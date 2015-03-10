@@ -1,0 +1,10 @@
+#!/bin/bash
+wget http://sourceforge.net/projects/boost/files/boost/1.57.0/boost_1_57_0.tar.gz
+if [ -f boost_1_57_0.tar.gz ]; then
+tar xzf boost_1_57_0.tar.gz
+cd boost_1_57_0
+./bootstrap.sh --with-libraries=timer,chrono,system,program_options,thread,iostreams --prefix=../boost
+./b2 install
+else
+echo "Failed to download Boost. Please check internet connectivity and try again."
+fi

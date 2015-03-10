@@ -1,0 +1,25 @@
+[0.7.3]
+- changed database format (makedb required)
+- optimized multithreading load balancing
+- removed a non-determinism in alignment computation
+- IUPAC nucleotide ambiguity codes in DNA sequences are accepted and converted into N's
+- SEG masking is disabled by default for blastp mode
+
+[0.7.2]
+- fixed a bug that could create invalid DAA files when using the --id option
+- added integrity check of DAA files to view command
+- fixed a bug that could cause segmentation fault or file seek errors
+
+[0.7.1]
+- fixed a race condition for opening temporary files
+- temporary files are deleted on ungraceful termination of the program
+- blank lines in FASTA files are tolerated
+- fixed a compiler error for GCC 4.4.7
+- view command can write to standard output
+
+[0.7.0]
+- introduced DAA format
+- reduced usage of temporary disk space and memory
+- fixed a compiler error for GCC 4.1.2
+- fixed a bug that could cause the program to hang when running out of temporary space or memory
+- added --forwardonly option to view command
