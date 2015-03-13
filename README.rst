@@ -6,8 +6,8 @@ Download & Installation
 =======================
 DIAMOND runs on Linux operating systems and can be downloaded in binary format for immediate use::
 
-    $ wget
-    $ tar xzf
+    $ wget http://github.com/bbuchfink/diamond/releases/download/v0.7.3/diamond-linux64-0.7.3.tar.gz
+    $ tar xzf diamond-linux64-0.7.3.tar.gz
 
 Alternatively, the software can be compiled from source (see Compiling from source).
 
