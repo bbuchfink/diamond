@@ -81,7 +81,7 @@ Option            Short Default  Description
 --gapopen               11       Gap open penalty.
 --gapextend             1        Gap extension penalty.
 --matrix                BLOSUM62 Scoring matrix.
---seg                   yes      Enable SEG masking of low complexity segments in the query (yes/no).
+--seg                            Enable SEG masking of low complexity segments in the query (yes/no). The default is no for blastp and yes for blastx.
 --max-target-seqs -k    25       The maximum number of target sequences per query to keep alignments for.
 --top                            Keep alignments within the given percentage range of the top alignment score for a query (overrides –max-target-seqs option).
 --evalue          -e    0.001    Maximum expected value to keep an alignment.
@@ -96,11 +96,11 @@ Option         Short Default  Description
 --tmpdir       -t    /dev/shm Directory to be used for temporary storage.
 --index-chunks -c    4        The number of chunks for processing the seed index.
 ============== ===== ======== ===========
-It is recommended to always use the **--tmpdir** option and set this to a disk-based directory. The amount of disk space that will be used depends on the program's settings and your data. As a general rule you should ensure that 100 GB of disk space are available here. If you run the program in a cluster environment, and disk space is only available over a slow network based file system, you may want to omit the --tmpdir option. This will keep temporary information in memory and increase the program's memory usage substantially, so depending on the amount of RAM available, you may have to adjust the --block-size option.
+It is recommended to always use the **--tmpdir** option and set this to a disk-based directory. The amount of disk space that will be used depends on the program's settings and your data. As a general rule you should ensure that 100 GB of disk space are available here. If you run the program in a cluster environment, and disk space is only available over a slow network based file system, you may want to omit the --tmpdir option. This will keep temporary information in memory and increase the program's memory usage substantially.
 
-The **--block-size/-b** option is set for the makedb command and determines the number of sequence letters (in billions) to be processed at a time. Bigger numbers will increase the use of memory *and* temporary disk space, but also improve performance. The program can be expected to roughly use ten times this number of memory (in GB).
+The **--block-size/-b** option is set for the makedb command and the main option for controlling the program's memory usage. Bigger numbers will increase the use of memory *and* temporary disk space, but also improve performance. The program can be expected to roughly use six times this number of memory (in GB). So for the default value of -b=2, the memory usage will be about 12 GB.
 
-The **--index-chunks/-c** option has a default value of 4. It is recommended to set this to 1 on a high memory server, which will increase performance and memory usage, but not the usage of temporary disk space.
+The **--index-chunks/-c** option can be additionally used to tune the performance. It is recommended to set this to 1 on a high memory server, which will increase performance and memory usage, but not the usage of temporary disk space.
 
 View options
 ============
