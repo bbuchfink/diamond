@@ -72,8 +72,8 @@ struct DP_matrix
 		rows_ (rows),
 		band_ (band),
 		padding_ (padding),
-		scores_ (scores_ptr),
-		hgap_ (hgap_ptr)
+		scores_ (&s2),
+		hgap_ (&h2)
 	{
 		scores_->resize(2*band+1);
 		hgap_->resize(2*band+2);
@@ -141,7 +141,9 @@ private:
 
 	const unsigned rows_, band_, padding_;
 	sv *hgap_front_, *score_front_;
-	Tls<vector<sv> > scores_, hgap_;
+	//Tls<vector<sv> > scores_, hgap_;
+	vector<sv>* scores_, *hgap_;
+	vector<sv> s2,h2;
 
 };
 

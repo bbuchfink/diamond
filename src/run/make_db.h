@@ -66,7 +66,7 @@ void make_db(_val)
 		timer.go("Saving to disk");
 		ref_seqs<_val>::data_->save(main);
 		ref_ids::get().save(main);
-		main.write(hst, 1);
+		hst->save(main);
 
 		timer.go("Deallocating sequences");
 		delete ref_seqs<_val>::data_;

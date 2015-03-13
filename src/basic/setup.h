@@ -102,6 +102,8 @@ void setup(const string &command, int ac, const char **av)
 	verbose_stream << "Gap open penalty = " << po::gap_open << endl;
 	verbose_stream << "Gap extension penalty = " << po::gap_extend << endl;
 
+	if(po::seg == "" && po::command == po::blastx)
+		po::seg = "yes";
 	verbose_stream << "Seg masking = " << (po::seg == "yes") << endl;
 
 	po::have_ssse3 = check_SSSE3();

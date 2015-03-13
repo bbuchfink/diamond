@@ -69,6 +69,9 @@ struct sorted_list
 					sh,
 					range);
 
+		for(typename vector<buffered_iterator*>::iterator i=iterators.begin();i!=iterators.end();++i)
+			delete *i;
+
 		timer.go("Sorting seed list");
 #pragma omp parallel for schedule(dynamic)
 		for(unsigned i=0;i<Const::seedp;++i)

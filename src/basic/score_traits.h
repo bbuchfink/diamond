@@ -62,7 +62,7 @@ const uint8_t* blast_alphabet<Amino_acid>()
 { return AMINOACID_TO_NCBISTDAA; }
 
 #ifdef EXTRA
-#include "../../extra/score_traits.h"
+#include "../../../extra/score_traits.h"
 #endif
 
 #endif /* SCORE_TRAITS_H_ */

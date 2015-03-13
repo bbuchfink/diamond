@@ -22,12 +22,7 @@ Author: Benjamin Buchfink
 #define ASYNC_BUFFER_H_
 
 #include <vector>
-#include <boost/thread.hpp>
-#include <boost/lockfree/queue.hpp>
-#include <boost/iostreams/device/file_descriptor.hpp>
-#include <boost/iostreams/device/file.hpp>
-#include <boost/iostreams/filtering_stream.hpp>
-#include <boost/iostreams/filter/gzip.hpp>
+#include <omp.h>
 #include <boost/ptr_container/ptr_vector.hpp>
 
 namespace io = boost::iostreams;
@@ -35,8 +30,6 @@ namespace io = boost::iostreams;
 using std::vector;
 using std::string;
 using std::endl;
-using boost::lockfree::queue;
-using boost::thread;
 using boost::ptr_vector;
 
 struct Buffer_file_read_exception : public diamond_exception
@@ -56,72 +49,83 @@ struct Async_buffer
 
 	Async_buffer(size_t input_count, const string &tmpdir, unsigned bins):
 		bins_ (bins),
-		bin_size_ ((input_count + bins_ - 1) / bins_),
-		done_ (false),
-		push_count_ (0)
+		bin_size_ ((input_count + bins_ - 1) / bins_)
 	{
 		log_stream << "Async_buffer() " << input_count << ',' << bin_size_ << endl;
-		for(unsigned i=0;i<bins;++i) {
-			tmp_file_.push_back(Temp_file ());
-			out_.push_back(new Output_stream (tmp_file_[i]));
-		}
-		memset(size_, 0, sizeof(size_));
-		writer_thread_  = new thread(writer, this);
+		for(unsigned j=0;j<program_options::threads();++j)
+			for(unsigned i=0;i<bins;++i) {
+				tmp_file_.push_back(Temp_file ());
+				out_.push_back(new Output_stream (tmp_file_.back()));
+				size_.push_back(0);
+			}
 	}
 
 	struct Iterator
 	{
 		Iterator(Async_buffer &parent):
-			parent_ (&parent)
+			parent_ (parent),
+			thread_num_ (omp_get_thread_num())
 		{
-			for(unsigned i=0;i<parent_->bins_;++i)
-				buffer_[i] = new vector<_t>;
+			for(unsigned i=0;i<parent.bins_;++i) {
+				size_[i] = 0;
+				out_[i] = parent.get_out(thread_num_, i);
+			}
 		}
 		void push(const _t &x)
 		{
-			//++parent_->push_count_;
-			const unsigned bin = x / parent_->bin_size_;
-			assert(bin < parent_->bins());
-			buffer_[bin]->push_back(x);
-			if(buffer_[bin]->size() == buffer_size) {
-				parent_->out_queue_[bin].push(buffer_[bin]);
-				buffer_[bin] = new vector<_t>;
-			}
+			const unsigned bin = x / parent_.bin_size_;
+			assert(bin < parent_.bins());
+			buffer_[bin*buffer_size+(size_[bin]++)] = x;
+			if(size_[bin] == buffer_size)
+				flush(bin);
+		}
+		void flush(unsigned bin)
+		{
+			/*if(size_[bin] > 0)
+				printf("bin=%u thread=%u size=%lu\n",bin,thread_num_,size_[bin]);*/
+			out_[bin]->write(&buffer_[bin*buffer_size], size_[bin]);
+			parent_.add_size(thread_num_, bin, size_[bin]);
+			size_[bin] = 0;
 		}
 		~Iterator()
 		{
-			for(unsigned bin=0;bin<parent_->bins_;++bin) {
-				//log_stream << buffer_[bin]->size() << endl;
-				//parent_->push_count_ += buffer_[bin]->size();
-				parent_->out_queue_[bin].push(buffer_[bin]);
-			}
+			for(unsigned bin=0;bin<parent_.bins_;++bin)
+				flush(bin);
 		}
 	private:
-		vector<_t> *buffer_[async_buffer_max_bins];
-		Async_buffer *parent_;
+		enum { buffer_size = 65536 };
+		_t buffer_[async_buffer_max_bins*buffer_size];
+		size_t size_[async_buffer_max_bins];
+		Output_stream* out_[async_buffer_max_bins];
+		Async_buffer &parent_;
+		const unsigned thread_num_;
 	};
 
 	void close()
 	{
-		done_ = true;
-		writer_thread_->join();
-		delete writer_thread_;
+		for(ptr_vector<Output_stream>::iterator i=out_.begin();i!=out_.end();++i)
+			i->close();
 		out_.clear();
-		for(unsigned i=0;i<bins_;++i)
-			log_stream << "Queue " << i << " status " << out_queue_[i].empty() << endl;
-		log_stream << "Async_buffer.close() " << push_count_ << endl;
+		log_stream << "Async_buffer.close() " << endl;
 	}
 
-	void load(vector<_t> &data, unsigned i) const
+	void load(vector<_t> &data, unsigned bin) const
 	{
-		log_stream << "Async_buffer.load() " << size_[i] << endl;
-		data.resize(size_[i]);
-		if(size_[i] > 0) {
-			Input_stream f (tmp_file_[i]);
-			const size_t n = f.read(data.data(), size_[i]);
+		size_t size = 0;
+		for(unsigned i=0;i<program_options::threads();++i)
+			size += size_[i*bins_+bin];
+		log_stream << "Async_buffer.load() " << size << endl;
+		data.resize(size);
+		_t* ptr = data.data();
+		for(unsigned i=0;i<program_options::threads();++i) {
+			Input_stream f (tmp_file_[i*bins_+bin]);
+			const size_t s = size_[i*bins_+bin];
+			const size_t n = f.read(ptr, s);
+			//printf("load bin=%u thread=%u size=%lu\n",bin,i,s);
+			ptr += s;
 			f.close();
-			if(n != size_[i])
-				throw Buffer_file_read_exception(f.file_name.c_str(), size_[i], n);
+			if(n != s)
+				throw Buffer_file_read_exception(f.file_name.c_str(), s, n);
 		}
 	}
 
@@ -130,46 +134,20 @@ struct Async_buffer
 
 private:
 
-	enum { buffer_size = 65536 };
-
-	void flush_queues()
+	Output_stream* get_out(unsigned threadid, unsigned bin)
 	{
-		vector<_t> *v;
-		for(unsigned i=0;i<bins_;++i)
-			while(out_queue_[i].pop(v)) {
-				out_[i].write(v->data(), v->size());
-				/*for(unsigned j=0;j<v->size();++j)
-					cout << v->operator[](j);*/
-				size_[i] += v->size();
-				delete v;
-			}
+		return &out_[threadid*bins_+bin];
 	}
 
-	static void writer(Async_buffer *me)
+	void add_size(unsigned thread_id, unsigned bin, size_t n)
 	{
-		try {
-			while(!me->done_ && !exception_state()) {
-				me->flush_queues();
-				boost::this_thread::sleep_for(boost::chrono::milliseconds(1));
-			}
-			me->flush_queues();
-		} catch(std::exception& e) {
-			exception_state.set(e);
-		}
+		size_[thread_id*bins_+bin] += n;
 	}
 
 	const unsigned bins_, bin_size_;
 	ptr_vector<Output_stream> out_;
-#ifdef NDEBUG
-	queue<vector<_t>*> out_queue_[async_buffer_max_bins];
-#else
-	queue<vector<_t>*,boost::lockfree::capacity<128> > out_queue_[async_buffer_max_bins];
-#endif
-	size_t size_[async_buffer_max_bins];
-	thread *writer_thread_;
-	bool done_;
+	vector<size_t> size_;
 	vector<Temp_file> tmp_file_;
-	boost::atomic<size_t> push_count_;
 
 };
 

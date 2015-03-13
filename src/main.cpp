@@ -31,8 +31,8 @@ Author: Benjamin Buchfink
 #include "output/view.h"
 
 #ifdef EXTRA
-#include "../extra/test_sw.h"
-#include "../extra/test_io.h"
+#include "../../extra/test_sw.h"
+#include "../../extra/test_io.h"
 #endif
 
 #ifdef ENABLE_STAT
@@ -92,7 +92,7 @@ int main(int ac, const char* av[])
         	("penalty", po::value<int>(&program_options::penalty)->default_value(-3), "mismatch penalty score (blastn only)")
 #endif
         	("matrix", po::value<string>(&program_options::matrix)->default_value("blosum62"), "score matrix for protein alignment")
-        	("seg", po::value<string>(&program_options::seg)->default_value("yes"), "enable SEG masking of queries (yes/no)");
+        	("seg", po::value<string>(&program_options::seg), "enable SEG masking of queries (yes/no)");
 			//("salltitles", "print all subject titles into the blast tabular format");
         	//("very-sensitive", "enable very sensitive mode (default: fast)");
 

@@ -109,7 +109,7 @@ void run_ref_chunk(Database_file &db_file,
 	task_timer timer ("Loading reference sequences", true);
 	ref_seqs<_val>::data_ = new Sequence_set<_val> (db_file);
 	ref_ids::data_ = new String_set<char,0> (db_file);
-	db_file.read(&ref_hst, 1);
+	ref_hst.load(db_file);
 	setup_search_params<_val>(query_len_bounds, ref_seqs<_val>::data_->letters());
 	ref_map.init(ref_seqs<_val>::get().get_length());
 

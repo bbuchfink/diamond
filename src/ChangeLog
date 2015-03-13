@@ -4,6 +4,8 @@
 - removed a non-determinism in alignment computation
 - IUPAC nucleotide ambiguity codes in DNA sequences are accepted and converted into N's
 - SEG masking is disabled by default for blastp mode
+- fixed a memory leak
+- reduced database file sizes
 
 [0.7.2]
 - fixed a bug that could create invalid DAA files when using the --id option

@@ -1,5 +1,5 @@
 dnl Process this file with autoconf to produce a configure script.
-AC_INIT(diamond, 0.7.2, buchfink@gmail.com)
+AC_INIT(diamond, 0.7.3, buchfink@gmail.com)
 AC_CONFIG_AUX_DIR(config)
 AC_CONFIG_MACRO_DIR([m4])
 AC_CONFIG_SRCDIR(./main.cpp)

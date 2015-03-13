@@ -26,7 +26,7 @@ struct Const
 
 	enum {
 		build_version = 52,
-		build_compatibility = 42,
+		build_compatibility = 52,
 		daa_version = 0,
 		seedp_bits = 10,
 		seedp = 1<<seedp_bits,

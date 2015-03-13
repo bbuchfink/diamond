@@ -42,7 +42,8 @@ struct hit_filter
 		stats_ (stats),
 		q_pos_ (q_pos),
 		out_ (out),
-		subjects_ (subjects_ptr)
+		subjects_ (&s2)
+		//subjects_ (subjects_ptr)
 	{ subjects_->clear(); }
 
 	void push(_locr subject, int score)
@@ -93,13 +94,15 @@ private:
 	Statistics  &stats_;
 	_locq q_pos_;
 	typename Trace_pt_buffer<_locr,_locl>::Iterator &out_;
-	Tls<vector<sequence<const _val> > > subjects_;
+	//Tls<vector<sequence<const _val> > > subjects_;
+	vector<sequence<const _val> > s2;
+	vector<sequence<const _val> >* subjects_;
 
-	static thread_specific_ptr<vector<sequence<const _val> > > subjects_ptr;
+	//static thread_specific_ptr<vector<sequence<const _val> > > subjects_ptr;
 
 };
 
-template<typename _val, typename _locr, typename _locq, typename _locl>
-thread_specific_ptr<vector<sequence<const _val> > > hit_filter<_val,_locr,_locq,_locl>::subjects_ptr;
+/*template<typename _val, typename _locr, typename _locq, typename _locl>
+thread_specific_ptr<vector<sequence<const _val> > > hit_filter<_val,_locr,_locq,_locl>::subjects_ptr;*/
 
-#endif /* HIT_FILTER_H_ */
+#endif /* HIT_FILTER_H_*/

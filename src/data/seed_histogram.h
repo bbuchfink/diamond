@@ -26,10 +26,46 @@ Author: Benjamin Buchfink
 #include "../basic/shape_config.h"
 
 using std::vector;
-using boost::thread;
-using boost::atomic;
 
-typedef size_t shape_histogram[Const::seqp][Const::seedp];
+void encode_zero_rle(const int32_t *data, size_t len, Output_stream &out)
+{
+	const int32_t *p = data, *end = data + len;
+	int32_t n = 0;
+	while(p < end) {
+		while(p < end && *p == 0) {
+			--n;
+			++p;
+		}
+		if(n < 0) {
+			out.write(&n, 1);
+			n = 0;
+		}
+		if(p < end) {
+			out.write(p, 1);
+			++p;
+		}
+	}
+}
+
+void decode_zero_rle(int32_t *data, size_t len, Input_stream &in)
+{
+	size_t n = 0;
+	while(n < len) {
+		int32_t x;
+		in.read(&x, 1);
+		if(x >= 0) {
+			*(data++) = x;
+			++n;
+		} else {
+			for(int32_t i=0;i>x;--i) {
+				*(data++) = 0;
+				++n;
+			}
+		}
+	}
+}
+
+typedef int32_t shape_histogram[Const::seqp][Const::seedp];
 
 struct seedp_range
 {
@@ -99,6 +135,16 @@ struct seed_histogram
 			for(unsigned chunk=0;chunk < p.parts; ++chunk)
 				max = std::max(max, hst_size(data_[program_options::index_mode-1][shape], seedp_range(p.getMin(chunk), p.getMax(chunk))));
 		return max;
+	}
+
+	void save(Output_stream &out) const
+	{
+		encode_zero_rle(reinterpret_cast<const int32_t*>(data_), sizeof(data_)/sizeof(int32_t), out);
+	}
+
+	void load(Input_stream &in)
+	{
+		decode_zero_rle(reinterpret_cast<int32_t*>(data_), sizeof(data_)/sizeof(int32_t), in);
 	}
 
 private:

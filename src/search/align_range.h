@@ -72,18 +72,19 @@ void align_partition(unsigned hp,
 		typename sorted_list<_locr>::Type::const_iterator i,
 		typename sorted_list<_locq>::Type::const_iterator j)
 {
-	typename Trace_pt_buffer<_locr,_locl>::Iterator out (*Trace_pt_buffer<_locr,_locl>::instance);
+	typename Trace_pt_buffer<_locr,_locl>::Iterator* out = new typename Trace_pt_buffer<_locr,_locl>::Iterator (*Trace_pt_buffer<_locr,_locl>::instance);
 	while(!i.at_end() && !j.at_end() && !exception_state()) {
 		if(i.key() < j.key()) {
 			++i;
 		} else if(j.key() < i.key()) {
 			++j;
 		} else {
-			align_range<_val,_locr,_locq,_locl>(j, i, stats, out, sid);
+			align_range<_val,_locr,_locq,_locl>(j, i, stats, *out, sid);
 			++i;
 			++j;
 		}
 	}
+	delete out;
 }
 
 #endif /* ALIGN_RANGE_H_ */

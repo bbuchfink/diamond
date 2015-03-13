@@ -64,9 +64,10 @@ private:
 };
 
 template<> const Reduction<Amino_acid> Reduction<Amino_acid>::reduction ("KREDQN C G H M F Y ILV W P STA");
+template<> const Reduction<Nucleotide> Reduction<Nucleotide>::reduction ("A C G T");
 
 #ifdef EXTRA
-#include "../../extra/reduction.h"
+#include "../../../extra/reduction.h"
 #endif
 
 #endif /* REDUCTION_H_ */
