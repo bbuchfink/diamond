@@ -1,4 +1,4 @@
-**DIAMOND v0.7.3 by Benjamin Buchfink** - http://github.com/bbuchfink/diamond
+**DIAMOND v0.7.4 by Benjamin Buchfink** - http://github.com/bbuchfink/diamond
 
 Published in *Nature Methods* **12**, 59–60 (2015) | `doi:10.1038/nmeth.3176 <http://dx.doi.org/10.1038/nmeth.3176>`_
 
@@ -8,7 +8,7 @@ Download & Installation
 =======================
 DIAMOND runs on Linux operating systems and can be downloaded in binary format for immediate use::
 
-    wget http://github.com/bbuchfink/diamond/releases/download/diamond-0.7.3/diamond-linux64.tar.gz
+    wget http://github.com/bbuchfink/diamond/releases/download/diamond-0.7.4/diamond-linux64.tar.gz
     tar xzf diamond-linux64.tar.gz
 
 Alternatively, the software can be compiled from source (see Compiling from source).
@@ -134,18 +134,18 @@ The requirements for compiling DIAMOND are Boost (version 1.53.0 or higher), Ope
 
 To compile DIAMOND from source, invoke the following commands on the shell::
 
-    $ wget http://github.com/bbuchfink/diamond/archive/v0.7.3.tar.gz
-    $ tar xzf v0.7.3.tar.gz
-    $ cd diamond-0.7.3/src
+    $ wget http://github.com/bbuchfink/diamond/archive/v0.7.4.tar.gz
+    $ tar xzf v0.7.4.tar.gz
+    $ cd diamond-0.7.4/src
     $ ./configure
     $ make
     $ make install
 
 Alternatively, for having a local copy of Boost installed as well::
 
-    $ wget http://github.com/bbuchfink/diamond/archive/v0.7.3.tar.gz
-    $ tar xzf v0.7.3.tar.gz
-    $ cd diamond-0.7.3/src
+    $ wget http://github.com/bbuchfink/diamond/archive/v0.7.4.tar.gz
+    $ tar xzf v0.7.4.tar.gz
+    $ cd diamond-0.7.4/src
     $ ./install-boost
     $ ./configure --with-boost=boost
     $ make
