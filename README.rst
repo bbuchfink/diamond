@@ -130,7 +130,7 @@ MEGAN requires mapping files which need to be downloaded separately at the MEGAN
 
 Compiling from source
 =====================
-The requirements for compiling DIAMOND are Boost (version 1.53.0 or higher), OpenMP and zlib. If a system-wide Boost installation is not possible, the package includes a script called install-boost which will download and install a local copy of Boost for the user.
+The requirements for compiling DIAMOND are Boost (version 1.53.0 or higher) and zlib. If a system-wide Boost installation is not possible, the package includes a script called install-boost which will download and install a local copy of Boost for the user.
 
 To compile DIAMOND from source, invoke the following commands on the shell::
 
