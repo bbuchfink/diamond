@@ -24,6 +24,7 @@ Author: Benjamin Buchfink
 #include "../basic/seed.h"
 #include "sequence_set.h"
 #include "../basic/shape_config.h"
+#include "../util/thread.h"
 
 using std::vector;
 
@@ -117,11 +118,8 @@ struct seed_histogram
 	seed_histogram(const Sequence_set<_val> &seqs, const _val&)
 	{
 		memset(data_, 0, sizeof(data_));
-		const vector<shape_config> cfgs (shape_configs<_val>());
-		const vector<size_t> seq_partition (seqs.partition());
-#pragma omp parallel for schedule(dynamic)
-		for(unsigned seqp=0;seqp<Const::seqp;++seqp)
-			build_seq_partition(seqs, seqp, seq_partition[seqp], seq_partition[seqp+1], cfgs);
+		Build_context<_val> context (seqs, *this);
+		launch_scheduled_thread_pool(context, Const::seqp, program_options::threads());
 	}
 
 	const shape_histogram& get(unsigned index_mode, unsigned sid) const
@@ -148,6 +146,23 @@ struct seed_histogram
 	}
 
 private:
+
+	template<typename _val>
+	struct Build_context
+	{
+		Build_context(const Sequence_set<_val> &seqs, seed_histogram &hst):
+			seqs (seqs),
+			cfgs (shape_configs<_val>()),
+			seq_partition (seqs.partition()),
+			hst (hst)
+		{ }
+		void operator()(unsigned thread_id, unsigned seqp) const
+		{ hst.build_seq_partition(seqs, seqp, seq_partition[seqp], seq_partition[seqp+1], cfgs); }
+		const Sequence_set<_val> &seqs;
+		const vector<shape_config> cfgs;
+		const vector<size_t> seq_partition;
+		seed_histogram &hst;
+	};
 
 	template<typename _val>
 	void build_seq_partition(const Sequence_set<_val> &seqs,

@@ -70,7 +70,9 @@ struct DAA_query_record
 	DAA_query_record(const DAA_file& file, const Binary_buffer &buf):
 		file_ (file),
 		it_ (init(buf))
-	{ }
+	{
+		//cout << sequence<Nucleotide>(source_seq.data(), source_seq.size());
+	}
 
 	Match_iterator begin() const
 	{ return Match_iterator (*this, it_); }
@@ -160,13 +162,13 @@ private:
 		r.total_subject_len = r.parent_.file_.ref_len(subject_id);
 		if(r.parent_.file_.mode() == blastx) {
 			r.frame = (flag&(1<<6)) == 0 ? r.query_begin % 3 : 3+(r.parent_.source_seq.size() - 1 - r.query_begin)%3;
-			r.translated_query_begin = query_translated_begin<_val>(r.query_begin, r.frame, r.parent_.source_seq.size());
+			r.translated_query_begin = query_translated_begin<_val>(r.query_begin, r.frame, r.parent_.source_seq.size(), true);
 		} else if (r.parent_.file_.mode() == blastp) {
 			r.frame = 0;
 			r.translated_query_begin = r.query_begin;
 		} else {
 			r.frame = (flag&(1<<6)) == 0 ? 0 : 1;
-			r.translated_query_begin = query_translated_begin<_val>(r.query_begin, r.frame, r.parent_.source_seq.size());
+			r.translated_query_begin = query_translated_begin<_val>(r.query_begin, r.frame, r.parent_.source_seq.size(), false);
 		}
 		r.parse();
 		return it;
@@ -180,6 +182,7 @@ private:
 		identities = 0;
 		mismatches = 0;
 		gap_openings = 0;
+		unsigned d = 0;
 		for(Packed_transcript::Const_iterator<char> i = transcript.template begin<char>(); i.good(); ++i) {
 			len += i->count;
 			switch(i->op) {
@@ -187,19 +190,24 @@ private:
 				identities += i->count;
 				translated_query_len += i->count;
 				subject_len += i->count;
+				d = 0;
 				break;
 			case op_substitution:
 				mismatches += i->count;
 				translated_query_len += i->count;
 				subject_len += i->count;
+				d = 0;
 				break;
 			case op_insertion:
 				translated_query_len += i->count;
-				gap_openings += i->count;
+				++gap_openings;
+				d = 0;
 				break;
 			case op_deletion:
-				++subject_len += i->count;
-				gap_openings += i->count;
+				subject_len += i->count;
+				if(d == 0)
+					++gap_openings;
+				d += i->count;
 			}
 		}
 	}

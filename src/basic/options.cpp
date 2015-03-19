@@ -22,8 +22,6 @@ Author: Benjamin Buchfink
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
-#include <omp.h>
-#include <boost/thread.hpp>
 #include "options.h"
 #include "value_type.h"
 

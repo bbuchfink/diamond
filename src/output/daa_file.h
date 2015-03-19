@@ -1,5 +1,5 @@
 /****
-Copyright (c) 2014, University of Tuebingen
+Copyright (c) 2014-2015, University of Tuebingen
 Author: Benjamin Buchfink
 All rights reserved.
 

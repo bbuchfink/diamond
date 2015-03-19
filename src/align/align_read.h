@@ -30,6 +30,7 @@ Author: Benjamin Buchfink
 #include "align_sequence.h"
 #include "../util/text_buffer.h"
 #include "../output/output_buffer.h"
+#include "link_segments.h"
 
 using std::vector;
 
@@ -68,6 +69,8 @@ void align_read(Output_buffer<_val> &buffer,
 	if(matches->size() == 0)
 		return;
 
+	link_segments(*matches);
+
 	std::sort(matches->begin(), matches->end());
 	unsigned n_hsp = 0, n_target_seq = 0;
 	typename vector<Segment<_val> >::iterator it = matches->begin();
@@ -75,8 +78,13 @@ void align_read(Output_buffer<_val> &buffer,
 			? score_matrix::get().bitscore(program_options::max_evalue, ref_header.letters, query_len) : program_options::min_bit_score);
 	const int top_score = matches->operator[](0).score_;
 
-	while(it < matches->end() && program_options::output_range(n_target_seq, it->score_, top_score) && it->score_ >= min_raw_score) {
-		if(it != matches->begin() && (it-1)->subject_id_ == it->subject_id_ && (it-1)->score_ == it->score_) {
+	while(it < matches->end()) {
+		const bool same_subject = it != matches->begin() && (it-1)->subject_id_ == it->subject_id_;
+		if(!same_subject && it->score_ < min_raw_score)
+			break;
+		if(!same_subject && !program_options::output_range(n_target_seq, it->score_, top_score))
+			break;
+		if(same_subject && (it-1)->score_ == it->score_) {
 			++it;
 			continue;
 		}
@@ -88,9 +96,9 @@ void align_read(Output_buffer<_val> &buffer,
 		if(n_hsp == 0)
 			buffer.write_query_record(query);
 		buffer.print_match(*it, source_query_len, query_seqs<_val>::get()[query*contexts + it->frame_], query);
-		++n_hsp;
 
-		if(!program_options::long_mode || it == matches->begin() || (it-1)->subject_id_ != it->subject_id_)
+		++n_hsp;
+		if(!same_subject)
 			++n_target_seq;
 		if(program_options::alignment_traceback && it->traceback_->gap_openings_ > 0)
 			stat.inc(Statistics::GAPPED);

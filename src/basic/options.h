@@ -108,9 +108,6 @@ namespace program_options
 	string get_temp_file();
 	bool mem_buffered();
 
-	inline string database_file_name()
-	{ return database + ".dmnd"; }
-
 	inline unsigned get_run_len(unsigned length)
 	{
 		if(run_len == 0) {

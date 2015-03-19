@@ -66,7 +66,7 @@ void write_intermediate_record(Text_buffer &buf,
 		.write_packed(match.score_)
 		.write_packed(match.traceback_->query_begin_)
 		.write_packed(match.traceback_->subject_begin_);
-	const unsigned qbegin = query_translated_begin<_val>(match.traceback_->query_begin_, match.frame_, query_source_len);
+	const unsigned qbegin = query_translated_begin<_val>(match.traceback_->query_begin_, match.frame_, query_source_len, query_translated());
 	match.traceback_->transcript_->print_packed(buf, query, ref_seqs<_val>::get()[match.subject_id_], qbegin, match.traceback_->subject_begin_);
 }
 

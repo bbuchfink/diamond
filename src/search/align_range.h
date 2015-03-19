@@ -70,9 +70,10 @@ void align_partition(unsigned hp,
 		Statistics &stats,
 		unsigned sid,
 		typename sorted_list<_locr>::Type::const_iterator i,
-		typename sorted_list<_locq>::Type::const_iterator j)
+		typename sorted_list<_locq>::Type::const_iterator j,
+		unsigned thread_id)
 {
-	typename Trace_pt_buffer<_locr,_locl>::Iterator* out = new typename Trace_pt_buffer<_locr,_locl>::Iterator (*Trace_pt_buffer<_locr,_locl>::instance);
+	typename Trace_pt_buffer<_locr,_locl>::Iterator* out = new typename Trace_pt_buffer<_locr,_locl>::Iterator (*Trace_pt_buffer<_locr,_locl>::instance, thread_id);
 	while(!i.at_end() && !j.at_end() && !exception_state()) {
 		if(i.key() < j.key()) {
 			++i;

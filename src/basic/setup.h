@@ -21,7 +21,6 @@ Author: Benjamin Buchfink
 #ifndef SETUP_H_
 #define SETUP_H_
 
-#include <omp.h>
 #include <boost/iostreams/tee.hpp>
 #include "options.h"
 #include "../util/system.h"
@@ -33,6 +32,10 @@ void setup(const string &command, int ac, const char **av)
 {
 	namespace io = boost::iostreams;
 	namespace po = program_options;
+
+	auto_append_extension(po::database, ".dmnd");
+	auto_append_extension(po::daa_file, ".daa");
+
 	if(po::debug_log) {
 		io::tee_filter<io::file_sink> t (io::file_sink("diamond.log", std::ios_base::out | std::ios_base::app));
 		verbose_stream.push(t);
@@ -54,10 +57,8 @@ void setup(const string &command, int ac, const char **av)
 #ifndef NDEBUG
 	verbose_stream << "Assertions enabled." << endl;
 #endif
-	po::set_option(po::threads_, boost::thread::hardware_concurrency());
-	omp_set_num_threads(po::threads_);
-	omp_set_dynamic(0);
-	verbose_stream << "#Threads = " << omp_get_max_threads() << endl;
+	po::set_option(po::threads_, tthread::thread::hardware_concurrency());
+	verbose_stream << "#Threads = " << po::threads() << endl;
 
 	if(command == "makedb")
 		po::command = po::makedb;

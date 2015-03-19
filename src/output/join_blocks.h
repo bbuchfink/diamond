@@ -37,11 +37,11 @@ void join_blocks(unsigned ref_blocks, DAA_output &master_out, const vector<Temp_
 	Block_output::Iterator r;
 	for(unsigned i=0;i<ref_blocks;++i) {
 		files.push_back(new Block_output (i, tmp_file[i]));
-		if(files.back()->next(r))
+		if(files.back()->next(r, std::numeric_limits<unsigned>::max()))
 			records.push_back(r);
 	}
 	std::make_heap(records.begin(), records.end());
-	unsigned query, block, subject, n = 0;
+	unsigned query, block, subject, n_target_seq = 0;
 	query = block = subject = std::numeric_limits<unsigned>::max();
 	int top_score=0;
 	Output_buffer<_val> buf;
@@ -56,26 +56,27 @@ void join_blocks(unsigned ref_blocks, DAA_output &master_out, const vector<Temp_
 				buf.clear();
 			}
 			query = next.info_.query_id;
-			n = 0;
+			n_target_seq = 0;
 			top_score = next.info_.score;
 			statistics.inc(Statistics::ALIGNED);
 			buf.write_query_record(query);
 		}
-		const bool same_subject = b == block && next.info_.subject_id == subject;
-		if(program_options::output_range(n, next.info_.score, top_score) || same_subject) {
+		const bool same_subject = n_target_seq > 0 && b == block && next.info_.subject_id == subject;
+		if(program_options::output_range(n_target_seq, next.info_.score, top_score) || same_subject) {
+			//printf("q=%u s=%u n=%u ss=%u\n",query, next.info_.subject_id, n_target_seq, same_subject);
 			DAA_output::write_record(buf, next.info_);
 			statistics.inc(Statistics::MATCHES);
 			if(!same_subject) {
 				block = b;
 				subject = next.info_.subject_id;
-				++n;
+				++n_target_seq;
 			}
 		} else
 			;
 
 		std::pop_heap(records.begin(), records.end());
 		records.pop_back();
-		if(files[b]->next(r)) {
+		if(files[b]->next(r, subject)) {
 			records.push_back(r);
 			std::push_heap(records.begin(), records.end());
 		}

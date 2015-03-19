@@ -21,11 +21,7 @@ Author: Benjamin Buchfink
 #ifndef ALIGN_QUERIES_H_
 #define ALIGN_QUERIES_H_
 
-#if __GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 3)
-#include <parallel/algorithm>
-#else
 #include "../util/merge_sort.h"
-#endif
 #include "../search/trace_pt_buffer.h"
 #include "../util/map.h"
 #include "align_read.h"
@@ -33,36 +29,15 @@ Author: Benjamin Buchfink
 
 using std::vector;
 
-struct Output_piece
-{
-	Output_piece():
-		text (0),
-		size (0),
-		empty (true)
-	{ }
-	Output_piece(char *text, size_t size):
-		text (text),
-		size (size),
-		empty (false)
-	{ }
-	operator bool() const
-	{ return empty == false; }
-	char *text;
-	size_t size;
-	bool empty;
-};
-
 struct Output_writer
 {
 	Output_writer(Output_stream* f):
 		f_ (f)
 	{ }
-	void operator()(const Output_piece &p)
+	void operator()(Text_buffer &buf)
 	{
-		if(p.text != 0) {
-			f_->write(p.text, p.size);
-			free(p.text);
-		}
+		f_->write(buf.get_begin(), buf.size());
+		buf.clear();
 	}
 private:
 	Output_stream* const f_;
@@ -83,105 +58,46 @@ void align_queries(typename Trace_pt_list<_locr,_locl>::iterator begin,
 	}
 }
 
-template<typename _locr, typename _locl>
-struct Query_fetcher
+template<typename _val, typename _locr, typename _locl, typename _buffer>
+struct Align_context
 {
-	Query_fetcher(typename Trace_pt_buffer<_locr,_locl>::Vector &trace_pts):
-		trace_pts_ (trace_pts)
+	Align_context(Trace_pt_list<_locr,_locl> &trace_pts, Output_stream* output_file):
+		trace_pts (trace_pts),
+		output_file (output_file),
+		writer (output_file),
+		queue (program_options::threads()*8, writer)
 	{ }
-private:
-	typename Trace_pt_buffer<_locr,_locl>::Vector &trace_pts_;
-};
-
-template<typename _val, typename _locr, typename _locl>
-void align_queries2(typename Trace_pt_buffer<_locr,_locl>::Vector &trace_pts, Output_stream* output_file)
-{
-	//const size_t max_size=65536,max_segments=4096,min_segments=program_options::threads()*4;
-	const size_t max_size=4096,max_segments=4096,min_segments=program_options::threads()*4;
-	if(trace_pts.size() == 0)
-		return;
-	vector<size_t> p;
-	switch(query_contexts()) {
-	case 1:
-		p = map_partition(trace_pts.begin(), trace_pts.end(), hit<_locr,_locl>::template query_id<1>, max_size, max_segments, min_segments);
-		break;
-	case 2:
-		p = map_partition(trace_pts.begin(), trace_pts.end(), hit<_locr,_locl>::template query_id<2>, max_size, max_segments, min_segments);
-		break;
-	case 6:
-		p = map_partition(trace_pts.begin(), trace_pts.end(), hit<_locr,_locl>::template query_id<6>, max_size, max_segments, min_segments);
-		break;
-	}
-
-	const size_t n = p.size() - 1;
-	/*for(unsigned i=0;i<n;++i) {
-		printf("%lu\n",p[i+1]-p[i]);
-	}*/
-
-	Output_writer writer (output_file);
-	Task_queue<Output_piece,Output_writer> queue (n, program_options::threads()*10, writer);
-
-#pragma omp parallel
-	{
-		Statistics st;
-		size_t i;
-		Void_callback cb;
-		while(queue.get(i, cb) && !exception_state()) {
-			try {
-				size_t begin = p[i], end = p[i+1];
-				Output_buffer<_val> *buffer = ref_header.n_blocks > 1 ? new Temp_output_buffer<_val> () : new Output_buffer<_val> ();
-				if(query_contexts() == 6)
-					align_queries<_val,_locr,_locl,6>(trace_pts, begin, end, *buffer, st);
-				else if(query_contexts() == 1)
-					align_queries<_val,_locr,_locl,1>(trace_pts, begin, end, *buffer, st);
-				else if(query_contexts() == 2)
-					align_queries<_val,_locr,_locl,2>(trace_pts, begin, end, *buffer, st);
-				queue.push(i, Output_piece (buffer->get_begin(), buffer->size()));
-			} catch(std::exception &e) {
-				exception_state.set(e);
-				queue.wake_all();
-			}
-		}
-#pragma omp critical
-		statistics += st;
-	}
-	exception_state.sync();
-}
-
-template<typename _val, typename _locr, typename _locl>
-void align_queries(Trace_pt_list<_locr,_locl> &trace_pts, Output_stream* output_file)
-{
-	if(trace_pts.size() == 0)
-		return;
-
-	Output_writer writer (output_file);
-	Task_queue3<Output_piece,Output_writer> queue (program_options::threads()*8, writer);
-
-#pragma omp parallel
+	void operator()(unsigned thread_id)
 	{
 		Statistics st;
 		size_t i=0;
 		typename Trace_pt_list<_locr,_locl>::Query_range query_range (trace_pts.get_range());
-		while(queue.get(i, query_range) && !exception_state()) {
+		_buffer *buffer = 0;
+		while(queue.get(i, buffer, query_range) && !exception_state()) {
 			try {
-				Output_buffer<_val> *buffer = ref_header.n_blocks > 1 ? new Temp_output_buffer<_val> () : new Output_buffer<_val> ();
-				if(query_contexts() == 6)
+				switch(query_contexts()) {
+				case 6:
 					align_queries<_val,_locr,_locl,6>(query_range.begin, query_range.end, *buffer, st);
-				else if(query_contexts() == 1)
-					align_queries<_val,_locr,_locl,1>(query_range.begin, query_range.end, *buffer, st);
-				else if(query_contexts() == 2)
+					break;
+				case 2:
 					align_queries<_val,_locr,_locl,2>(query_range.begin, query_range.end, *buffer, st);
-				queue.push(i, Output_piece (buffer->get_begin(), buffer->size()));
+					break;
+				default:
+					align_queries<_val,_locr,_locl,1>(query_range.begin, query_range.end, *buffer, st);
+				}
+				queue.push(i);
 			} catch(std::exception &e) {
 				exception_state.set(e);
 				queue.wake_all();
 			}
 		}
-#pragma omp critical
 		statistics += st;
 	}
-	exception_state.sync();
-}
+	Trace_pt_list<_locr,_locl> &trace_pts;
+	Output_stream* output_file;
+	Output_writer writer;
+	Task_queue<_buffer,Output_writer> queue;
+};
 
 template<typename _val, typename _locr, typename _locl>
 void align_queries(const Trace_pt_buffer<_locr,_locl> &trace_pts, Output_stream* output_file)
@@ -193,13 +109,15 @@ void align_queries(const Trace_pt_buffer<_locr,_locl> &trace_pts, Output_stream*
 		trace_pts.load(v, bin);
 		v.init();
 		timer.go("Sorting trace points");
-#if __GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 3)
-		__gnu_parallel::sort(v.begin(), v.end());
-#else
 		merge_sort(v.begin(), v.end(), program_options::threads());
-#endif
 		timer.go("Computing alignments");
-		align_queries<_val,_locr,_locl>(v, output_file);
+		if(ref_header.n_blocks > 1) {
+			Align_context<_val,_locr,_locl,Temp_output_buffer<_val> > context (v, output_file);
+			launch_thread_pool(context, program_options::threads());
+		} else {
+			Align_context<_val,_locr,_locl,Output_buffer<_val> > context (v, output_file);
+			launch_thread_pool(context, program_options::threads());
+		}
 	}
 }
 

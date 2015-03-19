@@ -34,9 +34,32 @@ Author: Benjamin Buchfink
 
 using std::endl;
 using std::cout;
-using boost::thread;
 using boost::timer::cpu_timer;
 using boost::ptr_vector;
+
+template<typename _val, typename _locr, typename _locq, typename _locl>
+struct Search_context
+{
+	Search_context(unsigned sid, const typename sorted_list<_locr>::Type &ref_idx, const typename sorted_list<_locq>::Type &query_idx):
+		sid (sid),
+		ref_idx (ref_idx),
+		query_idx (query_idx)
+	{ }
+	void operator()(unsigned thread_id, unsigned seedp) const
+	{
+		Statistics stat;
+		align_partition<_val,_locr,_locq,_locl>(seedp,
+				stat,
+				sid,
+				ref_idx.get_partition_cbegin(seedp),
+				query_idx.get_partition_cbegin(seedp),
+				thread_id);
+		statistics += stat;
+	}
+	const unsigned sid;
+	const typename sorted_list<_locr>::Type &ref_idx;
+	const typename sorted_list<_locq>::Type &query_idx;
+};
 
 template<typename _val, typename _locr, typename _locq, typename _locl>
 void process_shape(unsigned sid,
@@ -46,7 +69,6 @@ void process_shape(unsigned sid,
 		char *ref_buffer)
 {
 	using std::vector;
-	using boost::atomic;
 
 	::partition p (Const::seedp, program_options::lowmem);
 	for(unsigned chunk=0;chunk < p.parts; ++chunk) {
@@ -73,25 +95,8 @@ void process_shape(unsigned sid,
 		timer.finish();
 
 		timer.go("Searching alignments");
-#pragma omp parallel
-		{
-			Statistics stat;
-#pragma omp for schedule(dynamic) nowait
-			for(unsigned seedp=0;seedp<Const::seedp;++seedp) {
-				try {
-					align_partition<_val,_locr,_locq,_locl>(seedp,
-							stat,
-							sid,
-							ref_idx.get_partition_cbegin(seedp),
-							query_idx.get_partition_cbegin(seedp));
-				} catch (std::exception &e) {
-					exception_state.set(e);
-				}
-			}
-#pragma omp critical
-			statistics += stat;
-		}
-
+		Search_context<_val,_locr,_locq,_locl> context (sid, ref_idx, query_idx);
+		launch_scheduled_thread_pool(context, Const::seedp, program_options::threads());
 	}
 	timer_mapping.stop();
 }

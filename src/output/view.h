@@ -37,23 +37,61 @@ struct View_writer
 	Output_stream f_;
 };
 
-struct View_query
+struct View_fetcher
 {
-	View_query(DAA_file &daa):
+	View_fetcher(DAA_file &daa):
 		daa (daa)
 	{ }
-	void operator()()
+	bool operator()()
 	{
 		n = 0;
 		for(unsigned i=0;i<view_buf_size;++i)
 			if(!daa.read_query_buffer(buf[i]))
-				break;
+				return false;
 			else
 				++n;
+		return true;
 	}
 	Binary_buffer buf[view_buf_size];
 	unsigned n;
 	DAA_file &daa;
+};
+
+template<typename _val>
+struct View_context
+{
+	View_context(DAA_file &daa, View_writer &writer, const Output_format<_val> &format):
+		daa (daa),
+		writer (writer),
+		queue (3*program_options::threads(), writer),
+		format (format)
+	{ }
+	void operator()(unsigned thread_id)
+	{
+		try {
+			size_t n;
+			View_fetcher query_buf (daa);
+			Text_buffer *buffer = 0;
+			while(!exception_state() && queue.get(n, buffer, query_buf)) {
+				for(unsigned j=0;j<query_buf.n;++j) {
+					DAA_query_record<_val> r (daa, query_buf.buf[j]);
+					for(typename DAA_query_record<_val>::Match_iterator i = r.begin(); i.good(); ++i) {
+						if(i->frame > 2 && program_options::forwardonly)
+							continue;
+						format.print_match(*i, *buffer);
+					}
+				}
+				queue.push(n);
+			}
+		} catch(std::exception &e) {
+			exception_state.set(e);
+			queue.wake_all();
+		}
+	}
+	DAA_file &daa;
+	View_writer &writer;
+	Task_queue<Text_buffer,View_writer> queue;
+	const Output_format<_val> &format;
 };
 
 template<typename _val>
@@ -75,30 +113,8 @@ void view(DAA_file &daa)
 	const Output_format<_val>& format (get_output_format<_val>());
 	format.print_header(writer.f_);
 
-	Task_queue2<Text_buffer,View_writer> queue ((daa.query_records()+view_buf_size-1)/view_buf_size, 3*program_options::threads(), writer);
-
-#pragma omp parallel
-	try {
-		size_t n;
-		View_query view (daa);
-		Text_buffer *buffer = 0;
-		while(!exception_state() && queue.get(n, buffer, view)) {
-			for(unsigned j=0;j<view.n;++j) {
-				DAA_query_record<_val> r (daa, view.buf[j]);
-				for(typename DAA_query_record<_val>::Match_iterator i = r.begin(); i.good(); ++i) {
-					if(i->frame > 2 && program_options::forwardonly)
-						continue;
-					format.print_match(*i, *buffer);
-				}
-			}
-			queue.push(n);
-		}
-	} catch(std::exception &e) {
-		exception_state.set(e);
-		queue.wake_all();
-	}
-
-	exception_state.sync();
+	View_context<_val> context (daa, writer, format);
+	launch_thread_pool(context, program_options::threads());
 }
 
 void view()

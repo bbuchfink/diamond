@@ -44,13 +44,14 @@ void make_db(_val)
 
 	ref_header.block_size = program_options::chunk_size;
 	size_t chunk = 0;
-	Output_stream main(program_options::database_file_name());
+	Output_stream main(program_options::database);
 	main.write(&ref_header, 1);
 
 	for(;;++chunk) {
 		timer.go("Loading sequences");
 		Sequence_set<Nucleotide>* ss;
 		size_t n_seq = load_seqs<_val,_val,Single_strand>(db_file, FASTA_format<_val> (), ref_seqs<_val>::data_, ref_ids::data_, ss, (size_t)(program_options::chunk_size * 1e9));
+		log_stream << "load_seqs n=" << n_seq << endl;
 		if(n_seq == 0)
 			break;
 		ref_header.letters += ref_seqs<_val>::data_->letters();
@@ -77,8 +78,11 @@ void make_db(_val)
 
 	timer.finish();
 	ref_header.n_blocks = chunk;
+	log_stream << "db seek" << endl;
 	main.seekp(0);
+	log_stream << "db write" << endl;
 	main.write(&ref_header, 1);
+	log_stream << "db close" << endl;
 	main.close();
 
 	verbose_stream << "Total time = " << boost::timer::format(total.elapsed(), 1, "%ws\n");

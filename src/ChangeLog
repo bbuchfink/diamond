@@ -1,3 +1,12 @@
+[0.7.4]
+- removed OpenMP dependency
+- fixed an error with the autoconf script
+- file extensions can be named explicitly for DAA and database files
+- HSPs are grouped by target sequence
+- fixed a bug that could produce incorrect output for view
+- fixed a bug that could report an incorrect number of alignments
+- fixed a compiler error for GCC 4.1.2
+
 [0.7.3]
 - changed database format (makedb required)
 - optimized multithreading load balancing

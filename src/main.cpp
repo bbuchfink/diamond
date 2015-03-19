@@ -202,7 +202,7 @@ int main(int ac, const char* av[])
         	cout << "Insufficient arguments. Use diamond -h for help.\n";
 	}
 	catch(std::bad_alloc &e) {
-		cerr << "Failed to allocate sufficient memory. Please refer to the manual for instructions on memory usage." << endl;
+		cerr << "Failed to allocate sufficient memory. Please refer to the readme for instructions on memory usage." << endl;
 		log_stream << "Error: " << e.what() << endl;
 	} catch(exception& e) {
         cerr << "Error: " << e.what() << endl;

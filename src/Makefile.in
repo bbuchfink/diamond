@@ -113,7 +113,8 @@ am_diamond_OBJECTS = diamond-blast_encoding.$(OBJEXT) \
 	diamond-ncbi_std.$(OBJEXT) diamond-blast_psi_priv.$(OBJEXT) \
 	diamond-raw_scoremat.$(OBJEXT) \
 	diamond-blast_query_info.$(OBJEXT) diamond-blast_seg.$(OBJEXT) \
-	diamond-main.$(OBJEXT) diamond-options.$(OBJEXT)
+	diamond-main.$(OBJEXT) diamond-options.$(OBJEXT) \
+	diamond-tinythread.$(OBJEXT)
 diamond_OBJECTS = $(am_diamond_OBJECTS)
 am__DEPENDENCIES_1 =
 diamond_DEPENDENCIES = $(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
@@ -365,10 +366,10 @@ top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 ACLOCAL_AMFLAGS = -I m4
-diamond_SOURCES = algo/blast/core/blast_encoding.c algo/blast/core/blast_stat.c algo/blast/core/blast_filter.c algo/blast/core/blast_util.c algo/blast/core/blast_message.c algo/blast/core/ncbi_erf.c algo/blast/core/blast_options.c algo/blast/core/ncbi_math.c algo/blast/core/blast_program.c algo/blast/core/ncbi_std.c algo/blast/core/blast_psi_priv.c algo/blast/core/raw_scoremat.c algo/blast/core/blast_query_info.c algo/blast/core/blast_seg.c main.cpp basic/options.cpp
+diamond_SOURCES = algo/blast/core/blast_encoding.c algo/blast/core/blast_stat.c algo/blast/core/blast_filter.c algo/blast/core/blast_util.c algo/blast/core/blast_message.c algo/blast/core/ncbi_erf.c algo/blast/core/blast_options.c algo/blast/core/ncbi_math.c algo/blast/core/blast_program.c algo/blast/core/ncbi_std.c algo/blast/core/blast_psi_priv.c algo/blast/core/raw_scoremat.c algo/blast/core/blast_query_info.c algo/blast/core/blast_seg.c main.cpp basic/options.cpp util/tinythread.cpp
 diamond_CPPFLAGS = -DNDEBUG $(BOOST_CPPFLAGS)
-diamond_LDFLAGS = $(BOOST_THREAD_LDFLAGS) $(BOOST_PROGRAM_OPTIONS_LDFLAGS) $(BOOST_TIMER_LDFLAGS) $(BOOST_CHRONO_LDFLAGS) $(BOOST_SYSTEM_LDFLAGS) $(BOOST_IOSTREAMS_LDFLAGS) -all-static -fopenmp
-diamond_LDADD = $(BOOST_THREAD_LIBS) $(BOOST_PROGRAM_OPTIONS_LIBS) $(BOOST_TIMER_LIBS) $(BOOST_CHRONO_LIBS) $(BOOST_SYSTEM_LIBS) $(BOOST_IOSTREAMS_LIBS) -lrt -lz
+diamond_LDFLAGS = $(BOOST_THREAD_LDFLAGS) $(BOOST_PROGRAM_OPTIONS_LDFLAGS) $(BOOST_TIMER_LDFLAGS) $(BOOST_CHRONO_LDFLAGS) $(BOOST_SYSTEM_LDFLAGS) $(BOOST_IOSTREAMS_LDFLAGS) -all-static
+diamond_LDADD = $(BOOST_THREAD_LIBS) $(BOOST_PROGRAM_OPTIONS_LIBS) $(BOOST_TIMER_LIBS) $(BOOST_CHRONO_LIBS) $(BOOST_SYSTEM_LIBS) $(BOOST_IOSTREAMS_LIBS) -lrt -lz -lpthread
 all: all-am
 
 .SUFFIXES:
@@ -483,6 +484,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/diamond-ncbi_std.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/diamond-options.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/diamond-raw_scoremat.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/diamond-tinythread.Po@am__quote@
 
 .c.o:
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(COMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
@@ -749,6 +751,20 @@ diamond-options.obj: basic/options.cpp
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='basic/options.cpp' object='diamond-options.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(diamond_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o diamond-options.obj `if test -f 'basic/options.cpp'; then $(CYGPATH_W) 'basic/options.cpp'; else $(CYGPATH_W) '$(srcdir)/basic/options.cpp'; fi`
+
+diamond-tinythread.o: util/tinythread.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(diamond_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT diamond-tinythread.o -MD -MP -MF $(DEPDIR)/diamond-tinythread.Tpo -c -o diamond-tinythread.o `test -f 'util/tinythread.cpp' || echo '$(srcdir)/'`util/tinythread.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/diamond-tinythread.Tpo $(DEPDIR)/diamond-tinythread.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='util/tinythread.cpp' object='diamond-tinythread.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(diamond_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o diamond-tinythread.o `test -f 'util/tinythread.cpp' || echo '$(srcdir)/'`util/tinythread.cpp
+
+diamond-tinythread.obj: util/tinythread.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(diamond_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT diamond-tinythread.obj -MD -MP -MF $(DEPDIR)/diamond-tinythread.Tpo -c -o diamond-tinythread.obj `if test -f 'util/tinythread.cpp'; then $(CYGPATH_W) 'util/tinythread.cpp'; else $(CYGPATH_W) '$(srcdir)/util/tinythread.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/diamond-tinythread.Tpo $(DEPDIR)/diamond-tinythread.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='util/tinythread.cpp' object='diamond-tinythread.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(diamond_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o diamond-tinythread.obj `if test -f 'util/tinythread.cpp'; then $(CYGPATH_W) 'util/tinythread.cpp'; else $(CYGPATH_W) '$(srcdir)/util/tinythread.cpp'; fi`
 
 mostlyclean-libtool:
 	-rm -f *.lo

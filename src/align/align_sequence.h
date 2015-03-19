@@ -38,8 +38,6 @@ void align_sequence(vector<Segment<_val> > &matches,
 		typename Trace_pt_buffer<_locr,_locl>::Vector::iterator &begin,
 		typename Trace_pt_buffer<_locr,_locl>::Vector::iterator &end)
 {
-	/*for(typename Trace_pt_buffer<_locr,_locl>::Vector::iterator i=begin;i<end;++i)
-		cout << *i;*/
 	std::sort(begin, end, hit<_locr,_locl>::cmp_normalized_subject);
 	const unsigned q_num (begin->query_);
 	const sequence<const _val> query (query_seqs<_val>::get()[q_num]);
@@ -54,7 +52,6 @@ void align_sequence(vector<Segment<_val> > &matches,
 			continue;
 		}
 		local.push_back(local_match<_val> (i->seed_offset_, ref->data(i->subject_)));
-		//printf("so=%u\n",i->seed_offset_);
 		floating_sw(&query[i->seed_offset_],
 				local.back(),
 				padding[frame],
@@ -65,7 +62,7 @@ void align_sequence(vector<Segment<_val> > &matches,
 		const int score = local.back().score_;
 		std::pair<size_t,size_t> l = ref_seqs<_val>::data_->local_position(i->subject_);
 		matches.push_back(Segment<_val> (score, frame, score_matrix::get().evalue(score, db_letters, query_len), &local.back(), l.first));
-		matches.back().top_evalue_ = matches.back().evalue_;
+		//matches.back().top_evalue_ = matches.back().evalue_;
 		anchored_transform(local.back(), l.second, i->seed_offset_);
 
 		//local.back().print(query, ref_seqs<_val>::get()[l.first]);

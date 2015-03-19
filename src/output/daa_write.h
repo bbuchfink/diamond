@@ -43,7 +43,7 @@ struct DAA_output
 {
 
 	DAA_output():
-		f_ (program_options::daa_file + ".daa"),
+		f_ (program_options::daa_file),
 		h2_ (ref_header.sequences,
 				ref_header.letters,
 				program_options::gap_open,
@@ -97,7 +97,7 @@ struct DAA_output
 		buf.write_packed(match.score_);
 		buf.write_packed(match.traceback_->query_begin_);
 		buf.write_packed(match.traceback_->subject_begin_);
-		const unsigned qbegin = query_translated_begin<_val>(match.traceback_->query_begin_, match.frame_, query_source_len);
+		const unsigned qbegin = query_translated_begin<_val>(match.traceback_->query_begin_, match.frame_, query_source_len, query_translated());
 		match.traceback_->transcript_->print_packed(buf, query, ref_seqs<_val>::get()[match.subject_id_], qbegin, match.traceback_->subject_begin_);
 	}
 

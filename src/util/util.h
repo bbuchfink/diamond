@@ -250,4 +250,20 @@ __m128i _mm_set(int a)
 	return z;
 }
 
+template<typename _t, unsigned d1, unsigned d2>
+struct Static_matrix
+{
+	_t* operator[](size_t i)
+	{ return data_[i]; }
+private:
+	_t data_[d1][d2];
+};
+
+void auto_append_extension(string &str, const char *ext)
+{
+	size_t l = strlen(ext);
+	if(str.length() < l || (str.length() >= l && str.substr(str.length()-l, string::npos) != ext))
+		str += ext;
+}
+
 #endif /* UTIL_H_ */

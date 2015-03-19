@@ -22,7 +22,6 @@ Author: Benjamin Buchfink
 #define ASYNC_BUFFER_H_
 
 #include <vector>
-#include <omp.h>
 #include <boost/ptr_container/ptr_vector.hpp>
 
 namespace io = boost::iostreams;
@@ -62,9 +61,9 @@ struct Async_buffer
 
 	struct Iterator
 	{
-		Iterator(Async_buffer &parent):
+		Iterator(Async_buffer &parent, unsigned thread_num):
 			parent_ (parent),
-			thread_num_ (omp_get_thread_num())
+			thread_num_ (thread_num)
 		{
 			for(unsigned i=0;i<parent.bins_;++i) {
 				size_[i] = 0;
@@ -81,8 +80,6 @@ struct Async_buffer
 		}
 		void flush(unsigned bin)
 		{
-			/*if(size_[bin] > 0)
-				printf("bin=%u thread=%u size=%lu\n",bin,thread_num_,size_[bin]);*/
 			out_[bin]->write(&buffer_[bin*buffer_size], size_[bin]);
 			parent_.add_size(thread_num_, bin, size_[bin]);
 			size_[bin] = 0;
@@ -121,7 +118,6 @@ struct Async_buffer
 			Input_stream f (tmp_file_[i*bins_+bin]);
 			const size_t s = size_[i*bins_+bin];
 			const size_t n = f.read(ptr, s);
-			//printf("load bin=%u thread=%u size=%lu\n",bin,i,s);
 			ptr += s;
 			f.close();
 			if(n != s)
@@ -135,14 +131,10 @@ struct Async_buffer
 private:
 
 	Output_stream* get_out(unsigned threadid, unsigned bin)
-	{
-		return &out_[threadid*bins_+bin];
-	}
+	{ return &out_[threadid*bins_+bin]; }
 
 	void add_size(unsigned thread_id, unsigned bin, size_t n)
-	{
-		size_[thread_id*bins_+bin] += n;
-	}
+	{ size_[thread_id*bins_+bin] += n; }
 
 	const unsigned bins_, bin_size_;
 	ptr_vector<Output_stream> out_;

@@ -71,12 +71,25 @@ struct Complexity_filter<Amino_acid>
 
 	void run(String_set<Amino_acid> &seqs) const
 	{
-#pragma omp parallel for schedule(static)
-		for(size_t i=0;i<seqs.get_length();++i)
-			filter(seqs[i]);
+		Filter_context context (seqs, *this);
+		launch_scheduled_thread_pool(context, seqs.get_length(), program_options::threads());
 	}
 
 private:
+
+	struct Filter_context
+	{
+		Filter_context(String_set<Amino_acid> &seqs, const Complexity_filter &filter):
+			seqs (seqs),
+			filter (filter)
+		{ }
+		void operator()(unsigned thread_id, unsigned i)
+		{
+			filter.filter(seqs[i]);
+		}
+		String_set<Amino_acid> &seqs;
+		const Complexity_filter &filter;
+	};
 
 	SegParameters *blast_seg_;
 
@@ -85,6 +98,6 @@ private:
 };
 
 const Complexity_filter<Amino_acid> Complexity_filter<Amino_acid>::instance;
-template<typename _val> const Complexity_filter<_val> Complexity_filter<_val>::instance;
+template<> const Complexity_filter<Nucleotide> Complexity_filter<Nucleotide>::instance;
 
 #endif /* COMPLEXITY_FILTER_H_ */

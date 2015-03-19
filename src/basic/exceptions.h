@@ -23,7 +23,7 @@ Author: Benjamin Buchfink
 
 #include <string>
 #include <boost/lexical_cast.hpp>
-#include <boost/thread/mutex.hpp>
+#include "../util/tinythread.h"
 
 using std::exception;
 using std::string;
@@ -129,7 +129,7 @@ struct Exception_state
 	bool operator()() const
 	{ return active_; }
 private:
-	boost::mutex mtx_;
+	tthread::mutex mtx_;
 	bool active_;
 	string what_;
 } exception_state;

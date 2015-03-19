@@ -62,7 +62,7 @@ void to_source_space<Amino_acid>(local_match<Amino_acid> &l, unsigned frame, uns
 }
 
 template<typename _val>
-unsigned query_translated_begin(unsigned query_begin, unsigned frame, unsigned dna_len)
+unsigned query_translated_begin(unsigned query_begin, unsigned frame, unsigned dna_len, bool query_translated)
 {
 	if(frame == 0)
 		return query_begin;
@@ -71,9 +71,9 @@ unsigned query_translated_begin(unsigned query_begin, unsigned frame, unsigned d
 }
 
 template<>
-unsigned query_translated_begin<Amino_acid>(unsigned query_begin, unsigned frame, unsigned dna_len)
+unsigned query_translated_begin<Amino_acid>(unsigned query_begin, unsigned frame, unsigned dna_len, bool query_translated)
 {
-	if(!query_translated())
+	if(!query_translated)
 		return query_begin;
 	int f = frame <= 2 ? frame+1 : 2-frame;
 	if (f > 0)

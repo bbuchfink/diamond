@@ -63,7 +63,7 @@ struct Database_format_exception : public exception
 struct Database_file : public Input_stream
 {
 	Database_file():
-		Input_stream (program_options::database_file_name())
+		Input_stream (program_options::database)
 	{
 		if(this->read(&ref_header, 1) != 1)
 			throw Database_format_exception ();
@@ -114,17 +114,8 @@ struct Masking
 	{
 		task_timer timer ("Counting low complexity seeds", false);
 		vector<unsigned> counts (Const::seedp);
-#pragma omp parallel for schedule(dynamic)
-		for(unsigned seedp=range.begin(); seedp<range.end(); ++seedp) {
-			unsigned n = 0;
-			typename sorted_list<_loc>::Type::const_iterator i = idx.get_partition_cbegin(seedp);
-			while(!i.at_end()) {
-				if(i.n > program_options::hit_cap)
-					++n;
-				++i;
-			}
-			counts[seedp] = n;
-		}
+		Count_context<_loc> count_context (idx, counts);
+		launch_scheduled_thread_pool(count_context, Const::seedp, program_options::threads());
 
 		timer.finish();
 		size_t n = 0;
@@ -137,18 +128,8 @@ struct Masking
 		log_stream << "Low complexity seeds = " << n << std::endl;
 
 		timer.go("Building position filter");
-#pragma omp parallel for schedule(dynamic)
-		for(unsigned seedp=range.begin(); seedp<range.end(); ++seedp) {
-			unsigned n = 0;
-			typename sorted_list<_loc>::Type::iterator i = idx.get_partition_begin(seedp);
-			while(!i.at_end()) {
-				if(i.n > program_options::hit_cap)
-					n += mask_seed_pos<_val,_loc>(i, sid, seedp);
-				++i;
-			}
-			counts[seedp] = n;
-		}
-
+		Build_context<_val,_loc> build_context(idx, sid, counts, *this);
+		launch_scheduled_thread_pool(build_context, Const::seedp, program_options::threads());
 		timer.finish();
 		log_stream << "Masked positions = " << std::accumulate(counts.begin(), counts.end(), 0) << std::endl;
 	}
@@ -168,6 +149,54 @@ struct Masking
 
 private:
 
+	template<typename _loc>
+	struct Count_context
+	{
+		Count_context(const typename sorted_list<_loc>::Type &idx, vector<unsigned> &counts):
+			idx (idx),
+			counts (counts)
+		{ }
+		void operator()(unsigned thread_id, unsigned seedp) const
+		{
+			unsigned n = 0;
+			typename sorted_list<_loc>::Type::const_iterator i = idx.get_partition_cbegin(seedp);
+			while(!i.at_end()) {
+				if(i.n > program_options::hit_cap)
+					++n;
+				++i;
+			}
+			counts[seedp] = n;
+		}
+		const typename sorted_list<_loc>::Type &idx;
+		vector<unsigned> &counts;
+	};
+
+	template<typename _val, typename _loc>
+	struct Build_context
+	{
+		Build_context(const typename sorted_list<_loc>::Type &idx, unsigned sid, vector<unsigned> &counts, Masking &masking):
+			idx (idx),
+			sid (sid),
+			counts (counts),
+			masking (masking)
+		{ }
+		void operator()(unsigned thread_id, unsigned seedp)
+		{
+			unsigned n = 0;
+			typename sorted_list<_loc>::Type::iterator i = idx.get_partition_begin(seedp);
+			while(!i.at_end()) {
+				if(i.n > program_options::hit_cap)
+					n += masking.mask_seed_pos<_val,_loc>(i, sid, seedp);
+				++i;
+			}
+			counts[seedp] = n;
+		}
+		const typename sorted_list<_loc>::Type &idx;
+		const unsigned sid;
+		vector<unsigned> &counts;
+		Masking &masking;
+	};
+
 	template<typename _val, typename _loc>
 	unsigned mask_seed_pos(typename sorted_list<_loc>::Type::iterator &i, unsigned sid, unsigned p)
 	{
@@ -175,7 +204,7 @@ private:
 		unsigned count (0), k (0);
 		for(unsigned j=0;j<i.n;++j)
 			if(!position_filter(i[j], treshold, i.key())) {
-				mask_seed_pos<_val,_loc>(i[j], sid);
+				mask_seed_pos<_val,_loc>(i[j]);
 				++count;
 			} else
 				*(i.get(k++)) = *(i.get(j));
@@ -185,7 +214,7 @@ private:
 	}
 
 	template<typename _val, typename _loc>
-	static void mask_seed_pos(_loc pos, unsigned sid)
+	static void mask_seed_pos(_loc pos)
 	{
 		_val *x (ref_seqs<_val>::data_->data(pos));
 		*x = set_critical(*x);
@@ -218,7 +247,7 @@ struct Ref_map
 		if(n != std::numeric_limits<unsigned>::max())
 			return n;
 		else {
-			boost::lock_guard<boost::mutex> lock (mtx_);
+			tthread::lock_guard<tthread::mutex> lock (mtx_);
 			n = data_[block][i];
 			if(n != std::numeric_limits<uint32_t>::max())
 				return n;
@@ -245,7 +274,7 @@ struct Ref_map
 		}
 	}*/
 private:
-	boost::mutex mtx_;
+	tthread::mutex mtx_;
 	vector<vector<uint32_t> > data_;
 	vector<uint32_t> len_;
 	ptr_vector<string> name_;

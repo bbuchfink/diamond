@@ -34,6 +34,7 @@ struct Statistics
 
 	Statistics& operator+=(const Statistics &rhs)
 	{
+		tthread::lock_guard<tthread::mutex> lock (mtx_);
 		for(unsigned i=0;i<COUNT;++i)
 			data_[i] += rhs.data_[i];
 		return *this;
@@ -64,6 +65,7 @@ struct Statistics
 	}
 
 	stat_type data_[COUNT];
+	tthread::mutex mtx_;
 
 } statistics;
 

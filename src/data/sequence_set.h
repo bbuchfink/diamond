@@ -87,15 +87,8 @@ struct Sequence_set : public String_set<_val>
 		return sequence<const _val> (s, 2*program_options::window, begin - s);
 	}
 
-	const vector<size_t> partition() const
+	vector<size_t> partition() const
 	{
-		/*vector<size_t> v (Const::seqp+1);
-		 * 	const ::partition p (this->get_length(), Const::seqp);
-			for(unsigned i=0;i<p.parts;++i)
-				v[i] = p.getMin(i);
-			for(unsigned i=p.parts;i<Const::seqp+1;++i)
-				v[i] = this->get_length();
-			return v;*/
 		vector<size_t> v;
 		const size_t l = (this->letters()+Const::seqp-1) / Const::seqp;
 		v.push_back(0);

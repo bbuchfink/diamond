@@ -55,27 +55,12 @@ struct sorted_list
 		limits_ (hst, range),
 		data_ (reinterpret_cast<entry*>(buffer))
 	{
-		task_timer timer ("Computing partition", false);
-		vector<buffered_iterator*> iterators (build_iterators(hst));
-		const vector<size_t> seq_partition (seqs.partition());
-
-		timer.go("Building seed list");
-#pragma omp parallel for schedule(dynamic)
-		for(unsigned seqp=0;seqp<Const::seqp;++seqp)
-			build_seqp<_val>(seqs,
-					seq_partition[seqp],
-					seq_partition[seqp+1],
-					iterators[seqp],
-					sh,
-					range);
-
-		for(typename vector<buffered_iterator*>::iterator i=iterators.begin();i!=iterators.end();++i)
-			delete *i;
-
+		task_timer timer ("Building seed list", false);
+		Build_context<_val> build_context (seqs, sh, range, build_iterators(hst));
+		launch_scheduled_thread_pool(build_context, Const::seqp, program_options::threads());
 		timer.go("Sorting seed list");
-#pragma omp parallel for schedule(dynamic)
-		for(unsigned i=0;i<Const::seedp;++i)
-			std::sort(ptr_begin(i), ptr_end(i));
+		Sort_context sort_context (*this);
+		launch_scheduled_thread_pool(sort_context, Const::seedp, program_options::threads());
 	}
 
 	template<typename _t>
@@ -119,11 +104,16 @@ struct sorted_list
 
 private:
 
+	typedef Static_matrix<entry*,Const::seqp,Const::seedp> Ptr_set;
+
 	struct buffered_iterator
 	{
 		static const unsigned BUFFER_SIZE = 16;
-		buffered_iterator()
-		{ memset(n, 0, sizeof(n)); }
+		buffered_iterator(entry **ptr)
+		{
+			memset(n, 0, sizeof(n));
+			memcpy(this->ptr, ptr, sizeof(this->ptr));
+		}
 		void push(seed key, _pos value, const seedp_range &range)
 		{
 			const unsigned p (seed_partition(key));
@@ -146,7 +136,7 @@ private:
 				if(n[p] > 0)
 					flush(p);
 		}
-		entry 	*ptr[Const::seedp];
+		entry* ptr[Const::seedp];
 		entry  	 buf[Const::seedp][BUFFER_SIZE];
 		uint8_t  n[Const::seedp];
 	};
@@ -164,9 +154,36 @@ private:
 	{ return &data_[limits_[i+1]]; }
 
 	template<typename _val>
-	static void build_seqp(const Sequence_set<_val> &seqs, unsigned begin, unsigned end, buffered_iterator *it, const shape &sh, const seedp_range &range)
+	struct Build_context
+	{
+		Build_context(const Sequence_set<_val> &seqs, const shape &sh, const seedp_range &range, Ptr_set *iterators):
+			seqs (seqs),
+			sh (sh),
+			range (range),
+			iterators (iterators),
+			seq_partition (seqs.partition())
+		{ }
+		void operator()(unsigned thread_id, unsigned seqp) const
+		{
+			build_seqp<_val>(seqs,
+					seq_partition[seqp],
+					seq_partition[seqp+1],
+					(*iterators)[seqp],
+					sh,
+					range);
+		}
+		const Sequence_set<_val> &seqs;
+		const shape &sh;
+		const seedp_range &range;
+		const auto_ptr<Ptr_set> iterators;
+		const vector<size_t> seq_partition;
+	};
+
+	template<typename _val>
+	static void build_seqp(const Sequence_set<_val> &seqs, unsigned begin, unsigned end, entry **ptr, const shape &sh, const seedp_range &range)
 	{
 		uint64_t key;
+		auto_ptr<buffered_iterator> it (new buffered_iterator(ptr));
 		for(size_t i=begin;i<end;++i) {
 			const sequence<const _val> seq = seqs[i];
 			if(seq.length()<sh.length_) continue;
@@ -178,20 +195,28 @@ private:
 		it->flush();
 	}
 
-	vector<buffered_iterator*> build_iterators(const shape_histogram &hst) const
+	Ptr_set* build_iterators(const shape_histogram &hst) const
 	{
-		vector<buffered_iterator*> iterators (Const::seqp);
-		iterators[0] = new buffered_iterator();
+		Ptr_set *iterators = new Ptr_set;
 		for(unsigned i=0;i<Const::seedp;++i)
-			iterators[0]->ptr[i] = ptr_begin(i);
+			(*iterators)[0][i] = ptr_begin(i);
 
 		for(unsigned i=1;i<Const::seqp;++i) {
-			iterators[i] = new buffered_iterator();
 			for(unsigned j=0;j<Const::seedp;++j)
-				iterators[i]->ptr[j] = iterators[i-1]->ptr[j] + hst[i-1][j];
+				(*iterators)[i][j] = (*iterators)[i-1][j] + hst[i-1][j];
 		}
 		return iterators;
 	}
+
+	struct Sort_context
+	{
+		Sort_context(sorted_list &sl):
+			sl (sl)
+		{ }
+		void operator()(unsigned thread_id ,unsigned seedp) const
+		{ std::sort(sl.ptr_begin(seedp), sl.ptr_end(seedp)); }
+		sorted_list &sl;
+	};
 
 	struct Limits : vector<size_t>
 	{
