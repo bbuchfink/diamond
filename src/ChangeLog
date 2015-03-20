@@ -1,6 +1,6 @@
 [0.7.4]
 - removed OpenMP dependency
-- fixed an error with the autoconf script
+- using explicit Makefile instead of autoconf
 - file extensions can be named explicitly for DAA and database files
 - HSPs are grouped by target sequence
 - fixed a bug that could produce incorrect output for view
