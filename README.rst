@@ -138,7 +138,7 @@ To compile DIAMOND from source, invoke the following commands on the shell::
     $ wget http://github.com/bbuchfink/diamond/archive/v0.7.4.tar.gz
     $ tar xzf v0.7.4.tar.gz
     $ cd diamond-0.7.4/src
-    $ ./install-boost                                                   # optional, for installing Boost
+    $ ./install-boost                                       # optional, for installing Boost
     $ make
     
 The diamond binary will be created in diamond-0.7.4/bin.
