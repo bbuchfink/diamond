@@ -15,19 +15,19 @@ Alternatively, the software can be compiled from source (see `Compiling from sou
 
 Basic command line use
 ======================
-We assume to have a protein database file in FASTA format named nr.faa and a file of DNA reads that we want to align named reads.fna.
+We assume to have a protein database file in FASTA format named ``nr.faa`` and a file of DNA reads that we want to align named ``reads.fna``.
 
-In order to set up a reference database for DIAMOND, the makedb command needs to be executed with the following command line::
+In order to set up a reference database for DIAMOND, the ``makedb`` command needs to be executed with the following command line::
 
     $ diamond makedb --in nr.faa -d nr
 
-This will create a binary DIAMOND database file with the specified name (nr.dmnd). The alignment task may then be initiated using the blastx command like this::
+This will create a binary DIAMOND database file with the specified name (``nr.dmnd``). The alignment task may then be initiated using the ``blastx`` command like this::
 
     $ diamond blastx -d nr -q reads.fna -a matches -t <temporary directory>
 
 The temporary directory should point to a fast local disk with a lot of free space. It is possible to omit this option, this will however increase the program's memory usage substantially.
 
-The output file here is specified with the –a option and named matches.daa. It is generated in DAA (DIAMOND alignment archive) format. Other formats can be generated using the view command. For instance, the following command will generate BLAST tabular format from the DAA file and save it to disk::
+The output file here is specified with the ``–a`` option and named ``matches.daa``. It is generated in DAA (DIAMOND alignment archive) format. Other formats can be generated using the ``view`` command. For instance, the following command will generate BLAST tabular format from the DAA file and save it to disk::
 
     $ diamond view -a matches.daa -o matches.m8
 
@@ -98,11 +98,11 @@ Option         Short Default  Description
 --tmpdir       -t    /dev/shm Directory to be used for temporary storage.
 --index-chunks -c    4        The number of chunks for processing the seed index.
 ============== ===== ======== ===========
-It is recommended to always use the **--tmpdir** option and set this to a disk-based directory. The amount of disk space that will be used depends on the program's settings and your data. As a general rule you should ensure that 100 GB of disk space are available here. If you run the program in a cluster environment, and disk space is only available over a slow network based file system, you may want to omit the --tmpdir option. This will keep temporary information in memory and increase the program's memory usage substantially.
+It is recommended to always use the ``--tmpdir`` option and set this to a disk-based directory. The amount of disk space that will be used depends on the program's settings and your data. As a general rule you should ensure that 100 GB of disk space are available here. If you run the program in a cluster environment, and disk space is only available over a slow network based file system, you may want to omit the ``--tmpdir`` option. This will keep temporary information in memory and increase the program's memory usage substantially.
 
-The **--block-size/-b** option is set for the makedb command and the main option for controlling the program's memory usage. Bigger numbers will increase the use of memory *and* temporary disk space, but also improve performance. The program can be expected to roughly use six times this number of memory (in GB). So for the default value of -b=2, the memory usage will be about 12 GB.
+The ``--block-size/-b`` option is set for the makedb command and the main option for controlling the program's memory usage. Bigger numbers will increase the use of memory *and* temporary disk space, but also improve performance. The program can be expected to roughly use six times this number of memory (in GB). So for the default value of ``-b=2``, the memory usage will be about 12 GB.
 
-The **--index-chunks/-c** option can be additionally used to tune the performance. It is recommended to set this to 1 on a high memory server, which will increase performance and memory usage, but not the usage of temporary disk space.
+The ``--index-chunks/-c`` option can be additionally used to tune the performance. It is recommended to set this to 1 on a high memory server, which will increase performance and memory usage, but not the usage of temporary disk space.
 
 View options
 ============
@@ -131,7 +131,7 @@ MEGAN requires mapping files which need to be downloaded separately at the MEGAN
 .. _Compiling from source:
 Compiling from source
 =====================
-The requirements for compiling DIAMOND are Boost (version 1.53.0 or higher) and zlib. If a system-wide Boost installation is not possible, the package includes a script called install-boost which will download and install a local copy of Boost for the user.
+The requirements for compiling DIAMOND are Boost (version 1.53.0 or higher) and zlib. If a system-wide Boost installation is not possible, the package includes a script called ``install-boost`` which will download and install a local copy of Boost for the user.
 
 To compile DIAMOND from source, invoke the following commands on the shell::
 
@@ -141,7 +141,7 @@ To compile DIAMOND from source, invoke the following commands on the shell::
     $ ./install-boost                                       # optional, for installing Boost
     $ make
     
-The diamond binary will be created in diamond-0.7.4/bin.
+The diamond binary will be created in ``diamond-0.7.4/bin``.
 
 Scoring matrices
 ================
