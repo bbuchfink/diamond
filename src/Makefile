@@ -5,7 +5,7 @@ CFLAGS=-O3 -DNDEBUG
 CXXFLAGS=-O3 -DNDEBUG -Iboost/include $(WARN)
 
 ifneq ($(wildcard boost/.),)
-	LIBS=boost/lib/libboost_thread.a boost/lib/libboost_system.a boost/lib/libboost_chrono.a boost/lib/libboost_timer.a boost/lib/libboost_iostreams.a boost/lib/libboost_program_options.a
+	LIBS=boost/lib/libboost_thread.a boost/lib/libboost_system.a boost/lib/libboost_timer.a boost/lib/libboost_chrono.a boost/lib/libboost_iostreams.a boost/lib/libboost_program_options.a
 else
 	LIBS=-lboost_thread -lboost_system -lboost_timer -lboost_chrono -lboost_iostreams -lboost_program_options
 endif
