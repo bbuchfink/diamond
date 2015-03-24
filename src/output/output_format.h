@@ -40,6 +40,9 @@ template<typename _val>
 struct Blast_tab_format : public Output_format<_val>
 {
 
+	Blast_tab_format()
+	{ }
+
 	virtual void print_match(const DAA_match_record<_val> &r, Text_buffer &out) const
 	{
 		out << r.query_name() << '\t'
@@ -78,6 +81,9 @@ struct Blast_tab_format : public Output_format<_val>
 template<typename _val>
 struct Sam_format : public Output_format<_val>
 {
+
+	Sam_format()
+	{ }
 
 	virtual void print_match(const DAA_match_record<_val> &r, Text_buffer &out) const
 	{

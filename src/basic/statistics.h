@@ -27,7 +27,7 @@ struct Statistics
 {
 
 	enum value { SEED_HITS, TENTATIVE_MATCHES0, TENTATIVE_MATCHES1, TENTATIVE_MATCHES2, TENTATIVE_MATCHES3, MATCHES, ALIGNED, GAPPED, DUPLICATES,
-		GAPPED_HITS, QUERY_SEEDS, QUERY_SEEDS_HIT, REF_SEEDS, REF_SEEDS_HIT, QUERY_SIZE, REF_SIZE, OUT_HITS, OUT_MATCHES, COLLISION_LOOKUPS, QCOV, BIAS_ERRORS, SCORE_TOTAL, COUNT };
+		GAPPED_HITS, QUERY_SEEDS, QUERY_SEEDS_HIT, REF_SEEDS, REF_SEEDS_HIT, QUERY_SIZE, REF_SIZE, OUT_HITS, OUT_MATCHES, COLLISION_LOOKUPS, QCOV, BIAS_ERRORS, SCORE_TOTAL, ALIGNED_QLEN, COUNT };
 
 	Statistics()
 	{ memset(data_, 0, sizeof(data_)); }
@@ -59,6 +59,7 @@ struct Statistics
 		log_stream << "Net hits = " << data_[OUT_HITS] << endl;
 		log_stream << "Matches = " << data_[OUT_MATCHES] << endl;
 		log_stream << "Total score = " << data_[SCORE_TOTAL] << endl;
+		log_stream << "Aligned query len = " << data_[ALIGNED_QLEN] << endl;
 		log_stream << "Gapped matches = " << data_[GAPPED] << endl;
 		verbose_stream << "Final matches = " << data_[MATCHES] << endl;
 		verbose_stream << "Queries aligned = " << data_[ALIGNED] << endl;

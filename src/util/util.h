@@ -35,6 +35,7 @@ Author: Benjamin Buchfink
 
 #include <vector>
 #include <boost/thread.hpp>
+#include <sys/stat.h>
 #include "../basic/const.h"
 #include "../basic/seed.h"
 
@@ -264,6 +265,12 @@ void auto_append_extension(string &str, const char *ext)
 	size_t l = strlen(ext);
 	if(str.length() < l || (str.length() >= l && str.substr(str.length()-l, string::npos) != ext))
 		str += ext;
+}
+
+bool check_dir(const string &path)
+{
+	struct stat sb;
+	return stat(path.c_str(), &sb) == 0 && S_ISDIR(sb.st_mode);
 }
 
 #endif /* UTIL_H_ */

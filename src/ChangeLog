@@ -1,3 +1,9 @@
+[0.7.5]
+- fixed a compiler error for Clang
+- compiles on OS X
+- fixed a bug that would not produce the correct sort order for HSPs with e-value 0
+- option --run-len defaults to 1 for sequences shorther than 30 letters
+
 [0.7.4]
 - removed OpenMP dependency
 - using explicit Makefile instead of autoconf

@@ -111,7 +111,9 @@ namespace program_options
 	inline unsigned get_run_len(unsigned length)
 	{
 		if(run_len == 0) {
-			if(length < 100)
+			if(length < 30)
+				return 1;
+			else if(length < 100)
 				return 20;
 			else
 				return 40;

@@ -31,7 +31,7 @@ void merge_sort(_it begin, _it end, unsigned n_threads, unsigned level = 0)
 	if(diff <= 1)
 		return;
 
-	if(1 << level >= n_threads) {
+	if(1u << level >= n_threads) {
 		std::sort(begin, end);
 		return;
 	}

@@ -70,9 +70,7 @@ struct DAA_query_record
 	DAA_query_record(const DAA_file& file, const Binary_buffer &buf):
 		file_ (file),
 		it_ (init(buf))
-	{
-		//cout << sequence<Nucleotide>(source_seq.data(), source_seq.size());
-	}
+	{ }
 
 	Match_iterator begin() const
 	{ return Match_iterator (*this, it_); }
@@ -107,7 +105,8 @@ private:
 	const Binary_buffer::Iterator it_;
 
 	friend struct DAA_match_record<_val>;
-	friend Binary_buffer::Iterator& operator>>(Binary_buffer::Iterator &it, DAA_match_record<_val> &r);
+
+	template<typename _val2> friend Binary_buffer::Iterator& operator>>(Binary_buffer::Iterator &it, DAA_match_record<_val2> &r);
 
 };
 
@@ -147,32 +146,6 @@ struct DAA_match_record
 	Packed_transcript transcript;
 
 private:
-
-	friend Binary_buffer::Iterator& operator>>(Binary_buffer::Iterator &it, DAA_match_record &r)
-	{
-		uint32_t subject_id;
-		it >> subject_id;
-		uint8_t flag;
-		it >> flag;
-		it.read_packed(flag & 3, r.score);
-		it.read_packed((flag>>2)&3, r.query_begin);
-		it.read_packed((flag>>4)&3, r.subject_begin);
-		r.transcript.read(it);
-		r.subject_name = r.parent_.file_.ref_name(subject_id);
-		r.total_subject_len = r.parent_.file_.ref_len(subject_id);
-		if(r.parent_.file_.mode() == blastx) {
-			r.frame = (flag&(1<<6)) == 0 ? r.query_begin % 3 : 3+(r.parent_.source_seq.size() - 1 - r.query_begin)%3;
-			r.translated_query_begin = query_translated_begin<_val>(r.query_begin, r.frame, r.parent_.source_seq.size(), true);
-		} else if (r.parent_.file_.mode() == blastp) {
-			r.frame = 0;
-			r.translated_query_begin = r.query_begin;
-		} else {
-			r.frame = (flag&(1<<6)) == 0 ? 0 : 1;
-			r.translated_query_begin = query_translated_begin<_val>(r.query_begin, r.frame, r.parent_.source_seq.size(), false);
-		}
-		r.parse();
-		return it;
-	}
 
 	void parse()
 	{
@@ -214,6 +187,35 @@ private:
 
 	const DAA_query_record<_val> &parent_;
 
+	template<typename _val2> friend Binary_buffer::Iterator& operator>>(Binary_buffer::Iterator &it, DAA_match_record<_val2> &r);
+
 };
+
+template<typename _val>
+Binary_buffer::Iterator& operator>>(Binary_buffer::Iterator &it, DAA_match_record<_val> &r)
+{
+	uint32_t subject_id;
+	it >> subject_id;
+	uint8_t flag;
+	it >> flag;
+	it.read_packed(flag & 3, r.score);
+	it.read_packed((flag>>2)&3, r.query_begin);
+	it.read_packed((flag>>4)&3, r.subject_begin);
+	r.transcript.read(it);
+	r.subject_name = r.parent_.file_.ref_name(subject_id);
+	r.total_subject_len = r.parent_.file_.ref_len(subject_id);
+	if(r.parent_.file_.mode() == blastx) {
+		r.frame = (flag&(1<<6)) == 0 ? r.query_begin % 3 : 3+(r.parent_.source_seq.size() - 1 - r.query_begin)%3;
+		r.translated_query_begin = query_translated_begin<_val>(r.query_begin, r.frame, r.parent_.source_seq.size(), true);
+	} else if (r.parent_.file_.mode() == blastp) {
+		r.frame = 0;
+		r.translated_query_begin = r.query_begin;
+	} else {
+		r.frame = (flag&(1<<6)) == 0 ? 0 : 1;
+		r.translated_query_begin = query_translated_begin<_val>(r.query_begin, r.frame, r.parent_.source_seq.size(), false);
+	}
+	r.parse();
+	return it;
+}
 
 #endif /* DAA_RECORD_H_ */

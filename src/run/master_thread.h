@@ -278,6 +278,9 @@ void master_thread()
 	cpu_timer timer2, timer_mapping;
 	timer_mapping.stop();
 
+	if(!check_dir(program_options::tmpdir))
+		throw std::runtime_error("Temporary directory " + program_options::tmpdir + " does not exist or is not a directory. Please use option -t to specify a different directory.");
+
 	task_timer timer ("Opening the database", 1);
 	Database_file db_file;
 	timer.finish();

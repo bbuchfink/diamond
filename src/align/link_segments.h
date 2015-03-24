@@ -55,13 +55,13 @@ double link_segments(Segment<_val> &h1, Segment<_val> &h2)
 template<typename _val>
 void link_segments(const typename vector<Segment<_val> >::iterator &begin, const typename vector<Segment<_val> >::iterator &end)
 {
-	double min_ev = begin->evalue_;
+	int max_score = begin->score_;
 	/*for(typename vector<match<_val> >::iterator i=begin; i<end; ++i)
 		if(i->top_evalue_ == -1)
 			for(typename vector<match<_val> >::iterator j=i+1; j<end; ++j)
 				min_ev = std::min(min_ev, link_segments(*i, *j));*/
 	for(typename vector<Segment<_val> >::iterator i=begin; i<end; ++i)
-		i->top_evalue_ = min_ev;
+		i->top_score_ = max_score;
 }
 
 template<typename _val>

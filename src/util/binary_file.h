@@ -101,7 +101,7 @@ struct Input_stream : public io::filtering_istream
 	size_t read(_t *ptr, size_t count)
 	{
 		ssize_t n;
-		if((n = io::read(*this, reinterpret_cast<char*>(ptr), sizeof(_t) * count)) != count * sizeof(_t)) {
+		if((n = io::read(*this, reinterpret_cast<char*>(ptr), sizeof(_t) * count)) != (ssize_t)(count * sizeof(_t))) {
 			if(n == EOF)
 				return 0;
 			else if(n >= 0 && this->get() == EOF && (n % sizeof(_t) == 0))
@@ -213,7 +213,7 @@ struct Output_stream : public io::filtering_ostream
 	void write(const _t *ptr, size_t count)
 	{
 		ssize_t n;
-		if((n = io::write(*this, reinterpret_cast<const char*>(ptr), sizeof(_t) * count)) != sizeof(_t) * count)
+		if((n = io::write(*this, reinterpret_cast<const char*>(ptr), sizeof(_t) * count)) != (ssize_t)(sizeof(_t) * count))
 			throw File_write_exception (file_name_.c_str(), sizeof(_t) * count, n);
 	}
 

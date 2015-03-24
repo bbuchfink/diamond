@@ -194,18 +194,16 @@ struct local_match
 template<typename _val>
 struct Segment
 {
-	Segment(unsigned score,
+	Segment(int score,
 			unsigned frame,
-			double evalue = std::numeric_limits<double>::max(),
 			local_match<_val> *traceback = 0,
 			unsigned subject_id = std::numeric_limits<unsigned>::max()):
 		score_ (score),
 		frame_ (frame),
 		traceback_ (traceback),
 		subject_id_ (subject_id),
-		evalue_ (evalue),
 		next_ (0),
-		top_evalue_ (-1)
+		top_score_ (0)
 	{ }
 	Strand strand() const
 	{ return frame_ < 3 ? FORWARD : REVERSE; }
@@ -214,9 +212,9 @@ struct Segment
 	interval subject_range() const
 	{ return traceback_->subject_range(); }
 	bool operator<(const Segment &rhs) const
-	{ return top_evalue_ < rhs.top_evalue_
-			|| (top_evalue_ == rhs.top_evalue_
-			&& (subject_id_ < rhs.subject_id_ || (subject_id_ == rhs.subject_id_ && (evalue_ < rhs.evalue_ || (evalue_ == rhs.evalue_ && score_ > rhs.score_))))); }
+	{ return top_score_ > rhs.top_score_
+			|| (top_score_ == rhs.top_score_
+			&& (subject_id_ < rhs.subject_id_ || (subject_id_ == rhs.subject_id_ && (score_ > rhs.score_ || (score_ == rhs.score_ && traceback_->score_ > rhs.traceback_->score_))))); }
 	static bool comp_subject(const Segment& lhs, const Segment &rhs)
 	{ return lhs.subject_id_ < rhs.subject_id_ || (lhs.subject_id_ == rhs.subject_id_ && lhs.score_ > rhs.score_); }
 	struct Subject
@@ -224,13 +222,12 @@ struct Segment
 		unsigned operator()(const Segment& x) const
 		{ return x.subject_id_; }
 	};
-	unsigned				score_;
+	int						score_;
 	unsigned				frame_;
 	local_match<_val>	   *traceback_;
 	unsigned				subject_id_;
-	double					evalue_;
 	Segment				   *next_;
-	double					top_evalue_;
+	int						top_score_;
 };
 
 #endif /* MATCH_H_ */

@@ -1,11 +1,21 @@
-WARN=-Wall
+WARN=-Wall -Wno-uninitialized
 C=gcc
 CXX=g++
 CFLAGS=-O3 -DNDEBUG
 CXXFLAGS=-O3 -DNDEBUG -Iboost/include $(WARN)
-LINKFLAGS=-Lboost/lib
-LIBS=-Wl,-Bstatic -lboost_thread -lboost_system -lboost_timer -lboost_chrono -lboost_iostreams -lboost_program_options -Wl,-Bdynamic -lpthread -lz -lrt
-PROG=diamond
+
+ifneq ($(wildcard boost/.),)
+	LIBS=boost/lib/libboost_thread.a boost/lib/libboost_system.a boost/lib/libboost_chrono.a boost/lib/libboost_timer.a boost/lib/libboost_iostreams.a boost/lib/libboost_program_options.a
+else
+	LIBS=-lboost_thread -lboost_system -lboost_timer -lboost_chrono -lboost_iostreams -lboost_program_options
+endif
+
+LIBS+=-lpthread -lz
+
+ifneq (,$(findstring Darwin,$(shell uname)))
+else
+LIBS+=-lrt
+endif
 
 GCC_VER_GTE42 := $(shell echo `gcc -dumpversion | cut -f1-2 -d.` \>= 4.2 | bc )
 ifeq ($(GCC_VER_GTE42),1)
@@ -36,6 +46,6 @@ search/align.h	search/align_range.h  search/align_ungapped.h  search/collision.h
 	$(C) $(CFLAGS) -c -o $@ $<
 
 diamond : $(OBJS)
-	$(CXX) $(LINKFLAGS) -o ../bin/$@ $(OBJS) $(LIBS)
+	$(CXX) -o ../bin/$@ $(OBJS) $(LIBS)
 
-all : $(PROG)
+all : diamond

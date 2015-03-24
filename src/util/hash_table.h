@@ -24,9 +24,7 @@ Author: Benjamin Buchfink
 template<typename T, T value> struct value_compare
 {
 	bool operator()(T x) const
-	{
-		return x == value;
-	}
+	{ return x == value; }
 };
 
 template<typename _K, typename _V, typename _E, typename _H> class hash_table
@@ -43,14 +41,10 @@ public:
 	hash_table(size_t size):
 		table (new entry[size]),
 		size_ (size)
-	{
-		memset(table, 0, size_ * sizeof(entry));
-	}
+	{ memset(table, 0, size_ * sizeof(entry)); }
 
 	~hash_table()
-	{
-		delete[] table;
-	}
+	{ delete[] table; }
 
 	entry* operator[](_K key) const
 	{
@@ -83,19 +77,6 @@ public:
 	}
 
 private:
-
-	hash_table(const hash_table &):
-		table (NULL),
-		size_ (0)
-	{
-		assert(false);
-	}
-
-	hash_table& operator=(const hash_table &)
-	{
-		assert(false);
-		return *this;
-	}
 
 	entry* get_entry(_K key) const
 	{

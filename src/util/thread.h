@@ -94,10 +94,8 @@ struct Schedule_context
 	{
 		try {
 			unsigned idx;
-			while(!exception_state() && (idx = n++) < count) {
-					//printf("%u\n",idx);
+			while(!exception_state() && (idx = n++) < count)
 				context(thread_id, idx);
-			}
 		} catch(std::exception &e) {
 			exception_state.set(e);
 		}
@@ -117,14 +115,14 @@ void launch_scheduled_thread_pool(_context &context, unsigned count, unsigned th
 template<typename _f, typename _t1, typename _t2, typename _t3, typename _t4>
 struct Thread_p4
 {
-	Thread_p4(const _f &f, _t1 p1, _t2 p2, _t3 p3, _t4 p4):
+	Thread_p4(_f f, _t1 p1, _t2 p2, _t3 p3, _t4 p4):
 		f (f),
 		p1 (p1),
 		p2 (p2),
 		p3 (p3),
 		p4 (p4)
 	{ }
-	const _f &f;
+	_f f;
 	_t1 p1;
 	_t2 p2;
 	_t3 p3;
@@ -140,9 +138,7 @@ void thread_worker(void *p)
 }
 
 template<typename _f, typename _t1, typename _t2, typename _t3, typename _t4>
-thread* launch_thread(const _f &f, _t1 p1, _t2 p2, _t3 p3, _t4 p4)
-{
-	return new thread (thread_worker<_f,_t1,_t2,_t3,_t4>, new Thread_p4<_f,_t1,_t2,_t3,_t4> (f, p1, p2, p3, p4));
-}
+thread* launch_thread(_f f, _t1 p1, _t2 p2, _t3 p3, _t4 p4)
+{ return new thread (thread_worker<_f,_t1,_t2,_t3,_t4>, new Thread_p4<_f,_t1,_t2,_t3,_t4> (f, p1, p2, p3, p4)); }
 
 #endif /* THREAD_H_ */

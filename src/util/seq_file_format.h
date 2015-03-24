@@ -99,6 +99,10 @@ protected:
 template<typename _val>
 struct FASTA_format : public Sequence_file_format<_val>
 {
+
+	FASTA_format()
+	{ }
+
 	virtual bool get_seq(vector<char> &id, vector<_val> &seq, Input_stream &s) const
 	{
 		if(!Sequence_file_format<_val>::have_char(s, '>'))
@@ -118,6 +122,9 @@ struct FASTA_format : public Sequence_file_format<_val>
 template<typename _val>
 struct FASTQ_format : public Sequence_file_format<_val>
 {
+
+	FASTQ_format()
+	{ }
 
 	virtual bool get_seq(vector<char> &id, vector<_val> &seq, Input_stream &s) const
 	{

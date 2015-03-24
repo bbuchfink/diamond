@@ -22,10 +22,8 @@ Author: Benjamin Buchfink
 #define ALIGN_SEQUENCE_H_
 
 #include <vector>
-#include <boost/thread/tss.hpp>
 #include "../dp/floating_sw.h"
 
-using boost::thread_specific_ptr;
 using std::vector;
 
 template<typename _val, typename _locr, typename _locl>
@@ -41,8 +39,8 @@ void align_sequence(vector<Segment<_val> > &matches,
 	std::sort(begin, end, hit<_locr,_locl>::cmp_normalized_subject);
 	const unsigned q_num (begin->query_);
 	const sequence<const _val> query (query_seqs<_val>::get()[q_num]);
-	unsigned frame = q_num % query_contexts();
-	unsigned query_len = query.length();
+	const unsigned frame = q_num % query_contexts();
+	const unsigned query_len = query.length();
 	padding[frame] = program_options::read_padding<_val>(query_len);
 
 	const Sequence_set<_val> *ref = ref_seqs<_val>::data_;
@@ -61,9 +59,9 @@ void align_sequence(vector<Segment<_val> > &matches,
 				Traceback ());
 		const int score = local.back().score_;
 		std::pair<size_t,size_t> l = ref_seqs<_val>::data_->local_position(i->subject_);
-		matches.push_back(Segment<_val> (score, frame, score_matrix::get().evalue(score, db_letters, query_len), &local.back(), l.first));
-		//matches.back().top_evalue_ = matches.back().evalue_;
+		matches.push_back(Segment<_val> (score, frame, &local.back(), l.first));
 		anchored_transform(local.back(), l.second, i->seed_offset_);
+		stat.inc(Statistics::ALIGNED_QLEN, local.back().query_len_);
 
 		//local.back().print(query, ref_seqs<_val>::get()[l.first]);
 
