@@ -1,4 +1,4 @@
-**DIAMOND v0.7.4 by Benjamin Buchfink** - http://github.com/bbuchfink/diamond
+**DIAMOND v0.7.5 by Benjamin Buchfink** - http://github.com/bbuchfink/diamond
 
 Published in *Nature Methods* **12**, 59–60 (2015) | `doi:10.1038/nmeth.3176 <http://dx.doi.org/10.1038/nmeth.3176>`_
 
@@ -6,12 +6,12 @@ DIAMOND is a BLAST-compatible local aligner for mapping protein and translated D
 
 Download & Installation
 =======================
-DIAMOND runs on Linux operating systems and can be downloaded in binary format for immediate use::
+If you use a recent **Linux** operating system, you can download the software in binary format for immediate use::
 
-    wget http://github.com/bbuchfink/diamond/releases/download/v0.7.4/diamond-linux64.tar.gz
+    wget http://github.com/bbuchfink/diamond/releases/download/v0.7.5/diamond-linux64.tar.gz
     tar xzf diamond-linux64.tar.gz
 
-Alternatively, the software can be compiled from source (see `Compiling from source`_).
+Users of **Mac OS X** and some **old Linux systems** need to compile the software from source (see `Compiling from source`_).
 
 Basic command line use
 ======================
@@ -135,13 +135,13 @@ The requirements for compiling DIAMOND are Boost (version 1.53.0 or higher) and 
 
 To compile DIAMOND from source, invoke the following commands on the shell::
 
-    $ wget http://github.com/bbuchfink/diamond/archive/v0.7.4.tar.gz
-    $ tar xzf v0.7.4.tar.gz
-    $ cd diamond-0.7.4/src
+    $ wget http://github.com/bbuchfink/diamond/archive/v0.7.5.tar.gz
+    $ tar xzf v0.7.5.tar.gz
+    $ cd diamond-0.7.5/src
     $ ./install-boost                                       # optional, for installing Boost
     $ make
     
-The diamond binary will be created in ``diamond-0.7.4/bin``.
+The diamond binary will be created in ``diamond-0.7.5/bin``.
 
 Scoring matrices
 ================
