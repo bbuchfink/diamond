@@ -25,7 +25,7 @@ struct Const
 {
 
 	enum {
-		build_version = 54,
+		build_version = 55,
 		build_compatibility = 52,
 		daa_version = 0,
 		seedp_bits = 10,
@@ -46,7 +46,7 @@ struct Const
 
 };
 
-const char* Const::version_string = "0.7.5";
+const char* Const::version_string = "0.7.6";
 const char* Const::program_name = "diamond";
 const char* Const::id_delimiters = " \a\b\f\n\r\t\v";
 

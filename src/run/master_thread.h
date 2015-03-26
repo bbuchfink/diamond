@@ -102,7 +102,7 @@ void process_shape(unsigned sid,
 }
 
 template<typename _val, typename _locr, typename _locq, typename _locl>
-void run_ref_chunk(Database_file &db_file,
+void run_ref_chunk(Database_file<_val> &db_file,
 		cpu_timer &timer_mapping,
 		cpu_timer &total_timer,
 		unsigned query_chunk,
@@ -166,7 +166,7 @@ void run_ref_chunk(Database_file &db_file,
 }
 
 template<typename _val, typename _locr, typename _locq, typename _locl>
-void run_query_chunk(Database_file &db_file,
+void run_query_chunk(Database_file<_val> &db_file,
 		cpu_timer &timer_mapping,
 		cpu_timer &total_timer,
 		unsigned query_chunk,
@@ -199,7 +199,7 @@ void run_query_chunk(Database_file &db_file,
 }
 
 template<typename _val, typename _locr>
-void master_thread(Database_file &db_file, cpu_timer &timer_mapping, cpu_timer &total_timer)
+void master_thread(Database_file<_val> &db_file, cpu_timer &timer_mapping, cpu_timer &total_timer)
 {
 	shape_config::instance = shape_config (program_options::index_mode, _val ());
 
@@ -282,7 +282,7 @@ void master_thread()
 		throw std::runtime_error("Temporary directory " + program_options::tmpdir + " does not exist or is not a directory. Please use option -t to specify a different directory.");
 
 	task_timer timer ("Opening the database", 1);
-	Database_file db_file;
+	Database_file<_val> db_file;
 	timer.finish();
 	program_options::set_options<_val>(ref_header.block_size);
 	verbose_stream << "Reference = " << program_options::database << endl;

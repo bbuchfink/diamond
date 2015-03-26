@@ -163,13 +163,13 @@ struct Sam_format : public Output_format<_val>
 				n += i->count;
 			else {
 				if(n > 0)
-					buf << letter[op] << n;
+					buf << n << letter[op];
 				n = i->count;
 				op = map[i->op];
 			}
 		}
 		if(n > 0)
-			buf << letter[op] << n;
+			buf << n << letter[op];
 	}
 
 	virtual void print_header(Output_stream &f) const

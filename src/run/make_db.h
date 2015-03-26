@@ -43,6 +43,9 @@ void make_db(_val)
 	timer.finish();
 
 	ref_header.block_size = program_options::chunk_size;
+#ifdef EXTRA
+	ref_header.sequence_type = sequence_type(_val ());
+#endif
 	size_t chunk = 0;
 	Output_stream main(program_options::database);
 	main.write(&ref_header, 1);

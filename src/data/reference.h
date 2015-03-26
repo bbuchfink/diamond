@@ -52,6 +52,9 @@ struct Reference_header
 	unsigned n_blocks;
 	size_t sequences, letters;
 	double block_size;
+#ifdef EXTRA
+	Sequence_type sequence_type;
+#endif
 } ref_header;
 
 struct Database_format_exception : public exception
@@ -60,6 +63,7 @@ struct Database_format_exception : public exception
 	{ return "Database file is not a DIAMOND database."; }
 };
 
+template<typename _val>
 struct Database_file : public Input_stream
 {
 	Database_file():
@@ -71,6 +75,10 @@ struct Database_file : public Input_stream
 			throw Database_format_exception ();
 		if(ref_header.build > Const::build_version || ref_header.build < Const::build_compatibility)
 			throw invalid_database_version_exception();
+#ifdef EXTRA
+		if(sequence_type(_val()) != ref_header.sequence_type)
+			throw std::runtime_error("Database has incorrect sequence type for current alignment mode.");
+#endif
 	}
 	void rewind()
 	{ this->seek(sizeof(Reference_header)); }

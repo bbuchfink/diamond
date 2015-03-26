@@ -33,10 +33,10 @@ Author: Benjamin Buchfink
 #ifdef EXTRA
 #include "../../extra/test_sw.h"
 #include "../../extra/test_io.h"
+#include "../../extra/stat.h"
 #endif
 
 #ifdef ENABLE_STAT
-//#include "../stat/stat.h"
 #include "../stat/compare.h"
 //#include "../stat/random_seq.h"
 #endif
@@ -123,9 +123,12 @@ int main(int ac, const char* av[])
         po::options_description hidden("Hidden options");
         hidden.add_options()
         	("command", po::value<string>(&command))
+#ifdef EXTRA
         	("match1", po::value<string>(&program_options::match_file1))
         	("match2", po::value<string>(&program_options::match_file2))
-        	("tab", "tabular format");
+        	("tab", "tabular format")
+#endif
+        	;
 
         po::options_description cmd_line_options("Command line options");
         cmd_line_options.add(general).add(hidden).add(makedb).add(aligner).add(advanced).add(view_options);
@@ -186,11 +189,14 @@ int main(int ac, const char* av[])
         		master_thread<Amino_acid>();
         } else if(program_options::command == program_options::view && vm.count("daa") > 0)
         	view();
-		#ifdef ENABLE_STAT
-        //else if (command == "stat" && vm.count("match1"))
-        	//blast_stat(vm.count("tab") > 0);
-        else if (command == "comp" && vm.count("query") && vm.count("match1") && vm.count("match2"))
-        	compare();
+		#ifdef EXTRA
+        else if (command == "stat" && vm.count("match1"))
+        	if(program_options::db_type == "nucl")
+        		blast_stat<Nucleotide>(vm.count("tab") > 0);
+        	else
+        		blast_stat<Amino_acid>(vm.count("tab") > 0);
+        //else if (command == "comp" && vm.count("query") && vm.count("match1") && vm.count("match2"))
+        	//compare();
         //else if (command == "random" && vm.count("query") && vm.count("out"))
         	//random_seq();
 		#endif

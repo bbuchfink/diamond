@@ -273,4 +273,11 @@ bool check_dir(const string &path)
 	return stat(path.c_str(), &sb) == 0 && S_ISDIR(sb.st_mode);
 }
 
+string to_string(unsigned val)
+{
+	std::stringstream ss;
+	ss << val;
+	return ss.str();
+}
+
 #endif /* UTIL_H_ */

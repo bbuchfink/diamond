@@ -24,7 +24,15 @@ Author: Benjamin Buchfink
 #include "value_type.h"
 #include "const.h"
 
-typedef enum { amino_acid, nucleotide } Sequence_type;
+typedef enum { amino_acid=0, nucleotide=1 } Sequence_type;
+
+template<typename _val>
+Sequence_type sequence_type(const _val&)
+{ return amino_acid; }
+
+template<>
+Sequence_type sequence_type<Nucleotide>(const Nucleotide&)
+{ return nucleotide; }
 
 Sequence_type input_sequence_type()
 { return program_options::command == program_options::blastp ? amino_acid : nucleotide; }

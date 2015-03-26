@@ -127,7 +127,7 @@ struct shape
 			if(l == Value_traits<_val>::MASK_CHAR || l == String_set<_val>::PADDING_CHAR)
 				return false;
 			l = mask_critical(l);
-			unsigned r = Value_traits<_val>::value_reduction(l);
+			unsigned r = Reduction<_val>::reduction(l);
 			f += background_freq[r];
 		}
 		return !use_seed_freq<_val>() || f <= program_options::max_seed_freq;
