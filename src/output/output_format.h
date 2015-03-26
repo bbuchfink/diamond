@@ -101,7 +101,7 @@ struct Sam_format : public Output_format<_val>
 				<< '0' << '\t'
 				<< sequence<const _val> (&r.query()[r.translated_query_begin], r.translated_query_len) << '\t'
 				<< '*' << '\t'
-				<< "AS:i:" << score_matrix::get().bitscore(r.score) << '\t'
+				<< "AS:i:" << (uint32_t)score_matrix::get().bitscore(r.score) << '\t'
 				<< "NM:i:" << r.len - r.identities << '\t'
 				<< "ZL:i:" << r.total_subject_len << '\t'
 				<< "ZR:i:" << r.score << '\t'
