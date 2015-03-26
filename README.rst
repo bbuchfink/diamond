@@ -140,8 +140,25 @@ To compile DIAMOND from source, invoke the following commands on the shell::
     $ cd diamond-0.7.5/src
     $ ./install-boost                                       # optional, for installing Boost
     $ make
-    
+
 The diamond binary will be created in ``diamond-0.7.5/bin``.
+
+Compiling using CMake
+=====================
+To compile DIAMOND from source, invoke the following commands on the shell::
+
+  $ wget http://github.com/bbuchfink/diamond/archive/v0.7.5.tar.gz
+  $ tar xzf v0.7.5.tar.gz
+  $ cd diamond-0.7.5
+  $ mkdir build
+  $ cd build
+  $ cmake .. # Use cmake -DCMAKE_INSTALL_PREFIX=... to install to a different prefix.
+  $ make install
+
+Installing using Homebrew/Linuxbrew
+===================================
+
+  $ brew install homebrew/science/diamond
 
 Scoring matrices
 ================
