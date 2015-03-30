@@ -1,4 +1,4 @@
-**DIAMOND v0.7.7 by Benjamin Buchfink** - http://github.com/bbuchfink/diamond
+**DIAMOND v0.7.8 by Benjamin Buchfink** - http://github.com/bbuchfink/diamond
 
 Published in *Nature Methods* **12**, 59–60 (2015) | `doi:10.1038/nmeth.3176 <http://dx.doi.org/10.1038/nmeth.3176>`_
 
@@ -8,7 +8,7 @@ Download & Installation
 =======================
 If you use a recent **Linux** operating system, you can download the software in binary format for immediate use::
 
-    wget http://github.com/bbuchfink/diamond/releases/download/v0.7.7/diamond-linux64.tar.gz
+    wget http://github.com/bbuchfink/diamond/releases/download/v0.7.8/diamond-linux64.tar.gz
     tar xzf diamond-linux64.tar.gz
 
 Users of **Mac OS X** and some **old Linux systems** need to compile the software from source (see `Compiling from source`_).
@@ -135,13 +135,13 @@ The requirements for compiling DIAMOND are Boost (version 1.53.0 or higher) and 
 
 To compile DIAMOND from source, invoke the following commands on the shell::
 
-    $ wget http://github.com/bbuchfink/diamond/archive/v0.7.7.tar.gz
-    $ tar xzf v0.7.7.tar.gz
-    $ cd diamond-0.7.7/src
+    $ wget http://github.com/bbuchfink/diamond/archive/v0.7.8.tar.gz
+    $ tar xzf v0.7.8.tar.gz
+    $ cd diamond-0.7.8/src
     $ ./install-boost                                       # optional, for installing Boost
     $ make
     
-The diamond binary will be created in ``diamond-0.7.7/bin``.
+The diamond binary will be created in ``diamond-0.7.8/bin``.
 
 Scoring matrices
 ================
