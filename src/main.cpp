@@ -105,12 +105,14 @@ int main(int ac, const char* av[])
         	("window,w", po::value<unsigned>(&program_options::window)->default_value(0), "window size for local hit search")
         	("xdrop", po::value<int>(&program_options::xdrop)->default_value(20), "xdrop for ungapped alignment")
         	("gapped-xdrop,X", po::value<int>(&program_options::gapped_xdrop)->default_value(20), "xdrop for gapped alignment in bits")
-        	("ungapped-score", po::value<int>(&program_options::min_ungapped_raw_score)->default_value(0), "minimum ungapped raw alignment score to continue local extension")
+        	("ungapped-score", po::value<int>(&program_options::min_ungapped_raw_score)->default_value(0), "minimum raw alignment score to continue local extension")
         	("hit-band", po::value<int>(&program_options::hit_band)->default_value(0), "band for hit verification")
         	("hit-score", po::value<int>(&program_options::min_hit_score)->default_value(0), "minimum score to keep a tentative alignment")
         	("band", po::value<int>(&program_options::padding)->default_value(0), "band for dynamic programming computation")
         	("shapes,s", po::value<unsigned>(&program_options::shapes)->default_value(0), "number of seed shapes (0 = all available)")
-        	("index-mode", po::value<unsigned>(&program_options::index_mode)->default_value(0), "index mode (1=4x12, 2=16x9)");
+        	("index-mode", po::value<unsigned>(&program_options::index_mode)->default_value(0), "index mode (1=4x12, 2=16x9)")
+        	("fetch-size", po::value<unsigned>(&program_options::fetch_size)->default_value(4096), "trace point fetch size")
+        	;
         	//("no-traceback,r", "disable alignment traceback");
         	//("compress-temp", po::value<unsigned>(&program_options::compress_temp)->default_value(0), "compression for temporary output files (0=none, 1=gzip)");
 
@@ -168,10 +170,14 @@ int main(int ac, const char* av[])
         } else if (program_options::command == program_options::makedb && vm.count("in") && vm.count("db")) {
         	if(vm.count("block-size") == 0)
         		program_options::chunk_size = 2;
+#ifdef EXTRA
         	if(program_options::db_type == "nucl")
         		make_db(Nucleotide());
-        	else
+        	else if(program_options::db_type == "prot")
         		make_db(Amino_acid());
+#else
+        		make_db(Amino_acid());
+#endif
         } else if ((program_options::command == program_options::blastp
         		|| program_options::command == program_options::blastx
 #ifdef EXTRA

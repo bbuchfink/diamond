@@ -1,3 +1,9 @@
+[0.7.8]
+- fixed a bug that could produce an incorrect sort order of HSPs
+
+[0.7.7]
+- fixed a number formatting error in the SAM output format
+
 [0.7.6]
 - fixed a formatting error in CIGAR strings
 

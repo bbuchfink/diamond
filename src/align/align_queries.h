@@ -107,9 +107,9 @@ void align_queries(const Trace_pt_buffer<_locr,_locl> &trace_pts, Output_stream*
 		log_stream << "Processing query bin " << bin+1 << '/' << trace_pts.bins() << '\n';
 		task_timer timer ("Loading trace points", false);
 		trace_pts.load(v, bin);
-		v.init();
 		timer.go("Sorting trace points");
 		merge_sort(v.begin(), v.end(), program_options::threads());
+		v.init();
 		timer.go("Computing alignments");
 		if(ref_header.n_blocks > 1) {
 			Align_context<_val,_locr,_locl,Temp_output_buffer<_val> > context (v, output_file);

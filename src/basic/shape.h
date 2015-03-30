@@ -97,6 +97,7 @@ struct shape
 			unsigned r = Reduction<_val>::reduction(l);
 			f += background_freq[r];
 			s *= Reduction<_val>::reduction.size();
+			//s *= 5;
 			s += uint64_t(r);
 		}
 		if(use_seed_freq<_val>() && f > program_options::max_seed_freq) return false;

@@ -44,6 +44,34 @@ struct Trace_pt_list : public vector<hit<_locr,_locl> >
 	void init()
 	{
 		pos_ = this->begin();
+		p_.clear();
+		p_.push_back(0);
+		idx_ = 0;
+		const unsigned c = query_contexts();
+		/*typename vector<hit<_locr,_locl> >::iterator i = this->begin()+program_options::fetch_size;
+		for(; i < this->end(); i=std::min(i+program_options::fetch_size, this->end())) {
+			const unsigned q = i->query_/c;
+			for(; i<this->end() && i->query_/c == q; ++i);
+				//printf("%lu %u %u\n", i-this->begin(), i->query_/c, q);
+			//printf("%lu\n",i - this->begin());
+			//std::terminate();
+			p_.push_back(i - this->begin());
+		}*/
+		/*typename vector<hit<_locr,_locl> >::iterator i = this->begin();
+		unsigned total=0,count=1;
+		for(; i < this->end();) {
+			unsigned n=0;
+			const unsigned min_size = 4*total/count/5 + 1;
+			for(;i<this->end() && n<min_size;) {
+				const unsigned q = i->query_/c;
+				for(; i<this->end() && i->query_/c == q; ++i)
+					++n;
+			}
+			++count;
+			total += n;
+			p_.push_back(i - this->begin());
+		}
+		p_.push_back(i - this->begin());*/
 	}
 	struct Query_range
 	{
@@ -52,15 +80,28 @@ struct Trace_pt_list : public vector<hit<_locr,_locl> >
 		{ }
 		bool operator()()
 		{
+
 			begin = parent_.pos_;
-			end = std::min(begin + 4096, parent_.end());
+			//end = std::min(begin + 4096, parent_.end());
+			end = std::min(begin + program_options::fetch_size, parent_.end());
 			if(end >= parent_.end())
 				return false;
 			const unsigned c = query_contexts(), q = end->query_/c;
 			for(; end<parent_.end() && end->query_/c == q; ++end);
+				//printf("%lu %u %u\n", end-parent_.begin(), end->query_/c, q);
 			parent_.pos_ = end;
+			//printf("%lu\n",end - parent_.begin());
+			//printf("%lu %lu\n",begin-parent_.begin(),end-parent_.begin());
 			return end < parent_.end();
 		}
+		/*bool operator()()
+		{
+			begin = parent_.begin()+parent_.p_[parent_.idx_];
+			end = parent_.begin()+parent_.p_[parent_.idx_+1];
+			printf("%lu %lu %lu\n", parent_.p_[parent_.idx_], parent_.p_[parent_.idx_+1], parent_.p_[parent_.idx_+1]-parent_.p_[parent_.idx_]);
+			++parent_.idx_;
+			return parent_.idx_ < parent_.p_.size()-1;
+		}*/
 		typename Trace_pt_list::iterator begin, end;
 	private:
 		Trace_pt_list &parent_;
@@ -69,6 +110,9 @@ struct Trace_pt_list : public vector<hit<_locr,_locl> >
 	{ return Query_range (*this); }
 private:
 	typename vector<hit<_locr,_locl> >::iterator pos_;
+	vector<size_t> p_;
+	unsigned idx_;
 };
 
 #endif /* TRACE_PT_BUFFER_H_ */
+

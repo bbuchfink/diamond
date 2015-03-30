@@ -82,6 +82,7 @@ double		toppercent;
 string		daa_file;
 string		output_format;
 bool		forwardonly;
+unsigned	fetch_size;
 
 Aligner_mode aligner_mode;
 Command command;
