@@ -58,7 +58,8 @@ void write_intermediate_record(Text_buffer &buf,
 			const Segment<_val> &match,
 			size_t query_source_len,
 			const sequence<const _val> &query,
-			unsigned query_id)
+			unsigned query_id,
+			const vector<char> &transcript_buf)
 {
 	buf.write(query_id)
 		.write(ref_map.get<_val>(current_ref_block, match.subject_id_))
@@ -67,7 +68,7 @@ void write_intermediate_record(Text_buffer &buf,
 		.write_packed(match.traceback_->query_begin_)
 		.write_packed(match.traceback_->subject_begin_);
 	const unsigned qbegin = query_translated_begin<_val>(match.traceback_->query_begin_, match.frame_, query_source_len, query_translated());
-	match.traceback_->transcript_->print_packed(buf, query, ref_seqs<_val>::get()[match.subject_id_], qbegin, match.traceback_->subject_begin_);
+	print_packed(match.traceback_->transcript_right_, match.traceback_->transcript_left_, transcript_buf, buf, query, ref_seqs<_val>::get()[match.subject_id_], qbegin, match.traceback_->subject_begin_);
 }
 
 template<typename _val>
@@ -76,8 +77,9 @@ struct Output_buffer : public Text_buffer
 	virtual void print_match(const Segment<_val> &match,
 		size_t query_source_len,
 		const sequence<const _val> &query,
-		unsigned query_id)
-	{ DAA_output::write_record(*this, match, query_source_len, query, query_id); }
+		unsigned query_id,
+		const vector<char> &transcript_buf)
+	{ DAA_output::write_record(*this, match, query_source_len, query, query_id, transcript_buf); }
 	virtual void write_query_record(unsigned query_id)
 	{
 		query_begin_ = this->size();
@@ -100,8 +102,9 @@ struct Temp_output_buffer : public Output_buffer<_val>
 	virtual void print_match(const Segment<_val> &match,
 				size_t query_source_len,
 				const sequence<const _val> &query,
-				unsigned query_id)
-	{ write_intermediate_record(*this, match, query_source_len, query, query_id); }
+				unsigned query_id,
+				const vector<char> &transcript_buf)
+	{ write_intermediate_record(*this, match, query_source_len, query, query_id, transcript_buf); }
 	virtual void write_query_record(unsigned query_id)
 	{ }
 	virtual void finish_query_record()

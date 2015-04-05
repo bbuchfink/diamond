@@ -93,7 +93,8 @@ local_match<_val> traceback(const _val *query,
 		int gap_extend,
 		int i,
 		int j,
-		int score)
+		int score,
+		vector<char> &transcript_buf)
 {
 	if(i == -1)
 		return local_match<_val> (0);
@@ -106,7 +107,7 @@ local_match<_val> traceback(const _val *query,
 	l.query_begin_ = 0;
 	l.subject_begin_ = 0;
 	l.score_ = score;
-	l.transcript_ = new Edit_transcript ();
+	Edit_transcript transcript (transcript_buf);
 
 	int gap_len;
 
@@ -123,17 +124,17 @@ local_match<_val> traceback(const _val *query,
 			--i;
 			--j;
 			++l.len_;
-			l.transcript_->push_back(op_match);
+			transcript_buf.push_back(op_match);
 		} else if (have_hgap(dp, i, j, gap_open, gap_extend, gap_len)) {
 			++l.gap_openings_;
 			l.len_ += gap_len;
 			i -= gap_len;
-			l.transcript_->push(op_deletion, gap_len);
+			transcript_buf.insert(transcript_buf.end(), gap_len ,op_deletion);
 		} else if (have_vgap(dp, i, j, gap_open, gap_extend, gap_len)) {
 			++l.gap_openings_;
 			l.len_ += gap_len;
 			j -= gap_len;
-			l.transcript_->push(op_insertion, gap_len);
+			transcript_buf.insert(transcript_buf.end(), gap_len ,op_insertion);
 		} else {
 			throw std::runtime_error("Traceback error.");
 		}
@@ -144,7 +145,9 @@ local_match<_val> traceback(const _val *query,
 	else
 		++l.mismatches_;
 	++l.len_;
-	l.transcript_->push_back(op_match);
+	transcript_buf.push_back(op_match);
+	//printf("len=%i\n",l.len_);
+	l.transcript_right_ = transcript.set_end(transcript_buf);
 	return l;
 }
 

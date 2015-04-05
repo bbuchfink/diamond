@@ -27,7 +27,7 @@ Author: Benjamin Buchfink
 #include "scalar_traceback.h"
 
 template<typename _val, typename _dir, typename _score, typename _traceback>
-local_match<_val> floating_sw_dir(const _val *query, const _val *subject, int band, _score xdrop, _score gap_open, _score gap_extend)
+local_match<_val> floating_sw_dir(const _val *query, const _val *subject, int band, _score xdrop, _score gap_open, _score gap_extend, vector<char> &transcript_buf)
 {
 	using std::max;
 
@@ -70,17 +70,15 @@ local_match<_val> floating_sw_dir(const _val *query, const _val *subject, int ba
 		++j;
 	}
 
-	return traceback<_val,_dir,_score>(query, subject, mtx.score_buffer(), band, gap_open, gap_extend, j_best, i_best, max_score);
+	return traceback<_val,_dir,_score>(query, subject, mtx.score_buffer(), band, gap_open, gap_extend, j_best, i_best, max_score, transcript_buf);
 }
 
 template<typename _val, typename _score, typename _traceback>
-void floating_sw(const _val *query, local_match<_val> &segment, int band, _score xdrop, _score gap_open, _score gap_extend, const _traceback& = Score_only (), const _score& = int())
+void floating_sw(const _val *query, local_match<_val> &segment, int band, _score xdrop, _score gap_open, _score gap_extend, vector<char> &transcript_buf, const _traceback& = Score_only (), const _score& = int())
 {
-	segment += floating_sw_dir<_val,Right,_score,_traceback>(query, segment.subject_, band, xdrop, gap_open, gap_extend);
-	const local_match<_val> left (floating_sw_dir<_val,Left,_score,_traceback>(query, segment.subject_, band, xdrop, gap_open, gap_extend));
+	segment += floating_sw_dir<_val,Right,_score,_traceback>(query, segment.subject_, band, xdrop, gap_open, gap_extend, transcript_buf);
+	const local_match<_val> left (floating_sw_dir<_val,Left,_score,_traceback>(query, segment.subject_, band, xdrop, gap_open, gap_extend, transcript_buf));
 	if(left.query_len_ > 0) {
-		if(segment.transcript_ == 0)
-			segment.transcript_ = new Edit_transcript;
 		segment -= left;
 		segment.query_begin_--;
 		segment.subject_begin_--;

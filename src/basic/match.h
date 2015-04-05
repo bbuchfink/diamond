@@ -100,8 +100,7 @@ struct local_match
 		score_ (),
 		query_len_ (),
 		query_anchor_ (0),
-		subject_ (0),
-		transcript_ (0)
+		subject_ (0)
 	{ }
 	local_match(int score):
 		len_ (0),
@@ -114,8 +113,7 @@ struct local_match
 		score_ (score),
 		query_len_ (0),
 		query_anchor_ (0),
-		subject_ (0),
-		transcript_ (0)
+		subject_ (0)
 	{ }
 	local_match(int query_anchor, const _val *subject):
 		len_ (0),
@@ -128,8 +126,7 @@ struct local_match
 		score_ (0),
 		query_len_ (0),
 		query_anchor_ (query_anchor),
-		subject_ (subject),
-		transcript_ (0)
+		subject_ (subject)
 	{ }
 	local_match(unsigned len, unsigned query_begin, unsigned query_len, unsigned subject_len, unsigned gap_openings, unsigned identities, unsigned mismatches, signed subject_begin, signed score):
 		len_ (len),
@@ -142,13 +139,12 @@ struct local_match
 		score_ (score),
 		query_len_ (query_len),
 		query_anchor_ (0),
-		subject_ (0),
-		transcript_ (0)
+		subject_ (0)
 	{ }
 	local_match& operator+=(const local_match& rhs)
 	{
 		add(rhs);
-		transcript_ = rhs.transcript_;
+		transcript_right_ = rhs.transcript_right_;
 		return *this;
 	}
 	local_match& operator-=(const local_match& rhs)
@@ -156,9 +152,7 @@ struct local_match
 		add(rhs);
 		query_begin_ = rhs.query_len_;
 		subject_begin_ = rhs.subject_len_;
-		for(Edit_transcript::const_iterator i=rhs.transcript_->end()-2;i>=rhs.transcript_->begin();--i)
-			transcript_->push_back(*i);
-		delete rhs.transcript_;
+		transcript_left_ = rhs.transcript_right_;
 		return *this;
 	}
 	void add(const local_match &rhs)
@@ -175,10 +169,10 @@ struct local_match
 	{ return normalized_range(query_begin_, query_len_, strand); }
 	interval subject_range() const
 	{ return normalized_range(subject_begin_, subject_len_, FORWARD); }
-	void print(const sequence<const _val> &query, const sequence<const _val> &subject) const
+	void print(const sequence<const _val> &query, const sequence<const _val> &subject, const vector<char> &buf) const
 	{
 		cout << "Score = " << score_ << endl;
-		transcript_->print(cout, &query[query_begin_], &subject[subject_begin_]);
+		::print(cout, &query[query_begin_], &subject[subject_begin_], transcript_right_, transcript_left_, buf);
 	}
 	/*friend std::ostream& operator<<(std::ostream &os, const local_match &x)
 	{
@@ -188,7 +182,7 @@ struct local_match
 	unsigned len_, query_begin_, subject_len_, gap_openings_, identities_, mismatches_;
 	signed subject_begin_, score_, query_len_, query_anchor_;
 	const _val *subject_;
-	Edit_transcript *transcript_;
+	Edit_transcript transcript_right_, transcript_left_;
 };
 
 template<typename _val>

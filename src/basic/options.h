@@ -84,6 +84,7 @@ namespace program_options
 	extern string	output_file;
 	extern bool		forwardonly;
 	extern unsigned fetch_size;
+	extern bool		single_domain;
 
 	typedef enum { fast=0, sensitive=1, very_sensitive=2 } Aligner_mode;
 	extern Aligner_mode aligner_mode;

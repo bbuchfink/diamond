@@ -42,11 +42,14 @@ void align_read(Output_buffer<_val> &buffer,
 {
 	static thread_specific_ptr<vector<local_match<_val> > > local_ptr;
 	static thread_specific_ptr<vector<Segment<_val> > > matches_ptr;
+	static thread_specific_ptr<vector<char> > transcript_ptr;
 
 	Tls<vector<Segment<_val> > > matches (matches_ptr);
 	Tls<vector<local_match<_val> > > local (local_ptr);
+	Tls<vector<char> > transcript_buf (transcript_ptr);
 	local->clear();
 	matches->clear();
+	transcript_buf->clear();
 
 	assert(end > begin);
 	const size_t hit_count = end - begin;
@@ -62,7 +65,7 @@ void align_read(Output_buffer<_val> &buffer,
 	Map_t hits (begin, end);
 	typename Map_t::Iterator i = hits.begin();
 	while(i.valid()) {
-		align_sequence<_val,_locr,_locl>(*matches, stat, *local, padding, db_letters, source_query_len, i.begin(), i.end());
+		align_sequence<_val,_locr,_locl>(*matches, stat, *local, padding, db_letters, source_query_len, i.begin(), i.end(), *transcript_buf);
 		++i;
 	}
 
@@ -92,10 +95,14 @@ void align_read(Output_buffer<_val> &buffer,
 			++it;
 			continue;
 		}
+		if(same_subject && program_options::single_domain) {
+			++it;
+			continue;
+		}
 
 		if(n_hsp == 0)
 			buffer.write_query_record(query);
-		buffer.print_match(*it, source_query_len, query_seqs<_val>::get()[query*contexts + it->frame_], query);
+		buffer.print_match(*it, source_query_len, query_seqs<_val>::get()[query*contexts + it->frame_], query, *transcript_buf);
 
 		++n_hsp;
 		if(!same_subject)
@@ -107,11 +114,6 @@ void align_read(Output_buffer<_val> &buffer,
 
 	if(n_hsp > 0)
 		buffer.finish_query_record();
-
-	if(program_options::alignment_traceback)
-		for(typename vector<Segment<_val> >::iterator it = matches->begin(); it != matches->end(); ++it)
-			if(it->traceback_)
-				delete it->traceback_->transcript_;
 
 	stat.inc(Statistics::OUT_MATCHES, matches->size());
 	if(ref_header.n_blocks == 1) {

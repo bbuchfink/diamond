@@ -98,6 +98,11 @@ private:
 };
 
 const Complexity_filter<Amino_acid> Complexity_filter<Amino_acid>::instance;
+#ifdef NDEBUG
 template<> const Complexity_filter<Nucleotide> Complexity_filter<Nucleotide>::instance;
+#else
+template<typename _val> const Complexity_filter<_val> Complexity_filter<_val>::instance;
+#endif
+
 
 #endif /* COMPLEXITY_FILTER_H_ */

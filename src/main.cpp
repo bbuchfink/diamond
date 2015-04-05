@@ -112,8 +112,8 @@ int main(int ac, const char* av[])
         	("shapes,s", po::value<unsigned>(&program_options::shapes)->default_value(0), "number of seed shapes (0 = all available)")
         	("index-mode", po::value<unsigned>(&program_options::index_mode)->default_value(0), "index mode (1=4x12, 2=16x9)")
         	("fetch-size", po::value<unsigned>(&program_options::fetch_size)->default_value(4096), "trace point fetch size")
-        	;
-        	//("no-traceback,r", "disable alignment traceback");
+        	("single-domain", "Discard secondary domains within one target sequence")
+        	("no-traceback,r", "disable alignment traceback");
         	//("compress-temp", po::value<unsigned>(&program_options::compress_temp)->default_value(0), "compression for temporary output files (0=none, 1=gzip)");
 
         po::options_description view_options("View options");
@@ -154,6 +154,7 @@ int main(int ac, const char* av[])
         program_options::debug_log = vm.count("log") > 0;
         program_options::salltitles = vm.count("salltitles") > 0;
         program_options::forwardonly = vm.count("forwardonly") > 0;
+        program_options::single_domain = vm.count("single-domain") > 0;
 
         setup(command, ac, av);
 
@@ -175,6 +176,8 @@ int main(int ac, const char* av[])
         		make_db(Nucleotide());
         	else if(program_options::db_type == "prot")
         		make_db(Amino_acid());
+        	else
+        		throw std::runtime_error("Database type (protein/nucleotide) not specified.");
 #else
         		make_db(Amino_acid());
 #endif

@@ -83,6 +83,7 @@ string		daa_file;
 string		output_format;
 bool		forwardonly;
 unsigned	fetch_size;
+bool		single_domain;
 
 Aligner_mode aligner_mode;
 Command command;

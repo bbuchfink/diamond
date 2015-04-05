@@ -44,24 +44,18 @@ struct Trace_pt_list : public vector<hit<_locr,_locl> >
 	void init()
 	{
 		pos_ = this->begin();
+		total_ = 0;
+		count_ = 1;
+#ifdef PRE_PARTITION
 		p_.clear();
 		p_.push_back(0);
 		idx_ = 0;
 		const unsigned c = query_contexts();
-		/*typename vector<hit<_locr,_locl> >::iterator i = this->begin()+program_options::fetch_size;
-		for(; i < this->end(); i=std::min(i+program_options::fetch_size, this->end())) {
-			const unsigned q = i->query_/c;
-			for(; i<this->end() && i->query_/c == q; ++i);
-				//printf("%lu %u %u\n", i-this->begin(), i->query_/c, q);
-			//printf("%lu\n",i - this->begin());
-			//std::terminate();
-			p_.push_back(i - this->begin());
-		}*/
-		/*typename vector<hit<_locr,_locl> >::iterator i = this->begin();
+		typename vector<hit<_locr,_locl> >::iterator i = this->begin();
 		unsigned total=0,count=1;
 		for(; i < this->end();) {
 			unsigned n=0;
-			const unsigned min_size = 4*total/count/5 + 1;
+			const unsigned min_size = std::max(4*total/count/5 + 1, program_options::fetch_size);
 			for(;i<this->end() && n<min_size;) {
 				const unsigned q = i->query_/c;
 				for(; i<this->end() && i->query_/c == q; ++i)
@@ -71,37 +65,40 @@ struct Trace_pt_list : public vector<hit<_locr,_locl> >
 			total += n;
 			p_.push_back(i - this->begin());
 		}
-		p_.push_back(i - this->begin());*/
+		p_.push_back(i - this->begin());
+#endif
 	}
 	struct Query_range
 	{
 		Query_range(Trace_pt_list &parent):
 			parent_ (parent)
 		{ }
+#ifndef PRE_PARTITION
 		bool operator()()
 		{
 
 			begin = parent_.pos_;
-			//end = std::min(begin + 4096, parent_.end());
-			end = std::min(begin + program_options::fetch_size, parent_.end());
+			//end = std::min(std::max(begin + 3*parent_.total_/parent_.count_/4 + 1, begin+program_options::fetch_size), parent_.end());
+			end = std::min(begin + 3*parent_.total_/parent_.count_/4 + 1, parent_.end());
 			if(end >= parent_.end())
 				return false;
 			const unsigned c = query_contexts(), q = end->query_/c;
 			for(; end<parent_.end() && end->query_/c == q; ++end);
-				//printf("%lu %u %u\n", end-parent_.begin(), end->query_/c, q);
 			parent_.pos_ = end;
-			//printf("%lu\n",end - parent_.begin());
-			//printf("%lu %lu\n",begin-parent_.begin(),end-parent_.begin());
+			parent_.total_ += end - begin;
+			++parent_.count_;
 			return end < parent_.end();
 		}
-		/*bool operator()()
+#else
+		bool operator()()
 		{
 			begin = parent_.begin()+parent_.p_[parent_.idx_];
 			end = parent_.begin()+parent_.p_[parent_.idx_+1];
 			printf("%lu %lu %lu\n", parent_.p_[parent_.idx_], parent_.p_[parent_.idx_+1], parent_.p_[parent_.idx_+1]-parent_.p_[parent_.idx_]);
 			++parent_.idx_;
 			return parent_.idx_ < parent_.p_.size()-1;
-		}*/
+		}
+#endif
 		typename Trace_pt_list::iterator begin, end;
 	private:
 		Trace_pt_list &parent_;
@@ -110,8 +107,12 @@ struct Trace_pt_list : public vector<hit<_locr,_locl> >
 	{ return Query_range (*this); }
 private:
 	typename vector<hit<_locr,_locl> >::iterator pos_;
+#ifdef PRE_PARTITION
 	vector<size_t> p_;
 	unsigned idx_;
+#else
+	size_t total_, count_;
+#endif
 };
 
 #endif /* TRACE_PT_BUFFER_H_ */
