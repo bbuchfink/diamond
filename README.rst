@@ -143,6 +143,23 @@ To compile DIAMOND from source, invoke the following commands on the shell::
     
 The diamond binary will be created in ``diamond-0.7.9/bin``.
 
+Compiling using CMake
+=====================
+To compile DIAMOND from source, invoke the following commands on the shell::
+
+  $ wget http://github.com/bbuchfink/diamond/archive/v0.7.9.tar.gz
+  $ tar xzf v0.7.9.tar.gz
+  $ cd diamond-0.7.9
+  $ mkdir build
+  $ cd build
+  $ cmake .. # Use cmake -DCMAKE_INSTALL_PREFIX=... to install to a different prefix.
+  $ make install
+
+Installing using Homebrew/Linuxbrew
+===================================
+
+  $ brew install homebrew/science/diamond
+
 Scoring matrices
 ================
 ======== ============================================
