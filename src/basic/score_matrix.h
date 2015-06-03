@@ -30,6 +30,8 @@ using std::cout;
 using std::endl;
 using std::auto_ptr;
 
+const double	LN_2 = 0.69314718055994530941723212145818;
+
 struct Score_params_exception : public std::exception
 {
 	virtual const char* what() const throw()
@@ -163,8 +165,6 @@ struct score_matrix
 	static auto_ptr<score_matrix> instance;
 
 private:
-
-	static const double	LN_2 = 0.69314718055994530941723212145818;
 
 	template<typename _t>
 	struct Scores
