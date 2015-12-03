@@ -102,7 +102,7 @@ struct Value_traits<Amino_acid>
 
 const Amino_acid					Value_traits<Amino_acid>::MASK_CHAR = 23;
 const char* Value_traits<Amino_acid>::ALPHABET = "ARNDCQEGHILKMFPSTWYVBJZX*";
-const Char_representation<Amino_acid> Value_traits<Amino_acid>::from_char (Value_traits<Amino_acid>::ALPHABET_SIZE, Value_traits<Amino_acid>::ALPHABET, Value_traits<Amino_acid>::MASK_CHAR, "UO");
+const Char_representation<Amino_acid> Value_traits<Amino_acid>::from_char (Value_traits<Amino_acid>::ALPHABET_SIZE, Value_traits<Amino_acid>::ALPHABET, Value_traits<Amino_acid>::MASK_CHAR, "UO-");
 
 template<>
 struct Value_traits<const Amino_acid> : public Value_traits<Amino_acid>

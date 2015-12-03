@@ -83,7 +83,7 @@ void process_shape(unsigned sid,
 				shape_config::instance.get_shape(sid),
 				ref_hst.get(program_options::index_mode, sid),
 				range);
-		ref_masking.build<_val,_locr>(sid, range, ref_idx);
+		ref_seqs<_val>::get_nc().template build_masking<_locr>(sid, range, ref_idx);
 
 		timer.go("Building query index");
 		timer_mapping.resume();
@@ -112,7 +112,7 @@ void run_ref_chunk(Database_file<_val> &db_file,
 		vector<Temp_file> &tmp_file)
 {
 	task_timer timer ("Loading reference sequences", true);
-	ref_seqs<_val>::data_ = new Sequence_set<_val> (db_file);
+	ref_seqs<_val>::data_ = new Masked_sequence_set<_val> (db_file);
 	ref_ids::data_ = new String_set<char,0> (db_file);
 	ref_hst.load(db_file);
 	setup_search_params<_val>(query_len_bounds, ref_seqs<_val>::data_->letters());
@@ -220,9 +220,9 @@ void master_thread(Database_file<_val> &db_file, cpu_timer &timer_mapping, cpu_t
 		timer_mapping.resume();
 		size_t n_query_seqs;
 		if(input_sequence_type() == nucleotide)
-			n_query_seqs = load_seqs<Nucleotide,_val,Double_strand>(query_file, *format_n, query_seqs<_val>::data_, query_ids::data_, query_source_seqs::data_, (size_t)(program_options::chunk_size * 1e9));
+			n_query_seqs = load_seqs<Nucleotide,_val,Double_strand>(query_file, *format_n, &query_seqs<_val>::data_, query_ids::data_, query_source_seqs::data_, (size_t)(program_options::chunk_size * 1e9));
 		else
-			n_query_seqs = load_seqs<Amino_acid,_val,Single_strand>(query_file, *format_a, query_seqs<_val>::data_, query_ids::data_, query_source_seqs::data_, (size_t)(program_options::chunk_size * 1e9));
+			n_query_seqs = load_seqs<Amino_acid,_val,Single_strand>(query_file, *format_a, &query_seqs<_val>::data_, query_ids::data_, query_source_seqs::data_, (size_t)(program_options::chunk_size * 1e9));
 		if(n_query_seqs == 0)
 			break;
 		timer.finish();

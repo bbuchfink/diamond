@@ -396,8 +396,11 @@ private:
 void copy_file(boost::iostreams::filtering_ostream &s, const char* file_name)
 {
 	s << file_name << endl;
-	Input_stream f (file_name);
-	s << f.rdbuf() << endl;
+	try {
+		Input_stream f (file_name);
+		s << f.rdbuf() << endl;
+	} catch (file_open_exception &e) {
+	}
 }
 
 #endif /* BINARY_FILE_H_ */

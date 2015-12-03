@@ -85,6 +85,7 @@ namespace program_options
 	extern bool		forwardonly;
 	extern unsigned fetch_size;
 	extern bool		single_domain;
+	extern size_t	db_size;
 
 	typedef enum { fast=0, sensitive=1, very_sensitive=2 } Aligner_mode;
 	extern Aligner_mode aligner_mode;

@@ -224,8 +224,12 @@ private:
 		{
 			task_timer timer ("Computing limits", false);
 			this->push_back(0);
-			for(unsigned i=0;i<Const::seedp;++i)
+			for(unsigned i=0;i<Const::seedp;++i) {
+#ifdef EXTRA
+				log_stream << i << ' ' << partition_size(hst, i) << endl;
+#endif
 				this->push_back(this->operator[](i) + (range.contains(i) ? partition_size(hst, i) : 0));
+			}
 		}
 	};
 

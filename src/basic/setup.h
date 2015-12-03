@@ -132,16 +132,10 @@ void setup_search_params(pair<size_t,size_t> query_len_bounds, size_t chunk_db_l
 	po::set_option(po::min_identities, 18u);
 	po::min_ungapped_raw_score = score_matrix::get().rawscore(std::min(po::min_ungapped_raw_score == 0 ? 19.0 : po::min_ungapped_raw_score, b));
 
-	if(query_len_bounds.second <= 128) {
-		const int band = po::read_padding<_val>(query_len_bounds.second);
-		po::set_option(po::window, (unsigned)(query_len_bounds.second + band));
-		po::set_option(po::hit_band, band);
-		po::set_option(po::min_hit_score, score_matrix::get().rawscore(b));
-	} else {
-		po::set_option(po::window, 40u);
-		po::set_option(po::hit_band, 5);
-		po::min_hit_score = score_matrix::get().rawscore(std::min(po::min_hit_score == 0 ? 19.0 : po::min_hit_score, b));
-	}
+	po::set_option(po::window, 40u);
+	po::set_option(po::hit_band, 5);
+	po::min_hit_score = score_matrix::get().rawscore(std::min(po::min_hit_score == 0 ? 19.0 : po::min_hit_score, b));
+
 	log_stream << "Query len bounds " << query_len_bounds.first << ' ' << query_len_bounds.second << endl;
 	log_stream << "Minimum bit score = " << b << endl;
 	log_stream << "Search parameters " << po::min_ungapped_raw_score << ' ' << po::min_hit_score << ' ' << po::hit_cap << endl;

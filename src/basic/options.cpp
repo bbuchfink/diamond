@@ -84,6 +84,7 @@ string		output_format;
 bool		forwardonly;
 unsigned	fetch_size;
 bool		single_domain;
+size_t		db_size;
 
 Aligner_mode aligner_mode;
 Command command;

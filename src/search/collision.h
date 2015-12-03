@@ -67,7 +67,7 @@ inline bool shape_collision_right(uint64_t mask, uint64_t shape_mask, const _val
 	if(!match_shape_mask(mask, shape_mask)) return false;
 	return is_lower_chunk(subject, sid)
 			&& is_low_freq(subject, sid)
-			&& (!get_critical(*subject) || (need_lookup(sid) && !ref_masking.get(subject, sid)));
+			&& (!get_critical(*subject) || (need_lookup(sid) && !ref_seqs<_val>::get().get_masking(subject, sid)));
 }
 
 template <typename _val, typename _pos>
@@ -76,7 +76,7 @@ inline bool shape_collision_left(uint64_t mask, uint64_t shape_mask, const _val 
 	if(!match_shape_mask(mask, shape_mask)) return false;
 	return (!chunked || is_lower_or_equal_chunk(subject, sid))
 			&& is_low_freq(subject, sid)
-			&& (!get_critical(*subject) || (need_lookup(sid) && !ref_masking.get(subject, sid)));
+			&& (!get_critical(*subject) || (need_lookup(sid) && !ref_seqs<_val>::get().get_masking(subject, sid)));
 }
 
 template <typename _val, typename _pos>
@@ -84,7 +84,7 @@ inline bool previous_shape_collision(uint64_t mask, uint64_t shape_mask, const _
 {
 	if(!match_shape_mask(mask, shape_mask)) return false;
 	return is_low_freq(subject, sid)
-			&& (!get_critical(*subject) || !ref_masking.get(subject, sid));
+			&& (!get_critical(*subject) || !ref_seqs<_val>::get().get_masking(subject, sid));
 }
 
 template<typename _val, typename _pos>

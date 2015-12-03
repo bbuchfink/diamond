@@ -31,7 +31,7 @@ void align_range(_locq q_pos,
 				 typename Trace_pt_buffer<_locr,_locl>::Iterator &out,
 				 unsigned sid)
 {
-	unsigned i = 0;
+	unsigned i = 0, n=0;
 
 	const _val* query = query_seqs<_val>::data_->data(q_pos);
 	hit_filter<_val,_locr,_locq,_locl> hf (stats, q_pos, out);
@@ -48,8 +48,13 @@ void align_range(_locq q_pos,
 			align<_val,_locr,_locq,_locl>(q_pos, query, s[i], stats, sid, hf);
 			stats.inc(Statistics::SEED_HITS);
 			++i;
+			++n;
 		}
 	}
+#ifdef EXTRA
+	//if(n > 64)
+		//printf("%u\n",n);
+#endif
 
 	hf.finish();
 }
@@ -61,6 +66,10 @@ void align_range(const typename sorted_list<_locq>::Type::const_iterator &q,
 				 typename Trace_pt_buffer<_locr,_locl>::Iterator &out,
 				 const unsigned sid)
 {
+#ifdef EXTRA
+	//if(q.n > 4096)
+		//printf("%lu %lu\n",q.n,s.n);
+#endif
 	for(unsigned i=0;i<q.n; ++i)
 		align_range<_val,_locr,_locq,_locl>(_locq(q[i]), s, stats, out, sid);
 }

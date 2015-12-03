@@ -45,7 +45,7 @@ struct DAA_output
 	DAA_output():
 		f_ (program_options::daa_file),
 		h2_ (ref_header.sequences,
-				ref_header.letters,
+				program_options::db_size == 0 ? ref_header.letters : program_options::db_size,
 				program_options::gap_open,
 				program_options::gap_extend,
 				program_options::reward,

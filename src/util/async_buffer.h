@@ -111,7 +111,7 @@ struct Async_buffer
 		size_t size = 0;
 		for(unsigned i=0;i<program_options::threads();++i)
 			size += size_[i*bins_+bin];
-		log_stream << "Async_buffer.load() " << size << endl;
+		log_stream << "Async_buffer.load() " << size << "(" << (double)size*sizeof(_t)/(1<<30) << " GB)" << endl;
 		data.resize(size);
 		_t* ptr = data.data();
 		for(unsigned i=0;i<program_options::threads();++i) {

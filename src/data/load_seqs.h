@@ -21,6 +21,7 @@ Author: Benjamin Buchfink
 #ifndef LOAD_SEQS_H_
 #define LOAD_SEQS_H_
 
+#include <iostream>
 #include "sequence_set.h"
 #include "../basic/translate.h"
 #include "../util/seq_file_format.h"
@@ -69,27 +70,32 @@ size_t push_seq<Nucleotide,Nucleotide,Double_strand>(String_set<Nucleotide> &ss,
 template<typename _ival, typename _val, typename _strand>
 size_t load_seqs(Input_stream &file,
 		const Sequence_file_format<_ival> &format,
-		Sequence_set<_val>*& seqs,
+		Sequence_set<_val>** seqs,
 		String_set<char,0>*& ids,
 		Sequence_set<Nucleotide>*& source_seqs,
 		size_t max_letters)
 {
-	seqs = new Sequence_set<_val> ();
+	*seqs = new Sequence_set<_val> ();
 	ids = new String_set<char,0> ();
 	source_seqs = new Sequence_set<Nucleotide> ();
 	size_t letters = 0, n = 0;
 	vector<_ival> seq;
 	vector<char> id;
-	while(letters < max_letters && format.get_seq(id, seq, file)) {
-		ids->push_back(id);
-		letters += push_seq<_ival,_val,_strand>(*seqs, *source_seqs, seq);
-		++n;
+	try {
+		while(letters < max_letters && format.get_seq(id, seq, file)) {
+			ids->push_back(id);
+			letters += push_seq<_ival,_val,_strand>(**seqs, *source_seqs, seq);
+			++n;
+		}
+	} catch(invalid_sequence_char_exception &e) {
+		std::cerr << n << endl;
+		throw e;
 	}
 	ids->finish_reserve();
-	seqs->finish_reserve();
+	(*seqs)->finish_reserve();
 	source_seqs->finish_reserve();
 	if(n == 0) {
-		delete seqs;
+		delete *seqs;
 		delete ids;
 		delete source_seqs;
 	}

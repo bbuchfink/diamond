@@ -115,6 +115,9 @@ struct Sequence_set : public String_set<_val>
 			return l*3;
 	}
 
+	virtual ~Sequence_set()
+	{ }
+
 };
 
 #endif /* SEQUENCE_SET_H_ */

@@ -89,6 +89,8 @@ private:
 
 };
 
+const double LN_2 = 0.69314718055994530941723212145818;
+
 struct score_matrix
 {
 
@@ -163,8 +165,6 @@ struct score_matrix
 	static auto_ptr<score_matrix> instance;
 
 private:
-
-	static const double	LN_2 = 0.69314718055994530941723212145818;
 
 	template<typename _t>
 	struct Scores

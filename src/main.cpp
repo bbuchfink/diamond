@@ -113,7 +113,8 @@ int main(int ac, const char* av[])
         	("index-mode", po::value<unsigned>(&program_options::index_mode)->default_value(0), "index mode (1=4x12, 2=16x9)")
         	("fetch-size", po::value<unsigned>(&program_options::fetch_size)->default_value(4096), "trace point fetch size")
         	("single-domain", "Discard secondary domains within one target sequence")
-        	("no-traceback,r", "disable alignment traceback");
+        	("no-traceback,r", "disable alignment traceback")
+        	("dbsize", po::value<size_t>(&program_options::db_size)->default_value(0), "effective database size (in letters)");
         	//("compress-temp", po::value<unsigned>(&program_options::compress_temp)->default_value(0), "compression for temporary output files (0=none, 1=gzip)");
 
         po::options_description view_options("View options");
@@ -177,7 +178,7 @@ int main(int ac, const char* av[])
         	else if(program_options::db_type == "prot")
         		make_db(Amino_acid());
         	else
-        		throw std::runtime_error("Database type (protein/nucleotide) not specified.");
+        		throw std::runtime_error("Database type (protein/nucleotide) not specified. Please use option --dbtype prot/nucl.");
 #else
         		make_db(Amino_acid());
 #endif
