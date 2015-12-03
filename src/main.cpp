@@ -215,7 +215,8 @@ int main(int ac, const char* av[])
         	test_io();
 		#endif
         else
-        	cout << "Insufficient arguments. Use diamond -h for help.\n";
+        	cerr << "Insufficient arguments. Use diamond -h for help." << endl;
+        	return 1;
 	}
 	catch(std::bad_alloc &e) {
 		cerr << "Failed to allocate sufficient memory. Please refer to the readme for instructions on memory usage." << endl;
