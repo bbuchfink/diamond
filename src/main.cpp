@@ -22,6 +22,7 @@ Author: Benjamin Buchfink
 #include <iterator>
 #include <boost/program_options.hpp>
 #include "basic/options.h"
+#include "basic/const.h"
 #include "util/log_stream.h"
 #include "data/reference.h"
 #include "run/make_db.h"
@@ -61,6 +62,7 @@ int main(int ac, const char* av[])
             ("db,d", po::value<string>(&program_options::database), "database file")
             ("daa,a", po::value<string>(&program_options::daa_file), "DIAMOND alignment archive (DAA) file")
             ("verbose,v", "enable verbose out")
+            ("version", "display version information")
             ("log", "enable debug log");
 
         po::options_description makedb("Makedb options");
@@ -169,6 +171,8 @@ int main(int ac, const char* av[])
         	cout << "  view\tView DIAMOND alignment archive (DAA) formatted file" << endl;
         	cout << endl;
         	cout << general << endl << makedb << endl << aligner << endl << advanced << endl << view_options << endl;
+        } else if (vm.count("version")) {
+        	cout << Const::program_name << " version " << Const::version_string << endl;
         } else if (program_options::command == program_options::makedb && vm.count("in") && vm.count("db")) {
         	if(vm.count("block-size") == 0)
         		program_options::chunk_size = 2;
