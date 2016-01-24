@@ -152,8 +152,12 @@ To compile DIAMOND from source, invoke the following commands on the shell::
   $ cd diamond-0.7.10
   $ mkdir build
   $ cd build
-  $ cmake .. # Use cmake -DCMAKE_INSTALL_PREFIX=... to install to a different prefix.
+  $ cmake ..
   $ make install
+
+*Note*:
+  - Use cmake -DCMAKE_INSTALL_PREFIX=... to install to a different prefix.
+  - Use cmake -DBUILD_STATIC=ON to create a statically linked executable.
 
 Installing using Homebrew/Linuxbrew
 ===================================
