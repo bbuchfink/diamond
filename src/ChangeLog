@@ -1,3 +1,8 @@
+[0.7.12]
+- fixed header string in SAM output to correctly identify the blastp alignment mode
+- added option to filter aligments for a given query cover (option --query-cover)
+- added option to print full subject titles in output files (option --salltitles)
+
 [0.7.11]
 - added --version switch
 - added static build optiom for CMake build

@@ -91,7 +91,8 @@ void align_read(Output_buffer<_val> &buffer,
 			++it;
 			continue;
 		}
-		if(static_cast<double>(it->traceback_->identities_)*100/it->traceback_->len_ < program_options::min_id) {
+		if(static_cast<double>(it->traceback_->identities_)*100/it->traceback_->len_ < program_options::min_id
+				|| (double)it->traceback_->query_len_*100/(double)source_query_len < program_options::query_cover) {
 			++it;
 			continue;
 		}

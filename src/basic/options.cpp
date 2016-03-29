@@ -85,6 +85,7 @@ bool		forwardonly;
 unsigned	fetch_size;
 bool		single_domain;
 size_t		db_size;
+double		query_cover;
 
 Aligner_mode aligner_mode;
 Command command;

@@ -30,10 +30,23 @@ template<typename _val>
 struct Output_format
 {
 	virtual void print_match(const DAA_match_record<_val> &r, Text_buffer &out) const = 0;
-	virtual void print_header(Output_stream &f) const
+	virtual void print_header(Output_stream &f, int mode) const
 	{ }
 	virtual ~Output_format()
 	{ }
+	static size_t print_salltitles(Text_buffer &buf, const char *id)
+	{
+		size_t n = 0;
+		const vector<string> t (tokenize(id, "\1"));
+		vector<string>::const_iterator i=t.begin();
+		for(;i<t.end()-1;++i) {
+			buf << *i << "<>";
+			n += i->length() + 2;
+		}
+		buf << *i;
+		n += i->length();
+		return n;
+	}
 };
 
 template<typename _val>
@@ -45,8 +58,14 @@ struct Blast_tab_format : public Output_format<_val>
 
 	virtual void print_match(const DAA_match_record<_val> &r, Text_buffer &out) const
 	{
-		out << r.query_name() << '\t'
-				<< r.subject_name << '\t'
+		out << r.query_name() << '\t';
+
+		if(r.subject_name.find_first_of('\1') == string::npos)
+			out << r.subject_name;
+		else
+			this->print_salltitles(out, r.subject_name.c_str());
+
+		out		<< '\t'
 				<< (double)r.identities*100/r.len << '\t'
 				<< r.len << '\t'
 				<< r.mismatches << '\t'
@@ -62,20 +81,6 @@ struct Blast_tab_format : public Output_format<_val>
 	virtual ~Blast_tab_format()
 	{ }
 
-	static size_t print_salltitles(Text_buffer &buf, const char *id)
-	{
-		size_t n = 0;
-		const vector<string> t (tokenize(id, "\1"));
-		vector<string>::const_iterator i=t.begin();
-		for(;i<t.end()-1;++i) {
-			buf << *i << "<>";
-			n += i->length() + 2;
-		}
-		buf << *i;
-		n += i->length();
-		return n;
-	}
-
 };
 
 template<typename _val>
@@ -88,8 +93,14 @@ struct Sam_format : public Output_format<_val>
 	virtual void print_match(const DAA_match_record<_val> &r, Text_buffer &out) const
 	{
 		out << r.query_name() << '\t'
-				<< '0' << '\t'
-				<< r.subject_name << '\t'
+				<< '0' << '\t';
+
+		if(r.subject_name.find_first_of('\1') == string::npos)
+			out << r.subject_name;
+		else
+			this->print_salltitles(out, r.subject_name.c_str());
+
+		out		<< '\t'
 				<< r.subject_begin+1 << '\t'
 				<< "255" << '\t';
 
@@ -172,14 +183,15 @@ struct Sam_format : public Output_format<_val>
 			buf << n << letter[op];
 	}
 
-	virtual void print_header(Output_stream &f) const
+	virtual void print_header(Output_stream &f, int mode) const
 	{
-		static const char* line = "@HD\tVN:1.5\tSO:query\n\
+		static const char* mode_str[] = { 0, 0, "BlastP", "BlastX", "BlastN" };
+		string line = string("@HD\tVN:1.5\tSO:query\n\
 @PG\tPN:DIAMOND\n\
-@mm\tBlastX\n\
-@CO\tBlastX-like alignments\n\
+@mm\t") + mode_str[mode] + "\n\
+@CO\t" + mode_str[mode] + "-like alignments\n\
 @CO\tReporting AS: bitScore, ZR: rawScore, ZE: expected, ZI: percent identity, ZL: reference length, ZF: frame, ZS: query start DNA coordinate\n";
-		f.write(line, strlen(line));
+		f.write(line.c_str(), line.length());
 	}
 
 	virtual ~Sam_format()

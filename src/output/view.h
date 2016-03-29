@@ -111,7 +111,7 @@ void view(DAA_file &daa)
 
 	View_writer writer;
 	const Output_format<_val>& format (get_output_format<_val>());
-	format.print_header(writer.f_);
+	format.print_header(writer.f_, daa.mode());
 
 	View_context<_val> context (daa, writer, format);
 	launch_thread_pool(context, program_options::threads());

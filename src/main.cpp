@@ -84,6 +84,7 @@ int main(int ac, const char* av[])
 			("evalue,e", po::value<double>(&program_options::max_evalue)->default_value(0.001), "maximum e-value to report alignments")
         	("min-score", po::value<double>(&program_options::min_bit_score)->default_value(0), "minimum bit score to report alignments (overrides e-value setting)")
         	("id", po::value<double>(&program_options::min_id)->default_value(0), "minimum identity% to report an alignment")
+        	("query-cover", po::value<double>(&program_options::query_cover)->default_value(0), "minimum query cover% to report an alignment")
         	("sensitive", "enable sensitive mode (default: fast)")
         	("index-chunks,c", po::value<unsigned>(&program_options::lowmem)->default_value(4), "number of chunks for index processing")
         	("tmpdir,t", po::value<string>(&program_options::tmpdir)->default_value("/dev/shm"), "directory for temporary files")
@@ -94,8 +95,8 @@ int main(int ac, const char* av[])
         	("penalty", po::value<int>(&program_options::penalty)->default_value(-3), "mismatch penalty score (blastn only)")
 #endif
         	("matrix", po::value<string>(&program_options::matrix)->default_value("blosum62"), "score matrix for protein alignment")
-        	("seg", po::value<string>(&program_options::seg), "enable SEG masking of queries (yes/no)");
-			//("salltitles", "print all subject titles into the blast tabular format");
+        	("seg", po::value<string>(&program_options::seg), "enable SEG masking of queries (yes/no)")
+			("salltitles", "print full subject titles in output files");
         	//("very-sensitive", "enable very sensitive mode (default: fast)");
 
         po::options_description advanced("Advanced options (0=auto)");

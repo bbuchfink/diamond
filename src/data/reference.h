@@ -144,7 +144,10 @@ struct Ref_map
 			n = next_++;
 			data_[block][i] = n;
 			len_.push_back(ref_seqs<_val>::get().length(i));
-			name_.push_back(get_str(ref_ids::get()[i].c_str(), Const::id_delimiters));
+			if(program_options::salltitles)
+				name_.push_back(new string(ref_ids::get()[i].c_str()));
+			else
+				name_.push_back(get_str(ref_ids::get()[i].c_str(), Const::id_delimiters));
 			return n;
 		}
 	}
