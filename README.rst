@@ -1,4 +1,4 @@
-**DIAMOND v0.7.11 by Benjamin Buchfink** - http://github.com/bbuchfink/diamond
+**DIAMOND v0.7.12 by Benjamin Buchfink** - http://github.com/bbuchfink/diamond
 
 Published in *Nature Methods* **12**, 59–60 (2015) | `doi:10.1038/nmeth.3176 <http://dx.doi.org/10.1038/nmeth.3176>`_
 
@@ -8,7 +8,7 @@ Download & Installation
 =======================
 If you use a recent **Linux** operating system, you can download the software in binary format for immediate use::
 
-    wget http://github.com/bbuchfink/diamond/releases/download/v0.7.11/diamond-linux64.tar.gz
+    wget http://github.com/bbuchfink/diamond/releases/download/v0.7.12/diamond-linux64.tar.gz
     tar xzf diamond-linux64.tar.gz
 
 Users of **Mac OS X** and some **old Linux systems** need to compile the software from source (see `Compiling from source`_).
@@ -88,6 +88,8 @@ Option            Short Default  Description
 --top                            Keep alignments within the given percentage range of the top alignment score for a query (overrides –max-target-seqs option).
 --evalue          -e    0.001    Maximum expected value to keep an alignment.
 --min-score                      Minimum bit score to keep an alignment. Setting this option will override the --evalue parameter.
+--query-cover                    Report only alignments above the given percentage of query cover.
+--salltitles                     Print full length subject titles in output.
 ================= ===== ======== ===========
 
 Memory & performance options
@@ -135,21 +137,21 @@ The requirements for compiling DIAMOND are Boost (version 1.53.0 or higher) and 
 
 To compile DIAMOND from source, invoke the following commands on the shell::
 
-    $ wget http://github.com/bbuchfink/diamond/archive/v0.7.11.tar.gz
-    $ tar xzf v0.7.11.tar.gz
-    $ cd diamond-0.7.11/src
+    $ wget http://github.com/bbuchfink/diamond/archive/v0.7.12.tar.gz
+    $ tar xzf v0.7.12.tar.gz
+    $ cd diamond-0.7.12/src
     $ ./install-boost                                       # optional, for installing Boost
     $ make
     
-The diamond binary will be created in ``diamond-0.7.11/bin``.
+The diamond binary will be created in ``diamond-0.7.12/bin``.
 
 Compiling using CMake
 =====================
 To compile DIAMOND from source, invoke the following commands on the shell::
 
-  $ wget http://github.com/bbuchfink/diamond/archive/v0.7.11.tar.gz
-  $ tar xzf v0.7.11.tar.gz
-  $ cd diamond-0.7.11
+  $ wget http://github.com/bbuchfink/diamond/archive/v0.7.12.tar.gz
+  $ tar xzf v0.7.12.tar.gz
+  $ cd diamond-0.7.12
   $ mkdir build
   $ cd build
   $ cmake ..
