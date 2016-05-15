@@ -23,6 +23,7 @@ Author: Benjamin Buchfink
 
 #include <vector>
 #include "packed_transcript.h"
+#include "../util/util.h"
 
 using std::vector;
 using std::endl;
@@ -71,6 +72,7 @@ struct Link_iterator
 	Link_iterator(const Edit_transcript &right,
 		const Edit_transcript &left,
 		const vector<char> &transcript_buf):
+			good_(true),
 			i_ (left.begin(transcript_buf)),
 			left_end_ (left.end(transcript_buf)),
 			right_begin_ (right.begin(transcript_buf)),
@@ -82,10 +84,15 @@ struct Link_iterator
 	char operator*() const
 	{ return *i_; }
 	bool good() const
-	{ return i_ != right_begin_-1; }
+	//{ return i_ != right_begin_-1; }
+	{
+		return good_;
+	}
 	Link_iterator& operator++()
 	{
-		if(i_ >= right_begin_ && i_ < right_end_)
+		if (i_ == right_begin_)
+			good_ = false;
+		else if(i_ > right_begin_ && i_ < right_end_)
 			--i_;
 		else {
 			++i_;
@@ -95,11 +102,12 @@ struct Link_iterator
 		return *this;
 	}
 private:
+	bool good_;
 	vector<char>::const_iterator i_;
 	const vector<char>::const_iterator left_end_, right_begin_, right_end_;
 };
 
-void print_number(Text_buffer &buf, unsigned n, Edit_operation op)
+inline void print_number(Text_buffer &buf, unsigned n, Edit_operation op)
 {
 	while(n>0) {
 		unsigned m = std::min(n, 63u);
@@ -108,8 +116,7 @@ void print_number(Text_buffer &buf, unsigned n, Edit_operation op)
 	}
 }
 
-template<typename _val>
-void print_match(Text_buffer& buf, Link_iterator& i, const sequence<const _val> &query, const sequence<const _val>& subject, unsigned& qpos, unsigned &spos)
+inline void print_match(Text_buffer& buf, Link_iterator& i, const sequence &query, const sequence& subject, unsigned& qpos, unsigned &spos)
 {
 	unsigned n=0;
 	for(;i.good() && *i == op_match && query[qpos] == mask_critical(subject[spos]); ++i) {
@@ -120,14 +127,13 @@ void print_match(Text_buffer& buf, Link_iterator& i, const sequence<const _val> 
 	print_number(buf, n, op_match);
 }
 
-template<typename _val>
-void print_deletion(Text_buffer& buf, Link_iterator& i, const sequence<const _val>& subject, unsigned &spos)
+inline void print_deletion(Text_buffer& buf, Link_iterator& i, const sequence& subject, unsigned &spos)
 {
 	for(;i.good() && *i == op_deletion; ++i)
 		buf.write(Packed_operation(op_deletion, mask_critical(subject[spos++])));
 }
 
-void print_insertion(Text_buffer &buf, Link_iterator& i, unsigned &qpos)
+inline void print_insertion(Text_buffer &buf, Link_iterator& i, unsigned &qpos)
 {
 	unsigned n = 0;
 	for(;i.good() && *i == op_insertion; ++i) {
@@ -137,13 +143,12 @@ void print_insertion(Text_buffer &buf, Link_iterator& i, unsigned &qpos)
 	print_number(buf, n, op_insertion);
 }
 
-template<typename _val>
-void print_packed(const Edit_transcript &right,
+inline void print_packed(const Edit_transcript &right,
 		const Edit_transcript &left,
 		const vector<char> &transcript_buf,
 		Text_buffer& buf,
-		const sequence<const _val> &query,
-		const sequence<const _val> &subject,
+		const sequence &query,
+		const sequence &subject,
 		unsigned qpos,
 		unsigned spos)
 {
@@ -169,8 +174,7 @@ void print_packed(const Edit_transcript &right,
 	buf.write(Packed_operation::terminator());
 }
 
-template<typename _val>
-void print(Link_iterator i, std::ostream &os, const _val *s, Edit_operation gap_op)
+inline void print(Link_iterator i, std::ostream &os, const Letter *s, Edit_operation gap_op)
 {
 	unsigned n=0;
 	for(; i.good(); ++i) {
@@ -178,15 +182,14 @@ void print(Link_iterator i, std::ostream &os, const _val *s, Edit_operation gap_
 		if(*i == gap_op)
 			os << '-';
 		else
-			os << Value_traits<_val>::ALPHABET[*(s++)];
+			os << value_traits.alphabet[(long)*(s++)];
 		++n;
 	}
 }
 
-template<typename _val>
-void print(std::ostream &os,
-		const _val *query,
-		const _val *subject,
+inline void print(std::ostream &os,
+		const Letter *query,
+		const Letter *subject,
 		const Edit_transcript &right,
 		const Edit_transcript &left,
 		const vector<char> &transcript_buf)

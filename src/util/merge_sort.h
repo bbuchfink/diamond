@@ -22,6 +22,7 @@ Author: Benjamin Buchfink
 #define MERGE_SORT_H_
 
 #include <algorithm>
+#include <stddef.h>
 #include "thread.h"
 
 template<typename _it>

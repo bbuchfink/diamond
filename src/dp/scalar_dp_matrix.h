@@ -23,13 +23,11 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #include <vector>
 #include "../util/double_buffer.h"
 #include "growing_buffer.h"
+#include "../util/util.h"
+#include "floating_sw.h"
 
 using std::vector;
 using std::pair;
-using boost::thread_specific_ptr;
-
-struct Score_only { };
-struct Traceback { };
 
 template<typename _score, typename _traceback>
 struct Score_buffer { };
@@ -132,12 +130,9 @@ private:
 	int current_i_;
 	Tls<typename Score_buffer<_score,_traceback>::Type> score_;
 	Tls<Double_buffer<_score> > hgap_;
-	static thread_specific_ptr<typename Score_buffer<_score,_traceback>::Type> score_ptr;
-	static thread_specific_ptr<Double_buffer<_score> > hgap_ptr;
+	static TLS_PTR typename Score_buffer<_score,_traceback>::Type *score_ptr;
+	static TLS_PTR Double_buffer<_score> *hgap_ptr;
 
 };
-
-template<typename _score, typename _traceback> thread_specific_ptr<typename Score_buffer<_score,_traceback>::Type> Scalar_dp_matrix<_score,_traceback>::score_ptr;
-template<typename _score, typename _traceback> thread_specific_ptr<Double_buffer<_score> > Scalar_dp_matrix<_score,_traceback>::hgap_ptr;
 
 #endif /* SCALAR_DP_MATRIX_H_ */

@@ -22,21 +22,13 @@ Author: Benjamin Buchfink
 #define ASYNC_BUFFER_H_
 
 #include <vector>
-#include <boost/ptr_container/ptr_vector.hpp>
-
-namespace io = boost::iostreams;
+#include <exception>
+#include "../basic/config.h"
+#include "temp_file.h"
 
 using std::vector;
 using std::string;
 using std::endl;
-using boost::ptr_vector;
-
-struct Buffer_file_read_exception : public diamond_exception
-{
-	Buffer_file_read_exception(const char* file_name, size_t count, size_t n):
-		diamond_exception (string("Error reading buffer file ") + file_name + " (" + boost::lexical_cast<string>(count) + '/' + boost::lexical_cast<string>(n) + ')')
-	{ }
-};
 
 const unsigned async_buffer_max_bins = 4;
 
@@ -51,10 +43,9 @@ struct Async_buffer
 		bin_size_ ((input_count + bins_ - 1) / bins_)
 	{
 		log_stream << "Async_buffer() " << input_count << ',' << bin_size_ << endl;
-		for(unsigned j=0;j<program_options::threads();++j)
+		for(unsigned j=0;j<config.threads_;++j)
 			for(unsigned i=0;i<bins;++i) {
 				tmp_file_.push_back(Temp_file ());
-				out_.push_back(new Output_stream (tmp_file_.back()));
 				size_.push_back(0);
 			}
 	}
@@ -72,7 +63,7 @@ struct Async_buffer
 		}
 		void push(const _t &x)
 		{
-			const unsigned bin = x / parent_.bin_size_;
+			const unsigned bin = (unsigned)(x / parent_.bin_size_);
 			assert(bin < parent_.bins());
 			buffer_[bin*buffer_size+(size_[bin]++)] = x;
 			if(size_[bin] == buffer_size)
@@ -93,35 +84,27 @@ struct Async_buffer
 		enum { buffer_size = 65536 };
 		_t buffer_[async_buffer_max_bins*buffer_size];
 		size_t size_[async_buffer_max_bins];
-		Output_stream* out_[async_buffer_max_bins];
+		Temp_file* out_[async_buffer_max_bins];
 		Async_buffer &parent_;
 		const unsigned thread_num_;
 	};
 
-	void close()
-	{
-		for(ptr_vector<Output_stream>::iterator i=out_.begin();i!=out_.end();++i)
-			i->close();
-		out_.clear();
-		log_stream << "Async_buffer.close() " << endl;
-	}
-
 	void load(vector<_t> &data, unsigned bin) const
 	{
 		size_t size = 0;
-		for(unsigned i=0;i<program_options::threads();++i)
+		for(unsigned i=0;i<config.threads_;++i)
 			size += size_[i*bins_+bin];
 		log_stream << "Async_buffer.load() " << size << "(" << (double)size*sizeof(_t)/(1<<30) << " GB)" << endl;
 		data.resize(size);
 		_t* ptr = data.data();
-		for(unsigned i=0;i<program_options::threads();++i) {
+		for(unsigned i=0;i<config.threads_;++i) {
 			Input_stream f (tmp_file_[i*bins_+bin]);
 			const size_t s = size_[i*bins_+bin];
 			const size_t n = f.read(ptr, s);
 			ptr += s;
-			f.close();
-			if(n != s)
-				throw Buffer_file_read_exception(f.file_name.c_str(), s, n);
+			f.close_and_delete();
+			if (n != s)
+				throw std::runtime_error("Error reading temporary file: " + f.file_name);
 		}
 	}
 
@@ -130,14 +113,14 @@ struct Async_buffer
 
 private:
 
-	Output_stream* get_out(unsigned threadid, unsigned bin)
-	{ return &out_[threadid*bins_+bin]; }
+	Temp_file* get_out(unsigned threadid, unsigned bin)
+	{ return &tmp_file_[threadid*bins_+bin]; }
 
 	void add_size(unsigned thread_id, unsigned bin, size_t n)
 	{ size_[thread_id*bins_+bin] += n; }
 
-	const unsigned bins_, bin_size_;
-	ptr_vector<Output_stream> out_;
+	const unsigned bins_;
+	const size_t bin_size_;
 	vector<size_t> size_;
 	vector<Temp_file> tmp_file_;
 

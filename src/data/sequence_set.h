@@ -23,6 +23,7 @@ Author: Benjamin Buchfink
 
 #include <iostream>
 #include <string>
+#include <algorithm>
 #include "../basic/sequence.h"
 #include "string_set.h"
 
@@ -30,15 +31,14 @@ using std::cout;
 using std::endl;
 using std::pair;
 
-template<typename _val>
-struct Sequence_set : public String_set<_val>
+struct Sequence_set : public String_set<'\xff',1>
 {
 
 	Sequence_set()
 	{ }
 
 	Sequence_set(Input_stream &file):
-		String_set<_val> (file)
+		String_set (file)
 	{ }
 
 	void print_stats() const
@@ -55,36 +55,36 @@ struct Sequence_set : public String_set<_val>
 		return pair<size_t,size_t> (min, max);
 	}
 
-	sequence<const _val> window_infix(size_t offset, unsigned &left) const
+	sequence window_infix(size_t offset, unsigned &left) const
 	{
-		const _val* begin (this->data(offset));
+		const Letter* begin (this->data(offset));
 		unsigned n (0);
-		while(*begin != String_set<_val>::PADDING_CHAR && n <= program_options::window) {
+		while(*begin != '\xff' && n <= config.window) {
 			--begin;
 			++n;
 		}
 		++begin;
-		left = program_options::window + 1 - n;
-		const _val* end (this->data(offset));
+		left = config.window + 1 - n;
+		const Letter* end (this->data(offset));
 		n = 0;
-		while(*end != String_set<_val>::PADDING_CHAR && n < program_options::window) {
+		while(*end != '\xff' && n <config.window) {
 			++end;
 			++n;
 		}
-		return sequence<const _val> (begin, end - begin);
+		return sequence(begin, end - begin);
 	}
 
-	sequence<const _val> fixed_window_infix(size_t offset) const
+	sequence fixed_window_infix(size_t offset) const
 	{
-		const _val* begin (this->data(offset));
+		const Letter* begin (this->data(offset));
 		unsigned n (0);
-		while(*begin != String_set<_val>::PADDING_CHAR && n <= program_options::window) {
+		while(*begin != '\xff' && n <= config.window) {
 			--begin;
 			++n;
 		}
 		++begin;
-		const _val* s (this->data(offset - program_options::window));
-		return sequence<const _val> (s, 2*program_options::window, begin - s);
+		const Letter* s (this->data(offset - config.window));
+		return sequence (s, 2*config.window, (int)(begin - s));
 	}
 
 	vector<size_t> partition() const
@@ -98,7 +98,7 @@ struct Sequence_set : public String_set<_val>
 				n += this->length(i++);
 			v.push_back(i);
 		}
-		for(unsigned i=v.size();i<Const::seqp+1;++i)
+		for(size_t i=v.size();i<Const::seqp+1;++i)
 			v.push_back(this->get_length());
 		return v;
 	}

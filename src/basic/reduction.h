@@ -21,37 +21,58 @@ Author: Benjamin Buchfink
 #ifndef REDUCTION_H_
 #define REDUCTION_H_
 
+#include <vector>
+#include <string>
+#include <string.h>
+#include "value.h"
+#include "../util/util.h"
+
 using std::string;
 using std::vector;
 
-#include "value.h"
-
-template<typename _val>
 struct Reduction
 {
 
-    Reduction(const char *definition_string)
+	Reduction(const char *definition_string)
 	{
 		memset(map_, 0, sizeof(map_));
 		memset(map8_, 0, sizeof(map8_));
-		const vector<string> tokens (tokenize(definition_string, " "));
-		size_ = tokens.size();
-        for(unsigned i=0;i<size_;++i)
-        	for(unsigned j=0;j<tokens[i].length();++j) {
-        		const char ch = tokens[i][j];
-        		map_[(long) Value_traits<_val>::from_char(ch)] =  i;
-                map8_[(long) Value_traits<_val>::from_char(ch)] =  i;
-            }
+		const vector<string> tokens(tokenize(definition_string, " "));
+		size_ = (unsigned)tokens.size();
+		for (unsigned i = 0; i<size_; ++i)
+			for (unsigned j = 0; j<tokens[i].length(); ++j) {
+				const char ch = tokens[i][j];
+				map_[(long)value_traits.from_char(ch)] = i;
+				map8_[(long)value_traits.from_char(ch)] = i;
+			}
 	}
 
 	unsigned size() const
-	{ return size_; }
+	{
+		return size_;
+	}
 
-	unsigned operator()(_val a) const
-	{ return map_[(long)a]; }
+	unsigned operator()(Letter a) const
+	{
+		return map_[(long)a];
+	}
 
 	const char* map8() const
-	{ return map8_; }
+	{
+		return map8_;
+	}
+
+	inline friend std::ostream& operator<<(std::ostream &os, const Reduction &r)
+	{
+		for (unsigned i = 0; i < r.size_; ++i) {
+			os << '[';
+			for (unsigned j = 0; j < 20; ++j)
+				if (r. map_[j] == i)
+					os << value_traits.alphabet[j];
+			os << ']';
+		}
+		return os;
+	}
 
 	static const Reduction reduction;
 
@@ -62,9 +83,6 @@ private:
 	unsigned size_;
 
 };
-
-template<> const Reduction<Amino_acid> Reduction<Amino_acid>::reduction ("KREDQN C G H M F Y ILV W P STA");
-template<> const Reduction<Nucleotide> Reduction<Nucleotide>::reduction ("A C G T");
 
 #ifdef EXTRA
 #include "../../../extra/reduction.h"

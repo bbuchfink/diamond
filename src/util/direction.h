@@ -24,28 +24,22 @@ Author: Benjamin Buchfink
 struct Right { };
 struct Left { };
 
-template<typename _val>
-_val get_dir(const _val* x, int i, const Right&)
+Letter get_dir(const Letter* x, int i, const Right&)
 { return *(x+i); }
 
-template<typename _val>
-_val get_dir(const _val* x, int i, const Left&)
+Letter get_dir(const Letter* x, int i, const Left&)
 { return *(x-i); }
 
-template<typename _val>
-const _val* get_dir_ptr(const _val* x, int i, const Right&)
+const Letter* get_dir_ptr(const Letter* x, int i, const Right&)
 { return x+i; }
 
-template<typename _val>
-const _val* get_dir_ptr(const _val* x, int i, const Left&)
+const Letter* get_dir_ptr(const Letter* x, int i, const Left&)
 { return x-i; }
 
-template<typename _val>
-const _val* inc_dir(const _val* x, const Right&)
+const Letter* inc_dir(const Letter* x, const Right&)
 { return x+1; }
 
-template<typename _val>
-const _val* inc_dir(const _val* x, const Left&)
+const Letter* inc_dir(const Letter* x, const Left&)
 { return x-1; }
 
 #endif /* DIRECTION_H_ */

@@ -26,20 +26,16 @@ Author: Benjamin Buchfink
 
 using std::auto_ptr;
 
-template<typename _locr, typename _locl>
-struct Trace_pt_buffer : public Async_buffer<hit<_locr,_locl> >
+struct Trace_pt_buffer : public Async_buffer<hit>
 {
 	Trace_pt_buffer(size_t input_size, const string &tmpdir, bool mem_buffered):
-		Async_buffer<hit<_locr,_locl> > (input_size, tmpdir, mem_buffered ? mem_bins : file_bins)
+		Async_buffer<hit> (input_size, tmpdir, mem_buffered ? mem_bins : file_bins)
 	{ }
 	enum { mem_bins = 1, file_bins = 4 };
 	static Trace_pt_buffer *instance;
 };
 
-template<typename _locr, typename _locl> Trace_pt_buffer<_locr,_locl>* Trace_pt_buffer<_locr,_locl>::instance;
-
-template<typename _locr, typename _locl>
-struct Trace_pt_list : public vector<hit<_locr,_locl> >
+struct Trace_pt_list : public vector<hit>
 {
 	void init()
 	{
@@ -79,7 +75,13 @@ struct Trace_pt_list : public vector<hit<_locr,_locl> >
 
 			begin = parent_.pos_;
 			//end = std::min(std::max(begin + 3*parent_.total_/parent_.count_/4 + 1, begin+program_options::fetch_size), parent_.end());
+#ifdef NDEBUG
 			end = std::min(begin + 3*parent_.total_/parent_.count_/4 + 1, parent_.end());
+#else
+			//end = parent_.end();
+			ptrdiff_t x = std::min((ptrdiff_t)(3 * parent_.total_ / parent_.count_ / 4 + 1), parent_.end() - begin);
+			end = std::min(begin + x, parent_.end());
+#endif
 			if(end >= parent_.end())
 				return false;
 			const unsigned c = query_contexts(), q = end->query_/c;
@@ -99,14 +101,14 @@ struct Trace_pt_list : public vector<hit<_locr,_locl> >
 			return parent_.idx_ < parent_.p_.size()-1;
 		}
 #endif
-		typename Trace_pt_list::iterator begin, end;
+		Trace_pt_list::iterator begin, end;
 	private:
 		Trace_pt_list &parent_;
 	};
 	Query_range get_range()
 	{ return Query_range (*this); }
 private:
-	typename vector<hit<_locr,_locl> >::iterator pos_;
+	typename vector<hit>::iterator pos_;
 #ifdef PRE_PARTITION
 	vector<size_t> p_;
 	unsigned idx_;

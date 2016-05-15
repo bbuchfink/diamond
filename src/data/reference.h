@@ -24,6 +24,7 @@ Author: Benjamin Buchfink
 #include <memory>
 #include <string>
 #include <numeric>
+#include <limits>
 #include "../util/binary_file.h"
 #include "sorted_list.h"
 #include "../basic/statistics.h"
@@ -32,11 +33,18 @@ Author: Benjamin Buchfink
 #include "../util/hash_function.h"
 #include "../basic/packed_loc.h"
 #include "sequence_set.h"
-#include "boost/ptr_container/ptr_vector.hpp"
 #include "frequency_masking.h"
+#include "../util/ptr_vector.h"
 
 using std::auto_ptr;
-using boost::ptr_vector;
+
+struct invalid_database_version_exception : public std::exception
+{
+	virtual const char* what() const throw()
+	{
+		return "Incompatible database version";
+	}
+};
 
 struct Reference_header
 {
@@ -56,19 +64,20 @@ struct Reference_header
 #ifdef EXTRA
 	Sequence_type sequence_type;
 #endif
-} ref_header;
+};
 
-struct Database_format_exception : public exception
+extern Reference_header ref_header;
+
+struct Database_format_exception : public std::exception
 {
 	virtual const char* what() const throw()
 	{ return "Database file is not a DIAMOND database."; }
 };
 
-template<typename _val>
 struct Database_file : public Input_stream
 {
 	Database_file():
-		Input_stream (program_options::database)
+		Input_stream (config.database)
 	{
 		if(this->read(&ref_header, 1) != 1)
 			throw Database_format_exception ();
@@ -85,31 +94,26 @@ struct Database_file : public Input_stream
 	{ this->seek(sizeof(Reference_header)); }
 };
 
-template<typename _val>
 struct ref_seqs
 {
-	static const Masked_sequence_set<_val>& get()
-	{ return *(const Masked_sequence_set<_val>*)data_; }
-	static Masked_sequence_set<_val>& get_nc()
-	{ return *(Masked_sequence_set<_val>*)data_; }
-	static Sequence_set<_val> *data_;
+	static const Masked_sequence_set& get()
+	{ return *(const Masked_sequence_set*)data_; }
+	static Masked_sequence_set& get_nc()
+	{ return *(Masked_sequence_set*)data_; }
+	static Sequence_set *data_;
 };
-
-template<typename _val> Sequence_set<_val>* ref_seqs<_val>::data_ = 0;
 
 struct ref_ids
 {
-	static const String_set<char,0>& get()
+	static const String_set<0>& get()
 	{ return *data_; }
-	static String_set<char,0> *data_;
+	static String_set<0> *data_;
 };
 
-String_set<char,0>* ref_ids::data_ = 0;
+extern seed_histogram ref_hst;
+extern unsigned current_ref_block;
 
-seed_histogram ref_hst;
-unsigned current_ref_block;
-
-size_t max_id_len(const String_set<char,0> &ids)
+inline size_t max_id_len(const String_set<0> &ids)
 {
 	size_t max (0);
 	for(size_t i=0;i<ids.get_length(); ++i)
@@ -130,26 +134,25 @@ struct Ref_map
 			data_[block].insert(data_[block].end(), ref_count, std::numeric_limits<unsigned>::max());
 		}
 	}
-	template<typename _val>
 	uint32_t get(unsigned block, unsigned i)
 	{
 		uint32_t n = data_[block][i];
 		if(n != std::numeric_limits<unsigned>::max())
 			return n;
-		else {
-			tthread::lock_guard<tthread::mutex> lock (mtx_);
+		{
+			tthread::lock_guard<tthread::mutex> lock(mtx_);
 			n = data_[block][i];
-			if(n != std::numeric_limits<uint32_t>::max())
+			if (n != std::numeric_limits<uint32_t>::max())
 				return n;
 			n = next_++;
 			data_[block][i] = n;
-			len_.push_back(ref_seqs<_val>::get().length(i));
-			if(program_options::salltitles)
+			len_.push_back((uint32_t)ref_seqs::get().length(i));
+			if (config.salltitles)
 				name_.push_back(new string(ref_ids::get()[i].c_str()));
 			else
 				name_.push_back(get_str(ref_ids::get()[i].c_str(), Const::id_delimiters));
-			return n;
 		}
+		return n;
 	}
 	/*template<typename _val>
 	void finish()
@@ -170,9 +173,11 @@ private:
 	tthread::mutex mtx_;
 	vector<vector<uint32_t> > data_;
 	vector<uint32_t> len_;
-	ptr_vector<string> name_;
+	Ptr_vector<string> name_;
 	uint32_t next_;
 	friend struct DAA_output;
-} ref_map;
+};
+
+extern Ref_map ref_map;
 
 #endif /* REFERENCE_H_ */

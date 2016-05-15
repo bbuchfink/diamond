@@ -21,12 +21,14 @@ Author: Benjamin Buchfink
 #ifndef SHAPE_H_
 #define SHAPE_H_
 
+#include <string.h>
 #include "const.h"
 #include "value.h"
 #include "seed.h"
-#include "../util/hash_function.h"
 #include "score_matrix.h"
 #include "reduction.h"
+#include "../util/util.h"
+#include "config.h"
 
 const double background_freq[] = {-1.188861,
 		-4.343446,
@@ -40,13 +42,14 @@ const double background_freq[] = {-1.188861,
 		-3.027002,
 		-1.557546 };
 
-template<typename _val>
-bool use_seed_freq()
-{ return false; }
-
-template<>
-bool use_seed_freq<Amino_acid>()
-{ return true; }
+inline bool use_seed_freq()
+{
+#ifdef FREQUENCY_MASKING
+	return true;
+#else
+	return false;
+#endif
+}
 
 struct shape
 {
@@ -84,56 +87,60 @@ struct shape
 		d_ = positions_[weight_/2-1];
 	}
 
-	template<typename _val>
-	inline bool set_seed(uint64_t &s, const _val *seq) const
+	inline bool set_seed(Packed_seed &s, const Letter *seq) const
 	{
 		s = 0;
 		double f = 0;
 		for(unsigned i=0;i<weight_;++i) {
-			_val l = seq[positions_[i]];
-			if(l == Value_traits<_val>::MASK_CHAR || l == String_set<_val>::PADDING_CHAR)
+			Letter l = seq[positions_[i]];
+			if(l == value_traits.mask_char|| l == '\xff')
 				return false;
 			l = mask_critical(l);
-			unsigned r = Reduction<_val>::reduction(l);
+			unsigned r = Reduction::reduction(l);
 			f += background_freq[r];
-			s *= Reduction<_val>::reduction.size();
+			s *= Reduction::reduction.size();
 			s += uint64_t(r);
 		}
-		if(use_seed_freq<_val>() && f > program_options::max_seed_freq) return false;
+		if(use_seed_freq() && f > config.max_seed_freq) return false;
 #ifdef EXTRA
 		s = murmur_hash()(s);
 #endif
 		return true;
 	}
 
-	template<typename _val>
-	inline bool	is_low_freq(const _val *seq) const
+	inline bool	is_low_freq(const Letter *seq) const
 	{
 		double f = 0;
 		for(unsigned i=0;i<weight_;++i) {
-			_val l = seq[positions_[i]];
-			if(l == Value_traits<_val>::MASK_CHAR || l == String_set<_val>::PADDING_CHAR)
+			Letter l = seq[positions_[i]];
+			if(l == value_traits.mask_char || l == '\xff')
 				return false;
 			l = mask_critical(l);
-			unsigned r = Reduction<_val>::reduction(l);
+			unsigned r = Reduction::reduction(l);
 			f += background_freq[r];
 		}
-		return !use_seed_freq<_val>() || f <= program_options::max_seed_freq;
+		return !use_seed_freq() || f <= config.max_seed_freq;
 	}
 
-	template<typename _val>
-	inline bool	is_low_freq_rev(const _val *seq) const
+	inline bool	is_low_freq_rev(const Letter *seq) const
 	{
 		double f = 0;
 		for(unsigned i=0;i<weight_;++i) {
-			_val l = seq[(int)positions_[i]-(int)length_];
-			if(l == Value_traits<_val>::MASK_CHAR || l == String_set<_val>::PADDING_CHAR)
+			Letter l = seq[(int)positions_[i]-(int)length_];
+			if(l == value_traits.mask_char || l == '\xff')
 				return false;
 			l = mask_critical(l);
-			unsigned r = Reduction<_val>::reduction(l);
+			unsigned r = Reduction::reduction(l);
 			f += background_freq[r];
 		}
-		return !use_seed_freq<_val>() || f <= program_options::max_seed_freq;
+		return !use_seed_freq() || f <= config.max_seed_freq;
+	}
+
+	friend std::ostream& operator<<(std::ostream&s, const shape &sh)
+	{
+		for (unsigned i = 0; i < sh.length_; ++i)
+			s << ((sh.mask_ & (1 << i)) ? '1' : '0');
+		return s;
 	}
 
 	uint32_t length_, weight_, positions_[Const::max_seed_weight], d_, mask_, rev_mask_, id_;

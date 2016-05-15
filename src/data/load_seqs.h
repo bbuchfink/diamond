@@ -26,65 +26,50 @@ Author: Benjamin Buchfink
 #include "../basic/translate.h"
 #include "../util/seq_file_format.h"
 
-struct Single_strand { };
-struct Double_strand { };
-
-template<typename _ival, typename _val, typename _strand>
-size_t push_seq(String_set<_val> &ss, String_set<Nucleotide>& source_seqs, const vector<_ival> &seq)
-{ ss.push_back(seq); return seq.size(); }
-
-template<>
-size_t push_seq<Amino_acid,Nucleotide,Single_strand>(String_set<Nucleotide> &ss, String_set<Nucleotide>& source_seqs, const vector<Amino_acid> &seq)
-{ return 0; }
-
-template<>
-size_t push_seq<Nucleotide,Amino_acid,Double_strand>(String_set<Amino_acid> &ss, String_set<Nucleotide>& source_seqs, const vector<Nucleotide> &seq)
+size_t push_seq(Sequence_set &ss, Sequence_set& source_seqs, const vector<Letter> &seq)
 {
-	source_seqs.push_back(seq);
-	if(seq.size() < 2) {
-		for(unsigned j=0;j<6;++j)
-			ss.fill(0, Value_traits<Amino_acid>::MASK_CHAR);
-		return 0;
+	if (config.command == Config::blastp || config.command == Config::makedb) {
+		ss.push_back(seq);
+		return seq.size();
 	}
-	vector<Amino_acid> proteins[6];
-	size_t n = Translator::translate(seq, proteins);
+	else {
+		source_seqs.push_back(seq);
+		if (seq.size() < 2) {
+			for (unsigned j = 0; j<6; ++j)
+				ss.fill(0, value_traits.mask_char);
+			return 0;
+		}
+		vector<Letter> proteins[6];
+		size_t n = Translator::translate(seq, proteins);
 
-	unsigned bestFrames (Translator::computeGoodFrames(proteins, program_options::get_run_len(seq.size()/3)));
-	for(unsigned j = 0; j < 6; ++j) {
-		if(bestFrames & (1 << j))
-			ss.push_back(proteins[j]);
-		else
-			ss.fill(proteins[j].size(), Value_traits<Amino_acid>::MASK_CHAR);
+		unsigned bestFrames(Translator::computeGoodFrames(proteins, config.get_run_len((unsigned)seq.size() / 3)));
+		for (unsigned j = 0; j < 6; ++j) {
+			if (bestFrames & (1 << j))
+				ss.push_back(proteins[j]);
+			else
+				ss.fill(proteins[j].size(), value_traits.mask_char);
+		}
+		return n;
 	}
-	return n;
 }
 
-template<>
-size_t push_seq<Nucleotide,Nucleotide,Double_strand>(String_set<Nucleotide> &ss, String_set<Nucleotide>& source_seqs, const vector<Nucleotide> &seq)
-{
-	ss.push_back(seq);
-	ss.push_back(Translator::reverse(seq));
-	return seq.size()*2;
-}
-
-template<typename _ival, typename _val, typename _strand>
-size_t load_seqs(Input_stream &file,
-		const Sequence_file_format<_ival> &format,
-		Sequence_set<_val>** seqs,
-		String_set<char,0>*& ids,
-		Sequence_set<Nucleotide>*& source_seqs,
+size_t load_seqs(Compressed_istream &file,
+		const Sequence_file_format &format,
+		Sequence_set** seqs,
+		String_set<0>*& ids,
+		Sequence_set*& source_seqs,
 		size_t max_letters)
 {
-	*seqs = new Sequence_set<_val> ();
-	ids = new String_set<char,0> ();
-	source_seqs = new Sequence_set<Nucleotide> ();
+	*seqs = new Sequence_set ();
+	ids = new String_set<0> ();
+	source_seqs = new Sequence_set ();
 	size_t letters = 0, n = 0;
-	vector<_ival> seq;
+	vector<Letter> seq;
 	vector<char> id;
 	try {
 		while(letters < max_letters && format.get_seq(id, seq, file)) {
 			ids->push_back(id);
-			letters += push_seq<_ival,_val,_strand>(**seqs, *source_seqs, seq);
+			letters += push_seq(**seqs, *source_seqs, seq);
 			++n;
 		}
 	} catch(invalid_sequence_char_exception &e) {

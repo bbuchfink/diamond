@@ -20,6 +20,14 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #ifndef DAA_FILE_H_
 #define DAA_FILE_H_
 
+#include <string>
+#include <exception>
+#include "../util/ptr_vector.h"
+#include "../basic/config.h"
+#include "../basic/const.h"
+#include "../util/binary_buffer.h"
+#include "../util/binary_file.h"
+
 using std::string;
 
 struct DAA_header1
@@ -31,7 +39,18 @@ struct DAA_header1
 	uint64_t magic_number, version;
 };
 
-typedef enum { blastp=2, blastx=3, blastn=4 } Align_mode;
+typedef enum { mode_blastp=2, mode_blastx=3, mode_blastn=4 } Align_mode;
+
+inline Align_mode get_align_mode()
+{
+	switch (config.command) {
+	case Config::blastp:
+		return mode_blastp;
+	case Config::blastx:
+	default:
+		return mode_blastx;
+	}
+}
 
 struct DAA_header2
 {
@@ -95,17 +114,22 @@ struct DAA_file
 		if(h2_.block_size[0] == 0)
 			throw std::runtime_error("Invalid DAA file. DIAMOND run probably has not completed successfully.");
 
-		f_.seek(sizeof(DAA_header1) + sizeof(DAA_header2) + h2_.block_size[0]);
+		f_.seek(sizeof(DAA_header1) + sizeof(DAA_header2) + (size_t)h2_.block_size[0]);
 		string s;
-		ref_name_.reserve(h2_.db_seqs_used);
+		ref_name_.reserve((size_t)h2_.db_seqs_used);
 		for(uint64_t i=0;i<h2_.db_seqs_used;++i) {
 			f_.read_c_str(s);
 			ref_name_.push_back(new string(s));
 		}
-		ref_len_.resize(h2_.db_seqs_used);
-		f_.read(ref_len_.data(), h2_.db_seqs_used);
+		ref_len_.resize((size_t)h2_.db_seqs_used);
+		f_.read(ref_len_.data(), (size_t)h2_.db_seqs_used);
 
 		f_.seek(sizeof(DAA_header1) + sizeof(DAA_header2));
+	}
+
+	~DAA_file()
+	{
+		f_.close();
 	}
 
 	uint64_t diamond_build() const
@@ -163,7 +187,7 @@ private:
 	Input_stream f_;
 	DAA_header1 h1_;
 	DAA_header2 h2_;
-	ptr_vector<string> ref_name_;
+	Ptr_vector<string> ref_name_;
 	vector<uint32_t> ref_len_;
 
 };

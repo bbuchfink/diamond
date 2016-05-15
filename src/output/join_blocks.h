@@ -23,13 +23,13 @@ Author: Benjamin Buchfink
 
 #include <algorithm>
 #include <vector>
+#include <limits>
 #include "output_file.h"
 
 using std::endl;
 using std::cout;
 using std::vector;
 
-template<typename _val>
 void join_blocks(unsigned ref_blocks, DAA_output &master_out, const vector<Temp_file> &tmp_file)
 {
 	vector<Block_output*> files;
@@ -44,7 +44,7 @@ void join_blocks(unsigned ref_blocks, DAA_output &master_out, const vector<Temp_
 	unsigned query, block, subject, n_target_seq = 0;
 	query = block = subject = std::numeric_limits<unsigned>::max();
 	int top_score=0;
-	Output_buffer<_val> buf;
+	Output_buffer buf;
 	while(!records.empty()) {
 		const Block_output::Iterator &next = records.front();
 		const unsigned b = next.block_;
@@ -62,7 +62,7 @@ void join_blocks(unsigned ref_blocks, DAA_output &master_out, const vector<Temp_
 			buf.write_query_record(query);
 		}
 		const bool same_subject = n_target_seq > 0 && b == block && next.info_.subject_id == subject;
-		if(program_options::output_range(n_target_seq, next.info_.score, top_score) || same_subject) {
+		if(config.output_range(n_target_seq, next.info_.score, top_score) || same_subject) {
 			//printf("q=%u s=%u n=%u ss=%u\n",query, next.info_.subject_id, n_target_seq, same_subject, next.info_.score);
 			DAA_output::write_record(buf, next.info_);
 			statistics.inc(Statistics::MATCHES);
@@ -86,7 +86,7 @@ void join_blocks(unsigned ref_blocks, DAA_output &master_out, const vector<Temp_
 		master_out.stream().write(buf.get_begin(), buf.size());
 	}
 	for(unsigned i=0;i<ref_blocks;++i) {
-		files[i]->close();
+		files[i]->close_and_delete();
 		delete files[i];
 	}
 }

@@ -22,16 +22,16 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 
 #include <vector>
 #include "../util/map.h"
+#include "../basic/match.h"
 
 using std::vector;
 
 static const size_t MAX_LINKING_OVERLAP = 10;
 
-template<typename _val>
-double link_segments(Segment<_val> &h1, Segment<_val> &h2)
+/**double link_segments(Segment &h1, Segment &h2)
 {
 	if(h1.strand() == h2.strand() && h2.top_evalue_ == -1) {
-		Segment<_val> *p = &h1;
+		Segment *p = &h1;
 		while(p != 0) {
 			if(p->query_range().overlap(h2.query_range())/3 >= 1
 				|| p->subject_range().overlap(h2.subject_range()) > MAX_LINKING_OVERLAP)
@@ -50,29 +50,27 @@ double link_segments(Segment<_val> &h1, Segment<_val> &h2)
 		return ev;
 	}
 	return std::numeric_limits<double>::max();
-}
+}*/
 
-template<typename _val>
-void link_segments(const typename vector<Segment<_val> >::iterator &begin, const typename vector<Segment<_val> >::iterator &end)
+void link_segments(const typename vector<Segment>::iterator &begin, const typename vector<Segment>::iterator &end)
 {
 	int max_score = begin->score_;
 	/*for(typename vector<match<_val> >::iterator i=begin; i<end; ++i)
 		if(i->top_evalue_ == -1)
 			for(typename vector<match<_val> >::iterator j=i+1; j<end; ++j)
 				min_ev = std::min(min_ev, link_segments(*i, *j));*/
-	for(typename vector<Segment<_val> >::iterator i=begin; i<end; ++i)
+	for(typename vector<Segment>::iterator i=begin; i<end; ++i)
 		i->top_score_ = max_score;
 }
 
-template<typename _val>
-void link_segments(vector<Segment<_val> > &hsp_list)
+void link_segments(vector<Segment> &hsp_list)
 {
-	typedef Map<typename vector<Segment<_val> >::iterator,typename Segment<_val>::Subject> Hsp_map;
-	std::sort(hsp_list.begin(), hsp_list.end(), Segment<_val>::comp_subject);
+	typedef Map<typename vector<Segment>::iterator,typename Segment::Subject> Hsp_map;
+	std::sort(hsp_list.begin(), hsp_list.end(), Segment::comp_subject);
 	Hsp_map hsp_map (hsp_list.begin(), hsp_list.end());
 	typename Hsp_map::Iterator it = hsp_map.begin();
 	while(it.valid()) {
-		link_segments<_val>(it.begin(), it.end());
+		link_segments(it.begin(), it.end());
 		++it;
 	}
 }

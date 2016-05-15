@@ -30,31 +30,31 @@ Author: Benjamin Buchfink
 #include "../search/hit_filter.h"
 #include "../search/align_ungapped.h"
 
-template<typename _val, typename _locr, typename _locq, typename _locl>
-void align(const _locq q_pos,
-	  const _val *query,
-	  _locr s,
+inline void align(Loc q_pos,
+	  const Letter *query,
+	  Loc s,
 	  Statistics &stats,
 	  const unsigned sid,
-	  hit_filter<_val,_locr,_locq,_locl> &hf)
+	  hit_filter &hf)
 {
-	stats.inc(Statistics::TENTATIVE_MATCHES0);
-	const _val* subject = ref_seqs<_val>::data_->data(s);
+	const Letter* subject = ref_seqs::data_->data(s);
 
-	if(fast_match(query, subject) < program_options::min_identities)
+	if(fast_match(query, subject) < config.min_identities)
 		return;
 
 	stats.inc(Statistics::TENTATIVE_MATCHES1);
 
 	unsigned delta, len;
 	int score;
-	if((score = xdrop_ungapped<_val,_locr,_locq>(query, subject, shape_config::get().get_shape(sid).length_, delta, len)) < program_options::min_ungapped_raw_score)
-		return;
-
-	if(!is_primary_hit<_val,_locr>(query-delta, subject-delta, delta, sid, len))
+	if((score = xdrop_ungapped(query, subject, shapes.get_shape(sid).length_, delta, len)) < config.min_ungapped_raw_score)
 		return;
 
 	stats.inc(Statistics::TENTATIVE_MATCHES2);
+
+	if(!is_primary_hit(query-delta, subject-delta, delta, sid, len))
+		return;
+
+	stats.inc(Statistics::TENTATIVE_MATCHES3);
 	hf.push(s, score);
 }
 

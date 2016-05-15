@@ -21,6 +21,7 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #define THREAD_H_
 
 #include <vector>
+#include <exception>
 #include "fast_mutex.h"
 #include "tinythread.h"
 
@@ -77,7 +78,6 @@ void launch_thread_pool(_context &context, unsigned threads)
 		(*i)->join();
 		delete *i;
 	}
-	exception_state.sync();
 	if(n != threads)
 		throw std::runtime_error("Failed to create thread.");
 }
@@ -92,13 +92,9 @@ struct Schedule_context
 	{ }
 	void operator()(unsigned thread_id)
 	{
-		try {
-			unsigned idx;
-			while(!exception_state() && (idx = n++) < count)
-				context(thread_id, idx);
-		} catch(std::exception &e) {
-			exception_state.set(e);
-		}
+		unsigned idx;
+		while((idx = n++) < count)
+			context(thread_id, idx);
 	}
 	_context &context;
 	Atomic<unsigned> n;

@@ -22,15 +22,17 @@ Author: Benjamin Buchfink
 #define STRING_SET_H_
 
 #include <vector>
+#include <stddef.h>
+#include "../util/binary_file.h"
 
 using std::vector;
 
-template<typename _t, char _pchar = 0xff, size_t _padding = 1>
+template<char _pchar = '\xff', size_t _padding = 1lu>
 struct String_set
 {
 
+	typedef char _t;
 	static const unsigned PERIMETER_PADDING = 256;
-	static const _t PADDING_CHAR;
 
 	String_set():
 		data_ (PERIMETER_PADDING)
@@ -40,8 +42,8 @@ struct String_set
 	{
 		data_.resize(raw_len() + PERIMETER_PADDING);
 		for(unsigned i=0;i<PERIMETER_PADDING;++i) {
-			data_[i] = PADDING_CHAR;
-			data_[raw_len()+i] = PADDING_CHAR;
+			data_[i] = _pchar;
+			data_[raw_len()+i] = _pchar;
 		}
 	}
 
@@ -49,14 +51,14 @@ struct String_set
 	{
 		limits_.push_back(raw_len() + v.size() + _padding);
 		data_.insert(data_.end(), v.begin(), v.end());
-		data_.insert(data_.end(), _padding, PADDING_CHAR);
+		data_.insert(data_.end(), _padding, _pchar);
 	}
 
 	void fill(size_t n, _t v)
 	{
 		limits_.push_back(raw_len() + n + _padding);
 		data_.insert(data_.end(), n, v);
-		data_.insert(data_.end(), _padding, PADDING_CHAR);
+		data_.insert(data_.end(), _padding, _pchar);
 	}
 
 	_t* ptr(size_t i)
@@ -113,11 +115,8 @@ struct String_set
 		return std::pair<size_t,size_t> (i, p - limits_[i]);
 	}
 
-	sequence<const _t> operator[](size_t i) const
-	{ return sequence<const _t> (ptr(i), length(i)); }
-
-	sequence<_t> operator[](size_t i)
-	{ return sequence<_t> (ptr(i), length(i)); }
+	sequence operator[](size_t i) const
+	{ return sequence (ptr(i), length(i)); }
 
 private:
 
@@ -125,7 +124,5 @@ private:
 	vector<size_t> limits_;
 
 };
-
-template<typename _t, char _pchar, size_t _padding> const _t String_set<_t,_pchar,_padding>::PADDING_CHAR = _pchar;
 
 #endif /* STRING_SET_H_ */

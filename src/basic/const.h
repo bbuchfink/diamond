@@ -25,8 +25,9 @@ struct Const
 {
 
 	enum {
-		build_version = 61,
+		build_version = 62,
 		build_compatibility = 52,
+		db_version = 0,
 		daa_version = 0,
 		seedp_bits = 10,
 		seedp = 1<<seedp_bits,
@@ -36,6 +37,7 @@ struct Const
 		max_shapes = 16,
 		index_modes = 2,
 		min_shape_len = 10,
+		//min_shape_len = 5,
 		max_shape_len = 32,
 		seed_anchor = 8
 	};
@@ -46,8 +48,7 @@ struct Const
 
 };
 
-const char* Const::version_string = "0.7.12";
-const char* Const::program_name = "diamond";
-const char* Const::id_delimiters = " \a\b\f\n\r\t\v";
+#define SIMPLE_SEARCH
+#define FREQUENCY_MASKING
 
 #endif /* CONST_H_ */

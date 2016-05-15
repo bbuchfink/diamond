@@ -38,24 +38,24 @@ struct sequence_stream
 		next = buffer_len;
 		mask = 0;
 	}
-	template<typename _val, typename _score>
-	inline const __m128i& get(const typename vector<sequence<const _val> >::const_iterator &begin,
-					   const typename vector<sequence<const _val> >::const_iterator &end,
+	template<typename _score>
+	inline const __m128i& get(const typename vector<sequence>::const_iterator &begin,
+					   const typename vector<sequence>::const_iterator &end,
 					   unsigned pos,
 					   const _score&)
 	{
 		if(next == buffer_len)
-			fill<_val,_score>(begin, end, pos);
+			fill<_score>(begin, end, pos);
 		return data_[next++];
 	}
-	template<typename _val, typename _score>
-	inline void fill(const typename vector<sequence<const _val> >::const_iterator &begin,
-		  	  const typename vector<sequence<const _val> >::const_iterator &end,
+	template<typename _score>
+	inline void fill(const typename vector<sequence>::const_iterator &begin,
+		  	  const typename vector<sequence>::const_iterator &end,
 		 	  unsigned pos)
 	{
-		memset(data_, Value_traits<_val>::MASK_CHAR, buffer_len*16);
+		memset(data_, value_traits.mask_char, buffer_len*16);
 		unsigned n = 0;
-		typename vector<sequence<const _val> >::const_iterator it (begin);
+		typename vector<sequence>::const_iterator it (begin);
 		assert(pos < it->length());
 		const unsigned read_len (std::min(unsigned(buffer_len), static_cast<unsigned>(it->length())-pos));
 		while(it < end) {
@@ -99,10 +99,9 @@ template<typename _score>
 struct score_profile
 {
 
-	template<typename _val>
 	inline void set(const __m128i &seq)
 	{
-		assert(sizeof(data_)/sizeof(score_vector<_score>) >= Value_traits<_val>::ALPHABET_SIZE);
+		assert(sizeof(data_)/sizeof(score_vector<_score>) >= value_traits.alphabet_size);
 		/*unsigned j = 0;
 		do {
 			data_[j] = score_vector<_score> (j, seq);
@@ -116,12 +115,11 @@ struct score_profile
 		} while(j<24);
 		data_[j] = score_vector<_score> (j, seq);
 		assert(j+1 == Value_traits<_val>::ALPHABET_SIZE);*/
-		for(unsigned j=0;j<Value_traits<_val>::ALPHABET_SIZE;++j)
+		for(unsigned j=0;j<value_traits.alphabet_size;++j)
 			data_[j] = score_vector<_score> (j, seq);
 	}
 
-	template<typename _val>
-	inline const score_vector<_score>& get(_val i) const
+	inline const score_vector<_score>& get(Letter i) const
 	{ return data_[(int)i]; }
 
 	score_vector<_score> data_[25];

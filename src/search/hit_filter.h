@@ -22,36 +22,34 @@ Author: Benjamin Buchfink
 #define HIT_FILTER_H_
 
 #include <vector>
-#include <boost/thread/tss.hpp>
+#include <limits>
 #include "trace_pt_buffer.h"
 #include "../dp/smith_waterman.h"
 #include "../basic/sequence.h"
+#include "../data/queries.h"
 
 using std::vector;
-using boost::thread_specific_ptr;
 
-template<typename _val, typename _locr, typename _locq, typename _locl>
 struct hit_filter
 {
 
 	hit_filter(Statistics &stats,
-			   _locq q_pos,
-			   typename Trace_pt_buffer<_locr,_locl>::Iterator &out):
+			   Loc q_pos,
+			   Trace_pt_buffer::Iterator &out):
 		q_num_ (std::numeric_limits<unsigned>::max()),
 		seed_offset_ (std::numeric_limits<unsigned>::max()),
 		stats_ (stats),
 		q_pos_ (q_pos),
 		out_ (out),
-		subjects_ (&s2)
-		//subjects_ (subjects_ptr)
+		subjects_ (subjects_ptr)
 	{ subjects_->clear(); }
 
-	void push(_locr subject, int score)
+	void push(Loc subject, int score)
 	{
-		if(score >= program_options::min_hit_score)
+		if(score >= config.min_hit_score)
 			push_hit(subject);
 		else
-			subjects_->push_back(ref_seqs<_val>::data_->fixed_window_infix(subject+Const::seed_anchor));
+			subjects_->push_back(ref_seqs::data_->fixed_window_infix(subject+Const::seed_anchor));
 	}
 
 	void finish()
@@ -59,50 +57,45 @@ struct hit_filter
 		if(subjects_->size() == 0)
 			return;
 		unsigned left;
-		sequence<const _val> query (query_seqs<_val>::data_->window_infix(q_pos_ + Const::seed_anchor, left));
+		sequence query (query_seqs::data_->window_infix(q_pos_ + Const::seed_anchor, left));
 		smith_waterman(query,
 				*subjects_,
-				program_options::hit_band,
+				config.hit_band,
 				left,
-				program_options::gap_open + program_options::gap_extend,
-				program_options::gap_extend,
-				program_options::min_hit_score,
+				config.gap_open + config.gap_extend,
+				config.gap_extend,
+				config.min_hit_score,
 				*this,
 				uint8_t(),
 				stats_);
 	}
 
-	void push_hit(_locr subject)
+	void push_hit(Loc subject)
 	{
 		if(q_num_ == std::numeric_limits<unsigned>::max()) {
-			std::pair<size_t,size_t> l (query_seqs<_val>::data_->local_position(q_pos_));
-			q_num_ = l.first;
-			seed_offset_ = l.second;
+			std::pair<size_t,size_t> l (query_seqs::data_->local_position(q_pos_));
+			q_num_ = (unsigned)l.first;
+			seed_offset_ = (unsigned)l.second;
 		}
 		//cout << "query=" << q_num_ << " so=" << seed_offset_ << " subject=" << subject << endl;
-		assert(subject < ref_seqs<_val>::get().raw_len());
-		out_.push(hit<_locr,_locl> (q_num_, subject, seed_offset_));
-		stats_.inc(Statistics::TENTATIVE_MATCHES3);
+		assert(subject < ref_seqs::get().raw_len());
+		out_.push(hit  (q_num_, subject, seed_offset_));
+		stats_.inc(Statistics::TENTATIVE_MATCHES4);
 	}
 
-	void operator()(int i, const sequence<const _val> &seq, int score)
-	{ push_hit(ref_seqs<_val>::data_->position(seq.data()+program_options::window-Const::seed_anchor)); stats_.inc(Statistics::GAPPED_HITS); }
+	void operator()(int i, const sequence &seq, int score)
+	{ push_hit(ref_seqs::data_->position(seq.data()+config.window-Const::seed_anchor)); stats_.inc(Statistics::GAPPED_HITS); }
 
 private:
 
 	unsigned q_num_, seed_offset_;
 	Statistics  &stats_;
-	_locq q_pos_;
-	typename Trace_pt_buffer<_locr,_locl>::Iterator &out_;
-	//Tls<vector<sequence<const _val> > > subjects_;
-	vector<sequence<const _val> > s2;
-	vector<sequence<const _val> >* subjects_;
-
-	//static thread_specific_ptr<vector<sequence<const _val> > > subjects_ptr;
+	Loc q_pos_;
+	Trace_pt_buffer::Iterator &out_;
+	Tls<vector<sequence> > subjects_;
+	
+	static TLS_PTR vector<sequence> *subjects_ptr;
 
 };
-
-/*template<typename _val, typename _locr, typename _locq, typename _locl>
-thread_specific_ptr<vector<sequence<const _val> > > hit_filter<_val,_locr,_locq,_locl>::subjects_ptr;*/
 
 #endif /* HIT_FILTER_H_*/

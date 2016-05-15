@@ -20,21 +20,29 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #ifndef VIEW_H_
 #define VIEW_H_
 
+#include "../basic/config.h"
+#include "../util/binary_file.h"
+#include "../util/text_buffer.h"
+#include "daa_file.h"
+#include "../util/binary_buffer.h"
+#include "output_format.h"
+#include "../util/task_queue.h"
+#include "../basic/score_matrix.h"
+#include "../util/thread.h"
+
 const unsigned view_buf_size = 32;
 
 struct View_writer
 {
 	View_writer():
-		f_ (program_options::output_file + (program_options::compression==1?".gz":""),
-				program_options::compression==1,
-				program_options::output_file.length()==0 ? Output_stream::stdout_sink : Output_stream::file_sink)
+		f_ (config.output_file + (config.compression==1?".gz":""), config.compression==1)
 	{ }
 	void operator()(Text_buffer &buf)
 	{
 		f_.write(buf.get_begin(), buf.size());
 		buf.clear();
 	}
-	Output_stream f_;
+	Compressed_ostream f_;
 };
 
 struct View_fetcher
@@ -57,13 +65,12 @@ struct View_fetcher
 	DAA_file &daa;
 };
 
-template<typename _val>
 struct View_context
 {
-	View_context(DAA_file &daa, View_writer &writer, const Output_format<_val> &format):
+	View_context(DAA_file &daa, View_writer &writer, const Output_format &format):
 		daa (daa),
 		writer (writer),
-		queue (3*program_options::threads(), writer),
+		queue (3*config.threads_, writer),
 		format (format)
 	{ }
 	void operator()(unsigned thread_id)
@@ -72,11 +79,11 @@ struct View_context
 			size_t n;
 			View_fetcher query_buf (daa);
 			Text_buffer *buffer = 0;
-			while(!exception_state() && queue.get(n, buffer, query_buf)) {
+			while(queue.get(n, buffer, query_buf)) {
 				for(unsigned j=0;j<query_buf.n;++j) {
-					DAA_query_record<_val> r (daa, query_buf.buf[j]);
-					for(typename DAA_query_record<_val>::Match_iterator i = r.begin(); i.good(); ++i) {
-						if(i->frame > 2 && program_options::forwardonly)
+					DAA_query_record r (daa, query_buf.buf[j]);
+					for(DAA_query_record::Match_iterator i = r.begin(); i.good(); ++i) {
+						if(i->frame > 2 && config.forwardonly)
 							continue;
 						format.print_match(*i, *buffer);
 					}
@@ -84,46 +91,39 @@ struct View_context
 				queue.push(n);
 			}
 		} catch(std::exception &e) {
-			exception_state.set(e);
-			queue.wake_all();
+			std::cout << e.what() << std::endl;
+			std::terminate();
+			//queue.wake_all();
 		}
 	}
 	DAA_file &daa;
 	View_writer &writer;
 	Task_queue<Text_buffer,View_writer> queue;
-	const Output_format<_val> &format;
+	const Output_format &format;
 };
-
-template<typename _val>
-void view(DAA_file &daa)
-{
-	score_matrix::instance = auto_ptr<score_matrix> (new score_matrix(daa.score_matrix(),
-					daa.gap_open_penalty(),
-					daa.gap_extension_penalty(),
-					daa.match_reward(),
-					daa.mismatch_penalty(),
-					_val ()));
-
-	log_stream << "Build version = " << daa.diamond_build() << endl;
-	log_stream << "DB sequences = " << daa.db_seqs() << endl;
-	log_stream << "DB sequences used = " << daa.db_seqs_used() << endl;
-	log_stream << "DB letters = " << daa.db_letters() << endl;
-
-	View_writer writer;
-	const Output_format<_val>& format (get_output_format<_val>());
-	format.print_header(writer.f_, daa.mode());
-
-	View_context<_val> context (daa, writer, format);
-	launch_thread_pool(context, program_options::threads());
-}
 
 void view()
 {
-	DAA_file daa (program_options::daa_file);
-	if(daa.mode() == blastn)
-		view<Nucleotide>(daa);
-	else
-		view<Amino_acid>(daa);
+	DAA_file daa (config.daa_file);
+	score_matrix = Score_matrix(daa.score_matrix(),
+		daa.gap_open_penalty(),
+		daa.gap_extension_penalty(),
+		daa.match_reward(),
+		daa.mismatch_penalty());
+
+	message_stream << "Scoring parameters: " << score_matrix << endl;
+	verbose_stream << "Build version = " << daa.diamond_build() << endl;
+	message_stream << "DB sequences = " << daa.db_seqs() << endl;
+	message_stream << "DB sequences used = " << daa.db_seqs_used() << endl;
+	message_stream << "DB letters = " << daa.db_letters() << endl;
+	
+	task_timer timer("Generating output");
+	View_writer writer;
+	const Output_format& format(get_output_format());
+	format.print_header(writer.f_, daa.mode());
+
+	View_context context(daa, writer, format);
+	launch_thread_pool(context, config.threads_);
 }
 
 #endif /* VIEW_H_ */

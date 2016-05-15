@@ -1,5 +1,5 @@
 /****
-Copyright (c) 2014, University of Tuebingen
+Copyright (c) 2016, University of Tuebingen, Benjamin Buchfink
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
@@ -14,55 +14,57 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
 LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-****
-Author: Benjamin Buchfink
 ****/
 
 #ifndef ALIGN_SEQUENCE_H_
 #define ALIGN_SEQUENCE_H_
 
 #include <vector>
+#include <stddef.h>
 #include "../dp/floating_sw.h"
+#include "../data/queries.h"
 
 using std::vector;
 
-template<typename _val, typename _locr, typename _locl>
-void align_sequence(vector<Segment<_val> > &matches,
+void align_sequence(vector<Segment> &matches,
 		Statistics &stat,
-		vector<local_match<_val> > &local,
+		vector<local_match> &local,
 		unsigned *padding,
 		size_t db_letters,
 		unsigned dna_len,
-		typename Trace_pt_buffer<_locr,_locl>::Vector::iterator &begin,
-		typename Trace_pt_buffer<_locr,_locl>::Vector::iterator &end,
+		Trace_pt_buffer::Vector::iterator &begin,
+		Trace_pt_buffer::Vector::iterator &end,
 		vector<char> &transcript_buf)
 {
-	std::sort(begin, end, hit<_locr,_locl>::cmp_normalized_subject);
+	std::sort(begin, end, hit::cmp_normalized_subject);
 	const unsigned q_num (begin->query_);
-	const sequence<const _val> query (query_seqs<_val>::get()[q_num]);
+	const sequence query (query_seqs::get()[q_num]);
 	const unsigned frame = q_num % query_contexts();
-	const unsigned query_len = query.length();
-	padding[frame] = program_options::read_padding<_val>(query_len);
+	const unsigned query_len = (unsigned)query.length();
+	padding[frame] = config.read_padding(query_len);
 
-	const Sequence_set<_val> *ref = ref_seqs<_val>::data_;
-	for(typename Trace_pt_buffer<_locr,_locl>::Vector::iterator i = begin; i != end; ++i) {
+	const Sequence_set *ref = ref_seqs::data_;
+	for(Trace_pt_buffer::Vector::iterator i = begin; i != end; ++i) {
 		if(i != begin && (i->global_diagonal() - (i-1)->global_diagonal()) <= padding[frame]) {
-			stat.inc(Statistics::DUPLICATES);
-			continue;
+			std::pair<size_t, size_t> l1 = ref_seqs::data_->local_position((size_t)i->subject_), l2 = ref_seqs::data_->local_position((size_t)(i-1)->subject_);
+			if (l1.first == l2.first) {
+				stat.inc(Statistics::DUPLICATES);
+				continue;
+			}
 		}
-		local.push_back(local_match<_val> (i->seed_offset_, ref->data(i->subject_)));
+		local.push_back(local_match (i->seed_offset_, ref->data((ptrdiff_t)i->subject_)));
 		floating_sw(&query[i->seed_offset_],
 				local.back(),
 				padding[frame],
-				score_matrix::get().rawscore(program_options::gapped_xdrop),
-				program_options::gap_open + program_options::gap_extend,
-				program_options::gap_extend,
+				score_matrix.rawscore(config.gapped_xdrop),
+				config.gap_open + config.gap_extend,
+				config.gap_extend,
 				transcript_buf,
 				Traceback ());
 		const int score = local.back().score_;
-		std::pair<size_t,size_t> l = ref_seqs<_val>::data_->local_position(i->subject_);
-		matches.push_back(Segment<_val> (score, frame, &local.back(), l.first));
-		anchored_transform(local.back(), l.second, i->seed_offset_);
+		std::pair<size_t,size_t> l = ref_seqs::data_->local_position((size_t)i->subject_);
+		matches.push_back(Segment (score, frame, &local.back(), (unsigned)l.first));
+		anchored_transform(local.back(), (unsigned)l.second, i->seed_offset_);
 		stat.inc(Statistics::ALIGNED_QLEN, local.back().query_len_);
 
 		//local.back().print(query, ref_seqs<_val>::get()[l.first], transcript_buf);

@@ -21,21 +21,20 @@ Author: Benjamin Buchfink
 #ifndef ALIGN_UNGAPPED_H_
 #define ALIGN_UNGAPPED_H_
 
-template<typename _val, typename _locr, typename _locq>
-int xdrop_ungapped(const _val *query, const _val *subject, unsigned seed_len, unsigned &delta, unsigned &len)
+inline int xdrop_ungapped(const Letter *query, const Letter *subject, unsigned seed_len, unsigned &delta, unsigned &len)
 {
 	int score (0), st (0);
 	unsigned n (0);
 	delta = 0;
 
-	const _val *q (query-1), *s (subject-1);
-	const unsigned window_left = std::max(program_options::window, (unsigned)Const::seed_anchor) - Const::seed_anchor;
-	while(score - st < program_options::xdrop
+	const Letter *q (query-1), *s (subject-1);
+	const unsigned window_left = std::max(config.window, (unsigned)Const::seed_anchor) - Const::seed_anchor;
+	while(score - st < config.xdrop
 			&& delta < window_left
-			&& *q != String_set<_val>::PADDING_CHAR
-			&& *s != String_set<_val>::PADDING_CHAR)
+			&& *q != '\xff'
+			&& *s != '\xff')
 	{
-		st += score_matrix::get().letter_score(*q, mask_critical(*s));
+		st += score_matrix(*q, mask_critical(*s));
 		score = std::max(score, st);
 		--q;
 		--s;
@@ -46,13 +45,13 @@ int xdrop_ungapped(const _val *query, const _val *subject, unsigned seed_len, un
 	s = subject + seed_len;
 	st = score;
 	assert(seed_len >= Const::seed_anchor);
-	const unsigned window_right = std::max(program_options::window, seed_len - Const::seed_anchor) - (seed_len - Const::seed_anchor);
-	while(score - st < program_options::xdrop
+	const unsigned window_right = std::max(config.window, seed_len - Const::seed_anchor) - (seed_len - Const::seed_anchor);
+	while(score - st < config.xdrop
 			&& n < window_right
-			&& *q != String_set<_val>::PADDING_CHAR
-			&& *s != String_set<_val>::PADDING_CHAR)
+			&& *q != '\xff'
+			&& *s != '\xff')
 	{
-		st += score_matrix::get().letter_score(*q, mask_critical(*s));
+		st += score_matrix(*q, mask_critical(*s));
 		score = std::max(score, st);
 		++q;
 		++s;
@@ -60,7 +59,7 @@ int xdrop_ungapped(const _val *query, const _val *subject, unsigned seed_len, un
 	}
 
 	for(unsigned i=0;i<seed_len;++i)
-		score += score_matrix::get().letter_score(query[i], mask_critical(subject[i]));
+		score += score_matrix(query[i], mask_critical(subject[i]));
 
 	len = delta + n + seed_len;
 	return score;

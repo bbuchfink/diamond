@@ -30,8 +30,7 @@ struct Packed_operation
 	Packed_operation(Edit_operation op, unsigned count):
 		code ((op<<6) | count)
 	{ }
-	template<typename _val>
-	Packed_operation(Edit_operation op, _val v):
+	Packed_operation(Edit_operation op, Letter v):
 		code ((op<<6) | (int)v)
 	{ }
 	operator uint8_t() const
@@ -40,26 +39,23 @@ struct Packed_operation
 	{ return (Edit_operation)(code>>6); }
 	unsigned count() const
 	{ return code&63; }
-	template<typename _val>
-	_val letter() const
+	Letter letter() const
 	{ return code&63; }
 	static Packed_operation terminator()
-	{ return Packed_operation(op_match, 0); }
+	{ return Packed_operation(op_match, 0u); }
 	uint8_t code;
 };
 
-template<typename _val>
 struct Combined_operation
 {
 	Edit_operation op;
 	unsigned count;
-	_val letter;
+	Letter letter;
 };
 
 struct Packed_transcript
 {
 
-	template<typename _val>
 	struct Const_iterator
 	{
 		Const_iterator(const Packed_operation *op):
@@ -69,9 +65,9 @@ struct Packed_transcript
 		{ return *ptr_ != Packed_operation::terminator(); }
 		Const_iterator& operator++()
 		{ ++ptr_; gather(); return *this; }
-		const Combined_operation<_val>& operator*() const
+		const Combined_operation& operator*() const
 		{ return op_; }
-		const Combined_operation<_val>* operator->() const
+		const Combined_operation* operator->() const
 		{ return &op_; }
 	private:
 		void gather()
@@ -80,7 +76,7 @@ struct Packed_transcript
 				return;
 			op_.op = ptr_->op();
 			if(op_.op == op_deletion || op_.op == op_substitution) {
-				op_.letter = ptr_->letter<_val>();
+				op_.letter = ptr_->letter();
 				op_.count = 1;
 			} else {
 				op_.count = 0;
@@ -92,7 +88,7 @@ struct Packed_transcript
 			}
 		}
 		const Packed_operation *ptr_;
-		Combined_operation<_val> op_;
+		Combined_operation op_;
 	};
 
 	void read(Buffered_file &f)
@@ -115,9 +111,8 @@ struct Packed_transcript
 		} while (code != Packed_operation::terminator());
 	}
 
-	template<typename _val>
-	Const_iterator<_val> begin() const
-	{ return Const_iterator<_val> (data_.data()); }
+	Const_iterator begin() const
+	{ return Const_iterator (data_.data()); }
 
 	const vector<Packed_operation>& data() const
 	{ return data_; }

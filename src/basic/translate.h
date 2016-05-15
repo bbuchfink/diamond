@@ -21,34 +21,39 @@ Author: Benjamin Buchfink
 #ifndef TRANSLATE_H_
 #define TRANSLATE_H_
 
+#include <vector>
+#include "value.h"
+
+using std::vector;
+
 struct Translator
 {
 
 public:
 
-	static const Nucleotide reverseNucleotide[5];
-	static const Amino_acid lookup[5][5][5];
-	static const Amino_acid lookupReverse[5][5][5];
-	static const Amino_acid STOP;
+	static const Letter reverseLetter[5];
+	static const Letter lookup[5][5][5];
+	static const Letter lookupReverse[5][5][5];
+	static const Letter STOP;
 
-	static Nucleotide getReverseComplement(Nucleotide nucleotide)
-	{ return reverseNucleotide[(int) nucleotide]; }
+	static Letter getReverseComplement(Letter letter)
+	{ return reverseLetter[(int) letter]; }
 
-	static Amino_acid getAminoAcid(vector<Nucleotide> const &dnaSequence, size_t pos)
+	static Letter getAminoAcid(vector<Letter> const &dnaSequence, size_t pos)
 	{ return lookup[(int) dnaSequence[pos]][(int)dnaSequence[pos+1]][(int)dnaSequence[pos+2]]; }
 
-	static Amino_acid getAminoAcidReverse(vector<Nucleotide> const &dnaSequence, size_t pos)
+	static Letter getAminoAcidReverse(vector<Letter> const &dnaSequence, size_t pos)
 	{ return lookupReverse[(int) dnaSequence[pos + 2]][(int)dnaSequence[pos + 1]][(int)dnaSequence[pos]]; }
 
-	static vector<Nucleotide> reverse(const vector<Nucleotide> &seq)
+	static vector<Letter> reverse(const vector<Letter> &seq)
 	{
-		vector<Nucleotide> r;
-		for(vector<Nucleotide>::const_reverse_iterator i=seq.rbegin(); i!=seq.rend(); ++i)
+		vector<Letter> r;
+		for(vector<Letter>::const_reverse_iterator i=seq.rbegin(); i!=seq.rend(); ++i)
 			r.push_back(getReverseComplement(*i));
 		return r;
 	}
 
-	static size_t translate(vector<Nucleotide> const &dnaSequence, vector<Amino_acid> *proteins)
+	static size_t translate(vector<Letter> const &dnaSequence, vector<Letter> *proteins)
 	{
 		size_t length_ = dnaSequence.size(), d, n;
 		proteins[0].resize(d = length_ / 3);
@@ -84,49 +89,49 @@ public:
 		return n;
 	}
 
-	static Amino_acid const* nextChar(Amino_acid const*p, Amino_acid const*end)
+	static Letter const* nextChar(Letter const*p, Letter const*end)
 	{
 		while(*(p) != STOP && p < end)
 			++p;
 		return p;
 	}
 
-	static void mask_runs(vector<Amino_acid> &query, unsigned run_len)
+	static void mask_runs(vector<Letter> &query, unsigned run_len)
 	{
-		Amino_acid *last = &query[0]-1, *i = &query[0], *end = &query.back();
+		Letter *last = &query[0]-1, *i = &query[0], *end = &query.back();
 		while (i <= end) {
 			if(*i == STOP) {
-				if(last != 0 && i - last - 1 < run_len) {
-					for(Amino_acid *j = last+1; j < i; ++j)
+				if(last != 0 && i - last - 1 < (int)run_len) {
+					for(Letter *j = last+1; j < i; ++j)
 						*j = 23;
 				}
 				last = i;
 			}
 			++i;
 		}
-		if(last != 0 && i - last - 1 < run_len) {
-			for(Amino_acid *j = last+1; j < i; ++j)
+		if(last != 0 && i - last - 1 < (int)run_len) {
+			for(Letter *j = last+1; j < i; ++j)
 				*j = 23;
 		}
 	}
 
-	static unsigned computeGoodFrames(vector<Amino_acid>  const *queries, unsigned runLen)
+	static unsigned computeGoodFrames(vector<Letter>  const *queries, unsigned runLen)
 	{
 		unsigned set = 0;
 
 		for (unsigned i = 0; i < 6; ++i) {
 			if (queries[i].size() > 0) {
 				unsigned run = 0;
-				Amino_acid const*p =  &(queries[i][0]);
-				Amino_acid const*q;
-				Amino_acid const*end = p + queries[i].size();
+				Letter const*p =  &(queries[i][0]);
+				Letter const*q;
+				Letter const*end = p + queries[i].size();
 				while((q = nextChar(p, end)) < end) {
-					run = q-p;
+					run = (unsigned)(q-p);
 					if (run >= runLen)
 						set |= 1 << i;
 					p=q+1;
 				}
-				run = q-p;
+				run = (unsigned)(q-p);
 				if (run >= runLen)
 					set |= 1 << i;
 			}
@@ -134,80 +139,12 @@ public:
 		return set;
 	}
 
-	static void mask_runs(vector<Amino_acid> *queries, unsigned run_len)
+	static void mask_runs(vector<Letter> *queries, unsigned run_len)
 	{
 		for (unsigned i = 0; i < 6; ++i)
 			mask_runs(queries[i], run_len);
 	}
 
 };
-
-const Nucleotide Translator::reverseNucleotide[5] = { 3, 2, 1, 0, 4 };
-
-const Amino_acid Translator::lookup[5][5][5] = {
-{ { 11,2,11,2,23 },
-{ 16,16,16,16,16 },
-{ 1,15,1,15,23 },
-{ 9,9,12,9,23 },
-{ 23,23,23,23,23 },
- },
-{ { 5,8,5,8,23 },
-{ 14,14,14,14,14 },
-{ 1,1,1,1,1 },
-{ 10,10,10,10,10 },
-{ 23,23,23,23,23 },
- },
-{ { 6,3,6,3,23 },
-{ 0,0,0,0,0 },
-{ 7,7,7,7,7 },
-{ 19,19,19,19,19 },
-{ 23,23,23,23,23 },
- },
-{ { 23,18,23,18,23 },
-{ 15,15,15,15,15 },
-{ 23,4,17,4,23 },
-{ 10,13,10,13,23 },
-{ 23,23,23,23,23 },
- },
-{ { 23,23,23,23,23 },
-{ 23,23,23,23,23 },
-{ 23,23,23,23,23 },
-{ 23,23,23,23,23 },
-{ 23,23,23,23,23 },
-} };
-
-const Amino_acid Translator::lookupReverse[5][5][5] = {
-{ { 13,10,13,10,23 },
-{ 4,17,4,23,23 },
-{ 15,15,15,15,15 },
-{ 18,23,18,23,23 },
-{ 23,23,23,23,23 },
- },
-{ { 19,19,19,19,19 },
-{ 7,7,7,7,7 },
-{ 0,0,0,0,0 },
-{ 3,6,3,6,23 },
-{ 23,23,23,23,23 },
- },
-{ { 10,10,10,10,10 },
-{ 1,1,1,1,1 },
-{ 14,14,14,14,14 },
-{ 8,5,8,5,23 },
-{ 23,23,23,23,23 },
- },
-{ { 9,12,9,9,23 },
-{ 15,1,15,1,23 },
-{ 16,16,16,16,16 },
-{ 2,11,2,11,23 },
-{ 23,23,23,23,23 },
- },
-{ { 23,23,23,23,23 },
-{ 23,23,23,23,23 },
-{ 23,23,23,23,23 },
-{ 23,23,23,23,23 },
-{ 23,23,23,23,23 },
-}};
-
-const Amino_acid Translator::STOP (Value_traits<Amino_acid>::from_char('*'));
 
 #endif /* TRANSLATE_H_ */

@@ -21,13 +21,16 @@ Author: Benjamin Buchfink
 #ifndef SSE_DIST_H_
 #define SSE_DIST_H_
 
+#include "../basic/reduction.h"
+#include "../basic/value.h"
+#include "../util/system.h"
+
 #ifdef __SSSE3__
 #include <tmmintrin.h>
 #endif
 
-#include "../basic/reduction.h"
 
-unsigned popcount_3(uint64_t x)
+inline unsigned popcount_3(uint64_t x)
 {
 	const uint64_t m1  = 0x5555555555555555; //binary: 0101...
 	const uint64_t m2  = 0x3333333333333333; //binary: 00110011..
@@ -40,8 +43,7 @@ unsigned popcount_3(uint64_t x)
     return (x * h01)>>56;  //returns left 8 bits of x + (x<<8) + (x<<16) + (x<<24) + ...
 }
 
-template<typename _val>
-unsigned match_block(const _val *x, const _val *y)
+inline unsigned match_block(const Letter *x, const Letter *y)
 {
 	static const __m128i mask = _mm_set1_epi8(0x7F);
 	__m128i r1 = _mm_loadu_si128 ((__m128i const*)(x));
@@ -50,65 +52,163 @@ unsigned match_block(const _val *x, const _val *y)
 	return _mm_movemask_epi8(_mm_cmpeq_epi8(r1, r2));
 }
 
-template<typename _val>
-unsigned fast_match(const _val *q, const _val *s)
+inline unsigned fast_match(const Letter *q, const Letter *s)
 { return popcount_3(match_block(q-8, s-8)<<16 | match_block(q+8, s+8)); }
 
-template<typename _val>
-__m128i reduce_seq_ssse3(const __m128i &seq)
+inline unsigned popcount32(unsigned x)
+{
+#ifdef _MSC_VER
+	return __popcnt(x);
+#else
+	return __builtin_popcount(x);
+#endif
+}
+
+inline unsigned popcount64(unsigned long long x)
+{
+#ifdef _MSC_VER
+	return (unsigned)__popcnt64(x);
+#else
+	return __builtin_popcountll(x);
+#endif
+}
+
+struct Byte_finger_print
+{
+	Byte_finger_print(const Letter *q):
+		r1 (_mm_and_si128(_mm_loadu_si128((__m128i const*)(q - 8)), _mm_set1_epi8(0x7F))),
+		r2 (_mm_and_si128(_mm_loadu_si128((__m128i const*)(q + 8)), _mm_set1_epi8(0x7F)))
+	{ }
+	static unsigned match_block(__m128i x, __m128i y)
+	{
+		return _mm_movemask_epi8(_mm_cmpeq_epi8(x, y));
+	}
+	unsigned match(const Byte_finger_print &rhs) const
+	{
+		//return popcount_3(match_block(r1, rhs.r1) << 16 | match_block(r2, rhs.r2));
+		return popcount32(match_block(r1, rhs.r1) << 16 | match_block(r2, rhs.r2));
+	}
+	__m128i r1, r2;
+};
+
+struct Halfbyte_finger_print_naive
+{
+	Halfbyte_finger_print_naive(const Letter *q) :
+		r1(reduce(q-8)),
+		r2(reduce(q+8))
+	{ }
+	static unsigned match_block(uint64_t x, uint64_t y)
+	{
+		uint64_t v = ~(x ^ y);
+		v &= v >> 1;
+		v &= 0x5555555555555555LL;
+		v &= v >> 2;
+		v &= 0x1111111111111111LL;
+		return (unsigned)popcount64(v);
+	}
+	unsigned match(const Halfbyte_finger_print_naive &rhs) const
+	{
+		return match_block(r1, rhs.r1) + match_block(r2, rhs.r2);
+	}
+	static uint64_t reduce(const Letter *q)
+	{
+		uint64_t x;
+		for (unsigned i = 0; i < 16; ++i)
+			x = (x << 4) | reduction(mask_critical(q[i]));
+		return x;
+	}
+	static const Reduction reduction;
+	uint64_t r1, r2;
+};
+
+struct Halfbyte_finger_print
+{
+	Halfbyte_finger_print(const Letter *q) :
+		r(_mm_set_epi32(reduce(q - 8), reduce(q), reduce(q + 8), reduce(q+16)))
+	{ }
+	static unsigned match_block(uint64_t x, uint64_t y)
+	{
+		uint64_t v = ~(x ^ y);
+		v &= v >> 1;
+		v &= 0x5555555555555555LL;
+		v &= v >> 2;
+		v &= 0x1111111111111111LL;
+		return (unsigned)popcount64(v);
+	}
+	static unsigned get_mask(__m128i x, __m128i y)
+	{
+		return _mm_movemask_epi8(_mm_cmpeq_epi8(x, y));
+	}
+	unsigned match(const Halfbyte_finger_print &rhs) const
+	{
+		return popcount32(get_mask(_mm_and_si128(r,_mm_set1_epi8('\xf0')), _mm_and_si128(rhs.r, _mm_set1_epi8('\xf0')))<<16
+			| get_mask(_mm_and_si128(r, _mm_set1_epi8('\x0f')), _mm_and_si128(rhs.r, _mm_set1_epi8('\x0f'))));
+	}
+	static int reduce(const Letter *q)
+	{
+		int x = 0;
+		for (unsigned i = 0; i < 8; ++i)
+			x = (x << 4) | reduction(mask_critical(q[i]));
+		return x;
+	}
+	static const Reduction reduction;
+	__m128i r;
+};
+
+typedef Halfbyte_finger_print Finger_print;
+
+inline __m128i reduce_seq_ssse3(const __m128i &seq)
 {
 #ifdef __SSSE3__
-	const __m128i *row = reinterpret_cast<const __m128i*>(Reduction<_val>::reduction.map8());
-	__m128i high_mask = _mm_slli_epi16(_mm_and_si128(seq, _mm_set1_epi8(0x10)), 3);
+	const __m128i *row = reinterpret_cast<const __m128i*>(Reduction::reduction.map8());
+	__m128i high_mask = _mm_slli_epi16(_mm_and_si128(seq, _mm_set1_epi8('\x10')), 3);
 	__m128i seq_low = _mm_or_si128(seq, high_mask);
-	__m128i seq_high = _mm_or_si128(seq, _mm_xor_si128(high_mask, _mm_set1_epi8(0x80)));
+	__m128i seq_high = _mm_or_si128(seq, _mm_xor_si128(high_mask, _mm_set1_epi8('\x80')));
 
 	__m128i r1 = _mm_load_si128(row);
 	__m128i r2 = _mm_load_si128(row+1);
 	__m128i s1 = _mm_shuffle_epi8(r1, seq_low);
 	__m128i s2 = _mm_shuffle_epi8(r2, seq_high);
 	return _mm_or_si128(s1, s2);
+#else
+	return __m128i();
 #endif
 }
 
-template<typename _val>
-__m128i reduce_seq_generic(const __m128i &seq)
+inline __m128i reduce_seq_generic(const __m128i &seq)
 {
 	__m128i r;
-	_val* s = (_val*)&seq;
+	Letter* s = (Letter*)&seq;
 	uint8_t* d = (uint8_t*)&r;
 	for(unsigned i=0;i<16;++i)
-		*(d++) = Reduction<_val>::reduction(*(s++));
+		*(d++) = Reduction::reduction(*(s++));
 	return r;
 }
 
-template<typename _val>
-__m128i reduce_seq(const __m128i &seq)
+inline __m128i reduce_seq(const __m128i &seq)
 {
-	if(program_options::have_ssse3) {
+	if(config.have_ssse3) {
 #ifdef __SSSE3__
-		return reduce_seq_ssse3<_val>(seq);
+		return reduce_seq_ssse3(seq);
 #else
-		return reduce_seq_generic<_val>(seq);
+		return reduce_seq_generic(seq);
 #endif
 	} else
-		return reduce_seq_generic<_val>(seq);
+		return reduce_seq_generic(seq);
 }
 
-template<typename _val>
-unsigned match_block_reduced(const _val *x, const _val *y)
+inline unsigned match_block_reduced(const Letter *x, const Letter *y)
 {
 	static const __m128i mask = _mm_set1_epi8(0x7F);
 	__m128i r1 = _mm_loadu_si128 ((__m128i const*)(x));
 	__m128i r2 = _mm_loadu_si128 ((__m128i const*)(y));
 	r2 = _mm_and_si128(r2, mask);
-	r1 = reduce_seq<_val>(r1);
-	r2 = reduce_seq<_val>(r2);
+	r1 = reduce_seq(r1);
+	r2 = reduce_seq(r2);
 	return _mm_movemask_epi8(_mm_cmpeq_epi8(r1, r2));
 }
 
-template<typename _val>
-uint64_t reduced_match32(const _val* q, const _val *s, unsigned len)
+inline uint64_t reduced_match32(const Letter* q, const Letter *s, unsigned len)
 {
 	uint64_t x = match_block_reduced(q+16, s+16)<<16 | match_block_reduced(q,s);
 	if(len < 32)

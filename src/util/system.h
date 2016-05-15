@@ -24,7 +24,7 @@ Author: Benjamin Buchfink
 #ifdef _WIN32
 #define cpuid(info,x)    __cpuidex(info,x,0)
 #else
-void cpuid(int CPUInfo[4],int InfoType) {
+inline void cpuid(int CPUInfo[4],int InfoType) {
     __asm__ __volatile__ (
         "cpuid":
         "=a" (CPUInfo[0]),
@@ -36,8 +36,13 @@ void cpuid(int CPUInfo[4],int InfoType) {
 }
 #endif
 
-bool check_SSSE3()
+#ifdef _MSC_VER
+#define __SSSE3__
+#endif
+
+inline bool check_SSSE3()
 {
+#ifdef __SSSE3__
     int info[4];
     cpuid(info, 0);
     int nids = info[0];
@@ -45,7 +50,14 @@ bool check_SSSE3()
     	cpuid(info, 1);
     	return (info[2] & (1<<9)) != 0;
     }
+#endif
     return false;
 }
+
+#ifdef _MSC_VER
+#define PACKED_ATTRIBUTE
+#else
+#define PACKED_ATTRIBUTE __attribute__((packed))
+#endif
 
 #endif /* SYSTEM_H_ */

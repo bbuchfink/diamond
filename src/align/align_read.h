@@ -1,5 +1,5 @@
 /****
-Copyright (c) 2014, University of Tuebingen
+Copyright (c) 2016, University of Tuebingen, Benjamin Buchfink
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
@@ -14,8 +14,6 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
 LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-****
-Author: Benjamin Buchfink
 ****/
 
 #ifndef ALIGN_READ_H_
@@ -34,81 +32,80 @@ Author: Benjamin Buchfink
 
 using std::vector;
 
-template<typename _val, typename _locr, typename _locl>
-void align_read(Output_buffer<_val> &buffer,
+void align_read(Output_buffer &buffer,
 		Statistics &stat,
-		typename Trace_pt_buffer<_locr,_locl>::Vector::iterator &begin,
-		typename Trace_pt_buffer<_locr,_locl>::Vector::iterator &end)
+		Trace_pt_buffer::Vector::iterator &begin,
+		Trace_pt_buffer::Vector::iterator &end)
 {
-	static thread_specific_ptr<vector<local_match<_val> > > local_ptr;
-	static thread_specific_ptr<vector<Segment<_val> > > matches_ptr;
-	static thread_specific_ptr<vector<char> > transcript_ptr;
+	static TLS_PTR vector<local_match> *local_ptr = 0;
+	static TLS_PTR vector<Segment> *matches_ptr = 0;
+	static TLS_PTR vector<char> *transcript_ptr = 0;
 
-	Tls<vector<Segment<_val> > > matches (matches_ptr);
-	Tls<vector<local_match<_val> > > local (local_ptr);
-	Tls<vector<char> > transcript_buf (transcript_ptr);
-	local->clear();
-	matches->clear();
-	transcript_buf->clear();
+	vector<Segment>& matches (get_tls(matches_ptr));
+	vector<local_match>& local (get_tls(local_ptr));
+	vector<char>& transcript_buf (get_tls(transcript_ptr));
+	local.clear();
+	matches.clear();
+	transcript_buf.clear();
 
 	assert(end > begin);
 	const size_t hit_count = end - begin;
-	local->reserve(hit_count);
+	local.reserve(hit_count);
 	const unsigned contexts = query_contexts();
 	const unsigned query = begin->query_/contexts;
-	const size_t query_len (query_seqs<_val>::data_->length(query*contexts));
-	const size_t source_query_len = query_translated() ? query_seqs<_val>::data_->reverse_translated_len(query*contexts) : query_len;
+	const unsigned query_len ((unsigned)query_seqs::data_->length(query*contexts));
+	const unsigned source_query_len = query_translated() ? (unsigned)query_seqs::data_->reverse_translated_len(query*contexts) : query_len;
 	const size_t db_letters = ref_header.letters;
 	unsigned padding[6];
 
-	typedef Map<typename vector<hit<_locr,_locl> >::iterator,typename hit<_locr,_locl>::template Query_id<1> > Map_t;
+	typedef Map<typename vector<hit>::iterator,typename hit::template Query_id<1> > Map_t;
 	Map_t hits (begin, end);
 	typename Map_t::Iterator i = hits.begin();
 	while(i.valid()) {
-		align_sequence<_val,_locr,_locl>(*matches, stat, *local, padding, db_letters, source_query_len, i.begin(), i.end(), *transcript_buf);
+		align_sequence(matches, stat, local, padding, db_letters, source_query_len, i.begin(), i.end(), transcript_buf);
 		++i;
 	}
 
-	if(matches->size() == 0)
+	if(matches.size() == 0)
 		return;
 
-	link_segments(*matches);
+	link_segments(matches);
 
-	std::sort(matches->begin(), matches->end());
+	std::sort(matches.begin(), matches.end());
 	unsigned n_hsp = 0, n_target_seq = 0;
-	typename vector<Segment<_val> >::iterator it = matches->begin();
-	const int min_raw_score = score_matrix::get().rawscore(program_options::min_bit_score == 0
-			? score_matrix::get().bitscore(program_options::max_evalue, ref_header.letters, query_len) : program_options::min_bit_score);
-	const int top_score = matches->operator[](0).score_;
+	typename vector<Segment>::iterator it = matches.begin();
+	const int min_raw_score = score_matrix.rawscore(config.min_bit_score == 0
+			? score_matrix.bitscore(config.max_evalue, ref_header.letters, query_len) : config.min_bit_score);
+	const int top_score = matches.operator[](0).score_;
 
-	while(it < matches->end()) {
-		const bool same_subject = it != matches->begin() && (it-1)->subject_id_ == it->subject_id_;
+	while(it < matches.end()) {
+		const bool same_subject = it != matches.begin() && (it-1)->subject_id_ == it->subject_id_;
 		if(!same_subject && it->score_ < min_raw_score)
 			break;
-		if(!same_subject && !program_options::output_range(n_target_seq, it->score_, top_score))
+		if(!same_subject && !config.output_range(n_target_seq, it->score_, top_score))
 			break;
 		if(same_subject && (it-1)->score_ == it->score_) {
 			++it;
 			continue;
 		}
-		if(static_cast<double>(it->traceback_->identities_)*100/it->traceback_->len_ < program_options::min_id
-				|| (double)it->traceback_->query_len_*100/(double)source_query_len < program_options::query_cover) {
+		if(static_cast<double>(it->traceback_->identities_)*100/it->traceback_->len_ < config.min_id
+				|| (double)abs(it->traceback_->query_len_)*100/(double)source_query_len < config.query_cover) {
 			++it;
 			continue;
 		}
-		if(same_subject && program_options::single_domain) {
+		if(same_subject && config.single_domain) {
 			++it;
 			continue;
 		}
-
+		
 		if(n_hsp == 0)
 			buffer.write_query_record(query);
-		buffer.print_match(*it, source_query_len, query_seqs<_val>::get()[query*contexts + it->frame_], query, *transcript_buf);
+		buffer.print_match(*it, source_query_len, query_seqs::get()[query*contexts + it->frame_], query, transcript_buf);
 
 		++n_hsp;
 		if(!same_subject)
 			++n_target_seq;
-		if(program_options::alignment_traceback && it->traceback_->gap_openings_ > 0)
+		if(config.alignment_traceback && it->traceback_->gap_openings_ > 0)
 			stat.inc(Statistics::GAPPED);
 		++it;
 	}
@@ -116,7 +113,7 @@ void align_read(Output_buffer<_val> &buffer,
 	if(n_hsp > 0)
 		buffer.finish_query_record();
 
-	stat.inc(Statistics::OUT_MATCHES, matches->size());
+	stat.inc(Statistics::OUT_MATCHES, matches.size());
 	if(ref_header.n_blocks == 1) {
 		stat.inc(Statistics::MATCHES, n_hsp);
 		if(n_hsp > 0)

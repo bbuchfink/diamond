@@ -21,54 +21,94 @@ Author: Benjamin Buchfink
 #ifndef LOG_STREAM_H_
 #define LOG_STREAM_H_
 
-#include <boost/iostreams/device/file_descriptor.hpp>
-#include <boost/iostreams/device/file.hpp>
-#include <boost/iostreams/filtering_stream.hpp>
-#include <boost/timer/timer.hpp>
+#include <iostream>
+#include "Timer.h"
 
-using std::string;
 using std::endl;
 
-boost::iostreams::filtering_ostream verbose_stream;
-boost::iostreams::filtering_ostream log_stream;
-
-struct task_timer : public boost::timer::cpu_timer
+struct Message_stream
 {
-	task_timer(const char *msg, bool print):
-		print_ (print),
-		msg_ (msg)
-	{ start(msg); }
+	Message_stream(bool to_cout=true):
+		to_cout_ (to_cout)
+	{}
+	template<typename _t>
+	Message_stream& operator<<(const _t& x)
+	{
+		if(to_cout_)
+			std::cout << x;
+		return *this;
+	}
+	//Message_stream& operator<<(std::ostream & (__cdecl *_Pfn)(std::ostream&))
+	Message_stream& operator<<(std::ostream & (*_Pfn)(std::ostream&))
+	{
+		if(to_cout_)
+			((*_Pfn)(std::cout));
+		return *this;
+	}
+private:
+	bool to_cout_;
+};
+
+extern Message_stream message_stream;
+extern Message_stream verbose_stream;
+extern Message_stream log_stream;
+
+struct task_timer
+{
+	task_timer(const char *msg, unsigned level=1) :
+		level_(level),
+		msg_(msg)
+	{
+		start(msg);
+	}
 	~task_timer()
-	{ finish(); }
+	{
+		finish();
+	}
 	void go(const char *msg)
 	{
 		finish();
-		boost::timer::cpu_timer::start();
 		start(msg);
 		msg_ = msg;
 	}
 	void finish()
 	{
-		if(!msg_)
+		if (!msg_)
 			return;
-		if(print_ && !program_options::debug_log)
-			verbose_stream << boost::timer::format(elapsed(), 1, "[%ws]") << endl;
-		else {
-			log_stream << '/' << msg_ << boost::timer::format(elapsed(), 1, " [%ws]") << endl;
-		}
+		//if (print_ && !Cfg::debug_log)
+		get_stream() << " [" << timer_.getElapsedTimeInSec() << "s]" << endl;
+		/*else if (Cfg::debug_log) {
+			log_stream << '/' << msg_ << " [" << timer_.getElapsedTimeInSec() << "s]" << endl;
+		}*/
 		msg_ = 0;
+	}
+	Message_stream& get_stream() const
+	{
+		switch (level_) {
+		case 1:
+			return message_stream;
+		case 2:
+			return verbose_stream;
+		case 3:
+			return log_stream;
+		default:
+			return message_stream;
+		}
 	}
 private:
 	void start(const char *msg)
 	{
-		if(print_ && !program_options::debug_log) {
-			verbose_stream << msg << "... " << std::flush;
-			fflush(stdout);
-		} else
-			log_stream << msg << "..." << endl;
+		timer_.start();
+		//if (print_ && !Cfg::debug_log) {
+			get_stream() << msg << "... " << std::flush;
+			//fflush(stdout);
+		/**}
+		else if (Cfg::debug_log)
+			log_stream << msg << "..." << endl;*/
 	}
-	bool print_;
+	unsigned level_;
 	const char *msg_;
+	Timer timer_;
 };
 
 #endif

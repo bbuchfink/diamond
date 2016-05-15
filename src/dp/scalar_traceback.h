@@ -20,6 +20,9 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #ifndef SCALAR_TRACEBACK_H_
 #define SCALAR_TRACEBACK_H_
 
+#include <exception>
+#include "../basic/score_matrix.h"
+
 template<typename _score>
 struct Scalar_traceback_matrix
 {
@@ -84,9 +87,9 @@ bool have_hgap(const Scalar_traceback_matrix<_score> &dp,
 	return false;
 }
 
-template<typename _val, typename _dir, typename _score>
-local_match<_val> traceback(const _val *query,
-		const _val *subject,
+template<typename _dir, typename _score>
+local_match traceback(const Letter *query,
+		const Letter *subject,
 		const Growing_buffer<_score> &scores,
 		int band,
 		int gap_open,
@@ -97,11 +100,11 @@ local_match<_val> traceback(const _val *query,
 		vector<char> &transcript_buf)
 {
 	if(i == -1)
-		return local_match<_val> (0);
+		return local_match (0);
 	Scalar_traceback_matrix<_score> dp (scores, band);
 	//dp.print(i, j);
 
-	local_match<_val> l;
+	local_match l;
 	l.query_len_ = j + 1;
 	l.subject_len_ = i + 1;
 	l.query_begin_ = 0;
@@ -112,8 +115,8 @@ local_match<_val> traceback(const _val *query,
 	int gap_len;
 
 	while(i>0 || j>0) {
-		const _val lq = get_dir(query, j, _dir()), ls = mask_critical(get_dir(subject, i, _dir()));
-		const int match_score = score_matrix::get().letter_score(lq, ls);
+		const Letter lq = get_dir(query, j, _dir()), ls = mask_critical(get_dir(subject, i, _dir()));
+		const int match_score = score_matrix(lq, ls);
 		//printf("i=%i j=%i score=%i subject=%c query=%c\n",i,j,dp(i, j),Value_traits<_val>::ALPHABET[ls],Value_traits<_val>::ALPHABET[lq]);
 
 		if(dp(i, j) == match_score + dp(i-1, j-1)) {
@@ -151,9 +154,9 @@ local_match<_val> traceback(const _val *query,
 	return l;
 }
 
-template<typename _val, typename _dir, typename _score>
-local_match<_val> traceback(const _val *query,
-		const _val *subject,
+template<typename _dir, typename _score>
+local_match traceback(const Letter *query,
+		const Letter *subject,
 		const Double_buffer<_score> &scores,
 		int band,
 		int gap_open,
@@ -161,6 +164,6 @@ local_match<_val> traceback(const _val *query,
 		int i,
 		int j,
 		int score)
-{ return local_match<_val> (score); }
+{ return local_match (score); }
 
 #endif /* SCALAR_TRACEBACK_H_ */

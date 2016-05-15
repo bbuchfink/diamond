@@ -20,7 +20,10 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #ifndef DAA_WRITE_H_
 #define DAA_WRITE_H_
 
+#include <limits>
 #include "daa_file.h"
+#include "../basic/score_matrix.h"
+#include "../data/reference.h"
 
 struct Intermediate_record
 {
@@ -39,21 +42,48 @@ struct Intermediate_record
 	Packed_transcript transcript;
 };
 
+unsigned get_length_flag(unsigned x)
+{
+	if (x <= (unsigned)std::numeric_limits<uint8_t>::max())
+		return 0;
+	else if (x <= (unsigned)std::numeric_limits<uint16_t>::max())
+		return 1;
+	return 2;
+}
+
+/*template<typename _val>
+unsigned get_rev_flag(unsigned frame)
+{ return frame > 0 ? 1 : 0; }*/
+
+unsigned get_rev_flag(unsigned frame)
+{
+	return frame > 2 ? 1 : 0;
+}
+
+uint8_t get_segment_flag(const Segment &match)
+{
+	unsigned rev = get_rev_flag(match.frame_);
+	return (uint8_t)(get_length_flag(match.score_)
+		| (get_length_flag(match.traceback_->query_begin_) << 2)
+		| (get_length_flag(match.traceback_->subject_begin_) << 4)
+		| rev << 6);
+}
+
 struct DAA_output
 {
 
 	DAA_output():
-		f_ (program_options::daa_file),
+		f_ (config.daa_file, false),
 		h2_ (ref_header.sequences,
-				program_options::db_size == 0 ? ref_header.letters : program_options::db_size,
-				program_options::gap_open,
-				program_options::gap_extend,
-				program_options::reward,
-				program_options::penalty,
-				score_matrix::get().k(),
-				score_matrix::get().lambda(),
-				program_options::matrix,
-				(Align_mode)program_options::command)
+			config.db_size == 0 ? ref_header.letters : config.db_size,
+			config.gap_open,
+			config.gap_extend,
+			config.reward,
+			config.penalty,
+				score_matrix.k(),
+				score_matrix.lambda(),
+			config.matrix,
+				get_align_mode())
 	{
 		DAA_header1 h1;
 		f_.write(&h1, 1);
@@ -63,14 +93,13 @@ struct DAA_output
 		f_.write(&h2_, 1);
 	}
 
-	template<typename _val>
-	static void write_query_record(Text_buffer &buf, const sequence<const char> &query_name, const sequence<const _val> &query)
+	static void write_query_record(Text_buffer &buf, const sequence &query_name, const sequence &query)
 	{
 		buf.write((uint32_t)0);
-		uint32_t l = query.length();
+		uint32_t l = (uint32_t)query.length();
 		buf.write(l);
 		buf.write_c_str(query_name.c_str(), find_first_of(query_name.c_str(), Const::id_delimiters));
-		Packed_sequence s (query);
+		Packed_sequence s (query, input_sequence_type());
 		uint8_t flags = s.has_n() ? 1 : 0;
 		buf.write(flags);
 		buf << s.data();
@@ -85,21 +114,20 @@ struct DAA_output
 		buf << r.transcript.data();
 	}
 
-	template<typename _val>
 	static void write_record(Text_buffer &buf,
-			const Segment<_val> &match,
+			const Segment &match,
 			size_t query_source_len,
-			const sequence<const _val> &query,
+			const sequence &query,
 			unsigned query_id,
 			const vector<char> &transcript_buf)
 	{
-		buf.write(ref_map.get<_val>(current_ref_block, match.subject_id_));
+		buf.write(ref_map.get(current_ref_block, match.subject_id_));
 		buf.write(get_segment_flag(match));
 		buf.write_packed(match.score_);
 		buf.write_packed(match.traceback_->query_begin_);
 		buf.write_packed(match.traceback_->subject_begin_);
-		const unsigned qbegin = query_translated_begin<_val>(match.traceback_->query_begin_, match.frame_, query_source_len, query_translated());
-		print_packed(match.traceback_->transcript_right_, match.traceback_->transcript_left_, transcript_buf, buf, query, ref_seqs<_val>::get()[match.subject_id_], qbegin, match.traceback_->subject_begin_);
+		const unsigned qbegin = query_translated_begin(match.traceback_->query_begin_, match.frame_, (unsigned)query_source_len, query_translated());
+		print_packed(match.traceback_->transcript_right_, match.traceback_->transcript_left_, transcript_buf, buf, query, ref_seqs::get()[match.subject_id_], qbegin, match.traceback_->subject_begin_);
 	}
 
 	void finish()
@@ -111,16 +139,16 @@ struct DAA_output
 		h2_.query_records = statistics.get(Statistics::ALIGNED);
 
 		size_t s = 0;
-		for(ptr_vector<string>::const_iterator i = ref_map.name_.begin(); i != ref_map.name_.end(); ++i) {
-			f_.write_c_str(*i);
-			s += i->length()+1;
+		for(Ptr_vector<string>::const_iterator i = ref_map.name_.begin(); i != ref_map.name_.end(); ++i) {
+			f_.write_c_str((*i)->c_str());
+			s += (*i)->length()+1;
 		}
 		h2_.block_size[1] = s;
 
 		f_.write(ref_map.len_, false);
 		h2_.block_size[2] = ref_map.len_.size() * sizeof(uint32_t);
 
-		f_.seek(sizeof(DAA_header1));
+		f_.seekp(sizeof(DAA_header1));
 		f_.write(&h2_, 1);
 
 		f_.close();

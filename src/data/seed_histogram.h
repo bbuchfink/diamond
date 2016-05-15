@@ -21,6 +21,7 @@ Author: Benjamin Buchfink
 #ifndef SEED_HISTOGRAM_H_
 #define SEED_HISTOGRAM_H_
 
+#include <limits>
 #include "../basic/seed.h"
 #include "sequence_set.h"
 #include "../basic/shape_config.h"
@@ -28,7 +29,7 @@ Author: Benjamin Buchfink
 
 using std::vector;
 
-void encode_zero_rle(const int32_t *data, size_t len, Output_stream &out)
+inline void encode_zero_rle(const int32_t *data, size_t len, Output_stream &out)
 {
 	const int32_t *p = data, *end = data + len;
 	int32_t n = 0;
@@ -48,7 +49,7 @@ void encode_zero_rle(const int32_t *data, size_t len, Output_stream &out)
 	}
 }
 
-void decode_zero_rle(int32_t *data, size_t len, Input_stream &in)
+inline void decode_zero_rle(int32_t *data, size_t len, Input_stream &in)
 {
 	size_t n = 0;
 	while(n < len) {
@@ -90,9 +91,11 @@ struct seedp_range
 	{ return i < end_; }
 private:
 	unsigned begin_, end_;
-} current_range;
+};
 
-size_t partition_size(const shape_histogram &hst, unsigned p)
+extern seedp_range current_range;
+
+inline size_t partition_size(const shape_histogram &hst, unsigned p)
 {
 	size_t s (0);
 	for(unsigned i=0;i<Const::seqp;++i)
@@ -100,7 +103,7 @@ size_t partition_size(const shape_histogram &hst, unsigned p)
 	return s;
 }
 
-size_t hst_size(const shape_histogram &hst, const seedp_range &range)
+inline size_t hst_size(const shape_histogram &hst, const seedp_range &range)
 {
 	size_t s (0);
 	for(unsigned i=range.begin();i<range.end();++i)
@@ -114,24 +117,23 @@ struct seed_histogram
 	seed_histogram()
 	{ }
 
-	template<typename _val>
-	seed_histogram(const Sequence_set<_val> &seqs, const _val&)
+	seed_histogram(const Sequence_set &seqs)
 	{
 		memset(data_, 0, sizeof(data_));
-		Build_context<_val> context (seqs, *this);
-		launch_scheduled_thread_pool(context, Const::seqp, program_options::threads());
+		Build_context context (seqs, *this);
+		launch_scheduled_thread_pool(context, Const::seqp, config.threads_);
 	}
 
 	const shape_histogram& get(unsigned index_mode, unsigned sid) const
-	{ return data_[index_mode-1][sid]; }
+	{ return data_[index_mode][sid]; }
 
 	size_t max_chunk_size() const
 	{
 		size_t max (0);
-		::partition p (Const::seedp, program_options::lowmem);
-		for(unsigned shape=0;shape < shape_config::get().count();++shape)
+		::partition<unsigned> p (Const::seedp, config.lowmem);
+		for(unsigned shape=0;shape < shapes.count();++shape)
 			for(unsigned chunk=0;chunk < p.parts; ++chunk)
-				max = std::max(max, hst_size(data_[program_options::index_mode-1][shape], seedp_range(p.getMin(chunk), p.getMax(chunk))));
+				max = std::max(max, hst_size(data_[config.index_mode][shape], seedp_range(p.getMin(chunk), p.getMax(chunk))));
 		return max;
 	}
 
@@ -147,25 +149,23 @@ struct seed_histogram
 
 private:
 
-	template<typename _val>
 	struct Build_context
 	{
-		Build_context(const Sequence_set<_val> &seqs, seed_histogram &hst):
+		Build_context(const Sequence_set &seqs, seed_histogram &hst):
 			seqs (seqs),
-			cfgs (shape_configs<_val>()),
+			cfgs (shape_configs()),
 			seq_partition (seqs.partition()),
 			hst (hst)
 		{ }
 		void operator()(unsigned thread_id, unsigned seqp) const
 		{ hst.build_seq_partition(seqs, seqp, seq_partition[seqp], seq_partition[seqp+1], cfgs); }
-		const Sequence_set<_val> &seqs;
+		const Sequence_set &seqs;
 		const vector<shape_config> cfgs;
 		const vector<size_t> seq_partition;
 		seed_histogram &hst;
 	};
 
-	template<typename _val>
-	void build_seq_partition(const Sequence_set<_val> &seqs,
+	void build_seq_partition(const Sequence_set &seqs,
 			const unsigned seqp,
 			const size_t begin,
 			const size_t end,
@@ -176,7 +176,7 @@ private:
 		for(size_t i=begin;i<end;++i) {
 
 			assert(i < seqs.get_length());
-			const sequence<const _val> seq = seqs[i];
+			const sequence seq = seqs[i];
 			if(seq.length() < Const::min_shape_len) continue;
 			for(unsigned j=0;j<seq.length()+1-Const::min_shape_len; ++j)
 				for(vector<shape_config>::const_iterator cfg = cfgs.begin(); cfg != cfgs.end(); ++cfg) {
@@ -190,15 +190,14 @@ private:
 		}
 	}
 
-	template<typename _val>
 	static vector<shape_config> shape_configs()
 	{
 		vector<shape_config> v;
-		if(program_options::command == program_options::makedb) {
-			for(unsigned i=1;i<=Const::index_modes;++i)
-				v.push_back(shape_config (i, _val()));
+		if(config.command == Config::makedb) {
+			for(unsigned i=0;i<Const::index_modes;++i)
+				v.push_back(shape_config (i, Const::max_shapes));
 		} else
-			v.push_back(shape_config (program_options::index_mode, _val()));
+			v.push_back(shape_config (config.index_mode, Const::max_shapes));
 		return v;
 	}
 

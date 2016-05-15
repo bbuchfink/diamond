@@ -34,19 +34,25 @@ Author: Benjamin Buchfink
 #endif
 
 #include <vector>
-#include <boost/thread.hpp>
+#include <algorithm>
+#include <sstream>
+#include <iostream>
+#include <string.h>
 #include <sys/stat.h>
 #include "../basic/const.h"
 #include "../basic/seed.h"
+#include "../basic/value.h"
+#include "../basic/packed_loc.h"
 
 using std::vector;
 
+template<typename _t=size_t>
 struct partition
 {
-	size_t items, parts, size, remainder;
+	_t items, parts, size, remainder;
 	partition() : items(0), parts(0), size(0), remainder(0)
 	{ }
-	partition(size_t items, size_t parts) : items(items), parts(std::min(parts, items))
+	partition(_t items, _t parts) : items(items), parts(std::min(parts, items))
 	{
 		if(this->parts > 0) {
 			size = items / this->parts;
@@ -56,36 +62,35 @@ struct partition
 			remainder = 0;
 		}
 	}
-	size_t getMin(size_t i) const
-	{ size_t b = std::min(i, remainder); return b*(size+1) + (i-b)*size; }
-	size_t getMax(size_t i) const
+	_t getMin(_t i) const
+	{ _t b = std::min(i, remainder); return b*(size+1) + (i-b)*size; }
+	_t getMax(_t i) const
 	{ return getMin(i) + getCount(i); }
-	size_t getCount(size_t i) const
+	_t getCount(_t i) const
 	{ return i < remainder ? (size + 1) : size; }
 };
 
-template<typename _val> _val set_critical(_val v)
+inline Letter set_critical(Letter v)
 {
 	return static_cast<unsigned>(v) | 0x80;
 }
 
-template<typename _val> _val mask_critical(_val v)
+inline Letter mask_critical(Letter v)
 {
 	return static_cast<unsigned>(v) & 0x7F;
 }
 
-template<typename _val> bool get_critical(_val v)
+inline bool get_critical(Letter v)
 {
 	return (static_cast<unsigned>(v) & 0x80) != 0;
 }
 
-unsigned filter_treshold(unsigned n)
+inline unsigned filter_treshold(unsigned n)
 {
-	return program_options::hit_cap * 256 / n;
+	return config.hit_cap * 256 / n;
 }
 
-template<typename _loc>
-bool position_filter(_loc l, unsigned treshold, seed s)
+inline bool position_filter(Loc l, unsigned treshold, Packed_seed s)
 {
 	return ((l ^ s) & 0xff) < treshold;
 }
@@ -106,14 +111,14 @@ struct interval
 	{ return intersect(*this, rhs).length(); }
 	bool includes(size_t p) const
 	{ return p >= begin_ && p < end_; }
-	friend interval intersect(const interval &lhs, const interval &rhs)
+	friend inline interval intersect(const interval &lhs, const interval &rhs)
 	{ return interval (std::max(lhs.begin_, rhs.begin_), std::min(lhs.end_, rhs.end_)); }
 	friend std::ostream& operator<<(std::ostream &os, const interval &x)
 	{ os << "[" << x.begin_ << ";" << x.end_ << "]"; return os; }
 	size_t begin_, end_;
 };
 
-void print(const __m128i &x)
+inline void print(const __m128i &x)
 {
 	char *p=(char*)&x;
 	for(unsigned i=0;i<16;++i)
@@ -122,10 +127,10 @@ void print(const __m128i &x)
 }
 
 template<typename _it, typename _key>
-vector<size_t> map_partition(_it begin, _it end, const _key& key, size_t min_size, size_t max_segments, size_t min_segments)
+inline vector<size_t> map_partition(_it begin, _it end, const _key& key, size_t min_size, size_t max_segments, size_t min_segments)
 {
 	const size_t n = end - begin;
-	const ::partition p (n, std::max(min_segments, std::min(max_segments, n/min_size)));
+	const ::partition<size_t> p (n, std::max(min_segments, std::min(max_segments, n/min_size)));
 	vector<size_t> v (p.parts+1);
 	v[0] = p.getMin(0);
 	v[p.parts] = p.getMax(p.parts-1);
@@ -143,15 +148,15 @@ vector<size_t> map_partition(_it begin, _it end, const _key& key, size_t min_siz
 }
 
 template<typename _t>
-_t div_up(_t x, _t m)
+inline _t div_up(_t x, _t m)
 { return (x + (m-1)) / m; }
 
 template<typename _t>
-_t round_up(_t x, _t m)
+inline _t round_up(_t x, _t m)
 { return div_up(x, m) * m; }
 
 template<typename _val, typename _dir>
-void print_seq(const _val* s, const _dir& d)
+inline void print_seq(const _val* s, const _dir& d)
 {
 	unsigned i=0;
 	while(get_dir(s,i,d) != 0xff) {
@@ -160,10 +165,16 @@ void print_seq(const _val* s, const _dir& d)
 	}
 }
 
+#ifdef _MSC_VER
+#define TLS_PTR __declspec(thread)
+#else
+#define TLS_PTR __thread
+#endif
+
 template<typename _t>
 struct Tls
 {
-	Tls(boost::thread_specific_ptr<_t> &ptr):
+	Tls(_t *&ptr):
 		ptr_ (init(ptr))
 	{ }
 	_t& operator*() const
@@ -171,17 +182,24 @@ struct Tls
 	_t* operator->() const
 	{ return ptr_; }
 private:
-	static _t* init(boost::thread_specific_ptr<_t> &ptr)
+	static _t* init(_t *&ptr)
 	{
-		_t* p = ptr.get();
-		if(p == 0)
-			ptr.reset(p = new _t);
-		return p;
+		if (ptr == 0)
+			ptr = new _t;
+		return ptr;
 	}
 	_t *const ptr_;
 };
 
-vector<string> tokenize(const char *str, const char *delimiters)
+template<typename _t>
+_t& get_tls(_t *&ptr)
+{
+	if (ptr == 0)
+		ptr = new _t;
+	return *ptr;
+}
+
+inline vector<string> tokenize(const char *str, const char *delimiters)
 {
 	vector<string> out;
 	while(*str != 0) {
@@ -213,7 +231,7 @@ struct Pair
 	_t2 second;
 };
 
-size_t find_first_of(const char *s, const char *delimiters)
+inline size_t find_first_of(const char *s, const char *delimiters)
 {
 	const char *t = s;
 	while(*t && strchr(delimiters, *t) == 0)
@@ -221,25 +239,25 @@ size_t find_first_of(const char *s, const char *delimiters)
 	return t-s;
 }
 
-size_t print_str(char* buf, const char *s, size_t n)
+inline size_t print_str(char* buf, const char *s, size_t n)
 {
 	memcpy(buf, s, n);
 	*(buf+n) = 0;
 	return n;
 }
 
-size_t print_str(char *buf, const char *s, const char *delimiters)
+inline size_t print_str(char *buf, const char *s, const char *delimiters)
 { return print_str(buf, s, find_first_of(s, delimiters)); }
 
-string* get_str(const char *s, const char *delimiters)
+inline string* get_str(const char *s, const char *delimiters)
 {
 	return new string (s, find_first_of(s, delimiters));
 }
 
-__m128i _mm_set(int a)
+inline __m128i _mm_set(int a)
 {
 	int y = a << 8 | a;
-	__m128i z;
+	__m128i z = __m128i();
 	z = _mm_insert_epi16 (z, y, 0);
 	z = _mm_insert_epi16 (z, y, 1);
 	z = _mm_insert_epi16 (z, y, 2);
@@ -260,24 +278,30 @@ private:
 	_t data_[d1][d2];
 };
 
-void auto_append_extension(string &str, const char *ext)
+inline void auto_append_extension(string &str, const char *ext)
 {
 	size_t l = strlen(ext);
 	if(str.length() < l || (str.length() >= l && str.substr(str.length()-l, string::npos) != ext))
 		str += ext;
 }
 
-bool check_dir(const string &path)
+inline bool check_dir(const string &path)
 {
+#ifndef _MSC_VER
 	struct stat sb;
 	return stat(path.c_str(), &sb) == 0 && S_ISDIR(sb.st_mode);
+#else
+	return true;
+#endif
 }
 
-string to_string(unsigned val)
+inline string to_string(unsigned val)
 {
 	std::stringstream ss;
 	ss << val;
 	return ss.str();
 }
+
+string extract_dir(const string &s);
 
 #endif /* UTIL_H_ */

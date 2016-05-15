@@ -20,54 +20,54 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #ifndef FREQUENCY_MASKING_H_
 #define FREQUENCY_MASKING_H_
 
+#include <algorithm>
 #include <vector>
+#include "../basic/value.h"
 
 using std::vector;
 using std::auto_ptr;
 
-template<typename _val>
-struct Masked_sequence_set : public Sequence_set<_val>
+struct Masked_sequence_set : public Sequence_set
 {
 
 	Masked_sequence_set(Input_stream &file):
-			Sequence_set<_val> (file)
+			Sequence_set (file)
 	{ }
 
-	template<typename _loc>
-	void build_masking(unsigned sid, const seedp_range &range, typename sorted_list<_loc>::Type &idx)
+	void build_masking(unsigned sid, const seedp_range &range, sorted_list &idx)
 	{
-		task_timer timer ("Counting low complexity seeds", false);
+		task_timer timer ("Counting low complexity seeds", 3);
 		vector<unsigned> counts (Const::seedp);
-		Count_context<_loc> count_context (idx, counts);
-		launch_scheduled_thread_pool(count_context, Const::seedp, program_options::threads());
+		Count_context count_context (idx, counts);
+		launch_scheduled_thread_pool(count_context, Const::seedp, config.threads_);
 
 		timer.finish();
 		size_t n = 0;
-		for(unsigned i=range.begin();i<range.end();++i) {
+		for(size_t i=range.begin();i<range.end();++i) {
 			n += counts[i];
 			const size_t ht_size (std::max(static_cast<size_t>(static_cast<float>(counts[i]) * 1.3), static_cast<size_t>(counts[i] + 1)));
 			pos_filters[sid][i] = auto_ptr<filter_table> (new filter_table(ht_size));
 		}
-		log_stream << "Hit cap = " << program_options::hit_cap << std::endl;
+		log_stream << "Hit cap = " << config.hit_cap << std::endl;
 		log_stream << "Low complexity seeds = " << n << std::endl;
 
 		timer.go("Building position filter");
-		Build_context<_loc> build_context(idx, sid, counts, *this);
-		launch_scheduled_thread_pool(build_context, Const::seedp, program_options::threads());
+		Build_context build_context(idx, sid, counts, *this);
+		launch_scheduled_thread_pool(build_context, Const::seedp, config.threads_);
 		timer.finish();
 		log_stream << "Masked positions = " << std::accumulate(counts.begin(), counts.end(), 0) << std::endl;
 	}
 
-	bool get_masking(const _val *pos, unsigned sid) const
+	bool get_masking(const Letter *pos, unsigned sid) const
 	{
-		uint64_t seed;
-		shape_config::get().get_shape(sid).set_seed(seed, pos);
+		Packed_seed seed;
+		shapes.get_shape(sid).set_seed(seed, pos);
 		const filter_table::entry *e;
 		if((e = pos_filters[sid][seed_partition(seed)]->operator [](seed_partition_offset(seed))) != 0) {
 			const size_t offset (pos - this->data(0));
 			return !position_filter(offset, e->value, seed_partition_offset(seed));
-		} else
-			return false;
+		}
+		return false;
 	}
 
 	virtual ~Masked_sequence_set()
@@ -75,32 +75,30 @@ struct Masked_sequence_set : public Sequence_set<_val>
 
 private:
 
-	template<typename _loc>
 	struct Count_context
 	{
-		Count_context(const typename sorted_list<_loc>::Type &idx, vector<unsigned> &counts):
+		Count_context(const sorted_list &idx, vector<unsigned> &counts):
 			idx (idx),
 			counts (counts)
 		{ }
 		void operator()(unsigned thread_id, unsigned seedp) const
 		{
 			unsigned n = 0;
-			typename sorted_list<_loc>::Type::const_iterator i = idx.get_partition_cbegin(seedp);
+			sorted_list::const_iterator i = idx.get_partition_cbegin(seedp);
 			while(!i.at_end()) {
-				if(i.n > program_options::hit_cap)
+				if(i.n > config.hit_cap)
 					++n;
 				++i;
 			}
 			counts[seedp] = n;
 		}
-		const typename sorted_list<_loc>::Type &idx;
+		const sorted_list &idx;
 		vector<unsigned> &counts;
 	};
 
-	template<typename _loc>
 	struct Build_context
 	{
-		Build_context(const typename sorted_list<_loc>::Type &idx, unsigned sid, vector<unsigned> &counts, Masked_sequence_set<_val> &seqs):
+		Build_context(const sorted_list &idx, unsigned sid, vector<unsigned> &counts, Masked_sequence_set &seqs):
 			idx (idx),
 			sid (sid),
 			counts (counts),
@@ -109,28 +107,27 @@ private:
 		void operator()(unsigned thread_id, unsigned seedp)
 		{
 			unsigned n = 0;
-			typename sorted_list<_loc>::Type::iterator i = idx.get_partition_begin(seedp);
+			sorted_list::iterator i = idx.get_partition_begin(seedp);
 			while(!i.at_end()) {
-				if(i.n > program_options::hit_cap)
-					n += seqs.mask_seed_pos<_loc>(i, sid, seedp);
+				if(i.n > config.hit_cap)
+					n += seqs.mask_seed_pos(i, sid, seedp);
 				++i;
 			}
 			counts[seedp] = n;
 		}
-		const typename sorted_list<_loc>::Type &idx;
+		const sorted_list &idx;
 		const unsigned sid;
 		vector<unsigned> &counts;
-		Masked_sequence_set<_val> &seqs;
+		Masked_sequence_set &seqs;
 	};
 
-	template<typename _loc>
-	unsigned mask_seed_pos(typename sorted_list<_loc>::Type::iterator &i, unsigned sid, unsigned p)
+	unsigned mask_seed_pos(sorted_list::iterator &i, unsigned sid, unsigned p)
 	{
-		const unsigned treshold (filter_treshold(i.n));
+		const unsigned treshold (filter_treshold((unsigned)i.n));
 		unsigned count (0), k (0);
 		for(unsigned j=0;j<i.n;++j)
 			if(!position_filter(i[j], treshold, i.key())) {
-				mask_seed_pos<_loc>(i[j]);
+				mask_seed_pos(i[j]);
 				++count;
 			} else
 				*(i.get(k++)) = *(i.get(j));
@@ -139,10 +136,9 @@ private:
 		return count;
 	}
 
-	template<typename _loc>
-	void mask_seed_pos(_loc pos)
+	void mask_seed_pos(Loc pos)
 	{
-		_val *x = this->data(pos);
+		Letter *x = this->data(pos);
 		*x = set_critical(*x);
 	}
 

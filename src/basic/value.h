@@ -21,118 +21,99 @@ Author: Benjamin Buchfink
 #ifndef VALUE_H_
 #define VALUE_H_
 
-#include "value_type.h"
+#include <assert.h>
+#include <string.h>
 #include "const.h"
+#include "config.h"
 
+typedef char Letter;
 typedef enum { amino_acid=0, nucleotide=1 } Sequence_type;
+struct Amino_acid {};
+struct Nucleotide {};
 
-template<typename _val>
-Sequence_type sequence_type(const _val&)
-{ return amino_acid; }
+inline Sequence_type input_sequence_type()
+{ return config.command == Config::blastp ? amino_acid : nucleotide; }
 
-template<>
-Sequence_type sequence_type<Nucleotide>(const Nucleotide&)
-{ return nucleotide; }
-
-Sequence_type input_sequence_type()
-{ return program_options::command == program_options::blastp ? amino_acid : nucleotide; }
-
-Sequence_type sequence_type()
-{ return program_options::command == program_options::blastn ? nucleotide : amino_acid; }
-
-size_t query_contexts()
+inline Sequence_type sequence_type()
+//{ return config.command == Config::blastn ? nucleotide : amino_acid; }
 {
-	switch(program_options::command) {
-	case program_options::blastn: return 2;
-	case program_options::blastx: return 6;
+	return amino_acid;
+}
+
+inline unsigned query_contexts()
+{
+	switch(config.command) {
+	//case program_options::blastn: return 2;
+	case Config::blastx: return 6;
 	default: return 1;
 	}
 }
 
-bool query_translated()
-{ return program_options::command == program_options::blastx ? true : false; }
+inline bool query_translated()
+{ return config.command == Config::blastx ? true : false; }
 
-int query_len_factor()
-{ return program_options::command == program_options::blastx ? 3 : 1; }
+inline int query_len_factor()
+{ return config.command == Config::blastx ? 3 : 1; }
 
-template<typename _val>
+struct invalid_sequence_char_exception : public std::exception
+{
+	const std::string msg;
+	invalid_sequence_char_exception(char ch) :
+		msg(std::string("Invalid character (") + ch + ") in sequence")
+	{ }
+	~invalid_sequence_char_exception() throw()
+	{ }
+	virtual const char* what() const throw()
+	{
+		return msg.c_str();
+	}
+};
+
 struct Char_representation
 {
 	Char_representation(unsigned size, const char *chars, char mask, const char *mask_chars)
 	{
 		memset(data_, invalid, sizeof(data_));
-		for(unsigned i=0;i<size;++i) {
+		for (unsigned i = 0; i<size; ++i) {
 			assert(chars[i] != (char)invalid);
 			data_[(long)chars[i]] = i;
 			data_[(long)tolower(chars[i])] = i;
 		}
-		while(*mask_chars != 0) {
+		while (*mask_chars != 0) {
 			const char ch = *mask_chars;
 			data_[(long)ch] = mask;
 			data_[(long)tolower(ch)] = mask;
 			++mask_chars;
 		}
 	}
-	_val operator()(char c) const
+	Letter operator()(char c) const
 	{
-		if(data_[(long)c] == invalid)
-			throw invalid_sequence_char_exception (c);
+		if (data_[(long)c] == invalid)
+			throw invalid_sequence_char_exception(c);
 		return data_[(long)c];
 	}
 private:
-	static const _val invalid;
-	_val data_[256];
+	static const char invalid;
+	Letter data_[256];
 };
 
-template<> const Amino_acid Char_representation<Amino_acid>::invalid = 0xff;
-template<> const Nucleotide Char_representation<Nucleotide>::invalid = 0xff;
-
-template<typename _val>
 struct Value_traits
-{ };
-
-template<>
-struct Value_traits<Amino_acid>
 {
-	enum { ALPHABET_SIZE = 25 };
-	static const Amino_acid				MASK_CHAR;
-	static const char*					ALPHABET;
-	static const Char_representation<Amino_acid>	from_char;
+	Value_traits(const char *alphabet, Letter mask_char, const char *ignore);	
+	const char *alphabet;
+	unsigned alphabet_size;
+	Letter mask_char;
+	Char_representation from_char;
 };
 
-const Amino_acid					Value_traits<Amino_acid>::MASK_CHAR = 23;
-const char* Value_traits<Amino_acid>::ALPHABET = "ARNDCQEGHILKMFPSTWYVBJZX*";
-const Char_representation<Amino_acid> Value_traits<Amino_acid>::from_char (Value_traits<Amino_acid>::ALPHABET_SIZE, Value_traits<Amino_acid>::ALPHABET, Value_traits<Amino_acid>::MASK_CHAR, "UO-");
+extern const Value_traits amino_acid_traits;
+extern const Value_traits nucleotide_traits;
+extern Value_traits value_traits;
+extern Value_traits input_value_traits;
 
-template<>
-struct Value_traits<const Amino_acid> : public Value_traits<Amino_acid>
-{ };
-
-template<>
-struct Value_traits<Nucleotide>
+inline char to_char(Letter a)
 {
-	enum { ALPHABET_SIZE = 5 };
-	static const Nucleotide				MASK_CHAR;
-	static const char*					ALPHABET;
-	static const Char_representation<Nucleotide>	from_char;
-};
-
-const Nucleotide Value_traits<Nucleotide>::MASK_CHAR = 4;
-const char* Value_traits<Nucleotide>::ALPHABET = "ACGTN";
-const Char_representation<Nucleotide> Value_traits<Nucleotide>::from_char (Value_traits<Nucleotide>::ALPHABET_SIZE, Value_traits<Nucleotide>::ALPHABET, Value_traits<Nucleotide>::MASK_CHAR, "MRWSYKVHDBX");
-
-template<>
-struct Value_traits<const Nucleotide> : public Value_traits<Nucleotide>
-{ };
-
-char to_char(Amino_acid a)
-{ return Value_traits<Amino_acid>::ALPHABET[a]; }
-
-template<>
-struct Value_traits<char>
-{
-	static char from_char(char c)
-	{ return c; }
-};
+	return value_traits.alphabet[(long)a];
+}
 
 #endif /* VALUE_H_ */

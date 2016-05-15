@@ -38,8 +38,9 @@ freely, subject to the following restrictions:
 
 // Check if we can support the assembly language level implementation (otherwise
 // revert to the system API)
+//  || defined(_M_X64)
 #if (defined(__GNUC__) && (defined(__i386__) || defined(__x86_64__))) || \
-    (defined(_MSC_VER) && (defined(_M_IX86) || defined(_M_X64))) || \
+    (defined(_MSC_VER) && (defined(_M_IX86))) || \
     (defined(__GNUC__) && (defined(__ppc__)))
   #define _FAST_MUTEX_ASM_
 #else
@@ -51,6 +52,7 @@ freely, subject to the following restrictions:
     #define WIN32_LEAN_AND_MEAN
     #define __UNDEF_LEAN_AND_MEAN
   #endif
+#define NOMINMAX
   #include <windows.h>
   #ifdef __UNDEF_LEAN_AND_MEAN
     #undef WIN32_LEAN_AND_MEAN

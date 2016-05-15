@@ -21,6 +21,14 @@ Author: Benjamin Buchfink
 #ifndef HASH_TABLE_H_
 #define HASH_TABLE_H_
 
+struct hash_table_overflow_exception : public std::exception
+{
+	virtual const char* what() const throw()
+	{
+		return "Hash table overflow";
+	}
+};
+
 template<typename T, T value> struct value_compare
 {
 	bool operator()(T x) const
@@ -36,7 +44,7 @@ public:
 	{
 		_K	key;
 		_V	value;
-	} __attribute__((packed));
+	}; // __attribute__((packed));
 
 	hash_table(size_t size):
 		table (new entry[size]),
@@ -98,5 +106,6 @@ private:
 	size_t	 size_;
 
 };
+
 
 #endif /* HASH_TABLE_H_ */

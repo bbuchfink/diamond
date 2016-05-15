@@ -1,6 +1,13 @@
+[0.8.0]
+- fixed a bug that would sometimes cause alignments to be missed
+- fixed a bug that would cause alignments on the reverse strand to be missed in blastx mode
+- temporary directory now defaults to output directory
+- removed dependency on Boost
+- fixed a bug that would cause stop codons to be translated into 'X'
+
 [0.7.12]
 - fixed header string in SAM output to correctly identify the blastp alignment mode
-- added option to filter aligments for a given query cover (option --query-cover)
+- added option to filter alignments for a given query cover (option --query-cover)
 - added option to print full subject titles in output files (option --salltitles)
 
 [0.7.11]
@@ -33,7 +40,7 @@
 - fixed a compiler error for Clang
 - compiles on OS X
 - fixed a bug that would not produce the correct sort order for HSPs with e-value 0
-- option --run-len defaults to 1 for sequences shorther than 30 letters
+- option --run-len defaults to 1 for sequences shorter than 30 letters
 
 [0.7.4]
 - removed OpenMP dependency

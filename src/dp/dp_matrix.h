@@ -22,11 +22,9 @@ Author: Benjamin Buchfink
 #define DP_MATRIX_H_
 
 #include <vector>
-#include <boost/thread/tss.hpp>
 #include "score_vector.h"
 
 using std::vector;
-using boost::thread_specific_ptr;
 
 template<typename _score>
 void array_clear(score_vector<_score> *v, unsigned n)
@@ -72,8 +70,8 @@ struct DP_matrix
 		rows_ (rows),
 		band_ (band),
 		padding_ (padding),
-		scores_ (&s2),
-		hgap_ (&h2)
+		scores_ (scores_ptr),
+		hgap_ (hgap_ptr)
 	{
 		scores_->resize(2*band+1);
 		hgap_->resize(2*band+2);
@@ -136,18 +134,16 @@ struct DP_matrix
 
 private:
 
-	static thread_specific_ptr<vector<sv> > scores_ptr;
-	static thread_specific_ptr<vector<sv> > hgap_ptr;
+	static TLS_PTR vector<sv> *scores_ptr;
+	static TLS_PTR vector<sv> *hgap_ptr;
 
 	const unsigned rows_, band_, padding_;
 	sv *hgap_front_, *score_front_;
-	//Tls<vector<sv> > scores_, hgap_;
-	vector<sv>* scores_, *hgap_;
-	vector<sv> s2,h2;
+	Tls<vector<sv> > scores_, hgap_;
 
 };
 
-template<typename _score> thread_specific_ptr<vector<score_vector<_score> > > DP_matrix<_score>::scores_ptr;
-template<typename _score> thread_specific_ptr<vector<score_vector<_score> > > DP_matrix<_score>::hgap_ptr;
+template<typename _score> TLS_PTR vector<score_vector<_score> >* DP_matrix<_score>::scores_ptr;
+template<typename _score> TLS_PTR vector<score_vector<_score> >* DP_matrix<_score>::hgap_ptr;
 
 #endif /* DP_MATRIX_H_ */

@@ -21,14 +21,16 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #define PACKED_SEQUENCE_H_
 
 #include <vector>
+#include "value.h"
 #include "../util/binary_buffer.h"
+#include "sequence.h"
 
 using std::vector;
 
-bool has_n(const sequence<const Nucleotide> &seq)
+inline bool has_n(const sequence &seq)
 {
 	for(unsigned i=0;i<seq.length();++i)
-		if(seq[i] == Value_traits<Nucleotide>::MASK_CHAR)
+		if(seq[i] == 4)
 			return true;
 	return false;
 }
@@ -36,18 +38,20 @@ bool has_n(const sequence<const Nucleotide> &seq)
 struct Packed_sequence
 {
 
-	Packed_sequence(const sequence<const Nucleotide> &seq):
-		has_n_ (::has_n(seq))
+	Packed_sequence(const sequence &seq, Sequence_type type):
+		has_n_ (type == nucleotide ? ::has_n(seq) : false)
 	{
-		if(has_n_)
-			pack<Nucleotide,3>(seq);
-		else
-			pack<Nucleotide,2>(seq);
+		switch (type) {
+		case nucleotide:
+			if (has_n_)
+				pack<3>(seq);
+			else
+				pack<2>(seq);
+			break;
+		case amino_acid:
+			pack<5>(seq);
+		}
 	}
-
-	Packed_sequence(const sequence<const Amino_acid> &seq):
-		has_n_ (false)
-	{ pack<Amino_acid,5>(seq); }
 
 	Packed_sequence(Binary_buffer::Iterator &it, unsigned len, bool has_n, unsigned b):
 		has_n_ (has_n)
@@ -56,8 +60,7 @@ struct Packed_sequence
 		it.read(data_, l);
 	}
 
-	template<typename _val>
-	void unpack(vector<_val> &dst, unsigned b, unsigned len)
+	void unpack(vector<Letter> &dst, unsigned b, unsigned len)
 	{
 		dst.clear();
 		unsigned x = 0, n = 0, l = 0;
@@ -82,8 +85,8 @@ struct Packed_sequence
 
 private:
 
-	template<typename _val, unsigned _b>
-	void pack(const sequence<const _val> &seq)
+	template<unsigned _b>
+	void pack(const sequence &seq)
 	{
 		unsigned x = 0, n = 0;
 		for(unsigned i=0;i<seq.length();++i) {

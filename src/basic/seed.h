@@ -21,18 +21,19 @@ Author: Benjamin Buchfink
 #ifndef SEED_H_
 #define SEED_H_
 
+#include <stdint.h>
 #include "const.h"
 
-typedef uint64_t seed;
+typedef uint64_t Packed_seed;
 
-unsigned seed_partition(seed s)
+inline unsigned seed_partition(Packed_seed s)
 {
-	return s & (Const::seedp-1);
+	return (unsigned)(s & (Const::seedp-1));
 }
 
-unsigned seed_partition_offset(seed s)
+inline unsigned seed_partition_offset(Packed_seed s)
 {
-	return s >> Const::seedp_bits;
+	return (unsigned)(s >> Const::seedp_bits);
 }
 
 #endif /* SEED_H_ */

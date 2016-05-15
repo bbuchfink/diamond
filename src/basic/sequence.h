@@ -21,11 +21,11 @@ Author: Benjamin Buchfink
 #ifndef SEQUENCE_H_
 #define SEQUENCE_H_
 
+#include <iostream>
 #include "../basic/value.h"
 #include "../util/binary_buffer.h"
 #include "../util/text_buffer.h"
 
-template<typename _val>
 struct sequence
 {
 	sequence():
@@ -33,7 +33,7 @@ struct sequence
 		clipping_offset_ (0),
 		data_ (0)
 	{ }
-	sequence(_val *data, size_t len, int clipping_offset = 0):
+	sequence(const Letter *data, size_t len, int clipping_offset = 0):
 		len_ (len),
 		clipping_offset_ (clipping_offset),
 		data_ (data)
@@ -48,25 +48,21 @@ struct sequence
 	}
 	size_t aligned_clip(unsigned padding) const
 	{
-		return clipping_offset_ > padding ? clipping_offset_ - padding : 0;
+		return clipping_offset_ > (int)padding ? clipping_offset_ - padding : 0;
 	}
-	const _val* data() const
+	const Letter* data() const
 	{
 		return data_;
 	}
-	const _val* clipped_data() const
+	const Letter* clipped_data() const
 	{
 		return data_ + clipping_offset_;
 	}
-	const _val* aligned_data(unsigned padding) const
+	const Letter* aligned_data(unsigned padding) const
 	{
 		return data_ + padding;
 	}
-	const _val& operator [](size_t i) const
-	{
-		return data_[i];
-	}
-	_val& operator [](size_t i)
+	const Letter& operator [](size_t i) const
 	{
 		return data_[i];
 	}
@@ -83,13 +79,13 @@ struct sequence
 	friend std::ostream& operator<<(std::ostream &os, const sequence &s)
 	{
 		for(unsigned i=0;i<s.len_;++i)
-			os << Value_traits<_val>::ALPHABET[s.data_[i]];
+			os << value_traits.alphabet[(long)s.data_[i]];
 		return os;
 	}
 	friend Text_buffer& operator<<(Text_buffer &buf, const sequence &s)
 	{
 		for(unsigned i=0;i<s.len_;++i)
-			buf << Value_traits<_val>::ALPHABET[s.data_[i]];
+			buf << value_traits.alphabet[(long)s.data_[i]];
 		return buf;
 	}
 	/*friend std::ostream& operator<<(std::ostream &os, const sequence &s)
@@ -102,9 +98,9 @@ struct sequence
 		}
 		return os;
 	}*/
-	size_t	 len_;
-	int		 clipping_offset_;
-	_val	*data_;
+	size_t			len_;
+	int				clipping_offset_;
+	const Letter	*data_;
 };
 
 

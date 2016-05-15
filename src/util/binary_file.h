@@ -21,248 +21,211 @@ Author: Benjamin Buchfink
 #ifndef BINARY_FILE_H_
 #define BINARY_FILE_H_
 
+#include <memory>
+#include <vector>
+#include <string>
+#include <stdexcept>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <boost/iostreams/device/file_descriptor.hpp>
-#include <boost/iostreams/device/file.hpp>
-#include <boost/iostreams/filtering_stream.hpp>
-#include <boost/iostreams/filter/gzip.hpp>
-#include "../basic/exceptions.h"
-#include "temp_file.h"
-
-namespace io = boost::iostreams;
+#include <stdint.h>
+#include <stddef.h>
+#include <assert.h>
+#include "log_stream.h"
 
 using std::auto_ptr;
 using std::vector;
 using std::endl;
+using std::string;
+using std::runtime_error;
 
-struct File_read_exception : public diamond_exception
+struct File_read_exception : public std::runtime_error
 {
-	File_read_exception(const char* file_name, size_t count, ssize_t n):
-		diamond_exception (string("Error reading file ") + file_name + " (" + boost::lexical_cast<string>(count) + '/' + boost::lexical_cast<string>(n) + ')')
+	File_read_exception(const string &file_name) :
+		runtime_error(string("Error reading file ") + file_name)
 	{ }
 };
 
-struct File_write_exception : public diamond_exception
+struct File_write_exception : public std::runtime_error
 {
-	File_write_exception(const char* file_name, size_t count, ssize_t n):
-		diamond_exception (string("Error writing file ") + file_name + " (" + boost::lexical_cast<string>(count) + '/' + boost::lexical_cast<string>(n) + ')')
+	File_write_exception(const string &file_name) :
+		runtime_error(string("Error writing file ") + file_name + ". Disk full?")
 	{ }
 };
 
-struct Input_stream : public io::filtering_istream
+struct File_open_exception : public std::runtime_error
+{
+	File_open_exception(const string &file_name) :
+		std::runtime_error(string("Error opening file " + file_name))
+	{ }
+};
+
+struct Output_stream
 {
 
-	Input_stream(const string &file_name, bool gzipped = false):
-		file_name (file_name)
+	Output_stream()
+	{ }
+	Output_stream(const string &file_name, bool gzipped) :
+		file_name_(file_name),
+		f_(file_name.length() == 0 ? stdout : fopen(file_name.c_str(), "wb"))
 	{
-		if(gzipped) {
-			FILE *f = fopen(file_name.c_str(), "rb");
-			if(f == 0)
-				THROW_EXCEPTION(file_open_exception, file_name);
-			unsigned char id[2];
-			if(fread(id, 1, 2, f) != 2)
-				THROW_EXCEPTION(file_io_exception, file_name);
-			fclose(f);
-			if(id[0] == 0x1f && id[1] == 0x8b) {
-				log_stream << "Detected gzip compressed file " << file_name << endl;
-				this->push(io::gzip_decompressor ());
-			}
+		if (f_ == 0) throw File_open_exception(file_name_);
+	}
+	void close()
+	{
+		if (f_ && f_ != stdout) {
+			fclose(f_);
+			f_ = 0;
 		}
-		io::file_source f (file_name, std::ios_base::in | std::ios_base::binary);
-		if(!f.is_open())
-			THROW_EXCEPTION(file_open_exception, file_name);
-		this->push(f);
+	}
+	template<typename _t>
+	void write(const _t *ptr, size_t count)
+	{
+		size_t n;
+		if ((n = fwrite((const void*)ptr, sizeof(_t), count, f_)) != count)
+			throw File_write_exception(file_name_);
+	}
+	template<class _t>
+	void write(const vector<_t> &v, bool write_size = true)
+	{
+		size_t size = v.size();
+		if (write_size)
+			write(&size, 1);
+		write(v.data(), size);
+	}
+	void write_c_str(const string &s)
+	{
+		write(s.c_str(), s.length() + 1);
+	}
+	void seekp(size_t p)
+	{
+		if (fseek(f_, (long)p, SEEK_SET) != 0) throw File_write_exception(file_name_);
+	}
+	long tell()
+	{
+		long x;
+		if ((x = ftell(f_)) == -1L)
+			throw std::runtime_error("Error executing ftell on stream " + file_name_);
+		return x;
+	}
+protected:
+	string file_name_;
+	FILE *f_;
+	friend struct Input_stream;
+};
+
+struct Input_stream
+{
+
+	Input_stream(const string &file_name):
+		file_name (file_name),
+		f_(fopen(file_name.c_str(), "rb"))
+	{
+		if (f_ == 0)
+			throw File_open_exception(file_name);
 	}
 
-	Input_stream(const Temp_file &tmp_file)
+	Input_stream(const Output_stream &tmp_file):
+		file_name (tmp_file.file_name_),
+		f_(tmp_file.f_)
 	{
-		if(lseek(tmp_file.file_descriptor(), 0, SEEK_SET) == -1)
-			throw std::runtime_error("Error executing seek on temporary file.");
-		this->push(io::file_descriptor_source(tmp_file.file_descriptor(), io::close_handle));
+		rewind(f_);
 	}
 
 	void seek(size_t pos)
 	{
-		this->seekg(pos);
-		if(!this->good())
-			THROW_EXCEPTION(file_io_exception, file_name);
+		if (fseek(f_, (long)pos, SEEK_SET) != 0)
+			throw std::runtime_error("Error executing seek on file " + file_name);
 	}
 
 	void seek_forward(size_t n)
 	{
-		this->seekg(n, ios_base::cur);
-		if(!this->good())
-			THROW_EXCEPTION(file_io_exception, file_name);
+		if (fseek(f_, (long)n, SEEK_CUR) != 0)
+			throw std::runtime_error("Error executing seek on file " + file_name);
 	}
 
 	template<class _t>
 	size_t read(_t *ptr, size_t count)
 	{
-		ssize_t n;
-		if((n = io::read(*this, reinterpret_cast<char*>(ptr), sizeof(_t) * count)) != (ssize_t)(count * sizeof(_t))) {
-			if(n == EOF)
-				return 0;
-			else if(n >= 0 && this->get() == EOF && (n % sizeof(_t) == 0))
-				return n/sizeof(_t);
+		size_t n;
+		if ((n = fread(ptr, sizeof(_t), count, f_)) != count) {
+			if (feof(f_) != 0)
+				return n;
 			else
-				throw File_read_exception(file_name.c_str(), sizeof(_t) * count, n);
+				throw File_read_exception(file_name);
 		}
-		return n/sizeof(_t);
+		return n;
 	}
 
 	template<class _t>
 	void read(vector<_t> &v)
 	{
 		size_t size;
-		if(read(&size, 1) != 1)
-			THROW_EXCEPTION(file_io_exception, file_name);
+		if (read(&size, 1) != 1)
+			throw File_read_exception(file_name);
 		v.resize(size);
-		if(read(v.data(), size) != size)
-			THROW_EXCEPTION(file_io_exception, file_name);
+		if (read(v.data(), size) != size)
+			throw File_read_exception(file_name);
 	}
 
 	template<class _t>
 	void skip_vector()
 	{
 		size_t size;
-		if(read(&size, 1) != 1)
-			THROW_EXCEPTION(file_io_exception, file_name);
+		if (read(&size, 1) != 1)
+			throw File_read_exception(file_name);
 		seek_forward(size * sizeof(_t));
 	}
 
 	void read_c_str(string &s)
 	{
-		std::getline(*this, s, '\0');
-		if(!this->good())
-			THROW_EXCEPTION(file_io_exception, file_name);
+		int c;
+		s.clear();
+		while ((c = fgetc(f_)) != 0) {
+			if (c == EOF)
+				throw File_read_exception(file_name);
+			s += (char)c;
+		}
+	}
+
+	void close_and_delete()
+	{
+		close();
+#ifdef _MSC_VER
+		if (remove(file_name.c_str()) != 0)
+			std::cerr << "Warning: Failed to delete temporary file " << file_name << std::endl;
+#endif
 	}
 
 	void close()
 	{
-		this->set_auto_close(true);
-		this->pop();
+		if (f_) {
+			fclose(f_);
+			f_ = 0;
+		}
+	}
+
+	void putback(char c)
+	{
+		if (ungetc(c, f_) != (int)c)
+			throw File_read_exception(file_name);
 	}
 
 	const string file_name;
-
-};
-
-struct Output_stream2
-{
-	Output_stream2()
-	{ }
-	Output_stream2(const string &file_name):
-		file_name_ (file_name),
-		f_ (fopen(file_name.c_str(), "wb"))
-	{ if(f_ == 0) THROW_EXCEPTION(file_open_exception, file_name_); }
-	void close()
-	{ if(f_) fclose(f_); f_ = 0; }
-	~Output_stream2()
-	{ close(); }
-	template<typename _t>
-	void write(const _t *ptr, size_t count)
-	{
-		size_t n;
-		if((n=fwrite((const void*)ptr, sizeof(_t), count, f_)) != count)
-			throw File_write_exception (file_name_.c_str(), count, n);
-	}
-	template<class _t>
-	void write(const vector<_t> &v)
-	{
-		size_t size = v.size();
-		write(&size, 1);
-		write(v.data(), size);
-	}
-	void seekp(size_t p)
-	{ if(fseek(f_, p, SEEK_SET) != 0) throw File_write_exception (file_name_.c_str(), 0, 0); }
+	
 private:
-	const string file_name_;
 	FILE *f_;
-};
-
-struct Output_stream : public io::filtering_ostream
-{
-
-	enum Flags { file_sink, stdout_sink };
-
-	Output_stream()
-	{ }
-
-	Output_stream(const string &file_name, bool gzipped = false, Flags flags = file_sink):
-		file_name_ (file_name)
-	{
-		if(gzipped)
-			this->push(io::gzip_compressor ());
-		if(flags == file_sink) {
-			io::file_sink f (file_name, std::ios_base::out | std::ios_base::binary);
-			if(!f.is_open())
-				THROW_EXCEPTION(file_open_exception, file_name_);
-			this->push(f);
-		} else
-			this->push(std::cout);
-	}
-
-	Output_stream(const Temp_file &tmp_file)
-	{
-		this->push(io::file_descriptor_sink(tmp_file.file_descriptor(), io::never_close_handle));
-	}
-
-	template<typename _t>
-	void write(const _t *ptr, size_t count)
-	{
-		ssize_t n;
-		if((n = io::write(*this, reinterpret_cast<const char*>(ptr), sizeof(_t) * count)) != (ssize_t)(sizeof(_t) * count))
-			throw File_write_exception (file_name_.c_str(), sizeof(_t) * count, n);
-	}
-
-	void write_c_str(const string &s)
-	{ write(s.c_str(), s.length()+1); }
-
-	template<class _t>
-	void write(const vector<_t> &v, bool write_size = true)
-	{
-		size_t size = v.size();
-		if(write_size)
-			write(&size, 1);
-		write(v.data(), size);
-	}
-
-	size_t tell()
-	{
-		if(this->tellp() < 0)
-			throw std::runtime_error("Unable to execute tellp() on output stream.");
-		return this->tellp();
-	}
-
-	void seek(size_t pos)
-	{
-		this->seekp(pos);
-		if(!this->good())
-			throw std::runtime_error("Unable to execute seekp() on output stream.");
-	}
-
-	void close()
-	{
-		this->set_auto_close(true);
-		this->pop();
-	}
-
-private:
-
-	const string file_name_;
 
 };
 
 struct Buffered_file : public Input_stream
 {
 
-	Buffered_file(const string& file_name, bool gzipped=false):
-		Input_stream (file_name, gzipped)
+	Buffered_file(const string& file_name):
+		Input_stream (file_name)
 	{ init(); }
 
-	Buffered_file(const Temp_file &tmp_file):
+	Buffered_file(const Output_stream &tmp_file):
 		Input_stream (tmp_file)
 	{ init(); }
 
@@ -284,7 +247,7 @@ struct Buffered_file : public Input_stream
 		const char *const p = ptr_ + sizeof(_t);
 		if(p > end_) {
 			if(end_ < &data_[buffer_size])
-				THROW_EXCEPTION(file_io_exception, file_name);
+				throw File_read_exception(file_name);
 			fetch();
 			return read(dst);
 		}
@@ -321,7 +284,7 @@ struct Buffered_file : public Input_stream
 
 	void seek(size_t pos)
 	{
-		this->clear();
+		//this->clear();
 		Input_stream::seek(pos);
 		init();
 	}
@@ -374,8 +337,11 @@ struct Buffered_ostream
 		ptr_ += sizeof(_t);
 	}
 
-	~Buffered_ostream()
-	{ flush(); }
+	void close()
+	{
+		flush();
+		((Output_stream*)this)->close(); 
+	}
 
 private:
 
@@ -392,15 +358,5 @@ private:
 	char *ptr_, * const end_;
 
 };
-
-void copy_file(boost::iostreams::filtering_ostream &s, const char* file_name)
-{
-	s << file_name << endl;
-	try {
-		Input_stream f (file_name);
-		s << f.rdbuf() << endl;
-	} catch (file_open_exception &e) {
-	}
-}
 
 #endif /* BINARY_FILE_H_ */

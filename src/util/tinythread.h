@@ -71,6 +71,7 @@ freely, subject to the following restrictions:
     #define WIN32_LEAN_AND_MEAN
     #define __UNDEF_LEAN_AND_MEAN
   #endif
+#define NOMINMAX
   #include <windows.h>
   #ifdef __UNDEF_LEAN_AND_MEAN
     #undef WIN32_LEAN_AND_MEAN

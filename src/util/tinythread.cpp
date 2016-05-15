@@ -229,6 +229,7 @@ void thread::join()
 #if defined(_TTHREAD_WIN32_)
     WaitForSingleObject(mHandle, INFINITE);
     CloseHandle(mHandle);
+	mNotAThread = true;
 #elif defined(_TTHREAD_POSIX_)
     pthread_join(mHandle, NULL);
     mNotAThread = true;

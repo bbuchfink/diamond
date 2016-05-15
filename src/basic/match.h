@@ -21,58 +21,78 @@ Author: Benjamin Buchfink
 #ifndef MATCH_H_
 #define MATCH_H_
 
+#include <limits>
 #include "sequence.h"
 #include "../util/async_buffer.h"
 #include "edit_transcript.h"
+#include "packed_loc.h"
+#include "../util/system.h"
 
 enum Strand { FORWARD, REVERSE };
 
-interval normalized_range(unsigned pos, int len, Strand strand)
+inline interval normalized_range(unsigned pos, int len, Strand strand)
 {
 	return strand == FORWARD
 			? interval (pos, pos + len)
 			: interval (pos + 1 + len, pos + 1);
 }
 
-template<typename _locr, typename _locl>
+#pragma pack(1)
+
 struct hit
 {
-	typedef typename packed_sequence_location<_locr>::type packed_loc;
+	typedef uint32_t Seed_offset;
 
 	unsigned	query_;
-	packed_loc	subject_;
-	_locl		seed_offset_;
-	hit():
-		query_ (),
-		subject_ (),
-		seed_offset_ ()
+	Packed_loc	subject_;
+	Seed_offset	seed_offset_;
+	hit() :
+		query_(),
+		subject_(),
+		seed_offset_()
 	{ }
-	hit(unsigned query, _locr subject, _locl seed_offset):
-		query_ (query),
-		subject_ (subject),
-		seed_offset_ (seed_offset)
+	hit(unsigned query, Packed_loc subject, Seed_offset seed_offset) :
+		query_(query),
+		subject_(subject),
+		seed_offset_(seed_offset)
 	{ }
 	bool operator<(const hit &rhs) const
-	{ return query_ < rhs.query_; }
+	{
+		return query_ < rhs.query_;
+	}
 	bool blank() const
-	{ return subject_ == 0; }
+	{
+		return subject_ == 0;
+	}
 	unsigned operator%(unsigned i) const
-	{ return (query_/6) % i; }
-	unsigned operator/(unsigned i) const
-	{ return (query_/6)/i; }
+	{
+		return (query_ / 6) % i;
+	}
+	unsigned operator/(size_t i) const
+	{
+		return (query_ / 6) / (unsigned)i;
+	}
 	int64_t global_diagonal() const
-	{ return (int64_t)subject_ - (int64_t)seed_offset_; }
+	{
+		return (int64_t)subject_ - (int64_t)seed_offset_;
+	}
 	template<unsigned _d>
 	static unsigned query_id(const hit& x)
-	{ return x.query_/_d; }
+	{
+		return x.query_ / _d;
+	}
 	template<unsigned _d>
 	struct Query_id
 	{
 		unsigned operator()(const hit& x) const
-		{ return query_id<_d>(x); }
+		{
+			return query_id<_d>(x);
+		}
 	};
 	static bool cmp_subject(const hit &lhs, const hit &rhs)
-	{ return lhs.subject_ < rhs.subject_; }
+	{
+		return lhs.subject_ < rhs.subject_;
+	}
 	static bool cmp_normalized_subject(const hit &lhs, const hit &rhs)
 	{
 		const uint64_t x = (uint64_t)lhs.subject_ + (uint64_t)rhs.seed_offset_, y = (uint64_t)rhs.subject_ + (uint64_t)lhs.seed_offset_;
@@ -83,9 +103,10 @@ struct hit
 		s << me.query_ << '\t' << me.subject_ << '\t' << me.seed_offset_ << '\n';
 		return s;
 	}
-} __attribute__((packed));
+} PACKED_ATTRIBUTE ;
 
-template<typename _val>
+#pragma pack()
+
 struct local_match
 {
 	typedef typename vector<local_match>::iterator iterator;
@@ -115,7 +136,7 @@ struct local_match
 		query_anchor_ (0),
 		subject_ (0)
 	{ }
-	local_match(int query_anchor, const _val *subject):
+	local_match(int query_anchor, const Letter *subject):
 		len_ (0),
 		query_begin_ (0),
 		subject_len_ (0),
@@ -169,10 +190,10 @@ struct local_match
 	{ return normalized_range(query_begin_, query_len_, strand); }
 	interval subject_range() const
 	{ return normalized_range(subject_begin_, subject_len_, FORWARD); }
-	void print(const sequence<const _val> &query, const sequence<const _val> &subject, const vector<char> &buf) const
+	void print(const sequence &query, const sequence &subject, const vector<char> &buf) const
 	{
-		cout << "Score = " << score_ << endl;
-		::print(cout, &query[query_begin_], &subject[subject_begin_], transcript_right_, transcript_left_, buf);
+		std::cout << "Score = " << score_ << std::endl;
+		::print(std::cout, &query[query_begin_], &subject[subject_begin_], transcript_right_, transcript_left_, buf);
 	}
 	/*friend std::ostream& operator<<(std::ostream &os, const local_match &x)
 	{
@@ -181,16 +202,15 @@ struct local_match
 	}*/
 	unsigned len_, query_begin_, subject_len_, gap_openings_, identities_, mismatches_;
 	signed subject_begin_, score_, query_len_, query_anchor_;
-	const _val *subject_;
+	const Letter *subject_;
 	Edit_transcript transcript_right_, transcript_left_;
 };
 
-template<typename _val>
 struct Segment
 {
 	Segment(int score,
 			unsigned frame,
-			local_match<_val> *traceback = 0,
+			local_match *traceback = 0,
 			unsigned subject_id = std::numeric_limits<unsigned>::max()):
 		score_ (score),
 		frame_ (frame),
@@ -218,7 +238,7 @@ struct Segment
 	};
 	int						score_;
 	unsigned				frame_;
-	local_match<_val>	   *traceback_;
+	local_match			   *traceback_;
 	unsigned				subject_id_;
 	Segment				   *next_;
 	int						top_score_;

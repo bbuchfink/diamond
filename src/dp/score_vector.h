@@ -21,6 +21,7 @@ Author: Benjamin Buchfink
 #ifndef SCORE_VECTOR_H_
 #define SCORE_VECTOR_H_
 
+#include "../util/system.h"
 #ifdef __SSSE3__
 #include <tmmintrin.h>
 #endif
@@ -64,7 +65,7 @@ struct score_vector<uint8_t>
 
 	explicit score_vector(unsigned a, const __m128i &seq)
 	{
-		if(program_options::have_ssse3) {
+		if(config.have_ssse3) {
 #ifdef __SSSE3__
 			set_ssse3(a, seq);
 #else
@@ -77,11 +78,11 @@ struct score_vector<uint8_t>
 	void set_ssse3(unsigned a, const __m128i &seq)
 	{
 #ifdef __SSSE3__
-		const __m128i *row = reinterpret_cast<const __m128i*>(&score_matrix::get().matrix8u()[a << 5]);
+		const __m128i *row = reinterpret_cast<const __m128i*>(&score_matrix.matrix8u()[a << 5]);
 
-		__m128i high_mask = _mm_slli_epi16(_mm_and_si128(seq, _mm_set1_epi8(0x10)), 3);
+		__m128i high_mask = _mm_slli_epi16(_mm_and_si128(seq, _mm_set1_epi8('\x10')), 3);
 		__m128i seq_low = _mm_or_si128(seq, high_mask);
-		__m128i seq_high = _mm_or_si128(seq, _mm_xor_si128(high_mask, _mm_set1_epi8(0x80)));
+		__m128i seq_high = _mm_or_si128(seq, _mm_xor_si128(high_mask, _mm_set1_epi8('\x80')));
 
 		__m128i r1 = _mm_load_si128(row);
 		__m128i r2 = _mm_load_si128(row+1);
@@ -93,7 +94,7 @@ struct score_vector<uint8_t>
 
 	void set_generic(unsigned a, const __m128i &seq)
 	{
-		const uint8_t* row (&score_matrix::get().matrix8u()[a<<5]);
+		const uint8_t* row (&score_matrix.matrix8u()[a<<5]);
 		const uint8_t* seq_ptr (reinterpret_cast<const uint8_t*>(&seq));
 		uint8_t* dest (reinterpret_cast<uint8_t*>(&data_));
 		for(unsigned i=0;i<16;i++)

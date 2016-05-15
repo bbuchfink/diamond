@@ -24,28 +24,27 @@ Author: Benjamin Buchfink
 #include "align.h"
 #include "../basic/statistics.h"
 
-template<typename _val, typename _locr, typename _locq, typename _locl>
-void align_range(_locq q_pos,
-				 const typename sorted_list<_locr>::Type::const_iterator &s,
+inline void align_range(Loc q_pos,
+				 const sorted_list::const_iterator &s,
 				 Statistics &stats,
-				 typename Trace_pt_buffer<_locr,_locl>::Iterator &out,
+				 Trace_pt_buffer::Iterator &out,
 				 unsigned sid)
 {
 	unsigned i = 0, n=0;
 
-	const _val* query = query_seqs<_val>::data_->data(q_pos);
-	hit_filter<_val,_locr,_locq,_locl> hf (stats, q_pos, out);
+	const Letter* query = query_seqs::data_->data(q_pos);
+	hit_filter hf (stats, q_pos, out);
 
-	if(s.n <= program_options::hit_cap) {
+	if(s.n <= config.hit_cap) {
 		stats.inc(Statistics::SEED_HITS, s.n);
 		while(i < s.n) {
-			align<_val,_locr,_locq,_locl>(q_pos, query, s[i], stats, sid, hf);
+			align(q_pos, query, s[i], stats, sid, hf);
 			++i;
 		}
 	} else {
 		while(i < s.n && s[i] != 0) {
-			assert(position_filter(s[i], filter_treshold(s.n), s.key()));
-			align<_val,_locr,_locq,_locl>(q_pos, query, s[i], stats, sid, hf);
+			assert(position_filter(s[i], filter_treshold((unsigned)s.n), s.key()));
+			align(q_pos, query, s[i], stats, sid, hf);
 			stats.inc(Statistics::SEED_HITS);
 			++i;
 			++n;
@@ -59,11 +58,10 @@ void align_range(_locq q_pos,
 	hf.finish();
 }
 
-template<typename _val, typename _locr, typename _locq, typename _locl>
-void align_range(const typename sorted_list<_locq>::Type::const_iterator &q,
-				 const typename sorted_list<_locr>::Type::const_iterator &s,
+inline void align_range(const sorted_list::const_iterator &q,
+				 const sorted_list::const_iterator &s,
 				 Statistics &stats,
-				 typename Trace_pt_buffer<_locr,_locl>::Iterator &out,
+				 Trace_pt_buffer::Iterator &out,
 				 const unsigned sid)
 {
 #ifdef EXTRA
@@ -71,25 +69,41 @@ void align_range(const typename sorted_list<_locq>::Type::const_iterator &q,
 		//printf("%lu %lu\n",q.n,s.n);
 #endif
 	for(unsigned i=0;i<q.n; ++i)
-		align_range<_val,_locr,_locq,_locl>(_locq(q[i]), s, stats, out, sid);
+		align_range(Loc(q[i]), s, stats, out, sid);
 }
 
-template<typename _val, typename _locr, typename _locq, typename _locl>
-void align_partition(unsigned hp,
+void search_seed(const sorted_list::const_iterator &q,
+	const sorted_list::const_iterator &s,
+	Statistics &stats,
+	Trace_pt_buffer::Iterator &out,
+	const unsigned sid);
+
+inline void align_partition(unsigned hp,
 		Statistics &stats,
 		unsigned sid,
-		typename sorted_list<_locr>::Type::const_iterator i,
-		typename sorted_list<_locq>::Type::const_iterator j,
+		sorted_list::const_iterator i,
+		sorted_list::const_iterator j,
 		unsigned thread_id)
 {
-	typename Trace_pt_buffer<_locr,_locl>::Iterator* out = new typename Trace_pt_buffer<_locr,_locl>::Iterator (*Trace_pt_buffer<_locr,_locl>::instance, thread_id);
-	while(!i.at_end() && !j.at_end() && !exception_state()) {
+#ifndef SIMPLE_SEARCH
+	if (hp > 0)
+		return;
+#endif
+	typename Trace_pt_buffer::Iterator* out = new Trace_pt_buffer::Iterator (*Trace_pt_buffer::instance, thread_id);
+	while(!i.at_end() && !j.at_end()) {
 		if(i.key() < j.key()) {
 			++i;
 		} else if(j.key() < i.key()) {
 			++j;
 		} else {
-			align_range<_val,_locr,_locq,_locl>(j, i, stats, *out, sid);
+#ifdef SIMPLE_SEARCH
+			align_range(j, i, stats, *out, sid);
+#else
+			//cout << "n=" << stats.data_[Statistics::SEED_HITS] << endl;
+			/*if (stats.data_[Statistics::SEED_HITS] > 10000000000lu)
+				break;*/
+			search_seed(j, i, stats, *out, sid);
+#endif
 			++i;
 			++j;
 		}

@@ -20,6 +20,11 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #ifndef BINARY_BUFFER_H_
 #define BINARY_BUFFER_H_
 
+#include <vector>
+#include <stdexcept>
+#include <stdint.h>
+#include <string.h>
+
 using std::vector;
 using std::string;
 

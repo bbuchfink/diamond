@@ -21,6 +21,8 @@ Author: Benjamin Buchfink
 #ifndef SSE_SW_H_
 #define SSE_SW_H_
 
+#include <algorithm>
+#include <stddef.h>
 #include "score_profile.h"
 #include "dp_matrix.h"
 
@@ -46,9 +48,9 @@ inline score_vector<_score> cell_update(const score_vector<_score> &diagonal_cel
 	return current_cell;
 }
 
-template<typename _val, typename _score, typename _callback>
-void smith_waterman(const sequence<const _val> &query,
-			const vector<sequence<const _val> > &subjects,
+template<typename _score, typename _callback>
+void smith_waterman(const sequence &query,
+			const vector<sequence> &subjects,
 			unsigned band,
 			unsigned padding,
 			int op,
@@ -64,21 +66,21 @@ void smith_waterman(const sequence<const _val> &query,
 
 	typedef score_vector<_score> sv;
 
-	unsigned qlen (query.length());
-	unsigned slen (subjects[0].length());
+	unsigned qlen ((unsigned)query.length());
+	unsigned slen ((unsigned)subjects[0].length());
 	DP_matrix<_score> dp (slen, qlen, band, padding);
 
 	sv open_penalty (static_cast<char>(op));
 	sv extend_penalty (static_cast<char>(ep));
-	sv vbias (score_matrix::get().bias());
+	sv vbias (score_matrix.bias());
 	sequence_stream dseq;
 	score_profile<_score> profile;
 
-	typename vector<sequence<const _val> >::const_iterator subject_it (subjects.begin());
+	typename vector<sequence>::const_iterator subject_it (subjects.begin());
 	while(subject_it < subjects.end()) {
 
 		const unsigned n_subject (std::min((unsigned)score_traits<_score>::channels, (unsigned)(subjects.end() - subject_it)));
-		typename vector<sequence<const _val> >::const_iterator subject_end (subject_it + n_subject);
+		typename vector<sequence>::const_iterator subject_end (subject_it + n_subject);
 		sv best;
 		dseq.reset();
 		dp.clear();
@@ -86,7 +88,7 @@ void smith_waterman(const sequence<const _val> &query,
 		for(unsigned j=0;j<slen;++j) {
 			typename DP_matrix<_score>::Column_iterator it (dp.begin(j));
 			sv vgap, hgap, column_best;
-			profile.template set<_val> (dseq.get<_val>(subject_it, subject_end, j, _score()));
+			profile.set(dseq.get(subject_it, subject_end, j, _score()));
 
 			while(!it.at_end()) {
 				hgap = it.hgap();
@@ -103,8 +105,8 @@ void smith_waterman(const sequence<const _val> &query,
 
 		for(unsigned i=0;i<n_subject;++i)
 			if(best[i] >= filter_score)
-				f(i + (subject_it - subjects.begin()), *(subject_it + i), best[i]);
-		subject_it += score_traits<_score>::channels;
+				f(i + unsigned(subject_it - subjects.begin()), *(subject_it + i), best[i]);
+		subject_it += std::min((ptrdiff_t)score_traits<_score>::channels, subjects.end()-subject_it);
 	}
 
 	#ifdef SW_ENABLE_DEBUG

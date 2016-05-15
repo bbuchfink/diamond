@@ -43,80 +43,85 @@ private:
 	Output_stream* const f_;
 };
 
-template<typename _val, typename _locr, typename _locl, unsigned _d>
-void align_queries(typename Trace_pt_list<_locr,_locl>::iterator begin,
-		typename Trace_pt_list<_locr,_locl>::iterator end,
-		Output_buffer<_val> &buffer,
+template<unsigned _d>
+void align_queries(Trace_pt_list::iterator begin,
+		Trace_pt_list::iterator end,
+		Output_buffer &buffer,
 		Statistics &st)
 {
-	typedef Map<typename vector<hit<_locr,_locl> >::iterator,typename hit<_locr,_locl>::template Query_id<_d> > Map_t;
+	typedef Map<typename vector<hit>::iterator,typename hit::template Query_id<_d> > Map_t;
 	Map_t hits (begin, end);
 	typename Map_t::Iterator i = hits.begin();
-	while(i.valid() && !exception_state()) {
-		align_read<_val,_locr,_locl>(buffer, st, i.begin(), i.end());
+	while(i.valid()) {
+		align_read(buffer, st, i.begin(), i.end());
 		++i;
 	}
 }
 
-template<typename _val, typename _locr, typename _locl, typename _buffer>
+template<typename _buffer>
 struct Align_context
 {
-	Align_context(Trace_pt_list<_locr,_locl> &trace_pts, Output_stream* output_file):
+	Align_context(Trace_pt_list &trace_pts, Output_stream* output_file):
 		trace_pts (trace_pts),
 		output_file (output_file),
 		writer (output_file),
-		queue (program_options::threads()*8, writer)
+		queue (config.threads_*8, writer)
 	{ }
 	void operator()(unsigned thread_id)
 	{
 		Statistics st;
 		size_t i=0;
-		typename Trace_pt_list<_locr,_locl>::Query_range query_range (trace_pts.get_range());
+		typename Trace_pt_list::Query_range query_range (trace_pts.get_range());
 		_buffer *buffer = 0;
-		while(queue.get(i, buffer, query_range) && !exception_state()) {
+		while(queue.get(i, buffer, query_range)) {
 			try {
 				switch(query_contexts()) {
 				case 6:
-					align_queries<_val,_locr,_locl,6>(query_range.begin, query_range.end, *buffer, st);
+					align_queries<6>(query_range.begin, query_range.end, *buffer, st);
 					break;
 				case 2:
-					align_queries<_val,_locr,_locl,2>(query_range.begin, query_range.end, *buffer, st);
+					align_queries<2>(query_range.begin, query_range.end, *buffer, st);
 					break;
 				default:
-					align_queries<_val,_locr,_locl,1>(query_range.begin, query_range.end, *buffer, st);
+					align_queries<1>(query_range.begin, query_range.end, *buffer, st);
 				}
 				queue.push(i);
-			} catch(std::exception &e) {
-				exception_state.set(e);
-				queue.wake_all();
+			}
+			catch (std::bad_alloc&) {
+				std::cout << "Out of memory error." << std::endl;
+				std::terminate();
+			}
+			catch (std::exception &e) {
+				std::cout << e.what() << std::endl;
+				std::terminate();
+				//queue.wake_all();
 			}
 		}
 		statistics += st;
 	}
-	Trace_pt_list<_locr,_locl> &trace_pts;
+	Trace_pt_list &trace_pts;
 	Output_stream* output_file;
 	Output_writer writer;
 	Task_queue<_buffer,Output_writer> queue;
 };
 
-template<typename _val, typename _locr, typename _locl>
-void align_queries(const Trace_pt_buffer<_locr,_locl> &trace_pts, Output_stream* output_file)
+void align_queries(const Trace_pt_buffer &trace_pts, Output_stream* output_file)
 {
-	Trace_pt_list<_locr,_locl> v;
+	Trace_pt_list v;
 	for(unsigned bin=0;bin<trace_pts.bins();++bin) {
 		log_stream << "Processing query bin " << bin+1 << '/' << trace_pts.bins() << '\n';
-		task_timer timer ("Loading trace points", false);
+		task_timer timer ("Loading trace points", 3);
 		trace_pts.load(v, bin);
 		timer.go("Sorting trace points");
-		merge_sort(v.begin(), v.end(), program_options::threads());
+		merge_sort(v.begin(), v.end(), config.threads_);
 		v.init();
 		timer.go("Computing alignments");
 		if(ref_header.n_blocks > 1) {
-			Align_context<_val,_locr,_locl,Temp_output_buffer<_val> > context (v, output_file);
-			launch_thread_pool(context, program_options::threads());
+			Align_context<Temp_output_buffer> context (v, output_file);
+			launch_thread_pool(context, config.threads_);
 		} else {
-			Align_context<_val,_locr,_locl,Output_buffer<_val> > context (v, output_file);
-			launch_thread_pool(context, program_options::threads());
+			Align_context<Output_buffer> context (v, output_file);
+			launch_thread_pool(context, config.threads_);
 		}
 	}
 }

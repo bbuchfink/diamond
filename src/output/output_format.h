@@ -21,16 +21,16 @@ Author: Benjamin Buchfink
 #ifndef OUTPUT_FORMAT_H_
 #define OUTPUT_FORMAT_H_
 
+#include <exception>
 #include "../basic/match.h"
 #include "../align/match_func.h"
 #include "../output/daa_file.h"
 #include "../output/daa_record.h"
 
-template<typename _val>
 struct Output_format
 {
-	virtual void print_match(const DAA_match_record<_val> &r, Text_buffer &out) const = 0;
-	virtual void print_header(Output_stream &f, int mode) const
+	virtual void print_match(const DAA_match_record &r, Text_buffer &out) const = 0;
+	virtual void print_header(Compressed_ostream &f, int mode) const
 	{ }
 	virtual ~Output_format()
 	{ }
@@ -49,14 +49,13 @@ struct Output_format
 	}
 };
 
-template<typename _val>
-struct Blast_tab_format : public Output_format<_val>
+struct Blast_tab_format : public Output_format
 {
 
 	Blast_tab_format()
 	{ }
 
-	virtual void print_match(const DAA_match_record<_val> &r, Text_buffer &out) const
+	virtual void print_match(const DAA_match_record &r, Text_buffer &out) const
 	{
 		out << r.query_name() << '\t';
 
@@ -74,8 +73,8 @@ struct Blast_tab_format : public Output_format<_val>
 				<< r.query_end()+1 << '\t'
 				<< r.subject_begin+1 << '\t'
 				<< r.subject_begin+r.subject_len << '\t';
-		out.print_e(score_matrix::get().evalue(r.score, r.db_letters(), r.query().size()));
-		out << '\t' << score_matrix::get().bitscore(r.score) << '\n';
+		out.print_e(score_matrix.evalue(r.score, (size_t)r.db_letters(), (unsigned)r.query().size()));
+		out << '\t' << score_matrix.bitscore(r.score) << '\n';
 	}
 
 	virtual ~Blast_tab_format()
@@ -83,14 +82,13 @@ struct Blast_tab_format : public Output_format<_val>
 
 };
 
-template<typename _val>
-struct Sam_format : public Output_format<_val>
+struct Sam_format : public Output_format
 {
 
 	Sam_format()
 	{ }
 
-	virtual void print_match(const DAA_match_record<_val> &r, Text_buffer &out) const
+	virtual void print_match(const DAA_match_record &r, Text_buffer &out) const
 	{
 		out << r.query_name() << '\t'
 				<< '0' << '\t';
@@ -110,14 +108,14 @@ struct Sam_format : public Output_format<_val>
 				<< '*' << '\t'
 				<< '0' << '\t'
 				<< '0' << '\t'
-				<< sequence<const _val> (&r.query()[r.translated_query_begin], r.translated_query_len) << '\t'
+				<< sequence (&r.query()[r.translated_query_begin], r.translated_query_len) << '\t'
 				<< '*' << '\t'
-				<< "AS:i:" << (uint32_t)score_matrix::get().bitscore(r.score) << '\t'
+				<< "AS:i:" << (uint32_t)score_matrix.bitscore(r.score) << '\t'
 				<< "NM:i:" << r.len - r.identities << '\t'
 				<< "ZL:i:" << r.total_subject_len << '\t'
 				<< "ZR:i:" << r.score << '\t'
 				<< "ZE:f:";
-		out.print_e(score_matrix::get().evalue(r.score, r.db_letters(), r.query().size()));
+		out.print_e(score_matrix.evalue(r.score, (size_t)r.db_letters(), (unsigned)r.query().size()));
 		out << '\t'
 				<< "ZI:i:" << r.identities*100/r.len << '\t'
 				<< "ZF:i:" << blast_frame(r.frame) << '\t'
@@ -128,10 +126,10 @@ struct Sam_format : public Output_format<_val>
 		out << '\n';
 	}
 
-	void print_md(const DAA_match_record<_val> &r, Text_buffer &buf) const
+	void print_md(const DAA_match_record &r, Text_buffer &buf) const
 	{
 		unsigned matches = 0, del = 0;
-		for(Packed_transcript::Const_iterator<_val> i = r.transcript.template begin<_val>(); i.good(); ++i) {
+		for(Packed_transcript::Const_iterator i = r.transcript.begin(); i.good(); ++i) {
 			switch(i->op) {
 			case op_match:
 				del = 0;
@@ -147,7 +145,7 @@ struct Sam_format : public Output_format<_val>
 					buf << '0';
 					del = 0;
 				}
-				buf << Value_traits<_val>::ALPHABET[i->letter];
+				buf << value_traits.alphabet[(long)i->letter];
 				break;
 			case op_deletion:
 				if(matches > 0) {
@@ -156,7 +154,7 @@ struct Sam_format : public Output_format<_val>
 				}
 				if(del == 0)
 					buf << '^';
-				buf << Value_traits<_val>::ALPHABET[i->letter];
+				buf << value_traits.alphabet[(long)i->letter];
 				++del;
 			}
 		}
@@ -164,12 +162,12 @@ struct Sam_format : public Output_format<_val>
 			buf << matches;
 	}
 
-	void print_cigar(const DAA_match_record<_val> &r, Text_buffer &buf) const
+	void print_cigar(const DAA_match_record &r, Text_buffer &buf) const
 	{
 		static const unsigned map[] = { 0, 1, 2, 0 };
 		static const char letter[] = { 'M', 'I', 'D' };
 		unsigned n = 0, op = 0;
-		for(Packed_transcript::Const_iterator<_val> i = r.transcript.template begin<_val>(); i.good(); ++i) {
+		for(Packed_transcript::Const_iterator i = r.transcript.begin(); i.good(); ++i) {
 			if(map[i->op] == op)
 				n += i->count;
 			else {
@@ -183,7 +181,7 @@ struct Sam_format : public Output_format<_val>
 			buf << n << letter[op];
 	}
 
-	virtual void print_header(Output_stream &f, int mode) const
+	virtual void print_header(Compressed_ostream &f, int mode) const
 	{
 		static const char* mode_str[] = { 0, 0, "BlastP", "BlastX", "BlastN" };
 		string line = string("@HD\tVN:1.5\tSO:query\n\
@@ -199,17 +197,17 @@ struct Sam_format : public Output_format<_val>
 
 };
 
-template<typename _val>
-const Output_format<_val>& get_output_format()
+const Output_format& get_output_format()
 {
-	static const Sam_format<_val> sam;
-	static const Blast_tab_format<_val> tab;
-	if(program_options::output_format == "tab")
+	static const Sam_format sam;
+	static const Blast_tab_format tab;
+	if(config.output_format == "tab")
 		return tab;
-	else if(program_options::output_format == "sam")
+	else if(config.output_format == "sam")
 		return sam;
 	else
-		throw std::runtime_error("Invalid output format.");
+		throw std::runtime_error("Invalid output format. Allowed values: tab,sam");
+	return tab;
 }
 
 #endif /* OUTPUT_FORMAT_H_ */

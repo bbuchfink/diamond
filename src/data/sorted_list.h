@@ -24,12 +24,14 @@ Author: Benjamin Buchfink
 #include "../util/util.h"
 #include "seed_histogram.h"
 #include "../basic/packed_loc.h"
+#include "../util/system.h"
 
-template<typename _pos>
+#pragma pack(1)
+
 struct sorted_list
 {
 
-	typedef sorted_list<typename packed_sequence_location<_pos>::type> Type;
+	typedef Packed_loc _pos;
 
 	struct entry
 	{
@@ -45,22 +47,21 @@ struct sorted_list
 		{ return key < rhs.key; }
 		unsigned	key;
 		_pos		value;
-	} __attribute__((packed));
+	} PACKED_ATTRIBUTE ;
 
 	static char* alloc_buffer(const seed_histogram &hst)
 	{ return new char[sizeof(entry) * hst.max_chunk_size()]; }
 
-	template<typename _val>
-	sorted_list(char *buffer, const Sequence_set<_val> &seqs, const shape &sh, const shape_histogram &hst, const seedp_range &range):
+	sorted_list(char *buffer, const Sequence_set &seqs, const shape &sh, const shape_histogram &hst, const seedp_range &range):
 		limits_ (hst, range),
 		data_ (reinterpret_cast<entry*>(buffer))
 	{
-		task_timer timer ("Building seed list", false);
-		Build_context<_val> build_context (seqs, sh, range, build_iterators(hst));
-		launch_scheduled_thread_pool(build_context, Const::seqp, program_options::threads());
+		task_timer timer ("Building seed list", 3);
+		Build_context build_context (seqs, sh, range, build_iterators(hst));
+		launch_scheduled_thread_pool(build_context, Const::seqp, config.threads_);
 		timer.go("Sorting seed list");
 		Sort_context sort_context (*this);
-		launch_scheduled_thread_pool(sort_context, Const::seedp, program_options::threads());
+		launch_scheduled_thread_pool(sort_context, Const::seedp, config.threads_);
 	}
 
 	template<typename _t>
@@ -81,8 +82,8 @@ struct sorted_list
 		}
 		void operator++()
 		{ i += n; n = count(); }
-		_pos operator[](unsigned k) const
-		{ return (i+k)->value; }
+		Loc operator[](unsigned k) const
+		{ return (Loc)((i+k)->value); }
 		_t* get(unsigned k)
 		{ return i+k; }
 		bool at_end() const
@@ -114,7 +115,7 @@ private:
 			memset(n, 0, sizeof(n));
 			memcpy(this->ptr, ptr, sizeof(this->ptr));
 		}
-		void push(seed key, _pos value, const seedp_range &range)
+		void push(Packed_seed key, Loc value, const seedp_range &range)
 		{
 			const unsigned p (seed_partition(key));
 			if(range.contains(p)) {
@@ -153,10 +154,9 @@ private:
 	const entry* cptr_end(unsigned i) const
 	{ return &data_[limits_[i+1]]; }
 
-	template<typename _val>
 	struct Build_context
 	{
-		Build_context(const Sequence_set<_val> &seqs, const shape &sh, const seedp_range &range, Ptr_set *iterators):
+		Build_context(const Sequence_set &seqs, const shape &sh, const seedp_range &range, Ptr_set *iterators):
 			seqs (seqs),
 			sh (sh),
 			range (range),
@@ -165,27 +165,26 @@ private:
 		{ }
 		void operator()(unsigned thread_id, unsigned seqp) const
 		{
-			build_seqp<_val>(seqs,
+			build_seqp(seqs,
 					seq_partition[seqp],
 					seq_partition[seqp+1],
 					(*iterators)[seqp],
 					sh,
 					range);
 		}
-		const Sequence_set<_val> &seqs;
+		const Sequence_set &seqs;
 		const shape &sh;
 		const seedp_range &range;
 		const auto_ptr<Ptr_set> iterators;
 		const vector<size_t> seq_partition;
 	};
 
-	template<typename _val>
-	static void build_seqp(const Sequence_set<_val> &seqs, unsigned begin, unsigned end, entry **ptr, const shape &sh, const seedp_range &range)
+	static void build_seqp(const Sequence_set &seqs, size_t begin, size_t end, entry **ptr, const shape &sh, const seedp_range &range)
 	{
 		uint64_t key;
 		auto_ptr<buffered_iterator> it (new buffered_iterator(ptr));
 		for(size_t i=begin;i<end;++i) {
-			const sequence<const _val> seq = seqs[i];
+			const sequence seq = seqs[i];
 			if(seq.length()<sh.length_) continue;
 			for(unsigned j=0;j<seq.length()-sh.length_+1; ++j) {
 				if(sh.set_seed(key, &seq[j]))
@@ -222,7 +221,7 @@ private:
 	{
 		Limits(const shape_histogram &hst, const seedp_range &range)
 		{
-			task_timer timer ("Computing limits", false);
+			task_timer timer ("Computing limits", 3);
 			this->push_back(0);
 			for(unsigned i=0;i<Const::seedp;++i) {
 #ifdef EXTRA
@@ -237,5 +236,7 @@ private:
 	entry *data_;
 
 };
+
+#pragma pack()
 
 #endif /* SORTED_LIST_H_ */

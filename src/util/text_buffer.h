@@ -22,6 +22,10 @@ Author: Benjamin Buchfink
 #define TEXT_BUFFER_H_
 
 #include <stdlib.h>
+#include <stdio.h>
+#include <stdexcept>
+#include <stdint.h>
+#include <limits>
 
 struct Text_buffer
 {
@@ -36,7 +40,7 @@ struct Text_buffer
 		const size_t s = ptr_ - data_, new_size = s + n + block_size - ((s+n) & (block_size-1));
 		data_ = (char*)realloc(data_, new_size);
 		ptr_ = data_ + s;
-		if(data_ == 0) throw memory_alloc_exception();
+		if (data_ == 0) throw std::runtime_error("Failed to allocate memory.");
 	}
 
 	void operator+=(size_t n)

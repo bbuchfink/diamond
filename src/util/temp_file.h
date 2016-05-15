@@ -20,27 +20,15 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #ifndef TEMP_FILE_H_
 #define TEMP_FILE_H_
 
-struct Temp_file
+#include "binary_file.h"
+
+struct Temp_file : public Output_stream
 {
 
-	Temp_file():
-		file_des_ (-1)
-	{
-		char *name = new char[program_options::tmpdir.length()+20];
-		sprintf(name, "%s/diamond-tmp-XXXXXX", program_options::tmpdir.c_str());
-		file_des_ = mkstemp(name);
-		if(file_des_ == -1)
-			throw std::runtime_error("Error opening temporary file.");
-		unlink(name);
-		delete[] name;
-	}
-
-	int file_descriptor() const
-	{ return file_des_; }
-
-private:
-
-	int file_des_;
+	Temp_file();	
+	static string get_temp_dir();
+	static unsigned n;
+	static unsigned long hash_key;
 
 };
 
