@@ -23,6 +23,7 @@ Author: Benjamin Buchfink
 
 #include <vector>
 #include "../basic/value.h"
+#include "compressed_stream.h"
 
 using std::vector;
 using std::pair;
