@@ -1,4 +1,4 @@
-**DIAMOND v0.7.12 by Benjamin Buchfink** - http://github.com/bbuchfink/diamond
+**DIAMOND v0.8.0 by Benjamin Buchfink** - http://github.com/bbuchfink/diamond
 
 Published in *Nature Methods* **12**, 59–60 (2015) | `doi:10.1038/nmeth.3176 <http://dx.doi.org/10.1038/nmeth.3176>`_
 
@@ -8,10 +8,10 @@ Download & Installation
 =======================
 If you use a recent **Linux** operating system, you can download the software in binary format for immediate use::
 
-    wget http://github.com/bbuchfink/diamond/releases/download/v0.7.12/diamond-linux64.tar.gz
+    wget http://github.com/bbuchfink/diamond/releases/download/v0.8.0/diamond-linux64.tar.gz
     tar xzf diamond-linux64.tar.gz
 
-Users of **Mac OS X** and some **old Linux systems** need to compile the software from source (see `Compiling from source`_).
+Users of **Mac OS X** and some **old Linux systems** need to compile the software from source (see `Compiling from source`_). A binary executable for **Windows** is available under Releases.
 
 Basic command line use
 ======================
@@ -23,9 +23,7 @@ In order to set up a reference database for DIAMOND, the ``makedb`` command need
 
 This will create a binary DIAMOND database file with the specified name (``nr.dmnd``). The alignment task may then be initiated using the ``blastx`` command like this::
 
-    $ diamond blastx -d nr -q reads.fna -a matches -t <temporary directory>
-
-The temporary directory should point to a fast local disk with a lot of free space. It is possible to omit this option, this will however increase the program's memory usage substantially.
+    $ diamond blastx -d nr -q reads.fna -a matches
 
 The output file here is specified with the ``–a`` option and named ``matches.daa``. It is generated in DAA (DIAMOND alignment archive) format. Other formats can be generated using the ``view`` command. For instance, the following command will generate BLAST tabular format from the DAA file and save it to disk::
 
@@ -97,10 +95,10 @@ Memory & performance options
 ============== ===== ======== ===========
 Option         Short Default  Description
 ============== ===== ======== ===========
---tmpdir       -t    /dev/shm Directory to be used for temporary storage.
+--tmpdir       -t             Directory to be used for temporary storage.
 --index-chunks -c    4        The number of chunks for processing the seed index.
 ============== ===== ======== ===========
-It is recommended to always use the ``--tmpdir`` option and set this to a disk-based directory. The amount of disk space that will be used depends on the program's settings and your data. As a general rule you should ensure that 100 GB of disk space are available here. If you run the program in a cluster environment, and disk space is only available over a slow network based file system, you may want to omit the ``--tmpdir`` option. This will keep temporary information in memory and increase the program's memory usage substantially.
+By default, the temporary directory is set to the output directory. The amount of disk space that will be used depends on the program's settings and your data. As a general rule you should ensure that 100 GB of disk space are available here. If you run the program in a cluster environment, and disk space is only available over a slow network based file system, you may want to set the ``--tmpdir`` option to ``/dev/shm``. This will keep temporary information in memory and increase the program's memory usage substantially.
 
 The ``--block-size/-b`` option is set for the makedb command and the main option for controlling the program's memory usage. Bigger numbers will increase the use of memory *and* temporary disk space, but also improve performance. The program can be expected to roughly use six times this number of memory (in GB). So for the default value of ``-b=2``, the memory usage will be about 12 GB.
 
@@ -133,27 +131,13 @@ MEGAN requires mapping files which need to be downloaded separately at the MEGAN
 .. _Compiling from source:
 Compiling from source
 =====================
-The requirements for compiling DIAMOND are Boost (version 1.53.0 or higher) and zlib. If a system-wide Boost installation is not possible, the package includes a script called ``install-boost`` which will download and install a local copy of Boost for the user.
-
 To compile DIAMOND from source, invoke the following commands on the shell::
 
-    $ wget http://github.com/bbuchfink/diamond/archive/v0.7.12.tar.gz
-    $ tar xzf v0.7.12.tar.gz
-    $ cd diamond-0.7.12/src
-    $ ./install-boost                                       # optional, for installing Boost
-    $ make
-    
-The diamond binary will be created in ``diamond-0.7.12/bin``.
-
-Compiling using CMake
-=====================
-To compile DIAMOND from source, invoke the following commands on the shell::
-
-  $ wget http://github.com/bbuchfink/diamond/archive/v0.7.12.tar.gz
-  $ tar xzf v0.7.12.tar.gz
-  $ cd diamond-0.7.12
-  $ mkdir build
-  $ cd build
+  $ wget http://github.com/bbuchfink/diamond/archive/v0.8.0.tar.gz
+  $ tar xzf v0.8.0.tar.gz
+  $ cd diamond-0.8.0
+  $ mkdir bin
+  $ cd bin
   $ cmake ..
   $ make install
 
