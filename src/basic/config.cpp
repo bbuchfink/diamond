@@ -82,7 +82,8 @@ Config::Config(int argc, const char **argv)
 		("index-mode", 0, "index mode (0=4x12, 1=16x9)", index_mode)
 		("fetch-size", 0, "trace point fetch size", fetch_size, 4096u)
 		("single-domain", 0, "Discard secondary domains within one target sequence", single_domain)
-		("dbsize", 0, "effective database size (in letters)", db_size);
+		("dbsize", 0, "effective database size (in letters)", db_size)
+		("no-auto-append", 0, "disable auto appending of DAA and DMND file extensions", no_auto_append);
 	
 	Options_group view_options("View options");
 	view_options.add()
@@ -154,8 +155,10 @@ Config::Config(int argc, const char **argv)
 		set_option(index_mode, 0u);
 	}
 
-	auto_append_extension(database, ".dmnd");
-	auto_append_extension(daa_file, ".daa");
+	if (!no_auto_append) {
+		auto_append_extension(database, ".dmnd");
+		auto_append_extension(daa_file, ".daa");
+	}
 
 	message_stream << Const::program_name << " v" << Const::version_string << "." << Const::build_version << " | by Benjamin Buchfink <buchfink@gmail.com>" << endl; 
 	message_stream << "Check http://github.com/bbuchfink/diamond/releases for updates." << endl << endl;

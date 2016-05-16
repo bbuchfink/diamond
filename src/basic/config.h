@@ -66,6 +66,7 @@ struct Config
 
 	bool		mode_sensitive;
 	unsigned	verbosity;
+	bool no_auto_append;
 
 	typedef enum { makedb = 0, blastp = 1, blastx = 2, view = 3, help = 4, version = 5 } Command;
 	unsigned	command;

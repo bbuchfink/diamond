@@ -55,7 +55,7 @@ struct score_vector<uint8_t>
 		data_ = _mm_set1_epi8(score_traits<uint8_t>::zero);
 	}
 
-	explicit score_vector(int x):
+	explicit score_vector(char x):
 		data_ (_mm_set(x))
 	{ }
 

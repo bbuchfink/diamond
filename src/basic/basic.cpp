@@ -4,7 +4,7 @@
 #include "translate.h"
 #include "statistics.h"
 
-const char* Const::version_string = "0.8.0";
+const char* Const::version_string = "0.8.1";
 const char* Const::program_name = "diamond";
 const char* Const::id_delimiters = " \a\b\f\n\r\t\v";
 

@@ -254,19 +254,10 @@ inline string* get_str(const char *s, const char *delimiters)
 	return new string (s, find_first_of(s, delimiters));
 }
 
-inline __m128i _mm_set(int a)
+inline __m128i _mm_set(char a)
 {
-	int y = a << 8 | a;
-	__m128i z = __m128i();
-	z = _mm_insert_epi16 (z, y, 0);
-	z = _mm_insert_epi16 (z, y, 1);
-	z = _mm_insert_epi16 (z, y, 2);
-	z = _mm_insert_epi16 (z, y, 3);
-	z = _mm_insert_epi16 (z, y, 4);
-	z = _mm_insert_epi16 (z, y, 5);
-	z = _mm_insert_epi16 (z, y, 6);
-	z = _mm_insert_epi16 (z, y, 7);
-	return z;
+	const int x = (int)a;
+	return _mm_set1_epi32(x << 24 | x << 16 | x << 8 | x);
 }
 
 template<typename _t, unsigned d1, unsigned d2>

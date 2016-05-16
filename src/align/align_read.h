@@ -58,7 +58,7 @@ void align_read(Output_buffer &buffer,
 	const size_t db_letters = ref_header.letters;
 	unsigned padding[6];
 
-	typedef Map<typename vector<hit>::iterator,typename hit::template Query_id<1> > Map_t;
+	typedef Map<typename vector<hit>::iterator,typename hit::Query_id<1> > Map_t;
 	Map_t hits (begin, end);
 	typename Map_t::Iterator i = hits.begin();
 	while(i.valid()) {
