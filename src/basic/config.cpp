@@ -127,9 +127,9 @@ Config::Config(int argc, const char **argv)
 	switch (command) {
 	case Config::makedb:
 		if (input_ref_file == "")
-			throw std::runtime_error("Missing option: input file (--in)");
+			throw std::runtime_error("Missing parameter: input file (--in)");
 		if (database == "")
-			throw std::runtime_error("Missing option: database file (--db/-d)");
+			throw std::runtime_error("Missing parameter: database file (--db/-d)");
 		set_option(chunk_size, 2.0);
 		break;
 	case Config::blastp:
