@@ -195,7 +195,12 @@ Config::Config(int argc, const char **argv)
 		verbose_stream << "Reduction: " << Reduction::reduction << endl;
 		::shapes = shape_config(index_mode, shapes);
 		verbose_stream << "Shape configuration: " << ::shapes << endl;
-		message_stream << "#Target sequences to report alignments for: " << max_alignments << endl;
+		message_stream << "#Target sequences to report alignments for: ";
+		if (max_alignments == 0) {
+			max_alignments = std::numeric_limits<unsigned long>::max();
+			message_stream << "unlimited" << endl;
+		} else
+			message_stream << max_alignments << endl;
 	}
 
 	if (command == blastx)

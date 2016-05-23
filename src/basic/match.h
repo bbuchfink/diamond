@@ -136,13 +136,14 @@ struct local_match
 		query_anchor_ (0),
 		subject_ (0)
 	{ }
-	local_match(int query_anchor, const Letter *subject):
+	local_match(int query_anchor, const Letter *subject, unsigned total_subject_len = 0):
 		len_ (0),
 		query_begin_ (0),
 		subject_len_ (0),
 		gap_openings_ (0),
 		identities_ (0),
 		mismatches_ (0),
+		total_subject_len_(total_subject_len),
 		subject_begin_ (0),
 		score_ (0),
 		query_len_ (0),
@@ -200,7 +201,7 @@ struct local_match
 		os << "(sbj=" << x.subject_range() << " score=" << Scoring<_val>::bitscore(x.score_) << ")";
 		return os;
 	}*/
-	unsigned len_, query_begin_, subject_len_, gap_openings_, identities_, mismatches_;
+	unsigned len_, query_begin_, subject_len_, gap_openings_, identities_, mismatches_, total_subject_len_;
 	signed subject_begin_, score_, query_len_, query_anchor_;
 	const Letter *subject_;
 	Edit_transcript transcript_right_, transcript_left_;

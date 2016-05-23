@@ -79,7 +79,11 @@ struct Reduction
 private:
 
 	unsigned map_[256];
-	char map8_[256];
+#ifdef _MSC_VER
+	__declspec(align(16)) char map8_[256];
+#else
+	char map8_[256] __attribute__((aligned(16)));
+#endif;
 	unsigned size_;
 
 };

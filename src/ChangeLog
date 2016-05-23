@@ -1,3 +1,7 @@
+[0.8.2]
+- use parameter -k0 to report unlimited number of alignments
+- fixed a crash bug on Mac OS X
+
 [0.8.1]
 - added option to disable auto appending of DAA and DMND file extensions (--no-auto-append)
 - fixed some compiler errors for GCC 4.6

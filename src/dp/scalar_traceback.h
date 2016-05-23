@@ -119,7 +119,7 @@ local_match traceback(const Letter *query,
 		const int match_score = score_matrix(lq, ls);
 		//printf("i=%i j=%i score=%i subject=%c query=%c\n",i,j,dp(i, j),Value_traits<_val>::ALPHABET[ls],Value_traits<_val>::ALPHABET[lq]);
 
-		if(dp(i, j) == match_score + dp(i-1, j-1)) {
+		if(dp(i, j) == match_score + dp(i-1, j-1)) {		// i==0, j==0 ?
 			if(lq == ls)
 				++l.identities_;
 			else
