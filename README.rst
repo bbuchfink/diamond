@@ -1,4 +1,4 @@
-**DIAMOND v0.8.1 by Benjamin Buchfink** - http://github.com/bbuchfink/diamond
+**DIAMOND v0.8.2 by Benjamin Buchfink** - http://github.com/bbuchfink/diamond
 
 Published in *Nature Methods* **12**, 59–60 (2015) | `doi:10.1038/nmeth.3176 <http://dx.doi.org/10.1038/nmeth.3176>`_
 
@@ -8,7 +8,7 @@ Download & Installation
 =======================
 If you use a recent **Linux** operating system, you can download the software in binary format for immediate use::
 
-    wget http://github.com/bbuchfink/diamond/releases/download/v0.8.1/diamond-linux64.tar.gz
+    wget http://github.com/bbuchfink/diamond/releases/download/v0.8.2/diamond-linux64.tar.gz
     tar xzf diamond-linux64.tar.gz
 
 Users of **Mac OS X** and some **old Linux systems** need to compile the software from source (see `Compiling from source`_). A binary executable for **Windows** is available under Releases.
@@ -133,9 +133,9 @@ Compiling from source
 =====================
 To compile DIAMOND from source, invoke the following commands on the shell::
 
-  $ wget http://github.com/bbuchfink/diamond/archive/v0.8.1.tar.gz
-  $ tar xzf v0.8.1.tar.gz
-  $ cd diamond-0.8.1
+  $ wget http://github.com/bbuchfink/diamond/archive/v0.8.2.tar.gz
+  $ tar xzf v0.8.2.tar.gz
+  $ cd diamond-0.8.2
   $ mkdir bin
   $ cd bin
   $ cmake ..
