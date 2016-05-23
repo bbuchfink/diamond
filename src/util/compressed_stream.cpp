@@ -28,9 +28,15 @@ void Compressed_istream::putback(char c)
 
 Compressed_ostream::Compressed_ostream(const string & file_name, bool compressed) :
 	file_name_(file_name),
-	s_(file_name == "" ? auto_ptr<std::ostream>(&std::cout)
-		: (compressed ? auto_ptr<std::ostream>(new zstr::ofstream(file_name)) : auto_ptr<std::ostream>(new std::ofstream(file_name.c_str()))))
+	s_(file_name == "" ? &std::cout
+		: (compressed ? (std::ofstream*)new zstr::ofstream(file_name) : new std::ofstream(file_name.c_str())))
 {}
+
+Compressed_ostream::~Compressed_ostream()
+{
+	if (file_name_ != "")
+		delete s_;
+}
 
 size_t Compressed_ostream::write(const char * ptr, size_t count)
 {
