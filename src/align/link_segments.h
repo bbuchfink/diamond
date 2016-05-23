@@ -59,7 +59,7 @@ void link_segments(const vector<Segment>::iterator &begin, const vector<Segment>
 		if(i->top_evalue_ == -1)
 			for(typename vector<match<_val> >::iterator j=i+1; j<end; ++j)
 				min_ev = std::min(min_ev, link_segments(*i, *j));*/
-	for(typename vector<Segment>::iterator i=begin; i<end; ++i)
+	for(vector<Segment>::iterator i=begin; i<end; ++i)
 		i->top_score_ = max_score;
 }
 

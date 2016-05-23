@@ -39,7 +39,7 @@ void tile_search(const sorted_list::const_iterator &q,
 			f(q, s, stats, i, std::min(qend,i+tile_size), j, std::min(send,j+tile_size));
 }
 
-const unsigned levels = 2;
+// const unsigned levels = 2;
 const unsigned tile_size[] = { 1024, 128 };
 
 void register_search(vector<Finger_print>::const_iterator q,

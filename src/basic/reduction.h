@@ -83,7 +83,7 @@ private:
 	__declspec(align(16)) char map8_[256];
 #else
 	char map8_[256] __attribute__((aligned(16)));
-#endif;
+#endif
 	unsigned size_;
 
 };
