@@ -89,7 +89,7 @@ inline void align_partition(unsigned hp,
 	if (hp > 0)
 		return;
 #endif
-	typename Trace_pt_buffer::Iterator* out = new Trace_pt_buffer::Iterator (*Trace_pt_buffer::instance, thread_id);
+	Trace_pt_buffer::Iterator* out = new Trace_pt_buffer::Iterator (*Trace_pt_buffer::instance, thread_id);
 	while(!i.at_end() && !j.at_end()) {
 		if(i.key() < j.key()) {
 			++i;

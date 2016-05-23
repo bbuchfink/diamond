@@ -109,7 +109,7 @@ struct hit
 
 struct local_match
 {
-	typedef typename vector<local_match>::iterator iterator;
+	typedef vector<local_match>::iterator iterator;
 	local_match():
 		len_ (),
 		query_begin_ (),

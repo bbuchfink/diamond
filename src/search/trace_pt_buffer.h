@@ -108,7 +108,7 @@ struct Trace_pt_list : public vector<hit>
 	Query_range get_range()
 	{ return Query_range (*this); }
 private:
-	typename vector<hit>::iterator pos_;
+	vector<hit>::iterator pos_;
 #ifdef PRE_PARTITION
 	vector<size_t> p_;
 	unsigned idx_;

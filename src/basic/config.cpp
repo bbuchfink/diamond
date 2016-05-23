@@ -160,7 +160,7 @@ Config::Config(int argc, const char **argv)
 		auto_append_extension(daa_file, ".daa");
 	}
 
-	message_stream << Const::program_name << " v" << Const::version_string << "." << Const::build_version << " | by Benjamin Buchfink <buchfink@gmail.com>" << endl; 
+	message_stream << Const::program_name << " v" << Const::version_string << "." << (unsigned)Const::build_version << " | by Benjamin Buchfink <buchfink@gmail.com>" << endl; 
 	message_stream << "Check http://github.com/bbuchfink/diamond/releases for updates." << endl << endl;
 #ifndef NDEBUG
 	verbose_stream << "Assertions enabled." << endl;

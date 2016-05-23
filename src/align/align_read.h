@@ -58,9 +58,9 @@ void align_read(Output_buffer &buffer,
 	const size_t db_letters = ref_header.letters;
 	unsigned padding[6];
 
-	typedef Map<typename vector<hit>::iterator,typename hit::Query_id<1> > Map_t;
+	typedef Map<vector<hit>::iterator,hit::Query_id<1> > Map_t;
 	Map_t hits (begin, end);
-	typename Map_t::Iterator i = hits.begin();
+	Map_t::Iterator i = hits.begin();
 	while(i.valid()) {
 		align_sequence(matches, stat, local, padding, db_letters, source_query_len, i.begin(), i.end(), transcript_buf);
 		++i;
@@ -73,7 +73,7 @@ void align_read(Output_buffer &buffer,
 
 	std::sort(matches.begin(), matches.end());
 	unsigned n_hsp = 0, n_target_seq = 0;
-	typename vector<Segment>::iterator it = matches.begin();
+	vector<Segment>::iterator it = matches.begin();
 	const int min_raw_score = score_matrix.rawscore(config.min_bit_score == 0
 			? score_matrix.bitscore(config.max_evalue, ref_header.letters, query_len) : config.min_bit_score);
 	const int top_score = matches.operator[](0).score_;
