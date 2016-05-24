@@ -116,6 +116,7 @@ void align_read(Output_buffer &buffer,
 	stat.inc(Statistics::OUT_MATCHES, matches.size());
 	if(ref_header.n_blocks == 1) {
 		stat.inc(Statistics::MATCHES, n_hsp);
+		stat.inc(Statistics::PAIRWISE, n_target_seq);
 		if(n_hsp > 0)
 			stat.inc(Statistics::ALIGNED);
 	}

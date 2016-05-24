@@ -70,6 +70,7 @@ void join_blocks(unsigned ref_blocks, DAA_output &master_out, const vector<Temp_
 				block = b;
 				subject = next.info_.subject_id;
 				++n_target_seq;
+				statistics.inc(Statistics::PAIRWISE);
 			}
 		} else
 			;
