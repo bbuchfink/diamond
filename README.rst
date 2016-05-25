@@ -11,7 +11,7 @@ If you use a recent **Linux** operating system, you can download the software in
     wget http://github.com/bbuchfink/diamond/releases/download/v0.8.2/diamond-linux64.tar.gz
     tar xzf diamond-linux64.tar.gz
 
-Users of **Mac OS X** and **older Linux systems** need to compile the software from source (see `Compiling from source`_). On FreeBSD, the software can be installed using `pkg install diamond`. A binary executable for **Windows** is available under Releases.
+Users of **Mac OS X** and **older Linux systems** need to compile the software from source (see `Compiling from source`_). On **FreeBSD**, the software can be installed using ``pkg install diamond``. A binary executable for **Windows** is available under Releases.
 
 Basic command line use
 ======================
