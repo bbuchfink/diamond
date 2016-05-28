@@ -51,6 +51,7 @@ void align_sequence_simple(vector<Segment> &matches,
 				continue;
 			}
 		}
+		local.push_back(local_match(i->seed_offset_, 0, ref->data((ptrdiff_t)i->subject_)));
 		floating_sw(&query[i->seed_offset_],
 			local.back(),
 			padding[frame],

@@ -28,6 +28,7 @@ Author: Benjamin Buchfink
 #include "../search/sse_dist.h"
 #include "../search/collision.h"
 #include "../search/hit_filter.h"
+#include "../dp/dp.h"
 
 inline void align(Loc q_pos,
 	  const Letter *query,
