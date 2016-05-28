@@ -62,7 +62,7 @@ struct local_trace_point
 		return (int)subject_pos_ - (int)query_pos_;
 	}
 	unsigned subject_, subject_pos_, query_pos_;
-	const Diagonal_segment ungapped;
+	Diagonal_segment ungapped;
 	local_match *hsp_;
 };
 
@@ -134,7 +134,6 @@ void align_sequence_anchored(vector<Segment> &matches,
 	Trace_pt_buffer::Vector::iterator &end,
 	vector<char> &transcript_buf)
 {
-	static const double overlap_factor = 0.9;
 	static TLS_PTR vector<local_trace_point> *trace_points;
 
 	vector<local_trace_point> &trace_pt(get_tls(trace_points));
