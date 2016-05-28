@@ -62,13 +62,12 @@ void align_read(Output_buffer &buffer,
 	Map_t::Iterator i = hits.begin();
 	while(i.valid()) {
 		switch (config.local_align_mode) {
-		case 0:
+		case 1:
 			align_sequence_simple(matches, stat, local, padding, db_letters, source_query_len, i.begin(), i.end(), transcript_buf);
 			break;
-		case 1:
+		default:
 			align_sequence_anchored(matches, stat, local, padding, db_letters, source_query_len, i.begin(), i.end(), transcript_buf);
-		}
-		
+		}		
 		++i;
 	}
 
@@ -90,7 +89,7 @@ void align_read(Output_buffer &buffer,
 			break;
 		if(!same_subject && !config.output_range(n_target_seq, it->score_, top_score))
 			break;
-		if(config.local_align_mode == 0 && same_subject && (it-1)->score_ == it->score_) {
+		if(config.local_align_mode == 1 && same_subject && (it-1)->score_ == it->score_) {
 			++it;
 			continue;
 		}
