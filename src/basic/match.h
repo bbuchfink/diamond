@@ -37,6 +37,28 @@ inline interval normalized_range(unsigned pos, int len, Strand strand)
 			: interval (pos + 1 + len, pos + 1);
 }
 
+struct Diagonal_segment
+{
+	Diagonal_segment(int query_pos, int subject_pos, int len):
+		query_pos(query_pos),
+		subject_pos(subject_pos),
+		len(len)
+	{}
+	interval query_range() const
+	{
+		return interval(query_pos, query_pos + len);
+	}
+	interval subject_range() const
+	{
+		return interval(subject_pos, subject_pos + len);
+	}
+	int diag() const
+	{
+		return subject_pos - query_pos;
+	}
+	int query_pos, subject_pos, len;
+};
+
 #pragma pack(1)
 
 struct hit
@@ -91,7 +113,8 @@ struct hit
 	};
 	static bool cmp_subject(const hit &lhs, const hit &rhs)
 	{
-		return lhs.subject_ < rhs.subject_;
+		return lhs.subject_ < rhs.subject_
+			|| (lhs.subject_ == rhs.subject_ && lhs.seed_offset_ < rhs.seed_offset_);
 	}
 	static bool cmp_normalized_subject(const hit &lhs, const hit &rhs)
 	{
@@ -136,7 +159,7 @@ struct local_match
 		query_anchor_ (0),
 		subject_ (0)
 	{ }
-	local_match(int query_anchor, const Letter *subject, unsigned total_subject_len = 0):
+	local_match(int query_anchor, int subject_anchor, const Letter *subject, unsigned total_subject_len = 0):
 		len_ (0),
 		query_begin_ (0),
 		subject_len_ (0),
@@ -148,6 +171,7 @@ struct local_match
 		score_ (0),
 		query_len_ (0),
 		query_anchor_ (query_anchor),
+		subject_anchor (subject_anchor),
 		subject_ (subject)
 	{ }
 	local_match(unsigned len, unsigned query_begin, unsigned query_len, unsigned subject_len, unsigned gap_openings, unsigned identities, unsigned mismatches, signed subject_begin, signed score):
@@ -201,8 +225,10 @@ struct local_match
 		os << "(sbj=" << x.subject_range() << " score=" << Scoring<_val>::bitscore(x.score_) << ")";
 		return os;
 	}*/
+	bool pass_through(const Diagonal_segment &d, const vector<char> &transcript_buf);
+	bool is_weakly_enveloped(const local_match &j);
 	unsigned len_, query_begin_, subject_len_, gap_openings_, identities_, mismatches_, total_subject_len_;
-	signed subject_begin_, score_, query_len_, query_anchor_;
+	signed subject_begin_, score_, query_len_, query_anchor_, subject_anchor;
 	const Letter *subject_;
 	Edit_transcript transcript_right_, transcript_left_;
 };

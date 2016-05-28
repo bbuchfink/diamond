@@ -78,6 +78,7 @@ Config::Config(int argc, const char **argv)
 		("hit-band", 0, "band for hit verification", hit_band)
 		("hit-score",0, "minimum score to keep a tentative alignment", min_hit_score)
 		("band", 0, "band for dynamic programming computation", padding)
+		("local-align", 0, "Local alignment algorithm", local_align_mode, 0u)
 		("shapes", 's', "number of seed shapes (0 = all available)", shapes)
 		("index-mode", 0, "index mode (0=4x12, 1=16x9)", index_mode)
 		("fetch-size", 0, "trace point fetch size", fetch_size, 4096u)
@@ -161,7 +162,7 @@ Config::Config(int argc, const char **argv)
 	}
 
 	message_stream << Const::program_name << " v" << Const::version_string << "." << (unsigned)Const::build_version << " | by Benjamin Buchfink <buchfink@gmail.com>" << endl; 
-	message_stream << "Check http://github.com/bbuchfink/diamond/releases for updates." << endl << endl;
+	message_stream << "Check http://github.com/bbuchfink/diamond for updates." << endl << endl;
 #ifndef NDEBUG
 	verbose_stream << "Assertions enabled." << endl;
 #endif

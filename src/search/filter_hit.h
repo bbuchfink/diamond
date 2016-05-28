@@ -18,37 +18,43 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 Author: Benjamin Buchfink
 ****/
 
-#ifndef CONST_H_
-#define CONST_H_
+#ifndef FILTER_HIT_H_
+#define FILTER_HIT_H_
 
-struct Const
+#include "../data/reference.h"
+#include "../basic/statistics.h"
+#include "../basic/score_matrix.h"
+#include "../basic/shape_config.h"
+#include "../search/sse_dist.h"
+#include "../search/collision.h"
+#include "../search/hit_filter.h"
+
+inline void align(Loc q_pos,
+	  const Letter *query,
+	  Loc s,
+	  Statistics &stats,
+	  const unsigned sid,
+	  hit_filter &hf)
 {
+	const Letter* subject = ref_seqs::data_->data(s);
 
-	enum {
-		build_version = 65,
-		build_compatibility = 52,
-		db_version = 0,
-		daa_version = 0,
-		seedp_bits = 10,
-		seedp = 1<<seedp_bits,
-		max_seed_weight = 32,
-		seqp_bits = 8,
-		seqp = 1<<seqp_bits,
-		max_shapes = 16,
-		index_modes = 2,
-		min_shape_len = 10,
-		//min_shape_len = 5,
-		max_shape_len = 32,
-		seed_anchor = 8
-	};
+	if(fast_match(query, subject) < config.min_identities)
+		return;
 
-	static const char* version_string;
-	static const char* program_name;
-	static const char* id_delimiters;
+	stats.inc(Statistics::TENTATIVE_MATCHES1);
 
-};
+	unsigned delta, len;
+	int score;
+	if((score = xdrop_ungapped(query, subject, shapes.get_shape(sid).length_, delta, len)) < config.min_ungapped_raw_score)
+		return;
 
-#define SIMPLE_SEARCH
-#define FREQUENCY_MASKING
+	stats.inc(Statistics::TENTATIVE_MATCHES2);
 
-#endif /* CONST_H_ */
+	if(!is_primary_hit(query-delta, subject-delta, delta, sid, len))
+		return;
+
+	stats.inc(Statistics::TENTATIVE_MATCHES3);
+	hf.push(s, score);
+}
+
+#endif

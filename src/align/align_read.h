@@ -24,8 +24,7 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #include "../util/async_buffer.h"
 #include "../basic/match.h"
 #include "../basic/statistics.h"
-#include "../search/align_ungapped.h"
-#include "align_sequence.h"
+#include "align.h"
 #include "../util/text_buffer.h"
 #include "../output/output_buffer.h"
 #include "link_segments.h"
@@ -62,7 +61,14 @@ void align_read(Output_buffer &buffer,
 	Map_t hits (begin, end);
 	Map_t::Iterator i = hits.begin();
 	while(i.valid()) {
-		align_sequence(matches, stat, local, padding, db_letters, source_query_len, i.begin(), i.end(), transcript_buf);
+		switch (config.local_align_mode) {
+		case 0:
+			align_sequence_simple(matches, stat, local, padding, db_letters, source_query_len, i.begin(), i.end(), transcript_buf);
+			break;
+		case 1:
+			align_sequence_anchored(matches, stat, local, padding, db_letters, source_query_len, i.begin(), i.end(), transcript_buf);
+		}
+		
 		++i;
 	}
 
@@ -84,7 +90,7 @@ void align_read(Output_buffer &buffer,
 			break;
 		if(!same_subject && !config.output_range(n_target_seq, it->score_, top_score))
 			break;
-		if(same_subject && (it-1)->score_ == it->score_) {
+		if(config.local_align_mode == 0 && same_subject && (it-1)->score_ == it->score_) {
 			++it;
 			continue;
 		}

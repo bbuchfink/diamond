@@ -1,3 +1,7 @@
+[0.8.3]
+- fixed a problem that could sometimes cause alignments to be missed
+- suppressed reporting of alignments that are enveloped by better alignments
+
 [0.8.2]
 - use parameter -k0 to report unlimited number of alignments
 - fixed a crash bug on Mac OS X

@@ -21,7 +21,7 @@ Author: Benjamin Buchfink
 #ifndef ALIGN_RANGE_H_
 #define ALIGN_RANGE_H_
 
-#include "align.h"
+#include "filter_hit.h"
 #include "../basic/statistics.h"
 
 inline void align_range(Loc q_pos,

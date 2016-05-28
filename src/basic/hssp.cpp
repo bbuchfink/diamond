@@ -1,5 +1,5 @@
 /****
-Copyright (c) 2014, University of Tuebingen
+Copyright (c) 2016, Benjamin Buchfink
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
@@ -14,48 +14,49 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
 LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-****
-Author: Benjamin Buchfink
 ****/
 
-#ifndef ALIGN_H_
-#define ALIGN_H_
+#include "match.h"
 
-#include "../data/reference.h"
-#include "../basic/statistics.h"
-#include "../basic/score_matrix.h"
-#include "../basic/shape_config.h"
-#include "../search/sse_dist.h"
-#include "../search/collision.h"
-#include "../search/hit_filter.h"
-#include "../search/align_ungapped.h"
-
-inline void align(Loc q_pos,
-	  const Letter *query,
-	  Loc s,
-	  Statistics &stats,
-	  const unsigned sid,
-	  hit_filter &hf)
+bool local_match::pass_through(const Diagonal_segment &d, const vector<char> &transcript_buf)
 {
-	const Letter* subject = ref_seqs::data_->data(s);
+	if (intersect(d.query_range(), query_range(FORWARD)).length() != d.len
+		|| intersect(d.subject_range(), subject_range()).length() != d.len)
+		return false;
 
-	if(fast_match(query, subject) < config.min_identities)
-		return;
-
-	stats.inc(Statistics::TENTATIVE_MATCHES1);
-
-	unsigned delta, len;
-	int score;
-	if((score = xdrop_ungapped(query, subject, shapes.get_shape(sid).length_, delta, len)) < config.min_ungapped_raw_score)
-		return;
-
-	stats.inc(Statistics::TENTATIVE_MATCHES2);
-
-	if(!is_primary_hit(query-delta, subject-delta, delta, sid, len))
-		return;
-
-	stats.inc(Statistics::TENTATIVE_MATCHES3);
-	hf.push(s, score);
+	Link_iterator it(transcript_right_, transcript_left_, transcript_buf);
+	const int subject_end = d.subject_pos + d.len;
+	const int diag = d.diag();
+	int i = query_begin_, j = subject_begin_;
+	while (true) {
+		if (j >= d.subject_pos) {
+			if (j >= subject_end)
+				return true;
+			if (j-i != diag)
+				return false;
+		}
+		++it;
+		if (!it.good())
+			break;
+		switch (*it) {
+		case op_match:
+			++i;
+			++j;
+			break;
+		case op_deletion:
+			++j;
+			break;
+		case op_insertion:
+			++i;
+		}		
+	}
+	return true;
 }
 
-#endif /* ALIGN_H_ */
+bool local_match::is_weakly_enveloped(const local_match &j)
+{
+	static const double overlap_factor = 0.9;
+	return score_ <= j.score_
+		&& subject_range().overlap_factor(j.subject_range()) >= overlap_factor
+		&& query_range(FORWARD).overlap_factor(j.query_range(FORWARD)) >= overlap_factor;
+}

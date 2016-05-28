@@ -51,6 +51,10 @@ add_executable(diamond src/run/main.cpp
   src/util/Timer.cpp
   src/basic/basic.cpp
   src/dp/floating_sw.cpp
+  src/align/align_sequence_anchored.cpp
+  src/align/align_sequence_simple.cpp
+  src/basic/hssp.cpp
+  src/dp/ungapped_align.cpp
 )
 
 target_link_libraries(diamond ${ZLIB_LIBRARY} ${CMAKE_THREAD_LIBS_INIT})

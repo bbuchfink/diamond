@@ -109,6 +109,10 @@ struct interval
 	{ return end_ > begin_ ? end_ - begin_ : 0; }
 	size_t overlap(const interval &rhs) const
 	{ return intersect(*this, rhs).length(); }
+	double overlap_factor(const interval &rhs) const
+	{
+		return (double)overlap(rhs) / (double)length();
+	}
 	bool includes(size_t p) const
 	{ return p >= begin_ && p < end_; }
 	friend inline interval intersect(const interval &lhs, const interval &rhs)

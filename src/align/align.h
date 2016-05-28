@@ -1,5 +1,5 @@
 /****
-Copyright (c) 2014, University of Tuebingen
+Copyright (c) 2016, Benjamin Buchfink
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
@@ -14,55 +14,35 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
 LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-****
-Author: Benjamin Buchfink
 ****/
 
-#ifndef ALIGN_UNGAPPED_H_
-#define ALIGN_UNGAPPED_H_
+#ifndef ALIGN_H_
+#define ALIGN_H_
 
-inline int xdrop_ungapped(const Letter *query, const Letter *subject, unsigned seed_len, unsigned &delta, unsigned &len)
-{
-	int score (0), st (0);
-	unsigned n (0);
-	delta = 0;
+#include <vector>
+#include "../search/trace_pt_buffer.h"
 
-	const Letter *q (query-1), *s (subject-1);
-	const unsigned window_left = std::max(config.window, (unsigned)Const::seed_anchor) - Const::seed_anchor;
-	while(score - st < config.xdrop
-			&& delta < window_left
-			&& *q != '\xff'
-			&& *s != '\xff')
-	{
-		st += score_matrix(*q, mask_critical(*s));
-		score = std::max(score, st);
-		--q;
-		--s;
-		++delta;
-	}
+using std::vector;
 
-	q = query + seed_len;
-	s = subject + seed_len;
-	st = score;
-	assert(seed_len >= Const::seed_anchor);
-	const unsigned window_right = std::max(config.window, seed_len - Const::seed_anchor) - (seed_len - Const::seed_anchor);
-	while(score - st < config.xdrop
-			&& n < window_right
-			&& *q != '\xff'
-			&& *s != '\xff')
-	{
-		st += score_matrix(*q, mask_critical(*s));
-		score = std::max(score, st);
-		++q;
-		++s;
-		++n;
-	}
+void align_sequence_simple(vector<Segment> &matches,
+	Statistics &stat,
+	vector<local_match> &local,
+	unsigned *padding,
+	size_t db_letters,
+	unsigned dna_len,
+	Trace_pt_buffer::Vector::iterator &begin,
+	Trace_pt_buffer::Vector::iterator &end,
+	vector<char> &transcript_buf);
 
-	for(unsigned i=0;i<seed_len;++i)
-		score += score_matrix(query[i], mask_critical(subject[i]));
+void align_sequence_anchored(vector<Segment> &matches,
+	Statistics &stat,
+	vector<local_match> &local,
+	unsigned *padding,
+	size_t db_letters,
+	unsigned dna_len,
+	Trace_pt_buffer::Vector::iterator &begin,
+	Trace_pt_buffer::Vector::iterator &end,
+	vector<char> &transcript_buf);
 
-	len = delta + n + seed_len;
-	return score;
-}
 
-#endif /* ALIGN_UNGAPPED_H_ */
+#endif

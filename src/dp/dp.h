@@ -1,5 +1,5 @@
 /****
-Copyright (c) 2014, University of Tuebingen
+Copyright (c) 2016, University of Tuebingen, Benjamin Buchfink
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
@@ -14,41 +14,17 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
 LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-****
-Author: Benjamin Buchfink
 ****/
 
-#ifndef CONST_H_
-#define CONST_H_
+#ifndef DP_H_
+#define DP_H_
 
-struct Const
-{
+#include "../basic/match.h"
 
-	enum {
-		build_version = 65,
-		build_compatibility = 52,
-		db_version = 0,
-		daa_version = 0,
-		seedp_bits = 10,
-		seedp = 1<<seedp_bits,
-		max_seed_weight = 32,
-		seqp_bits = 8,
-		seqp = 1<<seqp_bits,
-		max_shapes = 16,
-		index_modes = 2,
-		min_shape_len = 10,
-		//min_shape_len = 5,
-		max_shape_len = 32,
-		seed_anchor = 8
-	};
+template<typename _score>
+void smith_waterman(const Letter *query, local_match &segment, _score gap_open, _score gap_extend, vector<char> &transcript_buf, const _score& = int());
 
-	static const char* version_string;
-	static const char* program_name;
-	static const char* id_delimiters;
+int xdrop_ungapped(const Letter *query, const Letter *subject, unsigned seed_len, unsigned &delta, unsigned &len);
+void xdrop_ungapped(const Letter *query, const Letter *subject, unsigned &delta, unsigned &len);
 
-};
-
-#define SIMPLE_SEARCH
-#define FREQUENCY_MASKING
-
-#endif /* CONST_H_ */
+#endif /* FLOATING_SW_H_ */
