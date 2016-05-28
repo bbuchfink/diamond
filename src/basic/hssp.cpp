@@ -20,8 +20,8 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 
 bool local_match::pass_through(const Diagonal_segment &d, const vector<char> &transcript_buf)
 {
-	if (intersect(d.query_range(), query_range(FORWARD)).length() != d.len
-		|| intersect(d.subject_range(), subject_range()).length() != d.len)
+	if (intersect(d.query_range(), query_range(FORWARD)).length() != (size_t)d.len
+		|| intersect(d.subject_range(), subject_range()).length() != (size_t)d.len)
 		return false;
 
 	Link_iterator it(transcript_right_, transcript_left_, transcript_buf);
