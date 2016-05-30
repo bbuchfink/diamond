@@ -56,7 +56,7 @@ void align_read(Output_buffer &buffer,
 	const unsigned source_query_len = query_translated() ? (unsigned)query_seqs::data_->reverse_translated_len(query*contexts) : query_len;
 	const size_t db_letters = ref_header.letters;
 	unsigned padding[6];
-
+	
 	typedef Map<vector<hit>::iterator,hit::Query_id<1> > Map_t;
 	Map_t hits (begin, end);
 	Map_t::Iterator i = hits.begin();

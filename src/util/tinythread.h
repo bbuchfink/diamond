@@ -548,6 +548,7 @@ class thread {
     /// @return The number of hardware thread contexts in the system.
     /// @note If this value is not defined, the function returns zero (0).
     static unsigned hardware_concurrency();
+	static unsigned get_current_thread_id();
 
     _TTHREAD_DISABLE_ASSIGNMENT(thread)
 

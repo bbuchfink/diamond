@@ -77,7 +77,6 @@ struct hit_filter
 			q_num_ = (unsigned)l.first;
 			seed_offset_ = (unsigned)l.second;
 		}
-		//cout << "query=" << q_num_ << " so=" << seed_offset_ << " subject=" << subject << endl;
 		assert(subject < ref_seqs::get().raw_len());
 		out_.push(hit  (q_num_, subject, seed_offset_));
 		stats_.inc(Statistics::TENTATIVE_MATCHES4);

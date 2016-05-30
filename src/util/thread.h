@@ -1,6 +1,5 @@
 /****
-Copyright (c) 2015, University of Tuebingen
-Author: Benjamin Buchfink
+Copyright (c) 2016, University of Tuebingen, Benjamin Buchfink
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
@@ -36,8 +35,9 @@ struct Atomic
 	{ }
 	volatile _t operator++(int)
 	{
-		tthread::lock_guard<tthread::mutex> lock (mtx_);
+		mtx_.lock();
 		_t r = v_++;
+		mtx_.unlock();
 		return r;
 	}
 private:

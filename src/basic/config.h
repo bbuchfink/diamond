@@ -68,6 +68,8 @@ struct Config
 	unsigned	verbosity;
 	bool no_auto_append;
 	unsigned local_align_mode;
+	bool extend_all;
+	bool fast_search;
 
 	typedef enum { makedb = 0, blastp = 1, blastx = 2, view = 3, help = 4, version = 5 } Command;
 	unsigned	command;

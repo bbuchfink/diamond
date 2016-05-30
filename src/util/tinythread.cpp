@@ -271,6 +271,15 @@ thread::id thread::get_id() const
 #endif
 }
 
+unsigned thread::get_current_thread_id()
+{
+#if defined(_TTHREAD_WIN32_)
+	return GetCurrentThreadId();
+#else
+	return 0;
+#endif
+}
+
 unsigned thread::hardware_concurrency()
 {
 #if defined(_TTHREAD_WIN32_)

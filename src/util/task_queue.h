@@ -21,6 +21,10 @@ Author: Benjamin Buchfink
 #ifndef TASK_QUEUE_H_
 #define TASK_QUEUE_H_
 
+#include "tinythread.h"
+
+//#define ENABLE_LOGGING
+
 template<typename _t, typename _callback>
 struct Task_queue
 {
@@ -33,6 +37,7 @@ struct Task_queue
 		limit_ (limit),
 		head_idx_ (0),
 		queued_ (0),
+		queued_size_ (0),
 		at_end_ (false),
 		callback_ (callback)
 	{ }
@@ -44,16 +49,17 @@ struct Task_queue
 	volatile bool get(size_t &n, _t*& res, _init &init)
 	{
 		{
-			tthread::lock_guard<tthread::mutex> lock (mtx_);
+			mtx_.lock();
 #ifdef ENABLE_LOGGING
-			log_stream << "Task_queue get() thread=" << omp_get_thread_num() << " waiting=" << waiting() << " head=" << head_ << " tail=" << tail_ << endl;
+			log_stream << "Task_queue get() thread=" << tthread::thread::get_current_thread_id() << " waiting=" << waiting() << " head=" << head_ << " tail=" << tail_ << endl;
 #endif
 			while(waiting() && !at_end_)
 				cond_.wait(mtx_);
 			if(at_end_) {
 #ifdef ENABLE_LOGGING
-				log_stream << "Task_queue get() thread=" << omp_get_thread_num() << " quit" << endl;
+				log_stream << "Task_queue get() thread=" << tthread::thread::get_current_thread_id() << " quit" << endl;
 #endif
+				mtx_.unlock();
 				return false;
 			}
 			n = tail_++;
@@ -61,8 +67,9 @@ struct Task_queue
 			if(!init())
 				at_end_ = true;
 #ifdef ENABLE_LOGGING
-			log_stream << "Task_queue get() thread=" << omp_get_thread_num() << " n=" << n << endl;
+			log_stream << "Task_queue get() thread=" << tthread::thread::get_current_thread_id() << " n=" << n << endl;
 #endif
+			mtx_.unlock();
 		}
 		if(at_end_)
 			cond_.notify_all();
@@ -77,16 +84,17 @@ struct Task_queue
 		mtx_.lock();
 		if(n == head_) {
 #ifdef ENABLE_LOGGING
-			log_stream << "Task_queue flush() thread=" << omp_get_thread_num() << " n=" << n << endl;
+			log_stream << "Task_queue flush() thread=" << tthread::thread::get_current_thread_id() << " n=" << n << endl;
 #endif
 			mtx_.unlock();
 			flush();
 		} else {
 #ifdef ENABLE_LOGGING
-			log_stream << "Task_queue push() thread=" << omp_get_thread_num() << "n=" << n << " head=" << head_ << endl;
+			message_stream << "Task_queue push() thread=" << tthread::thread::get_current_thread_id() << " n=" << n << " head=" << head_ << " size=" << queued_size_ << endl;
 #endif
 			state_[idx(n)] = true;
 			++queued_;
+			queued_size_ += slot(n).size();
 			mtx_.unlock();
 		}
 	}
@@ -98,9 +106,9 @@ struct Task_queue
 		do {
 			callback_(slot(head_));
 			{
-				tthread::lock_guard<tthread::mutex> lock(mtx_);
+				mtx_.lock();
 #ifdef ENABLE_LOGGING
-				log_stream << "Task_queue flush() thread=" << omp_get_thread_num() << " head=" << head_ << " waiting=" << notify << endl;
+				log_stream << "Task_queue flush() thread=" << tthread::thread::get_current_thread_id() << " head=" << head_ << " waiting=" << tail_-head_ << "/" << limit_ << " size=" << queued_size_ << endl;
 #endif
 				state_[idx(head_)] = false;
 				++head_;
@@ -111,9 +119,11 @@ struct Task_queue
 					log_stream << "Task_queue n=" << queued_ << endl;
 #endif
 					--queued_;
+					queued_size_ -= slot(head_).size();
 				}
 				else
 					next = false;
+				mtx_.unlock();
 			}
 			cond_.notify_one();
 			++n;
@@ -133,7 +143,7 @@ private:
 	vector<bool> state_;
 	tthread::mutex mtx_;
 	tthread::condition_variable cond_;
-	volatile size_t head_, tail_, limit_, head_idx_, queued_;
+	volatile size_t head_, tail_, limit_, head_idx_, queued_, queued_size_;
 	bool at_end_;
 	_callback &callback_;
 

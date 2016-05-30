@@ -1,3 +1,21 @@
+/****
+Copyright (c) 2016, Benjamin Buchfink
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
+
+3. Neither the name of the copyright holder nor the names of its contributors may be used to endorse or promote products derived from this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+****/
+
 #include "../util/command_line_parser.h"
 #include "config.h"
 #include "../util/util.h"
@@ -78,7 +96,6 @@ Config::Config(int argc, const char **argv)
 		("hit-band", 0, "band for hit verification", hit_band)
 		("hit-score",0, "minimum score to keep a tentative alignment", min_hit_score)
 		("band", 0, "band for dynamic programming computation", padding)
-		("local-align", 0, "Local alignment algorithm", local_align_mode, 0u)
 		("shapes", 's', "number of seed shapes (0 = all available)", shapes)
 		("index-mode", 0, "index mode (0=4x12, 1=16x9)", index_mode)
 		("fetch-size", 0, "trace point fetch size", fetch_size, 4096u)
@@ -92,13 +109,19 @@ Config::Config(int argc, const char **argv)
 		("outfmt",'f', "output format (tab/sam)", output_format, string("tab"))
 		("forwardonly", 0, "only show alignments of forward strand", forwardonly);
 
+	Options_group hidden_options("");
+	hidden_options.add()
+		("extend-all", 0, "extend all seed hits", extend_all)
+		("local-align", 0, "Local alignment algorithm", local_align_mode, 0u)
+		("fast-search", 0, "", fast_search);
+
 #ifdef EXTRA
 	("match1", po::value<string>(&program_options::match_file1))
 		("match2", po::value<string>(&program_options::match_file2))
 		("tab", "tabular format")
 #endif
 
-	parser.add(general).add(makedb).add(aligner).add(advanced).add(view_options);
+	parser.add(general).add(makedb).add(aligner).add(advanced).add(view_options).add(hidden_options);
 	parser.store(argc, argv, command);
 
 	if (debug_log)

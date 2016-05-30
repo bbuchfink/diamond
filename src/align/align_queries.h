@@ -26,22 +26,9 @@ Author: Benjamin Buchfink
 #include "../util/map.h"
 #include "align_read.h"
 #include "../util/task_queue.h"
+#include "align.h"
 
 using std::vector;
-
-struct Output_writer
-{
-	Output_writer(Output_stream* f):
-		f_ (f)
-	{ }
-	void operator()(Text_buffer &buf)
-	{
-		f_->write(buf.get_begin(), buf.size());
-		buf.clear();
-	}
-private:
-	Output_stream* const f_;
-};
 
 template<unsigned _d>
 void align_queries(Trace_pt_list::iterator begin,
@@ -58,22 +45,23 @@ void align_queries(Trace_pt_list::iterator begin,
 	}
 }
 
+#define Output_sink Ring_buffer_sink
+
 template<typename _buffer>
 struct Align_context
 {
 	Align_context(Trace_pt_list &trace_pts, Output_stream* output_file):
 		trace_pts (trace_pts),
 		output_file (output_file),
-		writer (output_file),
-		queue (config.threads_*8, writer)
+		sink (output_file)
 	{ }
 	void operator()(unsigned thread_id)
 	{
 		Statistics st;
 		size_t i=0;
-		typename Trace_pt_list::Query_range query_range (trace_pts.get_range());
+		Trace_pt_list::Query_range query_range (trace_pts.get_range());
 		_buffer *buffer = 0;
-		while(queue.get(i, buffer, query_range)) {
+		while(sink.get(i, buffer, query_range)) {
 			try {
 				switch(query_contexts()) {
 				case 6:
@@ -85,7 +73,7 @@ struct Align_context
 				default:
 					align_queries<1>(query_range.begin, query_range.end, *buffer, st);
 				}
-				queue.push(i);
+				sink.push(i);
 			}
 			catch (std::bad_alloc&) {
 				std::cout << "Out of memory error." << std::endl;
@@ -101,8 +89,7 @@ struct Align_context
 	}
 	Trace_pt_list &trace_pts;
 	Output_stream* output_file;
-	Output_writer writer;
-	Task_queue<_buffer,Output_writer> queue;
+	Output_sink<_buffer> sink;
 };
 
 void align_queries(const Trace_pt_buffer &trace_pts, Output_stream* output_file)

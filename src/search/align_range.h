@@ -96,14 +96,13 @@ inline void align_partition(unsigned hp,
 		} else if(j.key() < i.key()) {
 			++j;
 		} else {
-#ifdef SIMPLE_SEARCH
-			align_range(j, i, stats, *out, sid);
-#else
-			//cout << "n=" << stats.data_[Statistics::SEED_HITS] << endl;
-			/*if (stats.data_[Statistics::SEED_HITS] > 10000000000lu)
+			if (config.fast_search) {
+				//cout << "n=" << stats.data_[Statistics::SEED_HITS] << endl;
+				/*if (stats.data_[Statistics::SEED_HITS] > 10000000000lu)
 				break;*/
-			search_seed(j, i, stats, *out, sid);
-#endif
+				search_seed(j, i, stats, *out, sid);
+			} else
+				align_range(j, i, stats, *out, sid);
 			++i;
 			++j;
 		}

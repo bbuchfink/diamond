@@ -156,6 +156,7 @@ void query_register_search(vector<Finger_print>::const_iterator q,
 		if (q6.match(s4) >= config.min_identities) stats.inc(Statistics::TENTATIVE_MATCHES1);
 	}
 	for (; s < s_end; ++s) {
+		stats.inc(Statistics::SEED_HITS, 6);
 		if (q1.match(*s) >= config.min_identities) stats.inc(Statistics::TENTATIVE_MATCHES1);
 		if (q2.match(*s) >= config.min_identities) stats.inc(Statistics::TENTATIVE_MATCHES1);
 		if (q3.match(*s) >= config.min_identities) stats.inc(Statistics::TENTATIVE_MATCHES1);
@@ -250,11 +251,11 @@ void tiled_search(vector<Finger_print>::const_iterator q,
 				tiled_search(q, q + std::min(q_end - q, (ptrdiff_t)tile_size[level]), s2, s2 + std::min(s_end - s2, (ptrdiff_t)tile_size[level]), stats, level+1);
 		break;
 	case 2:
-		for (; q < q_end; q += 4)
-			if (q_end - q < 4)
+		for (; q < q_end; q += 6)
+			if (q_end - q < 6)
 				inner_search(q, q_end, s, s_end, stats);
 			else
-				query_register_search_simple(q, s, s_end, stats);
+				query_register_search(q, s, s_end, stats);
 
 	/*case 2:
 		if(q_end-q<4 || s_end-s<4)
@@ -283,6 +284,14 @@ void load_fps(const sorted_list::const_iterator &i, vector<Finger_print> &v, con
 {
 	v.clear();
 	v.reserve(i.n);
+	for (unsigned j = 0; j < i.n && (i.n<=config.hit_cap || i[j] != 0); ++j)
+		v.push_back(Finger_print(seqs.data(i[j]), Masked()));
+}
+
+void load_fps2(const sorted_list::const_iterator &i, vector<Finger_print> &v, const Sequence_set &seqs)
+{
+	v.clear();
+	v.reserve(i.n);
 	for (unsigned j = 0; j < i.n; ++j)
 		v.push_back(Finger_print(seqs.data(i[j])));
 }
@@ -294,11 +303,13 @@ void search_seed(const sorted_list::const_iterator &q,
 	const unsigned sid)
 {
 	//cout << q.n << ' ' << s.n << endl;
-	if (q.n > config.hit_cap)
-		return;
-	static vector<Finger_print> vq, vs;
-	load_fps(q, vq, *query_seqs::data_);
+	/*if (q.n > config.hit_cap)
+		return;*/
+	static TLS_PTR vector<Finger_print> *vq_ptr, *vs_ptr;
+	vector<Finger_print> &vq(get_tls(vq_ptr)), &vs(get_tls(vs_ptr));
+	load_fps2(q, vq, *query_seqs::data_);
 	load_fps(s, vs, *ref_seqs::data_);
+	//stats.inc(Statistics::TENTATIVE_MATCHES2, vq.size()*vs.size());
 	//tile_search(q, s, stats, 0, q.n, 0, s.n, inner_search,128);
 	tiled_search(vq.begin(), vq.end(), vs.begin(), vs.end(), stats, 0);
 }

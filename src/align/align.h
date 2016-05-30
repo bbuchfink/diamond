@@ -21,6 +21,8 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 
 #include <vector>
 #include "../search/trace_pt_buffer.h"
+#include "../util/task_queue.h"
+#include "../basic/statistics.h"
 
 using std::vector;
 
@@ -44,5 +46,36 @@ void align_sequence_anchored(vector<Segment> &matches,
 	Trace_pt_buffer::Vector::iterator &end,
 	vector<char> &transcript_buf);
 
+struct Output_writer
+{
+	Output_writer(Output_stream* f) :
+		f_(f)
+	{ }
+	void operator()(Text_buffer &buf)
+	{
+		f_->write(buf.get_begin(), buf.size());
+		buf.clear();
+	}
+private:
+	Output_stream* const f_;
+};
+
+template<typename _buffer>
+struct Ring_buffer_sink
+{
+	Ring_buffer_sink(Output_stream *output_file):
+		writer(output_file),
+	{}
+	{
+		return queue.get(i, buffer, query_range);
+	}
+	void push(size_t i)
+	{
+		queue.push(i);
+	}
+private:
+	Output_writer writer;
+	Task_queue<_buffer, Output_writer> queue;
+};
 
 #endif

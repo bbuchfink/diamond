@@ -32,8 +32,8 @@ Diagonal_segment ungapped_extension(unsigned subject, unsigned subject_pos, unsi
 	const Letter* s = ref_seqs::data_->data(ref_seqs::data_->position(subject, subject_pos)),
 		*q = &query[query_pos];
 	unsigned delta, len;
-	xdrop_ungapped(q, s, delta, len);
-	return Diagonal_segment(query_pos - delta, subject_pos - delta, len);
+	int score = xdrop_ungapped(q, s, delta, len);
+	return Diagonal_segment(query_pos - delta, subject_pos - delta, len, score);
 }
 
 struct local_trace_point
@@ -81,10 +81,14 @@ bool include(vector<local_trace_point>::iterator begin,
 	unsigned band,
 	const vector<char> &transcript_buf)
 {
+	if (config.extend_all)
+		return true;
 	for (vector<local_trace_point>::iterator i = begin; i<end; ++i) {
 		if (i->hsp_ != 0
 			//&& (i->hsp_->score_ == 0 || i->hsp_->pass_through(Diagonal_segment(p.query_pos_, p.subject_pos_, 1), transcript_buf)))
-			&& (i->hsp_->score_ == 0 || i->hsp_->pass_through(p.ungapped, transcript_buf)))
+			&& (i->hsp_->score_ == 0
+				|| p.ungapped.is_enveloped(i->ungapped)
+				|| i->hsp_->pass_through(p.ungapped, transcript_buf)))
 			return false;
 	}
 	return true;
@@ -98,8 +102,8 @@ void load_subject_seqs(vector<local_match> &dst,
 	unsigned band,
 	const vector<char> &transcript_buf)
 {
-	for (vector<local_trace_point>::iterator i = begin; i<end; ++i)
-		if (i->hsp_ == 0 && include(begin, i, *i, band, transcript_buf)) {
+	for (vector<local_trace_point>::iterator i = begin; i < end; ++i) {
+		if (i->hsp_ == 0 && include(begin, end, *i, band, transcript_buf)) {
 			dst.push_back(local_match(i->query_pos_, i->subject_pos_, ref_seqs::data_->data(ref_seqs::data_->position(i->subject_, i->subject_pos_))));
 			i->hsp_ = &dst.back();
 			//cout << *i << " i\n";
@@ -107,6 +111,7 @@ void load_subject_seqs(vector<local_match> &dst,
 		else {
 			//cout << *i << " x\n";
 		}
+	}
 }
 
 void load_subject_seqs(vector<local_match> &dst,
@@ -146,13 +151,12 @@ void align_sequence_anchored(vector<Segment> &matches,
 	const unsigned query_len = (unsigned)query.length();
 	padding[frame] = config.read_padding(query_len);
 	unsigned aligned = 0;
-
 	load_local_trace_points(trace_pt, begin, end, query);
 
 	while (true) {
 		const local_match::iterator local_begin = local.end();
 		load_subject_seqs(local, trace_pt, query, query_len, padding[frame], transcript_buf);
-
+		
 		if (local.end() - local_begin == 0) {
 			stat.inc(Statistics::OUT_HITS, aligned);
 			stat.inc(Statistics::DUPLICATES, trace_pt.size() - aligned);

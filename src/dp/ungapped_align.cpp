@@ -45,7 +45,7 @@ int xdrop_ungapped(const Letter *query, const Letter *subject, unsigned seed_len
 	return score;
 }
 
-void xdrop_ungapped(const Letter *query, const Letter *subject, unsigned &delta, unsigned &len)
+int xdrop_ungapped(const Letter *query, const Letter *subject, unsigned &delta, unsigned &len)
 {
 	int score(0), st(0), n=1;
 	delta = 0;
@@ -84,4 +84,5 @@ void xdrop_ungapped(const Letter *query, const Letter *subject, unsigned &delta,
 		++n;
 	}
 	len += delta;
+	return score;
 }

@@ -140,7 +140,7 @@ struct Ref_map
 		if(n != std::numeric_limits<unsigned>::max())
 			return n;
 		{
-			tthread::lock_guard<tthread::mutex> lock(mtx_);
+			mtx_.lock();
 			n = data_[block][i];
 			if (n != std::numeric_limits<uint32_t>::max())
 				return n;
@@ -151,6 +151,7 @@ struct Ref_map
 				name_.push_back(new string(ref_ids::get()[i].c_str()));
 			else
 				name_.push_back(get_str(ref_ids::get()[i].c_str(), Const::id_delimiters));
+			mtx_.unlock();
 		}
 		return n;
 	}

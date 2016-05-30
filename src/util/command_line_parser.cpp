@@ -88,6 +88,8 @@ void Command_line_parser::print_help()
 		cout << i->first << '\t' << i->second << endl;
 	cout << endl;
 	for (vector<const Options_group*>::const_iterator i = groups_.begin(); i != groups_.end(); ++i) {
+		if ((*i)->title == "")
+			continue;
 		cout << (*i)->title << ":" << endl;
 		for (vector<Option_base*>::const_iterator j = (*i)->options.begin(); j != (*i)->options.end(); ++j) {
 			string col1 = "--" + (*j)->id;

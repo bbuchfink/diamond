@@ -39,10 +39,11 @@ inline interval normalized_range(unsigned pos, int len, Strand strand)
 
 struct Diagonal_segment
 {
-	Diagonal_segment(int query_pos, int subject_pos, int len):
+	Diagonal_segment(int query_pos, int subject_pos, int len, int score):
 		query_pos(query_pos),
 		subject_pos(subject_pos),
-		len(len)
+		len(len),
+		score (score)
 	{}
 	interval query_range() const
 	{
@@ -56,7 +57,13 @@ struct Diagonal_segment
 	{
 		return subject_pos - query_pos;
 	}
-	int query_pos, subject_pos, len;
+	bool is_enveloped(const Diagonal_segment &x) const
+	{
+		return score <= x.score
+			&& query_range().overlap_factor(x.query_range()) == 1
+			&& subject_range().overlap_factor(x.subject_range()) == 1;
+	}
+	int query_pos, subject_pos, len, score;
 };
 
 #pragma pack(1)

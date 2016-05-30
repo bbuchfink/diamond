@@ -52,9 +52,6 @@ inline unsigned match_block(const Letter *x, const Letter *y)
 	return _mm_movemask_epi8(_mm_cmpeq_epi8(r1, r2));
 }
 
-inline unsigned fast_match(const Letter *q, const Letter *s)
-{ return popcount_3(match_block(q-8, s-8)<<16 | match_block(q+8, s+8)); }
-
 inline unsigned popcount32(unsigned x)
 {
 #ifdef _MSC_VER
@@ -73,11 +70,22 @@ inline unsigned popcount64(unsigned long long x)
 #endif
 }
 
+inline unsigned fast_match(const Letter *q, const Letter *s)
+{
+	return popcount32(match_block(q - 8, s - 8) << 16 | match_block(q + 8, s + 8));
+}
+
+struct Masked {};
+
 struct Byte_finger_print
 {
-	Byte_finger_print(const Letter *q):
-		r1 (_mm_and_si128(_mm_loadu_si128((__m128i const*)(q - 8)), _mm_set1_epi8(0x7F))),
-		r2 (_mm_and_si128(_mm_loadu_si128((__m128i const*)(q + 8)), _mm_set1_epi8(0x7F)))
+	Byte_finger_print(const Letter *q) :
+		r1(_mm_loadu_si128((__m128i const*)(q - 8))),
+		r2(_mm_loadu_si128((__m128i const*)(q + 8)))
+	{ }
+	Byte_finger_print(const Letter *q, Masked):
+		r1 (_mm_and_si128(_mm_loadu_si128((__m128i const*)(q - 8)), _mm_set1_epi8('\x7f'))),
+		r2 (_mm_and_si128(_mm_loadu_si128((__m128i const*)(q + 8)), _mm_set1_epi8('\x7f')))
 	{ }
 	static unsigned match_block(__m128i x, __m128i y)
 	{
@@ -155,7 +163,7 @@ struct Halfbyte_finger_print
 	__m128i r;
 };
 
-typedef Halfbyte_finger_print Finger_print;
+typedef Byte_finger_print Finger_print;
 
 inline __m128i reduce_seq_ssse3(const __m128i &seq)
 {
