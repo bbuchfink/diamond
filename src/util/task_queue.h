@@ -23,7 +23,6 @@ Author: Benjamin Buchfink
 
 #include "tinythread.h"
 
-//#define ENABLE_LOGGING
 
 template<typename _t, typename _callback>
 struct Task_queue

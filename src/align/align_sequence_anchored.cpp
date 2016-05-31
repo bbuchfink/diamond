@@ -42,8 +42,10 @@ struct local_trace_point
 		subject_(subject),
 		subject_pos_(subject_pos),
 		query_pos_(query_pos),
+		extensions_ (0),
 		ungapped(ungapped_extension(subject, subject_pos, query_pos, query)),
-		hsp_(hsp)
+		hsp_(hsp),
+		high_sim (false)
 	{ }
 	struct Subject
 	{
@@ -61,9 +63,14 @@ struct local_trace_point
 	{
 		return (int)subject_pos_ - (int)query_pos_;
 	}
-	unsigned subject_, subject_pos_, query_pos_;
+	bool operator<(const local_trace_point &rhs) const
+	{
+		return ungapped.score > rhs.ungapped.score;
+	}
+	unsigned subject_, subject_pos_, query_pos_, extensions_;
 	Diagonal_segment ungapped;
 	local_match *hsp_;
+	bool high_sim;
 };
 
 void load_local_trace_points(vector<local_trace_point> &v, Trace_pt_buffer::Vector::iterator &begin, Trace_pt_buffer::Vector::iterator &end, const sequence &query)
@@ -72,6 +79,14 @@ void load_local_trace_points(vector<local_trace_point> &v, Trace_pt_buffer::Vect
 		std::pair<size_t, size_t> l = ref_seqs::data_->local_position(i->subject_);
 		v.push_back(local_trace_point((unsigned)l.first, (unsigned)l.second, i->seed_offset_, query));
 		//cout << v.back() << endl;
+	}
+
+	typedef Map<vector<local_trace_point>::iterator, local_trace_point::Subject> trace_pt_map;
+	trace_pt_map trace_pt(v.begin(), v.end());
+	trace_pt_map::Iterator it = trace_pt.begin();
+	while (it.valid()) {
+		std::sort(it.begin(), it.end());
+		++it;
 	}
 }
 
@@ -100,12 +115,25 @@ void load_subject_seqs(vector<local_match> &dst,
 	const sequence &query,
 	unsigned query_len,
 	unsigned band,
-	const vector<char> &transcript_buf)
+	const vector<char> &transcript_buf,
+	Statistics &stat)
 {
+	if (begin->high_sim || begin->extensions_ >= sqrt(query_len)+query_len/10)
+		return;
+	double sim = (double)(end - begin) / query_len; // / ref_seqs::data_->length(begin->subject_);
+	if (sim > 0.25) {
+		begin->high_sim = true;
+		stat.inc(Statistics::HIGH_SIM);
+		dst.push_back(local_match(begin->query_pos_, begin->subject_pos_, ref_seqs::data_->data(ref_seqs::data_->position(begin->subject_, begin->subject_pos_))));
+		begin->hsp_ = &dst.back();
+		return;
+	}
 	for (vector<local_trace_point>::iterator i = begin; i < end; ++i) {
 		if (i->hsp_ == 0 && include(begin, end, *i, band, transcript_buf)) {
 			dst.push_back(local_match(i->query_pos_, i->subject_pos_, ref_seqs::data_->data(ref_seqs::data_->position(i->subject_, i->subject_pos_))));
+			//cout << i->query_pos_ << ' ' << i->subject_ << ' ' << i->subject_pos_ << endl;
 			i->hsp_ = &dst.back();
+			++begin->extensions_;
 			//cout << *i << " i\n";
 		}
 		else {
@@ -119,13 +147,14 @@ void load_subject_seqs(vector<local_match> &dst,
 	const sequence &query,
 	unsigned query_len,
 	unsigned band,
-	const vector<char> &transcript_buf)
+	const vector<char> &transcript_buf,
+	Statistics &stat)
 {
 	typedef Map<vector<local_trace_point>::iterator, local_trace_point::Subject> trace_pt_map;
 	trace_pt_map trace_pt(src.begin(), src.end());
 	trace_pt_map::Iterator it = trace_pt.begin();
 	while (it.valid()) {
-		load_subject_seqs(dst, it.begin(), it.end(), query, query_len, band, transcript_buf);
+		load_subject_seqs(dst, it.begin(), it.end(), query, query_len, band, transcript_buf, stat);
 		++it;
 	}
 }
@@ -155,7 +184,7 @@ void align_sequence_anchored(vector<Segment> &matches,
 
 	while (true) {
 		const local_match::iterator local_begin = local.end();
-		load_subject_seqs(local, trace_pt, query, query_len, padding[frame], transcript_buf);
+		load_subject_seqs(local, trace_pt, query, query_len, padding[frame], transcript_buf, stat);
 		
 		if (local.end() - local_begin == 0) {
 			stat.inc(Statistics::OUT_HITS, aligned);

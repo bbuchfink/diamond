@@ -29,7 +29,7 @@ struct Statistics
 {
 
 	enum value { SEED_HITS, TENTATIVE_MATCHES0, TENTATIVE_MATCHES1, TENTATIVE_MATCHES2, TENTATIVE_MATCHES3, TENTATIVE_MATCHES4, MATCHES, ALIGNED, GAPPED, DUPLICATES,
-		GAPPED_HITS, QUERY_SEEDS, QUERY_SEEDS_HIT, REF_SEEDS, REF_SEEDS_HIT, QUERY_SIZE, REF_SIZE, OUT_HITS, OUT_MATCHES, COLLISION_LOOKUPS, QCOV, BIAS_ERRORS, SCORE_TOTAL, ALIGNED_QLEN, PAIRWISE, COUNT };
+		GAPPED_HITS, QUERY_SEEDS, QUERY_SEEDS_HIT, REF_SEEDS, REF_SEEDS_HIT, QUERY_SIZE, REF_SIZE, OUT_HITS, OUT_MATCHES, COLLISION_LOOKUPS, QCOV, BIAS_ERRORS, SCORE_TOTAL, ALIGNED_QLEN, PAIRWISE, HIGH_SIM, COUNT };
 
 	Statistics()
 	{ memset(data_, 0, sizeof(data_)); }
@@ -60,6 +60,7 @@ struct Statistics
 		verbose_stream << "Hits (filter stage 4) = " << data_[TENTATIVE_MATCHES4] << " (" << data_[TENTATIVE_MATCHES4] * 100.0 / data_[TENTATIVE_MATCHES3] << " %)" << endl;
 		log_stream << "Gapped hits = " << data_[GAPPED_HITS] << endl;
 		log_stream << "Overlap hits = " << data_[DUPLICATES] << endl;
+		log_stream << "High similarity hits = " << data_[HIGH_SIM] << endl;
 		log_stream << "Net hits = " << data_[OUT_HITS] << endl;
 		log_stream << "Matches = " << data_[OUT_MATCHES] << endl;
 		log_stream << "Total score = " << data_[SCORE_TOTAL] << endl;

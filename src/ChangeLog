@@ -1,6 +1,7 @@
 [0.8.4]
 - fixed a problem that could cause very long runtimes for highly repetitive sequences
 - optimized performance
+- fixed a bug that could cause too high memory usage in blastp mode
 
 [0.8.3]
 - fixed a problem that could sometimes cause alignments to be missed

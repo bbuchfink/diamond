@@ -190,7 +190,7 @@ class mutex {
     {
 #if defined(_TTHREAD_WIN32_)
       EnterCriticalSection(&mHandle);
-      while(mAlreadyLocked) Sleep(1000); // Simulate deadlock...
+      //while(mAlreadyLocked) Sleep(1000); // Simulate deadlock...
       mAlreadyLocked = true;
 #else
       pthread_mutex_lock(&mHandle);

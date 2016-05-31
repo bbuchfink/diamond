@@ -29,6 +29,10 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #include "../output/output_buffer.h"
 #include "link_segments.h"
 
+#ifdef ENABLE_LOGGING
+#include <set>
+#endif
+
 using std::vector;
 
 void align_read(Output_buffer &buffer,
@@ -39,6 +43,11 @@ void align_read(Output_buffer &buffer,
 	static TLS_PTR vector<local_match> *local_ptr = 0;
 	static TLS_PTR vector<Segment> *matches_ptr = 0;
 	static TLS_PTR vector<char> *transcript_ptr = 0;
+
+#ifdef ENABLE_LOGGING
+	static std::set<unsigned> q;
+	static tthread::mutex mtx;
+#endif
 
 	vector<Segment>& matches (get_tls(matches_ptr));
 	vector<local_match>& local (get_tls(local_ptr));
@@ -56,6 +65,13 @@ void align_read(Output_buffer &buffer,
 	const unsigned source_query_len = query_translated() ? (unsigned)query_seqs::data_->reverse_translated_len(query*contexts) : query_len;
 	const size_t db_letters = ref_header.letters;
 	unsigned padding[6];
+
+#ifdef ENABLE_LOGGING
+	mtx.lock();
+	q.insert(query);
+	cout << tthread::thread::get_current_thread_id() << " query=" << query << " n=" << hit_count << endl;
+	mtx.unlock();
+#endif
 	
 	typedef Map<vector<hit>::iterator,hit::Query_id<1> > Map_t;
 	Map_t hits (begin, end);
@@ -70,7 +86,7 @@ void align_read(Output_buffer &buffer,
 		}		
 		++i;
 	}
-
+	
 	if(matches.size() == 0)
 		return;
 
@@ -125,6 +141,17 @@ void align_read(Output_buffer &buffer,
 		if(n_hsp > 0)
 			stat.inc(Statistics::ALIGNED);
 	}
+	
+#ifdef ENABLE_LOGGING
+	mtx.lock();
+	cout << tthread::thread::get_current_thread_id() << " finish query=" << query << endl;
+	q.erase(query);
+	for (std::set<unsigned>::const_iterator i = q.begin(); i != q.end(); ++i) {
+		cout << *i << ' ';
+	}
+	cout << endl;
+	mtx.unlock();
+#endif
 }
 
 #endif /* ALIGN_READ_H_ */

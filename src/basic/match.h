@@ -27,6 +27,7 @@ Author: Benjamin Buchfink
 #include "edit_transcript.h"
 #include "packed_loc.h"
 #include "../util/system.h"
+#include "value.h"
 
 enum Strand { FORWARD, REVERSE };
 
@@ -95,11 +96,11 @@ struct hit
 	}
 	unsigned operator%(unsigned i) const
 	{
-		return (query_ / 6) % i;
+		return (query_ / query_contexts()) % i;
 	}
 	unsigned operator/(size_t i) const
 	{
-		return (query_ / 6) / (unsigned)i;
+		return (query_ / query_contexts()) / (unsigned)i;
 	}
 	int64_t global_diagonal() const
 	{

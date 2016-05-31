@@ -142,8 +142,10 @@ struct Ref_map
 		{
 			mtx_.lock();
 			n = data_[block][i];
-			if (n != std::numeric_limits<uint32_t>::max())
+			if (n != std::numeric_limits<uint32_t>::max()) {
+				mtx_.unlock();
 				return n;
+			}
 			n = next_++;
 			data_[block][i] = n;
 			len_.push_back((uint32_t)ref_seqs::get().length(i));
