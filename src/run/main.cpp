@@ -26,6 +26,7 @@ Author: Benjamin Buchfink
 #include "../run/make_db.h"
 #include "../run/master_thread.h"
 #include "../output/view.h"
+#include "tools.h"
 
 #ifdef EXTRA
 #include "../../extra/test_sw.h"
@@ -64,6 +65,9 @@ int main(int ac, const char* av[])
 			break;
 		case Config::view:
         	view();
+			break;
+		case Config::getseq:
+			get_seq();
 			break;
 		#ifdef EXTRA
         else if (command == "stat" && vm.count("match1"))

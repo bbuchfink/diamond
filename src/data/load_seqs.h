@@ -26,7 +26,7 @@ Author: Benjamin Buchfink
 #include "../basic/translate.h"
 #include "../util/seq_file_format.h"
 
-size_t push_seq(Sequence_set &ss, Sequence_set& source_seqs, const vector<Letter> &seq)
+inline size_t push_seq(Sequence_set &ss, Sequence_set& source_seqs, const vector<Letter> &seq)
 {
 	if (config.command == Config::blastp || config.command == Config::makedb) {
 		ss.push_back(seq);
@@ -53,7 +53,7 @@ size_t push_seq(Sequence_set &ss, Sequence_set& source_seqs, const vector<Letter
 	}
 }
 
-size_t load_seqs(Compressed_istream &file,
+inline size_t load_seqs(Compressed_istream &file,
 		const Sequence_file_format &format,
 		Sequence_set** seqs,
 		String_set<0>*& ids,

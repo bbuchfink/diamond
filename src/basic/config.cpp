@@ -36,11 +36,12 @@ Config::Config(int argc, const char **argv)
 {
 	Command_line_parser parser;
 	parser.add_command("makedb", "Build DIAMOND database from a FASTA file")
-	      .add_command("blastp", "Align amino acid query sequences against a protein reference database")
-		  .add_command("blastx", "Align DNA query sequences against a protein reference database")
-		  .add_command("view", "View DIAMOND alignment archive (DAA) formatted file")
-		  .add_command("help", "Produce help message")
-		  .add_command("version", "Display version information");
+		.add_command("blastp", "Align amino acid query sequences against a protein reference database")
+		.add_command("blastx", "Align DNA query sequences against a protein reference database")
+		.add_command("view", "View DIAMOND alignment archive (DAA) formatted file")
+		.add_command("help", "Produce help message")
+		.add_command("version", "Display version information")
+		.add_command("getseq", "Get sequence from file");
 
 	Options_group general ("General options");
 	general.add()
@@ -113,7 +114,8 @@ Config::Config(int argc, const char **argv)
 	hidden_options.add()
 		("extend-all", 0, "extend all seed hits", extend_all)
 		("local-align", 0, "Local alignment algorithm", local_align_mode, 0u)
-		("fast-search", 0, "", fast_search);
+		("fast-search", 0, "", fast_search)
+		("seq", 0, "", seq_no);
 
 #ifdef EXTRA
 	("match1", po::value<string>(&program_options::match_file1))

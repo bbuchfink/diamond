@@ -25,6 +25,8 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #include "../util/map.h"
 #include "../dp/dp.h"
 
+// #define ENABLE_LOGGING_AS
+
 using std::vector;
 
 Diagonal_segment ungapped_extension(unsigned subject, unsigned subject_pos, unsigned query_pos, const sequence &query)
@@ -44,8 +46,7 @@ struct local_trace_point
 		query_pos_(query_pos),
 		extensions_ (0),
 		ungapped(ungapped_extension(subject, subject_pos, query_pos, query)),
-		hsp_(hsp),
-		high_sim (false)
+		hsp_(hsp)
 	{ }
 	struct Subject
 	{
@@ -70,7 +71,6 @@ struct local_trace_point
 	unsigned subject_, subject_pos_, query_pos_, extensions_;
 	Diagonal_segment ungapped;
 	local_match *hsp_;
-	bool high_sim;
 };
 
 void load_local_trace_points(vector<local_trace_point> &v, Trace_pt_buffer::Vector::iterator &begin, Trace_pt_buffer::Vector::iterator &end, const sequence &query)
@@ -118,26 +118,17 @@ void load_subject_seqs(vector<local_match> &dst,
 	const vector<char> &transcript_buf,
 	Statistics &stat)
 {
-	if (begin->high_sim || begin->extensions_ >= sqrt(query_len)+query_len/10)
+	if (begin->extensions_ >= sqrt(query_len)*2)
 		return;
-	double sim = (double)(end - begin) / query_len; // / ref_seqs::data_->length(begin->subject_);
-	if (sim > 0.25) {
-		begin->high_sim = true;
-		stat.inc(Statistics::HIGH_SIM);
-		dst.push_back(local_match(begin->query_pos_, begin->subject_pos_, ref_seqs::data_->data(ref_seqs::data_->position(begin->subject_, begin->subject_pos_))));
-		begin->hsp_ = &dst.back();
-		return;
-	}
 	for (vector<local_trace_point>::iterator i = begin; i < end; ++i) {
 		if (i->hsp_ == 0 && include(begin, end, *i, band, transcript_buf)) {
 			dst.push_back(local_match(i->query_pos_, i->subject_pos_, ref_seqs::data_->data(ref_seqs::data_->position(i->subject_, i->subject_pos_))));
-			//cout << i->query_pos_ << ' ' << i->subject_ << ' ' << i->subject_pos_ << endl;
+#ifdef ENABLE_LOGGING_AS
+			cout << i->query_pos_ << ' ' << i->subject_ << ' ' << i->subject_pos_ << endl;
+			cout << ref_ids::get()[i->subject_].c_str() << endl;
+#endif
 			i->hsp_ = &dst.back();
 			++begin->extensions_;
-			//cout << *i << " i\n";
-		}
-		else {
-			//cout << *i << " x\n";
 		}
 	}
 }
