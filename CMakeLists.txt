@@ -55,6 +55,7 @@ add_executable(diamond src/run/main.cpp
   src/align/align_sequence_simple.cpp
   src/basic/hssp.cpp
   src/dp/ungapped_align.cpp
+  src/run/tools.cpp
 )
 
 target_link_libraries(diamond ${ZLIB_LIBRARY} ${CMAKE_THREAD_LIBS_INIT})

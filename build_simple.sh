@@ -23,4 +23,5 @@ g++ -DNDEBUG -O3 -mssse3 -static \
   src/align/align_sequence_simple.cpp \
   src/basic/hssp.cpp \
   src/dp/ungapped_align.cpp \
+  src/run/tools.cpp
 -lz -lpthread -o diamond
