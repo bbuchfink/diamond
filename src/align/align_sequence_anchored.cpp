@@ -118,7 +118,7 @@ void load_subject_seqs(vector<local_match> &dst,
 	const vector<char> &transcript_buf,
 	Statistics &stat)
 {
-	if (begin->extensions_ >= sqrt(query_len)*2)
+	if (begin->extensions_ >= sqrt(query_len)/2)
 		return;
 	for (vector<local_trace_point>::iterator i = begin; i < end; ++i) {
 		if (i->hsp_ == 0 && include(begin, end, *i, band, transcript_buf)) {

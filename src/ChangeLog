@@ -1,5 +1,5 @@
 [0.8.5]
-- fixed a problem that could cause very long runtimes for highly repetitive sequences
+- optimized performance
 
 [0.8.4]
 - fixed a problem that could cause very long runtimes for highly repetitive sequences
