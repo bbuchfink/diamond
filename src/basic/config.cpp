@@ -41,7 +41,7 @@ Config::Config(int argc, const char **argv)
 		.add_command("view", "View DIAMOND alignment archive (DAA) formatted file")
 		.add_command("help", "Produce help message")
 		.add_command("version", "Display version information")
-		.add_command("getseq", "Get sequence from file");
+		.add_command("getseq", "");
 
 	Options_group general ("General options");
 	general.add()

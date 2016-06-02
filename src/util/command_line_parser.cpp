@@ -85,7 +85,8 @@ void Command_line_parser::print_help()
 	cout << "Syntax: diamond COMMAND [OPTIONS]" << endl << endl;
 	cout << "Commands:" << endl;
 	for (vector<pair<string, string> >::const_iterator i = commands_.begin(); i != commands_.end(); ++i)
-		cout << i->first << '\t' << i->second << endl;
+		if(i->second != "")
+			cout << i->first << '\t' << i->second << endl;
 	cout << endl;
 	for (vector<const Options_group*>::const_iterator i = groups_.begin(); i != groups_.end(); ++i) {
 		if ((*i)->title == "")
