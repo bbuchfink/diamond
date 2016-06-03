@@ -41,6 +41,7 @@ void align_sequence_simple(vector<Segment> &matches,
 	const unsigned frame = q_num % query_contexts();
 	const unsigned query_len = (unsigned)query.length();
 	padding[frame] = config.read_padding(query_len);
+	unsigned long cell_updates = 0;
 
 	const Sequence_set *ref = ref_seqs::data_;
 	for (Trace_pt_buffer::Vector::iterator i = begin; i != end; ++i) {
@@ -59,6 +60,7 @@ void align_sequence_simple(vector<Segment> &matches,
 			config.gap_open + config.gap_extend,
 			config.gap_extend,
 			transcript_buf,
+			cell_updates,
 			Traceback());
 		const int score = local.back().score_;
 		std::pair<size_t, size_t> l = ref_seqs::data_->local_position((size_t)i->subject_);

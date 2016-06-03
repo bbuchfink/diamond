@@ -41,7 +41,8 @@ Config::Config(int argc, const char **argv)
 		.add_command("view", "View DIAMOND alignment archive (DAA) formatted file")
 		.add_command("help", "Produce help message")
 		.add_command("version", "Display version information")
-		.add_command("getseq", "");
+		.add_command("getseq", "")
+		.add_command("benchmark", "");
 
 	Options_group general ("General options");
 	general.add()
@@ -203,7 +204,7 @@ Config::Config(int argc, const char **argv)
 		;
 	}	
 
-	if (command == Config::blastp || command == Config::blastx) {
+	if (command == Config::blastp || command == Config::blastx || command == Config::benchmark) {
 		if (tmpdir == "")
 			tmpdir = extract_dir(daa_file);
 		if (gap_open == -1)

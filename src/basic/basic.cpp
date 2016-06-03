@@ -21,6 +21,7 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #include "shape_config.h"
 #include "translate.h"
 #include "statistics.h"
+#include "sequence.h"
 
 const char* Const::version_string = "0.8.5";
 const char* Const::program_name = "diamond";
@@ -134,3 +135,11 @@ const Letter Translator::lookupReverse[5][5][5] = {
 	} };
 
 const Letter Translator::STOP(value_traits.from_char('*'));
+
+vector<Letter> sequence::from_string(const char* str)
+{
+	vector<Letter> seq;
+	while (*str)
+		seq.push_back(value_traits.from_char(*(str++)));
+	return seq;
+}

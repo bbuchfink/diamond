@@ -11,8 +11,40 @@ template<typename _score, typename _traceback> TLS_PTR Double_buffer<_score>* Sc
 
 template struct Scalar_dp_matrix<int, Traceback>;
 
+template<typename _dir, typename _score>
+local_match get_traceback(const Letter *query,
+	const Letter *subject,
+	const Growing_buffer<_score> &scores,
+	int band,
+	int gap_open,
+	int gap_extend,
+	int i,
+	int j,
+	int score,
+	vector<char> &transcript_buf,
+	const Traceback&)
+{
+	return traceback<_dir, _score>(query, subject, scores, band, gap_open, gap_extend, i, j, score, transcript_buf);
+}
+
+template<typename _dir, typename _score>
+local_match get_traceback(const Letter *query,
+	const Letter *subject,
+	const Double_buffer<_score> &scores,
+	int band,
+	int gap_open,
+	int gap_extend,
+	int i,
+	int j,
+	int score,
+	vector<char> &transcript_buf,
+	const Score_only&)
+{
+	return local_match(score);
+}
+
 template<typename _dir, typename _score, typename _traceback>
-local_match floating_sw_dir(const Letter *query, const Letter* subject, int band, _score xdrop, _score gap_open, _score gap_extend, vector<char> &transcript_buf)
+local_match floating_sw_dir(const Letter *query, const Letter* subject, int band, _score xdrop, _score gap_open, _score gap_extend, vector<char> &transcript_buf, unsigned long &cell_updates)
 {
 	using std::max;
 
@@ -45,6 +77,7 @@ local_match floating_sw_dir(const Letter *query, const Letter* subject, int band
 			vgap = max(vgap - gap_extend, open);
 			it.hgap_out() = max(it.hgap_in() - gap_extend, open);
 			it.score() = s;
+			++cell_updates;
 		}
 
 		if (column_max > max_score) {
@@ -56,14 +89,14 @@ local_match floating_sw_dir(const Letter *query, const Letter* subject, int band
 		++j;
 	}
 	
-	return traceback<_dir, _score>(query, subject, mtx.score_buffer(), band, gap_open, gap_extend, j_best, i_best, max_score, transcript_buf);
+	return get_traceback<_dir, _score>(query, subject, mtx.score_buffer(), band, gap_open, gap_extend, j_best, i_best, max_score, transcript_buf, _traceback());
 }
 
 template<typename _score, typename _traceback>
-void floating_sw(const Letter *query, local_match &segment, int band, _score xdrop, _score gap_open, _score gap_extend, vector<char> &transcript_buf, const _traceback&, const _score&)
+void floating_sw(const Letter *query, local_match &segment, int band, _score xdrop, _score gap_open, _score gap_extend, vector<char> &transcript_buf, unsigned long &cell_updates, const _traceback&, const _score&)
 {
-	segment += floating_sw_dir<Right, _score, _traceback>(query, segment.subject_, band, xdrop, gap_open, gap_extend, transcript_buf);
-	const local_match left(floating_sw_dir<Left, _score, _traceback>(query, segment.subject_, band, xdrop, gap_open, gap_extend, transcript_buf));
+	segment += floating_sw_dir<Right, _score, _traceback>(query, segment.subject_, band, xdrop, gap_open, gap_extend, transcript_buf, cell_updates);
+	const local_match left(floating_sw_dir<Left, _score, _traceback>(query, segment.subject_, band, xdrop, gap_open, gap_extend, transcript_buf, cell_updates));
 	if (left.query_len_ > 0) {
 		segment -= left;
 		segment.query_begin_--;
@@ -80,4 +113,5 @@ void floating_sw(const Letter *query, local_match &segment, int band, _score xdr
 	}
 }
 
-template void floating_sw<int, Traceback>(const Letter *query, local_match &segment, int band, int xdrop, int gap_open, int gap_extend, vector<char> &transcript_buf, const Traceback&, const int&);
+template void floating_sw<int, Traceback>(const Letter *query, local_match &segment, int band, int xdrop, int gap_open, int gap_extend, vector<char> &transcript_buf, unsigned long &cell_updates, const Traceback&, const int&);
+template void floating_sw<int, Score_only>(const Letter *query, local_match &segment, int band, int xdrop, int gap_open, int gap_extend, vector<char> &transcript_buf, unsigned long &cell_updates, const Score_only&, const int&);

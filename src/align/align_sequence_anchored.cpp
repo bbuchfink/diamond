@@ -171,6 +171,7 @@ void align_sequence_anchored(vector<Segment> &matches,
 	const unsigned query_len = (unsigned)query.length();
 	padding[frame] = config.read_padding(query_len);
 	unsigned aligned = 0;
+	unsigned long cell_updates = 0;
 	load_local_trace_points(trace_pt, begin, end, query);
 
 	while (true) {
@@ -192,6 +193,7 @@ void align_sequence_anchored(vector<Segment> &matches,
 				config.gap_open + config.gap_extend,
 				config.gap_extend,
 				transcript_buf,
+				cell_updates,
 				Traceback());
 			anchored_transform(*i, i->subject_anchor, i->query_anchor_);
 		}

@@ -72,7 +72,7 @@ struct Config
 	bool fast_search;
 	unsigned seq_no;
 
-	typedef enum { makedb = 0, blastp = 1, blastx = 2, view = 3, help = 4, version = 5, getseq = 6 } Command;
+	typedef enum { makedb = 0, blastp = 1, blastx = 2, view = 3, help = 4, version = 5, getseq = 6 , benchmark=7} Command;
 	unsigned	command;
 
 	Config() {}

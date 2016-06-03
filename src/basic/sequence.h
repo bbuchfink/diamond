@@ -98,6 +98,7 @@ struct sequence
 		}
 		return os;
 	}*/
+	static vector<Letter> from_string(const char* str);
 	size_t			len_;
 	int				clipping_offset_;
 	const Letter	*data_;
