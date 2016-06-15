@@ -27,7 +27,6 @@ void search_query_offset(Loc q,
 			continue;
 
 		stats.inc(Statistics::TENTATIVE_MATCHES3);
-		continue;
 		hf.push(s_pos, score);
 	}
 

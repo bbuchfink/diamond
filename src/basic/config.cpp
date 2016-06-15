@@ -116,7 +116,7 @@ Config::Config(int argc, const char **argv)
 	hidden_options.add()
 		("extend-all", 0, "extend all seed hits", extend_all)
 		("local-align", 0, "Local alignment algorithm", local_align_mode, 0u)
-		("fast-search", 0, "", fast_search)
+		("slow-search", 0, "", slow_search)
 		("seq", 0, "", seq_no);
 
 #ifdef EXTRA

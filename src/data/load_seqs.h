@@ -28,7 +28,7 @@ Author: Benjamin Buchfink
 
 inline size_t push_seq(Sequence_set &ss, Sequence_set& source_seqs, const vector<Letter> &seq)
 {
-	if (config.command == Config::blastp || config.command == Config::makedb) {
+	if (config.command == Config::blastp || config.command == Config::makedb || config.command == Config::random_seqs) {
 		ss.push_back(seq);
 		return seq.size();
 	}

@@ -168,5 +168,5 @@ void search_seed(const sorted_list::const_iterator &q,
 	tiled_search(vq.begin(), vq.end(), vs.begin(), vs.end(), Range_ref(vq.begin(), vs.begin()), hits, stats, 0);
 	std::sort(hits.begin(), hits.end());
 	stats.inc(Statistics::TENTATIVE_MATCHES1, hits.size());
-	//stage2_search(q, s, hits, stats, out, sid);
+	stage2_search(q, s, hits, stats, out, sid);
 }

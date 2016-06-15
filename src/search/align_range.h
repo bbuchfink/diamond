@@ -123,7 +123,7 @@ inline void align_partition(unsigned hp,
 		} else if(j.key() < i.key()) {
 			++j;
 		} else {
-			if (config.fast_search) {
+			if (!config.slow_search) {
 				//cout << "n=" << stats.data_[Statistics::SEED_HITS] << endl;
 				/*if (stats.data_[Statistics::SEED_HITS] > 10000000000lu)
 				break;*/
