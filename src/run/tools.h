@@ -3,5 +3,6 @@
 
 void get_seq();
 void benchmark_sw();
+void random_seqs();
 
 #endif

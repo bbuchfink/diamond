@@ -44,7 +44,7 @@ local_match get_traceback(const Letter *query,
 }
 
 template<typename _dir, typename _score, typename _traceback>
-local_match floating_sw_dir(const Letter *query, const Letter* subject, int band, _score xdrop, _score gap_open, _score gap_extend, vector<char> &transcript_buf, unsigned long &cell_updates)
+local_match floating_sw_dir(const Letter *query, const Letter* subject, int band, _score xdrop, _score gap_open, _score gap_extend, vector<char> &transcript_buf, uint64_t &cell_updates)
 {
 	using std::max;
 
@@ -93,7 +93,7 @@ local_match floating_sw_dir(const Letter *query, const Letter* subject, int band
 }
 
 template<typename _score, typename _traceback>
-void floating_sw(const Letter *query, local_match &segment, int band, _score xdrop, _score gap_open, _score gap_extend, vector<char> &transcript_buf, unsigned long &cell_updates, const _traceback&, const _score&)
+void floating_sw(const Letter *query, local_match &segment, int band, _score xdrop, _score gap_open, _score gap_extend, vector<char> &transcript_buf, uint64_t &cell_updates, const _traceback&, const _score&)
 {
 	segment += floating_sw_dir<Right, _score, _traceback>(query, segment.subject_, band, xdrop, gap_open, gap_extend, transcript_buf, cell_updates);
 	const local_match left(floating_sw_dir<Left, _score, _traceback>(query, segment.subject_, band, xdrop, gap_open, gap_extend, transcript_buf, cell_updates));
@@ -113,5 +113,5 @@ void floating_sw(const Letter *query, local_match &segment, int band, _score xdr
 	}
 }
 
-template void floating_sw<int, Traceback>(const Letter *query, local_match &segment, int band, int xdrop, int gap_open, int gap_extend, vector<char> &transcript_buf, unsigned long &cell_updates, const Traceback&, const int&);
-template void floating_sw<int, Score_only>(const Letter *query, local_match &segment, int band, int xdrop, int gap_open, int gap_extend, vector<char> &transcript_buf, unsigned long &cell_updates, const Score_only&, const int&);
+template void floating_sw<int, Traceback>(const Letter *query, local_match &segment, int band, int xdrop, int gap_open, int gap_extend, vector<char> &transcript_buf, uint64_t &cell_updates, const Traceback&, const int&);
+template void floating_sw<int, Score_only>(const Letter *query, local_match &segment, int band, int xdrop, int gap_open, int gap_extend, vector<char> &transcript_buf, uint64_t &cell_updates, const Score_only&, const int&);

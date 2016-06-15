@@ -22,6 +22,10 @@ struct Compressed_ostream
 {
 	Compressed_ostream(const string &file_name, bool compressed);
 	size_t write(const char *ptr, size_t count);
+	std::ostream& stream()
+	{
+		return *s_;
+	}
 	~Compressed_ostream();
 private:
 	const string file_name_;

@@ -32,6 +32,7 @@ Author: Benjamin Buchfink
 #include <stddef.h>
 #include <assert.h>
 #include "log_stream.h"
+#include "system.h"
 
 using std::auto_ptr;
 using std::vector;
@@ -99,14 +100,14 @@ struct Output_stream
 	}
 	void seekp(size_t p)
 	{
-		if (fseek(f_, (long)p, SEEK_SET) != 0) throw File_write_exception(file_name_);
+		if (FSEEK(f_, (int64_t)p, SEEK_SET) != 0) throw File_write_exception(file_name_);
 	}
-	long tell()
+	size_t tell()
 	{
-		long x;
-		if ((x = ftell(f_)) == -1L)
+		int64_t x;
+		if ((x = FTELL(f_)) == (int64_t)-1)
 			throw std::runtime_error("Error executing ftell on stream " + file_name_);
-		return x;
+		return (size_t)x;
 	}
 protected:
 	string file_name_;
@@ -134,13 +135,13 @@ struct Input_stream
 
 	void seek(size_t pos)
 	{
-		if (fseek(f_, (long)pos, SEEK_SET) != 0)
+		if (FSEEK(f_, (int64_t)pos, SEEK_SET) != 0)
 			throw std::runtime_error("Error executing seek on file " + file_name);
 	}
 
 	void seek_forward(size_t n)
 	{
-		if (fseek(f_, (long)n, SEEK_CUR) != 0)
+		if (FSEEK(f_, (int64_t)n, SEEK_CUR) != 0)
 			throw std::runtime_error("Error executing seek on file " + file_name);
 	}
 

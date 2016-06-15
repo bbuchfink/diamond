@@ -29,7 +29,7 @@ string extract_dir(const string & s)
 }
 
 unsigned Temp_file::n = 0;
-unsigned long Temp_file::hash_key;
+uint64_t Temp_file::hash_key;
 
 Temp_file::Temp_file()
 {
@@ -37,7 +37,7 @@ Temp_file::Temp_file()
 #ifdef WIN32
 		LARGE_INTEGER count;
 		QueryPerformanceCounter(&count);
-		hash_key = (unsigned long)(count.HighPart + count.LowPart + count.QuadPart + GetCurrentProcessId());
+		hash_key = (uint64_t)(count.HighPart + count.LowPart + count.QuadPart + GetCurrentProcessId());
 #else
 		timeval count;
 		gettimeofday(&count, NULL);

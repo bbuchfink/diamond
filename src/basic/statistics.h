@@ -29,7 +29,8 @@ struct Statistics
 {
 
 	enum value { SEED_HITS, TENTATIVE_MATCHES0, TENTATIVE_MATCHES1, TENTATIVE_MATCHES2, TENTATIVE_MATCHES3, TENTATIVE_MATCHES4, MATCHES, ALIGNED, GAPPED, DUPLICATES,
-		GAPPED_HITS, QUERY_SEEDS, QUERY_SEEDS_HIT, REF_SEEDS, REF_SEEDS_HIT, QUERY_SIZE, REF_SIZE, OUT_HITS, OUT_MATCHES, COLLISION_LOOKUPS, QCOV, BIAS_ERRORS, SCORE_TOTAL, ALIGNED_QLEN, PAIRWISE, HIGH_SIM, COUNT };
+		GAPPED_HITS, QUERY_SEEDS, QUERY_SEEDS_HIT, REF_SEEDS, REF_SEEDS_HIT, QUERY_SIZE, REF_SIZE, OUT_HITS, OUT_MATCHES, COLLISION_LOOKUPS, QCOV, BIAS_ERRORS, SCORE_TOTAL, ALIGNED_QLEN, PAIRWISE, HIGH_SIM,
+		TEMP_SPACE, COUNT };
 
 	Statistics()
 	{ memset(data_, 0, sizeof(data_)); }
@@ -45,6 +46,11 @@ struct Statistics
 
 	void inc(const value v, stat_type n = 1lu)
 	{ data_[v] += n; }
+
+	void max(const value v, stat_type n)
+	{
+		data_[v] = std::max(data_[v], n);
+	}
 
 	stat_type get(const value v) const
 	{ return data_[v]; }
@@ -66,6 +72,7 @@ struct Statistics
 		log_stream << "Total score = " << data_[SCORE_TOTAL] << endl;
 		log_stream << "Aligned query len = " << data_[ALIGNED_QLEN] << endl;
 		log_stream << "Gapped matches = " << data_[GAPPED] << endl;
+		verbose_stream << "Temporary disk space used: " << (double)data_[TEMP_SPACE] / (1 << 30) << " GB" << endl;
 		message_stream << "Reported " << data_[PAIRWISE] << " pairwise alignments, " << data_[MATCHES] << " HSSPs." << endl;
 		message_stream << data_[ALIGNED] << " queries aligned." << endl;
 	}

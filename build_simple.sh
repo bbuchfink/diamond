@@ -24,4 +24,7 @@ g++ -DNDEBUG -O3 -mssse3 -static \
   src/basic/hssp.cpp \
   src/dp/ungapped_align.cpp \
   src/run/tools.cpp \
+  src/dp/greedy_align.cpp \
+  src/run/benchmark.cpp \
+  src/search/stage2.cpp \
 -lz -lpthread -o diamond

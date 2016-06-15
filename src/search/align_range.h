@@ -72,8 +72,35 @@ inline void align_range(const sorted_list::const_iterator &q,
 		align_range(Loc(q[i]), s, stats, out, sid);
 }
 
+struct Stage1_hit
+{
+	Stage1_hit(unsigned q_ref, unsigned q_offset, unsigned s_ref, unsigned s_offset) :
+		q(q_ref + q_offset),
+		s(s_ref + s_offset)
+	{}
+	bool operator<(const Stage1_hit &rhs) const
+	{
+		return q < rhs.q;
+	}
+	struct Query
+	{
+		unsigned operator()(const Stage1_hit &x) const
+		{
+			return x.q;
+		}
+	};
+	unsigned q, s;
+};
+
 void search_seed(const sorted_list::const_iterator &q,
 	const sorted_list::const_iterator &s,
+	Statistics &stats,
+	Trace_pt_buffer::Iterator &out,
+	const unsigned sid);
+
+void stage2_search(const sorted_list::const_iterator &q,
+	const sorted_list::const_iterator &s,
+	const vector<Stage1_hit> &hits,
 	Statistics &stats,
 	Trace_pt_buffer::Iterator &out,
 	const unsigned sid);

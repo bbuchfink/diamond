@@ -44,7 +44,7 @@ inline void read_option<unsigned>(unsigned &dst, const vector<string> &v)
 { dst = atoi(v[0].c_str()); }
 
 template<>
-inline void read_option<unsigned long>(unsigned long &dst, const vector<string> &v)
+inline void read_option<uint64_t>(uint64_t &dst, const vector<string> &v)
 {
 	dst = atoi(v[0].c_str());
 }

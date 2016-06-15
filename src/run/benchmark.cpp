@@ -2,6 +2,7 @@
 #include "../data/sequence_set.h"
 #include "../dp/floating_sw.h"
 #include "../util/Timer.h"
+#include "../dp/dp.h"
 
 void benchmark_sw()
 {
@@ -30,28 +31,47 @@ Sbjct  76  TIINGL  81	*/
 	ss.push_back(s2);
 	ss.finish_reserve();
 
-	unsigned long cell_updates = 0;
-	local_match hsp(0, 0, &ss[1][16]);
-	vector<char> transcript_buf;
+	local_match hsp2(0, 0, &ss[1][0]);
+	//greedy_align(ss[0], hsp2);
+	
 	Timer t;
 	t.start();
 
 	for (unsigned i = 0; i < n; ++i) {
 
-		floating_sw(&ss[0][24],
-			hsp,
-			32,
-			config.xdrop,
-			config.gap_open + config.gap_extend,
-			config.gap_extend,
-			transcript_buf,
-			cell_updates,
-			Score_only());
+		greedy_align(ss[0], hsp2);
 
 	}
 	t.stop();
 
-	cout << hsp.score_ << ' ' << cell_updates << endl;
-	cout << (double)cell_updates / 1e9 / t.getElapsedTimeInSec();
+	cout << " n/sec=" << (double)n / t.getElapsedTimeInSec() << endl;
+	return;
+
+	uint64_t cell_updates = 0;
+	local_match hsp(0, 0, &ss[1][16]);
+	vector<char> transcript_buf;
+	
+	{
+		Timer t;
+		t.start();
+
+		for (unsigned i = 0; i < n; ++i) {
+
+			floating_sw(&ss[0][24],
+				hsp,
+				32,
+				config.xdrop,
+				config.gap_open + config.gap_extend,
+				config.gap_extend,
+				transcript_buf,
+				cell_updates,
+				Score_only());
+
+		}
+		t.stop();
+
+		cout << hsp.score_ << ' ' << cell_updates << endl;
+		cout << "gcups=" << (double)cell_updates / 1e9 / t.getElapsedTimeInSec() << " n/sec=" << (double)n / t.getElapsedTimeInSec() << endl;
+	}
 
 }

@@ -77,6 +77,27 @@ inline unsigned fast_match(const Letter *q, const Letter *s)
 
 struct Masked {};
 
+struct Int_finger_print
+{
+	Int_finger_print(const Letter *q) :
+		r1(*(uint64_t*)(q-8)),
+		r2(*(uint64_t*)(q)),
+		r3(*(uint64_t*)(q + 8)),
+		r4(*(uint64_t*)(q +16))
+	{ }
+	Int_finger_print(const Letter *q, Masked) :
+		r1(*(uint64_t*)(q - 8)),
+		r2(*(uint64_t*)(q)),
+		r3(*(uint64_t*)(q + 8)),
+		r4(*(uint64_t*)(q + 16))
+	{ }
+	unsigned match(const Int_finger_print &rhs) const
+	{
+		return popcount64(r1 & rhs.r1) + popcount64(r2 & rhs.r2) + popcount64(r3 & rhs.r3) + popcount64(r4 & rhs.r4);
+	}
+	uint64_t r1, r2,r3,r4;
+};
+
 struct Byte_finger_print
 {
 	Byte_finger_print(const Letter *q) :

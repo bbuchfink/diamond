@@ -28,7 +28,7 @@ struct Temp_file : public Output_stream
 	Temp_file();	
 	static string get_temp_dir();
 	static unsigned n;
-	static unsigned long hash_key;
+	static uint64_t hash_key;
 
 };
 

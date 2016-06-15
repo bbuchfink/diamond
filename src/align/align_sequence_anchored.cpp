@@ -171,7 +171,7 @@ void align_sequence_anchored(vector<Segment> &matches,
 	const unsigned query_len = (unsigned)query.length();
 	padding[frame] = config.read_padding(query_len);
 	unsigned aligned = 0;
-	unsigned long cell_updates = 0;
+	uint64_t cell_updates = 0;
 	load_local_trace_points(trace_pt, begin, end, query);
 
 	while (true) {

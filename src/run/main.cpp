@@ -72,6 +72,9 @@ int main(int ac, const char* av[])
 		case Config::benchmark:
 			benchmark_sw();
 			break;
+		case Config::random_seqs:
+			random_seqs();
+			break;
 		#ifdef EXTRA
         else if (command == "stat" && vm.count("match1"))
         	if(program_options::db_type == "nucl")

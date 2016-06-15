@@ -55,9 +55,17 @@ inline bool check_SSSE3()
 }
 
 #ifdef _MSC_VER
+
 #define PACKED_ATTRIBUTE
+#define FTELL(x) _ftelli64(x)
+#define FSEEK(x,y,z) _fseeki64(x,y,z)
+
 #else
+
 #define PACKED_ATTRIBUTE __attribute__((packed))
+#define FTELL(x) ftell(x)
+#define FSEEK(x,y,z) fseek(x,y,z)
+
 #endif
 
 #endif /* SYSTEM_H_ */

@@ -89,12 +89,16 @@ struct Async_buffer
 		const unsigned thread_num_;
 	};
 
-	void load(vector<_t> &data, unsigned bin) const
+	size_t load(vector<_t> &data, unsigned bin) const
 	{
+		static size_t total_size;
+		if (bin == 0)
+			total_size = 0;
 		size_t size = 0;
 		for(unsigned i=0;i<config.threads_;++i)
 			size += size_[i*bins_+bin];
 		log_stream << "Async_buffer.load() " << size << "(" << (double)size*sizeof(_t)/(1<<30) << " GB)" << endl;
+		total_size += size;
 		data.resize(size);
 		_t* ptr = data.data();
 		for(unsigned i=0;i<config.threads_;++i) {
@@ -106,6 +110,7 @@ struct Async_buffer
 			if (n != s)
 				throw std::runtime_error("Error reading temporary file: " + f.file_name);
 		}
+		return total_size*sizeof(_t);
 	}
 
 	unsigned bins() const

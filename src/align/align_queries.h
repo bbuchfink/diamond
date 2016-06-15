@@ -98,7 +98,7 @@ void align_queries(const Trace_pt_buffer &trace_pts, Output_stream* output_file)
 	for(unsigned bin=0;bin<trace_pts.bins();++bin) {
 		log_stream << "Processing query bin " << bin+1 << '/' << trace_pts.bins() << '\n';
 		task_timer timer ("Loading trace points", 3);
-		trace_pts.load(v, bin);
+		statistics.max(Statistics::TEMP_SPACE, trace_pts.load(v, bin));
 		timer.go("Sorting trace points");
 		merge_sort(v.begin(), v.end(), config.threads_);
 		v.init();

@@ -25,6 +25,6 @@ struct Score_only { };
 struct Traceback { };
 
 template<typename _score, typename _traceback>
-void floating_sw(const Letter *query, local_match &segment, int band, _score xdrop, _score gap_open, _score gap_extend, vector<char> &transcript_buf, unsigned long &cell_updates, const _traceback& = Score_only(), const _score& = int());
+void floating_sw(const Letter *query, local_match &segment, int band, _score xdrop, _score gap_open, _score gap_extend, vector<char> &transcript_buf, uint64_t &cell_updates, const _traceback& = Score_only(), const _score& = int());
 
 #endif /* FLOATING_SW_H_ */
