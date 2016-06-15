@@ -25,6 +25,7 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #include <assert.h>
 #include <stdlib.h>
 #include <stdexcept>
+#include <stdint.h>
 #include "ptr_vector.h"
 
 using std::vector;
