@@ -66,7 +66,7 @@ Config::Config(int argc, const char **argv)
 	Options_group aligner("Aligner options");
 	aligner.add()
 		("query",'q', "input query file", query_file)
-		("max-target-seqs",'k', "maximum number of target sequences to report alignments for", max_alignments, 25ui64)
+		("max-target-seqs",'k', "maximum number of target sequences to report alignments for", max_alignments, 25llu)
 		("top", 0, "report alignments within this percentage range of top alignment score (overrides --max-target-seqs)", toppercent, 100.0)
 		("compress", 0, "compression for output files (0=none, 1=gzip)", compression)
 		("evalue",'e', "maximum e-value to report alignments", max_evalue, 0.001)
