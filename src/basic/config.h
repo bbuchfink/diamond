@@ -2,6 +2,7 @@
 #define CONFIG_H_
 
 #include <string>
+#include <stdint.h>
 
 using std::string;
 
