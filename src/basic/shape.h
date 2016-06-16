@@ -90,26 +90,30 @@ struct shape
 	inline bool set_seed(Packed_seed &s, const Letter *seq) const
 	{
 		s = 0;
+#ifdef FREQUENCY_MASKING
 		double f = 0;
+#endif
 		for(unsigned i=0;i<weight_;++i) {
 			Letter l = seq[positions_[i]];
 			if(l == value_traits.mask_char|| l == '\xff')
 				return false;
 			l = mask_critical(l);
 			unsigned r = Reduction::reduction(l);
+#ifdef FREQUENCY_MASKING
 			f += background_freq[r];
+#endif
 			s *= Reduction::reduction.size();
 			s += uint64_t(r);
 		}
+#ifdef FREQUENCY_MASKING
 		if(use_seed_freq() && f > config.max_seed_freq) return false;
-#ifdef EXTRA
-		s = murmur_hash()(s);
 #endif
 		return true;
 	}
 
 	inline bool	is_low_freq(const Letter *seq) const
 	{
+#ifdef FREQUENCY_MASKING
 		double f = 0;
 		for(unsigned i=0;i<weight_;++i) {
 			Letter l = seq[positions_[i]];
@@ -120,10 +124,14 @@ struct shape
 			f += background_freq[r];
 		}
 		return !use_seed_freq() || f <= config.max_seed_freq;
+#else
+		return true;
+#endif
 	}
 
 	inline bool	is_low_freq_rev(const Letter *seq) const
 	{
+#ifdef FREQUENCY_MASKING
 		double f = 0;
 		for(unsigned i=0;i<weight_;++i) {
 			Letter l = seq[(int)positions_[i]-(int)length_];
@@ -134,6 +142,9 @@ struct shape
 			f += background_freq[r];
 		}
 		return !use_seed_freq() || f <= config.max_seed_freq;
+#else
+		return true;
+#endif
 	}
 
 	friend std::ostream& operator<<(std::ostream&s, const shape &sh)

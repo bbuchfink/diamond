@@ -6,7 +6,7 @@
 
 void benchmark_sw()
 {
-	static const unsigned n = 100000;
+	static const unsigned n = 1;
 
 	/*
 	> d2va1a_ c.73.1.0 (A:) automated matches {Ureaplasma parvum [TaxId: 
@@ -39,7 +39,7 @@ Sbjct  76  TIINGL  81	*/
 
 	for (unsigned i = 0; i < n; ++i) {
 
-		greedy_align(ss[0], hsp2);
+		greedy_align(ss[0], ss[1]);
 
 	}
 	t.stop();

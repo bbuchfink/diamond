@@ -1,5 +1,6 @@
 [0.8.6]
 - fixed a problem of the Windows version that could cause errors for larger files
+- optimized performance
 
 [0.8.5]
 - optimized performance

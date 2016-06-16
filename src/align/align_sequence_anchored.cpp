@@ -118,8 +118,19 @@ void load_subject_seqs(vector<local_match> &dst,
 	const vector<char> &transcript_buf,
 	Statistics &stat)
 {
-	if (begin->extensions_ >= sqrt(query_len)/2)
+	//if (begin->extensions_ >= sqrt(query_len)/2)
+	/*if(begin->extensions_ >= ref_seqs::get().length(begin->subject_) * 10)
+		return;*/
+	double sim = (double)(end - begin) / query_len * ref_seqs::data_->length(begin->subject_);
+	if (sim > 100) {
+		if (begin->hsp_)
+			return;
+		//cout << end - begin << ' ' << query_len << ' ' << sim << endl;
+		stat.inc(Statistics::HIGH_SIM);
+		dst.push_back(local_match(begin->query_pos_, begin->subject_pos_, ref_seqs::data_->data(ref_seqs::data_->position(begin->subject_, begin->subject_pos_))));
+		begin->hsp_ = &dst.back();
 		return;
+	}
 	for (vector<local_trace_point>::iterator i = begin; i < end; ++i) {
 		if (i->hsp_ == 0 && include(begin, end, *i, band, transcript_buf)) {
 			dst.push_back(local_match(i->query_pos_, i->subject_pos_, ref_seqs::data_->data(ref_seqs::data_->position(i->subject_, i->subject_pos_))));
@@ -128,7 +139,8 @@ void load_subject_seqs(vector<local_match> &dst,
 			cout << ref_ids::get()[i->subject_].c_str() << endl;
 #endif
 			i->hsp_ = &dst.back();
-			++begin->extensions_;
+			//++begin->extensions_;
+			//begin->extensions_ += i->hsp_->len_;
 		}
 	}
 }

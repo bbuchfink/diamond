@@ -50,5 +50,6 @@ struct Const
 
 #define SIMPLE_SEARCH
 #define FREQUENCY_MASKING
+// #define NO_COLLISION_FILTER
 
 #endif /* CONST_H_ */

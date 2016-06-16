@@ -27,6 +27,6 @@ void smith_waterman(const Letter *query, local_match &segment, _score gap_open, 
 int xdrop_ungapped(const Letter *query, const Letter *subject, unsigned seed_len, unsigned &delta, unsigned &len);
 int xdrop_ungapped(const Letter *query, const Letter *subject, unsigned &delta, unsigned &len);
 
-void greedy_align(sequence query, local_match &hsp);
+void greedy_align(sequence query, sequence subject);
 
 #endif /* FLOATING_SW_H_ */

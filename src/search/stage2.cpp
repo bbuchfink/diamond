@@ -23,8 +23,10 @@ void search_query_offset(Loc q,
 
 		stats.inc(Statistics::TENTATIVE_MATCHES2);
 		
+#ifndef NO_COLLISION_FILTER
 		if (!is_primary_hit(query - delta, subject - delta, delta, sid, len))
 			continue;
+#endif
 
 		stats.inc(Statistics::TENTATIVE_MATCHES3);
 		hf.push(s_pos, score);
