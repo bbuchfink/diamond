@@ -1,4 +1,4 @@
-**DIAMOND v0.8.5 by Benjamin Buchfink** - http://github.com/bbuchfink/diamond
+**DIAMOND v0.8.6 by Benjamin Buchfink** - http://github.com/bbuchfink/diamond
 
 Published in *Nature Methods* **12**, 59–60 (2015) | `doi:10.1038/nmeth.3176 <http://dx.doi.org/10.1038/nmeth.3176>`_
 
@@ -8,7 +8,7 @@ Download & Installation
 =======================
 If you use a recent **Linux** operating system, you can download the software in binary format for immediate use::
 
-    wget http://github.com/bbuchfink/diamond/releases/download/v0.8.5/diamond-linux64.tar.gz
+    wget http://github.com/bbuchfink/diamond/releases/download/v0.8.6/diamond-linux64.tar.gz
     tar xzf diamond-linux64.tar.gz
 
 Users of **Mac OS X** and **older Linux systems** need to compile the software from source (see `Compiling from source`_). On **FreeBSD**, the software can be installed using ``pkg install diamond``. A binary executable for **Windows** is available under Releases.
@@ -133,9 +133,9 @@ Compiling from source
 =====================
 To compile DIAMOND from source, invoke the following commands on the shell::
 
-  $ wget http://github.com/bbuchfink/diamond/archive/v0.8.5.tar.gz
-  $ tar xzf v0.8.5.tar.gz
-  $ cd diamond-0.8.5
+  $ wget http://github.com/bbuchfink/diamond/archive/v0.8.6.tar.gz
+  $ tar xzf v0.8.6.tar.gz
+  $ cd diamond-0.8.6
   $ mkdir bin
   $ cd bin
   $ cmake ..
@@ -144,11 +144,6 @@ To compile DIAMOND from source, invoke the following commands on the shell::
 *Note*:
   - Use cmake -DCMAKE_INSTALL_PREFIX=... to install to a different prefix.
   - Use cmake -DBUILD_STATIC=ON to create a statically linked executable.
-
-Installing using Homebrew/Linuxbrew
-===================================
-
-  $ brew install homebrew/science/diamond
 
 Scoring matrices
 ================
