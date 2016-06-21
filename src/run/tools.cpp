@@ -42,7 +42,7 @@ void random_seqs()
 	while (n.size() < config.seq_no)
 		n.insert((rand()*RAND_MAX+rand()) % query_seqs::get().get_length());
 	Compressed_ostream out(config.output_file);
-	unsigned j = 0;
+	//unsigned j = 0;
 	for (std::set<unsigned>::const_iterator i = n.begin(); i != n.end(); ++i)
 		;// out.stream() << '>' << j++ << endl << query_seqs::get()[*i] << endl;
 }

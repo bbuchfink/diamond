@@ -40,6 +40,8 @@ private:
 struct Compressed_ostream : public Output_stream
 {
 	Compressed_ostream(const string &file_name);
+	virtual ~Compressed_ostream()
+	{}
 	virtual void write(const char *ptr, size_t count);
 	virtual void close();
 private:

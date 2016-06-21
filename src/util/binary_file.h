@@ -66,6 +66,8 @@ struct Output_stream
 
 	Output_stream()
 	{ }
+	virtual ~Output_stream()
+	{}
 	Output_stream(const string &file_name) :
 		file_name_(file_name),
 		f_(file_name.length() == 0 ? stdout : fopen(file_name.c_str(), "wb"))

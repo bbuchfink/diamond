@@ -145,7 +145,7 @@ struct DAA_query_record
 				case op_deletion:
 					return '-';
 				default:
-					return value_traits.alphabet[query()];
+					return value_traits.alphabet[(long)query()];
 				}
 			}
 			char subject_char() const
@@ -154,14 +154,14 @@ struct DAA_query_record
 				case op_insertion:
 					return '-';
 				default:
-					return value_traits.alphabet[subject()];
+					return value_traits.alphabet[(long)subject()];
 				}
 			}
 			char midline_char() const
 			{
 				switch (op()) {
 				case op_match:
-					return value_traits.alphabet[query()];
+					return value_traits.alphabet[(long)query()];
 				case op_substitution:
 					return score() > 0 ? '+' : ' ';
 				default:

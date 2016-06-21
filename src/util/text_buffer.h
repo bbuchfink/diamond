@@ -138,7 +138,7 @@ struct Text_buffer
 	Text_buffer& operator<<(size_t x)
 	{
 		reserve(32);
-		ptr_ += sprintf(ptr_, "%llu", x);
+		ptr_ += sprintf(ptr_, "%llu", (unsigned long long)x);
 		return *this;
 	}
 
