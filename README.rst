@@ -1,4 +1,4 @@
-**DIAMOND v0.8.6 by Benjamin Buchfink** - http://github.com/bbuchfink/diamond
+**DIAMOND v0.8.7 by Benjamin Buchfink** - http://github.com/bbuchfink/diamond
 
 Published in *Nature Methods* **12**, 59–60 (2015) | `doi:10.1038/nmeth.3176 <http://dx.doi.org/10.1038/nmeth.3176>`_
 
@@ -8,7 +8,7 @@ Download & Installation
 =======================
 If you use a recent **Linux** operating system, you can download the software in binary format for immediate use::
 
-    wget http://github.com/bbuchfink/diamond/releases/download/v0.8.6/diamond-linux64.tar.gz
+    wget http://github.com/bbuchfink/diamond/releases/download/v0.8.7/diamond-linux64.tar.gz
     tar xzf diamond-linux64.tar.gz
 
 Users of **Mac OS X** and **older Linux systems** need to compile the software from source (see `Compiling from source`_). On **FreeBSD**, the software can be installed using ``pkg install diamond``. A binary executable for **Windows** is available under Releases.
@@ -111,7 +111,7 @@ Option     Short Default  Description
 ========== ===== ======== ===========
 --daa      -a             Path to input file in DAA format.
 --out      -o             Path to output file.
---outfmt   -f             Format of output file. (tab = BLAST tabular format; sam = SAM format)
+--outfmt   -f             Format of output file. (tab = BLAST tabular format; sam = SAM format; xml = BLAST XML format)
 --compress       0        Compression for output file (0=none, 1=gzip).
 ========== ===== ======== ===========
 FAQ
@@ -133,9 +133,9 @@ Compiling from source
 =====================
 To compile DIAMOND from source, invoke the following commands on the shell::
 
-  $ wget http://github.com/bbuchfink/diamond/archive/v0.8.6.tar.gz
-  $ tar xzf v0.8.6.tar.gz
-  $ cd diamond-0.8.6
+  $ wget http://github.com/bbuchfink/diamond/archive/v0.8.7.tar.gz
+  $ tar xzf v0.8.7.tar.gz
+  $ cd diamond-0.8.7
   $ mkdir bin
   $ cd bin
   $ cmake ..
