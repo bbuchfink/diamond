@@ -1,6 +1,5 @@
 /****
-Copyright (c) 2014, University of Tuebingen
-Author: Benjamin Buchfink
+Copyright (c) 2014-16, University of Tuebingen, Benjamin Buchfink
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
@@ -25,7 +24,11 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 struct Temp_file : public Output_stream
 {
 
-	Temp_file();	
+	Temp_file();
+#ifndef _MSC_VER
+	virtual ~Temp_file()
+	{}
+#endif
 	static string get_temp_dir();
 	static unsigned n;
 	static uint64_t hash_key;
