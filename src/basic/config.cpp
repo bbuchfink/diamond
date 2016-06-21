@@ -109,7 +109,7 @@ Config::Config(int argc, const char **argv)
 	Options_group view_options("View options");
 	view_options.add()
 		("out", 'o', "output file", output_file)
-		("outfmt",'f', "output format (tab/sam)", output_format, string("tab"))
+		("outfmt",'f', "output format (tab/sam/xml)", output_format, string("tab"))
 		("forwardonly", 0, "only show alignments of forward strand", forwardonly);
 
 	Options_group hidden_options("");
