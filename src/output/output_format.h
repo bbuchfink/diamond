@@ -1,5 +1,5 @@
 /****
-Copyright (c) 2014, University of Tuebingen
+Copyright (c) 2014-2016, University of Tuebingen, Benjamin Buchfink
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
@@ -14,8 +14,6 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
 LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-****
-Author: Benjamin Buchfink
 ****/
 
 #ifndef OUTPUT_FORMAT_H_
@@ -26,11 +24,19 @@ Author: Benjamin Buchfink
 #include "../align/match_func.h"
 #include "../output/daa_file.h"
 #include "../output/daa_record.h"
+#include "../util/compressed_stream.h"
+#include "../basic/score_matrix.h"
 
 struct Output_format
 {
-	virtual void print_match(const DAA_match_record &r, Text_buffer &out) const = 0;
-	virtual void print_header(Compressed_ostream &f, int mode) const
+	virtual void print_query_intro(const DAA_query_record &r, Text_buffer &out) const
+	{}
+	virtual void print_query_epilog(const DAA_query_record &r, Text_buffer &out) const
+	{}
+	virtual void print_match(const DAA_query_record::Match &r, Text_buffer &out) const = 0;
+	virtual void print_header(Output_stream &f, int mode, const char *matrix, int gap_open, int gap_extend, double evalue) const
+	{ }
+	virtual void print_footer(Output_stream &f) const
 	{ }
 	virtual ~Output_format()
 	{ }
@@ -47,6 +53,7 @@ struct Output_format
 		n += i->length();
 		return n;
 	}
+	enum { daa, blast_tab, blast_xml, sam };
 };
 
 struct Blast_tab_format : public Output_format
@@ -55,7 +62,7 @@ struct Blast_tab_format : public Output_format
 	Blast_tab_format()
 	{ }
 
-	virtual void print_match(const DAA_match_record &r, Text_buffer &out) const
+	virtual void print_match(const DAA_query_record::Match &r, Text_buffer &out) const
 	{
 		out << r.query_name() << '\t';
 
@@ -73,8 +80,8 @@ struct Blast_tab_format : public Output_format
 				<< r.query_end()+1 << '\t'
 				<< r.subject_begin+1 << '\t'
 				<< r.subject_begin+r.subject_len << '\t';
-		out.print_e(score_matrix.evalue(r.score, (size_t)r.db_letters(), (unsigned)r.query().size()));
-		out << '\t' << score_matrix.bitscore(r.score) << '\n';
+		out.print_e(r.evalue());
+		out << '\t' << r.bit_score() << '\n';
 	}
 
 	virtual ~Blast_tab_format()
@@ -88,7 +95,7 @@ struct Sam_format : public Output_format
 	Sam_format()
 	{ }
 
-	virtual void print_match(const DAA_match_record &r, Text_buffer &out) const
+	virtual void print_match(const DAA_query_record::Match &r, Text_buffer &out) const
 	{
 		out << r.query_name() << '\t'
 				<< '0' << '\t';
@@ -126,7 +133,7 @@ struct Sam_format : public Output_format
 		out << '\n';
 	}
 
-	void print_md(const DAA_match_record &r, Text_buffer &buf) const
+	void print_md(const DAA_query_record::Match &r, Text_buffer &buf) const
 	{
 		unsigned matches = 0, del = 0;
 		for(Packed_transcript::Const_iterator i = r.transcript.begin(); i.good(); ++i) {
@@ -162,7 +169,7 @@ struct Sam_format : public Output_format
 			buf << matches;
 	}
 
-	void print_cigar(const DAA_match_record &r, Text_buffer &buf) const
+	void print_cigar(const DAA_query_record::Match &r, Text_buffer &buf) const
 	{
 		static const unsigned map[] = { 0, 1, 2, 0 };
 		static const char letter[] = { 'M', 'I', 'D' };
@@ -181,7 +188,7 @@ struct Sam_format : public Output_format
 			buf << n << letter[op];
 	}
 
-	virtual void print_header(Compressed_ostream &f, int mode) const
+	virtual void print_header(Output_stream &f, int mode, const char *matrix, int gap_open, int gap_extend, double evalue) const
 	{
 		static const char* mode_str[] = { 0, 0, "BlastP", "BlastX", "BlastN" };
 		string line = string("@HD\tVN:1.5\tSO:query\n\
@@ -197,14 +204,28 @@ struct Sam_format : public Output_format
 
 };
 
-const Output_format& get_output_format()
+struct XML_format : public Output_format
+{
+	virtual void print_match(const DAA_query_record::Match &r, Text_buffer &out) const;
+	virtual void print_header(Output_stream &f, int mode, const char *matrix, int gap_open, int gap_extend, double evalue) const;
+	virtual void print_query_intro(const DAA_query_record &r, Text_buffer &out) const;
+	virtual void print_query_epilog(const DAA_query_record &r, Text_buffer &out) const;
+	virtual void print_footer(Output_stream &f) const;
+	virtual ~XML_format()
+	{ }
+};
+
+inline const Output_format& get_output_format()
 {
 	static const Sam_format sam;
 	static const Blast_tab_format tab;
+	static const XML_format xml;
 	if(config.output_format == "tab")
 		return tab;
-	else if(config.output_format == "sam")
+	else if (config.output_format == "sam")
 		return sam;
+	else if (config.output_format == "xml")
+		return xml;
 	else
 		throw std::runtime_error("Invalid output format. Allowed values: tab,sam");
 	return tab;

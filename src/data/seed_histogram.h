@@ -39,11 +39,11 @@ inline void encode_zero_rle(const int32_t *data, size_t len, Output_stream &out)
 			++p;
 		}
 		if(n < 0) {
-			out.write(&n, 1);
+			out.typed_write(&n, 1);
 			n = 0;
 		}
 		if(p < end) {
-			out.write(p, 1);
+			out.typed_write(p, 1);
 			++p;
 		}
 	}

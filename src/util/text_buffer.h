@@ -135,10 +135,24 @@ struct Text_buffer
 		return *this;
 	}
 
+	Text_buffer& operator<<(size_t x)
+	{
+		reserve(32);
+		ptr_ += sprintf(ptr_, "%llu", x);
+		return *this;
+	}
+
 	Text_buffer& operator<<(double x)
 	{
 		reserve(32);
 		ptr_ += sprintf(ptr_, "%.1lf", x);
+		return *this;
+	}
+
+	Text_buffer& print_d(double x)
+	{
+		reserve(32);
+		ptr_ += sprintf(ptr_, "%lf", x);
 		return *this;
 	}
 

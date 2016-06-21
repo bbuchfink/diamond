@@ -1,6 +1,5 @@
 /****
-Copyright (c) 2014, University of Tuebingen
-Author: Benjamin Buchfink
+Copyright (c) 2014-2016, University of Tuebingen, Benjamin Buchfink
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
@@ -20,12 +19,14 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #ifndef DAA_RECORD_H_
 #define DAA_RECORD_H_
 
+#include <limits>
 #include "daa_file.h"
 #include "../basic/packed_sequence.h"
 #include "../basic/value.h"
 #include "../basic/translate.h"
 #include "../basic/packed_transcript.h"
 #include "../align/match_func.h"
+#include "../basic/score_matrix.h"
 
 using std::string;
 using std::vector;
@@ -41,72 +42,159 @@ inline void translate_query(const vector<Letter>& query, vector<Letter> *context
 	Translator::translate(query, context);
 }
 
-struct DAA_query_record;
-
-struct DAA_match_record
-{
-
-	DAA_match_record(const DAA_query_record &query_record):
-		parent_ (query_record)
-	{ }
-
-	const string& query_name() const;
-	const vector<Letter>& query() const;
-	uint64_t db_letters() const;
-	unsigned query_end() const;
-
-	uint32_t total_subject_len, score, query_begin, subject_begin, frame, translated_query_begin, translated_query_len, subject_len, len, identities, mismatches, gap_openings;
-	string subject_name;
-	Packed_transcript transcript;
-
-private:
-
-	void parse()
-	{
-		translated_query_len = 0;
-		subject_len = 0;
-		len = 0;
-		identities = 0;
-		mismatches = 0;
-		gap_openings = 0;
-		unsigned d = 0;
-		for(Packed_transcript::Const_iterator i = transcript.begin(); i.good(); ++i) {
-			len += i->count;
-			switch(i->op) {
-			case op_match:
-				identities += i->count;
-				translated_query_len += i->count;
-				subject_len += i->count;
-				d = 0;
-				break;
-			case op_substitution:
-				mismatches += i->count;
-				translated_query_len += i->count;
-				subject_len += i->count;
-				d = 0;
-				break;
-			case op_insertion:
-				translated_query_len += i->count;
-				++gap_openings;
-				d = 0;
-				break;
-			case op_deletion:
-				subject_len += i->count;
-				if(d == 0)
-					++gap_openings;
-				d += i->count;
-			}
-		}
-	}
-
-	const DAA_query_record &parent_;
-
-	friend Binary_buffer::Iterator& operator>>(Binary_buffer::Iterator &it, DAA_match_record &r);
-
-};
-
 struct DAA_query_record
 {
+
+	struct Match
+	{
+
+		Match(const DAA_query_record &query_record) :
+			hit_num(std::numeric_limits<uint32_t>::max()),
+			subject_id(std::numeric_limits<uint32_t>::max()),
+			parent_(query_record)
+		{ }
+
+		const string& query_name() const;
+		const vector<Letter>& query() const;
+		uint64_t db_letters() const;
+		unsigned query_end() const;
+
+		double bit_score() const
+		{
+			return score_matrix.bitscore(score);
+		}
+
+		double evalue() const
+		{
+			return score_matrix.evalue(score, (size_t)db_letters(), (unsigned)query().size());
+		}
+
+		bool is_query_translated() const
+		{
+			return parent_.file_.mode() == mode_blastx;
+		}
+
+		int blast_query_frame() const
+		{
+			return is_query_translated() ? (frame <= 2 ? (int)frame + 1 : 2 - (int)frame) : 0;
+		}
+
+		std::pair<unsigned, unsigned> unoriented_query_range() const
+		{
+			if (frame > 2)
+				return std::pair<unsigned, unsigned>(query_end(), query_begin);
+			else
+				return std::pair<unsigned, unsigned>(query_begin, query_end());
+		}
+
+		struct Position_iterator
+		{
+			Position_iterator(const Match &parent) :
+				query_pos(parent.translated_query_begin),
+				subject_pos(parent.subject_begin),
+				ptr_(parent.transcript.ptr()),
+				count_(ptr_->count()),
+				parent_(parent)
+			{ }
+			bool good() const
+			{
+				return *ptr_ != Packed_operation::terminator();
+			}
+			Position_iterator& operator++()
+			{
+				switch (op()) {
+				case op_deletion:
+					++subject_pos;
+					break;
+				case op_insertion:
+					++query_pos;
+					break;
+				case op_match:
+				case op_substitution:
+					++query_pos;
+					++subject_pos;
+				}
+				--count_;
+				if (count_ == 0) {
+					++ptr_;
+					count_ = ptr_->count();
+				}
+				return *this;
+			}
+			Edit_operation op() const
+			{
+				return ptr_->op();
+			}
+			Letter query() const
+			{
+				return parent_.query()[query_pos];
+			}
+			Letter subject() const
+			{
+				switch (op()) {
+				case op_substitution:
+				case op_deletion:
+					return ptr_->letter();
+				default:
+					return query();
+				}				
+			}
+			char query_char() const
+			{
+				switch (op()) {
+				case op_deletion:
+					return '-';
+				default:
+					return value_traits.alphabet[query()];
+				}
+			}
+			char subject_char() const
+			{
+				switch (op()) {
+				case op_insertion:
+					return '-';
+				default:
+					return value_traits.alphabet[subject()];
+				}
+			}
+			char midline_char() const
+			{
+				switch (op()) {
+				case op_match:
+					return value_traits.alphabet[query()];
+				case op_substitution:
+					return score() > 0 ? '+' : ' ';
+				default:
+					return ' ';
+				}
+			}
+			int score() const
+			{
+				return score_matrix(query(), subject());
+			}
+			unsigned query_pos, subject_pos;
+		private:
+			const Packed_operation *ptr_;
+			unsigned count_;
+			const Match &parent_;
+		};
+		
+		Position_iterator begin() const
+		{
+			return Position_iterator(*this);
+		}
+
+		uint32_t total_subject_len, score, query_begin, subject_begin, frame, translated_query_begin, translated_query_len, subject_len, len, identities, mismatches, positives, gap_openings, gaps, hsp_num, hit_num, subject_id;
+		string subject_name;
+		Packed_transcript transcript;
+
+	private:
+
+		void parse();
+		const DAA_query_record &parent_;
+		friend Binary_buffer::Iterator& operator>>(Binary_buffer::Iterator &it, Match &r);
+
+	};
 
 	struct Match_iterator
 	{
@@ -117,11 +205,11 @@ struct DAA_query_record
 		{
 			operator++();
 		}
-		const DAA_match_record& operator*() const
+		const Match& operator*() const
 		{
 			return r_;
 		}
-		const DAA_match_record* operator->() const
+		const Match* operator->() const
 		{
 			return &r_;
 		}
@@ -134,12 +222,13 @@ struct DAA_query_record
 			if (it_.good()) it_ >> r_; else good_ = false; return *this;
 		}
 	private:
-		DAA_match_record r_;
+		Match r_;
 		Binary_buffer::Iterator it_;
 		bool good_;
 	};
 
-	DAA_query_record(const DAA_file& file, const Binary_buffer &buf) :
+	DAA_query_record(const DAA_file& file, const Binary_buffer &buf, size_t query_num):
+		query_num (query_num),
 		file_(file),
 		it_(init(buf))
 	{ }
@@ -149,66 +238,47 @@ struct DAA_query_record
 		return Match_iterator(*this, it_);
 	}
 
+	size_t query_len() const
+	{
+		switch (file_.mode()) {
+		case mode_blastx:
+			return source_seq.size();
+		default:
+			return context[0].size();
+		}
+	}
+
+	size_t db_letters() const
+	{
+		return file_.db_letters();
+	}
+
+	double lambda() const
+	{
+		return file_.lambda();
+	}
+
+	double kappa() const
+	{
+		return file_.kappa();
+	}
+
 	string query_name;
+	size_t query_num;
 	vector<Letter> source_seq;
 	vector<Letter> context[6];
 
 private:
 
-	Binary_buffer::Iterator init(const Binary_buffer &buf)
-	{
-		Binary_buffer::Iterator it(buf.begin());
-		uint32_t query_len;
-		it >> query_len;
-		it >> query_name;
-		uint8_t flags;
-		it >> flags;
-		if (file_.mode() == mode_blastp) {
-			Packed_sequence seq(it, query_len, false, 5);
-			seq.unpack(context[0], 5, query_len);
-		}
-		else {
-			const bool have_n = (flags & 1) == 1;
-			Packed_sequence seq(it, query_len, have_n, have_n ? 3 : 2);
-			seq.unpack(source_seq, have_n ? 3 : 2, query_len);
-			translate_query(source_seq, context);
-		}
-		return it;
-	}
+	Binary_buffer::Iterator init(const Binary_buffer &buf);
 
 	const DAA_file& file_;
 	const Binary_buffer::Iterator it_;
-
-	friend struct DAA_match_record;
-
-	friend Binary_buffer::Iterator& operator>>(Binary_buffer::Iterator &it, DAA_match_record &r);
+	
+	friend Binary_buffer::Iterator& operator>>(Binary_buffer::Iterator &it, Match &r);
 
 };
 
-inline Binary_buffer::Iterator& operator>>(Binary_buffer::Iterator &it, DAA_match_record &r)
-{
-	uint32_t subject_id;
-	it >> subject_id;
-	uint8_t flag;
-	it >> flag;
-	it.read_packed(flag & 3, r.score);
-	it.read_packed((flag>>2)&3, r.query_begin);
-	it.read_packed((flag>>4)&3, r.subject_begin);
-	r.transcript.read(it);
-	r.subject_name = r.parent_.file_.ref_name(subject_id);
-	r.total_subject_len = r.parent_.file_.ref_len(subject_id);
-	if(r.parent_.file_.mode() == mode_blastx) {
-		r.frame = (flag&(1<<6)) == 0 ? r.query_begin % 3 : 3+(r.parent_.source_seq.size() - 1 - r.query_begin)%3;
-		r.translated_query_begin = query_translated_begin(r.query_begin, r.frame, (unsigned)r.parent_.source_seq.size(), true);
-	} else if (r.parent_.file_.mode() == mode_blastp) {
-		r.frame = 0;
-		r.translated_query_begin = r.query_begin;
-	} else {
-		r.frame = (flag&(1<<6)) == 0 ? 0 : 1;
-		r.translated_query_begin = query_translated_begin(r.query_begin, r.frame, (unsigned)r.parent_.source_seq.size(), false);
-	}
-	r.parse();
-	return it;
-}
+Binary_buffer::Iterator& operator>>(Binary_buffer::Iterator &it, DAA_query_record::Match &r);
 
 #endif /* DAA_RECORD_H_ */

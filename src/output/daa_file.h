@@ -1,6 +1,5 @@
 /****
-Copyright (c) 2014-2015, University of Tuebingen
-Author: Benjamin Buchfink
+Copyright (c) 2014-2016, University of Tuebingen, Benjamin Buchfink
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
@@ -52,6 +51,12 @@ inline Align_mode get_align_mode()
 	}
 }
 
+inline const char* mode_str(int mode)
+{
+	static const char* mode_str[] = { 0, 0, "blastp", "blastx", "blastn" };
+	return mode_str[mode];
+}
+
 struct DAA_header2
 {
 	DAA_header2()
@@ -64,6 +69,7 @@ struct DAA_header2
 			int32_t penalty,
 			double k,
 			double lambda,
+			double evalue,
 			const string &score_matrix,
 			Align_mode mode):
 		diamond_build (Const::build_version),
@@ -82,7 +88,7 @@ struct DAA_header2
 		reserved3 (0),
 		k (k),
 		lambda (lambda),
-		reserved4 (0),
+		evalue (evalue),
 		reserved5 (0)
 	{
 		memset(block_type, 0, sizeof(block_type));
@@ -92,7 +98,7 @@ struct DAA_header2
 	typedef enum { empty = 0, alignments = 1, ref_names = 2, ref_lengths = 3 } Block_type;
 	uint64_t diamond_build, db_seqs, db_seqs_used, db_letters, flags, query_records;
 	int32_t mode, gap_open, gap_extend, reward, penalty, reserved1, reserved2, reserved3;
-	double k, lambda, reserved4, reserved5;
+	double k, lambda, evalue, reserved5;
 	char score_matrix[16];
 	uint64_t block_size[256];
 	char block_type[256];
@@ -102,7 +108,8 @@ struct DAA_file
 {
 
 	DAA_file(const string& file_name):
-		f_ (file_name)
+		f_ (file_name),
+		query_count_ (0)
 	{
 		f_.read(&h1_, 1);
 		if(h1_.magic_number != DAA_header1().magic_number)
@@ -171,7 +178,22 @@ struct DAA_file
 	const uint32_t ref_len(size_t i) const
 	{ return ref_len_[i]; }
 
-	bool read_query_buffer(Binary_buffer &buf)
+	double lambda() const
+	{
+		return h2_.lambda;
+	}
+
+	double kappa() const
+	{
+		return h2_.k;
+	}
+
+	double evalue() const
+	{
+		return h2_.evalue;
+	}
+
+	bool read_query_buffer(Binary_buffer &buf, size_t &query_num)
 	{
 		uint32_t size;
 		f_.read(&size, 1);
@@ -179,12 +201,14 @@ struct DAA_file
 			return false;
 		buf.resize(size);
 		f_.read(buf.data(), size);
+		query_num = query_count_++;
 		return true;
 	}
 
 private:
 
 	Input_stream f_;
+	size_t query_count_;
 	DAA_header1 h1_;
 	DAA_header2 h2_;
 	Ptr_vector<string> ref_name_;

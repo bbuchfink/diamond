@@ -66,21 +66,27 @@ struct Output_stream
 
 	Output_stream()
 	{ }
-	Output_stream(const string &file_name, bool gzipped) :
+	Output_stream(const string &file_name) :
 		file_name_(file_name),
 		f_(file_name.length() == 0 ? stdout : fopen(file_name.c_str(), "wb"))
 	{
 		if (f_ == 0) throw File_open_exception(file_name_);
 	}
-	void close()
+	virtual void close()
 	{
 		if (f_ && f_ != stdout) {
 			fclose(f_);
 			f_ = 0;
 		}
 	}
+	virtual void write(const char *ptr, size_t count)
+	{
+		size_t n;
+		if ((n = fwrite((const void*)ptr, 1, count, f_)) != count)
+			throw File_write_exception(file_name_);
+	}
 	template<typename _t>
-	void write(const _t *ptr, size_t count)
+	void typed_write(const _t *ptr, size_t count)
 	{
 		size_t n;
 		if ((n = fwrite((const void*)ptr, sizeof(_t), count, f_)) != count)
@@ -91,8 +97,8 @@ struct Output_stream
 	{
 		size_t size = v.size();
 		if (write_size)
-			write(&size, 1);
-		write(v.data(), size);
+			typed_write(&size, 1);
+		typed_write(v.data(), size);
 	}
 	void write_c_str(const string &s)
 	{

@@ -21,26 +21,10 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #define DAA_WRITE_H_
 
 #include <limits>
+#include "output.h"
 #include "daa_file.h"
 #include "../basic/score_matrix.h"
 #include "../data/reference.h"
-
-struct Intermediate_record
-{
-	void read(Buffered_file &f)
-	{
-		f.read(query_id);
-		f.read(subject_id);
-		f.read(flag);
-		f.read_packed(flag & 3, score);
-		f.read_packed((flag>>2)&3, query_begin);
-		f.read_packed((flag>>4)&3, subject_begin);
-		transcript.read(f);
-	}
-	uint32_t query_id, subject_id, score, query_begin, subject_begin;
-	uint8_t flag;
-	Packed_transcript transcript;
-};
 
 unsigned get_length_flag(unsigned x)
 {
@@ -73,7 +57,7 @@ struct DAA_output
 {
 
 	DAA_output():
-		f_ (config.daa_file, false),
+		f_ (config.daa_file),
 		h2_ (ref_header.sequences,
 			config.db_size == 0 ? ref_header.letters : config.db_size,
 			config.gap_open,
@@ -82,15 +66,16 @@ struct DAA_output
 			config.penalty,
 				score_matrix.k(),
 				score_matrix.lambda(),
+			config.max_evalue,
 			config.matrix,
 				get_align_mode())
 	{
 		DAA_header1 h1;
-		f_.write(&h1, 1);
+		f_.typed_write(&h1, 1);
 		h2_.block_type[0] = DAA_header2::alignments;
 		h2_.block_type[1] = DAA_header2::ref_names;
 		h2_.block_type[2] = DAA_header2::ref_lengths;
-		f_.write(&h2_, 1);
+		f_.typed_write(&h2_, 1);
 	}
 
 	static void write_query_record(Text_buffer &buf, const sequence &query_name, const sequence &query)
@@ -133,7 +118,7 @@ struct DAA_output
 	void finish()
 	{
 		uint32_t size = 0;
-		f_.write(&size, 1);
+		f_.typed_write(&size, 1);
 		h2_.block_size[0] = f_.tell() - sizeof(DAA_header1) - sizeof(DAA_header2);
 		h2_.db_seqs_used = ref_map.next_;
 		h2_.query_records = statistics.get(Statistics::ALIGNED);
@@ -149,7 +134,7 @@ struct DAA_output
 		h2_.block_size[2] = ref_map.len_.size() * sizeof(uint32_t);
 
 		f_.seekp(sizeof(DAA_header1));
-		f_.write(&h2_, 1);
+		f_.typed_write(&h2_, 1);
 
 		f_.close();
 	}

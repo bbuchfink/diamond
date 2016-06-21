@@ -81,7 +81,7 @@ public:
         }
         else
         {
-            ret = deflateInit2(this, _level, Z_DEFLATED, 15+16, 8, Z_DEFAULT_STRATEGY);
+			ret = deflateInit2(this, _level, Z_DEFLATED, 15+16, 8, Z_DEFAULT_STRATEGY);
         }
         if (ret != Z_OK) throw Exception(this, ret);
     }
@@ -362,6 +362,9 @@ struct strict_fstream_holder
     strict_fstream_holder(const std::string& filename, std::ios_base::openmode mode = std::ios_base::in)
         : _fs(filename, mode)
     {}
+	virtual ~strict_fstream_holder()
+	{
+	}
     FStream_Type _fs;
 }; // class strict_fstream_holder
 

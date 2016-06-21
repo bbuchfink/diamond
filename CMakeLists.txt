@@ -59,6 +59,7 @@ add_executable(diamond src/run/main.cpp
   src/dp/greedy_align.cpp
   src/run/benchmark.cpp
   src/search/stage2.cpp
+  src/output/output_format.cpp
 )
 
 target_link_libraries(diamond ${ZLIB_LIBRARY} ${CMAKE_THREAD_LIBS_INIT})

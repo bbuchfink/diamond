@@ -1,6 +1,5 @@
 /****
-Copyright (c) 2014, University of Tuebingen
-Author: Benjamin Buchfink
+Copyright (c) 2014-2016, University of Tuebingen, Benjamin Buchfink
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
@@ -35,14 +34,20 @@ const unsigned view_buf_size = 32;
 struct View_writer
 {
 	View_writer():
-		f_ (config.output_file + (config.compression==1?".gz":""), config.compression==1)
+		f_ (config.compression == 1
+			? new Compressed_ostream(config.output_file + ".gz")
+			: new Output_stream(config.output_file))
 	{ }
 	void operator()(Text_buffer &buf)
 	{
-		f_.write(buf.get_begin(), buf.size());
+		f_->write(buf.get_begin(), buf.size());
 		buf.clear();
 	}
-	Compressed_ostream f_;
+	~View_writer()
+	{
+		f_->close();
+	}
+	auto_ptr<Output_stream> f_;
 };
 
 struct View_fetcher
@@ -54,14 +59,17 @@ struct View_fetcher
 	{
 		n = 0;
 		for(unsigned i=0;i<view_buf_size;++i)
-			if(!daa.read_query_buffer(buf[i]))
+			if (!daa.read_query_buffer(buf[i], query_num)) {
+				query_num -= n - 1;
 				return false;
-			else
+			} else
 				++n;
+		query_num -= n - 1;
 		return true;
 	}
 	Binary_buffer buf[view_buf_size];
 	unsigned n;
+	size_t query_num;
 	DAA_file &daa;
 };
 
@@ -81,12 +89,14 @@ struct View_context
 			Text_buffer *buffer = 0;
 			while(queue.get(n, buffer, query_buf)) {
 				for(unsigned j=0;j<query_buf.n;++j) {
-					DAA_query_record r (daa, query_buf.buf[j]);
+					DAA_query_record r(daa, query_buf.buf[j], query_buf.query_num + j);
+					format.print_query_intro(r, *buffer);
 					for(DAA_query_record::Match_iterator i = r.begin(); i.good(); ++i) {
 						if(i->frame > 2 && config.forwardonly)
 							continue;
 						format.print_match(*i, *buffer);
 					}
+					format.print_query_epilog(r, *buffer);
 				}
 				queue.push(n);
 			}
@@ -120,10 +130,11 @@ void view()
 	task_timer timer("Generating output");
 	View_writer writer;
 	const Output_format& format(get_output_format());
-	format.print_header(writer.f_, daa.mode());
+	format.print_header(*writer.f_, daa.mode(), daa.score_matrix(), daa.gap_open_penalty(), daa.gap_extension_penalty(), daa.evalue());
 
 	View_context context(daa, writer, format);
 	launch_thread_pool(context, config.threads_);
+	format.print_footer(*writer.f_);
 }
 
 #endif /* VIEW_H_ */

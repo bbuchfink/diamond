@@ -38,7 +38,15 @@ struct Packed_operation
 	Edit_operation op() const
 	{ return (Edit_operation)(code>>6); }
 	unsigned count() const
-	{ return code&63; }
+	{
+		switch (op()) {
+		case op_match:
+		case op_insertion:
+			return code & 63;
+		default:
+			return 1;
+		}
+	}
 	Letter letter() const
 	{ return code&63; }
 	static Packed_operation terminator()
@@ -116,6 +124,11 @@ struct Packed_transcript
 
 	const vector<Packed_operation>& data() const
 	{ return data_; }
+
+	const Packed_operation* ptr() const
+	{
+		return &data_[0];
+	}
 
 private:
 

@@ -48,8 +48,8 @@ void make_db()
 	ref_header.sequence_type = sequence_type(_val ());
 #endif
 	size_t chunk = 0;
-	Output_stream main(config.database, false);
-	main.write(&ref_header, 1);
+	Output_stream main(config.database);
+	main.typed_write(&ref_header, 1);
 
 	for(;;++chunk) {
 		timer.go("Loading sequences");
@@ -82,7 +82,7 @@ void make_db()
 	timer.finish();
 	ref_header.n_blocks = (unsigned)chunk;
 	main.seekp(0);
-	main.write(&ref_header, 1);
+	main.typed_write(&ref_header, 1);
 	main.close();
 
 	message_stream << "Total time = " << total.getElapsedTimeInSec() << "s" << std::endl;

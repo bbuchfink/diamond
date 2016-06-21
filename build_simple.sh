@@ -27,4 +27,5 @@ g++ -DNDEBUG -O3 -mssse3 -static \
   src/dp/greedy_align.cpp \
   src/run/benchmark.cpp \
   src/search/stage2.cpp \
+  src/output/output_format.cpp \
 -lz -lpthread -o diamond

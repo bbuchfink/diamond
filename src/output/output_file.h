@@ -22,6 +22,7 @@ Author: Benjamin Buchfink
 #define OUTPUT_FILE_H_
 
 #include <string>
+#include "output.h"
 #include "output_buffer.h"
 
 using std::string;
