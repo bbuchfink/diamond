@@ -136,6 +136,13 @@ struct hit
 
 #pragma pack()
 
+struct Hsp_data
+{
+	unsigned score, frame, length, identities, mismatches, positives, gap_openings, gaps;
+	interval query_source_range, query_range, subject_range;
+	Packed_transcript transcript;
+};
+
 struct local_match
 {
 	typedef vector<local_match>::iterator iterator;
@@ -226,11 +233,6 @@ struct local_match
 		std::cout << "Score = " << score_ << std::endl;
 		::print(std::cout, &query[query_begin_], &subject[subject_begin_], transcript_right_, transcript_left_, buf);
 	}
-	/*friend std::ostream& operator<<(std::ostream &os, const local_match &x)
-	{
-		os << "(sbj=" << x.subject_range() << " score=" << Scoring<_val>::bitscore(x.score_) << ")";
-		return os;
-	}*/
 	bool pass_through(const Diagonal_segment &d, const vector<char> &transcript_buf);
 	bool is_weakly_enveloped(const local_match &j);
 	unsigned len_, query_begin_, subject_len_, gap_openings_, identities_, mismatches_, total_subject_len_;

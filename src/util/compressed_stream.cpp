@@ -59,8 +59,7 @@ Compressed_ostream::Compressed_ostream(const string &file_name):
 	strm.zalloc = Z_NULL;
 	strm.zfree = Z_NULL;
 	strm.opaque = Z_NULL;
-	int ret = deflateInit2(&strm, Z_DEFAULT_COMPRESSION, Z_DEFLATED, 15 + 16, 8, Z_DEFAULT_STRATEGY);
-	if (ret != Z_OK)
+	if (deflateInit2(&strm, Z_DEFAULT_COMPRESSION, Z_DEFLATED, 15 + 16, 8, Z_DEFAULT_STRATEGY) != Z_OK)
 		throw std::runtime_error("deflateInit error");
 }
 

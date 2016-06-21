@@ -206,6 +206,8 @@ struct Sam_format : public Output_format
 
 struct XML_format : public Output_format
 {
+	XML_format()
+	{}
 	virtual void print_match(const DAA_query_record::Match &r, Text_buffer &out) const;
 	virtual void print_header(Output_stream &f, int mode, const char *matrix, int gap_open, int gap_extend, double evalue) const;
 	virtual void print_query_intro(const DAA_query_record &r, Text_buffer &out) const;
