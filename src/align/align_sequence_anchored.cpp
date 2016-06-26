@@ -141,7 +141,9 @@ void load_subject_seqs(unsigned subject_id,
 	//if (begin->extensions_ >= sqrt(query_len)/2)
 	/*if(begin->extensions_ >= ref_seqs::get().length(begin->subject_) * 10)
 		return;*/
-	double sim = (double)(end - begin) / query_len * ref_seqs::data_->length(subject_id);
+	double sim = std::max((double)(end - begin) / query_len * ref_seqs::data_->length(subject_id),
+		(double)(end - begin) * query_len / ref_seqs::data_->length(subject_id));
+
 	if (sim > 100) {
 		if (begin->hsp_)
 			return;
@@ -151,6 +153,9 @@ void load_subject_seqs(unsigned subject_id,
 		begin->hsp_ = &dst.back();
 		return;
 	}
+	/*if (end - begin > 100) {
+		cout << "n=" << end - begin << " querylen=" << query_len << " reflen=" << ref_seqs::data_->length(subject_id) << " sim=" << (double)(end - begin) / query_len * ref_seqs::data_->length(subject_id) << endl;
+	}*/
 	for (vector<local_trace_point>::iterator i = begin; i < end; ++i) {
 		if (i->hsp_ == 0 && include(begin, end, *i, band)) {
 			dst.push_back(local_match(i->query_pos_, i->subject_pos_, ref_seqs::data_->data(ref_seqs::data_->position(subject_id, i->subject_pos_))));
