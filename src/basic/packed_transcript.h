@@ -129,9 +129,34 @@ struct Packed_transcript
 		return &data_[0];
 	}
 
+	void push_back(Edit_operation op)
+	{
+		if (data_.empty() || data_.back().op() != op || (data_.back().op() == op && data_.back().count() == 63))
+			data_.push_back(Packed_operation(op, 1u));
+		else
+			++data_.back().code;
+	}
+
+	void push_back(Edit_operation op, Letter l)
+	{
+		data_.push_back(Packed_operation(op, l));
+	}
+
+	void push_back(Edit_operation op, unsigned count)
+	{
+		data_.push_back(Packed_operation(op, count));
+	}
+
+	void push_terminator()
+	{
+		data_.push_back(Packed_operation::terminator());
+	}
+
 private:
 
 	vector<Packed_operation> data_;
+
+	friend struct local_match;
 
 };
 

@@ -1,5 +1,5 @@
 /****
-Copyright (c) 2014, University of Tuebingen
+Copyright (c) 2014-2016, University of Tuebingen, Benjamin Buchfink
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
@@ -14,8 +14,6 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
 LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-****
-Author: Benjamin Buchfink
 ****/
 
 #ifndef OUTPUT_BUFFER_H_
@@ -29,17 +27,15 @@ void write_intermediate_record(Text_buffer &buf,
 			const Segment &match,
 			size_t query_source_len,
 			const sequence &query,
-			unsigned query_id,
-			const vector<char> &transcript_buf)
+			unsigned query_id)
 {
 	buf.write(query_id)
 		.write(ref_map.get(current_ref_block, match.subject_id_))
 		.write(get_segment_flag(match))
 		.write_packed(match.score_)
-		.write_packed(match.traceback_->query_begin_)
-		.write_packed(match.traceback_->subject_begin_);
-	const unsigned qbegin = query_translated_begin(match.traceback_->query_begin_, match.frame_, (unsigned)query_source_len, query_translated());
-	print_packed(match.traceback_->transcript_right_, match.traceback_->transcript_left_, transcript_buf, buf, query, ref_seqs::get()[match.subject_id_], qbegin, match.traceback_->subject_begin_);
+		.write_packed(match.traceback_->oriented_range().begin_)
+		.write_packed(match.traceback_->subject_range.begin_)
+		<< match.traceback_->transcript.data();
 }
 
 struct Output_buffer : public Text_buffer
@@ -47,9 +43,8 @@ struct Output_buffer : public Text_buffer
 	virtual void print_match(const Segment &match,
 		size_t query_source_len,
 		const sequence &query,
-		unsigned query_id,
-		const vector<char> &transcript_buf)
-	{ DAA_output::write_record(*this, match, query_source_len, query, query_id, transcript_buf); }
+		unsigned query_id)
+	{ DAA_output::write_record(*this, match, query_source_len, query, query_id); }
 	virtual void write_query_record(unsigned query_id)
 	{
 		query_begin_ = this->size();
@@ -71,9 +66,8 @@ struct Temp_output_buffer : public Output_buffer
 	virtual void print_match(const Segment &match,
 				size_t query_source_len,
 				const sequence &query,
-				unsigned query_id,
-				const vector<char> &transcript_buf)
-	{ write_intermediate_record(*this, match, query_source_len, query, query_id, transcript_buf); }
+				unsigned query_id)
+	{ write_intermediate_record(*this, match, query_source_len, query, query_id); }
 	virtual void write_query_record(unsigned query_id)
 	{ }
 	virtual void finish_query_record()

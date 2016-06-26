@@ -125,7 +125,7 @@ void get_links(const vector<Diagonal_segment> &diag, sequence query, sequence su
 		for (vector<Diagonal_segment>::const_iterator j = diag.begin(); j != diag.end(); ++j) {
 			Link l;
 			int link_score = get_link(*i, *j, query, subject, l);
-			if (link_score > i->score && link_score > j->score) {
+			if (link_score > (int)i->score && link_score > (int)j->score) {
 				l.target = (unsigned)(j - diag.begin());
 				links[i - diag.begin()].push_back(l);
 				is_root[l.target] = false;
@@ -134,13 +134,6 @@ void get_links(const vector<Diagonal_segment> &diag, sequence query, sequence su
 #endif
 			}
 		}
-}
-
-std::ostream& indent(std::ostream &str, unsigned n)
-{
-	for (unsigned i = 0; i < n; ++i)
-		str << ' ';
-	return str;
 }
 
 void follow_path(unsigned level, unsigned node, vector<Link_list> &links, int score, int subject_pos, sequence query, sequence subject, const vector<Diagonal_segment> &diag)

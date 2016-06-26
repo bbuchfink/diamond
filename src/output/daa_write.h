@@ -1,6 +1,5 @@
 /****
-Copyright (c) 2014, University of Tuebingen
-Author: Benjamin Buchfink
+Copyright (c) 2014-2016, University of Tuebingen, Benjamin Buchfink
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
@@ -48,8 +47,8 @@ uint8_t get_segment_flag(const Segment &match)
 {
 	unsigned rev = get_rev_flag(match.frame_);
 	return (uint8_t)(get_length_flag(match.score_)
-		| (get_length_flag(match.traceback_->query_begin_) << 2)
-		| (get_length_flag(match.traceback_->subject_begin_) << 4)
+		| (get_length_flag(match.traceback_->oriented_range().begin_) << 2)
+		| (get_length_flag(match.traceback_->subject_range.begin_) << 4)
 		| rev << 6);
 }
 
@@ -103,16 +102,14 @@ struct DAA_output
 			const Segment &match,
 			size_t query_source_len,
 			const sequence &query,
-			unsigned query_id,
-			const vector<char> &transcript_buf)
+			unsigned query_id)
 	{
 		buf.write(ref_map.get(current_ref_block, match.subject_id_));
 		buf.write(get_segment_flag(match));
 		buf.write_packed(match.score_);
-		buf.write_packed(match.traceback_->query_begin_);
-		buf.write_packed(match.traceback_->subject_begin_);
-		const unsigned qbegin = query_translated_begin(match.traceback_->query_begin_, match.frame_, (unsigned)query_source_len, query_translated());
-		print_packed(match.traceback_->transcript_right_, match.traceback_->transcript_left_, transcript_buf, buf, query, ref_seqs::get()[match.subject_id_], qbegin, match.traceback_->subject_begin_);
+		buf.write_packed(match.traceback_->oriented_range().begin_);
+		buf.write_packed(match.traceback_->subject_range.begin_);
+		buf << match.traceback_->transcript.data();
 	}
 
 	void finish()

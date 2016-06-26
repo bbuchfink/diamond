@@ -32,8 +32,7 @@ void align_sequence_simple(vector<Segment> &matches,
 	size_t db_letters,
 	unsigned dna_len,
 	Trace_pt_buffer::Vector::iterator &begin,
-	Trace_pt_buffer::Vector::iterator &end,
-	vector<char> &transcript_buf)
+	Trace_pt_buffer::Vector::iterator &end)
 {
 	std::sort(begin, end, hit::cmp_normalized_subject);
 	const unsigned q_num(begin->query_);
@@ -59,19 +58,15 @@ void align_sequence_simple(vector<Segment> &matches,
 			score_matrix.rawscore(config.gapped_xdrop),
 			config.gap_open + config.gap_extend,
 			config.gap_extend,
-			transcript_buf,
 			cell_updates,
 			Traceback());
-		const int score = local.back().score_;
+		const int score = local.back().score;
 		std::pair<size_t, size_t> l = ref_seqs::data_->local_position((size_t)i->subject_);
 		matches.push_back(Segment(score, frame, &local.back(), (unsigned)l.first));
-		anchored_transform(local.back(), (unsigned)l.second, i->seed_offset_);
-		stat.inc(Statistics::ALIGNED_QLEN, local.back().query_len_);
 
 		//local.back().print(query, ref_seqs<_val>::get()[l.first], transcript_buf);
 
-		to_source_space(local.back(), frame, dna_len);
-		stat.inc(Statistics::SCORE_TOTAL, local.back().score_);
+		local.back().set_source_range(frame, dna_len);
 		stat.inc(Statistics::OUT_HITS);
 	}
 }

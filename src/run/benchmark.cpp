@@ -67,7 +67,6 @@ Sbjct  76  TIINGL  81	*/
 
 	uint64_t cell_updates = 0;
 	local_match hsp(0, 0, &ss[1][16]);
-	vector<char> transcript_buf;
 	
 	{
 		Timer t;
@@ -81,14 +80,13 @@ Sbjct  76  TIINGL  81	*/
 				config.xdrop,
 				config.gap_open + config.gap_extend,
 				config.gap_extend,
-				transcript_buf,
 				cell_updates,
 				Score_only());
 
 		}
 		t.stop();
 
-		cout << hsp.score_ << ' ' << cell_updates << endl;
+		cout << hsp.score << ' ' << cell_updates << endl;
 		cout << "gcups=" << (double)cell_updates / 1e9 / t.getElapsedTimeInSec() << " n/sec=" << (double)n / t.getElapsedTimeInSec() << endl;
 	}
 

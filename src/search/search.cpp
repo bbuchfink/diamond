@@ -120,12 +120,12 @@ void tiled_search(vector<Finger_print>::const_iterator q,
 	switch (level) {
 	case 0:
 	case 1:
-		for (; q < q_end; q += tile_size[level])
-			for (vector<Finger_print>::const_iterator s2 = s; s2 < s_end; s2 += tile_size[level])
+		for (; q < q_end; q += std::min(q_end - q, (ptrdiff_t)tile_size[level]))
+			for (vector<Finger_print>::const_iterator s2 = s; s2 < s_end; s2 += std::min(s_end - s2, (ptrdiff_t)tile_size[level]))
 				tiled_search(q, q + std::min(q_end - q, (ptrdiff_t)tile_size[level]), s2, s2 + std::min(s_end - s2, (ptrdiff_t)tile_size[level]), ref, hits, stats, level+1);
 		break;
 	case 2:
-		for (; q < q_end; q += 6)
+		for (; q < q_end; q += std::min(q_end-q,(ptrdiff_t)6))
 			if (q_end - q < 6)
 				inner_search(q, q_end, s, s_end, ref, hits, stats);
 			else

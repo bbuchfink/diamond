@@ -1,3 +1,6 @@
+[0.8.8]
+- fixed a clang compiler error
+
 [0.8.7]
 - added support for BLAST XML format
 - fixed the gzip compressed output option

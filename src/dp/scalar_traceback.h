@@ -96,8 +96,7 @@ local_match traceback(const Letter *query,
 		int gap_extend,
 		int i,
 		int j,
-		int score,
-		vector<char> &transcript_buf)
+		int score)
 {
 	if(i == -1)
 		return local_match (0);
@@ -105,12 +104,11 @@ local_match traceback(const Letter *query,
 	//dp.print(i, j);
 
 	local_match l;
-	l.query_len_ = j + 1;
-	l.subject_len_ = i + 1;
-	l.query_begin_ = 0;
-	l.subject_begin_ = 0;
-	l.score_ = score;
-	Edit_transcript transcript (transcript_buf);
+	l.query_range.begin_ = 0;
+	l.query_range.end_ = j + 1;
+	l.subject_range.begin_ = 0;
+	l.subject_range.end_ = i + 1;
+	l.score = score;
 
 	int gap_len;
 
@@ -120,37 +118,42 @@ local_match traceback(const Letter *query,
 		//printf("i=%i j=%i score=%i subject=%c query=%c\n",i,j,dp(i, j),Value_traits<_val>::ALPHABET[ls],Value_traits<_val>::ALPHABET[lq]);
 
 		if(dp(i, j) == match_score + dp(i-1, j-1)) {		// i==0, j==0 ?
-			if(lq == ls)
-				++l.identities_;
-			else
-				++l.mismatches_;
+			if (lq == ls) {
+				l.transcript.push_back(op_match);
+				++l.identities;
+			}
+			else {
+				l.transcript.push_back(op_substitution, ls);
+				++l.mismatches;
+			}
 			--i;
 			--j;
-			++l.len_;
-			transcript_buf.push_back(op_match);
+			++l.length;			
 		} else if (have_hgap(dp, i, j, gap_open, gap_extend, gap_len)) {
-			++l.gap_openings_;
-			l.len_ += gap_len;
-			i -= gap_len;
-			transcript_buf.insert(transcript_buf.end(), gap_len ,op_deletion);
+			++l.gap_openings;
+			l.length += gap_len;
+			for (; gap_len > 0; gap_len--)
+				l.transcript.push_back(op_deletion, mask_critical(get_dir(subject, i--, _dir())));
 		} else if (have_vgap(dp, i, j, gap_open, gap_extend, gap_len)) {
-			++l.gap_openings_;
-			l.len_ += gap_len;
+			++l.gap_openings;
+			l.length += gap_len;
 			j -= gap_len;
-			transcript_buf.insert(transcript_buf.end(), gap_len ,op_insertion);
+			l.transcript.push_back(op_insertion, (unsigned)gap_len);
 		} else {
 			throw std::runtime_error("Traceback error.");
 		}
 	}
 
-	if(get_dir(query, 0, _dir()) == mask_critical(get_dir(subject, 0, _dir())))
-		++l.identities_;
-	else
-		++l.mismatches_;
-	++l.len_;
-	transcript_buf.push_back(op_match);
-	//printf("len=%i\n",l.len_);
-	l.transcript_right_ = transcript.set_end(transcript_buf);
+	const Letter lq = get_dir(query, 0, _dir()), ls = mask_critical(get_dir(subject, 0, _dir()));
+	if (lq == ls) {
+		l.transcript.push_back(op_match);
+		++l.identities;
+	}
+	else {
+		l.transcript.push_back(op_substitution, ls);
+		++l.mismatches;
+	}
+	++l.length;
 	return l;
 }
 

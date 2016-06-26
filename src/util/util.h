@@ -1,5 +1,5 @@
 /****
-Copyright (c) 2014, University of Tuebingen
+Copyright (c) 2014-2016, University of Tuebingen, Benjamin Buchfink
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
@@ -14,8 +14,6 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
 LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-****
-Author: Benjamin Buchfink
 ****/
 
 #ifndef UTIL_H_
@@ -101,25 +99,25 @@ struct interval
 		begin_ (0),
 		end_ (0)
 	{ }
-	interval(size_t begin, size_t end):
+	interval(unsigned begin, unsigned end):
 		begin_ (begin),
 		end_ (end)
 	{ }
-	size_t length() const
+	unsigned length() const
 	{ return end_ > begin_ ? end_ - begin_ : 0; }
-	size_t overlap(const interval &rhs) const
+	unsigned overlap(const interval &rhs) const
 	{ return intersect(*this, rhs).length(); }
 	double overlap_factor(const interval &rhs) const
 	{
 		return (double)overlap(rhs) / (double)length();
 	}
-	bool includes(size_t p) const
+	bool includes(unsigned p) const
 	{ return p >= begin_ && p < end_; }
 	friend inline interval intersect(const interval &lhs, const interval &rhs)
 	{ return interval (std::max(lhs.begin_, rhs.begin_), std::min(lhs.end_, rhs.end_)); }
 	friend std::ostream& operator<<(std::ostream &os, const interval &x)
 	{ os << "[" << x.begin_ << ";" << x.end_ << "]"; return os; }
-	size_t begin_, end_;
+	unsigned begin_, end_;
 };
 
 inline void print(const __m128i &x)
@@ -298,5 +296,12 @@ inline string to_string(unsigned val)
 }
 
 string extract_dir(const string &s);
+
+inline std::ostream& indent(std::ostream &str, unsigned n)
+{
+	for (unsigned i = 0; i < n; ++i)
+		str << ' ';
+	return str;
+}
 
 #endif /* UTIL_H_ */

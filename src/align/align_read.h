@@ -44,7 +44,6 @@ void align_read(Output_buffer &buffer,
 {
 	static TLS_PTR vector<local_match> *local_ptr = 0;
 	static TLS_PTR vector<Segment> *matches_ptr = 0;
-	static TLS_PTR vector<char> *transcript_ptr = 0;
 
 #ifdef ENABLE_LOGGING_AR
 	static std::set<unsigned> q;
@@ -53,10 +52,8 @@ void align_read(Output_buffer &buffer,
 
 	vector<Segment>& matches (get_tls(matches_ptr));
 	vector<local_match>& local (get_tls(local_ptr));
-	vector<char>& transcript_buf (get_tls(transcript_ptr));
 	local.clear();
 	matches.clear();
-	transcript_buf.clear();
 
 	assert(end > begin);
 	const size_t hit_count = end - begin;
@@ -81,10 +78,10 @@ void align_read(Output_buffer &buffer,
 	while(i.valid()) {
 		switch (config.local_align_mode) {
 		case 1:
-			align_sequence_simple(matches, stat, local, padding, db_letters, source_query_len, i.begin(), i.end(), transcript_buf);
+			align_sequence_simple(matches, stat, local, padding, db_letters, source_query_len, i.begin(), i.end());
 			break;
 		default:
-			align_sequence_anchored(matches, stat, local, padding, db_letters, source_query_len, i.begin(), i.end(), transcript_buf);
+			align_sequence_anchored(matches, stat, local, padding, db_letters, source_query_len, i.begin(), i.end());
 		}		
 		++i;
 	}
@@ -111,8 +108,8 @@ void align_read(Output_buffer &buffer,
 			++it;
 			continue;
 		}
-		if(static_cast<double>(it->traceback_->identities_)*100/it->traceback_->len_ < config.min_id
-				|| (double)abs(it->traceback_->query_len_)*100/(double)source_query_len < config.query_cover) {
+		if(static_cast<double>(it->traceback_->identities)*100/it->traceback_->length < config.min_id
+				|| (double)it->traceback_->query_source_range.length()*100/(double)source_query_len < config.query_cover) {
 			++it;
 			continue;
 		}
@@ -123,13 +120,14 @@ void align_read(Output_buffer &buffer,
 		
 		if(n_hsp == 0)
 			buffer.write_query_record(query);
-		buffer.print_match(*it, source_query_len, query_seqs::get()[query*contexts + it->frame_], query, transcript_buf);
+		buffer.print_match(*it, source_query_len, query_seqs::get()[query*contexts + it->frame_], query);
 
 		++n_hsp;
 		if(!same_subject)
 			++n_target_seq;
-		if(config.alignment_traceback && it->traceback_->gap_openings_ > 0)
+		if(config.alignment_traceback && it->traceback_->gap_openings > 0)
 			stat.inc(Statistics::GAPPED);
+		stat.inc(Statistics::SCORE_TOTAL, it->traceback_->score);
 		++it;
 	}
 

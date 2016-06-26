@@ -38,7 +38,7 @@ inline interval normalized_range(unsigned pos, int len, Strand strand)
 
 struct Diagonal_segment
 {
-	Diagonal_segment(int query_pos, int subject_pos, int len, int score):
+	Diagonal_segment(unsigned query_pos, unsigned subject_pos, unsigned len, unsigned score):
 		query_pos(query_pos),
 		subject_pos(subject_pos),
 		len(len),
@@ -62,7 +62,7 @@ struct Diagonal_segment
 			&& query_range().overlap_factor(x.query_range()) == 1
 			&& subject_range().overlap_factor(x.subject_range()) == 1;
 	}
-	int query_pos, subject_pos, len, score;
+	unsigned query_pos, subject_pos, len, score;
 };
 
 #pragma pack(1)
@@ -138,107 +138,105 @@ struct hit
 
 struct Hsp_data
 {
+	Hsp_data():
+		Hsp_data(0)
+	{}
+	Hsp_data(int score):
+		score(unsigned(score)),
+		frame(0),
+		length(0),
+		identities(0),
+		mismatches(0),
+		positives(0),
+		gap_openings(0),
+		gaps(0)
+	{}
+	struct Iterator
+	{
+		Iterator(const Hsp_data &parent):
+			query_pos(parent.query_range.begin_),
+			subject_pos(parent.subject_range.begin_),
+			ptr_(parent.transcript.ptr()),
+			count_(ptr_->count())
+		{ }
+		bool good() const
+		{
+			return *ptr_ != Packed_operation::terminator();
+		}
+		Iterator& operator++()
+		{
+			switch (op()) {
+			case op_deletion:
+				++subject_pos;
+				break;
+			case op_insertion:
+				++query_pos;
+				break;
+			case op_match:
+			case op_substitution:
+				++query_pos;
+				++subject_pos;
+			}
+			--count_;
+			if (count_ == 0) {
+				++ptr_;
+				count_ = ptr_->count();
+			}
+			return *this;
+		}
+		Edit_operation op() const
+		{
+			return ptr_->op();
+		}
+		unsigned query_pos, subject_pos;
+	private:
+		const Packed_operation *ptr_;
+		unsigned count_;
+	};
+	Iterator begin() const
+	{
+		return Iterator(*this);
+	}
+	void set_source_range(unsigned frame, unsigned dna_len);
+	interval oriented_range() const
+	{
+		if (frame < 3)
+			return interval(query_source_range.begin_, query_source_range.end_ - 1);
+		else
+			return interval(query_source_range.end_ - 1, query_source_range.begin_);
+	}
 	unsigned score, frame, length, identities, mismatches, positives, gap_openings, gaps;
 	interval query_source_range, query_range, subject_range;
 	Packed_transcript transcript;
 };
 
-struct local_match
+struct local_match : public Hsp_data
 {
 	typedef vector<local_match>::iterator iterator;
 	local_match():
-		len_ (),
-		query_begin_ (),
-		subject_len_ (),
-		gap_openings_ (),
-		identities_ (),
-		mismatches_ (),
-		subject_begin_ (),
-		score_ (),
-		query_len_ (),
 		query_anchor_ (0),
 		subject_ (0)
 	{ }
 	local_match(int score):
-		len_ (0),
-		query_begin_ (0),
-		subject_len_ (0),
-		gap_openings_ (0),
-		identities_ (0),
-		mismatches_ (0),
-		subject_begin_ (0),
-		score_ (score),
-		query_len_ (0),
-		query_anchor_ (0),
-		subject_ (0)
+		Hsp_data(score)
 	{ }
 	local_match(int query_anchor, int subject_anchor, const Letter *subject, unsigned total_subject_len = 0):
-		len_ (0),
-		query_begin_ (0),
-		subject_len_ (0),
-		gap_openings_ (0),
-		identities_ (0),
-		mismatches_ (0),
 		total_subject_len_(total_subject_len),
-		subject_begin_ (0),
-		score_ (0),
-		query_len_ (0),
 		query_anchor_ (query_anchor),
 		subject_anchor (subject_anchor),
 		subject_ (subject)
 	{ }
 	local_match(unsigned len, unsigned query_begin, unsigned query_len, unsigned subject_len, unsigned gap_openings, unsigned identities, unsigned mismatches, signed subject_begin, signed score):
-		len_ (len),
-		query_begin_ (query_begin),
-		subject_len_ (subject_len),
-		gap_openings_ (gap_openings),
-		identities_ (identities),
-		mismatches_ (mismatches),
-		subject_begin_ (subject_begin),
-		score_ (score),
-		query_len_ (query_len),
+		Hsp_data(score),
 		query_anchor_ (0),
 		subject_ (0)
 	{ }
-	local_match& operator+=(const local_match& rhs)
-	{
-		add(rhs);
-		transcript_right_ = rhs.transcript_right_;
-		return *this;
-	}
-	local_match& operator-=(const local_match& rhs)
-	{
-		add(rhs);
-		query_begin_ = rhs.query_len_;
-		subject_begin_ = rhs.subject_len_;
-		transcript_left_ = rhs.transcript_right_;
-		return *this;
-	}
-	void add(const local_match &rhs)
-	{
-		len_ += rhs.len_;
-		subject_len_ += rhs.subject_len_;
-		gap_openings_ += rhs.gap_openings_;
-		identities_ += rhs.identities_;
-		mismatches_ += rhs.mismatches_;
-		score_ += rhs.score_;
-		query_len_ += rhs.query_len_;
-	}
-	interval query_range(Strand strand) const
-	{ return normalized_range(query_begin_, query_len_, strand); }
-	interval subject_range() const
-	{ return normalized_range(subject_begin_, subject_len_, FORWARD); }
-	void print(const sequence &query, const sequence &subject, const vector<char> &buf) const
-	{
-		std::cout << "Score = " << score_ << std::endl;
-		::print(std::cout, &query[query_begin_], &subject[subject_begin_], transcript_right_, transcript_left_, buf);
-	}
-	bool pass_through(const Diagonal_segment &d, const vector<char> &transcript_buf);
+	void merge(const local_match &right, const local_match &left);
+	bool pass_through(const Diagonal_segment &d);
 	bool is_weakly_enveloped(const local_match &j);
-	unsigned len_, query_begin_, subject_len_, gap_openings_, identities_, mismatches_, total_subject_len_;
-	signed subject_begin_, score_, query_len_, query_anchor_, subject_anchor;
+	unsigned total_subject_len_;
+	signed query_anchor_, subject_anchor;
 	const Letter *subject_;
-	Edit_transcript transcript_right_, transcript_left_;
 };
 
 struct Segment
@@ -256,14 +254,10 @@ struct Segment
 	{ }
 	Strand strand() const
 	{ return frame_ < 3 ? FORWARD : REVERSE; }
-	interval query_range() const
-	{ return traceback_->query_range(strand()); }
-	interval subject_range() const
-	{ return traceback_->subject_range(); }
 	bool operator<(const Segment &rhs) const
 	{ return top_score_ > rhs.top_score_
 			|| (top_score_ == rhs.top_score_
-			&& (subject_id_ < rhs.subject_id_ || (subject_id_ == rhs.subject_id_ && (score_ > rhs.score_ || (score_ == rhs.score_ && traceback_->score_ > rhs.traceback_->score_))))); }
+			&& (subject_id_ < rhs.subject_id_ || (subject_id_ == rhs.subject_id_ && (score_ > rhs.score_ || (score_ == rhs.score_ && traceback_->score > rhs.traceback_->score))))); }
 	static bool comp_subject(const Segment& lhs, const Segment &rhs)
 	{ return lhs.subject_id_ < rhs.subject_id_ || (lhs.subject_id_ == rhs.subject_id_ && lhs.score_ > rhs.score_); }
 	struct Subject

@@ -229,7 +229,7 @@ inline const Output_format& get_output_format()
 	else if (config.output_format == "xml")
 		return xml;
 	else
-		throw std::runtime_error("Invalid output format. Allowed values: tab,sam");
+		throw std::runtime_error("Invalid output format. Allowed values: tab,sam,xml");
 	return tab;
 }
 

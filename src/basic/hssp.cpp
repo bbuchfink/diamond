@@ -18,37 +18,23 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 
 #include "match.h"
 
-bool local_match::pass_through(const Diagonal_segment &d, const vector<char> &transcript_buf)
+bool local_match::pass_through(const Diagonal_segment &d)
 {
-	if (intersect(d.query_range(), query_range(FORWARD)).length() != (size_t)d.len
-		|| intersect(d.subject_range(), subject_range()).length() != (size_t)d.len)
+	if (intersect(d.query_range(), query_range).length() != (size_t)d.len
+		|| intersect(d.subject_range(), subject_range).length() != (size_t)d.len)
 		return false;
 
-	Link_iterator it(transcript_right_, transcript_left_, transcript_buf);
-	const int subject_end = d.subject_pos + d.len;
-	const int diag = d.diag();
-	int i = query_begin_, j = subject_begin_;
-	while (true) {
-		if (j >= d.subject_pos) {
-			if (j >= subject_end)
+	Iterator it = begin();
+	const unsigned subject_end = d.subject_pos + d.len;
+	const unsigned diag = d.diag();
+	while (it.good()) {
+		if (it.subject_pos >= d.subject_pos) {
+			if (it.subject_pos >= subject_end)
 				return true;
-			if (j-i != diag)
+			if (it.subject_pos-it.query_pos != diag)
 				return false;
 		}
 		++it;
-		if (!it.good())
-			break;
-		switch (*it) {
-		case op_match:
-			++i;
-			++j;
-			break;
-		case op_deletion:
-			++j;
-			break;
-		case op_insertion:
-			++i;
-		}		
 	}
 	return true;
 }
@@ -56,7 +42,44 @@ bool local_match::pass_through(const Diagonal_segment &d, const vector<char> &tr
 bool local_match::is_weakly_enveloped(const local_match &j)
 {
 	static const double overlap_factor = 0.9;
-	return score_ <= j.score_
-		&& subject_range().overlap_factor(j.subject_range()) >= overlap_factor
-		&& query_range(FORWARD).overlap_factor(j.query_range(FORWARD)) >= overlap_factor;
+	return score <= j.score
+		&& subject_range.overlap_factor(j.subject_range) >= overlap_factor
+		&& query_range.overlap_factor(j.query_range) >= overlap_factor;
+}
+
+void local_match::merge(const local_match &right, const local_match &left)
+{
+	length = right.length + left.length;
+	gap_openings = right.gap_openings + left.gap_openings;
+	identities = right.identities + left.identities;
+	mismatches = right.mismatches + left.mismatches;
+	score = right.score + left.score;
+	gaps = right.gaps + left.gaps;
+	gap_openings = right.gap_openings + left.gap_openings;
+	positives = right.positives + left.positives;
+	subject_range = interval(subject_anchor + 1 - left.subject_range.end_, subject_anchor + 1 + right.subject_range.end_);
+	query_range = interval(query_anchor_ + 1 - left.query_range.end_, query_anchor_ + 1 + right.query_range.end_);
+	transcript.data_.insert(transcript.data_.end(), left.transcript.data_.begin(), left.transcript.data_.end());
+	transcript.data_.insert(transcript.data_.end(), right.transcript.data_.rbegin(), right.transcript.data_.rend());
+	transcript.push_terminator();
+}
+
+void Hsp_data::set_source_range(unsigned frame, unsigned dna_len)
+{
+	this->frame = frame;
+	if (!query_translated())
+		query_source_range = query_range;
+	else {
+		signed f = frame <= 2 ? frame + 1 : 2 - frame;
+		if (f > 0) {
+			query_source_range.begin_ = (f - 1) + 3 * query_range.begin_;
+			query_source_range.end_ = query_source_range.begin_ + 3 * query_range.length();
+			//query_end_dna = (f-1) + 3 * (l.query_begin_+l.query_len_-1) + 3;
+		}
+		else {
+			query_source_range.end_ = dna_len + f - 3 * query_range.begin_ + 1;
+			//query_end_dna = dna_len + (f + 1) - 3 * (l.query_begin_+l.query_len_-1) - 2;
+			query_source_range.begin_ = query_source_range.end_ - 3 * query_range.length();
+		}
+	}
 }
