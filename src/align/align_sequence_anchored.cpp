@@ -144,7 +144,7 @@ void load_subject_seqs(unsigned subject_id,
 	double sim = std::max((double)(end - begin) / query_len * ref_seqs::data_->length(subject_id),
 		(double)(end - begin) * query_len / ref_seqs::data_->length(subject_id));
 
-	if (sim > 100) {
+	if (sim > 200) {
 		if (begin->hsp_)
 			return;
 		//cout << end - begin << ' ' << query_len << ' ' << sim << endl;
