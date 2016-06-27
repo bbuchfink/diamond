@@ -304,4 +304,9 @@ inline std::ostream& indent(std::ostream &str, unsigned n)
 	return str;
 }
 
+inline int abs_diff(unsigned x, unsigned y)
+{
+	return abs((int)x - int(y));
+}
+
 #endif /* UTIL_H_ */

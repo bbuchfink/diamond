@@ -42,7 +42,7 @@ struct Sequence_set : public String_set<'\xff',1>
 	{ }
 
 	void print_stats() const
-	{ verbose_stream << "Sequences = " << this->get_length() << ", letters = " << this->letters() << endl; }
+	{ verbose_stream << "Sequences = " << this->get_length() << ", letters = " << this->letters() << ", average length = " << this->avg_len() << endl; }
 
 	pair<size_t,size_t> len_bounds(size_t min_len) const
 	{
@@ -115,8 +115,14 @@ struct Sequence_set : public String_set<'\xff',1>
 			return l*3;
 	}
 
+	size_t avg_len() const
+	{
+		return this->letters() / this->get_length();
+	}
+
 	virtual ~Sequence_set()
 	{ }
+
 
 };
 
