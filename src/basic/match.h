@@ -139,7 +139,14 @@ struct hit
 struct Hsp_data
 {
 	Hsp_data():
-		Hsp_data(0)
+		score(0),
+		frame(0),
+		length(0),
+		identities(0),
+		mismatches(0),
+		positives(0),
+		gap_openings(0),
+		gaps(0)
 	{}
 	Hsp_data(int score):
 		score(unsigned(score)),

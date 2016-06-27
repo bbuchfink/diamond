@@ -1,5 +1,6 @@
 [0.8.9]
 - optimized performance
+- fixed some fields in the XML format
 
 [0.8.8]
 - fixed a clang compiler error
