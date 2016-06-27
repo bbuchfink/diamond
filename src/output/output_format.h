@@ -34,7 +34,7 @@ struct Output_format
 	virtual void print_query_epilog(const DAA_query_record &r, Text_buffer &out) const
 	{}
 	virtual void print_match(const DAA_query_record::Match &r, Text_buffer &out) const = 0;
-	virtual void print_header(Output_stream &f, int mode, const char *matrix, int gap_open, int gap_extend, double evalue) const
+	virtual void print_header(Output_stream &f, int mode, const char *matrix, int gap_open, int gap_extend, double evalue, const char *first_query_name, unsigned first_query_len) const
 	{ }
 	virtual void print_footer(Output_stream &f) const
 	{ }
@@ -188,7 +188,7 @@ struct Sam_format : public Output_format
 			buf << n << letter[op];
 	}
 
-	virtual void print_header(Output_stream &f, int mode, const char *matrix, int gap_open, int gap_extend, double evalue) const
+	virtual void print_header(Output_stream &f, int mode, const char *matrix, int gap_open, int gap_extend, double evalue, const char *first_query_name, unsigned first_query_len) const
 	{
 		static const char* mode_str[] = { 0, 0, "BlastP", "BlastX", "BlastN" };
 		string line = string("@HD\tVN:1.5\tSO:query\n\
@@ -209,7 +209,7 @@ struct XML_format : public Output_format
 	XML_format()
 	{}
 	virtual void print_match(const DAA_query_record::Match &r, Text_buffer &out) const;
-	virtual void print_header(Output_stream &f, int mode, const char *matrix, int gap_open, int gap_extend, double evalue) const;
+	virtual void print_header(Output_stream &f, int mode, const char *matrix, int gap_open, int gap_extend, double evalue, const char *first_query_name, unsigned first_query_len) const;
 	virtual void print_query_intro(const DAA_query_record &r, Text_buffer &out) const;
 	virtual void print_query_epilog(const DAA_query_record &r, Text_buffer &out) const;
 	virtual void print_footer(Output_stream &f) const;

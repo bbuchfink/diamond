@@ -253,6 +253,11 @@ struct DAA_query_record
 		return file_.db_letters();
 	}
 
+	size_t db_seqs() const
+	{
+		return file_.db_seqs();
+	}
+
 	double lambda() const
 	{
 		return file_.lambda();

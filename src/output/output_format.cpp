@@ -78,7 +78,7 @@ void XML_format::print_match(const DAA_query_record::Match &r, Text_buffer &out)
 		<< "    </Hsp>" << '\n';
 }
 
-void XML_format::print_header(Output_stream &f, int mode, const char *matrix, int gap_open, int gap_extend, double evalue) const
+void XML_format::print_header(Output_stream &f, int mode, const char *matrix, int gap_open, int gap_extend, double evalue, const char *first_query_name, unsigned first_query_len) const
 {
 	std::stringstream ss;
 	ss << "<?xml version=\"1.0\"?>" << endl
@@ -88,9 +88,9 @@ void XML_format::print_header(Output_stream &f, int mode, const char *matrix, in
 		<< "  <BlastOutput_version>" << Const::program_name << ' ' << Const::version_string << "</BlastOutput_version>" << endl
 		<< "  <BlastOutput_reference>Benjamin Buchfink, Xie Chao, and Daniel Huson (2015), &quot;Fast and sensitive protein alignment using DIAMOND&quot;, Nature Methods 12:59-60.</BlastOutput_reference>" << endl
 		<< "  <BlastOutput_db></BlastOutput_db>" << endl
-		<< "  <BlastOutput_query-ID></BlastOutput_query-ID>" << endl
-		<< "  <BlastOutput_query-def></BlastOutput_query-def>" << endl
-		<< "  <BlastOutput_query-len></BlastOutput_query-len>" << endl
+		<< "  <BlastOutput_query-ID>Query_1</BlastOutput_query-ID>" << endl
+		<< "  <BlastOutput_query-def>" << first_query_name << "</BlastOutput_query-def>" << endl
+		<< "  <BlastOutput_query-len>" << first_query_len << "</BlastOutput_query-len>" << endl
 		<< "  <BlastOutput_param>" << endl
 		<< "    <Parameters>" << endl
 		<< "      <Parameters_matrix>" << matrix << "</Parameters_matrix>" << endl
@@ -121,13 +121,13 @@ void XML_format::print_query_epilog(const DAA_query_record &r, Text_buffer &out)
 		<< "</Iteration_hits>" << '\n'
 		<< "  <Iteration_stat>" << '\n'
 		<< "    <Statistics>" << '\n'
-		<< "      <Statistics_db-num></Statistics_db-num>" << '\n'
+		<< "      <Statistics_db-num>" << r.db_seqs() << "</Statistics_db-num>" << '\n'
 		<< "      <Statistics_db-len>" << r.db_letters() << "</Statistics_db-len>" << '\n'
-		<< "      <Statistics_hsp-len></Statistics_hsp-len>" << '\n'
-		<< "      <Statistics_eff-space></Statistics_eff-space>" << '\n'
+		<< "      <Statistics_hsp-len>0</Statistics_hsp-len>" << '\n'
+		<< "      <Statistics_eff-space>0</Statistics_eff-space>" << '\n'
 		<< "      <Statistics_kappa>").print_d(r.kappa()) << "</Statistics_kappa>" << '\n'
 		<< "      <Statistics_lambda>").print_d(r.lambda()) << "</Statistics_lambda>" << '\n'
-		<< "      <Statistics_entropy></Statistics_entropy>" << '\n'
+		<< "      <Statistics_entropy>0</Statistics_entropy>" << '\n'
 		<< "    </Statistics>" << '\n'
 		<< "  </Iteration_stat>" << '\n'
 		<< "</Iteration>" << '\n';

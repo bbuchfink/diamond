@@ -76,6 +76,10 @@ struct Subject_seq
 	{
 		return filter_score > rhs.filter_score;
 	}
+	operator double() const
+	{
+		return (double)filter_score;
+	}
 	unsigned id, begin, end, filter_score;
 };
 
@@ -99,7 +103,9 @@ void load_local_trace_points(vector<local_trace_point> &v, vector<Subject_seq> &
 void rank_subjects(vector<Subject_seq> &subjects, vector<local_trace_point> &tp)
 {
 	std::sort(subjects.begin(), subjects.end());
-	int score = (int)((double)subjects[std::min(subjects.size(), config.max_alignments) - 1].filter_score * config.rank_ratio);
+	unsigned score = config.toppercent < 100 ?
+		(unsigned)((double)subjects[0].filter_score * (1.0 - config.toppercent / 100.0) * config.rank_ratio)
+		: (unsigned)((double)subjects[std::min(subjects.size(), config.max_alignments) - 1].filter_score * config.rank_ratio);
 	unsigned i = 0;
 	for (; i < subjects.size(); ++i)
 		if (subjects[i].filter_score < score)

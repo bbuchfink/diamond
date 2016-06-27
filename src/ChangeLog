@@ -1,3 +1,6 @@
+[0.8.9]
+- optimized performance
+
 [0.8.8]
 - fixed a clang compiler error
 

@@ -73,6 +73,17 @@ struct View_fetcher
 	DAA_file &daa;
 };
 
+void view_query(DAA_query_record &r, Text_buffer &out, const Output_format &format)
+{
+	format.print_query_intro(r, out);
+	for (DAA_query_record::Match_iterator i = r.begin(); i.good(); ++i) {
+		if (i->frame > 2 && config.forwardonly)
+			continue;
+		format.print_match(*i, out);
+	}
+	format.print_query_epilog(r, out);
+}
+
 struct View_context
 {
 	View_context(DAA_file &daa, View_writer &writer, const Output_format &format):
@@ -88,22 +99,15 @@ struct View_context
 			View_fetcher query_buf (daa);
 			Text_buffer *buffer = 0;
 			while(queue.get(n, buffer, query_buf)) {
-				for(unsigned j=0;j<query_buf.n;++j) {
+				for (unsigned j = 0; j < query_buf.n; ++j) {
 					DAA_query_record r(daa, query_buf.buf[j], query_buf.query_num + j);
-					format.print_query_intro(r, *buffer);
-					for(DAA_query_record::Match_iterator i = r.begin(); i.good(); ++i) {
-						if(i->frame > 2 && config.forwardonly)
-							continue;
-						format.print_match(*i, *buffer);
-					}
-					format.print_query_epilog(r, *buffer);
+					view_query(r, *buffer, format);
 				}
 				queue.push(n);
 			}
 		} catch(std::exception &e) {
 			std::cout << e.what() << std::endl;
 			std::terminate();
-			//queue.wake_all();
 		}
 	}
 	DAA_file &daa;
@@ -130,7 +134,16 @@ void view()
 	task_timer timer("Generating output");
 	View_writer writer;
 	const Output_format& format(get_output_format());
-	format.print_header(*writer.f_, daa.mode(), daa.score_matrix(), daa.gap_open_penalty(), daa.gap_extension_penalty(), daa.evalue());
+
+	Binary_buffer buf;
+	size_t query_num;
+	daa.read_query_buffer(buf, query_num);
+	DAA_query_record r(daa, buf, query_num);
+	Text_buffer out;
+	view_query(r, out, format);
+	
+	format.print_header(*writer.f_, daa.mode(), daa.score_matrix(), daa.gap_open_penalty(), daa.gap_extension_penalty(), daa.evalue(), r.query_name.c_str(), (unsigned)r.query_len());
+	writer(out);
 
 	View_context context(daa, writer, format);
 	launch_thread_pool(context, config.threads_);
