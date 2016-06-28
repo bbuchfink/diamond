@@ -1,5 +1,6 @@
 [0.8.9]
 - optimized performance
+- improved local alignment accuracy
 - fixed some fields in the XML format
 
 [0.8.8]

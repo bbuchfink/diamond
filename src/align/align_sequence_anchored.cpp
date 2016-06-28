@@ -72,8 +72,7 @@ struct Subject_seq
 		id(id),
 		begin(begin),
 		filter_score (0),
-		aligned_len (0),
-		mult(0)
+		aligned_len (0)
 	{}
 	bool operator<(const Subject_seq &rhs) const
 	{
@@ -85,7 +84,6 @@ struct Subject_seq
 	}
 	unsigned id, begin, end, filter_score, aligned_len;
 	vector<local_trace_point*> next_up;
-	double mult;
 };
 
 void load_local_trace_points(vector<local_trace_point> &v, vector<Subject_seq> &subjects, Trace_pt_buffer::Vector::iterator &begin, Trace_pt_buffer::Vector::iterator &end, const sequence &query)
@@ -105,39 +103,6 @@ void load_local_trace_points(vector<local_trace_point> &v, vector<Subject_seq> &
 	subjects.back().end = (unsigned)v.size();
 }
 
-void get_mult(Subject_seq &subject, vector<local_trace_point> &tp)
-{
-	unsigned n = 1;
-	for (vector<local_trace_point>::const_iterator i = tp.begin() + subject.begin+1; i != tp.begin() + subject.end; ++i) {
-		if (i->subject_pos_ / 8 != (i - 1)->subject_pos_ / 8) {
-			subject.mult += n*n;
-			n = 1;
-		}
-		else
-			++n;
-	}
-	subject.mult += n*n;
-	//subject.mult /= subject.end - subject.begin;
-	return;
-	//unsigned n = 1;
-	for (vector<local_trace_point>::const_iterator i = tp.begin() + subject.begin + 1; i != tp.begin() + subject.end; ++i)
-		if (i->subject_pos_ - (i - 1)->subject_pos_ < 16
-			&& i->query_pos_ - (i - 1)->query_pos_ > 64)
-			++n;
-		else {
-			subject.mult += n*n*n;
-			n = 1;
-		}
-	subject.mult += n*n*n;
-	subject.mult /= subject.end - subject.begin;
-	/*if (subject.end - subject.begin > 100 && subject.mult == 1) {
-		cout << "n=" << subject.end - subject.begin << endl;
-		for (vector<local_trace_point>::const_iterator i = tp.begin() + subject.begin; i != tp.begin() + subject.end; ++i)
-			cout << *i << endl;
-		cout << endl << endl;
-	}*/		
-}
-
 void rank_subjects(vector<Subject_seq> &subjects, vector<local_trace_point> &tp)
 {
 	std::sort(subjects.begin(), subjects.end());
@@ -152,7 +117,6 @@ void rank_subjects(vector<Subject_seq> &subjects, vector<local_trace_point> &tp)
 	subjects.erase(subjects.begin() + std::min((unsigned)subjects.size(), std::max((unsigned)(config.max_alignments*config.rank_factor), i)), subjects.end());
 
 	for (vector<Subject_seq>::iterator i = subjects.begin(); i != subjects.end(); ++i) {
-		get_mult(*i, tp);
 		std::sort(tp.begin() + i->begin, tp.begin() + i->end);
 		for (unsigned j = i->begin; j < i->end; ++j)
 			for (unsigned k = j + 1; k < i->end; ++k)
@@ -169,21 +133,7 @@ void load_subject_seqs(Subject_seq &subject,
 	unsigned query_len,
 	unsigned band,
 	Statistics &stat)
-{
-	//if (begin->extensions_ >= sqrt(query_len)/2)
-	/*if(begin->extensions_ >= ref_seqs::get().length(begin->subject_) * 10)
-		return;*/
-		/*double sim = std::max((double)(end - begin) / query_len * ref_seqs::data_->length(subject_id),
-			(double)(end - begin) * query_len / ref_seqs::data_->length(subject_id));*/
-			//double sim = (double)(end - begin) / sqrt(query_len) / sqrt(ref_seqs::data_->length(subject_id));
-	double sim = (double)(end - begin) / query_len;
-	//cout << mult << endl;
-	//if (sim > 200) {
-	//if (end-begin>100 && mult > 10) {
-
-	/*if (end - begin > 100) {
-		cout << "n=" << end - begin << " querylen=" << query_len << " reflen=" << ref_seqs::data_->length(subject_id) << " sim=" << (double)(end - begin) / query_len * ref_seqs::data_->length(subject_id) << endl;
-	}*/
+{	
 	for (vector<local_trace_point*>::const_iterator j = subject.next_up.begin(); j != subject.next_up.end(); ++j)
 		subject.aligned_len += (*j)->hsp_->length;
 	if (subject.aligned_len > query_len + 100*query_seqs::get().avg_len()) {
@@ -199,16 +149,6 @@ void load_subject_seqs(Subject_seq &subject,
 				i->contained = true;
 	}
 	subject.next_up.clear();
-
-	/*if (subject.mult/query_len > 0.03) {
-		if (begin->hsp_)
-			return;
-		//cout << end - begin << ' ' << query_len << ' ' << sim << endl;
-		stat.inc(Statistics::HIGH_SIM);
-		dst.push_back(local_match(begin->query_pos_, begin->subject_pos_, ref_seqs::data_->data(ref_seqs::data_->position(subject.id, begin->subject_pos_))));
-		begin->hsp_ = &dst.back();
-		return;
-}*/
 
 	for (vector<local_trace_point>::iterator i = begin; i < end; ++i) {
 		if (i->hsp_ == 0 && !i->contained) {
