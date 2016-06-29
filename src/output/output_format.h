@@ -33,7 +33,7 @@ struct Output_format
 	{}
 	virtual void print_query_epilog(const DAA_query_record &r, Text_buffer &out) const
 	{}
-	virtual void print_match(const DAA_query_record::Match &r, Text_buffer &out) const = 0;
+	virtual void print_match(const Hsp_context& r, Text_buffer &out) const = 0;
 	virtual void print_header(Output_stream &f, int mode, const char *matrix, int gap_open, int gap_extend, double evalue, const char *first_query_name, unsigned first_query_len) const
 	{ }
 	virtual void print_footer(Output_stream &f) const
@@ -42,6 +42,10 @@ struct Output_format
 	{ }
 	static size_t print_salltitles(Text_buffer &buf, const char *id)
 	{
+		if (strchr(id, '\1') == 0) {
+			buf << id;
+			return 0;
+		}
 		size_t n = 0;
 		const vector<string> t (tokenize(id, "\1"));
 		vector<string>::const_iterator i=t.begin();
@@ -53,7 +57,7 @@ struct Output_format
 		n += i->length();
 		return n;
 	}
-	enum { daa, blast_tab, blast_xml, sam };
+	enum { intermediate, daa, blast_tab, blast_xml, sam };
 };
 
 struct Blast_tab_format : public Output_format
@@ -62,24 +66,20 @@ struct Blast_tab_format : public Output_format
 	Blast_tab_format()
 	{ }
 
-	virtual void print_match(const DAA_query_record::Match &r, Text_buffer &out) const
+	virtual void print_match(const Hsp_context& r, Text_buffer &out) const
 	{
-		out << r.query_name() << '\t';
+		out << r.query_name << '\t';
+		this->print_salltitles(out, r.subject_name);
 
-		if(r.subject_name.find_first_of('\1') == string::npos)
-			out << r.subject_name;
-		else
-			this->print_salltitles(out, r.subject_name.c_str());
-
-		out		<< '\t'
-				<< (double)r.identities*100/r.len << '\t'
-				<< r.len << '\t'
-				<< r.mismatches << '\t'
-				<< r.gap_openings << '\t'
-				<< r.query_begin+1 << '\t'
-				<< r.query_end()+1 << '\t'
-				<< r.subject_begin+1 << '\t'
-				<< r.subject_begin+r.subject_len << '\t';
+		out << '\t'
+			<< (double)r.identities() * 100 / r.length() << '\t'
+			<< r.length() << '\t'
+			<< r.mismatches() << '\t'
+			<< r.gap_openings() << '\t'
+			<< r.oriented_query_range().begin_ + 1 << '\t'
+			<< r.oriented_query_range().end_ + 1<< '\t'
+			<< r.subject_range().begin_ + 1 << '\t'
+			<< r.subject_range().end_ << '\t';
 		out.print_e(r.evalue());
 		out << '\t' << r.bit_score() << '\n';
 	}
@@ -95,48 +95,45 @@ struct Sam_format : public Output_format
 	Sam_format()
 	{ }
 
-	virtual void print_match(const DAA_query_record::Match &r, Text_buffer &out) const
+	virtual void print_match(const Hsp_context& r, Text_buffer &out) const
 	{
-		out << r.query_name() << '\t'
+		out << r.query_name << '\t'
 				<< '0' << '\t';
 
-		if(r.subject_name.find_first_of('\1') == string::npos)
-			out << r.subject_name;
-		else
-			this->print_salltitles(out, r.subject_name.c_str());
+		this->print_salltitles(out, r.subject_name);
 
-		out		<< '\t'
-				<< r.subject_begin+1 << '\t'
-				<< "255" << '\t';
+		out << '\t'
+			<< r.subject_range().begin_ + 1 << '\t'
+			<< "255" << '\t';
 
 		print_cigar(r, out);
 
 		out << '\t'
-				<< '*' << '\t'
-				<< '0' << '\t'
-				<< '0' << '\t'
-				<< sequence (&r.query()[r.translated_query_begin], r.translated_query_len) << '\t'
-				<< '*' << '\t'
-				<< "AS:i:" << (uint32_t)score_matrix.bitscore(r.score) << '\t'
-				<< "NM:i:" << r.len - r.identities << '\t'
-				<< "ZL:i:" << r.total_subject_len << '\t'
-				<< "ZR:i:" << r.score << '\t'
-				<< "ZE:f:";
-		out.print_e(score_matrix.evalue(r.score, (size_t)r.db_letters(), (unsigned)r.query().size()));
+			<< '*' << '\t'
+			<< '0' << '\t'
+			<< '0' << '\t'
+			<< sequence(&r.query[r.query_range().begin_], r.query_range().length()) << '\t'
+			<< '*' << '\t'
+			<< "AS:i:" << (uint32_t)score_matrix.bitscore(r.score()) << '\t'
+			<< "NM:i:" << r.length() - r.identities() << '\t'
+			<< "ZL:i:" << r.subject_len << '\t'
+			<< "ZR:i:" << r.score() << '\t'
+			<< "ZE:f:";
+		out.print_e(score_matrix.evalue(r.score(), config.db_size, (unsigned)r.query.length()));
 		out << '\t'
-				<< "ZI:i:" << r.identities*100/r.len << '\t'
-				<< "ZF:i:" << blast_frame(r.frame) << '\t'
-				<< "ZS:i:" << r.query_begin+1 << '\t'
-				<< "MD:Z:";
+			<< "ZI:i:" << r.identities() * 100 / r.length() << '\t'
+			<< "ZF:i:" << blast_frame(r.frame()) << '\t'
+			<< "ZS:i:" << r.oriented_query_range().begin_ + 1 << '\t'
+			<< "MD:Z:";
 
 		print_md(r, out);
 		out << '\n';
 	}
 
-	void print_md(const DAA_query_record::Match &r, Text_buffer &buf) const
+	void print_md(const Hsp_context &r, Text_buffer &buf) const
 	{
 		unsigned matches = 0, del = 0;
-		for(Packed_transcript::Const_iterator i = r.transcript.begin(); i.good(); ++i) {
+		for(Packed_transcript::Const_iterator i = r.begin_old(); i.good(); ++i) {
 			switch(i->op) {
 			case op_match:
 				del = 0;
@@ -169,12 +166,12 @@ struct Sam_format : public Output_format
 			buf << matches;
 	}
 
-	void print_cigar(const DAA_query_record::Match &r, Text_buffer &buf) const
+	void print_cigar(const Hsp_context &r, Text_buffer &buf) const
 	{
 		static const unsigned map[] = { 0, 1, 2, 0 };
 		static const char letter[] = { 'M', 'I', 'D' };
 		unsigned n = 0, op = 0;
-		for(Packed_transcript::Const_iterator i = r.transcript.begin(); i.good(); ++i) {
+		for(Packed_transcript::Const_iterator i = r.begin_old(); i.good(); ++i) {
 			if(map[i->op] == op)
 				n += i->count;
 			else {
@@ -208,7 +205,7 @@ struct XML_format : public Output_format
 {
 	XML_format()
 	{}
-	virtual void print_match(const DAA_query_record::Match &r, Text_buffer &out) const;
+	virtual void print_match(const Hsp_context &r, Text_buffer &out) const;
 	virtual void print_header(Output_stream &f, int mode, const char *matrix, int gap_open, int gap_extend, double evalue, const char *first_query_name, unsigned first_query_len) const;
 	virtual void print_query_intro(const DAA_query_record &r, Text_buffer &out) const;
 	virtual void print_query_epilog(const DAA_query_record &r, Text_buffer &out) const;

@@ -58,10 +58,10 @@ void align_read(Output_buffer &buffer,
 	assert(end > begin);
 	const size_t hit_count = end - begin;
 	local.reserve(hit_count);
-	const unsigned contexts = query_contexts();
+	const unsigned contexts = align_mode.query_contexts;
 	const unsigned query = begin->query_/contexts;
 	const unsigned query_len ((unsigned)query_seqs::data_->length(query*contexts));
-	const unsigned source_query_len = query_translated() ? (unsigned)query_seqs::data_->reverse_translated_len(query*contexts) : query_len;
+	const unsigned source_query_len = align_mode.query_translated ? (unsigned)query_seqs::data_->reverse_translated_len(query*contexts) : query_len;
 	const size_t db_letters = ref_header.letters;
 	unsigned padding[6];
 

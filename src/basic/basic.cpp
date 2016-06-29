@@ -41,6 +41,37 @@ const Value_traits nucleotide_traits("ACGTN", 4, "MRWSYKVHDBX");
 Value_traits value_traits(amino_acid_traits);
 Value_traits input_value_traits(amino_acid_traits);
 
+Align_mode::Align_mode(unsigned mode) :
+	mode(mode)
+{
+	sequence_type = amino_acid;
+	switch (mode) {
+	case blastx:
+		input_sequence_type = nucleotide;
+		query_contexts = 6;
+		query_translated = true;
+		query_len_factor = 3;
+		break;
+	default:
+		input_sequence_type = amino_acid;
+		query_contexts = 1;
+		query_translated = false;
+		query_len_factor = 1;
+	}
+}
+
+unsigned Align_mode::from_command(unsigned command)
+{
+	switch (command) {
+	case Config::blastx:
+		return blastx;
+	default:
+		return blastp;
+	}
+}
+
+Align_mode align_mode (Align_mode::blastp);
+
 const Reduction Reduction::reduction("KREDQN C G H M F Y ILV W P STA");
 
 Statistics statistics;

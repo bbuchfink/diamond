@@ -21,6 +21,7 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #include "../dp/floating_sw.h"
 #include "../util/Timer.h"
 #include "../dp/dp.h"
+#include "../align/align.h"
 
 void benchmark_sw()
 {

@@ -198,7 +198,7 @@ void align_sequence_anchored(vector<Segment> &matches,
 	
 	const unsigned q_num(begin->query_);
 	const sequence query(query_seqs::get()[q_num]);
-	const unsigned frame = q_num % query_contexts();
+	const unsigned frame = q_num % align_mode.query_contexts;
 	const unsigned query_len = (unsigned)query.length();
 	padding[frame] = config.read_padding(query_len);
 	unsigned aligned = 0;

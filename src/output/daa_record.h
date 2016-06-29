@@ -45,7 +45,7 @@ inline void translate_query(const vector<Letter>& query, vector<Letter> *context
 struct DAA_query_record
 {
 
-	struct Match
+	struct Match : public Hsp_data
 	{
 
 		Match(const DAA_query_record &query_record) :
@@ -54,139 +54,13 @@ struct DAA_query_record
 			parent_(query_record)
 		{ }
 
-		const string& query_name() const;
-		const vector<Letter>& query() const;
-		uint64_t db_letters() const;
-		unsigned query_end() const;
-
-		double bit_score() const
+		Hsp_context context() const
 		{
-			return score_matrix.bitscore(score);
+			return Hsp_context(*this, sequence(parent_.context[frame]), parent_.query_name.c_str(), subject_name.c_str(), subject_len, hit_num, hsp_num);
 		}
 
-		double evalue() const
-		{
-			return score_matrix.evalue(score, (size_t)db_letters(), (unsigned)query().size());
-		}
-
-		bool is_query_translated() const
-		{
-			return parent_.file_.mode() == mode_blastx;
-		}
-
-		int blast_query_frame() const
-		{
-			return is_query_translated() ? (frame <= 2 ? (int)frame + 1 : 2 - (int)frame) : 0;
-		}
-
-		std::pair<unsigned, unsigned> unoriented_query_range() const
-		{
-			if (frame > 2)
-				return std::pair<unsigned, unsigned>(query_end(), query_begin);
-			else
-				return std::pair<unsigned, unsigned>(query_begin, query_end());
-		}
-
-		struct Position_iterator
-		{
-			Position_iterator(const Match &parent) :
-				query_pos(parent.translated_query_begin),
-				subject_pos(parent.subject_begin),
-				ptr_(parent.transcript.ptr()),
-				count_(ptr_->count()),
-				parent_(parent)
-			{ }
-			bool good() const
-			{
-				return *ptr_ != Packed_operation::terminator();
-			}
-			Position_iterator& operator++()
-			{
-				switch (op()) {
-				case op_deletion:
-					++subject_pos;
-					break;
-				case op_insertion:
-					++query_pos;
-					break;
-				case op_match:
-				case op_substitution:
-					++query_pos;
-					++subject_pos;
-				}
-				--count_;
-				if (count_ == 0) {
-					++ptr_;
-					count_ = ptr_->count();
-				}
-				return *this;
-			}
-			Edit_operation op() const
-			{
-				return ptr_->op();
-			}
-			Letter query() const
-			{
-				return parent_.query()[query_pos];
-			}
-			Letter subject() const
-			{
-				switch (op()) {
-				case op_substitution:
-				case op_deletion:
-					return ptr_->letter();
-				default:
-					return query();
-				}				
-			}
-			char query_char() const
-			{
-				switch (op()) {
-				case op_deletion:
-					return '-';
-				default:
-					return value_traits.alphabet[(long)query()];
-				}
-			}
-			char subject_char() const
-			{
-				switch (op()) {
-				case op_insertion:
-					return '-';
-				default:
-					return value_traits.alphabet[(long)subject()];
-				}
-			}
-			char midline_char() const
-			{
-				switch (op()) {
-				case op_match:
-					return value_traits.alphabet[(long)query()];
-				case op_substitution:
-					return score() > 0 ? '+' : ' ';
-				default:
-					return ' ';
-				}
-			}
-			int score() const
-			{
-				return score_matrix(query(), subject());
-			}
-			unsigned query_pos, subject_pos;
-		private:
-			const Packed_operation *ptr_;
-			unsigned count_;
-			const Match &parent_;
-		};
-		
-		Position_iterator begin() const
-		{
-			return Position_iterator(*this);
-		}
-
-		uint32_t total_subject_len, score, query_begin, subject_begin, frame, translated_query_begin, translated_query_len, subject_len, len, identities, mismatches, positives, gap_openings, gaps, hsp_num, hit_num, subject_id;
+		uint32_t hsp_num, hit_num, subject_id, subject_len;
 		string subject_name;
-		Packed_transcript transcript;
 
 	private:
 
@@ -240,32 +114,7 @@ struct DAA_query_record
 
 	size_t query_len() const
 	{
-		switch (file_.mode()) {
-		case mode_blastx:
-			return source_seq.size();
-		default:
-			return context[0].size();
-		}
-	}
-
-	size_t db_letters() const
-	{
-		return file_.db_letters();
-	}
-
-	size_t db_seqs() const
-	{
-		return file_.db_seqs();
-	}
-
-	double lambda() const
-	{
-		return file_.lambda();
-	}
-
-	double kappa() const
-	{
-		return file_.kappa();
+		return align_mode.query_translated ? source_seq.size() : context[0].size();
 	}
 
 	string query_name;

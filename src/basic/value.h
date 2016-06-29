@@ -1,5 +1,5 @@
 /****
-Copyright (c) 2014, University of Tuebingen
+Copyright (c) 2014-2016, University of Tuebingen, Benjamin Buchfink
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
@@ -14,8 +14,6 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
 LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-****
-Author: Benjamin Buchfink
 ****/
 
 #ifndef VALUE_H_
@@ -30,30 +28,6 @@ typedef char Letter;
 typedef enum { amino_acid=0, nucleotide=1 } Sequence_type;
 struct Amino_acid {};
 struct Nucleotide {};
-
-inline Sequence_type input_sequence_type()
-{ return config.command == Config::blastp ? amino_acid : nucleotide; }
-
-inline Sequence_type sequence_type()
-//{ return config.command == Config::blastn ? nucleotide : amino_acid; }
-{
-	return amino_acid;
-}
-
-inline unsigned query_contexts()
-{
-	switch(config.command) {
-	//case program_options::blastn: return 2;
-	case Config::blastx: return 6;
-	default: return 1;
-	}
-}
-
-inline bool query_translated()
-{ return config.command == Config::blastx ? true : false; }
-
-inline int query_len_factor()
-{ return config.command == Config::blastx ? 3 : 1; }
 
 struct invalid_sequence_char_exception : public std::exception
 {
@@ -115,5 +89,18 @@ inline char to_char(Letter a)
 {
 	return value_traits.alphabet[(long)a];
 }
+
+struct Align_mode
+{
+	Align_mode(unsigned mode);
+	static unsigned from_command(unsigned command);
+	enum { blastp = 2, blastx = 3, blastn = 4 };
+	Sequence_type sequence_type, input_sequence_type;
+	unsigned mode, query_contexts;
+	int query_len_factor;
+	bool query_translated;
+};
+
+extern Align_mode align_mode;
 
 #endif /* VALUE_H_ */

@@ -238,8 +238,8 @@ Config::Config(int argc, const char **argv)
 	if (command == help)
 		parser.print_help();
 
-	log_stream << "sizeof(hit)=" << sizeof(hit) << " sizeof(packed_uint40_t)=" << sizeof(packed_uint40_t)
-		<< " sizeof(sorted_list::entry)=" << sizeof(sorted_list::entry) << endl;
+	/*log_stream << "sizeof(hit)=" << sizeof(hit) << " sizeof(packed_uint40_t)=" << sizeof(packed_uint40_t)
+		<< " sizeof(sorted_list::entry)=" << sizeof(sorted_list::entry) << endl;*/
 }
 
 void Config::set_chunk_size(double x)

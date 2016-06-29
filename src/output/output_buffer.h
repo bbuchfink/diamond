@@ -48,7 +48,7 @@ struct Output_buffer : public Text_buffer
 	virtual void write_query_record(unsigned query_id)
 	{
 		query_begin_ = this->size();
-		if(query_translated())
+		if(align_mode.query_translated)
 			DAA_output::write_query_record(*this, query_ids::get()[query_id], query_source_seqs::get()[query_id]);
 		else
 			DAA_output::write_query_record(*this, query_ids::get()[query_id], query_seqs::get()[query_id]);

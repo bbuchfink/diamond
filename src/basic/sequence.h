@@ -22,9 +22,12 @@ Author: Benjamin Buchfink
 #define SEQUENCE_H_
 
 #include <iostream>
+#include <vector>
 #include "../basic/value.h"
 #include "../util/binary_buffer.h"
 #include "../util/text_buffer.h"
+
+using std::vector;
 
 struct sequence
 {
@@ -38,6 +41,11 @@ struct sequence
 		clipping_offset_ (clipping_offset),
 		data_ (data)
 	{ }
+	sequence(const vector<Letter> &data):
+		len_(data.size()),
+		clipping_offset_(0),
+		data_(data.data())
+	{}
 	size_t length() const
 	{
 		return len_;

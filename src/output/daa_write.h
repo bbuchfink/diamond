@@ -20,10 +20,12 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #define DAA_WRITE_H_
 
 #include <limits>
+#include <stdint.h>
 #include "output.h"
 #include "daa_file.h"
 #include "../basic/score_matrix.h"
 #include "../data/reference.h"
+#include "../align/align.h"
 
 unsigned get_length_flag(unsigned x)
 {
@@ -55,19 +57,19 @@ uint8_t get_segment_flag(const Segment &match)
 struct DAA_output
 {
 
-	DAA_output():
-		f_ (config.daa_file),
-		h2_ (ref_header.sequences,
-			config.db_size == 0 ? ref_header.letters : config.db_size,
+	DAA_output() :
+		f_(config.daa_file),
+		h2_(ref_header.sequences,
+			config.db_size,
 			config.gap_open,
 			config.gap_extend,
 			config.reward,
 			config.penalty,
-				score_matrix.k(),
-				score_matrix.lambda(),
+			score_matrix.k(),
+			score_matrix.lambda(),
 			config.max_evalue,
 			config.matrix,
-				get_align_mode())
+			align_mode.mode)
 	{
 		DAA_header1 h1;
 		f_.typed_write(&h1, 1);
@@ -83,7 +85,7 @@ struct DAA_output
 		uint32_t l = (uint32_t)query.length();
 		buf.write(l);
 		buf.write_c_str(query_name.c_str(), find_first_of(query_name.c_str(), Const::id_delimiters));
-		Packed_sequence s (query, input_sequence_type());
+		Packed_sequence s (query, align_mode.input_sequence_type);
 		uint8_t flags = s.has_n() ? 1 : 0;
 		buf.write(flags);
 		buf << s.data();

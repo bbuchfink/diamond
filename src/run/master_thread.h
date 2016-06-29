@@ -1,5 +1,5 @@
 /****
-Copyright (c) 2014, University of Tuebingen
+Copyright (c) 2014-2016, University of Tuebingen, Benjamin Buchfink
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
@@ -14,8 +14,6 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
 LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-****
-Author: Benjamin Buchfink
 ****/
 
 #ifndef MASTER_THREAD_H_
@@ -124,7 +122,7 @@ void run_ref_chunk(Database_file &db_file,
 
 	timer.go("Initializing temporary storage");
 	timer_mapping.resume();
-	Trace_pt_buffer::instance = new Trace_pt_buffer (query_seqs::data_->get_length()/query_contexts(),
+	Trace_pt_buffer::instance = new Trace_pt_buffer (query_seqs::data_->get_length()/align_mode.query_contexts,
 			config.tmpdir,
 			config.mem_buffered());
 	timer.finish();
@@ -218,7 +216,7 @@ void master_thread(Database_file &db_file, Timer &timer_mapping, Timer &total_ti
 		timer.finish();
 		query_seqs::data_->print_stats();
 
-		if(sequence_type() == amino_acid && config.seg == "yes") {
+		if(align_mode.sequence_type == amino_acid && config.seg == "yes") {
 			timer.go("Running complexity filter");
 			Complexity_filter::get().run(*query_seqs::data_);
 		}
@@ -252,6 +250,8 @@ void master_thread()
 	Timer timer2, timer_mapping;
 	timer2.start();
 
+	align_mode = Align_mode(Align_mode::from_command(config.command));
+
 	message_stream << "Temporary directory: " << Temp_file::get_temp_dir() << endl;
 
 	task_timer timer ("Opening the database", 1);
@@ -262,6 +262,7 @@ void master_thread()
 	verbose_stream << "Sequences = " << ref_header.sequences << endl;
 	verbose_stream << "Letters = " << ref_header.letters << endl;
 	verbose_stream << "Block size = " << (size_t)(ref_header.block_size * 1e9) << endl;
+	Config::set_option(config.db_size, ref_header.letters);
 
 	master_thread(db_file, timer_mapping, timer2);
 }

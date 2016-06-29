@@ -21,11 +21,13 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 
 #include <limits>
 #include "sequence.h"
+#include "../util/util.h"
 #include "../util/async_buffer.h"
-#include "edit_transcript.h"
 #include "packed_loc.h"
 #include "../util/system.h"
 #include "value.h"
+#include "packed_transcript.h"
+#include "score_matrix.h"
 
 enum Strand { FORWARD, REVERSE };
 
@@ -64,77 +66,6 @@ struct Diagonal_segment
 	}
 	unsigned query_pos, subject_pos, len, score;
 };
-
-#pragma pack(1)
-
-struct hit
-{
-	typedef uint32_t Seed_offset;
-
-	unsigned	query_;
-	Packed_loc	subject_;
-	Seed_offset	seed_offset_;
-	hit() :
-		query_(),
-		subject_(),
-		seed_offset_()
-	{ }
-	hit(unsigned query, Packed_loc subject, Seed_offset seed_offset) :
-		query_(query),
-		subject_(subject),
-		seed_offset_(seed_offset)
-	{ }
-	bool operator<(const hit &rhs) const
-	{
-		return query_ < rhs.query_;
-	}
-	bool blank() const
-	{
-		return subject_ == 0;
-	}
-	unsigned operator%(unsigned i) const
-	{
-		return (query_ / query_contexts()) % i;
-	}
-	unsigned operator/(size_t i) const
-	{
-		return (query_ / query_contexts()) / (unsigned)i;
-	}
-	int64_t global_diagonal() const
-	{
-		return (int64_t)subject_ - (int64_t)seed_offset_;
-	}
-	template<unsigned _d>
-	static unsigned query_id(const hit& x)
-	{
-		return x.query_ / _d;
-	}
-	template<unsigned _d>
-	struct Query_id
-	{
-		unsigned operator()(const hit& x) const
-		{
-			return query_id<_d>(x);
-		}
-	};
-	static bool cmp_subject(const hit &lhs, const hit &rhs)
-	{
-		return lhs.subject_ < rhs.subject_
-			|| (lhs.subject_ == rhs.subject_ && lhs.seed_offset_ < rhs.seed_offset_);
-	}
-	static bool cmp_normalized_subject(const hit &lhs, const hit &rhs)
-	{
-		const uint64_t x = (uint64_t)lhs.subject_ + (uint64_t)rhs.seed_offset_, y = (uint64_t)rhs.subject_ + (uint64_t)lhs.seed_offset_;
-		return x < y || (x == y && lhs.seed_offset_ < rhs.seed_offset_);
-	}
-	friend std::ostream& operator<<(std::ostream &s, const hit &me)
-	{
-		s << me.query_ << '\t' << me.subject_ << '\t' << me.seed_offset_ << '\n';
-		return s;
-	}
-} PACKED_ATTRIBUTE ;
-
-#pragma pack()
 
 struct Hsp_data
 {
@@ -196,7 +127,7 @@ struct Hsp_data
 			return ptr_->op();
 		}
 		unsigned query_pos, subject_pos;
-	private:
+	protected:
 		const Packed_operation *ptr_;
 		unsigned count_;
 	};
@@ -212,72 +143,138 @@ struct Hsp_data
 		else
 			return interval(query_source_range.end_ - 1, query_source_range.begin_);
 	}
+	void set_translated_query_begin(unsigned oriented_query_begin, unsigned dna_len)
+	{
+		int f = frame <= 2 ? frame + 1 : 2 - frame;
+		if (f > 0)
+			query_range.begin_ = (oriented_query_begin - (f - 1)) / 3;
+		else
+			query_range.begin_ = (dna_len + f - oriented_query_begin) / 3;
+	}
+	int blast_query_frame() const
+	{
+		return align_mode.query_translated ? (frame <= 2 ? (int)frame + 1 : 2 - (int)frame) : 0;
+	}
 	unsigned score, frame, length, identities, mismatches, positives, gap_openings, gaps;
 	interval query_source_range, query_range, subject_range;
 	Packed_transcript transcript;
 };
 
-struct local_match : public Hsp_data
+struct Hsp_context
 {
-	typedef vector<local_match>::iterator iterator;
-	local_match():
-		query_anchor_ (0),
-		subject_ (0)
-	{ }
-	local_match(int score):
-		Hsp_data(score)
-	{ }
-	local_match(int query_anchor, int subject_anchor, const Letter *subject, unsigned total_subject_len = 0):
-		total_subject_len_(total_subject_len),
-		query_anchor_ (query_anchor),
-		subject_anchor (subject_anchor),
-		subject_ (subject)
-	{ }
-	local_match(unsigned len, unsigned query_begin, unsigned query_len, unsigned subject_len, unsigned gap_openings, unsigned identities, unsigned mismatches, signed subject_begin, signed score):
-		Hsp_data(score),
-		query_anchor_ (0),
-		subject_ (0)
-	{ }
-	void merge(const local_match &right, const local_match &left);
-	bool pass_through(const Diagonal_segment &d);
-	bool is_weakly_enveloped(const local_match &j);
-	unsigned total_subject_len_;
-	signed query_anchor_, subject_anchor;
-	const Letter *subject_;
-};
-
-struct Segment
-{
-	Segment(int score,
-			unsigned frame,
-			local_match *traceback = 0,
-			unsigned subject_id = std::numeric_limits<unsigned>::max()):
-		score_ (score),
-		frame_ (frame),
-		traceback_ (traceback),
-		subject_id_ (subject_id),
-		next_ (0),
-		top_score_ (0)
-	{ }
-	Strand strand() const
-	{ return frame_ < 3 ? FORWARD : REVERSE; }
-	bool operator<(const Segment &rhs) const
-	{ return top_score_ > rhs.top_score_
-			|| (top_score_ == rhs.top_score_
-			&& (subject_id_ < rhs.subject_id_ || (subject_id_ == rhs.subject_id_ && (score_ > rhs.score_ || (score_ == rhs.score_ && traceback_->score > rhs.traceback_->score))))); }
-	static bool comp_subject(const Segment& lhs, const Segment &rhs)
-	{ return lhs.subject_id_ < rhs.subject_id_ || (lhs.subject_id_ == rhs.subject_id_ && lhs.score_ > rhs.score_); }
-	struct Subject
+	Hsp_context(const Hsp_data& hsp, const sequence &query, const char *query_name, const char *subject_name, unsigned subject_len, unsigned hit_num, unsigned hsp_num) :
+		query(query),
+		query_name(query_name),
+		subject_name(subject_name),
+		subject_len(subject_len),
+		hit_num(hit_num),
+		hsp_num(hsp_num),
+		hsp_(hsp)
+	{}
+	struct Iterator : public Hsp_data::Iterator
 	{
-		unsigned operator()(const Segment& x) const
-		{ return x.subject_id_; }
+		Iterator(const Hsp_context &parent) :
+			Hsp_data::Iterator(parent.hsp_),
+			parent_(parent)
+		{ }
+		Letter query() const
+		{
+			return parent_.query[query_pos];
+		}
+		Letter subject() const
+		{
+			switch (op()) {
+			case op_substitution:
+			case op_deletion:
+				return ptr_->letter();
+			default:
+				return query();
+			}
+		}
+		char query_char() const
+		{
+			switch (op()) {
+			case op_deletion:
+				return '-';
+			default:
+				return value_traits.alphabet[(long)query()];
+			}
+		}
+		char subject_char() const
+		{
+			switch (op()) {
+			case op_insertion:
+				return '-';
+			default:
+				return value_traits.alphabet[(long)subject()];
+			}
+		}
+		char midline_char() const
+		{
+			switch (op()) {
+			case op_match:
+				return value_traits.alphabet[(long)query()];
+			case op_substitution:
+				return score() > 0 ? '+' : ' ';
+			default:
+				return ' ';
+			}
+		}
+		int score() const
+		{
+			return score_matrix(query(), subject());
+		}
+	private:
+		const Hsp_context &parent_;
 	};
-	int						score_;
-	unsigned				frame_;
-	local_match			   *traceback_;
-	unsigned				subject_id_;
-	Segment				   *next_;
-	int						top_score_;
+	Iterator begin() const
+	{
+		return Iterator(*this);
+	}
+	Packed_transcript::Const_iterator begin_old() const
+	{
+		return hsp_.transcript.begin();
+	}
+	unsigned score() const
+	{ return hsp_.score; }
+	double evalue() const
+	{
+		return score_matrix.evalue(score(), config.db_size, (unsigned)query.length());
+	}
+	double bit_score() const
+	{
+		return score_matrix.bitscore(score());
+	}
+	unsigned frame() const
+	{ return hsp_.frame; }
+	unsigned length() const
+	{ return hsp_.length; }
+	unsigned identities() const
+	{ return hsp_.identities; }
+	unsigned mismatches() const
+	{ return hsp_.mismatches; }
+	unsigned positives() const
+	{ return hsp_.positives; }
+	unsigned gap_openings() const
+	{ return hsp_.gap_openings; }
+	unsigned gaps() const
+	{ return hsp_.gaps; }
+	const interval& query_source_range() const
+	{ return hsp_.query_source_range; }
+	const interval& query_range() const
+	{ return hsp_.query_range; }
+	const interval& subject_range() const
+	{ return hsp_.subject_range; }
+	interval oriented_query_range() const
+	{ return hsp_.oriented_range(); }
+	int blast_query_frame() const
+	{ return hsp_.blast_query_frame(); }
+
+	const sequence query;
+	const char *query_name, *subject_name;
+	const unsigned subject_len, hit_num, hsp_num;
+private:	
+	const Hsp_data &hsp_;
 };
 
 #endif /* MATCH_H_ */

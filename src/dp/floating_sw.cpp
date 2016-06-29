@@ -23,6 +23,7 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #include "scalar_traceback.h"
 #include "scalar_dp_matrix.h"
 #include "../basic/score_matrix.h"
+#include "../align/align.h"
 
 template<typename _score, typename _traceback> TLS_PTR typename Score_buffer<_score,_traceback>::Type* Scalar_dp_matrix<_score,_traceback>::score_ptr = 0;
 template<typename _score, typename _traceback> TLS_PTR Double_buffer<_score>* Scalar_dp_matrix<_score,_traceback>::hgap_ptr = 0;

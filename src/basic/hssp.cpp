@@ -16,7 +16,7 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ****/
 
-#include "match.h"
+#include "../align/align.h"
 
 bool local_match::pass_through(const Diagonal_segment &d)
 {
@@ -67,7 +67,7 @@ void local_match::merge(const local_match &right, const local_match &left)
 void Hsp_data::set_source_range(unsigned frame, unsigned dna_len)
 {
 	this->frame = frame;
-	if (!query_translated())
+	if (!align_mode.query_translated)
 		query_source_range = query_range;
 	else {
 		signed f = frame <= 2 ? frame + 1 : 2 - frame;

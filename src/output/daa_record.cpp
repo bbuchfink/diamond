@@ -18,46 +18,15 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 
 #include "daa_record.h"
 
-const string & DAA_query_record::Match::query_name() const
-{
-	return parent_.query_name;
-}
-
-const vector<Letter>& DAA_query_record::Match::query() const
-{
-	return parent_.context[frame];
-}
-
-uint64_t DAA_query_record::Match::db_letters() const
-{
-	return parent_.file_.db_letters();
-}
-
-unsigned DAA_query_record::Match::query_end() const
-{
-	if (parent_.file_.mode() == mode_blastp) {
-		return query_begin + translated_query_len - 1;
-	}
-	else if (parent_.file_.mode() == mode_blastx) {
-		int len = (int)translated_query_len * 3 * (frame>2 ? -1 : 1);
-		return (int)query_begin + (len > 0 ? -1 : 1) + len;
-	}
-	else if (parent_.file_.mode() == mode_blastn) {
-		int len = (int)translated_query_len*(frame>0 ? -1 : 1);
-		return (int)query_begin + (len > 0 ? -1 : 1) + len;
-	}
-	else
-		return 0;
-}
-
 void DAA_query_record::Match::parse()
 {
-	len = identities = mismatches = gap_openings = positives = gaps = 0;
+	length = identities = mismatches = gap_openings = positives = gaps = 0;
 	unsigned d = 0;
-	Position_iterator i = begin();
+	Hsp_context context = this->context();
+	Hsp_context::Iterator i = context.begin();
 
 	for (; i.good(); ++i) {
-		++len;
+		++length;
 		switch (i.op()) {
 		case op_match:
 			++identities;
@@ -80,8 +49,8 @@ void DAA_query_record::Match::parse()
 		}
 	}
 
-	translated_query_len = i.query_pos - translated_query_begin;
-	subject_len = i.subject_pos - subject_begin;
+	query_range.end_ = i.query_pos;
+	subject_range.end_ = i.subject_pos;
 }
 
 Binary_buffer::Iterator DAA_query_record::init(const Binary_buffer &buf)
@@ -92,7 +61,7 @@ Binary_buffer::Iterator DAA_query_record::init(const Binary_buffer &buf)
 	it >> query_name;
 	uint8_t flags;
 	it >> flags;
-	if (file_.mode() == mode_blastp) {
+	if (file_.mode() == Align_mode::blastp) {
 		Packed_sequence seq(it, query_len, false, 5);
 		seq.unpack(context[0], 5, query_len);
 	}
@@ -118,23 +87,23 @@ Binary_buffer::Iterator& operator>>(Binary_buffer::Iterator &it, DAA_query_recor
 	uint8_t flag;
 	it >> flag;
 	it.read_packed(flag & 3, r.score);
-	it.read_packed((flag >> 2) & 3, r.query_begin);
-	it.read_packed((flag >> 4) & 3, r.subject_begin);
+	uint32_t query_begin;
+	it.read_packed((flag >> 2) & 3, query_begin);
+	it.read_packed((flag >> 4) & 3, r.subject_range.begin_);
 	r.transcript.read(it);
 	r.subject_name = r.parent_.file_.ref_name(r.subject_id);
-	r.total_subject_len = r.parent_.file_.ref_len(r.subject_id);
-	if (r.parent_.file_.mode() == mode_blastx) {
-		r.frame = (flag&(1 << 6)) == 0 ? r.query_begin % 3 : 3 + (r.parent_.source_seq.size() - 1 - r.query_begin) % 3;
-		r.translated_query_begin = query_translated_begin(r.query_begin, r.frame, (unsigned)r.parent_.source_seq.size(), true);
+	r.subject_len = r.parent_.file_.ref_len(r.subject_id);
+	if (r.parent_.file_.mode() == Align_mode::blastx) {
+		r.frame = (flag&(1 << 6)) == 0 ? query_begin % 3 : 3 + (r.parent_.source_seq.size() - 1 - query_begin) % 3;
+		r.set_translated_query_begin(query_begin, (unsigned)r.parent_.source_seq.size());
+		r.parse();
+		r.query_source_range = r.frame < 3 ? interval(query_begin, query_begin + 3 * r.query_range.length()) : interval(query_begin + 1 - 3 * r.query_range.length(), query_begin + 1);
 	}
-	else if (r.parent_.file_.mode() == mode_blastp) {
+	else if (r.parent_.file_.mode() == Align_mode::blastp) {
 		r.frame = 0;
-		r.translated_query_begin = r.query_begin;
+		r.query_range.begin_ = query_begin;
+		r.parse();
+		r.query_source_range = r.query_range;
 	}
-	else {
-		r.frame = (flag&(1 << 6)) == 0 ? 0 : 1;
-		r.translated_query_begin = query_translated_begin(r.query_begin, r.frame, (unsigned)r.parent_.source_seq.size(), false);
-	}
-	r.parse();
 	return it;
 }

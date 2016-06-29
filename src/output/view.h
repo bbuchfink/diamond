@@ -79,7 +79,7 @@ void view_query(DAA_query_record &r, Text_buffer &out, const Output_format &form
 	for (DAA_query_record::Match_iterator i = r.begin(); i.good(); ++i) {
 		if (i->frame > 2 && config.forwardonly)
 			continue;
-		format.print_match(*i, out);
+		format.print_match(i->context(), out);
 	}
 	format.print_query_epilog(r, out);
 }

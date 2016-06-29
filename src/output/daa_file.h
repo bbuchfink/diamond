@@ -26,6 +26,8 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #include "../basic/const.h"
 #include "../util/binary_buffer.h"
 #include "../util/binary_file.h"
+#include "../basic/value.h"
+#include "../data/reference.h"
 
 using std::string;
 
@@ -37,19 +39,6 @@ struct DAA_header1
 	{ }
 	uint64_t magic_number, version;
 };
-
-typedef enum { mode_blastp=2, mode_blastx=3, mode_blastn=4 } Align_mode;
-
-inline Align_mode get_align_mode()
-{
-	switch (config.command) {
-	case Config::blastp:
-		return mode_blastp;
-	case Config::blastx:
-	default:
-		return mode_blastx;
-	}
-}
 
 inline const char* mode_str(int mode)
 {
@@ -71,14 +60,14 @@ struct DAA_header2
 			double lambda,
 			double evalue,
 			const string &score_matrix,
-			Align_mode mode):
+			unsigned mode):
 		diamond_build (Const::build_version),
 		db_seqs (db_seqs),
 		db_seqs_used (0),
 		db_letters (db_letters),
 		flags (0),
 		query_records (0),
-		mode (mode),
+		mode ((int32_t)mode),
 		gap_open (gap_open),
 		gap_extend (gap_extend),
 		reward (reward),
@@ -120,6 +109,10 @@ struct DAA_file
 
 		if(h2_.block_size[0] == 0)
 			throw std::runtime_error("Invalid DAA file. DIAMOND run probably has not completed successfully.");
+
+		Config::set_option(config.db_size, h2_.db_letters);
+		align_mode = Align_mode(h2_.mode);
+		ref_header.sequences = h2_.db_seqs;
 
 		f_.seek(sizeof(DAA_header1) + sizeof(DAA_header2) + (size_t)h2_.block_size[0]);
 		string s;
@@ -169,8 +162,8 @@ struct DAA_file
 	uint64_t query_records() const
 	{ return h2_.query_records; }
 
-	Align_mode mode() const
-	{ return (Align_mode)h2_.mode; }
+	unsigned mode() const
+	{ return (unsigned)h2_.mode; }
 
 	const string& ref_name(size_t i) const
 	{ return ref_name_[i]; }

@@ -37,7 +37,7 @@ void align_sequence_simple(vector<Segment> &matches,
 	std::sort(begin, end, hit::cmp_normalized_subject);
 	const unsigned q_num(begin->query_);
 	const sequence query(query_seqs::get()[q_num]);
-	const unsigned frame = q_num % query_contexts();
+	const unsigned frame = q_num % align_mode.query_contexts;
 	const unsigned query_len = (unsigned)query.length();
 	padding[frame] = config.read_padding(query_len);
 	uint64_t cell_updates = 0;
