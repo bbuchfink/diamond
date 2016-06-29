@@ -120,7 +120,7 @@ void XML_format::print_query_epilog(const DAA_query_record &r, Text_buffer &out)
 		<< "  <Iteration_stat>" << '\n'
 		<< "    <Statistics>" << '\n'
 		<< "      <Statistics_db-num>" << ref_header.sequences << "</Statistics_db-num>" << '\n'
-		<< "      <Statistics_db-len>" << config.db_size << "</Statistics_db-len>" << '\n'
+		<< "      <Statistics_db-len>" << (size_t) config.db_size << "</Statistics_db-len>" << '\n'
 		<< "      <Statistics_hsp-len>0</Statistics_hsp-len>" << '\n'
 		<< "      <Statistics_eff-space>0</Statistics_eff-space>" << '\n'
 		<< "      <Statistics_kappa>").print_d(score_matrix.k()) << "</Statistics_kappa>" << '\n'

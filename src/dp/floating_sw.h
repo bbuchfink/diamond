@@ -20,6 +20,7 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #define FLOATING_SW_H_
 
 #include "../basic/match.h"
+#include "../align/align.h"
 
 struct Score_only { };
 struct Traceback { };
