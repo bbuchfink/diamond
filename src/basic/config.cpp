@@ -111,7 +111,7 @@ Config::Config(int argc, const char **argv)
 	Options_group view_options("View options");
 	view_options.add()
 		("out", 'o', "output file", output_file)
-		("outfmt",'f', "output format (tab/sam/xml)", output_format, string("tab"))
+		("outfmt",'f', "output format (tab/sam/xml/daa)", output_format)
 		("forwardonly", 0, "only show alignments of forward strand", forwardonly);
 
 	Options_group hidden_options("");
@@ -168,8 +168,22 @@ Config::Config(int argc, const char **argv)
 			throw std::runtime_error("Missing parameter: query file (--query/-q)");
 		if (database == "")
 			throw std::runtime_error("Missing parameter: database file (--db/-d)");
+		if (daa_file.length() > 0) {
+			if (output_file.length() > 0)
+				throw std::runtime_error("Options --daa and --out cannot be used together.");
+			if (output_format.length() > 0 && output_format != "daa")
+				throw std::runtime_error("Invalid parameter: --daa/-a. Output file is specified with --out/-o parameter.");
+			output_file = daa_file;
+		}
+		if (daa_file.length() > 0 || output_format == "daa") {
+			if(compression != 0)
+				throw std::runtime_error("Compression is not supported for DAA format.");
+			if(!no_auto_append)
+				auto_append_extension(output_file, ".daa");
+		}			
 		if (chunk_size != 0)
 			std::cerr << "Warning: --block-size option should be set for the makedb command." << endl;
+		break;
 	case Config::view:
 		if (daa_file == "")
 			throw std::runtime_error("Missing parameter: DAA file (--daa/-a)");
@@ -187,7 +201,10 @@ Config::Config(int argc, const char **argv)
 
 	if (!no_auto_append) {
 		auto_append_extension(database, ".dmnd");
-		auto_append_extension(daa_file, ".daa");
+		if (command == Config::view)
+			auto_append_extension(daa_file, ".daa");
+		if (compression == 1)
+			auto_append_extension(output_file, ".gz");
 	}
 
 	message_stream << Const::program_name << " v" << Const::version_string << "." << (unsigned)Const::build_version << " | by Benjamin Buchfink <buchfink@gmail.com>" << endl; 

@@ -23,7 +23,6 @@ Author: Benjamin Buchfink
 
 #include <string>
 #include "output.h"
-#include "output_buffer.h"
 
 using std::string;
 

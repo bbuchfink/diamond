@@ -35,7 +35,7 @@ struct View_writer
 {
 	View_writer():
 		f_ (config.compression == 1
-			? new Compressed_ostream(config.output_file + ".gz")
+			? new Compressed_ostream(config.output_file)
 			: new Output_stream(config.output_file))
 	{ }
 	void operator()(Text_buffer &buf)
@@ -75,13 +75,13 @@ struct View_fetcher
 
 void view_query(DAA_query_record &r, Text_buffer &out, const Output_format &format)
 {
-	format.print_query_intro(r, out);
+	format.print_query_intro(r.query_num, r.query_name.c_str(), (unsigned)r.query_len(), out);
 	for (DAA_query_record::Match_iterator i = r.begin(); i.good(); ++i) {
 		if (i->frame > 2 && config.forwardonly)
 			continue;
 		format.print_match(i->context(), out);
 	}
-	format.print_query_epilog(r, out);
+	format.print_query_epilog(out);
 }
 
 struct View_context

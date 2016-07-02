@@ -22,6 +22,8 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 
 using std::endl;
 
+const Output_format* output_format;
+
 void XML_format::print_match(const Hsp_context &r, Text_buffer &out) const
 {
 	if(r.hsp_num == 0) {
@@ -31,7 +33,7 @@ void XML_format::print_match(const Hsp_context &r, Text_buffer &out) const
 			<< "  <Hit_num>" << r.hit_num+1 << "</Hit_num>" << '\n'
 			<< "  <Hit_id></Hit_id>" << '\n'
 			<< "  <Hit_def>";
-		this->print_salltitles(out, r.subject_name);
+		this->print_salltitles(out, r.subject_name, true);
 		out << "</Hit_def> " << '\n'
 			<< "  <Hit_accession></Hit_accession>" << '\n'
 			<< "  <Hit_len>" << r.subject_len << "</Hit_len>" << '\n'
@@ -102,17 +104,17 @@ void XML_format::print_header(Output_stream &f, int mode, const char *matrix, in
 	f.write(ss.str().c_str(), ss.str().length());
 }
 
-void XML_format::print_query_intro(const DAA_query_record &r, Text_buffer &out) const
+void XML_format::print_query_intro(size_t query_num, const char *query_name, unsigned query_len, Text_buffer &out) const
 {
 	out << "<Iteration>" << '\n'
-		<< "  <Iteration_iter-num>" << r.query_num+1 << "</Iteration_iter-num>" << '\n'
-		<< "  <Iteration_query-ID>Query_" << r.query_num+1 << "</Iteration_query-ID>" << '\n'
-		<< "  <Iteration_query-def>" << r.query_name << "</Iteration_query-def>" << '\n'
-		<< "  <Iteration_query-len>" << r.query_len() << "</Iteration_query-len>" << '\n'
+		<< "  <Iteration_iter-num>" << query_num+1 << "</Iteration_iter-num>" << '\n'
+		<< "  <Iteration_query-ID>Query_" << query_num+1 << "</Iteration_query-ID>" << '\n'
+		<< "  <Iteration_query-def>" << query_name << "</Iteration_query-def>" << '\n'
+		<< "  <Iteration_query-len>" << query_len << "</Iteration_query-len>" << '\n'
 		<< "<Iteration_hits>" << '\n';
 }
 
-void XML_format::print_query_epilog(const DAA_query_record &r, Text_buffer &out) const
+void XML_format::print_query_epilog(Text_buffer &out) const
 {
 	((out << "  </Hit_hsps>" << '\n'
 		<< "</Hit>" << '\n'

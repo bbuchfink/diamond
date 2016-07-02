@@ -54,9 +54,17 @@ struct DAA_query_record
 			parent_(query_record)
 		{ }
 
-		Hsp_context context() const
+		Hsp_context context()
 		{
-			return Hsp_context(*this, sequence(parent_.context[frame]), parent_.query_name.c_str(), subject_name.c_str(), subject_len, hit_num, hsp_num);
+			return Hsp_context(*this,
+				(unsigned)parent_.query_num,
+				sequence(parent_.context[frame]),
+				parent_.query_name.c_str(),
+				subject_id,
+				subject_name.c_str(),
+				subject_len,
+				hit_num,
+				hsp_num);
 		}
 
 		uint32_t hsp_num, hit_num, subject_id, subject_len;
@@ -64,7 +72,6 @@ struct DAA_query_record
 
 	private:
 
-		void parse();
 		const DAA_query_record &parent_;
 		friend Binary_buffer::Iterator& operator>>(Binary_buffer::Iterator &it, Match &r);
 
@@ -79,11 +86,11 @@ struct DAA_query_record
 		{
 			operator++();
 		}
-		const Match& operator*() const
+		Match& operator*()
 		{
 			return r_;
 		}
-		const Match* operator->() const
+		Match* operator->()
 		{
 			return &r_;
 		}

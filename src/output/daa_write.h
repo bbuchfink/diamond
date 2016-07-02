@@ -26,126 +26,90 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #include "../basic/score_matrix.h"
 #include "../data/reference.h"
 #include "../align/align.h"
+#include "../basic/packed_sequence.h"
 
-unsigned get_length_flag(unsigned x)
+inline void init_daa(Output_stream &f)
 {
-	if (x <= (unsigned)std::numeric_limits<uint8_t>::max())
-		return 0;
-	else if (x <= (unsigned)std::numeric_limits<uint16_t>::max())
-		return 1;
-	return 2;
-}
-
-/*template<typename _val>
-unsigned get_rev_flag(unsigned frame)
-{ return frame > 0 ? 1 : 0; }*/
-
-unsigned get_rev_flag(unsigned frame)
-{
-	return frame > 2 ? 1 : 0;
-}
-
-uint8_t get_segment_flag(const Segment &match)
-{
-	unsigned rev = get_rev_flag(match.frame_);
-	return (uint8_t)(get_length_flag(match.score_)
-		| (get_length_flag(match.traceback_->oriented_range().begin_) << 2)
-		| (get_length_flag(match.traceback_->subject_range.begin_) << 4)
-		| rev << 6);
-}
-
-struct DAA_output
-{
-
-	DAA_output() :
-		f_(config.daa_file),
-		h2_(ref_header.sequences,
-			config.db_size,
-			config.gap_open,
-			config.gap_extend,
-			config.reward,
-			config.penalty,
-			score_matrix.k(),
-			score_matrix.lambda(),
-			config.max_evalue,
-			config.matrix,
-			align_mode.mode)
-	{
-		DAA_header1 h1;
-		f_.typed_write(&h1, 1);
-		h2_.block_type[0] = DAA_header2::alignments;
-		h2_.block_type[1] = DAA_header2::ref_names;
-		h2_.block_type[2] = DAA_header2::ref_lengths;
-		f_.typed_write(&h2_, 1);
-	}
-
-	static void write_query_record(Text_buffer &buf, const sequence &query_name, const sequence &query)
-	{
-		buf.write((uint32_t)0);
-		uint32_t l = (uint32_t)query.length();
-		buf.write(l);
-		buf.write_c_str(query_name.c_str(), find_first_of(query_name.c_str(), Const::id_delimiters));
-		Packed_sequence s (query, align_mode.input_sequence_type);
-		uint8_t flags = s.has_n() ? 1 : 0;
-		buf.write(flags);
-		buf << s.data();
-	}
-
-	static void write_record(Text_buffer &buf, const Intermediate_record &r)
-	{
-		buf.write(r.subject_id).write(r.flag);
-		buf.write_packed(r.score);
-		buf.write_packed(r.query_begin);
-		buf.write_packed(r.subject_begin);
-		buf << r.transcript.data();
-	}
-
-	static void write_record(Text_buffer &buf,
-			const Segment &match,
-			size_t query_source_len,
-			const sequence &query,
-			unsigned query_id)
-	{
-		buf.write(ref_map.get(current_ref_block, match.subject_id_));
-		buf.write(get_segment_flag(match));
-		buf.write_packed(match.score_);
-		buf.write_packed(match.traceback_->oriented_range().begin_);
-		buf.write_packed(match.traceback_->subject_range.begin_);
-		buf << match.traceback_->transcript.data();
-	}
-
-	void finish()
-	{
-		uint32_t size = 0;
-		f_.typed_write(&size, 1);
-		h2_.block_size[0] = f_.tell() - sizeof(DAA_header1) - sizeof(DAA_header2);
-		h2_.db_seqs_used = ref_map.next_;
-		h2_.query_records = statistics.get(Statistics::ALIGNED);
-
-		size_t s = 0;
-		for(Ptr_vector<string>::const_iterator i = ref_map.name_.begin(); i != ref_map.name_.end(); ++i) {
-			f_.write_c_str((*i)->c_str());
-			s += (*i)->length()+1;
-		}
-		h2_.block_size[1] = s;
-
-		f_.write(ref_map.len_, false);
-		h2_.block_size[2] = ref_map.len_.size() * sizeof(uint32_t);
-
-		f_.seekp(sizeof(DAA_header1));
-		f_.typed_write(&h2_, 1);
-
-		f_.close();
-	}
-
-	Output_stream& stream()
-	{ return f_; }
-
-private:
-
-	Output_stream f_;
+	DAA_header1 h1;
+	f.typed_write(&h1, 1);	
 	DAA_header2 h2_;
+	f.typed_write(&h2_, 1);
+}
 
-};
+inline size_t write_daa_query_record(Text_buffer &buf, const char *query_name, const sequence &query)
+{
+	size_t seek_pos = buf.size();
+	buf.write((uint32_t)0);
+	uint32_t l = (uint32_t)query.length();
+	buf.write(l);
+	buf.write_c_str(query_name, find_first_of(query_name, Const::id_delimiters));
+	Packed_sequence s(query, align_mode.input_sequence_type);
+	uint8_t flags = s.has_n() ? 1 : 0;
+	buf.write(flags);
+	buf << s.data();
+	return seek_pos;
+}
+
+inline void finish_daa_query_record(Text_buffer &buf, size_t seek_pos)
+{
+	*(uint32_t*)(&buf[seek_pos]) = (uint32_t)(buf.size() - seek_pos - sizeof(uint32_t));
+}
+
+inline void write_daa_record(Text_buffer &buf, const Intermediate_record &r)
+{
+	buf.write(r.subject_id).write(r.flag);
+	buf.write_packed(r.score);
+	buf.write_packed(r.query_begin);
+	buf.write_packed(r.subject_begin);
+	buf << r.transcript.data();
+}
+
+inline void write_daa_record(Text_buffer &buf, const Segment &match, unsigned query_id)
+{
+	buf.write(ref_map.get(current_ref_block, match.subject_id_));
+	buf.write(get_segment_flag(match));
+	buf.write_packed(match.score_);
+	buf.write_packed(match.traceback_->oriented_range().begin_);
+	buf.write_packed(match.traceback_->subject_range.begin_);
+	buf << match.traceback_->transcript.data();
+}
+
+inline void finish_daa(Output_stream &f)
+{
+	DAA_header2 h2_(ref_header.sequences,
+		config.db_size,
+		config.gap_open,
+		config.gap_extend,
+		config.reward,
+		config.penalty,
+		score_matrix.k(),
+		score_matrix.lambda(),
+		config.max_evalue,
+		config.matrix,
+		align_mode.mode);
+
+	h2_.block_type[0] = DAA_header2::alignments;
+	h2_.block_type[1] = DAA_header2::ref_names;
+	h2_.block_type[2] = DAA_header2::ref_lengths;
+
+	uint32_t size = 0;
+	f.typed_write(&size, 1);
+	h2_.block_size[0] = f.tell() - sizeof(DAA_header1) - sizeof(DAA_header2);
+	h2_.db_seqs_used = ref_map.next_;
+	h2_.query_records = statistics.get(Statistics::ALIGNED);
+
+	size_t s = 0;
+	for (Ptr_vector<string>::const_iterator i = ref_map.name_.begin(); i != ref_map.name_.end(); ++i) {
+		f.write_c_str((*i)->c_str());
+		s += (*i)->length() + 1;
+	}
+	h2_.block_size[1] = s;
+
+	f.write(ref_map.len_, false);
+	h2_.block_size[2] = ref_map.len_.size() * sizeof(uint32_t);
+
+	f.seekp(sizeof(DAA_header1));
+	f.typed_write(&h2_, 1);
+}
 
 #endif /* DAA_WRITE_H_ */

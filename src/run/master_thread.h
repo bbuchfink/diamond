@@ -31,6 +31,7 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #include "../util/seq_file_format.h"
 #include "../data/load_seqs.h"
 #include "../search/setup.h"
+#include "../output//output_format.h"
 
 using std::endl;
 using std::cout;
@@ -107,7 +108,7 @@ void run_ref_chunk(Database_file &db_file,
 		unsigned query_chunk,
 		pair<size_t,size_t> query_len_bounds,
 		char *query_buffer,
-		DAA_output &master_out,
+		Output_stream &master_out,
 		vector<Temp_file> &tmp_file)
 {
 	task_timer timer ("Loading reference sequences", true);
@@ -143,14 +144,16 @@ void run_ref_chunk(Database_file &db_file,
 		timer.go ("Opening temporary output file");
 		tmp_file.push_back(Temp_file ());
 		out = new Output_stream (tmp_file.back());
-	} else
-		out = &master_out.stream();
+	}
+	else
+		out = &master_out;
 
 	timer.go("Computing alignments");
 	align_queries(*Trace_pt_buffer::instance, out);
 	delete Trace_pt_buffer::instance;
 
 	if(ref_header.n_blocks > 1) {
+		Intermediate_record::finish_file(*out);
 		delete out;
 	}
 	timer_mapping.stop();
@@ -166,7 +169,7 @@ void run_query_chunk(Database_file &db_file,
 		Timer &total_timer,
 		unsigned query_chunk,
 		pair<size_t,size_t> query_len_bounds,
-		DAA_output &master_out)
+		Output_stream &master_out)
 {
 	task_timer timer ("Allocating buffers", true);
 	char *query_buffer = sorted_list::alloc_buffer(*query_hst);
@@ -202,7 +205,11 @@ void master_thread(Database_file &db_file, Timer &timer_mapping, Timer &total_ti
 	current_query_chunk=0;
 
 	timer.go("Opening the output file");
-	DAA_output master_out;
+	auto_ptr<Output_stream> master_out(config.compression == 1
+		? new Compressed_ostream(config.output_file)
+		: new Output_stream(config.output_file));
+	if(*output_format == Output_format::daa)
+		init_daa(*master_out);
 	timer_mapping.stop();
 	timer.finish();
 
@@ -216,6 +223,10 @@ void master_thread(Database_file &db_file, Timer &timer_mapping, Timer &total_ti
 		timer.finish();
 		query_seqs::data_->print_stats();
 
+		if (current_query_chunk == 0 && *output_format != Output_format::daa)
+			output_format->print_header(*master_out, align_mode.mode, config.matrix.c_str(), config.gap_open, config.gap_extend, config.max_evalue, query_ids::get()[0].c_str(),
+				unsigned(align_mode.query_translated ? query_source_seqs::get()[0].length() : query_seqs::get()[0].length()));
+
 		if(align_mode.sequence_type == amino_acid && config.seg == "yes") {
 			timer.go("Running complexity filter");
 			Complexity_filter::get().run(*query_seqs::data_);
@@ -228,12 +239,16 @@ void master_thread(Database_file &db_file, Timer &timer_mapping, Timer &total_ti
 		timer.finish();
 		//const bool long_addressing_query = query_seqs::data_->raw_len() > (size_t)std::numeric_limits<uint32_t>::max();
 
-		run_query_chunk(db_file, timer_mapping, total_timer, current_query_chunk, query_len_bounds, master_out);
+		run_query_chunk(db_file, timer_mapping, total_timer, current_query_chunk, query_len_bounds, *master_out);
 	}
 
 	timer.go("Closing the output file");
 	timer_mapping.resume();
-	master_out.finish();
+	if (*output_format == Output_format::daa)
+		finish_daa(*master_out);
+	else
+		output_format->print_footer(*master_out);
+	master_out->close();
 	timer_mapping.stop();
 
 	timer.go("Closing the database file");
@@ -251,6 +266,7 @@ void master_thread()
 	timer2.start();
 
 	align_mode = Align_mode(Align_mode::from_command(config.command));
+	output_format = &get_output_format();
 
 	message_stream << "Temporary directory: " << Temp_file::get_temp_dir() << endl;
 

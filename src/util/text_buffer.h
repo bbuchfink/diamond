@@ -1,5 +1,5 @@
 /****
-Copyright (c) 2014, University of Tuebingen
+Copyright (c) 2014-2016, University of Tuebingen, Benjamin Buchfink
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
@@ -14,8 +14,6 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
 LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-****
-Author: Benjamin Buchfink
 ****/
 
 #ifndef TEXT_BUFFER_H_
@@ -26,6 +24,7 @@ Author: Benjamin Buchfink
 #include <stdexcept>
 #include <stdint.h>
 #include <limits>
+#include "util.h"
 
 struct Text_buffer
 {
@@ -37,7 +36,7 @@ struct Text_buffer
 
 	void reserve(size_t n)
 	{
-		const size_t s = ptr_ - data_, new_size = s + n + block_size - ((s+n) & (block_size-1));
+		const size_t s = ptr_ - data_, new_size = s + n + block_size - ((s + n) & (block_size - 1));
 		data_ = (char*)realloc(data_, new_size);
 		ptr_ = data_ + s;
 		if (data_ == 0) throw std::runtime_error("Failed to allocate memory.");
@@ -78,6 +77,18 @@ struct Text_buffer
 		memcpy(ptr_, s, len);
 		ptr_ += len;
 		*(ptr_++) = '\0';
+	}
+
+	void write_raw(const char *s, size_t len)
+	{
+		reserve(len);
+		memcpy(ptr_, s, len);
+		ptr_ += len;
+	}
+
+	void write_until(const char *s, const char *delimiters)
+	{
+		write_raw(s, find_first_of(s, delimiters));
 	}
 
 	Text_buffer& write_packed(unsigned x)
@@ -177,6 +188,11 @@ struct Text_buffer
 		memcpy(ptr_, v.data(), l);
 		ptr_ += l;
 		return *this;
+	}
+
+	char& operator[](size_t pos)
+	{
+		return data_[pos];
 	}
 
 protected:

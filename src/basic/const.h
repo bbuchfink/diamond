@@ -48,6 +48,7 @@ struct Const
 
 #define SIMPLE_SEARCH
 #define FREQUENCY_MASKING
+// #define ST_JOIN
 // #define NO_COLLISION_FILTER
 
 #endif /* CONST_H_ */

@@ -17,41 +17,7 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 ****/
 
 #include "daa_record.h"
-
-void DAA_query_record::Match::parse()
-{
-	length = identities = mismatches = gap_openings = positives = gaps = 0;
-	unsigned d = 0;
-	Hsp_context context = this->context();
-	Hsp_context::Iterator i = context.begin();
-
-	for (; i.good(); ++i) {
-		++length;
-		switch (i.op()) {
-		case op_match:
-			++identities;
-			++positives;
-			d = 0;
-			break;
-		case op_substitution:
-			++mismatches;
-			if (i.score() > 0)
-				++positives;
-			d = 0;
-			break;
-		case op_insertion:
-		case op_deletion:
-			if (d == 0)
-				++gap_openings;
-			++d;
-			++gaps;
-			break;
-		}
-	}
-
-	query_range.end_ = i.query_pos;
-	subject_range.end_ = i.subject_pos;
-}
+#include "output.h"
 
 Binary_buffer::Iterator DAA_query_record::init(const Binary_buffer &buf)
 {
@@ -96,14 +62,26 @@ Binary_buffer::Iterator& operator>>(Binary_buffer::Iterator &it, DAA_query_recor
 	if (r.parent_.file_.mode() == Align_mode::blastx) {
 		r.frame = (flag&(1 << 6)) == 0 ? query_begin % 3 : 3 + (r.parent_.source_seq.size() - 1 - query_begin) % 3;
 		r.set_translated_query_begin(query_begin, (unsigned)r.parent_.source_seq.size());
-		r.parse();
-		r.query_source_range = r.frame < 3 ? interval(query_begin, query_begin + 3 * r.query_range.length()) : interval(query_begin + 1 - 3 * r.query_range.length(), query_begin + 1);
 	}
 	else if (r.parent_.file_.mode() == Align_mode::blastp) {
 		r.frame = 0;
 		r.query_range.begin_ = query_begin;
-		r.parse();
-		r.query_source_range = r.query_range;
 	}
+	r.context().parse().set_query_source_range(query_begin);
 	return it;
+}
+
+Hsp_data::Hsp_data(const Intermediate_record &r, unsigned query_source_len):
+	score(r.score),
+	transcript(r.transcript)
+{
+	subject_range.begin_ = r.subject_begin;
+	if (align_mode.mode == Align_mode::blastx) {
+		frame = (r.flag&(1 << 6)) == 0 ? r.query_begin % 3 : 3 + (query_source_len - 1 - r.query_begin) % 3;
+		set_translated_query_begin(r.query_begin, query_source_len);
+	}
+	else {
+		frame = 0;
+		query_range.begin_ = r.query_begin;
+	}
 }

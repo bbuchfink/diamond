@@ -29,19 +29,27 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 
 struct Output_format
 {
-	virtual void print_query_intro(const DAA_query_record &r, Text_buffer &out) const
+	Output_format(unsigned code):
+		code(code)
 	{}
-	virtual void print_query_epilog(const DAA_query_record &r, Text_buffer &out) const
+	virtual void print_query_intro(size_t query_num, const char *query_name, unsigned query_len, Text_buffer &out) const
 	{}
-	virtual void print_match(const Hsp_context& r, Text_buffer &out) const = 0;
+	virtual void print_query_epilog(Text_buffer &out) const
+	{}
+	virtual void print_match(const Hsp_context& r, Text_buffer &out) const
+	{}
 	virtual void print_header(Output_stream &f, int mode, const char *matrix, int gap_open, int gap_extend, double evalue, const char *first_query_name, unsigned first_query_len) const
 	{ }
 	virtual void print_footer(Output_stream &f) const
 	{ }
 	virtual ~Output_format()
 	{ }
-	static size_t print_salltitles(Text_buffer &buf, const char *id)
+	static size_t print_salltitles(Text_buffer &buf, const char *id, bool full_titles = false)
 	{
+		if (!config.salltitles && config.command != Config::view && !full_titles) {
+			buf.write_until(id, Const::id_delimiters);
+			return 0;
+		}
 		if (strchr(id, '\1') == 0) {
 			buf << id;
 			return 0;
@@ -57,18 +65,34 @@ struct Output_format
 		n += i->length();
 		return n;
 	}
-	enum { intermediate, daa, blast_tab, blast_xml, sam };
+	operator unsigned() const
+	{
+		return code;
+	}
+	unsigned code;
+	enum { daa, blast_tab, blast_xml, sam };
+};
+
+extern const Output_format *output_format;
+
+struct DAA_format : public Output_format
+{
+	DAA_format():
+		Output_format(daa)
+	{}
 };
 
 struct Blast_tab_format : public Output_format
 {
 
-	Blast_tab_format()
+	Blast_tab_format():
+		Output_format(blast_tab)
 	{ }
 
 	virtual void print_match(const Hsp_context& r, Text_buffer &out) const
 	{
-		out << r.query_name << '\t';
+		out.write_until(r.query_name, Const::id_delimiters);
+		out << '\t';
 		this->print_salltitles(out, r.subject_name);
 
 		out << '\t'
@@ -92,13 +116,14 @@ struct Blast_tab_format : public Output_format
 struct Sam_format : public Output_format
 {
 
-	Sam_format()
+	Sam_format():
+		Output_format(sam)
 	{ }
 
 	virtual void print_match(const Hsp_context& r, Text_buffer &out) const
 	{
-		out << r.query_name << '\t'
-				<< '0' << '\t';
+		out.write_until(r.query_name, Const::id_delimiters);
+		out << '\t' << '0' << '\t';
 
 		this->print_salltitles(out, r.subject_name);
 
@@ -203,12 +228,13 @@ struct Sam_format : public Output_format
 
 struct XML_format : public Output_format
 {
-	XML_format()
+	XML_format():
+		Output_format(blast_xml)
 	{}
 	virtual void print_match(const Hsp_context &r, Text_buffer &out) const;
 	virtual void print_header(Output_stream &f, int mode, const char *matrix, int gap_open, int gap_extend, double evalue, const char *first_query_name, unsigned first_query_len) const;
-	virtual void print_query_intro(const DAA_query_record &r, Text_buffer &out) const;
-	virtual void print_query_epilog(const DAA_query_record &r, Text_buffer &out) const;
+	virtual void print_query_intro(size_t query_num, const char *query_name, unsigned query_len, Text_buffer &out) const;
+	virtual void print_query_epilog(Text_buffer &out) const;
 	virtual void print_footer(Output_stream &f) const;
 	virtual ~XML_format()
 	{ }
@@ -219,14 +245,18 @@ inline const Output_format& get_output_format()
 	static const Sam_format sam;
 	static const Blast_tab_format tab;
 	static const XML_format xml;
-	if(config.output_format == "tab")
+	static const DAA_format daa;
+	if(config.output_format == "tab" || (config.output_format == "" && (config.daa_file == "" || config.command == Config::view)))
 		return tab;
 	else if (config.output_format == "sam")
 		return sam;
 	else if (config.output_format == "xml")
 		return xml;
+	else if ((config.command == Config::blastp || config.command == Config::blastx)
+		&& (config.output_format == "daa" || config.daa_file.length() > 0))
+		return daa;
 	else
-		throw std::runtime_error("Invalid output format. Allowed values: tab,sam,xml");
+		throw std::runtime_error("Invalid output format. Allowed values: tab,sam,xml,daa");
 	return tab;
 }
 

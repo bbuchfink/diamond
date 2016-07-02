@@ -26,8 +26,10 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #include "../basic/statistics.h"
 #include "align.h"
 #include "../util/text_buffer.h"
-#include "../output/output_buffer.h"
 #include "link_segments.h"
+#include "../output/daa_write.h"
+#include "../output/output.h"
+#include "../output//output_format.h"
 
 // #define ENABLE_LOGGING_AR
 
@@ -37,7 +39,7 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 
 using std::vector;
 
-void align_read(Output_buffer &buffer,
+void align_read(Text_buffer &buffer,
 		Statistics &stat,
 		Trace_pt_buffer::Vector::iterator &begin,
 		Trace_pt_buffer::Vector::iterator &end)
@@ -92,11 +94,12 @@ void align_read(Output_buffer &buffer,
 	link_segments(matches);
 
 	std::sort(matches.begin(), matches.end());
-	unsigned n_hsp = 0, n_target_seq = 0;
+	unsigned n_hsp = 0, n_target_seq = 0, hit_hsps = 0;
 	vector<Segment>::iterator it = matches.begin();
 	const int min_raw_score = score_matrix.rawscore(config.min_bit_score == 0
 			? score_matrix.bitscore(config.max_evalue, ref_header.letters, query_len) : config.min_bit_score);
 	const int top_score = matches.operator[](0).score_;
+	size_t seek_pos = 0;
 
 	while(it < matches.end()) {
 		const bool same_subject = it != matches.begin() && (it-1)->subject_id_ == it->subject_id_;
@@ -118,21 +121,55 @@ void align_read(Output_buffer &buffer,
 			continue;
 		}
 		
-		if(n_hsp == 0)
-			buffer.write_query_record(query);
-		buffer.print_match(*it, source_query_len, query_seqs::get()[query*contexts + it->frame_], query);
+		if (ref_header.n_blocks > 1) {
+			if (n_hsp == 0)
+				seek_pos = Intermediate_record::write_query_intro(buffer, query);
+			Intermediate_record::write(buffer, *it, query);
+		}
+		else {
+			if (n_hsp == 0) {
+				if (*output_format == Output_format::daa)
+					seek_pos = write_daa_query_record(buffer, query_ids::get()[query].c_str(), align_mode.query_translated ? query_source_seqs::get()[query] : query_seqs::get()[query]);
+				else
+					output_format->print_query_intro(query, query_ids::get()[query].c_str(), source_query_len, buffer);
+			}
+			if (*output_format == Output_format::daa)
+				write_daa_record(buffer, *it, query);
+			else
+				output_format->print_match(Hsp_context(*it->traceback_,
+					query,
+					query_seqs::get()[query*contexts + it->frame_],
+					query_ids::get()[query].c_str(),
+					it->subject_id_,
+					ref_ids::get()[it->subject_id_].c_str(),
+					(unsigned)ref_seqs::get()[it->subject_id_].length(),
+					n_target_seq,
+					hit_hsps), buffer);
+		}		
 
 		++n_hsp;
-		if(!same_subject)
+		if (!same_subject) {
 			++n_target_seq;
+			hit_hsps = 0;
+		}
+		else
+			++hit_hsps;
 		if(config.alignment_traceback && it->traceback_->gap_openings > 0)
 			stat.inc(Statistics::GAPPED);
 		stat.inc(Statistics::SCORE_TOTAL, it->traceback_->score);
 		++it;
 	}
 
-	if(n_hsp > 0)
-		buffer.finish_query_record();
+	if (n_hsp > 0) {
+		if (ref_header.n_blocks == 1) {
+			if (*output_format == Output_format::daa)
+				finish_daa_query_record(buffer, seek_pos);
+			else
+				output_format->print_query_epilog(buffer);
+		}
+		else
+			Intermediate_record::finish_query(buffer, seek_pos);
+	}
 
 	stat.inc(Statistics::OUT_MATCHES, matches.size());
 	if(ref_header.n_blocks == 1) {

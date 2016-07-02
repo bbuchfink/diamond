@@ -67,6 +67,8 @@ struct Diagonal_segment
 	unsigned query_pos, subject_pos, len, score;
 };
 
+struct Intermediate_record;
+
 struct Hsp_data
 {
 	Hsp_data():
@@ -89,6 +91,7 @@ struct Hsp_data
 		gap_openings(0),
 		gaps(0)
 	{}
+	Hsp_data(const Intermediate_record &r, unsigned query_source_len);
 	struct Iterator
 	{
 		Iterator(const Hsp_data &parent):
@@ -136,6 +139,10 @@ struct Hsp_data
 		return Iterator(*this);
 	}
 	void set_source_range(unsigned frame, unsigned dna_len);
+	void set_source_range(unsigned oriented_query_begin)
+	{
+		query_source_range = frame < 3 ? interval(oriented_query_begin, oriented_query_begin + 3 * query_range.length()) : interval(oriented_query_begin + 1 - 3 * query_range.length(), oriented_query_begin + 1);
+	}
 	interval oriented_range() const
 	{
 		if (frame < 3)
@@ -162,10 +169,12 @@ struct Hsp_data
 
 struct Hsp_context
 {
-	Hsp_context(const Hsp_data& hsp, const sequence &query, const char *query_name, const char *subject_name, unsigned subject_len, unsigned hit_num, unsigned hsp_num) :
+	Hsp_context(Hsp_data& hsp, unsigned query_id, const sequence &query, const char *query_name, unsigned subject_id, const char *subject_name, unsigned subject_len, unsigned hit_num, unsigned hsp_num) :		
 		query(query),
 		query_name(query_name),
 		subject_name(subject_name),
+		query_id(query_id),
+		subject_id(subject_id),
 		subject_len(subject_len),
 		hit_num(hit_num),
 		hsp_num(hsp_num),
@@ -269,12 +278,16 @@ struct Hsp_context
 	{ return hsp_.oriented_range(); }
 	int blast_query_frame() const
 	{ return hsp_.blast_query_frame(); }
+	Packed_transcript transcript() const
+	{ return hsp_.transcript; }
+	Hsp_context& parse();
+	Hsp_context& set_query_source_range(unsigned oriented_query_begin);
 
 	const sequence query;
 	const char *query_name, *subject_name;
-	const unsigned subject_len, hit_num, hsp_num;
+	const unsigned query_id, subject_id, subject_len, hit_num, hsp_num;
 private:	
-	const Hsp_data &hsp_;
+	Hsp_data &hsp_;
 };
 
 #endif /* MATCH_H_ */

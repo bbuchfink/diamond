@@ -19,6 +19,9 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #ifndef PACKED_TRANSCRIPT_H_
 #define PACKED_TRANSCRIPT_H_
 
+#include "../util/binary_buffer.h"
+#include "../basic/value.h"
+
 typedef enum { op_match=0, op_insertion=1, op_deletion=2, op_substitution=3 } Edit_operation;
 
 struct Packed_operation

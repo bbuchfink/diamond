@@ -157,6 +157,17 @@ struct Ref_map
 		}
 		return n;
 	}
+
+	unsigned length(uint32_t i) const
+	{
+		return len_[i];
+	}
+
+	const char* name(uint32_t i) const
+	{
+		return name_[i].c_str();
+	}
+
 	/*template<typename _val>
 	void finish()
 	{
@@ -178,7 +189,7 @@ private:
 	vector<uint32_t> len_;
 	Ptr_vector<string> name_;
 	uint32_t next_;
-	friend struct DAA_output;
+	friend void finish_daa(Output_stream&);
 };
 
 extern Ref_map ref_map;

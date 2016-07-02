@@ -83,3 +83,48 @@ void Hsp_data::set_source_range(unsigned frame, unsigned dna_len)
 		}
 	}
 }
+
+Hsp_context& Hsp_context::parse()
+{
+	hsp_.length = hsp_.identities = hsp_.mismatches = hsp_.gap_openings = hsp_.positives = hsp_.gaps = 0;
+	unsigned d = 0;
+	Iterator i = begin();
+
+	for (; i.good(); ++i) {
+		++hsp_.length;
+		switch (i.op()) {
+		case op_match:
+			++hsp_.identities;
+			++hsp_.positives;
+			d = 0;
+			break;
+		case op_substitution:
+			++hsp_.mismatches;
+			if (i.score() > 0)
+				++hsp_.positives;
+			d = 0;
+			break;
+		case op_insertion:
+		case op_deletion:
+			if (d == 0)
+				++hsp_.gap_openings;
+			++d;
+			++hsp_.gaps;
+			break;
+		}
+	}
+
+	hsp_.query_range.end_ = i.query_pos;
+	hsp_.subject_range.end_ = i.subject_pos;
+
+	return *this;
+}
+
+Hsp_context& Hsp_context::set_query_source_range(unsigned oriented_query_begin)
+{
+	if(align_mode.query_translated)
+		hsp_.set_source_range(oriented_query_begin);
+	else
+		hsp_.query_source_range = hsp_.query_range;
+	return *this;
+}

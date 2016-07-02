@@ -31,7 +31,7 @@ using std::vector;
 template<unsigned _d>
 void align_queries(Trace_pt_list::iterator begin,
 		Trace_pt_list::iterator end,
-		Output_buffer &buffer,
+		Text_buffer &buffer,
 		Statistics &st)
 {
 	typedef Map<typename vector<hit>::iterator,typename hit::template Query_id<_d> > Map_t;
@@ -45,7 +45,6 @@ void align_queries(Trace_pt_list::iterator begin,
 
 #define Output_sink Ring_buffer_sink
 
-template<typename _buffer>
 struct Align_context
 {
 	Align_context(Trace_pt_list &trace_pts, Output_stream* output_file):
@@ -58,7 +57,7 @@ struct Align_context
 		Statistics st;
 		size_t i=0;
 		Trace_pt_list::Query_range query_range (trace_pts.get_range());
-		_buffer *buffer = 0;
+		Text_buffer *buffer = 0;
 		while(sink.get(i, buffer, query_range)) {
 			try {
 				switch(align_mode.query_contexts) {
@@ -80,14 +79,13 @@ struct Align_context
 			catch (std::exception &e) {
 				std::cout << e.what() << std::endl;
 				std::terminate();
-				//queue.wake_all();
 			}
 		}
 		statistics += st;
 	}
 	Trace_pt_list &trace_pts;
 	Output_stream* output_file;
-	Output_sink<_buffer> sink;
+	Output_sink<Text_buffer> sink;
 };
 
 void align_queries(const Trace_pt_buffer &trace_pts, Output_stream* output_file)
@@ -101,13 +99,8 @@ void align_queries(const Trace_pt_buffer &trace_pts, Output_stream* output_file)
 		merge_sort(v.begin(), v.end(), config.threads_);
 		v.init();
 		timer.go("Computing alignments");
-		if(ref_header.n_blocks > 1) {
-			Align_context<Temp_output_buffer> context (v, output_file);
-			launch_thread_pool(context, config.threads_);
-		} else {
-			Align_context<Output_buffer> context (v, output_file);
-			launch_thread_pool(context, config.threads_);
-		}
+		Align_context context (v, output_file);
+		launch_thread_pool(context, config.threads_);
 	}
 }
 

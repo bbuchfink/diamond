@@ -1,5 +1,5 @@
 /****
-Copyright (c) 2014, University of Tuebingen
+Copyright (c) 2014-2016, University of Tuebingen, Benjamin Buchfink
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
@@ -14,8 +14,6 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
 LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-****
-Author: Benjamin Buchfink
 ****/
 
 #ifndef JOIN_BLOCKS_H_
@@ -25,12 +23,14 @@ Author: Benjamin Buchfink
 #include <vector>
 #include <limits>
 #include "output_file.h"
+#include "daa_write.h"
 
 using std::endl;
 using std::cout;
 using std::vector;
 
-void join_blocks(unsigned ref_blocks, DAA_output &master_out, const vector<Temp_file> &tmp_file)
+#ifdef ST_JOIN
+void join_blocks(unsigned ref_blocks, Output_stream &master_out, const vector<Temp_file> &tmp_file)
 {
 	vector<Block_output*> files;
 	vector<Block_output::Iterator> records;
@@ -44,27 +44,28 @@ void join_blocks(unsigned ref_blocks, DAA_output &master_out, const vector<Temp_
 	unsigned query, block, subject, n_target_seq = 0;
 	query = block = subject = std::numeric_limits<unsigned>::max();
 	int top_score=0;
-	Output_buffer buf;
+	Text_buffer buf;
+	size_t seek_pos = 0;
 	while(!records.empty()) {
 		const Block_output::Iterator &next = records.front();
 		const unsigned b = next.block_;
 
 		if(next.info_.query_id != query) {
 			if(query != std::numeric_limits<unsigned>::max()) {
-				buf.finish_query_record();
-				master_out.stream().write(buf.get_begin(), buf.size());
+				finish_daa_query_record(buf, seek_pos);
+				master_out.write(buf.get_begin(), buf.size());
 				buf.clear();
 			}
 			query = next.info_.query_id;
 			n_target_seq = 0;
 			top_score = next.info_.score;
 			statistics.inc(Statistics::ALIGNED);
-			buf.write_query_record(query);
+			seek_pos = write_daa_query_record(buf, query_ids::get()[query], align_mode.query_translated ? query_source_seqs::get()[query] : query_seqs::get()[query]);
 		}
 		const bool same_subject = n_target_seq > 0 && b == block && next.info_.subject_id == subject;
 		if(config.output_range(n_target_seq, next.info_.score, top_score) || same_subject) {
 			//printf("q=%u s=%u n=%u ss=%u\n",query, next.info_.subject_id, n_target_seq, same_subject, next.info_.score);
-			DAA_output::write_record(buf, next.info_);
+			write_daa_record(buf, next.info_);
 			statistics.inc(Statistics::MATCHES);
 			if(!same_subject) {
 				block = b;
@@ -83,13 +84,14 @@ void join_blocks(unsigned ref_blocks, DAA_output &master_out, const vector<Temp_
 		}
 	}
 	if(query != std::numeric_limits<unsigned>::max()) {
-		buf.finish_query_record();
-		master_out.stream().write(buf.get_begin(), buf.size());
+		finish_daa_query_record(buf, seek_pos);
+		master_out.write(buf.get_begin(), buf.size());
 	}
 	for(unsigned i=0;i<ref_blocks;++i) {
 		files[i]->close_and_delete();
 		delete files[i];
 	}
 }
+#endif
 
 #endif /* JOIN_BLOCKS_H_ */
