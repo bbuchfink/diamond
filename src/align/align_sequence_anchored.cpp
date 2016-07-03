@@ -109,11 +109,11 @@ void rank_subjects(vector<Subject_seq> &subjects, vector<local_trace_point> &tp)
 
 	unsigned score = 0;
 	if (config.toppercent < 100) {
-		score = (double)subjects[0].filter_score * (1.0 - config.toppercent / 100.0) * config.rank_ratio;
+		score = unsigned((double)subjects[0].filter_score * (1.0 - config.toppercent / 100.0) * config.rank_ratio);
 	}
 	else {
 		size_t min_idx = std::min(subjects.size(), (size_t)config.max_alignments);
-		score = (double)subjects[min_idx - 1].filter_score * config.rank_ratio;
+		score = unsigned((double)subjects[min_idx - 1].filter_score * config.rank_ratio);
 	}
 
 	unsigned i = 0;

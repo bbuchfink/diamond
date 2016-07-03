@@ -49,7 +49,8 @@ Config::Config(int argc, const char **argv)
 	general.add()
 		("threads", 'p', "number of CPU threads", threads_)
 		("db", 'd', "database file", database)
-		("daa", 'a', "DIAMOND alignment archive (DAA) file", daa_file)
+		("out", 'o', "output file", output_file)
+		("outfmt", 'f', "output format (tab/sam/xml/daa)", output_format)
 		("verbose", 'v', "verbose console output", verbose)
 		("log", 0, "enable debug log", debug_log)
 		("quiet", 0, "disable console output", quiet);
@@ -110,8 +111,7 @@ Config::Config(int argc, const char **argv)
 	
 	Options_group view_options("View options");
 	view_options.add()
-		("out", 'o', "output file", output_file)
-		("outfmt",'f', "output format (tab/sam/xml/daa)", output_format)
+		("daa", 'a', "DIAMOND alignment archive (DAA) file", daa_file)		
 		("forwardonly", 0, "only show alignments of forward strand", forwardonly);
 
 	Options_group hidden_options("");

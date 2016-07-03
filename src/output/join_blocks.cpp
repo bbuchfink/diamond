@@ -135,7 +135,6 @@ void join_query(vector<Binary_buffer> &buf, Text_buffer &out, Statistics &statis
 	unsigned block, subject, n_target_seq = 0, hsp_num = 0;
 	block = subject = std::numeric_limits<unsigned>::max();
 	int top_score = records.front().info_.score;
-	size_t seek_pos = 0;
 
 	while (!records.empty()) {
 		const Join_record &next = records.front();
