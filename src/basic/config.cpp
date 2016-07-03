@@ -130,30 +130,6 @@ Config::Config(int argc, const char **argv)
 	parser.add(general).add(makedb).add(aligner).add(advanced).add(view_options).add(hidden_options);
 	parser.store(argc, argv, command);
 
-	if (debug_log)
-		verbosity = 3;
-	else if (quiet)
-		verbosity = 0;
-	else if (verbose)
-		verbosity = 2;
-	else if ((command == Config::view && output_file == "")
-		|| command == Config::version)
-		verbosity = 0;
-	else
-		verbosity = 1;
-
-	switch (verbosity) {
-	case 0:
-		message_stream = Message_stream(false);
-		break;	
-	case 3:
-		log_stream = Message_stream();
-	case 2:
-		verbose_stream = Message_stream();
-	default:
-		;
-	}
-
 	switch (command) {
 	case Config::makedb:
 		if (input_ref_file == "")
@@ -187,6 +163,30 @@ Config::Config(int argc, const char **argv)
 	case Config::view:
 		if (daa_file == "")
 			throw std::runtime_error("Missing parameter: DAA file (--daa/-a)");
+	default:
+		;
+	}
+
+	if (debug_log)
+		verbosity = 3;
+	else if (quiet)
+		verbosity = 0;
+	else if (verbose)
+		verbosity = 2;
+	else if (((command == Config::view || command == blastx || command == blastp) && output_file == "")
+		|| command == Config::version)
+		verbosity = 0;
+	else
+		verbosity = 1;
+
+	switch (verbosity) {
+	case 0:
+		message_stream = Message_stream(false);
+		break;
+	case 3:
+		log_stream = Message_stream();
+	case 2:
+		verbose_stream = Message_stream();
 	default:
 		;
 	}
