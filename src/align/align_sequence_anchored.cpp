@@ -107,13 +107,14 @@ void rank_subjects(vector<Subject_seq> &subjects, vector<local_trace_point> &tp)
 {
 	std::sort(subjects.begin(), subjects.end());
 
-  unsigned score = 0;
-  if (config.toppercent < 100) {
-    score = (double) subjects[0].filter_score * (1.0 - config.toppercent / 100.0) * config.rank_ratio;
-  } else {
-    size_t min_idx = (subjects.size() < config.max_alignments) ? subjects.size() : config.max_alignments;
-    score = (double) subjects[min_idx - 1].filter_score * config.rank_ratio;
-  }
+	unsigned score = 0;
+	if (config.toppercent < 100) {
+		score = (double)subjects[0].filter_score * (1.0 - config.toppercent / 100.0) * config.rank_ratio;
+	}
+	else {
+		size_t min_idx = std::min(subjects.size(), config.max_alignments);
+		score = (double)subjects[min_idx - 1].filter_score * config.rank_ratio;
+	}
 
 	unsigned i = 0;
 	for (; i < subjects.size(); ++i)

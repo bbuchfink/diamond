@@ -1,3 +1,6 @@
+[0.8.10]
+- added option to directly generate all output formats
+
 [0.8.9]
 - optimized performance
 - improved local alignment accuracy

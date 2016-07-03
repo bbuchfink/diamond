@@ -151,10 +151,7 @@ struct Config
 
 	bool mem_buffered() const { return tmpdir == "/dev/shm"; }
 
-  // Fix for Mac OS X GCC 6.1
-  static void set_option(uint64_t& option, size_t value) { if (option == 0) option = value; }
-
-	template<typename _t>
+  	template<typename _t>
 	static void set_option(_t& option, _t value) { if (option == 0) option = value; }
 };
 
