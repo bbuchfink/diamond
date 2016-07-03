@@ -1,5 +1,6 @@
 [0.8.10]
 - added option to directly generate all output formats
+- fixed some GCC 6.1 compiler errors
 
 [0.8.9]
 - optimized performance

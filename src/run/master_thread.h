@@ -278,7 +278,7 @@ void master_thread()
 	verbose_stream << "Sequences = " << ref_header.sequences << endl;
 	verbose_stream << "Letters = " << ref_header.letters << endl;
 	verbose_stream << "Block size = " << (size_t)(ref_header.block_size * 1e9) << endl;
-	Config::set_option(config.db_size, ref_header.letters);
+	Config::set_option(config.db_size, (uint64_t)ref_header.letters);
 
 	master_thread(db_file, timer_mapping, timer2);
 }

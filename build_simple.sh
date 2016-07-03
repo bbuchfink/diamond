@@ -1,5 +1,5 @@
 gcc -c -O3 -DNDEBUG src/blast/sm_blosum45.c src/blast/sm_blosum50.c src/blast/sm_blosum62.c src/blast/sm_blosum80.c src/blast/sm_blosum90.c src/blast/sm_pam30.c src/blast/sm_pam70.c src/blast/sm_pam250.c
-g++ -DNDEBUG -O3 -mssse3 -static \
+g++ -DNDEBUG -O3 -mssse3 -Wno-deprecated-declarations -static \
   sm*.o \
   src/run/main.cpp \
   src/basic/config.cpp \
@@ -28,4 +28,5 @@ g++ -DNDEBUG -O3 -mssse3 -static \
   src/run/benchmark.cpp \
   src/search/stage2.cpp \
   src/output/output_format.cpp \
+  src/output/join_blocks.cpp \
 -lz -lpthread -o diamond
