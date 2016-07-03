@@ -1,4 +1,4 @@
-**DIAMOND v0.8.9 by Benjamin Buchfink** - http://github.com/bbuchfink/diamond
+**DIAMOND v0.8.10 by Benjamin Buchfink** - http://github.com/bbuchfink/diamond
 
 Published in *Nature Methods* **12**, 59–60 (2015) | `doi:10.1038/nmeth.3176 <http://dx.doi.org/10.1038/nmeth.3176>`_
 
@@ -8,7 +8,7 @@ Download & Installation
 =======================
 If you use a recent **Linux** operating system, you can download the software in binary format for immediate use::
 
-    wget http://github.com/bbuchfink/diamond/releases/download/v0.8.9/diamond-linux64.tar.gz
+    wget http://github.com/bbuchfink/diamond/releases/download/v0.8.10/diamond-linux64.tar.gz
     tar xzf diamond-linux64.tar.gz
 
 Users of **Mac OS X** and **older Linux systems** need to compile the software from source (see `Compiling from source`_). On **FreeBSD**, the software can be installed using ``pkg install diamond``. A binary executable for **Windows** is available under Releases.
@@ -23,11 +23,14 @@ In order to set up a reference database for DIAMOND, the ``makedb`` command need
 
 This will create a binary DIAMOND database file with the specified name (``nr.dmnd``). The alignment task may then be initiated using the ``blastx`` command like this::
 
-    $ diamond blastx -d nr -q reads.fna -a matches
+    $ diamond blastx -d nr -q reads.fna -o matches.m8
 
-The output file here is specified with the ``–a`` option and named ``matches.daa``. It is generated in DAA (DIAMOND alignment archive) format. Other formats can be generated using the ``view`` command. For instance, the following command will generate BLAST tabular format from the DAA file and save it to disk::
+The output file here is specified with the ``–o`` option and named ``matches.m8``. By default, it is generated in BLAST tabular format.
 
-    $ diamond view -a matches.daa -o matches.m8
+*Note*:
+  - Other output formats can be chosen with the ``-f`` option (see below).
+  - The program may use quite a lot of memory and also temporary disk space. Should the program fail due to running out of either one, you need to set a lower value for the block size parameter ``-b`` (see below).
+  - The default (fast) mode was mainly designed for short reads. For longer sequences, the sensitive mode (option ``--sensitive``) is recommended.
 
 Commands
 ========
@@ -55,14 +58,16 @@ Option       Short Default Description
 
 General & IO options
 ====================
-========= ===== ======= ===========
-Option    Short Default Description
-========= ===== ======= ===========
---threads -p    max     Number of CPU threads.
---db      -d            Path to DIAMOND database file (not including the file extension .dmnd).
---query   -q            Path to query input file in FASTA or FASTQ format (may be gzip compressed).
---daa     -a            Path to output file in DAA format (extension .daa will be appended).
-========= ===== ======= ===========
+========== ===== ======= ===========
+Option     Short Default Description
+========== ===== ======= ===========
+--threads  -p    max     Number of CPU threads.
+--db       -d            Path to DIAMOND database file (not including the file extension .dmnd).
+--query    -q            Path to query input file in FASTA or FASTQ format (may be gzip compressed).
+--out      -o    stdout  Path to output file.
+--outfmt   -f            Format of output file. (tab = BLAST tabular format; sam = SAM format; xml = BLAST XML format; daa = DAA format)
+--compress       0       Compression for output file (0=none, 1=gzip).
+========== ===== ======= ===========
 
 Sensitivity & speed options
 ===========================
@@ -133,9 +138,9 @@ Compiling from source
 =====================
 To compile DIAMOND from source, invoke the following commands on the shell::
 
-  $ wget http://github.com/bbuchfink/diamond/archive/v0.8.9.tar.gz
-  $ tar xzf v0.8.9.tar.gz
-  $ cd diamond-0.8.9
+  $ wget http://github.com/bbuchfink/diamond/archive/v0.8.10.tar.gz
+  $ tar xzf v0.8.10.tar.gz
+  $ cd diamond-0.8.10
   $ mkdir bin
   $ cd bin
   $ cmake ..
