@@ -61,7 +61,7 @@ add_executable(diamond src/run/main.cpp
   src/search/stage2.cpp
   src/output/output_format.cpp
   src/output/join_blocks.cpp
-  src/run/run_mapper.cpp
+  src/run/mapper.cpp
   src/data/count_approximate.cpp
 )
 

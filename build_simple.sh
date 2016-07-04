@@ -29,6 +29,6 @@ g++ -DNDEBUG -O3 -mssse3 -Wno-deprecated-declarations -std=gnu++98 -static \
   src/search/stage2.cpp \
   src/output/output_format.cpp \
   src/output/join_blocks.cpp \
-  src/run/run_mapper.cpp \
+  src/run/mapper.cpp \
   src/data/count_approximate.cpp \
 -lz -lpthread -o diamond
