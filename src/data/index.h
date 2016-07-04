@@ -24,7 +24,7 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 
 using std::vector;
 
-vector<unsigned[256]> count_exact(const Sequence_set &seqs);
+vector<Array<unsigned, Hashed_seed::p> > count_exact(const Sequence_set &seqs);
 vector<size_t> count_approximate(const Sequence_set &seqs);
 
 #endif

@@ -82,11 +82,11 @@ struct Approximate_counter
 	vector<Flajolet_Martin_counter<8> > data;
 };
 
-vector<unsigned[Hashed_seed::p]> count_exact(const Sequence_set &seqs)
+vector<Array<unsigned, Hashed_seed::p> > count_exact(const Sequence_set &seqs)
 {
 	vector<Exact_counter> counters(config.threads_);
 	seqs.enum_seeds(counters);
-	vector<unsigned[Hashed_seed::p]> out(shape_to - shape_from);
+	vector<Array<unsigned, Hashed_seed::p> > out(shape_to - shape_from);
 	memset(out.data(), 0, (shape_to - shape_from)*Hashed_seed::p*sizeof(unsigned));
 	for (unsigned s = 0; s < shape_to - shape_from; ++s)
 		for (unsigned p = 0; p < Hashed_seed::p; ++p)

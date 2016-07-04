@@ -61,8 +61,8 @@ void run_mapper(Database_file &db_file, Timer &total_timer)
 		timer.go("Counting seeds");
 		shape_from = 0;
 		shape_to = 1;
-		vector<unsigned[Hashed_seed::p]> counts = count_exact(query_seqs::get());
-		cout << "Seeds = " << std::accumulate(counts[0], counts[0] + Hashed_seed::p, 0) << endl;
+		vector<Array<unsigned, Hashed_seed::p> > counts = count_exact(query_seqs::get());
+		cout << "Seeds = " << std::accumulate(counts[0].begin(), counts[0].end(), 0) << endl;
 
 		timer.go("Counting seeds");
 		vector<size_t> apxt_counts = count_approximate(query_seqs::get());

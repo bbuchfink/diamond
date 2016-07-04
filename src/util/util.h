@@ -320,6 +320,14 @@ struct Array
 	{
 		return data_[i];
 	}
+	_t* begin()
+	{
+		return data_;
+	}
+	_t* end()
+	{
+		return data_ + n;
+	}
 	_t data_[n];
 };
 
