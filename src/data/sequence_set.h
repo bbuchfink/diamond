@@ -25,6 +25,7 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #include "../basic/sequence.h"
 #include "string_set.h"
 #include "../util/thread.h"
+#include "../basic/shape_config.h"
 
 using std::cout;
 using std::endl;

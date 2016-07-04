@@ -111,7 +111,7 @@ struct Intermediate_record
 		unsigned x = finished;
 		f.typed_write(&x, 1);
 	}
-	enum { finished = std::numeric_limits<unsigned>::max() };
+	enum { finished = 0xffffffffu };
 	uint32_t query_id, subject_id, score, query_begin, subject_begin;
 	uint8_t flag;
 	Packed_transcript transcript;

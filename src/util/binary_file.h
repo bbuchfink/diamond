@@ -222,7 +222,7 @@ struct Input_stream
 			throw File_read_exception(file_name);
 	}
 
-	const string file_name;
+	string file_name;
 	
 private:
 	FILE *f_;
