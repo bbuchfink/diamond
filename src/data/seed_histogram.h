@@ -183,7 +183,7 @@ private:
 					assert(cfg->mode() < Const::index_modes);
 					assert(cfg->count() <= Const::max_shapes);
 					for(unsigned k=0;k<cfg->count(); ++k)
-						if(j+cfg->get_shape(k).length_ < seq.length()+1 && cfg->get_shape(k).set_seed(key, &seq[j]))
+						if(j+(*cfg)[k].length_ < seq.length()+1 && (*cfg)[k].set_seed(key, &seq[j]))
 							++data_[cfg->mode()][k][seqp][seed_partition(key)];
 				}
 

@@ -41,6 +41,8 @@ using std::cout;
 using std::cerr;
 using std::endl;
 
+void run_mapper();
+
 int main(int ac, const char* av[])
 {
 
@@ -59,7 +61,10 @@ int main(int ac, const char* av[])
 			break;
 		case Config::blastp:
 		case Config::blastx:
-			master_thread();
+			if (config.ht_mode)
+				run_mapper();
+			else
+				master_thread();
 			break;
 		case Config::view:
         	view();

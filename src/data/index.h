@@ -1,5 +1,5 @@
 /****
-Copyright (c) 2014-2016, University of Tuebingen, Benjamin Buchfink
+Copyright (c) 2016, Benjamin Buchfink
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
@@ -16,42 +16,15 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ****/
 
-#ifndef SEED_H_
-#define SEED_H_
+#ifndef INDEX_H_
+#define INDEX_H_
 
-#include <stdint.h>
-#include "const.h"
-#include "../util/hash_function.h"
+#include <vector>
+#include "sequence_set.h"
 
-typedef uint64_t Packed_seed;
+using std::vector;
 
-inline unsigned seed_partition(Packed_seed s)
-{
-	return (unsigned)(s & (Const::seedp-1));
-}
+vector<unsigned[256]> count_exact(const Sequence_set &seqs);
+vector<size_t> count_approximate(const Sequence_set &seqs);
 
-inline unsigned seed_partition_offset(Packed_seed s)
-{
-	return (unsigned)(s >> Const::seedp_bits);
-}
-
-struct Hashed_seed
-{
-	Hashed_seed(uint64_t seed):
-		hash(murmur_hash()(seed))
-	{}
-	unsigned partition() const
-	{
-		return unsigned(hash&(p - 1));
-	}
-	operator uint64_t() const
-	{
-		return hash;
-	}
-	enum {
-		p_bits = 8, p = 1 << p_bits
-	};
-	uint64_t hash;
-};
-
-#endif /* SEED_H_ */
+#endif

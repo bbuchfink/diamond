@@ -309,4 +309,30 @@ inline int abs_diff(unsigned x, unsigned y)
 	return abs((int)x - int(y));
 }
 
+template<typename _t, size_t n>
+struct Array
+{
+	_t& operator[](size_t i)
+	{
+		return data_[i];
+	}
+	const _t& operator[](size_t i) const
+	{
+		return data_[i];
+	}
+	_t data_[n];
+};
+
+inline int ctz(uint64_t x)
+{
+#ifdef _MSC_VER
+	if (x)
+		return (int)__popcnt64((x ^ (x - 1)) >> 1);
+	else
+		return CHAR_BIT * sizeof(x);
+#else
+	return __builtin_ctzll(x);
+#endif
+}
+
 #endif /* UTIL_H_ */

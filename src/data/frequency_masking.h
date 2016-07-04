@@ -61,7 +61,7 @@ struct Masked_sequence_set : public Sequence_set
 	bool get_masking(const Letter *pos, unsigned sid) const
 	{
 		Packed_seed seed;
-		shapes.get_shape(sid).set_seed(seed, pos);
+		shapes[sid].set_seed(seed, pos);
 		const filter_table::entry *e;
 		if((e = pos_filters[sid][seed_partition(seed)]->operator [](seed_partition_offset(seed))) != 0) {
 			const size_t offset (pos - this->data(0));

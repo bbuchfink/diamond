@@ -46,7 +46,7 @@ inline void align(Loc q_pos,
 
 	unsigned delta, len;
 	int score;
-	if((score = xdrop_ungapped(query, subject, shapes.get_shape(sid).length_, delta, len)) < config.min_ungapped_raw_score)
+	if((score = xdrop_ungapped(query, subject, shapes[sid].length_, delta, len)) < config.min_ungapped_raw_score)
 		return;
 
 	stats.inc(Statistics::TENTATIVE_MATCHES2);

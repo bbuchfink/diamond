@@ -48,7 +48,7 @@ public:
 	unsigned count() const
 	{ return n_; }
 
-	const shape& get_shape(unsigned i) const
+	const shape& operator[](unsigned i) const
 	{ return shapes_[i]; }
 
 	unsigned mode() const
@@ -69,5 +69,6 @@ private:
 };
 
 extern shape_config shapes;
+extern unsigned shape_from, shape_to;
 
 #endif /* SHAPE_CONFIG_H_ */

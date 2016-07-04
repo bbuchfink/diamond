@@ -119,7 +119,8 @@ Config::Config(int argc, const char **argv)
 		("extend-all", 0, "extend all seed hits", extend_all)
 		("local-align", 0, "Local alignment algorithm", local_align_mode, 0u)
 		("slow-search", 0, "", slow_search)
-		("seq", 0, "", seq_no);
+		("seq", 0, "", seq_no)
+		("ht", 0, "", ht_mode);
 
 #ifdef EXTRA
 	("match1", po::value<string>(&program_options::match_file1))

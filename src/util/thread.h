@@ -133,6 +133,35 @@ thread* launch_thread(_f f, _t1 p1)
 	return new thread(thread_worker<_f, _t1>, new Thread_p1<_f, _t1>(f, p1));
 }
 
+template<typename _f, typename _t1, typename _t2, typename _t3>
+struct Thread_p3
+{
+	Thread_p3(_f f, _t1 p1, _t2 p2, _t3 p3) :
+		f(f),
+		p1(p1),
+		p2(p2),
+		p3(p3)
+	{ }
+	_f f;
+	_t1 p1;
+	_t2 p2;
+	_t3 p3;
+};
+
+template<typename _f, typename _t1, typename _t2, typename _t3>
+void thread_worker(void *p)
+{
+	Thread_p3<_f, _t1, _t2, _t3> *q = (Thread_p3<_f, _t1, _t2, _t3>*)p;
+	q->f(q->p1, q->p2, q->p3);
+	delete q;
+}
+
+template<typename _f, typename _t1, typename _t2, typename _t3>
+thread* launch_thread(_f f, _t1 p1, _t2 p2, _t3 p3)
+{
+	return new thread(thread_worker<_f, _t1, _t2, _t3>, new Thread_p3<_f, _t1, _t2, _t3>(f, p1, p2, p3));
+}
+
 template<typename _f, typename _t1, typename _t2, typename _t3, typename _t4>
 struct Thread_p4
 {

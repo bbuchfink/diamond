@@ -98,6 +98,7 @@ const char* shape_codes[][Const::max_shapes] = {
 };
 
 shape_config shapes;
+unsigned shape_from, shape_to;
 
 const Letter Translator::reverseLetter[5] = { 3, 2, 1, 0, 4 };
 

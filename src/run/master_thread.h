@@ -77,7 +77,7 @@ void process_shape(unsigned sid,
 		task_timer timer ("Building reference index", true);
 		sorted_list ref_idx (ref_buffer,
 				*ref_seqs::data_,
-				shapes.get_shape(sid),
+				shapes[sid],
 				ref_hst.get(config.index_mode, sid),
 				range);
 		ref_seqs::get_nc().build_masking(sid, range, ref_idx);
@@ -86,7 +86,7 @@ void process_shape(unsigned sid,
 		timer_mapping.resume();
 		sorted_list query_idx (query_buffer,
 				*query_seqs::data_,
-				shapes.get_shape(sid),
+				shapes[sid],
 				query_hst->get(config.index_mode, sid),
 				range);
 		timer.finish();
@@ -234,7 +234,7 @@ void master_thread(Database_file &db_file, Timer &timer_mapping, Timer &total_ti
 
 		timer.go("Building query histograms");
 		query_hst = auto_ptr<seed_histogram> (new seed_histogram (*query_seqs::data_));
-		const pair<size_t,size_t> query_len_bounds = query_seqs::data_->len_bounds(shapes.get_shape(0).length_);
+		const pair<size_t,size_t> query_len_bounds = query_seqs::data_->len_bounds(shapes[0].length_);
 		timer_mapping.stop();
 		timer.finish();
 		//const bool long_addressing_query = query_seqs::data_->raw_len() > (size_t)std::numeric_limits<uint32_t>::max();

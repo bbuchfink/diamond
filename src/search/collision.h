@@ -37,14 +37,14 @@ inline bool match_shape_mask(const uint64_t mask, const uint64_t shape_mask)
 inline bool is_lower_chunk(const Letter *subject, unsigned sid)
 {
 	Packed_seed seed;
-	shapes.get_shape(sid).set_seed(seed, subject);
+	shapes[sid].set_seed(seed, subject);
 	return current_range.lower(seed_partition(seed));
 }
 
 inline bool is_lower_or_equal_chunk(const Letter *subject, unsigned sid)
 {
 	Packed_seed seed;
-	shapes.get_shape(sid).set_seed(seed, subject);
+	shapes[sid].set_seed(seed, subject);
 	return current_range.lower_or_equal(seed_partition(seed));
 }
 
@@ -55,7 +55,7 @@ inline bool need_lookup(unsigned sid)
 }
 
 inline bool is_low_freq(const Letter *subject, unsigned sid)
-{ return shapes.get_shape(sid).is_low_freq(subject); }
+{ return shapes[sid].is_low_freq(subject); }
 
 inline bool shape_collision_right(uint64_t mask, uint64_t shape_mask, const Letter *subject, unsigned sid)
 {
@@ -131,15 +131,15 @@ inline bool is_primary_hit(const Letter *query,
 	const bool chunked (config.lowmem > 1);
 	uint64_t mask = reduced_match32(query, subject, len);
 	unsigned i = 0;
-	uint64_t current_mask = shapes.get_shape(sid).mask_;
-	unsigned shape_len =  len - shapes.get_shape(0).length_ + 1;
+	uint64_t current_mask = shapes[sid].mask_;
+	unsigned shape_len =  len - shapes[0].length_ + 1;
 	while(i < shape_len) {
 		if(len-i > 32)
 			mask |= reduced_match32(query+32,subject+32,len-i-32) << 32;
 		for(unsigned j=0;j<32 && i<shape_len;++j) {
 			assert(&subject[j] >= ref_seqs::data_->data(0) && &subject[j] <= ref_seqs::data_->data(ref_seqs::data_->raw_len()-1));
 			for(unsigned k=0;k<sid;++k)
-				if(previous_shape_collision(mask, shapes.get_shape(k).mask_, &subject[j], k))
+				if(previous_shape_collision(mask, shapes[k].mask_, &subject[j], k))
 					return false;
 			if(i < seed_offset && shape_collision_left(mask, current_mask, &subject[j], sid, chunked))
 				return false;
