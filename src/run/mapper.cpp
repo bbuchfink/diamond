@@ -58,15 +58,8 @@ void run_mapper(Database_file &db_file, Timer &total_timer)
 			Complexity_filter::get().run(*query_seqs::data_);
 		}
 
-		timer.go("Counting seeds");
-		shape_from = 0;
-		shape_to = 1;
-		vector<Array<unsigned, Hashed_seed::p> > counts = count_exact(query_seqs::get());
-		cout << "Seeds = " << std::accumulate(counts[0].begin(), counts[0].end(), 0) << endl;
-
-		timer.go("Counting seeds");
-		vector<size_t> apxt_counts = count_approximate(query_seqs::get());
-		cout << "Seeds = " << apxt_counts[0] << endl;
+		timer.go("Building query index");
+		build_query_index();
 		
 	}
 

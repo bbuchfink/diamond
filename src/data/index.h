@@ -21,10 +21,39 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 
 #include <vector>
 #include "sequence_set.h"
+#include "../util/hash_table.h"
 
 using std::vector;
 
+struct Seed_double_index
+{
+
+	Seed_double_index()
+	{}
+	Seed_double_index(size_t psize);
+	Seed_double_index(const Array<unsigned, Hashed_seed::p> &psize);
+	
+private:
+
+	static const double hash_table_factor;
+	
+	struct Entry
+	{
+		uint32_t q;
+		operator unsigned() const
+		{
+			return q;
+		}
+	};
+
+	PHash_table<Entry> tables[Hashed_seed::p];
+
+};
+
+extern Seed_double_index index[Const::max_shapes];
+
 vector<Array<unsigned, Hashed_seed::p> > count_exact(const Sequence_set &seqs);
 vector<size_t> count_approximate(const Sequence_set &seqs);
+void build_query_index();
 
 #endif

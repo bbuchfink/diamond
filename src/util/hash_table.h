@@ -108,4 +108,85 @@ private:
 };
 
 
+template<typename _V> class PHash_table
+{
+
+public:
+
+	struct entry
+	{
+		uint16_t finger_print;
+		_V value;
+	}; // __attribute__((packed));
+
+	PHash_table() :
+		size_(0)
+	{}
+
+	PHash_table(size_t size) :
+		table(new entry[size]),
+		size_(size)
+	{
+		memset(table.get(), 0, size_ * sizeof(entry));
+	}
+	
+	entry* operator[](uint64_t hash) const
+	{
+		entry *entry = get_entry(hash);
+		if (entry->value == 0u)
+			return NULL;
+		return entry;
+	}
+
+	entry* insert(uint64_t hash)
+	{
+		entry *entry = get_entry(hash);
+		if (entry->value == 0u)
+			entry->finger_print = finger_print(hash);
+		return entry;
+	}
+
+	size_t size() const
+	{
+		return size_;
+	}
+
+	size_t count() const
+	{
+		size_t n(0);
+		for (size_t i = 0; i<size_; ++i)
+			if (table[i].value != 0u)
+				++n;
+		return n;
+	}
+
+private:
+
+	static uint16_t finger_print(uint64_t hash)
+	{
+		return (uint16_t)(hash & 0xffffllu);
+	}
+
+	entry* get_entry(uint64_t hash) const
+	{
+		entry *p = &table[(hash >> 16) % size_];
+		const uint16_t finger_print = finger_print(hash);
+		bool wrapped = false;
+		while (p->finger_print != finger_print && p->value != 0u) {
+			++p;
+			if (p == &table[size_]) {
+				if (wrapped)
+					throw hash_table_overflow_exception();
+				p = &table[0];
+				wrapped = true;
+			}
+		}
+		return p;
+	}
+
+	auto_ptr<entry> table;
+	size_t size_;
+
+};
+
 #endif /* HASH_TABLE_H_ */

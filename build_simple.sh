@@ -31,4 +31,5 @@ g++ -DNDEBUG -O3 -mssse3 -Wno-deprecated-declarations -std=gnu++98 -static \
   src/output/join_blocks.cpp \
   src/run/mapper.cpp \
   src/data/count_approximate.cpp \
+  src/data/index.cpp \
 -lz -lpthread -o diamond

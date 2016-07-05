@@ -22,7 +22,6 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 
 template<unsigned PartitionBits> struct Flajolet_Martin_counter
 {
-public:
 
 	static const unsigned N = 1 << PartitionBits;
 	static const uint64_t MASK = N - 1;
@@ -67,6 +66,8 @@ struct Exact_counter
 	{
 		seeds[shape_id - shape_from][seed.partition()].insert(seed);
 	}
+	void finish()
+	{}
 	vector<Array<std::set<uint64_t>, Hashed_seed::p> > seeds;
 };
 
@@ -79,7 +80,10 @@ struct Approximate_counter
 	{
 		data[shape_id - shape_from].add(seed);
 	}
-	vector<Flajolet_Martin_counter<8> > data;
+	void finish()
+	{}
+	enum { counter_pbits = 8 };
+	vector<Flajolet_Martin_counter<counter_pbits> > data;
 };
 
 vector<Array<unsigned, Hashed_seed::p> > count_exact(const Sequence_set &seqs)

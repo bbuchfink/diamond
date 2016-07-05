@@ -37,7 +37,7 @@ inline unsigned seed_partition_offset(Packed_seed s)
 
 struct Hashed_seed
 {
-	Hashed_seed(uint64_t seed):
+	explicit Hashed_seed(uint64_t seed):
 		hash(murmur_hash()(seed))
 	{}
 	unsigned partition() const

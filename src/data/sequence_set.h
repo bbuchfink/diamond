@@ -22,6 +22,7 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #include <iostream>
 #include <string>
 #include <algorithm>
+#include <queue>
 #include "../basic/sequence.h"
 #include "string_set.h"
 #include "../util/thread.h"
@@ -132,6 +133,19 @@ struct Sequence_set : public String_set<'\xff', 1>
 		threads.join_all();
 	}
 
+	template<typename _f, typename _entry>
+	void enum_seeds_partitioned()
+	{
+		vector<Enum_partitioned_callback<_f, _entry> > v;
+		v.reserve(config.threads_);
+		::partition p(Hashed_seed::p, config.threads);
+		for (unsigned i = 0; i < config.threads_; ++i)
+			v.push_back(Enum_partitioned_callback<_f, _entry>(p.getMin(i), p.getMax(i)));
+		enum_seeds(v);
+		for (unsigned i = 0; i < config.threads_; ++i)
+			v[i].flush_queues();
+	}
+
 	virtual ~Sequence_set()
 	{ }
 
@@ -152,7 +166,70 @@ private:
 				}
 			}
 		}
+		f->finish();
 	}
+
+	template<typename _f, typename _entry>
+	struct Enum_partitioned_callback
+	{
+		Enum_partitioned_callback(unsigned p_begin, unsigned p_end) :
+			p_begin(p_begin),
+			p_end(p_end)
+		{
+			memset(counts, 0, sizeof(counts));
+		}
+		void operator()(Hashed_seed seed, size_t pos, unsigned shape_id)
+		{
+			const unsigned p = seed.partition();
+			buffers[shape_id][p][counts[shape_id][p]++] = _entry(seed, pos);
+			if (counts[shape_id][p] == buffer_size)
+				flush_buffer(shape_id, p);
+			if (pos & flush_mask == 0 && shape_id == shape_from)
+				flush_queues();
+		}
+		void flush_buffer(unsigned shape_id, unsigned p)
+		{
+			mtx[shape_id][p].lock();
+			vector<_entry> &q = queues[shape_id][p];
+			size_t &count = counts[shape_id][p];
+			const size_t s = q.size();
+			q.resize(s + sizeof(_entry)*count);
+			memcpy(q.data() + s, buffers[shape_id][p], sizeof(_entry)*count);
+			mtx[p].unlock();
+			count = 0;
+		}
+		void finish()
+		{
+			for (unsigned shape_id = shape_from; shape_id < shape_to;++shape_id)
+				for (unsigned p = 0; p < Hashed_seed::p; ++p)
+					flush_buffer(shape_id, p);
+		}
+		void flush_queues()
+		{
+			for (unsigned shape_id = shape_from; shape_id < shape_to;++shape_id)
+				for (unsigned p = p_begin; p < p_end; ++p) {
+					mtx[shape_id][p].lock();
+					vector<_entry> &q = queues[shape_id][p];
+					const size_t size = q.size();
+					if (size == 0) {
+						mtx[shape_id][p].unlock();
+						continue;
+					}
+					out_buf.resize(size);
+					memcpy(out_buf.data(), q.data(), size * sizeof(_entry));
+					q.clear();
+					mtx[shape_id][p].unlock();
+					for (vector<_entry>::const_iterator i = out_buf.begin(); i != out_buf.end(); ++i)
+						_f()(*i);
+				}
+		}
+		enum { buffer_size = 16, flush_mask = 127 };
+		Array<_entry, buffer_size> buffers[Const::max_shapes][Hashed_seed::p];
+		unsigned counts[Const::max_shapes][Hashed_seed::p], p_begin, p_end;
+		vector<_entry> out_buf;
+		static tthread::mutex mtx[Const::max_shapes][Hashed_seed::p];
+		static vector<_entry> queues[Const::max_shapes][Hashed_seed::p];
+	};
 
 };
 
