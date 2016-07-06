@@ -222,7 +222,7 @@ private:
 					memcpy(out_buf.data(), q.data(), size * sizeof(_entry));
 					q.clear();
 					mtx[shape_id][p].unlock();
-					for (vector<_entry>::const_iterator i = out_buf.begin(); i != out_buf.end(); ++i)
+					for (typename vector<_entry>::const_iterator i = out_buf.begin(); i != out_buf.end(); ++i)
 						_f()(shape_id, *i);
 				}
 		}
