@@ -22,7 +22,7 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #include "../util/log_stream.h"
 
 const double Seed_double_index::hash_table_factor = 2;
-Seed_double_index index[Const::max_shapes];
+Seed_double_index seed_index[Const::max_shapes];
 
 Seed_double_index::Seed_double_index(size_t psize)
 {
@@ -50,7 +50,7 @@ struct Count_query_callback
 {
 	void operator()(unsigned shape_id, const Seed_entry& seed) const
 	{
-		PHash_table<Seed_double_index::Entry>::entry *e = index[shape_id].tables[seed.seed.partition()].insert(seed.seed.offset());
+		PHash_table<Seed_double_index::Entry>::entry *e = seed_index[shape_id].tables[seed.seed.partition()].insert(seed.seed.offset());
 		++e->value.q;
 	}
 };
@@ -59,7 +59,7 @@ struct Access
 {
 	void operator()(Hashed_seed seed, size_t pos, unsigned shape_id)
 	{
-		PHash_table<Seed_double_index::Entry>::entry *e = index[shape_id].tables[seed.partition()][seed.offset()];
+		PHash_table<Seed_double_index::Entry>::entry *e = seed_index[shape_id].tables[seed.partition()][seed.offset()];
 		if (e)
 			++n;
 	}
@@ -91,7 +91,7 @@ void build_query_index()
 
 	timer.go("Allocating hash tables");
 	for (unsigned shape_id = shape_from; shape_id < shape_to; ++shape_id)
-		index[shape_id] = exact ? Seed_double_index(exact_counts[shape_id - shape_from]) : Seed_double_index(apxt_counts[shape_id - shape_from] / Hashed_seed::p);
+		seed_index[shape_id] = exact ? Seed_double_index(exact_counts[shape_id - shape_from]) : Seed_double_index(apxt_counts[shape_id - shape_from] / Hashed_seed::p);
 
 	timer.go("Building hash table");
 	seqs.enum_seeds_partitioned<Count_query_callback, Seed_entry>();

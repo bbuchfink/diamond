@@ -53,7 +53,7 @@ private:
 
 };
 
-extern Seed_double_index index[Const::max_shapes];
+extern Seed_double_index seed_index[Const::max_shapes];
 
 vector<Array<unsigned, Hashed_seed::p> > count_exact(const Sequence_set &seqs);
 vector<size_t> count_approximate(const Sequence_set &seqs);
