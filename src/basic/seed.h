@@ -37,12 +37,18 @@ inline unsigned seed_partition_offset(Packed_seed s)
 
 struct Hashed_seed
 {
+	Hashed_seed()
+	{}
 	explicit Hashed_seed(uint64_t seed):
 		hash(murmur_hash()(seed))
 	{}
 	unsigned partition() const
 	{
 		return unsigned(hash&(p - 1));
+	}
+	uint64_t offset() const
+	{
+		return hash >> p_bits;
 	}
 	operator uint64_t() const
 	{

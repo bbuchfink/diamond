@@ -312,6 +312,8 @@ inline int abs_diff(unsigned x, unsigned y)
 template<typename _t, size_t n>
 struct Array
 {
+	Array()
+	{}
 	_t& operator[](size_t i)
 	{
 		return data_[i];

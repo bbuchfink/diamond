@@ -21,7 +21,7 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #include "queries.h"
 #include "../util/log_stream.h"
 
-const double Seed_double_index::hash_table_factor = 1.3;
+const double Seed_double_index::hash_table_factor = 2;
 Seed_double_index index[Const::max_shapes];
 
 Seed_double_index::Seed_double_index(size_t psize)
@@ -35,6 +35,38 @@ Seed_double_index::Seed_double_index(const Array<unsigned, Hashed_seed::p> &psiz
 	for (unsigned p = 0; p < Hashed_seed::p; ++p)
 		tables[p] = PHash_table<Entry>(std::max(size_t((double)psize[p] * hash_table_factor), (size_t)1llu));
 }
+
+struct Seed_entry
+{
+	Seed_entry()
+	{}
+	Seed_entry(Hashed_seed seed, size_t pos) :
+		seed(seed)
+	{}
+	Hashed_seed seed;
+};
+
+struct Count_query_callback
+{
+	void operator()(unsigned shape_id, const Seed_entry& seed) const
+	{
+		PHash_table<Seed_double_index::Entry>::entry *e = index[shape_id].tables[seed.seed.partition()].insert(seed.seed.offset());
+		++e->value.q;
+	}
+};
+
+struct Access
+{
+	void operator()(Hashed_seed seed, size_t pos, unsigned shape_id)
+	{
+		PHash_table<Seed_double_index::Entry>::entry *e = index[shape_id].tables[seed.partition()][seed.offset()];
+		if (e)
+			++n;
+	}
+	void finish()
+	{}
+	unsigned n;
+};
 
 void build_query_index()
 {
@@ -58,7 +90,13 @@ void build_query_index()
 	}
 
 	timer.go("Allocating hash tables");
-	for (unsigned shape_id = shape_from; shape_id = shape_to; ++shape_id)
-		index[shape_id] = exact ? Seed_double_index(exact_counts[shape_id-shape_from]) : Seed_double_index(apxt_counts[shape_id - shape_from] / Hashed_seed::p);
+	for (unsigned shape_id = shape_from; shape_id < shape_to; ++shape_id)
+		index[shape_id] = exact ? Seed_double_index(exact_counts[shape_id - shape_from]) : Seed_double_index(apxt_counts[shape_id - shape_from] / Hashed_seed::p);
 
+	timer.go("Building hash table");
+	seqs.enum_seeds_partitioned<Count_query_callback, Seed_entry>();
+
+	timer.go("test");
+	vector<Access> v(config.threads_);
+	seqs.enum_seeds(v);
 }

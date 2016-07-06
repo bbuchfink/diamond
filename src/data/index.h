@@ -48,6 +48,9 @@ private:
 
 	PHash_table<Entry> tables[Hashed_seed::p];
 
+	friend struct Count_query_callback;
+	friend struct Access;
+
 };
 
 extern Seed_double_index index[Const::max_shapes];

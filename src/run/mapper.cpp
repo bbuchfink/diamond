@@ -59,6 +59,8 @@ void run_mapper(Database_file &db_file, Timer &total_timer)
 		}
 
 		timer.go("Building query index");
+		shape_from = 0;
+		shape_to = 1;
 		build_query_index();
 		
 	}

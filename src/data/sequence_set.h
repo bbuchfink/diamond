@@ -134,16 +134,19 @@ struct Sequence_set : public String_set<'\xff', 1>
 	}
 
 	template<typename _f, typename _entry>
-	void enum_seeds_partitioned()
+	void enum_seeds_partitioned() const
 	{
 		vector<Enum_partitioned_callback<_f, _entry> > v;
 		v.reserve(config.threads_);
-		::partition p(Hashed_seed::p, config.threads);
-		for (unsigned i = 0; i < config.threads_; ++i)
-			v.push_back(Enum_partitioned_callback<_f, _entry>(p.getMin(i), p.getMax(i)));
+		::partition<unsigned> p(Hashed_seed::p, config.threads_);
+		for (unsigned i = 0; i < config.threads_; ++i) {
+			Enum_partitioned_callback<_f, _entry> * tmp = new Enum_partitioned_callback<_f, _entry>(p.getMin(i), p.getMax(i));
+			v.push_back(*tmp);
+			delete tmp;
+		}
 		enum_seeds(v);
-		for (unsigned i = 0; i < config.threads_; ++i)
-			v[i].flush_queues();
+		/*for (unsigned i = 0; i < config.threads_; ++i)
+			v[i].flush_queues();*/
 	}
 
 	virtual ~Sequence_set()
@@ -184,18 +187,18 @@ private:
 			buffers[shape_id][p][counts[shape_id][p]++] = _entry(seed, pos);
 			if (counts[shape_id][p] == buffer_size)
 				flush_buffer(shape_id, p);
-			if (pos & flush_mask == 0 && shape_id == shape_from)
+			if ((pos & flush_mask) == 0 && shape_id == shape_from)
 				flush_queues();
 		}
 		void flush_buffer(unsigned shape_id, unsigned p)
 		{
 			mtx[shape_id][p].lock();
 			vector<_entry> &q = queues[shape_id][p];
-			size_t &count = counts[shape_id][p];
+			unsigned &count = counts[shape_id][p];
 			const size_t s = q.size();
 			q.resize(s + sizeof(_entry)*count);
-			memcpy(q.data() + s, buffers[shape_id][p], sizeof(_entry)*count);
-			mtx[p].unlock();
+			memcpy(q.data() + s, buffers[shape_id][p].begin(), sizeof(_entry)*count);
+			mtx[shape_id][p].unlock();
 			count = 0;
 		}
 		void finish()
@@ -220,10 +223,10 @@ private:
 					q.clear();
 					mtx[shape_id][p].unlock();
 					for (vector<_entry>::const_iterator i = out_buf.begin(); i != out_buf.end(); ++i)
-						_f()(*i);
+						_f()(shape_id, *i);
 				}
 		}
-		enum { buffer_size = 16, flush_mask = 127 };
+		enum { buffer_size = 16, flush_mask = 1023 };
 		Array<_entry, buffer_size> buffers[Const::max_shapes][Hashed_seed::p];
 		unsigned counts[Const::max_shapes][Hashed_seed::p], p_begin, p_end;
 		vector<_entry> out_buf;
@@ -232,5 +235,10 @@ private:
 	};
 
 };
+
+template<typename _f, typename _entry>
+tthread::mutex Sequence_set::Enum_partitioned_callback<_f, _entry>::mtx[Const::max_shapes][Hashed_seed::p];
+template<typename _f, typename _entry>
+vector<_entry> Sequence_set::Enum_partitioned_callback<_f, _entry>::queues[Const::max_shapes][Hashed_seed::p];
 
 #endif /* SEQUENCE_SET_H_ */

@@ -169,15 +169,15 @@ private:
 
 	entry* get_entry(uint64_t hash) const
 	{
-		entry *p = &table[(hash >> 16) % size_];
-		const uint16_t finger_print = finger_print(hash);
+		entry *p = table.get() + ((hash >> 16) % size_);
+		const uint16_t fp = finger_print(hash);
 		bool wrapped = false;
-		while (p->finger_print != finger_print && p->value != 0u) {
+		while (p->finger_print != fp && p->value != 0u) {
 			++p;
-			if (p == &table[size_]) {
+			if (p == table.get() + size_) {
 				if (wrapped)
 					throw hash_table_overflow_exception();
-				p = &table[0];
+				p = table.get();
 				wrapped = true;
 			}
 		}
