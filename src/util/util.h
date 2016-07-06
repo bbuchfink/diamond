@@ -345,4 +345,11 @@ inline int ctz(uint64_t x)
 #endif
 }
 
+template<typename _t>
+inline void assign_ptr(_t& dst, _t *src)
+{
+	dst = *src;
+	delete src;
+}
+
 #endif /* UTIL_H_ */

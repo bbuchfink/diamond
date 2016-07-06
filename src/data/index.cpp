@@ -27,13 +27,13 @@ Seed_double_index seed_index[Const::max_shapes];
 Seed_double_index::Seed_double_index(size_t psize)
 {
 	for (unsigned p = 0; p < Hashed_seed::p; ++p)
-		tables[p] = PHash_table<Entry>(std::max(size_t((double)psize * hash_table_factor), (size_t)1llu));
+		assign_ptr(tables[p], new PHash_table<Entry>(std::max(size_t((double)psize * hash_table_factor), (size_t)1llu)));
 }
 
 Seed_double_index::Seed_double_index(const Array<unsigned, Hashed_seed::p> &psize)
 {
 	for (unsigned p = 0; p < Hashed_seed::p; ++p)
-		tables[p] = PHash_table<Entry>(std::max(size_t((double)psize[p] * hash_table_factor), (size_t)1llu));
+		assign_ptr(tables[p], new PHash_table<Entry>(std::max(size_t((double)psize[p] * hash_table_factor), (size_t)1llu)));
 }
 
 struct Seed_entry
@@ -91,7 +91,7 @@ void build_query_index()
 
 	timer.go("Allocating hash tables");
 	for (unsigned shape_id = shape_from; shape_id < shape_to; ++shape_id)
-		seed_index[shape_id] = exact ? Seed_double_index(exact_counts[shape_id - shape_from]) : Seed_double_index(apxt_counts[shape_id - shape_from] / Hashed_seed::p);
+		assign_ptr(seed_index[shape_id], exact ? new Seed_double_index(exact_counts[shape_id - shape_from]) : new Seed_double_index(apxt_counts[shape_id - shape_from] / Hashed_seed::p));
 
 	timer.go("Building hash table");
 	seqs.enum_seeds_partitioned<Count_query_callback, Seed_entry>();
