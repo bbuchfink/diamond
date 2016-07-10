@@ -326,6 +326,10 @@ struct Array
 	{
 		return data_;
 	}
+	const _t* begin() const
+	{
+		return data_;
+	}
 	_t* end()
 	{
 		return data_ + n;

@@ -21,7 +21,6 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #include "../basic/const.h"
 #include "../util/log_stream.h"
 #include "../data/reference.h"
-#include "../run/make_db.h"
 #include "../run/master_thread.h"
 #include "../output/view.h"
 #include "tools.h"

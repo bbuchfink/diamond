@@ -31,7 +31,7 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #include "../util/seq_file_format.h"
 #include "../data/load_seqs.h"
 #include "../search/setup.h"
-#include "../output//output_format.h"
+#include "../output/output_format.h"
 
 using std::endl;
 using std::cout;
@@ -75,20 +75,22 @@ void process_shape(unsigned sid,
 		current_range = range;
 
 		task_timer timer ("Building reference index", true);
-		sorted_list ref_idx (ref_buffer,
-				*ref_seqs::data_,
-				shapes[sid],
-				ref_hst.get(config.index_mode, sid),
-				range);
+		sorted_list ref_idx(ref_buffer,
+			*ref_seqs::data_,
+			shapes[sid],
+			ref_hst.get(sid),
+			range,
+			ref_hst.partition());
 		ref_seqs::get_nc().build_masking(sid, range, ref_idx);
 
 		timer.go("Building query index");
 		timer_mapping.resume();
-		sorted_list query_idx (query_buffer,
-				*query_seqs::data_,
-				shapes[sid],
-				query_hst->get(config.index_mode, sid),
-				range);
+		sorted_list query_idx(query_buffer,
+			*query_seqs::data_,
+			shapes[sid],
+			query_hst.get(sid),
+			range,
+			query_hst.partition());
 		timer.finish();
 
 		timer.go("Searching alignments");
@@ -111,10 +113,9 @@ void run_ref_chunk(Database_file &db_file,
 		Output_stream &master_out,
 		vector<Temp_file> &tmp_file)
 {
-	task_timer timer ("Loading reference sequences", true);
-	ref_seqs::data_ = new Masked_sequence_set (db_file);
-	ref_ids::data_ = new String_set<0> (db_file);
-	ref_hst.load(db_file);
+	task_timer timer("Building reference histograms");
+	ref_hst = Partitioned_histogram(*ref_seqs::data_);
+	
 	setup_search_params(query_len_bounds, ref_seqs::data_->letters());
 	ref_map.init((unsigned)ref_seqs::get().get_length());
 
@@ -140,7 +141,7 @@ void run_ref_chunk(Database_file &db_file,
 
 	timer_mapping.resume();
 	Output_stream* out;
-	if(ref_header.n_blocks > 1) {
+	if(blocked_processing) {
 		timer.go ("Opening temporary output file");
 		tmp_file.push_back(Temp_file ());
 		out = new Output_stream (tmp_file.back());
@@ -152,7 +153,7 @@ void run_ref_chunk(Database_file &db_file,
 	align_queries(*Trace_pt_buffer::instance, out);
 	delete Trace_pt_buffer::instance;
 
-	if(ref_header.n_blocks > 1) {
+	if(blocked_processing) {
 		Intermediate_record::finish_file(*out);
 		delete out;
 	}
@@ -172,21 +173,21 @@ void run_query_chunk(Database_file &db_file,
 		Output_stream &master_out)
 {
 	task_timer timer ("Allocating buffers", true);
-	char *query_buffer = sorted_list::alloc_buffer(*query_hst);
+	char *query_buffer = sorted_list::alloc_buffer(query_hst);
 	vector<Temp_file> tmp_file;
 	timer.finish();
 
 	db_file.rewind();
-	for(current_ref_block=0;current_ref_block<ref_header.n_blocks;++current_ref_block)
+	for (current_ref_block = 0; db_file.load_seqs(); ++current_ref_block)
 		run_ref_chunk(db_file, timer_mapping, total_timer, query_chunk, query_len_bounds, query_buffer, master_out, tmp_file);
 
 	timer.go("Deallocating buffers");
 	timer_mapping.resume();
 	delete[] query_buffer;
 
-	if(ref_header.n_blocks > 1) {
+	if(blocked_processing) {
 		timer.go("Joining output blocks");
-		join_blocks(ref_header.n_blocks, master_out, tmp_file);
+		join_blocks(current_ref_block, master_out, tmp_file);
 	}
 
 	timer.go("Deallocating queries");
@@ -233,7 +234,7 @@ void master_thread(Database_file &db_file, Timer &timer_mapping, Timer &total_ti
 		}
 
 		timer.go("Building query histograms");
-		query_hst = auto_ptr<seed_histogram> (new seed_histogram (*query_seqs::data_));
+		query_hst = Partitioned_histogram(*query_seqs::data_);
 		const pair<size_t,size_t> query_len_bounds = query_seqs::data_->len_bounds(shapes[0].length_);
 		timer_mapping.stop();
 		timer.finish();
@@ -273,11 +274,10 @@ void master_thread()
 	task_timer timer ("Opening the database", 1);
 	Database_file db_file;
 	timer.finish();
-	config.set_chunk_size(ref_header.block_size);
 	verbose_stream << "Reference = " << config.database << endl;
 	verbose_stream << "Sequences = " << ref_header.sequences << endl;
 	verbose_stream << "Letters = " << ref_header.letters << endl;
-	verbose_stream << "Block size = " << (size_t)(ref_header.block_size * 1e9) << endl;
+	verbose_stream << "Block size = " << (size_t)(config.chunk_size * 1e9) << endl;
 	Config::set_option(config.db_size, (uint64_t)ref_header.letters);
 
 	master_thread(db_file, timer_mapping, timer2);

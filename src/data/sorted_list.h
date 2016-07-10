@@ -1,5 +1,5 @@
 /****
-Copyright (c) 2014, University of Tuebingen
+Copyright (c) 2014-2016, University of Tuebingen, Benjamin Buchfink
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
@@ -14,8 +14,6 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
 LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-****
-Author: Benjamin Buchfink
 ****/
 
 #ifndef SORTED_LIST_H_
@@ -49,16 +47,16 @@ struct sorted_list
 		_pos		value;
 	} PACKED_ATTRIBUTE ;
 
-	static char* alloc_buffer(const seed_histogram &hst)
+	static char* alloc_buffer(const Partitioned_histogram &hst)
 	{ return new char[sizeof(entry) * hst.max_chunk_size()]; }
 
-	sorted_list(char *buffer, const Sequence_set &seqs, const shape &sh, const shape_histogram &hst, const seedp_range &range):
+	sorted_list(char *buffer, const Sequence_set &seqs, const shape &sh, const shape_histogram &hst, const seedp_range &range, const vector<size_t> seq_partition):
 		limits_ (hst, range),
 		data_ (reinterpret_cast<entry*>(buffer))
 	{
 		task_timer timer ("Building seed list", 3);
-		Build_context build_context (seqs, sh, range, build_iterators(hst));
-		launch_scheduled_thread_pool(build_context, Const::seqp, config.threads_);
+		Build_context build_context (seqs, sh, range, build_iterators(hst), seq_partition);
+		launch_scheduled_thread_pool(build_context, unsigned(seq_partition.size() - 1), config.threads_);
 		timer.go("Sorting seed list");
 		Sort_context sort_context (*this);
 		launch_scheduled_thread_pool(sort_context, Const::seedp, config.threads_);
@@ -105,12 +103,12 @@ struct sorted_list
 
 private:
 
-	typedef Static_matrix<entry*,Const::seqp,Const::seedp> Ptr_set;
+	typedef vector<Array<entry*, Const::seedp> > Ptr_set;
 
 	struct buffered_iterator
 	{
 		static const unsigned BUFFER_SIZE = 16;
-		buffered_iterator(entry **ptr)
+		buffered_iterator(entry* const* ptr)
 		{
 			memset(n, 0, sizeof(n));
 			memcpy(this->ptr, ptr, sizeof(this->ptr));
@@ -156,30 +154,30 @@ private:
 
 	struct Build_context
 	{
-		Build_context(const Sequence_set &seqs, const shape &sh, const seedp_range &range, Ptr_set *iterators):
+		Build_context(const Sequence_set &seqs, const shape &sh, const seedp_range &range, const Ptr_set &iterators, const vector<size_t> &seq_partition):
 			seqs (seqs),
 			sh (sh),
 			range (range),
 			iterators (iterators),
-			seq_partition (seqs.partition())
+			seq_partition (seq_partition)
 		{ }
 		void operator()(unsigned thread_id, unsigned seqp) const
 		{
 			build_seqp(seqs,
-					seq_partition[seqp],
-					seq_partition[seqp+1],
-					(*iterators)[seqp],
-					sh,
-					range);
+				seq_partition[seqp],
+				seq_partition[seqp + 1],
+				iterators[seqp].begin(),
+				sh,
+				range);
 		}
 		const Sequence_set &seqs;
 		const shape &sh;
 		const seedp_range &range;
-		const auto_ptr<Ptr_set> iterators;
-		const vector<size_t> seq_partition;
+		const Ptr_set iterators;
+		const vector<size_t> &seq_partition;
 	};
 
-	static void build_seqp(const Sequence_set &seqs, size_t begin, size_t end, entry **ptr, const shape &sh, const seedp_range &range)
+	static void build_seqp(const Sequence_set &seqs, size_t begin, size_t end, entry* const* ptr, const shape &sh, const seedp_range &range)
 	{
 		uint64_t key;
 		auto_ptr<buffered_iterator> it (new buffered_iterator(ptr));
@@ -194,16 +192,15 @@ private:
 		it->flush();
 	}
 
-	Ptr_set* build_iterators(const shape_histogram &hst) const
+	Ptr_set build_iterators(const shape_histogram &hst) const
 	{
-		Ptr_set *iterators = new Ptr_set;
-		for(unsigned i=0;i<Const::seedp;++i)
-			(*iterators)[0][i] = ptr_begin(i);
+		Ptr_set iterators (hst.size());
+		for (unsigned i = 0; i < Const::seedp; ++i)
+			iterators[0][i] = ptr_begin(i);
 
-		for(unsigned i=1;i<Const::seqp;++i) {
-			for(unsigned j=0;j<Const::seedp;++j)
-				(*iterators)[i][j] = (*iterators)[i-1][j] + hst[i-1][j];
-		}
+		for (unsigned i = 1; i < hst.size(); ++i)
+			for (unsigned j = 0; j < Const::seedp; ++j)
+				iterators[i][j] = iterators[i - 1][j] + hst[i - 1][j];
 		return iterators;
 	}
 

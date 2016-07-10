@@ -1,5 +1,5 @@
 /****
-Copyright (c) 2014, University of Tuebingen
+Copyright (c) 2014-2016, University of Tuebingen, Benjamin Buchfink
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
@@ -14,8 +14,6 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
 LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-****
-Author: Benjamin Buchfink
 ****/
 
 #ifndef REFERENCE_H_
@@ -51,19 +49,17 @@ struct Reference_header
 	Reference_header():
 		unique_id (0x24af8a415ee186dllu),
 		build (Const::build_version),
-		long_addressing (false),
+		db_version(current_db_version),
 		sequences (0),
 		letters (0)
 	{ }
 	uint64_t unique_id;
-	uint32_t build;
-	bool long_addressing;
-	unsigned n_blocks;
-	size_t sequences, letters;
-	double block_size;
+	uint32_t build, db_version;
+	uint64_t sequences, letters, pos_array_offset;
 #ifdef EXTRA
 	Sequence_type sequence_type;
 #endif
+	enum { current_db_version = 0 };
 };
 
 extern Reference_header ref_header;
@@ -83,16 +79,25 @@ struct Database_file : public Input_stream
 			throw Database_format_exception ();
 		if(ref_header.unique_id != Reference_header ().unique_id)
 			throw Database_format_exception ();
-		if(ref_header.build > Const::build_version || ref_header.build < Const::build_compatibility)
+		if(ref_header.build < min_build_required || ref_header.db_version != Reference_header::current_db_version)
 			throw invalid_database_version_exception();
 #ifdef EXTRA
 		if(sequence_type(_val()) != ref_header.sequence_type)
 			throw std::runtime_error("Database has incorrect sequence type for current alignment mode.");
 #endif
+		pos_array_offset = ref_header.pos_array_offset;
 	}
 	void rewind()
-	{ this->seek(sizeof(Reference_header)); }
+	{
+		pos_array_offset = ref_header.pos_array_offset;
+	}
+	bool load_seqs();
+	enum { min_build_required = 74 };
+
+	size_t pos_array_offset;
 };
+
+void make_db();
 
 struct ref_seqs
 {
@@ -110,8 +115,9 @@ struct ref_ids
 	static String_set<0> *data_;
 };
 
-extern seed_histogram ref_hst;
+extern Partitioned_histogram ref_hst;
 extern unsigned current_ref_block;
+extern bool blocked_processing;
 
 inline size_t max_id_len(const String_set<0> &ids)
 {

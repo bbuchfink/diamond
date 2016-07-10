@@ -54,7 +54,7 @@ struct Join_fetcher
 		files[b].read(&query_ids[b], 1);
 	}
 	Join_fetcher():
-		buf(ref_header.n_blocks)
+		buf(current_ref_block)
 	{}
 	bool operator()()
 	{
@@ -127,7 +127,7 @@ void join_query(vector<Binary_buffer> &buf, Text_buffer &out, Statistics &statis
 
 	vector<Join_record> records;
 	vector<Binary_buffer::Iterator> it;
-	for (unsigned i = 0; i<ref_header.n_blocks; ++i) {
+	for (unsigned i = 0; i<current_ref_block; ++i) {
 		it.push_back(buf[i].begin());
 		Join_record::push_next(i, std::numeric_limits<unsigned>::max(), it.back(), records);
 	}

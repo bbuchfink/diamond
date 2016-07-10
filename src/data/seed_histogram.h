@@ -1,5 +1,5 @@
 /****
-Copyright (c) 2014, University of Tuebingen
+Copyright (c) 2014-16, University of Tuebingen, Benjamin Buchfink
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
@@ -14,8 +14,6 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
 LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-****
-Author: Benjamin Buchfink
 ****/
 
 #ifndef SEED_HISTOGRAM_H_
@@ -26,48 +24,11 @@ Author: Benjamin Buchfink
 #include "sequence_set.h"
 #include "../basic/shape_config.h"
 #include "../util/thread.h"
+#include "../basic/seed_iterator.h"
 
 using std::vector;
 
-inline void encode_zero_rle(const int32_t *data, size_t len, Output_stream &out)
-{
-	const int32_t *p = data, *end = data + len;
-	int32_t n = 0;
-	while(p < end) {
-		while(p < end && *p == 0) {
-			--n;
-			++p;
-		}
-		if(n < 0) {
-			out.typed_write(&n, 1);
-			n = 0;
-		}
-		if(p < end) {
-			out.typed_write(p, 1);
-			++p;
-		}
-	}
-}
-
-inline void decode_zero_rle(int32_t *data, size_t len, Input_stream &in)
-{
-	size_t n = 0;
-	while(n < len) {
-		int32_t x;
-		in.read(&x, 1);
-		if(x >= 0) {
-			*(data++) = x;
-			++n;
-		} else {
-			for(int32_t i=0;i>x;--i) {
-				*(data++) = 0;
-				++n;
-			}
-		}
-	}
-}
-
-typedef int32_t shape_histogram[Const::seqp][Const::seedp];
+typedef vector<Array<unsigned,Const::seedp> > shape_histogram;
 
 struct seedp_range
 {
@@ -97,111 +58,97 @@ extern seedp_range current_range;
 
 inline size_t partition_size(const shape_histogram &hst, unsigned p)
 {
-	size_t s (0);
-	for(unsigned i=0;i<Const::seqp;++i)
+	size_t s = 0;
+	for(unsigned i=0;i<hst.size();++i)
 		s += hst[i][p];
 	return s;
 }
 
 inline size_t hst_size(const shape_histogram &hst, const seedp_range &range)
 {
-	size_t s (0);
+	size_t s = 0;
 	for(unsigned i=range.begin();i<range.end();++i)
 		s += partition_size(hst, i);
 	return s;
 }
 
-struct seed_histogram
+struct Partitioned_histogram
 {
 
-	seed_histogram()
+	Partitioned_histogram()
 	{ }
 
-	seed_histogram(const Sequence_set &seqs)
+	Partitioned_histogram(const Sequence_set &seqs):
+		p_(seqs.partition(config.threads_*4)),
+		data_(shapes.count())
 	{
-		memset(data_, 0, sizeof(data_));
+		for (unsigned s = 0; s < shapes.count(); ++s) {
+			data_[s].resize(p_.size() - 1);
+			memset(data_[s].data(), 0, (p_.size() - 1)*sizeof(unsigned)*Const::seedp);
+		}
 		Build_context context (seqs, *this);
-		launch_scheduled_thread_pool(context, Const::seqp, config.threads_);
+		launch_scheduled_thread_pool(context, (unsigned)(p_.size() - 1), (unsigned)(p_.size() - 1));
 	}
 
-	const shape_histogram& get(unsigned index_mode, unsigned sid) const
-	{ return data_[index_mode][sid]; }
+	const shape_histogram& get(unsigned sid) const
+	{ return data_[sid]; }
 
 	size_t max_chunk_size() const
 	{
-		size_t max (0);
-		::partition<unsigned> p (Const::seedp, config.lowmem);
-		for(unsigned shape=0;shape < shapes.count();++shape)
-			for(unsigned chunk=0;chunk < p.parts; ++chunk)
-				max = std::max(max, hst_size(data_[config.index_mode][shape], seedp_range(p.getMin(chunk), p.getMax(chunk))));
+		size_t max = 0;
+		::partition<unsigned> p(Const::seedp, config.lowmem);
+		for (unsigned shape = 0; shape < shapes.count(); ++shape)
+			for (unsigned chunk = 0; chunk < p.parts; ++chunk)
+				max = std::max(max, hst_size(data_[shape], seedp_range(p.getMin(chunk), p.getMax(chunk))));
 		return max;
 	}
 
-	void save(Output_stream &out) const
+	const vector<size_t>& partition() const
 	{
-		encode_zero_rle(reinterpret_cast<const int32_t*>(data_), sizeof(data_)/sizeof(int32_t), out);
-	}
-
-	void load(Input_stream &in)
-	{
-		decode_zero_rle(reinterpret_cast<int32_t*>(data_), sizeof(data_)/sizeof(int32_t), in);
+		return p_;
 	}
 
 private:
 
 	struct Build_context
 	{
-		Build_context(const Sequence_set &seqs, seed_histogram &hst):
+		Build_context(const Sequence_set &seqs, Partitioned_histogram &hst):
 			seqs (seqs),
-			cfgs (shape_configs()),
-			seq_partition (seqs.partition()),
 			hst (hst)
 		{ }
 		void operator()(unsigned thread_id, unsigned seqp) const
-		{ hst.build_seq_partition(seqs, seqp, seq_partition[seqp], seq_partition[seqp+1], cfgs); }
+		{
+			hst.build_seq_partition(seqs, seqp, hst.p_[seqp], hst.p_[seqp+1]);
+		}
 		const Sequence_set &seqs;
-		const vector<shape_config> cfgs;
-		const vector<size_t> seq_partition;
-		seed_histogram &hst;
+		Partitioned_histogram &hst;
 	};
 
 	void build_seq_partition(const Sequence_set &seqs,
 			const unsigned seqp,
 			const size_t begin,
-			const size_t end,
-			const vector<shape_config> &cfgs)
+			const size_t end)
 	{
-		assert(seqp < Const::seqp);
-		uint64_t key;
-		for(size_t i=begin;i<end;++i) {
+		vector<char> buf;
+		for (size_t i = begin; i < end; ++i) {
 
 			assert(i < seqs.get_length());
-			const sequence seq = seqs[i];
-			if(seq.length() < Const::min_shape_len) continue;
-			for(unsigned j=0;j<seq.length()+1-Const::min_shape_len; ++j)
-				for(vector<shape_config>::const_iterator cfg = cfgs.begin(); cfg != cfgs.end(); ++cfg) {
-					assert(cfg->mode() < Const::index_modes);
-					assert(cfg->count() <= Const::max_shapes);
-					for(unsigned k=0;k<cfg->count(); ++k)
-						if(j+(*cfg)[k].length_ < seq.length()+1 && (*cfg)[k].set_seed(key, &seq[j]))
-							++data_[cfg->mode()][k][seqp][seed_partition(key)];
-				}
+			Reduction::reduce_seq(seqs[i], buf);
+
+			for (unsigned s = 0; s < shapes.count(); ++s) {
+				Seed_iterator it(buf, shapes[s]);
+				unsigned *ptr = data_[s][seqp].begin();
+				uint64_t seed;
+				while (it.good())
+					if (it.get(seed, shapes[s]))
+						++ptr[seed_partition(seed)];
+			}
 
 		}
 	}
 
-	static vector<shape_config> shape_configs()
-	{
-		vector<shape_config> v;
-		if(config.command == Config::makedb) {
-			for(unsigned i=0;i<Const::index_modes;++i)
-				v.push_back(shape_config (i, Const::max_shapes));
-		} else
-			v.push_back(shape_config (config.index_mode, Const::max_shapes));
-		return v;
-	}
-
-	shape_histogram data_[Const::index_modes][Const::max_shapes];
+	vector<shape_histogram> data_;
+	vector<size_t> p_;
 
 };
 

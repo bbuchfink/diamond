@@ -26,6 +26,7 @@ Author: Benjamin Buchfink
 #include <string.h>
 #include "value.h"
 #include "../util/util.h"
+#include "sequence.h"
 
 using std::string;
 using std::vector;
@@ -72,6 +73,13 @@ struct Reduction
 			os << ']';
 		}
 		return os;
+	}
+
+	static void reduce_seq(const sequence &seq, vector<char> &dst)
+	{
+		dst.resize(seq.length());
+		for (unsigned i = 0; i < seq.length(); ++i)
+			dst[i] = reduction(seq[i]);
 	}
 
 	static const Reduction reduction;

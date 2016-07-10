@@ -121,7 +121,7 @@ void align_read(Text_buffer &buffer,
 			continue;
 		}
 		
-		if (ref_header.n_blocks > 1) {
+		if (blocked_processing) {
 			if (n_hsp == 0)
 				seek_pos = Intermediate_record::write_query_intro(buffer, query);
 			Intermediate_record::write(buffer, *it, query);
@@ -161,7 +161,7 @@ void align_read(Text_buffer &buffer,
 	}
 
 	if (n_hsp > 0) {
-		if (ref_header.n_blocks == 1) {
+		if (!blocked_processing) {
 			if (*output_format == Output_format::daa)
 				finish_daa_query_record(buffer, seek_pos);
 			else
@@ -172,7 +172,7 @@ void align_read(Text_buffer &buffer,
 	}
 
 	stat.inc(Statistics::OUT_MATCHES, matches.size());
-	if(ref_header.n_blocks == 1) {
+	if(!blocked_processing) {
 		stat.inc(Statistics::MATCHES, n_hsp);
 		stat.inc(Statistics::PAIRWISE, n_target_seq);
 		if(n_hsp > 0)

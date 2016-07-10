@@ -34,6 +34,9 @@ struct Masked_sequence_set : public Sequence_set
 			Sequence_set (file)
 	{ }
 
+	Masked_sequence_set()
+	{}
+	
 	void build_masking(unsigned sid, const seedp_range &range, sorted_list &idx)
 	{
 		task_timer timer ("Counting low complexity seeds", 3);

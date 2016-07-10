@@ -23,15 +23,11 @@ struct Const
 {
 
 	enum {
-		build_version = 73,
-		build_compatibility = 52,
-		db_version = 0,
+		build_version = 74,
 		daa_version = 0,
 		seedp_bits = 10,
 		seedp = 1<<seedp_bits,
 		max_seed_weight = 32,
-		seqp_bits = 8,
-		seqp = 1<<seqp_bits,
 		max_shapes = 16,
 		index_modes = 2,
 		min_shape_len = 10,

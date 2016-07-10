@@ -58,7 +58,6 @@ Config::Config(int argc, const char **argv)
 	Options_group makedb("Makedb options");
 	makedb.add()
 		("in", 0, "input reference file in FASTA format", input_ref_file)
-		("block-size", 'b', "sequence block size in billions of letters (default=2)", chunk_size)
 #ifdef EXTRA
 		("dbtype", po::value<string>(&program_options::db_type), "database type (nucl/prot)")
 #endif
@@ -75,6 +74,7 @@ Config::Config(int argc, const char **argv)
 		("id", 0, "minimum identity% to report an alignment", min_id)
 		("query-cover", 0, "minimum query cover% to report an alignment", query_cover)
 		("sensitive", 0, "enable sensitive mode (default: fast)", mode_sensitive)
+		("block-size", 'b', "sequence block size in billions of letters (default=2.0)", chunk_size, 2.0)
 		("index-chunks",'c', "number of chunks for index processing", lowmem, 4u)
 		("tmpdir",'t', "directory for temporary files", tmpdir)
 		("gapopen", 0, "gap open penalty (default=11 for protein)", gap_open, -1)
@@ -137,7 +137,8 @@ Config::Config(int argc, const char **argv)
 			throw std::runtime_error("Missing parameter: input file (--in)");
 		if (database == "")
 			throw std::runtime_error("Missing parameter: database file (--db/-d)");
-		set_option(chunk_size, 2.0);
+		if (chunk_size != 2.0)
+			throw std::runtime_error("Invalid option: --block-size/-b. Block size is set for the alignment commands.");
 		break;
 	case Config::blastp:
 	case Config::blastx:
@@ -149,17 +150,15 @@ Config::Config(int argc, const char **argv)
 			if (output_file.length() > 0)
 				throw std::runtime_error("Options --daa and --out cannot be used together.");
 			if (output_format.length() > 0 && output_format != "daa")
-				throw std::runtime_error("Invalid parameter: --daa/-a. Output file is specified with --out/-o parameter.");
+				throw std::runtime_error("Invalid parameter: --daa/-a. Output file is specified with the --out/-o parameter.");
 			output_file = daa_file;
 		}
 		if (daa_file.length() > 0 || output_format == "daa") {
-			if(compression != 0)
+			if (compression != 0)
 				throw std::runtime_error("Compression is not supported for DAA format.");
-			if(!no_auto_append)
+			if (!no_auto_append)
 				auto_append_extension(output_file, ".daa");
-		}			
-		if (chunk_size != 0)
-			std::cerr << "Warning: --block-size option should be set for the makedb command." << endl;
+		}
 		break;
 	case Config::view:
 		if (daa_file == "")

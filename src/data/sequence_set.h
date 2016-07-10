@@ -90,7 +90,7 @@ struct Sequence_set : public String_set<'\xff', 1>
 		return sequence(s, 2 * config.window, (int)(begin - s));
 	}
 
-	vector<size_t> partition(unsigned n_part = Const::seqp) const
+	vector<size_t> partition(unsigned n_part) const
 	{
 		vector<size_t> v;
 		const size_t l = (this->letters() + n_part - 1) / n_part;

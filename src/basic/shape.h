@@ -49,6 +49,21 @@ inline bool use_seed_freq()
 #endif
 }
 
+/*struct All_partitions {};
+struct Filter_partition {};
+
+template<typename _f>
+bool include_partition(unsigned p)
+{
+	return true;
+}
+
+template<>
+bool include_partition<Filter_partition>(unsigned p)
+{
+	return current_range.contains(p);
+}*/
+
 struct shape
 {
 
@@ -93,7 +108,7 @@ struct shape
 #endif
 		for(unsigned i=0;i<weight_;++i) {
 			Letter l = seq[positions_[i]];
-			if(l == value_traits.mask_char|| l == '\xff')
+			if(l == value_traits.mask_char || l == '\xff')
 				return false;
 			l = mask_critical(l);
 			unsigned r = Reduction::reduction(l);
@@ -105,6 +120,28 @@ struct shape
 		}
 #ifdef FREQUENCY_MASKING
 		if(use_seed_freq() && f > config.max_seed_freq) return false;
+#endif
+		return true;
+	}
+
+	inline bool set_seed_reduced(Packed_seed &s, const Letter *seq) const
+	{
+		s = 0;
+#ifdef FREQUENCY_MASKING
+		double f = 0;
+#endif
+		for (unsigned i = 0; i < weight_; ++i) {
+			Letter l = seq[positions_[i]];
+			if (l == value_traits.mask_char)
+				return false;
+#ifdef FREQUENCY_MASKING
+			f += background_freq[l];
+#endif
+			s *= Reduction::reduction.size();
+			s += uint64_t(l);
+		}
+#ifdef FREQUENCY_MASKING
+		if (use_seed_freq() && f > config.max_seed_freq) return false;
 #endif
 		return true;
 	}

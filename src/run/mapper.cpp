@@ -93,9 +93,8 @@ void run_mapper()
 	task_timer timer("Opening the database", 1);
 	Database_file db_file;
 	timer.finish();
-	config.set_chunk_size(ref_header.block_size);
 	message_stream << "Reference: " << config.database <<  " (" << ref_header.sequences << " sequences, " << ref_header.letters << " letters)" << endl;
-	verbose_stream << "Block size: " << (size_t)(ref_header.block_size * 1e9) << endl;
+	verbose_stream << "Block size: " << (size_t)(config.chunk_size * 1e9) << endl;
 	Config::set_option(config.db_size, (uint64_t)ref_header.letters);
 
 	run_mapper(db_file, timer2);

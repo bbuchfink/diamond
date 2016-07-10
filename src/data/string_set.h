@@ -47,6 +47,11 @@ struct String_set
 		}
 	}
 
+	void reserve(size_t n)
+	{
+		limits_.push_back(raw_len() + n + _padding);
+	}
+
 	void push_back(const vector<_t> &v)
 	{
 		limits_.push_back(raw_len() + v.size() + _padding);
