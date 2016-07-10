@@ -58,7 +58,6 @@ void make_db()
 	task_timer timer("Opening the database file", true);
 	Compressed_istream db_file(config.input_ref_file);
 	
-	size_t chunk = 0;
 	Output_stream out(config.database);
 	out.typed_write(&ref_header, 1);
 
