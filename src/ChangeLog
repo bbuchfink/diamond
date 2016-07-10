@@ -2,6 +2,7 @@
 - changed database format
 - block size parameter is set only for the alignment commands
 - the program will accept databases created by later versions if the format is compatible
+- improved sensitivity of sensitive mode with some loss in performance
 
 [0.8.11]
 - fixed a compiler error
