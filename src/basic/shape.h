@@ -135,7 +135,7 @@ struct shape
 			if (l == value_traits.mask_char)
 				return false;
 #ifdef FREQUENCY_MASKING
-			f += background_freq[l];
+			f += background_freq[(long)l];
 #endif
 			s *= Reduction::reduction.size();
 			s += uint64_t(l);

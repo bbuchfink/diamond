@@ -79,8 +79,8 @@ struct Partitioned_histogram
 	{ }
 
 	Partitioned_histogram(const Sequence_set &seqs):
-		p_(seqs.partition(config.threads_*4)),
-		data_(shapes.count())
+		data_(shapes.count()),
+		p_(seqs.partition(config.threads_*4))
 	{
 		for (unsigned s = 0; s < shapes.count(); ++s) {
 			data_[s].resize(p_.size() - 1);
