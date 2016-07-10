@@ -1,4 +1,4 @@
-**DIAMOND v0.8.11 by Benjamin Buchfink** - http://github.com/bbuchfink/diamond
+**DIAMOND v0.8.12 by Benjamin Buchfink** - http://github.com/bbuchfink/diamond
 
 Published in *Nature Methods* **12**, 59–60 (2015) | `doi:10.1038/nmeth.3176 <http://dx.doi.org/10.1038/nmeth.3176>`_
 
@@ -8,7 +8,7 @@ Download & Installation
 =======================
 If you use a recent **Linux** operating system, you can download the software in binary format for immediate use::
 
-    wget http://github.com/bbuchfink/diamond/releases/download/v0.8.11/diamond-linux64.tar.gz
+    wget http://github.com/bbuchfink/diamond/releases/download/v0.8.12/diamond-linux64.tar.gz
     tar xzf diamond-linux64.tar.gz
 
 Users of **Mac OS X** and **older Linux systems** need to compile the software from source (see `Compiling from source`_). On **FreeBSD**, the software can be installed using ``pkg install diamond``. A binary executable for **Windows** is available under Releases.
@@ -50,10 +50,8 @@ Makedb options
 ============ ===== ======= ===========
 Option       Short Default Description
 ============ ===== ======= ===========
---threads    -p    max     Number of CPU threads.
 --in                       Path to protein reference database file in FASTA format (may be gzip compressed).
 --db         -d            Path to DIAMOND database file.
---block-size -b    2       Block size in billions of sequence letters to be processed at a time.
 ============ ===== ======= ===========
 
 General & IO options
@@ -100,12 +98,13 @@ Memory & performance options
 ============== ===== ======== ===========
 Option         Short Default  Description
 ============== ===== ======== ===========
+--block-size   -b    2.0      Block size in billions of sequence letters to be processed at a time.
 --tmpdir       -t             Directory to be used for temporary storage.
 --index-chunks -c    4        The number of chunks for processing the seed index.
 ============== ===== ======== ===========
-By default, the temporary directory is set to the output directory. The amount of disk space that will be used depends on the program's settings and your data. As a general rule you should ensure that 100 GB of disk space are available here. If you run the program in a cluster environment, and disk space is only available over a slow network based file system, you may want to set the ``--tmpdir`` option to ``/dev/shm``. This will keep temporary information in memory and increase the program's memory usage substantially.
+The ``--block-size/-b`` parameter is the main option for controlling the program's memory usage. Bigger numbers will increase the use of memory *and* temporary disk space, but also improve performance. The program can be expected to roughly use six times this number of memory (in GB). So for the default value of ``-b2.0``, the memory usage will be about 12 GB.
 
-The ``--block-size/-b`` option is set for the makedb command and the main option for controlling the program's memory usage. Bigger numbers will increase the use of memory *and* temporary disk space, but also improve performance. The program can be expected to roughly use six times this number of memory (in GB). So for the default value of ``-b=2``, the memory usage will be about 12 GB.
+The temporary directory is set to the output directory by default. The amount of disk space that will be used depends on the program's settings and your data. As a general rule you should ensure that 100 GB of disk space are available here. If you run the program in a cluster environment, and disk space is only available over a slow network based file system, you may want to set the ``--tmpdir`` option to ``/dev/shm``. This will keep temporary information in memory and thus increase the program's memory usage substantially.
 
 The ``--index-chunks/-c`` option can be additionally used to tune the performance. It is recommended to set this to 1 on a high memory server, which will increase performance and memory usage, but not the usage of temporary disk space.
 
@@ -138,9 +137,9 @@ Compiling from source
 =====================
 To compile DIAMOND from source, invoke the following commands on the shell::
 
-  $ wget http://github.com/bbuchfink/diamond/archive/v0.8.11.tar.gz
-  $ tar xzf v0.8.11.tar.gz
-  $ cd diamond-0.8.11
+  $ wget http://github.com/bbuchfink/diamond/archive/v0.8.12.tar.gz
+  $ tar xzf v0.8.12.tar.gz
+  $ cd diamond-0.8.12
   $ mkdir bin
   $ cd bin
   $ cmake ..
