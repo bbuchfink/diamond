@@ -197,6 +197,8 @@ private:
 struct Ptr_wrapper_base
 {
 	virtual void del() = 0;
+	virtual ~Ptr_wrapper_base()
+	{}
 };
 
 template<typename _t>
@@ -209,6 +211,8 @@ struct Ptr_wrapper : public Ptr_wrapper_base
 	{
 		delete ptr;
 	}
+	virtual ~Ptr_wrapper()
+	{}
 	_t *ptr;
 };
 
