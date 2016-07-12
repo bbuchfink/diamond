@@ -34,7 +34,7 @@ Message_stream verbose_stream (false);
 Message_stream log_stream (false);
 
 const Complexity_filter Complexity_filter::instance;
-TLS_PTR vector<void*> *TLS::ptr_;
+TLS_PTR vector<Ptr_wrapper_base*> *TLS::ptr_;
 
 #ifndef _MSC_VER
 const char dir_separator = '/';

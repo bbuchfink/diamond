@@ -194,6 +194,24 @@ private:
 	_t *const ptr_;
 };*/
 
+struct Ptr_wrapper_base
+{
+	virtual void del() = 0;
+};
+
+template<typename _t>
+struct Ptr_wrapper : public Ptr_wrapper_base
+{
+	Ptr_wrapper(_t *ptr) :
+		ptr(ptr)
+	{}
+	virtual void del()
+	{
+		delete ptr;
+	}
+	_t *ptr;
+};
+
 struct TLS
 {
 	template<typename _t>
@@ -202,8 +220,8 @@ struct TLS
 		if (ptr == 0) {
 			ptr = new _t;
 			if (ptr_ == 0)
-				ptr_ = new vector<void*>;
-			ptr_->push_back((void*)ptr);
+				ptr_ = new vector<Ptr_wrapper_base*>;
+			ptr_->push_back(new Ptr_wrapper<_t>(ptr));
 		}
 		return *ptr;
 	}
@@ -211,12 +229,14 @@ struct TLS
 	{
 		if (ptr_ == 0)
 			return;
-		for (vector<void*>::iterator i = ptr_->begin(); i != ptr_->end(); ++i)
+		for (vector<Ptr_wrapper_base*>::iterator i = ptr_->begin(); i != ptr_->end(); ++i) {
+			(*i)->del();
 			delete *i;
+		}
 		delete ptr_;
 	}
 private:
-	static TLS_PTR vector<void*> *ptr_;
+	static TLS_PTR vector<Ptr_wrapper_base*> *ptr_;
 };
 
 inline vector<string> tokenize(const char *str, const char *delimiters)
