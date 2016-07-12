@@ -23,6 +23,7 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #include <stdint.h>
 #include <memory>
 #include <algorithm>
+#include <string.h>
 #include "hash_function.h"
 
 using std::auto_ptr;

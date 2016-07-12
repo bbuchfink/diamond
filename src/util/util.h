@@ -37,6 +37,7 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #include <iostream>
 #include <string.h>
 #include <sys/stat.h>
+#include <math.h>
 #include "../basic/const.h"
 #include "../basic/seed.h"
 #include "../basic/value.h"

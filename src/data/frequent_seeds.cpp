@@ -57,11 +57,12 @@ struct Frequent_seeds::Build_context
 		}
 
 		const size_t ht_size = std::max((size_t)(buf.size() * hash_table_factor), buf.size() + 1);
-		frequent_seeds.tables_[sid][seedp] = PHash_set(ht_size);
+		PHash_set hash_set(ht_size);
 
 		for (vector<uint32_t>::const_iterator i = buf.begin(); i != buf.end(); ++i)
-			frequent_seeds.tables_[sid][seedp].insert(*i);
+			hash_set.insert(*i);
 
+		frequent_seeds.tables_[sid][seedp] = hash_set;
 		counts[seedp] = (unsigned)n;
 	}
 	const sorted_list &ref_idx;
