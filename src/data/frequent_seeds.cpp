@@ -33,18 +33,25 @@ struct Frequent_seeds::Build_context
 	{ }
 	void operator()(unsigned thread_id, unsigned seedp)
 	{
-		Sd ref_sd, query_sd;
+		Sd ref_sd, query_sd, mult_sd;
 		Merge_iterator<sorted_list::const_iterator> it(ref_idx.get_partition_cbegin(seedp), query_idx.get_partition_cbegin(seedp));
 		while(it.next()) {
 			ref_sd.add((double)it.i.n);
 			query_sd.add((double)it.j.n);
+			mult_sd.add((double)it.i.n*(double)it.j.n);
+			++it;
+		}
+
+		/*sorted_list::const_iterator it = ref_idx.get_partition_cbegin(seedp);
+		while (!it.at_end()) {
+			ref_sd.add((double)it.n);
 			++it;
 		}
 
 		const unsigned max_n = (unsigned)(ref_sd.mean() + config.freq_sd*ref_sd.sd());
 		//cout << "mean=" << A << " sd=" << sd << endl;
 
-		size_t n = 0;
+		/*size_t n = 0;
 		vector<uint32_t> buf;
 		sorted_list::iterator j = ref_idx.get_partition_begin(seedp);
 		while (!j.at_end()) {
@@ -54,6 +61,22 @@ struct Frequent_seeds::Build_context
 				buf.push_back(j.key());
 			}
 			++j;
+		}*/
+
+		const size_t max_n = (unsigned)(mult_sd.mean() + config.freq_sd*mult_sd.sd());
+		vector<uint32_t> buf;
+		size_t n = 0;
+		{
+			Merge_iterator<sorted_list::iterator> it(ref_idx.get_partition_begin(seedp), query_idx.get_partition_begin(seedp));
+			while (it.next()) {
+				if ((size_t)it.i.n * (size_t)it.j.n > max_n) {
+				//if (it.i.n > max_n) {
+					it.i.get(0)->value = 0;
+					n += (unsigned)it.i.n;
+					buf.push_back(it.i.key());
+				}
+				++it;
+			}
 		}
 
 		const size_t ht_size = std::max((size_t)(buf.size() * hash_table_factor), buf.size() + 1);
