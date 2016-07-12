@@ -91,8 +91,8 @@ void process_shape(unsigned sid,
 			query_hst.get(sid),
 			range,
 			query_hst.partition());
-		timer.finish();
 
+		timer.go("Building seed filter");
 		if (config.simple_freq)
 			frequent_seeds.build(sid, range, ref_idx, query_idx);
 		else

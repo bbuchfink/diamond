@@ -41,25 +41,25 @@ struct hit_filter
 		stats_ (stats),
 		q_pos_ (q_pos),
 		out_ (out),
-		subjects_ (subjects_ptr)
-	{ subjects_->clear(); }
+		subjects_ (TLS::get(subjects_ptr))
+	{ subjects_.clear(); }
 
 	void push(Loc subject, int score)
 	{
 		if(score >= config.min_hit_score)
 			push_hit(subject);
 		else
-			subjects_->push_back(ref_seqs::data_->fixed_window_infix(subject+Const::seed_anchor));
+			subjects_.push_back(ref_seqs::data_->fixed_window_infix(subject+Const::seed_anchor));
 	}
 
 	void finish()
 	{
-		if(subjects_->size() == 0)
+		if(subjects_.size() == 0)
 			return;
 		unsigned left;
 		sequence query (query_seqs::data_->window_infix(q_pos_ + Const::seed_anchor, left));
 		smith_waterman(query,
-				*subjects_,
+				subjects_,
 				config.hit_band,
 				left,
 				config.gap_open + config.gap_extend,
@@ -91,7 +91,7 @@ private:
 	Statistics  &stats_;
 	Loc q_pos_;
 	Trace_pt_buffer::Iterator &out_;
-	Tls<vector<sequence> > subjects_;
+	vector<sequence> &subjects_;
 	
 	static TLS_PTR vector<sequence> *subjects_ptr;
 

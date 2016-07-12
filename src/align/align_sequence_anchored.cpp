@@ -195,8 +195,8 @@ void align_sequence_anchored(vector<Segment> &matches,
 	static TLS_PTR vector<local_trace_point> *trace_points;
 	static TLS_PTR vector<Subject_seq> *subject_ptr;
 
-	vector<local_trace_point> &trace_pt(get_tls(trace_points));
-	vector<Subject_seq> &subjects(get_tls(subject_ptr));
+	vector<local_trace_point> &trace_pt(TLS::get(trace_points));
+	vector<Subject_seq> &subjects(TLS::get(subject_ptr));
 
 	trace_pt.clear();
 	subjects.clear();

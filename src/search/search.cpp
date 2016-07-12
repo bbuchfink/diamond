@@ -164,8 +164,8 @@ void search_seed(const sorted_list::const_iterator &q,
 		return;*/
 	static TLS_PTR vector<Finger_print> *vq_ptr, *vs_ptr;
 	static TLS_PTR vector<Stage1_hit> *hits_ptr;
-	vector<Finger_print> &vq(get_tls(vq_ptr)), &vs(get_tls(vs_ptr));
-	vector<Stage1_hit> &hits(get_tls(hits_ptr));
+	vector<Finger_print> &vq(TLS::get(vq_ptr)), &vs(TLS::get(vs_ptr));
+	vector<Stage1_hit> &hits(TLS::get(hits_ptr));
 	hits.clear();
 	load_fps2(q, vq, *query_seqs::data_);
 	load_fps(s, vs, *ref_seqs::data_);

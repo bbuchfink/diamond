@@ -105,22 +105,22 @@ struct Scalar_dp_matrix
 	{
 		int i = std::max(current_i_, i_max+1), delta = i - current_i_;
 		current_i_ = i;
-		return Column_iterator (score_->get(i), hgap_->get(int ()), j, i, delta, band_);
+		return Column_iterator (score_.get(i), hgap_.get(int ()), j, i, delta, band_);
 	}
 
 	inline Scalar_dp_matrix(int band):
 		band_ (band),
 		band_max_ (2*band+1),
 		current_i_ (-1),
-		score_ (score_ptr),
-		hgap_ (hgap_ptr)
+		score_ (TLS::get(score_ptr)),
+		hgap_ (TLS::get(hgap_ptr))
 	{
-		score_->init(band_max_, band_+1, 1, NEG_MIN);
-		hgap_->init(band_max_, band_+1, 1, NEG_MIN);
+		score_.init(band_max_, band_+1, 1, NEG_MIN);
+		hgap_.init(band_max_, band_+1, 1, NEG_MIN);
 	}
 
 	const typename Score_buffer<_score,_traceback>::Type& score_buffer() const
-	{ return *score_; }
+	{ return score_; }
 
 	static const _score NEG_MIN = -65536;
 
@@ -128,8 +128,8 @@ private:
 
 	const int band_, band_max_;
 	int current_i_;
-	Tls<typename Score_buffer<_score,_traceback>::Type> score_;
-	Tls<Double_buffer<_score> > hgap_;
+	typename Score_buffer<_score,_traceback>::Type &score_;
+	Double_buffer<_score> &hgap_;
 	static TLS_PTR typename Score_buffer<_score,_traceback>::Type *score_ptr;
 	static TLS_PTR Double_buffer<_score> *hgap_ptr;
 

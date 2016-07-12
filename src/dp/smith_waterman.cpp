@@ -126,28 +126,28 @@ struct Dp_matrix
 
 	inline Column_iterator column(int j)
 	{
-		return Column_iterator(score_->get(), hgap_->get(int()), query_len_);
+		return Column_iterator(score_.get(), hgap_.get(int()), query_len_);
 	}
 
 	inline Dp_matrix(int query_len, int subject_len):
 		query_len_(query_len),
-		score_(score_ptr),
-		hgap_(hgap_ptr)
+		score_(TLS::get(score_ptr)),
+		hgap_(TLS::get(hgap_ptr))
 	{
-		score_->init(query_len+1, subject_len+1, 0);
-		hgap_->init(query_len, 0, 0, 0);
+		score_.init(query_len+1, subject_len+1, 0);
+		hgap_.init(query_len, 0, 0, 0);
 	}
 
 	const Fixed_score_buffer<_score>& score_buffer() const
 	{
-		return *score_;
+		return score_;
 	}
 	
 private:
 
 	const int query_len_;
-	Tls<Fixed_score_buffer<_score> > score_;
-	Tls<Double_buffer<_score> > hgap_;
+	Fixed_score_buffer<_score> &score_;
+	Double_buffer<_score> &hgap_;
 	static TLS_PTR Fixed_score_buffer<_score> *score_ptr;
 	static TLS_PTR Double_buffer<_score> *hgap_ptr;
 

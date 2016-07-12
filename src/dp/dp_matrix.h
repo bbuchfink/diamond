@@ -70,13 +70,13 @@ struct DP_matrix
 		rows_ (rows),
 		band_ (band),
 		padding_ (padding),
-		scores_ (scores_ptr),
-		hgap_ (hgap_ptr)
+		scores_ (TLS::get(scores_ptr)),
+		hgap_ (TLS::get(hgap_ptr))
 	{
-		scores_->resize(2*band+1);
-		hgap_->resize(2*band+2);
-		hgap_front_ = &hgap_->front();
-		score_front_ = &scores_->front();
+		scores_.resize(2*band+1);
+		hgap_.resize(2*band+2);
+		hgap_front_ = &hgap_.front();
+		score_front_ = &scores_.front();
 	}
 
 	inline void clear()
@@ -139,7 +139,7 @@ private:
 
 	const unsigned rows_, band_, padding_;
 	sv *hgap_front_, *score_front_;
-	Tls<vector<sv> > scores_, hgap_;
+	vector<sv> &scores_, &hgap_;
 
 };
 

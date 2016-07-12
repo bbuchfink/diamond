@@ -52,8 +52,8 @@ void align_read(Text_buffer &buffer,
 	static tthread::mutex mtx;
 #endif
 
-	vector<Segment>& matches (get_tls(matches_ptr));
-	vector<local_match>& local (get_tls(local_ptr));
+	vector<Segment>& matches (TLS::get(matches_ptr));
+	vector<local_match>& local (TLS::get(local_ptr));
 	local.clear();
 	matches.clear();
 

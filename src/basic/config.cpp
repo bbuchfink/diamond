@@ -228,7 +228,7 @@ Config::Config(int argc, const char **argv)
 
 	if (command == Config::blastp || command == Config::blastx || command == Config::benchmark) {
 		if (tmpdir == "")
-			tmpdir = extract_dir(daa_file);
+			tmpdir = extract_dir(output_file);
 		if (gap_open == -1)
 			gap_open = 11;
 		if (gap_extend == -1)

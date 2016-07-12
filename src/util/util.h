@@ -174,7 +174,7 @@ inline void print_seq(const _val* s, const _dir& d)
 #define TLS_PTR __thread
 #endif
 
-template<typename _t>
+/*template<typename _t>
 struct Tls
 {
 	Tls(_t *&ptr):
@@ -192,15 +192,32 @@ private:
 		return ptr;
 	}
 	_t *const ptr_;
-};
+};*/
 
-template<typename _t>
-_t& get_tls(_t *&ptr)
+struct TLS
 {
-	if (ptr == 0)
-		ptr = new _t;
-	return *ptr;
-}
+	template<typename _t>
+	static _t& get(_t *&ptr)
+	{
+		if (ptr == 0) {
+			ptr = new _t;
+			if (ptr_ == 0)
+				ptr_ = new vector<void*>;
+			ptr_->push_back((void*)ptr);
+		}
+		return *ptr;
+	}
+	static void clear()
+	{
+		if (ptr_ == 0)
+			return;
+		for (vector<void*>::iterator i = ptr_->begin(); i != ptr_->end(); ++i)
+			delete *i;
+		delete ptr_;
+	}
+private:
+	static TLS_PTR vector<void*> *ptr_;
+};
 
 inline vector<string> tokenize(const char *str, const char *delimiters)
 {

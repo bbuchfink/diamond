@@ -60,6 +60,7 @@ template<typename _context>
 void pool_worker(void *p)
 {
 	((Thread_p<_context>*)p)->context->operator()(((Thread_p<_context>*)p)->thread_id);
+	TLS::clear();
 }
 
 template<typename _context>
@@ -125,6 +126,7 @@ void thread_worker(void *p)
 	Thread_p1<_f, _t1> *q = (Thread_p1<_f, _t1>*)p;
 	q->f(q->p1);
 	delete q;
+	TLS::clear();
 }
 
 template<typename _f, typename _t1>
@@ -154,6 +156,7 @@ void thread_worker(void *p)
 	Thread_p3<_f, _t1, _t2, _t3> *q = (Thread_p3<_f, _t1, _t2, _t3>*)p;
 	q->f(q->p1, q->p2, q->p3);
 	delete q;
+	TLS::clear();
 }
 
 template<typename _f, typename _t1, typename _t2, typename _t3>
@@ -185,6 +188,7 @@ void thread_worker(void *p)
 	Thread_p4<_f,_t1,_t2,_t3,_t4> *q = (Thread_p4<_f,_t1,_t2,_t3,_t4>*)p;
 	q->f(q->p1, q->p2, q->p3, q->p4);
 	delete q;
+	TLS::clear();
 }
 
 template<typename _f, typename _t1, typename _t2, typename _t3, typename _t4>

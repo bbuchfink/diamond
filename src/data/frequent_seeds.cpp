@@ -96,10 +96,8 @@ struct Frequent_seeds::Build_context
 
 void Frequent_seeds::build(unsigned sid, const seedp_range &range, sorted_list &ref_idx, const sorted_list &query_idx)
 {
-	task_timer timer("Finding high frequency seeds", 3);
 	vector<unsigned> counts(Const::seedp);
 	Build_context build_context(ref_idx, query_idx, sid, counts);
 	launch_scheduled_thread_pool(build_context, Const::seedp, config.threads_);
-	timer.finish();
 	log_stream << "Masked positions = " << std::accumulate(counts.begin(), counts.end(), 0) << std::endl;
 }
