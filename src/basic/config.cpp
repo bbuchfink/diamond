@@ -92,6 +92,7 @@ Config::Config(int argc, const char **argv)
 		("seed-freq", 0, "maximum seed frequency", max_seed_freq, -15.0)
 		("run-len",'l', "mask runs between stop codons shorter than this length", run_len)
 		("max-hits",'C', "maximum number of hits to consider for one seed", hit_cap)
+		("freq-sd", 0, "number of standard deviations for ignoring frequent seeds", freq_sd, 25.0)
 		("id2", 0, "minimum number of identities for stage 1 hit", min_identities)
 		("window", 'w', "window size for local hit search", window)
 		("xdrop", 'x', "xdrop for ungapped alignment", xdrop, 20)
@@ -120,7 +121,8 @@ Config::Config(int argc, const char **argv)
 		("local-align", 0, "Local alignment algorithm", local_align_mode, 0u)
 		("slow-search", 0, "", slow_search)
 		("seq", 0, "", seq_no)
-		("ht", 0, "", ht_mode);
+		("ht", 0, "", ht_mode)
+		("simple-freq", 0, "", simple_freq);
 
 #ifdef EXTRA
 	("match1", po::value<string>(&program_options::match_file1))

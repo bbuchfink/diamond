@@ -32,6 +32,7 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #include "../data/load_seqs.h"
 #include "../search/setup.h"
 #include "../output/output_format.h"
+#include "../data/frequent_seeds.h"
 
 using std::endl;
 using std::cout;
@@ -81,8 +82,7 @@ void process_shape(unsigned sid,
 			ref_hst.get(sid),
 			range,
 			ref_hst.partition());
-		ref_seqs::get_nc().build_masking(sid, range, ref_idx);
-
+		
 		timer.go("Building query index");
 		timer_mapping.resume();
 		sorted_list query_idx(query_buffer,
@@ -92,6 +92,11 @@ void process_shape(unsigned sid,
 			range,
 			query_hst.partition());
 		timer.finish();
+
+		if (config.simple_freq)
+			frequent_seeds.build(sid, range, ref_idx, query_idx);
+		else
+			ref_seqs::get_nc().build_masking(sid, range, ref_idx);
 
 		timer.go("Searching alignments");
 		Search_context context (sid, ref_idx, query_idx);

@@ -127,7 +127,8 @@ inline void align_partition(unsigned hp,
 				//cout << "n=" << stats.data_[Statistics::SEED_HITS] << endl;
 				/*if (stats.data_[Statistics::SEED_HITS] > 10000000000lu)
 				break;*/
-				search_seed(j, i, stats, *out, sid);
+				if(!config.simple_freq || i[0] != 0)
+					search_seed(j, i, stats, *out, sid);
 			} else
 				align_range(j, i, stats, *out, sid);
 			++i;

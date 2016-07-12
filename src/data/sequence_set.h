@@ -39,7 +39,7 @@ struct Sequence_set : public String_set<'\xff', 1>
 	{ }
 
 	Sequence_set(Input_stream &file) :
-		String_set(file)
+		String_set<'\xff',1>(file)
 	{ }
 
 	void print_stats() const

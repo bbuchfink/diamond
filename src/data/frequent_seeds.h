@@ -16,35 +16,35 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ****/
 
-#ifndef CONST_H_
-#define CONST_H_
+#ifndef FREQUENT_SEEDS_H_
+#define FREQUENT_SEEDS_H_
 
-struct Const
+#include "../basic/const.h"
+#include "../util/hash_table.h"
+#include "sorted_list.h"
+
+struct Frequent_seeds
 {
 
-	enum {
-		build_version = 75,
-		daa_version = 0,
-		seedp_bits = 10,
-		seedp = 1<<seedp_bits,
-		max_seed_weight = 32,
-		max_shapes = 16,
-		index_modes = 2,
-		min_shape_len = 10,
-		//min_shape_len = 5,
-		max_shape_len = 32,
-		seed_anchor = 8
-	};
+	void build(unsigned sid, const seedp_range &range, sorted_list &ref_idx, const sorted_list &query_idx);
 
-	static const char* version_string;
-	static const char* program_name;
-	static const char* id_delimiters;
+	bool get(const Letter *pos, unsigned sid) const
+	{
+		Packed_seed seed;
+		shapes[sid].set_seed(seed, pos);
+		return tables_[sid][seed_partition(seed)].contains(seed_partition_offset(seed));
+	}
+
+private:
+
+	static const double hash_table_factor;
+
+	struct Build_context;
+
+	PHash_set tables_[Const::max_shapes][Const::seedp];
 
 };
 
-#define SIMPLE_SEARCH
-// #define FREQUENCY_MASKING
-// #define ST_JOIN
-// #define NO_COLLISION_FILTER
+extern Frequent_seeds frequent_seeds;
 
-#endif /* CONST_H_ */
+#endif

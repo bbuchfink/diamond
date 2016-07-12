@@ -1,5 +1,5 @@
 /****
-Copyright (c) 2014, University of Tuebingen
+Copyright (c) 2014-2016, University of Tuebingen, Benjamin Buchfink
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
@@ -14,12 +14,18 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
 LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-****
-Author: Benjamin Buchfink
 ****/
 
 #ifndef HASH_TABLE_H_
 #define HASH_TABLE_H_
+
+#include <exception>
+#include <stdint.h>
+#include <memory>
+#include <algorithm>
+#include "hash_function.h"
+
+using std::auto_ptr;
 
 struct hash_table_overflow_exception : public std::exception
 {
@@ -184,6 +190,72 @@ private:
 	}
 
 	auto_ptr<entry> table;
+	size_t size_;
+
+};
+
+
+struct PHash_set
+{
+
+public:
+
+	typedef uint8_t fp;
+
+	PHash_set() :
+		size_(0)
+	{}
+
+	PHash_set(size_t size) :
+		table(new fp[size]),
+		size_(size)
+	{
+		memset(table.get(), 0, size_ * sizeof(fp));
+	}
+
+	bool contains(uint64_t key) const
+	{
+		fp *entry = get_entry(key);
+		return *entry != 0;
+	}
+
+	void insert(uint64_t key)
+	{
+		fp *entry = get_entry(key);
+		if (*entry == (fp)0)
+			*entry = finger_print(murmur_hash()(key));
+	}
+
+	size_t size() const
+	{
+		return size_;
+	}
+
+private:
+
+	static fp finger_print(uint64_t hash)
+	{
+		return std::max((fp)(hash & ((1llu<<(sizeof(fp)*8))-1llu)), (fp)1);
+	}
+
+	fp* get_entry(uint64_t key) const
+	{
+		const uint64_t hash = murmur_hash()(key), f = finger_print(hash);
+		fp *p = table.get() + ((hash >> sizeof(fp)*8) % size_);
+		bool wrapped = false;
+		while (*p != f && *p != (fp)0) {
+			++p;
+			if (p == table.get() + size_) {
+				if (wrapped)
+					throw hash_table_overflow_exception();
+				p = table.get();
+				wrapped = true;
+			}
+		}
+		return p;
+	}
+
+	auto_ptr<fp> table;
 	size_t size_;
 
 };

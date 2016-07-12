@@ -1,6 +1,5 @@
 /****
-Copyright (c) 2014-2015, University of Tuebingen
-Author: Benjamin Buchfink
+Copyright (c) 2014-2016, University of Tuebingen, Benjamin Buchfink
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
@@ -46,7 +45,7 @@ struct Masked_sequence_set : public Sequence_set
 
 		timer.finish();
 		size_t n = 0;
-		for(size_t i=range.begin();i<range.end();++i) {
+		for (size_t i = range.begin(); i < range.end(); ++i) {
 			n += counts[i];
 			const size_t ht_size (std::max(static_cast<size_t>(static_cast<float>(counts[i]) * 1.3), static_cast<size_t>(counts[i] + 1)));
 			pos_filters[sid][i] = auto_ptr<filter_table> (new filter_table(ht_size));

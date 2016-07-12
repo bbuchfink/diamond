@@ -356,4 +356,30 @@ inline void assign_ptr(_t& dst, _t *src)
 	delete src;
 }
 
+struct Sd
+{
+	Sd():
+		A(0),
+		Q(0),
+		k(1)
+	{}
+	void add(double x)
+	{
+		const double d = x - A;
+		Q += (k - 1) / k*d*d;
+		A += d / k;
+		++k;
+	}
+	double mean() const
+	{
+		return A;
+	}
+	double sd() const
+	{
+		return sqrt(Q / (k - 1));
+	}
+private:
+	double A, Q, k;	
+};
+
 #endif /* UTIL_H_ */

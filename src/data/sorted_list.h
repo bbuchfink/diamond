@@ -234,6 +234,35 @@ private:
 
 };
 
+template<typename _it>
+struct Merge_iterator
+{
+	Merge_iterator(const _it &i, const _it& j):
+		i(i),
+		j(j)
+	{}
+	bool next()
+	{		
+		while (!i.at_end() && !j.at_end()) {
+			if (i.key() < j.key()) {
+				++i;
+			}
+			else if (j.key() < i.key()) {
+				++j;
+			}
+			else
+				return true;
+		}
+		return false;
+	}
+	void operator++()
+	{
+		++i;
+		++j;
+	}
+	_it i, j;
+};
+
 #pragma pack()
 
 #endif /* SORTED_LIST_H_ */

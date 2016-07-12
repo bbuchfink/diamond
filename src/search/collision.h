@@ -1,5 +1,5 @@
 /****
-Copyright (c) 2014, University of Tuebingen
+Copyright (c) 2014-2016, University of Tuebingen, Benjamin Buchfink
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
@@ -14,12 +14,12 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
 LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-****
-Author: Benjamin Buchfink
 ****/
 
 #ifndef COLLISION_H_
 #define COLLISION_H_
+
+#include "../data/frequent_seeds.h"
 
 inline unsigned letter_match(Letter query, Letter subject)
 {
@@ -48,36 +48,44 @@ inline bool is_lower_or_equal_chunk(const Letter *subject, unsigned sid)
 	return current_range.lower_or_equal(seed_partition(seed));
 }
 
-inline bool need_lookup(unsigned sid)
+inline bool need_lookup(unsigned sid, bool previous_shape)
 {
 	//return sid != 0 || current_query_chunk != 0;
-	return sid != 0;
+	return previous_shape || sid != 0;
 }
 
 inline bool is_low_freq(const Letter *subject, unsigned sid)
 { return shapes[sid].is_low_freq(subject); }
 
+inline bool is_high_frequency(const Letter *subject, unsigned sid, bool previous_shape)
+{
+	if (config.simple_freq)
+		return frequent_seeds.get(subject, sid);
+	else
+		return get_critical(*subject) && (!need_lookup(sid, previous_shape) || ref_seqs::get().get_masking(subject, sid));
+}
+
 inline bool shape_collision_right(uint64_t mask, uint64_t shape_mask, const Letter *subject, unsigned sid)
 {
 	if(!match_shape_mask(mask, shape_mask)) return false;
 	return is_lower_chunk(subject, sid)
-			&& is_low_freq(subject, sid)
-			&& (!get_critical(*subject) || (need_lookup(sid) && !ref_seqs::get().get_masking(subject, sid)));
+		&& is_low_freq(subject, sid)
+		&& !is_high_frequency(subject, sid, false);
 }
 
 inline bool shape_collision_left(uint64_t mask, uint64_t shape_mask, const Letter *subject, unsigned sid, bool chunked)
 {
 	if(!match_shape_mask(mask, shape_mask)) return false;
 	return (!chunked || is_lower_or_equal_chunk(subject, sid))
-			&& is_low_freq(subject, sid)
-			&& (!get_critical(*subject) || (need_lookup(sid) && !ref_seqs::get().get_masking(subject, sid)));
+		&& is_low_freq(subject, sid)
+		&& !is_high_frequency(subject, sid, false);
 }
 
 inline bool previous_shape_collision(uint64_t mask, uint64_t shape_mask, const Letter *subject, unsigned sid)
 {
 	if(!match_shape_mask(mask, shape_mask)) return false;
 	return is_low_freq(subject, sid)
-			&& (!get_critical(*subject) || !ref_seqs::get().get_masking(subject, sid));
+		&& !is_high_frequency(subject, sid, true);
 }
 
 /*template<typename _val, typename _pos>
