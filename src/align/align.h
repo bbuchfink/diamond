@@ -64,7 +64,7 @@ struct Ring_buffer_sink
 {
 	Ring_buffer_sink(Output_stream *output_file):
 		writer(output_file),
-		queue(config.threads_ * 32, writer)
+		queue(config.threads_ * 4, writer)
 	{}
 	bool get(size_t &i, _buffer *& buffer, Trace_pt_list::Query_range &query_range)
 	{

@@ -65,7 +65,6 @@ add_executable(diamond src/run/main.cpp
   src/data/count_approximate.cpp
   src/data/index.cpp
   src/data/frequent_seeds.cpp
-  src/util/ltalloc.cc
 )
 
 target_link_libraries(diamond ${ZLIB_LIBRARY} ${CMAKE_THREAD_LIBS_INIT})

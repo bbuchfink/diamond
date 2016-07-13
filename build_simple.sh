@@ -33,5 +33,4 @@ g++ -DNDEBUG -O3 -mssse3 -Wno-deprecated-declarations -std=gnu++98 -static \
   src/data/count_approximate.cpp \
   src/data/index.cpp \
   src/data/frequent_seeds.cpp \
-  src/util/ltalloc.cc \
 -lz -lpthread -o diamond
