@@ -34,6 +34,11 @@ struct Text_buffer
 		ptr_ (data_)
 	{ }
 
+	~Text_buffer()
+	{
+		free(data_);
+	}
+
 	void reserve(size_t n)
 	{
 		const size_t s = ptr_ - data_, new_size = s + n + block_size - ((s + n) & (block_size - 1));

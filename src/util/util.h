@@ -174,29 +174,8 @@ inline void print_seq(const _val* s, const _dir& d)
 #define TLS_PTR __thread
 #endif
 
-/*template<typename _t>
-struct Tls
-{
-	Tls(_t *&ptr):
-		ptr_ (init(ptr))
-	{ }
-	_t& operator*() const
-	{ return *ptr_; }
-	_t* operator->() const
-	{ return ptr_; }
-private:
-	static _t* init(_t *&ptr)
-	{
-		if (ptr == 0)
-			ptr = new _t;
-		return ptr;
-	}
-	_t *const ptr_;
-};*/
-
 struct Ptr_wrapper_base
 {
-	virtual void del() = 0;
 	virtual ~Ptr_wrapper_base()
 	{}
 };
@@ -207,12 +186,10 @@ struct Ptr_wrapper : public Ptr_wrapper_base
 	Ptr_wrapper(_t *ptr) :
 		ptr(ptr)
 	{}
-	virtual void del()
+	virtual ~Ptr_wrapper()
 	{
 		delete ptr;
 	}
-	virtual ~Ptr_wrapper()
-	{}
 	_t *ptr;
 };
 
@@ -233,10 +210,8 @@ struct TLS
 	{
 		if (ptr_ == 0)
 			return;
-		for (vector<Ptr_wrapper_base*>::iterator i = ptr_->begin(); i != ptr_->end(); ++i) {
-			(*i)->del();
+		for (vector<Ptr_wrapper_base*>::iterator i = ptr_->begin(); i != ptr_->end(); ++i)
 			delete *i;
-		}
 		delete ptr_;
 	}
 private:
