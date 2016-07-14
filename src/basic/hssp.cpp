@@ -18,7 +18,7 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 
 #include "../align/align.h"
 
-bool local_match::pass_through(const Diagonal_segment &d)
+bool Hsp_data::pass_through(const Diagonal_segment &d) const
 {
 	if (intersect(d.query_range(), query_range).length() != (size_t)d.len
 		|| intersect(d.subject_range(), subject_range).length() != (size_t)d.len)
@@ -39,7 +39,7 @@ bool local_match::pass_through(const Diagonal_segment &d)
 	return true;
 }
 
-bool local_match::is_weakly_enveloped(const local_match &j)
+bool Hsp_data::is_weakly_enveloped(const Hsp_data &j) const
 {
 	static const double overlap_factor = 0.9;
 	return score <= j.score

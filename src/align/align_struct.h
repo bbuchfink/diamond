@@ -42,8 +42,6 @@ struct local_match : public Hsp_data
 		subject_(0)
 	{ }
 	void merge(const local_match &right, const local_match &left);
-	bool pass_through(const Diagonal_segment &d);
-	bool is_weakly_enveloped(const local_match &j);
 	unsigned total_subject_len_;
 	signed query_anchor_, subject_anchor;
 	const Letter *subject_;

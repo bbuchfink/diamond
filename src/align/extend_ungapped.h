@@ -16,67 +16,18 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ****/
 
-#ifndef ALIGN_H_
-#define ALIGN_H_
+#ifndef EXTEND_UNGAPPED_H_
+#define EXTEND_UNGAPPED_H_
 
-#include <vector>
-#include "../search/trace_pt_buffer.h"
-#include "../util/task_queue.h"
-#include "../basic/statistics.h"
-#include "align_struct.h"
+#include "../dp/dp.h"
 
-using std::vector;
-
-void align_sequence_simple(vector<Segment> &matches,
-	Statistics &stat,
-	vector<local_match> &local,
-	unsigned *padding,
-	size_t db_letters,
-	unsigned dna_len,
-	Trace_pt_buffer::Vector::iterator &begin,
-	Trace_pt_buffer::Vector::iterator &end);
-
-void align_sequence_anchored(vector<Segment> &matches,
-	Statistics &stat,
-	vector<local_match> &local,
-	unsigned *padding,
-	size_t db_letters,
-	unsigned dna_len,
-	Trace_pt_buffer::Vector::iterator &begin,
-	Trace_pt_buffer::Vector::iterator &end);
-
-struct Output_writer
+inline Diagonal_segment ungapped_extension(unsigned subject, unsigned subject_pos, unsigned query_pos, const sequence &query)
 {
-	Output_writer(Output_stream* f) :
-		f_(f)
-	{ }
-	void operator()(Text_buffer &buf)
-	{
-		f_->write(buf.get_begin(), buf.size());
-		buf.clear();
-	}
-private:
-	Output_stream* const f_;
-};
-
-template<typename _buffer>
-struct Ring_buffer_sink
-{
-	Ring_buffer_sink(Output_stream *output_file):
-		writer(output_file),
-		queue(config.threads_ * 4, writer)
-	{}
-	bool get(size_t &i, _buffer *& buffer, Trace_pt_list::Query_range &query_range)
-	{
-		return queue.get(i, buffer, query_range);
-	}
-	void push(size_t i)
-	{
-		queue.push(i);
-	}
-private:
-	Output_writer writer;
-	Task_queue<_buffer, Output_writer> queue;
-};
+	const Letter* s = ref_seqs::data_->data(ref_seqs::data_->position(subject, subject_pos)),
+		*q = &query[query_pos];
+	unsigned delta, len;
+	int score = xdrop_ungapped(q, s, delta, len);
+	return Diagonal_segment(query_pos - delta, subject_pos - delta, len, score);
+}
 
 #endif

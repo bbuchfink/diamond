@@ -24,19 +24,11 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #include "match_func.h"
 #include "../util/map.h"
 #include "../dp/dp.h"
+#include "extend_ungapped.h"
 
 // #define ENABLE_LOGGING_AS
 
 using std::vector;
-
-Diagonal_segment ungapped_extension(unsigned subject, unsigned subject_pos, unsigned query_pos, const sequence &query)
-{
-	const Letter* s = ref_seqs::data_->data(ref_seqs::data_->position(subject, subject_pos)),
-		*q = &query[query_pos];
-	unsigned delta, len;
-	int score = xdrop_ungapped(q, s, delta, len);
-	return Diagonal_segment(query_pos - delta, subject_pos - delta, len, score);
-}
 
 struct local_trace_point
 {

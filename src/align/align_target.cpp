@@ -16,67 +16,35 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ****/
 
-#ifndef ALIGN_H_
-#define ALIGN_H_
+#include "query_mapper.h"
 
-#include <vector>
-#include "../search/trace_pt_buffer.h"
-#include "../util/task_queue.h"
-#include "../basic/statistics.h"
-#include "align_struct.h"
+using std::list;
 
-using std::vector;
-
-void align_sequence_simple(vector<Segment> &matches,
-	Statistics &stat,
-	vector<local_match> &local,
-	unsigned *padding,
-	size_t db_letters,
-	unsigned dna_len,
-	Trace_pt_buffer::Vector::iterator &begin,
-	Trace_pt_buffer::Vector::iterator &end);
-
-void align_sequence_anchored(vector<Segment> &matches,
-	Statistics &stat,
-	vector<local_match> &local,
-	unsigned *padding,
-	size_t db_letters,
-	unsigned dna_len,
-	Trace_pt_buffer::Vector::iterator &begin,
-	Trace_pt_buffer::Vector::iterator &end);
-
-struct Output_writer
+bool is_contained(const vector<Seed_hit>::const_iterator &hits, size_t i)
 {
-	Output_writer(Output_stream* f) :
-		f_(f)
-	{ }
-	void operator()(Text_buffer &buf)
-	{
-		f_->write(buf.get_begin(), buf.size());
-		buf.clear();
-	}
-private:
-	Output_stream* const f_;
-};
+	for (size_t j = 0; j < i; ++j)
+		if (hits[i].ungapped.is_enveloped(hits[j].ungapped))
+			return true;
+	return false;
+}
 
-template<typename _buffer>
-struct Ring_buffer_sink
+bool is_contained(const list<Hsp_data> &hsps, const Seed_hit &hit)
 {
-	Ring_buffer_sink(Output_stream *output_file):
-		writer(output_file),
-		queue(config.threads_ * 4, writer)
-	{}
-	bool get(size_t &i, _buffer *& buffer, Trace_pt_list::Query_range &query_range)
-	{
-		return queue.get(i, buffer, query_range);
-	}
-	void push(size_t i)
-	{
-		queue.push(i);
-	}
-private:
-	Output_writer writer;
-	Task_queue<_buffer, Output_writer> queue;
-};
+	for (list<Hsp_data>::const_iterator i = hsps.begin(); i != hsps.end(); ++i)
+		if (i->pass_through(hit.ungapped))
+			return true;
+	return false;
+}
 
-#endif
+void Query_mapper::align_target(size_t idx)
+{
+	Target& target = targets[idx];
+	std::sort(seed_hits.begin() + target.begin, seed_hits.begin() + target.end);
+	const size_t n = target.end - target.begin;
+	const vector<Seed_hit>::const_iterator hits = seed_hits.begin() + target.begin;
+	for (size_t i = 0; i < n; ++i) {
+		if (!is_contained(hits, i) && !is_contained(target.hsps, hits[i])) {
+
+		}
+	}
+}

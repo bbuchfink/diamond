@@ -40,6 +40,8 @@ inline interval normalized_range(unsigned pos, int len, Strand strand)
 
 struct Diagonal_segment
 {
+	Diagonal_segment()
+	{}
 	Diagonal_segment(unsigned query_pos, unsigned subject_pos, unsigned len, unsigned score):
 		query_pos(query_pos),
 		subject_pos(subject_pos),
@@ -162,6 +164,8 @@ struct Hsp_data
 	{
 		return align_mode.query_translated ? (frame <= 2 ? (int)frame + 1 : 2 - (int)frame) : 0;
 	}
+	bool pass_through(const Diagonal_segment &d) const;
+	bool is_weakly_enveloped(const Hsp_data &j) const;
 	unsigned score, frame, length, identities, mismatches, positives, gap_openings, gaps;
 	interval query_source_range, query_range, subject_range;
 	Packed_transcript transcript;
