@@ -17,13 +17,15 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 ****/
 
 #include "query_mapper.h"
+#include "../data/reference.h"
+#include "../dp/floating_sw.h"
 
 using std::list;
 
 bool is_contained(const vector<Seed_hit>::const_iterator &hits, size_t i)
 {
 	for (size_t j = 0; j < i; ++j)
-		if (hits[i].ungapped.is_enveloped(hits[j].ungapped))
+		if (hits[i].frame_ == hits[j].frame_ && hits[i].ungapped.is_enveloped(hits[j].ungapped))
 			return true;
 	return false;
 }
@@ -31,20 +33,50 @@ bool is_contained(const vector<Seed_hit>::const_iterator &hits, size_t i)
 bool is_contained(const list<Hsp_data> &hsps, const Seed_hit &hit)
 {
 	for (list<Hsp_data>::const_iterator i = hsps.begin(); i != hsps.end(); ++i)
-		if (i->pass_through(hit.ungapped))
+		if (hit.frame_ == i->frame && i->pass_through(hit.ungapped))
 			return true;
 	return false;
 }
 
-void Query_mapper::align_target(size_t idx)
+void Query_mapper::align_target(size_t idx, Statistics &stat)
 {
 	Target& target = targets[idx];
 	std::sort(seed_hits.begin() + target.begin, seed_hits.begin() + target.end);
 	const size_t n = target.end - target.begin;
 	const vector<Seed_hit>::const_iterator hits = seed_hits.begin() + target.begin;
+
 	for (size_t i = 0; i < n; ++i) {
 		if (!is_contained(hits, i) && !is_contained(target.hsps, hits[i])) {
-
+			target.hsps.push_back(Hsp_data());
+			target.hsps.back().frame = hits[i].frame_;
+			uint64_t cell_updates;
+			floating_sw(&query_seq(hits[i].frame_)[hits[i].query_pos_],
+				&ref_seqs::get()[hits[i].subject_][hits[i].subject_pos_],
+				target.hsps.back(),
+				config.read_padding(query_seq(hits[i].frame_).length()),
+				score_matrix.rawscore(config.gapped_xdrop),
+				config.gap_open + config.gap_extend,
+				config.gap_extend,
+				cell_updates,
+				hits[i].query_pos_,
+				hits[i].subject_pos_,
+				Traceback());
+			stat.inc(Statistics::OUT_HITS);
 		}
+		else
+			stat.inc(Statistics::DUPLICATES);
 	}
+
+	for (list<Hsp_data>::iterator i = target.hsps.begin(); i != target.hsps.end(); ++i)
+		for (list<Hsp_data>::iterator j = target.hsps.begin(); j != target.hsps.end();)
+			if (j != i && j->is_weakly_enveloped(*i))
+				j = target.hsps.erase(j);
+			else
+				++j;
+
+	for (list<Hsp_data>::iterator i = target.hsps.begin(); i != target.hsps.end(); ++i)
+		i->set_source_range(i->frame, source_query_len);
+
+	target.hsps.sort();
+	target.filter_score = target.hsps.front().score;
 }

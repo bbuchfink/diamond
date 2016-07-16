@@ -62,7 +62,7 @@ bool have_hgap(const _matrix &dp,
 }
 
 template<typename _dir, typename _matrix>
-local_match traceback(const Letter *query,
+Hsp_data traceback(const Letter *query,
 	const Letter *subject,
 	const _matrix &dp,
 	int gap_open,
@@ -75,7 +75,7 @@ local_match traceback(const Letter *query,
 	if (i == -1)
 		return local_match(0);
 
-	local_match l;
+	Hsp_data l;
 	l.score_ = score;
 	Edit_transcript transcript(transcript_buf);
 

@@ -186,9 +186,9 @@ struct Halfbyte_finger_print
 
 typedef Byte_finger_print Finger_print;
 
+#ifdef __SSSE3__
 inline __m128i reduce_seq_ssse3(const __m128i &seq)
 {
-#ifdef __SSSE3__
 	const __m128i *row = reinterpret_cast<const __m128i*>(Reduction::reduction.map8());
 	__m128i high_mask = _mm_slli_epi16(_mm_and_si128(seq, _mm_set1_epi8('\x10')), 3);
 	__m128i seq_low = _mm_or_si128(seq, high_mask);
@@ -199,10 +199,8 @@ inline __m128i reduce_seq_ssse3(const __m128i &seq)
 	__m128i s1 = _mm_shuffle_epi8(r1, seq_low);
 	__m128i s2 = _mm_shuffle_epi8(r2, seq_high);
 	return _mm_or_si128(s1, s2);
-#else
-	return __m128i();
-#endif
 }
+#endif
 
 inline __m128i reduce_seq_generic(const __m128i &seq)
 {

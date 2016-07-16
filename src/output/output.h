@@ -39,12 +39,12 @@ inline unsigned get_rev_flag(unsigned frame)
 	return frame > 2 ? 1 : 0;
 }
 
-inline uint8_t get_segment_flag(const Segment &match)
+inline uint8_t get_segment_flag(const Hsp_data &match)
 {
-	unsigned rev = get_rev_flag(match.frame_);
-	return (uint8_t)(get_length_flag(match.score_)
-		| (get_length_flag(match.traceback_->oriented_range().begin_) << 2)
-		| (get_length_flag(match.traceback_->subject_range.begin_) << 4)
+	unsigned rev = get_rev_flag(match.frame);
+	return (uint8_t)(get_length_flag(match.score)
+		| (get_length_flag(match.oriented_range().begin_) << 2)
+		| (get_length_flag(match.subject_range.begin_) << 4)
 		| rev << 6);
 }
 
@@ -94,17 +94,17 @@ struct Intermediate_record
 		*(unsigned*)(&buf[seek_pos + sizeof(unsigned)]) = (unsigned)(buf.size() - seek_pos - sizeof(unsigned) * 2);
 #endif
 	}
-	static void write(Text_buffer &buf, const Segment &match, unsigned query_id)
+	static void write(Text_buffer &buf, const Hsp_data &match, unsigned query_id, unsigned subject_id)
 	{
 #ifdef ST_JOIN
 		buf.write(query_id);
 #endif
-		buf.write(ref_map.get(current_ref_block, match.subject_id_))
+		buf.write(ref_map.get(current_ref_block, subject_id))
 			.write(get_segment_flag(match))
-			.write_packed(match.score_)
-			.write_packed(match.traceback_->oriented_range().begin_)
-			.write_packed(match.traceback_->subject_range.begin_)
-			<< match.traceback_->transcript.data();
+			.write_packed(match.score)
+			.write_packed(match.oriented_range().begin_)
+			.write_packed(match.subject_range.begin_)
+			<< match.transcript.data();
 	}
 	static void finish_file(Output_stream &f)
 	{

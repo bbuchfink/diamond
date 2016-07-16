@@ -218,12 +218,15 @@ void align_sequence_anchored(vector<Segment> &matches,
 
 		for (size_t i = local_begin; i < local.size(); ++i) {
 			floating_sw(&query[local[i].query_anchor_],
+				local[i].subject_,
 				local[i],
 				padding[frame],
 				score_matrix.rawscore(config.gapped_xdrop),
 				config.gap_open + config.gap_extend,
 				config.gap_extend,
 				cell_updates,
+				local[i].query_anchor_,
+				local[i].subject_anchor,
 				Traceback());
 		}
 	}

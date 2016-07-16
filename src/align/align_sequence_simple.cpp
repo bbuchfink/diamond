@@ -53,12 +53,15 @@ void align_sequence_simple(vector<Segment> &matches,
 		}
 		local.push_back(local_match(i->seed_offset_, 0, ref->data((ptrdiff_t)i->subject_)));
 		floating_sw(&query[i->seed_offset_],
+			local.back().subject_,
 			local.back(),
 			padding[frame],
 			score_matrix.rawscore(config.gapped_xdrop),
 			config.gap_open + config.gap_extend,
 			config.gap_extend,
 			cell_updates,
+			local.back().query_anchor_,
+			local.back().subject_anchor,
 			Traceback());
 		const int score = local.back().score;
 		std::pair<size_t, size_t> l = ref_seqs::data_->local_position((size_t)i->subject_);

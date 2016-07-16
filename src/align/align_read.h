@@ -30,6 +30,7 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #include "../output/daa_write.h"
 #include "../output/output.h"
 #include "../output//output_format.h"
+#include "../data/queries.h"
 
 // #define ENABLE_LOGGING_AR
 
@@ -39,7 +40,7 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 
 using std::vector;
 
-void align_read(Text_buffer &buffer,
+inline void align_read(Text_buffer &buffer,
 		Statistics &stat,
 		Trace_pt_buffer::Vector::iterator &begin,
 		Trace_pt_buffer::Vector::iterator &end)
@@ -124,7 +125,7 @@ void align_read(Text_buffer &buffer,
 		if (blocked_processing) {
 			if (n_hsp == 0)
 				seek_pos = Intermediate_record::write_query_intro(buffer, query);
-			Intermediate_record::write(buffer, *it, query);
+			Intermediate_record::write(buffer, *it->traceback_, query, it->subject_id_);
 		}
 		else {
 			if (n_hsp == 0) {
@@ -134,7 +135,7 @@ void align_read(Text_buffer &buffer,
 					output_format->print_query_intro(query, query_ids::get()[query].c_str(), source_query_len, buffer);
 			}
 			if (*output_format == Output_format::daa)
-				write_daa_record(buffer, *it, query);
+				write_daa_record(buffer, *it->traceback_, query, it->subject_id_);
 			else
 				output_format->print_match(Hsp_context(*it->traceback_,
 					query,

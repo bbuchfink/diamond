@@ -1,3 +1,7 @@
+[0.8.15]
+- fixed a compiler error on Mac
+- fixed a crash on some systems
+
 [0.8.14]
 - fixed a memory leak
 

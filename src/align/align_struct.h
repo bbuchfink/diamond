@@ -41,7 +41,6 @@ struct local_match : public Hsp_data
 		query_anchor_(0),
 		subject_(0)
 	{ }
-	void merge(const local_match &right, const local_match &left);
 	unsigned total_subject_len_;
 	signed query_anchor_, subject_anchor;
 	const Letter *subject_;

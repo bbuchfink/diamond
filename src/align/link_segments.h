@@ -52,7 +52,7 @@ static const size_t MAX_LINKING_OVERLAP = 10;
 	return std::numeric_limits<double>::max();
 }*/
 
-void link_segments(const vector<Segment>::iterator &begin, const vector<Segment>::iterator &end)
+inline void link_segments(const vector<Segment>::iterator &begin, const vector<Segment>::iterator &end)
 {
 	int max_score = begin->score_;
 	/*for(typename vector<match<_val> >::iterator i=begin; i<end; ++i)
@@ -63,7 +63,7 @@ void link_segments(const vector<Segment>::iterator &begin, const vector<Segment>
 		i->top_score_ = max_score;
 }
 
-void link_segments(vector<Segment> &hsp_list)
+inline void link_segments(vector<Segment> &hsp_list)
 {
 	typedef Map<vector<Segment>::iterator,Segment::Subject> Hsp_map;
 	std::sort(hsp_list.begin(), hsp_list.end(), Segment::comp_subject);

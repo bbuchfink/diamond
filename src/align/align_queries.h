@@ -25,11 +25,39 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #include "align_read.h"
 #include "../util/task_queue.h"
 #include "align.h"
+#include "query_mapper.h"
 
 using std::vector;
 
+struct Query_queue
+{
+	tthread::mutex queue_lock, trace_pt_lock;
+	std::queue<Query_mapper*> queue;
+	Trace_pt_list::iterator trace_pt_pos, trace_pt_end;
+	Query_mapper *mapper;
+	unsigned next_out;
+};
+
+extern Query_queue query_queue;
+
+inline void align_worker(Output_stream *out)
+{
+	Statistics stat;
+	Text_buffer buffer;
+	while (true) {
+		int target = 0; // query_queue.next_target--;
+		Query_mapper *mapper = query_queue.mapper;
+		mapper->align_target(target, stat);
+		if (target == 0) {
+			mapper->generate_output(buffer, stat);
+			out->write(buffer.get_begin(), buffer.size());
+			buffer.clear();
+		}
+	}
+}
+
 template<unsigned _d>
-void align_queries(Trace_pt_list::iterator begin,
+inline void align_queries(Trace_pt_list::iterator begin,
 		Trace_pt_list::iterator end,
 		Text_buffer &buffer,
 		Statistics &st)
@@ -88,7 +116,7 @@ struct Align_context
 	Output_sink<Text_buffer> sink;
 };
 
-void align_queries(const Trace_pt_buffer &trace_pts, Output_stream* output_file)
+inline void align_queries(const Trace_pt_buffer &trace_pts, Output_stream* output_file)
 {
 	Trace_pt_list v;
 	for(unsigned bin=0;bin<trace_pts.bins();++bin) {

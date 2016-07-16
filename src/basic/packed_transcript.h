@@ -159,7 +159,7 @@ private:
 
 	vector<Packed_operation> data_;
 
-	friend struct local_match;
+	friend struct Hsp_data;
 
 };
 

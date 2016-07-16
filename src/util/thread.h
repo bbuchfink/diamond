@@ -40,6 +40,13 @@ struct Atomic
 		mtx_.unlock();
 		return r;
 	}
+	_t operator--(int)
+	{
+		mtx_.lock();
+		_t r = v_--;
+		mtx_.unlock();
+		return r;
+	}
 private:
 	volatile _t v_;
 	tthread::mutex mtx_;

@@ -164,8 +164,21 @@ struct Hsp_data
 	{
 		return align_mode.query_translated ? (frame <= 2 ? (int)frame + 1 : 2 - (int)frame) : 0;
 	}
+	bool operator<(const Hsp_data &rhs) const
+	{
+		return score > rhs.score;
+	}
+	double id_percent() const
+	{
+		return (double)identities * 100.0 / (double)length;
+	}
+	double query_cover_percent(unsigned query_source_len) const
+	{
+		return (double)query_source_range.length() * 100 / query_source_len;
+	}
 	bool pass_through(const Diagonal_segment &d) const;
 	bool is_weakly_enveloped(const Hsp_data &j) const;
+	void merge(const Hsp_data &right, const Hsp_data &left, unsigned query_anchor, unsigned subject_anchor);
 	unsigned score, frame, length, identities, mismatches, positives, gap_openings, gaps;
 	interval query_source_range, query_range, subject_range;
 	Packed_transcript transcript;

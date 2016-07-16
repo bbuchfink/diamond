@@ -64,14 +64,14 @@ inline void write_daa_record(Text_buffer &buf, const Intermediate_record &r)
 	buf << r.transcript.data();
 }
 
-inline void write_daa_record(Text_buffer &buf, const Segment &match, unsigned query_id)
+inline void write_daa_record(Text_buffer &buf, const Hsp_data &match, unsigned query_id, unsigned subject_id)
 {
-	buf.write(ref_map.get(current_ref_block, match.subject_id_));
+	buf.write(ref_map.get(current_ref_block, subject_id));
 	buf.write(get_segment_flag(match));
-	buf.write_packed(match.score_);
-	buf.write_packed(match.traceback_->oriented_range().begin_);
-	buf.write_packed(match.traceback_->subject_range.begin_);
-	buf << match.traceback_->transcript.data();
+	buf.write_packed(match.score);
+	buf.write_packed(match.oriented_range().begin_);
+	buf.write_packed(match.subject_range.begin_);
+	buf << match.transcript.data();
 }
 
 inline void finish_daa(Output_stream &f)

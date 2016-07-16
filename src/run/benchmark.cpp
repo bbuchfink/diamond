@@ -76,12 +76,15 @@ Sbjct  76  TIINGL  81	*/
 		for (unsigned i = 0; i < n; ++i) {
 
 			floating_sw(&ss[0][24],
+				hsp.subject_,
 				hsp,
 				32,
 				config.xdrop,
 				config.gap_open + config.gap_extend,
 				config.gap_extend,
 				cell_updates,
+				hsp.query_anchor_,
+				hsp.subject_anchor,
 				Score_only());
 
 		}
@@ -90,5 +93,45 @@ Sbjct  76  TIINGL  81	*/
 		cout << hsp.score << ' ' << cell_updates << endl;
 		cout << "gcups=" << (double)cell_updates / 1e9 / t.getElapsedTimeInSec() << " n/sec=" << (double)n / t.getElapsedTimeInSec() << endl;
 	}
+
+	/*Query= d1mpxa2 c.69.1.21 (A:24-404) Alpha-amino acid ester hydrolase
+	{Xanthomonas citri [TaxId: 346]}
+
+	> sp|Q9L9D7|COCE_RHOSM Cocaine esterase OS=Rhodococcus sp. (strain
+	MB1 Bresler) GN=cocE PE=1 SV=1
+	Length=574
+
+	Score = 94.0 bits (232),  Expect = 1e-019
+	Identities = 103/380 (27%), Positives = 157/380 (41%), Gaps = 51/380 (13%)
+
+	Query  20   NDYIKREVMIPMRDGVKLHTVIVLPKGAKNAPIVLTRTPYDASGRTERLA-SPHMKDLLS  78
+	            N  +   VM+PMRDGV+L   +  P      P++L R PYD   + +  A S    + L
+	Sbjct  5    NYSVASNVMVPMRDGVRLAVDLYRPDADGPVPVLLVRNPYD---KFDVFAWSTQSTNWLE  61
+
+	Query  79   AGDDVFVEGGYIRVFQDVRGKYGSEGDYVMTRPLRGPLNPSEVDHATDAWDTIDWLVKNV  138
+	                 FV  GY  V QD RG + SEG++V             VD   DA DT+ W+++
+	Sbjct  62   -----FVRDGYAVVIQDTRGLFASEGEFV-----------PHVDDEADAEDTLSWILEQ-  104
+
+	Query  139  SESNGKVGMIGSSYEGFTVVMALTNPHPALKVAVPESPMIDGWMGDDWFNYGAFRQVNFD  198
+	            +  +G VGM G SY G T   A  +    LK   P     D +    W  YG    ++ +
+	Sbjct  105  AWCDGNVGMFGVSYLGVTQWQAAVSGVGGLKAIAPSMASADLYRA-PW--YGPGGALSVE  161
+
+	Query  199  YFTGQLSKRGKGAGIARQG--HDDYSNFLQ-AGSAGDFAKAAGLEQL----------PW-  244
+	               G  +  G G   +R     +D ++F+Q A    D A AA +  L          PW
+	Sbjct  162  ALLGWSALIGTGLITSRSDARPEDAADFVQLAAILNDVAGAASVTPLAEQPLLGRLIPWV  221
+
+	Query  245  WHKLTEHAAYDAFWQEQALDKVMA--RTPLKVPTMWLQGLWDQEDMWGAIHSYAAMEPRD  302
+	              ++ +H   D  WQ  +L + +    TP  +   W  G   +     ++ ++ A+
+	Sbjct  222  IDQVVDHPDNDESWQSISLFERLGGLATPALITAGWYDGFVGE-----SLRTFVAV----  272
+
+	Query  303  KRNTLNYLVMGPWRHSQVNYDGSALGALNFEGDTARQFRHDVLRPFFDQYL-VDGAPKAD  361
+	            K N    LV+GPW HS +    +A            Q    + + FFD++L  +    A
+	Sbjct  273  KDNADARLVVGPWSHSNLT-GRNADRKFGIAATYPIQEATTMHKAFFDRHLRGETDALAG  331
+
+	Query  362  TPPVFIYNTGENHWDRLKAW  381
+	             P V ++  G + W     W
+	Sbjct  332  VPKVRLFVMGIDEWRDETDW  351
+
+	*/
 
 }

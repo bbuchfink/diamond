@@ -27,11 +27,31 @@ template<typename _t>
 struct Ptr_vector : public vector<_t*>
 {
 
+	Ptr_vector():
+		vector<_t*>()
+	{}
+	
+	Ptr_vector(typename vector<_t*>::size_type n):
+		vector<_t*>(n)
+	{}
+
 	_t& operator[](typename vector<_t*>::size_type n)
 	{ return *vector<_t*>::operator[](n); }
 
 	const _t& operator[](typename vector<_t*>::size_type n) const
 	{ return *vector<_t*>::operator[](n); }
+
+	_t*& get(typename vector<_t*>::size_type n)
+	{
+		return vector<_t*>::operator[](n);
+	}
+
+	typename vector<_t*>::iterator erase(typename vector<_t*>::iterator first, typename vector<_t*>::iterator last)
+	{
+		for (typename vector<_t*>::iterator i = first; i < last; ++i)
+			delete *i;
+		vector<_t*>::erase(first, last);
+	}
 
 	~Ptr_vector()
 	{
