@@ -38,7 +38,7 @@ struct Reduction
 	{
 		memset(map_, 0, sizeof(map_));
 		memset(map8_, 0, sizeof(map8_));
-		map_[value_traits.mask_char] = value_traits.mask_char;
+		map_[(long)value_traits.mask_char] = value_traits.mask_char;
 		const vector<string> tokens(tokenize(definition_string, " "));
 		size_ = (unsigned)tokens.size();
 		for (unsigned i = 0; i<size_; ++i)

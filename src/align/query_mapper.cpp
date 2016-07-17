@@ -28,6 +28,7 @@ Query_queue query_queue;
 
 Query_mapper::Query_mapper() :
 	source_hits(get_query_data()),
+	ready(false),
 	query_id(source_hits.first->query_ / align_mode.query_contexts),
 	source_query_len(align_mode.query_translated ? (unsigned)query_seqs::get().reverse_translated_len(query_id*align_mode.query_contexts) : (unsigned)query_seqs::get().length(query_id)),
 	seed_hits(source_hits.second - source_hits.first)
