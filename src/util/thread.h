@@ -21,8 +21,10 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 
 #include <vector>
 #include <exception>
+#include <stdexcept>
 #include "fast_mutex.h"
 #include "tinythread.h"
+#include "util.h"
 
 using tthread::thread;
 using std::vector;
