@@ -19,6 +19,7 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #ifndef ALIGN_QUERIES_H_
 #define ALIGN_QUERIES_H_
 
+#include <deque>
 #include "../util/merge_sort.h"
 #include "../search/trace_pt_buffer.h"
 #include "../util/map.h"
@@ -31,11 +32,55 @@ using std::vector;
 
 struct Query_queue
 {
-	tthread::mutex queue_lock, trace_pt_lock;
-	std::queue<Query_mapper*> queue;
+	void init(Trace_pt_list::iterator begin, Trace_pt_list::iterator end)
+	{
+		trace_pt_pos = begin;
+		trace_pt_end = end;
+		assert(queue.empty());
+		assert(out_queue.empty());
+	}
+	void flush(Output_stream *out, Statistics &stat, Query_mapper *mapper)
+	{
+		Text_buffer buffer;
+		bool next;
+		do {
+			//cout << "write " << mapper->query_id << endl;
+			mapper->generate_output(buffer, stat);
+			out->write(buffer.get_begin(), buffer.size());
+			buffer.clear();
+			delete mapper;
+
+			lock.lock();
+			out_queue.pop();
+			if (out_queue.empty() || !out_queue.front()->finished())
+				next = false;
+			else {
+				next = true;
+				mapper = out_queue.front();
+			}
+			lock.unlock();
+		} while (next);
+	}
+	Query_mapper* get()
+	{
+		for (std::deque<Query_mapper*>::iterator i = queue.begin(); i != queue.end(); ++i)
+			if ((*i)->free())
+				return *i;
+		return 0;
+	}
+	void pop_busy()
+	{
+		while (!queue.empty() && queue.front()->ready && queue.front()->next_target == queue.front()->n_targets()) {
+			//cout << "pop " << queue.front()->query_id << endl;
+			out_queue.push(queue.front());
+			queue.pop_front();
+		}
+	}
+
+	tthread::mutex lock;
+	std::deque<Query_mapper*> queue;
+	std::queue<Query_mapper*> out_queue;
 	Trace_pt_list::iterator trace_pt_pos, trace_pt_end;
-	Query_mapper *mapper;
-	unsigned next_out;
 };
 
 extern Query_queue query_queue;
@@ -43,17 +88,54 @@ extern Query_queue query_queue;
 inline void align_worker(Output_stream *out)
 {
 	Statistics stat;
-	Text_buffer buffer;
+	Query_mapper *mapper = 0;
+	
 	while (true) {
-		int target = 0; // query_queue.next_target--;
-		Query_mapper *mapper = query_queue.mapper;
-		mapper->align_target(target, stat);
-		if (target == 0) {
-			mapper->generate_output(buffer, stat);
-			out->write(buffer.get_begin(), buffer.size());
-			buffer.clear();
+		
+		query_queue.lock.lock();
+		if (mapper) {
+			++mapper->targets_finished;
+			if (mapper->finished() && !query_queue.out_queue.empty() && mapper == query_queue.out_queue.front()) {
+				query_queue.lock.unlock();
+				query_queue.flush(out, stat, mapper);
+				mapper = 0;
+				continue;
+			}
+			mapper = 0;
 		}
+		
+		if (!(mapper = query_queue.get())) {
+			if (query_queue.trace_pt_pos >= query_queue.trace_pt_end) {
+				//if (query_queue.queue.empty()) {
+					query_queue.lock.unlock();
+					//cout << "finished" << endl;
+					break;
+				//}			
+				query_queue.lock.unlock();				
+			}
+			else {
+				query_queue.queue.push_back(mapper = new Query_mapper());
+				//cout << "init " << mapper->query_id << " qlen=" << query_queue.queue.size() << endl;
+				query_queue.lock.unlock();
+				mapper->init();
+				mapper = 0;
+			}
+		}
+		else {
+			size_t target = mapper->next_target++;
+			//cout << "work " << mapper->query_id << " target=" << target << endl;
+			if (target == mapper->n_targets() - 1)
+				query_queue.pop_busy();
+			//cout << "work2 " << mapper->query_id << " target=" << target << endl;
+			query_queue.lock.unlock();
+
+			//cout << "work3 " << mapper->query_id << " target=" << target << endl;
+			mapper->align_target(target, stat);
+		}
+
 	}
+	
+	statistics += stat;
 }
 
 template<unsigned _d>
@@ -127,8 +209,17 @@ inline void align_queries(const Trace_pt_buffer &trace_pts, Output_stream* outpu
 		merge_sort(v.begin(), v.end(), config.threads_);
 		v.init();
 		timer.go("Computing alignments");
-		Align_context context (v, output_file);
-		launch_thread_pool(context, config.threads_);
+		if (config.target_parallel) {
+			query_queue.init(v.begin(), v.end());
+			Thread_pool threads;
+			for (unsigned i = 0; i < config.threads_; ++i)
+				threads.push_back(launch_thread(align_worker, output_file));
+			threads.join_all();
+		}
+		else {
+			Align_context context(v, output_file);
+			launch_thread_pool(context, config.threads_);
+		}
 	}
 }
 

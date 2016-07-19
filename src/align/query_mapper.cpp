@@ -30,6 +30,8 @@ Query_mapper::Query_mapper() :
 	source_hits(get_query_data()),
 	ready(false),
 	query_id(source_hits.first->query_ / align_mode.query_contexts),
+	targets_finished(0),
+	next_target(0),
 	source_query_len(align_mode.query_translated ? (unsigned)query_seqs::get().reverse_translated_len(query_id*align_mode.query_contexts) : (unsigned)query_seqs::get().length(query_id)),
 	seed_hits(source_hits.second - source_hits.first)
 {	
@@ -40,6 +42,7 @@ void Query_mapper::init()
 	targets.resize(count_targets());
 	load_targets();
 	rank_targets();
+	ready = true;
 }
 
 pair<Trace_pt_list::iterator, Trace_pt_list::iterator> Query_mapper::get_query_data()

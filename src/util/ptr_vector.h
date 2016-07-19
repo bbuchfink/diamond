@@ -50,7 +50,7 @@ struct Ptr_vector : public vector<_t*>
 	{
 		for (typename vector<_t*>::iterator i = first; i < last; ++i)
 			delete *i;
-		vector<_t*>::erase(first, last);
+		return vector<_t*>::erase(first, last);
 	}
 
 	~Ptr_vector()

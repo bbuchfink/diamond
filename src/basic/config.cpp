@@ -122,7 +122,8 @@ Config::Config(int argc, const char **argv)
 		("slow-search", 0, "", slow_search)
 		("seq", 0, "", seq_no)
 		("ht", 0, "", ht_mode)
-		("simple-freq", 0, "", simple_freq);
+		("simple-freq", 0, "", simple_freq)
+		("tp", 0, "", target_parallel);
 
 #ifdef EXTRA
 	("match1", po::value<string>(&program_options::match_file1))

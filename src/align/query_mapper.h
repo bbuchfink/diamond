@@ -71,6 +71,21 @@ struct Query_mapper
 	void init();
 	void align_target(size_t idx, Statistics &stat);
 	void generate_output(Text_buffer &buffer, Statistics &stat);
+	size_t n_targets() const
+	{
+		return targets.size();
+	}
+	bool finished() const
+	{
+		return targets_finished == targets.size();
+	}
+	bool free() const
+	{
+		return ready && next_target < targets.size();
+	}
+	pair<Trace_pt_list::iterator, Trace_pt_list::iterator> source_hits;
+	bool ready;
+	unsigned query_id, targets_finished, next_target;
 private:
 	static pair<Trace_pt_list::iterator, Trace_pt_list::iterator> get_query_data();
 	unsigned count_targets();
@@ -81,9 +96,7 @@ private:
 	void load_targets();
 	void rank_targets();
 
-	pair<Trace_pt_list::iterator, Trace_pt_list::iterator> source_hits;
-	bool ready;
-	unsigned query_id, source_query_len;
+	unsigned source_query_len;
 	vector<Seed_hit> seed_hits;
 	Ptr_vector<Target> targets;
 };
