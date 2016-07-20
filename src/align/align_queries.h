@@ -52,8 +52,10 @@ struct Query_queue
 
 			lock.lock();
 			out_queue.pop();
-			if (out_queue.empty() || !out_queue.front()->finished())
+			if (out_queue.empty() || !out_queue.front()->finished()) {
 				next = false;
+				writing = false;
+			}
 			else {
 				next = true;
 				mapper = out_queue.front();
@@ -81,6 +83,7 @@ struct Query_queue
 	std::deque<Query_mapper*> queue;
 	std::queue<Query_mapper*> out_queue;
 	Trace_pt_list::iterator trace_pt_pos, trace_pt_end;
+	bool writing;
 };
 
 extern Query_queue query_queue;
@@ -95,7 +98,8 @@ inline void align_worker(Output_stream *out)
 		query_queue.lock.lock();
 		if (mapper) {
 			++mapper->targets_finished;
-			if (mapper->finished() && !query_queue.out_queue.empty() && mapper == query_queue.out_queue.front()) {
+			if (mapper->finished() && !query_queue.writing && !query_queue.out_queue.empty() && mapper == query_queue.out_queue.front()) {
+				query_queue.writing = true;
 				query_queue.lock.unlock();
 				query_queue.flush(out, stat, mapper);
 				mapper = 0;
