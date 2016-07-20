@@ -92,12 +92,13 @@ inline void align_worker(Output_stream *out)
 {
 	Statistics stat;
 	Query_mapper *mapper = 0;
+	unsigned n_targets = 0;
 	
 	while (true) {
 		
 		query_queue.lock.lock();
 		if (mapper) {
-			++mapper->targets_finished;
+			mapper->targets_finished += n_targets;
 			if (mapper->finished() && !query_queue.writing && !query_queue.out_queue.empty() && mapper == query_queue.out_queue.front()) {
 				query_queue.writing = true;
 				query_queue.lock.unlock();
@@ -126,15 +127,18 @@ inline void align_worker(Output_stream *out)
 			}
 		}
 		else {
-			size_t target = mapper->next_target++;
+			size_t target = mapper->next_target;
+			n_targets = std::min(config.target_fetch_size, (unsigned)mapper->n_targets() - mapper->next_target);
+			mapper->next_target += n_targets;
 			//cout << "work " << mapper->query_id << " target=" << target << endl;
-			if (target == mapper->n_targets() - 1)
+			if (target + n_targets == mapper->n_targets())
 				query_queue.pop_busy();
 			//cout << "work2 " << mapper->query_id << " target=" << target << endl;
 			query_queue.lock.unlock();
 
 			//cout << "work3 " << mapper->query_id << " target=" << target << endl;
-			mapper->align_target(target, stat);
+			for (unsigned i = 0; i < n_targets; ++i)
+				mapper->align_target(target + i, stat);
 		}
 
 	}

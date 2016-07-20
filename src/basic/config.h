@@ -96,6 +96,7 @@ struct Config
 	bool simple_freq;
 	double freq_sd;
 	bool target_parallel;
+	unsigned target_fetch_size;
 
 	enum { makedb = 0, blastp = 1, blastx = 2, view = 3, help = 4, version = 5, getseq = 6, benchmark = 7, random_seqs = 8 };
 	unsigned	command;
