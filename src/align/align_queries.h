@@ -30,6 +30,21 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 
 using std::vector;
 
+struct Query_data
+{
+	Query_data():
+		mapper(0)
+	{}
+	Query_data(Query_mapper *mapper):
+		mapper(mapper),
+		state(init)
+	{}
+	Query_mapper *mapper;
+	Text_buffer buf;
+	enum { init, free, closing, finished };
+	unsigned state;
+};
+
 struct Query_queue
 {
 	void init(Trace_pt_list::iterator begin, Trace_pt_list::iterator end)
@@ -39,40 +54,38 @@ struct Query_queue
 		assert(queue.empty());
 		assert(out_queue.empty());
 	}
-	void flush(Output_stream *out, Statistics &stat, Query_mapper *mapper)
+	void flush(Output_stream *out, Statistics &stat, Query_data *data)
 	{
-		Text_buffer buffer;
 		bool next;
 		do {
 			//cout << "write " << mapper->query_id << endl;
-			mapper->generate_output(buffer, stat);
-			out->write(buffer.get_begin(), buffer.size());
-			buffer.clear();
-			delete mapper;
+			//mapper->generate_output(buffer, stat);
+			out->write(data->buf.get_begin(), data->buf.size());
+			delete data;
 
 			lock.lock();
 			out_queue.pop();
-			if (out_queue.empty() || !out_queue.front()->finished()) {
+			if (out_queue.empty() || !(out_queue.front()->state == Query_data::finished)) {
 				next = false;
 				writing = false;
 			}
 			else {
 				next = true;
-				mapper = out_queue.front();
+				data = out_queue.front();
 			}
 			lock.unlock();
 		} while (next);
 	}
-	Query_mapper* get()
+	Query_data* get()
 	{
-		for (std::deque<Query_mapper*>::iterator i = queue.begin(); i != queue.end(); ++i)
-			if ((*i)->free())
+		for (std::deque<Query_data*>::iterator i = queue.begin(); i != queue.end(); ++i)
+			if ((*i)->state == Query_data::free)
 				return *i;
 		return 0;
 	}
 	void pop_busy()
 	{
-		while (!queue.empty() && queue.front()->ready && queue.front()->next_target == queue.front()->n_targets()) {
+		while (!queue.empty() && (queue.front()->state == Query_data::closing || queue.front()->state == Query_data::finished)) {
 			//cout << "pop " << queue.front()->query_id << endl;
 			out_queue.push(queue.front());
 			queue.pop_front();
@@ -80,8 +93,8 @@ struct Query_queue
 	}
 
 	tthread::mutex lock;
-	std::deque<Query_mapper*> queue;
-	std::queue<Query_mapper*> out_queue;
+	std::deque<Query_data*> queue;
+	std::queue<Query_data*> out_queue;
 	Trace_pt_list::iterator trace_pt_pos, trace_pt_end;
 	bool writing;
 };
@@ -91,25 +104,32 @@ extern Query_queue query_queue;
 inline void align_worker(Output_stream *out)
 {
 	Statistics stat;
-	Query_mapper *mapper = 0;
+	Query_data *data = 0;
 	unsigned n_targets = 0;
 	
 	while (true) {
 		
 		query_queue.lock.lock();
-		if (mapper) {
-			mapper->targets_finished += n_targets;
-			if (mapper->finished() && !query_queue.writing && !query_queue.out_queue.empty() && mapper == query_queue.out_queue.front()) {
-				query_queue.writing = true;
+
+		if (data) {
+			data->mapper->targets_finished += n_targets;			
+			if (data->mapper->finished()) {
 				query_queue.lock.unlock();
-				query_queue.flush(out, stat, mapper);
-				mapper = 0;
-				continue;
+				data->mapper->generate_output(data->buf, stat);
+				delete data->mapper;
+				query_queue.lock.lock();
+				data->state = Query_data::finished;
+				if (!query_queue.writing && !query_queue.out_queue.empty() && data == query_queue.out_queue.front()) {
+					query_queue.writing = true;
+					query_queue.lock.unlock();
+					query_queue.flush(out, stat, data);
+					data = 0;
+					continue;
+				}
 			}
-			mapper = 0;
 		}
 		
-		if (!(mapper = query_queue.get())) {
+		if (!(data = query_queue.get())) {
 			if (query_queue.trace_pt_pos >= query_queue.trace_pt_end) {
 				//if (query_queue.queue.empty()) {
 					query_queue.lock.unlock();
@@ -119,26 +139,30 @@ inline void align_worker(Output_stream *out)
 				query_queue.lock.unlock();				
 			}
 			else {
-				query_queue.queue.push_back(mapper = new Query_mapper());
+				query_queue.queue.push_back(new Query_data(new Query_mapper()));
+				data = query_queue.queue.back();
 				//cout << "init " << mapper->query_id << " qlen=" << query_queue.queue.size() << endl;
 				query_queue.lock.unlock();
-				mapper->init();
-				mapper = 0;
+				data->mapper->init();
+				data->state = Query_data::free;
+				data = 0;
 			}
 		}
 		else {
-			size_t target = mapper->next_target;
-			n_targets = std::min(config.target_fetch_size, (unsigned)mapper->n_targets() - mapper->next_target);
-			mapper->next_target += n_targets;
+			size_t target = data->mapper->next_target;
+			n_targets = std::min(config.target_fetch_size, (unsigned)data->mapper->n_targets() - data->mapper->next_target);
+			data->mapper->next_target += n_targets;
 			//cout << "work " << mapper->query_id << " target=" << target << endl;
-			if (target + n_targets == mapper->n_targets())
+			if (target + n_targets == data->mapper->n_targets()) {
+				data->state = Query_data::closing;
 				query_queue.pop_busy();
+			}
 			//cout << "work2 " << mapper->query_id << " target=" << target << endl;
 			query_queue.lock.unlock();
 
 			//cout << "work3 " << mapper->query_id << " target=" << target << endl;
 			for (unsigned i = 0; i < n_targets; ++i)
-				mapper->align_target(target + i, stat);
+				data->mapper->align_target(target + i, stat);
 		}
 
 	}

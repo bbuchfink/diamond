@@ -79,12 +79,7 @@ struct Query_mapper
 	{
 		return targets_finished == targets.size();
 	}
-	bool free() const
-	{
-		return ready && next_target < targets.size();
-	}
 	pair<Trace_pt_list::iterator, Trace_pt_list::iterator> source_hits;
-	bool ready;
 	unsigned query_id, targets_finished, next_target;
 private:
 	static pair<Trace_pt_list::iterator, Trace_pt_list::iterator> get_query_data();
