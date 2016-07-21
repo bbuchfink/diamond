@@ -53,28 +53,37 @@ struct Query_queue
 		trace_pt_end = end;
 		assert(queue.empty());
 		assert(out_queue.empty());
+		n = 0;
 	}
-	void flush(Output_stream *out, Statistics &stat, Query_data *data)
+	void flush(Output_stream *out, Statistics &stat)
 	{
-		bool next;
-		do {
-			//cout << "write " << mapper->query_id << endl;
-			//mapper->generate_output(buffer, stat);
-			out->write(data->buf.get_begin(), data->buf.size());
-			delete data;
-
-			lock.lock();
-			out_queue.pop();
-			if (out_queue.empty() || !(out_queue.front()->state == Query_data::finished)) {
-				next = false;
-				writing = false;
+		writing = true;
+		std::queue<Query_data*> q;
+		while(true) {
+			while (!out_queue.empty() && out_queue.front()->state == Query_data::finished) {
+				q.push(out_queue.front());
+				out_queue.pop();
 			}
-			else {
-				next = true;
-				data = out_queue.front();
+			if (q.empty()) {
+				writing = false;
+				lock.unlock();
+				return;
 			}
 			lock.unlock();
-		} while (next);
+
+			unsigned k = 0;
+			while (!q.empty()) {
+				out->write(q.front()->buf.get_begin(), q.front()->buf.size());
+				delete q.front();
+				q.pop();
+				++k;
+			}
+
+			lock.lock();
+			n -= k;
+			if (n > 100)
+				cout << "qlen=" << out_queue.size() << " finished=" << n << endl;
+		}
 	}
 	Query_data* get()
 	{
@@ -97,6 +106,7 @@ struct Query_queue
 	std::queue<Query_data*> out_queue;
 	Trace_pt_list::iterator trace_pt_pos, trace_pt_end;
 	bool writing;
+	unsigned n;
 };
 
 extern Query_queue query_queue;
@@ -119,10 +129,9 @@ inline void align_worker(Output_stream *out)
 				delete data->mapper;
 				query_queue.lock.lock();
 				data->state = Query_data::finished;
+				++query_queue.n;
 				if (!query_queue.writing && !query_queue.out_queue.empty() && data == query_queue.out_queue.front()) {
-					query_queue.writing = true;
-					query_queue.lock.unlock();
-					query_queue.flush(out, stat, data);
+					query_queue.flush(out, stat);
 					data = 0;
 					continue;
 				}
