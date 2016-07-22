@@ -161,15 +161,12 @@ inline void align_worker(Output_stream *out)
 			size_t target = data->mapper->next_target;
 			n_targets = std::min(config.target_fetch_size, (unsigned)data->mapper->n_targets() - data->mapper->next_target);
 			data->mapper->next_target += n_targets;
-			//cout << "work " << mapper->query_id << " target=" << target << endl;
 			if (target + n_targets == data->mapper->n_targets()) {
 				data->state = Query_data::closing;
 				query_queue.pop_busy();
 			}
-			//cout << "work2 " << mapper->query_id << " target=" << target << endl;
 			query_queue.lock.unlock();
 
-			//cout << "work3 " << mapper->query_id << " target=" << target << endl;
 			for (unsigned i = 0; i < n_targets; ++i)
 				data->mapper->align_target(target + i, stat);
 		}

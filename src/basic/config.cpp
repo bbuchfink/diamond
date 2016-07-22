@@ -109,7 +109,7 @@ Config::Config(int argc, const char **argv)
 		("single-domain", 0, "Discard secondary domains within one target sequence", single_domain)
 		("dbsize", 0, "effective database size (in letters)", db_size)
 		("no-auto-append", 0, "disable auto appending of DAA and DMND file extensions", no_auto_append)
-		("target-fetch-size", 0, "", target_fetch_size, 1u);
+		("target-fetch-size", 0, "", target_fetch_size, 4u);
 	
 	Options_group view_options("View options");
 	view_options.add()
