@@ -42,9 +42,9 @@ void Query_mapper::align_target(size_t idx, Statistics &stat)
 {
 	Target& target = targets[idx];
 	std::sort(seed_hits.begin() + target.begin, seed_hits.begin() + target.end);
-	const size_t n = target.end - target.begin,
-		max_len = query_seq(0).length() + 100 * query_seqs::get().avg_len();
-	size_t aligned_len = 0;
+	const size_t n = target.end - target.begin;
+		//max_len = query_seq(0).length() + 100 * query_seqs::get().avg_len();
+	//size_t aligned_len = 0;
 	const vector<Seed_hit>::const_iterator hits = seed_hits.begin() + target.begin;
 
 	for (size_t i = 0; i < n; ++i) {
@@ -64,9 +64,9 @@ void Query_mapper::align_target(size_t idx, Statistics &stat)
 				hits[i].subject_pos_,
 				Traceback());
 			stat.inc(Statistics::OUT_HITS);
-			aligned_len += target.hsps.back().length;
+			/*aligned_len += target.hsps.back().length;
 			if (aligned_len > max_len)
-				break;
+				break;*/
 		}
 		else
 			stat.inc(Statistics::DUPLICATES);

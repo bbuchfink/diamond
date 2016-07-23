@@ -1,3 +1,6 @@
+[0.8.16]
+- optimized performance
+
 [0.8.15]
 - fixed a compiler error on Mac
 - fixed a crash on some systems

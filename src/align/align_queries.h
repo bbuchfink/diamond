@@ -81,8 +81,8 @@ struct Query_queue
 
 			lock.lock();
 			n -= k;
-			if (n > 100)
-				cout << "qlen=" << out_queue.size() << " finished=" << n << endl;
+			/*if (n > 100)
+				cout << "qlen=" << out_queue.size() << " finished=" << n << endl;*/
 		}
 	}
 	Query_data* get()
@@ -95,7 +95,6 @@ struct Query_queue
 	void pop_busy()
 	{
 		while (!queue.empty() && (queue.front()->state == Query_data::closing || queue.front()->state == Query_data::finished)) {
-			//cout << "pop " << queue.front()->query_id << endl;
 			out_queue.push(queue.front());
 			queue.pop_front();
 		}
@@ -140,17 +139,12 @@ inline void align_worker(Output_stream *out)
 		
 		if (!(data = query_queue.get())) {
 			if (query_queue.trace_pt_pos >= query_queue.trace_pt_end) {
-				//if (query_queue.queue.empty()) {
-					query_queue.lock.unlock();
-					//cout << "finished" << endl;
-					break;
-				//}			
-				query_queue.lock.unlock();				
+				query_queue.lock.unlock();
+				break;
 			}
 			else {
 				query_queue.queue.push_back(new Query_data(new Query_mapper()));
 				data = query_queue.queue.back();
-				//cout << "init " << mapper->query_id << " qlen=" << query_queue.queue.size() << endl;
 				query_queue.lock.unlock();
 				data->mapper->init();
 				data->state = Query_data::free;
@@ -247,7 +241,7 @@ inline void align_queries(const Trace_pt_buffer &trace_pts, Output_stream* outpu
 		merge_sort(v.begin(), v.end(), config.threads_);
 		v.init();
 		timer.go("Computing alignments");
-		if (config.target_parallel) {
+		if (!config.query_parallel) {
 			query_queue.init(v.begin(), v.end());
 			Thread_pool threads;
 			for (unsigned i = 0; i < config.threads_; ++i)

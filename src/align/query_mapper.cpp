@@ -88,9 +88,7 @@ void Query_mapper::load_targets()
 		if (seed_hits[i].subject_ != subject_id) {
 			if (n > 0)
 				targets[n - 1].end = i;
-			targets.get(n) = new Target;
-			targets[n].begin = i;
-			targets[n].subject_id = seed_hits[i].subject_;
+			targets.get(n) = new Target(i, seed_hits[i].subject_);
 			++n;
 			subject_id = seed_hits[i].subject_;
 		}

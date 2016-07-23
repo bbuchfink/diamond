@@ -56,6 +56,11 @@ struct Seed_hit
 
 struct Target
 {
+	Target(size_t begin, unsigned subject_id) :
+		subject_id(subject_id),
+		filter_score(0),
+		begin(begin)
+	{}		
 	static bool compare(Target* lhs, Target *rhs)
 	{
 		return lhs->filter_score > rhs->filter_score;

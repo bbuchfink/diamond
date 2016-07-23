@@ -124,7 +124,7 @@ Config::Config(int argc, const char **argv)
 		("seq", 0, "", seq_no)
 		("ht", 0, "", ht_mode)
 		("simple-freq", 0, "", simple_freq)
-		("tp", 0, "", target_parallel);
+		("qp", 0, "", query_parallel);
 
 #ifdef EXTRA
 	("match1", po::value<string>(&program_options::match_file1))
