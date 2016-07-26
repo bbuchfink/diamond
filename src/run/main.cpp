@@ -24,6 +24,7 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #include "../run/master_thread.h"
 #include "../output/view.h"
 #include "tools.h"
+#include "../extra/compare.h"
 
 #ifdef EXTRA
 #include "../../extra/test_sw.h"
@@ -76,6 +77,9 @@ int main(int ac, const char* av[])
 			break;
 		case Config::random_seqs:
 			random_seqs();
+			break;
+		case Config::compare:
+			compare();
 			break;
 		#ifdef EXTRA
         else if (command == "stat" && vm.count("match1"))

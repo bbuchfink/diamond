@@ -43,7 +43,8 @@ Config::Config(int argc, const char **argv)
 		.add_command("version", "Display version information")
 		.add_command("getseq", "")
 		.add_command("benchmark", "")
-		.add_command("random-seqs", "");
+		.add_command("random-seqs", "")
+		.add_command("compare", "");
 
 	Options_group general ("General options");
 	general.add()
@@ -124,7 +125,9 @@ Config::Config(int argc, const char **argv)
 		("seq", 0, "", seq_no)
 		("ht", 0, "", ht_mode)
 		("simple-freq", 0, "", simple_freq)
-		("qp", 0, "", query_parallel);
+		("qp", 0, "", query_parallel)
+		("match1", 0, "", match_file1)
+		("match2", 0, "", match_file2);
 
 #ifdef EXTRA
 	("match1", po::value<string>(&program_options::match_file1))
