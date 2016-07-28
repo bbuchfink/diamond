@@ -56,6 +56,7 @@ inline unsigned popcount32(unsigned x)
 {
 #ifdef _MSC_VER
 	return __popcnt(x);
+	//return (unsigned)popcount_3(x);
 #else
 	return __builtin_popcount(x);
 #endif

@@ -129,12 +129,6 @@ Config::Config(int argc, const char **argv)
 		("match1", 0, "", match_file1)
 		("match2", 0, "", match_file2);
 
-#ifdef EXTRA
-	("match1", po::value<string>(&program_options::match_file1))
-		("match2", po::value<string>(&program_options::match_file2))
-		("tab", "tabular format")
-#endif
-
 	parser.add(general).add(makedb).add(aligner).add(advanced).add(view_options).add(hidden_options);
 	parser.store(argc, argv, command);
 

@@ -1,6 +1,5 @@
 /****
-Copyright (c) 2015, University of Tuebingen
-Author: Benjamin Buchfink
+Copyright (c) 2015-2016, University of Tuebingen, Benjamin Buchfink
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
@@ -41,7 +40,7 @@ void build_histogram(typename vector<_t>::const_iterator begin, typename vector<
 template<typename _t, typename _int_t, unsigned _radix=8>
 void scatter(typename vector<_t>::const_iterator begin, typename vector<_t>::const_iterator end, typename vector<typename vector<_t>::iterator>::iterator dst, unsigned shift)
 {
-	for(typename vector<_t>::const_iterator i=begin;i<end;++i)
+	for (typename vector<_t>::const_iterator i = begin; i < end; ++i)
 		*(dst[get_radix(*i, shift)]++) = *i;
 }
 
@@ -49,7 +48,7 @@ template<typename _t, typename _int_t, unsigned _radix=8>
 void radix_sort(typename vector<_t>::iterator begin, typename vector<_t>::iterator end, unsigned n_threads)
 {
 	typedef unsigned Histogram[1<<_radix];
-	const size_t n = end-begin;
+	const size_t n = end - begin;
 	if(n == 0)
 		return;
 	vector<_t> buf (n);
@@ -58,11 +57,11 @@ void radix_sort(typename vector<_t>::iterator begin, typename vector<_t>::iterat
 
 	typename vector<_t>::iterator *src = &begin, *dst = &buf_begin;
 
-	for(unsigned shift=0; shift<sizeof(_int_t)*8/_radix; shift+=_radix) {
+	for (unsigned shift = 0; shift < sizeof(_int_t) * 8 / _radix; shift += _radix) {
 		vector<Histogram> hst (p.parts);
 		vector<thread*> threads;
-		for(unsigned i=0;i<p.parts;++i)
-			threads.push_back(launch_thread(build_histogram, *src+p.getMin(i), *src+p.getMax(i), hst[i], shift));
+		for (unsigned i = 0; i < p.parts; ++i)
+			threads.push_back(launch_thread(build_histogram, *src + p.getMin(i), *src + p.getMax(i), hst[i], shift));
 		for(unsigned i=0;i<p.parts;++i) {
 			threads[i]->join();
 			delete threads[i];
