@@ -50,6 +50,10 @@ struct seedp_range
 	{ return i < begin_; }
 	bool lower_or_equal(unsigned i) const
 	{ return i < end_; }
+	unsigned size() const
+	{
+		return end_ - begin_;
+	}
 private:
 	unsigned begin_, end_;
 };

@@ -25,7 +25,6 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #include "../data/queries.h"
 #include "../basic/statistics.h"
 #include "../basic/shape_config.h"
-#include "../output/join_blocks.h"
 #include "../align/align_queries.h"
 #include "../search/align_range.h"
 #include "../util/seq_file_format.h"

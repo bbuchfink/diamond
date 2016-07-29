@@ -41,6 +41,8 @@ private:
 
 	struct Build_context;
 
+	static void compute_sd(Atomic<unsigned> *seedp, const sorted_list *ref_idx, vector<Sd> *out);
+
 	PHash_set tables_[Const::max_shapes][Const::seedp];
 
 };

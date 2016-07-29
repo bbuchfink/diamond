@@ -84,3 +84,18 @@ string Temp_file::get_temp_dir()
 	f.close_and_delete();
 	return extract_dir(f.file_name);
 }
+
+Sd::Sd(const vector<Sd> &groups):
+	k(0),
+	A(0),
+	Q(0)
+{
+	for (unsigned i = 0; i < groups.size(); ++i) {
+		k += groups[i].k;
+		A += groups[i].A * groups[i].k;
+		Q += groups[i].Q;
+	}
+	A /= k;
+	for (unsigned i = 0; i < groups.size(); ++i)
+		Q += (groups[i].A - A)*(groups[i].A - A)*groups[i].k;
+}

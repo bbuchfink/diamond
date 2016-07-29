@@ -381,6 +381,7 @@ struct Sd
 		Q(0),
 		k(1)
 	{}
+	Sd(const vector<Sd> &groups);
 	void add(double x)
 	{
 		const double d = x - A;
