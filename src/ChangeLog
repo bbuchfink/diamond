@@ -1,3 +1,8 @@
+[0.8.17]
+- slightly improved sensitivity of fast and sensitive mode
+- added new alignment mode (option --more-sensitive)
+- the scoring matrix parameter will accept upper case spelling
+
 [0.8.16]
 - optimized performance
 

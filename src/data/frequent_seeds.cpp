@@ -25,58 +25,35 @@ Frequent_seeds frequent_seeds;
 
 struct Frequent_seeds::Build_context
 {
-	Build_context(const sorted_list &ref_idx, const sorted_list &query_idx, unsigned sid, vector<unsigned> &counts) :
+	Build_context(const sorted_list &ref_idx, const sorted_list &query_idx, const seedp_range &range, unsigned sid, vector<unsigned> &counts) :
 		ref_idx(ref_idx),
 		query_idx(query_idx),
+		range(range),
 		sid(sid),
 		counts(counts)
 	{ }
 	void operator()(unsigned thread_id, unsigned seedp)
 	{
-		Sd ref_sd, query_sd, mult_sd;
-		/*Merge_iterator<sorted_list::const_iterator> it(ref_idx.get_partition_cbegin(seedp), query_idx.get_partition_cbegin(seedp));
-		while(it.next()) {
-			ref_sd.add((double)it.i.n);
-			query_sd.add((double)it.j.n);
-			mult_sd.add((double)it.i.n*(double)it.j.n);
-			++it;
-		}*/
-
+		if (!range.contains(seedp))
+			return;
+		Sd ref_sd;
 		sorted_list::const_iterator it = ref_idx.get_partition_cbegin(seedp);
 		while (!it.at_end()) {
 			ref_sd.add((double)it.n);
 			++it;
 		}
 
-		const unsigned max_n = (unsigned)(ref_sd.mean() + config.freq_sd*ref_sd.sd());
-		//cout << "mean=" << A << " sd=" << sd << endl;
-
-		/*size_t n = 0;
-		vector<uint32_t> buf;
-		sorted_list::iterator j = ref_idx.get_partition_begin(seedp);
-		while (!j.at_end()) {
-			if (j.n > max_n) {
-				j.get(0)->value = 0;
-				n += (unsigned)j.n;
-				buf.push_back(j.key());
-			}
-			++j;
-		}*/
-
-		//const size_t max_n = (unsigned)(mult_sd.mean() + config.freq_sd*mult_sd.sd());
+		const unsigned max_n = (unsigned)(ref_sd.mean() + config.freq_sd*ref_sd.sd());		
 		vector<uint32_t> buf;
 		size_t n = 0;
-		{
-			Merge_iterator<sorted_list::iterator> it(ref_idx.get_partition_begin(seedp), query_idx.get_partition_begin(seedp));
-			while (it.next()) {
-				//if ((size_t)it.i.n * (size_t)it.j.n > max_n) {
-				if (it.i.n > max_n) {
-					it.i.get(0)->value = 0;
-					n += (unsigned)it.i.n;
-					buf.push_back(it.i.key());
-				}
-				++it;
+		Merge_iterator<sorted_list::iterator> merge_it(ref_idx.get_partition_begin(seedp), query_idx.get_partition_begin(seedp));
+		while (merge_it.next()) {
+			if (merge_it.i.n > max_n) {
+				merge_it.i.get(0)->value = 0;
+				n += (unsigned)merge_it.i.n;
+				buf.push_back(merge_it.i.key());
 			}
+			++merge_it;
 		}
 
 		const size_t ht_size = std::max((size_t)(buf.size() * hash_table_factor), buf.size() + 1);
@@ -90,6 +67,7 @@ struct Frequent_seeds::Build_context
 	}
 	const sorted_list &ref_idx;
 	const sorted_list &query_idx;
+	const seedp_range range;
 	const unsigned sid;
 	vector<unsigned> &counts;
 };
@@ -97,7 +75,7 @@ struct Frequent_seeds::Build_context
 void Frequent_seeds::build(unsigned sid, const seedp_range &range, sorted_list &ref_idx, const sorted_list &query_idx)
 {
 	vector<unsigned> counts(Const::seedp);
-	Build_context build_context(ref_idx, query_idx, sid, counts);
+	Build_context build_context(ref_idx, query_idx, range, sid, counts);
 	launch_scheduled_thread_pool(build_context, Const::seedp, config.threads_);
 	log_stream << "Masked positions = " << std::accumulate(counts.begin(), counts.end(), 0) << std::endl;
 }

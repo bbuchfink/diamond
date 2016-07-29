@@ -119,7 +119,7 @@ struct View_context
 void view()
 {
 	DAA_file daa (config.daa_file);
-	score_matrix = Score_matrix(daa.score_matrix(),
+	score_matrix = Score_matrix(to_upper_case(daa.score_matrix()),
 		daa.gap_open_penalty(),
 		daa.gap_extension_penalty(),
 		daa.match_reward(),

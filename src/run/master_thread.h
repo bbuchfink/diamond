@@ -93,7 +93,7 @@ void process_shape(unsigned sid,
 			query_hst.partition());
 
 		timer.go("Building seed filter");
-		if (config.simple_freq)
+		if (!config.old_freq)
 			frequent_seeds.build(sid, range, ref_idx, query_idx);
 		else
 			ref_seqs::get_nc().build_masking(sid, range, ref_idx);

@@ -59,7 +59,7 @@ inline bool is_low_freq(const Letter *subject, unsigned sid)
 
 inline bool is_high_frequency(const Letter *subject, unsigned sid, bool previous_shape)
 {
-	if (config.simple_freq)
+	if (!config.old_freq)
 		return frequent_seeds.get(subject, sid);
 	else
 		return get_critical(*subject) && (!need_lookup(sid, previous_shape) || ref_seqs::get().get_masking(subject, sid));
@@ -87,47 +87,6 @@ inline bool previous_shape_collision(uint64_t mask, uint64_t shape_mask, const L
 	return is_low_freq(subject, sid)
 		&& !is_high_frequency(subject, sid, true);
 }
-
-/*template<typename _val, typename _pos>
-bool is_primary_hit2(const _val *query,
-					const _val *subject,
-					const unsigned seed_offset,
-					const unsigned sid,
-					const unsigned len,
-					Statistics &stat)
-{
-	assert(len > 0 && len <= config.window*2);
-	unsigned mask (0);
-	const bool chunked (config.lowmem > 1);
-	unsigned i = len;
-
-	do {
-		--i;
-		mask <<= 1;
-		mask |= letter_match(query[i], subject[i]);
-		for(unsigned j=0;j<sid;++j)
-			if(previous_shape_collision<_val,_pos>(mask, shape_config::instance.get_shape(j).mask_, &subject[i], j, stat))
-				return false;
-		if(chunked && i > seed_offset && shape_collision_right<_val,_pos>(mask, shape_config::instance.get_shape(sid).mask_, &subject[i], sid, stat))
-			return false;
-	} while (i > seed_offset);
-
-	if(i == 0)
-		return true;
-
-	do {
-		--i;
-		mask <<= 1;
-		mask |= letter_match(query[i], subject[i]);
-		for(unsigned j=0;j<sid;++j)
-			if(previous_shape_collision<_val,_pos>(mask, shape_config::instance.get_shape(j).mask_, &subject[i], j, stat))
-				return false;
-		if(shape_collision_left<_val,_pos>(mask, shape_config::instance.get_shape(sid).mask_, &subject[i], sid, chunked, stat))
-			return false;
-	} while (i > 0);
-
-	return true;
-}*/
 
 inline bool is_primary_hit(const Letter *query,
 					const Letter *subject,

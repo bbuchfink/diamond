@@ -38,6 +38,7 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #include <string.h>
 #include <sys/stat.h>
 #include <math.h>
+#include <ctype.h>
 #include "../basic/const.h"
 #include "../basic/seed.h"
 #include "../basic/value.h"
@@ -398,5 +399,21 @@ struct Sd
 private:
 	double A, Q, k;	
 };
+
+inline string to_upper_case(const string &s)
+{
+	string r;
+	for (string::const_iterator i = s.begin(); i != s.end(); ++i)
+		r.push_back(toupper(*i));
+	return r;
+}
+
+inline string to_lower_case(const string &s)
+{
+	string r;
+	for (string::const_iterator i = s.begin(); i != s.end(); ++i)
+		r.push_back(tolower(*i));
+	return r;
+}
 
 #endif /* UTIL_H_ */

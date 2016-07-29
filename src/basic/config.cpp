@@ -75,6 +75,7 @@ Config::Config(int argc, const char **argv)
 		("id", 0, "minimum identity% to report an alignment", min_id)
 		("query-cover", 0, "minimum query cover% to report an alignment", query_cover)
 		("sensitive", 0, "enable sensitive mode (default: fast)", mode_sensitive)
+		("more-sensitive", 0, "enable more sensitive mode (default: fast)", mode_more_sensitive)
 		("block-size", 'b', "sequence block size in billions of letters (default=2.0)", chunk_size, 2.0)
 		("index-chunks",'c', "number of chunks for index processing", lowmem, 4u)
 		("tmpdir",'t', "directory for temporary files", tmpdir)
@@ -89,11 +90,9 @@ Config::Config(int argc, const char **argv)
 		("salltitles", 0, "print full subject titles in output files", salltitles);
 
 	Options_group advanced("Advanced options");
-	advanced.add()
-		("seed-freq", 0, "maximum seed frequency", max_seed_freq, -15.0)
+	advanced.add()		
 		("run-len", 'l', "mask runs between stop codons shorter than this length", run_len)
-		("max-hits", 'C', "maximum number of hits to consider for one seed", hit_cap)
-		("freq-sd", 0, "number of standard deviations for ignoring frequent seeds", freq_sd, 25.0)
+		("freq-sd", 0, "number of standard deviations for ignoring frequent seeds", freq_sd, 0.0)
 		("id2", 0, "minimum number of identities for stage 1 hit", min_identities)
 		("window", 'w', "window size for local hit search", window)
 		("xdrop", 'x', "xdrop for ungapped alignment", xdrop, 20)
@@ -124,10 +123,12 @@ Config::Config(int argc, const char **argv)
 		("slow-search", 0, "", slow_search)
 		("seq", 0, "", seq_no)
 		("ht", 0, "", ht_mode)
-		("simple-freq", 0, "", simple_freq)
+		("old-freq", 0, "", old_freq)
 		("qp", 0, "", query_parallel)
 		("match1", 0, "", match_file1)
-		("match2", 0, "", match_file2);
+		("match2", 0, "", match_file2)
+		("max-hits", 'C', "maximum number of hits to consider for one seed", hit_cap)
+		("seed-freq", 0, "maximum seed frequency", max_seed_freq, -15.0);
 
 	parser.add(general).add(makedb).add(aligner).add(advanced).add(view_options).add(hidden_options);
 	parser.store(argc, argv, command);
@@ -168,6 +169,9 @@ Config::Config(int argc, const char **argv)
 		;
 	}
 
+	if (hit_cap != 0)
+		throw std::runtime_error("Deprecated parameter: --max-hits/-C.");
+
 	if (debug_log)
 		verbosity = 3;
 	else if (quiet)
@@ -190,14 +194,6 @@ Config::Config(int argc, const char **argv)
 		verbose_stream = Message_stream();
 	default:
 		;
-	}
-	
-	if (mode_sensitive) {
-		set_option(index_mode, 1u);
-		//lowmem = std::max(lowmem, 4u);
-	}
-	else {
-		set_option(index_mode, 0u);
 	}
 
 	if (!no_auto_append) {
@@ -232,7 +228,7 @@ Config::Config(int argc, const char **argv)
 			gap_open = 11;
 		if (gap_extend == -1)
 			gap_extend = 1;
-		score_matrix = Score_matrix(matrix, gap_open, gap_extend, reward, penalty);
+		score_matrix = Score_matrix(to_upper_case(matrix), gap_open, gap_extend, reward, penalty);
 		message_stream << "Scoring parameters: " << score_matrix << endl;
 		if (seg == "" && command == blastx)
 			seg = "yes";
@@ -241,8 +237,24 @@ Config::Config(int argc, const char **argv)
 		if (have_ssse3)
 			verbose_stream << "SSSE3 enabled." << endl;
 		verbose_stream << "Reduction: " << Reduction::reduction << endl;
+
+		if (mode_more_sensitive) {
+			set_option(index_mode, 1u);
+			set_option(freq_sd, 200.0);
+		}
+		else if (mode_sensitive) {
+			set_option(index_mode, 1u);
+			set_option(freq_sd, 10.0);
+		}
+		else {
+			set_option(index_mode, 0u);
+			set_option(freq_sd, 50.0);
+		}
+
+		verbose_stream << "Seed frequency SD: " << freq_sd << endl;
 		::shapes = shape_config(index_mode, shapes);
 		verbose_stream << "Shape configuration: " << ::shapes << endl;
+
 		message_stream << "#Target sequences to report alignments for: ";
 		if (max_alignments == 0) {
 			max_alignments = std::numeric_limits<uint64_t>::max();

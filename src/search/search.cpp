@@ -137,7 +137,7 @@ void load_fps(const sorted_list::const_iterator &i, vector<Finger_print> &v, con
 {
 	v.clear();
 	v.reserve(i.n);
-	if (config.simple_freq) {
+	if (!config.old_freq) {
 		for (unsigned j = 0; j < i.n; ++j)
 			v.push_back(Finger_print(seqs.data(i[j])));
 	} else

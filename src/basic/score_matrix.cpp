@@ -187,14 +187,14 @@ struct Matrix_info
 };
 
 const Matrix_info Matrix_info::matrices[] = {
-	{ "blosum45", blosum45_values, (const char*)NCBISM_Blosum45.scores, BLOSUM45_VALUES_MAX },
-	{ "blosum50", blosum50_values, (const char*)NCBISM_Blosum50.scores, BLOSUM50_VALUES_MAX },
-	{ "blosum62", blosum62_values, (const char*)NCBISM_Blosum62.scores, BLOSUM62_VALUES_MAX },
-	{ "blosum80", blosum80_values, (const char*)NCBISM_Blosum80.scores, BLOSUM80_VALUES_MAX },
-	{ "blosum90", blosum90_values, (const char*)NCBISM_Blosum90.scores, BLOSUM90_VALUES_MAX },
-	{ "pam70", pam70_values, (const char*)NCBISM_Pam70.scores, PAM70_VALUES_MAX },
-	{ "pam250", pam250_values, (const char*)NCBISM_Pam250.scores, PAM250_VALUES_MAX },
-	{ "pam30", pam30_values, (const char*)NCBISM_Pam30.scores, PAM30_VALUES_MAX }
+	{ "BLOSUM45", blosum45_values, (const char*)NCBISM_Blosum45.scores, BLOSUM45_VALUES_MAX },
+	{ "BLOSUM50", blosum50_values, (const char*)NCBISM_Blosum50.scores, BLOSUM50_VALUES_MAX },
+	{ "BLOSUM62", blosum62_values, (const char*)NCBISM_Blosum62.scores, BLOSUM62_VALUES_MAX },
+	{ "BLOSUM80", blosum80_values, (const char*)NCBISM_Blosum80.scores, BLOSUM80_VALUES_MAX },
+	{ "BLOSUM90", blosum90_values, (const char*)NCBISM_Blosum90.scores, BLOSUM90_VALUES_MAX },
+	{ "PAM70", pam70_values, (const char*)NCBISM_Pam70.scores, PAM70_VALUES_MAX },
+	{ "PAM250", pam250_values, (const char*)NCBISM_Pam250.scores, PAM250_VALUES_MAX },
+	{ "PAM30", pam30_values, (const char*)NCBISM_Pam30.scores, PAM30_VALUES_MAX }
 };
 
 Score_matrix::Score_matrix(const string & matrix, int gap_open, int gap_extend, int reward, int penalty):

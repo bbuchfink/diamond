@@ -85,7 +85,7 @@ inline void finish_daa(Output_stream &f)
 		score_matrix.k(),
 		score_matrix.lambda(),
 		config.max_evalue,
-		config.matrix,
+		to_lower_case(config.matrix),
 		align_mode.mode);
 
 	h2_.block_type[0] = DAA_header2::alignments;

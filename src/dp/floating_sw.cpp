@@ -112,7 +112,7 @@ Hsp_data floating_sw_dir(const Letter *query, const Letter* subject, int band, _
 template<typename _score, typename _traceback>
 void floating_sw(const Letter *query, const Letter *subject, Hsp_data &segment, int band, _score xdrop, _score gap_open, _score gap_extend, uint64_t &cell_updates, unsigned query_anchor, unsigned subject_anchor, const _traceback&, const _score&)
 {
-	segment.merge(floating_sw_dir<Right, _score, _traceback>(query+1, subject+1, band, xdrop, gap_open, gap_extend, cell_updates),
+	segment.merge(floating_sw_dir<Right, _score, _traceback>(query + 1, subject + 1, band, xdrop, gap_open, gap_extend, cell_updates),
 		floating_sw_dir<Left, _score, _traceback>(query, subject, band, xdrop, gap_open, gap_extend, cell_updates), query_anchor, subject_anchor);
 }
 

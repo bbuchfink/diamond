@@ -187,13 +187,13 @@ public:
 		char query[nameBufferSize], s2[nameBufferSize];
 		char query2[64];
 		double f1;
-		uint64_t i1,i2,i3,i4,i5,i6,i7;
+		unsigned long long i1,i2,i3,i4,i5,i6,i7;
 
 		if(readLine(buffer)) {
 			while(buffer[0] == '#')
 				readLine(buffer);
-			if(sscanf(buffer, "%s%s%lf%I64u%I64u%I64u%I64u%I64u%I64u%I64u%lf%lf", query, s2, &f1, &i1, &i2, &i3, &i4, &i5, &i6, &i7, &match.expect, &match.bitscore) == 12
-				|| sscanf(buffer, "%s%s%s%lf%I64u%I64u%I64u%I64u%I64u%I64u%I64u%lf%lf", query, query2, s2, &f1, &i1, &i2, &i3, &i4, &i5, &i6, &i7, &match.expect, &match.bitscore) == 13) {
+			if(sscanf(buffer, "%s%s%lf%llu%llu%llu%llu%llu%llu%llu%lf%lf", query, s2, &f1, &i1, &i2, &i3, &i4, &i5, &i6, &i7, &match.expect, &match.bitscore) == 12
+				|| sscanf(buffer, "%s%s%s%lf%llu%llu%llu%llu%llu%llu%llu%lf%lf", query, query2, s2, &f1, &i1, &i2, &i3, &i4, &i5, &i6, &i7, &match.expect, &match.bitscore) == 13) {
 				/*++matchCount;
 				if(!strcmp(query, currentQuery)) {
 					++currentQueryCount;
@@ -262,7 +262,5 @@ protected:
 	blast_match save;
 
 };
-
-
 
 #endif /* MATCH_FILE_H_ */
