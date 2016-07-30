@@ -1,4 +1,4 @@
-**DIAMOND v0.8.16 by Benjamin Buchfink** - http://github.com/bbuchfink/diamond
+**DIAMOND v0.8.17 by Benjamin Buchfink** - http://github.com/bbuchfink/diamond
 
 Published in *Nature Methods* **12**, 59–60 (2015) | `doi:10.1038/nmeth.3176 <http://dx.doi.org/10.1038/nmeth.3176>`_
 
@@ -8,7 +8,7 @@ Download & Installation
 =======================
 If you use a recent **Linux** operating system, you can download the software in binary format for immediate use::
 
-    wget http://github.com/bbuchfink/diamond/releases/download/v0.8.16/diamond-linux64.tar.gz
+    wget http://github.com/bbuchfink/diamond/releases/download/v0.8.17/diamond-linux64.tar.gz
     tar xzf diamond-linux64.tar.gz
 
 Users of **Mac OS X** and **older Linux systems** need to compile the software from source (see `Compiling from source`_). On **FreeBSD**, the software can be installed using ``pkg install diamond``. A binary executable for **Windows** is available under Releases.
@@ -30,7 +30,7 @@ The output file here is specified with the ``–o`` option and named ``matches.m
 *Note*:
   - Other output formats can be chosen with the ``-f`` option (see below).
   - The program may use quite a lot of memory and also temporary disk space. Should the program fail due to running out of either one, you need to set a lower value for the block size parameter ``-b`` (see below).
-  - The default (fast) mode was mainly designed for short reads. For longer sequences, the sensitive mode (option ``--sensitive``) is recommended.
+  - The default (fast) mode was mainly designed for short reads. For longer sequences, the sensitive modes (options ``--sensitive`` or ``--more-sensitive``) are recommended.
 
 Commands
 ========
@@ -69,12 +69,13 @@ Option     Short Default Description
 
 Sensitivity & speed options
 ===========================
-=========== ===== ======= ===========
-Option      Short Default Description
-=========== ===== ======= ===========
---sensitive               Trigger the sensitive alignment mode with a 16x9 seed shape configuration.
---band            auto    Dynamic programming band for seed extension. This corresponds to the maximum length of gaps that can be found in alignments.
-=========== ===== ======= ===========
+================ ===== ======= ===========
+Option           Short Default Description
+================ ===== ======= ===========
+--sensitive                    Trigger the sensitive alignment mode with a 16x9 seed shape configuration.
+--more-sensitive               This mode provides some additional sensitivity compared to the sensitive mode.
+--band                 auto    Dynamic programming band for seed extension. This corresponds to the maximum length of gaps that can be found in alignments.
+================ ===== ======= ===========
 
 Scoring & Reporting Options
 =================
@@ -137,9 +138,9 @@ Compiling from source
 =====================
 To compile DIAMOND from source, invoke the following commands on the shell::
 
-  $ wget http://github.com/bbuchfink/diamond/archive/v0.8.16.tar.gz
-  $ tar xzf v0.8.16.tar.gz
-  $ cd diamond-0.8.16
+  $ wget http://github.com/bbuchfink/diamond/archive/v0.8.17.tar.gz
+  $ tar xzf v0.8.17.tar.gz
+  $ cd diamond-0.8.17
   $ mkdir bin
   $ cd bin
   $ cmake ..
