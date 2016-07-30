@@ -86,9 +86,9 @@ string Temp_file::get_temp_dir()
 }
 
 Sd::Sd(const vector<Sd> &groups):
-	k(0),
 	A(0),
-	Q(0)
+	Q(0),
+	k(0)
 {
 	for (unsigned i = 0; i < groups.size(); ++i) {
 		k += groups[i].k;
