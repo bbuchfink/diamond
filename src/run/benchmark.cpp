@@ -98,8 +98,8 @@ void benchmark_sw()
 {
 	Sequence_set ss;
 	vector<Letter> s1, s2;
-	goto aln1;
-	unsigned qa=0, sa=0;
+	unsigned qa = 0, sa = 0;
+	goto aln1;	
 
 	aln1:
 
