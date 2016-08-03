@@ -64,6 +64,8 @@ void Query_mapper::align_target(size_t idx, Statistics &stat)
 				hits[i].subject_pos_,
 				Traceback());
 			stat.inc(Statistics::OUT_HITS);
+			if (i > 0)
+				stat.inc(Statistics::SECONDARY_HITS);
 			aligned_len += target.hsps.back().length;
 			if (aligned_len > max_len)
 				break;

@@ -66,6 +66,10 @@ struct Diagonal_segment
 			&& query_range().overlap_factor(x.query_range()) == 1
 			&& subject_range().overlap_factor(x.subject_range()) == 1;
 	}
+	Diagonal_segment transpose() const
+	{
+		return Diagonal_segment(subject_pos, query_pos, len, score);
+	}
 	unsigned query_pos, subject_pos, len, score;
 };
 

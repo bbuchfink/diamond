@@ -17,18 +17,54 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 ****/
 
 #include <list>
+#include <map>
 #include "../basic/sequence.h"
 #include "../basic/match.h"
 #include "../basic/score_matrix.h"
-
-#define LOG_GA
+#include "../search/sse_dist.h"
+#include "../align/extend_ungapped.h"
 
 using std::list;
+using std::map;
+
+struct Intervals
+{
+	void get_range(int begin, int end, vector<interval> &out)
+	{
+		for (vector<interval>::iterator i = data_.begin(); i != data_.end(); ++i)
+			if(end < (int)i->begin_) {
+				out.push_back(interval(begin, end));
+				data_.insert(i, interval(begin, end));
+				return;
+			}
+			else if (begin < (int)i->end_) {
+				if(begin < (int)i->begin_)
+					out.push_back(interval(begin, i->begin_));
+				if (end > (int)i->end_)
+					out.push_back(interval(i->end_, end));
+
+			}
+	}
+private:
+	vector<interval> data_;
+};
 
 struct Link
 {
+	Link()
+	{}
+	Link(unsigned target, int query_pos, int subject_pos):
+		target(target),
+		subject_pos(subject_pos),
+		query_pos(query_pos)
+	{}
 	unsigned target;
-	int subject_pos;
+	int subject_pos, query_pos;
+	Link& transpose()
+	{
+		std::swap(subject_pos, query_pos);
+		return *this;
+	}
 };
 
 typedef vector<Link> Link_list;
@@ -52,6 +88,30 @@ Diagonal_segment score_diagonal(const Letter *query, const Letter *subject)
 	return Diagonal_segment(begin, begin, end - begin, max_score);
 }
 
+unsigned cmp_16(const Letter *q, const Letter *s)
+{
+	const __m128i r1 = _mm_loadu_si128((__m128i const*)(q)),
+		r2 = _mm_loadu_si128((__m128i const*)(s));
+	return _mm_movemask_epi8(_mm_cmpeq_epi8(r1, r2));
+}
+
+size_t cmp_count = 0;
+
+void score_diagonal(sequence query, sequence subject, int q, int s, int len, vector<Diagonal_segment> &out)
+{
+	/*query = (const Letter*)(0xfffffffffffffff0llu & (long long unsigned)query);
+	subject = (const Letter*)(0xfffffffffffffff0llu & (long long unsigned)subject);*/
+	for (int i = 0; i < len;) {
+		++cmp_count;
+		if (popcount32(cmp_16(&query[q + i], &subject[s + i])) >= 3) {
+			out.push_back(ungapped_extension(s + i + 8, q + i + 8, query, subject));
+			i = out.back().query_pos + out.back().len - q;
+			//out.push_back(Diagonal_segment());
+		}
+		i += 16;
+	}
+}
+
 int score_range(sequence query, sequence subject, int i, int j, int j_end)
 {
 	int score = 0;
@@ -63,11 +123,12 @@ int score_range(sequence query, sequence subject, int i, int j, int j_end)
 	return score;
 }
 
-void get_ungapped(sequence query, sequence subject, vector<Diagonal_segment> &out)
+void get_ungapped2(sequence query, sequence subject, vector<Diagonal_segment> &out)
 {
-	const int min_score = 15;
+	/*const int min_score = 15;
+	const unsigned ql = query.length(), sl = subject.length();
 	for (unsigned i = 0; i < query.length(); ++i) {
-		Diagonal_segment d = score_diagonal(&query[i], &subject[0]);
+		Diagonal_segment d = score_diagonal(&query[i], &subject[0], std::min(ql - i, sl), out);
 		if (d.score >= min_score) {
 			d.query_pos += i;
 			out.push_back(d);
@@ -75,21 +136,44 @@ void get_ungapped(sequence query, sequence subject, vector<Diagonal_segment> &ou
 	}
 	unsigned i = 1;
 	while (subject[i] != '\xff') {
-		Diagonal_segment d = score_diagonal(&query[0], &subject[i]);
+		Diagonal_segment d = score_diagonal(&query[0], &subject[i], std::min(ql, sl - i), out);
 		if (d.score >= min_score) {
 			d.subject_pos += i;
 			out.push_back(d);
 		}
 		++i;
+	}*/
+}
+
+void scan_vicinity(sequence q, sequence s, const Diagonal_segment &d, vector<Diagonal_segment> &out)
+{
+	const int q0 = std::max((int)d.query_pos - 32, 0),
+		q1 = std::min((int)d.query_pos + 32, (int)q.length()),
+		s0 = std::max((int)d.subject_pos - 32, 0),
+		ql = (int)q.length(),
+		l = std::min((int)d.subject_pos + (int)d.len + 32, (int)s.length()) - s0;
+	for (int i = q0; i < q1; ++i) {
+		score_diagonal(q, s, i, s0, std::min(l, ql - i), out);
 	}
 }
 
-int get_vgap_link(const Diagonal_segment &d1, const Diagonal_segment &d2, sequence query, sequence subject, Link &l)
+void get_ungapped(sequence query, sequence subject, vector<Diagonal_segment> &d)
 {
-	return 0;
+	typedef map<int, vector<interval> > Dmap;
+	Dmap m;
+	for (unsigned i = 0; i < d.size(); ++i)
+		m[d[i].diag()].push_back(d[i].subject_range());
+	for (Dmap::iterator i = m.begin(); i != m.end(); ++i)
+		std::sort(i->second.begin(), i->second.end());
+	unsigned n = (unsigned)d.size();
+	for (unsigned i = 0; i < n; ++i)
+		scan_vicinity(query, subject, d[i], d);
+	/*n = d.size();
+	for (unsigned i = 1; i < n; ++i)
+		scan_vicinity(query, subject, d[i], d);*/
 }
 
-int get_hgap_link(const Diagonal_segment &d1, const Diagonal_segment &d2, sequence query,  sequence subject, Link &l)
+int get_hgap_link(const Diagonal_segment &d1, const Diagonal_segment &d2, sequence query, sequence subject, Link &l)
 {
 	const int d = d2.diag() - d1.diag(), j2_end = d2.subject_pos + d2.len;
 	int j1 = d1.subject_pos, j2 = j1 + d + 1, i1 = d1.query_pos, i2 = i1 + 1;
@@ -100,8 +184,9 @@ int get_hgap_link(const Diagonal_segment &d1, const Diagonal_segment &d2, sequen
 	while (true) {
 		if (score > max_score) {
 			max_score = score;
+			l.query_pos = i1;
 			l.subject_pos = j1;
-		}		
+		}
 		score -= score_matrix(query[i2], mask_critical(subject[j2]));
 		++i1; ++i2; ++j1; ++j2;
 		if (j2 >= j2_end)
@@ -109,6 +194,13 @@ int get_hgap_link(const Diagonal_segment &d1, const Diagonal_segment &d2, sequen
 		score += score_matrix(query[i1], mask_critical(subject[j1]));
 	}
 	return max_score;
+}
+
+int get_vgap_link(const Diagonal_segment &d1, const Diagonal_segment &d2, sequence query, sequence subject, Link &l)
+{
+	int s = get_hgap_link(d1.transpose(), d2.transpose(), subject, query, l);
+	l.transpose();
+	return s;
 }
 
 int get_link(const Diagonal_segment &d1, const Diagonal_segment &d2, sequence query, sequence subject, Link &l)
@@ -119,34 +211,30 @@ int get_link(const Diagonal_segment &d1, const Diagonal_segment &d2, sequence qu
 		return get_hgap_link(d1, d2, query, subject, l);
 }
 
-void get_links(const vector<Diagonal_segment> &diag, sequence query, sequence subject, vector<Link_list> &links, vector<bool> &is_root)
+void get_links(const vector<Diagonal_segment> &diag, sequence query, sequence subject, vector<Link_list> &links, vector<bool> &is_root, bool log)
 {
-	for (vector<Diagonal_segment>::const_iterator i = diag.begin(); i != diag.end();++i)
-		for (vector<Diagonal_segment>::const_iterator j = diag.begin(); j != diag.end(); ++j) {
+	for (unsigned i = 0; i < diag.size(); ++i)
+		for (unsigned j = 0; j < diag.size();++j) {
 			Link l;
-			int link_score = get_link(*i, *j, query, subject, l);
-			if (link_score > (int)i->score && link_score > (int)j->score) {
-				l.target = (unsigned)(j - diag.begin());
-				links[i - diag.begin()].push_back(l);
+			int link_score = get_link(diag[i], diag[j], query, subject, l);
+			if (link_score > (int)diag[i].score && link_score > (int)diag[j].score) {
+				l.target = j;
+				links[i].push_back(l);
 				is_root[l.target] = false;
-#ifdef LOG_GA
-				cout << i - diag.begin() << ' ' << j - diag.begin() << ' ' << link_score << endl;
-#endif
+				if (log) cout << i << ' ' << j << ' ' << link_score << endl;
 			}
 		}
 }
 
-void follow_path(unsigned level, unsigned node, vector<Link_list> &links, int score, int subject_pos, sequence query, sequence subject, const vector<Diagonal_segment> &diag)
+void follow_path(unsigned level, unsigned node, vector<Link_list> &links, int score, int subject_pos, sequence query, sequence subject, const vector<Diagonal_segment> &diag, bool log)
 {
-#ifdef LOG_GA
-	indent(cout, level) << "Node " << node << " Score=" << score << endl;
-#endif
+	if(log) indent(cout, level) << "Node " << node << " Score=" << score << endl;
 	const Link_list &l = links[node];
 	const Diagonal_segment& d = diag[node];
 	const int diff = subject_pos - d.subject_pos;
 	if (l.size() == 0) {
 		score += score_range(query, subject, d.query_pos + diff, subject_pos, d.subject_pos + d.len);
-		indent(cout, level) << "Final score=" << score << endl << endl;
+		if(log) indent(cout, level) << "Final score=" << score << endl << endl;
 	}
 	for (Link_list::const_iterator i = l.begin(); i != l.end(); ++i) {
 		if (i->subject_pos < subject_pos)
@@ -155,32 +243,37 @@ void follow_path(unsigned level, unsigned node, vector<Link_list> &links, int sc
 		follow_path(level + 1,
 			i->target,
 			links,
-			score + score_range(query, subject, d.query_pos + diff, subject_pos, i->subject_pos + 1),
-			shift < 0 ? subject_pos + 1 : subject_pos + shift + 1,
+			score + score_range(query, subject, d.query_pos + diff, subject_pos, i->subject_pos + 1) - config.gap_open - abs(shift)*config.gap_extend,
+			shift < 0 ? i->subject_pos + 1 : i->subject_pos + shift + 1,
 			query,
 			subject,
-			diag);
+			diag,
+			log);
 	}
 }
 
-void greedy_align(sequence query, sequence subject)
+void greedy_align(sequence query, sequence subject, const vector<Diagonal_segment> &sh, bool log)
 {
-	vector<Diagonal_segment> diag;
+	vector<Diagonal_segment> diag(sh);
 	vector<Link_list> links;
 	get_ungapped(query, subject, diag);
-#ifdef LOG_GA
-	cout << "Diagonals:" << endl;
-	for (vector<Diagonal_segment>::const_iterator i = diag.begin(); i != diag.end(); ++i)
-		cout << i-diag.begin() << ' ' << i->query_pos << ' ' << i->subject_pos << ' ' << i->score << endl;
-	cout << endl;
-#endif
+	if (log) {
+		cout << "Diagonals:" << endl;
+		for (vector<Diagonal_segment>::const_iterator i = diag.begin(); i != diag.end(); ++i)
+			cout << i - diag.begin() << " i=" << i->query_pos << " j=" << i->subject_pos << " score=" << i->score << endl;
+		cout << endl;
+	}
+	//cout << "cmp=" << cmp_count << endl;
+	return;
+
 	links.resize(diag.size());
 	vector<bool> is_root(diag.size(), true);
-#ifdef LOG_GA
-	cout << "Links:" << endl;
-#endif
-	get_links(diag, query, subject, links, is_root);
+	if(log) cout << "Links:" << endl;
+	get_links(diag, query, subject, links, is_root, log);
+	if(log) cout << endl;
+
+	if(log) cout << "Paths:" << endl;
 	for (unsigned i = 0; i < diag.size(); ++i)
 		if (is_root[i])
-			follow_path(0, i, links, 0, diag[i].subject_pos, query, subject, diag);
+			follow_path(0, i, links, 0, diag[i].subject_pos, query, subject, diag, log);
 }

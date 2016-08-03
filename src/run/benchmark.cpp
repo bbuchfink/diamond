@@ -22,60 +22,59 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #include "../util/Timer.h"
 #include "../dp/dp.h"
 #include "../align/align.h"
+#include "../align/extend_ungapped.h"
+#include "../search/sse_dist.h"
 
-void benchmark_sw()
+void benchmark_cmp()
 {
-	static const unsigned n = 1;
+	const size_t n = 1000000000llu;
+	__m128i r1 = _mm_set_epi8(1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16);
+	const __m128i r2 = _mm_set_epi8(0, 2, 3, 0, 0, 0, 0, 8, 0, 0, 0, 0, 13, 14, 0, 16);
+	Timer t;
+	t.start();
+	unsigned x = 0;
+	for (size_t i = 0; i < n; ++i) {
+		r1 = _mm_set_epi32(x, x, x, x);
+		//x += popcount32(_mm_movemask_epi8(_mm_cmpeq_epi8(r1, r2)));
+		x += _mm_movemask_epi8(_mm_cmpeq_epi8(r1, r2));
+	}
+	cout << "x=" << x << " t=" << t.getElapsedTimeInMicroSec() * 1000 / n << endl;
+}
 
-	/*
-	> d2va1a_ c.73.1.0 (A:) automated matches {Ureaplasma parvum [TaxId: 
-134821]}
-Length=234
+void benchmark_greedy(const Sequence_set &ss, unsigned qa, unsigned sa)
+{
+	static const unsigned n = 10000;
+	vector<Diagonal_segment> d;
+	d.push_back(ungapped_extension(sa, qa, ss[0], ss[1]));
+	greedy_align(ss[0], ss[1], d, true);
 
- Score = 26.2 bits (56),  Expect = 1.1
- Identities = 18/66 (27%), Positives = 28/66 (42%), Gaps = 4/66 (6%)
-
-Query  24  QADATVATFFNGIDMPNQTNKTAA--FLCAALGGPNAWTGRNLKE--VHANMGVSNAQFT  79
-           Q D+++  F    D+  Q  K +    +   LGG N W G   KE  +  N+  +     
-Sbjct  16  QNDSSIIDFIKINDLAEQIEKISKKYIVSIVLGGGNIWRGSIAKELDMDRNLADNMGMMA  75
-
-Query  80  TVIGHL  85
-           T+I  L
-Sbjct  76  TIINGL  81	*/
-
-	vector<Letter> s1 = sequence::from_string("SLFEQLGGQAAVQAVTAQFYANIQADATVATFFNGIDMPNQTNKTAAFLCAALGGPNAWTGRNLKEVHANMGVSNAQFTTVIGHLRSALTGAGVAAALVEQTVAVAETVRGDVVTV");
-	vector<Letter> s2 = sequence::from_string("RKQRIVIKISGACLKQNDSSIIDFIKINDLAEQIEKISKKYIVSIVLGGGNIWRGSIAKELDMDRNLADNMGMMATIINGLALENALNHLNVNTIVLSAIKCDKLVHESSANNIKKAIEKEQVMIFVAGTGFPYFTTDSCAAIRAAETESSIILMGKNGVDGVYDSDPKINPNAQFYEHITFNMALTQNLKVMDATALALCQENNINLLVFNIDKPNAIVDVLEKKNKYTIVSK");
-	Sequence_set ss;
-	ss.push_back(s1);
-	ss.push_back(s2);
-	ss.finish_reserve();
-
-	local_match hsp2(0, 0, &ss[1][0]);
-	//greedy_align(ss[0], hsp2);
-	
 	Timer t;
 	t.start();
 
 	for (unsigned i = 0; i < n; ++i) {
 
-		greedy_align(ss[0], ss[1]);
+		greedy_align(ss[0], ss[1], d, false);
 
 	}
 	t.stop();
 
 	cout << " n/sec=" << (double)n / t.getElapsedTimeInSec() << endl;
-	return;
+	cout << "t=" << t.getElapsedTimeInMicroSec() << endl;
+}
 
+void benchmark_floating(const Sequence_set &ss, unsigned qa, unsigned sa)
+{
+	static const unsigned n = 10000;
 	uint64_t cell_updates = 0;
-	local_match hsp(0, 0, &ss[1][16]);
-	
+	local_match hsp(0, 0, &ss[1][sa]);
+
 	{
 		Timer t;
 		t.start();
 
 		for (unsigned i = 0; i < n; ++i) {
 
-			floating_sw(&ss[0][24],
+			floating_sw(&ss[0][qa],
 				hsp.subject_,
 				hsp,
 				32,
@@ -93,6 +92,88 @@ Sbjct  76  TIINGL  81	*/
 		cout << hsp.score << ' ' << cell_updates << endl;
 		cout << "gcups=" << (double)cell_updates / 1e9 / t.getElapsedTimeInSec() << " n/sec=" << (double)n / t.getElapsedTimeInSec() << endl;
 	}
+}
+
+void benchmark_sw()
+{
+	Sequence_set ss;
+	vector<Letter> s1, s2;
+	goto aln1;
+	unsigned qa=0, sa=0;
+
+	aln1:
+
+	/*
+	> d2va1a_ c.73.1.0 (A:) automated matches {Ureaplasma parvum [TaxId: 
+134821]}
+Length=234
+
+ Score = 26.2 bits (56),  Expect = 1.1
+ Identities = 18/66 (27%), Positives = 28/66 (42%), Gaps = 4/66 (6%)
+
+Query  24  QADATVATFFNGIDMPNQTNKTAA--FLCAALGGPNAWTGRNLKE--VHANMGVSNAQFT  79
+           Q D+++  F    D+  Q  K +    +   LGG N W G   KE  +  N+  +     
+Sbjct  16  QNDSSIIDFIKINDLAEQIEKISKKYIVSIVLGGGNIWRGSIAKELDMDRNLADNMGMMA  75
+
+Query  80  TVIGHL  85
+           T+I  L
+Sbjct  76  TIINGL  81	*/
+
+	s1 = sequence::from_string("SLFEQLGGQAAVQAVTAQFYANIQADATVATFFNGIDMPNQTNKTAAFLCAALGGPNAWTGRNLKEVHANMGVSNAQFTTVIGHLRSALTGAGVAAALVEQTVAVAETVRGDVVTV");
+	s2 = sequence::from_string("RKQRIVIKISGACLKQNDSSIIDFIKINDLAEQIEKISKKYIVSIVLGGGNIWRGSIAKELDMDRNLADNMGMMATIINGLALENALNHLNVNTIVLSAIKCDKLVHESSANNIKKAIEKEQVMIFVAGTGFPYFTTDSCAAIRAAETESSIILMGKNGVDGVYDSDPKINPNAQFYEHITFNMALTQNLKVMDATALALCQENNINLLVFNIDKPNAIVDVLEKKNKYTIVSK");
+	qa = 24;
+	sa = 16;
+	goto ende;	
+
+	/*
+
+	Query= d1g2na_ a.123.1.1 (A:) Ultraspiracle protein, usp {Tobacco budworm
+	(Heliothis virescens) [TaxId: 7102]}
+
+	> sp|Q6DHP9|RXRGB_DANRE Retinoic acid receptor RXR-gamma-B OS=Danio
+	rerio GN=rxrgb PE=2 SV=1
+	Length=452
+
+	Score = 189 bits (479),  Expect = 6e-055
+	Identities = 101/249 (41%), Positives = 153/249 (61%), Gaps = 24/249 (10%)
+
+	Query  4    QELSIERLLEMESLVADPSEEFQFLRVGPDSNVPPKFRAPVSSLCQIGNKQIAALVVWAR  63
+	            +++ ++++L+ E  V   +E +       +S+       PV+++C   +KQ+  LV WA+
+	Sbjct  221  EDMPVDKILDAELSVEPKTETYT------ESSPSNSTNDPVTNICHAADKQLFTLVEWAK  274
+
+	Query  64   DIPHFSQLEMEDQILLIKGSWNELLLFAIAWRSMEFLTEERDGVDGTGNRTTSPPQLMCL  123
+	             IPHFS L ++DQ++L++  WNELL+ + + RS+      +DG+               L
+	Sbjct  275  RIPHFSDLPLDDQVILLRAGWNELLIASFSHRSITV----KDGI--------------LL  316
+
+	Query  124  MPGMTLHRNSALQAGVGQIFDRVLSELSLKMRTLRVDQAEYVALKAIILLNPDVKGLKNR  183
+	              G+ +HR+SA  AGVG IF+RVL+EL  KM+ +++D+ E   L+AI+L NPD KGL N
+	Sbjct  317  GTGLHVHRSSAHSAGVGSIFNRVLTELVSKMKDMQMDKTELGCLRAIVLFNPDAKGLSNS  376
+
+	Query  184  QEVEVLREKMFLCLDEYCRRSRSSEEGRFAALLLRLPALRSISLKSFEHLFFFHLVADTS  243
+	             EVE LREK++  L+ Y ++    + GRFA LLLRLPALRSI LK  EHLFFF L+ DT
+	Sbjct  377  LEVEALREKVYASLETYTKQKYPDQPGRFAKLLLRLPALRSIGLKCLEHLFFFKLIGDTP  436
+
+	Query  244  IAGYIRDAL  252
+	            I  ++ + L
+	Sbjct  437  IDTFLMEML  445
+	*/
+
+	s1 = sequence::from_string("aavqelsierllemeslvadpseefqflrvgpdsnvppkfrapvsslcqignkqiaalvv\
+wardiphfsqlemedqillikgswnelllfaiawrsmeflteerdgvdgtgnrttsppql\
+mclmpgmtlhrnsalqagvgqifdrvlselslkmrtlrvdqaeyvalkaiillnpdvkgl\
+knrqevevlrekmflcldeycrrsrsseegrfaalllrlpalrsislksfehlfffhlva\
+dtsiagyirdalrnha");
+
+	s2 = sequence::from_string("MDTHDTYLHLHSSPLNSSPSQPPVMSSMVGHPSVISSSRPLPSPMSTLGSSMNGLPSPYS\
+VITPSLSSPSISLPSTPSMGFNTLNSPQMNSLSMNGNEDIKPPPGLAPLGNMSSYQCTSP\
+GSLSKHICAICGDRSSGKHYGVYSCEGCKGFFKRTIRKDLTYTCRDIKECLIDKRQRNRC\
+QYCRYQKCLAMGMKREAVQEERQRGKEKSDTEVETTSRFNEDMPVDKILDAELSVEPKTE\
+TYTESSPSNSTNDPVTNICHAADKQLFTLVEWAKRIPHFSDLPLDDQVILLRAGWNELLI\
+ASFSHRSITVKDGILLGTGLHVHRSSAHSAGVGSIFNRVLTELVSKMKDMQMDKTELGCL\
+RAIVLFNPDAKGLSNSLEVEALREKVYASLETYTKQKYPDQPGRFAKLLLRLPALRSIGL\
+KCLEHLFFFKLIGDTPIDTFLMEMLEAPHQIT");
+
+	goto ende;
 
 	/*Query= d1mpxa2 c.69.1.21 (A:24-404) Alpha-amino acid ester hydrolase
 	{Xanthomonas citri [TaxId: 346]}
@@ -133,5 +214,14 @@ Sbjct  76  TIINGL  81	*/
 	Sbjct  332  VPKVRLFVMGIDEWRDETDW  351
 
 	*/
+
+	ende:
+	ss.push_back(s1);
+	ss.push_back(s2);
+	ss.finish_reserve();
+
+	//benchmark_floating(ss, qa, sa);
+	benchmark_greedy(ss, qa, sa);
+	//benchmark_cmp();
 
 }

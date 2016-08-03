@@ -119,6 +119,10 @@ struct interval
 	{ return interval (std::max(lhs.begin_, rhs.begin_), std::min(lhs.end_, rhs.end_)); }
 	friend std::ostream& operator<<(std::ostream &os, const interval &x)
 	{ os << "[" << x.begin_ << ";" << x.end_ << "]"; return os; }
+	bool operator<(const interval &rhs) const
+	{
+		return begin_ < rhs.begin_;
+	}
 	unsigned begin_, end_;
 };
 
@@ -304,13 +308,6 @@ inline bool check_dir(const string &path)
 #else
 	return true;
 #endif
-}
-
-inline string to_string(unsigned val)
-{
-	std::stringstream ss;
-	ss << val;
-	return ss.str();
 }
 
 string extract_dir(const string &s);

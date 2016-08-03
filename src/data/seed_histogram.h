@@ -137,6 +137,8 @@ private:
 		for (size_t i = begin; i < end; ++i) {
 
 			assert(i < seqs.get_length());
+			if (seqs[i].length() == 0)
+				continue;
 			Reduction::reduce_seq(seqs[i], buf);
 
 			for (unsigned s = 0; s < shapes.count(); ++s) {

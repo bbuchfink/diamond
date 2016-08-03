@@ -21,6 +21,7 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 
 #include <assert.h>
 #include <string.h>
+#include <sstream>
 #include "const.h"
 #include "config.h"
 
@@ -28,6 +29,13 @@ typedef char Letter;
 typedef enum { amino_acid=0, nucleotide=1 } Sequence_type;
 struct Amino_acid {};
 struct Nucleotide {};
+
+inline string to_string(unsigned val)
+{
+	std::stringstream ss;
+	ss << val;
+	return ss.str();
+}
 
 struct invalid_sequence_char_exception : public std::exception
 {

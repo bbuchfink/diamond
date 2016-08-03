@@ -20,10 +20,20 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #define EXTEND_UNGAPPED_H_
 
 #include "../dp/dp.h"
+#include "../data/reference.h"
 
 inline Diagonal_segment ungapped_extension(unsigned subject, unsigned subject_pos, unsigned query_pos, const sequence &query)
 {
 	const Letter* s = ref_seqs::data_->data(ref_seqs::data_->position(subject, subject_pos)),
+		*q = &query[query_pos];
+	unsigned delta, len;
+	int score = xdrop_ungapped(q, s, delta, len);
+	return Diagonal_segment(query_pos - delta, subject_pos - delta, len, score);
+}
+
+inline Diagonal_segment ungapped_extension(unsigned subject_pos, unsigned query_pos, const sequence &query, const sequence &subject)
+{
+	const Letter* s = &subject[subject_pos],
 		*q = &query[query_pos];
 	unsigned delta, len;
 	int score = xdrop_ungapped(q, s, delta, len);
