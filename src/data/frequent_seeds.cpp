@@ -83,7 +83,7 @@ struct Frequent_seeds::Build_context
 void Frequent_seeds::build(unsigned sid, const seedp_range &range, sorted_list &ref_idx, const sorted_list &query_idx)
 {
 	vector<Sd> sds(range.size());
-	Atomic<unsigned> seedp = range.begin();
+	Atomic<unsigned> seedp (range.begin());
 	Thread_pool threads;
 	for (unsigned i = 0; i < config.threads_; ++i)
 		threads.push_back(launch_thread(compute_sd, &seedp, &ref_idx, &sds));
