@@ -27,10 +27,8 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 
 void get_seq()
 {
-	const Sequence_file_format *format_n(guess_format(config.query_file));
-	Compressed_istream query_file(config.query_file);
-	load_seqs(query_file, *format_n, &query_seqs::data_, query_ids::data_, query_source_seqs::data_, std::numeric_limits<size_t>::max());
-	cout << query_ids::get()[config.seq_no].c_str() << endl;
+	Database_file db_file;
+	db_file.get_seq();
 }
 
 void random_seqs()
@@ -39,7 +37,8 @@ void random_seqs()
 	db_file.load_seqs();
 	cout << "Sequences = " << ref_seqs::get().get_length() << endl;
 	std::set<unsigned> n;
-	while (n.size() < config.seq_no)
+	const size_t count = atoi(config.seq_no[0].c_str());
+	while (n.size() < count)
 		n.insert((rand()*RAND_MAX+rand()) % ref_seqs::get().get_length());
 	Compressed_ostream out(config.output_file);
 	unsigned j = 0;

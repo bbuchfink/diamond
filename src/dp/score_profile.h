@@ -115,7 +115,7 @@ struct score_profile
 		} while(j<24);
 		data_[j] = score_vector<_score> (j, seq);
 		assert(j+1 == Value_traits<_val>::ALPHABET_SIZE);*/
-		for(unsigned j=0;j<value_traits.alphabet_size;++j)
+		for (unsigned j = 0; j < value_traits.alphabet_size; ++j)
 			data_[j] = score_vector<_score> (j, seq);
 	}
 

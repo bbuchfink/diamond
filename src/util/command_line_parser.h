@@ -61,6 +61,12 @@ inline void read_option<string>(string &dst, const vector<string> &v)
 { dst = v[0]; }
 
 template<>
+inline void read_option<vector<string> >(vector<string> &dst, const vector<string> &v)
+{
+	dst = v;
+}
+
+template<>
 inline void read_option<bool>(bool &dst, const vector<string> &v)
 { dst = true; }
 
@@ -74,6 +80,12 @@ template<>
 inline bool check_pcount<bool>(const vector<string> &v)
 {
 	return v.size() == 0;
+}
+
+template<>
+inline bool check_pcount<vector<string> >(const vector<string> &v)
+{
+	return v.size() > 0;
 }
 
 struct Option_base

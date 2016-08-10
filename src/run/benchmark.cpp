@@ -41,19 +41,70 @@ void benchmark_cmp()
 	cout << "x=" << x << " t=" << t.getElapsedTimeInMicroSec() * 1000 / n << endl;
 }
 
+int xdrop_ungapped2(const Letter *query, const Letter *subject)
+{
+	int score(0), st(0);
+
+	const Letter *q(query), *s(subject);
+
+	st = score;
+	while (score - st < config.xdrop
+		&& *q != '\xff'
+		&& *s != '\xff')
+	{
+		st += score_matrix(*q, *s);
+		//score = std::max(score, st);
+		++q;
+		++s;
+
+		st += score_matrix(*q, *s);
+		//score = std::max(score, st);
+		++q;
+		++s;
+
+		st += score_matrix(*q, *s);
+		score = std::max(score, st);
+		++q;
+		++s;
+	}
+	return score;
+}
+
+void benchmark_ungapped(const Sequence_set &ss, unsigned qa, unsigned sa)
+{
+	static const unsigned n = 10000000;
+	Timer t;
+	t.start();
+
+	const Letter *q = &ss[0][qa], *s = &ss[1][sa];
+	unsigned delta, len;
+	int score=0;
+
+	for (unsigned i = 0; i < n; ++i) {
+
+		score += xdrop_ungapped2(q, s);
+
+	}
+	t.stop();
+
+	cout << score << endl;
+	cout << " n/sec=" << (double)n / t.getElapsedTimeInSec() << endl;
+	cout << "t=" << t.getElapsedTimeInMicroSec() << endl;
+}
+
 void benchmark_greedy(const Sequence_set &ss, unsigned qa, unsigned sa)
 {
 	static const unsigned n = 10000;
 	vector<Diagonal_segment> d;
 	d.push_back(ungapped_extension(sa, qa, ss[0], ss[1]));
-	greedy_align(ss[0], ss[1], d, true);
+	greedy_align(ss[0], ss[1], d[0], true);
 
 	Timer t;
 	t.start();
 
 	for (unsigned i = 0; i < n; ++i) {
 
-		greedy_align(ss[0], ss[1], d, false);
+		greedy_align(ss[0], ss[1], d[0], false);
 
 	}
 	t.stop();
@@ -221,7 +272,8 @@ KCLEHLFFFKLIGDTPIDTFLMEMLEAPHQIT");
 	ss.finish_reserve();
 
 	//benchmark_floating(ss, qa, sa);
-	benchmark_greedy(ss, qa, sa);
+	//benchmark_greedy(ss, qa, sa);
 	//benchmark_cmp();
+	benchmark_ungapped(ss, qa, sa);
 
 }

@@ -19,6 +19,7 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #include <limits>
 #include <iostream>
 #include <sstream>
+#include <set>
 #include "../basic/config.h"
 #include "reference.h"
 #include "../basic/statistics.h"
@@ -149,4 +150,29 @@ bool Database_file::load_seqs()
 
 	blocked_processing = seqs < ref_header.sequences;
 	return true;
+}
+
+void Database_file::get_seq()
+{
+	vector<Letter> seq;
+	string id;
+	char c;
+	bool all = config.seq_no.size() == 0;
+	std::set<size_t> seqs;
+	if (!all)
+		for (vector<string>::const_iterator i = config.seq_no.begin(); i != config.seq_no.end(); ++i)
+			seqs.insert(atoi(i->c_str()) - 1);
+	for (size_t n = 0; n < ref_header.sequences; ++n) {
+		read(&c, 1);
+		while (read(&c, 1), c != '\xff')
+			seq.push_back(c);
+		while (read(&c, 1), c != '\0')
+			id.push_back(c);
+		if (all || seqs.find(n) != seqs.end()) {
+			cout << '>' << id << endl;
+			cout << sequence(seq) << endl;
+		}
+		seq.clear();
+		id.clear();
+	}
 }

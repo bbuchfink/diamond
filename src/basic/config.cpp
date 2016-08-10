@@ -41,7 +41,7 @@ Config::Config(int argc, const char **argv)
 		.add_command("view", "View DIAMOND alignment archive (DAA) formatted file")
 		.add_command("help", "Produce help message")
 		.add_command("version", "Display version information")
-		.add_command("getseq", "")
+		.add_command("getseq", "Retrieve sequences from a DIAMOND database file")
 		.add_command("benchmark", "")
 		.add_command("random-seqs", "")
 		.add_command("compare", "");
@@ -116,12 +116,15 @@ Config::Config(int argc, const char **argv)
 		("daa", 'a', "DIAMOND alignment archive (DAA) file", daa_file)		
 		("forwardonly", 0, "only show alignments of forward strand", forwardonly);
 
+	Options_group getseq_options("Getseq options");
+	getseq_options.add()
+		("seq", 0, "Sequence numbers to display.", seq_no);
+
 	Options_group hidden_options("");
 	hidden_options.add()
 		("extend-all", 0, "extend all seed hits", extend_all)
 		("local-align", 0, "Local alignment algorithm", local_align_mode, 0u)
 		("slow-search", 0, "", slow_search)
-		("seq", 0, "", seq_no)
 		("ht", 0, "", ht_mode)
 		("old-freq", 0, "", old_freq)
 		("qp", 0, "", query_parallel)
@@ -130,7 +133,7 @@ Config::Config(int argc, const char **argv)
 		("max-hits", 'C', "maximum number of hits to consider for one seed", hit_cap)
 		("seed-freq", 0, "maximum seed frequency", max_seed_freq, -15.0);
 
-	parser.add(general).add(makedb).add(aligner).add(advanced).add(view_options).add(hidden_options);
+	parser.add(general).add(makedb).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options);
 	parser.store(argc, argv, command);
 
 	switch (command) {
@@ -179,7 +182,7 @@ Config::Config(int argc, const char **argv)
 	else if (verbose)
 		verbosity = 2;
 	else if (((command == Config::view || command == blastx || command == blastp) && output_file == "")
-		|| command == Config::version)
+		|| command == Config::version || command == getseq)
 		verbosity = 0;
 	else
 		verbosity = 1;

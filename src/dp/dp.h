@@ -29,5 +29,6 @@ int xdrop_ungapped(const Letter *query, const Letter *subject, unsigned seed_len
 int xdrop_ungapped(const Letter *query, const Letter *subject, unsigned &delta, unsigned &len);
 
 void greedy_align(sequence query, sequence subject, const vector<Diagonal_segment> &sh, bool log);
+void greedy_align(sequence query, sequence subject, const Diagonal_segment &sh, bool log);
 
 #endif /* FLOATING_SW_H_ */

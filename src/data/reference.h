@@ -92,6 +92,7 @@ struct Database_file : public Input_stream
 		pos_array_offset = ref_header.pos_array_offset;
 	}
 	bool load_seqs();
+	void get_seq();
 	enum { min_build_required = 74 };
 
 	size_t pos_array_offset;

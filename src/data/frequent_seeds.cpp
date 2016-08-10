@@ -50,7 +50,7 @@ struct Frequent_seeds::Build_context
 	void operator()(unsigned thread_id, unsigned seedp)
 	{
 		if (!range.contains(seedp))
-			return;		
+			return;
 		
 		vector<uint32_t> buf;
 		size_t n = 0;

@@ -203,13 +203,13 @@ private:
 		}
 		void finish()
 		{
-			for (unsigned shape_id = shape_from; shape_id < shape_to;++shape_id)
+			for (unsigned shape_id = shape_from; shape_id < shape_to; ++shape_id)
 				for (unsigned p = 0; p < Hashed_seed::p; ++p)
 					flush_buffer(shape_id, p);
 		}
 		void flush_queues()
 		{
-			for (unsigned shape_id = shape_from; shape_id < shape_to;++shape_id)
+			for (unsigned shape_id = shape_from; shape_id < shape_to; ++shape_id)
 				for (unsigned p = p_begin; p < p_end; ++p) {
 					mtx[shape_id][p].lock();
 					vector<_entry> &q = queues[shape_id][p];

@@ -20,9 +20,11 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #define CONFIG_H_
 
 #include <string>
+#include <vector>
 #include <stdint.h>
 
 using std::string;
+using std::vector;
 
 struct Config
 {
@@ -89,7 +91,7 @@ struct Config
 	unsigned local_align_mode;
 	bool extend_all;
 	bool slow_search;
-	unsigned seq_no;
+	vector<string> seq_no;
 	double rank_factor;
 	double rank_ratio;
 	bool ht_mode;

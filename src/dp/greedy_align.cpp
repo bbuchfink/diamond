@@ -103,7 +103,7 @@ void score_diagonal(sequence query, sequence subject, int q, int s, int len, vec
 	subject = (const Letter*)(0xfffffffffffffff0llu & (long long unsigned)subject);*/
 	for (int i = 0; i < len;) {
 		++cmp_count;
-		if (popcount32(cmp_16(&query[q + i], &subject[s + i])) >= 3) {
+		if (popcount32(cmp_16(&query[q + i], &subject[s + i])) >= 2) {
 			out.push_back(ungapped_extension(s + i + 8, q + i + 8, query, subject));
 			i = out.back().query_pos + out.back().len - q;
 			//out.push_back(Diagonal_segment());
@@ -276,4 +276,56 @@ void greedy_align(sequence query, sequence subject, const vector<Diagonal_segmen
 	for (unsigned i = 0; i < diag.size(); ++i)
 		if (is_root[i])
 			follow_path(0, i, links, 0, diag[i].subject_pos, query, subject, diag, log);
+}
+
+void scan_ahead(sequence q, sequence s, const Diagonal_segment &d, vector<Diagonal_segment> &out)
+{
+	static const int look_ahead = 64;
+	const int q1 = d.query_pos + config.padding,
+		l1 = std::min(d.len + look_ahead, (int)s.length() - d.subject_pos),
+		ql = (int)q.length(),
+		sl = (int)s.length(),
+		s1 = d.subject_pos + config.padding,
+		l2 = std::min(d.len + look_ahead, (int)q.length() - d.query_pos);
+	for (int i = d.query_pos + 1; i < q1; ++i)
+		score_diagonal(q, s, i, d.subject_pos, std::min(l1, ql - i), out);
+	for (int j = d.subject_pos + 1; j < s1; ++j)
+		score_diagonal(q, s, d.query_pos, j, std::min(l2, sl - j), out);
+}
+
+void greedy_align(sequence query, sequence subject, const Diagonal_segment &sh, bool log)
+{
+	vector<Diagonal_segment> diag;
+	Diagonal_segment d = sh;
+	while (true) {
+		scan_ahead(query, subject, d, diag);
+		if (log) {
+			cout << "Diagonals:" << endl;
+			for (vector<Diagonal_segment>::const_iterator i = diag.begin(); i != diag.end(); ++i)
+				cout << i - diag.begin() << " i=" << i->query_pos << " j=" << i->subject_pos << " d=" << (int)i->subject_pos-(int)i->query_pos << " score=" << i->score << endl;
+			cout << endl;
+		}
+		if (log)
+			cout << "Links:" << endl;
+		Link link;
+		unsigned next = std::numeric_limits<unsigned>::max();
+		int max_score = 0;
+		for (unsigned i = 0; i < diag.size(); ++i) {
+			/*if (abs(d.diag() - diag[i].diag())*config.gap_extend + config.gap_open >= diag[i].score)
+				continue;*/
+			int link_score;
+			if ((link_score = get_link(d, diag[i], query, subject, link)) > (int)d.score) {
+				if (log)
+					cout << i << ' ' << link_score << endl;
+				if (link_score > max_score) {
+					max_score = link_score;
+					next = i;
+				}
+			}
+		}
+		if (max_score == 0)
+			break;
+		d = diag[next];
+		diag.clear();
+	}
 }

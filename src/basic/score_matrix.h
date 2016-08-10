@@ -58,7 +58,9 @@ struct Score_matrix
 	{ return matrix16_.data; }
 
 	int operator()(Letter a, Letter b) const
-	{ return matrix8_.data[(int(a) << 5) + int(b)]; }
+	{
+		return matrix8_.data[(int(a) << 5) + int(b)];
+	}
 
 	uint8_t biased_score(Letter a, Letter b) const
 	{ return matrix8u_.data[(int(a) << 5) + int(b)]; }
