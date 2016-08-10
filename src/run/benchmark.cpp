@@ -77,7 +77,6 @@ void benchmark_ungapped(const Sequence_set &ss, unsigned qa, unsigned sa)
 	t.start();
 
 	const Letter *q = &ss[0][qa], *s = &ss[1][sa];
-	unsigned delta, len;
 	int score=0;
 
 	for (unsigned i = 0; i < n; ++i) {
