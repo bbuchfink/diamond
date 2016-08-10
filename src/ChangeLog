@@ -1,3 +1,7 @@
+[0.8.18]
+- fixed a crash bug
+- implemented getseq command to retrieve sequences from database files
+
 [0.8.17]
 - slightly improved sensitivity of fast and sensitive mode
 - added new alignment mode (option --more-sensitive)
