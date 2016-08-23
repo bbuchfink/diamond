@@ -226,7 +226,7 @@ const char* custom_scores(const string &matrix_file)
 	std::stringstream ss;
 	vector<Letter> pos;
 	unsigned n = 0;
-	std::memset(scores, 0xff, sizeof(scores));
+	memset(scores, 0xff, sizeof(scores));
 	while (!f.eof()) {
 		std::getline(f, l);
 		if (l[0] == '#')

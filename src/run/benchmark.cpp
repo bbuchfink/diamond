@@ -203,12 +203,12 @@ Sbjct  76  TIINGL  81	*/
 	Query  184  QEVEVLREKMFLCLDEYCRRSRSSEEGRFAALLLRLPALRSISLKSFEHLFFFHLVADTS  243
 	             EVE LREK++  L+ Y ++    + GRFA LLLRLPALRSI LK  EHLFFF L+ DT
 	Sbjct  377  LEVEALREKVYASLETYTKQKYPDQPGRFAKLLLRLPALRSIGLKCLEHLFFFKLIGDTP  436
-	
+
 	Query  244  IAGYIRDAL  252
 	            I  ++ + L
 	Sbjct  437  IDTFLMEML  445
 	*/
-
+	
 	s1 = sequence::from_string("aavqelsierllemeslvadpseefqflrvgpdsnvppkfrapvsslcqignkqiaalvv\
 wardiphfsqlemedqillikgswnelllfaiawrsmeflteerdgvdgtgnrttsppql\
 mclmpgmtlhrnsalqagvgqifdrvlselslkmrtlrvdqaeyvalkaiillnpdvkgl\
