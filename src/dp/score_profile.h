@@ -120,10 +120,37 @@ struct score_profile
 	}
 
 	inline const score_vector<_score>& get(Letter i) const
-	{ return data_[(int)i]; }
+	{
+		return data_[(int)i];
+	}
 
 	score_vector<_score> data_[25];
 
+};
+
+struct Long_score_profile
+{
+	Long_score_profile(sequence seq)
+	{
+		for (unsigned l = 0; l < 25; ++l) {
+			const uint8_t *scores = &score_matrix.matrix8u()[l << 5];
+			data[l].reserve(seq.length() + 2*padding);
+			data[l].insert(data[l].end(), padding, 0);
+			for (unsigned i = 0; i < seq.length(); ++i)
+				data[l].push_back(scores[(int)seq[i]]);
+			data[l].insert(data[l].end(), padding, 0);
+		}
+	}
+	size_t length() const
+	{
+		return data[0].size() - 2 * padding;
+	}
+	const uint8_t* get(Letter l, int i) const
+	{
+		return &data[(int)l][i + padding];
+	}
+	vector<uint8_t> data[25];
+	enum { padding = 64 };
 };
 
 #endif /* SCORE_PROFILE_H_ */

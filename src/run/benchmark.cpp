@@ -24,6 +24,7 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #include "../align/align.h"
 #include "../align/extend_ungapped.h"
 #include "../search/sse_dist.h"
+#include "../dp/score_profile.h"
 
 void benchmark_cmp()
 {
@@ -48,7 +49,7 @@ int xdrop_ungapped2(const Letter *query, const Letter *subject)
 	const Letter *q(query), *s(subject);
 
 	st = score;
-	while (score - st < config.xdrop
+	while (score - st < config.raw_ungapped_xdrop
 		&& *q != '\xff'
 		&& *s != '\xff')
 	{
@@ -93,17 +94,18 @@ void benchmark_ungapped(const Sequence_set &ss, unsigned qa, unsigned sa)
 
 void benchmark_greedy(const Sequence_set &ss, unsigned qa, unsigned sa)
 {
-	static const unsigned n = 10000;
+	static const unsigned n = 100000;
 	vector<Diagonal_segment> d;
 	d.push_back(ungapped_extension(sa, qa, ss[0], ss[1]));
-	greedy_align(ss[0], ss[1], d[0], true);
+	Long_score_profile qp(ss[0]);
+	greedy_align(ss[0], qp, ss[1], d[0], true);
 
 	Timer t;
 	t.start();
 
 	for (unsigned i = 0; i < n; ++i) {
 
-		greedy_align(ss[0], ss[1], d[0], false);
+		greedy_align(ss[0], qp, ss[1], d[0], false);
 
 	}
 	t.stop();
@@ -128,7 +130,7 @@ void benchmark_floating(const Sequence_set &ss, unsigned qa, unsigned sa)
 				hsp.subject_,
 				hsp,
 				32,
-				config.xdrop,
+				config.raw_ungapped_xdrop,
 				config.gap_open + config.gap_extend,
 				config.gap_extend,
 				cell_updates,
@@ -150,9 +152,7 @@ void benchmark_sw()
 	vector<Letter> s1, s2;
 	unsigned qa = 0, sa = 0;
 	goto aln1;	
-
-	aln1:
-
+	
 	/*
 	> d2va1a_ c.73.1.0 (A:) automated matches {Ureaplasma parvum [TaxId: 
 134821]}
@@ -168,6 +168,7 @@ Sbjct  16  QNDSSIIDFIKINDLAEQIEKISKKYIVSIVLGGGNIWRGSIAKELDMDRNLADNMGMMA  75
 Query  80  TVIGHL  85
            T+I  L
 Sbjct  76  TIINGL  81	*/
+
 
 	s1 = sequence::from_string("SLFEQLGGQAAVQAVTAQFYANIQADATVATFFNGIDMPNQTNKTAAFLCAALGGPNAWTGRNLKEVHANMGVSNAQFTTVIGHLRSALTGAGVAAALVEQTVAVAETVRGDVVTV");
 	s2 = sequence::from_string("RKQRIVIKISGACLKQNDSSIIDFIKINDLAEQIEKISKKYIVSIVLGGGNIWRGSIAKELDMDRNLADNMGMMATIINGLALENALNHLNVNTIVLSAIKCDKLVHESSANNIKKAIEKEQVMIFVAGTGFPYFTTDSCAAIRAAETESSIILMGKNGVDGVYDSDPKINPNAQFYEHITFNMALTQNLKVMDATALALCQENNINLLVFNIDKPNAIVDVLEKKNKYTIVSK");
@@ -202,7 +203,7 @@ Sbjct  76  TIINGL  81	*/
 	Query  184  QEVEVLREKMFLCLDEYCRRSRSSEEGRFAALLLRLPALRSISLKSFEHLFFFHLVADTS  243
 	             EVE LREK++  L+ Y ++    + GRFA LLLRLPALRSI LK  EHLFFF L+ DT
 	Sbjct  377  LEVEALREKVYASLETYTKQKYPDQPGRFAKLLLRLPALRSIGLKCLEHLFFFKLIGDTP  436
-
+	
 	Query  244  IAGYIRDAL  252
 	            I  ++ + L
 	Sbjct  437  IDTFLMEML  445
@@ -222,6 +223,9 @@ TYTESSPSNSTNDPVTNICHAADKQLFTLVEWAKRIPHFSDLPLDDQVILLRAGWNELLI\
 ASFSHRSITVKDGILLGTGLHVHRSSAHSAGVGSIFNRVLTELVSKMKDMQMDKTELGCL\
 RAIVLFNPDAKGLSNSLEVEALREKVYASLETYTKQKYPDQPGRFAKLLLRLPALRSIGL\
 KCLEHLFFFKLIGDTPIDTFLMEMLEAPHQIT");
+
+	qa = 3;
+	sa = 220;
 
 	goto ende;
 
@@ -264,6 +268,30 @@ KCLEHLFFFKLIGDTPIDTFLMEMLEAPHQIT");
 	Sbjct  332  VPKVRLFVMGIDEWRDETDW  351
 
 	*/
+	
+
+aln1:
+	s1 = sequence::from_string("tspmtpditgkpfvaadasndyikrevmipmrdgvklhtvivlpkgaknapivltrtpyd\
+asgrterlasphmkdllsagddvfveggyirvfqdvrgkygsegdyvmtrplrgplnpse\
+vdhatdawdtidwlvknvsesngkvgmigssyegftvvmaltnphpalkvavpespmidg\
+wmgddwfnygafrqvnfdyftgqlskrgkgagiarqghddysnflqagsagdfakaagle\
+qlpwwhkltehaaydafwqeqaldkvmartplkvptmwlqglwdqedmwgaihsyaamep\
+rdkrntlnylvmgpwrhsqvnydgsalgalnfegdtarqfrhdvlrpffdqylvdgapka\
+dtppvfiyntgenhwdrlkaw");
+
+	s2 = sequence::from_string("MVDGNYSVASNVMVPMRDGVRLAVDLYRPDADGPVPVLLVRNPYDKFDVFAWSTQSTNWL\
+EFVRDGYAVVIQDTRGLFASEGEFVPHVDDEADAEDTLSWILEQAWCDGNVGMFGVSYLG\
+VTQWQAAVSGVGGLKAIAPSMASADLYRAPWYGPGGALSVEALLGWSALIGTGLITSRSD\
+ARPEDAADFVQLAAILNDVAGAASVTPLAEQPLLGRLIPWVIDQVVDHPDNDESWQSISL\
+FERLGGLATPALITAGWYDGFVGESLRTFVAVKDNADARLVVGPWSHSNLTGRNADRKFG\
+IAATYPIQEATTMHKAFFDRHLRGETDALAGVPKVRLFVMGIDEWRDETDWPLPDTAYTP\
+FYLGGSGAANTSTGGGTLSTSISGTESADTYLYDPADPVPSLGGTLLFHNGDNGPADQRP\
+IHDRDDVLCYSTEVLTDPVEVTGTVSARLFVSSSAVDTDFTAKLVDVFPDGRAIALCDGI\
+VRMRYRETLVNPTLIEAGEIYEVAIDMLATSNVFLPGHRIMVQVSSSNFPKYDRNSNTGG\
+VIAREQLEEMCTAVNRIHRGPEHPSHIVLPIIKR");
+
+	qa = 19;
+	sa = 4;
 
 	ende:
 	ss.push_back(s1);
@@ -271,8 +299,8 @@ KCLEHLFFFKLIGDTPIDTFLMEMLEAPHQIT");
 	ss.finish_reserve();
 
 	//benchmark_floating(ss, qa, sa);
-	//benchmark_greedy(ss, qa, sa);
+	benchmark_greedy(ss, qa, sa);
 	//benchmark_cmp();
-	benchmark_ungapped(ss, qa, sa);
+	//benchmark_ungapped(ss, qa, sa);
 
 }

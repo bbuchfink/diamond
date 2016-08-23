@@ -34,6 +34,7 @@ struct Config
 	string	query_file;
 	unsigned	merge_seq_treshold;
 	unsigned	hit_cap;
+	double min_ungapped_score;
 	int		min_ungapped_raw_score;
 	unsigned shapes;
 	unsigned	index_mode;
@@ -47,9 +48,11 @@ struct Config
 	double	chunk_size;
 	unsigned min_identities;
 	unsigned min_identities2;
-	int		xdrop;
+	double ungapped_xdrop;
+	int		raw_ungapped_xdrop;
 	unsigned window;
-	int		min_hit_score;
+	double		min_hit_score;
+	int min_hit_raw_score;
 	int		hit_band;
 	unsigned	min_compressed_identities;
 	int		min_seed_score;
@@ -100,6 +103,8 @@ struct Config
 	bool query_parallel;
 	unsigned target_fetch_size;
 	bool mode_more_sensitive;
+	string matrix_file;
+	double lambda, K;
 
 	enum { makedb = 0, blastp = 1, blastx = 2, view = 3, help = 4, version = 5, getseq = 6, benchmark = 7, random_seqs = 8, compare = 9 };
 	unsigned	command;

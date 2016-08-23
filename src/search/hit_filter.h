@@ -46,7 +46,7 @@ struct hit_filter
 
 	void push(Loc subject, int score)
 	{
-		if(score >= config.min_hit_score)
+		if(score >= config.min_hit_raw_score)
 			push_hit(subject);
 		else
 			subjects_.push_back(ref_seqs::data_->fixed_window_infix(subject+Const::seed_anchor));
@@ -64,7 +64,7 @@ struct hit_filter
 				left,
 				config.gap_open + config.gap_extend,
 				config.gap_extend,
-				config.min_hit_score,
+				config.min_hit_raw_score,
 				*this,
 				uint8_t(),
 				stats_);

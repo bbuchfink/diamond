@@ -56,6 +56,18 @@ struct Diagonal_segment
 	{
 		return interval(subject_pos, subject_pos + len);
 	}
+	int subject_last() const
+	{
+		return (int)subject_pos + len - 1;
+	}
+	int query_last() const
+	{
+		return (int)query_pos + len - 1;
+	}
+	int subject_end() const
+	{
+		return (int)subject_pos + len;
+	}
 	int diag() const
 	{
 		return subject_pos - query_pos;
@@ -69,6 +81,10 @@ struct Diagonal_segment
 	Diagonal_segment transpose() const
 	{
 		return Diagonal_segment(subject_pos, query_pos, len, score);
+	}
+	bool operator<=(const Diagonal_segment &rhs) const
+	{
+		return query_pos + len <= rhs.query_pos && subject_pos + len <= rhs.subject_pos;
 	}
 	unsigned query_pos, subject_pos, len, score;
 };

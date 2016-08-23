@@ -37,6 +37,7 @@ struct Score_matrix
 
 	Score_matrix() {}
 	Score_matrix(const string &matrix, int gap_open, int gap_extend, int reward, int penalty);
+	Score_matrix(const string &matrix_file, double lambda, double K, int gap_open, int gap_extend);
 
 	friend std::ostream& operator<<(std::ostream& s, const Score_matrix &m)
 	{

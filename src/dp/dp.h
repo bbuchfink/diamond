@@ -21,14 +21,17 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 
 #include "../basic/match.h"
 #include "../align/align.h"
+#include "score_profile.h"
 
 template<typename _score>
 void smith_waterman(const Letter *query, local_match &segment, _score gap_open, _score gap_extend, vector<char> &transcript_buf, const _score& = int());
 
 int xdrop_ungapped(const Letter *query, const Letter *subject, unsigned seed_len, unsigned &delta, unsigned &len);
 int xdrop_ungapped(const Letter *query, const Letter *subject, unsigned &delta, unsigned &len);
+int xdrop_ungapped_right(const Letter *query, const Letter *subject, int &len);
 
 void greedy_align(sequence query, sequence subject, const vector<Diagonal_segment> &sh, bool log);
 void greedy_align(sequence query, sequence subject, const Diagonal_segment &sh, bool log);
+void greedy_align(sequence query, const Long_score_profile &qp, sequence subject, const Diagonal_segment &sh, bool log);
 
 #endif /* FLOATING_SW_H_ */

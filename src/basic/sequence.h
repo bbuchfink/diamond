@@ -46,6 +46,11 @@ struct sequence
 		clipping_offset_(0),
 		data_(data.data())
 	{}
+	sequence(const sequence &seq, int from, int to):
+		len_(to-from+1),
+		clipping_offset_(0),
+		data_(&seq[from])
+	{}
 	size_t length() const
 	{
 		return len_;

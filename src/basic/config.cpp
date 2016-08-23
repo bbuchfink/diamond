@@ -85,7 +85,10 @@ Config::Config(int argc, const char **argv)
 		("reward", po::value<int>(&program_options::reward)->default_value(2), "match reward score (blastn only)")
 		("penalty", po::value<int>(&program_options::penalty)->default_value(-3), "mismatch penalty score (blastn only)")
 #endif
-		("matrix", 0, "score matrix for protein alignment", matrix, string("blosum62"))
+		("matrix", 0, "score matrix for protein alignment (default=BLOSUM62)", matrix, string("blosum62"))
+		("custom-matrix", 0, "file containing custom scoring matrix", matrix_file)
+		("lambda", 0, "lambda parameter for custom matrix", lambda)
+		("K", 0, "K parameter for custom matrix", K)
 		("seg", 0, "enable SEG masking of queries (yes/no)", seg)
 		("salltitles", 0, "print full subject titles in output files", salltitles);
 
@@ -95,11 +98,11 @@ Config::Config(int argc, const char **argv)
 		("freq-sd", 0, "number of standard deviations for ignoring frequent seeds", freq_sd, 0.0)
 		("id2", 0, "minimum number of identities for stage 1 hit", min_identities)
 		("window", 'w', "window size for local hit search", window)
-		("xdrop", 'x', "xdrop for ungapped alignment", xdrop, 20)
-		("gapped-xdrop", 'X', "xdrop for gapped alignment in bits", gapped_xdrop, 20)
-		("ungapped-score", 0, "minimum raw alignment score to continue local extension", min_ungapped_raw_score)
+		("xdrop", 'x', "xdrop for ungapped alignment", ungapped_xdrop, 12.3)
+		("ungapped-score", 0, "minimum alignment score to continue local extension", min_ungapped_score)
 		("hit-band", 0, "band for hit verification", hit_band)
 		("hit-score", 0, "minimum score to keep a tentative alignment", min_hit_score)
+		("gapped-xdrop", 'X', "xdrop for gapped alignment in bits", gapped_xdrop, 20)
 		("band", 0, "band for dynamic programming computation", padding)
 		("shapes", 's', "number of seed shapes (0 = all available)", shapes)
 		("index-mode", 0, "index mode (0=4x12, 1=16x9)", index_mode)
@@ -109,7 +112,7 @@ Config::Config(int argc, const char **argv)
 		("single-domain", 0, "Discard secondary domains within one target sequence", single_domain)
 		("dbsize", 0, "effective database size (in letters)", db_size)
 		("no-auto-append", 0, "disable auto appending of DAA and DMND file extensions", no_auto_append)
-		("target-fetch-size", 0, "", target_fetch_size, 4u);
+		("target-fetch-size", 0, "number of target sequences to fetch for seed extension", target_fetch_size, 4u);
 	
 	Options_group view_options("View options");
 	view_options.add()
@@ -231,7 +234,13 @@ Config::Config(int argc, const char **argv)
 			gap_open = 11;
 		if (gap_extend == -1)
 			gap_extend = 1;
-		score_matrix = Score_matrix(to_upper_case(matrix), gap_open, gap_extend, reward, penalty);
+		if (matrix_file == "")
+			score_matrix = Score_matrix(to_upper_case(matrix), gap_open, gap_extend, reward, penalty);
+		else {
+			if (lambda == 0 || K == 0)
+				throw std::runtime_error("Custom scoring matrices require setting the --lambda and --K options.");
+			score_matrix = Score_matrix(matrix_file, lambda, K, gap_open, gap_extend);
+		}
 		message_stream << "Scoring parameters: " << score_matrix << endl;
 		if (seg == "" && command == blastx)
 			seg = "yes";

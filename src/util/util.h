@@ -414,4 +414,26 @@ inline string to_lower_case(const string &s)
 	return r;
 }
 
+template<typename _t>
+struct Matrix
+{
+	void init(int rows, int cols, bool reset = false)
+	{
+		cols_ = cols;
+		if (!reset)
+			data_.resize(rows*cols);
+		else {
+			data_.clear();
+			data_.insert(data_.begin(), rows*cols, _t());
+		}
+	}
+	_t* operator[](int i)
+	{
+		return data_[i*cols_];
+	}
+private:
+	int cols_;
+	vector<_t> data_;
+};
+
 #endif /* UTIL_H_ */

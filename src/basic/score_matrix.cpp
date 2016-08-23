@@ -20,6 +20,7 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #include <limits>
 #include <algorithm>
 #include <stdexcept>
+#include <fstream>
 #include "score_matrix.h"
 #include "../blast/raw_scoremat.h"
 
@@ -215,4 +216,57 @@ char Score_matrix::low_score() const
 		for (Letter j = i + 1; j < (char)value_traits.alphabet_size; ++j)
 			low = std::min(low, (char)this->operator()(i, j));
 	return low;
+}
+
+const char* custom_scores(const string &matrix_file)
+{
+	static char scores[25 * 25];
+	std::ifstream f(matrix_file.c_str());
+	string l, s;
+	std::stringstream ss;
+	vector<Letter> pos;
+	unsigned n = 0;
+	std::memset(scores, 0xff, sizeof(scores));
+	while (!f.eof()) {
+		std::getline(f, l);
+		if (l[0] == '#')
+			continue;
+		if (pos.size() == 0) {
+			for (string::const_iterator i = l.begin(); i != l.end(); ++i)
+				if (*i == ' ' || *i == '\t')
+					continue;
+				else
+					pos.push_back(value_traits.from_char(*i));
+		}
+		else {
+			if (n >= pos.size())
+				break;
+			ss << l;
+			if (value_traits.from_char(ss.get()) != pos[n])
+				throw std::runtime_error("Invalid custom scoring matrix file format.");
+			for (unsigned i = 0; i < pos.size(); ++i) {
+				int score;
+				ss >> score;
+				scores[(int)pos[n] * 25 + (int)pos[i]] = score;
+			}
+			ss.clear();
+			++n;
+		}
+	}
+	return scores;
+}
+
+Score_matrix::Score_matrix(const string &matrix_file, double lambda, double K, int gap_open, int gap_extend):
+	gap_open_(gap_open),
+	gap_extend_(gap_extend),
+	name_("custom"),
+	matrix8_(custom_scores(matrix_file)),
+	bias_((char)(-low_score())),
+	matrix8u_(custom_scores(matrix_file), bias_),
+	matrix16_(custom_scores(matrix_file))
+{
+	static double constants[5];
+	constants[3] = lambda;
+	constants[4] = K;
+	constants_ = constants;
 }
