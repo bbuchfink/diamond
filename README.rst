@@ -1,4 +1,4 @@
-**DIAMOND v0.8.17 by Benjamin Buchfink** - http://github.com/bbuchfink/diamond
+**DIAMOND v0.8.18 by Benjamin Buchfink** - http://github.com/bbuchfink/diamond
 
 Published in *Nature Methods* **12**, 59–60 (2015) | `doi:10.1038/nmeth.3176 <http://dx.doi.org/10.1038/nmeth.3176>`_
 
@@ -8,10 +8,10 @@ Download & Installation
 =======================
 If you use a recent **Linux** operating system, you can download the software in binary format for immediate use::
 
-    wget http://github.com/bbuchfink/diamond/releases/download/v0.8.17/diamond-linux64.tar.gz
+    wget http://github.com/bbuchfink/diamond/releases/download/v0.8.18/diamond-linux64.tar.gz
     tar xzf diamond-linux64.tar.gz
 
-Users of **Mac OS X** and **older Linux systems** need to compile the software from source (see `Compiling from source`_). On **FreeBSD**, the software can be installed using ``pkg install diamond``. A binary executable for **Windows** is available under Releases.
+Users of **Mac OS X** and **older Linux systems** need to compile the software from source (see `Compiling from source`_). On **FreeBSD**, the software can be installed using ``pkg install diamond``. A binary executable for **Windows** is available under Releases (you also need to install the Visual C++ Redistributable: https://www.microsoft.com/en-us/download/details.aspx?id=48145).
 
 Basic command line use
 ======================
@@ -138,9 +138,9 @@ Compiling from source
 =====================
 To compile DIAMOND from source, invoke the following commands on the shell::
 
-  $ wget http://github.com/bbuchfink/diamond/archive/v0.8.17.tar.gz
-  $ tar xzf v0.8.17.tar.gz
-  $ cd diamond-0.8.17
+  $ wget http://github.com/bbuchfink/diamond/archive/v0.8.18.tar.gz
+  $ tar xzf v0.8.18.tar.gz
+  $ cd diamond-0.8.18
   $ mkdir bin
   $ cd bin
   $ cmake ..
