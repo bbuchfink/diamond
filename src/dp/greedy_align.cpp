@@ -122,7 +122,7 @@ int score_range(sequence query, sequence subject, int i, int j, int j_end)
 {
 	int score = 0;
 	while (j < j_end) {
-		if (i >= query.length()) // || j >= subject.length())
+		if (i >= (int)query.length()) // || j >= subject.length())
 			cout << 'y' << endl;
 		score += score_matrix(query[i], subject[j]);
 		++i;
@@ -315,15 +315,15 @@ int needleman_wunsch(sequence q, sequence s)
 	int *score1 = scores1, *score2 = scores2;
 	score1[0] = 0;
 	hgap[0] = std::numeric_limits<int>::min() + 1;
-	for (int i = 1; i <= q.length(); ++i) {
+	for (int i = 1; i <= (int)q.length(); ++i) {
 		score1[i] = g;
 		hgap[i] = std::numeric_limits<int>::min() + 1;
 		g--;
 	}
-	for (int j = 1; j <= s.length(); ++j) {
+	for (int j = 1; j <= (int)s.length(); ++j) {
 		g = std::numeric_limits<int>::min() + 1;
 		score1[0] = j == 1 ? 0 : (-10 - j);
-		for (int i = 1; i <= q.length(); ++i) {
+		for (int i = 1; i <= (int)q.length(); ++i) {
 			int sc = score_matrix(q[i - 1], s[j - 1]) + score1[i - 1];
 			sc = std::max(sc, hgap[i]);
 			sc = std::max(sc, g);
@@ -356,7 +356,7 @@ struct Diag_buffer
 	}
 	uint8_t* get_col(int j)
 	{
-		if (data_.size() < (j + 1) * 64)
+		if ((int)data_.size() < (j + 1) * 64)
 			data_.resize((j + 1) * 64);
 		return &data_[j * 64];
 	}
@@ -370,14 +370,6 @@ struct Diag_buffer
 				break;
 		}
 		return pair<int, int>((int)(j - data_.begin()) / 64 + 1, (int)(i - data_.begin()) / 64 + 1);
-	}
-	Fragment scan_interval(int d, int j0, int j1) const
-	{
-		static const int min_score[] = { 12, 12, 12, 12, 12, 12, 3 };
-		vector<uint8_t>::const_iterator i = data_.begin() + d + j0 * 64;
-		Fragment f;
-		for (; i < data_.end(); i += 64) {
-		}
 	}
 	int query_pos, subject_pos;
 	vector<uint8_t> data_;
@@ -586,6 +578,6 @@ void greedy_align(sequence query, const Long_score_profile &qp, sequence subject
 	static TLS_PTR vector<Diagonal_segment> *diag_ptr;
 	vector<Diagonal_segment> &diag(TLS::get(diag_ptr));
 	diag.clear();
-	Tile_map &tile_map(TLS::get(tile_map_ptr));
+	//Tile_map &tile_map(TLS::get(tile_map_ptr));
 
 }
