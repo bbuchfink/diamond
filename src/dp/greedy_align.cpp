@@ -574,7 +574,7 @@ void scan_vicinity(sequence q, const Long_score_profile &qp, sequence s, const D
 
 void greedy_align(sequence query, const Long_score_profile &qp, sequence subject, const vector<Diagonal_segment> &sh, bool log)
 {
-	static TLS_PTR Tile_map *tile_map_ptr;
+	// static TLS_PTR Tile_map *tile_map_ptr;
 	static TLS_PTR vector<Diagonal_segment> *diag_ptr;
 	vector<Diagonal_segment> &diag(TLS::get(diag_ptr));
 	diag.clear();
