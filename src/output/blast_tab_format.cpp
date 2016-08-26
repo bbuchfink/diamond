@@ -70,10 +70,10 @@ const char* Blast_tab_format::field_str[] = {
 Blast_tab_format::Blast_tab_format() :
 	Output_format(blast_tab)
 {
-	static const unsigned default[] = { 0, 5, 23, 22, 25, 27, 13, 14, 15, 16, 19, 20 };
+	static const unsigned stdf[] = { 0, 5, 23, 22, 25, 27, 13, 14, 15, 16, 19, 20 };
 	vector<string> &f = config.output_format;
 	if (f.size() <= 1) {
-		fields = vector<unsigned>(default, default + 12);
+		fields = vector<unsigned>(stdf, stdf + 12);
 		return;
 	}
 	for (vector<string>::const_iterator i = f.begin() + 1; i != f.end(); ++i) {
@@ -124,7 +124,7 @@ void Blast_tab_format::print_match(const Hsp_context& r, Text_buffer &out) const
 		{
 			vector<Letter> seq;
 			for (Hsp_context::Iterator j = r.begin(); j.good(); ++j)
-				if (!(j.op() == Edit_operation::op_insertion))
+				if (!(j.op() == op_insertion))
 					seq.push_back(j.subject());
 			out << sequence(seq);
 			break;
