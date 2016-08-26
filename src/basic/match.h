@@ -206,11 +206,12 @@ struct Hsp_data
 
 struct Hsp_context
 {
-	Hsp_context(Hsp_data& hsp, unsigned query_id, const sequence &query, const char *query_name, unsigned subject_id, const char *subject_name, unsigned subject_len, unsigned hit_num, unsigned hsp_num) :		
+	Hsp_context(Hsp_data& hsp, unsigned query_id, const sequence &query, unsigned source_query_len, const char *query_name, unsigned subject_id, const char *subject_name, unsigned subject_len, unsigned hit_num, unsigned hsp_num) :		
 		query(query),
 		query_name(query_name),
 		subject_name(subject_name),
 		query_id(query_id),
+		source_query_len(source_query_len),
 		subject_id(subject_id),
 		subject_len(subject_len),
 		hit_num(hit_num),
@@ -322,7 +323,7 @@ struct Hsp_context
 
 	const sequence query;
 	const char *query_name, *subject_name;
-	const unsigned query_id, subject_id, subject_len, hit_num, hsp_num;
+	const unsigned query_id, source_query_len, subject_id, subject_len, hit_num, hsp_num;
 private:	
 	Hsp_data &hsp_;
 };

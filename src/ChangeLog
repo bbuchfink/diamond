@@ -1,3 +1,6 @@
+[0.8.20]
+- added support for customizing the BLAST tabular output format
+
 [0.8.19]
 - ungapped xdrop score and ungapped and gapped filter scores are now set in bits
 - added support for custom scoring matrices

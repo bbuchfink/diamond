@@ -133,21 +133,21 @@ void view()
 	
 	task_timer timer("Generating output");
 	View_writer writer;
-	const Output_format& format(get_output_format());
+	output_format = auto_ptr<Output_format>(get_output_format());
 
 	Binary_buffer buf;
 	size_t query_num;
 	daa.read_query_buffer(buf, query_num);
 	DAA_query_record r(daa, buf, query_num);
 	Text_buffer out;
-	view_query(r, out, format);
+	view_query(r, out, *output_format);
 	
-	format.print_header(*writer.f_, daa.mode(), daa.score_matrix(), daa.gap_open_penalty(), daa.gap_extension_penalty(), daa.evalue(), r.query_name.c_str(), (unsigned)r.query_len());
+	output_format->print_header(*writer.f_, daa.mode(), daa.score_matrix(), daa.gap_open_penalty(), daa.gap_extension_penalty(), daa.evalue(), r.query_name.c_str(), (unsigned)r.query_len());
 	writer(out);
 
-	View_context context(daa, writer, format);
+	View_context context(daa, writer, *output_format);
 	launch_thread_pool(context, config.threads_);
-	format.print_footer(*writer.f_);
+	output_format->print_footer(*writer.f_);
 }
 
 #endif /* VIEW_H_ */

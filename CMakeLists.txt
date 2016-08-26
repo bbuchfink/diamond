@@ -67,6 +67,7 @@ add_executable(diamond src/run/main.cpp
   src/data/frequent_seeds.cpp
   src/align/query_mapper.cpp
   src/align/align_target.cpp
+  src/output/blast_tab_format.cpp
 )
 
 target_link_libraries(diamond ${ZLIB_LIBRARY} ${CMAKE_THREAD_LIBS_INIT})

@@ -447,7 +447,7 @@ void scan_ahead(const Long_score_profile &qp, sequence s, const Diagonal_segment
 	}
 	for (int b = 0; b < 4; ++b)
 		for (int i = 0; i < 16; ++i) {
-			uint8_t s;
+			uint8_t s=0;
 			//if ((s = max[b].data_.m128i_u8[i]) > 12) {
 				pair<int, int> e = scores.get_diag(b * 16 + i, s);
 				out.push_back(Diagonal_segment((int)d.query_pos - 32 + b * 16 + i + ((b>1) ? 1 : 0) + e.first, d.subject_pos + e.first, e.second - e.first, s));

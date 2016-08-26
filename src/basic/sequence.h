@@ -89,6 +89,12 @@ struct sequence
 			*(ptr++) = to_char(data_[i]);
 		return len;
 	}
+	Text_buffer& print(Text_buffer &buf, size_t begin, size_t end, const Value_traits& value_traits) const
+	{
+		for (size_t i = begin; i < end; ++i)
+			buf << value_traits.alphabet[(long)data_[i]];
+		return buf;
+	}
 	friend std::ostream& operator<<(std::ostream &os, const sequence &s)
 	{
 		for(unsigned i=0;i<s.len_;++i)

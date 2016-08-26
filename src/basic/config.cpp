@@ -51,7 +51,39 @@ Config::Config(int argc, const char **argv)
 		("threads", 'p', "number of CPU threads", threads_)
 		("db", 'd', "database file", database)
 		("out", 'o', "output file", output_file)
-		("outfmt", 'f', "output format (tab/sam/xml/daa)", output_format)
+		("outfmt", 'f', "output format\n\
+\t5   = BLAST XML\n\
+\t6   = BLAST tabular\n\
+\t100 = DIAMOND alignment archive (DAA)\n\
+\t101 = SAM\n\n\
+\tValue 6 may be followed by a space-separated list of these keywords:\n\n\
+\tqseqid means Query Seq - id\n\
+\tqlen means Query sequence length\n\
+\tsseqid means Subject Seq - id\n\
+\tsallseqid means All subject Seq - id(s), separated by a ';'\n\
+\tslen means Subject sequence length\n\
+\tqstart means Start of alignment in query\n\
+\tqend means End of alignment in query\n\
+\tsstart means Start of alignment in subject\n\
+\tsend means End of alignment in subject\n\
+\tqseq means Aligned part of query sequence\n\
+\tsseq means Aligned part of subject sequence\n\
+\tevalue means Expect value\n\
+\tbitscore means Bit score\n\
+\tscore means Raw score\n\
+\tlength means Alignment length\n\
+\tpident means Percentage of identical matches\n\
+\tnident means Number of identical matches\n\
+\tmismatch means Number of mismatches\n\
+\tpositive means Number of positive - scoring matches\n\
+\tgapopen means Number of gap openings\n\
+\tgaps means Total number of gaps\n\
+\tppos means Percentage of positive - scoring matches\n\
+\tqframe means Query frame\n\
+\tstitle means Subject Title\n\
+\tsalltitles means All Subject Title(s), separated by a '<>'\n\
+\tqcovhsp means Query Coverage Per HSP\n\n\
+\tDefault: qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore", output_format)
 		("verbose", 'v', "verbose console output", verbose)
 		("log", 0, "enable debug log", debug_log)
 		("quiet", 0, "disable console output", quiet);
@@ -157,11 +189,11 @@ Config::Config(int argc, const char **argv)
 		if (daa_file.length() > 0) {
 			if (output_file.length() > 0)
 				throw std::runtime_error("Options --daa and --out cannot be used together.");
-			if (output_format.length() > 0 && output_format != "daa")
+			if (output_format.size() > 0 && output_format[0] != "daa")
 				throw std::runtime_error("Invalid parameter: --daa/-a. Output file is specified with the --out/-o parameter.");
 			output_file = daa_file;
 		}
-		if (daa_file.length() > 0 || output_format == "daa") {
+		if (daa_file.length() > 0 || (output_format.size() > 0 && (output_format[0] == "daa" || output_format[0] == "100"))) {
 			if (compression != 0)
 				throw std::runtime_error("Compression is not supported for DAA format.");
 			if (!no_auto_append)

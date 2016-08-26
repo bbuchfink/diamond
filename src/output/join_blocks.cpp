@@ -151,6 +151,7 @@ void join_query(vector<Binary_buffer> &buf, Text_buffer &out, Statistics &statis
 				output_format->print_match(Hsp_context(hsp,
 					query,
 					context[hsp.frame],
+					query_source_len,
 					query_name,
 					next.info_.subject_id,
 					ref_map.name(next.info_.subject_id),

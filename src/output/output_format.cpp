@@ -22,7 +22,29 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 
 using std::endl;
 
-const Output_format* output_format;
+auto_ptr<Output_format> output_format;
+
+Output_format* get_output_format()
+{
+	const vector<string> &f = config.output_format;
+	if (f.size() == 0) {
+		if (config.daa_file == "" || config.command == Config::view)
+			return new Blast_tab_format;
+		else if ((config.command == Config::blastp || config.command == Config::blastx) && config.daa_file.length() > 0)
+			return new DAA_format();
+	}
+	if (f[0] == "tab" || f[0] == "6")
+		return new Blast_tab_format;
+	else if (f[0] == "sam" || f[0] == "101")
+		return new Sam_format;
+	else if (f[0] == "xml" || f[0] == "5")
+		return new XML_format;
+	else if ((config.command == Config::blastp || config.command == Config::blastx) && (f[0] == "daa" || f[0] == "100"))
+		return new DAA_format;
+	else
+		throw std::runtime_error("Invalid output format. Allowed values: 5,6,100,101");
+}
+
 
 void XML_format::print_match(const Hsp_context &r, Text_buffer &out) const
 {
@@ -33,7 +55,8 @@ void XML_format::print_match(const Hsp_context &r, Text_buffer &out) const
 			<< "  <Hit_num>" << r.hit_num+1 << "</Hit_num>" << '\n'
 			<< "  <Hit_id></Hit_id>" << '\n'
 			<< "  <Hit_def>";
-		this->print_salltitles(out, r.subject_name, true);
+		const bool lt = (config.salltitles || (config.command == Config::view)) ? true : false;
+		this->print_salltitles(out, r.subject_name, lt, lt);
 		out << "</Hit_def> " << '\n'
 			<< "  <Hit_accession></Hit_accession>" << '\n'
 			<< "  <Hit_len>" << r.subject_len << "</Hit_len>" << '\n'

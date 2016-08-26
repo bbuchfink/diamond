@@ -160,6 +160,7 @@ void Query_mapper::generate_output(Text_buffer &buffer, Statistics &stat)
 					output_format->print_match(Hsp_context(*j,
 						query_id,
 						query_seq(j->frame),
+						source_query_len,
 						query_ids::get()[query_id].c_str(),
 						targets[i].subject_id,
 						ref_ids::get()[targets[i].subject_id].c_str(),

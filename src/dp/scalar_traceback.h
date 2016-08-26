@@ -120,10 +120,13 @@ local_match traceback(const Letter *query,
 			if (lq == ls) {
 				l.transcript.push_back(op_match);
 				++l.identities;
+				++l.positives;
 			}
 			else {
 				l.transcript.push_back(op_substitution, ls);
 				++l.mismatches;
+				if (match_score > 0)
+					++l.positives;
 			}
 			--i;
 			--j;
@@ -131,11 +134,13 @@ local_match traceback(const Letter *query,
 		} else if (have_hgap(dp, i, j, gap_open, gap_extend, gap_len)) {
 			++l.gap_openings;
 			l.length += gap_len;
+			l.gaps += gap_len;
 			for (; gap_len > 0; gap_len--)
 				l.transcript.push_back(op_deletion, mask_critical(get_dir(subject, i--, _dir())));
 		} else if (have_vgap(dp, i, j, gap_open, gap_extend, gap_len)) {
 			++l.gap_openings;
 			l.length += gap_len;
+			l.gaps += gap_len;
 			j -= gap_len;
 			l.transcript.push_back(op_insertion, (unsigned)gap_len);
 		} else {

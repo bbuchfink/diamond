@@ -44,26 +44,34 @@ struct Output_format
 	{ }
 	virtual ~Output_format()
 	{ }
-	static size_t print_salltitles(Text_buffer &buf, const char *id, bool full_titles = false)
+	static void print_salltitles(Text_buffer &buf, const char *id, bool full_titles, bool all_titles)
 	{
-		if (!config.salltitles && config.command != Config::view && !full_titles) {
-			buf.write_until(id, Const::id_delimiters);
-			return 0;
+		if (!all_titles) {
+			buf.write_until(id, full_titles ? "\1" : Const::id_delimiters);
+			return;
 		}
 		if (strchr(id, '\1') == 0) {
-			buf << id;
-			return 0;
+			buf.write_until(id, full_titles ? "\1" : Const::id_delimiters);
+			return;
 		}
-		size_t n = 0;
+		//size_t n = 0;
 		const vector<string> t (tokenize(id, "\1"));
 		vector<string>::const_iterator i=t.begin();
 		for(;i<t.end()-1;++i) {
-			buf << *i << "<>";
-			n += i->length() + 2;
+			if (full_titles)
+				buf << *i << "<>";
+			else {
+				buf.write_until(i->c_str(), Const::id_delimiters);
+				buf << ";";
+			}
+			//n += i->length() + 2;
 		}
-		buf << *i;
-		n += i->length();
-		return n;
+		if(full_titles)
+			buf << *i;
+		else
+			buf.write_until(i->c_str(), Const::id_delimiters);
+		//n += i->length();
+		//return n;
 	}
 	operator unsigned() const
 	{
@@ -73,7 +81,7 @@ struct Output_format
 	enum { daa, blast_tab, blast_xml, sam };
 };
 
-extern const Output_format *output_format;
+extern auto_ptr<Output_format> output_format;
 
 struct DAA_format : public Output_format
 {
@@ -84,33 +92,12 @@ struct DAA_format : public Output_format
 
 struct Blast_tab_format : public Output_format
 {
-
-	Blast_tab_format():
-		Output_format(blast_tab)
-	{ }
-
-	virtual void print_match(const Hsp_context& r, Text_buffer &out) const
-	{
-		out.write_until(r.query_name, Const::id_delimiters);
-		out << '\t';
-		this->print_salltitles(out, r.subject_name);
-
-		out << '\t'
-			<< (double)r.identities() * 100 / r.length() << '\t'
-			<< r.length() << '\t'
-			<< r.mismatches() << '\t'
-			<< r.gap_openings() << '\t'
-			<< r.oriented_query_range().begin_ + 1 << '\t'
-			<< r.oriented_query_range().end_ + 1<< '\t'
-			<< r.subject_range().begin_ + 1 << '\t'
-			<< r.subject_range().end_ << '\t';
-		out.print_e(r.evalue());
-		out << '\t' << r.bit_score() << '\n';
-	}
-
+	static const char* field_str[];
+	Blast_tab_format();
+	virtual void print_match(const Hsp_context& r, Text_buffer &out) const;
 	virtual ~Blast_tab_format()
 	{ }
-
+	vector<unsigned> fields;
 };
 
 struct Sam_format : public Output_format
@@ -125,7 +112,8 @@ struct Sam_format : public Output_format
 		out.write_until(r.query_name, Const::id_delimiters);
 		out << '\t' << '0' << '\t';
 
-		this->print_salltitles(out, r.subject_name);
+		const bool lt = (config.salltitles || (config.command == Config::view)) ? true : false;
+		this->print_salltitles(out, r.subject_name, lt, lt);
 
 		out << '\t'
 			<< r.subject_range().begin_ + 1 << '\t'
@@ -240,24 +228,6 @@ struct XML_format : public Output_format
 	{ }
 };
 
-inline const Output_format& get_output_format()
-{
-	static const Sam_format sam;
-	static const Blast_tab_format tab;
-	static const XML_format xml;
-	static const DAA_format daa;
-	if(config.output_format == "tab" || (config.output_format == "" && (config.daa_file == "" || config.command == Config::view)))
-		return tab;
-	else if (config.output_format == "sam")
-		return sam;
-	else if (config.output_format == "xml")
-		return xml;
-	else if ((config.command == Config::blastp || config.command == Config::blastx)
-		&& (config.output_format == "daa" || config.daa_file.length() > 0))
-		return daa;
-	else
-		throw std::runtime_error("Invalid output format. Allowed values: tab,sam,xml,daa");
-	return tab;
-}
+Output_format* get_output_format();
 
 #endif /* OUTPUT_FORMAT_H_ */

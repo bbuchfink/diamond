@@ -436,4 +436,12 @@ private:
 	vector<_t> data_;
 };
 
+inline int get_idx(const char **a, size_t n, const char *s)
+{
+	for (size_t i = 0; i < n; ++i)
+		if (strcmp(a[i], s) == 0)
+			return (int)i;
+	return -1;
+}
+
 #endif /* UTIL_H_ */

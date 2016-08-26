@@ -35,4 +35,5 @@ g++ -DNDEBUG -O3 -mssse3 -Wno-deprecated-declarations -std=gnu++98 -static \
   src/data/frequent_seeds.cpp \
   src/align/query_mapper.cpp \
   src/align/align_target.cpp \
+  src/output/blast_tab_format.cpp \
 -lz -lpthread -o diamond

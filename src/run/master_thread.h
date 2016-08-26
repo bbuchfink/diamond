@@ -271,7 +271,7 @@ void master_thread()
 	timer2.start();
 
 	align_mode = Align_mode(Align_mode::from_command(config.command));
-	output_format = &get_output_format();
+	output_format = auto_ptr<Output_format>(get_output_format());
 
 	message_stream << "Temporary directory: " << Temp_file::get_temp_dir() << endl;
 
