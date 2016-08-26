@@ -26,7 +26,7 @@ This will create a binary DIAMOND database file with the specified name (``nr.dm
 The output file here is specified with the ``–o`` option and named ``matches.m8``. By default, it is generated in BLAST tabular format.
 
 *Note*:
-  - The program may use quite a lot of memory and also temporary disk space. Should the program fail due to running out of either one, you need to set a lower value for the block size parameter ``-b`` (see below).
+  - The program may use quite a lot of memory and also temporary disk space. Should the program fail due to running out of either one, you need to set a lower value for the block size parameter ``-b`` (see the `manual <https://github.com/bbuchfink/diamond/raw/master/diamond_manual.pdf>`_).
   - The default (fast) mode was mainly designed for short reads. For longer sequences, the sensitive modes (options ``--sensitive`` or ``--more-sensitive``) are recommended.
   - The full speed of the program is only attained on large query datasets. It is currently not efficient in mapping a smaller number of query sequences.
   
