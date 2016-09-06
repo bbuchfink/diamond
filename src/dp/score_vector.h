@@ -23,6 +23,9 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #ifdef __SSSE3__
 #include <tmmintrin.h>
 #endif
+#ifdef __SSE4_1__
+#include <smmintrin.h>
+#endif
 
 template<typename _score>
 struct score_traits
@@ -177,7 +180,11 @@ struct score_vector<uint8_t>
 	bool operator>(score_vector<uint8_t> cmp) const
 	{
 		const score_vector<uint8_t> s = *this - cmp;
+#ifdef __SSE4_1__
 		return _mm_testz_si128(s.data_, s.data_) == 0;
+#else
+		return _mm_movemask_epi8(_mm_cmpeq_epi8(s.data_, _mm_setzero_si128())) == 0xFFFF;
+#endif
 	}
 
 	__m128i data_;
