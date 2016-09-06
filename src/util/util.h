@@ -444,4 +444,16 @@ inline int get_idx(const char **a, size_t n, const char *s)
 	return -1;
 }
 
+template<int n>
+inline int round_down(int x)
+{
+	return (x / n)*n;
+}
+
+template<int n>
+inline int round_up(int x)
+{
+	return ((x + n - 1) / n)*n;
+}
+
 #endif /* UTIL_H_ */

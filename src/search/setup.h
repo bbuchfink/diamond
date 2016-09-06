@@ -25,8 +25,6 @@ void setup_search_params(pair<size_t,size_t> query_len_bounds, size_t chunk_db_l
 {
 	const double b = config.min_bit_score == 0 ? score_matrix.bitscore(config.max_evalue, ref_header.letters, (unsigned)query_len_bounds.first) : config.min_bit_score;
 
-	config.raw_ungapped_xdrop = score_matrix.rawscore(config.ungapped_xdrop);
-
 	if(query_len_bounds.second <= 40) {
 		Config::set_option(config.min_identities, 10u);
 		Config::set_option(config.min_ungapped_score, std::min(27.0, b));

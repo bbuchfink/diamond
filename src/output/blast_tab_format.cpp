@@ -123,6 +123,7 @@ void Blast_tab_format::print_match(const Hsp_context& r, Text_buffer &out) const
 		case 18:
 		{
 			vector<Letter> seq;
+			seq.reserve(r.subject_range().length());
 			for (Hsp_context::Iterator j = r.begin(); j.good(); ++j)
 				if (!(j.op() == op_insertion))
 					seq.push_back(j.subject());

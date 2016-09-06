@@ -42,35 +42,35 @@ struct Diagonal_segment
 {
 	Diagonal_segment()
 	{}
-	Diagonal_segment(unsigned query_pos, unsigned subject_pos, unsigned len, unsigned score):
-		query_pos(query_pos),
-		subject_pos(subject_pos),
+	Diagonal_segment(int query_pos, int subject_pos, int len, int score):
+		i(query_pos),
+		j(subject_pos),
 		len(len),
 		score (score)
 	{}
 	interval query_range() const
 	{
-		return interval(query_pos, query_pos + len);
+		return interval(i, i + len);
 	}
 	interval subject_range() const
 	{
-		return interval(subject_pos, subject_pos + len);
+		return interval(j, j + len);
 	}
 	int subject_last() const
 	{
-		return (int)subject_pos + len - 1;
+		return (int)j + len - 1;
 	}
 	int query_last() const
 	{
-		return (int)query_pos + len - 1;
+		return (int)i + len - 1;
 	}
 	int subject_end() const
 	{
-		return (int)subject_pos + len;
+		return (int)j + len;
 	}
 	int diag() const
 	{
-		return subject_pos - query_pos;
+		return i - j;
 	}
 	bool is_enveloped(const Diagonal_segment &x) const
 	{
@@ -80,13 +80,17 @@ struct Diagonal_segment
 	}
 	Diagonal_segment transpose() const
 	{
-		return Diagonal_segment(subject_pos, query_pos, len, score);
+		return Diagonal_segment(j, i, len, score);
 	}
 	bool operator<=(const Diagonal_segment &rhs) const
 	{
-		return query_pos + len <= rhs.query_pos && subject_pos + len <= rhs.subject_pos;
+		return i + len <= rhs.i && j + len <= rhs.j;
 	}
-	unsigned query_pos, subject_pos, len, score;
+	friend int abs_shift(const Diagonal_segment &x, const Diagonal_segment &y)
+	{
+		return abs(x.diag() - y.diag());
+	}
+	int i, j, len, score;
 };
 
 struct Intermediate_record;

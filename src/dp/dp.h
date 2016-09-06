@@ -33,5 +33,6 @@ int xdrop_ungapped_right(const Letter *query, const Letter *subject, int &len);
 void greedy_align(sequence query, sequence subject, const vector<Diagonal_segment> &sh, bool log);
 void greedy_align(sequence query, sequence subject, const Diagonal_segment &sh, bool log);
 void greedy_align(sequence query, const Long_score_profile &qp, sequence subject, const Diagonal_segment &sh, bool log);
+void greedy_align(sequence query, const Long_score_profile &qp, sequence subject, int qa, int sa, bool log);
 
 #endif /* FLOATING_SW_H_ */

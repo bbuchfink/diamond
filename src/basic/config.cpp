@@ -274,6 +274,8 @@ Config::Config(int argc, const char **argv)
 			score_matrix = Score_matrix(matrix_file, lambda, K, gap_open, gap_extend);
 		}
 		message_stream << "Scoring parameters: " << score_matrix << endl;
+		raw_ungapped_xdrop = score_matrix.rawscore(ungapped_xdrop);
+
 		if (seg == "" && command == blastx)
 			seg = "yes";
 		verbose_stream << "SEG masking = " << (seg == "yes") << endl;

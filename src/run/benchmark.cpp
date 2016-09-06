@@ -94,18 +94,20 @@ void benchmark_ungapped(const Sequence_set &ss, unsigned qa, unsigned sa)
 
 void benchmark_greedy(const Sequence_set &ss, unsigned qa, unsigned sa)
 {
-	static const unsigned n = 100000;
+	static const unsigned n = 1000000;
 	vector<Diagonal_segment> d;
 	d.push_back(ungapped_extension(sa, qa, ss[0], ss[1]));
 	Long_score_profile qp(ss[0]);
-	greedy_align(ss[0], qp, ss[1], d[0], true);
+	//greedy_align(ss[0], qp, ss[1], d[0], true);
+	greedy_align(ss[0], qp, ss[1], qa, sa, true);
 
 	Timer t;
 	t.start();
 
 	for (unsigned i = 0; i < n; ++i) {
 
-		greedy_align(ss[0], qp, ss[1], d[0], false);
+		//greedy_align(ss[0], qp, ss[1], d[0], false);
+		greedy_align(ss[0], qp, ss[1], qa, sa, false);
 
 	}
 	t.stop();
@@ -130,7 +132,7 @@ void benchmark_floating(const Sequence_set &ss, unsigned qa, unsigned sa)
 				hsp.subject_,
 				hsp,
 				32,
-				config.raw_ungapped_xdrop,
+				score_matrix.rawscore(config.gapped_xdrop),
 				config.gap_open + config.gap_extend,
 				config.gap_extend,
 				cell_updates,
@@ -170,6 +172,8 @@ Query  80  TVIGHL  85
 Sbjct  76  TIINGL  81	*/
 
 
+aln1:
+
 	s1 = sequence::from_string("SLFEQLGGQAAVQAVTAQFYANIQADATVATFFNGIDMPNQTNKTAAFLCAALGGPNAWTGRNLKEVHANMGVSNAQFTTVIGHLRSALTGAGVAAALVEQTVAVAETVRGDVVTV");
 	s2 = sequence::from_string("RKQRIVIKISGACLKQNDSSIIDFIKINDLAEQIEKISKKYIVSIVLGGGNIWRGSIAKELDMDRNLADNMGMMATIINGLALENALNHLNVNTIVLSAIKCDKLVHESSANNIKKAIEKEQVMIFVAGTGFPYFTTDSCAAIRAAETESSIILMGKNGVDGVYDSDPKINPNAQFYEHITFNMALTQNLKVMDATALALCQENNINLLVFNIDKPNAIVDVLEKKNKYTIVSK");
 	qa = 24;
@@ -208,7 +212,7 @@ Sbjct  76  TIINGL  81	*/
 	            I  ++ + L
 	Sbjct  437  IDTFLMEML  445
 	*/
-	
+
 	s1 = sequence::from_string("aavqelsierllemeslvadpseefqflrvgpdsnvppkfrapvsslcqignkqiaalvv\
 wardiphfsqlemedqillikgswnelllfaiawrsmeflteerdgvdgtgnrttsppql\
 mclmpgmtlhrnsalqagvgqifdrvlselslkmrtlrvdqaeyvalkaiillnpdvkgl\
@@ -269,8 +273,6 @@ KCLEHLFFFKLIGDTPIDTFLMEMLEAPHQIT");
 
 	*/
 	
-
-aln1:
 	s1 = sequence::from_string("tspmtpditgkpfvaadasndyikrevmipmrdgvklhtvivlpkgaknapivltrtpyd\
 asgrterlasphmkdllsagddvfveggyirvfqdvrgkygsegdyvmtrplrgplnpse\
 vdhatdawdtidwlvknvsesngkvgmigssyegftvvmaltnphpalkvavpespmidg\

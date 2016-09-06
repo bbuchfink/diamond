@@ -1,3 +1,6 @@
+[0.8.21]
+- fixed an error of 'diamond view' when using a custom scoring matrix
+
 [0.8.20]
 - added support for customizing the BLAST tabular output format
 

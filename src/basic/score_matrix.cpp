@@ -221,12 +221,14 @@ char Score_matrix::low_score() const
 const char* custom_scores(const string &matrix_file)
 {
 	static char scores[25 * 25];
-	std::ifstream f(matrix_file.c_str());
 	string l, s;
 	std::stringstream ss;
 	vector<Letter> pos;
 	unsigned n = 0;
 	memset(scores, 0xff, sizeof(scores));
+	if (matrix_file == "")
+		return scores;
+	std::ifstream f(matrix_file.c_str());
 	while (!f.eof()) {
 		std::getline(f, l);
 		if (l[0] == '#')

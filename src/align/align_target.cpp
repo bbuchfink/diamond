@@ -76,8 +76,10 @@ void Query_mapper::align_target(size_t idx, Statistics &stat)
 
 	for (list<Hsp_data>::iterator i = target.hsps.begin(); i != target.hsps.end(); ++i)
 		for (list<Hsp_data>::iterator j = target.hsps.begin(); j != target.hsps.end();)
-			if (j != i && j->is_weakly_enveloped(*i))
+			if (j != i && j->is_weakly_enveloped(*i)) {
+				stat.inc(Statistics::ERASED_HITS);
 				j = target.hsps.erase(j);
+			}
 			else
 				++j;
 

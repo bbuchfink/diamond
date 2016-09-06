@@ -1,5 +1,5 @@
 /****
-Copyright (c) 2014, University of Tuebingen
+Copyright (c) 2014-2016, University of Tuebingen, Benjamin Buchfink
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
@@ -14,8 +14,6 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
 LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-****
-Author: Benjamin Buchfink
 ****/
 
 #ifndef SCORE_VECTOR_H_
@@ -169,6 +167,17 @@ struct score_vector<uint8_t>
 	uint16_t cmpgt(const score_vector &rhs) const
 	{
 		return _mm_movemask_epi8(_mm_cmpgt_epi8(data_, rhs.data_));
+	}
+
+	void store(uint8_t *ptr) const
+	{
+		_mm_storeu_si128((__m128i*)ptr, data_);
+	}
+
+	bool operator>(score_vector<uint8_t> cmp) const
+	{
+		const score_vector<uint8_t> s = *this - cmp;
+		return _mm_testz_si128(s.data_, s.data_) == 0;
 	}
 
 	__m128i data_;

@@ -22,7 +22,6 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 
 template<unsigned PartitionBits> struct Flajolet_Martin_counter
 {
-
 	static const unsigned N = 1 << PartitionBits;
 	static const uint64_t MASK = N - 1;
 	static const uint64_t HIGH = MASK << (64 - PartitionBits);
