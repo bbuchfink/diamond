@@ -357,7 +357,7 @@ struct Diag_buffer
 	}
 	uint8_t* get_col(int j)
 	{
-		if ((int)data_.size() < (j + 1) * _rows)
+		if (data_.size() < (j + 1) * _rows)
 			data_.resize((j + 1) * _rows);
 		return &data_[j * _rows];
 	}

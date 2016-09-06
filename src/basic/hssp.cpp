@@ -28,7 +28,7 @@ bool Hsp_data::pass_through(const Diagonal_segment &d) const
 	const unsigned subject_end = d.j + d.len;
 	const unsigned diag = d.diag();
 	while (it.good()) {
-		if (it.subject_pos >= d.j) {
+		if ((int)it.subject_pos >= d.j) {
 			if (it.subject_pos >= subject_end)
 				return true;
 			if (it.query_pos - it.subject_pos != diag)
