@@ -154,6 +154,7 @@ void join_query(vector<Binary_buffer> &buf, Text_buffer &out, Statistics &statis
 					query_source_len,
 					query_name,
 					next.info_.subject_id,
+					ref_map.original_id(next.info_.subject_id),
 					ref_map.name(next.info_.subject_id),
 					ref_map.length(next.info_.subject_id),
 					n_target_seq,
@@ -215,6 +216,7 @@ void join_worker(Task_queue<Text_buffer,Join_writer> *queue)
 
 void join_blocks(unsigned ref_blocks, Output_stream &master_out, const vector<Temp_file> &tmp_file)
 {
+	ref_map.init_rev_map();
 	Join_fetcher::init(tmp_file);
 	Join_writer writer(master_out);
 	Task_queue<Text_buffer, Join_writer> queue(3*config.threads_, writer);

@@ -62,6 +62,7 @@ struct DAA_query_record
 				(unsigned)parent_.query_len(),
 				parent_.query_name.c_str(),
 				subject_id,
+				subject_id,
 				subject_name.c_str(),
 				subject_len,
 				hit_num,

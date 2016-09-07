@@ -1,3 +1,6 @@
+[0.8.22]
+- the Hit_id and Hit_accession fields are now filled for the BLAST XML format
+
 [0.8.21]
 - fixed an error of 'diamond view' when using a custom scoring matrix
 

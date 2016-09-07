@@ -32,6 +32,7 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #include "../search/setup.h"
 #include "../output/output_format.h"
 #include "../data/frequent_seeds.h"
+#include "../output/daa_write.h"
 
 using std::endl;
 using std::cout;

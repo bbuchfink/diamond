@@ -53,12 +53,12 @@ void XML_format::print_match(const Hsp_context &r, Text_buffer &out) const
 			out << "  </Hit_hsps>" << '\n' << "</Hit>" << '\n';
 		out << "<Hit>" << '\n'
 			<< "  <Hit_num>" << r.hit_num+1 << "</Hit_num>" << '\n'
-			<< "  <Hit_id></Hit_id>" << '\n'
+			<< "  <Hit_id>gnl|BL_ORD_ID|" << r.orig_subject_id << "</Hit_id>" << '\n'
 			<< "  <Hit_def>";
 		const bool lt = (config.salltitles || (config.command == Config::view)) ? true : false;
 		this->print_salltitles(out, r.subject_name, lt, lt);
 		out << "</Hit_def> " << '\n'
-			<< "  <Hit_accession></Hit_accession>" << '\n'
+			<< "  <Hit_accession>" << r.orig_subject_id << "</Hit_accession>" << '\n'
 			<< "  <Hit_len>" << r.subject_len << "</Hit_len>" << '\n'
 			<< "  <Hit_hsps>" << '\n';
 	}

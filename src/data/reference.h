@@ -169,32 +169,31 @@ struct Ref_map
 	{
 		return len_[i];
 	}
-
 	const char* name(uint32_t i) const
 	{
 		return name_[i].c_str();
 	}
-
-	/*template<typename _val>
-	void finish()
+	void init_rev_map()
 	{
-		vector<pair<unsigned,unsigned> > v;
-		for(unsigned i=0;i<data_.size();++i)
-			if(data_[i] != std::numeric_limits<unsigned>::max())
-				v.push_back(pair<unsigned,unsigned> (data_[i], i));
-		std::sort(v.begin(), v.end());
-		for(vector<pair<unsigned,unsigned> >::const_iterator i = v.begin(); i!=v.end(); ++i) {
-			const char* s = ref_ids::get()[i->second].c_str();
-			buf_ << (uint32_t)(strlen(s)+1);
-			buf_.write_c_str(s);
-			buf_ << (uint32_t)ref_seqs<_val>::get()[i->second].length();
+		rev_map_.resize(next_);
+		unsigned n = 0;
+		for (unsigned i = 0; i < data_.size(); ++i) {
+			for (unsigned j = 0; j < data_[i].size(); ++j)
+				if (data_[i][j] != std::numeric_limits<uint32_t>::max())
+					rev_map_[data_[i][j]] = n + j;
+			n += (unsigned)data_[i].size();
 		}
-	}*/
+	}
+	unsigned original_id(unsigned i) const
+	{
+		return rev_map_[i];
+	}
 private:
 	tthread::mutex mtx_;
 	vector<vector<uint32_t> > data_;
 	vector<uint32_t> len_;
 	Ptr_vector<string> name_;
+	vector<uint32_t> rev_map_;
 	uint32_t next_;
 	friend void finish_daa(Output_stream&);
 };

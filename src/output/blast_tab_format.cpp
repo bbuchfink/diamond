@@ -71,7 +71,7 @@ Blast_tab_format::Blast_tab_format() :
 	Output_format(blast_tab)
 {
 	static const unsigned stdf[] = { 0, 5, 23, 22, 25, 27, 13, 14, 15, 16, 19, 20 };
-	vector<string> &f = config.output_format;
+	const vector<string> &f = config.output_format;
 	if (f.size() <= 1) {
 		fields = vector<unsigned>(stdf, stdf + 12);
 		return;
