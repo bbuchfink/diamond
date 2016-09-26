@@ -38,6 +38,7 @@ inline void cpuid(int CPUInfo[4],int InfoType) {
 
 #ifdef _MSC_VER
 #define __SSSE3__
+#define __SSE4_1__
 #endif
 
 inline bool check_SSSE3()

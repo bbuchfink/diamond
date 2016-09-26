@@ -40,7 +40,8 @@ inline interval normalized_range(unsigned pos, int len, Strand strand)
 
 struct Diagonal_segment
 {
-	Diagonal_segment()
+	Diagonal_segment():
+		len(0)
 	{}
 	Diagonal_segment(int query_pos, int subject_pos, int len, int score):
 		i(query_pos),
@@ -48,6 +49,10 @@ struct Diagonal_segment
 		len(len),
 		score (score)
 	{}
+	bool empty() const
+	{
+		return len == 0;
+	}
 	interval query_range() const
 	{
 		return interval(i, i + len);
@@ -85,6 +90,10 @@ struct Diagonal_segment
 	bool operator<=(const Diagonal_segment &rhs) const
 	{
 		return i + len <= rhs.i && j + len <= rhs.j;
+	}
+	friend bool cmp_subject(const Diagonal_segment &x, const Diagonal_segment &y)
+	{
+		return x.j < y.j;
 	}
 	friend int abs_shift(const Diagonal_segment &x, const Diagonal_segment &y)
 	{

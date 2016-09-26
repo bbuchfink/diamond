@@ -119,7 +119,6 @@ struct View_context
 void view()
 {
 	DAA_file daa (config.daa_file);
-	cout << daa.score_matrix() << endl;
 	score_matrix = Score_matrix("", daa.lambda(), daa.kappa(), daa.gap_open_penalty(), daa.gap_extension_penalty());
 
 	message_stream << "Scoring parameters: " << score_matrix << endl;

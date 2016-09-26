@@ -99,7 +99,8 @@ void benchmark_greedy(const Sequence_set &ss, unsigned qa, unsigned sa)
 	d.push_back(ungapped_extension(sa, qa, ss[0], ss[1]));
 	Long_score_profile qp(ss[0]);
 	//greedy_align(ss[0], qp, ss[1], d[0], true);
-	greedy_align(ss[0], qp, ss[1], qa, sa, true);
+	//greedy_align(ss[0], qp, ss[1], qa, sa, true);
+	greedy_align2(ss[0], qp, ss[1], d, true);
 
 	Timer t;
 	t.start();
@@ -107,7 +108,8 @@ void benchmark_greedy(const Sequence_set &ss, unsigned qa, unsigned sa)
 	for (unsigned i = 0; i < n; ++i) {
 
 		//greedy_align(ss[0], qp, ss[1], d[0], false);
-		greedy_align(ss[0], qp, ss[1], qa, sa, false);
+		//greedy_align(ss[0], qp, ss[1], qa, sa, false);
+		greedy_align2(ss[0], qp, ss[1], d, false);
 
 	}
 	t.stop();
@@ -172,12 +174,10 @@ Query  80  TVIGHL  85
 Sbjct  76  TIINGL  81	*/
 
 
-aln1:
-
 	s1 = sequence::from_string("SLFEQLGGQAAVQAVTAQFYANIQADATVATFFNGIDMPNQTNKTAAFLCAALGGPNAWTGRNLKEVHANMGVSNAQFTTVIGHLRSALTGAGVAAALVEQTVAVAETVRGDVVTV");
 	s2 = sequence::from_string("RKQRIVIKISGACLKQNDSSIIDFIKINDLAEQIEKISKKYIVSIVLGGGNIWRGSIAKELDMDRNLADNMGMMATIINGLALENALNHLNVNTIVLSAIKCDKLVHESSANNIKKAIEKEQVMIFVAGTGFPYFTTDSCAAIRAAETESSIILMGKNGVDGVYDSDPKINPNAQFYEHITFNMALTQNLKVMDATALALCQENNINLLVFNIDKPNAIVDVLEKKNKYTIVSK");
-	qa = 24;
-	sa = 16;
+	qa = 23;
+	sa = 15;
 	goto ende;	
 
 	/*
@@ -212,6 +212,8 @@ aln1:
 	            I  ++ + L
 	Sbjct  437  IDTFLMEML  445
 	*/
+
+aln1:
 
 	s1 = sequence::from_string("aavqelsierllemeslvadpseefqflrvgpdsnvppkfrapvsslcqignkqiaalvv\
 wardiphfsqlemedqillikgswnelllfaiawrsmeflteerdgvdgtgnrttsppql\

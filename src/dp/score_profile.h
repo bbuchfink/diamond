@@ -150,7 +150,7 @@ struct Long_score_profile
 		return &data[(int)l][i + padding];
 	}
 	vector<uint8_t> data[25];
-	enum { padding = 64 };
+	enum { padding = 256 };
 };
 
 #endif /* SCORE_PROFILE_H_ */
