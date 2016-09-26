@@ -26,7 +26,7 @@ int xdrop_ungapped(const Letter *query, const Letter *subject, unsigned seed_len
 	delta = 0;
 
 	const Letter *q(query - 1), *s(subject - 1);
-	const unsigned window_left = std::max(config.window, (unsigned)Const::seed_anchor) - Const::seed_anchor;
+	const unsigned window_left = std::max(config.window, (unsigned)config.seed_anchor) - config.seed_anchor;
 	while (score - st < config.raw_ungapped_xdrop
 		&& delta < window_left
 		&& *q != '\xff'
@@ -42,8 +42,8 @@ int xdrop_ungapped(const Letter *query, const Letter *subject, unsigned seed_len
 	q = query + seed_len;
 	s = subject + seed_len;
 	st = score;
-	assert(seed_len >= Const::seed_anchor);
-	const unsigned window_right = std::max(config.window, seed_len - Const::seed_anchor) - (seed_len - Const::seed_anchor);
+	assert(seed_len >= config.seed_anchor);
+	const unsigned window_right = std::max(config.window, seed_len - config.seed_anchor) - (seed_len - config.seed_anchor);
 	while (score - st < config.raw_ungapped_xdrop
 		&& n < window_right
 		&& *q != '\xff'

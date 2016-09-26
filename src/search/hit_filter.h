@@ -49,7 +49,7 @@ struct hit_filter
 		if(score >= config.min_hit_raw_score)
 			push_hit(subject);
 		else
-			subjects_.push_back(ref_seqs::data_->fixed_window_infix(subject+Const::seed_anchor));
+			subjects_.push_back(ref_seqs::data_->fixed_window_infix(subject+ config.seed_anchor));
 	}
 
 	void finish()
@@ -57,7 +57,7 @@ struct hit_filter
 		if(subjects_.size() == 0)
 			return;
 		unsigned left;
-		sequence query (query_seqs::data_->window_infix(q_pos_ + Const::seed_anchor, left));
+		sequence query (query_seqs::data_->window_infix(q_pos_ + config.seed_anchor, left));
 		smith_waterman(query,
 				subjects_,
 				config.hit_band,
@@ -83,7 +83,7 @@ struct hit_filter
 	}
 
 	void operator()(int i, const sequence &seq, int score)
-	{ push_hit(ref_seqs::data_->position(seq.data()+config.window-Const::seed_anchor)); stats_.inc(Statistics::GAPPED_HITS); }
+	{ push_hit(ref_seqs::data_->position(seq.data()+config.window- config.seed_anchor)); stats_.inc(Statistics::GAPPED_HITS); }
 
 private:
 

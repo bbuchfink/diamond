@@ -137,6 +137,7 @@ Config::Config(int argc, const char **argv)
 		("gapped-xdrop", 'X', "xdrop for gapped alignment in bits", gapped_xdrop, 20)
 		("band", 0, "band for dynamic programming computation", padding)
 		("shapes", 's', "number of seed shapes (0 = all available)", shapes)
+		("shape-mask", 0, "seed shapes", shape_mask)
 		("index-mode", 0, "index mode (0=4x12, 1=16x9)", index_mode)
 		("fetch-size", 0, "trace point fetch size", fetch_size, 4096u)
 		("rank-factor", 0, "include subjects within this range of max-target-seqs", rank_factor, 2.0)
@@ -298,8 +299,9 @@ Config::Config(int argc, const char **argv)
 		}
 
 		verbose_stream << "Seed frequency SD: " << freq_sd << endl;
-		::shapes = shape_config(index_mode, shapes);
+		::shapes = shape_config(index_mode, shapes, shape_mask);
 		verbose_stream << "Shape configuration: " << ::shapes << endl;
+		seed_anchor = std::min(::shapes[0].length_, 8u);
 
 		message_stream << "#Target sequences to report alignments for: ";
 		if (max_alignments == 0) {

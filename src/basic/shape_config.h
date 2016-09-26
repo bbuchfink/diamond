@@ -35,14 +35,20 @@ public:
 		mode_ (0)
 	{ }
 
-	shape_config(unsigned mode, unsigned count):
+	shape_config(unsigned mode, unsigned count, const vector<string> &shape_mask):
 		n_ (0),
 		mode_ (mode)
 	{
-		unsigned maxShapes = count == 0 ? Const::max_shapes : count;
-		for(unsigned i=0;i<maxShapes;++i)
-			if(shape_codes[mode_][i])
-				shapes_[n_++] = shape (shape_codes[mode_][i], i);
+		if (shape_mask.size() == 0) {
+			unsigned maxShapes = count == 0 ? Const::max_shapes : count;
+			for (unsigned i = 0; i < maxShapes; ++i)
+				if (shape_codes[mode_][i])
+					shapes_[n_++] = shape(shape_codes[mode_][i], i);
+		}
+		else {
+			for (unsigned i = 0; i < (count == 0 ? shape_mask.size() : std::min((unsigned)shape_mask.size(), count)); ++i)
+				shapes_[n_++] = shape(shape_mask[i].c_str(), i);
+		}
 	}
 
 	unsigned count() const
