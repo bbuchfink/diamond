@@ -91,7 +91,7 @@ struct Diagonal_segment
 	{
 		return i + len <= rhs.i && j + len <= rhs.j;
 	}
-	friend bool cmp_subject(const Diagonal_segment &x, const Diagonal_segment &y)
+	static bool cmp_subject(const Diagonal_segment &x, const Diagonal_segment &y)
 	{
 		return x.j < y.j;
 	}

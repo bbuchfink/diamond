@@ -1009,7 +1009,7 @@ struct Greedy_aligner2
 	{
 		diags.clear();
 		scan_diags(sh[0]);
-		std::sort(diags.begin(), diags.end(), cmp_subject);
+		std::sort(diags.begin(), diags.end(), Diagonal_segment::cmp_subject);
 		if (log)
 			for (int k = 0; k < diags.size(); ++k) {
 				const Diagonal_segment &d = diags[k];
