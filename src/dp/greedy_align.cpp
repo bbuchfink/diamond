@@ -364,6 +364,7 @@ struct Greedy_aligner2
 
 	int follow_path_approximate()
 	{
+		return 0;
 	/*	static const int max_dist = 32;
 		static const float space_penalty = -0.5;
 		for (unsigned node = 0; node < diags.size(); ++node) {
@@ -445,7 +446,7 @@ struct Greedy_aligner2
 		scan_diags(sh[0]);
 		std::sort(diags.begin(), diags.end(), Diagonal_segment::cmp_subject);
 		if (log)
-			for (int k = 0; k < diags.size(); ++k) {
+			for (int k = 0; k < (int)diags.size(); ++k) {
 				const Diagonal_segment &d = diags[k];
 				cout << "Diag n=" << k << " i=" << d.i << " j=" << d.j << " score=" << d.score << " len=" << d.len << endl;
 				cout << sequence(query, d.i, d.query_last()) << endl;

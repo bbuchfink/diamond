@@ -150,8 +150,8 @@ void Translator::init(unsigned id)
 					lookupReverse[i][j][k] = value_traits.mask_char;
 				}
 				else {
-					lookup[i][j][k] = value_traits.from_char(codes[id][idx[i] * 16 + idx[j] * 4 + idx[k]]);
-					lookupReverse[i][j][k] = value_traits.from_char(codes[id][idx[reverseLetter[i]] * 16 + idx[reverseLetter[j]] * 4 + idx[reverseLetter[k]]]);
+					lookup[i][j][k] = value_traits.from_char(codes[id][(int)idx[i] * 16 + (int)idx[j] * 4 + (int)idx[k]]);
+					lookupReverse[i][j][k] = value_traits.from_char(codes[id][idx[(int)reverseLetter[i]] * 16 + idx[(int)reverseLetter[j]] * 4 + idx[(int)reverseLetter[k]]]);
 				}
 	for (unsigned i = 0; i < 4; ++i)
 		for (unsigned j = 0; j < 4; ++j) {
