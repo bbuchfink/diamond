@@ -23,7 +23,7 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #include "statistics.h"
 #include "sequence.h"
 
-const char* Const::version_string = "0.8.22";
+const char* Const::version_string = "0.8.23";
 const char* Const::program_name = "diamond";
 const char* Const::id_delimiters = " \a\b\f\n\r\t\v";
 
@@ -102,71 +102,65 @@ unsigned shape_from, shape_to;
 
 const Letter Translator::reverseLetter[5] = { 3, 2, 1, 0, 4 };
 
-const Letter Translator::lookup[5][5][5] = {
-	{ { 11,2,11,2,23 },
-	{ 16,16,16,16,16 },
-	{ 1,15,1,15,23 },
-	{ 9,9,12,9,23 },
-	{ 23,23,23,23,23 },
-	},
-	{ { 5,8,5,8,23 },
-	{ 14,14,14,14,14 },
-	{ 1,1,1,1,1 },
-	{ 10,10,10,10,10 },
-	{ 23,23,23,23,23 },
-	},
-	{ { 6,3,6,3,23 },
-	{ 0,0,0,0,0 },
-	{ 7,7,7,7,7 },
-	{ 19,19,19,19,19 },
-	{ 23,23,23,23,23 },
-	},
-	{ { 24,18,24,18,23 },
-	{ 15,15,15,15,15 },
-	{ 24,4,17,4,23 },
-	{ 10,13,10,13,23 },
-	{ 23,23,23,23,23 },
-	},
-	{ { 23,23,23,23,23 },
-	{ 23,23,23,23,23 },
-	{ 23,23,23,23,23 },
-	{ 23,23,23,23,23 },
-	{ 23,23,23,23,23 },
-	} };
-
-const Letter Translator::lookupReverse[5][5][5] = {
-	{ { 13,10,13,10,23 },
-	{ 4,17,4,24,23 },
-	{ 15,15,15,15,15 },
-	{ 18,24,18,24,23 },
-	{ 23,23,23,23,23 },
-	},
-	{ { 19,19,19,19,19 },
-	{ 7,7,7,7,7 },
-	{ 0,0,0,0,0 },
-	{ 3,6,3,6,23 },
-	{ 23,23,23,23,23 },
-	},
-	{ { 10,10,10,10,10 },
-	{ 1,1,1,1,1 },
-	{ 14,14,14,14,14 },
-	{ 8,5,8,5,23 },
-	{ 23,23,23,23,23 },
-	},
-	{ { 9,12,9,9,23 },
-	{ 15,1,15,1,23 },
-	{ 16,16,16,16,16 },
-	{ 2,11,2,11,23 },
-	{ 23,23,23,23,23 },
-	},
-	{ { 23,23,23,23,23 },
-	{ 23,23,23,23,23 },
-	{ 23,23,23,23,23 },
-	{ 23,23,23,23,23 },
-	{ 23,23,23,23,23 },
-	} };
+Letter Translator::lookup[5][5][5];
+Letter Translator::lookupReverse[5][5][5];
 
 const Letter Translator::STOP(value_traits.from_char('*'));
+
+const char* Translator::codes[] = {
+	0,
+	"FFLLSSSSYY**CC*WLLLLPPPPHHQQRRRRIIIMTTTTNNKKSSRRVVVVAAAADDEEGGGG", // 1
+	"FFLLSSSSYY**CCWWLLLLPPPPHHQQRRRRIIMMTTTTNNKKSS**VVVVAAAADDEEGGGG", // 2
+	"FFLLSSSSYY**CCWWTTTTPPPPHHQQRRRRIIMMTTTTNNKKSSRRVVVVAAAADDEEGGGG", // 3
+	"FFLLSSSSYY**CCWWLLLLPPPPHHQQRRRRIIIMTTTTNNKKSSRRVVVVAAAADDEEGGGG", // 4
+	"FFLLSSSSYY**CCWWLLLLPPPPHHQQRRRRIIMMTTTTNNKKSSSSVVVVAAAADDEEGGGG", // 5
+	"FFLLSSSSYYQQCC*WLLLLPPPPHHQQRRRRIIIMTTTTNNKKSSRRVVVVAAAADDEEGGGG", // 6
+	0,
+	0,
+	"FFLLSSSSYY**CCWWLLLLPPPPHHQQRRRRIIIMTTTTNNNKSSSSVVVVAAAADDEEGGGG", // 9
+	"FFLLSSSSYY**CCCWLLLLPPPPHHQQRRRRIIIMTTTTNNKKSSRRVVVVAAAADDEEGGGG", // 10
+	"FFLLSSSSYY**CC*WLLLLPPPPHHQQRRRRIIIMTTTTNNKKSSRRVVVVAAAADDEEGGGG", // 11
+	"FFLLSSSSYY**CC*WLLLSPPPPHHQQRRRRIIIMTTTTNNKKSSRRVVVVAAAADDEEGGGG", // 12
+	"FFLLSSSSYY**CCWWLLLLPPPPHHQQRRRRIIMMTTTTNNKKSSGGVVVVAAAADDEEGGGG", // 13
+	"FFLLSSSSYYY*CCWWLLLLPPPPHHQQRRRRIIIMTTTTNNNKSSSSVVVVAAAADDEEGGGG", // 14
+	0,
+	"FFLLSSSSYY*LCC*WLLLLPPPPHHQQRRRRIIIMTTTTNNKKSSRRVVVVAAAADDEEGGGG", // 16
+	0,
+	0,
+	0,
+	0,
+	"FFLLSSSSYY**CCWWLLLLPPPPHHQQRRRRIIMMTTTTNNNKSSSSVVVVAAAADDEEGGGG", // 21
+	"FFLLSS*SYY*LCC*WLLLLPPPPHHQQRRRRIIIMTTTTNNKKSSRRVVVVAAAADDEEGGGG", // 22
+	"FF*LSSSSYY**CC*WLLLLPPPPHHQQRRRRIIIMTTTTNNKKSSRRVVVVAAAADDEEGGGG", // 23
+	"FFLLSSSSYY**CCWWLLLLPPPPHHQQRRRRIIIMTTTTNNKKSSSKVVVVAAAADDEEGGGG", // 24
+	"FFLLSSSSYY**CCGWLLLLPPPPHHQQRRRRIIIMTTTTNNKKSSRRVVVVAAAADDEEGGGG", // 25
+	"FFLLSSSSYY**CC*WLLLAPPPPHHQQRRRRIIIMTTTTNNKKSSRRVVVVAAAADDEEGGGG" // 26
+};
+
+void Translator::init(unsigned id)
+{
+	static const unsigned idx[] = { 2, 1, 3, 0 };
+	if (id >= sizeof(codes) / sizeof(codes[0]) || codes[id] == 0)
+		throw std::runtime_error("Invalid genetic code id.");
+	for (unsigned i = 0; i < 5; ++i)
+		for (unsigned j = 0; j < 5; ++j)
+			for (unsigned k = 0; k < 5; ++k)
+				if (i == 4 || j == 4 || k == 4) {
+					lookup[i][j][k] = value_traits.mask_char;
+					lookupReverse[i][j][k] = value_traits.mask_char;
+				}
+				else {
+					lookup[i][j][k] = value_traits.from_char(codes[id][idx[i] * 16 + idx[j] * 4 + idx[k]]);
+					lookupReverse[i][j][k] = value_traits.from_char(codes[id][idx[reverseLetter[i]] * 16 + idx[reverseLetter[j]] * 4 + idx[reverseLetter[k]]]);
+				}
+	for (unsigned i = 0; i < 4; ++i)
+		for (unsigned j = 0; j < 4; ++j) {
+			if (equal(lookup[i][j], 4))
+				lookup[i][j][4] = lookup[i][j][0];
+			if (equal(lookupReverse[i][j], 4))
+				lookupReverse[i][j][4] = lookupReverse[i][j][0];
+		}
+}
 
 vector<Letter> sequence::from_string(const char* str)
 {

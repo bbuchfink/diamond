@@ -32,9 +32,12 @@ struct Translator
 public:
 
 	static const Letter reverseLetter[5];
-	static const Letter lookup[5][5][5];
-	static const Letter lookupReverse[5][5][5];
+	static Letter lookup[5][5][5];
+	static Letter lookupReverse[5][5][5];
 	static const Letter STOP;
+	static const char* codes[27];
+
+	static void init(unsigned id);
 
 	static Letter getReverseComplement(Letter letter)
 	{ return reverseLetter[(int) letter]; }

@@ -107,6 +107,7 @@ struct Config
 	double lambda, K;
 	vector<string> shape_mask;
 	unsigned seed_anchor;
+	unsigned query_gencode;
 
 	enum { makedb = 0, blastp = 1, blastx = 2, view = 3, help = 4, version = 5, getseq = 6, benchmark = 7, random_seqs = 8, compare = 9 };
 	unsigned	command;

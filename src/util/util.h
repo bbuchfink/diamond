@@ -456,4 +456,15 @@ inline int round_up(int x)
 	return ((x + n - 1) / n)*n;
 }
 
+template<typename _t>
+bool equal(const _t *ptr, unsigned n)
+{
+	const _t v = *ptr;
+	const _t* end = (ptr++) + n;
+	for (; ptr < end; ++ptr)
+		if (*ptr != v)
+			return false;
+	return true;
+}
+
 #endif /* UTIL_H_ */

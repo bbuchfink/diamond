@@ -29,6 +29,7 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #include "../util/temp_file.h"
 #include "../basic/match.h"
 #include "../data/sorted_list.h"
+#include "../basic/translate.h"
 
 Config config;
 
@@ -122,6 +123,7 @@ Config::Config(int argc, const char **argv)
 		("lambda", 0, "lambda parameter for custom matrix", lambda)
 		("K", 0, "K parameter for custom matrix", K)
 		("seg", 0, "enable SEG masking of queries (yes/no)", seg)
+		("query-gencode", 0, "genetic code to use to translate query (see user manual)", query_gencode, 1u)
 		("salltitles", 0, "print full subject titles in output files", salltitles);
 
 	Options_group advanced("Advanced options");
@@ -310,6 +312,8 @@ Config::Config(int argc, const char **argv)
 		} else
 			message_stream << max_alignments << endl;
 	}
+
+	Translator::init(query_gencode);
 
 	if (command == blastx)
 		input_value_traits = nucleotide_traits;

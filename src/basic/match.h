@@ -63,15 +63,19 @@ struct Diagonal_segment
 	}
 	int subject_last() const
 	{
-		return (int)j + len - 1;
+		return j + len - 1;
 	}
 	int query_last() const
 	{
-		return (int)i + len - 1;
+		return i + len - 1;
 	}
 	int subject_end() const
 	{
-		return (int)j + len;
+		return j + len;
+	}
+	int query_end() const
+	{
+		return i + len;
 	}
 	int diag() const
 	{

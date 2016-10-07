@@ -1,3 +1,6 @@
+[0.8.23]
+- added option to change the genetic code used for translation in blastx mode
+
 [0.8.22]
 - the Hit_id and Hit_accession fields are now filled for the BLAST XML format
 
