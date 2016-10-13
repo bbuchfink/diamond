@@ -29,8 +29,8 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 
 Compressed_istream::Compressed_istream(const string & file_name) :
 	file_name_(file_name),
-	s_(file_name, std::ios_base::in | std::ios_base::binary),
 	line_count(0),
+	s_(file_name, std::ios_base::in | std::ios_base::binary),	
 	putback_line_(false)
 { }
 
