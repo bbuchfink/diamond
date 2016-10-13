@@ -93,10 +93,7 @@ void process_shape(unsigned sid,
 			query_hst.partition());
 
 		timer.go("Building seed filter");
-		if (!config.old_freq)
-			frequent_seeds.build(sid, range, ref_idx, query_idx);
-		else
-			ref_seqs::get_nc().build_masking(sid, range, ref_idx);
+		frequent_seeds.build(sid, range, ref_idx, query_idx);
 
 		timer.go("Searching alignments");
 		Search_context context (sid, ref_idx, query_idx);

@@ -91,6 +91,10 @@ struct Diagonal_segment
 	{
 		return Diagonal_segment(j, i, len, score);
 	}
+	int partial_score(int diff) const
+	{
+		return std::max(score*(len - diff) / len, 0);
+	}
 	bool operator<=(const Diagonal_segment &rhs) const
 	{
 		return i + len <= rhs.i && j + len <= rhs.j;
@@ -98,6 +102,10 @@ struct Diagonal_segment
 	static bool cmp_subject(const Diagonal_segment &x, const Diagonal_segment &y)
 	{
 		return x.j < y.j;
+	}
+	static bool cmp_subject_end(const Diagonal_segment &x, const Diagonal_segment &y)
+	{
+		return x.subject_end() < y.subject_end();
 	}
 	friend int abs_shift(const Diagonal_segment &x, const Diagonal_segment &y)
 	{

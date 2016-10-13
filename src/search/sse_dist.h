@@ -144,7 +144,7 @@ struct Halfbyte_finger_print_naive
 	{
 		uint64_t x;
 		for (unsigned i = 0; i < 16; ++i)
-			x = (x << 4) | reduction(mask_critical(q[i]));
+			x = (x << 4) | reduction(q[i]);
 		return x;
 	}
 	static const Reduction reduction;
@@ -178,7 +178,7 @@ struct Halfbyte_finger_print
 	{
 		int x = 0;
 		for (unsigned i = 0; i < 8; ++i)
-			x = (x << 4) | reduction(mask_critical(q[i]));
+			x = (x << 4) | reduction(q[i]);
 		return x;
 	}
 	static const Reduction reduction;

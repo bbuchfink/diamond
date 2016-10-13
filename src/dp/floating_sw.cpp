@@ -80,11 +80,11 @@ Hsp_data floating_sw_dir(const Letter *query, const Letter* subject, int band, _
 		}
 		else {
 			++i_max;
-			column_max += score_matrix(mask_critical(*y), get_dir(x, i_max, _dir()));
+			column_max += score_matrix(*y, get_dir(x, i_max, _dir()));
 		}
 
 		for (; it.valid() && get_dir(x, it.row(), _dir()) != '\xff'; ++it) {
-			const _score match_score = score_matrix(mask_critical(*y), get_dir(x, it.row(), _dir()));
+			const _score match_score = score_matrix(*y, get_dir(x, it.row(), _dir()));
 			const _score s = max(max(it.diag() + match_score, vgap), it.hgap_in());
 			if (s > column_max) {
 				column_max = s;

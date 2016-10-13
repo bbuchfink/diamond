@@ -108,9 +108,8 @@ struct shape
 #endif
 		for(unsigned i=0;i<weight_;++i) {
 			Letter l = seq[positions_[i]];
-			if(l == value_traits.mask_char || l == '\xff')
+			if (l == value_traits.mask_char || l == '\xff')
 				return false;
-			l = mask_critical(l);
 			unsigned r = Reduction::reduction(l);
 #ifdef FREQUENCY_MASKING
 			f += background_freq[r];

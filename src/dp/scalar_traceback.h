@@ -112,7 +112,7 @@ local_match traceback(const Letter *query,
 	int gap_len;
 
 	while(i>0 || j>0) {
-		const Letter lq = get_dir(query, j, _dir()), ls = mask_critical(get_dir(subject, i, _dir()));
+		const Letter lq = get_dir(query, j, _dir()), ls = get_dir(subject, i, _dir());
 		const int match_score = score_matrix(lq, ls);
 		//printf("i=%i j=%i score=%i subject=%c query=%c\n",i,j,dp(i, j),Value_traits<_val>::ALPHABET[ls],Value_traits<_val>::ALPHABET[lq]);
 
@@ -136,7 +136,7 @@ local_match traceback(const Letter *query,
 			l.length += gap_len;
 			l.gaps += gap_len;
 			for (; gap_len > 0; gap_len--)
-				l.transcript.push_back(op_deletion, mask_critical(get_dir(subject, i--, _dir())));
+				l.transcript.push_back(op_deletion, get_dir(subject, i--, _dir()));
 		} else if (have_vgap(dp, i, j, gap_open, gap_extend, gap_len)) {
 			++l.gap_openings;
 			l.length += gap_len;
@@ -148,7 +148,7 @@ local_match traceback(const Letter *query,
 		}
 	}
 
-	const Letter lq = get_dir(query, 0, _dir()), ls = mask_critical(get_dir(subject, 0, _dir()));
+	const Letter lq = get_dir(query, 0, _dir()), ls = get_dir(subject, 0, _dir());
 	if (lq == ls) {
 		l.transcript.push_back(op_match);
 		++l.identities;

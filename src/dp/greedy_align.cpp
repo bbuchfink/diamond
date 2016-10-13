@@ -160,50 +160,64 @@ int needleman_wunsch(sequence q, sequence s)
 	return score1[q.length()];
 }
 
-void scan_cols(const Long_score_profile &qp, sequence s, int i, int j, int j_end, uint8_t *sv, uint8_t *sv_max, bool log, uint8_t *buf)
+void set_global_max(score_vector<uint8_t> *max, score_vector<uint8_t> *global_max, uint8_t *&local_max)
+{
+	global_max[0].max(max[0]);
+	max[0].store(local_max);
+	local_max += 16;
+	global_max[1].max(max[1]);
+	max[1].store(local_max);
+	local_max += 16;
+	global_max[2].max(max[2]);
+	max[2].store(local_max);
+	local_max += 16;
+	global_max[3].max(max[3]);
+	max[3].store(local_max);
+	local_max += 16;
+}
+
+void scan_cols(const Long_score_profile &qp, sequence s, int i, int j, int j_end, uint8_t *sv_max, bool log, uint8_t *buf, uint8_t *local_max)
 {
 	typedef score_vector<uint8_t> Sv;
 	const Sv vbias(score_matrix.bias());
-	Sv v[4], max[4];
-	v[0] = Sv(sv);
-	v[1] = Sv(sv + 16);
-	v[2] = Sv(sv + 32);
-	v[3] = Sv(sv + 48);
+	Sv v[4], max[4], global_max[4];
+	int n = 0;
 	for (; j < j_end; ++j) {
 		const uint8_t *q = qp.get(s[j], i);
 		v[0] = v[0] + score_vector<uint8_t>(q);
-		v[0].unbias(vbias);
+		v[0] -= vbias;
 		max[0].max(v[0]);
 		_mm_storeu_si128((__m128i*)buf, v[0].data_);
 		q += 16;
 		buf += 16;
 		v[1] = v[1] + score_vector<uint8_t>(q);
-		v[1].unbias(vbias);
+		v[1] -= vbias;
 		max[1].max(v[1]);
 		_mm_storeu_si128((__m128i*)buf, v[1].data_);
 		q += 16;
 		buf += 16;
 		v[2] = v[2] + score_vector<uint8_t>(q);
-		v[2].unbias(vbias);
+		v[2] -= vbias;
 		max[2].max(v[2]);
 		_mm_storeu_si128((__m128i*)buf, v[2].data_);
 		q += 16;
 		buf += 16;
 		v[3] = v[3] + score_vector<uint8_t>(q);
-		v[3].unbias(vbias);
+		v[3] -= vbias;
 		max[3].max(v[3]);
 		_mm_storeu_si128((__m128i*)buf, v[3].data_);
 		buf += 16;
+		if ((n & 15) == 0) {
+			set_global_max(max, global_max, local_max);
+		}
 		++i;
+		++n;
 	}
-	v[0].store(sv);
-	v[1].store(sv + 16);
-	v[2].store(sv + 32);
-	v[3].store(sv + 48);
-	max[0].store(sv_max);
-	max[1].store(sv_max + 16);
-	max[2].store(sv_max + 32);
-	max[3].store(sv_max + 48);
+	set_global_max(max, global_max, local_max);
+	global_max[0].store(sv_max);
+	global_max[1].store(sv_max + 16);
+	global_max[2].store(sv_max + 32);
+	global_max[3].store(sv_max + 48);
 }
 
 struct Greedy_aligner2
@@ -280,10 +294,10 @@ struct Greedy_aligner2
 		memset(sv, 0, band);
 		memset(sv_max, 0, band);
 		score_buf.resize(band * (j1 - j));
-		scan_cols(qp, subject, i, j, j1, sv, sv_max, log, score_buf.data());
+		scan_cols(qp, subject, i, j, j1, sv_max, log, score_buf.data(), local_max.data());
 		for (int o = 0; o < band; ++o)
 			if (sv_max[o] > 12) {
-				get_diag(i + o, j, sv_max[o], o);
+				//get_diag(i + o, j, sv_max[o], o);
 			}
 	}
 
@@ -362,15 +376,14 @@ struct Greedy_aligner2
 		}
 	}
 
-	int follow_path_approximate()
+	void follow_path_approximate()
 	{
-		return 0;
-	/*	static const int max_dist = 32;
+		static const int max_dist = 32;
 		static const float space_penalty = -0.5;
 		for (unsigned node = 0; node < diags.size(); ++node) {
 			Diagonal_node& d = diags[node];
 			if (log) cout << "Node " << node << " Score=" << d.score << endl;
-			int max_score = 0, current_score;
+			int max_score = 0;
 			for (int k = node - 1; k >= 0; --k) {
 				const Diagonal_node &e = diags[k];
 				if (d.j - e.subject_last() < max_dist) {
@@ -379,59 +392,22 @@ struct Greedy_aligner2
 					const int shift = d.diag() - e.diag();
 					int gap_score = -config.gap_open - abs(shift)*config.gap_extend;
 					const int space = shift > 0 ? d.j - e.subject_last() : d.i - e.query_last();
-					if (gap_score + diags[k].score + int(space_penalty*std::max(space, 0)) <= 0)
-						continue;
-					int score2, subject_pos1, subject_pos2;
-					if (space >= min_nw_space && abs(shift) > 1) {
-						const sequence q1 = sequence(query, d.query_last() + 1, diags[k].i - 1),
-							s1 = sequence(subject, d.subject_last() + 1, diags[k].j - 1);
-						if (log)
-							cout << q1 << endl << s1 << endl;
-						gap_score = needleman_wunsch(q1, s1);
-						score2 = diags[k].score;
-						subject_pos1 = d.subject_last();
-						subject_pos2 = diags[k].j;
-					}
-					else {
-						Link l;
-						int link_score = get_link(d, diags[k], query, subject, l);
-						score2 = l.score2;
-						subject_pos1 = l.subject_pos1;
-						subject_pos2 = l.subject_pos2;
-					}
+					const int prefix_score = e.end_score[0] + gap_score + (space >= 1 ? e.score + int(space_penalty*std::max(space - 1, 0)) : e.partial_score(abs(space) + 1));
 					if (log)
-						indent(cout, level) << "Link n=" << k << " gap_score=" << gap_score << " shift=" << shift << " space=" << space << endl;
-					if (gap_score + score2 > 0) {
-						//const int c = score_range(query, subject, d.i + diff, subject_pos, subject_pos1 + 1);
-						const int c = cl_score + correct_right(node, subject_pos1 + 1);
-						int s = follow_path(level + 1,
-							k,
-							score + c + gap_score,
-							subject_pos2);
-						if (s > max_score) {
-							max_score = s;
-							d.next[0] = k;
-							current_score = c;
-							d.link_j = subject_pos1;
-						}
+						cout << "Link n=" << k << " shift=" << shift << " space=" << space << " prefix_score=" << prefix_score << endl;
+					if (prefix_score > max_score) {
+						max_score = prefix_score;
+						d.next[0] = k;
+						d.end_score[0] = prefix_score;
 					}
 				}
 				else
 					break;
 			}
-			if (max_score == 0) {
-				//score += score_range(query, subject, d.i + diff, subject_pos, d.j + d.len);
-				score += cl_score;
-				if (log) indent(cout, level) << "Final score=" << score << endl << endl;
-				d.end_score[0] = 0;
-				d.link_j = d.subject_end();
-				return score;
+			if (log) {
+				cout << "Final score=" << max_score + d.score << endl << endl;
 			}
-			else {
-				d.end_score[0] = max_score - score - current_score;
-				return max_score;
-			}
-		}*/
+		}
 	}
 
 	Greedy_aligner2(const sequence &query, const Long_score_profile &qp, const sequence &subject, const vector<Diagonal_segment> &sh, bool log) :
@@ -440,11 +416,12 @@ struct Greedy_aligner2
 		qp(qp),
 		log(log),
 		score_buf(TLS::get(score_buf_ptr)),
+		local_max(TLS::get(local_max_ptr)),
 		diags(TLS::get(diags_ptr))
 	{
 		diags.clear();
 		scan_diags(sh[0]);
-		std::sort(diags.begin(), diags.end(), Diagonal_segment::cmp_subject);
+		std::sort(diags.begin(), diags.end(), Diagonal_segment::cmp_subject_end);
 		if (log)
 			for (int k = 0; k < (int)diags.size(); ++k) {
 				const Diagonal_segment &d = diags[k];
@@ -453,20 +430,23 @@ struct Greedy_aligner2
 				cout << sequence(subject, d.j, d.subject_last()) << endl;
 			}
 		if(log) cout << endl;
-		follow_path(0, 0, 0, diags[0].j);
+		//follow_path(0, 0, 0, diags[0].j);
+		//follow_path_approximate();
 	}
 
 	static TLS_PTR vector<uint8_t> *score_buf_ptr;
+	static TLS_PTR vector<uint8_t> *local_max_ptr;
 	static TLS_PTR vector<Diagonal_node> *diags_ptr;
 	const sequence query, subject;
 	const Long_score_profile &qp;
 	const bool log;
-	vector<uint8_t> &score_buf;
+	vector<uint8_t> &score_buf, &local_max;
 	vector<Diagonal_node> &diags;
 
 };
 
 TLS_PTR vector<uint8_t> *Greedy_aligner2::score_buf_ptr;
+TLS_PTR vector<uint8_t> *Greedy_aligner2::local_max_ptr;
 TLS_PTR vector<Greedy_aligner2::Diagonal_node> *Greedy_aligner2::diags_ptr;
 
 void greedy_align2(sequence query, const Long_score_profile &qp, sequence subject, const vector<Diagonal_segment> &sh, bool log)

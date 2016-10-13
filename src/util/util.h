@@ -39,12 +39,13 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #include <sys/stat.h>
 #include <math.h>
 #include <ctype.h>
+#include <string>
 #include "../basic/const.h"
 #include "../basic/seed.h"
-#include "../basic/value.h"
 #include "../basic/packed_loc.h"
 
 using std::vector;
+using std::string;
 
 template<typename _t=size_t>
 struct partition
@@ -69,31 +70,6 @@ struct partition
 	_t getCount(_t i) const
 	{ return i < remainder ? (size + 1) : size; }
 };
-
-inline Letter set_critical(Letter v)
-{
-	return static_cast<unsigned>(v) | 0x80;
-}
-
-inline Letter mask_critical(Letter v)
-{
-	return static_cast<unsigned>(v) & 0x7F;
-}
-
-inline bool get_critical(Letter v)
-{
-	return (static_cast<unsigned>(v) & 0x80) != 0;
-}
-
-inline unsigned filter_treshold(unsigned n)
-{
-	return config.hit_cap * 256 / n;
-}
-
-inline bool position_filter(Loc l, unsigned treshold, Packed_seed s)
-{
-	return ((l ^ s) & 0xff) < treshold;
-}
 
 struct interval
 {
@@ -465,6 +441,24 @@ bool equal(const _t *ptr, unsigned n)
 		if (*ptr != v)
 			return false;
 	return true;
+}
+
+template<typename _t>
+inline string to_string(_t val)
+{
+	std::stringstream ss;
+	ss << val;
+	return ss.str();
+}
+
+inline string print_char(char c)
+{
+	std::stringstream ss;
+	if (c < 32)
+		ss << "ASCII " << (unsigned)c;
+	else
+		ss << c;
+	return ss.str();
 }
 
 #endif /* UTIL_H_ */

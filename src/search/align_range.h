@@ -41,7 +41,6 @@ inline void align_range(Loc q_pos,
 		}
 	} else {
 		while(i < s.n && s[i] != 0) {
-			assert(position_filter(s[i], filter_treshold((unsigned)s.n), s.key()));
 			align(q_pos, query, s[i], stats, sid, hf);
 			stats.inc(Statistics::SEED_HITS);
 			++i;

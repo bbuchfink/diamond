@@ -23,7 +23,7 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 
 inline unsigned letter_match(Letter query, Letter subject)
 {
-	if(query != '\xff' && Reduction::reduction(query) == Reduction::reduction(mask_critical(subject)))
+	if(query != '\xff' && Reduction::reduction(query) == Reduction::reduction(subject))
 		return 1;
 	else
 		return 0;
@@ -59,10 +59,7 @@ inline bool is_low_freq(const Letter *subject, unsigned sid)
 
 inline bool is_high_frequency(const Letter *subject, unsigned sid, bool previous_shape)
 {
-	if (!config.old_freq)
-		return frequent_seeds.get(subject, sid);
-	else
-		return get_critical(*subject) && (!need_lookup(sid, previous_shape) || ref_seqs::get().get_masking(subject, sid));
+	return frequent_seeds.get(subject, sid);
 }
 
 inline bool shape_collision_right(uint64_t mask, uint64_t shape_mask, const Letter *subject, unsigned sid)

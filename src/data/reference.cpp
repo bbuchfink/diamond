@@ -113,7 +113,7 @@ bool Database_file::load_seqs()
 	seek(pos_array_offset);
 	size_t letters = 0, seqs = 0, id_letters = 0;
 
-	ref_seqs::data_ = new Masked_sequence_set;
+	ref_seqs::data_ = new Sequence_set;
 	ref_ids::data_ = new String_set<0>;
 
 	Pos_record r;

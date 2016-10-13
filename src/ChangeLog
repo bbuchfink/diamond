@@ -1,3 +1,6 @@
+[0.8.24]
+- error messages when reading sequence files include line numbers
+
 [0.8.23]
 - added option to change the genetic code used for translation in blastx mode
 

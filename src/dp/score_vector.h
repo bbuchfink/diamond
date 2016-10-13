@@ -53,7 +53,8 @@ struct score_vector<uint8_t>
 
 	score_vector()
 	{
-		data_ = _mm_set1_epi8(score_traits<uint8_t>::zero);
+		//data_ = _mm_set1_epi8(score_traits<uint8_t>::zero);
+		data_ = _mm_setzero_si128();
 	}
 
 	explicit score_vector(char x):
@@ -120,6 +121,17 @@ struct score_vector<uint8_t>
 	{
 		data_ = _mm_subs_epu8(data_, rhs.data_);
 		return *this;
+	}
+
+	score_vector& operator++()
+	{
+		data_ = _mm_adds_epu8(data_, _mm_set(1));
+		return *this;
+	}
+
+	__m128i operator==(const score_vector &rhs) const
+	{
+		return _mm_cmpeq_epi8(data_, rhs.data_);
 	}
 
 	void unbias(const score_vector &bias)

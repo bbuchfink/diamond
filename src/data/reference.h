@@ -31,7 +31,6 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #include "../util/hash_function.h"
 #include "../basic/packed_loc.h"
 #include "sequence_set.h"
-#include "frequency_masking.h"
 #include "../util/ptr_vector.h"
 
 using std::auto_ptr;
@@ -102,10 +101,10 @@ void make_db();
 
 struct ref_seqs
 {
-	static const Masked_sequence_set& get()
-	{ return *(const Masked_sequence_set*)data_; }
-	static Masked_sequence_set& get_nc()
-	{ return *(Masked_sequence_set*)data_; }
+	static const Sequence_set& get()
+	{ return *data_; }
+	static Sequence_set& get_nc()
+	{ return *data_; }
 	static Sequence_set *data_;
 };
 

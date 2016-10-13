@@ -29,7 +29,9 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 
 Compressed_istream::Compressed_istream(const string & file_name) :
 	file_name_(file_name),
-	s_(file_name, std::ios_base::in | std::ios_base::binary)
+	s_(file_name, std::ios_base::in | std::ios_base::binary),
+	line_count(0),
+	putback_line_(false)
 { }
 
 size_t Compressed_istream::read(char * ptr, size_t count)
@@ -50,6 +52,27 @@ void Compressed_istream::putback(char c)
 	s_.putback(c);
 	if (!s_.good())
 		throw std::runtime_error("Error reading file " + file_name_);
+}
+
+void Compressed_istream::getline()
+{
+	if (!putback_line_) {
+		std::getline(s_, line);
+		if (!s_.good() && !s_.eof())
+			throw Stream_read_exception(line_count, "I/O error");
+		const size_t s = line.length()-1;
+		if (!line.empty() && line[s] == '\r')
+			line.resize(s);
+	}
+	else
+		putback_line_ = false;
+	++line_count;
+}
+
+void Compressed_istream::putback_line()
+{
+	putback_line_ = true;
+	--line_count;
 }
 
 Compressed_ostream::Compressed_ostream(const string &file_name):
