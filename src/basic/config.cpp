@@ -83,7 +83,8 @@ Config::Config(int argc, const char **argv)
 \tqframe means Query frame\n\
 \tstitle means Subject Title\n\
 \tsalltitles means All Subject Title(s), separated by a '<>'\n\
-\tqcovhsp means Query Coverage Per HSP\n\n\
+\tqcovhsp means Query Coverage Per HSP\n\
+\tqtitle means Query title\n\n\
 \tDefault: qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore", output_format)
 		("verbose", 'v', "verbose console output", verbose)
 		("log", 0, "enable debug log", debug_log)

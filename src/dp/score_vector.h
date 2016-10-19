@@ -199,6 +199,15 @@ struct score_vector<uint8_t>
 #endif
 	}
 
+	friend std::ostream& operator<<(std::ostream &s, score_vector v)
+	{
+		uint8_t x[16];
+		v.store(x);
+		for (unsigned i = 0; i < 16; ++i)
+			printf("%3i ", (int)x[i]);
+		return s;
+	}
+
 	__m128i data_;
 
 };

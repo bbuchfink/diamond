@@ -164,19 +164,23 @@ void set_global_max(score_vector<uint8_t> *max, score_vector<uint8_t> *global_ma
 {
 	global_max[0].max(max[0]);
 	max[0].store(local_max);
+	max[0] = score_vector<uint8_t>();
 	local_max += 16;
 	global_max[1].max(max[1]);
 	max[1].store(local_max);
+	max[1] = score_vector<uint8_t>();
 	local_max += 16;
 	global_max[2].max(max[2]);
 	max[2].store(local_max);
+	max[2] = score_vector<uint8_t>();
 	local_max += 16;
 	global_max[3].max(max[3]);
 	max[3].store(local_max);
+	max[3] = score_vector<uint8_t>();
 	local_max += 16;
 }
 
-void scan_cols(const Long_score_profile &qp, sequence s, int i, int j, int j_end, uint8_t *sv_max, bool log, uint8_t *buf, uint8_t *local_max)
+void scan_cols(const Long_score_profile &qp, sequence s, int i, int j, int j_end, uint8_t *sv_max, bool log, uint8_t *buf, uint8_t *local_max, int block_len)
 {
 	typedef score_vector<uint8_t> Sv;
 	const Sv vbias(score_matrix.bias());
@@ -207,23 +211,27 @@ void scan_cols(const Long_score_profile &qp, sequence s, int i, int j, int j_end
 		max[3].max(v[3]);
 		_mm_storeu_si128((__m128i*)buf, v[3].data_);
 		buf += 16;
-		if ((n & 15) == 0) {
+		//cout << 's' << v[0] << v[1] << v[2] << v[3] << endl;
+		if ((n & 15) == 15) {
+			//cout << 'l' << max[0] << max[1] << max[2] << max[3] << endl;
 			set_global_max(max, global_max, local_max);
 		}
 		++i;
 		++n;
 	}
-	set_global_max(max, global_max, local_max);
+	if(n % block_len != 0)
+		set_global_max(max, global_max, local_max);
 	global_max[0].store(sv_max);
 	global_max[1].store(sv_max + 16);
 	global_max[2].store(sv_max + 32);
 	global_max[3].store(sv_max + 48);
+	//cout << 'g' << global_max[0] << global_max[1] << global_max[2] << global_max[3] << endl;
 }
 
 struct Greedy_aligner2
 {
 
-	enum { band = 64, n_path = 2 };
+	enum { band = 64, n_path = 2, block_len = 16 };
 
 	struct Diagonal_node : public Diagonal_segment
 	{
@@ -267,17 +275,32 @@ struct Greedy_aligner2
 
 	void get_diag(int i, int j, int max_score, int o)
 	{
-		const uint8_t *p = score_buf.data() + o, *b = p - band, *p_end = p + score_buf.size();
 		if (max_score >= 255 - score_matrix.bias()) {
 			const int i0 = std::max(i - j, 0), j0 = std::max(j - i, 0);
 			diags.push_back(score_diagonal(&query[i0], &subject[j0], i0, j0));
 			return;
 		}
+		const uint8_t *p = local_max.data() + local_max.size() + o - band, *p_begin = local_max.data() + o - band;
+		//cout << "o=" << o << endl;
+		for (; p > p_begin; p -= band) {
+			//cout << (int)*p << ' ';
+			if (*p == max_score)
+				break;
+		}
+		//cout << endl;
+		p = score_buf.data() + o + (p - (local_max.data() + o)) * block_len;
+		const uint8_t *p_end = p + block_len*band, *b0 = p - band, *b = b0;
 		for (; p < p_end; p += band) {
 			if (*p == 0)
 				b = p;
 			if (*p == max_score)
 				break;
+		}
+		if (b == b0) {
+			b0 = score_buf.data() + o;
+			for (; b >= b0; b -= band)
+				if (*b == 0)
+					break;
 		}
 		const int b2 = int(b - (score_buf.data() + o)) / band + 1;
 		diags.push_back(Diagonal_segment(i + b2, j + b2, int(p - b) / band, max_score));
@@ -290,14 +313,15 @@ struct Greedy_aligner2
 			i = std::max(0, d1) - band + 1,
 			j = i - d,
 			j1 = std::min((int)query.length() - d, (int)subject.length());
-		uint8_t sv[band], sv_max[band];
-		memset(sv, 0, band);
+		uint8_t sv_max[band];
 		memset(sv_max, 0, band);
-		score_buf.resize(band * (j1 - j));
-		scan_cols(qp, subject, i, j, j1, sv_max, log, score_buf.data(), local_max.data());
+		const size_t cells = band * (j1 - j);
+		score_buf.resize(cells);
+		local_max.resize((j1 - j + block_len - 1) / block_len * band);
+		scan_cols(qp, subject, i, j, j1, sv_max, log, score_buf.data(), local_max.data(), block_len);
 		for (int o = 0; o < band; ++o)
 			if (sv_max[o] > 12) {
-				//get_diag(i + o, j, sv_max[o], o);
+				get_diag(i + o, j, sv_max[o], o);
 			}
 	}
 
@@ -393,6 +417,9 @@ struct Greedy_aligner2
 					int gap_score = -config.gap_open - abs(shift)*config.gap_extend;
 					const int space = shift > 0 ? d.j - e.subject_last() : d.i - e.query_last();
 					const int prefix_score = e.end_score[0] + gap_score + (space >= 1 ? e.score + int(space_penalty*std::max(space - 1, 0)) : e.partial_score(abs(space) + 1));
+					Link link;
+					if(space <= 0)
+						get_link(e, d, query, subject, link);
 					if (log)
 						cout << "Link n=" << k << " shift=" << shift << " space=" << space << " prefix_score=" << prefix_score << endl;
 					if (prefix_score > max_score) {
@@ -420,6 +447,7 @@ struct Greedy_aligner2
 		diags(TLS::get(diags_ptr))
 	{
 		diags.clear();
+		local_max.clear();
 		scan_diags(sh[0]);
 		std::sort(diags.begin(), diags.end(), Diagonal_segment::cmp_subject_end);
 		if (log)
@@ -431,7 +459,7 @@ struct Greedy_aligner2
 			}
 		if(log) cout << endl;
 		//follow_path(0, 0, 0, diags[0].j);
-		//follow_path_approximate();
+		follow_path_approximate();
 	}
 
 	static TLS_PTR vector<uint8_t> *score_buf_ptr;

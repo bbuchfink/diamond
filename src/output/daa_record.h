@@ -59,7 +59,7 @@ struct DAA_query_record
 			return Hsp_context(*this,
 				(unsigned)parent_.query_num,
 				sequence(parent_.context[frame]),
-				(unsigned)parent_.query_len(),
+				align_mode.query_translated ? sequence(parent_.source_seq) : sequence(parent_.context[0]),
 				parent_.query_name.c_str(),
 				subject_id,
 				subject_id,

@@ -1,3 +1,7 @@
+[0.8.25]
+- fixed a bug with the qseq field in the blast tabular format
+- added qtitle field to the blast tabular format
+
 [0.8.24]
 - error messages when reading sequence files include line numbers
 

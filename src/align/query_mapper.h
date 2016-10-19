@@ -93,6 +93,10 @@ private:
 	{
 		return query_seqs::get()[query_id*align_mode.query_contexts + frame];
 	}
+	sequence query_source_seq() const
+	{
+		return align_mode.query_translated ? query_source_seqs::get()[query_id] : query_seqs::get()[query_id];
+	}
 	void load_targets();
 	void rank_targets();
 

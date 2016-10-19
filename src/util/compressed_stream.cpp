@@ -60,7 +60,7 @@ void Compressed_istream::getline()
 		std::getline(s_, line);
 		if (!s_.good() && !s_.eof())
 			throw Stream_read_exception(line_count, "I/O error");
-		const size_t s = line.length()-1;
+		const size_t s = line.length() - 1;
 		if (!line.empty() && line[s] == '\r')
 			line.resize(s);
 	}

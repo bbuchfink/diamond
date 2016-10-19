@@ -64,7 +64,8 @@ const char* Blast_tab_format::field_str[] = {
 	"sstrand",		// 41 means Subject Strand
 	"qcovs",		// 42 means Query Coverage Per Subject
 	"qcovhsp",		// 43 means Query Coverage Per HSP
-	"qcovus"		// 44 means Query Coverage Per Unique Subject(blastn only)
+	"qcovus",		// 44 means Query Coverage Per Unique Subject(blastn only)
+	"qtitle"		// 45 means Query title
 };
 
 Blast_tab_format::Blast_tab_format() :
@@ -94,7 +95,7 @@ void Blast_tab_format::print_match(const Hsp_context& r, Text_buffer &out) const
 			out.write_until(r.query_name, Const::id_delimiters);
 			break;
 		case 4:
-			out << r.source_query_len;
+			out << r.source_query.length();
 			break;
 		case 5:
 			this->print_salltitles(out, r.subject_name, false, false);
@@ -118,7 +119,7 @@ void Blast_tab_format::print_match(const Hsp_context& r, Text_buffer &out) const
 			out << r.subject_range().end_;
 			break;
 		case 17:
-			r.query.print(out, r.query_source_range().begin_, r.query_source_range().end_, input_value_traits);
+			r.source_query.print(out, r.query_source_range().begin_, r.query_source_range().end_, input_value_traits);
 			break;
 		case 18:
 		{
@@ -173,7 +174,10 @@ void Blast_tab_format::print_match(const Hsp_context& r, Text_buffer &out) const
 			this->print_salltitles(out, r.subject_name, true, true);
 			break;
 		case 43:
-			out << (double)r.query_source_range().length()*100.0 / r.source_query_len;
+			out << (double)r.query_source_range().length()*100.0 / r.source_query.length();
+			break;
+		case 45:
+			out << r.query_name;
 			break;
 		default:
 			throw std::runtime_error("Invalid output field");
