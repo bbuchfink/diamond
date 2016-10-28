@@ -19,13 +19,7 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #ifndef SCORE_VECTOR_H_
 #define SCORE_VECTOR_H_
 
-#include "../util/system.h"
-#ifdef __SSSE3__
-#include <tmmintrin.h>
-#endif
-#ifdef __SSE4_1__
-#include <smmintrin.h>
-#endif
+#include "../util/simd.h"
 
 template<typename _score>
 struct score_traits

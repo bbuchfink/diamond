@@ -19,18 +19,6 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #ifndef UTIL_H_
 #define UTIL_H_
 
-#ifdef __MMX__
-#include <mmintrin.h>
-#endif
-
-#ifdef __SSE__
-#include <xmmintrin.h>
-#endif
-
-#ifdef __SSE2__
-#include <emmintrin.h>
-#endif
-
 #include <vector>
 #include <algorithm>
 #include <sstream>
@@ -40,6 +28,7 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #include <math.h>
 #include <ctype.h>
 #include <string>
+#include "simd.h"
 #include "../basic/const.h"
 #include "../basic/seed.h"
 #include "../basic/packed_loc.h"

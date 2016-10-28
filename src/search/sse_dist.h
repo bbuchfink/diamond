@@ -25,11 +25,6 @@ Author: Benjamin Buchfink
 #include "../basic/value.h"
 #include "../util/system.h"
 
-#ifdef __SSSE3__
-#include <tmmintrin.h>
-#endif
-
-
 inline unsigned popcount_3(uint64_t x)
 {
 	const uint64_t m1  = 0x5555555555555555; //binary: 0101...

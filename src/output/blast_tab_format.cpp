@@ -167,6 +167,41 @@ void Blast_tab_format::print_match(const Hsp_context& r, Text_buffer &out) const
 		case 31:
 			out << r.blast_query_frame();
 			break;
+		case 33:
+		{
+			unsigned n_matches = 0;
+			for (Hsp_context::Iterator i = r.begin(); i.good(); ++i) {
+				switch (i.op()) {
+				case op_match:
+					++n_matches;
+					break;
+				case op_substitution:
+					if (n_matches > 0) {
+						out << n_matches;
+						n_matches = 0;
+					}
+					out << i.query_char() << i.subject_char();
+					break;
+				case op_insertion:
+					if (n_matches > 0) {
+						out << n_matches;
+						n_matches = 0;
+					}
+					out << i.query_char() << '-';
+					break;
+				case op_deletion:
+					if (n_matches > 0) {
+						out << n_matches;
+						n_matches = 0;
+					}
+					out << '-' << i.subject_char();
+					break;
+				}
+			}
+			if (n_matches > 0)
+				out << n_matches;
+		}
+			break;
 		case 39:
 			this->print_salltitles(out, r.subject_name, true, false);
 			break;

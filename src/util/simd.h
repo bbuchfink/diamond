@@ -1,5 +1,5 @@
 /****
-Copyright (c) 2014, University of Tuebingen
+Copyright (c) 2016, Benjamin Buchfink
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
@@ -14,40 +14,49 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
 LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-****
-Author: Benjamin Buchfink
 ****/
 
-#ifndef SYSTEM_H_
-#define SYSTEM_H_
+#ifndef SIMD_H_
+#define SIMD_H_
 
-#ifdef _WIN32
-#define cpuid(info,x)    __cpuidex(info,x,0)
-#else
-inline void cpuid(int CPUInfo[4],int InfoType) {
-    __asm__ __volatile__ (
-        "cpuid":
-        "=a" (CPUInfo[0]),
-        "=b" (CPUInfo[1]),
-        "=c" (CPUInfo[2]),
-        "=d" (CPUInfo[3]) :
-        "a" (InfoType), "c" (0)
-    );
-}
-#endif
+#include "system.h"
 
 #ifdef _MSC_VER
-
-#define PACKED_ATTRIBUTE
-#define FTELL(x) _ftelli64(x)
-#define FSEEK(x,y,z) _fseeki64(x,y,z)
-
-#else
-
-#define PACKED_ATTRIBUTE __attribute__((packed))
-#define FTELL(x) ftell(x)
-#define FSEEK(x,y,z) fseek(x,y,z)
-
+#define __MMX__
+#define __SSE__
+#define __SSE2__
+#define __SSSE3__
+#define __SSE4_1__
 #endif
 
-#endif /* SYSTEM_H_ */
+#ifdef __SSSE3__
+#include <tmmintrin.h>
+#endif
+#ifdef __SSE4_1__
+#include <smmintrin.h>
+#endif
+#ifdef __MMX__
+#include <mmintrin.h>
+#endif
+#ifdef __SSE__
+#include <xmmintrin.h>
+#endif
+#ifdef __SSE2__
+#include <emmintrin.h>
+#endif
+
+inline bool check_SSSE3()
+{
+#ifdef __SSSE3__
+	int info[4];
+	cpuid(info, 0);
+	int nids = info[0];
+	if (nids >= 1) {
+		cpuid(info, 1);
+		return (info[2] & (1 << 9)) != 0;
+	}
+#endif
+	return false;
+}
+
+#endif
