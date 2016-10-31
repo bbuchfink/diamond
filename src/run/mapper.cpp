@@ -27,7 +27,7 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 
 void run_mapper(Database_file &db_file, Timer &total_timer)
 {
-	task_timer timer("Opening the input file", true);
+/*	task_timer timer("Opening the input file", true);
 	const Sequence_file_format *format_n(guess_format(config.query_file));
 	Compressed_istream query_file(config.query_file);
 	current_query_chunk = 0;
@@ -77,7 +77,7 @@ void run_mapper(Database_file &db_file, Timer &total_timer)
 
 	timer.finish();
 	message_stream << "Total wall clock time: " << total_timer.getElapsedTimeInSec() << "s" << endl;
-	statistics.print();
+	statistics.print();*/
 }
 
 void run_mapper()

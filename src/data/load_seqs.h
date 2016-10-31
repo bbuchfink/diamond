@@ -53,7 +53,7 @@ inline size_t push_seq(Sequence_set &ss, Sequence_set& source_seqs, const vector
 	}
 }
 
-inline size_t load_seqs(Compressed_istream &file,
+inline size_t load_seqs(Input_stream &file,
 		const Sequence_file_format &format,
 		Sequence_set** seqs,
 		String_set<0>*& ids,

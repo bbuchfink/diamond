@@ -35,9 +35,9 @@ struct Stream_read_exception : public std::runtime_error
 	{}
 };
 
-struct Compressed_istream
+struct Compressed_istream2
 {
-	Compressed_istream(const string &file_name);
+	Compressed_istream2(const string &file_name);
 	size_t read(char *ptr, size_t count);
 	void putback(char c);
 	void getline();
@@ -52,6 +52,20 @@ private:
 	const string file_name_;
 	zstr::ifstream s_;
 	bool putback_line_;
+};
+
+struct Compressed_istream : public Input_stream
+{
+	Compressed_istream(const string &file_name);
+	virtual size_t read_bytes(char *ptr, size_t count);
+	virtual void close();
+	static Input_stream* auto_detect(const string &file_name);
+private:
+	z_stream strm;
+	static const size_t chunk_size = 1llu << 20;
+	auto_ptr<char> in, out;
+	size_t read_, total_;
+	bool eos_;
 };
 
 struct Compressed_ostream : public Output_stream

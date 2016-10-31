@@ -40,7 +40,7 @@ void copy_line(const string & s, vector<_t>& v, size_t d, _what)
 		v.push_back(convert_char<_what>(*i));
 }
 
-bool FASTA_format::get_seq(vector<char>& id, vector<Letter>& seq, Compressed_istream & s) const
+bool FASTA_format::get_seq(vector<char>& id, vector<Letter>& seq, Input_stream & s) const
 {
 	while (s.getline(), s.line.empty() && !s.eof());
 	if (s.eof())
@@ -72,7 +72,7 @@ bool FASTA_format::get_seq(vector<char>& id, vector<Letter>& seq, Compressed_ist
 	return true;
 }
 
-bool FASTQ_format::get_seq(vector<char>& id, vector<Letter>& seq, Compressed_istream & s) const
+bool FASTQ_format::get_seq(vector<char>& id, vector<Letter>& seq, Input_stream & s) const
 {
 	while (s.getline(), s.line.empty() && !s.eof());
 	if (s.eof())
@@ -96,19 +96,19 @@ bool FASTQ_format::get_seq(vector<char>& id, vector<Letter>& seq, Compressed_ist
 	return true;
 }
 
-const Sequence_file_format * guess_format(const string & file)
+const Sequence_file_format * guess_format(Input_stream &file)
 {
 	static const FASTA_format fasta;
 	static const FASTQ_format fastq;
 
-	Compressed_istream f(file);
-	char c;
-	if (f.read(&c, 1) != 1)
-		throw file_format_exception();
-	switch (c) {
+	file.getline();
+	file.putback_line();
+	if (file.line.empty())
+		throw std::runtime_error("Error detecting input file format. First line seems to be blank.");
+	switch (file.line[0]) {
 	case '>': return &fasta;
 	case '@': return &fastq;
-	default: throw file_format_exception();
+	default: throw std::runtime_error("Error detecting input file format. First line must begin with '>' (FASTA) or '@' (FASTQ).");
 	}
 	return 0;
 }

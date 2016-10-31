@@ -57,7 +57,7 @@ void make_db()
 	Timer total;
 	total.start();
 	task_timer timer("Opening the database file", true);
-	Compressed_istream db_file(config.input_ref_file);
+	auto_ptr<Input_stream> db_file (Compressed_istream::auto_detect(config.input_ref_file));
 	
 	Output_stream out(config.database);
 	out.typed_write(&ref_header, 1);
@@ -70,7 +70,7 @@ void make_db()
 	vector<Pos_record> pos_array;
 	FASTA_format format;
 
-	while (format.get_seq(id, seq, db_file)) {
+	while (format.get_seq(id, seq, *db_file)) {
 		if (seq.size() == 0)
 			throw std::runtime_error("File format error: sequence of length 0");
 		if (n % 100000llu == 0llu) {
@@ -93,6 +93,9 @@ void make_db()
 	ref_header.pos_array_offset = offset;
 	pos_array.push_back(Pos_record(offset, 0));
 	out.write(pos_array, false);
+
+	timer.go("Closing the input file");
+	db_file->close();
 	
 	timer.go("Closing the database file");
 	ref_header.letters = letters;

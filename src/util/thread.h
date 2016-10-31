@@ -204,6 +204,41 @@ template<typename _f, typename _t1, typename _t2, typename _t3, typename _t4>
 thread* launch_thread(_f f, _t1 p1, _t2 p2, _t3 p3, _t4 p4)
 { return new thread (thread_worker<_f,_t1,_t2,_t3,_t4>, new Thread_p4<_f,_t1,_t2,_t3,_t4> (f, p1, p2, p3, p4)); }
 
+template<typename _f, typename _t1, typename _t2, typename _t3, typename _t4, typename _t5>
+struct Thread_p5
+{
+	Thread_p5(_f f, _t1 p1, _t2 p2, _t3 p3, _t4 p4, _t5 p5) :
+		f(f),
+		p1(p1),
+		p2(p2),
+		p3(p3),
+		p4(p4),
+		p5(p5)
+	{ }
+	_f f;
+	_t1 p1;
+	_t2 p2;
+	_t3 p3;
+	_t4 p4;
+	_t5 p5;
+};
+
+template<typename _f, typename _t1, typename _t2, typename _t3, typename _t4, typename _t5>
+void thread_worker(void *p)
+{
+	Thread_p5<_f, _t1, _t2, _t3, _t4, _t5> *q = (Thread_p5<_f, _t1, _t2, _t3, _t4, _t5>*)p;
+	q->f(q->p1, q->p2, q->p3, q->p4, q->p5);
+	delete q;
+	TLS::clear();
+}
+
+template<typename _f, typename _t1, typename _t2, typename _t3, typename _t4, typename _t5>
+thread* launch_thread(_f f, _t1 p1, _t2 p2, _t3 p3, _t4 p4, _t5 p5)
+{
+	return new thread(thread_worker<_f, _t1, _t2, _t3, _t4, _t5>, new Thread_p5<_f, _t1, _t2, _t3, _t4, _t5>(f, p1, p2, p3, p4, p5));
+}
+
+
 struct Thread_pool : public vector<thread*>
 {
 	void join_all()

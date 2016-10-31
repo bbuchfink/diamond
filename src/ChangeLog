@@ -1,6 +1,8 @@
 [0.8.25]
 - fixed a bug with the qseq field in the blast tabular format
-- added qtitle field to the blast tabular format
+- added qtitle and btop fields to the blast tabular format
+- fixed a bug that could cause a crash when passing a nonexistant input file
+- fixed an issue that could cause unexpectedly long runtimes in certain cases
 
 [0.8.24]
 - error messages when reading sequence files include line numbers

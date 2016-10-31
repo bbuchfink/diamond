@@ -203,8 +203,9 @@ void master_thread(Database_file &db_file, Timer &timer_mapping, Timer &total_ti
 {
 	task_timer timer ("Opening the input file", true);
 	timer_mapping.start();
-	const Sequence_file_format *format_n (guess_format(config.query_file));
-	Compressed_istream query_file (config.query_file);
+	auto_ptr<Input_stream> query_file (Compressed_istream::auto_detect(config.query_file));
+	const Sequence_file_format *format_n (guess_format(*query_file));
+	
 	current_query_chunk=0;
 
 	timer.go("Opening the output file");
@@ -220,7 +221,7 @@ void master_thread(Database_file &db_file, Timer &timer_mapping, Timer &total_ti
 		task_timer timer ("Loading query sequences", true);
 		timer_mapping.resume();
 		size_t n_query_seqs;
-		n_query_seqs = load_seqs(query_file, *format_n, &query_seqs::data_, query_ids::data_, query_source_seqs::data_, (size_t)(config.chunk_size * 1e9));
+		n_query_seqs = load_seqs(*query_file, *format_n, &query_seqs::data_, query_ids::data_, query_source_seqs::data_, (size_t)(config.chunk_size * 1e9));
 		if(n_query_seqs == 0)
 			break;
 		timer.finish();
@@ -245,6 +246,9 @@ void master_thread(Database_file &db_file, Timer &timer_mapping, Timer &total_ti
 		run_query_chunk(db_file, timer_mapping, total_timer, current_query_chunk, query_len_bounds, *master_out);
 	}
 
+	timer.go("Closing the input file");
+	query_file->close();
+	
 	timer.go("Closing the output file");
 	timer_mapping.resume();
 	if (*output_format == Output_format::daa)

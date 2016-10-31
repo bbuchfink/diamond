@@ -88,9 +88,10 @@ struct static_method_holder
     {
 		if (s_p->fail())
 		{
-			throw Exception(std::string("strict_fstream: open('")
+			/*throw Exception(std::string("strict_fstream: open('")
 				+ filename + "'," + mode_to_string(mode) + "): open failed: "
-				+ std::strerror(errno));
+				+ std::strerror(errno));*/
+			throw std::runtime_error("");
 		}
         
     }
@@ -132,7 +133,7 @@ public:
         exceptions(std::ios_base::badbit);
         detail::static_method_holder::check_mode(filename, mode);
         std::ifstream::open(filename.c_str(), mode);
-        detail::static_method_holder::check_open(this, filename, mode);
+		detail::static_method_holder::check_open(this, filename, mode);
         detail::static_method_holder::check_peek(this, filename, mode);
     }
 }; // class ifstream

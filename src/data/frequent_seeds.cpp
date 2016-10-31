@@ -23,7 +23,7 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 const double Frequent_seeds::hash_table_factor = 1.3;
 Frequent_seeds frequent_seeds;
 
-void Frequent_seeds::compute_sd(Atomic<unsigned> *seedp, const sorted_list *ref_idx, vector<Sd> *out)
+void Frequent_seeds::compute_sd(Atomic<unsigned> *seedp, const sorted_list *ref_idx, const sorted_list *query_idx, vector<Sd> *ref_out, vector<Sd> *query_out)
 {
 	unsigned p;
 	while ((p = (*seedp)++) < current_range.end()) {
@@ -33,18 +33,27 @@ void Frequent_seeds::compute_sd(Atomic<unsigned> *seedp, const sorted_list *ref_
 			ref_sd.add((double)it.n);
 			++it;
 		}
-		(*out)[p - current_range.begin()] = ref_sd;
+		(*ref_out)[p - current_range.begin()] = ref_sd;
+
+		Sd query_sd;
+		it = query_idx->get_partition_cbegin(p);
+		while (!it.at_end()) {
+			query_sd.add((double)it.n);
+			++it;
+		}
+		(*query_out)[p - current_range.begin()] = query_sd;
 	}
 }
 
 struct Frequent_seeds::Build_context
 {
-	Build_context(const sorted_list &ref_idx, const sorted_list &query_idx, const seedp_range &range, unsigned sid, unsigned max_n, vector<unsigned> &counts) :
+	Build_context(const sorted_list &ref_idx, const sorted_list &query_idx, const seedp_range &range, unsigned sid, unsigned ref_max_n, unsigned query_max_n, vector<unsigned> &counts) :
 		ref_idx(ref_idx),
 		query_idx(query_idx),
 		range(range),
 		sid(sid),
-		max_n(max_n),
+		ref_max_n(ref_max_n),
+		query_max_n(query_max_n),
 		counts(counts)
 	{ }
 	void operator()(unsigned thread_id, unsigned seedp)
@@ -56,7 +65,7 @@ struct Frequent_seeds::Build_context
 		size_t n = 0;
 		Merge_iterator<sorted_list::iterator> merge_it(ref_idx.get_partition_begin(seedp), query_idx.get_partition_begin(seedp));
 		while (merge_it.next()) {
-			if (merge_it.i.n > max_n) {
+			if (merge_it.i.n > ref_max_n || merge_it.j.n > query_max_n) {
 				merge_it.i.get(0)->value = 0;
 				n += (unsigned)merge_it.i.n;
 				buf.push_back(merge_it.i.key());
@@ -76,24 +85,25 @@ struct Frequent_seeds::Build_context
 	const sorted_list &ref_idx;
 	const sorted_list &query_idx;
 	const seedp_range range;
-	const unsigned sid, max_n;
+	const unsigned sid, ref_max_n, query_max_n;
 	vector<unsigned> &counts;
 };
 
 void Frequent_seeds::build(unsigned sid, const seedp_range &range, sorted_list &ref_idx, const sorted_list &query_idx)
 {
-	vector<Sd> sds(range.size());
+	vector<Sd> ref_sds(range.size()), query_sds(range.size());
 	Atomic<unsigned> seedp (range.begin());
 	Thread_pool threads;
 	for (unsigned i = 0; i < config.threads_; ++i)
-		threads.push_back(launch_thread(compute_sd, &seedp, &ref_idx, &sds));
+		threads.push_back(launch_thread(compute_sd, &seedp, &ref_idx, &query_idx, &ref_sds, &query_sds));
 	threads.join_all();
 
-	Sd sd(sds);
-	const unsigned max_n = (unsigned)(sd.mean() + config.freq_sd*sd.sd());
-	log_stream << "Seed frequency mean = " << sd.mean() << ", SD = " << sd.sd() << endl;
+	Sd ref_sd(ref_sds), query_sd(query_sds);
+	const unsigned ref_max_n = (unsigned)(ref_sd.mean() + config.freq_sd*ref_sd.sd()), query_max_n = (unsigned)(query_sd.mean() + config.freq_sd*query_sd.sd());
+	log_stream << "Seed frequency mean (reference) = " << ref_sd.mean() << ", SD = " << ref_sd.sd() << endl;
+	log_stream << "Seed frequency mean (query) = " << query_sd.mean() << ", SD = " << query_sd.sd() << endl;
 	vector<unsigned> counts(Const::seedp);
-	Build_context build_context(ref_idx, query_idx, range, sid, max_n, counts);
+	Build_context build_context(ref_idx, query_idx, range, sid, ref_max_n, query_max_n, counts);
 	launch_scheduled_thread_pool(build_context, Const::seedp, config.threads_);
 	log_stream << "Masked positions = " << std::accumulate(counts.begin(), counts.end(), 0) << std::endl;
 }

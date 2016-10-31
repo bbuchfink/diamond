@@ -39,7 +39,7 @@ struct file_format_exception : public std::exception
 struct Sequence_file_format
 {
 
-	virtual bool get_seq(vector<char> &id, vector<Letter> &seq, Compressed_istream &s) const = 0;
+	virtual bool get_seq(vector<char> &id, vector<Letter> &seq, Input_stream &s) const = 0;
 	virtual ~Sequence_file_format()
 	{ }
 	
@@ -51,7 +51,7 @@ struct FASTA_format : public Sequence_file_format
 	FASTA_format()
 	{ }
 
-	virtual bool get_seq(vector<char> &id, vector<Letter> &seq, Compressed_istream &s) const;
+	virtual bool get_seq(vector<char> &id, vector<Letter> &seq, Input_stream &s) const;
 
 	virtual ~FASTA_format()
 	{ }
@@ -64,13 +64,13 @@ struct FASTQ_format : public Sequence_file_format
 	FASTQ_format()
 	{ }
 
-	virtual bool get_seq(vector<char> &id, vector<Letter> &seq, Compressed_istream &s) const;
+	virtual bool get_seq(vector<char> &id, vector<Letter> &seq, Input_stream &s) const;
 
 	virtual ~FASTQ_format()
 	{ }
 
 };
 
-const Sequence_file_format* guess_format(const string &file);
+const Sequence_file_format* guess_format(Input_stream &file);
 
 #endif /* SEQ_FILE_FORMAT_H_ */
