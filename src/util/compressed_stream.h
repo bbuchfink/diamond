@@ -21,7 +21,7 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 
 #include <string>
 #include <memory>
-#include "zstr.hpp"
+#include <zlib.h>
 #include "binary_file.h"
 #include "util.h"
 
@@ -64,6 +64,5 @@ private:
 	z_stream strm;
 	auto_ptr<char> out;
 };
-
 
 #endif
