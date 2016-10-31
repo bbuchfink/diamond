@@ -27,55 +27,6 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #  define SET_BINARY_MODE(file)
 #endif
 
-Compressed_istream2::Compressed_istream2(const string & file_name) :
-	file_name_(file_name),
-	line_count(0),
-	s_(file_name, std::ios_base::in | std::ios_base::binary),	
-	putback_line_(false)
-{
-}
-
-size_t Compressed_istream2::read(char * ptr, size_t count)
-{
-	s_.read(ptr, count);
-	const size_t n = s_.gcount();
-	if (n != count) {
-		if (s_.eof())
-			return n;
-		else
-			throw std::runtime_error("Error reading file " + file_name_);
-	}
-	return n;
-}
-
-void Compressed_istream2::putback(char c)
-{
-	s_.putback(c);
-	if (!s_.good())
-		throw std::runtime_error("Error reading file " + file_name_);
-}
-
-void Compressed_istream2::getline()
-{
-	if (!putback_line_) {
-		std::getline(s_, line);
-		if (!s_.good() && !s_.eof())
-			throw Stream_read_exception(line_count, "I/O error");
-		const size_t s = line.length() - 1;
-		if (!line.empty() && line[s] == '\r')
-			line.resize(s);
-	}
-	else
-		putback_line_ = false;
-	++line_count;
-}
-
-void Compressed_istream2::putback_line()
-{
-	putback_line_ = true;
-	--line_count;
-}
-
 Compressed_istream::Compressed_istream(const string &file_name):
 	Input_stream(file_name),
 	in(new char[chunk_size]),

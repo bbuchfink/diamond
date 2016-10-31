@@ -242,17 +242,17 @@ struct Greedy_aligner2
 		Diagonal_node() :
 			Diagonal_segment()
 		{
-			memset(end_score, 0xff, sizeof(end_score)*sizeof(int));
+			memset(end_score, 0xff, sizeof(end_score));
 		}
 		Diagonal_node(int query_pos, int subject_pos, int len, int score) :
 			Diagonal_segment(query_pos, subject_pos, len, score)
 		{
-			memset(end_score, 0xff, sizeof(end_score)*sizeof(int));
+			memset(end_score, 0xff, sizeof(end_score));
 		}
 		Diagonal_node(const Diagonal_segment &d):
 			Diagonal_segment(d)
 		{
-			memset(end_score, 0xff, sizeof(end_score)*sizeof(int));
+			memset(end_score, 0xff, sizeof(end_score));
 		}
 		bool visited() const
 		{

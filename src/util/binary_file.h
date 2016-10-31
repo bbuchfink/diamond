@@ -130,8 +130,8 @@ struct Input_stream
 
 	Input_stream(const string &file_name):
 		file_name (file_name),
-		f_(fopen(file_name.c_str(), "rb")),
 		line_count(0),
+		f_(fopen(file_name.c_str(), "rb")),		
 		line_buf_used_(0),
 		line_buf_end_(0),
 		putback_line_(false),
