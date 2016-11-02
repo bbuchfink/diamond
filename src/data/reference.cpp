@@ -72,7 +72,7 @@ void make_db()
 
 	while (format.get_seq(id, seq, *db_file)) {
 		if (seq.size() == 0)
-			throw std::runtime_error("File format error: sequence of length 0");
+			throw std::runtime_error("File format error: sequence of length 0 at line " + to_string(db_file->line_count));
 		if (n % 100000llu == 0llu) {
 			std::stringstream ss;
 			ss << "Loading sequence data (" << n << " sequences processed)";
