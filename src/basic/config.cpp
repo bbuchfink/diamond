@@ -153,7 +153,7 @@ Config::Config(int argc, const char **argv)
 	
 	Options_group view_options("View options");
 	view_options.add()
-		("daa", 'a', "DIAMOND alignment archive (DAA) file", daa_file)		
+		("daa", 'a', "DIAMOND alignment archive (DAA) file", daa_file)
 		("forwardonly", 0, "only show alignments of forward strand", forwardonly);
 
 	Options_group getseq_options("Getseq options");

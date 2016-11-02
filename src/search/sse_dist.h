@@ -1,5 +1,5 @@
 /****
-Copyright (c) 2014, University of Tuebingen
+Copyright (c) 2013-2016, Benjamin Buchfink
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
@@ -14,8 +14,6 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
 LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-****
-Author: Benjamin Buchfink
 ****/
 
 #ifndef SSE_DIST_H_
@@ -23,7 +21,7 @@ Author: Benjamin Buchfink
 
 #include "../basic/reduction.h"
 #include "../basic/value.h"
-#include "../util/system.h"
+#include "../util/simd.h"
 
 inline unsigned popcount_3(uint64_t x)
 {
@@ -94,6 +92,8 @@ struct Int_finger_print
 	uint64_t r1, r2,r3,r4;
 };
 
+#ifdef __SSE2__
+
 struct Byte_finger_print
 {
 	Byte_finger_print(const Letter *q) :
@@ -115,6 +115,27 @@ struct Byte_finger_print
 	}
 	__m128i r1, r2;
 };
+
+#else
+
+struct Byte_finger_print
+{
+	Byte_finger_print(const Letter *q)
+	{
+		memcpy(r, q - 8, 32);
+	}
+	unsigned match(const Byte_finger_print &rhs) const
+	{
+		unsigned n = 0;
+		for (unsigned i = 0; i < 32; ++i)
+			if (r[i] == rhs.r[i])
+				++n;
+		return n;
+	}
+	Letter r[32];
+};
+
+#endif
 
 struct Halfbyte_finger_print_naive
 {

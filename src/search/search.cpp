@@ -142,7 +142,7 @@ void load_fps(const sorted_list::const_iterator &i, vector<Finger_print> &v, con
 			v.push_back(Finger_print(seqs.data(i[j])));
 	} else
 		for (unsigned j = 0; j < i.n && (i.n<=config.hit_cap || i[j] != 0); ++j)
-			v.push_back(Finger_print(seqs.data(i[j]), Masked()));
+			v.push_back(Finger_print(seqs.data(i[j])));
 }
 
 void load_fps2(const sorted_list::const_iterator &i, vector<Finger_print> &v, const Sequence_set &seqs)
