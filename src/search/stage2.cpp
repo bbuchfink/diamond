@@ -18,6 +18,9 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 
 #include "align_range.h"
 #include "../util/map.h"
+#include "../dp/dp.h"
+
+#ifdef __SSE2__
 
 void search_query_offset(Loc q,
 	const sorted_list::const_iterator &s,
@@ -52,6 +55,58 @@ void search_query_offset(Loc q,
 
 	hf.finish();
 }
+
+#else
+
+void search_query_offset(Loc q,
+	const sorted_list::const_iterator &s,
+	vector<Stage1_hit>::const_iterator hits,
+	vector<Stage1_hit>::const_iterator hits_end,
+	Statistics &stats,
+	Trace_pt_buffer::Iterator &out,
+	const unsigned sid)
+{
+	const Letter* query = query_seqs::data_->data(q);
+	unsigned q_num_ = std::numeric_limits<unsigned>::max(), seed_offset_;
+
+	for (vector<Stage1_hit>::const_iterator i = hits; i < hits_end; ++i) {
+		const Loc s_pos = s[i->s];
+		const Letter* subject = ref_seqs::data_->data(s_pos);
+
+		unsigned delta, len;
+		int score;
+		if ((score = xdrop_ungapped(query, subject, shapes[sid].length_, delta, len)) < config.min_ungapped_raw_score)
+			continue;
+
+		stats.inc(Statistics::TENTATIVE_MATCHES2);
+
+#ifndef NO_COLLISION_FILTER
+		if (!is_primary_hit(query - delta, subject - delta, delta, sid, len))
+			continue;
+#endif
+
+		stats.inc(Statistics::TENTATIVE_MATCHES3);
+
+		if (score < config.min_hit_raw_score) {
+			const sequence s = ref_seqs::data_->fixed_window_infix(s_pos + config.seed_anchor);
+			unsigned left;
+			sequence query(query_seqs::data_->window_infix(q + config.seed_anchor, left));
+			score = smith_waterman(query, s, config.hit_band, left, config.gap_open + config.gap_extend, config.gap_extend);
+		}
+		if (score >= config.min_hit_raw_score) {
+			if (q_num_ == std::numeric_limits<unsigned>::max()) {
+				std::pair<size_t, size_t> l(query_seqs::data_->local_position(q));
+				q_num_ = (unsigned)l.first;
+				seed_offset_ = (unsigned)l.second;
+			}
+			assert(subject < ref_seqs::get().raw_len());
+			out.push(hit(q_num_, s_pos, seed_offset_));
+			stats.inc(Statistics::TENTATIVE_MATCHES4);
+		}
+	}
+}
+
+#endif
 
 void stage2_search(const sorted_list::const_iterator &q,
 	const sorted_list::const_iterator &s,

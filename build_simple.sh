@@ -36,4 +36,5 @@ g++ -DNDEBUG -O3 -mssse3 -Wno-deprecated-declarations -std=gnu++98 $1 \
   src/align/query_mapper.cpp \
   src/align/align_target.cpp \
   src/output/blast_tab_format.cpp \
+  src/dp/padded_banded_sw.cpp \
 -lz -lpthread -o diamond

@@ -21,14 +21,6 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 
 #include "../data/frequent_seeds.h"
 
-inline unsigned letter_match(Letter query, Letter subject)
-{
-	if(query != '\xff' && Reduction::reduction(query) == Reduction::reduction(subject))
-		return 1;
-	else
-		return 0;
-}
-
 inline bool match_shape_mask(const uint64_t mask, const uint64_t shape_mask)
 {
 	return (mask & shape_mask) == shape_mask;

@@ -47,6 +47,7 @@ struct Reduction
 				map_[(long)value_traits.from_char(ch)] = i;
 				map8_[(long)value_traits.from_char(ch)] = i;
 			}
+		map8_[(long)value_traits.mask_char] = (char)size_;
 	}
 
 	unsigned size() const

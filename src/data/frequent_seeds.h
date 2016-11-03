@@ -31,7 +31,8 @@ struct Frequent_seeds
 	bool get(const Letter *pos, unsigned sid) const
 	{
 		Packed_seed seed;
-		shapes[sid].set_seed(seed, pos);
+		if (!shapes[sid].set_seed(seed, pos))
+			return true;
 		return tables_[sid][seed_partition(seed)].contains(seed_partition_offset(seed));
 	}
 

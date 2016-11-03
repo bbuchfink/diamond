@@ -74,8 +74,8 @@ struct Padded_banded_DP_matrix
 
 	inline void clear()
 	{
-		memset(hgap_front_, 0, 2 * band_ + 2);
-		memset(score_front_, 0, 2 * band_ + 1);
+		memset(hgap_front_, 0, (2 * band_ + 2) * sizeof(int));
+		memset(score_front_, 0, (2 * band_ + 1) * sizeof(int));
 	}
 
 	inline Column_iterator begin(unsigned column)

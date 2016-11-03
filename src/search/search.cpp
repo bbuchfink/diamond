@@ -137,20 +137,9 @@ void load_fps(const sorted_list::const_iterator &i, vector<Finger_print> &v, con
 {
 	v.clear();
 	v.reserve(i.n);
-	if (!config.old_freq) {
-		for (unsigned j = 0; j < i.n; ++j)
-			v.push_back(Finger_print(seqs.data(i[j])));
-	} else
-		for (unsigned j = 0; j < i.n && (i.n<=config.hit_cap || i[j] != 0); ++j)
-			v.push_back(Finger_print(seqs.data(i[j])));
-}
-
-void load_fps2(const sorted_list::const_iterator &i, vector<Finger_print> &v, const Sequence_set &seqs)
-{
-	v.clear();
-	v.reserve(i.n);
 	for (unsigned j = 0; j < i.n; ++j)
 		v.push_back(Finger_print(seqs.data(i[j])));
+		//v.push_back(Finger_print());
 }
 
 void search_seed(const sorted_list::const_iterator &q,
@@ -167,7 +156,7 @@ void search_seed(const sorted_list::const_iterator &q,
 	vector<Finger_print> &vq(TLS::get(vq_ptr)), &vs(TLS::get(vs_ptr));
 	vector<Stage1_hit> &hits(TLS::get(hits_ptr));
 	hits.clear();
-	load_fps2(q, vq, *query_seqs::data_);
+	load_fps(q, vq, *query_seqs::data_);
 	load_fps(s, vs, *ref_seqs::data_);
 	tiled_search(vq.begin(), vq.end(), vs.begin(), vs.end(), Range_ref(vq.begin(), vs.begin()), hits, stats, 0);
 	std::sort(hits.begin(), hits.end());

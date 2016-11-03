@@ -23,19 +23,6 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #include "../basic/value.h"
 #include "../util/simd.h"
 
-inline unsigned popcount_3(uint64_t x)
-{
-	const uint64_t m1  = 0x5555555555555555; //binary: 0101...
-	const uint64_t m2  = 0x3333333333333333; //binary: 00110011..
-	const uint64_t m4  = 0x0f0f0f0f0f0f0f0f; //binary:  4 zeros,  4 ones ...
-	const uint64_t h01 = 0x0101010101010101; //the sum of 256 to the power of 0,1,2,3...
-
-    x -= (x >> 1) & m1;             //put count of each 2 bits into those 2 bits
-    x = (x & m2) + ((x >> 2) & m2); //put count of each 4 bits into those 4 bits
-    x = (x + (x >> 4)) & m4;        //put count of each 8 bits into those 8 bits
-    return (x * h01)>>56;  //returns left 8 bits of x + (x<<8) + (x<<16) + (x<<24) + ...
-}
-
 inline unsigned match_block(const Letter *x, const Letter *y)
 {
 	static const __m128i mask = _mm_set1_epi8(0x7F);
@@ -120,8 +107,11 @@ struct Byte_finger_print
 
 struct Byte_finger_print
 {
+	Byte_finger_print()
+	{}
 	Byte_finger_print(const Letter *q)
 	{
+		//printf("%llx\n", q);
 		memcpy(r, q - 8, 32);
 	}
 	unsigned match(const Byte_finger_print &rhs) const
@@ -133,6 +123,7 @@ struct Byte_finger_print
 		return n;
 	}
 	Letter r[32];
+	//char r[32];
 };
 
 #endif
@@ -219,6 +210,7 @@ inline __m128i reduce_seq_ssse3(const __m128i &seq)
 }
 #endif
 
+#ifdef __SSE2__
 inline __m128i reduce_seq_generic(const __m128i &seq)
 {
 	__m128i r;
@@ -240,9 +232,11 @@ inline __m128i reduce_seq(const __m128i &seq)
 	} else
 		return reduce_seq_generic(seq);
 }
+#endif
 
 inline unsigned match_block_reduced(const Letter *x, const Letter *y)
 {
+#ifdef __SSE2__
 	static const __m128i mask = _mm_set1_epi8(0x7F);
 	__m128i r1 = _mm_loadu_si128 ((__m128i const*)(x));
 	__m128i r2 = _mm_loadu_si128 ((__m128i const*)(y));
@@ -250,6 +244,15 @@ inline unsigned match_block_reduced(const Letter *x, const Letter *y)
 	r1 = reduce_seq(r1);
 	r2 = reduce_seq(r2);
 	return _mm_movemask_epi8(_mm_cmpeq_epi8(r1, r2));
+#else
+	unsigned r = 0;
+	for (int i = 15; i >= 0; --i) {
+		r <<= 1;
+		if (Reduction::reduction(x[i]) == Reduction::reduction(y[i]))
+			r |= 1;		
+	}
+	return r;
+#endif
 }
 
 inline uint64_t reduced_match32(const Letter* q, const Letter *s, unsigned len)
