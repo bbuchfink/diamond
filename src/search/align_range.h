@@ -19,55 +19,7 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #ifndef ALIGN_RANGE_H_
 #define ALIGN_RANGE_H_
 
-#include "filter_hit.h"
 #include "../basic/statistics.h"
-
-inline void align_range(Loc q_pos,
-				 const sorted_list::const_iterator &s,
-				 Statistics &stats,
-				 Trace_pt_buffer::Iterator &out,
-				 unsigned sid)
-{
-	unsigned i = 0, n=0;
-
-	const Letter* query = query_seqs::data_->data(q_pos);
-	hit_filter hf (stats, q_pos, out);
-
-	if(s.n <= config.hit_cap) {
-		stats.inc(Statistics::SEED_HITS, s.n);
-		while(i < s.n) {
-			align(q_pos, query, s[i], stats, sid, hf);
-			++i;
-		}
-	} else {
-		while(i < s.n && s[i] != 0) {
-			align(q_pos, query, s[i], stats, sid, hf);
-			stats.inc(Statistics::SEED_HITS);
-			++i;
-			++n;
-		}
-	}
-#ifdef EXTRA
-	//if(n > 64)
-		//printf("%u\n",n);
-#endif
-
-	hf.finish();
-}
-
-inline void align_range(const sorted_list::const_iterator &q,
-				 const sorted_list::const_iterator &s,
-				 Statistics &stats,
-				 Trace_pt_buffer::Iterator &out,
-				 const unsigned sid)
-{
-#ifdef EXTRA
-	//if(q.n > 4096)
-		//printf("%lu %lu\n",q.n,s.n);
-#endif
-	for(unsigned i=0;i<q.n; ++i)
-		align_range(Loc(q[i]), s, stats, out, sid);
-}
 
 struct Stage1_hit
 {
@@ -120,14 +72,8 @@ inline void align_partition(unsigned hp,
 		} else if(j.key() < i.key()) {
 			++j;
 		} else {
-			if (!config.slow_search) {
-				//cout << "n=" << stats.data_[Statistics::SEED_HITS] << endl;
-				/*if (stats.data_[Statistics::SEED_HITS] > 10000000000lu)
-				break;*/
-				if(config.old_freq || i[0] != 0)
-					search_seed(j, i, stats, *out, sid);
-			} else
-				align_range(j, i, stats, *out, sid);
+			if(i[0] != 0)
+				search_seed(j, i, stats, *out, sid);
 			++i;
 			++j;
 		}

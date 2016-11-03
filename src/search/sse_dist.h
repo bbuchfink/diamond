@@ -42,11 +42,6 @@ inline unsigned popcount64(unsigned long long x)
 #endif
 }
 
-inline unsigned fast_match(const Letter *q, const Letter *s)
-{
-	return popcount32(match_block(q - 8, s - 8) << 16 | match_block(q + 8, s + 8));
-}
-
 struct Masked {};
 
 struct Int_finger_print

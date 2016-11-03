@@ -26,6 +26,8 @@ Author: Benjamin Buchfink
 #include "score_profile.h"
 #include "dp_matrix.h"
 
+#ifdef __SSE2__
+
 template<typename _score>
 inline score_vector<_score> cell_update(const score_vector<_score> &diagonal_cell,
 						 const score_vector<_score> &scores,
@@ -118,5 +120,7 @@ void smith_waterman(const sequence &query,
 	printf("\n");
 	#endif
 }
+
+#endif
 
 #endif /* SSE_SW_H_ */
