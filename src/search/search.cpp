@@ -21,7 +21,9 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #include "sse_dist.h"
 
 Trace_pt_buffer* Trace_pt_buffer::instance;
+#ifdef __SSE2__
 TLS_PTR vector<sequence>* hit_filter::subjects_ptr;
+#endif
 
 const unsigned tile_size[] = { 1024, 128 };
 

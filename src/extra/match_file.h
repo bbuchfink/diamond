@@ -75,7 +75,7 @@ void get_match(unsigned &mask, const char *queryl, const char *subjectl, bool &h
 		*(q++) = queryl[i];
 		*(s++) = subjectl[i];
 		for(unsigned j=0;j<shapes.count();++j) {
-			if((mask & shapes[j].rev_mask_ == shapes[j].rev_mask_) && shapes[j].is_low_freq_rev(q))
+			if(((mask & shapes[j].rev_mask_) == shapes[j].rev_mask_) && shapes[j].is_low_freq_rev(q))
 				hit = true;
 		}
 	}
