@@ -31,6 +31,8 @@ Author: Benjamin Buchfink
 
 using std::vector;
 
+#ifdef __SSE2__
+
 struct hit_filter
 {
 
@@ -97,5 +99,7 @@ private:
 	static TLS_PTR vector<sequence> *subjects_ptr;
 
 };
+
+#endif
 
 #endif /* HIT_FILTER_H_*/

@@ -22,6 +22,8 @@ Author: Benjamin Buchfink
 #define STATISTICS_H_
 
 #include <algorithm>
+#include <stdint.h>
+#include <string.h>
 #include "../util/tinythread.h"
 #include "../util/log_stream.h"
 
