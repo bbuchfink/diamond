@@ -20,6 +20,7 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #define COLLISION_H_
 
 #include "../data/frequent_seeds.h"
+#include "sse_dist.h"
 
 inline bool match_shape_mask(const uint64_t mask, const uint64_t shape_mask)
 {

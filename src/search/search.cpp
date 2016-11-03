@@ -17,9 +17,10 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 ****/
 
 #include "align_range.h"
+#include "hit_filter.h"
+#include "sse_dist.h"
 
 Trace_pt_buffer* Trace_pt_buffer::instance;
-const Reduction Halfbyte_finger_print::reduction("KR E D Q N C G H LM FY VI W P S T A");
 TLS_PTR vector<sequence>* hit_filter::subjects_ptr;
 
 const unsigned tile_size[] = { 1024, 128 };

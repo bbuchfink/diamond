@@ -20,6 +20,8 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #define ALIGN_RANGE_H_
 
 #include "../basic/statistics.h"
+#include "../data/sorted_list.h"
+#include "../search/trace_pt_buffer.h"
 
 struct Stage1_hit
 {

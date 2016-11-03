@@ -19,6 +19,10 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #include "align_range.h"
 #include "../util/map.h"
 #include "../dp/dp.h"
+#include "../data/queries.h"
+#include "hit_filter.h"
+#include "../data/reference.h"
+#include "collision.h"
 
 #ifdef __SSE2__
 

@@ -21,7 +21,9 @@ Author: Benjamin Buchfink
 #ifndef STATISTICS_H_
 #define STATISTICS_H_
 
+#include <algorithm>
 #include "../util/tinythread.h"
+#include "../util/log_stream.h"
 
 typedef uint64_t stat_type;
 

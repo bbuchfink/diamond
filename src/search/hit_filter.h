@@ -27,6 +27,7 @@ Author: Benjamin Buchfink
 #include "../dp/smith_waterman.h"
 #include "../basic/sequence.h"
 #include "../data/queries.h"
+#include "../data/reference.h"
 
 using std::vector;
 
