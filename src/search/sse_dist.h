@@ -23,15 +23,6 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #include "../basic/value.h"
 #include "../util/simd.h"
 
-inline unsigned match_block(const Letter *x, const Letter *y)
-{
-	static const __m128i mask = _mm_set1_epi8(0x7F);
-	__m128i r1 = _mm_loadu_si128 ((__m128i const*)(x));
-	__m128i r2 = _mm_loadu_si128 ((__m128i const*)(y));
-	r2 = _mm_and_si128(r2, mask);
-	return _mm_movemask_epi8(_mm_cmpeq_epi8(r1, r2));
-}
-
 inline unsigned popcount32(unsigned x)
 {
 #ifdef _MSC_VER
@@ -158,39 +149,6 @@ struct Halfbyte_finger_print_naive
 	uint64_t r1, r2;
 };
 
-struct Halfbyte_finger_print
-{
-	Halfbyte_finger_print(const Letter *q) :
-		r(_mm_set_epi32(reduce(q - 8), reduce(q), reduce(q + 8), reduce(q+16)))
-	{ }
-	static unsigned match_block(uint64_t x, uint64_t y)
-	{
-		uint64_t v = ~(x ^ y);
-		v &= v >> 1;
-		v &= 0x5555555555555555LL;
-		v &= v >> 2;
-		v &= 0x1111111111111111LL;
-		return (unsigned)popcount64(v);
-	}
-	static unsigned get_mask(__m128i x, __m128i y)
-	{
-		return _mm_movemask_epi8(_mm_cmpeq_epi8(x, y));
-	}
-	unsigned match(const Halfbyte_finger_print &rhs) const
-	{
-		return popcount32(get_mask(_mm_and_si128(r,_mm_set1_epi8('\xf0')), _mm_and_si128(rhs.r, _mm_set1_epi8('\xf0')))<<16
-			| get_mask(_mm_and_si128(r, _mm_set1_epi8('\x0f')), _mm_and_si128(rhs.r, _mm_set1_epi8('\x0f'))));
-	}
-	static int reduce(const Letter *q)
-	{
-		int x = 0;
-		for (unsigned i = 0; i < 8; ++i)
-			x = (x << 4) | reduction(q[i]);
-		return x;
-	}
-	static const Reduction reduction;
-	__m128i r;
-};
 
 typedef Byte_finger_print Finger_print;
 

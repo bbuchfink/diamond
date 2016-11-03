@@ -28,6 +28,7 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 
 void benchmark_cmp()
 {
+#ifdef __SSE2__
 	const size_t n = 1000000000llu;
 	__m128i r1 = _mm_set_epi8(1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16);
 	const __m128i r2 = _mm_set_epi8(0, 2, 3, 0, 0, 0, 0, 8, 0, 0, 0, 0, 13, 14, 0, 16);
@@ -40,6 +41,7 @@ void benchmark_cmp()
 		x += _mm_movemask_epi8(_mm_cmpeq_epi8(r1, r2));
 	}
 	cout << "x=" << x << " t=" << t.getElapsedTimeInMicroSec() * 1000 / n << endl;
+#endif
 }
 
 int xdrop_ungapped2(const Letter *query, const Letter *subject)

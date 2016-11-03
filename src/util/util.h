@@ -91,6 +91,7 @@ struct interval
 	unsigned begin_, end_;
 };
 
+#ifdef __SSE2__
 inline void print(const __m128i &x)
 {
 	char *p=(char*)&x;
@@ -98,6 +99,7 @@ inline void print(const __m128i &x)
 		std::cout << int(*(p++)) << ' ';
 	std::cout << std::endl;
 }
+#endif
 
 template<typename _it, typename _key>
 inline vector<size_t> map_partition(_it begin, _it end, const _key& key, size_t min_size, size_t max_segments, size_t min_segments)
@@ -243,11 +245,13 @@ inline string* get_str(const char *s, const char *delimiters)
 	return new string (s, find_first_of(s, delimiters));
 }
 
+#ifdef __SSE2__
 inline __m128i _mm_set(char a)
 {
 	const int x = (int)a;
 	return _mm_set1_epi32(x << 24 | x << 16 | x << 8 | x);
 }
+#endif
 
 template<typename _t, unsigned d1, unsigned d2>
 struct Static_matrix

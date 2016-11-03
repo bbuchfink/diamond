@@ -27,6 +27,8 @@ Author: Benjamin Buchfink
 
 using std::vector;
 
+#ifdef __SSE2__
+
 struct sequence_stream
 {
 	sequence_stream():
@@ -127,6 +129,8 @@ struct score_profile
 	score_vector<_score> data_[25];
 
 };
+
+#endif
 
 struct Long_score_profile
 {

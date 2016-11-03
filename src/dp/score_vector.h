@@ -41,6 +41,8 @@ template<typename _score>
 struct score_vector
 { };
 
+#ifdef __SSE2__
+
 template<>
 struct score_vector<uint8_t>
 {
@@ -205,5 +207,7 @@ struct score_vector<uint8_t>
 	__m128i data_;
 
 };
+
+#endif
 
 #endif /* SCORE_VECTOR_H_ */

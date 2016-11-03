@@ -186,6 +186,7 @@ void set_global_max(score_vector<uint8_t> *max, score_vector<uint8_t> *global_ma
 
 void scan_cols(const Long_score_profile &qp, sequence s, int i, int j, int j_end, uint8_t *sv_max, bool log, uint8_t *buf, uint8_t *local_max, int block_len)
 {
+#ifdef __SSE2__
 	typedef score_vector<uint8_t> Sv;
 	const Sv vbias(score_matrix.bias());
 	Sv v[4], max[4], global_max[4];
@@ -230,6 +231,7 @@ void scan_cols(const Long_score_profile &qp, sequence s, int i, int j, int j_end
 	global_max[2].store(sv_max + 32);
 	global_max[3].store(sv_max + 48);
 	//cout << 'g' << global_max[0] << global_max[1] << global_max[2] << global_max[3] << endl;
+#endif
 }
 
 struct Greedy_aligner2
