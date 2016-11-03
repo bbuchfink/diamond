@@ -166,6 +166,7 @@ int needleman_wunsch(sequence q, sequence s)
 
 void set_global_max(score_vector<uint8_t> *max, score_vector<uint8_t> *global_max, uint8_t *&local_max)
 {
+#ifdef __SSE2__
 	global_max[0].max(max[0]);
 	max[0].store(local_max);
 	max[0] = score_vector<uint8_t>();
@@ -182,6 +183,7 @@ void set_global_max(score_vector<uint8_t> *max, score_vector<uint8_t> *global_ma
 	max[3].store(local_max);
 	max[3] = score_vector<uint8_t>();
 	local_max += 16;
+#endif
 }
 
 void scan_cols(const Long_score_profile &qp, sequence s, int i, int j, int j_end, uint8_t *sv_max, bool log, uint8_t *buf, uint8_t *local_max, int block_len)
