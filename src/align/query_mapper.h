@@ -75,7 +75,7 @@ struct Query_mapper
 	Query_mapper();
 	void init();
 	void align_target(size_t idx, Statistics &stat);
-	void generate_output(Text_buffer &buffer, Statistics &stat);
+	bool generate_output(Text_buffer &buffer, Statistics &stat);
 	size_t n_targets() const
 	{
 		return targets.size();

@@ -118,7 +118,7 @@ void Query_mapper::rank_targets()
 	targets.erase(targets.begin() + std::min((unsigned)targets.size(), std::max((unsigned)(config.max_alignments*config.rank_factor), i)), targets.end());
 }
 
-void Query_mapper::generate_output(Text_buffer &buffer, Statistics &stat)
+bool Query_mapper::generate_output(Text_buffer &buffer, Statistics &stat)
 {
 	std::sort(targets.begin(), targets.end(), Target::compare);
 
@@ -189,7 +189,6 @@ void Query_mapper::generate_output(Text_buffer &buffer, Statistics &stat)
 		}
 		else
 			Intermediate_record::finish_query(buffer, seek_pos);
-		query_aligned[query_id] = true;
 	}
 
 	if (!blocked_processing) {
@@ -198,4 +197,6 @@ void Query_mapper::generate_output(Text_buffer &buffer, Statistics &stat)
 		if (n_hsp > 0)
 			stat.inc(Statistics::ALIGNED);
 	}
+	
+	return n_hsp > 0;
 }

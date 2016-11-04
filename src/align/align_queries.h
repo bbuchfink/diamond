@@ -123,10 +123,13 @@ inline void align_worker(Output_stream *out)
 			data->mapper->targets_finished += n_targets;			
 			if (data->mapper->finished()) {
 				query_queue.lock.unlock();
-				data->mapper->generate_output(data->buf, stat);
+				const bool aligned = data->mapper->generate_output(data->buf, stat);
+				const unsigned query_id = data->mapper->query_id;
 				delete data->mapper;
 				query_queue.lock.lock();
 				data->state = Query_data::finished;
+				if (aligned && !config.unaligned.empty())
+					query_aligned[query_id] = true;
 				++query_queue.n;
 				if (!query_queue.writing && !query_queue.out_queue.empty() && data == query_queue.out_queue.front()) {
 					query_queue.flush(out, stat);
