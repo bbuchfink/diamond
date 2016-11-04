@@ -189,6 +189,7 @@ void Query_mapper::generate_output(Text_buffer &buffer, Statistics &stat)
 		}
 		else
 			Intermediate_record::finish_query(buffer, seek_pos);
+		query_aligned[query_id] = true;
 	}
 
 	if (!blocked_processing) {

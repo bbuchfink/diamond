@@ -51,4 +51,8 @@ struct query_ids
 	static String_set<0> *data_;
 };
 
+extern vector<bool> query_aligned;
+
+void write_unaligned(Output_stream *file);
+
 #endif /* QUERIES_H_ */

@@ -172,11 +172,14 @@ void run_query_chunk(Database_file &db_file,
 		Timer &total_timer,
 		unsigned query_chunk,
 		pair<size_t,size_t> query_len_bounds,
-		Output_stream &master_out)
+		Output_stream &master_out,
+	Output_stream *unaligned_file)
 {
 	task_timer timer ("Allocating buffers", true);
 	char *query_buffer = sorted_list::alloc_buffer(query_hst);
 	vector<Temp_file> tmp_file;
+	query_aligned.clear();
+	query_aligned.insert(query_aligned.end(), query_ids::get().get_length(), false);
 	timer.finish();
 
 	db_file.rewind();
@@ -190,6 +193,11 @@ void run_query_chunk(Database_file &db_file,
 	if(blocked_processing) {
 		timer.go("Joining output blocks");
 		join_blocks(current_ref_block, master_out, tmp_file);
+	}
+
+	if (unaligned_file) {
+		timer.go("Writing unaligned queries");
+		write_unaligned(unaligned_file);
 	}
 
 	timer.go("Deallocating queries");
@@ -214,6 +222,9 @@ void master_thread(Database_file &db_file, Timer &timer_mapping, Timer &total_ti
 		: new Output_stream(config.output_file));
 	if(*output_format == Output_format::daa)
 		init_daa(*master_out);
+	auto_ptr<Output_stream> unaligned_file;
+	if (!config.unaligned.empty())
+		unaligned_file = auto_ptr<Output_stream>(new Output_stream(config.unaligned));
 	timer_mapping.stop();
 	timer.finish();
 
@@ -243,7 +254,7 @@ void master_thread(Database_file &db_file, Timer &timer_mapping, Timer &total_ti
 		timer.finish();
 		//const bool long_addressing_query = query_seqs::data_->raw_len() > (size_t)std::numeric_limits<uint32_t>::max();
 
-		run_query_chunk(db_file, timer_mapping, total_timer, current_query_chunk, query_len_bounds, *master_out);
+		run_query_chunk(db_file, timer_mapping, total_timer, current_query_chunk, query_len_bounds, *master_out, unaligned_file.get());
 	}
 
 	timer.go("Closing the input file");
@@ -256,6 +267,8 @@ void master_thread(Database_file &db_file, Timer &timer_mapping, Timer &total_ti
 	else
 		output_format->print_footer(*master_out);
 	master_out->close();
+	if (unaligned_file.get())
+		unaligned_file->close();
 	timer_mapping.stop();
 
 	timer.go("Closing the database file");
