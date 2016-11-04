@@ -1,6 +1,7 @@
 [0.8.26]
 - fixed a compiler error
-- now compiles as generic C++ code without SSE available
+- now compiles as generic C++ code without SSE being available
+- added option to write unaligned queries to file (--un)
 
 [0.8.25]
 - fixed a bug with the qseq field in the blast tabular format

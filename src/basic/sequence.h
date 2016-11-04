@@ -95,11 +95,15 @@ struct sequence
 			buf << value_traits.alphabet[(long)data_[i]];
 		return buf;
 	}
+	std::ostream& print(std::ostream &os, const Value_traits &v) const
+	{
+		for (unsigned i = 0; i<len_; ++i)
+			os << v.alphabet[(long)data_[i]];
+		return os;
+	}
 	friend std::ostream& operator<<(std::ostream &os, const sequence &s)
 	{
-		for(unsigned i=0;i<s.len_;++i)
-			os << value_traits.alphabet[(long)s.data_[i]];
-		return os;
+		return s.print(os, value_traits);
 	}
 	friend Text_buffer& operator<<(Text_buffer &buf, const sequence &s)
 	{
