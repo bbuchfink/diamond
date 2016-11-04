@@ -116,7 +116,8 @@ void run_ref_chunk(Database_file &db_file,
 		vector<Temp_file> &tmp_file)
 {
 	task_timer timer("Building reference histograms");
-	ref_hst = Partitioned_histogram(*ref_seqs::data_);
+	const pair<size_t, size_t> len_bounds = ref_seqs::data_->len_bounds(shapes[0].length_);
+	ref_hst = Partitioned_histogram(*ref_seqs::data_, len_bounds.second);
 	
 	setup_search_params(query_len_bounds, ref_seqs::data_->letters());
 	ref_map.init((unsigned)ref_seqs::get().get_length());
@@ -248,8 +249,8 @@ void master_thread(Database_file &db_file, Timer &timer_mapping, Timer &total_ti
 		}
 
 		timer.go("Building query histograms");
-		query_hst = Partitioned_histogram(*query_seqs::data_);
-		const pair<size_t,size_t> query_len_bounds = query_seqs::data_->len_bounds(shapes[0].length_);
+		const pair<size_t, size_t> query_len_bounds = query_seqs::data_->len_bounds(shapes[0].length_);
+		query_hst = Partitioned_histogram(*query_seqs::data_, query_len_bounds.second);		
 		timer_mapping.stop();
 		timer.finish();
 		//const bool long_addressing_query = query_seqs::data_->raw_len() > (size_t)std::numeric_limits<uint32_t>::max();

@@ -82,7 +82,7 @@ struct Partitioned_histogram
 	Partitioned_histogram()
 	{ }
 
-	Partitioned_histogram(const Sequence_set &seqs):
+	Partitioned_histogram(const Sequence_set &seqs, unsigned longest):
 		data_(shapes.count()),
 		p_(seqs.partition(config.threads_*4))
 	{
@@ -90,7 +90,7 @@ struct Partitioned_histogram
 			data_[s].resize(p_.size() - 1);
 			memset(data_[s].data(), 0, (p_.size() - 1)*sizeof(unsigned)*Const::seedp);
 		}
-		Build_context context (seqs, *this);
+		Build_context context (seqs, *this, longest);
 		launch_scheduled_thread_pool(context, (unsigned)(p_.size() - 1), (unsigned)(p_.size() - 1));
 	}
 
@@ -116,24 +116,27 @@ private:
 
 	struct Build_context
 	{
-		Build_context(const Sequence_set &seqs, Partitioned_histogram &hst):
+		Build_context(const Sequence_set &seqs, Partitioned_histogram &hst, unsigned longest):
 			seqs (seqs),
-			hst (hst)
+			hst (hst),
+			longest(longest)
 		{ }
 		void operator()(unsigned thread_id, unsigned seqp) const
 		{
-			hst.build_seq_partition(seqs, seqp, hst.p_[seqp], hst.p_[seqp+1]);
+			vector<char> buf(longest);
+			hst.build_seq_partition(seqs, seqp, hst.p_[seqp], hst.p_[seqp+1], buf);
 		}
 		const Sequence_set &seqs;
 		Partitioned_histogram &hst;
+		unsigned longest;
 	};
 
 	void build_seq_partition(const Sequence_set &seqs,
 			const unsigned seqp,
 			const size_t begin,
-			const size_t end)
+			const size_t end,
+		vector<char> &buf)
 	{
-		vector<char> buf;
 		for (size_t i = begin; i < end; ++i) {
 
 			assert(i < seqs.get_length());
