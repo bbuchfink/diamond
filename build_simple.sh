@@ -37,4 +37,5 @@ g++ -DNDEBUG -O3 -mssse3 -Wno-deprecated-declarations -std=gnu++98 $1 \
   src/align/align_target.cpp \
   src/output/blast_tab_format.cpp \
   src/dp/padded_banded_sw.cpp \
+  src/dp/needleman_wunsch.cpp \
 -lz -lpthread -o diamond
