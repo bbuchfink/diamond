@@ -172,7 +172,9 @@ Config::Config(int argc, const char **argv)
 		("match1", 0, "", match_file1)
 		("match2", 0, "", match_file2)
 		("max-hits", 'C', "maximum number of hits to consider for one seed", hit_cap)
-		("seed-freq", 0, "maximum seed frequency", max_seed_freq, -15.0);
+		("seed-freq", 0, "maximum seed frequency", max_seed_freq, -15.0)
+		("space-penalty", 0, "", space_penalty, 4.9)
+		("min-diag-score", 0, "", min_diag_score, 10.5);
 
 	parser.add(general).add(makedb).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options);
 	parser.store(argc, argv, command);
@@ -281,6 +283,9 @@ Config::Config(int argc, const char **argv)
 		}
 		message_stream << "Scoring parameters: " << score_matrix << endl;
 		raw_ungapped_xdrop = score_matrix.rawscore(ungapped_xdrop);
+		min_diag_raw_score = score_matrix.rawscore(min_diag_score);
+		raw_space_penalty = score_matrix.rawscore(space_penalty, double());
+		log_stream << "Min_diag_score=" << min_diag_raw_score << " space_penalty=" << raw_space_penalty << endl;
 
 		if (seg == "" && command == blastx)
 			seg = "yes";
@@ -320,6 +325,7 @@ Config::Config(int argc, const char **argv)
 
 	if (command == blastx)
 		input_value_traits = nucleotide_traits;
+
 	if (command == help)
 		parser.print_help();
 

@@ -25,42 +25,6 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 using std::vector;
 using std::pair;
 
-template<typename _t>
-struct Fixed_score_buffer
-{
-
-	inline void init(size_t col_size, size_t cols, _t init)
-	{
-		col_size_ = size;
-		data_.reserve(col_size * cols);
-		data_.resize(col_size);
-		for (size_t i = 0; i<col_size; ++i)
-			data_[i] = init;
-	}
-
-	inline pair<_t*, _t*> get()
-	{
-		data_.resize(data_.size() + col_size_);
-		_t* ptr = last();
-		return pair<_t*, _t*>(ptr - col_size_, ptr);
-	}
-
-	inline _t* last()
-	{
-		return &*(data_.end() - col_size_);
-	}
-
-	const _t* column(int col) const
-	{
-		return &data_[col_size_*col];
-	}
-
-private:
-	vector<_t> data_;
-	size_t col_size_;
-
-};
-
 template<typename _score>
 struct Dp_matrix
 {

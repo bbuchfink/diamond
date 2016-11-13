@@ -96,7 +96,7 @@ void benchmark_ungapped(const Sequence_set &ss, unsigned qa, unsigned sa)
 
 void benchmark_greedy(const Sequence_set &ss, unsigned qa, unsigned sa)
 {
-	static const unsigned n = 1000000;
+	static const unsigned n = 100000;
 	vector<Diagonal_segment> d;
 	d.push_back(ungapped_extension(sa, qa, ss[0], ss[1]));
 	Long_score_profile qp(ss[0]);
@@ -116,7 +116,7 @@ void benchmark_greedy(const Sequence_set &ss, unsigned qa, unsigned sa)
 	}
 	t.stop();
 
-	cout << " n/sec=" << (double)n / t.getElapsedTimeInSec() << endl;
+	cout << " usec=" << t.getElapsedTimeInSec() / (double)n * 1000000.0 << endl;
 	cout << "t=" << t.getElapsedTimeInMicroSec() << endl;
 }
 
@@ -278,7 +278,6 @@ KCLEHLFFFKLIGDTPIDTFLMEMLEAPHQIT");
 
 
 aln1:
-
 	s1 = sequence::from_string("tspmtpditgkpfvaadasndyikrevmipmrdgvklhtvivlpkgaknapivltrtpyd\
 asgrterlasphmkdllsagddvfveggyirvfqdvrgkygsegdyvmtrplrgplnpse\
 vdhatdawdtidwlvknvsesngkvgmigssyegftvvmaltnphpalkvavpespmidg\

@@ -454,4 +454,29 @@ inline string print_char(char c)
 	return ss.str();
 }
 
+template<typename _t, int n>
+struct Top_list
+{
+	void add(const _t &x)
+	{
+		for (int i = 0; i < n; ++i)
+			if ((int)x >(int)data_[i]) {
+				if (i < n - 1)
+					memmove(&data_[i + 1], &data_[i], sizeof(data_)/n*(n - 1 - i));
+				data_[i] = x;
+				return;
+			}
+	}
+	const _t& operator[](unsigned i) const
+	{
+		return data_[i];
+	}
+	_t& operator[](unsigned i)
+	{
+		return data_[i];
+	}
+private:
+	_t data_[n];
+};
+
 #endif /* UTIL_H_ */

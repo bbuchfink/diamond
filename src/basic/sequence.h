@@ -101,6 +101,10 @@ struct sequence
 			os << v.alphabet[(long)data_[i]];
 		return os;
 	}
+	sequence subseq(int begin, int end) const
+	{
+		return sequence(*this, begin, end - 1);
+	}
 	friend std::ostream& operator<<(std::ostream &os, const sequence &s)
 	{
 		return s.print(os, value_traits);

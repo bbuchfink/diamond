@@ -97,7 +97,7 @@ public:
 	bool get(blast_match &record, const blast_format&)
 	{
 
-		enum State { begin=0, end=1, queryStart=2, subjectStart=3, matchStart=4, queryLine=5, subjectLine=6, separator=7, between=8, haveid=9 } state = begin;
+		enum State { begin = 0, end = 1, queryStart = 2, subjectStart = 3, matchStart = 4, queryLine = 5, subjectLine = 6, separator = 7, between = 8, haveid = 9 } state = begin;
 		unsigned rawScore, expect_i, id1, id2;
 		char queryl[128], subjectl[128];
 		Letter queryseq[4096], subjectseq[4096];
@@ -143,16 +143,16 @@ public:
 			} else if(!strncmp(buffer, "Query", 5)) {
 				if(state == haveid || state == separator) {
 					state = queryLine;
-					alline(buffer, queryl);
+					//alline(buffer, queryl);
 				} else
 					throw file_parse_exception(lineNumber);
 			} else if(!strncmp(buffer, "Sbjct", 5)) {
 				if(state == between) {
 					state = subjectLine;
-					alline(buffer, subjectl);
+					//alline(buffer, subjectl);
 					if(strlen(subjectl) != strlen(queryl))
 						throw file_parse_exception(lineNumber);
-					get_match(match_mask, queryl, subjectl, record.hit, record.len, record.rid, current_len, record.ungapped_len, q, s, record.stop);
+					//get_match(match_mask, queryl, subjectl, record.hit, record.len, record.rid, current_len, record.ungapped_len, q, s, record.stop);
 				} else
 					throw file_parse_exception(lineNumber);
 			} else if(state == queryLine && buffer[0] == ' ') {

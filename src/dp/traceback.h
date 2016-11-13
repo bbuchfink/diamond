@@ -31,11 +31,11 @@ bool have_vgap(const _matrix &dp,
 {
 	int score = dp(i, j);
 	l = 1;
-	--j;
-	while (dp.in_band(i, j)) {
-		if (score == dp(i, j) - gap_open - (l - 1)*gap_extend)
+	--i;
+	while (i > 0) {
+		if (score == dp(i, j) - gap_open - l*gap_extend)
 			return true;
-		--j;
+		--i;
 		++l;
 	}
 	return false;
@@ -51,14 +51,37 @@ bool have_hgap(const _matrix &dp,
 {
 	int score = dp(i, j);
 	l = 1;
-	--i;
-	while (dp.in_band(i, j)) {
-		if (score == dp(i, j) - gap_open - (l - 1)*gap_extend)
+	--j;
+	while (j > 0) {
+		if (score == dp(i, j) - gap_open - l*gap_extend)
 			return true;
-		--i;
+		--j;
 		++l;
 	}
 	return false;
+}
+
+template<typename _matrix>
+int have_diag(const _matrix &dp,
+	int i,
+	int j,
+	const sequence &query,
+	const sequence &subject)
+{
+	int l = 0;
+	while (i > 0 && j > 0) {
+		const int match_score = score_matrix(query[i - 1], subject[j - 1]);
+		//printf("i=%i j=%i score=%i subject=%c query=%c\n",i,j,dp(i, j),Value_traits<_val>::ALPHABET[ls],Value_traits<_val>::ALPHABET[lq]);
+
+		if (dp(i, j) == match_score + dp(i - 1, j - 1)) {
+			++l;
+			--i;
+			--j;
+		}
+		else
+			break;
+	}
+	return l;
 }
 
 template<typename _dir, typename _matrix>

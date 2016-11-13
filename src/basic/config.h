@@ -109,6 +109,9 @@ struct Config
 	unsigned seed_anchor;
 	unsigned query_gencode;
 	string unaligned;
+	double space_penalty, raw_space_penalty;
+	double min_diag_score;
+	int min_diag_raw_score;
 
 	enum { makedb = 0, blastp = 1, blastx = 2, view = 3, help = 4, version = 5, getseq = 6, benchmark = 7, random_seqs = 8, compare = 9 };
 	unsigned	command;

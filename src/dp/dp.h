@@ -19,6 +19,7 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #ifndef DP_H_
 #define DP_H_
 
+#include <utility>
 #include "../basic/match.h"
 #include "../align/align.h"
 #include "score_profile.h"
@@ -36,5 +37,90 @@ void greedy_align(sequence query, sequence subject, const Diagonal_segment &sh, 
 void greedy_align(sequence query, const Long_score_profile &qp, sequence subject, const Diagonal_segment &sh, bool log);
 void greedy_align2(sequence query, const Long_score_profile &qp, sequence subject, const vector<Diagonal_segment> &sh, bool log);
 void greedy_align(sequence query, const Long_score_profile &qp, sequence subject, int qa, int sa, bool log);
+
+template<typename _t>
+struct Fixed_score_buffer
+{
+
+	inline void init(size_t col_size, size_t cols, _t init)
+	{
+		col_size_ = col_size;
+		data_.reserve(col_size * cols);
+		data_.resize(col_size);
+		for (size_t i = 0; i<col_size; ++i)
+			data_[i] = init;
+	}
+
+	inline std::pair<_t*, _t*> get()
+	{
+		data_.resize(data_.size() + col_size_);
+		_t* ptr = last();
+		return pair<_t*, _t*>(ptr - col_size_, ptr);
+	}
+
+	inline _t* last()
+	{
+		return &*(data_.end() - col_size_);
+	}
+
+	const _t* column(int col) const
+	{
+		return &data_[col_size_*col];
+	}
+
+	_t operator()(int i, int j) const
+	{
+		return data_[j*col_size_ + i];
+	}
+
+private:
+	vector<_t> data_;
+	size_t col_size_;
+
+};
+
+struct Diagonal_node : public Diagonal_segment
+{
+
+	struct Edge
+	{
+		Edge() :
+			prefix_score(0),
+			node(),
+			exact(true)
+		{}
+		Edge(int prefix_score, int j, unsigned node, bool exact) :
+			prefix_score(prefix_score),
+			j(j),
+			node(node),
+			exact(exact)
+		{}
+		operator int() const
+		{
+			return prefix_score;
+		}
+		int prefix_score, j;
+		unsigned node;
+		bool exact;
+	};
+
+	Diagonal_node() :
+		Diagonal_segment(),
+		diff(std::numeric_limits<int>::min())
+	{}
+	Diagonal_node(int query_pos, int subject_pos, int len, int score) :
+		Diagonal_segment(query_pos, subject_pos, len, score),
+		diff(std::numeric_limits<int>::min())
+	{}
+	Diagonal_node(const Diagonal_segment &d) :
+		Diagonal_segment(d),
+		diff(std::numeric_limits<int>::min())
+	{}
+	enum { n_path = 2 };
+	Top_list<Edge, n_path> edges;
+	int diff;
+};
+
+int needleman_wunsch(sequence query, sequence subject, int qbegin, int qend, int sbegin, int send, unsigned node, unsigned edge, vector<Diagonal_node> &diags);
 
 #endif /* FLOATING_SW_H_ */

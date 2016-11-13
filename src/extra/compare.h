@@ -101,16 +101,18 @@ void print_out(size_t queries,size_t queries1, size_t queries2, size_t unique1, 
 
 void compare()
 {
+	typedef blast_format Format;
+
 	vector<char> id;
 	vector<Letter> seq;
 
-	Compressed_istream seqStream(config.query_file);
+	Input_stream seqStream(config.query_file);
 	match_file file1 (config.match_file1.c_str());
 	match_file::mcont v1;
-	file1.get_read(v1, blast_tab_format());
+	file1.get_read(v1, Format());
 	match_file file2 (config.match_file2.c_str());
 	match_file::mcont v2;
-	file2.get_read(v2, blast_tab_format());
+	file2.get_read(v2, Format());
 	bool do_out = config.output_file.length() > 0;
 	FILE *out = 0;
 	if(do_out) out = fopen(config.output_file.c_str(), "wt");
@@ -158,8 +160,8 @@ void compare()
 			++unique2;
 			if(do_out) fprintf(out, "2 %s\n", q.c_str());
 		}
-		if(have1) file1.get_read(v1, blast_tab_format());
-		if(have2) file2.get_read(v2, blast_tab_format());
+		if(have1) file1.get_read(v1, Format());
+		if(have2) file2.get_read(v2, Format());
 
 		++read;
 	}
