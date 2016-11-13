@@ -55,7 +55,7 @@ struct Fixed_score_buffer
 	{
 		data_.resize(data_.size() + col_size_);
 		_t* ptr = last();
-		return pair<_t*, _t*>(ptr - col_size_, ptr);
+		return std::pair<_t*, _t*>(ptr - col_size_, ptr);
 	}
 
 	inline _t* last()
