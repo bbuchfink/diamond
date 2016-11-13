@@ -11,7 +11,7 @@ struct blast_match {
 	string subject;
 	double expect, bitscore, id;
 	bool hit, stop;
-	unsigned len, rid, ungapped_len, n;
+	unsigned len, rid, ungapped_len, n, raw_score;
 
 	bool empty() const
 	{

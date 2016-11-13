@@ -110,7 +110,7 @@ public:
 
 		while(state != end && (this->getline(), !this->eof())) {
 
-			//printf("%lu %u %s", lineNumber, state, buffer);
+			//printf("%lu %u %s\n", line_count, state, line.c_str());
 
 			if(!strncmp(line.c_str(), "Query= ", 7)) {
 				if(state == begin || state == queryStart) {
@@ -131,8 +131,8 @@ public:
 				}
 				else
 					throw file_parse_exception(this->line_count);
-			} else if(sscanf(line.c_str(), " Score = %lf bits (%u),  Expect = %lf", &record.bitscore, &rawScore, &record.expect) == 3
-					|| sscanf(line.c_str(), " Score = %lf bits (%u),  Expect(%i) = %lf", &record.bitscore, &rawScore, &expect_i, &record.expect) == 4) {
+			} else if(sscanf(line.c_str(), " Score = %lf bits (%u),  Expect = %lf", &record.bitscore, &record.raw_score, &record.expect) == 3
+					|| sscanf(line.c_str(), " Score = %lf bits (%u),  Expect(%i) = %lf", &record.bitscore, &record.raw_score, &expect_i, &record.expect) == 4) {
 				if(state == subjectStart || state == begin) {
 					record.query = currentQuery;
 					record.subject = currentSubject;
@@ -166,7 +166,7 @@ public:
 					throw file_parse_exception(this->line_count);
 			} else if(state == queryLine && line.c_str()[0] == ' ') {
 				state = between;
-			} else if((state == subjectLine || state == separator) && line.c_str()[0] == 10) {
+			} else if((state == subjectLine || state == separator) && line.empty()) {
 				//printf("%i\n",(int)buffer[0]);
 				if(state == subjectLine)
 					state = separator;

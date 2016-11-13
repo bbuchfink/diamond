@@ -35,14 +35,17 @@ void get_target_seq(vector<blast_match>::const_iterator& i,
 	unsigned v2_matches = config.run_len != 0 ? config.run_len : 0xffffffffu;
 	vector<blast_match>::const_iterator i_begin = i, j_begin = j;
 	double sc_i=0,sc_j=0;
+	unsigned rs_i = 0, rs_j = 0;
 
 	while(i < end_i && i->subject == i_begin->subject) {
 		sc_i = std::max(sc_i, i->bitscore);
+		rs_i = std::max(rs_i, i->raw_score);
 		++i;
 	}
 
 	while(j< end_j && j->subject == j_begin->subject) {
 		sc_j = std::max(sc_j, j->bitscore);
+		rs_j = std::max(rs_j, j->raw_score);
 		++j;
 	}
 	if(consider_match(*i_begin)) {
@@ -50,7 +53,8 @@ void get_target_seq(vector<blast_match>::const_iterator& i,
 		if(j_begin->n < v2_matches) ++matches_hit;
 		double q = sc_j / sc_i;
 		//if(q >= 0.95 && q <=1.05) ++matches_hit;
-		if(q < 0.95) ++matches_badscore;
+		//if(q < 0.95) ++matches_badscore;
+		if (rs_i != rs_j) ++matches_badscore;
 	}
 
 }
