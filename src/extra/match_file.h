@@ -97,8 +97,8 @@ public:
 	{
 
 		enum State { begin = 0, end = 1, queryStart = 2, subjectStart = 3, matchStart = 4, queryLine = 5, subjectLine = 6, separator = 7, between = 8, haveid = 9 } state = begin;
-		unsigned rawScore, expect_i, id1, id2;
-		char queryl[128], subjectl[128];
+		unsigned expect_i, id1, id2;
+//		char queryl[128], subjectl[128];
 		Letter queryseq[4096], subjectseq[4096];
 		Letter *q = queryseq, *s = subjectseq;
 		unsigned match_mask = 0, current_len = 0;
@@ -194,15 +194,14 @@ public:
 	bool get(blast_match &match, const blast_tab_format&)
 	{
 		char query[nameBufferSize], s2[nameBufferSize];
-		char query2[64];
 		double f1;
 		unsigned long long i1,i2,i3,i4,i5,i6,i7;
 		this->getline();
 		if(!this->eof()) {
 			while (this->line[0] == '#')
 				this->getline();
-			if(sscanf(line.c_str(), "%s%s%lf%llu%llu%llu%llu%llu%llu%llu%lf%lf", query, s2, &f1, &i1, &i2, &i3, &i4, &i5, &i6, &i7, &match.expect, &match.bitscore) == 12
-				|| sscanf(line.c_str(), "%s%s%s%lf%llu%llu%llu%llu%llu%llu%llu%lf%lf", query, query2, s2, &f1, &i1, &i2, &i3, &i4, &i5, &i6, &i7, &match.expect, &match.bitscore) == 13) {
+			if(sscanf(line.c_str(), "%s%s%lf%llu%llu%llu%llu%llu%llu%llu%lf%lf%u", query, s2, &f1, &i1, &i2, &i3, &i4, &i5, &i6, &i7, &match.expect, &match.bitscore, &match.raw_score) == 13) {
+				//|| sscanf(line.c_str(), "%s%s%s%lf%llu%llu%llu%llu%llu%llu%llu%lf%lf", query, query2, s2, &f1, &i1, &i2, &i3, &i4, &i5, &i6, &i7, &match.expect, &match.bitscore) == 13) {
 				/*++matchCount;
 				if(!strcmp(query, currentQuery)) {
 					++currentQueryCount;
