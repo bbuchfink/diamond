@@ -379,7 +379,7 @@ struct Greedy_aligner2
 				cout << "Visited node final_score=" << d.edges[0].prefix_score << endl;
 			return d.diff;
 		}
-		int max_score = d.edges[0].prefix_score, diff = 0;
+		int max_score = d.edges[0].prefix_score, diff = 0, max_edge = 0;
 		for (unsigned k = 0; k < Diagonal_node::n_path; ++k) {
 			Diagonal_node::Edge &f = d.edges[k];
 			if (f.prefix_score == 0)
@@ -412,7 +412,10 @@ struct Greedy_aligner2
 			if (log)
 				cout << "Link n=" << f.node << " prefix_score=" << f.prefix_score << endl;
 			f.prefix_score += follow_path(level + 1, f.node, 0, 0);
-			diff = std::max(diff, f.prefix_score - max_score);
+			if (diff < f.prefix_score - max_score) {
+				diff = f.prefix_score - max_score;
+				max_edge = k;
+			}
 		}
 		d.edges[0].prefix_score = max_score + diff;
 		d.diff = diff;
@@ -475,7 +478,7 @@ struct Greedy_aligner2
 		return max_node;
 	}
 
-	Greedy_aligner2(const sequence &query, const Long_score_profile &qp, const sequence &subject, const vector<Diagonal_segment> &sh, bool log) :
+	Greedy_aligner2(const sequence &query, const Long_score_profile &qp, const sequence &subject, const vector<Diagonal_segment> &sh, bool log, Hsp_data &out) :
 		query(query),
 		subject(subject),
 		qp(qp),
@@ -517,5 +520,6 @@ TLS_PTR vector<Diagonal_node> *Greedy_aligner2::diags_ptr;
 
 void greedy_align2(sequence query, const Long_score_profile &qp, sequence subject, const vector<Diagonal_segment> &sh, bool log)
 {
-	Greedy_aligner2(query, qp, subject, sh, log);
+	Hsp_data h;
+	Greedy_aligner2(query, qp, subject, sh, log, h);
 }

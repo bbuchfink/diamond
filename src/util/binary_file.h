@@ -280,7 +280,7 @@ struct Input_stream
 	string line;
 	size_t line_count;
 	
-private:
+protected:
 
 	enum { line_buf_size = 256 };
 

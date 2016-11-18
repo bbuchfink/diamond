@@ -1,3 +1,6 @@
+[0.8.27]
+- added support for gzip compressed files containing multiple gzip streams
+
 [0.8.26]
 - fixed a compiler error
 - now compiles as generic C++ code without SSE being available

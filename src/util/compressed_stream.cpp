@@ -59,7 +59,7 @@ size_t Compressed_istream::read_bytes(char *ptr, size_t count)
 		if (count == n || eos_)
 			return n;
 
-		if (strm.avail_out > 0) {
+		if (strm.avail_out > 0 && strm.avail_in == 0) {
 			strm.avail_in = (uInt)Input_stream::read_bytes(in.get(), chunk_size);
 			if (strm.avail_in == 0) {
 				eos_ = true;
@@ -72,8 +72,15 @@ size_t Compressed_istream::read_bytes(char *ptr, size_t count)
 		strm.next_out = (Bytef*)out.get();
 
 		int ret = inflate(&strm, Z_NO_FLUSH);
-		if (ret == Z_STREAM_END)
-			eos_ = true;
+		if (ret == Z_STREAM_END) {
+			if(strm.avail_in == 0 && feof(this->f_))
+				eos_ = true;
+			else {
+				int ret = inflateInit2(&strm, 15 + 32);
+				if (ret != Z_OK)
+					throw std::runtime_error("Error initializing compressed stream (inflateInit): " + file_name);
+			}
+		}
 		else if (ret != Z_OK)
 			throw std::runtime_error("Inflate error.");
 
@@ -88,16 +95,21 @@ void Compressed_istream::close()
 	Input_stream::close();
 }
 
+bool is_gzip_stream(const unsigned char *b)
+{
+	return (b[0] == 0x1F && b[1] == 0x8B)         // gzip header
+		|| (b[0] == 0x78 && (b[1] == 0x01      // zlib header
+			|| b[1] == 0x9C
+			|| b[1] == 0xDA));
+}
+
 Input_stream *Compressed_istream::auto_detect(const string &file_name)
 {
 	unsigned char b[2];
 	Input_stream f(file_name);
 	size_t n = f.read(b, 2);
 	f.close();
-	if (n == 2 && ((b[0] == 0x1F && b[1] == 0x8B)         // gzip header
-		|| (b[0] == 0x78 && (b[1] == 0x01      // zlib header
-			|| b[1] == 0x9C
-			|| b[1] == 0xDA))))
+	if (n == 2 && is_gzip_stream(b))
 		return new Compressed_istream(file_name);
 	else
 		return new Input_stream(file_name);
