@@ -35,7 +35,7 @@ int xdrop_ungapped_right(const Letter *query, const Letter *subject, int &len);
 void greedy_align(sequence query, sequence subject, const vector<Diagonal_segment> &sh, bool log);
 void greedy_align(sequence query, sequence subject, const Diagonal_segment &sh, bool log);
 void greedy_align(sequence query, const Long_score_profile &qp, sequence subject, const Diagonal_segment &sh, bool log);
-void greedy_align2(sequence query, const Long_score_profile &qp, sequence subject, const vector<Diagonal_segment> &sh, bool log);
+void greedy_align2(sequence query, const Long_score_profile &qp, sequence subject, const vector<Diagonal_segment> &sh, bool log, Hsp_data &out);
 void greedy_align(sequence query, const Long_score_profile &qp, sequence subject, int qa, int sa, bool log);
 
 template<typename _t>
@@ -121,6 +121,6 @@ struct Diagonal_node : public Diagonal_segment
 	int diff;
 };
 
-int needleman_wunsch(sequence query, sequence subject, int qbegin, int qend, int sbegin, int send, unsigned node, unsigned edge, vector<Diagonal_node> &diags);
+int needleman_wunsch(sequence query, sequence subject, int qbegin, int qend, int sbegin, int send, unsigned node, unsigned edge, vector<Diagonal_node> &diags, bool log);
 
 #endif /* FLOATING_SW_H_ */

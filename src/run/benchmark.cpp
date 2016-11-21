@@ -25,6 +25,7 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #include "../align/extend_ungapped.h"
 #include "../search/sse_dist.h"
 #include "../dp/score_profile.h"
+#include "../output/output_format.h"
 
 void benchmark_cmp()
 {
@@ -102,7 +103,12 @@ void benchmark_greedy(const Sequence_set &ss, unsigned qa, unsigned sa)
 	Long_score_profile qp(ss[0]);
 	//greedy_align(ss[0], qp, ss[1], d[0], true);
 	//greedy_align(ss[0], qp, ss[1], qa, sa, true);
-	greedy_align2(ss[0], qp, ss[1], d, true);
+	Hsp_data hsp;
+	greedy_align2(ss[0], qp, ss[1], d, true, hsp);
+	Text_buffer buf;
+	Pairwise_format().print_match(Hsp_context(hsp, 0, ss[0], ss[0], "", 0, 0, "", 0, 0, 0), buf);
+	buf << '\0';
+	cout << buf.get_begin();
 
 	Timer t;
 	t.start();
@@ -111,7 +117,7 @@ void benchmark_greedy(const Sequence_set &ss, unsigned qa, unsigned sa)
 
 		//greedy_align(ss[0], qp, ss[1], d[0], false);
 		//greedy_align(ss[0], qp, ss[1], qa, sa, false);
-		greedy_align2(ss[0], qp, ss[1], d, false);
+		greedy_align2(ss[0], qp, ss[1], d, false, hsp);
 
 	}
 	t.stop();
@@ -174,7 +180,6 @@ Sbjct  16  QNDSSIIDFIKINDLAEQIEKISKKYIVSIVLGGGNIWRGSIAKELDMDRNLADNMGMMA  75
 Query  80  TVIGHL  85
            T+I  L
 Sbjct  76  TIINGL  81	*/
-
 
 
 	s1 = sequence::from_string("SLFEQLGGQAAVQAVTAQFYANIQADATVATFFNGIDMPNQTNKTAAFLCAALGGPNAWTGRNLKEVHANMGVSNAQFTTVIGHLRSALTGAGVAAALVEQTVAVAETVRGDVVTV");
@@ -275,6 +280,7 @@ KCLEHLFFFKLIGDTPIDTFLMEMLEAPHQIT");
 	Sbjct  332  VPKVRLFVMGIDEWRDETDW  351
 
 	*/
+
 
 
 aln1:

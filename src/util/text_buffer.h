@@ -179,6 +179,13 @@ struct Text_buffer
 		return *this;
 	}
 
+	Text_buffer& print(unsigned i, unsigned width)
+	{
+		reserve(16);
+		ptr_ += sprintf(ptr_, "%4u", i);
+		return *this;
+	}
+
 	/*Text_buffer& operator<<(uint8_t x)
 	{
 		write(x);

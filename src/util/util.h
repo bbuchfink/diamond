@@ -479,4 +479,9 @@ private:
 	_t data_[n];
 };
 
+inline unsigned percentage(unsigned x, unsigned y)
+{
+	return x * 100 / y;
+}
+
 #endif /* UTIL_H_ */

@@ -78,7 +78,7 @@ struct Output_format
 		return code;
 	}
 	unsigned code;
-	enum { daa, blast_tab, blast_xml, sam };
+	enum { daa, blast_tab, blast_xml, sam, blast_pairwise };
 };
 
 extern auto_ptr<Output_format> output_format;
@@ -225,6 +225,20 @@ struct XML_format : public Output_format
 	virtual void print_query_epilog(Text_buffer &out) const;
 	virtual void print_footer(Output_stream &f) const;
 	virtual ~XML_format()
+	{ }
+};
+
+struct Pairwise_format : public Output_format
+{
+	Pairwise_format() :
+		Output_format(blast_pairwise)
+	{}
+	virtual void print_match(const Hsp_context &r, Text_buffer &out) const;
+	virtual void print_header(Output_stream &f, int mode, const char *matrix, int gap_open, int gap_extend, double evalue, const char *first_query_name, unsigned first_query_len) const;
+	virtual void print_query_intro(size_t query_num, const char *query_name, unsigned query_len, Text_buffer &out) const;
+	virtual void print_query_epilog(Text_buffer &out) const;
+	virtual void print_footer(Output_stream &f) const;
+	virtual ~Pairwise_format()
 	{ }
 };
 

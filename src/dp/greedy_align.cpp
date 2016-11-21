@@ -241,6 +241,24 @@ struct Greedy_aligner2
 
 	enum { band = 64, block_len = 16 };
 
+	struct Node_ref
+	{
+		Node_ref():
+			node(0),
+			score(0)
+		{}
+		Node_ref(unsigned node, int score) :
+			node(node),
+			score(score)
+		{}
+		unsigned node;
+		int score;
+		bool operator<(const Node_ref &rhs) const
+		{
+			return score > rhs.score;
+		}
+	};
+
 	int correct_left(unsigned node, int j)
 	{
 		const Diagonal_segment &d = diags[node];
@@ -370,7 +388,7 @@ struct Greedy_aligner2
 
 	int follow_path(unsigned level, unsigned node, int score, int subject_pos)
 	{
-		static const int max_dist = 32, min_nw_space = 11;
+		static const int max_dist = 32, min_nw_space = 7;
 		static const float space_penalty = -0.5;
 		Diagonal_node& d = diags[node];
 		if (log) cout << "Node " << node << " Score=" << d.edges[0].prefix_score << endl;
@@ -386,7 +404,8 @@ struct Greedy_aligner2
 				break;
 			if (f.node == node)
 				continue;
-			const Diagonal_node &e = diags[f.node];
+			unsigned next = f.node;
+			const Diagonal_node &e = diags[next];
 			if (!f.exact) {
 				const int shift = d.diag() - e.diag();
 				int gap_score = -config.gap_open - abs(shift)*config.gap_extend;
@@ -398,7 +417,7 @@ struct Greedy_aligner2
 							s1 = sequence(subject, e.subject_last() + 1, d.j - 1);
 						cout << q1 << endl << s1 << endl;
 					}
-					gap_score = needleman_wunsch(query, subject, e.query_last() + 1, d.i, e.subject_last() + 1, d.j, node, k, diags);
+					gap_score = needleman_wunsch(query, subject, e.query_last() + 1, d.i, e.subject_last() + 1, d.j, node, k, diags, log);
 					f.prefix_score -= -config.gap_open - abs(shift)*config.gap_extend;
 					f.prefix_score += gap_score;
 				}
@@ -410,15 +429,18 @@ struct Greedy_aligner2
 				}
 			}
 			if (log)
-				cout << "Link n=" << f.node << " prefix_score=" << f.prefix_score << endl;
-			f.prefix_score += follow_path(level + 1, f.node, 0, 0);
+				cout << "Node=" << node << " Link n=" << next << " prefix_score=" << f.prefix_score << endl;
+			f.prefix_score += follow_path(level + 1, next, 0, 0);
 			if (diff < f.prefix_score - max_score) {
 				diff = f.prefix_score - max_score;
 				max_edge = k;
 			}
 		}
-		d.edges[0].prefix_score = max_score + diff;
+		if (max_edge != 0) {
+			memcpy(&d.edges[0], &d.edges[max_edge], sizeof(Diagonal_node::Edge));
+		}
 		d.diff = diff;
+		top_node = std::min(top_node, Node_ref(node, d.edges[0].prefix_score));
 		if(log) cout << "Node " << node << " diff=" << diff << " final_score=" << d.edges[0].prefix_score << endl;
 		return diff;
 	}
@@ -432,7 +454,7 @@ struct Greedy_aligner2
 		for (unsigned node = 0; node < diags.size(); ++node) {
 			Diagonal_node& d = diags[node];
 			if (log) cout << "Node " << node << " Score=" << d.score << endl;
-			d.edges.add(Diagonal_node::Edge(d.score, 0, node, true));
+			d.edges.add(Diagonal_node::Edge(d.score, d.j, node, true));
 			for (int k = node - 1; k >= 0; --k) {
 				const Diagonal_node &e = diags[k];
 				if (d.j - e.subject_last() < max_dist) {
@@ -470,12 +492,44 @@ struct Greedy_aligner2
 			if (log) {
 				cout << "Final score=" << d.edges[0].prefix_score << endl << endl;
 			}
+			top_nodes.push_back(Node_ref(node, d.edges[0].prefix_score));
 			if (d.edges[0].prefix_score > max_score) {
 				max_score = d.edges[0].prefix_score;
 				max_node = node;
 			}
 		}
 		return max_node;
+	}
+
+	void backtrace(unsigned node, int j_end, Hsp_data &out)
+	{
+		const Diagonal_node &d = diags[node];
+		const Diagonal_node::Edge &f = d.edges[0];
+		const Diagonal_node &e = diags[f.node];
+		const int shift = d.diag() - e.diag();
+		int j = f.j;
+		if (f.node != node) {
+			backtrace(f.node, shift > 0 ? j : j + shift, out);
+			if (shift > 0) {
+				out.transcript.push_back(op_insertion, (unsigned)shift);
+			}
+			else {
+				for (int j2 = j + shift; j2 < j; ++j2)
+					out.transcript.push_back(op_deletion, subject[j2]);
+			}
+		}
+		else {
+			out.query_range.begin_ = d.i;
+			out.subject_range.begin_ = d.j;
+		}
+		const int d2 = d.diag();
+		for (; j < j_end; ++j) {
+			const Letter s = subject[j], q = query[d2 + j];
+			if (s == q)
+				out.transcript.push_back(op_match);
+			else
+				out.transcript.push_back(op_substitution, s);
+		}
 	}
 
 	Greedy_aligner2(const sequence &query, const Long_score_profile &qp, const sequence &subject, const vector<Diagonal_segment> &sh, bool log, Hsp_data &out) :
@@ -485,10 +539,13 @@ struct Greedy_aligner2
 		log(log),
 		score_buf(TLS::get(score_buf_ptr)),
 		local_max(TLS::get(local_max_ptr)),
-		diags(TLS::get(diags_ptr))
+		diags(TLS::get(diags_ptr)),
+		top_nodes(TLS::get(top_nodes_ptr))
 	{
+		config.min_diag_raw_score = 15;
 		diags.clear();
 		local_max.clear();
+		top_nodes.clear();
 		scan_diags(sh[0]);
 		std::sort(diags.begin(), diags.end(), Diagonal_segment::cmp_subject_end);
 		if (log)
@@ -501,25 +558,32 @@ struct Greedy_aligner2
 		if(log) cout << endl;
 		unsigned max_node = follow_path_approximate();
 		follow_path(0, max_node, 0, 0);
+		out.transcript.clear();
+		out.length = 1;
+		backtrace(top_node.node, diags[top_node.node].subject_end(), out);
+		out.transcript.push_terminator();
 	}
 
 	static TLS_PTR vector<uint8_t> *score_buf_ptr;
 	static TLS_PTR vector<uint8_t> *local_max_ptr;
 	static TLS_PTR vector<Diagonal_node> *diags_ptr;
+	static TLS_PTR vector<Node_ref> *top_nodes_ptr;
 	const sequence query, subject;
 	const Long_score_profile &qp;
 	const bool log;
 	vector<uint8_t> &score_buf, &local_max;
 	vector<Diagonal_node> &diags;
+	vector<Node_ref> &top_nodes;
+	Node_ref top_node;
 
 };
 
 TLS_PTR vector<uint8_t> *Greedy_aligner2::score_buf_ptr;
 TLS_PTR vector<uint8_t> *Greedy_aligner2::local_max_ptr;
 TLS_PTR vector<Diagonal_node> *Greedy_aligner2::diags_ptr;
+TLS_PTR vector<Greedy_aligner2::Node_ref> *Greedy_aligner2::top_nodes_ptr;
 
-void greedy_align2(sequence query, const Long_score_profile &qp, sequence subject, const vector<Diagonal_segment> &sh, bool log)
+void greedy_align2(sequence query, const Long_score_profile &qp, sequence subject, const vector<Diagonal_segment> &sh, bool log, Hsp_data &out)
 {
-	Hsp_data h;
-	Greedy_aligner2(query, qp, subject, sh, log, h);
+	Greedy_aligner2(query, qp, subject, sh, log, out);
 }

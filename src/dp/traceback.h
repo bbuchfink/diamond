@@ -66,14 +66,16 @@ int have_diag(const _matrix &dp,
 	int i,
 	int j,
 	const sequence &query,
-	const sequence &subject)
+	const sequence &subject,
+	bool log)
 {
 	int l = 0;
 	while (i > 0 && j > 0) {
 		const int match_score = score_matrix(query[i - 1], subject[j - 1]);
-		//printf("i=%i j=%i score=%i subject=%c query=%c\n",i,j,dp(i, j),Value_traits<_val>::ALPHABET[ls],Value_traits<_val>::ALPHABET[lq]);
 
 		if (dp(i, j) == match_score + dp(i - 1, j - 1)) {
+			if (log)
+				printf("i=%i j=%i score=%i subject=%c query=%c\n", i, j, dp(i, j), value_traits.alphabet[subject[j - 1]], value_traits.alphabet[query[i - 1]]);
 			++l;
 			--i;
 			--j;

@@ -129,7 +129,7 @@ const Fixed_score_buffer<_score>& needleman_wunsch(sequence query, sequence subj
 
 	Dp_matrix<_score> mtx((unsigned)query.length(), (unsigned)subject.length());
 
-	for (int j = 0; j < subject.length(); ++j) {
+	for (int j = 0; j < (int)subject.length(); ++j) {
 		typename Dp_matrix<_score>::Column_iterator it = mtx.column(j);
 		_score vgap = std::numeric_limits<int>::min() + 1;
 		for (; it.valid(); ++it) {
@@ -145,7 +145,7 @@ const Fixed_score_buffer<_score>& needleman_wunsch(sequence query, sequence subj
 	return mtx.score_buffer();
 }
 
-int needleman_wunsch(sequence query, sequence subject, int qbegin, int qend, int sbegin, int send, unsigned node, unsigned edge, vector<Diagonal_node> &diags)
+int needleman_wunsch(sequence query, sequence subject, int qbegin, int qend, int sbegin, int send, unsigned node, unsigned edge, vector<Diagonal_node> &diags, bool log)
 {
 	const sequence q = query.subseq(qbegin, qend), s = subject.subseq(sbegin, send);
 	const Fixed_score_buffer<int> &dp = needleman_wunsch(q, s, int());
@@ -157,7 +157,7 @@ int needleman_wunsch(sequence query, sequence subject, int qbegin, int qend, int
 	int l, i = qend - qbegin, j = send - sbegin;
 	const int score = dp(i, j);
 
-	l = have_diag(dp, i, j, q, s);
+	l = have_diag(dp, i, j, q, s, log);
 	if (l > 0) {
 		i -= l;
 		j -= l;
@@ -166,10 +166,10 @@ int needleman_wunsch(sequence query, sequence subject, int qbegin, int qend, int
 	}
 
 	while (i > 0 && j > 0) {
-		if ((l = have_diag(dp, i, j, q, s)) > 0) {
+		if ((l = have_diag(dp, i, j, q, s, log)) > 0) {
 			i -= l;
 			j -= l;
-			if (i != 0 && j != 0) {
+			if (i != 0 || j != 0) {
 				f->node = (unsigned)diags.size();
 				diags.push_back(Diagonal_node(qbegin + i, sbegin + j, l, 0));
 				f = &diags.back().edges[0];

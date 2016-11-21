@@ -105,7 +105,7 @@ void print_out(size_t queries,size_t queries1, size_t queries2, size_t unique1, 
 
 void compare()
 {
-	typedef blast_format Format1;
+	typedef blast_tab_format Format1;
 	typedef blast_tab_format Format2;
 
 	vector<char> id;

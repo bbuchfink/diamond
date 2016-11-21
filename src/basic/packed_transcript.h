@@ -155,6 +155,11 @@ struct Packed_transcript
 		data_.push_back(Packed_operation::terminator());
 	}
 
+	void clear()
+	{
+		data_.clear();
+	}
+
 private:
 
 	vector<Packed_operation> data_;
