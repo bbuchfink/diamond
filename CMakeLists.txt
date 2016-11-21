@@ -70,6 +70,7 @@ add_executable(diamond src/run/main.cpp
   src/output/blast_tab_format.cpp
   src/dp/padded_banded_sw.cpp
   src/dp/needleman_wunsch.cpp
+  src/output/blast_pairwise_format.cpp
 )
 
 target_link_libraries(diamond ${ZLIB_LIBRARY} ${CMAKE_THREAD_LIBS_INIT})
