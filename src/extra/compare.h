@@ -131,7 +131,7 @@ void compare()
 		trim(q, id);
 		++queries;
 		//printf("%lu ", queries);
-		if(queries % 10000 == 0) {
+		if(queries % 1000 == 0) {
 			printf("n = %zu\n", queries);
 			print_out(queries,queries1, queries2, unique1, unique2, queries1_sc, unique1_sc, matches1, matches1_hit, matches1_badscore);
 		}

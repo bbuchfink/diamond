@@ -311,7 +311,7 @@ Config::Config(int argc, const char **argv)
 		verbose_stream << "Seed frequency SD: " << freq_sd << endl;
 		::shapes = shape_config(index_mode, shapes, shape_mask);
 		verbose_stream << "Shape configuration: " << ::shapes << endl;
-		seed_anchor = std::min(::shapes[0].length_, 8u);
+		seed_anchor = std::min(::shapes[0].length_ - 1, 8u);
 
 		message_stream << "#Target sequences to report alignments for: ";
 		if (max_alignments == 0) {

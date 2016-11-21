@@ -29,7 +29,6 @@ struct Const
 		seedp = 1<<seedp_bits,
 		max_seed_weight = 32,
 		max_shapes = 16,
-		index_modes = 2,
 		max_shape_len = 32
 	};
 
