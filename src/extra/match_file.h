@@ -16,6 +16,7 @@ struct file_parse_exception : public std::runtime_error
 
 struct blast_format { };
 struct blast_tab_format { };
+struct blast_tab_format_with_rawscore {};
 
 using std::vector;
 
@@ -200,7 +201,7 @@ public:
 		if(!this->eof()) {
 			while (this->line[0] == '#')
 				this->getline();
-			if(sscanf(line.c_str(), "%s%s%lf%llu%llu%llu%llu%llu%llu%llu%lf%lf%u", query, s2, &f1, &i1, &i2, &i3, &i4, &i5, &i6, &i7, &match.expect, &match.bitscore, &match.raw_score) == 13) {
+			if(sscanf(line.c_str(), "%s%s%lf%llu%llu%llu%llu%llu%llu%llu%lf%lf%u", query, s2, &f1, &i1, &i2, &i3, &i4, &i5, &i6, &i7, &match.expect, &match.bitscore) == 12) {
 				//|| sscanf(line.c_str(), "%s%s%s%lf%llu%llu%llu%llu%llu%llu%llu%lf%lf", query, query2, s2, &f1, &i1, &i2, &i3, &i4, &i5, &i6, &i7, &match.expect, &match.bitscore) == 13) {
 				/*++matchCount;
 				if(!strcmp(query, currentQuery)) {
@@ -218,6 +219,40 @@ public:
 				throw file_parse_exception(this->line_count);
 			}
 		} else {
+			match.set_empty();
+			return false;
+		}
+	}
+
+	bool get(blast_match &match, const blast_tab_format_with_rawscore&)
+	{
+		char query[nameBufferSize], s2[nameBufferSize];
+		double f1;
+		unsigned long long i1, i2, i3, i4, i5, i6, i7;
+		this->getline();
+		if (!this->eof()) {
+			while (this->line[0] == '#')
+				this->getline();
+			if (sscanf(line.c_str(), "%s%s%lf%llu%llu%llu%llu%llu%llu%llu%lf%lf%u", query, s2, &f1, &i1, &i2, &i3, &i4, &i5, &i6, &i7, &match.expect, &match.bitscore, &match.raw_score) == 13) {
+				//|| sscanf(line.c_str(), "%s%s%s%lf%llu%llu%llu%llu%llu%llu%llu%lf%lf", query, query2, s2, &f1, &i1, &i2, &i3, &i4, &i5, &i6, &i7, &match.expect, &match.bitscore) == 13) {
+				/*++matchCount;
+				if(!strcmp(query, currentQuery)) {
+				++currentQueryCount;
+				} else {
+				++queryCount;
+				currentQueryCount = 1;
+				strcpy(currentQuery, query);
+				}*/
+				match.query = query;
+				match.subject = s2;
+				return true;
+			}
+			else {
+				printf("%s\n", line.c_str());
+				throw file_parse_exception(this->line_count);
+			}
+		}
+		else {
 			match.set_empty();
 			return false;
 		}
