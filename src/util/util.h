@@ -218,6 +218,10 @@ struct Pair
 		first (first),
 		second (second)
 	{ }
+	bool operator<(const Pair &rhs) const
+	{
+		return first < rhs.first;
+	}
 	_t1 first;
 	_t2 second;
 };

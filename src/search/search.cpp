@@ -25,16 +25,10 @@ Trace_pt_buffer* Trace_pt_buffer::instance;
 TLS_PTR vector<sequence>* hit_filter::subjects_ptr;
 #endif
 
-const unsigned tile_size[] = { 1024, 128 };
+TLS_PTR vector<Finger_print> *Seed_filter::vq_ptr, *Seed_filter::vs_ptr;
+TLS_PTR vector<Stage1_hit> *Seed_filter::hits_ptr;
 
-struct Range_ref
-{
-	Range_ref(vector<Finger_print>::const_iterator q_begin, vector<Finger_print>::const_iterator s_begin):
-		q_begin(q_begin),
-		s_begin(s_begin)
-	{}
-	const vector<Finger_print>::const_iterator q_begin, s_begin;
-};
+const unsigned tile_size[] = { 1024, 128 };
 
 #define FAST_COMPARE2(q, s, stats, q_ref, s_ref, q_offset, s_offset, hits) if (q.match(s) >= config.min_identities) stats.inc(Statistics::TENTATIVE_MATCHES1)
 #define FAST_COMPARE(q, s, stats, q_ref, s_ref, q_offset, s_offset, hits) if (q.match(s) >= config.min_identities) hits.push_back(Stage1_hit(q_ref, q_offset, s_ref, s_offset))
@@ -111,13 +105,11 @@ void inner_search(vector<Finger_print>::const_iterator q,
 	}
 }
 
-void tiled_search(vector<Finger_print>::const_iterator q,
+void Seed_filter::tiled_search(vector<Finger_print>::const_iterator q,
 	vector<Finger_print>::const_iterator q_end,
 	vector<Finger_print>::const_iterator s,
 	vector<Finger_print>::const_iterator s_end,
 	const Range_ref &ref,
-	vector<Stage1_hit> &hits,
-	Statistics &stats,
 	unsigned level)
 {
 	switch (level) {
@@ -125,7 +117,7 @@ void tiled_search(vector<Finger_print>::const_iterator q,
 	case 1:
 		for (; q < q_end; q += std::min(q_end - q, (ptrdiff_t)tile_size[level]))
 			for (vector<Finger_print>::const_iterator s2 = s; s2 < s_end; s2 += std::min(s_end - s2, (ptrdiff_t)tile_size[level]))
-				tiled_search(q, q + std::min(q_end - q, (ptrdiff_t)tile_size[level]), s2, s2 + std::min(s_end - s2, (ptrdiff_t)tile_size[level]), ref, hits, stats, level+1);
+				tiled_search(q, q + std::min(q_end - q, (ptrdiff_t)tile_size[level]), s2, s2 + std::min(s_end - s2, (ptrdiff_t)tile_size[level]), ref, level+1);
 		break;
 	case 2:
 		for (; q < q_end; q += std::min(q_end-q,(ptrdiff_t)6))
@@ -142,26 +134,14 @@ void load_fps(const sorted_list::const_iterator &i, vector<Finger_print> &v, con
 	v.reserve(i.n);
 	for (unsigned j = 0; j < i.n; ++j)
 		v.push_back(Finger_print(seqs.data(i[j])));
-		//v.push_back(Finger_print());
 }
 
-void search_seed(const sorted_list::const_iterator &q,
-	const sorted_list::const_iterator &s,
-	Statistics &stats,
-	Trace_pt_buffer::Iterator &out,
-	const unsigned sid)
+void Seed_filter::run(const sorted_list::const_iterator &q, const sorted_list::const_iterator &s)
 {
-	//cout << q.n << ' ' << s.n << endl;
-	/*if (q.n > config.hit_cap)
-		return;*/
-	static TLS_PTR vector<Finger_print> *vq_ptr, *vs_ptr;
-	static TLS_PTR vector<Stage1_hit> *hits_ptr;
-	vector<Finger_print> &vq(TLS::get(vq_ptr)), &vs(TLS::get(vs_ptr));
-	vector<Stage1_hit> &hits(TLS::get(hits_ptr));
 	hits.clear();
 	load_fps(q, vq, *query_seqs::data_);
 	load_fps(s, vs, *ref_seqs::data_);
-	tiled_search(vq.begin(), vq.end(), vs.begin(), vs.end(), Range_ref(vq.begin(), vs.begin()), hits, stats, 0);
+	tiled_search(vq.begin(), vq.end(), vs.begin(), vs.end(), Range_ref(vq.begin(), vs.begin()), 0);
 	std::sort(hits.begin(), hits.end());
 	stats.inc(Statistics::TENTATIVE_MATCHES1, hits.size());
 	stage2_search(q, s, hits, stats, out, sid);

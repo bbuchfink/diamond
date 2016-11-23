@@ -45,7 +45,8 @@ Config::Config(int argc, const char **argv)
 		.add_command("getseq", "Retrieve sequences from a DIAMOND database file")
 		.add_command("benchmark", "")
 		.add_command("random-seqs", "")
-		.add_command("compare", "");
+		.add_command("compare", "")
+		.add_command("sort", "");
 
 	Options_group general ("General options");
 	general.add()

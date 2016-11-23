@@ -52,3 +52,18 @@ void random_seqs()
 	}
 	out.close();
 }
+
+void sort_file()
+{
+	Input_stream f(config.query_file);
+	vector<Pair<unsigned, string> > data;
+	while (f.getline(), !f.eof()) {
+		unsigned query;
+		sscanf(f.line.c_str(), "%u", &query);
+		data.push_back(Pair<unsigned, string>(query, f.line));
+	}
+	std::stable_sort(data.begin(), data.end());
+	for (vector<Pair<unsigned, string> >::const_iterator i = data.begin(); i != data.end(); ++i)
+		cout << i->second << endl;
+	f.close();
+}

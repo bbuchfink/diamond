@@ -113,7 +113,7 @@ struct Config
 	double min_diag_score;
 	int min_diag_raw_score;
 
-	enum { makedb = 0, blastp = 1, blastx = 2, view = 3, help = 4, version = 5, getseq = 6, benchmark = 7, random_seqs = 8, compare = 9 };
+	enum { makedb = 0, blastp = 1, blastx = 2, view = 3, help = 4, version = 5, getseq = 6, benchmark = 7, random_seqs = 8, compare = 9, sort = 10 };
 	unsigned	command;
 
 	Config() {}
