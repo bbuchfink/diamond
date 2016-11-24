@@ -201,7 +201,7 @@ public:
 		if(!this->eof()) {
 			while (this->line[0] == '#')
 				this->getline();
-			if(sscanf(line.c_str(), "%s%s%lf%llu%llu%llu%llu%llu%llu%llu%lf%lf%u", query, s2, &f1, &i1, &i2, &i3, &i4, &i5, &i6, &i7, &match.expect, &match.bitscore) == 12) {
+			if(sscanf(line.c_str(), "%s%s%lf%llu%llu%llu%llu%llu%llu%llu%lf%lf", query, s2, &f1, &i1, &i2, &i3, &i4, &i5, &i6, &i7, &match.expect, &match.bitscore) == 12) {
 				//|| sscanf(line.c_str(), "%s%s%s%lf%llu%llu%llu%llu%llu%llu%llu%lf%lf", query, query2, s2, &f1, &i1, &i2, &i3, &i4, &i5, &i6, &i7, &match.expect, &match.bitscore) == 13) {
 				/*++matchCount;
 				if(!strcmp(query, currentQuery)) {
