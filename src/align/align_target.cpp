@@ -34,8 +34,12 @@ void Query_mapper::get_prefilter_score(size_t idx)
 	int max_score = 0;
 	for (unsigned node = 0; node < n; ++node) {
 		Seed_hit& d = hits[node];
+		if (d.ungapped.len == 0)
+			continue;
 		for (int k = node - 1; k >= 0; --k) {
 			const Seed_hit &e = hits[k];
+			if (e.ungapped.len == 0)
+				continue;
 			if (d.ungapped.j - e.ungapped.subject_last() < max_dist) {
 				if (abs(d.ungapped.i - e.ungapped.query_last()) >= max_dist)
 					continue;
