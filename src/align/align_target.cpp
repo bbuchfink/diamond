@@ -22,6 +22,44 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 
 using std::list;
 
+void Query_mapper::get_prefilter_score(size_t idx)
+{
+	static const int max_dist = 64;
+
+	Target& target = targets[idx];
+	const size_t n = target.end - target.begin;
+	vector<Seed_hit>::iterator hits = seed_hits.begin() + target.begin;
+	std::sort(seed_hits.begin() + target.begin, seed_hits.begin() + target.end, Seed_hit::compare_pos);
+	
+	int max_score = 0;
+	for (unsigned node = 0; node < n; ++node) {
+		Seed_hit& d = hits[node];
+		for (int k = node - 1; k >= 0; --k) {
+			const Seed_hit &e = hits[k];
+			if (d.ungapped.j - e.ungapped.subject_last() < max_dist) {
+				if (abs(d.ungapped.i - e.ungapped.query_last()) >= max_dist)
+					continue;
+				const int shift = d.ungapped.diag() - e.ungapped.diag();
+				int gap_score = -config.gap_open - abs(shift)*config.gap_extend;
+				const int space = shift > 0 ? d.ungapped.j - e.ungapped.subject_last() : d.ungapped.i - e.ungapped.query_last();
+				int prefix_score;
+				if (space <= 0) {
+					prefix_score = std::max(e.prefix_score - (e.ungapped.score - e.ungapped.partial_score(abs(space))) + d.ungapped.score, e.prefix_score + d.ungapped.partial_score(abs(space))) + gap_score;
+				}
+				else {
+					prefix_score = e.prefix_score + d.ungapped.score + gap_score;
+				}
+
+				d.prefix_score = std::max(d.prefix_score, (unsigned)prefix_score);
+			}
+			else
+				break;
+		}
+		max_score = std::max(max_score, (int)d.prefix_score);
+	}
+	target.filter_score = max_score;
+}
+
 bool is_contained(const vector<Seed_hit>::const_iterator &hits, size_t i)
 {
 	for (size_t j = 0; j < i; ++j)

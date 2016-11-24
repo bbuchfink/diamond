@@ -175,7 +175,8 @@ Config::Config(int argc, const char **argv)
 		("max-hits", 'C', "maximum number of hits to consider for one seed", hit_cap)
 		("seed-freq", 0, "maximum seed frequency", max_seed_freq, -15.0)
 		("space-penalty", 0, "", space_penalty, 4.9)
-		("min-diag-score", 0, "", min_diag_score, 10.5);
+		("min-diag-score", 0, "", min_diag_score, 10.5)
+		("new-prefilter", 0, "", new_prefilter);
 
 	parser.add(general).add(makedb).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options);
 	parser.store(argc, argv, command);

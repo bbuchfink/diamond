@@ -93,7 +93,7 @@ struct Diagonal_segment
 	}
 	int partial_score(int diff) const
 	{
-		return std::max(score*(len - diff) / len, 0);
+		return score*std::max(len - diff, 0) / len;
 	}
 	bool operator<=(const Diagonal_segment &rhs) const
 	{

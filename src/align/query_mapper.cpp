@@ -86,15 +86,21 @@ void Query_mapper::load_targets()
 	unsigned subject_id = std::numeric_limits<unsigned>::max(), n = 0;
 	for (size_t i = 0; i < seed_hits.size(); ++i) {
 		if (seed_hits[i].subject_ != subject_id) {
-			if (n > 0)
+			if (n > 0) {
 				targets[n - 1].end = i;
+				if(config.new_prefilter)
+					get_prefilter_score(n - 1);
+			}
 			targets.get(n) = new Target(i, seed_hits[i].subject_);
 			++n;
 			subject_id = seed_hits[i].subject_;
 		}
-		targets[n - 1].filter_score += seed_hits[i].ungapped.score;
+		if(!config.new_prefilter)
+			targets[n - 1].filter_score += seed_hits[i].ungapped.score;
 	}
 	targets[n - 1].end = seed_hits.size();
+	if (config.new_prefilter)
+		get_prefilter_score(n - 1);
 }
 
 void Query_mapper::rank_targets()

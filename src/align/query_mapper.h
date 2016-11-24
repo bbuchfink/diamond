@@ -40,7 +40,8 @@ struct Seed_hit
 		subject_(subject),
 		subject_pos_(subject_pos),
 		query_pos_(query_pos),
-		ungapped(ungapped)
+		ungapped(ungapped),
+		prefix_score(ungapped.score)
 	{ }
 	int diagonal() const
 	{
@@ -50,8 +51,13 @@ struct Seed_hit
 	{
 		return ungapped.score > rhs.ungapped.score;
 	}
+	static bool compare_pos(const Seed_hit &x, const Seed_hit &y)
+	{
+		return Diagonal_segment::cmp_subject_end(x.ungapped, y.ungapped);
+	}
 	unsigned frame_, subject_, subject_pos_, query_pos_;
 	Diagonal_segment ungapped;
+	unsigned prefix_score;
 };
 
 struct Target
@@ -74,6 +80,7 @@ struct Query_mapper
 {
 	Query_mapper();
 	void init();
+	void get_prefilter_score(size_t idx);
 	void align_target(size_t idx, Statistics &stat);
 	bool generate_output(Text_buffer &buffer, Statistics &stat);
 	size_t n_targets() const
