@@ -88,7 +88,8 @@ void query_sens(match_file::mcont &v1,
 			get_target_seq(i, j, v1.end(), v2.end(), stat);
 		}
 	}
-	stat.query_sens += double(stat.matches1_hit - matches_hit) / (stat.matches1 - matches);
+	if (stat.matches1 - matches > 0)
+		stat.query_sens += double(stat.matches1_hit - matches_hit) / (stat.matches1 - matches);
 }
 
 void lone_query(match_file::mcont &v1,
