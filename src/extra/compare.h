@@ -108,7 +108,7 @@ void print_out(Cmp_stats &stat)
 	printf("unique(1)=%zu unique(2)=%zu\n", stat.unique1, stat.unique2);
 	printf("queries(1)>sc=%zu unique(1)>sc=%zu hit(2)=%zu (%1.f%%)\n", stat.queries1_sc, stat.unique1_sc, stat.queries1_sc-stat.unique1_sc, (double)(stat.queries1_sc-stat.unique1_sc)*100/stat.queries1_sc);
 	printf("matches(1)>sc=%zu hit(2)=%zu (%.1lf%%) bad score=%zu\n", stat.matches1, stat.matches1_hit, double(stat.matches1_hit)*100/stat.matches1, stat.matches1_badscore);
-	printf("query_sens=%.1lf\n", stat.query_sens / stat.queries1_sc);
+	printf("query_sens=%.1lf\n", stat.query_sens * 100 / stat.queries1_sc);
 	printf("\n");
 }
 
