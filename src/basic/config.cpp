@@ -54,6 +54,7 @@ Config::Config(int argc, const char **argv)
 		("db", 'd', "database file", database)
 		("out", 'o', "output file", output_file)
 		("outfmt", 'f', "output format\n\
+\t0   = BLAST pairwise\n\
 \t5   = BLAST XML\n\
 \t6   = BLAST tabular\n\
 \t100 = DIAMOND alignment archive (DAA)\n\
