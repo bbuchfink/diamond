@@ -147,7 +147,7 @@ Config::Config(int argc, const char **argv)
 		("index-mode", 0, "index mode (0=4x12, 1=16x9)", index_mode)
 		("fetch-size", 0, "trace point fetch size", fetch_size, 4096u)
 		("rank-factor", 0, "include subjects within this range of max-target-seqs", rank_factor, 2.0)
-		("rank-ratio", 0, "include subjects within this ratio of last hit", rank_ratio, 0.35)
+		("rank-ratio", 0, "include subjects within this ratio of last hit", rank_ratio, 0.6)
 		("single-domain", 0, "Discard secondary domains within one target sequence", single_domain)
 		("dbsize", 0, "effective database size (in letters)", db_size)
 		("no-auto-append", 0, "disable auto appending of DAA and DMND file extensions", no_auto_append)
@@ -175,8 +175,7 @@ Config::Config(int argc, const char **argv)
 		("max-hits", 'C', "maximum number of hits to consider for one seed", hit_cap)
 		("seed-freq", 0, "maximum seed frequency", max_seed_freq, -15.0)
 		("space-penalty", 0, "", space_penalty, 4.9)
-		("min-diag-score", 0, "", min_diag_score, 10.5)
-		("new-prefilter", 0, "", new_prefilter);
+		("min-diag-score", 0, "", min_diag_score, 10.5);
 
 	parser.add(general).add(makedb).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options);
 	parser.store(argc, argv, command);

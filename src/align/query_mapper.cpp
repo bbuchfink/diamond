@@ -88,19 +88,15 @@ void Query_mapper::load_targets()
 		if (seed_hits[i].subject_ != subject_id) {
 			if (n > 0) {
 				targets[n - 1].end = i;
-				if(config.new_prefilter)
-					get_prefilter_score(n - 1);
+				get_prefilter_score(n - 1);
 			}
 			targets.get(n) = new Target(i, seed_hits[i].subject_);
 			++n;
 			subject_id = seed_hits[i].subject_;
 		}
-		if(!config.new_prefilter)
-			targets[n - 1].filter_score += seed_hits[i].ungapped.score;
 	}
 	targets[n - 1].end = seed_hits.size();
-	if (config.new_prefilter)
-		get_prefilter_score(n - 1);
+	get_prefilter_score(n - 1);
 }
 
 void Query_mapper::rank_targets()

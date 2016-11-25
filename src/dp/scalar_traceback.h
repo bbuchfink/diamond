@@ -152,10 +152,13 @@ local_match traceback(const Letter *query,
 	if (lq == ls) {
 		l.transcript.push_back(op_match);
 		++l.identities;
+		++l.positives;
 	}
 	else {
 		l.transcript.push_back(op_substitution, ls);
 		++l.mismatches;
+		if (score_matrix(lq, ls) > 0)
+			++l.positives;
 	}
 	++l.length;
 	return l;

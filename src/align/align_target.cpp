@@ -47,12 +47,10 @@ void Query_mapper::get_prefilter_score(size_t idx)
 				int gap_score = -config.gap_open - abs(shift)*config.gap_extend;
 				const int space = shift > 0 ? d.ungapped.j - e.ungapped.subject_last() : d.ungapped.i - e.ungapped.query_last();
 				int prefix_score;
-				if (space <= 0) {
+				if (space <= 0)
 					prefix_score = std::max(e.prefix_score - (e.ungapped.score - e.ungapped.partial_score(abs(space))) + d.ungapped.score, e.prefix_score + d.ungapped.partial_score(abs(space))) + gap_score;
-				}
-				else {
+				else
 					prefix_score = e.prefix_score + d.ungapped.score + gap_score;
-				}
 
 				d.prefix_score = std::max(d.prefix_score, (unsigned)prefix_score);
 			}
