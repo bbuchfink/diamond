@@ -173,8 +173,10 @@ void Database_file::get_seq()
 			id.push_back(c);
 		if (all || seqs.find(n) != seqs.end()) {
 			cout << '>' << id << endl;
-			if (config.reverse)
+			if (config.reverse) {
 				sequence(seq).print(cout, value_traits, sequence::Reversed());
+				cout << endl;
+			}
 			else
 				cout << sequence(seq) << endl;
 		}
