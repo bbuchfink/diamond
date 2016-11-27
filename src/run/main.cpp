@@ -84,6 +84,9 @@ int main(int ac, const char* av[])
 		case Config::sort:
 			sort_file();
 			break;
+		case Config::roc:
+			roc();
+			break;
 		#ifdef EXTRA
         else if (command == "stat" && vm.count("match1"))
         	if(program_options::db_type == "nucl")

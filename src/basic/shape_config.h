@@ -23,7 +23,7 @@ Author: Benjamin Buchfink
 
 #include "shape.h"
 
-extern const char* shape_codes[4][Const::max_shapes];
+extern const char* shape_codes[5][Const::max_shapes];
 
 class shape_config
 {

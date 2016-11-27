@@ -23,5 +23,6 @@ void get_seq();
 void benchmark_sw();
 void random_seqs();
 void sort_file();
+void roc();
 
 #endif

@@ -31,6 +31,7 @@ using std::vector;
 
 struct sequence
 {
+	struct Reversed {};
 	sequence():
 		len_ (0),
 		clipping_offset_ (0),
@@ -98,6 +99,12 @@ struct sequence
 	std::ostream& print(std::ostream &os, const Value_traits &v) const
 	{
 		for (unsigned i = 0; i<len_; ++i)
+			os << v.alphabet[(long)data_[i]];
+		return os;
+	}
+	std::ostream& print(std::ostream &os, const Value_traits &v, Reversed) const
+	{
+		for (int i = (int)len_ - 1; i >= 0; --i)
 			os << v.alphabet[(long)data_[i]];
 		return os;
 	}

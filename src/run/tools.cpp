@@ -39,14 +39,19 @@ void random_seqs()
 	std::set<unsigned> n;
 	const size_t count = atoi(config.seq_no[0].c_str());
 	while (n.size() < count)
-		n.insert((rand()*RAND_MAX+rand()) % ref_seqs::get().get_length());
+		n.insert((rand()*RAND_MAX + rand()) % ref_seqs::get().get_length());
 	Compressed_ostream out(config.output_file);
 	unsigned j = 0;
 	
 	std::string s;
 	for (std::set<unsigned>::const_iterator i = n.begin(); i != n.end(); ++i) {
 		std::stringstream ss;
-		ss << '>' << j++ << endl << ref_seqs::get()[*i] << endl;
+		ss << '>' << j++ << endl;
+		if (config.reverse)
+			ref_seqs::get()[*i].print(ss, value_traits, sequence::Reversed());
+		else
+			ss << ref_seqs::get()[*i];
+		ss << endl;
 		s = ss.str();
 		out.write(s.data(), s.length());
 	}

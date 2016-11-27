@@ -20,7 +20,7 @@ struct blast_tab_format_with_rawscore {};
 
 using std::vector;
 
-void alline(const char *buffer, char *dest)
+inline void alline(const char *buffer, char *dest)
 {
 	buffer += 7;
 	const char *begin = strstr(buffer, " ") + 1;
@@ -31,15 +31,15 @@ void alline(const char *buffer, char *dest)
 	dest[end-begin] = 0;
 }
 
-bool seq_letter(char x)
+inline bool seq_letter(char x)
 {
 	return x >= 'A' && x <= 'Z';
 }
 
-int64_t match_scores[32];
-int64_t match_counts[32];
+/*int64_t match_scores[32];
+int64_t match_counts[32];*/
 
-unsigned char_match(char query, char subject, const Reduction &red)
+inline unsigned char_match(char query, char subject, const Reduction &red)
 {
 	Letter ql = query;
 	Letter sl = subject;
@@ -54,7 +54,7 @@ unsigned char_match(char query, char subject, const Reduction &red)
 		return 0;
 }
 
-void get_match(unsigned &mask, const char *queryl, const char *subjectl, bool &hit, unsigned &len, unsigned &rid, unsigned &current_len, unsigned &ungapped_len, Letter* q, Letter* s, bool &stop)
+inline void get_match(unsigned &mask, const char *queryl, const char *subjectl, bool &hit, unsigned &len, unsigned &rid, unsigned &current_len, unsigned &ungapped_len, Letter* q, Letter* s, bool &stop)
 {
 	unsigned l ((unsigned)strlen(queryl));
 	for(unsigned i=0;i<l;++i) {
@@ -259,7 +259,7 @@ public:
 	}
 
 	template<typename _format>
-	void get_read(mcont &v, const _format& format)
+	bool get_read(mcont &v, const _format& format)
 	{
 		unsigned n = 0;
 		v.clear();
@@ -270,7 +270,7 @@ public:
 			save.set_empty();
 		} else {
 			if(!get(match, format))
-				return;
+				return false;
 			match.n = n++;
 			v.push_back(match);
 		}
@@ -283,7 +283,7 @@ public:
 		}
 		if(!match.empty() && match.query != v[0].query)
 			save = match;
-		return;
+		return !v.empty();
 	}
 
 	unsigned getTotalQueries() const
