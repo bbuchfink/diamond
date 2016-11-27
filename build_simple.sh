@@ -39,4 +39,5 @@ g++ -DNDEBUG -O3 -mssse3 -Wno-deprecated-declarations -std=gnu++98 $1 \
   src/dp/padded_banded_sw.cpp \
   src/dp/needleman_wunsch.cpp \
   src/output/blast_pairwise_format.cpp \
+  src/extra/roc.cpp \
 -lz -lpthread -o diamond
