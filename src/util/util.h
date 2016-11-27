@@ -496,20 +496,20 @@ struct Numeric_vector : public std::vector<_t>
 	{}
 	Numeric_vector& operator+=(Numeric_vector &x)
 	{
-		for (size_t i = 0; i < size(); ++i)
+		for (size_t i = 0; i < this->size(); ++i)
 			this->operator[](i) += x[i];
 		return *this;
 	}
 	Numeric_vector& operator/=(double x)
 	{
-		for (size_t i = 0; i < size(); ++i)
+		for (size_t i = 0; i < this->size(); ++i)
 			this->operator[](i) /= x;
 		return *this;
 	}
 	friend std::ostream& operator<<(std::ostream &s, const Numeric_vector &x)
 	{
 		for (size_t i = 0; i < x.size(); ++i)
-			s << x[i] << endl;
+			s << x[i] << std::endl;
 		return s;
 	}
 };
