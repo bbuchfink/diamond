@@ -87,6 +87,9 @@ int main(int ac, const char* av[])
 		case Config::roc:
 			roc();
 			break;
+		case Config::db_stat:
+			db_stat();
+			break;
 		#ifdef EXTRA
         else if (command == "stat" && vm.count("match1"))
         	if(program_options::db_type == "nucl")
