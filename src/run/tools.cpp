@@ -72,3 +72,27 @@ void sort_file()
 		cout << i->second << endl;
 	f.close();
 }
+
+void db_stat()
+{
+	Database_file db_file;
+	db_file.load_seqs();
+	cout << "Sequences = " << ref_seqs::get().get_length() << endl;
+
+	size_t letters = 0;
+	vector<size_t> letter_freq(20);
+	for (size_t i = 0; i < ref_seqs::get().get_length(); ++i) {
+		const sequence seq = ref_seqs::get()[i];
+		for (size_t j = 0; j < seq.length(); ++j) {
+			if (seq[j] < 20) {
+				++letters;
+				++letter_freq[(int)seq[j]];
+			}
+		}
+	}
+	cout << "Frequencies = ";
+	for (vector<size_t>::const_iterator i = letter_freq.begin(); i != letter_freq.end(); ++i)
+		cout << (double)*i / letters << ',';
+	cout << endl;
+
+}

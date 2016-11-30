@@ -47,7 +47,8 @@ Config::Config(int argc, const char **argv)
 		.add_command("random-seqs", "")
 		.add_command("compare", "")
 		.add_command("sort", "")
-		.add_command("roc", "");
+		.add_command("roc", "")
+		.add_command("dbstat", "");
 
 	Options_group general ("General options");
 	general.add()
@@ -178,7 +179,8 @@ Config::Config(int argc, const char **argv)
 		("seed-freq", 0, "maximum seed frequency", max_seed_freq, -15.0)
 		("space-penalty", 0, "", space_penalty, 4.9)
 		("min-diag-score", 0, "", min_diag_score, 10.5)
-		("reverse", 0, "", reverse);
+		("reverse", 0, "", reverse)
+		("comp-based-stats", 0, "", comp_based_stats);
 
 	parser.add(general).add(makedb).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options);
 	parser.store(argc, argv, command);
