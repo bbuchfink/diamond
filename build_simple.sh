@@ -40,4 +40,8 @@ g++ -DNDEBUG -O3 -mssse3 -Wno-deprecated-declarations -std=gnu++98 $1 \
   src/dp/needleman_wunsch.cpp \
   src/output/blast_pairwise_format.cpp \
   src/extra/roc.cpp \
+  src/align/comp_based_stats.cpp \
+  src/extra/model_sim.cpp \
+  src/run/double_indexed.cpp \
+  src/search/search_query.cpp \
 -lz -lpthread -o diamond

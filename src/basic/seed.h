@@ -72,7 +72,7 @@ struct Seed
 	friend std::ostream& operator<<(std::ostream &str, const Seed &s)
 	{
 		for (unsigned i = 0; i < config.seed_weight; ++i)
-			str << value_traits.alphabet[s.data_[i]];
+			str << value_traits.alphabet[(size_t)s.data_[i]];
 		return str;
 	}
 	int score(const Seed &rhs) const

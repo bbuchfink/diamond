@@ -21,6 +21,7 @@ Author: Benjamin Buchfink
 #ifndef PACKED_LOC_H_
 #define PACKED_LOC_H_
 
+#include <stdint.h>
 #include "../util/system.h"
 
 #pragma pack(1)
