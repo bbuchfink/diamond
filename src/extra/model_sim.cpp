@@ -237,7 +237,7 @@ struct MSS_neighborhood_model
 {
 	bool hit(const Letter *x, const Letter *y, size_t l) const
 	{
-		for (int i = 0; i <= l; ++i) {
+		for (size_t i = 0; i <= l; ++i) {
 			for (unsigned s = 0; s < shapes.count(); ++s) {
 				if (l - i < shapes[s].length_) continue;
 				if (shapes[s].score(&x[i], &y[i]) >= config.neighborhood_score)
@@ -297,7 +297,7 @@ void get_related_seq(const sequence &seq, vector<Letter> &out, double id)
 		if ((double)rand() / RAND_MAX < id)
 			out[i] = seq[i];
 		else
-			out[i] = get_distribution<20>(p[seq[i]]);
+			out[i] = get_distribution<20>(p[(size_t)seq[i]]);
 }
 
 template<typename _model>
@@ -345,7 +345,7 @@ void model_seqs()
 	vector<Letter> seq1, seq2;
 	sequence s1(seq1), s2(seq2);
 	const size_t count = atoi(config.seq_no[0].c_str());
-	std::ofstream out(config.output_file);
+	std::ofstream out(config.output_file.c_str());
 	for (unsigned i = 0; i < count; ++i) {
 		get_random_seq(seq1);
 		out << '>' << i << endl;

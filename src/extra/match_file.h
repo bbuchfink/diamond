@@ -102,8 +102,8 @@ public:
 			if (*q != '-' && *s != '-' && *q != *s) {
 				const Letter lq = value_traits.from_char(*q), ls = value_traits.from_char(*s);
 				if (lq < 20 && ls < 20 && lq != ls) {
-					++subst_p[lq][ls];
-					++subst_n[lq];
+					++subst_p[(size_t)lq][(size_t)ls];
+					++subst_n[(size_t)lq];
 				}
 			}
 			++q;
