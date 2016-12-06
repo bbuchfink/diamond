@@ -54,6 +54,10 @@ struct seedp_range
 	{
 		return end_ - begin_;
 	}
+	static seedp_range all()
+	{
+		return seedp_range(0, Const::seedp);
+	}
 private:
 	unsigned begin_, end_;
 };

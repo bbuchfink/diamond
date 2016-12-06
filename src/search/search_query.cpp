@@ -1,5 +1,5 @@
 /****
-Copyright (c) 2014, University of Tuebingen
+Copyright (c) 2016, Benjamin Buchfink
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
@@ -14,67 +14,42 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
 LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-****
-Author: Benjamin Buchfink
 ****/
 
-#ifndef SHAPE_CONFIG_H_
-#define SHAPE_CONFIG_H_
+#include "../util/thread.h"
+#include "../data/queries.h"
+#include "../data/index.h"
 
-#include "shape.h"
-
-extern const char* shape_codes[6][Const::max_shapes];
-
-class shape_config
+void search_query(unsigned query_id, Statistics &stat, vector<Seed> &neighbor_seeds)
 {
-
-public:
-	
-	shape_config():
-		n_ (0),
-		mode_ (0)
-	{ }
-
-	shape_config(unsigned mode, unsigned count, const vector<string> &shape_mask):
-		n_ (0),
-		mode_ (mode)
-	{
-		if (shape_mask.size() == 0) {
-			unsigned maxShapes = count == 0 ? Const::max_shapes : count;
-			for (unsigned i = 0; i < maxShapes; ++i)
-				if (shape_codes[mode_][i])
-					shapes_[n_++] = shape(shape_codes[mode_][i], i);
-		}
-		else {
-			for (unsigned i = 0; i < (count == 0 ? shape_mask.size() : std::min((unsigned)shape_mask.size(), count)); ++i)
-				shapes_[n_++] = shape(shape_mask[i].c_str(), i);
+	const sequence query_seq = query_seqs::get()[query_id];
+	const shape &sh = shapes[0];
+	if (query_seq.length() < sh.length_)
+		return;
+	for (unsigned i = 0; i <= query_seq.length() - sh.length_; ++i) {
+		//uint64_t seed;
+		//if (sh.set_seed(seed, &query_seq[i])) {
+		Seed seed;
+		if(sh.set_seed(seed, &query_seq[i])) {
+			seed.enum_neighborhood(config.neighborhood_score, neighbor_seeds);
+			cout << neighbor_seeds.size() << endl;
+			for (vector<Seed>::const_iterator j = neighbor_seeds.begin(); j != neighbor_seeds.end(); ++j) {
+				sorted_list::Random_access_iterator k = seed_index[seed.packed()];
+				while (k.good()) {
+					stat.inc(Statistics::SEED_HITS);
+					++k;
+				}
+			}
 		}
 	}
+}
 
-	unsigned count() const
-	{ return n_; }
-
-	const shape& operator[](unsigned i) const
-	{ return shapes_[i]; }
-
-	unsigned mode() const
-	{ return mode_; }
-
-	friend std::ostream& operator<<(std::ostream&s, const shape_config &cfg)
-	{
-		for (unsigned i = 0; i < cfg.n_; ++i)
-			s << cfg.shapes_[i] << (i<cfg.n_-1?",":"");
-		return s;
-	}
-
-private:
-
-	shape shapes_[Const::max_shapes];
-	unsigned n_, mode_;
-
-};
-
-extern shape_config shapes;
-extern unsigned shape_from, shape_to;
-
-#endif /* SHAPE_CONFIG_H_ */
+void search_query_worker(Atomic<unsigned> *next)
+{
+	unsigned query_id;
+	Statistics stat;
+	vector<Seed> neighbor_seeds;
+	while ((query_id = (*next)++) < query_seqs::get().get_length())
+		search_query(query_id, stat, neighbor_seeds);
+	statistics += stat;
+}

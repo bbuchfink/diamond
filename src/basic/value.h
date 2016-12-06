@@ -104,5 +104,6 @@ struct Align_mode
 };
 
 extern Align_mode align_mode;
+extern const double background_freq[20];
 
 #endif /* VALUE_H_ */

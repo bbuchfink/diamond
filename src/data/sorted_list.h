@@ -50,6 +50,9 @@ struct sorted_list
 	static char* alloc_buffer(const Partitioned_histogram &hst)
 	{ return new char[sizeof(entry) * hst.max_chunk_size()]; }
 
+	sorted_list()
+	{}
+
 	sorted_list(char *buffer, const Sequence_set &seqs, const shape &sh, const shape_histogram &hst, const seedp_range &range, const vector<size_t> seq_partition):
 		limits_ (hst, range),
 		data_ (reinterpret_cast<entry*>(buffer))
@@ -100,6 +103,43 @@ struct sorted_list
 
 	iterator get_partition_begin(unsigned p) const
 	{ return iterator (ptr_begin(p), ptr_end(p)); }
+
+	struct Random_access_iterator
+	{
+		Random_access_iterator(const entry *i, const entry *end) :
+			i(i),
+			end(end),
+			key_(i ? i->key : 0)
+		{ }
+		void operator++()
+		{
+			++i;
+		}
+		Loc operator*() const
+		{
+			return (Loc)i->value;
+		}
+		bool good() const
+		{
+			return i < end && i->key == key_;
+		}
+		unsigned key() const
+		{
+			return key_;
+		}
+		const entry *i, *end;
+		unsigned key_;
+	};
+
+	size_t iterator_offset(const const_iterator &i, unsigned p) const
+	{
+		return i.i - cptr_begin(p);
+	}
+
+	Random_access_iterator random_access(unsigned p, size_t offset) const
+	{
+		return Random_access_iterator(cptr_begin(p) + offset, cptr_end(p));
+	}
 
 private:
 
@@ -216,6 +256,8 @@ private:
 
 	struct Limits : vector<size_t>
 	{
+		Limits()
+		{}
 		Limits(const shape_histogram &hst, const seedp_range &range)
 		{
 			task_timer timer ("Computing limits", 3);
@@ -229,7 +271,7 @@ private:
 		}
 	};
 
-	const Limits limits_;
+	Limits limits_;
 	entry *data_;
 
 };

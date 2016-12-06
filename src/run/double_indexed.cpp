@@ -1,5 +1,5 @@
 /****
-Copyright (c) 2014-2016, University of Tuebingen, Benjamin Buchfink
+Copyright (c) 2016, Benjamin Buchfink
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
@@ -15,9 +15,6 @@ PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CON
 LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ****/
-
-#ifndef MASTER_THREAD_H_
-#define MASTER_THREAD_H_
 
 #include <iostream>
 #include <limits>
@@ -39,20 +36,20 @@ using std::cout;
 
 struct Search_context
 {
-	Search_context(unsigned sid, const sorted_list &ref_idx, const sorted_list &query_idx):
-		sid (sid),
-		ref_idx (ref_idx),
-		query_idx (query_idx)
+	Search_context(unsigned sid, const sorted_list &ref_idx, const sorted_list &query_idx) :
+		sid(sid),
+		ref_idx(ref_idx),
+		query_idx(query_idx)
 	{ }
 	void operator()(unsigned thread_id, unsigned seedp) const
 	{
 		Statistics stat;
 		align_partition(seedp,
-				stat,
-				sid,
-				ref_idx.get_partition_cbegin(seedp),
-				query_idx.get_partition_cbegin(seedp),
-				thread_id);
+			stat,
+			sid,
+			ref_idx.get_partition_cbegin(seedp),
+			query_idx.get_partition_cbegin(seedp),
+			thread_id);
 		statistics += stat;
 	}
 	const unsigned sid;
@@ -61,28 +58,28 @@ struct Search_context
 };
 
 void process_shape(unsigned sid,
-		Timer &timer_mapping,
-		unsigned query_chunk,
-		char *query_buffer,
-		char *ref_buffer)
+	Timer &timer_mapping,
+	unsigned query_chunk,
+	char *query_buffer,
+	char *ref_buffer)
 {
 	using std::vector;
 
-	::partition<unsigned> p (Const::seedp, config.lowmem);
-	for(unsigned chunk=0;chunk < p.parts; ++chunk) {
+	::partition<unsigned> p(Const::seedp, config.lowmem);
+	for (unsigned chunk = 0; chunk < p.parts; ++chunk) {
 
 		message_stream << "Processing query chunk " << query_chunk << ", reference chunk " << current_ref_block << ", shape " << sid << ", index chunk " << chunk << '.' << endl;
-		const seedp_range range (p.getMin(chunk), p.getMax(chunk));
+		const seedp_range range(p.getMin(chunk), p.getMax(chunk));
 		current_range = range;
 
-		task_timer timer ("Building reference index", true);
+		task_timer timer("Building reference index", true);
 		sorted_list ref_idx(ref_buffer,
 			*ref_seqs::data_,
 			shapes[sid],
 			ref_hst.get(sid),
 			range,
 			ref_hst.partition());
-		
+
 		timer.go("Building query index");
 		timer_mapping.resume();
 		sorted_list query_idx(query_buffer,
@@ -96,7 +93,7 @@ void process_shape(unsigned sid,
 		frequent_seeds.build(sid, range, ref_idx, query_idx);
 
 		timer.go("Searching alignments");
-		Search_context context (sid, ref_idx, query_idx);
+		Search_context context(sid, ref_idx, query_idx);
 #ifdef SIMPLE_SEARCH
 		launch_scheduled_thread_pool(context, Const::seedp, config.threads_);
 #else
@@ -107,18 +104,18 @@ void process_shape(unsigned sid,
 }
 
 void run_ref_chunk(Database_file &db_file,
-		Timer &timer_mapping,
-		Timer &total_timer,
-		unsigned query_chunk,
-		pair<size_t,size_t> query_len_bounds,
-		char *query_buffer,
-		Output_stream &master_out,
-		vector<Temp_file> &tmp_file)
+	Timer &timer_mapping,
+	Timer &total_timer,
+	unsigned query_chunk,
+	pair<size_t, size_t> query_len_bounds,
+	char *query_buffer,
+	Output_stream &master_out,
+	vector<Temp_file> &tmp_file)
 {
 	task_timer timer("Building reference histograms");
 	const pair<size_t, size_t> len_bounds = ref_seqs::data_->len_bounds(shapes[0].length_);
 	ref_hst = Partitioned_histogram(*ref_seqs::data_, (unsigned)len_bounds.second);
-	
+
 	setup_search_params(query_len_bounds, ref_seqs::data_->letters());
 	ref_map.init((unsigned)ref_seqs::get().get_length());
 
@@ -127,13 +124,13 @@ void run_ref_chunk(Database_file &db_file,
 
 	timer.go("Initializing temporary storage");
 	timer_mapping.resume();
-	Trace_pt_buffer::instance = new Trace_pt_buffer (query_seqs::data_->get_length()/align_mode.query_contexts,
-			config.tmpdir,
-			config.mem_buffered());
+	Trace_pt_buffer::instance = new Trace_pt_buffer(query_seqs::data_->get_length() / align_mode.query_contexts,
+		config.tmpdir,
+		config.mem_buffered());
 	timer.finish();
 	timer_mapping.stop();
 
-	for(unsigned i=0;i<shapes.count();++i)
+	for (unsigned i = 0; i<shapes.count(); ++i)
 		process_shape(i, timer_mapping, query_chunk, query_buffer, ref_buffer);
 
 	/*timer.go("Closing temporary storage");
@@ -144,10 +141,10 @@ void run_ref_chunk(Database_file &db_file,
 
 	timer_mapping.resume();
 	Output_stream* out;
-	if(blocked_processing) {
-		timer.go ("Opening temporary output file");
-		tmp_file.push_back(Temp_file ());
-		out = new Output_stream (tmp_file.back());
+	if (blocked_processing) {
+		timer.go("Opening temporary output file");
+		tmp_file.push_back(Temp_file());
+		out = new Output_stream(tmp_file.back());
 	}
 	else
 		out = &master_out;
@@ -156,7 +153,7 @@ void run_ref_chunk(Database_file &db_file,
 	align_queries(*Trace_pt_buffer::instance, out);
 	delete Trace_pt_buffer::instance;
 
-	if(blocked_processing) {
+	if (blocked_processing) {
 		Intermediate_record::finish_file(*out);
 		delete out;
 	}
@@ -169,14 +166,14 @@ void run_ref_chunk(Database_file &db_file,
 }
 
 void run_query_chunk(Database_file &db_file,
-		Timer &timer_mapping,
-		Timer &total_timer,
-		unsigned query_chunk,
-		pair<size_t,size_t> query_len_bounds,
-		Output_stream &master_out,
+	Timer &timer_mapping,
+	Timer &total_timer,
+	unsigned query_chunk,
+	pair<size_t, size_t> query_len_bounds,
+	Output_stream &master_out,
 	Output_stream *unaligned_file)
 {
-	task_timer timer ("Allocating buffers", true);
+	task_timer timer("Allocating buffers", true);
 	char *query_buffer = sorted_list::alloc_buffer(query_hst);
 	vector<Temp_file> tmp_file;
 	query_aligned.clear();
@@ -191,7 +188,7 @@ void run_query_chunk(Database_file &db_file,
 	timer_mapping.resume();
 	delete[] query_buffer;
 
-	if(blocked_processing) {
+	if (blocked_processing) {
 		timer.go("Joining output blocks");
 		join_blocks(current_ref_block, master_out, tmp_file);
 	}
@@ -210,18 +207,18 @@ void run_query_chunk(Database_file &db_file,
 
 void master_thread(Database_file &db_file, Timer &timer_mapping, Timer &total_timer)
 {
-	task_timer timer ("Opening the input file", true);
+	task_timer timer("Opening the input file", true);
 	timer_mapping.start();
-	auto_ptr<Input_stream> query_file (Compressed_istream::auto_detect(config.query_file));
-	const Sequence_file_format *format_n (guess_format(*query_file));
-	
-	current_query_chunk=0;
+	auto_ptr<Input_stream> query_file(Compressed_istream::auto_detect(config.query_file));
+	const Sequence_file_format *format_n(guess_format(*query_file));
+
+	current_query_chunk = 0;
 
 	timer.go("Opening the output file");
 	auto_ptr<Output_stream> master_out(config.compression == 1
 		? new Compressed_ostream(config.output_file)
 		: new Output_stream(config.output_file));
-	if(*output_format == Output_format::daa)
+	if (*output_format == Output_format::daa)
 		init_daa(*master_out);
 	auto_ptr<Output_stream> unaligned_file;
 	if (!config.unaligned.empty())
@@ -229,12 +226,12 @@ void master_thread(Database_file &db_file, Timer &timer_mapping, Timer &total_ti
 	timer_mapping.stop();
 	timer.finish();
 
-	for(;;++current_query_chunk) {
-		task_timer timer ("Loading query sequences", true);
+	for (;; ++current_query_chunk) {
+		task_timer timer("Loading query sequences", true);
 		timer_mapping.resume();
 		size_t n_query_seqs;
 		n_query_seqs = load_seqs(*query_file, *format_n, &query_seqs::data_, query_ids::data_, query_source_seqs::data_, (size_t)(config.chunk_size * 1e9));
-		if(n_query_seqs == 0)
+		if (n_query_seqs == 0)
 			break;
 		timer.finish();
 		query_seqs::data_->print_stats();
@@ -243,14 +240,14 @@ void master_thread(Database_file &db_file, Timer &timer_mapping, Timer &total_ti
 			output_format->print_header(*master_out, align_mode.mode, config.matrix.c_str(), config.gap_open, config.gap_extend, config.max_evalue, query_ids::get()[0].c_str(),
 				unsigned(align_mode.query_translated ? query_source_seqs::get()[0].length() : query_seqs::get()[0].length()));
 
-		if(align_mode.sequence_type == amino_acid && config.seg == "yes") {
+		if (align_mode.sequence_type == amino_acid && config.seg == "yes") {
 			timer.go("Running complexity filter");
 			Complexity_filter::get().run(*query_seqs::data_);
 		}
 
 		timer.go("Building query histograms");
 		const pair<size_t, size_t> query_len_bounds = query_seqs::data_->len_bounds(shapes[0].length_);
-		query_hst = Partitioned_histogram(*query_seqs::data_, (unsigned)query_len_bounds.second);		
+		query_hst = Partitioned_histogram(*query_seqs::data_, (unsigned)query_len_bounds.second);
 		timer_mapping.stop();
 		timer.finish();
 		//const bool long_addressing_query = query_seqs::data_->raw_len() > (size_t)std::numeric_limits<uint32_t>::max();
@@ -260,7 +257,7 @@ void master_thread(Database_file &db_file, Timer &timer_mapping, Timer &total_ti
 
 	timer.go("Closing the input file");
 	query_file->close();
-	
+
 	timer.go("Closing the output file");
 	timer_mapping.resume();
 	if (*output_format == Output_format::daa)
@@ -281,7 +278,7 @@ void master_thread(Database_file &db_file, Timer &timer_mapping, Timer &total_ti
 	statistics.print();
 }
 
-void master_thread()
+void master_thread_di()
 {
 	Timer timer2, timer_mapping;
 	timer2.start();
@@ -291,7 +288,7 @@ void master_thread()
 
 	message_stream << "Temporary directory: " << Temp_file::get_temp_dir() << endl;
 
-	task_timer timer ("Opening the database", 1);
+	task_timer timer("Opening the database", 1);
 	Database_file db_file;
 	timer.finish();
 	verbose_stream << "Reference = " << config.database << endl;
@@ -302,5 +299,3 @@ void master_thread()
 
 	master_thread(db_file, timer_mapping, timer2);
 }
-
-#endif /* MASTER_THREAD_H_ */

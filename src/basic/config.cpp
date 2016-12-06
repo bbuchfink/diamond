@@ -30,6 +30,7 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #include "../basic/match.h"
 #include "../data/sorted_list.h"
 #include "../basic/translate.h"
+#include "../align/align.h"
 
 Config config;
 
@@ -48,7 +49,10 @@ Config::Config(int argc, const char **argv)
 		.add_command("compare", "")
 		.add_command("sort", "")
 		.add_command("roc", "")
-		.add_command("dbstat", "");
+		.add_command("dbstat", "")
+		.add_command("modelsim", "")
+		.add_command("match-file-stat", "")
+		.add_command("model-seqs", "");
 
 	Options_group general ("General options");
 	general.add()
@@ -180,7 +184,10 @@ Config::Config(int argc, const char **argv)
 		("space-penalty", 0, "", space_penalty, 4.9)
 		("min-diag-score", 0, "", min_diag_score, 10.5)
 		("reverse", 0, "", reverse)
-		("comp-based-stats", 0, "", comp_based_stats);
+		("comp-based-stats", 0, "", comp_based_stats)
+		("neighborhood-score", 0, "", neighborhood_score)
+		("algo", 0, "", algo, 0u)
+		("seed-weight", 'w', "", seed_weight, 7u);
 
 	parser.add(general).add(makedb).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options);
 	parser.store(argc, argv, command);
@@ -273,7 +280,7 @@ Config::Config(int argc, const char **argv)
 		;
 	}	
 
-	if (command == Config::blastp || command == Config::blastx || command == Config::benchmark) {
+	if (command == Config::blastp || command == Config::blastx || command == Config::benchmark || command == Config::model_sim) {
 		if (tmpdir == "")
 			tmpdir = extract_dir(output_file);
 		if (gap_open == -1)
@@ -292,6 +299,7 @@ Config::Config(int argc, const char **argv)
 		min_diag_raw_score = score_matrix.rawscore(min_diag_score);
 		raw_space_penalty = score_matrix.rawscore(space_penalty, double());
 		log_stream << "Min_diag_score=" << min_diag_raw_score << " space_penalty=" << raw_space_penalty << endl;
+		init_cbs();
 
 		if (seg == "" && command == blastx)
 			seg = "yes";

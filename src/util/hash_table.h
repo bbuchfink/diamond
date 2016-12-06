@@ -38,8 +38,10 @@ struct hash_table_overflow_exception : public std::exception
 
 template<typename T, T value> struct value_compare
 {
-	bool operator()(T x) const
-	{ return x == value; }
+bool operator()(T x) const
+{
+	return x == value;
+}
 };
 
 template<typename _K, typename _V, typename _E, typename _H> class hash_table
@@ -53,18 +55,22 @@ public:
 		_V	value;
 	}; // __attribute__((packed));
 
-	hash_table(size_t size):
-		table (new entry[size]),
-		size_ (size)
-	{ memset(table, 0, size_ * sizeof(entry)); }
+	hash_table(size_t size) :
+		table(new entry[size]),
+		size_(size)
+	{
+		memset(table, 0, size_ * sizeof(entry));
+	}
 
 	~hash_table()
-	{ delete[] table; }
+	{
+		delete[] table;
+	}
 
 	entry* operator[](_K key) const
 	{
 		entry *entry = get_entry(key);
-		if(_E()(entry->value))
+		if (_E()(entry->value))
 			return NULL;
 		return entry;
 	}
@@ -72,7 +78,7 @@ public:
 	void insert(_K key, _V value)
 	{
 		entry *entry = get_entry(key);
-		if(_E()(entry->value))
+		if (_E()(entry->value))
 			entry->key = key;
 		entry->value = value;
 	}
@@ -84,9 +90,9 @@ public:
 
 	size_t count() const
 	{
-		size_t n (0);
-		for(size_t i=0;i<size_;++i)
-			if(!_E()(table[i].value))
+		size_t n(0);
+		for (size_t i = 0; i < size_; ++i)
+			if (!_E()(table[i].value))
 				++n;
 		return n;
 	}
@@ -97,10 +103,10 @@ private:
 	{
 		entry *p = &table[_H()(key) % size_];
 		bool wrapped = false;
-		while(p->key != key && !_E()(p->value)) {
+		while (p->key != key && !_E()(p->value)) {
 			++p;
-			if(p == &table[size_]) {
-				if(wrapped)
+			if (p == &table[size_]) {
+				if (wrapped)
 					throw hash_table_overflow_exception();
 				p = &table[0];
 				wrapped = true;
@@ -132,6 +138,13 @@ public:
 	PHash_table(size_t size) :
 		table(new entry[size]),
 		size_(size)
+	{
+		memset(table.get(), 0, size_ * sizeof(entry));
+	}
+
+	PHash_table(size_t size, double factor) :
+		size_(std::max(size_t((double)size * factor), (size_t)1llu)),
+		table(new entry[size_])
 	{
 		memset(table.get(), 0, size_ * sizeof(entry));
 	}
@@ -190,8 +203,8 @@ private:
 		return p;
 	}
 
-	auto_ptr<entry> table;
 	size_t size_;
+	auto_ptr<entry> table;	
 
 };
 

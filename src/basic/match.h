@@ -176,6 +176,13 @@ struct Hsp_data
 		{
 			return ptr_->op();
 		}
+		bool to_next_match()
+		{
+			do {
+				this->operator++();
+			} while (good() && (op() == op_deletion || op() == op_insertion));
+			return good();
+		}
 		unsigned query_pos, subject_pos;
 	protected:
 		const Packed_operation *ptr_;

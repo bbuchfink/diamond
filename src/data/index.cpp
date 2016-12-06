@@ -21,82 +21,65 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #include "queries.h"
 #include "../util/log_stream.h"
 
-const double Seed_double_index::hash_table_factor = 2;
-Seed_double_index seed_index[Const::max_shapes];
+const double Seed_index::hash_table_factor = 1.3;
+Seed_index seed_index;
 
-Seed_double_index::Seed_double_index(size_t psize)
+Seed_index::Seed_index(const Partitioned_histogram &hst, const Sequence_set &seqs):
+	list_buffer(sorted_list::alloc_buffer(hst)),
+	list(list_buffer.get(), seqs, shapes[0], hst.get(0), seedp_range::all(), hst.partition())
 {
-	for (unsigned p = 0; p < Hashed_seed::p; ++p)
-		assign_ptr(tables[p], new PHash_table<Entry>(std::max(size_t((double)psize * hash_table_factor), (size_t)1llu)));
-}
-
-Seed_double_index::Seed_double_index(const Array<unsigned, Hashed_seed::p> &psize)
-{
-	for (unsigned p = 0; p < Hashed_seed::p; ++p)
-		assign_ptr(tables[p], new PHash_table<Entry>(std::max(size_t((double)psize[p] * hash_table_factor), (size_t)1llu)));
-}
-
-struct Seed_entry
-{
-	Seed_entry()
-	{}
-	Seed_entry(Hashed_seed seed, size_t pos) :
-		seed(seed)
-	{}
-	Hashed_seed seed;
-};
-
-struct Count_query_callback
-{
-	void operator()(unsigned shape_id, const Seed_entry& seed) const
-	{
-		PHash_table<Seed_double_index::Entry>::entry *e = seed_index[shape_id].tables[seed.seed.partition()].insert(seed.seed.offset());
-		++e->value.q;
-	}
-};
-
-struct Access
-{
-	void operator()(Hashed_seed seed, size_t pos, unsigned shape_id)
-	{
-		PHash_table<Seed_double_index::Entry>::entry *e = seed_index[shape_id].tables[seed.partition()][seed.offset()];
-		if (e)
-			++n;
-	}
-	void finish()
-	{}
-	unsigned n;
-};
-
-void build_query_index()
-{
-	static const size_t count_exact_limit = 10000000llu;
-
-	const Sequence_set& seqs = query_seqs::get();
-
-	task_timer timer("Counting query seeds", 2);
-	vector<Array<unsigned, Hashed_seed::p> > exact_counts;
-	vector<size_t> apxt_counts;
-	const bool exact = seqs.letters() < count_exact_limit;
-	if (exact) {
-		exact_counts = count_exact(seqs);
-		timer.finish();
-		verbose_stream << "Seeds = " << std::accumulate(exact_counts[0].begin(), exact_counts[0].end(), 0) << endl;
-	}
-	else {
-		apxt_counts = count_approximate(seqs);
-		timer.finish();
-		verbose_stream << "Seeds = " << apxt_counts[0] << endl;
-	}
+	task_timer timer("Counting seeds", 3);
+	Thread_pool threads;
+	vector<size_t> counts(Const::seedp);
+	Atomic<unsigned> seedp(0);
+	for (unsigned i = 0; i < config.threads_; ++i)
+		threads.push_back(launch_thread(count_seeds, &seedp, &counts, &list));
+	threads.join_all();
 
 	timer.go("Allocating hash tables");
-	for (unsigned shape_id = shape_from; shape_id < shape_to; ++shape_id)
-		assign_ptr(seed_index[shape_id], exact ? new Seed_double_index(exact_counts[shape_id - shape_from]) : new Seed_double_index(apxt_counts[shape_id - shape_from] / Hashed_seed::p));
+	for (unsigned p = 0; p < Hashed_seed::p; ++p)
+		assign_ptr(tables[p], new PHash_table<Entry>(counts[p], hash_table_factor));
+	
+	timer.go("Filling hash tables");
+	seedp = 0;
+	for (unsigned i = 0; i < config.threads_; ++i)
+		threads.push_back(launch_thread(fill_tables, &seedp, this));
+	threads.join_all();
+}
 
-	timer.go("Building hash table");
-	seqs.enum_seeds_partitioned<Count_query_callback, Seed_entry>();
+void Seed_index::count_seeds(Atomic<unsigned> *seedp, vector<size_t> *counts, sorted_list *list)
+{
+	unsigned p;
+	while ((p = (*seedp)++) < Const::seedp) {
+		sorted_list::const_iterator i = list->get_partition_cbegin(p);
+		size_t n = 0;
+		while (!i.at_end()) {
+			++n;
+			++i;
+		}
+		(*counts)[p] = n;
+	}
+}
 
-	timer.go("test");
-	vector<Access> v(config.threads_);
-	seqs.enum_seeds(v);
+void Seed_index::fill_tables(Atomic<unsigned> *seedp, Seed_index *idx)
+{
+	unsigned p;
+	while ((p = (*seedp)++) < Const::seedp) {
+		sorted_list::const_iterator i = idx->list.get_partition_cbegin(p);
+		while (!i.at_end()) {
+			PHash_table<Entry>::entry *e = idx->tables[p].insert(murmur_hash()(i.key()));
+			e->value.n = (unsigned)idx->list.iterator_offset(i, p);
+			++i;
+		}
+	}
+}
+
+void build_index(const Sequence_set &seqs)
+{
+	task_timer timer("Building histograms", 3);
+	const pair<size_t, size_t> len_bounds = seqs.len_bounds(shapes[0].length_);
+	const Partitioned_histogram hst(seqs, (unsigned)len_bounds.second);
+	timer.finish();
+
+	assign_ptr(seed_index, new Seed_index(hst, seqs));
 }

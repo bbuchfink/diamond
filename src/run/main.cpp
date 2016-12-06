@@ -21,7 +21,6 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #include "../basic/const.h"
 #include "../util/log_stream.h"
 #include "../data/reference.h"
-#include "../run/master_thread.h"
 #include "../output/view.h"
 #include "tools.h"
 #include "../extra/compare.h"
@@ -42,6 +41,8 @@ using std::cerr;
 using std::endl;
 
 void run_mapper();
+void master_thread_di();
+void model_seqs();
 
 int main(int ac, const char* av[])
 {
@@ -61,10 +62,10 @@ int main(int ac, const char* av[])
 			break;
 		case Config::blastp:
 		case Config::blastx:
-			if (config.ht_mode)
+			if (config.algo == Config::subject_indexed)
 				run_mapper();
 			else
-				master_thread();
+				master_thread_di();
 			break;
 		case Config::view:
         	view();
@@ -89,6 +90,15 @@ int main(int ac, const char* av[])
 			break;
 		case Config::db_stat:
 			db_stat();
+			break;
+		case Config::model_sim:
+			model_sim();
+			break;
+		case Config::match_file_stat:
+			match_file_stat();
+			break;
+		case Config::model_seqs:
+			model_seqs();
 			break;
 		#ifdef EXTRA
         else if (command == "stat" && vm.count("match1"))

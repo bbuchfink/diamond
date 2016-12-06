@@ -25,51 +25,54 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #include "../data/load_seqs.h"
 #include "../data/index.h"
 
+void search_query_worker(Atomic<unsigned> *next);
+
+void run_query_chunk(Output_stream &master_out)
+{
+	task_timer timer("Computing alignments");
+	Thread_pool threads;
+	Atomic<unsigned> query (0);
+	for (unsigned i = 0; i < config.threads_; ++i)
+		threads.push_back(launch_thread(search_query_worker, &query));
+	threads.join_all();
+}
+
+void run_ref_chunk(Input_stream &query_file, const Sequence_file_format &input_format, Output_stream &master_out)
+{	
+	task_timer timer("Building database index");
+	shape_from = 0;
+	shape_to = 1;
+	build_index(ref_seqs::get());
+	timer.finish();
+
+	for (current_query_chunk = 0;; ++current_query_chunk) {
+		task_timer timer("Loading query sequences", true);
+		size_t n_query_seqs;
+		n_query_seqs = load_seqs(query_file, input_format, &query_seqs::data_, query_ids::data_, query_source_seqs::data_, (size_t)(config.chunk_size * 1e9));
+		if (n_query_seqs == 0)
+			break;
+		timer.finish();
+		query_seqs::data_->print_stats();
+		run_query_chunk(master_out);
+	}
+}
+
 void run_mapper(Database_file &db_file, Timer &total_timer)
 {
-/*	task_timer timer("Opening the input file", true);
-	const Sequence_file_format *format_n(guess_format(config.query_file));
-	Compressed_istream query_file(config.query_file);
-	current_query_chunk = 0;
+	task_timer timer("Opening the input file", true);
+	auto_ptr<Input_stream> query_file(Compressed_istream::auto_detect(config.query_file));
+	const Sequence_file_format *format_n(guess_format(*query_file));
 
 	timer.go("Opening the output file");
 	auto_ptr<Output_stream> master_out(config.compression == 1
 		? new Compressed_ostream(config.output_file)
 		: new Output_stream(config.output_file));
-	if (*output_format == Output_format::daa)
-		init_daa(*master_out);
 	timer.finish();
 
-	for (;; ++current_query_chunk) {
-		task_timer timer("Loading query sequences", true);
-		size_t n_query_seqs;
-		n_query_seqs = load_seqs(query_file, *format_n, &query_seqs::data_, query_ids::data_, query_source_seqs::data_, (size_t)(config.chunk_size * 1e9));
-		if (n_query_seqs == 0)
-			break;
-		timer.finish();
-		query_seqs::data_->print_stats();
-
-		if (current_query_chunk == 0 && *output_format != Output_format::daa)
-			output_format->print_header(*master_out, align_mode.mode, config.matrix.c_str(), config.gap_open, config.gap_extend, config.max_evalue, query_ids::get()[0].c_str(),
-				unsigned(align_mode.query_translated ? query_source_seqs::get()[0].length() : query_seqs::get()[0].length()));
-
-		if (align_mode.sequence_type == amino_acid && config.seg == "yes") {
-			timer.go("Running complexity filter");
-			Complexity_filter::get().run(*query_seqs::data_);
-		}
-
-		timer.go("Building query index");
-		shape_from = 0;
-		shape_to = 1;
-		build_query_index();
-		
-	}
+	for (current_ref_block = 0; db_file.load_seqs(); ++current_ref_block)
+		run_ref_chunk(*query_file, *format_n, *master_out);
 
 	timer.go("Closing the output file");
-	if (*output_format == Output_format::daa)
-		finish_daa(*master_out);
-	else
-		output_format->print_footer(*master_out);
 	master_out->close();
 	
 	timer.go("Closing the database file");
@@ -77,13 +80,15 @@ void run_mapper(Database_file &db_file, Timer &total_timer)
 
 	timer.finish();
 	message_stream << "Total wall clock time: " << total_timer.getElapsedTimeInSec() << "s" << endl;
-	statistics.print();*/
+	statistics.print();
 }
 
 void run_mapper()
 {
 	Timer timer2;
 	timer2.start();
+
+	Reduction::reduction = Reduction("K R E D Q N C G H M F Y I L V W P S T A");
 
 	align_mode = Align_mode(Align_mode::from_command(config.command));
 	output_format = auto_ptr<Output_format>(get_output_format());

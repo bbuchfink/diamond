@@ -92,6 +92,33 @@ public:
 	{
 		currentQuery[0] = 0;
 		currentSubject[0] = 0;
+		memset(subst_p, 0, sizeof(subst_p));
+		memset(subst_n, 0, sizeof(subst_n));
+	}
+
+	void set_subst(const char* q, const char *s)
+	{
+		while (*q) {
+			if (*q != '-' && *s != '-' && *q != *s) {
+				const Letter lq = value_traits.from_char(*q), ls = value_traits.from_char(*s);
+				if (lq < 20 && ls < 20 && lq != ls) {
+					++subst_p[lq][ls];
+					++subst_n[lq];
+				}
+			}
+			++q;
+			++s;
+		}
+	}
+
+	void get_subst() const
+	{
+		for (unsigned i = 0; i < 20; ++i) {
+			cout << "{";
+			for (unsigned j = 0; j < 20; ++j)
+				cout << (double)subst_p[i][j] / subst_n[i] << ',';
+			cout << "}," << endl;
+		}
 	}
 
 	bool get(blast_match &record, const blast_format&)
@@ -99,7 +126,7 @@ public:
 
 		enum State { begin = 0, end = 1, queryStart = 2, subjectStart = 3, matchStart = 4, queryLine = 5, subjectLine = 6, separator = 7, between = 8, haveid = 9 } state = begin;
 		unsigned expect_i, id1, id2;
-//		char queryl[128], subjectl[128];
+		char queryl[128], subjectl[128];
 		Letter queryseq[4096], subjectseq[4096];
 		Letter *q = queryseq, *s = subjectseq;
 		unsigned match_mask = 0, current_len = 0;
@@ -153,14 +180,15 @@ public:
 			} else if(!strncmp(line.c_str(), "Query", 5)) {
 				if(state == haveid || state == separator) {
 					state = queryLine;
-					//alline(buffer, queryl);
+					alline(line.c_str(), queryl);
 				} else
 					throw file_parse_exception(this->line_count);
 			} else if(!strncmp(line.c_str(), "Sbjct", 5)) {
 				if(state == between) {
 					state = subjectLine;
-					/*alline(buffer, subjectl);
-					if(strlen(subjectl) != strlen(queryl))
+					alline(line.c_str(), subjectl);
+					set_subst(queryl, subjectl);
+					/*if(strlen(subjectl) != strlen(queryl))
 						throw file_parse_exception(lineNumber);*/
 					//get_match(match_mask, queryl, subjectl, record.hit, record.len, record.rid, current_len, record.ungapped_len, q, s, record.stop);
 				} else
@@ -301,6 +329,8 @@ protected:
 	unsigned currentQueryCount, queryCount, matchCount;
 	char currentQuery[nameBufferSize], currentSubject[nameBufferSize];
 	blast_match save;
+	size_t subst_p[20][20];
+	size_t subst_n[20];
 
 };
 

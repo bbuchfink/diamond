@@ -22,6 +22,9 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #include <stdint.h>
 #include "const.h"
 #include "../util/hash_function.h"
+#include "config.h"
+#include "value.h"
+#include "score_matrix.h"
 
 typedef uint64_t Packed_seed;
 
@@ -55,9 +58,43 @@ struct Hashed_seed
 		return hash;
 	}
 	enum {
-		p_bits = 8, p = 1 << p_bits
+		p_bits = 10, p = 1 << p_bits
 	};
 	uint64_t hash;
+};
+
+struct Seed
+{
+	Letter& operator[](unsigned i)
+	{
+		return data_[i];
+	}
+	friend std::ostream& operator<<(std::ostream &str, const Seed &s)
+	{
+		for (unsigned i = 0; i < config.seed_weight; ++i)
+			str << value_traits.alphabet[s.data_[i]];
+		return str;
+	}
+	int score(const Seed &rhs) const
+	{
+		int s = 0;
+		for (unsigned i = 0; i < config.seed_weight; ++i)
+			s += score_matrix(data_[i], rhs.data_[i]);
+		return s;
+	}
+	uint64_t packed() const
+	{
+		uint64_t s = 0;
+		for (unsigned i = 0; i < config.seed_weight; ++i) {
+			s *= 20;
+			s += data_[i];			
+		}
+		return s;
+	}
+	void enum_neighborhood(int treshold, vector<Seed> &out);
+private:
+	void enum_neighborhood(unsigned pos, int treshold, vector<Seed>& out, int score);
+	Letter data_[Const::max_seed_weight];
 };
 
 #endif /* SEED_H_ */

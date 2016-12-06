@@ -84,7 +84,7 @@ struct Reduction
 			dst[i] = reduction(seq[i]);
 	}
 
-	static const Reduction reduction;
+	static Reduction reduction;
 
 private:
 

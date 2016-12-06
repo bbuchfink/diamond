@@ -35,6 +35,11 @@ struct Atomic
 	Atomic(const _t &v):
 		v_ (v)
 	{ }
+	Atomic& operator=(const _t &v)
+	{
+		v_ = v;
+		return *this;
+	}
 	volatile _t operator++(int)
 	{
 		mtx_.lock();
@@ -144,6 +149,34 @@ thread* launch_thread(_f f, _t1 p1)
 	return new thread(thread_worker<_f, _t1>, new Thread_p1<_f, _t1>(f, p1));
 }
 
+template<typename _f, typename _t1, typename _t2>
+struct Thread_p2
+{
+	Thread_p2(_f f, _t1 p1, _t2 p2) :
+		f(f),
+		p1(p1),
+		p2(p2)
+	{ }
+	_f f;
+	_t1 p1;
+	_t2 p2;
+};
+
+template<typename _f, typename _t1, typename _t2>
+void thread_worker(void *p)
+{
+	Thread_p2<_f, _t1, _t2> *q = (Thread_p2<_f, _t1, _t2>*)p;
+	q->f(q->p1, q->p2);
+	delete q;
+	TLS::clear();
+}
+
+template<typename _f, typename _t1, typename _t2>
+thread* launch_thread(_f f, _t1 p1, _t2 p2)
+{
+	return new thread(thread_worker<_f, _t1, _t2>, new Thread_p2<_f, _t1, _t2>(f, p1, p2));
+}
+
 template<typename _f, typename _t1, typename _t2, typename _t3>
 struct Thread_p3
 {
@@ -247,6 +280,7 @@ struct Thread_pool : public vector<thread*>
 			(*i)->join();
 			delete *i;
 		}
+		clear();
 	}
 };
 

@@ -26,6 +26,8 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 
 #ifdef __SSE2__
 
+// #define NO_COLLISION_FILTER
+
 void search_query_offset(Loc q,
 	const sorted_list::const_iterator &s,
 	vector<Stage1_hit>::const_iterator hits,

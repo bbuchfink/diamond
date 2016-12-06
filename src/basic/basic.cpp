@@ -72,7 +72,11 @@ unsigned Align_mode::from_command(unsigned command)
 
 Align_mode align_mode (Align_mode::blastp);
 
-const Reduction Reduction::reduction("KREDQN C G H M F Y ILV W P STA");
+Reduction Reduction::reduction("KREDQN C G H M F Y ILV W P STA");
+//const Reduction Reduction::reduction("A KR EDNQ C G H ILVM FYW P ST"); // murphy.10
+//const Reduction Reduction::reduction("G D N AEFIKLMQRVW Y H C T S P"); // gmbr.10
+//const Reduction Reduction::reduction("EKQR IV LY F AM W HT C DNS"); // dssp.10
+//const Reduction Reduction::reduction("K R E D Q N C G H M F Y I L V W P S T A");
 
 Statistics statistics;
 
@@ -148,8 +152,25 @@ const char* shape_codes[][Const::max_shapes] = {
 	"10100010000010000001011",
 	"110001000000010001000101"
 
+	},
+	{
+		"101011",		// 16x4
+		"110011",
+	"110000101",
+	"1001000011",
+	"10010000011",
+	"110000010001",
+	"1100000001001",
+	"10001000000101",
+	"10100000100001",
+	"100100000000011",
+	"101000000010001",
+	"1010000001000001",
+	"1000010000001001",
+	"101000000000000011",
+	"100010000000000000101",
+	"1000100000000000100001"
 	}
-
 };
 
 shape_config shapes;
@@ -223,4 +244,27 @@ vector<Letter> sequence::from_string(const char* str)
 	while (*str)
 		seq.push_back(value_traits.from_char(*(str++)));
 	return seq;
+}
+
+void Seed::enum_neighborhood(unsigned pos, int treshold, vector<Seed>& out, int score)
+{
+	Letter l = data_[pos];
+	score -= score_matrix(l, l);
+	for (unsigned i = 0; i < 20; ++i) {
+		int new_score = score + score_matrix(l, i);
+		data_[pos] = i;
+		if (new_score >= treshold) {
+			if (pos < config.seed_weight - 1)
+				enum_neighborhood(pos + 1, treshold, out, new_score);
+			else
+				out.push_back(*this);
+		}
+	}
+	data_[pos] = l;
+}
+
+void Seed::enum_neighborhood(int treshold, vector<Seed>& out)
+{
+	out.clear();
+	enum_neighborhood(0, treshold, out, score(*this));
 }

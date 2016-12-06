@@ -22,16 +22,27 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #include <vector>
 #include "sequence_set.h"
 #include "../util/hash_table.h"
+#include "seed_histogram.h"
+#include "sorted_list.h"
 
 using std::vector;
 
-struct Seed_double_index
+struct Seed_index
 {
 
-	Seed_double_index()
+	Seed_index()
 	{}
-	Seed_double_index(size_t psize);
-	Seed_double_index(const Array<unsigned, Hashed_seed::p> &psize);
+	Seed_index(const Partitioned_histogram &hst, const Sequence_set &seqs);
+
+	sorted_list::Random_access_iterator operator[](uint64_t seed) const
+	{
+		const unsigned p = seed_partition(seed);
+		PHash_table<Entry>::entry *e = tables[p][murmur_hash()(seed_partition_offset(seed))];
+		if (e == 0)
+			return sorted_list::Random_access_iterator(0, 0);
+		else
+			return list.random_access(p, e->value.n);
+	}
 	
 private:
 
@@ -39,24 +50,26 @@ private:
 	
 	struct Entry
 	{
-		uint32_t q;
+		uint32_t n;
 		operator unsigned() const
 		{
-			return q;
+			return n;
 		}
 	};
 
-	PHash_table<Entry> tables[Hashed_seed::p];
+	static void fill_tables(Atomic<unsigned> *seedp, Seed_index *idx);
+	static void count_seeds(Atomic<unsigned> *seedp, vector<size_t> *counts, sorted_list *list);
 
-	friend struct Count_query_callback;
-	friend struct Access;
+	auto_ptr<char> list_buffer;
+	sorted_list list;
+	PHash_table<Entry> tables[Const::seedp];
 
 };
 
-extern Seed_double_index seed_index[Const::max_shapes];
+extern Seed_index seed_index;
 
 vector<Array<unsigned, Hashed_seed::p> > count_exact(const Sequence_set &seqs);
 vector<size_t> count_approximate(const Sequence_set &seqs);
-void build_query_index();
+void build_index(const Sequence_set &seqs);
 
 #endif

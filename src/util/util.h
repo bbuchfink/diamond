@@ -30,7 +30,6 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #include <string>
 #include "simd.h"
 #include "../basic/const.h"
-#include "../basic/seed.h"
 #include "../basic/packed_loc.h"
 
 using std::vector;
@@ -488,6 +487,11 @@ inline unsigned percentage(unsigned x, unsigned y)
 	return x * 100 / y;
 }
 
+inline double percentage(size_t x, size_t y)
+{
+	return x * 100.0 / y;
+}
+
 template<typename _t>
 struct Numeric_vector : public std::vector<_t>
 {
@@ -513,5 +517,18 @@ struct Numeric_vector : public std::vector<_t>
 		return s;
 	}
 };
+
+template<unsigned n>
+inline unsigned get_distribution(const double *p)
+{
+	const double x = (double)rand() / RAND_MAX;
+	double s = 0;
+	for (unsigned i = 0; i < n; ++i) {
+		s += p[i];
+		if (x < s)
+			return i;
+	}
+	return n - 1;
+}
 
 #endif /* UTIL_H_ */

@@ -24,6 +24,7 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #include "../data/queries.h"
 #include "../data/load_seqs.h"
 #include "../data/reference.h"
+#include "../extra/match_file.h"
 
 void get_seq()
 {
@@ -95,4 +96,13 @@ void db_stat()
 		cout << (double)*i / letters << ',';
 	cout << endl;
 
+}
+
+void match_file_stat()
+{
+	match_file file(config.match_file1.c_str());
+	blast_match match;
+	while(file.get(match, blast_format())) {
+	}
+	file.get_subst();
 }
