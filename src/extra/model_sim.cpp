@@ -204,7 +204,7 @@ struct MSS_twohit_window_neighborhood_model
 	bool hit(const Letter *x, const Letter *y, size_t l) const
 	{
 		int last = -2 * window;
-		for (int i = 0; i <= l; ++i) {
+		for (int i = 0; i <= (int)l; ++i) {
 			for (unsigned s = 0; s < shapes.count(); ++s) {
 				if (l - i < shapes[s].length_) continue;
 				if(shapes[s].score(&x[i], &y[i]) >= config.neighborhood_score) {
@@ -342,7 +342,7 @@ void model_seqs()
 {
 	static const unsigned seq_len = 300;
 	static const double id = 0.25;
-	vector<Letter> seq1, seq2;
+	vector<Letter> seq1(seq_len), seq2(seq_len);
 	sequence s1(seq1), s2(seq2);
 	const size_t count = atoi(config.seq_no[0].c_str());
 	std::ofstream out(config.output_file.c_str());
