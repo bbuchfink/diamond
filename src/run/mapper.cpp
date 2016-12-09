@@ -45,6 +45,8 @@ void run_ref_chunk(Input_stream &query_file, const Sequence_file_format &input_f
 	build_index(ref_seqs::get());
 	timer.finish();
 
+	query_file.rewind();
+
 	for (current_query_chunk = 0;; ++current_query_chunk) {
 		task_timer timer("Loading query sequences", true);
 		size_t n_query_seqs;

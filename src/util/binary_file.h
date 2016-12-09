@@ -141,11 +141,22 @@ struct Input_stream
 			throw File_open_exception(file_name);
 	}
 
+	void rewind()
+	{
+		::rewind(f_);
+		line_count = 0;
+		line_buf_used_ = 0;
+		line_buf_end_ = 0;
+		putback_line_ = false;
+		eof_ = false;
+		line.clear();
+	}
+
 	Input_stream(const Output_stream &tmp_file):
 		file_name (tmp_file.file_name_),
 		f_(tmp_file.f_)
 	{
-		rewind(f_);
+		::rewind(f_);
 	}
 
 	void seek(size_t pos)
