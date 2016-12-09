@@ -32,7 +32,7 @@ struct Seed_index
 
 	Seed_index()
 	{}
-	Seed_index(const Partitioned_histogram &hst, const Sequence_set &seqs);
+	Seed_index(const Partitioned_histogram &hst, const Sequence_set &seqs, unsigned sh);
 
 	sorted_list::Random_access_iterator operator[](uint64_t seed) const
 	{
@@ -66,7 +66,7 @@ private:
 
 };
 
-extern Seed_index seed_index;
+extern Seed_index seed_index[Const::max_shapes];
 
 vector<Array<unsigned, Hashed_seed::p> > count_exact(const Sequence_set &seqs);
 vector<size_t> count_approximate(const Sequence_set &seqs);

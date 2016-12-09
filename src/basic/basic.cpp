@@ -73,7 +73,7 @@ unsigned Align_mode::from_command(unsigned command)
 Align_mode align_mode (Align_mode::blastp);
 
 Reduction Reduction::reduction("KREDQN C G H M F Y ILV W P STA");
-//const Reduction Reduction::reduction("A KR EDNQ C G H ILVM FYW P ST"); // murphy.10
+//Reduction Reduction::reduction("A KR EDNQ C G H ILVM FYW P ST"); // murphy.10
 //const Reduction Reduction::reduction("G D N AEFIKLMQRVW Y H C T S P"); // gmbr.10
 //const Reduction Reduction::reduction("EKQR IV LY F AM W HT C DNS"); // dssp.10
 //const Reduction Reduction::reduction("K R E D Q N C G H M F Y I L V W P S T A");

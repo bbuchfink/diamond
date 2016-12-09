@@ -55,6 +55,10 @@ void run_ref_chunk(Input_stream &query_file, const Sequence_file_format &input_f
 		query_seqs::data_->print_stats();
 		run_query_chunk(master_out);
 	}
+
+	timer.go("Deallocating memory");
+	for (unsigned i = 0; i < shapes.count(); ++i)
+		seed_index[i] = Seed_index();
 }
 
 void run_mapper(Database_file &db_file, Timer &total_timer)
@@ -88,7 +92,7 @@ void run_mapper()
 	Timer timer2;
 	timer2.start();
 
-	Reduction::reduction = Reduction("K R E D Q N C G H M F Y I L V W P S T A");
+	Reduction::reduction = Reduction("A KR EDNQ C G H ILVM FYW P ST");
 
 	align_mode = Align_mode(Align_mode::from_command(config.command));
 	output_format = auto_ptr<Output_format>(get_output_format());

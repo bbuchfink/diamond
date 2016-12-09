@@ -22,11 +22,11 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #include "../util/log_stream.h"
 
 const double Seed_index::hash_table_factor = 1.3;
-Seed_index seed_index;
+Seed_index seed_index[Const::max_shapes];
 
-Seed_index::Seed_index(const Partitioned_histogram &hst, const Sequence_set &seqs):
+Seed_index::Seed_index(const Partitioned_histogram &hst, const Sequence_set &seqs, unsigned sid):
 	list_buffer(sorted_list::alloc_buffer(hst)),
-	list(list_buffer.get(), seqs, shapes[0], hst.get(0), seedp_range::all(), hst.partition())
+	list(list_buffer.get(), seqs, shapes[sid], hst.get(sid), seedp_range::all(), hst.partition())
 {
 	task_timer timer("Counting seeds", 3);
 	Thread_pool threads;
@@ -81,5 +81,6 @@ void build_index(const Sequence_set &seqs)
 	const Partitioned_histogram hst(seqs, (unsigned)len_bounds.second);
 	timer.finish();
 
-	assign_ptr(seed_index, new Seed_index(hst, seqs));
+	for (unsigned i = 0; i < shapes.count();++i)
+		assign_ptr(seed_index[i], new Seed_index(hst, seqs, i));
 }

@@ -155,7 +155,7 @@ private:
 		}
 		void push(Packed_seed key, Loc value, const seedp_range &range)
 		{
-			const unsigned p (seed_partition(key));
+			const unsigned p(seed_partition(key));
 			if(range.contains(p)) {
 				assert(n[p] < BUFFER_SIZE);
 				buf[p][n[p]++] = entry (seed_partition_offset(key), value);
@@ -224,8 +224,8 @@ private:
 		for(size_t i=begin;i<end;++i) {
 			const sequence seq = seqs[i];
 			if(seq.length()<sh.length_) continue;
-			for(unsigned j=0;j<seq.length()-sh.length_+1; ++j) {
-				if(sh.set_seed(key, &seq[j]))
+			for (unsigned j = 0; j < seq.length() - sh.length_ + 1; ++j) {
+				if (sh.set_seed(key, &seq[j]))
 					it->push(key, seqs.position(i, j), range);
 			}
 		}

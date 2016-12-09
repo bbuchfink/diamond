@@ -23,18 +23,14 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 void search_query(unsigned query_id, Statistics &stat, vector<Seed> &neighbor_seeds)
 {
 	const sequence query_seq = query_seqs::get()[query_id];
-	const shape &sh = shapes[0];
-	if (query_seq.length() < sh.length_)
-		return;
-	for (unsigned i = 0; i <= query_seq.length() - sh.length_; ++i) {
-		//uint64_t seed;
-		//if (sh.set_seed(seed, &query_seq[i])) {
-		Seed seed;
-		if(sh.set_seed(seed, &query_seq[i])) {
-			seed.enum_neighborhood(config.neighborhood_score, neighbor_seeds);
-			cout << neighbor_seeds.size() << endl;
-			for (vector<Seed>::const_iterator j = neighbor_seeds.begin(); j != neighbor_seeds.end(); ++j) {
-				sorted_list::Random_access_iterator k = seed_index[seed.packed()];
+	for (unsigned sid = 0; sid < shapes.count(); ++sid) {
+		const shape &sh = shapes[sid];
+		if (query_seq.length() < sh.length_)
+			return;
+		for (unsigned i = 0; i <= query_seq.length() - sh.length_; ++i) {
+			uint64_t seed;
+			if (sh.set_seed(seed, &query_seq[i])) {
+				sorted_list::Random_access_iterator k = seed_index[sid][seed];
 				while (k.good()) {
 					stat.inc(Statistics::SEED_HITS);
 					++k;
