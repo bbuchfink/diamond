@@ -58,7 +58,7 @@ void run_ref_chunk(Input_stream &query_file, const Sequence_file_format &input_f
 
 	timer.go("Deallocating memory");
 	for (unsigned i = 0; i < shapes.count(); ++i)
-		seed_index[i] = Seed_index();
+		assign_ptr(seed_index[i], new Seed_index());
 }
 
 void run_mapper(Database_file &db_file, Timer &total_timer)
