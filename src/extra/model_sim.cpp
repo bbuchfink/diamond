@@ -303,7 +303,7 @@ void get_related_seq(const sequence &seq, vector<Letter> &out, double id)
 template<typename _model>
 void model_sim()
 {
-	static const unsigned seq_len = 150;
+	static const unsigned seq_len = 300;
 	static const double id = 0.25;
 	srand((unsigned)time(0));
 
@@ -335,7 +335,8 @@ void model_sim()
 
 void model_sim()
 {
-	model_sim<MSS_twohit_window_neighborhood_model<80> >();
+	Reduction::reduction = Reduction("A KR EDNQ C G H ILVM FYW P ST"); // murphy.10
+	model_sim<MSS_model>();
 }
 
 void model_seqs()

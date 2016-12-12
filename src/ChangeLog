@@ -1,3 +1,6 @@
+[0.8.29]
+- fixed an issue that could cause a crash when using view on incomplete DAA files
+
 [0.8.28]
 - slightly improved sensitivity
 - added support for the BLAST pairwise format (option -f 0)

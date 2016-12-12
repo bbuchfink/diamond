@@ -48,8 +48,12 @@ inline const char* mode_str(int mode)
 
 struct DAA_header2
 {
-	DAA_header2()
-	{ }
+	DAA_header2():
+		diamond_build(Const::build_version)
+	{
+		memset(block_type, 0, sizeof(block_type));
+		memset(block_size, 0, sizeof(block_size));
+	}
 	DAA_header2(uint64_t db_seqs,
 			uint64_t db_letters,
 			int32_t gap_open,
@@ -108,7 +112,7 @@ struct DAA_file
 		f_.read(&h2_, 1);
 
 		if(h2_.block_size[0] == 0)
-			throw std::runtime_error("Invalid DAA file. DIAMOND run probably has not completed successfully.");
+			throw std::runtime_error("Invalid DAA file. DIAMOND run has probably not completed successfully.");
 
 		Config::set_option(config.db_size, h2_.db_letters);
 		align_mode = Align_mode(h2_.mode);
