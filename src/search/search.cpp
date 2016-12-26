@@ -42,7 +42,7 @@ void query_register_search(vector<Finger_print>::const_iterator q,
 {
 	const unsigned q_ref = unsigned(q - ref.q_begin);
 	unsigned s_ref = unsigned(s - ref.s_begin);
-	Finger_print q1 = *(q++), q2 = *(q++), q3 = *(q++), q4 = *(q++), q5=*(q++),q6=*q;
+	Finger_print q1 = *(q++), q2 = *(q++), q3 = *(q++), q4 = *(q++), q5 = *(q++), q6 = *q;
 	const vector<Finger_print>::const_iterator end2 = s_end - (s_end - s) % 4;
 	for (; s < end2; ) {
 		Finger_print s1 = *(s++), s2 = *(s++), s3 = *(s++), s4 = *(s++);

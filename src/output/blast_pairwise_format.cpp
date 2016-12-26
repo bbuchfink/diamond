@@ -64,14 +64,17 @@ void Pairwise_format::print_footer(Output_stream &out) const
 
 }
 
-void Pairwise_format::print_query_epilog(Text_buffer &out) const
+void Pairwise_format::print_query_epilog(Text_buffer &out, bool unaligned) const
 {
 
 }
 
-void Pairwise_format::print_query_intro(size_t query_num, const char *query_name, unsigned query_len, Text_buffer &out) const
+void Pairwise_format::print_query_intro(size_t query_num, const char *query_name, unsigned query_len, Text_buffer &out, bool unaligned) const
 {
 	out << "Query= " << query_name << "\n\nLength=" << query_len << "\n\n";
+	if (unaligned) {
+		out << "\n***** No hits found *****\n\n\n";
+	}
 }
 
 void Pairwise_format::print_header(Output_stream &f, int mode, const char *matrix, int gap_open, int gap_extend, double evalue, const char *first_query_name, unsigned first_query_len) const

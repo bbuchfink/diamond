@@ -1,3 +1,7 @@
+[0.8.30]
+- slightly improved sensitivity
+- added option to report unaligned queries (--unal)
+
 [0.8.29]
 - fixed an issue that could cause a crash when using view on incomplete DAA files
 

@@ -75,13 +75,13 @@ struct View_fetcher
 
 void view_query(DAA_query_record &r, Text_buffer &out, const Output_format &format)
 {
-	format.print_query_intro(r.query_num, r.query_name.c_str(), (unsigned)r.query_len(), out);
+	format.print_query_intro(r.query_num, r.query_name.c_str(), (unsigned)r.query_len(), out, false);
 	for (DAA_query_record::Match_iterator i = r.begin(); i.good(); ++i) {
 		if (i->frame > 2 && config.forwardonly)
 			continue;
 		format.print_match(i->context(), out);
 	}
-	format.print_query_epilog(out);
+	format.print_query_epilog(out, false);
 }
 
 struct View_context

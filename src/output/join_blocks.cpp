@@ -33,6 +33,7 @@ struct Join_fetcher
 			query_ids.push_back(0);
 			files.back().read(&query_ids.back(), 1);
 		}
+		query_last = (unsigned)-1;
 	}
 	static void finish()
 	{
@@ -59,6 +60,8 @@ struct Join_fetcher
 	bool operator()()
 	{
 		query_id = next();
+		unaligned_from = query_last + 1;
+		query_last = query_id;
 		for (unsigned i = 0; i < buf.size(); ++i)
 			if (query_ids[i] == query_id)
 				fetch(i);
@@ -68,12 +71,14 @@ struct Join_fetcher
 	}
 	static vector<Input_stream> files;
 	static vector<unsigned> query_ids;
+	static unsigned query_last;
 	vector<Binary_buffer> buf;
-	unsigned query_id;
+	unsigned query_id, unaligned_from;
 };
 
 vector<Input_stream> Join_fetcher::files;
 vector<unsigned> Join_fetcher::query_ids;
+unsigned Join_fetcher::query_last;
 
 struct Join_writer
 {
@@ -196,17 +201,24 @@ void join_worker(Task_queue<Text_buffer,Join_writer> *queue)
 		const char * query_name = query_ids::get()[fetcher.query_id].c_str();
 		const sequence query_seq = align_mode.query_translated ? query_source_seqs::get()[fetcher.query_id] : query_seqs::get()[fetcher.query_id];
 
+		if (*output_format != Output_format::daa && config.report_unaligned != 0) {
+			for (unsigned i = fetcher.unaligned_from; i < fetcher.query_id; ++i) {
+				output_format->print_query_intro(i, query_ids::get()[i].c_str(), get_source_query_len(i), *out, true);
+				output_format->print_query_epilog(*out, true);
+			}
+		}
+
 		if (*output_format == Output_format::daa)
 			seek_pos = write_daa_query_record(*out, query_name, query_seq);
 		else
-			output_format->print_query_intro(fetcher.query_id, query_name, (unsigned)query_seq.length(), *out);
+			output_format->print_query_intro(fetcher.query_id, query_name, (unsigned)query_seq.length(), *out, false);
 
 		join_query(fetcher.buf, *out, stat, fetcher.query_id, query_name, (unsigned)query_seq.length());
 
 		if (*output_format == Output_format::daa)
 			finish_daa_query_record(*out, seek_pos);
 		else
-			output_format->print_query_epilog(*out);
+			output_format->print_query_epilog(*out, false);
 
 		queue->push(n);
 	}
@@ -225,6 +237,14 @@ void join_blocks(unsigned ref_blocks, Output_stream &master_out, const vector<Te
 		threads.push_back(launch_thread(join_worker, &queue));
 	threads.join_all();
 	Join_fetcher::finish();
+	if (*output_format != Output_format::daa && config.report_unaligned != 0) {
+		Text_buffer out;
+		for (unsigned i = Join_fetcher::query_last + 1; i < query_ids::get().get_length(); ++i) {
+			output_format->print_query_intro(i, query_ids::get()[i].c_str(), get_source_query_len(i), out, true);
+			output_format->print_query_epilog(out, true);
+		}
+		writer(out);
+	}
 }
 
 #endif

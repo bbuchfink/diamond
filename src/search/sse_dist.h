@@ -83,7 +83,16 @@ struct Byte_finger_print
 	}
 	unsigned match(const Byte_finger_print &rhs) const
 	{
-		//return popcount_3(match_block(r1, rhs.r1) << 16 | match_block(r2, rhs.r2));
+		/*for (unsigned i = 0; i < 16; ++i)
+			cout << value_traits.alphabet[r1.m128i_u8[i]];
+		for (unsigned i = 0; i < 16; ++i)
+			cout << value_traits.alphabet[r2.m128i_u8[i]];
+		cout << endl;
+		for (unsigned i = 0; i < 16; ++i)
+			cout << value_traits.alphabet[rhs.r1.m128i_u8[i]];
+		for (unsigned i = 0; i < 16; ++i)
+			cout << value_traits.alphabet[rhs.r2.m128i_u8[i]];
+		cout << endl;*/
 		return popcount32(match_block(r1, rhs.r1) << 16 | match_block(r2, rhs.r2));
 	}
 	__m128i r1, r2;
@@ -210,7 +219,7 @@ inline unsigned match_block_reduced(const Letter *x, const Letter *y)
 
 inline uint64_t reduced_match32(const Letter* q, const Letter *s, unsigned len)
 {
-	uint64_t x = match_block_reduced(q+16, s+16)<<16 | match_block_reduced(q,s);
+	uint64_t x = match_block_reduced(q + 16, s + 16) << 16 | match_block_reduced(q, s);
 	if(len < 32)
 		x &= (1 << len) - 1;
 	return x;

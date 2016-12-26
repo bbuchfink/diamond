@@ -26,8 +26,6 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 
 #ifdef __SSE2__
 
-// #define NO_COLLISION_FILTER
-
 void search_query_offset(Loc q,
 	const sorted_list::const_iterator &s,
 	vector<Stage1_hit>::const_iterator hits,
@@ -42,18 +40,18 @@ void search_query_offset(Loc q,
 	for (vector<Stage1_hit>::const_iterator i = hits; i < hits_end; ++i) {
 		const Loc s_pos = s[i->s];
 		const Letter* subject = ref_seqs::data_->data(s_pos);
+		/*cout << sequence(query, 32) << endl;
+		cout << sequence(subject, 32) << endl;*/
 
 		unsigned delta, len;
 		int score;
-		if ((score = xdrop_ungapped(query, subject, shapes[sid].length_, delta, len)) < config.min_ungapped_raw_score)
+		if ((score = stage2_ungapped(query, subject, sid, delta, len)) < config.min_ungapped_raw_score)
 			continue;
 
 		stats.inc(Statistics::TENTATIVE_MATCHES2);
 		
-#ifndef NO_COLLISION_FILTER
 		if (!is_primary_hit(query - delta, subject - delta, delta, sid, len))
 			continue;
-#endif
 
 		stats.inc(Statistics::TENTATIVE_MATCHES3);
 		hf.push(s_pos, score);
@@ -81,7 +79,7 @@ void search_query_offset(Loc q,
 
 		unsigned delta, len;
 		int score;
-		if ((score = xdrop_ungapped(query, subject, shapes[sid].length_, delta, len)) < config.min_ungapped_raw_score)
+		if ((score = stage2_ungapped(query, subject, sid, delta, len)) < config.min_ungapped_raw_score)
 			continue;
 
 		stats.inc(Statistics::TENTATIVE_MATCHES2);

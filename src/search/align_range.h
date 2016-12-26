@@ -23,6 +23,7 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #include "../data/sorted_list.h"
 #include "../search/trace_pt_buffer.h"
 #include "sse_dist.h"
+#include "../dp/dp.h"
 
 struct Stage1_hit
 {
@@ -43,6 +44,11 @@ struct Stage1_hit
 	};
 	unsigned q, s;
 };
+
+inline int stage2_ungapped(const Letter *query, const Letter *subject, unsigned sid, unsigned &delta, unsigned &len)
+{
+	return xdrop_ungapped(query, subject, shapes[sid].length_, delta, len);
+}
 
 struct Range_ref
 {

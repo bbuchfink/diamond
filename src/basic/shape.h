@@ -125,43 +125,7 @@ struct shape
 		}
 		return true;
 	}
-
-	inline bool	is_low_freq(const Letter *seq) const
-	{
-#ifdef FREQUENCY_MASKING
-		double f = 0;
-		for(unsigned i=0;i<weight_;++i) {
-			Letter l = seq[positions_[i]];
-			if(l == value_traits.mask_char || l == '\xff')
-				return false;
-			l = mask_critical(l);
-			unsigned r = Reduction::reduction(l);
-			f += background_freq[r];
-		}
-		return !use_seed_freq() || f <= config.max_seed_freq;
-#else
-		return true;
-#endif
-	}
-
-	inline bool	is_low_freq_rev(const Letter *seq) const
-	{
-#ifdef FREQUENCY_MASKING
-		double f = 0;
-		for(unsigned i=0;i<weight_;++i) {
-			Letter l = seq[(int)positions_[i]-(int)length_];
-			if(l == value_traits.mask_char || l == '\xff')
-				return false;
-			l = mask_critical(l);
-			unsigned r = Reduction::reduction(l);
-			f += background_freq[r];
-		}
-		return !use_seed_freq() || f <= config.max_seed_freq;
-#else
-		return true;
-#endif
-	}
-
+	
 	friend std::ostream& operator<<(std::ostream&s, const shape &sh)
 	{
 		for (unsigned i = 0; i < sh.length_; ++i)

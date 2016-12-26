@@ -531,4 +531,12 @@ inline unsigned get_distribution(const double *p)
 	return n - 1;
 }
 
+inline void print_binary(uint64_t x)
+{
+	for (unsigned i = 0; i < 64; ++i) {
+		std::cout << (x & 1);
+		x >>= 1;
+	}
+}
+
 #endif /* UTIL_H_ */

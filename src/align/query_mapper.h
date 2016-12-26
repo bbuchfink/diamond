@@ -107,7 +107,7 @@ private:
 	void load_targets();
 	void rank_targets();
 
-	unsigned source_query_len;
+	unsigned source_query_len, unaligned_from;
 	vector<Seed_hit> seed_hits;
 	Ptr_vector<Target> targets;
 };

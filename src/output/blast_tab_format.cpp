@@ -222,3 +222,58 @@ void Blast_tab_format::print_match(const Hsp_context& r, Text_buffer &out) const
 	}
 	out << '\n';
 }
+
+void Blast_tab_format::print_query_intro(size_t query_num, const char *query_name, unsigned query_len, Text_buffer &out, bool unaligned) const
+{
+	if (unaligned && config.report_unaligned == 1) {
+		for (vector<unsigned>::const_iterator i = fields.begin(); i != fields.end(); ++i) {
+			switch (*i) {
+			case 0:
+				out.write_until(query_name, Const::id_delimiters);
+				break;
+			case 4:
+				out << query_len;
+				break;
+			case 5:
+			case 6:
+			case 17:
+			case 18:
+			case 33:
+			case 39:
+			case 40:
+				out << '*';
+				break;
+			case 12:
+			case 13:
+			case 14:
+			case 15:
+			case 16:
+			case 19:
+			case 20:
+			case 21:
+			case 22:
+			case 23:
+			case 24:
+			case 25:
+			case 26:
+			case 27:
+			case 28:
+			case 29:
+			case 43:
+				out << "-1";
+				break;			
+			case 31:
+				out << '0';
+				break;
+			case 45:
+				out << query_name;
+				break;
+			default:
+				throw std::runtime_error("Invalid output field");
+			}
+			if (i < fields.end() - 1)
+				out << '\t';			
+		}
+		out << '\n';
+	}
+}

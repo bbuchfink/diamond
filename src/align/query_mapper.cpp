@@ -24,16 +24,16 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #include "../output/output_format.h"
 #include "../output/daa_write.h"
 
-Query_queue query_queue;
-
 Query_mapper::Query_mapper() :
 	source_hits(get_query_data()),
 	query_id(source_hits.first->query_ / align_mode.query_contexts),
 	targets_finished(0),
 	next_target(0),
-	source_query_len(align_mode.query_translated ? (unsigned)query_seqs::get().reverse_translated_len(query_id*align_mode.query_contexts) : (unsigned)query_seqs::get().length(query_id)),
+	source_query_len(get_source_query_len(query_id)),
+	unaligned_from(query_queue.last_query+1),
 	seed_hits(source_hits.second - source_hits.first)
 {	
+	query_queue.last_query = query_id;
 }
 
 void Query_mapper::init()
@@ -122,6 +122,13 @@ void Query_mapper::rank_targets()
 
 bool Query_mapper::generate_output(Text_buffer &buffer, Statistics &stat)
 {
+	if (!blocked_processing && *output_format != Output_format::daa && config.report_unaligned != 0) {
+		for (unsigned i = unaligned_from; i < query_id; ++i) {
+			output_format->print_query_intro(i, query_ids::get()[i].c_str(), get_source_query_len(i), buffer, true);
+			output_format->print_query_epilog(buffer, true);
+		}
+	}
+
 	std::sort(targets.begin(), targets.end(), Target::compare);
 
 	unsigned n_hsp = 0, n_target_seq = 0, hit_hsps = 0;
@@ -154,7 +161,7 @@ bool Query_mapper::generate_output(Text_buffer &buffer, Statistics &stat)
 					if (*output_format == Output_format::daa)
 						seek_pos = write_daa_query_record(buffer, query_ids::get()[query_id].c_str(), align_mode.query_translated ? query_source_seqs::get()[query_id] : query_seqs::get()[query_id]);
 					else
-						output_format->print_query_intro(query_id, query_ids::get()[query_id].c_str(), source_query_len, buffer);
+						output_format->print_query_intro(query_id, query_ids::get()[query_id].c_str(), source_query_len, buffer, false);
 				}
 				if (*output_format == Output_format::daa)
 					write_daa_record(buffer, *j, query_id, targets[i].subject_id);
@@ -187,10 +194,14 @@ bool Query_mapper::generate_output(Text_buffer &buffer, Statistics &stat)
 			if (*output_format == Output_format::daa)
 				finish_daa_query_record(buffer, seek_pos);
 			else
-				output_format->print_query_epilog(buffer);
+				output_format->print_query_epilog(buffer, false);
 		}
 		else
 			Intermediate_record::finish_query(buffer, seek_pos);
+	}
+	else if (!blocked_processing && *output_format != Output_format::daa && config.report_unaligned != 0) {
+		output_format->print_query_intro(query_id, query_ids::get()[query_id].c_str(), source_query_len, buffer, true);
+		output_format->print_query_epilog(buffer, true);
 	}
 
 	if (!blocked_processing) {
