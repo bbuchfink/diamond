@@ -76,6 +76,9 @@ add_executable(diamond src/run/main.cpp
   src/extra/model_sim.cpp
   src/run/double_indexed.cpp
   src/search/search_query.cpp
+  src/search/collision.cpp
+  src/output/sam_format.cpp
+  src/align/align.cpp
 )
 
 target_link_libraries(diamond ${ZLIB_LIBRARY} ${CMAKE_THREAD_LIBS_INIT})

@@ -44,4 +44,7 @@ g++ -DNDEBUG -O3 -mssse3 -Wno-deprecated-declarations -std=gnu++98 $1 \
   src/extra/model_sim.cpp \
   src/run/double_indexed.cpp \
   src/search/search_query.cpp \
+  src/search/collision.cpp \
+  src/output/sam_format.cpp \
+  src/align/align.cpp \
 -lz -lpthread -o diamond
