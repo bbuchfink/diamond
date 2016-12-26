@@ -1,6 +1,8 @@
 [0.8.30]
 - slightly improved sensitivity
 - added option to report unaligned queries (--unal)
+- pairwise, XML and SAM format will report unaligned queries by default
+- added option to filter alignments by subject cover (--subject-cover)
 
 [0.8.29]
 - fixed an issue that could cause a crash when using view on incomplete DAA files

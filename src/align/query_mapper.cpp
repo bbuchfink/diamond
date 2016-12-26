@@ -143,10 +143,14 @@ bool Query_mapper::generate_output(Text_buffer &buffer, Statistics &stat)
 			break;
 		if (!config.output_range(n_target_seq, targets[i].filter_score, top_score))
 			break;
+
+		const unsigned subject_len = (unsigned)ref_seqs::get()[targets[i].subject_id].length();
 		
 		hit_hsps = 0;
 		for (list<Hsp_data>::iterator j = targets[i].hsps.begin(); j != targets[i].hsps.end(); ++j) {
-			if (j->id_percent() < config.min_id || j->query_cover_percent(source_query_len) < config.query_cover)
+			if (j->id_percent() < config.min_id
+				|| j->query_cover_percent(source_query_len) < config.query_cover
+				|| j->subject_cover_percent(subject_len) < config.subject_cover)
 				continue;
 			if (hit_hsps > 0 && config.single_domain)
 				continue;
@@ -174,7 +178,7 @@ bool Query_mapper::generate_output(Text_buffer &buffer, Statistics &stat)
 						targets[i].subject_id,
 						targets[i].subject_id,
 						ref_ids::get()[targets[i].subject_id].c_str(),
-						(unsigned)ref_seqs::get()[targets[i].subject_id].length(),
+						subject_len,
 						n_target_seq,
 						hit_hsps), buffer);
 			}

@@ -103,8 +103,8 @@ void roc()
 		errors += e2;
 	}
 	
-	coverage /= queries;
-	errors /= queries;
+	coverage /= (double)queries;
+	errors /= (double)queries;
 	cout << queries << " Sequences." << endl;
 	cout << coverage << endl;
 	cout << errors << endl;

@@ -228,6 +228,10 @@ struct Hsp_data
 	{
 		return (double)query_source_range.length() * 100 / query_source_len;
 	}
+	double subject_cover_percent(unsigned subject_len) const
+	{
+		return (double)subject_range.length() * 100 / subject_len;
+	}
 	bool pass_through(const Diagonal_segment &d) const;
 	bool is_weakly_enveloped(const Hsp_data &j) const;
 	void merge(const Hsp_data &right, const Hsp_data &left, unsigned query_anchor, unsigned subject_anchor);
