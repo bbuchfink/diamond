@@ -26,7 +26,6 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #include "../search/align_range.h"
 #include "../util/seq_file_format.h"
 #include "../data/load_seqs.h"
-#include "../search/setup.h"
 #include "../output/output_format.h"
 #include "../data/frequent_seeds.h"
 #include "../output/daa_write.h"
@@ -116,7 +115,6 @@ void run_ref_chunk(Database_file &db_file,
 	const pair<size_t, size_t> len_bounds = ref_seqs::data_->len_bounds(shapes[0].length_);
 	ref_hst = Partitioned_histogram(*ref_seqs::data_, (unsigned)len_bounds.second);
 
-	setup_search_params(query_len_bounds, ref_seqs::data_->letters());
 	ref_map.init((unsigned)ref_seqs::get().get_length());
 
 	timer.go("Allocating buffers");
@@ -247,6 +245,7 @@ void master_thread(Database_file &db_file, Timer &timer_mapping, Timer &total_ti
 
 		timer.go("Building query histograms");
 		const pair<size_t, size_t> query_len_bounds = query_seqs::data_->len_bounds(shapes[0].length_);
+		setup_search_params(query_len_bounds, 0);
 		query_hst = Partitioned_histogram(*query_seqs::data_, (unsigned)query_len_bounds.second);
 		timer_mapping.stop();
 		timer.finish();

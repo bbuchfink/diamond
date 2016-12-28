@@ -35,11 +35,11 @@ Hsp_data get_traceback(const Letter *query,
 	const Letter *subject,
 	const Growing_buffer<_score> &scores,
 	int band,
-	int gap_open,
-	int gap_extend,
+	_score gap_open,
+	_score gap_extend,
 	int i,
 	int j,
-	int score,
+	_score score,
 	const Traceback&)
 {
 	return traceback<_dir, _score>(query, subject, scores, band, gap_open, gap_extend, i, j, score);
@@ -50,14 +50,14 @@ Hsp_data get_traceback(const Letter *query,
 	const Letter *subject,
 	const Double_buffer<_score> &scores,
 	int band,
-	int gap_open,
-	int gap_extend,
+	_score gap_open,
+	_score gap_extend,
 	int i,
 	int j,
-	int score,
+	_score score,
 	const Score_only&)
 {
-	return Hsp_data(score);
+	return Hsp_data((int)score);
 }
 
 template<typename _dir, typename _score, typename _traceback>
@@ -74,7 +74,7 @@ Hsp_data floating_sw_dir(const Letter *query, const Letter* subject, int band, _
 		typename Scalar_dp_matrix<_score, _traceback>::Column_iterator it = mtx.column(j, i_max);
 		if (get_dir(x, it.row(), _dir()) == '\xff')
 			break;
-		_score vgap = Scalar_dp_matrix<_score, _traceback>::NEG_MIN;
+		_score vgap = Scalar_dp_matrix<_score, _traceback>::minus_inf;
 		if (get_dir(x, i_max + 1, _dir()) == '\xff') {
 			column_max = std::numeric_limits<_score>::min();
 		}
@@ -84,7 +84,7 @@ Hsp_data floating_sw_dir(const Letter *query, const Letter* subject, int band, _
 		}
 
 		for (; it.valid() && get_dir(x, it.row(), _dir()) != '\xff'; ++it) {
-			const _score match_score = score_matrix(*y, get_dir(x, it.row(), _dir()));
+			const _score match_score = (_score)score_matrix(*y, get_dir(x, it.row(), _dir()));
 			const _score s = max(max(it.diag() + match_score, vgap), it.hgap_in());
 			if (s > column_max) {
 				column_max = s;
@@ -118,3 +118,7 @@ void floating_sw(const Letter *query, const Letter *subject, Hsp_data &segment, 
 
 template void floating_sw<int, Traceback>(const Letter *query, const Letter *subject, Hsp_data &segment, int band, int xdrop, int gap_open, int gap_extend, uint64_t &cell_updates, unsigned query_anchor, unsigned subject_anchor, const Traceback&, const int&);
 template void floating_sw<int, Score_only>(const Letter *query, const Letter *subject, Hsp_data &segment, int band, int xdrop, int gap_open, int gap_extend, uint64_t &cell_updates, unsigned query_anchor, unsigned subject_anchor, const Score_only&, const int&);
+template void floating_sw<float, Traceback>(const Letter *query, const Letter *subject, Hsp_data &segment, int band, float xdrop, float gap_open, float gap_extend, uint64_t &cell_updates, unsigned query_anchor, unsigned subject_anchor, const Traceback&, const float&);
+template void floating_sw<float, Score_only>(const Letter *query, const Letter *subject, Hsp_data &segment, int band, float xdrop, float gap_open, float gap_extend, uint64_t &cell_updates, unsigned query_anchor, unsigned subject_anchor, const Score_only&, const float&);
+template void floating_sw<double, Traceback>(const Letter *query, const Letter *subject, Hsp_data &segment, int band, double xdrop, double gap_open, double gap_extend, uint64_t &cell_updates, unsigned query_anchor, unsigned subject_anchor, const Traceback&, const double&);
+template void floating_sw<double, Score_only>(const Letter *query, const Letter *subject, Hsp_data &segment, int band, double xdrop, double gap_open, double gap_extend, uint64_t &cell_updates, unsigned query_anchor, unsigned subject_anchor, const Score_only&, const double&);

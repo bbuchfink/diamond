@@ -30,7 +30,7 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #include "../basic/match.h"
 #include "../data/sorted_list.h"
 #include "../basic/translate.h"
-#include "../align/align.h"
+#include "../dp/dp.h"
 
 Config config;
 
@@ -54,7 +54,7 @@ Config::Config(int argc, const char **argv)
 		.add_command("match-file-stat", "")
 		.add_command("model-seqs", "");
 
-	Options_group general ("General options");
+	Options_group general("General options");
 	general.add()
 		("threads", 'p', "number of CPU threads", threads_)
 		("db", 'd', "database file", database)
@@ -95,17 +95,13 @@ Config::Config(int argc, const char **argv)
 \tqcovhsp means Query Coverage Per HSP\n\
 \tqtitle means Query title\n\n\
 \tDefault: qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore", output_format)
-		("verbose", 'v', "verbose console output", verbose)
-		("log", 0, "enable debug log", debug_log)
-		("quiet", 0, "disable console output", quiet);
+("verbose", 'v', "verbose console output", verbose)
+("log", 0, "enable debug log", debug_log)
+("quiet", 0, "disable console output", quiet);
 
 	Options_group makedb("Makedb options");
 	makedb.add()
-		("in", 0, "input reference file in FASTA format", input_ref_file)
-#ifdef EXTRA
-		("dbtype", po::value<string>(&program_options::db_type), "database type (nucl/prot)")
-#endif
-		;
+		("in", 0, "input reference file in FASTA format", input_ref_file);
 
 	Options_group aligner("Aligner options");
 	aligner.add()
@@ -127,10 +123,6 @@ Config::Config(int argc, const char **argv)
 		("tmpdir", 't', "directory for temporary files", tmpdir)
 		("gapopen", 0, "gap open penalty (default=11 for protein)", gap_open, -1)
 		("gapextend", 0, "gap extension penalty (default=1 for protein)", gap_extend, -1)
-#ifdef EXTRA
-		("reward", po::value<int>(&program_options::reward)->default_value(2), "match reward score (blastn only)")
-		("penalty", po::value<int>(&program_options::penalty)->default_value(-3), "mismatch penalty score (blastn only)")
-#endif
 		("matrix", 0, "score matrix for protein alignment (default=BLOSUM62)", matrix, string("blosum62"))
 		("custom-matrix", 0, "file containing custom scoring matrix", matrix_file)
 		("lambda", 0, "lambda parameter for custom matrix", lambda)
@@ -140,7 +132,7 @@ Config::Config(int argc, const char **argv)
 		("salltitles", 0, "print full subject titles in output files", salltitles);
 
 	Options_group advanced("Advanced options");
-	advanced.add()		
+	advanced.add()
 		("run-len", 'l', "mask runs between stop codons shorter than this length", run_len)
 		("freq-sd", 0, "number of standard deviations for ignoring frequent seeds", freq_sd, 0.0)
 		("id2", 0, "minimum number of identities for stage 1 hit", min_identities)
@@ -161,7 +153,7 @@ Config::Config(int argc, const char **argv)
 		("dbsize", 0, "effective database size (in letters)", db_size)
 		("no-auto-append", 0, "disable auto appending of DAA and DMND file extensions", no_auto_append)
 		("target-fetch-size", 0, "number of target sequences to fetch for seed extension", target_fetch_size, 4u);
-	
+
 	Options_group view_options("View options");
 	view_options.add()
 		("daa", 'a', "DIAMOND alignment archive (DAA) file", daa_file)
@@ -189,7 +181,8 @@ Config::Config(int argc, const char **argv)
 		("comp-based-stats", 0, "", comp_based_stats)
 		("neighborhood-score", 0, "", neighborhood_score)
 		("algo", 0, "", algo, 0u)
-		("seed-weight", 'w', "", seed_weight, 7u);
+		("seed-weight", 'w', "", seed_weight, 7u)
+		("very-sensitive", 0, "", mode_very_sensitive);
 
 	parser.add(general).add(makedb).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options);
 	parser.store(argc, argv, command);
@@ -265,7 +258,7 @@ Config::Config(int argc, const char **argv)
 			auto_append_extension(output_file, ".gz");
 	}
 
-	message_stream << Const::program_name << " v" << Const::version_string << "." << (unsigned)Const::build_version << " | by Benjamin Buchfink <buchfink@gmail.com>" << endl; 
+	message_stream << Const::program_name << " v" << Const::version_string << "." << (unsigned)Const::build_version << " | by Benjamin Buchfink <buchfink@gmail.com>" << endl;
 	message_stream << "Check http://github.com/bbuchfink/diamond for updates." << endl << endl;
 #ifndef NDEBUG
 	verbose_stream << "Assertions enabled." << endl;
@@ -280,7 +273,7 @@ Config::Config(int argc, const char **argv)
 		message_stream << "#CPU threads: " << threads_ << endl;
 	default:
 		;
-	}	
+	}
 
 	if (command == Config::blastp || command == Config::blastx || command == Config::benchmark || command == Config::model_sim) {
 		if (tmpdir == "")
@@ -333,8 +326,12 @@ Config::Config(int argc, const char **argv)
 		if (max_alignments == 0) {
 			max_alignments = std::numeric_limits<uint64_t>::max();
 			message_stream << "unlimited" << endl;
-		} else
+		}
+		else
 			message_stream << max_alignments << endl;
+
+		if(mode_very_sensitive)
+			set_option(chunk_size, 0.4);
 	}
 
 	Translator::init(query_gencode);
@@ -347,9 +344,4 @@ Config::Config(int argc, const char **argv)
 
 	/*log_stream << "sizeof(hit)=" << sizeof(hit) << " sizeof(packed_uint40_t)=" << sizeof(packed_uint40_t)
 		<< " sizeof(sorted_list::entry)=" << sizeof(sorted_list::entry) << endl;*/
-}
-
-void Config::set_chunk_size(double x)
-{
-	set_option(chunk_size, x);
 }

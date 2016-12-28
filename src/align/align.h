@@ -79,12 +79,4 @@ private:
 	Task_queue<_buffer, Output_writer> queue;
 };
 
-
-void init_cbs();
-
-struct Bias_correction : public vector<double>
-{
-	Bias_correction(const sequence &seq);
-};
-
 #endif

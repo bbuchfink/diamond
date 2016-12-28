@@ -17,12 +17,14 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 ****/
 
 #include <map>
+#include <set>
 #include "../util/binary_file.h"
 #include "../basic/config.h"
 #include "match_file.h"
 #include "../util/seq_file_format.h"
 
 using std::map;
+using std::set;
 
 const int roc_from = -10, roc_to = 1;
 const size_t roc_steps = (roc_to - roc_from + 1) * 9;
@@ -39,6 +41,8 @@ struct Superfamily
 
 map<char, map<unsigned, map<unsigned, unsigned> > > superfamilies;
 map<string, Superfamily> subjects;
+set<pair<string, string> > target;
+size_t n_targets = 0, tp = 0, fp = 0;
 
 void query_roc(Superfamily superfamily, const match_file::mcont &matches, Numeric_vector<double> &coverage, Numeric_vector<double> &errors)
 {
@@ -63,8 +67,12 @@ void query_roc(Superfamily superfamily, const match_file::mcont &matches, Numeri
 				if (subjects.find(i->subject) != subjects.end() && subjects[i->subject] == superfamily) {
 					++coverage[idx];
 				}
-				else
+				else {
 					++errors[idx];
+					++fp;
+				}
+				if (target.find(pair<string, string>(i->query, i->subject)) != target.end())
+					++n_targets;
 				++i;
 			}
 			++idx;
@@ -97,6 +105,16 @@ void roc()
 		subjects[name] = superfamily;
 	}
 
+	Input_stream target_file(config.match_file2.c_str());
+	while (target_file.getline(), !target_file.eof()) {
+		char q[16], s[128];
+		float b;
+		if (sscanf(target_file.line.c_str(), "%s %s %f", q, s, &b) != 3)
+			throw std::runtime_error("Format error");
+		if (s[0] == 'd' || s[0] == 'g')
+			target.insert(pair<string, string>(q, s));
+	}
+
 	while (file1.get_read(v1, blast_tab_format())) {
 		query_roc(subjects[v1[0].query], v1, c2, e2);
 		coverage += c2;
@@ -106,9 +124,13 @@ void roc()
 	coverage /= (double)queries;
 	errors /= (double)queries;
 	cout << queries << " Sequences." << endl;
-	cout << coverage << endl;
+	/*cout << coverage << endl;
 	cout << errors << endl;
 	for (int exp = roc_from; exp <= roc_to; ++exp)
 		for (int factor = 2; factor <= 10; ++factor)
-			cout << pow(10.0, exp)*factor << endl;
+			cout << pow(10.0, exp)*factor << endl;*/
+
+	cout << endl;
+	cout << "Targets = " << n_targets << " / " << target.size() << " (" << percentage(n_targets, target.size()) << "%)" << endl;
+	cout << "False positives = " << fp << endl;
 }

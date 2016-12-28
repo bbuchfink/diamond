@@ -72,13 +72,14 @@ add_executable(diamond src/run/main.cpp
   src/dp/needleman_wunsch.cpp
   src/output/blast_pairwise_format.cpp
   src/extra/roc.cpp
-  src/align/comp_based_stats.cpp
+  src/dp/comp_based_stats.cpp
   src/extra/model_sim.cpp
   src/run/double_indexed.cpp
   src/search/search_query.cpp
   src/search/collision.cpp
   src/output/sam_format.cpp
   src/align/align.cpp
+  src/search/setup.cpp
 )
 
 target_link_libraries(diamond ${ZLIB_LIBRARY} ${CMAKE_THREAD_LIBS_INIT})

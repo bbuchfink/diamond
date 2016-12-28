@@ -24,6 +24,13 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #include "../align/align.h"
 #include "score_profile.h"
 
+void init_cbs();
+
+struct Bias_correction : public vector<float>
+{
+	Bias_correction(const sequence &seq);
+};
+
 template<typename _score>
 void smith_waterman(const Letter *query, local_match &segment, _score gap_open, _score gap_extend, vector<char> &transcript_buf, const _score& = int());
 int smith_waterman(const sequence &query, const sequence &subject, unsigned band, unsigned padding, int op, int ep);

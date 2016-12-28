@@ -29,7 +29,7 @@ struct Scalar_traceback_matrix
 		data_ (data),
 		band_ (band)
 	{ }
-	int operator()(int col, int row) const
+	_score operator()(int col, int row) const
 	{ return data_.column(col+1)[row - (data_.center(col+1)-band_)]; }
 	bool in_band(int col, int row) const
 	{ return row >= data_.center(col+1)-band_ && row <= data_.center(col+1)+band_ && row >= 0 && col >= 0; }
@@ -50,11 +50,11 @@ template<typename _score>
 bool have_vgap(const Scalar_traceback_matrix<_score> &dp,
 		int i,
 		int j,
-		int gap_open,
-		int gap_extend,
+		_score gap_open,
+		_score gap_extend,
 		int &l)
 {
-	int score = dp(i, j);
+	_score score = dp(i, j);
 	l = 1;
 	--j;
 	while(dp.in_band(i, j)) {
@@ -68,13 +68,13 @@ bool have_vgap(const Scalar_traceback_matrix<_score> &dp,
 
 template<typename _score>
 bool have_hgap(const Scalar_traceback_matrix<_score> &dp,
-		int i,
-		int j,
-		int gap_open,
-		int gap_extend,
-		int &l)
+	int i,
+	int j,
+	_score gap_open,
+	_score gap_extend,
+	int &l)
 {
-	int score = dp(i, j);
+	_score score = dp(i, j);
 	l = 1;
 	--i;
 	while(dp.in_band(i, j)) {
@@ -88,14 +88,14 @@ bool have_hgap(const Scalar_traceback_matrix<_score> &dp,
 
 template<typename _dir, typename _score>
 local_match traceback(const Letter *query,
-		const Letter *subject,
-		const Growing_buffer<_score> &scores,
-		int band,
-		int gap_open,
-		int gap_extend,
-		int i,
-		int j,
-		int score)
+	const Letter *subject,
+	const Growing_buffer<_score> &scores,
+	int band,
+	_score gap_open,
+	_score gap_extend,
+	int i,
+	int j,
+	_score score)
 {
 	if(i == -1)
 		return local_match (0);
@@ -107,13 +107,13 @@ local_match traceback(const Letter *query,
 	l.query_range.end_ = j + 1;
 	l.subject_range.begin_ = 0;
 	l.subject_range.end_ = i + 1;
-	l.score = score;
+	l.score = (unsigned)score;
 
 	int gap_len;
 
 	while(i>0 || j>0) {
 		const Letter lq = get_dir(query, j, _dir()), ls = get_dir(subject, i, _dir());
-		const int match_score = score_matrix(lq, ls);
+		const _score match_score = (_score)score_matrix(lq, ls);
 		//printf("i=%i j=%i score=%i subject=%c query=%c\n",i,j,dp(i, j),Value_traits<_val>::ALPHABET[ls],Value_traits<_val>::ALPHABET[lq]);
 
 		if(dp(i, j) == match_score + dp(i-1, j-1) || dp(i, j) == score_matrix(ls,lq) + dp(i - 1, j - 1)) {		// i==0, j==0 ?
@@ -169,11 +169,11 @@ local_match traceback(const Letter *query,
 		const Letter *subject,
 		const Double_buffer<_score> &scores,
 		int band,
-		int gap_open,
-		int gap_extend,
+		_score gap_open,
+		_score gap_extend,
 		int i,
 		int j,
-		int score)
+		_score score)
 { return local_match (score); }
 
 #endif /* SCALAR_TRACEBACK_H_ */

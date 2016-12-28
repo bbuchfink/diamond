@@ -41,7 +41,7 @@ void random_seqs()
 	const size_t count = atoi(config.seq_no[0].c_str());
 	while (n.size() < count)
 		n.insert((rand()*RAND_MAX + rand()) % ref_seqs::get().get_length());
-	Compressed_ostream out(config.output_file);
+	Output_stream out(config.output_file);
 	unsigned j = 0;
 	
 	std::string s;
@@ -102,7 +102,6 @@ void match_file_stat()
 {
 	match_file file(config.match_file1.c_str());
 	blast_match match;
-	while(file.get(match, blast_format())) {
-	}
+	while (file.get(match, blast_format()));
 	file.get_subst();
 }

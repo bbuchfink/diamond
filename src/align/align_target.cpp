@@ -80,6 +80,7 @@ bool is_contained(const list<Hsp_data> &hsps, const Seed_hit &hit)
 
 void Query_mapper::align_target(size_t idx, Statistics &stat)
 {
+	typedef float score_t;
 	Target& target = targets[idx];
 	std::sort(seed_hits.begin() + target.begin, seed_hits.begin() + target.end);
 	const size_t n = target.end - target.begin,
@@ -92,17 +93,34 @@ void Query_mapper::align_target(size_t idx, Statistics &stat)
 			target.hsps.push_back(Hsp_data());
 			target.hsps.back().frame = hits[i].frame_;
 			uint64_t cell_updates;
-			floating_sw(&query_seq(hits[i].frame_)[hits[i].query_pos_],
-				&ref_seqs::get()[hits[i].subject_][hits[i].subject_pos_],
-				target.hsps.back(),
-				config.read_padding(query_seq(hits[i].frame_).length()),
-				score_matrix.rawscore(config.gapped_xdrop),
-				config.gap_open + config.gap_extend,
-				config.gap_extend,
-				cell_updates,
-				hits[i].query_pos_,
-				hits[i].subject_pos_,
-				Traceback());
+
+			if (config.comp_based_stats == 1)
+				floating_sw(&query_seq(hits[i].frame_)[hits[i].query_pos_],
+					&ref_seqs::get()[hits[i].subject_][hits[i].subject_pos_],
+					target.hsps.back(),
+					config.read_padding(query_seq(hits[i].frame_).length()),
+					(score_t)score_matrix.rawscore(config.gapped_xdrop),
+					(score_t)(config.gap_open + config.gap_extend),
+					(score_t)config.gap_extend,
+					cell_updates,
+					hits[i].query_pos_,
+					hits[i].subject_pos_,
+					Traceback(),
+					score_t());
+			else
+				floating_sw(&query_seq(hits[i].frame_)[hits[i].query_pos_],
+					&ref_seqs::get()[hits[i].subject_][hits[i].subject_pos_],
+					target.hsps.back(),
+					config.read_padding(query_seq(hits[i].frame_).length()),
+					score_matrix.rawscore(config.gapped_xdrop),
+					config.gap_open + config.gap_extend,
+					config.gap_extend,
+					cell_updates,
+					hits[i].query_pos_,
+					hits[i].subject_pos_,
+					Traceback(),
+					int());
+
 			stat.inc(Statistics::OUT_HITS);
 			if (i > 0)
 				stat.inc(Statistics::SECONDARY_HITS);

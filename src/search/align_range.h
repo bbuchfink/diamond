@@ -25,6 +25,8 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #include "sse_dist.h"
 #include "../dp/dp.h"
 
+void setup_search_params(pair<size_t, size_t> query_len_bounds, size_t chunk_db_letters);
+
 struct Stage1_hit
 {
 	Stage1_hit(unsigned q_ref, unsigned q_offset, unsigned s_ref, unsigned s_offset) :

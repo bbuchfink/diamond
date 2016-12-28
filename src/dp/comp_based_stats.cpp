@@ -16,8 +16,7 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ****/
 
-#include "../basic/match.h"
-#include "align.h"
+#include "dp.h"
 
 double background_scores[20];
 const double background_freq[] = { 0.0844581,0.0581912,0.0421072,0.0546748,0.0146359,0.040118,0.0621211,0.0669379,0.0225159,0.0547866,0.0957934,0.0523275,0.0218629,0.038769,0.0505311,
@@ -54,7 +53,7 @@ struct Vector_scores
 };
 
 Bias_correction::Bias_correction(const sequence &seq):
-	vector<double>(seq.length())
+	vector<float>(seq.length())
 {
 	Vector_scores scores;
 	const unsigned window_half = std::min(20u, (unsigned)seq.length());
@@ -69,7 +68,7 @@ Bias_correction::Bias_correction(const sequence &seq):
 		++n;
 		scores += seq[h];
 		const Letter r = seq[m];
-		this->operator[](m) = background_scores[(int)r] - double(scores.scores[(int)r] - score_matrix(r, r)) / (n - 1);
+		this->operator[](m) = (float)background_scores[(int)r] - float(scores.scores[(int)r] - score_matrix(r, r)) / (n - 1);
 		++h;
 		++m;
 	}
@@ -77,7 +76,7 @@ Bias_correction::Bias_correction(const sequence &seq):
 		scores += seq[h];
 		scores -= seq[t];
 		const Letter r = seq[m];
-		this->operator[](m) = background_scores[(int)r] - double(scores.scores[(int)r] - score_matrix(r, r)) / (n - 1);
+		this->operator[](m) = (float)background_scores[(int)r] - float(scores.scores[(int)r] - score_matrix(r, r)) / (n - 1);
 		++h;
 		++t;
 		++m;
@@ -86,7 +85,7 @@ Bias_correction::Bias_correction(const sequence &seq):
 		--n;
 		scores -= seq[t];
 		const Letter r = seq[m];
-		this->operator[](m) = background_scores[(int)r] - double(scores.scores[(int)r] - score_matrix(r, r)) / (n - 1);		
+		this->operator[](m) = (float)background_scores[(int)r] - float(scores.scores[(int)r] - score_matrix(r, r)) / (n - 1);
 		++t;
 		++m;
 	}

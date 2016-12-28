@@ -119,6 +119,7 @@ struct Config
 	unsigned seed_weight;
 	int report_unaligned;
 	double subject_cover;
+	bool mode_very_sensitive;
 
 	enum {
 		makedb = 0, blastp = 1, blastx = 2, view = 3, help = 4, version = 5, getseq = 6, benchmark = 7, random_seqs = 8, compare = 9, sort = 10, roc = 11, db_stat = 12, model_sim = 13,
@@ -153,8 +154,6 @@ struct Config
 		else
 			return n_target_seq < max_alignments;
 	}
-
-	void set_chunk_size(double x);
 
 	/*unsigned read_padding(size_t len)
 	{

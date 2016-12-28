@@ -1,5 +1,5 @@
 /****
-Copyright (c) 2014-2016, University of Tuebingen, Benjamin Buchfink
+Copyright (c) 2016, Benjamin Buchfink
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
@@ -16,37 +16,51 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ****/
 
-#ifndef SETUP_H_
-#define SETUP_H_
-
+#include "align_range.h"
+#include "../data/reference.h"
 #include "../basic/config.h"
 
-void setup_search_params(pair<size_t,size_t> query_len_bounds, size_t chunk_db_letters)
+void setup_search_params(pair<size_t, size_t> query_len_bounds, size_t chunk_db_letters)
 {
 	const double b = config.min_bit_score == 0 ? score_matrix.bitscore(config.max_evalue, ref_header.letters, (unsigned)query_len_bounds.first) : config.min_bit_score;
 
-	if(query_len_bounds.second <= 40) {
-		Config::set_option(config.min_identities, 10u);
-		Config::set_option(config.min_ungapped_score, std::min(27.0, b));
-	} else {
-		Config::set_option(config.min_identities, 9u);
-		Config::set_option(config.min_ungapped_score, std::min(23.0, b));
+	if (config.mode_very_sensitive) {
+		Reduction::reduction = Reduction("A KR EDNQ C G H ILVM FYW P ST"); // murphy.10
+		Config::set_option(config.index_mode, 4u);
+		::shapes = shape_config(config.index_mode, config.shapes, config.shape_mask);
+		config.seed_anchor = std::min(::shapes[0].length_ - 1, 8u);
+		Config::set_option(config.min_identities, 6u);
+		Config::set_option(config.min_ungapped_score, 19.0);
+		Config::set_option(config.window, 60u);
+		Config::set_option(config.hit_band, 8);
+		Config::set_option(config.min_hit_score, 23.0);
+	}
+	else {
+
+		if (query_len_bounds.second <= 40) {
+			Config::set_option(config.min_identities, 10u);
+			Config::set_option(config.min_ungapped_score, std::min(27.0, b));
+		}
+		else {
+			Config::set_option(config.min_identities, 9u);
+			Config::set_option(config.min_ungapped_score, std::min(23.0, b));
+		}
+
+		if (query_len_bounds.second <= 80) {
+			const int band = config.read_padding(query_len_bounds.second);
+			Config::set_option(config.window, (unsigned)(query_len_bounds.second + band));
+			Config::set_option(config.hit_band, band);
+			Config::set_option(config.min_hit_score, b);
+		}
+		else {
+			Config::set_option(config.window, 40u);
+			Config::set_option(config.hit_band, 5);
+			Config::set_option(config.min_hit_score, std::min(29.0, b));
+		}
 	}
 
-	if(query_len_bounds.second <= 80) {
-		const int band = config.read_padding(query_len_bounds.second);
-		Config::set_option(config.window, (unsigned)(query_len_bounds.second + band));
-		Config::set_option(config.hit_band, band);
-		Config::set_option(config.min_hit_score, b);
-	} else {
-		Config::set_option(config.window, 40u);
-		Config::set_option(config.hit_band, 5);
-		Config::set_option(config.min_hit_score, std::min(29.0, b));
-	}
 	config.min_ungapped_raw_score = score_matrix.rawscore(config.min_ungapped_score);
 	config.min_hit_raw_score = score_matrix.rawscore(config.min_hit_score);
 	log_stream << "Query len bounds " << query_len_bounds.first << ' ' << query_len_bounds.second << endl;
 	log_stream << "Search parameters " << config.min_ungapped_raw_score << ' ' << config.min_hit_score << ' ' << config.hit_cap << endl;
 }
-
-#endif /* SETUP_H_ */

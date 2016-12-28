@@ -18,23 +18,9 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 
 #include <iostream>
 #include "../basic/config.h"
-#include "../basic/const.h"
-#include "../util/log_stream.h"
-#include "../data/reference.h"
 #include "../output/view.h"
 #include "tools.h"
 #include "../extra/compare.h"
-
-#ifdef EXTRA
-#include "../../extra/test_sw.h"
-#include "../../extra/test_io.h"
-#include "../../extra/stat.h"
-#endif
-
-#ifdef ENABLE_STAT
-#include "../stat/compare.h"
-//#include "../stat/random_seq.h"
-#endif
 
 using std::cout;
 using std::cerr;
@@ -51,11 +37,11 @@ int main(int ac, const char* av[])
 
 		config = Config(ac, av);
 
-		switch(config.command) {
+		switch (config.command) {
 		case Config::help:
 			break;
 		case Config::version:
-        	cout << Const::program_name << " version " << Const::version_string << endl;
+			cout << Const::program_name << " version " << Const::version_string << endl;
 			break;
 		case Config::makedb:
 			make_db();
@@ -68,7 +54,7 @@ int main(int ac, const char* av[])
 				master_thread_di();
 			break;
 		case Config::view:
-        	view();
+			view();
 			break;
 		case Config::getseq:
 			get_seq();
@@ -100,24 +86,9 @@ int main(int ac, const char* av[])
 		case Config::model_seqs:
 			model_seqs();
 			break;
-		#ifdef EXTRA
-        else if (command == "stat" && vm.count("match1"))
-        	if(program_options::db_type == "nucl")
-        		blast_stat<Nucleotide>(vm.count("tab") > 0);
-        	else
-        		blast_stat<Amino_acid>(vm.count("tab") > 0);
-        //else if (command == "comp" && vm.count("query") && vm.count("match1") && vm.count("match2"))
-        	//compare();
-        //else if (command == "random" && vm.count("query") && vm.count("out"))
-        	//random_seq();
-		#endif
-		#ifdef EXTRA
-        else if (command == "test")
-        	test_io();
-		#endif
 		default:
-        	return 1;
-	}
+			return 1;
+		}
 	}
 	catch(std::bad_alloc &e) {
 		cerr << "Failed to allocate sufficient memory. Please refer to the manual for instructions on memory usage." << endl;

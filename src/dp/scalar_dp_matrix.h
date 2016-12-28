@@ -115,14 +115,16 @@ struct Scalar_dp_matrix
 		score_ (TLS::get(score_ptr)),
 		hgap_ (TLS::get(hgap_ptr))
 	{
-		score_.init(band_max_, band_+1, 1, NEG_MIN);
-		hgap_.init(band_max_, band_+1, 1, NEG_MIN);
+		score_.init(band_max_, band_+1, 1, minus_inf);
+		hgap_.init(band_max_, band_+1, 1, minus_inf);
 	}
 
 	const typename Score_buffer<_score,_traceback>::Type& score_buffer() const
 	{ return score_; }
 
-	static const _score NEG_MIN = -65536;
+	enum {
+		minus_inf = -65536
+	};
 
 private:
 
