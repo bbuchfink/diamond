@@ -133,7 +133,7 @@ Config::Config(int argc, const char **argv)
 
 	Options_group advanced("Advanced options");
 	advanced.add()
-		("run-len", 'l', "mask runs between stop codons shorter than this length", run_len)
+		("min-orf", 'l', "ignore translated sequences without an open reading frame of at least this length", run_len)
 		("freq-sd", 0, "number of standard deviations for ignoring frequent seeds", freq_sd, 0.0)
 		("id2", 0, "minimum number of identities for stage 1 hit", min_identities)
 		("window", 'w', "window size for local hit search", window)

@@ -1,3 +1,6 @@
+[0.8.31]
+- renamed option --run-len to --min-orf
+
 [0.8.30]
 - slightly improved sensitivity
 - added option to report unaligned queries (--unal)

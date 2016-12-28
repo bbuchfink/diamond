@@ -34,6 +34,7 @@ void setup_search_params(pair<size_t, size_t> query_len_bounds, size_t chunk_db_
 		Config::set_option(config.window, 60u);
 		Config::set_option(config.hit_band, 8);
 		Config::set_option(config.min_hit_score, 23.0);
+		Config::set_option(config.padding, 60);
 	}
 	else {
 

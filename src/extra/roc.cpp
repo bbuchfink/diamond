@@ -43,6 +43,7 @@ map<char, map<unsigned, map<unsigned, unsigned> > > superfamilies;
 map<string, Superfamily> subjects;
 set<pair<string, string> > target;
 size_t n_targets = 0, tp = 0, fp = 0;
+double max_ev = 0;
 
 void query_roc(Superfamily superfamily, const match_file::mcont &matches, Numeric_vector<double> &coverage, Numeric_vector<double> &errors)
 {
@@ -71,8 +72,12 @@ void query_roc(Superfamily superfamily, const match_file::mcont &matches, Numeri
 					++errors[idx];
 					++fp;
 				}
-				if (target.find(pair<string, string>(i->query, i->subject)) != target.end())
+				if (target.find(pair<string, string>(i->query, i->subject)) != target.end()) {
+					max_ev = std::max(max_ev, i->expect);
+					if (i->expect == 0.015)
+						cout << i->query << endl;
 					++n_targets;
+				}
 				++i;
 			}
 			++idx;
@@ -132,5 +137,6 @@ void roc()
 
 	cout << endl;
 	cout << "Targets = " << n_targets << " / " << target.size() << " (" << percentage(n_targets, target.size()) << "%)" << endl;
+	cout << "max ev = " << max_ev << endl;
 	cout << "False positives = " << fp << endl;
 }
