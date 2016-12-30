@@ -19,8 +19,6 @@ g++ -DNDEBUG -O3 -mssse3 -Wno-deprecated-declarations -std=gnu++98 $1 \
   src/util/Timer.cpp \
   src/basic/basic.cpp \
   src/dp/floating_sw.cpp \
-  src/align/align_sequence_anchored.cpp \
-  src/align/align_sequence_simple.cpp \
   src/basic/hssp.cpp \
   src/dp/ungapped_align.cpp \
   src/run/tools.cpp \
