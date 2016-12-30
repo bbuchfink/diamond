@@ -170,7 +170,9 @@ struct Config
 	unsigned read_padding(size_t len)
 	{
 		if (padding == 0) {
-			if (len <= 35)
+			if (mode_very_sensitive)
+				return 60;
+			else if (len <= 35)
 				return 5;
 			else if (len <= 55)
 				return 16;

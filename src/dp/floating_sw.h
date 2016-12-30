@@ -25,7 +25,19 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 struct Score_only { };
 struct Traceback { };
 
-template<typename _score, typename _traceback>
-void floating_sw(const Letter *query, const Letter *subject, Hsp_data &segment, int band, _score xdrop, _score gap_open, _score gap_extend, uint64_t &cell_updates, unsigned query_anchor, unsigned subject_anchor, const _traceback& = Score_only(), const _score& = int());
+template<typename _score, typename _traceback, typename _score_correction>
+void floating_sw(const Letter *query,
+	const Letter *subject,
+	Hsp_data &segment,
+	int band,
+	_score xdrop,
+	_score gap_open,
+	_score gap_extend,
+	uint64_t &cell_updates,
+	unsigned query_anchor,
+	unsigned subject_anchor,
+	const _score_correction &score_correction,
+	const _traceback& = Score_only(),
+	const _score& = int());
 
 #endif /* FLOATING_SW_H_ */

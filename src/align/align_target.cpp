@@ -90,34 +90,37 @@ void Query_mapper::align_target(size_t idx, Statistics &stat)
 
 	for (size_t i = 0; i < n; ++i) {
 		if (!is_contained(hits, i) && !is_contained(target.hsps, hits[i])) {
+			const unsigned frame = hits[i].frame_;
 			target.hsps.push_back(Hsp_data());
-			target.hsps.back().frame = hits[i].frame_;
+			target.hsps.back().frame = frame;
 			uint64_t cell_updates;
 
 			if (config.comp_based_stats == 1)
-				floating_sw(&query_seq(hits[i].frame_)[hits[i].query_pos_],
+				floating_sw(&query_seq(frame)[hits[i].query_pos_],
 					&ref_seqs::get()[hits[i].subject_][hits[i].subject_pos_],
 					target.hsps.back(),
-					config.read_padding(query_seq(hits[i].frame_).length()),
+					config.read_padding(query_seq(frame).length()),
 					(score_t)score_matrix.rawscore(config.gapped_xdrop),
 					(score_t)(config.gap_open + config.gap_extend),
 					(score_t)config.gap_extend,
 					cell_updates,
 					hits[i].query_pos_,
 					hits[i].subject_pos_,
+					query_cb[frame],
 					Traceback(),
 					score_t());
 			else
-				floating_sw(&query_seq(hits[i].frame_)[hits[i].query_pos_],
+				floating_sw(&query_seq(frame)[hits[i].query_pos_],
 					&ref_seqs::get()[hits[i].subject_][hits[i].subject_pos_],
 					target.hsps.back(),
-					config.read_padding(query_seq(hits[i].frame_).length()),
+					config.read_padding(query_seq(frame).length()),
 					score_matrix.rawscore(config.gapped_xdrop),
 					config.gap_open + config.gap_extend,
 					config.gap_extend,
 					cell_updates,
 					hits[i].query_pos_,
 					hits[i].subject_pos_,
+					No_score_correction(),
 					Traceback(),
 					int());
 

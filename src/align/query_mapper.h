@@ -26,6 +26,7 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #include "../search/trace_pt_buffer.h"
 #include "../data/queries.h"
 #include "../util/ptr_vector.h"
+#include "../dp/dp.h"
 
 using std::vector;
 using std::pair;
@@ -110,6 +111,7 @@ private:
 	unsigned source_query_len, unaligned_from;
 	vector<Seed_hit> seed_hits;
 	Ptr_vector<Target> targets;
+	vector<Bias_correction> query_cb;
 };
 
 #endif

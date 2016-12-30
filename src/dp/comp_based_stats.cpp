@@ -56,7 +56,7 @@ Bias_correction::Bias_correction(const sequence &seq):
 	vector<float>(seq.length())
 {
 	Vector_scores scores;
-	const unsigned window_half = std::min(20u, (unsigned)seq.length());
+	const unsigned window_half = std::min(20u, (unsigned)seq.length() - 1);
 	unsigned n = 0;
 	unsigned h = 0, m = 0, t = 0, l = (unsigned)seq.length();
 	while (n < window_half && h < l) {
@@ -81,12 +81,17 @@ Bias_correction::Bias_correction(const sequence &seq):
 		++t;
 		++m;
 	}
-	while (m < l) {
+	while (m < l && n>21) {
 		--n;
 		scores -= seq[t];
 		const Letter r = seq[m];
 		this->operator[](m) = (float)background_scores[(int)r] - float(scores.scores[(int)r] - score_matrix(r, r)) / (n - 1);
 		++t;
+		++m;
+	}
+	while (m < l) {
+		const Letter r = seq[m];
+		this->operator[](m) = (float)background_scores[(int)r] - float(scores.scores[(int)r] - score_matrix(r, r)) / (n - 1);
 		++m;
 	}
 }

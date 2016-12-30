@@ -26,9 +26,19 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 
 void init_cbs();
 
+struct No_score_correction
+{
+	void operator()(int &score, int i, int query_anchor, int mult) const
+	{}
+};
+
 struct Bias_correction : public vector<float>
 {
 	Bias_correction(const sequence &seq);
+	void operator()(float &score, int i, int query_anchor, int mult) const
+	{
+		score += (*this)[query_anchor + i*mult];
+	}
 };
 
 template<typename _score>

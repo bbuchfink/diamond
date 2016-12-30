@@ -97,7 +97,6 @@ bool is_primary_hit(const Letter *query,
 			cout << sequence(&subject[j], len - j) << endl;
 			print_binary(mask);
 			cout << endl;*/
-			assert(&subject[j] >= ref_seqs::data_->data(0) && &subject[j] <= ref_seqs::data_->data(ref_seqs::data_->raw_len() - 1));
 			for (unsigned k = 0; k < sid; ++k)
 				if (previous_shape_collision(mask, shapes[k].mask_, &subject[j], k) && verify_hit(&query[j], &subject[j], k)) {
 					//cout << "k=" << k << endl;

@@ -21,8 +21,8 @@ Author: Benjamin Buchfink
 #ifndef DIRECTION_H_
 #define DIRECTION_H_
 
-struct Right { };
-struct Left { };
+struct Right { enum { mult = 1 }; };
+struct Left { enum { mult = -1 }; };
 
 Letter get_dir(const Letter* x, int i, const Right&)
 { return *(x+i); }

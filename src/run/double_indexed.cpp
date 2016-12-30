@@ -93,11 +93,7 @@ void process_shape(unsigned sid,
 
 		timer.go("Searching alignments");
 		Search_context context(sid, ref_idx, query_idx);
-#ifdef SIMPLE_SEARCH
 		launch_scheduled_thread_pool(context, Const::seedp, config.threads_);
-#else
-		launch_scheduled_thread_pool(context, Const::seedp, 1);
-#endif
 	}
 	timer_mapping.stop();
 }
@@ -286,6 +282,15 @@ void master_thread_di()
 	output_format = auto_ptr<Output_format>(get_output_format());
 
 	message_stream << "Temporary directory: " << Temp_file::get_temp_dir() << endl;
+
+	if (config.mode_very_sensitive) {
+		Config::set_option(config.chunk_size, 0.4);
+		Config::set_option(config.lowmem, 1u);
+	}
+	else {
+		Config::set_option(config.chunk_size, 2.0);
+		Config::set_option(config.lowmem, 4u);
+	}
 
 	task_timer timer("Opening the database", 1);
 	Database_file db_file;

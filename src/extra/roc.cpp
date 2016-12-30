@@ -67,16 +67,14 @@ void query_roc(Superfamily superfamily, const match_file::mcont &matches, Numeri
 					break;
 				if (subjects.find(i->subject) != subjects.end() && subjects[i->subject] == superfamily) {
 					++coverage[idx];
+					if (target.find(pair<string, string>(i->query, i->subject)) != target.end()) {
+						max_ev = std::max(max_ev, i->expect);
+						++n_targets;
+					}
 				}
 				else {
 					++errors[idx];
 					++fp;
-				}
-				if (target.find(pair<string, string>(i->query, i->subject)) != target.end()) {
-					max_ev = std::max(max_ev, i->expect);
-					if (i->expect == 0.015)
-						cout << i->query << endl;
-					++n_targets;
 				}
 				++i;
 			}
@@ -110,14 +108,16 @@ void roc()
 		subjects[name] = superfamily;
 	}
 
-	Input_stream target_file(config.match_file2.c_str());
-	while (target_file.getline(), !target_file.eof()) {
-		char q[16], s[128];
-		float b;
-		if (sscanf(target_file.line.c_str(), "%s %s %f", q, s, &b) != 3)
-			throw std::runtime_error("Format error");
-		if (s[0] == 'd' || s[0] == 'g')
-			target.insert(pair<string, string>(q, s));
+	if (!config.match_file2.empty()) {
+		Input_stream target_file(config.match_file2.c_str());
+		while (target_file.getline(), !target_file.eof()) {
+			char q[16], s[128];
+			float b;
+			if (sscanf(target_file.line.c_str(), "%s %s %f", q, s, &b) != 3)
+				throw std::runtime_error("Format error");
+			if (s[0] == 'd' || s[0] == 'g')
+				target.insert(pair<string, string>(q, s));
+		}
 	}
 
 	while (file1.get_read(v1, blast_tab_format())) {
