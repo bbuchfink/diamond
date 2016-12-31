@@ -84,7 +84,6 @@ struct Config
 	string	output_file;
 	bool		forwardonly;
 	unsigned fetch_size;
-	bool		single_domain;
 	uint64_t	db_size;
 	double	query_cover;
 
@@ -120,6 +119,7 @@ struct Config
 	int report_unaligned;
 	double subject_cover;
 	bool mode_very_sensitive;
+	unsigned max_hsps;
 
 	enum {
 		makedb = 0, blastp = 1, blastx = 2, view = 3, help = 4, version = 5, getseq = 6, benchmark = 7, random_seqs = 8, compare = 9, sort = 10, roc = 11, db_stat = 12, model_sim = 13,

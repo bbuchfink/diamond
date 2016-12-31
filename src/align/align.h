@@ -27,24 +27,6 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 
 using std::vector;
 
-void align_sequence_simple(vector<Segment> &matches,
-	Statistics &stat,
-	vector<local_match> &local,
-	unsigned *padding,
-	size_t db_letters,
-	unsigned dna_len,
-	Trace_pt_buffer::Vector::iterator &begin,
-	Trace_pt_buffer::Vector::iterator &end);
-
-void align_sequence_anchored(vector<Segment> &matches,
-	Statistics &stat,
-	vector<local_match> &local,
-	unsigned *padding,
-	size_t db_letters,
-	unsigned dna_len,
-	Trace_pt_buffer::Vector::iterator &begin,
-	Trace_pt_buffer::Vector::iterator &end);
-
 struct Output_writer
 {
 	Output_writer(Output_stream* f) :

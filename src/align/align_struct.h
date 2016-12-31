@@ -46,46 +46,4 @@ struct local_match : public Hsp_data
 	const Letter *subject_;
 };
 
-struct Segment
-{
-	Segment(int score,
-		unsigned frame,
-		local_match *traceback = 0,
-		unsigned subject_id = std::numeric_limits<unsigned>::max()) :
-		score_(score),
-		frame_(frame),
-		traceback_(traceback),
-		subject_id_(subject_id),
-		next_(0),
-		top_score_(0)
-	{ }
-	Strand strand() const
-	{
-		return frame_ < 3 ? FORWARD : REVERSE;
-	}
-	bool operator<(const Segment &rhs) const
-	{
-		return top_score_ > rhs.top_score_
-			|| (top_score_ == rhs.top_score_
-				&& (subject_id_ < rhs.subject_id_ || (subject_id_ == rhs.subject_id_ && (score_ > rhs.score_ || (score_ == rhs.score_ && traceback_->score > rhs.traceback_->score)))));
-	}
-	static bool comp_subject(const Segment& lhs, const Segment &rhs)
-	{
-		return lhs.subject_id_ < rhs.subject_id_ || (lhs.subject_id_ == rhs.subject_id_ && lhs.score_ > rhs.score_);
-	}
-	struct Subject
-	{
-		unsigned operator()(const Segment& x) const
-		{
-			return x.subject_id_;
-		}
-	};
-	int						score_;
-	unsigned				frame_;
-	local_match			   *traceback_;
-	unsigned				subject_id_;
-	Segment				   *next_;
-	int						top_score_;
-};
-
 #endif

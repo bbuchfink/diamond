@@ -39,6 +39,7 @@ struct Bias_correction : public vector<float>
 	{
 		score += (*this)[query_anchor + i*mult];
 	}
+	int operator()(const Hsp_data &hsp) const;
 };
 
 template<typename _score>

@@ -149,7 +149,7 @@ Config::Config(int argc, const char **argv)
 		("fetch-size", 0, "trace point fetch size", fetch_size, 4096u)
 		("rank-factor", 0, "include subjects within this range of max-target-seqs", rank_factor, 2.0)
 		("rank-ratio", 0, "include subjects within this ratio of last hit", rank_ratio, 0.6)
-		("single-domain", 0, "Discard secondary domains within one target sequence", single_domain)
+		("max-hsps", 0, "maximum number of HSPs per subject sequence to save for each query", max_hsps, 1u)
 		("dbsize", 0, "effective database size (in letters)", db_size)
 		("no-auto-append", 0, "disable auto appending of DAA and DMND file extensions", no_auto_append)
 		("target-fetch-size", 0, "number of target sequences to fetch for seed extension", target_fetch_size, 4u);

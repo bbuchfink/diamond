@@ -95,7 +95,7 @@ void Query_mapper::align_target(size_t idx, Statistics &stat)
 			target.hsps.back().frame = frame;
 			uint64_t cell_updates;
 
-			if (config.comp_based_stats == 1)
+			if (false && config.comp_based_stats == 1)
 				floating_sw(&query_seq(frame)[hits[i].query_pos_],
 					&ref_seqs::get()[hits[i].subject_][hits[i].subject_pos_],
 					target.hsps.back(),
@@ -124,6 +124,11 @@ void Query_mapper::align_target(size_t idx, Statistics &stat)
 					Traceback(),
 					int());
 
+			if (config.comp_based_stats) {
+				const int score = (int)target.hsps.back().score + query_cb[frame](target.hsps.back());
+				target.hsps.back().score = (unsigned)std::max(0, score);
+			}
+
 			stat.inc(Statistics::OUT_HITS);
 			if (i > 0)
 				stat.inc(Statistics::SECONDARY_HITS);
@@ -148,5 +153,6 @@ void Query_mapper::align_target(size_t idx, Statistics &stat)
 		i->set_source_range(i->frame, source_query_len);
 
 	target.hsps.sort();
-	target.filter_score = target.hsps.front().score;
+	if(target.hsps.size() > 0)
+		target.filter_score = target.hsps.front().score;
 }

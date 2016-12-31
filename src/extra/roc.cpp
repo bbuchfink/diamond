@@ -129,9 +129,9 @@ void roc()
 	coverage /= (double)queries;
 	errors /= (double)queries;
 	cout << queries << " Sequences." << endl;
-	/*cout << coverage << endl;
+	cout << coverage << endl;
 	cout << errors << endl;
-	for (int exp = roc_from; exp <= roc_to; ++exp)
+	/*for (int exp = roc_from; exp <= roc_to; ++exp)
 		for (int factor = 2; factor <= 10; ++factor)
 			cout << pow(10.0, exp)*factor << endl;*/
 

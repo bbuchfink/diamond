@@ -135,15 +135,14 @@ bool Query_mapper::generate_output(Text_buffer &buffer, Statistics &stat)
 	std::sort(targets.begin(), targets.end(), Target::compare);
 
 	unsigned n_hsp = 0, n_target_seq = 0, hit_hsps = 0;
-
-	const unsigned min_raw_score = (unsigned)score_matrix.rawscore(config.min_bit_score == 0
-		? score_matrix.bitscore(config.max_evalue, ref_header.letters, (unsigned)query_seq(0).length()) : config.min_bit_score);
-	const unsigned top_score = targets[0].filter_score;
+	const unsigned top_score = targets[0].filter_score, query_len = (unsigned)query_seq(0).length();
 	size_t seek_pos = 0;
 
 	for (size_t i = 0; i < targets.size(); ++i) {
-		if(targets[i].filter_score < min_raw_score)
+		if (config.min_bit_score == 0 && score_matrix.evalue(targets[i].filter_score, config.db_size, query_len) > config.max_evalue
+			|| score_matrix.bitscore(targets[i].filter_score) < config.min_bit_score)
 			break;
+
 		if (!config.output_range(n_target_seq, targets[i].filter_score, top_score))
 			break;
 
@@ -155,8 +154,8 @@ bool Query_mapper::generate_output(Text_buffer &buffer, Statistics &stat)
 				|| j->query_cover_percent(source_query_len) < config.query_cover
 				|| j->subject_cover_percent(subject_len) < config.subject_cover)
 				continue;
-			if (hit_hsps > 0 && config.single_domain)
-				continue;
+			/*if (hit_hsps > 0 && config.single_domain)
+				continue;*/
 
 			if (blocked_processing) {
 				if (n_hsp == 0)
