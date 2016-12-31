@@ -193,7 +193,7 @@ Config::Config(int argc, const char **argv)
 			throw std::runtime_error("Missing parameter: input file (--in)");
 		if (database == "")
 			throw std::runtime_error("Missing parameter: database file (--db/-d)");
-		if (chunk_size != 2.0)
+		if (chunk_size != 0.0)
 			throw std::runtime_error("Invalid option: --block-size/-b. Block size is set for the alignment commands.");
 		break;
 	case Config::blastp:
