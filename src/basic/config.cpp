@@ -127,7 +127,7 @@ Config::Config(int argc, const char **argv)
 		("custom-matrix", 0, "file containing custom scoring matrix", matrix_file)
 		("lambda", 0, "lambda parameter for custom matrix", lambda)
 		("K", 0, "K parameter for custom matrix", K)
-		("comp-based-stats", 0, "", comp_based_stats, 1u)
+		("comp-based-stats", 0, "enable composition based statistics (0/1=default)", comp_based_stats, 1u)
 		("seg", 0, "enable SEG masking of queries (yes/no)", seg)
 		("query-gencode", 0, "genetic code to use to translate query (see user manual)", query_gencode, 1u)
 		("salltitles", 0, "print full subject titles in output files", salltitles);
