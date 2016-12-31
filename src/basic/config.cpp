@@ -130,7 +130,8 @@ Config::Config(int argc, const char **argv)
 		("comp-based-stats", 0, "enable composition based statistics (0/1=default)", comp_based_stats, 1u)
 		("seg", 0, "enable SEG masking of queries (yes/no)", seg)
 		("query-gencode", 0, "genetic code to use to translate query (see user manual)", query_gencode, 1u)
-		("salltitles", 0, "print full subject titles in output files", salltitles);
+		("salltitles", 0, "print full subject titles in output files", salltitles)
+		("no-self-hits", 0, "suppress reporting of identical self hits", no_self_hits);
 
 	Options_group advanced("Advanced options");
 	advanced.add()

@@ -2,6 +2,7 @@
 - renamed option --run-len to --min-orf
 - added compositional score adjustments (option --comp-based-stats (0,1), enabled by default)
 - removed --single-domain option and replaced by --max-hsps
+- added option --no-self-hits
 
 [0.8.30]
 - slightly improved sensitivity

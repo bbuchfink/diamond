@@ -154,8 +154,9 @@ bool Query_mapper::generate_output(Text_buffer &buffer, Statistics &stat)
 				break;
 			if (j->id_percent() < config.min_id
 				|| j->query_cover_percent(source_query_len) < config.query_cover
-				|| j->subject_cover_percent(subject_len) < config.subject_cover)
-				continue;			
+				|| j->subject_cover_percent(subject_len) < config.subject_cover
+				|| (config.no_self_hits && j->identities == j->length && j->query_source_range.length() == source_query_len && j->subject_range.length() == subject_len))
+				continue;
 
 			if (blocked_processing) {
 				if (n_hsp == 0)
