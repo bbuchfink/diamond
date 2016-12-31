@@ -150,12 +150,12 @@ bool Query_mapper::generate_output(Text_buffer &buffer, Statistics &stat)
 		
 		hit_hsps = 0;
 		for (list<Hsp_data>::iterator j = targets[i].hsps.begin(); j != targets[i].hsps.end(); ++j) {
+			if (hit_hsps >= config.max_hsps)
+				break;
 			if (j->id_percent() < config.min_id
 				|| j->query_cover_percent(source_query_len) < config.query_cover
 				|| j->subject_cover_percent(subject_len) < config.subject_cover)
-				continue;
-			/*if (hit_hsps > 0 && config.single_domain)
-				continue;*/
+				continue;			
 
 			if (blocked_processing) {
 				if (n_hsp == 0)
