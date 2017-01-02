@@ -139,7 +139,7 @@ bool Query_mapper::generate_output(Text_buffer &buffer, Statistics &stat)
 	size_t seek_pos = 0;
 
 	for (size_t i = 0; i < targets.size(); ++i) {
-		if (config.min_bit_score == 0 && score_matrix.evalue(targets[i].filter_score, config.db_size, query_len) > config.max_evalue
+		if ((config.min_bit_score == 0 && score_matrix.evalue(targets[i].filter_score, config.db_size, query_len) > config.max_evalue)
 			|| score_matrix.bitscore(targets[i].filter_score) < config.min_bit_score)
 			break;
 

@@ -24,6 +24,19 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #include "../data/reference.h"
 #include "collision.h"
 
+unsigned count_id(const Letter *query, const Letter *subject)
+{
+	static const Reduction reduction("KR E D Q N C G H LM FY VI W P S T A"); // murphy.10
+	unsigned n = 0;
+	for (int i = -1; i >= -((int)config.id_left) && query[i] != '\xff' && subject[i] != '\xff'; --i)
+		if (reduction(query[i]) == reduction(subject[i]))
+			++n;
+	for (int i = 0; i < config.id_right && query[i] != '\xff' && subject[i] != '\xff'; ++i)
+		if (reduction(query[i]) == reduction(subject[i]))
+			++n;
+	return n;
+}
+
 #ifdef __SSE2__
 
 void search_query_offset(Loc q,
@@ -40,8 +53,11 @@ void search_query_offset(Loc q,
 	for (vector<Stage1_hit>::const_iterator i = hits; i < hits_end; ++i) {
 		const Loc s_pos = s[i->s];
 		const Letter* subject = ref_seqs::data_->data(s_pos);
-		/*cout << sequence(query, 32) << endl;
-		cout << sequence(subject, 32) << endl;*/
+
+		/*if (count_id(query, subject) < config.id_n)
+			continue;*/
+
+		stats.inc(Statistics::TENTATIVE_MATCHESX);
 
 		unsigned delta, len;
 		int score;

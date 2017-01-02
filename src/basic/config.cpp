@@ -183,7 +183,10 @@ Config::Config(int argc, const char **argv)
 		("neighborhood-score", 0, "", neighborhood_score)
 		("algo", 0, "", algo, 0u)
 		("seed-weight", 'w', "", seed_weight, 7u)
-		("very-sensitive", 0, "", mode_very_sensitive);
+		("very-sensitive", 0, "", mode_very_sensitive)
+		("idl", 0, "", id_left)
+		("idr", 0, "", id_right)
+		("idn", 0, "", id_n);
 
 	parser.add(general).add(makedb).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options);
 	parser.store(argc, argv, command);

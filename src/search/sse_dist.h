@@ -83,19 +83,27 @@ struct Byte_finger_print
 	}
 	unsigned match(const Byte_finger_print &rhs) const
 	{
-		/*for (unsigned i = 0; i < 16; ++i)
-			cout << value_traits.alphabet[r1.m128i_u8[i]];
-		for (unsigned i = 0; i < 16; ++i)
-			cout << value_traits.alphabet[r2.m128i_u8[i]];
-		cout << endl;
-		for (unsigned i = 0; i < 16; ++i)
-			cout << value_traits.alphabet[rhs.r1.m128i_u8[i]];
-		for (unsigned i = 0; i < 16; ++i)
-			cout << value_traits.alphabet[rhs.r2.m128i_u8[i]];
-		cout << endl;*/
 		return popcount32(match_block(r1, rhs.r1) << 16 | match_block(r2, rhs.r2));
 	}
 	__m128i r1, r2;
+};
+
+struct Byte_finger_print_48
+{
+	Byte_finger_print_48(const Letter *q) :
+		r1(_mm_loadu_si128((__m128i const*)(q - 16))),
+		r2(_mm_loadu_si128((__m128i const*)(q))),
+		r3(_mm_loadu_si128((__m128i const*)(q + 16)))
+	{}
+	static uint64_t match_block(__m128i x, __m128i y)
+	{
+		return (uint64_t)_mm_movemask_epi8(_mm_cmpeq_epi8(x, y));
+	}
+	unsigned match(const Byte_finger_print_48 &rhs) const
+	{
+		return popcount64(match_block(r3, rhs.r3) << 32 | match_block(r1, rhs.r1) << 16 | match_block(r2, rhs.r2));
+	}
+	__m128i r1, r2, r3;
 };
 
 #else
@@ -154,7 +162,7 @@ struct Halfbyte_finger_print_naive
 };
 
 
-typedef Byte_finger_print Finger_print;
+typedef Byte_finger_print_48 Finger_print;
 
 #ifdef __SSSE3__
 inline __m128i reduce_seq_ssse3(const __m128i &seq)

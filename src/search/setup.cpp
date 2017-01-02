@@ -29,7 +29,7 @@ void setup_search_params(pair<size_t, size_t> query_len_bounds, size_t chunk_db_
 		Config::set_option(config.index_mode, 4u);
 		::shapes = shape_config(config.index_mode, config.shapes, config.shape_mask);
 		config.seed_anchor = std::min(::shapes[0].length_ - 1, 8u);
-		Config::set_option(config.min_identities, 6u);
+		Config::set_option(config.min_identities, 9u);
 		Config::set_option(config.min_ungapped_score, 19.0);
 		Config::set_option(config.window, 60u);
 		Config::set_option(config.hit_band, 8);
@@ -37,12 +37,13 @@ void setup_search_params(pair<size_t, size_t> query_len_bounds, size_t chunk_db_
 	}
 	else {
 
+		Config::set_option(config.min_identities, 11u);
 		if (query_len_bounds.second <= 40) {
-			Config::set_option(config.min_identities, 10u);
+			//Config::set_option(config.min_identities, 10u);
 			Config::set_option(config.min_ungapped_score, std::min(27.0, b));
 		}
 		else {
-			Config::set_option(config.min_identities, 9u);
+			//Config::set_option(config.min_identities, 9u);
 			Config::set_option(config.min_ungapped_score, std::min(23.0, b));
 		}
 
