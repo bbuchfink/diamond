@@ -107,26 +107,6 @@ int xdrop_window(const Letter *query, const Letter *subject)
 	return st;
 }
 
-int binary_ungapped(uint64_t mask)
-{
-	static const int scores[] = { 3, -1 };
-	int s = 0, m = 0;
-	unsigned long index;
-	while (_BitScanForward64(&index, mask)) {
-		s += 5;
-		m = std::max(m, s);
-		mask >>= index + 1;
-	}
-	return m;
-	for (unsigned i = 0; i < 64; ++i) {
-		//s += scores[mask & 1];
-		s += ((mask & 1) << 2) - 1;
-		m = std::max(m, s);
-		mask >>= 1;
-	}
-	return m;
-}
-
 void benchmark_ungapped(const Sequence_set &ss, unsigned qa, unsigned sa)
 {
 	static const size_t n = 100000000llu;
@@ -147,7 +127,7 @@ void benchmark_ungapped(const Sequence_set &ss, unsigned qa, unsigned sa)
 	for (size_t i = 0; i < n; ++i) {
 
 		//score += xdrop_window(q, s);
-		score += binary_ungapped(mask);
+		//score += binary_ungapped(mask);
 
 	}
 	t.stop();
