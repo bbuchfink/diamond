@@ -33,6 +33,7 @@ struct Double_buffer
 	inline void init(size_t size, size_t padding, size_t padding_front, _t init)
 	{
 		const size_t total = size + padding + padding_front;
+		data_.clear();
 		data_.resize(total*2);
 		ptr1 = &data_[padding_front];
 		ptr2 = &data_[total+padding_front];

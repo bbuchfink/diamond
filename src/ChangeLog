@@ -1,3 +1,6 @@
+[0.8.32]
+- slightly improved speed and sensitivity
+
 [0.8.31]
 - renamed option --run-len to --min-orf
 - added compositional score adjustments (option --comp-based-stats (0,1), enabled by default)

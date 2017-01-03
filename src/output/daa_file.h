@@ -196,6 +196,7 @@ struct DAA_file
 		f_.read(&size, 1);
 		if(size == 0)
 			return false;
+		buf.clear();
 		buf.resize(size);
 		f_.read(buf.data(), size);
 		query_num = query_count_++;

@@ -392,8 +392,10 @@ struct Matrix
 	void init(int rows, int cols, bool reset = false)
 	{
 		cols_ = cols;
-		if (!reset)
+		if (!reset) {
+			data_.clear();
 			data_.resize(rows*cols);
+		}
 		else {
 			data_.clear();
 			data_.insert(data_.begin(), rows*cols, _t());

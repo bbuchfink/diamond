@@ -63,6 +63,7 @@ struct Fixed_score_buffer
 	inline void init(size_t col_size, size_t cols, _t init)
 	{
 		col_size_ = col_size;
+		data_.clear();
 		data_.reserve(col_size * cols);
 		data_.resize(col_size);
 		for (size_t i = 0; i<col_size; ++i)

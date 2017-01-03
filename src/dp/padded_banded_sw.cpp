@@ -66,7 +66,9 @@ struct Padded_banded_DP_matrix
 		scores_(TLS::get(scores_ptr)),
 		hgap_(TLS::get(hgap_ptr))
 	{
+		scores_.clear();
 		scores_.resize(2 * band + 1);
+		hgap_.clear();
 		hgap_.resize(2 * band + 2);
 		hgap_front_ = &hgap_.front();
 		score_front_ = &scores_.front();

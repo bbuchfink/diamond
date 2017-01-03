@@ -57,12 +57,12 @@ int xdrop_ungapped2(const Letter *query, const Letter *subject)
 		&& *s != '\xff')
 	{
 		st += score_matrix(*q, *s);
-		//score = std::max(score, st);
+		score = std::max(score, st);
 		++q;
 		++s;
 
 		st += score_matrix(*q, *s);
-		//score = std::max(score, st);
+		score = std::max(score, st);
 		++q;
 		++s;
 
@@ -74,25 +74,86 @@ int xdrop_ungapped2(const Letter *query, const Letter *subject)
 	return score;
 }
 
+int xdrop_window(const Letter *query, const Letter *subject)
+{
+	static const int window = 40;
+	int score(0), st(0), n = 0;
+
+	const Letter *q(query), *s(subject);
+
+	st = score;
+	while (n < window
+		&& *q != '\xff'
+		&& *s != '\xff')
+	{
+		st += score_matrix(*q, *s);
+		//score = std::max(score, st);
+		++q;
+		++s;
+		++n;
+
+		st += score_matrix(*q, *s);
+		//score = std::max(score, st);
+		++q;
+		++s;
+		++n;
+
+		st += score_matrix(*q, *s);
+		//score = std::max(score, st);
+		++q;
+		++s;
+		++n;
+	}
+	return st;
+}
+
+int binary_ungapped(uint64_t mask)
+{
+	static const int scores[] = { 3, -1 };
+	int s = 0, m = 0;
+	unsigned long index;
+	while (_BitScanForward64(&index, mask)) {
+		s += 5;
+		m = std::max(m, s);
+		mask >>= index + 1;
+	}
+	return m;
+	for (unsigned i = 0; i < 64; ++i) {
+		//s += scores[mask & 1];
+		s += ((mask & 1) << 2) - 1;
+		m = std::max(m, s);
+		mask >>= 1;
+	}
+	return m;
+}
+
 void benchmark_ungapped(const Sequence_set &ss, unsigned qa, unsigned sa)
 {
-	static const unsigned n = 10000000;
+	static const size_t n = 100000000llu;
 	Timer t;
 	t.start();
 
 	const Letter *q = &ss[0][qa], *s = &ss[1][sa];
 	int score=0;
 
-	for (unsigned i = 0; i < n; ++i) {
+	uint64_t mask = 0;
+	for (unsigned i = 0; i < 64; ++i) {
+		if (q[i] == '\xff' || s[i] == '\xff')
+			break;
+		if (q[i] == s[i])
+			mask |= 1llu << i;
+	}
 
-		score += xdrop_ungapped2(q, s);
+	for (size_t i = 0; i < n; ++i) {
+
+		//score += xdrop_window(q, s);
+		score += binary_ungapped(mask);
 
 	}
 	t.stop();
 
 	cout << score << endl;
-	cout << " n/sec=" << (double)n / t.getElapsedTimeInSec() << endl;
-	cout << "t=" << t.getElapsedTimeInMicroSec() << endl;
+	cout << "t=" << t.getElapsedTimeInMicroSec() * 1000 / n << " ns" << endl;
 }
 
 void benchmark_greedy(const Sequence_set &ss, unsigned qa, unsigned sa)
@@ -182,6 +243,7 @@ Query  80  TVIGHL  85
            T+I  L
 Sbjct  76  TIINGL  81	*/
 
+aln1:
 
 	s1 = sequence::from_string("SLFEQLGGQAAVQAVTAQFYANIQADATVATFFNGIDMPNQTNKTAAFLCAALGGPNAWTGRNLKEVHANMGVSNAQFTTVIGHLRSALTGAGVAAALVEQTVAVAETVRGDVVTV");
 	s2 = sequence::from_string("RKQRIVIKISGACLKQNDSSIIDFIKINDLAEQIEKISKKYIVSIVLGGGNIWRGSIAKELDMDRNLADNMGMMATIINGLALENALNHLNVNTIVLSAIKCDKLVHESSANNIKKAIEKEQVMIFVAGTGFPYFTTDSCAAIRAAETESSIILMGKNGVDGVYDSDPKINPNAQFYEHITFNMALTQNLKVMDATALALCQENNINLLVFNIDKPNAIVDVLEKKNKYTIVSK");
@@ -283,8 +345,6 @@ KCLEHLFFFKLIGDTPIDTFLMEMLEAPHQIT");
 	*/
 
 
-
-aln1:
 	s1 = sequence::from_string("tspmtpditgkpfvaadasndyikrevmipmrdgvklhtvivlpkgaknapivltrtpyd\
 asgrterlasphmkdllsagddvfveggyirvfqdvrgkygsegdyvmtrplrgplnpse\
 vdhatdawdtidwlvknvsesngkvgmigssyegftvvmaltnphpalkvavpespmidg\
@@ -313,8 +373,8 @@ VIAREQLEEMCTAVNRIHRGPEHPSHIVLPIIKR");
 	ss.finish_reserve();
 
 	//benchmark_floating(ss, qa, sa);
-	benchmark_greedy(ss, qa, sa);
+	//benchmark_greedy(ss, qa, sa);
 	//benchmark_cmp();
-	//benchmark_ungapped(ss, qa, sa);
+	benchmark_ungapped(ss, qa, sa);
 
 }

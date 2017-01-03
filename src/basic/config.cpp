@@ -186,8 +186,11 @@ Config::Config(int argc, const char **argv)
 		("very-sensitive", 0, "", mode_very_sensitive)
 		("idl", 0, "", id_left)
 		("idr", 0, "", id_right)
-		("idn", 0, "", id_n);
-
+		("idn", 0, "", id_n)
+		("bmatch", 0, "", bmatch)
+		("bmismatch", 0, "", bmismatch)
+		("bcutoff", 0, "", bcutoff);
+		
 	parser.add(general).add(makedb).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options);
 	parser.store(argc, argv, command);
 

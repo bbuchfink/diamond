@@ -200,6 +200,7 @@ struct Input_stream
 		size_t size;
 		if (read(&size, 1) != 1)
 			throw File_read_exception(file_name);
+		v.clear();
 		v.resize(size);
 		if (read(v.data(), size) != size)
 			throw File_read_exception(file_name);

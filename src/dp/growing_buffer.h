@@ -32,6 +32,7 @@ struct Growing_buffer
 	inline void init(size_t size, size_t padding, size_t padding_front, _t init)
 	{
 		const size_t total = size + padding;
+		data_.clear();
 		data_.resize(total);
 		col_size_ = total;
 		for(size_t i=0;i<total;++i)

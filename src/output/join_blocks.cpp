@@ -50,6 +50,7 @@ struct Join_fetcher
 	{
 		unsigned size;
 		files[b].read(&size, 1);
+		buf[b].clear();
 		buf[b].resize(size);
 		files[b].read(buf[b].data(), size);
 		files[b].read(&query_ids[b], 1);

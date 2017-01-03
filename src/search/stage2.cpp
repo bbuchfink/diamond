@@ -24,6 +24,10 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #include "../data/reference.h"
 #include "collision.h"
 
+#ifdef __SSE2__
+TLS_PTR vector<sequence>* hit_filter::subjects_ptr;
+#endif
+
 unsigned count_id(const Letter *query, const Letter *subject)
 {
 	static const Reduction reduction("KR E D Q N C G H LM FY VI W P S T A"); // murphy.10
@@ -31,10 +35,26 @@ unsigned count_id(const Letter *query, const Letter *subject)
 	for (int i = -1; i >= -((int)config.id_left) && query[i] != '\xff' && subject[i] != '\xff'; --i)
 		if (reduction(query[i]) == reduction(subject[i]))
 			++n;
-	for (int i = 0; i < config.id_right && query[i] != '\xff' && subject[i] != '\xff'; ++i)
+	for (unsigned i = 0; i < config.id_right && query[i] != '\xff' && subject[i] != '\xff'; ++i)
 		if (reduction(query[i]) == reduction(subject[i]))
 			++n;
 	return n;
+}
+
+int extend_binary(const Letter *query, const Letter *subject)
+{
+	int s = 0, t = 0;
+	for (int i = -1; i >= -60 && query[i] != '\xff' && subject[i] != '\xff'; --i) {
+		t += query[i] == subject[i] ? config.bmatch : -config.bmismatch;
+		s = std::max(s, t);
+	}
+	int sr = 0;
+	t = 0;
+	for (unsigned i = 0; i < 60 && query[i] != '\xff' && subject[i] != '\xff'; ++i) {
+		t += query[i] == subject[i] ? config.bmatch : -config.bmismatch;
+		sr = std::max(sr, t);
+	}
+	return s + sr;
 }
 
 #ifdef __SSE2__
@@ -55,6 +75,9 @@ void search_query_offset(Loc q,
 		const Letter* subject = ref_seqs::data_->data(s_pos);
 
 		/*if (count_id(query, subject) < config.id_n)
+			continue;*/
+
+		/*if (extend_binary(query, subject) < config.bcutoff)
 			continue;*/
 
 		stats.inc(Statistics::TENTATIVE_MATCHESX);
