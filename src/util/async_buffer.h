@@ -30,7 +30,7 @@ using std::vector;
 using std::string;
 using std::endl;
 
-const unsigned async_buffer_max_bins = 4;
+const unsigned async_buffer_max_bins = 16;
 
 template<typename _t>
 struct Async_buffer
