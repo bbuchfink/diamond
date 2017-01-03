@@ -120,7 +120,7 @@ void run_ref_chunk(Database_file &db_file,
 	timer_mapping.resume();
 	Trace_pt_buffer::instance = new Trace_pt_buffer(query_seqs::data_->get_length() / align_mode.query_contexts,
 		config.tmpdir,
-		config.mem_buffered());
+		config.query_bins);
 	timer.finish();
 	timer_mapping.stop();
 

@@ -135,6 +135,7 @@ Config::Config(int argc, const char **argv)
 
 	Options_group advanced("Advanced options");
 	advanced.add()
+		("bin", 0, "number of query bins for seed search", query_bins, 16u)
 		("min-orf", 'l', "ignore translated sequences without an open reading frame of at least this length", run_len)
 		("freq-sd", 0, "number of standard deviations for ignoring frequent seeds", freq_sd, 0.0)
 		("id2", 0, "minimum number of identities for stage 1 hit", min_identities)

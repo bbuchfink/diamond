@@ -97,10 +97,9 @@ struct hit
 
 struct Trace_pt_buffer : public Async_buffer<hit>
 {
-	Trace_pt_buffer(size_t input_size, const string &tmpdir, bool mem_buffered):
-		Async_buffer<hit> (input_size, tmpdir, mem_buffered ? mem_bins : file_bins)
-	{ }
-	enum { mem_bins = 1, file_bins = 4 };
+	Trace_pt_buffer(size_t input_size, const string &tmpdir, unsigned query_bins):
+		Async_buffer<hit>(input_size, tmpdir, query_bins)
+	{}
 	static Trace_pt_buffer *instance;
 };
 
