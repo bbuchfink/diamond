@@ -350,7 +350,7 @@ Config::Config(int argc, const char **argv)
 	if (command == help)
 		parser.print_help();
 
-	set_max_open_files(0);
+	set_max_open_files(query_bins * threads_ + 16);
 
 	/*log_stream << "sizeof(hit)=" << sizeof(hit) << " sizeof(packed_uint40_t)=" << sizeof(packed_uint40_t)
 		<< " sizeof(sorted_list::entry)=" << sizeof(sorted_list::entry) << endl;*/
