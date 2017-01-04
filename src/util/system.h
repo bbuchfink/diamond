@@ -53,7 +53,6 @@ inline void cpuid(int CPUInfo[4],int InfoType) {
 #ifndef _MSC_VER
 
 #include <sys/resource.h>
-#include <iostream>
 
 inline void set_max_open_files(unsigned n)
 {
