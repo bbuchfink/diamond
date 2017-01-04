@@ -22,8 +22,6 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #include "../output/daa_write.h"
 #include "output_format.h"
 
-#ifndef ST_JOIN
-
 struct Join_fetcher
 {
 	static void init(const vector<Temp_file> &tmp_file)
@@ -232,7 +230,7 @@ void join_blocks(unsigned ref_blocks, Output_stream &master_out, const vector<Te
 	ref_map.init_rev_map();
 	Join_fetcher::init(tmp_file);
 	Join_writer writer(master_out);
-	Task_queue<Text_buffer, Join_writer> queue(3*config.threads_, writer);
+	Task_queue<Text_buffer, Join_writer> queue(3 * config.threads_, writer);
 	Thread_pool threads;
 	for (unsigned i = 0; i < config.threads_; ++i)
 		threads.push_back(launch_thread(join_worker, &queue));
@@ -247,5 +245,3 @@ void join_blocks(unsigned ref_blocks, Output_stream &master_out, const vector<Te
 		writer(out);
 	}
 }
-
-#endif

@@ -143,21 +143,23 @@ void align_worker(Output_stream *out)
 
 void align_queries(const Trace_pt_buffer &trace_pts, Output_stream* output_file)
 {
-	Trace_pt_list v;
 	query_queue.last_query = (unsigned)-1;
 	for (unsigned bin = 0; bin < trace_pts.bins(); ++bin) {
 		log_stream << "Processing query bin " << bin + 1 << '/' << trace_pts.bins() << '\n';
 		task_timer timer("Loading trace points", 3);
-		statistics.max(Statistics::TEMP_SPACE, trace_pts.load(v, bin));
+		Trace_pt_list *v = new Trace_pt_list;
+		statistics.max(Statistics::TEMP_SPACE, trace_pts.load(*v, bin));
 		timer.go("Sorting trace points");
-		merge_sort(v.begin(), v.end(), config.threads_);
-		v.init();
+		merge_sort(v->begin(), v->end(), config.threads_);
+		v->init();
 		timer.go("Computing alignments");
-		query_queue.init(v.begin(), v.end());
+		query_queue.init(v->begin(), v->end());
 		Thread_pool threads;
 		for (unsigned i = 0; i < config.threads_; ++i)
 			threads.push_back(launch_thread(align_worker, output_file));
 		threads.join_all();
+		timer.go("Deallocating buffers");
+		delete v;
 	}
 	if (!blocked_processing && *output_format != Output_format::daa && config.report_unaligned != 0) {
 		Text_buffer buf;

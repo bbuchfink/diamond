@@ -50,4 +50,23 @@ inline void cpuid(int CPUInfo[4],int InfoType) {
 
 #endif
 
+#ifndef _MSC_VER
+
+#include <sys/resource.h>
+
+inline void set_max_open_files(unsigned n)
+{
+	rlimit rlp;
+	if (getrlimit(RLIMIT_NOFILE, &rlp) != 0)
+		throw std::runtime_error("Error executing getrlimit");
+	log_stream << "Soft limit = " << rlp.rlim_cur << " Hard limit = " << rlp.rlim_max << endl;
+}
+
+#else
+
+inline void set_max_open_files(unsigned n)
+{}
+
+#endif
+
 #endif /* SYSTEM_H_ */
