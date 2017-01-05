@@ -111,9 +111,9 @@ struct Trails
 	double pheromone[20][20];
 };
 
-const size_t n_ants = 100;
-Trail ants[n_ants];
-double sens[n_ants];
+const size_t max_ants = 100000;
+Trail ants[max_ants];
+double sens[max_ants];
 Trails trails;
 
 void get_sens_worker(vector<char>::const_iterator query, vector<char>::const_iterator query_end, vector<char>::const_iterator subject, vector<double> *sens)
@@ -121,9 +121,9 @@ void get_sens_worker(vector<char>::const_iterator query, vector<char>::const_ite
 	vector<bool> hit;
 
 	for (; query < query_end; query += 70, subject += 70) {
-		hit.insert(hit.begin(), n_ants, false);
+		hit.insert(hit.begin(), config.n_ants, false);
 		for (size_t j = 0; j <= 70 - shapes[0].length_; ++j) {
-			for (size_t k = 0; k < n_ants; ++k)
+			for (size_t k = 0; k < config.n_ants; ++k)
 				if (shapes[0].hit(&query[j], &subject[j], ants[k]) && !hit[k]) {
 					++((*sens)[k]);
 					hit[k] = true;
@@ -140,16 +140,16 @@ void get_sens(const vector<char> &query, const vector<char> &subject)
 	vector<vector<double> > v(config.threads_);
 	Thread_pool threads;
 	for (unsigned i = 0; i < config.threads_; ++i) {
-		v[i].resize(n_ants);
+		v[i].resize(config.n_ants);
 		threads.push_back(launch_thread(get_sens_worker, query.begin() + p.getMin(i) * 70, query.begin() + p.getMax(i) * 70, subject.begin() + p.getMin(i) * 70, &v[i]));
 	}
 	threads.join_all();
 	memset(sens, 0, sizeof(sens));
 	for (unsigned i = 0; i < config.threads_; ++i)
-		for (unsigned j = 0; j < n_ants; ++j)
+		for (unsigned j = 0; j < config.n_ants; ++j)
 			sens[j] += v[i][j];
 
-	for (size_t k = 0; k < n_ants; ++k)
+	for (size_t k = 0; k < config.n_ants; ++k)
 		sens[k] /= n_seqs;
 }
 
@@ -179,7 +179,7 @@ void opt()
 
 	while (true) {
 		timer.go("Setting ants");
-		for (size_t i = 0; i < n_ants; ++i)
+		for (size_t i = 0; i < config.n_ants; ++i)
 			ants[i] = trails.get();
 		
 		timer.go("Getting sensitivity");
@@ -187,7 +187,7 @@ void opt()
 		
 		double max_sens_eff = 0;
 		size_t max_ant;
-		for (size_t i = 0; i < n_ants; ++i) {
+		for (size_t i = 0; i < config.n_ants; ++i) {
 			const double e = sens[i] * std::min(p_bg / ants[i].background_p(), 1.0);
 			if (e > max_sens_eff) {
 				max_sens_eff = e;

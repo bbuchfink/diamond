@@ -191,7 +191,8 @@ Config::Config(int argc, const char **argv)
 		("idn", 0, "", id_n)
 		("bmatch", 0, "", bmatch)
 		("bmismatch", 0, "", bmismatch)
-		("bcutoff", 0, "", bcutoff);
+		("bcutoff", 0, "", bcutoff)
+		("ants", 0, "", n_ants, uint64_t(100));
 		
 	parser.add(general).add(makedb).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options);
 	parser.store(argc, argv, command);
