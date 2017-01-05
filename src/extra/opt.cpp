@@ -67,13 +67,13 @@ struct Trails
 			double sum = pheromone[next][next];
 			for (int i = next + 1; i < 20; ++i)
 				if (t.bucket[i] == -1)
-					sum += pheromone[next][i] * std::max(score_matrix(next, i) + 1, 1);
+					sum += pheromone[next][i] * std::max(score_matrix(next, i) + 1, 0);
 
 			memset(p, 0, sizeof(p));
 			p[next] = pheromone[next][next] / sum;
 			for (int i = next + 1; i < 20; ++i)
 				if (t.bucket[i] == -1)
-					p[i] = (pheromone[next][i] * std::max(score_matrix(next, i) + 1, 1)) / sum;
+					p[i] = (pheromone[next][i] * std::max(score_matrix(next, i) + 1, 0)) / sum;
 
 			int i = get_distribution<20>(p);
 
