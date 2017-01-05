@@ -43,6 +43,44 @@ bool include_partition<Filter_partition>(unsigned p)
 	return current_range.contains(p);
 }*/
 
+
+struct Trail
+{
+	Trail()
+	{
+		bucket[0] = 0;
+		for (int i = 1; i < 20; ++i)
+			bucket[i] = -1;
+	}
+	Trail(const Reduction &reduction)
+	{
+		for (int i = 0; i < 20; ++i)
+			bucket[i] = reduction(i);
+	}
+	int operator()(char l) const
+	{
+		return bucket[(long)l];
+	}
+	int next() const
+	{
+		for (int i = 0; i < 20; ++i)
+			if (bucket[i] == -1)
+				return i;
+		return -1;
+	}
+	int buckets() const
+	{
+		int m = 0;
+		for (int i = 0; i < 20; ++i)
+			m = std::max(m, bucket[i]);
+		return m + 1;
+	}
+	double background_p() const;
+	friend std::ostream& operator<<(std::ostream &s, const Trail &t);
+	int bucket[20];
+};
+
+
 struct shape
 {
 
@@ -139,6 +177,14 @@ struct shape
 		for (unsigned i = 0; i < weight_; ++i)
 			score += score_matrix(x[positions_[i]], y[positions_[i]]);
 		return score;
+	}
+
+	bool hit(const Letter *x, const Letter *y, const Trail &trail) const
+	{
+		for (unsigned i = 0; i < weight_; ++i)
+			if (trail(x[positions_[i]]) != trail(y[positions_[i]]))
+				return false;
+		return true;
 	}
 
 	uint32_t length_, weight_, positions_[Const::max_seed_weight], d_, mask_, rev_mask_, id_;

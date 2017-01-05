@@ -52,7 +52,8 @@ Config::Config(int argc, const char **argv)
 		.add_command("dbstat", "")
 		.add_command("modelsim", "")
 		.add_command("match-file-stat", "")
-		.add_command("model-seqs", "");
+		.add_command("model-seqs", "")
+		.add_command("opt", "");
 
 	Options_group general("General options");
 	general.add()
@@ -283,7 +284,7 @@ Config::Config(int argc, const char **argv)
 		;
 	}
 
-	if (command == Config::blastp || command == Config::blastx || command == Config::benchmark || command == Config::model_sim) {
+	if (command == Config::blastp || command == Config::blastx || command == Config::benchmark || command == Config::model_sim || command == Config::opt) {
 		if (tmpdir == "")
 			tmpdir = extract_dir(output_file);
 		if (gap_open == -1)

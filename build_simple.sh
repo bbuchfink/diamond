@@ -46,4 +46,5 @@ g++ -DNDEBUG -O3 -mssse3 -Wno-deprecated-declarations -std=gnu++98 $1 \
   src/output/sam_format.cpp \
   src/align/align.cpp \
   src/search/setup.cpp \
+  src/extra/opt.cpp \
 -lz -lpthread -o diamond

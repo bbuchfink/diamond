@@ -29,6 +29,7 @@ using std::endl;
 void run_mapper();
 void master_thread_di();
 void model_seqs();
+void opt();
 
 int main(int ac, const char* av[])
 {
@@ -85,6 +86,9 @@ int main(int ac, const char* av[])
 			break;
 		case Config::model_seqs:
 			model_seqs();
+			break;
+		case Config::opt:
+			opt();
 			break;
 		default:
 			return 1;

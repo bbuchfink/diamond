@@ -78,6 +78,7 @@ add_executable(diamond src/run/main.cpp
   src/output/sam_format.cpp
   src/align/align.cpp
   src/search/setup.cpp
+  src/extra/opt.cpp
 )
 
 target_link_libraries(diamond ${ZLIB_LIBRARY} ${CMAKE_THREAD_LIBS_INIT})
