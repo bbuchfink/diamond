@@ -25,17 +25,25 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #include "../util/util.h"
 #include "../util/thread.h"
 
-double Trail::background_p() const
+double Letter_trail::background_p() const
 {
 	double p = 0;
 	for (int i = 0; i < 20; ++i)
 		for (int j = 0; j < 20; ++j)
 			if (bucket[i] == bucket[j])
 				p += background_freq[i] * background_freq[j];
-	return pow(p, shapes[0].weight_);
+	return p;
 }
 
-std::ostream& operator<<(std::ostream &s, const Trail &t)
+double background_p(const Trail& t)
+{
+	double p = 1.0;
+	for (int pos = 0; pos < OPT_W; ++pos)
+		p *= t[pos].background_p();
+	return p;
+}
+
+std::ostream& operator<<(std::ostream &s, const Letter_trail &t)
 {
 	const int buckets = t.buckets();
 	for (int i = 0; i < buckets; ++i) {
@@ -54,26 +62,27 @@ struct Trails
 	{
 		for (int i = 0; i < 20; ++i)
 			for (int j = 0; j < 20; ++j)
-				pheromone[i][j] = 1.0;
+				for (int p = 0; p < OPT_W; ++p)
+					pheromone[p][i][j] = 1.0;
 	}
 
-	Trail get() const
+	Letter_trail get(int pos) const
 	{
-		Trail t;
+		Letter_trail t;
 		int next = 0;
 		double p[20];
 		while (true) {
 
-			double sum = pheromone[next][next];
+			double sum = pheromone[pos][next][next];
 			for (int i = next + 1; i < 20; ++i)
 				if (t.bucket[i] == -1)
-					sum += pheromone[next][i] * std::max(score_matrix(next, i) + 1, 0);
+					sum += pheromone[pos][next][i] * std::max(score_matrix(next, i) + 1, 0);
 
 			memset(p, 0, sizeof(p));
-			p[next] = pheromone[next][next] / sum;
+			p[next] = pheromone[pos][next][next] / sum;
 			for (int i = next + 1; i < 20; ++i)
 				if (t.bucket[i] == -1)
-					p[i] = (pheromone[next][i] * std::max(score_matrix(next, i) + 1, 0)) / sum;
+					p[i] = (pheromone[pos][next][i] * std::max(score_matrix(next, i) + 1, 0)) / sum;
 
 			int i = get_distribution<20>(p);
 
@@ -94,7 +103,13 @@ struct Trails
 		return t;
 	}
 
-	void update(const Trail &t, double sens)
+	void get(Trail &out) const
+	{
+		for (int pos = 0; pos < OPT_W; ++pos)
+			out[pos] = get(pos);
+	}
+
+	void update(const Letter_trail &t, int pos, double sens)
 	{
 		const int buckets = t.buckets();
 		vector<vector<int> > v(buckets);
@@ -103,15 +118,21 @@ struct Trails
 		for (int i = 0; i < buckets; ++i) {
 			int j;
 			for (j = 0; j < v[i].size() - 1; ++j)
-				pheromone[v[i][j]][v[i][j + 1]] += sens;
-			pheromone[v[i][j]][v[i][j]] += sens;
+				pheromone[pos][v[i][j]][v[i][j + 1]] += sens;
+			pheromone[pos][v[i][j]][v[i][j]] += sens;
 		}
 	}
 
-	double pheromone[20][20];
+	void update(const Trail &t, double sens)
+	{
+		for (int pos = 0; pos < OPT_W; ++pos)
+			update(t[pos], pos, sens);
+	}
+
+	double pheromone[OPT_W][20][20];
 };
 
-const size_t max_ants = 100000;
+const size_t max_ants = 10000;
 Trail ants[max_ants];
 double sens[max_ants];
 Trails trails;
@@ -169,18 +190,19 @@ void opt()
 	get_related_seq(sequence(query), subject, id);
 
 	timer.go("Calculating sensitivity");
-	ants[0] = Trail(Reduction("A KR EDNQ C G H ILVM FYW P ST"));
+	for (int pos = 0; pos < OPT_W; ++pos)
+		ants[0][pos] = Letter_trail(Reduction("A KR EDNQ C G H ILVM FYW P ST"));
 	get_sens(query, subject);
 	timer.finish();
-
-	double p_bg = ants[0].background_p();
+	
+	double p_bg = background_p(ants[0]);
 	cout << "Sensitivity = " << sens[0] << endl;
 	cout << "P(background) = " << p_bg << endl;	
 
 	while (true) {
 		timer.go("Setting ants");
 		for (size_t i = 0; i < config.n_ants; ++i)
-			ants[i] = trails.get();
+			trails.get(ants[i]);
 		
 		timer.go("Getting sensitivity");
 		get_sens(query, subject);
@@ -188,7 +210,7 @@ void opt()
 		double max_sens_eff = 0;
 		size_t max_ant;
 		for (size_t i = 0; i < config.n_ants; ++i) {
-			const double e = sens[i] * std::min(p_bg / ants[i].background_p(), 1.0);
+			const double e = sens[i] * std::min(p_bg / background_p(ants[i]), 1.0);
 			if (e > max_sens_eff) {
 				max_sens_eff = e;
 				max_ant = i;
@@ -197,8 +219,10 @@ void opt()
 		timer.finish();
 		cout << "Effective sensitivity = " << max_sens_eff << endl;
 		cout << "Sensitivity = " << sens[max_ant] << endl;
-		cout << "P(background) = " << ants[max_ant].background_p() << endl;
-		cout << ants[max_ant] << endl << endl;;
+		cout << "P(background) = " << background_p(ants[max_ant]) << endl;
+		for (int pos = 0; pos < OPT_W; ++pos)
+			cout << ants[max_ant][pos] << endl;
+		cout << endl;
 
 		trails.update(ants[max_ant], max_sens_eff);
 	}

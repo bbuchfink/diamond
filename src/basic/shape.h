@@ -44,15 +44,15 @@ bool include_partition<Filter_partition>(unsigned p)
 }*/
 
 
-struct Trail
+struct Letter_trail
 {
-	Trail()
+	Letter_trail()
 	{
 		bucket[0] = 0;
 		for (int i = 1; i < 20; ++i)
 			bucket[i] = -1;
 	}
-	Trail(const Reduction &reduction)
+	Letter_trail(const Reduction &reduction)
 	{
 		for (int i = 0; i < 20; ++i)
 			bucket[i] = reduction(i);
@@ -76,10 +76,12 @@ struct Trail
 		return m + 1;
 	}
 	double background_p() const;
-	friend std::ostream& operator<<(std::ostream &s, const Trail &t);
+	friend std::ostream& operator<<(std::ostream &s, const Letter_trail &t);
 	int bucket[20];
 };
 
+#define OPT_W 7
+typedef Letter_trail Trail[OPT_W];
 
 struct shape
 {
@@ -182,8 +184,13 @@ struct shape
 	bool hit(const Letter *x, const Letter *y, const Trail &trail) const
 	{
 		for (unsigned i = 0; i < weight_; ++i)
+#if OPT_W==1
 			if (trail(x[positions_[i]]) != trail(y[positions_[i]]))
 				return false;
+#else
+			if (trail[i](x[positions_[i]]) != trail[i](y[positions_[i]]))
+				return false;
+#endif
 		return true;
 	}
 
