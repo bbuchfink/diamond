@@ -125,6 +125,7 @@ struct Config
 	int bmatch, bmismatch, bcutoff;
 	unsigned query_bins;
 	uint64_t n_ants;
+	double rho;
 
 	enum {
 		makedb = 0, blastp = 1, blastx = 2, view = 3, help = 4, version = 5, getseq = 6, benchmark = 7, random_seqs = 8, compare = 9, sort = 10, roc = 11, db_stat = 12, model_sim = 13,

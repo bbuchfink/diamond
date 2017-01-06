@@ -126,6 +126,10 @@ struct Trails
 	void update(const Trail &t, double sens)
 	{
 		for (int pos = 0; pos < OPT_W; ++pos)
+			for (int i = 0; i < 20; ++i)
+				for (int j = 0; j < 20; ++j)
+					pheromone[pos][i][j] *= config.rho;
+		for (int pos = 0; pos < OPT_W; ++pos)
 			update(t[pos], pos, sens);
 	}
 
