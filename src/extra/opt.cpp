@@ -55,6 +55,13 @@ std::ostream& operator<<(std::ostream &s, const Letter_trail &t)
 	return s;
 }
 
+double tau_min, tau_max;
+
+void set_limits(double &x)
+{
+	x = std::min(std::max(x, tau_min), tau_max);
+}
+
 struct Trails
 {
 
@@ -63,7 +70,7 @@ struct Trails
 		for (int i = 0; i < 20; ++i)
 			for (int j = 0; j < 20; ++j)
 				for (int p = 0; p < OPT_W; ++p)
-					pheromone[p][i][j] = 1.0;
+					pheromone[p][i][j] = 100.0;
 	}
 
 	Letter_trail get(int pos) const
@@ -117,9 +124,12 @@ struct Trails
 			v[t.bucket[i]].push_back(i);
 		for (int i = 0; i < buckets; ++i) {
 			int j;
-			for (j = 0; j < v[i].size() - 1; ++j)
+			for (j = 0; j < v[i].size() - 1; ++j) {
 				pheromone[pos][v[i][j]][v[i][j + 1]] += sens;
+				set_limits(pheromone[pos][v[i][j]][v[i][j + 1]]);
+			}
 			pheromone[pos][v[i][j]][v[i][j]] += sens;
+			set_limits(pheromone[pos][v[i][j]][v[i][j]]);
 		}
 	}
 
@@ -127,8 +137,10 @@ struct Trails
 	{
 		for (int pos = 0; pos < OPT_W; ++pos)
 			for (int i = 0; i < 20; ++i)
-				for (int j = 0; j < 20; ++j)
+				for (int j = 0; j < 20; ++j) {
 					pheromone[pos][i][j] *= config.rho;
+					set_limits(pheromone[pos][i][j]);
+				}
 		for (int pos = 0; pos < OPT_W; ++pos)
 			update(t[pos], pos, sens);
 	}
@@ -202,6 +214,7 @@ void opt()
 	double p_bg = background_p(ants[0]);
 	cout << "Sensitivity = " << sens[0] << endl;
 	cout << "P(background) = " << p_bg << endl;	
+	double global_best = 0;
 
 	while (true) {
 		timer.go("Setting ants");
@@ -221,9 +234,13 @@ void opt()
 			}
 		}
 		timer.finish();
-		cout << "Effective sensitivity = " << max_sens_eff << endl;
+		global_best = std::max(global_best, max_sens_eff);
+		tau_max = 1 / (1 - config.rho)*global_best;
+		tau_min = tau_max*(1 - pow(config.p_best, 0.05)) / 9 / pow(config.p_best, 0.05);
+		cout << "Effective sensitivity = " << max_sens_eff << ", global = " << global_best << endl;
 		cout << "Sensitivity = " << sens[max_ant] << endl;
 		cout << "P(background) = " << background_p(ants[max_ant]) << endl;
+		cout << "tau_max = " << tau_max << " tau_min = " << tau_min << endl;
 		for (int pos = 0; pos < OPT_W; ++pos)
 			cout << ants[max_ant][pos] << endl;
 		cout << endl;
