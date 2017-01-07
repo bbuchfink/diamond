@@ -161,7 +161,7 @@ void get_sens_worker(vector<char>::const_iterator query, vector<char>::const_ite
 		hit.insert(hit.begin(), config.n_ants, false);
 		for (size_t j = 0; j <= 70 - shapes[0].length_; ++j) {
 			for (size_t k = 0; k < config.n_ants; ++k)
-				if (shapes[0].hit(&query[j], &subject[j], ants[k]) && !hit[k]) {
+				if (shapes[1].hit(&query[j], &subject[j], ants[k]) && !hit[k]) {
 					++((*sens)[k]);
 					hit[k] = true;
 				}
@@ -190,6 +190,27 @@ void get_sens(const vector<char> &query, const vector<char> &subject)
 		sens[k] /= n_seqs;
 }
 
+bool hit(const sequence &seq, const vector<Letter> &v, const Trail &t)
+{
+	for (size_t j = 0; j <= 70 - shapes[0].length_; ++j)
+		if (shapes[0].hit(&seq[j], &v[j], t))
+			return true;
+	return false;
+}
+
+void get_related_seq(const sequence &seq, vector<Letter> &out, double id, size_t region, const Trail &previous)
+{
+	vector<Letter> r(region);
+	out.clear();
+	for (size_t i = 0; i < seq.length(); i += region) {
+		const sequence query(&seq[i], region);
+		do {
+			get_related_seq(query, r, id);
+		} while (hit(query, r, previous));
+		out.insert(out.end(), r.begin(), r.end());
+	}
+}
+
 void opt()
 {
 	static const size_t region = 70;
@@ -197,13 +218,22 @@ void opt()
 	static const double id = 0.25;
 	
 	srand((unsigned)time(0));
+
+	Trail previous;
+	previous[0] = Letter_trail(Reduction("A KR EDNQ C G H ILVM FYW P ST"));
+	previous[1] = Letter_trail(Reduction("A KR EDNQ C G H ILVM FYW P ST"));
+	previous[2] = Letter_trail(Reduction("A KR EDNQ C G H ILVM FYW P ST"));
+	previous[3] = Letter_trail(Reduction("A KR EDNQ C G H ILVM FYW P ST"));
+	previous[4] = Letter_trail(Reduction("A KR EDNQ C G H ILVM FYW P ST"));
+	previous[5] = Letter_trail(Reduction("A KR EDNQ C G H ILVM FYW P ST"));
+	previous[6] = Letter_trail(Reduction("A KR EDNQ C G H ILVM FYW P ST"));
 	
 	task_timer timer("Init");
 	vector<char> query(count*region);
 	get_random_seq(query);
 
 	vector<char> subject(count*region);
-	get_related_seq(sequence(query), subject, id);
+	get_related_seq(sequence(query), subject, id, region, previous);
 
 	timer.go("Calculating sensitivity");
 	for (int pos = 0; pos < OPT_W; ++pos)

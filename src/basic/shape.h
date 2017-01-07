@@ -185,7 +185,7 @@ struct shape
 	{
 		for (unsigned i = 0; i < weight_; ++i)
 #if OPT_W==1
-			if (trail(x[positions_[i]]) != trail(y[positions_[i]]))
+			if (trail[0](x[positions_[i]]) != trail[0](y[positions_[i]]))
 				return false;
 #else
 			if (trail[i](x[positions_[i]]) != trail[i](y[positions_[i]]))
