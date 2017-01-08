@@ -23,3 +23,5 @@ using std::vector;
 
 void get_random_seq(vector<Letter> &seq);
 void get_related_seq(const sequence &seq, vector<Letter> &out, double id);
+
+extern const double subst_freq[20][20];

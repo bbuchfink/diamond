@@ -59,8 +59,13 @@ double tau_min, tau_max;
 
 void set_limits(double &x)
 {
-	x = std::min(std::max(x, tau_min), tau_max);
+	//x = std::min(std::max(x, tau_min), tau_max);
+	x = std::max(x, tau_min);
 }
+
+const size_t max_ants = 10000;
+Trail ants[max_ants];
+double sens[max_ants];
 
 struct Trails
 {
@@ -70,7 +75,18 @@ struct Trails
 		for (int i = 0; i < 20; ++i)
 			for (int j = 0; j < 20; ++j)
 				for (int p = 0; p < OPT_W; ++p)
-					pheromone[p][i][j] = 100.0;
+					pheromone[p][i][j] = 0.1;
+	}
+
+	double delta_tau(int pos, int i, int j) const
+	{
+		return pheromone[pos][i][j] * pow(subst_freq[i][j], config.d_exp);
+		//return pheromone[pos][i][j] * std::max(score_matrix(i, j) + 1, 0);
+	}
+
+	double delta_tau0(int pos, int i) const
+	{
+		return pheromone[pos][i][i] * pow(config.d_new, config.d_exp);
 	}
 
 	Letter_trail get(int pos) const
@@ -80,16 +96,16 @@ struct Trails
 		double p[20];
 		while (true) {
 
-			double sum = pheromone[pos][next][next];
+			double sum = delta_tau0(pos, next);
 			for (int i = next + 1; i < 20; ++i)
 				if (t.bucket[i] == -1)
-					sum += pheromone[pos][next][i] * std::max(score_matrix(next, i) + 1, 0);
+					sum += delta_tau(pos, next, i);
 
 			memset(p, 0, sizeof(p));
-			p[next] = pheromone[pos][next][next] / sum;
+			p[next] = delta_tau0(pos, next) / sum;
 			for (int i = next + 1; i < 20; ++i)
 				if (t.bucket[i] == -1)
-					p[i] = (pheromone[pos][next][i] * std::max(score_matrix(next, i) + 1, 0)) / sum;
+					p[i] = delta_tau(pos, next, i) / sum;
 
 			int i = get_distribution<20>(p);
 
@@ -133,7 +149,7 @@ struct Trails
 		}
 	}
 
-	void update(const Trail &t, double sens)
+	void evaporate()
 	{
 		for (int pos = 0; pos < OPT_W; ++pos)
 			for (int i = 0; i < 20; ++i)
@@ -141,16 +157,23 @@ struct Trails
 					pheromone[pos][i][j] *= config.rho;
 					set_limits(pheromone[pos][i][j]);
 				}
+	}
+
+	void update(const Trail &t, double sens)
+	{		
 		for (int pos = 0; pos < OPT_W; ++pos)
 			update(t[pos], pos, sens);
+	}
+
+	void update_all()
+	{
+		for (size_t i = 0; i < config.n_ants; ++i)
+			update(ants[i], sens[i]);
 	}
 
 	double pheromone[OPT_W][20][20];
 };
 
-const size_t max_ants = 10000;
-Trail ants[max_ants];
-double sens[max_ants];
 Trails trails;
 
 void get_sens_worker(vector<char>::const_iterator query, vector<char>::const_iterator query_end, vector<char>::const_iterator subject, vector<double> *sens)
@@ -258,6 +281,7 @@ void opt()
 		size_t max_ant;
 		for (size_t i = 0; i < config.n_ants; ++i) {
 			const double e = sens[i] * std::min(p_bg / background_p(ants[i]), 1.0);
+			sens[i] = e;
 			if (e > max_sens_eff) {
 				max_sens_eff = e;
 				max_ant = i;
@@ -275,7 +299,9 @@ void opt()
 			cout << ants[max_ant][pos] << endl;
 		cout << endl;
 
-		trails.update(ants[max_ant], max_sens_eff);
+		//trails.update(ants[max_ant], max_sens_eff);
+		trails.evaporate();
+		trails.update_all();
 	}
 
 }

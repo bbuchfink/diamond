@@ -194,7 +194,9 @@ Config::Config(int argc, const char **argv)
 		("bcutoff", 0, "", bcutoff)
 		("ants", 0, "", n_ants, uint64_t(100))
 		("rho", 0, "", rho, 0.99)
-		("p_best", 0, "", p_best, 0.05);
+		("p_best", 0, "", p_best, 0.05)
+		("d_exp", 0, "", d_exp, 1.0)
+		("d_new", 0, "", d_new, 0.03);
 		
 	parser.add(general).add(makedb).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options);
 	parser.store(argc, argv, command);
