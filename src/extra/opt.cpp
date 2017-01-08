@@ -59,8 +59,8 @@ double tau_min, tau_max;
 
 void set_limits(double &x)
 {
-	//x = std::min(std::max(x, tau_min), tau_max);
-	x = std::max(x, tau_min);
+	x = std::min(std::max(x, tau_min), tau_max);
+	//x = std::max(x, tau_min);
 }
 
 const size_t max_ants = 10000;
