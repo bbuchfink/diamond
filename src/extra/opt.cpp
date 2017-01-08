@@ -299,9 +299,9 @@ void opt()
 			cout << ants[max_ant][pos] << endl;
 		cout << endl;
 
-		//trails.update(ants[max_ant], max_sens_eff);
 		trails.evaporate();
-		trails.update_all();
+		trails.update(ants[max_ant], max_sens_eff);
+		//trails.update_all();
 	}
 
 }
