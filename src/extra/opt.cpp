@@ -75,13 +75,13 @@ struct Trails
 		for (int i = 0; i < 20; ++i)
 			for (int j = 0; j < 20; ++j)
 				for (int p = 0; p < OPT_W; ++p)
-					pheromone[p][i][j] = 0.1;
+					pheromone[p][i][j] = 100.0;
 	}
 
 	double delta_tau(int pos, int i, int j) const
 	{
-		return pheromone[pos][i][j] * pow(subst_freq[i][j], config.d_exp);
-		//return pheromone[pos][i][j] * std::max(score_matrix(i, j) + 1, 0);
+		//return pheromone[pos][i][j] * pow(subst_freq[i][j], config.d_exp);
+		return pheromone[pos][i][j] * pow(std::max(score_matrix(i, j) + 1, 0), config.d_exp);
 	}
 
 	double delta_tau0(int pos, int i) const
