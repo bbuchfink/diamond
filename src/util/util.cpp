@@ -32,6 +32,7 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 Message_stream message_stream;
 Message_stream verbose_stream (false);
 Message_stream log_stream (false);
+tthread::mutex Message_stream::mtx;
 
 const Complexity_filter Complexity_filter::instance;
 TLS_PTR vector<Ptr_wrapper_base*> *TLS::ptr_;

@@ -541,4 +541,12 @@ inline void print_binary(uint64_t x)
 	}
 }
 
+template<typename _t>
+inline _t safe_cast(size_t x)
+{
+	if (x > (size_t)std::numeric_limits<_t>::max())
+		throw std::runtime_error("Integer value out of bounds.");
+	return (_t)x;
+}
+
 #endif /* UTIL_H_ */

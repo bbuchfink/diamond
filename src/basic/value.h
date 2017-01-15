@@ -96,6 +96,12 @@ struct Align_mode
 {
 	Align_mode(unsigned mode);
 	static unsigned from_command(unsigned command);
+	unsigned check_context(unsigned i) const
+	{
+		if (i >= query_contexts)
+			throw std::runtime_error("Sequence context is out of bounds.");
+		return i;
+	}
 	enum { blastp = 2, blastx = 3, blastn = 4 };
 	Sequence_type sequence_type, input_sequence_type;
 	unsigned mode, query_contexts;

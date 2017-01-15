@@ -62,7 +62,7 @@ struct Join_fetcher
 		unaligned_from = query_last + 1;
 		query_last = query_id;
 		for (unsigned i = 0; i < buf.size(); ++i)
-			if (query_ids[i] == query_id)
+			if (query_ids[i] == query_id && query_id != Intermediate_record::finished)
 				fetch(i);
 			else
 				buf[i].clear();
@@ -107,7 +107,7 @@ struct Join_record
 		same_subject_ = info_.subject_id == subject;
 	}
 
-	static bool push_next(unsigned block, unsigned subject, Binary_buffer::Iterator &it, vector<Join_record> &v)	
+	static bool push_next(unsigned block, unsigned subject, Binary_buffer::Iterator &it, vector<Join_record> &v)
 	{
 		if (it.good()) {
 			v.push_back(Join_record(block, subject, it));
@@ -131,7 +131,7 @@ void join_query(vector<Binary_buffer> &buf, Text_buffer &out, Statistics &statis
 
 	vector<Join_record> records;
 	vector<Binary_buffer::Iterator> it;
-	for (unsigned i = 0; i<current_ref_block; ++i) {
+	for (unsigned i = 0; i < current_ref_block; ++i) {
 		it.push_back(buf[i].begin());
 		Join_record::push_next(i, std::numeric_limits<unsigned>::max(), it.back(), records);
 	}
@@ -154,10 +154,10 @@ void join_query(vector<Binary_buffer> &buf, Text_buffer &out, Statistics &statis
 				Hsp_data hsp(next.info_, query_source_len);
 				output_format->print_match(Hsp_context(hsp,
 					query,
-					context[hsp.frame],
+					context[align_mode.check_context(hsp.frame)],
 					align_mode.query_translated ? query_source_seqs::get()[query] : context[0],
 					query_name,
-					next.info_.subject_id,
+					ref_map.check_id(next.info_.subject_id),
 					ref_map.original_id(next.info_.subject_id),
 					ref_map.name(next.info_.subject_id),
 					ref_map.length(next.info_.subject_id),
@@ -193,11 +193,12 @@ void join_worker(Task_queue<Text_buffer,Join_writer> *queue)
 	size_t n;
 	Text_buffer *out;
 	Statistics stat;
+	const String_set<0>& qids = query_ids::get();
 
 	while (queue->get(n, out, fetcher)) {
 		stat.inc(Statistics::ALIGNED);
 		size_t seek_pos;
-		const char * query_name = query_ids::get()[fetcher.query_id].c_str();
+		const char * query_name = qids[qids.check_idx(fetcher.query_id)].c_str();
 		const sequence query_seq = align_mode.query_translated ? query_source_seqs::get()[fetcher.query_id] : query_seqs::get()[fetcher.query_id];
 
 		if (*output_format != Output_format::daa && config.report_unaligned != 0) {

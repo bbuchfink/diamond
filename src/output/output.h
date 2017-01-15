@@ -80,25 +80,17 @@ struct Intermediate_record
 	}
 	static size_t write_query_intro(Text_buffer &buf, unsigned query_id)
 	{
-#ifndef ST_JOIN
 		size_t seek_pos = buf.size();
 		buf.write(query_id).write(0u);
 		return seek_pos;
-#else
-		return 0;
-#endif
 	}
 	static void finish_query(Text_buffer &buf, size_t seek_pos)
 	{
-#ifndef ST_JOIN
-		*(unsigned*)(&buf[seek_pos + sizeof(unsigned)]) = (unsigned)(buf.size() - seek_pos - sizeof(unsigned) * 2);
-#endif
+		*(unsigned*)(&buf[seek_pos + sizeof(unsigned)]) = safe_cast<unsigned>(buf.size() - seek_pos - sizeof(unsigned) * 2);
 	}
 	static void write(Text_buffer &buf, const Hsp_data &match, unsigned query_id, unsigned subject_id)
 	{
-#ifdef ST_JOIN
 		buf.write(query_id);
-#endif
 		buf.write(ref_map.get(current_ref_block, subject_id))
 			.write(get_segment_flag(match))
 			.write_packed(match.score)

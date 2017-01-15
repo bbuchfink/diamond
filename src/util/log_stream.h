@@ -22,20 +22,28 @@ Author: Benjamin Buchfink
 #define LOG_STREAM_H_
 
 #include <iostream>
+#include <fstream>
 #include "Timer.h"
+#include "tinythread.h"
 
 using std::endl;
 
 struct Message_stream
 {
-	Message_stream(bool to_cout=true):
-		to_cout_ (to_cout)
+	Message_stream(bool to_cout = true, bool to_file = false) :
+		to_cout_(to_cout),
+		to_file_(to_file)
 	{}
 	template<typename _t>
 	Message_stream& operator<<(const _t& x)
 	{
 		if(to_cout_)
 			std::cout << x;
+		if (to_file_) {
+			std::ofstream f("diamond.log", std::ios_base::out | std::ios_base::app);
+			f << x;
+			f.close();
+		}
 		return *this;
 	}
 	//Message_stream& operator<<(std::ostream & (__cdecl *_Pfn)(std::ostream&))
@@ -43,10 +51,16 @@ struct Message_stream
 	{
 		if(to_cout_)
 			((*_Pfn)(std::cout));
+		if (to_file_) {
+			std::ofstream f("diamond.log", std::ios_base::out | std::ios_base::app);
+			((*_Pfn)(f));
+			f.close();
+		}
 		return *this;
 	}
+	static tthread::mutex mtx;
 private:
-	bool to_cout_;
+	bool to_cout_, to_file_;
 };
 
 extern Message_stream message_stream;

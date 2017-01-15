@@ -191,7 +191,7 @@ struct Input_stream
 	template<class _t>
 	size_t read(_t *ptr, size_t count)
 	{
-		return read_bytes((char*)ptr, count*sizeof(_t))/sizeof(_t);
+		return read_bytes((char*)ptr, count*sizeof(_t)) / sizeof(_t);
 	}
 
 	template<class _t>

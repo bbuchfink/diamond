@@ -66,15 +66,13 @@ inline size_t load_seqs(Input_stream &file,
 	size_t letters = 0, n = 0;
 	vector<Letter> seq;
 	vector<char> id;
-	try {
-		while(letters < max_letters && format.get_seq(id, seq, file)) {
-			ids->push_back(id);
-			letters += push_seq(**seqs, *source_seqs, seq);
-			++n;
-		}
-	} catch(invalid_sequence_char_exception &e) {
-		std::cerr << n << endl;
-		throw e;
+	
+	while (letters < max_letters && format.get_seq(id, seq, file)) {
+		ids->push_back(id);
+		letters += push_seq(**seqs, *source_seqs, seq);
+		++n;
+		if ((*seqs)->get_length() > std::numeric_limits<int>::max())
+			throw std::runtime_error("Number of sequences in file exceeds supported maximum.");
 	}
 	ids->finish_reserve();
 	(*seqs)->finish_reserve();

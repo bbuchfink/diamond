@@ -111,7 +111,7 @@ void run_ref_chunk(Database_file &db_file,
 	const pair<size_t, size_t> len_bounds = ref_seqs::data_->len_bounds(shapes[0].length_);
 	ref_hst = Partitioned_histogram(*ref_seqs::data_, (unsigned)len_bounds.second);
 
-	ref_map.init((unsigned)ref_seqs::get().get_length());
+	ref_map.init(safe_cast<unsigned>(ref_seqs::get().get_length()));
 
 	timer.go("Allocating buffers");
 	char *ref_buffer = sorted_list::alloc_buffer(ref_hst);
@@ -124,11 +124,8 @@ void run_ref_chunk(Database_file &db_file,
 	timer.finish();
 	timer_mapping.stop();
 
-	for (unsigned i = 0; i<shapes.count(); ++i)
+	for (unsigned i = 0; i < shapes.count(); ++i)
 		process_shape(i, timer_mapping, query_chunk, query_buffer, ref_buffer);
-
-	/*timer.go("Closing temporary storage");
-	Trace_pt_buffer::instance->close();*/
 
 	timer.go("Deallocating buffers");
 	delete[] ref_buffer;
@@ -300,6 +297,8 @@ void master_thread_di()
 	verbose_stream << "Letters = " << ref_header.letters << endl;
 	verbose_stream << "Block size = " << (size_t)(config.chunk_size * 1e9) << endl;
 	Config::set_option(config.db_size, (uint64_t)ref_header.letters);
+
+	set_max_open_files(config.query_bins * config.threads_ + ref_header.letters / (size_t)(config.chunk_size * 1e9) + 16);
 
 	master_thread(db_file, timer_mapping, timer2);
 }

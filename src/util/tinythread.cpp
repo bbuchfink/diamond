@@ -24,6 +24,7 @@ freely, subject to the following restrictions:
 #include <exception>
 #include <iostream>
 #include "tinythread.h"
+#include "log_stream.h"
 
 #if defined(_TTHREAD_POSIX_)
   #include <unistd.h>
@@ -171,6 +172,7 @@ void * thread::wrapper_function(void * aArg)
   }
   catch (std::exception &e) {
 	  std::cerr << "Error: " << e.what() << std::endl;
+	  log_stream << "Error: " << e.what() << std::endl;
 	  std::terminate();
   }
   catch(...)

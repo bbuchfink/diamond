@@ -72,6 +72,13 @@ struct String_set
 	const _t* ptr(size_t i) const
 	{ return &data_[limits_[i]]; }
 
+	size_t check_idx(size_t i) const
+	{
+		if (limits_.size() < i + 2)
+			throw std::runtime_error("Sequence set index out of bounds.");
+		return i;
+	}
+
 	size_t length(size_t i) const
 	{ return limits_[i+1] - limits_[i] - _padding; }
 

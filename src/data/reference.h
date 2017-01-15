@@ -137,13 +137,13 @@ struct Ref_map
 		const unsigned block = current_ref_block;
 		if(data_.size() < block+1) {
 			data_.resize(block+1);
-			data_[block].insert(data_[block].end(), ref_count, std::numeric_limits<unsigned>::max());
+			data_[block].insert(data_[block].end(), ref_count, std::numeric_limits<uint32_t>::max());
 		}
 	}
 	uint32_t get(unsigned block, unsigned i)
 	{
 		uint32_t n = data_[block][i];
-		if(n != std::numeric_limits<unsigned>::max())
+		if(n != std::numeric_limits<uint32_t>::max())
 			return n;
 		{
 			mtx_.lock();
@@ -186,6 +186,12 @@ struct Ref_map
 	unsigned original_id(unsigned i) const
 	{
 		return rev_map_[i];
+	}
+	uint32_t check_id(uint32_t i) const
+	{
+		if (i >= next_)
+			throw std::runtime_error("Dictionary reference id out of bounds.");
+		return i;
 	}
 private:
 	tthread::mutex mtx_;

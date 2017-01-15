@@ -38,7 +38,7 @@ struct Frequent_seeds
 
 private:
 
-	static const double hash_table_factor;
+	static const double hash_table_factor;   
 
 	struct Build_context;
 
