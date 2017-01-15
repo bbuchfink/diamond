@@ -92,6 +92,8 @@ Hsp_context& Hsp_context::parse()
 
 	for (; i.good(); ++i) {
 		++hsp_.length;
+		if (i.query_pos >= query.length())
+			throw std::runtime_error("Query sequence index out of bounds.");
 		switch (i.op()) {
 		case op_match:
 			++hsp_.identities;

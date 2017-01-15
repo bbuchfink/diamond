@@ -90,7 +90,6 @@ struct Intermediate_record
 	}
 	static void write(Text_buffer &buf, const Hsp_data &match, unsigned query_id, unsigned subject_id)
 	{
-		buf.write(query_id);
 		buf.write(ref_map.get(current_ref_block, subject_id))
 			.write(get_segment_flag(match))
 			.write_packed(match.score)

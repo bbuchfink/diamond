@@ -140,7 +140,7 @@ struct Trails
 			v[t.bucket[i]].push_back(i);
 		for (int i = 0; i < buckets; ++i) {
 			int j;
-			for (j = 0; j < v[i].size() - 1; ++j) {
+			for (j = 0; j < (int)v[i].size() - 1; ++j) {
 				pheromone[pos][v[i][j]][v[i][j + 1]] += sens;
 				set_limits(pheromone[pos][v[i][j]][v[i][j + 1]]);
 			}

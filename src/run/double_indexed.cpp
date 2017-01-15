@@ -298,7 +298,7 @@ void master_thread_di()
 	verbose_stream << "Block size = " << (size_t)(config.chunk_size * 1e9) << endl;
 	Config::set_option(config.db_size, (uint64_t)ref_header.letters);
 
-	set_max_open_files(config.query_bins * config.threads_ + ref_header.letters / (size_t)(config.chunk_size * 1e9) + 16);
+	set_max_open_files(config.query_bins * config.threads_ + unsigned(ref_header.letters / (size_t)(config.chunk_size * 1e9)) + 16);
 
 	master_thread(db_file, timer_mapping, timer2);
 }

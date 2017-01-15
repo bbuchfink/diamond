@@ -198,6 +198,7 @@ void join_worker(Task_queue<Text_buffer,Join_writer> *queue)
 	while (queue->get(n, out, fetcher)) {
 		stat.inc(Statistics::ALIGNED);
 		size_t seek_pos;
+
 		const char * query_name = qids[qids.check_idx(fetcher.query_id)].c_str();
 		const sequence query_seq = align_mode.query_translated ? query_source_seqs::get()[fetcher.query_id] : query_seqs::get()[fetcher.query_id];
 

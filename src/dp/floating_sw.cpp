@@ -26,8 +26,8 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #include "../align/align.h"
 #include "dp.h"
 
-template<typename _score, typename _traceback> TLS_PTR typename Score_buffer<_score,_traceback>::Type* Scalar_dp_matrix<_score,_traceback>::score_ptr = 0;
-template<typename _score, typename _traceback> TLS_PTR Double_buffer<_score>* Scalar_dp_matrix<_score,_traceback>::hgap_ptr = 0;
+template<typename _score, typename _traceback> TLS_PTR typename Score_buffer<_score, _traceback>::Type* Scalar_dp_matrix<_score, _traceback>::score_ptr = 0;
+template<typename _score, typename _traceback> TLS_PTR Double_buffer<_score>* Scalar_dp_matrix<_score, _traceback>::hgap_ptr = 0;
 
 template struct Scalar_dp_matrix<int, Traceback>;
 
@@ -120,7 +120,7 @@ Hsp_data floating_sw_dir(const Letter *query, const Letter* subject, int band, _
 template<typename _score, typename _traceback, typename _score_correction>
 void floating_sw(const Letter *query, const Letter *subject, Hsp_data &segment, int band, _score xdrop, _score gap_open, _score gap_extend, uint64_t &cell_updates, unsigned query_anchor, unsigned subject_anchor, const _score_correction &score_correction, const _traceback&, const _score&)
 {
-	segment.merge(floating_sw_dir<Right, _score, _traceback, _score_correction>(query + 1, subject + 1, band, xdrop, gap_open, gap_extend, cell_updates, score_correction, query_anchor+1),
+	segment.merge(floating_sw_dir<Right, _score, _traceback, _score_correction>(query + 1, subject + 1, band, xdrop, gap_open, gap_extend, cell_updates, score_correction, query_anchor + 1),
 		floating_sw_dir<Left, _score, _traceback, _score_correction>(query, subject, band, xdrop, gap_open, gap_extend, cell_updates, score_correction, query_anchor), query_anchor, subject_anchor);
 }
 

@@ -267,7 +267,7 @@ Config::Config(int argc, const char **argv)
 		;
 	}
 
-	for (size_t i = 0; i < argc; ++i)
+	for (int i = 0; i < argc; ++i)
 		log_stream << argv[i] << ' ';
 	log_stream << endl;
 
