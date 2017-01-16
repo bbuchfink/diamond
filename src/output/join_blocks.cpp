@@ -195,7 +195,7 @@ void join_worker(Task_queue<Text_buffer,Join_writer> *queue)
 	Statistics stat;
 	const String_set<0>& qids = query_ids::get();
 
-	while (queue->get(n, out, fetcher)) {
+	while (queue->get(n, out, fetcher) && fetcher.query_id != Intermediate_record::finished) {
 		stat.inc(Statistics::ALIGNED);
 		size_t seek_pos;
 
