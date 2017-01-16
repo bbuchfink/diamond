@@ -137,6 +137,7 @@ bool Query_mapper::generate_output(Text_buffer &buffer, Statistics &stat)
 	unsigned n_hsp = 0, n_target_seq = 0, hit_hsps = 0;
 	const unsigned top_score = targets[0].filter_score, query_len = (unsigned)query_seq(0).length();
 	size_t seek_pos = 0;
+	const char *query_title = query_ids::get()[query_id].c_str();
 
 	for (size_t i = 0; i < targets.size(); ++i) {
 		if ((config.min_bit_score == 0 && score_matrix.evalue(targets[i].filter_score, config.db_size, query_len) > config.max_evalue)
@@ -152,10 +153,11 @@ bool Query_mapper::generate_output(Text_buffer &buffer, Statistics &stat)
 		for (list<Hsp_data>::iterator j = targets[i].hsps.begin(); j != targets[i].hsps.end(); ++j) {
 			if (hit_hsps >= config.max_hsps)
 				break;
+			const char *ref_title = ref_ids::get()[targets[i].subject_id].c_str();
 			if (j->id_percent() < config.min_id
 				|| j->query_cover_percent(source_query_len) < config.query_cover
 				|| j->subject_cover_percent(subject_len) < config.subject_cover
-				|| (config.no_self_hits && j->identities == j->length && j->query_source_range.length() == source_query_len && j->subject_range.length() == subject_len))
+				|| (config.no_self_hits && j->identities == j->length && j->query_source_range.length() == source_query_len && j->subject_range.length() == subject_len && strcmp(query_title, ref_title) == 0))
 				continue;
 
 			if (blocked_processing) {
@@ -166,9 +168,9 @@ bool Query_mapper::generate_output(Text_buffer &buffer, Statistics &stat)
 			else {
 				if (n_hsp == 0) {
 					if (*output_format == Output_format::daa)
-						seek_pos = write_daa_query_record(buffer, query_ids::get()[query_id].c_str(), align_mode.query_translated ? query_source_seqs::get()[query_id] : query_seqs::get()[query_id]);
+						seek_pos = write_daa_query_record(buffer, query_title, align_mode.query_translated ? query_source_seqs::get()[query_id] : query_seqs::get()[query_id]);
 					else
-						output_format->print_query_intro(query_id, query_ids::get()[query_id].c_str(), source_query_len, buffer, false);
+						output_format->print_query_intro(query_id, query_title, source_query_len, buffer, false);
 				}
 				if (*output_format == Output_format::daa)
 					write_daa_record(buffer, *j, query_id, targets[i].subject_id);
@@ -177,10 +179,10 @@ bool Query_mapper::generate_output(Text_buffer &buffer, Statistics &stat)
 						query_id,
 						query_seq(j->frame),
 						query_source_seq(),
-						query_ids::get()[query_id].c_str(),
+						query_title,
 						targets[i].subject_id,
 						targets[i].subject_id,
-						ref_ids::get()[targets[i].subject_id].c_str(),
+						ref_title,
 						subject_len,
 						n_target_seq,
 						hit_hsps), buffer);
@@ -207,7 +209,7 @@ bool Query_mapper::generate_output(Text_buffer &buffer, Statistics &stat)
 			Intermediate_record::finish_query(buffer, seek_pos);
 	}
 	else if (!blocked_processing && *output_format != Output_format::daa && config.report_unaligned != 0) {
-		output_format->print_query_intro(query_id, query_ids::get()[query_id].c_str(), source_query_len, buffer, true);
+		output_format->print_query_intro(query_id, query_title, source_query_len, buffer, true);
 		output_format->print_query_epilog(buffer, true);
 	}
 
