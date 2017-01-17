@@ -29,6 +29,7 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #include <ctype.h>
 #include <string>
 #include <limits>
+#include <stdexcept>
 #include "simd.h"
 #include "../basic/const.h"
 #include "../basic/packed_loc.h"

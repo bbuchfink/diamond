@@ -1,3 +1,6 @@
+[0.8.34]
+- fixed a compiler error
+
 [0.8.33]
 - modified option --no-self-hits to also require matching sequence titles for filtering of a self hit
 - fixed a bug that could cause a crash in the `joining output blocks` stage

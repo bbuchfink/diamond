@@ -21,6 +21,8 @@ Author: Benjamin Buchfink
 #ifndef SYSTEM_H_
 #define SYSTEM_H_
 
+#include <stdexcept>
+
 #ifdef _WIN32
 #define cpuid(info,x)    __cpuidex(info,x,0)
 #else

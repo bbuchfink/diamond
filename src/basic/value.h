@@ -22,6 +22,7 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #include <assert.h>
 #include <string.h>
 #include <sstream>
+#include <stdexcept>
 #include "const.h"
 #include "config.h"
 #include "../util/util.h"
