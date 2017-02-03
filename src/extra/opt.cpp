@@ -35,6 +35,16 @@ double Letter_trail::background_p() const
 	return p;
 }
 
+double Letter_trail::foreground_p(double id) const
+{
+	double p = 0;
+	for (int i = 0; i < 20; ++i)
+		for (int j = 0; j < 20; ++j)
+			if (bucket[i] == bucket[j] && i != j)
+				p += background_freq[i] * subst_freq[i][j];
+	return id + (1 - id)*p;
+}
+
 double background_p(const Trail& t)
 {
 	double p = 1.0;
@@ -239,7 +249,7 @@ void opt()
 	static const size_t region = 70;
 	static const size_t count = (size_t)1e6;
 	static const double id = 0.25;
-	
+
 	srand((unsigned)time(0));
 
 	Trail previous;
@@ -250,6 +260,11 @@ void opt()
 	previous[4] = Letter_trail(Reduction("A KR EDNQ C G H ILVM FYW P ST"));
 	previous[5] = Letter_trail(Reduction("A KR EDNQ C G H ILVM FYW P ST"));
 	previous[6] = Letter_trail(Reduction("A KR EDNQ C G H ILVM FYW P ST"));
+
+	previous[0] = Letter_trail(Reduction("A K R E D N Q C G H I L V M F Y W P S T"));
+	cout << previous[0].foreground_p(id) / previous[0].background_p() << endl;
+	
+	return;
 	
 	task_timer timer("Init");
 	vector<char> query(count*region);

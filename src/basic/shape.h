@@ -76,6 +76,7 @@ struct Letter_trail
 		return m + 1;
 	}
 	double background_p() const;
+	double foreground_p(double id) const;
 	friend std::ostream& operator<<(std::ostream &s, const Letter_trail &t);
 	int bucket[20];
 };

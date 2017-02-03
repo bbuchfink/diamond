@@ -136,9 +136,9 @@ private:
 	};
 
 	void build_seq_partition(const Sequence_set &seqs,
-			const unsigned seqp,
-			const size_t begin,
-			const size_t end,
+		const unsigned seqp,
+		const size_t begin,
+		const size_t end,
 		vector<char> &buf)
 	{
 		for (size_t i = begin; i < end; ++i) {

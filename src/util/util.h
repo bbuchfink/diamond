@@ -486,14 +486,10 @@ private:
 	_t data_[n];
 };
 
-inline unsigned percentage(unsigned x, unsigned y)
+template<typename _t1, typename _t2>
+_t1 percentage(_t2 x, _t2 y)
 {
-	return x * 100 / y;
-}
-
-inline double percentage(size_t x, size_t y)
-{
-	return x * 100.0 / y;
+	return x * (_t1)100 / y;
 }
 
 template<typename _t>

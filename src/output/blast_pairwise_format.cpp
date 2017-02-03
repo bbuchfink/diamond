@@ -26,8 +26,8 @@ void Pairwise_format::print_match(const Hsp_context& r, Text_buffer &out) const
 	out << " Score = " << r.bit_score() << " bits (" << r.score() << "),  Expect = ";
 	out.print_e(r.evalue());
 	out << '\n';
-	out << " Identities = " << r.identities() << '/' << r.length() << " (" << percentage(r.identities(), r.length()) << "%), Positives = " << r.positives() << '/' << r.length() << " (" << percentage(r.positives(), r.length())
-		<< "%), Gaps = " << r.gaps() << '/' << r.length() << " (" << percentage(r.gaps(), r.length()) << "%)\n";
+	out << " Identities = " << r.identities() << '/' << r.length() << " (" << percentage<unsigned,unsigned>(r.identities(), r.length()) << "%), Positives = " << r.positives() << '/' << r.length() << " (" << percentage<unsigned, unsigned>(r.positives(), r.length())
+		<< "%), Gaps = " << r.gaps() << '/' << r.length() << " (" << percentage<unsigned, unsigned>(r.gaps(), r.length()) << "%)\n";
 	if (align_mode.query_translated)
 		out << " Frame = " << r.blast_query_frame() << '\n';
 	out << '\n';

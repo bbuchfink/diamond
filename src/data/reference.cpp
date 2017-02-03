@@ -70,23 +70,32 @@ void make_db()
 	vector<Pos_record> pos_array;
 	FASTA_format format;
 
-	while (format.get_seq(id, seq, *db_file)) {
-		if (seq.size() == 0)
-			throw std::runtime_error("File format error: sequence of length 0 at line " + to_string(db_file->line_count));
-		if (n % 100000llu == 0llu) {
-			std::stringstream ss;
-			ss << "Loading sequence data (" << n << " sequences processed)";
-			timer.go(ss.str().c_str());
+	try {
+
+		while (format.get_seq(id, seq, *db_file)) {
+			if (seq.size() == 0)
+				throw std::runtime_error("File format error: sequence of length 0 at line " + to_string(db_file->line_count));
+			if (n % 100000llu == 0llu) {
+				std::stringstream ss;
+				ss << "Loading sequence data (" << n << " sequences processed)";
+				timer.go(ss.str().c_str());
+			}
+			pos_array.push_back(Pos_record(offset, seq.size()));
+			out.write("\xff", 1);
+			out.write(seq, false);
+			out.write("\xff", 1);
+			out.write(id, false);
+			out.write("\0", 1);
+			letters += seq.size();
+			++n;
+			offset += seq.size() + id.size() + 3;
 		}
-		pos_array.push_back(Pos_record(offset, seq.size()));
-		out.write("\xff", 1);
-		out.write(seq, false);
-		out.write("\xff", 1);
-		out.write(id, false);
-		out.write("\0", 1);
-		letters += seq.size();
-		++n;
-		offset += seq.size() + id.size() + 3;
+
+	}
+	catch (std::exception &e) {
+		out.close();
+		out.remove();
+		throw e;
 	}
 
 	timer.go("Writing trailer");

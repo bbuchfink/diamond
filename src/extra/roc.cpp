@@ -136,7 +136,7 @@ void roc()
 			cout << pow(10.0, exp)*factor << endl;*/
 
 	cout << endl;
-	cout << "Targets = " << n_targets << " / " << target.size() << " (" << percentage(n_targets, target.size()) << "%)" << endl;
+	cout << "Targets = " << n_targets << " / " << target.size() << " (" << percentage<double,size_t>(n_targets, target.size()) << "%)" << endl;
 	cout << "max ev = " << max_ev << endl;
 	cout << "False positives = " << fp << endl;
 }

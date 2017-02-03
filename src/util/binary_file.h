@@ -76,6 +76,11 @@ struct Output_stream
 	{
 		if (f_ == 0) throw File_open_exception(file_name_);
 	}
+	void remove()
+	{
+		if (::remove(file_name_.c_str()) != 0)
+			std::cerr << "Warning: Failed to delete file " << file_name_ << std::endl;
+	}
 	virtual void close()
 	{
 		if (f_ && f_ != stdout) {

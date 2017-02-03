@@ -45,12 +45,12 @@ struct invalid_database_version_exception : public std::exception
 
 struct Reference_header
 {
-	Reference_header():
-		unique_id (0x24af8a415ee186dllu),
-		build (Const::build_version),
+	Reference_header() :
+		unique_id(0x24af8a415ee186dllu),
+		build(Const::build_version),
 		db_version(current_db_version),
-		sequences (0),
-		letters (0)
+		sequences(0),
+		letters(0)
 	{ }
 	uint64_t unique_id;
 	uint32_t build, db_version;
@@ -80,6 +80,8 @@ struct Database_file : public Input_stream
 			throw Database_format_exception ();
 		if(ref_header.build < min_build_required || ref_header.db_version != Reference_header::current_db_version)
 			throw invalid_database_version_exception();
+		if (ref_header.sequences == 0)
+			throw std::runtime_error("Incomplete database file. Database building did not complete successfully.");
 #ifdef EXTRA
 		if(sequence_type(_val()) != ref_header.sequence_type)
 			throw std::runtime_error("Database has incorrect sequence type for current alignment mode.");

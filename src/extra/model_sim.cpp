@@ -328,7 +328,7 @@ void model_sim()
 			++hit_fg;
 
 		if (n % 100 == 0) {
-			cout << "n=" << n << " background hit%=" << percentage(hit_bg, n) <<  " foreground hit%=" << percentage(hit_fg, n) << endl;
+			cout << "n=" << n << " background hit%=" << percentage<double,size_t>(hit_bg, n) <<  " foreground hit%=" << percentage<double, size_t>(hit_fg, n) << endl;
 		}
 		++n;
 	}
@@ -336,7 +336,8 @@ void model_sim()
 
 void model_sim()
 {
-	Reduction::reduction = Reduction("A KR EDNQ C G H ILVM FYW P ST"); // murphy.10
+	//Reduction::reduction = Reduction("A KR EDNQ C G H ILVM FYW P ST"); // murphy.10
+	Reduction::reduction = Reduction("A K R E D N Q C G H I L V M F Y W P S T");
 	model_sim<MSS_model>();
 }
 

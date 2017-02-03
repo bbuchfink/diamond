@@ -151,7 +151,7 @@ struct Text_buffer
 		return *this;
 	}
 
-	Text_buffer& operator<<(size_t x)
+	Text_buffer& operator<<(uint64_t x)
 	{
 		reserve(32);
 		ptr_ += sprintf(ptr_, "%llu", (unsigned long long)x);
