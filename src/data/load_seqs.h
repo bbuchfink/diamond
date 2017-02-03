@@ -71,7 +71,7 @@ inline size_t load_seqs(Input_stream &file,
 		ids->push_back(id);
 		letters += push_seq(**seqs, *source_seqs, seq);
 		++n;
-		if ((*seqs)->get_length() > std::numeric_limits<int>::max())
+		if ((*seqs)->get_length() > (size_t)std::numeric_limits<int>::max())
 			throw std::runtime_error("Number of sequences in file exceeds supported maximum.");
 	}
 	ids->finish_reserve();
