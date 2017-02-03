@@ -32,7 +32,7 @@ struct String_set
 {
 
 	typedef char _t;
-	static const unsigned PERIMETER_PADDING = 256;
+	enum { PERIMETER_PADDING = 256 };
 
 	String_set():
 		data_ (PERIMETER_PADDING)
