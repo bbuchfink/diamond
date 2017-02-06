@@ -132,8 +132,8 @@ void XML_format::print_header(Output_stream &f, int mode, const char *matrix, in
 void XML_format::print_query_intro(size_t query_num, const char *query_name, unsigned query_len, Text_buffer &out, bool unaligned) const
 {
 	out << "<Iteration>" << '\n'
-		<< "  <Iteration_iter-num>" << query_num+1 << "</Iteration_iter-num>" << '\n'
-		<< "  <Iteration_query-ID>Query_" << query_num+1 << "</Iteration_query-ID>" << '\n'
+		<< "  <Iteration_iter-num>" << query_num + 1 << "</Iteration_iter-num>" << '\n'
+		<< "  <Iteration_query-ID>Query_" << query_num + 1 << "</Iteration_query-ID>" << '\n'
 		<< "  <Iteration_query-def>" << query_name << "</Iteration_query-def>" << '\n'
 		<< "  <Iteration_query-len>" << query_len << "</Iteration_query-len>" << '\n'
 		<< "<Iteration_hits>" << '\n';

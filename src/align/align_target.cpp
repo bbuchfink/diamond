@@ -78,8 +78,22 @@ bool is_contained(const list<Hsp_data> &hsps, const Seed_hit &hit)
 	return false;
 }
 
+pair<int, int> get_diag_range(vector<Seed_hit>::const_iterator begin, vector<Seed_hit>::const_iterator end, unsigned frame)
+{
+	int d_min = std::numeric_limits<int>::max(), d_max = std::numeric_limits<int>::min();
+	for (vector<Seed_hit>::const_iterator i = begin; i < end; ++i) {
+		if (i->frame_ == frame) {
+			const int d = i->diagonal();
+			d_min = std::min(d_min, d);
+			d_max = std::max(d_max, d);
+		}
+	}
+	return pair<int, int>(d_min, d_max);
+}
+
 void Query_mapper::align_target(size_t idx, Statistics &stat)
 {
+	static const int band = 32;
 	typedef float score_t;
 	Target& target = targets[idx];
 	std::sort(seed_hits.begin() + target.begin, seed_hits.begin() + target.end);
@@ -87,17 +101,24 @@ void Query_mapper::align_target(size_t idx, Statistics &stat)
 		max_len = query_seq(0).length() + 100 * query_seqs::get().avg_len();
 	size_t aligned_len = 0;
 	const vector<Seed_hit>::const_iterator hits = seed_hits.begin() + target.begin;
+	const sequence subject = ref_seqs::get()[hits[0].subject_];
+	//log_stream << ref_ids::get()[hits[0].subject_].c_str() << endl;
+
+	unsigned frame_mask = (1 << align_mode.query_contexts) - 1;
+
 
 	for (size_t i = 0; i < n; ++i) {
-		if (!is_contained(hits, i) && !is_contained(target.hsps, hits[i])) {
-			const unsigned frame = hits[i].frame_;
+		const unsigned frame = hits[i].frame_;
+		if ((frame_mask & (1u << frame)) == 0)
+			continue;
+		if (!is_contained(hits, i) && !is_contained(target.hsps, hits[i])) {			
 			target.hsps.push_back(Hsp_data());
 			target.hsps.back().frame = frame;
 			uint64_t cell_updates;
 
 			if (false && config.comp_based_stats == 1)
 				floating_sw(&query_seq(frame)[hits[i].query_pos_],
-					&ref_seqs::get()[hits[i].subject_][hits[i].subject_pos_],
+					&subject[hits[i].subject_pos_],
 					target.hsps.back(),
 					config.read_padding(query_seq(frame).length()),
 					(score_t)score_matrix.rawscore(config.gapped_xdrop),
@@ -111,7 +132,7 @@ void Query_mapper::align_target(size_t idx, Statistics &stat)
 					score_t());
 			else
 				floating_sw(&query_seq(frame)[hits[i].query_pos_],
-					&ref_seqs::get()[hits[i].subject_][hits[i].subject_pos_],
+					&subject[hits[i].subject_pos_],
 					target.hsps.back(),
 					config.read_padding(query_seq(frame).length()),
 					score_matrix.rawscore(config.gapped_xdrop),

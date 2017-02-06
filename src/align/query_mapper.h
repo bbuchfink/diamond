@@ -46,7 +46,7 @@ struct Seed_hit
 	{ }
 	int diagonal() const
 	{
-		return (int)subject_pos_ - (int)query_pos_;
+		return (int)query_pos_ - (int)subject_pos_;
 	}
 	bool operator<(const Seed_hit &rhs) const
 	{
@@ -112,6 +112,7 @@ private:
 	vector<Seed_hit> seed_hits;
 	Ptr_vector<Target> targets;
 	vector<Bias_correction> query_cb;
+	
 };
 
 #endif

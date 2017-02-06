@@ -55,6 +55,7 @@ void greedy_align(sequence query, sequence subject, const Diagonal_segment &sh, 
 void greedy_align(sequence query, const Long_score_profile &qp, sequence subject, const Diagonal_segment &sh, bool log);
 void greedy_align2(sequence query, const Long_score_profile &qp, sequence subject, const vector<Diagonal_segment> &sh, bool log, Hsp_data &out);
 void greedy_align(sequence query, const Long_score_profile &qp, sequence subject, int qa, int sa, bool log);
+int estimate_score(const Long_score_profile &qp, sequence s, int d, int d1, bool log);
 
 template<typename _t>
 struct Fixed_score_buffer

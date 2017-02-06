@@ -196,7 +196,9 @@ Config::Config(int argc, const char **argv)
 		("rho", 0, "", rho, 0.99)
 		("p_best", 0, "", p_best, 0.05)
 		("d_exp", 0, "", d_exp, 1.0)
-		("d_new", 0, "", d_new, 1.0);
+		("d_new", 0, "", d_new, 1.0)
+		("score-estimate-factor", 0, "", score_estimate_factor, 0.0)
+		("diag-min-estimate", 0, "", diag_min_estimate, 17);
 		
 	parser.add(general).add(makedb).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options);
 	parser.store(argc, argv, command);

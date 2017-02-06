@@ -52,9 +52,11 @@ struct Message_stream
 		if(to_cout_)
 			((*_Pfn)(std::cout));
 		if (to_file_) {
+			mtx.lock();
 			std::ofstream f("diamond.log", std::ios_base::out | std::ios_base::app);
 			((*_Pfn)(f));
 			f.close();
+			mtx.unlock();
 		}
 		return *this;
 	}
