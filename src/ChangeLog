@@ -1,3 +1,6 @@
+[0.8.36]
+- fixed a compiler error
+
 [0.8.35]
 - added a check to detect incomplete database files
 - database files will be deleted in case database building fails
