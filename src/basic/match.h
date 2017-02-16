@@ -107,6 +107,11 @@ struct Diagonal_segment
 	{
 		return x.subject_end() < y.subject_end();
 	}
+	static bool cmp_heuristic(const Diagonal_segment &x, const Diagonal_segment &y)
+	{
+		return (x.subject_end() < y.subject_end() && x.j < y.j)
+			|| (y.j - x.j > x.subject_end() - y.subject_end());
+	}
 	friend int abs_shift(const Diagonal_segment &x, const Diagonal_segment &y)
 	{
 		return abs(x.diag() - y.diag());
@@ -118,7 +123,7 @@ struct Intermediate_record;
 
 struct Hsp_data
 {
-	Hsp_data():
+	Hsp_data() :
 		score(0),
 		frame(0),
 		length(0),
@@ -126,9 +131,10 @@ struct Hsp_data
 		mismatches(0),
 		positives(0),
 		gap_openings(0),
-		gaps(0)
+		gaps(0),
+		filter_score(0)
 	{}
-	Hsp_data(int score):
+	Hsp_data(int score) :
 		score(unsigned(score)),
 		frame(0),
 		length(0),
@@ -136,7 +142,8 @@ struct Hsp_data
 		mismatches(0),
 		positives(0),
 		gap_openings(0),
-		gaps(0)
+		gaps(0),
+		filter_score(0)
 	{}
 	Hsp_data(const Intermediate_record &r, unsigned query_source_len);
 	struct Iterator
@@ -235,7 +242,7 @@ struct Hsp_data
 	bool pass_through(const Diagonal_segment &d) const;
 	bool is_weakly_enveloped(const Hsp_data &j) const;
 	void merge(const Hsp_data &right, const Hsp_data &left, unsigned query_anchor, unsigned subject_anchor);
-	unsigned score, frame, length, identities, mismatches, positives, gap_openings, gaps;
+	unsigned score, frame, length, identities, mismatches, positives, gap_openings, gaps, filter_score;
 	interval query_source_range, query_range, subject_range;
 	Packed_transcript transcript;
 };
@@ -328,6 +335,10 @@ struct Hsp_context
 	double bit_score() const
 	{
 		return score_matrix.bitscore(score());
+	}
+	double filter_score() const
+	{
+		return score_matrix.bitscore(hsp_.filter_score);
 	}
 	unsigned frame() const
 	{ return hsp_.frame; }

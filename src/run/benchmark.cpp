@@ -223,7 +223,6 @@ Query  80  TVIGHL  85
            T+I  L
 Sbjct  76  TIINGL  81	*/
 
-aln1:
 
 	s1 = sequence::from_string("SLFEQLGGQAAVQAVTAQFYANIQADATVATFFNGIDMPNQTNKTAAFLCAALGGPNAWTGRNLKEVHANMGVSNAQFTTVIGHLRSALTGAGVAAALVEQTVAVAETVRGDVVTV");
 	s2 = sequence::from_string("RKQRIVIKISGACLKQNDSSIIDFIKINDLAEQIEKISKKYIVSIVLGGGNIWRGSIAKELDMDRNLADNMGMMATIINGLALENALNHLNVNTIVLSAIKCDKLVHESSANNIKKAIEKEQVMIFVAGTGFPYFTTDSCAAIRAAETESSIILMGKNGVDGVYDSDPKINPNAQFYEHITFNMALTQNLKVMDATALALCQENNINLLVFNIDKPNAIVDVLEKKNKYTIVSK");
@@ -263,6 +262,7 @@ aln1:
 	            I  ++ + L
 	Sbjct  437  IDTFLMEML  445
 	*/
+
 
 	s1 = sequence::from_string("aavqelsierllemeslvadpseefqflrvgpdsnvppkfrapvsslcqignkqiaalvv\
 wardiphfsqlemedqillikgswnelllfaiawrsmeflteerdgvdgtgnrttsppql\
@@ -324,6 +324,7 @@ KCLEHLFFFKLIGDTPIDTFLMEMLEAPHQIT");
 
 	*/
 
+aln1:
 
 	s1 = sequence::from_string("tspmtpditgkpfvaadasndyikrevmipmrdgvklhtvivlpkgaknapivltrtpyd\
 asgrterlasphmkdllsagddvfveggyirvfqdvrgkygsegdyvmtrplrgplnpse\
@@ -353,8 +354,8 @@ VIAREQLEEMCTAVNRIHRGPEHPSHIVLPIIKR");
 	ss.finish_reserve();
 
 	//benchmark_floating(ss, qa, sa);
-	//benchmark_greedy(ss, qa, sa);
+	benchmark_greedy(ss, qa, sa);
 	//benchmark_cmp();
-	benchmark_ungapped(ss, qa, sa);
+	//benchmark_ungapped(ss, qa, sa);
 
 }

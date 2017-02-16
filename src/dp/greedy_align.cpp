@@ -24,6 +24,7 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #include "../search/sse_dist.h"
 #include "../align/extend_ungapped.h"
 #include "../dp/score_profile.h"
+#include "../output/output_format.h"
 
 struct Link
 {
@@ -73,7 +74,7 @@ Diagonal_segment score_diagonal(const Letter *query, const Letter *subject, int 
 Diagonal_segment score_diagonal(const Letter *query, const Letter *subject, int n, int qbegin, int jbegin)
 {
 	int i = 0, j = 0, max_score = 0, score = 0, begin = 0, end = 0;
-	while (i < n) {
+	while (i < n && query[i] != '\xff' && subject[i] != '\xff') {
 		score += score_matrix(query[i], subject[i]);
 		if (score <= 0) {
 			score = 0;
@@ -100,10 +101,10 @@ int score_range(sequence query, sequence subject, int i, int j, int j_end)
 	return score;
 }
 
-int get_hgap_link(const Diagonal_segment &d1, const Diagonal_segment &d2, sequence query, sequence subject, Link &l)
+int get_hgap_link(const Diagonal_segment &d1, const Diagonal_segment &d2, sequence query, sequence subject, Link &l, int padding)
 {
 	const int d = d1.diag() - d2.diag(),
-		j2_end = std::min(std::max((int)d2.j, d1.subject_last() + d + 1), d2.subject_last());
+		j2_end = std::min(std::max((int)d2.j, d1.subject_last() + d + 1 + padding), d2.subject_last());
 	int j1;
 	bool space;
 	if (d1.subject_last() < d2.j - d - 1) {
@@ -111,12 +112,13 @@ int get_hgap_link(const Diagonal_segment &d1, const Diagonal_segment &d2, sequen
 		space = true;
 	}
 	else {
-		j1 = std::max(d2.j - d - 1, d1.j);
+		j1 = std::max(d2.j - d - 1 - padding, d1.j);
 		space = false;
 	}
 	int j2 = j1 + d + 1,
 		i1 = d1.i + (j1 - d1.j),
 		i2 = i1 + 1;
+	//cout << "j2=" << j2 << " d2.subject_last=" << d2.subject_last() << endl;
 	if (j2 > d2.subject_last()) {
 		l.reset();
 		return std::numeric_limits<int>::min();
@@ -126,6 +128,7 @@ int get_hgap_link(const Diagonal_segment &d1, const Diagonal_segment &d2, sequen
 		score2 = score_range(query, subject, i2, j2, d2.j) + d2.score - score_range(query, subject, d2.i, d2.j, j2);
 	int max_score = std::numeric_limits<int>::min();
 	while (true) {
+		//cout << "i1=" << i1 << " j1=" << j1 << " i2=" << i2 << " j2=" << j2 << " score1=" << score1 << " score2=" << score2 << " total=" << score1 + score2 << endl;
 		if (score1 + score2 > max_score) {
 			max_score = score1 + score2;
 			l.query_pos1 = i1;
@@ -145,23 +148,23 @@ int get_hgap_link(const Diagonal_segment &d1, const Diagonal_segment &d2, sequen
 	if (space)
 		l.score1 = d1.score + l.score1;
 	else
-		l.score1 = d1.score - score_range(query, subject, d1.diag() + j1_end, j1_end, d1.subject_end()) - score1 + l.score1;
+		l.score1 = d1.score - score_range(query, subject, d1.diag() + j1_end, j1_end, d1.subject_end()) + score_range(query, subject, d1.query_end(), d1.subject_end(), j1_end) - score1 + l.score1;
 	return max_score;
 }
 
-int get_vgap_link(const Diagonal_segment &d1, const Diagonal_segment &d2, sequence query, sequence subject, Link &l)
+int get_vgap_link(const Diagonal_segment &d1, const Diagonal_segment &d2, sequence query, sequence subject, Link &l, int padding)
 {
-	int s = get_hgap_link(d1.transpose(), d2.transpose(), subject, query, l);
+	int s = get_hgap_link(d1.transpose(), d2.transpose(), subject, query, l, padding);
 	l.transpose();
 	return s;
 }
 
-int get_link(const Diagonal_segment &d1, const Diagonal_segment &d2, sequence query, sequence subject, Link &l)
+int get_link(const Diagonal_segment &d1, const Diagonal_segment &d2, sequence query, sequence subject, Link &l, int padding)
 {
 	if (d1.diag() < d2.diag())
-		return get_vgap_link(d1, d2, query, subject, l);
+		return get_vgap_link(d1, d2, query, subject, l, padding);
 	else
-		return get_hgap_link(d1, d2, query, subject, l);
+		return get_hgap_link(d1, d2, query, subject, l, padding);
 }
 
 void set_global_max(score_vector<uint8_t> *max, score_vector<uint8_t> *global_max, uint8_t *&local_max)
@@ -239,7 +242,7 @@ void scan_cols(const Long_score_profile &qp, sequence s, int i, int j, int j_end
 struct Greedy_aligner2
 {
 
-	enum { band = 64, block_len = 16 };
+	enum { band = 64, block_len = 16, link_padding = 5, reverse_link_min_overhang = 10 };
 
 	struct Node_ref
 	{
@@ -376,13 +379,22 @@ struct Greedy_aligner2
 		uint8_t sv_max[band];
 		memset(sv_max, 0, band);
 		const size_t cells = band * (j1 - j);
+		score_buf.clear();
 		score_buf.resize(cells);
+		memset(score_buf.data(), 0, score_buf.size());
+		local_max.clear();
 		local_max.resize((j1 - j + block_len - 1) / block_len * band);
+		memset(local_max.data(), 0, local_max.size());
 		scan_cols(qp, subject, i, j, j1, sv_max, log, score_buf.data(), local_max.data(), block_len);
 		for (int o = 0; o < band; ++o)
 			if (sv_max[o] >= config.min_diag_raw_score) {
 				//get_diag(i + o, j, sv_max[o], o);
-				get_diag(i + o, j, o);
+				if (sv_max[o] >= 255 - score_matrix.bias()) {
+					const int s = std::min(i + o, 0);
+					diags.push_back(score_diagonal(&query[i + o - s], &subject[j - s], i + o - s, j - s));
+				}
+				else
+					get_diag(i + o, j, o);
 			}
 	}
 
@@ -391,31 +403,41 @@ struct Greedy_aligner2
 		static const int max_dist = 32, min_nw_space = 7;
 		static const float space_penalty = -0.5;
 		Diagonal_node& d = diags[node];
-		if (log) cout << "Node " << node << " Score=" << d.edges[0].prefix_score << endl;
+		if (log) indent(cout, level) << "Node " << node << " Score=" << d.edges[0].prefix_score << " j=" << subject_pos << endl;
 		if (d.diff != std::numeric_limits<int>::min()) {
 			if (log)
-				cout << "Visited node final_score=" << d.edges[0].prefix_score << endl;
+				indent(cout, level) << "Visited node final_score=" << d.edges[0].prefix_score << endl;
 			return d.diff;
 		}
-		int max_score = d.edges[0].prefix_score, diff = 0, max_edge = 0;
+		int max_score = d.edges[0].prefix_score, diff = std::numeric_limits<int>::min(), max_edge = 0;
 		for (unsigned k = 0; k < Diagonal_node::n_path; ++k) {
 			Diagonal_node::Edge &f = d.edges[k];
 			if (f.prefix_score == 0)
 				break;
-			if (f.node == node)
+			if (f.node == node) {
+				if (diff < f.prefix_score - max_score) {
+					diff = f.prefix_score - max_score;
+					max_edge = k;
+				}
+				continue;
+			}
+			if (f.j > subject_pos)
 				continue;
 			unsigned next = f.node;
 			const Diagonal_node &e = diags[next];
+			const int shift = d.diag() - e.diag();
 			if (!f.exact) {
-				const int shift = d.diag() - e.diag();
 				int gap_score = -config.gap_open - abs(shift)*config.gap_extend;
 				const int space = shift > 0 ? d.j - e.subject_last() : d.i - e.query_last();
 				f.prefix_score += int(config.raw_space_penalty*std::max(space - 1, 0));
+				if (log)
+					indent(cout, level) << "Node=" << node << " Link n=" << f.node << " space=" << space << " shift=" << shift << endl;
 				if (space >= min_nw_space && abs(shift) > 1) {
 					if (log) {
 						const sequence q1 = sequence(query, e.query_last() + 1, d.i - 1),
 							s1 = sequence(subject, e.subject_last() + 1, d.j - 1);
-						cout << q1 << endl << s1 << endl;
+						indent(cout, level) << q1 << endl;
+						indent(cout, level) << s1 << endl;
 					}
 					gap_score = needleman_wunsch(query, subject, e.query_last() + 1, d.i, e.subject_last() + 1, d.j, node, k, diags, log);
 					f.prefix_score -= -config.gap_open - abs(shift)*config.gap_extend;
@@ -423,14 +445,18 @@ struct Greedy_aligner2
 				}
 				else {
 					Link l;
-					int link_score = get_link(e, d, query, subject, l);
+					int link_score = get_link(e, d, query, subject, l, link_padding);
 					f.prefix_score += (l.score1 - e.score) + (l.score2 - d.score);
 					f.j = l.subject_pos2;
+					if (log)
+						indent(cout, level) << "Direct link scores=" << l.score1 << "," << l.score2 << endl;
 				}
 			}
 			if (log)
-				cout << "Node=" << node << " Link n=" << next << " prefix_score=" << f.prefix_score << endl;
-			f.prefix_score += follow_path(level + 1, next, 0, 0);
+				indent(cout, level) << "Node=" << node << " Link n=" << next << " prefix_score=" << f.prefix_score << " j=" << f.j << endl;
+			f.prefix_score += follow_path(level + 1, next, 0, f.j + std::min(shift, 0) - 1);
+			if (log)
+				indent(cout, level) << "Node=" << node << " Link n=" << next << " final prefix_score=" << f.prefix_score << endl;
 			if (diff < f.prefix_score - max_score) {
 				diff = f.prefix_score - max_score;
 				max_edge = k;
@@ -441,13 +467,42 @@ struct Greedy_aligner2
 		}
 		d.diff = diff;
 		top_node = std::min(top_node, Node_ref(node, d.edges[0].prefix_score));
-		if(log) cout << "Node " << node << " diff=" << diff << " final_score=" << d.edges[0].prefix_score << endl;
+		if(log) indent(cout, level) << "Node " << node << " diff=" << diff << " final_score=" << d.edges[0].prefix_score << endl;
 		return diff;
+	}
+
+	void get_approximate_link(Diagonal_node &d, const Diagonal_node &e, int k)
+	{
+		const int shift = d.diag() - e.diag();
+		int gap_score = -config.gap_open - abs(shift)*config.gap_extend;
+		const int space = shift > 0 ? d.j - e.subject_last() : d.i - e.query_last();
+		int prefix_score = 0, link_score = 0, link_j;
+		bool exact;
+		if (space <= 0) {
+			Link link;
+			if (get_link(e, d, query, subject, link, link_padding) > 0) {
+				prefix_score = e.edges[0].prefix_score - (e.score - link.score1) + gap_score + link.score2;
+				link_score = link.score1 + link.score2 + gap_score;
+				exact = true;
+				link_j = link.subject_pos2;
+			}
+		}
+		else {
+			prefix_score = e.edges[0].prefix_score + gap_score - int(config.raw_space_penalty*std::max(space - 1, 0)) + d.score;
+			link_score = e.score + d.score + gap_score;
+			exact = false;
+			link_j = d.j;
+		}
+
+		if (log)
+			cout << "Link n=" << k << " shift=" << shift << " space=" << space << " prefix_score=" << prefix_score << " link_score=" << link_score << endl;
+		if (prefix_score > 0)
+			d.edges.add(Diagonal_node::Edge(prefix_score, link_j, k, exact));
 	}
 
 	unsigned follow_path_approximate()
 	{
-		static const int max_dist = 32;
+		static const int max_dist = 60;
 		static const float space_penalty = -0.5;
 		int max_score = 0;
 		unsigned max_node;
@@ -457,34 +512,10 @@ struct Greedy_aligner2
 			d.edges.add(Diagonal_node::Edge(d.score, d.j, node, true));
 			for (int k = node - 1; k >= 0; --k) {
 				const Diagonal_node &e = diags[k];
-				if (d.j - e.subject_last() < max_dist) {
+				if (abs(d.j - e.subject_last()) < max_dist) {
 					if (abs(d.i - e.query_last()) >= max_dist)
 						continue;
-					const int shift = d.diag() - e.diag();
-					int gap_score = -config.gap_open - abs(shift)*config.gap_extend;
-					const int space = shift > 0 ? d.j - e.subject_last() : d.i - e.query_last();
-					int prefix_score = 0, link_score = 0, link_j;
-					bool exact;
-					if (space <= 0) {
-						Link link;
-						if (get_link(e, d, query, subject, link) > 0) {
-							prefix_score = e.edges[0].prefix_score - (e.score - link.score1) + gap_score + link.score2;
-							link_score = link.score1 + link.score2 + gap_score;
-							exact = true;
-							link_j = link.subject_pos2;
-						}
-					}
-					else {
-						prefix_score = e.edges[0].prefix_score + gap_score - int(config.raw_space_penalty*std::max(space - 1, 0)) + d.score;
-						link_score = e.score + d.score + gap_score;
-						exact = false;
-						link_j = d.j;
-					}
-
-					if (log)
-						cout << "Link n=" << k << " shift=" << shift << " space=" << space << " prefix_score=" << prefix_score << " link_score=" << link_score << endl;
-					if (prefix_score > 0)
-						d.edges.add(Diagonal_node::Edge(prefix_score, link_j, k, exact));
+					get_approximate_link(d, e, k);
 				}
 				else
 					break;
@@ -496,6 +527,18 @@ struct Greedy_aligner2
 			if (d.edges[0].prefix_score > max_score) {
 				max_score = d.edges[0].prefix_score;
 				max_node = node;
+			}
+
+			for (int k = 0; k < Diagonal_node::n_path; ++k) {
+				Diagonal_node::Edge &f = d.edges[k];
+				if (f.prefix_score == 0)
+					break;
+				Diagonal_node &e = diags[f.node];
+				if (e.subject_end() - (d.subject_end() - std::min(e.diag()-d.diag(), 0)) >= reverse_link_min_overhang) {
+					if (log)
+						cout << "Computing reverse link" << endl;
+					get_approximate_link(e, d, node);
+				}
 			}
 		}
 		return max_node;
@@ -523,6 +566,7 @@ struct Greedy_aligner2
 			out.subject_range.begin_ = d.j;
 		}
 		const int d2 = d.diag();
+		if (log) cout << "Backtrace node=" << node << " i=" << d2+j << "-" << d2+j_end << " j=" << j << "-" << j_end << endl;		
 		for (; j < j_end; ++j) {
 			const Letter s = subject[j], q = query[d2 + j];
 			if (s == q)
@@ -542,12 +586,14 @@ struct Greedy_aligner2
 		diags(TLS::get(diags_ptr)),
 		top_nodes(TLS::get(top_nodes_ptr))
 	{
+		static const double score_range = 0.97;
+
 		config.min_diag_raw_score = 15;
 		diags.clear();
 		local_max.clear();
 		top_nodes.clear();
 		scan_diags(sh[0]);
-		std::sort(diags.begin(), diags.end(), Diagonal_segment::cmp_subject_end);
+		std::sort(diags.begin(), diags.end(), Diagonal_segment::cmp_heuristic);
 		if (log)
 			for (int k = 0; k < (int)diags.size(); ++k) {
 				const Diagonal_segment &d = diags[k];
@@ -555,13 +601,26 @@ struct Greedy_aligner2
 				cout << sequence(query, d.i, d.query_last()) << endl;
 				cout << sequence(subject, d.j, d.subject_last()) << endl;
 			}
-		if(log) cout << endl;
+		if(log) cout << endl << endl;
 		unsigned max_node = follow_path_approximate();
-		follow_path(0, max_node, 0, 0);
+
+		std::sort(top_nodes.begin(), top_nodes.end());
+		for (vector<Node_ref>::const_iterator i = top_nodes.begin(); i < top_nodes.end() && (double)i->score / top_nodes.begin()->score >= score_range; ++i)
+			follow_path(0, i->node, 0, diags[i->node].subject_last());
+		if (log) cout << endl << endl;
+
 		out.transcript.clear();
 		out.length = 1;
 		backtrace(top_node.node, diags[top_node.node].subject_end(), out);
 		out.transcript.push_terminator();
+		out.score = top_node.score;
+
+		if (log) {
+			Text_buffer buf;
+			Pairwise_format().print_match(Hsp_context(out, 0, query, query, "", 0, 0, "", 0, 0, 0), buf);
+			buf << '\0';
+			cout << buf.get_begin();
+		}
 	}
 
 	static TLS_PTR vector<uint8_t> *score_buf_ptr;

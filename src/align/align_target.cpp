@@ -102,10 +102,9 @@ void Query_mapper::align_target(size_t idx, Statistics &stat)
 	size_t aligned_len = 0;
 	const vector<Seed_hit>::const_iterator hits = seed_hits.begin() + target.begin;
 	const sequence subject = ref_seqs::get()[hits[0].subject_];
-	//log_stream << ref_ids::get()[hits[0].subject_].c_str() << endl;
+	//log_stream << query_ids::get()[query_id].c_str() << endl << ref_ids::get()[hits[0].subject_].c_str() << endl;
 
 	unsigned frame_mask = (1 << align_mode.query_contexts) - 1;
-
 
 	for (size_t i = 0; i < n; ++i) {
 		const unsigned frame = hits[i].frame_;
@@ -148,6 +147,14 @@ void Query_mapper::align_target(size_t idx, Statistics &stat)
 			if (config.comp_based_stats) {
 				const int score = (int)target.hsps.back().score + query_cb[frame](target.hsps.back());
 				target.hsps.back().score = (unsigned)std::max(0, score);
+			}
+
+			if (config.greedy) {
+				vector<Diagonal_segment> sh;
+				sh.push_back(Diagonal_segment(hits[i].query_pos_, hits[i].subject_pos_, 0, 0));
+				Hsp_data hsp;
+				greedy_align2(query_seq(frame), profile[frame], subject, sh, true, hsp);
+				target.hsps.back().filter_score = hsp.score;
 			}
 
 			stat.inc(Statistics::OUT_HITS);

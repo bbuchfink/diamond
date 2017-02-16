@@ -93,6 +93,16 @@ struct Fixed_score_buffer
 		return data_[j*col_size_ + i];
 	}
 
+	friend std::ostream& operator<<(std::ostream &s, const Fixed_score_buffer &buf)
+	{
+		for (int i = 0; i < buf.col_size_; ++i) {
+			for (int j = 0; j < buf.data_.size() / buf.col_size_; ++j)
+				s << buf(i, j) << '\t';
+			s << endl;
+		}
+		return s;
+	}
+
 private:
 	vector<_t> data_;
 	size_t col_size_;

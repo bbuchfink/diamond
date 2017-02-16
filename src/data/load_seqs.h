@@ -54,30 +54,34 @@ inline size_t push_seq(Sequence_set &ss, Sequence_set& source_seqs, const vector
 }
 
 inline size_t load_seqs(Input_stream &file,
-		const Sequence_file_format &format,
-		Sequence_set** seqs,
-		String_set<0>*& ids,
-		Sequence_set*& source_seqs,
-		size_t max_letters)
+	const Sequence_file_format &format,
+	Sequence_set** seqs,
+	String_set<0>*& ids,
+	Sequence_set*& source_seqs,
+	size_t max_letters,
+	const string &filter)
 {
-	*seqs = new Sequence_set ();
-	ids = new String_set<0> ();
-	source_seqs = new Sequence_set ();
+	*seqs = new Sequence_set();
+	ids = new String_set<0>();
+	source_seqs = new Sequence_set();
 	size_t letters = 0, n = 0;
 	vector<Letter> seq;
 	vector<char> id;
-	
+	string id2;
+
 	while (letters < max_letters && format.get_seq(id, seq, file)) {
-		ids->push_back(id);
-		letters += push_seq(**seqs, *source_seqs, seq);
-		++n;
-		if ((*seqs)->get_length() > (size_t)std::numeric_limits<int>::max())
-			throw std::runtime_error("Number of sequences in file exceeds supported maximum.");
+		if (filter.empty() || id2.assign(id.data(), id.data() + id.size()).find(filter, 0) != string::npos) {
+			ids->push_back(id);
+			letters += push_seq(**seqs, *source_seqs, seq);
+			++n;
+			if ((*seqs)->get_length() >(size_t)std::numeric_limits<int>::max())
+				throw std::runtime_error("Number of sequences in file exceeds supported maximum.");
+		}
 	}
 	ids->finish_reserve();
 	(*seqs)->finish_reserve();
 	source_seqs->finish_reserve();
-	if(n == 0) {
+	if (n == 0) {
 		delete *seqs;
 		delete ids;
 		delete source_seqs;

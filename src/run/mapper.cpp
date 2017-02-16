@@ -50,7 +50,7 @@ void run_ref_chunk(Input_stream &query_file, const Sequence_file_format &input_f
 	for (current_query_chunk = 0;; ++current_query_chunk) {
 		task_timer timer("Loading query sequences", true);
 		size_t n_query_seqs;
-		n_query_seqs = load_seqs(query_file, input_format, &query_seqs::data_, query_ids::data_, query_source_seqs::data_, (size_t)(config.chunk_size * 1e9));
+		n_query_seqs = load_seqs(query_file, input_format, &query_seqs::data_, query_ids::data_, query_source_seqs::data_, (size_t)(config.chunk_size * 1e9), config.qfilt);
 		if (n_query_seqs == 0)
 			break;
 		timer.finish();

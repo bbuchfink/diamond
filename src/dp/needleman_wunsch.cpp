@@ -153,6 +153,9 @@ int needleman_wunsch(sequence query, sequence subject, int qbegin, int qend, int
 	unsigned start_node = d->edges[edge].node;
 	Diagonal_node::Edge *f = &d->edges[edge];
 
+	if (log)
+		cout << dp << endl;
+
 	const int gap_open = config.gap_open, gap_extend = config.gap_extend;
 	int l, i = qend - qbegin, j = send - sbegin;
 	const int score = dp(i, j);
@@ -162,7 +165,7 @@ int needleman_wunsch(sequence query, sequence subject, int qbegin, int qend, int
 		i -= l;
 		j -= l;
 		f->exact = true;
-		f->j = j;
+		f->j = sbegin + j;
 	}
 
 	while (i > 0 && j > 0) {

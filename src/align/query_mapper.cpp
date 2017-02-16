@@ -44,6 +44,9 @@ void Query_mapper::init()
 	if (config.comp_based_stats == 1)
 		for (unsigned i = 0; i < align_mode.query_contexts; ++i)
 			query_cb.push_back(Bias_correction(query_seq(i)));
+	if (config.greedy)
+		for (unsigned i = 0; i < align_mode.query_contexts; ++i)
+			profile.push_back(Long_score_profile(query_seq(i)));
 }
 
 pair<Trace_pt_list::iterator, Trace_pt_list::iterator> Query_mapper::get_query_data()

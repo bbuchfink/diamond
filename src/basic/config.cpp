@@ -112,7 +112,7 @@ Config::Config(int argc, const char **argv)
 		("max-target-seqs", 'k', "maximum number of target sequences to report alignments for", max_alignments, uint64_t(25))
 		("top", 0, "report alignments within this percentage range of top alignment score (overrides --max-target-seqs)", toppercent, 100.0)
 		("compress", 0, "compression for output files (0=none, 1=gzip)", compression)
-		("evalue", 'e', "maximum e-value to report alignments", max_evalue, 0.001)
+		("evalue", 'e', "maximum e-value to report alignments (default=0.001)", max_evalue, 0.001)
 		("min-score", 0, "minimum bit score to report alignments (overrides e-value setting)", min_bit_score)
 		("id", 0, "minimum identity% to report an alignment", min_id)
 		("query-cover", 0, "minimum query cover% to report an alignment", query_cover)
@@ -198,7 +198,9 @@ Config::Config(int argc, const char **argv)
 		("d_exp", 0, "", d_exp, 1.0)
 		("d_new", 0, "", d_new, 1.0)
 		("score-estimate-factor", 0, "", score_estimate_factor, 0.0)
-		("diag-min-estimate", 0, "", diag_min_estimate, 17);
+		("diag-min-estimate", 0, "", diag_min_estimate, 17)
+		("greedy", 0, "", greedy)
+		("qfilt", 0, "", qfilt);
 		
 	parser.add(general).add(makedb).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options);
 	parser.store(argc, argv, command);

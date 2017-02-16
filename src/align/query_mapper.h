@@ -112,6 +112,7 @@ private:
 	vector<Seed_hit> seed_hits;
 	Ptr_vector<Target> targets;
 	vector<Bias_correction> query_cb;
+	vector<Long_score_profile> profile;
 	
 };
 
