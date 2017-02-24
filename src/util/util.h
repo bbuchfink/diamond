@@ -81,16 +81,20 @@ struct interval
 	}
 	bool includes(unsigned p) const
 	{ return p >= begin_ && p < end_; }
-	friend inline interval intersect(const interval &lhs, const interval &rhs)
-	{ return interval (std::max(lhs.begin_, rhs.begin_), std::min(lhs.end_, rhs.end_)); }
 	friend std::ostream& operator<<(std::ostream &os, const interval &x)
 	{ os << "[" << x.begin_ << ";" << x.end_ << "]"; return os; }
 	bool operator<(const interval &rhs) const
 	{
 		return begin_ < rhs.begin_;
 	}
+	friend interval intersect(const interval &lhs, const interval &rhs);
 	unsigned begin_, end_;
 };
+
+inline interval intersect(const interval &lhs, const interval &rhs)
+{
+	return interval(std::max(lhs.begin_, rhs.begin_), std::min(lhs.end_, rhs.end_));
+}
 
 #ifdef __SSE2__
 inline void print(const __m128i &x)
@@ -481,6 +485,10 @@ struct Top_list
 	_t& operator[](unsigned i)
 	{
 		return data_[i];
+	}
+	void sort()
+	{
+		std::sort(&data_[0], &data_[n]);
 	}
 private:
 	_t data_[n];

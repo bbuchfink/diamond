@@ -47,4 +47,5 @@ g++ -DNDEBUG -O3 -mssse3 -Wno-deprecated-declarations -std=gnu++98 $1 \
   src/align/align.cpp \
   src/search/setup.cpp \
   src/extra/opt.cpp \
+  src/dp/diag_scores.cpp \
 -lz -lpthread -o diamond

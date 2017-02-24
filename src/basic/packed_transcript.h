@@ -150,6 +150,11 @@ struct Packed_transcript
 		data_.push_back(Packed_operation(op, count));
 	}
 
+	void reverse()
+	{
+		std::reverse(data_.begin(), data_.end());
+	}
+
 	void push_terminator()
 	{
 		data_.push_back(Packed_operation::terminator());

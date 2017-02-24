@@ -1,5 +1,5 @@
 /****
-Copyright (c) 2016, Benjamin Buchfink
+Copyright (c) 2016-2017, Benjamin Buchfink
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
@@ -26,7 +26,33 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 using std::vector;
 using std::pair;
 
-template<typename _score>
+struct Local {};
+struct Global {};
+
+template<typename _score, typename _mode>
+_score saturate(_score x)
+{
+	return x;
+}
+
+template<>
+int saturate<int, Local>(int x)
+{
+	return std::max(x, 0);
+}
+
+template<typename _score,typename _mode>
+void set_max_score(_score s, _score &max_score)
+{
+}
+
+template<>
+void set_max_score<int,Local>(int s, int &max_score)
+{
+	max_score = std::max(max_score, s);
+}
+
+template<typename _score, typename _mode>
 struct Dp_matrix
 {
 
@@ -39,7 +65,7 @@ struct Dp_matrix
 			end_(score_.second + query_len + 1),
 			i_(0)
 		{
-			*score_.first = col == 0 ? 0 : -config.gap_open - col*config.gap_extend;
+			*score_.first = saturate<_score, _mode>(col == 0 ? 0 : -config.gap_open - col*config.gap_extend);
 			++score_.second;
 		}
 
@@ -100,7 +126,7 @@ struct Dp_matrix
 		int *score = score_.last();
 		int g = -config.gap_open - config.gap_extend;
 		for (int i = 1; i <= query_len; ++i)
-			score[i] = g--;
+			score[i] = saturate<_score, _mode>(g--);
 	}
 
 	const Fixed_score_buffer<_score>& score_buffer() const
@@ -118,37 +144,41 @@ private:
 
 };
 
-template<typename _score> TLS_PTR Fixed_score_buffer<_score>* Dp_matrix<_score>::score_ptr;
-template<typename _score> TLS_PTR vector<_score>* Dp_matrix<_score>::hgap_ptr;
+template<typename _score, typename _mode> TLS_PTR Fixed_score_buffer<_score>* Dp_matrix<_score,_mode>::score_ptr;
+template<typename _score, typename _mode> TLS_PTR vector<_score>* Dp_matrix<_score,_mode>::hgap_ptr;
 
-template<typename _score>
-const Fixed_score_buffer<_score>& needleman_wunsch(sequence query, sequence subject, const _score& = int())
+template<typename _score, typename _mode>
+const Fixed_score_buffer<_score>& needleman_wunsch(sequence query, sequence subject, int &max_score, const _mode&, const _score& = int())
 {
 	using std::max;
 	const int gap_open = config.gap_open + config.gap_extend, gap_extend = config.gap_extend;
+	int m = 0;
 
-	Dp_matrix<_score> mtx((unsigned)query.length(), (unsigned)subject.length());
+	Dp_matrix<_score, _mode> mtx((unsigned)query.length(), (unsigned)subject.length());
 
 	for (int j = 0; j < (int)subject.length(); ++j) {
-		typename Dp_matrix<_score>::Column_iterator it = mtx.column(j);
+		typename Dp_matrix<_score,_mode>::Column_iterator it = mtx.column(j);
 		_score vgap = std::numeric_limits<int>::min() + 1;
 		for (; it.valid(); ++it) {
 			const _score match_score = score_matrix(subject[j], query[it.row()]);
-			const _score s = max(max(it.diag() + match_score, vgap), it.hgap());
+			const _score s = saturate<_score, _mode>(max(max(it.diag() + match_score, vgap), it.hgap()));
 			const _score open = s - gap_open;
 			vgap = max(vgap - gap_extend, open);
 			it.hgap() = max(it.hgap() - gap_extend, open);
 			it.score() = s;
+			set_max_score<_score, _mode>(s, m);
 		}
 	}
 
+	max_score = m;
 	return mtx.score_buffer();
 }
 
 int needleman_wunsch(sequence query, sequence subject, int qbegin, int qend, int sbegin, int send, unsigned node, unsigned edge, vector<Diagonal_node> &diags, bool log)
 {
 	const sequence q = query.subseq(qbegin, qend), s = subject.subseq(sbegin, send);
-	const Fixed_score_buffer<int> &dp = needleman_wunsch(q, s, int());
+	int max_score;
+	const Fixed_score_buffer<int> &dp = needleman_wunsch(q, s, max_score, Global(), int());
 	Diagonal_node *d = &diags[node];
 	unsigned start_node = d->edges[edge].node;
 	Diagonal_node::Edge *f = &d->edges[edge];
@@ -192,4 +222,96 @@ int needleman_wunsch(sequence query, sequence subject, int qbegin, int qend, int
 
 	f->node = start_node;
 	return score;
+}
+
+void smith_waterman(sequence q, sequence s, Hsp_data &out)
+{
+	int max_score;
+	const Fixed_score_buffer<int> &dp = needleman_wunsch(q, s, max_score, Local(), int());
+	pair<int, int> max_pos = dp.find(max_score);
+
+	const int gap_open = config.gap_open, gap_extend = config.gap_extend;
+	int l, i = max_pos.first, j = max_pos.second, score;
+	out.score = dp(i, j);
+	out.query_range.end_ = i;
+	out.subject_range.end_ = j;
+
+	while ((score = dp(i, j)) > 0) {
+		const int match_score = score_matrix(q[i - 1], s[j - 1]);
+		if (score == match_score + dp(i - 1, j - 1)) {
+			if (q[i - 1] == s[j - 1]) {
+				out.transcript.push_back(op_match);
+			}
+			else {
+				out.transcript.push_back(op_substitution, s[j - 1]);
+			}
+			--i;
+			--j;
+		}
+		else if (have_hgap(dp, i, j, gap_open, gap_extend, l)) {
+			for (; l > 0; l--)
+				out.transcript.push_back(op_deletion, s[--j]);
+		}
+		else if (have_vgap(dp, i, j, gap_open, gap_extend, l)) {
+			out.transcript.push_back(op_insertion, (unsigned)l);
+			i -= l;
+		}
+		else
+			throw std::runtime_error("Traceback error.");
+	}
+
+	out.query_range.begin_ = i;
+	out.subject_range.begin_ = j;
+	out.transcript.reverse();
+	out.transcript.push_terminator();
+}
+
+void print_diag(int i0, int j0, int l, int score, const vector<Diagonal_node> &diags, const sequence &query, const sequence &subject)
+{
+	Diagonal_segment ds(i0, j0, l, 0);
+	unsigned n = 0;
+	for (vector<Diagonal_node>::const_iterator d = diags.begin(); d != diags.end(); ++d) {
+		if (d->intersect(ds).len > 0) {
+			const int diff = score_range(query, subject, d->query_end(), d->subject_end(), j0 + l);
+			cout << "Diag n=" << d - diags.begin() << " i=" << i0 << " j=" << j0 << " len=" << l
+				<< " prefix_score=" << score + score_range(query, subject, i0 + l, j0 + l, d->subject_end()) - std::min(diff, 0)
+				<< " prefix_score2=" << d->prefix_score(j0 + l) << endl;
+			++n;
+		}
+	}
+	if(n == 0)
+		cout << "Diag n=x i=" << i0 << " j=" << j0 << " len=" << l << " prefix_score=" << score << endl;
+}
+
+void smith_waterman(sequence q, sequence s, const vector<Diagonal_node> &diags)
+{
+	Hsp_data hsp;
+	smith_waterman(q, s, hsp);
+	Hsp_data::Iterator i = hsp.begin();
+	int i0 = -1, j0 = -1, l = 0, score = 0;
+	for (; i.good(); ++i) {
+		switch (i.op()) {
+		case op_match:
+		case op_substitution:
+			if (i0 < 0) {
+				i0 = i.query_pos;
+				j0 = i.subject_pos;
+				l = 0;
+			}
+			score += score_matrix(q[i.query_pos], s[i.subject_pos]);
+			++l;
+			break;
+		case op_deletion:
+		case op_insertion:
+			if (i0 >= 0) {
+				print_diag(i0, j0, l, score, diags, q, s);
+				score -= config.gap_open + config.gap_extend;
+				i0 = -1;
+				j0 = -1;
+			}
+			else
+				score -= config.gap_extend;
+		}
+	}
+	print_diag(i0, j0, l, score, diags, q, s);
 }

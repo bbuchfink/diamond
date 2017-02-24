@@ -81,6 +81,15 @@ struct Diagonal_segment
 	{
 		return i - j;
 	}
+	Diagonal_segment intersect(const Diagonal_segment &x) const
+	{
+		if (diag() != x.diag())
+			return Diagonal_segment();
+		else {
+			const interval q = ::intersect(query_range(), x.query_range());
+			return Diagonal_segment(q.begin_, ::intersect(subject_range(), x.subject_range()).begin_, q.length(), 0);
+		}
+	}
 	bool is_enveloped(const Diagonal_segment &x) const
 	{
 		return score <= x.score

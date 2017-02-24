@@ -150,7 +150,6 @@ void benchmark_greedy(const Sequence_set &ss, unsigned qa, unsigned sa)
 	Pairwise_format().print_match(Hsp_context(hsp, 0, ss[0], ss[0], "", 0, 0, "", 0, 0, 0), buf);
 	buf << '\0';
 	cout << buf.get_begin();
-
 	Timer t;
 	t.start();
 
@@ -197,6 +196,7 @@ void benchmark_floating(const Sequence_set &ss, unsigned qa, unsigned sa)
 
 		cout << hsp.score << ' ' << cell_updates << endl;
 		cout << "gcups=" << (double)cell_updates / 1e9 / t.getElapsedTimeInSec() << " n/sec=" << (double)n / t.getElapsedTimeInSec() << endl;
+		cout << " usec=" << t.getElapsedTimeInSec() / (double)n * 1000000.0 << endl;
 	}
 }
 
@@ -223,6 +223,7 @@ Query  80  TVIGHL  85
            T+I  L
 Sbjct  76  TIINGL  81	*/
 
+aln1:
 
 	s1 = sequence::from_string("SLFEQLGGQAAVQAVTAQFYANIQADATVATFFNGIDMPNQTNKTAAFLCAALGGPNAWTGRNLKEVHANMGVSNAQFTTVIGHLRSALTGAGVAAALVEQTVAVAETVRGDVVTV");
 	s2 = sequence::from_string("RKQRIVIKISGACLKQNDSSIIDFIKINDLAEQIEKISKKYIVSIVLGGGNIWRGSIAKELDMDRNLADNMGMMATIINGLALENALNHLNVNTIVLSAIKCDKLVHESSANNIKKAIEKEQVMIFVAGTGFPYFTTDSCAAIRAAETESSIILMGKNGVDGVYDSDPKINPNAQFYEHITFNMALTQNLKVMDATALALCQENNINLLVFNIDKPNAIVDVLEKKNKYTIVSK");
@@ -324,7 +325,6 @@ KCLEHLFFFKLIGDTPIDTFLMEMLEAPHQIT");
 
 	*/
 
-aln1:
 
 	s1 = sequence::from_string("tspmtpditgkpfvaadasndyikrevmipmrdgvklhtvivlpkgaknapivltrtpyd\
 asgrterlasphmkdllsagddvfveggyirvfqdvrgkygsegdyvmtrplrgplnpse\
