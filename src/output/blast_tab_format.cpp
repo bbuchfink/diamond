@@ -217,6 +217,8 @@ void Blast_tab_format::print_match(const Hsp_context& r, Text_buffer &out) const
 			break;
 		case 46:
 			out << r.filter_score();
+			if (r.filter_score() != r.bit_score())
+				out << "=";
 			break;
 		default:
 			throw std::runtime_error("Invalid output field");

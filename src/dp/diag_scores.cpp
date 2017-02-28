@@ -128,6 +128,40 @@ void scan_cols(const Long_score_profile &qp, sequence s, int i, int j, int j_end
 #endif
 }
 
+void scan_cols(const Long_score_profile &qp, sequence s, int i, int i_end, int j, int j_end, uint8_t *sv_max, bool log, uint8_t *buf, uint8_t *local_max, int block_len)
+{
+#ifdef __SSE2__
+	typedef score_vector<uint8_t> Sv;
+	const Sv vbias(score_matrix.bias());
+	for (int i2 = i; i2 < i_end; i2 += 16) {
+		int j2 = std::max(-(i2 - j + 15), j), i3 = j2 + i2 - j;
+		uint8_t *local_max_ptr = local_max + (i2 - i) + (j2 - j) / 16 * (i_end - i),
+			*buf_ptr = buf + (i2 - i) + (j2 - j)*(i_end - i);
+		Sv v, max, global_max;
+		for (; j2 < j_end; ++j2, ++i3) {
+			assert(j2 >= 0);
+			const uint8_t *q = qp.get(s[j2], i3);
+			v = v + score_vector<uint8_t>(q);
+			v -= vbias;
+			max.max(v);
+			v.store(buf_ptr);
+			buf_ptr += i_end - i;
+			if (((j2 - j) & 15) == 15) {
+				global_max.max(max);
+				max.store(local_max_ptr);
+				local_max_ptr += (i_end - i);
+				max = score_vector<uint8_t>();
+			}
+		}
+		if (((j2 - j) & 15) != 0) {
+			global_max.max(max);
+			max.store(local_max_ptr);
+		}
+		global_max.store(&sv_max[i2 - i]);
+	}
+#endif
+}
+
 void get_zero_index(const Band::Iterator &d, int begin, int end, int max_score, int &z0, int& z1)
 {
 	z0 = z1 = -1;
@@ -146,8 +180,7 @@ void get_zero_index(const Band::Iterator &d, int begin, int end, int max_score, 
 	}
 }
 
-void get_diag(int i, int j, const Band::Iterator &d, int begin, int max_score, int zero, vector<Diagonal_node> &diags, int block_len,
-	int &second_best_begin, int second_best, const sequence &query, const sequence &subject)
+void get_diag(int i, int j, const Band::Iterator &d, int begin, int max_score, int zero, vector<Diagonal_node> &diags, int block_len, int cols)
 {
 	int p = begin, p_end = p + block_len;
 	for (; p < p_end; ++p)
@@ -155,30 +188,38 @@ void get_diag(int i, int j, const Band::Iterator &d, int begin, int max_score, i
 			break;
 	diags.push_back(Diagonal_segment(i + zero + 1, j + zero + 1, p - zero, max_score));
 
-	if (second_best_begin >= 0) {
-		second_best_begin -= 1;
-		const Diagonal_segment second = score_diagonal(&query[i + second_best_begin * 16],
-			&subject[j + second_best_begin * 16],
-			(second_best - second_best_begin + 1) * 16,
-			i + second_best_begin * 16,
-			j + second_best_begin * 16);
-		if (second.i > diags.back().subject_end() && second.score >= config.min_diag_raw_score)
-			diags.push_back(second);
-		second_best_begin = -1;
+	int low = max_score, low_pos = p, high = 0, high_pos = p;
+	++p;
+	while (p < cols && d[p] > 0) {
+		if (d[p] < low) {
+			if (high >= config.min_diag_raw_score)
+				diags.push_back(Diagonal_segment(i + low_pos + 1, j + low_pos + 1, high_pos - low_pos, high));
+			high = 0;
+			high_pos = p;
+			low = d[p];
+			low_pos = p;
+		}
+		if (d[p] - low > high) {
+			high = d[p] - low;
+			high_pos = p;
+		}
+		++p;
 	}
+	if (high >= config.min_diag_raw_score)
+		diags.push_back(Diagonal_segment(i + low_pos + 1, j + low_pos + 1, high_pos - low_pos, high));
 }
 
 void Diag_scores::get_diag(int i, int j, int o, const sequence &query, const sequence &subject, vector<Diagonal_node> &diags)
 {
 	Band::Iterator d(local_max.diag(o)), d2(score_buf.diag(o));
-	int p = 0, p_end = local_max.cols(), best = -1, best_score = -1, second_best_score = -1, second_best = -1, second_best_begin = -1, last_zero = -1, last_block = -1, max_score;
+	int p = 0, p_end = local_max.cols(), best = -1, best_score = -1, last_zero = -1, last_block = -1, max_score, p2_end(score_buf.cols());
 	for (; p < p_end; ++p)
 		if ((max_score = d[p]) >= config.min_diag_raw_score) {
 			if (last_block == -1) {
 				int z0, z1;
-				get_zero_index(d2, 0, (p + 1)*block_len, max_score, z0, z1);
+				get_zero_index(d2, 0, std::min((p + 1)*block_len, p2_end), max_score, z0, z1);
 				if (z1 > 0) {
-					::get_diag(i, j, d2, p * block_len, max_score, z0, diags, block_len, second_best_begin, -1, query, subject);
+					::get_diag(i, j, d2, p * block_len, max_score, z0, diags, block_len, score_buf.cols());
 					max_score = -1;
 					last_zero = z1;
 				}
@@ -187,9 +228,10 @@ void Diag_scores::get_diag(int i, int j, int o, const sequence &query, const seq
 			}
 			else {
 				int z0, z1;
-				get_zero_index(d2, (last_block + 1)*block_len, (p + 1)*block_len, max_score, z0, z1);
+				get_zero_index(d2, (last_block + 1)*block_len, std::min((p + 1)*block_len, p2_end), max_score, z0, z1);
 				if (z0 > last_zero) {
-					::get_diag(i, j, d2, best * block_len, best_score, last_zero, diags, block_len, second_best_begin, second_best, query, subject);
+					if(best >= 0)
+						::get_diag(i, j, d2, best * block_len, best_score, last_zero, diags, block_len, score_buf.cols());
 					best = p;
 					best_score = max_score;
 					last_zero = z0;
@@ -199,7 +241,7 @@ void Diag_scores::get_diag(int i, int j, int o, const sequence &query, const seq
 						best = p;
 						best_score = max_score;
 					}
-					::get_diag(i, j, d2, best * block_len, best_score, last_zero, diags, block_len, second_best_begin, second_best, query, subject);
+					::get_diag(i, j, d2, best * block_len, best_score, last_zero, diags, block_len, score_buf.cols());
 					max_score = -1;
 					best = -1;
 					best_score = -1;
@@ -212,26 +254,14 @@ void Diag_scores::get_diag(int i, int j, int o, const sequence &query, const seq
 				best = p;
 				best_score = max_score;
 			}
-			else if (max_score > d[p - 1]) {
-				if (second_best_begin == -1) {
-					second_best_begin = p;
-					second_best = p;
-					second_best_score = max_score;
-				}
-				else {
-					if (max_score > second_best_score) {
-						second_best_score = max_score;
-						second_best = p;
-					}
-				}
-			}
 		}
 	if (best >= 0)
-		::get_diag(i, j, d2, best * 16, best_score, last_zero, diags, block_len, second_best_begin, second_best, query, subject);
+		::get_diag(i, j, d2, best * 16, best_score, last_zero, diags, block_len, score_buf.cols());
 }
 
 void Diag_scores::scan_diags(const Diagonal_segment &diag, sequence query, sequence subject, const Long_score_profile &qp, bool log, vector<Diagonal_node> &diags)
 {
+	static const int band = 128;
 	const int d = diag.diag() - band / 2,
 		d1 = d + band - 1,
 		i = std::max(0, d1) - band + 1,
@@ -239,12 +269,10 @@ void Diag_scores::scan_diags(const Diagonal_segment &diag, sequence query, seque
 		j1 = std::min((int)query.length() - d, (int)subject.length());
 	uint8_t sv_max[band];
 	memset(sv_max, 0, band);
-	const size_t cells = band * (j1 - j);
-	score_buf.init(band, j1 - j);
-	//memset(score_buf.data(), 0, score_buf.size());
-	local_max.init(band, (j1 - j + block_len - 1) / block_len);
-	//memset(local_max.data(), 0, local_max.size());
-	scan_cols(qp, subject, i, j, j1, sv_max, log, score_buf.data(), local_max.data(), block_len);
+	score_buf.init(band, j1 - j, true);
+	local_max.init(band, (j1 - j + block_len - 1) / block_len, true);
+	//scan_cols(qp, subject, i, j, j1, sv_max, log, score_buf.data(), local_max.data(), block_len);
+	scan_cols(qp, subject, i, i + band, j, j1, sv_max, log, score_buf.data(), local_max.data(), block_len);
 	for (int o = 0; o < band; ++o)
 		if (sv_max[o] >= config.min_diag_raw_score) {
 			//get_diag(i + o, j, sv_max[o], o);

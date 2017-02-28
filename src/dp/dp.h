@@ -169,10 +169,15 @@ struct Diagonal_node : public Diagonal_segment
 	}
 	int get_edge(int j) const
 	{
+		if (score == 0)
+			return 0;
+		int max_score = score, max_edge = -1;
 		for (int k = 0; k < n_path; ++k)
-			if (edges[k].j < j && edges[k].prefix_score > score)
-				return k;
-		return -1;
+			if (edges[k].j < j && edges[k].prefix_score > max_score) {
+				max_edge = k;
+				max_score = edges[k].prefix_score;
+			}
+		return max_edge;
 	}
 	Top_list<Edge, n_path> edges;
 };
@@ -181,12 +186,14 @@ int needleman_wunsch(sequence query, sequence subject, int qbegin, int qend, int
 
 struct Band
 {
-	void init(int diags, int cols)
+	void init(int diags, int cols, bool zero)
 	{
 		diags_ = diags;
 		cols_ = cols;
 		data_.clear();
 		data_.resize((size_t)diags*cols);
+		if (zero)
+			memset(data_.data(), 0, data_.size());
 	}
 	struct Iterator {
 		Iterator(const uint8_t *p, int diags) :
@@ -219,7 +226,7 @@ private:
 };
 
 struct Diag_scores {
-	enum { band = 64, block_len = 16 };
+	enum { block_len = 16 };
 	void get_diag(int i, int j, int o, const sequence &query, const sequence &subject, vector<Diagonal_node> &diags);
 	void scan_diags(const Diagonal_segment &diag, sequence query, sequence subject, const Long_score_profile &qp, bool log, vector<Diagonal_node> &diags);
 	Band score_buf, local_max;

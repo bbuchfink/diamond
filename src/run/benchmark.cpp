@@ -147,7 +147,7 @@ void benchmark_greedy(const Sequence_set &ss, unsigned qa, unsigned sa)
 	Hsp_data hsp;
 	greedy_align2(ss[0], qp, ss[1], d, true, hsp);
 	Text_buffer buf;
-	Pairwise_format().print_match(Hsp_context(hsp, 0, ss[0], ss[0], "", 0, 0, "", 0, 0, 0), buf);
+	//Pairwise_format().print_match(Hsp_context(hsp, 0, ss[0], ss[0], "", 0, 0, "", 0, 0, 0), buf);
 	buf << '\0';
 	cout << buf.get_begin();
 	Timer t;

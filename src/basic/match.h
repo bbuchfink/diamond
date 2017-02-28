@@ -119,7 +119,7 @@ struct Diagonal_segment
 	static bool cmp_heuristic(const Diagonal_segment &x, const Diagonal_segment &y)
 	{
 		return (x.subject_end() < y.subject_end() && x.j < y.j)
-			|| (y.j - x.j > x.subject_end() - y.subject_end());
+			|| (x.j - y.j < y.subject_end() - x.subject_end());
 	}
 	friend int abs_shift(const Diagonal_segment &x, const Diagonal_segment &y)
 	{

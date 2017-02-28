@@ -468,14 +468,14 @@ inline string print_char(char c)
 template<typename _t, int n>
 struct Top_list
 {
-	void add(const _t &x)
+	_t& add(const _t &x)
 	{
 		for (int i = 0; i < n; ++i)
 			if ((int)x >(int)data_[i]) {
 				if (i < n - 1)
 					memmove(&data_[i + 1], &data_[i], sizeof(data_)/n*(n - 1 - i));
 				data_[i] = x;
-				return;
+				return data_[i];
 			}
 	}
 	const _t& operator[](unsigned i) const

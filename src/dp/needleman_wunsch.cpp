@@ -183,8 +183,8 @@ int needleman_wunsch(sequence query, sequence subject, int qbegin, int qend, int
 	unsigned start_node = d->edges[edge].node;
 	Diagonal_node::Edge *f = &d->edges[edge];
 
-	if (log)
-		cout << dp << endl;
+	/*if (log)
+		cout << dp << endl;*/
 
 	const int gap_open = config.gap_open, gap_extend = config.gap_extend;
 	int l, i = qend - qbegin, j = send - sbegin;
@@ -273,9 +273,14 @@ void print_diag(int i0, int j0, int l, int score, const vector<Diagonal_node> &d
 	for (vector<Diagonal_node>::const_iterator d = diags.begin(); d != diags.end(); ++d) {
 		if (d->intersect(ds).len > 0) {
 			const int diff = score_range(query, subject, d->query_end(), d->subject_end(), j0 + l);
+			if (n > 0)
+				cout << "(";
 			cout << "Diag n=" << d - diags.begin() << " i=" << i0 << " j=" << j0 << " len=" << l
 				<< " prefix_score=" << score + score_range(query, subject, i0 + l, j0 + l, d->subject_end()) - std::min(diff, 0)
-				<< " prefix_score2=" << d->prefix_score(j0 + l) << endl;
+				<< " prefix_score2=" << d->prefix_score(j0 + l);
+			if (n > 0)
+				cout << ")";
+			cout << endl;
 			++n;
 		}
 	}

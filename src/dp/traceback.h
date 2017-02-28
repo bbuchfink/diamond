@@ -74,8 +74,8 @@ int have_diag(const _matrix &dp,
 		const int match_score = score_matrix(query[i - 1], subject[j - 1]);
 
 		if (dp(i, j) == match_score + dp(i - 1, j - 1)) {
-			if (log)
-				printf("i=%i j=%i score=%i subject=%c query=%c\n", i, j, dp(i, j), value_traits.alphabet[(int)subject[j - 1]], value_traits.alphabet[(int)query[i - 1]]);
+			/*if (log)
+				printf("i=%i j=%i score=%i subject=%c query=%c\n", i, j, dp(i, j), value_traits.alphabet[(int)subject[j - 1]], value_traits.alphabet[(int)query[i - 1]]);*/
 			++l;
 			--i;
 			--j;
