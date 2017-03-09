@@ -125,6 +125,11 @@ struct Diagonal_segment
 	{
 		return abs(x.diag() - y.diag());
 	}
+	friend std::ostream& operator<<(std::ostream &s, const Diagonal_segment &d)
+	{
+		s << "i=" << d.i << " j=" << d.j << " l=" << d.len << " score=" << d.score;
+		return s;
+	}
 	int i, j, len, score;
 };
 

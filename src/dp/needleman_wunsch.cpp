@@ -174,14 +174,14 @@ const Fixed_score_buffer<_score>& needleman_wunsch(sequence query, sequence subj
 	return mtx.score_buffer();
 }
 
-int needleman_wunsch(sequence query, sequence subject, int qbegin, int qend, int sbegin, int send, unsigned node, unsigned edge, vector<Diagonal_node> &diags, bool log)
+int needleman_wunsch(sequence query, sequence subject, int qbegin, int qend, int sbegin, int send, unsigned node, unsigned edge, Diag_graph &diags, bool log)
 {
 	const sequence q = query.subseq(qbegin, qend), s = subject.subseq(sbegin, send);
 	int max_score;
 	const Fixed_score_buffer<int> &dp = needleman_wunsch(q, s, max_score, Global(), int());
 	Diagonal_node *d = &diags[node];
-	unsigned start_node = d->edges[edge].node;
-	Diagonal_node::Edge *f = &d->edges[edge];
+	unsigned start_node = diags.edges[edge].node_out;
+	vector<Diag_graph::Edge>::iterator f = diags.edges.begin() + edge;
 
 	/*if (log)
 		cout << dp << endl;*/
@@ -203,11 +203,9 @@ int needleman_wunsch(sequence query, sequence subject, int qbegin, int qend, int
 			i -= l;
 			j -= l;
 			if (i != 0 || j != 0) {
-				f->node = (unsigned)diags.size();
-				diags.push_back(Diagonal_node(qbegin + i, sbegin + j, l, 0));
-				f = &diags.back().edges[0];
-				f->exact = true;
-				f->j = sbegin + j;
+				f->node_out = (unsigned)diags.nodes.size();
+				diags.nodes.push_back(Diagonal_node(qbegin + i, sbegin + j, l, 0, diags.edges.size()));
+				f = diags.add_edge(Diag_graph::Edge(0, sbegin + j, f->node_out, 0, true, Diagonal_node::finished, 0, 0));
 			}
 		}
 		else if (have_hgap(dp, i, j, gap_open, gap_extend, l)) {
@@ -220,7 +218,7 @@ int needleman_wunsch(sequence query, sequence subject, int qbegin, int qend, int
 			throw std::runtime_error("Traceback error.");
 	}
 
-	f->node = start_node;
+	f->node_out = start_node;
 	return score;
 }
 
@@ -266,18 +264,20 @@ void smith_waterman(sequence q, sequence s, Hsp_data &out)
 	out.transcript.push_terminator();
 }
 
-void print_diag(int i0, int j0, int l, int score, const vector<Diagonal_node> &diags, const sequence &query, const sequence &subject)
+void print_diag(int i0, int j0, int l, int score, const Diag_graph &diags, const sequence &query, const sequence &subject)
 {
 	Diagonal_segment ds(i0, j0, l, 0);
 	unsigned n = 0;
-	for (vector<Diagonal_node>::const_iterator d = diags.begin(); d != diags.end(); ++d) {
+	for (vector<Diagonal_node>::const_iterator d = diags.nodes.begin(); d != diags.nodes.end(); ++d) {
 		if (d->intersect(ds).len > 0) {
+			if (d->score == 0)
+				continue;
 			const int diff = score_range(query, subject, d->query_end(), d->subject_end(), j0 + l);
 			if (n > 0)
 				cout << "(";
-			cout << "Diag n=" << d - diags.begin() << " i=" << i0 << " j=" << j0 << " len=" << l
+			cout << "Diag n=" << d - diags.nodes.begin() << " i=" << i0 << " j=" << j0 << " len=" << l
 				<< " prefix_score=" << score + score_range(query, subject, i0 + l, j0 + l, d->subject_end()) - std::min(diff, 0)
-				<< " prefix_score2=" << d->prefix_score(j0 + l);
+				<< " prefix_score2=" << diags.prefix_score(d - diags.nodes.begin(), j0 + l);
 			if (n > 0)
 				cout << ")";
 			cout << endl;
@@ -288,7 +288,7 @@ void print_diag(int i0, int j0, int l, int score, const vector<Diagonal_node> &d
 		cout << "Diag n=x i=" << i0 << " j=" << j0 << " len=" << l << " prefix_score=" << score << endl;
 }
 
-void smith_waterman(sequence q, sequence s, const vector<Diagonal_node> &diags)
+void smith_waterman(sequence q, sequence s, const Diag_graph &diags)
 {
 	Hsp_data hsp;
 	smith_waterman(q, s, hsp);

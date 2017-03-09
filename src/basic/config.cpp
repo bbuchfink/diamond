@@ -180,7 +180,6 @@ Config::Config(int argc, const char **argv)
 		("max-hits", 'C', "maximum number of hits to consider for one seed", hit_cap)
 		("seed-freq", 0, "maximum seed frequency", max_seed_freq, -15.0)
 		("space-penalty", 0, "", space_penalty, 4.9)
-		("min-diag-score", 0, "", min_diag_score, 10.5)
 		("reverse", 0, "", reverse)
 		("neighborhood-score", 0, "", neighborhood_score)
 		("algo", 0, "", algo, 0u)
@@ -316,9 +315,6 @@ Config::Config(int argc, const char **argv)
 		}
 		message_stream << "Scoring parameters: " << score_matrix << endl;
 		raw_ungapped_xdrop = score_matrix.rawscore(ungapped_xdrop);
-		min_diag_raw_score = score_matrix.rawscore(min_diag_score);
-		raw_space_penalty = score_matrix.rawscore(space_penalty, double());
-		log_stream << "Min_diag_score=" << min_diag_raw_score << " space_penalty=" << raw_space_penalty << endl;
 		init_cbs();
 
 		if (seg == "" && command == blastx)

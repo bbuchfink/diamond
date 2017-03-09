@@ -109,8 +109,6 @@ struct Config
 	unsigned query_gencode;
 	string unaligned;
 	double space_penalty, raw_space_penalty;
-	double min_diag_score;
-	int min_diag_raw_score;
 	bool new_prefilter;
 	bool reverse;
 	unsigned comp_based_stats;

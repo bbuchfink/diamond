@@ -20,6 +20,7 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #define DP_H_
 
 #include <utility>
+#include <map>
 #include "../basic/match.h"
 #include "../align/align.h"
 #include "score_profile.h"
@@ -117,18 +118,36 @@ private:
 
 struct Diagonal_node : public Diagonal_segment
 {
-	enum { n_path = 3, estimate, finished };
+	enum { estimate, finished };
+	Diagonal_node() :
+		Diagonal_segment(),
+		link_idx(0)
+	{}
+	Diagonal_node(int query_pos, int subject_pos, int len, int score, int link_idx=0) :
+		Diagonal_segment(query_pos, subject_pos, len, score),
+		link_idx(link_idx)
+	{}
+	Diagonal_node(const Diagonal_segment &d) :
+		Diagonal_segment(d),
+		link_idx(0)
+	{}
+	unsigned link_idx;
+};
+
+struct Diag_graph
+{
 	struct Edge
 	{
 		Edge() :
 			prefix_score(0),
-			node(),
+			node_in(),
 			exact(true)
 		{}
-		Edge(int prefix_score, int j, unsigned node, bool exact, unsigned state, int diff1, int diff2) :
+		Edge(int prefix_score, int j, unsigned node_in, unsigned node_out, bool exact, unsigned state, int diff1, int diff2) :
 			prefix_score(prefix_score),
 			j(j),
-			node(node),
+			node_in(node_in),
+			node_out(node_out),
 			exact(exact),
 			state(state),
 			diff1(diff1),
@@ -143,46 +162,66 @@ struct Diagonal_node : public Diagonal_segment
 			return prefix_score > x.prefix_score;
 		}
 		int prefix_score, j, diff1, diff2;
-		unsigned node, state;
+		unsigned node_in, node_out, state;
 		bool exact;
 	};
 
-	Diagonal_node() :
-		Diagonal_segment()
-	{}
-	Diagonal_node(int query_pos, int subject_pos, int len, int score) :
-		Diagonal_segment(query_pos, subject_pos, len, score)
-	{}
-	Diagonal_node(const Diagonal_segment &d) :
-		Diagonal_segment(d)
-	{}
-	int prefix_score(int j) const
+	void init()
 	{
-		for (int k = 0; k < n_path; ++k)
-			if (edges[k].j < j)
-				return std::max(edges[k].prefix_score, score);
-		return score;
+		nodes.clear();
+		edges.clear();
 	}
-	int prefix_score() const
+
+	vector<Edge>::iterator add_edge(const Edge &edge)
 	{
-		return std::max(edges[0].prefix_score, score);
+		for (vector<Diagonal_node>::iterator j = nodes.begin() + edge.node_in + 1; j < nodes.end(); ++j)
+			++j->link_idx;
+		return edges.insert(edges.begin() + nodes[edge.node_in].link_idx++, edge);
 	}
-	int get_edge(int j) const
+
+	vector<Edge>::const_iterator get_edge(unsigned node, int j) const
 	{
-		if (score == 0)
-			return 0;
-		int max_score = score, max_edge = -1;
-		for (int k = 0; k < n_path; ++k)
-			if (edges[k].j < j && edges[k].prefix_score > max_score) {
-				max_edge = k;
-				max_score = edges[k].prefix_score;
+		const Diagonal_node &d = nodes[node];
+		if (d.score == 0)
+			return edges.begin() + d.link_idx - 1;
+		if (edges.empty())
+			return edges.end();
+		int max_score = d.score;
+		vector<Edge>::const_iterator max_edge = edges.end();
+		for (vector<Edge>::const_iterator i = edges.begin() + d.link_idx - 1; i >= edges.begin() && i->node_in == node; --i)
+			if (i->j < j && i->prefix_score > max_score) {
+				max_edge = i;
+				max_score = i->prefix_score;
 			}
 		return max_edge;
 	}
-	Top_list<Edge, n_path> edges;
+
+	int prefix_score(unsigned node, int j) const
+	{
+		const vector<Edge>::const_iterator i = get_edge(node, j);
+		return i == edges.end() ? nodes[node].score : std::max(nodes[node].score, i->prefix_score);
+	}
+
+	int prefix_score(unsigned node) const
+	{
+		return prefix_score(node, nodes[node].subject_end());
+	}
+
+	Diagonal_node& operator[](unsigned k)
+	{
+		return nodes[k];
+	}
+
+	const Diagonal_node& operator[](unsigned k) const
+	{
+		return nodes[k];
+	}
+
+	vector<Diagonal_node> nodes;
+	vector<Edge> edges;
 };
 
-int needleman_wunsch(sequence query, sequence subject, int qbegin, int qend, int sbegin, int send, unsigned node, unsigned edge, vector<Diagonal_node> &diags, bool log);
+int needleman_wunsch(sequence query, sequence subject, int qbegin, int qend, int sbegin, int send, unsigned node, unsigned edge, Diag_graph &diags, bool log);
 
 struct Band
 {
@@ -196,19 +235,19 @@ struct Band
 			memset(data_.data(), 0, data_.size());
 	}
 	struct Iterator {
-		Iterator(const uint8_t *p, int diags) :
+		Iterator(uint8_t *p, int diags) :
 			p_(p),
 			diags_(diags)
 		{}
-		uint8_t operator[](int i) const
+		uint8_t& operator[](int i)
 		{
 			return p_[i*diags_];
 		}
 	private:
 		const int diags_;
-		const uint8_t *p_;
+		uint8_t *p_;
 	};
-	Iterator diag(int o) const
+	Iterator diag(int o)
 	{
 		return Iterator(&data_[o], diags_);
 	}
@@ -226,14 +265,21 @@ private:
 };
 
 struct Diag_scores {
-	enum { block_len = 16 };
-	void get_diag(int i, int j, int o, const sequence &query, const sequence &subject, vector<Diagonal_node> &diags);
-	void scan_diags(const Diagonal_segment &diag, sequence query, sequence subject, const Long_score_profile &qp, bool log, vector<Diagonal_node> &diags);
+	enum {
+		block_len = 16
+	};
+	void get_diag(int i, int j, int o, int j_begin, int j_end, vector<Diagonal_node> &diags, int cutoff, bool log);
+	void scan_diags(const Diagonal_segment &diag, sequence query, sequence subject, const Long_score_profile &qp, bool log, vector<Diagonal_node> &diags, std::multimap<int, unsigned> &window);
+	void scan_vicinity(unsigned d_idx, unsigned e_idx, vector<Diagonal_node> &diags, bool log, uint8_t *sv_max);
+	void set_zero(Band::Iterator &d, Band::Iterator d2, int begin, int end);
+	void scan_ends(unsigned d_idx, vector<Diagonal_node> &diags, bool log, uint8_t *sv_max);
 	Band score_buf, local_max;
+	int i_begin, j_begin, d_begin, d_end;
+	static int min_diag_score, min_low_score;
 };
 
 void smith_waterman(sequence q, sequence s, Hsp_data &out);
-void smith_waterman(sequence q, sequence s, const vector<Diagonal_node> &diags);
+void smith_waterman(sequence q, sequence s, const Diag_graph &diags);
 int score_range(sequence query, sequence subject, int i, int j, int j_end);
 
 #endif /* FLOATING_SW_H_ */
