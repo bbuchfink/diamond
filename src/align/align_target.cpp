@@ -106,66 +106,66 @@ void Query_mapper::align_target(size_t idx, Statistics &stat)
 
 	unsigned frame_mask = (1 << align_mode.query_contexts) - 1;
 
-	for (size_t i = 0; i < n; ++i) {
-		const unsigned frame = hits[i].frame_;
-		if ((frame_mask & (1u << frame)) == 0)
-			continue;
-		if (!is_contained(hits, i) && !is_contained(target.hsps, hits[i])) {			
-			target.hsps.push_back(Hsp_data());
-			target.hsps.back().frame = frame;
-			uint64_t cell_updates;
+	if (!config.greedy) {
 
-			if (false && config.comp_based_stats == 1)
-				floating_sw(&query_seq(frame)[hits[i].query_pos_],
-					&subject[hits[i].subject_pos_],
-					target.hsps.back(),
-					config.read_padding(query_seq(frame).length()),
-					(score_t)score_matrix.rawscore(config.gapped_xdrop),
-					(score_t)(config.gap_open + config.gap_extend),
-					(score_t)config.gap_extend,
-					cell_updates,
-					hits[i].query_pos_,
-					hits[i].subject_pos_,
-					query_cb[frame],
-					Traceback(),
-					score_t());
+		for (size_t i = 0; i < n; ++i) {
+			const unsigned frame = hits[i].frame_;
+			if ((frame_mask & (1u << frame)) == 0)
+				continue;
+			if (!is_contained(hits, i) && !is_contained(target.hsps, hits[i])) {
+				target.hsps.push_back(Hsp_data());
+				target.hsps.back().frame = frame;
+				uint64_t cell_updates;
+
+				if (false && config.comp_based_stats == 1)
+					floating_sw(&query_seq(frame)[hits[i].query_pos_],
+						&subject[hits[i].subject_pos_],
+						target.hsps.back(),
+						config.read_padding(query_seq(frame).length()),
+						(score_t)score_matrix.rawscore(config.gapped_xdrop),
+						(score_t)(config.gap_open + config.gap_extend),
+						(score_t)config.gap_extend,
+						cell_updates,
+						hits[i].query_pos_,
+						hits[i].subject_pos_,
+						query_cb[frame],
+						Traceback(),
+						score_t());
+				else
+					floating_sw(&query_seq(frame)[hits[i].query_pos_],
+						&subject[hits[i].subject_pos_],
+						target.hsps.back(),
+						config.read_padding(query_seq(frame).length()),
+						score_matrix.rawscore(config.gapped_xdrop),
+						config.gap_open + config.gap_extend,
+						config.gap_extend,
+						cell_updates,
+						hits[i].query_pos_,
+						hits[i].subject_pos_,
+						No_score_correction(),
+						Traceback(),
+						int());
+
+				if (config.comp_based_stats) {
+					const int score = (int)target.hsps.back().score + query_cb[frame](target.hsps.back());
+					target.hsps.back().score = (unsigned)std::max(0, score);
+				}
+
+				stat.inc(Statistics::OUT_HITS);
+				if (i > 0)
+					stat.inc(Statistics::SECONDARY_HITS);
+				aligned_len += target.hsps.back().length;
+				if (aligned_len > max_len)
+					break;
+			}
 			else
-				floating_sw(&query_seq(frame)[hits[i].query_pos_],
-					&subject[hits[i].subject_pos_],
-					target.hsps.back(),
-					config.read_padding(query_seq(frame).length()),
-					score_matrix.rawscore(config.gapped_xdrop),
-					config.gap_open + config.gap_extend,
-					config.gap_extend,
-					cell_updates,
-					hits[i].query_pos_,
-					hits[i].subject_pos_,
-					No_score_correction(),
-					Traceback(),
-					int());
-
-			if (config.comp_based_stats) {
-				const int score = (int)target.hsps.back().score + query_cb[frame](target.hsps.back());
-				target.hsps.back().score = (unsigned)std::max(0, score);
-			}
-
-			if (config.greedy) {
-				vector<Diagonal_segment> sh;
-				sh.push_back(Diagonal_segment(hits[i].query_pos_, hits[i].subject_pos_, 0, 0));
-				Hsp_data hsp;
-				greedy_align2(query_seq(frame), profile[frame], subject, sh, true, hsp);
-				target.hsps.back().filter_score = hsp.score;
-			}
-
-			stat.inc(Statistics::OUT_HITS);
-			if (i > 0)
-				stat.inc(Statistics::SECONDARY_HITS);
-			aligned_len += target.hsps.back().length;
-			if (aligned_len > max_len)
-				break;
+				stat.inc(Statistics::DUPLICATES);
 		}
-		else
-			stat.inc(Statistics::DUPLICATES);
+	}
+	else {
+		target.hsps.push_back(Hsp_data());
+		target.hsps.back().frame = 0;
+		greedy_align(query_seq(0), profile[0], subject, hits, hits + n, true, target.hsps.back());
 	}
 
 	for (list<Hsp_data>::iterator i = target.hsps.begin(); i != target.hsps.end(); ++i)

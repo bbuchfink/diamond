@@ -146,7 +146,7 @@ struct Hsp_data
 		positives(0),
 		gap_openings(0),
 		gaps(0),
-		filter_score(0)
+		sw_score(0)
 	{}
 	Hsp_data(int score) :
 		score(unsigned(score)),
@@ -157,7 +157,7 @@ struct Hsp_data
 		positives(0),
 		gap_openings(0),
 		gaps(0),
-		filter_score(0)
+		sw_score(0)
 	{}
 	Hsp_data(const Intermediate_record &r, unsigned query_source_len);
 	struct Iterator
@@ -256,7 +256,7 @@ struct Hsp_data
 	bool pass_through(const Diagonal_segment &d) const;
 	bool is_weakly_enveloped(const Hsp_data &j) const;
 	void merge(const Hsp_data &right, const Hsp_data &left, unsigned query_anchor, unsigned subject_anchor);
-	unsigned score, frame, length, identities, mismatches, positives, gap_openings, gaps, filter_score;
+	unsigned score, frame, length, identities, mismatches, positives, gap_openings, gaps, sw_score;
 	interval query_source_range, query_range, subject_range;
 	Packed_transcript transcript;
 };
@@ -350,9 +350,9 @@ struct Hsp_context
 	{
 		return score_matrix.bitscore(score());
 	}
-	double filter_score() const
+	double sw_score() const
 	{
-		return score_matrix.bitscore(hsp_.filter_score);
+		return score_matrix.bitscore(hsp_.sw_score);
 	}
 	unsigned frame() const
 	{ return hsp_.frame; }

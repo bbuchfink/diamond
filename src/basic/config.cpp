@@ -199,7 +199,8 @@ Config::Config(int argc, const char **argv)
 		("score-estimate-factor", 0, "", score_estimate_factor, 0.0)
 		("diag-min-estimate", 0, "", diag_min_estimate, 17)
 		("greedy", 0, "", greedy)
-		("qfilt", 0, "", qfilt);
+		("qfilt", 0, "", qfilt)
+		("path-cutoff", 0, "", path_cutoff, 0.95);
 		
 	parser.add(general).add(makedb).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options);
 	parser.store(argc, argv, command);

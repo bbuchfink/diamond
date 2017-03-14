@@ -26,9 +26,6 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 using std::vector;
 using std::pair;
 
-struct Local {};
-struct Global {};
-
 template<typename _score, typename _mode>
 _score saturate(_score x)
 {
@@ -277,7 +274,7 @@ void print_diag(int i0, int j0, int l, int score, const Diag_graph &diags, const
 				cout << "(";
 			cout << "Diag n=" << d - diags.nodes.begin() << " i=" << i0 << " j=" << j0 << " len=" << l
 				<< " prefix_score=" << score + score_range(query, subject, i0 + l, j0 + l, d->subject_end()) - std::min(diff, 0)
-				<< " prefix_score2=" << diags.prefix_score(d - diags.nodes.begin(), j0 + l);
+				<< " prefix_score2=" << diags.prefix_score(d - diags.nodes.begin(), j0 + l, 1);
 			if (n > 0)
 				cout << ")";
 			cout << endl;

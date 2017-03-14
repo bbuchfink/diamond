@@ -32,35 +32,6 @@ using std::vector;
 using std::pair;
 using std::list;
 
-struct Seed_hit
-{
-	Seed_hit()
-	{}
-	Seed_hit(unsigned frame, unsigned subject, unsigned subject_pos, unsigned query_pos, const Diagonal_segment &ungapped) :
-		frame_(frame),
-		subject_(subject),
-		subject_pos_(subject_pos),
-		query_pos_(query_pos),
-		ungapped(ungapped),
-		prefix_score(ungapped.score)
-	{ }
-	int diagonal() const
-	{
-		return (int)query_pos_ - (int)subject_pos_;
-	}
-	bool operator<(const Seed_hit &rhs) const
-	{
-		return ungapped.score > rhs.ungapped.score;
-	}
-	static bool compare_pos(const Seed_hit &x, const Seed_hit &y)
-	{
-		return Diagonal_segment::cmp_subject_end(x.ungapped, y.ungapped);
-	}
-	unsigned frame_, subject_, subject_pos_, query_pos_;
-	Diagonal_segment ungapped;
-	unsigned prefix_score;
-};
-
 struct Target
 {
 	Target(size_t begin, unsigned subject_id) :

@@ -43,6 +43,35 @@ struct Bias_correction : public vector<float>
 	int operator()(const Hsp_data &hsp) const;
 };
 
+struct Seed_hit
+{
+	Seed_hit()
+	{}
+	Seed_hit(unsigned frame, unsigned subject, unsigned subject_pos, unsigned query_pos, const Diagonal_segment &ungapped) :
+		frame_(frame),
+		subject_(subject),
+		subject_pos_(subject_pos),
+		query_pos_(query_pos),
+		ungapped(ungapped),
+		prefix_score(ungapped.score)
+	{ }
+	int diagonal() const
+	{
+		return (int)query_pos_ - (int)subject_pos_;
+	}
+	bool operator<(const Seed_hit &rhs) const
+	{
+		return ungapped.score > rhs.ungapped.score;
+	}
+	static bool compare_pos(const Seed_hit &x, const Seed_hit &y)
+	{
+		return Diagonal_segment::cmp_subject_end(x.ungapped, y.ungapped);
+	}
+	unsigned frame_, subject_, subject_pos_, query_pos_;
+	Diagonal_segment ungapped;
+	unsigned prefix_score;
+};
+
 template<typename _score>
 void smith_waterman(const Letter *query, local_match &segment, _score gap_open, _score gap_extend, vector<char> &transcript_buf, const _score& = int());
 int smith_waterman(const sequence &query, const sequence &subject, unsigned band, unsigned padding, int op, int ep);
@@ -51,11 +80,10 @@ int xdrop_ungapped(const Letter *query, const Letter *subject, unsigned seed_len
 int xdrop_ungapped(const Letter *query, const Letter *subject, unsigned &delta, unsigned &len);
 int xdrop_ungapped_right(const Letter *query, const Letter *subject, int &len);
 
-void greedy_align(sequence query, sequence subject, const vector<Diagonal_segment> &sh, bool log);
-void greedy_align(sequence query, sequence subject, const Diagonal_segment &sh, bool log);
-void greedy_align(sequence query, const Long_score_profile &qp, sequence subject, const Diagonal_segment &sh, bool log);
-void greedy_align2(sequence query, const Long_score_profile &qp, sequence subject, const vector<Diagonal_segment> &sh, bool log, Hsp_data &out);
-void greedy_align(sequence query, const Long_score_profile &qp, sequence subject, int qa, int sa, bool log);
+struct Local {};
+struct Global {};
+
+void greedy_align(sequence query, const Long_score_profile &qp, sequence subject, vector<Seed_hit>::const_iterator begin, vector<Seed_hit>::const_iterator end, bool log, Hsp_data &out);
 int estimate_score(const Long_score_profile &qp, sequence s, int d, int d1, bool log);
 
 template<typename _t>
@@ -116,6 +144,9 @@ private:
 
 };
 
+template<typename _score, typename _mode>
+const Fixed_score_buffer<_score>& needleman_wunsch(sequence query, sequence subject, int &max_score, const _mode&, const _score&);
+
 struct Diagonal_node : public Diagonal_segment
 {
 	enum { estimate, finished };
@@ -139,12 +170,13 @@ struct Diag_graph
 	struct Edge
 	{
 		Edge() :
-			prefix_score(0),
 			node_in(),
 			exact(true)
-		{}
+		{
+			prefix_score[0] = 0;
+			prefix_score[1] = 0;
+		}
 		Edge(int prefix_score, int j, unsigned node_in, unsigned node_out, bool exact, unsigned state, int diff1, int diff2) :
-			prefix_score(prefix_score),
 			j(j),
 			node_in(node_in),
 			node_out(node_out),
@@ -152,16 +184,20 @@ struct Diag_graph
 			state(state),
 			diff1(diff1),
 			diff2(diff2)
-		{}
-		operator int() const
+		{
+			this->prefix_score[0] = prefix_score;
+			this->prefix_score[1] = 0;
+		}
+		/*operator int() const
 		{
 			return prefix_score;
 		}
 		bool operator<(const Edge &x) const
 		{
 			return prefix_score > x.prefix_score;
-		}
-		int prefix_score, j, diff1, diff2;
+		}*/
+		enum { n_pass = 2 };
+		int prefix_score[n_pass], j, diff1, diff2;
 		unsigned node_in, node_out, state;
 		bool exact;
 	};
@@ -179,7 +215,7 @@ struct Diag_graph
 		return edges.insert(edges.begin() + nodes[edge.node_in].link_idx++, edge);
 	}
 
-	vector<Edge>::const_iterator get_edge(unsigned node, int j) const
+	vector<Edge>::const_iterator get_edge(unsigned node, int j, int pass) const
 	{
 		const Diagonal_node &d = nodes[node];
 		if (d.score == 0)
@@ -189,22 +225,22 @@ struct Diag_graph
 		int max_score = d.score;
 		vector<Edge>::const_iterator max_edge = edges.end();
 		for (vector<Edge>::const_iterator i = edges.begin() + d.link_idx - 1; i >= edges.begin() && i->node_in == node; --i)
-			if (i->j < j && i->prefix_score > max_score) {
+			if (i->j < j && i->prefix_score[pass] > max_score) {
 				max_edge = i;
-				max_score = i->prefix_score;
+				max_score = i->prefix_score[pass];
 			}
 		return max_edge;
 	}
 
-	int prefix_score(unsigned node, int j) const
+	int prefix_score(unsigned node, int j, int pass) const
 	{
-		const vector<Edge>::const_iterator i = get_edge(node, j);
-		return i == edges.end() ? nodes[node].score : std::max(nodes[node].score, i->prefix_score);
+		const vector<Edge>::const_iterator i = get_edge(node, j, pass);
+		return i == edges.end() ? nodes[node].score : std::max(nodes[node].score, i->prefix_score[pass]);
 	}
 
-	int prefix_score(unsigned node) const
+	int prefix_score(unsigned node, int pass) const
 	{
-		return prefix_score(node, nodes[node].subject_end());
+		return prefix_score(node, nodes[node].subject_end(), pass);
 	}
 
 	Diagonal_node& operator[](unsigned k)
@@ -269,11 +305,15 @@ struct Diag_scores {
 		block_len = 16
 	};
 	void get_diag(int i, int j, int o, int j_begin, int j_end, vector<Diagonal_node> &diags, int cutoff, bool log);
-	void scan_diags(const Diagonal_segment &diag, sequence query, sequence subject, const Long_score_profile &qp, bool log, vector<Diagonal_node> &diags, std::multimap<int, unsigned> &window);
+	void get_diag2(int i, int j, int o, int j_begin, int j_end, vector<Diagonal_node> &diags, int cutoff, bool log);
+	void scan_diags(int diag, sequence query, sequence subject, const Long_score_profile &qp, bool log, vector<Diagonal_node> &diags, std::multimap<int, unsigned> &window);
 	void scan_vicinity(unsigned d_idx, unsigned e_idx, vector<Diagonal_node> &diags, bool log, uint8_t *sv_max);
 	void set_zero(Band::Iterator &d, Band::Iterator d2, int begin, int end);
-	void scan_ends(unsigned d_idx, vector<Diagonal_node> &diags, bool log, uint8_t *sv_max);
+	void scan_ends(unsigned d_idx, vector<Diagonal_node> &diags, bool log, uint8_t *sv_max, int subject_len);
+	void set_active(int o, int begin, int end);
+	bool is_active(int o, int i) const;
 	Band score_buf, local_max;
+	vector<bool> active;
 	int i_begin, j_begin, d_begin, d_end;
 	static int min_diag_score, min_low_score;
 };
