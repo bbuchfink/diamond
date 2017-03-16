@@ -146,7 +146,7 @@ template<typename _score, typename _mode> TLS_PTR Fixed_score_buffer<_score>* Dp
 template<typename _score, typename _mode> TLS_PTR vector<_score>* Dp_matrix<_score,_mode>::hgap_ptr;
 
 template<typename _score, typename _mode>
-const Fixed_score_buffer<_score>& needleman_wunsch(sequence query, sequence subject, int &max_score, const _mode&, const _score& = int())
+const Fixed_score_buffer<_score>& needleman_wunsch(sequence query, sequence subject, int &max_score, const _mode&, const _score&)
 {
 	using std::max;
 	const int gap_open = config.gap_open + config.gap_extend, gap_extend = config.gap_extend;
