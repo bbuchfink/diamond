@@ -304,22 +304,31 @@ struct Diag_scores {
 	enum {
 		block_len = 16
 	};
+	int dj0(int o) const
+	{
+		return std::max(-d_begin - o, 0);
+	}
+	int dj1(int o) const
+	{
+		return std::min(qlen - d_begin - o, slen);
+	}
 	void get_diag(int i, int j, int o, int j_begin, int j_end, vector<Diagonal_node> &diags, int cutoff, bool log);
 	void get_diag2(int i, int j, int o, int j_begin, int j_end, vector<Diagonal_node> &diags, int cutoff, bool log);
-	void scan_diags(int diag, sequence query, sequence subject, const Long_score_profile &qp, bool log, vector<Diagonal_node> &diags, std::multimap<int, unsigned> &window);
+	void scan_diags(int d_begin, int d_end, sequence query, sequence subject, const Long_score_profile &qp, bool log, vector<Diagonal_node> &diags, std::multimap<int, unsigned> &window);
 	void scan_vicinity(unsigned d_idx, unsigned e_idx, vector<Diagonal_node> &diags, bool log, uint8_t *sv_max);
 	void set_zero(Band::Iterator &d, Band::Iterator d2, int begin, int end);
 	void scan_ends(unsigned d_idx, vector<Diagonal_node> &diags, bool log, uint8_t *sv_max, int subject_len);
 	void set_active(int o, int begin, int end);
 	bool is_active(int o, int i) const;
 	Band score_buf, local_max;
+	vector<uint8_t> sv_max;
 	vector<bool> active;
-	int i_begin, j_begin, d_begin, d_end;
+	int i_begin, j_begin, d_begin, d_end, qlen, slen;
 	static int min_diag_score, min_low_score;
 };
 
 void smith_waterman(sequence q, sequence s, Hsp_data &out);
-void smith_waterman(sequence q, sequence s, const Diag_graph &diags);
+void smith_waterman(sequence q, sequence s, const Diag_graph &diags, Text_buffer &buf);
 int score_range(sequence query, sequence subject, int i, int j, int j_end);
 
 #endif /* FLOATING_SW_H_ */

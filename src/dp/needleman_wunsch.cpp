@@ -22,6 +22,7 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #include "growing_buffer.h"
 #include "../util/util.h"
 #include "traceback.h"
+#include "../output/output_format.h"
 
 using std::vector;
 using std::pair;
@@ -242,13 +243,17 @@ void smith_waterman(sequence q, sequence s, Hsp_data &out)
 			}
 			--i;
 			--j;
+			++out.length;
 		}
 		else if (have_hgap(dp, i, j, gap_open, gap_extend, l)) {
-			for (; l > 0; l--)
+			for (; l > 0; l--) {
 				out.transcript.push_back(op_deletion, s[--j]);
+				++out.length;
+			}
 		}
 		else if (have_vgap(dp, i, j, gap_open, gap_extend, l)) {
 			out.transcript.push_back(op_insertion, (unsigned)l);
+			out.length += l;
 			i -= l;
 		}
 		else
@@ -285,7 +290,7 @@ void print_diag(int i0, int j0, int l, int score, const Diag_graph &diags, const
 		cout << "Diag n=x i=" << i0 << " j=" << j0 << " len=" << l << " prefix_score=" << score << endl;
 }
 
-void smith_waterman(sequence q, sequence s, const Diag_graph &diags)
+void smith_waterman(sequence q, sequence s, const Diag_graph &diags, Text_buffer &buf)
 {
 	Hsp_data hsp;
 	smith_waterman(q, s, hsp);
@@ -316,4 +321,6 @@ void smith_waterman(sequence q, sequence s, const Diag_graph &diags)
 		}
 	}
 	print_diag(i0, j0, l, score, diags, q, s);
+	buf.clear();
+	Pairwise_format().print_match(Hsp_context(hsp, 0, q, q, "", 0, 0, "", 0, 0, 0), buf);
 }

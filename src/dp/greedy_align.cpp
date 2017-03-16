@@ -419,7 +419,7 @@ struct Greedy_aligner2
 		}
 	}
 
-	Greedy_aligner2(const sequence &query, const Long_score_profile &qp, const sequence &subject, int diag, bool log, Hsp_data &out) :
+	Greedy_aligner2(const sequence &query, const Long_score_profile &qp, const sequence &subject, int d_begin, int d_end, bool log, Hsp_data &out) :
 		query(query),
 		subject(subject),
 		qp(qp),
@@ -433,7 +433,7 @@ struct Greedy_aligner2
 		diags.init();
 		top_nodes.clear();
 		window.clear();
-		diag_scores.scan_diags(diag, query, subject, qp, log, diags.nodes, window);
+		diag_scores.scan_diags(d_begin, d_end, query, subject, qp, log, diags.nodes, window);
 		std::sort(diags.nodes.begin(), diags.nodes.end(), Diagonal_segment::cmp_subject);
 		if (log)
 			for (int k = 0; k < (int)diags.nodes.size(); ++k) {
@@ -463,8 +463,9 @@ struct Greedy_aligner2
 			Pairwise_format().print_match(Hsp_context(out, 0, query, query, "", 0, 0, "", 0, 0, 0), buf);
 			buf << '\0';
 			cout << buf.get_begin() << endl << "Smith-Waterman:" << endl;
-			smith_waterman(query, subject, diags);
-			cout << endl << endl;
+			smith_waterman(query, subject, diags, buf);
+			buf << '\0';
+			cout << endl << buf.get_begin() << endl << endl;
 		}
 	}
 
@@ -494,14 +495,18 @@ TLS_PTR vector<int> *Greedy_aligner2::buf_ptr;
 
 void greedy_align(sequence query, const Long_score_profile &qp, sequence subject, vector<Seed_hit>::const_iterator begin, vector<Seed_hit>::const_iterator end, bool log, Hsp_data &out)
 {
-	for (vector<Seed_hit>::const_iterator i = begin; i < end; ++i) {
-		Hsp_data hsp;
-		Greedy_aligner2(query, qp, subject, i->diagonal(), log, hsp);
-		if (hsp.score > out.score)
-			out = hsp;
+	static const int band = 64;
+	int min_diag = begin->diagonal(), max_diag = begin->diagonal();
+	for (vector<Seed_hit>::const_iterator i = begin + 1; i < end; ++i) {
+		min_diag = std::min(min_diag, i->diagonal());
+		max_diag = std::max(max_diag, i->diagonal());
 	}
-	int score;
-	needleman_wunsch(query, subject, score, Local(), int());
-	assert(score >= out.score);
-	out.sw_score = score;
+	Greedy_aligner2(query, qp, subject, std::max(min_diag - band, -((int)subject.length() - 1)), std::min(max_diag + band, (int)query.length() - 1), log, out);
+
+	if (config.use_smith_waterman) {
+		int score;
+		needleman_wunsch(query, subject, score, Local(), int());
+		assert(score >= out.score);
+		out.sw_score = score;
+	}
 }

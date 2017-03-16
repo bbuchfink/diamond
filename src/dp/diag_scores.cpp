@@ -170,7 +170,7 @@ void scan_cols(const Long_score_profile &qp, sequence s, int i, int j, int j_end
 		buf += 16;
 		//cout << 's' << v[0] << v[1] << v[2] << v[3] << endl;
 		if ((n & 15) == 15) {
-			//cout << 'l' << max[0] << max[1] << max[2] << max[3] << endl;
+			//cout << 'l' << max[0] << max[1] << max[2] << max[3] << endl;7
 			set_global_max(max, global_max, local_max);
 		}
 		++i;
@@ -316,7 +316,19 @@ int get_score_idx(Band::Iterator &d, int begin, int end, int score)
 	return i;
 }
 
-int get_low_idx(Band::Iterator &d, int begin, int end)
+int get_max_idx(Band::Iterator &d, int begin, int end)
+{
+	assert(begin >= 0 && begin < end);
+	int i = begin, s = d[begin];
+	for (int j=i+1; j < end;++j)
+		if (d[j] > s) {
+			i = j;
+			s = d[j];
+		}
+	return i;
+}
+
+int get_low_idx(Band::Iterator &d, int begin, int end, int d0)
 {
 	uint8_t low = 255;
 	int j = end;
@@ -327,24 +339,35 @@ int get_low_idx(Band::Iterator &d, int begin, int end)
 			low = d[i];
 			j = i;
 		}
-	return begin > 0 ? j : -1;
+	return begin > d0 ? j : d0 - 1;
 }
 
-int get_diag(int i, int j, Band::Iterator &d, int begin, int last, int end, int max_score, vector<Diagonal_node> &diags, int block_len, bool log, int cutoff)
+int get_diag(int i, int j, Band::Iterator &d, int begin, int last, int end, int d0, vector<Diagonal_node> &diags, int block_len, bool log, int cutoff, int best_score)
 {
-	assert(end >= begin);
-	const int p1 = get_score_idx(d, std::max(end - block_len, 0), end, max_score),
-		p0 = get_low_idx(d, last, std::min(std::min(begin + block_len, end), p1));
-	assert(p1 > p0);
-	const int score = d[p1] - (p0 >= 0 ? d[p0] : 0);
-	if (score >= cutoff) {
-		diags.push_back(Diagonal_segment(i + p0 + 1, j + p0 + 1, p1 - p0, score));
-		return p0 + 1;
-		if (log)
-			cout << diags.back() << endl;
+	assert(end >= begin && begin >= 0);
+	int z = std::numeric_limits<int>::max();
+	while (end > begin) {
+		/*const int p1 = get_score_idx(d, std::max(end - block_len, begin), end, max_score),
+			p0 = get_low_idx(d, last, std::min(std::min(begin + block_len, end), p1));*/
+		const int mod = end%block_len,
+			p1 = get_max_idx(d, std::max(begin, end - (mod == 0 ? block_len : mod)), end),
+			p0 = get_low_idx(d, last, p1, d0);
+		assert(p1 >= p0);
+		assert(p1 < end);
+		const int score = d[p1] - (p0 >= d0 ? d[p0] : 0);
+		if (score >= cutoff || (d[p1]==best_score &&  score > 0)) {
+			assert(i + p0 + 1 >= 0);
+			assert(j + p0 + 1 >= 0);
+			diags.push_back(Diagonal_segment(i + p0 + 1, j + p0 + 1, p1 - p0, score));
+			assert(p0 + 1 >= 0);
+			z = p0 + 1;
+			if (log)
+				cout << diags.back() << endl;
+		}
+		end = p0;
 	}
-	else
-		return -1;
+	assert(z >= last);
+	return z;
 }
 
 void set_zero(Band::Iterator &i, int begin, int end)
@@ -454,8 +477,12 @@ void Diag_scores::get_diag2(int i, int j, int o, int j_begin, int j_end, vector<
 void Diag_scores::get_diag(int i, int j, int o, int j_begin, int j_end, vector<Diagonal_node> &diags, int cutoff, bool log)
 {
 	Band::Iterator d(local_max.diag(o)), d2(score_buf.diag(o));
-	int p = (j_begin - j) / block_len, p_begin = p, p_end = (j_end - j + block_len - 1) / block_len, best = -1, best_score = -1, begin = -1, max_score, last = p, p2_end = score_buf.cols();
-	while (last > 0 && !is_active(o, last - 1))
+	const int j0 = dj0(o),
+		j1 = dj1(o),
+		b0 = (j0 - j) / block_len,
+		b1 = (j1 - j + block_len - 1) / block_len;
+	int p = std::max((j_begin - j) / block_len, b0), p_begin = p, p_end = std::min((j_end - j + block_len - 1) / block_len, b1), best = -1, best_score = -1, begin = -1, max_score, last = p;
+	while (last > b0 && !is_active(o, last - 1))
 		--last;
 	for (; p < p_end; ++p) {
 		if (!is_active(o, p)
@@ -467,8 +494,11 @@ void Diag_scores::get_diag(int i, int j, int o, int j_begin, int j_end, vector<D
 			best_score = max_score;
 		}
 		else if (begin != -1) {
-			const int z = ::get_diag(i, j, d2, begin*block_len, last*block_len, std::min((best + 1)*block_len, p2_end), best_score, diags, block_len, log, cutoff);
-			if (z >= 0) {
+			const int z = ::get_diag(i, j, d2, std::max(begin*block_len, j0 - j), std::max(last*block_len, j0 - j), std::min((best + 1)*block_len, j1 - j), j0-j, diags, block_len, log, cutoff, best_score);
+			if (z < std::numeric_limits<int>::max()) {
+				assert(diags.back().len > 0);
+				assert(diags.back().j >= 0 && diags.back().subject_end() <= slen);
+				assert(diags.back().i >= 0 && diags.back().query_end() <= qlen);
 				set_active(o, z / block_len, best + 1);
 				last = best + 1;
 			}
@@ -481,13 +511,18 @@ void Diag_scores::get_diag(int i, int j, int o, int j_begin, int j_end, vector<D
 
 	if (begin != -1) {
 		if (best == p_end - 1) {
-			for (; best<local_max.cols() && d[best] >= cutoff && (best == 0 || d[best] > d[best - 1]); ++best);
-			set_active(o, p_end, best);
+			for (; best<b1 && !is_active(o, best) && d[best] >= cutoff && (best == 0 || d[best] > d[best - 1]); ++best);
+			//set_active(o, p_end, best);
 			best -= 1;
+			best_score = d[best];
 		}
-		const int z = ::get_diag(i, j, d2, begin*block_len, last*block_len, std::min((best + 1)*block_len, p2_end), best_score, diags, block_len, log, cutoff);
-		if (z >= 0)
+		const int z = ::get_diag(i, j, d2, std::max(begin*block_len, j0 - j1), std::max(last*block_len, j0 - j), std::min((best + 1)*block_len, j1 - j), j0-j, diags, block_len, log, cutoff, best_score);
+		if (z < std::numeric_limits<int>::max()) {
+			assert(diags.back().len > 0);
+			assert(diags.back().j >= 0 && diags.back().subject_end() <= slen);
+			assert(diags.back().i >= 0 && diags.back().query_end() <= qlen);
 			set_active(o, z / block_len, best + 1);
+		}
 	}
 }
 
@@ -578,23 +613,26 @@ void Diag_scores::scan_vicinity(unsigned d_idx, unsigned e_idx, vector<Diagonal_
 	}
 }
 
-void Diag_scores::scan_diags(int diag, sequence query, sequence subject, const Long_score_profile &qp, bool log, vector<Diagonal_node> &diags, multimap<int, unsigned> &window)
+void Diag_scores::scan_diags(int d_begin, int d_end, sequence query, sequence subject, const Long_score_profile &qp, bool log, vector<Diagonal_node> &diags, multimap<int, unsigned> &window)
 {
-	static const int band = 128, max_dist = 60;
-	d_begin = diag - band / 2;
-	d_end = d_begin + band;
+	static const int max_dist = 60;
+	const int band = d_end - d_begin;
+	this->d_begin = d_begin;
+	this->d_end = d_end;
 	i_begin = std::max(0, d_end - 1) - band + 1;
 	j_begin = i_begin - d_begin;
-	const int subject_len = (int)subject.length(),
-		j1 = std::min((int)query.length() - d_begin, subject_len);
-	uint8_t sv_max[band];
-	memset(sv_max, 0, band);
+	qlen = (int)query.length();
+	slen = (int)subject.length();
+	const int j1 = std::min(qlen - d_begin, slen);
+	sv_max.clear();
+	sv_max.resize(band + (block_len - band%block_len));
+	memset(sv_max.data(), 0, sv_max.size());
 	score_buf.init(band, j1 - j_begin, true);
 	local_max.init(band, (j1 - j_begin + block_len - 1) / block_len, true);
 	active.clear();
 	active.insert(active.begin(), band*local_max.cols(), false);
 	//scan_cols(qp, subject, i, j, j1, sv_max, log, score_buf.data(), local_max.data(), block_len);
-	scan_cols(qp, subject, i_begin, i_begin + band, j_begin, j1, sv_max, log, score_buf.data(), local_max.data(), block_len);
+	scan_cols(qp, subject, i_begin, i_begin + band, j_begin, j1, sv_max.data(), log, score_buf.data(), local_max.data(), block_len);
 	for (int o = 0; o < band; ++o)
 		if (sv_max[o] >= Diag_scores::min_diag_score) {
 			if (sv_max[o] >= 255 - score_matrix.bias()) {
@@ -615,7 +653,7 @@ void Diag_scores::scan_diags(int diag, sequence query, sequence subject, const L
 			continue;
 		if (log)
 			cout << "Node n=" << node << endl;
-		scan_ends(node, diags, log, sv_max, subject_len);
+		scan_ends(node, diags, log, sv_max.data(), slen);
 		while (!window.empty() && diags[node].j - window.begin()->first > max_dist)
 			window.erase(window.begin());
 		for (multimap<int, unsigned>::iterator i = window.begin(); i != window.end(); ++i) {
@@ -623,7 +661,7 @@ void Diag_scores::scan_diags(int diag, sequence query, sequence subject, const L
 				continue;
 			if (log)
 				cout << "Link n=" << i->second << endl;
-			scan_vicinity(node, i->second, diags, log, sv_max);
+			scan_vicinity(node, i->second, diags, log, sv_max.data());
 			/*if (e.subject_end() - (d.subject_end() - std::min(e.diag() - d.diag(), 0)) >= 11) {
 
 			}*/

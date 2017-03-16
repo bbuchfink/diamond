@@ -102,7 +102,7 @@ void Query_mapper::align_target(size_t idx, Statistics &stat)
 	size_t aligned_len = 0;
 	const vector<Seed_hit>::const_iterator hits = seed_hits.begin() + target.begin;
 	const sequence subject = ref_seqs::get()[hits[0].subject_];
-	//log_stream << query_ids::get()[query_id].c_str() << endl << ref_ids::get()[hits[0].subject_].c_str() << endl;
+	//cout << query_ids::get()[query_id].c_str() << endl << ref_ids::get()[hits[0].subject_].c_str() << endl;
 
 	unsigned frame_mask = (1 << align_mode.query_contexts) - 1;
 
@@ -165,7 +165,7 @@ void Query_mapper::align_target(size_t idx, Statistics &stat)
 	else {
 		target.hsps.push_back(Hsp_data());
 		target.hsps.back().frame = 0;
-		greedy_align(query_seq(0), profile[0], subject, hits, hits + n, true, target.hsps.back());
+		greedy_align(query_seq(0), profile[0], subject, hits, hits + n, false, target.hsps.back());
 	}
 
 	for (list<Hsp_data>::iterator i = target.hsps.begin(); i != target.hsps.end(); ++i)

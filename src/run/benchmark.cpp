@@ -139,25 +139,23 @@ void benchmark_ungapped(const Sequence_set &ss, unsigned qa, unsigned sa)
 void benchmark_greedy(const Sequence_set &ss, unsigned qa, unsigned sa)
 {
 	static const unsigned n = 100000;
-	vector<Diagonal_segment> d;
-	d.push_back(ungapped_extension(sa, qa, ss[0], ss[1]));
+	vector<Seed_hit> d;
+	d.push_back(Seed_hit(0, 0, sa, qa, Diagonal_segment()));
 	Long_score_profile qp(ss[0]);
 	//greedy_align(ss[0], qp, ss[1], d[0], true);
 	//greedy_align(ss[0], qp, ss[1], qa, sa, true);
 	Hsp_data hsp;
-	//greedy_align2(ss[0], qp, ss[1], d, true, hsp);
-	Text_buffer buf;
-	//Pairwise_format().print_match(Hsp_context(hsp, 0, ss[0], ss[0], "", 0, 0, "", 0, 0, 0), buf);
+	greedy_align(ss[0], qp, ss[1], d.begin(), d.end(), true, hsp);
+	/*Text_buffer buf;
+	Pairwise_format().print_match(Hsp_context(hsp, 0, ss[0], ss[0], "", 0, 0, "", 0, 0, 0), buf);
 	buf << '\0';
-	cout << buf.get_begin();
+	cout << buf.get_begin();*/
 	Timer t;
 	t.start();
 
 	for (unsigned i = 0; i < n; ++i) {
 
-		//greedy_align(ss[0], qp, ss[1], d[0], false);
-		//greedy_align(ss[0], qp, ss[1], qa, sa, false);
-		//greedy_align2(ss[0], qp, ss[1], d, false, hsp);
+		greedy_align(ss[0], qp, ss[1], d.begin(), d.end(), false, hsp);
 
 	}
 	t.stop();
@@ -223,7 +221,6 @@ Query  80  TVIGHL  85
            T+I  L
 Sbjct  76  TIINGL  81	*/
 
-aln1:
 
 	s1 = sequence::from_string("SLFEQLGGQAAVQAVTAQFYANIQADATVATFFNGIDMPNQTNKTAAFLCAALGGPNAWTGRNLKEVHANMGVSNAQFTTVIGHLRSALTGAGVAAALVEQTVAVAETVRGDVVTV");
 	s2 = sequence::from_string("RKQRIVIKISGACLKQNDSSIIDFIKINDLAEQIEKISKKYIVSIVLGGGNIWRGSIAKELDMDRNLADNMGMMATIINGLALENALNHLNVNTIVLSAIKCDKLVHESSANNIKKAIEKEQVMIFVAGTGFPYFTTDSCAAIRAAETESSIILMGKNGVDGVYDSDPKINPNAQFYEHITFNMALTQNLKVMDATALALCQENNINLLVFNIDKPNAIVDVLEKKNKYTIVSK");
@@ -325,6 +322,7 @@ KCLEHLFFFKLIGDTPIDTFLMEMLEAPHQIT");
 
 	*/
 
+aln1:
 
 	s1 = sequence::from_string("tspmtpditgkpfvaadasndyikrevmipmrdgvklhtvivlpkgaknapivltrtpyd\
 asgrterlasphmkdllsagddvfveggyirvfqdvrgkygsegdyvmtrplrgplnpse\
