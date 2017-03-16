@@ -443,8 +443,10 @@ struct Greedy_aligner2
 				cout << sequence(subject, d.j, d.subject_last()) << endl;
 			}
 		if (log) cout << endl << endl;
+		return;
 
 		forward_pass();
+		return;
 
 		std::sort(top_nodes.begin(), top_nodes.end());
 		for (vector<Node_ref>::const_iterator i = top_nodes.begin(); i < top_nodes.end() && (double)i->score / top_nodes.begin()->score >= config.path_cutoff; ++i)

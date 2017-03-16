@@ -633,6 +633,7 @@ void Diag_scores::scan_diags(int d_begin, int d_end, sequence query, sequence su
 	active.insert(active.begin(), band*local_max.cols(), false);
 	//scan_cols(qp, subject, i, j, j1, sv_max, log, score_buf.data(), local_max.data(), block_len);
 	scan_cols(qp, subject, i_begin, i_begin + band, j_begin, j1, sv_max.data(), log, score_buf.data(), local_max.data(), block_len);
+	return;
 	for (int o = 0; o < band; ++o)
 		if (sv_max[o] >= Diag_scores::min_diag_score) {
 			if (sv_max[o] >= 255 - score_matrix.bias()) {
@@ -644,8 +645,9 @@ void Diag_scores::scan_diags(int d_begin, int d_end, sequence query, sequence su
 			else
 				get_diag(i_begin + o, j_begin, o, j_begin, j1, diags, min_diag_score, log);
 		}
-
+	return;
 	std::sort(diags.begin(), diags.end(), Diagonal_segment::cmp_subject);
+	return;
 
 	const unsigned nodes = diags.size();
 	for (unsigned node = 0; node < nodes; ++node) {
