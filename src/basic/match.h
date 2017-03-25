@@ -255,6 +255,7 @@ struct Hsp_data
 	}
 	bool pass_through(const Diagonal_segment &d) const;
 	bool is_weakly_enveloped(const Hsp_data &j) const;
+	std::pair<int, int> diagonal_bounds() const;
 	void merge(const Hsp_data &right, const Hsp_data &left, unsigned query_anchor, unsigned subject_anchor);
 	unsigned score, frame, length, identities, mismatches, positives, gap_openings, gaps, sw_score;
 	interval query_source_range, query_range, subject_range;

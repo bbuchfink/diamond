@@ -108,7 +108,7 @@ struct Config
 	unsigned seed_anchor;
 	unsigned query_gencode;
 	string unaligned;
-	double space_penalty, raw_space_penalty;
+	double space_penalty;
 	bool new_prefilter;
 	bool reverse;
 	unsigned comp_based_stats;
@@ -129,7 +129,7 @@ struct Config
 	double score_estimate_factor;
 	int diag_min_estimate;
 	bool greedy;
-	string qfilt;
+	string qfilt, sfilt;
 	double path_cutoff;
 	bool use_smith_waterman;
 

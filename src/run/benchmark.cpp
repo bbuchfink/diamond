@@ -261,7 +261,6 @@ Sbjct  76  TIINGL  81	*/
 	Sbjct  437  IDTFLMEML  445
 	*/
 
-
 	s1 = sequence::from_string("aavqelsierllemeslvadpseefqflrvgpdsnvppkfrapvsslcqignkqiaalvv\
 wardiphfsqlemedqillikgswnelllfaiawrsmeflteerdgvdgtgnrttsppql\
 mclmpgmtlhrnsalqagvgqifdrvlselslkmrtlrvdqaeyvalkaiillnpdvkgl\
@@ -321,6 +320,7 @@ KCLEHLFFFKLIGDTPIDTFLMEMLEAPHQIT");
 	Sbjct  332  VPKVRLFVMGIDEWRDETDW  351
 
 	*/
+
 
 aln1:
 

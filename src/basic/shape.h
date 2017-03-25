@@ -126,7 +126,7 @@ struct shape
 #ifdef FREQUENCY_MASKING
 		double f = 0;
 #endif
-		for(unsigned i=0;i<weight_;++i) {
+		for (unsigned i = 0; i < weight_; ++i) {
 			Letter l = seq[positions_[i]];
 			if (l == value_traits.mask_char || l == '\xff')
 				return false;

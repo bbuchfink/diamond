@@ -147,7 +147,11 @@ struct Packed_transcript
 
 	void push_back(Edit_operation op, unsigned count)
 	{
-		data_.push_back(Packed_operation(op, count));
+		while (count > 0) {
+			const unsigned n = std::min(count, 63u);
+			data_.push_back(Packed_operation(op, n));
+			count -= n;
+		}
 	}
 
 	void reverse()

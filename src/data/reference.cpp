@@ -158,6 +158,8 @@ bool Database_file::load_seqs()
 	for (size_t n = 0; n < seqs; ++n) {
 		read(ref_seqs::data_->ptr(n) - 1, ref_seqs::data_->length(n) + 2);
 		read(ref_ids::data_->ptr(n), ref_ids::data_->length(n) + 1);
+		if (!config.sfilt.empty() && strstr(ref_ids::get()[n].c_str(), config.sfilt.c_str()) == 0)
+			memset(ref_seqs::data_->ptr(n), value_traits.mask_char, ref_seqs::data_->length(n));
 	}
 
 	blocked_processing = seqs < ref_header.sequences;

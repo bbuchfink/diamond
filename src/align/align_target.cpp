@@ -26,6 +26,8 @@ void Query_mapper::get_prefilter_score(size_t idx)
 {
 	static const int max_dist = 64;
 
+	if (config.greedy)
+		return;
 	Target& target = targets[idx];
 	const size_t n = target.end - target.begin;
 	vector<Seed_hit>::iterator hits = seed_hits.begin() + target.begin;
@@ -96,17 +98,18 @@ void Query_mapper::align_target(size_t idx, Statistics &stat)
 	static const int band = 32;
 	typedef float score_t;
 	Target& target = targets[idx];
-	std::sort(seed_hits.begin() + target.begin, seed_hits.begin() + target.end);
 	const size_t n = target.end - target.begin,
 		max_len = query_seq(0).length() + 100 * query_seqs::get().avg_len();
 	size_t aligned_len = 0;
 	const vector<Seed_hit>::const_iterator hits = seed_hits.begin() + target.begin;
 	const sequence subject = ref_seqs::get()[hits[0].subject_];
-	//cout << query_ids::get()[query_id].c_str() << endl << ref_ids::get()[hits[0].subject_].c_str() << endl;
+	cout << query_ids::get()[query_id].c_str() << endl << ref_ids::get()[hits[0].subject_].c_str() << endl;
 
 	unsigned frame_mask = (1 << align_mode.query_contexts) - 1;
 
 	if (!config.greedy) {
+
+		std::sort(seed_hits.begin() + target.begin, seed_hits.begin() + target.end);
 
 		for (size_t i = 0; i < n; ++i) {
 			const unsigned frame = hits[i].frame_;
@@ -163,9 +166,11 @@ void Query_mapper::align_target(size_t idx, Statistics &stat)
 		}
 	}
 	else {
+		std::sort(seed_hits.begin() + target.begin, seed_hits.begin() + target.end, Seed_hit::compare_diag);
 		target.hsps.push_back(Hsp_data());
 		target.hsps.back().frame = 0;
-		greedy_align(query_seq(0), profile[0], subject, hits, hits + n, false, target.hsps.back());
+		stat.inc(Statistics::SQUARED_ERROR, (uint64_t)greedy_align(query_seq(0), profile[0], subject, hits, hits + n, false, target.hsps.back()));
+		stat.inc(Statistics::OUT_HITS);
 	}
 
 	for (list<Hsp_data>::iterator i = target.hsps.begin(); i != target.hsps.end(); ++i)

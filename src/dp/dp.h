@@ -67,6 +67,11 @@ struct Seed_hit
 	{
 		return Diagonal_segment::cmp_subject_end(x.ungapped, y.ungapped);
 	}
+	static bool compare_diag(const Seed_hit &x, const Seed_hit &y)
+	{
+		return x.diagonal() < y.diagonal();
+	}
+
 	unsigned frame_, subject_, subject_pos_, query_pos_;
 	Diagonal_segment ungapped;
 	unsigned prefix_score;
@@ -83,7 +88,7 @@ int xdrop_ungapped_right(const Letter *query, const Letter *subject, int &len);
 struct Local {};
 struct Global {};
 
-void greedy_align(sequence query, const Long_score_profile &qp, sequence subject, vector<Seed_hit>::const_iterator begin, vector<Seed_hit>::const_iterator end, bool log, Hsp_data &out);
+double greedy_align(sequence query, const Long_score_profile &qp, sequence subject, vector<Seed_hit>::const_iterator begin, vector<Seed_hit>::const_iterator end, bool log, Hsp_data &out);
 int estimate_score(const Long_score_profile &qp, sequence s, int d, int d1, bool log);
 
 template<typename _t>
@@ -130,7 +135,12 @@ struct Fixed_score_buffer
 
 	friend std::ostream& operator<<(std::ostream &s, const Fixed_score_buffer &buf)
 	{
+		s << '\t';
+		for (int j = 0; j < buf.data_.size() / buf.col_size_; ++j)
+			s << j << '\t';
+		s << endl;
 		for (int i = 0; i < buf.col_size_; ++i) {
+			s << i << '\t';
 			for (int j = 0; j < buf.data_.size() / buf.col_size_; ++j)
 				s << buf(i, j) << '\t';
 			s << endl;
@@ -261,14 +271,12 @@ int needleman_wunsch(sequence query, sequence subject, int qbegin, int qend, int
 
 struct Band
 {
-	void init(int diags, int cols, bool zero)
+	void init(int diags, int cols)
 	{
 		diags_ = diags;
 		cols_ = cols;
 		data_.clear();
 		data_.resize((size_t)diags*cols);
-		if (zero)
-			memset(data_.data(), 0, data_.size());
 	}
 	struct Iterator {
 		Iterator(uint8_t *p, int diags) :
@@ -295,6 +303,10 @@ struct Band
 	{
 		return data_.data();
 	}
+	bool check(uint8_t *ptr) const
+	{
+		return ptr >= data_.data() && ptr <= data_.data() + data_.size();
+	}
 private:
 	int diags_, cols_;
 	vector<uint8_t> data_;
@@ -314,7 +326,7 @@ struct Diag_scores {
 	}
 	void get_diag(int i, int j, int o, int j_begin, int j_end, vector<Diagonal_node> &diags, int cutoff, bool log);
 	void get_diag2(int i, int j, int o, int j_begin, int j_end, vector<Diagonal_node> &diags, int cutoff, bool log);
-	void scan_diags(int d_begin, int d_end, sequence query, sequence subject, const Long_score_profile &qp, bool log, vector<Diagonal_node> &diags, std::multimap<int, unsigned> &window);
+	void scan_diags(int d_begin, int d_end, sequence query, sequence subject, const Long_score_profile &qp, bool log, vector<Diagonal_node> &diags, std::multimap<int, unsigned> &window, bool fast);
 	void scan_vicinity(unsigned d_idx, unsigned e_idx, vector<Diagonal_node> &diags, bool log, uint8_t *sv_max);
 	void set_zero(Band::Iterator &d, Band::Iterator d2, int begin, int end);
 	void scan_ends(unsigned d_idx, vector<Diagonal_node> &diags, bool log, uint8_t *sv_max, int subject_len);
@@ -324,6 +336,7 @@ struct Diag_scores {
 	vector<uint8_t> sv_max;
 	vector<bool> active;
 	int i_begin, j_begin, d_begin, d_end, qlen, slen;
+	bool fast;
 	static int min_diag_score, min_low_score;
 };
 

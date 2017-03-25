@@ -279,7 +279,7 @@ void print_diag(int i0, int j0, int l, int score, const Diag_graph &diags, const
 				cout << "(";
 			cout << "Diag n=" << d - diags.nodes.begin() << " i=" << i0 << " j=" << j0 << " len=" << l
 				<< " prefix_score=" << score + score_range(query, subject, i0 + l, j0 + l, d->subject_end()) - std::min(diff, 0)
-				<< " prefix_score2=" << diags.prefix_score(d - diags.nodes.begin(), j0 + l, 1);
+				<< " prefix_score2=" << diags.prefix_score(d - diags.nodes.begin(), j0 + l, 0);
 			if (n > 0)
 				cout << ")";
 			cout << endl;

@@ -39,6 +39,17 @@ bool Hsp_data::pass_through(const Diagonal_segment &d) const
 	return true;
 }
 
+std::pair<int, int> Hsp_data::diagonal_bounds() const
+{
+	int d0 = std::numeric_limits<int>::max(), d1 = std::numeric_limits<int>::min();
+	for (Iterator it = begin(); it.good(); ++it) {
+		const int d = (int)it.query_pos - (int)it.subject_pos;
+		d0 = std::min(d0, d);
+		d1 = std::max(d1, d);
+	}
+	return std::make_pair(d0, d1);
+}
+
 bool Hsp_data::is_weakly_enveloped(const Hsp_data &j) const
 {
 	static const double overlap_factor = 0.9;
