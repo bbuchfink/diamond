@@ -103,7 +103,7 @@ void Query_mapper::align_target(size_t idx, Statistics &stat)
 	size_t aligned_len = 0;
 	const vector<Seed_hit>::const_iterator hits = seed_hits.begin() + target.begin;
 	const sequence subject = ref_seqs::get()[hits[0].subject_];
-	cout << query_ids::get()[query_id].c_str() << endl << ref_ids::get()[hits[0].subject_].c_str() << endl;
+	//cout << query_ids::get()[query_id].c_str() << endl << ref_ids::get()[hits[0].subject_].c_str() << endl;
 
 	unsigned frame_mask = (1 << align_mode.query_contexts) - 1;
 

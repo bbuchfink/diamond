@@ -27,7 +27,7 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #include "../dp/score_profile.h"
 #include "../output/output_format.h"
 
-using std::multimap;
+using std::map;
 
 struct Link
 {
@@ -319,6 +319,7 @@ struct Greedy_aligner2
 		int prefix_score = 0, link_score = 0, link_j, diff1 = 0, diff2 = 0;
 		bool exact;
 		if (space <= 0) {
+			return;
 			Link link;
 			if (get_link(e, d, query, subject, link, link_padding) > 0) {
 				diff1 = e.score - link.score1;
@@ -348,23 +349,33 @@ struct Greedy_aligner2
 
 	void forward_pass()
 	{
-		static const int max_dist = 200, max_shift = 100;
+		static const int max_dist = 200, max_shift = 32;
+		map<int, unsigned>::iterator i, j;
 
 		for (unsigned node = 0; node < diags.nodes.size(); ++node) {
 			Diagonal_node& d = diags[node];
 			const int dd = d.diag();
 			if (log) cout << "Node " << node << " Score=" << d.score << endl;
-			while (!window.empty() && d.j - window.begin()->first > max_dist) {
-				top_nodes.push_back(Node_ref(window.begin()->second, diags.prefix_score(window.begin()->second, 0)));
-				window.erase(window.begin());
-			}
-			for (multimap<int, unsigned>::iterator i = window.begin(); i != window.end(); ++i) {
-				Diagonal_node &e = diags[i->second];
+			i = window.find(dd);
+			if (i == window.end())
+				i = window.insert(std::make_pair(dd, node)).first;
+			j = i;
+			++j;
+			int n = 0;
+			for (; j != window.end(); ++j) {
+				Diagonal_node &e = diags[j->second];
 				const int de = e.diag(), shift = dd - de;
 				if (abs(shift) > max_shift)
+					break;
+				if (d.j - e.subject_end() > max_dist) {
+					map<int, unsigned>::iterator k = j;
+					++k;
+					window.erase(j);
+					j = k;
 					continue;
+				}
 
-				for (multimap<int, unsigned>::iterator j = i; j != window.end(); ++j) {
+				/*for (multimap<int, unsigned>::iterator j = i; j != window.end(); ++j) {
 					Diagonal_node &f = diags[j->second];
 					const int df = f.diag();
 					if (shift >= 0 && shift > df - de) {
@@ -375,24 +386,23 @@ struct Greedy_aligner2
 						if (f.subject_end() > e.subject_end())
 							goto weiter;
 					}
-				}
+				}*/
 
-				get_approximate_link(node, i->second);
+				get_approximate_link(node, j->second);
 				if (e.subject_end() - (d.subject_end() - std::min(e.diag() - d.diag(), 0)) >= reverse_link_min_overhang) {
 					if (log)
-						cout << "Computing reverse link node=" << i->second << endl;
-					get_approximate_link(i->second, node);
+						cout << "Computing reverse link node=" << j->second << endl;
+					get_approximate_link(j->second, node);
 				}
+				++n;
 			weiter:
 				;
 			}
+			if(node%100==0)cout << node << '\t' << n << endl;
+			i = window.insert(std::make_pair(dd, node)).first;
 			if (log)
 				cout << endl;
-			window.insert(std::make_pair(d.subject_end(), node));
 		}
-
-		for (multimap<int, unsigned>::const_iterator i = window.begin(); i != window.end(); ++i)
-			top_nodes.push_back(Node_ref(i->second, diags.prefix_score(i->second, 0)));
 	}
 
 	void backtrace(unsigned node, int j_end, Hsp_data &out, unsigned pass)
@@ -452,7 +462,7 @@ struct Greedy_aligner2
 		diags.init();
 		top_nodes.clear();
 		window.clear();
-		diag_scores.scan_diags(d_begin, d_end, query, subject, qp, log, diags.nodes, window, fast);
+		diag_scores.scan_diags(d_begin, d_end, query, subject, qp, log, diags.nodes, fast);
 		std::sort(diags.nodes.begin(), diags.nodes.end(), Diagonal_segment::cmp_subject);
 		if (log)
 			for (int k = 0; k < (int)diags.nodes.size(); ++k) {
@@ -462,8 +472,9 @@ struct Greedy_aligner2
 				cout << sequence(subject, d.j, d.subject_last()) << endl;
 			}
 		if (log) cout << endl << endl;
-		return;
+
 		forward_pass();
+		return;
 
 		std::sort(top_nodes.begin(), top_nodes.end());
 		if (!fast) {			
@@ -497,7 +508,7 @@ struct Greedy_aligner2
 	static TLS_PTR Diag_scores *diag_scores_ptr;
 	static TLS_PTR Diag_graph *diags_ptr;
 	static TLS_PTR vector<Node_ref> *top_nodes_ptr;
-	static TLS_PTR multimap<int, unsigned> *window_ptr;
+	static TLS_PTR map<int, unsigned> *window_ptr;
 	static TLS_PTR vector<int> *buf_ptr;
 	const sequence query, subject;
 	const Long_score_profile &qp;
@@ -506,7 +517,7 @@ struct Greedy_aligner2
 	Diag_scores &diag_scores;
 	Diag_graph &diags;
 	vector<Node_ref> &top_nodes;
-	multimap<int, unsigned> &window;
+	map<int, unsigned> &window;
 	Node_ref top_node;
 	vector<int> &buf;
 
@@ -515,7 +526,7 @@ struct Greedy_aligner2
 TLS_PTR Diag_scores *Greedy_aligner2::diag_scores_ptr;
 TLS_PTR Diag_graph *Greedy_aligner2::diags_ptr;
 TLS_PTR vector<Greedy_aligner2::Node_ref> *Greedy_aligner2::top_nodes_ptr;
-TLS_PTR multimap<int, unsigned> *Greedy_aligner2::window_ptr;
+TLS_PTR map<int, unsigned> *Greedy_aligner2::window_ptr;
 TLS_PTR vector<int> *Greedy_aligner2::buf_ptr;
 
 void greedy_align(sequence query, const Long_score_profile &qp, sequence subject, int d_begin, int d_end, bool log, Hsp_data &out)

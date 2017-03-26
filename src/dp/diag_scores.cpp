@@ -473,94 +473,7 @@ void Diag_scores::get_diag(int i, int j, int o, int j_begin, int j_end, vector<D
 	}
 }
 
-void Diag_scores::scan_ends(unsigned d_idx, vector<Diagonal_node> &diags, bool log, uint8_t *sv_max, int subject_len)
-{
-	static const int len = 20;
-	const int dd = diags[d_idx].diag(), dj = diags[d_idx].j, dj1 = diags[d_idx].subject_end();
-	int min_score;
-	for (int shift = 1; (min_score = config.gap_open + shift*config.gap_extend + 1) < min_diag_score; shift++)
-	{
-		if (dd + shift < d_end) {
-			const int o = dd + shift - d_begin;
-			if (sv_max[o] >= min_score) {
-				get_diag(i_begin + o, j_begin, o, std::max(dj - len, 0), dj, diags, min_score, log);
-				get_diag(i_begin + o, j_begin, o, dj1, std::min(dj1 + len, subject_len), diags, min_score, log);
-			}
-		}
-		if (dd - shift >= d_begin) {
-			const int o = dd - shift - d_begin;
-			if (sv_max[o] >= min_score) {
-				get_diag(i_begin + o, j_begin, o, std::max(dj - len, 0), dj, diags, min_score, log);
-				get_diag(i_begin + o, j_begin, o, dj1, std::min(dj1 + len, subject_len), diags, min_score, log);
-			}
-		}
-	}
-}
-
-void Diag_scores::scan_vicinity(unsigned d_idx, unsigned e_idx, vector<Diagonal_node> &diags, bool log, uint8_t *sv_max)
-{
-	static const int reverse_diags = 2;
-	const int dd = diags[d_idx].diag(), de = diags[e_idx].diag(), jd = diags[d_idx].j, je = diags[e_idx].j, je1 = diags[e_idx].subject_end(), jd1 = diags[d_idx].subject_end(), ld = diags[d_idx].len, le = diags[e_idx].len;
-	const int shift = dd - de;
-	if (shift > 0) {
-		const int j0 = std::min(je1, jd),
-			j1 = std::min(std::max(jd, je1), jd1);
-		for (int diag = de + 1; diag < dd; ++diag) {
-			const int o = diag - d_begin;
-			assert(j0 >= 0);
-			assert(j1 <= jd1);
-			if(sv_max[o] >= min_low_score)
-				get_diag(i_begin + o, j_begin, o, j0, j1, diags, min_low_score, log);
-		}
-		for (int diag = std::max(de - reverse_diags,d_begin); diag < de; ++diag) {
-			const int o = diag - d_begin;
-			assert(j0 >= 0);
-			assert(j1 <= jd1);
-			if (sv_max[o] >= min_low_score)
-				get_diag(i_begin + o, j_begin, o, j0, j1, diags, min_low_score, log);
-		}
-	}
-	else if (shift < 0) {
-		const int jde = jd + shift,
-			jde1 = jd1 + shift;
-		int j0, l;
-		if (jde > je1) {
-			j0 = je1;
-			l = jde - je1;
-		}
-		else if (jde > je) {
-			j0 = jde;
-			l = std::min(je1 - jde, ld);
-		}
-		else {
-			j0 = je;
-			l = std::min(jde1 - je, le);
-			if (l <= 0)
-				return;
-		}
-
-		int j = j0;
-		for (int diag = de - 1; diag > dd; --diag) {
-			const int o = diag - d_begin;
-			assert(l >= 0);
-			assert(j >= 0);
-			assert(j + l <= std::max(diags[d_idx].subject_end(), diags[e_idx].subject_end()));
-			if (sv_max[o] >= min_low_score)
-				get_diag(i_begin + o, j_begin, o, j, j + l, diags, min_low_score, log);
-			++j;
-		}
-		for (int diag = de + 1; diag < std::min(de + reverse_diags + 1, d_end); ++diag) {
-			const int o = diag - d_begin;
-			assert(l >= 0);
-			assert(j0 >= 0);
-			assert(j0 + l <= std::max(diags[d_idx].subject_end(), diags[e_idx].subject_end()));
-			if (sv_max[o] >= min_low_score)
-				get_diag(i_begin + o, j_begin, o, j0, j0 + l, diags, min_low_score, log);
-		}
-	}
-}
-
-void Diag_scores::scan_diags(int d_begin, int d_end, sequence query, sequence subject, const Long_score_profile &qp, bool log, vector<Diagonal_node> &diags, multimap<int, unsigned> &window, bool fast)
+void Diag_scores::scan_diags(int d_begin, int d_end, sequence query, sequence subject, const Long_score_profile &qp, bool log, vector<Diagonal_node> &diags, bool fast)
 {
 	static const int max_dist = 60;
 	qlen = (int)query.length();
@@ -599,32 +512,4 @@ void Diag_scores::scan_diags(int d_begin, int d_end, sequence query, sequence su
 				get_diag(i_begin + o, j_begin, o, j_begin, j1, diags, min_diag_score, log);
 		}
 
-	if (fast)
-		return;
-
-	std::sort(diags.begin(), diags.end(), Diagonal_segment::cmp_subject);
-	
-	const unsigned nodes = diags.size();
-	for (unsigned node = 0; node < nodes; ++node) {
-		if (diags[node].score < min_diag_score)
-			continue;
-		if (log)
-			cout << "Node n=" << node << endl;
-		scan_ends(node, diags, log, sv_max.data(), slen);
-		while (!window.empty() && diags[node].j - window.begin()->first > max_dist)
-			window.erase(window.begin());
-		for (multimap<int, unsigned>::iterator i = window.begin(); i != window.end(); ++i) {
-			if (abs(diags[node].diag() - diags[i->second].diag()) > max_dist)
-				continue;
-			if (log)
-				cout << "Link n=" << i->second << endl;
-			scan_vicinity(node, i->second, diags, log, sv_max.data());
-			/*if (e.subject_end() - (d.subject_end() - std::min(e.diag() - d.diag(), 0)) >= 11) {
-
-			}*/
-		}
-		window.insert(std::make_pair(diags[node].subject_end(), node));
-	}
-
-	window.clear();
 }

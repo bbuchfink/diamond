@@ -162,17 +162,17 @@ struct Diagonal_node : public Diagonal_segment
 	enum { estimate, finished };
 	Diagonal_node() :
 		Diagonal_segment(),
-		link_idx(0)
+		link_idx(-1)
 	{}
-	Diagonal_node(int query_pos, int subject_pos, int len, int score, int link_idx=0) :
+	Diagonal_node(int query_pos, int subject_pos, int len, int score, int link_idx=-1) :
 		Diagonal_segment(query_pos, subject_pos, len, score),
 		link_idx(link_idx)
 	{}
 	Diagonal_node(const Diagonal_segment &d) :
 		Diagonal_segment(d),
-		link_idx(0)
+		link_idx(-1)
 	{}
-	unsigned link_idx;
+	int link_idx;
 };
 
 struct Diag_graph
@@ -221,7 +221,15 @@ struct Diag_graph
 	vector<Edge>::iterator add_edge(const Edge &edge)
 	{
 		for (vector<Diagonal_node>::iterator j = nodes.begin() + edge.node_in + 1; j < nodes.end(); ++j)
-			++j->link_idx;
+			if (j->link_idx == -1)
+				break;
+			else
+				++j->link_idx;
+		if (nodes[edge.node_in].link_idx == -1) {
+			if (edges.size() >= (size_t)std::numeric_limits<int>::max())
+				throw std::runtime_error("Too many edges.");
+			nodes[edge.node_in].link_idx = (int)edges.size();
+		}
 		return edges.insert(edges.begin() + nodes[edge.node_in].link_idx++, edge);
 	}
 
@@ -326,10 +334,8 @@ struct Diag_scores {
 	}
 	void get_diag(int i, int j, int o, int j_begin, int j_end, vector<Diagonal_node> &diags, int cutoff, bool log);
 	void get_diag2(int i, int j, int o, int j_begin, int j_end, vector<Diagonal_node> &diags, int cutoff, bool log);
-	void scan_diags(int d_begin, int d_end, sequence query, sequence subject, const Long_score_profile &qp, bool log, vector<Diagonal_node> &diags, std::multimap<int, unsigned> &window, bool fast);
-	void scan_vicinity(unsigned d_idx, unsigned e_idx, vector<Diagonal_node> &diags, bool log, uint8_t *sv_max);
+	void scan_diags(int d_begin, int d_end, sequence query, sequence subject, const Long_score_profile &qp, bool log, vector<Diagonal_node> &diags, bool fast);
 	void set_zero(Band::Iterator &d, Band::Iterator d2, int begin, int end);
-	void scan_ends(unsigned d_idx, vector<Diagonal_node> &diags, bool log, uint8_t *sv_max, int subject_len);
 	void set_active(int o, int begin, int end);
 	bool is_active(int o, int i) const;
 	Band score_buf, local_max;
