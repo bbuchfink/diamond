@@ -122,8 +122,8 @@ Config::Config(int argc, const char **argv)
 		("block-size", 'b', "sequence block size in billions of letters (default=2.0)", chunk_size)
 		("index-chunks", 'c', "number of chunks for index processing", lowmem)
 		("tmpdir", 't', "directory for temporary files", tmpdir)
-		("gapopen", 0, "gap open penalty (default=11 for protein)", gap_open, -1)
-		("gapextend", 0, "gap extension penalty (default=1 for protein)", gap_extend, -1)
+		("gapopen", 0, "gap open penalty", gap_open, -1)
+		("gapextend", 0, "gap extension penalty", gap_extend, -1)
 		("matrix", 0, "score matrix for protein alignment (default=BLOSUM62)", matrix, string("blosum62"))
 		("custom-matrix", 0, "file containing custom scoring matrix", matrix_file)
 		("lambda", 0, "lambda parameter for custom matrix", lambda)
@@ -305,15 +305,13 @@ Config::Config(int argc, const char **argv)
 	if (command == Config::blastp || command == Config::blastx || command == Config::benchmark || command == Config::model_sim || command == Config::opt) {
 		if (tmpdir == "")
 			tmpdir = extract_dir(output_file);
-		if (gap_open == -1)
-			gap_open = 11;
-		if (gap_extend == -1)
-			gap_extend = 1;
 		if (matrix_file == "")
 			score_matrix = Score_matrix(to_upper_case(matrix), gap_open, gap_extend, reward, penalty);
 		else {
 			if (lambda == 0 || K == 0)
 				throw std::runtime_error("Custom scoring matrices require setting the --lambda and --K options.");
+			if (gap_open == -1 || gap_extend == -1)
+				throw std::runtime_error("Custom scoring matrices require setting the --gapopen and --gapextend options.");
 			score_matrix = Score_matrix(matrix_file, lambda, K, gap_open, gap_extend);
 		}
 		message_stream << "Scoring parameters: " << score_matrix << endl;

@@ -133,16 +133,23 @@ void view()
 
 	Binary_buffer buf;
 	size_t query_num;
-	daa.read_query_buffer(buf, query_num);
-	DAA_query_record r(daa, buf, query_num);
-	Text_buffer out;
-	view_query(r, out, *output_format);
-	
-	output_format->print_header(*writer.f_, daa.mode(), daa.score_matrix(), daa.gap_open_penalty(), daa.gap_extension_penalty(), daa.evalue(), r.query_name.c_str(), (unsigned)r.query_len());
-	writer(out);
+	if (daa.read_query_buffer(buf, query_num)) {
+		DAA_query_record r(daa, buf, query_num);
+		Text_buffer out;
+		view_query(r, out, *output_format);
 
-	View_context context(daa, writer, *output_format);
-	launch_thread_pool(context, config.threads_);
+		output_format->print_header(*writer.f_, daa.mode(), daa.score_matrix(), daa.gap_open_penalty(), daa.gap_extension_penalty(), daa.evalue(), r.query_name.c_str(), (unsigned)r.query_len());
+		writer(out);
+
+		View_context context(daa, writer, *output_format);
+		launch_thread_pool(context, config.threads_);
+	}
+	else {
+		Text_buffer out;
+		output_format->print_header(*writer.f_, daa.mode(), daa.score_matrix(), daa.gap_open_penalty(), daa.gap_extension_penalty(), daa.evalue(), "", 0);
+		writer(out);
+	}
+
 	output_format->print_footer(*writer.f_);
 }
 

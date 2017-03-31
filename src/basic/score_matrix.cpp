@@ -165,6 +165,7 @@ struct Matrix_info
 	const array_of_8 *constants;
 	const char *scores;
 	const unsigned count;
+	const int default_gap_open, default_gap_extend;
 
 	static const Matrix_info& get(const string &name)
 	{
@@ -188,20 +189,20 @@ struct Matrix_info
 };
 
 const Matrix_info Matrix_info::matrices[] = {
-	{ "BLOSUM45", blosum45_values, (const char*)NCBISM_Blosum45.scores, BLOSUM45_VALUES_MAX },
-	{ "BLOSUM50", blosum50_values, (const char*)NCBISM_Blosum50.scores, BLOSUM50_VALUES_MAX },
-	{ "BLOSUM62", blosum62_values, (const char*)NCBISM_Blosum62.scores, BLOSUM62_VALUES_MAX },
-	{ "BLOSUM80", blosum80_values, (const char*)NCBISM_Blosum80.scores, BLOSUM80_VALUES_MAX },
-	{ "BLOSUM90", blosum90_values, (const char*)NCBISM_Blosum90.scores, BLOSUM90_VALUES_MAX },
-	{ "PAM70", pam70_values, (const char*)NCBISM_Pam70.scores, PAM70_VALUES_MAX },
-	{ "PAM250", pam250_values, (const char*)NCBISM_Pam250.scores, PAM250_VALUES_MAX },
-	{ "PAM30", pam30_values, (const char*)NCBISM_Pam30.scores, PAM30_VALUES_MAX }
+	{ "BLOSUM45", blosum45_values, (const char*)NCBISM_Blosum45.scores, BLOSUM45_VALUES_MAX, 14, 2 },
+	{ "BLOSUM50", blosum50_values, (const char*)NCBISM_Blosum50.scores, BLOSUM50_VALUES_MAX, 13, 2 },
+	{ "BLOSUM62", blosum62_values, (const char*)NCBISM_Blosum62.scores, BLOSUM62_VALUES_MAX, 11, 1 },
+	{ "BLOSUM80", blosum80_values, (const char*)NCBISM_Blosum80.scores, BLOSUM80_VALUES_MAX, 10, 1 },
+	{ "BLOSUM90", blosum90_values, (const char*)NCBISM_Blosum90.scores, BLOSUM90_VALUES_MAX, 10, 1 },
+	{ "PAM70", pam70_values, (const char*)NCBISM_Pam70.scores, PAM70_VALUES_MAX, 10, 1 },
+	{ "PAM250", pam250_values, (const char*)NCBISM_Pam250.scores, PAM250_VALUES_MAX, 14, 2 },
+	{ "PAM30", pam30_values, (const char*)NCBISM_Pam30.scores, PAM30_VALUES_MAX, 9, 1 }
 };
 
 Score_matrix::Score_matrix(const string & matrix, int gap_open, int gap_extend, int reward, int penalty):
-	gap_open_ (gap_open),
-	gap_extend_ (gap_extend),
-	constants_ (Matrix_info::get(matrix).get_constants(gap_open, gap_extend)),	
+	gap_open_ (gap_open == -1 ? Matrix_info::get(matrix).default_gap_open : gap_open),
+	gap_extend_ (gap_extend == -1 ? Matrix_info::get(matrix).default_gap_extend : gap_extend),
+	constants_ (Matrix_info::get(matrix).get_constants(gap_open_, gap_extend_)),
 	name_(matrix),
 	matrix8_(Matrix_info::get(matrix).scores),
 	bias_((char)(-low_score())),

@@ -23,7 +23,7 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #include "statistics.h"
 #include "sequence.h"
 
-const char* Const::version_string = "0.8.36";
+const char* Const::version_string = "0.8.37";
 const char* Const::program_name = "diamond";
 const char* Const::id_delimiters = " \a\b\f\n\r\t\v";
 
