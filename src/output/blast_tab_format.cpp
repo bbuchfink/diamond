@@ -18,6 +18,7 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 
 #include "../basic/match.h"
 #include "output_format.h"
+#include "../data/taxonomy.h"
 
 const char* Blast_tab_format::field_str[] = {
 	"qseqid",		// 0 means Query Seq - id
@@ -82,10 +83,21 @@ Blast_tab_format::Blast_tab_format() :
 		int j = get_idx(field_str, sizeof(field_str) / sizeof(field_str[0]), i->c_str());
 		if(j == -1)
 			throw std::runtime_error(string("Invalid output field: ") + *i);
+		if (j == 34 && config.prot_accession2taxid.empty())
+			throw std::runtime_error("staxids output field requires setting the --taxonmap parameter.");
 		fields.push_back(j);
 		if (j == 6 || j == 39 || j == 40)
 			config.salltitles = true;
 	}
+}
+
+void print_staxids(Text_buffer &out, const char *id)
+{
+	const vector<string> t(tokenize(id, "\1"));	
+	vector<string>::const_iterator i = t.begin();
+	for (; i < t.end() - 1; ++i)
+		out << taxonomy.get(Taxonomy::Accession(*i)) << ';';
+	out << taxonomy.get(Taxonomy::Accession(*i));
 }
 
 void Blast_tab_format::print_match(const Hsp_context& r, Text_buffer &out) const
@@ -202,6 +214,9 @@ void Blast_tab_format::print_match(const Hsp_context& r, Text_buffer &out) const
 			if (n_matches > 0)
 				out << n_matches;
 		}
+			break;
+		case 34:
+			print_staxids(out, r.subject_name);
 			break;
 		case 39:
 			this->print_salltitles(out, r.subject_name, true, false);

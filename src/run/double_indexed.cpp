@@ -29,6 +29,7 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #include "../output/output_format.h"
 #include "../data/frequent_seeds.h"
 #include "../output/daa_write.h"
+#include "../data/taxonomy.h"
 
 using std::endl;
 using std::cout;
@@ -299,6 +300,12 @@ void master_thread_di()
 	Config::set_option(config.db_size, (uint64_t)ref_header.letters);
 
 	set_max_open_files(config.query_bins * config.threads_ + unsigned(ref_header.letters / (size_t)(config.chunk_size * 1e9)) + 16);
+
+	if (!config.prot_accession2taxid.empty()) {
+		timer.go("Loading taxonomy");
+		taxonomy.load();
+		timer.finish();
+	}
 
 	master_thread(db_file, timer_mapping, timer2);
 }

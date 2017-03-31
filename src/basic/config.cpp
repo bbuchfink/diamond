@@ -132,7 +132,8 @@ Config::Config(int argc, const char **argv)
 		("seg", 0, "enable SEG masking of queries (yes/no)", seg)
 		("query-gencode", 0, "genetic code to use to translate query (see user manual)", query_gencode, 1u)
 		("salltitles", 0, "print full subject titles in output files", salltitles)
-		("no-self-hits", 0, "suppress reporting of identical self hits", no_self_hits);
+		("no-self-hits", 0, "suppress reporting of identical self hits", no_self_hits)
+		("taxonmap", 0, "protein accession to taxid mapping file", prot_accession2taxid);
 
 	Options_group advanced("Advanced options");
 	advanced.add()

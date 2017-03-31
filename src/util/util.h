@@ -239,6 +239,11 @@ inline size_t find_first_of(const char *s, const char *delimiters)
 	return t-s;
 }
 
+inline string get_title(const string &s)
+{
+	return s.substr(0, find_first_of(s.c_str(), Const::id_delimiters));
+}
+
 inline size_t print_str(char* buf, const char *s, size_t n)
 {
 	memcpy(buf, s, n);
