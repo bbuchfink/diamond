@@ -504,7 +504,7 @@ void Diag_scores::scan_diags(int d_begin, int d_end, sequence query, sequence su
 		if (sv_max[o] >= Diag_scores::min_diag_score) {
 			if (sv_max[o] >= 255 - score_matrix.bias()) {
 				const int s = std::min(i_begin + o, 0), i0 = i_begin + o - s, j0 = j_begin - s;
-				score_diagonal2(&query[i0], &subject[j0], std::min(query.length() - i0, subject.length() - j0), i0, j0, diags, fast ? min_diag_score : min_low_score);
+				score_diagonal2(&query[i0], &subject[j0], std::min((int)query.length() - i0, (int)subject.length() - j0), i0, j0, diags, fast ? min_diag_score : min_low_score);
 				//::set_zero(local_max.diag(o), 0, local_max.cols());
 				set_active(o, 0, local_max.cols());
 			}

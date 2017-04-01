@@ -91,6 +91,7 @@ Config::Config(int argc, const char **argv)
 \tppos means Percentage of positive - scoring matches\n\
 \tqframe means Query frame\n\
 \tbtop means Blast traceback operations(BTOP)\n\
+\tstaxids means unique Subject Taxonomy ID(s), separated by a ';' (in numerical order)\n\
 \tstitle means Subject Title\n\
 \tsalltitles means All Subject Title(s), separated by a '<>'\n\
 \tqcovhsp means Query Coverage Per HSP\n\

@@ -202,7 +202,7 @@ int needleman_wunsch(sequence query, sequence subject, int qbegin, int qend, int
 			j -= l;
 			if (i != 0 || j != 0) {
 				f->node_out = (unsigned)diags.nodes.size();
-				diags.nodes.push_back(Diagonal_node(qbegin + i, sbegin + j, l, 0, diags.edges.size()));
+				diags.nodes.push_back(Diagonal_node(qbegin + i, sbegin + j, l, 0, (int)diags.edges.size()));
 				f = diags.add_edge(Diag_graph::Edge(0, sbegin + j, f->node_out, 0, true, Diagonal_node::finished, 0, 0));
 			}
 		}
@@ -279,7 +279,7 @@ void print_diag(int i0, int j0, int l, int score, const Diag_graph &diags, const
 				cout << "(";
 			cout << "Diag n=" << d - diags.nodes.begin() << " i=" << i0 << " j=" << j0 << " len=" << l
 				<< " prefix_score=" << score + score_range(query, subject, i0 + l, j0 + l, d->subject_end()) - std::min(diff, 0)
-				<< " prefix_score2=" << diags.prefix_score(d - diags.nodes.begin(), j0 + l, 0);
+				<< " prefix_score2=" << diags.prefix_score((unsigned)(d - diags.nodes.begin()), j0 + l, 0);
 			if (n > 0)
 				cout << ")";
 			cout << endl;

@@ -395,8 +395,6 @@ struct Greedy_aligner2
 					get_approximate_link(j->second, node);
 				}
 				++n;
-			weiter:
-				;
 			}
 			if(node%100==0)cout << node << '\t' << n << endl;
 			i = window.insert(std::make_pair(dd, node)).first;
@@ -539,8 +537,8 @@ void greedy_align(sequence query, const Long_score_profile &qp, sequence subject
 			d1 = h.second->query_range.begin_ - h.second->subject_range.begin_,
 			shift = d1 - d0,
 			space = std::max(shift > 0 ? (int)h.second->subject_range.begin_ - (int)h.first->subject_range.end_ : (int)h.second->query_range.begin_ - (int)h.first->query_range.end_, 0),
-			s = -abs(shift)*score_matrix.gap_extend() - score_matrix.gap_open() + out.score + hsp.score - config.space_penalty*space;		
-		if (s > out.score && s > hsp.score) {
+			s = -abs(shift)*score_matrix.gap_extend() - score_matrix.gap_open() + out.score + hsp.score - int(config.space_penalty*space);
+		if (s > (int)out.score && s > (int)hsp.score) {
 			const std::pair<int, int> db1 = h.first->diagonal_bounds(), db2 = h.second->diagonal_bounds();
 			Greedy_aligner2(query, qp, subject, std::min(db1.first, db2.first), std::max(db1.second, db2.second) + 1, log, hsp, true);
 		}

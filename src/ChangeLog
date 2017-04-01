@@ -3,6 +3,7 @@
 - all scoring matrices use the respective default gap penalties from BLAST
 - added check for SSSE3 instruction set
 - added diamond-sse2 to the binary package
+- added staxids field to the tabular format
 
 [0.8.36]
 - fixed a compiler error
