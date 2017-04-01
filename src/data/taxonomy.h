@@ -49,7 +49,7 @@ struct Taxonomy
 		{
 			return strncmp(s, y.s, max_accesion_len) < 0;
 		}
-		bool operator==(const Accession &y) const
+		bool match(const Accession &y) const
 		{
 			const void *p2 = memchr(y.s, '.', max_accesion_len);
 			size_t n = max_accesion_len;
@@ -68,7 +68,7 @@ struct Taxonomy
 	unsigned get(const Accession &accession) const
 	{
 		std::vector<std::pair<Accession, unsigned> >::const_iterator i = std::lower_bound(accession2taxid_.begin(), accession2taxid_.end(), std::make_pair(accession, 0u));
-		if (i->first == accession)
+		if (i->first.match(accession))
 			return i->second;
 		else
 			return 0;
