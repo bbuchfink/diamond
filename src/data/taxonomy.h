@@ -36,7 +36,10 @@ struct Taxonomy
 		}
 		Accession(const string &s)
 		{
-			const string t(get_title(s));
+			string t(get_title(s));
+			if (t.compare(0, 6, "UniRef")) {
+				t.erase(0, 9);
+			}
 			if (t.length() > max_accesion_len)
 				this->s[0] = 0;
 			else
@@ -48,7 +51,14 @@ struct Taxonomy
 		}
 		bool operator==(const Accession &y) const
 		{
-			return strncmp(s, y.s, max_accesion_len) == 0;
+			const void *p2 = memchr(y.s, '.', max_accesion_len);
+			size_t n = max_accesion_len;
+			if (p2 == 0) {
+				const void *p1 = memchr(s, '.', max_accesion_len);
+				if (p1)
+					n = (const char*)p1 - s;
+			}
+			return strncmp(s, y.s, n) == 0;
 		}
 		char s[max_accesion_len];
 	};

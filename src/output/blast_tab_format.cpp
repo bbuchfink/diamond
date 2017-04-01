@@ -16,6 +16,7 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ****/
 
+#include <set>
 #include "../basic/match.h"
 #include "output_format.h"
 #include "../data/taxonomy.h"
@@ -94,10 +95,13 @@ Blast_tab_format::Blast_tab_format() :
 void print_staxids(Text_buffer &out, const char *id)
 {
 	const vector<string> t(tokenize(id, "\1"));	
-	vector<string>::const_iterator i = t.begin();
-	for (; i < t.end() - 1; ++i)
-		out << taxonomy.get(Taxonomy::Accession(*i)) << ';';
-	out << taxonomy.get(Taxonomy::Accession(*i));
+	std::set<unsigned> taxons;
+	for (vector<string>::const_iterator i = t.begin(); i < t.end(); ++i)
+		taxons.insert(taxonomy.get(Taxonomy::Accession(*i)));
+	std::set<unsigned>::const_iterator i = taxons.begin();
+	out << *(i++);
+	for (; i != taxons.end(); ++i)
+		out << ';' << *i;
 }
 
 void Blast_tab_format::print_match(const Hsp_context& r, Text_buffer &out) const
