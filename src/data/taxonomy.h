@@ -37,7 +37,7 @@ struct Taxonomy
 		Accession(const string &s)
 		{
 			string t(get_title(s));
-			if (t.compare(0, 6, "UniRef")) {
+			if (t.compare(0, 6, "UniRef") == 0) {
 				t.erase(0, 9);
 			}
 			if (t.length() > max_accesion_len)
@@ -60,6 +60,12 @@ struct Taxonomy
 			}
 			return strncmp(s, y.s, n) == 0;
 		}
+		friend std::ostream& operator<<(std::ostream &str, const Accession &x)
+		{
+			for (int i = 0; i < max_accesion_len && x.s[i] != 0; ++i)
+				str << x.s[i];
+			return str;
+		}
 		char s[max_accesion_len];
 	};
 
@@ -68,7 +74,7 @@ struct Taxonomy
 	unsigned get(const Accession &accession) const
 	{
 		std::vector<std::pair<Accession, unsigned> >::const_iterator i = std::lower_bound(accession2taxid_.begin(), accession2taxid_.end(), std::make_pair(accession, 0u));
-		if (i->first.match(accession))
+		if (i < accession2taxid_.end() && i->first.match(accession))
 			return i->second;
 		else
 			return 0;

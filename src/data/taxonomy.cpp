@@ -30,9 +30,8 @@ void Taxonomy::load()
 	Compressed_istream f(config.prot_accession2taxid);
 	f.getline();
 	
-	while (!f.eof()) {
-		f.getline();
-		if (!f.line.empty() && sscanf(f.line.c_str(), "%*s%15s%u%*u", acc, &taxid) != 2) {
+	while (!f.eof() && (f.getline(), !f.line.empty())) {
+		if (sscanf(f.line.c_str(), "%*s%15s%u%*u", acc, &taxid) != 2) {
 			//std::cout << f.line << endl;
 			throw std::runtime_error("Invalid taxonomy mapping file format.");
 		}

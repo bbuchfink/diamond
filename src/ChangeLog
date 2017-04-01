@@ -1,6 +1,8 @@
 [0.8.37]
 - fixed a bug that would cause an error message for empty DAA files
 - all scoring matrices use the respective default gap penalties from BLAST
+- added check for SSSE3 instruction set
+- added diamond-sse2 to the binary package
 
 [0.8.36]
 - fixed a compiler error
