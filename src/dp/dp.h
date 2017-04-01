@@ -188,12 +188,12 @@ struct Diag_graph
 		}
 		Edge(int prefix_score, int j, unsigned node_in, unsigned node_out, bool exact, unsigned state, int diff1, int diff2) :
 			j(j),
-			node_in(node_in),
-			node_out(node_out),
-			exact(exact),
-			state(state),
 			diff1(diff1),
-			diff2(diff2)
+			diff2(diff2),
+			node_in(node_in),
+			node_out(node_out),	
+			state(state),			
+			exact(exact)
 		{
 			this->prefix_score[0] = prefix_score;
 			this->prefix_score[1] = 0;
@@ -288,8 +288,8 @@ struct Band
 	}
 	struct Iterator {
 		Iterator(uint8_t *p, int diags) :
-			p_(p),
-			diags_(diags)
+			diags_(diags),
+			p_(p)			
 		{}
 		uint8_t& operator[](int i)
 		{
