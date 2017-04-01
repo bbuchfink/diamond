@@ -52,14 +52,11 @@ inline __m128i reduce_seq_generic(const __m128i &seq)
 
 inline __m128i reduce_seq(const __m128i &seq)
 {
-	if(config.have_ssse3) {
 #ifdef __SSSE3__
-		return reduce_seq_ssse3(seq);
+	return reduce_seq_ssse3(seq);
 #else
-		return reduce_seq_generic(seq);
+	return reduce_seq_generic(seq);
 #endif
-	} else
-		return reduce_seq_generic(seq);
 }
 #endif
 

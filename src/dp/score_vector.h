@@ -63,14 +63,11 @@ struct score_vector<uint8_t>
 
 	explicit score_vector(unsigned a, const __m128i &seq)
 	{
-		if(config.have_ssse3) {
 #ifdef __SSSE3__
-			set_ssse3(a, seq);
+		set_ssse3(a, seq);
 #else
-			set_generic(a, seq);
+		set_generic(a, seq);
 #endif
-		} else
-			set_generic(a, seq);
 	}
 
 	void set_ssse3(unsigned a, const __m128i &seq)

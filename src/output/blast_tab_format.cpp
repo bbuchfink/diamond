@@ -87,7 +87,7 @@ Blast_tab_format::Blast_tab_format() :
 		if (j == 34 && config.prot_accession2taxid.empty())
 			throw std::runtime_error("staxids output field requires setting the --taxonmap parameter.");
 		fields.push_back(j);
-		if (j == 6 || j == 39 || j == 40)
+		if (j == 6 || j == 39 || j == 40 || j == 34)
 			config.salltitles = true;
 	}
 }

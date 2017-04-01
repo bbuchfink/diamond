@@ -71,7 +71,6 @@ struct Config
 	string	matrix;
 	string	seg;
 	bool debug_log, verbose, quiet;
-	bool		have_ssse3;
 	bool		salltitles;
 	int		reward;
 	int		penalty;

@@ -37,8 +37,19 @@ struct Taxonomy
 		Accession(const string &s)
 		{
 			string t(get_title(s));
+			size_t i;
 			if (t.compare(0, 6, "UniRef") == 0) {
 				t.erase(0, 9);
+			}
+			else if ((i = t.find_first_of('|', 0)) != string::npos) {
+				if (t.compare(0, 3, "gi|") == 0) {
+					t.erase(0, t.find_first_of('|', i + 1) + 1);
+					i = t.find_first_of('|', 0);
+				}
+				t.erase(0, i + 1);
+				i = t.find_first_of('|', 0);
+				if (i != string::npos)
+					t.erase(i);
 			}
 			if (t.length() > max_accesion_len)
 				this->s[0] = 0;
