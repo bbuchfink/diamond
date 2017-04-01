@@ -63,7 +63,7 @@ struct Dp_matrix
 			end_(score_.second + query_len + 1),
 			i_(0)
 		{
-			*score_.first = saturate<_score, _mode>(col == 0 ? 0 : -config.gap_open - col*config.gap_extend);
+			*score_.first = saturate<_score, _mode>(col == 0 ? 0 : -score_matrix.gap_open() - col*score_matrix.gap_extend());
 			++score_.second;
 		}
 
@@ -122,7 +122,7 @@ struct Dp_matrix
 		hgap_.clear();
 		hgap_.insert(hgap_.end(), query_len, std::numeric_limits<int>::min() + 1);
 		int *score = score_.last();
-		int g = -config.gap_open - config.gap_extend;
+		int g = -score_matrix.gap_open() - score_matrix.gap_extend();
 		for (int i = 1; i <= query_len; ++i)
 			score[i] = saturate<_score, _mode>(g--);
 	}
@@ -149,7 +149,7 @@ template<typename _score, typename _mode>
 const Fixed_score_buffer<_score>& needleman_wunsch(sequence query, sequence subject, int &max_score, const _mode&, const _score&)
 {
 	using std::max;
-	const int gap_open = config.gap_open + config.gap_extend, gap_extend = config.gap_extend;
+	const int gap_open = score_matrix.gap_open() + score_matrix.gap_extend(), gap_extend = score_matrix.gap_extend();
 	int m = 0;
 
 	Dp_matrix<_score, _mode> mtx((unsigned)query.length(), (unsigned)subject.length());
@@ -184,7 +184,7 @@ int needleman_wunsch(sequence query, sequence subject, int qbegin, int qend, int
 	/*if (log)
 		cout << dp << endl;*/
 
-	const int gap_open = config.gap_open, gap_extend = config.gap_extend;
+	const int gap_open = score_matrix.gap_open(), gap_extend = score_matrix.gap_extend();
 	int l, i = qend - qbegin, j = send - sbegin;
 	const int score = dp(i, j);
 
@@ -226,7 +226,7 @@ void smith_waterman(sequence q, sequence s, Hsp_data &out)
 	const Fixed_score_buffer<int> &dp = needleman_wunsch(q, s, max_score, Local(), int());
 	pair<int, int> max_pos = dp.find(max_score);
 
-	const int gap_open = config.gap_open, gap_extend = config.gap_extend;
+	const int gap_open = score_matrix.gap_open(), gap_extend = score_matrix.gap_extend();
 	int l, i = max_pos.first, j = max_pos.second, score;
 	out.score = dp(i, j);
 	out.query_range.end_ = i;
@@ -312,12 +312,12 @@ void smith_waterman(sequence q, sequence s, const Diag_graph &diags, Text_buffer
 		case op_insertion:
 			if (i0 >= 0) {
 				print_diag(i0, j0, l, score, diags, q, s);
-				score -= config.gap_open + config.gap_extend;
+				score -= score_matrix.gap_open() + score_matrix.gap_extend();
 				i0 = -1;
 				j0 = -1;
 			}
 			else
-				score -= config.gap_extend;
+				score -= score_matrix.gap_extend();
 		}
 	}
 	print_diag(i0, j0, l, score, diags, q, s);

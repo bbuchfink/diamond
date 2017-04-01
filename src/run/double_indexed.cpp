@@ -229,7 +229,7 @@ void master_thread(Database_file &db_file, Timer &timer_mapping, Timer &total_ti
 		query_seqs::data_->print_stats();
 
 		if (current_query_chunk == 0 && *output_format != Output_format::daa)
-			output_format->print_header(*master_out, align_mode.mode, config.matrix.c_str(), config.gap_open, config.gap_extend, config.max_evalue, query_ids::get()[0].c_str(),
+			output_format->print_header(*master_out, align_mode.mode, config.matrix.c_str(), score_matrix.gap_open(), score_matrix.gap_extend(), config.max_evalue, query_ids::get()[0].c_str(),
 				unsigned(align_mode.query_translated ? query_source_seqs::get()[0].length() : query_seqs::get()[0].length()));
 
 		if (align_mode.sequence_type == amino_acid && config.seg == "yes") {

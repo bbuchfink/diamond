@@ -101,6 +101,16 @@ struct Score_matrix
 
 	char low_score() const;
 
+	int gap_open() const
+	{
+		return gap_open_;
+	}
+
+	int gap_extend() const
+	{
+		return gap_extend_;
+	}
+
 private:
 
 	template<typename _t>

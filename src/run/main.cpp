@@ -36,6 +36,7 @@ int main(int ac, const char* av[])
 
 	try {
 
+		check_simd();
 		config = Config(ac, av);
 
 		switch (config.command) {

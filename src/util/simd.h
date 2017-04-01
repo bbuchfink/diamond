@@ -45,7 +45,7 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #include <emmintrin.h>
 #endif
 
-inline bool check_SSSE3()
+inline void check_simd()
 {
 #ifdef __SSSE3__
 	int info[4];
@@ -53,10 +53,12 @@ inline bool check_SSSE3()
 	int nids = info[0];
 	if (nids >= 1) {
 		cpuid(info, 1);
-		return (info[2] & (1 << 9)) != 0;
+		if ((info[2] & (1 << 9)) == 0)
+			throw std::runtime_error("CPU does not support SSSE3. Please try to run the diamond-sse2 file contained in the binary package or compile the software from source.");
 	}
+	else
+		throw std::runtime_error("Incompatible CPU type. Please try to run the diamond-sse2 file contained in the binary package or compile the software from source.");
 #endif
-	return false;
 }
 
 #endif

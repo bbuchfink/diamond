@@ -322,9 +322,12 @@ Config::Config(int argc, const char **argv)
 		if (seg == "" && command == blastx)
 			seg = "yes";
 		verbose_stream << "SEG masking = " << (seg == "yes") << endl;
-		have_ssse3 = check_SSSE3();
-		if (have_ssse3)
-			verbose_stream << "SSSE3 enabled." << endl;
+#ifdef __SSSE3__
+		verbose_stream << "SSSE3 enabled." << endl;
+#endif
+#ifdef __SSE4_1__
+		verbose_stream << "SSE4.1 enabled." << endl;
+#endif
 		verbose_stream << "Reduction: " << Reduction::reduction << endl;
 
 		if (mode_more_sensitive) {

@@ -78,8 +78,8 @@ inline void finish_daa(Output_stream &f)
 {
 	DAA_header2 h2_(ref_header.sequences,
 		config.db_size,
-		config.gap_open,
-		config.gap_extend,
+		score_matrix.gap_open(),
+		score_matrix.gap_extend(),
 		config.reward,
 		config.penalty,
 		score_matrix.k(),

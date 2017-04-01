@@ -134,7 +134,7 @@ void search_query_offset(Loc q,
 			const sequence s = ref_seqs::data_->fixed_window_infix(s_pos + config.seed_anchor);
 			unsigned left;
 			sequence query(query_seqs::data_->window_infix(q + config.seed_anchor, left));
-			score = smith_waterman(query, s, config.hit_band, left, config.gap_open + config.gap_extend, config.gap_extend);
+			score = smith_waterman(query, s, config.hit_band, left, score_matrix.gap_open() + score_matrix.gap_extend(), score_matrix.gap_extend());
 		}
 		if (score >= config.min_hit_raw_score) {
 			if (q_num_ == std::numeric_limits<unsigned>::max()) {

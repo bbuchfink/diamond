@@ -175,7 +175,7 @@ struct Greedy_aligner2
 			j1 = std::max(j0, d1.j),
 			j3 = std::min(d1.subject_end(), d2.subject_end() + shift),
 			j2 = std::min(j3, d2.subject_end()),
-			gap_cost = config.gap_open + shift*config.gap_extend;
+			gap_cost = score_matrix.gap_open() + shift*score_matrix.gap_extend();
 		buf.clear();
 		buf.resize(2 * (j3 - j0));
 		int *p1 = buf.data(),
@@ -284,14 +284,14 @@ struct Greedy_aligner2
 				else {
 					Link l;
 					int link_score = get_link(*e, *d, query, subject, l, link_padding);
-					f->prefix_score[1] = l.score1 - e->score - config.gap_open - abs(shift)*config.gap_extend + l.score2;
+					f->prefix_score[1] = l.score1 - e->score - score_matrix.gap_open() - abs(shift)*score_matrix.gap_extend() + l.score2;
 					f->j = l.subject_pos2;
 					if (log)
 						indent(cout, level) << "Direct link scores=" << l.score1 << "," << l.score2 << endl;
 				}
 			}
 			else
-				f->prefix_score[1] = -f->diff1 - config.gap_open - abs(shift)*config.gap_extend + d->score - f->diff2;
+				f->prefix_score[1] = -f->diff1 - score_matrix.gap_open() - abs(shift)*score_matrix.gap_extend() + d->score - f->diff2;
 			if (log)
 				indent(cout, level) << "Node=" << node << " Link n=" << next << " estimate_score=" << estimate_score << " prefix_score=" << f->prefix_score[1] << " j=" << f->j << endl;
 			const int fp_score = follow_path(level + 1, next, 0, f->j + std::min(shift, 0) - 1);
@@ -314,7 +314,7 @@ struct Greedy_aligner2
 		Diagonal_node &d = diags[d_idx];
 		Diagonal_node &e = diags[e_idx];
 		const int shift = d.diag() - e.diag();
-		int gap_score = shift != 0 ? -config.gap_open - abs(shift)*config.gap_extend : 0;
+		int gap_score = shift != 0 ? -score_matrix.gap_open() - abs(shift)*score_matrix.gap_extend() : 0;
 		const int space = shift > 0 ? d.j - e.subject_last() : d.i - e.query_last();
 		int prefix_score = 0, link_score = 0, link_j, diff1 = 0, diff2 = 0;
 		bool exact;
@@ -539,7 +539,7 @@ void greedy_align(sequence query, const Long_score_profile &qp, sequence subject
 			d1 = h.second->query_range.begin_ - h.second->subject_range.begin_,
 			shift = d1 - d0,
 			space = std::max(shift > 0 ? (int)h.second->subject_range.begin_ - (int)h.first->subject_range.end_ : (int)h.second->query_range.begin_ - (int)h.first->query_range.end_, 0),
-			s = -abs(shift)*config.gap_extend - config.gap_open + out.score + hsp.score - config.space_penalty*space;		
+			s = -abs(shift)*score_matrix.gap_extend() - score_matrix.gap_open() + out.score + hsp.score - config.space_penalty*space;		
 		if (s > out.score && s > hsp.score) {
 			const std::pair<int, int> db1 = h.first->diagonal_bounds(), db2 = h.second->diagonal_bounds();
 			Greedy_aligner2(query, qp, subject, std::min(db1.first, db2.first), std::max(db1.second, db2.second) + 1, log, hsp, true);

@@ -46,7 +46,7 @@ void Query_mapper::get_prefilter_score(size_t idx)
 				if (abs(d.ungapped.i - e.ungapped.query_last()) >= max_dist)
 					continue;
 				const int shift = d.ungapped.diag() - e.ungapped.diag();
-				int gap_score = -config.gap_open - abs(shift)*config.gap_extend;
+				int gap_score = -score_matrix.gap_open() - abs(shift)*score_matrix.gap_extend();
 				const int space = shift > 0 ? d.ungapped.j - e.ungapped.subject_last() : d.ungapped.i - e.ungapped.query_last();
 				int prefix_score;
 				if (space <= 0)
@@ -126,8 +126,8 @@ void Query_mapper::align_target(size_t idx, Statistics &stat)
 						target.hsps.back(),
 						config.read_padding(query_seq(frame).length()),
 						(score_t)score_matrix.rawscore(config.gapped_xdrop),
-						(score_t)(config.gap_open + config.gap_extend),
-						(score_t)config.gap_extend,
+						(score_t)(score_matrix.gap_open() + score_matrix.gap_extend()),
+						(score_t)score_matrix.gap_extend(),
 						cell_updates,
 						hits[i].query_pos_,
 						hits[i].subject_pos_,
@@ -140,8 +140,8 @@ void Query_mapper::align_target(size_t idx, Statistics &stat)
 						target.hsps.back(),
 						config.read_padding(query_seq(frame).length()),
 						score_matrix.rawscore(config.gapped_xdrop),
-						config.gap_open + config.gap_extend,
-						config.gap_extend,
+						score_matrix.gap_open() + score_matrix.gap_extend(),
+						score_matrix.gap_extend(),
 						cell_updates,
 						hits[i].query_pos_,
 						hits[i].subject_pos_,
