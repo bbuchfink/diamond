@@ -204,7 +204,9 @@ Config::Config(int argc, const char **argv)
 		("qfilt", 0, "", qfilt)
 		("sfilt", 0, "", sfilt)
 		("path-cutoff", 0, "", path_cutoff, 0.92)
-		("sw", 0, "", use_smith_waterman);
+		("sw", 0, "", use_smith_waterman)
+		("superblock", 0, "", superblock, 128)
+		("max-cells", 0, "", max_cells, 10000000u);
 		
 	parser.add(general).add(makedb).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options);
 	parser.store(argc, argv, command);

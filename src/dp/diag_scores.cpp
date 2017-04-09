@@ -71,15 +71,17 @@ void score_diagonal(const Letter *query, const Letter *subject, int len, int qbe
 	}
 }
 
-void score_diagonal2(const Letter *query, const Letter *subject, int len, int qbegin, int jbegin, vector<Diagonal_node> &diags, int cutoff)
+void score_diagonal2(const Letter *query, const Letter *subject, int len, int qbegin, int jbegin, vector<Diagonal_node> &diags, int cutoff, size_t &cells)
 {
 	static const int xdrop = 10;
 	int i = 0, j = 0, max_score = 0, score = 0, begin = 0, end = 0, l = 0;
 	while (l<len) {
 		score += score_matrix(query[i], subject[i]);
 		if (score <= 0 || max_score - score > xdrop) {
-			if (max_score >= cutoff)
+			if (max_score >= cutoff) {
 				diags.push_back(Diagonal_node(qbegin + begin, jbegin + begin, end - begin, max_score));
+				cells += end - begin;
+			}
 			score = 0;
 			max_score = 0;
 			begin = i + 1;
@@ -91,8 +93,10 @@ void score_diagonal2(const Letter *query, const Letter *subject, int len, int qb
 		++i;
 		++l;
 	}
-	if (max_score >= cutoff)
+	if (max_score >= cutoff) {
 		diags.push_back(Diagonal_node(qbegin + begin, jbegin + begin, end - begin, max_score));
+		cells += end - begin;
+	}
 }
 
 Diagonal_segment score_diagonal(const Letter *query, const Letter *subject, int n, int qbegin, int jbegin)
@@ -186,44 +190,44 @@ void scan_cols(const Long_score_profile &qp, sequence s, int i, int j, int j_end
 #endif
 }
 
-void scan_cols(const Long_score_profile &qp, sequence s, int i, int i_end, int j, int j_end, vector<uint8_t> &sv_max, bool log, Band &buf, Band &local_max, int block_len)
+void scan_cols(const Long_score_profile &qp, sequence s, int i, int j, int j_end, vector<uint8_t> &sv_max, bool log, Band &buf, Band &local_max, int block_len)
 {
 #ifdef __SSE2__
 	typedef score_vector<uint8_t> Sv;
 	const Sv vbias(score_matrix.bias());
-	const int qlen = (int)qp.length();
-	for (int i2 = i; i2 < i_end; i2 += 16) {
-		int j2 = std::max(-(i2 - j + 15), j),
-			i3 = j2 + i2 - j,
-			j2_end = std::min(qlen - (i2 - j), j_end);
-		uint8_t *local_max_ptr = local_max.data() + (i2 - i) + (j2 - j) / 16 * (i_end - i),
-			*buf_ptr = buf.data() + (i2 - i) + (j2 - j)*(i_end - i);
-		Sv v, max, global_max;
-		for (; j2 < j2_end; ++j2, ++i3) {
-			assert(j2 >= 0);
-			const uint8_t *q = qp.get(s[j2], i3);
-			v = v + score_vector<uint8_t>(q);
-			v -= vbias;
-			max.max(v);
-			assert(buf.check(buf_ptr + 16));
-			v.store(buf_ptr);
-			buf_ptr += i_end - i;
-			if (((j2 - j) & 15) == 15) {
-				global_max.max(max);
-				assert(local_max.check(local_max_ptr + 16));
-				max.store(local_max_ptr);
-				local_max_ptr += (i_end - i);
-				max = score_vector<uint8_t>();
-			}
-		}
-		if (((j2 - j) & 15) != 0) {
+	const int qlen = (int)qp.length(),
+		diags = buf.diags();
+
+	int j2 = std::max(-(i - j + 15), j),
+		i3 = j2 + i - j,
+		j2_end = std::min(qlen - (i - j), j_end);
+	uint8_t *local_max_ptr = local_max.data() + (j2 - j) / 16 * diags,
+		*buf_ptr = buf.data() + (j2 - j)*diags;
+	Sv v, max, global_max;
+	for (; j2 < j2_end; ++j2, ++i3) {
+		assert(j2 >= 0);
+		const uint8_t *q = qp.get(s[j2], i3);
+		v = v + score_vector<uint8_t>(q);
+		v -= vbias;
+		max.max(v);
+		assert(buf.check(buf_ptr + 16));
+		v.store(buf_ptr);
+		buf_ptr += diags;
+		if (((j2 - j) & 15) == 15) {
 			global_max.max(max);
-			assert(local_max.check(local_max_ptr));
+			assert(local_max.check(local_max_ptr + 16));
 			max.store(local_max_ptr);
+			local_max_ptr += diags;
+			max = score_vector<uint8_t>();
 		}
-		assert(i2 - i >= 0 && i2 - i < sv_max.size());
-		global_max.store(&sv_max[i2 - i]);
 	}
+	if (((j2 - j) & 15) != 0) {
+		global_max.max(max);
+		assert(local_max.check(local_max_ptr));
+		max.store(local_max_ptr);
+	}
+	global_max.store(&sv_max[0]);
+
 #endif
 }
 
@@ -349,7 +353,7 @@ int get_low_idx(Band::Iterator &d, int begin, int end, int d0)
 	return begin > d0 ? j : d0 - 1;
 }
 
-int get_diag(int i, int j, Band::Iterator &d, int begin, int last, int end, int d0, vector<Diagonal_node> &diags, int block_len, bool log, int cutoff, int best_score)
+int get_diag(int i, int j, Band::Iterator &d, int begin, int last, int end, int d0, vector<Diagonal_node> &diags, int block_len, bool log, int cutoff, int best_score, size_t &cells)
 {
 	assert(end >= begin && begin >= 0);
 	int z = std::numeric_limits<int>::max();
@@ -367,6 +371,7 @@ int get_diag(int i, int j, Band::Iterator &d, int begin, int last, int end, int 
 			assert(i + p0 + 1 >= 0);
 			assert(j + p0 + 1 >= 0);
 			diags.push_back(Diagonal_segment(i + p0 + 1, j + p0 + 1, p1 - p0, score));
+			cells += p1 - p0;
 			assert(p0 + 1 >= 0);
 			z = p0 + 1;
 			if (log)
@@ -421,11 +426,12 @@ void Diag_scores::set_zero(Band::Iterator &d, Band::Iterator d2, int begin, int 
 	::set_zero(d, b0 + 1, b1);
 }
 
-void Diag_scores::get_diag(int i, int j, int o, int j_begin, int j_end, vector<Diagonal_node> &diags, int cutoff, bool log)
+void Diag_scores::get_diag(int i, int j, int o, int j_begin, int j_end, vector<Diagonal_node> &diags, int cutoff, bool log, size_t &cells)
 {
 	Band::Iterator d(local_max.diag(o)), d2(score_buf.diag(o));
-	const int j0 = dj0(o),
-		j1 = dj1(o),
+	const int diag = i - j,
+		j0 = dj0(diag),
+		j1 = dj1(diag),
 		b0 = (j0 - j) / block_len,
 		b1 = (j1 - j + block_len - 1) / block_len;
 	int p = std::max((j_begin - j) / block_len, b0), p_begin = p, p_end = std::min((j_end - j + block_len - 1) / block_len, b1), best = -1, best_score = -1, begin = -1, max_score, last = p;
@@ -441,7 +447,7 @@ void Diag_scores::get_diag(int i, int j, int o, int j_begin, int j_end, vector<D
 			best_score = max_score;
 		}
 		else if (begin != -1) {
-			const int z = ::get_diag(i, j, d2, std::max(begin*block_len, j0 - j), std::max(last*block_len, j0 - j), std::min((best + 1)*block_len, j1 - j), j0-j, diags, block_len, log, cutoff, best_score);
+			const int z = ::get_diag(i, j, d2, std::max(begin*block_len, j0 - j), std::max(last*block_len, j0 - j), std::min((best + 1)*block_len, j1 - j), j0-j, diags, block_len, log, cutoff, best_score, cells);
 			if (z < std::numeric_limits<int>::max()) {
 				assert(diags.back().len > 0);
 				assert(diags.back().j >= 0 && diags.back().subject_end() <= slen);
@@ -463,7 +469,7 @@ void Diag_scores::get_diag(int i, int j, int o, int j_begin, int j_end, vector<D
 			best -= 1;
 			best_score = d[best];
 		}
-		const int z = ::get_diag(i, j, d2, std::max(begin*block_len, j0 - j), std::max(last*block_len, j0 - j), std::min((best + 1)*block_len, j1 - j), j0-j, diags, block_len, log, cutoff, best_score);
+		const int z = ::get_diag(i, j, d2, std::max(begin*block_len, j0 - j), std::max(last*block_len, j0 - j), std::min((best + 1)*block_len, j1 - j), j0-j, diags, block_len, log, cutoff, best_score, cells);
 		if (z < std::numeric_limits<int>::max()) {
 			assert(diags.back().len > 0);
 			assert(diags.back().j >= 0 && diags.back().subject_end() <= slen);
@@ -473,9 +479,8 @@ void Diag_scores::get_diag(int i, int j, int o, int j_begin, int j_end, vector<D
 	}
 }
 
-void Diag_scores::scan_diags(int d_begin, int d_end, sequence query, sequence subject, const Long_score_profile &qp, bool log, vector<Diagonal_node> &diags, bool fast)
+size_t Diag_scores::scan_diags(int d_begin, int d_end, sequence query, sequence subject, const Long_score_profile &qp, bool log, vector<Diagonal_node> &diags, bool fast)
 {
-	static const int max_dist = 60;
 	qlen = (int)query.length();
 	slen = (int)subject.length();
 	d_begin = std::max(d_begin, -((int)subject.length() - 1));
@@ -489,27 +494,33 @@ void Diag_scores::scan_diags(int d_begin, int d_end, sequence query, sequence su
 	j_begin = i_begin - d_begin;
 	const int j1 = std::min(qlen - d_begin, slen);
 	sv_max.clear();
-	sv_max.resize(band + (block_len - band%block_len));
-	memset(sv_max.data(), 0, sv_max.size());
-	score_buf.init(band, j1 - j_begin);
-	local_max.init(band, (j1 - j_begin + block_len - 1) / block_len);
-	if (!fast) {
-		active.clear();
-		active.insert(active.begin(), band*local_max.cols(), false);
-	}
-	//scan_cols(qp, subject, i, j, j1, sv_max, log, score_buf.data(), local_max.data(), block_len);
-	scan_cols(qp, subject, i_begin, i_begin + band, j_begin, j1, sv_max, log, score_buf, local_max, block_len);
+	sv_max.resize(16);
+	score_buf.init(16, j1 - j_begin);
+	local_max.init(16, (j1 - j_begin + block_len - 1) / block_len);
+	size_t cells = 0;
 
-	for (int o = 0; o < band; ++o)
-		if (sv_max[o] >= Diag_scores::min_diag_score) {
-			if (sv_max[o] >= 255 - score_matrix.bias()) {
-				const int s = std::min(i_begin + o, 0), i0 = i_begin + o - s, j0 = j_begin - s;
-				score_diagonal2(&query[i0], &subject[j0], std::min((int)query.length() - i0, (int)subject.length() - j0), i0, j0, diags, fast ? min_diag_score : min_low_score);
-				//::set_zero(local_max.diag(o), 0, local_max.cols());
-				set_active(o, 0, local_max.cols());
+	for (int i = i_begin; i < i_begin + band; i += 16) {
+
+		memset(sv_max.data(), 0, sv_max.size());
+		
+		scan_cols(qp, subject, i, j_begin, j1, sv_max, log, score_buf, local_max, block_len);
+
+		for (int o = 0; o < 16; ++o)
+			if (sv_max[o] >= Diag_scores::min_diag_score) {
+				if (sv_max[o] >= 255 - score_matrix.bias()) {
+					const int s = std::min(i + o, 0), i0 = i + o - s, j0 = j_begin - s;
+					score_diagonal2(&query[i0], &subject[j0], std::min((int)query.length() - i0, (int)subject.length() - j0), i0, j0, diags, fast ? min_diag_score : min_low_score, cells);
+					//::set_zero(local_max.diag(o), 0, local_max.cols());
+					set_active(o, 0, local_max.cols());
+				}
+				else
+					get_diag(i + o, j_begin, o, j_begin, j1, diags, min_diag_score, log, cells);
 			}
-			else
-				get_diag(i_begin + o, j_begin, o, j_begin, j1, diags, min_diag_score, log);
-		}
+
+	}
+	
+	//cout << "dens=" << (double)cells / (double)band / (double)(j1 - j_begin) << endl;
+
+	return cells;
 
 }

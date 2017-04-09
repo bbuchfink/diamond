@@ -307,6 +307,10 @@ struct Band
 	{
 		return cols_;
 	}
+	int diags() const
+	{
+		return diags_;
+	}
 	uint8_t* data()
 	{
 		return data_.data();
@@ -324,17 +328,17 @@ struct Diag_scores {
 	enum {
 		block_len = 16
 	};
-	int dj0(int o) const
+	int dj0(int d) const
 	{
-		return std::max(-d_begin - o, 0);
+		return std::max(-d, 0);
 	}
-	int dj1(int o) const
+	int dj1(int d) const
 	{
-		return std::min(qlen - d_begin - o, slen);
+		return std::min(qlen - d, slen);
 	}
-	void get_diag(int i, int j, int o, int j_begin, int j_end, vector<Diagonal_node> &diags, int cutoff, bool log);
+	void get_diag(int i, int j, int o, int j_begin, int j_end, vector<Diagonal_node> &diags, int cutoff, bool log, size_t &cells);
 	void get_diag2(int i, int j, int o, int j_begin, int j_end, vector<Diagonal_node> &diags, int cutoff, bool log);
-	void scan_diags(int d_begin, int d_end, sequence query, sequence subject, const Long_score_profile &qp, bool log, vector<Diagonal_node> &diags, bool fast);
+	size_t scan_diags(int d_begin, int d_end, sequence query, sequence subject, const Long_score_profile &qp, bool log, vector<Diagonal_node> &diags, bool fast);
 	void set_zero(Band::Iterator &d, Band::Iterator d2, int begin, int end);
 	void set_active(int o, int begin, int end);
 	bool is_active(int o, int i) const;

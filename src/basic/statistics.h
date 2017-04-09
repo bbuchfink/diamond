@@ -67,9 +67,9 @@ struct Statistics
 		log_stream << "Traceback errors = " << data_[BIAS_ERRORS] << endl;
 		verbose_stream << "Hits (filter stage 0) = " << data_[SEED_HITS] << endl;
 		verbose_stream << "Hits (filter stage 1) = " << data_[TENTATIVE_MATCHES1] << " (" << data_[TENTATIVE_MATCHES1]*100.0/ data_[SEED_HITS] << " %)" << endl;
-		verbose_stream << "Hits (filter stage x) = " << data_[TENTATIVE_MATCHESX] << " (" << data_[TENTATIVE_MATCHESX] * 100.0 / data_[TENTATIVE_MATCHES1] << " %)" << endl;
-		verbose_stream << "Hits (filter stage 2) = " << data_[TENTATIVE_MATCHES2] << " (" << data_[TENTATIVE_MATCHES2] * 100.0 / data_[TENTATIVE_MATCHESX] << " %)" << endl;
-		verbose_stream << "Hits (filter stage 3) = " << data_[TENTATIVE_MATCHES3] << " (" << data_[TENTATIVE_MATCHES3] * 100.0 / data_[TENTATIVE_MATCHES2] << " %)" << endl;
+		verbose_stream << "Hits (filter stage 2) = " << data_[TENTATIVE_MATCHES2] << " (" << data_[TENTATIVE_MATCHES2] * 100.0 / data_[TENTATIVE_MATCHES1] << " %)" << endl;
+		verbose_stream << "Hits (filter stage x) = " << data_[TENTATIVE_MATCHESX] << " (" << data_[TENTATIVE_MATCHESX] * 100.0 / data_[TENTATIVE_MATCHES2] << " %)" << endl;
+		verbose_stream << "Hits (filter stage 3) = " << data_[TENTATIVE_MATCHES3] << " (" << data_[TENTATIVE_MATCHES3] * 100.0 / data_[TENTATIVE_MATCHESX] << " %)" << endl;
 		verbose_stream << "Hits (filter stage 4) = " << data_[TENTATIVE_MATCHES4] << " (" << data_[TENTATIVE_MATCHES4] * 100.0 / data_[TENTATIVE_MATCHES3] << " %)" << endl;
 		log_stream << "Gapped hits = " << data_[GAPPED_HITS] << endl;
 		log_stream << "Overlap hits = " << data_[DUPLICATES] << endl;

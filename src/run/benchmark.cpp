@@ -126,7 +126,7 @@ void benchmark_ungapped(const Sequence_set &ss, unsigned qa, unsigned sa)
 
 	for (size_t i = 0; i < n; ++i) {
 
-		//score += xdrop_window(q, s);
+		score += xdrop_window(q, s);
 		//score += binary_ungapped(mask);
 
 	}
@@ -138,7 +138,7 @@ void benchmark_ungapped(const Sequence_set &ss, unsigned qa, unsigned sa)
 
 void benchmark_greedy(const Sequence_set &ss, unsigned qa, unsigned sa)
 {
-	static const unsigned n = 100000;
+	static const unsigned n = 1000000;
 	vector<Seed_hit> d;
 	d.push_back(Seed_hit(0, 0, sa, qa, Diagonal_segment()));
 	Long_score_profile qp(ss[0]);
@@ -156,6 +156,7 @@ void benchmark_greedy(const Sequence_set &ss, unsigned qa, unsigned sa)
 	for (unsigned i = 0; i < n; ++i) {
 
 		greedy_align(ss[0], qp, ss[1], d.begin(), d.end(), false, hsp);
+		hsp.score = 0;
 
 	}
 	t.stop();

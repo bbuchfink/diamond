@@ -122,6 +122,21 @@ struct sequence
 			buf << value_traits.alphabet[(long)s.data_[i]];
 		return buf;
 	}
+	static sequence get_window(const Letter *s, int window)
+	{
+		const Letter *p = s;
+		int n = 0;
+		while (*p != '\xff' && n < window) {
+			--p;
+			++n;
+		}
+		n = 0;
+		while (*s != '\xff' && n < window) {
+			++s;
+			++n;
+		}
+		return sequence(p + 1, s - p - 1);
+	}
 	/*friend std::ostream& operator<<(std::ostream &os, const sequence &s)
 	{
 		std::cout << "co = " << s.clipping_offset_ << std::endl;

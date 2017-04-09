@@ -28,35 +28,6 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 TLS_PTR vector<sequence>* hit_filter::subjects_ptr;
 #endif
 
-unsigned count_id(const Letter *query, const Letter *subject)
-{
-	static const Reduction reduction("KR E D Q N C G H LM FY VI W P S T A"); // murphy.10
-	unsigned n = 0;
-	for (int i = -1; i >= -((int)config.id_left) && query[i] != '\xff' && subject[i] != '\xff'; --i)
-		if (reduction(query[i]) == reduction(subject[i]))
-			++n;
-	for (unsigned i = 0; i < config.id_right && query[i] != '\xff' && subject[i] != '\xff'; ++i)
-		if (reduction(query[i]) == reduction(subject[i]))
-			++n;
-	return n;
-}
-
-int extend_binary(const Letter *query, const Letter *subject)
-{
-	int s = 0, t = 0;
-	for (int i = -1; i >= -60 && query[i] != '\xff' && subject[i] != '\xff'; --i) {
-		t += query[i] == subject[i] ? config.bmatch : -config.bmismatch;
-		s = std::max(s, t);
-	}
-	int sr = 0;
-	t = 0;
-	for (unsigned i = 0; i < 60 && query[i] != '\xff' && subject[i] != '\xff'; ++i) {
-		t += query[i] == subject[i] ? config.bmatch : -config.bmismatch;
-		sr = std::max(sr, t);
-	}
-	return s + sr;
-}
-
 #ifdef __SSE2__
 
 void search_query_offset(Loc q,
@@ -80,14 +51,16 @@ void search_query_offset(Loc q,
 		/*if (extend_binary(query, subject) < config.bcutoff)
 			continue;*/
 
-		stats.inc(Statistics::TENTATIVE_MATCHESX);
-
 		unsigned delta, len;
 		int score;
 		if ((score = stage2_ungapped(query, subject, sid, delta, len)) < config.min_ungapped_raw_score)
 			continue;
 
 		stats.inc(Statistics::TENTATIVE_MATCHES2);
+		/*if (filterl(query, subject) < 20)
+			continue;*/
+
+		stats.inc(Statistics::TENTATIVE_MATCHESX);
 		
 		if (!is_primary_hit(query - delta, subject - delta, delta, sid, len))
 			continue;

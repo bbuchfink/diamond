@@ -96,6 +96,7 @@ pair<int, int> get_diag_range(vector<Seed_hit>::const_iterator begin, vector<See
 void Query_mapper::align_target(size_t idx, Statistics &stat)
 {
 	static const int band = 32;
+	static const bool logging = false;
 	typedef float score_t;
 	Target& target = targets[idx];
 	const size_t n = target.end - target.begin,
@@ -103,7 +104,7 @@ void Query_mapper::align_target(size_t idx, Statistics &stat)
 	size_t aligned_len = 0;
 	const vector<Seed_hit>::const_iterator hits = seed_hits.begin() + target.begin;
 	const sequence subject = ref_seqs::get()[hits[0].subject_];
-	//cout << query_ids::get()[query_id].c_str() << endl << ref_ids::get()[hits[0].subject_].c_str() << endl;
+	//cout << '>' << query_ids::get()[query_id].c_str() << endl << '>' << ref_ids::get()[hits[0].subject_].c_str() << endl;
 
 	unsigned frame_mask = (1 << align_mode.query_contexts) - 1;
 
@@ -169,7 +170,7 @@ void Query_mapper::align_target(size_t idx, Statistics &stat)
 		std::sort(seed_hits.begin() + target.begin, seed_hits.begin() + target.end, Seed_hit::compare_diag);
 		target.hsps.push_back(Hsp_data());
 		target.hsps.back().frame = 0;
-		stat.inc(Statistics::SQUARED_ERROR, (uint64_t)greedy_align(query_seq(0), profile[0], subject, hits, hits + n, false, target.hsps.back()));
+		stat.inc(Statistics::SQUARED_ERROR, (uint64_t)greedy_align(query_seq(0), profile[0], subject, hits, hits + n, logging, target.hsps.back()));
 		stat.inc(Statistics::OUT_HITS);
 	}
 
