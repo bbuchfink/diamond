@@ -108,9 +108,13 @@ struct Diagonal_segment
 	{
 		return i + len <= rhs.i && j + len <= rhs.j;
 	}
+	bool operator==(const Diagonal_segment &rhs) const
+	{
+		return i == rhs.i && j == rhs.j && len == rhs.len;
+	}
 	static bool cmp_subject(const Diagonal_segment &x, const Diagonal_segment &y)
 	{
-		return x.j < y.j;
+		return x.j < y.j || (x.j == y.j && x.i < y.i);
 	}
 	static bool cmp_subject_end(const Diagonal_segment &x, const Diagonal_segment &y)
 	{

@@ -29,6 +29,44 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 
 using std::map;
 
+void Diag_graph::load(vector<Seed_hit>::const_iterator begin, vector<Seed_hit>::const_iterator end)
+{
+	for (vector<Seed_hit>::const_iterator i = begin; i < end; ++i)
+		nodes.push_back(i->ungapped);
+}
+
+void Diag_graph::print(sequence query, sequence subject) const
+{
+	for (int k = 0; k < (int)nodes.size(); ++k) {
+		const Diagonal_segment &d = nodes[k];
+		cout << "Diag n=" << k << " i=" << d.i << " j=" << d.j << " d=" << d.diag() << " score=" << d.score << " len=" << d.len << endl;
+		cout << sequence(query, d.i, d.query_last()) << endl;
+		cout << sequence(subject, d.j, d.subject_last()) << endl;
+	}
+}
+
+size_t Diag_graph::top_node() const
+{
+	int top_score = 0, score;
+	unsigned top_node = 0;
+	for (unsigned k = 0; k < nodes.size(); ++k)
+		if ((score = prefix_score(k, 0)) > top_score) {
+			top_node = k;
+			top_score = score;
+		}
+	return top_node;
+}
+
+void Diag_graph::sort()
+{
+	std::sort(nodes.begin(), nodes.end(), Diagonal_segment::cmp_subject);
+	for (vector<Diagonal_node>::iterator i = nodes.begin() + 1; i < nodes.end();)
+		if (*i == *(i - 1))
+			i = nodes.erase(i);
+		else
+			++i;
+}
+
 struct Link
 {
 	Link():
@@ -132,40 +170,21 @@ int get_link(const Diagonal_segment &d1, const Diagonal_segment &d2, sequence qu
 		return get_hgap_link(d1, d2, query, subject, l, padding);
 }
 
-int backtrace_diag(const int *scores, int i, int j, const sequence &query, const sequence &subject)
+struct Hsp_traits
 {
-	int l = 0;
-	while (*scores == score_matrix(query[i], subject[j]) + *(scores - 1)) {
-		--scores;
-		--i;
-		--j;
-		++l;
-	}
-	return l;
-}
+	Hsp_traits() :
+		d_max(std::numeric_limits<int>::min()),
+		d_min(std::numeric_limits<int>::max()),
+		shift_max(0),
+		dj_max(0)
+	{}
+	int d_min, d_max, shift_max, dj_max;
+};
 
 struct Greedy_aligner2
 {
 
 	enum { link_padding = 10, reverse_link_min_overhang = 10 };
-
-	struct Node_ref
-	{
-		Node_ref():
-			node(0),
-			score(0)
-		{}
-		Node_ref(unsigned node, int score) :
-			node(node),
-			score(score)
-		{}
-		unsigned node;
-		int score;
-		bool operator<(const Node_ref &rhs) const
-		{
-			return score > rhs.score;
-		}
-	};
 
 	void get_approximate_link(int d_idx, int e_idx)
 	{
@@ -185,8 +204,8 @@ struct Greedy_aligner2
 				link_score = link.score1 + link.score2 + gap_score;
 				exact = true;
 				link_j = link.subject_pos2;
-				if (log)
-					cout << "Link score1=" << link.score1 << " score2=" << link.score2 << " j1=" << link.subject_pos1 << " j2=" << link.subject_pos2 << endl;
+				/*if (log)
+					cout << "Link score1=" << link.score1 << " score2=" << link.score2 << " j1=" << link.subject_pos1 << " j2=" << link.subject_pos2 << endl;*/
 			}
 		}
 		else {
@@ -195,20 +214,20 @@ struct Greedy_aligner2
 			exact = false;
 			link_j = d.j;
 		}
-
 		
 		if (prefix_score > 0) {
 			diags.add_edge(Diag_graph::Edge(prefix_score, link_j, d_idx, e_idx, exact, Diagonal_node::estimate, diff1, diff2));
 			if (log)
-				cout << "Link n=" << e_idx << " shift=" << shift << " space=" << space << " prefix_score=" << prefix_score << " link_score=" << link_score << endl;
+				cout << "Link n=" << e_idx << " d=" << e.diag() << " shift=" << shift << " space=" << space << " prefix_score=" << prefix_score << " link_score=" << link_score << endl;
 		}
 	}
 
 	void forward_pass()
 	{
-		static const int max_dist = 200, max_shift = 48;
+		static const int max_dist = 999999, max_shift = 999999;
 
 		for (unsigned node = 0; node < diags.nodes.size(); ++node) {
+			diags.init(node);
 			Diagonal_node& d = diags[node];
 			const int dd = d.diag();
 			if (log) cout << "Node " << node << " Score=" << d.score << endl;
@@ -217,9 +236,13 @@ struct Greedy_aligner2
 				i = window.insert(std::make_pair(dd, node)).first;
 
 			j = i;
+			if (i == window.begin())
+				goto weiter;
 			int max_j = 0;
-			while(j != window.begin() && dd - j->first < max_shift) {
+			do {
 				--j;
+				if (dd - j->first > max_shift)
+					break;
 				Diagonal_node &e = diags[j->second];
 				const int de = j->first, shift = dd - de;
 				if (d.j - e.subject_end() > max_dist) {
@@ -233,11 +256,12 @@ struct Greedy_aligner2
 						window.erase(j);
 						j = k;
 						++j;
+						continue;
 					}
+				}
+				if (e.subject_end() < max_j) {
 					continue;
 				}
-				if (e.subject_end() < max_j)
-					continue;
 				get_approximate_link(node, j->second);
 				if (e.subject_end() - (d.subject_end() - std::min(e.diag() - d.diag(), 0)) >= reverse_link_min_overhang) {
 					if (log)
@@ -245,8 +269,9 @@ struct Greedy_aligner2
 					get_approximate_link(j->second, node);
 				}
 				max_j = std::max(max_j, e.subject_end());
-			}
+			} while (j != window.begin());
 
+			weiter:
 			j = i;
 			int max_i = 0;
 			while (j != window.end() && j->first - dd < max_shift) {
@@ -284,9 +309,12 @@ struct Greedy_aligner2
 		}
 	}
 
-	void backtrace(unsigned node, int j_end, Hsp_data &out, unsigned pass, bool transcript)
+	void backtrace(size_t node, int j_end, Hsp_data &out, unsigned pass, bool transcript, Hsp_traits &t) const
 	{
 		const Diagonal_node &d = diags[node];
+		const int dd = d.diag();
+		t.d_max = std::max(t.d_max, dd);
+		t.d_min = std::min(t.d_min, dd);
 		int j;
 		vector<Diag_graph::Edge>::const_iterator f = diags.get_edge(node, j_end, pass);
 		if (f != diags.edges.end()) {
@@ -294,7 +322,7 @@ struct Greedy_aligner2
 			const int shift = d.diag() - e.diag();
 			j = f->j;
 
-			backtrace(f->node_out, shift > 0 ? j : j + shift, out, pass, transcript);
+			backtrace(f->node_out, shift > 0 ? j : j + shift, out, pass, transcript, t);
 
 			if (transcript) {
 				if (shift > 0) {
@@ -331,7 +359,54 @@ struct Greedy_aligner2
 		}
 	}
 
-	Greedy_aligner2(const sequence &query, const Long_score_profile &qp, const sequence &subject, int d_begin, int d_end, bool log, Hsp_data &out, bool fast=true) :
+	void backtrace(Hsp_data &out, Hsp_traits &t) const
+	{
+		size_t top_node = diags.top_node();
+		out.transcript.clear();
+		out.query_range.end_ = diags[top_node].query_end();
+		out.subject_range.end_ = diags[top_node].subject_end();
+		backtrace(top_node, diags[top_node].subject_end(), out, 0, log, t);
+		out.transcript.push_terminator();
+		out.score = diags.prefix_score(top_node, 0);
+	}
+
+	void run(Hsp_data &out, Hsp_traits &t)
+	{
+		diags.sort();
+		if (log) {
+			diags.print(query, subject);
+			cout << endl << endl;
+		}
+
+		forward_pass();
+		backtrace(out, t);
+
+		if (log) {
+			print_hsp(out, query);
+			cout << endl << "Smith-Waterman:" << endl;
+			smith_waterman(query, subject, diags);
+			cout << endl << endl;
+		}
+	}
+
+	void run(int d_begin, int d_end, Hsp_data &out, Hsp_traits &t)
+	{
+		cout << d_begin << '\t' << d_end << '\t' << d_end-d_begin << endl;
+		diags.init();
+		window.clear();
+		diag_scores.scan_diags(d_begin, d_end, query, subject, qp, log, diags.nodes, true);
+		run(out, t);
+	}
+
+	void run(Hsp_data &out, Hsp_traits &t, vector<Seed_hit>::const_iterator begin, vector<Seed_hit>::const_iterator end)
+	{
+		diags.init();
+		window.clear();
+		diags.load(begin, end);
+		run(out, t);
+	}
+
+	Greedy_aligner2(const sequence &query, const Long_score_profile &qp, const sequence &subject, bool log) :
 		query(query),
 		subject(subject),
 		qp(qp),
@@ -340,48 +415,6 @@ struct Greedy_aligner2
 		diags(TLS::get(diags_ptr)),
 		window(TLS::get(window_ptr))
 	{
-		//cout << d_begin << '\t' << d_end << endl;
-		diags.init();
-		window.clear();
-		diag_scores.scan_diags(d_begin, d_end, query, subject, qp, log, diags.nodes, fast);
-		std::sort(diags.nodes.begin(), diags.nodes.end(), Diagonal_segment::cmp_subject);
-		if (log)
-			for (int k = 0; k < (int)diags.nodes.size(); ++k) {
-				const Diagonal_segment &d = diags[k];
-				cout << "Diag n=" << k << " i=" << d.i << " j=" << d.j << " score=" << d.score << " len=" << d.len << endl;
-				cout << sequence(query, d.i, d.query_last()) << endl;
-				cout << sequence(subject, d.j, d.subject_last()) << endl;
-			}
-		if (log) cout << endl << endl;
-
-		forward_pass();
-
-		//cout << "Diags=" << diags.nodes.size() << " edges=" << diags.edges.size() << endl;
-
-		int top_score = 0, score;
-		unsigned top_node = 0;
-		for (unsigned k = 0; k < diags.nodes.size();++k)
-			if ((score = diags.prefix_score(k, 0)) > top_score) {
-				top_node = k;
-				top_score = score;
-			}
-
-		out.transcript.clear();
-		out.query_range.end_ = diags[top_node].query_end();
-		out.subject_range.end_ = diags[top_node].subject_end();
-		backtrace(top_node, diags[top_node].subject_end(), out, fast ? 0 : 1, log);
-		out.transcript.push_terminator();
-		out.score = (int)top_score;
-
-		if (log) {
-			Text_buffer buf;
-			Pairwise_format().print_match(Hsp_context(out, 0, query, query, "", 0, 0, "", 0, 0, 0), buf);
-			buf << '\0';
-			cout << buf.get_begin() << endl << "Smith-Waterman:" << endl;
-			smith_waterman(query, subject, diags, buf);
-			buf << '\0';
-			cout << endl << buf.get_begin() << endl << endl;
-		}
 	}
 
 	static TLS_PTR Diag_scores *diag_scores_ptr;
@@ -389,12 +422,10 @@ struct Greedy_aligner2
 	static TLS_PTR map<int, unsigned> *window_ptr;
 	const sequence query, subject;
 	const Long_score_profile &qp;
-	const bool log;
-	
+	const bool log;	
 	Diag_scores &diag_scores;
 	Diag_graph &diags;
 	map<int, unsigned> &window;
-	Node_ref top_node;
 
 };
 
@@ -402,39 +433,43 @@ TLS_PTR Diag_scores *Greedy_aligner2::diag_scores_ptr;
 TLS_PTR Diag_graph *Greedy_aligner2::diags_ptr;
 TLS_PTR map<int, unsigned> *Greedy_aligner2::window_ptr;
 
-void greedy_align(sequence query, const Long_score_profile &qp, sequence subject, int d_begin, int d_end, bool log, Hsp_data &out)
+void greedy_align(sequence query, const Long_score_profile &qp, sequence subject, int d_begin, int d_end, bool log, Hsp_data &out, Hsp_traits &traits, vector<Seed_hit>::const_iterator begin, vector<Seed_hit>::const_iterator end)
 {
+	typedef pair<Hsp_data*, Hsp_traits> Hsp_ref;
 	Hsp_data hsp;
-	Greedy_aligner2(query, qp, subject, d_begin, d_end, log, hsp, true);
+	Hsp_traits t;
+	Greedy_aligner2 ga(query, qp, subject, log);
+	if (d_end - d_begin > config.padding * 4) {
+		ga.run(hsp, t, begin, end);
+		d_begin = t.d_min - config.padding;
+		d_end = t.d_max + config.padding;
+	}
+	ga.run(d_begin, d_end, hsp, t);
 	if (out.score > 0) {
-		const std::pair<Hsp_data*, Hsp_data*> h = hsp.subject_range.begin_ > out.subject_range.begin_ ? std::make_pair(&out, &hsp) : std::make_pair(&hsp, &out);
-		const int d0 = h.first->query_range.end_ - h.first->subject_range.end_,
-			d1 = h.second->query_range.begin_ - h.second->subject_range.begin_,
+		const Hsp_ref h1 = std::make_pair(&out, traits), h2 = std::make_pair(&hsp, t);
+		const pair<Hsp_ref, Hsp_ref> h = hsp.subject_range.begin_ > out.subject_range.begin_ ? std::make_pair(h1, h2) : std::make_pair(h2, h1);
+		const int d0 = h.first.first->query_range.end_ - h.first.first->subject_range.end_,
+			d1 = h.second.first->query_range.begin_ - h.second.first->subject_range.begin_,
 			shift = d1 - d0,
-			space = std::max(shift > 0 ? (int)h.second->subject_range.begin_ - (int)h.first->subject_range.end_ : (int)h.second->query_range.begin_ - (int)h.first->query_range.end_, 0),
+			space = shift > 0 ? (int)h.second.first->subject_range.begin_ - (int)h.first.first->subject_range.end_ : (int)h.second.first->query_range.begin_ - (int)h.first.first->query_range.end_,
 			s = -abs(shift)*score_matrix.gap_extend() - score_matrix.gap_open() + out.score + hsp.score - int(config.space_penalty*space);
-		if (s > (int)out.score && s > (int)hsp.score) {
-			const std::pair<int, int> db1 = h.first->diagonal_bounds(), db2 = h.second->diagonal_bounds();
-			Greedy_aligner2(query, qp, subject, std::min(db1.first, db2.first), std::max(db1.second, db2.second) + 1, log, hsp, true);
+		if (space >= 0 && s > (int)out.score && s > (int)hsp.score) {
+			cout << "Merge " << endl;
+			ga.run(std::min(h.first.second.d_min, h.second.second.d_min), std::max(h.first.second.d_max, h.second.second.d_max) + 1, hsp, t);
 		}
 	}
-	if (hsp.score > out.score)
+	if (hsp.score > out.score) {
 		out = hsp;
+		traits = t;
+	}
 }
 
 double greedy_align(sequence query, const Long_score_profile &qp, sequence subject, vector<Seed_hit>::const_iterator begin, vector<Seed_hit>::const_iterator end, bool log, Hsp_data &out)
-{
-	static const bool fast = true;
-	static const int band = 48;
-
-	if (query.length()*subject.length() > config.max_cells) {
-		int score;
-		needleman_wunsch(query, subject, score, Local(), int());
-		out.score = score;
-		return 0;
-	}
-
+{	
+	const int band = config.padding;
+	Hsp_traits traits;
 	int d_begin = begin->diagonal() - band, d_end = begin->diagonal() + band;
+	vector<Seed_hit>::const_iterator z_begin = begin;
 	if (log) {
 		cout << "Seed hit i=" << begin->query_pos_ << " j=" << begin->subject_pos_ << " d=" << begin->diagonal() << endl;
 	}
@@ -443,15 +478,16 @@ double greedy_align(sequence query, const Long_score_profile &qp, sequence subje
 		if(log)
 			cout << "Seed hit i=" << i->query_pos_ << " j=" << i->subject_pos_ << " d=" << i->diagonal() << endl;
 		if (d - band >= d_end) {
-			greedy_align(query, qp, subject, d_begin, d_end, log, out);
+			greedy_align(query, qp, subject, d_begin, d_end, log, out, traits, z_begin, i);
 			d_begin = d - band;
 			d_end = d + band;
+			z_begin = i;
 		}
 		else
 			d_end = d + band;
 	}
 
-	greedy_align(query, qp, subject, d_begin, d_end, log, out);
+	greedy_align(query, qp, subject, d_begin, d_end, log, out, traits, z_begin, end);
 
 	if (config.use_smith_waterman) {
 		int score;

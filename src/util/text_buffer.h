@@ -189,7 +189,12 @@ struct Text_buffer
 	Text_buffer& print(unsigned i, unsigned width)
 	{
 		reserve(16);
-		ptr_ += sprintf(ptr_, "%4u", i);
+		char buf[16];
+		const int n = sprintf(buf, "%u", i),
+			padding = std::max((int)width - n, 0);
+		memset(ptr_, ' ', padding);
+		memcpy(ptr_ + padding, buf, n);
+		ptr_ += padding + n;
 		return *this;
 	}
 

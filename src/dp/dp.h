@@ -218,6 +218,16 @@ struct Diag_graph
 		edges.clear();
 	}
 
+	void init(unsigned node)
+	{
+		if (edges.size() >= (size_t)std::numeric_limits<int>::max())
+			throw std::runtime_error("Too many edges.");
+		nodes[node].link_idx = (int)edges.size();
+	}
+
+	void load(vector<Seed_hit>::const_iterator begin, vector<Seed_hit>::const_iterator end);
+	void sort();
+
 	vector<Edge>::iterator add_edge(const Edge &edge)
 	{
 		for (vector<Diagonal_node>::iterator j = nodes.begin() + edge.node_in + 1; j < nodes.end(); ++j)
@@ -225,15 +235,11 @@ struct Diag_graph
 				break;
 			else
 				++j->link_idx;
-		if (nodes[edge.node_in].link_idx == -1) {
-			if (edges.size() >= (size_t)std::numeric_limits<int>::max())
-				throw std::runtime_error("Too many edges.");
-			nodes[edge.node_in].link_idx = (int)edges.size();
-		}
+		assert(nodes[edge.node_in].link_idx >= 0 && nodes[edge.node_in].link_idx <= (int)edges.size());
 		return edges.insert(edges.begin() + nodes[edge.node_in].link_idx++, edge);
 	}
 
-	vector<Edge>::const_iterator get_edge(unsigned node, int j, int pass) const
+	vector<Edge>::const_iterator get_edge(size_t node, int j, int pass) const
 	{
 		const Diagonal_node &d = nodes[node];
 		if (d.score == 0)
@@ -250,26 +256,29 @@ struct Diag_graph
 		return max_edge;
 	}
 
-	int prefix_score(unsigned node, int j, int pass) const
+	int prefix_score(size_t node, int j, int pass) const
 	{
 		const vector<Edge>::const_iterator i = get_edge(node, j, pass);
 		return i == edges.end() ? nodes[node].score : std::max(nodes[node].score, i->prefix_score[pass]);
 	}
 
-	int prefix_score(unsigned node, int pass) const
+	int prefix_score(size_t node, int pass) const
 	{
 		return prefix_score(node, nodes[node].subject_end(), pass);
 	}
 
-	Diagonal_node& operator[](unsigned k)
+	Diagonal_node& operator[](size_t k)
 	{
 		return nodes[k];
 	}
 
-	const Diagonal_node& operator[](unsigned k) const
+	const Diagonal_node& operator[](size_t k) const
 	{
 		return nodes[k];
 	}
+
+	void print(sequence query, sequence subject) const;
+	size_t top_node() const;
 
 	vector<Diagonal_node> nodes;
 	vector<Edge> edges;
@@ -351,7 +360,7 @@ struct Diag_scores {
 };
 
 void smith_waterman(sequence q, sequence s, Hsp_data &out);
-void smith_waterman(sequence q, sequence s, const Diag_graph &diags, Text_buffer &buf);
+void smith_waterman(sequence q, sequence s, const Diag_graph &diags);
 int score_range(sequence query, sequence subject, int i, int j, int j_end);
 
 #endif /* FLOATING_SW_H_ */

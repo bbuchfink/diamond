@@ -31,11 +31,12 @@ void Pairwise_format::print_match(const Hsp_context& r, Text_buffer &out) const
 	if (align_mode.query_translated)
 		out << " Frame = " << r.blast_query_frame() << '\n';
 	out << '\n';
+	const unsigned digits = (unsigned)std::max(ceil(log10(r.subject_range().end_)), ceil(log10(r.query_range().end_)));
 
 	Hsp_context::Iterator qi = r.begin(), mi = r.begin(), si = r.begin();
 	while (qi.good()) {
 		out << "Query  ";
-		out.print(qi.query_pos+1, 0);
+		out.print(qi.query_pos+1, digits);
 		out << "  ";
 		for (unsigned i = 0; i < width && qi.good(); ++i, ++qi)
 			out << qi.query_char();
@@ -43,13 +44,14 @@ void Pairwise_format::print_match(const Hsp_context& r, Text_buffer &out) const
 		out.print(qi.query_pos, 0);
 		out << '\n';
 
-		out << "             ";
+		for (unsigned i = 0; i < digits + 9; ++i)
+			out << ' ';
 		for (unsigned i = 0; i < width && mi.good(); ++i, ++mi)
 			out << mi.midline_char();
 		out << '\n';
 
 		out << "Sbjct  ";
-		out.print(si.subject_pos+1, 0);
+		out.print(si.subject_pos+1, digits);
 		out << "  ";
 		for (unsigned i = 0; i < width && si.good(); ++i, ++si)
 			out << si.subject_char();

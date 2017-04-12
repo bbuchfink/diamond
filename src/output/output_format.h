@@ -142,5 +142,6 @@ struct Pairwise_format : public Output_format
 };
 
 Output_format* get_output_format();
+void print_hsp(Hsp_data &hsp, sequence query);
 
 #endif /* OUTPUT_FORMAT_H_ */

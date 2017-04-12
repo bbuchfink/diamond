@@ -24,6 +24,14 @@ using std::endl;
 
 auto_ptr<Output_format> output_format;
 
+void print_hsp(Hsp_data &hsp, sequence query)
+{
+	Text_buffer buf;
+	Pairwise_format().print_match(Hsp_context(hsp, 0, query, query, "", 0, 0, "", 0, 0, 0), buf);
+	buf << '\0';
+	cout << buf.get_begin();
+}
+
 Output_format* get_output_format()
 {
 	const vector<string> &f = config.output_format;

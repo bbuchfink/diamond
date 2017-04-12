@@ -279,7 +279,7 @@ void print_diag(int i0, int j0, int l, int score, const Diag_graph &diags, const
 				cout << "(";
 			cout << "Diag n=" << d - diags.nodes.begin() << " i=" << i0 << " j=" << j0 << " len=" << l
 				<< " prefix_score=" << score + score_range(query, subject, i0 + l, j0 + l, d->subject_end()) - std::min(diff, 0)
-				<< " prefix_score2=" << diags.prefix_score((unsigned)(d - diags.nodes.begin()), j0 + l, 0);
+				<< " prefix_score2=" << diags.prefix_score((unsigned)(d - diags.nodes.begin()), j0 + l, 0) << " (" << diags.prefix_score((unsigned)(d - diags.nodes.begin()), 0) << ")";
 			if (n > 0)
 				cout << ")";
 			cout << endl;
@@ -290,7 +290,7 @@ void print_diag(int i0, int j0, int l, int score, const Diag_graph &diags, const
 		cout << "Diag n=x i=" << i0 << " j=" << j0 << " len=" << l << " prefix_score=" << score << endl;
 }
 
-void smith_waterman(sequence q, sequence s, const Diag_graph &diags, Text_buffer &buf)
+void smith_waterman(sequence q, sequence s, const Diag_graph &diags)
 {
 	Hsp_data hsp;
 	smith_waterman(q, s, hsp);
@@ -321,6 +321,5 @@ void smith_waterman(sequence q, sequence s, const Diag_graph &diags, Text_buffer
 		}
 	}
 	print_diag(i0, j0, l, score, diags, q, s);
-	buf.clear();
-	Pairwise_format().print_match(Hsp_context(hsp, 0, q, q, "", 0, 0, "", 0, 0, 0), buf);
+	print_hsp(hsp, q);
 }
