@@ -36,6 +36,16 @@ Query_mapper::Query_mapper() :
 	query_queue.last_query = query_id;
 }
 
+Query_mapper::Query_mapper(size_t query_id, Trace_pt_list::iterator begin, Trace_pt_list::iterator end) :
+	source_hits(std::make_pair(begin, end)),
+	query_id(query_id),
+	targets_finished(0),
+	next_target(0),
+	source_query_len(get_source_query_len(query_id)),
+	seed_hits(source_hits.second - source_hits.first)
+{
+}
+
 void Query_mapper::init()
 {
 	targets.resize(count_targets());
@@ -47,6 +57,7 @@ void Query_mapper::init()
 	if (config.greedy)
 		for (unsigned i = 0; i < align_mode.query_contexts; ++i)
 			profile.push_back(Long_score_profile(query_seq(i)));
+			//profile.push_back(Long_score_profile());
 }
 
 pair<Trace_pt_list::iterator, Trace_pt_list::iterator> Query_mapper::get_query_data()

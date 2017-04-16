@@ -134,6 +134,8 @@ struct score_profile
 
 struct Long_score_profile
 {
+	Long_score_profile()
+	{}
 	Long_score_profile(sequence seq)
 	{
 		for (unsigned l = 0; l < 25; ++l) {
@@ -154,7 +156,7 @@ struct Long_score_profile
 		return &data[(int)l][i + padding];
 	}
 	vector<uint8_t> data[25];
-	enum { padding = 256 };
+	enum { padding = 32 };
 };
 
 #endif /* SCORE_PROFILE_H_ */

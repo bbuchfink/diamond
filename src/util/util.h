@@ -67,11 +67,11 @@ struct interval
 		begin_ (0),
 		end_ (0)
 	{ }
-	interval(unsigned begin, unsigned end):
+	interval(int begin, int end):
 		begin_ (begin),
 		end_ (end)
 	{ }
-	unsigned length() const
+	int length() const
 	{ return end_ > begin_ ? end_ - begin_ : 0; }
 	unsigned overlap(const interval &rhs) const
 	{ return intersect(*this, rhs).length(); }
@@ -79,7 +79,7 @@ struct interval
 	{
 		return (double)overlap(rhs) / (double)length();
 	}
-	bool includes(unsigned p) const
+	bool includes(int p) const
 	{ return p >= begin_ && p < end_; }
 	friend std::ostream& operator<<(std::ostream &os, const interval &x)
 	{ os << "[" << x.begin_ << ";" << x.end_ << "]"; return os; }
@@ -88,13 +88,24 @@ struct interval
 		return begin_ < rhs.begin_;
 	}
 	friend interval intersect(const interval &lhs, const interval &rhs);
-	unsigned begin_, end_;
+	int begin_, end_;
 };
 
 inline interval intersect(const interval &lhs, const interval &rhs)
 {
 	return interval(std::max(lhs.begin_, rhs.begin_), std::min(lhs.end_, rhs.end_));
 }
+
+struct Interval_set : public vector<interval>
+{
+	int max_intersect(const interval &x) const
+	{
+		int max = 0;
+		for (const_iterator i = begin(); i < end(); ++i)
+			max = std::max(max, intersect(x, *i).length());
+		return max;
+	}
+};
 
 #ifdef __SSE2__
 inline void print(const __m128i &x)
@@ -558,6 +569,32 @@ inline _t safe_cast(size_t x)
 	if (x > (size_t)std::numeric_limits<_t>::max())
 		throw std::runtime_error("Integer value out of bounds.");
 	return (_t)x;
+}
+
+struct Index_iterator
+{
+	Index_iterator(size_t i) :
+		i(i)
+	{}
+	size_t operator*() const
+	{
+		return i;
+	}
+	bool operator<(const Index_iterator &rhs) const
+	{
+		return i < rhs.i;
+	}
+	Index_iterator& operator++()
+	{
+		++i;
+		return *this;
+	}
+	size_t i;
+};
+
+inline double megabytes(size_t x)
+{
+	return (double)x / (1 << 20);
 }
 
 #endif /* UTIL_H_ */

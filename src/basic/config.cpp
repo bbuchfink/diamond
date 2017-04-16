@@ -176,7 +176,6 @@ Config::Config(int argc, const char **argv)
 		("slow-search", 0, "", slow_search)
 		("ht", 0, "", ht_mode)
 		("old-freq", 0, "", old_freq)
-		("qp", 0, "", query_parallel)
 		("match1", 0, "", match_file1)
 		("match2", 0, "", match_file2)
 		("max-hits", 'C', "maximum number of hits to consider for one seed", hit_cap)
@@ -206,7 +205,8 @@ Config::Config(int argc, const char **argv)
 		("path-cutoff", 0, "", path_cutoff, 0.92)
 		("sw", 0, "", use_smith_waterman)
 		("superblock", 0, "", superblock, 128)
-		("max-cells", 0, "", max_cells, 10000000u);
+		("max-cells", 0, "", max_cells, 10000000u)
+		("lb", 0, "", load_balancing, (unsigned)Config::target_parallel);
 		
 	parser.add(general).add(makedb).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options);
 	parser.store(argc, argv, command);

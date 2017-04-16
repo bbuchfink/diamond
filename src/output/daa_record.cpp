@@ -53,9 +53,10 @@ Binary_buffer::Iterator& operator>>(Binary_buffer::Iterator &it, DAA_query_recor
 	uint8_t flag;
 	it >> flag;
 	it.read_packed(flag & 3, r.score);
-	uint32_t query_begin;
+	uint32_t query_begin, subject_begin;
 	it.read_packed((flag >> 2) & 3, query_begin);
-	it.read_packed((flag >> 4) & 3, r.subject_range.begin_);
+	it.read_packed((flag >> 4) & 3, subject_begin);
+	r.subject_range.begin_ = (int)subject_begin;
 	r.transcript.read(it);
 	r.subject_name = r.parent_.file_.ref_name(r.subject_id);
 	r.subject_len = r.parent_.file_.ref_len(r.subject_id);

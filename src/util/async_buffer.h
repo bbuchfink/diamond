@@ -36,7 +36,8 @@ struct Async_buffer
 
 	Async_buffer(size_t input_count, const string &tmpdir, unsigned bins) :
 		bins_(bins),
-		bin_size_((input_count + bins_ - 1) / bins_)
+		bin_size_((input_count + bins_ - 1) / bins_),
+		input_count_(input_count)
 	{
 		log_stream << "Async_buffer() " << input_count << ',' << bin_size_ << endl;
 		for (unsigned j = 0; j < config.threads_; ++j)
@@ -44,6 +45,16 @@ struct Async_buffer
 				tmp_file_.push_back(Temp_file());
 				size_.push_back(0);
 			}
+	}
+
+	size_t begin(size_t bin) const
+	{
+		return bin*bin_size_;
+	}
+
+	size_t end(size_t bin) const
+	{
+		return std::min((bin + 1)*bin_size_, input_count_);
 	}
 
 	struct Iterator
@@ -125,7 +136,7 @@ private:
 	}
 
 	const unsigned bins_;
-	const size_t bin_size_;
+	const size_t bin_size_, input_count_;
 	vector<size_t> size_;
 	vector<Temp_file> tmp_file_;
 

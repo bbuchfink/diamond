@@ -162,17 +162,27 @@ struct Diagonal_node : public Diagonal_segment
 	enum { estimate, finished };
 	Diagonal_node() :
 		Diagonal_segment(),
-		link_idx(-1)
+		link_idx(-1),
+		prefix_score(0),
+		path_max(0)
 	{}
 	Diagonal_node(int query_pos, int subject_pos, int len, int score, int link_idx=-1) :
 		Diagonal_segment(query_pos, subject_pos, len, score),
-		link_idx(link_idx)
+		link_idx(link_idx),
+		prefix_score(score),
+		path_max(score)
 	{}
 	Diagonal_node(const Diagonal_segment &d) :
 		Diagonal_segment(d),
-		link_idx(-1)
+		link_idx(-1),
+		prefix_score(d.score),
+		path_max(d.score)
 	{}
-	int link_idx;
+	static bool cmp_prefix_score(const Diagonal_node *x, const Diagonal_node *y)
+	{
+		return x->prefix_score > y->prefix_score;
+	}
+	int link_idx, prefix_score, path_max;
 };
 
 struct Diag_graph
@@ -181,22 +191,17 @@ struct Diag_graph
 	{
 		Edge() :
 			node_in(),
-			exact(true)
+			prefix_score(0)
 		{
-			prefix_score[0] = 0;
-			prefix_score[1] = 0;
 		}
-		Edge(int prefix_score, int j, unsigned node_in, unsigned node_out, bool exact, unsigned state, int diff1, int diff2) :
+		Edge(int prefix_score, int path_max, int j, unsigned node_in, unsigned node_out, int diff) :
+			prefix_score(prefix_score),
+			path_max(path_max),
 			j(j),
-			diff1(diff1),
-			diff2(diff2),
 			node_in(node_in),
-			node_out(node_out),	
-			state(state),			
-			exact(exact)
-		{
-			this->prefix_score[0] = prefix_score;
-			this->prefix_score[1] = 0;
+			node_out(node_out),
+			diff(diff)
+		{			
 		}
 		/*operator int() const
 		{
@@ -206,10 +211,8 @@ struct Diag_graph
 		{
 			return prefix_score > x.prefix_score;
 		}*/
-		enum { n_pass = 2 };
-		int prefix_score[n_pass], j, diff1, diff2;
-		unsigned node_in, node_out, state;
-		bool exact;
+		int prefix_score, path_max, j, diff;
+		unsigned node_in, node_out;
 	};
 
 	void init()
@@ -236,10 +239,13 @@ struct Diag_graph
 			else
 				++j->link_idx;
 		assert(nodes[edge.node_in].link_idx >= 0 && nodes[edge.node_in].link_idx <= (int)edges.size());
-		return edges.insert(edges.begin() + nodes[edge.node_in].link_idx++, edge);
+		Diagonal_node &d = nodes[edge.node_in];
+		d.prefix_score = std::max(d.prefix_score, edge.prefix_score);
+		d.path_max = std::max(d.path_max, edge.path_max);
+		return edges.insert(edges.begin() + d.link_idx++, edge);
 	}
 
-	vector<Edge>::const_iterator get_edge(size_t node, int j, int pass) const
+	vector<Edge>::const_iterator get_edge(size_t node, int j) const
 	{
 		const Diagonal_node &d = nodes[node];
 		if (d.score == 0)
@@ -249,24 +255,20 @@ struct Diag_graph
 		int max_score = d.score;
 		vector<Edge>::const_iterator max_edge = edges.end();
 		for (vector<Edge>::const_iterator i = edges.begin() + d.link_idx - 1; i >= edges.begin() && i->node_in == node; --i)
-			if (i->j < j && i->prefix_score[pass] > max_score) {
+			if (i->j <= j && i->prefix_score > max_score) {
 				max_edge = i;
-				max_score = i->prefix_score[pass];
+				max_score = i->prefix_score;
 			}
 		return max_edge;
 	}
 
-	int prefix_score(size_t node, int j, int pass) const
+	int prefix_score(size_t node, int j, int &path_max) const
 	{
-		const vector<Edge>::const_iterator i = get_edge(node, j, pass);
-		return i == edges.end() ? nodes[node].score : std::max(nodes[node].score, i->prefix_score[pass]);
+		const vector<Edge>::const_iterator i = get_edge(node, j);
+		path_max = i == edges.end() ? nodes[node].score : std::max(nodes[node].score, i->path_max);
+		return i == edges.end() ? nodes[node].score : std::max(nodes[node].score, i->prefix_score);
 	}
-
-	int prefix_score(size_t node, int pass) const
-	{
-		return prefix_score(node, nodes[node].subject_end(), pass);
-	}
-
+	
 	Diagonal_node& operator[](size_t k)
 	{
 		return nodes[k];

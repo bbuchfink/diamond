@@ -16,9 +16,107 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ****/
 
+#include "../basic/value.h"
+#include "align.h"
 #include "align_queries.h"
 #include "../data/reference.h"
 #include "../output/output_format.h"
+
+using std::map;
+
+auto_ptr<Simple_query_queue> Simple_query_queue::instance;
+auto_ptr<Output_sink> Output_sink::instance;
+
+size_t Simple_query_queue::get(vector<hit>::iterator &begin, vector<hit>::iterator &end)
+{
+	mtx_.lock();
+	const unsigned query = (unsigned)(next_++),
+		c = align_mode.query_contexts;
+	if (query >= qend_) {
+		mtx_.unlock();
+		return Simple_query_queue::end;
+	}
+	begin = it_;
+	while (it_ < end_ && it_->query_ / c == query)
+		++it_;
+	mtx_.unlock();
+	end = it_;
+	return query;
+}
+
+void Output_sink::push(size_t n, Text_buffer *buf)
+{
+	mtx_.lock();
+	if (n != next_) {
+		backlog_[n] = buf;
+		size_ += buf ? buf->size() : 0;
+		max_size_ = std::max(max_size_, size_);
+		mtx_.unlock();
+	}
+	else
+		flush(buf);
+}
+
+void Output_sink::flush(Text_buffer *buf)
+{
+	size_t n = next_ + 1;
+	vector<Text_buffer*> out;
+	out.push_back(buf);
+	map<size_t, Text_buffer*>::iterator i;
+	do {
+		while ((i = backlog_.begin()) != backlog_.end() && i->first == n) {
+			out.push_back(i->second);
+			backlog_.erase(i);
+			++n;
+		}
+		mtx_.unlock();
+		size_t size = 0;
+		for (vector<Text_buffer*>::iterator j = out.begin(); j < out.end(); ++j) {
+			if (*j) {
+				f_->write((*j)->get_begin(), (*j)->size());
+				size += (*j)->size();
+				delete *j;
+			}
+		}
+		out.clear();
+		mtx_.lock();
+		size_ -= size - (buf ? buf->size() : 0);
+	} while ((i = backlog_.begin()) != backlog_.end() && i->first == n);
+	next_ = n;
+	mtx_.unlock();
+}
+
+void align_worker(size_t thread_id)
+{
+	static const double heartbeat_interval = 1.0;
+	vector<hit>::iterator begin, end;
+	size_t query;
+	Statistics stat;
+	Timer timer;
+	if (thread_id == 0)
+		timer.start();
+	while ((query = Simple_query_queue::get().get(begin, end)) != Simple_query_queue::end) {
+		if (end == begin) {
+			Output_sink::get().push(query, 0);
+			continue;
+		}
+		Query_mapper mapper(query, begin, end);
+		mapper.init();
+		const size_t targets = mapper.n_targets();
+		for (size_t i = 0; i < targets; ++i)
+			mapper.align_target(i, stat);
+		Text_buffer *buf = new Text_buffer;
+		const bool aligned = mapper.generate_output(*buf, stat);
+		if (aligned && !config.unaligned.empty())
+			query_aligned[query] = true;
+		Output_sink::get().push(query, buf);
+		if (thread_id == 0 && timer.getElapsedTime() >= heartbeat_interval) {
+			verbose_stream << "Queries=" << query << " size=" << megabytes(Output_sink::get().size()) << " max_size=" << megabytes(Output_sink::get().max_size()) << endl;
+			timer.start();
+		}
+	}
+	statistics += stat;
+}
 
 Query_queue query_queue;
 
@@ -153,11 +251,21 @@ void align_queries(const Trace_pt_buffer &trace_pts, Output_stream* output_file)
 		merge_sort(v->begin(), v->end(), config.threads_);
 		v->init();
 		timer.go("Computing alignments");
-		query_queue.init(v->begin(), v->end());
-		Thread_pool threads;
-		for (unsigned i = 0; i < config.threads_; ++i)
-			threads.push_back(launch_thread(align_worker, output_file));
-		threads.join_all();
+		if (config.load_balancing == Config::target_parallel) {
+			query_queue.init(v->begin(), v->end());
+			Thread_pool threads;
+			for (unsigned i = 0; i < config.threads_; ++i)
+				threads.push_back(launch_thread(static_cast<void (*)(Output_stream*)>(&align_worker), output_file));
+			threads.join_all();
+		}
+		else {
+			Simple_query_queue::instance = auto_ptr<Simple_query_queue>(new Simple_query_queue(trace_pts.begin(bin), trace_pts.end(bin), v->begin(), v->end()));
+			Output_sink::instance = auto_ptr<Output_sink>(new Output_sink(output_file));
+			Thread_pool threads;
+			for (size_t i = 0; i < config.threads_; ++i)
+				threads.push_back(launch_thread(static_cast<void(*)(size_t)>(&align_worker), i));
+			threads.join_all();
+		}
 		timer.go("Deallocating buffers");
 		delete v;
 	}

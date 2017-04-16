@@ -98,7 +98,6 @@ struct Config
 	bool ht_mode;
 	bool old_freq;
 	double freq_sd;
-	bool query_parallel;
 	unsigned target_fetch_size;
 	bool mode_more_sensitive;
 	string matrix_file;
@@ -143,6 +142,9 @@ struct Config
 
 	enum { double_indexed = 0, subject_indexed = 1 };
 	unsigned algo;
+
+	enum { query_parallel = 0, target_parallel = 1 };
+	unsigned load_balancing;
 
 	Config() {}
 	Config(int argc, const char **argv);

@@ -231,6 +231,49 @@ void scan_cols(const Long_score_profile &qp, sequence s, int i, int j, int j_end
 #endif
 }
 
+void scan_cols(const sequence &q, sequence s, int i, int j, int j_end, vector<uint8_t> &sv_max, bool log, Band &buf, Band &local_max, int block_len)
+{
+#ifdef __SSE2__
+	typedef score_vector<uint8_t> Sv;
+	const Sv vbias(score_matrix.bias());
+	const int qlen = (int)q.length(),
+		diags = buf.diags();
+
+	int j2 = std::max(-(i - j + 15), j),
+		i3 = j2 + i - j,
+		j2_end = std::min(qlen - (i - j), j_end);
+	uint8_t *local_max_ptr = local_max.data() + (j2 - j) / 16 * diags,
+		*buf_ptr = buf.data() + (j2 - j)*diags;
+	Sv v, max, global_max;
+	//__m128i f = _mm_loadu_si128((__m128i*)&q[0]);
+	for (; j2 < j2_end; ++j2, ++i3) {
+		assert(j2 >= 0);
+		const Sv scores(s[j2], _mm_loadu_si128((__m128i*)&q[i3]));
+		//const Sv scores(s[j2], f);
+		v = v + scores;
+		v -= vbias;
+		max.max(v);
+		assert(buf.check(buf_ptr + 16));
+		v.store(buf_ptr);
+		buf_ptr += diags;
+		if (((j2 - j) & 15) == 15) {
+			global_max.max(max);
+			assert(local_max.check(local_max_ptr + 16));
+			max.store(local_max_ptr);
+			local_max_ptr += diags;
+			max = score_vector<uint8_t>();
+		}
+	}
+	if (((j2 - j) & 15) != 0) {
+		global_max.max(max);
+		assert(local_max.check(local_max_ptr));
+		max.store(local_max_ptr);
+	}
+	global_max.store(&sv_max[0]);
+
+#endif
+}
+
 void get_zero_index(Band::Iterator &d, int begin, int end, int max_score, int &z0, int& z1)
 {
 	z0 = z1 = -1;
@@ -504,6 +547,7 @@ size_t Diag_scores::scan_diags(int d_begin, int d_end, sequence query, sequence 
 		memset(sv_max.data(), 0, sv_max.size());
 		
 		scan_cols(qp, subject, i, j_begin, j1, sv_max, log, score_buf, local_max, block_len);
+		//scan_cols(query, subject, i, j_begin, j1, sv_max, log, score_buf, local_max, block_len);
 
 		for (int o = 0; o < 16; ++o)
 			if (sv_max[o] >= Diag_scores::min_diag_score) {

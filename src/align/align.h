@@ -20,6 +20,7 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #define ALIGN_H_
 
 #include <vector>
+#include <map>
 #include "../search/trace_pt_buffer.h"
 #include "../util/task_queue.h"
 #include "../basic/statistics.h"
@@ -59,6 +60,58 @@ struct Ring_buffer_sink
 private:
 	Output_writer writer;
 	Task_queue<_buffer, Output_writer> queue;
+};
+
+struct Simple_query_queue
+{
+	enum { end = 0xffffffffffffffffllu };
+	Simple_query_queue(size_t qbegin, size_t qend, vector<hit>::iterator begin, vector<hit>::iterator end):
+		next_(qbegin),
+		qend_(qend),
+		it_(begin),
+		end_(end)
+	{}
+	size_t get(vector<hit>::iterator &begin, vector<hit>::iterator &end);
+	static Simple_query_queue& get()
+	{
+		return *instance;
+	}
+	static auto_ptr<Simple_query_queue> instance;
+private:
+	tthread::mutex mtx_;
+	size_t next_;
+	const size_t qend_;
+	vector<hit>::iterator it_, end_;
+};
+
+struct Output_sink
+{
+	Output_sink(Output_stream *f):
+		f_(f),
+		next_(0),
+		size_(0),
+		max_size_(0)
+	{}
+	void push(size_t n, Text_buffer *buf);
+	size_t size() const
+	{
+		return size_;
+	}
+	size_t max_size() const
+	{
+		return max_size_;
+	}
+	static Output_sink& get()
+	{
+		return *instance;
+	}
+	static auto_ptr<Output_sink> instance;
+private:
+	void flush(Text_buffer *buf);
+	tthread::mutex mtx_;
+	Output_stream* const f_;
+	std::map<size_t, Text_buffer*> backlog_;
+	size_t next_, size_, max_size_;
 };
 
 #endif

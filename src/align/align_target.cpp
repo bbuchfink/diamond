@@ -95,7 +95,6 @@ pair<int, int> get_diag_range(vector<Seed_hit>::const_iterator begin, vector<See
 
 void Query_mapper::align_target(size_t idx, Statistics &stat)
 {
-	static const int band = 32;
 	static const bool logging = false;
 	typedef float score_t;
 	Target& target = targets[idx];
