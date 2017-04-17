@@ -225,9 +225,9 @@ struct Greedy_aligner2
 				i = window.insert(std::make_pair(dd, node)).first;
 
 			j = i;
+			int max_j = 0;
 			if (i == window.begin())
 				goto weiter;
-			int max_j = 0;
 			do {
 				--j;
 				if (dd - j->first > max_shift)
