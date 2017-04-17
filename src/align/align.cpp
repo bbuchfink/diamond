@@ -74,13 +74,14 @@ void Output_sink::flush(Text_buffer *buf)
 		for (vector<Text_buffer*>::iterator j = out.begin(); j < out.end(); ++j) {
 			if (*j) {
 				f_->write((*j)->get_begin(), (*j)->size());
-				size += (*j)->size();
+				if(*j != buf)
+					size += (*j)->size();
 				delete *j;
 			}
 		}
 		out.clear();
 		mtx_.lock();
-		size_ -= size - (buf ? buf->size() : 0);
+		size_ -= size;
 	} while ((i = backlog_.begin()) != backlog_.end() && i->first == n);
 	next_ = n;
 	mtx_.unlock();
@@ -88,7 +89,7 @@ void Output_sink::flush(Text_buffer *buf)
 
 void align_worker(size_t thread_id)
 {
-	static const double heartbeat_interval = 1.0;
+	static const double heartbeat_interval = 10.0;
 	vector<hit>::iterator begin, end;
 	size_t query;
 	Statistics stat;
@@ -269,7 +270,7 @@ void align_queries(const Trace_pt_buffer &trace_pts, Output_stream* output_file)
 		timer.go("Deallocating buffers");
 		delete v;
 	}
-	if (!blocked_processing && *output_format != Output_format::daa && config.report_unaligned != 0) {
+	if (!blocked_processing && *output_format != Output_format::daa && config.report_unaligned != 0 && config.load_balancing == Config::target_parallel) {
 		Text_buffer buf;
 		for (unsigned i = query_queue.last_query + 1; i < query_ids::get().get_length(); ++i) {
 			output_format->print_query_intro(i, query_ids::get()[i].c_str(), get_source_query_len(i), buf, true);

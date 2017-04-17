@@ -49,8 +49,6 @@ Query_mapper::Query_mapper(size_t query_id, Trace_pt_list::iterator begin, Trace
 void Query_mapper::init()
 {
 	targets.resize(count_targets());
-	load_targets();
-	rank_targets();
 	if (config.comp_based_stats == 1)
 		for (unsigned i = 0; i < align_mode.query_contexts; ++i)
 			query_cb.push_back(Bias_correction(query_seq(i)));
@@ -58,6 +56,8 @@ void Query_mapper::init()
 		for (unsigned i = 0; i < align_mode.query_contexts; ++i)
 			profile.push_back(Long_score_profile(query_seq(i)));
 			//profile.push_back(Long_score_profile());
+	load_targets();
+	rank_targets();
 }
 
 pair<Trace_pt_list::iterator, Trace_pt_list::iterator> Query_mapper::get_query_data()
@@ -139,7 +139,7 @@ void Query_mapper::rank_targets()
 
 bool Query_mapper::generate_output(Text_buffer &buffer, Statistics &stat)
 {
-	if (!blocked_processing && *output_format != Output_format::daa && config.report_unaligned != 0) {
+	if (!blocked_processing && *output_format != Output_format::daa && config.report_unaligned != 0 && config.load_balancing == Config::target_parallel) {
 		for (unsigned i = unaligned_from; i < query_id; ++i) {
 			output_format->print_query_intro(i, query_ids::get()[i].c_str(), get_source_query_len(i), buffer, true);
 			output_format->print_query_epilog(buffer, true);

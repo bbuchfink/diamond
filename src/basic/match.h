@@ -262,6 +262,7 @@ struct Hsp_data
 	std::pair<int, int> diagonal_bounds() const;
 	void merge(const Hsp_data &right, const Hsp_data &left, unsigned query_anchor, unsigned subject_anchor);
 	unsigned score, frame, length, identities, mismatches, positives, gap_openings, gaps, sw_score;
+	float time;
 	interval query_source_range, query_range, subject_range;
 	Packed_transcript transcript;
 };
@@ -358,6 +359,10 @@ struct Hsp_context
 	double sw_score() const
 	{
 		return score_matrix.bitscore(hsp_.sw_score);
+	}
+	double time() const
+	{
+		return hsp_.time;
 	}
 	unsigned frame() const
 	{ return hsp_.frame; }

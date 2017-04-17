@@ -69,12 +69,30 @@ struct Seed_hit
 	}
 	static bool compare_diag(const Seed_hit &x, const Seed_hit &y)
 	{
-		return x.diagonal() < y.diagonal();
+		return x.frame_ < y.frame_ || (x.frame_ == y.frame_ && x.diagonal() < y.diagonal());
 	}
+	struct Frame
+	{
+		unsigned operator()(const Seed_hit &x) const
+		{
+			return x.frame_;
+		}
+	};
 
 	unsigned frame_, subject_, subject_pos_, query_pos_;
 	Diagonal_segment ungapped;
 	unsigned prefix_score;
+};
+
+struct Hsp_traits
+{
+	Hsp_traits() :
+		d_max(std::numeric_limits<int>::min()),
+		d_min(std::numeric_limits<int>::max()),
+		shift_max(0),
+		dj_max(0)
+	{}
+	int d_min, d_max, shift_max, dj_max;
 };
 
 template<typename _score>
@@ -88,7 +106,7 @@ int xdrop_ungapped_right(const Letter *query, const Letter *subject, int &len);
 struct Local {};
 struct Global {};
 
-double greedy_align(sequence query, const Long_score_profile &qp, sequence subject, vector<Seed_hit>::const_iterator begin, vector<Seed_hit>::const_iterator end, bool log, Hsp_data &out);
+double greedy_align(sequence query, const Long_score_profile &qp, sequence subject, vector<Seed_hit>::const_iterator begin, vector<Seed_hit>::const_iterator end, bool log, Hsp_data &out, Hsp_traits &traits);
 int estimate_score(const Long_score_profile &qp, sequence s, int d, int d1, bool log);
 
 template<typename _t>

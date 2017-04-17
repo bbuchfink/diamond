@@ -166,17 +166,6 @@ int get_link(const Diagonal_segment &d1, const Diagonal_segment &d2, sequence qu
 		return get_hgap_link(d1, d2, query, subject, l, padding);
 }
 
-struct Hsp_traits
-{
-	Hsp_traits() :
-		d_max(std::numeric_limits<int>::min()),
-		d_min(std::numeric_limits<int>::max()),
-		shift_max(0),
-		dj_max(0)
-	{}
-	int d_min, d_max, shift_max, dj_max;
-};
-
 struct Greedy_aligner2
 {
 
@@ -375,9 +364,11 @@ struct Greedy_aligner2
 		out.transcript.clear();
 		out.query_range.end_ = diags[top_node].query_end();
 		out.subject_range.end_ = diags[top_node].subject_end();
-		backtrace(top_node, diags[top_node].subject_end(), out, log, t);
+		Hsp_traits traits;
+		backtrace(top_node, diags[top_node].subject_end(), out, log, traits);
 		out.transcript.push_terminator();
 		out.score = diags.nodes[top_node].prefix_score;
+		t = traits;
 	}
 
 	size_t anschluss()
@@ -517,10 +508,9 @@ void greedy_align(sequence query, const Long_score_profile &qp, sequence subject
 	}
 }
 
-double greedy_align(sequence query, const Long_score_profile &qp, sequence subject, vector<Seed_hit>::const_iterator begin, vector<Seed_hit>::const_iterator end, bool log, Hsp_data &out)
+double greedy_align(sequence query, const Long_score_profile &qp, sequence subject, vector<Seed_hit>::const_iterator begin, vector<Seed_hit>::const_iterator end, bool log, Hsp_data &out, Hsp_traits &traits)
 {	
-	const int band = config.padding == 0 ? std::min(48, (int)query.length()/2) : config.padding;
-	Hsp_traits traits;
+	const int band = config.padding == 0 ? std::min(48, (int)query.length() / 2) : config.padding;
 	int d_begin = begin->diagonal() - band, d_end = begin->diagonal() + band;
 	vector<Seed_hit>::const_iterator z_begin = begin;
 	if (log) {

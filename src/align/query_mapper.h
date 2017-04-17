@@ -43,7 +43,9 @@ struct Target
 	{
 		return lhs->filter_score > rhs->filter_score;
 	}
-	unsigned subject_id, filter_score;
+	unsigned subject_id, filter_score, filter_frame;
+	int filter_i, filter_j;
+	Hsp_traits traits;
 	size_t begin, end;
 	list<Hsp_data> hsps;
 };

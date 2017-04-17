@@ -145,7 +145,8 @@ void benchmark_greedy(const Sequence_set &ss, unsigned qa, unsigned sa)
 	//greedy_align(ss[0], qp, ss[1], d[0], true);
 	//greedy_align(ss[0], qp, ss[1], qa, sa, true);
 	Hsp_data hsp;
-	greedy_align(ss[0], qp, ss[1], d.begin(), d.end(), true, hsp);
+	Hsp_traits traits;
+	greedy_align(ss[0], qp, ss[1], d.begin(), d.end(), true, hsp, traits);
 	/*Text_buffer buf;
 	Pairwise_format().print_match(Hsp_context(hsp, 0, ss[0], ss[0], "", 0, 0, "", 0, 0, 0), buf);
 	buf << '\0';
@@ -155,7 +156,7 @@ void benchmark_greedy(const Sequence_set &ss, unsigned qa, unsigned sa)
 
 	for (unsigned i = 0; i < n; ++i) {
 
-		greedy_align(ss[0], qp, ss[1], d.begin(), d.end(), false, hsp);
+		greedy_align(ss[0], qp, ss[1], d.begin(), d.end(), false, hsp, traits);
 		hsp.score = 0;
 
 	}
@@ -167,7 +168,7 @@ void benchmark_greedy(const Sequence_set &ss, unsigned qa, unsigned sa)
 
 void benchmark_floating(const Sequence_set &ss, unsigned qa, unsigned sa)
 {
-	static const unsigned n = 10000;
+	static const unsigned n = 100000;
 	uint64_t cell_updates = 0;
 	local_match hsp(0, 0, &ss[1][sa]);
 
@@ -180,7 +181,7 @@ void benchmark_floating(const Sequence_set &ss, unsigned qa, unsigned sa)
 			floating_sw(&ss[0][qa],
 				hsp.subject_,
 				hsp,
-				32,
+				16,
 				score_matrix.rawscore(config.gapped_xdrop),
 				score_matrix.gap_open() + score_matrix.gap_extend(),
 				score_matrix.gap_extend(),
@@ -322,9 +323,6 @@ KCLEHLFFFKLIGDTPIDTFLMEMLEAPHQIT");
 
 	*/
 
-
-aln1:
-
 	s1 = sequence::from_string("tspmtpditgkpfvaadasndyikrevmipmrdgvklhtvivlpkgaknapivltrtpyd\
 asgrterlasphmkdllsagddvfveggyirvfqdvrgkygsegdyvmtrplrgplnpse\
 vdhatdawdtidwlvknvsesngkvgmigssyegftvvmaltnphpalkvavpespmidg\
@@ -346,6 +344,32 @@ VIAREQLEEMCTAVNRIHRGPEHPSHIVLPIIKR");
 
 	qa = 19;
 	sa = 4;
+
+	/*
+
+	Query= 488:2:1:298:839
+
+	Length=114
+
+	>sp|Q820R1|RS3_NITEU 30S ribosomal protein S3 OS=Nitrosomonas europaea (strain ATCC 19718 / NBRC 14298) GN=rpsC PE=3 SV=1
+Length=215
+
+ Score = 46.6 bits (109),  Expect = 6.8e-05
+ Identities = 22/34 (64%), Positives = 27/34 (79%), Gaps = 5/34 (14%)
+ Frame = 2
+
+Query    1  PLHTLRADIDYGT--ARALYPGAGIIGVQVWIYK 32
+            PLHTLRA++DYGT  AR  Y   GIIGV+VW++K
+Sbjct  174  PLHTLRAEVDYGTSEARTTY---GIIGVKVWVFK 204
+	*/
+
+aln1:
+
+	s1 = sequence::from_string("PLHTLRADIDYGTARALYPGAGIIGVQVWIYK");
+	s2 = sequence::from_string("MGQKINPTGFRLSVLKNWSSRWYTNTKKFSDFLNEDISVRQYLQKKLAHASVGSIIIERPSKNAKITIHTSRPGVVIGKKGEDIEILRRNVEKLMNVPVHINIEEIRKPEIDAQLIAASITQQLEKRIMFRRAMKRAIQNAMRLGAQGIKIMSSGRLNGIEIARTEWYREGRVPLHTLRAEVDYGTSEARTTYGIIGVKVWVFKGEQLGIKERQN");
+
+	qa = 0;
+	sa = 173;
 
 	ende:
 	ss.push_back(s1);
