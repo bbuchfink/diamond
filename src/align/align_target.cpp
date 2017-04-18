@@ -26,12 +26,12 @@ using std::list;
 void Query_mapper::get_prefilter_score(size_t idx)
 {
 	static const int max_dist = 64;
-	static const bool logging = true;
+	static const bool logging = false;
 
 	Target& target = targets[idx];
 
 	if (config.greedy) {
-		cout << '>' << ref_ids::get()[(seed_hits.begin() + target.begin)->subject_].c_str() << endl;
+		//cout << "subject=" << ref_ids::get()[(seed_hits.begin() + target.begin)->subject_].c_str() << endl;
 		std::sort(seed_hits.begin() + target.begin, seed_hits.begin() + target.end, Seed_hit::compare_diag);
 		typedef Map<vector<Seed_hit>::const_iterator, Seed_hit::Frame> Hit_map;		
 		Hit_map hit_map(seed_hits.begin() + target.begin, seed_hits.begin() + target.end);
@@ -192,7 +192,8 @@ void Query_mapper::align_target(size_t idx, Statistics &stat)
 		}
 	}
 	else {
-		return;
+		if (target.filter_score == 0)
+			return;
 		const unsigned frame = target.filter_frame;
 		const int d = target.filter_i - target.filter_j,
 			band = std::max(d - target.traits.d_min, target.traits.d_max - d) + band_plus;

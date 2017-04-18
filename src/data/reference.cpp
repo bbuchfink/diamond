@@ -92,7 +92,7 @@ void make_db()
 		}
 
 	}
-	catch (std::exception &e) {
+	catch (std::exception&) {
 		out.close();
 		out.remove();
 		throw;

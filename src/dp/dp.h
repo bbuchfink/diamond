@@ -103,6 +103,7 @@ int smith_waterman(const sequence &query, const sequence &subject, unsigned band
 int xdrop_ungapped(const Letter *query, const Letter *subject, unsigned seed_len, unsigned &delta, unsigned &len);
 int xdrop_ungapped(const Letter *query, const Letter *subject, unsigned &delta, unsigned &len);
 int xdrop_ungapped_right(const Letter *query, const Letter *subject, int &len);
+Diagonal_segment xdrop_ungapped(const sequence &query, const Bias_correction &query_bc, const sequence &subject, int qa, int sa);
 
 struct Local {};
 struct Global {};
@@ -206,6 +207,9 @@ struct Diagonal_node : public Diagonal_segment
 
 struct Diag_graph
 {
+
+	enum { end = 0xffffffffffffffffllu };
+
 	struct Edge
 	{
 		Edge() :

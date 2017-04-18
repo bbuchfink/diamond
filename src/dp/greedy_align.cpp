@@ -48,8 +48,8 @@ void Diag_graph::print(sequence query, sequence subject) const
 size_t Diag_graph::top_node() const
 {
 	int top_score = 0, score;
-	unsigned top_node = 0;
-	for (unsigned k = 0; k < nodes.size(); ++k)
+	size_t top_node = end;
+	for (size_t k = 0; k < nodes.size(); ++k)
 		if ((score = nodes[k].prefix_score) > top_score) {
 			top_node = k;
 			top_score = score;
@@ -362,12 +362,17 @@ struct Greedy_aligner2
 	void backtrace(size_t top_node, Hsp_data &out, Hsp_traits &t) const
 	{
 		out.transcript.clear();
-		out.query_range.end_ = diags[top_node].query_end();
-		out.subject_range.end_ = diags[top_node].subject_end();
 		Hsp_traits traits;
-		backtrace(top_node, diags[top_node].subject_end(), out, log, traits);
-		out.transcript.push_terminator();
-		out.score = diags.nodes[top_node].prefix_score;
+		if (top_node != Diag_graph::end) {
+			out.query_range.end_ = diags[top_node].query_end();
+			out.subject_range.end_ = diags[top_node].subject_end();			
+			backtrace(top_node, diags[top_node].subject_end(), out, log, traits);
+			out.score = diags.nodes[top_node].prefix_score;
+		}
+		else {
+			out.score = 0;
+		}
+		out.transcript.push_terminator();		
 		t = traits;
 	}
 
@@ -437,7 +442,7 @@ struct Greedy_aligner2
 
 	void run(int d_begin, int d_end, Hsp_data &out, Hsp_traits &t, int band)
 	{
-		cout << d_begin << '\t' << d_end << '\t' << d_end-d_begin << endl;
+		//cout << d_begin << '\t' << d_end << '\t' << d_end-d_begin << endl;
 		diags.init();
 		diag_scores.scan_diags(d_begin, d_end, query, subject, qp, query_bc, log, diags.nodes, true);
 		run(out, t, band);

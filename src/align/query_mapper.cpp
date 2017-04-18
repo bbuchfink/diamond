@@ -30,10 +30,10 @@ Query_mapper::Query_mapper() :
 	targets_finished(0),
 	next_target(0),
 	source_query_len(get_source_query_len(query_id)),
-	unaligned_from(query_queue.last_query+1),
-	seed_hits(source_hits.second - source_hits.first)
+	unaligned_from(query_queue.last_query+1)
 {	
 	query_queue.last_query = query_id;
+	seed_hits.reserve(source_hits.second - source_hits.first);
 }
 
 Query_mapper::Query_mapper(size_t query_id, Trace_pt_list::iterator begin, Trace_pt_list::iterator end) :
@@ -41,15 +41,14 @@ Query_mapper::Query_mapper(size_t query_id, Trace_pt_list::iterator begin, Trace
 	query_id(query_id),
 	targets_finished(0),
 	next_target(0),
-	source_query_len(get_source_query_len(query_id)),
-	seed_hits(source_hits.second - source_hits.first)
+	source_query_len(get_source_query_len(query_id))
 {
+	seed_hits.reserve(source_hits.second - source_hits.first);
 }
 
 void Query_mapper::init()
 {
 	//cout << '>' << query_ids::get()[query_id].c_str() << endl;
-	targets.resize(count_targets());
 	if (config.comp_based_stats == 1)
 		for (unsigned i = 0; i < align_mode.query_contexts; ++i)
 			query_cb.push_back(Bias_correction(query_seq(i)));
@@ -57,6 +56,9 @@ void Query_mapper::init()
 		for (unsigned i = 0; i < align_mode.query_contexts; ++i)
 			profile.push_back(Long_score_profile(query_seq(i)));
 			//profile.push_back(Long_score_profile());
+	targets.resize(count_targets());
+	if (targets.empty())
+		return;
 	load_targets();
 	rank_targets();
 }
@@ -82,19 +84,19 @@ unsigned Query_mapper::count_targets()
 	unsigned n_subject = 0;
 	for (size_t i = 0; i < n; ++i) {
 		std::pair<size_t, size_t> l = ref_seqs::data_->local_position(hits[i].subject_);
-		if (l.first != subject_id) {
-			subject_id = l.first;
-			++n_subject;
-		}
 		const unsigned frame = hits[i].query_ % align_mode.query_contexts;
-		seed_hits[i] = Seed_hit(frame,
-			(unsigned)l.first,
-			(unsigned)l.second,
-			hits[i].seed_offset_,
-			ungapped_extension((unsigned)l.first,
+		const Diagonal_segment d = xdrop_ungapped(query_seq(frame), query_cb[frame], ref_seqs::get()[l.first], hits[i].seed_offset_, l.second);
+		if (d.score >= Diag_scores::min_diag_score) {
+			if (l.first != subject_id) {
+				subject_id = l.first;
+				++n_subject;
+			}
+			seed_hits.push_back(Seed_hit(frame,
+				(unsigned)l.first,
 				(unsigned)l.second,
 				hits[i].seed_offset_,
-				query_seq(frame)));
+				d));
+		}
 	}
 	return n_subject;
 }
@@ -150,7 +152,7 @@ bool Query_mapper::generate_output(Text_buffer &buffer, Statistics &stat)
 	std::sort(targets.begin(), targets.end(), Target::compare);
 
 	unsigned n_hsp = 0, n_target_seq = 0, hit_hsps = 0;
-	const unsigned top_score = targets[0].filter_score, query_len = (unsigned)query_seq(0).length();
+	const unsigned top_score = targets.empty() ? 0 : targets[0].filter_score, query_len = (unsigned)query_seq(0).length();
 	size_t seek_pos = 0;
 	const char *query_title = query_ids::get()[query_id].c_str();
 
@@ -223,7 +225,7 @@ bool Query_mapper::generate_output(Text_buffer &buffer, Statistics &stat)
 		else
 			Intermediate_record::finish_query(buffer, seek_pos);
 	}
-	else if (!blocked_processing && *output_format != Output_format::daa && config.report_unaligned != 0) {
+	else if (!blocked_processing && *output_format != Output_format::daa && config.report_unaligned != 0 && config.load_balancing == Config::target_parallel) {
 		output_format->print_query_intro(query_id, query_title, source_query_len, buffer, true);
 		output_format->print_query_epilog(buffer, true);
 	}
