@@ -95,7 +95,7 @@ void make_db()
 	catch (std::exception &e) {
 		out.close();
 		out.remove();
-		throw e;
+		throw;
 	}
 
 	timer.go("Writing trailer");
