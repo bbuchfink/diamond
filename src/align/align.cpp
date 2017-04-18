@@ -89,7 +89,7 @@ void Output_sink::flush(Text_buffer *buf)
 
 void align_worker(size_t thread_id)
 {
-	static const double heartbeat_interval = 10.0;
+	static const double heartbeat_interval = 1.0;
 	vector<hit>::iterator begin, end;
 	size_t query;
 	Statistics stat;

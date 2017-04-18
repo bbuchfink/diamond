@@ -114,3 +114,12 @@ int Bias_correction::operator()(const Hsp_data &hsp) const
 	}
 	return (int)s;
 }
+
+int Bias_correction::operator()(const Diagonal_segment &d) const
+{
+	float s = 0;
+	const int end = d.query_end();
+	for (int i = d.i; i < end; ++i)
+		s += (*this)[i];
+	return (int)s;
+}

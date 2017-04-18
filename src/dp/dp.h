@@ -41,6 +41,7 @@ struct Bias_correction : public vector<float>
 		score += (*this)[query_anchor + i*mult];
 	}
 	int operator()(const Hsp_data &hsp) const;
+	int operator()(const Diagonal_segment &d) const;
 };
 
 struct Seed_hit
@@ -106,7 +107,7 @@ int xdrop_ungapped_right(const Letter *query, const Letter *subject, int &len);
 struct Local {};
 struct Global {};
 
-double greedy_align(sequence query, const Long_score_profile &qp, sequence subject, vector<Seed_hit>::const_iterator begin, vector<Seed_hit>::const_iterator end, bool log, Hsp_data &out, Hsp_traits &traits);
+double greedy_align(sequence query, const Long_score_profile &qp, const Bias_correction &query_bc, sequence subject, vector<Seed_hit>::const_iterator begin, vector<Seed_hit>::const_iterator end, bool log, Hsp_data &out, Hsp_traits &traits);
 int estimate_score(const Long_score_profile &qp, sequence s, int d, int d1, bool log);
 
 template<typename _t>
@@ -365,9 +366,9 @@ struct Diag_scores {
 	{
 		return std::min(qlen - d, slen);
 	}
-	void get_diag(int i, int j, int o, int j_begin, int j_end, vector<Diagonal_node> &diags, int cutoff, bool log, size_t &cells);
+	void get_diag(int i, int j, int o, int j_begin, int j_end, vector<Diagonal_node> &diags, int cutoff, bool log, size_t &cells, const Bias_correction &query_bc);
 	void get_diag2(int i, int j, int o, int j_begin, int j_end, vector<Diagonal_node> &diags, int cutoff, bool log);
-	size_t scan_diags(int d_begin, int d_end, sequence query, sequence subject, const Long_score_profile &qp, bool log, vector<Diagonal_node> &diags, bool fast);
+	size_t scan_diags(int d_begin, int d_end, sequence query, sequence subject, const Long_score_profile &qp, const Bias_correction &query_bc, bool log, vector<Diagonal_node> &diags, bool fast);
 	void set_zero(Band::Iterator &d, Band::Iterator d2, int begin, int end);
 	void set_active(int o, int begin, int end);
 	bool is_active(int o, int i) const;

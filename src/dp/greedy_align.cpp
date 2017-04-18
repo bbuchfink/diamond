@@ -437,9 +437,9 @@ struct Greedy_aligner2
 
 	void run(int d_begin, int d_end, Hsp_data &out, Hsp_traits &t, int band)
 	{
-		//cout << d_begin << '\t' << d_end << '\t' << d_end-d_begin << endl;
+		cout << d_begin << '\t' << d_end << '\t' << d_end-d_begin << endl;
 		diags.init();
-		diag_scores.scan_diags(d_begin, d_end, query, subject, qp, log, diags.nodes, true);
+		diag_scores.scan_diags(d_begin, d_end, query, subject, qp, query_bc, log, diags.nodes, true);
 		run(out, t, band);
 	}
 
@@ -450,10 +450,11 @@ struct Greedy_aligner2
 		run(out, t, band);
 	}
 
-	Greedy_aligner2(const sequence &query, const Long_score_profile &qp, const sequence &subject, bool log) :
+	Greedy_aligner2(const sequence &query, const Long_score_profile &qp, const Bias_correction &query_bc, const sequence &subject, bool log) :
 		query(query),
 		subject(subject),
 		qp(qp),
+		query_bc(query_bc),
 		log(log),
 		diag_scores(TLS::get(diag_scores_ptr)),
 		diags(TLS::get(diags_ptr)),
@@ -466,6 +467,7 @@ struct Greedy_aligner2
 	static TLS_PTR map<int, unsigned> *window_ptr;
 	const sequence query, subject;
 	const Long_score_profile &qp;
+	const Bias_correction &query_bc;
 	const bool log;	
 	Diag_scores &diag_scores;
 	Diag_graph &diags;
@@ -477,13 +479,15 @@ TLS_PTR Diag_scores *Greedy_aligner2::diag_scores_ptr;
 TLS_PTR Diag_graph *Greedy_aligner2::diags_ptr;
 TLS_PTR map<int, unsigned> *Greedy_aligner2::window_ptr;
 
-void greedy_align(sequence query, const Long_score_profile &qp, sequence subject, int d_begin, int d_end, bool log, Hsp_data &out, Hsp_traits &traits, vector<Seed_hit>::const_iterator begin, vector<Seed_hit>::const_iterator end, int band)
+void greedy_align(sequence query, const Long_score_profile &qp, const Bias_correction &query_bc, sequence subject, int d_begin, int d_end, bool log, Hsp_data &out, Hsp_traits &traits, vector<Seed_hit>::const_iterator begin, vector<Seed_hit>::const_iterator end, int band)
 {
 	typedef pair<Hsp_data*, Hsp_traits> Hsp_ref;
 	Hsp_data hsp;
 	Hsp_traits t;
-	Greedy_aligner2 ga(query, qp, subject, log);
+	Greedy_aligner2 ga(query, qp, query_bc, subject, log);
 	if (d_end - d_begin > band * 4) {
+		if (log)
+			cout << "--- Seed hit run" << endl << endl;
 		ga.run(hsp, t, begin, end, band);
 		d_begin = t.d_min - band;
 		d_end = t.d_max + band;
@@ -508,7 +512,7 @@ void greedy_align(sequence query, const Long_score_profile &qp, sequence subject
 	}
 }
 
-double greedy_align(sequence query, const Long_score_profile &qp, sequence subject, vector<Seed_hit>::const_iterator begin, vector<Seed_hit>::const_iterator end, bool log, Hsp_data &out, Hsp_traits &traits)
+double greedy_align(sequence query, const Long_score_profile &qp, const Bias_correction &query_bc, sequence subject, vector<Seed_hit>::const_iterator begin, vector<Seed_hit>::const_iterator end, bool log, Hsp_data &out, Hsp_traits &traits)
 {	
 	const int band = config.padding == 0 ? std::min(48, (int)query.length() / 2) : config.padding;
 	int d_begin = begin->diagonal() - band, d_end = begin->diagonal() + band;
@@ -521,7 +525,7 @@ double greedy_align(sequence query, const Long_score_profile &qp, sequence subje
 		if(log)
 			cout << "Seed hit i=" << i->query_pos_ << " j=" << i->subject_pos_ << " d=" << i->diagonal() << endl;
 		if (d - band >= d_end) {
-			greedy_align(query, qp, subject, d_begin, d_end, log, out, traits, z_begin, i, band);
+			greedy_align(query, qp, query_bc, subject, d_begin, d_end, log, out, traits, z_begin, i, band);
 			d_begin = d - band;
 			d_end = d + band;
 			z_begin = i;
@@ -530,7 +534,7 @@ double greedy_align(sequence query, const Long_score_profile &qp, sequence subje
 			d_end = d + band;
 	}
 
-	greedy_align(query, qp, subject, d_begin, d_end, log, out, traits, z_begin, end, band);
+	greedy_align(query, qp, query_bc, subject, d_begin, d_end, log, out, traits, z_begin, end, band);
 
 	if (config.use_smith_waterman) {
 		int score;

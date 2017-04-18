@@ -26,11 +26,12 @@ using std::list;
 void Query_mapper::get_prefilter_score(size_t idx)
 {
 	static const int max_dist = 64;
-	static const bool logging = false;
+	static const bool logging = true;
 
 	Target& target = targets[idx];
 
 	if (config.greedy) {
+		cout << '>' << ref_ids::get()[(seed_hits.begin() + target.begin)->subject_].c_str() << endl;
 		std::sort(seed_hits.begin() + target.begin, seed_hits.begin() + target.end, Seed_hit::compare_diag);
 		typedef Map<vector<Seed_hit>::const_iterator, Seed_hit::Frame> Hit_map;		
 		Hit_map hit_map(seed_hits.begin() + target.begin, seed_hits.begin() + target.end);
@@ -39,7 +40,7 @@ void Query_mapper::get_prefilter_score(size_t idx)
 		const sequence subject = ref_seqs::get()[(seed_hits.begin() + target.begin)->subject_];
 		for (Hit_map::Iterator it = hit_map.begin(); it.valid(); ++it) {
 			const unsigned frame = it.begin()->frame_;
-			greedy_align(query_seq(frame), profile[frame], subject, it.begin(), it.end(), logging, hsp, traits);
+			greedy_align(query_seq(frame), profile[frame], query_cb[frame], subject, it.begin(), it.end(), logging, hsp, traits);
 			if (hsp.score > target.filter_score) {
 				target.filter_score = hsp.score;
 				target.traits = traits;
@@ -191,6 +192,7 @@ void Query_mapper::align_target(size_t idx, Statistics &stat)
 		}
 	}
 	else {
+		return;
 		const unsigned frame = target.filter_frame;
 		const int d = target.filter_i - target.filter_j,
 			band = std::max(d - target.traits.d_min, target.traits.d_max - d) + band_plus;

@@ -48,6 +48,7 @@ Query_mapper::Query_mapper(size_t query_id, Trace_pt_list::iterator begin, Trace
 
 void Query_mapper::init()
 {
+	//cout << '>' << query_ids::get()[query_id].c_str() << endl;
 	targets.resize(count_targets());
 	if (config.comp_based_stats == 1)
 		for (unsigned i = 0; i < align_mode.query_contexts; ++i)

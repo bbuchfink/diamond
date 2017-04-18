@@ -146,7 +146,8 @@ void benchmark_greedy(const Sequence_set &ss, unsigned qa, unsigned sa)
 	//greedy_align(ss[0], qp, ss[1], qa, sa, true);
 	Hsp_data hsp;
 	Hsp_traits traits;
-	greedy_align(ss[0], qp, ss[1], d.begin(), d.end(), true, hsp, traits);
+	Bias_correction query_bc(ss[0]);
+	greedy_align(ss[0], qp, query_bc, ss[1], d.begin(), d.end(), true, hsp, traits);
 	/*Text_buffer buf;
 	Pairwise_format().print_match(Hsp_context(hsp, 0, ss[0], ss[0], "", 0, 0, "", 0, 0, 0), buf);
 	buf << '\0';
@@ -156,7 +157,7 @@ void benchmark_greedy(const Sequence_set &ss, unsigned qa, unsigned sa)
 
 	for (unsigned i = 0; i < n; ++i) {
 
-		greedy_align(ss[0], qp, ss[1], d.begin(), d.end(), false, hsp, traits);
+		greedy_align(ss[0], qp, query_bc, ss[1], d.begin(), d.end(), false, hsp, traits);
 		hsp.score = 0;
 
 	}

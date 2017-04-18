@@ -105,6 +105,48 @@ int xdrop_ungapped(const Letter *query, const Letter *subject, unsigned &delta, 
 	return score;
 }
 
+/*Diagonal_segment xdrop_ungapped(const sequence &query, const Bias_correction &query_bc, const sequence &subject, int qa, int sa)
+{
+	int score(0), st(0), n = 1;
+	delta = 0;
+
+	const Letter *q(query - 1), *s(subject - 1);
+	while (score - st < config.raw_ungapped_xdrop
+		&& *q != '\xff'
+		&& *s != '\xff')
+	{
+		st += score_matrix(*q, *s);
+		if (st > score) {
+			score = st;
+			delta = n;
+		}
+		--q;
+		--s;
+		++n;
+	}
+
+	q = query;
+	s = subject;
+	st = score;
+	n = 1;
+	len = 0;
+	while (score - st < config.raw_ungapped_xdrop
+		&& *q != '\xff'
+		&& *s != '\xff')
+	{
+		st += score_matrix(*q, *s);
+		if (st > score) {
+			score = st;
+			len = n;
+		}
+		++q;
+		++s;
+		++n;
+	}
+	len += delta;
+	return score;
+}*/
+
 int xdrop_ungapped_right(const Letter *query, const Letter *subject, int &len)
 {
 	int score(0), st(0), n = 1;

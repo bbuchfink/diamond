@@ -95,11 +95,11 @@ int main(int ac, const char* av[])
 			return 1;
 		}
 	}
-	catch(std::bad_alloc &e) {
+	catch(const std::bad_alloc &e) {
 		cerr << "Failed to allocate sufficient memory. Please refer to the manual for instructions on memory usage." << endl;
 		log_stream << "Error: " << e.what() << endl;
 		return 1;
-	} catch(std::exception& e) {
+	} catch(const std::exception& e) {
         cerr << "Error: " << e.what() << endl;
         log_stream << "Error: " << e.what() << endl;
         return 1;
