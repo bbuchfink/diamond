@@ -497,8 +497,9 @@ void greedy_align(sequence query, const Long_score_profile &qp, const Bias_corre
 		d_begin = t.d_min - band;
 		d_end = t.d_max + band;
 	}
-	ga.run(d_begin, d_end, hsp, t, band);
-	if (out.score > 0) {
+	if(hsp.score > 0)
+		ga.run(d_begin, d_end, hsp, t, band);
+	if (hsp.score > 0 && out.score > 0) {
 		const Hsp_ref h1 = std::make_pair(&out, traits), h2 = std::make_pair(&hsp, t);
 		const pair<Hsp_ref, Hsp_ref> h = hsp.subject_range.begin_ > out.subject_range.begin_ ? std::make_pair(h1, h2) : std::make_pair(h2, h1);
 		const int d0 = h.first.first->query_range.end_ - h.first.first->subject_range.end_,

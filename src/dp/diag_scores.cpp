@@ -528,6 +528,7 @@ void Diag_scores::get_diag(int i, int j, int o, int j_begin, int j_end, vector<D
 
 size_t Diag_scores::scan_diags(int d_begin, int d_end, sequence query, sequence subject, const Long_score_profile &qp, const Bias_correction &query_bc, bool log, vector<Diagonal_node> &diags, bool fast)
 {
+	assert(d_end > d_begin);
 	qlen = (int)query.length();
 	slen = (int)subject.length();
 	d_begin = std::max(d_begin, -((int)subject.length() - 1));
@@ -542,6 +543,7 @@ size_t Diag_scores::scan_diags(int d_begin, int d_end, sequence query, sequence 
 	const int j1 = std::min(qlen - d_begin, slen);
 	sv_max.clear();
 	sv_max.resize(16);
+	assert(j1 > j_begin);
 	score_buf.init(16, j1 - j_begin);
 	local_max.init(16, (j1 - j_begin + block_len - 1) / block_len);
 	size_t cells = 0;
