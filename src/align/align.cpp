@@ -39,8 +39,8 @@ size_t Simple_query_queue::get(vector<hit>::iterator &begin, vector<hit>::iterat
 	begin = it_;
 	while (it_ < end_ && it_->query_ / c == query)
 		++it_;
-	mtx_.unlock();
 	end = it_;
+	mtx_.unlock();	
 	return query;
 }
 
