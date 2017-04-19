@@ -86,9 +86,9 @@ private:
 
 struct Output_sink
 {
-	Output_sink(Output_stream *f):
+	Output_sink(size_t begin, Output_stream *f):
 		f_(f),
-		next_(0),
+		next_(begin),
 		size_(0),
 		max_size_(0)
 	{}

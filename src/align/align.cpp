@@ -1,5 +1,5 @@
 /****
-Copyright (c) 2016, Benjamin Buchfink
+Copyright (c) 2016-2017, Benjamin Buchfink
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
@@ -47,6 +47,7 @@ size_t Simple_query_queue::get(vector<hit>::iterator &begin, vector<hit>::iterat
 void Output_sink::push(size_t n, Text_buffer *buf)
 {
 	mtx_.lock();
+	//cout << "n=" << n << " next=" << next_ << endl;
 	if (n != next_) {
 		backlog_[n] = buf;
 		size_ += buf ? buf->size() : 0;
@@ -261,7 +262,7 @@ void align_queries(const Trace_pt_buffer &trace_pts, Output_stream* output_file)
 		}
 		else {
 			Simple_query_queue::instance = auto_ptr<Simple_query_queue>(new Simple_query_queue(trace_pts.begin(bin), trace_pts.end(bin), v->begin(), v->end()));
-			Output_sink::instance = auto_ptr<Output_sink>(new Output_sink(output_file));
+			Output_sink::instance = auto_ptr<Output_sink>(new Output_sink(trace_pts.begin(bin), output_file));
 			Thread_pool threads;
 			for (size_t i = 0; i < config.threads_; ++i)
 				threads.push_back(launch_thread(static_cast<void(*)(size_t)>(&align_worker), i));
