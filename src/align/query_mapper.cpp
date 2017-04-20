@@ -38,10 +38,10 @@ Query_mapper::Query_mapper() :
 
 Query_mapper::Query_mapper(size_t query_id, Trace_pt_list::iterator begin, Trace_pt_list::iterator end) :
 	source_hits(std::make_pair(begin, end)),
-	query_id(query_id),
+	query_id((unsigned)query_id),
 	targets_finished(0),
 	next_target(0),
-	source_query_len(get_source_query_len(query_id))
+	source_query_len(get_source_query_len((unsigned)query_id))
 {
 	seed_hits.reserve(source_hits.second - source_hits.first);
 }
@@ -85,8 +85,9 @@ unsigned Query_mapper::count_targets()
 	for (size_t i = 0; i < n; ++i) {
 		std::pair<size_t, size_t> l = ref_seqs::data_->local_position(hits[i].subject_);
 		const unsigned frame = hits[i].query_ % align_mode.query_contexts;
-		const Diagonal_segment d = xdrop_ungapped(query_seq(frame), query_cb[frame], ref_seqs::get()[l.first], hits[i].seed_offset_, l.second);
-		if (d.score >= Diag_scores::min_diag_score) {
+		const Diagonal_segment d = config.comp_based_stats ? xdrop_ungapped(query_seq(frame), query_cb[frame], ref_seqs::get()[l.first], hits[i].seed_offset_, (int)l.second)
+			: xdrop_ungapped(query_seq(frame), ref_seqs::get()[l.first], hits[i].seed_offset_, (int)l.second);
+		if (d.score >= config.min_ungapped_raw_score) {
 			if (l.first != subject_id) {
 				subject_id = l.first;
 				++n_subject;

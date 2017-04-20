@@ -1,5 +1,7 @@
 [0.8.38]
 - fixed std::exception error messages
+- fixed sequence titles in XML format
+- XML and pairwise format contain full length titles by default
 
 [0.8.37]
 - fixed a bug that would cause an error message for empty DAA files

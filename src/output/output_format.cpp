@@ -24,6 +24,36 @@ using std::endl;
 
 auto_ptr<Output_format> output_format;
 
+void Output_format::print_title(Text_buffer &buf, const char *id, bool full_titles, bool all_titles, const char *separator)
+{
+	if (!all_titles) {
+		buf.write_until(id, full_titles ? "\1" : Const::id_delimiters);
+		return;
+	}
+	if (strchr(id, '\1') == 0) {
+		buf.write_until(id, full_titles ? "\1" : Const::id_delimiters);
+		return;
+	}
+	//size_t n = 0;
+	const vector<string> t(tokenize(id, "\1"));
+	vector<string>::const_iterator i = t.begin();
+	for (; i<t.end() - 1; ++i) {
+		if (full_titles)
+			buf << *i << separator;
+		else {
+			buf.write_until(i->c_str(), Const::id_delimiters);
+			buf << ";";
+		}
+		//n += i->length() + 2;
+	}
+	if (full_titles)
+		buf << *i;
+	else
+		buf.write_until(i->c_str(), Const::id_delimiters);
+	//n += i->length();
+	//return n;
+}
+
 void print_hsp(Hsp_data &hsp, sequence query)
 {
 	Text_buffer buf;
@@ -65,8 +95,7 @@ void XML_format::print_match(const Hsp_context &r, Text_buffer &out) const
 			<< "  <Hit_num>" << r.hit_num + 1 << "</Hit_num>" << '\n'
 			<< "  <Hit_id>gnl|BL_ORD_ID|" << r.orig_subject_id + 1 << "</Hit_id>" << '\n'
 			<< "  <Hit_def>";
-		const bool lt = (config.salltitles || (config.command == Config::view)) ? true : false;
-		this->print_salltitles(out, r.subject_name, lt, lt);
+		Output_format::print_title(out, r.subject_name, true, true, " ");
 		out << "</Hit_def> " << '\n'
 			<< "  <Hit_accession>" << r.orig_subject_id + 1 << "</Hit_accession>" << '\n'
 			<< "  <Hit_len>" << r.subject_len << "</Hit_len>" << '\n'
@@ -122,8 +151,10 @@ void XML_format::print_header(Output_stream &f, int mode, const char *matrix, in
 		<< "  <BlastOutput_reference>Benjamin Buchfink, Xie Chao, and Daniel Huson (2015), &quot;Fast and sensitive protein alignment using DIAMOND&quot;, Nature Methods 12:59-60.</BlastOutput_reference>" << endl
 		<< "  <BlastOutput_db></BlastOutput_db>" << endl
 		<< "  <BlastOutput_query-ID>Query_1</BlastOutput_query-ID>" << endl
-		<< "  <BlastOutput_query-def>" << first_query_name << "</BlastOutput_query-def>" << endl
-		<< "  <BlastOutput_query-len>" << first_query_len << "</BlastOutput_query-len>" << endl
+		<< "  <BlastOutput_query-def>";
+	const string fqn = string(first_query_name);
+	ss << fqn.substr(0, fqn.find('\1'));
+		ss << "</BlastOutput_query-def>" << endl << "  <BlastOutput_query-len>" << first_query_len << "</BlastOutput_query-len>" << endl
 		<< "  <BlastOutput_param>" << endl
 		<< "    <Parameters>" << endl
 		<< "      <Parameters_matrix>" << matrix << "</Parameters_matrix>" << endl
@@ -142,7 +173,9 @@ void XML_format::print_query_intro(size_t query_num, const char *query_name, uns
 	out << "<Iteration>" << '\n'
 		<< "  <Iteration_iter-num>" << query_num + 1 << "</Iteration_iter-num>" << '\n'
 		<< "  <Iteration_query-ID>Query_" << query_num + 1 << "</Iteration_query-ID>" << '\n'
-		<< "  <Iteration_query-def>" << query_name << "</Iteration_query-def>" << '\n'
+		<< "  <Iteration_query-def>";
+	print_title(out, query_name, true, false, "");
+	out << "</Iteration_query-def>" << '\n'
 		<< "  <Iteration_query-len>" << query_len << "</Iteration_query-len>" << '\n'
 		<< "<Iteration_hits>" << '\n';
 }

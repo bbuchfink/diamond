@@ -21,8 +21,9 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 void Pairwise_format::print_match(const Hsp_context& r, Text_buffer &out) const
 {
 	static const unsigned width = 60;
-	out << '>' << r.subject_name << '\n';
-	out << "Length=" << r.subject_len << "\n\n";
+	out << '>';
+	Output_format::print_title(out, r.subject_name, true, true, " ");
+	out << "\nLength=" << r.subject_len << "\n\n";
 	out << " Score = " << r.bit_score() << " bits (" << r.score() << "),  Expect = ";
 	out.print_e(r.evalue());
 	out << '\n';

@@ -73,13 +73,14 @@ void score_diagonal(const Letter *query, const Letter *subject, int len, int qbe
 
 void score_diagonal2(const Letter *query, const Bias_correction &query_bc, const Letter *subject, int len, int qbegin, int jbegin, vector<Diagonal_node> &diags, int cutoff, size_t &cells)
 {
-	static const int xdrop = 10;
-	int i = 0, j = 0, max_score = 0, score = 0, begin = 0, end = 0, l = 0;
+	static const float xdrop = 10;
+	int i = 0, j = 0, begin = 0, end = 0, l = 0;
+	float score = 0, max_score = 0;
 	while (l<len) {
 		score += score_matrix(query[i], subject[i]) + query_bc[qbegin + i];
 		if (score <= 0 || max_score - score > xdrop) {
 			if (max_score >= cutoff) {
-				diags.push_back(Diagonal_node(qbegin + begin, jbegin + begin, end - begin, max_score));
+				diags.push_back(Diagonal_node(qbegin + begin, jbegin + begin, end - begin, (int)max_score));
 				cells += end - begin;
 			}
 			score = 0;
@@ -94,7 +95,7 @@ void score_diagonal2(const Letter *query, const Bias_correction &query_bc, const
 		++l;
 	}
 	if (max_score >= cutoff) {
-		diags.push_back(Diagonal_node(qbegin + begin, jbegin + begin, end - begin, max_score));
+		diags.push_back(Diagonal_node(qbegin + begin, jbegin + begin, end - begin, (int)max_score));
 		cells += end - begin;
 	}
 }

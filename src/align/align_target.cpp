@@ -231,7 +231,7 @@ void Query_mapper::align_target(size_t idx, Statistics &stat)
 			else
 				++j;
 
-	const float time = timer.getElapsedTimeInMicroSec();
+	const float time = (float)timer.getElapsedTimeInMicroSec();
 
 	for (list<Hsp_data>::iterator i = target.hsps.begin(); i != target.hsps.end(); ++i) {
 		i->time = time;

@@ -88,7 +88,7 @@ void Sam_format::print_match(const Hsp_context& r, Text_buffer &out) const
 	out << '\t' << '0' << '\t';
 
 	const bool lt = (config.salltitles || (config.command == Config::view)) ? true : false;
-	this->print_salltitles(out, r.subject_name, lt, lt);
+	print_title(out, r.subject_name, lt, lt, "<>");
 
 	out << '\t'
 		<< r.subject_range().begin_ + 1 << '\t'

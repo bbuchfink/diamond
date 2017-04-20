@@ -44,35 +44,7 @@ struct Output_format
 	{ }
 	virtual ~Output_format()
 	{ }
-	static void print_salltitles(Text_buffer &buf, const char *id, bool full_titles, bool all_titles)
-	{
-		if (!all_titles) {
-			buf.write_until(id, full_titles ? "\1" : Const::id_delimiters);
-			return;
-		}
-		if (strchr(id, '\1') == 0) {
-			buf.write_until(id, full_titles ? "\1" : Const::id_delimiters);
-			return;
-		}
-		//size_t n = 0;
-		const vector<string> t (tokenize(id, "\1"));
-		vector<string>::const_iterator i=t.begin();
-		for(;i<t.end()-1;++i) {
-			if (full_titles)
-				buf << *i << "<>";
-			else {
-				buf.write_until(i->c_str(), Const::id_delimiters);
-				buf << ";";
-			}
-			//n += i->length() + 2;
-		}
-		if(full_titles)
-			buf << *i;
-		else
-			buf.write_until(i->c_str(), Const::id_delimiters);
-		//n += i->length();
-		//return n;
-	}
+	static void print_title(Text_buffer &buf, const char *id, bool full_titles, bool all_titles, const char *separator);
 	operator unsigned() const
 	{
 		return code;
@@ -117,7 +89,9 @@ struct XML_format : public Output_format
 {
 	XML_format():
 		Output_format(blast_xml)
-	{}
+	{
+		config.salltitles = true;
+	}
 	virtual void print_match(const Hsp_context &r, Text_buffer &out) const;
 	virtual void print_header(Output_stream &f, int mode, const char *matrix, int gap_open, int gap_extend, double evalue, const char *first_query_name, unsigned first_query_len) const;
 	virtual void print_query_intro(size_t query_num, const char *query_name, unsigned query_len, Text_buffer &out, bool unaligned) const;
@@ -131,7 +105,9 @@ struct Pairwise_format : public Output_format
 {
 	Pairwise_format() :
 		Output_format(blast_pairwise)
-	{}
+	{
+		config.salltitles = true;
+	}
 	virtual void print_match(const Hsp_context &r, Text_buffer &out) const;
 	virtual void print_header(Output_stream &f, int mode, const char *matrix, int gap_open, int gap_extend, double evalue, const char *first_query_name, unsigned first_query_len) const;
 	virtual void print_query_intro(size_t query_num, const char *query_name, unsigned query_len, Text_buffer &out, bool unaligned) const;

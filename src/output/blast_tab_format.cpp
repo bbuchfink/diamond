@@ -116,10 +116,10 @@ void Blast_tab_format::print_match(const Hsp_context& r, Text_buffer &out) const
 			out << r.source_query.length();
 			break;
 		case 5:
-			this->print_salltitles(out, r.subject_name, false, false);
+			print_title(out, r.subject_name, false, false, "<>");
 			break;
 		case 6:
-			this->print_salltitles(out, r.subject_name, false, true);
+			print_title(out, r.subject_name, false, true, "<>");
 			break;
 		case 12:
 			out << r.subject_len;
@@ -224,10 +224,10 @@ void Blast_tab_format::print_match(const Hsp_context& r, Text_buffer &out) const
 			print_staxids(out, r.subject_name);
 			break;
 		case 39:
-			this->print_salltitles(out, r.subject_name, true, false);
+			print_title(out, r.subject_name, true, false, "<>");
 			break;
 		case 40:
-			this->print_salltitles(out, r.subject_name, true, true);
+			print_title(out, r.subject_name, true, true, "<>");
 			break;
 		case 43:
 			out << (double)r.query_source_range().length()*100.0 / r.source_query.length();

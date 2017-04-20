@@ -104,6 +104,7 @@ int xdrop_ungapped(const Letter *query, const Letter *subject, unsigned seed_len
 int xdrop_ungapped(const Letter *query, const Letter *subject, unsigned &delta, unsigned &len);
 int xdrop_ungapped_right(const Letter *query, const Letter *subject, int &len);
 Diagonal_segment xdrop_ungapped(const sequence &query, const Bias_correction &query_bc, const sequence &subject, int qa, int sa);
+Diagonal_segment xdrop_ungapped(const sequence &query, const sequence &subject, int qa, int sa);
 
 struct Local {};
 struct Global {};
