@@ -185,7 +185,6 @@ struct Greedy_aligner2
 				diff1 = e.score - link.score1;
 				prefix_score = diags.prefix_score(e_idx, link.subject_pos1, path_max) - diff1 + gap_score + link.score2;
 				link_score = link.score1 + link.score2 + gap_score;
-				exact = true;
 				link_j = link.subject_pos2;
 				/*if (log)
 					cout << "Link score1=" << link.score1 << " score2=" << link.score2 << " j1=" << link.subject_pos1 << " j2=" << link.subject_pos2 << endl;*/
@@ -195,7 +194,6 @@ struct Greedy_aligner2
 			prefix_score = diags.nodes[e_idx].prefix_score + gap_score - int(config.space_penalty*std::max(space - 1, 0)) + d.score;
 			path_max = diags.nodes[e_idx].path_max;
 			link_score = e.score + d.score + gap_score;
-			exact = false;
 			link_j = d.j;
 		}
 		

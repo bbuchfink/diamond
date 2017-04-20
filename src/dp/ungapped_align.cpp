@@ -107,7 +107,7 @@ int xdrop_ungapped(const Letter *query, const Letter *subject, unsigned &delta, 
 
 Diagonal_segment xdrop_ungapped(const sequence &query, const Bias_correction &query_bc, const sequence &subject, int qa, int sa)
 {
-	const float xdrop = config.raw_ungapped_xdrop;
+	const float xdrop = (float)config.raw_ungapped_xdrop;
 	float score = 0, st = 0;
 	int n = 1, delta = 0, len = 0;
 
@@ -144,7 +144,7 @@ Diagonal_segment xdrop_ungapped(const sequence &query, const Bias_correction &qu
 		++s;
 		++n;
 	}
-	return Diagonal_segment(qa - delta, sa - delta, len + delta, score);
+	return Diagonal_segment(qa - delta, sa - delta, len + delta, (int)score);
 }
 
 Diagonal_segment xdrop_ungapped(const sequence &query, const sequence &subject, int qa, int sa)
