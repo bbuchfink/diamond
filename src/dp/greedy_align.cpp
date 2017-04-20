@@ -179,7 +179,6 @@ struct Greedy_aligner2
 		int gap_score = shift != 0 ? -score_matrix.gap_open() - abs(shift)*score_matrix.gap_extend() : 0;
 		const int space = shift > 0 ? d.j - e.subject_last() : d.i - e.query_last();
 		int prefix_score = 0, link_score = 0, link_j, diff1 = 0, path_max;
-		bool exact;
 		if (space <= 0) {
 			Link link;
 			if (get_link(e, d, query, subject, link, link_padding) > 0) {

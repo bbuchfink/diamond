@@ -175,7 +175,7 @@ bool Query_mapper::generate_output(Text_buffer &buffer, Statistics &stat)
 			if (j->id_percent() < config.min_id
 				|| j->query_cover_percent(source_query_len) < config.query_cover
 				|| j->subject_cover_percent(subject_len) < config.subject_cover
-				|| (config.no_self_hits && j->identities == j->length && j->query_source_range.length() == source_query_len && j->subject_range.length() == subject_len && strcmp(query_title, ref_title) == 0))
+				|| (config.no_self_hits && j->identities == j->length && j->query_source_range.length() == (int)source_query_len && j->subject_range.length() == (int)subject_len && strcmp(query_title, ref_title) == 0))
 				continue;
 
 			if (blocked_processing) {
