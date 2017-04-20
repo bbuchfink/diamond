@@ -258,15 +258,13 @@ struct Greedy_aligner2
 
 			weiter:
 			j = i;
+			if (j->second == node)
+				++j;
 			int max_i = 0;
 			while (j != window.end() && j->first - dd < max_shift) {
-				if (j->second == node) {
-					++j;
-					continue;
-				}
 				Diagonal_node &e = diags[j->second];
 				const int de = j->first, shift = dd - de;
-				if (d.j - e.subject_end() > max_dist) {
+				if (d.j - e.subject_end() > max_dist && j != i) {
 					map<int, unsigned>::iterator k = j;
 					++k;
 					window.erase(j);

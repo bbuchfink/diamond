@@ -20,8 +20,8 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 
 bool Hsp_data::pass_through(const Diagonal_segment &d) const
 {
-	if (intersect(d.query_range(), query_range).length() != (size_t)d.len
-		|| intersect(d.subject_range(), subject_range).length() != (size_t)d.len)
+	if (intersect(d.query_range(), query_range).length() != d.len
+		|| intersect(d.subject_range(), subject_range).length() != d.len)
 		return false;
 
 	Iterator it = begin();
