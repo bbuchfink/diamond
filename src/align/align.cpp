@@ -113,7 +113,8 @@ void align_worker(size_t thread_id)
 			query_aligned[query] = true;
 		Output_sink::get().push(query, buf);
 		if (thread_id == 0 && timer.getElapsedTime() >= heartbeat_interval) {
-			verbose_stream << "Queries=" << query << " size=" << megabytes(Output_sink::get().size()) << " max_size=" << megabytes(Output_sink::get().max_size()) << endl;
+			verbose_stream << "Queries=" << query << " size=" << megabytes(Output_sink::get().size()) << " max_size=" << megabytes(Output_sink::get().max_size())
+				<< " next=" << query_ids::get()[Output_sink::get().next()].c_str() << endl;
 			timer.start();
 		}
 	}

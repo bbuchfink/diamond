@@ -105,6 +105,10 @@ struct Output_sink
 	{
 		return *instance;
 	}
+	size_t next() const
+	{
+		return next_;
+	}
 	static auto_ptr<Output_sink> instance;
 private:
 	void flush(Text_buffer *buf);
