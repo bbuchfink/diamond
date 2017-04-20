@@ -88,8 +88,8 @@ struct Seed_hit
 struct Hsp_traits
 {
 	Hsp_traits() :
-		d_max(std::numeric_limits<int>::min()),
 		d_min(std::numeric_limits<int>::max()),
+		d_max(std::numeric_limits<int>::min()),
 		shift_max(0),
 		dj_max(0)
 	{}
@@ -214,17 +214,17 @@ struct Diag_graph
 	struct Edge
 	{
 		Edge() :
-			node_in(),
-			prefix_score(0)
+			prefix_score(0),
+			node_in()
 		{
 		}
 		Edge(int prefix_score, int path_max, int j, unsigned node_in, unsigned node_out, int diff) :
 			prefix_score(prefix_score),
 			path_max(path_max),
 			j(j),
+			diff(diff),
 			node_in(node_in),
-			node_out(node_out),
-			diff(diff)
+			node_out(node_out)
 		{			
 		}
 		/*operator int() const
