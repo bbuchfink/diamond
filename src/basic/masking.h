@@ -39,8 +39,8 @@ struct Masking
 		}
 		std::copy(likelihoodRatioMatrix_, likelihoodRatioMatrix_ + size, probMatrixPointers_);
 		int firstGapCost = score_matrix.gap_extend() + score_matrix.gap_open();
-		firstGapProb_ = std::exp(-score_matrix.lambda() * firstGapCost);
-		otherGapProb_ = std::exp(-score_matrix.lambda() * score_matrix.gap_extend());
+		firstGapProb_ = exp(-score_matrix.lambda() * firstGapCost);
+		otherGapProb_ = exp(-score_matrix.lambda() * score_matrix.gap_extend());
 	}
 	void operator()(Letter *seq, size_t len) const
 	{
