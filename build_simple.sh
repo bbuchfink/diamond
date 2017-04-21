@@ -50,4 +50,5 @@ g++ -DNDEBUG -O3 -Wno-deprecated-declarations $1 $2 \
   src/dp/diag_scores.cpp \
   src/data/taxonomy.cpp \
   src/lib/tantan/tantan.cc \
+  src/basic/masking.cpp \
 -lz -lpthread -o diamond

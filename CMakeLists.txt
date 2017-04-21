@@ -82,6 +82,7 @@ add_executable(diamond src/run/main.cpp
   src/dp/diag_scores.cpp
   src/data/taxonomy.cpp
   src/lib/tantan/tantan.cc
+  src/basic/masking.cpp
 )
 
 target_link_libraries(diamond ${ZLIB_LIBRARY} ${CMAKE_THREAD_LIBS_INIT})

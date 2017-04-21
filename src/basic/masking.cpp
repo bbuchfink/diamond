@@ -16,28 +16,46 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ****/
 
-#include <vector>
-#include <math.h>
-#include "value.h"
-#include "score_matrix.h"
-#include "../basic/sequence.h"
-#include "../lib/tantan/tantan.hh"
-#include "../data/sequence_set.h"
+#include "masking.h"
 
-using std::vector;
-
-struct Masking
+Masking::Masking(const Score_matrix &score_matrix)
 {
-	Masking()
-	{}
-	Masking(const Score_matrix &score_matrix);
-	void operator()(Letter *seq, size_t len) const;
-private:
-	enum { size = 64 };
-	double likelihoodRatioMatrix_[size][size], *probMatrixPointers_[size], firstGapProb_, otherGapProb_;
-	char mask_table_[size];
-};
+	const double lambda = 0.324032;
+	for (int i = 0; i < size; ++i) {
+		mask_table_[i] = value_traits.mask_char;
+		for (int j = 0; j < size; ++j)
+			if (i < value_traits.alphabet_size && j < value_traits.alphabet_size)
+				likelihoodRatioMatrix_[i][j] = exp(lambda * score_matrix(i, j));
+	}
+	std::copy(likelihoodRatioMatrix_, likelihoodRatioMatrix_ + size, probMatrixPointers_);
+	int firstGapCost = score_matrix.gap_extend() + score_matrix.gap_open();
+	firstGapProb_ = exp(-lambda * firstGapCost);
+	otherGapProb_ = exp(-lambda * score_matrix.gap_extend());
+	firstGapProb_ /= (1 - otherGapProb_);
+}
 
-extern Masking masking;
+void Masking::operator()(Letter *seq, size_t len) const
+{
+	tantan::maskSequences((tantan::uchar*)seq, (tantan::uchar*)(seq + len), 50,
+		(tantan::const_double_ptr*)probMatrixPointers_,
+		0.005, 0.05,
+		0.9,
+		0, 0,
+		0.5, (const tantan::uchar*)mask_table_);
+}
 
-void mask_seqs(Sequence_set &seqs, const Masking &masking);
+void mask_worker(Atomic<size_t> *next, Sequence_set *seqs, const Masking *masking)
+{
+	size_t i;
+	while ((i = (*next)++) < seqs->get_length())
+		masking->operator()(seqs->ptr(i), seqs->length(i));
+}
+
+void mask_seqs(Sequence_set &seqs, const Masking &masking)
+{
+	Thread_pool threads;
+	Atomic<size_t> next(0);
+	for (size_t i = 0; i < config.threads_; ++i)
+		threads.push_back(launch_thread(mask_worker, &next, &seqs, &masking));
+	threads.join_all();
+}

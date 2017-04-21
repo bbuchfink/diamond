@@ -30,6 +30,7 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #include "../data/frequent_seeds.h"
 #include "../output/daa_write.h"
 #include "../data/taxonomy.h"
+#include "../basic/masking.h"
 
 using std::endl;
 using std::cout;
@@ -108,7 +109,10 @@ void run_ref_chunk(Database_file &db_file,
 	Output_stream &master_out,
 	vector<Temp_file> &tmp_file)
 {
-	task_timer timer("Building reference histograms");
+	task_timer timer("Masking reference");
+	mask_seqs(*ref_seqs::data_, masking);
+
+	timer.go("Building reference histograms");
 	const pair<size_t, size_t> len_bounds = ref_seqs::data_->len_bounds(shapes[0].length_);
 	ref_hst = Partitioned_histogram(*ref_seqs::data_, (unsigned)len_bounds.second);
 
@@ -232,10 +236,12 @@ void master_thread(Database_file &db_file, Timer &timer_mapping, Timer &total_ti
 			output_format->print_header(*master_out, align_mode.mode, config.matrix.c_str(), score_matrix.gap_open(), score_matrix.gap_extend(), config.max_evalue, query_ids::get()[0].c_str(),
 				unsigned(align_mode.query_translated ? query_source_seqs::get()[0].length() : query_seqs::get()[0].length()));
 
-		if (align_mode.sequence_type == amino_acid && config.seg == "yes") {
+		/*if (align_mode.sequence_type == amino_acid && config.seg == "yes") {
 			timer.go("Running complexity filter");
 			Complexity_filter::get().run(*query_seqs::data_);
-		}
+		}*/
+		timer.go("Masking queries");
+		mask_seqs(*query_seqs::data_, masking);
 
 		timer.go("Building query histograms");
 		const pair<size_t, size_t> query_len_bounds = query_seqs::data_->len_bounds(shapes[0].length_);
