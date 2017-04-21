@@ -35,7 +35,7 @@ struct Masking
 			mask_table_[i] = value_traits.mask_char;
 			for (int j = 0; j < size; ++j)
 				if (i < value_traits.alphabet_size && j < value_traits.alphabet_size)
-					likelihoodRatioMatrix_[i][j] = std::exp(score_matrix.lambda() * score_matrix(i, j));
+					likelihoodRatioMatrix_[i][j] = exp(score_matrix.lambda() * score_matrix(i, j));
 		}
 		std::copy(likelihoodRatioMatrix_, likelihoodRatioMatrix_ + size, probMatrixPointers_);
 		int firstGapCost = score_matrix.gap_extend() + score_matrix.gap_open();
