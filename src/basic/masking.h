@@ -17,6 +17,7 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 ****/
 
 #include <vector>
+#include <math.h>
 #include "value.h"
 #include "score_matrix.h"
 #include "../basic/sequence.h"
