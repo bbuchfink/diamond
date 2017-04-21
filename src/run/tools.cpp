@@ -110,12 +110,20 @@ void match_file_stat()
 void run_masker()
 {
 	Input_stream f(config.query_file);
-	vector<Letter> seq;
+	vector<Letter> seq, seq2;
 	vector<char> id;
 	const FASTA_format format;
 	while (format.get_seq(id, seq, f)) {
 		cout << '>' << string(id.data(), id.size()) << endl;
-		masking(seq.data(), seq.size());
-		cout << sequence(seq.data(), seq.size()) << endl;
+		seq2 = seq;
+		masking(seq2.data(), seq2.size());
+		for (size_t i = 0; i < seq.size(); ++i) {
+			char c = value_traits.alphabet[seq[i]];
+			if (seq2[i] == value_traits.mask_char)
+				c = tolower(c);
+			cout << c;
+		}
+		cout << endl;
+		//cout << sequence(seq.data(), seq.size()) << endl;
 	}
 }
