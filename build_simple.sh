@@ -49,4 +49,5 @@ g++ -DNDEBUG -O3 -Wno-deprecated-declarations $1 $2 \
   src/extra/opt.cpp \
   src/dp/diag_scores.cpp \
   src/data/taxonomy.cpp \
+  src/lib/tantan/tantan.cc \
 -lz -lpthread -o diamond

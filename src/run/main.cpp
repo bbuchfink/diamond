@@ -30,6 +30,7 @@ void run_mapper();
 void master_thread_di();
 void model_seqs();
 void opt();
+void run_masker();
 
 int main(int ac, const char* av[])
 {
@@ -90,6 +91,9 @@ int main(int ac, const char* av[])
 			break;
 		case Config::opt:
 			opt();
+			break;
+		case Config::mask:
+			run_masker();
 			break;
 		default:
 			return 1;

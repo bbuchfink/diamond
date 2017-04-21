@@ -68,6 +68,10 @@ struct sequence
 	{
 		return data_;
 	}
+	const Letter* end() const
+	{
+		return data_ + len_;
+	}
 	const Letter* clipped_data() const
 	{
 		return data_ + clipping_offset_;

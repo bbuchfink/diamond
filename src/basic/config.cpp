@@ -31,6 +31,7 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #include "../data/sorted_list.h"
 #include "../basic/translate.h"
 #include "../dp/dp.h"
+#include "masking.h"
 
 Config config;
 
@@ -53,7 +54,8 @@ Config::Config(int argc, const char **argv)
 		.add_command("modelsim", "")
 		.add_command("match-file-stat", "")
 		.add_command("model-seqs", "")
-		.add_command("opt", "");
+		.add_command("opt", "")
+		.add_command("mask", "");
 
 	Options_group general("General options");
 	general.add()
@@ -306,7 +308,8 @@ Config::Config(int argc, const char **argv)
 		;
 	}
 
-	if (command == Config::blastp || command == Config::blastx || command == Config::benchmark || command == Config::model_sim || command == Config::opt) {
+	if (command == Config::blastp || command == Config::blastx || command == Config::benchmark || command == Config::model_sim || command == Config::opt
+		|| command == Config::mask) {
 		if (tmpdir == "")
 			tmpdir = extract_dir(output_file);
 		if (matrix_file == "")
@@ -321,6 +324,7 @@ Config::Config(int argc, const char **argv)
 		message_stream << "Scoring parameters: " << score_matrix << endl;
 		raw_ungapped_xdrop = score_matrix.rawscore(ungapped_xdrop);
 		init_cbs();
+		masking = Masking(score_matrix);
 
 		if (seg == "" && command == blastx)
 			seg = "yes";

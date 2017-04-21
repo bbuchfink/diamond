@@ -22,6 +22,7 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #include "translate.h"
 #include "statistics.h"
 #include "sequence.h"
+#include "masking.h"
 
 const char* Const::version_string = "0.8.38";
 const char* Const::program_name = "diamond";
@@ -40,6 +41,8 @@ const Value_traits amino_acid_traits("ARNDCQEGHILKMFPSTWYVBJZX*", 23, "UO-");
 const Value_traits nucleotide_traits("ACGTN", 4, "MRWSYKVHDBX");
 Value_traits value_traits(amino_acid_traits);
 Value_traits input_value_traits(amino_acid_traits);
+
+Masking masking;
 
 Align_mode::Align_mode(unsigned mode) :
 	mode(mode)

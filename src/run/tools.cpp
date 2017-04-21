@@ -25,6 +25,7 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #include "../data/load_seqs.h"
 #include "../data/reference.h"
 #include "../extra/match_file.h"
+#include "../basic/masking.h"
 
 void get_seq()
 {
@@ -104,4 +105,17 @@ void match_file_stat()
 	blast_match match;
 	while (file.get(match, blast_format()));
 	file.get_subst();
+}
+
+void run_masker()
+{
+	Input_stream f(config.query_file);
+	vector<Letter> seq;
+	vector<char> id;
+	const FASTA_format format;
+	while (format.get_seq(id, seq, f)) {
+		cout << '>' << string(id.data(), id.size()) << endl;
+		masking(seq.data(), seq.size());
+		cout << sequence(seq.data(), seq.size()) << endl;
+	}
 }
