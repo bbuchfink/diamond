@@ -239,7 +239,7 @@ void master_thread(Database_file &db_file, Timer &timer_mapping, Timer &total_ti
 		}*/
 		if (config.masking == 1) {
 			timer.go("Masking queries");
-			mask_seqs(*query_seqs::data_, masking);
+			mask_seqs(*query_seqs::data_, Masking::get());
 		}
 
 		timer.go("Building query histograms");
