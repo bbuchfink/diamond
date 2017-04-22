@@ -20,7 +20,7 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 
 Masking::Masking(const Score_matrix &score_matrix)
 {
-	const double lambda = score_matrix.lambda();		//0.324032;
+	const double lambda = 0.324032;//  score_matrix.lambda();		//;
 	for (int i = 0; i < size; ++i) {
 		mask_table_[i] = value_traits.mask_char;
 		for (int j = 0; j < size; ++j)

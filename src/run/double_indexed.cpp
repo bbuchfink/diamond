@@ -109,10 +109,7 @@ void run_ref_chunk(Database_file &db_file,
 	Output_stream &master_out,
 	vector<Temp_file> &tmp_file)
 {
-	task_timer timer("Masking reference");
-	mask_seqs(*ref_seqs::data_, masking);
-
-	timer.go("Building reference histograms");
+	task_timer timer("Building reference histograms");
 	const pair<size_t, size_t> len_bounds = ref_seqs::data_->len_bounds(shapes[0].length_);
 	ref_hst = Partitioned_histogram(*ref_seqs::data_, (unsigned)len_bounds.second);
 
@@ -240,8 +237,10 @@ void master_thread(Database_file &db_file, Timer &timer_mapping, Timer &total_ti
 			timer.go("Running complexity filter");
 			Complexity_filter::get().run(*query_seqs::data_);
 		}*/
-		timer.go("Masking queries");
-		mask_seqs(*query_seqs::data_, masking);
+		if (config.masking == 1) {
+			timer.go("Masking queries");
+			mask_seqs(*query_seqs::data_, masking);
+		}
 
 		timer.go("Building query histograms");
 		const pair<size_t, size_t> query_len_bounds = query_seqs::data_->len_bounds(shapes[0].length_);

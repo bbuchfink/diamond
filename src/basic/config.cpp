@@ -132,7 +132,8 @@ Config::Config(int argc, const char **argv)
 		("lambda", 0, "lambda parameter for custom matrix", lambda)
 		("K", 0, "K parameter for custom matrix", K)
 		("comp-based-stats", 0, "enable composition based statistics (0/1=default)", comp_based_stats, 1u)
-		("seg", 0, "enable SEG masking of queries (yes/no)", seg)
+		("masking", 0, "enable masking of low complexity regions (0/1=default)", masking, 1)
+		//("seg", 0, "enable SEG masking of queries (yes/no)", seg)
 		("query-gencode", 0, "genetic code to use to translate query (see user manual)", query_gencode, 1u)
 		("salltitles", 0, "print full subject titles in output files", salltitles)
 		("no-self-hits", 0, "suppress reporting of identical self hits", no_self_hits)
@@ -324,7 +325,8 @@ Config::Config(int argc, const char **argv)
 		message_stream << "Scoring parameters: " << score_matrix << endl;
 		raw_ungapped_xdrop = score_matrix.rawscore(ungapped_xdrop);
 		init_cbs();
-		masking = Masking(score_matrix);
+		if(masking == 1)
+			::masking = Masking(score_matrix);
 
 		if (seg == "" && command == blastx)
 			seg = "yes";

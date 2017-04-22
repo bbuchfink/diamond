@@ -1,3 +1,7 @@
+[0.8.39]
+- removed SEG masking
+- added low complexity masking using tantan
+
 [0.8.38]
 - fixed std::exception error messages
 - fixed sequence titles in XML format
