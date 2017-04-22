@@ -18,6 +18,8 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 
 #include "masking.h"
 
+auto_ptr<Masking> Masking::instance;
+
 Masking::Masking(const Score_matrix &score_matrix)
 {
 	const double lambda = 0.324032;//  score_matrix.lambda();		//;
@@ -36,6 +38,9 @@ Masking::Masking(const Score_matrix &score_matrix)
 
 void Masking::operator()(Letter *seq, size_t len) const
 {
+	for (int i = 0; i < 64; ++i)
+		for (int j = 0; j < 64; ++j)
+			cout << probMatrixPointers_[i][j] << ' ';
 	tantan::maskSequences((tantan::uchar*)seq, (tantan::uchar*)(seq + len), 50,
 		(tantan::const_double_ptr*)probMatrixPointers_,
 		0.005, 0.05,

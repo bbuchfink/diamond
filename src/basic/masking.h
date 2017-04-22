@@ -28,16 +28,17 @@ using std::vector;
 
 struct Masking
 {
-	Masking()
-	{}
 	Masking(const Score_matrix &score_matrix);
 	void operator()(Letter *seq, size_t len) const;
+	static const Masking& get()
+	{
+		return *instance;
+	}
+	static auto_ptr<Masking> instance;
 private:
 	enum { size = 64 };
 	double likelihoodRatioMatrix_[size][size], *probMatrixPointers_[size], firstGapProb_, otherGapProb_;
 	char mask_table_[size];
 };
-
-extern Masking masking;
 
 void mask_seqs(Sequence_set &seqs, const Masking &masking);

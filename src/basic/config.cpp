@@ -326,7 +326,7 @@ Config::Config(int argc, const char **argv)
 		raw_ungapped_xdrop = score_matrix.rawscore(ungapped_xdrop);
 		init_cbs();
 		if(masking == 1)
-			::masking = Masking(score_matrix);
+			Masking::instance = auto_ptr<Masking>(new Masking(score_matrix));
 
 		if (seg == "" && command == blastx)
 			seg = "yes";

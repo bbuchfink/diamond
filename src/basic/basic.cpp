@@ -42,8 +42,6 @@ const Value_traits nucleotide_traits("ACGTN", 4, "MRWSYKVHDBX");
 Value_traits value_traits(amino_acid_traits);
 Value_traits input_value_traits(amino_acid_traits);
 
-Masking masking;
-
 Align_mode::Align_mode(unsigned mode) :
 	mode(mode)
 {
