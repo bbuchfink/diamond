@@ -309,10 +309,14 @@ Config::Config(int argc, const char **argv)
 		;
 	}
 
-	if (command == Config::blastp || command == Config::blastx || command == Config::benchmark || command == Config::model_sim || command == Config::opt
-		|| command == Config::mask) {
-		if (tmpdir == "")
-			tmpdir = extract_dir(output_file);
+	switch (command) {
+	case Config::blastp:
+	case Config::blastx:
+	case Config::benchmark:
+	case Config::model_sim:
+	case Config::opt:
+	case Config::mask:
+	case Config::makedb:
 		if (matrix_file == "")
 			score_matrix = Score_matrix(to_upper_case(matrix), gap_open, gap_extend, reward, penalty);
 		else {
@@ -323,10 +327,17 @@ Config::Config(int argc, const char **argv)
 			score_matrix = Score_matrix(matrix_file, lambda, K, gap_open, gap_extend);
 		}
 		message_stream << "Scoring parameters: " << score_matrix << endl;
-		raw_ungapped_xdrop = score_matrix.rawscore(ungapped_xdrop);
-		init_cbs();
-		if(masking == 1)
+		if (masking == 1)
 			Masking::instance = auto_ptr<Masking>(new Masking(score_matrix));
+	}
+
+	if (command == Config::blastp || command == Config::blastx || command == Config::benchmark || command == Config::model_sim || command == Config::opt
+		|| command == Config::mask) {
+		if (tmpdir == "")
+			tmpdir = extract_dir(output_file);
+		
+		init_cbs();
+		raw_ungapped_xdrop = score_matrix.rawscore(ungapped_xdrop);
 
 		if (seg == "" && command == blastx)
 			seg = "yes";

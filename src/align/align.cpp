@@ -90,13 +90,9 @@ void Output_sink::flush(Text_buffer *buf)
 
 void align_worker(size_t thread_id)
 {
-	static const double heartbeat_interval = 1.0;
 	vector<hit>::iterator begin, end;
 	size_t query;
 	Statistics stat;
-	Timer timer;
-	if (thread_id == 0)
-		timer.start();
 	while ((query = Simple_query_queue::get().get(begin, end)) != Simple_query_queue::end) {
 		if (end == begin) {
 			Output_sink::get().push(query, 0);
@@ -112,13 +108,18 @@ void align_worker(size_t thread_id)
 		if (aligned && !config.unaligned.empty())
 			query_aligned[query] = true;
 		Output_sink::get().push(query, buf);
-		if (thread_id == 0 && timer.getElapsedTime() >= heartbeat_interval) {
-			verbose_stream << "Queries=" << query << " size=" << megabytes(Output_sink::get().size()) << " max_size=" << megabytes(Output_sink::get().max_size())
-				<< " next=" << query_ids::get()[Output_sink::get().next()].c_str() << endl;
-			timer.start();
-		}
 	}
 	statistics += stat;
+}
+
+void heartbeat_worker()
+{
+	static const int interval = 1;
+	while (Output_sink::get().next() < Simple_query_queue::get().qend()) {
+		verbose_stream << "Queries=" << Simple_query_queue::get().next() << " size=" << megabytes(Output_sink::get().size()) << " max_size=" << megabytes(Output_sink::get().max_size())
+			<< " next=" << query_ids::get()[Output_sink::get().next()].c_str() << endl;
+		tthread::this_thread::sleep_for(tthread::chrono::seconds(interval));
+	}
 }
 
 Query_queue query_queue;
@@ -267,6 +268,7 @@ void align_queries(const Trace_pt_buffer &trace_pts, Output_stream* output_file)
 			Thread_pool threads;
 			for (size_t i = 0; i < config.threads_; ++i)
 				threads.push_back(launch_thread(static_cast<void(*)(size_t)>(&align_worker), i));
+			threads.push_back(launch_thread(heartbeat_worker));
 			threads.join_all();
 		}
 		timer.go("Deallocating buffers");

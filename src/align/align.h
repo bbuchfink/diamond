@@ -72,6 +72,14 @@ struct Simple_query_queue
 		end_(end)
 	{}
 	size_t get(vector<hit>::iterator &begin, vector<hit>::iterator &end);
+	size_t next() const
+	{
+		return next_;
+	}
+	size_t qend() const
+	{
+		return qend_;
+	}
 	static Simple_query_queue& get()
 	{
 		return *instance;

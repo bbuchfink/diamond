@@ -39,7 +39,7 @@ struct invalid_database_version_exception : public std::exception
 {
 	virtual const char* what() const throw()
 	{
-		return "Incompatible database version";
+		return "Database was built with a different version of diamond as is incompatible.";
 	}
 };
 
@@ -58,7 +58,7 @@ struct Reference_header
 #ifdef EXTRA
 	Sequence_type sequence_type;
 #endif
-	enum { current_db_version = 0 };
+	enum { current_db_version = 1 };
 };
 
 extern Reference_header ref_header;

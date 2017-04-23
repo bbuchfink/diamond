@@ -123,6 +123,31 @@ void launch_scheduled_thread_pool(_context &context, unsigned count, unsigned th
 	launch_thread_pool(c, threads);
 }
 
+template<typename _f>
+struct Thread_p0
+{
+	Thread_p0(_f f) :
+		f(f)
+	{ }
+	_f f;
+};
+
+template<typename _f>
+void thread_worker(void *p)
+{
+	Thread_p0<_f> *q = (Thread_p0<_f>*)p;
+	q->f();
+	delete q;
+	TLS::clear();
+}
+
+template<typename _f>
+thread* launch_thread(_f f)
+{
+	return new thread(thread_worker<_f>, new Thread_p0<_f>(f));
+}
+
+
 template<typename _f, typename _t1>
 struct Thread_p1
 {

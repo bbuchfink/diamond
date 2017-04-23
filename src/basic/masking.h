@@ -30,15 +30,19 @@ struct Masking
 {
 	Masking(const Score_matrix &score_matrix);
 	void operator()(Letter *seq, size_t len) const;
+	void mask_bit(Letter *seq, size_t len) const;
+	void bit_to_hard_mask(Letter *seq, size_t len, size_t &n) const;
+	void remove_bit_mask(Letter *seq, size_t len) const;
 	static const Masking& get()
 	{
 		return *instance;
 	}
 	static auto_ptr<Masking> instance;
+	static const uint8_t bit_mask;
 private:
 	enum { size = 64 };
 	double likelihoodRatioMatrix_[size][size], *probMatrixPointers_[size], firstGapProb_, otherGapProb_;
-	char mask_table_[size];
+	char mask_table_x_[size], mask_table_bit_[size];
 };
 
-void mask_seqs(Sequence_set &seqs, const Masking &masking);
+void mask_seqs(Sequence_set &seqs, const Masking &masking, bool hard_mask = true);

@@ -223,7 +223,7 @@ void master_thread(Database_file &db_file, Timer &timer_mapping, Timer &total_ti
 		task_timer timer("Loading query sequences", true);
 		timer_mapping.resume();
 		size_t n_query_seqs;
-		n_query_seqs = load_seqs(*query_file, *format_n, &query_seqs::data_, query_ids::data_, query_source_seqs::data_, (size_t)(config.chunk_size * 1e9), config.qfilt);
+		n_query_seqs = load_seqs(*query_file, *format_n, &query_seqs::data_, query_ids::data_, &query_source_seqs::data_, (size_t)(config.chunk_size * 1e9), config.qfilt);
 		if (n_query_seqs == 0)
 			break;
 		timer.finish();

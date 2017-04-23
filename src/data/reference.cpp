@@ -1,5 +1,5 @@
 /****
-Copyright (c) 2016, Benjamin Buchfink
+Copyright (c) 2016-2017, Benjamin Buchfink
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
@@ -26,6 +26,7 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #include "load_seqs.h"
 #include "../util/seq_file_format.h"
 #include "../util/log_stream.h"
+#include "../basic/masking.h"
 
 String_set<0>* ref_ids::data_ = 0;
 Ref_map ref_map;
@@ -50,6 +51,18 @@ struct Pos_record
 	uint32_t seq_len;
 };
 
+void push_seq(const sequence &seq, const sequence &id, uint64_t &offset, vector<Pos_record> &pos_array, Output_stream &out, size_t &letters, size_t &n_seqs)
+{	
+	pos_array.push_back(Pos_record(offset, seq.length()));
+	out.write("\xff", 1);
+	out.write(seq.data(), seq.length());
+	out.write("\xff", 1);
+	out.write(id.data(), id.length() + 1);
+	letters += seq.length();
+	++n_seqs;
+	offset += seq.length() + id.length() + 3;
+}
+
 void make_db()
 {
 	message_stream << "Database file: " << config.input_ref_file << endl;
@@ -62,42 +75,36 @@ void make_db()
 	Output_stream out(config.database);
 	out.typed_write(&ref_header, 1);
 
-	size_t letters = 0, n = 0;
+	size_t letters = 0, n = 0, n_seqs = 0;
 	uint64_t offset = sizeof(ref_header);
-
-	vector<Letter> seq;
-	vector<char> id;
+	Sequence_set *seqs;
+	String_set<0> *ids;
+	const FASTA_format format;
 	vector<Pos_record> pos_array;
-	FASTA_format format;
 
 	try {
-
-		while (format.get_seq(id, seq, *db_file)) {
-			if (seq.size() == 0)
-				throw std::runtime_error("File format error: sequence of length 0 at line " + to_string(db_file->line_count));
-			if (n % 100000llu == 0llu) {
-				std::stringstream ss;
-				ss << "Loading sequence data (" << n << " sequences processed)";
-				timer.go(ss.str().c_str());
+		while ((timer.go("Loading sequences"), n = load_seqs(*db_file, format, &seqs, ids, 0, (size_t)(1e9), string())) > 0) {
+			if (config.masking == 1) {
+				timer.go("Masking sequences");
+				mask_seqs(*seqs, Masking::get(), false);
 			}
-			pos_array.push_back(Pos_record(offset, seq.size()));
-			out.write("\xff", 1);
-			out.write(seq, false);
-			out.write("\xff", 1);
-			out.write(id, false);
-			out.write("\0", 1);
-			letters += seq.size();
-			++n;
-			offset += seq.size() + id.size() + 3;
+			timer.go("Writing sequences");
+			for (size_t i = 0; i < n; ++i) {
+				sequence seq = (*seqs)[i];
+				if (seq.length() == 0)
+					throw std::runtime_error("File format error: sequence of length 0 at line " + to_string(db_file->line_count));
+				push_seq(seq, (*ids)[i], offset, pos_array, out, letters, n_seqs);
+			}
+			delete seqs;
+			delete ids;
 		}
-
 	}
 	catch (std::exception&) {
 		out.close();
 		out.remove();
 		throw;
 	}
-
+	
 	timer.go("Writing trailer");
 	ref_header.pos_array_offset = offset;
 	pos_array.push_back(Pos_record(offset, 0));
@@ -108,13 +115,13 @@ void make_db()
 	
 	timer.go("Closing the database file");
 	ref_header.letters = letters;
-	ref_header.sequences = n;
+	ref_header.sequences = n_seqs;
 	out.seekp(0);
 	out.typed_write(&ref_header, 1);
 	out.close();
 
 	timer.finish();
-	message_stream << "Processed " << n << " sequences, " << letters << " letters." << endl;
+	message_stream << "Processed " << n_seqs << " sequences, " << letters << " letters." << endl;
 	message_stream << "Total time = " << total.getElapsedTimeInSec() << "s" << endl;
 }
 
@@ -154,13 +161,19 @@ bool Database_file::load_seqs()
 	ref_seqs::data_->finish_reserve();
 	ref_ids::data_->finish_reserve();
 	seek(start_offset);
+	size_t masked = 0;
 
 	for (size_t n = 0; n < seqs; ++n) {
 		read(ref_seqs::data_->ptr(n) - 1, ref_seqs::data_->length(n) + 2);
 		read(ref_ids::data_->ptr(n), ref_ids::data_->length(n) + 1);
+		if (config.masking == 1)
+			Masking::get().bit_to_hard_mask(ref_seqs::data_->ptr(n), ref_seqs::data_->length(n), masked);
+		else
+			Masking::get().remove_bit_mask(ref_seqs::data_->ptr(n), ref_seqs::data_->length(n));
 		if (!config.sfilt.empty() && strstr(ref_ids::get()[n].c_str(), config.sfilt.c_str()) == 0)
 			memset(ref_seqs::data_->ptr(n), value_traits.mask_char, ref_seqs::data_->length(n));
 	}
+	log_stream << "Masked letters = " << masked << endl;
 
 	blocked_processing = seqs < ref_header.sequences;
 	return true;
