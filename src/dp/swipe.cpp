@@ -115,7 +115,7 @@ struct Target_iterator
 		subject_begin(subject_begin),
 		subject_end(subject_end)
 	{
-		const int n_targets(n_targets());
+		const int n_targets = this->n_targets();
 		int i = 0;
 		for (; i < std::min(_n, n_targets); ++i) {
 			pos[i] = 0;
