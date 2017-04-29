@@ -73,15 +73,16 @@ void score_diagonal(const Letter *query, const Letter *subject, int len, int qbe
 
 void score_diagonal2(const Letter *query, const Bias_correction &query_bc, const Letter *subject, int len, int qbegin, int jbegin, vector<Diagonal_node> &diags, int cutoff, size_t &cells)
 {
-	static const float xdrop = 10;
+	typedef int score_t;
+	static const score_t xdrop = 10;
 	int i = 0, j = 0, begin = 0, end = 0, l = 0;
-	float score = 0, max_score = 0;
+	score_t score = 0, max_score = 0;
 	while (l<len) {
-		score += score_matrix(query[i], subject[i]) + query_bc[qbegin + i];
+		score += score_matrix(query[i], subject[i]); // +query_bc[qbegin + i];
 		if (score <= 0 || max_score - score > xdrop) {
 			if (max_score >= cutoff) {
 				diags.push_back(Diagonal_node(qbegin + begin, jbegin + begin, end - begin, (int)max_score));
-				cells += end - begin;
+				//cells += end - begin;
 			}
 			score = 0;
 			max_score = 0;
@@ -96,7 +97,7 @@ void score_diagonal2(const Letter *query, const Bias_correction &query_bc, const
 	}
 	if (max_score >= cutoff) {
 		diags.push_back(Diagonal_node(qbegin + begin, jbegin + begin, end - begin, (int)max_score));
-		cells += end - begin;
+		//cells += end - begin;
 	}
 }
 
@@ -415,15 +416,15 @@ int get_diag(int i, int j, Band::Iterator &d, int begin, int last, int end, int 
 			assert(i + p0 + 1 >= 0);
 			assert(j + p0 + 1 >= 0);
 			Diagonal_segment diag(Diagonal_segment(i + p0 + 1, j + p0 + 1, p1 - p0, score));
-			if (diag.score + query_bc(diag) >= cutoff) {
-				diag.score = diag.score + query_bc(diag);
+			//if (diag.score + query_bc(diag) >= cutoff) {
+			diag.score = diag.score; // +query_bc(diag);
 				diags.push_back(diag);
 				cells += p1 - p0;
 				assert(p0 + 1 >= 0);
 				z = p0 + 1;
 				if (log)
 					cout << diags.back() << endl;
-			}
+			//}
 		}
 		end = p0;
 	}

@@ -1,5 +1,5 @@
 /****
-Copyright (c) 2016, University of Tuebingen, Benjamin Buchfink
+Copyright (c) 2016-2017, Benjamin Buchfink, University of Tuebingen
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
@@ -388,5 +388,7 @@ struct Diag_scores {
 void smith_waterman(sequence q, sequence s, Hsp_data &out);
 void smith_waterman(sequence q, sequence s, const Diag_graph &diags);
 int score_range(sequence query, sequence subject, int i, int j, int j_end);
+
+void swipe(const sequence &query, vector<sequence>::const_iterator subject_begin, vector<sequence>::const_iterator subject_end, vector<int> &out);
 
 #endif /* FLOATING_SW_H_ */

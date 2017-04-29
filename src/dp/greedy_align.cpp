@@ -437,7 +437,8 @@ struct Greedy_aligner2
 
 	void run(int d_begin, int d_end, Hsp_data &out, Hsp_traits &t, int band)
 	{
-		//cout << d_begin << '\t' << d_end << '\t' << d_end-d_begin << endl;
+		if(log)
+			cout << "***** " << d_begin << '\t' << d_end << '\t' << d_end-d_begin << endl;
 		diags.init();
 		diag_scores.scan_diags(d_begin, d_end, query, subject, qp, query_bc, log, diags.nodes, true);
 		run(out, t, band);
@@ -445,6 +446,8 @@ struct Greedy_aligner2
 
 	void run(Hsp_data &out, Hsp_traits &t, vector<Seed_hit>::const_iterator begin, vector<Seed_hit>::const_iterator end, int band)
 	{
+		if (log)
+			cout << "***** Seed hit run " << begin->diagonal() << '\t' << (end - 1)->diagonal() << '\t' << (end - 1)->diagonal() - begin->diagonal() << endl;
 		diags.init();
 		diags.load(begin, end);
 		run(out, t, band);
@@ -486,8 +489,6 @@ void greedy_align(sequence query, const Long_score_profile &qp, const Bias_corre
 	Hsp_traits t;
 	Greedy_aligner2 ga(query, qp, query_bc, subject, log);
 	if (d_end - d_begin > band * 4) {
-		if (log)
-			cout << "--- Seed hit run" << endl << endl;
 		ga.run(hsp, t, begin, end, band);
 		d_begin = t.d_min - band;
 		d_end = t.d_max + band;
@@ -496,7 +497,7 @@ void greedy_align(sequence query, const Long_score_profile &qp, const Bias_corre
 	}
 	else
 		ga.run(d_begin, d_end, hsp, t, band);
-	if (hsp.score > 0 && out.score > 0) {
+	if (false && hsp.score > 0 && out.score > 0) {
 		const Hsp_ref h1 = std::make_pair(&out, traits), h2 = std::make_pair(&hsp, t);
 		const pair<Hsp_ref, Hsp_ref> h = hsp.subject_range.begin_ > out.subject_range.begin_ ? std::make_pair(h1, h2) : std::make_pair(h2, h1);
 		const int d0 = h.first.first->query_range.end_ - h.first.first->subject_range.end_,
@@ -505,7 +506,8 @@ void greedy_align(sequence query, const Long_score_profile &qp, const Bias_corre
 			space = shift > 0 ? (int)h.second.first->subject_range.begin_ - (int)h.first.first->subject_range.end_ : (int)h.second.first->query_range.begin_ - (int)h.first.first->query_range.end_,
 			s = -abs(shift)*score_matrix.gap_extend() - score_matrix.gap_open() + out.score + hsp.score - int(config.space_penalty*space);
 		if (space >= 0 && s > (int)out.score && s > (int)hsp.score) {
-			//cout << "Merge " << endl;
+			if (log)
+				cout << "***** Merge" << endl;
 			ga.run(std::min(h.first.second.d_min, h.second.second.d_min), std::max(h.first.second.d_max, h.second.second.d_max) + 1, hsp, t, band);
 		}
 	}

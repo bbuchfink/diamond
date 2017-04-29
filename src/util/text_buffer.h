@@ -220,7 +220,7 @@ struct Text_buffer
 	}
 
 protected:
-	enum { block_size = 65536 };
+	enum { block_size = 4096 };
 	char *data_, *ptr_;
 
 };

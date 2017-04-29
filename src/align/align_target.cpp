@@ -1,5 +1,5 @@
 /****
-Copyright (c) 2016, Benjamin Buchfink
+Copyright (c) 2016-2017, Benjamin Buchfink
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
@@ -118,7 +118,6 @@ pair<int, int> get_diag_range(vector<Seed_hit>::const_iterator begin, vector<See
 
 void Query_mapper::align_target(size_t idx, Statistics &stat)
 {
-	static const bool logging = false;
 	static const int band_plus = 3;
 	typedef float score_t;
 	Target& target = targets[idx];
@@ -130,6 +129,7 @@ void Query_mapper::align_target(size_t idx, Statistics &stat)
 	//cout << '>' << query_ids::get()[query_id].c_str() << endl << '>' << ref_ids::get()[hits[0].subject_].c_str() << endl;
 
 	unsigned frame_mask = (1 << align_mode.query_contexts) - 1;
+	stat.inc(Statistics::CELLS, query_seq(0).length() * subject.length());
 	Timer timer;
 	timer.start();
 
@@ -197,6 +197,7 @@ void Query_mapper::align_target(size_t idx, Statistics &stat)
 		const unsigned frame = target.filter_frame;
 		const int d = target.filter_i - target.filter_j,
 			band = std::max(d - target.traits.d_min, target.traits.d_max - d) + band_plus;
+		cout << band << endl;
 		target.hsps.push_back(Hsp_data());
 		target.hsps.back().frame = frame;
 		uint64_t cell_updates;
@@ -211,7 +212,7 @@ void Query_mapper::align_target(size_t idx, Statistics &stat)
 			target.filter_i,
 			target.filter_j,
 			No_score_correction(),
-			Traceback(),
+			Score_only(),
 			int());
 
 		if (config.comp_based_stats) {
