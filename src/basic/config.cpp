@@ -202,14 +202,14 @@ Config::Config(int argc, const char **argv)
 		("d_new", 0, "", d_new, 1.0)
 		("score-estimate-factor", 0, "", score_estimate_factor, 0.0)
 		("diag-min-estimate", 0, "", diag_min_estimate, 17)
-		("greedy", 0, "", greedy)
 		("qfilt", 0, "", qfilt)
 		("sfilt", 0, "", sfilt)
 		("path-cutoff", 0, "", path_cutoff, 0.92)
 		("sw", 0, "", use_smith_waterman)
 		("superblock", 0, "", superblock, 128)
 		("max-cells", 0, "", max_cells, 10000000u)
-		("lb", 0, "", load_balancing, (unsigned)Config::target_parallel);
+		("lb", 0, "", load_balancing, (unsigned)Config::target_parallel)
+		("ext", 0, "", ext, (int)Config::floating_xdrop);
 		
 	parser.add(general).add(makedb).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options);
 	parser.store(argc, argv, command);

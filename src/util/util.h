@@ -346,6 +346,37 @@ struct Array
 	_t data_[n];
 };
 
+template<typename _t, int _n>
+struct Static_vector
+{
+	Static_vector():
+		n(0)
+	{}
+	_t& operator[](int i)
+	{
+		return data[i];
+	}
+	const _t& operator[](int i) const
+	{
+		return data[i];
+	}
+	int size() const
+	{
+		return n;
+	}
+	void push_back(const _t &x)
+	{
+		data[n++] = x;
+	}
+	void erase(int i)
+	{
+		memmove(&data[i], &data[i + 1], --n - i);
+	}
+private:
+	_t data[_n];
+	int n;
+};
+
 inline int ctz(uint64_t x)
 {
 #ifdef _MSC_VER

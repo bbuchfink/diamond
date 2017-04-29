@@ -211,11 +211,12 @@ void benchmark_greedy(const Sequence_set &ss, unsigned qa, unsigned sa)
 
 void benchmark_swipe(const Sequence_set &ss)
 {
-	static const unsigned n = 10000;
+	static const unsigned n = 1000;
 	vector<sequence> seqs;
-	vector<int> score;
-	seqs.push_back(ss[1]);
-	swipe(ss[0], seqs.begin(), seqs.end(), score);
+	vector<int> score(64);
+	for (int i = 0; i < 64; ++i)
+		seqs.push_back(ss[1]);
+	swipe(ss[0], seqs.begin(), seqs.end(), score.begin());
 	cout << "Score = " << score[0] << endl;
 	
 	Timer t;
@@ -223,14 +224,13 @@ void benchmark_swipe(const Sequence_set &ss)
 
 	for (unsigned i = 0; i < n; ++i) {
 
-		score.clear();
-		swipe(ss[0], seqs.begin(), seqs.end(), score);
+		swipe(ss[0], seqs.begin(), seqs.end(), score.begin());
 
 	}
 	t.stop();
 
 	cout << "usec=" << t.getElapsedTimeInSec() / (double)n * 1000000.0 << endl;
-	cout << "gcups=" << 16*ss[0].length()*ss[1].length()*n / t.getElapsedTime() / 1e9 << endl;
+	cout << "gcups=" << 64*ss[0].length()*ss[1].length()*n / t.getElapsedTime() / 1e9 << endl;
 }
 
 void benchmark_floating(const Sequence_set &ss, unsigned qa, unsigned sa)

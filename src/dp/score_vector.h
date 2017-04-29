@@ -86,7 +86,7 @@ struct score_vector<uint8_t>
 		data_ = _mm_or_si128(s1, s2);
 #endif
 	}
-
+	
 	void set_generic(unsigned a, const __m128i &seq)
 	{
 		const uint8_t* row (&score_matrix.matrix8u()[a<<5]);

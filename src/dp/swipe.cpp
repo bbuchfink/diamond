@@ -74,16 +74,36 @@ struct Swipe_matrix
 		sv *hgap_ptr_, *score_ptr_;
 	};
 	Swipe_matrix(int rows):
-		hgap_(rows),
-		score_(rows + 1)
-	{}
+		hgap_(TLS::get(hgap_ptr)),
+		score_(TLS::get(score_ptr))
+	{
+		hgap_.clear();
+		hgap_.resize(rows);
+		score_.clear();
+		score_.resize(rows + 1);
+		memset(hgap_.data(), 0, rows * sizeof(sv));
+		memset(score_.data(), 0, (rows + 1) * sizeof(sv));
+	}
 	inline Column_iterator begin()
 	{
 		return Column_iterator(&hgap_[0], &score_[0]);
 	}
+	void set_zero(int c)
+	{
+		const int l = (int)hgap_.size();
+		for (int i = 0; i < l; ++i) {
+			hgap_[i].set(c, 0);
+			score_[i].set(c, 0);
+		}
+		score_[l].set(c, 0);
+	}
 private:
-	vector<sv> hgap_, score_;
+	vector<sv> &hgap_, &score_;
+	static TLS_PTR vector<sv> *hgap_ptr, *score_ptr;
 };
+
+template<typename _score> TLS_PTR vector<score_vector<_score> >* Swipe_matrix<_score>::hgap_ptr;
+template<typename _score> TLS_PTR vector<score_vector<_score> >* Swipe_matrix<_score>::score_ptr;
 
 template<typename _score>
 inline score_vector<_score> cell_update(const score_vector<_score> &diagonal_cell,
@@ -110,24 +130,16 @@ inline score_vector<_score> cell_update(const score_vector<_score> &diagonal_cel
 template<int _n>
 struct Target_iterator
 {
-	Target_iterator(vector<sequence>::const_iterator subject_begin, vector<sequence>::const_iterator subject_end) :
-		active(0),
-		subject_begin(subject_begin),
-		subject_end(subject_end)
+	Target_iterator(vector<sequence>::const_iterator subject_begin, vector<sequence>::const_iterator subject_end):
+		next(0),
+		n_targets(int(subject_end-subject_begin)),
+		subject_begin(subject_begin)
 	{
-		const int n_targets = this->n_targets();
-		int i = 0;
-		for (; i < std::min(_n, n_targets); ++i) {
-			pos[i] = 0;
-			target[i] = i;
-			++active;
+		for (; next < std::min(_n, n_targets); ++next) {
+			pos[next] = 0;
+			target[next] = next;
+			active.push_back(next);
 		}
-		for (; i < _n; ++i)
-			target[i] = -1;
-	}
-	int n_targets() const
-	{
-		return int(subject_end - subject_begin);
 	}
 	char operator[](int i) const
 	{
@@ -136,28 +148,36 @@ struct Target_iterator
 	__m128i get() const
 	{
 		char s[16];
-		for (int i = 0; i < _n; ++i)
-			if (target[i] != -1)
-				s[i] = (*this)[i];
+		for (int i = 0; i < active.size(); ++i) {
+			const int j = active[i];
+			s[j] = (*this)[j];
+		}
 		return _mm_loadu_si128((const __m128i*)s);
 	}
-	void operator++()
+	bool init_target(int i, int j)
 	{
-		for (int i = 0; i < _n; ++i)
-			if (target[i] != -1) {
-				++pos[i];
-				if (pos[i] >= subject_begin[target[i]].length()) {
-					target[i] = -1;
-					--active;
-				}
-			}
+		if (next < n_targets) {
+			pos[j] = 0;
+			target[j] = next++;
+			return true;
+		}
+		active.erase(i);
+		return false;
 	}
-	int pos[_n], target[_n], active;
-	const vector<sequence>::const_iterator subject_begin, subject_end;
+	bool inc(int i)
+	{
+		++pos[i];
+		if (pos[i] >= subject_begin[target[i]].length())
+			return false;
+		return true;
+	}
+	int pos[_n], target[_n], next, n_targets;
+	Static_vector<int, _n> active;
+	const vector<sequence>::const_iterator subject_begin;
 };
 
 template<typename _score>
-void swipe(const sequence &query, vector<sequence>::const_iterator subject_begin, vector<sequence>::const_iterator subject_end, vector<int> &out)
+void swipe(const sequence &query, vector<sequence>::const_iterator subject_begin, vector<sequence>::const_iterator subject_end, vector<int>::iterator out)
 {
 #ifdef SW_ENABLE_DEBUG
 	int v[1024][1024];
@@ -175,7 +195,7 @@ void swipe(const sequence &query, vector<sequence>::const_iterator subject_begin
 	Swipe_profile<_score> profile;
 	Target_iterator<score_traits<_score>::channels> targets(subject_begin, subject_end);
 
-	while (targets.active > 0) {
+	while (targets.active.size() > 0) {
 		typename Swipe_matrix<_score>::Column_iterator it(dp.begin());
 		sv vgap, hgap, last;
 		profile.set(targets.get());
@@ -191,10 +211,18 @@ void swipe(const sequence &query, vector<sequence>::const_iterator subject_begin
 			++it;
 		}
 		it.set_score(last);
-		++targets;
+		
+		for (int i = 0; i < targets.active.size(); ++i) {
+			int j = targets.active[i];
+			if (!targets.inc(j)) {
+				out[targets.target[j]] = best[j];
+				if (targets.init_target(i, j)) {
+					dp.set_zero(j);
+					best.set(j, 0);
+				}
+			}
+		}
 	}
-	for (int i = 0; i < 16; ++i)
-		out.push_back(best[i]);
 
 #ifdef SW_ENABLE_DEBUG
 	for (unsigned j = 0; j<qlen; ++j) {
@@ -206,7 +234,7 @@ void swipe(const sequence &query, vector<sequence>::const_iterator subject_begin
 #endif
 }
 
-void swipe(const sequence &query, vector<sequence>::const_iterator subject_begin, vector<sequence>::const_iterator subject_end, vector<int> &out)
+void swipe(const sequence &query, vector<sequence>::const_iterator subject_begin, vector<sequence>::const_iterator subject_end, vector<int>::iterator out)
 {
 	swipe<uint8_t>(query, subject_begin, subject_end, out);
 }

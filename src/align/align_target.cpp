@@ -30,7 +30,7 @@ void Query_mapper::get_prefilter_score(size_t idx)
 
 	Target& target = targets[idx];
 
-	if (config.greedy) {
+	if (config.ext == Config::greedy) {
 		//cout << "subject=" << ref_ids::get()[(seed_hits.begin() + target.begin)->subject_].c_str() << endl;
 		std::sort(seed_hits.begin() + target.begin, seed_hits.begin() + target.end, Seed_hit::compare_diag);
 		typedef Map<vector<Seed_hit>::const_iterator, Seed_hit::Frame> Hit_map;		
@@ -133,7 +133,7 @@ void Query_mapper::align_target(size_t idx, Statistics &stat)
 	Timer timer;
 	timer.start();
 
-	if (!config.greedy) {
+	if (config.ext == Config::floating_xdrop) {
 
 		std::sort(seed_hits.begin() + target.begin, seed_hits.begin() + target.end);
 

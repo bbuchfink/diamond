@@ -389,6 +389,6 @@ void smith_waterman(sequence q, sequence s, Hsp_data &out);
 void smith_waterman(sequence q, sequence s, const Diag_graph &diags);
 int score_range(sequence query, sequence subject, int i, int j, int j_end);
 
-void swipe(const sequence &query, vector<sequence>::const_iterator subject_begin, vector<sequence>::const_iterator subject_end, vector<int> &out);
+void swipe(const sequence &query, vector<sequence>::const_iterator subject_begin, vector<sequence>::const_iterator subject_end, vector<int>::iterator out);
 
 #endif /* FLOATING_SW_H_ */

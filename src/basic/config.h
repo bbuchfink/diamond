@@ -126,7 +126,6 @@ struct Config
 	double d_exp, d_new;
 	double score_estimate_factor;
 	int diag_min_estimate;
-	bool greedy;
 	string qfilt, sfilt;
 	double path_cutoff;
 	bool use_smith_waterman;
@@ -146,6 +145,11 @@ struct Config
 
 	enum { query_parallel = 0, target_parallel = 1 };
 	unsigned load_balancing;
+
+	enum {
+		swipe = 0, greedy = 1, floating_xdrop = 2
+	};
+	int ext;
 
 	Config() {}
 	Config(int argc, const char **argv);
