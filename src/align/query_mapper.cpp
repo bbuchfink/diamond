@@ -52,7 +52,7 @@ void Query_mapper::init()
 	if (config.comp_based_stats == 1)
 		for (unsigned i = 0; i < align_mode.query_contexts; ++i)
 			query_cb.push_back(Bias_correction(query_seq(i)));
-	if (config.ext == Config::greedy)
+	if (config.ext == Config::greedy || config.ext == Config::more_greedy)
 		for (unsigned i = 0; i < align_mode.query_contexts; ++i)
 			profile.push_back(Long_score_profile(query_seq(i)));
 			//profile.push_back(Long_score_profile());
@@ -175,7 +175,9 @@ bool Query_mapper::generate_output(Text_buffer &buffer, Statistics &stat)
 			if (j->id_percent() < config.min_id
 				|| j->query_cover_percent(source_query_len) < config.query_cover
 				|| j->subject_cover_percent(subject_len) < config.subject_cover
-				|| (config.no_self_hits && j->identities == j->length && j->query_source_range.length() == (int)source_query_len && j->subject_range.length() == (int)subject_len && strcmp(query_title, ref_title) == 0))
+				|| (config.no_self_hits &&
+					(config.ext == Config::more_greedy || (j->identities == j->length && j->query_source_range.length() == (int)source_query_len && j->subject_range.length() == (int)subject_len))
+					&& strcmp(query_title, ref_title) == 0))
 				continue;
 
 			if (blocked_processing) {

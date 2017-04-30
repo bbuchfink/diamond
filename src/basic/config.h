@@ -147,7 +147,7 @@ struct Config
 	unsigned load_balancing;
 
 	enum {
-		swipe = 0, greedy = 1, floating_xdrop = 2
+		swipe = 0, greedy = 1, floating_xdrop = 2, more_greedy = 3
 	};
 	int ext;
 

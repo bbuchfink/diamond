@@ -45,6 +45,7 @@ struct Target
 	}
 	unsigned subject_id, filter_score, filter_frame;
 	int filter_i, filter_j;
+	float filter_time;
 	Hsp_traits traits;
 	size_t begin, end;
 	list<Hsp_data> hsps;

@@ -270,9 +270,9 @@ void align_queries(const Trace_pt_buffer &trace_pts, Output_stream* output_file)
 			Simple_query_queue::instance = auto_ptr<Simple_query_queue>(new Simple_query_queue(trace_pts.begin(bin), trace_pts.end(bin), v->begin(), v->end()));
 			Output_sink::instance = auto_ptr<Output_sink>(new Output_sink(trace_pts.begin(bin), output_file));
 			Thread_pool threads;
+			//launch_thread(heartbeat_worker);
 			for (size_t i = 0; i < config.threads_; ++i)
 				threads.push_back(launch_thread(static_cast<void(*)(size_t)>(&align_worker), i));
-			threads.push_back(launch_thread(heartbeat_worker));
 			threads.join_all();
 		}
 		timer.go("Deallocating buffers");

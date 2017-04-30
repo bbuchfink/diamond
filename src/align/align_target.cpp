@@ -30,8 +30,10 @@ void Query_mapper::get_prefilter_score(size_t idx)
 
 	Target& target = targets[idx];
 
-	if (config.ext == Config::greedy) {
+	if (config.ext == Config::greedy || config.ext == Config::more_greedy) {
 		//cout << "subject=" << ref_ids::get()[(seed_hits.begin() + target.begin)->subject_].c_str() << endl;
+		Timer timer;
+		timer.start();
 		std::sort(seed_hits.begin() + target.begin, seed_hits.begin() + target.end, Seed_hit::compare_diag);
 		typedef Map<vector<Seed_hit>::const_iterator, Seed_hit::Frame> Hit_map;		
 		Hit_map hit_map(seed_hits.begin() + target.begin, seed_hits.begin() + target.end);
@@ -49,6 +51,8 @@ void Query_mapper::get_prefilter_score(size_t idx)
 				target.filter_j = hsp.subject_range.begin_;
 			}
 		}
+		const float time = (float)timer.getElapsedTimeInMicroSec();
+		target.filter_time = time;
 		return;
 	}
 
@@ -194,30 +198,34 @@ void Query_mapper::align_target(size_t idx, Statistics &stat)
 	else {
 		if (target.filter_score == 0)
 			return;
-		const unsigned frame = target.filter_frame;
-		const int d = target.filter_i - target.filter_j,
-			band = std::max(d - target.traits.d_min, target.traits.d_max - d) + band_plus;
-		cout << band << endl;
-		target.hsps.push_back(Hsp_data());
-		target.hsps.back().frame = frame;
-		uint64_t cell_updates;
-		floating_sw(&query_seq(frame)[target.filter_i],
-			&subject[target.filter_j],
-			target.hsps.back(),
-			band,
-			score_matrix.rawscore(config.gapped_xdrop),
-			score_matrix.gap_open() + score_matrix.gap_extend(),
-			score_matrix.gap_extend(),
-			cell_updates,
-			target.filter_i,
-			target.filter_j,
-			No_score_correction(),
-			Score_only(),
-			int());
+		if (config.ext == Config::more_greedy)
+			target.hsps.push_back(Hsp_data(target.filter_score));
+		else {
+			const unsigned frame = target.filter_frame;
+			const int d = target.filter_i - target.filter_j,
+				band = std::max(d - target.traits.d_min, target.traits.d_max - d) + band_plus;
+			//cout << band << endl;
+			target.hsps.push_back(Hsp_data());
+			target.hsps.back().frame = frame;
+			uint64_t cell_updates;
+			floating_sw(&query_seq(frame)[target.filter_i],
+				&subject[target.filter_j],
+				target.hsps.back(),
+				band,
+				score_matrix.rawscore(config.gapped_xdrop),
+				score_matrix.gap_open() + score_matrix.gap_extend(),
+				score_matrix.gap_extend(),
+				cell_updates,
+				target.filter_i,
+				target.filter_j,
+				No_score_correction(),
+				Traceback(),
+				int());
 
-		if (config.comp_based_stats) {
-			const int score = (int)target.hsps.back().score + query_cb[frame](target.hsps.back());
-			target.hsps.back().score = (unsigned)std::max(0, score);
+			if (config.comp_based_stats) {
+				const int score = (int)target.hsps.back().score + query_cb[frame](target.hsps.back());
+				target.hsps.back().score = (unsigned)std::max(0, score);
+			}
 		}
 
 		stat.inc(Statistics::OUT_HITS);
@@ -232,7 +240,7 @@ void Query_mapper::align_target(size_t idx, Statistics &stat)
 			else
 				++j;
 
-	const float time = (float)timer.getElapsedTimeInMicroSec();
+	const float time = (float)timer.getElapsedTimeInMicroSec() + target.filter_time;
 
 	for (list<Hsp_data>::iterator i = target.hsps.begin(); i != target.hsps.end(); ++i) {
 		i->time = time;
@@ -242,6 +250,14 @@ void Query_mapper::align_target(size_t idx, Statistics &stat)
 	target.hsps.sort();
 	if(target.hsps.size() > 0)
 		target.filter_score = target.hsps.front().score;
+	
+	if (config.use_smith_waterman) {
+		int score;
+		needleman_wunsch(query_seq(0), subject, score, Local(), int());
+		assert(score >= out.score);
+		target.hsps.front().sw_score = score;
+		stat.inc(Statistics::SQUARED_ERROR, pow(score - (int)target.hsps.front().score, 2));
+	}
 }
 
 void Query_mapper::align_targets(Statistics &stat)

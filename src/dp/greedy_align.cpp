@@ -423,7 +423,7 @@ struct Greedy_aligner2
 			cout << endl << endl;
 		}
 
-		forward_pass(Index_iterator(0llu), Index_iterator(diags.nodes.size()), true, band, band * 2);
+		forward_pass(Index_iterator(0llu), Index_iterator(diags.nodes.size()), true, band * 2, band);
 		//backtrace(anschluss(), out, t);
 		backtrace(diags.top_node(), out, t);
 
@@ -482,72 +482,11 @@ TLS_PTR Diag_scores *Greedy_aligner2::diag_scores_ptr;
 TLS_PTR Diag_graph *Greedy_aligner2::diags_ptr;
 TLS_PTR map<int, unsigned> *Greedy_aligner2::window_ptr;
 
-void greedy_align(sequence query, const Long_score_profile &qp, const Bias_correction &query_bc, sequence subject, int d_begin, int d_end, bool log, Hsp_data &out, Hsp_traits &traits, vector<Seed_hit>::const_iterator begin, vector<Seed_hit>::const_iterator end, int band)
+void greedy_align(sequence query, const Long_score_profile &qp, const Bias_correction &query_bc, sequence subject, vector<Seed_hit>::const_iterator begin, vector<Seed_hit>::const_iterator end, bool log, Hsp_data &out, Hsp_traits &traits)
 {
-	typedef pair<Hsp_data*, Hsp_traits> Hsp_ref;
-	Hsp_data hsp;
-	Hsp_traits t;
-	Greedy_aligner2 ga(query, qp, query_bc, subject, log);
-	if (d_end - d_begin > band * 4) {
-		ga.run(hsp, t, begin, end, band);
-		d_begin = t.d_min - band;
-		d_end = t.d_max + band;
-		if (hsp.score > 0)
-			ga.run(d_begin, d_end, hsp, t, band);
-	}
-	else
-		ga.run(d_begin, d_end, hsp, t, band);
-	if (false && hsp.score > 0 && out.score > 0) {
-		const Hsp_ref h1 = std::make_pair(&out, traits), h2 = std::make_pair(&hsp, t);
-		const pair<Hsp_ref, Hsp_ref> h = hsp.subject_range.begin_ > out.subject_range.begin_ ? std::make_pair(h1, h2) : std::make_pair(h2, h1);
-		const int d0 = h.first.first->query_range.end_ - h.first.first->subject_range.end_,
-			d1 = h.second.first->query_range.begin_ - h.second.first->subject_range.begin_,
-			shift = d1 - d0,
-			space = shift > 0 ? (int)h.second.first->subject_range.begin_ - (int)h.first.first->subject_range.end_ : (int)h.second.first->query_range.begin_ - (int)h.first.first->query_range.end_,
-			s = -abs(shift)*score_matrix.gap_extend() - score_matrix.gap_open() + out.score + hsp.score - int(config.space_penalty*space);
-		if (space >= 0 && s > (int)out.score && s > (int)hsp.score) {
-			if (log)
-				cout << "***** Merge" << endl;
-			ga.run(std::min(h.first.second.d_min, h.second.second.d_min), std::max(h.first.second.d_max, h.second.second.d_max) + 1, hsp, t, band);
-		}
-	}
-	if (hsp.score > out.score) {
-		out = hsp;
-		traits = t;
-	}
-}
-
-double greedy_align(sequence query, const Long_score_profile &qp, const Bias_correction &query_bc, sequence subject, vector<Seed_hit>::const_iterator begin, vector<Seed_hit>::const_iterator end, bool log, Hsp_data &out, Hsp_traits &traits)
-{	
 	const int band = config.padding == 0 ? std::min(48, (int)query.length() / 2) : config.padding;
-	int d_begin = begin->diagonal() - band, d_end = begin->diagonal() + band;
-	vector<Seed_hit>::const_iterator z_begin = begin;
-	if (log) {
-		cout << "Seed hit i=" << begin->query_pos_ << " j=" << begin->subject_pos_ << " d=" << begin->diagonal() << endl;
-	}
-	for (vector<Seed_hit>::const_iterator i = begin + 1; i < end; ++i) {
-		const int d = i->diagonal();
-		if(log)
-			cout << "Seed hit i=" << i->query_pos_ << " j=" << i->subject_pos_ << " d=" << i->diagonal() << endl;
-		if (d - band >= d_end) {
-			greedy_align(query, qp, query_bc, subject, d_begin, d_end, log, out, traits, z_begin, i, band);
-			d_begin = d - band;
-			d_end = d + band;
-			z_begin = i;
-		}
-		else
-			d_end = d + band;
-	}
-
-	greedy_align(query, qp, query_bc, subject, d_begin, d_end, log, out, traits, z_begin, end, band);
-
-	if (config.use_smith_waterman) {
-		int score;
-		needleman_wunsch(query, subject, score, Local(), int());
-		assert(score >= out.score);
-		out.sw_score = score;
-		return pow(score - (int)out.score, 2);
-	}
-	else
-		return 0;
+	Greedy_aligner2 ga(query, qp, query_bc, subject, log);
+	ga.run(out, traits, begin, end, 500);
+	if (out.score > 0)
+		ga.run(traits.d_min - band, traits.d_max + band, out, traits, std::max(traits.d_max - traits.d_min, band));
 }
