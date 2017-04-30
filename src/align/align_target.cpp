@@ -243,3 +243,16 @@ void Query_mapper::align_target(size_t idx, Statistics &stat)
 	if(target.hsps.size() > 0)
 		target.filter_score = target.hsps.front().score;
 }
+
+void Query_mapper::align_targets(Statistics &stat)
+{
+	const size_t n = targets.size();
+	vector<sequence> seqs(n);
+	for (size_t i = 0; i < n; ++i) {
+		seqs[i] = ref_seqs::get()[targets[i].subject_id];
+	}
+	vector<int> scores(n);
+	swipe(query_seq(0), seqs.begin(), seqs.end(), scores.begin());
+	for (size_t i = 0; i < n; ++i)
+		targets[i].hsps.push_back(Hsp_data(scores[i]));
+}

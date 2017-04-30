@@ -20,6 +20,8 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #include "dp.h"
 #include "score_vector.h"
 
+// #define SW_ENABLE_DEBUG
+
 using std::vector;
 using std::pair;
 
@@ -180,7 +182,7 @@ template<typename _score>
 void swipe(const sequence &query, vector<sequence>::const_iterator subject_begin, vector<sequence>::const_iterator subject_end, vector<int>::iterator out)
 {
 #ifdef SW_ENABLE_DEBUG
-	int v[1024][1024];
+	static int v[1024][1024];
 #endif
 
 	typedef score_vector<_score> sv;
@@ -206,13 +208,13 @@ void swipe(const sequence &query, vector<sequence>::const_iterator subject_begin
 			it.set_score(last);
 			last = next;
 #ifdef SW_ENABLE_DEBUG
-			v[j][it.row_pos_] = next[0];
+			v[targets.pos[0]][i] = next[0];
 #endif
 			++it;
 		}
 		it.set_score(last);
 		
-		for (int i = 0; i < targets.active.size(); ++i) {
+		for (int i = 0; i < targets.active.size();) {
 			int j = targets.active[i];
 			if (!targets.inc(j)) {
 				out[targets.target[j]] = best[j];
@@ -220,13 +222,16 @@ void swipe(const sequence &query, vector<sequence>::const_iterator subject_begin
 					dp.set_zero(j);
 					best.set(j, 0);
 				}
+				else
+					continue;
 			}
+			++i;
 		}
 	}
 
 #ifdef SW_ENABLE_DEBUG
-	for (unsigned j = 0; j<qlen; ++j) {
-		for (unsigned i = 0; i<subjects[0].length(); ++i)
+	for (unsigned j = 0; j < qlen; ++j) {
+		for (unsigned i = 0; i < subject_begin[0].length(); ++i)
 			printf("%4i", v[i][j]);
 		printf("\n");
 	}

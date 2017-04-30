@@ -101,8 +101,12 @@ void align_worker(size_t thread_id)
 		Query_mapper mapper(query, begin, end);
 		mapper.init();
 		const size_t targets = mapper.n_targets();
-		for (size_t i = 0; i < targets; ++i)
-			mapper.align_target(i, stat);
+		if (config.ext == Config::swipe)
+			mapper.align_targets(stat);
+		else {
+			for (size_t i = 0; i < targets; ++i)
+				mapper.align_target(i, stat);
+		}
 		Text_buffer *buf = new Text_buffer;
 		const bool aligned = mapper.generate_output(*buf, stat);
 		if (aligned && !config.unaligned.empty())
