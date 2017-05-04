@@ -156,7 +156,7 @@ Config::Config(int argc, const char **argv)
 		("shape-mask", 0, "seed shapes", shape_mask)
 		("index-mode", 0, "index mode (0=4x12, 1=16x9)", index_mode)
 		("fetch-size", 0, "trace point fetch size", fetch_size, 4096u)
-		("rank-factor", 0, "include subjects within this range of max-target-seqs", rank_factor, 2.0)
+		//("rank-factor", 0, "include subjects within this range of max-target-seqs", rank_factor, 2.0)
 		("rank-ratio", 0, "include subjects within this ratio of last hit", rank_ratio, 0.6)
 		("max-hsps", 0, "maximum number of HSPs per subject sequence to save for each query", max_hsps, 1u)
 		("dbsize", 0, "effective database size (in letters)", db_size)
@@ -209,7 +209,8 @@ Config::Config(int argc, const char **argv)
 		("superblock", 0, "", superblock, 128)
 		("max-cells", 0, "", max_cells, 10000000u)
 		("lb", 0, "", load_balancing, (unsigned)Config::target_parallel)
-		("ext", 0, "", ext, (int)Config::floating_xdrop);
+		("ext", 0, "", ext, (int)Config::floating_xdrop)
+		("br", 0, "", benchmark_ranking);
 		
 	parser.add(general).add(makedb).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options);
 	parser.store(argc, argv, command);

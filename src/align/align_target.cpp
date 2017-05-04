@@ -49,6 +49,10 @@ void Query_mapper::get_prefilter_score(size_t idx)
 				target.filter_frame = frame;
 				target.filter_i = hsp.query_range.begin_;
 				target.filter_j = hsp.subject_range.begin_;
+				target.filter_j_end = hsp.subject_range.end_;
+				if (logging) {
+					cout << "i=" << target.filter_i << " j=" << target.filter_j << " d_min=" << traits.d_min << " d_max=" << traits.d_max << endl;
+				}
 			}
 		}
 		const float time = (float)timer.getElapsedTimeInMicroSec();
@@ -122,7 +126,7 @@ pair<int, int> get_diag_range(vector<Seed_hit>::const_iterator begin, vector<See
 
 void Query_mapper::align_target(size_t idx, Statistics &stat)
 {
-	static const int band_plus = 3;
+	static const int band_plus = 40;
 	typedef float score_t;
 	Target& target = targets[idx];
 	const size_t n = target.end - target.begin,
@@ -161,6 +165,7 @@ void Query_mapper::align_target(size_t idx, Statistics &stat)
 						cell_updates,
 						hits[i].query_pos_,
 						hits[i].subject_pos_,
+						0,
 						query_cb[frame],
 						Traceback(),
 						score_t());
@@ -175,6 +180,7 @@ void Query_mapper::align_target(size_t idx, Statistics &stat)
 						cell_updates,
 						hits[i].query_pos_,
 						hits[i].subject_pos_,
+						0,
 						No_score_correction(),
 						Traceback(),
 						int());
@@ -204,7 +210,8 @@ void Query_mapper::align_target(size_t idx, Statistics &stat)
 			const unsigned frame = target.filter_frame;
 			const int d = target.filter_i - target.filter_j,
 				band = std::max(d - target.traits.d_min, target.traits.d_max - d) + band_plus;
-			//cout << band << endl;
+				//band = std::max(d - target.traits.d_min, target.traits.d_max - d) * 2;
+			//cout << "band=" << band << endl;
 			target.hsps.push_back(Hsp_data());
 			target.hsps.back().frame = frame;
 			uint64_t cell_updates;
@@ -218,14 +225,15 @@ void Query_mapper::align_target(size_t idx, Statistics &stat)
 				cell_updates,
 				target.filter_i,
 				target.filter_j,
+				target.filter_j_end,
 				No_score_correction(),
 				Traceback(),
 				int());
 
-			if (config.comp_based_stats) {
+			/*if (config.comp_based_stats) {
 				const int score = (int)target.hsps.back().score + query_cb[frame](target.hsps.back());
 				target.hsps.back().score = (unsigned)std::max(0, score);
-			}
+			}*/
 		}
 
 		stat.inc(Statistics::OUT_HITS);

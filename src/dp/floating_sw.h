@@ -36,6 +36,7 @@ void floating_sw(const Letter *query,
 	uint64_t &cell_updates,
 	unsigned query_anchor,
 	unsigned subject_anchor,
+	int min_j,
 	const _score_correction &score_correction,
 	const _traceback& = Score_only(),
 	const _score& = int());

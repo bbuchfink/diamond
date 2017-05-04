@@ -93,7 +93,6 @@ struct Config
 	bool extend_all;
 	bool slow_search;
 	vector<string> seq_no;
-	double rank_factor;
 	double rank_ratio;
 	bool ht_mode;
 	bool old_freq;
@@ -133,6 +132,7 @@ struct Config
 	int superblock;
 	unsigned max_cells;
 	int masking;
+	bool benchmark_ranking;
 
 	enum {
 		makedb = 0, blastp = 1, blastx = 2, view = 3, help = 4, version = 5, getseq = 6, benchmark = 7, random_seqs = 8, compare = 9, sort = 10, roc = 11, db_stat = 12, model_sim = 13,
@@ -147,7 +147,7 @@ struct Config
 	unsigned load_balancing;
 
 	enum {
-		swipe = 0, greedy = 1, floating_xdrop = 2, more_greedy = 3
+		swipe = 2, greedy = 0, floating_xdrop = 3, more_greedy = 1
 	};
 	int ext;
 

@@ -256,6 +256,7 @@ void benchmark_floating(const Sequence_set &ss, unsigned qa, unsigned sa)
 				cell_updates,
 				hsp.query_anchor_,
 				hsp.subject_anchor,
+				0,
 				No_score_correction(),
 				Score_only());
 

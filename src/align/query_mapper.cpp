@@ -137,8 +137,12 @@ void Query_mapper::rank_targets()
 	for (; i < targets.size(); ++i)
 		if (targets[i].filter_score < score)
 			break;
-
-	targets.erase(targets.begin() + std::min((unsigned)targets.size(), std::max((unsigned)(config.max_alignments*config.rank_factor), i)), targets.end());
+	
+	if (config.benchmark_ranking)
+		for (unsigned j = i; j < targets.size(); ++j)
+			targets[j].outranked = true;
+	else
+		targets.erase(targets.begin() + i, targets.end());
 }
 
 bool Query_mapper::generate_output(Text_buffer &buffer, Statistics &stat)
@@ -164,6 +168,9 @@ bool Query_mapper::generate_output(Text_buffer &buffer, Statistics &stat)
 
 		if (!config.output_range(n_target_seq, targets[i].filter_score, top_score))
 			break;
+
+		if (targets[i].outranked)
+			stat.inc(Statistics::OUTRANKED_HITS);
 
 		const unsigned subject_len = (unsigned)ref_seqs::get()[targets[i].subject_id].length();
 		

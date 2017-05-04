@@ -66,7 +66,7 @@ Hsp_data get_traceback(const Letter *query,
 }
 
 template<typename _dir, typename _score, typename _traceback, typename _score_correction>
-Hsp_data floating_sw_dir(const Letter *query, const Letter* subject, int band, _score xdrop, _score gap_open, _score gap_extend, uint64_t &cell_updates, const _score_correction &score_correction, int query_anchor)
+Hsp_data floating_sw_dir(const Letter *query, const Letter* subject, int band, _score xdrop, _score gap_open, _score gap_extend, uint64_t &cell_updates, const _score_correction &score_correction, int query_anchor, int min_j)
 {
 	using std::max;
 
@@ -74,8 +74,7 @@ Hsp_data floating_sw_dir(const Letter *query, const Letter* subject, int band, _
 	int j = 0, i_max = -1, j_best = -1, i_best = -1;
 	Scalar_dp_matrix<_score, _traceback> mtx(band);
 	const Letter *x = query, *y = subject;
-
-	while (*y != '\xff' && max_score - column_max < xdrop) {
+	while (*y != '\xff' && (max_score - column_max < xdrop || j < min_j)) {
 		typename Scalar_dp_matrix<_score, _traceback>::Column_iterator it = mtx.column(j, i_max);
 		if (get_dir(x, it.row(), _dir()) == '\xff')
 			break;
@@ -118,13 +117,13 @@ Hsp_data floating_sw_dir(const Letter *query, const Letter* subject, int band, _
 }
 
 template<typename _score, typename _traceback, typename _score_correction>
-void floating_sw(const Letter *query, const Letter *subject, Hsp_data &segment, int band, _score xdrop, _score gap_open, _score gap_extend, uint64_t &cell_updates, unsigned query_anchor, unsigned subject_anchor, const _score_correction &score_correction, const _traceback&, const _score&)
+void floating_sw(const Letter *query, const Letter *subject, Hsp_data &segment, int band, _score xdrop, _score gap_open, _score gap_extend, uint64_t &cell_updates, unsigned query_anchor, unsigned subject_anchor, int min_j, const _score_correction &score_correction, const _traceback&, const _score&)
 {
-	segment.merge(floating_sw_dir<Right, _score, _traceback, _score_correction>(query + 1, subject + 1, band, xdrop, gap_open, gap_extend, cell_updates, score_correction, query_anchor + 1),
-		floating_sw_dir<Left, _score, _traceback, _score_correction>(query, subject, band, xdrop, gap_open, gap_extend, cell_updates, score_correction, query_anchor), query_anchor, subject_anchor);
+	segment.merge(floating_sw_dir<Right, _score, _traceback, _score_correction>(query + 1, subject + 1, band, xdrop, gap_open, gap_extend, cell_updates, score_correction, query_anchor + 1, min_j-subject_anchor),
+		floating_sw_dir<Left, _score, _traceback, _score_correction>(query, subject, band, xdrop, gap_open, gap_extend, cell_updates, score_correction, query_anchor,0), query_anchor, subject_anchor);
 }
 
-template void floating_sw<int, Traceback, No_score_correction>(const Letter *query, const Letter *subject, Hsp_data &segment, int band, int xdrop, int gap_open, int gap_extend, uint64_t &cell_updates, unsigned query_anchor, unsigned subject_anchor, const No_score_correction&, const Traceback&, const int&);
-template void floating_sw<int, Score_only, No_score_correction>(const Letter *query, const Letter *subject, Hsp_data &segment, int band, int xdrop, int gap_open, int gap_extend, uint64_t &cell_updates, unsigned query_anchor, unsigned subject_anchor, const No_score_correction&, const Score_only&, const int&);
-template void floating_sw<float, Traceback, Bias_correction>(const Letter *query, const Letter *subject, Hsp_data &segment, int band, float xdrop, float gap_open, float gap_extend, uint64_t &cell_updates, unsigned query_anchor, unsigned subject_anchor, const Bias_correction&, const Traceback&, const float&);
-template void floating_sw<float, Score_only, Bias_correction>(const Letter *query, const Letter *subject, Hsp_data &segment, int band, float xdrop, float gap_open, float gap_extend, uint64_t &cell_updates, unsigned query_anchor, unsigned subject_anchor, const Bias_correction&, const Score_only&, const float&);
+template void floating_sw<int, Traceback, No_score_correction>(const Letter *query, const Letter *subject, Hsp_data &segment, int band, int xdrop, int gap_open, int gap_extend, uint64_t &cell_updates, unsigned query_anchor, unsigned subject_anchor, int min_j, const No_score_correction&, const Traceback&, const int&);
+template void floating_sw<int, Score_only, No_score_correction>(const Letter *query, const Letter *subject, Hsp_data &segment, int band, int xdrop, int gap_open, int gap_extend, uint64_t &cell_updates, unsigned query_anchor, unsigned subject_anchor, int min_j, const No_score_correction&, const Score_only&, const int&);
+template void floating_sw<float, Traceback, Bias_correction>(const Letter *query, const Letter *subject, Hsp_data &segment, int band, float xdrop, float gap_open, float gap_extend, uint64_t &cell_updates, unsigned query_anchor, unsigned subject_anchor, int min_j, const Bias_correction&, const Traceback&, const float&);
+template void floating_sw<float, Score_only, Bias_correction>(const Letter *query, const Letter *subject, Hsp_data &segment, int band, float xdrop, float gap_open, float gap_extend, uint64_t &cell_updates, unsigned query_anchor, unsigned subject_anchor, int min_j, const Bias_correction&, const Score_only&, const float&);

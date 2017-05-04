@@ -171,7 +171,7 @@ struct Greedy_aligner2
 
 	enum { link_padding = 10, reverse_link_min_overhang = 10 };
 
-	int get_approximate_link(int d_idx, int e_idx)
+	int get_approximate_link(int d_idx, int e_idx, double space_penalty)
 	{
 		Diagonal_node &d = diags[d_idx];
 		Diagonal_node &e = diags[e_idx];
@@ -191,7 +191,7 @@ struct Greedy_aligner2
 			}
 		}
 		else {
-			prefix_score = diags.nodes[e_idx].prefix_score + gap_score - int(config.space_penalty*std::max(space - 1, 0)) + d.score;
+			prefix_score = diags.nodes[e_idx].prefix_score + gap_score - int(space_penalty*std::max(space - 1, 0)) + d.score;
 			path_max = diags.nodes[e_idx].path_max;
 			link_score = e.score + d.score + gap_score;
 			link_j = d.j;
@@ -206,7 +206,7 @@ struct Greedy_aligner2
 	}
 
 	template<typename _it>
-	void forward_pass(_it begin, _it end, bool init, int max_dist, int max_shift)
+	void forward_pass(_it begin, _it end, bool init, int max_dist, int max_shift, double space_penalty)
 	{
 		window.clear();
 
@@ -231,7 +231,8 @@ struct Greedy_aligner2
 					break;
 				Diagonal_node &e = diags[j->second];
 				const int de = j->first, shift = dd - de;
-				if (d.j - e.subject_end() > max_dist) {
+				//if (d.j - e.subject_end() > max_dist) {
+				if (e.prefix_score - int(space_penalty*(std::max(d.j - e.subject_end(), 0))) <= 0) {
 					map<int, unsigned>::iterator k = j;
 					if (j == window.begin()) {
 						window.erase(j);
@@ -247,12 +248,12 @@ struct Greedy_aligner2
 				if (e.subject_end() < max_j) {
 					continue;
 				}
-				if(get_approximate_link(node, j->second) > e.prefix_score)
+				if(get_approximate_link(node, j->second, space_penalty) > e.prefix_score)
 					max_j = std::max(max_j, std::min(d.j, e.subject_end()));
 				if (e.subject_end() - (d.subject_end() - std::min(e.diag() - d.diag(), 0)) >= reverse_link_min_overhang) {
 					if (log)
 						cout << "Computing reverse link node=" << j->second << endl;
-					get_approximate_link(j->second, node);
+					get_approximate_link(j->second, node, space_penalty);
 				}
 			} while (j != window.begin());
 
@@ -264,7 +265,8 @@ struct Greedy_aligner2
 			while (j != window.end() && j->first - dd < max_shift) {
 				Diagonal_node &e = diags[j->second];
 				const int de = j->first, shift = dd - de;
-				if (d.j - e.subject_end() > max_dist && j != i) {
+				//if (d.j - e.subject_end() > max_dist && j != i) {
+				if (e.prefix_score - int(space_penalty*(std::max(d.j - e.subject_end(),0))) <= 0 && j != i) {
 					map<int, unsigned>::iterator k = j;
 					++k;
 					window.erase(j);
@@ -275,12 +277,12 @@ struct Greedy_aligner2
 					++j;
 					continue;
 				}
-				if (get_approximate_link(node, j->second) > e.prefix_score && e.i < d.i)
+				if (get_approximate_link(node, j->second, space_penalty) > e.prefix_score && e.i < d.i)
 					max_i = std::max(max_i, std::min(e.query_end(), d.i));
 				if (e.subject_end() - (d.subject_end() - std::min(e.diag() - d.diag(), 0)) >= reverse_link_min_overhang) {
 					if (log)
 						cout << "Computing reverse link node=" << j->second << endl;
-					get_approximate_link(j->second, node);
+					get_approximate_link(j->second, node, space_penalty);
 				}
 				++j;
 			}
@@ -401,7 +403,7 @@ struct Greedy_aligner2
 
 		if (perimeter.size() > 2) {
 			std::sort(perimeter.begin(), perimeter.end());
-			forward_pass(perimeter.begin(), perimeter.end(), false, std::numeric_limits<int>::max(), std::numeric_limits<int>::max());
+			forward_pass(perimeter.begin(), perimeter.end(), false, std::numeric_limits<int>::max(), std::numeric_limits<int>::max(), 0);
 			int max = 0;
 			size_t max_node = 0;
 			for (vector<unsigned>::const_iterator i = perimeter.begin(); i < perimeter.end();++i)
@@ -415,7 +417,7 @@ struct Greedy_aligner2
 			return top_nodes[0] - diags.nodes.data();
 	}
 
-	void run(Hsp_data &out, Hsp_traits &t, int band)
+	void run(Hsp_data &out, Hsp_traits &t, int band, double space_penalty)
 	{
 		diags.sort();
 		if (log) {
@@ -423,7 +425,7 @@ struct Greedy_aligner2
 			cout << endl << endl;
 		}
 
-		forward_pass(Index_iterator(0llu), Index_iterator(diags.nodes.size()), true, band * 2, band);
+		forward_pass(Index_iterator(0llu), Index_iterator(diags.nodes.size()), true, band * 2, band, space_penalty);
 		//backtrace(anschluss(), out, t);
 		backtrace(diags.top_node(), out, t);
 
@@ -441,7 +443,7 @@ struct Greedy_aligner2
 			cout << "***** " << d_begin << '\t' << d_end << '\t' << d_end-d_begin << endl;
 		diags.init();
 		diag_scores.scan_diags(d_begin, d_end, query, subject, qp, query_bc, log, diags.nodes, true);
-		run(out, t, band);
+		run(out, t, band, config.space_penalty);
 	}
 
 	void run(Hsp_data &out, Hsp_traits &t, vector<Seed_hit>::const_iterator begin, vector<Seed_hit>::const_iterator end, int band)
@@ -450,7 +452,7 @@ struct Greedy_aligner2
 			cout << "***** Seed hit run " << begin->diagonal() << '\t' << (end - 1)->diagonal() << '\t' << (end - 1)->diagonal() - begin->diagonal() << endl;
 		diags.init();
 		diags.load(begin, end);
-		run(out, t, band);
+		run(out, t, band, 0.1);
 	}
 
 	Greedy_aligner2(const sequence &query, const Long_score_profile &qp, const Bias_correction &query_bc, const sequence &subject, bool log) :
@@ -484,7 +486,7 @@ TLS_PTR map<int, unsigned> *Greedy_aligner2::window_ptr;
 
 void greedy_align(sequence query, const Long_score_profile &qp, const Bias_correction &query_bc, sequence subject, vector<Seed_hit>::const_iterator begin, vector<Seed_hit>::const_iterator end, bool log, Hsp_data &out, Hsp_traits &traits)
 {
-	const int band = config.padding == 0 ? std::min(48, (int)query.length() / 2) : config.padding;
+	const int band = config.padding == 0 ? std::min(64, (int)query.length() / 2) : config.padding;
 	Greedy_aligner2 ga(query, qp, query_bc, subject, log);
 	ga.run(out, traits, begin, end, 500);
 	if (out.score > 0)

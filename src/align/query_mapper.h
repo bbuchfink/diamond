@@ -37,6 +37,7 @@ struct Target
 	Target(size_t begin, unsigned subject_id) :
 		subject_id(subject_id),
 		filter_score(0),
+		outranked(false),
 		begin(begin)
 	{}		
 	static bool compare(Target* lhs, Target *rhs)
@@ -44,8 +45,9 @@ struct Target
 		return lhs->filter_score > rhs->filter_score;
 	}
 	unsigned subject_id, filter_score, filter_frame;
-	int filter_i, filter_j;
+	int filter_i, filter_j, filter_j_end;
 	float filter_time;
+	bool outranked;
 	Hsp_traits traits;
 	size_t begin, end;
 	list<Hsp_data> hsps;

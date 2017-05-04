@@ -115,7 +115,6 @@ local_match traceback(const Letter *query,
 		return local_match (0);
 	Scalar_traceback_matrix<_score> dp (scores, band);
 	//dp.print(i, j);
-
 	local_match l;
 	l.query_range.begin_ = 0;
 	l.query_range.end_ = j + 1;
