@@ -62,6 +62,6 @@ struct Query_queue
 extern Query_queue query_queue;
 
 void align_worker(Output_stream *out);
-void align_queries(const Trace_pt_buffer &trace_pts, Output_stream* output_file);
+void align_queries(Trace_pt_buffer &trace_pts, Output_stream* output_file);
 
 #endif /* ALIGN_QUERIES_H_ */

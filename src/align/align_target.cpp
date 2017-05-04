@@ -264,7 +264,7 @@ void Query_mapper::align_target(size_t idx, Statistics &stat)
 		needleman_wunsch(query_seq(0), subject, score, Local(), int());
 		assert(score >= out.score);
 		target.hsps.front().sw_score = score;
-		stat.inc(Statistics::SQUARED_ERROR, pow(score - (int)target.hsps.front().score, 2));
+		stat.inc(Statistics::SQUARED_ERROR, (stat_type)pow(score - (int)target.hsps.front().score, 2));
 	}
 }
 

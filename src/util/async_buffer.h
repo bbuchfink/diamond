@@ -37,7 +37,8 @@ struct Async_buffer
 	Async_buffer(size_t input_count, const string &tmpdir, unsigned bins) :
 		bins_(bins),
 		bin_size_((input_count + bins_ - 1) / bins_),
-		input_count_(input_count)
+		input_count_(input_count),
+		bins_processed_(0)
 	{
 		log_stream << "Async_buffer() " << input_count << ',' << bin_size_ << endl;
 		for (unsigned j = 0; j < config.threads_; ++j)
@@ -94,27 +95,28 @@ struct Async_buffer
 		const unsigned thread_num_;
 	};
 
-	size_t load(vector<_t> &data, unsigned bin) const
+	size_t load(vector<_t> &data, size_t max_size, std::pair<size_t,size_t> &input_range)
 	{
 		static size_t total_size;
-		if (bin == 0)
+		if (bins_processed_ == 0)
 			total_size = 0;
-		size_t size = 0;
-		for (unsigned i = 0; i < config.threads_; ++i)
-			size += size_[i*bins_ + bin];
+		if (bins_processed_ == bins_) {
+			input_range = std::make_pair(0, 0);
+			return total_size*sizeof(_t);
+		}
+		size_t size = bin_size(bins_processed_), end = bins_processed_ + 1, current_size;
+		while (end < bins_ && size + (current_size = bin_size(end)) < max_size) {
+			size += current_size;
+			++end;
+		}
 		log_stream << "Async_buffer.load() " << size << "(" << (double)size*sizeof(_t) / (1 << 30) << " GB)" << endl;
 		total_size += size;
 		data.resize(size);
 		_t* ptr = data.data();
-		for (unsigned i = 0; i < config.threads_; ++i) {
-			Input_stream f(tmp_file_[i*bins_ + bin]);
-			const size_t s = size_[i*bins_ + bin];
-			const size_t n = f.read(ptr, s);
-			ptr += s;
-			f.close_and_delete();
-			if (n != s)
-				throw std::runtime_error("Error reading temporary file: " + f.file_name);
-		}
+		input_range.first = begin(bins_processed_);
+		for (; bins_processed_ < end; ++bins_processed_)
+			load_bin(ptr, bins_processed_);
+		input_range.second = this->end(bins_processed_ - 1);
 		return total_size*sizeof(_t);
 	}
 
@@ -124,6 +126,27 @@ struct Async_buffer
 	}
 
 private:
+
+	void load_bin(_t*& ptr, size_t bin)
+	{
+		for (unsigned i = 0; i < config.threads_; ++i) {
+			Input_stream f(tmp_file_[i*bins_ + bin]);
+			const size_t s = size_[i*bins_ + bin];
+			const size_t n = f.read(ptr, s);
+			ptr += s;
+			f.close_and_delete();
+			if (n != s)
+				throw std::runtime_error("Error reading temporary file: " + f.file_name);
+		}
+	}
+
+	size_t bin_size(size_t bin) const
+	{
+		size_t size = 0;
+		for (unsigned i = 0; i < config.threads_; ++i)
+			size += size_[i*bins_ + bin];
+		return size;
+	}
 
 	Temp_file* get_out(unsigned threadid, unsigned bin)
 	{
@@ -137,6 +160,7 @@ private:
 
 	const unsigned bins_;
 	const size_t bin_size_, input_count_;
+	size_t bins_processed_;
 	vector<size_t> size_;
 	vector<Temp_file> tmp_file_;
 

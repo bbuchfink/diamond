@@ -50,7 +50,7 @@ void Output_sink::push(size_t n, Text_buffer *buf)
 	//cout << "n=" << n << " next=" << next_ << endl;
 	if (n != next_) {
 		backlog_[n] = buf;
-		size_ += buf ? buf->size() : 0;
+		size_ += buf ? buf->alloc_size() : 0;
 		max_size_ = std::max(max_size_, size_);
 		mtx_.unlock();
 	}
@@ -76,7 +76,7 @@ void Output_sink::flush(Text_buffer *buf)
 			if (*j) {
 				f_->write((*j)->get_begin(), (*j)->size());
 				if(*j != buf)
-					size += (*j)->size();
+					size += (*j)->alloc_size();
 				delete *j;
 			}
 		}
@@ -118,11 +118,18 @@ void align_worker(size_t thread_id)
 
 void heartbeat_worker()
 {
-	static const int interval = 1;
+	static const int interval = 100;
+	int n = 0;
 	while (Output_sink::get().next() < Simple_query_queue::get().qend()) {
-		verbose_stream << "Queries=" << Simple_query_queue::get().next() << " size=" << megabytes(Output_sink::get().size()) << " max_size=" << megabytes(Output_sink::get().max_size())
-			<< " next=" << query_ids::get()[Output_sink::get().next()].c_str() << endl;
-		tthread::this_thread::sleep_for(tthread::chrono::seconds(interval));
+		if (n == interval) {
+			const string title(query_ids::get()[Output_sink::get().next()].c_str());
+			verbose_stream << "Queries=" << Simple_query_queue::get().next() << " size=" << megabytes(Output_sink::get().size()) << " max_size=" << megabytes(Output_sink::get().max_size())
+				<< " next=" << title.substr(0, title.find(' ')) << endl;
+			n = 0;
+		}
+		else
+			++n;
+		tthread::this_thread::sleep_for(tthread::chrono::milliseconds(10));
 	}
 }
 
@@ -247,14 +254,19 @@ void align_worker(Output_stream *out)
 	statistics += stat;
 }
 
-void align_queries(const Trace_pt_buffer &trace_pts, Output_stream* output_file)
+void align_queries(Trace_pt_buffer &trace_pts, Output_stream* output_file)
 {
 	query_queue.last_query = (unsigned)-1;
-	for (unsigned bin = 0; bin < trace_pts.bins(); ++bin) {
-		log_stream << "Processing query bin " << bin + 1 << '/' << trace_pts.bins() << '\n';
+	const size_t max_size = (size_t)std::min(config.chunk_size*1e9 * 9 * 2 / config.lowmem, 2e9);
+	pair<size_t, size_t> query_range;
+	while(true) {
 		task_timer timer("Loading trace points", 3);
 		Trace_pt_list *v = new Trace_pt_list;
-		statistics.max(Statistics::TEMP_SPACE, trace_pts.load(*v, bin));
+		statistics.max(Statistics::TEMP_SPACE, trace_pts.load(*v, max_size, query_range));
+		if (query_range.second - query_range.first == 0) {
+			delete v;
+			break;
+		}
 		timer.go("Sorting trace points");
 		merge_sort(v->begin(), v->end(), config.threads_);
 		v->init();
@@ -267,10 +279,11 @@ void align_queries(const Trace_pt_buffer &trace_pts, Output_stream* output_file)
 			threads.join_all();
 		}
 		else {
-			Simple_query_queue::instance = auto_ptr<Simple_query_queue>(new Simple_query_queue(trace_pts.begin(bin), trace_pts.end(bin), v->begin(), v->end()));
-			Output_sink::instance = auto_ptr<Output_sink>(new Output_sink(trace_pts.begin(bin), output_file));
+			Simple_query_queue::instance = auto_ptr<Simple_query_queue>(new Simple_query_queue(query_range.first, query_range.second, v->begin(), v->end()));
+			Output_sink::instance = auto_ptr<Output_sink>(new Output_sink(query_range.first, output_file));
 			Thread_pool threads;
-			//launch_thread(heartbeat_worker);
+			if (config.verbosity >= 3)
+				threads.push_back(launch_thread(heartbeat_worker));
 			for (size_t i = 0; i < config.threads_; ++i)
 				threads.push_back(launch_thread(static_cast<void(*)(size_t)>(&align_worker), i));
 			threads.join_all();

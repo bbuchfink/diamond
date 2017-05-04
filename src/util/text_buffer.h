@@ -31,7 +31,8 @@ struct Text_buffer
 
 	Text_buffer():
 		data_ (0),
-		ptr_ (data_)
+		ptr_ (data_),
+		alloc_size_(0)
 	{ }
 
 	~Text_buffer()
@@ -41,8 +42,9 @@ struct Text_buffer
 
 	void reserve(size_t n)
 	{
-		const size_t s = ptr_ - data_, new_size = s + n + block_size - ((s + n) & (block_size - 1));
-		data_ = (char*)realloc(data_, new_size);
+		const size_t s = ptr_ - data_;
+		alloc_size_ = s + n + block_size - ((s + n) & (block_size - 1));
+		data_ = (char*)realloc(data_, alloc_size_);
 		ptr_ = data_ + s;
 		if (data_ == 0) throw std::runtime_error("Failed to allocate memory.");
 	}
@@ -109,6 +111,11 @@ struct Text_buffer
 
 	size_t size() const
 	{ return ptr_ - data_; }
+
+	size_t alloc_size() const
+	{
+		return alloc_size_;
+	}
 
 	Text_buffer& operator<<(const string &s)
 	{
@@ -222,6 +229,7 @@ struct Text_buffer
 protected:
 	enum { block_size = 4096 };
 	char *data_, *ptr_;
+	size_t alloc_size_;
 
 };
 
