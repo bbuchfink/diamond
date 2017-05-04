@@ -55,7 +55,8 @@ Config::Config(int argc, const char **argv)
 		.add_command("match-file-stat", "")
 		.add_command("model-seqs", "")
 		.add_command("opt", "")
-		.add_command("mask", "");
+		.add_command("mask", "")
+		.add_command("fastq2fasta", "");
 
 	Options_group general("General options");
 	general.add()
@@ -261,7 +262,7 @@ Config::Config(int argc, const char **argv)
 	else if (verbose)
 		verbosity = 2;
 	else if (((command == Config::view || command == blastx || command == blastp) && output_file == "")
-		|| command == Config::version || command == getseq)
+		|| command == Config::version || command == getseq || command == fastq2fasta)
 		verbosity = 0;
 	else
 		verbosity = 1;

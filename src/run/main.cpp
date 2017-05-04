@@ -31,6 +31,7 @@ void master_thread_di();
 void model_seqs();
 void opt();
 void run_masker();
+void fastq2fasta();
 
 int main(int ac, const char* av[])
 {
@@ -94,6 +95,9 @@ int main(int ac, const char* av[])
 			break;
 		case Config::mask:
 			run_masker();
+			break;
+		case Config::fastq2fasta:
+			fastq2fasta();
 			break;
 		default:
 			return 1;

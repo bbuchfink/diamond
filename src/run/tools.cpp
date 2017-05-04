@@ -127,3 +127,18 @@ void run_masker()
 		//cout << sequence(seq.data(), seq.size()) << endl;
 	}
 }
+
+void fastq2fasta()
+{
+	auto_ptr<Input_stream> f(Compressed_istream::auto_detect(config.query_file));
+	vector<Letter> seq;
+	vector<char> id;
+	const FASTQ_format format;
+	input_value_traits = value_traits = nucleotide_traits;
+	size_t n = 0, max = atoi(config.seq_no[0].c_str());
+	while (n < max && format.get_seq(id, seq, *f)) {
+		cout << '>' << string(id.data(), id.size()) << endl;
+		cout << sequence(seq.data(), seq.size()) << endl;
+		++n;
+	}
+}
