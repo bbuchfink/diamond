@@ -126,7 +126,6 @@ pair<int, int> get_diag_range(vector<Seed_hit>::const_iterator begin, vector<See
 
 void Query_mapper::align_target(size_t idx, Statistics &stat)
 {
-	static const int band_plus = 40;
 	typedef float score_t;
 	Target& target = targets[idx];
 	const size_t n = target.end - target.begin,
@@ -209,8 +208,9 @@ void Query_mapper::align_target(size_t idx, Statistics &stat)
 		else {
 			const unsigned frame = target.filter_frame;
 			const int d = target.filter_i - target.filter_j,
-				band = std::max(d - target.traits.d_min, target.traits.d_max - d) + band_plus;
-				//band = std::max(d - target.traits.d_min, target.traits.d_max - d) * 2;
+				qlen= (int)query_seq(0).length(),
+				band_plus = qlen <= 50 ? 7 : 40,
+				band = std::min(std::max(d - target.traits.d_min, target.traits.d_max - d) + band_plus, qlen/2);
 			//cout << "band=" << band << endl;
 			target.hsps.push_back(Hsp_data());
 			target.hsps.back().frame = frame;
@@ -261,10 +261,12 @@ void Query_mapper::align_target(size_t idx, Statistics &stat)
 	
 	if (config.use_smith_waterman) {
 		int score;
-		needleman_wunsch(query_seq(0), subject, score, Local(), int());
-		assert(score >= out.score);
-		target.hsps.front().sw_score = score;
-		stat.inc(Statistics::SQUARED_ERROR, (stat_type)pow(score - (int)target.hsps.front().score, 2));
+		for (int f = 0; f < align_mode.query_contexts; ++f) {
+			needleman_wunsch(query_seq(f), subject, score, Local(), int());
+			target.hsps.front().sw_score = std::max((unsigned)score, target.hsps.front().sw_score);
+		}
+		assert(score >= out.score);		
+		stat.inc(Statistics::SQUARED_ERROR, (stat_type)pow(target.hsps.front().sw_score - (int)target.hsps.front().score, 2));
 	}
 }
 
