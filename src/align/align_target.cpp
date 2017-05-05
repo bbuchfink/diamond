@@ -23,43 +23,53 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 
 using std::list;
 
+const bool log_ga = false;
+
+void Query_mapper::ungapped_stage(size_t idx)
+{
+	Target& target = targets[idx];
+	const string subject_id(ref_ids::get()[target.subject_id].c_str());
+	Timer timer;
+	timer.start();
+	std::sort(seed_hits.begin() + target.begin, seed_hits.begin() + target.end, Seed_hit::compare_diag);
+	typedef Map<vector<Seed_hit>::const_iterator, Seed_hit::Frame> Hit_map;
+	Hit_map hit_map(seed_hits.begin() + target.begin, seed_hits.begin() + target.end);
+	const sequence subject = ref_seqs::get()[target.subject_id];
+	for (Hit_map::Iterator it = hit_map.begin(); it.valid(); ++it) {
+		const unsigned frame = it.begin()->frame_;
+		greedy_align(query_seq(frame), profile[frame], query_cb[frame], subject, it.begin(), it.end(), log_ga, 0, target.traits[frame]);
+		target.filter_score = std::max(target.filter_score, (unsigned)target.traits[frame].score);
+	}
+	const float time = (float)timer.getElapsedTimeInMicroSec();
+	target.filter_time = time;
+}
+
+void Query_mapper::greedy_stage(size_t idx)
+{
+	Target& target = targets[idx];
+	const sequence subject = ref_seqs::get()[target.subject_id];
+	const string subject_id(ref_ids::get()[target.subject_id].c_str());
+	target.filter_score = 0;
+	for (unsigned frame = 0; frame < align_mode.query_contexts; ++frame)
+		if (target.traits[frame].score > 0) {
+			Hsp_traits &t = target.traits[frame];
+			greedy_align(query_seq(frame), profile[frame], query_cb[frame], subject, t.d_min, t.d_max, log_ga, 0, t);
+			if (t.score > target.filter_score) {
+				target.filter_score = t.score;
+				target.filter_frame = frame;
+			}
+		}
+}
+
 void Query_mapper::get_prefilter_score(size_t idx)
 {
 	static const int max_dist = 64;
-	static const bool logging = false;
+
+	if (config.ext == Config::greedy || config.ext == Config::more_greedy)
+		return;
 
 	Target& target = targets[idx];
-
-	if (config.ext == Config::greedy || config.ext == Config::more_greedy) {
-		//cout << "subject=" << ref_ids::get()[(seed_hits.begin() + target.begin)->subject_].c_str() << endl;
-		Timer timer;
-		timer.start();
-		std::sort(seed_hits.begin() + target.begin, seed_hits.begin() + target.end, Seed_hit::compare_diag);
-		typedef Map<vector<Seed_hit>::const_iterator, Seed_hit::Frame> Hit_map;		
-		Hit_map hit_map(seed_hits.begin() + target.begin, seed_hits.begin() + target.end);
-		Hsp_data hsp;
-		Hsp_traits traits;
-		const sequence subject = ref_seqs::get()[(seed_hits.begin() + target.begin)->subject_];
-		for (Hit_map::Iterator it = hit_map.begin(); it.valid(); ++it) {
-			const unsigned frame = it.begin()->frame_;
-			greedy_align(query_seq(frame), profile[frame], query_cb[frame], subject, it.begin(), it.end(), logging, hsp, traits);
-			if (hsp.score > target.filter_score) {
-				target.filter_score = hsp.score;
-				target.traits = traits;
-				target.filter_frame = frame;
-				target.filter_i = hsp.query_range.begin_;
-				target.filter_j = hsp.subject_range.begin_;
-				target.filter_j_end = hsp.subject_range.end_;
-				if (logging) {
-					cout << "i=" << target.filter_i << " j=" << target.filter_j << " d_min=" << traits.d_min << " d_max=" << traits.d_max << endl;
-				}
-			}
-		}
-		const float time = (float)timer.getElapsedTimeInMicroSec();
-		target.filter_time = time;
-		return;
-	}
-
+	
 	const size_t n = target.end - target.begin;
 	vector<Seed_hit>::iterator hits = seed_hits.begin() + target.begin;
 	std::sort(seed_hits.begin() + target.begin, seed_hits.begin() + target.end, Seed_hit::compare_pos);
@@ -207,25 +217,29 @@ void Query_mapper::align_target(size_t idx, Statistics &stat)
 			target.hsps.push_back(Hsp_data(target.filter_score));
 		else {
 			const unsigned frame = target.filter_frame;
-			const int d = target.filter_i - target.filter_j,
-				qlen= (int)query_seq(0).length(),
-				band_plus = qlen <= 50 ? 7 : 40,
-				band = std::min(std::max(d - target.traits.d_min, target.traits.d_max - d) + band_plus, qlen/2);
-			//cout << "band=" << band << endl;
+			const Hsp_traits &t = target.traits[frame];
+			const int d = t.i_begin - t.j_begin,
+				qlen = (int)query_seq(0).length(),
+				band_plus = qlen <= 50 ? 7 : 50,
+				band = std::min(std::max(d - t.d_min, t.d_max - d) + band_plus, qlen / 2);
+			if (log_ga) {
+				cout << "i_begin=" << t.i_begin << " j_begin=" << t.j_begin << " d_min=" << t.d_min << " d_max=" << t.d_max << endl;
+				cout << "band=" << band << endl;
+			}
 			target.hsps.push_back(Hsp_data());
 			target.hsps.back().frame = frame;
 			uint64_t cell_updates;
-			floating_sw(&query_seq(frame)[target.filter_i],
-				&subject[target.filter_j],
+			floating_sw(&query_seq(frame)[t.i_begin],
+				&subject[t.j_begin],
 				target.hsps.back(),
 				band,
 				score_matrix.rawscore(config.gapped_xdrop),
 				score_matrix.gap_open() + score_matrix.gap_extend(),
 				score_matrix.gap_extend(),
 				cell_updates,
-				target.filter_i,
-				target.filter_j,
-				target.filter_j_end,
+				t.i_begin,
+				t.j_begin,
+				t.j_end,
 				No_score_correction(),
 				Traceback(),
 				int());
@@ -265,7 +279,6 @@ void Query_mapper::align_target(size_t idx, Statistics &stat)
 			needleman_wunsch(query_seq(f), subject, score, Local(), int());
 			target.hsps.front().sw_score = std::max((unsigned)score, target.hsps.front().sw_score);
 		}
-		assert(score >= out.score);		
 		stat.inc(Statistics::SQUARED_ERROR, (stat_type)pow(target.hsps.front().sw_score - (int)target.hsps.front().score, 2));
 	}
 }

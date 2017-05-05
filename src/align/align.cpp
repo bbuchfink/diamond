@@ -100,11 +100,19 @@ void align_worker(size_t thread_id)
 		}
 		Query_mapper mapper(query, begin, end);
 		mapper.init();
-		const size_t targets = mapper.n_targets();
 		if (config.ext == Config::swipe)
 			mapper.align_targets(stat);
 		else {
-			for (size_t i = 0; i < targets; ++i)
+			stat.inc(Statistics::TARGET_HITS0, mapper.n_targets());
+			for (size_t i = 0; i < mapper.n_targets(); ++i)
+				mapper.ungapped_stage(i);
+			mapper.rank_targets(config.rank_ratio);
+			stat.inc(Statistics::TARGET_HITS1, mapper.n_targets());
+			for (size_t i = 0; i < mapper.n_targets(); ++i)
+				mapper.greedy_stage(i);
+			mapper.rank_targets(config.rank_ratio2);
+			stat.inc(Statistics::TARGET_HITS2, mapper.n_targets());
+			for (size_t i = 0; i < mapper.n_targets(); ++i)
 				mapper.align_target(i, stat);
 		}
 		Text_buffer *buf = new Text_buffer;

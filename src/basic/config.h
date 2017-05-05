@@ -94,6 +94,7 @@ struct Config
 	bool slow_search;
 	vector<string> seq_no;
 	double rank_ratio;
+	double rank_ratio2;
 	bool ht_mode;
 	bool old_freq;
 	double freq_sd;

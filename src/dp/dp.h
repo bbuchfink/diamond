@@ -90,10 +90,9 @@ struct Hsp_traits
 	Hsp_traits() :
 		d_min(std::numeric_limits<int>::max()),
 		d_max(std::numeric_limits<int>::min()),
-		shift_max(0),
-		dj_max(0)
+		score(0)
 	{}
-	int d_min, d_max, shift_max, dj_max;
+	int d_min, d_max, i_begin, j_begin, j_end, score;
 };
 
 template<typename _score>
@@ -109,7 +108,8 @@ Diagonal_segment xdrop_ungapped(const sequence &query, const sequence &subject, 
 struct Local {};
 struct Global {};
 
-void greedy_align(sequence query, const Long_score_profile &qp, const Bias_correction &query_bc, sequence subject, vector<Seed_hit>::const_iterator begin, vector<Seed_hit>::const_iterator end, bool log, Hsp_data &out, Hsp_traits &traits);
+void greedy_align(sequence query, const Long_score_profile &qp, const Bias_correction &query_bc, sequence subject, vector<Seed_hit>::const_iterator begin, vector<Seed_hit>::const_iterator end, bool log, Hsp_data *out, Hsp_traits &traits);
+void greedy_align(sequence query, const Long_score_profile &qp, const Bias_correction &query_bc, sequence subject, int d_begin, int d_end, bool log, Hsp_data *out, Hsp_traits &traits);
 int estimate_score(const Long_score_profile &qp, sequence s, int d, int d1, bool log);
 
 template<typename _t>

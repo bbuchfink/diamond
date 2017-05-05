@@ -35,7 +35,7 @@ struct Statistics
 	enum value {
 		SEED_HITS, TENTATIVE_MATCHES0, TENTATIVE_MATCHES1, TENTATIVE_MATCHES2, TENTATIVE_MATCHES3, TENTATIVE_MATCHES4, TENTATIVE_MATCHESX, MATCHES, ALIGNED, GAPPED, DUPLICATES,
 		GAPPED_HITS, QUERY_SEEDS, QUERY_SEEDS_HIT, REF_SEEDS, REF_SEEDS_HIT, QUERY_SIZE, REF_SIZE, OUT_HITS, OUT_MATCHES, COLLISION_LOOKUPS, QCOV, BIAS_ERRORS, SCORE_TOTAL, ALIGNED_QLEN, PAIRWISE, HIGH_SIM,
-		TEMP_SPACE, SECONDARY_HITS, ERASED_HITS, SQUARED_ERROR, CELLS, OUTRANKED_HITS, COUNT
+		TEMP_SPACE, SECONDARY_HITS, ERASED_HITS, SQUARED_ERROR, CELLS, OUTRANKED_HITS, TARGET_HITS0, TARGET_HITS1, TARGET_HITS2, COUNT
 	};
 
 	Statistics()
@@ -63,29 +63,32 @@ struct Statistics
 
 	void print() const
 	{
-		log_stream << "Used ref size = " << data_[REF_SIZE] << endl;
-		log_stream << "Traceback errors = " << data_[BIAS_ERRORS] << endl;
+		//log_stream << "Used ref size = " << data_[REF_SIZE] << endl;
+		//log_stream << "Traceback errors = " << data_[BIAS_ERRORS] << endl;
 		verbose_stream << "Hits (filter stage 0) = " << data_[SEED_HITS] << endl;
 		verbose_stream << "Hits (filter stage 1) = " << data_[TENTATIVE_MATCHES1] << " (" << data_[TENTATIVE_MATCHES1]*100.0/ data_[SEED_HITS] << " %)" << endl;
 		verbose_stream << "Hits (filter stage 2) = " << data_[TENTATIVE_MATCHES2] << " (" << data_[TENTATIVE_MATCHES2] * 100.0 / data_[TENTATIVE_MATCHES1] << " %)" << endl;
 		verbose_stream << "Hits (filter stage x) = " << data_[TENTATIVE_MATCHESX] << " (" << data_[TENTATIVE_MATCHESX] * 100.0 / data_[TENTATIVE_MATCHES2] << " %)" << endl;
 		verbose_stream << "Hits (filter stage 3) = " << data_[TENTATIVE_MATCHES3] << " (" << data_[TENTATIVE_MATCHES3] * 100.0 / data_[TENTATIVE_MATCHESX] << " %)" << endl;
 		verbose_stream << "Hits (filter stage 4) = " << data_[TENTATIVE_MATCHES4] << " (" << data_[TENTATIVE_MATCHES4] * 100.0 / data_[TENTATIVE_MATCHES3] << " %)" << endl;
-		log_stream << "Gapped hits = " << data_[GAPPED_HITS] << endl;
-		log_stream << "Overlap hits = " << data_[DUPLICATES] << endl;
-		log_stream << "Secondary hits = " << data_[SECONDARY_HITS] << endl;
-		log_stream << "Erased hits = " << data_[ERASED_HITS] << endl;
-		log_stream << "High similarity hits = " << data_[HIGH_SIM] << endl;
-		log_stream << "Net hits = " << data_[OUT_HITS] << endl;
-		log_stream << "Matches = " << data_[OUT_MATCHES] << endl;
-		log_stream << "Total score = " << data_[SCORE_TOTAL] << endl;
-		log_stream << "Aligned query len = " << data_[ALIGNED_QLEN] << endl;
-		log_stream << "Gapped matches = " << data_[GAPPED] << endl;
+		verbose_stream << "Target hits (stage 0) = " << data_[TARGET_HITS0] << endl;
+		verbose_stream << "Target hits (stage 1) = " << data_[TARGET_HITS1] << endl;
+		verbose_stream << "Target hits (stage 2) = " << data_[TARGET_HITS2] << endl;
+		//log_stream << "Gapped hits = " << data_[GAPPED_HITS] << endl;
+		//log_stream << "Overlap hits = " << data_[DUPLICATES] << endl;
+		//log_stream << "Secondary hits = " << data_[SECONDARY_HITS] << endl;
+		//log_stream << "Erased hits = " << data_[ERASED_HITS] << endl;
+		//log_stream << "High similarity hits = " << data_[HIGH_SIM] << endl;
+		//log_stream << "Net hits = " << data_[OUT_HITS] << endl;
+		//log_stream << "Matches = " << data_[OUT_MATCHES] << endl;
+		//log_stream << "Total score = " << data_[SCORE_TOTAL] << endl;
+		//log_stream << "Aligned query len = " << data_[ALIGNED_QLEN] << endl;
+		//log_stream << "Gapped matches = " << data_[GAPPED] << endl;
 		log_stream << "MSE = " << (double)data_[SQUARED_ERROR] / (double)data_[OUT_HITS] << endl;
-		log_stream << "Cells = " << data_[CELLS] << endl;
+		//log_stream << "Cells = " << data_[CELLS] << endl;
 		verbose_stream << "Temporary disk space used: " << (double)data_[TEMP_SPACE] / (1 << 30) << " GB" << endl;
 		log_stream << "Outranked hits = " << data_[OUTRANKED_HITS] << " (" << data_[OUTRANKED_HITS]*100.0/ data_[PAIRWISE] << "%)" << endl;
-		message_stream << "Reported " << data_[PAIRWISE] << " pairwise alignments, " << data_[MATCHES] << " HSSPs." << endl;
+		message_stream << "Reported " << data_[PAIRWISE] << " pairwise alignments." << endl; //<< data_[MATCHES] << " HSSPs." << endl;
 		message_stream << data_[ALIGNED] << " queries aligned." << endl;
 	}
 

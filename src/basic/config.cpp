@@ -211,7 +211,8 @@ Config::Config(int argc, const char **argv)
 		("max-cells", 0, "", max_cells, 10000000u)
 		("lb", 0, "", load_balancing, (unsigned)Config::target_parallel)
 		("ext", 0, "", ext, (int)Config::floating_xdrop)
-		("br", 0, "", benchmark_ranking);
+		("br", 0, "", benchmark_ranking)
+		("rank-ratio2", 0, "include subjects within this ratio of last hit", rank_ratio2, 0.95);
 		
 	parser.add(general).add(makedb).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options);
 	parser.store(argc, argv, command);

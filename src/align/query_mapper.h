@@ -37,6 +37,7 @@ struct Target
 	Target(size_t begin, unsigned subject_id) :
 		subject_id(subject_id),
 		filter_score(0),
+		filter_frame(0),
 		outranked(false),
 		begin(begin)
 	{}		
@@ -45,10 +46,9 @@ struct Target
 		return lhs->filter_score > rhs->filter_score;
 	}
 	unsigned subject_id, filter_score, filter_frame;
-	int filter_i, filter_j, filter_j_end;
 	float filter_time;
 	bool outranked;
-	Hsp_traits traits;
+	Hsp_traits traits[6];
 	size_t begin, end;
 	list<Hsp_data> hsps;
 };
@@ -62,6 +62,9 @@ struct Query_mapper
 	void align_target(size_t idx, Statistics &stat);
 	void align_targets(Statistics &stat);
 	bool generate_output(Text_buffer &buffer, Statistics &stat);
+	void ungapped_stage(size_t idx);
+	void greedy_stage(size_t idx);
+	void rank_targets(double ratio);
 	size_t n_targets() const
 	{
 		return targets.size();
@@ -84,7 +87,6 @@ private:
 		return align_mode.query_translated ? query_source_seqs::get()[query_id] : query_seqs::get()[query_id];
 	}
 	void load_targets();
-	void rank_targets();
 
 	unsigned source_query_len, unaligned_from;
 	vector<Seed_hit> seed_hits;

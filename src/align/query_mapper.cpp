@@ -60,7 +60,8 @@ void Query_mapper::init()
 	if (targets.empty())
 		return;
 	load_targets();
-	rank_targets();
+	if (config.ext == Config::floating_xdrop)
+		rank_targets(config.rank_ratio);
 }
 
 pair<Trace_pt_list::iterator, Trace_pt_list::iterator> Query_mapper::get_query_data()
@@ -85,8 +86,9 @@ unsigned Query_mapper::count_targets()
 	for (size_t i = 0; i < n; ++i) {
 		std::pair<size_t, size_t> l = ref_seqs::data_->local_position(hits[i].subject_);
 		const unsigned frame = hits[i].query_ % align_mode.query_contexts;
-		const Diagonal_segment d = config.comp_based_stats ? xdrop_ungapped(query_seq(frame), query_cb[frame], ref_seqs::get()[l.first], hits[i].seed_offset_, (int)l.second)
-			: xdrop_ungapped(query_seq(frame), ref_seqs::get()[l.first], hits[i].seed_offset_, (int)l.second);
+		/*const Diagonal_segment d = config.comp_based_stats ? xdrop_ungapped(query_seq(frame), query_cb[frame], ref_seqs::get()[l.first], hits[i].seed_offset_, (int)l.second)
+			: xdrop_ungapped(query_seq(frame), ref_seqs::get()[l.first], hits[i].seed_offset_, (int)l.second);*/
+		const Diagonal_segment d = xdrop_ungapped(query_seq(frame), ref_seqs::get()[l.first], hits[i].seed_offset_, (int)l.second);
 		if (d.score >= config.min_ungapped_raw_score) {
 			if (l.first != subject_id) {
 				subject_id = l.first;
@@ -120,17 +122,17 @@ void Query_mapper::load_targets()
 	get_prefilter_score(n - 1);
 }
 
-void Query_mapper::rank_targets()
+void Query_mapper::rank_targets(double ratio)
 {
 	std::sort(targets.begin(), targets.end(), Target::compare);
 
 	unsigned score = 0;
 	if (config.toppercent < 100) {
-		score = unsigned((double)targets[0].filter_score * (1.0 - config.toppercent / 100.0) * config.rank_ratio);
+		score = unsigned((double)targets[0].filter_score * (1.0 - config.toppercent / 100.0) * ratio);
 	}
 	else {
 		size_t min_idx = std::min(targets.size(), (size_t)config.max_alignments);
-		score = unsigned((double)targets[min_idx - 1].filter_score * config.rank_ratio);
+		score = unsigned((double)targets[min_idx - 1].filter_score * ratio);
 	}
 
 	unsigned i = 0;
