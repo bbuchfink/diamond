@@ -50,6 +50,8 @@ void Query_mapper::greedy_stage(size_t idx)
 	const sequence subject = ref_seqs::get()[target.subject_id];
 	const string subject_id(ref_ids::get()[target.subject_id].c_str());
 	target.filter_score = 0;
+	Timer timer;
+	timer.start();
 	for (unsigned frame = 0; frame < align_mode.query_contexts; ++frame)
 		if (target.traits[frame].score > 0) {
 			Hsp_traits &t = target.traits[frame];
@@ -59,6 +61,7 @@ void Query_mapper::greedy_stage(size_t idx)
 				target.filter_frame = frame;
 			}
 		}
+	target.filter_time += (float)timer.getElapsedTimeInMicroSec();
 }
 
 void Query_mapper::get_prefilter_score(size_t idx)

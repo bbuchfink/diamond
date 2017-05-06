@@ -70,7 +70,7 @@ struct Seed_hit
 	}
 	static bool compare_diag(const Seed_hit &x, const Seed_hit &y)
 	{
-		return x.frame_ < y.frame_ || (x.frame_ == y.frame_ && x.diagonal() < y.diagonal());
+		return x.frame_ < y.frame_ || (x.frame_ == y.frame_ && (x.diagonal() < y.diagonal() || (x.diagonal() == y.diagonal() && x.subject_pos_ < y.subject_pos_)));
 	}
 	struct Frame
 	{

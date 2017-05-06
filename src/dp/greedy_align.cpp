@@ -31,8 +31,19 @@ using std::map;
 
 void Diag_graph::load(vector<Seed_hit>::const_iterator begin, vector<Seed_hit>::const_iterator end)
 {
-	for (vector<Seed_hit>::const_iterator i = begin; i < end; ++i)
-		nodes.push_back(i->ungapped);
+	int d = std::numeric_limits<int>::min(), max_j_end = d;
+	for (vector<Seed_hit>::const_iterator i = begin; i < end; ++i) {
+		const int d2 = i->diagonal();
+		if (d2 != d) {
+			d = d2;
+			nodes.push_back(i->ungapped);
+			max_j_end = nodes.back().subject_end();
+		}
+		else if (max_j_end < i->subject_pos_) {
+			nodes.push_back(i->ungapped);
+			max_j_end = std::max(max_j_end, nodes.back().subject_end());
+		}
+	}
 }
 
 void Diag_graph::print(sequence query, sequence subject) const
@@ -60,7 +71,7 @@ size_t Diag_graph::top_node() const
 void Diag_graph::sort()
 {
 	std::sort(nodes.begin(), nodes.end(), Diagonal_segment::cmp_subject);
-	nodes.erase(std::unique(nodes.begin(), nodes.end()), nodes.end());
+	//nodes.erase(std::unique(nodes.begin(), nodes.end()), nodes.end());
 }
 
 struct Link
