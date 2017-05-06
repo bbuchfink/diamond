@@ -209,6 +209,27 @@ void benchmark_greedy(const Sequence_set &ss, unsigned qa, unsigned sa)
 	cout << "t=" << t.getElapsedTimeInMicroSec() << endl;
 }
 
+void benchmark_banded(const Sequence_set &ss, unsigned qa, unsigned sa)
+{
+	static const unsigned n = 10000;
+	Hsp_data hsp;
+	const int d = (int)qa - (int)sa, band = 30;
+	banded_sw(ss[0], ss[1], d - band, d + band, 0, 0, hsp);
+	cout << "Score = " << hsp.score << endl;
+	Timer t;
+	t.start();
+
+	for (unsigned i = 0; i < n; ++i) {
+
+		banded_sw(ss[0], ss[1], d - band, d + band, 0,0,hsp);
+		hsp.score = 0;
+
+	}
+	t.stop();
+
+	cout << " usec=" << t.getElapsedTimeInSec() / (double)n * 1000000.0 << endl;
+}
+
 void benchmark_swipe(const Sequence_set &ss)
 {
 	static const unsigned n = 1000;
@@ -291,7 +312,7 @@ Sbjct  16  QNDSSIIDFIKINDLAEQIEKISKKYIVSIVLGGGNIWRGSIAKELDMDRNLADNMGMMA  75
 Query  80  TVIGHL  85
            T+I  L
 Sbjct  76  TIINGL  81	*/
-	
+
 	s1 = sequence::from_string("SLFEQLGGQAAVQAVTAQFYANIQADATVATFFNGIDMPNQTNKTAAFLCAALGGPNAWTGRNLKEVHANMGVSNAQFTTVIGHLRSALTGAGVAAALVEQTVAVAETVRGDVVTV");
 	s2 = sequence::from_string("RKQRIVIKISGACLKQNDSSIIDFIKINDLAEQIEKISKKYIVSIVLGGGNIWRGSIAKELDMDRNLADNMGMMATIINGLALENALNHLNVNTIVLSAIKCDKLVHESSANNIKKAIEKEQVMIFVAGTGFPYFTTDSCAAIRAAETESSIILMGKNGVDGVYDSDPKINPNAQFYEHITFNMALTQNLKVMDATALALCQENNINLLVFNIDKPNAIVDVLEKKNKYTIVSK");
 	qa = 23;
@@ -391,6 +412,7 @@ KCLEHLFFFKLIGDTPIDTFLMEMLEAPHQIT");
 
 	*/
 
+aln1:
 	s1 = sequence::from_string("tspmtpditgkpfvaadasndyikrevmipmrdgvklhtvivlpkgaknapivltrtpyd\
 asgrterlasphmkdllsagddvfveggyirvfqdvrgkygsegdyvmtrplrgplnpse\
 vdhatdawdtidwlvknvsesngkvgmigssyegftvvmaltnphpalkvavpespmidg\
@@ -423,7 +445,7 @@ VIAREQLEEMCTAVNRIHRGPEHPSHIVLPIIKR");
 	>sp|Q820R1|RS3_NITEU 30S ribosomal protein S3 OS=Nitrosomonas europaea (strain ATCC 19718 / NBRC 14298) GN=rpsC PE=3 SV=1
 Length=215
 
- Score = 46.6 bits (109),  Expect = 6.8e-05
+ Score = 46.6 bits (105!),  Expect = 6.8e-05
  Identities = 22/34 (64%), Positives = 27/34 (79%), Gaps = 5/34 (14%)
  Frame = 2
 
@@ -431,9 +453,7 @@ Query    1  PLHTLRADIDYGT--ARALYPGAGIIGVQVWIYK 32
             PLHTLRA++DYGT  AR  Y   GIIGV+VW++K
 Sbjct  174  PLHTLRAEVDYGTSEARTTY---GIIGVKVWVFK 204
 	*/
-
-aln1:
-
+	
 	s1 = sequence::from_string("PLHTLRADIDYGTARALYPGAGIIGVQVWIYK");
 	s2 = sequence::from_string("MGQKINPTGFRLSVLKNWSSRWYTNTKKFSDFLNEDISVRQYLQKKLAHASVGSIIIERPSKNAKITIHTSRPGVVIGKKGEDIEILRRNVEKLMNVPVHINIEEIRKPEIDAQLIAASITQQLEKRIMFRRAMKRAIQNAMRLGAQGIKIMSSGRLNGIEIARTEWYREGRVPLHTLRAEVDYGTSEARTTYGIIGVKVWVFKGEQLGIKERQN");
 
@@ -607,6 +627,7 @@ aln1:
 	//benchmark_greedy(ss, qa, sa);
 	//benchmark_cmp();
 	//benchmark_ungapped(ss, qa, sa);
-	benchmark_swipe(ss);
+	//benchmark_swipe(ss);
+	benchmark_banded(ss, qa, sa);
 
 }

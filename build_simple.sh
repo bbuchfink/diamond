@@ -52,4 +52,5 @@ g++ -DNDEBUG -O3 -Wno-deprecated-declarations $1 $2 \
   src/lib/tantan/tantan.cc \
   src/basic/masking.cpp \
   src/dp/swipe.cpp \
+  src/dp/banded_sw.cpp \
 -lz -lpthread -o diamond

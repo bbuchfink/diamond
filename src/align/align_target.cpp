@@ -231,7 +231,10 @@ void Query_mapper::align_target(size_t idx, Statistics &stat)
 			}
 			target.hsps.push_back(Hsp_data());
 			target.hsps.back().frame = frame;
-			uint64_t cell_updates;
+
+			banded_sw(query_seq(frame), subject, t.d_min - 16, t.d_max + 16, t.j_begin, t.j_end, target.hsps.back());
+
+			/*uint64_t cell_updates;
 			floating_sw(&query_seq(frame)[t.i_begin],
 				&subject[t.j_begin],
 				target.hsps.back(),
@@ -244,8 +247,8 @@ void Query_mapper::align_target(size_t idx, Statistics &stat)
 				t.j_begin,
 				t.j_end,
 				No_score_correction(),
-				Traceback(),
-				int());
+				Score_only(),
+				int());*/
 
 			/*if (config.comp_based_stats) {
 				const int score = (int)target.hsps.back().score + query_cb[frame](target.hsps.back());

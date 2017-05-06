@@ -84,6 +84,7 @@ add_executable(diamond src/run/main.cpp
   src/lib/tantan/tantan.cc
   src/basic/masking.cpp
   src/dp/swipe.cpp
+  src/dp/banded_sw.cpp
 )
 
 target_link_libraries(diamond ${ZLIB_LIBRARY} ${CMAKE_THREAD_LIBS_INIT})
