@@ -223,7 +223,7 @@ void Query_mapper::align_target(size_t idx, Statistics &stat)
 			const Hsp_traits &t = target.traits[frame];
 			const int d = t.i_begin - t.j_begin,
 				qlen = (int)query_seq(0).length(),
-				band_plus = qlen <= 50 ? 7 : 50,
+				band_plus = qlen <= 50 ? 3 : 16,
 				band = std::min(std::max(d - t.d_min, t.d_max - d) + band_plus, qlen / 2);
 			if (log_ga) {
 				cout << "i_begin=" << t.i_begin << " j_begin=" << t.j_begin << " d_min=" << t.d_min << " d_max=" << t.d_max << endl;
@@ -232,23 +232,7 @@ void Query_mapper::align_target(size_t idx, Statistics &stat)
 			target.hsps.push_back(Hsp_data());
 			target.hsps.back().frame = frame;
 
-			banded_sw(query_seq(frame), subject, t.d_min - 16, t.d_max + 16, t.j_begin, t.j_end, target.hsps.back());
-
-			/*uint64_t cell_updates;
-			floating_sw(&query_seq(frame)[t.i_begin],
-				&subject[t.j_begin],
-				target.hsps.back(),
-				band,
-				score_matrix.rawscore(config.gapped_xdrop),
-				score_matrix.gap_open() + score_matrix.gap_extend(),
-				score_matrix.gap_extend(),
-				cell_updates,
-				t.i_begin,
-				t.j_begin,
-				t.j_end,
-				No_score_correction(),
-				Score_only(),
-				int());*/
+			banded_sw(query_seq(frame), subject, t.d_min - band_plus, t.d_max + band_plus, 0, (int)subject.length(), target.hsps.back());
 
 			/*if (config.comp_based_stats) {
 				const int score = (int)target.hsps.back().score + query_cb[frame](target.hsps.back());

@@ -213,15 +213,16 @@ void benchmark_banded(const Sequence_set &ss, unsigned qa, unsigned sa)
 {
 	static const unsigned n = 10000;
 	Hsp_data hsp;
-	const int d = (int)qa - (int)sa, band = 30;
-	banded_sw(ss[0], ss[1], d - band, d + band, 0, 0, hsp);
+	const int d = (int)qa - (int)sa, band = 30, slen = (int)ss[1].length();
+	banded_sw(ss[0], ss[1], d - band, d + band, 0, slen, hsp);
 	cout << "Score = " << hsp.score << endl;
+	//print_hsp(hsp, ss[0]);
 	Timer t;
 	t.start();
 
 	for (unsigned i = 0; i < n; ++i) {
 
-		banded_sw(ss[0], ss[1], d - band, d + band, 0,0,hsp);
+		banded_sw(ss[0], ss[1], d - band, d + band, 0,slen,hsp);
 		hsp.score = 0;
 
 	}
