@@ -105,7 +105,7 @@ struct Async_buffer
 			return total_size*sizeof(_t);
 		}
 		size_t size = bin_size(bins_processed_), end = bins_processed_ + 1, current_size;
-		while (end < bins_ && size + (current_size = bin_size(end)) < max_size) {
+		while (end < bins_ && (size + (current_size = bin_size(end)))*sizeof(_t) < max_size) {
 			size += current_size;
 			++end;
 		}

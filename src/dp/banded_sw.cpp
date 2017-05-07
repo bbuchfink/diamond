@@ -35,13 +35,73 @@ struct Banded_traceback_matrix
 	{
 		return i >= 0 && j >= 0 && i >= i0_ + j && i < i0_ + j + band_;
 	}
-	void print(int col, int row) const
+	void print(int qlen, int slen) const
 	{
-		for (unsigned j = 0; j <= row; ++j) {
-			for (unsigned i = 0; i <= col; ++i)
-				printf("%4i", in_band(i, j) ? this->operator()(i, j) : 0);
+		printf("\n    ");
+		for (int j = 0; j <= slen; ++j)
+			printf("%4i", j - 1);
+		printf("\n");
+		for (int i = 0; i <= qlen; ++i) {
+			printf("%4i", i - 1);
+			for (int j = 0; j <= slen; ++j)
+				printf("%4i", in_band(i - 1, j - 1) ? this->operator()(i - 1, j - 1) : 0);
 			printf("\n");
 		}
+	}
+	struct Column_iterator
+	{
+		Column_iterator(const int *ptr, const int *end):
+			ptr_(ptr),
+			end_(end)
+		{}
+		bool good()
+		{
+			return ptr_ >= end_;
+		}
+		void operator--()
+		{
+			--ptr_;
+		}
+		int operator*() const
+		{
+			return *ptr_;
+		}
+		const int *ptr_, *end_;
+	};
+	Column_iterator column(int i, int j) const
+	{
+		const int i0 = i0_ + j;
+		return Column_iterator(&data_[(j + 1)*band_ + (i - i0)], &data_[(j + 1)*band_ + std::max(i0, 0) - i0]);
+	}
+	struct Row_iterator
+	{
+		Row_iterator(const int *ptr, const int *end, int band) :
+			ptr_(ptr),
+			end_(end),
+			band_(band-1)
+		{}
+		bool good()
+		{
+			return ptr_ >= end_;
+		}
+		void operator--()
+		{
+			ptr_ -= band_;
+		}
+		int operator*() const
+		{
+			//cout << "*h=" << *ptr_ << endl;
+			//printf("ptr=%llx end=%llx\n", ptr_, end_);
+			return *ptr_;
+		}
+		const int *ptr_, *end_, band_;
+	};
+	Row_iterator row(int i, int j) const
+	{
+		const int i0 = i0_ + j;
+		//cout << "j_end=" << i - i0_ - band_ << endl;
+		const int* p = &data_[(j + 1)*band_ + (i - i0)];
+		return Row_iterator(p, std::max(p - (j - (i - i0_ - band_) - 1)*(band_ - 1), &data_[band_]), band_);
 	}
 private:
 	const vector<int> &data_;
@@ -55,17 +115,33 @@ int have_gap(const Banded_traceback_matrix &dp,
 {
 	const int score = dp(i, j);
 	l = 1;
-	int j1 = j - 1, i1 = i - 1, g = score_matrix.gap_open() + score_matrix.gap_extend();
-	bool bv, bh;
-	while ((bv = dp.in_band(i1, j)) || (bh = dp.in_band(i, j1))) {
-		if (bv && score == dp(i1, j) - g)
+	const int ge = score_matrix.gap_extend();
+	int g = score_matrix.gap_open() + ge;
+	Banded_traceback_matrix::Column_iterator v(dp.column(i - 1, j));
+	Banded_traceback_matrix::Row_iterator h(dp.row(i, j - 1));
+	while (v.good() && h.good()) {
+		if (score == *v - g)
 			return 0;
-		else if (bh && score == dp(i, j1) - g)
+		else if (score == *h - g)
 			return 1;
-		--j1;
-		--i1;
+		--h;
+		--v;
 		++l;
-		++g;
+		g += ge;
+	}
+	while (v.good()) {
+		if (score == *v - g)
+			return 0;
+		--v;
+		++l;
+		g += ge;
+	}
+	while (h.good()) {
+		if (score == *h - g)
+			return 1;
+		--h;
+		++l;
+		g += ge;
 	}
 	return -1;
 }
@@ -80,7 +156,7 @@ void traceback(const sequence &query,
 	Hsp_data &l)
 {
 	Banded_traceback_matrix dp(scores, band, i0);
-	//dp.print(i, j);
+	//dp.print(i + 1, j + 1);
 	l.query_range.end_ = i + 1;
 	l.subject_range.end_ = j + 1;
 	l.transcript.clear();
@@ -89,7 +165,7 @@ void traceback(const sequence &query,
 
 	while ((score = dp(i, j)) > 0) {
 		const int match_score = score_matrix(query[i], subject[j]);
-		//printf("i=%i j=%i score=%i subject=%c query=%c\n",i,j,dp(i, j),Value_traits<_val>::ALPHABET[ls],Value_traits<_val>::ALPHABET[lq]);
+		//printf("i=%i j=%i score=%i subject=%c query=%c\n", i, j, dp(i, j), value_traits.alphabet[subject[j]], value_traits.alphabet[query[i]]);
 
 		if (score == match_score + dp(i - 1, j - 1)) {
 			if (query[i] == subject[j]) {
@@ -120,7 +196,6 @@ void traceback(const sequence &query,
 			}
 			else {
 				for (; gap_len > 0; gap_len--)
-					j--;
 					l.transcript.push_back(op_deletion, subject[j--]);
 			}
 		}

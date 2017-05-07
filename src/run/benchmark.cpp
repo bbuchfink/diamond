@@ -413,7 +413,6 @@ KCLEHLFFFKLIGDTPIDTFLMEMLEAPHQIT");
 
 	*/
 
-aln1:
 	s1 = sequence::from_string("tspmtpditgkpfvaadasndyikrevmipmrdgvklhtvivlpkgaknapivltrtpyd\
 asgrterlasphmkdllsagddvfveggyirvfqdvrgkygsegdyvmtrplrgplnpse\
 vdhatdawdtidwlvknvsesngkvgmigssyegftvvmaltnphpalkvavpespmidg\
@@ -454,7 +453,8 @@ Query    1  PLHTLRADIDYGT--ARALYPGAGIIGVQVWIYK 32
             PLHTLRA++DYGT  AR  Y   GIIGV+VW++K
 Sbjct  174  PLHTLRAEVDYGTSEARTTY---GIIGVKVWVFK 204
 	*/
-	
+
+aln1:
 	s1 = sequence::from_string("PLHTLRADIDYGTARALYPGAGIIGVQVWIYK");
 	s2 = sequence::from_string("MGQKINPTGFRLSVLKNWSSRWYTNTKKFSDFLNEDISVRQYLQKKLAHASVGSIIIERPSKNAKITIHTSRPGVVIGKKGEDIEILRRNVEKLMNVPVHINIEEIRKPEIDAQLIAASITQQLEKRIMFRRAMKRAIQNAMRLGAQGIKIMSSGRLNGIEIARTEWYREGRVPLHTLRAEVDYGTSEARTTYGIIGVKVWVFKGEQLGIKERQN");
 
