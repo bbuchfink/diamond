@@ -61,7 +61,7 @@ void Query_mapper::init()
 		return;
 	load_targets();
 	if (config.ext == Config::floating_xdrop)
-		rank_targets(config.rank_ratio);
+		rank_targets(config.rank_ratio == -1 ? 0.6 : config.rank_ratio);
 }
 
 pair<Trace_pt_list::iterator, Trace_pt_list::iterator> Query_mapper::get_query_data()
