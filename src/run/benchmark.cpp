@@ -181,15 +181,17 @@ void benchmark_ungapped(const Sequence_set &ss, unsigned qa, unsigned sa)
 void benchmark_greedy(const Sequence_set &ss, unsigned qa, unsigned sa)
 {
 	static const unsigned n = 10000;
-	vector<Seed_hit> d;
-	d.push_back(Seed_hit(0, 0, sa, qa, Diagonal_segment()));
+	vector<Seed_hit> d2;
+	d2.push_back(Seed_hit(0, 0, sa, qa, Diagonal_segment()));
 	Long_score_profile qp(ss[0]);
 	//greedy_align(ss[0], qp, ss[1], d[0], true);
 	//greedy_align(ss[0], qp, ss[1], qa, sa, true);
 	Hsp_data hsp;
 	Hsp_traits traits;
 	Bias_correction query_bc(ss[0]);
-	greedy_align(ss[0], qp, query_bc, ss[1], d.begin(), d.end(), true, &hsp, traits);
+	//greedy_align(ss[0], qp, query_bc, ss[1], d2.begin(), d2.end(), true, &hsp, traits);
+	const int d = (int)qa - (int)sa, band = 7;
+	greedy_align(ss[0], qp, query_bc, ss[1], d - band, d + band + 1, false, &hsp, traits);
 	/*Text_buffer buf;
 	Pairwise_format().print_match(Hsp_context(hsp, 0, ss[0], ss[0], "", 0, 0, "", 0, 0, 0), buf);
 	buf << '\0';
@@ -199,7 +201,7 @@ void benchmark_greedy(const Sequence_set &ss, unsigned qa, unsigned sa)
 
 	for (unsigned i = 0; i < n; ++i) {
 
-		greedy_align(ss[0], qp, query_bc, ss[1], d.begin(), d.end(), false, &hsp, traits);
+		greedy_align(ss[0], qp, query_bc, ss[1], d, d, false, &hsp, traits);
 		hsp.score = 0;
 
 	}
@@ -271,7 +273,7 @@ void benchmark_floating(const Sequence_set &ss, unsigned qa, unsigned sa)
 			floating_sw(&ss[0][qa],
 				hsp.subject_,
 				hsp,
-				16,
+				5,
 				score_matrix.rawscore(config.gapped_xdrop),
 				score_matrix.gap_open() + score_matrix.gap_extend(),
 				score_matrix.gap_extend(),
@@ -625,10 +627,10 @@ aln1:
 	ss.finish_reserve();
 
 	//benchmark_floating(ss, qa, sa);
-	//benchmark_greedy(ss, qa, sa);
+	benchmark_greedy(ss, qa, sa);
 	//benchmark_cmp();
 	//benchmark_ungapped(ss, qa, sa);
 	//benchmark_swipe(ss);
-	benchmark_banded(ss, qa, sa);
+	//benchmark_banded(ss, qa, sa);
 
 }

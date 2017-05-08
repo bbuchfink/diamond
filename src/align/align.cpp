@@ -110,7 +110,7 @@ void align_worker(size_t thread_id)
 				mapper.rank_targets(config.rank_ratio == -1 ? (mapper.query_seq(0).length() > 50 ? 0.6 : 0.9) : config.rank_ratio);
 				stat.inc(Statistics::TARGET_HITS1, mapper.n_targets());
 				for (size_t i = 0; i < mapper.n_targets(); ++i)
-					mapper.greedy_stage(i);
+					mapper.greedy_stage(i, stat);
 				mapper.rank_targets(config.rank_ratio2 == -1 ? (mapper.query_seq(0).length() > 50 ? 0.95 : 1.0) : config.rank_ratio2);
 				stat.inc(Statistics::TARGET_HITS2, mapper.n_targets());
 				for (size_t i = 0; i < mapper.n_targets(); ++i)

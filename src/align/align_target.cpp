@@ -20,6 +20,7 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #include "../data/reference.h"
 #include "../dp/floating_sw.h"
 #include "../util/map.h"
+#include "../util/high_res_timer.h"
 
 using std::list;
 
@@ -40,13 +41,17 @@ void Query_mapper::ungapped_stage(size_t idx)
 	for (Hit_map::Iterator it = hit_map.begin(); it.valid(); ++it) {
 		const unsigned frame = it.begin()->frame_;
 		greedy_align(query_seq(frame), profile[frame], query_cb[frame], subject, it.begin(), it.end(), log_ga, 0, target.traits[frame]);
-		target.filter_score = std::max(target.filter_score, (unsigned)target.traits[frame].score);
+		//target.filter_score = std::max(target.filter_score, (unsigned)target.traits[frame].score);
+		if (target.traits[frame].score > target.filter_score) {
+			target.filter_score = target.traits[frame].score;
+			target.filter_frame = frame;
+		}
 	}
 	const float time = (float)timer.getElapsedTimeInMicroSec();
 	target.filter_time = time;
 }
 
-void Query_mapper::greedy_stage(size_t idx)
+void Query_mapper::greedy_stage(size_t idx, Statistics &stat)
 {
 	Target& target = targets[idx];
 	const sequence subject = ref_seqs::get()[target.subject_id];
@@ -54,9 +59,8 @@ void Query_mapper::greedy_stage(size_t idx)
 	if (config.log_subject)
 		cout << "Subject = " << subject_id << endl;
 	target.filter_score = 0;
-	Timer timer;
-	timer.start();
-	for (unsigned frame = 0; frame < align_mode.query_contexts; ++frame)
+	High_res_timer timer;
+	/*for (unsigned frame = 0; frame < align_mode.query_contexts; ++frame)
 		if (target.traits[frame].score > 0) {
 			Hsp_traits &t = target.traits[frame];
 			greedy_align(query_seq(frame), profile[frame], query_cb[frame], subject, t.d_min, t.d_max, log_ga, 0, t);
@@ -64,8 +68,13 @@ void Query_mapper::greedy_stage(size_t idx)
 				target.filter_score = t.score;
 				target.filter_frame = frame;
 			}
-		}
-	target.filter_time += (float)timer.getElapsedTimeInMicroSec();
+		}*/
+	const unsigned frame = target.filter_frame;
+	Hsp_traits &t = target.traits[frame];
+	greedy_align(query_seq(frame), profile[frame], query_cb[frame], subject, t.d_min, t.d_max, log_ga, 0, t);
+	target.filter_score = t.score;
+	stat.inc(Statistics::TIME_GREEDY_EXT, timer.nanoseconds());
+	target.filter_time += (float)timer.microseconds();
 }
 
 void Query_mapper::get_prefilter_score(size_t idx)

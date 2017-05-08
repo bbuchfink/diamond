@@ -537,6 +537,7 @@ size_t Diag_scores::scan_diags(int d_begin, int d_end, sequence query, sequence 
 	d_end = std::min(d_end, (int)query.length());
 	d_end += (d_end - d_begin) % 16 == 0 ? 0 : 16 - (d_end - d_begin) % 16;
 	const int band = d_end - d_begin;
+	//cout << band << endl;
 	this->fast = fast;
 	this->d_begin = d_begin;
 	this->d_end = d_end;

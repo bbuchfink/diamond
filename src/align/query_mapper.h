@@ -63,7 +63,7 @@ struct Query_mapper
 	void align_targets(Statistics &stat);
 	bool generate_output(Text_buffer &buffer, Statistics &stat);
 	void ungapped_stage(size_t idx);
-	void greedy_stage(size_t idx);
+	void greedy_stage(size_t idx, Statistics &stat);
 	void rank_targets(double ratio);
 	size_t n_targets() const
 	{

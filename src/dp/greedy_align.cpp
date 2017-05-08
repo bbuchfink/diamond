@@ -517,7 +517,7 @@ void greedy_align(sequence query, const Long_score_profile &qp, const Bias_corre
 
 void greedy_align(sequence query, const Long_score_profile &qp, const Bias_correction &query_bc, sequence subject, int d_begin, int d_end, bool log, Hsp_data *out, Hsp_traits &traits)
 {
-	const int band = config.padding == 0 ? std::min(64, (int)query.length() / 2) : config.padding;
+	const int band = config.padding == 0 ? std::min(64, int(query.length()*0.5)) : config.padding;
 	Greedy_aligner2 ga(query, qp, query_bc, subject, log);
 	ga.run(d_begin - band, d_end + band, out, traits, std::max(traits.d_max - traits.d_min, band));
 }
