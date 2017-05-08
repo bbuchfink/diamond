@@ -106,14 +106,16 @@ void align_worker(size_t thread_id)
 			stat.inc(Statistics::TARGET_HITS0, mapper.n_targets());
 			for (size_t i = 0; i < mapper.n_targets(); ++i)
 				mapper.ungapped_stage(i);
-			mapper.rank_targets(config.rank_ratio == -1 ? (mapper.query_seq(0).length() > 50 ? 0.6 : 0.9) : config.rank_ratio);
-			stat.inc(Statistics::TARGET_HITS1, mapper.n_targets());
-			for (size_t i = 0; i < mapper.n_targets(); ++i)
-				mapper.greedy_stage(i);
-			mapper.rank_targets(config.rank_ratio2 == -1 ? (mapper.query_seq(0).length() > 50 ? 0.95 : 1.0) : config.rank_ratio2);
-			stat.inc(Statistics::TARGET_HITS2, mapper.n_targets());
-			for (size_t i = 0; i < mapper.n_targets(); ++i)
-				mapper.align_target(i, stat);
+			if (config.ext != Config::most_greedy) {
+				mapper.rank_targets(config.rank_ratio == -1 ? (mapper.query_seq(0).length() > 50 ? 0.6 : 0.9) : config.rank_ratio);
+				stat.inc(Statistics::TARGET_HITS1, mapper.n_targets());
+				for (size_t i = 0; i < mapper.n_targets(); ++i)
+					mapper.greedy_stage(i);
+				mapper.rank_targets(config.rank_ratio2 == -1 ? (mapper.query_seq(0).length() > 50 ? 0.95 : 1.0) : config.rank_ratio2);
+				stat.inc(Statistics::TARGET_HITS2, mapper.n_targets());
+				for (size_t i = 0; i < mapper.n_targets(); ++i)
+					mapper.align_target(i, stat);
+			}
 		}
 		Text_buffer *buf = 0;
 		if (*output_format != Output_format::null) {
