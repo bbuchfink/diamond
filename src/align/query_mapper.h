@@ -73,15 +73,15 @@ struct Query_mapper
 	{
 		return targets_finished == targets.size();
 	}
+	sequence query_seq(unsigned frame) const
+	{
+		return query_seqs::get()[query_id*align_mode.query_contexts + frame];
+	}
 	pair<Trace_pt_list::iterator, Trace_pt_list::iterator> source_hits;
 	unsigned query_id, targets_finished, next_target;
 private:
 	static pair<Trace_pt_list::iterator, Trace_pt_list::iterator> get_query_data();
 	unsigned count_targets();
-	sequence query_seq(unsigned frame) const
-	{
-		return query_seqs::get()[query_id*align_mode.query_contexts + frame];
-	}
 	sequence query_source_seq() const
 	{
 		return align_mode.query_translated ? query_source_seqs::get()[query_id] : query_seqs::get()[query_id];
