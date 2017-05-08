@@ -292,7 +292,7 @@ void align_queries(Trace_pt_buffer &trace_pts, Output_stream* output_file)
 			Thread_pool threads;
 			if (config.verbosity >= 3)
 				threads.push_back(launch_thread(heartbeat_worker));
-			for (size_t i = 0; i < config.threads_align == 0 ? config.threads_ : config.threads_align; ++i)
+			for (size_t i = 0; i < (config.threads_align == 0 ? config.threads_ : config.threads_align); ++i)
 				threads.push_back(launch_thread(static_cast<void(*)(size_t)>(&align_worker), i));
 			threads.join_all();
 		}
