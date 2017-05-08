@@ -29,6 +29,8 @@ void Query_mapper::ungapped_stage(size_t idx)
 {
 	Target& target = targets[idx];
 	const string subject_id(ref_ids::get()[target.subject_id].c_str());
+	if (config.log_subject)
+		cout << "Subject = " << subject_id << endl;
 	Timer timer;
 	timer.start();
 	std::sort(seed_hits.begin() + target.begin, seed_hits.begin() + target.end, Seed_hit::compare_diag);
@@ -49,6 +51,8 @@ void Query_mapper::greedy_stage(size_t idx)
 	Target& target = targets[idx];
 	const sequence subject = ref_seqs::get()[target.subject_id];
 	const string subject_id(ref_ids::get()[target.subject_id].c_str());
+	if (config.log_subject)
+		cout << "Subject = " << subject_id << endl;
 	target.filter_score = 0;
 	Timer timer;
 	timer.start();
@@ -146,7 +150,8 @@ void Query_mapper::align_target(size_t idx, Statistics &stat)
 	size_t aligned_len = 0;
 	const vector<Seed_hit>::const_iterator hits = seed_hits.begin() + target.begin;
 	const sequence subject = ref_seqs::get()[hits[0].subject_];
-	//cout << '>' << query_ids::get()[query_id].c_str() << endl << '>' << ref_ids::get()[hits[0].subject_].c_str() << endl;
+	if (config.log_subject)
+		cout << "Subject = " << ref_ids::get()[target.subject_id].c_str() << endl;
 
 	unsigned frame_mask = (1 << align_mode.query_contexts) - 1;
 	stat.inc(Statistics::CELLS, query_seq(0).length() * subject.length());

@@ -212,7 +212,10 @@ Config::Config(int argc, const char **argv)
 		("lb", 0, "", load_balancing, (unsigned)Config::target_parallel)
 		("ext", 0, "", ext, (int)Config::floating_xdrop)
 		("br", 0, "", benchmark_ranking)
-		("rank-ratio2", 0, "include subjects within this ratio of last hit", rank_ratio2, -1.0);
+		("rank-ratio2", 0, "include subjects within this ratio of last hit", rank_ratio2, -1.0)
+		("log-query", 0, "", log_query)
+		("log-subject", 0, "", log_subject)
+		("palign", 0, "", threads_align);
 		
 	parser.add(general).add(makedb).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options);
 	parser.store(argc, argv, command);
