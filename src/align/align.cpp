@@ -102,7 +102,7 @@ void align_worker(size_t thread_id)
 		mapper.init();
 		if (config.ext == Config::swipe)
 			mapper.align_targets(stat);
-		else {
+		else if (mapper.n_targets() > 0) {
 			stat.inc(Statistics::TARGET_HITS0, mapper.n_targets());
 			for (size_t i = 0; i < mapper.n_targets(); ++i)
 				mapper.ungapped_stage(i);
@@ -115,10 +115,13 @@ void align_worker(size_t thread_id)
 			for (size_t i = 0; i < mapper.n_targets(); ++i)
 				mapper.align_target(i, stat);
 		}
-		Text_buffer *buf = new Text_buffer;
-		const bool aligned = mapper.generate_output(*buf, stat);
-		if (aligned && !config.unaligned.empty())
-			query_aligned[query] = true;
+		Text_buffer *buf = 0;
+		if (*output_format != Output_format::null) {
+			buf = new Text_buffer;
+			const bool aligned = mapper.generate_output(*buf, stat);
+			if (aligned && !config.unaligned.empty())
+				query_aligned[query] = true;
+		}
 		Output_sink::get().push(query, buf);
 	}
 	statistics += stat;

@@ -81,6 +81,8 @@ Output_format* get_output_format()
 		return new DAA_format;
 	else if (f[0] == "0")
 		return new Pairwise_format;
+	else if (f[0] == "-1")
+		return new Null_format;
 	else
 		throw std::runtime_error("Invalid output format. Allowed values: 5,6,100,101");
 }

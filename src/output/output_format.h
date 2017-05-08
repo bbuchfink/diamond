@@ -50,10 +50,17 @@ struct Output_format
 		return code;
 	}
 	unsigned code;
-	enum { daa, blast_tab, blast_xml, sam, blast_pairwise };
+	enum { daa, blast_tab, blast_xml, sam, blast_pairwise, null };
 };
 
 extern auto_ptr<Output_format> output_format;
+
+struct Null_format : public Output_format
+{
+	Null_format() :
+		Output_format(null)
+	{}
+};
 
 struct DAA_format : public Output_format
 {
