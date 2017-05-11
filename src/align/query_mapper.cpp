@@ -36,6 +36,11 @@ Query_mapper::Query_mapper() :
 	seed_hits.reserve(source_hits.second - source_hits.first);
 }
 
+int Query_mapper::raw_score_cutoff() const
+{
+	return score_matrix.rawscore(config.min_bit_score == 0 ? score_matrix.bitscore(config.max_evalue, ref_header.letters, query_seq(0).length()) : config.min_bit_score);
+}
+
 Query_mapper::Query_mapper(size_t query_id, Trace_pt_list::iterator begin, Trace_pt_list::iterator end) :
 	source_hits(std::make_pair(begin, end)),
 	query_id((unsigned)query_id),

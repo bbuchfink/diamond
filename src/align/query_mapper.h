@@ -48,9 +48,9 @@ struct Target
 	unsigned subject_id, filter_score, filter_frame;
 	float filter_time;
 	bool outranked;
-	Hsp_traits traits[6];
 	size_t begin, end;
 	list<Hsp_data> hsps;
+	list<Hsp_traits> ts;
 };
 
 struct Query_mapper
@@ -63,8 +63,9 @@ struct Query_mapper
 	void align_targets(Statistics &stat);
 	bool generate_output(Text_buffer &buffer, Statistics &stat);
 	void ungapped_stage(size_t idx);
-	void greedy_stage(size_t idx, Statistics &stat);
+	void greedy_stage(size_t idx, Statistics &stat, int cutoff);
 	void rank_targets(double ratio);
+	int raw_score_cutoff() const;
 	size_t n_targets() const
 	{
 		return targets.size();

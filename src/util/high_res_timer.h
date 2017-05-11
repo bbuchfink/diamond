@@ -6,11 +6,20 @@
 
 struct High_res_timer {
 	
-	High_res_timer() {
+	High_res_timer():
+#ifdef _MSC_VER
+	time_(__rdtsc())
+#endif
+	{
 #ifdef _MSC_VER
 #else
 		clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time_);
 #endif
+	}
+
+	uint64_t get() const
+	{
+		return __rdtsc() - time_;
 	}
 
 	uint64_t nanoseconds() {
@@ -30,6 +39,7 @@ struct High_res_timer {
 
 private:
 #ifdef _MSC_VER
+	unsigned long long time_;
 #else
 	timespec time_;
 #endif

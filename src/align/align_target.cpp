@@ -24,7 +24,9 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 
 using std::list;
 
-const bool log_ga = false;
+#define ENABLE_TIMING
+
+const bool log_ga = true;
 
 void Query_mapper::ungapped_stage(size_t idx)
 {
@@ -38,23 +40,26 @@ void Query_mapper::ungapped_stage(size_t idx)
 	const sequence subject = ref_seqs::get()[target.subject_id];
 	for (Hit_map::Iterator it = hit_map.begin(); it.valid(); ++it) {
 		const unsigned frame = it.begin()->frame_;
-		greedy_align(query_seq(frame), profile[frame], query_cb[frame], subject, it.begin(), it.end(), log_ga, 0, target.traits[frame]);
+		int score = greedy_align(query_seq(frame), profile[frame], query_cb[frame], subject, it.begin(), it.end(), log_ga, target.hsps, target.ts);
 		//target.filter_score = std::max(target.filter_score, (unsigned)target.traits[frame].score);
-		if (target.traits[frame].score > target.filter_score) {
-			target.filter_score = target.traits[frame].score;
+		if (score > target.filter_score) {
+			target.filter_score = score;
 			target.filter_frame = frame;
 		}
 	}
 	//target.filter_time = time;
 }
 
-void Query_mapper::greedy_stage(size_t idx, Statistics &stat)
+void Query_mapper::greedy_stage(size_t idx, Statistics &stat, int cutoff)
 {
 	Target& target = targets[idx];
 	const sequence subject = ref_seqs::get()[target.subject_id];
 	const string subject_id(ref_ids::get()[target.subject_id].c_str());
 	if (config.log_subject)
 		cout << "Subject = " << subject_id << endl;
+#ifdef ENABLE_TIMING
+	High_res_timer timer;
+#endif
 	target.filter_score = 0;
 	/*for (unsigned frame = 0; frame < align_mode.query_contexts; ++frame)
 		if (target.traits[frame].score > 0) {
@@ -65,12 +70,12 @@ void Query_mapper::greedy_stage(size_t idx, Statistics &stat)
 				target.filter_frame = frame;
 			}
 		}*/
-	const unsigned frame = target.filter_frame;
-	Hsp_traits &t = target.traits[frame];
-	greedy_align(query_seq(frame), profile[frame], query_cb[frame], subject, t.d_min, t.d_max, log_ga, 0, t);
-	target.filter_score = t.score;
+	const unsigned frame = target.filter_frame;	
+	target.filter_score = greedy_align(query_seq(frame), profile[frame], query_cb[frame], subject, log_ga, target.hsps, target.ts, cutoff);
 	//stat.inc(Statistics::TIME_GREEDY_EXT, timer.nanoseconds());
-	//target.filter_time += (float)timer.microseconds();
+#ifdef ENABLE_TIMING
+	target.filter_time = (float)timer.get();
+#endif
 }
 
 void Query_mapper::get_prefilter_score(size_t idx)
@@ -228,19 +233,16 @@ void Query_mapper::align_target(size_t idx, Statistics &stat)
 			target.hsps.push_back(Hsp_data(target.filter_score));
 		else {
 			const unsigned frame = target.filter_frame;
-			const Hsp_traits &t = target.traits[frame];
-			const int d = t.i_begin - t.j_begin,
-				qlen = (int)query_seq(0).length(),
-				band_plus = qlen <= 50 ? 0 : 16,
-				band = std::min(std::max(d - t.d_min, t.d_max - d) + band_plus, qlen / 2);
-			if (log_ga) {
-				cout << "i_begin=" << t.i_begin << " j_begin=" << t.j_begin << " d_min=" << t.d_min << " d_max=" << t.d_max << endl;
-				cout << "band=" << band << endl;
-			}
-			target.hsps.push_back(Hsp_data());
-			target.hsps.back().frame = frame;
-
-			banded_sw(query_seq(frame), subject, t.d_min - band_plus, t.d_max + band_plus + 1, 0, (int)subject.length(), target.hsps.back());
+			for (list<Hsp_traits>::const_iterator i = target.ts.begin(); i != target.ts.end(); ++i) {
+				const int qlen = (int)query_seq(0).length(),
+					band_plus = qlen <= 50 ? 0 : 16;
+				if (log_ga) {
+					cout << "i_begin=" << i->query_range.begin_ << " j_begin=" << i->subject_range.begin_ << " d_min=" << i->d_min << " d_max=" << i->d_max << endl;
+				}
+				target.hsps.push_back(Hsp_data());
+				target.hsps.back().frame = frame;
+				banded_sw(query_seq(frame), subject, i->d_min - band_plus, i->d_max + band_plus + 1, 0, (int)subject.length(), target.hsps.back());
+			}			
 
 			/*if (config.comp_based_stats) {
 				const int score = (int)target.hsps.back().score + query_cb[frame](target.hsps.back());
@@ -263,7 +265,7 @@ void Query_mapper::align_target(size_t idx, Statistics &stat)
 	//const float time = (float)timer.getElapsedTimeInMicroSec() + target.filter_time;
 
 	for (list<Hsp_data>::iterator i = target.hsps.begin(); i != target.hsps.end(); ++i) {
-		//i->time = time;
+		i->time = target.filter_time;
 		i->set_source_range(i->frame, source_query_len);
 	}
 

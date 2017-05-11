@@ -19,6 +19,7 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 // #define _ITERATOR_DEBUG_LEVEL 0
 
 #include <map>
+#include <list>
 #include "../basic/sequence.h"
 #include "../basic/match.h"
 #include "../basic/score_matrix.h"
@@ -28,6 +29,23 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 #include "../output/output_format.h"
 
 using std::map;
+using std::list;
+
+bool disjoint(list<Hsp_traits>::const_iterator begin, list<Hsp_traits>::const_iterator end, const Hsp_traits &t)
+{
+	for (; begin != end; ++begin)
+		if (!begin->disjoint(t) || !begin->collinear(t))
+			return false;
+	return true;
+}
+
+bool disjoint(list<Hsp_traits>::const_iterator begin, list<Hsp_traits>::const_iterator end, const Diagonal_segment &d)
+{
+	for (; begin != end; ++begin)
+		if (!begin->disjoint(d) || !begin->collinear(d))
+			return false;
+	return true;
+}
 
 void Diag_graph::load(vector<Seed_hit>::const_iterator begin, vector<Seed_hit>::const_iterator end)
 {
@@ -39,7 +57,7 @@ void Diag_graph::load(vector<Seed_hit>::const_iterator begin, vector<Seed_hit>::
 			nodes.push_back(i->ungapped);
 			max_j_end = nodes.back().subject_end();
 		}
-		else if (max_j_end < i->subject_pos_) {
+		else if (max_j_end < i->ungapped.j) {
 			nodes.push_back(i->ungapped);
 			max_j_end = std::max(max_j_end, nodes.back().subject_end());
 		}
@@ -182,7 +200,7 @@ struct Greedy_aligner2
 
 	enum { link_padding = 10, reverse_link_min_overhang = 10 };
 
-	int get_approximate_link(int d_idx, int e_idx, double space_penalty)
+	int get_approximate_link(int d_idx, int e_idx, double space_penalty, int max_i)
 	{
 		Diagonal_node &d = diags[d_idx];
 		Diagonal_node &e = diags[e_idx];
@@ -211,13 +229,13 @@ struct Greedy_aligner2
 		if (prefix_score > d.score) {
 			diags.add_edge(Diag_graph::Edge(prefix_score, std::max(path_max, prefix_score), link_j, d_idx, e_idx, 0));
 			if (log)
-				cout << "Link n=" << e_idx << " d=" << e.diag() << " shift=" << shift << " space=" << space << " prefix_score=" << prefix_score << " link_score=" << link_score << endl;
+				cout << "Link n=" << e_idx << " d=" << e.diag() << " i_end=" << e.query_end() << " max_i=" << max_i << " shift=" << shift << " space=" << space << " prefix_score=" << prefix_score << " link_score=" << link_score << endl;
 		}
 		return prefix_score;
 	}
 
 	template<typename _it>
-	void forward_pass(_it begin, _it end, bool init, int max_dist, int max_shift, double space_penalty)
+	void forward_pass(_it begin, _it end, bool init, int max_shift, double space_penalty)
 	{
 		window.clear();
 
@@ -259,12 +277,13 @@ struct Greedy_aligner2
 				if (e.subject_end() < max_j) {
 					continue;
 				}
-				if(get_approximate_link(node, j->second, space_penalty) > e.prefix_score)
-					max_j = std::max(max_j, std::min(d.j, e.subject_end()));
+				//if(get_approximate_link(node, j->second, space_penalty, max_j) > e.prefix_score)
+				get_approximate_link(node, j->second, space_penalty, max_j);
+				max_j = std::max(max_j, std::min(d.j, e.subject_end()));
 				if (e.subject_end() - (d.subject_end() - std::min(e.diag() - d.diag(), 0)) >= reverse_link_min_overhang) {
 					if (log)
 						cout << "Computing reverse link node=" << j->second << endl;
-					get_approximate_link(j->second, node, space_penalty);
+					get_approximate_link(j->second, node, space_penalty, max_j);
 				}
 			} while (j != window.begin());
 
@@ -288,12 +307,14 @@ struct Greedy_aligner2
 					++j;
 					continue;
 				}
-				if (get_approximate_link(node, j->second, space_penalty) > e.prefix_score && e.i < d.i)
+				//if (get_approximate_link(node, j->second, space_penalty, max_i) > e.prefix_score)
+				get_approximate_link(node, j->second, space_penalty, max_i);
+				if (e.i < d.i)
 					max_i = std::max(max_i, std::min(e.query_end(), d.i));
 				if (e.subject_end() - (d.subject_end() - std::min(e.diag() - d.diag(), 0)) >= reverse_link_min_overhang) {
 					if (log)
 						cout << "Computing reverse link node=" << j->second << endl;
-					get_approximate_link(j->second, node, space_penalty);
+					get_approximate_link(j->second, node, space_penalty, max_i);
 				}
 				++j;
 			}
@@ -337,8 +358,8 @@ struct Greedy_aligner2
 				out->query_range.begin_ = d.i;
 				out->subject_range.begin_ = d.j;
 			}
-			t.i_begin = d.i;
-			t.j_begin = d.j;
+			t.query_range.begin_ = d.i;
+			t.subject_range.begin_ = d.j;
 			j = d.j;
 		}
 
@@ -382,7 +403,8 @@ struct Greedy_aligner2
 				out->score = diags.nodes[top_node].prefix_score;
 			}
 			traits.score = diags.nodes[top_node].prefix_score;
-			traits.j_end = diags[top_node].subject_end();
+			traits.subject_range.end_ = diags[top_node].subject_end();
+			traits.query_range.end_ = diags[top_node].query_end();
 			backtrace(top_node, diags[top_node].subject_end(), out, traits);
 		}
 		else {
@@ -395,51 +417,37 @@ struct Greedy_aligner2
 		t = traits;
 	}
 
-	size_t anschluss()
+	int backtrace(list<Hsp_data> &hsps, list<Hsp_traits> &ts, int cutoff) const
 	{
-		if (log)
-			cout << "Anschluss:" << endl;
 		vector<Diagonal_node*> top_nodes;
-		for (size_t i = 0; i < diags.nodes.size(); ++i)
-			if (diags.nodes[i].prefix_score == diags.nodes[i].path_max)
-				top_nodes.push_back(&diags.nodes[i]);
+		for (size_t i = 0; i < diags.nodes.size(); ++i) {
+			Diagonal_node &d = diags.nodes[i];
+			if (d.prefix_score >= cutoff && d.prefix_score == d.path_max)
+				top_nodes.push_back(&d);
+		}
 		std::sort(top_nodes.begin(), top_nodes.end(), Diagonal_node::cmp_prefix_score);
+		int max_score = 0;
 
-		Interval_set range;
-		vector<unsigned> perimeter;
-		const int min_score = score_matrix.gap_open() + score_matrix.gap_extend()*config.padding;
 		for (vector<Diagonal_node*>::const_iterator i = top_nodes.begin(); i < top_nodes.end(); ++i) {
-			if ((*i)->prefix_score >= min_score && range.max_intersect((*i)->subject_range()) == 0) {
-				const unsigned node = (unsigned)(*i - diags.nodes.data()),
-					begin = backtrace(node, (*i)->subject_end());
-				perimeter.push_back(node);
-				perimeter.push_back(begin);
-				range.push_back(interval(diags.nodes[begin].j, (*i)->subject_end()));
+			Hsp_traits t;
+			const size_t node = *i - diags.nodes.data();
+			if (disjoint(ts.begin(), ts.end(), **i)) {
+				Hsp_data *hsp = 0;
 				if (log)
-					cout << "Node = " << node << " prefix_score=" << (*i)->prefix_score << ' ' << (**i) << endl;
+					hsp = new Hsp_data;
+				backtrace(node, hsp, t);
+				if (disjoint(ts.begin(), ts.end(), t)) {
+					ts.push_back(t);
+					hsps.push_back(*hsp);
+					max_score = std::max(max_score, t.score);
+				}
+				delete hsp;
 			}
 		}
-
-		if (log)
-			cout << endl << endl;
-
-		if (perimeter.size() > 2) {
-			std::sort(perimeter.begin(), perimeter.end());
-			forward_pass(perimeter.begin(), perimeter.end(), false, std::numeric_limits<int>::max(), std::numeric_limits<int>::max(), 0);
-			int max = 0;
-			size_t max_node = 0;
-			for (vector<unsigned>::const_iterator i = perimeter.begin(); i < perimeter.end();++i)
-				if (diags.nodes[*i].prefix_score > max) {
-					max = diags.nodes[*i].prefix_score;
-					max_node = *i;
-				}
-			return max_node;
-		}
-		else
-			return top_nodes[0] - diags.nodes.data();
+		return max_score;
 	}
 
-	void run(Hsp_data *out, Hsp_traits &t, int band, double space_penalty)
+	int run(list<Hsp_data> &hsps, list<Hsp_traits> &ts, int band, double space_penalty, int cutoff)
 	{
 		diags.sort();
 		if (log) {
@@ -447,37 +455,59 @@ struct Greedy_aligner2
 			cout << endl << endl;
 		}
 
-		forward_pass(Index_iterator(0llu), Index_iterator(diags.nodes.size()), true, band * 2, band, space_penalty);
-		//backtrace(anschluss(), out, t);
-		if (log && out == 0)
-			out = new Hsp_data;
-		backtrace(diags.top_node(), out, t);
+		forward_pass(Index_iterator(0llu), Index_iterator(diags.nodes.size()), true, band, space_penalty);
+		int max_score = backtrace(hsps, ts, cutoff);
 
 		if (log) {
-			print_hsp(*out, query);
-			delete out;
+			for (list<Hsp_data>::iterator i = hsps.begin(); i != hsps.end(); ++i)
+				print_hsp(*i, query);
 			cout << endl << "Smith-Waterman:" << endl;
 			smith_waterman(query, subject, diags);
 			cout << endl << endl;
 		}
+		return max_score;
 	}
 
-	void run(int d_begin, int d_end, Hsp_data *out, Hsp_traits &t, int band)
+	int run(list<Hsp_data> &hsps, list<Hsp_traits> &ts, int band, int cutoff)
 	{
+		if (ts.empty())
+			return 0;
 		if(log)
-			cout << "***** " << d_begin << '\t' << d_end << '\t' << d_end-d_begin << endl;
+			cout << "***** Scan run n_hsp=" << ts.size() << endl;
 		diags.init();
+		ts.sort(Hsp_traits::cmp_diag);
+		list<Hsp_traits>::const_iterator i = ts.begin();
+		int d_begin = i->d_min - band, d_end = i->d_max + band;
+		++i;
+		for (; i != ts.end(); ++i) {
+			if (i->d_min >= d_end) {
+				if (log)
+					cout << "Scan " << d_begin << '\t' << d_end << '\t' << d_end - d_begin << endl;
+				diag_scores.scan_diags(d_begin, d_end, query, subject, qp, query_bc, log, diags.nodes, true);
+				d_begin = i->d_min - band;
+				d_end = i->d_max + band;
+			}
+			else
+				d_end = std::max(d_end, i->d_max + band);
+		}
+		if (log)
+			cout << "Scan " << d_begin << '\t' << d_end << '\t' << d_end - d_begin << endl;
 		diag_scores.scan_diags(d_begin, d_end, query, subject, qp, query_bc, log, diags.nodes, true);
-		run(out, t, band, config.space_penalty);
+		if (log)
+			cout << endl;
+
+		ts.clear();
+		hsps.clear();
+		return run(hsps, ts, band, config.space_penalty, cutoff);
 	}
 
-	void run(Hsp_data *out, Hsp_traits &t, vector<Seed_hit>::const_iterator begin, vector<Seed_hit>::const_iterator end, int band)
+	int run(list<Hsp_data> &hsps, list<Hsp_traits> &ts, vector<Seed_hit>::const_iterator begin, vector<Seed_hit>::const_iterator end, int band)
 	{
 		if (log)
 			cout << "***** Seed hit run " << begin->diagonal() << '\t' << (end - 1)->diagonal() << '\t' << (end - 1)->diagonal() - begin->diagonal() << endl;
 		diags.init();
 		diags.load(begin, end);
-		run(out, t, band, 0.1);
+		return run(hsps, ts, band, 0.1, 0);
 	}
 
 	Greedy_aligner2(const sequence &query, const Long_score_profile &qp, const Bias_correction &query_bc, const sequence &subject, bool log) :
@@ -509,15 +539,16 @@ TLS_PTR Diag_scores *Greedy_aligner2::diag_scores_ptr;
 TLS_PTR Diag_graph *Greedy_aligner2::diags_ptr;
 TLS_PTR map<int, unsigned> *Greedy_aligner2::window_ptr;
 
-void greedy_align(sequence query, const Long_score_profile &qp, const Bias_correction &query_bc, sequence subject, vector<Seed_hit>::const_iterator begin, vector<Seed_hit>::const_iterator end, bool log, Hsp_data *out, Hsp_traits &traits)
-{
-	Greedy_aligner2 ga(query, qp, query_bc, subject, log);
-	ga.run(out, traits, begin, end, 500);
-}
-
-void greedy_align(sequence query, const Long_score_profile &qp, const Bias_correction &query_bc, sequence subject, int d_begin, int d_end, bool log, Hsp_data *out, Hsp_traits &traits)
+int greedy_align(sequence query, const Long_score_profile &qp, const Bias_correction &query_bc, sequence subject, vector<Seed_hit>::const_iterator begin, vector<Seed_hit>::const_iterator end, bool log, list<Hsp_data> &hsps, list<Hsp_traits> &ts)
 {
 	const int band = config.padding == 0 ? std::min(64, int(query.length()*0.5)) : config.padding;
 	Greedy_aligner2 ga(query, qp, query_bc, subject, log);
-	ga.run(d_begin - band, d_end + band, out, traits, std::max(traits.d_max - traits.d_min, band));
+	return ga.run(hsps, ts, begin, end, band);
+}
+
+int greedy_align(sequence query, const Long_score_profile &qp, const Bias_correction &query_bc, sequence subject, bool log, list<Hsp_data> &hsps, list<Hsp_traits> &ts, int cutoff)
+{
+	const int band = config.padding == 0 ? std::min(64, int(query.length()*0.5)) : config.padding;
+	Greedy_aligner2 ga(query, qp, query_bc, subject, log);
+	return ga.run(hsps, ts, band, cutoff);
 }

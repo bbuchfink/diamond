@@ -332,8 +332,8 @@ int get_diag(int i, int j, Band::Iterator &d, int begin, int max_score, int zero
 			break;
 		}
 	diags.push_back(Diagonal_segment(i + zero + 1, j + zero + 1, p - zero, max_score));
-	if (log)
-		cout << diags.back() << endl;
+	/*if (log)
+		cout << diags.back() << endl;*/
 
 	int low = max_score, low_pos = p, high = 0, high_pos = p;
 	++p;
@@ -341,8 +341,8 @@ int get_diag(int i, int j, Band::Iterator &d, int begin, int max_score, int zero
 		if (d[p] < low) {
 			if (high >= Diag_scores::min_diag_score) {
 				diags.push_back(Diagonal_segment(i + low_pos + 1, j + low_pos + 1, high_pos - low_pos, high));
-				if (log)
-					cout << diags.back() << endl;
+				/*if (log)
+					cout << diags.back() << endl;*/
 			}
 			high = 0;
 			high_pos = p;
@@ -357,8 +357,8 @@ int get_diag(int i, int j, Band::Iterator &d, int begin, int max_score, int zero
 	}
 	if (high >= Diag_scores::min_diag_score) {
 		diags.push_back(Diagonal_segment(i + low_pos + 1, j + low_pos + 1, high_pos - low_pos, high));
-		if (log)
-			cout << diags.back() << endl;
+		/*if (log)
+			cout << diags.back() << endl;*/
 	}
 	return p;
 }
@@ -422,8 +422,8 @@ int get_diag(int i, int j, Band::Iterator &d, int begin, int last, int end, int 
 				cells += p1 - p0;
 				assert(p0 + 1 >= 0);
 				z = p0 + 1;
-				if (log)
-					cout << diags.back() << endl;
+				/*if (log)
+					cout << diags.back() << endl;*/
 			//}
 		}
 		end = p0;

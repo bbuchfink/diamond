@@ -21,6 +21,7 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 
 #include <utility>
 #include <map>
+#include <list>
 #include "../basic/match.h"
 #include "../align/align.h"
 #include "score_profile.h"
@@ -92,7 +93,30 @@ struct Hsp_traits
 		d_max(std::numeric_limits<int>::min()),
 		score(0)
 	{}
-	int d_min, d_max, i_begin, j_begin, j_end, score;
+	bool disjoint(const Diagonal_segment &d) const
+	{
+		return intersect(query_range, d.query_range()).length() == 0 && intersect(subject_range, d.subject_range()).length() == 0;
+	}
+	bool disjoint(const Hsp_traits &x) const
+	{
+		return intersect(query_range, x.query_range).length() == 0 && intersect(subject_range, x.subject_range).length() == 0;
+	}
+	bool collinear(const Hsp_traits &x) const
+	{
+		const int di = x.query_range.begin_ - query_range.begin_, dj = x.subject_range.begin_ - subject_range.begin_;
+		return (di > 0 && dj > 0) || (di < 0 && dj < 0);
+	}
+	bool collinear(const Diagonal_segment &d) const
+	{
+		const int di = d.i - query_range.begin_, dj = d.j - subject_range.begin_;
+		return (di > 0 && dj > 0) || (di < 0 && dj < 0);
+	}
+	static bool cmp_diag(const Hsp_traits &x, const Hsp_traits &y)
+	{
+		return x.d_min < y.d_min;
+	}
+	int d_min, d_max, score;
+	interval query_range, subject_range;
 };
 
 template<typename _score>
@@ -108,8 +132,8 @@ Diagonal_segment xdrop_ungapped(const sequence &query, const sequence &subject, 
 struct Local {};
 struct Global {};
 
-void greedy_align(sequence query, const Long_score_profile &qp, const Bias_correction &query_bc, sequence subject, vector<Seed_hit>::const_iterator begin, vector<Seed_hit>::const_iterator end, bool log, Hsp_data *out, Hsp_traits &traits);
-void greedy_align(sequence query, const Long_score_profile &qp, const Bias_correction &query_bc, sequence subject, int d_begin, int d_end, bool log, Hsp_data *out, Hsp_traits &traits);
+int greedy_align(sequence query, const Long_score_profile &qp, const Bias_correction &query_bc, sequence subject, vector<Seed_hit>::const_iterator begin, vector<Seed_hit>::const_iterator end, bool log, std::list<Hsp_data> &hsps, std::list<Hsp_traits> &ts);
+int greedy_align(sequence query, const Long_score_profile &qp, const Bias_correction &query_bc, sequence subject, bool log, std::list<Hsp_data> &hsps, std::list<Hsp_traits> &ts, int cutoff);
 int estimate_score(const Long_score_profile &qp, sequence s, int d, int d1, bool log);
 
 template<typename _t>
