@@ -13,10 +13,6 @@ struct High_res_timer {
 	time_(0)
 #endif
 	{
-#ifdef _MSC_VER
-#else
-		clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time_);
-#endif
 	}
 
 	uint64_t get() const
@@ -32,9 +28,7 @@ struct High_res_timer {
 #ifdef _MSC_VER
 		return 0;		
 #else
-		struct timespec end_time;
-		clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &end_time);
-		return end_time.tv_nsec - time_.tv_nsec;
+		return 0;
 #endif
 	}
 
@@ -44,10 +38,6 @@ struct High_res_timer {
 	}
 
 private:
-#ifdef _MSC_VER
 	unsigned long long time_;
-#else
-	timespec time_;
-#endif
 
 };
