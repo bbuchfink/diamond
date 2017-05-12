@@ -9,6 +9,8 @@ struct High_res_timer {
 	High_res_timer():
 #ifdef _MSC_VER
 	time_(__rdtsc())
+#else
+	time_(0)
 #endif
 	{
 #ifdef _MSC_VER
