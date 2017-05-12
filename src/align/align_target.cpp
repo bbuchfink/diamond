@@ -26,7 +26,7 @@ using std::list;
 
 #define ENABLE_TIMING
 
-const bool log_ga = true;
+const bool log_ga = false;
 
 void Query_mapper::ungapped_stage(size_t idx)
 {
@@ -233,9 +233,9 @@ void Query_mapper::align_target(size_t idx, Statistics &stat)
 			target.hsps.push_back(Hsp_data(target.filter_score));
 		else {
 			const unsigned frame = target.filter_frame;
-			for (list<Hsp_traits>::const_iterator i = target.ts.begin(); i != target.ts.end(); ++i) {
-				const int qlen = (int)query_seq(0).length(),
-					band_plus = qlen <= 50 ? 0 : 16;
+			const int qlen = (int)query_seq(0).length(),
+				band_plus = qlen <= 50 ? 0 : 16;
+			for (list<Hsp_traits>::const_iterator i = target.ts.begin(); i != target.ts.end(); ++i) {				
 				if (log_ga) {
 					cout << "i_begin=" << i->query_range.begin_ << " j_begin=" << i->subject_range.begin_ << " d_min=" << i->d_min << " d_max=" << i->d_max << endl;
 				}
@@ -250,7 +250,8 @@ void Query_mapper::align_target(size_t idx, Statistics &stat)
 			}*/
 		}
 
-		stat.inc(Statistics::OUT_HITS);
+		if (!target.hsps.empty())
+			stat.inc(Statistics::OUT_HITS);
 	}
 
 	for (list<Hsp_data>::iterator i = target.hsps.begin(); i != target.hsps.end(); ++i)
@@ -273,13 +274,13 @@ void Query_mapper::align_target(size_t idx, Statistics &stat)
 	if(target.hsps.size() > 0)
 		target.filter_score = target.hsps.front().score;
 	
-	if (config.use_smith_waterman) {
+	if (config.use_smith_waterman && !target.hsps.empty()) {
 		int score;
 		for (int f = 0; f < align_mode.query_contexts; ++f) {
 			needleman_wunsch(query_seq(f), subject, score, Local(), int());
 			target.hsps.front().sw_score = std::max((unsigned)score, target.hsps.front().sw_score);
 		}
-		stat.inc(Statistics::SQUARED_ERROR, (stat_type)pow(target.hsps.front().sw_score - (int)target.hsps.front().score, 2));
+		stat.inc(Statistics::SQUARED_ERROR, (stat_type)pow((int)target.hsps.front().sw_score - (int)target.hsps.front().score, 2));
 	}
 }
 

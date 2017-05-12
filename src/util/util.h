@@ -611,9 +611,9 @@ struct Index_iterator
 	{
 		return i;
 	}
-	bool operator<(const Index_iterator &rhs) const
+	bool operator!=(const Index_iterator &rhs) const
 	{
-		return i < rhs.i;
+		return i != rhs.i;
 	}
 	Index_iterator& operator++()
 	{

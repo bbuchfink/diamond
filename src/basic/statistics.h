@@ -89,7 +89,7 @@ struct Statistics
 		//log_stream << "Cells = " << data_[CELLS] << endl;
 		verbose_stream << "Temporary disk space used: " << (double)data_[TEMP_SPACE] / (1 << 30) << " GB" << endl;
 		log_stream << "Outranked hits = " << data_[OUTRANKED_HITS] << " (" << data_[OUTRANKED_HITS]*100.0/ data_[PAIRWISE] << "%)" << endl;
-		message_stream << "Reported " << data_[PAIRWISE] << " pairwise alignments." << endl; //<< data_[MATCHES] << " HSSPs." << endl;
+		message_stream << "Reported " << data_[PAIRWISE] << " pairwise alignments, " << data_[MATCHES] << " HSPs." << endl;
 		message_stream << data_[ALIGNED] << " queries aligned." << endl;
 	}
 

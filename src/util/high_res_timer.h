@@ -19,7 +19,11 @@ struct High_res_timer {
 
 	uint64_t get() const
 	{
+#ifdef _MSC_VER
 		return __rdtsc() - time_;
+#else
+		return 0;
+#endif
 	}
 
 	uint64_t nanoseconds() {

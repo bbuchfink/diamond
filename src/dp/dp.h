@@ -101,6 +101,14 @@ struct Hsp_traits
 	{
 		return intersect(query_range, x.query_range).length() == 0 && intersect(subject_range, x.subject_range).length() == 0;
 	}
+	bool rel_disjoint(const Diagonal_segment &d) const
+	{
+		return intersect(query_range, d.query_range()).length() == 0 || intersect(subject_range, d.subject_range()).length() == 0;
+	}
+	bool rel_disjoint(const Hsp_traits &x) const
+	{
+		return intersect(query_range, x.query_range).length() == 0 || intersect(subject_range, x.subject_range).length() == 0;
+	}
 	bool collinear(const Hsp_traits &x) const
 	{
 		const int di = x.query_range.begin_ - query_range.begin_, dj = x.subject_range.begin_ - subject_range.begin_;
@@ -223,6 +231,12 @@ struct Diagonal_node : public Diagonal_segment
 		prefix_score(d.score),
 		path_max(d.score)
 	{}
+	void reset()
+	{
+		link_idx = -1;
+		prefix_score = score;
+		path_max = score;
+	}
 	static bool cmp_prefix_score(const Diagonal_node *x, const Diagonal_node *y)
 	{
 		return x->prefix_score > y->prefix_score;
@@ -278,6 +292,7 @@ struct Diag_graph
 
 	void load(vector<Seed_hit>::const_iterator begin, vector<Seed_hit>::const_iterator end);
 	void sort();
+	void clear_edges();
 
 	vector<Edge>::iterator add_edge(const Edge &edge)
 	{

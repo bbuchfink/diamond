@@ -20,6 +20,7 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 
 #include <map>
 #include <list>
+#include <set>
 #include "../basic/sequence.h"
 #include "../basic/match.h"
 #include "../basic/score_matrix.h"
@@ -30,11 +31,13 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 
 using std::map;
 using std::list;
+using std::set;
 
 bool disjoint(list<Hsp_traits>::const_iterator begin, list<Hsp_traits>::const_iterator end, const Hsp_traits &t)
 {
 	for (; begin != end; ++begin)
 		if (!begin->disjoint(t) || !begin->collinear(t))
+		//if (!begin->rel_disjoint(t))
 			return false;
 	return true;
 }
@@ -43,8 +46,16 @@ bool disjoint(list<Hsp_traits>::const_iterator begin, list<Hsp_traits>::const_it
 {
 	for (; begin != end; ++begin)
 		if (!begin->disjoint(d) || !begin->collinear(d))
+		//if (!begin->rel_disjoint(d))
 			return false;
 	return true;
+}
+
+void Diag_graph::clear_edges()
+{
+	edges.clear();
+	for (vector<Diagonal_node>::iterator i = nodes.begin(); i < nodes.end(); ++i)
+		i->reset();
 }
 
 void Diag_graph::load(vector<Seed_hit>::const_iterator begin, vector<Seed_hit>::const_iterator end)
@@ -239,7 +250,7 @@ struct Greedy_aligner2
 	{
 		window.clear();
 
-		for (_it it = begin; it < end; ++it) {
+		for (_it it = begin; it != end; ++it) {
 
 			unsigned node = (unsigned)(*it);
 			if(init) diags.init(node);
@@ -325,12 +336,14 @@ struct Greedy_aligner2
 		}
 	}
 
-	void backtrace(size_t node, int j_end, Hsp_data *out, Hsp_traits &t) const
+	void backtrace(size_t node, int j_end, Hsp_data *out, Hsp_traits &t, set<unsigned> *node_list) const
 	{
 		const Diagonal_node &d = diags[node];
 		const int dd = d.diag();
 		t.d_max = std::max(t.d_max, dd);
 		t.d_min = std::min(t.d_min, dd);
+		if (node_list)
+			node_list->insert(node);
 		int j;
 		vector<Diag_graph::Edge>::const_iterator f = diags.get_edge(node, j_end);
 		if (f != diags.edges.end()) {
@@ -338,7 +351,7 @@ struct Greedy_aligner2
 			const int shift = d.diag() - e.diag();
 			j = f->j;
 
-			backtrace(f->node_out, shift > 0 ? j : j + shift, out, t);
+			backtrace(f->node_out, shift > 0 ? j : j + shift, out, t, node_list);
 
 			if (out) {
 				if (shift > 0) {
@@ -392,7 +405,7 @@ struct Greedy_aligner2
 			return node;
 	}
 
-	void backtrace(size_t top_node, Hsp_data *out, Hsp_traits &t) const
+	void backtrace(size_t top_node, Hsp_data *out, Hsp_traits &t, set<unsigned> *node_list) const
 	{
 		Hsp_traits traits;
 		if (top_node != Diag_graph::end) {
@@ -405,7 +418,7 @@ struct Greedy_aligner2
 			traits.score = diags.nodes[top_node].prefix_score;
 			traits.subject_range.end_ = diags[top_node].subject_end();
 			traits.query_range.end_ = diags[top_node].query_end();
-			backtrace(top_node, diags[top_node].subject_end(), out, traits);
+			backtrace(top_node, diags[top_node].subject_end(), out, traits, node_list);
 		}
 		else {
 			traits.score = 0;
@@ -417,7 +430,7 @@ struct Greedy_aligner2
 		t = traits;
 	}
 
-	int backtrace(list<Hsp_data> &hsps, list<Hsp_traits> &ts, int cutoff) const
+	int backtrace(list<Hsp_data> &hsps, list<Hsp_traits> &ts, int cutoff, set<unsigned> *node_list) const
 	{
 		vector<Diagonal_node*> top_nodes;
 		for (size_t i = 0; i < diags.nodes.size(); ++i) {
@@ -427,6 +440,7 @@ struct Greedy_aligner2
 		}
 		std::sort(top_nodes.begin(), top_nodes.end(), Diagonal_node::cmp_prefix_score);
 		int max_score = 0;
+		set<unsigned> list2;
 
 		for (vector<Diagonal_node*>::const_iterator i = top_nodes.begin(); i < top_nodes.end(); ++i) {
 			Hsp_traits t;
@@ -435,10 +449,15 @@ struct Greedy_aligner2
 				Hsp_data *hsp = 0;
 				if (log)
 					hsp = new Hsp_data;
-				backtrace(node, hsp, t);
+				backtrace(node, hsp, t, node_list ? &list2 : 0);
 				if (disjoint(ts.begin(), ts.end(), t)) {
 					ts.push_back(t);
-					hsps.push_back(*hsp);
+					if(hsp)
+						hsps.push_back(*hsp);
+					if (node_list) {
+						node_list->insert(list2.begin(), list2.end());
+						list2.clear();
+					}
 					max_score = std::max(max_score, t.score);
 				}
 				delete hsp;
@@ -447,7 +466,7 @@ struct Greedy_aligner2
 		return max_score;
 	}
 
-	int run(list<Hsp_data> &hsps, list<Hsp_traits> &ts, int band, double space_penalty, int cutoff)
+	int run(list<Hsp_data> &hsps, list<Hsp_traits> &ts, int band, double space_penalty, int cutoff, bool anschluss)
 	{
 		diags.sort();
 		if (log) {
@@ -456,7 +475,24 @@ struct Greedy_aligner2
 		}
 
 		forward_pass(Index_iterator(0llu), Index_iterator(diags.nodes.size()), true, band, space_penalty);
-		int max_score = backtrace(hsps, ts, cutoff);
+		auto_ptr<set<unsigned> > node_list(anschluss ? new set<unsigned> : 0);
+		int max_score = backtrace(hsps, ts, cutoff, node_list.get());
+
+		if (log && anschluss) {
+			for (list<Hsp_data>::iterator i = hsps.begin(); i != hsps.end(); ++i)
+				print_hsp(*i, query);
+			cout << endl << endl;
+		}
+
+		if (anschluss) {
+			if (log)
+				cout << "Anschluss:" << endl << endl;
+			ts.clear();
+			hsps.clear();
+			diags.clear_edges();
+			forward_pass(node_list->begin(), node_list->end(), true, 9999, space_penalty);
+			max_score = backtrace(hsps, ts, cutoff, 0);
+		}
 
 		if (log) {
 			for (list<Hsp_data>::iterator i = hsps.begin(); i != hsps.end(); ++i)
@@ -473,14 +509,14 @@ struct Greedy_aligner2
 		if (ts.empty())
 			return 0;
 		if(log)
-			cout << "***** Scan run n_hsp=" << ts.size() << endl;
+			cout << "***** Scan run n_hsp=" << ts.size() << " cutoff=" << cutoff << endl;
 		diags.init();
 		ts.sort(Hsp_traits::cmp_diag);
 		list<Hsp_traits>::const_iterator i = ts.begin();
 		int d_begin = i->d_min - band, d_end = i->d_max + band;
 		++i;
 		for (; i != ts.end(); ++i) {
-			if (i->d_min >= d_end) {
+			if (i->d_min - band >= d_end) {
 				if (log)
 					cout << "Scan " << d_begin << '\t' << d_end << '\t' << d_end - d_begin << endl;
 				diag_scores.scan_diags(d_begin, d_end, query, subject, qp, query_bc, log, diags.nodes, true);
@@ -498,7 +534,7 @@ struct Greedy_aligner2
 
 		ts.clear();
 		hsps.clear();
-		return run(hsps, ts, band, config.space_penalty, cutoff);
+		return run(hsps, ts, band, config.space_penalty, cutoff, true);
 	}
 
 	int run(list<Hsp_data> &hsps, list<Hsp_traits> &ts, vector<Seed_hit>::const_iterator begin, vector<Seed_hit>::const_iterator end, int band)
@@ -507,7 +543,7 @@ struct Greedy_aligner2
 			cout << "***** Seed hit run " << begin->diagonal() << '\t' << (end - 1)->diagonal() << '\t' << (end - 1)->diagonal() - begin->diagonal() << endl;
 		diags.init();
 		diags.load(begin, end);
-		return run(hsps, ts, band, 0.1, 0);
+		return run(hsps, ts, band, 0.1, 0, false);
 	}
 
 	Greedy_aligner2(const sequence &query, const Long_score_profile &qp, const Bias_correction &query_bc, const sequence &subject, bool log) :
