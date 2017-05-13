@@ -93,6 +93,16 @@ struct Hsp_traits
 		d_max(std::numeric_limits<int>::min()),
 		score(0)
 	{}
+	int partial_score(const Diagonal_segment &d) const
+	{
+		const double overlap = std::max(d.subject_range().overlap_factor(subject_range), d.query_range().overlap_factor(query_range));
+		return (1 - overlap)*d.score;
+	}
+	int partial_score(const Hsp_traits &x) const
+	{
+		const double overlap = std::max(x.subject_range.overlap_factor(subject_range), x.query_range.overlap_factor(query_range));
+		return int((1 - overlap)*x.score);
+	}
 	bool disjoint(const Diagonal_segment &d) const
 	{
 		return intersect(query_range, d.query_range()).length() == 0 && intersect(subject_range, d.subject_range()).length() == 0;

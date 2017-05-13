@@ -33,19 +33,21 @@ using std::map;
 using std::list;
 using std::set;
 
-bool disjoint(list<Hsp_traits>::const_iterator begin, list<Hsp_traits>::const_iterator end, const Hsp_traits &t)
+bool disjoint(list<Hsp_traits>::const_iterator begin, list<Hsp_traits>::const_iterator end, const Hsp_traits &t, int cutoff)
 {
 	for (; begin != end; ++begin)
-		if (!begin->disjoint(t) || !begin->collinear(t))
+		if (begin->partial_score(t) < cutoff || !begin->collinear(t))
+		//if (!begin->disjoint(t) || !begin->collinear(t))
 		//if (!begin->rel_disjoint(t))
 			return false;
 	return true;
 }
 
-bool disjoint(list<Hsp_traits>::const_iterator begin, list<Hsp_traits>::const_iterator end, const Diagonal_segment &d)
+bool disjoint(list<Hsp_traits>::const_iterator begin, list<Hsp_traits>::const_iterator end, const Diagonal_segment &d, int cutoff)
 {
 	for (; begin != end; ++begin)
-		if (!begin->disjoint(d) || !begin->collinear(d))
+		if (begin->partial_score(d) < cutoff || !begin->collinear(d))
+		//if (!begin->disjoint(d) || !begin->collinear(d))
 		//if (!begin->rel_disjoint(d))
 			return false;
 	return true;
@@ -445,14 +447,14 @@ struct Greedy_aligner2
 		for (vector<Diagonal_node*>::const_iterator i = top_nodes.begin(); i < top_nodes.end(); ++i) {
 			Hsp_traits t;
 			const size_t node = *i - diags.nodes.data();
-			if (disjoint(ts.begin(), ts.end(), **i)) {
+			if (disjoint(ts.begin(), ts.end(), **i, cutoff)) {
 				Hsp_data *hsp = 0;
 				if (log) {
 					hsp = new Hsp_data;
 					cout << "Backtrace node=" << node << " prefix_score=" << (*i)->prefix_score << endl;
 				}
 				backtrace(node, hsp, t, node_list ? &list2 : 0);
-				if (disjoint(ts.begin(), ts.end(), t)) {
+				if (disjoint(ts.begin(), ts.end(), t, cutoff)) {
 					ts.push_back(t);
 					if(hsp)
 						hsps.push_back(*hsp);
