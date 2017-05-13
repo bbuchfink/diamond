@@ -226,6 +226,7 @@ struct Greedy_aligner2
 			if (get_link(e, d, query, subject, link, link_padding) > 0) {
 				diff1 = e.score - link.score1;
 				prefix_score = diags.prefix_score(e_idx, link.subject_pos1, path_max) - diff1 + gap_score + link.score2;
+				path_max -= diff1;
 				link_score = link.score1 + link.score2 + gap_score;
 				link_j = link.subject_pos2;
 				/*if (log)
@@ -437,6 +438,7 @@ struct Greedy_aligner2
 		vector<Diagonal_node*> top_nodes;
 		for (size_t i = 0; i < diags.nodes.size(); ++i) {
 			Diagonal_node &d = diags.nodes[i];
+			//cout << "node=" << i << " prefix_score=" << d.prefix_score << " path_max=" << d.path_max << endl;
 			if (d.prefix_score >= cutoff && d.prefix_score == d.path_max)
 				top_nodes.push_back(&d);
 		}
@@ -447,6 +449,8 @@ struct Greedy_aligner2
 		for (vector<Diagonal_node*>::const_iterator i = top_nodes.begin(); i < top_nodes.end(); ++i) {
 			Hsp_traits t;
 			const size_t node = *i - diags.nodes.data();
+			if (log)
+				cout << "Backtrace candidate node=" << node << endl;
 			if (disjoint(ts.begin(), ts.end(), **i, cutoff)) {
 				Hsp_data *hsp = 0;
 				if (log) {

@@ -96,7 +96,7 @@ struct Hsp_traits
 	int partial_score(const Diagonal_segment &d) const
 	{
 		const double overlap = std::max(d.subject_range().overlap_factor(subject_range), d.query_range().overlap_factor(query_range));
-		return (1 - overlap)*d.score;
+		return int((1 - overlap)*d.score);
 	}
 	int partial_score(const Hsp_traits &x) const
 	{
@@ -122,12 +122,12 @@ struct Hsp_traits
 	bool collinear(const Hsp_traits &x) const
 	{
 		const int di = x.query_range.begin_ - query_range.begin_, dj = x.subject_range.begin_ - subject_range.begin_;
-		return (di > 0 && dj > 0) || (di < 0 && dj < 0);
+		return (di >= 0 && dj >= 0) || (di <= 0 && dj <= 0);
 	}
 	bool collinear(const Diagonal_segment &d) const
 	{
 		const int di = d.i - query_range.begin_, dj = d.j - subject_range.begin_;
-		return (di > 0 && dj > 0) || (di < 0 && dj < 0);
+		return (di >= 0 && dj >= 0) || (di <= 0 && dj <= 0);
 	}
 	static bool cmp_diag(const Hsp_traits &x, const Hsp_traits &y)
 	{
