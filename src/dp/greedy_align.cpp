@@ -55,7 +55,7 @@ void Diag_graph::clear_edges()
 {
 	edges.clear();
 	for (vector<Diagonal_node>::iterator i = nodes.begin(); i < nodes.end(); ++i)
-		i->reset();
+		i->deactivate();
 }
 
 void Diag_graph::load(vector<Seed_hit>::const_iterator begin, vector<Seed_hit>::const_iterator end)
@@ -447,8 +447,10 @@ struct Greedy_aligner2
 			const size_t node = *i - diags.nodes.data();
 			if (disjoint(ts.begin(), ts.end(), **i)) {
 				Hsp_data *hsp = 0;
-				if (log)
+				if (log) {
 					hsp = new Hsp_data;
+					cout << "Backtrace node=" << node << " prefix_score=" << (*i)->prefix_score << endl;
+				}
 				backtrace(node, hsp, t, node_list ? &list2 : 0);
 				if (disjoint(ts.begin(), ts.end(), t)) {
 					ts.push_back(t);
@@ -460,6 +462,8 @@ struct Greedy_aligner2
 					}
 					max_score = std::max(max_score, t.score);
 				}
+				if (log)
+					cout << endl;
 				delete hsp;
 			}
 		}
@@ -490,6 +494,8 @@ struct Greedy_aligner2
 			ts.clear();
 			hsps.clear();
 			diags.clear_edges();
+			for (set<unsigned>::const_iterator i = node_list->begin(); i != node_list->end(); ++i)
+				diags[*i].reset();
 			forward_pass(node_list->begin(), node_list->end(), true, 9999, space_penalty);
 			max_score = backtrace(hsps, ts, cutoff, 0);
 		}

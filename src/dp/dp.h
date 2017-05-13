@@ -231,6 +231,10 @@ struct Diagonal_node : public Diagonal_segment
 		prefix_score(d.score),
 		path_max(d.score)
 	{}
+	void deactivate()
+	{
+		link_idx = 0;
+	}
 	void reset()
 	{
 		link_idx = -1;

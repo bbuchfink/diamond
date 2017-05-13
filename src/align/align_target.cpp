@@ -24,7 +24,7 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR P
 
 using std::list;
 
-#define ENABLE_TIMING
+// #define ENABLE_TIMING
 
 const bool log_ga = false;
 
