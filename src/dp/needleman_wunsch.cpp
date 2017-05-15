@@ -1,19 +1,19 @@
 /****
-Copyright (c) 2016-2017, Benjamin Buchfink
-All rights reserved.
+DIAMOND protein aligner
+Copyright (C) 2013-2017 Benjamin Buchfink <buchfink@gmail.com>
 
-Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as
+published by the Free Software Foundation, either version 3 of the
+License, or (at your option) any later version.
 
-1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU Affero General Public License for more details.
 
-2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
-
-3. Neither the name of the copyright holder nor the names of its contributors may be used to endorse or promote products derived from this software without specific prior written permission.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
-PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
-LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+You should have received a copy of the GNU Affero General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #include <vector>
@@ -269,7 +269,7 @@ void print_diag(int i0, int j0, int l, int score, const Diag_graph &diags, const
 {
 	Diagonal_segment ds(i0, j0, l, 0);
 	unsigned n = 0;
-	int path_max;
+	int path_max,path_min;
 	for (vector<Diagonal_node>::const_iterator d = diags.nodes.begin(); d != diags.nodes.end(); ++d) {
 		if (d->intersect(ds).len > 0) {
 			if (d->score == 0)
@@ -279,7 +279,7 @@ void print_diag(int i0, int j0, int l, int score, const Diag_graph &diags, const
 				cout << "(";
 			cout << "Diag n=" << d - diags.nodes.begin() << " i=" << i0 << " j=" << j0 << " len=" << l
 				<< " prefix_score=" << score + score_range(query, subject, i0 + l, j0 + l, d->subject_end()) - std::min(diff, 0)
-				<< " prefix_score2=" << diags.prefix_score((unsigned)(d - diags.nodes.begin()), j0 + l, path_max);
+				<< " prefix_score2=" << diags.prefix_score((unsigned)(d - diags.nodes.begin()), j0 + l, path_max,path_min);
 			if (n > 0)
 				cout << ")";
 			cout << endl;

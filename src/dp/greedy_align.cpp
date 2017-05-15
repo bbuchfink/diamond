@@ -1,19 +1,19 @@
 /****
-Copyright (c) 2016-2017, Benjamin Buchfink
-All rights reserved.
+DIAMOND protein aligner
+Copyright (C) 2013-2017 Benjamin Buchfink <buchfink@gmail.com>
 
-Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as
+published by the Free Software Foundation, either version 3 of the
+License, or (at your option) any later version.
 
-1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU Affero General Public License for more details.
 
-2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
-
-3. Neither the name of the copyright holder nor the names of its contributors may be used to endorse or promote products derived from this software without specific prior written permission.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
-PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
-LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+You should have received a copy of the GNU Affero General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 // #define _ITERATOR_DEBUG_LEVEL 0
@@ -220,13 +220,18 @@ struct Greedy_aligner2
 		const int shift = d.diag() - e.diag();
 		int gap_score = shift != 0 ? -score_matrix.gap_open() - abs(shift)*score_matrix.gap_extend() : 0;
 		const int space = shift > 0 ? d.j - e.subject_last() : d.i - e.query_last();
-		int prefix_score = 0, link_score = 0, link_j, diff1 = 0, path_max;
+		int prefix_score = 0, link_score = 0, link_j, diff1 = 0, path_max, path_min, prefix_score_begin;
 		if (space <= 0) {
 			Link link;
 			if (get_link(e, d, query, subject, link, link_padding) > 0) {
 				diff1 = e.score - link.score1;
-				prefix_score = diags.prefix_score(e_idx, link.subject_pos1, path_max) - diff1 + gap_score + link.score2;
-				path_max -= diff1;
+				const int prefix_e = diags.prefix_score(e_idx, link.subject_pos1, path_max, path_min);
+				prefix_score = prefix_e - diff1 + gap_score + link.score2;
+				prefix_score_begin = prefix_score - link.score2;
+				path_min = std::min(path_min, prefix_score - link.score2);
+				if (prefix_e == path_max) {
+					path_max -= diff1;
+				}
 				link_score = link.score1 + link.score2 + gap_score;
 				link_j = link.subject_pos2;
 				/*if (log)
@@ -235,15 +240,19 @@ struct Greedy_aligner2
 		}
 		else {
 			prefix_score = diags.nodes[e_idx].prefix_score + gap_score - int(space_penalty*std::max(space - 1, 0)) + d.score;
+			prefix_score_begin = prefix_score - d.score;
 			path_max = diags.nodes[e_idx].path_max;
+			path_min = diags.nodes[e_idx].path_min;
+			path_min = std::min(path_min, prefix_score - d.score);
 			link_score = e.score + d.score + gap_score;
 			link_j = d.j;
 		}
 		
 		if (prefix_score > d.score) {
-			diags.add_edge(Diag_graph::Edge(prefix_score, std::max(path_max, prefix_score), link_j, d_idx, e_idx, 0));
+			path_max = std::max(path_max, prefix_score);
+			diags.add_edge(Diag_graph::Edge(prefix_score, path_max, link_j, d_idx, e_idx, prefix_score == path_max ? prefix_score : path_min, prefix_score_begin));
 			if (log)
-				cout << "Link n=" << e_idx << " d=" << e.diag() << " i_end=" << e.query_end() << " max_i=" << max_i << " shift=" << shift << " space=" << space << " prefix_score=" << prefix_score << " link_score=" << link_score << endl;
+				cout << "Link n=" << e_idx << " d=" << e.diag() << " i_end=" << e.query_end() << " max_i=" << max_i << " shift=" << shift << " space=" << space << " prefix_score=" << prefix_score << " link_score=" << link_score << " path_min="<<path_min<<endl;
 		}
 		return prefix_score;
 	}
@@ -335,27 +344,46 @@ struct Greedy_aligner2
 			i->second = node;
 
 			if (log)
-				cout << endl;
+				cout << "Prefix_score=" << d.prefix_score << " path_max=" << d.path_max << " path_min=" << d.path_min << endl << endl;
 		}
 	}
 
-	void backtrace(size_t node, int j_end, Hsp_data *out, Hsp_traits &t, set<unsigned> *node_list) const
+	bool backtrace(size_t node, int j_end, Hsp_data *out, Hsp_traits &t, set<unsigned> *node_list, int score_max, int &score_min) const
 	{
 		const Diagonal_node &d = diags[node];
-		const int dd = d.diag();
-		t.d_max = std::max(t.d_max, dd);
-		t.d_min = std::min(t.d_min, dd);
-		if (node_list)
-			node_list->insert(node);
-		int j;
 		vector<Diag_graph::Edge>::const_iterator f = diags.get_edge(node, j_end);
-		if (f != diags.edges.end()) {
+		const bool at_end = f == diags.edges.end();
+		const int prefix_score = at_end ? d.score : f->prefix_score;
+		if (prefix_score > score_max)
+			return false;
+		
+		int j;
+		score_min = std::min(score_min, at_end ? 0 : f->prefix_score_begin);
+		
+		//if (f != diags.edges.end() && (!stop_at_min || f->path_min == diags[f->node_out].path_min)) {
+		if (!at_end) {
 			const Diagonal_node &e = diags[f->node_out];
 			const int shift = d.diag() - e.diag();
 			j = f->j;
 
-			backtrace(f->node_out, shift > 0 ? j : j + shift, out, t, node_list);
+			if (!backtrace(f->node_out, shift > 0 ? j : j + shift, out, t, node_list, score_max, score_min) && f->prefix_score_begin > score_min)
+				return false;
+		}
 
+		if (at_end || f->prefix_score_begin == score_min) {
+			if (out) {
+				out->query_range.begin_ = d.i;
+				out->subject_range.begin_ = d.j;
+				out->score = score_max - score_min;
+			}
+			t.query_range.begin_ = d.i;
+			t.subject_range.begin_ = d.j;
+			t.score = score_max - score_min;
+			j = d.j;
+		}
+		else {
+			const Diagonal_node &e = diags[f->node_out];
+			const int shift = d.diag() - e.diag();
 			if (out) {
 				if (shift > 0) {
 					out->transcript.push_back(op_insertion, (unsigned)shift);
@@ -369,15 +397,12 @@ struct Greedy_aligner2
 				}
 			}
 		}
-		else {
-			if (out) {
-				out->query_range.begin_ = d.i;
-				out->subject_range.begin_ = d.j;
-			}
-			t.query_range.begin_ = d.i;
-			t.subject_range.begin_ = d.j;
-			j = d.j;
-		}
+
+		const int dd = d.diag();
+		t.d_max = std::max(t.d_max, dd);
+		t.d_min = std::min(t.d_min, dd);
+		if (node_list)
+			node_list->insert(node);
 
 		if (out) {
 			const int d2 = d.diag();
@@ -412,16 +437,16 @@ struct Greedy_aligner2
 	{
 		Hsp_traits traits;
 		if (top_node != Diag_graph::end) {
+			const Diagonal_node &d = diags[top_node];
 			if (out) {
 				out->transcript.clear();
-				out->query_range.end_ = diags[top_node].query_end();
-				out->subject_range.end_ = diags[top_node].subject_end();
-				out->score = diags.nodes[top_node].prefix_score;
+				out->query_range.end_ = d.query_end();
+				out->subject_range.end_ = d.subject_end();
 			}
-			traits.score = diags.nodes[top_node].prefix_score;
-			traits.subject_range.end_ = diags[top_node].subject_end();
-			traits.query_range.end_ = diags[top_node].query_end();
-			backtrace(top_node, diags[top_node].subject_end(), out, traits, node_list);
+			traits.subject_range.end_ = d.subject_end();
+			traits.query_range.end_ = d.query_end();
+			int score_min = d.prefix_score;
+			backtrace(top_node, d.subject_end(), out, traits, node_list, d.prefix_score, score_min);
 		}
 		else {
 			traits.score = 0;
@@ -439,10 +464,11 @@ struct Greedy_aligner2
 		for (size_t i = 0; i < diags.nodes.size(); ++i) {
 			Diagonal_node &d = diags.nodes[i];
 			//cout << "node=" << i << " prefix_score=" << d.prefix_score << " path_max=" << d.path_max << endl;
-			if (d.prefix_score >= cutoff && d.prefix_score == d.path_max)
+			//if (d.prefix_score >= cutoff && (d.prefix_score == d.path_max || d.prefix_score - d.path_min >= cutoff))
+			if(d.rel_score() >= cutoff)
 				top_nodes.push_back(&d);
 		}
-		std::sort(top_nodes.begin(), top_nodes.end(), Diagonal_node::cmp_prefix_score);
+		std::sort(top_nodes.begin(), top_nodes.end(), Diagonal_node::cmp_rel_score);
 		int max_score = 0;
 		set<unsigned> list2;
 
@@ -455,10 +481,11 @@ struct Greedy_aligner2
 				Hsp_data *hsp = 0;
 				if (log) {
 					hsp = new Hsp_data;
-					cout << "Backtrace node=" << node << " prefix_score=" << (*i)->prefix_score << endl;
+					cout << "Backtrace node=" << node << " prefix_score=" << (*i)->prefix_score <<  " rel_score=" << (*i)->rel_score() << endl;
 				}
+				//backtrace(node, hsp, t, node_list ? &list2 : 0, !(*i)->is_maximum());
 				backtrace(node, hsp, t, node_list ? &list2 : 0);
-				if (disjoint(ts.begin(), ts.end(), t, cutoff)) {
+				if (t.score >= cutoff && disjoint(ts.begin(), ts.end(), t, cutoff)) {
 					ts.push_back(t);
 					if(hsp)
 						hsps.push_back(*hsp);
@@ -555,7 +582,7 @@ struct Greedy_aligner2
 			cout << "***** Seed hit run " << begin->diagonal() << '\t' << (end - 1)->diagonal() << '\t' << (end - 1)->diagonal() - begin->diagonal() << endl;
 		diags.init();
 		diags.load(begin, end);
-		return run(hsps, ts, band, 0.1, 0, false);
+		return run(hsps, ts, band, 0.1, config.min_ungapped_raw_score, false);
 	}
 
 	Greedy_aligner2(const sequence &query, const Long_score_profile &qp, const Bias_correction &query_bc, const sequence &subject, bool log) :

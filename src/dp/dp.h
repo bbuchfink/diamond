@@ -1,19 +1,19 @@
 /****
-Copyright (c) 2016-2017, Benjamin Buchfink, University of Tuebingen
-All rights reserved.
+DIAMOND protein aligner
+Copyright (C) 2013-2017 Benjamin Buchfink <buchfink@gmail.com>
 
-Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as
+published by the Free Software Foundation, either version 3 of the
+License, or (at your option) any later version.
 
-1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU Affero General Public License for more details.
 
-2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
-
-3. Neither the name of the copyright holder nor the names of its contributors may be used to endorse or promote products derived from this software without specific prior written permission.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
-PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
-LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+You should have received a copy of the GNU Affero General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #ifndef DP_H_
@@ -227,19 +227,22 @@ struct Diagonal_node : public Diagonal_segment
 		Diagonal_segment(),
 		link_idx(-1),
 		prefix_score(0),
-		path_max(0)
+		path_max(0),
+		path_min(0)
 	{}
 	Diagonal_node(int query_pos, int subject_pos, int len, int score, int link_idx=-1) :
 		Diagonal_segment(query_pos, subject_pos, len, score),
 		link_idx(link_idx),
 		prefix_score(score),
-		path_max(score)
+		path_max(score),
+		path_min(score)
 	{}
 	Diagonal_node(const Diagonal_segment &d) :
 		Diagonal_segment(d),
 		link_idx(-1),
 		prefix_score(d.score),
-		path_max(d.score)
+		path_max(d.score),
+		path_min(d.score)
 	{}
 	void deactivate()
 	{
@@ -250,12 +253,25 @@ struct Diagonal_node : public Diagonal_segment
 		link_idx = -1;
 		prefix_score = score;
 		path_max = score;
+		path_min = score;
+	}
+	bool is_maximum() const
+	{
+		return path_max == prefix_score;
+	}
+	int rel_score() const
+	{
+		return prefix_score == path_max ? prefix_score : prefix_score - path_min;
 	}
 	static bool cmp_prefix_score(const Diagonal_node *x, const Diagonal_node *y)
 	{
 		return x->prefix_score > y->prefix_score;
 	}
-	int link_idx, prefix_score, path_max;
+	static bool cmp_rel_score(const Diagonal_node *x, const Diagonal_node *y)
+	{
+		return x->rel_score() > y->rel_score();
+	}
+	int link_idx, prefix_score, path_max, path_min;
 };
 
 struct Diag_graph
@@ -270,13 +286,14 @@ struct Diag_graph
 			node_in()
 		{
 		}
-		Edge(int prefix_score, int path_max, int j, unsigned node_in, unsigned node_out, int diff) :
+		Edge(int prefix_score, int path_max, int j, unsigned node_in, unsigned node_out, int path_min, int prefix_score_begin) :
 			prefix_score(prefix_score),
 			path_max(path_max),
 			j(j),
-			diff(diff),
+			path_min(path_min),
 			node_in(node_in),
-			node_out(node_out)
+			node_out(node_out),
+			prefix_score_begin(prefix_score_begin)
 		{			
 		}
 		/*operator int() const
@@ -287,7 +304,7 @@ struct Diag_graph
 		{
 			return prefix_score > x.prefix_score;
 		}*/
-		int prefix_score, path_max, j, diff;
+		int prefix_score, path_max, j, path_min, prefix_score_begin;
 		unsigned node_in, node_out;
 	};
 
@@ -317,8 +334,11 @@ struct Diag_graph
 				++j->link_idx;
 		assert(nodes[edge.node_in].link_idx >= 0 && nodes[edge.node_in].link_idx <= (int)edges.size());
 		Diagonal_node &d = nodes[edge.node_in];
-		d.prefix_score = std::max(d.prefix_score, edge.prefix_score);
-		d.path_max = std::max(d.path_max, edge.path_max);
+		if (edge.prefix_score > d.prefix_score) {
+			d.prefix_score = edge.prefix_score;
+			d.path_max = edge.path_max;
+			d.path_min = edge.path_min;
+		}
 		return edges.insert(edges.begin() + d.link_idx++, edge);
 	}
 
@@ -339,10 +359,11 @@ struct Diag_graph
 		return max_edge;
 	}
 
-	int prefix_score(size_t node, int j, int &path_max) const
+	int prefix_score(size_t node, int j, int &path_max, int &path_min) const
 	{
 		const vector<Edge>::const_iterator i = get_edge(node, j);
 		path_max = i == edges.end() ? nodes[node].score : std::max(nodes[node].score, i->path_max);
+		path_min = i == edges.end() ? nodes[node].score : i->path_min;
 		return i == edges.end() ? nodes[node].score : std::max(nodes[node].score, i->prefix_score);
 	}
 	
