@@ -423,6 +423,7 @@ struct Greedy_aligner2
 				++out->length;
 			}
 		}
+		return true;
 	}
 
 	unsigned backtrace(unsigned node, int j_end) const
