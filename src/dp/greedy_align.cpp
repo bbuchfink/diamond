@@ -352,7 +352,7 @@ struct Greedy_aligner2
 	{
 		const Diagonal_node &d = diags[node];
 		vector<Diag_graph::Edge>::const_iterator f = diags.get_edge(node, j_end);
-		bool at_end = f == diags.edges.end();
+		bool at_end = f >= diags.edges.end();
 		const int prefix_score = at_end ? d.score : f->prefix_score;
 		if (prefix_score > score_max)
 			return false;
