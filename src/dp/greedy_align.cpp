@@ -348,11 +348,11 @@ struct Greedy_aligner2
 		}
 	}
 
-	bool backtrace(size_t node, int j_end, Hsp_data *out, Hsp_traits &t, set<unsigned> *node_list, int score_max, int &score_min) const
+	bool backtrace(size_t node, int j_end, Hsp_data *out, Hsp_traits &t, set<unsigned> *node_list, int score_max, int score_min) const
 	{
 		const Diagonal_node &d = diags[node];
 		vector<Diag_graph::Edge>::const_iterator f = diags.get_edge(node, j_end);
-		const bool at_end = f == diags.edges.end();
+		bool at_end = f == diags.edges.end();
 		const int prefix_score = at_end ? d.score : f->prefix_score;
 		if (prefix_score > score_max)
 			return false;
@@ -366,11 +366,16 @@ struct Greedy_aligner2
 			const int shift = d.diag() - e.diag();
 			j = f->j;
 
-			if (!backtrace(f->node_out, shift > 0 ? j : j + shift, out, t, node_list, score_max, score_min) && f->prefix_score_begin > score_min)
-				return false;
+			const bool bt = backtrace(f->node_out, shift > 0 ? j : j + shift, out, t, node_list, score_max, score_min);
+			if (!bt) {
+				if (f->prefix_score_begin > score_min)
+					return false;
+				else
+					at_end = true;
+			}
 		}
 
-		if (at_end || f->prefix_score_begin == score_min) {
+		if (at_end) {
 			if (out) {
 				out->query_range.begin_ = d.i;
 				out->subject_range.begin_ = d.j;
