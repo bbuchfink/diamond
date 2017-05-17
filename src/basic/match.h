@@ -257,6 +257,10 @@ struct Hsp_data
 	{
 		return (double)subject_range.length() * 100 / subject_len;
 	}
+	static bool cmp_query_pos(const Hsp_data &x, const Hsp_data &y)
+	{
+		return x.query_range.begin_ < y.query_range.begin_;
+	}
 	bool pass_through(const Diagonal_segment &d) const;
 	bool is_weakly_enveloped(const Hsp_data &j) const;
 	std::pair<int, int> diagonal_bounds() const;

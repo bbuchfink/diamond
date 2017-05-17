@@ -102,7 +102,6 @@ size_t Diag_graph::top_node() const
 void Diag_graph::sort()
 {
 	std::sort(nodes.begin(), nodes.end(), Diagonal_segment::cmp_subject);
-	//nodes.erase(std::unique(nodes.begin(), nodes.end()), nodes.end());
 }
 
 struct Link
@@ -258,7 +257,7 @@ struct Greedy_aligner2
 	}
 
 	template<typename _it>
-	void forward_pass(_it begin, _it end, bool init, int max_shift, double space_penalty)
+	void forward_pass(_it begin, _it end, bool init, double space_penalty)
 	{
 		window.clear();
 
@@ -279,8 +278,6 @@ struct Greedy_aligner2
 				goto weiter;
 			do {
 				--j;
-				if (dd - j->first > max_shift)
-					break;
 				Diagonal_node &e = diags[j->second];
 				const int de = j->first, shift = dd - de;
 				//if (d.j - e.subject_end() > max_dist) {
@@ -315,7 +312,7 @@ struct Greedy_aligner2
 			if (j->second == node)
 				++j;
 			int max_i = 0;
-			while (j != window.end() && j->first - dd < max_shift) {
+			while (j != window.end()) {
 				Diagonal_node &e = diags[j->second];
 				const int de = j->first, shift = dd - de;
 				//if (d.j - e.subject_end() > max_dist && j != i) {
@@ -348,7 +345,7 @@ struct Greedy_aligner2
 		}
 	}
 
-	bool backtrace(size_t node, int j_end, Hsp_data *out, Hsp_traits &t, set<unsigned> *node_list, int score_max, int score_min) const
+	bool backtrace(size_t node, int j_end, Hsp_data *out, Hsp_traits &t, int score_max, int score_min, int max_shift, unsigned &next) const
 	{
 		const Diagonal_node &d = diags[node];
 		vector<Diag_graph::Edge>::const_iterator f = diags.get_edge(node, j_end);
@@ -365,13 +362,19 @@ struct Greedy_aligner2
 			const Diagonal_node &e = diags[f->node_out];
 			const int shift = d.diag() - e.diag();
 			j = f->j;
-
-			const bool bt = backtrace(f->node_out, shift > 0 ? j : j + shift, out, t, node_list, score_max, score_min);
-			if (!bt) {
-				if (f->prefix_score_begin > score_min)
-					return false;
-				else
-					at_end = true;
+			
+			if (abs(shift) <= max_shift) {
+				const bool bt = backtrace(f->node_out, shift > 0 ? j : j + shift, out, t, score_max, score_min, max_shift, next);
+				if (!bt) {
+					if (f->prefix_score_begin > score_min)
+						return false;
+					else
+						at_end = true;
+				}
+			}
+			else {
+				next = f->node_out;
+				at_end = true;
 			}
 		}
 
@@ -406,9 +409,7 @@ struct Greedy_aligner2
 		const int dd = d.diag();
 		t.d_max = std::max(t.d_max, dd);
 		t.d_min = std::min(t.d_min, dd);
-		if (node_list)
-			node_list->insert(node);
-
+		
 		if (out) {
 			const int d2 = d.diag();
 			if (log) cout << "Backtrace node=" << node << " i=" << d2 + j << "-" << d2 + j_end << " j=" << j << "-" << j_end << endl;
@@ -426,20 +427,7 @@ struct Greedy_aligner2
 		return true;
 	}
 
-	unsigned backtrace(unsigned node, int j_end) const
-	{
-		const Diagonal_node &d = diags[node];
-		vector<Diag_graph::Edge>::const_iterator f = diags.get_edge(node, j_end);
-		if (f != diags.edges.end()) {
-			const Diagonal_node &e = diags[f->node_out];
-			const int shift = d.diag() - e.diag();
-			return backtrace(f->node_out, shift > 0 ? f->j : f->j + shift);
-		}
-		else
-			return node;
-	}
-
-	void backtrace(size_t top_node, Hsp_data *out, Hsp_traits &t, set<unsigned> *node_list) const
+	void backtrace(size_t top_node, Hsp_data *out, Hsp_traits &t, int max_shift, unsigned &next) const
 	{
 		Hsp_traits traits;
 		if (top_node != Diag_graph::end) {
@@ -452,7 +440,7 @@ struct Greedy_aligner2
 			traits.subject_range.end_ = d.subject_end();
 			traits.query_range.end_ = d.query_end();
 			int score_min = d.prefix_score;
-			backtrace(top_node, d.subject_end(), out, traits, node_list, d.prefix_score, score_min);
+			backtrace(top_node, d.subject_end(), out, traits, d.prefix_score, score_min, max_shift, next);
 		}
 		else {
 			traits.score = 0;
@@ -464,7 +452,28 @@ struct Greedy_aligner2
 		t = traits;
 	}
 
-	int backtrace(list<Hsp_data> &hsps, list<Hsp_traits> &ts, int cutoff, set<unsigned> *node_list) const
+	int backtrace(size_t top_node, list<Hsp_data> &hsps, list<Hsp_traits> &ts, int cutoff, int max_shift) const
+	{		
+		unsigned next;
+		int max_score = 0;
+		do {
+			Hsp_data *hsp = log ? new Hsp_data : 0;
+			Hsp_traits t;
+			next = std::numeric_limits<unsigned>::max();
+			backtrace(top_node, hsp, t, max_shift, next);
+			if (t.score >= cutoff && disjoint(ts.begin(), ts.end(), t, cutoff)) {
+				ts.push_back(t);
+				if (hsp)
+					hsps.push_back(*hsp);
+				max_score = std::max(max_score, t.score);
+			}
+			delete hsp;
+			top_node = next;
+		} while (next != std::numeric_limits<unsigned>::max());
+		return max_score;
+	}
+
+	int backtrace(list<Hsp_data> &hsps, list<Hsp_traits> &ts, int cutoff, int max_shift) const
 	{
 		vector<Diagonal_node*> top_nodes;
 		for (size_t i = 0; i < diags.nodes.size(); ++i) {
@@ -484,32 +493,17 @@ struct Greedy_aligner2
 			if (log)
 				cout << "Backtrace candidate node=" << node << endl;
 			if (disjoint(ts.begin(), ts.end(), **i, cutoff)) {
-				Hsp_data *hsp = 0;
-				if (log) {
-					hsp = new Hsp_data;
-					cout << "Backtrace node=" << node << " prefix_score=" << (*i)->prefix_score <<  " rel_score=" << (*i)->rel_score() << endl;
-				}
-				//backtrace(node, hsp, t, node_list ? &list2 : 0, !(*i)->is_maximum());
-				backtrace(node, hsp, t, node_list ? &list2 : 0);
-				if (t.score >= cutoff && disjoint(ts.begin(), ts.end(), t, cutoff)) {
-					ts.push_back(t);
-					if(hsp)
-						hsps.push_back(*hsp);
-					if (node_list) {
-						node_list->insert(list2.begin(), list2.end());
-						list2.clear();
-					}
-					max_score = std::max(max_score, t.score);
-				}
+				if (log)
+					cout << "Backtrace node=" << node << " prefix_score=" << (*i)->prefix_score << " rel_score=" << (*i)->rel_score() << endl;
+				max_score = std::max(max_score, backtrace(node, hsps, ts, cutoff, max_shift));
 				if (log)
 					cout << endl;
-				delete hsp;
 			}
 		}
 		return max_score;
 	}
 
-	int run(list<Hsp_data> &hsps, list<Hsp_traits> &ts, int band, double space_penalty, int cutoff, bool anschluss)
+	int run(list<Hsp_data> &hsps, list<Hsp_traits> &ts, double space_penalty, int cutoff, int max_shift)
 	{
 		diags.sort();
 		if (log) {
@@ -517,29 +511,11 @@ struct Greedy_aligner2
 			cout << endl << endl;
 		}
 
-		forward_pass(Index_iterator(0llu), Index_iterator(diags.nodes.size()), true, band, space_penalty);
-		auto_ptr<set<unsigned> > node_list(anschluss ? new set<unsigned> : 0);
-		int max_score = backtrace(hsps, ts, cutoff, node_list.get());
-
-		if (log && anschluss) {
-			for (list<Hsp_data>::iterator i = hsps.begin(); i != hsps.end(); ++i)
-				print_hsp(*i, query);
-			cout << endl << endl;
-		}
-
-		if (anschluss) {
-			if (log)
-				cout << "Anschluss:" << endl << endl;
-			ts.clear();
-			hsps.clear();
-			diags.clear_edges();
-			for (set<unsigned>::const_iterator i = node_list->begin(); i != node_list->end(); ++i)
-				diags[*i].reset();
-			forward_pass(node_list->begin(), node_list->end(), true, 9999, space_penalty);
-			max_score = backtrace(hsps, ts, cutoff, 0);
-		}
+		forward_pass(Index_iterator(0llu), Index_iterator(diags.nodes.size()), true, space_penalty);
+		int max_score = backtrace(hsps, ts, cutoff, max_shift);
 
 		if (log) {
+			hsps.sort(Hsp_data::cmp_query_pos);
 			for (list<Hsp_data>::iterator i = hsps.begin(); i != hsps.end(); ++i)
 				print_hsp(*i, query);
 			cout << endl << "Smith-Waterman:" << endl;
@@ -579,7 +555,7 @@ struct Greedy_aligner2
 
 		ts.clear();
 		hsps.clear();
-		return run(hsps, ts, band, config.space_penalty, cutoff, true);
+		return run(hsps, ts, config.space_penalty, cutoff, 999);
 	}
 
 	int run(list<Hsp_data> &hsps, list<Hsp_traits> &ts, vector<Seed_hit>::const_iterator begin, vector<Seed_hit>::const_iterator end, int band)
@@ -588,7 +564,7 @@ struct Greedy_aligner2
 			cout << "***** Seed hit run " << begin->diagonal() << '\t' << (end - 1)->diagonal() << '\t' << (end - 1)->diagonal() - begin->diagonal() << endl;
 		diags.init();
 		diags.load(begin, end);
-		return run(hsps, ts, band, 0.1, config.min_ungapped_raw_score, false);
+		return run(hsps, ts, 0.1, config.min_ungapped_raw_score, band);
 	}
 
 	Greedy_aligner2(const sequence &query, const Long_score_profile &qp, const Bias_correction &query_bc, const sequence &subject, bool log) :
