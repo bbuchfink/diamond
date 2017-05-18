@@ -294,10 +294,8 @@ struct Greedy_aligner2
 						continue;
 					}
 				}
-				if (e.subject_end() < max_j) {
+				if (e.subject_end() < max_j)
 					continue;
-				}
-				//if(get_approximate_link(node, j->second, space_penalty, max_j) > e.prefix_score)
 				get_approximate_link(node, j->second, space_penalty, max_j);
 				max_j = std::max(max_j, std::min(d.j, e.subject_end()));
 				if (e.subject_end() - (d.subject_end() - std::min(e.diag() - d.diag(), 0)) >= reverse_link_min_overhang) {
@@ -485,7 +483,6 @@ struct Greedy_aligner2
 		}
 		std::sort(top_nodes.begin(), top_nodes.end(), Diagonal_node::cmp_rel_score);
 		int max_score = 0;
-		set<unsigned> list2;
 
 		for (vector<Diagonal_node*>::const_iterator i = top_nodes.begin(); i < top_nodes.end(); ++i) {
 			Hsp_traits t;
@@ -534,7 +531,9 @@ struct Greedy_aligner2
 		diags.init();
 		ts.sort(Hsp_traits::cmp_diag);
 		list<Hsp_traits>::const_iterator i = ts.begin();
-		int d_begin = i->d_min - band, d_end = i->d_max + band;
+		const int ql = (int)query.length();
+		int d_begin = std::max(i->d_min - band, -((int)subject.length() - 1)),
+			d_end = d_begin + make_multiple(std::min(i->d_max + band, ql) - d_begin, 16);
 		++i;
 		for (; i != ts.end(); ++i) {
 			if (i->d_min - band >= d_end) {
@@ -542,10 +541,10 @@ struct Greedy_aligner2
 					cout << "Scan " << d_begin << '\t' << d_end << '\t' << d_end - d_begin << endl;
 				diag_scores.scan_diags(d_begin, d_end, query, subject, qp, query_bc, log, diags.nodes, true);
 				d_begin = i->d_min - band;
-				d_end = i->d_max + band;
+				d_end = d_begin + make_multiple(std::min(i->d_max + band, ql) - d_begin, 16);
 			}
 			else
-				d_end = std::max(d_end, i->d_max + band);
+				d_end = std::max(d_end, d_begin + make_multiple(std::min(i->d_max + band, ql) - d_begin, 16));
 		}
 		if (log)
 			cout << "Scan " << d_begin << '\t' << d_end << '\t' << d_end - d_begin << endl;

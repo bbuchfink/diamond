@@ -1,6 +1,7 @@
 [0.8.39]
 - removed SEG masking
 - added low complexity masking using tantan
+- changed license to AGPL
 
 [0.8.38]
 - fixed std::exception error messages

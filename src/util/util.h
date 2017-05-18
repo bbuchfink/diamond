@@ -628,4 +628,9 @@ inline double megabytes(size_t x)
 	return (double)x / (1 << 20);
 }
 
+inline int make_multiple(int x, int m)
+{
+	return x % m == 0 ? x : x + m - x%m;
+}
+
 #endif /* UTIL_H_ */
