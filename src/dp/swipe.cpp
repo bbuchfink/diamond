@@ -239,9 +239,11 @@ void swipe(const sequence &query, vector<sequence>::const_iterator subject_begin
 #endif
 }
 
+#endif
+
 void swipe(const sequence &query, vector<sequence>::const_iterator subject_begin, vector<sequence>::const_iterator subject_end, vector<int>::iterator out)
 {
+#ifdef __SSE2__
 	swipe<uint8_t>(query, subject_begin, subject_end, out);
-}
-
 #endif
+}

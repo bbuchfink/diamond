@@ -115,7 +115,6 @@ void search_query_offset(Loc q,
 				q_num_ = (unsigned)l.first;
 				seed_offset_ = (unsigned)l.second;
 			}
-			assert(subject < ref_seqs::get().raw_len());
 			out.push(hit(q_num_, s_pos, seed_offset_));
 			stats.inc(Statistics::TENTATIVE_MATCHES4);
 		}

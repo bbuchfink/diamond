@@ -453,12 +453,8 @@ struct Diag_scores {
 	{
 		return std::min(qlen - d, slen);
 	}
-	void get_diag(int i, int j, int o, int j_begin, int j_end, vector<Diagonal_node> &diags, int cutoff, bool log, size_t &cells, const Bias_correction &query_bc);
-	void get_diag2(int i, int j, int o, int j_begin, int j_end, vector<Diagonal_node> &diags, int cutoff, bool log);
-	size_t scan_diags(int d_begin, int d_end, sequence query, sequence subject, const Long_score_profile &qp, const Bias_correction &query_bc, bool log, vector<Diagonal_node> &diags, bool fast);
-	void set_zero(Band::Iterator &d, Band::Iterator d2, int begin, int end);
-	void set_active(int o, int begin, int end);
-	bool is_active(int o, int i) const;
+	void get_diag(int i, int j, int o, int j_begin, int j_end, vector<Diagonal_node> &diags, int cutoff, bool log, const Bias_correction &query_bc);
+	void scan_diags(int d_begin, int d_end, sequence query, sequence subject, const Long_score_profile &qp, const Bias_correction &query_bc, bool log, vector<Diagonal_node> &diags, bool fast);
 	Band score_buf, local_max;
 	vector<uint8_t> sv_max;
 	vector<bool> active;

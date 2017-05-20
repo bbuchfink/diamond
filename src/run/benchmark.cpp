@@ -191,7 +191,9 @@ void benchmark_greedy(const Sequence_set &ss, unsigned qa, unsigned sa)
 	Bias_correction query_bc(ss[0]);
 	const int d = (int)qa - (int)sa, band = 7;
 	greedy_align(ss[0], qp, query_bc, ss[1], d2.begin(), d2.end(), true, hsp, traits, 0);
+	hsp.clear();
 	greedy_align(ss[0], qp, query_bc, ss[1], true, hsp, traits.begin(), traits.end(), traits2, 50, 0);
+	return;
 	
 	Timer t;
 	t.start();

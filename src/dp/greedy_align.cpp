@@ -450,7 +450,7 @@ struct Greedy_aligner2
 		t = traits;
 	}
 
-	int backtrace(size_t top_node, list<Hsp_data> &hsps, list<Hsp_traits> &ts, list<Hsp_traits>::iterator t_begin, int cutoff, int max_shift) const
+	int backtrace(size_t top_node, list<Hsp_data> &hsps, list<Hsp_traits> &ts, list<Hsp_traits>::iterator &t_begin, int cutoff, int max_shift) const
 	{		
 		unsigned next;
 		int max_score = 0;
@@ -460,7 +460,12 @@ struct Greedy_aligner2
 			next = std::numeric_limits<unsigned>::max();
 			backtrace(top_node, hsp, t, max_shift, next);
 			if (t.score >= cutoff && disjoint(t_begin, ts.end(), t, cutoff)) {
-				ts.push_back(t);
+				if (t_begin == ts.end()) {
+					ts.push_back(t);
+					t_begin = ts.end();
+					t_begin--;
+				} else
+					ts.push_back(t);
 				if (hsp)
 					hsps.push_back(*hsp);
 				max_score = std::max(max_score, t.score);
@@ -476,7 +481,7 @@ struct Greedy_aligner2
 		vector<Diagonal_node*> top_nodes;
 		for (size_t i = 0; i < diags.nodes.size(); ++i) {
 			Diagonal_node &d = diags.nodes[i];
-			//cout << "node=" << i << " prefix_score=" << d.prefix_score << " path_max=" << d.path_max << endl;
+			//cout << "node=" << i << " prefix_score=" << d.prefix_score << " path_max=" << d.path_max << " rel_score=" << d.rel_score() << " cutoff=" << cutoff << endl;
 			//if (d.prefix_score >= cutoff && (d.prefix_score == d.path_max || d.prefix_score - d.path_min >= cutoff))
 			if(d.rel_score() >= cutoff)
 				top_nodes.push_back(&d);
@@ -560,7 +565,7 @@ struct Greedy_aligner2
 			cout << "***** Seed hit run " << begin->diagonal() << '\t' << (end - 1)->diagonal() << '\t' << (end - 1)->diagonal() - begin->diagonal() << endl;
 		diags.init();
 		diags.load(begin, end);
-		return run(hsps, ts, 0.1, config.min_ungapped_raw_score, band);
+		return run(hsps, ts, 0.1, 19, band);
 	}
 
 	Greedy_aligner2(const sequence &query, const Long_score_profile &qp, const Bias_correction &query_bc, const sequence &subject, bool log, unsigned frame) :
