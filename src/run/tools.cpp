@@ -118,7 +118,7 @@ void run_masker()
 		seq2 = seq;
 		Masking::get()(seq2.data(), seq2.size());
 		for (size_t i = 0; i < seq.size(); ++i) {
-			char c = value_traits.alphabet[seq[i]];
+			char c = value_traits.alphabet[(long)seq[i]];
 			if (seq2[i] == value_traits.mask_char)
 				c = tolower(c);
 			cout << c;

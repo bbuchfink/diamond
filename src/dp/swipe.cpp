@@ -169,7 +169,7 @@ struct Target_iterator
 	bool inc(int i)
 	{
 		++pos[i];
-		if (pos[i] >= subject_begin[target[i]].length())
+		if (pos[i] >= (int)subject_begin[target[i]].length())
 			return false;
 		return true;
 	}

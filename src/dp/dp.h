@@ -207,12 +207,12 @@ struct Fixed_score_buffer
 	friend std::ostream& operator<<(std::ostream &s, const Fixed_score_buffer &buf)
 	{
 		s << '\t';
-		for (int j = 0; j < buf.data_.size() / buf.col_size_; ++j)
+		for (int j = 0; j < int(buf.data_.size() / buf.col_size_); ++j)
 			s << j << '\t';
 		s << endl;
-		for (int i = 0; i < buf.col_size_; ++i) {
+		for (int i = 0; i < int(buf.col_size_); ++i) {
 			s << i << '\t';
-			for (int j = 0; j < buf.data_.size() / buf.col_size_; ++j)
+			for (int j = 0; j < int(buf.data_.size() / buf.col_size_); ++j)
 				s << buf(i, j) << '\t';
 			s << endl;
 		}
@@ -299,9 +299,9 @@ struct Diag_graph
 			path_max(path_max),
 			j(j),
 			path_min(path_min),
+			prefix_score_begin(prefix_score_begin),
 			node_in(node_in),
-			node_out(node_out),
-			prefix_score_begin(prefix_score_begin)
+			node_out(node_out)
 		{			
 		}
 		/*operator int() const
