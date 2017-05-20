@@ -136,7 +136,7 @@ Config::Config(int argc, const char **argv)
 		("masking", 0, "enable masking of low complexity regions (0/1=default)", masking, 1)
 		//("seg", 0, "enable SEG masking of queries (yes/no)", seg)
 		("query-gencode", 0, "genetic code to use to translate query (see user manual)", query_gencode, 1u)
-		("salltitles", 0, "print full subject titles in output files", salltitles)
+		("salltitles", 0, "include full subject titles in DAA file", salltitles)
 		("no-self-hits", 0, "suppress reporting of identical self hits", no_self_hits)
 		("taxonmap", 0, "protein accession to taxid mapping file", prot_accession2taxid);
 
@@ -156,13 +156,11 @@ Config::Config(int argc, const char **argv)
 		("shapes", 's', "number of seed shapes (0 = all available)", shapes)
 		("shape-mask", 0, "seed shapes", shape_mask)
 		("index-mode", 0, "index mode (0=4x12, 1=16x9)", index_mode)
-		("fetch-size", 0, "trace point fetch size", fetch_size, 4096u)
-		//("rank-factor", 0, "include subjects within this range of max-target-seqs", rank_factor, 2.0)
-		("rank-ratio", 0, "include subjects within this ratio of last hit", rank_ratio, -1.0)
+		("rank-ratio", 0, "include subjects within this ratio of last hit (stage 1)", rank_ratio, -1.0)
+		("rank-ratio2", 0, "include subjects within this ratio of last hit (stage 2)", rank_ratio2, -1.0)
 		("max-hsps", 0, "maximum number of HSPs per subject sequence to save for each query", max_hsps, 1u)
 		("dbsize", 0, "effective database size (in letters)", db_size)
-		("no-auto-append", 0, "disable auto appending of DAA and DMND file extensions", no_auto_append)
-		("target-fetch-size", 0, "number of target sequences to fetch for seed extension", target_fetch_size, 4u);
+		("no-auto-append", 0, "disable auto appending of DAA and DMND file extensions", no_auto_append);
 
 	Options_group view_options("View options");
 	view_options.add()
@@ -209,14 +207,15 @@ Config::Config(int argc, const char **argv)
 		("sw", 0, "", use_smith_waterman)
 		("superblock", 0, "", superblock, 128)
 		("max-cells", 0, "", max_cells, 10000000u)
-		("lb", 0, "", load_balancing, (unsigned)Config::target_parallel)
-		("ext", 0, "", ext, (int)Config::floating_xdrop)
+		("lb", 0, "", load_balancing, (unsigned)Config::query_parallel)
+		("ext", 0, "", ext, (int)Config::greedy)
 		("br", 0, "", benchmark_ranking)
-		("rank-ratio2", 0, "include subjects within this ratio of last hit", rank_ratio2, -1.0)
 		("log-query", 0, "", log_query)
 		("log-subject", 0, "", log_subject)
 		("palign", 0, "", threads_align)
-		("score-ratio", 0, "", score_ratio, 0.9);
+		("score-ratio", 0, "", score_ratio, 0.9)
+		("fetch-size", 0, "trace point fetch size", fetch_size, 4096u)
+		("target-fetch-size", 0, "number of target sequences to fetch for seed extension", target_fetch_size, 4u);
 		
 	parser.add(general).add(makedb).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options);
 	parser.store(argc, argv, command);
@@ -300,6 +299,7 @@ Config::Config(int argc, const char **argv)
 	}
 
 	message_stream << Const::program_name << " v" << Const::version_string << "." << (unsigned)Const::build_version << " | by Benjamin Buchfink <buchfink@gmail.com>" << endl;
+	message_stream << "Licensed under the GNU AGPL <https://www.gnu.org/licenses/agpl.txt>" << endl;
 	message_stream << "Check http://github.com/bbuchfink/diamond for updates." << endl << endl;
 #ifndef NDEBUG
 	verbose_stream << "Assertions enabled." << endl;

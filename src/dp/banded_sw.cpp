@@ -288,7 +288,6 @@ void banded_sw(const sequence &query, const sequence &subject, int d_begin, int 
 		for (; i < i1; ++i, ++it) {
 			const int match_score = score_matrix(query[i], subject[j]);
 			int hgap = it.hgap_in();
-			//const int s = max(max(max(it.diag() + match_score, vgap), hgap), 0);
 			int s = it.diag() + match_score;
 			if (s < hgap)
 				s = hgap;
@@ -297,17 +296,14 @@ void banded_sw(const sequence &query, const sequence &subject, int d_begin, int 
 			if (s < 0)
 				s = 0;
 			const int open = s - gap_open;
-			//vgap = max(vgap - gap_extend, open);
 			vgap -= gap_extend;
 			if (vgap < open)
 				vgap = open;
-			//it.hgap_out() = max(hgap - gap_extend, open);
 			hgap -= gap_extend;
 			if (hgap < open)
 				hgap = open;
 			it.hgap_out() = hgap;
 			it.score() = s;
-			//score = max(score, s);
 			if (s > score) {
 				score = s;
 				max_i = i;

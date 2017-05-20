@@ -427,7 +427,7 @@ struct Greedy_aligner2
 
 	void backtrace(size_t top_node, Hsp_data *out, Hsp_traits &t, int max_shift, unsigned &next) const
 	{
-		Hsp_traits traits;
+		Hsp_traits traits(frame);
 		if (top_node != Diag_graph::end) {
 			const Diagonal_node &d = diags[top_node];
 			if (out) {
@@ -450,16 +450,16 @@ struct Greedy_aligner2
 		t = traits;
 	}
 
-	int backtrace(size_t top_node, list<Hsp_data> &hsps, list<Hsp_traits> &ts, int cutoff, int max_shift) const
+	int backtrace(size_t top_node, list<Hsp_data> &hsps, list<Hsp_traits> &ts, list<Hsp_traits>::iterator t_begin, int cutoff, int max_shift) const
 	{		
 		unsigned next;
 		int max_score = 0;
 		do {
 			Hsp_data *hsp = log ? new Hsp_data : 0;
-			Hsp_traits t;
+			Hsp_traits t(frame);
 			next = std::numeric_limits<unsigned>::max();
 			backtrace(top_node, hsp, t, max_shift, next);
-			if (t.score >= cutoff && disjoint(ts.begin(), ts.end(), t, cutoff)) {
+			if (t.score >= cutoff && disjoint(t_begin, ts.end(), t, cutoff)) {
 				ts.push_back(t);
 				if (hsp)
 					hsps.push_back(*hsp);
@@ -483,16 +483,16 @@ struct Greedy_aligner2
 		}
 		std::sort(top_nodes.begin(), top_nodes.end(), Diagonal_node::cmp_rel_score);
 		int max_score = 0;
+		list<Hsp_traits>::iterator t_begin = ts.end();
 
 		for (vector<Diagonal_node*>::const_iterator i = top_nodes.begin(); i < top_nodes.end(); ++i) {
-			Hsp_traits t;
 			const size_t node = *i - diags.nodes.data();
 			if (log)
 				cout << "Backtrace candidate node=" << node << endl;
-			if (disjoint(ts.begin(), ts.end(), **i, cutoff)) {
+			if (disjoint(t_begin, ts.end(), **i, cutoff)) {
 				if (log)
 					cout << "Backtrace node=" << node << " prefix_score=" << (*i)->prefix_score << " rel_score=" << (*i)->rel_score() << endl;
-				max_score = std::max(max_score, backtrace(node, hsps, ts, cutoff, max_shift));
+				max_score = std::max(max_score, backtrace(node, hsps, ts, t_begin, cutoff, max_shift));
 				if (log)
 					cout << endl;
 			}
@@ -522,20 +522,19 @@ struct Greedy_aligner2
 		return max_score;
 	}
 
-	int run(list<Hsp_data> &hsps, list<Hsp_traits> &ts, int band, int cutoff)
+	int run(list<Hsp_data> &hsps, list<Hsp_traits>::const_iterator t_begin, list<Hsp_traits>::const_iterator t_end, list<Hsp_traits> &ts, int band, int cutoff)
 	{
-		if (ts.empty())
+		if (t_end == t_begin)
 			return 0;
 		if(log)
-			cout << "***** Scan run n_hsp=" << ts.size() << " cutoff=" << cutoff << endl;
+			cout << "***** Scan run n_hsp=" << 0 << " cutoff=" << cutoff << endl;
 		diags.init();
-		ts.sort(Hsp_traits::cmp_diag);
-		list<Hsp_traits>::const_iterator i = ts.begin();
+		list<Hsp_traits>::const_iterator i = t_begin;
 		const int ql = (int)query.length();
 		int d_begin = std::max(i->d_min - band, -((int)subject.length() - 1)),
 			d_end = d_begin + make_multiple(std::min(i->d_max + band, ql) - d_begin, 16);
 		++i;
-		for (; i != ts.end(); ++i) {
+		for (; i != t_end; ++i) {
 			if (i->d_min - band >= d_end) {
 				if (log)
 					cout << "Scan " << d_begin << '\t' << d_end << '\t' << d_end - d_begin << endl;
@@ -552,8 +551,6 @@ struct Greedy_aligner2
 		if (log)
 			cout << endl;
 
-		ts.clear();
-		hsps.clear();
 		return run(hsps, ts, config.space_penalty, cutoff, 999);
 	}
 
@@ -566,12 +563,13 @@ struct Greedy_aligner2
 		return run(hsps, ts, 0.1, config.min_ungapped_raw_score, band);
 	}
 
-	Greedy_aligner2(const sequence &query, const Long_score_profile &qp, const Bias_correction &query_bc, const sequence &subject, bool log) :
+	Greedy_aligner2(const sequence &query, const Long_score_profile &qp, const Bias_correction &query_bc, const sequence &subject, bool log, unsigned frame) :
 		query(query),
 		subject(subject),
 		qp(qp),
 		query_bc(query_bc),
 		log(log),
+		frame(frame),
 		diag_scores(TLS::get(diag_scores_ptr)),
 		diags(TLS::get(diags_ptr)),
 		window(TLS::get(window_ptr))
@@ -584,7 +582,8 @@ struct Greedy_aligner2
 	const sequence query, subject;
 	const Long_score_profile &qp;
 	const Bias_correction &query_bc;
-	const bool log;	
+	const bool log;
+	const unsigned frame;
 	Diag_scores &diag_scores;
 	Diag_graph &diags;
 	map<int, unsigned> &window;
@@ -595,16 +594,16 @@ TLS_PTR Diag_scores *Greedy_aligner2::diag_scores_ptr;
 TLS_PTR Diag_graph *Greedy_aligner2::diags_ptr;
 TLS_PTR map<int, unsigned> *Greedy_aligner2::window_ptr;
 
-int greedy_align(sequence query, const Long_score_profile &qp, const Bias_correction &query_bc, sequence subject, vector<Seed_hit>::const_iterator begin, vector<Seed_hit>::const_iterator end, bool log, list<Hsp_data> &hsps, list<Hsp_traits> &ts)
+int greedy_align(sequence query, const Long_score_profile &qp, const Bias_correction &query_bc, sequence subject, vector<Seed_hit>::const_iterator begin, vector<Seed_hit>::const_iterator end, bool log, list<Hsp_data> &hsps, list<Hsp_traits> &ts, unsigned frame)
 {
 	const int band = config.padding == 0 ? std::min(64, int(query.length()*0.5)) : config.padding;
-	Greedy_aligner2 ga(query, qp, query_bc, subject, log);
+	Greedy_aligner2 ga(query, qp, query_bc, subject, log, frame);
 	return ga.run(hsps, ts, begin, end, band);
 }
 
-int greedy_align(sequence query, const Long_score_profile &qp, const Bias_correction &query_bc, sequence subject, bool log, list<Hsp_data> &hsps, list<Hsp_traits> &ts, int cutoff)
+int greedy_align(sequence query, const Long_score_profile &qp, const Bias_correction &query_bc, sequence subject, bool log, list<Hsp_data> &hsps, list<Hsp_traits>::const_iterator t_begin, list<Hsp_traits>::const_iterator t_end, list<Hsp_traits> &ts, int cutoff, unsigned frame)
 {
 	const int band = config.padding == 0 ? std::min(64, int(query.length()*0.5)) : config.padding;
-	Greedy_aligner2 ga(query, qp, query_bc, subject, log);
-	return ga.run(hsps, ts, band, cutoff);
+	Greedy_aligner2 ga(query, qp, query_bc, subject, log, frame);
+	return ga.run(hsps, t_begin, t_end, ts, band, cutoff);
 }

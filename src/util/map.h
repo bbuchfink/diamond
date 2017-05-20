@@ -33,7 +33,7 @@ struct Map
 		void operator++()
 		{ begin_ = end_; end_ = get_end(); }
 		bool valid() const
-		{ return begin_ < parent_end_; }
+		{ return begin_ != parent_end_; }
 		_it& begin()
 		{ return begin_; }
 		_it& end()
@@ -42,7 +42,7 @@ struct Map
 		_it get_end() const
 		{
 			_it i = begin_;
-			while(i < parent_end_ && _key()(*i) == _key()(*begin_)) ++i;
+			while(i != parent_end_ && _key()(*i) == _key()(*begin_)) ++i;
 			return i;
 		}
 		_it begin_, parent_end_, end_;

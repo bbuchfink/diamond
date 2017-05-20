@@ -40,11 +40,10 @@ void Query_mapper::ungapped_stage(size_t idx)
 	const sequence subject = ref_seqs::get()[target.subject_id];
 	for (Hit_map::Iterator it = hit_map.begin(); it.valid(); ++it) {
 		const unsigned frame = it.begin()->frame_;
-		int score = greedy_align(query_seq(frame), profile[frame], query_cb[frame], subject, it.begin(), it.end(), log_ga, target.hsps, target.ts);
+		int score = greedy_align(query_seq(frame), profile[frame], query_cb[frame], subject, it.begin(), it.end(), log_ga, target.hsps, target.ts, frame);
 		//target.filter_score = std::max(target.filter_score, (unsigned)target.traits[frame].score);
 		if (score > target.filter_score) {
 			target.filter_score = score;
-			target.filter_frame = frame;
 		}
 	}
 	//target.filter_time = time;
@@ -61,17 +60,17 @@ void Query_mapper::greedy_stage(size_t idx, Statistics &stat, int cutoff)
 	High_res_timer timer;
 #endif
 	target.filter_score = 0;
-	/*for (unsigned frame = 0; frame < align_mode.query_contexts; ++frame)
-		if (target.traits[frame].score > 0) {
-			Hsp_traits &t = target.traits[frame];
-			greedy_align(query_seq(frame), profile[frame], query_cb[frame], subject, t.d_min, t.d_max, log_ga, 0, t);
-			if (t.score > target.filter_score) {
-				target.filter_score = t.score;
-				target.filter_frame = frame;
-			}
-		}*/
-	const unsigned frame = target.filter_frame;	
-	target.filter_score = greedy_align(query_seq(frame), profile[frame], query_cb[frame], subject, log_ga, target.hsps, target.ts, cutoff);
+	target.ts.sort(Hsp_traits::cmp_diag);
+	typedef Map<list<Hsp_traits>::const_iterator, Hsp_traits::Frame> Hsp_map;
+	Hsp_map ts(target.ts.begin(), target.ts.end());
+	list<Hsp_traits> t_out;
+	target.hsps.clear();
+	for (Hsp_map::Iterator it = ts.begin(); it.valid(); ++it) {
+		const unsigned frame = it.begin()->frame;
+		target.filter_score = std::max(target.filter_score, greedy_align(query_seq(frame), profile[frame], query_cb[frame], subject, log_ga, target.hsps, it.begin(), it.end(), t_out, cutoff, frame));
+	}
+	target.ts.clear();
+	target.ts.splice(target.ts.begin(), t_out);
 	//stat.inc(Statistics::TIME_GREEDY_EXT, timer.nanoseconds());
 #ifdef ENABLE_TIMING
 	target.filter_time = (float)timer.get();
@@ -232,23 +231,22 @@ void Query_mapper::align_target(size_t idx, Statistics &stat)
 		if (config.ext == Config::more_greedy)
 			target.hsps.push_back(Hsp_data(target.filter_score));
 		else {
-			const unsigned frame = target.filter_frame;
 			const int qlen = (int)query_seq(0).length(),
 				band_plus = qlen <= 50 ? 0 : 16;
 			target.hsps.clear();
-			for (list<Hsp_traits>::const_iterator i = target.ts.begin(); i != target.ts.end(); ++i) {				
+			for (list<Hsp_traits>::const_iterator i = target.ts.begin(); i != target.ts.end(); ++i) {
 				if (log_ga) {
 					cout << "i_begin=" << i->query_range.begin_ << " j_begin=" << i->subject_range.begin_ << " d_min=" << i->d_min << " d_max=" << i->d_max << endl;
 				}
 				target.hsps.push_back(Hsp_data());
-				target.hsps.back().frame = frame;
-				banded_sw(query_seq(frame), subject, i->d_min - band_plus, i->d_max + band_plus + 1, 0, (int)subject.length(), target.hsps.back());
-			}			
+				target.hsps.back().frame = i->frame;
+				banded_sw(query_seq(i->frame), subject, i->d_min - band_plus, i->d_max + band_plus + 1, 0, (int)subject.length(), target.hsps.back());
 
-			/*if (config.comp_based_stats) {
-				const int score = (int)target.hsps.back().score + query_cb[frame](target.hsps.back());
-				target.hsps.back().score = (unsigned)std::max(0, score);
-			}*/
+				if (config.comp_based_stats) {
+					const int score = (int)target.hsps.back().score + query_cb[i->frame](target.hsps.back());
+					target.hsps.back().score = (unsigned)std::max(0, score);
+				}
+			}
 		}
 
 		if (!target.hsps.empty())
@@ -277,7 +275,7 @@ void Query_mapper::align_target(size_t idx, Statistics &stat)
 	
 	if (config.use_smith_waterman && !target.hsps.empty()) {
 		int score;
-		for (int f = 0; f < align_mode.query_contexts; ++f) {
+		for (unsigned f = 0; f < align_mode.query_contexts; ++f) {
 			needleman_wunsch(query_seq(f), subject, score, Local(), int());
 			target.hsps.front().sw_score = std::max((unsigned)score, target.hsps.front().sw_score);
 		}

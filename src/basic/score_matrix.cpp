@@ -219,6 +219,24 @@ char Score_matrix::low_score() const
 	return low;
 }
 
+double Score_matrix::avg_id_score() const
+{
+	double s = 0;
+	for (int i = 0; i < 20; ++i)
+		s += this->operator()(i, i);
+	return s / 20;
+}
+
+std::ostream& operator<<(std::ostream& s, const Score_matrix &m)
+{
+	s << "(Matrix=" << m.name_
+		<< " Lambda=" << m.lambda()
+		<< " K=" << m.k()
+		<< " Penalties=" << m.gap_open_
+		<< '/' << m.gap_extend_ << ')';
+	return s;
+}
+
 const char* custom_scores(const string &matrix_file)
 {
 	static char scores[25 * 25];

@@ -88,10 +88,11 @@ struct Seed_hit
 
 struct Hsp_traits
 {
-	Hsp_traits() :
+	Hsp_traits(unsigned frame) :
 		d_min(std::numeric_limits<int>::max()),
 		d_max(std::numeric_limits<int>::min()),
-		score(0)
+		score(0),
+		frame((int)frame)
 	{}
 	int partial_score(const Diagonal_segment &d) const
 	{
@@ -131,9 +132,16 @@ struct Hsp_traits
 	}
 	static bool cmp_diag(const Hsp_traits &x, const Hsp_traits &y)
 	{
-		return x.d_min < y.d_min;
+		return x.frame < y.frame || (x.frame == y.frame && x.d_min < y.d_min);
 	}
-	int d_min, d_max, score;
+	struct Frame
+	{
+		unsigned operator()(const Hsp_traits &x) const
+		{
+			return x.frame;
+		}
+	};
+	int d_min, d_max, score, frame;
 	interval query_range, subject_range;
 };
 
@@ -150,8 +158,8 @@ Diagonal_segment xdrop_ungapped(const sequence &query, const sequence &subject, 
 struct Local {};
 struct Global {};
 
-int greedy_align(sequence query, const Long_score_profile &qp, const Bias_correction &query_bc, sequence subject, vector<Seed_hit>::const_iterator begin, vector<Seed_hit>::const_iterator end, bool log, std::list<Hsp_data> &hsps, std::list<Hsp_traits> &ts);
-int greedy_align(sequence query, const Long_score_profile &qp, const Bias_correction &query_bc, sequence subject, bool log, std::list<Hsp_data> &hsps, std::list<Hsp_traits> &ts, int cutoff);
+int greedy_align(sequence query, const Long_score_profile &qp, const Bias_correction &query_bc, sequence subject, vector<Seed_hit>::const_iterator begin, vector<Seed_hit>::const_iterator end, bool log, std::list<Hsp_data> &hsps, std::list<Hsp_traits> &ts, unsigned frame);
+int greedy_align(sequence query, const Long_score_profile &qp, const Bias_correction &query_bc, sequence subject, bool log, std::list<Hsp_data> &hsps, std::list<Hsp_traits>::const_iterator t_begin, std::list<Hsp_traits>::const_iterator t_end, std::list<Hsp_traits> &ts, int cutoff, unsigned frame);
 int estimate_score(const Long_score_profile &qp, sequence s, int d, int d1, bool log);
 
 template<typename _t>

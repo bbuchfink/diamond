@@ -120,7 +120,7 @@ struct Dp_matrix
 	{
 		score_.init(query_len + 1, subject_len + 1, 0);
 		hgap_.clear();
-		hgap_.insert(hgap_.end(), query_len, std::numeric_limits<int>::min() + 1);
+		hgap_.insert(hgap_.end(), query_len, std::numeric_limits<int>::min() + score_matrix.gap_extend());
 		int *score = score_.last();
 		int g = -score_matrix.gap_open() - score_matrix.gap_extend();
 		for (int i = 1; i <= query_len; ++i)
@@ -156,7 +156,7 @@ const Fixed_score_buffer<_score>& needleman_wunsch(sequence query, sequence subj
 
 	for (int j = 0; j < (int)subject.length(); ++j) {
 		typename Dp_matrix<_score,_mode>::Column_iterator it = mtx.column(j);
-		_score vgap = std::numeric_limits<int>::min() + 1;
+		_score vgap = std::numeric_limits<int>::min() + gap_extend;
 		for (; it.valid(); ++it) {
 			const _score match_score = score_matrix(subject[j], query[it.row()]);
 			const _score s = saturate<_score, _mode>(max(max(it.diag() + match_score, vgap), it.hgap()));

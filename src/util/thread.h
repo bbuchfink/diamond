@@ -83,18 +83,14 @@ void launch_thread_pool(_context &context, unsigned threads)
 	vector<tthread::thread*> t;
 	vector<Thread_p<_context> > p;
 	p.reserve(threads);
-	unsigned n = 0;
 	for(unsigned i=0;i<threads;++i) {
 		p.push_back(Thread_p<_context> (i, context));
 		t.push_back(new tthread::thread(pool_worker<_context>, (void*)&p.back()));
-		n += t.back()->get_id() == tthread::thread::id () ? 0 : 1;
 	}
-	for(vector<tthread::thread*>::iterator i=t.begin();i!=t.end();++i) {
+	for (vector<tthread::thread*>::iterator i = t.begin(); i != t.end(); ++i) {
 		(*i)->join();
 		delete *i;
 	}
-	if(n != threads)
-		throw std::runtime_error("Failed to create thread.");
 }
 
 template<typename _context>

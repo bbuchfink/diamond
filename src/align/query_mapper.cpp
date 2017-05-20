@@ -38,7 +38,7 @@ Query_mapper::Query_mapper() :
 
 int Query_mapper::raw_score_cutoff() const
 {
-	return score_matrix.rawscore(config.min_bit_score == 0 ? score_matrix.bitscore(config.max_evalue, ref_header.letters, query_seq(0).length()) : config.min_bit_score);
+	return score_matrix.rawscore(config.min_bit_score == 0 ? score_matrix.bitscore(config.max_evalue, ref_header.letters, (unsigned)query_seq(0).length()) : config.min_bit_score);
 }
 
 Query_mapper::Query_mapper(size_t query_id, Trace_pt_list::iterator begin, Trace_pt_list::iterator end) :
@@ -132,13 +132,13 @@ void Query_mapper::rank_targets(double ratio)
 {
 	std::sort(targets.begin(), targets.end(), Target::compare);
 
-	unsigned score = 0;
+	int score = 0;
 	if (config.toppercent < 100) {
-		score = unsigned((double)targets[0].filter_score * (1.0 - config.toppercent / 100.0) * ratio);
+		score = int((double)targets[0].filter_score * (1.0 - config.toppercent / 100.0) * ratio);
 	}
 	else {
 		size_t min_idx = std::min(targets.size(), (size_t)config.max_alignments);
-		score = unsigned((double)targets[min_idx - 1].filter_score * ratio);
+		score = int((double)targets[min_idx - 1].filter_score * ratio);
 	}
 
 	unsigned i = 0;
@@ -243,7 +243,7 @@ bool Query_mapper::generate_output(Text_buffer &buffer, Statistics &stat)
 		else
 			Intermediate_record::finish_query(buffer, seek_pos);
 	}
-	else if (!blocked_processing && *output_format != Output_format::daa && config.report_unaligned != 0 && config.load_balancing == Config::target_parallel) {
+	else if (!blocked_processing && *output_format != Output_format::daa && config.report_unaligned != 0) {
 		output_format->print_query_intro(query_id, query_title, source_query_len, buffer, true);
 		output_format->print_query_epilog(buffer, true);
 	}

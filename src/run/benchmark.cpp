@@ -187,19 +187,19 @@ void benchmark_greedy(const Sequence_set &ss, unsigned qa, unsigned sa)
 	d2.push_back(Seed_hit(0, 0, sa, qa, xdrop_ungapped(ss[0],ss[1],qa,sa)));
 	Long_score_profile qp(ss[0]);
 	list<Hsp_data> hsp;
-	list<Hsp_traits> traits;
+	list<Hsp_traits> traits, traits2;
 	Bias_correction query_bc(ss[0]);
 	const int d = (int)qa - (int)sa, band = 7;
-	greedy_align(ss[0], qp, query_bc, ss[1], d2.begin(), d2.end(), true, hsp, traits);
-	greedy_align(ss[0], qp, query_bc, ss[1], true, hsp, traits, 50);
+	greedy_align(ss[0], qp, query_bc, ss[1], d2.begin(), d2.end(), true, hsp, traits, 0);
+	greedy_align(ss[0], qp, query_bc, ss[1], true, hsp, traits.begin(), traits.end(), traits2, 50, 0);
 	
 	Timer t;
 	t.start();
 
 	for (unsigned i = 0; i < n; ++i) {
 		traits.clear();
-		greedy_align(ss[0], qp, query_bc, ss[1], d2.begin(), d2.end(), false, hsp, traits);
-		greedy_align(ss[0], qp, query_bc, ss[1], false, hsp, traits, 50);
+		greedy_align(ss[0], qp, query_bc, ss[1], d2.begin(), d2.end(), true, hsp, traits, 0);
+		greedy_align(ss[0], qp, query_bc, ss[1], true, hsp, traits.begin(), traits.end(), traits2, 50, 0);
 	}
 	t.stop();
 

@@ -37,7 +37,6 @@ struct Target
 	Target(size_t begin, unsigned subject_id) :
 		subject_id(subject_id),
 		filter_score(0),
-		filter_frame(0),
 		outranked(false),
 		begin(begin)
 	{}		
@@ -45,7 +44,8 @@ struct Target
 	{
 		return lhs->filter_score > rhs->filter_score;
 	}
-	unsigned subject_id, filter_score, filter_frame;
+	unsigned subject_id;
+	int filter_score;
 	float filter_time;
 	bool outranked;
 	size_t begin, end;

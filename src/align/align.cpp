@@ -95,7 +95,13 @@ void align_worker(size_t thread_id)
 	Statistics stat;
 	while ((query = Simple_query_queue::get().get(begin, end)) != Simple_query_queue::end) {
 		if (end == begin) {
-			Output_sink::get().push(query, 0);
+			Text_buffer *buf = 0;
+			if (!blocked_processing && *output_format != Output_format::daa && config.report_unaligned != 0) {
+				buf = new Text_buffer;
+				output_format->print_query_intro(query, query_ids::get()[query].c_str(), get_source_query_len((unsigned)query), *buf, true);
+				output_format->print_query_epilog(*buf, true);
+			}
+			Output_sink::get().push(query, buf);
 			continue;
 		}
 		Query_mapper mapper(query, begin, end);
@@ -109,7 +115,7 @@ void align_worker(size_t thread_id)
 			if (config.ext != Config::most_greedy) {
 				mapper.rank_targets(config.rank_ratio == -1 ? (mapper.query_seq(0).length() > 50 ? 0.6 : 0.9) : config.rank_ratio);
 				stat.inc(Statistics::TARGET_HITS1, mapper.n_targets());
-				const int cutoff = mapper.raw_score_cutoff() * config.score_ratio;
+				const int cutoff = int(mapper.raw_score_cutoff() * config.score_ratio);
 				for (size_t i = 0; i < mapper.n_targets(); ++i)
 					mapper.greedy_stage(i, stat, cutoff);
 				mapper.rank_targets(config.rank_ratio2 == -1 ? (mapper.query_seq(0).length() > 50 ? 0.95 : 1.0) : config.rank_ratio2);

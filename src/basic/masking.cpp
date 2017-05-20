@@ -24,10 +24,10 @@ const uint8_t Masking::bit_mask = 128;
 Masking::Masking(const Score_matrix &score_matrix)
 {
 	const double lambda = score_matrix.lambda(); // 0.324032
-	for (int i = 0; i < size; ++i) {
+	for (unsigned i = 0; i < size; ++i) {
 		mask_table_x_[i] = value_traits.mask_char;
 		mask_table_bit_[i] = (uint8_t)i | bit_mask;
-		for (int j = 0; j < size; ++j)
+		for (unsigned j = 0; j < size; ++j)
 			if (i < value_traits.alphabet_size && j < value_traits.alphabet_size)
 				likelihoodRatioMatrix_[i][j] = exp(lambda * score_matrix(i, j));
 	}
