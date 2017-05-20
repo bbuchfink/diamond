@@ -28,6 +28,7 @@ freely, subject to the following restrictions:
 
 #if defined(_TTHREAD_POSIX_)
   #include <unistd.h>
+#include <pthread.h>
   #include <map>
 #elif defined(_TTHREAD_WIN32_)
   #include <process.h>

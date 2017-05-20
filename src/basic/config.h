@@ -69,7 +69,6 @@ struct Config
 	int		gap_open;
 	int		gap_extend;
 	string	matrix;
-	string	seg;
 	bool debug_log, verbose, quiet;
 	bool		salltitles;
 	int		reward;

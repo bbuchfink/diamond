@@ -346,9 +346,6 @@ Config::Config(int argc, const char **argv)
 		init_cbs();
 		raw_ungapped_xdrop = score_matrix.rawscore(ungapped_xdrop);
 
-		if (seg == "" && command == blastx)
-			seg = "yes";
-		verbose_stream << "SEG masking = " << (seg == "yes") << endl;
 #ifdef __SSSE3__
 		verbose_stream << "SSSE3 enabled." << endl;
 #endif
