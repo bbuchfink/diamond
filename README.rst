@@ -8,7 +8,7 @@ Please read the `manual <https://github.com/bbuchfink/diamond/raw/master/diamond
 
 Installing the software on your system may be done by downloading it in binary format for immediate use::
 
-    wget http://github.com/bbuchfink/diamond/releases/download/v0.8.38/diamond-linux64.tar.gz
+    wget http://github.com/bbuchfink/diamond/releases/download/v0.9.0/diamond-linux64.tar.gz
     tar xzf diamond-linux64.tar.gz
 
 The extracted ``diamond`` binary file should be moved to a directory contained in your executable search path (PATH environment variable).
@@ -29,6 +29,7 @@ The output file here is specified with the ``–o`` option and named ``matches.m
   - The program may use quite a lot of memory and also temporary disk space. Should the program fail due to running out of either one, you need to set a lower value for the block size parameter ``-b`` (see the `manual <https://github.com/bbuchfink/diamond/raw/master/diamond_manual.pdf>`_).
   - The default (fast) mode was mainly designed for short reads. For longer sequences, the sensitive modes (options ``--sensitive`` or ``--more-sensitive``) are recommended.
   - The runtime of the program is not linear in the size of the query file and it is much more efficient for large query files (> 1 million sequences) than for smaller ones.
+  - Low complexity masking is applied to the query and reference sequences by default. Masked residues appear in the output as X.
   - The default e-value cutoff of DIAMOND is 0.001 while that of BLAST is 10, so by default the program will search a lot more stringently than BLAST and not report weak hits.  
 About
 =====
