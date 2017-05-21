@@ -24,7 +24,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "sequence.h"
 #include "masking.h"
 
-const char* Const::version_string = "0.9.0";
+const char* Const::version_string = "0.9.1";
 const char* Const::program_name = "diamond";
 const char* Const::id_delimiters = " \a\b\f\n\r\t\v";
 
@@ -73,8 +73,8 @@ unsigned Align_mode::from_command(unsigned command)
 
 Align_mode align_mode (Align_mode::blastp);
 
-Reduction Reduction::reduction("KREDQN C G H M F Y ILV W P STA");
-//Reduction Reduction::reduction("A KR EDNQ C G H ILVM FYW P ST"); // murphy.10
+//Reduction Reduction::reduction("KREDQN C G H M F Y ILV W P STA");
+Reduction Reduction::reduction("A KR EDNQ C G H ILVM FYW P ST"); // murphy.10
 //const Reduction Reduction::reduction("G D N AEFIKLMQRVW Y H C T S P"); // gmbr.10
 //const Reduction Reduction::reduction("EKQR IV LY F AM W HT C DNS"); // dssp.10
 //const Reduction Reduction::reduction("K R E D Q N C G H M F Y I L V W P S T A");
@@ -82,8 +82,8 @@ Reduction Reduction::reduction("KREDQN C G H M F Y ILV W P STA");
 Statistics statistics;
 
 const char* shape_codes[][Const::max_shapes] = {
-	{ "111101011101111", "111011001100101111", "1111001001010001001111", "111100101000010010010111", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },				// 4x12
-	{ "1111011111",		// 16x9
+	{ "111101011101111", "111011001100101111", "1111001001010001001111", "111100101000010010010111", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },				// 0 4x12
+	{ "1111011111",		// 1 16x9
 	"111001101111",
 	"11101100101011",
 	"11010010111011",
@@ -100,7 +100,7 @@ const char* shape_codes[][Const::max_shapes] = {
 	"1101000100100000100000111",
 	"1110001000100000001010011" },
 	{
-		"11001011",		// 16x5
+		"11001011",		// 2 16x5
 		"101010011",
 	"100110101",
 	"1110000101",
@@ -118,7 +118,7 @@ const char* shape_codes[][Const::max_shapes] = {
 	"10010000100000000000011" },
 
 	{
-		"11101011", // 16x6
+		"11101011", // 3 16x6
 "110100111",
 "11001000111",
 "1100001001011",
@@ -136,7 +136,7 @@ const char* shape_codes[][Const::max_shapes] = {
 "101000010000000000010011"
 	},
 
-	{ "1110010111", // 16x7
+	{ "1110010111", // 4 16x7
 	"11001101011",
 	"1101001000111",
 	"11100010010011",
@@ -155,7 +155,7 @@ const char* shape_codes[][Const::max_shapes] = {
 
 	},
 	{
-		"101011",		// 16x4
+		"101011",		// 5 16x4
 		"110011",
 	"110000101",
 	"1001000011",
@@ -171,7 +171,10 @@ const char* shape_codes[][Const::max_shapes] = {
 	"101000000000000011",
 	"100010000000000000101",
 	"1000100000000000100001"
-	}
+	},
+	{
+		"111010110110111","111001010101001111","1110110010001101011","11110010000100100010111",0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, // 6 4x11
+{	"1110101101111","1110110100010111","10110110001001000111","111010001000010010111",0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 } // 7 4x10
 };
 
 shape_config shapes;

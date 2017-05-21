@@ -21,7 +21,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "shape.h"
 
-extern const char* shape_codes[6][Const::max_shapes];
+extern const char* shape_codes[8][Const::max_shapes];
 
 class shape_config
 {
