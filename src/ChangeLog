@@ -1,3 +1,6 @@
+[0.9.1]
+- fixed a performance issue
+
 [0.9.0]
 - improved performance
 - improved support for alignments with long gaps
