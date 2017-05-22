@@ -355,15 +355,15 @@ Config::Config(int argc, const char **argv)
 		verbose_stream << "Reduction: " << Reduction::reduction << endl;
 
 		if (mode_more_sensitive) {
-			set_option(index_mode, 1u);
+			set_option(index_mode, 9u);
 			set_option(freq_sd, 200.0);
 		}
 		else if (mode_sensitive) {
-			set_option(index_mode, 1u);
+			set_option(index_mode, 9u);
 			set_option(freq_sd, 10.0);
 		}
 		else {
-			set_option(index_mode, 0u);
+			set_option(index_mode, 8u);
 			set_option(freq_sd, 50.0);
 		}
 
