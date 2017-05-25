@@ -26,13 +26,37 @@ char* sorted_list::alloc_buffer(const Partitioned_histogram &hst)
 sorted_list::sorted_list()
 {}
 
-sorted_list::sorted_list(char *buffer, const Sequence_set &seqs, const shape &sh, const shape_histogram &hst, const seedp_range &range, const vector<size_t> seq_partition, const Seed_set *filter) :
+struct Build_callback
+{
+	Build_callback(const seedp_range &range, sorted_list::entry* const* ptr, const Seed_set *filter):
+		range(range),
+		filter(filter),
+		it(new sorted_list::buffered_iterator(ptr))
+	{ }
+	void operator()(uint64_t seed, uint64_t pos, size_t shape)
+	{		
+		if (filter == 0 || filter->contains(seed))
+			it->push(seed, pos, range);
+	}
+	void finish()
+	{
+		it->flush();
+	}
+	const seedp_range &range;
+	const Seed_set *filter;
+	auto_ptr<sorted_list::buffered_iterator> it;
+};
+
+sorted_list::sorted_list(char *buffer, const Sequence_set &seqs, size_t sh, const shape_histogram &hst, const seedp_range &range, const vector<size_t> seq_partition, const Seed_set *filter) :
 	limits_(hst, range),
 	data_(reinterpret_cast<entry*>(buffer))
 {
 	task_timer timer("Building seed list", 3);
-	Build_context build_context(seqs, sh, range, build_iterators(hst), seq_partition, filter);
-	launch_scheduled_thread_pool(build_context, unsigned(seq_partition.size() - 1), config.threads_);
+	Ptr_set iterators(build_iterators(hst));
+	vector<Build_callback> cb;
+	for (size_t i = 0; i < seq_partition.size() - 1; ++i)
+		cb.push_back(Build_callback(range, iterators[i].begin(), filter));
+	seqs.enum_seeds(cb, seq_partition, sh, sh + 1);
 	timer.go("Sorting seed list");
 	Sort_context sort_context(*this);
 	launch_scheduled_thread_pool(sort_context, Const::seedp, config.threads_);

@@ -27,6 +27,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "string_set.h"
 #include "../util/thread.h"
 #include "../basic/shape_config.h"
+#include "../basic/seed_iterator.h"
 
 using std::cout;
 using std::endl;
@@ -56,6 +57,14 @@ struct Sequence_set : public String_set<'\xff', 1>
 			min = this->length(i) >= min_len ? std::min(this->length(i), min) : min;
 		}
 		return pair<size_t, size_t>(min, max);
+	}
+
+	size_t max_len(size_t begin, size_t end) const
+	{
+		size_t max = 0;
+		for (size_t i = begin; i < end; ++i)
+			max = std::max(this->length(i), max);
+		return max;
 	}
 
 	sequence window_infix(size_t offset, unsigned &left) const
@@ -128,7 +137,7 @@ struct Sequence_set : public String_set<'\xff', 1>
 	{
 		Thread_pool threads;
 		for (unsigned i = 0; i < f.size(); ++i)
-			threads.push_back(launch_thread(enum_seeds_worker<_f>, &f[i], this, (unsigned)p[i], (unsigned)p[i + 1]));
+			threads.push_back(launch_thread(enum_seeds_worker<_f>, &f[i], this, (unsigned)p[i], (unsigned)p[i + 1], std::make_pair(shape_begin, shape_end)));
 		threads.join_all();
 	}
 
@@ -138,21 +147,89 @@ struct Sequence_set : public String_set<'\xff', 1>
 private:
 
 	template<typename _f>
-	static void enum_seeds_worker(_f *f, const Sequence_set *seqs, unsigned begin, unsigned end, size_t shape_begin, size_t shape_end)
+	void enum_seeds(_f *f, unsigned begin, unsigned end, pair<size_t, size_t> shape_range) const
 	{
+		vector<char> buf(max_len(begin, end));
 		uint64_t key;
 		for (unsigned i = begin; i < end; ++i) {
-			const sequence seq = (*seqs)[i];
-			for (unsigned shape_id = shape_begin; shape_id < shape_end ++shape_id) {
+			const sequence seq = (*this)[i];
+			Reduction::reduce_seq(seq, buf);
+			for (size_t shape_id = shape_range.first; shape_id < shape_range.second; ++shape_id) {
 				const shape& sh = shapes[shape_id];
 				if (seq.length() < sh.length_) continue;
-				for (unsigned j = 0; j < seq.length() - sh.length_ + 1; ++j) {
-					if (sh.set_seed(key, &seq[j]))
-						(*f)(key, seqs->position(i, j), shape_id);
+				Seed_iterator it(buf, sh);
+				size_t j = 0;
+				while (it.good()) {
+					if (it.get(key, sh))
+						(*f)(key, position(i, j), shape_id);
+					++j;
 				}
 			}
 		}
 		f->finish();
+	}
+
+	template<typename _f, typename _it>
+	void enum_seeds_contiguous(_f *f, unsigned begin, unsigned end, pair<size_t, size_t> shape_range) const
+	{
+		uint64_t key;
+		for (unsigned i = begin; i < end; ++i) {
+			const sequence seq = (*this)[i];
+			for (size_t shape_id = shape_range.first; shape_id < shape_range.second; ++shape_id) {
+				const shape& sh = shapes[shape_id];
+				if (seq.length() < sh.length_) continue;
+				_it it(seq, sh);
+				size_t j = 0;
+				while (it.good()) {
+					if (it.get(key, sh))
+						(*f)(key, position(i, j), shape_id);
+					++j;
+				}
+			}
+		}
+		f->finish();
+	}
+
+	template<typename _f>
+	static void enum_seeds_worker(_f *f, const Sequence_set *seqs, unsigned begin, unsigned end, pair<size_t,size_t> shape_range)
+	{
+		static const char *errmsg = "Unsupported contiguous seed.";
+		if (shape_range.second - shape_range.first == 1 && shapes[shape_range.first].contiguous()) {
+			const uint64_t b = Reduction::reduction.bit_size(), l = shapes[shape_range.first].length_;
+			switch (l) {
+			case 7:
+				switch (b) {
+				case 4:
+					seqs->enum_seeds_contiguous<_f, Contiguous_seed_iterator<7, 4> >(f, begin, end, shape_range);
+					break;
+				default:
+					throw std::runtime_error(errmsg);
+				}
+				break;
+			case 6:
+				switch (b) {
+				case 4:
+					seqs->enum_seeds_contiguous<_f, Contiguous_seed_iterator<6, 4> >(f, begin, end, shape_range);
+					break;
+				default:
+					throw std::runtime_error(errmsg);
+				}
+				break;
+			case 5:
+				switch (b) {
+				case 4:
+					seqs->enum_seeds_contiguous<_f, Contiguous_seed_iterator<5, 4> >(f, begin, end, shape_range);
+					break;
+				default:
+					throw std::runtime_error(errmsg);
+				}
+				break;
+			default:
+				throw std::runtime_error(errmsg);
+			}
+		}
+		else
+			seqs->enum_seeds<_f>(f, begin, end, shape_range);
 	}
 
 };

@@ -75,7 +75,7 @@ void process_shape(unsigned sid,
 		task_timer timer("Building reference index", true);
 		sorted_list ref_idx(ref_buffer,
 			*ref_seqs::data_,
-			shapes[sid],
+			sid,
 			ref_hst.get(sid),
 			range,
 			ref_hst.partition(),
@@ -84,7 +84,7 @@ void process_shape(unsigned sid,
 		timer.go("Building query index");
 		sorted_list query_idx(query_buffer,
 			*query_seqs::data_,
-			shapes[sid],
+			sid,
 			query_hst.get(sid),
 			range,
 			query_hst.partition());
@@ -108,7 +108,7 @@ void run_ref_chunk(Database_file &db_file,
 {
 	task_timer timer("Building reference histograms");
 	const pair<size_t, size_t> len_bounds = ref_seqs::data_->len_bounds(shapes[0].length_);
-	ref_hst = Partitioned_histogram(*ref_seqs::data_, (unsigned)len_bounds.second, query_seeds);
+	ref_hst = Partitioned_histogram(*ref_seqs::data_, query_seeds);
 
 	ref_map.init(safe_cast<unsigned>(ref_seqs::get().get_length()));
 
@@ -166,7 +166,7 @@ void run_query_chunk(Database_file &db_file,
 
 	if (config.algo == Config::query_indexed) {
 		timer.go("Building query seed set");
-		query_seeds = new Seed_set(query_seqs::get(), shapes[0]);
+		query_seeds = new Seed_set(query_seqs::get());
 	}
 
 	timer.finish();
@@ -236,7 +236,7 @@ void master_thread(Database_file &db_file, Timer &total_timer)
 		timer.go("Building query histograms");
 		const pair<size_t, size_t> query_len_bounds = query_seqs::data_->len_bounds(shapes[0].length_);
 		setup_search_params(query_len_bounds, 0);
-		query_hst = Partitioned_histogram(*query_seqs::data_, (unsigned)query_len_bounds.second);
+		query_hst = Partitioned_histogram(*query_seqs::data_);
 		timer.finish();
 		//const bool long_addressing_query = query_seqs::data_->raw_len() > (size_t)std::numeric_limits<uint32_t>::max();
 

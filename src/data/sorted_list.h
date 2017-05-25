@@ -49,7 +49,7 @@ struct sorted_list
 
 	static char* alloc_buffer(const Partitioned_histogram &hst);
 	sorted_list();
-	sorted_list(char *buffer, const Sequence_set &seqs, const shape &sh, const shape_histogram &hst, const seedp_range &range, const vector<size_t> seq_partition, const Seed_set *filter = 0);
+	sorted_list(char *buffer, const Sequence_set &seqs, size_t sh, const shape_histogram &hst, const seedp_range &range, const vector<size_t> seq_partition, const Seed_set *filter = 0);
 
 	template<typename _t>
 	struct Iterator_base
@@ -123,6 +123,8 @@ struct sorted_list
 
 private:
 
+	friend struct Build_callback;
+
 	typedef vector<Array<entry*, Const::seedp> > Ptr_set;
 
 	struct buffered_iterator
@@ -164,34 +166,6 @@ private:
 	entry* ptr_end(unsigned i) const;
 	const entry* cptr_begin(unsigned i) const;
 	const entry* cptr_end(unsigned i) const;
-
-	struct Build_context
-	{
-		Build_context(const Sequence_set &seqs, const shape &sh, const seedp_range &range, const Ptr_set &iterators, const vector<size_t> &seq_partition, const Seed_set *filter):
-			seqs (seqs),
-			sh (sh),
-			range (range),
-			iterators (iterators),
-			seq_partition (seq_partition),
-			filter(filter)
-		{ }
-		void operator()(unsigned thread_id, unsigned seqp) const
-		{
-			build_seqp(seqs,
-				seq_partition[seqp],
-				seq_partition[seqp + 1],
-				iterators[seqp].begin(),
-				sh,
-				range,
-				filter);
-		}
-		const Sequence_set &seqs;
-		const shape &sh;
-		const seedp_range &range;
-		const Ptr_set iterators;
-		const vector<size_t> &seq_partition;
-		const Seed_set *filter;
-	};
 
 	static void build_seqp(const Sequence_set &seqs, size_t begin, size_t end, entry* const* ptr, const shape &sh, const seedp_range &range, const Seed_set *filter);
 	Ptr_set build_iterators(const shape_histogram &hst) const;

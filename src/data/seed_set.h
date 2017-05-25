@@ -23,7 +23,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 struct Seed_set
 {
-	Seed_set(const Sequence_set &seqs, const shape &sh);
+	Seed_set(const Sequence_set &seqs);
 	bool contains(uint64_t key) const
 	{
 		return data_[key];

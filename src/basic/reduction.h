@@ -53,6 +53,11 @@ struct Reduction
 		return size_;
 	}
 
+	uint64_t bit_size() const
+	{
+		return (uint64_t)ceil(log(size_) / log(2));
+	}
+
 	unsigned operator()(Letter a) const
 	{
 		return map_[(long)a];

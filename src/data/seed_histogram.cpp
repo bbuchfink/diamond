@@ -23,16 +23,38 @@ seedp_range current_range;
 Partitioned_histogram::Partitioned_histogram()
 { }
 
-Partitioned_histogram::Partitioned_histogram(const Sequence_set &seqs, unsigned longest, const Seed_set *filter) :
+struct Histogram_callback
+{
+	Histogram_callback(size_t seqp, vector<shape_histogram> &data, const Seed_set *filter):
+		filter(filter)
+	{
+		for (unsigned s = 0; s < shapes.count(); ++s)
+			ptr.push_back(data[s][seqp].begin());
+	}
+	void operator()(uint64_t seed, uint64_t pos, size_t shape)
+	{
+		if (filter == 0 || filter->contains(seed))
+			++ptr[shape][seed_partition(seed)];
+	}
+	void finish() const
+	{
+	}
+	vector<unsigned*> ptr;
+	const Seed_set *filter;
+};
+
+Partitioned_histogram::Partitioned_histogram(const Sequence_set &seqs, const Seed_set *filter) :
 	data_(shapes.count()),
-	p_(seqs.partition(config.threads_ * 4))
+	p_(seqs.partition(config.threads_))
 {
 	for (unsigned s = 0; s < shapes.count(); ++s) {
 		data_[s].resize(p_.size() - 1);
 		memset(data_[s].data(), 0, (p_.size() - 1)*sizeof(unsigned)*Const::seedp);
 	}
-	Build_context context(seqs, *this, longest, filter);
-	launch_scheduled_thread_pool(context, (unsigned)(p_.size() - 1), (unsigned)(p_.size() - 1));
+	vector<Histogram_callback> cb;
+	for (size_t i = 0; i < p_.size() - 1; ++i)
+		cb.push_back(Histogram_callback(i, data_, filter));
+	seqs.enum_seeds(cb, p_, 0, shapes.count());
 }
 
 size_t Partitioned_histogram::max_chunk_size() const

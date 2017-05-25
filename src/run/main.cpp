@@ -26,7 +26,6 @@ using std::cout;
 using std::cerr;
 using std::endl;
 
-void run_mapper();
 void master_thread_di();
 void model_seqs();
 void opt();
@@ -52,10 +51,7 @@ int main(int ac, const char* av[])
 			break;
 		case Config::blastp:
 		case Config::blastx:
-			if (config.algo == Config::subject_indexed)
-				run_mapper();
-			else
-				master_thread_di();
+			master_thread_di();
 			break;
 		case Config::view:
 			view();

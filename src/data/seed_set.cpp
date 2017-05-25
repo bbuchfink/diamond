@@ -18,18 +18,26 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "seed_set.h"
 
-Seed_set::Seed_set(const Sequence_set &seqs, const shape &sh):
-	data_((size_t)pow(Reduction::reduction.size(), sh.length_))
+struct Seed_set_callback
 {
-	uint64_t key;
-	const size_t n = seqs.get_length();
-	for (size_t i = 0; i < n; ++i) {
-		const sequence seq = seqs[i];
-		if (seq.length() < sh.length_) continue;
-		const size_t j1 = seq.length() - sh.length_ + 1;
-		for (size_t j = 0; j < j1; ++j) {
-			if (sh.set_seed(key, &seq[j]))
-				data_[key] = true;
-		}
+	Seed_set_callback(vector<bool> &data):
+		data(data)
+	{}
+	void operator()(uint64_t seed, uint64_t pos, uint64_t shape)
+	{
+		data[seed] = true;
 	}
+	void finish()
+	{}
+	vector<bool> &data;
+};
+
+Seed_set::Seed_set(const Sequence_set &seqs):
+	data_((size_t)pow(1llu<<Reduction::reduction.bit_size(), shapes[0].length_))
+{
+	if (!shapes[0].contiguous())
+		throw std::runtime_error("Contiguous seed required.");
+	vector<Seed_set_callback> v;
+	v.push_back(Seed_set_callback(data_));
+	seqs.enum_seeds(v, seqs.partition(1), 0, 1);
 }

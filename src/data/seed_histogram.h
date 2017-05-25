@@ -85,7 +85,7 @@ struct Partitioned_histogram
 {
 
 	Partitioned_histogram();
-	Partitioned_histogram(const Sequence_set &seqs, unsigned longest, const Seed_set *filter = 0);
+	Partitioned_histogram(const Sequence_set &seqs, const Seed_set *filter = 0);
 
 	const shape_histogram& get(unsigned sid) const
 	{ return data_[sid]; }

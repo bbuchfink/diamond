@@ -16,6 +16,9 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
+#ifndef SEED_ITERATOR_H_
+#define SEED_ITERATOR_H_
+
 #include "shape.h"
 #include "sequence.h"
 
@@ -40,13 +43,13 @@ private:
 template<uint64_t _l, uint64_t _b>
 struct Contiguous_seed_iterator
 {
-	Contiguous_seed_iterator(vector<char> &seq) :
+	Contiguous_seed_iterator(const sequence &seq, const shape &sh) :
 		ptr_(seq.data()),
-		end_(ptr_ + seq.size()),
+		end_(ptr_ + seq.length()),
 		last_(0)
 	{
 		for (uint64_t i = 0; i < _l - 1; ++i)
-			last_ = (last_ << _b) | *(ptr_++);
+			last_ = (last_ << _b) | Reduction::reduction(*(ptr_++));
 	}
 	bool good() const
 	{
@@ -59,7 +62,7 @@ struct Contiguous_seed_iterator
 		const char l = *(ptr_++);
 		if (l == value_traits.mask_char)
 			return false;
-		last_ |= l;
+		last_ |= Reduction::reduction(l);
 		seed = last_;
 		return true;
 	}
@@ -67,3 +70,5 @@ private:
 	const char *ptr_, *end_;
 	uint64_t last_;
 };
+
+#endif

@@ -52,7 +52,7 @@ public:
 	unsigned count() const
 	{ return n_; }
 
-	const shape& operator[](unsigned i) const
+	const shape& operator[](size_t i) const
 	{ return shapes_[i]; }
 
 	unsigned mode() const

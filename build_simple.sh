@@ -27,7 +27,6 @@ g++ -DNDEBUG -O3 -Wno-deprecated-declarations $1 $2 \
   src/search/stage2.cpp \
   src/output/output_format.cpp \
   src/output/join_blocks.cpp \
-  src/run/mapper.cpp \
   src/data/count_approximate.cpp \
   src/data/index.cpp \
   src/data/frequent_seeds.cpp \
