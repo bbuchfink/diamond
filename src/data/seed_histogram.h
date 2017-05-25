@@ -25,6 +25,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../basic/shape_config.h"
 #include "../util/thread.h"
 #include "../basic/seed_iterator.h"
+#include "seed_set.h"
 
 using std::vector;
 
@@ -83,33 +84,13 @@ inline size_t hst_size(const shape_histogram &hst, const seedp_range &range)
 struct Partitioned_histogram
 {
 
-	Partitioned_histogram()
-	{ }
-
-	Partitioned_histogram(const Sequence_set &seqs, unsigned longest):
-		data_(shapes.count()),
-		p_(seqs.partition(config.threads_*4))
-	{
-		for (unsigned s = 0; s < shapes.count(); ++s) {
-			data_[s].resize(p_.size() - 1);
-			memset(data_[s].data(), 0, (p_.size() - 1)*sizeof(unsigned)*Const::seedp);
-		}
-		Build_context context (seqs, *this, longest);
-		launch_scheduled_thread_pool(context, (unsigned)(p_.size() - 1), (unsigned)(p_.size() - 1));
-	}
+	Partitioned_histogram();
+	Partitioned_histogram(const Sequence_set &seqs, unsigned longest, const Seed_set *filter = 0);
 
 	const shape_histogram& get(unsigned sid) const
 	{ return data_[sid]; }
 
-	size_t max_chunk_size() const
-	{
-		size_t max = 0;
-		::partition<unsigned> p(Const::seedp, config.lowmem);
-		for (unsigned shape = 0; shape < shapes.count(); ++shape)
-			for (unsigned chunk = 0; chunk < p.parts; ++chunk)
-				max = std::max(max, hst_size(data_[shape], seedp_range(p.getMin(chunk), p.getMax(chunk))));
-		return max;
-	}
+	size_t max_chunk_size() const;
 
 	const vector<size_t>& partition() const
 	{
@@ -120,45 +101,29 @@ private:
 
 	struct Build_context
 	{
-		Build_context(const Sequence_set &seqs, Partitioned_histogram &hst, unsigned longest):
+		Build_context(const Sequence_set &seqs, Partitioned_histogram &hst, unsigned longest, const Seed_set *filter):
 			seqs (seqs),
 			hst (hst),
-			longest(longest)
+			longest(longest),
+			filter(filter)
 		{ }
 		void operator()(unsigned thread_id, unsigned seqp) const
 		{
 			vector<char> buf(longest);
-			hst.build_seq_partition(seqs, seqp, hst.p_[seqp], hst.p_[seqp+1], buf);
+			hst.build_seq_partition(seqs, seqp, hst.p_[seqp], hst.p_[seqp+1], buf, filter);
 		}
 		const Sequence_set &seqs;
 		Partitioned_histogram &hst;
 		unsigned longest;
+		const Seed_set *filter;
 	};
 
 	void build_seq_partition(const Sequence_set &seqs,
 		const unsigned seqp,
 		const size_t begin,
 		const size_t end,
-		vector<char> &buf)
-	{
-		for (size_t i = begin; i < end; ++i) {
-
-			assert(i < seqs.get_length());
-			if (seqs[i].length() == 0)
-				continue;
-			Reduction::reduce_seq(seqs[i], buf);
-
-			for (unsigned s = 0; s < shapes.count(); ++s) {
-				Seed_iterator it(buf, shapes[s]);
-				unsigned *ptr = data_[s][seqp].begin();
-				uint64_t seed;
-				while (it.good())
-					if (it.get(seed, shapes[s]))
-						++ptr[seed_partition(seed)];
-			}
-
-		}
-	}
+		vector<char> &buf,
+		const Seed_set *filter);
 
 	vector<shape_histogram> data_;
 	vector<size_t> p_;

@@ -85,6 +85,8 @@ add_executable(diamond src/run/main.cpp
   src/basic/masking.cpp
   src/dp/swipe.cpp
   src/dp/banded_sw.cpp
+  src/data/sorted_list.cpp
+  src/data/seed_set.cpp
 )
 
 target_link_libraries(diamond ${ZLIB_LIBRARY} ${CMAKE_THREAD_LIBS_INIT})

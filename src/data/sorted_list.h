@@ -47,23 +47,9 @@ struct sorted_list
 		_pos		value;
 	} PACKED_ATTRIBUTE ;
 
-	static char* alloc_buffer(const Partitioned_histogram &hst)
-	{ return new char[sizeof(entry) * hst.max_chunk_size()]; }
-
-	sorted_list()
-	{}
-
-	sorted_list(char *buffer, const Sequence_set &seqs, const shape &sh, const shape_histogram &hst, const seedp_range &range, const vector<size_t> seq_partition):
-		limits_ (hst, range),
-		data_ (reinterpret_cast<entry*>(buffer))
-	{
-		task_timer timer ("Building seed list", 3);
-		Build_context build_context (seqs, sh, range, build_iterators(hst), seq_partition);
-		launch_scheduled_thread_pool(build_context, unsigned(seq_partition.size() - 1), config.threads_);
-		timer.go("Sorting seed list");
-		Sort_context sort_context (*this);
-		launch_scheduled_thread_pool(sort_context, Const::seedp, config.threads_);
-	}
+	static char* alloc_buffer(const Partitioned_histogram &hst);
+	sorted_list();
+	sorted_list(char *buffer, const Sequence_set &seqs, const shape &sh, const shape_histogram &hst, const seedp_range &range, const vector<size_t> seq_partition, const Seed_set *filter = 0);
 
 	template<typename _t>
 	struct Iterator_base
@@ -98,11 +84,8 @@ struct sorted_list
 	typedef Iterator_base<entry> iterator;
 	typedef Iterator_base<const entry> const_iterator;
 
-	const_iterator get_partition_cbegin(unsigned p) const
-	{ return const_iterator (cptr_begin(p), cptr_end(p)); }
-
-	iterator get_partition_begin(unsigned p) const
-	{ return iterator (ptr_begin(p), ptr_end(p)); }
+	const_iterator get_partition_cbegin(unsigned p) const;
+	iterator get_partition_begin(unsigned p) const;
 
 	struct Random_access_iterator
 	{
@@ -136,10 +119,7 @@ struct sorted_list
 		return i.i - cptr_begin(p);
 	}
 
-	Random_access_iterator random_access(unsigned p, size_t offset) const
-	{
-		return Random_access_iterator(cptr_begin(p) + offset, cptr_end(p));
-	}
+	Random_access_iterator random_access(unsigned p, size_t offset) const;
 
 private:
 
@@ -180,26 +160,20 @@ private:
 		uint8_t  n[Const::seedp];
 	};
 
-	entry* ptr_begin(unsigned i) const
-	{ return &data_[limits_[i]]; }
-
-	entry* ptr_end(unsigned i) const
-	{ return &data_[limits_[i+1]]; }
-
-	const entry* cptr_begin(unsigned i) const
-	{ return &data_[limits_[i]]; }
-
-	const entry* cptr_end(unsigned i) const
-	{ return &data_[limits_[i+1]]; }
+	entry* ptr_begin(unsigned i) const;
+	entry* ptr_end(unsigned i) const;
+	const entry* cptr_begin(unsigned i) const;
+	const entry* cptr_end(unsigned i) const;
 
 	struct Build_context
 	{
-		Build_context(const Sequence_set &seqs, const shape &sh, const seedp_range &range, const Ptr_set &iterators, const vector<size_t> &seq_partition):
+		Build_context(const Sequence_set &seqs, const shape &sh, const seedp_range &range, const Ptr_set &iterators, const vector<size_t> &seq_partition, const Seed_set *filter):
 			seqs (seqs),
 			sh (sh),
 			range (range),
 			iterators (iterators),
-			seq_partition (seq_partition)
+			seq_partition (seq_partition),
+			filter(filter)
 		{ }
 		void operator()(unsigned thread_id, unsigned seqp) const
 		{
@@ -208,41 +182,19 @@ private:
 				seq_partition[seqp + 1],
 				iterators[seqp].begin(),
 				sh,
-				range);
+				range,
+				filter);
 		}
 		const Sequence_set &seqs;
 		const shape &sh;
 		const seedp_range &range;
 		const Ptr_set iterators;
 		const vector<size_t> &seq_partition;
+		const Seed_set *filter;
 	};
 
-	static void build_seqp(const Sequence_set &seqs, size_t begin, size_t end, entry* const* ptr, const shape &sh, const seedp_range &range)
-	{
-		uint64_t key;
-		auto_ptr<buffered_iterator> it (new buffered_iterator(ptr));
-		for(size_t i=begin;i<end;++i) {
-			const sequence seq = seqs[i];
-			if(seq.length()<sh.length_) continue;
-			for (unsigned j = 0; j < seq.length() - sh.length_ + 1; ++j) {
-				if (sh.set_seed(key, &seq[j]))
-					it->push(key, seqs.position(i, j), range);
-			}
-		}
-		it->flush();
-	}
-
-	Ptr_set build_iterators(const shape_histogram &hst) const
-	{
-		Ptr_set iterators (hst.size());
-		for (unsigned i = 0; i < Const::seedp; ++i)
-			iterators[0][i] = ptr_begin(i);
-
-		for (unsigned i = 1; i < hst.size(); ++i)
-			for (unsigned j = 0; j < Const::seedp; ++j)
-				iterators[i][j] = iterators[i - 1][j] + hst[i - 1][j];
-		return iterators;
-	}
+	static void build_seqp(const Sequence_set &seqs, size_t begin, size_t end, entry* const* ptr, const shape &sh, const seedp_range &range, const Seed_set *filter);
+	Ptr_set build_iterators(const shape_histogram &hst) const;
 
 	struct Sort_context
 	{

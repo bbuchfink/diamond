@@ -185,7 +185,7 @@ Config::Config(int argc, const char **argv)
 		("space-penalty", 0, "", space_penalty, 0.5)
 		("reverse", 0, "", reverse)
 		("neighborhood-score", 0, "", neighborhood_score)
-		("algo", 0, "", algo, 0u)
+		("algo", 0, "", algo, (unsigned)Config::double_indexed)
 		("seed-weight", 'w', "", seed_weight, 7u)
 		("very-sensitive", 0, "", mode_very_sensitive)
 		("idl", 0, "", id_left)
@@ -363,7 +363,10 @@ Config::Config(int argc, const char **argv)
 			set_option(freq_sd, 10.0);
 		}
 		else {
-			set_option(index_mode, 8u);
+			if (algo == double_indexed)
+				set_option(index_mode, 8u);
+			else
+				set_option(index_mode, 10u);
 			set_option(freq_sd, 50.0);
 		}
 

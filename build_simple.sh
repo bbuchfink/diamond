@@ -53,4 +53,6 @@ g++ -DNDEBUG -O3 -Wno-deprecated-declarations $1 $2 \
   src/basic/masking.cpp \
   src/dp/swipe.cpp \
   src/dp/banded_sw.cpp \
+  src/data/sorted_list.cpp \
+  src/data/seed_set.cpp \
 -lz -lpthread -o diamond

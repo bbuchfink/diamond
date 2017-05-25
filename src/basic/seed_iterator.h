@@ -36,3 +36,34 @@ struct Seed_iterator
 private:
 	const char *ptr_, *end_;
 };
+
+template<uint64_t _l, uint64_t _b>
+struct Contiguous_seed_iterator
+{
+	Contiguous_seed_iterator(vector<char> &seq) :
+		ptr_(seq.data()),
+		end_(ptr_ + seq.size()),
+		last_(0)
+	{
+		for (uint64_t i = 0; i < _l - 1; ++i)
+			last_ = (last_ << _b) | *(ptr_++);
+	}
+	bool good() const
+	{
+		return ptr_ < end_;
+	}
+	bool get(uint64_t &seed, const shape &sh)
+	{
+		last_ <<= _b;
+		last_ &= (1 << (_b*_l)) - 1;
+		const char l = *(ptr_++);
+		if (l == value_traits.mask_char)
+			return false;
+		last_ |= l;
+		seed = last_;
+		return true;
+	}
+private:
+	const char *ptr_, *end_;
+	uint64_t last_;
+};

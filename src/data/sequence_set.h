@@ -124,29 +124,12 @@ struct Sequence_set : public String_set<'\xff', 1>
 	}
 
 	template <typename _f>
-	void enum_seeds(vector<_f> &f) const
+	void enum_seeds(vector<_f> &f, const vector<size_t> &p, size_t shape_begin, size_t shape_end) const
 	{
-		const vector<size_t> p = this->partition((unsigned)f.size());
 		Thread_pool threads;
 		for (unsigned i = 0; i < f.size(); ++i)
 			threads.push_back(launch_thread(enum_seeds_worker<_f>, &f[i], this, (unsigned)p[i], (unsigned)p[i + 1]));
 		threads.join_all();
-	}
-
-	template<typename _f, typename _entry>
-	void enum_seeds_partitioned() const
-	{
-		vector<Enum_partitioned_callback<_f, _entry> > v;
-		v.reserve(config.threads_);
-		::partition<unsigned> p(Hashed_seed::p, config.threads_);
-		for (unsigned i = 0; i < config.threads_; ++i) {
-			Enum_partitioned_callback<_f, _entry> * tmp = new Enum_partitioned_callback<_f, _entry>(p.getMin(i), p.getMax(i));
-			v.push_back(*tmp);
-			delete tmp;
-		}
-		enum_seeds(v);
-		/*for (unsigned i = 0; i < config.threads_; ++i)
-			v[i].flush_queues();*/
 	}
 
 	virtual ~Sequence_set()
@@ -155,90 +138,23 @@ struct Sequence_set : public String_set<'\xff', 1>
 private:
 
 	template<typename _f>
-	static void enum_seeds_worker(_f *f, const Sequence_set *seqs, unsigned begin, unsigned end)
+	static void enum_seeds_worker(_f *f, const Sequence_set *seqs, unsigned begin, unsigned end, size_t shape_begin, size_t shape_end)
 	{
 		uint64_t key;
 		for (unsigned i = begin; i < end; ++i) {
 			const sequence seq = (*seqs)[i];
-			for (unsigned shape_id = shape_from; shape_id < shape_to; ++shape_id) {
+			for (unsigned shape_id = shape_begin; shape_id < shape_end ++shape_id) {
 				const shape& sh = shapes[shape_id];
 				if (seq.length() < sh.length_) continue;
 				for (unsigned j = 0; j < seq.length() - sh.length_ + 1; ++j) {
 					if (sh.set_seed(key, &seq[j]))
-						(*f)(Hashed_seed(key), seqs->position(i, j), shape_id);
+						(*f)(key, seqs->position(i, j), shape_id);
 				}
 			}
 		}
 		f->finish();
 	}
 
-	template<typename _f, typename _entry>
-	struct Enum_partitioned_callback
-	{
-		Enum_partitioned_callback(unsigned p_begin, unsigned p_end) :
-			p_begin(p_begin),
-			p_end(p_end)
-		{
-			memset(counts, 0, sizeof(counts));
-		}
-		void operator()(Hashed_seed seed, size_t pos, unsigned shape_id)
-		{
-			const unsigned p = seed.partition();
-			buffers[shape_id][p][counts[shape_id][p]++] = _entry(seed, pos);
-			if (counts[shape_id][p] == buffer_size)
-				flush_buffer(shape_id, p);
-			if ((pos & flush_mask) == 0 && shape_id == shape_from)
-				flush_queues();
-		}
-		void flush_buffer(unsigned shape_id, unsigned p)
-		{
-			mtx[shape_id][p].lock();
-			vector<_entry> &q = queues[shape_id][p];
-			unsigned &count = counts[shape_id][p];
-			const size_t s = q.size();
-			q.resize(s + sizeof(_entry)*count);
-			memcpy(q.data() + s, buffers[shape_id][p].begin(), sizeof(_entry)*count);
-			mtx[shape_id][p].unlock();
-			count = 0;
-		}
-		void finish()
-		{
-			for (unsigned shape_id = shape_from; shape_id < shape_to; ++shape_id)
-				for (unsigned p = 0; p < Hashed_seed::p; ++p)
-					flush_buffer(shape_id, p);
-		}
-		void flush_queues()
-		{
-			for (unsigned shape_id = shape_from; shape_id < shape_to; ++shape_id)
-				for (unsigned p = p_begin; p < p_end; ++p) {
-					mtx[shape_id][p].lock();
-					vector<_entry> &q = queues[shape_id][p];
-					const size_t size = q.size();
-					if (size == 0) {
-						mtx[shape_id][p].unlock();
-						continue;
-					}
-					out_buf.resize(size);
-					memcpy(out_buf.data(), q.data(), size * sizeof(_entry));
-					q.clear();
-					mtx[shape_id][p].unlock();
-					for (typename vector<_entry>::const_iterator i = out_buf.begin(); i != out_buf.end(); ++i)
-						_f()(shape_id, *i);
-				}
-		}
-		enum { buffer_size = 16, flush_mask = 1023 };
-		Array<_entry, buffer_size> buffers[Const::max_shapes][Hashed_seed::p];
-		unsigned counts[Const::max_shapes][Hashed_seed::p], p_begin, p_end;
-		vector<_entry> out_buf;
-		static tthread::mutex mtx[Const::max_shapes][Hashed_seed::p];
-		static vector<_entry> queues[Const::max_shapes][Hashed_seed::p];
-	};
-
 };
-
-template<typename _f, typename _entry>
-tthread::mutex Sequence_set::Enum_partitioned_callback<_f, _entry>::mtx[Const::max_shapes][Hashed_seed::p];
-template<typename _f, typename _entry>
-vector<_entry> Sequence_set::Enum_partitioned_callback<_f, _entry>::queues[Const::max_shapes][Hashed_seed::p];
 
 #endif /* SEQUENCE_SET_H_ */

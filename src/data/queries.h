@@ -24,6 +24,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "sorted_list.h"
 #include "../basic/statistics.h"
 #include "sequence_set.h"
+#include "seed_set.h"
 
 extern Partitioned_histogram query_hst;
 extern unsigned current_query_chunk;
@@ -57,5 +58,7 @@ inline unsigned get_source_query_len(unsigned query_id)
 {
 	return align_mode.query_translated ? (unsigned)query_seqs::get().reverse_translated_len(query_id*align_mode.query_contexts) : (unsigned)query_seqs::get().length(query_id);
 }
+
+extern Seed_set *query_seeds;
 
 #endif /* QUERIES_H_ */

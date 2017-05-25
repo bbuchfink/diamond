@@ -173,6 +173,7 @@ bool Database_file::load_seqs()
 		if (!config.sfilt.empty() && strstr(ref_ids::get()[n].c_str(), config.sfilt.c_str()) == 0)
 			memset(ref_seqs::data_->ptr(n), value_traits.mask_char, ref_seqs::data_->length(n));
 	}
+	timer.finish();
 	ref_seqs::get().print_stats();
 	log_stream << "Masked letters = " << masked << endl;	
 

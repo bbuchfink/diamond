@@ -195,6 +195,11 @@ struct shape
 		return true;
 	}
 
+	bool contiguous() const
+	{
+		return length_ == weight_;
+	}
+
 	uint32_t length_, weight_, positions_[Const::max_seed_weight], d_, mask_, rev_mask_, id_;
 
 };

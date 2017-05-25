@@ -16,28 +16,20 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#include "queries.h"
+#ifndef SEED_SET_H_
+#define SEED_SET_H_
 
-unsigned current_query_chunk;
-Sequence_set* query_source_seqs::data_ = 0;
-Sequence_set* query_seqs::data_ = 0;
-String_set<0>* query_ids::data_ = 0;
-Partitioned_histogram query_hst;
-vector<bool> query_aligned;
-Seed_set *query_seeds = 0;
+#include "sequence_set.h"
 
-void write_unaligned(Output_stream *file)
+struct Seed_set
 {
-	const size_t n = query_ids::get().get_length();
-	string s;
-	for (size_t i = 0; i < n; ++i) {
-		if (!query_aligned[i]) {
-			std::stringstream ss;
-			ss << '>' << query_ids::get()[i].c_str() << endl;
-			(align_mode.query_translated ? query_source_seqs::get()[i] : query_seqs::get()[i]).print(ss, input_value_traits);
-			ss << endl;
-			s = ss.str();
-			file->write(s.data(), s.length());
-		}
+	Seed_set(const Sequence_set &seqs, const shape &sh);
+	bool contains(uint64_t key) const
+	{
+		return data_[key];
 	}
-}
+private:
+	vector<bool> data_;
+};
+
+#endif

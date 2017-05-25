@@ -144,7 +144,7 @@ struct Config
 	};
 	unsigned	command;
 
-	enum { double_indexed = 0, subject_indexed = 1 };
+	enum { double_indexed = 0, query_indexed = 1, subject_indexed = 2 };
 	unsigned algo;
 
 	enum { query_parallel = 0, target_parallel = 1 };
