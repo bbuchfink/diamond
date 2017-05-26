@@ -28,6 +28,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/thread.h"
 #include "../basic/shape_config.h"
 #include "../basic/seed_iterator.h"
+#include "../util/ptr_vector.h"
 
 using std::cout;
 using std::endl;
@@ -133,7 +134,7 @@ struct Sequence_set : public String_set<'\xff', 1>
 	}
 
 	template <typename _f>
-	void enum_seeds(vector<_f> &f, const vector<size_t> &p, size_t shape_begin, size_t shape_end) const
+	void enum_seeds(Ptr_vector<_f> &f, const vector<size_t> &p, size_t shape_begin, size_t shape_end) const
 	{
 		Thread_pool threads;
 		for (unsigned i = 0; i < f.size(); ++i)

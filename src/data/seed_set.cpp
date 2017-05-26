@@ -17,6 +17,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #include "seed_set.h"
+#include "../util/ptr_vector.h"
 
 struct Seed_set_callback
 {
@@ -37,7 +38,7 @@ Seed_set::Seed_set(const Sequence_set &seqs):
 {
 	if (!shapes[0].contiguous())
 		throw std::runtime_error("Contiguous seed required.");
-	vector<Seed_set_callback> v;
-	v.push_back(Seed_set_callback(data_));
+	Ptr_vector<Seed_set_callback> v;
+	v.push_back(new Seed_set_callback(data_));
 	seqs.enum_seeds(v, seqs.partition(1), 0, 1);
 }

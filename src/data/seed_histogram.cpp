@@ -51,9 +51,9 @@ Partitioned_histogram::Partitioned_histogram(const Sequence_set &seqs, const See
 		data_[s].resize(p_.size() - 1);
 		memset(data_[s].data(), 0, (p_.size() - 1)*sizeof(unsigned)*Const::seedp);
 	}
-	vector<Histogram_callback> cb;
+	Ptr_vector<Histogram_callback> cb;
 	for (size_t i = 0; i < p_.size() - 1; ++i)
-		cb.push_back(Histogram_callback(i, data_, filter));
+		cb.push_back(new Histogram_callback(i, data_, filter));
 	seqs.enum_seeds(cb, p_, 0, shapes.count());
 }
 

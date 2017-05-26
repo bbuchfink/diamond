@@ -17,6 +17,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #include "sorted_list.h"
+#include "../util/ptr_vector.h"
 
 char* sorted_list::alloc_buffer(const Partitioned_histogram &hst)
 {
@@ -53,9 +54,9 @@ sorted_list::sorted_list(char *buffer, const Sequence_set &seqs, size_t sh, cons
 {
 	task_timer timer("Building seed list", 3);
 	Ptr_set iterators(build_iterators(hst));
-	vector<Build_callback> cb(seq_partition.size() - 1);
+	Ptr_vector<Build_callback> cb;
 	for (size_t i = 0; i < seq_partition.size() - 1; ++i)
-		cb[i] = Build_callback(range, iterators[i].begin(), filter);
+		cb.push_back(new Build_callback(range, iterators[i].begin(), filter));
 
 	seqs.enum_seeds(cb, seq_partition, sh, sh + 1);
 	timer.go("Sorting seed list");
