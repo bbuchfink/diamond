@@ -170,21 +170,18 @@ private:
 	}
 
 	template<typename _f, typename _it>
-	void enum_seeds_contiguous(_f *f, unsigned begin, unsigned end, pair<size_t, size_t> shape_range) const
+	void enum_seeds_contiguous(_f *f, unsigned begin, unsigned end) const
 	{
 		uint64_t key;
 		for (unsigned i = begin; i < end; ++i) {
 			const sequence seq = (*this)[i];
-			for (size_t shape_id = shape_range.first; shape_id < shape_range.second; ++shape_id) {
-				const shape& sh = shapes[shape_id];
-				if (seq.length() < sh.length_) continue;
-				_it it(seq, sh);
-				size_t j = 0;
-				while (it.good()) {
-					if (it.get(key, sh))
-						(*f)(key, position(i, j), shape_id);
-					++j;
-				}
+			if (seq.length() < shapes[0].length_) continue;
+			_it it(seq);
+			size_t j = 0;
+			while (it.good()) {
+				if (it.get(key))
+					(*f)(key, position(i, j), 0);
+				++j;
 			}
 		}
 		f->finish();
@@ -200,7 +197,7 @@ private:
 			case 7:
 				switch (b) {
 				case 4:
-					seqs->enum_seeds_contiguous<_f, Contiguous_seed_iterator<7, 4> >(f, begin, end, shape_range);
+					seqs->enum_seeds_contiguous<_f, Contiguous_seed_iterator<7, 4> >(f, begin, end);
 					break;
 				default:
 					throw std::runtime_error(errmsg);
@@ -209,7 +206,7 @@ private:
 			case 6:
 				switch (b) {
 				case 4:
-					seqs->enum_seeds_contiguous<_f, Contiguous_seed_iterator<6, 4> >(f, begin, end, shape_range);
+					seqs->enum_seeds_contiguous<_f, Contiguous_seed_iterator<6, 4> >(f, begin, end);
 					break;
 				default:
 					throw std::runtime_error(errmsg);
@@ -218,7 +215,7 @@ private:
 			case 5:
 				switch (b) {
 				case 4:
-					seqs->enum_seeds_contiguous<_f, Contiguous_seed_iterator<5, 4> >(f, begin, end, shape_range);
+					seqs->enum_seeds_contiguous<_f, Contiguous_seed_iterator<5, 4> >(f, begin, end);
 					break;
 				default:
 					throw std::runtime_error(errmsg);

@@ -43,7 +43,7 @@ private:
 template<uint64_t _l, uint64_t _b>
 struct Contiguous_seed_iterator
 {
-	Contiguous_seed_iterator(const sequence &seq, const shape &sh) :
+	Contiguous_seed_iterator(const sequence &seq) :
 		ptr_(seq.data()),
 		end_(ptr_ + seq.length()),
 		last_(0)
@@ -55,7 +55,7 @@ struct Contiguous_seed_iterator
 	{
 		return ptr_ < end_;
 	}
-	bool get(uint64_t &seed, const shape &sh)
+	bool get(uint64_t &seed)
 	{
 		last_ <<= _b;
 		last_ &= (1 << (_b*_l)) - 1;

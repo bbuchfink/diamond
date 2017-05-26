@@ -352,23 +352,35 @@ Config::Config(int argc, const char **argv)
 #ifdef __SSE4_1__
 		verbose_stream << "SSE4.1 enabled." << endl;
 #endif
-		verbose_stream << "Reduction: " << Reduction::reduction << endl;
 
 		if (mode_more_sensitive) {
-			set_option(index_mode, 9u);
+			if (algo == double_indexed)
+				set_option(index_mode, 9u);
+			else
+				set_option(index_mode, 11u);
 			set_option(freq_sd, 200.0);
 		}
 		else if (mode_sensitive) {
-			set_option(index_mode, 9u);
-			set_option(freq_sd, 10.0);
+			if (algo == double_indexed) {
+				set_option(index_mode, 9u);
+				set_option(freq_sd, 10.0);
+			}
+			else {
+				set_option(index_mode, 11u);
+				set_option(freq_sd, 20.0);
+			}
 		}
 		else {
 			if (algo == double_indexed)
 				set_option(index_mode, 8u);
-			else
+			else {
 				set_option(index_mode, 10u);
+				Reduction::reduction = Reduction("KR EQ D N C G H F Y IV LM W P S T A");
+			}
 			set_option(freq_sd, 50.0);
 		}
+
+		verbose_stream << "Reduction: " << Reduction::reduction << endl;
 
 		verbose_stream << "Seed frequency SD: " << freq_sd << endl;
 		::shapes = shape_config(index_mode, shapes, shape_mask);
