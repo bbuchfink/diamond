@@ -27,8 +27,6 @@ g++ -DNDEBUG -O3 -Wno-deprecated-declarations $1 $2 \
   src/search/stage2.cpp \
   src/output/output_format.cpp \
   src/output/join_blocks.cpp \
-  src/data/count_approximate.cpp \
-  src/data/index.cpp \
   src/data/frequent_seeds.cpp \
   src/align/query_mapper.cpp \
   src/align/align_target.cpp \
@@ -40,7 +38,6 @@ g++ -DNDEBUG -O3 -Wno-deprecated-declarations $1 $2 \
   src/dp/comp_based_stats.cpp \
   src/extra/model_sim.cpp \
   src/run/double_indexed.cpp \
-  src/search/search_query.cpp \
   src/search/collision.cpp \
   src/output/sam_format.cpp \
   src/align/align.cpp \
