@@ -53,9 +53,10 @@ sorted_list::sorted_list(char *buffer, const Sequence_set &seqs, size_t sh, cons
 {
 	task_timer timer("Building seed list", 3);
 	Ptr_set iterators(build_iterators(hst));
-	vector<Build_callback> cb;
+	vector<Build_callback> cb(seq_partition.size() - 1);
 	for (size_t i = 0; i < seq_partition.size() - 1; ++i)
-		cb.push_back(Build_callback(range, iterators[i].begin(), filter));
+		cb[i] = Build_callback(range, iterators[i].begin(), filter);
+
 	seqs.enum_seeds(cb, seq_partition, sh, sh + 1);
 	timer.go("Sorting seed list");
 	Sort_context sort_context(*this);
