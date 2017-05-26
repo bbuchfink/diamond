@@ -21,24 +21,34 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 struct Seed_set_callback
 {
-	Seed_set_callback(vector<bool> &data):
+	Seed_set_callback(vector<bool> &data, size_t max_coverage):
+		coverage(0),
+		max_coverage(max_coverage),
 		data(&data)
 	{}
-	void operator()(uint64_t seed, uint64_t pos, uint64_t shape)
+	bool operator()(uint64_t seed, uint64_t pos, uint64_t shape)
 	{
-		(*data)[seed] = true;
+		if ((*data)[seed] == false) {
+			(*data)[seed] = true;
+			++coverage;
+			if (coverage > max_coverage)
+				return false;
+		}
+		return true;
 	}
 	void finish()
 	{}
+	size_t coverage, max_coverage;
 	vector<bool> *data;
 };
 
-Seed_set::Seed_set(const Sequence_set &seqs):
+Seed_set::Seed_set(const Sequence_set &seqs, double max_coverage):
 	data_((size_t)pow(1llu<<Reduction::reduction.bit_size(), shapes[0].length_))
 {
 	if (!shapes[0].contiguous())
 		throw std::runtime_error("Contiguous seed required.");
 	Ptr_vector<Seed_set_callback> v;
-	v.push_back(new Seed_set_callback(data_));
+	v.push_back(new Seed_set_callback(data_, size_t(max_coverage*pow(Reduction::reduction.size(), shapes[0].length_))));
 	seqs.enum_seeds(v, seqs.partition(1), 0, 1);
+	coverage_ = (double)v.back()->coverage / pow(Reduction::reduction.size(), shapes[0].length_);
 }

@@ -20,6 +20,60 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../data/reference.h"
 #include "../basic/config.h"
 
+void setup_search_cont()
+{
+	unsigned index_mode;
+	if (config.mode_more_sensitive) {
+		index_mode = 11;
+	}
+	else if (config.mode_sensitive) {
+		index_mode = 11;
+	}
+	else {
+		index_mode = 10;
+		Reduction::reduction = Reduction("KR EQ D N C G H F Y IV LM W P S T A");
+	}
+	::shapes = shape_config(index_mode, 1, vector<string>());
+}
+
+void setup_search()
+{
+	if (config.algo == Config::double_indexed) {
+		if (config.mode_more_sensitive) {
+			Config::set_option(config.index_mode, 9u);
+			Config::set_option(config.freq_sd, 200.0);
+		}
+		else if (config.mode_sensitive) {
+			Config::set_option(config.index_mode, 9u);
+			Config::set_option(config.freq_sd, 10.0);
+		}
+		else {
+			Config::set_option(config.index_mode, 8u);
+			Config::set_option(config.freq_sd, 50.0);
+		}
+		Reduction::reduction = Reduction("A KR EDNQ C G H ILVM FYW P ST");
+		::shapes = shape_config(config.index_mode, config.shapes, config.shape_mask);
+	}
+	else {
+		if (config.mode_more_sensitive) {
+			Config::set_option(config.freq_sd, 200.0);
+		}
+		else if (config.mode_sensitive) {
+			Config::set_option(config.freq_sd, 20.0);
+		}
+		else {
+			Config::set_option(config.freq_sd, 50.0);
+		}
+	}
+
+	message_stream << "Algorithm: " << (config.algo == Config::double_indexed ? "Double-indexed" : "Query-indexed") << endl;
+	verbose_stream << "Reduction: " << Reduction::reduction << endl;
+
+	verbose_stream << "Seed frequency SD: " << config.freq_sd << endl;
+	verbose_stream << "Shape configuration: " << ::shapes << endl;
+	config.seed_anchor = std::min(::shapes[0].length_ - 1, 8u);
+}
+
 void setup_search_params(pair<size_t, size_t> query_len_bounds, size_t chunk_db_letters)
 {
 	const double b = config.min_bit_score == 0 ? score_matrix.bitscore(config.max_evalue, ref_header.letters, (unsigned)query_len_bounds.first) : config.min_bit_score;

@@ -66,6 +66,10 @@ struct Contiguous_seed_iterator
 		seed = last_;
 		return true;
 	}
+	static uint64_t length()
+	{
+		return _l;
+	}
 private:
 	const char *ptr_, *end_;
 	uint64_t last_;

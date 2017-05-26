@@ -176,12 +176,13 @@ private:
 		uint64_t key;
 		for (unsigned i = begin; i < end; ++i) {
 			const sequence seq = (*this)[i];
-			if (seq.length() < shapes[0].length_) continue;
+			if (seq.length() < _it::length()) continue;
 			_it it(seq);
 			size_t j = 0;
 			while (it.good()) {
 				if (it.get(key))
-					(*f)(key, position(i, j), 0);
+					if ((*f)(key, position(i, j), 0) == false)
+						return;
 				++j;
 			}
 		}

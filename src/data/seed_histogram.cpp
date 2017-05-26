@@ -31,10 +31,11 @@ struct Histogram_callback
 		for (unsigned s = 0; s < shapes.count(); ++s)
 			ptr.push_back(data[s][seqp].begin());
 	}
-	void operator()(uint64_t seed, uint64_t pos, size_t shape)
+	bool operator()(uint64_t seed, uint64_t pos, size_t shape)
 	{
 		if (filter == 0 || filter->contains(seed))
 			++ptr[shape][seed_partition(seed)];
+		return true;
 	}
 	void finish() const
 	{

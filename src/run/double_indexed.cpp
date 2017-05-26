@@ -154,22 +154,46 @@ void run_ref_chunk(Database_file &db_file,
 void run_query_chunk(Database_file &db_file,
 	Timer &total_timer,
 	unsigned query_chunk,
-	pair<size_t, size_t> query_len_bounds,
 	Output_stream &master_out,
 	Output_stream *unaligned_file)
 {
-	task_timer timer("Allocating buffers", true);
+	static const double max_coverage = 0.15;
+
+	task_timer timer("Building query seed set");
+	if (query_chunk == 0)
+		setup_search_cont();
+	if (config.algo == -1) {
+		query_seeds = new Seed_set(query_seqs::get(), max_coverage);
+		timer.finish();
+		log_stream << "Seed space coverage = " << query_seeds->coverage() << endl;
+		if (query_seeds->coverage() >= max_coverage) {
+			config.algo = Config::double_indexed;
+			delete query_seeds;
+			query_seeds = 0;
+		}
+		else
+			config.algo = Config::query_indexed;
+	}
+	else if (config.algo == Config::query_indexed) {
+		query_seeds = new Seed_set(query_seqs::get(), 2);
+		timer.finish();
+		log_stream << "Seed space coverage = " << query_seeds->coverage() << endl;
+	}
+	if (query_chunk == 0)
+		setup_search();
+
+	timer.go("Building query histograms");
+	const pair<size_t, size_t> query_len_bounds = query_seqs::data_->len_bounds(shapes[0].length_);
+	setup_search_params(query_len_bounds, 0);
+	query_hst = Partitioned_histogram(*query_seqs::data_);
+	timer.finish();
+	//const bool long_addressing_query = query_seqs::data_->raw_len() > (size_t)std::numeric_limits<uint32_t>::max();
+
+	timer.go("Allocating buffers");
 	char *query_buffer = sorted_list::alloc_buffer(query_hst);
 	vector<Temp_file> tmp_file;
 	query_aligned.clear();
 	query_aligned.insert(query_aligned.end(), query_ids::get().get_length(), false);
-
-	if (config.algo == Config::query_indexed) {
-		timer.go("Building query seed set");
-		query_seeds = new Seed_set(query_seqs::get());
-	}
-
-	timer.finish();
 
 	db_file.rewind();
 	for (current_ref_block = 0; db_file.load_seqs(); ++current_ref_block)
@@ -231,16 +255,10 @@ void master_thread(Database_file &db_file, Timer &total_timer)
 		if (config.masking == 1) {
 			timer.go("Masking queries");
 			mask_seqs(*query_seqs::data_, Masking::get());
-		}
+			timer.finish();
+		}		
 
-		timer.go("Building query histograms");
-		const pair<size_t, size_t> query_len_bounds = query_seqs::data_->len_bounds(shapes[0].length_);
-		setup_search_params(query_len_bounds, 0);
-		query_hst = Partitioned_histogram(*query_seqs::data_);
-		timer.finish();
-		//const bool long_addressing_query = query_seqs::data_->raw_len() > (size_t)std::numeric_limits<uint32_t>::max();
-
-		run_query_chunk(db_file, total_timer, current_query_chunk, query_len_bounds, *master_out, unaligned_file.get());
+		run_query_chunk(db_file, total_timer, current_query_chunk, *master_out, unaligned_file.get());
 	}
 
 	timer.go("Closing the input file");

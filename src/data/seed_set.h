@@ -23,13 +23,18 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 struct Seed_set
 {
-	Seed_set(const Sequence_set &seqs);
+	Seed_set(const Sequence_set &seqs, double max_coverage);
 	bool contains(uint64_t key) const
 	{
 		return data_[key];
 	}
+	double coverage() const
+	{
+		return coverage_;
+	}
 private:
 	vector<bool> data_;
+	double coverage_;
 };
 
 #endif

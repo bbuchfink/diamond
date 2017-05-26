@@ -26,6 +26,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../dp/dp.h"
 
 void setup_search_params(pair<size_t, size_t> query_len_bounds, size_t chunk_db_letters);
+void setup_search();
+void setup_search_cont();
 
 struct Stage1_hit
 {

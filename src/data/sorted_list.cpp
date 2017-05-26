@@ -34,10 +34,11 @@ struct Build_callback
 		filter(filter),
 		it(new sorted_list::buffered_iterator(ptr))
 	{ }
-	void operator()(uint64_t seed, uint64_t pos, size_t shape)
+	bool operator()(uint64_t seed, uint64_t pos, size_t shape)
 	{		
 		if (filter == 0 || filter->contains(seed))
 			it->push(seed, pos, range);
+		return true;
 	}
 	void finish()
 	{
