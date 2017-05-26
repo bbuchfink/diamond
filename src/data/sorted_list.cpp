@@ -42,7 +42,7 @@ struct Build_callback
 	{
 		it->flush();
 	}
-	const seedp_range &range;
+	seedp_range range;
 	const Seed_set *filter;
 	auto_ptr<sorted_list::buffered_iterator> it;
 };

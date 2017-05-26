@@ -21,15 +21,15 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 struct Seed_set_callback
 {
 	Seed_set_callback(vector<bool> &data):
-		data(data)
+		data(&data)
 	{}
 	void operator()(uint64_t seed, uint64_t pos, uint64_t shape)
 	{
-		data[seed] = true;
+		(*data)[seed] = true;
 	}
 	void finish()
 	{}
-	vector<bool> &data;
+	vector<bool> *data;
 };
 
 Seed_set::Seed_set(const Sequence_set &seqs):
