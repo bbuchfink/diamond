@@ -18,6 +18,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "sorted_list.h"
 #include "../util/ptr_vector.h"
+#include "queries.h"
 
 char* sorted_list::alloc_buffer(const Partitioned_histogram &hst)
 {
@@ -26,44 +27,6 @@ char* sorted_list::alloc_buffer(const Partitioned_histogram &hst)
 
 sorted_list::sorted_list()
 {}
-
-struct Build_callback
-{
-	Build_callback(const seedp_range &range, sorted_list::entry* const* ptr, const Seed_set *filter):
-		range(range),
-		filter(filter),
-		it(new sorted_list::buffered_iterator(ptr))
-	{ }
-	bool operator()(uint64_t seed, uint64_t pos, size_t shape)
-	{		
-		if (filter == 0 || filter->contains(seed))
-			it->push(seed, pos, range);
-		return true;
-	}
-	void finish()
-	{
-		it->flush();
-	}
-	seedp_range range;
-	const Seed_set *filter;
-	auto_ptr<sorted_list::buffered_iterator> it;
-};
-
-sorted_list::sorted_list(char *buffer, const Sequence_set &seqs, size_t sh, const shape_histogram &hst, const seedp_range &range, const vector<size_t> seq_partition, const Seed_set *filter) :
-	limits_(hst, range),
-	data_(reinterpret_cast<entry*>(buffer))
-{
-	task_timer timer("Building seed list", 3);
-	Ptr_set iterators(build_iterators(hst));
-	Ptr_vector<Build_callback> cb;
-	for (size_t i = 0; i < seq_partition.size() - 1; ++i)
-		cb.push_back(new Build_callback(range, iterators[i].begin(), filter));
-
-	seqs.enum_seeds(cb, seq_partition, sh, sh + 1);
-	timer.go("Sorting seed list");
-	Sort_context sort_context(*this);
-	launch_scheduled_thread_pool(sort_context, Const::seedp, config.threads_);
-}
 
 sorted_list::const_iterator sorted_list::get_partition_cbegin(unsigned p) const
 {
@@ -98,23 +61,6 @@ const sorted_list::entry* sorted_list::cptr_begin(unsigned i) const
 const sorted_list::entry* sorted_list::cptr_end(unsigned i) const
 {
 	return &data_[limits_[i + 1]];
-}
-
-void sorted_list::build_seqp(const Sequence_set &seqs, size_t begin, size_t end, entry* const* ptr, const shape &sh, const seedp_range &range, const Seed_set *filter)
-{
-	uint64_t key;
-	auto_ptr<buffered_iterator> it(new buffered_iterator(ptr));
-	for (size_t i = begin; i < end; ++i) {
-		const sequence seq = seqs[i];
-		if (seq.length() < sh.length_) continue;
-		const unsigned j1 = (unsigned)seq.length() - sh.length_ + 1;
-		for (unsigned j = 0; j < j1; ++j) {
-			if (sh.set_seed(key, &seq[j]))
-				if (filter == 0 || filter->contains(key))
-					it->push(key, seqs.position(i, j), range);
-		}
-	}
-	it->flush();
 }
 
 sorted_list::Ptr_set sorted_list::build_iterators(const shape_histogram &hst) const

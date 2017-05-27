@@ -85,7 +85,21 @@ struct Partitioned_histogram
 {
 
 	Partitioned_histogram();
-	Partitioned_histogram(const Sequence_set &seqs, const Seed_set *filter = 0);
+	
+	template<typename _filter>
+	Partitioned_histogram::Partitioned_histogram(const Sequence_set &seqs, const _filter *filter) :
+		data_(shapes.count()),
+		p_(seqs.partition(config.threads_))
+	{
+		for (unsigned s = 0; s < shapes.count(); ++s) {
+			data_[s].resize(p_.size() - 1);
+			memset(data_[s].data(), 0, (p_.size() - 1)*sizeof(unsigned)*Const::seedp);
+		}
+		Ptr_vector<Callback> cb;
+		for (size_t i = 0; i < p_.size() - 1; ++i)
+			cb.push_back(new Callback(i, data_));
+		seqs.enum_seeds(cb, p_, 0, shapes.count(), filter);
+	}
 
 	const shape_histogram& get(unsigned sid) const
 	{ return data_[sid]; }
@@ -99,31 +113,23 @@ struct Partitioned_histogram
 
 private:
 
-	struct Build_context
+	struct Callback
 	{
-		Build_context(const Sequence_set &seqs, Partitioned_histogram &hst, unsigned longest, const Seed_set *filter):
-			seqs (seqs),
-			hst (hst),
-			longest(longest),
-			filter(filter)
-		{ }
-		void operator()(unsigned thread_id, unsigned seqp) const
+		Callback(size_t seqp, vector<shape_histogram> &data)
 		{
-			vector<char> buf(longest);
-			hst.build_seq_partition(seqs, seqp, hst.p_[seqp], hst.p_[seqp+1], buf, filter);
+			for (unsigned s = 0; s < shapes.count(); ++s)
+				ptr.push_back(data[s][seqp].begin());
 		}
-		const Sequence_set &seqs;
-		Partitioned_histogram &hst;
-		unsigned longest;
-		const Seed_set *filter;
+		bool operator()(uint64_t seed, uint64_t pos, size_t shape)
+		{
+			++ptr[shape][seed_partition(seed)];
+			return true;
+		}
+		void finish() const
+		{
+		}
+		vector<unsigned*> ptr;
 	};
-
-	void build_seq_partition(const Sequence_set &seqs,
-		const unsigned seqp,
-		const size_t begin,
-		const size_t end,
-		vector<char> &buf,
-		const Seed_set *filter);
 
 	vector<shape_histogram> data_;
 	vector<size_t> p_;

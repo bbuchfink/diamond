@@ -292,6 +292,41 @@ thread* launch_thread(_f f, _t1 p1, _t2 p2, _t3 p3, _t4 p4, _t5 p5)
 	return new thread(thread_worker<_f, _t1, _t2, _t3, _t4, _t5>, new Thread_p5<_f, _t1, _t2, _t3, _t4, _t5>(f, p1, p2, p3, p4, p5));
 }
 
+template<typename _f, typename _t1, typename _t2, typename _t3, typename _t4, typename _t5, typename _t6>
+struct Thread_p6
+{
+	Thread_p6(_f f, _t1 p1, _t2 p2, _t3 p3, _t4 p4, _t5 p5, _t6 p6) :
+		f(f),
+		p1(p1),
+		p2(p2),
+		p3(p3),
+		p4(p4),
+		p5(p5),
+		p6(p6)
+	{ }
+	_f f;
+	_t1 p1;
+	_t2 p2;
+	_t3 p3;
+	_t4 p4;
+	_t5 p5;
+	_t6 p6;
+};
+
+template<typename _f, typename _t1, typename _t2, typename _t3, typename _t4, typename _t5, typename _t6>
+void thread_worker(void *p)
+{
+	Thread_p6<_f, _t1, _t2, _t3, _t4, _t5,_t6> *q = (Thread_p6<_f, _t1, _t2, _t3, _t4, _t5,_t6>*)p;
+	q->f(q->p1, q->p2, q->p3, q->p4, q->p5,q->p6);
+	delete q;
+	TLS::clear();
+}
+
+template<typename _f, typename _t1, typename _t2, typename _t3, typename _t4, typename _t5,typename _t6>
+thread* launch_thread(_f f, _t1 p1, _t2 p2, _t3 p3, _t4 p4, _t5 p5, _t6 p6)
+{
+	return new thread(thread_worker<_f, _t1, _t2, _t3, _t4, _t5, _t6>, new Thread_p6<_f, _t1, _t2, _t3, _t4, _t5, _t6>(f, p1, p2, p3, p4, p5, p6));
+}
 
 struct Thread_pool : public vector<thread*>
 {

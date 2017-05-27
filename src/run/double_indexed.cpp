@@ -73,13 +73,23 @@ void process_shape(unsigned sid,
 		current_range = range;
 
 		task_timer timer("Building reference index", true);
-		sorted_list ref_idx(ref_buffer,
-			*ref_seqs::data_,
-			sid,
-			ref_hst.get(sid),
-			range,
-			ref_hst.partition(),
-			query_seeds);
+		sorted_list *ref_idx;
+		if (config.algo == Config::query_indexed)
+			ref_idx = new sorted_list(ref_buffer,
+				*ref_seqs::data_,
+				sid,
+				ref_hst.get(sid),
+				range,
+				ref_hst.partition(),
+				query_seeds);
+		else
+			ref_idx = new sorted_list(ref_buffer,
+				*ref_seqs::data_,
+				sid,
+				ref_hst.get(sid),
+				range,
+				ref_hst.partition(),
+				&no_filter);
 
 		timer.go("Building query index");
 		sorted_list query_idx(query_buffer,
@@ -87,14 +97,16 @@ void process_shape(unsigned sid,
 			sid,
 			query_hst.get(sid),
 			range,
-			query_hst.partition());
+			query_hst.partition(),
+			&no_filter);
 
 		timer.go("Building seed filter");
-		frequent_seeds.build(sid, range, ref_idx, query_idx);
+		frequent_seeds.build(sid, range, *ref_idx, query_idx);
 
 		timer.go("Searching alignments");
-		Search_context context(sid, ref_idx, query_idx);
+		Search_context context(sid, *ref_idx, query_idx);
 		launch_scheduled_thread_pool(context, Const::seedp, config.threads_);
+		delete ref_idx;
 	}
 }
 
@@ -108,7 +120,10 @@ void run_ref_chunk(Database_file &db_file,
 {
 	task_timer timer("Building reference histograms");
 	const pair<size_t, size_t> len_bounds = ref_seqs::data_->len_bounds(shapes[0].length_);
-	ref_hst = Partitioned_histogram(*ref_seqs::data_, query_seeds);
+	if(config.algo==Config::query_indexed)
+		ref_hst = Partitioned_histogram(*ref_seqs::data_, query_seeds);
+	else
+		ref_hst = Partitioned_histogram(*ref_seqs::data_, &no_filter);
 
 	ref_map.init(safe_cast<unsigned>(ref_seqs::get().get_length()));
 
@@ -187,7 +202,7 @@ void run_query_chunk(Database_file &db_file,
 	timer.go("Building query histograms");
 	const pair<size_t, size_t> query_len_bounds = query_seqs::data_->len_bounds(shapes[0].length_);
 	setup_search_params(query_len_bounds, 0);
-	query_hst = Partitioned_histogram(*query_seqs::data_);
+	query_hst = Partitioned_histogram(*query_seqs::data_, &no_filter);
 	timer.finish();
 	//const bool long_addressing_query = query_seqs::data_->raw_len() > (size_t)std::numeric_limits<uint32_t>::max();
 

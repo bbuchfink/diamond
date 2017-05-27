@@ -49,8 +49,23 @@ struct sorted_list
 
 	static char* alloc_buffer(const Partitioned_histogram &hst);
 	sorted_list();
-	sorted_list(char *buffer, const Sequence_set &seqs, size_t sh, const shape_histogram &hst, const seedp_range &range, const vector<size_t> seq_partition, const Seed_set *filter = 0);
-
+	
+	template<typename _filter>
+	sorted_list(char *buffer, const Sequence_set &seqs, size_t sh, const shape_histogram &hst, const seedp_range &range, const vector<size_t> seq_partition, const _filter *filter) :
+		limits_(hst, range),
+		data_(reinterpret_cast<entry*>(buffer))
+	{
+		task_timer timer("Building seed list", 3);
+		Ptr_set iterators(build_iterators(hst));
+		Ptr_vector<Build_callback> cb;
+		for (size_t i = 0; i < seq_partition.size() - 1; ++i)
+			cb.push_back(new Build_callback(range, iterators[i].begin()));
+		seqs.enum_seeds(cb, seq_partition, sh, sh + 1, filter);
+		timer.go("Sorting seed list");
+		Sort_context sort_context(*this);
+		launch_scheduled_thread_pool(sort_context, Const::seedp, config.threads_);
+	}
+	
 	template<typename _t>
 	struct Iterator_base
 	{
@@ -167,7 +182,6 @@ private:
 	const entry* cptr_begin(unsigned i) const;
 	const entry* cptr_end(unsigned i) const;
 
-	static void build_seqp(const Sequence_set &seqs, size_t begin, size_t end, entry* const* ptr, const shape &sh, const seedp_range &range, const Seed_set *filter);
 	Ptr_set build_iterators(const shape_histogram &hst) const;
 
 	struct Sort_context
@@ -195,6 +209,25 @@ private:
 				this->push_back(this->operator[](i) + (range.contains(i) ? partition_size(hst, i) : 0));
 			}
 		}
+	};
+
+	struct Build_callback
+	{
+		Build_callback(const seedp_range &range, sorted_list::entry* const* ptr) :
+			range(range),
+			it(new sorted_list::buffered_iterator(ptr))
+		{ }
+		bool operator()(uint64_t seed, uint64_t pos, size_t shape)
+		{
+			it->push(seed, pos, range);
+			return true;
+		}
+		void finish()
+		{
+			it->flush();
+		}
+		seedp_range range;
+		auto_ptr<sorted_list::buffered_iterator> it;
 	};
 
 	Limits limits_;

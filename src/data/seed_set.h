@@ -20,11 +20,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define SEED_SET_H_
 
 #include "sequence_set.h"
+#include "../util/hash_table.h"
 
 struct Seed_set
 {
 	Seed_set(const Sequence_set &seqs, double max_coverage);
-	bool contains(uint64_t key) const
+	bool contains(uint64_t key, uint64_t shape) const
 	{
 		return data_[key];
 	}
@@ -35,6 +36,21 @@ struct Seed_set
 private:
 	vector<bool> data_;
 	double coverage_;
+};
+
+struct Hashed_seed_set
+{
+	Hashed_seed_set(const Sequence_set &seqs);
+	PHash_set* get(size_t shape)
+	{
+		return &data_[shape];
+	}
+	bool contains(uint64_t key, uint64_t shape) const
+	{
+		return data_[shape].contains(key);
+	}
+private:
+	vector<PHash_set> data_;
 };
 
 #endif

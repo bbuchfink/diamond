@@ -133,12 +133,12 @@ struct Sequence_set : public String_set<'\xff', 1>
 		return this->letters() / this->get_length();
 	}
 
-	template <typename _f>
-	void enum_seeds(Ptr_vector<_f> &f, const vector<size_t> &p, size_t shape_begin, size_t shape_end) const
+	template <typename _f, typename _filter>
+	void enum_seeds(Ptr_vector<_f> &f, const vector<size_t> &p, size_t shape_begin, size_t shape_end, const _filter *filter) const
 	{
 		Thread_pool threads;
 		for (unsigned i = 0; i < f.size(); ++i)
-			threads.push_back(launch_thread(enum_seeds_worker<_f>, &f[i], this, (unsigned)p[i], (unsigned)p[i + 1], std::make_pair(shape_begin, shape_end)));
+			threads.push_back(launch_thread(enum_seeds_worker<_f, _filter>, &f[i], this, (unsigned)p[i], (unsigned)p[i + 1], std::make_pair(shape_begin, shape_end), filter));
 		threads.join_all();
 	}
 
@@ -147,8 +147,8 @@ struct Sequence_set : public String_set<'\xff', 1>
 
 private:
 
-	template<typename _f>
-	void enum_seeds(_f *f, unsigned begin, unsigned end, pair<size_t, size_t> shape_range) const
+	template<typename _f, typename _filter>
+	void enum_seeds(_f *f, unsigned begin, unsigned end, pair<size_t, size_t> shape_range, const _filter *filter) const
 	{
 		vector<char> buf(max_len(begin, end));
 		uint64_t key;
@@ -162,7 +162,8 @@ private:
 				size_t j = 0;
 				while (it.good()) {
 					if (it.get(key, sh))
-						(*f)(key, position(i, j), shape_id);
+						if (filter->contains(key, shape_id))
+							(*f)(key, position(i, j), shape_id);
 					++j;
 				}
 			}
@@ -170,8 +171,8 @@ private:
 		f->finish();
 	}
 
-	template<typename _f, typename _it>
-	void enum_seeds_contiguous(_f *f, unsigned begin, unsigned end) const
+	template<typename _f, typename _it, typename _filter>
+	void enum_seeds_contiguous(_f *f, unsigned begin, unsigned end, const _filter *filter) const
 	{
 		uint64_t key;
 		for (unsigned i = begin; i < end; ++i) {
@@ -181,16 +182,17 @@ private:
 			size_t j = 0;
 			while (it.good()) {
 				if (it.get(key))
-					if ((*f)(key, position(i, j), 0) == false)
-						return;
+					if (filter->contains(key, 0))
+						if ((*f)(key, position(i, j), 0) == false)
+							return;
 				++j;
 			}
 		}
 		f->finish();
 	}
 
-	template<typename _f>
-	static void enum_seeds_worker(_f *f, const Sequence_set *seqs, unsigned begin, unsigned end, pair<size_t,size_t> shape_range)
+	template<typename _f, typename _filter>
+	static void enum_seeds_worker(_f *f, const Sequence_set *seqs, unsigned begin, unsigned end, pair<size_t,size_t> shape_range, const _filter *filter)
 	{
 		static const char *errmsg = "Unsupported contiguous seed.";
 		if (shape_range.second - shape_range.first == 1 && shapes[shape_range.first].contiguous()) {
@@ -199,7 +201,7 @@ private:
 			case 7:
 				switch (b) {
 				case 4:
-					seqs->enum_seeds_contiguous<_f, Contiguous_seed_iterator<7, 4> >(f, begin, end);
+					seqs->enum_seeds_contiguous<_f, Contiguous_seed_iterator<7, 4>,_filter>(f, begin, end, filter);
 					break;
 				default:
 					throw std::runtime_error(errmsg);
@@ -208,7 +210,7 @@ private:
 			case 6:
 				switch (b) {
 				case 4:
-					seqs->enum_seeds_contiguous<_f, Contiguous_seed_iterator<6, 4> >(f, begin, end);
+					seqs->enum_seeds_contiguous<_f, Contiguous_seed_iterator<6, 4>, _filter>(f, begin, end, filter);
 					break;
 				default:
 					throw std::runtime_error(errmsg);
@@ -217,7 +219,7 @@ private:
 			case 5:
 				switch (b) {
 				case 4:
-					seqs->enum_seeds_contiguous<_f, Contiguous_seed_iterator<5, 4> >(f, begin, end);
+					seqs->enum_seeds_contiguous<_f, Contiguous_seed_iterator<5, 4>, _filter>(f, begin, end, filter);
 					break;
 				default:
 					throw std::runtime_error(errmsg);
@@ -228,9 +230,19 @@ private:
 			}
 		}
 		else
-			seqs->enum_seeds<_f>(f, begin, end, shape_range);
+			seqs->enum_seeds<_f,_filter>(f, begin, end, shape_range, filter);
 	}
 
 };
+
+struct No_filter
+{
+	bool contains(uint64_t seed, uint64_t shape) const
+	{
+		return true;
+	}
+};
+
+extern No_filter no_filter;
 
 #endif /* SEQUENCE_SET_H_ */

@@ -60,5 +60,6 @@ inline unsigned get_source_query_len(unsigned query_id)
 }
 
 extern Seed_set *query_seeds;
+extern Hashed_seed_set *query_seeds_hashed;
 
 #endif /* QUERIES_H_ */

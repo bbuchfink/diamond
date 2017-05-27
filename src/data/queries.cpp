@@ -25,6 +25,7 @@ String_set<0>* query_ids::data_ = 0;
 Partitioned_histogram query_hst;
 vector<bool> query_aligned;
 Seed_set *query_seeds = 0;
+Hashed_seed_set *query_seeds_hashed = 0;
 
 void write_unaligned(Output_stream *file)
 {
