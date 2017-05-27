@@ -57,7 +57,7 @@ Seed_set::Seed_set(const Sequence_set &seqs, double max_coverage):
 
 struct Hashed_seed_set_callback
 {
-	Hashed_seed_set_callback(vector<PHash_set> &dst):
+	Hashed_seed_set_callback(Ptr_vector<PHash_set> &dst):
 		dst(dst)
 	{}
 	bool operator()(uint64_t seed, uint64_t pos, uint64_t shape)
@@ -67,14 +67,13 @@ struct Hashed_seed_set_callback
 	}
 	void finish()
 	{}
-	vector<PHash_set> &dst;
+	Ptr_vector<PHash_set> &dst;
 };
 
-Hashed_seed_set::Hashed_seed_set(const Sequence_set &seqs):
-	data_(shapes.count())
+Hashed_seed_set::Hashed_seed_set(const Sequence_set &seqs)
 {
 	for (size_t i = 0; i < shapes.count(); ++i)
-		assign_ptr(data_[i], new PHash_set(seqs.letters()));
+		data_.push_back(new PHash_set(seqs.letters()));
 	Ptr_vector<Hashed_seed_set_callback> v;
 	v.push_back(new Hashed_seed_set_callback(data_));
 	seqs.enum_seeds(v, seqs.partition(1), 0, shapes.count(), &no_filter);
