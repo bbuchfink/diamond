@@ -87,7 +87,7 @@ struct Partitioned_histogram
 	Partitioned_histogram();
 	
 	template<typename _filter>
-	Partitioned_histogram::Partitioned_histogram(const Sequence_set &seqs, const _filter *filter) :
+	Partitioned_histogram(const Sequence_set &seqs, const _filter *filter) :
 		data_(shapes.count()),
 		p_(seqs.partition(config.threads_))
 	{

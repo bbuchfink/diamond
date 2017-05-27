@@ -82,6 +82,14 @@ void process_shape(unsigned sid,
 				range,
 				ref_hst.partition(),
 				query_seeds);
+		else if (query_seeds_hashed != 0)
+			ref_idx = new sorted_list(ref_buffer,
+				*ref_seqs::data_,
+				sid,
+				ref_hst.get(sid),
+				range,
+				ref_hst.partition(),
+				query_seeds_hashed);
 		else
 			ref_idx = new sorted_list(ref_buffer,
 				*ref_seqs::data_,
@@ -122,6 +130,8 @@ void run_ref_chunk(Database_file &db_file,
 	const pair<size_t, size_t> len_bounds = ref_seqs::data_->len_bounds(shapes[0].length_);
 	if(config.algo==Config::query_indexed)
 		ref_hst = Partitioned_histogram(*ref_seqs::data_, query_seeds);
+	else if(query_seeds_hashed != 0)
+		ref_hst = Partitioned_histogram(*ref_seqs::data_, query_seeds_hashed);
 	else
 		ref_hst = Partitioned_histogram(*ref_seqs::data_, &no_filter);
 
@@ -198,6 +208,10 @@ void run_query_chunk(Database_file &db_file,
 		timer.finish();
 	if (query_chunk == 0)
 		setup_search();
+	if (config.algo == Config::double_indexed && config.small_query) {
+		timer.go("Building query seed hash set");
+		query_seeds_hashed = new Hashed_seed_set(query_seqs::get());
+	}
 
 	timer.go("Building query histograms");
 	const pair<size_t, size_t> query_len_bounds = query_seqs::data_->len_bounds(shapes[0].length_);

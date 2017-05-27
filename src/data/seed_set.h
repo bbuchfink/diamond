@@ -41,10 +41,6 @@ private:
 struct Hashed_seed_set
 {
 	Hashed_seed_set(const Sequence_set &seqs);
-	PHash_set* get(size_t shape)
-	{
-		return &data_[shape];
-	}
 	bool contains(uint64_t key, uint64_t shape) const
 	{
 		return data_[shape].contains(key);
