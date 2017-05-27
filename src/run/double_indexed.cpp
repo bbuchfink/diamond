@@ -179,6 +179,8 @@ void run_query_chunk(Database_file &db_file,
 		timer.finish();
 		log_stream << "Seed space coverage = " << query_seeds->coverage() << endl;
 	}
+	else
+		timer.finish();
 	if (query_chunk == 0)
 		setup_search();
 
@@ -194,8 +196,9 @@ void run_query_chunk(Database_file &db_file,
 	vector<Temp_file> tmp_file;
 	query_aligned.clear();
 	query_aligned.insert(query_aligned.end(), query_ids::get().get_length(), false);
-
 	db_file.rewind();
+	timer.finish();
+	
 	for (current_ref_block = 0; db_file.load_seqs(); ++current_ref_block)
 		run_ref_chunk(db_file, total_timer, query_chunk, query_len_bounds, query_buffer, master_out, tmp_file);
 

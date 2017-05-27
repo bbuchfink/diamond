@@ -64,6 +64,7 @@ void setup_search()
 		else {
 			Config::set_option(config.freq_sd, 50.0);
 		}
+		config.lowmem = 1;
 	}
 
 	message_stream << "Algorithm: " << (config.algo == Config::double_indexed ? "Double-indexed" : "Query-indexed") << endl;

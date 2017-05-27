@@ -1,3 +1,7 @@
+[0.9.2]
+- Fixed a compiler error.
+- Improved performance for very small query files.
+
 [0.9.1]
 - fixed a performance issue
 

@@ -23,6 +23,7 @@ freely, subject to the following restrictions:
 
 #include <exception>
 #include <iostream>
+#include <stdexcept>
 #include "tinythread.h"
 #include "log_stream.h"
 
