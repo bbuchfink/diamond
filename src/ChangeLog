@@ -1,3 +1,7 @@
+[0.9.3]
+- Fixed a bug that could cause hanging.
+- Fixed a bug that could cause an error when using the staxids output field and the --unal option.
+
 [0.9.2]
 - Fixed a compiler error.
 - Improved performance for very small query files.

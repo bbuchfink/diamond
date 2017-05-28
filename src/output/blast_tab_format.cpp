@@ -290,6 +290,7 @@ void Blast_tab_format::print_query_intro(size_t query_num, const char *query_nam
 				out << "-1";
 				break;			
 			case 31:
+			case 34:
 				out << '0';
 				break;
 			case 45:

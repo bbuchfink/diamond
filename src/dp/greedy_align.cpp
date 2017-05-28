@@ -425,7 +425,7 @@ struct Greedy_aligner2
 		return true;
 	}
 
-	void backtrace(size_t top_node, Hsp_data *out, Hsp_traits &t, int max_shift, unsigned &next) const
+	void backtrace(size_t top_node, Hsp_data *out, Hsp_traits &t, int max_shift, unsigned &next, int max_j) const
 	{
 		Hsp_traits traits(frame);
 		if (top_node != Diag_graph::end) {
@@ -438,7 +438,7 @@ struct Greedy_aligner2
 			traits.subject_range.end_ = d.subject_end();
 			traits.query_range.end_ = d.query_end();
 			int score_min = d.prefix_score;
-			backtrace(top_node, d.subject_end(), out, traits, d.prefix_score, score_min, max_shift, next);
+			backtrace(top_node, std::min(d.subject_end(), max_j), out, traits, d.prefix_score, score_min, max_shift, next);
 		}
 		else {
 			traits.score = 0;
@@ -453,12 +453,14 @@ struct Greedy_aligner2
 	int backtrace(size_t top_node, list<Hsp_data> &hsps, list<Hsp_traits> &ts, list<Hsp_traits>::iterator &t_begin, int cutoff, int max_shift) const
 	{		
 		unsigned next;
-		int max_score = 0;
+		int max_score = 0, max_j = (int)subject.length();
 		do {
 			Hsp_data *hsp = log ? new Hsp_data : 0;
 			Hsp_traits t(frame);
 			next = std::numeric_limits<unsigned>::max();
-			backtrace(top_node, hsp, t, max_shift, next);
+			backtrace(top_node, hsp, t, max_shift, next, max_j);
+			if (t.score > 0)
+				max_j = t.subject_range.begin_;
 			if (t.score >= cutoff && disjoint(t_begin, ts.end(), t, cutoff)) {
 				if (t_begin == ts.end()) {
 					ts.push_back(t);

@@ -625,7 +625,7 @@ aln1:
 	ss.finish_reserve();
 
 	//benchmark_floating(ss, qa, sa);
-	benchmark_greedy(ss, qa, sa);
+	//benchmark_greedy(ss, qa, sa);
 	//benchmark_cmp();
 	//benchmark_ungapped(ss, qa, sa);
 	//benchmark_swipe(ss);
