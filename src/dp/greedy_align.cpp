@@ -221,11 +221,19 @@ struct Greedy_aligner2
 		const int space = shift > 0 ? d.j - e.subject_last() : d.i - e.query_last();
 		int prefix_score = 0, link_score = 0, link_j, diff1 = 0, path_max, path_min, prefix_score_begin;
 		if (space <= 0) {
+			vector<Diag_graph::Edge>::const_iterator edge = diags.get_edge(d_idx, d.j);
+			if (edge != diags.edges.end() && edge->prefix_score > e.prefix_score + gap_score + d.score)
+				return 0;
+			/*if (d.prefix_score > e.prefix_score + gap_score + d.score)
+				return 0;*/
 			Link link;
 			if (get_link(e, d, query, subject, link, link_padding) > 0) {
 				diff1 = e.score - link.score1;
 				const int prefix_e = diags.prefix_score(e_idx, link.subject_pos1, path_max, path_min);
 				prefix_score = prefix_e - diff1 + gap_score + link.score2;
+				vector<Diag_graph::Edge>::const_iterator edge = diags.get_edge(d_idx, link.subject_pos2);
+				if (edge != diags.edges.end() && edge->prefix_score > prefix_score)
+					return 0;
 				prefix_score_begin = prefix_score - link.score2;
 				path_min = std::min(path_min, prefix_score - link.score2);
 				if (prefix_e == path_max) {
@@ -238,10 +246,13 @@ struct Greedy_aligner2
 			}
 		}
 		else {
-			prefix_score = diags.nodes[e_idx].prefix_score + gap_score - int(space_penalty*std::max(space - 1, 0)) + d.score;
+			prefix_score = e.prefix_score + gap_score - int(space_penalty*std::max(space - 1, 0)) + d.score;
+			vector<Diag_graph::Edge>::const_iterator edge = diags.get_edge(d_idx, d.j);
+			if (edge != diags.edges.end() && edge->prefix_score > prefix_score)
+				return 0;
 			prefix_score_begin = prefix_score - d.score;
-			path_max = diags.nodes[e_idx].path_max;
-			path_min = diags.nodes[e_idx].path_min;
+			path_max = e.path_max;
+			path_min = e.path_min;
 			path_min = std::min(path_min, prefix_score - d.score);
 			link_score = e.score + d.score + gap_score;
 			link_j = d.j;
