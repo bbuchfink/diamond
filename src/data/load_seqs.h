@@ -69,7 +69,7 @@ inline size_t load_seqs(Input_stream &file,
 	string id2;
 
 	while (letters < max_letters && format.get_seq(id, seq, file)) {
-		if (filter.empty() || id2.assign(id.data(), id.data() + id.size()).find(filter, 0) != string::npos) {
+		if (seq.size() > 0 && (filter.empty() || id2.assign(id.data(), id.data() + id.size()).find(filter, 0) != string::npos)) {
 			ids->push_back(id);
 			letters += push_seq(**seqs, source_seqs, seq);
 			++n;
