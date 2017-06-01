@@ -21,6 +21,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "shape.h"
 #include "sequence.h"
+#include "../util/hash_function.h"
 
 struct Seed_iterator
 {
@@ -38,6 +39,36 @@ struct Seed_iterator
 	}
 private:
 	const char *ptr_, *end_;
+};
+
+template<uint64_t _b>
+struct Hashed_seed_iterator
+{
+	Hashed_seed_iterator(const sequence &seq, const shape &sh):
+		ptr_(seq.data()),
+		end_(ptr_ + seq.length()),
+		last_(0)
+	{
+		for (uint64_t i = 0; i < sh.length_ - 1; ++i)
+			last_ = (last_ << _b) | Reduction::reduction(*(ptr_++));
+	}
+	bool good() const
+	{
+		return ptr_ < end_;
+	}
+	bool get(uint64_t &seed, uint64_t mask)
+	{
+		last_ <<= _b;
+		const char l = *(ptr_++);
+		if (l == value_traits.mask_char)
+			return false;
+		last_ |= Reduction::reduction(l);
+		seed = murmur_hash()(last_ & mask);
+		return true;
+	}
+private:
+	const char *ptr_, *end_;
+	uint64_t last_;
 };
 
 template<uint64_t _l, uint64_t _b>

@@ -216,7 +216,8 @@ Config::Config(int argc, const char **argv)
 		("score-ratio", 0, "", score_ratio, 0.9)
 		("fetch-size", 0, "trace point fetch size", fetch_size, 4096u)
 		("target-fetch-size", 0, "number of target sequences to fetch for seed extension", target_fetch_size, 4u)
-		("small-query", 0, "", small_query);
+		("small-query", 0, "", small_query)
+		("hashed-seeds", 0, "", hashed_seeds);
 		
 	parser.add(general).add(makedb).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options);
 	parser.store(argc, argv, command);

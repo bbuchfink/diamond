@@ -171,6 +171,29 @@ private:
 		f->finish();
 	}
 
+	template<typename _f, uint64_t _b, typename _filter>
+	void enum_seeds_hashed(_f *f, unsigned begin, unsigned end, pair<size_t, size_t> shape_range, const _filter *filter) const
+	{
+		uint64_t key;
+		for (unsigned i = begin; i < end; ++i) {
+			const sequence seq = (*this)[i];
+			for (size_t shape_id = shape_range.first; shape_id < shape_range.second; ++shape_id) {
+				const shape& sh = shapes[shape_id];
+				if (seq.length() < sh.length_) continue;
+				const uint64_t shape_mask = sh.long_mask();
+				Hashed_seed_iterator<_b> it(seq, sh);
+				size_t j = 0;
+				while (it.good()) {
+					if (it.get(key, shape_mask))
+						if (filter->contains(key, shape_id))
+							(*f)(key, position(i, j), shape_id);
+					++j;
+				}
+			}
+		}
+		f->finish();
+	}
+
 	template<typename _f, typename _it, typename _filter>
 	void enum_seeds_contiguous(_f *f, unsigned begin, unsigned end, const _filter *filter) const
 	{
@@ -227,6 +250,16 @@ private:
 				break;
 			default:
 				throw std::runtime_error(errmsg);
+			}
+		}
+		else if (config.hashed_seeds) {
+			const uint64_t b = Reduction::reduction.bit_size();
+			switch (b) {
+			case 4:
+				seqs->enum_seeds_hashed<_f, 4, _filter>(f, begin, end, shape_range, filter);
+				break;
+			default:
+				throw std::runtime_error("Unsupported reduction.");
 			}
 		}
 		else

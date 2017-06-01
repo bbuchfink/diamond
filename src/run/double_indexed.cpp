@@ -127,7 +127,6 @@ void run_ref_chunk(Database_file &db_file,
 	vector<Temp_file> &tmp_file)
 {
 	task_timer timer("Building reference histograms");
-	const pair<size_t, size_t> len_bounds = ref_seqs::data_->len_bounds(shapes[0].length_);
 	if(config.algo==Config::query_indexed)
 		ref_hst = Partitioned_histogram(*ref_seqs::data_, false, query_seeds);
 	else if(query_seeds_hashed != 0)

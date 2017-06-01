@@ -178,7 +178,7 @@ int get_low_idx(Band::Iterator &d, int begin, int end, int d0)
 			low = d[i];
 			j = i;
 		}
-		return begin > d0 ? j : d0 - 1;
+	return begin > d0 ? j : d0 - 1;
 }
 
 int get_max_idx(Band::Iterator &d, int begin, int end)

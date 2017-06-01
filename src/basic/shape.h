@@ -100,20 +100,24 @@ struct shape
 		weight_ (0),
 		mask_ (0),
 		rev_mask_ (0),
-		id_ (id)
+		id_ (id),
+		long_mask_(0)
 	{
 		assert(id < Const::max_shapes);
 		assert(strlen(code) <= 32);
 		memset(positions_, 0, sizeof(uint32_t)*Const::max_seed_weight);
+		const uint64_t b = Reduction::reduction.bit_size();
 		unsigned i (0);
 		for(;i<strlen(code);++i) {
 			rev_mask_ <<= 1;
+			long_mask_ <<= b;
 			if(code[i] == '1') {
 				assert(weight_ < Const::max_seed_weight);
 				positions_[weight_] = i;
 				++weight_;
 				mask_ |= 1 << i;
 				rev_mask_ |= 1;
+				long_mask_ |= (1 << b) - 1;
 			}
 		}
 		length_ = i;
@@ -200,7 +204,13 @@ struct shape
 		return length_ == weight_;
 	}
 
+	uint64_t long_mask() const
+	{
+		return long_mask_;
+	}
+
 	uint32_t length_, weight_, positions_[Const::max_seed_weight], d_, mask_, rev_mask_, id_;
+	uint64_t long_mask_;
 
 };
 
