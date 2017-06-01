@@ -74,7 +74,7 @@ struct Frequent_seeds::Build_context
 		}
 
 		const size_t ht_size = std::max((size_t)(buf.size() * hash_table_factor), buf.size() + 1);
-		PHash_set hash_set(ht_size);
+		PHash_set<void, murmur_hash> hash_set(ht_size);
 
 		for (vector<uint32_t>::const_iterator i = buf.begin(); i != buf.end(); ++i)
 			hash_set.insert(*i);

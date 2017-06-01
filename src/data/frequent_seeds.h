@@ -44,7 +44,7 @@ private:
 
 	static void compute_sd(Atomic<unsigned> *seedp, const sorted_list *ref_idx, const sorted_list *query_idx, vector<Sd> *ref_out, vector<Sd> *query_out);
 
-	PHash_set tables_[Const::max_shapes][Const::seedp];
+	PHash_set<void,murmur_hash> tables_[Const::max_shapes][Const::seedp];
 
 };
 

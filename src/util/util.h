@@ -633,4 +633,9 @@ inline int make_multiple(int x, int m)
 	return x % m == 0 ? x : x + m - x%m;
 }
 
+inline uint64_t next_power_of_2(double x)
+{
+	return 1llu << uint64_t(ceil(log(x) / log(2)));
+}
+
 #endif /* UTIL_H_ */

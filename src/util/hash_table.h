@@ -208,7 +208,29 @@ private:
 
 };
 
+struct Modulo2 {};
 
+template<typename _t>
+inline uint64_t modulo(uint64_t x, uint64_t y)
+{
+	return x % y;
+}
+
+template<>
+inline uint64_t modulo<Modulo2>(uint64_t x, uint64_t y)
+{
+	return x & (y - 1);
+}
+
+struct No_hash
+{
+	uint64_t operator()(uint64_t x) const
+	{
+		return x;
+	}
+};
+
+template<typename _mod, typename _hash>
 struct PHash_set
 {
 
@@ -229,15 +251,16 @@ public:
 
 	bool contains(uint64_t key) const
 	{
-		fp *entry = get_entry(key);
-		return *entry != 0;
+		fp *p;
+		return get_entry(key, p);
 	}
 
 	void insert(uint64_t key)
 	{
-		fp *entry = get_entry(key);
+		fp *entry;
+		get_entry(key, entry);
 		if (*entry == (fp)0)
-			*entry = finger_print(murmur_hash()(key));
+			*entry = finger_print(_hash()(key));
 	}
 
 	size_t size() const
@@ -245,19 +268,33 @@ public:
 		return size_;
 	}
 
+	double load() const
+	{
+		size_t n = 0;
+		for (size_t i = 0; i < size_; ++i)
+			if (*(table.get() + i) != 0)
+				++n;
+		return (double)n / size_;
+	}
+
 private:
 
 	static fp finger_print(uint64_t hash)
 	{
-		return std::max((fp)(hash & ((1llu<<(sizeof(fp)*8))-1llu)), (fp)1);
+		const fp x = (fp)(hash & ((1llu << (sizeof(fp) * 8)) - 1llu));
+		return std::max(x, (fp)1);
 	}
 
-	fp* get_entry(uint64_t key) const
+	bool get_entry(uint64_t key, fp*& p) const
 	{
-		const uint64_t hash = murmur_hash()(key), f = finger_print(hash);
-		fp *p = table.get() + ((hash >> sizeof(fp)*8) % size_);
+		const uint64_t hash = _hash()(key), f = finger_print(hash);
+		p = table.get() + modulo<_mod>(hash >> sizeof(fp) * 8, size_);
 		bool wrapped = false;
-		while (*p != f && *p != (fp)0) {
+		while (true) {
+			if (*p == f)
+				return true;
+			if (*p == (fp)0)
+				return false;
 			++p;
 			if (p == table.get() + size_) {
 				if (wrapped)
@@ -266,7 +303,6 @@ private:
 				wrapped = true;
 			}
 		}
-		return p;
 	}
 
 	auto_ptr<fp> table;
