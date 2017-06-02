@@ -39,6 +39,7 @@ struct Reduction
 		map_[(long)value_traits.mask_char] = value_traits.mask_char;
 		const vector<string> tokens(tokenize(definition_string, " "));
 		size_ = (unsigned)tokens.size();
+		bit_size_ = (uint64_t)ceil(log(size_) / log(2));
 		for (unsigned i = 0; i<size_; ++i)
 			for (unsigned j = 0; j<tokens[i].length(); ++j) {
 				const char ch = tokens[i][j];
@@ -55,7 +56,7 @@ struct Reduction
 
 	uint64_t bit_size() const
 	{
-		return (uint64_t)ceil(log(size_) / log(2));
+		return bit_size_;
 	}
 
 	unsigned operator()(Letter a) const
@@ -99,6 +100,7 @@ private:
 	char map8_[256] __attribute__((aligned(16)));
 #endif
 	unsigned size_;
+	uint64_t bit_size_;
 
 };
 

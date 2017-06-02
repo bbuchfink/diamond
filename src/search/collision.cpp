@@ -38,14 +38,20 @@ inline bool match_shape_mask(const uint64_t mask, const uint64_t shape_mask)
 inline bool is_lower_chunk(const Letter *subject, unsigned sid)
 {
 	Packed_seed seed;
-	shapes[sid].set_seed(seed, subject);
+	if (config.algo == Config::double_indexed)
+		shapes[sid].set_seed(seed, subject);
+	else
+		shapes[sid].set_seed_shifted(seed, subject);
 	return current_range.lower(seed_partition(seed));
 }
 
 inline bool is_lower_or_equal_chunk(const Letter *subject, unsigned sid)
 {
 	Packed_seed seed;
-	shapes[sid].set_seed(seed, subject);
+	if (config.algo == Config::double_indexed)
+		shapes[sid].set_seed(seed, subject);
+	else
+		shapes[sid].set_seed_shifted(seed, subject);
 	return current_range.lower_or_equal(seed_partition(seed));
 }
 

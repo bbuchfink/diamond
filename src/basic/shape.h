@@ -147,6 +147,21 @@ struct shape
 		return true;
 	}
 
+	inline bool set_seed_shifted(Packed_seed &s, const Letter *seq) const
+	{
+		s = 0;
+		const uint64_t b = Reduction::reduction.bit_size();
+		for (unsigned i = 0; i < weight_; ++i) {
+			Letter l = seq[positions_[i]];
+			if (l == value_traits.mask_char || l == '\xff')
+				return false;
+			unsigned r = Reduction::reduction(l);
+			s <<= b;
+			s |= uint64_t(r);
+		}
+		return true;
+	}
+
 	inline bool set_seed_reduced(Packed_seed &s, const Letter *seq) const
 	{
 		s = 0;

@@ -1,3 +1,8 @@
+[0.9.4]
+- Improved performance.
+- Fixed a bug in the query-indexed algorithm.
+- Empty sequences are ignored instead of generating an error.
+
 [0.9.3]
 - Fixed a bug that could cause hanging.
 - Fixed a bug that could cause an error when using the staxids output field and the --unal option.

@@ -23,7 +23,7 @@ struct Const
 {
 
 	enum {
-		build_version = 104,
+		build_version = 105,
 		daa_version = 0,
 		seedp_bits = 10,
 		seedp = 1<<seedp_bits,
