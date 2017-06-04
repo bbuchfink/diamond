@@ -40,7 +40,7 @@ Output_stream::Output_stream()
 { }
 
 #ifndef _MSC_VER
-virtual ~Output_stream::Output_stream()
+virtual Output_stream::~Output_stream()
 {}
 #endif
 
@@ -143,7 +143,7 @@ Input_stream::Input_stream(const string &file_name) :
 #ifdef _MSC_VER
 	f_(file_name.empty() ? stdin : fopen(file_name.c_str(), "rb")),
 #else
-	fd_(file_name.empty() ? 0 : open64(file_name.c_str(), O_RDONLY))
+	fd_(file_name.empty() ? 0 : open64(file_name.c_str(), O_RDONLY)),
 #endif
 	line_buf_used_(0),
 	line_buf_end_(0),
