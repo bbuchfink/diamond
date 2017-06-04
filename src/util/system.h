@@ -43,8 +43,6 @@ inline void cpuid(int CPUInfo[4],int InfoType) {
 #else
 
 #define PACKED_ATTRIBUTE __attribute__((packed))
-#define FTELL(x) ftell(x)
-#define FSEEK(x,y,z) fseek(x,y,z)
 
 #endif
 

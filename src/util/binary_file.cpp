@@ -45,24 +45,24 @@ Output_stream::~Output_stream()
 {}
 #endif
 
+Output_stream::Output_stream(const string &file_name) :
+	file_name_(file_name)	
+{
 #ifdef _MSC_VER
-Output_stream::Output_stream(const string &file_name) :
-	file_name_(file_name),
-	f_(file_name.length() == 0 ? stdout : fopen(file_name.c_str(), "wb"))
-{
-	if (f_ == 0) throw File_open_exception(file_name_);
-}
+	f_ = file_name.length() == 0 ? stdout : fopen(file_name.c_str(), "wb");
 #else
-Output_stream::Output_stream(const string &file_name) :
-	file_name_(file_name),
-	fd_(file_name.length() == 0 ? 1 : open64(file_name.c_str(), O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR))
-{
+	int fd_ = file_name.length() == 0 ? 1 : open64(file_name.c_str(), O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
 	if (fd_ < 0) {
 		perror(0);
 		throw File_open_exception(file_name_);
 	}
+	f_ = fdopen(fd_, "wb");
+#endif	
+	if (f_ == 0) {
+		perror(0);
+		throw File_open_exception(file_name_);
+	}
 }
-#endif
 
 void Output_stream::remove()
 {
@@ -72,36 +72,22 @@ void Output_stream::remove()
 
 void Output_stream::close()
 {
-#ifdef _MSC_VER
 	if (f_ && f_ != stdout) {
-		fclose(f_);
+		if (fclose(f_) != 0) {
+			perror(0);
+			throw std::runtime_error(string("Error closing file ") + file_name_);
+		}
 		f_ = 0;
 	}
-#else
-	if (fd_ != 1 && ::close(fd_) != 0) {
-		perror(0);
-		throw std::runtime_error(string("Error closing file ") + file_name_);
-	}
-#endif
 }
 
 void Output_stream::write_raw(const char *ptr, size_t count)
 {
-#ifdef _MSC_VER
 	size_t n;
-	if ((n = fwrite((const void*)ptr, 1, count, f_)) != count)
+	if ((n = fwrite((const void*)ptr, 1, count, f_)) != count) {
+		perror(0);
 		throw File_write_exception(file_name_);
-#else
-	while (count > 0) {
-		const ssize_t n = ::write(fd_, (const void*)ptr, count);
-		if (n < 0) {
-			perror(0);
-			throw std::runtime_error(string("Error writing to file ") + file_name_);
-		}
-		count -= n;
-		ptr += n;
 	}
-#endif
 }
 
 void Output_stream::write_c_str(const string &s)
@@ -112,11 +98,14 @@ void Output_stream::write_c_str(const string &s)
 void Output_stream::seekp(size_t p)
 {
 #ifdef _MSC_VER
-	if (_fseeki64(f_, (int64_t)p, SEEK_SET) != 0) throw File_write_exception(file_name_);
-#else
-	if (lseek64(fd_, p, SEEK_SET) < 0) {
+	if (_fseeki64(f_, (int64_t)p, SEEK_SET) != 0) {
 		perror(0);
-		throw std::runtime_error("Error calling lseek.");
+		throw std::runtime_error("Error calling fseek.");
+	}
+#else
+	if (fseek(f_, p, SEEK_SET) != 0) {
+		perror(0);
+		throw std::runtime_error("Error calling fseek.");
 	}
 #endif
 }
@@ -129,10 +118,10 @@ size_t Output_stream::tell()
 		throw std::runtime_error("Error executing ftell on stream " + file_name_);
 	return (size_t)x;
 #else
-	const off64_t n = lseek64(fd_, 0, SEEK_CUR);
+	const long n = ftell(f_);
 	if (n < 0) {
 		perror(0);
-		throw std::runtime_error("Error calling lseek.");
+		throw std::runtime_error("Error calling ftell.");
 	}
 	return n;
 #endif
@@ -141,34 +130,30 @@ size_t Output_stream::tell()
 Input_stream::Input_stream(const string &file_name) :
 	file_name(file_name),
 	line_count(0),
-#ifdef _MSC_VER
-	f_(file_name.empty() ? stdin : fopen(file_name.c_str(), "rb")),
-#else
-	fd_(file_name.empty() ? 0 : open64(file_name.c_str(), O_RDONLY)),
-#endif
 	line_buf_used_(0),
 	line_buf_end_(0),
 	putback_line_(false),
 	eof_(false)
 {
 #ifdef _MSC_VER
-	if (f_ == 0)
-		throw File_open_exception(file_name);
+	f_ = file_name.empty() ? stdin : fopen(file_name.c_str(), "rb");
 #else
+	int fd_ = file_name.empty() ? 0 : open64(file_name.c_str(), O_RDONLY);
 	if (fd_ < 0) {
 		perror(0);
 		throw std::runtime_error(string("Error opening file ") + file_name);
 	}
+	f_ = fdopen(fd_, "rb");
 #endif
+	if (f_ == 0) {
+		perror(0);
+		throw File_open_exception(file_name);
+	}
 }
 
 void Input_stream::rewind()
 {
-#ifdef _MSC_VER
 	::rewind(f_);
-#else
-	seek(0);
-#endif
 	line_count = 0;
 	line_buf_used_ = 0;
 	line_buf_end_ = 0;
@@ -177,31 +162,24 @@ void Input_stream::rewind()
 	line.clear();
 }
 
-#ifdef _MSC_VER
 Input_stream::Input_stream(const Output_stream &tmp_file) :
 	file_name(tmp_file.file_name_),
 	f_(tmp_file.f_)
 {
 	::rewind(f_);
 }
-#else
-Input_stream::Input_stream(const Output_stream &tmp_file) :
-	file_name(tmp_file.file_name_),
-	fd_(tmp_file.fd_)
-{
-	seek(0);
-}
-#endif
 
 void Input_stream::seek(size_t pos)
 {
 #ifdef _MSC_VER
-	if (_fseeki64(f_, (int64_t)pos, SEEK_SET) != 0)
-		throw std::runtime_error("Error executing seek on file " + file_name);
-#else
-	if (lseek64(fd_, pos, SEEK_SET) < 0) {
+	if (_fseeki64(f_, (int64_t)pos, SEEK_SET) != 0) {
 		perror(0);
-		throw std::runtime_error("Error calling lseek.");
+		throw std::runtime_error("Error executing seek on file " + file_name);
+	}
+#else
+	if (fseek(f_, pos, SEEK_SET) < 0) {
+		perror(0);
+		throw std::runtime_error("Error calling fseek.");
 	}
 #endif
 }
@@ -209,12 +187,14 @@ void Input_stream::seek(size_t pos)
 void Input_stream::seek_forward(size_t n)
 {
 #ifdef _MSC_VER
-	if (_fseeki64(f_, (int64_t)n, SEEK_CUR) != 0)
-		throw std::runtime_error("Error executing seek on file " + file_name);
-#else
-	if (lseek64(fd_, n, SEEK_CUR) < 0) {
+	if (_fseeki64(f_, (int64_t)n, SEEK_CUR) != 0) {
 		perror(0);
-		throw std::runtime_error("Error calling lseek.");
+		throw std::runtime_error("Error executing seek on file " + file_name);
+	}
+#else
+	if (fseek(f_, n, SEEK_CUR) < 0) {
+		perror(0);
+		throw std::runtime_error("Error calling fseek.");
 	}
 #endif
 }
@@ -226,31 +206,16 @@ bool Input_stream::eof() const
 
 size_t Input_stream::read_bytes(char *ptr, size_t count)
 {
-#ifdef _MSC_VER
 	size_t n;
 	if ((n = fread(ptr, 1, count, f_)) != count) {
 		if (feof(f_) != 0)
 			return n;
-		else
+		else {
+			perror(0);
 			throw File_read_exception(file_name);
+		}
 	}
 	return n;
-#else
-	ssize_t total = 0;
-	while (count > 0) {
-		const ssize_t n = ::read(fd_, ptr, count);
-		if (n < 0) {
-			perror(0);
-			throw std::runtime_error(string("Error reading file ") + file_name);
-		}
-		total += n;
-		if (n == 0)
-			return total;
-		count -= n;
-		ptr += n;
-	}
-	return total;
-#endif
 }
 
 void Input_stream::read_c_str(string &s)
@@ -277,17 +242,13 @@ void Input_stream::close_and_delete()
 
 void Input_stream::close()
 {
-#ifdef _MSC_VER
 	if (f_) {
-		fclose(f_);
+		if (fclose(f_) != 0) {
+			perror(0);
+			throw std::runtime_error(string("Error closing file ") + file_name);
+		}
 		f_ = 0;
 	}
-#else
-	if (fd_ != 0 && ::close(fd_) != 0) {
-		perror(0);
-		throw std::runtime_error(string("Error closing file ") + file_name);
-	}
-#endif
 }
 
 void Input_stream::getline()
@@ -353,17 +314,24 @@ Temp_file::Temp_file()
 	ss >> this->file_name_;
 #ifdef _MSC_VER
 	this->f_ = fopen(this->file_name_.c_str(), "w+b");
-	if (this->f_ == 0)
+	if (this->f_ == 0) {
+		perror(0);
 		throw std::runtime_error("Error opening temporary file: " + this->file_name_);
+	}
 #else
-	this->fd_ = open64(this->file_name_.c_str(), O_RDWR | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
-	if (this->fd_ < 0) {
+	int fd = open64(this->file_name_.c_str(), O_RDWR | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
+	if (fd < 0) {
 		perror(0);
 		throw std::runtime_error(string("Error opening temporary file ") + this->file_name_);
 	}
 	if (unlink(this->file_name_.c_str()) < 0) {
 		perror(0);
 		throw std::runtime_error("Error calling unlink.");
+	}
+	this->f_ = fdopen(fd, "w+b");
+	if (this->f_ == 0) {
+		perror(0);
+		throw std::runtime_error("Error opening temporary file: " + this->file_name_);
 	}
 #endif
 }

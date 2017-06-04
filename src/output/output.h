@@ -59,16 +59,6 @@ inline uint8_t get_segment_flag(const Hsp_context &match)
 
 struct Intermediate_record
 {
-	void read(Buffered_file &f)
-	{
-		f.read(query_id);
-		f.read(subject_id);
-		f.read(flag);
-		f.read_packed(flag & 3, score);
-		f.read_packed((flag >> 2) & 3, query_begin);
-		f.read_packed((flag >> 4) & 3, subject_begin);
-		transcript.read(f);
-	}
 	void read(Binary_buffer::Iterator &f)
 	{
 		f.read(subject_id);

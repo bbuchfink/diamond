@@ -101,16 +101,6 @@ struct Packed_transcript
 		Combined_operation op_;
 	};
 
-	void read(Buffered_file &f)
-	{
-		data_.clear();
-		uint8_t code;
-		do {
-			f.read(code);
-			data_.push_back(code);
-		} while (code != Packed_operation::terminator());
-	}
-
 	void read(Binary_buffer::Iterator &it)
 	{
 		data_.clear();

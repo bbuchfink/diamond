@@ -84,11 +84,7 @@ struct Output_stream
 	size_t tell();
 protected:
 	string file_name_;
-#ifdef _MSC_VER
 	FILE *f_;
-#else
-	int fd_;
-#endif
 	friend struct Input_stream;
 };
 
@@ -116,160 +112,15 @@ struct Input_stream
 	string file_name;
 	string line;
 	size_t line_count;
-	
+
 protected:
 
 	enum { line_buf_size = 256 };
 
-#ifdef _MSC_VER
 	FILE *f_;
-#else
-	int fd_;
-#endif
 	char line_buf_[line_buf_size];
 	size_t line_buf_used_, line_buf_end_;
 	bool putback_line_, eof_;
-
-};
-
-struct Buffered_file : public Input_stream
-{
-
-	Buffered_file(const string& file_name):
-		Input_stream (file_name)
-	{ init(); }
-
-	Buffered_file(const Output_stream &tmp_file):
-		Input_stream (tmp_file)
-	{ init(); }
-
-	bool eof()
-	{
-		if(ptr_ < end_)
-			return false;
-		else if(end_ < &data_[buffer_size])
-			return true;
-		else {
-			fetch();
-			return eof();
-		}
-	}
-
-	template<typename _t>
-	void read(_t &dst)
-	{
-		const char *const p = ptr_ + sizeof(_t);
-		if(p > end_) {
-			if(end_ < &data_[buffer_size])
-				throw File_read_exception(file_name);
-			fetch();
-			return read(dst);
-		}
-		dst = *reinterpret_cast<_t*>(ptr_);
-		ptr_ += sizeof(_t);
-	}
-
-	template<typename _t>
-	void read(_t* dst, size_t n)
-	{
-		for(size_t i=0;i<n;++i)
-			read(*(dst++));
-	}
-
-	void read_c_str(string &dst)
-	{
-		dst.clear();
-		char c;
-		while(read(c), c != '\0')
-			dst.push_back(c);
-	}
-
-	void read_packed(uint8_t length, uint32_t &dst)
-	{
-		switch(length) {
-		case 0: uint8_t x; read(x); dst = x; break;
-		case 1: uint16_t y; read(y); dst = y; break;
-		case 2: read(dst);
-		}
-	}
-
-	const char* ptr() const
-	{ return ptr_; }
-
-	void seek(size_t pos)
-	{
-		//this->clear();
-		Input_stream::seek(pos);
-		init();
-	}
-
-private:
-
-	void fetch()
-	{
-		ptrdiff_t d = end_ - ptr_;
-		assert(d >= 0);
-		memcpy(&data_[0], ptr_, d);
-		ptr_ = &data_[0];
-		end_ = read_block(ptr_+d, buffer_size - d);
-	}
-
-	void init()
-	{
-		ptr_ = &data_[0];
-		end_ = read_block(ptr_, buffer_size);
-	}
-
-	char* read_block(char* ptr, size_t size)
-	{ return ptr + Input_stream::read(ptr, size); }
-
-	enum { buffer_size = 8192 };
-
-	char data_[buffer_size];
-	char *ptr_, *end_;
-
-};
-
-struct Buffered_ostream
-{
-
-	Buffered_ostream(Output_stream &s):
-		stream_ (s),
-		ptr_ (&data_[0]),
-		end_ (&data_[buffer_size])
-	{ }
-
-	template<typename _t>
-	void write(const _t &x)
-	{
-		const char *const p = ptr_ + sizeof(_t);
-		if(p > end_) {
-			flush();
-			return write(x);
-		}
-		*reinterpret_cast<_t*>(ptr_) = x;
-		ptr_ += sizeof(_t);
-	}
-
-	void close()
-	{
-		flush();
-		((Output_stream*)this)->close(); 
-	}
-
-private:
-
-	void flush()
-	{
-		stream_.write(data_, ptr_ - data_);
-		ptr_ = data_;
-	}
-
-	enum { buffer_size = 4096 };
-
-	Output_stream &stream_;
-	char data_[buffer_size];
-	char *ptr_, * const end_;
 
 };
 

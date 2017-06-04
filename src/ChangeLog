@@ -1,6 +1,7 @@
 [0.9.5]
 - Added support for named pipes.
 - Added support for reading input files from stdin.
+- Added more elaborate file I/O error messages.
 
 [0.9.4]
 - Improved performance.
