@@ -23,6 +23,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <fcntl.h>
 #include <unistd.h>
 #include <errno.h>
+#include <sys/stat.h>
 #endif
 
 #include "../basic/config.h"
@@ -54,7 +55,7 @@ Output_stream::Output_stream(const string &file_name) :
 #else
 Output_stream::Output_stream(const string &file_name) :
 	file_name_(file_name),
-	fd_(file_name.length() == 0 ? 1 : open64(file_name.c_str(), O_WRONLY | O_CREAT | O_TRUNC))
+	fd_(file_name.length() == 0 ? 1 : open64(file_name.c_str(), O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR))
 {
 	if (fd_ < 0) {
 		perror(0);
@@ -355,7 +356,7 @@ Temp_file::Temp_file()
 	if (this->f_ == 0)
 		throw std::runtime_error("Error opening temporary file: " + this->file_name_);
 #else
-	this->fd_ = open64(this->file_name_.c_str(), O_RDWR | O_CREAT | O_TRUNC);
+	this->fd_ = open64(this->file_name_.c_str(), O_RDWR | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
 	if (this->fd_ < 0) {
 		perror(0);
 		throw std::runtime_error(string("Error opening temporary file ") + this->file_name_);
