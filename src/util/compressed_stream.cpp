@@ -73,13 +73,18 @@ size_t Compressed_istream::read_bytes(char *ptr, size_t count)
 
 		int ret = inflate(&strm, Z_NO_FLUSH);
 		if (ret == Z_STREAM_END) {
-			if(strm.avail_in == 0 && feof(this->f_))
-				eos_ = true;
-			else {
-				int ret = inflateInit2(&strm, 15 + 32);
-				if (ret != Z_OK)
-					throw std::runtime_error("Error initializing compressed stream (inflateInit): " + file_name);
-			}
+			/*if (strm.avail_in == 0) {
+				if (eos_)
+					return n;
+				strm.avail_in = (uInt)Input_stream::read_bytes(in.get(), chunk_size);
+				if (strm.avail_in == 0) {
+					eos_ = true;
+					return n;
+				}
+			}*/
+			int ret = inflateInit2(&strm, 15 + 32);
+			if (ret != Z_OK)
+				throw std::runtime_error("Error initializing compressed stream (inflateInit): " + file_name);
 		}
 		else if (ret != Z_OK)
 			throw std::runtime_error("Inflate error.");

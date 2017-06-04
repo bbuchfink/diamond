@@ -51,4 +51,5 @@ g++ -DNDEBUG -O3 -Wno-deprecated-declarations $1 $2 \
   src/dp/banded_sw.cpp \
   src/data/sorted_list.cpp \
   src/data/seed_set.cpp \
+  src/util/binary_file.cpp \
 -lz -lpthread -o diamond
