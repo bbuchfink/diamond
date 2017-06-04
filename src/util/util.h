@@ -304,6 +304,7 @@ inline bool check_dir(const string &path)
 #endif
 }
 
+extern const char dir_separator;
 string extract_dir(const string &s);
 
 inline std::ostream& indent(std::ostream &str, unsigned n)

@@ -100,7 +100,7 @@ struct Intermediate_record
 	static void finish_file(Output_stream &f)
 	{
 		unsigned x = finished;
-		f.typed_write(&x, 1);
+		f.write(&x, 1);
 	}
 	enum { finished = 0xffffffffu };
 	uint32_t query_id, subject_id, score, query_begin, subject_begin;

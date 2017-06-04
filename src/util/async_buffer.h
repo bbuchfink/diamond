@@ -78,7 +78,7 @@ struct Async_buffer
 		}
 		void flush(unsigned bin)
 		{
-			out_[bin]->typed_write(buffer_[bin].data(), buffer_[bin].size());
+			out_[bin]->write(buffer_[bin].data(), buffer_[bin].size());
 			parent_.add_size(thread_num_, bin, buffer_[bin].size());
 			buffer_[bin].clear();
 		}

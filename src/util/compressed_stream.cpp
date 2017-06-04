@@ -140,7 +140,7 @@ void Compressed_ostream::deflate_loop(const char * ptr, size_t count, int flush)
 	} while (strm.avail_out == 0);
 }
 
-void Compressed_ostream::write(const char * ptr, size_t count)
+void Compressed_ostream::write_raw(const char * ptr, size_t count)
 {
 	deflate_loop(ptr, count, Z_NO_FLUSH);
 }

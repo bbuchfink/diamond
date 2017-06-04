@@ -56,7 +56,7 @@ struct Compressed_ostream : public Output_stream
 	virtual ~Compressed_ostream()
 	{}
 #endif
-	virtual void write(const char *ptr, size_t count);
+	virtual void write_raw(const char *ptr, size_t count);
 	virtual void close();
 private:
 	void deflate_loop(const char *ptr, size_t count, int code);

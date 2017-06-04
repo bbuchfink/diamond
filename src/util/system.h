@@ -39,8 +39,6 @@ inline void cpuid(int CPUInfo[4],int InfoType) {
 #ifdef _MSC_VER
 
 #define PACKED_ATTRIBUTE
-#define FTELL(x) _ftelli64(x)
-#define FSEEK(x,y,z) _fseeki64(x,y,z)
 
 #else
 

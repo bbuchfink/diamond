@@ -1,3 +1,7 @@
+[0.9.5]
+- Added support for named pipes.
+- Added support for reading input files from stdin.
+
 [0.9.4]
 - Improved performance.
 - Fixed a bug in the query-indexed algorithm.

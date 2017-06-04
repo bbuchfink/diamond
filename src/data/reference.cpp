@@ -73,7 +73,7 @@ void make_db()
 	auto_ptr<Input_stream> db_file (Compressed_istream::auto_detect(config.input_ref_file));
 	
 	Output_stream out(config.database);
-	out.typed_write(&ref_header, 1);
+	out.write(&ref_header, 1);
 
 	size_t letters = 0, n = 0, n_seqs = 0;
 	uint64_t offset = sizeof(ref_header);
@@ -108,7 +108,7 @@ void make_db()
 	timer.go("Writing trailer");
 	ref_header.pos_array_offset = offset;
 	pos_array.push_back(Pos_record(offset, 0));
-	out.write(pos_array, false);
+	out.write(pos_array);
 
 	timer.go("Closing the input file");
 	db_file->close();
@@ -117,7 +117,7 @@ void make_db()
 	ref_header.letters = letters;
 	ref_header.sequences = n_seqs;
 	out.seekp(0);
-	out.typed_write(&ref_header, 1);
+	out.write(&ref_header, 1);
 	out.close();
 
 	timer.finish();

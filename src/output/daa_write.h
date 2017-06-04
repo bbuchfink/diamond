@@ -31,9 +31,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 inline void init_daa(Output_stream &f)
 {
 	DAA_header1 h1;
-	f.typed_write(&h1, 1);	
+	f.write(&h1, 1);	
 	DAA_header2 h2_;
-	f.typed_write(&h2_, 1);
+	f.write(&h2_, 1);
 }
 
 inline size_t write_daa_query_record(Text_buffer &buf, const char *query_name, const sequence &query)
@@ -93,7 +93,7 @@ inline void finish_daa(Output_stream &f)
 	h2_.block_type[2] = DAA_header2::ref_lengths;
 
 	uint32_t size = 0;
-	f.typed_write(&size, 1);
+	f.write(&size, 1);
 	h2_.block_size[0] = f.tell() - sizeof(DAA_header1) - sizeof(DAA_header2);
 	h2_.db_seqs_used = ref_map.next_;
 	h2_.query_records = statistics.get(Statistics::ALIGNED);
@@ -105,11 +105,11 @@ inline void finish_daa(Output_stream &f)
 	}
 	h2_.block_size[1] = s;
 
-	f.write(ref_map.len_, false);
+	f.write(ref_map.len_);
 	h2_.block_size[2] = ref_map.len_.size() * sizeof(uint32_t);
 
 	f.seekp(sizeof(DAA_header1));
-	f.typed_write(&h2_, 1);
+	f.write(&h2_, 1);
 }
 
 #endif /* DAA_WRITE_H_ */

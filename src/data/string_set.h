@@ -89,18 +89,6 @@ struct String_set
 		file.write(data_);
 	}
 
-	String_set(Input_stream &file)
-	{
-		file.read(limits_);
-		file.read(data_);
-	}
-
-	static void skip(Input_stream &file)
-	{
-		file.skip_vector<size_t>();
-		file.skip_vector<_t>();
-	}
-
 	size_t raw_len() const
 	{ return limits_.back(); }
 

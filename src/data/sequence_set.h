@@ -39,11 +39,7 @@ struct Sequence_set : public String_set<'\xff', 1>
 
 	Sequence_set()
 	{ }
-
-	Sequence_set(Input_stream &file) :
-		String_set<'\xff',1>(file)
-	{ }
-
+	
 	void print_stats() const
 	{
 		verbose_stream << "Sequences = " << this->get_length() << ", letters = " << this->letters() << ", average length = " << this->avg_len() << endl;
