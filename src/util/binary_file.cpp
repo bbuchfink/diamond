@@ -40,7 +40,7 @@ Output_stream::Output_stream()
 { }
 
 #ifndef _MSC_VER
-virtual Output_stream::~Output_stream()
+Output_stream::~Output_stream()
 {}
 #endif
 
@@ -240,7 +240,7 @@ size_t Input_stream::read_bytes(char *ptr, size_t count)
 		const ssize_t n = ::read(fd_, ptr, count);
 		if (n < 0) {
 			perror(0);
-			throw std::runtime_error(string("Error reading file ") + file_name_);
+			throw std::runtime_error(string("Error reading file ") + file_name);
 		}
 		total += n;
 		if (n == 0)
@@ -248,6 +248,7 @@ size_t Input_stream::read_bytes(char *ptr, size_t count)
 		count -= n;
 		ptr += n;
 	}
+	return total;
 #endif
 }
 
@@ -283,7 +284,7 @@ void Input_stream::close()
 #else
 	if (fd_ != 0 && ::close(fd_) != 0) {
 		perror(0);
-		throw std::runtime_error(string("Error closing file ") + file_name_);
+		throw std::runtime_error(string("Error closing file ") + file_name);
 	}
 #endif
 }
@@ -354,7 +355,7 @@ Temp_file::Temp_file()
 	if (this->f_ == 0)
 		throw std::runtime_error("Error opening temporary file: " + this->file_name_);
 #else
-	this->fd_ = open64(thus->file_name_.c_str(), O_RDWR | O_CREAT | O_TRUNC);
+	this->fd_ = open64(this->file_name_.c_str(), O_RDWR | O_CREAT | O_TRUNC);
 	if (this->fd_ < 0) {
 		perror(0);
 		throw std::runtime_error(string("Error opening temporary file ") + this->file_name_);
