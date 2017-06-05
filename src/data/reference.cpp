@@ -69,6 +69,8 @@ void make_db()
 	
 	Timer total;
 	total.start();
+	if (config.input_ref_file == "")
+		std::cerr << "Input file parameter (--in) is missing. Input will be read from stdin." << endl;
 	task_timer timer("Opening the database file", true);
 	auto_ptr<Input_stream> db_file (Compressed_istream::auto_detect(config.input_ref_file));
 	

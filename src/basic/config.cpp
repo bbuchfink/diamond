@@ -224,17 +224,13 @@ Config::Config(int argc, const char **argv)
 
 	switch (command) {
 	case Config::makedb:
-		if (input_ref_file == "")
-			throw std::runtime_error("Missing parameter: input file (--in)");
 		if (database == "")
 			throw std::runtime_error("Missing parameter: database file (--db/-d)");
 		if (chunk_size != 0.0)
 			throw std::runtime_error("Invalid option: --block-size/-b. Block size is set for the alignment commands.");
 		break;
 	case Config::blastp:
-	case Config::blastx:
-		if (query_file == "")
-			throw std::runtime_error("Missing parameter: query file (--query/-q)");
+	case Config::blastx:	
 		if (database == "")
 			throw std::runtime_error("Missing parameter: database file (--db/-d)");
 		if (daa_file.length() > 0) {

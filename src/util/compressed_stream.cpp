@@ -116,6 +116,8 @@ Input_stream *Compressed_istream::auto_detect(const string &file_name)
 	if (!S_ISREG(buf.st_mode))
 		return new Input_stream(file_name);
 #endif
+	if (file_name.empty())
+		return new Input_stream(file_name);
 	unsigned char b[2];
 	Input_stream f(file_name);
 	size_t n = f.read(b, 2);

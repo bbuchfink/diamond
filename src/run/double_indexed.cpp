@@ -253,6 +253,8 @@ void run_query_chunk(Database_file &db_file,
 
 void master_thread(Database_file &db_file, Timer &total_timer)
 {
+	if(config.query_file.empty())
+		std::cerr << "Query file parameter (--query/-q) is missing. Input will be read from stdin." << endl;
 	task_timer timer("Opening the input file", true);
 	auto_ptr<Input_stream> query_file(Compressed_istream::auto_detect(config.query_file));
 	const Sequence_file_format *format_n(guess_format(*query_file));
