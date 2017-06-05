@@ -23,6 +23,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <exception>
 #include "../basic/config.h"
 #include "temp_file.h"
+#include "log_stream.h"
 
 using std::vector;
 using std::string;

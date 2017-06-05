@@ -22,8 +22,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/async_buffer.h"
 #include "../basic/match.h"
 
-using std::auto_ptr;
-
 #pragma pack(1)
 
 struct hit

@@ -19,6 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #ifndef ALIGN_H_
 #define ALIGN_H_
 
+#include <memory>
 #include <vector>
 #include <map>
 #include "../search/trace_pt_buffer.h"
@@ -27,6 +28,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "align_struct.h"
 
 using std::vector;
+using std::auto_ptr;
 
 struct Output_writer
 {
