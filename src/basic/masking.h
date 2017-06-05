@@ -17,6 +17,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #include <vector>
+#include <memory>
 #include <math.h>
 #include "value.h"
 #include "score_matrix.h"
@@ -25,6 +26,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../data/sequence_set.h"
 
 using std::vector;
+using std::auto_ptr;
 
 struct Masking
 {

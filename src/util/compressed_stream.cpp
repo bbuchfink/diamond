@@ -17,15 +17,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #include <stdexcept>
-#include "compressed_stream.h"
-
-#if defined(MSDOS) || defined(OS2) || defined(WIN32) || defined(__CYGWIN__)
-#  include <fcntl.h>
-#  include <io.h>
-#  define SET_BINARY_MODE(file) setmode(fileno(file), O_BINARY)
-#else
-#  define SET_BINARY_MODE(file)
+#ifndef _MSC_VER
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
 #endif
+#include "compressed_stream.h"
 
 Compressed_istream::Compressed_istream(const string &file_name):
 	Input_stream(file_name),
@@ -110,6 +107,15 @@ bool is_gzip_stream(const unsigned char *b)
 
 Input_stream *Compressed_istream::auto_detect(const string &file_name)
 {
+#ifndef _MSC_VER
+	struct stat buf;
+	if (stat(file_name.c_str(), &buf) < 0) {
+		perror(0);
+		throw std::runtime_error(string("Error calling stat on file ") + file_name);
+	}
+	if (!S_ISREG(buf.st_mode))
+		return new Input_stream(file_name);
+#endif
 	unsigned char b[2];
 	Input_stream f(file_name);
 	size_t n = f.read(b, 2);

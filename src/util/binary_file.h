@@ -19,22 +19,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #ifndef BINARY_FILE_H_
 #define BINARY_FILE_H_
 
-#include <memory>
 #include <vector>
 #include <string>
 #include <stdexcept>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <stdint.h>
-#include <stddef.h>
-#include <assert.h>
-#include "log_stream.h"
-#include "system.h"
 
-using std::auto_ptr;
 using std::vector;
-using std::endl;
 using std::string;
 using std::runtime_error;
 

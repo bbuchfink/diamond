@@ -18,6 +18,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <sstream>
 #ifdef _MSC_VER
+#define NOMINMAX
+#include <Windows.h>
 #else
 #include <stdio.h>
 #include <fcntl.h>
@@ -296,7 +298,7 @@ uint64_t Temp_file::hash_key;
 Temp_file::Temp_file()
 {
 	if (n == 0) {
-#ifdef WIN32
+#ifdef _MSC_VER
 		LARGE_INTEGER count;
 		QueryPerformanceCounter(&count);
 		hash_key = (uint64_t)(count.HighPart + count.LowPart + count.QuadPart + GetCurrentProcessId());
