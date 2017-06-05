@@ -26,6 +26,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <unistd.h>
 #include <errno.h>
 #include <sys/stat.h>
+#include <sys/time.h>
 #endif
 
 #include "../basic/config.h"
@@ -33,7 +34,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "temp_file.h"
 #include "util.h"
 
-using std::auto_ptr;
 using std::vector;
 using std::endl;
 using std::string;
