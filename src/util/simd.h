@@ -47,17 +47,19 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 inline void check_simd()
 {
-#ifdef __SSSE3__
+#ifdef __SSE2__
 	int info[4];
 	cpuid(info, 0);
 	int nids = info[0];
 	if (nids >= 1) {
 		cpuid(info, 1);
-		if ((info[2] & (1 << 9)) == 0)
-			throw std::runtime_error("CPU does not support SSSE3. Please try to run the diamond-sse2 file contained in the binary package or compile the software from source.");
 	}
 	else
-		throw std::runtime_error("Incompatible CPU type. Please try to run the diamond-sse2 file contained in the binary package or compile the software from source.");
+		throw std::runtime_error("Incompatible CPU type. Please try to compile the software from source.");
+#endif
+#ifdef __SSSE3__
+	if ((info[2] & (1 << 9)) == 0)
+		throw std::runtime_error("CPU does not support SSSE3. Please try to run the diamond-sse2 file contained in the binary package or compile the software from source.");		
 #endif
 }
 

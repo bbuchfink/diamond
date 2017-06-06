@@ -17,11 +17,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #include <sstream>
+#include <stdio.h>
 #ifdef _MSC_VER
 #define NOMINMAX
 #include <Windows.h>
 #else
-#include <stdio.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <errno.h>

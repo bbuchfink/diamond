@@ -17,6 +17,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #include <stdexcept>
+#include <stdio.h>
 #ifndef _MSC_VER
 #include <sys/types.h>
 #include <sys/stat.h>

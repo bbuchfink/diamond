@@ -37,7 +37,7 @@ struct File_read_exception : public std::runtime_error
 struct File_write_exception : public std::runtime_error
 {
 	File_write_exception(const string &file_name) :
-		runtime_error(string("Error writing file ") + file_name + ". Disk full?")
+		runtime_error(string("Error writing file ") + file_name)
 	{ }
 };
 
