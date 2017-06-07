@@ -39,6 +39,14 @@ using std::endl;
 using std::string;
 using std::runtime_error;
 
+#ifdef __APPLE__
+#define POSIX_OPEN(x,y,z) open(x,y,z)
+#define POSIX_OPEN2(x,y) open(x,y)
+#else
+#define POSIX_OPEN(x,y,z) open64(x,y,z)
+#define POSIX_OPEN2(x,y) open64(x,y)
+#endif
+
 Output_stream::Output_stream()
 { }
 
@@ -53,7 +61,7 @@ Output_stream::Output_stream(const string &file_name) :
 #ifdef _MSC_VER
 	f_ = file_name.length() == 0 ? stdout : fopen(file_name.c_str(), "wb");
 #else
-	int fd_ = file_name.length() == 0 ? 1 : open64(file_name.c_str(), O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
+	int fd_ = file_name.length() == 0 ? 1 : POSIX_OPEN(file_name.c_str(), O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
 	if (fd_ < 0) {
 		perror(0);
 		throw File_open_exception(file_name_);
@@ -140,7 +148,7 @@ Input_stream::Input_stream(const string &file_name) :
 #ifdef _MSC_VER
 	f_ = file_name.empty() ? stdin : fopen(file_name.c_str(), "rb");
 #else
-	int fd_ = file_name.empty() ? 0 : open64(file_name.c_str(), O_RDONLY);
+	int fd_ = file_name.empty() ? 0 : POSIX_OPEN2(file_name.c_str(), O_RDONLY);
 	if (fd_ < 0) {
 		perror(0);
 		throw std::runtime_error(string("Error opening file ") + file_name);
@@ -321,7 +329,7 @@ Temp_file::Temp_file()
 		throw std::runtime_error("Error opening temporary file: " + this->file_name_);
 	}
 #else
-	int fd = open64(this->file_name_.c_str(), O_RDWR | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
+	int fd = POSIX_OPEN(this->file_name_.c_str(), O_RDWR | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
 	if (fd < 0) {
 		perror(0);
 		throw std::runtime_error(string("Error opening temporary file ") + this->file_name_);
