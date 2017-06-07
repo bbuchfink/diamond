@@ -39,12 +39,12 @@ using std::endl;
 using std::string;
 using std::runtime_error;
 
-#ifdef __APPLE__
-#define POSIX_OPEN(x,y,z) open(x,y,z)
-#define POSIX_OPEN2(x,y) open(x,y)
-#else
+#ifdef __linux__
 #define POSIX_OPEN(x,y,z) open64(x,y,z)
 #define POSIX_OPEN2(x,y) open64(x,y)
+#else
+#define POSIX_OPEN(x,y,z) open(x,y,z)
+#define POSIX_OPEN2(x,y) open(x,y)
 #endif
 
 Output_stream::Output_stream()
