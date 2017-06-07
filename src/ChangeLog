@@ -1,3 +1,6 @@
+[0.9.6]
+- Fixed compiler errors.
+
 [0.9.5]
 - Added support for named pipes.
 - Added support for reading input files from stdin.

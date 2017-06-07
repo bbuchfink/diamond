@@ -19,6 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #ifndef MATCH_FILE_H_
 #define MATCH_FILE_H_
 
+#include <stdio.h>
 #include <vector>
 #include "blast_record.h"
 #include "../util/util.h"
