@@ -99,8 +99,8 @@ void XML_format::print_match(const Hsp_context &r, Text_buffer &out) const
 		out << "<Hit>" << '\n'
 			<< "  <Hit_num>" << r.hit_num + 1 << "</Hit_num>" << '\n'
 			<< "  <Hit_id>" << id << "</Hit_id>" << '\n'
-			<< "  <Hit_def>" << def << "</Hit_def>" << '\n'
-			<< "  <Hit_accession>" << get_accession(id) << "</Hit_accession>" << '\n'
+			<< "  <Hit_def>" << def << "</Hit_def>" << '\n';
+		out << "  <Hit_accession>" << get_accession(id) << "</Hit_accession>" << '\n'
 			<< "  <Hit_len>" << r.subject_len << "</Hit_len>" << '\n'
 			<< "  <Hit_hsps>" << '\n';
 	}
