@@ -24,6 +24,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #ifdef _MSC_VER
 #define __SSE2__
 #define __SSSE3__
+#define __SSE4_1__
 #define __POPCNT__
 #endif
 
@@ -32,6 +33,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #endif
 #ifdef __SSE2__
 #include <emmintrin.h>
+#endif
+#ifdef __SSE4_1__
+#include <smmintrin.h>
 #endif
 
 void check_simd();

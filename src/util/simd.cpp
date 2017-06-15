@@ -53,4 +53,8 @@ void check_simd()
 	if ((info[2] & (1 << 23)) == 0)
 		throw std::runtime_error("CPU does not support POPCNT. Please compile the software from source.");
 #endif
+#ifdef __SSE4_1__
+	if ((info[2] & (1 << 19)) == 0)
+		throw std::runtime_error("CPU does not support SSE4.1. Please compile the software from source.");
+#endif
 }
