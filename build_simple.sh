@@ -1,5 +1,5 @@
 gcc -c -O3 -DNDEBUG src/blast/sm_blosum45.c src/blast/sm_blosum50.c src/blast/sm_blosum62.c src/blast/sm_blosum80.c src/blast/sm_blosum90.c src/blast/sm_pam30.c src/blast/sm_pam70.c src/blast/sm_pam250.c
-g++ -DNDEBUG -O3 -Wno-deprecated-declarations $1 $2 \
+g++ -DNDEBUG -O3 -Wno-deprecated-declarations $1 $2 $3 \
   sm*.o \
   src/run/main.cpp \
   src/basic/config.cpp \
@@ -52,4 +52,5 @@ g++ -DNDEBUG -O3 -Wno-deprecated-declarations $1 $2 \
   src/data/sorted_list.cpp \
   src/data/seed_set.cpp \
   src/util/binary_file.cpp \
+  src/util/simd.cpp \
 -lz -lpthread -o diamond

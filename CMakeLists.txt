@@ -84,6 +84,7 @@ add_executable(diamond src/run/main.cpp
   src/data/sorted_list.cpp
   src/data/seed_set.cpp
   src/util/binary_file.cpp
+  src/util/simd.cpp
 )
 
 target_link_libraries(diamond ${ZLIB_LIBRARY} ${CMAKE_THREAD_LIBS_INIT})

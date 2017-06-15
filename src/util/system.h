@@ -21,21 +21,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <stdexcept>
 
-#ifdef _WIN32
-#define cpuid(info,x)    __cpuidex(info,x,0)
-#else
-inline void cpuid(int CPUInfo[4],int InfoType) {
-    __asm__ __volatile__ (
-        "cpuid":
-        "=a" (CPUInfo[0]),
-        "=b" (CPUInfo[1]),
-        "=c" (CPUInfo[2]),
-        "=d" (CPUInfo[3]) :
-        "a" (InfoType), "c" (0)
-    );
-}
-#endif
-
 #ifdef _MSC_VER
 
 #define PACKED_ATTRIBUTE
