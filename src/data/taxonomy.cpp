@@ -24,6 +24,24 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 Taxonomy taxonomy;
 
+string& get_accession(string &t)
+{
+	size_t i;
+	if (t.compare(0, 6, "UniRef") == 0)
+		t.erase(0, 9);
+	else if ((i = t.find_first_of('|', 0)) != string::npos) {
+		if (t.compare(0, 3, "gi|") == 0) {
+			t.erase(0, t.find_first_of('|', i + 1) + 1);
+			i = t.find_first_of('|', 0);
+		}
+		t.erase(0, i + 1);
+		i = t.find_first_of('|', 0);
+		if (i != string::npos)
+			t.erase(i);
+	}
+	return t;
+}
+
 void Taxonomy::load()
 {
 	char acc[max_accesion_len + 2];

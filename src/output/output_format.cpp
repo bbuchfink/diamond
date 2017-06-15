@@ -17,6 +17,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #include <iostream>
+#include "../data/taxonomy.h"
 #include "output_format.h"
 #include "../data/reference.h"
 
@@ -93,13 +94,13 @@ void XML_format::print_match(const Hsp_context &r, Text_buffer &out) const
 	if(r.hsp_num == 0) {
 		if (r.hit_num > 0)
 			out << "  </Hit_hsps>" << '\n' << "</Hit>" << '\n';
+		string id, def;
+		get_title_def(r.subject_name, id, def);
 		out << "<Hit>" << '\n'
 			<< "  <Hit_num>" << r.hit_num + 1 << "</Hit_num>" << '\n'
-			<< "  <Hit_id>gnl|BL_ORD_ID|" << r.orig_subject_id + 1 << "</Hit_id>" << '\n'
-			<< "  <Hit_def>";
-		Output_format::print_title(out, r.subject_name, true, true, " ");
-		out << "</Hit_def> " << '\n'
-			<< "  <Hit_accession>" << r.orig_subject_id + 1 << "</Hit_accession>" << '\n'
+			<< "  <Hit_id>" << id << "</Hit_id>" << '\n'
+			<< "  <Hit_def>" << def << "</Hit_def>" << '\n'
+			<< "  <Hit_accession>" << get_accession(id) << "</Hit_accession>" << '\n'
 			<< "  <Hit_len>" << r.subject_len << "</Hit_len>" << '\n'
 			<< "  <Hit_hsps>" << '\n';
 	}

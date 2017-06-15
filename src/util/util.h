@@ -255,6 +255,16 @@ inline string get_title(const string &s)
 	return s.substr(0, find_first_of(s.c_str(), Const::id_delimiters));
 }
 
+inline void get_title_def(const string &s, string &title, string &def)
+{
+	const size_t i = find_first_of(s.c_str(), Const::id_delimiters);
+	title = s.substr(0, i);
+	if (i >= s.length())
+		def.clear();
+	else
+		def = s.substr(i + 1);
+}
+
 inline size_t print_str(char* buf, const char *s, size_t n)
 {
 	memcpy(buf, s, n);
