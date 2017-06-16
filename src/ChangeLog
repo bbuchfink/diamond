@@ -1,3 +1,6 @@
+[0.9.8]
+- Fixed a compiler errror.
+
 [0.9.7]
 - Fixed compiler errors.
 - Changed XML format to print accessions in the Hit_id and Hit_accession fields.

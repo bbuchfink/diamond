@@ -347,6 +347,9 @@ Config::Config(int argc, const char **argv)
 #ifdef __SSSE3__
 		verbose_stream << "SSSE3 enabled." << endl;
 #endif
+#ifdef __SSE4_1__
+		verbose_stream << "SSE4.1 enabled." << endl;
+#endif
 #ifdef __POPCNT__
 		verbose_stream << "POPCNT enabled." << endl;
 #endif
