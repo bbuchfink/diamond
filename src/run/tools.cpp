@@ -118,14 +118,14 @@ void run_masker()
 		cout << '>' << string(id.data(), id.size()) << endl;
 		seq2 = seq;
 		Masking::get()(seq2.data(), seq2.size());
-		for (size_t i = 0; i < seq.size(); ++i) {
+		/*for (size_t i = 0; i < seq.size(); ++i) {
 			char c = value_traits.alphabet[(long)seq[i]];
 			if (seq2[i] == value_traits.mask_char)
 				c = tolower(c);
 			cout << c;
 		}
-		cout << endl;
-		//cout << sequence(seq.data(), seq.size()) << endl;
+		cout << endl;*/
+		cout << sequence(seq2.data(), seq2.size()) << endl;
 	}
 }
 
