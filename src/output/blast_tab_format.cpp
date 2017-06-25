@@ -97,6 +97,8 @@ void print_staxids(Text_buffer &out, const char *id)
 {
 	std::set<unsigned> taxons;
 	taxonomy.get_taxids(id, taxons);
+	if (taxons.empty())
+		return;
 	std::set<unsigned>::const_iterator i = taxons.begin();
 	out << *(i++);
 	for (; i != taxons.end(); ++i)

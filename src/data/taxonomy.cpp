@@ -88,8 +88,11 @@ void Taxonomy::load_nodes()
 void Taxonomy::get_taxids(const char *id, set<unsigned> &taxons) const
 {
 	const vector<string> t(tokenize(id, "\1"));
-	for (vector<string>::const_iterator i = t.begin(); i < t.end(); ++i)
-		taxons.insert(get(Taxonomy::Accession(*i)));
+	for (vector<string>::const_iterator i = t.begin(); i < t.end(); ++i) {
+		const unsigned id = get(Taxonomy::Accession(*i));
+		if(id != 0)
+			taxons.insert(id);
+	}
 }
 
 unsigned Taxonomy::get_lca(unsigned t1, unsigned t2) const

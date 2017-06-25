@@ -30,7 +30,7 @@ void Taxon_format::print_match(const Hsp_context &r, Text_buffer &out)
 		return;
 	evalue = std::min(evalue, r.evalue());
 	for (set<unsigned>::const_iterator i = taxons.begin(); i != taxons.end(); ++i)
-		taxid == taxonomy.get_lca(taxid, *i);
+		taxid = taxonomy.get_lca(taxid, *i);
 }
 
 void Taxon_format::print_query_epilog(Text_buffer &out, const char *query_title, bool unaligned) const
