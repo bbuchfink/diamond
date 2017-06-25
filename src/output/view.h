@@ -73,7 +73,7 @@ struct View_fetcher
 	DAA_file &daa;
 };
 
-void view_query(DAA_query_record &r, Text_buffer &out, const Output_format &format)
+void view_query(DAA_query_record &r, Text_buffer &out, Output_format &format)
 {
 	format.print_query_intro(r.query_num, r.query_name.c_str(), (unsigned)r.query_len(), out, false);
 	for (DAA_query_record::Match_iterator i = r.begin(); i.good(); ++i) {
@@ -81,12 +81,12 @@ void view_query(DAA_query_record &r, Text_buffer &out, const Output_format &form
 			continue;
 		format.print_match(i->context(), out);
 	}
-	format.print_query_epilog(out, false);
+	format.print_query_epilog(out, r.query_name.c_str(), false);
 }
 
 struct View_context
 {
-	View_context(DAA_file &daa, View_writer &writer, const Output_format &format):
+	View_context(DAA_file &daa, View_writer &writer, Output_format &format):
 		daa (daa),
 		writer (writer),
 		queue (3*config.threads_, writer),
@@ -113,7 +113,7 @@ struct View_context
 	DAA_file &daa;
 	View_writer &writer;
 	Task_queue<Text_buffer,View_writer> queue;
-	const Output_format &format;
+	Output_format &format;
 };
 
 void view()

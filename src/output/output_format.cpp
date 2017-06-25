@@ -84,12 +84,14 @@ Output_format* get_output_format()
 		return new Pairwise_format;
 	else if (f[0] == "null")
 		return new Null_format;
+	else if (f[0] == "102")
+		return new Taxon_format;
 	else
-		throw std::runtime_error("Invalid output format. Allowed values: 5,6,100,101");
+		throw std::runtime_error("Invalid output format. Allowed values: 0,5,6,100,101,102");
 }
 
 
-void XML_format::print_match(const Hsp_context &r, Text_buffer &out) const
+void XML_format::print_match(const Hsp_context &r, Text_buffer &out)
 {
 	if(r.hsp_num == 0) {
 		if (r.hit_num > 0)
@@ -183,7 +185,7 @@ void XML_format::print_query_intro(size_t query_num, const char *query_name, uns
 		<< "<Iteration_hits>" << '\n';
 }
 
-void XML_format::print_query_epilog(Text_buffer &out, bool unaligned) const
+void XML_format::print_query_epilog(Text_buffer &out, const char *query_title, bool unaligned) const
 {
 	if (!unaligned) {
 		out << "  </Hit_hsps>" << '\n'

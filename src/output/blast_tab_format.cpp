@@ -95,17 +95,15 @@ Blast_tab_format::Blast_tab_format() :
 
 void print_staxids(Text_buffer &out, const char *id)
 {
-	const vector<string> t(tokenize(id, "\1"));	
 	std::set<unsigned> taxons;
-	for (vector<string>::const_iterator i = t.begin(); i < t.end(); ++i)
-		taxons.insert(taxonomy.get(Taxonomy::Accession(*i)));
+	taxonomy.get_taxids(id, taxons);
 	std::set<unsigned>::const_iterator i = taxons.begin();
 	out << *(i++);
 	for (; i != taxons.end(); ++i)
 		out << ';' << *i;
 }
 
-void Blast_tab_format::print_match(const Hsp_context& r, Text_buffer &out) const
+void Blast_tab_format::print_match(const Hsp_context& r, Text_buffer &out)
 {
 	for (vector<unsigned>::const_iterator i = fields.begin(); i != fields.end(); ++i) {
 		switch (*i) {

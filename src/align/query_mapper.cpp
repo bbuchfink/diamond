@@ -155,19 +155,13 @@ void Query_mapper::rank_targets(double ratio)
 
 bool Query_mapper::generate_output(Text_buffer &buffer, Statistics &stat)
 {
-	if (!blocked_processing && *output_format != Output_format::daa && config.report_unaligned != 0 && config.load_balancing == Config::target_parallel) {
-		for (unsigned i = unaligned_from; i < query_id; ++i) {
-			output_format->print_query_intro(i, query_ids::get()[i].c_str(), get_source_query_len(i), buffer, true);
-			output_format->print_query_epilog(buffer, true);
-		}
-	}
-
 	std::sort(targets.begin(), targets.end(), Target::compare);
 
 	unsigned n_hsp = 0, n_target_seq = 0, hit_hsps = 0;
 	const unsigned top_score = targets.empty() ? 0 : targets[0].filter_score, query_len = (unsigned)query_seq(0).length();
 	size_t seek_pos = 0;
 	const char *query_title = query_ids::get()[query_id].c_str();
+	auto_ptr<Output_format> f(output_format->clone());
 
 	for (size_t i = 0; i < targets.size(); ++i) {
 		if ((config.min_bit_score == 0 && score_matrix.evalue(targets[i].filter_score, config.db_size, query_len) > config.max_evalue)
@@ -202,15 +196,15 @@ bool Query_mapper::generate_output(Text_buffer &buffer, Statistics &stat)
 			}
 			else {
 				if (n_hsp == 0) {
-					if (*output_format == Output_format::daa)
+					if (*f == Output_format::daa)
 						seek_pos = write_daa_query_record(buffer, query_title, align_mode.query_translated ? query_source_seqs::get()[query_id] : query_seqs::get()[query_id]);
 					else
-						output_format->print_query_intro(query_id, query_title, source_query_len, buffer, false);
+						f->print_query_intro(query_id, query_title, source_query_len, buffer, false);
 				}
-				if (*output_format == Output_format::daa)
+				if (*f == Output_format::daa)
 					write_daa_record(buffer, *j, query_id, targets[i].subject_id);
 				else
-					output_format->print_match(Hsp_context(*j,
+					f->print_match(Hsp_context(*j,
 						query_id,
 						query_seq(j->frame),
 						query_source_seq(),
@@ -235,17 +229,17 @@ bool Query_mapper::generate_output(Text_buffer &buffer, Statistics &stat)
 
 	if (n_hsp > 0) {
 		if (!blocked_processing) {
-			if (*output_format == Output_format::daa)
+			if (*f == Output_format::daa)
 				finish_daa_query_record(buffer, seek_pos);
 			else
-				output_format->print_query_epilog(buffer, false);
+				f->print_query_epilog(buffer, query_title, false);
 		}
 		else
 			Intermediate_record::finish_query(buffer, seek_pos);
 	}
-	else if (!blocked_processing && *output_format != Output_format::daa && config.report_unaligned != 0) {
-		output_format->print_query_intro(query_id, query_title, source_query_len, buffer, true);
-		output_format->print_query_epilog(buffer, true);
+	else if (!blocked_processing && *f != Output_format::daa && config.report_unaligned != 0) {
+		f->print_query_intro(query_id, query_title, source_query_len, buffer, true);
+		f->print_query_epilog(buffer, query_title, true);
 	}
 
 	if (!blocked_processing) {

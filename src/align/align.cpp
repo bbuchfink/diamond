@@ -98,8 +98,9 @@ void align_worker(size_t thread_id)
 			Text_buffer *buf = 0;
 			if (!blocked_processing && *output_format != Output_format::daa && config.report_unaligned != 0) {
 				buf = new Text_buffer;
-				output_format->print_query_intro(query, query_ids::get()[query].c_str(), get_source_query_len((unsigned)query), *buf, true);
-				output_format->print_query_epilog(*buf, true);
+				const char *query_title = query_ids::get()[query].c_str();
+				output_format->print_query_intro(query, query_title, get_source_query_len((unsigned)query), *buf, true);
+				output_format->print_query_epilog(*buf, query_title, true);
 			}
 			Output_sink::get().push(query, buf);
 			continue;
@@ -279,7 +280,7 @@ void align_queries(Trace_pt_buffer &trace_pts, Output_stream* output_file)
 	query_queue.last_query = (unsigned)-1;
 	const size_t max_size = (size_t)std::min(config.chunk_size*1e9 * 9 * 2 / config.lowmem, 2e9);
 	pair<size_t, size_t> query_range;
-	while(true) {
+	while (true) {
 		task_timer timer("Loading trace points", 3);
 		Trace_pt_list *v = new Trace_pt_list;
 		statistics.max(Statistics::TEMP_SPACE, trace_pts.load(*v, max_size, query_range));
@@ -295,7 +296,7 @@ void align_queries(Trace_pt_buffer &trace_pts, Output_stream* output_file)
 			query_queue.init(v->begin(), v->end());
 			Thread_pool threads;
 			for (unsigned i = 0; i < config.threads_; ++i)
-				threads.push_back(launch_thread(static_cast<void (*)(Output_stream*)>(&align_worker), output_file));
+				threads.push_back(launch_thread(static_cast<void(*)(Output_stream*)>(&align_worker), output_file));
 			threads.join_all();
 		}
 		else {
@@ -310,13 +311,5 @@ void align_queries(Trace_pt_buffer &trace_pts, Output_stream* output_file)
 		}
 		timer.go("Deallocating buffers");
 		delete v;
-	}
-	if (!blocked_processing && *output_format != Output_format::daa && config.report_unaligned != 0 && config.load_balancing == Config::target_parallel) {
-		Text_buffer buf;
-		for (unsigned i = query_queue.last_query + 1; i < query_ids::get().get_length(); ++i) {
-			output_format->print_query_intro(i, query_ids::get()[i].c_str(), get_source_query_len(i), buf, true);
-			output_format->print_query_epilog(buf, true);
-		}
-		output_file->write(buf.get_begin(), buf.size());
 	}
 }

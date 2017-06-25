@@ -18,7 +18,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "output_format.h"
 
-void Pairwise_format::print_match(const Hsp_context& r, Text_buffer &out) const
+void Pairwise_format::print_match(const Hsp_context& r, Text_buffer &out)
 {
 	static const unsigned width = 60;
 	out << '>';
@@ -67,9 +67,8 @@ void Pairwise_format::print_footer(Output_stream &out) const
 
 }
 
-void Pairwise_format::print_query_epilog(Text_buffer &out, bool unaligned) const
+void Pairwise_format::print_query_epilog(Text_buffer &out, const char *query_title, bool unaligned) const
 {
-
 }
 
 void Pairwise_format::print_query_intro(size_t query_num, const char *query_name, unsigned query_len, Text_buffer &out, bool unaligned) const

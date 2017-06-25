@@ -350,5 +350,11 @@ void master_thread_di()
 		timer.finish();
 	}
 
+	if (!config.nodesdmp.empty()) {
+		timer.go("Loading taxonomy nodes");
+		taxonomy.load_nodes();
+		timer.finish();
+	}
+
 	master_thread(db_file, timer2);
 }

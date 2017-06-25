@@ -82,7 +82,7 @@ void Sam_format::print_query_intro(size_t query_num, const char *query_name, uns
 	}
 }
 
-void Sam_format::print_match(const Hsp_context& r, Text_buffer &out) const
+void Sam_format::print_match(const Hsp_context& r, Text_buffer &out)
 {
 	out.write_until(r.query_name, Const::id_delimiters);
 	out << '\t' << '0' << '\t';

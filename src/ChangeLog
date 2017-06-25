@@ -1,3 +1,8 @@
+[0.9.9]
+- Added taxonomic classification format.
+- Fixed a bug in getseq printing masked residues.
+- Fixed parsing of UniRef100_ sequence id prefixes.
+
 [0.9.8]
 - Fixed a compiler errror.
 

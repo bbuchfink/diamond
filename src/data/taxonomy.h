@@ -19,6 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <vector>
 #include <algorithm>
 #include <string>
+#include <set>
 #include "../basic/const.h"
 #include "../util/util.h"
 
@@ -72,6 +73,8 @@ struct Taxonomy
 	};
 
 	void load();
+	void load_nodes();
+	void get_taxids(const char *s, std::set<unsigned> &taxons) const;
 
 	unsigned get(const Accession &accession) const
 	{
@@ -82,9 +85,20 @@ struct Taxonomy
 			return 0;
 	}
 
+	unsigned get_parent(unsigned taxid) const
+	{
+		if (parent_.size() <= taxid)
+			throw std::runtime_error(string("No taxonomy node found for taxon id ") + to_string(taxid));
+		return parent_[taxid];
+	}
+
+	unsigned get_lca(unsigned t1, unsigned t2) const;
+
 private:
 	
 	std::vector<std::pair<Accession, unsigned> > accession2taxid_;
+	std::vector<unsigned> parent_;
+
 };
 
 extern Taxonomy taxonomy;

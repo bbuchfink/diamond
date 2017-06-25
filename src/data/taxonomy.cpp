@@ -17,10 +17,15 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #include <stdio.h>
+#include <set>
 #include "taxonomy.h"
 #include "../util/compressed_stream.h"
 #include "../basic/config.h"
 #include "../util/merge_sort.h"
+
+using std::cout;
+using std::endl;
+using std::set;
 
 Taxonomy taxonomy;
 
@@ -62,5 +67,47 @@ void Taxonomy::load()
 		/*if (f.line_count % 10000 == 0)
 			std::cout << f.line_count << endl;*/
 	}
+	f.close();
 	merge_sort(accession2taxid_.begin(), accession2taxid_.end(), config.threads_);
+}
+
+void Taxonomy::load_nodes()
+{
+	Input_stream f(config.nodesdmp);
+	unsigned taxid, parent;
+	while (!f.eof() && (f.getline(), !f.line.empty())) {
+		if (sscanf(f.line.c_str(), "%u\t|\t%u", &taxid, &parent) != 2)
+			throw std::runtime_error("Invalid nodes.dmp file format.");
+		//cout << taxid << '\t' << parent << endl;
+		parent_.resize(taxid + 1);
+		parent_[taxid] = parent;
+	}
+	f.close();
+}
+
+void Taxonomy::get_taxids(const char *id, set<unsigned> &taxons) const
+{
+	const vector<string> t(tokenize(id, "\1"));
+	for (vector<string>::const_iterator i = t.begin(); i < t.end(); ++i)
+		taxons.insert(get(Taxonomy::Accession(*i)));
+}
+
+unsigned Taxonomy::get_lca(unsigned t1, unsigned t2) const
+{
+	if (t1 == t2 || t2 == 0)
+		return t1;
+	if (t1 == 0)
+		return t2;
+	unsigned p = t2;
+	set<unsigned> l;
+	do {
+		p = get_parent(p);
+		l.insert(p);
+	} while (p != t1 && p != 1);
+	if (p == t1)
+		return p;
+	p = t1;
+	while (l.find(p) == l.end())
+		p = get_parent(p);
+	return p;
 }
