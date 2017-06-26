@@ -124,6 +124,8 @@ unsigned Taxonomy::get_lca(unsigned t1, unsigned t2) const
 	int n = 0;
 	do {
 		p = get_parent(p);
+		if (p == 0)
+			return t1;
 		l.insert(p);
 		if (++n > max)
 			throw std::runtime_error("Path in taxonomy too long (1).");
@@ -134,6 +136,8 @@ unsigned Taxonomy::get_lca(unsigned t1, unsigned t2) const
 	n = 0;
 	while (l.find(p) == l.end()) {
 		p = get_parent(p);
+		if (p == 0)
+			return t2;
 		if (++n > max)
 			throw std::runtime_error("Path in taxonomy too long (2).");
 	}
