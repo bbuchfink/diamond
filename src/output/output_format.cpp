@@ -105,7 +105,7 @@ void init_output()
 			message_stream << config.max_alignments << endl;
 	}
 	else
-		message_stream << "Percentage range from top alignment score to report hits: " << config.toppercent << endl;
+		message_stream << "Percentage range of top alignment score to report hits: " << config.toppercent << endl;
 }
 
 void XML_format::print_match(const Hsp_context &r, Text_buffer &out)

@@ -29,8 +29,14 @@ void Taxon_format::print_match(const Hsp_context &r, Text_buffer &out)
 	if (taxons.empty())
 		return;
 	evalue = std::min(evalue, r.evalue());
-	for (set<unsigned>::const_iterator i = taxons.begin(); i != taxons.end(); ++i)
-		taxid = taxonomy.get_lca(taxid, *i);
+	try {
+		for (set<unsigned>::const_iterator i = taxons.begin(); i != taxons.end(); ++i)
+			taxid = taxonomy.get_lca(taxid, *i);
+	}
+	catch (std::exception &e) {
+		std::cerr << "Query=" << r.query_name << endl << "Subject=" << r.subject_name << endl;
+		throw;
+	}
 }
 
 void Taxon_format::print_query_epilog(Text_buffer &out, const char *query_title, bool unaligned) const
