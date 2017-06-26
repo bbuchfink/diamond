@@ -22,7 +22,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../data/queries.h"
 #include "../basic/statistics.h"
 #include "../basic/shape_config.h"
-#include "../align/align_queries.h"
 #include "../search/align_range.h"
 #include "../util/seq_file_format.h"
 #include "../data/load_seqs.h"
@@ -320,7 +319,7 @@ void master_thread_di()
 	timer2.start();
 
 	align_mode = Align_mode(Align_mode::from_command(config.command));
-	output_format = auto_ptr<Output_format>(get_output_format());
+	init_output();
 
 	message_stream << "Temporary directory: " << Temp_file::get_temp_dir() << endl;
 
@@ -343,18 +342,7 @@ void master_thread_di()
 	Config::set_option(config.db_size, (uint64_t)ref_header.letters);
 
 	set_max_open_files(config.query_bins * config.threads_ + unsigned(ref_header.letters / (size_t)(config.chunk_size * 1e9)) + 16);
-
-	if (!config.prot_accession2taxid.empty()) {
-		timer.go("Loading taxonomy");
-		taxonomy.load();
-		timer.finish();
-	}
-
-	if (!config.nodesdmp.empty()) {
-		timer.go("Loading taxonomy nodes");
-		taxonomy.load_nodes();
-		timer.finish();
-	}
+	taxonomy.init();
 
 	master_thread(db_file, timer2);
 }

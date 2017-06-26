@@ -22,6 +22,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/compressed_stream.h"
 #include "../basic/config.h"
 #include "../util/merge_sort.h"
+#include "../util/log_stream.h"
 
 using std::cout;
 using std::endl;
@@ -85,6 +86,22 @@ void Taxonomy::load_nodes()
 	f.close();
 }
 
+void Taxonomy::init()
+{
+	task_timer timer;
+	if (!config.prot_accession2taxid.empty()) {
+		timer.go("Loading taxonomy");
+		load();
+		timer.finish();
+	}
+
+	if (!config.nodesdmp.empty()) {
+		timer.go("Loading taxonomy nodes");
+		load_nodes();
+		timer.finish();
+	}
+}
+
 void Taxonomy::get_taxids(const char *id, set<unsigned> &taxons) const
 {
 	const vector<string> t(tokenize(id, "\1"));
@@ -97,20 +114,28 @@ void Taxonomy::get_taxids(const char *id, set<unsigned> &taxons) const
 
 unsigned Taxonomy::get_lca(unsigned t1, unsigned t2) const
 {
+	static const int max = 64;
 	if (t1 == t2 || t2 == 0)
 		return t1;
 	if (t1 == 0)
 		return t2;
 	unsigned p = t2;
 	set<unsigned> l;
+	int n = 0;
 	do {
 		p = get_parent(p);
 		l.insert(p);
+		if (++n > max)
+			throw std::runtime_error("Path in taxonomy too long.");
 	} while (p != t1 && p != 1);
 	if (p == t1)
 		return p;
 	p = t1;
-	while (l.find(p) == l.end())
+	n = 0;
+	while (l.find(p) == l.end()) {
 		p = get_parent(p);
+		if (++n > max)
+			throw std::runtime_error("Path in taxonomy too long.");
+	}
 	return p;
 }

@@ -69,6 +69,11 @@ extern Message_stream log_stream;
 
 struct task_timer
 {
+	task_timer(unsigned level = 1) :
+		level_(level),
+		msg_(0)
+	{
+	}
 	task_timer(const char *msg, unsigned level=1) :
 		level_(level),
 		msg_(msg)

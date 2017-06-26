@@ -175,6 +175,7 @@ struct Taxon_format : public Output_format
 };
 
 Output_format* get_output_format();
+void init_output();
 void print_hsp(Hsp_data &hsp, sequence query);
 
 #endif /* OUTPUT_FORMAT_H_ */

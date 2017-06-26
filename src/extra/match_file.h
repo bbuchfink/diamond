@@ -21,6 +21,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <stdio.h>
 #include <vector>
+#include "../util/binary_file.h"
 #include "blast_record.h"
 #include "../util/util.h"
 #include "../basic/reduction.h"

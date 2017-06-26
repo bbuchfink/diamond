@@ -54,4 +54,6 @@ g++ -DNDEBUG -O3 -Wno-deprecated-declarations $1 $2 $3 \
   src/util/binary_file.cpp \
   src/util/simd.cpp \
   src/output/taxon_format.cpp \
+  src/output/view.cpp \
+  src/output/output_sink.cpp \
 -lz -lpthread -o diamond

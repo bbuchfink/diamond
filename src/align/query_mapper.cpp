@@ -16,25 +16,12 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#include "align_queries.h"
 #include "query_mapper.h"
 #include "../data/reference.h"
 #include "extend_ungapped.h"
 #include "../output/output.h"
 #include "../output/output_format.h"
 #include "../output/daa_write.h"
-
-Query_mapper::Query_mapper() :
-	source_hits(get_query_data()),
-	query_id(source_hits.first->query_ / align_mode.query_contexts),
-	targets_finished(0),
-	next_target(0),
-	source_query_len(get_source_query_len(query_id)),
-	unaligned_from(query_queue.last_query+1)
-{	
-	query_queue.last_query = query_id;
-	seed_hits.reserve(source_hits.second - source_hits.first);
-}
 
 int Query_mapper::raw_score_cutoff() const
 {
@@ -68,18 +55,6 @@ void Query_mapper::init()
 	load_targets();
 	if (config.ext == Config::floating_xdrop)
 		rank_targets(config.rank_ratio == -1 ? 0.6 : config.rank_ratio);
-}
-
-pair<Trace_pt_list::iterator, Trace_pt_list::iterator> Query_mapper::get_query_data()
-{
-	const Trace_pt_list::iterator begin = query_queue.trace_pt_pos;
-	if (begin == query_queue.trace_pt_end)
-		return pair<Trace_pt_list::iterator, Trace_pt_list::iterator>(begin, begin);
-	const unsigned c = align_mode.query_contexts, query = begin->query_ / c;
-	Trace_pt_list::iterator end = begin;
-	for (; end < query_queue.trace_pt_end && end->query_ / c == query; ++end);
-	query_queue.trace_pt_pos = end;
-	return pair<Trace_pt_list::iterator, Trace_pt_list::iterator>(begin, end);
 }
 
 unsigned Query_mapper::count_targets()

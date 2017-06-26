@@ -19,6 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #ifndef OUTPUT_H_
 #define OUTPUT_H_
 
+#include <map>
 #include "../util/binary_file.h"
 #include "../basic/packed_transcript.h"
 #include "../util/text_buffer.h"
@@ -98,8 +99,42 @@ struct Intermediate_record
 	Packed_transcript transcript;
 };
 
-#ifndef ST_JOIN
 void join_blocks(unsigned ref_blocks, Output_stream &master_out, const vector<Temp_file> &tmp_file);
-#endif
+
+struct Output_sink
+{
+	Output_sink(size_t begin, Output_stream *f) :
+		f_(f),
+		next_(begin),
+		size_(0),
+		max_size_(0)
+	{}
+	void push(size_t n, Text_buffer *buf);
+	size_t size() const
+	{
+		return size_;
+	}
+	size_t max_size() const
+	{
+		return max_size_;
+	}
+	static Output_sink& get()
+	{
+		return *instance;
+	}
+	size_t next() const
+	{
+		return next_;
+	}
+	static auto_ptr<Output_sink> instance;
+private:
+	void flush(Text_buffer *buf);
+	tthread::mutex mtx_;
+	Output_stream* const f_;
+	std::map<size_t, Text_buffer*> backlog_;
+	size_t next_, size_, max_size_;
+};
+
+void heartbeat_worker(size_t qend);
 
 #endif

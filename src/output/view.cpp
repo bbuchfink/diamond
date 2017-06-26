@@ -16,9 +16,6 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#ifndef VIEW_H_
-#define VIEW_H_
-
 #include "../basic/config.h"
 #include "../util/binary_file.h"
 #include "../util/text_buffer.h"
@@ -28,13 +25,14 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/task_queue.h"
 #include "../basic/score_matrix.h"
 #include "../util/thread.h"
+#include "../data/taxonomy.h"
 
 const unsigned view_buf_size = 32;
 
 struct View_writer
 {
-	View_writer():
-		f_ (config.compression == 1
+	View_writer() :
+		f_(config.compression == 1
 			? new Compressed_ostream(config.output_file)
 			: new Output_stream(config.output_file))
 	{ }
@@ -52,17 +50,18 @@ struct View_writer
 
 struct View_fetcher
 {
-	View_fetcher(DAA_file &daa):
-		daa (daa)
+	View_fetcher(DAA_file &daa) :
+		daa(daa)
 	{ }
 	bool operator()()
 	{
 		n = 0;
-		for(unsigned i=0;i<view_buf_size;++i)
+		for (unsigned i = 0; i<view_buf_size; ++i)
 			if (!daa.read_query_buffer(buf[i], query_num)) {
 				query_num -= n - 1;
 				return false;
-			} else
+			}
+			else
 				++n;
 		query_num -= n - 1;
 		return true;
@@ -76,9 +75,13 @@ struct View_fetcher
 void view_query(DAA_query_record &r, Text_buffer &out, Output_format &format)
 {
 	format.print_query_intro(r.query_num, r.query_name.c_str(), (unsigned)r.query_len(), out, false);
-	for (DAA_query_record::Match_iterator i = r.begin(); i.good(); ++i) {
+	DAA_query_record::Match_iterator i = r.begin();
+	const unsigned top_score = i.good() ? i->score : 0;
+	for (; i.good(); ++i) {
 		if (i->frame > 2 && config.forwardonly)
 			continue;
+		if (!config.output_range(i->hit_num, i->score, top_score))
+			break;
 		format.print_match(i->context(), out);
 	}
 	format.print_query_epilog(out, r.query_name.c_str(), false);
@@ -86,39 +89,40 @@ void view_query(DAA_query_record &r, Text_buffer &out, Output_format &format)
 
 struct View_context
 {
-	View_context(DAA_file &daa, View_writer &writer, Output_format &format):
-		daa (daa),
-		writer (writer),
-		queue (3*config.threads_, writer),
-		format (format)
+	View_context(DAA_file &daa, View_writer &writer, Output_format &format) :
+		daa(daa),
+		writer(writer),
+		queue(3 * config.threads_, writer),
+		format(format)
 	{ }
 	void operator()(unsigned thread_id)
 	{
 		try {
 			size_t n;
-			View_fetcher query_buf (daa);
+			View_fetcher query_buf(daa);
 			Text_buffer *buffer = 0;
-			while(queue.get(n, buffer, query_buf)) {
+			while (queue.get(n, buffer, query_buf)) {
 				for (unsigned j = 0; j < query_buf.n; ++j) {
 					DAA_query_record r(daa, query_buf.buf[j], query_buf.query_num + j);
 					view_query(r, *buffer, format);
 				}
 				queue.push(n);
 			}
-		} catch(std::exception &e) {
+		}
+		catch (std::exception &e) {
 			std::cout << e.what() << std::endl;
 			std::terminate();
 		}
 	}
 	DAA_file &daa;
 	View_writer &writer;
-	Task_queue<Text_buffer,View_writer> queue;
+	Task_queue<Text_buffer, View_writer> queue;
 	Output_format &format;
 };
 
 void view()
 {
-	DAA_file daa (config.daa_file);
+	DAA_file daa(config.daa_file);
 	score_matrix = Score_matrix("", daa.lambda(), daa.kappa(), daa.gap_open_penalty(), daa.gap_extension_penalty());
 
 	message_stream << "Scoring parameters: " << score_matrix << endl;
@@ -126,10 +130,12 @@ void view()
 	message_stream << "DB sequences = " << daa.db_seqs() << endl;
 	message_stream << "DB sequences used = " << daa.db_seqs_used() << endl;
 	message_stream << "DB letters = " << daa.db_letters() << endl;
-	
+
+	init_output();
+	taxonomy.init();
+
 	task_timer timer("Generating output");
 	View_writer writer;
-	output_format = auto_ptr<Output_format>(get_output_format());
 
 	Binary_buffer buf;
 	size_t query_num;
@@ -152,5 +158,3 @@ void view()
 
 	output_format->print_footer(*writer.f_);
 }
-
-#endif /* VIEW_H_ */

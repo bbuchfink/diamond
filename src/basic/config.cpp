@@ -354,14 +354,6 @@ Config::Config(int argc, const char **argv)
 #ifdef __POPCNT__
 		verbose_stream << "POPCNT enabled." << endl;
 #endif
-
-		message_stream << "#Target sequences to report alignments for: ";
-		if (max_alignments == 0) {
-			max_alignments = std::numeric_limits<uint64_t>::max();
-			message_stream << "unlimited" << endl;
-		}
-		else
-			message_stream << max_alignments << endl;
 	}
 
 	Translator::init(query_gencode);

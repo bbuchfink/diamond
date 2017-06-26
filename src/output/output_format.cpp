@@ -90,6 +90,23 @@ Output_format* get_output_format()
 		throw std::runtime_error("Invalid output format. Allowed values: 0,5,6,100,101,102");
 }
 
+void init_output()
+{
+	output_format = auto_ptr<Output_format>(get_output_format());
+	if (*output_format == Output_format::taxon && config.toppercent == 100.0)
+		config.toppercent = 10.0;
+	if (config.toppercent == 100.0) {
+		message_stream << "#Target sequences to report alignments for: ";
+		if (config.max_alignments == 0) {
+			config.max_alignments = std::numeric_limits<uint64_t>::max();
+			message_stream << "unlimited" << endl;
+		}
+		else
+			message_stream << config.max_alignments << endl;
+	}
+	else
+		message_stream << "Percentage range from top alignment score to report hits: " << config.toppercent << endl;
+}
 
 void XML_format::print_match(const Hsp_context &r, Text_buffer &out)
 {

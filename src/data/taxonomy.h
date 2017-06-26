@@ -72,6 +72,7 @@ struct Taxonomy
 		char s[max_accesion_len];
 	};
 
+	void init();
 	void load();
 	void load_nodes();
 	void get_taxids(const char *s, std::set<unsigned> &taxons) const;

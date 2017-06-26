@@ -18,7 +18,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <iostream>
 #include "../basic/config.h"
-#include "../output/view.h"
 #include "tools.h"
 #include "../extra/compare.h"
 
@@ -31,6 +30,8 @@ void model_seqs();
 void opt();
 void run_masker();
 void fastq2fasta();
+void view();
+void make_db();
 
 int main(int ac, const char* av[])
 {
