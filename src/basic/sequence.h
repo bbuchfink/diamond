@@ -100,8 +100,13 @@ struct sequence
 	}
 	std::ostream& print(std::ostream &os, const Value_traits &v) const
 	{
-		for (unsigned i = 0; i<len_; ++i)
-			os << v.alphabet[(long)data_[i]];
+		for (unsigned i = 0; i < len_; ++i) {
+			long l = (long)data_[i];
+			if ((l & 128) == 0)
+				os << v.alphabet[l];
+			else
+				os << (char)tolower(v.alphabet[l & 127]);
+		}
 		return os;
 	}
 	std::ostream& print(std::ostream &os, const Value_traits &v, Reversed) const

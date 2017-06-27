@@ -33,7 +33,7 @@ void Taxon_format::print_match(const Hsp_context &r, Text_buffer &out)
 		for (set<unsigned>::const_iterator i = taxons.begin(); i != taxons.end(); ++i)
 			taxid = taxonomy.get_lca(taxid, *i);
 	}
-	catch (std::exception &e) {
+	catch (std::exception &) {
 		std::cerr << "Query=" << r.query_name << endl << "Subject=" << r.subject_name << endl;
 		throw;
 	}
