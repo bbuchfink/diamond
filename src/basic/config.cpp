@@ -137,6 +137,7 @@ Config::Config(int argc, const char **argv)
 		//("seg", 0, "enable SEG masking of queries (yes/no)", seg)
 		("query-gencode", 0, "genetic code to use to translate query (see user manual)", query_gencode, 1u)
 		("salltitles", 0, "include full subject titles in DAA file", salltitles)
+		("sallseqid", 0, "include all subject ids in DAA file", sallseqid)
 		("no-self-hits", 0, "suppress reporting of identical self hits", no_self_hits)
 		("taxonmap", 0, "protein accession to taxid mapping file", prot_accession2taxid)
 		("taxonnodes", 0, "taxonomy nodes.dmp from NCBI", nodesdmp);

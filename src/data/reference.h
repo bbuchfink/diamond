@@ -129,6 +129,8 @@ inline size_t max_id_len(const String_set<0> &ids)
 	return max;
 }
 
+string* get_allseqids(const char *s);
+
 struct Ref_map
 {
 	Ref_map():
@@ -157,10 +159,13 @@ struct Ref_map
 			n = next_++;
 			data_[block][i] = n;
 			len_.push_back((uint32_t)ref_seqs::get().length(i));
+			const char *title = ref_ids::get()[i].c_str();
 			if (config.salltitles)
-				name_.push_back(new string(ref_ids::get()[i].c_str()));
+				name_.push_back(new string(title));
+			else if (config.sallseqid)
+				name_.push_back(get_allseqids(title));
 			else
-				name_.push_back(get_str(ref_ids::get()[i].c_str(), Const::id_delimiters));
+				name_.push_back(get_str(title, Const::id_delimiters));
 			mtx_.unlock();
 		}
 		return n;

@@ -39,6 +39,18 @@ bool blocked_processing;
 using std::cout;
 using std::endl;
 
+string* get_allseqids(const char *s)
+{
+	string *r = new string;
+	const vector<string> t(tokenize(s, "\1"));
+	for (vector<string>::const_iterator i = t.begin(); i != t.end(); ++i) {
+		if (i != t.begin())
+			r->append("\1");
+		r->append(i->substr(0, find_first_of(i->c_str(), Const::id_delimiters)));
+	}
+	return r;
+}
+
 struct Pos_record
 {
 	Pos_record()
