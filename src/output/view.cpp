@@ -74,7 +74,8 @@ struct View_fetcher
 
 void view_query(DAA_query_record &r, Text_buffer &out, Output_format &format)
 {
-	format.print_query_intro(r.query_num, r.query_name.c_str(), (unsigned)r.query_len(), out, false);
+	auto_ptr<Output_format> f(format.clone());
+	f->print_query_intro(r.query_num, r.query_name.c_str(), (unsigned)r.query_len(), out, false);
 	DAA_query_record::Match_iterator i = r.begin();
 	const unsigned top_score = i.good() ? i->score : 0;
 	for (; i.good(); ++i) {
@@ -82,9 +83,9 @@ void view_query(DAA_query_record &r, Text_buffer &out, Output_format &format)
 			continue;
 		if (!config.output_range(i->hit_num, i->score, top_score))
 			break;
-		format.print_match(i->context(), out);
+		f->print_match(i->context(), out);
 	}
-	format.print_query_epilog(out, r.query_name.c_str(), false);
+	f->print_query_epilog(out, r.query_name.c_str(), false);
 }
 
 struct View_context
@@ -122,8 +123,10 @@ struct View_context
 
 void view()
 {
+	task_timer timer("Loading subject IDs");
 	DAA_file daa(config.daa_file);
 	score_matrix = Score_matrix("", daa.lambda(), daa.kappa(), daa.gap_open_penalty(), daa.gap_extension_penalty());
+	timer.finish();
 
 	message_stream << "Scoring parameters: " << score_matrix << endl;
 	verbose_stream << "Build version = " << daa.diamond_build() << endl;
@@ -134,7 +137,7 @@ void view()
 	init_output();
 	taxonomy.init();
 
-	task_timer timer("Generating output");
+	timer.go("Generating output");
 	View_writer writer;
 
 	Binary_buffer buf;

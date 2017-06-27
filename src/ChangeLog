@@ -2,6 +2,7 @@
 - Added taxonomic classification format.
 - Fixed a bug in getseq printing masked residues.
 - Fixed parsing of UniRef100_ sequence id prefixes.
+- Added support for using the staxids output field in diamond view.
 
 [0.9.8]
 - Fixed a compiler errror.
