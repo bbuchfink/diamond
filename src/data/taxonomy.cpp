@@ -34,7 +34,7 @@ string& get_accession(string &t)
 {
 	size_t i;
 	if (t.compare(0, 6, "UniRef") == 0)
-		t.erase(0, 9);
+		t.erase(0, t.find('_', 0) + 1);
 	else if ((i = t.find_first_of('|', 0)) != string::npos) {
 		if (t.compare(0, 3, "gi|") == 0) {
 			t.erase(0, t.find_first_of('|', i + 1) + 1);

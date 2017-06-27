@@ -26,7 +26,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 const char* Const::version_string = "0.9.9";
 const char* Const::program_name = "diamond";
-const char* Const::id_delimiters = " \a\b\f\n\r\t\v";
+const char* Const::id_delimiters = " \a\b\f\n\r\t\v\1";
 
 Value_traits::Value_traits(const char *alphabet, Letter mask_char, const char *ignore) :
 	alphabet(alphabet),
