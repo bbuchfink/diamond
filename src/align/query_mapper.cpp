@@ -159,7 +159,7 @@ void Query_mapper::rank_targets(double ratio)
 
 		int i = 0;
 		const double p = config.query_overlap_culling / 100.0;
-		while (i < targets.size()) {
+		while (i < (int)targets.size()) {
 			int min_score = int((double)targets[i].filter_score / (1.0 - config.toppercent / 100.0) / ratio);
 			if (targets[i].is_enveloped(targets.begin(), targets.begin() + i, p, min_score))
 				targets.erase(targets.begin() + i, targets.begin() + i + 1);
