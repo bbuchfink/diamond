@@ -24,7 +24,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../basic/translate.h"
 #include "../util/seq_file_format.h"
 
-inline size_t push_seq(Sequence_set &ss, Sequence_set** source_seqs, const vector<Letter> &seq)
+inline size_t push_seq(Sequence_set &ss, Sequence_set** source_seqs, const vector<Letter> &seq, unsigned frame_mask)
 {
 	if (config.command == Config::blastp || config.command == Config::makedb || config.command == Config::random_seqs) {
 		ss.push_back(seq);
@@ -42,7 +42,7 @@ inline size_t push_seq(Sequence_set &ss, Sequence_set** source_seqs, const vecto
 
 		unsigned bestFrames(Translator::computeGoodFrames(proteins, config.get_run_len((unsigned)seq.size() / 3)));
 		for (unsigned j = 0; j < 6; ++j) {
-			if (bestFrames & (1 << j))
+			if ((bestFrames & (1 << j)) && (frame_mask & (1 << j)))
 				ss.push_back(proteins[j]);
 			else
 				ss.fill(proteins[j].size(), value_traits.mask_char);
@@ -68,10 +68,16 @@ inline size_t load_seqs(Input_stream &file,
 	vector<char> id;
 	string id2;
 
+	unsigned frame_mask = (1 << 6) - 1;
+	if (config.query_strands == "plus")
+		frame_mask = (1 << 3) - 1;
+	else if (config.query_strands == "minus")
+		frame_mask = ((1 << 3) - 1) << 3;
+
 	while (letters < max_letters && format.get_seq(id, seq, file)) {
 		if (seq.size() > 0 && (filter.empty() || id2.assign(id.data(), id.data() + id.size()).find(filter, 0) != string::npos)) {
 			ids->push_back(id);
-			letters += push_seq(**seqs, source_seqs, seq);
+			letters += push_seq(**seqs, source_seqs, seq, frame_mask);
 			++n;
 			if ((*seqs)->get_length() >(size_t)std::numeric_limits<int>::max())
 				throw std::runtime_error("Number of sequences in file exceeds supported maximum.");

@@ -56,7 +56,8 @@ Config::Config(int argc, const char **argv)
 		.add_command("model-seqs", "")
 		.add_command("opt", "")
 		.add_command("mask", "")
-		.add_command("fastq2fasta", "");
+		.add_command("fastq2fasta", "")
+		.add_command("dbinfo", "");
 
 	Options_group general("General options");
 	general.add()
@@ -111,10 +112,12 @@ Config::Config(int argc, const char **argv)
 	Options_group aligner("Aligner options");
 	aligner.add()
 		("query", 'q', "input query file", query_file)
+		("strand", 0, "query strands to search (both/minus/plus)", query_strands, string("both"))
 		("un", 0, "file for unaligned queries", unaligned)
 		("unal", 0, "report unaligned queries (0=no, 1=yes)", report_unaligned, -1)
 		("max-target-seqs", 'k', "maximum number of target sequences to report alignments for", max_alignments, uint64_t(25))
 		("top", 0, "report alignments within this percentage range of top alignment score (overrides --max-target-seqs)", toppercent, 100.0)
+		("overlap-culling", 0, "delete hits only if a higher scoring hit envelops the given percentage of the query range", query_overlap_culling)
 		("compress", 0, "compression for output files (0=none, 1=gzip)", compression)
 		("evalue", 'e', "maximum e-value to report alignments (default=0.001)", max_evalue, 0.001)
 		("min-score", 0, "minimum bit score to report alignments (overrides e-value setting)", min_bit_score)
@@ -232,7 +235,7 @@ Config::Config(int argc, const char **argv)
 			throw std::runtime_error("Invalid option: --block-size/-b. Block size is set for the alignment commands.");
 		break;
 	case Config::blastp:
-	case Config::blastx:	
+	case Config::blastx:
 		if (database == "")
 			throw std::runtime_error("Missing parameter: database file (--db/-d)");
 		if (daa_file.length() > 0) {
@@ -254,6 +257,12 @@ Config::Config(int argc, const char **argv)
 			throw std::runtime_error("Missing parameter: DAA file (--daa/-a)");
 	default:
 		;
+	}
+
+	switch (command) {
+	case Config::dbinfo:
+		if (database == "")
+			throw std::runtime_error("Missing parameter: database file (--db/-d)");
 	}
 
 	if (hit_cap != 0)
@@ -364,6 +373,9 @@ Config::Config(int argc, const char **argv)
 
 	if (command == help)
 		parser.print_help();
+
+	if (query_strands != "both" && query_strands != "minus" && query_strands != "plus")
+		throw std::runtime_error("Invalid value for parameter --strand");
 
 	/*log_stream << "sizeof(hit)=" << sizeof(hit) << " sizeof(packed_uint40_t)=" << sizeof(packed_uint40_t)
 		<< " sizeof(sorted_list::entry)=" << sizeof(sorted_list::entry) << endl;*/

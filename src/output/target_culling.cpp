@@ -16,31 +16,9 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#ifndef CONST_H_
-#define CONST_H_
+#include "target_culling.h"
 
-struct Const
+Target_culling* Target_culling::get(const Target* first)
 {
-
-	enum {
-		build_version = 111,
-		daa_version = 0,
-		seedp_bits = 10,
-		seedp = 1<<seedp_bits,
-		max_seed_weight = 32,
-		max_shapes = 16,
-		max_shape_len = 32
-	};
-
-	static const char* version_string;
-	static const char* program_name;
-	static const char* id_delimiters;
-
-};
-
-#define SIMPLE_SEARCH
-// #define FREQUENCY_MASKING
-// #define ST_JOIN
-// #define NO_COLLISION_FILTER
-
-#endif /* CONST_H_ */
+	return config.query_overlap_culling == 0.0 ? new Target_culling(first) : new Overlap_culling;
+}

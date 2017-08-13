@@ -85,11 +85,13 @@ void align_worker(size_t thread_id)
 			for (size_t i = 0; i < mapper.n_targets(); ++i)
 				mapper.ungapped_stage(i);
 			if (config.ext != Config::most_greedy) {
+				mapper.fill_source_ranges();
 				mapper.rank_targets(config.rank_ratio == -1 ? (mapper.query_seq(0).length() > 50 ? 0.6 : 0.9) : config.rank_ratio);
 				stat.inc(Statistics::TARGET_HITS1, mapper.n_targets());
 				const int cutoff = int(mapper.raw_score_cutoff() * config.score_ratio);
 				for (size_t i = 0; i < mapper.n_targets(); ++i)
 					mapper.greedy_stage(i, stat, cutoff);
+				mapper.fill_source_ranges();
 				mapper.rank_targets(config.rank_ratio2 == -1 ? (mapper.query_seq(0).length() > 50 ? 0.95 : 1.0) : config.rank_ratio2);
 				stat.inc(Statistics::TARGET_HITS2, mapper.n_targets());
 				for (size_t i = 0; i < mapper.n_targets(); ++i)

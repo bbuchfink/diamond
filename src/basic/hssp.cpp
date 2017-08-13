@@ -18,6 +18,21 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "../align/align.h"
 
+interval untranslate_range(const interval &r, unsigned frame, size_t len)
+{
+	signed f = frame <= 2 ? frame + 1 : 2 - frame;
+	interval s;
+	if (f > 0) {
+		s.begin_ = (f - 1) + 3 * r.begin_;
+		s.end_ = s.begin_ + 3 * r.length();
+	}
+	else {
+		s.end_ = (int)len + f - 3 * r.begin_ + 1;
+		s.begin_ = s.end_ - 3 * r.length();
+	}
+	return s;
+}
+
 bool Hsp_data::pass_through(const Diagonal_segment &d) const
 {
 	if (intersect(d.query_range(), query_range).length() != d.len
@@ -80,19 +95,8 @@ void Hsp_data::set_source_range(unsigned frame, unsigned dna_len)
 	this->frame = frame;
 	if (!align_mode.query_translated)
 		query_source_range = query_range;
-	else {
-		signed f = frame <= 2 ? frame + 1 : 2 - frame;
-		if (f > 0) {
-			query_source_range.begin_ = (f - 1) + 3 * query_range.begin_;
-			query_source_range.end_ = query_source_range.begin_ + 3 * query_range.length();
-			//query_end_dna = (f-1) + 3 * (l.query_begin_+l.query_len_-1) + 3;
-		}
-		else {
-			query_source_range.end_ = dna_len + f - 3 * query_range.begin_ + 1;
-			//query_end_dna = dna_len + (f + 1) - 3 * (l.query_begin_+l.query_len_-1) - 2;
-			query_source_range.begin_ = query_source_range.end_ - 3 * query_range.length();
-		}
-	}
+	else
+		query_source_range = untranslate_range(query_range, frame, dna_len);
 }
 
 Hsp_context& Hsp_context::parse()

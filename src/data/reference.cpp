@@ -224,3 +224,13 @@ void Database_file::get_seq()
 		id.clear();
 	}
 }
+
+void db_info()
+{
+	Database_file db_file;
+	cout << "Database format version = " << ref_header.db_version << endl;
+	cout << "Diamond build = " << ref_header.build << endl;
+	cout << "Sequences = " << ref_header.sequences << endl;
+	cout << "Letters = " << ref_header.letters << endl;
+	db_file.close();
+}

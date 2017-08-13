@@ -94,6 +94,11 @@ struct Hsp_traits
 		score(0),
 		frame((int)frame)
 	{}
+	Hsp_traits(const interval &query_source_range):
+		query_source_range(query_source_range)
+	{}
+	Hsp_traits(const Hsp_data &hsp)
+	{}
 	int partial_score(const Diagonal_segment &d) const
 	{
 		const double overlap = std::max(d.subject_range().overlap_factor(subject_range), d.query_range().overlap_factor(query_range));
@@ -142,7 +147,7 @@ struct Hsp_traits
 		}
 	};
 	int d_min, d_max, score, frame;
-	interval query_range, subject_range;
+	interval query_source_range, query_range, subject_range;
 };
 
 template<typename _score>

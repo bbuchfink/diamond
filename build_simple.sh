@@ -56,4 +56,5 @@ g++ -DNDEBUG -O3 -Wno-deprecated-declarations $1 $2 $3 \
   src/output/taxon_format.cpp \
   src/output/view.cpp \
   src/output/output_sink.cpp \
+  src/output/target_culling.cpp \
 -lz -lpthread -o diamond

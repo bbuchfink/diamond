@@ -32,6 +32,7 @@ void run_masker();
 void fastq2fasta();
 void view();
 void make_db();
+void db_info();
 
 int main(int ac, const char* av[])
 {
@@ -95,6 +96,9 @@ int main(int ac, const char* av[])
 			break;
 		case Config::fastq2fasta:
 			fastq2fasta();
+			break;
+		case Config::dbinfo:
+			db_info();
 			break;
 		default:
 			return 1;

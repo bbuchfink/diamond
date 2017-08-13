@@ -22,6 +22,31 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../output/output.h"
 #include "../output/output_format.h"
 #include "../output/daa_write.h"
+#include "../output/target_culling.h"
+
+bool Target::envelopes(const Hsp_traits &t, double p) const
+{
+	for (list<Hsp_traits>::const_iterator i = ts.begin(); i != ts.end(); ++i)
+		if (t.query_source_range.overlap_factor(i->query_source_range) >= p)
+			return true;
+	return false;
+}
+
+bool Target::is_enveloped(const Target &t, double p) const
+{
+	for (list<Hsp_traits>::const_iterator i = ts.begin(); i != ts.end(); ++i)
+		if (!t.envelopes(*i, p))
+			return false;
+	return true;
+}
+
+bool Target::is_enveloped(Ptr_vector<Target>::const_iterator begin, Ptr_vector<Target>::const_iterator end, double p, int min_score) const
+{
+	for (; begin != end; ++begin)
+		if (is_enveloped(**begin, p) && (*begin)->filter_score >= min_score)
+			return true;
+	return false;
+}
 
 int Query_mapper::raw_score_cutoff() const
 {
@@ -107,25 +132,42 @@ void Query_mapper::rank_targets(double ratio)
 {
 	std::sort(targets.begin(), targets.end(), Target::compare);
 
-	int score = 0;
-	if (config.toppercent < 100) {
-		score = int((double)targets[0].filter_score * (1.0 - config.toppercent / 100.0) * ratio);
+	if (config.query_overlap_culling == 0.0) {
+
+		int score = 0;
+		if (config.toppercent < 100) {
+			score = int((double)targets[0].filter_score * (1.0 - config.toppercent / 100.0) * ratio);
+		}
+		else {
+			size_t min_idx = std::min(targets.size(), (size_t)config.max_alignments);
+			score = int((double)targets[min_idx - 1].filter_score * ratio);
+		}
+
+		unsigned i = 0;
+		for (; i < targets.size(); ++i)
+			if (targets[i].filter_score < score)
+				break;
+
+		if (config.benchmark_ranking)
+			for (unsigned j = i; j < targets.size(); ++j)
+				targets[j].outranked = true;
+		else
+			targets.erase(targets.begin() + i, targets.end());
+
 	}
 	else {
-		size_t min_idx = std::min(targets.size(), (size_t)config.max_alignments);
-		score = int((double)targets[min_idx - 1].filter_score * ratio);
-	}
 
-	unsigned i = 0;
-	for (; i < targets.size(); ++i)
-		if (targets[i].filter_score < score)
-			break;
-	
-	if (config.benchmark_ranking)
-		for (unsigned j = i; j < targets.size(); ++j)
-			targets[j].outranked = true;
-	else
-		targets.erase(targets.begin() + i, targets.end());
+		int i = 0;
+		const double p = config.query_overlap_culling / 100.0;
+		while (i < targets.size()) {
+			int min_score = int((double)targets[i].filter_score / (1.0 - config.toppercent / 100.0) / ratio);
+			if (targets[i].is_enveloped(targets.begin(), targets.begin() + i, p, min_score))
+				targets.erase(targets.begin() + i, targets.begin() + i + 1);
+			else
+				++i;
+		}
+
+	}
 }
 
 bool Query_mapper::generate_output(Text_buffer &buffer, Statistics &stat)
@@ -133,7 +175,8 @@ bool Query_mapper::generate_output(Text_buffer &buffer, Statistics &stat)
 	std::sort(targets.begin(), targets.end(), Target::compare);
 
 	unsigned n_hsp = 0, n_target_seq = 0, hit_hsps = 0;
-	const unsigned top_score = targets.empty() ? 0 : targets[0].filter_score, query_len = (unsigned)query_seq(0).length();
+	auto_ptr<Target_culling> target_culling(Target_culling::get(targets.empty() ? 0 : &targets[0]));
+	const unsigned query_len = (unsigned)query_seq(0).length();
 	size_t seek_pos = 0;
 	const char *query_title = query_ids::get()[query_id].c_str();
 	auto_ptr<Output_format> f(output_format->clone());
@@ -143,7 +186,10 @@ bool Query_mapper::generate_output(Text_buffer &buffer, Statistics &stat)
 			|| score_matrix.bitscore(targets[i].filter_score) < config.min_bit_score)
 			break;
 
-		if (!config.output_range(n_target_seq, targets[i].filter_score, top_score))
+		const int c = target_culling->cull(targets[i]);
+		if (c == Target_culling::next)
+			continue;
+		else if (c == Target_culling::finished)
 			break;
 
 		if (targets[i].outranked)
@@ -192,8 +238,10 @@ bool Query_mapper::generate_output(Text_buffer &buffer, Statistics &stat)
 						hit_hsps), buffer);
 			}
 
-			if(hit_hsps == 0)
+			if (hit_hsps == 0) {
 				++n_target_seq;
+				target_culling->add(&targets[i]);
+			}
 			++n_hsp;
 			++hit_hsps;
 			if (config.alignment_traceback && j->gap_openings > 0)

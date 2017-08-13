@@ -76,7 +76,7 @@ private:
 
 struct Value_traits
 {
-	Value_traits(const char *alphabet, Letter mask_char, const char *ignore);	
+	Value_traits(const char *alphabet, Letter mask_char, const char *ignore);
 	const char *alphabet;
 	unsigned alphabet_size;
 	Letter mask_char;

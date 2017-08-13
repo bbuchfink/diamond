@@ -21,6 +21,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../data/queries.h"
 #include "../output/daa_write.h"
 #include "output_format.h"
+#include "../align/query_mapper.h"
 
 struct Join_fetcher
 {
@@ -121,6 +122,34 @@ struct Join_record
 	bool same_subject_;
 	Intermediate_record info_;
 
+};
+
+struct Join_records
+{
+	Join_records(vector<Binary_buffer> &buf)
+	{
+		for (unsigned i = 0; i < current_ref_block; ++i) {
+			it.push_back(buf[i].begin());
+			Join_record::push_next(i, std::numeric_limits<unsigned>::max(), it.back(), records);
+		}
+		std::make_heap(records.begin(), records.end());
+	}
+	Target* get_target()
+	{
+		if (records.empty())
+			return 0;
+		const unsigned block = records.front().block_;
+		const unsigned subject = records.front().info_.subject_id;
+		Target *t = new Target(records.front().info_.score);
+		do {
+			std::pop_heap(records.begin(), records.end());
+			records.pop_back();
+			if (Join_record::push_next(block, subject, it[block], records))
+				std::push_heap(records.begin(), records.end());
+		} while (!records.empty() && records.front().info_.subject_id == subject);
+	}
+	vector<Join_record> records;
+	vector<Binary_buffer::Iterator> it;
 };
 
 void join_query(vector<Binary_buffer> &buf, Text_buffer &out, Statistics &statistics, unsigned query, const char *query_name, unsigned query_source_len, Output_format &f)

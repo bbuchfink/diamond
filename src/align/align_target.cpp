@@ -272,6 +272,10 @@ void Query_mapper::align_target(size_t idx, Statistics &stat)
 	target.hsps.sort();
 	if(target.hsps.size() > 0)
 		target.filter_score = target.hsps.front().score;
+
+	target.ts.clear();
+	for (list<Hsp_data>::iterator i = target.hsps.begin(); i != target.hsps.end(); ++i)
+		target.ts.push_back(Hsp_traits(i->query_source_range));
 	
 	if (config.use_smith_waterman && !target.hsps.empty()) {
 		int score;

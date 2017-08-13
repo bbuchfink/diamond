@@ -34,6 +34,9 @@ using std::list;
 
 struct Target
 {
+	Target(int score):
+		filter_score(score)
+	{}
 	Target(size_t begin, unsigned subject_id) :
 		subject_id(subject_id),
 		filter_score(0),
@@ -44,6 +47,14 @@ struct Target
 	{
 		return lhs->filter_score > rhs->filter_score;
 	}
+	void fill_source_ranges(size_t query_len)
+	{
+		for (list<Hsp_traits>::iterator i = ts.begin(); i != ts.end(); ++i)
+			i->query_source_range = align_mode.query_translated ? untranslate_range(i->query_range, i->frame, query_len) : i->query_range;
+	}
+	bool envelopes(const Hsp_traits &t, double p) const;
+	bool is_enveloped(const Target &t, double p) const;
+	bool is_enveloped(Ptr_vector<Target>::const_iterator begin, Ptr_vector<Target>::const_iterator end, double p, int min_score) const;
 	unsigned subject_id;
 	int filter_score;
 	float filter_time;
@@ -77,6 +88,11 @@ struct Query_mapper
 	sequence query_seq(unsigned frame) const
 	{
 		return query_seqs::get()[query_id*align_mode.query_contexts + frame];
+	}
+	void fill_source_ranges()
+	{
+		for (size_t i = 0; i < targets.size(); ++i)
+			targets[i].fill_source_ranges(source_query_len);
 	}
 	pair<Trace_pt_list::iterator, Trace_pt_list::iterator> source_hits;
 	unsigned query_id, targets_finished, next_target;

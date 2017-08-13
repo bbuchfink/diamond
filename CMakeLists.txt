@@ -88,6 +88,7 @@ add_executable(diamond src/run/main.cpp
   src/output/taxon_format.cpp
   src/output/view.cpp
   src/output/output_sink.cpp
+  src/output/target_culling.cpp
 )
 
 target_link_libraries(diamond ${ZLIB_LIBRARY} ${CMAKE_THREAD_LIBS_INIT})

@@ -38,6 +38,8 @@ inline interval normalized_range(unsigned pos, int len, Strand strand)
 			: interval (pos + 1 + len, pos + 1);
 }
 
+interval untranslate_range(const interval &r, unsigned frame, size_t l);
+
 struct Diagonal_segment
 {
 	Diagonal_segment():
