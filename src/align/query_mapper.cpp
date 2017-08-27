@@ -130,7 +130,7 @@ void Query_mapper::load_targets()
 
 void Query_mapper::rank_targets(double ratio)
 {
-	std::sort(targets.begin(), targets.end(), Target::compare);
+	std::stable_sort(targets.begin(), targets.end(), Target::compare);
 
 	if (config.query_overlap_culling == 0.0) {
 
@@ -172,7 +172,7 @@ void Query_mapper::rank_targets(double ratio)
 
 bool Query_mapper::generate_output(Text_buffer &buffer, Statistics &stat)
 {
-	std::sort(targets.begin(), targets.end(), Target::compare);
+	std::stable_sort(targets.begin(), targets.end(), Target::compare);
 
 	unsigned n_hsp = 0, n_target_seq = 0, hit_hsps = 0;
 	auto_ptr<Target_culling> target_culling(Target_culling::get(targets.empty() ? 0 : &targets[0]));

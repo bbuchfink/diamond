@@ -45,7 +45,7 @@ struct Target
 	{}		
 	static bool compare(Target* lhs, Target *rhs)
 	{
-		return lhs->filter_score > rhs->filter_score;
+		return lhs->filter_score > rhs->filter_score || (lhs->filter_score == rhs->filter_score && lhs->subject_id < rhs->subject_id);
 	}
 	void fill_source_ranges(size_t query_len)
 	{

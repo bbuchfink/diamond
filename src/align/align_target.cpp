@@ -34,7 +34,7 @@ void Query_mapper::ungapped_stage(size_t idx)
 	const string subject_id(ref_ids::get()[target.subject_id].c_str());
 	if (config.log_subject)
 		cout << "Subject = " << subject_id << endl;
-	std::sort(seed_hits.begin() + target.begin, seed_hits.begin() + target.end, Seed_hit::compare_diag);
+	std::stable_sort(seed_hits.begin() + target.begin, seed_hits.begin() + target.end, Seed_hit::compare_diag);
 	typedef Map<vector<Seed_hit>::const_iterator, Seed_hit::Frame> Hit_map;
 	Hit_map hit_map(seed_hits.begin() + target.begin, seed_hits.begin() + target.end);
 	const sequence subject = ref_seqs::get()[target.subject_id];

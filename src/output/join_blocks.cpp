@@ -98,7 +98,12 @@ struct Join_record
 
 	bool operator<(const Join_record &rhs) const
 	{
-		return rhs.same_subject_ ||  (!rhs.same_subject_ && info_.score < rhs.info_.score);
+		return rhs.same_subject_ ||  (!rhs.same_subject_ && (info_.score < rhs.info_.score || (info_.score == rhs.info_.score && rhs.db_precedence(*this))));
+	}
+
+	bool db_precedence(const Join_record &rhs) const
+	{
+		return block_ < rhs.block_ || (block_ == rhs.block_ && info_.subject_id < rhs.info_.subject_id);
 	}
 
 	Join_record(unsigned ref_block, unsigned subject, Binary_buffer::Iterator &it):
