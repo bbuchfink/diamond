@@ -20,8 +20,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define MERGE_SORT_H_
 
 #include <algorithm>
+#include <cmath>
 #include <stddef.h>
 #include "thread.h"
+#include <cmath>
 
 template<typename _it>
 void merge_sort(_it begin, _it end, unsigned n_threads, unsigned level = 0)
@@ -29,8 +31,9 @@ void merge_sort(_it begin, _it end, unsigned n_threads, unsigned level = 0)
 	ptrdiff_t diff = end - begin;
 	if(diff <= 1)
 		return;
-
-	if(1u << level >= n_threads) {
+	// The total number of threads at a given level is equal 2^(level)
+	// If the overhead of the pow function start to be problem you can replace it by a left-shit (1 << level)
+	if(1u << int(std::pow(2,level)) >= n_threads) {
 		std::sort(begin, end);
 		return;
 	}
