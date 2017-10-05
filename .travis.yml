@@ -1,0 +1,9 @@
+# Enable C++ support
+language: cpp
+# Compiler selection
+compiler:
+  - clang
+  - gcc
+# Build steps
+   - cmake .
+   - make
