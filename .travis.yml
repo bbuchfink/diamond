@@ -2,7 +2,7 @@ language: cpp
 
 os:
   - linux
-  - osx
+#  - osx #Take long time to get the VM.
 
 compiler:
   - clang
@@ -12,3 +12,4 @@ compiler:
 script:
   - cmake .
   - make
+  - cd tests; ./libs/bats/bin/bats *.bats 
