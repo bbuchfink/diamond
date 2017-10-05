@@ -4,6 +4,8 @@ language: cpp
 compiler:
   - clang
   - gcc
+
 # Build steps
-   - cmake .
-   - make
+script:
+  - cmake .
+  - make
