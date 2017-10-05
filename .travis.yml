@@ -11,5 +11,5 @@ compiler:
 # Build steps
 script:
   - cmake .
-  - make
+  - make -j
   - cd tests; ./libs/bats/bin/bats *.bats 
