@@ -166,7 +166,8 @@ Config::Config(int argc, const char **argv)
 		("rank-ratio2", 0, "include subjects within this ratio of last hit (stage 2)", rank_ratio2, -1.0)
 		("max-hsps", 0, "maximum number of HSPs per subject sequence to save for each query", max_hsps, 1u)
 		("dbsize", 0, "effective database size (in letters)", db_size)
-		("no-auto-append", 0, "disable auto appending of DAA and DMND file extensions", no_auto_append);
+		("no-auto-append", 0, "disable auto appending of DAA and DMND file extensions", no_auto_append)
+		("xml-blord-format", 0, "Use gnl|BL_ORD_ID| style format in XML output", xml_blord_format);
 
 	Options_group view_options("View options");
 	view_options.add()

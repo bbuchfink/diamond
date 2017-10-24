@@ -1,3 +1,6 @@
+[0.9.11]
+- Added option --xml-blord-format for alternative-style XML format.
+
 [0.9.10]
 - added --strand option to choose query strand
 - added dbinfo command
