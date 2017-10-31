@@ -122,7 +122,7 @@ void XML_format::print_match(const Hsp_context &r, Text_buffer &out)
 			out << "  <Hit_id>gnl|BL_ORD_ID|" << r.subject_id << "</Hit_id>" << '\n'
 				<< "  <Hit_def>" << r.subject_name << "</Hit_def>" << '\n';
 		}
-		else {			
+		else {
 			out << "  <Hit_id>" << id << "</Hit_id>" << '\n'
 				<< "  <Hit_def>" << def << "</Hit_def>" << '\n';
 		}

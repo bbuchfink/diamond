@@ -141,7 +141,7 @@ void Compressed_ostream::deflate_loop(const char * ptr, size_t count, int flush)
 		if (deflate(&strm, flush) == Z_STREAM_ERROR)
 			throw std::runtime_error("deflate error");
 		const size_t have = chunk_size - strm.avail_out;
-		Output_stream::write(out.get(), have);
+		Output_stream::write_raw(out.get(), have);
 	} while (strm.avail_out == 0);
 }
 

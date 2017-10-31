@@ -1,5 +1,6 @@
 [0.9.11]
 - Added option --xml-blord-format for alternative-style XML format.
+- Fixed a bug that could cause a crash when writing compressed output files.
 
 [0.9.10]
 - added --strand option to choose query strand
