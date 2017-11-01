@@ -74,10 +74,7 @@ struct Database_file : public Input_stream
 	Database_file():
 		Input_stream (config.database)
 	{
-		if(this->read(&ref_header, 1) != 1)
-			throw Database_format_exception ();
-		if(ref_header.unique_id != Reference_header ().unique_id)
-			throw Database_format_exception ();
+		read_header(*this, ref_header);
 		if(ref_header.build < min_build_required || ref_header.db_version != Reference_header::current_db_version)
 			throw invalid_database_version_exception();
 		if (ref_header.sequences == 0)
@@ -88,6 +85,15 @@ struct Database_file : public Input_stream
 #endif
 		pos_array_offset = ref_header.pos_array_offset;
 	}
+
+	static void read_header(Input_stream &stream, Reference_header &header)
+	{
+		if (stream.read(&header, 1) != 1)
+			throw Database_format_exception();
+		if (header.unique_id != Reference_header().unique_id)
+			throw Database_format_exception();
+	}
+
 	void rewind()
 	{
 		pos_array_offset = ref_header.pos_array_offset;

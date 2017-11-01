@@ -227,10 +227,12 @@ void Database_file::get_seq()
 
 void db_info()
 {
-	Database_file db_file;
-	cout << "Database format version = " << ref_header.db_version << endl;
-	cout << "Diamond build = " << ref_header.build << endl;
-	cout << "Sequences = " << ref_header.sequences << endl;
-	cout << "Letters = " << ref_header.letters << endl;
+	Input_stream db_file(config.database);
+	Reference_header header;
+	Database_file::read_header(db_file, header);
+	cout << "Database format version = " << header.db_version << endl;
+	cout << "Diamond build = " << header.build << endl;
+	cout << "Sequences = " << header.sequences << endl;
+	cout << "Letters = " << header.letters << endl;
 	db_file.close();
 }
