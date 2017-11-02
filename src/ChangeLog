@@ -1,5 +1,6 @@
 [0.9.12]
 - Fixed dbinfo command to be able to read older database formats.
+- Adjusted XML format for better compatibility with Blast2Go.
 
 [0.9.11]
 - Added option --xml-blord-format for alternative-style XML format.

@@ -120,11 +120,15 @@ void XML_format::print_match(const Hsp_context &r, Text_buffer &out)
 		get_title_def(r.subject_name, id, def);
 		if (config.xml_blord_format) {
 			out << "  <Hit_id>gnl|BL_ORD_ID|" << r.subject_id << "</Hit_id>" << '\n'
-				<< "  <Hit_def>" << r.subject_name << "</Hit_def>" << '\n';
+				<< "  <Hit_def>";
+			Output_format::print_title(out, r.subject_name, true, true, " &gt;");
+			out << "</Hit_def>" << '\n';
 		}
 		else {
 			out << "  <Hit_id>" << id << "</Hit_id>" << '\n'
-				<< "  <Hit_def>" << def << "</Hit_def>" << '\n';
+				<< "  <Hit_def>";
+			Output_format::print_title(out, def.c_str(), true, true, " &gt;");
+			out << "</Hit_def>" << '\n';
 		}
 		out << "  <Hit_accession>" << get_accession(id) << "</Hit_accession>" << '\n'
 			<< "  <Hit_len>" << r.subject_len << "</Hit_len>" << '\n'
@@ -178,7 +182,7 @@ void XML_format::print_header(Output_stream &f, int mode, const char *matrix, in
 		<< "  <BlastOutput_program>" << mode_str(mode) << "</BlastOutput_program>" << endl
 		<< "  <BlastOutput_version>" << Const::program_name << ' ' << Const::version_string << "</BlastOutput_version>" << endl
 		<< "  <BlastOutput_reference>Benjamin Buchfink, Xie Chao, and Daniel Huson (2015), &quot;Fast and sensitive protein alignment using DIAMOND&quot;, Nature Methods 12:59-60.</BlastOutput_reference>" << endl
-		<< "  <BlastOutput_db></BlastOutput_db>" << endl
+		<< "  <BlastOutput_db>" << config.database << "</BlastOutput_db>" << endl
 		<< "  <BlastOutput_query-ID>Query_1</BlastOutput_query-ID>" << endl
 		<< "  <BlastOutput_query-def>";
 	const string fqn = string(first_query_name);
@@ -190,7 +194,7 @@ void XML_format::print_header(Output_stream &f, int mode, const char *matrix, in
 		<< "      <Parameters_expect>" << evalue << "</Parameters_expect>" << endl
 		<< "      <Parameters_gap-open>" << gap_open << "</Parameters_gap-open>" << endl
 		<< "      <Parameters_gap-extend>" << gap_extend << "</Parameters_gap-extend>" << endl
-		<< "      <Parameters_filter></Parameters_filter>" << endl
+		<< "      <Parameters_filter>F</Parameters_filter>" << endl
 		<< "    </Parameters>" << endl
 		<< "  </BlastOutput_param>" << endl
 		<< "<BlastOutput_iterations>" << endl;
