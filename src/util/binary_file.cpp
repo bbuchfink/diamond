@@ -305,9 +305,9 @@ uint64_t Temp_file::hash_key;
 
 Temp_file::Temp_file()
 {
-	std::stringstream ss;
-	if(config.tmpdir != "")
-		ss << config.tmpdir << dir_separator;
+	vector<char> buf(config.tmpdir.length() + 64);
+	char *s = buf.data();
+	const string prefix = config.tmpdir != "" ? config.tmpdir + dir_separator : "";
 
 #ifdef _MSC_VER
 	if (n == 0) {
@@ -315,32 +315,35 @@ Temp_file::Temp_file()
 		QueryPerformanceCounter(&count);
 		hash_key = (uint64_t)(count.HighPart + count.LowPart + count.QuadPart + GetCurrentProcessId());
 	}
-	ss.setf(std::ios::hex, std::ios::basefield);
-	ss << "diamond-" << hash_key << "-" << n++ << ".tmp";
+	sprintf(s, "%sdiamond-%llx-%u.tmp", prefix.c_str(), hash_key, n++);
 #else
-	ss << "diamond-tmp-XXXXXX";
-#endif	
-
-	ss >> this->file_name_;
+	sprintf(s, "%sdiamond-tmp-XXXXXX", prefix.c_str());
+#endif
 
 #ifdef _MSC_VER
-	this->f_ = fopen(this->file_name_.c_str(), "w+b");
+	this->f_ = fopen(s, "w+b");
 	if (this->f_ == 0) {
 		perror(0);
-		throw std::runtime_error("Error opening temporary file: " + this->file_name_);
+		throw std::runtime_error("Error opening temporary file: " + string(s));
 	}
 #else
-	int fd = mkstemp(this->file_name_.c_str());
+	int fd = mkstemp(s);
 	if (fd < 0) {
 		perror(0);
-		throw std::runtime_error(string("Error opening temporary file ") + this->file_name_);
+		throw std::runtime_error(string("Error opening temporary file ") + string(s));
 	}
-	if (unlink(this->file_name_.c_str()) < 0) {
+	if (unlink(s) < 0) {
 		perror(0);
 		throw std::runtime_error("Error calling unlink.");
 	}
-	this->f_ = fd;
+	this->f_ = fdopen(fd, "w+b");
+	if (this->f_ == 0) {
+		perror(0);
+		throw std::runtime_error("Error opening temporary file: " + string(s));
+	}
 #endif
+
+	this->file_name_ = s;
 }
 
 string Temp_file::get_temp_dir()
