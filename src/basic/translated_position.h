@@ -16,31 +16,34 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#ifndef CONST_H_
-#define CONST_H_
+#ifndef TRANSLATED_POSITION_H_
+#define TRANSLATED_POSITION_H_
 
-struct Const
+struct TranslatedPosition
 {
 
-	enum {
-		build_version = 114,
-		daa_version = 0,
-		seedp_bits = 10,
-		seedp = 1<<seedp_bits,
-		max_seed_weight = 32,
-		max_shapes = 16,
-		max_shape_len = 32
-	};
+	TranslatedPosition(interval source, int translated, int frame):
+		source(frame < 3 ? source.begin_ : source.end_ - 1),
+		translated(translated),
+		frame(frame)
+	{}
 
-	static const char* version_string;
-	static const char* program_name;
-	static const char* id_delimiters;
+	TranslatedPosition& operator++()
+	{
+		if (align_mode.query_translated) {
+			if (frame < 3)
+				source += 3;
+			else
+				source -= 3;
+		}
+		else
+			++source;
+		++translated;
+		return *this;
+	}
+
+	int source, translated, frame;
 
 };
 
-#define SIMPLE_SEARCH
-// #define FREQUENCY_MASKING
-// #define ST_JOIN
-// #define NO_COLLISION_FILTER
-
-#endif /* CONST_H_ */
+#endif

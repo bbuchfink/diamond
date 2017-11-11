@@ -107,7 +107,7 @@ int Bias_correction::operator()(const Hsp_data &hsp) const
 		switch (i.op()) {
 		case op_match:
 		case op_substitution:
-			s += (*this)[i.query_pos];
+			s += (*this)[i.query_pos.translated];
 		default:
 			;
 		}

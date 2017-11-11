@@ -117,7 +117,6 @@ void Query_mapper::load_targets()
 		if (seed_hits[i].subject_ != subject_id) {
 			if (n > 0) {
 				targets[n - 1].end = i;
-				get_prefilter_score(n - 1);
 			}
 			targets.get(n) = new Target(i, seed_hits[i].subject_);
 			++n;
@@ -125,7 +124,6 @@ void Query_mapper::load_targets()
 		}
 	}
 	targets[n - 1].end = seed_hits.size();
-	get_prefilter_score(n - 1);
 }
 
 void Query_mapper::rank_targets(double ratio)

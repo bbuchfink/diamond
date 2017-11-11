@@ -301,11 +301,11 @@ void smith_waterman(sequence q, sequence s, const Diag_graph &diags)
 		case op_match:
 		case op_substitution:
 			if (i0 < 0) {
-				i0 = i.query_pos;
+				i0 = i.query_pos.translated;
 				j0 = i.subject_pos;
 				l = 0;
 			}
-			score += score_matrix(q[i.query_pos], s[i.subject_pos]);
+			score += score_matrix(q[i.query_pos.translated], s[i.subject_pos]);
 			++l;
 			break;
 		case op_deletion:

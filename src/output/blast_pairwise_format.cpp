@@ -37,12 +37,12 @@ void Pairwise_format::print_match(const Hsp_context& r, Text_buffer &out)
 	Hsp_context::Iterator qi = r.begin(), mi = r.begin(), si = r.begin();
 	while (qi.good()) {
 		out << "Query  ";
-		out.print(qi.query_pos+1, digits);
+		out.print(qi.query_pos.source+1, digits);
 		out << "  ";
 		for (unsigned i = 0; i < width && qi.good(); ++i, ++qi)
 			out << qi.query_char();
 		out << " ";
-		out.print(qi.query_pos, 0);
+		out.print(qi.query_pos.source, 0);
 		out << '\n';
 
 		for (unsigned i = 0; i < digits + 9; ++i)

@@ -77,181 +77,42 @@ void Query_mapper::greedy_stage(size_t idx, Statistics &stat, int cutoff)
 #endif
 }
 
-void Query_mapper::get_prefilter_score(size_t idx)
-{
-	static const int max_dist = 64;
-
-	if (config.ext == Config::greedy || config.ext == Config::more_greedy)
-		return;
-
-	Target& target = targets[idx];
-	
-	const size_t n = target.end - target.begin;
-	vector<Seed_hit>::iterator hits = seed_hits.begin() + target.begin;
-	std::sort(seed_hits.begin() + target.begin, seed_hits.begin() + target.end, Seed_hit::compare_pos);
-	
-	int max_score = 0;
-	for (unsigned node = 0; node < n; ++node) {
-		Seed_hit& d = hits[node];
-		if (d.ungapped.len == 0)
-			continue;
-		for (int k = node - 1; k >= 0; --k) {
-			const Seed_hit &e = hits[k];
-			if (e.ungapped.len == 0)
-				continue;
-			if (d.ungapped.j - e.ungapped.subject_last() < max_dist) {
-				if (abs(d.ungapped.i - e.ungapped.query_last()) >= max_dist)
-					continue;
-				const int shift = d.ungapped.diag() - e.ungapped.diag();
-				int gap_score = -score_matrix.gap_open() - abs(shift)*score_matrix.gap_extend();
-				const int space = shift > 0 ? d.ungapped.j - e.ungapped.subject_last() : d.ungapped.i - e.ungapped.query_last();
-				int prefix_score;
-				if (space <= 0)
-					prefix_score = std::max(e.prefix_score - (e.ungapped.score - e.ungapped.partial_score(abs(space))) + d.ungapped.score, e.prefix_score + d.ungapped.partial_score(abs(space))) + gap_score;
-				else
-					prefix_score = e.prefix_score + d.ungapped.score + gap_score;
-
-				d.prefix_score = std::max(d.prefix_score, (unsigned)prefix_score);
-			}
-			else
-				break;
-		}
-		max_score = std::max(max_score, (int)d.prefix_score);
-	}
-	target.filter_score = max_score;
-}
-
-bool is_contained(const vector<Seed_hit>::const_iterator &hits, size_t i)
-{
-	for (size_t j = 0; j < i; ++j)
-		if (hits[i].frame_ == hits[j].frame_ && hits[i].ungapped.is_enveloped(hits[j].ungapped))
-			return true;
-	return false;
-}
-
-bool is_contained(const list<Hsp_data> &hsps, const Seed_hit &hit)
-{
-	for (list<Hsp_data>::const_iterator i = hsps.begin(); i != hsps.end(); ++i)
-		if (hit.frame_ == i->frame && i->pass_through(hit.ungapped))
-			return true;
-	return false;
-}
-
-pair<int, int> get_diag_range(vector<Seed_hit>::const_iterator begin, vector<Seed_hit>::const_iterator end, unsigned frame)
-{
-	int d_min = std::numeric_limits<int>::max(), d_max = std::numeric_limits<int>::min();
-	for (vector<Seed_hit>::const_iterator i = begin; i < end; ++i) {
-		if (i->frame_ == frame) {
-			const int d = i->diagonal();
-			d_min = std::min(d_min, d);
-			d_max = std::max(d_max, d);
-		}
-	}
-	return pair<int, int>(d_min, d_max);
-}
-
 void Query_mapper::align_target(size_t idx, Statistics &stat)
 {
 	typedef float score_t;
 	Target& target = targets[idx];
-	const size_t n = target.end - target.begin,
-		max_len = query_seq(0).length() + 100 * query_seqs::get().avg_len();
-	size_t aligned_len = 0;
+	const size_t n = target.end - target.begin;
 	const vector<Seed_hit>::const_iterator hits = seed_hits.begin() + target.begin;
 	const sequence subject = ref_seqs::get()[hits[0].subject_];
 	if (config.log_subject)
 		cout << "Subject = " << ref_ids::get()[target.subject_id].c_str() << endl;
 
-	unsigned frame_mask = (1 << align_mode.query_contexts) - 1;
 	stat.inc(Statistics::CELLS, query_seq(0).length() * subject.length());
 
-	if (config.ext == Config::floating_xdrop) {
-
-		std::sort(seed_hits.begin() + target.begin, seed_hits.begin() + target.end);
-
-		for (size_t i = 0; i < n; ++i) {
-			const unsigned frame = hits[i].frame_;
-			if ((frame_mask & (1u << frame)) == 0)
-				continue;
-			if (!is_contained(hits, i) && !is_contained(target.hsps, hits[i])) {
-				target.hsps.push_back(Hsp_data());
-				target.hsps.back().frame = frame;
-				uint64_t cell_updates;
-
-				if (false && config.comp_based_stats == 1)
-					floating_sw(&query_seq(frame)[hits[i].query_pos_],
-						&subject[hits[i].subject_pos_],
-						target.hsps.back(),
-						config.read_padding(query_seq(frame).length()),
-						(score_t)score_matrix.rawscore(config.gapped_xdrop),
-						(score_t)(score_matrix.gap_open() + score_matrix.gap_extend()),
-						(score_t)score_matrix.gap_extend(),
-						cell_updates,
-						hits[i].query_pos_,
-						hits[i].subject_pos_,
-						0,
-						query_cb[frame],
-						Traceback(),
-						score_t());
-				else
-					floating_sw(&query_seq(frame)[hits[i].query_pos_],
-						&subject[hits[i].subject_pos_],
-						target.hsps.back(),
-						config.read_padding(query_seq(frame).length()),
-						score_matrix.rawscore(config.gapped_xdrop),
-						score_matrix.gap_open() + score_matrix.gap_extend(),
-						score_matrix.gap_extend(),
-						cell_updates,
-						hits[i].query_pos_,
-						hits[i].subject_pos_,
-						0,
-						No_score_correction(),
-						Traceback(),
-						int());
-
-				if (config.comp_based_stats) {
-					const int score = (int)target.hsps.back().score + query_cb[frame](target.hsps.back());
-					target.hsps.back().score = (unsigned)std::max(0, score);
-				}
-
-				stat.inc(Statistics::OUT_HITS);
-				if (i > 0)
-					stat.inc(Statistics::SECONDARY_HITS);
-				aligned_len += target.hsps.back().length;
-				if (aligned_len > max_len)
-					break;
-			}
-			else
-				stat.inc(Statistics::DUPLICATES);
-		}
-	}
+	if (target.filter_score == 0)
+		return;
+	if (config.ext == Config::more_greedy)
+		target.hsps.push_back(Hsp_data(target.filter_score));
 	else {
-		if (target.filter_score == 0)
-			return;
-		if (config.ext == Config::more_greedy)
-			target.hsps.push_back(Hsp_data(target.filter_score));
-		else {
-			const int qlen = (int)query_seq(0).length(),
-				band_plus = qlen <= 50 ? 0 : 16;
-			target.hsps.clear();
-			for (list<Hsp_traits>::const_iterator i = target.ts.begin(); i != target.ts.end(); ++i) {
-				if (log_ga) {
-					cout << "i_begin=" << i->query_range.begin_ << " j_begin=" << i->subject_range.begin_ << " d_min=" << i->d_min << " d_max=" << i->d_max << endl;
-				}
-				target.hsps.push_back(Hsp_data());
-				target.hsps.back().frame = i->frame;
-				banded_sw(query_seq(i->frame), subject, i->d_min - band_plus, i->d_max + band_plus + 1, 0, (int)subject.length(), target.hsps.back());
-
-				if (config.comp_based_stats) {
-					const int score = (int)target.hsps.back().score + query_cb[i->frame](target.hsps.back());
-					target.hsps.back().score = (unsigned)std::max(0, score);
-				}
+		const int qlen = (int)query_seq(0).length(),
+			band_plus = qlen <= 50 ? 0 : 16;
+		target.hsps.clear();
+		for (list<Hsp_traits>::const_iterator i = target.ts.begin(); i != target.ts.end(); ++i) {
+			if (log_ga) {
+				cout << "i_begin=" << i->query_range.begin_ << " j_begin=" << i->subject_range.begin_ << " d_min=" << i->d_min << " d_max=" << i->d_max << endl;
+			}
+			target.hsps.push_back(Hsp_data());
+			target.hsps.back().frame = i->frame;
+			banded_sw(query_seq(i->frame), subject, i->d_min - band_plus, i->d_max + band_plus + 1, 0, (int)subject.length(), target.hsps.back());
+			if (config.comp_based_stats) {
+				const int score = (int)target.hsps.back().score + query_cb[i->frame](target.hsps.back());
+				target.hsps.back().score = (unsigned)std::max(0, score);
 			}
 		}
-
-		if (!target.hsps.empty())
-			stat.inc(Statistics::OUT_HITS);
 	}
+
+	if (!target.hsps.empty())
+		stat.inc(Statistics::OUT_HITS);
 
 	for (list<Hsp_data>::iterator i = target.hsps.begin(); i != target.hsps.end(); ++i)
 		for (list<Hsp_data>::iterator j = target.hsps.begin(); j != target.hsps.end();)

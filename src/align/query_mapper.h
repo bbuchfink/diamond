@@ -69,7 +69,6 @@ struct Query_mapper
 	Query_mapper();
 	Query_mapper(size_t query_id, Trace_pt_list::iterator begin, Trace_pt_list::iterator end);
 	void init();
-	void get_prefilter_score(size_t idx);
 	void align_target(size_t idx, Statistics &stat);
 	void align_targets(Statistics &stat);
 	bool generate_output(Text_buffer &buffer, Statistics &stat);

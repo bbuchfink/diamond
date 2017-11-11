@@ -28,6 +28,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "value.h"
 #include "packed_transcript.h"
 #include "score_matrix.h"
+#include "translated_position.h"
 
 enum Strand { FORWARD, REVERSE };
 
@@ -143,6 +144,7 @@ struct Intermediate_record;
 
 struct Hsp_data
 {
+
 	Hsp_data() :
 		score(0),
 		frame(0),
@@ -154,6 +156,7 @@ struct Hsp_data
 		gaps(0),
 		sw_score(0)
 	{}
+
 	Hsp_data(int score) :
 		score(unsigned(score)),
 		frame(0),
@@ -165,11 +168,13 @@ struct Hsp_data
 		gaps(0),
 		sw_score(0)
 	{}
+
 	Hsp_data(const Intermediate_record &r, unsigned query_source_len);
+
 	struct Iterator
 	{
 		Iterator(const Hsp_data &parent):
-			query_pos(parent.query_range.begin_),
+			query_pos(parent.query_source_range, parent.query_range.begin_, parent.frame),
 			subject_pos(parent.subject_range.begin_),
 			ptr_(parent.transcript.ptr()),
 			count_(ptr_->count())
@@ -210,20 +215,25 @@ struct Hsp_data
 			} while (good() && (op() == op_deletion || op() == op_insertion));
 			return good();
 		}
-		unsigned query_pos, subject_pos;
+		unsigned subject_pos;
+		TranslatedPosition query_pos;
 	protected:
 		const Packed_operation *ptr_;
 		unsigned count_;
 	};
+
 	Iterator begin() const
 	{
 		return Iterator(*this);
 	}
+
 	void set_source_range(unsigned frame, unsigned dna_len);
+
 	void set_source_range(unsigned oriented_query_begin)
 	{
 		query_source_range = frame < 3 ? interval(oriented_query_begin, oriented_query_begin + 3 * query_range.length()) : interval(oriented_query_begin + 1 - 3 * query_range.length(), oriented_query_begin + 1);
 	}
+
 	interval oriented_range() const
 	{
 		if (frame < 3)
@@ -231,6 +241,7 @@ struct Hsp_data
 		else
 			return interval(query_source_range.end_ - 1, query_source_range.begin_);
 	}
+
 	void set_translated_query_begin(unsigned oriented_query_begin, unsigned dna_len)
 	{
 		int f = frame <= 2 ? frame + 1 : 2 - frame;
@@ -239,31 +250,37 @@ struct Hsp_data
 		else
 			query_range.begin_ = (dna_len + f - oriented_query_begin) / 3;
 	}
+
 	int blast_query_frame() const
 	{
 		return align_mode.query_translated ? (frame <= 2 ? (int)frame + 1 : 2 - (int)frame) : 0;
 	}
+
 	bool operator<(const Hsp_data &rhs) const
 	{
 		return score > rhs.score;
 	}
+
 	double id_percent() const
 	{
 		return (double)identities * 100.0 / (double)length;
 	}
+
 	double query_cover_percent(unsigned query_source_len) const
 	{
 		return (double)query_source_range.length() * 100 / query_source_len;
 	}
+
 	double subject_cover_percent(unsigned subject_len) const
 	{
 		return (double)subject_range.length() * 100 / subject_len;
 	}
+
 	static bool cmp_query_pos(const Hsp_data &x, const Hsp_data &y)
 	{
 		return x.query_range.begin_ < y.query_range.begin_;
 	}
-	bool pass_through(const Diagonal_segment &d) const;
+
 	bool is_weakly_enveloped(const Hsp_data &j) const;
 	std::pair<int, int> diagonal_bounds() const;
 	void merge(const Hsp_data &right, const Hsp_data &left, unsigned query_anchor, unsigned subject_anchor);
@@ -296,7 +313,7 @@ struct Hsp_context
 		{ }
 		Letter query() const
 		{
-			return parent_.query[query_pos];
+			return parent_.query[query_pos.translated];
 		}
 		Letter subject() const
 		{

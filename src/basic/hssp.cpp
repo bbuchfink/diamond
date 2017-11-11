@@ -33,32 +33,11 @@ interval untranslate_range(const interval &r, unsigned frame, size_t len)
 	return s;
 }
 
-bool Hsp_data::pass_through(const Diagonal_segment &d) const
-{
-	if (intersect(d.query_range(), query_range).length() != d.len
-		|| intersect(d.subject_range(), subject_range).length() != d.len)
-		return false;
-
-	Iterator it = begin();
-	const unsigned subject_end = d.j + d.len;
-	const unsigned diag = d.diag();
-	while (it.good()) {
-		if ((int)it.subject_pos >= d.j) {
-			if (it.subject_pos >= subject_end)
-				return true;
-			if (it.query_pos - it.subject_pos != diag)
-				return false;
-		}
-		++it;
-	}
-	return true;
-}
-
 std::pair<int, int> Hsp_data::diagonal_bounds() const
 {
 	int d0 = std::numeric_limits<int>::max(), d1 = std::numeric_limits<int>::min();
 	for (Iterator it = begin(); it.good(); ++it) {
-		const int d = (int)it.query_pos - (int)it.subject_pos;
+		const int d = (int)it.query_pos.translated - (int)it.subject_pos;
 		d0 = std::min(d0, d);
 		d1 = std::max(d1, d);
 	}
@@ -107,8 +86,8 @@ Hsp_context& Hsp_context::parse()
 
 	for (; i.good(); ++i) {
 		++hsp_.length;
-		assert(i.query_pos < query.length());
-		if (i.query_pos >= query.length())
+		assert(i.query_pos.translated < query.length());
+		if (i.query_pos.translated >= query.length())
 			throw std::runtime_error("Query sequence index out of bounds.");
 		switch (i.op()) {
 		case op_match:
@@ -132,7 +111,7 @@ Hsp_context& Hsp_context::parse()
 		}
 	}
 
-	hsp_.query_range.end_ = i.query_pos;
+	hsp_.query_range.end_ = i.query_pos.translated;
 	hsp_.subject_range.end_ = i.subject_pos;
 
 	return *this;
