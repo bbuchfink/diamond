@@ -42,6 +42,18 @@ struct TranslatedPosition
 		return *this;
 	}
 
+	int inner_end() const
+	{
+		if (align_mode.query_translated) {
+			if (frame < 3)
+				return source - 1;
+			else
+				return source + 1;
+		}
+		else
+			return source - 1;
+	}
+
 	int source, translated, frame;
 
 };
