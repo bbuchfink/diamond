@@ -2,7 +2,7 @@ Introduction
 ============
 DIAMOND is a sequence aligner for protein and translated DNA searches and functions as a drop-in replacement for the NCBI BLAST software tools. It is suitable for protein-protein search as well as DNA-protein search on short reads and longer sequences including contigs and assemblies, providing a speedup of BLAST ranging up to x20,000.
 
-Follow me on Twitter to be notified of updates.
+Follow me on Twitter to get notified of updates.
 
 .. image:: https://thumb.ibb.co/fPtjFw/follow.png
    :target: https://twitter.com/bbuchfink
