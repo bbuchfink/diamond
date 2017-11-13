@@ -1,5 +1,6 @@
 [0.9.13]
 - Fixed query positions in pairwise format for translated searches.
+- Changed default behaviour of --max-hsps option to report unlimited number of HSPs.
 
 [0.9.12]
 - Fixed dbinfo command to be able to read older database formats.

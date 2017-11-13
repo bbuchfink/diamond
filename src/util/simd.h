@@ -39,5 +39,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #endif
 
 void check_simd();
+void simd_messages();
 
 #endif

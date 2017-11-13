@@ -197,7 +197,7 @@ bool Query_mapper::generate_output(Text_buffer &buffer, Statistics &stat)
 		
 		hit_hsps = 0;
 		for (list<Hsp_data>::iterator j = targets[i].hsps.begin(); j != targets[i].hsps.end(); ++j) {
-			if (hit_hsps >= config.max_hsps)
+			if (config.max_hsps > 0 && hit_hsps >= config.max_hsps)
 				break;
 			const char *ref_title = ref_ids::get()[targets[i].subject_id].c_str();
 			if (j->id_percent() < config.min_id
@@ -244,7 +244,6 @@ bool Query_mapper::generate_output(Text_buffer &buffer, Statistics &stat)
 			++hit_hsps;
 			if (config.alignment_traceback && j->gap_openings > 0)
 				stat.inc(Statistics::GAPPED);
-			stat.inc(Statistics::SCORE_TOTAL, j->score);
 		}
 	}
 

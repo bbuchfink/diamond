@@ -17,6 +17,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #include "simd.h"
+#include "log_stream.h"
 
 #ifdef _WIN32
 #define cpuid(info,x)    __cpuidex(info,x,0)
@@ -56,5 +57,18 @@ void check_simd()
 #ifdef __SSE4_1__
 	if ((info[2] & (1 << 19)) == 0)
 		throw std::runtime_error("CPU does not support SSE4.1. Please compile the software from source.");
+#endif
+}
+
+void simd_messages()
+{
+#ifdef __SSSE3__
+	verbose_stream << "SSSE3 enabled." << endl;
+#endif
+#ifdef __SSE4_1__
+	verbose_stream << "SSE4.1 enabled." << endl;
+#endif
+#ifdef __POPCNT__
+	verbose_stream << "POPCNT enabled." << endl;
 #endif
 }

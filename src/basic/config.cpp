@@ -164,7 +164,7 @@ Config::Config(int argc, const char **argv)
 		("index-mode", 0, "index mode (0=4x12, 1=16x9)", index_mode)
 		("rank-ratio", 0, "include subjects within this ratio of last hit (stage 1)", rank_ratio, -1.0)
 		("rank-ratio2", 0, "include subjects within this ratio of last hit (stage 2)", rank_ratio2, -1.0)
-		("max-hsps", 0, "maximum number of HSPs per subject sequence to save for each query", max_hsps, 1u)
+		("max-hsps", 0, "maximum number of HSPs per subject sequence to save for each query", max_hsps, 0u)
 		("dbsize", 0, "effective database size (in letters)", db_size)
 		("no-auto-append", 0, "disable auto appending of DAA and DMND file extensions", no_auto_append)
 		("xml-blord-format", 0, "Use gnl|BL_ORD_ID| style format in XML output", xml_blord_format);
@@ -355,16 +355,7 @@ Config::Config(int argc, const char **argv)
 		
 		init_cbs();
 		raw_ungapped_xdrop = score_matrix.rawscore(ungapped_xdrop);
-
-#ifdef __SSSE3__
-		verbose_stream << "SSSE3 enabled." << endl;
-#endif
-#ifdef __SSE4_1__
-		verbose_stream << "SSE4.1 enabled." << endl;
-#endif
-#ifdef __POPCNT__
-		verbose_stream << "POPCNT enabled." << endl;
-#endif
+		simd_messages();
 	}
 
 	Translator::init(query_gencode);
