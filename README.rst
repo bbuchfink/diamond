@@ -42,4 +42,4 @@ DIAMOND is developed by Benjamin Buchfink. Feel free to contact me for support (
 
 If you use DIAMOND in published research, please cite B. Buchfink, Xie C., D. Huson, "Fast and sensitive protein alignment using DIAMOND", Nature Methods 12, 59-60 (2015).
 
-.. image:: https://ga-beacon.appspot.com/UA-109667396-1/diamond
+.. image:: https://ga-beacon.appspot.com/UA-109667396-1/diamond?pixel
