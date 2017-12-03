@@ -18,7 +18,6 @@ g++ -DNDEBUG -O3 -Wno-deprecated-declarations $1 $2 $3 \
   src/util/util.cpp  \
   src/util/Timer.cpp \
   src/basic/basic.cpp \
-  src/dp/floating_sw.cpp \
   src/basic/hssp.cpp \
   src/dp/ungapped_align.cpp \
   src/run/tools.cpp \
