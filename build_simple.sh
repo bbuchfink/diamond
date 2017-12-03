@@ -28,7 +28,6 @@ g++ -DNDEBUG -O3 -Wno-deprecated-declarations $1 $2 $3 \
   src/output/join_blocks.cpp \
   src/data/frequent_seeds.cpp \
   src/align/query_mapper.cpp \
-  src/align/align_target.cpp \
   src/output/blast_tab_format.cpp \
   src/dp/padded_banded_sw.cpp \
   src/dp/needleman_wunsch.cpp \

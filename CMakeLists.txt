@@ -64,7 +64,6 @@ add_executable(diamond src/run/main.cpp
   src/output/join_blocks.cpp
   src/data/frequent_seeds.cpp
   src/align/query_mapper.cpp
-  src/align/align_target.cpp
   src/output/blast_tab_format.cpp
   src/dp/padded_banded_sw.cpp
   src/dp/needleman_wunsch.cpp
