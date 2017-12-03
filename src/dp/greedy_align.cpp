@@ -462,7 +462,7 @@ struct Greedy_aligner2
 	}
 
 	int backtrace(size_t top_node, list<Hsp_data> &hsps, list<Hsp_traits> &ts, list<Hsp_traits>::iterator &t_begin, int cutoff, int max_shift) const
-	{		
+	{
 		unsigned next;
 		int max_score = 0, max_j = (int)subject.length();
 		do {
@@ -477,7 +477,8 @@ struct Greedy_aligner2
 					ts.push_back(t);
 					t_begin = ts.end();
 					t_begin--;
-				} else
+				}
+				else
 					ts.push_back(t);
 				if (hsp)
 					hsps.push_back(*hsp);
@@ -532,7 +533,7 @@ struct Greedy_aligner2
 		if (log) {
 			hsps.sort(Hsp_data::cmp_query_pos);
 			for (list<Hsp_data>::iterator i = hsps.begin(); i != hsps.end(); ++i)
-				print_hsp(*i, query);
+				print_hsp(*i, TranslatedSequence(query));
 			cout << endl << "Smith-Waterman:" << endl;
 			smith_waterman(query, subject, diags);
 			cout << endl << endl;

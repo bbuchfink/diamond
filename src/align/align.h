@@ -25,7 +25,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../search/trace_pt_buffer.h"
 #include "../util/task_queue.h"
 #include "../basic/statistics.h"
-#include "align_struct.h"
+#include "query_mapper.h"
 
 using std::vector;
 using std::auto_ptr;
@@ -65,5 +65,29 @@ private:
 };
 
 void align_queries(Trace_pt_buffer &trace_pts, Output_stream* output_file);
+
+namespace ExtensionPipeline {
+	namespace Greedy {
+		struct Target;
+		struct Pipeline : public Query_mapper
+		{
+			Pipeline(size_t query_id, Trace_pt_list::iterator begin, Trace_pt_list::iterator end) :
+				Query_mapper(query_id, begin, end)
+			{}
+			Target& target(size_t i);
+			virtual void run(Statistics &stat);
+		};
+	}
+	namespace Swipe {
+		struct Pipeline : public Query_mapper
+		{
+			Pipeline(size_t query_id, Trace_pt_list::iterator begin, Trace_pt_list::iterator end) :
+				Query_mapper(query_id, begin, end)
+			{}
+			virtual void run(Statistics &stat);
+		};
+	}
+}
+
 
 #endif

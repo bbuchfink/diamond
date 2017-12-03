@@ -23,8 +23,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <map>
 #include <list>
 #include "../basic/match.h"
-#include "../align/align.h"
 #include "score_profile.h"
+#include "../basic/translated_position.h"
 
 void init_cbs();
 
@@ -150,8 +150,8 @@ struct Hsp_traits
 	interval query_source_range, query_range, subject_range;
 };
 
-template<typename _score>
-void smith_waterman(const Letter *query, local_match &segment, _score gap_open, _score gap_extend, vector<char> &transcript_buf, const _score& = int());
+/*template<typename _score>
+void smith_waterman(const Letter *query, local_match &segment, _score gap_open, _score gap_extend, vector<char> &transcript_buf, const _score& = int());*/
 int smith_waterman(const sequence &query, const sequence &subject, unsigned band, unsigned padding, int op, int ep);
 
 int xdrop_ungapped(const Letter *query, const Letter *subject, unsigned seed_len, unsigned &delta, unsigned &len);
@@ -474,5 +474,8 @@ int score_range(sequence query, sequence subject, int i, int j, int j_end);
 
 void swipe(const sequence &query, vector<sequence>::const_iterator subject_begin, vector<sequence>::const_iterator subject_end, vector<int>::iterator out);
 void banded_sw(const sequence &query, const sequence &subject, int d_begin, int d_end, int j_begin, int j_end, Hsp_data &out);
+
+void anchored_3frame_dp(const TranslatedSequence &query, sequence &subject, const DiagonalSegment &anchor, Hsp_data &out, int gap_open, int gap_extend, int frame_shift);
+int sw_3frame(const TranslatedSequence &query, Strand strand, const sequence &subject, int gap_open, int gap_extend, int frame_shift, Hsp_data &out);
 
 #endif /* FLOATING_SW_H_ */

@@ -123,7 +123,7 @@ int smith_waterman(const sequence &query, const sequence &subject, unsigned band
 	for (unsigned j = 0; j < slen; ++j) {
 		if (j < (unsigned)subject.clipping_offset_)
 			continue;
-		if (subject[j] == '\xff')
+		if (subject[j] == sequence::DELIMITER)
 			break;
 		Padded_banded_DP_matrix::Column_iterator it(dp.begin(j));
 		int vgap = 0, hgap;

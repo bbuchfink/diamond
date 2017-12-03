@@ -23,8 +23,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/binary_file.h"
 #include "../basic/packed_transcript.h"
 #include "../util/text_buffer.h"
-#include "../align/align_struct.h"
 #include "../data/reference.h"
+#include "../basic/match.h"
 
 inline unsigned get_length_flag(unsigned x)
 {

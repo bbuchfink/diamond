@@ -25,8 +25,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../basic/value.h"
 #include "../basic/translate.h"
 #include "../basic/packed_transcript.h"
-#include "../align/match_func.h"
 #include "../basic/score_matrix.h"
+#include "../basic/match.h"
 
 using std::string;
 using std::vector;
@@ -58,8 +58,7 @@ struct DAA_query_record
 		{
 			return Hsp_context(*this,
 				(unsigned)parent_.query_num,
-				sequence(parent_.context[frame]),
-				align_mode.query_translated ? sequence(parent_.source_seq) : sequence(parent_.context[0]),
+				parent_.query_seq,
 				parent_.query_name.c_str(),
 				subject_id,
 				subject_id,
@@ -130,6 +129,7 @@ struct DAA_query_record
 	size_t query_num;
 	vector<Letter> source_seq;
 	vector<Letter> context[6];
+	TranslatedSequence query_seq;
 
 private:
 

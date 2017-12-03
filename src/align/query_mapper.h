@@ -66,14 +66,9 @@ struct Target
 
 struct Query_mapper
 {
-	Query_mapper();
 	Query_mapper(size_t query_id, Trace_pt_list::iterator begin, Trace_pt_list::iterator end);
 	void init();
-	void align_target(size_t idx, Statistics &stat);
-	void align_targets(Statistics &stat);
 	bool generate_output(Text_buffer &buffer, Statistics &stat);
-	void ungapped_stage(size_t idx);
-	void greedy_stage(size_t idx, Statistics &stat, int cutoff);
 	void rank_targets(double ratio);
 	int raw_score_cutoff() const;
 	size_t n_targets() const
@@ -93,9 +88,17 @@ struct Query_mapper
 		for (size_t i = 0; i < targets.size(); ++i)
 			targets[i].fill_source_ranges(source_query_len);
 	}
+	virtual void run(Statistics &stat) = 0;
 	pair<Trace_pt_list::iterator, Trace_pt_list::iterator> source_hits;
 	unsigned query_id, targets_finished, next_target;
+	unsigned source_query_len, unaligned_from;
+	Ptr_vector<Target> targets;
+	vector<Seed_hit> seed_hits;
+	vector<Bias_correction> query_cb;
+	vector<Long_score_profile> profile;
+
 private:
+
 	static pair<Trace_pt_list::iterator, Trace_pt_list::iterator> get_query_data();
 	unsigned count_targets();
 	sequence query_source_seq() const
@@ -104,11 +107,7 @@ private:
 	}
 	void load_targets();
 
-	unsigned source_query_len, unaligned_from;
-	vector<Seed_hit> seed_hits;
-	Ptr_vector<Target> targets;
-	vector<Bias_correction> query_cb;
-	vector<Long_score_profile> profile;
+	TranslatedSequence translated_query;
 	
 };
 

@@ -113,7 +113,7 @@ void Blast_tab_format::print_match(const Hsp_context& r, Text_buffer &out)
 			out.write_until(r.query_name, Const::id_delimiters);
 			break;
 		case 4:
-			out << r.source_query.length();
+			out << r.query.source().length();
 			break;
 		case 5:
 			print_title(out, r.subject_name, false, false, "<>");
@@ -137,7 +137,7 @@ void Blast_tab_format::print_match(const Hsp_context& r, Text_buffer &out)
 			out << r.subject_range().end_;
 			break;
 		case 17:
-			r.source_query.print(out, r.query_source_range().begin_, r.query_source_range().end_, input_value_traits);
+			r.query.source().print(out, r.query_source_range().begin_, r.query_source_range().end_, input_value_traits);
 			break;
 		case 18:
 		{
@@ -230,7 +230,7 @@ void Blast_tab_format::print_match(const Hsp_context& r, Text_buffer &out)
 			print_title(out, r.subject_name, true, true, "<>");
 			break;
 		case 43:
-			out << (double)r.query_source_range().length()*100.0 / r.source_query.length();
+			out << (double)r.query_source_range().length()*100.0 / r.query.source().length();
 			break;
 		case 45:
 			out << r.query_name;

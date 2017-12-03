@@ -59,6 +59,14 @@ inline unsigned get_source_query_len(unsigned query_id)
 	return align_mode.query_translated ? (unsigned)query_seqs::get().reverse_translated_len(query_id*align_mode.query_contexts) : (unsigned)query_seqs::get().length(query_id);
 }
 
+inline TranslatedSequence get_translated_query(size_t query_id)
+{
+	if (align_mode.query_translated)
+		return query_seqs::get().translated_seq(query_source_seqs::get()[query_id], query_id*align_mode.query_contexts);
+	else
+		return TranslatedSequence(query_seqs::get()[query_id]);
+}
+
 extern Seed_set *query_seeds;
 extern Hashed_seed_set *query_seeds_hashed;
 

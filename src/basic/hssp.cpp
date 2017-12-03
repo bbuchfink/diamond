@@ -20,14 +20,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 interval untranslate_range(const interval &r, unsigned frame, size_t len)
 {
-	signed f = frame <= 2 ? frame + 1 : 2 - frame;
 	interval s;
-	if (f > 0) {
-		s.begin_ = (f - 1) + 3 * r.begin_;
+	if (frame < 3) {
+		s.begin_ = TranslatedPosition::translated_to_absolute(r.begin_, Frame(FORWARD, frame), len);
 		s.end_ = s.begin_ + 3 * r.length();
 	}
 	else {
-		s.end_ = (int)len + f - 3 * r.begin_ + 1;
+		s.end_ = TranslatedPosition::translated_to_absolute(r.begin_, Frame(REVERSE, frame), len) + 1;
 		s.begin_ = s.end_ - 3 * r.length();
 	}
 	return s;
@@ -86,8 +85,8 @@ Hsp_context& Hsp_context::parse()
 
 	for (; i.good(); ++i) {
 		++hsp_.length;
-		assert(i.query_pos.translated < query.length());
-		if (i.query_pos.translated >= query.length())
+		assert(query.in_bounds(i.query_pos));
+		if (!query.in_bounds(i.query_pos))
 			throw std::runtime_error("Query sequence index out of bounds.");
 		switch (i.op()) {
 		case op_match:
@@ -108,6 +107,8 @@ Hsp_context& Hsp_context::parse()
 			++d;
 			++hsp_.gaps;
 			break;
+		default:
+			;
 		}
 	}
 
@@ -124,4 +125,99 @@ Hsp_context& Hsp_context::set_query_source_range(unsigned oriented_query_begin)
 	else
 		hsp_.query_source_range = hsp_.query_range;
 	return *this;
+}
+
+void Hsp_data::push_back(const DiagonalSegment &d, const TranslatedSequence &query, const sequence &subject, bool reversed)
+{
+	const sequence &q = query[d.i.frame];
+	if (reversed) {
+		for (int i = d.query_last().translated, j = d.subject_last(); j >= d.j; --j, --i) {
+			const Letter ls = subject[j], lq = q[i];
+			if (ls == lq) {
+				transcript.push_back(op_match);
+				++identities;
+				++positives;
+			}
+			else {
+				transcript.push_back(op_substitution, ls);
+				++mismatches;
+				if (score_matrix(ls, lq) > 0)
+					++positives;
+			}
+			++length;
+		}
+	}
+	else {
+		for (int i = d.i, j = d.j; j < d.subject_end(); ++j, ++i) {
+			const Letter ls = subject[j], lq = q[i];
+			if (ls == lq) {
+				transcript.push_back(op_match);
+				++identities;
+				++positives;
+			}
+			else {
+				transcript.push_back(op_substitution, ls);
+				++mismatches;
+				if (score_matrix(ls, lq) > 0)
+					++positives;
+			}
+			++length;
+		}
+	}
+}
+
+void Hsp_data::splice(const DiagonalSegment &a, const DiagonalSegment &b, const TranslatedSequence &query, const sequence &subject, bool reversed)
+{
+	TranslatedPosition i0 = a.query_last();
+	int j0 = a.subject_last();
+	const int fs = i0.frame_shift(b.i);
+	if (fs == 1) {
+		i0.shift_forward();
+		transcript.push_back(op_frameshift_forward);
+	}
+	else if (fs == -1) {
+		i0.shift_back();
+		transcript.push_back(op_frameshift_reverse);
+	}
+	const int d0 = i0 - j0, d1 = b.diag();
+	if (d1 > d0)
+		transcript.push_back(op_insertion, unsigned(d1 - d0));
+	else if (d1 < d0)
+		if(reversed)
+			transcript.push_back(subject.subseq(j0 + 1, b.j), Reversed());
+		else
+			transcript.push_back(subject.subseq(j0 + 1, b.j));
+	const int shift = abs(d1 - d0);
+	if (shift > 0) {
+		length += shift;
+		++gap_openings;
+		gaps += shift;
+	}
+}
+
+void Hsp_data::set_begin(const DiagonalSegment &d, int dna_len)
+{
+	subject_range.begin_ = d.j;
+	query_range.begin_ = d.i;
+	frame = d.i.frame.index();
+	if (d.i.frame.strand == FORWARD)
+		query_source_range.begin_ = d.i.absolute(dna_len);
+	else
+		query_source_range.end_ = d.i.absolute(dna_len) + 1;
+}
+
+void Hsp_data::set_end(const DiagonalSegment &d, int dna_len)
+{
+	subject_range.end_ = d.subject_end();
+	query_range.end_ = d.query_end();
+	if (d.i.frame.strand == FORWARD)
+		query_source_range.end_ = d.query_end().absolute(dna_len);
+	else
+		query_source_range.begin_ = d.query_end().absolute(dna_len) + 1;
+}
+
+void Hsp_data::clear()
+{
+	score = frame = length = identities = mismatches = positives = gap_openings = gaps = sw_score = 0;
+	transcript.clear();
 }

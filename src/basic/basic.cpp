@@ -37,7 +37,7 @@ Value_traits::Value_traits(const char *alphabet, Letter mask_char, const char *i
 
 const char Char_representation::invalid = '\xff';
 
-const Value_traits amino_acid_traits("ARNDCQEGHILKMFPSTWYVBJZX*", 23, "UO-");
+const Value_traits amino_acid_traits(AMINO_ACID_ALPHABET, 23, "UO-");
 const Value_traits nucleotide_traits("ACGTN", 4, "MRWSYKVHDBX");
 Value_traits value_traits(amino_acid_traits);
 Value_traits input_value_traits(amino_acid_traits);
@@ -250,11 +250,11 @@ void Translator::init(unsigned id)
 		}
 }
 
-vector<Letter> sequence::from_string(const char* str)
+vector<Letter> sequence::from_string(const char* str, const Value_traits &vt)
 {
 	vector<Letter> seq;
 	while (*str)
-		seq.push_back(value_traits.from_char(*(str++)));
+		seq.push_back(vt.from_char(*(str++)));
 	return seq;
 }
 

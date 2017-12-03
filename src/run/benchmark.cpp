@@ -55,8 +55,8 @@ int xdrop_ungapped2(const Letter *query, const Letter *subject)
 
 	st = score;
 	while (score - st < config.raw_ungapped_xdrop
-		&& *q != '\xff'
-		&& *s != '\xff')
+		&& *q != sequence::DELIMITER
+		&& *s != sequence::DELIMITER)
 	{
 		st += score_matrix(*q, *s);
 		score = std::max(score, st);
@@ -85,8 +85,8 @@ int xdrop_window(const Letter *query, const Letter *subject)
 
 	st = score;
 	while (n < window
-		&& *q != '\xff'
-		&& *s != '\xff')
+		&& *q != sequence::DELIMITER
+		&& *s != sequence::DELIMITER)
 	{
 		st += score_matrix(*q, *s);
 		score = std::max(score, st);
@@ -118,8 +118,8 @@ int xdrop_window2(const Letter *query, const Letter *subject)
 
 	st = score;
 	while (n < window
-		&& *q != '\xff'
-		&& *s != '\xff')
+		&& *q != sequence::DELIMITER
+		&& *s != sequence::DELIMITER)
 	{
 		st += score_matrix(*q, *s);
 		if (st > score) {
@@ -162,7 +162,7 @@ void benchmark_ungapped(const Sequence_set &ss, unsigned qa, unsigned sa)
 
 	uint64_t mask = 0;
 	for (unsigned i = 0; i < 64; ++i) {
-		if (q[i] == '\xff' || s[i] == '\xff')
+		if (q[i] == sequence::DELIMITER || s[i] == sequence::DELIMITER)
 			break;
 		if (q[i] == s[i])
 			mask |= 1llu << i;
@@ -254,41 +254,6 @@ void benchmark_swipe(const Sequence_set &ss)
 
 	cout << "usec=" << t.getElapsedTimeInSec() / (double)n * 1000000.0 << endl;
 	cout << "gcups=" << 64*ss[0].length()*ss[1].length()*n / t.getElapsedTime() / 1e9 << endl;
-}
-
-void benchmark_floating(const Sequence_set &ss, unsigned qa, unsigned sa)
-{
-	static const unsigned n = 100000;
-	uint64_t cell_updates = 0;
-	local_match hsp(0, 0, &ss[1][sa]);
-
-	{
-		Timer t;
-		t.start();
-
-		for (unsigned i = 0; i < n; ++i) {
-
-			floating_sw(&ss[0][qa],
-				hsp.subject_,
-				hsp,
-				5,
-				score_matrix.rawscore(config.gapped_xdrop),
-				score_matrix.gap_open() + score_matrix.gap_extend(),
-				score_matrix.gap_extend(),
-				cell_updates,
-				hsp.query_anchor_,
-				hsp.subject_anchor,
-				0,
-				No_score_correction(),
-				Score_only());
-
-		}
-		t.stop();
-
-		cout << hsp.score << ' ' << cell_updates << endl;
-		cout << "gcups=" << (double)cell_updates / 1e9 / t.getElapsedTimeInSec() << " n/sec=" << (double)n / t.getElapsedTimeInSec() << endl;
-		cout << " usec=" << t.getElapsedTimeInSec() / (double)n * 1000000.0 << endl;
-	}
 }
 
 void benchmark_sw()

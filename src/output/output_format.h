@@ -21,7 +21,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <exception>
 #include "../basic/match.h"
-#include "../align/match_func.h"
 #include "../output/daa_file.h"
 #include "../output/daa_record.h"
 #include "../util/compressed_stream.h"
@@ -176,6 +175,6 @@ struct Taxon_format : public Output_format
 
 Output_format* get_output_format();
 void init_output();
-void print_hsp(Hsp_data &hsp, sequence query);
+void print_hsp(Hsp_data &hsp, const TranslatedSequence &query);
 
 #endif /* OUTPUT_FORMAT_H_ */

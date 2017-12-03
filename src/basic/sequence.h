@@ -24,11 +24,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../basic/value.h"
 #include "../util/binary_buffer.h"
 #include "../util/text_buffer.h"
+#include "translated_position.h"
 
 using std::vector;
 
 struct sequence
 {
+	static const char DELIMITER = '\x1f';
 	struct Reversed {};
 	sequence():
 		len_ (0),
@@ -133,12 +135,12 @@ struct sequence
 	{
 		const Letter *p = s;
 		int n = 0;
-		while (*p != '\xff' && n < window) {
+		while (*p != sequence::DELIMITER && n < window) {
 			--p;
 			++n;
 		}
 		n = 0;
-		while (*s != '\xff' && n < window) {
+		while (*s != sequence::DELIMITER && n < window) {
 			++s;
 			++n;
 		}
@@ -154,10 +156,78 @@ struct sequence
 		}
 		return os;
 	}*/
-	static vector<Letter> from_string(const char* str);
+	static vector<Letter> from_string(const char* str, const Value_traits &vt = value_traits);
 	size_t			len_;
 	int				clipping_offset_;
 	const Letter	*data_;
+};
+
+struct TranslatedSequence
+{
+
+	TranslatedSequence()
+	{}
+
+	explicit TranslatedSequence(const sequence &s1):
+		source_(s1)
+	{
+		translated_[0] = s1;
+	}
+
+	TranslatedSequence(const sequence &source, const sequence &s1, const sequence &s2, const sequence &s3, const sequence &s4, const sequence &s5, const sequence &s6):
+		source_(source)
+	{
+		translated_[0] = s1;
+		translated_[1] = s2;
+		translated_[2] = s3;
+		translated_[3] = s4;
+		translated_[4] = s5;
+		translated_[5] = s6;
+	}
+
+	TranslatedSequence(const sequence &source, const vector<Letter> v[6]):
+		source_(source)
+	{
+		for (int i = 0; i < 6; ++i)
+			translated_[i] = sequence(v[i]);
+	}
+
+	const sequence& operator[](Frame frame) const
+	{
+		return translated_[frame.index()];
+	}
+
+	const Letter& operator[](const TranslatedPosition &i) const
+	{
+		return (*this)[i.frame][i];
+	}
+
+	const Letter& operator()(int in_strand, Strand strand) const
+	{
+		assert(in_strand < source_.length() - 2);
+		return translated_[in_strand % 3 + (strand == FORWARD ? 0 : 3)][in_strand / 3];
+	}
+
+	const sequence& index(unsigned frame) const
+	{
+		return translated_[frame];
+	}
+
+	const sequence &source() const
+	{
+		return source_;
+	}
+
+	bool in_bounds(const TranslatedPosition &i) const
+	{
+		return i >= 0 && i < (*this)[i.frame].length();
+	}
+
+private:
+	
+	sequence source_;
+	sequence translated_[6];
+
 };
 
 

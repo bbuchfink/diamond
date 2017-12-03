@@ -21,6 +21,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 void Pairwise_format::print_match(const Hsp_context& r, Text_buffer &out)
 {
 	static const unsigned width = 60;
+	const int dna_len = (int)r.query.source().length();
+	const Strand strand = r.frame() < 3 ? FORWARD : REVERSE;
 	out << '>';
 	Output_format::print_title(out, r.subject_name, true, true, " ");
 	out << "\nLength=" << r.subject_len << "\n\n";
@@ -37,12 +39,12 @@ void Pairwise_format::print_match(const Hsp_context& r, Text_buffer &out)
 	Hsp_context::Iterator qi = r.begin(), mi = r.begin(), si = r.begin();
 	while (qi.good()) {
 		out << "Query  ";
-		out.print(qi.query_pos.source+1, digits);
+		out.print(qi.query_pos.absolute(dna_len) + 1, digits);
 		out << "  ";
 		for (unsigned i = 0; i < width && qi.good(); ++i, ++qi)
 			out << qi.query_char();
 		out << " ";
-		out.print(qi.query_pos.inner_end() + 1, 0);
+		out.print(TranslatedPosition::oriented_position(qi.query_pos.in_strand() - 1, strand, dna_len) + 1, 0);
 		out << '\n';
 
 		for (unsigned i = 0; i < digits + 9; ++i)

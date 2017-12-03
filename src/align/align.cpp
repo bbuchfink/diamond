@@ -76,32 +76,19 @@ void align_worker(size_t thread_id)
 			Output_sink::get().push(hits.query, buf);
 			continue;
 		}
-		Query_mapper mapper(hits.query, hits.begin, hits.end);
-		mapper.init();
+
+		auto_ptr<Query_mapper> mapper;
 		if (config.ext == Config::swipe)
-			mapper.align_targets(stat);
-		else if (mapper.n_targets() > 0) {
-			stat.inc(Statistics::TARGET_HITS0, mapper.n_targets());
-			for (size_t i = 0; i < mapper.n_targets(); ++i)
-				mapper.ungapped_stage(i);
-			if (config.ext != Config::most_greedy) {
-				mapper.fill_source_ranges();
-				mapper.rank_targets(config.rank_ratio == -1 ? (mapper.query_seq(0).length() > 50 ? 0.6 : 0.9) : config.rank_ratio);
-				stat.inc(Statistics::TARGET_HITS1, mapper.n_targets());
-				const int cutoff = int(mapper.raw_score_cutoff() * config.score_ratio);
-				for (size_t i = 0; i < mapper.n_targets(); ++i)
-					mapper.greedy_stage(i, stat, cutoff);
-				mapper.fill_source_ranges();
-				mapper.rank_targets(config.rank_ratio2 == -1 ? (mapper.query_seq(0).length() > 50 ? 0.95 : 1.0) : config.rank_ratio2);
-				stat.inc(Statistics::TARGET_HITS2, mapper.n_targets());
-				for (size_t i = 0; i < mapper.n_targets(); ++i)
-					mapper.align_target(i, stat);
-			}
-		}
+			mapper = auto_ptr<Query_mapper>(new ExtensionPipeline::Swipe::Pipeline(hits.query, hits.begin, hits.end));
+		else
+			mapper = auto_ptr<Query_mapper>(new ExtensionPipeline::Greedy::Pipeline(hits.query, hits.begin, hits.end));
+		mapper->init();
+		mapper->run(stat);
+
 		Text_buffer *buf = 0;
 		if (*output_format != Output_format::null) {
 			buf = new Text_buffer;
-			const bool aligned = mapper.generate_output(*buf, stat);
+			const bool aligned = mapper->generate_output(*buf, stat);
 			if (aligned && !config.unaligned.empty())
 				query_aligned[hits.query] = true;
 		}

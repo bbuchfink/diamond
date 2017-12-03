@@ -159,9 +159,7 @@ struct Join_records
 
 void join_query(vector<Binary_buffer> &buf, Text_buffer &out, Statistics &statistics, unsigned query, const char *query_name, unsigned query_source_len, Output_format &f)
 {
-	sequence context[6];
-	for (unsigned i = 0; i < align_mode.query_contexts; ++i)
-		context[i] = query_seqs::get()[query*align_mode.query_contexts + i];
+	TranslatedSequence query_seq(get_translated_query(query));
 
 	vector<Join_record> records;
 	vector<Binary_buffer::Iterator> it;
@@ -188,8 +186,7 @@ void join_query(vector<Binary_buffer> &buf, Text_buffer &out, Statistics &statis
 				Hsp_data hsp(next.info_, query_source_len);
 				f.print_match(Hsp_context(hsp,
 					query,
-					context[align_mode.check_context(hsp.frame)],
-					align_mode.query_translated ? query_source_seqs::get()[query] : context[0],
+					query_seq,
 					query_name,
 					ref_map.check_id(next.info_.subject_id),
 					ref_map.original_id(next.info_.subject_id),

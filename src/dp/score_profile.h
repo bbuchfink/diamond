@@ -81,7 +81,7 @@ struct sequence_stream
 			++src;
 			return true;
 		}
-		if(*src == 0xff) {
+		if(*src == sequence::DELIMITER) {
 			mask |= 1 << n;
 			return false;
 		}

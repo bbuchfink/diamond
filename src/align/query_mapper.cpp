@@ -58,7 +58,8 @@ Query_mapper::Query_mapper(size_t query_id, Trace_pt_list::iterator begin, Trace
 	query_id((unsigned)query_id),
 	targets_finished(0),
 	next_target(0),
-	source_query_len(get_source_query_len((unsigned)query_id))
+	source_query_len(get_source_query_len((unsigned)query_id)),
+	translated_query(get_translated_query(query_id))
 {
 	seed_hits.reserve(source_hits.second - source_hits.first);
 }
@@ -78,8 +79,6 @@ void Query_mapper::init()
 	if (targets.empty())
 		return;
 	load_targets();
-	if (config.ext == Config::floating_xdrop)
-		rank_targets(config.rank_ratio == -1 ? 0.6 : config.rank_ratio);
 }
 
 unsigned Query_mapper::count_targets()
@@ -225,8 +224,7 @@ bool Query_mapper::generate_output(Text_buffer &buffer, Statistics &stat)
 				else
 					f->print_match(Hsp_context(*j,
 						query_id,
-						query_seq(j->frame),
-						query_source_seq(),
+						translated_query,
 						query_title,
 						targets[i].subject_id,
 						targets[i].subject_id,

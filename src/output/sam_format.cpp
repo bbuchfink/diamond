@@ -100,17 +100,17 @@ void Sam_format::print_match(const Hsp_context& r, Text_buffer &out)
 		<< '*' << '\t'
 		<< '0' << '\t'
 		<< '0' << '\t'
-		<< sequence(&r.query[r.query_range().begin_], r.query_range().length()) << '\t'
+		<< sequence(&r.query.index(r.frame())[r.query_range().begin_], r.query_range().length()) << '\t'
 		<< '*' << '\t'
 		<< "AS:i:" << (uint32_t)score_matrix.bitscore(r.score()) << '\t'
 		<< "NM:i:" << r.length() - r.identities() << '\t'
 		<< "ZL:i:" << r.subject_len << '\t'
 		<< "ZR:i:" << r.score() << '\t'
 		<< "ZE:f:";
-	out.print_e(score_matrix.evalue(r.score(), config.db_size, (unsigned)r.query.length()));
+	out.print_e(score_matrix.evalue(r.score(), config.db_size, (unsigned)r.query.index(r.frame()).length()));
 	out << '\t'
 		<< "ZI:i:" << r.identities() * 100 / r.length() << '\t'
-		<< "ZF:i:" << blast_frame(r.frame()) << '\t'
+		<< "ZF:i:" << Frame(r.frame()).signed_frame() << '\t'
 		<< "ZS:i:" << r.oriented_query_range().begin_ + 1 << '\t'
 		<< "MD:Z:";
 

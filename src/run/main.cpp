@@ -33,10 +33,10 @@ void fastq2fasta();
 void view();
 void make_db();
 void db_info();
+void test_main();
 
 int main(int ac, const char* av[])
 {
-
 	try {
 
 		check_simd();
@@ -100,6 +100,10 @@ int main(int ac, const char* av[])
 		case Config::dbinfo:
 			db_info();
 			break;
+#ifdef EXTRA
+		case Config::test_extra:
+			test_main();
+#endif
 		default:
 			return 1;
 		}

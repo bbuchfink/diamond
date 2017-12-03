@@ -34,7 +34,7 @@ using std::cout;
 using std::endl;
 using std::pair;
 
-struct Sequence_set : public String_set<'\xff', 1>
+struct Sequence_set : public String_set<sequence::DELIMITER, 1>
 {
 
 	Sequence_set()
@@ -68,7 +68,7 @@ struct Sequence_set : public String_set<'\xff', 1>
 	{
 		const Letter* begin(this->data(offset));
 		unsigned n(0);
-		while (*begin != '\xff' && n <= config.window) {
+		while (*begin != sequence::DELIMITER && n <= config.window) {
 			--begin;
 			++n;
 		}
@@ -76,7 +76,7 @@ struct Sequence_set : public String_set<'\xff', 1>
 		left = config.window + 1 - n;
 		const Letter* end(this->data(offset));
 		n = 0;
-		while (*end != '\xff' && n < config.window) {
+		while (*end != sequence::DELIMITER && n < config.window) {
 			++end;
 			++n;
 		}
@@ -87,7 +87,7 @@ struct Sequence_set : public String_set<'\xff', 1>
 	{
 		const Letter* begin(this->data(offset));
 		unsigned n(0);
-		while (*begin != '\xff' && n <= config.window) {
+		while (*begin != sequence::DELIMITER && n <= config.window) {
 			--begin;
 			++n;
 		}
@@ -122,6 +122,14 @@ struct Sequence_set : public String_set<'\xff', 1>
 			return l * 3 + 1;
 		else
 			return l * 3;
+	}
+
+	TranslatedSequence translated_seq(const sequence &source, size_t i) const
+	{
+		if (!align_mode.query_translated)
+			return TranslatedSequence((*this)[i]);
+		const size_t j = i - i % 6;
+		return TranslatedSequence(source, (*this)[i], (*this)[i + 1], (*this)[i + 2], (*this)[i + 3], (*this)[i + 4], (*this)[i + 5]);
 	}
 
 	size_t avg_len() const

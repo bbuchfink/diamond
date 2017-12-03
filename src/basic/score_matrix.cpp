@@ -207,7 +207,8 @@ Score_matrix::Score_matrix(const string & matrix, int gap_open, int gap_extend, 
 	matrix8_(Matrix_info::get(matrix).scores),
 	bias_((char)(-low_score())),
 	matrix8u_(Matrix_info::get(matrix).scores, bias_),
-	matrix16_(Matrix_info::get(matrix).scores)
+	matrix16_(Matrix_info::get(matrix).scores),
+	matrix32_(Matrix_info::get(matrix).scores)
 { }
 
 char Score_matrix::low_score() const
@@ -217,6 +218,15 @@ char Score_matrix::low_score() const
 		for (Letter j = i + 1; j < (char)value_traits.alphabet_size; ++j)
 			low = std::min(low, (char)this->operator()(i, j));
 	return low;
+}
+
+char Score_matrix::high_score() const
+{
+	char high = std::numeric_limits<char>::min();
+	for (Letter i = 0; i < (char)value_traits.alphabet_size; ++i)
+		for (Letter j = i; j < (char)value_traits.alphabet_size; ++j)
+			high = std::max(high, (char)this->operator()(i, j));
+	return high;
 }
 
 double Score_matrix::avg_id_score() const
@@ -284,7 +294,8 @@ Score_matrix::Score_matrix(const string &matrix_file, double lambda, double K, i
 	matrix8_(custom_scores(matrix_file)),
 	bias_((char)(-low_score())),
 	matrix8u_(custom_scores(matrix_file), bias_),
-	matrix16_(custom_scores(matrix_file))
+	matrix16_(custom_scores(matrix_file)),
+	matrix32_(custom_scores(matrix_file))
 {
 	static double constants[5];
 	constants[3] = lambda;

@@ -31,6 +31,7 @@ struct String_set
 
 	typedef char _t;
 	enum { PERIMETER_PADDING = 256 };
+	static const char DELIMITER = _pchar;
 
 	String_set():
 		data_ (PERIMETER_PADDING)

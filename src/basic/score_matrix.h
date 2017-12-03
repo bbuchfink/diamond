@@ -50,6 +50,11 @@ struct Score_matrix
 	const int16_t* matrix16() const
 	{ return matrix16_.data; }
 
+	const int* matrix32() const
+	{
+		return matrix32_.data;
+	}
+
 	int operator()(Letter a, Letter b) const
 	{
 		return matrix8_.data[(int(a) << 5) + int(b)];
@@ -92,6 +97,7 @@ struct Score_matrix
 	}
 
 	char low_score() const;
+	char high_score() const;
 
 	int gap_open() const
 	{
@@ -114,9 +120,9 @@ private:
 		Scores(const char *scores, char bias = 0)
 		{
 			const unsigned n = value_traits.alphabet_size;
-			for(unsigned i=0;i<32;++i)
-				for(unsigned j=0;j<32;++j)
-					data[i*32+j] = i < n && j < n ? (_t)(scores[i*n+j] + (int)bias) : std::numeric_limits<_t>::min();
+			for (unsigned i = 0; i < 32; ++i)
+				for (unsigned j = 0; j < 32; ++j)
+					data[i * 32 + j] = i < n && j < n ? (_t)(scores[i*n + j] + (int)bias) : -(std::numeric_limits<_t>::max() / 2);
 		}
 #ifdef _MSC_VER
 		__declspec(align(16)) _t data[32 * 32];
@@ -132,6 +138,7 @@ private:
 	char bias_;
 	Scores<uint8_t> matrix8u_;
 	Scores<int16_t> matrix16_;
+	Scores<int> matrix32_;
 
 };
 

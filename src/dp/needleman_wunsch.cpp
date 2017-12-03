@@ -321,5 +321,5 @@ void smith_waterman(sequence q, sequence s, const Diag_graph &diags)
 		}
 	}
 	print_diag(i0, j0, l, score, diags, q, s);
-	print_hsp(hsp, q);
+	print_hsp(hsp, TranslatedSequence(q));
 }

@@ -55,10 +55,10 @@ void Output_format::print_title(Text_buffer &buf, const char *id, bool full_titl
 	//return n;
 }
 
-void print_hsp(Hsp_data &hsp, sequence query)
+void print_hsp(Hsp_data &hsp, const TranslatedSequence &query)
 {
 	Text_buffer buf;
-	Pairwise_format().print_match(Hsp_context(hsp, 0, query, query, "", 0, 0, "", 0, 0, 0), buf);
+	Pairwise_format().print_match(Hsp_context(hsp, 0, query, "", 0, 0, "", 0, 0, 0), buf);
 	buf << '\0';
 	cout << buf.get_begin();
 }

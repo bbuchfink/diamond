@@ -29,8 +29,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "packed_transcript.h"
 #include "score_matrix.h"
 #include "translated_position.h"
-
-enum Strand { FORWARD, REVERSE };
+#include "diagonal_segment.h"
 
 inline interval normalized_range(unsigned pos, int len, Strand strand)
 {
@@ -40,105 +39,6 @@ inline interval normalized_range(unsigned pos, int len, Strand strand)
 }
 
 interval untranslate_range(const interval &r, unsigned frame, size_t l);
-
-struct Diagonal_segment
-{
-	Diagonal_segment():
-		len(0)
-	{}
-	Diagonal_segment(int query_pos, int subject_pos, int len, int score):
-		i(query_pos),
-		j(subject_pos),
-		len(len),
-		score (score)
-	{}
-	bool empty() const
-	{
-		return len == 0;
-	}
-	interval query_range() const
-	{
-		return interval(i, i + len);
-	}
-	interval subject_range() const
-	{
-		return interval(j, j + len);
-	}
-	int subject_last() const
-	{
-		return j + len - 1;
-	}
-	int query_last() const
-	{
-		return i + len - 1;
-	}
-	int subject_end() const
-	{
-		return j + len;
-	}
-	int query_end() const
-	{
-		return i + len;
-	}
-	int diag() const
-	{
-		return i - j;
-	}
-	Diagonal_segment intersect(const Diagonal_segment &x) const
-	{
-		if (diag() != x.diag())
-			return Diagonal_segment();
-		else {
-			const interval q = ::intersect(query_range(), x.query_range());
-			return Diagonal_segment(q.begin_, ::intersect(subject_range(), x.subject_range()).begin_, q.length(), 0);
-		}
-	}
-	bool is_enveloped(const Diagonal_segment &x) const
-	{
-		return score <= x.score
-			&& query_range().overlap_factor(x.query_range()) == 1
-			&& subject_range().overlap_factor(x.subject_range()) == 1;
-	}
-	Diagonal_segment transpose() const
-	{
-		return Diagonal_segment(j, i, len, score);
-	}
-	int partial_score(int diff) const
-	{
-		return score*std::max(len - diff, 0) / len;
-	}
-	bool operator<=(const Diagonal_segment &rhs) const
-	{
-		return i + len <= rhs.i && j + len <= rhs.j;
-	}
-	bool operator==(const Diagonal_segment &rhs) const
-	{
-		return i == rhs.i && j == rhs.j && len == rhs.len;
-	}
-	static bool cmp_subject(const Diagonal_segment &x, const Diagonal_segment &y)
-	{
-		return x.j < y.j || (x.j == y.j && x.i < y.i);
-	}
-	static bool cmp_subject_end(const Diagonal_segment &x, const Diagonal_segment &y)
-	{
-		return x.subject_end() < y.subject_end();
-	}
-	static bool cmp_heuristic(const Diagonal_segment &x, const Diagonal_segment &y)
-	{
-		return (x.subject_end() < y.subject_end() && x.j < y.j)
-			|| (x.j - y.j < y.subject_end() - x.subject_end());
-	}
-	friend int abs_shift(const Diagonal_segment &x, const Diagonal_segment &y)
-	{
-		return abs(x.diag() - y.diag());
-	}
-	friend std::ostream& operator<<(std::ostream &s, const Diagonal_segment &d)
-	{
-		s << "i=" << d.i << " j=" << d.j << " l=" << d.len << " score=" << d.score;
-		return s;
-	}
-	int i, j, len, score;
-};
 
 struct Intermediate_record;
 
@@ -173,8 +73,8 @@ struct Hsp_data
 
 	struct Iterator
 	{
-		Iterator(const Hsp_data &parent):
-			query_pos(parent.query_source_range, parent.query_range.begin_, parent.frame),
+		Iterator(const Hsp_data &parent) :
+			query_pos(parent.query_range.begin_, Frame(parent.frame)),
 			subject_pos(parent.subject_range.begin_),
 			ptr_(parent.transcript.ptr()),
 			count_(ptr_->count())
@@ -196,6 +96,13 @@ struct Hsp_data
 			case op_substitution:
 				++query_pos;
 				++subject_pos;
+				break;
+			case op_frameshift_forward:
+				query_pos.shift_forward();
+				break;
+			case op_frameshift_reverse:
+				query_pos.shift_back();
+				break;
 			}
 			--count_;
 			if (count_ == 0) {
@@ -281,6 +188,12 @@ struct Hsp_data
 		return x.query_range.begin_ < y.query_range.begin_;
 	}
 
+	void push_back(const DiagonalSegment &d, const TranslatedSequence &query, const sequence &subject, bool reversed);
+	void splice(const DiagonalSegment &d0, const DiagonalSegment &d1, const TranslatedSequence &query, const sequence &subject, bool reversed);
+	void set_begin(const DiagonalSegment &d, int dna_len);
+	void set_end(const DiagonalSegment &d, int dna_len);
+	void clear();
+
 	bool is_weakly_enveloped(const Hsp_data &j) const;
 	std::pair<int, int> diagonal_bounds() const;
 	void merge(const Hsp_data &right, const Hsp_data &left, unsigned query_anchor, unsigned subject_anchor);
@@ -292,9 +205,19 @@ struct Hsp_data
 
 struct Hsp_context
 {
-	Hsp_context(Hsp_data& hsp, unsigned query_id, const sequence &query, const sequence &source_query, const char *query_name, unsigned subject_id, unsigned orig_subject_id, const char *subject_name, unsigned subject_len, unsigned hit_num, unsigned hsp_num) :		
+	Hsp_context(
+		Hsp_data& hsp,
+		unsigned query_id,
+		const TranslatedSequence &query,
+		const char *query_name,
+		unsigned subject_id,
+		unsigned orig_subject_id,
+		const char *subject_name,
+		unsigned subject_len,
+		unsigned hit_num,
+		unsigned hsp_num
+	) :
 		query(query),
-		source_query(source_query),
 		query_name(query_name),
 		subject_name(subject_name),
 		query_id(query_id),
@@ -313,7 +236,7 @@ struct Hsp_context
 		{ }
 		Letter query() const
 		{
-			return parent_.query[query_pos.translated];
+			return parent_.query[query_pos];
 		}
 		Letter subject() const
 		{
@@ -330,6 +253,10 @@ struct Hsp_context
 			switch (op()) {
 			case op_deletion:
 				return '-';
+			case op_frameshift_forward:
+				return '\\';
+			case op_frameshift_reverse:
+				return '/';
 			default:
 				return value_traits.alphabet[(long)query()];
 			}
@@ -338,6 +265,8 @@ struct Hsp_context
 		{
 			switch (op()) {
 			case op_insertion:
+			case op_frameshift_forward:
+			case op_frameshift_reverse:
 				return '-';
 			default:
 				return value_traits.alphabet[(long)subject()];
@@ -373,7 +302,7 @@ struct Hsp_context
 	{ return hsp_.score; }
 	double evalue() const
 	{
-		return score_matrix.evalue(score(), config.db_size, (unsigned)query.length());
+		return score_matrix.evalue(score(), config.db_size, (unsigned)query.index(0).length());
 	}
 	double bit_score() const
 	{
@@ -416,7 +345,7 @@ struct Hsp_context
 	Hsp_context& parse();
 	Hsp_context& set_query_source_range(unsigned oriented_query_begin);
 
-	const sequence query, source_query;
+	const TranslatedSequence query;
 	const char *query_name, *subject_name;
 	const unsigned query_id, subject_id, orig_subject_id, subject_len, hit_num, hsp_num;
 private:	

@@ -30,12 +30,14 @@ Binary_buffer::Iterator DAA_query_record::init(const Binary_buffer &buf)
 	if (file_.mode() == Align_mode::blastp) {
 		Packed_sequence seq(it, query_len, false, 5);
 		seq.unpack(context[0], 5, query_len);
+		query_seq = TranslatedSequence(sequence(context[0]));
 	}
 	else {
 		const bool have_n = (flags & 1) == 1;
 		Packed_sequence seq(it, query_len, have_n, have_n ? 3 : 2);
 		seq.unpack(source_seq, have_n ? 3 : 2, query_len);
 		translate_query(source_seq, context);
+		query_seq = TranslatedSequence(sequence(source_seq), context);
 	}
 	return it;
 }

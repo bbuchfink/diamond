@@ -150,7 +150,7 @@ template<typename _val, typename _dir>
 inline void print_seq(const _val* s, const _dir& d)
 {
 	unsigned i=0;
-	while(get_dir(s,i,d) != 0xff) {
+	while(get_dir(s,i,d) != sequence::DELIMITER) {
 		std::cout << mask_critical(get_dir(s,i,d));
 		++i;
 	}
@@ -467,7 +467,7 @@ struct Matrix
 	}
 	_t* operator[](int i)
 	{
-		return data_[i*cols_];
+		return &data_[i*cols_];
 	}
 private:
 	int cols_;
