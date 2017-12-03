@@ -91,6 +91,8 @@ add_executable(diamond src/run/main.cpp
   src/output/view.cpp
   src/output/output_sink.cpp
   src/output/target_culling.cpp
+  src/align/greedy_pipeline.cpp
+  src/align/swipe_pipeline.cpp
 )
 
 target_link_libraries(diamond ${ZLIB_LIBRARY} ${CMAKE_THREAD_LIBS_INIT})

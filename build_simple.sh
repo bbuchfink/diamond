@@ -55,4 +55,6 @@ g++ -DNDEBUG -O3 -Wno-deprecated-declarations $1 $2 $3 \
   src/output/view.cpp \
   src/output/output_sink.cpp \
   src/output/target_culling.cpp \
+  src/align/greedy_pipeline.cpp \
+  src/align/swipe_pipeline.cpp \
 -lz -lpthread -o diamond
