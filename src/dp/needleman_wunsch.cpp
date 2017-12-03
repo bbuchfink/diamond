@@ -318,6 +318,10 @@ void smith_waterman(sequence q, sequence s, const Diag_graph &diags)
 			}
 			else
 				score -= score_matrix.gap_extend();
+			break;
+		case op_frameshift_forward:
+		case op_frameshift_reverse:
+			;
 		}
 	}
 	print_diag(i0, j0, l, score, diags, q, s);
