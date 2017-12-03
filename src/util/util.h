@@ -146,16 +146,6 @@ template<typename _t>
 inline _t round_up(_t x, _t m)
 { return div_up(x, m) * m; }
 
-template<typename _val, typename _dir>
-inline void print_seq(const _val* s, const _dir& d)
-{
-	unsigned i=0;
-	while(get_dir(s,i,d) != sequence::DELIMITER) {
-		std::cout << mask_critical(get_dir(s,i,d));
-		++i;
-	}
-}
-
 #ifdef _MSC_VER
 #define TLS_PTR __declspec(thread)
 #else

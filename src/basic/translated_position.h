@@ -26,12 +26,12 @@ struct Frame
 	Frame()
 	{}
 	Frame(Strand strand, int offset):
-		strand(strand),
-		offset(offset)
+		offset(offset),
+		strand(strand)		
 	{}
 	explicit Frame(int index) :
-		strand(index < 3 ? FORWARD : REVERSE),
-		offset(index % 3)
+		offset(index % 3),
+		strand(index < 3 ? FORWARD : REVERSE)		
 	{}
 	int index() const
 	{
@@ -52,8 +52,8 @@ struct TranslatedPosition
 	{}
 
 	TranslatedPosition(int translated, Frame frame):
-		translated(translated),
-		frame(frame)
+		frame(frame),
+		translated(translated)		
 	{
 	}
 	

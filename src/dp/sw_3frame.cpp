@@ -5,9 +5,9 @@ int sw_3frame(const TranslatedSequence &query, Strand strand, const sequence &su
 	using std::max;
 
 	Matrix<int> score, hgap, vgap;
-	score.init(query.source().length()-2, subject.length());
-	hgap.init(query.source().length()-2, subject.length());
-	vgap.init(query.source().length()-2, subject.length());
+	score.init(int(query.source().length()-2), (int)subject.length());
+	hgap.init(int(query.source().length()-2), (int)subject.length());
+	vgap.init(int(query.source().length()-2), (int)subject.length());
 
 	int max_score = 0, max_i = -1, max_j = -1;
 

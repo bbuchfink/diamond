@@ -63,11 +63,11 @@ void anchored_3frame_dp(const TranslatedSequence &query, sequence &subject, cons
 		cbrc::INF,
 		frame_shift)) {
 		//cout << "end1=" << end1 << " end2=" << end2 << " length=" << length << endl;
-		const DiagonalSegment d(TranslatedPosition(anchor.i.in_strand() - end2, strand), anchor.j - end1, (int)length);
+		const DiagonalSegment d(TranslatedPosition(anchor.i.in_strand() - (int)end2, strand), anchor.j - (int)end1, (int)length);
 		if (last.len > 0)
 			out.splice(last, d, query, subject, false);
 		else
-			out.set_begin(d, query.source().length());
+			out.set_begin(d, (int)query.source().length());
 		out.push_back(d, query, subject, false);
 		last = d;
 	}
@@ -75,7 +75,7 @@ void anchored_3frame_dp(const TranslatedSequence &query, sequence &subject, cons
 	// Splice with anchor
 	//int splice_score = last.splice_score(anchor, gap_open, gap_extend, frame_shift);
 	if (last.len == 0) {
-		out.set_begin(anchor, query.source().length());
+		out.set_begin(anchor, (int)query.source().length());
 	}
 	else
 		out.splice(last, anchor, query, subject, false);
@@ -119,11 +119,11 @@ void anchored_3frame_dp(const TranslatedSequence &query, sequence &subject, cons
 		cbrc::INF,
 		frame_shift)) {
 		//cout << "end1=" << end1 << " end2=" << end2 << " length=" << length << endl;
-		const DiagonalSegment d(TranslatedPosition(anchor.query_end().in_strand() + end2 - length * 3, strand), anchor.subject_end() + end1 - length, (int)length);
+		const DiagonalSegment d(TranslatedPosition(anchor.query_end().in_strand() + (int)end2 - (int)length * 3, strand), anchor.subject_end() + (int)end1 - (int)length, (int)length);
 		if (last.len > 0)
 			out.splice(d, last, query, subject, true);
 		else
-			out.set_end(d, query.source().length());
+			out.set_end(d, (int)query.source().length());
 		out.push_back(d, query, subject, true);
 		last = d;
 	}
@@ -131,7 +131,7 @@ void anchored_3frame_dp(const TranslatedSequence &query, sequence &subject, cons
 	// Splice with anchor
 	//slice_score = anchor.splice_score(last, gap_open, gap_extend, frame_shift);
 	if (last.len == 0) {
-		out.set_end(anchor, query.source().length());
+		out.set_end(anchor, (int)query.source().length());
 	}
 	else
 		out.splice(anchor, last, query, subject, true);

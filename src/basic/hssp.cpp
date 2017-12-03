@@ -22,11 +22,11 @@ interval untranslate_range(const interval &r, unsigned frame, size_t len)
 {
 	interval s;
 	if (frame < 3) {
-		s.begin_ = TranslatedPosition::translated_to_absolute(r.begin_, Frame(FORWARD, frame), len);
+		s.begin_ = TranslatedPosition::translated_to_absolute(r.begin_, Frame(FORWARD, frame), (int)len);
 		s.end_ = s.begin_ + 3 * r.length();
 	}
 	else {
-		s.end_ = TranslatedPosition::translated_to_absolute(r.begin_, Frame(REVERSE, frame), len) + 1;
+		s.end_ = TranslatedPosition::translated_to_absolute(r.begin_, Frame(REVERSE, frame), (int)len) + 1;
 		s.begin_ = s.end_ - 3 * r.length();
 	}
 	return s;
