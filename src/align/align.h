@@ -76,6 +76,7 @@ namespace ExtensionPipeline {
 			{}
 			Target& target(size_t i);
 			virtual void run(Statistics &stat);
+			virtual ~Pipeline() {}
 		};
 	}
 	namespace Swipe {
@@ -85,6 +86,7 @@ namespace ExtensionPipeline {
 				Query_mapper(query_id, begin, end)
 			{}
 			virtual void run(Statistics &stat);
+			virtual ~Pipeline() {}
 		};
 	}
 }

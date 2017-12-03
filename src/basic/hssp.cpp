@@ -182,11 +182,12 @@ void Hsp_data::splice(const DiagonalSegment &a, const DiagonalSegment &b, const 
 	const int d0 = i0 - j0, d1 = b.diag();
 	if (d1 > d0)
 		transcript.push_back(op_insertion, unsigned(d1 - d0));
-	else if (d1 < d0)
-		if(reversed)
+	else if (d1 < d0) {
+		if (reversed)
 			transcript.push_back(subject.subseq(j0 + 1, b.j), Reversed());
 		else
 			transcript.push_back(subject.subseq(j0 + 1, b.j));
+	}
 	const int shift = abs(d1 - d0);
 	if (shift > 0) {
 		length += shift;

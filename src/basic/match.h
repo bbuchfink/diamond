@@ -122,8 +122,8 @@ struct Hsp_data
 			} while (good() && (op() == op_deletion || op() == op_insertion));
 			return good();
 		}
-		unsigned subject_pos;
 		TranslatedPosition query_pos;
+		unsigned subject_pos;
 	protected:
 		const Packed_operation *ptr_;
 		unsigned count_;

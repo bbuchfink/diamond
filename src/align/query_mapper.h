@@ -89,6 +89,7 @@ struct Query_mapper
 			targets[i].fill_source_ranges(source_query_len);
 	}
 	virtual void run(Statistics &stat) = 0;
+	virtual ~Query_mapper() {}
 	pair<Trace_pt_list::iterator, Trace_pt_list::iterator> source_hits;
 	unsigned query_id, targets_finished, next_target;
 	unsigned source_query_len, unaligned_from;
