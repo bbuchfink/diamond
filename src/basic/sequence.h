@@ -220,7 +220,7 @@ struct TranslatedSequence
 
 	bool in_bounds(const TranslatedPosition &i) const
 	{
-		return i >= 0 && i < (*this)[i.frame].length();
+		return i >= 0 && i < int((*this)[i.frame].length());
 	}
 
 private:
