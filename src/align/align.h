@@ -89,6 +89,17 @@ namespace ExtensionPipeline {
 			virtual ~Pipeline() {}
 		};
 	}
+	namespace XDrop {
+		struct Target;
+		struct Pipeline : public Query_mapper
+		{
+			Pipeline(size_t query_id, Trace_pt_list::iterator begin, Trace_pt_list::iterator end) :
+				Query_mapper(query_id, begin, end)
+			{}
+			Target& target(size_t i);
+			virtual void run(Statistics &stat);
+		};
+	}
 }
 
 

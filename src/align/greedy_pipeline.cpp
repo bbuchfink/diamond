@@ -25,7 +25,8 @@ namespace ExtensionPipeline { namespace Greedy {
 
 const bool log_ga = false;
 
-struct Target : public ::Target {
+struct Target : public ::Target
+{
 
 	void ungapped_stage(Query_mapper &mapper)
 	{
@@ -34,7 +35,6 @@ struct Target : public ::Target {
 		std::stable_sort(mapper.seed_hits.begin() + begin, mapper.seed_hits.begin() + end, Seed_hit::compare_diag);
 		typedef Map<vector<Seed_hit>::const_iterator, Seed_hit::Frame> Hit_map;
 		Hit_map hit_map(mapper.seed_hits.begin() + begin, mapper.seed_hits.begin() + end);
-		const sequence subject = ref_seqs::get()[subject_id];
 		for (Hit_map::Iterator it = hit_map.begin(); it.valid(); ++it) {
 			const unsigned frame = it.begin()->frame_;
 			int score = greedy_align(mapper.query_seq(frame), mapper.profile[frame], mapper.query_cb[frame], subject, it.begin(), it.end(), log_ga, hsps, ts, frame);
@@ -48,7 +48,6 @@ struct Target : public ::Target {
 
 	void greedy_stage(Query_mapper &mapper, Statistics &stat, int cutoff)
 	{
-		const sequence subject = ref_seqs::get()[subject_id];
 		if (config.log_subject)
 			cout << "Subject = " << ref_ids::get()[subject_id].c_str() << endl;
 #ifdef ENABLE_TIMING
@@ -74,10 +73,8 @@ struct Target : public ::Target {
 
 	void align_target(Query_mapper &mapper, Statistics &stat)
 	{
-		typedef float score_t;
 		const size_t n = end - begin;
 		const vector<Seed_hit>::const_iterator hits = mapper.seed_hits.begin() + begin;
-		const sequence subject = ref_seqs::get()[hits[0].subject_];
 		if (config.log_subject)
 			cout << "Subject = " << ref_ids::get()[subject_id].c_str() << endl;
 

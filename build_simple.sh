@@ -57,4 +57,8 @@ g++ -DNDEBUG -O3 -Wno-deprecated-declarations $1 $2 $3 \
   src/output/target_culling.cpp \
   src/align/greedy_pipeline.cpp \
   src/align/swipe_pipeline.cpp \
+  src/align/xdrop_pipeline.cpp \
+  src/dp/anchored_3frame_dp.cpp \
+  src/dp/last/GappedXdropAligner.cc \
+  src/dp/last/GappedXdropAligner3frame.cc \
 -lz -lpthread -o diamond

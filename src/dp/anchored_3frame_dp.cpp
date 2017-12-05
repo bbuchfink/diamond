@@ -28,6 +28,7 @@ void anchored_3frame_dp(const TranslatedSequence &query, sequence &subject, cons
 
 	const unsigned char* q[3];
 	out.clear();
+	//cout << "Anchor: " << anchor << endl;
 
 	// Extend left
 
@@ -54,6 +55,7 @@ void anchored_3frame_dp(const TranslatedSequence &query, sequence &subject, cons
 
 	size_t end1, end2, length;
 	DiagonalSegment last;
+	//cout << "score_left=" << out.score << endl;
 
 	while (al.getNextChunk3(end1,
 		end2,
@@ -96,7 +98,7 @@ void anchored_3frame_dp(const TranslatedSequence &query, sequence &subject, cons
 	back.shift_back();
 	q[2] = (unsigned char*)&query[back];
 
-	out.score += al.align3((unsigned char*)&subject[anchor.subject_end()],
+	int score_right = al.align3((unsigned char*)&subject[anchor.subject_end()],
 		q[0],
 		q[1],
 		q[2],
@@ -109,6 +111,8 @@ void anchored_3frame_dp(const TranslatedSequence &query, sequence &subject, cons
 		score_matrix.rawscore(config.gapped_xdrop),
 		score_matrix.high_score());
 
+	out.score += score_right;
+	//cout << "score_right=" << score_right << endl;
 	last = DiagonalSegment();
 
 	while (al.getNextChunk3(end1,
@@ -129,7 +133,6 @@ void anchored_3frame_dp(const TranslatedSequence &query, sequence &subject, cons
 	}
 
 	// Splice with anchor
-	//slice_score = anchor.splice_score(last, gap_open, gap_extend, frame_shift);
 	if (last.len == 0) {
 		out.set_end(anchor, (int)query.source().length());
 	}

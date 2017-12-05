@@ -77,11 +77,13 @@ void align_worker(size_t thread_id)
 			continue;
 		}
 
-		auto_ptr<Query_mapper> mapper;
+		Query_mapper *mapper;
 		if (config.ext == Config::swipe)
-			mapper = auto_ptr<Query_mapper>(new ExtensionPipeline::Swipe::Pipeline(hits.query, hits.begin, hits.end));
+			mapper = new ExtensionPipeline::Swipe::Pipeline(hits.query, hits.begin, hits.end);
+		else if(config.frame_shift != 0)
+			mapper = new ExtensionPipeline::XDrop::Pipeline(hits.query, hits.begin, hits.end);
 		else
-			mapper = auto_ptr<Query_mapper>(new ExtensionPipeline::Greedy::Pipeline(hits.query, hits.begin, hits.end));
+			mapper = new ExtensionPipeline::Greedy::Pipeline(hits.query, hits.begin, hits.end);
 		mapper->init();
 		mapper->run(stat);
 
@@ -92,6 +94,7 @@ void align_worker(size_t thread_id)
 			if (aligned && !config.unaligned.empty())
 				query_aligned[hits.query] = true;
 		}
+		delete mapper;
 		Output_sink::get().push(hits.query, buf);
 	}
 	statistics += stat;

@@ -222,3 +222,11 @@ void Hsp_data::clear()
 	score = frame = length = identities = mismatches = positives = gap_openings = gaps = sw_score = 0;
 	transcript.clear();
 }
+
+bool Hsp_data::is_weakly_enveloped_by(list<Hsp_data>::const_iterator begin, list<Hsp_data>::const_iterator end, int cutoff) const
+{
+	for (list<Hsp_data>::const_iterator i = begin; i != end; ++i)
+		if (partial_score(*i) < cutoff)
+			return true;
+	return false;
+}

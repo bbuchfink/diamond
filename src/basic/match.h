@@ -20,6 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define MATCH_H_
 
 #include <limits>
+#include <list>
 #include "sequence.h"
 #include "../util/util.h"
 #include "../util/async_buffer.h"
@@ -188,6 +189,13 @@ struct Hsp_data
 		return x.query_range.begin_ < y.query_range.begin_;
 	}
 
+	int partial_score(const Hsp_data &h) const
+	{
+		const double overlap = std::max(subject_range.overlap_factor(h.subject_range), query_source_range.overlap_factor(h.query_source_range));
+		return int((1 - overlap)*score);
+	}
+
+	bool is_weakly_enveloped_by(std::list<Hsp_data>::const_iterator begin, std::list<Hsp_data>::const_iterator end, int cutoff) const;
 	void push_back(const DiagonalSegment &d, const TranslatedSequence &query, const sequence &subject, bool reversed);
 	void splice(const DiagonalSegment &d0, const DiagonalSegment &d1, const TranslatedSequence &query, const sequence &subject, bool reversed);
 	void set_begin(const DiagonalSegment &d, int dna_len);

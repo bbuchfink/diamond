@@ -179,6 +179,8 @@ bool Database_file::load_seqs()
 
 	for (size_t n = 0; n < seqs; ++n) {
 		read(ref_seqs::data_->ptr(n) - 1, ref_seqs::data_->length(n) + 2);
+		*(ref_seqs::data_->ptr(n) - 1) = sequence::DELIMITER;
+		*(ref_seqs::data_->ptr(n) + ref_seqs::data_->length(n)) = sequence::DELIMITER;
 		read(ref_ids::data_->ptr(n), ref_ids::data_->length(n) + 1);
 		if (config.masking == 1)
 			Masking::get().bit_to_hard_mask(ref_seqs::data_->ptr(n), ref_seqs::data_->length(n), masked);

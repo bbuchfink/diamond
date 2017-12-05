@@ -151,6 +151,12 @@ struct TranslatedPosition
 		return oriented_position(translated_to_in_strand(translated, frame), frame.strand, dna_len);
 	}
 
+	friend std::ostream& operator<<(std::ostream &s, const TranslatedPosition &a)
+	{
+		s << a.frame.offset << ' ' << a.translated;
+		return s;
+	}
+
 	Frame frame;
 	int translated;
 

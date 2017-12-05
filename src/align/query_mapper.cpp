@@ -269,3 +269,16 @@ bool Query_mapper::generate_output(Text_buffer &buffer, Statistics &stat)
 	
 	return n_hsp > 0;
 }
+
+void Target::inner_culling(int cutoff)
+{
+	hsps.sort();
+	if (hsps.size() > 0)
+		filter_score = hsps.front().score;
+	for (list<Hsp_data>::iterator i = hsps.begin(); i != hsps.end();) {
+		if (i->is_weakly_enveloped_by(hsps.begin(), i, cutoff))
+			i = hsps.erase(i);
+		else
+			++i;
+	}
+}

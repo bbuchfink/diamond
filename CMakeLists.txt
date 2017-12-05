@@ -93,6 +93,10 @@ add_executable(diamond src/run/main.cpp
   src/output/target_culling.cpp
   src/align/greedy_pipeline.cpp
   src/align/swipe_pipeline.cpp
+  src/align/xdrop_pipeline.cpp
+  src/dp/anchored_3frame_dp.cpp
+  src/dp/last/GappedXdropAligner.cc
+  src/dp/last/GappedXdropAligner3frame.cc
 )
 
 target_link_libraries(diamond ${ZLIB_LIBRARY} ${CMAKE_THREAD_LIBS_INIT})

@@ -192,6 +192,12 @@ struct DiagonalSegment
 			return -penalty;
 	}
 
+	friend std::ostream& operator<<(std::ostream &s, const DiagonalSegment &d)
+	{
+		s << "i=(" << d.i << ") j=" << d.j << " len=" << d.len << " score=" << d.score << std::endl;
+		return s;
+	}
+
 	TranslatedPosition i;
 	int j, len, score;
 };
