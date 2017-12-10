@@ -135,6 +135,13 @@ struct DiagonalSegment
 		score(score)
 	{}
 
+	DiagonalSegment(const Diagonal_segment &d, Frame frame):
+		i(TranslatedPosition(d.i, frame)),
+		j(d.j),
+		len(d.len),
+		score(d.score)
+	{}
+
 	int subject_last() const
 	{
 		return j + len - 1;
@@ -169,33 +176,21 @@ struct DiagonalSegment
 		return *this;
 	}
 
-	int splice_score(const DiagonalSegment &d, int gap_open, int gap_extend, int frame_shift) const
-	{
-		TranslatedPosition i0 = query_last();
-		int j0 = subject_last();
-		const int fs = i0.frame_shift(d.i);
-		if (fs == 1)
-			i0.shift_forward();
-		else if (fs == -1)
-			i0.shift_back();
-		const int shift = d.diag() - (i0 - j0),
-			penalty = abs(fs)*frame_shift;
-		if (shift > 0)
-			i0 = i0 + shift;
-		else if (shift < 0)
-			j0 += shift;
-		if (i0 + 1 != d.i || j0 + 1 != d.j)
-			throw std::runtime_error("Splice error");
-		if (shift != 0)
-			return -gap_open - abs(shift)*gap_extend - penalty;
-		else
-			return -penalty;
-	}
 
 	friend std::ostream& operator<<(std::ostream &s, const DiagonalSegment &d)
 	{
 		s << "i=(" << d.i << ") j=" << d.j << " len=" << d.len << " score=" << d.score << std::endl;
 		return s;
+	}
+
+	interval query_absolute_range(int dna_len) const
+	{
+		return i.absolute_interval(len, dna_len);
+	}
+
+	interval subject_range() const
+	{
+		return interval(j, j + len);
 	}
 
 	TranslatedPosition i;

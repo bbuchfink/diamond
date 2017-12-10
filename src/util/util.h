@@ -81,6 +81,10 @@ struct interval
 	}
 	bool includes(int p) const
 	{ return p >= begin_ && p < end_; }
+	bool contains(const interval &i) const
+	{
+		return begin_ <= i.begin_ && end_ >= i.end_;
+	}
 	friend std::ostream& operator<<(std::ostream &os, const interval &x)
 	{ os << "[" << x.begin_ << ";" << x.end_ << "]"; return os; }
 	bool operator<(const interval &rhs) const

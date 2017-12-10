@@ -195,6 +195,11 @@ struct Hsp_data
 		return int((1 - overlap)*score);
 	}
 
+	bool envelopes(const DiagonalSegment &d, int dna_len) const
+	{
+		return query_source_range.contains(d.query_absolute_range(dna_len)) || subject_range.contains(d.subject_range());
+	}
+
 	bool is_weakly_enveloped_by(std::list<Hsp_data>::const_iterator begin, std::list<Hsp_data>::const_iterator end, int cutoff) const;
 	void push_back(const DiagonalSegment &d, const TranslatedSequence &query, const sequence &subject, bool reversed);
 	void splice(const DiagonalSegment &d0, const DiagonalSegment &d1, const TranslatedSequence &query, const sequence &subject, bool reversed);

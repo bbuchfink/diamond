@@ -28,11 +28,21 @@ DiagonalSegment anchor(const Seed_hit &s, const TranslatedSequence &query, const
 
 struct Target : public ::Target
 {
+
+	void ungapped_stage(Query_mapper &mapper)
+	{
+		vector<Seed_hit>::iterator hits = mapper.seed_hits.begin() + begin, hits_end = mapper.seed_hits.begin() + end;
+		std::sort(hits, hits_end);
+		filter_score = hits[0].ungapped.score;
+	}
+
 	void process(Query_mapper &mapper)
 	{
-		const int cutoff = mapper.raw_score_cutoff();
-		vector<Seed_hit>::const_iterator hits = mapper.seed_hits.begin() + begin, hits_end = mapper.seed_hits.begin() + end;
+		const int cutoff = mapper.raw_score_cutoff(), dna_len = (int)mapper.translated_query.source().length();
+		vector<Seed_hit>::iterator hits = mapper.seed_hits.begin() + begin, hits_end = mapper.seed_hits.begin() + end;
 		for (vector<Seed_hit>::const_iterator i = hits; i < hits_end; ++i) {
+			if (i->is_enveloped(hsps.begin(), hsps.end(), dna_len))
+				continue;
 			hsps.push_back(Hsp_data());
 			anchored_3frame_dp(
 				mapper.translated_query,
@@ -48,6 +58,7 @@ struct Target : public ::Target
 		}
 		inner_culling(mapper.raw_score_cutoff());
 	}
+
 };
 
 Target& Pipeline::target(size_t i)
@@ -57,6 +68,9 @@ Target& Pipeline::target(size_t i)
 
 void Pipeline::run(Statistics &stat)
 {
+	for (size_t i = 0; i < n_targets(); ++i)
+		target(i).ungapped_stage(*this);
+	rank_targets(config.rank_ratio == -1 ? 0.4 : config.rank_ratio);
 	for (size_t i = 0; i < n_targets(); ++i)
 		target(i).process(*this);
 }

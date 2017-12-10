@@ -26,6 +26,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "score_profile.h"
 #include "../basic/translated_position.h"
 
+using std::list;
+
 void init_cbs();
 
 struct No_score_correction
@@ -64,6 +66,14 @@ struct Seed_hit
 	bool operator<(const Seed_hit &rhs) const
 	{
 		return ungapped.score > rhs.ungapped.score;
+	}
+	bool is_enveloped(list<Hsp_data>::const_iterator begin, list<Hsp_data>::const_iterator end, int dna_len) const
+	{
+		const DiagonalSegment d(ungapped, ::Frame(frame_));
+		for (list<Hsp_data>::const_iterator i = begin; i != end; ++i)
+			if (i->envelopes(d, dna_len))
+				return true;
+		return false;
 	}
 	static bool compare_pos(const Seed_hit &x, const Seed_hit &y)
 	{

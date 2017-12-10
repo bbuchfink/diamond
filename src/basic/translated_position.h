@@ -116,7 +116,22 @@ struct TranslatedPosition
 	{
 		if (!align_mode.query_translated)
 			return translated;
-		return frame.strand == FORWARD ? in_strand() : dna_len - in_strand() - 1;
+		return in_strand_to_absolute(in_strand(), frame.strand, dna_len);
+	}
+
+	static int in_strand_to_absolute(int in_strand, Strand strand, int dna_len)
+	{
+		if (!align_mode.query_translated)
+			return in_strand;
+		return strand == FORWARD ? in_strand : dna_len - in_strand - 1;
+	}
+
+	interval absolute_interval(int len, int dna_len) const
+	{
+		if (frame.strand == FORWARD)
+			return interval(absolute(dna_len), ((*this) + len).absolute(dna_len));
+		else
+			return interval(in_strand_to_absolute(((*this) + len).in_strand() - 1, REVERSE, dna_len), in_strand_to_absolute(in_strand() - 1, REVERSE, dna_len));
 	}
 
 	static int in_strand_to_translated(int in_strand)
