@@ -185,7 +185,7 @@ struct DiagonalSegment
 
 	interval query_absolute_range(int dna_len) const
 	{
-		return i.absolute_interval(len, dna_len);
+		return TranslatedPosition::absolute_interval(i, i + len, dna_len);
 	}
 
 	interval subject_range() const

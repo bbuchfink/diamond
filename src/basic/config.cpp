@@ -336,6 +336,8 @@ Config::Config(int argc, const char **argv)
 	case Config::opt:
 	case Config::mask:
 	case Config::makedb:
+		if (frame_shift != 0 && command == Config::blastp)
+			throw std::runtime_error("Frameshift alignments are only supported for translated searches.");
 		if (matrix_file == "")
 			score_matrix = Score_matrix(to_upper_case(matrix), gap_open, gap_extend, reward, penalty);
 		else {

@@ -70,7 +70,7 @@ Binary_buffer::Iterator& operator>>(Binary_buffer::Iterator &it, DAA_query_recor
 		r.frame = 0;
 		r.query_range.begin_ = query_begin;
 	}
-	r.context().parse().set_query_source_range(query_begin);
+	r.context().parse();
 	return it;
 }
 

@@ -18,20 +18,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "../align/align.h"
 
-interval untranslate_range(const interval &r, unsigned frame, size_t len)
-{
-	interval s;
-	if (frame < 3) {
-		s.begin_ = TranslatedPosition::translated_to_absolute(r.begin_, Frame(FORWARD, frame), (int)len);
-		s.end_ = s.begin_ + 3 * r.length();
-	}
-	else {
-		s.end_ = TranslatedPosition::translated_to_absolute(r.begin_, Frame(REVERSE, frame), (int)len) + 1;
-		s.begin_ = s.end_ - 3 * r.length();
-	}
-	return s;
-}
-
 std::pair<int, int> Hsp_data::diagonal_bounds() const
 {
 	int d0 = std::numeric_limits<int>::max(), d1 = std::numeric_limits<int>::min();
@@ -66,15 +52,6 @@ void Hsp_data::merge(const Hsp_data &right, const Hsp_data &left, unsigned query
 	transcript.data_.insert(transcript.data_.end(), left.transcript.data_.begin(), left.transcript.data_.end());
 	transcript.data_.insert(transcript.data_.end(), right.transcript.data_.rbegin(), right.transcript.data_.rend());
 	transcript.push_terminator();
-}
-
-void Hsp_data::set_source_range(unsigned frame, unsigned dna_len)
-{
-	this->frame = frame;
-	if (!align_mode.query_translated)
-		query_source_range = query_range;
-	else
-		query_source_range = untranslate_range(query_range, frame, dna_len);
 }
 
 Hsp_context& Hsp_context::parse()
@@ -114,16 +91,8 @@ Hsp_context& Hsp_context::parse()
 
 	hsp_.query_range.end_ = i.query_pos.translated;
 	hsp_.subject_range.end_ = i.subject_pos;
+	hsp_.query_source_range = TranslatedPosition::absolute_interval(begin().query_pos, i.query_pos, query.source().length());
 
-	return *this;
-}
-
-Hsp_context& Hsp_context::set_query_source_range(unsigned oriented_query_begin)
-{
-	if(align_mode.query_translated)
-		hsp_.set_source_range(oriented_query_begin);
-	else
-		hsp_.query_source_range = hsp_.query_range;
 	return *this;
 }
 

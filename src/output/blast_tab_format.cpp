@@ -194,6 +194,8 @@ void Blast_tab_format::print_match(const Hsp_context& r, Text_buffer &out)
 					++n_matches;
 					break;
 				case op_substitution:
+				case op_frameshift_forward:
+				case op_frameshift_reverse:
 					if (n_matches > 0) {
 						out << n_matches;
 						n_matches = 0;

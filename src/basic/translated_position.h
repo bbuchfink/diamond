@@ -116,32 +116,31 @@ struct TranslatedPosition
 	{
 		if (!align_mode.query_translated)
 			return translated;
-		return in_strand_to_absolute(in_strand(), frame.strand, dna_len);
+		return oriented_position(in_strand(), frame.strand, dna_len);
 	}
 
-	static int in_strand_to_absolute(int in_strand, Strand strand, int dna_len)
+	static interval absolute_interval(const TranslatedPosition &begin, const TranslatedPosition &end, int dna_len)
 	{
-		if (!align_mode.query_translated)
-			return in_strand;
-		return strand == FORWARD ? in_strand : dna_len - in_strand - 1;
-	}
-
-	interval absolute_interval(int len, int dna_len) const
-	{
-		if (frame.strand == FORWARD)
-			return interval(absolute(dna_len), ((*this) + len).absolute(dna_len));
+		if (begin.frame.strand == FORWARD)
+			return interval(begin.in_strand(), end.in_strand());
 		else
-			return interval(in_strand_to_absolute(((*this) + len).in_strand() - 1, REVERSE, dna_len), in_strand_to_absolute(in_strand() - 1, REVERSE, dna_len));
+			return interval(oriented_position(end.in_strand() - 1, REVERSE, dna_len), oriented_position(begin.in_strand() - 1, REVERSE, dna_len));
 	}
 
 	static int in_strand_to_translated(int in_strand)
 	{
-		return in_strand / 3;
+		if (align_mode.query_translated)
+			return in_strand / 3;
+		else
+			return in_strand;
 	}
 
 	static int translated_to_in_strand(int translated, Frame frame)
 	{
-		return frame.offset + 3 * translated;
+		if (align_mode.query_translated)
+			return frame.offset + 3 * translated;
+		else
+			return translated;
 	}
 
 	int in_strand() const

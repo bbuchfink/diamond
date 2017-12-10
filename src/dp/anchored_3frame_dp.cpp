@@ -140,5 +140,6 @@ void anchored_3frame_dp(const TranslatedSequence &query, sequence &subject, cons
 		out.splice(anchor, last, query, subject, true);
 
 	out.transcript.reverse(splice);
-	out.transcript.push_terminator();
+	if(out.transcript.data().back() != Packed_operation::terminator())
+		out.transcript.push_terminator();
 }

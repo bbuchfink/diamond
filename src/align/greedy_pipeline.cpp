@@ -118,7 +118,7 @@ struct Target : public ::Target
 
 		for (list<Hsp_data>::iterator i = hsps.begin(); i != hsps.end(); ++i) {
 			i->time = filter_time;
-			i->set_source_range(i->frame, mapper.source_query_len);
+			i->query_source_range = TranslatedPosition::absolute_interval(TranslatedPosition(i->query_range.begin_, Frame(i->frame)), TranslatedPosition(i->query_range.end_, Frame(i->frame)), mapper.source_query_len);
 		}
 
 		hsps.sort();

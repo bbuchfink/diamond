@@ -193,7 +193,7 @@ void join_query(vector<Binary_buffer> &buf, Text_buffer &out, Statistics &statis
 					ref_map.name(next.info_.subject_id),
 					ref_map.length(next.info_.subject_id),
 					n_target_seq,
-					hsp_num).parse().set_query_source_range(next.info_.query_begin), out);
+					hsp_num).parse(), out);
 			}
 
 			statistics.inc(Statistics::MATCHES);

@@ -39,8 +39,6 @@ inline interval normalized_range(unsigned pos, int len, Strand strand)
 			: interval (pos + 1 + len, pos + 1);
 }
 
-interval untranslate_range(const interval &r, unsigned frame, size_t l);
-
 struct Intermediate_record;
 
 struct Hsp_data
@@ -133,13 +131,6 @@ struct Hsp_data
 	Iterator begin() const
 	{
 		return Iterator(*this);
-	}
-
-	void set_source_range(unsigned frame, unsigned dna_len);
-
-	void set_source_range(unsigned oriented_query_begin)
-	{
-		query_source_range = frame < 3 ? interval(oriented_query_begin, oriented_query_begin + 3 * query_range.length()) : interval(oriented_query_begin + 1 - 3 * query_range.length(), oriented_query_begin + 1);
 	}
 
 	interval oriented_range() const
@@ -356,7 +347,6 @@ struct Hsp_context
 	Packed_transcript transcript() const
 	{ return hsp_.transcript; }
 	Hsp_context& parse();
-	Hsp_context& set_query_source_range(unsigned oriented_query_begin);
 
 	const TranslatedSequence query;
 	const char *query_name, *subject_name;
