@@ -204,7 +204,7 @@ struct TranslatedSequence
 
 	const Letter& operator()(int in_strand, Strand strand) const
 	{
-		assert(in_strand < source_.length() - 2);
+		assert(in_strand < (int)source_.length() - 2);
 		return translated_[in_strand % 3 + (strand == FORWARD ? 0 : 3)][in_strand / 3];
 	}
 
