@@ -1,6 +1,11 @@
 Introduction
 ============
-DIAMOND is a sequence aligner for protein and translated DNA searches and functions as a drop-in replacement for the NCBI BLAST software tools. It is suitable for protein-protein search as well as DNA-protein search on short reads and longer sequences including contigs and assemblies, providing a speedup of BLAST ranging up to x20,000.
+DIAMOND is a sequence aligner for protein and translated DNA searches, designed for high performance analysis of big sequence data. The key features are:
+
+  - Pairwise alignment of proteins and translated DNA at 500x-20,000x speed of BLAST.
+  - Frameshift alignments for long read analysis.
+  - Low resource requirements and suitable for running on standard desktops or laptops.
+  - Various output formats, including BLAST pairwise, tabular and XML, as well as taxonomic classification.
 
 Follow me on Twitter to get notified of updates.
 
@@ -13,7 +18,7 @@ Please read the `manual <https://github.com/bbuchfink/diamond/raw/master/diamond
 
 Installing the software on your system may be done by downloading it in binary format for immediate use::
 
-    wget http://github.com/bbuchfink/diamond/releases/download/v0.9.13/diamond-linux64.tar.gz
+    wget http://github.com/bbuchfink/diamond/releases/download/v0.9.14/diamond-linux64.tar.gz
     tar xzf diamond-linux64.tar.gz
 
 The extracted ``diamond`` binary file should be moved to a directory contained in your executable search path (PATH environment variable).
