@@ -34,6 +34,7 @@ void view();
 void make_db();
 void db_info();
 void test_main();
+void benchmark_sw();
 
 int main(int ac, const char* av[])
 {
@@ -60,9 +61,6 @@ int main(int ac, const char* av[])
 			break;
 		case Config::getseq:
 			get_seq();
-			break;
-		case Config::benchmark:
-			benchmark_sw();
 			break;
 		case Config::random_seqs:
 			random_seqs();
@@ -103,6 +101,9 @@ int main(int ac, const char* av[])
 #ifdef EXTRA
 		case Config::test_extra:
 			test_main();
+		case Config::benchmark:
+			benchmark_sw();
+			break;
 #endif
 		default:
 			return 1;
