@@ -52,7 +52,7 @@ struct Target
 	void fill_source_ranges(size_t query_len)
 	{
 		for (list<Hsp_traits>::iterator i = ts.begin(); i != ts.end(); ++i)
-			i->query_source_range = TranslatedPosition::absolute_interval(TranslatedPosition(i->query_range.begin_, Frame(i->frame)), TranslatedPosition(i->query_range.end_, Frame(i->frame)), query_len);
+			i->query_source_range = TranslatedPosition::absolute_interval(TranslatedPosition(i->query_range.begin_, Frame(i->frame)), TranslatedPosition(i->query_range.end_, Frame(i->frame)), (int)query_len);
 	}
 	bool envelopes(const Hsp_traits &t, double p) const;
 	bool is_enveloped(const Target &t, double p) const;

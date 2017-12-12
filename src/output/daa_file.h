@@ -33,9 +33,10 @@ using std::string;
 
 struct DAA_header1
 {
+	enum { VERSION = 1, COMPATIBILITY_VERSION = 0 };
 	DAA_header1():
 		magic_number (0x3c0e53476d3ee36bllu),
-		version (0)
+		version (VERSION)
 	{ }
 	uint64_t magic_number, version;
 };
@@ -107,7 +108,7 @@ struct DAA_file
 		f_.read(&h1_, 1);
 		if(h1_.magic_number != DAA_header1().magic_number)
 			throw std::runtime_error("Input file is not a DAA file.");
-		if(h1_.version > Const::daa_version)
+		if(h1_.version > DAA_header1::VERSION)
 			throw std::runtime_error("DAA version requires later version of DIAMOND.");
 		f_.read(&h2_, 1);
 

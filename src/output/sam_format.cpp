@@ -27,8 +27,6 @@ void print_md(const Hsp_context &r, Text_buffer &buf)
 			del = 0;
 			matches += i->count;
 			break;
-		case op_insertion:
-			break;
 		case op_substitution:
 			if (matches > 0) {
 				buf << matches;
@@ -49,6 +47,8 @@ void print_md(const Hsp_context &r, Text_buffer &buf)
 				buf << '^';
 			buf << value_traits.alphabet[(long)i->letter];
 			++del;
+		default:
+			break;
 		}
 	}
 	if (matches > 0)
@@ -57,8 +57,8 @@ void print_md(const Hsp_context &r, Text_buffer &buf)
 
 void print_cigar(const Hsp_context &r, Text_buffer &buf)
 {
-	static const unsigned map[] = { 0, 1, 2, 0 };
-	static const char letter[] = { 'M', 'I', 'D' };
+	static const unsigned map[] = { 0, 1, 2, 0, 3, 4 };
+	static const char letter[] = { 'M', 'I', 'D', '\\', '/' };
 	unsigned n = 0, op = 0;
 	for (Packed_transcript::Const_iterator i = r.begin_old(); i.good(); ++i) {
 		if (map[i->op] == op)

@@ -115,7 +115,7 @@ struct Packed_transcript
 			if(!good())
 				return;
 			op_.op = ptr_->op();
-			if(op_.op == op_deletion || op_.op == op_substitution) {
+			if(op_.op == op_deletion || op_.op == op_substitution || op_.op == op_frameshift_forward || op_.op==op_frameshift_reverse) {
 				op_.letter = ptr_->letter();
 				op_.count = 1;
 			} else {

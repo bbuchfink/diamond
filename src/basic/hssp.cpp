@@ -91,7 +91,7 @@ Hsp_context& Hsp_context::parse()
 
 	hsp_.query_range.end_ = i.query_pos.translated;
 	hsp_.subject_range.end_ = i.subject_pos;
-	hsp_.query_source_range = TranslatedPosition::absolute_interval(begin().query_pos, i.query_pos, query.source().length());
+	hsp_.query_source_range = TranslatedPosition::absolute_interval(begin().query_pos, i.query_pos, (int)query.source().length());
 
 	return *this;
 }

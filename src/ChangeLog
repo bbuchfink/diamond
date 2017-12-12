@@ -1,3 +1,6 @@
+[0.9.14]
+- Added support for frameshift alignments.
+
 [0.9.13]
 - Fixed query positions in pairwise format for translated searches.
 - Changed default behaviour of --max-hsps option to report unlimited number of HSPs.
