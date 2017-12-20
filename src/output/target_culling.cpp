@@ -18,7 +18,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "target_culling.h"
 
-Target_culling* Target_culling::get(const Target* first)
+TargetCulling* TargetCulling::get()
 {
-	return config.query_overlap_culling == 0.0 ? new Target_culling(first) : new Overlap_culling;
+	if (config.query_range_culling)
+		return new RangeCulling;
+	else
+		return new GlobalCulling;
 }

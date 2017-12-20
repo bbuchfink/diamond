@@ -18,6 +18,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "align.h"
 #include "../dp/dp.h"
+#include "../util/interval_partition.h"
 
 namespace ExtensionPipeline { namespace XDrop {
 
@@ -66,13 +67,27 @@ Target& Pipeline::target(size_t i)
 	return (Target&)(this->targets[i]);
 }
 
+void Pipeline::run_global_culling(Statistics &stat)
+{
+	rank_targets(config.rank_ratio == -1 ? 0.4 : config.rank_ratio);
+	for (size_t i = 0; i < n_targets(); ++i)
+		target(i).process(*this);
+}
+
+void Pipeline::run_range_culling(Statistics &stat)
+{
+	for (size_t i = 0; i < n_targets(); ++i)
+		target(i).process(*this);
+}
+
 void Pipeline::run(Statistics &stat)
 {
 	for (size_t i = 0; i < n_targets(); ++i)
 		target(i).ungapped_stage(*this);
-	rank_targets(config.rank_ratio == -1 ? 0.4 : config.rank_ratio);
-	for (size_t i = 0; i < n_targets(); ++i)
-		target(i).process(*this);
+	if (config.query_range_culling)
+		run_range_culling(stat);
+	else
+		run_global_culling(stat);
 }
 
 }}

@@ -66,8 +66,16 @@ struct Intermediate_record
 		f.read(flag);
 		f.read_packed(flag & 3, score);
 		f.read_packed((flag >> 2) & 3, query_begin);
+		f.read_varint(query_end);
 		f.read_packed((flag >> 4) & 3, subject_begin);
 		transcript.read(f);
+	}
+	interval absolute_query_range() const
+	{
+		if (query_begin < query_end)
+			return interval(query_begin, query_end + 1);
+		else
+			return interval(query_end, query_begin + 1);
 	}
 	static size_t write_query_intro(Text_buffer &buf, unsigned query_id)
 	{
@@ -81,10 +89,12 @@ struct Intermediate_record
 	}
 	static void write(Text_buffer &buf, const Hsp_data &match, unsigned query_id, unsigned subject_id)
 	{
+		const interval or (match.oriented_range());
 		buf.write(ref_map.get(current_ref_block, subject_id))
 			.write(get_segment_flag(match))
 			.write_packed(match.score)
-			.write_packed(match.oriented_range().begin_)
+			.write_packed(or.begin_)
+			.write_varint(or.end_)
 			.write_packed(match.subject_range.begin_)
 			<< match.transcript.data();
 	}
@@ -94,7 +104,7 @@ struct Intermediate_record
 		f.write(&x, 1);
 	}
 	enum { finished = 0xffffffffu };
-	uint32_t query_id, subject_id, score, query_begin, subject_begin;
+	uint32_t query_id, subject_id, score, query_begin, subject_begin, query_end;
 	uint8_t flag;
 	Packed_transcript transcript;
 };

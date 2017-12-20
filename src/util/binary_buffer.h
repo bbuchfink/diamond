@@ -23,6 +23,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <stdexcept>
 #include <stdint.h>
 #include <string.h>
+#include "intrin.h"
 
 using std::vector;
 using std::string;
@@ -62,6 +63,38 @@ struct Binary_buffer : public vector<char>
 			case 0: uint8_t x; read(x); dst = x; break;
 			case 1: uint16_t y; read(y); dst = y; break;
 			case 2: read(dst);
+			}
+		}
+		void read_varint(uint32_t &dst)
+		{
+			uint8_t b0, b1;
+			uint16_t b2;
+			uint32_t b3;
+			read(b0);
+			int c = ctz((uint32_t)b0);
+			switch (c) {
+			case 0:
+				dst = b0 >> 1;
+				return;
+			case 1:
+				read(b1);
+				dst = (uint32_t(b1) << 6) | (uint32_t(b0) >> 2);
+				return;
+			case 2:
+				read(b2);
+				dst = (uint32_t(b2) << 5) | (uint32_t(b0) >> 3);
+				return;
+			case 3:
+				read(b1);
+				read(b2);
+				dst = (uint32_t(b2) << 12) | (uint32_t(b1) << 4) | (uint32_t(b0) >> 4);
+				return;
+			case 4:
+				read(b3);
+				dst = (b3 << 3) | (uint32_t(b0) >> 5);
+				return;
+			default:
+				throw std::runtime_error("Format error: Invalid varint encoding.");
 			}
 		}
 		Iterator& operator>>(string &dst)

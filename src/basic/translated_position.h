@@ -19,6 +19,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #ifndef TRANSLATED_POSITION_H_
 #define TRANSLATED_POSITION_H_
 
+#include "../util/interval.h"
+
 enum Strand { FORWARD = 0, REVERSE = 1 };
 
 struct Frame

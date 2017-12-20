@@ -21,53 +21,91 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <vector>
 #include "../align/query_mapper.h"
+#include "../util/interval_partition.h"
+#include "output.h"
 
-struct Target_culling
+struct TargetCulling
 {
-	Target_culling():
-		top_score_(0)
-	{}
-	Target_culling(const Target *first):
-		n_(0),
-		top_score_(first ? first->filter_score : 0)
-	{}
-	virtual int cull(const Target &t)
-	{
-		return config.output_range((unsigned)n_, t.filter_score, top_score_) ? use : finished;
-	}
-	virtual void add(Target *t)
-	{
-		++n_;
-	}
-	enum { finished = 0, next = 1, use = 2};
-	static Target_culling* get(const Target* first);
+	virtual int cull(const Target &t) const = 0;
+	virtual int cull(const vector<Intermediate_record> &target_hsp) const = 0;
+	virtual void add(const Target &t) = 0;
+	virtual void add(const vector<Intermediate_record> &target_hsp) = 0;
+	enum { FINISHED = 0, NEXT = 1, INCLUDE = 2};
+	static TargetCulling* get();
 private:
 	size_t n_;
-	const int top_score_;
+	int top_score_;
 };
 
-struct Overlap_culling : Target_culling
+struct GlobalCulling : public TargetCulling
 {
-	Overlap_culling()
+	GlobalCulling() :
+		n_(0),
+		top_score_(0)
 	{}
-	virtual int cull(const Target &t)
+	virtual int cull(const Target &t) const
 	{
-		return t.is_enveloped(targets_.begin(), targets_.end(), config.query_overlap_culling / 100.0, int(double(t.filter_score) / (1.0 - config.toppercent / 100.0)))
-			? next : use;
+		if (top_score_ == 0)
+			return INCLUDE;
+		if (config.toppercent < 100.0)
+			return (1.0 - (double)t.filter_score / top_score_) * 100.0 <= config.toppercent ? INCLUDE : FINISHED;
+		else
+			return n_ < config.max_alignments ? INCLUDE : FINISHED;
 	}
-	virtual void add(Target *t)
+	virtual int cull(const vector<Intermediate_record> &target_hsp) const
 	{
-		targets_.push_back(t);
+		if (top_score_ == 0)
+			return INCLUDE;
+		if (config.toppercent < 100.0)
+			return (1.0 - (double)target_hsp[0].score / top_score_) * 100.0 <= config.toppercent ? INCLUDE : FINISHED;
+		else
+			return n_ < config.max_alignments ? INCLUDE : FINISHED;
 	}
-	virtual void add(unsigned n, const Hsp_data &hsp)
+	virtual void add(const Target &t)
 	{
-		if (n >= targets_.size()) {
-			targets_.push_back(new Target(hsp.score));
-		}
-		targets_[n]->ts.push_back(Hsp_traits(hsp));
+		if (top_score_ == 0)
+			top_score_ = t.filter_score;
+		++n_;
+	}
+	virtual void add(const vector<Intermediate_record> &target_hsp)
+	{
+		if (top_score_ == 0)
+			top_score_ = target_hsp[0].score;
+		++n_;
 	}
 private:
-	std::vector<Target*> targets_;
+	size_t n_;
+	int top_score_;
+};
+
+struct RangeCulling : public TargetCulling
+{
+	RangeCulling()
+	{}
+	virtual int cull(const Target &t) const
+	{
+		int c = 0, l = 0;
+		for (std::list<Hsp_data>::const_iterator i = t.hsps.begin(); i != t.hsps.end(); ++i) {
+			c += p_.covered(i->query_source_range, config.max_alignments);
+			l += i->query_source_range.length();
+		}
+		return (double)c / l < config.query_range_cover ? INCLUDE : NEXT;
+	}
+	virtual int cull(const vector<Intermediate_record> &target_hsp) const
+	{
+		return 0;
+	}
+	virtual void add(const Target &t)
+	{
+		for (std::list<Hsp_data>::const_iterator i = t.hsps.begin(); i != t.hsps.end(); ++i)
+			p_.insert(i->query_source_range);
+	}
+	virtual void add(const vector<Intermediate_record> &target_hsp)
+	{
+
+	}
+private:
+	IntervalPartition p_;
 };
 
 #endif

@@ -98,6 +98,8 @@ namespace ExtensionPipeline {
 			{}
 			Target& target(size_t i);
 			virtual void run(Statistics &stat);
+			void run_global_culling(Statistics &stat);
+			void run_range_culling(Statistics &stat);
 		};
 	}
 }

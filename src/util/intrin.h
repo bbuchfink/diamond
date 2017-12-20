@@ -16,30 +16,53 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#ifndef CONST_H_
-#define CONST_H_
+#ifndef INTRIN_H_
+#define INTRIN_H_
 
-struct Const
+#include <stdint.h>
+#ifdef _MSC_VER
+#include <intrin.h>
+#endif
+
+inline unsigned popcount32(unsigned x)
 {
+#ifdef _MSC_VER
+	return __popcnt(x);
+#else
+	return __builtin_popcount(x);
+#endif
+}
 
-	enum {
-		build_version = 116,
-		seedp_bits = 10,
-		seedp = 1<<seedp_bits,
-		max_seed_weight = 32,
-		max_shapes = 16,
-		max_shape_len = 32
-	};
+inline unsigned popcount64(unsigned long long x)
+{
+#ifdef _MSC_VER
+	return (unsigned)__popcnt64(x);
+#else
+	return __builtin_popcountll(x);
+#endif
+}
 
-	static const char* version_string;
-	static const char* program_name;
-	static const char* id_delimiters;
+inline int ctz(uint32_t x)
+{
+#ifdef _MSC_VER
+	unsigned long i;
+	unsigned char c = _BitScanForward(&i, x);
+	return i;
+#else
+	return __builtin_ctz(x);
+#endif
+}
 
-};
+inline int ctz(uint64_t x)
+{
+#ifdef _MSC_VER
+	if (x)
+		return (int)__popcnt64((x ^ (x - 1)) >> 1);
+	else
+		return CHAR_BIT * sizeof(x);
+#else
+	return __builtin_ctzll(x);
+#endif
+}
 
-#define SIMPLE_SEARCH
-// #define FREQUENCY_MASKING
-// #define ST_JOIN
-// #define NO_COLLISION_FILTER
-
-#endif /* CONST_H_ */
+#endif

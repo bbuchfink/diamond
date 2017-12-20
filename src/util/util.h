@@ -61,56 +61,6 @@ struct partition
 	{ return i < remainder ? (size + 1) : size; }
 };
 
-struct interval
-{
-	interval():
-		begin_ (0),
-		end_ (0)
-	{ }
-	interval(int begin, int end):
-		begin_ (begin),
-		end_ (end)
-	{ }
-	int length() const
-	{ return end_ > begin_ ? end_ - begin_ : 0; }
-	unsigned overlap(const interval &rhs) const
-	{ return intersect(*this, rhs).length(); }
-	double overlap_factor(const interval &rhs) const
-	{
-		return (double)overlap(rhs) / (double)length();
-	}
-	bool includes(int p) const
-	{ return p >= begin_ && p < end_; }
-	bool contains(const interval &i) const
-	{
-		return begin_ <= i.begin_ && end_ >= i.end_;
-	}
-	friend std::ostream& operator<<(std::ostream &os, const interval &x)
-	{ os << "[" << x.begin_ << ";" << x.end_ << "]"; return os; }
-	bool operator<(const interval &rhs) const
-	{
-		return begin_ < rhs.begin_;
-	}
-	friend interval intersect(const interval &lhs, const interval &rhs);
-	int begin_, end_;
-};
-
-inline interval intersect(const interval &lhs, const interval &rhs)
-{
-	return interval(std::max(lhs.begin_, rhs.begin_), std::min(lhs.end_, rhs.end_));
-}
-
-struct Interval_set : public vector<interval>
-{
-	int max_intersect(const interval &x) const
-	{
-		int max = 0;
-		for (const_iterator i = begin(); i < end(); ++i)
-			max = std::max(max, intersect(x, *i).length());
-		return max;
-	}
-};
-
 #ifdef __SSE2__
 inline void print(const __m128i &x)
 {
@@ -381,18 +331,6 @@ private:
 	_t data[_n];
 	int n;
 };
-
-inline int ctz(uint64_t x)
-{
-#ifdef _MSC_VER
-	if (x)
-		return (int)__popcnt64((x ^ (x - 1)) >> 1);
-	else
-		return CHAR_BIT * sizeof(x);
-#else
-	return __builtin_ctzll(x);
-#endif
-}
 
 template<typename _t>
 inline void assign_ptr(_t& dst, _t *src)

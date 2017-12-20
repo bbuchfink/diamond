@@ -129,42 +129,25 @@ void Query_mapper::rank_targets(double ratio)
 {
 	std::stable_sort(targets.begin(), targets.end(), Target::compare);
 
-	if (config.query_overlap_culling == 0.0) {
-
-		int score = 0;
-		if (config.toppercent < 100) {
-			score = int((double)targets[0].filter_score * (1.0 - config.toppercent / 100.0) * ratio);
-		}
-		else {
-			size_t min_idx = std::min(targets.size(), (size_t)config.max_alignments);
-			score = int((double)targets[min_idx - 1].filter_score * ratio);
-		}
-
-		unsigned i = 0;
-		for (; i < targets.size(); ++i)
-			if (targets[i].filter_score < score)
-				break;
-
-		if (config.benchmark_ranking)
-			for (unsigned j = i; j < targets.size(); ++j)
-				targets[j].outranked = true;
-		else
-			targets.erase(targets.begin() + i, targets.end());
-
+	int score = 0;
+	if (config.toppercent < 100) {
+		score = int((double)targets[0].filter_score * (1.0 - config.toppercent / 100.0) * ratio);
 	}
 	else {
-
-		int i = 0;
-		const double p = config.query_overlap_culling / 100.0;
-		while (i < (int)targets.size()) {
-			int min_score = int((double)targets[i].filter_score / (1.0 - config.toppercent / 100.0) / ratio);
-			if (targets[i].is_enveloped(targets.begin(), targets.begin() + i, p, min_score))
-				targets.erase(targets.begin() + i, targets.begin() + i + 1);
-			else
-				++i;
-		}
-
+		size_t min_idx = std::min(targets.size(), (size_t)config.max_alignments);
+		score = int((double)targets[min_idx - 1].filter_score * ratio);
 	}
+
+	unsigned i = 0;
+	for (; i < targets.size(); ++i)
+		if (targets[i].filter_score < score)
+			break;
+
+	if (config.benchmark_ranking)
+		for (unsigned j = i; j < targets.size(); ++j)
+			targets[j].outranked = true;
+	else
+		targets.erase(targets.begin() + i, targets.end());
 }
 
 bool Query_mapper::generate_output(Text_buffer &buffer, Statistics &stat)
@@ -172,7 +155,7 @@ bool Query_mapper::generate_output(Text_buffer &buffer, Statistics &stat)
 	std::stable_sort(targets.begin(), targets.end(), Target::compare);
 
 	unsigned n_hsp = 0, n_target_seq = 0, hit_hsps = 0;
-	auto_ptr<Target_culling> target_culling(Target_culling::get(targets.empty() ? 0 : &targets[0]));
+	auto_ptr<TargetCulling> target_culling(TargetCulling::get());
 	const unsigned query_len = (unsigned)query_seq(0).length();
 	size_t seek_pos = 0;
 	const char *query_title = query_ids::get()[query_id].c_str();
@@ -184,9 +167,9 @@ bool Query_mapper::generate_output(Text_buffer &buffer, Statistics &stat)
 			break;
 
 		const int c = target_culling->cull(targets[i]);
-		if (c == Target_culling::next)
+		if (c == TargetCulling::NEXT)
 			continue;
-		else if (c == Target_culling::finished)
+		else if (c == TargetCulling::FINISHED)
 			break;
 
 		if (targets[i].outranked)
@@ -236,7 +219,7 @@ bool Query_mapper::generate_output(Text_buffer &buffer, Statistics &stat)
 
 			if (hit_hsps == 0) {
 				++n_target_seq;
-				target_culling->add(&targets[i]);
+				target_culling->add(targets[i]);
 			}
 			++n_hsp;
 			++hit_hsps;

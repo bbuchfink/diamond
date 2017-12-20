@@ -24,6 +24,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../search/trace_pt_buffer.h"
 #include "sse_dist.h"
 #include "../dp/dp.h"
+#include "../util/intrin.h"
 
 void setup_search_params(pair<size_t, size_t> query_len_bounds, size_t chunk_db_letters);
 void setup_search();
@@ -52,25 +53,6 @@ struct Stage1_hit
 inline int stage2_ungapped(const Letter *query, const Letter *subject, unsigned sid, unsigned &delta, unsigned &len)
 {
 	return xdrop_ungapped(query, subject, shapes[sid].length_, delta, len);
-}
-
-
-inline unsigned popcount32(unsigned x)
-{
-#ifdef _MSC_VER
-	return __popcnt(x);
-#else
-	return __builtin_popcount(x);
-#endif
-}
-
-inline unsigned popcount64(unsigned long long x)
-{
-#ifdef _MSC_VER
-	return (unsigned)__popcnt64(x);
-#else
-	return __builtin_popcountll(x);
-#endif
 }
 
 #ifdef __SSE2__

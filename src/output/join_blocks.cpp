@@ -22,6 +22,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../output/daa_write.h"
 #include "output_format.h"
 #include "../align/query_mapper.h"
+#include "target_culling.h"
 
 struct Join_fetcher
 {
@@ -129,9 +130,9 @@ struct Join_record
 
 };
 
-struct Join_records
+struct BlockJoiner
 {
-	Join_records(vector<Binary_buffer> &buf)
+	BlockJoiner(vector<Binary_buffer> &buf)
 	{
 		for (unsigned i = 0; i < current_ref_block; ++i) {
 			it.push_back(buf[i].begin());
@@ -139,19 +140,25 @@ struct Join_records
 		}
 		std::make_heap(records.begin(), records.end());
 	}
-	Target* get_target()
+	bool get(vector<Intermediate_record> &target_hsp)
 	{
 		if (records.empty())
-			return 0;
-		const unsigned block = records.front().block_;
-		const unsigned subject = records.front().info_.subject_id;
-		Target *t = new Target(records.front().info_.score);
+			return false;
+		const Join_record &first = records.front();
+		const unsigned block = first.block_;
+		const unsigned subject = first.info_.subject_id;
+		target_hsp.clear();
 		do {
+			const Join_record &next = records.front();
+			if (next.block_ != block || next.info_.subject_id != subject)
+				return true;
+			target_hsp.push_back(next.info_);
 			std::pop_heap(records.begin(), records.end());
 			records.pop_back();
 			if (Join_record::push_next(block, subject, it[block], records))
 				std::push_heap(records.begin(), records.end());
-		} while (!records.empty() && records.front().info_.subject_id == subject);
+		} while (!records.empty());
+		return true;
 	}
 	vector<Join_record> records;
 	vector<Binary_buffer::Iterator> it;
@@ -160,61 +167,39 @@ struct Join_records
 void join_query(vector<Binary_buffer> &buf, Text_buffer &out, Statistics &statistics, unsigned query, const char *query_name, unsigned query_source_len, Output_format &f)
 {
 	TranslatedSequence query_seq(get_translated_query(query));
+	BlockJoiner joiner(buf);
+	vector<Intermediate_record> target_hsp;
+	auto_ptr<TargetCulling> culling(TargetCulling::get());
 
-	vector<Join_record> records;
-	vector<Binary_buffer::Iterator> it;
-	for (unsigned i = 0; i < current_ref_block; ++i) {
-		it.push_back(buf[i].begin());
-		Join_record::push_next(i, std::numeric_limits<unsigned>::max(), it.back(), records);
-	}
-	std::make_heap(records.begin(), records.end());
-	unsigned block, subject, n_target_seq = 0, hsp_num = 0;
-	block = subject = std::numeric_limits<unsigned>::max();
-	int top_score = records.front().info_.score;
+	unsigned n_target_seq = 0;
+		
+	while (joiner.get(target_hsp)) {
+		if (culling->cull(target_hsp) == TargetCulling::FINISHED)
+			break;
 
-	while (!records.empty()) {
-		const Join_record &next = records.front();
-		const unsigned b = next.block_;
-		const bool same_subject = n_target_seq > 0 && b == block && next.info_.subject_id == subject;
-
-		if (config.output_range(n_target_seq, next.info_.score, top_score) || same_subject) {
-			//printf("q=%u s=%u n=%u ss=%u\n",query, next.info_.subject_id, n_target_seq, same_subject, next.info_.score);
-
-			if(f == Output_format::daa)
-				write_daa_record(out, next.info_);
+		unsigned hsp_num = 0;
+		for (vector<Intermediate_record>::const_iterator i = target_hsp.begin(); i != target_hsp.end(); ++i, ++hsp_num) {
+			if (f == Output_format::daa)
+				write_daa_record(out, *i);
 			else {
-				Hsp_data hsp(next.info_, query_source_len);
+				Hsp_data hsp(*i, query_source_len);
 				f.print_match(Hsp_context(hsp,
 					query,
 					query_seq,
 					query_name,
-					ref_map.check_id(next.info_.subject_id),
-					ref_map.original_id(next.info_.subject_id),
-					ref_map.name(next.info_.subject_id),
-					ref_map.length(next.info_.subject_id),
+					ref_map.check_id(i->subject_id),
+					ref_map.original_id(i->subject_id),
+					ref_map.name(i->subject_id),
+					ref_map.length(i->subject_id),
 					n_target_seq,
 					hsp_num).parse(), out);
 			}
-
-			statistics.inc(Statistics::MATCHES);
-			if (!same_subject) {
-				block = b;
-				subject = next.info_.subject_id;
-				++n_target_seq;
-				hsp_num = 0;
-				statistics.inc(Statistics::PAIRWISE);
-			}
-			else
-				++hsp_num;
 		}
-		else
-			break;
 
-		std::pop_heap(records.begin(), records.end());
-		records.pop_back();
-
-		if (Join_record::push_next(block, subject, it[block], records))
-			std::push_heap(records.begin(), records.end());
+		culling->add(target_hsp);
+		++n_target_seq;
+		statistics.inc(Statistics::PAIRWISE);
+		statistics.inc(Statistics::MATCHES, hsp_num);
 	}
 }
 
