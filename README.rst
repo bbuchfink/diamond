@@ -1,9 +1,6 @@
 Introduction
 ============
 
-.. image:: https://badges.gitter.im/diamond-aligner/Lobby.svg
-   :alt: Join the chat at https://gitter.im/diamond-aligner/Lobby
-   :target: https://gitter.im/diamond-aligner/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge
 DIAMOND is a sequence aligner for protein and translated DNA searches, designed for high performance analysis of big sequence data. The key features are:
 
 - Pairwise alignment of proteins and translated DNA at 500x-20,000x speed of BLAST.
@@ -15,6 +12,9 @@ Follow me on Twitter to get notified of updates.
 
 .. image:: https://thumb.ibb.co/fPtjFw/follow.png
    :target: https://twitter.com/bbuchfink
+.. image:: https://badges.gitter.im/diamond-aligner/Lobby.svg
+   :alt: Join the chat at https://gitter.im/diamond-aligner/Lobby
+   :target: https://gitter.im/diamond-aligner/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge
 
 Quick start guide
 =================
