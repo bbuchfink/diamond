@@ -64,16 +64,16 @@ struct Join_fetcher
 		unaligned_from = query_last + 1;
 		query_last = query_id;
 		for (unsigned i = 0; i < buf.size(); ++i)
-			if (query_ids[i] == query_id && query_id != Intermediate_record::finished)
+			if (query_ids[i] == query_id && query_id != IntermediateRecord::finished)
 				fetch(i);
 			else
 				buf[i].clear();
-		return next() != Intermediate_record::finished;
+		return next() != IntermediateRecord::finished;
 	}
 	static vector<Input_stream> files;
 	static vector<unsigned> query_ids;
 	static unsigned query_last;
-	vector<Binary_buffer> buf;
+	vector<BinaryBuffer> buf;
 	unsigned query_id, unaligned_from;
 };
 
@@ -86,7 +86,7 @@ struct Join_writer
 	Join_writer(Output_stream &f):
 		f_(f)
 	{}
-	void operator()(Text_buffer& buf)
+	void operator()(TextBuffer& buf)
 	{
 		f_.write(buf.get_begin(), buf.size());
 		buf.clear();
@@ -107,14 +107,14 @@ struct Join_record
 		return block_ < rhs.block_ || (block_ == rhs.block_ && info_.subject_id < rhs.info_.subject_id);
 	}
 
-	Join_record(unsigned ref_block, unsigned subject, Binary_buffer::Iterator &it):
+	Join_record(unsigned ref_block, unsigned subject, BinaryBuffer::Iterator &it):
 		block_(ref_block)
 	{
 		info_.read(it);
 		same_subject_ = info_.subject_id == subject;
 	}
 
-	static bool push_next(unsigned block, unsigned subject, Binary_buffer::Iterator &it, vector<Join_record> &v)
+	static bool push_next(unsigned block, unsigned subject, BinaryBuffer::Iterator &it, vector<Join_record> &v)
 	{
 		if (it.good()) {
 			v.push_back(Join_record(block, subject, it));
@@ -126,13 +126,13 @@ struct Join_record
 
 	unsigned block_;
 	bool same_subject_;
-	Intermediate_record info_;
+	IntermediateRecord info_;
 
 };
 
 struct BlockJoiner
 {
-	BlockJoiner(vector<Binary_buffer> &buf)
+	BlockJoiner(vector<BinaryBuffer> &buf)
 	{
 		for (unsigned i = 0; i < current_ref_block; ++i) {
 			it.push_back(buf[i].begin());
@@ -140,7 +140,7 @@ struct BlockJoiner
 		}
 		std::make_heap(records.begin(), records.end());
 	}
-	bool get(vector<Intermediate_record> &target_hsp)
+	bool get(vector<IntermediateRecord> &target_hsp)
 	{
 		if (records.empty())
 			return false;
@@ -161,28 +161,31 @@ struct BlockJoiner
 		return true;
 	}
 	vector<Join_record> records;
-	vector<Binary_buffer::Iterator> it;
+	vector<BinaryBuffer::Iterator> it;
 };
 
-void join_query(vector<Binary_buffer> &buf, Text_buffer &out, Statistics &statistics, unsigned query, const char *query_name, unsigned query_source_len, Output_format &f)
+void join_query(vector<BinaryBuffer> &buf, TextBuffer &out, Statistics &statistics, unsigned query, const char *query_name, unsigned query_source_len, Output_format &f)
 {
 	TranslatedSequence query_seq(get_translated_query(query));
 	BlockJoiner joiner(buf);
-	vector<Intermediate_record> target_hsp;
+	vector<IntermediateRecord> target_hsp;
 	auto_ptr<TargetCulling> culling(TargetCulling::get());
 
 	unsigned n_target_seq = 0;
 		
 	while (joiner.get(target_hsp)) {
-		if (culling->cull(target_hsp) == TargetCulling::FINISHED)
+		const int c = culling->cull(target_hsp);
+		if (c == TargetCulling::FINISHED)
 			break;
+		else if (c == TargetCulling::NEXT)
+			continue;
 
 		unsigned hsp_num = 0;
-		for (vector<Intermediate_record>::const_iterator i = target_hsp.begin(); i != target_hsp.end(); ++i, ++hsp_num) {
+		for (vector<IntermediateRecord>::const_iterator i = target_hsp.begin(); i != target_hsp.end(); ++i, ++hsp_num) {
 			if (f == Output_format::daa)
 				write_daa_record(out, *i);
 			else {
-				Hsp_data hsp(*i, query_source_len);
+				Hsp hsp(*i, query_source_len);
 				f.print_match(Hsp_context(hsp,
 					query,
 					query_seq,
@@ -203,15 +206,15 @@ void join_query(vector<Binary_buffer> &buf, Text_buffer &out, Statistics &statis
 	}
 }
 
-void join_worker(Task_queue<Text_buffer,Join_writer> *queue)
+void join_worker(Task_queue<TextBuffer,Join_writer> *queue)
 {
 	Join_fetcher fetcher;
 	size_t n;
-	Text_buffer *out;
+	TextBuffer *out;
 	Statistics stat;
 	const String_set<0>& qids = query_ids::get();
 
-	while (queue->get(n, out, fetcher) && fetcher.query_id != Intermediate_record::finished) {
+	while (queue->get(n, out, fetcher) && fetcher.query_id != IntermediateRecord::finished) {
 		stat.inc(Statistics::ALIGNED);
 		size_t seek_pos;
 
@@ -250,14 +253,14 @@ void join_blocks(unsigned ref_blocks, Output_stream &master_out, const vector<Te
 	ref_map.init_rev_map();
 	Join_fetcher::init(tmp_file);
 	Join_writer writer(master_out);
-	Task_queue<Text_buffer, Join_writer> queue(3 * config.threads_, writer);
+	Task_queue<TextBuffer, Join_writer> queue(3 * config.threads_, writer);
 	Thread_pool threads;
 	for (unsigned i = 0; i < config.threads_; ++i)
 		threads.push_back(launch_thread(join_worker, &queue));
 	threads.join_all();
 	Join_fetcher::finish();
 	if (*output_format != Output_format::daa && config.report_unaligned != 0) {
-		Text_buffer out;
+		TextBuffer out;
 		for (unsigned i = Join_fetcher::query_last + 1; i < query_ids::get().get_length(); ++i) {
 			output_format->print_query_intro(i, query_ids::get()[i].c_str(), get_source_query_len(i), out, true);
 			output_format->print_query_epilog(out, query_ids::get()[i].c_str(), true);

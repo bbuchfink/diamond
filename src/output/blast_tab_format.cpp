@@ -93,7 +93,7 @@ Blast_tab_format::Blast_tab_format() :
 	}
 }
 
-void print_staxids(Text_buffer &out, const char *id)
+void print_staxids(TextBuffer &out, const char *id)
 {
 	std::set<unsigned> taxons;
 	taxonomy.get_taxids(id, taxons);
@@ -105,7 +105,7 @@ void print_staxids(Text_buffer &out, const char *id)
 		out << ';' << *i;
 }
 
-void Blast_tab_format::print_match(const Hsp_context& r, Text_buffer &out)
+void Blast_tab_format::print_match(const Hsp_context& r, TextBuffer &out)
 {
 	for (vector<unsigned>::const_iterator i = fields.begin(); i != fields.end(); ++i) {
 		switch (*i) {
@@ -252,7 +252,7 @@ void Blast_tab_format::print_match(const Hsp_context& r, Text_buffer &out)
 	out << '\n';
 }
 
-void Blast_tab_format::print_query_intro(size_t query_num, const char *query_name, unsigned query_len, Text_buffer &out, bool unaligned) const
+void Blast_tab_format::print_query_intro(size_t query_num, const char *query_name, unsigned query_len, TextBuffer &out, bool unaligned) const
 {
 	if (unaligned && config.report_unaligned == 1) {
 		for (vector<unsigned>::const_iterator i = fields.begin(); i != fields.end(); ++i) {

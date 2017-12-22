@@ -28,7 +28,7 @@ struct Traceback { };
 template<typename _score, typename _traceback, typename _score_correction>
 void floating_sw(const Letter *query,
 	const Letter *subject,
-	Hsp_data &segment,
+	Hsp &segment,
 	int band,
 	_score xdrop,
 	_score gap_open,

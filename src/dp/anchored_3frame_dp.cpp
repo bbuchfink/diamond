@@ -19,7 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "dp.h"
 #include "last/GappedXdropAligner.hh"
 
-void anchored_3frame_dp(const TranslatedSequence &query, sequence &subject, const DiagonalSegment &anchor, Hsp_data &out, int gap_open, int gap_extend, int frame_shift)
+void anchored_3frame_dp(const TranslatedSequence &query, sequence &subject, const DiagonalSegment &anchor, Hsp &out, int gap_open, int gap_extend, int frame_shift)
 {
 	static TLS_PTR cbrc::GappedXdropAligner* al_ptr;
 	cbrc::GappedXdropAligner al(TLS::get(al_ptr));

@@ -26,16 +26,16 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <limits>
 #include "util.h"
 
-struct Text_buffer
+struct TextBuffer
 {
 
-	Text_buffer():
+	TextBuffer():
 		data_ (0),
 		ptr_ (data_),
 		alloc_size_(0)
 	{ }
 
-	~Text_buffer()
+	~TextBuffer()
 	{
 		free(data_);
 	}
@@ -62,7 +62,7 @@ struct Text_buffer
 	{ ptr_ = data_; }
 
 	template<typename _t>
-	Text_buffer& write(const _t& data)
+	TextBuffer& write(const _t& data)
 	{
 		reserve(sizeof(_t));
 		*reinterpret_cast<_t*>(ptr_) = data;
@@ -98,7 +98,7 @@ struct Text_buffer
 		write_raw(s, find_first_of(s, delimiters));
 	}
 
-	Text_buffer& write_packed(unsigned x)
+	TextBuffer& write_packed(unsigned x)
 	{
 		if(x <= (unsigned)std::numeric_limits<uint8_t>::max())
 			write((uint8_t)x);
@@ -109,7 +109,7 @@ struct Text_buffer
 		return *this;
 	}
 
-	Text_buffer& write_varint(unsigned x)
+	TextBuffer& write_varint(unsigned x)
 	{
 		if (x < 1 << 7) {
 			write((uint8_t)(x << 1 | 1));
@@ -139,7 +139,7 @@ struct Text_buffer
 		return alloc_size_;
 	}
 
-	Text_buffer& operator<<(const string &s)
+	TextBuffer& operator<<(const string &s)
 	{
 		const size_t l = s.length();
 		reserve(l);
@@ -148,7 +148,7 @@ struct Text_buffer
 		return *this;
 	}
 
-	Text_buffer& operator<<(const char* s)
+	TextBuffer& operator<<(const char* s)
 	{
 		const size_t l = strlen(s);
 		reserve(l);
@@ -157,14 +157,14 @@ struct Text_buffer
 		return *this;
 	}
 
-	Text_buffer& operator<<(char c)
+	TextBuffer& operator<<(char c)
 	{
 		reserve(1);
 		*(ptr_++) = c;
 		return *this;
 	}
 	
-	Text_buffer& operator<<(unsigned int x)
+	TextBuffer& operator<<(unsigned int x)
 	{
 		//write(x);
 		reserve(16);
@@ -172,7 +172,7 @@ struct Text_buffer
 		return *this;
 	}
 
-	Text_buffer& operator<<(int x)
+	TextBuffer& operator<<(int x)
 	{
 		//write(x);
 		reserve(16);
@@ -180,42 +180,42 @@ struct Text_buffer
 		return *this;
 	}
 
-	Text_buffer& operator<<(unsigned long x)
+	TextBuffer& operator<<(unsigned long x)
 	{
 		reserve(32);
 		ptr_ += sprintf(ptr_, "%lu", x);
 		return *this;
 	}
 	
-	Text_buffer& operator<<(unsigned long long x)
+	TextBuffer& operator<<(unsigned long long x)
 	{
 		reserve(32);
 		ptr_ += sprintf(ptr_, "%llu", x);
 		return *this;
 	}
 
-	Text_buffer& operator<<(double x)
+	TextBuffer& operator<<(double x)
 	{
 		reserve(32);
 		ptr_ += sprintf(ptr_, "%.1lf", x);
 		return *this;
 	}
 
-	Text_buffer& print_d(double x)
+	TextBuffer& print_d(double x)
 	{
 		reserve(32);
 		ptr_ += sprintf(ptr_, "%lf", x);
 		return *this;
 	}
 
-	Text_buffer& print_e(double x)
+	TextBuffer& print_e(double x)
 	{
 		reserve(32);
 		ptr_ += sprintf(ptr_, "%.1le", x);
 		return *this;
 	}
 
-	Text_buffer& print(unsigned i, unsigned width)
+	TextBuffer& print(unsigned i, unsigned width)
 	{
 		reserve(16);
 		char buf[16];
@@ -234,7 +234,7 @@ struct Text_buffer
 	}*/
 
 	template<typename _t>
-	Text_buffer& operator<<(const vector<_t> &v)
+	TextBuffer& operator<<(const vector<_t> &v)
 	{
 		const size_t l = v.size() * sizeof(_t);
 		reserve(l);

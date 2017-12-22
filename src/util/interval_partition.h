@@ -24,7 +24,26 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <limits>
 #include "interval.h"
 
-struct IntervalPartition : protected std::map<int, int>
+struct IntervalNode
+{
+	enum { INF = std::numeric_limits<int>::max() };
+	IntervalNode():
+		count(0),
+		min_score(INF)
+	{}
+	IntervalNode(int count, int min_score):
+		count(count),
+		min_score(min_score)
+	{
+	}
+	IntervalNode add(int score, int cap) const
+	{
+		return IntervalNode(count + 1, count < cap ? std::min(min_score, score) : min_score);
+	}
+	int count, min_score, max_score;
+};
+
+struct IntervalPartition : protected std::map<int, IntervalNode>
 {
 
 	struct Iterator
@@ -45,7 +64,7 @@ struct IntervalPartition : protected std::map<int, int>
 			++j_;
 			return *this;
 		}
-		std::pair<interval, int> operator*() const
+		std::pair<interval, IntervalNode> operator*() const
 		{
 			return std::make_pair(interval(i_->first, j_ == parent_.end() ? std::numeric_limits<int>::max() : j_->first), i_->second);
 		}
@@ -54,39 +73,55 @@ struct IntervalPartition : protected std::map<int, int>
 		const IntervalPartition &parent_;
 	};
 
-	IntervalPartition()
+	IntervalPartition(int cap):
+		cap(cap)
 	{
-		(*this)[0] = 0;
+		(*this)[0] = IntervalNode();
 	}
 
-	void insert(interval k)
+	void insert(interval k, int score)
 	{
 		iterator i = lower_bound(k.begin_);
 		if (i->first != k.begin_) {
 			assert(i != begin());
 			i--;
-			i = std::map<int,int>::insert(std::make_pair(k.begin_, i->second)).first;
+			i = std::map<int, IntervalNode>::insert(std::make_pair(k.begin_, i->second.add(score, cap))).first;
 		}
-		int last;
+		IntervalNode last;
 		while (i != end() && i->first < k.end_) {
-			last = i->second++;
+			last = i->second;
+			i->second = i->second.add(score, cap);
 			++i;
 		}
 		if (i->first != k.end_)
 			(*this)[k.end_] = last;
 	}
 
-	int covered(interval k, int n) const
+	int covered(interval k) const
 	{
 		Iterator i = begin(k.begin_);
-		std::pair<interval, int> l;
+		std::pair<interval, IntervalNode> l;
 		int c = 0;
 		while (i.good() && (l = *i).first.begin_ < k.end_) {
-			if (l.second >= n)
+			if (l.second.count >= cap)
 				c += k.overlap(l.first);
 			++i;
 		}
 		return c;
+	}
+
+	int min_score(interval k) const
+	{
+		Iterator i = begin(k.begin_);
+		std::pair<interval, IntervalNode> l;
+		int s = IntervalNode::INF;
+		while (i.good() && (l = *i).first.begin_ < k.end_) {
+			if (l.second.count < cap)
+				return 0;
+			s = std::min(s, l.second.min_score);
+			++i;
+		}
+		return s;
 	}
 
 	Iterator begin(int p) const
@@ -103,6 +138,8 @@ struct IntervalPartition : protected std::map<int, int>
 		}
 		return Iterator(i, j, *this);
 	}
+
+	const int cap;
 
 };
 

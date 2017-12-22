@@ -22,7 +22,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 using std::set;
 
-void Taxon_format::print_match(const Hsp_context &r, Text_buffer &out)
+void Taxon_format::print_match(const Hsp_context &r, TextBuffer &out)
 {
 	set<unsigned> taxons;
 	taxonomy.get_taxids(r.subject_name, taxons);
@@ -39,7 +39,7 @@ void Taxon_format::print_match(const Hsp_context &r, Text_buffer &out)
 	}
 }
 
-void Taxon_format::print_query_epilog(Text_buffer &out, const char *query_title, bool unaligned) const
+void Taxon_format::print_query_epilog(TextBuffer &out, const char *query_title, bool unaligned) const
 {
 	out.write_until(query_title, Const::id_delimiters);
 	out << '\t' << taxid << '\t';

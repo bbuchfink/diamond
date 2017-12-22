@@ -30,21 +30,21 @@ DiagonalSegment anchor(const Seed_hit &s, const TranslatedSequence &query, const
 struct Target : public ::Target
 {
 
-	void ungapped_stage(Query_mapper &mapper)
+	void ungapped_stage(QueryMapper &mapper)
 	{
 		vector<Seed_hit>::iterator hits = mapper.seed_hits.begin() + begin, hits_end = mapper.seed_hits.begin() + end;
 		std::sort(hits, hits_end);
 		filter_score = hits[0].ungapped.score;
 	}
 
-	void process(Query_mapper &mapper)
+	void process(QueryMapper &mapper)
 	{
 		const int cutoff = mapper.raw_score_cutoff(), dna_len = (int)mapper.translated_query.source().length();
 		vector<Seed_hit>::iterator hits = mapper.seed_hits.begin() + begin, hits_end = mapper.seed_hits.begin() + end;
 		for (vector<Seed_hit>::const_iterator i = hits; i < hits_end; ++i) {
 			if (i->is_enveloped(hsps.begin(), hsps.end(), dna_len))
 				continue;
-			hsps.push_back(Hsp_data());
+			hsps.push_back(Hsp());
 			anchored_3frame_dp(
 				mapper.translated_query,
 				subject,
@@ -58,6 +58,23 @@ struct Target : public ::Target
 				hsps.pop_back();
 		}
 		inner_culling(mapper.raw_score_cutoff());
+	}
+
+	void add_ranges(IntervalPartition &ip, int score) const
+	{
+		for (list<Hsp>::const_iterator i = hsps.begin(); i != hsps.end(); ++i)
+			ip.insert(i->query_source_range, score);
+	}
+
+	void process_range_culling(QueryMapper &mapper, IntervalPartition &ip)
+	{
+		const double rank_ratio = config.rank_ratio == -1 ? 0.4 : config.rank_ratio;
+		vector<Seed_hit>::iterator hits = mapper.seed_hits.begin() + begin;
+		const int min_score = ip.min_score(hits[0].query_source_range(mapper.source_query_len));
+		if (min_score > 0 && (double)filter_score / min_score < rank_ratio)
+			return;
+		process(mapper);
+		add_ranges(ip, hits[0].ungapped.score);
 	}
 
 };
@@ -76,8 +93,10 @@ void Pipeline::run_global_culling(Statistics &stat)
 
 void Pipeline::run_range_culling(Statistics &stat)
 {
+	IntervalPartition ip(config.max_alignments);
+	std::stable_sort(targets.begin(), targets.end(), Target::compare);
 	for (size_t i = 0; i < n_targets(); ++i)
-		target(i).process(*this);
+		target(i).process_range_culling(*this, ip);
 }
 
 void Pipeline::run(Statistics &stat)

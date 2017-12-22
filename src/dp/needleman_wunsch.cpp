@@ -219,7 +219,7 @@ int needleman_wunsch(sequence query, sequence subject, int qbegin, int qend, int
 	return score;
 }
 
-void smith_waterman(sequence q, sequence s, Hsp_data &out)
+void smith_waterman(sequence q, sequence s, Hsp &out)
 {
 	int max_score;
 	const Fixed_score_buffer<int> &dp = needleman_wunsch(q, s, max_score, Local(), int());
@@ -292,9 +292,9 @@ void print_diag(int i0, int j0, int l, int score, const Diag_graph &diags, const
 
 void smith_waterman(sequence q, sequence s, const Diag_graph &diags)
 {
-	Hsp_data hsp;
+	Hsp hsp;
 	smith_waterman(q, s, hsp);
-	Hsp_data::Iterator i = hsp.begin();
+	Hsp::Iterator i = hsp.begin();
 	int i0 = -1, j0 = -1, l = 0, score = 0;
 	for (; i.good(); ++i) {
 		switch (i.op()) {

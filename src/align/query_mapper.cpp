@@ -48,12 +48,12 @@ bool Target::is_enveloped(Ptr_vector<Target>::const_iterator begin, Ptr_vector<T
 	return false;
 }
 
-int Query_mapper::raw_score_cutoff() const
+int QueryMapper::raw_score_cutoff() const
 {
 	return score_matrix.rawscore(config.min_bit_score == 0 ? score_matrix.bitscore(config.max_evalue, ref_header.letters, (unsigned)query_seq(0).length()) : config.min_bit_score);
 }
 
-Query_mapper::Query_mapper(size_t query_id, Trace_pt_list::iterator begin, Trace_pt_list::iterator end) :
+QueryMapper::QueryMapper(size_t query_id, Trace_pt_list::iterator begin, Trace_pt_list::iterator end) :
 	source_hits(std::make_pair(begin, end)),
 	query_id((unsigned)query_id),
 	targets_finished(0),
@@ -64,7 +64,7 @@ Query_mapper::Query_mapper(size_t query_id, Trace_pt_list::iterator begin, Trace
 	seed_hits.reserve(source_hits.second - source_hits.first);
 }
 
-void Query_mapper::init()
+void QueryMapper::init()
 {
 	if(config.log_query)
 		cout << "Query = " << query_ids::get()[query_id].c_str() << endl;
@@ -81,7 +81,7 @@ void Query_mapper::init()
 	load_targets();
 }
 
-unsigned Query_mapper::count_targets()
+unsigned QueryMapper::count_targets()
 {
 	std::sort(source_hits.first, source_hits.second, hit::cmp_subject);
 	const size_t n = source_hits.second - source_hits.first;
@@ -109,7 +109,7 @@ unsigned Query_mapper::count_targets()
 	return n_subject;
 }
 
-void Query_mapper::load_targets()
+void QueryMapper::load_targets()
 {
 	unsigned subject_id = std::numeric_limits<unsigned>::max(), n = 0;
 	for (size_t i = 0; i < seed_hits.size(); ++i) {
@@ -125,7 +125,7 @@ void Query_mapper::load_targets()
 	targets[n - 1].end = seed_hits.size();
 }
 
-void Query_mapper::rank_targets(double ratio)
+void QueryMapper::rank_targets(double ratio)
 {
 	std::stable_sort(targets.begin(), targets.end(), Target::compare);
 
@@ -150,7 +150,7 @@ void Query_mapper::rank_targets(double ratio)
 		targets.erase(targets.begin() + i, targets.end());
 }
 
-bool Query_mapper::generate_output(Text_buffer &buffer, Statistics &stat)
+bool QueryMapper::generate_output(TextBuffer &buffer, Statistics &stat)
 {
 	std::stable_sort(targets.begin(), targets.end(), Target::compare);
 
@@ -166,6 +166,12 @@ bool Query_mapper::generate_output(Text_buffer &buffer, Statistics &stat)
 			|| score_matrix.bitscore(targets[i].filter_score) < config.min_bit_score)
 			break;
 
+		const unsigned subject_len = (unsigned)ref_seqs::get()[targets[i].subject_id].length();
+		const char *ref_title = ref_ids::get()[targets[i].subject_id].c_str();
+		targets[i].apply_filters(source_query_len, subject_len, query_title, ref_title);
+		if (targets[i].hsps.size() == 0)
+			continue;
+
 		const int c = target_culling->cull(targets[i]);
 		if (c == TargetCulling::NEXT)
 			continue;
@@ -174,26 +180,18 @@ bool Query_mapper::generate_output(Text_buffer &buffer, Statistics &stat)
 
 		if (targets[i].outranked)
 			stat.inc(Statistics::OUTRANKED_HITS);
-
-		const unsigned subject_len = (unsigned)ref_seqs::get()[targets[i].subject_id].length();
+		++n_target_seq;
+		target_culling->add(targets[i]);
 		
 		hit_hsps = 0;
-		for (list<Hsp_data>::iterator j = targets[i].hsps.begin(); j != targets[i].hsps.end(); ++j) {
+		for (list<Hsp>::iterator j = targets[i].hsps.begin(); j != targets[i].hsps.end(); ++j) {
 			if (config.max_hsps > 0 && hit_hsps >= config.max_hsps)
 				break;
-			const char *ref_title = ref_ids::get()[targets[i].subject_id].c_str();
-			if (j->id_percent() < config.min_id
-				|| j->query_cover_percent(source_query_len) < config.query_cover
-				|| j->subject_cover_percent(subject_len) < config.subject_cover
-				|| (config.no_self_hits &&
-					(config.ext == Config::more_greedy || (j->identities == j->length && j->query_source_range.length() == (int)source_query_len && j->subject_range.length() == (int)subject_len))
-					&& strcmp(query_title, ref_title) == 0))
-				continue;
 
 			if (blocked_processing) {
 				if (n_hsp == 0)
-					seek_pos = Intermediate_record::write_query_intro(buffer, query_id);
-				Intermediate_record::write(buffer, *j, query_id, targets[i].subject_id);
+					seek_pos = IntermediateRecord::write_query_intro(buffer, query_id);
+				IntermediateRecord::write(buffer, *j, query_id, targets[i].subject_id);
 			}
 			else {
 				if (n_hsp == 0) {
@@ -217,14 +215,8 @@ bool Query_mapper::generate_output(Text_buffer &buffer, Statistics &stat)
 						hit_hsps), buffer);
 			}
 
-			if (hit_hsps == 0) {
-				++n_target_seq;
-				target_culling->add(targets[i]);
-			}
 			++n_hsp;
 			++hit_hsps;
-			if (config.alignment_traceback && j->gap_openings > 0)
-				stat.inc(Statistics::GAPPED);
 		}
 	}
 
@@ -236,7 +228,7 @@ bool Query_mapper::generate_output(Text_buffer &buffer, Statistics &stat)
 				f->print_query_epilog(buffer, query_title, false);
 		}
 		else
-			Intermediate_record::finish_query(buffer, seek_pos);
+			IntermediateRecord::finish_query(buffer, seek_pos);
 	}
 	else if (!blocked_processing && *f != Output_format::daa && config.report_unaligned != 0) {
 		f->print_query_intro(query_id, query_title, source_query_len, buffer, true);
@@ -258,8 +250,25 @@ void Target::inner_culling(int cutoff)
 	hsps.sort();
 	if (hsps.size() > 0)
 		filter_score = hsps.front().score;
-	for (list<Hsp_data>::iterator i = hsps.begin(); i != hsps.end();) {
+	for (list<Hsp>::iterator i = hsps.begin(); i != hsps.end();) {
 		if (i->is_weakly_enveloped_by(hsps.begin(), i, cutoff))
+			i = hsps.erase(i);
+		else
+			++i;
+	}
+}
+
+void Target::apply_filters(int dna_len, int subject_len, const char *query_title, const char *ref_title)
+{
+	for (list<Hsp>::iterator i = hsps.begin(); i != hsps.end();) {
+		if (i->id_percent() < config.min_id
+			|| i->query_cover_percent(dna_len) < config.query_cover
+			|| i->subject_cover_percent(subject_len) < config.subject_cover
+			|| (config.no_self_hits
+				&& i->identities == i->length
+				&& i->query_source_range.length() == (int)dna_len
+				&& i->subject_range.length() == (int)subject_len
+				&& strcmp(query_title, ref_title) == 0))
 			i = hsps.erase(i);
 		else
 			++i;

@@ -40,7 +40,7 @@ inline unsigned get_rev_flag(unsigned frame)
 	return frame > 2 ? 1 : 0;
 }
 
-inline uint8_t get_segment_flag(const Hsp_data &match)
+inline uint8_t get_segment_flag(const Hsp &match)
 {
 	unsigned rev = get_rev_flag(match.frame);
 	return (uint8_t)(get_length_flag(match.score)
@@ -58,9 +58,9 @@ inline uint8_t get_segment_flag(const Hsp_context &match)
 		| rev << 6);
 }
 
-struct Intermediate_record
+struct IntermediateRecord
 {
-	void read(Binary_buffer::Iterator &f)
+	void read(BinaryBuffer::Iterator &f)
 	{
 		f.read(subject_id);
 		f.read(flag);
@@ -77,17 +77,17 @@ struct Intermediate_record
 		else
 			return interval(query_end, query_begin + 1);
 	}
-	static size_t write_query_intro(Text_buffer &buf, unsigned query_id)
+	static size_t write_query_intro(TextBuffer &buf, unsigned query_id)
 	{
 		size_t seek_pos = buf.size();
 		buf.write(query_id).write(0u);
 		return seek_pos;
 	}
-	static void finish_query(Text_buffer &buf, size_t seek_pos)
+	static void finish_query(TextBuffer &buf, size_t seek_pos)
 	{
 		*(unsigned*)(&buf[seek_pos + sizeof(unsigned)]) = safe_cast<unsigned>(buf.size() - seek_pos - sizeof(unsigned) * 2);
 	}
-	static void write(Text_buffer &buf, const Hsp_data &match, unsigned query_id, unsigned subject_id)
+	static void write(TextBuffer &buf, const Hsp &match, unsigned query_id, unsigned subject_id)
 	{
 		const interval or (match.oriented_range());
 		buf.write(ref_map.get(current_ref_block, subject_id))
@@ -119,7 +119,7 @@ struct Output_sink
 		size_(0),
 		max_size_(0)
 	{}
-	void push(size_t n, Text_buffer *buf);
+	void push(size_t n, TextBuffer *buf);
 	size_t size() const
 	{
 		return size_;
@@ -138,10 +138,10 @@ struct Output_sink
 	}
 	static auto_ptr<Output_sink> instance;
 private:
-	void flush(Text_buffer *buf);
+	void flush(TextBuffer *buf);
 	tthread::mutex mtx_;
 	Output_stream* const f_;
-	std::map<size_t, Text_buffer*> backlog_;
+	std::map<size_t, TextBuffer*> backlog_;
 	size_t next_, size_, max_size_;
 };
 

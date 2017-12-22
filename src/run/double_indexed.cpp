@@ -164,7 +164,7 @@ void run_ref_chunk(Database_file &db_file,
 	delete Trace_pt_buffer::instance;
 
 	if (blocked_processing) {
-		Intermediate_record::finish_file(*out);
+		IntermediateRecord::finish_file(*out);
 		delete out;
 	}
 

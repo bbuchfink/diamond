@@ -153,7 +153,7 @@ void traceback(const sequence &query,
 	int i0,
 	int i,
 	int j,
-	Hsp_data &l)
+	Hsp &l)
 {
 	Banded_traceback_matrix dp(scores, band, i0);
 	//dp.print(i + 1, j + 1);
@@ -267,7 +267,7 @@ private:
 
 };
 
-void banded_sw(const sequence &query, const sequence &subject, int d_begin, int d_end, int j_begin, int j_end, Hsp_data &out)
+void banded_sw(const sequence &query, const sequence &subject, int d_begin, int d_end, int j_begin, int j_end, Hsp &out)
 {
 	using std::max;
 	assert(d_end > d_begin);

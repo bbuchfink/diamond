@@ -45,7 +45,7 @@ inline void translate_query(const vector<Letter>& query, vector<Letter> *context
 struct DAA_query_record
 {
 
-	struct Match : public Hsp_data
+	struct Match : public Hsp
 	{
 
 		Match(const DAA_query_record &query_record) :
@@ -74,13 +74,13 @@ struct DAA_query_record
 	private:
 
 		const DAA_query_record &parent_;
-		friend Binary_buffer::Iterator& operator>>(Binary_buffer::Iterator &it, Match &r);
+		friend BinaryBuffer::Iterator& operator>>(BinaryBuffer::Iterator &it, Match &r);
 
 	};
 
 	struct Match_iterator
 	{
-		Match_iterator(const DAA_query_record &parent, Binary_buffer::Iterator it) :
+		Match_iterator(const DAA_query_record &parent, BinaryBuffer::Iterator it) :
 			r_(parent),
 			it_(it),
 			good_(true)
@@ -105,11 +105,11 @@ struct DAA_query_record
 		}
 	private:
 		Match r_;
-		Binary_buffer::Iterator it_;
+		BinaryBuffer::Iterator it_;
 		bool good_;
 	};
 
-	DAA_query_record(const DAA_file& file, const Binary_buffer &buf, size_t query_num):
+	DAA_query_record(const DAA_file& file, const BinaryBuffer &buf, size_t query_num):
 		query_num (query_num),
 		file_(file),
 		it_(init(buf))
@@ -133,15 +133,15 @@ struct DAA_query_record
 
 private:
 
-	Binary_buffer::Iterator init(const Binary_buffer &buf);
+	BinaryBuffer::Iterator init(const BinaryBuffer &buf);
 
 	const DAA_file& file_;
-	const Binary_buffer::Iterator it_;
+	const BinaryBuffer::Iterator it_;
 	
-	friend Binary_buffer::Iterator& operator>>(Binary_buffer::Iterator &it, Match &r);
+	friend BinaryBuffer::Iterator& operator>>(BinaryBuffer::Iterator &it, Match &r);
 
 };
 
-Binary_buffer::Iterator& operator>>(Binary_buffer::Iterator &it, DAA_query_record::Match &r);
+BinaryBuffer::Iterator& operator>>(BinaryBuffer::Iterator &it, DAA_query_record::Match &r);
 
 #endif /* DAA_RECORD_H_ */

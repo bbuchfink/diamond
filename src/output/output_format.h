@@ -31,11 +31,11 @@ struct Output_format
 	Output_format(unsigned code):
 		code(code)
 	{}
-	virtual void print_query_intro(size_t query_num, const char *query_name, unsigned query_len, Text_buffer &out, bool unaligned) const
+	virtual void print_query_intro(size_t query_num, const char *query_name, unsigned query_len, TextBuffer &out, bool unaligned) const
 	{}
-	virtual void print_query_epilog(Text_buffer &out, const char *query_title, bool unaligned) const
+	virtual void print_query_epilog(TextBuffer &out, const char *query_title, bool unaligned) const
 	{}
-	virtual void print_match(const Hsp_context& r, Text_buffer &out)
+	virtual void print_match(const Hsp_context& r, TextBuffer &out)
 	{}
 	virtual void print_header(Output_stream &f, int mode, const char *matrix, int gap_open, int gap_extend, double evalue, const char *first_query_name, unsigned first_query_len) const
 	{ }
@@ -44,7 +44,7 @@ struct Output_format
 	virtual Output_format* clone() const = 0;
 	virtual ~Output_format()
 	{ }
-	static void print_title(Text_buffer &buf, const char *id, bool full_titles, bool all_titles, const char *separator);
+	static void print_title(TextBuffer &buf, const char *id, bool full_titles, bool all_titles, const char *separator);
 	operator unsigned() const
 	{
 		return code;
@@ -81,8 +81,8 @@ struct Blast_tab_format : public Output_format
 {
 	static const char* field_str[];
 	Blast_tab_format();
-	virtual void print_query_intro(size_t query_num, const char *query_name, unsigned query_len, Text_buffer &out, bool unaligned) const;
-	virtual void print_match(const Hsp_context& r, Text_buffer &out);
+	virtual void print_query_intro(size_t query_num, const char *query_name, unsigned query_len, TextBuffer &out, bool unaligned) const;
+	virtual void print_match(const Hsp_context& r, TextBuffer &out);
 	virtual ~Blast_tab_format()
 	{ }
 	virtual Output_format* clone() const
@@ -97,9 +97,9 @@ struct Sam_format : public Output_format
 	Sam_format():
 		Output_format(sam)
 	{ }
-	virtual void print_match(const Hsp_context& r, Text_buffer &out);
+	virtual void print_match(const Hsp_context& r, TextBuffer &out);
 	virtual void print_header(Output_stream &f, int mode, const char *matrix, int gap_open, int gap_extend, double evalue, const char *first_query_name, unsigned first_query_len) const;
-	virtual void print_query_intro(size_t query_num, const char *query_name, unsigned query_len, Text_buffer &out, bool unaligned) const;
+	virtual void print_query_intro(size_t query_num, const char *query_name, unsigned query_len, TextBuffer &out, bool unaligned) const;
 	virtual ~Sam_format()
 	{ }
 	virtual Output_format* clone() const
@@ -115,10 +115,10 @@ struct XML_format : public Output_format
 	{
 		config.salltitles = true;
 	}
-	virtual void print_match(const Hsp_context &r, Text_buffer &out);
+	virtual void print_match(const Hsp_context &r, TextBuffer &out);
 	virtual void print_header(Output_stream &f, int mode, const char *matrix, int gap_open, int gap_extend, double evalue, const char *first_query_name, unsigned first_query_len) const;
-	virtual void print_query_intro(size_t query_num, const char *query_name, unsigned query_len, Text_buffer &out, bool unaligned) const;
-	virtual void print_query_epilog(Text_buffer &out, const char *query_title, bool unaligned) const;
+	virtual void print_query_intro(size_t query_num, const char *query_name, unsigned query_len, TextBuffer &out, bool unaligned) const;
+	virtual void print_query_epilog(TextBuffer &out, const char *query_title, bool unaligned) const;
 	virtual void print_footer(Output_stream &f) const;
 	virtual ~XML_format()
 	{ }
@@ -135,10 +135,10 @@ struct Pairwise_format : public Output_format
 	{
 		config.salltitles = true;
 	}
-	virtual void print_match(const Hsp_context &r, Text_buffer &out);
+	virtual void print_match(const Hsp_context &r, TextBuffer &out);
 	virtual void print_header(Output_stream &f, int mode, const char *matrix, int gap_open, int gap_extend, double evalue, const char *first_query_name, unsigned first_query_len) const;
-	virtual void print_query_intro(size_t query_num, const char *query_name, unsigned query_len, Text_buffer &out, bool unaligned) const;
-	virtual void print_query_epilog(Text_buffer &out, const char *query_title, bool unaligned) const;
+	virtual void print_query_intro(size_t query_num, const char *query_name, unsigned query_len, TextBuffer &out, bool unaligned) const;
+	virtual void print_query_epilog(TextBuffer &out, const char *query_title, bool unaligned) const;
 	virtual void print_footer(Output_stream &f) const;
 	virtual ~Pairwise_format()
 	{ }
@@ -161,8 +161,8 @@ struct Taxon_format : public Output_format
 		if (config.nodesdmp.empty())
 			throw std::runtime_error("Output format requires setting the --taxonnodes parameter.");
 	}
-	virtual void print_match(const Hsp_context &r, Text_buffer &out);
-	virtual void print_query_epilog(Text_buffer &out, const char *query_title, bool unaligned) const;
+	virtual void print_match(const Hsp_context &r, TextBuffer &out);
+	virtual void print_query_epilog(TextBuffer &out, const char *query_title, bool unaligned) const;
 	virtual ~Taxon_format()
 	{ }
 	virtual Output_format* clone() const
@@ -175,6 +175,6 @@ struct Taxon_format : public Output_format
 
 Output_format* get_output_format();
 void init_output();
-void print_hsp(Hsp_data &hsp, const TranslatedSequence &query);
+void print_hsp(Hsp &hsp, const TranslatedSequence &query);
 
 #endif /* OUTPUT_FORMAT_H_ */

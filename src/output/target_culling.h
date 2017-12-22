@@ -27,9 +27,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 struct TargetCulling
 {
 	virtual int cull(const Target &t) const = 0;
-	virtual int cull(const vector<Intermediate_record> &target_hsp) const = 0;
+	virtual int cull(const vector<IntermediateRecord> &target_hsp) const = 0;
 	virtual void add(const Target &t) = 0;
-	virtual void add(const vector<Intermediate_record> &target_hsp) = 0;
+	virtual void add(const vector<IntermediateRecord> &target_hsp) = 0;
 	enum { FINISHED = 0, NEXT = 1, INCLUDE = 2};
 	static TargetCulling* get();
 private:
@@ -52,7 +52,7 @@ struct GlobalCulling : public TargetCulling
 		else
 			return n_ < config.max_alignments ? INCLUDE : FINISHED;
 	}
-	virtual int cull(const vector<Intermediate_record> &target_hsp) const
+	virtual int cull(const vector<IntermediateRecord> &target_hsp) const
 	{
 		if (top_score_ == 0)
 			return INCLUDE;
@@ -67,7 +67,7 @@ struct GlobalCulling : public TargetCulling
 			top_score_ = t.filter_score;
 		++n_;
 	}
-	virtual void add(const vector<Intermediate_record> &target_hsp)
+	virtual void add(const vector<IntermediateRecord> &target_hsp)
 	{
 		if (top_score_ == 0)
 			top_score_ = target_hsp[0].score;
@@ -80,29 +80,36 @@ private:
 
 struct RangeCulling : public TargetCulling
 {
-	RangeCulling()
+	RangeCulling():
+		p_(config.max_alignments)
 	{}
 	virtual int cull(const Target &t) const
 	{
 		int c = 0, l = 0;
-		for (std::list<Hsp_data>::const_iterator i = t.hsps.begin(); i != t.hsps.end(); ++i) {
-			c += p_.covered(i->query_source_range, config.max_alignments);
+		for (std::list<Hsp>::const_iterator i = t.hsps.begin(); i != t.hsps.end(); ++i) {
+			c += p_.covered(i->query_source_range);
 			l += i->query_source_range.length();
 		}
-		return (double)c / l < config.query_range_cover ? INCLUDE : NEXT;
+		return (double)c / l * 100.0 < config.query_range_cover ? INCLUDE : NEXT;
 	}
-	virtual int cull(const vector<Intermediate_record> &target_hsp) const
+	virtual int cull(const std::vector<IntermediateRecord> &target_hsp) const
 	{
-		return 0;
+		int c = 0, l = 0;
+		for (std::vector<IntermediateRecord>::const_iterator i = target_hsp.begin(); i != target_hsp.end(); ++i) {
+			c += p_.covered(i->absolute_query_range());
+			l += i->absolute_query_range().length();
+		}
+		return (double)c / l * 100.0 < config.query_range_cover ? INCLUDE : NEXT;
 	}
 	virtual void add(const Target &t)
 	{
-		for (std::list<Hsp_data>::const_iterator i = t.hsps.begin(); i != t.hsps.end(); ++i)
-			p_.insert(i->query_source_range);
+		for (std::list<Hsp>::const_iterator i = t.hsps.begin(); i != t.hsps.end(); ++i)
+			p_.insert(i->query_source_range, i->score);
 	}
-	virtual void add(const vector<Intermediate_record> &target_hsp)
+	virtual void add(const vector<IntermediateRecord> &target_hsp)
 	{
-
+		for (std::vector<IntermediateRecord>::const_iterator i = target_hsp.begin(); i != target_hsp.end(); ++i)
+			p_.insert(i->absolute_query_range(), i->score);
 	}
 private:
 	IntervalPartition p_;

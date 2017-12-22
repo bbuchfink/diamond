@@ -36,7 +36,7 @@ struct View_writer
 			? new Compressed_ostream(config.output_file)
 			: new Output_stream(config.output_file))
 	{ }
-	void operator()(Text_buffer &buf)
+	void operator()(TextBuffer &buf)
 	{
 		f_->write(buf.get_begin(), buf.size());
 		buf.clear();
@@ -66,13 +66,13 @@ struct View_fetcher
 		query_num -= n - 1;
 		return true;
 	}
-	Binary_buffer buf[view_buf_size];
+	BinaryBuffer buf[view_buf_size];
 	unsigned n;
 	size_t query_num;
 	DAA_file &daa;
 };
 
-void view_query(DAA_query_record &r, Text_buffer &out, Output_format &format)
+void view_query(DAA_query_record &r, TextBuffer &out, Output_format &format)
 {
 	auto_ptr<Output_format> f(format.clone());
 	f->print_query_intro(r.query_num, r.query_name.c_str(), (unsigned)r.query_len(), out, false);
@@ -101,7 +101,7 @@ struct View_context
 		try {
 			size_t n;
 			View_fetcher query_buf(daa);
-			Text_buffer *buffer = 0;
+			TextBuffer *buffer = 0;
 			while (queue.get(n, buffer, query_buf)) {
 				for (unsigned j = 0; j < query_buf.n; ++j) {
 					DAA_query_record r(daa, query_buf.buf[j], query_buf.query_num + j);
@@ -117,7 +117,7 @@ struct View_context
 	}
 	DAA_file &daa;
 	View_writer &writer;
-	Task_queue<Text_buffer, View_writer> queue;
+	Task_queue<TextBuffer, View_writer> queue;
 	Output_format &format;
 };
 
@@ -140,11 +140,11 @@ void view()
 	timer.go("Generating output");
 	View_writer writer;
 
-	Binary_buffer buf;
+	BinaryBuffer buf;
 	size_t query_num;
 	if (daa.read_query_buffer(buf, query_num)) {
 		DAA_query_record r(daa, buf, query_num);
-		Text_buffer out;
+		TextBuffer out;
 		view_query(r, out, *output_format);
 
 		output_format->print_header(*writer.f_, daa.mode(), daa.score_matrix(), daa.gap_open_penalty(), daa.gap_extension_penalty(), daa.evalue(), r.query_name.c_str(), (unsigned)r.query_len());
@@ -154,7 +154,7 @@ void view()
 		launch_thread_pool(context, config.threads_);
 	}
 	else {
-		Text_buffer out;
+		TextBuffer out;
 		output_format->print_header(*writer.f_, daa.mode(), daa.score_matrix(), daa.gap_open_penalty(), daa.gap_extension_penalty(), daa.evalue(), "", 0);
 		writer(out);
 	}

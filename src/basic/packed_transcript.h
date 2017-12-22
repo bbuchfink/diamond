@@ -131,7 +131,7 @@ struct Packed_transcript
 		Combined_operation op_;
 	};
 
-	void read(Binary_buffer::Iterator &it)
+	void read(BinaryBuffer::Iterator &it)
 	{
 		data_.clear();
 		uint8_t code;
@@ -216,7 +216,7 @@ private:
 
 	vector<Packed_operation> data_;
 
-	friend struct Hsp_data;
+	friend struct Hsp;
 
 };
 

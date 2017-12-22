@@ -18,7 +18,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "output_format.h"
 
-void print_md(const Hsp_context &r, Text_buffer &buf)
+void print_md(const Hsp_context &r, TextBuffer &buf)
 {
 	unsigned matches = 0, del = 0;
 	for (Packed_transcript::Const_iterator i = r.begin_old(); i.good(); ++i) {
@@ -55,7 +55,7 @@ void print_md(const Hsp_context &r, Text_buffer &buf)
 		buf << matches;
 }
 
-void print_cigar(const Hsp_context &r, Text_buffer &buf)
+void print_cigar(const Hsp_context &r, TextBuffer &buf)
 {
 	static const unsigned map[] = { 0, 1, 2, 0, 3, 4 };
 	static const char letter[] = { 'M', 'I', 'D', '\\', '/' };
@@ -74,7 +74,7 @@ void print_cigar(const Hsp_context &r, Text_buffer &buf)
 		buf << n << letter[op];
 }
 
-void Sam_format::print_query_intro(size_t query_num, const char *query_name, unsigned query_len, Text_buffer &out, bool unaligned) const
+void Sam_format::print_query_intro(size_t query_num, const char *query_name, unsigned query_len, TextBuffer &out, bool unaligned) const
 {
 	if (unaligned) {
 		out.write_until(query_name, Const::id_delimiters);
@@ -82,7 +82,7 @@ void Sam_format::print_query_intro(size_t query_num, const char *query_name, uns
 	}
 }
 
-void Sam_format::print_match(const Hsp_context& r, Text_buffer &out)
+void Sam_format::print_match(const Hsp_context& r, TextBuffer &out)
 {
 	out.write_until(r.query_name, Const::id_delimiters);
 	out << '\t' << '0' << '\t';

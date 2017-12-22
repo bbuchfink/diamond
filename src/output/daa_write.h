@@ -36,7 +36,7 @@ inline void init_daa(Output_stream &f)
 	f.write(&h2_, 1);
 }
 
-inline size_t write_daa_query_record(Text_buffer &buf, const char *query_name, const sequence &query)
+inline size_t write_daa_query_record(TextBuffer &buf, const char *query_name, const sequence &query)
 {
 	size_t seek_pos = buf.size();
 	buf.write((uint32_t)0);
@@ -50,12 +50,12 @@ inline size_t write_daa_query_record(Text_buffer &buf, const char *query_name, c
 	return seek_pos;
 }
 
-inline void finish_daa_query_record(Text_buffer &buf, size_t seek_pos)
+inline void finish_daa_query_record(TextBuffer &buf, size_t seek_pos)
 {
 	*(uint32_t*)(&buf[seek_pos]) = (uint32_t)(buf.size() - seek_pos - sizeof(uint32_t));
 }
 
-inline void write_daa_record(Text_buffer &buf, const Intermediate_record &r)
+inline void write_daa_record(TextBuffer &buf, const IntermediateRecord &r)
 {
 	buf.write(r.subject_id).write(r.flag);
 	buf.write_packed(r.score);
@@ -64,7 +64,7 @@ inline void write_daa_record(Text_buffer &buf, const Intermediate_record &r)
 	buf << r.transcript.data();
 }
 
-inline void write_daa_record(Text_buffer &buf, const Hsp_data &match, unsigned query_id, unsigned subject_id)
+inline void write_daa_record(TextBuffer &buf, const Hsp &match, unsigned query_id, unsigned subject_id)
 {
 	buf.write(ref_map.get(current_ref_block, subject_id));
 	buf.write(get_segment_flag(match));

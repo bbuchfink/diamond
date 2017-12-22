@@ -58,21 +58,22 @@ struct Target
 	bool is_enveloped(const Target &t, double p) const;
 	bool is_enveloped(Ptr_vector<Target>::const_iterator begin, Ptr_vector<Target>::const_iterator end, double p, int min_score) const;
 	void inner_culling(int cutoff);
+	void apply_filters(int dna_len, int subject_len, const char *query_title, const char *ref_title);
 	unsigned subject_id;
 	sequence subject;
 	int filter_score;
 	float filter_time;
 	bool outranked;
 	size_t begin, end;
-	list<Hsp_data> hsps;
+	list<Hsp> hsps;
 	list<Hsp_traits> ts;
 };
 
-struct Query_mapper
+struct QueryMapper
 {
-	Query_mapper(size_t query_id, Trace_pt_list::iterator begin, Trace_pt_list::iterator end);
+	QueryMapper(size_t query_id, Trace_pt_list::iterator begin, Trace_pt_list::iterator end);
 	void init();
-	bool generate_output(Text_buffer &buffer, Statistics &stat);
+	bool generate_output(TextBuffer &buffer, Statistics &stat);
 	void rank_targets(double ratio);
 	int raw_score_cutoff() const;
 	size_t n_targets() const
@@ -93,7 +94,7 @@ struct Query_mapper
 			targets[i].fill_source_ranges(source_query_len);
 	}
 	virtual void run(Statistics &stat) = 0;
-	virtual ~Query_mapper() {}
+	virtual ~QueryMapper() {}
 	pair<Trace_pt_list::iterator, Trace_pt_list::iterator> source_hits;
 	unsigned query_id, targets_finished, next_target;
 	unsigned source_query_len, unaligned_from;

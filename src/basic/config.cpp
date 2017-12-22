@@ -339,6 +339,8 @@ Config::Config(int argc, const char **argv)
 	case Config::makedb:
 		if (frame_shift != 0 && command == Config::blastp)
 			throw std::runtime_error("Frameshift alignments are only supported for translated searches.");
+		if (query_range_culling && frame_shift == 0)
+			throw std::runtime_error("Query range culling is only supported in frameshift alignment mode (option -F).");
 		if (matrix_file == "")
 			score_matrix = Score_matrix(to_upper_case(matrix), gap_open, gap_extend, reward, penalty);
 		else {

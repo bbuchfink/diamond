@@ -25,7 +25,7 @@ using std::endl;
 
 auto_ptr<Output_format> output_format;
 
-void Output_format::print_title(Text_buffer &buf, const char *id, bool full_titles, bool all_titles, const char *separator)
+void Output_format::print_title(TextBuffer &buf, const char *id, bool full_titles, bool all_titles, const char *separator)
 {
 	if (!all_titles) {
 		buf.write_until(id, full_titles ? "\1" : Const::id_delimiters);
@@ -55,9 +55,9 @@ void Output_format::print_title(Text_buffer &buf, const char *id, bool full_titl
 	//return n;
 }
 
-void print_hsp(Hsp_data &hsp, const TranslatedSequence &query)
+void print_hsp(Hsp &hsp, const TranslatedSequence &query)
 {
-	Text_buffer buf;
+	TextBuffer buf;
 	Pairwise_format().print_match(Hsp_context(hsp, 0, query, "", 0, 0, "", 0, 0, 0), buf);
 	buf << '\0';
 	cout << buf.get_begin();
@@ -108,7 +108,7 @@ void init_output()
 		message_stream << "Percentage range of top alignment score to report hits: " << config.toppercent << endl;
 }
 
-void XML_format::print_match(const Hsp_context &r, Text_buffer &out)
+void XML_format::print_match(const Hsp_context &r, TextBuffer &out)
 {
 	if(r.hsp_num == 0) {
 		if (r.hit_num > 0)
@@ -201,7 +201,7 @@ void XML_format::print_header(Output_stream &f, int mode, const char *matrix, in
 	f.write(ss.str().c_str(), ss.str().length());
 }
 
-void XML_format::print_query_intro(size_t query_num, const char *query_name, unsigned query_len, Text_buffer &out, bool unaligned) const
+void XML_format::print_query_intro(size_t query_num, const char *query_name, unsigned query_len, TextBuffer &out, bool unaligned) const
 {
 	out << "<Iteration>" << '\n'
 		<< "  <Iteration_iter-num>" << query_num + 1 << "</Iteration_iter-num>" << '\n'
@@ -213,7 +213,7 @@ void XML_format::print_query_intro(size_t query_num, const char *query_name, uns
 		<< "<Iteration_hits>" << '\n';
 }
 
-void XML_format::print_query_epilog(Text_buffer &out, const char *query_title, bool unaligned) const
+void XML_format::print_query_epilog(TextBuffer &out, const char *query_title, bool unaligned) const
 {
 	if (!unaligned) {
 		out << "  </Hit_hsps>" << '\n'

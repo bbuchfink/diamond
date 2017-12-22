@@ -28,7 +28,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 using std::vector;
 using std::string;
 
-struct Binary_buffer : public vector<char>
+struct BinaryBuffer : public vector<char>
 {
 
 	struct Iterator

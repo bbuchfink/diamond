@@ -43,7 +43,7 @@ struct Bias_correction : public vector<float>
 	{
 		score += (*this)[query_anchor + i*mult];
 	}
-	int operator()(const Hsp_data &hsp) const;
+	int operator()(const Hsp &hsp) const;
 	int operator()(const Diagonal_segment &d) const;
 };
 
@@ -67,13 +67,17 @@ struct Seed_hit
 	{
 		return ungapped.score > rhs.ungapped.score;
 	}
-	bool is_enveloped(list<Hsp_data>::const_iterator begin, list<Hsp_data>::const_iterator end, int dna_len) const
+	bool is_enveloped(list<Hsp>::const_iterator begin, list<Hsp>::const_iterator end, int dna_len) const
 	{
 		const DiagonalSegment d(ungapped, ::Frame(frame_));
-		for (list<Hsp_data>::const_iterator i = begin; i != end; ++i)
+		for (list<Hsp>::const_iterator i = begin; i != end; ++i)
 			if (i->envelopes(d, dna_len))
 				return true;
 		return false;
+	}
+	interval query_source_range(int dna_len) const
+	{
+		return DiagonalSegment(ungapped, ::Frame(frame_)).query_absolute_range(dna_len);
 	}
 	static bool compare_pos(const Seed_hit &x, const Seed_hit &y)
 	{
@@ -107,7 +111,7 @@ struct Hsp_traits
 	Hsp_traits(const interval &query_source_range):
 		query_source_range(query_source_range)
 	{}
-	Hsp_traits(const Hsp_data &hsp)
+	Hsp_traits(const Hsp &hsp)
 	{}
 	int partial_score(const Diagonal_segment &d) const
 	{
@@ -173,8 +177,8 @@ Diagonal_segment xdrop_ungapped(const sequence &query, const sequence &subject, 
 struct Local {};
 struct Global {};
 
-int greedy_align(sequence query, const Long_score_profile &qp, const Bias_correction &query_bc, sequence subject, vector<Seed_hit>::const_iterator begin, vector<Seed_hit>::const_iterator end, bool log, std::list<Hsp_data> &hsps, std::list<Hsp_traits> &ts, unsigned frame);
-int greedy_align(sequence query, const Long_score_profile &qp, const Bias_correction &query_bc, sequence subject, bool log, std::list<Hsp_data> &hsps, std::list<Hsp_traits>::const_iterator t_begin, std::list<Hsp_traits>::const_iterator t_end, std::list<Hsp_traits> &ts, int cutoff, unsigned frame);
+int greedy_align(sequence query, const Long_score_profile &qp, const Bias_correction &query_bc, sequence subject, vector<Seed_hit>::const_iterator begin, vector<Seed_hit>::const_iterator end, bool log, std::list<Hsp> &hsps, std::list<Hsp_traits> &ts, unsigned frame);
+int greedy_align(sequence query, const Long_score_profile &qp, const Bias_correction &query_bc, sequence subject, bool log, std::list<Hsp> &hsps, std::list<Hsp_traits>::const_iterator t_begin, std::list<Hsp_traits>::const_iterator t_end, std::list<Hsp_traits> &ts, int cutoff, unsigned frame);
 int estimate_score(const Long_score_profile &qp, sequence s, int d, int d1, bool log);
 
 template<typename _t>
@@ -478,14 +482,14 @@ struct Diag_scores {
 	static int min_diag_score, min_low_score;
 };
 
-void smith_waterman(sequence q, sequence s, Hsp_data &out);
+void smith_waterman(sequence q, sequence s, Hsp &out);
 void smith_waterman(sequence q, sequence s, const Diag_graph &diags);
 int score_range(sequence query, sequence subject, int i, int j, int j_end);
 
 void swipe(const sequence &query, vector<sequence>::const_iterator subject_begin, vector<sequence>::const_iterator subject_end, vector<int>::iterator out);
-void banded_sw(const sequence &query, const sequence &subject, int d_begin, int d_end, int j_begin, int j_end, Hsp_data &out);
+void banded_sw(const sequence &query, const sequence &subject, int d_begin, int d_end, int j_begin, int j_end, Hsp &out);
 
-void anchored_3frame_dp(const TranslatedSequence &query, sequence &subject, const DiagonalSegment &anchor, Hsp_data &out, int gap_open, int gap_extend, int frame_shift);
-int sw_3frame(const TranslatedSequence &query, Strand strand, const sequence &subject, int gap_open, int gap_extend, int frame_shift, Hsp_data &out);
+void anchored_3frame_dp(const TranslatedSequence &query, sequence &subject, const DiagonalSegment &anchor, Hsp &out, int gap_open, int gap_extend, int frame_shift);
+int sw_3frame(const TranslatedSequence &query, Strand strand, const sequence &subject, int gap_open, int gap_extend, int frame_shift, Hsp &out);
 
 #endif /* FLOATING_SW_H_ */

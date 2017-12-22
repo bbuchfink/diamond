@@ -191,7 +191,7 @@ struct DAA_file
 		return h2_.evalue;
 	}
 
-	bool read_query_buffer(Binary_buffer &buf, size_t &query_num)
+	bool read_query_buffer(BinaryBuffer &buf, size_t &query_num)
 	{
 		uint32_t size;
 		f_.read(&size, 1);

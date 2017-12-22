@@ -28,7 +28,7 @@ const bool log_ga = false;
 struct Target : public ::Target
 {
 
-	void ungapped_stage(Query_mapper &mapper)
+	void ungapped_stage(QueryMapper &mapper)
 	{
 		if (config.log_subject)
 			cout << "Subject = " << ref_ids::get()[subject_id].c_str() << endl;
@@ -46,7 +46,7 @@ struct Target : public ::Target
 		//target.filter_time = time;
 	}
 
-	void greedy_stage(Query_mapper &mapper, Statistics &stat, int cutoff)
+	void greedy_stage(QueryMapper &mapper, Statistics &stat, int cutoff)
 	{
 		if (config.log_subject)
 			cout << "Subject = " << ref_ids::get()[subject_id].c_str() << endl;
@@ -71,7 +71,7 @@ struct Target : public ::Target
 #endif
 	}
 
-	void align_target(Query_mapper &mapper, Statistics &stat)
+	void align_target(QueryMapper &mapper, Statistics &stat)
 	{
 		const size_t n = end - begin;
 		const vector<Seed_hit>::const_iterator hits = mapper.seed_hits.begin() + begin;
@@ -83,7 +83,7 @@ struct Target : public ::Target
 		if (filter_score == 0)
 			return;
 		if (config.ext == Config::more_greedy)
-			hsps.push_back(Hsp_data(filter_score));
+			hsps.push_back(Hsp(filter_score));
 		else {
 			const int qlen = (int)mapper.query_seq(0).length(),
 				band_plus = qlen <= 50 ? 0 : 16;
@@ -92,7 +92,7 @@ struct Target : public ::Target
 				if (log_ga) {
 					cout << "i_begin=" << i->query_range.begin_ << " j_begin=" << i->subject_range.begin_ << " d_min=" << i->d_min << " d_max=" << i->d_max << endl;
 				}
-				hsps.push_back(Hsp_data());
+				hsps.push_back(Hsp());
 				hsps.back().frame = i->frame;
 				banded_sw(mapper.query_seq(i->frame), subject, i->d_min - band_plus, i->d_max + band_plus + 1, 0, (int)subject.length(), hsps.back());
 				if (config.comp_based_stats) {
@@ -105,8 +105,8 @@ struct Target : public ::Target
 		if (!hsps.empty())
 			stat.inc(Statistics::OUT_HITS);
 
-		for (list<Hsp_data>::iterator i = hsps.begin(); i != hsps.end(); ++i)
-			for (list<Hsp_data>::iterator j = hsps.begin(); j != hsps.end();)
+		for (list<Hsp>::iterator i = hsps.begin(); i != hsps.end(); ++i)
+			for (list<Hsp>::iterator j = hsps.begin(); j != hsps.end();)
 				if (j != i && j->is_weakly_enveloped(*i)) {
 					stat.inc(Statistics::ERASED_HITS);
 					j = hsps.erase(j);
@@ -116,7 +116,7 @@ struct Target : public ::Target
 
 		//const float time = (float)timer.getElapsedTimeInMicroSec() + target.filter_time;
 
-		for (list<Hsp_data>::iterator i = hsps.begin(); i != hsps.end(); ++i) {
+		for (list<Hsp>::iterator i = hsps.begin(); i != hsps.end(); ++i) {
 			i->time = filter_time;
 			i->query_source_range = TranslatedPosition::absolute_interval(TranslatedPosition(i->query_range.begin_, Frame(i->frame)), TranslatedPosition(i->query_range.end_, Frame(i->frame)), mapper.source_query_len);
 		}
@@ -126,7 +126,7 @@ struct Target : public ::Target
 			filter_score = hsps.front().score;
 
 		ts.clear();
-		for (list<Hsp_data>::iterator i = hsps.begin(); i != hsps.end(); ++i)
+		for (list<Hsp>::iterator i = hsps.begin(); i != hsps.end(); ++i)
 			ts.push_back(Hsp_traits(i->query_source_range));
 
 		if (config.use_smith_waterman && !hsps.empty()) {

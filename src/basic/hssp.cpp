@@ -18,7 +18,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "../align/align.h"
 
-std::pair<int, int> Hsp_data::diagonal_bounds() const
+std::pair<int, int> Hsp::diagonal_bounds() const
 {
 	int d0 = std::numeric_limits<int>::max(), d1 = std::numeric_limits<int>::min();
 	for (Iterator it = begin(); it.good(); ++it) {
@@ -29,7 +29,7 @@ std::pair<int, int> Hsp_data::diagonal_bounds() const
 	return std::make_pair(d0, d1);
 }
 
-bool Hsp_data::is_weakly_enveloped(const Hsp_data &j) const
+bool Hsp::is_weakly_enveloped(const Hsp &j) const
 {
 	static const double overlap_factor = 0.9;
 	return score <= j.score
@@ -37,7 +37,7 @@ bool Hsp_data::is_weakly_enveloped(const Hsp_data &j) const
 		&& query_range.overlap_factor(j.query_range) >= overlap_factor;
 }
 
-void Hsp_data::merge(const Hsp_data &right, const Hsp_data &left, unsigned query_anchor, unsigned subject_anchor)
+void Hsp::merge(const Hsp &right, const Hsp &left, unsigned query_anchor, unsigned subject_anchor)
 {
 	length = right.length + left.length;
 	gap_openings = right.gap_openings + left.gap_openings;
@@ -96,7 +96,7 @@ Hsp_context& Hsp_context::parse()
 	return *this;
 }
 
-void Hsp_data::push_back(const DiagonalSegment &d, const TranslatedSequence &query, const sequence &subject, bool reversed)
+void Hsp::push_back(const DiagonalSegment &d, const TranslatedSequence &query, const sequence &subject, bool reversed)
 {
 	const sequence &q = query[d.i.frame];
 	if (reversed) {
@@ -135,7 +135,7 @@ void Hsp_data::push_back(const DiagonalSegment &d, const TranslatedSequence &que
 	}
 }
 
-void Hsp_data::splice(const DiagonalSegment &a, const DiagonalSegment &b, const TranslatedSequence &query, const sequence &subject, bool reversed)
+void Hsp::splice(const DiagonalSegment &a, const DiagonalSegment &b, const TranslatedSequence &query, const sequence &subject, bool reversed)
 {
 	TranslatedPosition i0 = a.query_last();
 	int j0 = a.subject_last();
@@ -165,7 +165,7 @@ void Hsp_data::splice(const DiagonalSegment &a, const DiagonalSegment &b, const 
 	}
 }
 
-void Hsp_data::set_begin(const DiagonalSegment &d, int dna_len)
+void Hsp::set_begin(const DiagonalSegment &d, int dna_len)
 {
 	subject_range.begin_ = d.j;
 	query_range.begin_ = d.i;
@@ -176,7 +176,7 @@ void Hsp_data::set_begin(const DiagonalSegment &d, int dna_len)
 		query_source_range.end_ = d.i.absolute(dna_len) + 1;
 }
 
-void Hsp_data::set_end(const DiagonalSegment &d, int dna_len)
+void Hsp::set_end(const DiagonalSegment &d, int dna_len)
 {
 	subject_range.end_ = d.subject_end();
 	query_range.end_ = d.query_end();
@@ -186,15 +186,15 @@ void Hsp_data::set_end(const DiagonalSegment &d, int dna_len)
 		query_source_range.begin_ = d.query_end().absolute(dna_len) + 1;
 }
 
-void Hsp_data::clear()
+void Hsp::clear()
 {
 	score = frame = length = identities = mismatches = positives = gap_openings = gaps = sw_score = 0;
 	transcript.clear();
 }
 
-bool Hsp_data::is_weakly_enveloped_by(list<Hsp_data>::const_iterator begin, list<Hsp_data>::const_iterator end, int cutoff) const
+bool Hsp::is_weakly_enveloped_by(list<Hsp>::const_iterator begin, list<Hsp>::const_iterator end, int cutoff) const
 {
-	for (list<Hsp_data>::const_iterator i = begin; i != end; ++i)
+	for (list<Hsp>::const_iterator i = begin; i != end; ++i)
 		if (partial_score(*i) < cutoff)
 			return true;
 	return false;

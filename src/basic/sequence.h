@@ -94,7 +94,7 @@ struct sequence
 			*(ptr++) = to_char(data_[i]);
 		return len;
 	}
-	Text_buffer& print(Text_buffer &buf, size_t begin, size_t end, const Value_traits& value_traits) const
+	TextBuffer& print(TextBuffer &buf, size_t begin, size_t end, const Value_traits& value_traits) const
 	{
 		for (size_t i = begin; i < end; ++i)
 			buf << value_traits.alphabet[(long)data_[i]];
@@ -125,7 +125,7 @@ struct sequence
 	{
 		return s.print(os, value_traits);
 	}
-	friend Text_buffer& operator<<(Text_buffer &buf, const sequence &s)
+	friend TextBuffer& operator<<(TextBuffer &buf, const sequence &s)
 	{
 		for(unsigned i=0;i<s.len_;++i)
 			buf << value_traits.alphabet[(long)s.data_[i]];

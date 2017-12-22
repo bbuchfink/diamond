@@ -19,9 +19,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "daa_record.h"
 #include "output.h"
 
-Binary_buffer::Iterator DAA_query_record::init(const Binary_buffer &buf)
+BinaryBuffer::Iterator DAA_query_record::init(const BinaryBuffer &buf)
 {
-	Binary_buffer::Iterator it(buf.begin());
+	BinaryBuffer::Iterator it(buf.begin());
 	uint32_t query_len;
 	it >> query_len;
 	it >> query_name;
@@ -42,7 +42,7 @@ Binary_buffer::Iterator DAA_query_record::init(const Binary_buffer &buf)
 	return it;
 }
 
-Binary_buffer::Iterator& operator>>(Binary_buffer::Iterator &it, DAA_query_record::Match &r)
+BinaryBuffer::Iterator& operator>>(BinaryBuffer::Iterator &it, DAA_query_record::Match &r)
 {
 	const uint32_t old_subject = r.subject_id;
 	it >> r.subject_id;
@@ -74,7 +74,7 @@ Binary_buffer::Iterator& operator>>(Binary_buffer::Iterator &it, DAA_query_recor
 	return it;
 }
 
-Hsp_data::Hsp_data(const Intermediate_record &r, unsigned query_source_len):
+Hsp::Hsp(const IntermediateRecord &r, unsigned query_source_len):
 	score(r.score),
 	transcript(r.transcript)
 {

@@ -52,7 +52,7 @@ struct Packed_sequence
 		}
 	}
 
-	Packed_sequence(Binary_buffer::Iterator &it, unsigned len, bool has_n, unsigned b):
+	Packed_sequence(BinaryBuffer::Iterator &it, unsigned len, bool has_n, unsigned b):
 		has_n_ (has_n)
 	{
 		const size_t l = (len*b+7)/8;

@@ -32,7 +32,7 @@ void Pipeline::run(Statistics &stat)
 	vector<int> scores(n);
 	swipe(query_seq(0), seqs.begin(), seqs.end(), scores.begin());
 	for (size_t i = 0; i < n; ++i)
-		targets[i].hsps.push_back(Hsp_data(scores[i]));
+		targets[i].hsps.push_back(Hsp(scores[i]));
 }
 
 }}

@@ -39,12 +39,12 @@ inline interval normalized_range(unsigned pos, int len, Strand strand)
 			: interval (pos + 1 + len, pos + 1);
 }
 
-struct Intermediate_record;
+struct IntermediateRecord;
 
-struct Hsp_data
+struct Hsp
 {
 
-	Hsp_data() :
+	Hsp() :
 		score(0),
 		frame(0),
 		length(0),
@@ -56,7 +56,7 @@ struct Hsp_data
 		sw_score(0)
 	{}
 
-	Hsp_data(int score) :
+	Hsp(int score) :
 		score(unsigned(score)),
 		frame(0),
 		length(0),
@@ -68,11 +68,11 @@ struct Hsp_data
 		sw_score(0)
 	{}
 
-	Hsp_data(const Intermediate_record &r, unsigned query_source_len);
+	Hsp(const IntermediateRecord &r, unsigned query_source_len);
 
 	struct Iterator
 	{
-		Iterator(const Hsp_data &parent) :
+		Iterator(const Hsp &parent) :
 			query_pos(parent.query_range.begin_, Frame(parent.frame)),
 			subject_pos(parent.subject_range.begin_),
 			ptr_(parent.transcript.ptr()),
@@ -155,7 +155,7 @@ struct Hsp_data
 		return align_mode.query_translated ? (frame <= 2 ? (int)frame + 1 : 2 - (int)frame) : 0;
 	}
 
-	bool operator<(const Hsp_data &rhs) const
+	bool operator<(const Hsp &rhs) const
 	{
 		return score > rhs.score;
 	}
@@ -175,12 +175,12 @@ struct Hsp_data
 		return (double)subject_range.length() * 100 / subject_len;
 	}
 
-	static bool cmp_query_pos(const Hsp_data &x, const Hsp_data &y)
+	static bool cmp_query_pos(const Hsp &x, const Hsp &y)
 	{
 		return x.query_range.begin_ < y.query_range.begin_;
 	}
 
-	int partial_score(const Hsp_data &h) const
+	int partial_score(const Hsp &h) const
 	{
 		const double overlap = std::max(subject_range.overlap_factor(h.subject_range), query_source_range.overlap_factor(h.query_source_range));
 		return int((1 - overlap)*score);
@@ -191,16 +191,16 @@ struct Hsp_data
 		return query_source_range.contains(d.query_absolute_range(dna_len)) || subject_range.contains(d.subject_range());
 	}
 
-	bool is_weakly_enveloped_by(std::list<Hsp_data>::const_iterator begin, std::list<Hsp_data>::const_iterator end, int cutoff) const;
+	bool is_weakly_enveloped_by(std::list<Hsp>::const_iterator begin, std::list<Hsp>::const_iterator end, int cutoff) const;
 	void push_back(const DiagonalSegment &d, const TranslatedSequence &query, const sequence &subject, bool reversed);
 	void splice(const DiagonalSegment &d0, const DiagonalSegment &d1, const TranslatedSequence &query, const sequence &subject, bool reversed);
 	void set_begin(const DiagonalSegment &d, int dna_len);
 	void set_end(const DiagonalSegment &d, int dna_len);
 	void clear();
 
-	bool is_weakly_enveloped(const Hsp_data &j) const;
+	bool is_weakly_enveloped(const Hsp &j) const;
 	std::pair<int, int> diagonal_bounds() const;
-	void merge(const Hsp_data &right, const Hsp_data &left, unsigned query_anchor, unsigned subject_anchor);
+	void merge(const Hsp &right, const Hsp &left, unsigned query_anchor, unsigned subject_anchor);
 	unsigned score, frame, length, identities, mismatches, positives, gap_openings, gaps, sw_score;
 	float time;
 	interval query_source_range, query_range, subject_range;
@@ -210,7 +210,7 @@ struct Hsp_data
 struct Hsp_context
 {
 	Hsp_context(
-		Hsp_data& hsp,
+		Hsp& hsp,
 		unsigned query_id,
 		const TranslatedSequence &query,
 		const char *query_name,
@@ -232,10 +232,10 @@ struct Hsp_context
 		hsp_num(hsp_num),
 		hsp_(hsp)
 	{}
-	struct Iterator : public Hsp_data::Iterator
+	struct Iterator : public Hsp::Iterator
 	{
 		Iterator(const Hsp_context &parent) :
-			Hsp_data::Iterator(parent.hsp_),
+			Hsp::Iterator(parent.hsp_),
 			parent_(parent)
 		{ }
 		Letter query() const
@@ -352,7 +352,7 @@ struct Hsp_context
 	const char *query_name, *subject_name;
 	const unsigned query_id, subject_id, orig_subject_id, subject_len, hit_num, hsp_num;
 private:	
-	Hsp_data &hsp_;
+	Hsp &hsp_;
 };
 
 #endif /* MATCH_H_ */

@@ -35,7 +35,7 @@ struct Output_writer
 	Output_writer(Output_stream* f) :
 		f_(f)
 	{ }
-	void operator()(Text_buffer &buf)
+	void operator()(TextBuffer &buf)
 	{
 		f_->write(buf.get_begin(), buf.size());
 		buf.clear();
@@ -69,10 +69,10 @@ void align_queries(Trace_pt_buffer &trace_pts, Output_stream* output_file);
 namespace ExtensionPipeline {
 	namespace Greedy {
 		struct Target;
-		struct Pipeline : public Query_mapper
+		struct Pipeline : public QueryMapper
 		{
 			Pipeline(size_t query_id, Trace_pt_list::iterator begin, Trace_pt_list::iterator end) :
-				Query_mapper(query_id, begin, end)
+				QueryMapper(query_id, begin, end)
 			{}
 			Target& target(size_t i);
 			virtual void run(Statistics &stat);
@@ -80,10 +80,10 @@ namespace ExtensionPipeline {
 		};
 	}
 	namespace Swipe {
-		struct Pipeline : public Query_mapper
+		struct Pipeline : public QueryMapper
 		{
 			Pipeline(size_t query_id, Trace_pt_list::iterator begin, Trace_pt_list::iterator end) :
-				Query_mapper(query_id, begin, end)
+				QueryMapper(query_id, begin, end)
 			{}
 			virtual void run(Statistics &stat);
 			virtual ~Pipeline() {}
@@ -91,10 +91,10 @@ namespace ExtensionPipeline {
 	}
 	namespace XDrop {
 		struct Target;
-		struct Pipeline : public Query_mapper
+		struct Pipeline : public QueryMapper
 		{
 			Pipeline(size_t query_id, Trace_pt_list::iterator begin, Trace_pt_list::iterator end) :
-				Query_mapper(query_id, begin, end)
+				QueryMapper(query_id, begin, end)
 			{}
 			Target& target(size_t i);
 			virtual void run(Statistics &stat);

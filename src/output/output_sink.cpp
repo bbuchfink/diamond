@@ -24,7 +24,7 @@ using std::auto_ptr;
 
 auto_ptr<Output_sink> Output_sink::instance;
 
-void Output_sink::push(size_t n, Text_buffer *buf)
+void Output_sink::push(size_t n, TextBuffer *buf)
 {
 	mtx_.lock();
 	//cout << "n=" << n << " next=" << next_ << endl;
@@ -38,12 +38,12 @@ void Output_sink::push(size_t n, Text_buffer *buf)
 		flush(buf);
 }
 
-void Output_sink::flush(Text_buffer *buf)
+void Output_sink::flush(TextBuffer *buf)
 {
 	size_t n = next_ + 1;
-	vector<Text_buffer*> out;
+	vector<TextBuffer*> out;
 	out.push_back(buf);
-	map<size_t, Text_buffer*>::iterator i;
+	map<size_t, TextBuffer*>::iterator i;
 	do {
 		while ((i = backlog_.begin()) != backlog_.end() && i->first == n) {
 			out.push_back(i->second);
@@ -52,7 +52,7 @@ void Output_sink::flush(Text_buffer *buf)
 		}
 		mtx_.unlock();
 		size_t size = 0;
-		for (vector<Text_buffer*>::iterator j = out.begin(); j < out.end(); ++j) {
+		for (vector<TextBuffer*>::iterator j = out.begin(); j < out.end(); ++j) {
 			if (*j) {
 				f_->write((*j)->get_begin(), (*j)->size());
 				if (*j != buf)

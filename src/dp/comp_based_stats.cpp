@@ -100,10 +100,10 @@ Bias_correction::Bias_correction(const sequence &seq):
 	}
 }
 
-int Bias_correction::operator()(const Hsp_data &hsp) const
+int Bias_correction::operator()(const Hsp &hsp) const
 {
 	float s = 0;
-	for (Hsp_data::Iterator i = hsp.begin(); i.good(); ++i) {
+	for (Hsp::Iterator i = hsp.begin(); i.good(); ++i) {
 		switch (i.op()) {
 		case op_match:
 		case op_substitution:

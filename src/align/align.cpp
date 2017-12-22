@@ -66,9 +66,9 @@ void align_worker(size_t thread_id)
 	Statistics stat;
 	while (hits.get()) {
 		if (hits.end == hits.begin) {
-			Text_buffer *buf = 0;
+			TextBuffer *buf = 0;
 			if (!blocked_processing && *output_format != Output_format::daa && config.report_unaligned != 0) {
-				buf = new Text_buffer;
+				buf = new TextBuffer;
 				const char *query_title = query_ids::get()[hits.query].c_str();
 				output_format->print_query_intro(hits.query, query_title, get_source_query_len((unsigned)hits.query), *buf, true);
 				output_format->print_query_epilog(*buf, query_title, true);
@@ -77,7 +77,7 @@ void align_worker(size_t thread_id)
 			continue;
 		}
 
-		Query_mapper *mapper;
+		QueryMapper *mapper;
 		if (config.ext == Config::swipe)
 			mapper = new ExtensionPipeline::Swipe::Pipeline(hits.query, hits.begin, hits.end);
 		else if(config.frame_shift != 0)
@@ -87,9 +87,9 @@ void align_worker(size_t thread_id)
 		mapper->init();
 		mapper->run(stat);
 
-		Text_buffer *buf = 0;
+		TextBuffer *buf = 0;
 		if (*output_format != Output_format::null) {
-			buf = new Text_buffer;
+			buf = new TextBuffer;
 			const bool aligned = mapper->generate_output(*buf, stat);
 			if (aligned && !config.unaligned.empty())
 				query_aligned[hits.query] = true;
