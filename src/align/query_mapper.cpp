@@ -250,6 +250,8 @@ void Target::inner_culling(int cutoff)
 	hsps.sort();
 	if (hsps.size() > 0)
 		filter_score = hsps.front().score;
+	else
+		filter_score = 0;
 	for (list<Hsp>::iterator i = hsps.begin(); i != hsps.end();) {
 		if (i->is_weakly_enveloped_by(hsps.begin(), i, cutoff))
 			i = hsps.erase(i);
