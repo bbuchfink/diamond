@@ -89,12 +89,12 @@ struct IntermediateRecord
 	}
 	static void write(TextBuffer &buf, const Hsp &match, unsigned query_id, unsigned subject_id)
 	{
-		const interval or (match.oriented_range());
+		const interval oriented_range (match.oriented_range());
 		buf.write(ref_map.get(current_ref_block, subject_id))
 			.write(get_segment_flag(match))
 			.write_packed(match.score)
-			.write_packed(or.begin_)
-			.write_varint(or.end_)
+			.write_packed(oriented_range.begin_)
+			.write_varint(oriented_range.end_)
 			.write_packed(match.subject_range.begin_)
 			<< match.transcript.data();
 	}

@@ -21,12 +21,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <assert.h>
 #include <map>
-#include <limits>
+#include <limits.h>
 #include "interval.h"
 
 struct IntervalNode
 {
-	enum { INF = std::numeric_limits<int>::max() };
+	enum { INF = INT_MAX };
 	IntervalNode():
 		count(0),
 		min_score(INF)
@@ -66,7 +66,7 @@ struct IntervalPartition : protected std::map<int, IntervalNode>
 		}
 		std::pair<interval, IntervalNode> operator*() const
 		{
-			return std::make_pair(interval(i_->first, j_ == parent_.end() ? std::numeric_limits<int>::max() : j_->first), i_->second);
+			return std::make_pair(interval(i_->first, j_ == parent_.end() ? INT_MAX : j_->first), i_->second);
 		}
 	private:
 		const_iterator i_, j_;
