@@ -88,7 +88,7 @@ void anchored_3frame_dp(const TranslatedSequence &query, sequence &subject, cons
 	const size_t splice = out.transcript.raw_length();
 	out.transcript.push_terminator();
 
-	// Extend right
+	// Extend right... seq end?
 	
 	q[0] = (unsigned char*)&query[anchor.query_end()];
 	forward = anchor.query_end();

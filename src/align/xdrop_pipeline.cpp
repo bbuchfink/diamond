@@ -66,12 +66,26 @@ struct Target : public ::Target
 			ip.insert(i->query_source_range, score);
 	}
 
-	void process_range_culling(QueryMapper &mapper, IntervalPartition &ip)
+	bool is_outranked(QueryMapper &mapper, const IntervalPartition &ip, const Seed_hit &hit) const
 	{
-		const double rank_ratio = config.rank_ratio == -1 ? 0.4 : config.rank_ratio;
+		const interval query_range = hit.query_source_range(mapper.source_query_len);
+		if (config.toppercent == 100.0) {
+			const double rank_ratio = config.rank_ratio == -1 ? 0.4 : config.rank_ratio;
+			const int min_score = ip.min_score(query_range);
+			return min_score > 0 && (double)filter_score / min_score < rank_ratio;
+		}
+		else {
+			const double rank_ratio = config.rank_ratio == -1 ? 0.4 : config.rank_ratio;
+			const int max_score = ip.max_score(query_range);
+			const double cutoff = (double)max_score * (1.0 - config.toppercent / 100.0);
+			return max_score > 0 && (double)filter_score / cutoff < rank_ratio;
+		}
+	}
+
+	void process_range_culling(QueryMapper &mapper, IntervalPartition &ip)
+	{		
 		vector<Seed_hit>::iterator hits = mapper.seed_hits.begin() + begin;
-		const int min_score = ip.min_score(hits[0].query_source_range(mapper.source_query_len));
-		if (min_score > 0 && (double)filter_score / min_score < rank_ratio) {
+		if(is_outranked(mapper, ip, hits[0])) {
 			if (config.benchmark_ranking)
 				outranked = true;
 			else

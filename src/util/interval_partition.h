@@ -26,19 +26,20 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 struct IntervalNode
 {
-	enum { INF = INT_MAX };
 	IntervalNode():
 		count(0),
-		min_score(INF)
+		min_score(INT_MAX),
+		max_score(0)
 	{}
-	IntervalNode(int count, int min_score):
+	IntervalNode(int count, int min_score, int max_score):
 		count(count),
-		min_score(min_score)
+		min_score(min_score),
+		max_score(max_score)
 	{
 	}
 	IntervalNode add(int score, int cap) const
 	{
-		return IntervalNode(count + 1, count < cap ? std::min(min_score, score) : min_score);
+		return IntervalNode(count + 1, count < cap ? std::min(min_score, score) : min_score, std::max(max_score, score));
 	}
 	int count, min_score, max_score;
 };
@@ -112,17 +113,43 @@ struct IntervalPartition : protected std::map<int, IntervalNode>
 		return c;
 	}
 
+	int covered(interval k, int max_score) const
+	{
+		Iterator i = begin(k.begin_);
+		std::pair<interval, IntervalNode> l;
+		int c = 0;
+		while (i.good() && (l = *i).first.begin_ < k.end_) {
+			if (l.second.max_score >= max_score)
+				c += k.overlap(l.first);
+			++i;
+		}
+		return c;
+	}
+
 	int min_score(interval k) const
 	{
 		Iterator i = begin(k.begin_);
 		std::pair<interval, IntervalNode> l;
-		int s = IntervalNode::INF;
+		int s = INT_MAX;
 		while (i.good() && (l = *i).first.begin_ < k.end_) {
 			if (l.second.count < cap)
 				return 0;
 			s = std::min(s, l.second.min_score);
 			++i;
 		}
+		return s;
+	}
+
+	int max_score(interval k) const
+	{
+		Iterator i = begin(k.begin_);
+		std::pair<interval, IntervalNode> l;
+		int s = INT_MAX;
+		while (i.good() && (l = *i).first.begin_ < k.end_) {
+			s = std::min(s, l.second.max_score);
+			++i;
+		}
+		assert(s != INT_MAX);
 		return s;
 	}
 

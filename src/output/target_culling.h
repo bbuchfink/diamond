@@ -87,7 +87,12 @@ struct RangeCulling : public TargetCulling
 	{
 		int c = 0, l = 0;
 		for (std::list<Hsp>::const_iterator i = t.hsps.begin(); i != t.hsps.end(); ++i) {
-			c += p_.covered(i->query_source_range);
+			if(config.toppercent == 100.0)
+				c += p_.covered(i->query_source_range);
+			else {
+				const int cutoff = (double)i->score / (1.0 - config.toppercent / 100.0);
+				c += p_.covered(i->query_source_range, cutoff);
+			}
 			l += i->query_source_range.length();
 		}
 		return (double)c / l * 100.0 < config.query_range_cover ? INCLUDE : NEXT;
@@ -96,7 +101,12 @@ struct RangeCulling : public TargetCulling
 	{
 		int c = 0, l = 0;
 		for (std::vector<IntermediateRecord>::const_iterator i = target_hsp.begin(); i != target_hsp.end(); ++i) {
-			c += p_.covered(i->absolute_query_range());
+			if (config.toppercent == 100.0)
+				c += p_.covered(i->absolute_query_range());
+			else {
+				const int cutoff = (double)i->score / (1.0 - config.toppercent / 100.0);
+				c += p_.covered(i->absolute_query_range(), cutoff);
+			}
 			l += i->absolute_query_range().length();
 		}
 		return (double)c / l * 100.0 < config.query_range_cover ? INCLUDE : NEXT;

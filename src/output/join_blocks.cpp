@@ -24,7 +24,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../align/query_mapper.h"
 #include "target_culling.h"
 
-struct Join_fetcher
+struct JoinFetcher
 {
 	static void init(const vector<Temp_file> &tmp_file)
 	{
@@ -55,7 +55,7 @@ struct Join_fetcher
 		files[b].read(buf[b].data(), size);
 		files[b].read(&query_ids[b], 1);
 	}
-	Join_fetcher():
+	JoinFetcher():
 		buf(current_ref_block)
 	{}
 	bool operator()()
@@ -77,13 +77,13 @@ struct Join_fetcher
 	unsigned query_id, unaligned_from;
 };
 
-vector<Input_stream> Join_fetcher::files;
-vector<unsigned> Join_fetcher::query_ids;
-unsigned Join_fetcher::query_last;
+vector<Input_stream> JoinFetcher::files;
+vector<unsigned> JoinFetcher::query_ids;
+unsigned JoinFetcher::query_last;
 
-struct Join_writer
+struct JoinWriter
 {
-	Join_writer(Output_stream &f):
+	JoinWriter(Output_stream &f):
 		f_(f)
 	{}
 	void operator()(TextBuffer& buf)
@@ -206,9 +206,9 @@ void join_query(vector<BinaryBuffer> &buf, TextBuffer &out, Statistics &statisti
 	}
 }
 
-void join_worker(Task_queue<TextBuffer,Join_writer> *queue)
+void join_worker(Task_queue<TextBuffer, JoinWriter> *queue)
 {
-	Join_fetcher fetcher;
+	JoinFetcher fetcher;
 	size_t n;
 	TextBuffer *out;
 	Statistics stat;
@@ -251,17 +251,17 @@ void join_worker(Task_queue<TextBuffer,Join_writer> *queue)
 void join_blocks(unsigned ref_blocks, Output_stream &master_out, const vector<Temp_file> &tmp_file)
 {
 	ref_map.init_rev_map();
-	Join_fetcher::init(tmp_file);
-	Join_writer writer(master_out);
-	Task_queue<TextBuffer, Join_writer> queue(3 * config.threads_, writer);
+	JoinFetcher::init(tmp_file);
+	JoinWriter writer(master_out);
+	Task_queue<TextBuffer, JoinWriter> queue(3 * config.threads_, writer);
 	Thread_pool threads;
 	for (unsigned i = 0; i < config.threads_; ++i)
 		threads.push_back(launch_thread(join_worker, &queue));
 	threads.join_all();
-	Join_fetcher::finish();
+	JoinFetcher::finish();
 	if (*output_format != Output_format::daa && config.report_unaligned != 0) {
 		TextBuffer out;
-		for (unsigned i = Join_fetcher::query_last + 1; i < query_ids::get().get_length(); ++i) {
+		for (unsigned i = JoinFetcher::query_last + 1; i < query_ids::get().get_length(); ++i) {
 			output_format->print_query_intro(i, query_ids::get()[i].c_str(), get_source_query_len(i), out, true);
 			output_format->print_query_epilog(out, query_ids::get()[i].c_str(), true);
 		}
