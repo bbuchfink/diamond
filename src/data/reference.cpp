@@ -207,6 +207,8 @@ void Database_file::get_seq()
 	if (!all)
 		for (vector<string>::const_iterator i = config.seq_no.begin(); i != config.seq_no.end(); ++i)
 			seqs.insert(atoi(i->c_str()) - 1);
+	const size_t max_letters = config.chunk_size == 0.0 ? std::numeric_limits<size_t>::max() : (size_t)(config.chunk_size*1e9);
+	size_t letters = 0;
 	for (size_t n = 0; n < ref_header.sequences; ++n) {
 		read(&c, 1);
 		while (read(&c, 1), c != '\xff')
@@ -222,6 +224,9 @@ void Database_file::get_seq()
 			else
 				cout << sequence(seq) << endl;
 		}
+		letters += seq.size();
+		if (letters >= max_letters)
+			break;
 		seq.clear();
 		id.clear();
 	}
