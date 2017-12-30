@@ -156,13 +156,13 @@ void Pipeline::run(Statistics &stat)
 	if (config.ext == Config::most_greedy)
 		return;
 	fill_source_ranges();
-	rank_targets(config.rank_ratio == -1 ? (query_seq(0).length() > 50 ? 0.6 : 0.9) : config.rank_ratio);
+	rank_targets(config.rank_ratio == -1 ? (query_seq(0).length() > 50 ? 0.6 : 0.9) : config.rank_ratio, config.rank_factor == -1 ? 1e3 : config.rank_factor);
 	stat.inc(Statistics::TARGET_HITS1, n_targets());
 	const int cutoff = int(raw_score_cutoff() * config.score_ratio);
 	for (size_t i = 0; i < n_targets(); ++i)
 		target(i).greedy_stage(*this, stat, cutoff);
 	fill_source_ranges();
-	rank_targets(config.rank_ratio2 == -1 ? (query_seq(0).length() > 50 ? 0.95 : 1.0) : config.rank_ratio2);
+	rank_targets(config.rank_ratio2 == -1 ? (query_seq(0).length() > 50 ? 0.95 : 1.0) : config.rank_ratio2, config.rank_factor == -1 ? 1e3 : config.rank_factor);
 	stat.inc(Statistics::TARGET_HITS2, n_targets());
 	for (size_t i = 0; i < n_targets(); ++i)
 		target(i).align_target(*this, stat);
