@@ -55,9 +55,6 @@ struct Reference_header
 	uint64_t unique_id;
 	uint32_t build, db_version;
 	uint64_t sequences, letters, pos_array_offset;
-#ifdef EXTRA
-	Sequence_type sequence_type;
-#endif
 	enum { current_db_version = 1 };
 };
 
@@ -79,10 +76,6 @@ struct Database_file : public Input_stream
 			throw invalid_database_version_exception();
 		if (ref_header.sequences == 0)
 			throw std::runtime_error("Incomplete database file. Database building did not complete successfully.");
-#ifdef EXTRA
-		if(sequence_type(_val()) != ref_header.sequence_type)
-			throw std::runtime_error("Database has incorrect sequence type for current alignment mode.");
-#endif
 		pos_array_offset = ref_header.pos_array_offset;
 	}
 

@@ -75,9 +75,17 @@ struct Seed_hit
 				return true;
 		return false;
 	}
+	DiagonalSegment diagonal_segment() const
+	{
+		return DiagonalSegment(ungapped, ::Frame(frame_));
+	}
 	interval query_source_range(int dna_len) const
 	{
-		return DiagonalSegment(ungapped, ::Frame(frame_)).query_absolute_range(dna_len);
+		return diagonal_segment().query_absolute_range(dna_len);
+	}
+	Strand strand() const
+	{
+		return ::Frame(frame_).strand;
 	}
 	static bool compare_pos(const Seed_hit &x, const Seed_hit &y)
 	{
@@ -459,6 +467,8 @@ private:
 	int diags_, cols_;
 	vector<uint8_t> data_;
 };
+
+extern size_t cells;
 
 struct Diag_scores {
 	enum {

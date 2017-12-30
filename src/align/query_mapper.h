@@ -74,7 +74,7 @@ struct QueryMapper
 	QueryMapper(size_t query_id, Trace_pt_list::iterator begin, Trace_pt_list::iterator end);
 	void init();
 	bool generate_output(TextBuffer &buffer, Statistics &stat);
-	void rank_targets(double ratio);
+	void rank_targets(double ratio, double factor);
 	int raw_score_cutoff() const;
 	size_t n_targets() const
 	{

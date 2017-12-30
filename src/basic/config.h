@@ -94,6 +94,7 @@ struct Config
 	vector<string> seq_no;
 	double rank_ratio;
 	double rank_ratio2;
+	double rank_factor;
 	bool ht_mode;
 	bool old_freq;
 	double freq_sd;

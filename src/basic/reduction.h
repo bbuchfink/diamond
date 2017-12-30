@@ -104,8 +104,4 @@ private:
 
 };
 
-#ifdef EXTRA
-#include "../../../extra/reduction.h"
-#endif
-
 #endif /* REDUCTION_H_ */

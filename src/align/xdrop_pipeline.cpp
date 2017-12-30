@@ -27,6 +27,27 @@ DiagonalSegment anchor(const Seed_hit &s, const TranslatedSequence &query, const
 	return DiagonalSegment(TranslatedPosition(s.query_pos_, Frame(s.frame_)), s.subject_pos_, 1).set_score(query, subject);
 }
 
+int ungapped_filter_score(vector<Seed_hit>::iterator begin, vector<Seed_hit>::iterator end, Strand strand)
+{
+	int filter_score = 0;
+	vector<DiagonalSegment> v;
+	for (vector<Seed_hit>::iterator i = begin; i < end; ++i) {
+		if (i->strand() != strand)
+			continue;
+		DiagonalSegment d(i->diagonal_segment());
+		for (vector<DiagonalSegment>::const_iterator j = v.begin(); j < v.end(); ++j) {
+			d.cut_out(*j);
+			if (d.len == 0)
+				break;
+		}
+		if (d.len > 0) {
+			v.push_back(d);
+			filter_score += d.score;
+		}
+	}
+	return filter_score;
+}
+
 struct Target : public ::Target
 {
 
@@ -35,6 +56,7 @@ struct Target : public ::Target
 		vector<Seed_hit>::iterator hits = mapper.seed_hits.begin() + begin, hits_end = mapper.seed_hits.begin() + end;
 		std::stable_sort(hits, hits_end);
 		filter_score = hits[0].ungapped.score;
+		//filter_score = std::max(ungapped_filter_score(hits, hits_end, FORWARD), ungapped_filter_score(hits, hits_end, REVERSE));
 	}
 
 	void process(QueryMapper &mapper)
@@ -104,7 +126,7 @@ Target& Pipeline::target(size_t i)
 
 void Pipeline::run_global_culling(Statistics &stat)
 {
-	rank_targets(config.rank_ratio == -1 ? 0.4 : config.rank_ratio);
+	rank_targets(config.rank_ratio == -1 ? 0.4 : config.rank_ratio, config.rank_factor == -1 ? 1e3 : config.rank_factor);
 	for (size_t i = 0; i < n_targets(); ++i)
 		target(i).process(*this);
 }

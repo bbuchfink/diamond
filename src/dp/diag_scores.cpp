@@ -51,6 +51,8 @@ void score_diagonal2(const Letter *query, const Bias_correction &query_bc, const
 	}
 }
 
+size_t cells = 0;
+
 void scan_cols(const Long_score_profile &qp, sequence s, int i, int j, int j_end, vector<uint8_t> &sv_max, bool log, Band &buf, Band &local_max, int block_len)
 {
 #ifdef __SSE2__
@@ -81,6 +83,7 @@ void scan_cols(const Long_score_profile &qp, sequence s, int i, int j, int j_end
 			local_max_ptr += diags;
 			max = score_vector<uint8_t>();
 		}
+		cells += 16;
 	}
 	if (((j2 - j) & 15) != 0) {
 		global_max.max(max);

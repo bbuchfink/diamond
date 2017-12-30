@@ -188,9 +188,40 @@ struct DiagonalSegment
 		return TranslatedPosition::absolute_interval(i, i + len, dna_len);
 	}
 
+	interval query_in_strand_range() const
+	{
+		return interval(i.in_strand(), (i + len).in_strand());
+	}
+
 	interval subject_range() const
 	{
 		return interval(j, j + len);
+	}
+
+	int partial_score(const DiagonalSegment &d) const
+	{
+		const double overlap = std::max(subject_range().overlap_factor(d.subject_range()), query_in_strand_range().overlap_factor(d.query_in_strand_range()));
+		return int((1.0 - overlap)*score);
+	}
+
+	void cut_out(const DiagonalSegment &d)
+	{
+		const int ll = std::min(d.i.translated - i.translated, d.j - j),
+			lr = std::min(query_end().translated - d.query_end().translated, subject_end() - d.subject_end());
+		int len2;
+		if (ll > 0 && ll >= lr) {
+			len2 = std::min(len, ll);
+		}
+		else if (lr > 0 && lr >= ll) {
+			len2 = std::min(len, lr);
+			i = query_end() - len2;
+			j = subject_end() - len2;
+		}
+		else {
+			len2 = 0;
+		}
+		score = int((double)len2 / len * score);
+		len = len2;
 	}
 
 	TranslatedPosition i;

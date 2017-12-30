@@ -111,9 +111,9 @@ struct IntermediateRecord
 
 void join_blocks(unsigned ref_blocks, Output_stream &master_out, const vector<Temp_file> &tmp_file);
 
-struct Output_sink
+struct OutputSink
 {
-	Output_sink(size_t begin, Output_stream *f) :
+	OutputSink(size_t begin, Output_stream *f) :
 		f_(f),
 		next_(begin),
 		size_(0),
@@ -128,7 +128,7 @@ struct Output_sink
 	{
 		return max_size_;
 	}
-	static Output_sink& get()
+	static OutputSink& get()
 	{
 		return *instance;
 	}
@@ -136,7 +136,7 @@ struct Output_sink
 	{
 		return next_;
 	}
-	static auto_ptr<Output_sink> instance;
+	static auto_ptr<OutputSink> instance;
 private:
 	void flush(TextBuffer *buf);
 	tthread::mutex mtx_;

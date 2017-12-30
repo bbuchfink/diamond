@@ -125,7 +125,7 @@ void QueryMapper::load_targets()
 	targets[n - 1].end = seed_hits.size();
 }
 
-void QueryMapper::rank_targets(double ratio)
+void QueryMapper::rank_targets(double ratio, double factor)
 {
 	std::stable_sort(targets.begin(), targets.end(), Target::compare);
 
@@ -138,13 +138,14 @@ void QueryMapper::rank_targets(double ratio)
 		score = int((double)targets[min_idx - 1].filter_score * ratio);
 	}
 
-	unsigned i = 0;
+	const size_t cap = (config.toppercent < 100 || config.max_alignments == std::numeric_limits<uint64_t>::max()) ? std::numeric_limits<uint64_t>::max() : config.max_alignments*factor;
+	size_t i = 0;
 	for (; i < targets.size(); ++i)
-		if (targets[i].filter_score < score)
+		if (targets[i].filter_score < score || i >= cap)
 			break;
 
 	if (config.benchmark_ranking)
-		for (unsigned j = i; j < targets.size(); ++j)
+		for (size_t j = i; j < targets.size(); ++j)
 			targets[j].outranked = true;
 	else
 		targets.erase(targets.begin() + i, targets.end());

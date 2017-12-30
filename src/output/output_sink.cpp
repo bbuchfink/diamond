@@ -22,9 +22,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 using std::map;
 using std::auto_ptr;
 
-auto_ptr<Output_sink> Output_sink::instance;
+auto_ptr<OutputSink> OutputSink::instance;
 
-void Output_sink::push(size_t n, TextBuffer *buf)
+void OutputSink::push(size_t n, TextBuffer *buf)
 {
 	mtx_.lock();
 	//cout << "n=" << n << " next=" << next_ << endl;
@@ -38,7 +38,7 @@ void Output_sink::push(size_t n, TextBuffer *buf)
 		flush(buf);
 }
 
-void Output_sink::flush(TextBuffer *buf)
+void OutputSink::flush(TextBuffer *buf)
 {
 	size_t n = next_ + 1;
 	vector<TextBuffer*> out;
@@ -72,10 +72,10 @@ void heartbeat_worker(size_t qend)
 {
 	static const int interval = 100;
 	int n = 0;
-	while (Output_sink::get().next() < qend) {
+	while (OutputSink::get().next() < qend) {
 		if (n == interval) {
-			const string title(query_ids::get()[Output_sink::get().next()].c_str());
-			verbose_stream << "Queries=" << Output_sink::get().next() << " size=" << megabytes(Output_sink::get().size()) << " max_size=" << megabytes(Output_sink::get().max_size())
+			const string title(query_ids::get()[OutputSink::get().next()].c_str());
+			verbose_stream << "Queries=" << OutputSink::get().next() << " size=" << megabytes(OutputSink::get().size()) << " max_size=" << megabytes(OutputSink::get().max_size())
 				<< " next=" << title.substr(0, title.find(' ')) << endl;
 			n = 0;
 		}

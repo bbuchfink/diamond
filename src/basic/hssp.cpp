@@ -37,23 +37,6 @@ bool Hsp::is_weakly_enveloped(const Hsp &j) const
 		&& query_range.overlap_factor(j.query_range) >= overlap_factor;
 }
 
-void Hsp::merge(const Hsp &right, const Hsp &left, unsigned query_anchor, unsigned subject_anchor)
-{
-	length = right.length + left.length;
-	gap_openings = right.gap_openings + left.gap_openings;
-	identities = right.identities + left.identities;
-	mismatches = right.mismatches + left.mismatches;
-	score = right.score + left.score;
-	gaps = right.gaps + left.gaps;
-	gap_openings = right.gap_openings + left.gap_openings;
-	positives = right.positives + left.positives;
-	subject_range = interval(subject_anchor + 1 - left.subject_range.end_, subject_anchor + 1 + right.subject_range.end_);
-	query_range = interval(query_anchor + 1 - left.query_range.end_, query_anchor + 1 + right.query_range.end_);
-	transcript.data_.insert(transcript.data_.end(), left.transcript.data_.begin(), left.transcript.data_.end());
-	transcript.data_.insert(transcript.data_.end(), right.transcript.data_.rbegin(), right.transcript.data_.rend());
-	transcript.push_terminator();
-}
-
 Hsp_context& Hsp_context::parse()
 {
 	hsp_.length = hsp_.identities = hsp_.mismatches = hsp_.gap_openings = hsp_.positives = hsp_.gaps = 0;

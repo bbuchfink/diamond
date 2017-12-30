@@ -73,7 +73,7 @@ void align_worker(size_t thread_id)
 				output_format->print_query_intro(hits.query, query_title, get_source_query_len((unsigned)hits.query), *buf, true);
 				output_format->print_query_epilog(*buf, query_title, true);
 			}
-			Output_sink::get().push(hits.query, buf);
+			OutputSink::get().push(hits.query, buf);
 			continue;
 		}
 
@@ -95,7 +95,7 @@ void align_worker(size_t thread_id)
 				query_aligned[hits.query] = true;
 		}
 		delete mapper;
-		Output_sink::get().push(hits.query, buf);
+		OutputSink::get().push(hits.query, buf);
 	}
 	statistics += stat;
 }
@@ -117,7 +117,7 @@ void align_queries(Trace_pt_buffer &trace_pts, Output_stream* output_file)
 		v->init();
 		timer.go("Computing alignments");
 		Align_fetcher::init(query_range.first, query_range.second, v->begin(), v->end());
-		Output_sink::instance = auto_ptr<Output_sink>(new Output_sink(query_range.first, output_file));
+		OutputSink::instance = auto_ptr<OutputSink>(new OutputSink(query_range.first, output_file));
 		Thread_pool threads;
 		if (config.verbosity >= 3)
 			threads.push_back(launch_thread(heartbeat_worker, query_range.second));

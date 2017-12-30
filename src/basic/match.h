@@ -200,7 +200,6 @@ struct Hsp
 
 	bool is_weakly_enveloped(const Hsp &j) const;
 	std::pair<int, int> diagonal_bounds() const;
-	void merge(const Hsp &right, const Hsp &left, unsigned query_anchor, unsigned subject_anchor);
 	unsigned score, frame, length, identities, mismatches, positives, gap_openings, gaps, sw_score;
 	float time;
 	interval query_source_range, query_range, subject_range;
