@@ -92,12 +92,12 @@ struct Target : public ::Target
 	{
 		const interval query_range = hit.query_source_range(mapper.source_query_len);
 		if (config.toppercent == 100.0) {
-			const double rank_ratio = config.rank_ratio == -1 ? 0.4 : config.rank_ratio;
+			const double rank_ratio = config.rank_ratio == -1.0 ? 0.6 : config.rank_ratio;
 			const int min_score = ip.min_score(query_range);
 			return min_score > 0 && (double)filter_score / min_score < rank_ratio;
 		}
 		else {
-			const double rank_ratio = config.rank_ratio == -1 ? 0.4 : config.rank_ratio;
+			const double rank_ratio = config.rank_ratio == -1.0 ? 0.6 : config.rank_ratio;
 			const int max_score = ip.max_score(query_range);
 			const double cutoff = (double)max_score * (1.0 - config.toppercent / 100.0);
 			return max_score > 0 && (double)filter_score / cutoff < rank_ratio;
@@ -114,7 +114,8 @@ struct Target : public ::Target
 				return;
 		}
 		process(mapper);
-		add_ranges(ip, hits[0].ungapped.score);
+		if (!outranked)
+			add_ranges(ip, hits[0].ungapped.score);
 	}
 
 };
@@ -126,7 +127,7 @@ Target& Pipeline::target(size_t i)
 
 void Pipeline::run_global_culling(Statistics &stat)
 {
-	rank_targets(config.rank_ratio == -1 ? 0.4 : config.rank_ratio, config.rank_factor == -1 ? 1e3 : config.rank_factor);
+	rank_targets(config.rank_ratio == -1 ? 0.6 : config.rank_ratio, config.rank_factor == -1.0 ? 1e3 : config.rank_factor);
 	for (size_t i = 0; i < n_targets(); ++i)
 		target(i).process(*this);
 }

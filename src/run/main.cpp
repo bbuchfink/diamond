@@ -101,6 +101,7 @@ int main(int ac, const char* av[])
 #ifdef EXTRA
 		case Config::test_extra:
 			test_main();
+			break;
 		case Config::benchmark:
 			benchmark_sw();
 			break;

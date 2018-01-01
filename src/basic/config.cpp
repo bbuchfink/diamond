@@ -167,7 +167,6 @@ Config::Config(int argc, const char **argv)
 		("index-mode", 0, "index mode (0=4x12, 1=16x9)", index_mode)
 		("rank-ratio", 0, "include subjects within this ratio of last hit (stage 1)", rank_ratio, -1.0)
 		("rank-ratio2", 0, "include subjects within this ratio of last hit (stage 2)", rank_ratio2, -1.0)
-		("rank-factor", 0, "", rank_factor, -1.0)
 		("max-hsps", 0, "maximum number of HSPs per subject sequence to save for each query", max_hsps, 0u)
 		("dbsize", 0, "effective database size (in letters)", db_size)
 		("no-auto-append", 0, "disable auto appending of DAA and DMND file extensions", no_auto_append)
@@ -227,7 +226,8 @@ Config::Config(int argc, const char **argv)
 		("fetch-size", 0, "trace point fetch size", fetch_size, 4096u)
 		("target-fetch-size", 0, "number of target sequences to fetch for seed extension", target_fetch_size, 4u)
 		("small-query", 0, "", small_query)
-		("hashed-seeds", 0, "", hashed_seeds);
+		("hashed-seeds", 0, "", hashed_seeds)
+		("rank-factor", 0, "", rank_factor, -1.0);
 		
 	parser.add(general).add(makedb).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options);
 	parser.store(argc, argv, command);
