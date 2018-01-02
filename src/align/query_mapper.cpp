@@ -138,7 +138,7 @@ void QueryMapper::rank_targets(double ratio, double factor)
 		score = int((double)targets[min_idx - 1].filter_score * ratio);
 	}
 
-	const size_t cap = (config.toppercent < 100 || config.max_alignments == std::numeric_limits<uint64_t>::max()) ? std::numeric_limits<uint64_t>::max() : config.max_alignments*factor;
+	const size_t cap = (config.toppercent < 100 || config.max_alignments == std::numeric_limits<uint64_t>::max()) ? std::numeric_limits<uint64_t>::max() : size_t(config.max_alignments*factor);
 	size_t i = 0;
 	for (; i < targets.size(); ++i)
 		if (targets[i].filter_score < score || i >= cap)

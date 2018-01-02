@@ -51,11 +51,12 @@ int ungapped_filter_score(vector<Seed_hit>::iterator begin, vector<Seed_hit>::it
 struct Target : public ::Target
 {
 
-	void ungapped_stage(QueryMapper &mapper)
+	void ungapped_stage(QueryMapper &mapper, vector<int> &pack)
 	{
 		vector<Seed_hit>::iterator hits = mapper.seed_hits.begin() + begin, hits_end = mapper.seed_hits.begin() + end;
 		std::stable_sort(hits, hits_end);
 		filter_score = hits[0].ungapped.score;
+		pack.push_back(std::max(hits[0].diagonal(), 0));
 		//filter_score = std::max(ungapped_filter_score(hits, hits_end, FORWARD), ungapped_filter_score(hits, hits_end, REVERSE));
 	}
 
@@ -134,7 +135,7 @@ void Pipeline::run_global_culling(Statistics &stat)
 
 void Pipeline::run_range_culling(Statistics &stat)
 {
-	IntervalPartition ip (config.max_alignments);
+	IntervalPartition ip ((int)std::min(config.max_alignments, (uint64_t)INT_MAX));
 	std::stable_sort(targets.begin(), targets.end(), Target::compare);
 	for (size_t i = 0; i < n_targets(); ++i)
 		target(i).process_range_culling(*this, ip);
@@ -142,8 +143,25 @@ void Pipeline::run_range_culling(Statistics &stat)
 
 void Pipeline::run(Statistics &stat)
 {
+	vector<int> pack;
 	for (size_t i = 0; i < n_targets(); ++i)
-		target(i).ungapped_stage(*this);
+		target(i).ungapped_stage(*this, pack);
+
+	if (config.verbosity == 3) {
+		std::sort(pack.begin(), pack.end());
+		int n_pack = 0, n = 0, a;
+		for (vector<int>::const_iterator i = pack.begin(); i != pack.end(); ++i) {
+			if (n == 0 || *i - a > 64 || n == 16) {
+				++n_pack;
+				a = *i;
+				n = 1;
+			}
+			else
+				++n;
+		}
+		std::cout << (double)pack.size() / n_pack << std::endl;
+	}
+
 	if (config.query_range_culling)
 		run_range_culling(stat);
 	else

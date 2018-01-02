@@ -80,8 +80,8 @@ private:
 
 struct RangeCulling : public TargetCulling
 {
-	RangeCulling():
-		p_(config.max_alignments)
+	RangeCulling() :
+		p_((int)std::min(config.max_alignments, (uint64_t)INT_MAX))
 	{}
 	virtual int cull(const Target &t) const
 	{
@@ -90,7 +90,7 @@ struct RangeCulling : public TargetCulling
 			if(config.toppercent == 100.0)
 				c += p_.covered(i->query_source_range);
 			else {
-				const int cutoff = (double)i->score / (1.0 - config.toppercent / 100.0);
+				const int cutoff = int((double)i->score / (1.0 - config.toppercent / 100.0));
 				c += p_.covered(i->query_source_range, cutoff);
 			}
 			l += i->query_source_range.length();
@@ -104,7 +104,7 @@ struct RangeCulling : public TargetCulling
 			if (config.toppercent == 100.0)
 				c += p_.covered(i->absolute_query_range());
 			else {
-				const int cutoff = (double)i->score / (1.0 - config.toppercent / 100.0);
+				const int cutoff = int((double)i->score / (1.0 - config.toppercent / 100.0));
 				c += p_.covered(i->absolute_query_range(), cutoff);
 			}
 			l += i->absolute_query_range().length();
