@@ -100,56 +100,6 @@ template<typename _t>
 inline _t round_up(_t x, _t m)
 { return div_up(x, m) * m; }
 
-#ifdef _MSC_VER
-#define TLS_PTR __declspec(thread)
-#else
-#define TLS_PTR __thread
-#endif
-
-struct Ptr_wrapper_base
-{
-	virtual ~Ptr_wrapper_base()
-	{}
-};
-
-template<typename _t>
-struct Ptr_wrapper : public Ptr_wrapper_base
-{
-	Ptr_wrapper(_t *ptr) :
-		ptr(ptr)
-	{}
-	virtual ~Ptr_wrapper()
-	{
-		delete ptr;
-	}
-	_t *ptr;
-};
-
-struct TLS
-{
-	template<typename _t>
-	static _t& get(_t *&ptr)
-	{
-		if (ptr == 0) {
-			ptr = new _t;
-			if (ptr_ == 0)
-				ptr_ = new vector<Ptr_wrapper_base*>;
-			ptr_->push_back(new Ptr_wrapper<_t>(ptr));
-		}
-		return *ptr;
-	}
-	static void clear()
-	{
-		if (ptr_ == 0)
-			return;
-		for (vector<Ptr_wrapper_base*>::iterator i = ptr_->begin(); i != ptr_->end(); ++i)
-			delete *i;
-		delete ptr_;
-	}
-private:
-	static TLS_PTR vector<Ptr_wrapper_base*> *ptr_;
-};
-
 inline vector<string> tokenize(const char *str, const char *delimiters)
 {
 	vector<string> out;

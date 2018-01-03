@@ -17,6 +17,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #include "dp.h"
+#include "../util/tls.h"
 
 struct Padded_banded_DP_matrix
 {

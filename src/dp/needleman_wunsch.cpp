@@ -19,7 +19,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <vector>
 #include "dp.h"
 #include "../util/double_buffer.h"
-#include "growing_buffer.h"
 #include "../util/util.h"
 #include "traceback.h"
 #include "../output/output_format.h"

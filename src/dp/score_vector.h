@@ -20,6 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define SCORE_VECTOR_H_
 
 #include "../util/simd.h"
+#include "../basic/score_matrix.h"
 
 template<typename _score>
 struct score_traits

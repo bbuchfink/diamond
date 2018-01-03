@@ -24,7 +24,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <stdexcept>
 #include "fast_mutex.h"
 #include "tinythread.h"
-#include "util.h"
+#include "tls.h"
 
 using tthread::thread;
 using std::vector;

@@ -492,14 +492,28 @@ struct Diag_scores {
 	static int min_diag_score, min_low_score;
 };
 
+struct DpTarget
+{
+	DpTarget()
+	{}
+	DpTarget(const sequence &seq):
+		seq(seq)
+	{}
+	int d_begin, d_end;
+	sequence seq;
+	list<Hsp> *out;
+};
+
 void smith_waterman(sequence q, sequence s, Hsp &out);
 void smith_waterman(sequence q, sequence s, const Diag_graph &diags);
 int score_range(sequence query, sequence subject, int i, int j, int j_end);
 
-void swipe(const sequence &query, vector<sequence>::const_iterator subject_begin, vector<sequence>::const_iterator subject_end, vector<int>::iterator out);
+void swipe(const sequence &query, vector<DpTarget>::const_iterator subject_begin, vector<DpTarget>::const_iterator subject_end, vector<int>::iterator out);
 void banded_sw(const sequence &query, const sequence &subject, int d_begin, int d_end, int j_begin, int j_end, Hsp &out);
 
 void anchored_3frame_dp(const TranslatedSequence &query, sequence &subject, const DiagonalSegment &anchor, Hsp &out, int gap_open, int gap_extend, int frame_shift);
 int sw_3frame(const TranslatedSequence &query, Strand strand, const sequence &subject, int gap_open, int gap_extend, int frame_shift, Hsp &out);
+
+void banded_swipe(const sequence &query, const vector<DpTarget> &targets);
 
 #endif /* FLOATING_SW_H_ */
