@@ -44,7 +44,7 @@ g++ -DNDEBUG -O3 -Wno-deprecated-declarations $1 $2 $3 \
   src/data/taxonomy.cpp \
   src/lib/tantan/tantan.cc \
   src/basic/masking.cpp \
-  src/dp/swipe.cpp \
+  src/dp/swipe/swipe.cpp \
   src/dp/banded_sw.cpp \
   src/data/sorted_list.cpp \
   src/data/seed_set.cpp \
@@ -60,4 +60,6 @@ g++ -DNDEBUG -O3 -Wno-deprecated-declarations $1 $2 $3 \
   src/dp/anchored_3frame_dp.cpp \
   src/dp/last/GappedXdropAligner.cc \
   src/dp/last/GappedXdropAligner3frame.cc \
+  src/dp/swipe/banded_3frame_swipe.cpp \
+  src/dp/swipe/banded_swipe.cpp \
 -lz -lpthread -o diamond

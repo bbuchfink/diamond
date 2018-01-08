@@ -17,8 +17,86 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #include "../dp.h"
+#include "swipe_matrix.h"
+#include "swipe.h"
+#include "target_iterator.h"
 
-void banded_swipe(const sequence &query, const vector<DpTarget> &targets)
+template<typename _score> TLS_PTR vector<score_vector<_score> >* BandedSwipeMatrix<_score>::hgap_ptr;
+template<typename _score> TLS_PTR vector<score_vector<_score> >* BandedSwipeMatrix<_score>::score_ptr;
+template<typename _score> TLS_PTR vector<score_vector<_score> >* BandedSwipeTracebackMatrix<_score>::hgap_ptr;
+template<typename _score> TLS_PTR vector<score_vector<_score> >* BandedSwipeTracebackMatrix<_score>::score_ptr;
+
+#ifdef __SSE2__
+
+template<typename _score>
+void banded_swipe(const sequence &query, vector<DpTarget>::iterator subject_begin, vector<DpTarget>::iterator subject_end)
 {
+	typedef score_vector<_score> sv;
 
+	assert(subject_end - subject_begin <= score_traits<_score>::channels);
+	const int qlen = (int)query.length();
+
+	int i0 = INT_MAX, i1 = INT_MIN, cols = 0;
+	for (vector<DpTarget>::const_iterator j = subject_begin; j < subject_end; ++j) {
+		int i2 = std::max(j->d_end - 1, 0);
+		int j0 = i2 - (j->d_end - 1),
+			j1 = std::min(qlen - 1 - j->d_begin, (int)(j->seq.length() - 1)) + 1;
+		cols = std::max(cols, j1 - j0);
+		i1 = std::max(i1, i2);
+		i0 = std::min(i0, i2 + 1 - (j->d_end - j->d_begin));
+	}
+	const int band = i1 + 1 - i0;
+	assert(band > 0);
+
+	//BandedSwipeMatrix<_score> dp(band);
+	BandedSwipeTracebackMatrix<_score> dp(band, cols);
+
+	const sv open_penalty(static_cast<char>(score_matrix.gap_open() + score_matrix.gap_extend())),
+		extend_penalty(static_cast<char>(score_matrix.gap_extend()));
+	sv best;
+	best.zero();
+	SwipeProfile<_score> profile;
+	TargetIterator<score_traits<_score>::channels> targets(subject_begin, subject_end, Banded());
+
+	int j = 0;
+	while (targets.active.size() > 0) {
+		const int i0_ = std::max(i0, 0), i1_ = std::min(i1, qlen - 1);
+		if (i0_ > i1_)
+			break;
+		typename BandedSwipeTracebackMatrix<_score>::ColumnIterator it(dp.begin(i0_ - i0, j));
+		if (i0_ - i0 > 0)
+			it.set_zero();
+		sv vgap, hgap;
+		vgap.zero();
+		
+		profile.set(targets.get());
+		for (int i = i0_; i <= i1_; ++i) {
+			hgap = it.hgap();
+			const sv next = cell_update<_score>(it.diag(), profile.get(query[i]), extend_penalty, open_penalty, hgap, vgap, best);
+			it.set_hgap(hgap);
+			it.set_score(next);
+			++it;
+		}
+
+		cells += targets.active.size()*(i1_ - i0_ + 1);
+		for (int i = 0; i < targets.active.size(); ++i) {
+			int channel = targets.active[i];
+			if (!targets.inc(channel))
+				targets.active.erase(i);
+		}
+		++i0;
+		++i1;
+		++j;
+	}
+	for (int i = 0; i < targets.n_targets; ++i)
+		subject_begin[i].score = best[i];
+}
+
+#endif
+
+void banded_swipe(const sequence &query, vector<DpTarget>::iterator target_begin, vector<DpTarget>::iterator target_end)
+{
+#ifdef __SSE2__
+	banded_swipe<int16_t>(query, target_begin, target_end);
+#endif
 }

@@ -499,7 +499,12 @@ struct DpTarget
 	DpTarget(const sequence &seq):
 		seq(seq)
 	{}
-	int d_begin, d_end;
+	DpTarget(const sequence &seq, int d_begin, int d_end):
+		seq(seq),
+		d_begin(d_begin),
+		d_end(d_end)
+	{}
+	int d_begin, d_end, score;
 	sequence seq;
 	list<Hsp> *out;
 };
@@ -514,6 +519,7 @@ void banded_sw(const sequence &query, const sequence &subject, int d_begin, int 
 void anchored_3frame_dp(const TranslatedSequence &query, sequence &subject, const DiagonalSegment &anchor, Hsp &out, int gap_open, int gap_extend, int frame_shift);
 int sw_3frame(const TranslatedSequence &query, Strand strand, const sequence &subject, int gap_open, int gap_extend, int frame_shift, Hsp &out);
 
-void banded_swipe(const sequence &query, const vector<DpTarget> &targets);
+void banded_swipe(const sequence &query, vector<DpTarget>::iterator target_begin, vector<DpTarget>::iterator target_end);
+void banded_3frame_swipe(const TranslatedSequence &query, Strand strand, vector<DpTarget>::iterator target_begin, vector<DpTarget>::iterator target_end);
 
 #endif /* FLOATING_SW_H_ */

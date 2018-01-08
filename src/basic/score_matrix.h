@@ -36,7 +36,7 @@ struct Score_matrix
 {
 
 	Score_matrix() {}
-	Score_matrix(const string &matrix, int gap_open, int gap_extend, int reward, int penalty);
+	Score_matrix(const string &matrix, int gap_open, int gap_extend, int reward, int penalty, int frame_shift);
 	Score_matrix(const string &matrix_file, double lambda, double K, int gap_open, int gap_extend);
 
 	friend std::ostream& operator<<(std::ostream& s, const Score_matrix &m);
@@ -109,6 +109,11 @@ struct Score_matrix
 		return gap_extend_;
 	}
 
+	int frame_shift() const
+	{
+		return frame_shift_;
+	}
+
 	double avg_id_score() const;
 
 private:
@@ -131,7 +136,7 @@ private:
 #endif
 	};
 
-	int gap_open_, gap_extend_;
+	int gap_open_, gap_extend_, frame_shift_;
 	const double *constants_;
 	string name_;
 	Scores<int8_t> matrix8_;

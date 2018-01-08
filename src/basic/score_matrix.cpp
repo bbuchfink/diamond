@@ -199,9 +199,10 @@ const Matrix_info Matrix_info::matrices[] = {
 	{ "PAM30", pam30_values, (const char*)NCBISM_Pam30.scores, PAM30_VALUES_MAX, 9, 1 }
 };
 
-Score_matrix::Score_matrix(const string & matrix, int gap_open, int gap_extend, int reward, int penalty):
+Score_matrix::Score_matrix(const string & matrix, int gap_open, int gap_extend, int reward, int penalty, int frameshift):
 	gap_open_ (gap_open == -1 ? Matrix_info::get(matrix).default_gap_open : gap_open),
 	gap_extend_ (gap_extend == -1 ? Matrix_info::get(matrix).default_gap_extend : gap_extend),
+	frame_shift_(frameshift),
 	constants_ (Matrix_info::get(matrix).get_constants(gap_open_, gap_extend_)),
 	name_(matrix),
 	matrix8_(Matrix_info::get(matrix).scores),

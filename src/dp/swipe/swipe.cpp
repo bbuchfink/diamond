@@ -55,7 +55,7 @@ void swipe(const sequence &query, vector<DpTarget>::const_iterator subject_begin
 	while (targets.active.size() > 0) {
 		typename SwipeMatrix<_score>::ColumnIterator it(dp.begin());
 		sv vgap, hgap, last;
-		profile.set(targets.get());
+		//profile.set(targets.get2<_score>());
 		for (int i = 0; i < qlen; ++i) {
 			hgap = it.hgap();
 			const sv next = cell_update<_score>(it.diag(), profile.get(query[i]), extend_penalty, open_penalty, hgap, vgap, best, vbias);

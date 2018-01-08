@@ -223,6 +223,14 @@ struct TranslatedSequence
 		return i >= 0 && i < int((*this)[i.frame].length());
 	}
 
+	void get_strand(Strand strand, sequence *dst) const
+	{
+		int i = strand == FORWARD ? 0 : 3;
+		dst[0] = translated_[i++];
+		dst[1] = translated_[i++];
+		dst[2] = translated_[i];
+	}
+
 private:
 	
 	sequence source_;

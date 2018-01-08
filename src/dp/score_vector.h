@@ -19,6 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #ifndef SCORE_VECTOR_H_
 #define SCORE_VECTOR_H_
 
+#include <limits.h>
 #include "../util/simd.h"
 #include "../basic/score_matrix.h"
 
@@ -62,7 +63,16 @@ struct score_vector<uint8_t>
 		data_ (data)
 	{ }
 
-	explicit score_vector(unsigned a, const __m128i &seq)
+	score_vector(unsigned a, const __m128i &seq)
+	{
+#ifdef __SSSE3__
+		set_ssse3(a, seq);
+#else
+		set_generic(a, seq);
+#endif
+	}
+
+	score_vector(unsigned a, const __m128i &seq, const score_vector &bias)
 	{
 #ifdef __SSSE3__
 		set_ssse3(a, seq);
@@ -200,6 +210,121 @@ struct score_vector<uint8_t>
 		for (unsigned i = 0; i < 16; ++i)
 			printf("%3i ", (int)x[i]);
 		return s;
+	}
+
+	__m128i data_;
+
+};
+
+template<>
+struct score_traits<int16_t>
+{
+	enum { channels = 8, zero = 0x8000, byte_size = 2 };
+	typedef uint8_t Mask;
+};
+
+template<>
+struct score_vector<int16_t>
+{
+
+	score_vector()
+	{
+	}
+
+	score_vector(int x)
+	{
+		data_ = _mm_set1_epi16(x);
+	}
+
+	explicit score_vector(__m128i data) :
+		data_(data)
+	{ }
+
+	score_vector(unsigned a, uint64_t seq)
+	{
+		const int16_t* row(&score_matrix.matrix16()[a << 5]);
+
+		uint64_t b = 0, c = 0;
+		for (int i = 0; i < 4; ++i) {
+			b <<= 16;
+			b |= row[seq & 0xff];
+			seq >>= 8;
+		}
+		for (int i = 4; i < 8; ++i) {
+			c <<= 16;
+			c |= row[seq & 0xff];
+			seq >>= 8;
+		}
+		data_ = _mm_set_epi64x(b, c);
+	}
+
+	score_vector(unsigned a, const __m128i &seq, const score_vector &bias)
+	{
+#ifdef __SSSE3__
+		const __m128i *row = reinterpret_cast<const __m128i*>(&score_matrix.matrix8u()[a << 5]);
+
+		__m128i high_mask = _mm_slli_epi16(_mm_and_si128(seq, _mm_set1_epi8('\x10')), 3);
+		__m128i seq_low = _mm_or_si128(seq, high_mask);
+		__m128i seq_high = _mm_or_si128(seq, _mm_xor_si128(high_mask, _mm_set1_epi8('\x80')));
+
+		__m128i r1 = _mm_load_si128(row);
+		__m128i r2 = _mm_load_si128(row + 1);
+		__m128i s1 = _mm_shuffle_epi8(r1, seq_low);
+		__m128i s2 = _mm_shuffle_epi8(r2, seq_high);
+		data_ = _mm_subs_epi16(_mm_and_si128(_mm_or_si128(s1, s2), _mm_set1_epi16(255)), bias.data_);
+#endif
+	}
+
+	void zero()
+	{
+		data_ = _mm_set1_epi16(SHRT_MIN);
+	}
+
+	score_vector operator+(const score_vector &rhs) const
+	{
+		return score_vector(_mm_adds_epi16(data_, rhs.data_));
+	}
+
+	score_vector operator-(const score_vector &rhs) const
+	{
+		return score_vector(_mm_subs_epi16(data_, rhs.data_));
+	}
+
+	score_vector& operator-=(const score_vector &rhs)
+	{
+		data_ = _mm_subs_epi16(data_, rhs.data_);
+		return *this;
+	}
+
+	int16_t operator [](unsigned i) const
+	{
+		return *(((int16_t*)&data_) + i); // ^ 0x8000;
+	}
+
+	score_vector& max(const score_vector &rhs)
+	{
+		data_ = _mm_max_epi16(data_, rhs.data_);
+		return *this;
+	}
+
+	friend score_vector max(const score_vector& lhs, const score_vector &rhs)
+	{
+		return score_vector(_mm_max_epi16(lhs.data_, rhs.data_));
+	}
+
+	uint16_t cmpeq(const score_vector &rhs) const
+	{
+		return _mm_movemask_epi8(_mm_cmpeq_epi16(data_, rhs.data_));
+	}
+
+	__m128i cmpgt(const score_vector &rhs) const
+	{
+		return _mm_cmpgt_epi16(data_, rhs.data_);
+	}
+
+	operator int() const
+	{
+		return this->operator[](0);
 	}
 
 	__m128i data_;

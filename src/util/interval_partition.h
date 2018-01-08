@@ -86,7 +86,7 @@ struct IntervalPartition : protected std::map<int, IntervalNode>
 		if (i == end())
 			i = std::map<int, IntervalNode>::insert(std::make_pair(k.begin_, IntervalNode())).first;
 		else if (i->first != k.begin_) {
-			assert(i != begin());
+			//assert(i != std::map<int, IntervalNode>::begin());
 			i--;
 			i = std::map<int, IntervalNode>::insert(std::make_pair(k.begin_, i->second)).first;
 		}
@@ -157,7 +157,7 @@ struct IntervalPartition : protected std::map<int, IntervalNode>
 	{
 		const_iterator i = lower_bound(p), j;
 		if (i == end() || i->first != p) {
-			assert(i != begin());
+			//assert(i != std::map<int, IntervalNode>::begin());
 			j = i;
 			i--;
 		}

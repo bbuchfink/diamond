@@ -80,7 +80,7 @@ add_executable(diamond src/run/main.cpp
   src/data/taxonomy.cpp
   src/lib/tantan/tantan.cc
   src/basic/masking.cpp
-  src/dp/swipe.cpp
+  src/dp/swipe/swipe.cpp
   src/dp/banded_sw.cpp
   src/data/sorted_list.cpp
   src/data/seed_set.cpp
@@ -96,6 +96,8 @@ add_executable(diamond src/run/main.cpp
   src/dp/anchored_3frame_dp.cpp
   src/dp/last/GappedXdropAligner.cc
   src/dp/last/GappedXdropAligner3frame.cc
+  src/dp/swipe/banded_3frame_swipe.cpp
+  src/dp/swipe/banded_swipe.cpp
 )
 
 target_link_libraries(diamond ${ZLIB_LIBRARY} ${CMAKE_THREAD_LIBS_INIT})
