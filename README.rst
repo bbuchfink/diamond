@@ -19,6 +19,7 @@ Follow me on Twitter to get notified of updates.
 .. image:: https://img.shields.io/conda/dn/bioconda/diamond.svg?label=BioConda%20install
    :target: https://anaconda.org/bioconda/diamond
 .. image:: https://img.shields.io/badge/Google%20Scholar-435-blue.svg
+
 Quick start guide
 =================
 Please read the `manual <https://github.com/bbuchfink/diamond/raw/master/diamond_manual.pdf>`_ for detailed installation and usage instructions. This demonstrates a quick example for setting up and using the program on Linux.
