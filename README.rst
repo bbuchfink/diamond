@@ -1,10 +1,3 @@
-.. image:: https://img.shields.io/github/downloads/bbuchfink/diamond/total.svg?label=Downloads
-   :target: https://github.com/bbuchfink/diamond/releases/download/v0.9.14/diamond-linux64.tar.gz
-.. image:: https://img.shields.io/conda/dn/bioconda/diamond.svg?label=BioConda%20install
-   :target: https://anaconda.org/bioconda/diamond
-.. image:: https://badges.gitter.im/diamond-aligner/Lobby.svg
-   :alt: Join the chat at https://gitter.im/diamond-aligner/Lobby
-   :target: https://gitter.im/diamond-aligner/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge
 Introduction
 ============
 DIAMOND is a sequence aligner for protein and translated DNA searches, designed for high performance analysis of big sequence data. The key features are:
@@ -16,9 +9,15 @@ DIAMOND is a sequence aligner for protein and translated DNA searches, designed 
 
 Follow me on Twitter to get notified of updates.
 
-.. image:: https://thumb.ibb.co/fPtjFw/follow.png
+.. image:: https://img.shields.io/twitter/url/http/shields.io.svg?style=social&label=%40bbuchfink
    :target: https://twitter.com/bbuchfink
-
+.. image:: https://badges.gitter.im/diamond-aligner/Lobby.svg
+   :alt: Join the chat at https://gitter.im/diamond-aligner/Lobby
+   :target: https://gitter.im/diamond-aligner/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge
+.. image:: https://img.shields.io/github/downloads/bbuchfink/diamond/total.svg?label=Downloads
+   :target: https://github.com/bbuchfink/diamond/releases/download/v0.9.14/diamond-linux64.tar.gz
+.. image:: https://img.shields.io/conda/dn/bioconda/diamond.svg?label=BioConda%20install
+   :target: https://anaconda.org/bioconda/diamond
 Quick start guide
 =================
 Please read the `manual <https://github.com/bbuchfink/diamond/raw/master/diamond_manual.pdf>`_ for detailed installation and usage instructions. This demonstrates a quick example for setting up and using the program on Linux.
