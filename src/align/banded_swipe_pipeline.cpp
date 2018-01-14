@@ -63,6 +63,8 @@ void Pipeline::run(Statistics &stat)
 		target(i).ungapped_stage(*this);
 	for (size_t i = 0; i < n_targets(); ++i)
 		target(i).add(*this, vf, vr);
+	std::sort(vf.begin(), vf.end());
+	std::sort(vr.begin(), vr.end());
 	for (vector<DpTarget>::iterator i = vf.begin(); i < vf.end(); i += 8) {
 		banded_3frame_swipe(translated_query, FORWARD, i, std::min(i + 8, vf.end()));
 	}

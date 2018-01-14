@@ -261,13 +261,15 @@ struct Banded3FrameSwipeTracebackMatrix
 
 	struct TracebackIterator
 	{
-		TracebackIterator(const _score *score, size_t band, int frame, int i, int j):
+		TracebackIterator(const _score *score, size_t band, int frame, int i, int j) :
 			band_(band),
 			score_(score),
 			frame(frame),
 			i(i),
 			j(j)
-		{}
+		{
+			assert(i >= 0 && j >= 0);
+		}
 		_score score() const
 		{
 			return *score_;
@@ -324,7 +326,7 @@ struct Banded3FrameSwipeTracebackMatrix
 			const _score e = score_matrix.gap_extend();
 			_score g = score_matrix.gap_open() + e;
 			int l = 1;
-			while (v>v0 && h>h0) {
+			while (v > v0 && h > h0) {
 				if (score + g == *h) {
 					walk_hgap(h, l);
 					return -l;
@@ -347,7 +349,7 @@ struct Banded3FrameSwipeTracebackMatrix
 				++l;
 				g += e;
 			}
-			while (h>h0) {
+			while (h > h0) {
 				if (score + g == *h) {
 					walk_hgap(h, l);
 					return -l;
@@ -375,11 +377,12 @@ struct Banded3FrameSwipeTracebackMatrix
 		int frame, i, j;
 	};
 
-	TracebackIterator traceback(size_t col, int i0, int j, size_t channel, _score score) const
+	TracebackIterator traceback(size_t col, int i0, int j, int dna_len, size_t channel, _score score) const
 	{
-		const _score *s = (_score*)(&score_[col*(band_ + 1)]) + channel;
+		const int i_ = std::max(-i0, 0) * 3;
+		const _score *s = (_score*)(&score_[col*(band_ + 1) + i_]) + channel;
 		// TODO: Clipping
-		for (int i = 0; i < band_; ++i, s += 8)
+		for (int i = i_; i < std::min(band_, size_t(dna_len - 2 - i0 * 3)); ++i, s += 8)
 			if (*s == score)
 				return TracebackIterator(s, band_, i % 3, i0 + i / 3, j);
 		throw std::runtime_error("Trackback error.");

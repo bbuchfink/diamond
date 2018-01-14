@@ -32,7 +32,7 @@ template<typename _score, bool _with_transcript>
 void traceback(sequence *query, Strand strand, int dna_len, const Banded3FrameSwipeTracebackMatrix<_score> &dp, DpTarget &target, _score max_score, int max_col, int channel, int i0, int i1)
 {
 	const int j0 = i1 - (target.d_end - 1), d1 = target.d_end, d0 = target.d_begin;
-	typename Banded3FrameSwipeTracebackMatrix<_score>::TracebackIterator it(dp.traceback(max_col + 1, i0 + max_col, j0 + max_col, channel, max_score));
+	typename Banded3FrameSwipeTracebackMatrix<_score>::TracebackIterator it(dp.traceback(max_col + 1, i0 + max_col, j0 + max_col, dna_len, channel, max_score));
 	target.out->push_back(Hsp());
 	Hsp &out = target.out->back();
 	out.score = target.score = (uint16_t)max_score ^ 0x8000;

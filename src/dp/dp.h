@@ -506,6 +506,14 @@ struct DpTarget
 		subject_id(subject_id),
 		out(out)
 	{}
+	int left_i1() const
+	{
+		return std::max(d_end - 1, 0);
+	}
+	bool operator<(const DpTarget &x) const
+	{
+		return left_i1() < x.left_i1();
+	}
 	int d_begin, d_end, score, subject_id;
 	sequence seq;
 	list<Hsp> *out;
