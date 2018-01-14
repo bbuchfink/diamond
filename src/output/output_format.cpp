@@ -60,7 +60,7 @@ void print_hsp(Hsp &hsp, const TranslatedSequence &query)
 	TextBuffer buf;
 	Pairwise_format().print_match(Hsp_context(hsp, 0, query, "", 0, 0, "", 0, 0, 0), buf);
 	buf << '\0';
-	cout << buf.get_begin();
+	cout << buf.get_begin() << endl;
 }
 
 Output_format* get_output_format()

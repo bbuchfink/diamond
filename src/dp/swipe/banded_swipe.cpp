@@ -31,7 +31,7 @@ template<typename _score> TLS_PTR vector<score_vector<_score> >* BandedSwipeTrac
 template<typename _score>
 void banded_swipe(const sequence &query, vector<DpTarget>::iterator subject_begin, vector<DpTarget>::iterator subject_end)
 {
-	typedef score_vector<_score> sv;
+	/*typedef score_vector<_score> sv;
 
 	assert(subject_end - subject_begin <= score_traits<_score>::channels);
 	const int qlen = (int)query.length();
@@ -89,7 +89,7 @@ void banded_swipe(const sequence &query, vector<DpTarget>::iterator subject_begi
 		++j;
 	}
 	for (int i = 0; i < targets.n_targets; ++i)
-		subject_begin[i].score = best[i];
+		subject_begin[i].score = best[i];*/
 }
 
 #endif

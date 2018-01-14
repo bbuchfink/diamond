@@ -212,6 +212,11 @@ struct Packed_transcript
 			push_back(op_deletion, s[i]);
 	}
 
+	void reserve(size_t n)
+	{
+		data_.reserve(n);
+	}
+
 private:
 
 	vector<Packed_operation> data_;

@@ -56,7 +56,7 @@ struct Target : public ::Target
 		vector<Seed_hit>::iterator hits = mapper.seed_hits.begin() + begin, hits_end = mapper.seed_hits.begin() + end;
 		std::stable_sort(hits, hits_end);
 		filter_score = hits[0].ungapped.score;
-		pack.push_back(std::max(hits[0].diagonal(), 0));
+		//pack.push_back(std::max(hits[0].diagonal(), 0));
 		//filter_score = std::max(ungapped_filter_score(hits, hits_end, FORWARD), ungapped_filter_score(hits, hits_end, REVERSE));
 	}
 
@@ -147,7 +147,7 @@ void Pipeline::run(Statistics &stat)
 	for (size_t i = 0; i < n_targets(); ++i)
 		target(i).ungapped_stage(*this, pack);
 
-	if (config.verbosity == 3) {
+	/*if (config.verbosity == 3) {
 		std::sort(pack.begin(), pack.end());
 		int n_pack = 0, n = 0, a;
 		for (vector<int>::const_iterator i = pack.begin(); i != pack.end(); ++i) {
@@ -160,7 +160,7 @@ void Pipeline::run(Statistics &stat)
 				++n;
 		}
 		std::cout << (double)pack.size() / n_pack << std::endl;
-	}
+	}*/
 
 	if (config.query_range_culling)
 		run_range_culling(stat);

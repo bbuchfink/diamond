@@ -102,6 +102,17 @@ namespace ExtensionPipeline {
 			void run_range_culling(Statistics &stat);
 		};
 	}
+	namespace BandedSwipe {
+		struct Target;
+		struct Pipeline : public QueryMapper
+		{
+			Pipeline(size_t query_id, Trace_pt_list::iterator begin, Trace_pt_list::iterator end) :
+				QueryMapper(query_id, begin, end)
+			{}
+			Target& target(size_t i);
+			virtual void run(Statistics &stat);
+		};
+	}
 }
 
 

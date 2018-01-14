@@ -62,4 +62,5 @@ g++ -DNDEBUG -O3 -Wno-deprecated-declarations $1 $2 $3 \
   src/dp/last/GappedXdropAligner3frame.cc \
   src/dp/swipe/banded_3frame_swipe.cpp \
   src/dp/swipe/banded_swipe.cpp \
+  src/align/banded_swipe_pipeline.cpp \
 -lz -lpthread -o diamond

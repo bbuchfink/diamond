@@ -196,6 +196,8 @@ struct Hsp
 	void splice(const DiagonalSegment &d0, const DiagonalSegment &d1, const TranslatedSequence &query, const sequence &subject, bool reversed);
 	void set_begin(const DiagonalSegment &d, int dna_len);
 	void set_end(const DiagonalSegment &d, int dna_len);
+	void set_begin(int i, int j, Frame frame, int dna_len);
+	void set_end(int i, int j, Frame frame, int dna_len);
 	void clear();
 
 	bool is_weakly_enveloped(const Hsp &j) const;

@@ -169,6 +169,27 @@ void Hsp::set_end(const DiagonalSegment &d, int dna_len)
 		query_source_range.begin_ = d.query_end().absolute(dna_len) + 1;
 }
 
+void Hsp::set_begin(int i, int j, Frame frame, int dna_len)
+{
+	subject_range.begin_ = j;
+	query_range.begin_ = i;
+	this->frame = frame.index();
+	if (frame.strand == FORWARD)
+		query_source_range.begin_ = TranslatedPosition(i, frame).absolute(dna_len);
+	else
+		query_source_range.end_ = TranslatedPosition(i, frame).absolute(dna_len) + 1;
+}
+
+void Hsp::set_end(int i, int j, Frame frame, int dna_len)
+{
+	subject_range.end_ = j;
+	query_range.end_ = i;
+	if (frame.strand == FORWARD)
+		query_source_range.end_ = TranslatedPosition(i, frame).absolute(dna_len);
+	else
+		query_source_range.begin_ = TranslatedPosition(i, frame).absolute(dna_len) + 1;
+}
+
 void Hsp::clear()
 {
 	score = frame = length = identities = mismatches = positives = gap_openings = gaps = sw_score = 0;

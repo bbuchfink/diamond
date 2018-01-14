@@ -21,16 +21,78 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "swipe.h"
 #include "target_iterator.h"
 
+#include "../../data/reference.h"
+
 template<typename _score> TLS_PTR vector<score_vector<_score> >* Banded3FrameSwipeTracebackMatrix<_score>::hgap_ptr;
 template<typename _score> TLS_PTR vector<score_vector<_score> >* Banded3FrameSwipeTracebackMatrix<_score>::score_ptr;
 
 #ifdef __SSE2__
 
-template<typename _score>
-void traceback(const Banded3FrameSwipeTracebackMatrix<_score> &dp, DpTarget &target, _score max_score, int max_col, int channel)
+template<typename _score, bool _with_transcript>
+void traceback(sequence *query, Strand strand, int dna_len, const Banded3FrameSwipeTracebackMatrix<_score> &dp, DpTarget &target, _score max_score, int max_col, int channel, int i0, int i1)
 {
-	typename Banded3FrameSwipeTracebackMatrix<_score>::TracebackIterator it(dp.traceback(max_col + 1, channel, max_score));
-	target.score = (uint16_t)it.sm3() ^ 0x8000;
+	const int j0 = i1 - (target.d_end - 1), d1 = target.d_end, d0 = target.d_begin;
+	typename Banded3FrameSwipeTracebackMatrix<_score>::TracebackIterator it(dp.traceback(max_col + 1, i0 + max_col, j0 + max_col, channel, max_score));
+	target.out->push_back(Hsp());
+	Hsp &out = target.out->back();
+	out.score = target.score = (uint16_t)max_score ^ 0x8000;
+	if(_with_transcript) out.transcript.reserve(size_t(out.score * config.transcript_len_estimate));
+
+	out.set_end(it.i + 1, it.j + 1, Frame(strand, it.frame), dna_len);
+
+	while (it.score() > SHRT_MIN) {
+		const Letter q = query[it.frame][it.i], s = target.seq[it.j];
+		const int m = score_matrix(q, s);
+		const _score score = it.score();
+		if (score == it.sm3() + m) {
+			if (_with_transcript) {
+				if (q == s)
+					out.transcript.push_back(op_match, 1u);
+				else
+					out.transcript.push_back(op_substitution, s);
+			}
+			it.walk_diagonal();
+		}
+		else if (score == it.sm4() + m - score_matrix.frame_shift()) {
+			if (_with_transcript) {
+				if (q == s)
+					out.transcript.push_back(op_match, 1u);
+				else
+					out.transcript.push_back(op_substitution, s);
+				out.transcript.push_back(op_frameshift_forward);
+			}
+			it.walk_forward_shift();
+		}
+		else if (score == it.sm2() + m - score_matrix.frame_shift()) {
+			if (_with_transcript) {
+				if (q == s)
+					out.transcript.push_back(op_match, 1u);
+				else
+					out.transcript.push_back(op_substitution, s);
+				out.transcript.push_back(op_frameshift_reverse);
+			}
+			it.walk_reverse_shift();
+		}
+		else {
+			int l = it.walk_gap(d0, d1);
+			if (_with_transcript) {
+				if (l > 0) {
+					out.transcript.push_back(op_insertion, (unsigned)l);
+				}
+				else {
+					for (int j = it.j - l; j > it.j; --j)
+						out.transcript.push_back(op_deletion, target.seq[j]);
+				}
+			}
+		}
+		++out.length;
+	}
+
+	out.set_begin(it.i + 1, it.j + 1, Frame(strand, it.frame), dna_len);
+	if (_with_transcript) {
+		out.transcript.reverse();
+		out.transcript.push_terminator();
+	}
 }
 
 template<typename _score>
@@ -43,27 +105,37 @@ void banded_3frame_swipe(const TranslatedSequence &query, Strand strand, vector<
 	query.get_strand(strand, q);
 	const int qlen = (int)q[0].length(), qlen2 = (int)q[1].length(), qlen3 = (int)q[2].length();
 
-	int i0 = INT_MAX, i1 = INT_MIN, cols = 0;
+	int band = 0;
 	for (vector<DpTarget>::const_iterator j = subject_begin; j < subject_end; ++j) {
-		int i2 = std::max(j->d_end - 1, 0);
-		int j0 = i2 - (j->d_end - 1),
-			j1 = std::min(qlen - 1 - j->d_begin, (int)(j->seq.length() - 1)) + 1;
-		cols = std::max(cols, j1 - j0);
-		i1 = std::max(i1, i2);
-		i0 = std::min(i0, i2 + 1 - (j->d_end - j->d_begin));
+		band = std::max(band, j->d_end - j->d_begin);
 	}
-	const int band = i1 + 1 - i0;
-	assert(band > 0);
 
-	Banded3FrameSwipeTracebackMatrix<_score> dp(band * 3, cols);
+	int i0 = INT_MAX, i1 = INT_MAX;
+	for (vector<DpTarget>::iterator j = subject_begin; j < subject_end; ++j) {
+		if (j->d_end - j->d_begin < band) {
+			const int top_max = j->d_begin - (-(int)(j->seq.length() - 1)), bottom_max = qlen - j->d_end;
+			int diff = band - (j->d_end - j->d_begin);
+			int d = std::min(std::max(diff / 2, diff - bottom_max), top_max);
+			j->d_begin -= d;
+			diff -= d;
+			if (diff > bottom_max)
+				throw std::runtime_error("xxx");
+			j->d_end += std::min(diff, bottom_max);
+		}
+
+		int i2 = std::max(j->d_end - 1, 0);
+		i1 = std::min(i1, i2);
+		i0 = std::min(i0, i2 + 1 - band);
+	}
+
+	TargetIterator<score_traits<_score>::channels> targets(subject_begin, subject_end, i1, qlen);
+	Banded3FrameSwipeTracebackMatrix<_score> dp(band * 3, targets.cols);
 
 	const sv open_penalty(score_matrix.gap_open() + score_matrix.gap_extend()),
 		extend_penalty(score_matrix.gap_extend()),
 		frameshift_penalty(score_matrix.frame_shift());
 	
 	SwipeProfile<_score> profile;
-	TargetIterator<score_traits<_score>::channels> targets(subject_begin, subject_end, Banded());
-	//sv best;
 	int16_t best[8];
 	int max_col[8];
 	for (int i = 0; i < 8; ++i)
@@ -110,10 +182,12 @@ void banded_3frame_swipe(const TranslatedSequence &query, Strand strand, vector<
 		}
 
 		cells += targets.active.size()*(i1_ - i0_ + 1) * 3;
-		for (int i = 0; i < targets.active.size(); ++i) {
+		for (int i = 0; i < targets.active.size();) {
 			int channel = targets.active[i];
 			if (!targets.inc(channel))
 				targets.active.erase(i);
+			else
+				++i;
 			if (col_best[channel] > best[channel]) {
 				best[channel] = col_best[channel];
 				max_col[channel] = j;
@@ -124,13 +198,16 @@ void banded_3frame_swipe(const TranslatedSequence &query, Strand strand, vector<
 		++j;
 	}
 	for (int i = 0; i < targets.n_targets; ++i)
-		traceback(dp, subject_begin[i], best[i], max_col[i], i);
+		traceback<_score, true>(q, strand, (int)query.source().length(), dp, subject_begin[i], best[i], max_col[i], i, i0 - j, i1 - j);
 }
 
 #endif
 
 void banded_3frame_swipe(const TranslatedSequence &query, Strand strand, vector<DpTarget>::iterator target_begin, vector<DpTarget>::iterator target_end)
 {
+	/*cout << "==========" << endl;
+	for (vector<DpTarget>::iterator i = target_begin; i < target_end; ++i)
+		cout << ref_ids::get()[i->subject_id].c_str() << endl;*/
 #ifdef __SSE2__
 	banded_3frame_swipe<int16_t>(query, strand, target_begin, target_end);
 #endif

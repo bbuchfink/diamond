@@ -227,7 +227,8 @@ Config::Config(int argc, const char **argv)
 		("target-fetch-size", 0, "number of target sequences to fetch for seed extension", target_fetch_size, 4u)
 		("small-query", 0, "", small_query)
 		("hashed-seeds", 0, "", hashed_seeds)
-		("rank-factor", 0, "", rank_factor, -1.0);
+		("rank-factor", 0, "", rank_factor, -1.0)
+		("transcript-len-estimate", 0, "", transcript_len_estimate, 0.5);
 		
 	parser.add(general).add(makedb).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options);
 	parser.store(argc, argv, command);

@@ -21,8 +21,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "../dp.h"
 
-struct Banded {};
-
 template<int _n>
 struct TargetIterator
 {
@@ -39,13 +37,17 @@ struct TargetIterator
 		}
 	}
 
-	TargetIterator(vector<DpTarget>::const_iterator subject_begin, vector<DpTarget>::const_iterator subject_end, const Banded&) :
+	TargetIterator(vector<DpTarget>::const_iterator subject_begin, vector<DpTarget>::const_iterator subject_end, int i1, int qlen) :
 		next(0),
 		n_targets(int(subject_end - subject_begin)),
+		cols(0),
 		subject_begin(subject_begin)
 	{
 		for (; next < std::min(_n, n_targets); ++next) {
-			pos[next] = std::max(-(subject_begin[next].d_end - 1), 0);
+			const DpTarget &t = subject_begin[next];
+			pos[next] = i1 - (t.d_end - 1);
+			const int j1 = std::min(qlen - 1 - t.d_begin, (int)(t.seq.length() - 1)) + 1;
+			cols = std::max(cols, j1 - pos[next]);
 			target[next] = next;
 			active.push_back(next);
 		}
@@ -53,7 +55,7 @@ struct TargetIterator
 
 	char operator[](int channel) const
 	{
-		return subject_begin[target[channel]].seq[pos[channel]];
+		return pos[channel] >= 0 ? subject_begin[target[channel]].seq[pos[channel]] : value_traits.mask_char;
 	}
 
 #ifdef __SSSE3__
@@ -97,7 +99,7 @@ struct TargetIterator
 		return true;
 	}
 
-	int pos[_n], target[_n], next, n_targets;
+	int pos[_n], target[_n], next, n_targets, cols;
 	Static_vector<int, _n> active;
 	const vector<DpTarget>::const_iterator subject_begin;
 };

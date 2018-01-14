@@ -499,12 +499,14 @@ struct DpTarget
 	DpTarget(const sequence &seq):
 		seq(seq)
 	{}
-	DpTarget(const sequence &seq, int d_begin, int d_end):
+	DpTarget(const sequence &seq, int d_begin, int d_end, list<Hsp> *out = 0, int subject_id=0):
 		seq(seq),
 		d_begin(d_begin),
-		d_end(d_end)
+		d_end(d_end),
+		subject_id(subject_id),
+		out(out)
 	{}
-	int d_begin, d_end, score;
+	int d_begin, d_end, score, subject_id;
 	sequence seq;
 	list<Hsp> *out;
 };

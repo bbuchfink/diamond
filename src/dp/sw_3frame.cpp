@@ -54,6 +54,20 @@ int sw_3frame(const TranslatedSequence &query, Strand strand, const sequence &su
 	int j = max_j;
 	int s;
 
+	cout << '\t';
+	for (int j = 0; j < subject.length(); ++j) {
+		cout << j << '\t';
+	}
+	cout << endl;
+	for (int i = 0; i < query.source().length() - 2; ++i) {
+		cout << i << '\t';
+		for (int j = 0; j < subject.length(); ++j) {
+			cout << score[i][j] << '\t';
+		}
+		cout << endl;
+	}
+	return max_score;
+
 	out.query_range.end_ = TranslatedPosition(i, strand).translated + 1;
 	out.subject_range.end_ = j + 1;
 

@@ -66,8 +66,8 @@ inline score_vector<_score> cell_update(const score_vector<_score> &diagonal_cel
 
 template<typename _score>
 inline score_vector<_score> cell_update(const score_vector<_score> &diagonal_cell,
-	const score_vector<_score> &reverse_cell,
-	const score_vector<_score> &forward_cell,
+	const score_vector<_score> &shift_cell0,
+	const score_vector<_score> &shift_cell1,
 	const score_vector<_score> &scores,
 	const score_vector<_score> &gap_extension,
 	const score_vector<_score> &gap_open,
@@ -77,8 +77,9 @@ inline score_vector<_score> cell_update(const score_vector<_score> &diagonal_cel
 	score_vector<_score> &best)
 {
 	score_vector<_score> current_cell = diagonal_cell + scores;
-	current_cell.max(reverse_cell + scores - frame_shift);
-	current_cell.max(forward_cell + scores - frame_shift);
+	const score_vector<_score> f = scores - frame_shift;
+	current_cell.max(shift_cell0 + f);
+	current_cell.max(shift_cell1 + f);
 	current_cell.max(vertical_gap).max(horizontal_gap);
 	best.max(current_cell);
 	vertical_gap -= gap_extension;

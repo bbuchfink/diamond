@@ -147,6 +147,7 @@ struct Config
 	int frame_shift;
 	bool query_range_culling;
 	double query_range_cover;
+	double transcript_len_estimate;
 
 	enum {
 		makedb = 0, blastp = 1, blastx = 2, view = 3, help = 4, version = 5, getseq = 6, benchmark = 7, random_seqs = 8, compare = 9, sort = 10, roc = 11, db_stat = 12, model_sim = 13,
@@ -161,7 +162,7 @@ struct Config
 	unsigned load_balancing;
 
 	enum {
-		swipe = 0, greedy = 1, floating_xdrop = 4, more_greedy = 2, most_greedy=3,
+		swipe = 0, greedy = 1, floating_xdrop = 4, more_greedy = 2, most_greedy=3, banded_swipe=4
 	};
 	int ext;
 
