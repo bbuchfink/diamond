@@ -19,6 +19,7 @@ Follow me on Twitter to get notified of updates.
 .. image:: https://img.shields.io/conda/dn/bioconda/diamond.svg?label=BioConda%20install
    :target: https://anaconda.org/bioconda/diamond
 .. image:: https://img.shields.io/badge/Google%20Scholar-440-blue.svg
+   :target: https://scholar.google.de/citations?user=kjPIF1cAAAAJ
 
 Quick start guide
 =================
