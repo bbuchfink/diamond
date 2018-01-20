@@ -83,7 +83,7 @@ void scan_cols(const Long_score_profile &qp, sequence s, int i, int j, int j_end
 			local_max_ptr += diags;
 			max = score_vector<uint8_t>();
 		}
-		// cells += 16;
+		//cells += 16;
 	}
 	if (((j2 - j) & 15) != 0) {
 		global_max.max(max);

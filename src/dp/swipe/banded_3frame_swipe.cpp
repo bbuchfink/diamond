@@ -25,6 +25,29 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 template<typename _score> TLS_PTR vector<score_vector<_score> >* Banded3FrameSwipeTracebackMatrix<_score>::hgap_ptr;
 template<typename _score> TLS_PTR vector<score_vector<_score> >* Banded3FrameSwipeTracebackMatrix<_score>::score_ptr;
+template<typename _score> TLS_PTR vector<score_vector<_score> >* Banded3FrameSwipeMatrix<_score>::hgap_ptr;
+template<typename _score> TLS_PTR vector<score_vector<_score> >* Banded3FrameSwipeMatrix<_score>::score_ptr;
+
+struct Traceback {};
+struct ScoreOnly {};
+
+template<typename _score, typename _traceback>
+struct Banded3FrameSwipeMatrixRef
+{
+};
+
+template<typename _score>
+struct Banded3FrameSwipeMatrixRef<_score, Traceback>
+{
+	typedef Banded3FrameSwipeTracebackMatrix<_score> type;
+};
+
+template<typename _score>
+struct Banded3FrameSwipeMatrixRef<_score, ScoreOnly>
+{
+	typedef Banded3FrameSwipeMatrix<_score> type;
+};
+
 
 #ifdef __SSE2__
 
@@ -95,10 +118,19 @@ void traceback(sequence *query, Strand strand, int dna_len, const Banded3FrameSw
 	}
 }
 
-template<typename _score>
-void banded_3frame_swipe(const TranslatedSequence &query, Strand strand, vector<DpTarget>::iterator subject_begin, vector<DpTarget>::iterator subject_end)
+template<typename _score, bool _with_transcript>
+void traceback(sequence *query, Strand strand, int dna_len, const Banded3FrameSwipeMatrix<_score> &dp, DpTarget &target, _score max_score, int max_col, int channel, int i0, int i1)
+{
+	target.out->push_back(Hsp());
+	Hsp &out = target.out->back();
+	out.score = target.score = (uint16_t)max_score ^ 0x8000;
+}
+
+template<typename _score, typename _traceback>
+void banded_3frame_swipe(const TranslatedSequence &query, Strand strand, vector<DpTarget>::iterator subject_begin, vector<DpTarget>::iterator subject_end, DpStat &stat)
 {
 	typedef score_vector<_score> sv;
+	typedef typename Banded3FrameSwipeMatrixRef<_score, _traceback>::type Matrix;
 
 	assert(subject_end - subject_begin <= score_traits<_score>::channels);
 	sequence q[3];
@@ -112,7 +144,7 @@ void banded_3frame_swipe(const TranslatedSequence &query, Strand strand, vector<
 
 	int i0 = INT_MAX, i1 = INT_MAX;
 	for (vector<DpTarget>::iterator j = subject_begin; j < subject_end; ++j) {
-		if (j->d_end - j->d_begin < band) {
+		/*if (j->d_end - j->d_begin < band) {
 			const int top_max = j->d_begin - (-(int)(j->seq.length() - 1)), bottom_max = qlen - j->d_end;
 			int diff = band - (j->d_end - j->d_begin);
 			int d = std::min(std::max(diff / 2, diff - bottom_max), top_max);
@@ -121,15 +153,15 @@ void banded_3frame_swipe(const TranslatedSequence &query, Strand strand, vector<
 			if (diff > bottom_max)
 				throw std::runtime_error("xxx");
 			j->d_end += std::min(diff, bottom_max);
-		}
-
+		}*/
+		j->d_begin = j->d_end - band;
 		int i2 = std::max(j->d_end - 1, 0);
 		i1 = std::min(i1, i2);
 		i0 = std::min(i0, i2 + 1 - band);
 	}
 
 	TargetIterator<score_traits<_score>::channels> targets(subject_begin, subject_end, i1, qlen);
-	Banded3FrameSwipeTracebackMatrix<_score> dp(band * 3, targets.cols);
+	Matrix dp(band * 3, targets.cols);
 
 	const sv open_penalty(score_matrix.gap_open() + score_matrix.gap_extend()),
 		extend_penalty(score_matrix.gap_extend()),
@@ -146,7 +178,7 @@ void banded_3frame_swipe(const TranslatedSequence &query, Strand strand, vector<
 		const int i0_ = std::max(i0, 0), i1_ = std::min(i1, qlen - 1);
 		if (i0_ > i1_)
 			break;
-		typename Banded3FrameSwipeTracebackMatrix<_score>::ColumnIterator it(dp.begin((i0_ - i0) * 3, j));
+		typename Matrix::ColumnIterator it(dp.begin((i0_ - i0) * 3, j));
 		if (i0_ - i0 > 0)
 			it.set_zero();
 		sv vgap0, vgap1, vgap2, hgap;
@@ -181,7 +213,10 @@ void banded_3frame_swipe(const TranslatedSequence &query, Strand strand, vector<
 			++it;
 		}
 
-		cells += targets.active.size()*(i1_ - i0_ + 1) * 3;
+#ifdef DP_STAT
+		stat.net_cells += targets.live * (i1_ - i0_ + 1) * 3;
+		stat.gross_cells += 8 * (i1_ - i0_ + 1) * 3;
+#endif
 		for (int i = 0; i < targets.active.size();) {
 			int channel = targets.active[i];
 			if (!targets.inc(channel))
@@ -203,12 +238,15 @@ void banded_3frame_swipe(const TranslatedSequence &query, Strand strand, vector<
 
 #endif
 
-void banded_3frame_swipe(const TranslatedSequence &query, Strand strand, vector<DpTarget>::iterator target_begin, vector<DpTarget>::iterator target_end)
+void banded_3frame_swipe(const TranslatedSequence &query, Strand strand, vector<DpTarget>::iterator target_begin, vector<DpTarget>::iterator target_end, DpStat &stat)
 {
 	/*cout << "==========" << endl;
 	for (vector<DpTarget>::iterator i = target_begin; i < target_end; ++i)
 		cout << ref_ids::get()[i->subject_id].c_str() << endl;*/
 #ifdef __SSE2__
-	banded_3frame_swipe<int16_t>(query, strand, target_begin, target_end);
+	if(config.disable_traceback)
+		banded_3frame_swipe<int16_t, ScoreOnly>(query, strand, target_begin, target_end, stat);
+	else
+		banded_3frame_swipe<int16_t, Traceback>(query, strand, target_begin, target_end, stat);
 #endif
 }

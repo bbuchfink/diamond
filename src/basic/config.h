@@ -59,7 +59,7 @@ struct Config
 	unsigned	seed_signatures;
 	double	min_bit_score;
 	unsigned	run_len;
-	bool		alignment_traceback;
+	bool		disable_traceback;
 	double	max_seed_freq;
 	string	tmpdir;
 	bool		long_mode;

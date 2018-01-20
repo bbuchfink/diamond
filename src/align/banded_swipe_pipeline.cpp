@@ -35,8 +35,15 @@ struct Target : public ::Target
 	void add(QueryMapper &mapper, vector<DpTarget> &vf, vector<DpTarget> &vr)
 	{
 		vector<Seed_hit>::iterator hits = mapper.seed_hits.begin() + begin, hits_end = mapper.seed_hits.begin() + end;
+		int d_min = INT_MAX, d_max = INT_MIN;
+		for (vector<Seed_hit>::iterator i = hits; i < hits_end;++i)
+			if (i->frame_ == hits[0].frame_) {
+				d_min = std::min(d_min, std::max(i->diagonal() - config.padding, -int(subject.length() - 1)));
+				d_max = std::max(d_max, std::min(i->diagonal() + config.padding, int(mapper.query_seq(0).length() - 1)));
+			}
 		const int d = hits[0].diagonal();
 		const DpTarget t(subject, std::max(d - 32, -int(subject.length() - 1)), std::min(d + 32, int(mapper.query_seq(0).length() - 1)), &hsps, subject_id);
+		//const DpTarget t(subject, d_min, d_max, &hsps, subject_id);
 		if (hits[0].frame_ < 3)
 			vf.push_back(t);
 		else
@@ -58,6 +65,7 @@ Target& Pipeline::target(size_t i)
 void Pipeline::run(Statistics &stat)
 {
 	//cout << "Query=" << query_ids::get()[this->query_id].c_str() << endl;
+	Config::set_option(config.padding, 32);
 	vector<DpTarget> vf, vr;
 	for (size_t i = 0; i < n_targets(); ++i)
 		target(i).ungapped_stage(*this);
@@ -65,11 +73,13 @@ void Pipeline::run(Statistics &stat)
 		target(i).add(*this, vf, vr);
 	std::sort(vf.begin(), vf.end());
 	std::sort(vr.begin(), vr.end());
-	for (vector<DpTarget>::iterator i = vf.begin(); i < vf.end(); i += 8) {
-		banded_3frame_swipe(translated_query, FORWARD, i, std::min(i + 8, vf.end()));
-	}
-	for (vector<DpTarget>::iterator i = vr.begin(); i < vr.end(); i += 8)
-		banded_3frame_swipe(translated_query, REVERSE, i, std::min(i + 8, vr.end()));
+	if(!vf.empty())
+		for (vector<DpTarget>::iterator i = vf.begin(); i < vf.end(); i += 8) {
+			banded_3frame_swipe(translated_query, FORWARD, i, std::min(i + 8, vf.end()), this->dp_stat);
+		}
+	if(!vr.empty())
+		for (vector<DpTarget>::iterator i = vr.begin(); i < vr.end(); i += 8)
+			banded_3frame_swipe(translated_query, REVERSE, i, std::min(i + 8, vr.end()), this->dp_stat);
 	for (size_t i = 0; i < n_targets(); ++i)
 		target(i).finish(*this);
 }

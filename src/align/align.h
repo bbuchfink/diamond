@@ -106,11 +106,13 @@ namespace ExtensionPipeline {
 		struct Target;
 		struct Pipeline : public QueryMapper
 		{
-			Pipeline(size_t query_id, Trace_pt_list::iterator begin, Trace_pt_list::iterator end) :
-				QueryMapper(query_id, begin, end)
+			Pipeline(size_t query_id, Trace_pt_list::iterator begin, Trace_pt_list::iterator end, DpStat &dp_stat) :
+				QueryMapper(query_id, begin, end),
+				dp_stat(dp_stat)
 			{}
 			Target& target(size_t i);
 			virtual void run(Statistics &stat);
+			DpStat &dp_stat;
 		};
 	}
 }

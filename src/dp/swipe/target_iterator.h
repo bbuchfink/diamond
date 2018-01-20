@@ -19,6 +19,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #ifndef TARGET_ITERATOR_H_
 #define TARGET_ITERATOR_H_
 
+#define DP_STAT
+
 #include "../dp.h"
 
 template<int _n>
@@ -53,15 +55,24 @@ struct TargetIterator
 		}
 	}
 
-	char operator[](int channel) const
+	char operator[](int channel)
 	{
-		return pos[channel] >= 0 ? subject_begin[target[channel]].seq[pos[channel]] : value_traits.mask_char;
+		if (pos[channel] >= 0) {
+#ifdef DP_STAT
+			++live;
+#endif
+			return subject_begin[target[channel]].seq[pos[channel]];
+		} else
+			return value_traits.mask_char;
 	}
 
 #ifdef __SSSE3__
-	__m128i get() const
+	__m128i get()
 	{
 		int16_t s[8];
+#ifdef DP_STAT
+		live = 0;
+#endif
 		for (int i = 0; i < active.size(); ++i) {
 			const int channel = active[i];
 			s[channel] = (*this)[channel];
@@ -100,6 +111,9 @@ struct TargetIterator
 	}
 
 	int pos[_n], target[_n], next, n_targets, cols;
+#ifdef DP_STAT
+	int live;
+#endif
 	Static_vector<int, _n> active;
 	const vector<DpTarget>::const_iterator subject_begin;
 };

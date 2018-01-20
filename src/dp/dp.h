@@ -519,6 +519,27 @@ struct DpTarget
 	list<Hsp> *out;
 };
 
+struct DpStat
+{
+	DpStat():
+		gross_cells(0),
+		net_cells(0)
+	{}
+	DpStat& operator+=(DpStat &x)
+	{
+		mtx_.lock();
+		gross_cells += x.gross_cells;
+		net_cells += x.net_cells;
+		mtx_.unlock();
+		return *this;
+	}
+	size_t gross_cells, net_cells;
+private:
+	tthread::mutex mtx_;
+};
+
+extern DpStat dp_stat;
+
 void smith_waterman(sequence q, sequence s, Hsp &out);
 void smith_waterman(sequence q, sequence s, const Diag_graph &diags);
 int score_range(sequence query, sequence subject, int i, int j, int j_end);
@@ -530,6 +551,6 @@ void anchored_3frame_dp(const TranslatedSequence &query, sequence &subject, cons
 int sw_3frame(const TranslatedSequence &query, Strand strand, const sequence &subject, int gap_open, int gap_extend, int frame_shift, Hsp &out);
 
 void banded_swipe(const sequence &query, vector<DpTarget>::iterator target_begin, vector<DpTarget>::iterator target_end);
-void banded_3frame_swipe(const TranslatedSequence &query, Strand strand, vector<DpTarget>::iterator target_begin, vector<DpTarget>::iterator target_end);
+void banded_3frame_swipe(const TranslatedSequence &query, Strand strand, vector<DpTarget>::iterator target_begin, vector<DpTarget>::iterator target_end, DpStat &stat);
 
 #endif /* FLOATING_SW_H_ */

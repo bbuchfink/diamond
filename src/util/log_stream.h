@@ -101,6 +101,10 @@ struct task_timer
 		}*/
 		msg_ = 0;
 	}
+	double get()
+	{
+		return timer_.getElapsedTimeInSec();
+	}
 	Message_stream& get_stream() const
 	{
 		switch (level_) {

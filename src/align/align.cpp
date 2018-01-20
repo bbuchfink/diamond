@@ -27,6 +27,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 using std::map;
 
+DpStat dp_stat;
+
 struct Align_fetcher
 {
 	static void init(size_t qbegin, size_t qend, vector<hit>::iterator begin, vector<hit>::iterator end)
@@ -64,6 +66,7 @@ void align_worker(size_t thread_id)
 {
 	Align_fetcher hits;
 	Statistics stat;
+	DpStat dp_stat;
 	while (hits.get()) {
 		if (hits.end == hits.begin) {
 			TextBuffer *buf = 0;
@@ -81,7 +84,7 @@ void align_worker(size_t thread_id)
 		if (config.ext == Config::swipe)
 			mapper = new ExtensionPipeline::Swipe::Pipeline(hits.query, hits.begin, hits.end);
 		else if (config.ext == Config::banded_swipe)
-			mapper = new ExtensionPipeline::BandedSwipe::Pipeline(hits.query, hits.begin, hits.end);
+			mapper = new ExtensionPipeline::BandedSwipe::Pipeline(hits.query, hits.begin, hits.end, dp_stat);
 		else if(config.frame_shift != 0)
 			mapper = new ExtensionPipeline::XDrop::Pipeline(hits.query, hits.begin, hits.end);
 		else
@@ -100,6 +103,7 @@ void align_worker(size_t thread_id)
 		OutputSink::get().push(hits.query, buf);
 	}
 	statistics += stat;
+	::dp_stat += dp_stat;
 }
 
 void align_queries(Trace_pt_buffer &trace_pts, Output_stream* output_file)
@@ -123,9 +127,20 @@ void align_queries(Trace_pt_buffer &trace_pts, Output_stream* output_file)
 		Thread_pool threads;
 		if (config.verbosity >= 3)
 			threads.push_back(launch_thread(heartbeat_worker, query_range.second));
-		for (size_t i = 0; i < (config.threads_align == 0 ? config.threads_ : config.threads_align); ++i)
+		size_t n_threads = (config.threads_align == 0 ? config.threads_ : config.threads_align);
+		for (size_t i = 0; i < n_threads; ++i)
 			threads.push_back(launch_thread(static_cast<void(*)(size_t)>(&align_worker), i));
 		threads.join_all();
+		timer.finish();
+
+		double t = timer.get();
+		log_stream << "Gross cells = " << dp_stat.gross_cells << endl;
+		log_stream << "Gross GCUPS = " << (double)dp_stat.gross_cells / 1e9 / t << endl;
+		log_stream << "Gross GCUPS/thread = " << (double)dp_stat.gross_cells / n_threads / 1e9 / t << endl;
+		log_stream << "Net cells = " << dp_stat.net_cells << endl;
+		log_stream << "Net GCUPS = " << (double)dp_stat.net_cells / 1e9 / t << endl;
+		log_stream << "Net GCUPS/thread = " << (double)dp_stat.net_cells / n_threads / 1e9 / t << endl;
+
 		timer.go("Deallocating buffers");
 		delete v;
 	}
