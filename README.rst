@@ -18,7 +18,7 @@ Follow me on Twitter to get notified of updates.
    :target: https://github.com/bbuchfink/diamond/releases/download/v0.9.14/diamond-linux64.tar.gz
 .. image:: https://img.shields.io/conda/dn/bioconda/diamond.svg?label=BioConda%20install
    :target: https://anaconda.org/bioconda/diamond
-.. image:: https://img.shields.io/badge/Google%20Scholar-440-blue.svg
+.. image:: https://img.shields.io/badge/Google%20Scholar-444-blue.svg
    :target: https://scholar.google.de/citations?user=kjPIF1cAAAAJ
 
 Quick start guide
