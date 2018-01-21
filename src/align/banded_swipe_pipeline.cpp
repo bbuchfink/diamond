@@ -118,11 +118,13 @@ void Pipeline::run(Statistics &stat)
 	stat.inc(Statistics::TARGET_HITS0, n_targets());
 	for (size_t i = 0; i < n_targets(); ++i)
 		target(i).ungapped_stage(*this);
+	rank_targets(config.rank_ratio == -1 ? 0.4 : config.rank_ratio, config.rank_factor == -1.0 ? 1e3 : config.rank_factor);
+	stat.inc(Statistics::TARGET_HITS1, n_targets());
 	run_swipe(true);
 	for (size_t i = 0; i < n_targets(); ++i)
 		target(i).set_filter_score();
 	score_only_culling();
-	stat.inc(Statistics::TARGET_HITS1, n_targets());
+	stat.inc(Statistics::TARGET_HITS2, n_targets());
 	run_swipe(false);
 	for (size_t i = 0; i < n_targets(); ++i)
 		target(i).finish(*this);
