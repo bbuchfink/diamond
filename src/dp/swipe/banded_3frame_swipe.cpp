@@ -238,13 +238,13 @@ void banded_3frame_swipe(const TranslatedSequence &query, Strand strand, vector<
 
 #endif
 
-void banded_3frame_swipe(const TranslatedSequence &query, Strand strand, vector<DpTarget>::iterator target_begin, vector<DpTarget>::iterator target_end, DpStat &stat)
+void banded_3frame_swipe(const TranslatedSequence &query, Strand strand, vector<DpTarget>::iterator target_begin, vector<DpTarget>::iterator target_end, DpStat &stat, bool score_only)
 {
 	/*cout << "==========" << endl;
 	for (vector<DpTarget>::iterator i = target_begin; i < target_end; ++i)
 		cout << ref_ids::get()[i->subject_id].c_str() << endl;*/
 #ifdef __SSE2__
-	if(config.disable_traceback)
+	if(score_only || config.disable_traceback)
 		banded_3frame_swipe<int16_t, ScoreOnly>(query, strand, target_begin, target_end, stat);
 	else
 		banded_3frame_swipe<int16_t, Traceback>(query, strand, target_begin, target_end, stat);

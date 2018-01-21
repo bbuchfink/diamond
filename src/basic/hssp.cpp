@@ -203,3 +203,16 @@ bool Hsp::is_weakly_enveloped_by(list<Hsp>::const_iterator begin, list<Hsp>::con
 			return true;
 	return false;
 }
+
+bool Hsp::is_enveloped_by(const Hsp &hsp, double p) const
+{
+	return query_source_range.overlap_factor(hsp.query_source_range) >= p || subject_range.overlap_factor(hsp.subject_range) >= p;
+}
+
+bool Hsp::is_enveloped_by(std::list<Hsp>::const_iterator begin, std::list<Hsp>::const_iterator end, double p) const
+{
+	for (list<Hsp>::const_iterator i = begin; i != end; ++i)
+		if (is_enveloped_by(*i, p))
+			return true;
+	return false;
+}

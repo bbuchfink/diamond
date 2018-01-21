@@ -112,6 +112,7 @@ namespace ExtensionPipeline {
 			{}
 			Target& target(size_t i);
 			virtual void run(Statistics &stat);
+			void run_swipe(bool score_only);
 			DpStat &dp_stat;
 		};
 	}

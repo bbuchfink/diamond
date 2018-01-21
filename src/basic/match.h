@@ -191,6 +191,8 @@ struct Hsp
 		return query_source_range.contains(d.query_absolute_range(dna_len)) || subject_range.contains(d.subject_range());
 	}
 
+	bool is_enveloped_by(const Hsp &hsp, double p) const;
+	bool is_enveloped_by(std::list<Hsp>::const_iterator begin, std::list<Hsp>::const_iterator end, double p) const;
 	bool is_weakly_enveloped_by(std::list<Hsp>::const_iterator begin, std::list<Hsp>::const_iterator end, int cutoff) const;
 	void push_back(const DiagonalSegment &d, const TranslatedSequence &query, const sequence &subject, bool reversed);
 	void splice(const DiagonalSegment &d0, const DiagonalSegment &d1, const TranslatedSequence &query, const sequence &subject, bool reversed);

@@ -67,6 +67,7 @@ struct Target
 	size_t begin, end;
 	list<Hsp> hsps;
 	list<Hsp_traits> ts;
+	Seed_hit top_hit;
 };
 
 struct QueryMapper
@@ -75,6 +76,7 @@ struct QueryMapper
 	void init();
 	bool generate_output(TextBuffer &buffer, Statistics &stat);
 	void rank_targets(double ratio, double factor);
+	void score_only_culling();
 	int raw_score_cutoff() const;
 	size_t n_targets() const
 	{
