@@ -32,22 +32,42 @@ struct Target : public ::Target
 		filter_score = hits[0].ungapped.score;
 	}
 
+	void add_strand(QueryMapper &mapper, vector<DpTarget> &v, vector<Seed_hit>::iterator begin, vector<Seed_hit>::iterator end)
+	{
+		if (end == begin) return;
+		const int band = config.padding, d_min = -int(subject.length() - 1), d_max = int(mapper.query_seq(0).length() - 1);
+		vector<Seed_hit>::iterator i = begin;
+		int d0 = std::max(i->diagonal() - band, d_min), d1 = std::min(i->diagonal() + band, d_max);
+		++i;
+		for (; i < end; ++i) {
+			if (i->diagonal() - d1 <= band) {
+				d1 = std::min(i->diagonal() + band, d_max);
+			}
+			else {
+				v.push_back(DpTarget(subject, d0, d1, &hsps, subject_id));
+				d0 = std::max(i->diagonal() - band, d_min);
+				d1 = std::min(i->diagonal() + band, d_max);
+			}
+		}
+		v.push_back(DpTarget(subject, d0, d1, &hsps, subject_id));
+	}
+
 	void add(QueryMapper &mapper, vector<DpTarget> &vf, vector<DpTarget> &vr)
 	{
 		vector<Seed_hit>::iterator hits = mapper.seed_hits.begin() + begin, hits_end = mapper.seed_hits.begin() + end;
-		int d_min = INT_MAX, d_max = INT_MIN;
-		for (vector<Seed_hit>::iterator i = hits; i < hits_end;++i)
-			if (i->frame_ == hits[0].frame_) {
-				d_min = std::min(d_min, std::max(i->diagonal() - config.padding, -int(subject.length() - 1)));
-				d_max = std::max(d_max, std::min(i->diagonal() + config.padding, int(mapper.query_seq(0).length() - 1)));
+		Strand strand = hits[0].strand();
+		std::stable_sort(hits, hits_end, Seed_hit::compare_diag_strand);
+		for (vector<Seed_hit>::iterator i = hits; i < hits_end; ++i)
+			if (i->strand() == REVERSE) {
+				if (strand == FORWARD)
+					add_strand(mapper, vf, hits, i);
+				else
+					add_strand(mapper, vr, i, hits_end);
+				return;
 			}
-		const int d = hits[0].diagonal();
-		const DpTarget t(subject, std::max(d - 32, -int(subject.length() - 1)), std::min(d + 32, int(mapper.query_seq(0).length() - 1)), &hsps, subject_id);
-		//const DpTarget t(subject, d_min, d_max, &hsps, subject_id);
-		if (hits[0].frame_ < 3)
-			vf.push_back(t);
-		else
-			vr.push_back(t);
+		if (strand == FORWARD) add_strand(mapper, vf, hits, hits_end);
+		//const int d = hits[0].diagonal();
+		//const DpTarget t(subject, std::max(d - 32, -int(subject.length() - 1)), std::min(d + 32, int(mapper.query_seq(0).length() - 1)), &hsps, subject_id);		
 	}
 
 	void finish(QueryMapper &mapper)
