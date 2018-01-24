@@ -365,6 +365,10 @@ struct ScoreTraits<int32_t>
 	{
 		x = std::max(x, 0);
 	}
+	static int max_score()
+	{
+		return INT_MAX;
+	}
 };
 
 inline void store_sv(int32_t sv, int32_t *dst)
@@ -393,6 +397,10 @@ struct ScoreTraits<score_vector<int16_t> >
 	static int int_score(Score s)
 	{
 		return (uint16_t)s ^ 0x8000;
+	}
+	static int16_t max_score()
+	{
+		return SHRT_MAX;
 	}
 };
 

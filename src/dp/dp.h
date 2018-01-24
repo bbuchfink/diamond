@@ -519,6 +519,7 @@ struct DpTarget
 		return left_i1() < x.left_i1();
 	}
 	int d_begin, d_end, score, subject_id;
+	bool overflow;
 	sequence seq;
 	list<Hsp> *out;
 };
