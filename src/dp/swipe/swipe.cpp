@@ -30,35 +30,33 @@ using std::pair;
 
 #ifdef __SSE2__
 
-template<typename _score> TLS_PTR vector<score_vector<_score> >* SwipeMatrix<_score>::hgap_ptr;
-template<typename _score> TLS_PTR vector<score_vector<_score> >* SwipeMatrix<_score>::score_ptr;
+template<typename _sv> TLS_PTR vector<_sv>* SwipeMatrix<_sv>::hgap_ptr;
+template<typename _sv> TLS_PTR vector<_sv>* SwipeMatrix<_sv>::score_ptr;
 
-template<typename _score>
+template<typename _sv>
 void swipe(const sequence &query, vector<DpTarget>::const_iterator subject_begin, vector<DpTarget>::const_iterator subject_end, vector<int>::iterator out)
 {
 #ifdef SW_ENABLE_DEBUG
 	static int v[1024][1024];
 #endif
 
-	typedef score_vector<_score> sv;
-
 	const int qlen = (int)query.length();
-	SwipeMatrix<_score> dp(qlen);
+	SwipeMatrix<_sv> dp(qlen);
 
-	const sv open_penalty(static_cast<char>(score_matrix.gap_open() + score_matrix.gap_extend())),
+	const _sv open_penalty(static_cast<char>(score_matrix.gap_open() + score_matrix.gap_extend())),
 		extend_penalty(static_cast<char>(score_matrix.gap_extend())),
 		vbias(score_matrix.bias());
-	sv best;
-	SwipeProfile<_score> profile;
-	TargetIterator<score_traits<_score>::channels> targets(subject_begin, subject_end);
+	_sv best;
+	SwipeProfile<_sv> profile;
+	TargetIterator<_sv::CHANNELS> targets(subject_begin, subject_end);
 
 	while (targets.active.size() > 0) {
-		typename SwipeMatrix<_score>::ColumnIterator it(dp.begin());
-		sv vgap, hgap, last;
+		typename SwipeMatrix<_sv>::ColumnIterator it(dp.begin());
+		_sv vgap, hgap, last;
 		//profile.set(targets.get2<_score>());
 		for (int i = 0; i < qlen; ++i) {
 			hgap = it.hgap();
-			const sv next = cell_update<_score>(it.diag(), profile.get(query[i]), extend_penalty, open_penalty, hgap, vgap, best, vbias);
+			const _sv next = cell_update<_sv>(it.diag(), profile.get(query[i]), extend_penalty, open_penalty, hgap, vgap, best, vbias);
 			it.set_hgap(hgap);
 			it.set_score(last);
 			last = next;
@@ -99,6 +97,6 @@ void swipe(const sequence &query, vector<DpTarget>::const_iterator subject_begin
 void swipe(const sequence &query, vector<DpTarget>::const_iterator subject_begin, vector<DpTarget>::const_iterator subject_end, vector<int>::iterator out)
 {
 #ifdef __SSE2__
-	swipe<uint8_t>(query, subject_begin, subject_end, out);
+	swipe<score_vector<uint8_t> >(query, subject_begin, subject_end, out);
 #endif
 }

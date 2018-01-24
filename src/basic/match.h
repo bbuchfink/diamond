@@ -195,6 +195,7 @@ struct Hsp
 	bool is_enveloped_by(std::list<Hsp>::const_iterator begin, std::list<Hsp>::const_iterator end, double p) const;
 	bool is_weakly_enveloped_by(std::list<Hsp>::const_iterator begin, std::list<Hsp>::const_iterator end, int cutoff) const;
 	void push_back(const DiagonalSegment &d, const TranslatedSequence &query, const sequence &subject, bool reversed);
+	void push_match(Letter q, Letter s, bool positive);
 	void splice(const DiagonalSegment &d0, const DiagonalSegment &d1, const TranslatedSequence &query, const sequence &subject, bool reversed);
 	void set_begin(const DiagonalSegment &d, int dna_len);
 	void set_end(const DiagonalSegment &d, int dna_len);

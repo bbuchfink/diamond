@@ -60,6 +60,11 @@ struct Score_matrix
 		return matrix8_.data[(int(a) << 5) + int(b)];
 	}
 
+	const int* row(char a) const
+	{
+		return &matrix32_.data[(int)a << 5];
+	}
+
 	uint8_t biased_score(Letter a, Letter b) const
 	{ return matrix8u_.data[(int(a) << 5) + int(b)]; }
 

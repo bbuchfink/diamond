@@ -49,6 +49,9 @@ template<>
 struct score_vector<uint8_t>
 {
 
+	typedef uint8_t Score;
+	enum { CHANNELS = 16 };
+
 	score_vector()
 	{
 		//data_ = _mm_set1_epi8(score_traits<uint8_t>::zero);
@@ -227,6 +230,9 @@ template<>
 struct score_vector<int16_t>
 {
 
+	typedef int16_t Score;
+	enum { CHANNELS = 8 };
+
 	score_vector()
 	{
 	}
@@ -275,9 +281,10 @@ struct score_vector<int16_t>
 #endif
 	}
 
-	void zero()
+	score_vector& zero()
 	{
 		data_ = _mm_set1_epi16(SHRT_MIN);
+		return *this;
 	}
 
 	score_vector operator+(const score_vector &rhs) const
@@ -330,6 +337,70 @@ struct score_vector<int16_t>
 	__m128i data_;
 
 };
+
+#endif
+
+template<typename _t>
+struct ScoreTraits
+{};
+
+template<>
+struct ScoreTraits<int32_t>
+{
+	enum { CHANNELS = 1 };
+	typedef int32_t Score;
+	static int32_t zero()
+	{
+		return 0;
+	}
+	static int32_t zero_score()
+	{
+		return 0;
+	}
+	static int int_score(Score s)
+	{
+		return s;
+	}
+	static void saturate(int &x)
+	{
+		x = std::max(x, 0);
+	}
+};
+
+inline void store_sv(int32_t sv, int32_t *dst)
+{
+	*dst = sv;
+}
+
+#ifdef __SSE2__
+
+template<>
+struct ScoreTraits<score_vector<int16_t> >
+{
+	enum { CHANNELS = 8 };
+	typedef int16_t Score;
+	static score_vector<int16_t> zero()
+	{
+		return score_vector<int16_t>().zero();
+	}
+	static void saturate(score_vector<int16_t> &v)
+	{
+	}
+	static int16_t zero_score()
+	{
+		return SHRT_MIN;
+	}
+	static int int_score(Score s)
+	{
+		return (uint16_t)s ^ 0x8000;
+	}
+};
+
+template<typename _t, typename _p>
+inline void store_sv(const score_vector<_t> &sv, _p *dst)
+{
+	_mm_storeu_si128((__m128i*)dst, sv.data_);
+}
 
 #endif
 

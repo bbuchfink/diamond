@@ -98,15 +98,8 @@ void Pipeline::run_swipe(bool score_only)
 	vector<DpTarget> vf, vr;
 	for (size_t i = 0; i < n_targets(); ++i)
 		target(i).add(*this, vf, vr);
-	std::sort(vf.begin(), vf.end());
-	std::sort(vr.begin(), vr.end());
-	if (!vf.empty())
-		for (vector<DpTarget>::iterator i = vf.begin(); i < vf.end(); i += 8) {
-			banded_3frame_swipe(translated_query, FORWARD, i, std::min(i + 8, vf.end()), this->dp_stat, score_only);
-		}
-	if (!vr.empty())
-		for (vector<DpTarget>::iterator i = vr.begin(); i < vr.end(); i += 8)
-			banded_3frame_swipe(translated_query, REVERSE, i, std::min(i + 8, vr.end()), this->dp_stat, score_only);
+	banded_3frame_swipe(translated_query, FORWARD, vf.begin(), vf.end(), this->dp_stat, score_only);
+	banded_3frame_swipe(translated_query, REVERSE, vr.begin(), vr.end(), this->dp_stat, score_only);
 }
 
 void Pipeline::run(Statistics &stat)

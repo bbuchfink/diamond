@@ -216,3 +216,19 @@ bool Hsp::is_enveloped_by(std::list<Hsp>::const_iterator begin, std::list<Hsp>::
 			return true;
 	return false;
 }
+
+void Hsp::push_match(Letter q, Letter s, bool positive)
+{
+	if (q == s) {
+		transcript.push_back(op_match, 1u);
+		++identities;
+		++positives;
+	}
+	else {
+		transcript.push_back(op_substitution, s);
+		++mismatches;
+		if (positive)
+			++positives;
+	}
+	++length;
+}
