@@ -92,10 +92,6 @@ add_executable(diamond src/run/main.cpp
   src/output/target_culling.cpp
   src/align/greedy_pipeline.cpp
   src/align/swipe_pipeline.cpp
-  src/align/xdrop_pipeline.cpp
-  src/dp/anchored_3frame_dp.cpp
-  src/dp/last/GappedXdropAligner.cc
-  src/dp/last/GappedXdropAligner3frame.cc
   src/dp/swipe/banded_3frame_swipe.cpp
   src/dp/swipe/banded_swipe.cpp
   src/align/banded_swipe_pipeline.cpp
