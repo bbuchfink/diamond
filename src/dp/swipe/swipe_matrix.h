@@ -452,9 +452,10 @@ struct Banded3FrameSwipeTracebackMatrix
 
 	TracebackIterator traceback(size_t col, int i0, int j, int dna_len, size_t channel, Score score) const
 	{
-		const int i_ = std::max(-i0, 0) * 3;
+		const int i_ = std::max(-i0, 0) * 3,
+			i1 = (int)std::min(band_, size_t(dna_len - 2 - i0 * 3));
 		const Score *s = (Score*)(&score_[col*(band_ + 1) + i_]) + channel;
-		for (int i = i_; i < std::min(band_, size_t(dna_len - 2 - i0 * 3)); ++i, s += ScoreTraits<_sv>::CHANNELS)
+		for (int i = i_; i < i1; ++i, s += ScoreTraits<_sv>::CHANNELS)
 			if (*s == score)
 				return TracebackIterator(s, band_, i % 3, i0 + i / 3, j);
 		throw std::runtime_error("Trackback error.");
