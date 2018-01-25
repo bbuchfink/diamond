@@ -106,9 +106,9 @@ struct SwipeProfile
 #else
 	inline void set(uint64_t seq)
 	{
-		assert(sizeof(data_) / sizeof(score_vector<_score>) >= value_traits.alphabet_size);
+		assert(sizeof(data_) / sizeof(_sv) >= value_traits.alphabet_size);
 		for (unsigned j = 0; j < AMINO_ACID_COUNT; ++j)
-			data_[j] = score_vector<_score>(j, seq);
+			data_[j] = _sv(j, seq);
 	}
 #endif
 	inline const _sv& get(Letter i) const
@@ -121,11 +121,17 @@ struct SwipeProfile
 template<>
 struct SwipeProfile<int32_t>
 {
+#ifdef __SSE2__
 	void set(const __m128i& seq)
 	{
 		int16_t s[8];
 		_mm_storeu_si128((__m128i*)s, seq);
-		row = score_matrix.row(s[0]);
+		row = score_matrix.row((char)s[0]);
+	}
+#endif
+	void set(uint64_t seq)
+	{
+		row = score_matrix.row((char)seq);
 	}
 	int32_t get(char i) const
 	{

@@ -83,10 +83,8 @@ void align_worker(size_t thread_id)
 		QueryMapper *mapper;
 		if (config.ext == Config::swipe)
 			mapper = new ExtensionPipeline::Swipe::Pipeline(hits.query, hits.begin, hits.end);
-		else if (config.ext == Config::banded_swipe)
+		else if (config.frame_shift != 0)
 			mapper = new ExtensionPipeline::BandedSwipe::Pipeline(hits.query, hits.begin, hits.end, dp_stat);
-		else if(config.frame_shift != 0)
-			mapper = new ExtensionPipeline::XDrop::Pipeline(hits.query, hits.begin, hits.end);
 		else
 			mapper = new ExtensionPipeline::Greedy::Pipeline(hits.query, hits.begin, hits.end);
 		mapper->init();
