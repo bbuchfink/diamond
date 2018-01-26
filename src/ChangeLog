@@ -1,3 +1,6 @@
+[0.9.16]
+- Fixed a bug that caused an error for non-SSSE3 builds.
+
 [0.9.15]
 - Improved performance of frameshift alignment mode.
 
