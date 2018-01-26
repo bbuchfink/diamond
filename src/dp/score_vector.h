@@ -248,22 +248,22 @@ struct score_vector<int16_t>
 
 	score_vector(unsigned a, uint64_t seq)
 	{
-		const int16_t* row(&score_matrix.matrix16()[a << 5]);
-		uint64_t b = uint64_t((uint16_t)row[seq & 0xff]);
+		const uint16_t* row((uint16_t*)&score_matrix.matrix16()[a << 5]);
+		uint64_t b = uint64_t(row[seq & 0xff]);
 		seq >>= 8;
-		b |= uint64_t((uint16_t)row[seq & 0xff]) << 16;
+		b |= uint64_t(row[seq & 0xff]) << 16;
 		seq >>= 8;
-		b |= uint64_t((uint16_t)row[seq & 0xff]) << 16*2;
+		b |= uint64_t(row[seq & 0xff]) << 16*2;
 		seq >>= 8;
-		b |= uint64_t((uint16_t)row[seq & 0xff]) << 16 * 3;
+		b |= uint64_t(row[seq & 0xff]) << 16 * 3;
 		seq >>= 8;
-		uint16_t c = uint64_t((uint16_t)row[seq & 0xff]);
+		uint64_t c = uint64_t(row[seq & 0xff]);
 		seq >>= 8;
-		c |= uint64_t((uint16_t)row[seq & 0xff]) << 16;
+		c |= uint64_t(row[seq & 0xff]) << 16;
 		seq >>= 8;
-		c |= uint64_t((uint16_t)row[seq & 0xff]) << 16 * 2;
+		c |= uint64_t(row[seq & 0xff]) << 16 * 2;
 		seq >>= 8;
-		c |= uint64_t((uint16_t)row[seq & 0xff]) << 16 * 3;
+		c |= uint64_t(row[seq & 0xff]) << 16 * 3;
 		data_ = _mm_set_epi64x(c, b);
 	}
 
