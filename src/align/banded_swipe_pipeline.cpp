@@ -105,7 +105,7 @@ void Pipeline::range_ranking()
 	const double rr = config.rank_ratio == -1 ? 0.4 : config.rank_ratio;
 	std::stable_sort(targets.begin(), targets.end(), Target::compare);
 	IntervalPartition ip(config.max_alignments);
-	for (Ptr_vector<::Target>::iterator i = targets.begin(); i < targets.end();) {
+	for (Ptr_vector< ::Target>::iterator i = targets.begin(); i < targets.end();) {
 		Target* t = ((Target*)*i);
 		const int min_score = int((double)t->filter_score / rr);
 		const interval r = t->ungapped_query_range(source_query_len);
