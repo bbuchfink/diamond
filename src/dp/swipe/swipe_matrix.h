@@ -279,6 +279,11 @@ struct Banded3FrameSwipeMatrix
 		return ColumnIterator(&hgap_[offset], &score_[offset]);
 	}
 
+	size_t band() const
+	{
+		return band_;
+	}
+
 private:
 	const size_t band_;
 	std::vector<_sv> &hgap_, &score_;
@@ -413,7 +418,7 @@ struct Banded3FrameSwipeTracebackMatrix
 				++l;
 				g += e;
 			}
-			while (v>v0) {
+			while (v > v0) {
 				if (score + g == *v) {
 					walk_vgap(v, l);
 					return l;
@@ -478,14 +483,18 @@ struct Banded3FrameSwipeTracebackMatrix
 		}
 		hgap_[i++] = z;
 		hgap_[i] = z;
-		for (i = 0; i < cols; ++i) {
+		for (i = 0; i < cols; ++i)
 			score_[i*(band + 1) + band] = z;
-		}
 	}
 
 	inline ColumnIterator begin(size_t offset, size_t col)
 	{
 		return ColumnIterator(&hgap_[offset], &score_[col*(band_ + 1) + offset], &score_[(col + 1)*(band_ + 1) + offset]);
+	}
+
+	size_t band() const
+	{
+		return band_;
 	}
 
 private:

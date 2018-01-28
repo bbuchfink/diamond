@@ -48,7 +48,7 @@ struct Banded3FrameSwipeMatrixRef<_sv, ScoreOnly>
 	typedef Banded3FrameSwipeMatrix<_sv> type;
 };
 
-template<typename _sv, bool _with_transcript>
+template<typename _sv>
 void traceback(sequence *query, Strand strand, int dna_len, const Banded3FrameSwipeTracebackMatrix<_sv> &dp, DpTarget &target, typename ScoreTraits<_sv>::Score max_score, int max_col, int channel, int i0, int i1)
 {
 	typedef typename ScoreTraits<_sv>::Score Score;
@@ -57,7 +57,7 @@ void traceback(sequence *query, Strand strand, int dna_len, const Banded3FrameSw
 	target.out->push_back(Hsp());
 	Hsp &out = target.out->back();
 	out.score = target.score = ScoreTraits<_sv>::int_score(max_score);
-	if(_with_transcript) out.transcript.reserve(size_t(out.score * config.transcript_len_estimate));
+	out.transcript.reserve(size_t(out.score * config.transcript_len_estimate));
 
 	out.set_end(it.i + 1, it.j + 1, Frame(strand, it.frame), dna_len);
 
@@ -65,21 +65,17 @@ void traceback(sequence *query, Strand strand, int dna_len, const Banded3FrameSw
 		const Letter q = query[it.frame][it.i], s = target.seq[it.j];
 		const Score m = score_matrix(q, s), score = it.score();
 		if (score == it.sm3() + m) {
-			if (_with_transcript) out.push_match(q, s, m > (Score)0);
+			out.push_match(q, s, m > (Score)0);
 			it.walk_diagonal();
 		}
 		else if (score == it.sm4() + m - score_matrix.frame_shift()) {
-			if (_with_transcript) {
-				out.push_match(q, s, m > (Score)0);
-				out.transcript.push_back(op_frameshift_forward);
-			}
+			out.push_match(q, s, m > (Score)0);
+			out.transcript.push_back(op_frameshift_forward);
 			it.walk_forward_shift();
 		}
 		else if (score == it.sm2() + m - score_matrix.frame_shift()) {
-			if (_with_transcript) {
-				out.push_match(q, s, m > (Score)0);
-				out.transcript.push_back(op_frameshift_reverse);
-			}
+			out.push_match(q, s, m > (Score)0);
+			out.transcript.push_back(op_frameshift_reverse);
 			it.walk_reverse_shift();
 		}
 		else {
@@ -87,31 +83,30 @@ void traceback(sequence *query, Strand strand, int dna_len, const Banded3FrameSw
 			++out.gap_openings;
 			out.length += abs(l);
 			out.gaps += abs(l);
-			if (_with_transcript) {
-				if (l > 0) {
-					out.transcript.push_back(op_insertion, (unsigned)l);
-				}
-				else {
-					for (int j = it.j - l; j > it.j; --j)
-						out.transcript.push_back(op_deletion, target.seq[j]);
-				}
-			}
+			if (l > 0)
+				out.transcript.push_back(op_insertion, (unsigned)l);
+			else
+				for (int j = it.j - l; j > it.j; --j)
+					out.transcript.push_back(op_deletion, target.seq[j]);
 		}
 	}
 
 	out.set_begin(it.i + 1, it.j + 1, Frame(strand, it.frame), dna_len);
-	if (_with_transcript) {
-		out.transcript.reverse();
-		out.transcript.push_terminator();
-	}
+	out.transcript.reverse();
+	out.transcript.push_terminator();
 }
 
-template<typename _sv, bool _with_transcript>
+template<typename _sv>
 void traceback(sequence *query, Strand strand, int dna_len, const Banded3FrameSwipeMatrix<_sv> &dp, DpTarget &target, typename ScoreTraits<_sv>::Score max_score, int max_col, int channel, int i0, int i1)
 {
 	target.out->push_back(Hsp());
 	Hsp &out = target.out->back();
+	const int j0 = i1 - (target.d_end - 1);
 	out.score = target.score = ScoreTraits<_sv>::int_score(max_score);
+	out.query_range.end_ = std::min(i0 + max_col + (int)dp.band() / 3 / 2, (int)query[0].length());
+	out.query_range.begin_ = std::max(out.query_range.end_ - (j0 + max_col), 0);
+	out.frame = strand == FORWARD ? 0 : 3;
+	out.query_source_range = TranslatedPosition::absolute_interval(TranslatedPosition(out.query_range.begin_, Frame(out.frame)), TranslatedPosition(out.query_range.end_, Frame(out.frame)), dna_len);
 }
 
 template<typename _sv, typename _traceback>
@@ -221,7 +216,7 @@ void banded_3frame_swipe(const TranslatedSequence &query, Strand strand, vector<
 	for (int i = 0; i < targets.n_targets; ++i)
 		if (best[i] < ScoreTraits<_sv>::max_score()) {
 			subject_begin[i].overflow = false;
-			traceback<_sv, true>(q, strand, (int)query.source().length(), dp, subject_begin[i], best[i], max_col[i], i, i0 - j, i1 - j);
+			traceback<_sv>(q, strand, (int)query.source().length(), dp, subject_begin[i], best[i], max_col[i], i, i0 - j, i1 - j);
 		}
 		else
 			subject_begin[i].overflow = true;
@@ -247,7 +242,7 @@ void banded_3frame_swipe(const TranslatedSequence &query, Strand strand, vector<
 				banded_3frame_swipe<int32_t, Traceback>(query, strand, i, i + 1, stat);
 		}
 #else
-	for (vector<DpTarget>::iterator i = target_begin; i < target_end; i += 1)
+	for (vector<DpTarget>::iterator i = target_begin; i < target_end; ++i)
 		if (score_only || config.disable_traceback)
 			banded_3frame_swipe<int32_t, ScoreOnly>(query, strand, i, i + 1, stat);
 		else

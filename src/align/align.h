@@ -100,6 +100,7 @@ namespace ExtensionPipeline {
 			Target& target(size_t i);
 			virtual void run(Statistics &stat);
 			void run_swipe(bool score_only);
+			void range_ranking();
 			DpStat &dp_stat;
 		};
 	}

@@ -156,15 +156,26 @@ void QueryMapper::score_only_culling()
 	std::stable_sort(targets.begin(), targets.end(), Target::compare);
 	auto_ptr<TargetCulling> target_culling(TargetCulling::get());
 	const unsigned query_len = (unsigned)query_seq(0).length();
-	size_t i = 0;
-	for (; i < targets.size(); ++i) {
-		if ((config.min_bit_score == 0 && score_matrix.evalue(targets[i].filter_score, config.db_size, query_len) > config.max_evalue)
-			|| score_matrix.bitscore(targets[i].filter_score) < config.min_bit_score)
+	Ptr_vector<Target>::iterator i;
+	for (i = targets.begin(); i<targets.end();) {
+		if ((config.min_bit_score == 0 && score_matrix.evalue((*i)->filter_score, config.db_size, query_len) > config.max_evalue)
+			|| score_matrix.bitscore((*i)->filter_score) < config.min_bit_score)
 			break;
-		if (target_culling->cull(targets[i]) == TargetCulling::FINISHED) break;
-		target_culling->add(targets[i]);
+		const int c = target_culling->cull(**i);
+		if (c == TargetCulling::FINISHED)
+			break;
+		else if (c == TargetCulling::NEXT) {
+			if (config.benchmark_ranking)
+				(*i++)->outranked = true;
+			else
+				i = targets.erase(i, i + 1);
+		}
+		else {
+			target_culling->add(**i);
+			++i;
+		}
 	}
-	targets.erase(targets.begin() + i, targets.end());
+	targets.erase(i, targets.end());
 }
 
 bool QueryMapper::generate_output(TextBuffer &buffer, Statistics &stat)
@@ -270,7 +281,7 @@ void Target::inner_culling(int cutoff)
 	else
 		filter_score = 0;
 	for (list<Hsp>::iterator i = hsps.begin(); i != hsps.end();) {
-		if (i->is_enveloped_by(hsps.begin(), i, 0.5))
+		if (i->is_enveloped_by(hsps.begin(), i, 0.5) || i->score < cutoff)
 			i = hsps.erase(i);
 		else
 			++i;

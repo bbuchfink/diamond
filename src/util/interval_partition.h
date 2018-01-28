@@ -47,6 +47,9 @@ struct IntervalNode
 struct IntervalPartition : protected std::map<int, IntervalNode>
 {
 
+	struct MaxScore {};
+	struct MinScore {};
+
 	struct Iterator
 	{
 		Iterator(const_iterator i, const_iterator j, const IntervalPartition &parent) :
@@ -113,13 +116,26 @@ struct IntervalPartition : protected std::map<int, IntervalNode>
 		return c;
 	}
 
-	int covered(interval k, int max_score) const
+	int covered(interval k, int max_score, const MaxScore&) const
 	{
 		Iterator i = begin(k.begin_);
 		std::pair<interval, IntervalNode> l;
 		int c = 0;
 		while (i.good() && (l = *i).first.begin_ < k.end_) {
 			if (l.second.max_score >= max_score)
+				c += k.overlap(l.first);
+			++i;
+		}
+		return c;
+	}
+
+	int covered(interval k, int min_score, const MinScore&) const
+	{
+		Iterator i = begin(k.begin_);
+		std::pair<interval, IntervalNode> l;
+		int c = 0;
+		while (i.good() && (l = *i).first.begin_ < k.end_) {
+			if (l.second.count >= cap && l.second.min_score >= min_score)
 				c += k.overlap(l.first);
 			++i;
 		}

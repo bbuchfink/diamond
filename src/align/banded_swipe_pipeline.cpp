@@ -35,6 +35,14 @@ struct Target : public ::Target
 		filter_score = top_hit.ungapped.score;
 	}
 
+	interval ungapped_query_range(int query_dna_len) const
+	{
+		const int i0 = std::max((int)top_hit.query_pos_ - (int)top_hit.subject_pos_, 0),
+			i1 = std::min((int)top_hit.query_pos_ + (int)subject.length() - (int)top_hit.subject_pos_, query_dna_len / 3);
+		const Frame f = Frame(top_hit.frame_);
+		return TranslatedPosition::absolute_interval(TranslatedPosition(i0, f), TranslatedPosition(i1, f), query_dna_len);
+	}
+
 	void add_strand(QueryMapper &mapper, vector<DpTarget> &v, vector<Seed_hit>::iterator begin, vector<Seed_hit>::iterator end)
 	{
 		if (end == begin) return;
@@ -78,6 +86,10 @@ struct Target : public ::Target
 		filter_score = 0;
 		for (list<Hsp>::const_iterator i = hsps.begin(); i != hsps.end(); ++i)
 			filter_score = std::max(filter_score, (int)i->score);
+	}
+
+	void reset()
+	{
 		hsps.clear();
 	}
 
@@ -87,6 +99,29 @@ struct Target : public ::Target
 	}
 
 };
+
+void Pipeline::range_ranking()
+{
+	const double rr = config.rank_ratio == -1 ? 0.4 : config.rank_ratio;
+	std::stable_sort(targets.begin(), targets.end(), Target::compare);
+	IntervalPartition ip(config.max_alignments);
+	for (Ptr_vector<::Target>::iterator i = targets.begin(); i < targets.end();) {
+		Target* t = ((Target*)*i);
+		const int min_score = int((double)t->filter_score / rr);
+		const interval r = t->ungapped_query_range(source_query_len);
+		if ((double)ip.covered(r, min_score, IntervalPartition::MinScore()) / r.length() * 100.0 < config.query_range_cover) {
+			ip.insert(r, t->filter_score);
+			++i;
+		}
+		else
+			if (config.benchmark_ranking) {
+				t->outranked = true;
+				++i;
+			}
+			else
+				i = targets.erase(i, i + 1);
+	}
+}
 
 Target& Pipeline::target(size_t i)
 {
@@ -111,13 +146,21 @@ void Pipeline::run(Statistics &stat)
 	stat.inc(Statistics::TARGET_HITS0, n_targets());
 	for (size_t i = 0; i < n_targets(); ++i)
 		target(i).ungapped_stage(*this);
-	rank_targets(config.rank_ratio == -1 ? 0.4 : config.rank_ratio, config.rank_factor == -1.0 ? 1e3 : config.rank_factor);
+	if (!config.query_range_culling) {
+		rank_targets(config.rank_ratio == -1 ? 0.4 : config.rank_ratio, config.rank_factor == -1.0 ? 1e3 : config.rank_factor);
+	}
+	else
+		range_ranking();
+
 	stat.inc(Statistics::TARGET_HITS1, n_targets());
 	run_swipe(true);
 	for (size_t i = 0; i < n_targets(); ++i)
 		target(i).set_filter_score();
 	score_only_culling();
+
 	stat.inc(Statistics::TARGET_HITS2, n_targets());
+	for (size_t i = 0; i < n_targets(); ++i)
+		target(i).reset();
 	run_swipe(false);
 	for (size_t i = 0; i < n_targets(); ++i)
 		target(i).finish(*this);

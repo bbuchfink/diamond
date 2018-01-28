@@ -253,7 +253,7 @@ struct score_vector<int16_t>
 		seq >>= 8;
 		b |= uint64_t(row[seq & 0xff]) << 16;
 		seq >>= 8;
-		b |= uint64_t(row[seq & 0xff]) << 16*2;
+		b |= uint64_t(row[seq & 0xff]) << 16 * 2;
 		seq >>= 8;
 		b |= uint64_t(row[seq & 0xff]) << 16 * 3;
 		seq >>= 8;
