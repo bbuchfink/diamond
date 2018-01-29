@@ -281,7 +281,7 @@ void Target::inner_culling(int cutoff)
 	else
 		filter_score = 0;
 	for (list<Hsp>::iterator i = hsps.begin(); i != hsps.end();) {
-		if (i->is_enveloped_by(hsps.begin(), i, 0.5) || i->score < cutoff)
+		if (i->is_enveloped_by(hsps.begin(), i, 0.5) || (int)i->score < cutoff)
 			i = hsps.erase(i);
 		else
 			++i;

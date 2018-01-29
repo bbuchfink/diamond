@@ -140,23 +140,4 @@ struct SwipeProfile<int32_t>
 	const int32_t *row;
 };
 
-template<typename _score>
-struct LazySwipeProfile
-{
-	LazySwipeProfile():
-		set(0)
-	{ }
-	inline const score_vector<_score>& get(Letter i, const __m128i &seq)
-	{
-		if ((set & (1 << i)) == 0) {
-			data_[(int)i] = score_vector<_score>(i, seq);
-			set |= 1 << i;
-		}
-		return data_[(int)i];
-	}
-	int set;
-	score_vector<_score> data_[AMINO_ACID_COUNT];
-};
-
-
 #endif

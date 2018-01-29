@@ -316,7 +316,7 @@ struct Diagonal_node : public Diagonal_segment
 struct Diag_graph
 {
 
-	enum { end = 0xffffffffffffffffllu };
+	enum { end = SIZE_MAX };
 
 	struct Edge
 	{

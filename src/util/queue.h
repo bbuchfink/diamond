@@ -20,7 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 struct Queue
 {
-	enum { end = 0xffffffffffffffffllu };
+	enum { end = SIZE_MAX };
 	Queue(size_t begin, size_t end) :
 		next_(begin),
 		end_(end)

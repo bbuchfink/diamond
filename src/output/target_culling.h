@@ -32,9 +32,6 @@ struct TargetCulling
 	virtual void add(const vector<IntermediateRecord> &target_hsp) = 0;
 	enum { FINISHED = 0, NEXT = 1, INCLUDE = 2};
 	static TargetCulling* get();
-private:
-	size_t n_;
-	int top_score_;
 };
 
 struct GlobalCulling : public TargetCulling

@@ -104,7 +104,7 @@ void Pipeline::range_ranking()
 {
 	const double rr = config.rank_ratio == -1 ? 0.4 : config.rank_ratio;
 	std::stable_sort(targets.begin(), targets.end(), Target::compare);
-	IntervalPartition ip(config.max_alignments);
+	IntervalPartition ip((int)std::min(config.max_alignments, (uint64_t)INT_MAX));
 	for (Ptr_vector< ::Target>::iterator i = targets.begin(); i < targets.end();) {
 		Target* t = ((Target*)*i);
 		const int min_score = int((double)t->filter_score / rr);
@@ -146,9 +146,8 @@ void Pipeline::run(Statistics &stat)
 	stat.inc(Statistics::TARGET_HITS0, n_targets());
 	for (size_t i = 0; i < n_targets(); ++i)
 		target(i).ungapped_stage(*this);
-	if (!config.query_range_culling) {
+	if (!config.query_range_culling)
 		rank_targets(config.rank_ratio == -1 ? 0.4 : config.rank_ratio, config.rank_factor == -1.0 ? 1e3 : config.rank_factor);
-	}
 	else
 		range_ranking();
 
