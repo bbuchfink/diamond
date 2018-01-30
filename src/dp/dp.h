@@ -22,6 +22,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <utility>
 #include <map>
 #include <list>
+#include <stdint.h>
 #include "../basic/match.h"
 #include "score_profile.h"
 #include "../basic/translated_position.h"
