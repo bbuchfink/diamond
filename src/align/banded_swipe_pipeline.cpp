@@ -98,6 +98,19 @@ struct Target : public ::Target
 		inner_culling(mapper.raw_score_cutoff());
 	}
 
+	bool is_outranked(const IntervalPartition &ip, int source_query_len, double rr) const
+	{
+		const interval r = ungapped_query_range(source_query_len);
+		if (config.toppercent == 100.0) {
+			const int min_score = int((double)filter_score / rr);
+			return (double)ip.covered(r, min_score, IntervalPartition::MinScore()) / r.length() * 100.0 >= config.query_range_cover;
+		}
+		else {
+			const int min_score = int((double)filter_score / rr / (1.0 - config.toppercent / 100.0));
+			return (double)ip.covered(r, min_score, IntervalPartition::MaxScore()) / r.length() * 100.0 >= config.query_range_cover;
+		}
+	}
+
 };
 
 void Pipeline::range_ranking()
@@ -107,19 +120,18 @@ void Pipeline::range_ranking()
 	IntervalPartition ip((int)std::min(config.max_alignments, (uint64_t)INT_MAX));
 	for (Ptr_vector< ::Target>::iterator i = targets.begin(); i < targets.end();) {
 		Target* t = ((Target*)*i);
-		const int min_score = int((double)t->filter_score / rr);
-		const interval r = t->ungapped_query_range(source_query_len);
-		if ((double)ip.covered(r, min_score, IntervalPartition::MinScore()) / r.length() * 100.0 < config.query_range_cover) {
-			ip.insert(r, t->filter_score);
-			++i;
-		}
-		else
+		if (t->is_outranked(ip, source_query_len, rr)) {
 			if (config.benchmark_ranking) {
 				t->outranked = true;
 				++i;
 			}
 			else
 				i = targets.erase(i, i + 1);
+		}
+		else {
+			ip.insert(t->ungapped_query_range(source_query_len), t->filter_score);
+			++i;
+		}			
 	}
 }
 

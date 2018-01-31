@@ -220,24 +220,14 @@ struct score_vector<uint8_t>
 };
 
 template<>
-struct score_traits<int16_t>
-{
-	enum { channels = 8, zero = 0x8000, byte_size = 2 };
-	typedef uint8_t Mask;
-};
-
-template<>
 struct score_vector<int16_t>
 {
-
-	typedef int16_t Score;
-	enum { CHANNELS = 8 };
 
 	score_vector()
 	{
 	}
 
-	score_vector(int x)
+	explicit score_vector(int x)
 	{
 		data_ = _mm_set1_epi16(x);
 	}

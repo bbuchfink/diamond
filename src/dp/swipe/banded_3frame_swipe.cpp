@@ -21,8 +21,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "swipe.h"
 #include "target_iterator.h"
 
-// #include "../../data/reference.h"
-
 template<typename _sv> TLS_PTR vector<_sv>* Banded3FrameSwipeTracebackMatrix<_sv>::hgap_ptr;
 template<typename _sv> TLS_PTR vector<_sv>* Banded3FrameSwipeTracebackMatrix<_sv>::score_ptr;
 template<typename _sv> TLS_PTR vector<_sv>* Banded3FrameSwipeMatrix<_sv>::hgap_ptr;
@@ -224,9 +222,6 @@ void banded_3frame_swipe(const TranslatedSequence &query, Strand strand, vector<
 
 void banded_3frame_swipe(const TranslatedSequence &query, Strand strand, vector<DpTarget>::iterator target_begin, vector<DpTarget>::iterator target_end, DpStat &stat, bool score_only)
 {
-	/*cout << "==========" << endl;
-	for (vector<DpTarget>::iterator i = target_begin; i < target_end; ++i)
-		cout << ref_ids::get()[i->subject_id].c_str() << endl;*/
 	std::stable_sort(target_begin, target_end);
 #ifdef __SSE2__
 	for (vector<DpTarget>::iterator i = target_begin; i < target_end; i += 8)

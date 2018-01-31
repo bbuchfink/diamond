@@ -16,11 +16,12 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
+#include <limits>
 #include "tinythread.h"
 
 struct Queue
 {
-	enum { end = SIZE_MAX };
+	enum { end = std::numeric_limits<size_t>::max() };
 	Queue(size_t begin, size_t end) :
 		next_(begin),
 		end_(end)
