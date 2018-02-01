@@ -37,7 +37,7 @@ struct EscapeSequences
 			seq_[(size_t)c][1] = '\0';
 		}
 		for (size_t i = 0; i < n; ++i)
-			strcpy(seq_[seqs[i].c], seqs[i].seq);
+			strcpy(seq_[(size_t)seqs[i].c], seqs[i].seq);
 	}
 
 	const char* escape(char c) const
