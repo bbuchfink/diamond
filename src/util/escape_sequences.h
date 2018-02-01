@@ -19,18 +19,18 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #ifndef ESCAPE_SEQUENCES_H_
 #define ESCAPE_SEQUENCES_H_
 
-#include <stdint.h>
+#include <limits.h>
 
 struct EscapeSequence
 {
 	char c;
-	char *seq;
+	const char *seq;
 };
 
 struct EscapeSequences
 {
 
-	struct EscapeSequences(const EscapeSequence seqs[], size_t n)
+	EscapeSequences(const EscapeSequence seqs[], size_t n)
 	{
 		for (unsigned char c = 0; c < UCHAR_MAX; ++c) {
 			seq_[(size_t)c][0] = c;
