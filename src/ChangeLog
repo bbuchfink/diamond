@@ -1,6 +1,7 @@
 [0.9.17]
 - Fixed a compiler error on FreeBSD.
 - Added option --range-culling.
+- Fixed escape sequences in XML output.
 
 [0.9.16]
 - Fixed a bug that caused an error for non-SSSE3 builds.

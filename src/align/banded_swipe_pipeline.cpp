@@ -163,11 +163,13 @@ void Pipeline::run(Statistics &stat)
 	else
 		range_ranking();
 
-	stat.inc(Statistics::TARGET_HITS1, n_targets());
-	run_swipe(true);
-	for (size_t i = 0; i < n_targets(); ++i)
-		target(i).set_filter_score();
-	score_only_culling();
+	if (n_targets() > config.max_alignments) {
+		stat.inc(Statistics::TARGET_HITS1, n_targets());
+		run_swipe(true);
+		for (size_t i = 0; i < n_targets(); ++i)
+			target(i).set_filter_score();
+		score_only_culling();
+	}
 
 	stat.inc(Statistics::TARGET_HITS2, n_targets());
 	for (size_t i = 0; i < n_targets(); ++i)

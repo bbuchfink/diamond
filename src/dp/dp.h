@@ -318,7 +318,7 @@ struct Diagonal_node : public Diagonal_segment
 struct Diag_graph
 {
 
-	enum { end = std::numeric_limits<size_t>::max() };
+	enum { end = size_t(-1) };
 
 	struct Edge
 	{

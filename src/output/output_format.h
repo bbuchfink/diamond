@@ -25,6 +25,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../output/daa_record.h"
 #include "../util/compressed_stream.h"
 #include "../basic/score_matrix.h"
+#include "../util/escape_sequences.h"
 
 struct Output_format
 {
@@ -44,7 +45,7 @@ struct Output_format
 	virtual Output_format* clone() const = 0;
 	virtual ~Output_format()
 	{ }
-	static void print_title(TextBuffer &buf, const char *id, bool full_titles, bool all_titles, const char *separator);
+	static void print_title(TextBuffer &buf, const char *id, bool full_titles, bool all_titles, const char *separator, const EscapeSequences *esc = 0);
 	operator unsigned() const
 	{
 		return code;

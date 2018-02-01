@@ -19,7 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #ifndef TARGET_ITERATOR_H_
 #define TARGET_ITERATOR_H_
 
-#define DP_STAT
+// #define DP_STAT
 
 #include "../dp.h"
 

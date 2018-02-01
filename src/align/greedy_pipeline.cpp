@@ -74,7 +74,6 @@ struct Target : public ::Target
 	void align_target(QueryMapper &mapper, Statistics &stat)
 	{
 		const size_t n = end - begin;
-		const vector<Seed_hit>::const_iterator hits = mapper.seed_hits.begin() + begin;
 		if (config.log_subject)
 			cout << "Subject = " << ref_ids::get()[subject_id].c_str() << endl;
 

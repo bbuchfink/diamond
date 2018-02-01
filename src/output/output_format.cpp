@@ -20,39 +20,60 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../data/taxonomy.h"
 #include "output_format.h"
 #include "../data/reference.h"
+#include "../util/escape_sequences.h"
 
 using std::endl;
 
 auto_ptr<Output_format> output_format;
 
-void Output_format::print_title(TextBuffer &buf, const char *id, bool full_titles, bool all_titles, const char *separator)
+void print_escaped_until(TextBuffer &buf, const char *s, const char *delimiters, const EscapeSequences *esc)
+{
+	if (esc == 0)
+		buf.write_until(s, delimiters);
+	else {
+		string tmp;
+		esc->escape(s, find_first_of(s, delimiters), tmp);
+		buf << tmp;
+	}
+}
+
+void print_escaped(TextBuffer &buf, const string &s, const EscapeSequences *esc)
+{
+	if (esc == 0)
+		buf << s;
+	else {
+		string tmp;
+		esc->escape(s, tmp);
+		buf << tmp;
+	}
+}
+
+void Output_format::print_title(TextBuffer &buf, const char *id, bool full_titles, bool all_titles, const char *separator, const EscapeSequences *esc)
 {
 	if (!all_titles) {
-		buf.write_until(id, full_titles ? "\1" : Const::id_delimiters);
+		print_escaped_until(buf, id, full_titles ? "\1" : Const::id_delimiters, esc);
 		return;
 	}
 	if (strchr(id, '\1') == 0) {
-		buf.write_until(id, full_titles ? "\1" : Const::id_delimiters);
+		print_escaped_until(buf, id, full_titles ? "\1" : Const::id_delimiters, esc);
 		return;
 	}
-	//size_t n = 0;
 	const vector<string> t(tokenize(id, "\1"));
 	vector<string>::const_iterator i = t.begin();
-	for (; i<t.end() - 1; ++i) {
-		if (full_titles)
-			buf << *i << separator;
+	for (; i < t.end() - 1; ++i) {
+		if (full_titles) {
+			print_escaped(buf, *i, esc);
+			buf << separator;
+		}
 		else {
-			buf.write_until(i->c_str(), Const::id_delimiters);
+			print_escaped_until(buf, i->c_str(), Const::id_delimiters, esc);
 			buf << ";";
 		}
-		//n += i->length() + 2;
 	}
 	if (full_titles)
-		buf << *i;
+		print_escaped(buf, *i, esc);
 	else
-		buf.write_until(i->c_str(), Const::id_delimiters);
-	//n += i->length();
-	//return n;
+		print_escaped_until(buf, i->c_str(), Const::id_delimiters, esc);
 }
 
 void print_hsp(Hsp &hsp, const TranslatedSequence &query)
@@ -121,16 +142,20 @@ void XML_format::print_match(const Hsp_context &r, TextBuffer &out)
 		if (config.xml_blord_format) {
 			out << "  <Hit_id>gnl|BL_ORD_ID|" << r.subject_id << "</Hit_id>" << '\n'
 				<< "  <Hit_def>";
-			Output_format::print_title(out, r.subject_name, true, true, " &gt;");
+			Output_format::print_title(out, r.subject_name, true, true, " &gt;", &EscapeSequences::XML);
 			out << "</Hit_def>" << '\n';
 		}
 		else {
-			out << "  <Hit_id>" << id << "</Hit_id>" << '\n'
+			out << "  <Hit_id>";
+			print_escaped(out, id, &EscapeSequences::XML);
+			out << "</Hit_id>" << '\n'
 				<< "  <Hit_def>";
-			Output_format::print_title(out, def.c_str(), true, true, " &gt;");
+			Output_format::print_title(out, def.c_str(), true, true, " &gt;", &EscapeSequences::XML);
 			out << "</Hit_def>" << '\n';
 		}
-		out << "  <Hit_accession>" << get_accession(id) << "</Hit_accession>" << '\n'
+		out << "  <Hit_accession>";
+		print_escaped(out, get_accession(id), &EscapeSequences::XML);
+		out << "</Hit_accession>" << '\n'
 			<< "  <Hit_len>" << r.subject_len << "</Hit_len>" << '\n'
 			<< "  <Hit_hsps>" << '\n';
 	}
@@ -186,7 +211,9 @@ void XML_format::print_header(Output_stream &f, int mode, const char *matrix, in
 		<< "  <BlastOutput_query-ID>Query_1</BlastOutput_query-ID>" << endl
 		<< "  <BlastOutput_query-def>";
 	const string fqn = string(first_query_name);
-	ss << fqn.substr(0, fqn.find('\1'));
+	string escaped;
+	EscapeSequences::XML.escape(fqn, escaped);
+	ss << escaped.substr(0, fqn.find('\1'));
 		ss << "</BlastOutput_query-def>" << endl << "  <BlastOutput_query-len>" << first_query_len << "</BlastOutput_query-len>" << endl
 		<< "  <BlastOutput_param>" << endl
 		<< "    <Parameters>" << endl
@@ -207,7 +234,7 @@ void XML_format::print_query_intro(size_t query_num, const char *query_name, uns
 		<< "  <Iteration_iter-num>" << query_num + 1 << "</Iteration_iter-num>" << '\n'
 		<< "  <Iteration_query-ID>Query_" << query_num + 1 << "</Iteration_query-ID>" << '\n'
 		<< "  <Iteration_query-def>";
-	print_title(out, query_name, true, false, "");
+	print_title(out, query_name, true, false, "", &EscapeSequences::XML);
 	out << "</Iteration_query-def>" << '\n'
 		<< "  <Iteration_query-len>" << query_len << "</Iteration_query-len>" << '\n'
 		<< "<Iteration_hits>" << '\n';

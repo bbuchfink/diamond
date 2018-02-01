@@ -20,6 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "log_stream.h"
 #include "complexity_filter.h"
 #include "util.h"
+#include "escape_sequences.h"
 
 Message_stream message_stream;
 Message_stream verbose_stream (false);
@@ -54,3 +55,13 @@ Sd::Sd(const vector<Sd> &groups):
 	for (unsigned i = 0; i < groups.size(); ++i)
 		Q += (groups[i].A - A)*(groups[i].A - A)*groups[i].k;
 }
+
+const EscapeSequence EscapeSequences::xml_data[5] = {
+	{ '\"', "&quot;" },
+	{ '\'', "&apos;" },
+	{ '<', "&lt;" },
+	{ '>', "&gt;" },
+	{ '&', "&amp;" }
+};
+
+const EscapeSequences EscapeSequences::XML(EscapeSequences::xml_data, 5);

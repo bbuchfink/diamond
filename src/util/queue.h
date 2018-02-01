@@ -21,7 +21,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 struct Queue
 {
-	enum { end = std::numeric_limits<size_t>::max() };
+	enum { end = size_t(-1) };
 	Queue(size_t begin, size_t end) :
 		next_(begin),
 		end_(end)
