@@ -9,7 +9,7 @@ DIAMOND is a sequence aligner for protein and translated DNA searches, designed 
 
 Follow me on Twitter to get notified of updates.
 
-.. image:: https://img.shields.io/twitter/url/http/shields.io.svg?style=social&label=%40bbuchfink
+.. image:: https://image.ibb.co/gAmVKR/twitter1.png
    :target: https://twitter.com/bbuchfink
 .. image:: https://badges.gitter.im/diamond-aligner/Lobby.svg
    :alt: Join the chat at https://gitter.im/diamond-aligner/Lobby
