@@ -210,7 +210,7 @@ private:
 	size_t query_count_;
 	DAA_header1 h1_;
 	DAA_header2 h2_;
-	Ptr_vector<string> ref_name_;
+	PtrVector<string> ref_name_;
 	vector<uint32_t> ref_len_;
 
 };

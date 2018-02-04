@@ -232,3 +232,15 @@ void Hsp::push_match(Letter q, Letter s, bool positive)
 	}
 	++length;
 }
+
+void Hsp::push_gap(Edit_operation op, int length, const char *subject)
+{
+	++gap_openings;
+	this->length += length;
+	gaps += length;
+	if (op == op_insertion)
+		transcript.push_back(op_insertion, (unsigned)length);
+	else
+		for (int i = 0; i < length; ++i)
+			transcript.push_back(op_deletion, subject[-i]);
+}

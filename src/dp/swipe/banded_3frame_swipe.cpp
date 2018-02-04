@@ -77,15 +77,8 @@ void traceback(sequence *query, Strand strand, int dna_len, const Banded3FrameSw
 			it.walk_reverse_shift();
 		}
 		else {
-			int l = it.walk_gap(d0, d1);
-			++out.gap_openings;
-			out.length += abs(l);
-			out.gaps += abs(l);
-			if (l > 0)
-				out.transcript.push_back(op_insertion, (unsigned)l);
-			else
-				for (int j = it.j - l; j > it.j; --j)
-					out.transcript.push_back(op_deletion, target.seq[j]);
+			const pair<Edit_operation, int> g = it.walk_gap(d0, d1);
+			out.push_gap(g.first, g.second, &target.seq[it.j + g.second]);
 		}
 	}
 
@@ -222,8 +215,8 @@ void banded_3frame_swipe(const TranslatedSequence &query, Strand strand, vector<
 
 void banded_3frame_swipe(const TranslatedSequence &query, Strand strand, vector<DpTarget>::iterator target_begin, vector<DpTarget>::iterator target_end, DpStat &stat, bool score_only)
 {
-	std::stable_sort(target_begin, target_end);
 #ifdef __SSE2__
+	std::stable_sort(target_begin, target_end);
 	for (vector<DpTarget>::iterator i = target_begin; i < target_end; i += 8)
 		if (score_only || config.disable_traceback)
 			banded_3frame_swipe<score_vector<int16_t>, ScoreOnly>(query, strand, i, std::min(i + 8, target_end), stat);

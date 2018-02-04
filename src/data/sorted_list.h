@@ -57,7 +57,7 @@ struct sorted_list
 	{
 		task_timer timer("Building seed list", 3);
 		Ptr_set iterators(build_iterators(hst));
-		Ptr_vector<Build_callback> cb;
+		PtrVector<Build_callback> cb;
 		for (size_t i = 0; i < seq_partition.size() - 1; ++i)
 			cb.push_back(new Build_callback(range, iterators[i].begin()));
 		seqs.enum_seeds(cb, seq_partition, sh, sh + 1, filter);

@@ -59,4 +59,5 @@ g++ -DNDEBUG -O3 -Wno-deprecated-declarations $1 $2 $3 \
   src/dp/swipe/banded_3frame_swipe.cpp \
   src/dp/swipe/banded_swipe.cpp \
   src/align/banded_swipe_pipeline.cpp \
+  src/data/ref_dictionary.cpp \
 -lz -lpthread -o diamond

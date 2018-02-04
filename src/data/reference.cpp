@@ -1,6 +1,6 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2017 Benjamin Buchfink <buchfink@gmail.com>
+Copyright (C) 2013-2018 Benjamin Buchfink <buchfink@gmail.com>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU Affero General Public License as
@@ -18,7 +18,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <limits>
 #include <iostream>
-#include <sstream>
 #include <set>
 #include "../basic/config.h"
 #include "reference.h"
@@ -29,7 +28,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../basic/masking.h"
 
 String_set<0>* ref_ids::data_ = 0;
-Ref_map ref_map;
 Partitioned_histogram ref_hst;
 unsigned current_ref_block;
 Reference_header ref_header;
@@ -38,18 +36,6 @@ bool blocked_processing;
 
 using std::cout;
 using std::endl;
-
-string* get_allseqids(const char *s)
-{
-	string *r = new string;
-	const vector<string> t(tokenize(s, "\1"));
-	for (vector<string>::const_iterator i = t.begin(); i != t.end(); ++i) {
-		if (i != t.begin())
-			r->append("\1");
-		r->append(i->substr(0, find_first_of(i->c_str(), Const::id_delimiters)));
-	}
-	return r;
-}
 
 struct Pos_record
 {

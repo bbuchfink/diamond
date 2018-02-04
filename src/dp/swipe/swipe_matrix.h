@@ -22,8 +22,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <vector>
 #include <string.h>
 #include <stdlib.h>
+#include <utility>
 #include "../score_vector.h"
 #include "../../util/tls.h"
+#include "../../basic/packed_transcript.h"
+
+using std::pair;
 
 template<typename _sv>
 struct SwipeMatrix
@@ -395,7 +399,7 @@ struct Banded3FrameSwipeTracebackMatrix
 			}
 			assert(i >= -1 && j >= -1);
 		}
-		int walk_gap(int d0, int d1)
+		pair<Edit_operation, int> walk_gap(int d0, int d1)
 		{
 			const int i0 = std::max(d0 + j, 0), j0 = std::max(i - d1, -1);
 			const Score *h = score_ - (band_ - 2) * ScoreTraits<_sv>::CHANNELS, *h0 = score_ - (j - j0) * (band_ - 2) * ScoreTraits<_sv>::CHANNELS;
@@ -407,11 +411,11 @@ struct Banded3FrameSwipeTracebackMatrix
 			while (v > v0 && h > h0) {
 				if (score + g == *h) {
 					walk_hgap(h, l);
-					return -l;
+					return std::make_pair(op_deletion , l);
 				}
 				else if (score + g == *v) {
 					walk_vgap(v, l);
-					return l;
+					return std::make_pair(op_insertion, l);
 				}
 				h -= (band_ - 2) * ScoreTraits<_sv>::CHANNELS;
 				v -= 3 * ScoreTraits<_sv>::CHANNELS;
@@ -421,7 +425,7 @@ struct Banded3FrameSwipeTracebackMatrix
 			while (v > v0) {
 				if (score + g == *v) {
 					walk_vgap(v, l);
-					return l;
+					return std::make_pair(op_insertion, l);
 				}
 				v -= 3 * ScoreTraits<_sv>::CHANNELS;
 				++l;
@@ -430,7 +434,7 @@ struct Banded3FrameSwipeTracebackMatrix
 			while (h > h0) {
 				if (score + g == *h) {
 					walk_hgap(h, l);
-					return -l;
+					return std::make_pair(op_deletion, l);
 				}
 				h -= (band_ - 2) * ScoreTraits<_sv>::CHANNELS;
 				++l;

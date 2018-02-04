@@ -42,7 +42,7 @@ struct EscapeSequences
 
 	const char* escape(char c) const
 	{
-		return (char*)seq_[(size_t)c];
+		return (const char*)seq_[(size_t)c];
 	}
 
 	void escape(const char *s, size_t len, string &out) const

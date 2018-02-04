@@ -1,6 +1,6 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2017 Benjamin Buchfink <buchfink@gmail.com>
+Copyright (C) 2013-2018 Benjamin Buchfink <buchfink@gmail.com>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU Affero General Public License as
@@ -30,6 +30,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../output/daa_write.h"
 #include "../data/taxonomy.h"
 #include "../basic/masking.h"
+#include "../data/ref_dictionary.h"
 
 using std::endl;
 using std::cout;
@@ -133,7 +134,7 @@ void run_ref_chunk(Database_file &db_file,
 	else
 		ref_hst = Partitioned_histogram(*ref_seqs::data_, false, &no_filter);
 
-	ref_map.init(safe_cast<unsigned>(ref_seqs::get().get_length()));
+	ReferenceDictionary::get().init(safe_cast<unsigned>(ref_seqs::get().get_length()));
 
 	timer.go("Allocating buffers");
 	char *ref_buffer = sorted_list::alloc_buffer(ref_hst);

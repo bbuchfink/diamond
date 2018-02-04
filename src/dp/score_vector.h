@@ -295,12 +295,7 @@ struct score_vector<int16_t>
 		data_ = _mm_subs_epi16(data_, rhs.data_);
 		return *this;
 	}
-
-	int16_t operator [](unsigned i) const
-	{
-		return *(((int16_t*)&data_) + i); // ^ 0x8000;
-	}
-
+	
 	score_vector& max(const score_vector &rhs)
 	{
 		data_ = _mm_max_epi16(data_, rhs.data_);
@@ -320,11 +315,6 @@ struct score_vector<int16_t>
 	__m128i cmpgt(const score_vector &rhs) const
 	{
 		return _mm_cmpgt_epi16(data_, rhs.data_);
-	}
-
-	operator int() const
-	{
-		return this->operator[](0);
 	}
 
 	__m128i data_;

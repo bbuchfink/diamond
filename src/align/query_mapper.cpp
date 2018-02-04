@@ -40,7 +40,7 @@ bool Target::is_enveloped(const Target &t, double p) const
 	return true;
 }
 
-bool Target::is_enveloped(Ptr_vector<Target>::const_iterator begin, Ptr_vector<Target>::const_iterator end, double p, int min_score) const
+bool Target::is_enveloped(PtrVector<Target>::const_iterator begin, PtrVector<Target>::const_iterator end, double p, int min_score) const
 {
 	for (; begin != end; ++begin)
 		if (is_enveloped(**begin, p) && (*begin)->filter_score >= min_score)
@@ -156,7 +156,7 @@ void QueryMapper::score_only_culling()
 	std::stable_sort(targets.begin(), targets.end(), Target::compare);
 	auto_ptr<TargetCulling> target_culling(TargetCulling::get());
 	const unsigned query_len = (unsigned)query_seq(0).length();
-	Ptr_vector<Target>::iterator i;
+	PtrVector<Target>::iterator i;
 	for (i = targets.begin(); i<targets.end();) {
 		if ((config.min_bit_score == 0 && score_matrix.evalue((*i)->filter_score, config.db_size, query_len) > config.max_evalue)
 			|| score_matrix.bitscore((*i)->filter_score) < config.min_bit_score)

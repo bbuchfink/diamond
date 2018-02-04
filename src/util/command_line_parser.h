@@ -151,7 +151,7 @@ struct Options_group
 	Options_group(const char *title):
 		title (title)
 	{}
-	Ptr_vector<Option_base> options;
+	PtrVector<Option_base> options;
 	string title;
 };
 

@@ -25,7 +25,7 @@ using std::endl;
 
 Command_line_parser & Command_line_parser::add(const Options_group & group)
 {
-	for (Ptr_vector<Option_base>::const_iterator i = group.options.begin(); i != group.options.end(); ++i) {
+	for (PtrVector<Option_base>::const_iterator i = group.options.begin(); i != group.options.end(); ++i) {
 		map_[(*i)->id] = *i;
 		map_short_[(*i)->short_id] = *i;
 	}

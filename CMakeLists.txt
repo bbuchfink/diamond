@@ -95,6 +95,7 @@ add_executable(diamond src/run/main.cpp
   src/dp/swipe/banded_3frame_swipe.cpp
   src/dp/swipe/banded_swipe.cpp
   src/align/banded_swipe_pipeline.cpp
+  src/data/ref_dictionary.cpp
 )
 
 target_link_libraries(diamond ${ZLIB_LIBRARY} ${CMAKE_THREAD_LIBS_INIT})

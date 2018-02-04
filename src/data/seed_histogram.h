@@ -95,7 +95,7 @@ struct Partitioned_histogram
 			data_[s].resize(p_.size() - 1);
 			memset(data_[s].data(), 0, (p_.size() - 1)*sizeof(unsigned)*Const::seedp);
 		}
-		Ptr_vector<Callback> cb;
+		PtrVector<Callback> cb;
 		for (size_t i = 0; i < p_.size() - 1; ++i)
 			cb.push_back(new Callback(i, data_));
 		if (serial)

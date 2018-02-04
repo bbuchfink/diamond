@@ -24,14 +24,14 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 using std::vector;
 
 template<typename _t>
-struct Ptr_vector : public vector<_t*>
+struct PtrVector : public vector<_t*>
 {
 
-	Ptr_vector():
+	PtrVector():
 		vector<_t*>()
 	{}
 	
-	Ptr_vector(typename vector<_t*>::size_type n):
+	PtrVector(typename vector<_t*>::size_type n):
 		vector<_t*>(n)
 	{}
 
@@ -53,7 +53,7 @@ struct Ptr_vector : public vector<_t*>
 		return vector<_t*>::erase(first, last);
 	}
 
-	~Ptr_vector()
+	~PtrVector()
 	{
 		for(typename vector<_t*>::iterator i=this->begin(); i!=this->end(); ++i)
 			delete *i;

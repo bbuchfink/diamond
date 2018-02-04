@@ -56,7 +56,7 @@ struct Target
 	}
 	bool envelopes(const Hsp_traits &t, double p) const;
 	bool is_enveloped(const Target &t, double p) const;
-	bool is_enveloped(Ptr_vector<Target>::const_iterator begin, Ptr_vector<Target>::const_iterator end, double p, int min_score) const;
+	bool is_enveloped(PtrVector<Target>::const_iterator begin, PtrVector<Target>::const_iterator end, double p, int min_score) const;
 	void inner_culling(int cutoff);
 	void apply_filters(int dna_len, int subject_len, const char *query_title, const char *ref_title);
 	unsigned subject_id;
@@ -100,7 +100,7 @@ struct QueryMapper
 	pair<Trace_pt_list::iterator, Trace_pt_list::iterator> source_hits;
 	unsigned query_id, targets_finished, next_target;
 	unsigned source_query_len, unaligned_from;
-	Ptr_vector<Target> targets;
+	PtrVector<Target> targets;
 	vector<Seed_hit> seed_hits;
 	vector<Bias_correction> query_cb;
 	vector<Long_score_profile> profile;

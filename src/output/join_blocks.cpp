@@ -23,6 +23,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "output_format.h"
 #include "../align/query_mapper.h"
 #include "target_culling.h"
+#include "../data/ref_dictionary.h"
 
 struct JoinFetcher
 {
@@ -166,6 +167,7 @@ struct BlockJoiner
 
 void join_query(vector<BinaryBuffer> &buf, TextBuffer &out, Statistics &statistics, unsigned query, const char *query_name, unsigned query_source_len, Output_format &f)
 {
+	const ReferenceDictionary& dict = ReferenceDictionary::get();
 	TranslatedSequence query_seq(get_translated_query(query));
 	BlockJoiner joiner(buf);
 	vector<IntermediateRecord> target_hsp;
@@ -190,10 +192,10 @@ void join_query(vector<BinaryBuffer> &buf, TextBuffer &out, Statistics &statisti
 					query,
 					query_seq,
 					query_name,
-					ref_map.check_id(i->subject_id),
-					ref_map.original_id(i->subject_id),
-					ref_map.name(i->subject_id),
-					ref_map.length(i->subject_id),
+					dict.check_id(i->subject_id),
+					dict.original_id(i->subject_id),
+					dict.name(i->subject_id),
+					dict.length(i->subject_id),
 					n_target_seq,
 					hsp_num).parse(), out);
 			}
@@ -250,7 +252,7 @@ void join_worker(Task_queue<TextBuffer, JoinWriter> *queue)
 
 void join_blocks(unsigned ref_blocks, Output_stream &master_out, const vector<Temp_file> &tmp_file)
 {
-	ref_map.init_rev_map();
+	ReferenceDictionary::get().init_rev_map();
 	JoinFetcher::init(tmp_file);
 	JoinWriter writer(master_out);
 	Task_queue<TextBuffer, JoinWriter> queue(3 * config.threads_, writer);

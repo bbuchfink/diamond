@@ -138,7 +138,7 @@ struct Sequence_set : public String_set<sequence::DELIMITER, 1>
 	}
 
 	template <typename _f, typename _filter>
-	void enum_seeds(Ptr_vector<_f> &f, const vector<size_t> &p, size_t shape_begin, size_t shape_end, const _filter *filter) const
+	void enum_seeds(PtrVector<_f> &f, const vector<size_t> &p, size_t shape_begin, size_t shape_end, const _filter *filter) const
 	{
 		Thread_pool threads;
 		for (unsigned i = 0; i < f.size(); ++i)

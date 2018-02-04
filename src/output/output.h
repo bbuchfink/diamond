@@ -25,6 +25,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/text_buffer.h"
 #include "../data/reference.h"
 #include "../basic/match.h"
+#include "../data/ref_dictionary.h"
 
 inline unsigned get_length_flag(unsigned x)
 {
@@ -90,7 +91,7 @@ struct IntermediateRecord
 	static void write(TextBuffer &buf, const Hsp &match, unsigned query_id, unsigned subject_id)
 	{
 		const interval oriented_range (match.oriented_range());
-		buf.write(ref_map.get(current_ref_block, subject_id))
+		buf.write(ReferenceDictionary::get().get(current_ref_block, subject_id))
 			.write(get_segment_flag(match))
 			.write_packed(match.score)
 			.write_packed(oriented_range.begin_)
