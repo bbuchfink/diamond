@@ -28,18 +28,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #endif
 
 #include "file_sink.h"
+#include "../system.h"
 
 using std::endl;
 using std::string;
 using std::runtime_error;
-
-#ifdef __linux__
-#define POSIX_OPEN(x,y,z) open64(x,y,z)
-#define POSIX_OPEN2(x,y) open64(x,y)
-#else
-#define POSIX_OPEN(x,y,z) open(x,y,z)
-#define POSIX_OPEN2(x,y) open(x,y)
-#endif
 
 FileSink::FileSink(const string &file_name, const char *mode):
 	file_name_(file_name)

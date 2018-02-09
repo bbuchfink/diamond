@@ -16,6 +16,7 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
+#include <iostream>
 #include <stdio.h>
 #ifdef _MSC_VER
 #define NOMINMAX
@@ -28,6 +29,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "file_source.h"
 #include "file_sink.h"
+#include "../system.h"
 
 using std::endl;
 using std::string;
@@ -58,8 +60,8 @@ void FileSource::rewind()
 }
 
 FileSource::FileSource(const string &file_name, FILE *file) :
-	file_name_(file_name),
-	f_(file)
+	f_(file),
+	file_name_(file_name)	
 {
 }
 
