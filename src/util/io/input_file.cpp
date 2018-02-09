@@ -43,7 +43,7 @@ InputFile::InputFile(const string &file_name) :
 	}
 	if (!S_ISREG(buf.st_mode))
 		return;
-#endif	
+#endif
 	char b[2];
 	size_t n = source_->read(b, 2);
 	if (n == 2)

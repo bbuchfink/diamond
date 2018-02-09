@@ -97,7 +97,7 @@ void FileSource::seek_forward(size_t n)
 
 void FileSource::putback(char c)
 {
-	if (ungetc((int)c, f_) != (int)c) {
+	if ((char)ungetc((int)c, f_) != c) {
 		perror(0);
 		throw std::runtime_error("Error calling ungetc.");
 	}
