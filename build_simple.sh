@@ -58,11 +58,11 @@ g++ -DNDEBUG -O3 -Wno-deprecated-declarations $1 $2 $3 \
   src/dp/swipe/banded_swipe.cpp \
   src/align/banded_swipe_pipeline.cpp \
   src/data/ref_dictionary.cpp \
-  util/io/compressed_stream.cpp \
-  util/io/file_sink.cpp \
-  util/io/file_source.cpp \
-  util/io/input_file.cpp \
-  util/io/output_file.cpp \
-  util/io/temp_file.cpp \
-  util/io/text_input_file.cpp \
+  src/util/io/compressed_stream.cpp \
+  src/util/io/file_sink.cpp \
+  src/util/io/file_source.cpp \
+  src/util/io/input_file.cpp \
+  src/util/io/output_file.cpp \
+  src/util/io/temp_file.cpp \
+  src/util/io/text_input_file.cpp \
 -lz -lpthread -o diamond
