@@ -198,7 +198,7 @@ void XML_format::print_match(const Hsp_context &r, TextBuffer &out)
 		<< "    </Hsp>" << '\n';
 }
 
-void XML_format::print_header(Output_stream &f, int mode, const char *matrix, int gap_open, int gap_extend, double evalue, const char *first_query_name, unsigned first_query_len) const
+void XML_format::print_header(OutputFile &f, int mode, const char *matrix, int gap_open, int gap_extend, double evalue, const char *first_query_name, unsigned first_query_len) const
 {
 	std::stringstream ss;
 	ss << "<?xml version=\"1.0\"?>" << endl
@@ -261,7 +261,7 @@ void XML_format::print_query_epilog(TextBuffer &out, const char *query_title, bo
 		<< "</Iteration>" << '\n';
 }
 
-void XML_format::print_footer(Output_stream &f) const
+void XML_format::print_footer(OutputFile &f) const
 {
 	std::stringstream ss;
 	ss << "</BlastOutput_iterations>" << endl

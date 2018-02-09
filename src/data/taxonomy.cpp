@@ -19,7 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <stdio.h>
 #include <set>
 #include "taxonomy.h"
-#include "../util/compressed_stream.h"
+#include "../util/io/text_input_file.h"
 #include "../basic/config.h"
 #include "../util/merge_sort.h"
 #include "../util/log_stream.h"
@@ -52,7 +52,7 @@ void Taxonomy::load()
 {
 	char acc[max_accesion_len + 2];
 	unsigned taxid;
-	Compressed_istream f(config.prot_accession2taxid);
+	TextInputFile f(config.prot_accession2taxid);
 	f.getline();
 	
 	while (!f.eof() && (f.getline(), !f.line.empty())) {
@@ -74,7 +74,7 @@ void Taxonomy::load()
 
 void Taxonomy::load_nodes()
 {
-	Input_stream f(config.nodesdmp);
+	TextInputFile f(config.nodesdmp);
 	unsigned taxid, parent;
 	while (!f.eof() && (f.getline(), !f.line.empty())) {
 		if (sscanf(f.line.c_str(), "%u\t|\t%u", &taxid, &parent) != 2)

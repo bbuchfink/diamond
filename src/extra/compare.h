@@ -21,7 +21,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "../basic/config.h"
 #include "match_file.h"
-#include "../util/compressed_stream.h"
+#include "../util/io/text_input_file.h"
 #include "../util/seq_file_format.h"
 
 struct Cmp_stats
@@ -139,7 +139,7 @@ void compare()
 	vector<char> id;
 	vector<Letter> seq;
 
-	Input_stream seqStream(config.query_file);
+	TextInputFile seqStream(config.query_file);
 	match_file file1 (config.match_file1.c_str());
 	match_file::mcont v1;
 	file1.get_read(v1, Format1());

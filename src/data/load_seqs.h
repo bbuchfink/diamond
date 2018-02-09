@@ -51,7 +51,7 @@ inline size_t push_seq(Sequence_set &ss, Sequence_set** source_seqs, const vecto
 	}
 }
 
-inline size_t load_seqs(Input_stream &file,
+inline size_t load_seqs(TextInputFile &file,
 	const Sequence_file_format &format,
 	Sequence_set** seqs,
 	String_set<0>*& ids,

@@ -27,7 +27,7 @@ vector<bool> query_aligned;
 Seed_set *query_seeds = 0;
 Hashed_seed_set *query_seeds_hashed = 0;
 
-void write_unaligned(Output_stream *file)
+void write_unaligned(OutputFile *file)
 {
 	const size_t n = query_ids::get().get_length();
 	string s;

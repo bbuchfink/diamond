@@ -1,6 +1,6 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2017 Benjamin Buchfink <buchfink@gmail.com>
+Copyright (C) 2013-2018 Benjamin Buchfink <buchfink@gmail.com>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU Affero General Public License as
@@ -25,8 +25,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #endif
 #include "compressed_stream.h"
 
-Compressed_istream::Compressed_istream(const string &file_name):
-	Input_stream(file_name),
+ZlibSource::ZlibSource(Source *source):
 	in(new char[chunk_size]),
 	out(new char[chunk_size]),
 	read_(0),
@@ -42,10 +41,10 @@ Compressed_istream::Compressed_istream(const string &file_name):
 	strm.next_out = (Bytef*)out.get();
 	int ret = inflateInit2(&strm, 15 + 32);
 	if (ret != Z_OK)
-		throw std::runtime_error("Error opening compressed file (inflateInit): " + file_name);
+		throw std::runtime_error("Error opening compressed file (inflateInit): " + file_name());
 }
 
-size_t Compressed_istream::read_bytes(char *ptr, size_t count)
+size_t ZlibSource::read(char *ptr, size_t count)
 {
 	size_t n = 0;
 	do {
@@ -58,7 +57,7 @@ size_t Compressed_istream::read_bytes(char *ptr, size_t count)
 			return n;
 
 		if (strm.avail_out > 0 && strm.avail_in == 0) {
-			strm.avail_in = (uInt)Input_stream::read_bytes(in.get(), chunk_size);
+			strm.avail_in = (uInt)source_->read(in.get(), chunk_size);
 			if (strm.avail_in == 0) {
 				eos_ = true;
 				return n;
@@ -73,7 +72,7 @@ size_t Compressed_istream::read_bytes(char *ptr, size_t count)
 		if (ret == Z_STREAM_END) {
 			int ret = inflateInit2(&strm, 15 + 32);
 			if (ret != Z_OK)
-				throw std::runtime_error("Error initializing compressed stream (inflateInit): " + file_name);
+				throw std::runtime_error("Error initializing compressed stream (inflateInit): " + file_name());
 		}
 		else if (ret != Z_OK)
 			throw std::runtime_error("Inflate error.");
@@ -83,45 +82,14 @@ size_t Compressed_istream::read_bytes(char *ptr, size_t count)
 	} while (true);
 }
 
-void Compressed_istream::close()
+void ZlibSource::close()
 {
 	inflateEnd(&strm);
-	Input_stream::close();
+	source_->close();
 }
 
-bool is_gzip_stream(const unsigned char *b)
-{
-	return (b[0] == 0x1F && b[1] == 0x8B)         // gzip header
-		|| (b[0] == 0x78 && (b[1] == 0x01      // zlib header
-			|| b[1] == 0x9C
-			|| b[1] == 0xDA));
-}
-
-Input_stream *Compressed_istream::auto_detect(const string &file_name)
-{
-	if (file_name.empty())
-		return new Input_stream(file_name);
-#ifndef _MSC_VER
-	struct stat buf;
-	if (stat(file_name.c_str(), &buf) < 0) {
-		perror(0);
-		throw std::runtime_error(string("Error calling stat on file ") + file_name);
-	}
-	if (!S_ISREG(buf.st_mode))
-		return new Input_stream(file_name);
-#endif	
-	unsigned char b[2];
-	Input_stream f(file_name);
-	size_t n = f.read(b, 2);
-	f.close();
-	if (n == 2 && is_gzip_stream(b))
-		return new Compressed_istream(file_name);
-	else
-		return new Input_stream(file_name);
-}
-
-Compressed_ostream::Compressed_ostream(const string &file_name):
-	Output_stream(file_name),
+ZlibSink::ZlibSink(Sink* sink):
+	sink_(sink),
 	out(new char[chunk_size])
 {
 	strm.zalloc = Z_NULL;
@@ -131,7 +99,7 @@ Compressed_ostream::Compressed_ostream(const string &file_name):
 		throw std::runtime_error("deflateInit error");
 }
 
-void Compressed_ostream::deflate_loop(const char * ptr, size_t count, int flush)
+void ZlibSink::deflate_loop(const char * ptr, size_t count, int flush)
 {
 	strm.avail_in = (uInt)count;
 	strm.next_in = (Bytef*)ptr;
@@ -141,17 +109,18 @@ void Compressed_ostream::deflate_loop(const char * ptr, size_t count, int flush)
 		if (deflate(&strm, flush) == Z_STREAM_ERROR)
 			throw std::runtime_error("deflate error");
 		const size_t have = chunk_size - strm.avail_out;
-		Output_stream::write_raw(out.get(), have);
+		sink_->write(out.get(), have);
 	} while (strm.avail_out == 0);
 }
 
-void Compressed_ostream::write_raw(const char * ptr, size_t count)
+void ZlibSink::write(const char * ptr, size_t count)
 {
 	deflate_loop(ptr, count, Z_NO_FLUSH);
 }
 
-void Compressed_ostream::close()
+void ZlibSink::close()
 {
 	deflate_loop(0, 0, Z_FINISH);
 	deflateEnd(&strm);
+	sink_->close();
 }

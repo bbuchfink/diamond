@@ -25,7 +25,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../basic/config.h"
 #include "../basic/const.h"
 #include "../util/binary_buffer.h"
-#include "../util/binary_file.h"
+#include "../util/io/input_file.h"
 #include "../basic/value.h"
 #include "../data/reference.h"
 
@@ -206,7 +206,7 @@ struct DAA_file
 
 private:
 
-	Input_stream f_;
+	InputFile f_;
 	size_t query_count_;
 	DAA_header1 h1_;
 	DAA_header2 h2_;

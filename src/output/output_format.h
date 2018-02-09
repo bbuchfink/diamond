@@ -23,7 +23,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../basic/match.h"
 #include "../output/daa_file.h"
 #include "../output/daa_record.h"
-#include "../util/compressed_stream.h"
+#include "../util/io/output_file.h"
 #include "../basic/score_matrix.h"
 #include "../util/escape_sequences.h"
 
@@ -38,9 +38,9 @@ struct Output_format
 	{}
 	virtual void print_match(const Hsp_context& r, TextBuffer &out)
 	{}
-	virtual void print_header(Output_stream &f, int mode, const char *matrix, int gap_open, int gap_extend, double evalue, const char *first_query_name, unsigned first_query_len) const
+	virtual void print_header(OutputFile &f, int mode, const char *matrix, int gap_open, int gap_extend, double evalue, const char *first_query_name, unsigned first_query_len) const
 	{ }
-	virtual void print_footer(Output_stream &f) const
+	virtual void print_footer(OutputFile &f) const
 	{ }
 	virtual Output_format* clone() const = 0;
 	virtual ~Output_format()
@@ -99,7 +99,7 @@ struct Sam_format : public Output_format
 		Output_format(sam)
 	{ }
 	virtual void print_match(const Hsp_context& r, TextBuffer &out);
-	virtual void print_header(Output_stream &f, int mode, const char *matrix, int gap_open, int gap_extend, double evalue, const char *first_query_name, unsigned first_query_len) const;
+	virtual void print_header(OutputFile &f, int mode, const char *matrix, int gap_open, int gap_extend, double evalue, const char *first_query_name, unsigned first_query_len) const;
 	virtual void print_query_intro(size_t query_num, const char *query_name, unsigned query_len, TextBuffer &out, bool unaligned) const;
 	virtual ~Sam_format()
 	{ }
@@ -117,10 +117,10 @@ struct XML_format : public Output_format
 		config.salltitles = true;
 	}
 	virtual void print_match(const Hsp_context &r, TextBuffer &out);
-	virtual void print_header(Output_stream &f, int mode, const char *matrix, int gap_open, int gap_extend, double evalue, const char *first_query_name, unsigned first_query_len) const;
+	virtual void print_header(OutputFile &f, int mode, const char *matrix, int gap_open, int gap_extend, double evalue, const char *first_query_name, unsigned first_query_len) const;
 	virtual void print_query_intro(size_t query_num, const char *query_name, unsigned query_len, TextBuffer &out, bool unaligned) const;
 	virtual void print_query_epilog(TextBuffer &out, const char *query_title, bool unaligned) const;
-	virtual void print_footer(Output_stream &f) const;
+	virtual void print_footer(OutputFile &f) const;
 	virtual ~XML_format()
 	{ }
 	virtual Output_format* clone() const
@@ -137,10 +137,10 @@ struct Pairwise_format : public Output_format
 		config.salltitles = true;
 	}
 	virtual void print_match(const Hsp_context &r, TextBuffer &out);
-	virtual void print_header(Output_stream &f, int mode, const char *matrix, int gap_open, int gap_extend, double evalue, const char *first_query_name, unsigned first_query_len) const;
+	virtual void print_header(OutputFile &f, int mode, const char *matrix, int gap_open, int gap_extend, double evalue, const char *first_query_name, unsigned first_query_len) const;
 	virtual void print_query_intro(size_t query_num, const char *query_name, unsigned query_len, TextBuffer &out, bool unaligned) const;
 	virtual void print_query_epilog(TextBuffer &out, const char *query_title, bool unaligned) const;
-	virtual void print_footer(Output_stream &f) const;
+	virtual void print_footer(OutputFile &f) const;
 	virtual ~Pairwise_format()
 	{ }
 	virtual Output_format* clone() const

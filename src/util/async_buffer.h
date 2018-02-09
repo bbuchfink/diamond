@@ -22,8 +22,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <vector>
 #include <exception>
 #include "../basic/config.h"
-#include "temp_file.h"
+#include "io/temp_file.h"
 #include "log_stream.h"
+#include "../util/ptr_vector.h"
 
 using std::vector;
 using std::string;
@@ -44,7 +45,7 @@ struct Async_buffer
 		log_stream << "Async_buffer() " << input_count << ',' << bin_size_ << endl;
 		for (unsigned j = 0; j < config.threads_; ++j)
 			for (unsigned i = 0; i < bins; ++i) {
-				tmp_file_.push_back(Temp_file());
+				tmp_file_.push_back(new TempFile());
 				size_.push_back(0);
 			}
 	}
@@ -91,7 +92,7 @@ struct Async_buffer
 	private:
 		enum { buffer_size = 65536 };
 		vector<vector<_t> > buffer_;
-		vector<Temp_file*> out_;
+		vector<TempFile*> out_;
 		Async_buffer &parent_;
 		const unsigned thread_num_;
 	};
@@ -131,7 +132,7 @@ private:
 	void load_bin(_t*& ptr, size_t bin)
 	{
 		for (unsigned i = 0; i < config.threads_; ++i) {
-			Input_stream f(tmp_file_[i*bins_ + bin]);
+			InputFile f(tmp_file_[i*bins_ + bin]);
 			const size_t s = size_[i*bins_ + bin];
 			const size_t n = f.read(ptr, s);
 			ptr += s;
@@ -149,7 +150,7 @@ private:
 		return size;
 	}
 
-	Temp_file* get_out(unsigned threadid, unsigned bin)
+	TempFile* get_out(unsigned threadid, unsigned bin)
 	{
 		return &tmp_file_[threadid*bins_ + bin];
 	}
@@ -163,7 +164,7 @@ private:
 	const size_t bin_size_, input_count_;
 	size_t bins_processed_;
 	vector<size_t> size_;
-	vector<Temp_file> tmp_file_;
+	PtrVector<TempFile> tmp_file_;
 
 };
 

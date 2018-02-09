@@ -17,7 +17,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #include "../basic/config.h"
-#include "../util/binary_file.h"
+#include "../util/io/output_file.h"
 #include "../util/text_buffer.h"
 #include "daa_file.h"
 #include "../util/binary_buffer.h"
@@ -32,9 +32,7 @@ const unsigned view_buf_size = 32;
 struct View_writer
 {
 	View_writer() :
-		f_(config.compression == 1
-			? new Compressed_ostream(config.output_file)
-			: new Output_stream(config.output_file))
+		f_(new OutputFile(config.output_file, config.compression == 1))
 	{ }
 	void operator()(TextBuffer &buf)
 	{
@@ -45,7 +43,7 @@ struct View_writer
 	{
 		f_->close();
 	}
-	auto_ptr<Output_stream> f_;
+	auto_ptr<OutputFile> f_;
 };
 
 struct View_fetcher

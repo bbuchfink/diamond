@@ -30,20 +30,20 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 void get_seq()
 {
-	Database_file db_file;
+	DatabaseFile db_file;
 	db_file.get_seq();
 }
 
 void random_seqs()
 {
-	Database_file db_file;
+	DatabaseFile db_file;
 	db_file.load_seqs();
 	cout << "Sequences = " << ref_seqs::get().get_length() << endl;
 	std::set<unsigned> n;
 	const size_t count = atoi(config.seq_no[0].c_str());
 	while (n.size() < count)
 		n.insert((rand()*RAND_MAX + rand()) % ref_seqs::get().get_length());
-	Output_stream out(config.output_file);
+	OutputFile out(config.output_file);
 	unsigned j = 0;
 	
 	std::string s;
@@ -63,7 +63,7 @@ void random_seqs()
 
 void sort_file()
 {
-	Input_stream f(config.query_file);
+	TextInputFile f(config.query_file);
 	vector<Pair<unsigned, string> > data;
 	while (f.getline(), !f.eof()) {
 		unsigned query;
@@ -78,7 +78,7 @@ void sort_file()
 
 void db_stat()
 {
-	Database_file db_file;
+	DatabaseFile db_file;
 	db_file.load_seqs();
 	cout << "Sequences = " << ref_seqs::get().get_length() << endl;
 
@@ -110,7 +110,7 @@ void match_file_stat()
 
 void run_masker()
 {
-	Input_stream f(config.query_file);
+	TextInputFile f(config.query_file);
 	vector<Letter> seq, seq2;
 	vector<char> id;
 	const FASTA_format format;
@@ -131,7 +131,7 @@ void run_masker()
 
 void fastq2fasta()
 {
-	auto_ptr<Input_stream> f(Compressed_istream::auto_detect(config.query_file));
+	auto_ptr<TextInputFile> f(new TextInputFile(config.query_file));
 	vector<Letter> seq;
 	vector<char> id;
 	const FASTQ_format format;

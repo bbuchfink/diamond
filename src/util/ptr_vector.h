@@ -46,6 +46,11 @@ struct PtrVector : public vector<_t*>
 		return vector<_t*>::operator[](n);
 	}
 
+	_t& back()
+	{
+		return *vector<_t*>::back();
+	}
+
 	typename vector<_t*>::iterator erase(typename vector<_t*>::iterator first, typename vector<_t*>::iterator last)
 	{
 		for (typename vector<_t*>::iterator i = first; i < last; ++i)

@@ -32,7 +32,6 @@ include_directories(
 add_executable(diamond src/run/main.cpp
   src/basic/config.cpp
   src/util/tinythread.cpp
-  src/util/compressed_stream.cpp
   src/basic/score_matrix.cpp
   src/blast/blast_filter.cpp
   src/blast/blast_seg.cpp
@@ -84,7 +83,6 @@ add_executable(diamond src/run/main.cpp
   src/dp/banded_sw.cpp
   src/data/sorted_list.cpp
   src/data/seed_set.cpp
-  src/util/binary_file.cpp
   src/util/simd.cpp
   src/output/taxon_format.cpp
   src/output/view.cpp
@@ -96,6 +94,13 @@ add_executable(diamond src/run/main.cpp
   src/dp/swipe/banded_swipe.cpp
   src/align/banded_swipe_pipeline.cpp
   src/data/ref_dictionary.cpp
+  util/io/compressed_stream.cpp
+  util/io/file_sink.cpp
+  util/io/file_source.cpp
+  util/io/input_file.cpp
+  util/io/output_file.cpp
+  util/io/temp_file.cpp
+  util/io/text_input_file.cpp
 )
 
 target_link_libraries(diamond ${ZLIB_LIBRARY} ${CMAKE_THREAD_LIBS_INIT})

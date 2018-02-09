@@ -21,7 +21,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <vector>
 #include <stddef.h>
-#include "../util/binary_file.h"
+#include "../util/io/output_file.h"
 
 using std::vector;
 
@@ -84,7 +84,7 @@ struct String_set
 	size_t get_length() const
 	{ return limits_.size() - 1; }
 
-	void save(Output_stream &file) const
+	void save(OutputFile &file) const
 	{
 		file.write(limits_);
 		file.write(data_);

@@ -21,11 +21,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <set>
 #include "../basic/config.h"
 #include "reference.h"
-#include "../basic/statistics.h"
 #include "load_seqs.h"
 #include "../util/seq_file_format.h"
 #include "../util/log_stream.h"
 #include "../basic/masking.h"
+#include "../util/io/text_input_file.h"
 
 String_set<0>* ref_ids::data_ = 0;
 Partitioned_histogram ref_hst;
@@ -49,7 +49,31 @@ struct Pos_record
 	uint32_t seq_len;
 };
 
-void push_seq(const sequence &seq, const sequence &id, uint64_t &offset, vector<Pos_record> &pos_array, Output_stream &out, size_t &letters, size_t &n_seqs)
+DatabaseFile::DatabaseFile():
+	InputFile(config.database)
+{
+	read_header(*this, ref_header);
+	if (ref_header.build < min_build_required || ref_header.db_version != Reference_header::current_db_version)
+		throw std::runtime_error("Database was built with a different version of Diamond as is incompatible.");
+	if (ref_header.sequences == 0)
+		throw std::runtime_error("Incomplete database file. Database building did not complete successfully.");
+	pos_array_offset = ref_header.pos_array_offset;
+}
+
+void DatabaseFile::read_header(InputFile &stream, Reference_header &header)
+{
+	if (stream.read(&header, 1) != 1)
+		throw Database_format_exception();
+	if (header.magic_number != Reference_header().magic_number)
+		throw Database_format_exception();
+}
+
+void DatabaseFile::rewind()
+{
+	pos_array_offset = ref_header.pos_array_offset;
+}
+
+void push_seq(const sequence &seq, const sequence &id, uint64_t &offset, vector<Pos_record> &pos_array, OutputFile &out, size_t &letters, size_t &n_seqs)
 {	
 	pos_array.push_back(Pos_record(offset, seq.length()));
 	out.write("\xff", 1);
@@ -70,9 +94,9 @@ void make_db()
 	if (config.input_ref_file == "")
 		std::cerr << "Input file parameter (--in) is missing. Input will be read from stdin." << endl;
 	task_timer timer("Opening the database file", true);
-	auto_ptr<Input_stream> db_file (Compressed_istream::auto_detect(config.input_ref_file));
+	auto_ptr<TextInputFile> db_file (new TextInputFile(config.input_ref_file));
 	
-	Output_stream out(config.database);
+	OutputFile out(config.database);
 	out.write(&ref_header, 1);
 
 	size_t letters = 0, n = 0, n_seqs = 0;
@@ -125,7 +149,7 @@ void make_db()
 	message_stream << "Total time = " << total.getElapsedTimeInSec() << "s" << endl;
 }
 
-bool Database_file::load_seqs()
+bool DatabaseFile::load_seqs()
 {
 	task_timer timer("Loading reference sequences");
 	const size_t max_letters = (size_t)(config.chunk_size*1e9);
@@ -183,7 +207,7 @@ bool Database_file::load_seqs()
 	return true;
 }
 
-void Database_file::get_seq()
+void DatabaseFile::get_seq()
 {
 	vector<Letter> seq;
 	string id;
@@ -220,9 +244,9 @@ void Database_file::get_seq()
 
 void db_info()
 {
-	Input_stream db_file(config.database);
+	InputFile db_file(config.database);
 	Reference_header header;
-	Database_file::read_header(db_file, header);
+	DatabaseFile::read_header(db_file, header);
 	cout << "Database format version = " << header.db_version << endl;
 	cout << "Diamond build = " << header.build << endl;
 	cout << "Sequences = " << header.sequences << endl;

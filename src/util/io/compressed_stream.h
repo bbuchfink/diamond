@@ -1,6 +1,6 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2017 Benjamin Buchfink <buchfink@gmail.com>
+Copyright (C) 2013-2018 Benjamin Buchfink <buchfink@gmail.com>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU Affero General Public License as
@@ -22,8 +22,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <string>
 #include <memory>
 #include <zlib.h>
-#include "binary_file.h"
-#include "util.h"
+#include "sink.h"
+#include "source.h"
+#include "../util.h"
 
 using std::string;
 using std::auto_ptr;
@@ -35,13 +36,21 @@ struct Stream_read_exception : public std::runtime_error
 	{}
 };
 
-struct Compressed_istream : public Input_stream
+struct ZlibSource : public Source
 {
-	Compressed_istream(const string &file_name);
-	virtual size_t read_bytes(char *ptr, size_t count);
+	ZlibSource(Source *source);
+	virtual size_t read(char *ptr, size_t count);
 	virtual void close();
-	static Input_stream* auto_detect(const string &file_name);
+	virtual const string& file_name() const
+	{
+		return source_->file_name();
+	}
+	virtual ~ZlibSource()
+	{
+		delete source_;
+	}
 private:
+	Source *source_;
 	z_stream strm;
 	static const size_t chunk_size = 1llu << 20;
 	auto_ptr<char> in, out;
@@ -49,16 +58,21 @@ private:
 	bool eos_;
 };
 
-struct Compressed_ostream : public Output_stream
+struct ZlibSink : public Sink
 {
-	Compressed_ostream(const string &file_name);
-#ifndef _MSC_VER
-	virtual ~Compressed_ostream()
-	{}
-#endif
-	virtual void write_raw(const char *ptr, size_t count);
+	ZlibSink(Sink *sink);
 	virtual void close();
+	virtual void write(const char *ptr, size_t count);
+	virtual FILE* file()
+	{
+		return sink_->file();
+	}
+	virtual ~ZlibSink()
+	{
+		delete sink_;
+	}
 private:
+	Sink *sink_;
 	void deflate_loop(const char *ptr, size_t count, int code);
 	static const size_t chunk_size = 1llu << 20;
 	z_stream strm;

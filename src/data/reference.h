@@ -19,21 +19,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #ifndef REFERENCE_H_
 #define REFERENCE_H_
 
-#include <memory>
-#include <string>
-#include <numeric>
-#include <limits>
-#include "../util/binary_file.h"
-#include "sorted_list.h"
-#include "../basic/statistics.h"
+#include "../util/io/input_file.h"
 #include "../data/seed_histogram.h"
-#include "../util/hash_table.h"
-#include "../util/hash_function.h"
-#include "../basic/packed_loc.h"
 #include "sequence_set.h"
-#include "../util/ptr_vector.h"
-
-using std::auto_ptr;
 
 struct Reference_header
 {
@@ -58,33 +46,14 @@ struct Database_format_exception : public std::exception
 	{ return "Database file is not a DIAMOND database."; }
 };
 
-struct Database_file : public Input_stream
+struct DatabaseFile : public InputFile
 {
-	Database_file():
-		Input_stream (config.database)
-	{
-		read_header(*this, ref_header);
-		if (ref_header.build < min_build_required || ref_header.db_version != Reference_header::current_db_version)
-			throw std::runtime_error("Database was built with a different version of diamond as is incompatible.");
-		if (ref_header.sequences == 0)
-			throw std::runtime_error("Incomplete database file. Database building did not complete successfully.");
-		pos_array_offset = ref_header.pos_array_offset;
-	}
-
-	static void read_header(Input_stream &stream, Reference_header &header)
-	{
-		if (stream.read(&header, 1) != 1)
-			throw Database_format_exception();
-		if (header.magic_number != Reference_header().magic_number)
-			throw Database_format_exception();
-	}
-
-	void rewind()
-	{
-		pos_array_offset = ref_header.pos_array_offset;
-	}
+	DatabaseFile();
+	static void read_header(InputFile &stream, Reference_header &header);
+	void rewind();
 	bool load_seqs();
 	void get_seq();
+
 	enum { min_build_required = 74 };
 
 	size_t pos_array_offset;

@@ -21,7 +21,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <vector>
 #include "../basic/value.h"
-#include "compressed_stream.h"
+#include "io/text_input_file.h"
 
 using std::vector;
 using std::pair;
@@ -37,7 +37,7 @@ struct file_format_exception : public std::exception
 struct Sequence_file_format
 {
 
-	virtual bool get_seq(vector<char> &id, vector<Letter> &seq, Input_stream &s) const = 0;
+	virtual bool get_seq(vector<char> &id, vector<Letter> &seq, TextInputFile &s) const = 0;
 	virtual ~Sequence_file_format()
 	{ }
 	
@@ -49,7 +49,7 @@ struct FASTA_format : public Sequence_file_format
 	FASTA_format()
 	{ }
 
-	virtual bool get_seq(vector<char> &id, vector<Letter> &seq, Input_stream &s) const;
+	virtual bool get_seq(vector<char> &id, vector<Letter> &seq, TextInputFile &s) const;
 
 	virtual ~FASTA_format()
 	{ }
@@ -62,13 +62,13 @@ struct FASTQ_format : public Sequence_file_format
 	FASTQ_format()
 	{ }
 
-	virtual bool get_seq(vector<char> &id, vector<Letter> &seq, Input_stream &s) const;
+	virtual bool get_seq(vector<char> &id, vector<Letter> &seq, TextInputFile &s) const;
 
 	virtual ~FASTQ_format()
 	{ }
 
 };
 
-const Sequence_file_format* guess_format(Input_stream &file);
+const Sequence_file_format* guess_format(TextInputFile &file);
 
 #endif /* SEQ_FILE_FORMAT_H_ */

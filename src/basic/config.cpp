@@ -26,7 +26,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/system.h"
 #include "reduction.h"
 #include "shape_config.h"
-#include "../util/temp_file.h"
+#include "../util/io/temp_file.h"
 #include "../basic/match.h"
 #include "../data/sorted_list.h"
 #include "../basic/translate.h"

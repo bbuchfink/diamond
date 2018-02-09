@@ -29,7 +29,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../basic/packed_sequence.h"
 #include "../data/ref_dictionary.h"
 
-inline void init_daa(Output_stream &f)
+inline void init_daa(OutputFile &f)
 {
 	DAA_header1 h1;
 	f.write(&h1, 1);	
@@ -75,7 +75,7 @@ inline void write_daa_record(TextBuffer &buf, const Hsp &match, unsigned query_i
 	buf << match.transcript.data();
 }
 
-inline void finish_daa(Output_stream &f)
+inline void finish_daa(OutputFile &f)
 {
 	DAA_header2 h2_(ref_header.sequences,
 		config.db_size,

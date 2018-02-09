@@ -40,7 +40,7 @@ void copy_line(const string & s, vector<_t>& v, size_t d, _what)
 		v.push_back(convert_char<_what>(*i));
 }
 
-bool FASTA_format::get_seq(vector<char>& id, vector<Letter>& seq, Input_stream & s) const
+bool FASTA_format::get_seq(vector<char>& id, vector<Letter>& seq, TextInputFile & s) const
 {
 	while (s.getline(), s.line.empty() && !s.eof());
 	if (s.eof())
@@ -72,7 +72,7 @@ bool FASTA_format::get_seq(vector<char>& id, vector<Letter>& seq, Input_stream &
 	return true;
 }
 
-bool FASTQ_format::get_seq(vector<char>& id, vector<Letter>& seq, Input_stream & s) const
+bool FASTQ_format::get_seq(vector<char>& id, vector<Letter>& seq, TextInputFile & s) const
 {
 	while (s.getline(), s.line.empty() && !s.eof());
 	if (s.eof())
@@ -96,7 +96,7 @@ bool FASTQ_format::get_seq(vector<char>& id, vector<Letter>& seq, Input_stream &
 	return true;
 }
 
-const Sequence_file_format * guess_format(Input_stream &file)
+const Sequence_file_format * guess_format(TextInputFile &file)
 {
 	static const FASTA_format fasta;
 	static const FASTQ_format fastq;

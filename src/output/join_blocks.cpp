@@ -17,7 +17,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #include "output.h"
-#include "../util/temp_file.h"
+#include "../util/io/temp_file.h"
 #include "../data/queries.h"
 #include "../output/daa_write.h"
 #include "output_format.h"
@@ -27,10 +27,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 struct JoinFetcher
 {
-	static void init(const vector<Temp_file> &tmp_file)
+	static void init(const PtrVector<TempFile> &tmp_file)
 	{
-		for (vector<Temp_file>::const_iterator i = tmp_file.begin(); i != tmp_file.end(); ++i) {
-			files.push_back(Input_stream(*i));
+		for (PtrVector<TempFile>::const_iterator i = tmp_file.begin(); i != tmp_file.end(); ++i) {
+			files.push_back(new InputFile(**i));
 			query_ids.push_back(0);
 			files.back().read(&query_ids.back(), 1);
 		}
@@ -38,8 +38,8 @@ struct JoinFetcher
 	}
 	static void finish()
 	{
-		for (vector<Input_stream>::iterator i = files.begin(); i != files.end(); ++i)
-			i->close_and_delete();
+		for (PtrVector<InputFile>::iterator i = files.begin(); i != files.end(); ++i)
+			(*i)->close_and_delete();
 		files.clear();
 		query_ids.clear();
 	}
@@ -71,20 +71,20 @@ struct JoinFetcher
 				buf[i].clear();
 		return next() != IntermediateRecord::finished;
 	}
-	static vector<Input_stream> files;
+	static PtrVector<InputFile> files;
 	static vector<unsigned> query_ids;
 	static unsigned query_last;
 	vector<BinaryBuffer> buf;
 	unsigned query_id, unaligned_from;
 };
 
-vector<Input_stream> JoinFetcher::files;
+PtrVector<InputFile> JoinFetcher::files;
 vector<unsigned> JoinFetcher::query_ids;
 unsigned JoinFetcher::query_last;
 
 struct JoinWriter
 {
-	JoinWriter(Output_stream &f):
+	JoinWriter(OutputFile &f):
 		f_(f)
 	{}
 	void operator()(TextBuffer& buf)
@@ -92,7 +92,7 @@ struct JoinWriter
 		f_.write(buf.get_begin(), buf.size());
 		buf.clear();
 	}
-	Output_stream &f_;
+	OutputFile &f_;
 };
 
 struct Join_record
@@ -250,7 +250,7 @@ void join_worker(Task_queue<TextBuffer, JoinWriter> *queue)
 	statistics += stat;
 }
 
-void join_blocks(unsigned ref_blocks, Output_stream &master_out, const vector<Temp_file> &tmp_file)
+void join_blocks(unsigned ref_blocks, OutputFile &master_out, const PtrVector<TempFile> &tmp_file)
 {
 	ReferenceDictionary::get().init_rev_map();
 	JoinFetcher::init(tmp_file);

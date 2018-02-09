@@ -118,13 +118,13 @@ void process_shape(unsigned sid,
 	}
 }
 
-void run_ref_chunk(Database_file &db_file,
+void run_ref_chunk(DatabaseFile &db_file,
 	Timer &total_timer,
 	unsigned query_chunk,
 	pair<size_t, size_t> query_len_bounds,
 	char *query_buffer,
-	Output_stream &master_out,
-	vector<Temp_file> &tmp_file)
+	OutputFile &master_out,
+	PtrVector<TempFile> &tmp_file)
 {
 	task_timer timer("Building reference histograms");
 	if(config.algo==Config::query_indexed)
@@ -151,11 +151,11 @@ void run_ref_chunk(Database_file &db_file,
 	timer.go("Deallocating buffers");
 	delete[] ref_buffer;
 
-	Output_stream* out;
+	OutputFile* out;
 	if (blocked_processing) {
 		timer.go("Opening temporary output file");
-		tmp_file.push_back(Temp_file());
-		out = new Output_stream(tmp_file.back());
+		tmp_file.push_back(new TempFile());
+		out = &tmp_file.back();
 	}
 	else
 		out = &master_out;
@@ -164,10 +164,8 @@ void run_ref_chunk(Database_file &db_file,
 	align_queries(*Trace_pt_buffer::instance, out);
 	delete Trace_pt_buffer::instance;
 
-	if (blocked_processing) {
+	if (blocked_processing)
 		IntermediateRecord::finish_file(*out);
-		delete out;
-	}
 
 	timer.go("Deallocating reference");
 	delete ref_seqs::data_;
@@ -175,11 +173,11 @@ void run_ref_chunk(Database_file &db_file,
 	timer.finish();
 }
 
-void run_query_chunk(Database_file &db_file,
+void run_query_chunk(DatabaseFile &db_file,
 	Timer &total_timer,
 	unsigned query_chunk,
-	Output_stream &master_out,
-	Output_stream *unaligned_file)
+	OutputFile &master_out,
+	OutputFile *unaligned_file)
 {
 	static const double max_coverage = 0.15;
 
@@ -221,7 +219,7 @@ void run_query_chunk(Database_file &db_file,
 
 	timer.go("Allocating buffers");
 	char *query_buffer = sorted_list::alloc_buffer(query_hst);
-	vector<Temp_file> tmp_file;
+	PtrVector<TempFile> tmp_file;
 	query_aligned.clear();
 	query_aligned.insert(query_aligned.end(), query_ids::get().get_length(), false);
 	db_file.rewind();
@@ -251,25 +249,23 @@ void run_query_chunk(Database_file &db_file,
 	delete query_source_seqs::data_;
 }
 
-void master_thread(Database_file &db_file, Timer &total_timer)
+void master_thread(DatabaseFile &db_file, Timer &total_timer)
 {
 	if(config.query_file.empty())
 		std::cerr << "Query file parameter (--query/-q) is missing. Input will be read from stdin." << endl;
 	task_timer timer("Opening the input file", true);
-	auto_ptr<Input_stream> query_file(Compressed_istream::auto_detect(config.query_file));
+	auto_ptr<TextInputFile> query_file(new TextInputFile(config.query_file));
 	const Sequence_file_format *format_n(guess_format(*query_file));
 
 	current_query_chunk = 0;
 
 	timer.go("Opening the output file");
-	auto_ptr<Output_stream> master_out(config.compression == 1
-		? new Compressed_ostream(config.output_file)
-		: new Output_stream(config.output_file));
+	auto_ptr<OutputFile> master_out(new OutputFile(config.output_file, config.compression == 1));
 	if (*output_format == Output_format::daa)
 		init_daa(*master_out);
-	auto_ptr<Output_stream> unaligned_file;
+	auto_ptr<OutputFile> unaligned_file;
 	if (!config.unaligned.empty())
-		unaligned_file = auto_ptr<Output_stream>(new Output_stream(config.unaligned));
+		unaligned_file = auto_ptr<OutputFile>(new OutputFile(config.unaligned));
 	timer.finish();
 
 	for (;; ++current_query_chunk) {
@@ -322,7 +318,7 @@ void master_thread_di()
 	align_mode = Align_mode(Align_mode::from_command(config.command));
 	init_output();
 
-	message_stream << "Temporary directory: " << Temp_file::get_temp_dir() << endl;
+	message_stream << "Temporary directory: " << TempFile::get_temp_dir() << endl;
 
 	if (config.mode_very_sensitive) {
 		Config::set_option(config.chunk_size, 0.4);
@@ -334,7 +330,7 @@ void master_thread_di()
 	}
 
 	task_timer timer("Opening the database", 1);
-	Database_file db_file;
+	DatabaseFile db_file;
 	timer.finish();
 	verbose_stream << "Reference = " << config.database << endl;
 	verbose_stream << "Sequences = " << ref_header.sequences << endl;

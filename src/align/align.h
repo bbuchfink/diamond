@@ -32,7 +32,7 @@ using std::auto_ptr;
 
 struct Output_writer
 {
-	Output_writer(Output_stream* f) :
+	Output_writer(OutputFile* f) :
 		f_(f)
 	{ }
 	void operator()(TextBuffer &buf)
@@ -41,13 +41,13 @@ struct Output_writer
 		buf.clear();
 	}
 private:
-	Output_stream* const f_;
+	OutputFile* const f_;
 };
 
 template<typename _buffer>
 struct Ring_buffer_sink
 {
-	Ring_buffer_sink(Output_stream *output_file):
+	Ring_buffer_sink(OutputFile *output_file):
 		writer(output_file),
 		queue(config.threads_ * 4, writer)
 	{}
@@ -64,7 +64,7 @@ private:
 	Task_queue<_buffer, Output_writer> queue;
 };
 
-void align_queries(Trace_pt_buffer &trace_pts, Output_stream* output_file);
+void align_queries(Trace_pt_buffer &trace_pts, OutputFile* output_file);
 
 namespace ExtensionPipeline {
 	namespace Greedy {

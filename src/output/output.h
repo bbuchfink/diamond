@@ -20,7 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define OUTPUT_H_
 
 #include <map>
-#include "../util/binary_file.h"
+#include "../util/io/output_file.h"
 #include "../basic/packed_transcript.h"
 #include "../util/text_buffer.h"
 #include "../data/reference.h"
@@ -99,7 +99,7 @@ struct IntermediateRecord
 			.write_packed(match.subject_range.begin_)
 			<< match.transcript.data();
 	}
-	static void finish_file(Output_stream &f)
+	static void finish_file(OutputFile &f)
 	{
 		unsigned x = finished;
 		f.write(&x, 1);
@@ -110,11 +110,11 @@ struct IntermediateRecord
 	Packed_transcript transcript;
 };
 
-void join_blocks(unsigned ref_blocks, Output_stream &master_out, const vector<Temp_file> &tmp_file);
+void join_blocks(unsigned ref_blocks, OutputFile &master_out, const PtrVector<TempFile> &tmp_file);
 
 struct OutputSink
 {
-	OutputSink(size_t begin, Output_stream *f) :
+	OutputSink(size_t begin, OutputFile *f) :
 		f_(f),
 		next_(begin),
 		size_(0),
@@ -141,7 +141,7 @@ struct OutputSink
 private:
 	void flush(TextBuffer *buf);
 	tthread::mutex mtx_;
-	Output_stream* const f_;
+	OutputFile* const f_;
 	std::map<size_t, TextBuffer*> backlog_;
 	size_t next_, size_, max_size_;
 };

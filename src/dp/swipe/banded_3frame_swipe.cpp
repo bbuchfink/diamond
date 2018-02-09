@@ -77,7 +77,7 @@ void traceback(sequence *query, Strand strand, int dna_len, const Banded3FrameSw
 			it.walk_reverse_shift();
 		}
 		else {
-			const pair<Edit_operation, int> g = it.walk_gap(d0, d1);
+			const pair<Edit_operation, int> g(it.walk_gap(d0, d1));
 			out.push_gap(g.first, g.second, &target.seq[it.j + g.second]);
 		}
 	}

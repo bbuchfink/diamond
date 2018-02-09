@@ -25,7 +25,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <string>
 #include "../util/tinythread.h"
 #include "../util/ptr_vector.h"
-#include "../util/binary_file.h"
+#include "../util/io/output_file.h"
 
 using std::vector;
 using std::string;
@@ -81,7 +81,7 @@ private:
 	vector<uint32_t> rev_map_;
 	uint32_t next_;
 
-	friend void finish_daa(Output_stream&);
+	friend void finish_daa(OutputFile&);
 
 };
 
