@@ -16,6 +16,7 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
+#include <iostream>
 #include <stdio.h>
 #ifdef _MSC_VER
 #define NOMINMAX
@@ -61,8 +62,8 @@ FileSink::FileSink(const string &file_name, const char *mode):
 
 #ifndef _MSC_VER
 FileSink::FileSink(const string &file_name, int fd, const char *mode):
-	file_name_(file_name),
-	f_(fdopen(fd, mode))
+	f_(fdopen(fd, mode)),
+	file_name_(file_name)	
 {
 	if (f_ == 0) {
 		perror(0);
