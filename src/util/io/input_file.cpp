@@ -20,6 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "input_file.h"
 #include "file_source.h"
 #include "compressed_stream.h"
+#include "buffered_source.h"
 
 bool is_gzip_stream(const unsigned char *b)
 {
@@ -29,7 +30,7 @@ bool is_gzip_stream(const unsigned char *b)
 			|| b[1] == 0xDA));
 }
 
-InputFile::InputFile(const string &file_name) :
+InputFile::InputFile(const string &file_name, int flags) :
 	file_name(file_name),
 	source_ (new FileSource(file_name))
 {
@@ -52,6 +53,8 @@ InputFile::InputFile(const string &file_name) :
 		source_->putback(b[0]);
 	if (n == 2 && is_gzip_stream((const unsigned char*)b))
 		source_ = new ZlibSource(source_);
+	if (flags & BUFFERED)
+		source_ = new BufferedSource(source_);
 }
 
 InputFile::~InputFile()

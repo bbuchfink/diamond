@@ -20,11 +20,35 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define EXCEPTIONS_H_
 
 #include <stdexcept>
+#include <string>
+
+using std::string;
 
 struct UnsupportedOperation : public std::runtime_error
 {
 	UnsupportedOperation() :
 		std::runtime_error("Unsupported I/O operation.")
+	{ }
+};
+
+struct File_open_exception : public std::runtime_error
+{
+	File_open_exception(const string &file_name) :
+		std::runtime_error(string("Error opening file " + file_name))
+	{ }
+};
+
+struct File_read_exception : public std::runtime_error
+{
+	File_read_exception(const string &file_name) :
+		runtime_error(string("Error reading file ") + file_name)
+	{ }
+};
+
+struct File_write_exception : public std::runtime_error
+{
+	File_write_exception(const string &file_name) :
+		runtime_error(string("Error writing file ") + file_name)
 	{ }
 };
 

@@ -65,4 +65,5 @@ g++ -DNDEBUG -O3 -Wno-deprecated-declarations $1 $2 $3 \
   src/util/io/output_file.cpp \
   src/util/io/temp_file.cpp \
   src/util/io/text_input_file.cpp \
+  src/util/io/buffered_source.cpp \
 -lz -lpthread -o diamond

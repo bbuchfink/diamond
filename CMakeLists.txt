@@ -101,6 +101,7 @@ add_executable(diamond src/run/main.cpp
   src/util/io/output_file.cpp
   src/util/io/temp_file.cpp
   src/util/io/text_input_file.cpp
+  src/util/io/buffered_source.cpp
 )
 
 target_link_libraries(diamond ${ZLIB_LIBRARY} ${CMAKE_THREAD_LIBS_INIT})

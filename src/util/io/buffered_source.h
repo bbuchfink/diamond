@@ -16,44 +16,49 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#ifndef INPUT_FILE_H_
-#define INPUT_FILE_H_
+#ifndef BUFFERED_SOURCE_H_
+#define BUFFERED_SOURCE_H_
 
-#include <vector>
-#include <string>
-#include <stdexcept>
-#include "output_file.h"
+#include <assert.h>
 #include "source.h"
 
-using std::vector;
-using std::string;
-using std::runtime_error;
-
-struct InputFile
+struct BufferedSource : public Source
 {
-	enum { BUFFERED = 1 };
-
-	InputFile(const string &file_name, int flags = 0);
-	void rewind();
-	InputFile(const OutputFile &tmp_file);
-	void seek(size_t pos);
-	void seek_forward(size_t n);
-	template<class _t>
-	size_t read(_t *ptr, size_t count)
+	BufferedSource(Source* source);
+	virtual void rewind();
+	virtual void seek(size_t pos);
+	virtual void seek_forward(size_t n);
+	virtual size_t read(char *ptr, size_t count);
+	virtual void close();
+	virtual const string& file_name() const;
+	virtual ~BufferedSource()
 	{
-		return source_->read((char*)ptr, count*sizeof(_t)) / sizeof(_t);
+		delete source_;
 	}
-	void read_c_str(string &s);
-	void close_and_delete();
-	void close();
-	~InputFile();
-	
-	string file_name;
-	
 private:
-	
+	char* next()
+	{
+		return &buf_[start_];
+	}
+	void pop(char *dst, size_t n)
+	{
+		assert(n <= avail_);
+		memcpy(dst, next(), n);
+		start_ += n;
+		avail_ -= n;
+	}
+	void fetch()
+	{
+		start_ = 0;
+		avail_ = source_->read(buf_, BUF_SIZE);
+	}
+
+	enum { BUF_SIZE = 4096 };
+
 	Source *source_;
-	
+	char buf_[BUF_SIZE];
+	size_t start_, avail_;
+	bool eof_;
 };
 
-#endif /* BINARY_FILE_H_ */
+#endif
