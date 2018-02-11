@@ -17,6 +17,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #include <algorithm>
+#include <string.h>
 #include "buffered_source.h"
 
 BufferedSource::BufferedSource(Source* source):
@@ -72,4 +73,12 @@ void BufferedSource::close()
 const string& BufferedSource::file_name() const
 {
 	return source_->file_name();
+}
+
+void BufferedSource::pop(char *dst, size_t n)
+{
+	assert(n <= avail_);
+	memcpy(dst, next(), n);
+	start_ += n;
+	avail_ -= n;
 }

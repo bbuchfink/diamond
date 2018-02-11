@@ -40,13 +40,7 @@ private:
 	{
 		return &buf_[start_];
 	}
-	void pop(char *dst, size_t n)
-	{
-		assert(n <= avail_);
-		memcpy(dst, next(), n);
-		start_ += n;
-		avail_ -= n;
-	}
+	void pop(char *dst, size_t n);
 	void fetch()
 	{
 		start_ = 0;

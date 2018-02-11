@@ -17,6 +17,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #include <iostream>
+#ifndef _MSC_VER
+#include <stdio.h>
+#include <errno.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#endif
 #include "input_file.h"
 #include "file_source.h"
 #include "compressed_stream.h"
