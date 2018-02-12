@@ -208,7 +208,6 @@ bool QueryMapper::generate_output(TextBuffer &buffer, Statistics &stat)
 
 		if (targets[i].outranked)
 			stat.inc(Statistics::OUTRANKED_HITS);
-		++n_target_seq;
 		target_culling->add(targets[i]);
 		
 		hit_hsps = 0;
@@ -246,6 +245,7 @@ bool QueryMapper::generate_output(TextBuffer &buffer, Statistics &stat)
 			++n_hsp;
 			++hit_hsps;
 		}
+		++n_target_seq;
 	}
 
 	if (n_hsp > 0) {

@@ -50,7 +50,6 @@ struct Pos_record
 };
 
 DatabaseFile::DatabaseFile():
-	//InputFile(config.database)
 	InputFile(config.database, InputFile::BUFFERED)
 {
 	read_header(*this, ref_header);
