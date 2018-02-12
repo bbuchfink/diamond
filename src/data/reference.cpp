@@ -50,7 +50,8 @@ struct Pos_record
 };
 
 DatabaseFile::DatabaseFile():
-	InputFile(config.database)
+	//InputFile(config.database)
+	InputFile(config.database, InputFile::BUFFERED)
 {
 	read_header(*this, ref_header);
 	if (ref_header.build < min_build_required || ref_header.db_version != Reference_header::current_db_version)
