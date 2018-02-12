@@ -35,6 +35,7 @@ void make_db();
 void db_info();
 void test_main();
 void benchmark_sw();
+void test_io();
 
 int main(int ac, const char* av[])
 {
@@ -97,6 +98,9 @@ int main(int ac, const char* av[])
 			break;
 		case Config::dbinfo:
 			db_info();
+			break;
+		case Config::test_io:
+			test_io();
 			break;
 #ifdef EXTRA
 		case Config::test_extra:

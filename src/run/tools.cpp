@@ -143,3 +143,17 @@ void fastq2fasta()
 		++n;
 	}
 }
+
+void test_io()
+{
+	const size_t buf_size = 256;
+	InputFile f(config.query_file, InputFile::BUFFERED);
+	char buf[buf_size];
+	Timer t;
+	t.start();
+	size_t total = 0;
+	while (f.read(buf, buf_size) == buf_size)
+		total += buf_size;
+	cout << "MBytes/sec = " << total / 1e6 / t.getElapsedTime() << endl;
+	cout << "Time = " << t.getElapsedTime() << "s" << endl;
+}
