@@ -21,7 +21,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "exceptions.h"
 #include <string>
+#include <vector>
 
+using std::vector;
 using std::string;
 
 struct Source
@@ -43,6 +45,14 @@ struct Source
 		throw UnsupportedOperation();
 	}
 	virtual size_t read(char *ptr, size_t count) = 0;
+	virtual bool read_until(string &dst, char delimiter)
+	{
+		throw UnsupportedOperation();
+	}
+	virtual bool read_until(vector<char> &dst, char delimiter)
+	{
+		throw UnsupportedOperation();
+	}
 	virtual void close() = 0;
 	virtual const string& file_name() const = 0;
 	virtual ~Source()

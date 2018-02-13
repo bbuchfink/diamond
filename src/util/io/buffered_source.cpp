@@ -82,3 +82,43 @@ void BufferedSource::pop(char *dst, size_t n)
 	start_ += n;
 	avail_ -= n;
 }
+
+bool BufferedSource::read_until(string &dst, char delimiter)
+{
+	int d = delimiter;
+	d &= 0xff;
+	dst.clear();
+	do {
+		const char *p = (const char*)memchr((void*)next(), d, avail_);
+		if (p == 0)
+			dst.append(next(), avail_);
+		else {
+			const size_t n = p - next();
+			dst.append(next(), n);
+			start_ += n + 1;
+			avail_ -= n + 1;
+			return true;
+		}
+	} while (fetch());
+	return dst.empty();
+}
+
+bool BufferedSource::read_until(vector<char> &dst, char delimiter)
+{
+	int d = delimiter;
+	d &= 0xff;
+	dst.clear();
+	do {
+		const char *p = (const char*)memchr((void*)next(), d, avail_);
+		if (p == 0)
+			dst.insert(dst.end(), next(), next() + avail_);
+		else {
+			const size_t n = p - next();
+			dst.insert(dst.end(), next(), next() + n);
+			start_ += n + 1;
+			avail_ -= n + 1;
+			return true;
+		}
+	} while (fetch());
+	return dst.empty();
+}

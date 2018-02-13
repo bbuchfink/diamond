@@ -221,10 +221,12 @@ void DatabaseFile::get_seq()
 	size_t letters = 0;
 	for (size_t n = 0; n < ref_header.sequences; ++n) {
 		read(&c, 1);
-		while (read(&c, 1), c != '\xff')
-			seq.push_back(c);
-		while (read(&c, 1), c != '\0')
-			id.push_back(c);
+		read_until(seq, '\xff');
+		//while (read(&c, 1), c != '\xff')
+			//seq.push_back(c);
+		read_until(id, '\0');
+		//while (read(&c, 1), c != '\0')
+			//id.push_back(c);
 		if (all || seqs.find(n) != seqs.end()) {
 			cout << '>' << id << endl;
 			if (config.reverse) {

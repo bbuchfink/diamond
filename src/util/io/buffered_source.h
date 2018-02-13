@@ -20,7 +20,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define BUFFERED_SOURCE_H_
 
 #include <assert.h>
+#include <vector>
+#include <string>
 #include "source.h"
+
+using std::vector;
+using std::string;
 
 struct BufferedSource : public Source
 {
@@ -31,6 +36,8 @@ struct BufferedSource : public Source
 	virtual size_t read(char *ptr, size_t count);
 	virtual void close();
 	virtual const string& file_name() const;
+	virtual bool read_until(string &dst, char delimiter);
+	virtual bool read_until(vector<char> &dst, char delimiter);
 	virtual ~BufferedSource()
 	{
 		delete source_;
@@ -41,10 +48,10 @@ private:
 		return &buf_[start_];
 	}
 	void pop(char *dst, size_t n);
-	void fetch()
+	size_t fetch()
 	{
 		start_ = 0;
-		avail_ = source_->read(buf_, BUF_SIZE);
+		return avail_ = source_->read(buf_, BUF_SIZE);
 	}
 
 	enum { BUF_SIZE = 4096 };

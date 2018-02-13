@@ -43,6 +43,14 @@ struct InputFile
 	{
 		return source_->read((char*)ptr, count*sizeof(_t)) / sizeof(_t);
 	}
+	bool read_until(string &dst, char delimiter)
+	{
+		return source_->read_until(dst, delimiter);
+	}
+	bool read_until(vector<char> &dst, char delimiter)
+	{
+		return source_->read_until(dst, delimiter);
+	}
 	void read_c_str(string &s);
 	void close_and_delete();
 	void close();
