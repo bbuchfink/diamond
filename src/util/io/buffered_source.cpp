@@ -86,7 +86,6 @@ void BufferedSource::pop(char *dst, size_t n)
 bool BufferedSource::read_until(string &dst, char delimiter)
 {
 	int d = delimiter;
-	d &= 0xff;
 	dst.clear();
 	do {
 		const char *p = (const char*)memchr((void*)next(), d, avail_);
@@ -106,7 +105,6 @@ bool BufferedSource::read_until(string &dst, char delimiter)
 bool BufferedSource::read_until(vector<char> &dst, char delimiter)
 {
 	int d = delimiter;
-	d &= 0xff;
 	dst.clear();
 	do {
 		const char *p = (const char*)memchr((void*)next(), d, avail_);

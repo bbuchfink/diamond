@@ -30,15 +30,13 @@ Hashed_seed_set *query_seeds_hashed = 0;
 void write_unaligned(OutputFile *file)
 {
 	const size_t n = query_ids::get().get_length();
-	string s;
+	TextBuffer buf;
 	for (size_t i = 0; i < n; ++i) {
 		if (!query_aligned[i]) {
-			std::stringstream ss;
-			ss << '>' << query_ids::get()[i].c_str() << endl;
-			(align_mode.query_translated ? query_source_seqs::get()[i] : query_seqs::get()[i]).print(ss, input_value_traits);
-			ss << endl;
-			s = ss.str();
-			file->write(s.data(), s.length());
+			buf << '>' << query_ids::get()[i].c_str() << '\n';
+			(align_mode.query_translated ? query_source_seqs::get()[i] : query_seqs::get()[i]).print(buf, input_value_traits);
+			buf << '\n';
+			file->write(buf.get_begin(), buf.size());
 		}
 	}
 }

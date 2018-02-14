@@ -219,28 +219,28 @@ void DatabaseFile::get_seq()
 			seqs.insert(atoi(i->c_str()) - 1);
 	const size_t max_letters = config.chunk_size == 0.0 ? std::numeric_limits<size_t>::max() : (size_t)(config.chunk_size*1e9);
 	size_t letters = 0;
+	TextBuffer buf;
+	OutputFile out(config.output_file);
 	for (size_t n = 0; n < ref_header.sequences; ++n) {
 		read(&c, 1);
 		read_until(seq, '\xff');
-		//while (read(&c, 1), c != '\xff')
-			//seq.push_back(c);
 		read_until(id, '\0');
-		//while (read(&c, 1), c != '\0')
-			//id.push_back(c);
 		if (all || seqs.find(n) != seqs.end()) {
-			cout << '>' << id << endl;
+			buf << '>' << id << '\n';
 			if (config.reverse) {
-				sequence(seq).print(cout, value_traits, sequence::Reversed());
-				cout << endl;
+				sequence(seq).print(buf, value_traits, sequence::Reversed());
+				buf << '\n';
 			}
 			else
-				cout << sequence(seq) << endl;
+				buf << sequence(seq) << '\n';
 		}
+		out.write(buf.get_begin(), buf.size());
 		letters += seq.size();
 		if (letters >= max_letters)
 			break;
 		seq.clear();
 		id.clear();
+		buf.clear();
 	}
 }
 

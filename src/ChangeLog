@@ -1,3 +1,6 @@
+[0.9.18]
+- Optimized output writing performance.
+
 [0.9.17]
 - Fixed a compiler error on FreeBSD.
 - Added option --range-culling.

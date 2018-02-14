@@ -33,7 +33,8 @@ struct TextBuffer
 		data_ (0),
 		ptr_ (data_),
 		alloc_size_(0)
-	{ }
+	{
+	}
 
 	~TextBuffer()
 	{
@@ -43,6 +44,8 @@ struct TextBuffer
 	void reserve(size_t n)
 	{
 		const size_t s = ptr_ - data_;
+		if (s + n < alloc_size_)
+			return;
 		alloc_size_ = s + n + block_size - ((s + n) & (block_size - 1));
 		data_ = (char*)realloc(data_, alloc_size_);
 		ptr_ = data_ + s;

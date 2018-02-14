@@ -50,10 +50,10 @@ void random_seqs()
 	for (std::set<unsigned>::const_iterator i = n.begin(); i != n.end(); ++i) {
 		std::stringstream ss;
 		ss << '>' << j++ << endl;
-		if (config.reverse)
+		/*if (config.reverse)
 			ref_seqs::get()[*i].print(ss, value_traits, sequence::Reversed());
 		else
-			ss << ref_seqs::get()[*i];
+			ss << ref_seqs::get()[*i];*/
 		ss << endl;
 		s = ss.str();
 		out.write(s.data(), s.length());

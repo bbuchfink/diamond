@@ -111,7 +111,18 @@ struct sequence
 		}
 		return os;
 	}
-	std::ostream& print(std::ostream &os, const Value_traits &v, Reversed) const
+	TextBuffer& print(TextBuffer &os, const Value_traits &v) const
+	{
+		for (unsigned i = 0; i < len_; ++i) {
+			long l = (long)data_[i];
+			if ((l & 128) == 0)
+				os << v.alphabet[l];
+			else
+				os << (char)tolower(v.alphabet[l & 127]);
+		}
+		return os;
+	}
+	TextBuffer& print(TextBuffer &os, const Value_traits &v, Reversed) const
 	{
 		for (int i = (int)len_ - 1; i >= 0; --i)
 			os << v.alphabet[(long)data_[i]];
@@ -121,15 +132,13 @@ struct sequence
 	{
 		return sequence(*this, begin, end - 1);
 	}
-	friend std::ostream& operator<<(std::ostream &os, const sequence &s)
-	{
-		return s.print(os, value_traits);
-	}
 	friend TextBuffer& operator<<(TextBuffer &buf, const sequence &s)
 	{
-		for(unsigned i=0;i<s.len_;++i)
-			buf << value_traits.alphabet[(long)s.data_[i]];
-		return buf;
+		return s.print(buf, value_traits);
+	}
+	friend std::ostream& operator<<(std::ostream &buf, const sequence &s)
+	{
+		return s.print(buf, value_traits);
 	}
 	static sequence get_window(const Letter *s, int window)
 	{
