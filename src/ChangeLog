@@ -1,5 +1,6 @@
 [0.9.18]
 - Optimized output writing performance.
+- Fixed a bug in the XML output format.
 
 [0.9.17]
 - Fixed a compiler error on FreeBSD.
