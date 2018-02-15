@@ -125,7 +125,7 @@ struct sequence
 	TextBuffer& print(TextBuffer &os, const Value_traits &v, Reversed) const
 	{
 		for (int i = (int)len_ - 1; i >= 0; --i)
-			os << v.alphabet[(long)data_[i]];
+			os << v.alphabet[(long)(data_[i] & 127)];
 		return os;
 	}
 	sequence subseq(int begin, int end) const
