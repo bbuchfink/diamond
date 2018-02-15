@@ -19,6 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <limits>
 #include <iostream>
 #include <set>
+#include <map>
 #include "../basic/config.h"
 #include "reference.h"
 #include "load_seqs.h"
@@ -209,10 +210,22 @@ bool DatabaseFile::load_seqs()
 
 void DatabaseFile::get_seq()
 {
+	std::map<string, string> seq_titles;
+	if (!config.query_file.empty()) {
+		TextInputFile list(config.query_file);
+		while (list.getline(), !list.eof()) {
+			const vector<string> t(tokenize(list.line.c_str(), "\t"));
+			if (t.size() != 2)
+				throw std::runtime_error("Query file format error.");
+			seq_titles[t[0]] = t[1];
+		}
+		list.close();
+	}
+
 	vector<Letter> seq;
 	string id;
 	char c;
-	bool all = config.seq_no.size() == 0;
+	bool all = config.seq_no.size() == 0 && seq_titles.empty();
 	std::set<size_t> seqs;
 	if (!all)
 		for (vector<string>::const_iterator i = config.seq_no.begin(); i != config.seq_no.end(); ++i)
@@ -225,8 +238,9 @@ void DatabaseFile::get_seq()
 		read(&c, 1);
 		read_until(seq, '\xff');
 		read_until(id, '\0');
-		if (all || seqs.find(n) != seqs.end()) {
-			buf << '>' << id << '\n';
+		typename std::map<string, string>::const_iterator mapped_title = seq_titles.find(get_title(id));
+		if (all || seqs.find(n) != seqs.end() || mapped_title != seq_titles.end()) {
+			buf << '>' << (mapped_title != seq_titles.end() ? mapped_title->second : id) << '\n';
 			if (config.reverse) {
 				sequence(seq).print(buf, value_traits, sequence::Reversed());
 				buf << '\n';
@@ -242,6 +256,8 @@ void DatabaseFile::get_seq()
 		id.clear();
 		buf.clear();
 	}
+
+	out.close();
 }
 
 void db_info()
