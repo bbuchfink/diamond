@@ -41,6 +41,11 @@ struct Superfamily
 	{
 		return cl < x.cl || (cl == x.cl && (fold < x.fold || (fold == x.fold && superfamily < x.superfamily)));
 	}
+	friend TextBuffer& operator<<(TextBuffer &buf, const Superfamily &f)
+	{
+		buf << f.cl << '\t' << f.fold << '\t' << f.superfamily;
+		return buf;
+	}
 	char cl;
 	unsigned fold, superfamily;
 };
@@ -168,6 +173,9 @@ void db_annot_stats()
 	vector<char> seq;
 	for (size_t n = 0; n < ref_header.sequences; ++n) {
 		db.read_seq(id, seq);
-		++family_counts[subjects[id]];
+		if(subjects.find(id) != subjects.end())
+			++family_counts[subjects[id]];
 	}
+	OutputFile out(config.output_file);
+	out.write_map_csv<Superfamily, size_t>(family_counts.begin(), family_counts.end());
 }

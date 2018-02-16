@@ -19,6 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #ifndef OUTPUT_FILE_H_
 #define OUTPUT_FILE_H_
 
+#include <map>
 #include <stdexcept>
 #include <string>
 #include "sink.h"
@@ -56,6 +57,19 @@ struct OutputFile
 	void seekp(size_t p);
 	void remove();
 	size_t tell();
+
+	template<typename _k, typename _v>
+	void write_map_csv(typename std::map<_k, _v>::const_iterator begin, typename std::map<_k, _v>::const_iterator end)
+	{
+		TextBuffer buf;
+		for (typename std::map<_k, _v>::const_iterator i = begin; i != end; ++i) {
+			buf << i->first << '\t' << i->second << '\n';
+			write(buf.get_begin(), buf.size());
+			buf.clear();
+		}
+
+	}
+
 	~OutputFile()
 	{
 		delete sink_;
