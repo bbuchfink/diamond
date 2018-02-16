@@ -144,6 +144,7 @@ void roc()
 		TextInputFile f(config.family_counts_file);
 		while (!f.eof()) {
 			f.getline();
+			if (f.line.empty()) break;
 			vector<string> t(tokenize(f.line.c_str(), "\t"));
 			family_counts[Superfamily(t.begin())] = atoi(t[3].c_str());
 		}
@@ -190,9 +191,11 @@ void db_annot_stats()
 	vector<char> seq;
 	for (size_t n = 0; n < ref_header.sequences; ++n) {
 		db.read_seq(id, seq);
+		id = get_title(id);
 		if(subjects.find(id) != subjects.end())
 			++family_counts[subjects[id]];
 	}
 	OutputFile out(config.output_file);
 	out.write_map_csv<Superfamily, size_t>(family_counts.begin(), family_counts.end());
+	out.close();
 }
