@@ -62,6 +62,7 @@ struct Superfamily
 };
 
 map<Superfamily, size_t> family_counts;
+map<Superfamily, size_t> query_family_counts;
 map<string, Superfamily> subjects;
 set<pair<string, string> > target;
 size_t n_targets = 0, tp = 0, fp = 0;
@@ -105,6 +106,7 @@ void query_roc(Superfamily superfamily, const match_file::mcont &matches, Numeri
 			++idx;
 		}
 	coverage /= (double)family_counts[superfamily];
+	coverage /= (double)query_family_counts[superfamily];
 }
 
 pair<string, Superfamily> parse_astral_title(const string &s)
@@ -170,16 +172,25 @@ void roc()
 	while (file1.get_read(v1, blast_tab_format())) {
 		Superfamily sf = subjects[v1[0].query];
 		if (family_counts[sf] > 0) {
-			query_roc(sf, v1, c2, e2);
-			coverage += c2;
-			errors += e2;
+			++query_family_counts[sf];
 			++queries;
 		}
 	}
+	file1.rewind();
+
+	while (file1.get_read(v1, blast_tab_format())) {
+		Superfamily sf = subjects[v1[0].query];
+		if (family_counts[sf] > 0) {
+			query_roc(sf, v1, c2, e2);
+			coverage += c2;
+			errors += e2;
+		}
+	}
 	
-	coverage /= (double)queries;
+	coverage /= (double)query_family_counts.size();
 	errors /= (double)queries;
-	cout << queries << " Sequences." << endl;
+	cout << queries << " Queries." << endl;
+	cout << query_family_counts.size() << " Query families." << endl;
 	cout << coverage << endl;
 	cout << errors << endl;
 	/*for (int exp = roc_from; exp <= roc_to; ++exp)
