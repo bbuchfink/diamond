@@ -1,6 +1,6 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2017 Benjamin Buchfink <buchfink@gmail.com>
+Copyright (C) 2013-2018 Benjamin Buchfink <buchfink@gmail.com>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU Affero General Public License as
@@ -19,6 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <stdio.h>
 #include <map>
 #include <set>
+#include "../data/reference.h"
 #include "../util/io/text_input_file.h"
 #include "../basic/config.h"
 #include "match_file.h"
@@ -36,11 +37,15 @@ struct Superfamily
 	{
 		return cl == x.cl && fold == x.fold && superfamily == x.superfamily;
 	}
+	bool operator<(const Superfamily &x) const
+	{
+		return cl < x.cl || (cl == x.cl && (fold < x.fold || (fold == x.fold && superfamily < x.superfamily)));
+	}
 	char cl;
 	unsigned fold, superfamily;
 };
 
-map<char, map<unsigned, map<unsigned, unsigned> > > superfamilies;
+map<Superfamily, size_t> family_counts;
 map<string, Superfamily> subjects;
 set<pair<string, string> > target;
 size_t n_targets = 0, tp = 0, fp = 0;
@@ -81,7 +86,33 @@ void query_roc(Superfamily superfamily, const match_file::mcont &matches, Numeri
 			}
 			++idx;
 		}
-	coverage /= superfamilies[superfamily.cl][superfamily.fold][superfamily.superfamily];
+	coverage /= (double)family_counts[superfamily];
+}
+
+pair<string, Superfamily> parse_astral_title(const string &s)
+{
+	char name[32];
+	unsigned family;
+	Superfamily superfamily;
+	if (sscanf(s.c_str(), "%s %c.%u.%u.%u", name, &superfamily.cl, &superfamily.fold, &superfamily.superfamily, &family) != 5)
+		throw std::runtime_error("Format error");
+	return std::make_pair(name, superfamily);
+}
+
+size_t read_family_mapping(bool count)
+{
+	TextInputFile seqStream(config.query_file);
+	size_t queries = 0;
+	FASTA_format format;
+	vector<char> id, seq;
+	while (format.get_seq(id, seq, seqStream)) {
+		++queries;
+		pair<string, Superfamily> p = parse_astral_title(string(id.data(), id.size()));
+		if (count)
+			++family_counts[p.second];
+		subjects[p.first] = p.second;
+	}
+	return queries;
 }
 
 void roc()
@@ -89,25 +120,12 @@ void roc()
 	vector<char> id;
 	vector<Letter> seq;
 
-	TextInputFile seqStream(config.query_file);
 	match_file file1(config.match_file1.c_str());
 	match_file::mcont v1;
 
 	Numeric_vector<double> coverage(roc_steps), errors(roc_steps), c2(roc_steps), e2(roc_steps);
-	size_t queries = 0;
-	FASTA_format format;
-	while (format.get_seq(id, seq, seqStream)) {
-		string id2(id.data(), id.size());
-		++queries;
 
-		char name[32];
-		unsigned family;
-		Superfamily superfamily;
-		if (sscanf(id2.c_str(), "%s %c.%u.%u.%u", name, &superfamily.cl, &superfamily.fold, &superfamily.superfamily, &family) != 5)
-			throw std::runtime_error("Format error");
-		++superfamilies[superfamily.cl][superfamily.fold][superfamily.superfamily];
-		subjects[name] = superfamily;
-	}
+	size_t queries = read_family_mapping(true);
 
 	if (!config.match_file2.empty()) {
 		TextInputFile target_file(config.match_file2.c_str());
@@ -140,4 +158,16 @@ void roc()
 	cout << "Targets = " << n_targets << " / " << target.size() << " (" << percentage<double,size_t>(n_targets, target.size()) << "%)" << endl;
 	cout << "max ev = " << max_ev << endl;
 	cout << "False positives = " << fp << endl;
+}
+
+void db_annot_stats()
+{
+	read_family_mapping(false);
+	DatabaseFile db;
+	string id;
+	vector<char> seq;
+	for (size_t n = 0; n < ref_header.sequences; ++n) {
+		db.read_seq(id, seq);
+		++family_counts[subjects[id]];
+	}
 }

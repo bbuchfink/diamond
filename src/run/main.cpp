@@ -36,6 +36,7 @@ void db_info();
 void test_main();
 void benchmark_sw();
 void test_io();
+void db_annot_stats();
 
 int main(int ac, const char* av[])
 {
@@ -101,6 +102,9 @@ int main(int ac, const char* av[])
 			break;
 		case Config::test_io:
 			test_io();
+			break;
+		case Config::db_annot_stats:
+			db_annot_stats();
 			break;
 #ifdef EXTRA
 		case Config::test_extra:

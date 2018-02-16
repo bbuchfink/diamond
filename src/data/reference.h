@@ -53,6 +53,7 @@ struct DatabaseFile : public InputFile
 	void rewind();
 	bool load_seqs();
 	void get_seq();
+	void read_seq(string &id, vector<char> &seq);
 
 	enum { min_build_required = 74 };
 

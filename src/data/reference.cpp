@@ -208,6 +208,14 @@ bool DatabaseFile::load_seqs()
 	return true;
 }
 
+void DatabaseFile::read_seq(string &id, vector<char> &seq)
+{
+	char c;
+	read(&c, 1);
+	read_until(seq, '\xff');
+	read_until(id, '\0');
+}
+
 void DatabaseFile::get_seq()
 {
 	std::map<string, string> seq_titles;
@@ -224,7 +232,6 @@ void DatabaseFile::get_seq()
 
 	vector<Letter> seq;
 	string id;
-	char c;
 	bool all = config.seq_no.size() == 0 && seq_titles.empty();
 	std::set<size_t> seqs;
 	if (!all)
@@ -235,9 +242,7 @@ void DatabaseFile::get_seq()
 	TextBuffer buf;
 	OutputFile out(config.output_file);
 	for (size_t n = 0; n < ref_header.sequences; ++n) {
-		read(&c, 1);
-		read_until(seq, '\xff');
-		read_until(id, '\0');
+		read_seq(id, seq);
 		typename std::map<string, string>::const_iterator mapped_title = seq_titles.find(get_title(id));
 		if (all || seqs.find(n) != seqs.end() || mapped_title != seq_titles.end()) {
 			buf << '>' << (mapped_title != seq_titles.end() ? mapped_title->second : id) << '\n';

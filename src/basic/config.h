@@ -151,7 +151,7 @@ struct Config
 
 	enum {
 		makedb = 0, blastp = 1, blastx = 2, view = 3, help = 4, version = 5, getseq = 6, benchmark = 7, random_seqs = 8, compare = 9, sort = 10, roc = 11, db_stat = 12, model_sim = 13,
-		match_file_stat = 14, model_seqs = 15, opt = 16, mask = 17, fastq2fasta=18, dbinfo=19, test_extra = 20, test_io = 21
+		match_file_stat = 14, model_seqs = 15, opt = 16, mask = 17, fastq2fasta=18, dbinfo=19, test_extra = 20, test_io = 21, db_annot_stats = 22
 	};
 	unsigned	command;
 
