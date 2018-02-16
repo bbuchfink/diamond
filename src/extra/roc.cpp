@@ -66,7 +66,6 @@ double max_ev = 0;
 
 void query_roc(Superfamily superfamily, const match_file::mcont &matches, Numeric_vector<double> &coverage, Numeric_vector<double> &errors)
 {
-	if (family_counts[superfamily] == 0) return;
 	coverage = Numeric_vector<double>(roc_steps);
 	errors = Numeric_vector<double>(roc_steps);
 	match_file::mcont::const_iterator i = matches.begin();
@@ -85,11 +84,13 @@ void query_roc(Superfamily superfamily, const match_file::mcont &matches, Numeri
 				}
 				if (i->expect > ev)
 					break;
-				if (subjects.find(i->subject) != subjects.end() && subjects[i->subject] == superfamily) {
-					++coverage[idx];
-					if (target.find(pair<string, string>(i->query, i->subject)) != target.end()) {
-						max_ev = std::max(max_ev, i->expect);
-						++n_targets;
+				if (subjects.find(i->subject) != subjects.end()) {
+					if (subjects[i->subject] == superfamily) {
+						++coverage[idx];
+						if (target.find(pair<string, string>(i->query, i->subject)) != target.end()) {
+							max_ev = std::max(max_ev, i->expect);
+							++n_targets;
+						}
 					}
 				}
 				else {
@@ -140,7 +141,7 @@ void roc()
 	Numeric_vector<double> coverage(roc_steps), errors(roc_steps), c2(roc_steps), e2(roc_steps);
 
 	bool counts_file = !config.family_counts_file.empty();
-	size_t queries = read_family_mapping(!counts_file);
+	read_family_mapping(!counts_file);
 	if (counts_file) {
 		TextInputFile f(config.family_counts_file);
 		while (!f.eof()) {
@@ -163,10 +164,15 @@ void roc()
 		}
 	}
 
+	size_t queries = 0;
 	while (file1.get_read(v1, blast_tab_format())) {
-		query_roc(subjects[v1[0].query], v1, c2, e2);
-		coverage += c2;
-		errors += e2;
+		Superfamily sf = subjects[v1[0].query];
+		if (family_counts[sf] > 0) {
+			query_roc(sf, v1, c2, e2);
+			coverage += c2;
+			errors += e2;
+			++queries;
+		}
 	}
 	
 	coverage /= (double)queries;
