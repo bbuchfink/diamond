@@ -33,6 +33,14 @@ const size_t roc_steps = (roc_to - roc_from + 1) * 9;
 
 struct Superfamily
 {
+	Superfamily()
+	{}
+	Superfamily(vector<string>::const_iterator s):
+		cl(s[0][0]),
+		fold(atoi(s[1].c_str())),
+		superfamily(atoi(s[2].c_str()))
+	{
+	}
 	bool operator==(const Superfamily &x) const
 	{
 		return cl == x.cl && fold == x.fold && superfamily == x.superfamily;
@@ -130,7 +138,16 @@ void roc()
 
 	Numeric_vector<double> coverage(roc_steps), errors(roc_steps), c2(roc_steps), e2(roc_steps);
 
-	size_t queries = read_family_mapping(true);
+	bool counts_file = !config.family_counts_file.empty();
+	size_t queries = read_family_mapping(!counts_file);
+	if (counts_file) {
+		TextInputFile f(config.family_counts_file);
+		while (!f.eof()) {
+			f.getline();
+			vector<string> t(tokenize(f.line.c_str(), "\t"));
+			family_counts[Superfamily(t.begin())] = atoi(t[3].c_str());
+		}
+	}
 
 	if (!config.match_file2.empty()) {
 		TextInputFile target_file(config.match_file2.c_str());

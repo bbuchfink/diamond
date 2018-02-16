@@ -231,7 +231,8 @@ Config::Config(int argc, const char **argv)
 		("hashed-seeds", 0, "", hashed_seeds)
 		("rank-factor", 0, "", rank_factor, -1.0)
 		("transcript-len-estimate", 0, "", transcript_len_estimate, 1.0)
-		("no-traceback", 0, "", disable_traceback);
+		("no-traceback", 0, "", disable_traceback)
+		("family-counts", 0, "", family_counts_file);
 		
 	parser.add(general).add(makedb).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options);
 	parser.store(argc, argv, command);
