@@ -25,6 +25,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "sink.h"
 #include "file_sink.h"
 #include "compressed_stream.h"
+#include "../text_buffer.h"
 
 using std::string;
 
