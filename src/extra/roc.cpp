@@ -66,6 +66,7 @@ double max_ev = 0;
 
 void query_roc(Superfamily superfamily, const match_file::mcont &matches, Numeric_vector<double> &coverage, Numeric_vector<double> &errors)
 {
+	if (family_counts[superfamily] == 0) return;
 	coverage = Numeric_vector<double>(roc_steps);
 	errors = Numeric_vector<double>(roc_steps);
 	match_file::mcont::const_iterator i = matches.begin();
