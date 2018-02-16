@@ -31,6 +31,8 @@ using std::set;
 const int roc_from = -10, roc_to = 1;
 const size_t roc_steps = (roc_to - roc_from + 1) * 9;
 
+const bool SUPER_FAMILY = false;
+
 struct Superfamily
 {
 	Superfamily()
@@ -38,24 +40,25 @@ struct Superfamily
 	Superfamily(vector<string>::const_iterator s):
 		cl(s[0][0]),
 		fold(atoi(s[1].c_str())),
-		superfamily(atoi(s[2].c_str()))
+		superfamily(atoi(s[2].c_str())),
+		family(SUPER_FAMILY ? 0 : atoi(s[3].c_str()))
 	{
 	}
 	bool operator==(const Superfamily &x) const
 	{
-		return cl == x.cl && fold == x.fold && superfamily == x.superfamily;
+		return cl == x.cl && fold == x.fold && superfamily == x.superfamily && family == x.family;
 	}
 	bool operator<(const Superfamily &x) const
 	{
-		return cl < x.cl || (cl == x.cl && (fold < x.fold || (fold == x.fold && superfamily < x.superfamily)));
+		return cl < x.cl || (cl == x.cl && (fold < x.fold || (fold == x.fold && (superfamily < x.superfamily || (superfamily == x.superfamily && family < x.family)))));
 	}
 	friend TextBuffer& operator<<(TextBuffer &buf, const Superfamily &f)
 	{
-		buf << f.cl << '\t' << f.fold << '\t' << f.superfamily;
+		buf << f.cl << '\t' << f.fold << '\t' << f.superfamily << '\t' << f.family;
 		return buf;
 	}
 	char cl;
-	unsigned fold, superfamily;
+	unsigned fold, superfamily, family;
 };
 
 map<Superfamily, size_t> family_counts;
@@ -107,9 +110,8 @@ void query_roc(Superfamily superfamily, const match_file::mcont &matches, Numeri
 pair<string, Superfamily> parse_astral_title(const string &s)
 {
 	char name[32];
-	unsigned family;
 	Superfamily superfamily;
-	if (sscanf(s.c_str(), "%s %c.%u.%u.%u", name, &superfamily.cl, &superfamily.fold, &superfamily.superfamily, &family) != 5)
+	if (sscanf(s.c_str(), "%s %c.%u.%u.%u", name, &superfamily.cl, &superfamily.fold, &superfamily.superfamily, &superfamily.family) != 5)
 		throw std::runtime_error("Format error");
 	return std::make_pair(name, superfamily);
 }
@@ -148,7 +150,7 @@ void roc()
 			f.getline();
 			if (f.line.empty()) break;
 			vector<string> t(tokenize(f.line.c_str(), "\t"));
-			family_counts[Superfamily(t.begin())] = atoi(t[3].c_str());
+			family_counts[Superfamily(t.begin())] = atoi(t[4].c_str());
 		}
 	}
 
