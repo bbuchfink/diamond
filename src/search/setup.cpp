@@ -39,7 +39,10 @@ void setup_search_cont()
 void setup_search()
 {
 	if (config.algo == Config::double_indexed) {
-		if (config.mode_more_sensitive) {
+		if (config.mode_very_sensitive) {
+			Config::set_option(config.index_mode, 4u);
+			Config::set_option(config.freq_sd, 200.0);
+		} else if (config.mode_more_sensitive) {
 			Config::set_option(config.index_mode, 9u);
 			Config::set_option(config.freq_sd, 200.0);
 		}
