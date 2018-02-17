@@ -68,12 +68,14 @@ set<pair<string, string> > target;
 size_t n_targets = 0, tp = 0, fp = 0;
 double max_ev = 0;
 
-void query_roc(Superfamily superfamily, const match_file::mcont &matches, Numeric_vector<double> &coverage, Numeric_vector<double> &errors)
+void query_roc(Superfamily superfamily, const match_file::mcont &matches, Numeric_vector<double> &coverage, Numeric_vector<double> &errors, double &auc1)
 {
 	coverage = Numeric_vector<double>(roc_steps);
 	errors = Numeric_vector<double>(roc_steps);
 	match_file::mcont::const_iterator i = matches.begin();
 	size_t idx = 0;
+	auc1 = 0;
+	bool error = false;
 	for (int exp = roc_from; exp <= roc_to; ++exp)
 		for (int factor = 2; factor <= 10; ++factor) {
 			const double ev = pow(10.0, exp)*factor;
@@ -90,6 +92,7 @@ void query_roc(Superfamily superfamily, const match_file::mcont &matches, Numeri
 					break;
 				if (subjects.find(i->subject) != subjects.end()) {
 					if (subjects[i->subject] == superfamily) {
+						if(!error) ++auc1;
 						++coverage[idx];
 						if (target.find(pair<string, string>(i->query, i->subject)) != target.end()) {
 							max_ev = std::max(max_ev, i->expect);
@@ -100,6 +103,7 @@ void query_roc(Superfamily superfamily, const match_file::mcont &matches, Numeri
 				else {
 					++errors[idx];
 					++fp;
+					error = true;
 				}
 				++i;
 			}
@@ -107,6 +111,8 @@ void query_roc(Superfamily superfamily, const match_file::mcont &matches, Numeri
 		}
 	coverage /= (double)family_counts[superfamily];
 	coverage /= (double)query_family_counts[superfamily];
+	auc1 /= (double)family_counts[superfamily];
+	auc1 /= (double)query_family_counts[superfamily];
 }
 
 pair<string, Superfamily> parse_astral_title(const string &s)
@@ -143,6 +149,7 @@ void roc()
 	match_file::mcont v1;
 
 	Numeric_vector<double> coverage(roc_steps), errors(roc_steps), c2(roc_steps), e2(roc_steps);
+	double auc1 = 0;
 
 	bool counts_file = !config.family_counts_file.empty();
 	read_family_mapping(!counts_file);
@@ -181,14 +188,17 @@ void roc()
 	while (file1.get_read(v1, blast_tab_format())) {
 		Superfamily sf = subjects[v1[0].query];
 		if (family_counts[sf] > 0) {
-			query_roc(sf, v1, c2, e2);
+			double auc1_;
+			query_roc(sf, v1, c2, e2, auc1_);
 			coverage += c2;
 			errors += e2;
+			auc1 += auc1_;
 		}
 	}
 	
 	coverage /= (double)query_family_counts.size();
 	errors /= (double)queries;
+	auc1 /= (double)query_family_counts.size();
 	cout << queries << " Queries." << endl;
 	cout << query_family_counts.size() << " Query families." << endl;
 	cout << coverage << endl;
@@ -201,6 +211,7 @@ void roc()
 	cout << "Targets = " << n_targets << " / " << target.size() << " (" << percentage<double,size_t>(n_targets, target.size()) << "%)" << endl;
 	cout << "max ev = " << max_ev << endl;
 	cout << "False positives = " << fp << endl;
+	cout << "AUC1 = " << auc1 << endl;
 }
 
 void db_annot_stats()

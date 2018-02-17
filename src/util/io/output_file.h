@@ -68,7 +68,6 @@ struct OutputFile
 			write(buf.get_begin(), buf.size());
 			buf.clear();
 		}
-
 	}
 
 	~OutputFile()
