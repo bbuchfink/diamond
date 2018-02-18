@@ -41,6 +41,7 @@ struct ZlibSource : public Source
 	ZlibSource(Source *source);
 	virtual size_t read(char *ptr, size_t count);
 	virtual void close();
+	virtual void rewind();
 	virtual const string& file_name() const
 	{
 		return source_->file_name();
@@ -50,6 +51,7 @@ struct ZlibSource : public Source
 		delete source_;
 	}
 private:
+	void init();
 	Source *source_;
 	z_stream strm;
 	static const size_t chunk_size = 1llu << 20;

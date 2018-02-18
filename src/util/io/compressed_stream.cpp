@@ -25,14 +25,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #endif
 #include "compressed_stream.h"
 
-ZlibSource::ZlibSource(Source *source):
-	source_(source),
-	in(new char[chunk_size]),
-	out(new char[chunk_size]),
-	read_(0),
-	total_(0),
-	eos_(false)
+void ZlibSource::init()
 {
+	read_ = 0;
+	total_ = 0;
+	eos_ = false;
 	strm.zalloc = Z_NULL;
 	strm.zfree = Z_NULL;
 	strm.opaque = Z_NULL;
@@ -43,6 +40,14 @@ ZlibSource::ZlibSource(Source *source):
 	int ret = inflateInit2(&strm, 15 + 32);
 	if (ret != Z_OK)
 		throw std::runtime_error("Error opening compressed file (inflateInit): " + file_name());
+}
+
+ZlibSource::ZlibSource(Source *source):
+	source_(source),
+	in(new char[chunk_size]),
+	out(new char[chunk_size])
+{
+	init();
 }
 
 size_t ZlibSource::read(char *ptr, size_t count)
@@ -87,6 +92,12 @@ void ZlibSource::close()
 {
 	inflateEnd(&strm);
 	source_->close();
+}
+
+void ZlibSource::rewind()
+{
+	source_->rewind();
+	init();
 }
 
 ZlibSink::ZlibSink(Sink* sink):
