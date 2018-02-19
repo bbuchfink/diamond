@@ -199,10 +199,11 @@ const Matrix_info Matrix_info::matrices[] = {
 	{ "PAM30", pam30_values, (const char*)NCBISM_Pam30.scores, PAM30_VALUES_MAX, 9, 1 }
 };
 
-Score_matrix::Score_matrix(const string & matrix, int gap_open, int gap_extend, int reward, int penalty, int frameshift):
+Score_matrix::Score_matrix(const string & matrix, int gap_open, int gap_extend, int frameshift, uint64_t db_letters):
 	gap_open_ (gap_open == -1 ? Matrix_info::get(matrix).default_gap_open : gap_open),
 	gap_extend_ (gap_extend == -1 ? Matrix_info::get(matrix).default_gap_extend : gap_extend),
 	frame_shift_(frameshift),
+	db_letters_ ((double)db_letters),
 	constants_ (Matrix_info::get(matrix).get_constants(gap_open_, gap_extend_)),
 	name_(matrix),
 	matrix8_(Matrix_info::get(matrix).scores),
@@ -288,9 +289,10 @@ const char* custom_scores(const string &matrix_file)
 	return scores;
 }
 
-Score_matrix::Score_matrix(const string &matrix_file, double lambda, double K, int gap_open, int gap_extend):
+Score_matrix::Score_matrix(const string &matrix_file, double lambda, double K, int gap_open, int gap_extend, uint64_t db_letters):
 	gap_open_(gap_open),
 	gap_extend_(gap_extend),
+	db_letters_((double)db_letters),
 	name_("custom"),
 	matrix8_(custom_scores(matrix_file)),
 	bias_((char)(-low_score())),

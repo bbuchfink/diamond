@@ -117,7 +117,7 @@ struct DAA_file
 
 		Config::set_option(config.db_size, h2_.db_letters);
 		align_mode = Align_mode(h2_.mode);
-		ref_header.sequences = h2_.db_seqs;
+		//ref_header.sequences = h2_.db_seqs;
 
 		f_.seek(sizeof(DAA_header1) + sizeof(DAA_header2) + (size_t)h2_.block_size[0]);
 		string s;

@@ -43,6 +43,8 @@ struct BufferedSource : public Source
 		delete source_;
 	}
 private:
+	template<typename _t>
+	bool read_to(_t &container, char delimiter);
 	char* next()
 	{
 		return &buf_[start_];

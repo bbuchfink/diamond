@@ -75,9 +75,9 @@ inline void write_daa_record(TextBuffer &buf, const Hsp &match, unsigned query_i
 	buf << match.transcript.data();
 }
 
-inline void finish_daa(OutputFile &f)
+inline void finish_daa(OutputFile &f, const DatabaseFile &db)
 {
-	DAA_header2 h2_(ref_header.sequences,
+	DAA_header2 h2_(db.ref_header.sequences,
 		config.db_size,
 		score_matrix.gap_open(),
 		score_matrix.gap_extend(),
@@ -98,7 +98,7 @@ inline void finish_daa(OutputFile &f)
 	uint32_t size = 0;
 	f.write(&size, 1);
 	h2_.block_size[0] = f.tell() - sizeof(DAA_header1) - sizeof(DAA_header2);
-	h2_.db_seqs_used = dict.next_;
+	h2_.db_seqs_used = dict.seqs();
 	h2_.query_records = statistics.get(Statistics::ALIGNED);
 
 	size_t s = 0;

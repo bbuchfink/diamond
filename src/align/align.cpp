@@ -62,7 +62,7 @@ auto_ptr<Queue> Align_fetcher::queue_;
 vector<hit>::iterator Align_fetcher::it_;
 vector<hit>::iterator Align_fetcher::end_;
 
-void align_worker(size_t thread_id)
+void align_worker(size_t thread_id, const Parameters *params)
 {
 	Align_fetcher hits;
 	Statistics stat;
@@ -74,7 +74,7 @@ void align_worker(size_t thread_id)
 				buf = new TextBuffer;
 				const char *query_title = query_ids::get()[hits.query].c_str();
 				output_format->print_query_intro(hits.query, query_title, get_source_query_len((unsigned)hits.query), *buf, true);
-				output_format->print_query_epilog(*buf, query_title, true);
+				output_format->print_query_epilog(*buf, query_title, true, *params);
 			}
 			OutputSink::get().push(hits.query, buf);
 			continue;
@@ -82,11 +82,11 @@ void align_worker(size_t thread_id)
 
 		QueryMapper *mapper;
 		if (config.ext == Config::swipe)
-			mapper = new ExtensionPipeline::Swipe::Pipeline(hits.query, hits.begin, hits.end);
+			mapper = new ExtensionPipeline::Swipe::Pipeline(*params, hits.query, hits.begin, hits.end);
 		else if (config.frame_shift != 0)
-			mapper = new ExtensionPipeline::BandedSwipe::Pipeline(hits.query, hits.begin, hits.end, dp_stat);
+			mapper = new ExtensionPipeline::BandedSwipe::Pipeline(*params, hits.query, hits.begin, hits.end, dp_stat);
 		else
-			mapper = new ExtensionPipeline::Greedy::Pipeline(hits.query, hits.begin, hits.end);
+			mapper = new ExtensionPipeline::Greedy::Pipeline(*params, hits.query, hits.begin, hits.end);
 		mapper->init();
 		mapper->run(stat);
 
@@ -104,7 +104,7 @@ void align_worker(size_t thread_id)
 	::dp_stat += dp_stat;
 }
 
-void align_queries(Trace_pt_buffer &trace_pts, OutputFile* output_file)
+void align_queries(Trace_pt_buffer &trace_pts, OutputFile* output_file, const Parameters &params)
 {
 	const size_t max_size = (size_t)std::min(config.chunk_size*1e9 * 9 * 2 / config.lowmem, 2e9);
 	pair<size_t, size_t> query_range;
@@ -127,7 +127,8 @@ void align_queries(Trace_pt_buffer &trace_pts, OutputFile* output_file)
 			threads.push_back(launch_thread(heartbeat_worker, query_range.second));
 		size_t n_threads = (config.threads_align == 0 ? config.threads_ : config.threads_align);
 		for (size_t i = 0; i < n_threads; ++i)
-			threads.push_back(launch_thread(static_cast<void(*)(size_t)>(&align_worker), i));
+			//threads.push_back(launch_thread(static_cast<void(*)(size_t)>(&align_worker), i));
+			threads.push_back(launch_thread(align_worker, i, &params));
 		threads.join_all();
 		timer.finish();
 

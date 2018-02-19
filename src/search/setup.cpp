@@ -80,7 +80,7 @@ void setup_search()
 
 void setup_search_params(pair<size_t, size_t> query_len_bounds, size_t chunk_db_letters)
 {
-	const double b = config.min_bit_score == 0 ? score_matrix.bitscore(config.max_evalue, ref_header.letters, (unsigned)query_len_bounds.first) : config.min_bit_score;
+	const double b = config.min_bit_score == 0 ? score_matrix.bitscore(config.max_evalue, (unsigned)query_len_bounds.first) : config.min_bit_score;
 
 	if (config.mode_very_sensitive) {
 		Reduction::reduction = Reduction("A KR EDNQ C G H ILVM FYW P ST"); // murphy.10

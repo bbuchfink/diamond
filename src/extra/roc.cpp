@@ -220,7 +220,7 @@ void db_annot_stats()
 	DatabaseFile db;
 	string id;
 	vector<char> seq;
-	for (size_t n = 0; n < ref_header.sequences; ++n) {
+	for (size_t n = 0; n < db.ref_header.sequences; ++n) {
 		db.read_seq(id, seq);
 		id = get_title(id);
 		if(subjects.find(id) != subjects.end())

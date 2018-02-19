@@ -23,9 +23,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../data/seed_histogram.h"
 #include "sequence_set.h"
 
-struct Reference_header
+struct ReferenceHeader
 {
-	Reference_header() :
+	ReferenceHeader() :
 		magic_number(0x24af8a415ee186dllu),
 		build(Const::build_version),
 		db_version(current_db_version),
@@ -38,8 +38,6 @@ struct Reference_header
 	enum { current_db_version = 1 };
 };
 
-extern Reference_header ref_header;
-
 struct Database_format_exception : public std::exception
 {
 	virtual const char* what() const throw()
@@ -49,7 +47,7 @@ struct Database_format_exception : public std::exception
 struct DatabaseFile : public InputFile
 {
 	DatabaseFile();
-	static void read_header(InputFile &stream, Reference_header &header);
+	static void read_header(InputFile &stream, ReferenceHeader &header);
 	void rewind();
 	bool load_seqs();
 	void get_seq();
@@ -58,6 +56,7 @@ struct DatabaseFile : public InputFile
 	enum { min_build_required = 74 };
 
 	size_t pos_array_offset;
+	ReferenceHeader ref_header;
 };
 
 void make_db();

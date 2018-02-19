@@ -26,6 +26,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/io/output_file.h"
 #include "../basic/score_matrix.h"
 #include "../util/escape_sequences.h"
+#include "../basic/parameters.h"
 
 struct Output_format
 {
@@ -34,7 +35,7 @@ struct Output_format
 	{}
 	virtual void print_query_intro(size_t query_num, const char *query_name, unsigned query_len, TextBuffer &out, bool unaligned) const
 	{}
-	virtual void print_query_epilog(TextBuffer &out, const char *query_title, bool unaligned) const
+	virtual void print_query_epilog(TextBuffer &out, const char *query_title, bool unaligned, const Parameters &parameters) const
 	{}
 	virtual void print_match(const Hsp_context& r, TextBuffer &out)
 	{}
@@ -119,7 +120,7 @@ struct XML_format : public Output_format
 	virtual void print_match(const Hsp_context &r, TextBuffer &out);
 	virtual void print_header(OutputFile &f, int mode, const char *matrix, int gap_open, int gap_extend, double evalue, const char *first_query_name, unsigned first_query_len) const;
 	virtual void print_query_intro(size_t query_num, const char *query_name, unsigned query_len, TextBuffer &out, bool unaligned) const;
-	virtual void print_query_epilog(TextBuffer &out, const char *query_title, bool unaligned) const;
+	virtual void print_query_epilog(TextBuffer &out, const char *query_title, bool unaligned, const Parameters &parameters) const;
 	virtual void print_footer(OutputFile &f) const;
 	virtual ~XML_format()
 	{ }
@@ -139,7 +140,7 @@ struct Pairwise_format : public Output_format
 	virtual void print_match(const Hsp_context &r, TextBuffer &out);
 	virtual void print_header(OutputFile &f, int mode, const char *matrix, int gap_open, int gap_extend, double evalue, const char *first_query_name, unsigned first_query_len) const;
 	virtual void print_query_intro(size_t query_num, const char *query_name, unsigned query_len, TextBuffer &out, bool unaligned) const;
-	virtual void print_query_epilog(TextBuffer &out, const char *query_title, bool unaligned) const;
+	virtual void print_query_epilog(TextBuffer &out, const char *query_title, bool unaligned, const Parameters &parameters) const;
 	virtual void print_footer(OutputFile &f) const;
 	virtual ~Pairwise_format()
 	{ }
@@ -163,7 +164,7 @@ struct Taxon_format : public Output_format
 			throw std::runtime_error("Output format requires setting the --taxonnodes parameter.");
 	}
 	virtual void print_match(const Hsp_context &r, TextBuffer &out);
-	virtual void print_query_epilog(TextBuffer &out, const char *query_title, bool unaligned) const;
+	virtual void print_query_epilog(TextBuffer &out, const char *query_title, bool unaligned, const Parameters &parameters) const;
 	virtual ~Taxon_format()
 	{ }
 	virtual Output_format* clone() const

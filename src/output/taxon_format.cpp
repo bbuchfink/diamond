@@ -39,7 +39,7 @@ void Taxon_format::print_match(const Hsp_context &r, TextBuffer &out)
 	}
 }
 
-void Taxon_format::print_query_epilog(TextBuffer &out, const char *query_title, bool unaligned) const
+void Taxon_format::print_query_epilog(TextBuffer &out, const char *query_title, bool unaligned, const Parameters &params) const
 {
 	out.write_until(query_title, Const::id_delimiters);
 	out << '\t' << taxid << '\t';

@@ -26,6 +26,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../basic/score_matrix.h"
 #include "../util/thread.h"
 #include "../data/taxonomy.h"
+#include "../basic/parameters.h"
 
 const unsigned view_buf_size = 32;
 
@@ -70,7 +71,7 @@ struct View_fetcher
 	DAA_file &daa;
 };
 
-void view_query(DAA_query_record &r, TextBuffer &out, Output_format &format)
+void view_query(DAA_query_record &r, TextBuffer &out, Output_format &format, const Parameters &params)
 {
 	auto_ptr<Output_format> f(format.clone());
 	f->print_query_intro(r.query_num, r.query_name.c_str(), (unsigned)r.query_len(), out, false);
@@ -83,16 +84,17 @@ void view_query(DAA_query_record &r, TextBuffer &out, Output_format &format)
 			break;
 		f->print_match(i->context(), out);
 	}
-	f->print_query_epilog(out, r.query_name.c_str(), false);
+	f->print_query_epilog(out, r.query_name.c_str(), false, params);
 }
 
 struct View_context
 {
-	View_context(DAA_file &daa, View_writer &writer, Output_format &format) :
+	View_context(DAA_file &daa, View_writer &writer, Output_format &format, const Parameters &params) :
 		daa(daa),
 		writer(writer),
 		queue(3 * config.threads_, writer),
-		format(format)
+		format(format),
+		params(params)
 	{ }
 	void operator()(unsigned thread_id)
 	{
@@ -103,7 +105,7 @@ struct View_context
 			while (queue.get(n, buffer, query_buf)) {
 				for (unsigned j = 0; j < query_buf.n; ++j) {
 					DAA_query_record r(daa, query_buf.buf[j], query_buf.query_num + j);
-					view_query(r, *buffer, format);
+					view_query(r, *buffer, format, params);
 				}
 				queue.push(n);
 			}
@@ -117,13 +119,14 @@ struct View_context
 	View_writer &writer;
 	Task_queue<TextBuffer, View_writer> queue;
 	Output_format &format;
+	const Parameters &params;
 };
 
 void view()
 {
 	task_timer timer("Loading subject IDs");
 	DAA_file daa(config.daa_file);
-	score_matrix = Score_matrix("", daa.lambda(), daa.kappa(), daa.gap_open_penalty(), daa.gap_extension_penalty());
+	score_matrix = Score_matrix("", daa.lambda(), daa.kappa(), daa.gap_open_penalty(), daa.gap_extension_penalty(), daa.db_letters());
 	timer.finish();
 
 	message_stream << "Scoring parameters: " << score_matrix << endl;
@@ -131,6 +134,8 @@ void view()
 	message_stream << "DB sequences = " << daa.db_seqs() << endl;
 	message_stream << "DB sequences used = " << daa.db_seqs_used() << endl;
 	message_stream << "DB letters = " << daa.db_letters() << endl;
+
+	const Parameters params(daa.db_seqs(), daa.db_letters());
 
 	init_output();
 	taxonomy.init();
@@ -143,12 +148,12 @@ void view()
 	if (daa.read_query_buffer(buf, query_num)) {
 		DAA_query_record r(daa, buf, query_num);
 		TextBuffer out;
-		view_query(r, out, *output_format);
+		view_query(r, out, *output_format, params);
 
 		output_format->print_header(*writer.f_, daa.mode(), daa.score_matrix(), daa.gap_open_penalty(), daa.gap_extension_penalty(), daa.evalue(), r.query_name.c_str(), (unsigned)r.query_len());
 		writer(out);
 
-		View_context context(daa, writer, *output_format);
+		View_context context(daa, writer, *output_format, params);
 		launch_thread_pool(context, config.threads_);
 	}
 	else {

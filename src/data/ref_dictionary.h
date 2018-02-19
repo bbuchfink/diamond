@@ -70,6 +70,11 @@ struct ReferenceDictionary
 		return instance_;
 	}
 
+	uint32_t seqs() const
+	{
+		return next_;
+	}
+
 private:
 
 	static ReferenceDictionary instance_;
@@ -81,7 +86,7 @@ private:
 	vector<uint32_t> rev_map_;
 	uint32_t next_;
 
-	friend void finish_daa(OutputFile&);
+	friend void finish_daa(OutputFile&, const DatabaseFile&);
 
 };
 

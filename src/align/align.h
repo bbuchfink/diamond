@@ -64,15 +64,15 @@ private:
 	Task_queue<_buffer, Output_writer> queue;
 };
 
-void align_queries(Trace_pt_buffer &trace_pts, OutputFile* output_file);
+void align_queries(Trace_pt_buffer &trace_pts, OutputFile* output_file, const Parameters &params);
 
 namespace ExtensionPipeline {
 	namespace Greedy {
 		struct Target;
 		struct Pipeline : public QueryMapper
 		{
-			Pipeline(size_t query_id, Trace_pt_list::iterator begin, Trace_pt_list::iterator end) :
-				QueryMapper(query_id, begin, end)
+			Pipeline(const Parameters &params, size_t query_id, Trace_pt_list::iterator begin, Trace_pt_list::iterator end) :
+				QueryMapper(params, query_id, begin, end)
 			{}
 			Target& target(size_t i);
 			virtual void run(Statistics &stat);
@@ -82,8 +82,8 @@ namespace ExtensionPipeline {
 	namespace Swipe {
 		struct Pipeline : public QueryMapper
 		{
-			Pipeline(size_t query_id, Trace_pt_list::iterator begin, Trace_pt_list::iterator end) :
-				QueryMapper(query_id, begin, end)
+			Pipeline(const Parameters &params, size_t query_id, Trace_pt_list::iterator begin, Trace_pt_list::iterator end) :
+				QueryMapper(params, query_id, begin, end)
 			{}
 			virtual void run(Statistics &stat);
 			virtual ~Pipeline() {}
@@ -93,8 +93,8 @@ namespace ExtensionPipeline {
 		struct Target;
 		struct Pipeline : public QueryMapper
 		{
-			Pipeline(size_t query_id, Trace_pt_list::iterator begin, Trace_pt_list::iterator end, DpStat &dp_stat) :
-				QueryMapper(query_id, begin, end),
+			Pipeline(const Parameters &params, size_t query_id, Trace_pt_list::iterator begin, Trace_pt_list::iterator end, DpStat &dp_stat) :
+				QueryMapper(params, query_id, begin, end),
 				dp_stat(dp_stat)
 			{}
 			Target& target(size_t i);

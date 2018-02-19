@@ -50,10 +50,11 @@ bool Target::is_enveloped(PtrVector<Target>::const_iterator begin, PtrVector<Tar
 
 int QueryMapper::raw_score_cutoff() const
 {
-	return score_matrix.rawscore(config.min_bit_score == 0 ? score_matrix.bitscore(config.max_evalue, ref_header.letters, (unsigned)query_seq(0).length()) : config.min_bit_score);
+	return score_matrix.rawscore(config.min_bit_score == 0 ? score_matrix.bitscore(config.max_evalue, (unsigned)query_seq(0).length()) : config.min_bit_score);
 }
 
-QueryMapper::QueryMapper(size_t query_id, Trace_pt_list::iterator begin, Trace_pt_list::iterator end) :
+QueryMapper::QueryMapper(const Parameters &params, size_t query_id, Trace_pt_list::iterator begin, Trace_pt_list::iterator end) :
+	parameters(params),
 	source_hits(std::make_pair(begin, end)),
 	query_id((unsigned)query_id),
 	targets_finished(0),
@@ -158,7 +159,7 @@ void QueryMapper::score_only_culling()
 	const unsigned query_len = (unsigned)query_seq(0).length();
 	PtrVector<Target>::iterator i;
 	for (i = targets.begin(); i<targets.end();) {
-		if ((config.min_bit_score == 0 && score_matrix.evalue((*i)->filter_score, config.db_size, query_len) > config.max_evalue)
+		if ((config.min_bit_score == 0 && score_matrix.evalue((*i)->filter_score, query_len) > config.max_evalue)
 			|| score_matrix.bitscore((*i)->filter_score) < config.min_bit_score)
 			break;
 		const int c = target_culling->cull(**i);
@@ -190,7 +191,7 @@ bool QueryMapper::generate_output(TextBuffer &buffer, Statistics &stat)
 	auto_ptr<Output_format> f(output_format->clone());
 
 	for (size_t i = 0; i < targets.size(); ++i) {
-		if ((config.min_bit_score == 0 && score_matrix.evalue(targets[i].filter_score, config.db_size, query_len) > config.max_evalue)
+		if ((config.min_bit_score == 0 && score_matrix.evalue(targets[i].filter_score, query_len) > config.max_evalue)
 			|| score_matrix.bitscore(targets[i].filter_score) < config.min_bit_score)
 			break;
 
@@ -253,14 +254,14 @@ bool QueryMapper::generate_output(TextBuffer &buffer, Statistics &stat)
 			if (*f == Output_format::daa)
 				finish_daa_query_record(buffer, seek_pos);
 			else
-				f->print_query_epilog(buffer, query_title, false);
+				f->print_query_epilog(buffer, query_title, false, parameters);
 		}
 		else
 			IntermediateRecord::finish_query(buffer, seek_pos);
 	}
 	else if (!blocked_processing && *f != Output_format::daa && config.report_unaligned != 0) {
 		f->print_query_intro(query_id, query_title, source_query_len, buffer, true);
-		f->print_query_epilog(buffer, query_title, true);
+		f->print_query_epilog(buffer, query_title, true, parameters);
 	}
 
 	if (!blocked_processing) {

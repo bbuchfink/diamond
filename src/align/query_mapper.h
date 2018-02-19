@@ -28,6 +28,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/ptr_vector.h"
 #include "../dp/dp.h"
 #include "../data/reference.h"
+#include "../basic/parameters.h"
 
 using std::vector;
 using std::pair;
@@ -72,7 +73,7 @@ struct Target
 
 struct QueryMapper
 {
-	QueryMapper(size_t query_id, Trace_pt_list::iterator begin, Trace_pt_list::iterator end);
+	QueryMapper(const Parameters &params, size_t query_id, Trace_pt_list::iterator begin, Trace_pt_list::iterator end);
 	void init();
 	bool generate_output(TextBuffer &buffer, Statistics &stat);
 	void rank_targets(double ratio, double factor);
@@ -97,6 +98,8 @@ struct QueryMapper
 	}
 	virtual void run(Statistics &stat) = 0;
 	virtual ~QueryMapper() {}
+
+	const Parameters &parameters;
 	pair<Trace_pt_list::iterator, Trace_pt_list::iterator> source_hits;
 	unsigned query_id, targets_finished, next_target;
 	unsigned source_query_len, unaligned_from;

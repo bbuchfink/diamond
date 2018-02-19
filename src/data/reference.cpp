@@ -31,7 +31,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 String_set<0>* ref_ids::data_ = 0;
 Partitioned_histogram ref_hst;
 unsigned current_ref_block;
-Reference_header ref_header;
+ReferenceHeader ref_header;
 Sequence_set* ref_seqs::data_ = 0;
 bool blocked_processing;
 
@@ -54,18 +54,18 @@ DatabaseFile::DatabaseFile():
 	InputFile(config.database, InputFile::BUFFERED)
 {
 	read_header(*this, ref_header);
-	if (ref_header.build < min_build_required || ref_header.db_version != Reference_header::current_db_version)
+	if (ref_header.build < min_build_required || ref_header.db_version != ReferenceHeader::current_db_version)
 		throw std::runtime_error("Database was built with a different version of Diamond as is incompatible.");
 	if (ref_header.sequences == 0)
 		throw std::runtime_error("Incomplete database file. Database building did not complete successfully.");
 	pos_array_offset = ref_header.pos_array_offset;
 }
 
-void DatabaseFile::read_header(InputFile &stream, Reference_header &header)
+void DatabaseFile::read_header(InputFile &stream, ReferenceHeader &header)
 {
 	if (stream.read(&header, 1) != 1)
 		throw Database_format_exception();
-	if (header.magic_number != Reference_header().magic_number)
+	if (header.magic_number != ReferenceHeader().magic_number)
 		throw Database_format_exception();
 }
 
@@ -268,7 +268,7 @@ void DatabaseFile::get_seq()
 void db_info()
 {
 	InputFile db_file(config.database);
-	Reference_header header;
+	ReferenceHeader header;
 	DatabaseFile::read_header(db_file, header);
 	cout << "Database format version = " << header.db_version << endl;
 	cout << "Diamond build = " << header.build << endl;

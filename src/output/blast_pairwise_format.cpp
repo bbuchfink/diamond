@@ -69,7 +69,7 @@ void Pairwise_format::print_footer(OutputFile &out) const
 
 }
 
-void Pairwise_format::print_query_epilog(TextBuffer &out, const char *query_title, bool unaligned) const
+void Pairwise_format::print_query_epilog(TextBuffer &out, const char *query_title, bool unaligned, const Parameters &params) const
 {
 }
 

@@ -1,6 +1,6 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2017 Benjamin Buchfink <buchfink@gmail.com>
+Copyright (C) 2013-2018 Benjamin Buchfink <buchfink@gmail.com>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU Affero General Public License as
@@ -240,7 +240,7 @@ void XML_format::print_query_intro(size_t query_num, const char *query_name, uns
 		<< "<Iteration_hits>" << '\n';
 }
 
-void XML_format::print_query_epilog(TextBuffer &out, const char *query_title, bool unaligned) const
+void XML_format::print_query_epilog(TextBuffer &out, const char *query_title, bool unaligned, const Parameters &parameters) const
 {
 	if (!unaligned) {
 		out << "  </Hit_hsps>" << '\n'
@@ -249,8 +249,8 @@ void XML_format::print_query_epilog(TextBuffer &out, const char *query_title, bo
 	((out << "</Iteration_hits>" << '\n'
 		<< "  <Iteration_stat>" << '\n'
 		<< "    <Statistics>" << '\n'
-		<< "      <Statistics_db-num>" << (size_t)ref_header.sequences << "</Statistics_db-num>" << '\n'
-		<< "      <Statistics_db-len>" << (size_t)config.db_size << "</Statistics_db-len>" << '\n'
+		<< "      <Statistics_db-num>" << parameters.db_seqs << "</Statistics_db-num>" << '\n'
+		<< "      <Statistics_db-len>" << parameters.db_letters << "</Statistics_db-len>" << '\n'
 		<< "      <Statistics_hsp-len>0</Statistics_hsp-len>" << '\n'
 		<< "      <Statistics_eff-space>0</Statistics_eff-space>" << '\n'
 		<< "      <Statistics_kappa>").print_d(score_matrix.k()) << "</Statistics_kappa>" << '\n'

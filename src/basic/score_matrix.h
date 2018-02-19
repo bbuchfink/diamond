@@ -1,6 +1,6 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2017 Benjamin Buchfink <buchfink@gmail.com>
+Copyright (C) 2013-2018 Benjamin Buchfink <buchfink@gmail.com>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU Affero General Public License as
@@ -36,8 +36,8 @@ struct Score_matrix
 {
 
 	Score_matrix() {}
-	Score_matrix(const string &matrix, int gap_open, int gap_extend, int reward, int penalty, int frame_shift);
-	Score_matrix(const string &matrix_file, double lambda, double K, int gap_open, int gap_extend);
+	Score_matrix(const string &matrix, int gap_open, int gap_extend, int frame_shift, uint64_t db_letters = 0);
+	Score_matrix(const string &matrix_file, double lambda, double K, int gap_open, int gap_extend, uint64_t db_letters = 0);
 
 	friend std::ostream& operator<<(std::ostream& s, const Score_matrix &m);
 
@@ -80,11 +80,11 @@ struct Score_matrix
 	int rawscore(double bitscore) const
 	{ return (int)ceil(rawscore(bitscore, double ())); }
 
-	double evalue(int raw_score, size_t db_letters, unsigned query_len) const
-	{ return static_cast<double>(db_letters) * query_len * pow(2,-bitscore(raw_score)); }
+	double evalue(int raw_score, unsigned query_len) const
+	{ return db_letters_ * query_len * pow(2, -bitscore(raw_score)); }
 
-	double bitscore(double evalue, size_t db_letters, unsigned query_len) const
-	{ return -log(evalue/db_letters/query_len)/log(2); }
+	double bitscore(double evalue, unsigned query_len) const
+	{ return -log(evalue/db_letters_/query_len)/log(2); }
 
 	double lambda() const
 	{
@@ -119,6 +119,16 @@ struct Score_matrix
 		return frame_shift_;
 	}
 
+	uint64_t db_letters() const
+	{
+		return (uint64_t)db_letters_;
+	}
+
+	void set_db_letters(uint64_t n)
+	{
+		db_letters_ = (double)n;
+	}
+
 	double avg_id_score() const;
 
 private:
@@ -142,6 +152,7 @@ private:
 	};
 
 	int gap_open_, gap_extend_, frame_shift_;
+	double db_letters_;
 	const double *constants_;
 	string name_;
 	Scores<int8_t> matrix8_;

@@ -20,6 +20,18 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <string.h>
 #include "buffered_source.h"
 
+template<typename _t>
+void append(_t &container, const char *ptr, size_t n)
+{
+	container.append(ptr, n);
+}
+
+template<>
+void append<vector<char> >(vector<char> &container, const char *ptr, size_t n)
+{
+	container.insert(container.end(), ptr, ptr + n);
+}
+
 BufferedSource::BufferedSource(Source* source):
 	source_(source)
 {
@@ -83,40 +95,32 @@ void BufferedSource::pop(char *dst, size_t n)
 	avail_ -= n;
 }
 
-bool BufferedSource::read_until(string &dst, char delimiter)
+template<typename _t>
+bool BufferedSource::read_to(_t &container, char delimiter)
 {
 	int d = delimiter;
-	dst.clear();
+	container.clear();
 	do {
 		const char *p = (const char*)memchr((void*)next(), d, avail_);
 		if (p == 0)
-			dst.append(next(), avail_);
+			append(container, next(), avail_);
 		else {
 			const size_t n = p - next();
-			dst.append(next(), n);
+			append(container, next(), n);
 			start_ += n + 1;
 			avail_ -= n + 1;
 			return true;
 		}
 	} while (fetch());
-	return dst.empty();
+	return container.empty();
+}
+
+bool BufferedSource::read_until(string &dst, char delimiter)
+{
+	return read_to(dst, delimiter);
 }
 
 bool BufferedSource::read_until(vector<char> &dst, char delimiter)
 {
-	int d = delimiter;
-	dst.clear();
-	do {
-		const char *p = (const char*)memchr((void*)next(), d, avail_);
-		if (p == 0)
-			dst.insert(dst.end(), next(), next() + avail_);
-		else {
-			const size_t n = p - next();
-			dst.insert(dst.end(), next(), next() + n);
-			start_ += n + 1;
-			avail_ -= n + 1;
-			return true;
-		}
-	} while (fetch());
-	return dst.empty();
+	return read_to(dst, delimiter);
 }

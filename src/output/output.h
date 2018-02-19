@@ -26,6 +26,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../data/reference.h"
 #include "../basic/match.h"
 #include "../data/ref_dictionary.h"
+#include "../basic/parameters.h"
 
 inline unsigned get_length_flag(unsigned x)
 {
@@ -110,7 +111,7 @@ struct IntermediateRecord
 	Packed_transcript transcript;
 };
 
-void join_blocks(unsigned ref_blocks, OutputFile &master_out, const PtrVector<TempFile> &tmp_file);
+void join_blocks(unsigned ref_blocks, OutputFile &master_out, const PtrVector<TempFile> &tmp_file, const Parameters &params);
 
 struct OutputSink
 {

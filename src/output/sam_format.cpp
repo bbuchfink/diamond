@@ -107,7 +107,7 @@ void Sam_format::print_match(const Hsp_context& r, TextBuffer &out)
 		<< "ZL:i:" << r.subject_len << '\t'
 		<< "ZR:i:" << r.score() << '\t'
 		<< "ZE:f:";
-	out.print_e(score_matrix.evalue(r.score(), config.db_size, (unsigned)r.query.index(r.frame()).length()));
+	out.print_e(score_matrix.evalue(r.score(), (unsigned)r.query.index(r.frame()).length()));
 	out << '\t'
 		<< "ZI:i:" << r.identities() * 100 / r.length() << '\t'
 		<< "ZF:i:" << Frame(r.frame()).signed_frame() << '\t'

@@ -124,7 +124,8 @@ void run_ref_chunk(DatabaseFile &db_file,
 	pair<size_t, size_t> query_len_bounds,
 	char *query_buffer,
 	OutputFile &master_out,
-	PtrVector<TempFile> &tmp_file)
+	PtrVector<TempFile> &tmp_file,
+	const Parameters &params)
 {
 	task_timer timer("Building reference histograms");
 	if(config.algo==Config::query_indexed)
@@ -161,7 +162,7 @@ void run_ref_chunk(DatabaseFile &db_file,
 		out = &master_out;
 
 	timer.go("Computing alignments");
-	align_queries(*Trace_pt_buffer::instance, out);
+	align_queries(*Trace_pt_buffer::instance, out, params);
 	delete Trace_pt_buffer::instance;
 
 	if (blocked_processing)
@@ -180,6 +181,8 @@ void run_query_chunk(DatabaseFile &db_file,
 	OutputFile *unaligned_file)
 {
 	static const double max_coverage = 0.15;
+
+	const Parameters params(db_file.ref_header.sequences, db_file.ref_header.letters);
 
 	task_timer timer("Building query seed set");
 	if (query_chunk == 0)
@@ -226,7 +229,7 @@ void run_query_chunk(DatabaseFile &db_file,
 	timer.finish();
 	
 	for (current_ref_block = 0; db_file.load_seqs(); ++current_ref_block)
-		run_ref_chunk(db_file, total_timer, query_chunk, query_len_bounds, query_buffer, master_out, tmp_file);
+		run_ref_chunk(db_file, total_timer, query_chunk, query_len_bounds, query_buffer, master_out, tmp_file, params);
 
 	timer.go("Deallocating buffers");
 	delete[] query_buffer;
@@ -235,7 +238,7 @@ void run_query_chunk(DatabaseFile &db_file,
 
 	if (blocked_processing) {
 		timer.go("Joining output blocks");
-		join_blocks(current_ref_block, master_out, tmp_file);
+		join_blocks(current_ref_block, master_out, tmp_file, params);
 	}
 
 	if (unaligned_file) {
@@ -295,7 +298,7 @@ void master_thread(DatabaseFile &db_file, Timer &total_timer)
 
 	timer.go("Closing the output file");
 	if (*output_format == Output_format::daa)
-		finish_daa(*master_out);
+		finish_daa(*master_out, db_file);
 	else
 		output_format->print_footer(*master_out);
 	master_out->close();
@@ -333,12 +336,13 @@ void master_thread_di()
 	DatabaseFile db_file;
 	timer.finish();
 	verbose_stream << "Reference = " << config.database << endl;
-	verbose_stream << "Sequences = " << ref_header.sequences << endl;
-	verbose_stream << "Letters = " << ref_header.letters << endl;
+	verbose_stream << "Sequences = " << db_file.ref_header.sequences << endl;
+	verbose_stream << "Letters = " << db_file.ref_header.letters << endl;
 	verbose_stream << "Block size = " << (size_t)(config.chunk_size * 1e9) << endl;
-	Config::set_option(config.db_size, (uint64_t)ref_header.letters);
+	Config::set_option(config.db_size, (uint64_t)db_file.ref_header.letters);
+	score_matrix.set_db_letters(db_file.ref_header.letters);
 
-	set_max_open_files(config.query_bins * config.threads_ + unsigned(ref_header.letters / (size_t)(config.chunk_size * 1e9)) + 16);
+	set_max_open_files(config.query_bins * config.threads_ + unsigned(db_file.ref_header.letters / (size_t)(config.chunk_size * 1e9)) + 16);
 	taxonomy.init();
 
 	master_thread(db_file, timer2);

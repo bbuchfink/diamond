@@ -208,7 +208,7 @@ void join_query(vector<BinaryBuffer> &buf, TextBuffer &out, Statistics &statisti
 	}
 }
 
-void join_worker(Task_queue<TextBuffer, JoinWriter> *queue)
+void join_worker(Task_queue<TextBuffer, JoinWriter> *queue, const Parameters *params)
 {
 	JoinFetcher fetcher;
 	size_t n;
@@ -226,7 +226,7 @@ void join_worker(Task_queue<TextBuffer, JoinWriter> *queue)
 		if (*output_format != Output_format::daa && config.report_unaligned != 0) {
 			for (unsigned i = fetcher.unaligned_from; i < fetcher.query_id; ++i) {
 				output_format->print_query_intro(i, query_ids::get()[i].c_str(), get_source_query_len(i), *out, true);
-				output_format->print_query_epilog(*out, query_ids::get()[i].c_str(), true);
+				output_format->print_query_epilog(*out, query_ids::get()[i].c_str(), true, *params);
 			}
 		}
 
@@ -242,7 +242,7 @@ void join_worker(Task_queue<TextBuffer, JoinWriter> *queue)
 		if (*f == Output_format::daa)
 			finish_daa_query_record(*out, seek_pos);
 		else
-			f->print_query_epilog(*out, query_name, false);
+			f->print_query_epilog(*out, query_name, false, *params);
 
 		queue->push(n);
 	}
@@ -250,7 +250,7 @@ void join_worker(Task_queue<TextBuffer, JoinWriter> *queue)
 	statistics += stat;
 }
 
-void join_blocks(unsigned ref_blocks, OutputFile &master_out, const PtrVector<TempFile> &tmp_file)
+void join_blocks(unsigned ref_blocks, OutputFile &master_out, const PtrVector<TempFile> &tmp_file, const Parameters &params)
 {
 	ReferenceDictionary::get().init_rev_map();
 	JoinFetcher::init(tmp_file);
@@ -258,14 +258,14 @@ void join_blocks(unsigned ref_blocks, OutputFile &master_out, const PtrVector<Te
 	Task_queue<TextBuffer, JoinWriter> queue(3 * config.threads_, writer);
 	Thread_pool threads;
 	for (unsigned i = 0; i < config.threads_; ++i)
-		threads.push_back(launch_thread(join_worker, &queue));
+		threads.push_back(launch_thread(join_worker, &queue, &params));
 	threads.join_all();
 	JoinFetcher::finish();
 	if (*output_format != Output_format::daa && config.report_unaligned != 0) {
 		TextBuffer out;
 		for (unsigned i = JoinFetcher::query_last + 1; i < query_ids::get().get_length(); ++i) {
 			output_format->print_query_intro(i, query_ids::get()[i].c_str(), get_source_query_len(i), out, true);
-			output_format->print_query_epilog(out, query_ids::get()[i].c_str(), true);
+			output_format->print_query_epilog(out, query_ids::get()[i].c_str(), true, params);
 		}
 		writer(out);
 	}
