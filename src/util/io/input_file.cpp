@@ -74,11 +74,13 @@ void InputFile::rewind()
 	source_->rewind();
 }
 
-InputFile::InputFile(const OutputFile &tmp_file) :
+InputFile::InputFile(const OutputFile &tmp_file, int flags) :
 	file_name(tmp_file.file_name()),
 	source_(new FileSource(file_name, tmp_file.file()))
 {
 	rewind();
+	if (flags & BUFFERED)
+		source_ = new BufferedSource(source_);
 }
 
 void InputFile::seek(size_t pos)

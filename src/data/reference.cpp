@@ -27,6 +27,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/log_stream.h"
 #include "../basic/masking.h"
 #include "../util/io/text_input_file.h"
+#include "taxonomy.h"
+#include "../util/data_structures/array_list.h"
 
 String_set<0>* ref_ids::data_ = 0;
 Partitioned_histogram ref_hst;
@@ -54,6 +56,10 @@ DatabaseFile::DatabaseFile():
 	InputFile(config.database, InputFile::BUFFERED)
 {
 	read_header(*this, ref_header);
+#ifdef EXTRA
+	if (read(&header2, 1) != 1)
+		throw Database_format_exception();
+#endif
 	if (ref_header.build < min_build_required || ref_header.db_version != ReferenceHeader::current_db_version)
 		throw std::runtime_error("Database was built with a different version of Diamond as is incompatible.");
 	if (ref_header.sequences == 0)
@@ -101,11 +107,16 @@ void make_db()
 	out.write(&ref_header, 1);
 
 	size_t letters = 0, n = 0, n_seqs = 0;
+#ifdef EXTRA
+	uint64_t offset = sizeof(ref_header) + sizeof(ReferenceHeader2);
+#else
 	uint64_t offset = sizeof(ref_header);
+#endif
 	Sequence_set *seqs;
 	String_set<0> *ids;
 	const FASTA_format format;
 	vector<Pos_record> pos_array;
+	ArrayList accessions;
 
 	try {
 		while ((timer.go("Loading sequences"), n = load_seqs(*db_file, format, &seqs, ids, 0, (size_t)(1e9), string())) > 0) {
@@ -120,6 +131,12 @@ void make_db()
 					throw std::runtime_error("File format error: sequence of length 0 at line " + to_string(db_file->line_count));
 				push_seq(seq, (*ids)[i], offset, pos_array, out, letters, n_seqs);
 			}
+			if (!config.prot_accession2taxid.empty()) {
+				timer.go("Writing accessions");
+				for (size_t i = 0; i < n; ++i) {
+					accessions.push_back(Taxonomy::Accession::from_title((*ids)[i].c_str()));
+				}
+			}
 			delete seqs;
 			delete ids;
 		}
@@ -129,11 +146,17 @@ void make_db()
 		out.remove();
 		throw;
 	}
+
+	timer.finish();
+	log_stream << "Accessions = " << accessions.entries() << endl;
 	
 	timer.go("Writing trailer");
 	ref_header.pos_array_offset = offset;
 	pos_array.push_back(Pos_record(offset, 0));
 	out.write(pos_array);
+	timer.finish();
+
+	taxonomy.init();
 
 	timer.go("Closing the input file");
 	db_file->close();
@@ -243,7 +266,7 @@ void DatabaseFile::get_seq()
 	OutputFile out(config.output_file);
 	for (size_t n = 0; n < ref_header.sequences; ++n) {
 		read_seq(id, seq);
-		typename std::map<string, string>::const_iterator mapped_title = seq_titles.find(get_title(id));
+		typename std::map<string, string>::const_iterator mapped_title = seq_titles.find(blast_id(id));
 		if (all || seqs.find(n) != seqs.end() || mapped_title != seq_titles.end()) {
 			buf << '>' << (mapped_title != seq_titles.end() ? mapped_title->second : id) << '\n';
 			if (config.reverse) {

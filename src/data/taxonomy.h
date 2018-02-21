@@ -23,6 +23,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../basic/const.h"
 #include "../util/util.h"
 
+using std::vector;
 using std::pair;
 using std::string;
 
@@ -39,7 +40,7 @@ struct Taxonomy
 		}
 		Accession(const string &s)
 		{
-			string t(get_title(s));
+			string t(blast_id(s));
 			get_accession(t);
 			if (t.length() > max_accesion_len) {
 				//this->s[0] = 0;
@@ -63,6 +64,7 @@ struct Taxonomy
 			}
 			return strncmp(s, y.s, n) == 0;
 		}
+		static vector<string> from_title(const char *title);
 		friend std::ostream& operator<<(std::ostream &str, const Accession &x)
 		{
 			for (int i = 0; i < max_accesion_len && x.s[i] != 0; ++i)

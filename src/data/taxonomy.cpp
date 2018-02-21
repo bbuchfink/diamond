@@ -23,6 +23,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../basic/config.h"
 #include "../util/merge_sort.h"
 #include "../util/log_stream.h"
+#include "reference.h"
 
 using std::cout;
 using std::endl;
@@ -93,6 +94,7 @@ void Taxonomy::init()
 		timer.go("Loading taxonomy");
 		load();
 		timer.finish();
+		log_stream << "Accession mappings = " << accession2taxid_.size() << endl;
 	}
 
 	if (!config.nodesdmp.empty()) {
@@ -102,9 +104,17 @@ void Taxonomy::init()
 	}
 }
 
+vector<string> Taxonomy::Accession::from_title(const char *title)
+{
+	vector<string> t(seq_titles(title));
+	for (vector<string>::iterator i = t.begin(); i < t.end(); ++i)
+		*i = get_accession(blast_id(*i));
+	return t;
+}
+
 void Taxonomy::get_taxids(const char *id, set<unsigned> &taxons) const
 {
-	const vector<string> t(tokenize(id, "\1"));
+	const vector<string> t(seq_titles(id));
 	for (vector<string>::const_iterator i = t.begin(); i < t.end(); ++i) {
 		const unsigned id = get(Taxonomy::Accession(*i));
 		if(id != 0)

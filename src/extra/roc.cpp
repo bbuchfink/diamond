@@ -222,7 +222,7 @@ void db_annot_stats()
 	vector<char> seq;
 	for (size_t n = 0; n < db.ref_header.sequences; ++n) {
 		db.read_seq(id, seq);
-		id = get_title(id);
+		id = blast_id(id);
 		if(subjects.find(id) != subjects.end())
 			++family_counts[subjects[id]];
 	}

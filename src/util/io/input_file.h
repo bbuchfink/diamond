@@ -35,7 +35,7 @@ struct InputFile
 
 	InputFile(const string &file_name, int flags = 0);
 	void rewind();
-	InputFile(const OutputFile &tmp_file);
+	InputFile(const OutputFile &tmp_file, int flags = 0);
 	void seek(size_t pos);
 	void seek_forward(size_t n);
 	template<class _t>

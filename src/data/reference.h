@@ -1,6 +1,6 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2017 Benjamin Buchfink <buchfink@gmail.com>
+Copyright (C) 2013-2018 Benjamin Buchfink <buchfink@gmail.com>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU Affero General Public License as
@@ -19,9 +19,14 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #ifndef REFERENCE_H_
 #define REFERENCE_H_
 
+#include <vector>
+#include <string>
 #include "../util/io/input_file.h"
 #include "../data/seed_histogram.h"
 #include "sequence_set.h"
+
+using std::vector;
+using std::string;
 
 struct ReferenceHeader
 {
@@ -35,7 +40,16 @@ struct ReferenceHeader
 	uint64_t magic_number;
 	uint32_t build, db_version;
 	uint64_t sequences, letters, pos_array_offset;
+#ifdef EXTRA
+	enum { current_db_version = 2 };
+#else
 	enum { current_db_version = 1 };
+#endif
+};
+
+struct ReferenceHeader2
+{
+	uint64_t taxon_array_offset;
 };
 
 struct Database_format_exception : public std::exception
@@ -52,11 +66,15 @@ struct DatabaseFile : public InputFile
 	bool load_seqs();
 	void get_seq();
 	void read_seq(string &id, vector<char> &seq);
+	void build_taxon_list();
 
 	enum { min_build_required = 74 };
 
 	size_t pos_array_offset;
 	ReferenceHeader ref_header;
+#ifdef EXTRA
+	ReferenceHeader2 header2;
+#endif
 };
 
 void make_db();
@@ -87,6 +105,11 @@ inline size_t max_id_len(const String_set<0> &ids)
 	for(size_t i=0;i<ids.get_length(); ++i)
 		max = std::max(max, find_first_of(ids[i].c_str(), Const::id_delimiters));
 	return max;
+}
+
+inline vector<string> seq_titles(const char *title)
+{
+	return tokenize(title, "\1");
 }
 
 #endif /* REFERENCE_H_ */

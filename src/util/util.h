@@ -144,9 +144,9 @@ inline size_t find_first_of(const char *s, const char *delimiters)
 	return t-s;
 }
 
-inline string get_title(const string &s)
+inline string blast_id(const string &title)
 {
-	return s.substr(0, find_first_of(s.c_str(), Const::id_delimiters));
+	return title.substr(0, find_first_of(title.c_str(), Const::id_delimiters));
 }
 
 inline void get_title_def(const string &s, string &title, string &def)
