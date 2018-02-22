@@ -16,44 +16,36 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#ifndef ARRAY_LIST_H_
-#define ARRAY_LIST_H_
+#ifndef VARINT_H_
+#define VARINT_H_
 
-#include <vector>
-#include "file_buffer.h"
+#include <stdint.h>
 
-using std::vector;
-
-struct ArrayList : private FileBuffer
+/*template<typename _t, typename _out>
+inline void varint_write_wrapper(const _t &x, _out &out)
 {
+}*/
 
-	ArrayList():
-		FileBuffer(),
-		entries_(0)
-	{}
-
-	void push_back(const vector<string> &v)
-	{
-		(*this) << (int)v.size();
-		for (vector<string>::const_iterator i = v.begin(); i < v.end(); ++i)
-			(*this) << *i;
-		entries_ += v.size();
+template<typename _out>
+inline void write_varint(unsigned x, _out &out)
+{
+	if (x < 1 << 7) {
+		varint_write_wrapper((uint8_t)(x << 1 | 1), out);
 	}
-
-	void rewind()
-	{
-		FileBuffer::rewind();
+	else if (x < 1 << 14) {
+		varint_write_wrapper((uint16_t)(x << 2 | 2), out);
 	}
-
-	size_t entries() const
-	{
-		return entries_;
+	else if (x < 1 << 21) {
+		varint_write_wrapper(uint8_t((x & 31) << 3 | 4), out);
+		varint_write_wrapper(uint16_t(x >> 5), out);
 	}
-
-private:
-
-	size_t entries_;
-
-};
+	else if (x < 1 << 28) {
+		varint_write_wrapper(uint32_t(x << 4 | 8), out);
+	}
+	else {
+		varint_write_wrapper(uint8_t((x & 7) << 5 | 16), out);
+		varint_write_wrapper(uint32_t(x >> 3), out);
+	}
+}
 
 #endif

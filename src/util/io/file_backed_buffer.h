@@ -16,63 +16,36 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#ifndef FILE_BUFFER_H_
-#define FILE_BUFFER_H_
+#ifndef FILE_BACKED_BUFFER_H_
+#define FILE_BACKED_BUFFER_H_
 
-#include <string>
-#include "../io/temp_file.h"
+#include "serializer.h"
+#include "temp_file.h"
 
-using std::string;
-
-struct FileBuffer
+struct FileBackedBuffer : public Serializer, public Deserializer
 {
 
-	FileBuffer():
-		out_(TempFile()),
-		in_(NULL)
+	FileBackedBuffer():
+		f_(TempFile()),
+		Serializer(f_)
 	{}
-
-	FileBuffer& operator<<(int x)
-	{
-		out_.write(&x, 1);
-		return *this;
-	}
-
-	FileBuffer& operator<<(const string &s)
-	{
-		out_.write(s.c_str(), s.length() + 1);
-		return *this;
-	}
-
-	FileBuffer& operator>>(int &x)
-	{
-		in_->read(&x, 1);
-		return *this;
-	}
-
-	FileBuffer& operator>>(string &s)
-	{
-		in_->read_until(s, '\0');
-		return *this;
-	}
 
 	void rewind()
 	{
-		in_ = new InputFile(out_, InputFile::BUFFERED);
+		Deserializer::f_ = new InputFile(f_, InputFile::BUFFERED);
 	}
 
-	~FileBuffer()
+	~FileBackedBuffer()
 	{
-		if (!in_)
+		if (Deserializer::f_ == NULL)
 			rewind();
-		in_->close_and_delete();
-		delete in_;
+		Deserializer::f_->close_and_delete();
+		delete Deserializer::f_;
 	}
 
 private:
 
-	TempFile out_;
-	InputFile *in_;
+	TempFile f_;
 
 };
 

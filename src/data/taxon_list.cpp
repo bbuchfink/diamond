@@ -16,9 +16,15 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#include "reference.h"
+#include "taxon_list.h"
 
-void DatabaseFile::build_taxon_list()
+void TaxonList::build(OutputFile &db, FileBackedBuffer &accessions, size_t seqs)
 {
+	accessions.rewind();
+	vector<string> a;
+	Serializer out(db);
+	for (size_t i = 0; i < seqs; ++i) {
+		accessions >> a;
 
+	}
 }

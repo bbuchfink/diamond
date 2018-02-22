@@ -60,7 +60,8 @@ Config::Config(int argc, const char **argv)
 		.add_command("dbinfo", "Print information about a DIAMOND database file")
 		.add_command("test-extra", "")
 		.add_command("test-io", "")
-		.add_command("db-annot-stats", "");
+		.add_command("db-annot-stats", "")
+		.add_command("read-sim", "");
 
 	Options_group general("General options");
 	general.add()

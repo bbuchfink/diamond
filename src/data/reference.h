@@ -66,7 +66,6 @@ struct DatabaseFile : public InputFile
 	bool load_seqs();
 	void get_seq();
 	void read_seq(string &id, vector<char> &seq);
-	void build_taxon_list();
 
 	enum { min_build_required = 74 };
 

@@ -17,6 +17,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
 #include <set>
 #include "tools.h"
 #include "../basic/config.h"
@@ -161,4 +163,29 @@ void test_io()
 	size_t total = ref_seqs::get().raw_len() + ref_ids::get().raw_len();
 	cout << "MBytes/sec = " << total / 1e6 / t.getElapsedTime() << endl;
 	cout << "Time = " << t.getElapsedTime() << "s" << endl;
+}
+
+void read_sim()
+{
+	const double ID = 0.35;
+	srand((unsigned)time(0));
+	TextInputFile in(config.query_file);
+	OutputFile out(config.output_file);
+	FASTA_format format;
+	vector<char> id, seq;
+	input_value_traits = nucleotide_traits;
+	TextBuffer buf;
+	while (format.get_seq(id, seq, in)) {
+		buf << '>' << id << '\n';
+		for (int i = 0; i < seq.size(); ++i) {
+			if ((double)rand() / RAND_MAX <= ID)
+				buf << nucleotide_traits.alphabet[seq[i]];
+			else
+				buf << nucleotide_traits.alphabet[rand() % 4];
+		}
+		buf << '\n';
+		out.write(buf.get_begin(), buf.size());
+		buf.clear();
+	}
+	out.close();
 }

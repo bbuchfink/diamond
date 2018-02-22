@@ -42,6 +42,7 @@ void copy_line(const string & s, vector<_t>& v, size_t d, _what)
 
 bool FASTA_format::get_seq(vector<char>& id, vector<Letter>& seq, TextInputFile & s) const
 {
+	// !!!
 	while (s.getline(), s.line.empty() && !s.eof());
 	if (s.eof())
 		return false;

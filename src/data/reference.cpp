@@ -28,7 +28,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../basic/masking.h"
 #include "../util/io/text_input_file.h"
 #include "taxonomy.h"
-#include "../util/data_structures/array_list.h"
+#include "../util/io/file_backed_buffer.h"
+#include "taxon_list.h"
 
 String_set<0>* ref_ids::data_ = 0;
 Partitioned_histogram ref_hst;
@@ -116,7 +117,7 @@ void make_db()
 	String_set<0> *ids;
 	const FASTA_format format;
 	vector<Pos_record> pos_array;
-	ArrayList accessions;
+	FileBackedBuffer accessions;
 
 	try {
 		while ((timer.go("Loading sequences"), n = load_seqs(*db_file, format, &seqs, ids, 0, (size_t)(1e9), string())) > 0) {
@@ -133,9 +134,8 @@ void make_db()
 			}
 			if (!config.prot_accession2taxid.empty()) {
 				timer.go("Writing accessions");
-				for (size_t i = 0; i < n; ++i) {
-					accessions.push_back(Taxonomy::Accession::from_title((*ids)[i].c_str()));
-				}
+				for (size_t i = 0; i < n; ++i)
+					accessions << Taxonomy::Accession::from_title((*ids)[i].c_str());
 			}
 			delete seqs;
 			delete ids;
@@ -148,7 +148,6 @@ void make_db()
 	}
 
 	timer.finish();
-	log_stream << "Accessions = " << accessions.entries() << endl;
 	
 	timer.go("Writing trailer");
 	ref_header.pos_array_offset = offset;
@@ -157,6 +156,10 @@ void make_db()
 	timer.finish();
 
 	taxonomy.init();
+	if (!config.prot_accession2taxid.empty()) {
+		timer.go("Writing taxon id lists");
+		TaxonList::build(out, accessions, n_seqs);
+	}
 
 	timer.go("Closing the input file");
 	db_file->close();

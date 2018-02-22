@@ -19,8 +19,14 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #ifndef TAXON_LIST_H_
 #define TAXON_LIST_H_
 
+#include "../util/io/output_file.h"
+#include "../util/io/file_backed_buffer.h"
+
 struct TaxonList
 {
+
+	static void build(OutputFile &db, FileBackedBuffer &accessions, size_t seqs);
+
 };
 
 #endif

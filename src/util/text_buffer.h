@@ -25,6 +25,21 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <stdint.h>
 #include <limits>
 #include "util.h"
+#include "algo/varint.h"
+
+struct TextBuffer;
+
+/*template<typename _t>
+inline void varint_write_wrapper<_t, int>(const _t &x, int &out)
+{
+	out.write(x);
+}*/
+
+template<typename _t>
+inline void varint_write_wrapper(const _t &x, TextBuffer &out)
+{
+	out.write(x);
+}
 
 struct TextBuffer
 {
@@ -114,23 +129,7 @@ struct TextBuffer
 
 	TextBuffer& write_varint(unsigned x)
 	{
-		if (x < 1 << 7) {
-			write((uint8_t)(x << 1 | 1));
-		}
-		else if (x < 1 << 14) {
-			write((uint16_t)(x << 2 | 2));
-		}
-		else if (x < 1 << 21) {
-			write(uint8_t((x & 31) << 3 | 4));
-			write(uint16_t(x >> 5));
-		}
-		else if (x < 1 << 28) {
-			write(uint32_t(x << 4 | 8));
-		}
-		else {
-			write(uint8_t((x & 7) << 5 | 16));
-			write(uint32_t(x >> 3));
-		}
+		::write_varint(x, *this);
 		return *this;
 	}
 
