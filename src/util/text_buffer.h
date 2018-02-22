@@ -27,20 +27,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "util.h"
 #include "algo/varint.h"
 
-struct TextBuffer;
-
-/*template<typename _t>
-inline void varint_write_wrapper<_t, int>(const _t &x, int &out)
-{
-	out.write(x);
-}*/
-
-template<typename _t>
-inline void varint_write_wrapper(const _t &x, TextBuffer &out)
-{
-	out.write(x);
-}
-
 struct TextBuffer
 {
 

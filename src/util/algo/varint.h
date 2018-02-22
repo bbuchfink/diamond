@@ -21,30 +21,25 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <stdint.h>
 
-/*template<typename _t, typename _out>
-inline void varint_write_wrapper(const _t &x, _out &out)
-{
-}*/
-
 template<typename _out>
 inline void write_varint(unsigned x, _out &out)
 {
 	if (x < 1 << 7) {
-		varint_write_wrapper((uint8_t)(x << 1 | 1), out);
+		out.write((uint8_t)(x << 1 | 1));
 	}
 	else if (x < 1 << 14) {
-		varint_write_wrapper((uint16_t)(x << 2 | 2), out);
+		out.write((uint16_t)(x << 2 | 2));
 	}
 	else if (x < 1 << 21) {
-		varint_write_wrapper(uint8_t((x & 31) << 3 | 4), out);
-		varint_write_wrapper(uint16_t(x >> 5), out);
+		out.write(uint8_t((x & 31) << 3 | 4));
+		out.write(uint16_t(x >> 5));
 	}
 	else if (x < 1 << 28) {
-		varint_write_wrapper(uint32_t(x << 4 | 8), out);
+		out.write(uint32_t(x << 4 | 8));
 	}
 	else {
-		varint_write_wrapper(uint8_t((x & 7) << 5 | 16), out);
-		varint_write_wrapper(uint32_t(x >> 3), out);
+		out.write(uint8_t((x & 7) << 5 | 16));
+		out.write(uint32_t(x >> 3));
 	}
 }
 
