@@ -27,7 +27,7 @@ using std::vector;
 using std::pair;
 using std::string;
 
-string& get_accession(string &t);
+string get_accession(const string &t);
 
 struct Taxonomy
 {

@@ -177,7 +177,7 @@ void read_sim()
 	TextBuffer buf;
 	while (format.get_seq(id, seq, in)) {
 		buf << '>' << id << '\n';
-		for (int i = 0; i < seq.size(); ++i) {
+		for (size_t i = 0; i < seq.size(); ++i) {
 			if ((double)rand() / RAND_MAX <= ID)
 				buf << nucleotide_traits.alphabet[seq[i]];
 			else

@@ -28,19 +28,23 @@ using std::string;
 struct Serializer
 {
 
+	Serializer():
+		f_(NULL)
+	{}
+
 	Serializer(OutputFile &f):
-		f_(f)
+		f_(&f)
 	{}
 
 	Serializer& operator<<(int x)
 	{
-		f_.write(&x, 1);
+		f_->write(&x, 1);
 		return *this;
 	}
 
 	Serializer& operator<<(const string &s)
 	{
-		f_.write(s.c_str(), s.length() + 1);
+		f_->write(s.c_str(), s.length() + 1);
 		return *this;
 	}
 
@@ -54,7 +58,7 @@ struct Serializer
 
 protected:
 
-	OutputFile &f_;
+	OutputFile *f_;
 
 };
 

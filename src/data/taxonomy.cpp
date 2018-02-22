@@ -31,9 +31,10 @@ using std::set;
 
 Taxonomy taxonomy;
 
-string& get_accession(string &t)
+string get_accession(const string &title)
 {
 	size_t i;
+	string t(title);
 	if (t.compare(0, 6, "UniRef") == 0)
 		t.erase(0, t.find('_', 0) + 1);
 	else if ((i = t.find_first_of('|', 0)) != string::npos) {

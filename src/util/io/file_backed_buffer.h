@@ -26,9 +26,10 @@ struct FileBackedBuffer : public Serializer, public Deserializer
 {
 
 	FileBackedBuffer():
-		f_(TempFile()),
-		Serializer(f_)
-	{}
+		f_(TempFile())
+	{
+		Serializer::f_ = &f_;
+	}
 
 	void rewind()
 	{
