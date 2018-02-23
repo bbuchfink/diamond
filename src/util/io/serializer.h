@@ -22,23 +22,45 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <string>
 #include "output_file.h"
 #include "input_file.h"
+#include "../algo/varint.h"
 
 using std::string;
 
 struct Serializer
 {
 
+	enum { VARINT = 1 };
+
 	Serializer():
-		f_(NULL)
+		f_(NULL),
+		varint_(false)
 	{}
 
-	Serializer(OutputFile &f):
-		f_(&f)
+	Serializer(OutputFile &f, int flags = 0):
+		f_(&f),
+		varint_(flags & VARINT)
 	{}
 
 	Serializer& operator<<(int x)
 	{
 		f_->write(&x, 1);
+		return *this;
+	}
+
+	Serializer& operator<<(unsigned x)
+	{
+		if (varint_)
+			write_varint(x, *this);
+		else
+			f_->write(&x, 1);
+		return *this;
+	}
+
+	Serializer& operator<<(const vector<unsigned> v)
+	{
+		*this << (unsigned)v.size();
+		for (vector<unsigned>::const_iterator i = v.begin(); i < v.end(); ++i)
+			*this << *i;
 		return *this;
 	}
 
@@ -56,9 +78,25 @@ struct Serializer
 		return *this;
 	}
 
+	void write(uint8_t x)
+	{
+		f_->write(&x, 1);
+	}
+
+	void write(uint16_t x)
+	{
+		f_->write(&x, 1);
+	}
+
+	void write(uint32_t x)
+	{
+		f_->write(&x, 1);
+	}
+
 protected:
 
 	OutputFile *f_;
+	bool varint_;
 
 };
 

@@ -1,3 +1,6 @@
+[0.9.19]
+- Fixed a bug in the --un function to write unaligned reads.
+
 [0.9.18]
 - Optimized output writing performance.
 - Fixed a bug in the XML output format.

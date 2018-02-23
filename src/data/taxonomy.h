@@ -36,6 +36,8 @@ struct Taxonomy
 	{
 		Accession(const char *s)
 		{
+			if (strlen(s) > max_accesion_len)
+				throw std::runtime_error("Accession exceeds maximum length.");
 			strncpy(this->s, s, max_accesion_len);
 		}
 		Accession(const string &s)

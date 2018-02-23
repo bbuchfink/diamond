@@ -34,7 +34,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 String_set<0>* ref_ids::data_ = 0;
 Partitioned_histogram ref_hst;
 unsigned current_ref_block;
-ReferenceHeader ref_header;
 Sequence_set* ref_seqs::data_ = 0;
 bool blocked_processing;
 
@@ -105,11 +104,17 @@ void make_db()
 	auto_ptr<TextInputFile> db_file (new TextInputFile(config.input_ref_file));
 	
 	OutputFile out(config.database);
-	out.write(&ref_header, 1);
+	ReferenceHeader header;
+	ReferenceHeader2 header2;
+
+	out.write(&header, 1);
+#ifdef EXTRA
+	out.write(&header2, 1);
+#endif
 
 	size_t letters = 0, n = 0, n_seqs = 0;
 #ifdef EXTRA
-	uint64_t offset = sizeof(ref_header) + sizeof(ReferenceHeader2);
+	uint64_t offset = sizeof(ReferenceHeader) + sizeof(ReferenceHeader2);
 #else
 	uint64_t offset = sizeof(ref_header);
 #endif
@@ -150,7 +155,7 @@ void make_db()
 	timer.finish();
 	
 	timer.go("Writing trailer");
-	ref_header.pos_array_offset = offset;
+	header.pos_array_offset = offset;
 	pos_array.push_back(Pos_record(offset, 0));
 	out.write(pos_array);
 	timer.finish();
@@ -165,10 +170,10 @@ void make_db()
 	db_file->close();
 	
 	timer.go("Closing the database file");
-	ref_header.letters = letters;
-	ref_header.sequences = n_seqs;
+	header.letters = letters;
+	header.sequences = n_seqs;
 	out.seekp(0);
-	out.write(&ref_header, 1);
+	out.write(&header, 1);
 	out.close();
 
 	timer.finish();

@@ -17,14 +17,19 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #include "taxon_list.h"
+#include "taxonomy.h"
 
 void TaxonList::build(OutputFile &db, FileBackedBuffer &accessions, size_t seqs)
 {
 	accessions.rewind();
 	vector<string> a;
-	Serializer out(db);
+	Serializer out(db, Serializer::VARINT);
+	vector<unsigned> t;
 	for (size_t i = 0; i < seqs; ++i) {
 		accessions >> a;
-
+		t.clear();
+		for (vector<string>::const_iterator j = a.begin(); j < a.end(); ++j)
+			t.push_back(taxonomy.get(Taxonomy::Accession(j->c_str())));
+		out << t;
 	}
 }

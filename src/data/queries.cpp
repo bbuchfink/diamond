@@ -37,6 +37,7 @@ void write_unaligned(OutputFile *file)
 			(align_mode.query_translated ? query_source_seqs::get()[i] : query_seqs::get()[i]).print(buf, input_value_traits);
 			buf << '\n';
 			file->write(buf.get_begin(), buf.size());
+			buf.clear();
 		}
 	}
 }

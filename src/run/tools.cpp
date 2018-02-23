@@ -179,7 +179,7 @@ void read_sim()
 		buf << '>' << id << '\n';
 		for (size_t i = 0; i < seq.size(); ++i) {
 			if ((double)rand() / RAND_MAX <= ID)
-				buf << nucleotide_traits.alphabet[seq[i]];
+				buf << nucleotide_traits.alphabet[(size_t)seq[i]];
 			else
 				buf << nucleotide_traits.alphabet[rand() % 4];
 		}
