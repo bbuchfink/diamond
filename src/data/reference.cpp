@@ -116,7 +116,7 @@ void make_db()
 #ifdef EXTRA
 	uint64_t offset = sizeof(ReferenceHeader) + sizeof(ReferenceHeader2);
 #else
-	uint64_t offset = sizeof(ref_header);
+	uint64_t offset = sizeof(ReferenceHeader);
 #endif
 	Sequence_set *seqs;
 	String_set<0> *ids;
