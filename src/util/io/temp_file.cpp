@@ -39,7 +39,11 @@ using std::vector;
 unsigned TempFile::n = 0;
 uint64_t TempFile::hash_key;
 
-TempFile::TempFile()
+#ifdef _MSC_VER
+string TempFile::init()
+#else
+pair<string, int> TempFile::init()
+#endif
 {
 	vector<char> buf(config.tmpdir.length() + 64);
 	char *s = buf.data();
@@ -57,7 +61,7 @@ TempFile::TempFile()
 #endif
 
 #ifdef _MSC_VER
-	sink_ = new FileSink(s, "w+b");
+	return string(s);
 #else
 	int fd = mkstemp(s);
 	if (fd < 0) {
@@ -68,10 +72,17 @@ TempFile::TempFile()
 		perror(0);
 		throw std::runtime_error("Error calling unlink.");
 	}
-	sink_ = new FileSink(s, fd, "w+b");
+	return std::make_pair(string(s), fd);
 #endif
+}
 
-	this->file_name_ = s;
+TempFile::TempFile():
+#ifdef _MSC_VER
+	OutputFile(init(), false, "w+b")
+#else
+	OutputFile(init(), "w+b")
+#endif
+{
 }
 
 string TempFile::get_temp_dir()

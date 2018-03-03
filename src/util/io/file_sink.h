@@ -21,27 +21,30 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <string>
 #include <stdexcept>
-#include "sink.h"
+#include "stream_entity.h"
 #include "exceptions.h"
 
 using std::string;
 
-struct FileSink : public Sink
+struct FileSink : public StreamEntity
 {
-	virtual void close();
-	virtual void write(const char *ptr, size_t count);
-	virtual void seekp(size_t p);
-	virtual size_t tell();
-	virtual FILE* file()
-	{
-		return f_;
-	}
 	FileSink(const string &file_name, const char *mode = "wb");
 #ifndef _MSC_VER
 	FileSink(const string &file_name, int fd, const char *mode);
 #endif
-	virtual ~FileSink()
-	{}
+	virtual void close();
+	virtual void write(const char *ptr, size_t count);
+	virtual void seek(size_t p);
+	virtual void rewind();
+	virtual size_t tell();
+	virtual const string& file_name() const
+	{
+		return file_name_;
+	}
+	virtual FILE* file()
+	{
+		return f_;
+	}
 protected:
 	FILE *f_;
 	const string file_name_;

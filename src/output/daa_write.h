@@ -103,7 +103,7 @@ inline void finish_daa(OutputFile &f, const DatabaseFile &db)
 
 	size_t s = 0;
 	for (PtrVector<string>::const_iterator i = dict.name_.begin(); i != dict.name_.end(); ++i) {
-		f.write_c_str((*i)->c_str());
+		f << **i;
 		s += (*i)->length() + 1;
 	}
 	h2_.block_size[1] = s;
@@ -111,7 +111,7 @@ inline void finish_daa(OutputFile &f, const DatabaseFile &db)
 	f.write(dict.len_);
 	h2_.block_size[2] = dict.len_.size() * sizeof(uint32_t);
 
-	f.seekp(sizeof(DAA_header1));
+	f.seek(sizeof(DAA_header1));
 	f.write(&h2_, 1);
 }
 

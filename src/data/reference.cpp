@@ -157,12 +157,13 @@ void make_db()
 	timer.go("Writing trailer");
 	header.pos_array_offset = offset;
 	pos_array.push_back(Pos_record(offset, 0));
-	out.write(pos_array);
+	out.write_raw(pos_array);
 	timer.finish();
 
 	taxonomy.init();
 	if (!config.prot_accession2taxid.empty()) {
 		timer.go("Writing taxon id lists");
+		header2.taxon_array_offset = out.tell();
 		TaxonList::build(out, accessions, n_seqs);
 	}
 
@@ -172,8 +173,11 @@ void make_db()
 	timer.go("Closing the database file");
 	header.letters = letters;
 	header.sequences = n_seqs;
-	out.seekp(0);
+	out.seek(0);
 	out.write(&header, 1);
+#ifdef EXTRA
+	out.write(&header2, 1);
+#endif
 	out.close();
 
 	timer.finish();

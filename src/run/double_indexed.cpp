@@ -288,7 +288,7 @@ void master_thread(DatabaseFile &db_file, Timer &total_timer)
 			timer.go("Masking queries");
 			mask_seqs(*query_seqs::data_, Masking::get());
 			timer.finish();
-		}		
+		}
 
 		run_query_chunk(db_file, total_timer, current_query_chunk, *master_out, unaligned_file.get());
 	}

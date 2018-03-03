@@ -27,7 +27,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "input_file.h"
 #include "file_source.h"
 #include "compressed_stream.h"
-#include "buffered_source.h"
+#include "input_stream_buffer.h"
 
 bool is_gzip_stream(const unsigned char *b)
 {
@@ -38,8 +38,8 @@ bool is_gzip_stream(const unsigned char *b)
 }
 
 InputFile::InputFile(const string &file_name, int flags) :
-	file_name(file_name),
-	source_ (new FileSource(file_name))
+	Deserializer(new InputStreamBuffer(new FileSource(file_name))),
+	file_name(file_name)
 {
 	if (file_name.empty())
 		return;
@@ -52,70 +52,29 @@ InputFile::InputFile(const string &file_name, int flags) :
 	if (!S_ISREG(buf.st_mode))
 		return;
 #endif
+	FileSource *source = dynamic_cast<FileSource*>(buffer_->root());
 	char b[2];
-	size_t n = source_->read(b, 2);
+	size_t n = source->read(b, 2);
 	if (n == 2)
-		source_->putback(b[1]);
+		source->putback(b[1]);
 	if (n >= 1)
-		source_->putback(b[0]);
+		source->putback(b[0]);
 	if (n == 2 && is_gzip_stream((const unsigned char*)b))
-		source_ = new ZlibSource(source_);
-	if (flags & BUFFERED)
-		source_ = new BufferedSource(source_);
+		buffer_ = new InputStreamBuffer(new ZlibSource(buffer_));
 }
 
-InputFile::~InputFile()
+InputFile::InputFile(OutputFile &tmp_file, int flags) :
+	Deserializer(new InputStreamBuffer(new FileSource(tmp_file.file_name(), tmp_file.file()))),
+	file_name(tmp_file.file_name())
 {
-	delete source_;
-}
-
-void InputFile::rewind()
-{
-	source_->rewind();
-}
-
-InputFile::InputFile(const OutputFile &tmp_file, int flags) :
-	file_name(tmp_file.file_name()),
-	source_(new FileSource(file_name, tmp_file.file()))
-{
-	rewind();
-	if (flags & BUFFERED)
-		source_ = new BufferedSource(source_);
-}
-
-void InputFile::seek(size_t pos)
-{
-	source_->seek(pos);
-}
-
-void InputFile::seek_forward(size_t n)
-{
-	source_->seek_forward(n);
-}
-
-void InputFile::read_c_str(string &s)
-{
-	char c;
-	s.clear();
-	while (true) {
-		if (read(&c, 1) != 1)
-			throw std::runtime_error("Unexpected end of file.");
-		if (c == 0)
-			break;
-		s += (char)c;
-	}
+	tmp_file.rewind();
 }
 
 void InputFile::close_and_delete()
 {
-	source_->close();
+	close();
 #ifdef _MSC_VER
 	if (remove(file_name.c_str()) != 0)
 		std::cerr << "Warning: Failed to delete temporary file " << file_name << std::endl;
 #endif
-}
-
-void InputFile::close()
-{
-	source_->close();
 }

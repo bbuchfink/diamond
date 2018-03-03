@@ -19,24 +19,28 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <iostream>
 #include <stdio.h>
 #include "output_file.h"
+#include "file_sink.h"
+#include "output_stream_buffer.h"
+#include "compressed_stream.h"
+
+OutputFile::OutputFile(const string &file_name, bool compressed, const char *mode) :
+	Serializer(new OutputStreamBuffer(new FileSink(file_name, mode))),
+	file_name_(file_name)
+{
+	if (compressed)
+		buffer_ = new OutputStreamBuffer(new ZlibSink(buffer_));
+}
+
+#ifndef _MSC_VER
+OutputFile::OutputFile(pair<string, int> fd, const char *mode):
+	Serializer(new OutputStreamBuffer(new FileSink(fd.first, fd.second, mode))),
+	file_name_(file_name)
+{
+}
+#endif
 
 void OutputFile::remove()
 {
 	if (::remove(file_name_.c_str()) != 0)
 		std::cerr << "Warning: Failed to delete file " << file_name_ << std::endl;
-}
-
-void OutputFile::write_c_str(const string &s)
-{
-	write(s.c_str(), s.length() + 1);
-}
-
-void OutputFile::seekp(size_t p)
-{
-	sink_->seekp(p);
-}
-
-size_t OutputFile::tell()
-{
-	return sink_->tell();
 }

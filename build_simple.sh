@@ -59,12 +59,15 @@ g++ -DNDEBUG -O3 -Wno-deprecated-declarations $1 $2 $3 \
   src/align/banded_swipe_pipeline.cpp \
   src/data/ref_dictionary.cpp \
   src/util/io/compressed_stream.cpp \
+  src/util/io/deserializer.cpp \
   src/util/io/file_sink.cpp \
   src/util/io/file_source.cpp \
   src/util/io/input_file.cpp \
+  src/util/io/input_stream_buffer.cpp \
   src/util/io/output_file.cpp \
+  src/util/io/output_stream_buffer.cpp \
+  src/util/io/serializer.cpp \
   src/util/io/temp_file.cpp \
   src/util/io/text_input_file.cpp \
-  src/util/io/buffered_source.cpp \
   src/data/taxon_list.cpp \
 -lz -lpthread -o diamond

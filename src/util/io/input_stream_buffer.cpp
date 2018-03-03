@@ -16,26 +16,34 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#ifndef SINK_H_
-#define SINK_H_
+#include <algorithm>
+#include <string.h>
+#include "input_stream_buffer.h"
 
-#include "exceptions.h"
+using std::make_pair;
 
-struct Sink
+InputStreamBuffer::InputStreamBuffer(StreamEntity *prev):
+	StreamEntity(prev)
 {
-	virtual void close() = 0;
-	virtual void write(const char *ptr, size_t count) = 0;
-	virtual void seekp(size_t p)
-	{
-		throw UnsupportedOperation();
-	}
-	virtual size_t tell()
-	{
-		throw UnsupportedOperation();
-	}
-	virtual FILE* file() = 0;
-	virtual ~Sink()
-	{}
-};
+}
 
-#endif
+void InputStreamBuffer::rewind()
+{
+	prev_->rewind();
+}
+
+void InputStreamBuffer::seek(size_t pos)
+{
+	prev_->seek(pos);
+}
+
+void InputStreamBuffer::seek_forward(size_t n)
+{
+	prev_->seek_forward(n);
+}
+
+pair<const char*, const char*> InputStreamBuffer::read()
+{
+	size_t n = prev_->read(buf_, BUF_SIZE);
+	return make_pair(buf_, buf_ + n);
+}

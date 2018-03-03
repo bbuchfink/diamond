@@ -87,7 +87,7 @@ void FileSink::write(const char *ptr, size_t count)
 	}
 }
 
-void FileSink::seekp(size_t p)
+void FileSink::seek(size_t p)
 {
 #ifdef _MSC_VER
 	if (_fseeki64(f_, (int64_t)p, SEEK_SET) != 0) {
@@ -117,4 +117,9 @@ size_t FileSink::tell()
 	}
 	return n;
 #endif
+}
+
+void FileSink::rewind()
+{
+	::rewind(f_);
 }

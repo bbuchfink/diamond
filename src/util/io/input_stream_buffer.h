@@ -16,52 +16,23 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#ifndef BUFFERED_SOURCE_H_
-#define BUFFERED_SOURCE_H_
+#ifndef INPUT_STREAM_BUFFER_H_
+#define INPUT_STREAM_BUFFER_H_
 
-#include <assert.h>
-#include <vector>
-#include <string>
-#include "source.h"
+#include <utility>
+#include "stream_entity.h"
 
-using std::vector;
-using std::string;
-
-struct BufferedSource : public Source
+struct InputStreamBuffer : public StreamEntity
 {
-	BufferedSource(Source* source);
+	InputStreamBuffer(StreamEntity* prev);
 	virtual void rewind();
 	virtual void seek(size_t pos);
 	virtual void seek_forward(size_t n);
-	virtual size_t read(char *ptr, size_t count);
-	virtual void close();
-	virtual const string& file_name() const;
-	virtual bool read_until(string &dst, char delimiter);
-	virtual bool read_until(vector<char> &dst, char delimiter);
-	virtual ~BufferedSource()
-	{
-		delete source_;
-	}
+	virtual pair<const char*, const char*> read();
 private:
-	template<typename _t>
-	bool read_to(_t &container, char delimiter);
-	char* next()
-	{
-		return &buf_[start_];
-	}
-	void pop(char *dst, size_t n);
-	size_t fetch()
-	{
-		start_ = 0;
-		return avail_ = source_->read(buf_, BUF_SIZE);
-	}
-
 	enum { BUF_SIZE = 4096 };
 
-	Source *source_;
 	char buf_[BUF_SIZE];
-	size_t start_, avail_;
-	bool eof_;
 };
 
 #endif

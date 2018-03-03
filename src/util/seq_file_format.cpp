@@ -47,7 +47,7 @@ bool FASTA_format::get_seq(vector<char>& id, vector<Letter>& seq, TextInputFile 
 	if (s.eof())
 		return false;
 	if (s.line[0] != '>')
-		throw Stream_read_exception(s.line_count, "FASTA format error: Missing '>' at record start.");
+		throw StreamReadException(s.line_count, "FASTA format error: Missing '>' at record start.");
 	id.clear();
 	seq.clear();
 	copy_line(s.line, id, 1, Raw_text());
@@ -67,7 +67,7 @@ bool FASTA_format::get_seq(vector<char>& id, vector<Letter>& seq, TextInputFile 
 			copy_line(s.line, seq, 0, Sequence_data());
 		}
 		catch (invalid_sequence_char_exception &e) {
-			throw Stream_read_exception(s.line_count, e.what());
+			throw StreamReadException(s.line_count, e.what());
 		}
 	}
 	return true;
@@ -79,7 +79,7 @@ bool FASTQ_format::get_seq(vector<char>& id, vector<Letter>& seq, TextInputFile 
 	if (s.eof())
 		return false;
 	if (s.line[0] != '@')
-		throw Stream_read_exception(s.line_count, "FASTQ format error: Missing '@' at record start.");
+		throw StreamReadException(s.line_count, "FASTQ format error: Missing '@' at record start.");
 	id.clear();
 	seq.clear();
 	copy_line(s.line, id, 1, Raw_text());
@@ -88,11 +88,11 @@ bool FASTQ_format::get_seq(vector<char>& id, vector<Letter>& seq, TextInputFile 
 		copy_line(s.line, seq, 0, Sequence_data());
 	}
 	catch (invalid_sequence_char_exception &e) {
-		throw Stream_read_exception(s.line_count, e.what());
+		throw StreamReadException(s.line_count, e.what());
 	}
 	s.getline();
 	if (s.line.empty() || s.line[0] != '+')
-		throw Stream_read_exception(s.line_count, "FASTQ format error: Missing '+' line in record.");
+		throw StreamReadException(s.line_count, "FASTQ format error: Missing '+' line in record.");
 	s.getline();
 	return true;
 }

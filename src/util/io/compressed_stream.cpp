@@ -27,52 +27,38 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 void ZlibSource::init()
 {
-	read_ = 0;
-	total_ = 0;
 	eos_ = false;
 	strm.zalloc = Z_NULL;
 	strm.zfree = Z_NULL;
 	strm.opaque = Z_NULL;
 	strm.avail_in = 0;
 	strm.next_in = Z_NULL;
-	strm.avail_out = chunk_size;
-	strm.next_out = (Bytef*)out.get();
 	int ret = inflateInit2(&strm, 15 + 32);
 	if (ret != Z_OK)
 		throw std::runtime_error("Error opening compressed file (inflateInit): " + file_name());
 }
 
-ZlibSource::ZlibSource(Source *source):
-	source_(source),
-	in(new char[chunk_size]),
-	out(new char[chunk_size])
+ZlibSource::ZlibSource(StreamEntity *prev):
+	StreamEntity(prev)
 {
 	init();
 }
 
 size_t ZlibSource::read(char *ptr, size_t count)
 {
-	size_t n = 0;
-	do {
-		size_t m = std::min(count - n, total_ - read_);
-		memcpy(ptr, &out.get()[read_], m);
-		read_ += m;
-		ptr += m;
-		n += m;
-		if (count == n || eos_)
-			return n;
+	strm.avail_out = (uInt)count;
+	strm.next_out = (Bytef*)ptr;
+	while (strm.avail_out > 0 && !eos_) {
+		if (strm.avail_in == 0) {
+			pair<const char*, const char*> in = prev_->read();
 
-		if (strm.avail_out > 0 && strm.avail_in == 0) {
-			strm.avail_in = (uInt)source_->read(in.get(), chunk_size);
+			strm.avail_in = (uInt)(in.second - in.first);
 			if (strm.avail_in == 0) {
 				eos_ = true;
-				return n;
+				break;
 			}
-			strm.next_in = (Bytef*)in.get();
+			strm.next_in = (Bytef*)in.first;
 		}
-
-		strm.avail_out = chunk_size;
-		strm.next_out = (Bytef*)out.get();
 
 		int ret = inflate(&strm, Z_NO_FLUSH);
 		if (ret == Z_STREAM_END) {
@@ -82,27 +68,24 @@ size_t ZlibSource::read(char *ptr, size_t count)
 		}
 		else if (ret != Z_OK)
 			throw std::runtime_error("Inflate error.");
-
-		read_ = 0;
-		total_ = chunk_size - strm.avail_out;
-	} while (true);
+	}
+	return count - strm.avail_out;
 }
 
 void ZlibSource::close()
 {
 	inflateEnd(&strm);
-	source_->close();
+	prev_->close();
 }
 
 void ZlibSource::rewind()
 {
-	source_->rewind();
+	prev_->rewind();
 	init();
 }
 
-ZlibSink::ZlibSink(Sink* sink):
-	sink_(sink),
-	out(new char[chunk_size])
+ZlibSink::ZlibSink(StreamEntity *prev):
+	StreamEntity(prev)
 {
 	strm.zalloc = Z_NULL;
 	strm.zfree = Z_NULL;
@@ -111,17 +94,18 @@ ZlibSink::ZlibSink(Sink* sink):
 		throw std::runtime_error("deflateInit error");
 }
 
-void ZlibSink::deflate_loop(const char * ptr, size_t count, int flush)
+void ZlibSink::deflate_loop(const char *ptr, size_t count, int flush)
 {
 	strm.avail_in = (uInt)count;
 	strm.next_in = (Bytef*)ptr;
 	do {
-		strm.avail_out = chunk_size;
-		strm.next_out = (Bytef*)out.get();
+		pair<char*, char*> out = prev_->write_buffer();
+		const size_t chunk_size = out.second - out.first;
+		strm.avail_out = (uInt)chunk_size;
+		strm.next_out = (Bytef*)out.first;
 		if (deflate(&strm, flush) == Z_STREAM_ERROR)
 			throw std::runtime_error("deflate error");
-		const size_t have = chunk_size - strm.avail_out;
-		sink_->write(out.get(), have);
+		prev_->flush(chunk_size - strm.avail_out);
 	} while (strm.avail_out == 0);
 }
 
@@ -134,5 +118,5 @@ void ZlibSink::close()
 {
 	deflate_loop(0, 0, Z_FINISH);
 	deflateEnd(&strm);
-	sink_->close();
+	prev_->close();
 }

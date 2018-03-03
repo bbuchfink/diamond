@@ -28,7 +28,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #endif
 
 #include "file_source.h"
-#include "file_sink.h"
 #include "../system.h"
 
 using std::endl;
@@ -54,15 +53,15 @@ FileSource::FileSource(const string &file_name) :
 	}
 }
 
+FileSource::FileSource(const string &file_name, FILE *file):
+	f_(file),
+	file_name_(file_name)
+{
+}
+
 void FileSource::rewind()
 {
 	::rewind(f_);
-}
-
-FileSource::FileSource(const string &file_name, FILE *file) :
-	f_(file),
-	file_name_(file_name)	
-{
 }
 
 void FileSource::seek(size_t pos)

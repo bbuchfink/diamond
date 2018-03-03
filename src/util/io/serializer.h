@@ -20,30 +20,24 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define SERIALIZER_H_
 
 #include <string>
-#include "output_file.h"
-#include "input_file.h"
+#include <set>
+#include <vector>
 #include "../algo/varint.h"
+#include "stream_entity.h"
 
 using std::string;
+using std::vector;
 
 struct Serializer
 {
 
 	enum { VARINT = 1 };
 
-	Serializer():
-		f_(NULL),
-		varint_(false)
-	{}
-
-	Serializer(OutputFile &f, int flags = 0):
-		f_(&f),
-		varint_(flags & VARINT)
-	{}
+	Serializer(StreamEntity *buffer, int flags = 0);
 
 	Serializer& operator<<(int x)
 	{
-		f_->write(&x, 1);
+		write(x);
 		return *this;
 	}
 
@@ -52,11 +46,11 @@ struct Serializer
 		if (varint_)
 			write_varint(x, *this);
 		else
-			f_->write(&x, 1);
+			write(x);
 		return *this;
 	}
 
-	Serializer& operator<<(const vector<unsigned> v)
+	Serializer& operator<<(const vector<unsigned> &v)
 	{
 		*this << (unsigned)v.size();
 		for (vector<unsigned>::const_iterator i = v.begin(); i < v.end(); ++i)
@@ -64,84 +58,74 @@ struct Serializer
 		return *this;
 	}
 
+	Serializer& operator<<(const std::set<unsigned> &v)
+	{
+		*this << (unsigned)v.size();
+		for (std::set<unsigned>::const_iterator i = v.begin(); i != v.end(); ++i)
+			*this << *i;
+		return *this;
+	}
+
 	Serializer& operator<<(const string &s)
 	{
-		f_->write(s.c_str(), s.length() + 1);
+		write(s.c_str(), s.length() + 1);
 		return *this;
 	}
 
 	Serializer& operator<<(const vector<string> &v)
 	{
-		(*this) << (int)v.size();
+		*this << (int)v.size();
 		for (vector<string>::const_iterator i = v.begin(); i < v.end(); ++i)
-			(*this) << *i;
+			*this << *i;
 		return *this;
 	}
 
-	void write(uint8_t x)
+	template<typename _t>
+	void write(const _t &x)
 	{
-		f_->write(&x, 1);
-	}
-
-	void write(uint16_t x)
-	{
-		f_->write(&x, 1);
-	}
-
-	void write(uint32_t x)
-	{
-		f_->write(&x, 1);
-	}
-
-protected:
-
-	OutputFile *f_;
-	bool varint_;
-
-};
-
-struct Deserializer
-{
-
-	Deserializer():
-		f_(NULL)
-	{
-	}
-
-	Deserializer(InputFile &f) :
-		f_(&f)
-	{}
-
-	Deserializer& operator>>(int &x)
-	{
-		if (f_->read(&x, 1) != 1)
-			throw std::runtime_error("Unexpected end of buffer.");
-		return *this;
-	}
-
-	Deserializer& operator>>(string &s)
-	{
-		if (!f_->read_until(s, '\0'))
-			throw std::runtime_error("Unexpected end of buffer.");
-		return *this;
-	}
-
-	Deserializer& operator>>(vector<string> &v)
-	{
-		int n;
-		*this >> n;
-		v.clear();
-		string s;
-		for (int i = 0; i < n; ++i) {
-			*this >> s;
-			v.push_back(s);
+		if (sizeof(_t) <= avail()) {
+			*(_t*)next_ = x;
+			next_ += sizeof(_t);
 		}
-		return *this;
+		else
+			write(&x, 1);
 	}
+
+	template<typename _t>
+	void write(const _t *ptr, size_t count)
+	{
+		write_raw((const char*)ptr, count * sizeof(_t));
+	}
+
+	template<class _t>
+	void write_raw(const vector<_t> &v)
+	{
+		write(v.data(), v.size());
+	}
+
+	void set(int flag);
+	void write_raw(const char *ptr, size_t count);
+	void seek(size_t pos);
+	void rewind();
+	size_t tell() const;
+	void close();
+	string file_name() const;
+	FILE* file();
+	~Serializer();
 
 protected:
 
-	InputFile *f_;
+	void reset_buffer();
+	void flush();
+
+	size_t avail() const
+	{
+		return end_ - next_;
+	}
+
+	StreamEntity *buffer_;
+	char *begin_, *next_, *end_;
+	bool varint_;
 
 };
 

@@ -21,6 +21,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <stdexcept>
 #include <string>
+#include "../util.h"
 
 using std::string;
 
@@ -50,6 +51,20 @@ struct File_write_exception : public std::runtime_error
 	File_write_exception(const string &file_name) :
 		runtime_error(string("Error writing file ") + file_name)
 	{ }
+};
+
+struct EndOfStream : public std::runtime_error
+{
+	EndOfStream() :
+		runtime_error("Unexpected end of input.")
+	{ }
+};
+
+struct StreamReadException : public std::runtime_error
+{
+	StreamReadException(size_t line_count, const char *msg) :
+		runtime_error(string("Error reading input stream at line ") + to_string(line_count) + ": " + msg)
+	{}
 };
 
 #endif

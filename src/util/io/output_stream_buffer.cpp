@@ -16,34 +16,29 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#ifndef FILE_SOURCE_H_
-#define FILE_SOURCE_H_
+#include "output_stream_buffer.h"
 
-#include "stream_entity.h"
+OutputStreamBuffer::OutputStreamBuffer(StreamEntity* prev):
+	StreamEntity(prev)
+{}
 
-struct FileSource : public StreamEntity
+pair<char*, char*> OutputStreamBuffer::write_buffer()
 {
-	FileSource(const string &file_name);
-	FileSource(const string &file_name, FILE *file);
-	virtual void rewind();
-	virtual void seek(size_t pos);
-	virtual void seek_forward(size_t n);
-	virtual size_t read(char *ptr, size_t count);
-	virtual void close();
-	virtual const string& file_name() const
-	{
-		return file_name_;
-	}
-	virtual FILE* file()
-	{
-		return f_;
-	}
-	void putback(char c);
-	~FileSource()
-	{}
-protected:
-	FILE *f_;
-	const string file_name_;
-};
+	return std::make_pair(buf_, buf_ + BUF_SIZE);
+}
 
-#endif
+void OutputStreamBuffer::flush(size_t count)
+{
+	prev_->write(buf_, count);
+}
+
+void OutputStreamBuffer::seek(size_t pos)
+{
+	prev_->seek(pos);
+}
+
+void OutputStreamBuffer::rewind()
+{
+	prev_->rewind();
+}
+

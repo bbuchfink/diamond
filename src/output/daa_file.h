@@ -123,7 +123,7 @@ struct DAA_file
 		string s;
 		ref_name_.reserve((size_t)h2_.db_seqs_used);
 		for(uint64_t i=0;i<h2_.db_seqs_used;++i) {
-			f_.read_c_str(s);
+			f_ >> s;
 			ref_name_.push_back(new string(s));
 		}
 		ref_len_.resize((size_t)h2_.db_seqs_used);

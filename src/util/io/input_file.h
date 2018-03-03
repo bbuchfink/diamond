@@ -23,44 +23,22 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <string>
 #include <stdexcept>
 #include "output_file.h"
-#include "source.h"
+#include "deserializer.h"
 
 using std::vector;
 using std::string;
 using std::runtime_error;
 
-struct InputFile
+struct InputFile : public Deserializer
 {
+
 	enum { BUFFERED = 1 };
 
 	InputFile(const string &file_name, int flags = 0);
-	void rewind();
-	InputFile(const OutputFile &tmp_file, int flags = 0);
-	void seek(size_t pos);
-	void seek_forward(size_t n);
-	template<class _t>
-	size_t read(_t *ptr, size_t count)
-	{
-		return source_->read((char*)ptr, count*sizeof(_t)) / sizeof(_t);
-	}
-	bool read_until(string &dst, char delimiter)
-	{
-		return source_->read_until(dst, delimiter);
-	}
-	bool read_until(vector<char> &dst, char delimiter)
-	{
-		return source_->read_until(dst, delimiter);
-	}
-	void read_c_str(string &s);
+	InputFile(OutputFile &tmp_file, int flags = 0);
 	void close_and_delete();
-	void close();
-	~InputFile();
 	
 	string file_name;
-	
-private:
-	
-	Source *source_;
 	
 };
 

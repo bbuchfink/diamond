@@ -84,11 +84,11 @@ struct String_set
 	size_t get_length() const
 	{ return limits_.size() - 1; }
 
-	void save(OutputFile &file) const
+	/*void save(OutputFile &file) const
 	{
 		file.write(limits_);
 		file.write(data_);
-	}
+	}*/
 
 	size_t raw_len() const
 	{ return limits_.back(); }

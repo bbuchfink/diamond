@@ -16,18 +16,24 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#ifndef SOURCE_H_
-#define SOURCE_H_
+#ifndef STREAM_ENTITY_H_
+#define STREAM_ENTITY_H_
 
-#include "exceptions.h"
 #include <string>
-#include <vector>
+#include <utility>
+#include "exceptions.h"
 
-using std::vector;
 using std::string;
+using std::pair;
 
-struct Source
+struct StreamEntity
 {
+	StreamEntity():
+		prev_(NULL)
+	{}
+	StreamEntity(StreamEntity *prev):
+		prev_(prev)
+	{}
 	virtual void rewind()
 	{
 		throw UnsupportedOperation();
@@ -40,23 +46,52 @@ struct Source
 	{
 		throw UnsupportedOperation();
 	}
-	virtual void putback(char c)
+	virtual size_t tell()
 	{
 		throw UnsupportedOperation();
 	}
-	virtual size_t read(char *ptr, size_t count) = 0;
-	virtual bool read_until(string &dst, char delimiter)
+	virtual size_t read(char *ptr, size_t count)
 	{
 		throw UnsupportedOperation();
 	}
-	virtual bool read_until(vector<char> &dst, char delimiter)
+	virtual pair<const char*, const char*> read()
 	{
 		throw UnsupportedOperation();
 	}
-	virtual void close() = 0;
-	virtual const string& file_name() const = 0;
-	virtual ~Source()
-	{}
+	virtual void close()
+	{
+		prev_->close();
+	}
+	virtual const string& file_name() const
+	{
+		return prev_->file_name();
+	}
+	virtual void write(const char *ptr, size_t count)
+	{
+		throw UnsupportedOperation();
+	}
+	virtual pair<char*, char*> write_buffer()
+	{
+		throw UnsupportedOperation();
+	}
+	virtual void flush(size_t count)
+	{
+		throw UnsupportedOperation();
+	}
+	virtual FILE* file()
+	{
+		return prev_->file();
+	}
+	virtual StreamEntity* root()
+	{
+		return prev_ ? prev_->root() : this;
+	}
+	virtual ~StreamEntity()
+	{
+		delete prev_;
+	}
+protected:
+	StreamEntity *prev_;
 };
 
 #endif

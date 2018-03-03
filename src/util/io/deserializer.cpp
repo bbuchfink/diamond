@@ -16,9 +16,9 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
+#include <assert.h>
 #include <algorithm>
-#include <string.h>
-#include "buffered_source.h"
+#include "deserializer.h"
 
 template<typename _t>
 void append(_t &container, const char *ptr, size_t n)
@@ -32,95 +32,102 @@ void append<vector<char> >(vector<char> &container, const char *ptr, size_t n)
 	container.insert(container.end(), ptr, ptr + n);
 }
 
-BufferedSource::BufferedSource(Source* source):
-	source_(source)
+Deserializer::Deserializer(StreamEntity* buffer):
+	buffer_(buffer),
+	begin_(NULL),
+	end_(NULL)
 {
-	fetch();
 }
 
-void BufferedSource::rewind()
+Deserializer::~Deserializer()
 {
-	source_->rewind();
-	fetch();
+	delete buffer_;
 }
 
-void BufferedSource::seek(size_t pos)
+void Deserializer::close()
 {
-	source_->seek(pos);
-	fetch();
+	buffer_->close();
 }
 
-void BufferedSource::seek_forward(size_t n)
+void Deserializer::rewind()
 {
-	source_->seek_forward(n);
-	fetch();
+	buffer_->rewind();
+	begin_ = end_ = NULL;
 }
 
-size_t BufferedSource::read(char *ptr, size_t count)
+void Deserializer::seek(size_t pos)
 {
-	if (count <= avail_) {
+	buffer_->seek(pos);
+	begin_ = end_ = NULL;
+}
+
+void Deserializer::seek_forward(size_t n)
+{
+	buffer_->seek_forward(n);
+	begin_ = end_ = NULL;
+}
+
+size_t Deserializer::read_raw(char *ptr, size_t count)
+{
+	if (count <= avail()) {
 		pop(ptr, count);
 		return count;
 	}
 	else {
 		size_t total = 0;
 		do {
-			const size_t n = std::min(count, avail_);
+			const size_t n = std::min(count, avail());
 			pop(ptr, n);
 			ptr += n;
 			count -= n;
 			total += n;
-			if (avail_ == 0)
+			if (avail() == 0)
 				fetch();
-		} while (count > 0 && avail_ > 0);
+		} while (count > 0 && avail() > 0);
 		return total;
 	}
 }
 
-void BufferedSource::close()
+bool Deserializer::fetch()
 {
-	source_->close();
+	pair<const char*, const char*> in = buffer_->read();
+	begin_ = in.first;
+	end_ = in.second;
+	return end_ > begin_;
 }
 
-const string& BufferedSource::file_name() const
+void Deserializer::pop(char *dst, size_t n)
 {
-	return source_->file_name();
-}
-
-void BufferedSource::pop(char *dst, size_t n)
-{
-	assert(n <= avail_);
-	memcpy(dst, next(), n);
-	start_ += n;
-	avail_ -= n;
+	assert(n <= avail());
+	memcpy(dst, begin_, n);
+	begin_ += n;
 }
 
 template<typename _t>
-bool BufferedSource::read_to(_t &container, char delimiter)
+bool Deserializer::read_to(_t &container, char delimiter)
 {
 	int d = delimiter;
 	container.clear();
 	do {
-		const char *p = (const char*)memchr((void*)next(), d, avail_);
+		const char *p = (const char*)memchr((void*)begin_, d, avail());
 		if (p == 0)
-			append(container, next(), avail_);
+			append(container, begin_, avail());
 		else {
-			const size_t n = p - next();
-			append(container, next(), n);
-			start_ += n + 1;
-			avail_ -= n + 1;
+			const size_t n = p - begin_;
+			append(container, begin_, n);
+			begin_ += n + 1;
 			return true;
 		}
 	} while (fetch());
-	return container.empty();
+	return !container.empty();
 }
 
-bool BufferedSource::read_until(string &dst, char delimiter)
+bool Deserializer::read_until(string &dst, char delimiter)
 {
 	return read_to(dst, delimiter);
 }
 
-bool BufferedSource::read_until(vector<char> &dst, char delimiter)
+bool Deserializer::read_until(vector<char> &dst, char delimiter)
 {
 	return read_to(dst, delimiter);
 }

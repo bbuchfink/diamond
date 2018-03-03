@@ -19,34 +19,27 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #ifndef FILE_BACKED_BUFFER_H_
 #define FILE_BACKED_BUFFER_H_
 
-#include "serializer.h"
+#include "input_file.h"
 #include "temp_file.h"
 
-struct FileBackedBuffer : public Serializer, public Deserializer
+struct FileBackedBuffer : public TempFile, public InputFile
 {
 
 	FileBackedBuffer():
-		f_(TempFile())
+		TempFile(),
+		InputFile(*dynamic_cast<OutputFile*>(this))
 	{
-		Serializer::f_ = &f_;
 	}
 
 	void rewind()
 	{
-		Deserializer::f_ = new InputFile(f_, InputFile::BUFFERED);
+		InputFile::rewind();
 	}
 
 	~FileBackedBuffer()
 	{
-		if (Deserializer::f_ == NULL)
-			rewind();
-		Deserializer::f_->close_and_delete();
-		delete Deserializer::f_;
+		InputFile::close_and_delete();
 	}
-
-private:
-
-	TempFile f_;
 
 };
 

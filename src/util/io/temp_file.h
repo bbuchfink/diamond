@@ -29,6 +29,10 @@ struct TempFile : public OutputFile
 	static unsigned n;
 	static uint64_t hash_key;
 
+private:
+
+	static string init();
+
 };
 
 #endif /* TEMP_FILE_H_ */

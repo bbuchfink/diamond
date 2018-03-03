@@ -21,18 +21,18 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <vector>
 #include <algorithm>
-#include <sstream>
+//#include <sstream>
 #include <iostream>
 #include <string.h>
-#include <sys/stat.h>
+//#include <sys/stat.h>
 #include <math.h>
 #include <ctype.h>
 #include <string>
 #include <limits>
 #include <stdexcept>
+#include <stdio.h>
 #include "simd.h"
 #include "../basic/const.h"
-#include "../basic/packed_loc.h"
 
 using std::vector;
 using std::string;
@@ -387,22 +387,21 @@ bool equal(const _t *ptr, unsigned n)
 	return true;
 }
 
-template<typename _t>
-inline string to_string(_t val)
+inline string to_string(unsigned long long val)
 {
-	std::stringstream ss;
-	ss << val;
-	return ss.str();
+	char buf[32];
+	sprintf(buf, "%llu", val);
+	return string(buf);
 }
 
 inline string print_char(char c)
 {
-	std::stringstream ss;
+	char buf[16];
 	if (c < 32)
-		ss << "ASCII " << (unsigned)c;
+		sprintf(buf, "ASCII %u", (unsigned)c);
 	else
-		ss << c;
-	return ss.str();
+		sprintf(buf, "%c", c);
+	return string(buf);
 }
 
 template<typename _t, int n>

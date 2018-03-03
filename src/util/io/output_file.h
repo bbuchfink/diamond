@@ -22,42 +22,20 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <map>
 #include <stdexcept>
 #include <string>
-#include "sink.h"
-#include "file_sink.h"
-#include "compressed_stream.h"
-#include "../text_buffer.h"
+#include <utility>
+#include "serializer.h"
 
 using std::string;
+using std::pair;
 
-struct OutputFile
+struct OutputFile : public Serializer
 {
-	OutputFile()
-	{}
-	OutputFile(string &file_name, bool compressed = false):
-		file_name_(file_name),
-		sink_(new FileSink(file_name))
-	{
-		if (compressed)
-			sink_ = new ZlibSink(sink_);
-	}
-	void close()
-	{
-		sink_->close();
-	}
-	template<typename _t>
-	void write(const _t *ptr, size_t count)
-	{
-		sink_->write((const char*)ptr, sizeof(_t)*count);
-	}
-	template<class _t>
-	void write(const vector<_t> &v)
-	{
-		write(v.data(), v.size());
-	}
-	void write_c_str(const string &s);
-	void seekp(size_t p);
+	OutputFile(const string &file_name, bool compressed = false, const char *mode = "wb");
+#ifndef _MSC_VER
+	OutputFile(pair<string, int> fd, const char *mode);
+#endif
+
 	void remove();
-	size_t tell();
 
 	template<typename _k, typename _v>
 	void write_map_csv(typename std::map<_k, _v>::const_iterator begin, typename std::map<_k, _v>::const_iterator end)
@@ -70,21 +48,15 @@ struct OutputFile
 		}
 	}
 
-	~OutputFile()
-	{
-		delete sink_;
-	}
-	const string file_name() const
+	string file_name() const
 	{
 		return file_name_;
 	}
-	FILE* file() const
-	{
-		return sink_->file();
-	}
+
 protected:
+
 	string file_name_;
-	Sink *sink_;
+
 };
 
 #endif
