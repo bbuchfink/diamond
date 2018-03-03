@@ -19,7 +19,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #ifndef TEMP_FILE_H_
 #define TEMP_FILE_H_
 
+#include <utility>
 #include "output_file.h"
+
+using std::string;
 
 struct TempFile : public OutputFile
 {
@@ -31,7 +34,11 @@ struct TempFile : public OutputFile
 
 private:
 
+#ifdef _MSC_VER
 	static string init();
+#else
+	static std::pair<string, int> init();
+#endif
 
 };
 
