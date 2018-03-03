@@ -34,7 +34,7 @@ OutputFile::OutputFile(const string &file_name, bool compressed, const char *mod
 #ifndef _MSC_VER
 OutputFile::OutputFile(pair<string, int> fd, const char *mode):
 	Serializer(new OutputStreamBuffer(new FileSink(fd.first, fd.second, mode))),
-	file_name_(file_name)
+	file_name_(fd.first)
 {
 }
 #endif
