@@ -24,6 +24,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <string>
 #include <utility>
 #include "serializer.h"
+#include "../text_buffer.h"
 
 using std::string;
 using std::pair;

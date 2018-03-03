@@ -198,16 +198,6 @@ inline void auto_append_extension(string &str, const char *ext)
 		str += ext;
 }
 
-inline bool check_dir(const string &path)
-{
-#ifndef _MSC_VER
-	struct stat sb;
-	return stat(path.c_str(), &sb) == 0 && S_ISDIR(sb.st_mode);
-#else
-	return true;
-#endif
-}
-
 extern const char dir_separator;
 string extract_dir(const string &s);
 
