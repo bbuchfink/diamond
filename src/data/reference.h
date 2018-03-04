@@ -49,7 +49,11 @@ struct ReferenceHeader
 
 struct ReferenceHeader2
 {
-	uint64_t taxon_array_offset;
+	ReferenceHeader2():
+		taxon_array_offset(0),
+		taxon_array_size(0)
+	{}
+	uint64_t taxon_array_offset, taxon_array_size;
 };
 
 struct Database_format_exception : public std::exception

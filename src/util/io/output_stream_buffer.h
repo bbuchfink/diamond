@@ -29,6 +29,7 @@ struct OutputStreamBuffer : public StreamEntity
 	virtual void flush(size_t count);
 	virtual void seek(size_t pos);
 	virtual void rewind();
+	virtual size_t tell();
 private:
 	enum { BUF_SIZE = 4096 };
 

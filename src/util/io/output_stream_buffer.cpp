@@ -42,3 +42,7 @@ void OutputStreamBuffer::rewind()
 	prev_->rewind();
 }
 
+size_t OutputStreamBuffer::tell()
+{
+	return prev_->tell();
+}

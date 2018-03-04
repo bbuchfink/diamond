@@ -21,17 +21,36 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <vector>
 #include "stream_entity.h"
+#include "../algo/varint.h"
 
 using std::vector;
 
 struct Deserializer
 {
 
+	enum { VARINT = 1 };
+
 	Deserializer(StreamEntity* buffer);
 	void rewind();
 	void seek(size_t pos);
 	void seek_forward(size_t n);
 	void close();
+
+	Deserializer(const char *begin, const char *end, int flags = 0):
+		buffer_(NULL),
+		begin_(begin),
+		end_(end),
+		varint_(flags & VARINT)
+	{}
+
+	Deserializer& operator>>(unsigned &x)
+	{
+		if (varint_)
+			read_varint(*this, x);
+		else
+			read(x);
+		return *this;
+	}
 
 	Deserializer& operator>>(int &x)
 	{
@@ -59,6 +78,18 @@ struct Deserializer
 		return *this;
 	}
 
+	Deserializer& operator>>(vector<unsigned> &v)
+	{
+		unsigned n, x;
+		*this >> n;
+		v.clear();
+		for (unsigned i = 0; i < n; ++i) {
+			*this >> x;
+			v.push_back(x);
+		}
+		return *this;
+	}
+
 	template<typename _t>
 	void read(_t &x)
 	{
@@ -66,7 +97,7 @@ struct Deserializer
 			x = *(const _t*)begin_;
 			begin_ += sizeof(_t);
 		}
-		else if (read((char*)&x, sizeof(_t)) != sizeof(_t))
+		else if (read_raw((char*)&x, sizeof(_t)) != sizeof(_t))
 			throw EndOfStream();
 	}
 
@@ -74,6 +105,11 @@ struct Deserializer
 	size_t read(_t *ptr, size_t count)
 	{
 		return read_raw((char*)ptr, count*sizeof(_t)) / sizeof(_t);
+	}
+
+	const char* data() const
+	{
+		return begin_;
 	}
 
 	size_t read_raw(char *ptr, size_t count);
@@ -95,6 +131,7 @@ protected:
 	
 	StreamEntity *buffer_;
 	const char *begin_, *end_;
+	bool varint_;
 };
 
 #endif

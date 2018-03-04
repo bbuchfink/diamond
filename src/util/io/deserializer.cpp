@@ -35,7 +35,8 @@ void append<vector<char> >(vector<char> &container, const char *ptr, size_t n)
 Deserializer::Deserializer(StreamEntity* buffer):
 	buffer_(buffer),
 	begin_(NULL),
-	end_(NULL)
+	end_(NULL),
+	varint_(false)
 {
 }
 
@@ -90,6 +91,8 @@ size_t Deserializer::read_raw(char *ptr, size_t count)
 
 bool Deserializer::fetch()
 {
+	if (buffer_ == NULL)
+		throw EndOfStream();
 	pair<const char*, const char*> in = buffer_->read();
 	begin_ = in.first;
 	end_ = in.second;

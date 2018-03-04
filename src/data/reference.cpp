@@ -164,7 +164,8 @@ void make_db()
 	if (!config.prot_accession2taxid.empty()) {
 		timer.go("Writing taxon id lists");
 		header2.taxon_array_offset = out.tell();
-		TaxonList::build(out, accessions, n_seqs);
+		TaxonList::build(out, accessions.rewind(), n_seqs);
+		header2.taxon_array_size = out.tell() - header2.taxon_array_offset;
 	}
 
 	timer.go("Closing the input file");

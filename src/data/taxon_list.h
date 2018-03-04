@@ -21,12 +21,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "../util/io/output_file.h"
 #include "../util/io/file_backed_buffer.h"
+#include "../util/data_structures/compact_array.h"
 
-struct TaxonList
+struct TaxonList : public CompactArray<vector<unsigned> >
 {
-
+	TaxonList(InputFile &in, size_t size, size_t data_size);
 	static void build(OutputFile &db, FileBackedBuffer &accessions, size_t seqs);
-
 };
 
 #endif

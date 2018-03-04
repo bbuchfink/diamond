@@ -31,7 +31,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 struct Output_format
 {
 	Output_format(unsigned code):
-		code(code)
+		code(code),
+		needs_taxonomy(false)
 	{}
 	virtual void print_query_intro(size_t query_num, const char *query_name, unsigned query_len, TextBuffer &out, bool unaligned) const
 	{}
@@ -52,6 +53,7 @@ struct Output_format
 		return code;
 	}
 	unsigned code;
+	bool needs_taxonomy;
 	enum { daa, blast_tab, blast_xml, sam, blast_pairwise, null, taxon };
 };
 

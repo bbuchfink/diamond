@@ -20,6 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define VARINT_H_
 
 #include <stdint.h>
+#include "../intrin.h"
 
 template<typename _out>
 inline void write_varint(unsigned x, _out &out)
@@ -40,6 +41,40 @@ inline void write_varint(unsigned x, _out &out)
 	else {
 		out.write(uint8_t((x & 7) << 5 | 16));
 		out.write(uint32_t(x >> 3));
+	}
+}
+
+template<typename _buf>
+void read_varint(_buf &buf, uint32_t &dst)
+{
+	uint8_t b0, b1;
+	uint16_t b2;
+	uint32_t b3;
+	buf.read(b0);
+	int c = ctz((uint32_t)b0);
+	switch (c) {
+	case 0:
+		dst = b0 >> 1;
+		return;
+	case 1:
+		buf.read(b1);
+		dst = (uint32_t(b1) << 6) | (uint32_t(b0) >> 2);
+		return;
+	case 2:
+		buf.read(b2);
+		dst = (uint32_t(b2) << 5) | (uint32_t(b0) >> 3);
+		return;
+	case 3:
+		buf.read(b1);
+		buf.read(b2);
+		dst = (uint32_t(b2) << 12) | (uint32_t(b1) << 4) | (uint32_t(b0) >> 4);
+		return;
+	case 4:
+		buf.read(b3);
+		dst = (b3 << 3) | (uint32_t(b0) >> 5);
+		return;
+	default:
+		throw std::runtime_error("Format error: Invalid varint encoding.");
 	}
 }
 

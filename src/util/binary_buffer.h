@@ -24,6 +24,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <stdint.h>
 #include <string.h>
 #include "intrin.h"
+#include "algo/varint.h"
 
 using std::vector;
 using std::string;
@@ -67,35 +68,7 @@ struct BinaryBuffer : public vector<char>
 		}
 		void read_varint(uint32_t &dst)
 		{
-			uint8_t b0, b1;
-			uint16_t b2;
-			uint32_t b3;
-			read(b0);
-			int c = ctz((uint32_t)b0);
-			switch (c) {
-			case 0:
-				dst = b0 >> 1;
-				return;
-			case 1:
-				read(b1);
-				dst = (uint32_t(b1) << 6) | (uint32_t(b0) >> 2);
-				return;
-			case 2:
-				read(b2);
-				dst = (uint32_t(b2) << 5) | (uint32_t(b0) >> 3);
-				return;
-			case 3:
-				read(b1);
-				read(b2);
-				dst = (uint32_t(b2) << 12) | (uint32_t(b1) << 4) | (uint32_t(b0) >> 4);
-				return;
-			case 4:
-				read(b3);
-				dst = (b3 << 3) | (uint32_t(b0) >> 5);
-				return;
-			default:
-				throw std::runtime_error("Format error: Invalid varint encoding.");
-			}
+			::read_varint(*this, dst);
 		}
 		Iterator& operator>>(string &dst)
 		{

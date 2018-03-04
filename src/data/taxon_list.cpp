@@ -22,9 +22,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 using std::set;
 
+TaxonList::TaxonList(InputFile &in, size_t size, size_t data_size):
+	CompactArray<vector<unsigned> >(in, size, data_size)
+{}
+
 void TaxonList::build(OutputFile &db, FileBackedBuffer &accessions, size_t seqs)
 {
-	accessions.rewind();
 	vector<string> a;
 	db.set(Serializer::VARINT);
 	set<unsigned> t;
@@ -32,6 +35,7 @@ void TaxonList::build(OutputFile &db, FileBackedBuffer &accessions, size_t seqs)
 		accessions >> a;
 		for (vector<string>::const_iterator j = a.begin(); j < a.end(); ++j)
 			t.insert(taxonomy.get(Taxonomy::Accession(j->c_str())));
+		t.erase(0);
 		db << t;
 		t.clear();
 	}

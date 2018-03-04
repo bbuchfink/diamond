@@ -31,9 +31,10 @@ struct FileBackedBuffer : public TempFile, public InputFile
 	{
 	}
 
-	void rewind()
+	FileBackedBuffer& rewind()
 	{
-		InputFile::rewind();
+		Serializer::rewind();
+		return *this;
 	}
 
 	~FileBackedBuffer()
