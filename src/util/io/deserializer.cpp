@@ -56,10 +56,11 @@ void Deserializer::rewind()
 	begin_ = end_ = NULL;
 }
 
-void Deserializer::seek(size_t pos)
+Deserializer& Deserializer::seek(size_t pos)
 {
 	buffer_->seek(pos);
 	begin_ = end_ = NULL;
+	return *this;
 }
 
 void Deserializer::seek_forward(size_t n)

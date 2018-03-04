@@ -160,10 +160,14 @@ struct Taxon_format : public Output_format
 		evalue(std::numeric_limits<double>::max())
 	{
 		config.salltitles = true;
+#ifdef EXTRA
+		needs_taxonomy = true;
+#else
 		if (config.prot_accession2taxid.empty())
 			throw std::runtime_error("Output format requires setting the --taxonmap parameter.");
 		if (config.nodesdmp.empty())
 			throw std::runtime_error("Output format requires setting the --taxonnodes parameter.");
+#endif
 	}
 	virtual void print_match(const Hsp_context &r, TextBuffer &out);
 	virtual void print_query_epilog(TextBuffer &out, const char *query_title, bool unaligned, const Parameters &parameters) const;
@@ -178,7 +182,7 @@ struct Taxon_format : public Output_format
 };
 
 Output_format* get_output_format();
-void init_output();
+void init_output(bool have_taxonomy);
 void print_hsp(Hsp &hsp, const TranslatedSequence &query);
 
 #endif /* OUTPUT_FORMAT_H_ */

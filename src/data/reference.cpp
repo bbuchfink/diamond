@@ -75,6 +75,11 @@ void DatabaseFile::read_header(InputFile &stream, ReferenceHeader &header)
 		throw Database_format_exception();
 }
 
+bool DatabaseFile::has_taxonomy()
+{
+	return header2.taxon_array_offset != 0;
+}
+
 void DatabaseFile::rewind()
 {
 	pos_array_offset = ref_header.pos_array_offset;

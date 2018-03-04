@@ -21,16 +21,15 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <vector>
 #include <algorithm>
-//#include <sstream>
 #include <iostream>
 #include <string.h>
-//#include <sys/stat.h>
 #include <math.h>
 #include <ctype.h>
 #include <string>
 #include <limits>
 #include <stdexcept>
 #include <stdio.h>
+#include <stdint.h>
 #include "simd.h"
 #include "../basic/const.h"
 

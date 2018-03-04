@@ -32,7 +32,7 @@ struct Deserializer
 
 	Deserializer(StreamEntity* buffer);
 	void rewind();
-	void seek(size_t pos);
+	Deserializer& seek(size_t pos);
 	void seek_forward(size_t n);
 	void close();
 
@@ -70,6 +70,7 @@ struct Deserializer
 		int n;
 		*this >> n;
 		v.clear();
+		v.reserve(n);
 		string s;
 		for (int i = 0; i < n; ++i) {
 			*this >> s;
@@ -83,6 +84,7 @@ struct Deserializer
 		unsigned n, x;
 		*this >> n;
 		v.clear();
+		v.reserve(n);
 		for (unsigned i = 0; i < n; ++i) {
 			*this >> x;
 			v.push_back(x);

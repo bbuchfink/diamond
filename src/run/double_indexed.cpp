@@ -31,6 +31,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../data/taxonomy.h"
 #include "../basic/masking.h"
 #include "../data/ref_dictionary.h"
+#include "../data/metadata.h"
 
 using std::endl;
 using std::cout;
@@ -252,7 +253,7 @@ void run_query_chunk(DatabaseFile &db_file,
 	delete query_source_seqs::data_;
 }
 
-void master_thread(DatabaseFile &db_file, Timer &total_timer)
+void master_thread(DatabaseFile &db_file, Timer &total_timer, Metadata &metadata)
 {
 	if(config.query_file.empty())
 		std::cerr << "Query file parameter (--query/-q) is missing. Input will be read from stdin." << endl;
@@ -308,6 +309,9 @@ void master_thread(DatabaseFile &db_file, Timer &total_timer)
 	timer.go("Closing the database file");
 	db_file.close();
 
+	timer.go("Deallocating taxonomy");
+	delete metadata.taxon_list;
+
 	timer.finish();
 	message_stream << "Total time = " << total_timer.getElapsedTimeInSec() << "s" << endl;
 	statistics.print();
@@ -319,7 +323,6 @@ void master_thread_di()
 	timer2.start();
 
 	align_mode = Align_mode(Align_mode::from_command(config.command));
-	init_output();
 
 	message_stream << "Temporary directory: " << TempFile::get_temp_dir() << endl;
 
@@ -335,6 +338,9 @@ void master_thread_di()
 	task_timer timer("Opening the database", 1);
 	DatabaseFile db_file;
 	timer.finish();
+
+	init_output(db_file.has_taxonomy());
+
 	verbose_stream << "Reference = " << config.database << endl;
 	verbose_stream << "Sequences = " << db_file.ref_header.sequences << endl;
 	verbose_stream << "Letters = " << db_file.ref_header.letters << endl;
@@ -343,7 +349,16 @@ void master_thread_di()
 	score_matrix.set_db_letters(db_file.ref_header.letters);
 
 	set_max_open_files(config.query_bins * config.threads_ + unsigned(db_file.ref_header.letters / (size_t)(config.chunk_size * 1e9)) + 16);
-	taxonomy.init();
 
-	master_thread(db_file, timer2);
+	Metadata metadata;
+#ifdef EXTRA
+	if (output_format->needs_taxonomy) {
+		timer.go("Loading taxonomy");
+		metadata.taxon_list = new TaxonList(db_file.seek(db_file.header2.taxon_array_offset), db_file.ref_header.sequences, db_file.header2.taxon_array_size);
+	}
+#else
+	taxonomy.init();
+#endif
+
+	master_thread(db_file, timer2, metadata);
 }

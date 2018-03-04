@@ -22,7 +22,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 using std::set;
 
-TaxonList::TaxonList(InputFile &in, size_t size, size_t data_size):
+TaxonList::TaxonList(Deserializer &in, size_t size, size_t data_size):
 	CompactArray<vector<unsigned> >(in, size, data_size)
 {}
 

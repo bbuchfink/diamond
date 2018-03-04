@@ -16,17 +16,12 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#ifndef TAXON_LIST_H_
-#define TAXON_LIST_H_
+#include "taxon_list.h"
 
-#include "../util/io/output_file.h"
-#include "../util/io/file_backed_buffer.h"
-#include "../util/data_structures/compact_array.h"
-
-struct TaxonList : public CompactArray<vector<unsigned> >
+struct Metadata
 {
-	TaxonList(Deserializer &in, size_t size, size_t data_size);
-	static void build(OutputFile &db, FileBackedBuffer &accessions, size_t seqs);
+	Metadata():
+		taxon_list(NULL)
+	{}
+	TaxonList *taxon_list;
 };
-
-#endif

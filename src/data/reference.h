@@ -70,14 +70,13 @@ struct DatabaseFile : public InputFile
 	bool load_seqs();
 	void get_seq();
 	void read_seq(string &id, vector<char> &seq);
+	bool has_taxonomy();
 
 	enum { min_build_required = 74 };
 
 	size_t pos_array_offset;
 	ReferenceHeader ref_header;
-#ifdef EXTRA
 	ReferenceHeader2 header2;
-#endif
 };
 
 void make_db();

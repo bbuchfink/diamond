@@ -22,7 +22,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <vector>
 #include <limits.h>
 #include "../io/deserializer.h"
-#include "../io/input_file.h"
 
 using std::vector;
 
@@ -30,7 +29,7 @@ template <typename _t>
 struct CompactArray
 {
 
-	CompactArray(InputFile &in, size_t size, size_t data_size) :
+	CompactArray(Deserializer &in, size_t size, size_t data_size) :
 		data_(data_size)
 	{
 		in.read(data_.data(), data_size);
