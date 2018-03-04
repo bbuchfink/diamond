@@ -20,6 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define VARINT_H_
 
 #include <stdint.h>
+#include <stdexcept>
 #include "../intrin.h"
 
 template<typename _out>
