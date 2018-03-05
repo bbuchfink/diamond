@@ -33,7 +33,7 @@ struct CompactArray
 		data_(data_size)
 	{
 		in.read(data_.data(), data_size);
-		limits_.reserve(size);
+		limits_.reserve(size + 1);
 		limits_.push_back(0);
 		Deserializer d(data_.data(), data_.data() + data_.size(), Deserializer::VARINT);
 		_t x;

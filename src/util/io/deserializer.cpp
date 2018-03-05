@@ -18,6 +18,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <assert.h>
 #include <algorithm>
+#include <string.h>
 #include "deserializer.h"
 
 template<typename _t>
@@ -75,19 +76,17 @@ size_t Deserializer::read_raw(char *ptr, size_t count)
 		pop(ptr, count);
 		return count;
 	}
-	else {
-		size_t total = 0;
-		do {
-			const size_t n = std::min(count, avail());
-			pop(ptr, n);
-			ptr += n;
-			count -= n;
-			total += n;
-			if (avail() == 0)
-				fetch();
-		} while (count > 0 && avail() > 0);
-		return total;
-	}
+	size_t total = 0;
+	do {
+		const size_t n = std::min(count, avail());
+		pop(ptr, n);
+		ptr += n;
+		count -= n;
+		total += n;
+		if (avail() == 0)
+			fetch();
+	} while (count > 0 && avail() > 0);
+	return total;
 }
 
 bool Deserializer::fetch()

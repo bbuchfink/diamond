@@ -108,7 +108,7 @@ inline void finish_daa(OutputFile &f, const DatabaseFile &db)
 	}
 	h2_.block_size[1] = s;
 
-	f.write(dict.len_);
+	f.write(dict.len_.data(), dict.len_.size());
 	h2_.block_size[2] = dict.len_.size() * sizeof(uint32_t);
 
 	f.seek(sizeof(DAA_header1));
