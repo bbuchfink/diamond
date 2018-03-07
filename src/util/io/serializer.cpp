@@ -80,6 +80,7 @@ void Serializer::reset_buffer()
 
 void Serializer::write_raw(const char *ptr, size_t count)
 {
+	// !!!
 	if (next_ > begin_)
 		flush();
 	reset_buffer();

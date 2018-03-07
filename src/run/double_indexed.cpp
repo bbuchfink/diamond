@@ -126,7 +126,8 @@ void run_ref_chunk(DatabaseFile &db_file,
 	char *query_buffer,
 	OutputFile &master_out,
 	PtrVector<TempFile> &tmp_file,
-	const Parameters &params)
+	const Parameters &params,
+	const Metadata &metadata)
 {
 	task_timer timer("Building reference histograms");
 	if(config.algo==Config::query_indexed)
@@ -163,7 +164,7 @@ void run_ref_chunk(DatabaseFile &db_file,
 		out = &master_out;
 
 	timer.go("Computing alignments");
-	align_queries(*Trace_pt_buffer::instance, out, params);
+	align_queries(*Trace_pt_buffer::instance, out, params, metadata);
 	delete Trace_pt_buffer::instance;
 
 	if (blocked_processing)
@@ -179,7 +180,8 @@ void run_query_chunk(DatabaseFile &db_file,
 	Timer &total_timer,
 	unsigned query_chunk,
 	OutputFile &master_out,
-	OutputFile *unaligned_file)
+	OutputFile *unaligned_file,
+	const Metadata &metadata)
 {
 	static const double max_coverage = 0.15;
 
@@ -230,7 +232,7 @@ void run_query_chunk(DatabaseFile &db_file,
 	timer.finish();
 	
 	for (current_ref_block = 0; db_file.load_seqs(); ++current_ref_block)
-		run_ref_chunk(db_file, total_timer, query_chunk, query_len_bounds, query_buffer, master_out, tmp_file, params);
+		run_ref_chunk(db_file, total_timer, query_chunk, query_len_bounds, query_buffer, master_out, tmp_file, params, metadata);
 
 	timer.go("Deallocating buffers");
 	delete[] query_buffer;
@@ -239,7 +241,7 @@ void run_query_chunk(DatabaseFile &db_file,
 
 	if (blocked_processing) {
 		timer.go("Joining output blocks");
-		join_blocks(current_ref_block, master_out, tmp_file, params);
+		join_blocks(current_ref_block, master_out, tmp_file, params, metadata);
 	}
 
 	if (unaligned_file) {
@@ -291,7 +293,7 @@ void master_thread(DatabaseFile &db_file, Timer &total_timer, Metadata &metadata
 			timer.finish();
 		}
 
-		run_query_chunk(db_file, total_timer, current_query_chunk, *master_out, unaligned_file.get());
+		run_query_chunk(db_file, total_timer, current_query_chunk, *master_out, unaligned_file.get(), metadata);
 	}
 
 	timer.go("Closing the input file");

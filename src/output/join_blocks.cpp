@@ -165,7 +165,7 @@ struct BlockJoiner
 	vector<BinaryBuffer::Iterator> it;
 };
 
-void join_query(vector<BinaryBuffer> &buf, TextBuffer &out, Statistics &statistics, unsigned query, const char *query_name, unsigned query_source_len, Output_format &f)
+void join_query(vector<BinaryBuffer> &buf, TextBuffer &out, Statistics &statistics, unsigned query, const char *query_name, unsigned query_source_len, Output_format &f, const Metadata &metadata)
 {
 	const ReferenceDictionary& dict = ReferenceDictionary::get();
 	TranslatedSequence query_seq(get_translated_query(query));
@@ -197,7 +197,7 @@ void join_query(vector<BinaryBuffer> &buf, TextBuffer &out, Statistics &statisti
 					dict.name(i->subject_id),
 					dict.length(i->subject_id),
 					n_target_seq,
-					hsp_num).parse(), out);
+					hsp_num).parse(), metadata, out);
 			}
 		}
 
@@ -208,7 +208,7 @@ void join_query(vector<BinaryBuffer> &buf, TextBuffer &out, Statistics &statisti
 	}
 }
 
-void join_worker(Task_queue<TextBuffer, JoinWriter> *queue, const Parameters *params)
+void join_worker(Task_queue<TextBuffer, JoinWriter> *queue, const Parameters *params, const Metadata *metadata)
 {
 	JoinFetcher fetcher;
 	size_t n;
@@ -237,7 +237,7 @@ void join_worker(Task_queue<TextBuffer, JoinWriter> *queue, const Parameters *pa
 		else
 			f->print_query_intro(fetcher.query_id, query_name, (unsigned)query_seq.length(), *out, false);
 
-		join_query(fetcher.buf, *out, stat, fetcher.query_id, query_name, (unsigned)query_seq.length(), *f);
+		join_query(fetcher.buf, *out, stat, fetcher.query_id, query_name, (unsigned)query_seq.length(), *f, *metadata);
 
 		if (*f == Output_format::daa)
 			finish_daa_query_record(*out, seek_pos);
@@ -250,7 +250,7 @@ void join_worker(Task_queue<TextBuffer, JoinWriter> *queue, const Parameters *pa
 	statistics += stat;
 }
 
-void join_blocks(unsigned ref_blocks, OutputFile &master_out, const PtrVector<TempFile> &tmp_file, const Parameters &params)
+void join_blocks(unsigned ref_blocks, OutputFile &master_out, const PtrVector<TempFile> &tmp_file, const Parameters &params, const Metadata &metadata)
 {
 	ReferenceDictionary::get().init_rev_map();
 	JoinFetcher::init(tmp_file);
@@ -258,7 +258,7 @@ void join_blocks(unsigned ref_blocks, OutputFile &master_out, const PtrVector<Te
 	Task_queue<TextBuffer, JoinWriter> queue(3 * config.threads_, writer);
 	Thread_pool threads;
 	for (unsigned i = 0; i < config.threads_; ++i)
-		threads.push_back(launch_thread(join_worker, &queue, &params));
+		threads.push_back(launch_thread(join_worker, &queue, &params, &metadata));
 	threads.join_all();
 	JoinFetcher::finish();
 	if (*output_format != Output_format::daa && config.report_unaligned != 0) {

@@ -29,6 +29,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../dp/dp.h"
 #include "../data/reference.h"
 #include "../basic/parameters.h"
+#include "../data/metadata.h"
 
 using std::vector;
 using std::pair;
@@ -75,7 +76,7 @@ struct QueryMapper
 {
 	QueryMapper(const Parameters &params, size_t query_id, Trace_pt_list::iterator begin, Trace_pt_list::iterator end);
 	void init();
-	bool generate_output(TextBuffer &buffer, Statistics &stat);
+	bool generate_output(TextBuffer &buffer, Statistics &stat, const Metadata &metadata);
 	void rank_targets(double ratio, double factor);
 	void score_only_culling();
 	int raw_score_cutoff() const;

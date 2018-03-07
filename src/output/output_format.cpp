@@ -79,7 +79,7 @@ void Output_format::print_title(TextBuffer &buf, const char *id, bool full_title
 void print_hsp(Hsp &hsp, const TranslatedSequence &query)
 {
 	TextBuffer buf;
-	Pairwise_format().print_match(Hsp_context(hsp, 0, query, "", 0, 0, "", 0, 0, 0), buf);
+	Pairwise_format().print_match(Hsp_context(hsp, 0, query, "", 0, 0, "", 0, 0, 0), Metadata(), buf);
 	buf << '\0';
 	cout << buf.get_begin() << endl;
 }
@@ -133,7 +133,7 @@ void init_output(bool have_taxonomy)
 		message_stream << "Percentage range of top alignment score to report hits: " << config.toppercent << endl;
 }
 
-void XML_format::print_match(const Hsp_context &r, TextBuffer &out)
+void XML_format::print_match(const Hsp_context &r, const Metadata &metadata, TextBuffer &out)
 {
 	if(r.hsp_num == 0) {
 		if (r.hit_num > 0)

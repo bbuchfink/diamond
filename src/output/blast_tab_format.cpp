@@ -98,7 +98,13 @@ Blast_tab_format::Blast_tab_format() :
 	}
 }
 
-void print_staxids(TextBuffer &out, const char *id)
+#ifdef EXTRA
+void print_staxids(TextBuffer &out, unsigned subject_global_id, const Metadata &metadata)
+{
+	out.print((*metadata.taxon_list)[subject_global_id], ';');
+}
+#else
+void print_staxids(TextBuffer &out, const char *id, const Metadata &metadata)
 {
 	std::set<unsigned> taxons;
 	taxonomy.get_taxids(id, taxons);
@@ -109,8 +115,9 @@ void print_staxids(TextBuffer &out, const char *id)
 	for (; i != taxons.end(); ++i)
 		out << ';' << *i;
 }
+#endif
 
-void Blast_tab_format::print_match(const Hsp_context& r, TextBuffer &out)
+void Blast_tab_format::print_match(const Hsp_context& r, const Metadata &metadata, TextBuffer &out)
 {
 	for (vector<unsigned>::const_iterator i = fields.begin(); i != fields.end(); ++i) {
 		switch (*i) {
@@ -228,7 +235,11 @@ void Blast_tab_format::print_match(const Hsp_context& r, TextBuffer &out)
 		}
 			break;
 		case 34:
+#ifdef EXTRA
+			print_staxids(out, r.orig_subject_id, metadata);
+#else
 			print_staxids(out, r.subject_name);
+#endif
 			break;
 		case 39:
 			print_title(out, r.subject_name, true, false, "<>");

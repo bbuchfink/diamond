@@ -18,7 +18,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "output_format.h"
 
-void Pairwise_format::print_match(const Hsp_context& r, TextBuffer &out)
+void Pairwise_format::print_match(const Hsp_context& r, const Metadata &metadata, TextBuffer &out)
 {
 	static const unsigned width = 60;
 	const int dna_len = (int)r.query.source().length();

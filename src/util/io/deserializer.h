@@ -95,7 +95,7 @@ struct Deserializer
 	template<typename _t>
 	void read(_t &x)
 	{
-		if (avail() <= sizeof(_t)) {
+		if (avail() >= sizeof(_t)) {
 			x = *(const _t*)begin_;
 			begin_ += sizeof(_t);
 		}

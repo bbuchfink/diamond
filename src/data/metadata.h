@@ -16,6 +16,9 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
+#ifndef METADATA_H_
+#define METADATA_H_
+
 #include "taxon_list.h"
 
 struct Metadata
@@ -25,3 +28,5 @@ struct Metadata
 	{}
 	TaxonList *taxon_list;
 };
+
+#endif

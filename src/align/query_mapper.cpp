@@ -179,7 +179,7 @@ void QueryMapper::score_only_culling()
 	targets.erase(i, targets.end());
 }
 
-bool QueryMapper::generate_output(TextBuffer &buffer, Statistics &stat)
+bool QueryMapper::generate_output(TextBuffer &buffer, Statistics &stat, const Metadata &metadata)
 {
 	std::stable_sort(targets.begin(), targets.end(), Target::compare);
 
@@ -240,7 +240,7 @@ bool QueryMapper::generate_output(TextBuffer &buffer, Statistics &stat)
 						ref_title,
 						subject_len,
 						n_target_seq,
-						hit_hsps), buffer);
+						hit_hsps), metadata, buffer);
 			}
 
 			++n_hsp;

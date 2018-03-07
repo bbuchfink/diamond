@@ -62,7 +62,7 @@ auto_ptr<Queue> Align_fetcher::queue_;
 vector<hit>::iterator Align_fetcher::it_;
 vector<hit>::iterator Align_fetcher::end_;
 
-void align_worker(size_t thread_id, const Parameters *params)
+void align_worker(size_t thread_id, const Parameters *params, const Metadata *metadata)
 {
 	Align_fetcher hits;
 	Statistics stat;
@@ -93,7 +93,7 @@ void align_worker(size_t thread_id, const Parameters *params)
 		TextBuffer *buf = 0;
 		if (*output_format != Output_format::null) {
 			buf = new TextBuffer;
-			const bool aligned = mapper->generate_output(*buf, stat);
+			const bool aligned = mapper->generate_output(*buf, stat, *metadata);
 			if (aligned && !config.unaligned.empty())
 				query_aligned[hits.query] = true;
 		}
@@ -104,7 +104,7 @@ void align_worker(size_t thread_id, const Parameters *params)
 	::dp_stat += dp_stat;
 }
 
-void align_queries(Trace_pt_buffer &trace_pts, OutputFile* output_file, const Parameters &params)
+void align_queries(Trace_pt_buffer &trace_pts, OutputFile* output_file, const Parameters &params, const Metadata &metadata)
 {
 	const size_t max_size = (size_t)std::min(config.chunk_size*1e9 * 9 * 2 / config.lowmem, 2e9);
 	pair<size_t, size_t> query_range;
@@ -128,7 +128,7 @@ void align_queries(Trace_pt_buffer &trace_pts, OutputFile* output_file, const Pa
 		size_t n_threads = (config.threads_align == 0 ? config.threads_ : config.threads_align);
 		for (size_t i = 0; i < n_threads; ++i)
 			//threads.push_back(launch_thread(static_cast<void(*)(size_t)>(&align_worker), i));
-			threads.push_back(launch_thread(align_worker, i, &params));
+			threads.push_back(launch_thread(align_worker, i, &params, &metadata));
 		threads.join_all();
 		timer.finish();
 

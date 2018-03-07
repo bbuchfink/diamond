@@ -27,6 +27,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/thread.h"
 #include "../data/taxonomy.h"
 #include "../basic/parameters.h"
+#include "../data/metadata.h"
 
 const unsigned view_buf_size = 32;
 
@@ -71,7 +72,7 @@ struct View_fetcher
 	DAA_file &daa;
 };
 
-void view_query(DAA_query_record &r, TextBuffer &out, Output_format &format, const Parameters &params)
+void view_query(DAA_query_record &r, TextBuffer &out, Output_format &format, const Parameters &params, const Metadata &metadata)
 {
 	auto_ptr<Output_format> f(format.clone());
 	f->print_query_intro(r.query_num, r.query_name.c_str(), (unsigned)r.query_len(), out, false);
@@ -82,19 +83,20 @@ void view_query(DAA_query_record &r, TextBuffer &out, Output_format &format, con
 			continue;
 		if (!config.output_range(i->hit_num, i->score, top_score))
 			break;
-		f->print_match(i->context(), out);
+		f->print_match(i->context(), metadata, out);
 	}
 	f->print_query_epilog(out, r.query_name.c_str(), false, params);
 }
 
 struct View_context
 {
-	View_context(DAA_file &daa, View_writer &writer, Output_format &format, const Parameters &params) :
+	View_context(DAA_file &daa, View_writer &writer, Output_format &format, const Parameters &params, const Metadata &metadata) :
 		daa(daa),
 		writer(writer),
 		queue(3 * config.threads_, writer),
 		format(format),
-		params(params)
+		params(params),
+		metadata(metadata)
 	{ }
 	void operator()(unsigned thread_id)
 	{
@@ -105,7 +107,7 @@ struct View_context
 			while (queue.get(n, buffer, query_buf)) {
 				for (unsigned j = 0; j < query_buf.n; ++j) {
 					DAA_query_record r(daa, query_buf.buf[j], query_buf.query_num + j);
-					view_query(r, *buffer, format, params);
+					view_query(r, *buffer, format, params, metadata);
 				}
 				queue.push(n);
 			}
@@ -120,6 +122,7 @@ struct View_context
 	Task_queue<TextBuffer, View_writer> queue;
 	Output_format &format;
 	const Parameters &params;
+	const Metadata &metadata;
 };
 
 void view()
@@ -136,6 +139,7 @@ void view()
 	message_stream << "DB letters = " << daa.db_letters() << endl;
 
 	const Parameters params(daa.db_seqs(), daa.db_letters());
+	Metadata metadata;
 
 	init_output(false);
 	taxonomy.init();
@@ -148,12 +152,12 @@ void view()
 	if (daa.read_query_buffer(buf, query_num)) {
 		DAA_query_record r(daa, buf, query_num);
 		TextBuffer out;
-		view_query(r, out, *output_format, params);
+		view_query(r, out, *output_format, params, metadata);
 
 		output_format->print_header(*writer.f_, daa.mode(), daa.score_matrix(), daa.gap_open_penalty(), daa.gap_extension_penalty(), daa.evalue(), r.query_name.c_str(), (unsigned)r.query_len());
 		writer(out);
 
-		View_context context(daa, writer, *output_format, params);
+		View_context context(daa, writer, *output_format, params, metadata);
 		launch_thread_pool(context, config.threads_);
 	}
 	else {

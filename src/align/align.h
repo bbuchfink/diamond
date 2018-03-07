@@ -26,6 +26,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/task_queue.h"
 #include "../basic/statistics.h"
 #include "query_mapper.h"
+#include "../data/metadata.h"
 
 using std::vector;
 using std::auto_ptr;
@@ -64,7 +65,7 @@ private:
 	Task_queue<_buffer, Output_writer> queue;
 };
 
-void align_queries(Trace_pt_buffer &trace_pts, OutputFile* output_file, const Parameters &params);
+void align_queries(Trace_pt_buffer &trace_pts, OutputFile* output_file, const Parameters &params, const Metadata &metadata);
 
 namespace ExtensionPipeline {
 	namespace Greedy {

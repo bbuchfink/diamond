@@ -22,7 +22,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 using std::set;
 
-void Taxon_format::print_match(const Hsp_context &r, TextBuffer &out)
+void Taxon_format::print_match(const Hsp_context &r, const Metadata &metadata, TextBuffer &out)
 {
 	set<unsigned> taxons;
 	taxonomy.get_taxids(r.subject_name, taxons);

@@ -24,8 +24,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <stdexcept>
 #include <stdint.h>
 #include <limits>
+#include <vector>
 #include "util.h"
 #include "algo/varint.h"
+
+using std::vector;
 
 struct TextBuffer
 {
@@ -212,6 +215,15 @@ struct TextBuffer
 		memset(ptr_, ' ', padding);
 		memcpy(ptr_ + padding, buf, n);
 		ptr_ += padding + n;
+		return *this;
+	}
+
+	TextBuffer& print(const vector<unsigned> &v, char separator)
+	{
+		vector<unsigned>::const_iterator i = v.begin();
+		*this << *(i++);
+		for (; i < v.end(); ++i)
+			*this << ';' << *i;
 		return *this;
 	}
 
