@@ -104,7 +104,7 @@ void print_staxids(TextBuffer &out, unsigned subject_global_id, const Metadata &
 	out.print((*metadata.taxon_list)[subject_global_id], ';');
 }
 #else
-void print_staxids(TextBuffer &out, const char *id, const Metadata &metadata)
+void print_staxids(TextBuffer &out, const char *id)
 {
 	std::set<unsigned> taxons;
 	taxonomy.get_taxids(id, taxons);
