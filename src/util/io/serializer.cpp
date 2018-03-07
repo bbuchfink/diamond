@@ -51,8 +51,9 @@ void Serializer::rewind()
 	reset_buffer();
 }
 
-size_t Serializer::tell() const
+size_t Serializer::tell()
 {
+	flush();
 	return buffer_->tell();
 }
 

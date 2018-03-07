@@ -355,6 +355,8 @@ void master_thread_di()
 	Metadata metadata;
 #ifdef EXTRA
 	if (output_format->needs_taxonomy) {
+		if (!db_file.has_taxonomy())
+			throw std::runtime_error("Output format requires taxonomic information, which needs to be built into the database during construction.");
 		timer.go("Loading taxonomy");
 		metadata.taxon_list = new TaxonList(db_file.seek(db_file.header2.taxon_array_offset), db_file.ref_header.sequences, db_file.header2.taxon_array_size);
 	}

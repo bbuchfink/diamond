@@ -107,7 +107,7 @@ struct Serializer
 	void write_raw(const char *ptr, size_t count);
 	void seek(size_t pos);
 	void rewind();
-	size_t tell() const;
+	size_t tell();
 	void close();
 	string file_name() const;
 	FILE* file();
