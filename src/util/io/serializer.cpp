@@ -54,6 +54,7 @@ void Serializer::rewind()
 size_t Serializer::tell()
 {
 	flush();
+	reset_buffer();
 	return buffer_->tell();
 }
 
