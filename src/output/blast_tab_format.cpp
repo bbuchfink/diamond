@@ -87,7 +87,7 @@ Blast_tab_format::Blast_tab_format() :
 			throw std::runtime_error(string("Invalid output field: ") + *i);
 #ifdef EXTRA
 		if (j == 34)
-			needs_taxonomy = true;
+			needs_taxon_id_lists = true;
 #else
 		if (j == 34 && config.prot_accession2taxid.empty())
 			throw std::runtime_error("staxids output field requires setting the --taxonmap parameter.");

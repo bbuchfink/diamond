@@ -313,6 +313,7 @@ void master_thread(DatabaseFile &db_file, Timer &total_timer, Metadata &metadata
 
 	timer.go("Deallocating taxonomy");
 	delete metadata.taxon_list;
+	delete metadata.taxon_nodes;
 
 	timer.finish();
 	message_stream << "Total time = " << total_timer.getElapsedTimeInSec() << "s" << endl;
@@ -341,7 +342,7 @@ void master_thread_di()
 	DatabaseFile db_file;
 	timer.finish();
 
-	init_output(db_file.has_taxonomy());
+	init_output(db_file.has_taxon_id_lists(), db_file.has_taxon_nodes());
 
 	verbose_stream << "Reference = " << config.database << endl;
 	verbose_stream << "Sequences = " << db_file.ref_header.sequences << endl;
@@ -354,11 +355,15 @@ void master_thread_di()
 
 	Metadata metadata;
 #ifdef EXTRA
-	if (output_format->needs_taxonomy) {
-		if (!db_file.has_taxonomy())
-			throw std::runtime_error("Output format requires taxonomic information, which needs to be built into the database during construction.");
-		timer.go("Loading taxonomy");
+	if (output_format->needs_taxon_id_lists) {
+		timer.go("Loading taxonomy mapping");
 		metadata.taxon_list = new TaxonList(db_file.seek(db_file.header2.taxon_array_offset), db_file.ref_header.sequences, db_file.header2.taxon_array_size);
+		timer.finish();
+	}
+	if (output_format->needs_taxon_nodes) {
+		timer.go("Loading taxonomy nodes");
+		metadata.taxon_nodes = new TaxonomyNodes(db_file.seek(db_file.header2.taxon_nodes_offset));
+		timer.finish();
 	}
 #else
 	taxonomy.init();

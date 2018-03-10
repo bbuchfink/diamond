@@ -16,20 +16,32 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#ifndef METADATA_H_
-#define METADATA_H_
+#ifndef TAXONOMY_NODES_H_
+#define TAXONOMY_NODES_H_
 
-#include "taxon_list.h"
-#include "taxonomy_nodes.h"
+#include <vector>
+#include "../util/io/serializer.h"
+#include "../util/io/deserializer.h"
 
-struct Metadata
+using std::vector;
+
+struct TaxonomyNodes
 {
-	Metadata():
-		taxon_list(NULL),
-		taxon_nodes(NULL)
-	{}
-	TaxonList *taxon_list;
-	TaxonomyNodes *taxon_nodes;
+
+	TaxonomyNodes(Deserializer &in);
+	static void build(Serializer &out);
+	unsigned get_parent(unsigned taxid) const
+	{
+		if (taxid >= parent_.size())
+			throw std::runtime_error(string("No taxonomy node found for taxon id ") + to_string(taxid));
+		return parent_[taxid];
+	}
+	unsigned get_lca(unsigned t1, unsigned t2) const;
+
+private:
+
+	vector<unsigned> parent_;
+
 };
 
 #endif

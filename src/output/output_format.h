@@ -33,7 +33,8 @@ struct Output_format
 {
 	Output_format(unsigned code):
 		code(code),
-		needs_taxonomy(false)
+		needs_taxon_id_lists(false),
+		needs_taxon_nodes(false)
 	{}
 	virtual void print_query_intro(size_t query_num, const char *query_name, unsigned query_len, TextBuffer &out, bool unaligned) const
 	{}
@@ -54,7 +55,7 @@ struct Output_format
 		return code;
 	}
 	unsigned code;
-	bool needs_taxonomy;
+	bool needs_taxon_id_lists, needs_taxon_nodes;
 	enum { daa, blast_tab, blast_xml, sam, blast_pairwise, null, taxon };
 };
 
@@ -160,10 +161,11 @@ struct Taxon_format : public Output_format
 		taxid(0),
 		evalue(std::numeric_limits<double>::max())
 	{
-		config.salltitles = true;
 #ifdef EXTRA
-		needs_taxonomy = true;
+		needs_taxon_id_lists = true;
+		needs_taxon_nodes = true;
 #else
+		config.salltitles = true;
 		if (config.prot_accession2taxid.empty())
 			throw std::runtime_error("Output format requires setting the --taxonmap parameter.");
 		if (config.nodesdmp.empty())
@@ -183,7 +185,7 @@ struct Taxon_format : public Output_format
 };
 
 Output_format* get_output_format();
-void init_output(bool have_taxonomy);
+void init_output(bool have_taxon_id_lists, bool have_taxon_nodes);
 void print_hsp(Hsp &hsp, const TranslatedSequence &query);
 
 #endif /* OUTPUT_FORMAT_H_ */

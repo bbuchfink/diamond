@@ -40,12 +40,12 @@ struct Deserializer
 		buffer_(NULL),
 		begin_(begin),
 		end_(end),
-		varint_(flags & VARINT)
+		varint(flags & VARINT)
 	{}
 
 	Deserializer& operator>>(unsigned &x)
 	{
-		if (varint_)
+		if (varint)
 			read_varint(*this, x);
 		else
 			read(x);
@@ -119,6 +119,8 @@ struct Deserializer
 	bool read_until(vector<char> &dst, char delimiter);
 	~Deserializer();
 
+	bool varint;
+
 protected:
 
 	template<typename _t>
@@ -133,7 +135,6 @@ protected:
 	
 	StreamEntity *buffer_;
 	const char *begin_, *end_;
-	bool varint_;
 };
 
 #endif

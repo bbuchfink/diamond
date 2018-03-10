@@ -220,6 +220,7 @@ struct TextBuffer
 
 	TextBuffer& print(const vector<unsigned> &v, char separator)
 	{
+		if (v.empty()) return *this;
 		vector<unsigned>::const_iterator i = v.begin();
 		*this << *(i++);
 		for (; i < v.end(); ++i)

@@ -37,7 +37,7 @@ Deserializer::Deserializer(StreamEntity* buffer):
 	buffer_(buffer),
 	begin_(NULL),
 	end_(NULL),
-	varint_(false)
+	varint(false)
 {
 }
 

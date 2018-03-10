@@ -92,7 +92,7 @@ struct Taxonomy
 
 	unsigned get_parent(unsigned taxid) const
 	{
-		if (parent_.size() <= taxid)
+		if (taxid >= parent_.size())
 			throw std::runtime_error(string("No taxonomy node found for taxon id ") + to_string(taxid));
 		return parent_[taxid];
 	}
@@ -103,6 +103,8 @@ private:
 	
 	std::vector<std::pair<Accession, unsigned> > accession2taxid_;
 	std::vector<unsigned> parent_;
+
+	friend struct TaxonomyNodes;
 
 };
 

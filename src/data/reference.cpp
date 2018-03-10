@@ -30,6 +30,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "taxonomy.h"
 #include "../util/io/file_backed_buffer.h"
 #include "taxon_list.h"
+#include "taxonomy_nodes.h"
 
 String_set<0>* ref_ids::data_ = 0;
 Partitioned_histogram ref_hst;
@@ -75,10 +76,16 @@ void DatabaseFile::read_header(InputFile &stream, ReferenceHeader &header)
 		throw Database_format_exception();
 }
 
-bool DatabaseFile::has_taxonomy()
+bool DatabaseFile::has_taxon_id_lists()
 {
 	return header2.taxon_array_offset != 0;
 }
+
+bool DatabaseFile::has_taxon_nodes()
+{
+	return header2.taxon_nodes_offset != 0;
+}
+
 
 void DatabaseFile::rewind()
 {
@@ -170,6 +177,10 @@ void make_db()
 		header2.taxon_array_offset = out.tell();
 		TaxonList::build(out, accessions.rewind(), n_seqs);
 		header2.taxon_array_size = out.tell() - header2.taxon_array_offset;
+	}
+	if (!config.nodesdmp.empty()) {
+		header2.taxon_nodes_offset = out.tell();
+		TaxonomyNodes::build(out);
 	}
 
 	timer.go("Closing the input file");

@@ -104,6 +104,7 @@ struct Serializer
 	}
 
 	void set(int flag);
+	void unset(int flag);
 	void write_raw(const char *ptr, size_t count);
 	void seek(size_t pos);
 	void rewind();

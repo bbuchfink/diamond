@@ -51,9 +51,10 @@ struct ReferenceHeader2
 {
 	ReferenceHeader2():
 		taxon_array_offset(0),
-		taxon_array_size(0)
+		taxon_array_size(0),
+		taxon_nodes_offset(0)
 	{}
-	uint64_t taxon_array_offset, taxon_array_size;
+	uint64_t taxon_array_offset, taxon_array_size, taxon_nodes_offset;
 };
 
 struct Database_format_exception : public std::exception
@@ -70,7 +71,8 @@ struct DatabaseFile : public InputFile
 	bool load_seqs();
 	void get_seq();
 	void read_seq(string &id, vector<char> &seq);
-	bool has_taxonomy();
+	bool has_taxon_id_lists();
+	bool has_taxon_nodes();
 
 	enum { min_build_required = 74 };
 

@@ -82,10 +82,6 @@ void Serializer::reset_buffer()
 
 void Serializer::write_raw(const char *ptr, size_t count)
 {
-	// !!!
-	if (next_ > begin_)
-		flush();
-	reset_buffer();
 	do {
 		size_t n = std::min(avail(), count);
 		memcpy(next_, ptr, n);
@@ -104,6 +100,16 @@ void Serializer::set(int flag)
 	switch (flag) {
 	case VARINT:
 		varint_ = true;
+	default:
+		;
+	}
+}
+
+void Serializer::unset(int flag)
+{
+	switch (flag) {
+	case VARINT:
+		varint_ = false;
 	default:
 		;
 	}
