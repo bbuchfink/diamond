@@ -70,3 +70,22 @@ unsigned TaxonomyNodes::get_lca(unsigned t1, unsigned t2) const
 	}
 	return p;
 }
+
+bool TaxonomyNodes::contained(const vector<unsigned> query, const set<unsigned> filter)
+{
+	static const int max = 64;
+	if (filter.find(1) != filter.end())
+		return true;
+	for (vector<unsigned>::const_iterator i = query.begin(); i != query.end(); ++i) {
+		int n = 0;
+		unsigned p = *i;
+		while (p > 1 && filter.find(p) == filter.end()) {
+			p = get_parent(p);
+			if (++n > max)
+				throw std::runtime_error("Path in taxonomy too long (3).");
+		}
+		if (p > 1)
+			return true;
+	}
+	return false;
+}

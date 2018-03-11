@@ -39,7 +39,7 @@ void get_seq()
 void random_seqs()
 {
 	DatabaseFile db_file;
-	db_file.load_seqs();
+	db_file.load_seqs(Metadata());
 	cout << "Sequences = " << ref_seqs::get().get_length() << endl;
 	std::set<unsigned> n;
 	const size_t count = atoi(config.seq_no[0].c_str());
@@ -81,7 +81,7 @@ void sort_file()
 void db_stat()
 {
 	DatabaseFile db_file;
-	db_file.load_seqs();
+	db_file.load_seqs(Metadata());
 	cout << "Sequences = " << ref_seqs::get().get_length() << endl;
 
 	size_t letters = 0;
@@ -158,7 +158,7 @@ void test_io()
 		total += buf_size;*/
 
 	DatabaseFile db;
-	db.load_seqs();
+	db.load_seqs(Metadata());
 
 	size_t total = ref_seqs::get().raw_len() + ref_ids::get().raw_len();
 	cout << "MBytes/sec = " << total / 1e6 / t.getElapsedTime() << endl;

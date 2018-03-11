@@ -231,7 +231,7 @@ void run_query_chunk(DatabaseFile &db_file,
 	db_file.rewind();
 	timer.finish();
 	
-	for (current_ref_block = 0; db_file.load_seqs(); ++current_ref_block)
+	for (current_ref_block = 0; db_file.load_seqs(metadata); ++current_ref_block)
 		run_ref_chunk(db_file, total_timer, query_chunk, query_len_bounds, query_buffer, master_out, tmp_file, params, metadata);
 
 	timer.go("Deallocating buffers");
@@ -355,12 +355,16 @@ void master_thread_di()
 
 	Metadata metadata;
 #ifdef EXTRA
-	if (output_format->needs_taxon_id_lists) {
+	if (output_format->needs_taxon_id_lists || !config.taxonlist.empty()) {
+		if (!config.taxonlist.empty() && db_file.header2.taxon_array_offset == 0)
+			throw std::runtime_error("--taxonlist option requires taxonomy mapping built into the database.");
 		timer.go("Loading taxonomy mapping");
 		metadata.taxon_list = new TaxonList(db_file.seek(db_file.header2.taxon_array_offset), db_file.ref_header.sequences, db_file.header2.taxon_array_size);
 		timer.finish();
 	}
-	if (output_format->needs_taxon_nodes) {
+	if (output_format->needs_taxon_nodes || !config.taxonlist.empty()) {
+		if (!config.taxonlist.empty() && db_file.header2.taxon_nodes_offset == 0)
+			throw std::runtime_error("--taxonlist option requires taxonomy nodes built into the database.");
 		timer.go("Loading taxonomy nodes");
 		metadata.taxon_nodes = new TaxonomyNodes(db_file.seek(db_file.header2.taxon_nodes_offset));
 		timer.finish();

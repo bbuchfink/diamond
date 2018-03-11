@@ -20,10 +20,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define TAXONOMY_NODES_H_
 
 #include <vector>
+#include <set>
 #include "../util/io/serializer.h"
 #include "../util/io/deserializer.h"
 
 using std::vector;
+using std::set;
 
 struct TaxonomyNodes
 {
@@ -37,6 +39,7 @@ struct TaxonomyNodes
 		return parent_[taxid];
 	}
 	unsigned get_lca(unsigned t1, unsigned t2) const;
+	bool contained(const vector<unsigned> query, const set<unsigned> filter);
 
 private:
 

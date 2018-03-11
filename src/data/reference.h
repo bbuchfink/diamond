@@ -25,6 +25,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/io/input_file.h"
 #include "../data/seed_histogram.h"
 #include "sequence_set.h"
+#include "metadata.h"
 
 using std::vector;
 using std::string;
@@ -72,7 +73,7 @@ struct DatabaseFile : public InputFile
 	DatabaseFile();
 	static void read_header(InputFile &stream, ReferenceHeader &header);
 	void rewind();
-	bool load_seqs();
+	bool load_seqs(const Metadata &metadata);
 	void get_seq();
 	void read_seq(string &id, vector<char> &seq);
 	bool has_taxon_id_lists();

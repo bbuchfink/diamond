@@ -209,30 +209,39 @@ void make_db()
 	message_stream << "Total time = " << total.getElapsedTimeInSec() << "s" << endl;
 }
 
-bool DatabaseFile::load_seqs()
+bool DatabaseFile::load_seqs(const Metadata &metadata)
 {
 	task_timer timer("Loading reference sequences");
 	const size_t max_letters = (size_t)(config.chunk_size*1e9);
 	seek(pos_array_offset);
-	size_t letters = 0, seqs = 0, id_letters = 0;
+	size_t database_id = (pos_array_offset - ref_header.pos_array_offset) / sizeof(Pos_record);
+	size_t letters = 0, seqs = 0, id_letters = 0, seqs_processed = 0;
+	vector<uint64_t> filtered_pos;
+	const set<unsigned> taxon_filter_list(parse_csv(config.taxonlist));
+	const bool filtered = !taxon_filter_list.empty();
 
 	ref_seqs::data_ = new Sequence_set;
 	ref_ids::data_ = new String_set<0>;
 
 	Pos_record r;
 	read(&r, 1);
-	size_t start_offset = r.pos;
+	uint64_t start_offset = r.pos;
 
 	while (r.seq_len > 0 && letters < max_letters) {
 		Pos_record r_next;
 		read(&r_next, 1);
-		letters += r.seq_len;
-		ref_seqs::data_->reserve(r.seq_len);
-		const size_t id = r_next.pos - r.pos - r.seq_len - 3;
-		id_letters += id;
-		ref_ids::data_->reserve(id);
+		if (!filtered || metadata.taxon_nodes->contained((*metadata.taxon_list)[database_id], taxon_filter_list)) {
+			letters += r.seq_len;
+			ref_seqs::data_->reserve(r.seq_len);
+			const size_t id_len = r_next.pos - r.pos - r.seq_len - 3;
+			id_letters += id_len;
+			ref_ids::data_->reserve(id_len);
+			++seqs;
+			if (filtered) filtered_pos.push_back(r.pos);
+		}
 		pos_array_offset += sizeof(Pos_record);
-		++seqs;
+		++database_id;
+		++seqs_processed;
 		r = r_next;
 	}
 
@@ -248,6 +257,7 @@ bool DatabaseFile::load_seqs()
 	size_t masked = 0;
 
 	for (size_t n = 0; n < seqs; ++n) {
+		if (filtered) seek(filtered_pos[n]);
 		read(ref_seqs::data_->ptr(n) - 1, ref_seqs::data_->length(n) + 2);
 		*(ref_seqs::data_->ptr(n) - 1) = sequence::DELIMITER;
 		*(ref_seqs::data_->ptr(n) + ref_seqs::data_->length(n)) = sequence::DELIMITER;
@@ -263,7 +273,7 @@ bool DatabaseFile::load_seqs()
 	ref_seqs::get().print_stats();
 	log_stream << "Masked letters = " << masked << endl;	
 
-	blocked_processing = seqs < ref_header.sequences;
+	blocked_processing = seqs_processed < ref_header.sequences;
 	return true;
 }
 

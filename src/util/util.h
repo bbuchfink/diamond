@@ -30,11 +30,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <stdexcept>
 #include <stdio.h>
 #include <stdint.h>
+#include <set>
 #include "simd.h"
 #include "../basic/const.h"
 
 using std::vector;
 using std::string;
+using std::set;
 
 template<typename _t=size_t>
 struct partition
@@ -527,6 +529,15 @@ inline string hex_print(const char *x, int len) {
 		out += d;
 	}
 	return out;
+}
+
+inline set<unsigned> parse_csv(const string &s)
+{
+	set<unsigned> r;
+	vector<string> t(tokenize(s.c_str(), ","));
+	for (vector<string>::const_iterator i = t.begin(); i != t.end(); ++i)
+		if(!i->empty()) r.insert(atoi(i->c_str()));
+	return r;
 }
 
 #endif /* UTIL_H_ */
