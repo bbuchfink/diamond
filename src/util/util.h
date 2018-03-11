@@ -1,6 +1,6 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2017 Benjamin Buchfink <buchfink@gmail.com>
+Copyright (C) 2013-2018 Benjamin Buchfink <buchfink@gmail.com>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU Affero General Public License as
@@ -517,6 +517,16 @@ inline int make_multiple(int x, int m)
 inline uint64_t next_power_of_2(double x)
 {
 	return 1llu << uint64_t(ceil(log(x) / log(2)));
+}
+
+inline string hex_print(const char *x, int len) {
+	string out;
+	char d[3];
+	for (int i = 0; i < len; i++) {
+		sprintf(d, "%02x", (unsigned char)x[i]);
+		out += d;
+	}
+	return out;
 }
 
 #endif /* UTIL_H_ */

@@ -31,6 +31,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/io/file_backed_buffer.h"
 #include "taxon_list.h"
 #include "taxonomy_nodes.h"
+#include "../util/algo/MurmurHash3.h"
 
 String_set<0>* ref_ids::data_ = 0;
 Partitioned_histogram ref_hst;
@@ -154,6 +155,12 @@ void make_db()
 				for (size_t i = 0; i < n; ++i)
 					accessions << Taxonomy::Accession::from_title((*ids)[i].c_str());
 			}
+			timer.go("Hashing sequences");
+			for (size_t i = 0; i < n; ++i) {
+				sequence seq = (*seqs)[i], id = (*ids)[i];
+				MurmurHash3_x64_128(seq.data(), (int)seq.length(), header2.hash, header2.hash);
+				MurmurHash3_x64_128(id.data(), (int)id.length(), header2.hash, header2.hash);
+			}
 			delete seqs;
 			delete ids;
 		}
@@ -197,6 +204,7 @@ void make_db()
 	out.close();
 
 	timer.finish();
+	message_stream << "Database hash = " << hex_print(header2.hash, 16) << endl;
 	message_stream << "Processed " << n_seqs << " sequences, " << letters << " letters." << endl;
 	message_stream << "Total time = " << total.getElapsedTimeInSec() << "s" << endl;
 }

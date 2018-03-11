@@ -2,6 +2,7 @@ cmake_minimum_required (VERSION 2.6)
 project (DIAMOND)
 
 option(BUILD_STATIC "BUILD_STATIC" OFF)
+option(EXTRA "EXTRA" OFF)
 
 if(BUILD_STATIC)
     set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
@@ -107,7 +108,18 @@ add_executable(diamond src/run/main.cpp
   src/util/io/text_input_file.cpp
   src/data/taxon_list.cpp
   src/data/taxonomy_nodes.cpp
+  src/util/algo/MurmurHash3.cpp
 )
+
+if(EXTRA)
+  target_sources(diamond
+    PUBLIC
+      src/extra/benchmark.cpp
+	  src/extra/test.cpp
+	  src/dp/sw_3frame.cpp
+  )
+  add_definitions(-DEXTRA)
+endif()
 
 target_link_libraries(diamond ${ZLIB_LIBRARY} ${CMAKE_THREAD_LIBS_INIT})
 

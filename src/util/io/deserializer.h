@@ -37,10 +37,10 @@ struct Deserializer
 	void close();
 
 	Deserializer(const char *begin, const char *end, int flags = 0):
+		varint(flags & VARINT),
 		buffer_(NULL),
 		begin_(begin),
-		end_(end),
-		varint(flags & VARINT)
+		end_(end)
 	{}
 
 	Deserializer& operator>>(unsigned &x)

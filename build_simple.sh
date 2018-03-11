@@ -71,4 +71,5 @@ g++ -DNDEBUG -O3 -Wno-deprecated-declarations $1 $2 $3 \
   src/util/io/text_input_file.cpp \
   src/data/taxon_list.cpp \
   src/data/taxonomy_nodes.cpp \
+  src/util/algo/MurmurHash3.cpp \
 -lz -lpthread -o diamond
