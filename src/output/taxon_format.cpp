@@ -24,7 +24,6 @@ using std::set;
 
 void Taxon_format::print_match(const Hsp_context &r, const Metadata &metadata, TextBuffer &out)
 {
-#ifdef EXTRA
 	const vector<unsigned> taxons((*metadata.taxon_list)[r.orig_subject_id]);
 	if (taxons.empty())
 		return;
@@ -37,21 +36,6 @@ void Taxon_format::print_match(const Hsp_context &r, const Metadata &metadata, T
 		std::cerr << "Query=" << r.query_name << endl << "Subject=" << r.subject_name << endl;
 		throw;
 	}
-#else
-	set<unsigned> taxons;
-	taxonomy.get_taxids(r.subject_name, taxons);
-	if (taxons.empty())
-		return;
-	evalue = std::min(evalue, r.evalue());
-	try {
-		for (set<unsigned>::const_iterator i = taxons.begin(); i != taxons.end(); ++i)
-			taxid = taxonomy.get_lca(taxid, *i);
-	}
-	catch (std::exception &) {
-		std::cerr << "Query=" << r.query_name << endl << "Subject=" << r.subject_name << endl;
-		throw;
-	}
-#endif
 }
 
 void Taxon_format::print_query_epilog(TextBuffer &out, const char *query_title, bool unaligned, const Parameters &params) const

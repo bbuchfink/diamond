@@ -34,31 +34,33 @@ string* get_allseqids(const char *s)
 	return r;
 }
 
-void ReferenceDictionary::init(unsigned ref_count)
+void ReferenceDictionary::init(unsigned ref_count, const vector<unsigned> &block_to_database_id)
 {
 	const unsigned block = current_ref_block;
 	if (data_.size() < block + 1) {
 		data_.resize(block + 1);
 		data_[block].insert(data_[block].end(), ref_count, std::numeric_limits<uint32_t>::max());
 	}
+	block_to_database_id_ = &block_to_database_id;
 }
 
-uint32_t ReferenceDictionary::get(unsigned block, unsigned i)
+uint32_t ReferenceDictionary::get(unsigned block, unsigned block_id)
 {
-	uint32_t n = data_[block][i];
+	uint32_t n = data_[block][block_id];
 	if (n != std::numeric_limits<uint32_t>::max())
 		return n;
 	{
 		mtx_.lock();
-		n = data_[block][i];
+		n = data_[block][block_id];
 		if (n != std::numeric_limits<uint32_t>::max()) {
 			mtx_.unlock();
 			return n;
 		}
 		n = next_++;
-		data_[block][i] = n;
-		len_.push_back((uint32_t)ref_seqs::get().length(i));
-		const char *title = ref_ids::get()[i].c_str();
+		data_[block][block_id] = n;
+		len_.push_back((uint32_t)ref_seqs::get().length(block_id));
+		database_id_.push_back((*block_to_database_id_)[block_id]);
+		const char *title = ref_ids::get()[block_id].c_str();
 		if (config.salltitles)
 			name_.push_back(new string(title));
 		else if (config.sallseqid)
@@ -70,7 +72,7 @@ uint32_t ReferenceDictionary::get(unsigned block, unsigned i)
 	return n;
 }
 
-void ReferenceDictionary::init_rev_map()
+/*void ReferenceDictionary::init_rev_map()
 {
 	rev_map_.resize(next_);
 	unsigned n = 0;
@@ -81,3 +83,4 @@ void ReferenceDictionary::init_rev_map()
 		n += (unsigned)data_[i].size();
 	}
 }
+*/

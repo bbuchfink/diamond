@@ -37,7 +37,7 @@ struct ReferenceDictionary
 		next_(0)
 	{ }
 
-	void init(unsigned ref_count);
+	void init(unsigned ref_count, const vector<unsigned> &block_to_database_id);
 
 	uint32_t get(unsigned block, unsigned i);
 
@@ -51,11 +51,16 @@ struct ReferenceDictionary
 		return name_[i].c_str();
 	}
 
-	void init_rev_map();
+	//void init_rev_map();
 	
-	unsigned original_id(unsigned i) const
+	unsigned database_id(unsigned dict_id) const
 	{
-		return rev_map_[i];
+		return database_id_[dict_id];
+	}
+
+	unsigned block_to_database_id(unsigned block_id) const
+	{
+		return (*block_to_database_id_)[block_id];
 	}
 
 	uint32_t check_id(uint32_t i) const
@@ -81,10 +86,11 @@ private:
 
 	tthread::mutex mtx_;
 	vector<vector<uint32_t> > data_;
-	vector<uint32_t> len_;
+	vector<uint32_t> len_, database_id_;
 	PtrVector<string> name_;
-	vector<uint32_t> rev_map_;
+	//vector<uint32_t> rev_map_;
 	uint32_t next_;
+	const vector<unsigned> *block_to_database_id_;
 
 	friend void finish_daa(OutputFile&, const DatabaseFile&);
 

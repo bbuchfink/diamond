@@ -42,11 +42,7 @@ struct ReferenceHeader
 	uint64_t magic_number;
 	uint32_t build, db_version;
 	uint64_t sequences, letters, pos_array_offset;
-#ifdef EXTRA
 	enum { current_db_version = 2 };
-#else
-	enum { current_db_version = 1 };
-#endif
 };
 
 struct ReferenceHeader2
@@ -73,7 +69,7 @@ struct DatabaseFile : public InputFile
 	DatabaseFile();
 	static void read_header(InputFile &stream, ReferenceHeader &header);
 	void rewind();
-	bool load_seqs(const Metadata &metadata);
+	bool load_seqs(const Metadata &metadata, vector<unsigned> &block_to_database_id);
 	void get_seq();
 	void read_seq(string &id, vector<char> &seq);
 	bool has_taxon_id_lists();

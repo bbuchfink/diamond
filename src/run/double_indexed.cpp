@@ -127,7 +127,8 @@ void run_ref_chunk(DatabaseFile &db_file,
 	OutputFile &master_out,
 	PtrVector<TempFile> &tmp_file,
 	const Parameters &params,
-	const Metadata &metadata)
+	const Metadata &metadata,
+	const vector<unsigned> &block_to_database_id)
 {
 	task_timer timer("Building reference histograms");
 	if(config.algo==Config::query_indexed)
@@ -137,7 +138,7 @@ void run_ref_chunk(DatabaseFile &db_file,
 	else
 		ref_hst = Partitioned_histogram(*ref_seqs::data_, false, &no_filter);
 
-	ReferenceDictionary::get().init(safe_cast<unsigned>(ref_seqs::get().get_length()));
+	ReferenceDictionary::get().init(safe_cast<unsigned>(ref_seqs::get().get_length()), block_to_database_id);
 
 	timer.go("Allocating buffers");
 	char *ref_buffer = sorted_list::alloc_buffer(ref_hst);
@@ -229,10 +230,11 @@ void run_query_chunk(DatabaseFile &db_file,
 	query_aligned.clear();
 	query_aligned.insert(query_aligned.end(), query_ids::get().get_length(), false);
 	db_file.rewind();
+	vector<unsigned> block_to_database_id;
 	timer.finish();
 	
-	for (current_ref_block = 0; db_file.load_seqs(metadata); ++current_ref_block)
-		run_ref_chunk(db_file, total_timer, query_chunk, query_len_bounds, query_buffer, master_out, tmp_file, params, metadata);
+	for (current_ref_block = 0; db_file.load_seqs(metadata, block_to_database_id); ++current_ref_block)
+		run_ref_chunk(db_file, total_timer, query_chunk, query_len_bounds, query_buffer, master_out, tmp_file, params, metadata, block_to_database_id);
 
 	timer.go("Deallocating buffers");
 	delete[] query_buffer;
@@ -354,7 +356,6 @@ void master_thread_di()
 	set_max_open_files(config.query_bins * config.threads_ + unsigned(db_file.ref_header.letters / (size_t)(config.chunk_size * 1e9)) + 16);
 
 	Metadata metadata;
-#ifdef EXTRA
 	if (output_format->needs_taxon_id_lists || !config.taxonlist.empty()) {
 		if (!config.taxonlist.empty() && db_file.header2.taxon_array_offset == 0)
 			throw std::runtime_error("--taxonlist option requires taxonomy mapping built into the database.");
@@ -369,9 +370,6 @@ void master_thread_di()
 		metadata.taxon_nodes = new TaxonomyNodes(db_file.seek(db_file.header2.taxon_nodes_offset));
 		timer.finish();
 	}
-#else
-	taxonomy.init();
-#endif
 
 	master_thread(db_file, timer2, metadata);
 }

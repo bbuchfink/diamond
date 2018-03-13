@@ -193,7 +193,7 @@ void join_query(vector<BinaryBuffer> &buf, TextBuffer &out, Statistics &statisti
 					query_seq,
 					query_name,
 					dict.check_id(i->subject_id),
-					dict.original_id(i->subject_id),
+					dict.database_id(i->subject_id),
 					dict.name(i->subject_id),
 					dict.length(i->subject_id),
 					n_target_seq,
@@ -252,7 +252,7 @@ void join_worker(Task_queue<TextBuffer, JoinWriter> *queue, const Parameters *pa
 
 void join_blocks(unsigned ref_blocks, OutputFile &master_out, const PtrVector<TempFile> &tmp_file, const Parameters &params, const Metadata &metadata)
 {
-	ReferenceDictionary::get().init_rev_map();
+	//ReferenceDictionary::get().init_rev_map();
 	JoinFetcher::init(tmp_file);
 	JoinWriter writer(master_out);
 	Task_queue<TextBuffer, JoinWriter> queue(3 * config.threads_, writer);

@@ -58,12 +58,10 @@ DatabaseFile::DatabaseFile():
 	InputFile(config.database, InputFile::BUFFERED)
 {
 	read_header(*this, ref_header);
-#ifdef EXTRA
 	if (read(&header2, 1) != 1)
 		throw Database_format_exception();
-#endif
 	if (ref_header.build < min_build_required || ref_header.db_version != ReferenceHeader::current_db_version)
-		throw std::runtime_error("Database was built with a different version of Diamond as is incompatible.");
+		throw std::runtime_error("Database was built with a different version of Diamond and is incompatible.");
 	if (ref_header.sequences == 0)
 		throw std::runtime_error("Incomplete database file. Database building did not complete successfully.");
 	pos_array_offset = ref_header.pos_array_offset;
@@ -121,16 +119,11 @@ void make_db()
 	ReferenceHeader2 header2;
 
 	out.write(&header, 1);
-#ifdef EXTRA
 	out.write(&header2, 1);
-#endif
 
 	size_t letters = 0, n = 0, n_seqs = 0;
-#ifdef EXTRA
 	uint64_t offset = sizeof(ReferenceHeader) + sizeof(ReferenceHeader2);
-#else
-	uint64_t offset = sizeof(ReferenceHeader);
-#endif
+
 	Sequence_set *seqs;
 	String_set<0> *ids;
 	const FASTA_format format;
@@ -198,9 +191,7 @@ void make_db()
 	header.sequences = n_seqs;
 	out.seek(0);
 	out.write(&header, 1);
-#ifdef EXTRA
 	out.write(&header2, 1);
-#endif
 	out.close();
 
 	timer.finish();
@@ -209,7 +200,7 @@ void make_db()
 	message_stream << "Total time = " << total.getElapsedTimeInSec() << "s" << endl;
 }
 
-bool DatabaseFile::load_seqs(const Metadata &metadata)
+bool DatabaseFile::load_seqs(const Metadata &metadata, vector<unsigned> &block_to_database_id)
 {
 	task_timer timer("Loading reference sequences");
 	const size_t max_letters = (size_t)(config.chunk_size*1e9);
@@ -219,6 +210,7 @@ bool DatabaseFile::load_seqs(const Metadata &metadata)
 	vector<uint64_t> filtered_pos;
 	const set<unsigned> taxon_filter_list(parse_csv(config.taxonlist));
 	const bool filtered = !taxon_filter_list.empty();
+	block_to_database_id.clear();
 
 	ref_seqs::data_ = new Sequence_set;
 	ref_ids::data_ = new String_set<0>;
@@ -226,6 +218,7 @@ bool DatabaseFile::load_seqs(const Metadata &metadata)
 	Pos_record r;
 	read(&r, 1);
 	uint64_t start_offset = r.pos;
+	bool last = false;
 
 	while (r.seq_len > 0 && letters < max_letters) {
 		Pos_record r_next;
@@ -237,8 +230,12 @@ bool DatabaseFile::load_seqs(const Metadata &metadata)
 			id_letters += id_len;
 			ref_ids::data_->reserve(id_len);
 			++seqs;
-			if (filtered) filtered_pos.push_back(r.pos);
+			block_to_database_id.push_back((unsigned)database_id);
+			if (filtered) filtered_pos.push_back(last ? 0 : r.pos);
+			last = true;
 		}
+		else
+			last = false;
 		pos_array_offset += sizeof(Pos_record);
 		++database_id;
 		++seqs_processed;
@@ -257,7 +254,7 @@ bool DatabaseFile::load_seqs(const Metadata &metadata)
 	size_t masked = 0;
 
 	for (size_t n = 0; n < seqs; ++n) {
-		if (filtered) seek(filtered_pos[n]);
+		if (filtered && filtered_pos[n]) seek(filtered_pos[n]);
 		read(ref_seqs::data_->ptr(n) - 1, ref_seqs::data_->length(n) + 2);
 		*(ref_seqs::data_->ptr(n) - 1) = sequence::DELIMITER;
 		*(ref_seqs::data_->ptr(n) + ref_seqs::data_->length(n)) = sequence::DELIMITER;

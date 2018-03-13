@@ -85,37 +85,18 @@ Blast_tab_format::Blast_tab_format() :
 		int j = get_idx(field_str, sizeof(field_str) / sizeof(field_str[0]), i->c_str());
 		if(j == -1)
 			throw std::runtime_error(string("Invalid output field: ") + *i);
-#ifdef EXTRA
 		if (j == 34)
 			needs_taxon_id_lists = true;
-#else
-		if (j == 34 && config.prot_accession2taxid.empty())
-			throw std::runtime_error("staxids output field requires setting the --taxonmap parameter.");
-#endif
 		fields.push_back(j);
 		if (j == 6 || j == 39 || j == 40 || j == 34)
 			config.salltitles = true;
 	}
 }
 
-#ifdef EXTRA
 void print_staxids(TextBuffer &out, unsigned subject_global_id, const Metadata &metadata)
 {
 	out.print((*metadata.taxon_list)[subject_global_id], ';');
 }
-#else
-void print_staxids(TextBuffer &out, const char *id)
-{
-	std::set<unsigned> taxons;
-	taxonomy.get_taxids(id, taxons);
-	if (taxons.empty())
-		return;
-	std::set<unsigned>::const_iterator i = taxons.begin();
-	out << *(i++);
-	for (; i != taxons.end(); ++i)
-		out << ';' << *i;
-}
-#endif
 
 void Blast_tab_format::print_match(const Hsp_context& r, const Metadata &metadata, TextBuffer &out)
 {
@@ -235,11 +216,7 @@ void Blast_tab_format::print_match(const Hsp_context& r, const Metadata &metadat
 		}
 			break;
 		case 34:
-#ifdef EXTRA
 			print_staxids(out, r.orig_subject_id, metadata);
-#else
-			print_staxids(out, r.subject_name);
-#endif
 			break;
 		case 39:
 			print_title(out, r.subject_name, true, false, "<>");

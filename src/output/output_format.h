@@ -161,16 +161,8 @@ struct Taxon_format : public Output_format
 		taxid(0),
 		evalue(std::numeric_limits<double>::max())
 	{
-#ifdef EXTRA
 		needs_taxon_id_lists = true;
 		needs_taxon_nodes = true;
-#else
-		config.salltitles = true;
-		if (config.prot_accession2taxid.empty())
-			throw std::runtime_error("Output format requires setting the --taxonmap parameter.");
-		if (config.nodesdmp.empty())
-			throw std::runtime_error("Output format requires setting the --taxonnodes parameter.");
-#endif
 	}
 	virtual void print_match(const Hsp_context& r, const Metadata &metadata, TextBuffer &out);
 	virtual void print_query_epilog(TextBuffer &out, const char *query_title, bool unaligned, const Parameters &parameters) const;

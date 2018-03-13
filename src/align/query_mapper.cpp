@@ -236,7 +236,7 @@ bool QueryMapper::generate_output(TextBuffer &buffer, Statistics &stat, const Me
 						translated_query,
 						query_title,
 						targets[i].subject_id,
-						targets[i].subject_id,
+						ReferenceDictionary::get().block_to_database_id(targets[i].subject_id),
 						ref_title,
 						subject_len,
 						n_target_seq,
