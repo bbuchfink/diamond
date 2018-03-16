@@ -50,6 +50,12 @@ struct Serializer
 		return *this;
 	}
 
+	Serializer& operator<<(unsigned long x)
+	{
+		write(x);
+		return *this;
+	}
+
 	Serializer& operator<<(unsigned long long x)
 	{
 		write(x);
