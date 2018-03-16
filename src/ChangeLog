@@ -3,6 +3,7 @@
 - Fixed an issue in the LCA algorithm that could cause an assignment to a higher node.
 - --taxonmap and --taxonnodes parameters now apply exclusively to the makedb command.
 - Added option --taxonlist to filter searches by subject taxonomic id.
+- Changed database format; rebuilding is required.
 
 [0.9.18]
 - Optimized output writing performance.
