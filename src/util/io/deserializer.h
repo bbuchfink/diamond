@@ -58,6 +58,12 @@ struct Deserializer
 		return *this;
 	}
 
+	Deserializer& operator>>(unsigned long long &x)
+	{
+		read(x);
+		return *this;
+	}
+
 	Deserializer& operator>>(string &s)
 	{
 		if (!read_until(s, '\0'))

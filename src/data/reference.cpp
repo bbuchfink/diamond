@@ -42,6 +42,26 @@ bool blocked_processing;
 using std::cout;
 using std::endl;
 
+Serializer& operator<<(Serializer &s, const ReferenceHeader2 &h)
+{
+	s.unset(Serializer::VARINT);
+	s << sizeof(ReferenceHeader2);
+	s.write(h.hash, sizeof(h.hash));
+	s << h.taxon_array_offset << h.taxon_array_size << h.taxon_nodes_offset;
+	return s;
+}
+
+Deserializer& operator>>(Deserializer &d, ReferenceHeader2 &h)
+{
+	d.varint = false;
+	uint64_t size;
+	d >> size;
+	d.read(h.hash, sizeof(h.hash));
+	d >> h.taxon_array_offset >> h.taxon_array_size >> h.taxon_nodes_offset;
+	return d;
+}
+
+
 struct Pos_record
 {
 	Pos_record()
@@ -58,8 +78,7 @@ DatabaseFile::DatabaseFile():
 	InputFile(config.database, InputFile::BUFFERED)
 {
 	read_header(*this, ref_header);
-	if (read(&header2, 1) != 1)
-		throw Database_format_exception();
+	*this >> header2;
 	if (ref_header.build < min_build_required || ref_header.db_version != ReferenceHeader::current_db_version)
 		throw std::runtime_error("Database was built with a different version of Diamond and is incompatible.");
 	if (ref_header.sequences == 0)
@@ -119,10 +138,10 @@ void make_db()
 	ReferenceHeader2 header2;
 
 	out.write(&header, 1);
-	out.write(&header2, 1);
+	out << header2;
 
 	size_t letters = 0, n = 0, n_seqs = 0;
-	uint64_t offset = sizeof(ReferenceHeader) + sizeof(ReferenceHeader2);
+	uint64_t offset = out.tell();
 
 	Sequence_set *seqs;
 	String_set<0> *ids;
@@ -191,7 +210,7 @@ void make_db()
 	header.sequences = n_seqs;
 	out.seek(0);
 	out.write(&header, 1);
-	out.write(&header2, 1);
+	out << header2;
 	out.close();
 
 	timer.finish();

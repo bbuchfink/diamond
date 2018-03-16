@@ -22,6 +22,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <vector>
 #include <string>
 #include <string.h>
+#include "../util/io/serializer.h"
 #include "../util/io/input_file.h"
 #include "../data/seed_histogram.h"
 #include "sequence_set.h"
@@ -55,7 +56,10 @@ struct ReferenceHeader2
 		memset(hash, 0, sizeof(hash));
 	}
 	char hash[16];
-	uint64_t taxon_array_offset, taxon_array_size, taxon_nodes_offset;
+	uint64_t taxon_array_offset, taxon_array_size, taxon_nodes_offset;	
+
+	friend Serializer& operator<<(Serializer &s, const ReferenceHeader2 &h);
+	friend Deserializer& operator>>(Deserializer &d, ReferenceHeader2 &h);
 };
 
 struct Database_format_exception : public std::exception
