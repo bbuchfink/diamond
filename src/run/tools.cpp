@@ -20,6 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <stdlib.h>
 #include <time.h>
 #include <set>
+#include <iostream>
 #include "tools.h"
 #include "../basic/config.h"
 #include "../data/sequence_set.h"
@@ -29,6 +30,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../data/reference.h"
 #include "../extra/match_file.h"
 #include "../basic/masking.h"
+
+using std::cout;
+using std::endl;
 
 void get_seq()
 {
@@ -191,4 +195,26 @@ void read_sim()
 		buf.clear();
 	}
 	out.close();
+}
+
+void info()
+{
+	vector<string> arch_flags;
+#ifdef __SSE2__
+	arch_flags.push_back("sse2");
+#endif
+#ifdef __SSE3__
+	arch_flags.push_back("sse3");
+#endif
+#ifdef __SSSE3__
+	arch_flags.push_back("ssse3");
+#endif
+#ifdef __POPCNT__
+	arch_flags.push_back("popcnt");
+#endif
+
+	cout << "Architecture flags: ";
+	for (vector<string>::const_iterator i = arch_flags.begin(); i != arch_flags.end(); ++i)
+		cout << *i << ' ';
+	cout << endl;
 }

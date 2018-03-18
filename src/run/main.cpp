@@ -38,6 +38,7 @@ void benchmark_sw();
 void test_io();
 void db_annot_stats();
 void read_sim();
+void info();
 
 int main(int ac, const char* av[])
 {
@@ -109,6 +110,9 @@ int main(int ac, const char* av[])
 			break;
 		case Config::read_sim:
 			read_sim();
+			break;
+		case Config::info:
+			info();
 			break;
 #ifdef EXTRA
 		case Config::test_extra:
