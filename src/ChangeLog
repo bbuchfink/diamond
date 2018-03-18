@@ -1,5 +1,6 @@
 [0.9.20]
 - Added Bioconda installation instructions to manual.
+- Added official docker release: https://hub.docker.com/r/buchfink/diamond/
 
 [0.9.19]
 - Fixed a bug in the --un function to write unaligned reads.
