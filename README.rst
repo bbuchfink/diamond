@@ -7,7 +7,7 @@ DIAMOND is a sequence aligner for protein and translated DNA searches, designed 
 - Low resource requirements and suitable for running on standard desktops or laptops.
 - Various output formats, including BLAST pairwise, tabular and XML, as well as taxonomic classification.
 
-Follow me on Twitter to get notified of updates.
+Keep posted about new developments by following me on Twitter.
 
 .. image:: https://image.ibb.co/gAmVKR/twitter1.png
    :target: https://twitter.com/bbuchfink
