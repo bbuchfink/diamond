@@ -235,7 +235,12 @@ Config::Config(int argc, const char **argv)
 		("rank-factor", 0, "", rank_factor, -1.0)
 		("transcript-len-estimate", 0, "", transcript_len_estimate, 1.0)
 		("no-traceback", 0, "", disable_traceback)
-		("family-counts", 0, "", family_counts_file);
+		("family-counts", 0, "", family_counts_file)
+		("radix-cluster-buffered", 0, "", radix_cluster_buffered)
+		("join-split-size", 0, "", join_split_size, 100000u)
+		("join-split-key-len", 0, "", join_split_key_len, 9u)
+		("radix-bits", 0, "", radix_bits, 8u)
+		("join-ht-factor", 0, "", join_ht_factor, 1.3);
 		
 	parser.add(general).add(makedb).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options);
 	parser.store(argc, argv, command);

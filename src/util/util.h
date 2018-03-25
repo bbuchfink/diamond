@@ -540,4 +540,16 @@ inline set<unsigned> parse_csv(const string &s)
 	return r;
 }
 
+inline unsigned next_power_of_2(unsigned V)
+{
+	V--;
+	V |= V >> 1;
+	V |= V >> 2;
+	V |= V >> 4;
+	V |= V >> 8;
+	V |= V >> 16;
+	V++;
+	return V;
+}
+
 #endif /* UTIL_H_ */
