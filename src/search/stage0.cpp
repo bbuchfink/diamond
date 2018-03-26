@@ -25,8 +25,10 @@ void seed_join_worker(const sorted_list *query_seeds, const sorted_list *ref_see
 	unsigned p;
 	while ((p = (*seedp)++) < Const::seedp) {
 		if (config.sort_join) {
-			radix_sort(Relation<sorted_list::entry>(query_seeds->ptr_begin(p), query_seeds->ptr_end(p) - query_seeds->ptr_begin(p)), 24);
-			radix_sort(Relation<sorted_list::entry>(ref_seeds->ptr_begin(p), ref_seeds->ptr_end(p) - ref_seeds->ptr_begin(p)), 24);
+			Relation<sorted_list::entry> R(query_seeds->ptr_begin(p), query_seeds->ptr_end(p) - query_seeds->ptr_begin(p)),
+				S(ref_seeds->ptr_begin(p), ref_seeds->ptr_end(p) - ref_seeds->ptr_begin(p));
+			radix_sort(R, 24);
+			radix_sort(S, 24);
 		}
 		else {
 			hash_join(
