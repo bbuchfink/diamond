@@ -20,6 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define RADIX_CLUSTER_H_
 
 #include <string.h>
+#include "../../basic/config.h"
 
 template<typename _t>
 struct Relation
@@ -54,13 +55,12 @@ struct ExtractBits
 };
 
 template<typename _t>
-void radix_cluster(const Relation<_t> &in, unsigned shift, _t *&out, unsigned *&hst)
+void radix_cluster(const Relation<_t> &in, unsigned shift, _t *out, unsigned *hst)
 {
 	static const size_t BUF_SIZE = 8;
 	const unsigned clusters = 1 << config.radix_bits;
 	ExtractBits radix(clusters, shift);
 
-	hst = new unsigned[clusters];
 	memset(hst, 0, clusters*sizeof(unsigned));
 	for (const _t *i = in.data; i < in.end(); ++i)
 		++hst[radix(i->key)];
@@ -70,8 +70,6 @@ void radix_cluster(const Relation<_t> &in, unsigned shift, _t *&out, unsigned *&
 		hst[i] = sum;
 		sum += c;
 	}
-
-	out = new _t[in.n];
 
 	if (config.radix_cluster_buffered) {
 		_t *buf = new _t[clusters*BUF_SIZE];

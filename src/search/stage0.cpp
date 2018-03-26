@@ -18,16 +18,23 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "search.h"
 #include "../util/algo/hash_join.h"
+#include "../util/algo/radix_sort.h"
 
 void seed_join_worker(const sorted_list *query_seeds, const sorted_list *ref_seeds, Atomic<unsigned> *seedp)
 {
 	unsigned p;
 	while ((p = (*seedp)++) < Const::seedp) {
-		hash_join(
-			Relation<sorted_list::entry>(query_seeds->ptr_begin(p), query_seeds->ptr_end(p) - query_seeds->ptr_begin(p)),
-			Relation<sorted_list::entry>(ref_seeds->ptr_begin(p), ref_seeds->ptr_end(p) - ref_seeds->ptr_begin(p)),
-			24
-			);
+		if (config.sort_join) {
+			radix_sort(Relation<sorted_list::entry>(query_seeds->ptr_begin(p), query_seeds->ptr_end(p) - query_seeds->ptr_begin(p)), 24);
+			radix_sort(Relation<sorted_list::entry>(ref_seeds->ptr_begin(p), ref_seeds->ptr_end(p) - ref_seeds->ptr_begin(p)), 24);
+		}
+		else {
+			hash_join(
+				Relation<sorted_list::entry>(query_seeds->ptr_begin(p), query_seeds->ptr_end(p) - query_seeds->ptr_begin(p)),
+				Relation<sorted_list::entry>(ref_seeds->ptr_begin(p), ref_seeds->ptr_end(p) - ref_seeds->ptr_begin(p)),
+				24
+				);
+		}
 	}
 }
 

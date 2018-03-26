@@ -238,10 +238,11 @@ Config::Config(int argc, const char **argv)
 		("family-counts", 0, "", family_counts_file)
 		("radix-cluster-buffered", 0, "", radix_cluster_buffered)
 		("join-split-size", 0, "", join_split_size, 100000u)
-		("join-split-key-len", 0, "", join_split_key_len, 9u)
+		("join-split-key-len", 0, "", join_split_key_len, 17u)
 		("radix-bits", 0, "", radix_bits, 8u)
 		("join-ht-factor", 0, "", join_ht_factor, 1.3)
-		("hash-join", 0, "", hash_join);
+		("hash-join", 0, "", hash_join)
+		("sort-join", 0, "", sort_join);
 		
 	parser.add(general).add(makedb).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options);
 	parser.store(argc, argv, command);

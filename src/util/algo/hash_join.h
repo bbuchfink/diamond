@@ -170,8 +170,9 @@ void hash_join(const Relation<_t> &R, const Relation<_t> &S, unsigned total_bits
 			table_join(R, S, total_bits, shift);			
 	}
 	else {
-		_t *outR, *outS;
-		unsigned *hstR, *hstS;
+		const unsigned clusters = 1 << config.radix_bits;
+		_t *outR = new _t[R.n], *outS = new _t[S.n];
+		unsigned *hstR = new unsigned[clusters], *hstS = new unsigned[clusters];
 		radix_cluster(R, shift, outR, hstR);
 		radix_cluster(S, shift, outS, hstS);
 
