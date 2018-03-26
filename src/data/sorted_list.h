@@ -35,33 +35,19 @@ struct sorted_list
 	struct entry
 	{
 		entry():
-			seed (),
-			pos ()
+			key (),
+			value ()
 		{ }
-		entry(unsigned seed, _pos pos):
-			seed (seed),
-			pos (pos)
+		entry(unsigned key, _pos value):
+			key(key),
+			value(value)
 		{ }
 		bool operator<(const entry &rhs) const
-		{ return seed < rhs.seed; }
-		unsigned& key()
 		{
-			return seed;
+			return key < rhs.key;
 		}
-		unsigned key() const
-		{
-			return seed;
-		}
-		_pos& value()
-		{
-			return pos;
-		}
-		_pos value() const
-		{
-			return pos;
-		}
-		unsigned	seed;
-		_pos		pos;
+		unsigned	key;
+		_pos		value;
 		typedef _pos Value;
 	} PACKED_ATTRIBUTE ;
 
@@ -97,20 +83,20 @@ struct sorted_list
 		{
 			_t *k (i);
 			size_t n (0);
-			while(k < end && (k++)->seed == i->seed)
+			while(k < end && (k++)->key == i->key)
 				++n;
 			return n;
 		}
 		void operator++()
 		{ i += n; n = count(); }
 		Loc operator[](unsigned k) const
-		{ return (Loc)((i+k)->pos); }
+		{ return (Loc)((i+k)->value); }
 		_t* get(unsigned k)
 		{ return i+k; }
 		bool at_end() const
 		{ return i >= end; }
 		unsigned key() const
-		{ return i->seed; }
+		{ return i->key; }
 		_t *i, *end;
 		size_t n;
 	};
@@ -126,7 +112,7 @@ struct sorted_list
 		Random_access_iterator(const entry *i, const entry *end) :
 			i(i),
 			end(end),
-			key_(i ? i->seed : 0)
+			key_(i ? i->key : 0)
 		{ }
 		void operator++()
 		{
@@ -134,11 +120,11 @@ struct sorted_list
 		}
 		Loc operator*() const
 		{
-			return (Loc)i->pos;
+			return (Loc)i->value;
 		}
 		bool good() const
 		{
-			return i < end && i->seed == key_;
+			return i < end && i->key == key_;
 		}
 		unsigned key() const
 		{

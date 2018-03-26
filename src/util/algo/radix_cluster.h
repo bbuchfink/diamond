@@ -63,7 +63,7 @@ void radix_cluster(const Relation<_t> &in, unsigned shift, _t *&out, unsigned *&
 	hst = new unsigned[clusters];
 	memset(hst, 0, clusters*sizeof(unsigned));
 	for (const _t *i = in.data; i < in.end(); ++i)
-		++hst[radix(i->key())];
+		++hst[radix(i->key)];
 	unsigned sum = 0;
 	for (unsigned i = 0; i < clusters; ++i) {
 		const unsigned c = hst[i];
@@ -79,7 +79,7 @@ void radix_cluster(const Relation<_t> &in, unsigned shift, _t *&out, unsigned *&
 		memset(buf_n, 0, clusters*sizeof(unsigned));
 
 		for (const _t *i = in.data; i < in.end(); ++i) {
-			const unsigned r = radix(i->key());
+			const unsigned r = radix(i->key);
 			buf[r*BUF_SIZE + buf_n[r]++] = *i;
 			if (buf_n[r] == BUF_SIZE) {
 				memcpy(out + hst[r], buf + r*BUF_SIZE, BUF_SIZE*sizeof(_t));
@@ -92,7 +92,7 @@ void radix_cluster(const Relation<_t> &in, unsigned shift, _t *&out, unsigned *&
 	}
 	else {
 		for (const _t *i = in.data; i < in.end(); ++i) {
-			const unsigned r = radix(i->key());
+			const unsigned r = radix(i->key);
 			out[hst[r]++] = *i;
 		}
 	}

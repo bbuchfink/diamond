@@ -52,18 +52,18 @@ void hash_table_join(const Relation<_t> &R, const Relation<_t> &S, unsigned shif
 	typename Table::Entry *p;
 
 	for (_t *i = R.data; i < R.end(); ++i) {
-		p = table.insert(i->key());
+		p = table.insert(i->key);
 		++p->r;
-		i->key() = p - table.data();
+		i->key = p - table.data();
 	}
 
 	unsigned keys_hit = 0;
 	_t *hit_s = S.data;
 	for (_t *i = S.data; i < S.end(); ++i) {
-		if (p = table.find_entry(i->key())) {
+		if (p = table.find_entry(i->key)) {
 			++p->s;
-			hit_s->value() = i->value();
-			hit_s->key() = p - table.data();
+			hit_s->value = i->value;
+			hit_s->key = p - table.data();
 			++hit_s;
 			if (p->s == 1)
 				++keys_hit;
@@ -89,15 +89,15 @@ void hash_table_join(const Relation<_t> &R, const Relation<_t> &S, unsigned shif
 
 	hits_r.init(sum_r);
 	for (const _t *i = R.data; i < R.end(); ++i) {
-		p = &table.data()[i->key()];
+		p = &table.data()[i->key];
 		if (p->s)
-			hits_r.data()[p->r++] = i->value();
+			hits_r.data()[p->r++] = i->value;
 	}
 
 	hits_s.init(sum_s - 1);
 	for (const _t *i = S.data; i < hit_s; ++i) {
-		p = &table.data()[i->key()];
-		hits_s.data()[p->s++ - 1] = i->value();
+		p = &table.data()[i->key];
+		hits_s.data()[p->s++ - 1] = i->value;
 	}
 }
 
@@ -111,12 +111,12 @@ void table_join(const Relation<_t> &R, const Relation<_t> &S, unsigned total_bit
 	RelPtr *p;
 
 	for (_t *i = R.data; i < R.end(); ++i)
-		++table[key(i->key())].r;
+		++table[key(i->key)].r;
 
 	unsigned keys_hit = 0;
 	_t *hit_s = S.data;
 	for (_t *i = S.data; i < S.end(); ++i) {
-		if ((p = &table[key(i->key())])->r) {
+		if ((p = &table[key(i->key)])->r) {
 			++p->s;
 			memcpy(hit_s++, i, sizeof(_t));
 			if (p->s == 1)
@@ -143,15 +143,15 @@ void table_join(const Relation<_t> &R, const Relation<_t> &S, unsigned total_bit
 
 	hits_r.init(sum_r);
 	for (const _t *i = R.data; i < R.end(); ++i) {
-		p = &table[key(i->key())];
+		p = &table[key(i->key)];
 		if (p->s)
-			hits_r.data()[p->r++] = i->value();
+			hits_r.data()[p->r++] = i->value;
 	}
 
 	hits_s.init(sum_s - 1);
 	for (const _t *i = S.data; i < hit_s; ++i) {
-		p = &table[key(i->key())];
-		hits_s.data()[p->s++ - 1] = i->value();
+		p = &table[key(i->key)];
+		hits_s.data()[p->s++ - 1] = i->value;
 	}
 	
 	free(table);
