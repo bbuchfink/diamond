@@ -30,8 +30,10 @@ void seed_join_worker(const sorted_list *query_seeds, const sorted_list *ref_see
 		if (config.sort_join) {
 			Relation<sorted_list::entry> R(query_seeds->ptr_begin(p), query_seeds->ptr_end(p) - query_seeds->ptr_begin(p)),
 				S(ref_seeds->ptr_begin(p), ref_seeds->ptr_end(p) - ref_seeds->ptr_begin(p));
-			radix_sort(R, 24, &buf_q[query_seeds->limits_[p]]);
-			radix_sort(S, 24, &buf_r[ref_seeds->limits_[p]]);
+			//radix_sort(R, 24, &buf_q[query_seeds->limits_[p]]);
+			//radix_sort(S, 24, &buf_r[ref_seeds->limits_[p]]);
+			radix_sort(R, 24);
+			radix_sort(S, 24);
 		}
 		else {
 			hash_join(
@@ -48,8 +50,8 @@ void search(const sorted_list &query_seeds, const sorted_list &ref_seeds)
 	task_timer timer("Allocating radix sort buffer");
 	Atomic<unsigned> seedp = 0;
 	Thread_pool threads;
-	buf_q = new sorted_list::entry[query_seeds.limits_.back()];
-	buf_r = new sorted_list::entry[ref_seeds.limits_.back()];
+	//buf_q = new sorted_list::entry[query_seeds.limits_.back()];
+	//buf_r = new sorted_list::entry[ref_seeds.limits_.back()];
 	timer.go("Computing hash join");
 	for (size_t i = 0; i < config.threads_; ++i)
 		threads.push_back(launch_thread(seed_join_worker, &query_seeds, &ref_seeds, &seedp));

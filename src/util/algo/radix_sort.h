@@ -27,7 +27,8 @@ void radix_sort(Relation<_t> &R, unsigned total_bits, _t *buf = 0)
 {
 	bool dealloc = false;
 	if (!buf) {
-		buf = new _t[R.n];
+		//buf = new _t[R.n];
+		buf = (_t*)new char[sizeof(_t)*R.n];
 		dealloc = true;
 	}
 	unsigned *hst = new unsigned[1 << config.radix_bits];
