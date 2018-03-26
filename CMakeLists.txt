@@ -109,6 +109,7 @@ add_executable(diamond src/run/main.cpp
   src/data/taxon_list.cpp
   src/data/taxonomy_nodes.cpp
   src/util/algo/MurmurHash3.cpp
+  src/search/stage0.cpp
 )
 
 if(EXTRA)

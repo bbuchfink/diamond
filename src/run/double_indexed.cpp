@@ -32,6 +32,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../basic/masking.h"
 #include "../data/ref_dictionary.h"
 #include "../data/metadata.h"
+#include "../search/search.h"
 
 using std::endl;
 using std::cout;
@@ -109,12 +110,18 @@ void process_shape(unsigned sid,
 			query_hst.partition(),
 			&no_filter);
 
-		timer.go("Building seed filter");
-		frequent_seeds.build(sid, range, *ref_idx, query_idx);
+		if (config.hash_join) {
+			timer.go("Computing hash join");
+			search(query_idx, *ref_idx);
+		}
+		else {
+			timer.go("Building seed filter");
+			frequent_seeds.build(sid, range, *ref_idx, query_idx);
 
-		timer.go("Searching alignments");
-		Search_context context(sid, *ref_idx, query_idx);
-		launch_scheduled_thread_pool(context, Const::seedp, config.threads_);
+			timer.go("Searching alignments");
+			Search_context context(sid, *ref_idx, query_idx);
+			launch_scheduled_thread_pool(context, Const::seedp, config.threads_);
+		}
 		delete ref_idx;
 	}
 }

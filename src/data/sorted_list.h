@@ -23,6 +23,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "seed_histogram.h"
 #include "../basic/packed_loc.h"
 #include "../util/system.h"
+#include "../util/algo/hash_join.h"
 
 #pragma pack(1)
 
@@ -34,17 +35,34 @@ struct sorted_list
 	struct entry
 	{
 		entry():
-			key (),
-			value ()
+			seed (),
+			pos ()
 		{ }
-		entry(unsigned key, _pos value):
-			key (key),
-			value (value)
+		entry(unsigned seed, _pos pos):
+			seed (seed),
+			pos (pos)
 		{ }
 		bool operator<(const entry &rhs) const
-		{ return key < rhs.key; }
-		unsigned	key;
-		_pos		value;
+		{ return seed < rhs.seed; }
+		unsigned& key()
+		{
+			return seed;
+		}
+		unsigned key() const
+		{
+			return seed;
+		}
+		_pos& value()
+		{
+			return pos;
+		}
+		_pos value() const
+		{
+			return pos;
+		}
+		unsigned	seed;
+		_pos		pos;
+		typedef _pos Value;
 	} PACKED_ATTRIBUTE ;
 
 	static char* alloc_buffer(const Partitioned_histogram &hst);
@@ -61,6 +79,7 @@ struct sorted_list
 		for (size_t i = 0; i < seq_partition.size() - 1; ++i)
 			cb.push_back(new Build_callback(range, iterators[i].begin()));
 		seqs.enum_seeds(cb, seq_partition, sh, sh + 1, filter);
+		if (config.hash_join) return;
 		timer.go("Sorting seed list");
 		Sort_context sort_context(*this);
 		launch_scheduled_thread_pool(sort_context, Const::seedp, config.threads_);
@@ -78,20 +97,20 @@ struct sorted_list
 		{
 			_t *k (i);
 			size_t n (0);
-			while(k < end && (k++)->key == i->key)
+			while(k < end && (k++)->seed == i->seed)
 				++n;
 			return n;
 		}
 		void operator++()
 		{ i += n; n = count(); }
 		Loc operator[](unsigned k) const
-		{ return (Loc)((i+k)->value); }
+		{ return (Loc)((i+k)->pos); }
 		_t* get(unsigned k)
 		{ return i+k; }
 		bool at_end() const
 		{ return i >= end; }
 		unsigned key() const
-		{ return i->key; }
+		{ return i->seed; }
 		_t *i, *end;
 		size_t n;
 	};
@@ -107,7 +126,7 @@ struct sorted_list
 		Random_access_iterator(const entry *i, const entry *end) :
 			i(i),
 			end(end),
-			key_(i ? i->key : 0)
+			key_(i ? i->seed : 0)
 		{ }
 		void operator++()
 		{
@@ -115,11 +134,11 @@ struct sorted_list
 		}
 		Loc operator*() const
 		{
-			return (Loc)i->value;
+			return (Loc)i->pos;
 		}
 		bool good() const
 		{
-			return i < end && i->key == key_;
+			return i < end && i->seed == key_;
 		}
 		unsigned key() const
 		{
@@ -189,8 +208,10 @@ private:
 		Sort_context(sorted_list &sl):
 			sl (sl)
 		{ }
-		void operator()(unsigned thread_id ,unsigned seedp) const
-		{ std::sort(sl.ptr_begin(seedp), sl.ptr_end(seedp)); }
+		void operator()(unsigned thread_id, unsigned seedp) const
+		{
+			std::sort(sl.ptr_begin(seedp), sl.ptr_end(seedp));
+		}
 		sorted_list &sl;
 	};
 
@@ -232,6 +253,8 @@ private:
 
 	Limits limits_;
 	entry *data_;
+
+	friend void seed_join_worker(const sorted_list *, const sorted_list *, Atomic<unsigned> *);
 
 };
 

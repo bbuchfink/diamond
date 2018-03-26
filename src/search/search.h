@@ -16,28 +16,11 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#ifndef TABLE_H_
-#define TABLE_H_
+#include "../data/sorted_list.h"
 
-template<typename _V, typename _HashFunction>
-struct Table : private _HashFunction
-{
+#ifndef SEARCH_H_
+#define SEARCH_H_
 
-	Table(size_t size) :
-		data_(new _V[size])
-	{
-	}
-
-	~Table()
-	{
-		delete[] data_;
-	}
-
-private:
-
-	size_t size_;
-	_V *data_;
-
-};
+void search(const sorted_list &query_seeds, const sorted_list &ref_seeds);
 
 #endif

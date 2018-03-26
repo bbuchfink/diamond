@@ -66,7 +66,7 @@ struct Frequent_seeds::Build_context
 		Merge_iterator<sorted_list::iterator> merge_it(ref_idx.get_partition_begin(seedp), query_idx.get_partition_begin(seedp));
 		while (merge_it.next()) {
 			if (merge_it.i.n > ref_max_n || merge_it.j.n > query_max_n) {
-				merge_it.i.get(0)->value = 0;
+				merge_it.i.get(0)->pos = 0;
 				n += (unsigned)merge_it.i.n;
 				buf.push_back(merge_it.i.key());
 			}

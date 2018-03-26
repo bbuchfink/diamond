@@ -72,4 +72,5 @@ g++ -DNDEBUG -O3 -Wno-deprecated-declarations $1 $2 $3 \
   src/data/taxon_list.cpp \
   src/data/taxonomy_nodes.cpp \
   src/util/algo/MurmurHash3.cpp \
+  src/search/stage0.cpp \
 -lz -lpthread -o diamond

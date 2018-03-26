@@ -19,16 +19,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #ifndef HASH_JOIN_H_
 #define HASH_JOIN_H_
 
-#include <vector>
-#include <algorithm>
+#include <stdlib.h>
 #include "../../basic/config.h"
 #include "../util.h"
 #include "radix_cluster.h"
 #include "../data_structures/hash_table.h"
-#include "../data_structures/table.h"
 #include "../data_structures/double_array.h"
-
-using std::vector;
 
 struct RelPtr
 {
@@ -45,30 +41,29 @@ struct RelPtr
 	unsigned r, s;
 };
 
-template<typename _t, typename _table>
+template<typename _t>
 void hash_table_join(const Relation<_t> &R, const Relation<_t> &S, unsigned shift)
 {
-	uint32_t N = R.n;
+	typedef HashTable<unsigned, RelPtr, ExtractBits> Table;
 
-	N = next_power_of_2(N);
-	N <<= 1;
+	uint32_t N = next_power_of_2(R.n * config.join_ht_factor);
 
-	_table table(N, ExtractBits(N, shift));
-	typename _table::Entry *p;
+	Table table(N, ExtractBits(N, shift));
+	typename Table::Entry *p;
 
 	for (_t *i = R.data; i < R.end(); ++i) {
-		p = table.insert(unsigned(*i));
+		p = table.insert(i->key());
 		++p->r;
-		i->key = p - table.data();
+		i->key() = p - table.data();
 	}
 
 	unsigned keys_hit = 0;
 	_t *hit_s = S.data;
 	for (_t *i = S.data; i < S.end(); ++i) {
-		if (p = table.find_entry(unsigned(*i))) {
+		if (p = table.find_entry(i->key())) {
 			++p->s;
-			hit_s->value = i->value;
-			hit_s->key = p - table.data();
+			hit_s->value() = i->value();
+			hit_s->key() = p - table.data();
 			++hit_s;
 			if (p->s == 1)
 				++keys_hit;
@@ -94,25 +89,85 @@ void hash_table_join(const Relation<_t> &R, const Relation<_t> &S, unsigned shif
 
 	hits_r.init(sum_r);
 	for (const _t *i = R.data; i < R.end(); ++i) {
-		p = &table.data()[i->key];
+		p = &table.data()[i->key()];
 		if (p->s)
-			hits_r.data()[p->r++] = i->value;
+			hits_r.data()[p->r++] = i->value();
 	}
 
 	hits_s.init(sum_s - 1);
 	for (const _t *i = S.data; i < hit_s; ++i) {
-		p = &table.data()[i->key];
-		hits_s.data()[p->s++ - 1] = i->value;
+		p = &table.data()[i->key()];
+		hits_s.data()[p->s++ - 1] = i->value();
 	}
+}
+
+
+template<typename _t>
+void table_join(const Relation<_t> &R, const Relation<_t> &S, unsigned total_bits, unsigned shift)
+{
+	const unsigned keys = 1 << (total_bits - shift);
+	ExtractBits key(keys, shift);
+	RelPtr *table = (RelPtr*)calloc(keys, sizeof(RelPtr));
+	RelPtr *p;
+
+	for (_t *i = R.data; i < R.end(); ++i)
+		++table[key(i->key())].r;
+
+	unsigned keys_hit = 0;
+	_t *hit_s = S.data;
+	for (_t *i = S.data; i < S.end(); ++i) {
+		if ((p = &table[key(i->key())])->r) {
+			++p->s;
+			memcpy(hit_s++, i, sizeof(_t));
+			if (p->s == 1)
+				++keys_hit;
+		}
+	}
+
+	unsigned sum_r = 0, sum_s = 1;
+	DoubleArray<typename _t::Value> hits_r(keys_hit), hits_s(keys_hit);
+	unsigned *limits_r = hits_r.limits(), *limits_s = hits_s.limits();
+
+	for (unsigned i = 0; i < keys; ++i) {
+		p = &table[i];
+		if (p->r && p->s) {
+			unsigned r = p->r, s = p->s;
+			p->r = sum_r;
+			p->s = sum_s;
+			*(limits_r++) = sum_r;
+			*(limits_s++) = sum_s - 1;
+			sum_r += r;
+			sum_s += s;
+		}
+	}
+
+	hits_r.init(sum_r);
+	for (const _t *i = R.data; i < R.end(); ++i) {
+		p = &table[key(i->key())];
+		if (p->s)
+			hits_r.data()[p->r++] = i->value();
+	}
+
+	hits_s.init(sum_s - 1);
+	for (const _t *i = S.data; i < hit_s; ++i) {
+		p = &table[key(i->key())];
+		hits_s.data()[p->s++ - 1] = i->value();
+	}
+	
+	free(table);
 }
 
 template<typename _t>
 void hash_join(const Relation<_t> &R, const Relation<_t> &S, unsigned total_bits = 32, unsigned shift = 0)
 {
-	if (R.n < config.join_split_size) {
-		if (R.n == 0 || S.n == 0)
-			return;
-		hash_table_join<_t, HashTable<unsigned, RelPtr, ExtractBits> >(R, S, shift);
+	if (R.n == 0 || S.n == 0)
+		return;
+	const unsigned key_bits = total_bits - shift;
+	if (R.n < config.join_split_size || key_bits < config.join_split_key_len) {
+		if (next_power_of_2(R.n * config.join_ht_factor) < 1 << key_bits)
+			hash_table_join(R, S, shift);
+		else
+			table_join(R, S, total_bits, shift);			
 	}
 	else {
 		_t *outR, *outS;
