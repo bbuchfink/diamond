@@ -111,7 +111,7 @@ void process_shape(unsigned sid,
 			&no_filter);
 
 		if (config.hash_join) {
-			timer.go("Computing hash join");
+			timer.finish();
 			search(query_idx, *ref_idx);
 		}
 		else {

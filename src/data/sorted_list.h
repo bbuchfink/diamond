@@ -241,6 +241,7 @@ private:
 	entry *data_;
 
 	friend void seed_join_worker(const sorted_list *, const sorted_list *, Atomic<unsigned> *);
+	friend void search(const sorted_list &, const sorted_list &);
 
 };
 

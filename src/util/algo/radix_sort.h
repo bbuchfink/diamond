@@ -23,16 +23,20 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "radix_cluster.h"
 
 template<typename _t>
-void radix_sort(Relation<_t> &R, unsigned total_bits)
+void radix_sort(Relation<_t> &R, unsigned total_bits, _t *buf = 0)
 {
-	_t *buf = new _t[R.n];
+	bool dealloc = false;
+	if (!buf) {
+		buf = new _t[R.n];
+		dealloc = true;
+	}
 	unsigned *hst = new unsigned[1 << config.radix_bits];
 	_t *in = R.data, *out = buf;
 	for (int bits = (int)total_bits; bits > 0; bits -= config.radix_bits) {
 		radix_cluster(Relation<_t>(in, R.n), total_bits - bits, out, hst);
 		std::swap(in, out);
 	}
-	delete[] buf;
+	if(dealloc) delete[] buf;
 	delete[] hst;
 }
 
