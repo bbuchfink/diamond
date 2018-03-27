@@ -16,32 +16,45 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#ifndef RADIX_SORT2_H_
-#define RADIX_SORT2_H_
+#ifndef MEMORY_POOL_H_
+#define MEMORY_POOL_H_
 
-#include <algorithm>
-#include "radix_cluster.h"
-#include "../memory/memory_pool.h"
+#include <list>
+#include <map>
+#include "../tinythread.h"
 
-template<typename _t>
-void radix_sort(Relation<_t> &R, unsigned total_bits, _t *buf = 0)
+using std::list;
+using std::map;
+
+struct MemoryPool
 {
-	bool dealloc = false;
-	if (!buf) {
-		//buf = new _t[R.n];
-		//buf = (_t*)new char[sizeof(_t)*R.n];
-		buf = (_t*)MemoryPool::alloc(sizeof(_t)*R.n);
-		dealloc = true;
-	}
-	unsigned *hst = new unsigned[1 << config.radix_bits];
-	_t *in = R.data, *out = buf;
-	for (int bits = (int)total_bits; bits > 0; bits -= config.radix_bits) {
-		radix_cluster(Relation<_t>(in, R.n), total_bits - bits, out, hst);
-		std::swap(in, out);
-	}
-	//if(dealloc) delete[] buf;
-	if (dealloc) MemoryPool::free(buf);
-	delete[] hst;
-}
+	
+	static void init(size_t size);
+	static void* alloc(size_t n);
+	static void free(void *p);
+
+private:
+
+	struct Block
+	{
+		Block(size_t begin, size_t size) :
+			begin(begin),
+			size(size)
+		{}
+		size_t end() const
+		{
+			return begin + size;
+		}
+		size_t begin, size;
+	};
+
+	static list<Block>::iterator find_block(size_t min_size);
+
+	static char *mem_;
+	static list<Block> free_;
+	static map<size_t, size_t> size_;
+	static tthread::mutex mtx_;
+
+};
 
 #endif

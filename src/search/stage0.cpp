@@ -52,6 +52,7 @@ void search(const sorted_list &query_seeds, const sorted_list &ref_seeds)
 	Thread_pool threads;
 	//buf_q = new sorted_list::entry[query_seeds.limits_.back()];
 	//buf_r = new sorted_list::entry[ref_seeds.limits_.back()];
+	MemoryPool::init(ref_seeds.limits_.back() * sizeof(sorted_list::entry)*config.threads_ * 3 / 1024);
 	timer.go("Computing hash join");
 	for (size_t i = 0; i < config.threads_; ++i)
 		threads.push_back(launch_thread(seed_join_worker, &query_seeds, &ref_seeds, &seedp));
