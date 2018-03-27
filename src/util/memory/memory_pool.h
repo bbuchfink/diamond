@@ -33,6 +33,12 @@ struct MemoryPool
 	static void* alloc(size_t n);
 	static void free(void *p);
 
+	template<typename _t>
+	static _t* alloc(size_t n)
+	{
+		return (_t*)alloc(sizeof(_t)*n);
+	}
+
 private:
 
 	struct Block

@@ -19,25 +19,27 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #ifndef DOUBLE_ARRAY_H_
 #define DOUBLE_ARRAY_H_
 
+#include "../memory/memory_pool.h"
+
 template<typename _t>
 struct DoubleArray
 {
 
 	DoubleArray(unsigned n) :
-		limits_(new unsigned[n]),
+		limits_(MemoryPool::alloc<unsigned>(n)),
 		data_(NULL)
 	{
 	}
 
 	~DoubleArray()
 	{
-		delete[] limits_;
-		delete[] data_;
+		MemoryPool::free(limits_);
+		MemoryPool::free(data_);
 	}
 
 	void init(unsigned data_size)
 	{
-		data_ = new _t[data_size];
+		data_ = MemoryPool::alloc<_t>(data_size);
 	}
 
 	unsigned* limits()

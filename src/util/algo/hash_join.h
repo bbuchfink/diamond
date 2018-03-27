@@ -25,6 +25,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "radix_cluster.h"
 #include "../data_structures/hash_table.h"
 #include "../data_structures/double_array.h"
+#include "../memory/memory_pool.h"
 
 struct RelPtr
 {
@@ -171,7 +172,7 @@ void hash_join(const Relation<_t> &R, const Relation<_t> &S, unsigned total_bits
 	}
 	else {
 		const unsigned clusters = 1 << config.radix_bits;
-		_t *outR = new _t[R.n], *outS = new _t[S.n];
+		_t *outR = MemoryPool::alloc<_t>(R.n), *outS = MemoryPool::alloc<_t>(S.n);
 		unsigned *hstR = new unsigned[clusters], *hstS = new unsigned[clusters];
 		radix_cluster(R, shift, outR, hstR);
 		radix_cluster(S, shift, outS, hstS);
@@ -183,8 +184,8 @@ void hash_join(const Relation<_t> &R, const Relation<_t> &S, unsigned total_bits
 
 		delete[] hstR;
 		delete[] hstS;
-		delete[] outR;
-		delete[] outS;
+		MemoryPool::free(outR);
+		MemoryPool::free(outS);
 	}
 }
 
