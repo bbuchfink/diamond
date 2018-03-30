@@ -36,6 +36,7 @@ void seed_join_worker(const sorted_list *query_seeds, const sorted_list *ref_see
 void search(const sorted_list &query_seeds, const sorted_list &ref_seeds, const SeedPartitionRange &seedp_range)
 {
 	task_timer timer("Computing hash join");
+	MemoryPool::init((query_seeds.limits_.back() + ref_seeds.limits_.back()) * 5);
 	Atomic<unsigned> seedp = seedp_range.begin();
 	Thread_pool threads;
 	vector<JoinResult<sorted_list::entry> > seed_hits(seedp_range.size());

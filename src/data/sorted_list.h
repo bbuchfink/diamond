@@ -241,6 +241,8 @@ private:
 	Limits limits_;
 	entry *data_;
 
+	friend void search(const sorted_list &query_seeds, const sorted_list &ref_seeds, const SeedPartitionRange &seedp_range);
+
 };
 
 template<typename _it>

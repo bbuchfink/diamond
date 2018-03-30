@@ -28,6 +28,7 @@ tthread::mutex MemoryPool::mtx_;
 MemoryPool::SizeMap MemoryPool::size_;
 size_t MemoryPool::max_alloc_size_ = 0;
 size_t MemoryPool::current_alloc_size_ = 0;
+size_t MemoryPool::arena_size_ = 0;
 
 struct Arena
 {
@@ -113,6 +114,11 @@ struct Arena
 
 };
 
+void MemoryPool::init(size_t expected_limit)
+{
+	arena_size_ = expected_limit / 20;
+}
+
 void* MemoryPool::alloc(size_t n)
 {
 	mtx_.lock();
@@ -123,7 +129,8 @@ void* MemoryPool::alloc(size_t n)
 			mtx_.unlock();
 			return p;
 		}
-	const size_t alloc_size = n*ARENA_SIZE_MULTIPLIER;
+	//const size_t alloc_size = n*ARENA_SIZE_MULTIPLIER;
+	const size_t alloc_size = arena_size_;
 	current_alloc_size_ += alloc_size;
 	max_alloc_size_ = std::max(max_alloc_size_, current_alloc_size_);
 	arena_.push_back(new Arena(alloc_size));

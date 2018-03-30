@@ -36,6 +36,7 @@ struct MemoryPool
 	static void* alloc(size_t n);
 	static void free(void *p);
 	static void clear();
+	static void init(size_t expected_limit);
 
 	static size_t max_alloc_size()
 	{
@@ -57,7 +58,7 @@ private:
 	static tthread::mutex mtx_;
 	static vector<Arena*> arena_;
 	static SizeMap size_;
-	static size_t max_alloc_size_, current_alloc_size_;
+	static size_t max_alloc_size_, current_alloc_size_, arena_size_;
 
 };
 
