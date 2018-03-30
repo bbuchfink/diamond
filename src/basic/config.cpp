@@ -62,7 +62,8 @@ Config::Config(int argc, const char **argv)
 		.add_command("test-io", "")
 		.add_command("db-annot-stats", "")
 		.add_command("read-sim", "")
-		.add_command("info", "");
+		.add_command("info", "")
+		.add_command("seed-stat", "");
 
 	Options_group general("General options");
 	general.add()

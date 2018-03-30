@@ -26,7 +26,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 struct Frequent_seeds
 {
 
-	void build(unsigned sid, const seedp_range &range, sorted_list &ref_idx, const sorted_list &query_idx);
+	void build(unsigned sid, const SeedPartitionRange &range, sorted_list &ref_idx, const sorted_list &query_idx);
 
 	bool get(const Letter *pos, unsigned sid) const
 	{

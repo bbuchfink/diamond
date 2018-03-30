@@ -18,7 +18,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "seed_histogram.h"
 
-seedp_range current_range;
+SeedPartitionRange current_range;
 
 Partitioned_histogram::Partitioned_histogram()
 { }
@@ -29,6 +29,6 @@ size_t Partitioned_histogram::max_chunk_size() const
 	::partition<unsigned> p(Const::seedp, config.lowmem);
 	for (unsigned shape = 0; shape < shapes.count(); ++shape)
 		for (unsigned chunk = 0; chunk < p.parts; ++chunk)
-			max = std::max(max, hst_size(data_[shape], seedp_range(p.getMin(chunk), p.getMax(chunk))));
+			max = std::max(max, hst_size(data_[shape], SeedPartitionRange(p.getMin(chunk), p.getMax(chunk))));
 	return max;
 }

@@ -31,13 +31,13 @@ using std::vector;
 
 typedef vector<Array<unsigned,Const::seedp> > shape_histogram;
 
-struct seedp_range
+struct SeedPartitionRange
 {
-	seedp_range():
+	SeedPartitionRange():
 		begin_ (0),
 		end_ (0)
 	{ }
-	seedp_range(unsigned begin, unsigned end):
+	SeedPartitionRange(unsigned begin, unsigned end):
 		begin_ (begin),
 		end_ (end)
 	{ }
@@ -55,15 +55,15 @@ struct seedp_range
 	{
 		return end_ - begin_;
 	}
-	static seedp_range all()
+	static SeedPartitionRange all()
 	{
-		return seedp_range(0, Const::seedp);
+		return SeedPartitionRange(0, Const::seedp);
 	}
 private:
 	unsigned begin_, end_;
 };
 
-extern seedp_range current_range;
+extern SeedPartitionRange current_range;
 
 inline size_t partition_size(const shape_histogram &hst, unsigned p)
 {
@@ -73,7 +73,7 @@ inline size_t partition_size(const shape_histogram &hst, unsigned p)
 	return s;
 }
 
-inline size_t hst_size(const shape_histogram &hst, const seedp_range &range)
+inline size_t hst_size(const shape_histogram &hst, const SeedPartitionRange &range)
 {
 	size_t s = 0;
 	for(unsigned i=range.begin();i<range.end();++i)

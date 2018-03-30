@@ -19,19 +19,28 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #ifndef MEMORY_POOL_H_
 #define MEMORY_POOL_H_
 
-#include <list>
+#include <vector>
+#include <algorithm>
 #include <map>
 #include "../tinythread.h"
 
-using std::list;
+using std::vector;
+using std::pair;
 using std::map;
+
+struct Arena;
 
 struct MemoryPool
 {
 	
-	static void init(size_t size);
 	static void* alloc(size_t n);
 	static void free(void *p);
+	static void clear();
+
+	static size_t max_alloc_size()
+	{
+		return max_alloc_size_;
+	}
 
 	template<typename _t>
 	static _t* alloc(size_t n)
@@ -41,25 +50,14 @@ struct MemoryPool
 
 private:
 
-	struct Block
-	{
-		Block(size_t begin, size_t size) :
-			begin(begin),
-			size(size)
-		{}
-		size_t end() const
-		{
-			return begin + size;
-		}
-		size_t begin, size;
-	};
+	enum { ARENA_SIZE_MULTIPLIER = 20 };
 
-	static list<Block>::iterator find_block(size_t min_size);
+	typedef map<void*, pair<size_t, size_t> > SizeMap;
 
-	static char *mem_;
-	static list<Block> free_;
-	static map<size_t, size_t> size_;
 	static tthread::mutex mtx_;
+	static vector<Arena*> arena_;
+	static SizeMap size_;
+	static size_t max_alloc_size_, current_alloc_size_;
 
 };
 

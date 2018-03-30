@@ -39,6 +39,7 @@ void test_io();
 void db_annot_stats();
 void read_sim();
 void info();
+void seed_stat();
 
 int main(int ac, const char* av[])
 {
@@ -120,6 +121,9 @@ int main(int ac, const char* av[])
 			break;
 		case Config::benchmark:
 			benchmark_sw();
+			break;
+		case Config::seed_stat:
+			seed_stat();
 			break;
 #endif
 		default:

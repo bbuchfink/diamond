@@ -71,7 +71,7 @@ void process_shape(unsigned sid,
 	for (unsigned chunk = 0; chunk < p.parts; ++chunk) {
 
 		message_stream << "Processing query chunk " << query_chunk << ", reference chunk " << current_ref_block << ", shape " << sid << ", index chunk " << chunk << '.' << endl;
-		const seedp_range range(p.getMin(chunk), p.getMax(chunk));
+		const SeedPartitionRange range(p.getMin(chunk), p.getMax(chunk));
 		current_range = range;
 
 		task_timer timer("Building reference index", true);
@@ -112,7 +112,7 @@ void process_shape(unsigned sid,
 
 		if (config.hash_join) {
 			timer.finish();
-			search(query_idx, *ref_idx);
+			search(query_idx, *ref_idx, range);
 		}
 		else {
 			timer.go("Building seed filter");

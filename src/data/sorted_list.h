@@ -55,7 +55,7 @@ struct sorted_list
 	sorted_list();
 	
 	template<typename _filter>
-	sorted_list(char *buffer, const Sequence_set &seqs, size_t sh, const shape_histogram &hst, const seedp_range &range, const vector<size_t> seq_partition, const _filter *filter) :
+	sorted_list(char *buffer, const Sequence_set &seqs, size_t sh, const shape_histogram &hst, const SeedPartitionRange &range, const vector<size_t> seq_partition, const _filter *filter) :
 		limits_(hst, range),
 		data_(reinterpret_cast<entry*>(buffer))
 	{
@@ -138,6 +138,9 @@ struct sorted_list
 	{
 		return i.i - cptr_begin(p);
 	}
+	
+	entry* ptr_begin(unsigned i) const;
+	entry* ptr_end(unsigned i) const;
 
 	Random_access_iterator random_access(unsigned p, size_t offset) const;
 
@@ -155,7 +158,7 @@ private:
 			memset(n, 0, sizeof(n));
 			memcpy(this->ptr, ptr, sizeof(this->ptr));
 		}
-		void push(Packed_seed key, Loc value, const seedp_range &range)
+		void push(Packed_seed key, Loc value, const SeedPartitionRange &range)
 		{
 			const unsigned p(seed_partition(key));
 			if(range.contains(p)) {
@@ -182,8 +185,6 @@ private:
 		uint8_t  n[Const::seedp];
 	};
 
-	entry* ptr_begin(unsigned i) const;
-	entry* ptr_end(unsigned i) const;
 	const entry* cptr_begin(unsigned i) const;
 	const entry* cptr_end(unsigned i) const;
 
@@ -205,7 +206,7 @@ private:
 	{
 		Limits()
 		{}
-		Limits(const shape_histogram &hst, const seedp_range &range)
+		Limits(const shape_histogram &hst, const SeedPartitionRange &range)
 		{
 			task_timer timer ("Computing limits", 3);
 			this->push_back(0);
@@ -220,7 +221,7 @@ private:
 
 	struct Build_callback
 	{
-		Build_callback(const seedp_range &range, sorted_list::entry* const* ptr) :
+		Build_callback(const SeedPartitionRange &range, sorted_list::entry* const* ptr) :
 			range(range),
 			it(new sorted_list::buffered_iterator(ptr))
 		{ }
@@ -233,15 +234,12 @@ private:
 		{
 			it->flush();
 		}
-		seedp_range range;
+		SeedPartitionRange range;
 		auto_ptr<sorted_list::buffered_iterator> it;
 	};
 
 	Limits limits_;
 	entry *data_;
-
-	friend void seed_join_worker(const sorted_list *, const sorted_list *, Atomic<unsigned> *);
-	friend void search(const sorted_list &, const sorted_list &);
 
 };
 

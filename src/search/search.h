@@ -21,6 +21,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #ifndef SEARCH_H_
 #define SEARCH_H_
 
-void search(const sorted_list &query_seeds, const sorted_list &ref_seeds);
+void search(const sorted_list &query_seeds, const sorted_list &ref_seeds, const SeedPartitionRange &seedp_range);
 
 #endif

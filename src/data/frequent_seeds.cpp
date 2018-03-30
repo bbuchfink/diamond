@@ -20,6 +20,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "frequent_seeds.h"
 #include "sorted_list.h"
 
+// #define MASK_FREQUENT
+
+#ifdef MASK_FREQUENT
+#include "../data/reference.h"
+#endif
+
 const double Frequent_seeds::hash_table_factor = 1.3;
 Frequent_seeds frequent_seeds;
 
@@ -47,7 +53,7 @@ void Frequent_seeds::compute_sd(Atomic<unsigned> *seedp, const sorted_list *ref_
 
 struct Frequent_seeds::Build_context
 {
-	Build_context(const sorted_list &ref_idx, const sorted_list &query_idx, const seedp_range &range, unsigned sid, unsigned ref_max_n, unsigned query_max_n, vector<unsigned> &counts) :
+	Build_context(const sorted_list &ref_idx, const sorted_list &query_idx, const SeedPartitionRange &range, unsigned sid, unsigned ref_max_n, unsigned query_max_n, vector<unsigned> &counts) :
 		ref_idx(ref_idx),
 		query_idx(query_idx),
 		range(range),
@@ -69,6 +75,13 @@ struct Frequent_seeds::Build_context
 				merge_it.i.get(0)->value = 0;
 				n += (unsigned)merge_it.i.n;
 				buf.push_back(merge_it.i.key());
+#ifdef MASK_FREQUENT
+				for (unsigned i = 0; i < merge_it.i.n; ++i) {
+					char *p = ref_seqs::get_nc().data(merge_it.i.get(i)->value);
+					for (unsigned j = 0; j < shapes[0].weight_; ++j)
+						p[shapes[0].positions_[j]] |= 128;
+				}
+#endif
 			}
 			++merge_it;
 		}
@@ -84,12 +97,12 @@ struct Frequent_seeds::Build_context
 	}
 	const sorted_list &ref_idx;
 	const sorted_list &query_idx;
-	const seedp_range range;
+	const SeedPartitionRange range;
 	const unsigned sid, ref_max_n, query_max_n;
 	vector<unsigned> &counts;
 };
 
-void Frequent_seeds::build(unsigned sid, const seedp_range &range, sorted_list &ref_idx, const sorted_list &query_idx)
+void Frequent_seeds::build(unsigned sid, const SeedPartitionRange &range, sorted_list &ref_idx, const sorted_list &query_idx)
 {
 	vector<Sd> ref_sds(range.size()), query_sds(range.size());
 	Atomic<unsigned> seedp (range.begin());
