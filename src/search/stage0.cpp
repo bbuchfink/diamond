@@ -23,20 +23,21 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 void seed_join_worker(const sorted_list *query_seeds, const sorted_list *ref_seeds, Atomic<unsigned> *seedp, const SeedPartitionRange *seedp_range, typename vector<JoinResult<sorted_list::entry> >::iterator seed_hits)
 {
 	unsigned p;
+	MemoryPool tmp_pool(false);
 	while ((p = (*seedp)++) < seedp_range->end()) {
 		hash_join(
 			Relation<sorted_list::entry>(query_seeds->ptr_begin(p), query_seeds->ptr_end(p) - query_seeds->ptr_begin(p)),
 			Relation<sorted_list::entry>(ref_seeds->ptr_begin(p), ref_seeds->ptr_end(p) - ref_seeds->ptr_begin(p)),
 			*(seed_hits + (p - seedp_range->begin())),
-			24
-			);
+			tmp_pool,
+			24);
 	}
 }
 
 void search(const sorted_list &query_seeds, const sorted_list &ref_seeds, const SeedPartitionRange &seedp_range)
 {
 	task_timer timer("Computing hash join");
-	MemoryPool::init((query_seeds.limits_.back() + ref_seeds.limits_.back()) * 5);
+	//MemoryPool::init((query_seeds.limits_.back() + ref_seeds.limits_.back()) * 5);
 	Atomic<unsigned> seedp = seedp_range.begin();
 	Thread_pool threads;
 	vector<JoinResult<sorted_list::entry> > seed_hits(seedp_range.size());

@@ -23,12 +23,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 using std::list;
 
-vector<Arena*> MemoryPool::arena_;
-tthread::mutex MemoryPool::mtx_;
-MemoryPool::SizeMap MemoryPool::size_;
-size_t MemoryPool::max_alloc_size_ = 0;
-size_t MemoryPool::current_alloc_size_ = 0;
-size_t MemoryPool::arena_size_ = 0;
+MemoryPool MemoryPool::global_;
 
 struct Arena
 {
@@ -59,26 +54,19 @@ struct Arena
 		::free(mem_);
 	}
 
-	list<Block>::iterator find_block(size_t min_size)
-	{
-		list<Block>::iterator i;
-		for (i = free_.begin(); i != free_.end(); ++i)
-			if (i->size >= min_size)
-				return i;
-		return i;
-	}
-
 	void* alloc(size_t n)
 	{
-		list<Block>::iterator i = find_block(n);
-		if (i == free_.end())
+		if (free_.empty())
 			return NULL;
-		void *m = mem_ + i->begin;
-		if (n == i->size)
-			free_.erase(i);
+		Block &b = free_.back();
+		if (b.size < n)
+			return NULL;
+		void *m = mem_ + b.begin;
+		if (n == b.size)
+			free_.pop_back();
 		else {
-			i->size -= n;
-			i->begin += n;
+			b.size -= n;
+			b.begin += n;
 		}
 		return m;
 	}
@@ -114,41 +102,43 @@ struct Arena
 
 };
 
-void MemoryPool::init(size_t expected_limit)
+MemoryPool::MemoryPool(bool thread_safe, size_t expected_limit):
+	current_alloc_size_(0),
+	max_alloc_size_(0),
+	arena_size_(expected_limit ? expected_limit / 100 : 256 * (1<<20)),
+	thread_safe_(thread_safe)
 {
-	arena_size_ = expected_limit / 20;
 }
 
 void* MemoryPool::alloc(size_t n)
 {
-	mtx_.lock();
+	if (thread_safe_) mtx_.lock();
 	void *p;
 	for (vector<Arena*>::iterator i = arena_.begin(); i < arena_.end(); ++i)
 		if (p = (*i)->alloc(n)) {
 			size_[p] = std::make_pair(i - arena_.begin(), n);
-			mtx_.unlock();
+			if (thread_safe_) mtx_.unlock();
 			return p;
 		}
-	//const size_t alloc_size = n*ARENA_SIZE_MULTIPLIER;
-	const size_t alloc_size = arena_size_;
+	const size_t alloc_size = std::max(arena_size_, n*ARENA_SIZE_MULTIPLIER);
 	current_alloc_size_ += alloc_size;
 	max_alloc_size_ = std::max(max_alloc_size_, current_alloc_size_);
 	arena_.push_back(new Arena(alloc_size));
 	p = arena_.back()->alloc(n);
 	size_[p] = std::make_pair(arena_.size() - 1, n);
-	mtx_.unlock();
+	if (thread_safe_) mtx_.unlock();
 	return p;
 }
 
 void MemoryPool::free(void *p)
 {
-	mtx_.lock();
+	if(thread_safe_) mtx_.lock();
 	typename SizeMap::iterator s = size_.find(p);
 	if (s == size_.end())
 		throw std::runtime_error("MemoryPool: Invalid free.");
 	arena_[s->second.first]->free(p, s->second.second);
 	size_.erase(s);
-	mtx_.unlock();
+	if (thread_safe_) mtx_.unlock();
 }
 
 void MemoryPool::clear()

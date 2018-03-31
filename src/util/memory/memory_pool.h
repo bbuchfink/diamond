@@ -33,20 +33,25 @@ struct Arena;
 struct MemoryPool
 {
 	
-	static void* alloc(size_t n);
-	static void free(void *p);
-	static void clear();
-	static void init(size_t expected_limit);
+	void* alloc(size_t n);
+	void free(void *p);
+	void clear();
+	MemoryPool(bool thread_safe = true, size_t expected_limit = 0);
 
-	static size_t max_alloc_size()
+	size_t max_alloc_size()
 	{
 		return max_alloc_size_;
 	}
 
 	template<typename _t>
-	static _t* alloc(size_t n)
+	_t* alloc(size_t n)
 	{
 		return (_t*)alloc(sizeof(_t)*n);
+	}
+
+	static MemoryPool& global()
+	{
+		return global_;
 	}
 
 private:
@@ -55,10 +60,13 @@ private:
 
 	typedef map<void*, pair<size_t, size_t> > SizeMap;
 
-	static tthread::mutex mtx_;
-	static vector<Arena*> arena_;
-	static SizeMap size_;
-	static size_t max_alloc_size_, current_alloc_size_, arena_size_;
+	tthread::mutex mtx_;
+	vector<Arena*> arena_;
+	SizeMap size_;
+	size_t max_alloc_size_, current_alloc_size_, arena_size_;
+	bool thread_safe_;
+
+	static MemoryPool global_;
 
 };
 

@@ -116,7 +116,6 @@ void hash_table_join(const Relation<_t> &R, const Relation<_t> &S, unsigned shif
 	out.push_back(std::make_pair(hits_r, hits_s));
 }
 
-
 template<typename _t>
 void table_join(const Relation<_t> &R, const Relation<_t> &S, unsigned total_bits, unsigned shift, JoinResult<_t> &out)
 {
@@ -177,7 +176,7 @@ void table_join(const Relation<_t> &R, const Relation<_t> &S, unsigned total_bit
 }
 
 template<typename _t>
-void hash_join(const Relation<_t> &R, const Relation<_t> &S, JoinResult<_t> &out, unsigned total_bits = 32, unsigned shift = 0)
+void hash_join(const Relation<_t> &R, const Relation<_t> &S, JoinResult<_t> &out, MemoryPool &tmp_pool, unsigned total_bits = 32, unsigned shift = 0)
 {
 	if (R.n == 0 || S.n == 0)
 		return;
@@ -190,20 +189,20 @@ void hash_join(const Relation<_t> &R, const Relation<_t> &S, JoinResult<_t> &out
 	}
 	else {
 		const unsigned clusters = 1 << config.radix_bits;
-		_t *outR = MemoryPool::alloc<_t>(R.n), *outS = MemoryPool::alloc<_t>(S.n);
+		_t *outR = tmp_pool.alloc<_t>(R.n), *outS = tmp_pool.alloc<_t>(S.n);
 		unsigned *hstR = new unsigned[clusters], *hstS = new unsigned[clusters];
 		radix_cluster(R, shift, outR, hstR);
 		radix_cluster(S, shift, outS, hstS);
 
 		shift += config.radix_bits;
-		hash_join(Relation<_t>(outR, hstR[0]), Relation<_t>(outS, hstS[0]), out, total_bits, shift);
+		hash_join(Relation<_t>(outR, hstR[0]), Relation<_t>(outS, hstS[0]), out, tmp_pool, total_bits, shift);
 		for (unsigned i = 1; i < clusters; ++i)
-			hash_join(Relation<_t>(&outR[hstR[i - 1]], hstR[i] - hstR[i - 1]), Relation<_t>(&outS[hstS[i - 1]], hstS[i] - hstS[i - 1]), out, total_bits, shift);
+			hash_join(Relation<_t>(&outR[hstR[i - 1]], hstR[i] - hstR[i - 1]), Relation<_t>(&outS[hstS[i - 1]], hstS[i] - hstS[i - 1]), out, tmp_pool, total_bits, shift);
 
 		delete[] hstR;
 		delete[] hstS;
-		MemoryPool::free(outR);
-		MemoryPool::free(outS);
+		tmp_pool.free(outR);
+		tmp_pool.free(outS);
 	}
 }
 

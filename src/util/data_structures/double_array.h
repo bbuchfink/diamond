@@ -26,20 +26,20 @@ struct DoubleArray
 {
 
 	DoubleArray(unsigned n) :
-		limits_(MemoryPool::alloc<unsigned>(n)),
+		limits_(MemoryPool::global().alloc<unsigned>(n)),
 		data_(NULL)
 	{
 	}
 
 	~DoubleArray()
 	{
-		MemoryPool::free(limits_);
-		MemoryPool::free(data_);
+		MemoryPool::global().free(limits_);
+		MemoryPool::global().free(data_);
 	}
 
 	void init(unsigned data_size)
 	{
-		data_ = MemoryPool::alloc<_t>(data_size);
+		data_ = MemoryPool::global().alloc<_t>(data_size);
 	}
 
 	unsigned* limits()
