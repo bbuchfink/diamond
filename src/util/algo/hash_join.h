@@ -89,7 +89,7 @@ void hash_table_join(const Relation<_t> &R, const Relation<_t> &S, unsigned shif
 	
 	for (unsigned i = 0; i < table.size(); ++i) {
 		p = &table.data()[i];
-		if (p->r && p->s) {
+		if (p->s) {
 			unsigned r = p->r, s = p->s;
 			p->r = sum_r;
 			p->s = sum_s;
@@ -101,16 +101,18 @@ void hash_table_join(const Relation<_t> &R, const Relation<_t> &S, unsigned shif
 	}
 
 	hits_r->init(sum_r);
+	hits_s->init(sum_s - 1);
+	typename _t::Value *data_r = hits_r->data(), *data_s = hits_s->data();
+
 	for (const _t *i = R.data; i < R.end(); ++i) {
 		p = &table.data()[i->key];
 		if (p->s)
-			hits_r->data()[p->r++] = i->value;
+			data_r[p->r++] = i->value;
 	}
 
-	hits_s->init(sum_s - 1);
 	for (const _t *i = S.data; i < hit_s; ++i) {
 		p = &table.data()[i->key];
-		hits_s->data()[p->s++ - 1] = i->value;
+		data_s[p->s++ - 1] = i->value;
 	}
 
 	out.push_back(std::make_pair(hits_r, hits_s));
@@ -145,7 +147,7 @@ void table_join(const Relation<_t> &R, const Relation<_t> &S, unsigned total_bit
 
 	for (unsigned i = 0; i < keys; ++i) {
 		p = &table[i];
-		if (p->r && p->s) {
+		if (p->s) {
 			unsigned r = p->r, s = p->s;
 			p->r = sum_r;
 			p->s = sum_s;
@@ -156,16 +158,16 @@ void table_join(const Relation<_t> &R, const Relation<_t> &S, unsigned total_bit
 		}
 	}
 
-	typename _t::Value *data_r = hits_r->data(), *data_s = hits_s->data();
-
 	hits_r->init(sum_r);
+	hits_s->init(sum_s - 1);
+	typename _t::Value *data_r = hits_r->data(), *data_s = hits_s->data();
+	
 	for (const _t *i = R.data; i < R.end(); ++i) {
 		p = &table[key(i->key)];
 		if (p->s)
 			data_r[p->r++] = i->value;
 	}
 
-	hits_s->init(sum_s - 1);
 	for (const _t *i = S.data; i < hit_s; ++i) {
 		p = &table[key(i->key)];
 		data_s[p->s++ - 1] = i->value;
