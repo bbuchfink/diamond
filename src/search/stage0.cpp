@@ -19,29 +19,55 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "search.h"
 #include "../util/algo/hash_join.h"
 #include "../util/algo/radix_sort.h"
+#include "../data/reference.h"
+#include "../data/seed_array.h"
+#include "../data/queries.h"
 
-void seed_join_worker(const sorted_list *query_seeds, const sorted_list *ref_seeds, Atomic<unsigned> *seedp, const SeedPartitionRange *seedp_range, typename vector<JoinResult<sorted_list::entry> >::iterator seed_hits)
+void seed_join_worker(SeedArray *query_seeds, SeedArray *ref_seeds, Atomic<unsigned> *seedp, const SeedPartitionRange *seedp_range, typename vector<JoinResult<SeedArray::Entry> >::iterator seed_hits)
 {
 	unsigned p;
 	MemoryPool tmp_pool(false);
 	while ((p = (*seedp)++) < seedp_range->end()) {
 		hash_join(
-			Relation<sorted_list::entry>(query_seeds->ptr_begin(p), query_seeds->ptr_end(p) - query_seeds->ptr_begin(p)),
-			Relation<sorted_list::entry>(ref_seeds->ptr_begin(p), ref_seeds->ptr_end(p) - ref_seeds->ptr_begin(p)),
+			Relation<SeedArray::Entry>(query_seeds->begin(p), query_seeds->size(p)),
+			Relation<SeedArray::Entry>(ref_seeds->begin(p), ref_seeds->size(p)),
 			*(seed_hits + (p - seedp_range->begin())),
 			tmp_pool,
 			24);
+		MemoryPool::global().free(query_seeds->begin(p));
+		MemoryPool::global().free(ref_seeds->begin(p));
 	}
 }
 
-void search(const sorted_list &query_seeds, const sorted_list &ref_seeds, const SeedPartitionRange &seedp_range)
+void search_shape(unsigned sid, unsigned query_block)
 {
-	task_timer timer("Computing hash join");
-	//MemoryPool::init((query_seeds.limits_.back() + ref_seeds.limits_.back()) * 5);
-	Atomic<unsigned> seedp = seedp_range.begin();
-	Thread_pool threads;
-	vector<JoinResult<sorted_list::entry> > seed_hits(seedp_range.size());
-	for (size_t i = 0; i < config.threads_; ++i)
-		threads.push_back(launch_thread(seed_join_worker, &query_seeds, &ref_seeds, &seedp, &seedp_range, seed_hits.begin()));
-	threads.join_all();
+	::partition<unsigned> p(Const::seedp, config.lowmem);
+	for (unsigned chunk = 0; chunk < p.parts; ++chunk) {
+		message_stream << "Processing query block " << query_block << ", reference block " << current_ref_block << ", shape " << sid << ", index chunk " << chunk << '.' << endl;
+		const SeedPartitionRange range(p.getMin(chunk), p.getMax(chunk));
+		current_range = range;
+
+		task_timer timer("Building reference seed array", true);
+		SeedArray *ref_idx;
+		if (config.algo == Config::query_indexed)
+			ref_idx = new SeedArray(*ref_seqs::data_, sid, ref_hst.get(sid), range, ref_hst.partition(), query_seeds);
+		else if (query_seeds_hashed != 0)
+			ref_idx = new SeedArray(*ref_seqs::data_, sid, ref_hst.get(sid), range, ref_hst.partition(), query_seeds_hashed);
+		else
+			ref_idx = new SeedArray(*ref_seqs::data_, sid, ref_hst.get(sid), range, ref_hst.partition(), &no_filter);
+
+		timer.go("Building query seed array");
+		SeedArray query_idx(*query_seqs::data_, sid, query_hst.get(sid), range, query_hst.partition(), &no_filter);
+
+		timer.go("Computing hash join");
+		//MemoryPool::init((query_seeds.limits_.back() + ref_seeds.limits_.back()) * 5);
+		Atomic<unsigned> seedp = range.begin();
+		Thread_pool threads;
+		vector<JoinResult<SeedArray::Entry> > seed_hits(range.size());
+		for (size_t i = 0; i < config.threads_; ++i)
+			threads.push_back(launch_thread(seed_join_worker, &query_idx, ref_idx, &seedp, &range, seed_hits.begin()));
+		threads.join_all();
+
+		delete ref_idx;
+	}
 }

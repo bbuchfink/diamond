@@ -110,6 +110,12 @@ MemoryPool::MemoryPool(bool thread_safe, size_t expected_limit):
 {
 }
 
+void MemoryPool::init(size_t expected_limit)
+{
+
+}
+
+
 void* MemoryPool::alloc(size_t n)
 {
 	if (thread_safe_) mtx_.lock();

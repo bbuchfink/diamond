@@ -110,18 +110,13 @@ void process_shape(unsigned sid,
 			query_hst.partition(),
 			&no_filter);
 
-		if (config.hash_join) {
-			timer.finish();
-			search(query_idx, *ref_idx, range);
-		}
-		else {
-			timer.go("Building seed filter");
-			frequent_seeds.build(sid, range, *ref_idx, query_idx);
+		timer.go("Building seed filter");
+		frequent_seeds.build(sid, range, *ref_idx, query_idx);
 
-			timer.go("Searching alignments");
-			Search_context context(sid, *ref_idx, query_idx);
-			launch_scheduled_thread_pool(context, Const::seedp, config.threads_);
-		}
+		timer.go("Searching alignments");
+		Search_context context(sid, *ref_idx, query_idx);
+		launch_scheduled_thread_pool(context, Const::seedp, config.threads_);
+
 		delete ref_idx;
 	}
 }
@@ -157,7 +152,10 @@ void run_ref_chunk(DatabaseFile &db_file,
 	timer.finish();
 	
 	for (unsigned i = 0; i < shapes.count(); ++i)
-		process_shape(i, query_chunk, query_buffer, ref_buffer);
+		if (config.hash_join)
+			search_shape(i, query_chunk);
+		else
+			process_shape(i, query_chunk, query_buffer, ref_buffer);
 
 	timer.go("Deallocating buffers");
 	delete[] ref_buffer;

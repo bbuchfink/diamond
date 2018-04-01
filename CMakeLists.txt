@@ -111,6 +111,7 @@ add_executable(diamond src/run/main.cpp
   src/util/algo/MurmurHash3.cpp
   src/search/stage0.cpp
   src/util/memory/memory_pool.cpp
+  src/data/seed_array.cpp
 )
 
 if(EXTRA)

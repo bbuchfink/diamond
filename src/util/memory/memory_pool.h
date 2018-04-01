@@ -37,6 +37,7 @@ struct MemoryPool
 	void free(void *p);
 	void clear();
 	MemoryPool(bool thread_safe = true, size_t expected_limit = 0);
+	void init(size_t expected_limit);
 
 	size_t max_alloc_size()
 	{
