@@ -64,7 +64,7 @@ struct JoinResult : public vector<pair<DoubleArray<typename _t::Value>*, DoubleA
 
 	Iterator begin()
 	{
-		return Iterator(vector<pair<DoubleArray<typename _t::Value>*, DoubleArray<typename _t::Value>*> >::begin(), end());
+		return Iterator(vector<pair<DoubleArray<typename _t::Value>*, DoubleArray<typename _t::Value>*> >::begin(), this->end());
 	}
 
 };
