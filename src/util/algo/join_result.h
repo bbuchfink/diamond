@@ -35,7 +35,7 @@ struct JoinResult : public vector<pair<DoubleArray<typename _t::Value>*, DoubleA
 	struct Iterator
 	{
 		typename DoubleArray<Value>::Iterator r, s;
-		Iterator(iterator begin, iterator end) :
+		Iterator(typename JoinResult<_t>::iterator begin, typename JoinResult<_t>::iterator end) :
 			r(begin->first->begin()),
 			s(begin->second->begin()),
 			it_(begin),
@@ -59,7 +59,7 @@ struct JoinResult : public vector<pair<DoubleArray<typename _t::Value>*, DoubleA
 			return it_ < end_;
 		}
 	private:
-		iterator it_, end_;
+		typename JoinResult<_t>::iterator it_, end_;
 	};
 
 	Iterator begin()
