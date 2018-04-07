@@ -148,7 +148,7 @@ void load_fps(const Packed_loc *p, size_t n, vector<Finger_print> &v, const Sequ
 {
 	v.clear();
 	v.reserve(n);
-	const Packed_loc const *end = p + n;
+	const Packed_loc *end = p + n;
 	for (; p < end; ++p)
 		v.push_back(Finger_print(seqs.data(*p)));
 }
