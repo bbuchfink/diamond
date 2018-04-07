@@ -84,10 +84,10 @@ struct Letter_trail
 #define OPT_W 7
 typedef Letter_trail Trail[OPT_W];
 
-struct shape
+struct Shape
 {
 
-	shape():
+	Shape():
 		length_ (0),
 		weight_ (0),
 		d_ (0),
@@ -96,7 +96,7 @@ struct shape
 		id_ (0)
 	{ memset(positions_, 0, sizeof(uint32_t)*Const::max_seed_weight); }
 
-	shape(const char *code, unsigned id):
+	Shape(const char *code, unsigned id):
 		weight_ (0),
 		mask_ (0),
 		rev_mask_ (0),
@@ -186,7 +186,7 @@ struct shape
 		return true;
 	}
 	
-	friend std::ostream& operator<<(std::ostream&s, const shape &sh)
+	friend std::ostream& operator<<(std::ostream&s, const Shape &sh)
 	{
 		for (unsigned i = 0; i < sh.length_; ++i)
 			s << ((sh.mask_ & (1 << i)) ? '1' : '0');

@@ -160,7 +160,7 @@ private:
 			const sequence seq = (*this)[i];
 			Reduction::reduce_seq(seq, buf);
 			for (size_t shape_id = shape_range.first; shape_id < shape_range.second; ++shape_id) {
-				const shape& sh = shapes[shape_id];
+				const Shape& sh = shapes[shape_id];
 				if (seq.length() < sh.length_) continue;
 				Seed_iterator it(buf, sh);
 				size_t j = 0;
@@ -182,7 +182,7 @@ private:
 		for (unsigned i = begin; i < end; ++i) {
 			const sequence seq = (*this)[i];
 			for (size_t shape_id = shape_range.first; shape_id < shape_range.second; ++shape_id) {
-				const shape& sh = shapes[shape_id];
+				const Shape& sh = shapes[shape_id];
 				if (seq.length() < sh.length_) continue;
 				const uint64_t shape_mask = sh.long_mask();
 				Hashed_seed_iterator<_b> it(seq, sh);

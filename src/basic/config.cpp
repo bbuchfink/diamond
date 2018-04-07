@@ -243,7 +243,9 @@ Config::Config(int argc, const char **argv)
 		("radix-bits", 0, "", radix_bits, 8u)
 		("join-ht-factor", 0, "", join_ht_factor, 1.3)
 		("hash-join", 0, "", hash_join)
-		("sort-join", 0, "", sort_join);
+		("sort-join", 0, "", sort_join)
+		("simple-freq", 0, "", simple_freq)
+		("freq-treshold", 0, "", freq_treshold);
 		
 	parser.add(general).add(makedb).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options);
 	parser.store(argc, argv, command);

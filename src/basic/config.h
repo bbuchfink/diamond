@@ -157,6 +157,8 @@ struct Config
 	double join_ht_factor;
 	bool hash_join;
 	bool sort_join;
+	bool simple_freq;
+	double freq_treshold;
 
 	enum {
 		makedb = 0, blastp = 1, blastx = 2, view = 3, help = 4, version = 5, getseq = 6, benchmark = 7, random_seqs = 8, compare = 9, sort = 10, roc = 11, db_stat = 12, model_sim = 13,

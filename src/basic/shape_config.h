@@ -41,18 +41,18 @@ public:
 			unsigned maxShapes = count == 0 ? Const::max_shapes : count;
 			for (unsigned i = 0; i < maxShapes; ++i)
 				if (shape_codes[mode_][i])
-					shapes_[n_++] = shape(shape_codes[mode_][i], i);
+					shapes_[n_++] = Shape(shape_codes[mode_][i], i);
 		}
 		else {
 			for (unsigned i = 0; i < (count == 0 ? shape_mask.size() : std::min((unsigned)shape_mask.size(), count)); ++i)
-				shapes_[n_++] = shape(shape_mask[i].c_str(), i);
+				shapes_[n_++] = Shape(shape_mask[i].c_str(), i);
 		}
 	}
 
 	unsigned count() const
 	{ return n_; }
 
-	const shape& operator[](size_t i) const
+	const Shape& operator[](size_t i) const
 	{ return shapes_[i]; }
 
 	unsigned mode() const
@@ -67,7 +67,7 @@ public:
 
 private:
 
-	shape shapes_[Const::max_shapes];
+	Shape shapes_[Const::max_shapes];
 	unsigned n_, mode_;
 
 };

@@ -19,6 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "align_range.h"
 #include "hit_filter.h"
 #include "sse_dist.h"
+#include "seed_complexity.h"
 
 Trace_pt_buffer* Trace_pt_buffer::instance;
 
@@ -135,6 +136,10 @@ void load_fps(const sorted_list::const_iterator &i, vector<Finger_print> &v, con
 
 void Seed_filter::run(const sorted_list::const_iterator &q, const sorted_list::const_iterator &s)
 {
+	if (config.simple_freq && !SeedComplexity::complex(query_seqs::get().data(q[0]), shapes[sid])) {
+		stats.inc(Statistics::LOW_COMPLEXITY_SEEDS);
+		return;
+	}
 	hits.clear();
 	load_fps(q, vq, *query_seqs::data_);
 	load_fps(s, vs, *ref_seqs::data_);

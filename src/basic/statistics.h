@@ -34,7 +34,7 @@ struct Statistics
 	enum value {
 		SEED_HITS, TENTATIVE_MATCHES0, TENTATIVE_MATCHES1, TENTATIVE_MATCHES2, TENTATIVE_MATCHES3, TENTATIVE_MATCHES4, TENTATIVE_MATCHESX, MATCHES, ALIGNED, GAPPED, DUPLICATES,
 		GAPPED_HITS, QUERY_SEEDS, QUERY_SEEDS_HIT, REF_SEEDS, REF_SEEDS_HIT, QUERY_SIZE, REF_SIZE, OUT_HITS, OUT_MATCHES, COLLISION_LOOKUPS, QCOV, BIAS_ERRORS, SCORE_TOTAL, ALIGNED_QLEN, PAIRWISE, HIGH_SIM,
-		TEMP_SPACE, SECONDARY_HITS, ERASED_HITS, SQUARED_ERROR, CELLS, OUTRANKED_HITS, TARGET_HITS0, TARGET_HITS1, TARGET_HITS2, TIME_GREEDY_EXT, COUNT
+		TEMP_SPACE, SECONDARY_HITS, ERASED_HITS, SQUARED_ERROR, CELLS, OUTRANKED_HITS, TARGET_HITS0, TARGET_HITS1, TARGET_HITS2, TIME_GREEDY_EXT, LOW_COMPLEXITY_SEEDS, COUNT
 	};
 
 	Statistics()
@@ -64,6 +64,7 @@ struct Statistics
 	{
 		//log_stream << "Used ref size = " << data_[REF_SIZE] << endl;
 		//log_stream << "Traceback errors = " << data_[BIAS_ERRORS] << endl;
+		log_stream << "Low complexity seeds  = " << data_[LOW_COMPLEXITY_SEEDS] << endl;
 		log_stream << "Hits (filter stage 0) = " << data_[SEED_HITS] << endl;
 		log_stream << "Hits (filter stage 1) = " << data_[TENTATIVE_MATCHES1] << " (" << data_[TENTATIVE_MATCHES1]*100.0/ data_[SEED_HITS] << " %)" << endl;
 		log_stream << "Hits (filter stage 2) = " << data_[TENTATIVE_MATCHES2] << " (" << data_[TENTATIVE_MATCHES2] * 100.0 / data_[TENTATIVE_MATCHES1] << " %)" << endl;

@@ -25,7 +25,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 struct Seed_iterator
 {
-	Seed_iterator(vector<char> &seq, const shape &sh):
+	Seed_iterator(vector<char> &seq, const Shape &sh):
 		ptr_ (seq.data()),
 		end_ (ptr_ + seq.size() - sh.length_ + 1)
 	{}
@@ -33,7 +33,7 @@ struct Seed_iterator
 	{
 		return ptr_ < end_;
 	}
-	bool get(uint64_t &seed, const shape &sh)
+	bool get(uint64_t &seed, const Shape &sh)
 	{
 		return sh.set_seed_reduced(seed, ptr_++);
 	}
@@ -44,7 +44,7 @@ private:
 template<uint64_t _b>
 struct Hashed_seed_iterator
 {
-	Hashed_seed_iterator(const sequence &seq, const shape &sh):
+	Hashed_seed_iterator(const sequence &seq, const Shape &sh):
 		ptr_(seq.data()),
 		end_(ptr_ + seq.length()),
 		last_(0)

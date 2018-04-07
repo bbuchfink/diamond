@@ -110,8 +110,10 @@ void process_shape(unsigned sid,
 			query_hst.partition(),
 			&no_filter);
 
-		timer.go("Building seed filter");
-		frequent_seeds.build(sid, range, *ref_idx, query_idx);
+		if (!config.simple_freq) {
+			timer.go("Building seed filter");
+			frequent_seeds.build(sid, range, *ref_idx, query_idx);
+		}
 
 		timer.go("Searching alignments");
 		Search_context context(sid, *ref_idx, query_idx);

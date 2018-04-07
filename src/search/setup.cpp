@@ -19,6 +19,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "align_range.h"
 #include "../data/reference.h"
 #include "../basic/config.h"
+#include "seed_complexity.h"
+
+double SeedComplexity::prob_[AMINO_ACID_COUNT];
 
 void setup_search_cont()
 {
@@ -69,6 +72,8 @@ void setup_search()
 		}
 		config.lowmem = 1;
 	}
+
+	SeedComplexity::init(Reduction::reduction);
 
 	message_stream << "Algorithm: " << (config.algo == Config::double_indexed ? "Double-indexed" : "Query-indexed") << endl;
 	verbose_stream << "Reduction: " << Reduction::reduction << endl;
