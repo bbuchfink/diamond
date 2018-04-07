@@ -78,7 +78,7 @@ void radix_cluster(const Relation<_t> &in, unsigned shift, _t *out, unsigned *hs
 
 		for (const _t *i = in.data; i < in.end(); ++i) {
 			const unsigned r = radix(i->key);
-			buf[r*BUF_SIZE + buf_n[r]++] = *i;
+			buf[r*BUF_SIZE + buf_n[r]++] = *i;	
 			if (buf_n[r] == BUF_SIZE) {
 				memcpy(out + hst[r], buf + r*BUF_SIZE, BUF_SIZE*sizeof(_t));
 				hst[r] += BUF_SIZE;

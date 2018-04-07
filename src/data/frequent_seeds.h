@@ -22,11 +22,14 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../basic/const.h"
 #include "../util/hash_table.h"
 #include "sorted_list.h"
+#include "seed_array.h"
+#include "../util/algo/join_result.h"
 
 struct Frequent_seeds
 {
 
 	void build(unsigned sid, const SeedPartitionRange &range, sorted_list &ref_idx, const sorted_list &query_idx);
+	void build(unsigned sid, const SeedPartitionRange &range, vector<JoinResult<SeedArray::Entry> >::iterator seed_hits);
 
 	bool get(const Letter *pos, unsigned sid) const
 	{
@@ -42,8 +45,10 @@ private:
 	static const double hash_table_factor;   
 
 	struct Build_context;
+	struct Build_context2;
 
 	static void compute_sd(Atomic<unsigned> *seedp, const sorted_list *ref_idx, const sorted_list *query_idx, vector<Sd> *ref_out, vector<Sd> *query_out);
+	static void compute_sd2(Atomic<unsigned> *seedp, vector<JoinResult<SeedArray::Entry> >::iterator seed_hits, vector<Sd> *ref_out, vector<Sd> *query_out);
 
 	PHash_set<void,murmur_hash> tables_[Const::max_shapes][Const::seedp];
 

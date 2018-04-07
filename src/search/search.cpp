@@ -143,3 +143,23 @@ void Seed_filter::run(const sorted_list::const_iterator &q, const sorted_list::c
 	stats.inc(Statistics::TENTATIVE_MATCHES1, hits.size());
 	stage2_search(q, s, hits, stats, out, sid);
 }
+
+void load_fps(const Packed_loc *p, size_t n, vector<Finger_print> &v, const Sequence_set &seqs)
+{
+	v.clear();
+	v.reserve(n);
+	const Packed_loc const *end = p + n;
+	for (; p < end; ++p)
+		v.push_back(Finger_print(seqs.data(*p)));
+}
+
+void Seed_filter::run(const Packed_loc *q, size_t nq, const Packed_loc *s, size_t ns)
+{
+	hits.clear();
+	load_fps(q, nq, vq, *query_seqs::data_);
+	load_fps(s, ns, vs, *ref_seqs::data_);
+	tiled_search(vq.begin(), vq.end(), vs.begin(), vs.end(), Range_ref(vq.begin(), vs.begin()), 0);
+	std::sort(hits.begin(), hits.end());
+	stats.inc(Statistics::TENTATIVE_MATCHES1, hits.size());
+	stage2_search(q, s, hits, stats, out, sid);
+}

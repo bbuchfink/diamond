@@ -20,23 +20,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define HASH_JOIN_H_
 
 #include <stdlib.h>
-#include <algorithm>
-#include <vector>
 #include "../../basic/config.h"
 #include "../util.h"
 #include "radix_cluster.h"
 #include "../data_structures/hash_table.h"
-#include "../data_structures/double_array.h"
 #include "../memory/memory_pool.h"
-
-using std::pair;
-using std::vector;
-
-template<typename _t>
-struct JoinResult : public vector<pair<DoubleArray<typename _t::Value>*, DoubleArray<typename _t::Value>*> >
-{
-	
-};
+#include "join_result.h"
 
 struct RelPtr
 {
@@ -83,8 +72,7 @@ void hash_table_join(const Relation<_t> &R, const Relation<_t> &S, unsigned shif
 	}
 
 	unsigned sum_r = 0, sum_s = 1;
-	DoubleArray<typename _t::Value> *hits_r = new DoubleArray<typename _t::Value>(keys_hit),
-		*hits_s = new DoubleArray<typename _t::Value>(keys_hit);
+	DoubleArray<typename _t::Value> *hits_r = new DoubleArray<typename _t::Value>(keys_hit), *hits_s = new DoubleArray<typename _t::Value>(keys_hit);
 	unsigned *limits_r = hits_r->limits(), *limits_s = hits_s->limits();
 	
 	for (unsigned i = 0; i < table.size(); ++i) {
@@ -93,8 +81,8 @@ void hash_table_join(const Relation<_t> &R, const Relation<_t> &S, unsigned shif
 			unsigned r = p->r, s = p->s;
 			p->r = sum_r;
 			p->s = sum_s;
-			*(limits_r++) = sum_r;
-			*(limits_s++) = sum_s - 1;
+			*(limits_r++) = r;
+			*(limits_s++) = s;
 			sum_r += r;
 			sum_s += s;
 		}
@@ -141,8 +129,7 @@ void table_join(const Relation<_t> &R, const Relation<_t> &S, unsigned total_bit
 	}
 
 	unsigned sum_r = 0, sum_s = 1;
-	DoubleArray<typename _t::Value> *hits_r = new DoubleArray<typename _t::Value>(keys_hit),
-		*hits_s = new DoubleArray<typename _t::Value>(keys_hit);
+	DoubleArray<typename _t::Value> *hits_r = new DoubleArray<typename _t::Value>(keys_hit), *hits_s = new DoubleArray<typename _t::Value>(keys_hit);
 	unsigned *limits_r = hits_r->limits(), *limits_s = hits_s->limits();
 
 	for (unsigned i = 0; i < keys; ++i) {
@@ -151,8 +138,8 @@ void table_join(const Relation<_t> &R, const Relation<_t> &S, unsigned total_bit
 			unsigned r = p->r, s = p->s;
 			p->r = sum_r;
 			p->s = sum_s;
-			*(limits_r++) = sum_r;
-			*(limits_s++) = sum_s - 1;
+			*(limits_r++) = r;
+			*(limits_s++) = s;
 			sum_r += r;
 			sum_s += s;
 		}

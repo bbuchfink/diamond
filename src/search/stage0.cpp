@@ -22,6 +22,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../data/reference.h"
 #include "../data/seed_array.h"
 #include "../data/queries.h"
+#include "../data/frequent_seeds.h"
+#include "trace_pt_buffer.h"
+#include "align_range.h"
 
 void seed_join_worker(SeedArray *query_seeds, SeedArray *ref_seeds, Atomic<unsigned> *seedp, const SeedPartitionRange *seedp_range, typename vector<JoinResult<SeedArray::Entry> >::iterator seed_hits)
 {
@@ -37,6 +40,20 @@ void seed_join_worker(SeedArray *query_seeds, SeedArray *ref_seeds, Atomic<unsig
 		MemoryPool::global().free(query_seeds->begin(p));
 		MemoryPool::global().free(ref_seeds->begin(p));
 	}
+}
+
+void search_worker(Atomic<unsigned> *seedp, const SeedPartitionRange *seedp_range, unsigned shape, size_t thread_id, vector<JoinResult<SeedArray::Entry> >::iterator seed_hits)
+{
+	Trace_pt_buffer::Iterator* out = new Trace_pt_buffer::Iterator(*Trace_pt_buffer::instance, thread_id);
+	Statistics stats;
+	Seed_filter seed_filter(stats, *out, shape);
+	unsigned p;
+	while ((p = (*seedp)++) < seedp_range->end())
+		for (typename JoinResult<SeedArray::Entry>::Iterator it = seed_hits[p - seedp_range->begin()].begin(); it.good(); ++it)
+			if (it.s[0] != 0)
+				seed_filter.run(it.r.data(), it.r.count(), it.s.data(), it.s.count());
+	delete out;
+	statistics += stats;
 }
 
 void search_shape(unsigned sid, unsigned query_block)
@@ -67,7 +84,15 @@ void search_shape(unsigned sid, unsigned query_block)
 		for (size_t i = 0; i < config.threads_; ++i)
 			threads.push_back(launch_thread(seed_join_worker, &query_idx, ref_idx, &seedp, &range, seed_hits.begin()));
 		threads.join_all();
-
 		delete ref_idx;
+
+		timer.go("Building seed filter");
+		frequent_seeds.build(sid, range, seed_hits.begin());
+
+		timer.go("Searching alignments");
+		seedp = range.begin();
+		for (size_t i = 0; i < config.threads_; ++i)
+			threads.push_back(launch_thread(search_worker, &seedp, &range, sid, i, seed_hits.begin()));
+		threads.join_all();
 	}
 }

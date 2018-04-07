@@ -122,6 +122,7 @@ struct Seed_filter
 		sid(sid)
 	{}
 	void run(const sorted_list::const_iterator &q, const sorted_list::const_iterator &s);
+	void run(const Packed_loc *q, size_t nq, const Packed_loc *s, size_t ns);
 	void tiled_search(vector<Finger_print>::const_iterator q,
 		vector<Finger_print>::const_iterator q_end,
 		vector<Finger_print>::const_iterator s,
@@ -140,6 +141,13 @@ struct Seed_filter
 
 void stage2_search(const sorted_list::const_iterator &q,
 	const sorted_list::const_iterator &s,
+	const vector<Stage1_hit> &hits,
+	Statistics &stats,
+	Trace_pt_buffer::Iterator &out,
+	const unsigned sid);
+
+void stage2_search(const Packed_loc *q,
+	const Packed_loc *s,
 	const vector<Stage1_hit> &hits,
 	Statistics &stats,
 	Trace_pt_buffer::Iterator &out,

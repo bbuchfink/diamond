@@ -27,7 +27,8 @@ struct DoubleArray
 
 	DoubleArray(unsigned n) :
 		limits_(MemoryPool::global().alloc<unsigned>(n)),
-		data_(NULL)
+		data_(NULL),
+		size_(n)
 	{
 	}
 
@@ -52,10 +53,54 @@ struct DoubleArray
 		return data_;
 	}
 
+	struct Iterator
+	{
+		_t& operator[](size_t i)
+		{
+			return data_[i];
+		}
+		size_t count() const
+		{
+			return *limits_;
+		}
+		_t* data()
+		{
+			return data_;
+		}
+		bool operator<(const Iterator &i) const
+		{
+			return limits_ < i.limits_;
+		}
+		Iterator& operator++()
+		{
+			data_ += *limits_;
+			++limits_;
+			return *this;
+		}
+		Iterator(unsigned *limits, _t *data) :
+			limits_(limits),
+			data_(data)
+		{}
+	private:
+		unsigned *limits_;
+		_t *data_;
+	};
+
+	Iterator begin()
+	{
+		return Iterator(limits_, data_);
+	}
+
+	Iterator end()
+	{
+		return Iterator(limits_ + size_, data_);
+	}
+
 private:
 
 	unsigned *limits_;
 	_t *data_;
+	const size_t size_;
 
 };
 
