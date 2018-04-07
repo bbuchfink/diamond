@@ -78,7 +78,7 @@ void search_shape(unsigned sid, unsigned query_block)
 
 		timer.go("Computing hash join");
 		//MemoryPool::init((query_seeds.limits_.back() + ref_seeds.limits_.back()) * 5);
-		Atomic<unsigned> seedp = range.begin();
+		Atomic<unsigned> seedp(range.begin());
 		Thread_pool threads;
 		vector<JoinResult<SeedArray::Entry> > seed_hits(range.size());
 		for (size_t i = 0; i < config.threads_; ++i)

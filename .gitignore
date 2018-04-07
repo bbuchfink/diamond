@@ -54,3 +54,4 @@ Makefile
 diamond
 src/extra/benchmark.cpp
 src/extra/test.cpp
+src/extra/seed_stat.cpp
