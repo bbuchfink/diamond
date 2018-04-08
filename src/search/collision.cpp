@@ -18,6 +18,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "collision.h"
 #include "align_range.h"
+#include "seed_complexity.h"
 
 // #define NO_COLLISION_FILTER
 
@@ -57,7 +58,10 @@ inline bool is_lower_or_equal_chunk(const Letter *subject, unsigned sid)
 
 inline bool is_high_frequency(const Letter *subject, unsigned sid, bool previous_shape)
 {
-	return frequent_seeds.get(subject, sid);
+	if (config.simple_freq)
+		return !SeedComplexity::complex(subject, shapes[sid]);
+	else
+		return frequent_seeds.get(subject, sid);
 }
 
 inline bool shape_collision_right(uint64_t mask, uint64_t shape_mask, const Letter *subject, unsigned sid)

@@ -62,7 +62,7 @@ void search_query_offset(Loc q,
 
 		stats.inc(Statistics::TENTATIVE_MATCHESX);
 		
-		if (!config.simple_freq && !is_primary_hit(query - delta, subject - delta, delta, sid, len))
+		if (!is_primary_hit(query - delta, subject - delta, delta, sid, len))
 			continue;
 
 		stats.inc(Statistics::TENTATIVE_MATCHES3);
