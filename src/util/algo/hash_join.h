@@ -47,7 +47,7 @@ void hash_table_join(const Relation<_t> &R, const Relation<_t> &S, unsigned shif
 {
 	typedef HashTable<unsigned, RelPtr, ExtractBits> Table;
 
-	uint32_t N = next_power_of_2(R.n * config.join_ht_factor);
+	uint32_t N = (uint32_t)next_power_of_2(R.n * config.join_ht_factor);
 
 	Table table(N, ExtractBits(N, shift));
 	typename Table::Entry *p;
@@ -55,7 +55,7 @@ void hash_table_join(const Relation<_t> &R, const Relation<_t> &S, unsigned shif
 	for (_t *i = R.data; i < R.end(); ++i) {
 		p = table.insert(i->key);
 		++p->r;
-		i->key = p - table.data();
+		i->key = unsigned(p - table.data());
 	}
 
 	unsigned keys_hit = 0;
@@ -64,7 +64,7 @@ void hash_table_join(const Relation<_t> &R, const Relation<_t> &S, unsigned shif
 		if (p = table.find_entry(i->key)) {
 			++p->s;
 			hit_s->value = i->value;
-			hit_s->key = p - table.data();
+			hit_s->key = unsigned(p - table.data());
 			++hit_s;
 			if (p->s == 1)
 				++keys_hit;
@@ -171,7 +171,7 @@ void hash_join(const Relation<_t> &R, const Relation<_t> &S, JoinResult<_t> &out
 		return;
 	const unsigned key_bits = total_bits - shift;
 	if (R.n < config.join_split_size || key_bits < config.join_split_key_len) {
-		if (next_power_of_2(R.n * config.join_ht_factor) < 1 << key_bits)
+		if (next_power_of_2(R.n * config.join_ht_factor) < 1llu << key_bits)
 			hash_table_join(R, S, shift, out);
 		else
 			table_join(R, S, total_bits, shift, out);

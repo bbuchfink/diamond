@@ -135,9 +135,9 @@ void run_ref_chunk(DatabaseFile &db_file,
 	const vector<unsigned> &block_to_database_id)
 {
 	task_timer timer("Building reference histograms");
-	if(config.algo==Config::query_indexed)
+	if (config.algo == Config::query_indexed)
 		ref_hst = Partitioned_histogram(*ref_seqs::data_, false, query_seeds);
-	else if(query_seeds_hashed != 0)
+	else if (query_seeds_hashed != 0)
 		ref_hst = Partitioned_histogram(*ref_seqs::data_, true, query_seeds_hashed);
 	else
 		ref_hst = Partitioned_histogram(*ref_seqs::data_, false, &no_filter);
@@ -191,24 +191,22 @@ void run_query_chunk(DatabaseFile &db_file,
 	OutputFile *unaligned_file,
 	const Metadata &metadata)
 {
-	static const double max_coverage = 0.15;
-
 	const Parameters params(db_file.ref_header.sequences, db_file.ref_header.letters);
 
 	task_timer timer("Building query seed set");
 	if (query_chunk == 0)
 		setup_search_cont();
 	if (config.algo == -1) {
-		query_seeds = new Seed_set(query_seqs::get(), max_coverage);
+		query_seeds = new Seed_set(query_seqs::get(), SINGLE_INDEXED_SEED_SPACE_MAX_COVERAGE);
 		timer.finish();
 		log_stream << "Seed space coverage = " << query_seeds->coverage() << endl;
-		if (query_seeds->coverage() >= max_coverage) {
+		if (use_single_indexed(query_seeds->coverage(), query_seqs::get().letters(), db_file.ref_header.letters))
+			config.algo = Config::query_indexed;
+		else {
 			config.algo = Config::double_indexed;
 			delete query_seeds;
-			query_seeds = 0;
-		}
-		else
-			config.algo = Config::query_indexed;
+			query_seeds = NULL;
+		}			
 	}
 	else if (config.algo == Config::query_indexed) {
 		query_seeds = new Seed_set(query_seqs::get(), 2);
@@ -217,6 +215,7 @@ void run_query_chunk(DatabaseFile &db_file,
 	}
 	else
 		timer.finish();
+
 	if (query_chunk == 0)
 		setup_search();
 	if (config.algo == Config::double_indexed && config.small_query) {

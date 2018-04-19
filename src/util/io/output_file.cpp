@@ -27,8 +27,10 @@ OutputFile::OutputFile(const string &file_name, bool compressed, const char *mod
 	Serializer(new OutputStreamBuffer(new FileSink(file_name, mode))),
 	file_name_(file_name)
 {
-	if (compressed)
+	if (compressed) {
 		buffer_ = new OutputStreamBuffer(new ZlibSink(buffer_));
+		reset_buffer();
+	}
 }
 
 #ifndef _MSC_VER

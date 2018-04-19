@@ -63,7 +63,7 @@ struct Async_buffer
 
 	struct Iterator
 	{
-		Iterator(Async_buffer &parent, unsigned thread_num) :
+		Iterator(Async_buffer &parent, size_t thread_num) :
 			buffer_(parent.bins()),
 			parent_(parent),
 			thread_num_(thread_num)
@@ -95,7 +95,7 @@ struct Async_buffer
 		vector<vector<_t> > buffer_;
 		vector<TempFile*> out_;
 		Async_buffer &parent_;
-		const unsigned thread_num_;
+		const size_t thread_num_;
 	};
 
 	size_t load(vector<_t> &data, size_t max_size, std::pair<size_t,size_t> &input_range)
@@ -151,12 +151,12 @@ private:
 		return size;
 	}
 
-	TempFile* get_out(unsigned threadid, unsigned bin)
+	TempFile* get_out(size_t threadid, unsigned bin)
 	{
 		return &tmp_file_[threadid*bins_ + bin];
 	}
 
-	void add_size(unsigned thread_id, unsigned bin, size_t n)
+	void add_size(size_t thread_id, unsigned bin, size_t n)
 	{
 		size_[thread_id*bins_ + bin] += n;
 	}

@@ -1,6 +1,8 @@
 [0.9.20]
 - Added Bioconda installation instructions to manual.
 - Added official docker release: https://hub.docker.com/r/buchfink/diamond/
+- Fixed a bug that could cause corrupted output if compression was activated.
+- Fixed an issue that could cause high memory usage by automatic use of the query-indexed algorithm.
 
 [0.9.19]
 - Fixed a bug in the --un function to write unaligned reads.
@@ -51,7 +53,7 @@
 - Added support for using the staxids output field in diamond view.
 
 [0.9.8]
-- Fixed a compiler errror.
+- Fixed a compiler error.
 
 [0.9.7]
 - Fixed compiler errors.

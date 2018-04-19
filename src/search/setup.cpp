@@ -20,8 +20,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../data/reference.h"
 #include "../basic/config.h"
 #include "seed_complexity.h"
+#include "search.h"
 
 double SeedComplexity::prob_[AMINO_ACID_COUNT];
+const double SINGLE_INDEXED_SEED_SPACE_MAX_COVERAGE = 0.15;
 
 void setup_search_cont()
 {
@@ -37,6 +39,17 @@ void setup_search_cont()
 		Reduction::reduction = Reduction("KR EQ D N C G H F Y IV LM W P S T A");
 	}
 	::shapes = shape_config(index_mode, 1, vector<string>());
+}
+
+bool use_single_indexed(double coverage, size_t query_letters, size_t ref_letters)
+{
+	if (coverage >= SINGLE_INDEXED_SEED_SPACE_MAX_COVERAGE)
+		return false;
+	if (config.mode_more_sensitive || config.mode_sensitive) {
+		return query_letters < 300000llu && query_letters * 20000llu < ref_letters;
+	}
+	else
+		return query_letters < 3000000llu && query_letters * 2000llu < ref_letters;
 }
 
 void setup_search()

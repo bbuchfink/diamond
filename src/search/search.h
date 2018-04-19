@@ -20,5 +20,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define SEARCH_H_
 
 void search_shape(unsigned sid, unsigned query_block);
+bool use_single_indexed(double coverage, size_t query_letters, size_t ref_letters);
+
+extern const double SINGLE_INDEXED_SEED_SPACE_MAX_COVERAGE;
 
 #endif
