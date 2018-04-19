@@ -61,7 +61,7 @@ void hash_table_join(const Relation<_t> &R, const Relation<_t> &S, unsigned shif
 	unsigned keys_hit = 0;
 	_t *hit_s = S.data;
 	for (_t *i = S.data; i < S.end(); ++i) {
-		if (p = table.find_entry(i->key)) {
+		if ((p = table.find_entry(i->key))) {
 			++p->s;
 			hit_s->value = i->value;
 			hit_s->key = unsigned(p - table.data());

@@ -19,6 +19,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #ifndef SEARCH_H_
 #define SEARCH_H_
 
+#include <stddef.h>
+
 void search_shape(unsigned sid, unsigned query_block);
 bool use_single_indexed(double coverage, size_t query_letters, size_t ref_letters);
 

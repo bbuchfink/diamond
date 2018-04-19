@@ -20,6 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define SEED_COMPLEXITY_H_
 
 #include <math.h>
+#include <stddef.h>
 #include "../basic/value.h"
 #include "../basic/shape.h"
 #include "../basic/reduction.h"
@@ -31,13 +32,13 @@ struct SeedComplexity
 	static void init(const Reduction &r)
 	{
 		double p[20];
-		for (int i = 0; i < 20; ++i)
+		for (size_t i = 0; i < 20; ++i)
 			p[i] = 0;
-		for (int i = 0; i < 20; ++i)
+		for (size_t i = 0; i < 20; ++i)
 			p[r(i)] += background_freq[i];
-		for (int i = 0; i < 20; ++i)
+		for (size_t i = 0; i < 20; ++i)
 			prob_[i] = log(p[r(i)]);
-		for (int i = 20; i < AMINO_ACID_COUNT; ++i)
+		for (size_t i = 20; i < AMINO_ACID_COUNT; ++i)
 			prob_[i] = 1000;
 	}
 
@@ -45,7 +46,7 @@ struct SeedComplexity
 	{
 		double p = 0;
 		for (unsigned i = 0; i < shape.weight_; ++i)
-			p += prob_[seq[shape.positions_[i]]];
+			p += prob_[(size_t)seq[shape.positions_[i]]];
 		return p <= -config.freq_treshold;
 	}
 

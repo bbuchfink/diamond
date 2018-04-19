@@ -37,9 +37,7 @@ struct HashTable : private _HashFunction
 	HashTable(size_t size, const _HashFunction &hash) :
 		_HashFunction(hash),
 		table(new Entry[size]),
-		size_(size),
-		probe_l(0),
-		probe_n(0)
+		size_(size)
 	{
 		memset(table, 0, size_ * sizeof(Entry));
 	}
@@ -90,8 +88,6 @@ struct HashTable : private _HashFunction
 	{
 		return table;
 	}
-
-	size_t probe_l, probe_n;
 
 private:
 
