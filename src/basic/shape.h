@@ -54,7 +54,7 @@ struct Letter_trail
 	}
 	Letter_trail(const Reduction &reduction)
 	{
-		for (int i = 0; i < 20; ++i)
+		for (size_t i = 0; i < 20; ++i)
 			bucket[i] = reduction(i);
 	}
 	int operator()(char l) const

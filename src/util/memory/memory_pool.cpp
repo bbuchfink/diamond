@@ -17,7 +17,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #include <list>
-#include <malloc.h>
+#include <stdlib.h>
 #include <stdexcept>
 #include "memory_pool.h"
 
@@ -103,8 +103,8 @@ struct Arena
 };
 
 MemoryPool::MemoryPool(bool thread_safe, size_t expected_limit):
-	current_alloc_size_(0),
 	max_alloc_size_(0),
+	current_alloc_size_(0),
 	arena_size_(expected_limit ? expected_limit / 100 : 256 * (1<<20)),
 	thread_safe_(thread_safe)
 {
@@ -121,7 +121,7 @@ void* MemoryPool::alloc(size_t n)
 	if (thread_safe_) mtx_.lock();
 	void *p;
 	for (vector<Arena*>::iterator i = arena_.begin(); i < arena_.end(); ++i)
-		if (p = (*i)->alloc(n)) {
+		if ((p = (*i)->alloc(n))) {
 			size_[p] = std::make_pair(i - arena_.begin(), n);
 			if (thread_safe_) mtx_.unlock();
 			return p;
@@ -139,7 +139,7 @@ void* MemoryPool::alloc(size_t n)
 void MemoryPool::free(void *p)
 {
 	if(thread_safe_) mtx_.lock();
-	typename SizeMap::iterator s = size_.find(p);
+	SizeMap::iterator s = size_.find(p);
 	if (s == size_.end())
 		throw std::runtime_error("MemoryPool: Invalid free.");
 	arena_[s->second.first]->free(p, s->second.second);

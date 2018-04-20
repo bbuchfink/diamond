@@ -1,3 +1,6 @@
+[0.9.21]
+- Fixed compiler errors on some systems.
+
 [0.9.20]
 - Added Bioconda installation instructions to manual.
 - Added official docker release: https://hub.docker.com/r/buchfink/diamond/

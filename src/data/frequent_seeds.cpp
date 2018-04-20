@@ -127,7 +127,7 @@ void Frequent_seeds::compute_sd2(Atomic<unsigned> *seedp, vector<JoinResult<Seed
 	unsigned p;
 	while ((p = (*seedp)++) < current_range.end()) {
 		Sd ref_sd, query_sd;
-		for (typename JoinResult<SeedArray::Entry>::Iterator it = seed_hits[p - current_range.begin()].begin(); it.good(); ++it) {
+		for (JoinResult<SeedArray::Entry>::Iterator it = seed_hits[p - current_range.begin()].begin(); it.good(); ++it) {
 			query_sd.add((double)it.r.count());
 			ref_sd.add((double)it.s.count());
 		}
@@ -154,7 +154,7 @@ struct Frequent_seeds::Build_context2
 
 		vector<uint32_t> buf;
 		size_t n = 0;
-		for (typename JoinResult<SeedArray::Entry>::Iterator it = seed_hits[seedp - range.begin()].begin(); it.good(); ++it) {
+		for (JoinResult<SeedArray::Entry>::Iterator it = seed_hits[seedp - range.begin()].begin(); it.good(); ++it) {
 			if (it.s.count() > ref_max_n || it.r.count() > query_max_n) {
 				it.s[0] = 0;
 				n += (unsigned)it.s.count();

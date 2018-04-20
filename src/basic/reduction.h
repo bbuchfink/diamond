@@ -64,6 +64,11 @@ struct Reduction
 		return map_[(long)a];
 	}
 
+	unsigned operator()(size_t a) const
+	{
+		return map_[a];
+	}
+
 	const char* map8() const
 	{
 		return map8_;

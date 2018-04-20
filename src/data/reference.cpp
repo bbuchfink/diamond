@@ -328,7 +328,7 @@ void DatabaseFile::get_seq()
 	OutputFile out(config.output_file);
 	for (size_t n = 0; n < ref_header.sequences; ++n) {
 		read_seq(id, seq);
-		typename std::map<string, string>::const_iterator mapped_title = seq_titles.find(blast_id(id));
+		std::map<string, string>::const_iterator mapped_title = seq_titles.find(blast_id(id));
 		if (all || seqs.find(n) != seqs.end() || mapped_title != seq_titles.end()) {
 			buf << '>' << (mapped_title != seq_titles.end() ? mapped_title->second : id) << '\n';
 			if (config.reverse) {

@@ -49,7 +49,7 @@ void search_worker(Atomic<unsigned> *seedp, const SeedPartitionRange *seedp_rang
 	Seed_filter seed_filter(stats, *out, shape);
 	unsigned p;
 	while ((p = (*seedp)++) < seedp_range->end())
-		for (typename JoinResult<SeedArray::Entry>::Iterator it = seed_hits[p - seedp_range->begin()].begin(); it.good(); ++it)
+		for (JoinResult<SeedArray::Entry>::Iterator it = seed_hits[p - seedp_range->begin()].begin(); it.good(); ++it)
 			if (it.s[0] != 0)
 				seed_filter.run(it.r.data(), it.r.count(), it.s.data(), it.s.count());
 	delete out;

@@ -65,10 +65,10 @@ private:
 
 extern SeedPartitionRange current_range;
 
-inline size_t partition_size(const shape_histogram &hst, unsigned p)
+inline size_t partition_size(const shape_histogram &hst, size_t p)
 {
 	size_t s = 0;
-	for(unsigned i=0;i<hst.size();++i)
+	for (unsigned i = 0; i < hst.size(); ++i)
 		s += hst[i][p];
 	return s;
 }

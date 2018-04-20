@@ -30,7 +30,7 @@ void radix_sort(Relation<_t> &R, unsigned total_bits, _t *buf = 0)
 	if (!buf) {
 		//buf = new _t[R.n];
 		//buf = (_t*)new char[sizeof(_t)*R.n];
-		buf = (_t*)MemoryPool::alloc(sizeof(_t)*R.n);
+		buf = (_t*)MemoryPool::global().alloc(sizeof(_t)*R.n);
 		dealloc = true;
 	}
 	unsigned *hst = new unsigned[1 << config.radix_bits];
@@ -40,7 +40,7 @@ void radix_sort(Relation<_t> &R, unsigned total_bits, _t *buf = 0)
 		std::swap(in, out);
 	}
 	//if(dealloc) delete[] buf;
-	if (dealloc) MemoryPool::free(buf);
+	if (dealloc) MemoryPool::global().free(buf);
 	delete[] hst;
 }
 
