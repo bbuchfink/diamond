@@ -26,7 +26,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "trace_pt_buffer.h"
 #include "align_range.h"
 
-void seed_join_worker(SeedArray *query_seeds, SeedArray *ref_seeds, Atomic<unsigned> *seedp, const SeedPartitionRange *seedp_range, typename vector<JoinResult<SeedArray::Entry> >::iterator seed_hits)
+void seed_join_worker(SeedArray *query_seeds, SeedArray *ref_seeds, Atomic<unsigned> *seedp, const SeedPartitionRange *seedp_range, vector<JoinResult<SeedArray::Entry> >::iterator seed_hits)
 {
 	unsigned p;
 	MemoryPool tmp_pool(false);
