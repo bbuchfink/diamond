@@ -132,7 +132,7 @@ struct Shape
 #endif
 		for (unsigned i = 0; i < weight_; ++i) {
 			Letter l = seq[positions_[i]];
-			if (l == value_traits.mask_char || l == sequence::DELIMITER)
+			if (l == value_traits.mask_char || l == sequence::DELIMITER || l == 24)
 				return false;
 			unsigned r = Reduction::reduction(l);
 #ifdef FREQUENCY_MASKING
@@ -153,7 +153,7 @@ struct Shape
 		const uint64_t b = Reduction::reduction.bit_size();
 		for (unsigned i = 0; i < weight_; ++i) {
 			Letter l = seq[positions_[i]];
-			if (l == value_traits.mask_char || l == sequence::DELIMITER)
+			if (l == value_traits.mask_char || l == sequence::DELIMITER || l == 24)
 				return false;
 			unsigned r = Reduction::reduction(l);
 			s <<= b;
@@ -167,7 +167,7 @@ struct Shape
 		s = 0;
 		for (unsigned i = 0; i < weight_; ++i) {
 			Letter l = seq[positions_[i]];
-			if (l == value_traits.mask_char)
+			if (l == value_traits.mask_char || l == 24)
 				return false;
 			s *= Reduction::reduction.size();
 			s += uint64_t(l);
