@@ -25,6 +25,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "value.h"
 #include "../util/util.h"
 #include "sequence.h"
+#include "translate.h"
 
 using std::string;
 using std::vector;
@@ -37,6 +38,7 @@ struct Reduction
 		memset(map_, 0, sizeof(map_));
 		memset(map8_, 0, sizeof(map8_));
 		map_[(long)value_traits.mask_char] = value_traits.mask_char;
+		map_[(long)Translator::STOP] = value_traits.mask_char;
 		const vector<string> tokens(tokenize(definition_string, " "));
 		size_ = (unsigned)tokens.size();
 		bit_size_ = (uint64_t)ceil(log(size_) / log(2));

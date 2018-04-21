@@ -27,6 +27,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "reduction.h"
 #include "../util/util.h"
 #include "config.h"
+#include "translate.h"
 
 /*struct All_partitions {};
 struct Filter_partition {};
@@ -132,7 +133,8 @@ struct Shape
 #endif
 		for (unsigned i = 0; i < weight_; ++i) {
 			Letter l = seq[positions_[i]];
-			if (l == value_traits.mask_char || l == sequence::DELIMITER || l == 24)
+			if (l == value_traits.mask_char || l == sequence::DELIMITER || l == Translator::STOP)
+			//if (l == value_traits.mask_char || l == sequence::DELIMITER)
 				return false;
 			unsigned r = Reduction::reduction(l);
 #ifdef FREQUENCY_MASKING
@@ -153,7 +155,8 @@ struct Shape
 		const uint64_t b = Reduction::reduction.bit_size();
 		for (unsigned i = 0; i < weight_; ++i) {
 			Letter l = seq[positions_[i]];
-			if (l == value_traits.mask_char || l == sequence::DELIMITER || l == 24)
+			if (l == value_traits.mask_char || l == sequence::DELIMITER || l == Translator::STOP)
+			//if (l == value_traits.mask_char || l == sequence::DELIMITER)
 				return false;
 			unsigned r = Reduction::reduction(l);
 			s <<= b;
@@ -167,7 +170,7 @@ struct Shape
 		s = 0;
 		for (unsigned i = 0; i < weight_; ++i) {
 			Letter l = seq[positions_[i]];
-			if (l == value_traits.mask_char || l == 24)
+			if (l == value_traits.mask_char)
 				return false;
 			s *= Reduction::reduction.size();
 			s += uint64_t(l);
