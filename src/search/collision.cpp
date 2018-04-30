@@ -27,6 +27,7 @@ bool verify_hit(const Letter *query, const Letter *subject, unsigned sid)
 	const Finger_print fq(query), fs(subject);
 	if (fq.match(fs) < config.min_identities)
 		return false;
+	return true;
 	unsigned delta, len;
 	return stage2_ungapped(query, subject, sid, delta, len) >= config.min_ungapped_raw_score;
 }

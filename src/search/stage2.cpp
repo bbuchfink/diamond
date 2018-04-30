@@ -66,6 +66,7 @@ void search_query_offset(Loc q,
 			continue;
 
 		stats.inc(Statistics::TENTATIVE_MATCHES3);
+
 		//cout << ref_ids::get()[ref_seqs::get().local_position(s_pos).first].c_str() << endl;
 		hf.push(s_pos, score);
 	}

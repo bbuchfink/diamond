@@ -293,6 +293,78 @@ bool DatabaseFile::load_seqs(const Metadata &metadata, vector<unsigned> &block_t
 	return true;
 }
 
+bool DatabaseFile::load_seqs(vector<unsigned> &block_to_database_id, const vector<bool> *filter)
+{
+	task_timer timer("Loading reference sequences");
+	const size_t max_letters = (size_t)(config.chunk_size*1e9);
+	seek(pos_array_offset);
+	size_t database_id = (pos_array_offset - ref_header.pos_array_offset) / sizeof(Pos_record);
+	size_t letters = 0, seqs = 0, id_letters = 0, seqs_processed = 0;
+	vector<uint64_t> filtered_pos;
+	block_to_database_id.clear();
+
+	ref_seqs::data_ = new Sequence_set;
+	ref_ids::data_ = new String_set<0>;
+
+	Pos_record r;
+	read(&r, 1);
+	uint64_t start_offset = r.pos;
+	bool last = false;
+
+	while (r.seq_len > 0 && letters < max_letters) {
+		Pos_record r_next;
+		read(&r_next, 1);
+		if (!filter || (*filter)[database_id]) {
+			letters += r.seq_len;
+			ref_seqs::data_->reserve(r.seq_len);
+			const size_t id_len = r_next.pos - r.pos - r.seq_len - 3;
+			id_letters += id_len;
+			ref_ids::data_->reserve(id_len);
+			++seqs;
+			block_to_database_id.push_back((unsigned)database_id);
+			if (filter) filtered_pos.push_back(last ? 0 : r.pos);
+			last = true;
+		}
+		else
+			last = false;
+		pos_array_offset += sizeof(Pos_record);
+		++database_id;
+		++seqs_processed;
+		r = r_next;
+	}
+
+	if (seqs == 0) {
+		delete ref_seqs::data_;
+		delete ref_ids::data_;
+		return false;
+	}
+
+	ref_seqs::data_->finish_reserve();
+	ref_ids::data_->finish_reserve();
+	seek(start_offset);
+	size_t masked = 0;
+
+	for (size_t n = 0; n < seqs; ++n) {
+		if (filter && filtered_pos[n]) seek(filtered_pos[n]);
+		read(ref_seqs::data_->ptr(n) - 1, ref_seqs::data_->length(n) + 2);
+		*(ref_seqs::data_->ptr(n) - 1) = sequence::DELIMITER;
+		*(ref_seqs::data_->ptr(n) + ref_seqs::data_->length(n)) = sequence::DELIMITER;
+		read(ref_ids::data_->ptr(n), ref_ids::data_->length(n) + 1);
+		if (config.masking == 1)
+			Masking::get().bit_to_hard_mask(ref_seqs::data_->ptr(n), ref_seqs::data_->length(n), masked);
+		else
+			Masking::get().remove_bit_mask(ref_seqs::data_->ptr(n), ref_seqs::data_->length(n));
+		if (!config.sfilt.empty() && strstr(ref_ids::get()[n].c_str(), config.sfilt.c_str()) == 0)
+			memset(ref_seqs::data_->ptr(n), value_traits.mask_char, ref_seqs::data_->length(n));
+	}
+	timer.finish();
+	ref_seqs::get().print_stats();
+	log_stream << "Masked letters = " << masked << endl;
+
+	blocked_processing = seqs_processed < ref_header.sequences;
+	return true;
+}
+
 void DatabaseFile::read_seq(string &id, vector<char> &seq)
 {
 	char c;

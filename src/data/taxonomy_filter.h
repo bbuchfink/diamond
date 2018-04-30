@@ -16,32 +16,32 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#ifndef METADATA_H_
-#define METADATA_H_
+#ifndef TAXONOMY_FILTER_H_
+#define TAXONOMY_FILTER_H_
 
+#include <set>
+#include <vector>
+#include <string>
 #include "taxon_list.h"
 #include "taxonomy_nodes.h"
-#include "taxonomy_filter.h"
+#include "../util/util.h"
 
-struct Metadata
+using std::vector;
+using std::string;
+using std::set;
+
+struct TaxonomyFilter : public vector<bool>
 {
-	Metadata():
-		taxon_list(NULL),
-		taxon_nodes(NULL),
-		taxon_filter(NULL)
-	{}
-	void free()
+	TaxonomyFilter(const string &filter, const TaxonList &list, TaxonomyNodes &nodes)
 	{
-		delete taxon_list;
-		delete taxon_nodes;
-		delete taxon_filter;
-		taxon_list = NULL;
-		taxon_nodes = NULL;
-		taxon_filter = NULL;
+		const set<unsigned> taxon_filter_list(parse_csv(filter));
+		if (taxon_filter_list.empty())
+			throw std::runtime_error("Option --taxonlist used with empty list.");
+		if (taxon_filter_list.find(1) != taxon_filter_list.end() || taxon_filter_list.find(0) != taxon_filter_list.end())
+			throw std::runtime_error("Option --taxonlist used with invalid argument (0 or 1).");
+		for (size_t i = 0; i < list.size(); ++i)
+			push_back(nodes.contained(list[i], taxon_filter_list));
 	}
-	TaxonList *taxon_list;
-	TaxonomyNodes *taxon_nodes;
-	TaxonomyFilter *taxon_filter;
 };
 
 #endif

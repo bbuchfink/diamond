@@ -191,24 +191,22 @@ void run_query_chunk(DatabaseFile &db_file,
 	OutputFile *unaligned_file,
 	const Metadata &metadata)
 {
-	static const double max_coverage = 0.15;
-
 	const Parameters params(db_file.ref_header.sequences, db_file.ref_header.letters);
 
 	task_timer timer("Building query seed set");
 	if (query_chunk == 0)
 		setup_search_cont();
 	if (config.algo == -1) {
-		query_seeds = new Seed_set(query_seqs::get(), max_coverage);
+		query_seeds = new Seed_set(query_seqs::get(), SINGLE_INDEXED_SEED_SPACE_MAX_COVERAGE);
 		timer.finish();
 		log_stream << "Seed space coverage = " << query_seeds->coverage() << endl;
-		if (query_seeds->coverage() >= max_coverage) {
+		if (use_single_indexed(query_seeds->coverage(), query_seqs::get().letters(), db_file.ref_header.letters))
+			config.algo = Config::query_indexed;
+		else {
 			config.algo = Config::double_indexed;
 			delete query_seeds;
-			query_seeds = 0;
+			query_seeds = NULL;
 		}
-		else
-			config.algo = Config::query_indexed;
 	}
 	else if (config.algo == Config::query_indexed) {
 		query_seeds = new Seed_set(query_seqs::get(), 2);
@@ -241,6 +239,7 @@ void run_query_chunk(DatabaseFile &db_file,
 	timer.finish();
 	
 	for (current_ref_block = 0; db_file.load_seqs(metadata, block_to_database_id); ++current_ref_block)
+	//for (current_ref_block = 0; db_file.load_seqs(block_to_database_id, metadata.taxon_filter); ++current_ref_block)
 		run_ref_chunk(db_file, total_timer, query_chunk, query_len_bounds, query_buffer, master_out, tmp_file, params, metadata, block_to_database_id);
 
 	timer.go("Deallocating buffers");
@@ -321,8 +320,7 @@ void master_thread(DatabaseFile &db_file, Timer &total_timer, Metadata &metadata
 	db_file.close();
 
 	timer.go("Deallocating taxonomy");
-	delete metadata.taxon_list;
-	delete metadata.taxon_nodes;
+	metadata.free();
 
 	timer.finish();
 	message_stream << "Total time = " << total_timer.getElapsedTimeInSec() << "s" << endl;
@@ -375,6 +373,10 @@ void master_thread_di()
 			throw std::runtime_error("--taxonlist option requires taxonomy nodes built into the database.");
 		timer.go("Loading taxonomy nodes");
 		metadata.taxon_nodes = new TaxonomyNodes(db_file.seek(db_file.header2.taxon_nodes_offset));
+		if (!config.taxonlist.empty()) {
+			timer.go("Building taxonomy filter");
+			metadata.taxon_filter = new TaxonomyFilter(config.taxonlist, *metadata.taxon_list, *metadata.taxon_nodes);
+		}
 		timer.finish();
 	}
 

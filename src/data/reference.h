@@ -74,6 +74,7 @@ struct DatabaseFile : public InputFile
 	static void read_header(InputFile &stream, ReferenceHeader &header);
 	void rewind();
 	bool load_seqs(const Metadata &metadata, vector<unsigned> &block_to_database_id);
+	bool load_seqs(vector<unsigned> &block_to_database_id, const vector<bool> *filter = NULL);
 	void get_seq();
 	void read_seq(string &id, vector<char> &seq);
 	bool has_taxon_id_lists();

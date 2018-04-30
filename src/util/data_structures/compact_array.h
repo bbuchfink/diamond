@@ -55,6 +55,11 @@ struct CompactArray
 		return r;
 	}
 
+	size_t size() const
+	{
+		return limits_.size() - 1;
+	}
+
 private:
 
 	vector<char> data_;

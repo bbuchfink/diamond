@@ -69,7 +69,8 @@ const char* Blast_tab_format::field_str[] = {
 	"qcovus",		// 44 means Query Coverage Per Unique Subject(blastn only)
 	"qtitle",		// 45 means Query title
 	"swdiff",		// 46
-	"time"			// 47
+	"time", 		// 47
+	"full_sseq"		// 48
 };
 
 Blast_tab_format::Blast_tab_format() :
@@ -235,6 +236,8 @@ void Blast_tab_format::print_match(const Hsp_context& r, const Metadata &metadat
 			break;
 		case 47:
 			out << r.time();
+			break;
+		case 48:
 			break;
 		default:
 			throw std::runtime_error("Invalid output field");
