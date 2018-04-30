@@ -224,7 +224,8 @@ struct Hsp_context
 		const char *subject_name,
 		unsigned subject_len,
 		unsigned hit_num,
-		unsigned hsp_num
+		unsigned hsp_num,
+		const sequence &subject_seq
 	) :
 		query(query),
 		query_name(query_name),
@@ -235,7 +236,8 @@ struct Hsp_context
 		subject_len(subject_len),
 		hit_num(hit_num),
 		hsp_num(hsp_num),
-		hsp_(hsp)
+		hsp_(hsp),
+		subject_seq(subject_seq)
 	{}
 	struct Iterator : public Hsp::Iterator
 	{
@@ -356,6 +358,7 @@ struct Hsp_context
 	const TranslatedSequence query;
 	const char *query_name, *subject_name;
 	const unsigned query_id, subject_id, orig_subject_id, subject_len, hit_num, hsp_num;
+	const sequence subject_seq;
 private:	
 	Hsp &hsp_;
 };

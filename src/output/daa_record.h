@@ -65,7 +65,8 @@ struct DAA_query_record
 				subject_name.c_str(),
 				subject_len,
 				hit_num,
-				hsp_num);
+				hsp_num,
+				sequence());
 		}
 
 		uint32_t hsp_num, hit_num, subject_id, subject_len;

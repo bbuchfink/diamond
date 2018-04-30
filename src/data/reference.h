@@ -73,8 +73,7 @@ struct DatabaseFile : public InputFile
 	DatabaseFile();
 	static void read_header(InputFile &stream, ReferenceHeader &header);
 	void rewind();
-	bool load_seqs(const Metadata &metadata, vector<unsigned> &block_to_database_id);
-	bool load_seqs(vector<unsigned> &block_to_database_id, const vector<bool> *filter = NULL);
+	bool load_seqs(vector<unsigned> &block_to_database_id, size_t max_letters, bool masked, bool load_ids = true, const vector<bool> *filter = NULL);
 	void get_seq();
 	void read_seq(string &id, vector<char> &seq);
 	bool has_taxon_id_lists();

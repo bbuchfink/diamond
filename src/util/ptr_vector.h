@@ -58,10 +58,16 @@ struct PtrVector : public vector<_t*>
 		return vector<_t*>::erase(first, last);
 	}
 
+	void clear()
+	{
+		for (typename vector<_t*>::iterator i = this->begin(); i != this->end(); ++i)
+			delete *i;
+		vector<_t*>::clear();
+	}
+
 	~PtrVector()
 	{
-		for(typename vector<_t*>::iterator i=this->begin(); i!=this->end(); ++i)
-			delete *i;
+		clear();
 	}
 
 };

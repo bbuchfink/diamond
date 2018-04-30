@@ -26,6 +26,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/tinythread.h"
 #include "../util/ptr_vector.h"
 #include "../util/io/output_file.h"
+#include "reference.h"
 
 using std::vector;
 using std::string;
@@ -40,6 +41,8 @@ struct ReferenceDictionary
 	void init(unsigned ref_count, const vector<unsigned> &block_to_database_id);
 
 	uint32_t get(unsigned block, unsigned i);
+	void build_lazy_dict(DatabaseFile &db_file);
+	void clear();
 
 	unsigned length(uint32_t i) const
 	{
@@ -49,6 +52,11 @@ struct ReferenceDictionary
 	const char* name(uint32_t i) const
 	{
 		return name_[i].c_str();
+	}
+
+	sequence seq(size_t i) const
+	{
+		return ref_seqs::get()[dict_to_lazy_dict_id_[i]];
 	}
 
 	//void init_rev_map();
@@ -90,6 +98,7 @@ private:
 	PtrVector<string> name_;
 	//vector<uint32_t> rev_map_;
 	uint32_t next_;
+	vector<uint32_t> dict_to_lazy_dict_id_;
 	const vector<unsigned> *block_to_database_id_;
 
 	friend void finish_daa(OutputFile&, const DatabaseFile&);

@@ -195,8 +195,9 @@ bool QueryMapper::generate_output(TextBuffer &buffer, Statistics &stat, const Me
 			|| score_matrix.bitscore(targets[i].filter_score) < config.min_bit_score)
 			break;
 
-		const unsigned subject_len = (unsigned)ref_seqs::get()[targets[i].subject_id].length();
-		const char *ref_title = ref_ids::get()[targets[i].subject_id].c_str();
+		const size_t subject_id = targets[i].subject_id;
+		const unsigned subject_len = (unsigned)ref_seqs::get()[subject_id].length();
+		const char *ref_title = ref_ids::get()[subject_id].c_str();
 		targets[i].apply_filters(source_query_len, subject_len, query_title, ref_title);
 		if (targets[i].hsps.size() == 0)
 			continue;
@@ -219,7 +220,7 @@ bool QueryMapper::generate_output(TextBuffer &buffer, Statistics &stat, const Me
 			if (blocked_processing) {
 				if (n_hsp == 0)
 					seek_pos = IntermediateRecord::write_query_intro(buffer, query_id);
-				IntermediateRecord::write(buffer, *j, query_id, targets[i].subject_id);
+				IntermediateRecord::write(buffer, *j, query_id, subject_id);
 			}
 			else {
 				if (n_hsp == 0) {
@@ -229,18 +230,19 @@ bool QueryMapper::generate_output(TextBuffer &buffer, Statistics &stat, const Me
 						f->print_query_intro(query_id, query_title, source_query_len, buffer, false);
 				}
 				if (*f == Output_format::daa)
-					write_daa_record(buffer, *j, query_id, targets[i].subject_id);
+					write_daa_record(buffer, *j, query_id, subject_id);
 				else
 					f->print_match(Hsp_context(*j,
 						query_id,
 						translated_query,
 						query_title,
-						targets[i].subject_id,
-						ReferenceDictionary::get().block_to_database_id(targets[i].subject_id),
+						subject_id,
+						ReferenceDictionary::get().block_to_database_id(subject_id),
 						ref_title,
 						subject_len,
 						n_target_seq,
-						hit_hsps), metadata, buffer);
+						hit_hsps,
+						ref_seqs::get()[subject_id]), metadata, buffer);
 			}
 
 			++n_hsp;

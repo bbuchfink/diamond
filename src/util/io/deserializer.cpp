@@ -125,6 +125,20 @@ bool Deserializer::read_to(_t &container, char delimiter)
 	return !container.empty();
 }
 
+bool Deserializer::seek_forward(char delimiter)
+{
+	int d = delimiter;
+	do {
+		const char *p = (const char*)memchr((void*)begin_, d, avail());
+		if (p) {
+			const size_t n = p - begin_;
+			begin_ += n + 1;
+			return true;
+		}
+	} while (fetch());
+	return false;
+}
+
 bool Deserializer::read_until(string &dst, char delimiter)
 {
 	return read_to(dst, delimiter);

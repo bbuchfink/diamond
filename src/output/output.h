@@ -112,7 +112,7 @@ struct IntermediateRecord
 	Packed_transcript transcript;
 };
 
-void join_blocks(unsigned ref_blocks, OutputFile &master_out, const PtrVector<TempFile> &tmp_file, const Parameters &params, const Metadata &metadata);
+void join_blocks(unsigned ref_blocks, OutputFile &master_out, const PtrVector<TempFile> &tmp_file, const Parameters &params, const Metadata &metadata, DatabaseFile &db_file);
 
 struct OutputSink
 {

@@ -1,6 +1,6 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2017 Benjamin Buchfink <buchfink@gmail.com>
+Copyright (C) 2013-2018 Benjamin Buchfink <buchfink@gmail.com>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU Affero General Public License as
@@ -91,6 +91,8 @@ Blast_tab_format::Blast_tab_format() :
 		fields.push_back(j);
 		if (j == 6 || j == 39 || j == 40 || j == 34)
 			config.salltitles = true;
+		if (j == 48)
+			config.use_lazy_dict = true;
 	}
 }
 
@@ -238,6 +240,7 @@ void Blast_tab_format::print_match(const Hsp_context& r, const Metadata &metadat
 			out << r.time();
 			break;
 		case 48:
+			out << r.subject_seq;
 			break;
 		default:
 			throw std::runtime_error("Invalid output field");
@@ -266,6 +269,7 @@ void Blast_tab_format::print_query_intro(size_t query_num, const char *query_nam
 			case 33:
 			case 39:
 			case 40:
+			case 48:
 				out << '*';
 				break;
 			case 12:

@@ -16,9 +16,12 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
+#include <utility>
 #include "reference.h"
 #include "ref_dictionary.h"
 #include "../util/util.h"
+
+using std::pair;
 
 ReferenceDictionary ReferenceDictionary::instance_;
 
@@ -32,6 +35,15 @@ string* get_allseqids(const char *s)
 		r->append(i->substr(0, find_first_of(i->c_str(), Const::id_delimiters)));
 	}
 	return r;
+}
+
+void ReferenceDictionary::clear()
+{
+	data_.clear();
+	len_.clear();
+	database_id_.clear();
+	name_.clear();
+	next_ = 0;
 }
 
 void ReferenceDictionary::init(unsigned ref_count, const vector<unsigned> &block_to_database_id)
@@ -70,6 +82,28 @@ uint32_t ReferenceDictionary::get(unsigned block, unsigned block_id)
 		mtx_.unlock();
 	}
 	return n;
+}
+
+void ReferenceDictionary::build_lazy_dict(DatabaseFile &db_file)
+{
+	vector<bool> filter(db_file.ref_header.sequences);
+	vector<pair<unsigned, unsigned> > m;
+	const size_t dict_size = database_id_.size();
+	m.reserve(dict_size);
+	unsigned n = 0;
+	for (vector<uint32_t>::const_iterator i = database_id_.begin(); i < database_id_.end(); ++i) {
+		filter[*i] = true;
+		m.push_back(std::make_pair(*i, n++));
+	}
+	db_file.rewind();
+	vector<unsigned> block_to_database_id;
+	db_file.load_seqs(block_to_database_id, std::numeric_limits<size_t>::max(), false, false, &filter);
+	std::sort(m.begin(), m.end());
+	dict_to_lazy_dict_id_.clear();
+	dict_to_lazy_dict_id_.resize(dict_size);
+	n = 0;
+	for (vector<pair<unsigned, unsigned> >::const_iterator i = m.begin(); i < m.end(); ++i)
+		dict_to_lazy_dict_id_[i->second] = n++;
 }
 
 /*void ReferenceDictionary::init_rev_map()

@@ -238,8 +238,7 @@ void run_query_chunk(DatabaseFile &db_file,
 	vector<unsigned> block_to_database_id;
 	timer.finish();
 	
-	for (current_ref_block = 0; db_file.load_seqs(metadata, block_to_database_id); ++current_ref_block)
-	//for (current_ref_block = 0; db_file.load_seqs(block_to_database_id, metadata.taxon_filter); ++current_ref_block)
+	for (current_ref_block = 0; db_file.load_seqs(block_to_database_id, (size_t)(config.chunk_size*1e9), true, true, metadata.taxon_filter); ++current_ref_block)
 		run_ref_chunk(db_file, total_timer, query_chunk, query_len_bounds, query_buffer, master_out, tmp_file, params, metadata, block_to_database_id);
 
 	timer.go("Deallocating buffers");
@@ -249,7 +248,7 @@ void run_query_chunk(DatabaseFile &db_file,
 
 	if (blocked_processing) {
 		timer.go("Joining output blocks");
-		join_blocks(current_ref_block, master_out, tmp_file, params, metadata);
+		join_blocks(current_ref_block, master_out, tmp_file, params, metadata, db_file);
 	}
 
 	if (unaligned_file) {
@@ -261,6 +260,8 @@ void run_query_chunk(DatabaseFile &db_file,
 	delete query_seqs::data_;
 	delete query_ids::data_;
 	delete query_source_seqs::data_;
+	if (*output_format != Output_format::daa)
+		ReferenceDictionary::get().clear();
 }
 
 void master_thread(DatabaseFile &db_file, Timer &total_timer, Metadata &metadata)

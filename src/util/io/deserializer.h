@@ -34,6 +34,7 @@ struct Deserializer
 	void rewind();
 	Deserializer& seek(size_t pos);
 	void seek_forward(size_t n);
+	bool seek_forward(char delimiter);
 	void close();
 
 	Deserializer(const char *begin, const char *end, int flags = 0):

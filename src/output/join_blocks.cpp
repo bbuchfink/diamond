@@ -24,6 +24,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../align/query_mapper.h"
 #include "target_culling.h"
 #include "../data/ref_dictionary.h"
+#include "../util/log_stream.h"
 
 struct JoinFetcher
 {
@@ -197,7 +198,9 @@ void join_query(vector<BinaryBuffer> &buf, TextBuffer &out, Statistics &statisti
 					dict.name(i->subject_id),
 					dict.length(i->subject_id),
 					n_target_seq,
-					hsp_num).parse(), metadata, out);
+					hsp_num,
+					config.use_lazy_dict ? dict.seq(i->subject_id) : sequence()
+					).parse(), metadata, out);
 			}
 		}
 
@@ -250,9 +253,13 @@ void join_worker(Task_queue<TextBuffer, JoinWriter> *queue, const Parameters *pa
 	statistics += stat;
 }
 
-void join_blocks(unsigned ref_blocks, OutputFile &master_out, const PtrVector<TempFile> &tmp_file, const Parameters &params, const Metadata &metadata)
+void join_blocks(unsigned ref_blocks, OutputFile &master_out, const PtrVector<TempFile> &tmp_file, const Parameters &params, const Metadata &metadata, DatabaseFile &db_file)
 {
 	//ReferenceDictionary::get().init_rev_map();
+	task_timer timer("Building reference dictionary", 3);
+	if (config.use_lazy_dict)
+		ReferenceDictionary::get().build_lazy_dict(db_file);
+	timer.go("Joining output blocks");
 	JoinFetcher::init(tmp_file);
 	JoinWriter writer(master_out);
 	Task_queue<TextBuffer, JoinWriter> queue(3 * config.threads_, writer);
@@ -268,5 +275,10 @@ void join_blocks(unsigned ref_blocks, OutputFile &master_out, const PtrVector<Te
 			output_format->print_query_epilog(out, query_ids::get()[i].c_str(), true, params);
 		}
 		writer(out);
+	}
+	if (config.use_lazy_dict) {
+		timer.go("Deallocating dictionary");
+		delete ref_seqs::data_;
+		ref_seqs::data_ = NULL;
 	}
 }
