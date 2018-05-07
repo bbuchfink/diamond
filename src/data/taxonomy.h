@@ -29,6 +29,13 @@ using std::string;
 
 string get_accession(const string &t);
 
+struct AccessionLengthError : public std::runtime_error
+{
+	AccessionLengthError() :
+		std::runtime_error("Accession exceeds maximum length.")
+	{ }
+};
+
 struct Taxonomy
 {
 	enum { max_accesion_len = 14 };
@@ -37,7 +44,7 @@ struct Taxonomy
 		Accession(const char *s)
 		{
 			if (strlen(s) > max_accesion_len)
-				throw std::runtime_error("Accession exceeds maximum length.");
+				throw AccessionLengthError();
 			strncpy(this->s, s, max_accesion_len);
 		}
 		Accession(const string &s)
@@ -46,7 +53,7 @@ struct Taxonomy
 			get_accession(t);
 			if (t.length() > max_accesion_len) {
 				//this->s[0] = 0;
-				throw std::runtime_error("Accession exceeds maximum length.");
+				throw AccessionLengthError();
 			}
 			else
 				strncpy(this->s, t.c_str(), max_accesion_len);

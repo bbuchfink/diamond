@@ -36,8 +36,13 @@ void TaxonList::build(OutputFile &db, FileBackedBuffer &accessions, size_t seqs)
 	size_t mapped = 0, mappings = 0;
 	for (size_t i = 0; i < seqs; ++i) {
 		accessions >> a;
-		for (vector<string>::const_iterator j = a.begin(); j < a.end(); ++j)
-			t.insert(taxonomy.get(Taxonomy::Accession(j->c_str())));
+		for (vector<string>::const_iterator j = a.begin(); j < a.end(); ++j) {
+			try {
+				t.insert(taxonomy.get(Taxonomy::Accession(j->c_str())));
+			}
+			catch (AccessionLengthError &) {
+			}
+		}
 		t.erase(0);
 		db << t;
 		mappings += t.size();
