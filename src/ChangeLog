@@ -1,6 +1,7 @@
 [0.9.22]
 - Added output field full_sseq to tabular output format.
 - Database sequences that exceed the maximum accession length will no longer cause an error.
+- Added support for PAF output format.
 
 [0.9.21]
 - Fixed compiler errors on some systems.

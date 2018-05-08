@@ -107,6 +107,8 @@ Output_format* get_output_format()
 		return new Null_format;
 	else if (f[0] == "102")
 		return new Taxon_format;
+	else if (f[0] == "paf" || f[0] == "103")
+		return new PAF_format;
 	else
 		throw std::runtime_error("Invalid output format. Allowed values: 0,5,6,100,101,102");
 }

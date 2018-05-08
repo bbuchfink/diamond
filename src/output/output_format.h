@@ -56,7 +56,7 @@ struct Output_format
 	}
 	unsigned code;
 	bool needs_taxon_id_lists, needs_taxon_nodes;
-	enum { daa, blast_tab, blast_xml, sam, blast_pairwise, null, taxon };
+	enum { daa, blast_tab, blast_xml, sam, blast_pairwise, null, taxon, paf };
 };
 
 extern auto_ptr<Output_format> output_format;
@@ -96,6 +96,21 @@ struct Blast_tab_format : public Output_format
 		return new Blast_tab_format(*this);
 	}
 	vector<unsigned> fields;
+};
+
+struct PAF_format : public Output_format
+{
+	PAF_format():
+		Output_format(paf)
+	{}
+	virtual void print_query_intro(size_t query_num, const char *query_name, unsigned query_len, TextBuffer &out, bool unaligned) const;
+	virtual void print_match(const Hsp_context& r, const Metadata &metadata, TextBuffer &out);
+	virtual ~PAF_format()
+	{ }
+	virtual Output_format* clone() const
+	{
+		return new PAF_format(*this);
+	}
 };
 
 struct Sam_format : public Output_format

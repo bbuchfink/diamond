@@ -112,6 +112,7 @@ add_executable(diamond src/run/main.cpp
   src/search/stage0.cpp
   src/util/memory/memory_pool.cpp
   src/data/seed_array.cpp
+  src/output/paf_format.cpp
 )
 
 if(EXTRA)
