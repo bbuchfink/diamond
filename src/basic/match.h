@@ -236,8 +236,8 @@ struct Hsp_context
 		subject_len(subject_len),
 		hit_num(hit_num),
 		hsp_num(hsp_num),
-		hsp_(hsp),
-		subject_seq(subject_seq)
+		subject_seq(subject_seq),
+		hsp_(hsp)		
 	{}
 	struct Iterator : public Hsp::Iterator
 	{
