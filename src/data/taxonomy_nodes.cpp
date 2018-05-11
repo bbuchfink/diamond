@@ -93,6 +93,7 @@ bool TaxonomyNodes::contained(unsigned query, const set<unsigned> &filter)
 	unsigned q = query;
 	while (set_cached(q, contained), q != p)
 		q = get_parent(q);
+	return contained;
 }
 
 bool TaxonomyNodes::contained(const vector<unsigned> query, const set<unsigned> &filter)
