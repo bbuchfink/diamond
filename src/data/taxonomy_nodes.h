@@ -39,11 +39,19 @@ struct TaxonomyNodes
 		return parent_[taxid];
 	}
 	unsigned get_lca(unsigned t1, unsigned t2) const;
-	bool contained(const vector<unsigned> query, const set<unsigned> filter);
+	bool contained(unsigned query, const set<unsigned> &filter);
+	bool contained(const vector<unsigned> query, const set<unsigned> &filter);
 
 private:
 
+	void set_cached(unsigned taxon_id, bool contained)
+	{
+		cached_[taxon_id] = true;
+		contained_[taxon_id] = contained;
+	}
+
 	vector<unsigned> parent_;
+	vector<bool> cached_, contained_;
 
 };
 

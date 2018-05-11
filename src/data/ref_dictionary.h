@@ -40,7 +40,7 @@ struct ReferenceDictionary
 
 	void init(unsigned ref_count, const vector<unsigned> &block_to_database_id);
 
-	uint32_t get(unsigned block, unsigned i);
+	uint32_t get(unsigned block, size_t i);
 	void build_lazy_dict(DatabaseFile &db_file);
 	void clear();
 
@@ -66,7 +66,7 @@ struct ReferenceDictionary
 		return database_id_[dict_id];
 	}
 
-	unsigned block_to_database_id(unsigned block_id) const
+	unsigned block_to_database_id(size_t block_id) const
 	{
 		return (*block_to_database_id_)[block_id];
 	}

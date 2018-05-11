@@ -56,7 +56,7 @@ void ReferenceDictionary::init(unsigned ref_count, const vector<unsigned> &block
 	block_to_database_id_ = &block_to_database_id;
 }
 
-uint32_t ReferenceDictionary::get(unsigned block, unsigned block_id)
+uint32_t ReferenceDictionary::get(unsigned block, size_t block_id)
 {
 	uint32_t n = data_[block][block_id];
 	if (n != std::numeric_limits<uint32_t>::max())

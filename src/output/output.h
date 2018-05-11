@@ -90,7 +90,7 @@ struct IntermediateRecord
 	{
 		*(unsigned*)(&buf[seek_pos + sizeof(unsigned)]) = safe_cast<unsigned>(buf.size() - seek_pos - sizeof(unsigned) * 2);
 	}
-	static void write(TextBuffer &buf, const Hsp &match, unsigned query_id, unsigned subject_id)
+	static void write(TextBuffer &buf, const Hsp &match, unsigned query_id, size_t subject_id)
 	{
 		const interval oriented_range (match.oriented_range());
 		buf.write(ReferenceDictionary::get().get(current_ref_block, subject_id))

@@ -65,7 +65,7 @@ inline void write_daa_record(TextBuffer &buf, const IntermediateRecord &r)
 	buf << r.transcript.data();
 }
 
-inline void write_daa_record(TextBuffer &buf, const Hsp &match, unsigned query_id, unsigned subject_id)
+inline void write_daa_record(TextBuffer &buf, const Hsp &match, unsigned query_id, size_t subject_id)
 {
 	buf.write(ReferenceDictionary::get().get(current_ref_block, subject_id));
 	buf.write(get_segment_flag(match));

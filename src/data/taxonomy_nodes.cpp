@@ -36,6 +36,8 @@ TaxonomyNodes::TaxonomyNodes(Deserializer &in)
 {
 	in.varint = false;
 	in >> parent_;
+	cached_.insert(cached_.end(), parent_.size(), false);
+	contained_.insert(contained_.end(), parent_.size(), false);
 }
 
 unsigned TaxonomyNodes::get_lca(unsigned t1, unsigned t2) const
@@ -71,21 +73,35 @@ unsigned TaxonomyNodes::get_lca(unsigned t1, unsigned t2) const
 	return p;
 }
 
-bool TaxonomyNodes::contained(const vector<unsigned> query, const set<unsigned> filter)
+bool TaxonomyNodes::contained(unsigned query, const set<unsigned> &filter)
+{
+	static const int max = 64;
+	if (query >= parent_.size())
+		throw std::runtime_error(string("No taxonomy node found for taxon id ") + to_string(query));
+	if (cached_[query])
+		return contained_[query];
+	if (filter.find(1) != filter.end())
+		return true;
+	int n = 0;
+	unsigned p = query;
+	while (p > 1 && filter.find(p) == filter.end()) {
+		p = get_parent(p);
+		if (++n > max)
+			throw std::runtime_error("Path in taxonomy too long (3).");
+	}
+	const bool contained = p > 1;
+	unsigned q = query;
+	while (set_cached(q, contained), q != p)
+		q = get_parent(q);
+}
+
+bool TaxonomyNodes::contained(const vector<unsigned> query, const set<unsigned> &filter)
 {
 	static const int max = 64;
 	if (filter.find(1) != filter.end())
 		return true;
-	for (vector<unsigned>::const_iterator i = query.begin(); i != query.end(); ++i) {
-		int n = 0;
-		unsigned p = *i;
-		while (p > 1 && filter.find(p) == filter.end()) {
-			p = get_parent(p);
-			if (++n > max)
-				throw std::runtime_error("Path in taxonomy too long (3).");
-		}
-		if (p > 1)
+	for (vector<unsigned>::const_iterator i = query.begin(); i != query.end(); ++i)
+		if (contained(*i, filter))
 			return true;
-	}
 	return false;
 }
