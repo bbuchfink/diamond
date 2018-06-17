@@ -94,7 +94,7 @@ void align_worker(size_t thread_id, const Parameters *params, const Metadata *me
 		if (*output_format != Output_format::null) {
 			buf = new TextBuffer;
 			const bool aligned = mapper->generate_output(*buf, stat, *metadata);
-			if (aligned && !config.unaligned.empty())
+			if (aligned && (!config.unaligned.empty() || !config.aligned_file.empty()))
 				query_aligned[hits.query] = true;
 		}
 		delete mapper;
