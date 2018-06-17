@@ -189,6 +189,7 @@ void run_query_chunk(DatabaseFile &db_file,
 	unsigned query_chunk,
 	OutputFile &master_out,
 	OutputFile *unaligned_file,
+	OutputFile *aligned_file,
 	const Metadata &metadata)
 {
 	const Parameters params(db_file.ref_header.sequences, db_file.ref_header.letters);
@@ -255,6 +256,10 @@ void run_query_chunk(DatabaseFile &db_file,
 		timer.go("Writing unaligned queries");
 		write_unaligned(unaligned_file);
 	}
+	if (aligned_file) {
+		timer.go("Writing aligned queries");
+		write_aligned(aligned_file);
+	}
 
 	timer.go("Deallocating queries");
 	delete query_seqs::data_;
@@ -278,9 +283,11 @@ void master_thread(DatabaseFile &db_file, Timer &total_timer, Metadata &metadata
 	auto_ptr<OutputFile> master_out(new OutputFile(config.output_file, config.compression == 1));
 	if (*output_format == Output_format::daa)
 		init_daa(*master_out);
-	auto_ptr<OutputFile> unaligned_file;
+	auto_ptr<OutputFile> unaligned_file, aligned_file;
 	if (!config.unaligned.empty())
 		unaligned_file = auto_ptr<OutputFile>(new OutputFile(config.unaligned));
+	if (!config.aligned_file.empty())
+		aligned_file = auto_ptr<OutputFile>(new OutputFile(config.aligned_file));
 	timer.finish();
 
 	for (;; ++current_query_chunk) {
@@ -302,7 +309,7 @@ void master_thread(DatabaseFile &db_file, Timer &total_timer, Metadata &metadata
 			timer.finish();
 		}
 
-		run_query_chunk(db_file, total_timer, current_query_chunk, *master_out, unaligned_file.get(), metadata);
+		run_query_chunk(db_file, total_timer, current_query_chunk, *master_out, unaligned_file.get(), aligned_file.get(), metadata);
 	}
 
 	timer.go("Closing the input file");
@@ -316,6 +323,8 @@ void master_thread(DatabaseFile &db_file, Timer &total_timer, Metadata &metadata
 	master_out->close();
 	if (unaligned_file.get())
 		unaligned_file->close();
+	if (aligned_file.get())
+		aligned_file->close();
 	
 	timer.go("Closing the database file");
 	db_file.close();

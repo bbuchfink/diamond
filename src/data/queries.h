@@ -53,6 +53,7 @@ struct query_ids
 extern vector<bool> query_aligned;
 
 void write_unaligned(OutputFile *file);
+void write_aligned(OutputFile *file);
 
 inline unsigned get_source_query_len(unsigned query_id)
 {
