@@ -16,7 +16,7 @@ Keep posted about new developments by following me on Twitter.
    :target: https://gitter.im/diamond-aligner/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge
 .. image:: https://anaconda.org/bioconda/diamond/badges/downloads.svg
    :target: https://anaconda.org/bioconda/diamond
-.. image:: https://img.shields.io/badge/Google%20Scholar-546-blue.svg
+.. image:: https://img.shields.io/badge/Google%20Scholar-590-blue.svg
    :target: https://scholar.google.de/citations?user=kjPIF1cAAAAJ
 
 Quick start guide
@@ -25,7 +25,7 @@ Please read the `manual <https://github.com/bbuchfink/diamond/raw/master/diamond
 
 Installing the software on your system may be done by downloading it in binary format for immediate use::
 
-    wget http://github.com/bbuchfink/diamond/releases/download/v0.9.21/diamond-linux64.tar.gz
+    wget http://github.com/bbuchfink/diamond/releases/download/v0.9.22/diamond-linux64.tar.gz
     tar xzf diamond-linux64.tar.gz
 
 The extracted ``diamond`` binary file should be moved to a directory contained in your executable search path (PATH environment variable).
