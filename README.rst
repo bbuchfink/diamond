@@ -16,7 +16,7 @@ Keep posted about new developments by following me on Twitter.
    :target: https://gitter.im/diamond-aligner/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge
 .. image:: https://anaconda.org/bioconda/diamond/badges/downloads.svg
    :target: https://anaconda.org/bioconda/diamond
-.. image:: https://img.shields.io/badge/Google%20Scholar-621-blue.svg
+.. image:: https://img.shields.io/badge/Google%20Scholar-622-blue.svg
    :target: https://scholar.google.de/citations?user=kjPIF1cAAAAJ
 
 Quick start guide
