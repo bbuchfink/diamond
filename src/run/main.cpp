@@ -40,6 +40,7 @@ void db_annot_stats();
 void read_sim();
 void info();
 void seed_stat();
+void pairwise();
 
 int main(int ac, const char* av[])
 {
@@ -114,6 +115,9 @@ int main(int ac, const char* av[])
 			break;
 		case Config::info:
 			info();
+			break;
+		case Config::smith_waterman:
+			pairwise();
 			break;
 #ifdef EXTRA
 		case Config::test_extra:

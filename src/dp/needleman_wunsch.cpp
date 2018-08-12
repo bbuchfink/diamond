@@ -201,7 +201,6 @@ int needleman_wunsch(sequence query, sequence subject, int qbegin, int qend, int
 			if (i != 0 || j != 0) {
 				f->node_out = (unsigned)diags.nodes.size();
 				diags.nodes.push_back(Diagonal_node(qbegin + i, sbegin + j, l, 0, (int)diags.edges.size()));
-				//f = diags.add_edge(Diag_graph::Edge(0, sbegin + j, f->node_out, 0, true, Diagonal_node::finished, 0, 0));
 			}
 		}
 		else if (have_hgap(dp, i, j, gap_open, gap_extend, l)) {

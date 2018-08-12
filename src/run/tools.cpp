@@ -30,6 +30,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../data/reference.h"
 #include "../extra/match_file.h"
 #include "../basic/masking.h"
+#include "../dp/dp.h"
 
 using std::cout;
 using std::endl;
@@ -217,4 +218,31 @@ void info()
 	for (vector<string>::const_iterator i = arch_flags.begin(); i != arch_flags.end(); ++i)
 		cout << *i << ' ';
 	cout << endl;
+}
+
+void pairwise()
+{
+	input_value_traits = nucleotide_traits;
+	value_traits = nucleotide_traits;;
+	score_matrix = Score_matrix("DNA", 5, 2, 0);
+
+	TextInputFile in(config.query_file);
+	FASTA_format format;
+	vector<char> id_r, id_q, ref, query;
+	
+	while (format.get_seq(id_r, ref, in)) {
+		format.get_seq(id_q, query, in);
+		const string ir = blast_id(string(id_r.data(), id_r.size())), iq = blast_id(string(id_q.data(), id_q.size()));
+		Hsp hsp;
+		smith_waterman(sequence(query), sequence(ref), hsp);
+		Hsp_context context(hsp, 0, TranslatedSequence(query), "", 0, 0, "", 0, 0, 0, sequence());
+		Hsp_context::Iterator it = context.begin();
+		while (it.good()) {
+			if (it.op() == Edit_operation::op_substitution)
+				cout << ir << '\t' << iq << '\t' << it.subject_pos << '\t' << it.query_pos.translated << '\t' << it.query_char() << endl;
+			else if (it.op() == Edit_operation::op_deletion)
+				cout << ir << '\t' << iq << '\t' << it.subject_pos << '\t' << "-1" << '\t' << '.' << endl;
+			++it;
+		}
+	}
 }

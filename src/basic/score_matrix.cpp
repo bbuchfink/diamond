@@ -36,6 +36,18 @@ typedef double array_of_8[BLAST_NUM_STAT_VALUES];
 
 const double INT2_MAX = std::numeric_limits<double>::max();
 
+const char DNA_scores[5 * 5] = {
+	2, -3, -3, -3, -3,
+	-3,2,-3,-3,-3,
+	-3,-3,2,-3,-3,
+	-3,-3,-3,2,-3,
+	-3,-3,-3,-3,2
+};
+
+static array_of_8 dna_values[1] = {
+	{ 5, 2, (double)INT2_MAX, 0, 0, 0, 0, 0, 0, 0, 0 }
+};
+
 #define BLOSUM45_VALUES_MAX 14 /**< Number of different combinations supported for BLOSUM45. */
 static array_of_8 blosum45_values[BLOSUM45_VALUES_MAX] = {
 	{ (double)INT2_MAX, (double)INT2_MAX, (double)INT2_MAX, 0.2291, 0.0924, 0.2514, 0.9113, -5.7, 0.641318, 9.611060, 9.611060 },
@@ -185,7 +197,7 @@ struct Matrix_info
 		return 0;
 	}
 
-	static const Matrix_info matrices[8];
+	static const Matrix_info matrices[9];
 };
 
 const Matrix_info Matrix_info::matrices[] = {
@@ -196,7 +208,8 @@ const Matrix_info Matrix_info::matrices[] = {
 	{ "BLOSUM90", blosum90_values, (const char*)NCBISM_Blosum90.scores, BLOSUM90_VALUES_MAX, 10, 1 },
 	{ "PAM70", pam70_values, (const char*)NCBISM_Pam70.scores, PAM70_VALUES_MAX, 10, 1 },
 	{ "PAM250", pam250_values, (const char*)NCBISM_Pam250.scores, PAM250_VALUES_MAX, 14, 2 },
-	{ "PAM30", pam30_values, (const char*)NCBISM_Pam30.scores, PAM30_VALUES_MAX, 9, 1 }
+	{ "PAM30", pam30_values, (const char*)NCBISM_Pam30.scores, PAM30_VALUES_MAX, 9, 1 },
+	{ "DNA", dna_values, (const char*)DNA_scores, 1, 5, 2 }
 };
 
 Score_matrix::Score_matrix(const string & matrix, int gap_open, int gap_extend, int frameshift, uint64_t db_letters):

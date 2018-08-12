@@ -63,7 +63,8 @@ Config::Config(int argc, const char **argv)
 		.add_command("db-annot-stats", "")
 		.add_command("read-sim", "")
 		.add_command("info", "")
-		.add_command("seed-stat", "");
+		.add_command("seed-stat", "")
+		.add_command("smith-waterman", "");
 
 	Options_group general("General options");
 	general.add()
