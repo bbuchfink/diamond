@@ -21,6 +21,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <time.h>
 #include <set>
 #include <iostream>
+#include <sstream>
 #include "tools.h"
 #include "../basic/config.h"
 #include "../data/sequence_set.h"
@@ -31,6 +32,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../extra/match_file.h"
 #include "../basic/masking.h"
 #include "../dp/dp.h"
+#include "../util/tinythread.h"
 
 using std::cout;
 using std::endl;
@@ -220,6 +222,40 @@ void info()
 	cout << endl;
 }
 
+void pairwise_worker(TextInputFile *in, tthread::mutex *input_lock, tthread::mutex *output_lock) {
+	FASTA_format format;
+	vector<char> id_r, id_q, ref, query;
+
+	while(true) {
+		input_lock->lock();
+		if (!format.get_seq(id_r, ref, *in)) {
+			input_lock->unlock();
+			return;
+		}
+		if (!format.get_seq(id_q, query, *in)) {
+			input_lock->unlock();
+			return;
+		}
+		input_lock->unlock();
+		const string ir = blast_id(string(id_r.data(), id_r.size())), iq = blast_id(string(id_q.data(), id_q.size()));
+		Hsp hsp;
+		smith_waterman(sequence(query), sequence(ref), hsp);
+		Hsp_context context(hsp, 0, TranslatedSequence(query), "", 0, 0, "", 0, 0, 0, sequence());
+		Hsp_context::Iterator it = context.begin();
+		std::stringstream ss;
+		while (it.good()) {
+			if (it.op() == Edit_operation::op_substitution)
+				ss << ir << '\t' << iq << '\t' << it.subject_pos << '\t' << it.query_pos.translated << '\t' << it.query_char() << endl;
+			else if (it.op() == Edit_operation::op_deletion)
+				ss << ir << '\t' << iq << '\t' << it.subject_pos << '\t' << "-1" << '\t' << '.' << endl;
+			++it;
+		}
+		output_lock->lock();
+		cout << ss.str();
+		output_lock->unlock();
+	}
+}
+
 void pairwise()
 {
 	input_value_traits = nucleotide_traits;
@@ -227,22 +263,10 @@ void pairwise()
 	score_matrix = Score_matrix("DNA", 4, 2, 0);
 
 	TextInputFile in(config.query_file);
-	FASTA_format format;
-	vector<char> id_r, id_q, ref, query;
-	
-	while (format.get_seq(id_r, ref, in)) {
-		format.get_seq(id_q, query, in);
-		const string ir = blast_id(string(id_r.data(), id_r.size())), iq = blast_id(string(id_q.data(), id_q.size()));
-		Hsp hsp;
-		smith_waterman(sequence(query), sequence(ref), hsp);
-		Hsp_context context(hsp, 0, TranslatedSequence(query), "", 0, 0, "", 0, 0, 0, sequence());
-		Hsp_context::Iterator it = context.begin();
-		while (it.good()) {
-			if (it.op() == Edit_operation::op_substitution)
-				cout << ir << '\t' << iq << '\t' << it.subject_pos << '\t' << it.query_pos.translated << '\t' << it.query_char() << endl;
-			else if (it.op() == Edit_operation::op_deletion)
-				cout << ir << '\t' << iq << '\t' << it.subject_pos << '\t' << "-1" << '\t' << '.' << endl;
-			++it;
-		}
+	tthread::mutex input_lock, output_lock;
+	Thread_pool threads;
+	for (unsigned i = 0; i < config.threads_; ++i) {
+		threads.push_back(launch_thread(pairwise_worker, &in, &input_lock, &output_lock));
 	}
+	threads.join_all();
 }
