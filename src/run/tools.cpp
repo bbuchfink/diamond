@@ -224,7 +224,7 @@ void pairwise()
 {
 	input_value_traits = nucleotide_traits;
 	value_traits = nucleotide_traits;;
-	score_matrix = Score_matrix("DNA", 5, 2, 0);
+	score_matrix = Score_matrix("DNA", 4, 2, 0);
 
 	TextInputFile in(config.query_file);
 	FASTA_format format;
