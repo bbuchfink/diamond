@@ -45,7 +45,7 @@ const char DNA_scores[5 * 5] = {
 };
 
 static array_of_8 dna_values[1] = {
-	{ 5, 2, (double)INT2_MAX, 0, 0, 0, 0, 0, 0, 0, 0 }
+	{ 4, 2, (double)INT2_MAX, 0, 0, 0, 0, 0, 0, 0, 0 }
 };
 
 #define BLOSUM45_VALUES_MAX 14 /**< Number of different combinations supported for BLOSUM45. */
