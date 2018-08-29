@@ -16,8 +16,6 @@ Keep posted about new developments by following me on Twitter.
    :target: https://gitter.im/diamond-aligner/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge
 .. image:: https://anaconda.org/bioconda/diamond/badges/downloads.svg
    :target: https://anaconda.org/bioconda/diamond
-.. image:: https://img.shields.io/badge/Google%20Scholar-632-blue.svg
-   :target: https://scholar.google.de/citations?user=kjPIF1cAAAAJ
 
 Quick start guide
 =================
@@ -50,6 +48,8 @@ The output file here is specified with the ``–o`` option and named ``matches.m
   - The default e-value cutoff of DIAMOND is 0.001 while that of BLAST is 10, so by default the program will search a lot more stringently than BLAST and not report weak hits.  
 About
 =====
-DIAMOND is developed by Benjamin Buchfink. Feel free to contact me for support (`Email <mailto:buchfink@gmail.com>`_ `Twitter <http://twitter.com/bbuchfink>`_).
+DIAMOND is developed by Benjamin Buchfink at the Detlef Weigel lab, Max Planck Institute for Developmental Biology, Tübingen, Germany.
+
+[`Email <mailto:buchfink@gmail.com>`_] [`Google Scholar <https://scholar.google.de/citations?user=kjPIF1cAAAAJ>`_] [`MPI-EBIO <http://eb.tuebingen.mpg.de/>`_]
 
 If you use DIAMOND in published research, please cite B. Buchfink, Xie C., D. Huson, "Fast and sensitive protein alignment using DIAMOND", Nature Methods 12, 59-60 (2015).
