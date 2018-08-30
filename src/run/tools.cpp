@@ -245,9 +245,9 @@ void pairwise_worker(TextInputFile *in, tthread::mutex *input_lock, tthread::mut
 		Hsp_context::Iterator it = context.begin();
 		std::stringstream ss;
 		while (it.good()) {
-			if (it.op() == Edit_operation::op_substitution)
+			if (it.op() == op_substitution)
 				ss << ir << '\t' << iq << '\t' << it.subject_pos << '\t' << it.query_pos.translated << '\t' << it.query_char() << endl;
-			else if (it.op() == Edit_operation::op_deletion)
+			else if (it.op() == op_deletion)
 				ss << ir << '\t' << iq << '\t' << it.subject_pos << '\t' << "-1" << '\t' << '.' << endl;
 			++it;
 		}
