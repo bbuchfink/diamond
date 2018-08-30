@@ -400,4 +400,6 @@ Config::Config(int argc, const char **argv)
 
 	/*log_stream << "sizeof(hit)=" << sizeof(hit) << " sizeof(packed_uint40_t)=" << sizeof(packed_uint40_t)
 		<< " sizeof(sorted_list::entry)=" << sizeof(sorted_list::entry) << endl;*/
+
+	use_lazy_dict = false;
 }
