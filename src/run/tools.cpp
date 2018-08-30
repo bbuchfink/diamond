@@ -33,6 +33,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../basic/masking.h"
 #include "../dp/dp.h"
 #include "../util/tinythread.h"
+#include "../basic/packed_transcript.h"
 
 using std::cout;
 using std::endl;
