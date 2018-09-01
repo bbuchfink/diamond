@@ -64,7 +64,8 @@ Config::Config(int argc, const char **argv)
 		.add_command("read-sim", "")
 		.add_command("info", "")
 		.add_command("seed-stat", "")
-		.add_command("smith-waterman", "");
+		.add_command("smith-waterman", "")
+		.add_command("protein-snps", "");
 
 	Options_group general("General options");
 	general.add()

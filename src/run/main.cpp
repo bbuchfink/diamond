@@ -41,6 +41,7 @@ void read_sim();
 void info();
 void seed_stat();
 void pairwise();
+void protein_snps();
 
 int main(int ac, const char* av[])
 {
@@ -118,6 +119,9 @@ int main(int ac, const char* av[])
 			break;
 		case Config::smith_waterman:
 			pairwise();
+			break;
+		case Config::protein_snps:
+			protein_snps();
 			break;
 #ifdef EXTRA
 		case Config::test_extra:

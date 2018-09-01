@@ -35,8 +35,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/tinythread.h"
 #include "../basic/packed_transcript.h"
 
-using std::cout;
-using std::endl;
+using namespace std;
 
 void get_seq()
 {
@@ -270,4 +269,46 @@ void pairwise()
 		threads.push_back(launch_thread(pairwise_worker, &in, &input_lock, &output_lock));
 	}
 	threads.join_all();
+}
+
+void fasta_skip_to(vector<char> &id, vector<char> &seq, const string &blast_id, TextInputFile &f)
+{
+	while (string(id.data(), id.size()) != blast_id)
+		if (!FASTA_format().get_seq(id, seq, f))
+			throw runtime_error("Sequence not found in FASTA file.");
+}
+
+void call_protein_snps(const string &gene, const vector<char> &seq, const vector<char> &seqv)
+{
+	if (seq.empty())
+		return;
+	vector<char> t[6], tv[6];
+	Translator::translate(seq, t);
+	Translator::translate(seqv, tv);
+	for (size_t i = 0; i < t[0].size(); ++i)
+		if (t[0][i] != tv[0][i])
+			cout << gene << '\t' << i << '\t' << amino_acid_traits.alphabet[tv[0][i]] << endl;
+}
+
+void protein_snps()
+{
+	vector<char> id, seq, seqv;
+	TextInputFile in(config.query_file);
+	string gene, current_gene;
+	int locus;
+	char base;
+	while (!cin.eof()) {
+		gene.clear();
+		cin >> gene >> locus >> base;
+		if (gene.empty())
+			break;
+		if (gene != current_gene) {
+			call_protein_snps(current_gene, seq, seqv);
+			fasta_skip_to(id, seq, gene, in);
+			seqv = seq;
+			current_gene = gene;
+		}
+		seqv[locus] = nucleotide_traits.from_char(base);
+	}
+	call_protein_snps(current_gene, seq, seqv);
 }
