@@ -273,7 +273,7 @@ void pairwise()
 
 void fasta_skip_to(vector<char> &id, vector<char> &seq, const string &blast_id, TextInputFile &f)
 {
-	while (string(id.data(), id.size()) != blast_id)
+	while (::blast_id(string(id.data(), id.size())) != blast_id)
 		if (!FASTA_format().get_seq(id, seq, f))
 			throw runtime_error("Sequence not found in FASTA file.");
 }
@@ -287,7 +287,7 @@ void call_protein_snps(const string &gene, const vector<char> &seq, const vector
 	Translator::translate(seqv, tv);
 	for (size_t i = 0; i < t[0].size(); ++i)
 		if (t[0][i] != tv[0][i])
-			cout << gene << '\t' << i << '\t' << amino_acid_traits.alphabet[tv[0][i]] << endl;
+			cout << gene << '\t' << i << '\t' << amino_acid_traits.alphabet[(int)tv[0][i]] << endl;
 }
 
 void protein_snps()
