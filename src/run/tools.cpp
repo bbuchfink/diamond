@@ -292,6 +292,7 @@ void call_protein_snps(const string &gene, const vector<char> &seq, const vector
 
 void protein_snps()
 {
+	input_value_traits = value_traits = nucleotide_traits;
 	vector<char> id, seq, seqv;
 	TextInputFile in(config.query_file);
 	string gene, current_gene;
