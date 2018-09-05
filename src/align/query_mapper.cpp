@@ -301,7 +301,8 @@ void Target::apply_filters(int dna_len, int subject_len, const char *query_title
 				&& i->identities == i->length
 				&& i->query_source_range.length() == (int)dna_len
 				&& i->subject_range.length() == (int)subject_len
-				&& strcmp(query_title, ref_title) == 0))
+				&& strcmp(query_title, ref_title) == 0)
+			|| (config.filter_locus && !i->subject_range.includes(config.filter_locus)))
 			i = hsps.erase(i);
 		else
 			++i;
