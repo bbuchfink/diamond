@@ -247,7 +247,7 @@ void pairwise_worker(TextInputFile *in, tthread::mutex *input_lock, tthread::mut
 			if (it.op() == op_substitution)
 				ss << ir << '\t' << iq << '\t' << it.subject_pos << '\t' << it.query_pos.translated << '\t' << it.query_char() << endl;
 			else if (it.op() == op_deletion)
-				ss << ir << '\t' << iq << '\t' << it.subject_pos << '\t' << "-1" << '\t' << '.' << endl;
+				ss << ir << '\t' << iq << '\t' << it.subject_pos << '\t' << "-1" << '\t' << '-' << endl;
 			++it;
 		}
 		output_lock->lock();
@@ -308,7 +308,8 @@ void protein_snps()
 			seqv = seq;
 			current_gene = gene;
 		}
-		seqv[locus] = nucleotide_traits.from_char(base);
+		if(base != '-')
+			seqv[locus] = nucleotide_traits.from_char(base);
 	}
 	call_protein_snps(current_gene, seq, seqv);
 }
