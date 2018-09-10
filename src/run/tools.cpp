@@ -259,15 +259,14 @@ void pairwise_worker(TextInputFile *in, tthread::mutex *input_lock, tthread::mut
 void pairwise()
 {
 	input_value_traits = nucleotide_traits;
-	value_traits = nucleotide_traits;;
-	score_matrix = Score_matrix("DNA", 4, 2, 0);
+	value_traits = nucleotide_traits;
+	score_matrix = Score_matrix("DNA", 5, 2, 0);
 
 	TextInputFile in(config.query_file);
 	tthread::mutex input_lock, output_lock;
 	Thread_pool threads;
-	for (unsigned i = 0; i < config.threads_; ++i) {
+	for (unsigned i = 0; i < config.threads_; ++i)
 		threads.push_back(launch_thread(pairwise_worker, &in, &input_lock, &output_lock));
-	}
 	threads.join_all();
 }
 

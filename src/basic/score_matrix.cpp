@@ -37,15 +37,15 @@ typedef double array_of_8[BLAST_NUM_STAT_VALUES];
 const double INT2_MAX = std::numeric_limits<double>::max();
 
 const char DNA_scores[5 * 5] = {
-	2, -4, -4, -4, -4,
-	-4,2,-4,-4,-4,
-	-4,-4,2,-4,-4,
-	-4,-4,-4,2,-4,
-	-4,-4,-4,-4,2
+	2, -3, -3, -3, -3,
+	-3,2,-3,-3,-3,
+	-3,-3,2,-3,-3,
+	-3,-3,-3,2,-3,
+	-3,-3,-3,-3,2
 };
 
 static array_of_8 dna_values[1] = {
-	{ 4, 2, (double)INT2_MAX, 0, 0, 0, 0, 0, 0, 0, 0 }
+	{ 5, 2, (double)INT2_MAX, 0, 0, 0, 0, 0, 0, 0, 0 }
 };
 
 #define BLOSUM45_VALUES_MAX 14 /**< Number of different combinations supported for BLOSUM45. */
