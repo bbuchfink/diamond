@@ -270,46 +270,73 @@ void pairwise()
 	threads.join_all();
 }
 
-void fasta_skip_to(vector<char> &id, vector<char> &seq, const string &blast_id, TextInputFile &f)
+void fasta_skip_to(vector<char> &id, vector<char> &seq, string &blast_id, TextInputFile &f)
 {
-	while (::blast_id(string(id.data(), id.size())) != blast_id)
+	while (::blast_id(string(id.data(), id.size())) != blast_id) {
 		if (!FASTA_format().get_seq(id, seq, f))
 			throw runtime_error("Sequence not found in FASTA file.");
+	}
 }
 
-void call_protein_snps(const string &gene, const vector<char> &seq, const vector<char> &seqv)
+void call_protein_snps(const string &gene, const vector<char> &seq, vector<vector<char> > &snps)
 {
 	if (seq.empty())
 		return;
-	vector<char> t[6], tv[6];
-	Translator::translate(seq, t);
-	Translator::translate(seqv, tv);
-	for (size_t i = 0; i < t[0].size(); ++i)
-		if (t[0][i] != tv[0][i])
-			cout << gene << '\t' << i << '\t' << amino_acid_traits.alphabet[(int)tv[0][i]] << endl;
+	const size_t codons = seq.size() / 3;
+	vector<char> codon(3);
+	for (size_t i = 0; i < codons; ++i) {
+		set<char> psnp;
+		codon[0] = seq[i*3];
+		codon[1] = seq[i*3+1];
+		codon[2] = seq[i*3+2];
+		char r = Translator::getAminoAcid(codon, 0);
+		if(snps[i*3].empty())
+			snps[i*3].push_back(seq[i*3]);
+		if(snps[i*3+1].empty())
+			snps[i*3+1].push_back(seq[i*3+1]);
+		if(snps[i*3+2].empty())
+			snps[i*3+2].push_back(seq[i*3+2]);
+		for(char b1 : snps[i*3]) {
+			codon[0] = b1;
+			for(char b2 : snps[i*3+1]) {
+				codon[1] = b2;
+				for(char b3 : snps[i*3+2]) {
+					codon[2] = b3;
+					char s = Translator::getAminoAcid(codon, 0);
+					if(r != s)
+						psnp.insert(s);
+				}
+			}
+		}
+		for(char r : psnp)
+			cout << gene << '\t' << i << '\t' << amino_acid_traits.alphabet[(int)r] << endl;
+	}
 }
 
 void protein_snps()
 {
 	input_value_traits = value_traits = nucleotide_traits;
-	vector<char> id, seq, seqv;
+	vector<char> id, seq;
+	vector<vector<char> > snps;
 	TextInputFile in(config.query_file);
 	string gene, current_gene;
-	int locus;
+	int locus, read_count;
 	char base;
+	double read_ratio;
 	while (!cin.eof()) {
 		gene.clear();
-		cin >> gene >> locus >> base;
+		cin >> gene >> locus >> base >> read_count >> read_ratio;
 		if (gene.empty())
 			break;
 		if (gene != current_gene) {
-			call_protein_snps(current_gene, seq, seqv);
+			call_protein_snps(current_gene, seq, snps);
 			fasta_skip_to(id, seq, gene, in);
-			seqv = seq;
+			snps.clear();
+			snps.insert(snps.begin(), seq.size(), vector<char>());
 			current_gene = gene;
 		}
 		if(base != '-')
-			seqv[locus] = nucleotide_traits.from_char(base);
+			snps[locus].push_back(nucleotide_traits.from_char(base));
 	}
-	call_protein_snps(current_gene, seq, seqv);
+	call_protein_snps(current_gene, seq, snps);
 }
