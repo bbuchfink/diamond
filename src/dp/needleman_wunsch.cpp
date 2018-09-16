@@ -231,18 +231,7 @@ void smith_waterman(sequence q, sequence s, Hsp &out)
 
 	while ((score = dp(i, j)) > 0) {
 		const int match_score = score_matrix(q[i - 1], s[j - 1]);
-		if (have_hgap(dp, i, j, gap_open, gap_extend, l)) {
-			for (; l > 0; l--) {
-				out.transcript.push_back(op_deletion, s[--j]);
-				++out.length;
-			}
-		}
-		else if (have_vgap(dp, i, j, gap_open, gap_extend, l)) {
-			out.transcript.push_back(op_insertion, (unsigned)l);
-			out.length += l;
-			i -= l;
-		}
-		else if (score == match_score + dp(i - 1, j - 1)) {
+		if (score == match_score + dp(i - 1, j - 1)) {
 			if (q[i - 1] == s[j - 1]) {
 				out.transcript.push_back(op_match);
 			}
@@ -253,7 +242,17 @@ void smith_waterman(sequence q, sequence s, Hsp &out)
 			--j;
 			++out.length;
 		}
-		
+		else if (have_hgap(dp, i, j, gap_open, gap_extend, l)) {
+			for (; l > 0; l--) {
+				out.transcript.push_back(op_deletion, s[--j]);
+				++out.length;
+			}
+		}
+		else if (have_vgap(dp, i, j, gap_open, gap_extend, l)) {
+			out.transcript.push_back(op_insertion, (unsigned)l);
+			out.length += l;
+			i -= l;
+		}		
 		else
 			throw std::runtime_error("Traceback error.");
 	}
