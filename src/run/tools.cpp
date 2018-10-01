@@ -319,11 +319,14 @@ void protein_snps()
 	vector<char> id, seq;
 	vector<vector<char> > snps;
 	TextInputFile in(config.query_file);
-	string gene, current_gene;
+	string gene, current_gene, header;
 	int locus, read_count;
 	char base;
 	double read_ratio;
 	cout << "# Gene accession\tReference locus(0 - based)\tConsensus base" << endl;
+	getline(cin, header);
+	if (header.empty() || header[0] != '#')
+		throw runtime_error("Invalid header.");
 	while (!cin.eof()) {
 		gene.clear();
 		cin >> gene >> locus >> base >> read_count >> read_ratio;
