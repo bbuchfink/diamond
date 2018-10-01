@@ -323,6 +323,7 @@ void protein_snps()
 	int locus, read_count;
 	char base;
 	double read_ratio;
+	cout << "# Gene accession\tReference locus(0 - based)\tConsensus base" << endl;
 	while (!cin.eof()) {
 		gene.clear();
 		cin >> gene >> locus >> base >> read_count >> read_ratio;
