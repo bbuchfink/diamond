@@ -323,7 +323,7 @@ void protein_snps()
 	int locus, read_count;
 	char base;
 	double read_ratio;
-	cout << "# Gene accession\tReference locus(0 - based)\tConsensus base" << endl;
+	cout << "# Gene accession, Reference locus (0-based), Consensus residue" << endl;
 	getline(cin, header);
 	if (header.empty() || header[0] != '#')
 		throw runtime_error("Invalid header.");
