@@ -308,8 +308,8 @@ void call_protein_snps(const string &gene, const vector<char> &seq, vector<vecto
 				}
 			}
 		}
-		for(char r : psnp)
-			cout << gene << '\t' << i << '\t' << amino_acid_traits.alphabet[(int)r] << endl;
+		for(char s : psnp)
+			cout << gene << '\t' << i << '\t' << amino_acid_traits.alphabet[(int)r] << '\t' << amino_acid_traits.alphabet[(int)s] << endl;
 	}
 }
 
@@ -323,7 +323,7 @@ void protein_snps()
 	int locus, read_count;
 	char base;
 	double read_ratio;
-	cout << "# Gene accession, Reference locus (0-based), Consensus residue" << endl;
+	cout << "# Gene accession, Reference locus (0-based), Reference residue, Consensus residue" << endl;
 	getline(cin, header);
 	if (header.empty() || header[0] != '#')
 		throw runtime_error("Invalid header.");
