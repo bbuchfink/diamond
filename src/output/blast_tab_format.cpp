@@ -243,7 +243,11 @@ void Blast_tab_format::print_match(const Hsp_context& r, const Metadata &metadat
 			out << r.subject_seq;
 			break;
 		default:
-			throw std::runtime_error("Invalid output field");
+				const int max_field_num = sizeof(field_str) / sizeof(field_str[0]);
+				if (*i > max_field_num)
+					throw std::runtime_error("Invalid output field");
+				else
+					throw std::runtime_error(string("Invalid output field: ") + field_str[*i]);
 		}
 		if (i < fields.end() - 1)
 			out << '\t';
@@ -299,7 +303,11 @@ void Blast_tab_format::print_query_intro(size_t query_num, const char *query_nam
 				out << query_name;
 				break;
 			default:
-				throw std::runtime_error("Invalid output field");
+				const int max_field_num = sizeof(field_str) / sizeof(field_str[0]);
+				if (*i > max_field_num)
+					throw std::runtime_error("Invalid output field (query_intro)");
+				else
+					throw std::runtime_error(string("Invalid output field (query_intro): ") + field_str[*i]);
 			}
 			if (i < fields.end() - 1)
 				out << '\t';			
