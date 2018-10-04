@@ -321,7 +321,7 @@ void protein_snps()
 	TextInputFile in(config.query_file);
 	string gene, current_gene, header;
 	int locus, read_count;
-	char base;
+	char called_base, ref_base;
 	double read_ratio;
 	cout << "# Gene accession, Reference locus (0-based), Reference residue, Consensus residue" << endl;
 	getline(cin, header);
@@ -329,7 +329,7 @@ void protein_snps()
 		throw runtime_error("Invalid header.");
 	while (!cin.eof()) {
 		gene.clear();
-		cin >> gene >> locus >> base >> read_count >> read_ratio;
+		cin >> gene >> locus >> ref_base >> called_base >> read_count >> read_ratio;
 		if (gene.empty())
 			break;
 		if (gene != current_gene) {
