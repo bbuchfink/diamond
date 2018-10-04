@@ -339,8 +339,8 @@ void protein_snps()
 			snps.insert(snps.begin(), seq.size(), vector<char>());
 			current_gene = gene;
 		}
-		if(base != '-')
-			snps[locus].push_back(nucleotide_traits.from_char(base));
+		if(called_base != '-')
+			snps[locus].push_back(nucleotide_traits.from_char(called_base));
 	}
 	call_protein_snps(current_gene, seq, snps);
 }
