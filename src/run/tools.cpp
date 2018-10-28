@@ -330,7 +330,7 @@ void protein_snps()
 	vector<vector<char> > snps;
 	string gene, current_gene, header, dataset;
 	int locus;
-	char base;
+	char called_base;
 	cout << "# Gene accession, Reference locus (0-based), Reference residue, Consensus residue" << endl;
 	TextInputFile sin("");
 	vector <string> t;
@@ -349,7 +349,7 @@ void protein_snps()
 		if (gene.empty())
 			break;
 		locus = stoi(t[i + 1]);
-		base = t[i + 2][0];
+		called_base = t[i + 3][0];
 
 		if (gene != current_gene) {
 			call_protein_snps(current_gene, ref_genes[current_gene], snps, dataset);
@@ -357,8 +357,8 @@ void protein_snps()
 			snps.insert(snps.begin(), ref_genes[gene].size(), vector<char>());
 			current_gene = gene;
 		}
-		if(base != '-')
-			snps[locus].push_back(nucleotide_traits.from_char(base));
+		if(called_base != '-')
+			snps[locus].push_back(nucleotide_traits.from_char(called_base));
 	}
 	call_protein_snps(current_gene, ref_genes[current_gene], snps, dataset);
 }
