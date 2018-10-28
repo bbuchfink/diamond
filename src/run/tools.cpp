@@ -278,7 +278,7 @@ void fasta_skip_to(vector<char> &id, vector<char> &seq, string &blast_id, TextIn
 	}
 }
 
-void call_protein_snps(const string &gene, const vector<char> &seq, vector<vector<char> > &snps)
+void call_protein_snps(const string &gene, const vector<char> &seq, vector<vector<char> > &snps, const string &dataset)
 {
 	if (seq.empty())
 		return;
@@ -308,39 +308,57 @@ void call_protein_snps(const string &gene, const vector<char> &seq, vector<vecto
 				}
 			}
 		}
-		for(char s : psnp)
+		for (char s : psnp) {
+			if (config.use_dataset_field)
+				cout << dataset << '\t';
 			cout << gene << '\t' << i << '\t' << amino_acid_traits.alphabet[(int)r] << '\t' << amino_acid_traits.alphabet[(int)s] << endl;
+		}
 	}
 }
 
 void protein_snps()
 {
 	input_value_traits = value_traits = nucleotide_traits;
-	vector<char> id, seq;
-	vector<vector<char> > snps;
+	
 	TextInputFile in(config.query_file);
-	string gene, current_gene, header;
-	int locus, read_count;
+	vector<char> id, seq;
+	map<string, vector<char> > ref_genes;
+	while (FASTA_format().get_seq(id, seq, in)) {
+		ref_genes[blast_id(string(id.data(), id.size()))] = seq;
+	}
+
+	vector<vector<char> > snps;
+	string gene, current_gene, header, dataset;
+	int locus;
 	char base;
-	double read_ratio;
 	cout << "# Gene accession, Reference locus (0-based), Reference residue, Consensus residue" << endl;
-	getline(cin, header);
-	if (header.empty() || header[0] != '#')
-		throw runtime_error("Invalid header.");
-	while (!cin.eof()) {
-		gene.clear();
-		cin >> gene >> locus >> base >> read_count >> read_ratio;
+	TextInputFile sin("");
+	vector <string> t;
+	while (sin.getline(), !sin.eof()) {
+		if (sin.line[0] == '#')
+			continue;
+		t = tokenize(sin.line.c_str(), "\t");
+		if (t.empty())
+			break;
+		int i = 0;
+		if (config.use_dataset_field) {
+			dataset = t[0];
+			++i;
+		}
+		gene = t[i];
 		if (gene.empty())
 			break;
+		locus = stoi(t[i + 1]);
+		base = t[i + 2][0];
+
 		if (gene != current_gene) {
-			call_protein_snps(current_gene, seq, snps);
-			fasta_skip_to(id, seq, gene, in);
+			call_protein_snps(current_gene, ref_genes[current_gene], snps, dataset);
 			snps.clear();
-			snps.insert(snps.begin(), seq.size(), vector<char>());
+			snps.insert(snps.begin(), ref_genes[gene].size(), vector<char>());
 			current_gene = gene;
 		}
 		if(base != '-')
 			snps[locus].push_back(nucleotide_traits.from_char(base));
 	}
-	call_protein_snps(current_gene, seq, snps);
+	call_protein_snps(current_gene, ref_genes[current_gene], snps, dataset);
 }
