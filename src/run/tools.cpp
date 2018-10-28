@@ -340,11 +340,7 @@ void protein_snps()
 		t = tokenize(sin.line.c_str(), "\t");
 		if (t.empty())
 			break;
-		int i = 0;
-		if (config.use_dataset_field) {
-			dataset = t[0];
-			++i;
-		}
+		int i = config.use_dataset_field ? 1 : 0;
 		gene = t[i];
 		if (gene.empty())
 			break;
@@ -356,6 +352,7 @@ void protein_snps()
 			snps.clear();
 			snps.insert(snps.begin(), ref_genes[gene].size(), vector<char>());
 			current_gene = gene;
+			dataset = t[0];
 		}
 		if(called_base != '-')
 			snps[locus].push_back(nucleotide_traits.from_char(called_base));
