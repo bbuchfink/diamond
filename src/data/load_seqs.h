@@ -56,6 +56,7 @@ inline size_t load_seqs(TextInputFile &file,
 	Sequence_set** seqs,
 	String_set<0>*& ids,
 	Sequence_set** source_seqs,
+	String_set<0>** quals,
 	size_t max_letters,
 	const string &filter)
 {
@@ -63,9 +64,11 @@ inline size_t load_seqs(TextInputFile &file,
 	ids = new String_set<0>();
 	if(source_seqs)
 		*source_seqs = new Sequence_set();
+	if (quals)
+		*quals = new String_set<0>();
 	size_t letters = 0, n = 0;
 	vector<Letter> seq;
-	vector<char> id;
+	vector<char> id, qual;
 	string id2;
 
 	unsigned frame_mask = (1 << 6) - 1;
@@ -74,16 +77,20 @@ inline size_t load_seqs(TextInputFile &file,
 	else if (config.query_strands == "minus")
 		frame_mask = ((1 << 3) - 1) << 3;
 
-	while (letters < max_letters && format.get_seq(id, seq, file)) {
+	while (letters < max_letters && format.get_seq(id, seq, file, quals ? &qual : nullptr)) {
 		if (seq.size() > 0 && (filter.empty() || id2.assign(id.data(), id.data() + id.size()).find(filter, 0) != string::npos)) {
 			ids->push_back(id);
 			letters += push_seq(**seqs, source_seqs, seq, frame_mask);
+			if (quals)
+				(*quals)->push_back(qual);
 			++n;
 			if ((*seqs)->get_length() >(size_t)std::numeric_limits<int>::max())
 				throw std::runtime_error("Number of sequences in file exceeds supported maximum.");
 		}
 	}
 	ids->finish_reserve();
+	if (quals)
+		(*quals)->finish_reserve();
 	(*seqs)->finish_reserve();
 	if(source_seqs)
 		(*source_seqs)->finish_reserve();
@@ -92,6 +99,8 @@ inline size_t load_seqs(TextInputFile &file,
 		delete ids;
 		if(source_seqs)
 			delete *source_seqs;
+		if (quals)
+			delete *quals;
 	}
 	return n;
 }

@@ -108,8 +108,9 @@ Config::Config(int argc, const char **argv)
 \tstitle means Subject Title\n\
 \tsalltitles means All Subject Title(s), separated by a '<>'\n\
 \tqcovhsp means Query Coverage Per HSP\n\
-\tqtitle means Query title\n\n\
-\tDefault: qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore", output_format)
+\tqtitle means Query title\n\
+\tqqual means Query quality values\n\
+\n\tDefault: qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore", output_format)
 ("verbose", 'v', "verbose console output", verbose)
 ("log", 0, "enable debug log", debug_log)
 ("quiet", 0, "disable console output", quiet);
@@ -251,7 +252,8 @@ Config::Config(int argc, const char **argv)
 		("simple-freq", 0, "", simple_freq)
 		("freq-treshold", 0, "", freq_treshold)
 		("filter-locus", 0, "", filter_locus)
-		("use-dataset-field", 0, "", use_dataset_field);
+		("use-dataset-field", 0, "", use_dataset_field)
+		("store-query-quality", 0, "", store_query_quality);
 		
 	parser.add(general).add(makedb).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options);
 	parser.store(argc, argv, command);

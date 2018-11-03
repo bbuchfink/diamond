@@ -37,7 +37,7 @@ struct file_format_exception : public std::exception
 struct Sequence_file_format
 {
 
-	virtual bool get_seq(vector<char> &id, vector<Letter> &seq, TextInputFile &s) const = 0;
+	virtual bool get_seq(vector<char> &id, vector<Letter> &seq, TextInputFile &s, vector<char> *qual = nullptr) const = 0;
 	virtual ~Sequence_file_format()
 	{ }
 	
@@ -49,7 +49,7 @@ struct FASTA_format : public Sequence_file_format
 	FASTA_format()
 	{ }
 
-	virtual bool get_seq(vector<char> &id, vector<Letter> &seq, TextInputFile &s) const;
+	virtual bool get_seq(vector<char> &id, vector<Letter> &seq, TextInputFile &s, vector<char> *qual = nullptr) const;
 
 	virtual ~FASTA_format()
 	{ }
@@ -62,7 +62,7 @@ struct FASTQ_format : public Sequence_file_format
 	FASTQ_format()
 	{ }
 
-	virtual bool get_seq(vector<char> &id, vector<Letter> &seq, TextInputFile &s) const;
+	virtual bool get_seq(vector<char> &id, vector<Letter> &seq, TextInputFile &s, vector<char> *qual = nullptr) const;
 
 	virtual ~FASTQ_format()
 	{ }

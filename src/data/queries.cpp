@@ -26,6 +26,7 @@ Partitioned_histogram query_hst;
 vector<bool> query_aligned;
 Seed_set *query_seeds = 0;
 Hashed_seed_set *query_seeds_hashed = 0;
+String_set<0> *query_qual = nullptr;
 
 void write_unaligned(OutputFile *file)
 {

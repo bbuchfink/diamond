@@ -40,7 +40,7 @@ void copy_line(const string & s, vector<_t>& v, size_t d, _what)
 		v.push_back(convert_char<_what>(*i));
 }
 
-bool FASTA_format::get_seq(vector<char>& id, vector<Letter>& seq, TextInputFile & s) const
+bool FASTA_format::get_seq(vector<char>& id, vector<Letter>& seq, TextInputFile & s, vector<char> *qual) const
 {
 	// !!!
 	while (s.getline(), s.line.empty() && !s.eof());
@@ -73,7 +73,7 @@ bool FASTA_format::get_seq(vector<char>& id, vector<Letter>& seq, TextInputFile 
 	return true;
 }
 
-bool FASTQ_format::get_seq(vector<char>& id, vector<Letter>& seq, TextInputFile & s) const
+bool FASTQ_format::get_seq(vector<char>& id, vector<Letter>& seq, TextInputFile & s, vector<char> *qual) const
 {
 	while (s.getline(), s.line.empty() && !s.eof());
 	if (s.eof())
@@ -94,6 +94,10 @@ bool FASTQ_format::get_seq(vector<char>& id, vector<Letter>& seq, TextInputFile 
 	if (s.line.empty() || s.line[0] != '+')
 		throw StreamReadException(s.line_count, "FASTQ format error: Missing '+' line in record.");
 	s.getline();
+	if (qual) {
+		qual->clear();
+		copy_line(s.line, *qual, 0, Raw_text());
+	}
 	return true;
 }
 

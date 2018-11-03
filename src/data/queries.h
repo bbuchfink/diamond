@@ -51,6 +51,7 @@ struct query_ids
 };
 
 extern vector<bool> query_aligned;
+extern String_set<0> *query_qual;
 
 void write_unaligned(OutputFile *file);
 void write_aligned(OutputFile *file);

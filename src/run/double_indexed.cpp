@@ -265,6 +265,7 @@ void run_query_chunk(DatabaseFile &db_file,
 	delete query_seqs::data_;
 	delete query_ids::data_;
 	delete query_source_seqs::data_;
+	delete query_qual;
 	if (*output_format != Output_format::daa)
 		ReferenceDictionary::get().clear();
 }
@@ -293,7 +294,9 @@ void master_thread(DatabaseFile &db_file, Timer &total_timer, Metadata &metadata
 	for (;; ++current_query_chunk) {
 		task_timer timer("Loading query sequences", true);
 		size_t n_query_seqs;
-		n_query_seqs = load_seqs(*query_file, *format_n, &query_seqs::data_, query_ids::data_, &query_source_seqs::data_, (size_t)(config.chunk_size * 1e9), config.qfilt);
+		n_query_seqs = load_seqs(*query_file, *format_n, &query_seqs::data_, query_ids::data_, &query_source_seqs::data_,
+			config.store_query_quality ? &query_qual : nullptr,
+			(size_t)(config.chunk_size * 1e9), config.qfilt);
 		if (n_query_seqs == 0)
 			break;
 		timer.finish();

@@ -20,6 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../basic/match.h"
 #include "output_format.h"
 #include "../data/taxonomy.h"
+#include "../data/queries.h"
 
 const char* Blast_tab_format::field_str[] = {
 	"qseqid",		// 0 means Query Seq - id
@@ -70,7 +71,8 @@ const char* Blast_tab_format::field_str[] = {
 	"qtitle",		// 45 means Query title
 	"swdiff",		// 46
 	"time", 		// 47
-	"full_sseq"		// 48
+	"full_sseq",	// 48
+	"qqual"			// 49
 };
 
 Blast_tab_format::Blast_tab_format() :
@@ -93,6 +95,8 @@ Blast_tab_format::Blast_tab_format() :
 			config.salltitles = true;
 		if (j == 48)
 			config.use_lazy_dict = true;
+		if (j == 49)
+			config.store_query_quality = true;
 	}
 }
 
@@ -242,6 +246,9 @@ void Blast_tab_format::print_match(const Hsp_context& r, const Metadata &metadat
 		case 48:
 			out << r.subject_seq;
 			break;
+		case 49:
+			out << (*query_qual)[r.query_id].c_str();
+			break;
 		default:
 			throw std::runtime_error("Invalid output field");
 		}
@@ -297,6 +304,9 @@ void Blast_tab_format::print_query_intro(size_t query_num, const char *query_nam
 				break;
 			case 45:
 				out << query_name;
+				break;
+			case 49:
+				out << (*query_qual)[query_num].c_str();
 				break;
 			default:
 				throw std::runtime_error("Invalid output field");
