@@ -3,16 +3,16 @@ DIAMOND protein aligner
 Copyright (C) 2013-2017 Benjamin Buchfink <buchfink@gmail.com>
 
 This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU Affero General Public License as
-published by the Free Software Foundation, either version 3 of the
-License, or (at your option) any later version.
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
 
 This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU Affero General Public License for more details.
+GNU General Public License for more details.
 
-You should have received a copy of the GNU Affero General Public License
+You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
@@ -339,7 +339,7 @@ Config::Config(int argc, const char **argv)
 	}
 
 	message_stream << Const::program_name << " v" << Const::version_string << "." << (unsigned)Const::build_version << " | by Benjamin Buchfink <buchfink@gmail.com>" << endl;
-	message_stream << "Licensed under the GNU AGPL <https://www.gnu.org/licenses/agpl.txt>" << endl;
+	message_stream << "Licensed under the GNU GPL <https://www.gnu.org/licenses/gpl.txt>" << endl;
 	message_stream << "Check http://github.com/bbuchfink/diamond for updates." << endl << endl;
 #ifndef NDEBUG
 	verbose_stream << "Assertions enabled." << endl;

@@ -1,6 +1,7 @@
 [0.9.23]
 - Fixed an issue that could cause too high memory usage.
 - Added output field 'qqual' to print query FASTQ quality values to the tabular format.
+- Changed license to GPL.
 
 [0.9.22]
 - Added output field full_sseq to tabular output format.
