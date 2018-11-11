@@ -7,11 +7,13 @@ DIAMOND is a sequence aligner for protein and translated DNA searches, designed 
 - Low resource requirements and suitable for running on standard desktops or laptops.
 - Various output formats, including BLAST pairwise, tabular and XML, as well as taxonomic classification.
 
-Keep posted about new developments by following me on Twitter.
+Keep posted about new developments by following me on `Twitter <https://twitter.com/bbuchfink>`_.
 
 .. image:: https://anaconda.org/bioconda/diamond/badges/version.svg
    :target: https://anaconda.org/bioconda/diamond
+   :align: left
 .. image:: https://anaconda.org/bioconda/diamond/badges/platforms.svg
+   :align: left
 .. image:: https://anaconda.org/bioconda/diamond/badges/downloads.svg
    :target: https://anaconda.org/bioconda/diamond
 
