@@ -9,11 +9,9 @@ DIAMOND is a sequence aligner for protein and translated DNA searches, designed 
 
 Keep posted about new developments by following me on Twitter.
 
-.. image:: https://image.ibb.co/gAmVKR/twitter1.png
-   :target: https://twitter.com/bbuchfink
-.. image:: https://badges.gitter.im/diamond-aligner/Lobby.svg
-   :alt: Join the chat at https://gitter.im/diamond-aligner/Lobby
-   :target: https://gitter.im/diamond-aligner/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge
+.. image:: https://anaconda.org/bioconda/diamond/badges/version.svg
+   :target: https://anaconda.org/bioconda/diamond
+.. image:: https://anaconda.org/bioconda/diamond/badges/platforms.svg
 .. image:: https://anaconda.org/bioconda/diamond/badges/downloads.svg
    :target: https://anaconda.org/bioconda/diamond
 
