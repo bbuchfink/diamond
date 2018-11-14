@@ -52,6 +52,6 @@ DIAMOND is developed by Benjamin Buchfink at the Detlef Weigel lab, Max Planck I
 
 [`Email <mailto:buchfink@gmail.com>`_] [`Twitter <https://twitter.com/bbuchfink>`_] [`Google Scholar <https://scholar.google.de/citations?user=kjPIF1cAAAAJ>`_] [`MPI-EBIO <http://eb.tuebingen.mpg.de/>`_]
 
-If you use DIAMOND in published research, please cite:
+Publication:
 
-  - Buchfink B, Xie C, Huson DH, "Fast and sensitive protein alignment using DIAMOND", Nature Methods 12, 59-60 (2015). `doi:10.1038/nmeth.3176 <https://doi.org/10.1038/nmeth.3176>`_
+- Buchfink B, Xie C, Huson DH, "Fast and sensitive protein alignment using DIAMOND", Nature Methods 12, 59-60 (2015). `doi:10.1038/nmeth.3176 <https://doi.org/10.1038/nmeth.3176>`_
