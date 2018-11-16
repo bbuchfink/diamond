@@ -10,6 +10,8 @@ if(BUILD_STATIC)
     set(CMAKE_EXE_LINKER_FLAGS "-static")
 endif()
 
+set(CMAKE_CXX_STANDARD 11)
+
 if(CMAKE_BUILD_MARCH)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=${CMAKE_BUILD_MARCH}")
 else()
