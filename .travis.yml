@@ -1,0 +1,20 @@
+language: c++
+
+matrix:
+  include:
+  - os: linux
+    dist: trusty
+    sudo: false
+    addons:
+      apt:
+        sources:
+        - ubuntu-toolchain-r-test
+        packages:
+        - cmake
+        - g++-7
+        - zlib1g-dev
+    env:
+    - MATRIX_EVAL="CXX=g++-7"
+    
+script:
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then mkdir build; cd build; cmake ..; make; cd ..; fi
