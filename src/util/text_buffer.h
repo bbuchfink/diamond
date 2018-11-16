@@ -212,7 +212,7 @@ struct TextBuffer
 		char buf[16];
 		const int n = sprintf(buf, "%u", i),
 			padding = std::max((int)width - n, 0);
-		memset(ptr_, ' ', padding);
+		memset(ptr_, (int)' ', (size_t)padding);
 		memcpy(ptr_ + padding, buf, n);
 		ptr_ += padding + n;
 		return *this;
