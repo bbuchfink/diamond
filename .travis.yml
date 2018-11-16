@@ -3,3 +3,6 @@ matrix:
     - language: c++
       compiler: g++
       script: mkdir build; cd build; cmake ..; make; cd ..
+    - language: c++
+      compiler: clang
+      script: mkdir build; cd build; cmake ..; make; cd ..
