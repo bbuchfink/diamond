@@ -191,6 +191,14 @@ struct DAA_file
 		return h2_.evalue;
 	}
 
+	size_t block_size(size_t i) const {
+		return h2_.block_size[i];
+	}
+
+	const vector<uint32_t>& ref_len() const {
+		return ref_len_;
+	}
+
 	bool read_query_buffer(BinaryBuffer &buf, size_t &query_num)
 	{
 		uint32_t size;

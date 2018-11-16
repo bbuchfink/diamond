@@ -65,9 +65,9 @@ inline void write_daa_record(TextBuffer &buf, const IntermediateRecord &r)
 	buf << r.transcript.data();
 }
 
-inline void write_daa_record(TextBuffer &buf, const Hsp &match, unsigned query_id, size_t subject_id)
+inline void write_daa_record(TextBuffer &buf, const Hsp &match, size_t subject_id)
 {
-	buf.write(ReferenceDictionary::get().get(current_ref_block, subject_id));
+	buf.write(config.command == Config::view ? (uint32_t)subject_id : ReferenceDictionary::get().get(current_ref_block, subject_id));
 	buf.write(get_segment_flag(match));
 	buf.write_packed(match.score);
 	buf.write_packed(match.oriented_range().begin_);
@@ -110,6 +110,40 @@ inline void finish_daa(OutputFile &f, const DatabaseFile &db)
 
 	f.write(dict.len_.data(), dict.len_.size());
 	h2_.block_size[2] = dict.len_.size() * sizeof(uint32_t);
+
+	f.seek(sizeof(DAA_header1));
+	f.write(&h2_, 1);
+}
+
+inline void finish_daa(OutputFile &f, DAA_file &daa_in) {
+	DAA_header2 h2_(daa_in.db_seqs(),
+		daa_in.db_letters(),
+		daa_in.gap_open_penalty(),
+		daa_in.gap_extension_penalty(),
+		daa_in.match_reward(),
+		daa_in.mismatch_penalty(),
+		daa_in.kappa(),
+		daa_in.lambda(),
+		daa_in.evalue(),
+		daa_in.score_matrix(),
+		daa_in.mode());
+
+	h2_.block_type[0] = DAA_header2::alignments;
+	h2_.block_type[1] = DAA_header2::ref_names;
+	h2_.block_type[2] = DAA_header2::ref_lengths;
+
+	uint32_t size = 0;
+	f.write(&size, 1);
+	h2_.block_size[0] = f.tell() - sizeof(DAA_header1) - sizeof(DAA_header2);
+	h2_.db_seqs_used = daa_in.db_seqs_used();
+	h2_.query_records = daa_in.query_records();
+
+	for (size_t i = 0; i < daa_in.db_seqs_used(); ++i)
+		f << daa_in.ref_name(i);
+	h2_.block_size[1] = daa_in.block_size(1);
+
+	f.write(daa_in.ref_len().data(), daa_in.ref_len().size());
+	h2_.block_size[2] = daa_in.block_size(2);
 
 	f.seek(sizeof(DAA_header1));
 	f.write(&h2_, 1);

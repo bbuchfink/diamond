@@ -230,7 +230,7 @@ bool QueryMapper::generate_output(TextBuffer &buffer, Statistics &stat, const Me
 						f->print_query_intro(query_id, query_title, source_query_len, buffer, false);
 				}
 				if (*f == Output_format::daa)
-					write_daa_record(buffer, *j, query_id, subject_id);
+					write_daa_record(buffer, *j, subject_id);
 				else
 					f->print_match(Hsp_context(*j,
 						query_id,

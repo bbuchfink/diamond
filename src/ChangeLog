@@ -2,6 +2,8 @@
 - Fixed an issue that could cause too high memory usage.
 - Added output field 'qqual' to print query FASTQ quality values to the tabular format.
 - Changed license to GPL.
+- Raised compiler requirement to GCC 4.6.
+- Added option to use the DAA output format for diamond view.
 
 [0.9.22]
 - Added output field full_sseq to tabular output format.

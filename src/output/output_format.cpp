@@ -99,7 +99,7 @@ Output_format* get_output_format()
 		return new Sam_format;
 	else if (f[0] == "xml" || f[0] == "5")
 		return new XML_format;
-	else if ((config.command == Config::blastp || config.command == Config::blastx) && (f[0] == "daa" || f[0] == "100"))
+	else if (f[0] == "daa" || f[0] == "100")
 		return new DAA_format;
 	else if (f[0] == "0")
 		return new Pairwise_format;

@@ -28,6 +28,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../data/taxonomy.h"
 #include "../basic/parameters.h"
 #include "../data/metadata.h"
+#include "daa_write.h"
 
 const unsigned view_buf_size = 32;
 
@@ -75,7 +76,12 @@ struct View_fetcher
 void view_query(DAA_query_record &r, TextBuffer &out, Output_format &format, const Parameters &params, const Metadata &metadata)
 {
 	auto_ptr<Output_format> f(format.clone());
-	f->print_query_intro(r.query_num, r.query_name.c_str(), (unsigned)r.query_len(), out, false);
+	size_t seek_pos;
+	if (format == Output_format::daa)
+		seek_pos = write_daa_query_record(out, r.query_name.c_str(), r.query_seq.source());
+	else
+		f->print_query_intro(r.query_num, r.query_name.c_str(), (unsigned)r.query_len(), out, false);
+	
 	DAA_query_record::Match_iterator i = r.begin();
 	const unsigned top_score = i.good() ? i->score : 0;
 	for (; i.good(); ++i) {
@@ -83,9 +89,16 @@ void view_query(DAA_query_record &r, TextBuffer &out, Output_format &format, con
 			continue;
 		if (!config.output_range(i->hit_num, i->score, top_score))
 			break;
-		f->print_match(i->context(), metadata, out);
+		if (format == Output_format::daa)
+			write_daa_record(out, *i, i->subject_id);
+		else
+			f->print_match(i->context(), metadata, out);
 	}
-	f->print_query_epilog(out, r.query_name.c_str(), false, params);
+	if (format == Output_format::daa)
+		finish_daa_query_record(out, seek_pos);
+	else
+		f->print_query_epilog(out, r.query_name.c_str(), false, params);
+	
 }
 
 struct View_context
@@ -146,6 +159,8 @@ void view()
 
 	timer.go("Generating output");
 	View_writer writer;
+	if (*output_format == Output_format::daa)
+		init_daa(*writer.f_);
 
 	BinaryBuffer buf;
 	size_t query_num;
@@ -166,5 +181,8 @@ void view()
 		writer(out);
 	}
 
-	output_format->print_footer(*writer.f_);
+	if (*output_format == Output_format::daa)
+		finish_daa(*writer.f_, daa);
+	else
+		output_format->print_footer(*writer.f_);
 }
