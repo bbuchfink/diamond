@@ -209,13 +209,8 @@ struct TextBuffer
 	TextBuffer& print(unsigned i, unsigned width)
 	{
 		reserve(16);
-		char buf[16];
-		const int n = sprintf(buf, "%u", i),
-			padding = std::max((int)width - n, 0);
-		if(padding)
-			memset(ptr_, (int)' ', (size_t)padding);
-		memcpy(ptr_ + padding, buf, n);
-		ptr_ += padding + n;
+		sprintf(ptr_, "%*u", width, i);
+		ptr_ += width;
 		return *this;
 	}
 
@@ -228,12 +223,6 @@ struct TextBuffer
 			*this << ';' << *i;
 		return *this;
 	}
-
-	/*Text_buffer& operator<<(uint8_t x)
-	{
-		write(x);
-		return *this;
-	}*/
 
 	template<typename _t>
 	TextBuffer& operator<<(const vector<_t> &v)
