@@ -1,3 +1,5 @@
+#include <exception>
+#include <string.h>
 #include "system.h"
 
 using namespace std;
@@ -7,6 +9,7 @@ using namespace std;
 #else
 #include <unistd.h>
 #include <sys/stat.h>
+#include <linux/limits.h>
 #endif
 
 string executable_path() {
