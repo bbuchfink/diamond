@@ -1,4 +1,4 @@
-#include <exception>
+#include <stdexcept>
 #include <string.h>
 #include "system.h"
 
