@@ -16,7 +16,7 @@
 #define TIMER_H_DEF
 
 #ifdef _MSC_VER
-#define WIN32
+//#define WIN32
 #endif
 
 #ifdef WIN32   // Windows system specific

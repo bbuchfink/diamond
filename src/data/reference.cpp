@@ -74,8 +74,7 @@ struct Pos_record
 	uint32_t seq_len;
 };
 
-DatabaseFile::DatabaseFile():
-	InputFile(config.database, InputFile::BUFFERED)
+void DatabaseFile::init()
 {
 	read_header(*this, ref_header);
 	*this >> header2;
@@ -84,6 +83,27 @@ DatabaseFile::DatabaseFile():
 	if (ref_header.sequences == 0)
 		throw std::runtime_error("Incomplete database file. Database building did not complete successfully.");
 	pos_array_offset = ref_header.pos_array_offset;
+}
+
+DatabaseFile::DatabaseFile(const string &input_file):
+	InputFile(input_file, InputFile::BUFFERED),
+	temporary(false)
+{
+	init();
+}
+
+DatabaseFile::DatabaseFile(TempFile &tmp_file):
+	InputFile(tmp_file, 0),
+	temporary(true)
+{
+	init();
+}
+
+void DatabaseFile::close() {
+	if (temporary)
+		InputFile::close_and_delete();
+	else
+		InputFile::close();
 }
 
 void DatabaseFile::read_header(InputFile &stream, ReferenceHeader &header)
@@ -122,7 +142,7 @@ void push_seq(const sequence &seq, const sequence &id, uint64_t &offset, vector<
 	offset += seq.length() + id.length() + 3;
 }
 
-void make_db()
+void make_db(TempFile **tmp_out)
 {
 	message_stream << "Database file: " << config.input_ref_file << endl;
 	
@@ -133,15 +153,15 @@ void make_db()
 	task_timer timer("Opening the database file", true);
 	auto_ptr<TextInputFile> db_file (new TextInputFile(config.input_ref_file));
 	
-	OutputFile out(config.database);
+	OutputFile *out = tmp_out ? new TempFile() : new OutputFile(config.database);
 	ReferenceHeader header;
 	ReferenceHeader2 header2;
 
-	out.write(&header, 1);
-	out << header2;
+	out->write(&header, 1);
+	*out << header2;
 
 	size_t letters = 0, n = 0, n_seqs = 0;
-	uint64_t offset = out.tell();
+	uint64_t offset = out->tell();
 
 	Sequence_set *seqs;
 	String_set<0> *ids;
@@ -160,7 +180,7 @@ void make_db()
 				sequence seq = (*seqs)[i];
 				if (seq.length() == 0)
 					throw std::runtime_error("File format error: sequence of length 0 at line " + to_string(db_file->line_count));
-				push_seq(seq, (*ids)[i], offset, pos_array, out, letters, n_seqs);
+				push_seq(seq, (*ids)[i], offset, pos_array, *out, letters, n_seqs);
 			}
 			if (!config.prot_accession2taxid.empty()) {
 				timer.go("Writing accessions");
@@ -178,8 +198,8 @@ void make_db()
 		}
 	}
 	catch (std::exception&) {
-		out.close();
-		out.remove();
+		out->close();
+		out->remove();
 		throw;
 	}
 
@@ -188,18 +208,18 @@ void make_db()
 	timer.go("Writing trailer");
 	header.pos_array_offset = offset;
 	pos_array.push_back(Pos_record(offset, 0));
-	out.write_raw(pos_array);
+	out->write_raw(pos_array);
 	timer.finish();
 
 	taxonomy.init();
 	if (!config.prot_accession2taxid.empty()) {
-		header2.taxon_array_offset = out.tell();
-		TaxonList::build(out, accessions.rewind(), n_seqs);
-		header2.taxon_array_size = out.tell() - header2.taxon_array_offset;
+		header2.taxon_array_offset = out->tell();
+		TaxonList::build(*out, accessions.rewind(), n_seqs);
+		header2.taxon_array_size = out->tell() - header2.taxon_array_offset;
 	}
 	if (!config.nodesdmp.empty()) {
-		header2.taxon_nodes_offset = out.tell();
-		TaxonomyNodes::build(out);
+		header2.taxon_nodes_offset = out->tell();
+		TaxonomyNodes::build(*out);
 	}
 
 	timer.go("Closing the input file");
@@ -208,10 +228,15 @@ void make_db()
 	timer.go("Closing the database file");
 	header.letters = letters;
 	header.sequences = n_seqs;
-	out.seek(0);
-	out.write(&header, 1);
-	out << header2;
-	out.close();
+	out->seek(0);
+	out->write(&header, 1);
+	*out << header2;
+	if (tmp_out) {
+		*tmp_out = static_cast<TempFile*>(out);
+	} else {
+		out->close();
+		delete out;
+	}
 
 	timer.finish();
 	message_stream << "Database hash = " << hex_print(header2.hash, 16) << endl;
@@ -362,4 +387,23 @@ void db_info()
 	cout << "Sequences = " << header.sequences << endl;
 	cout << "Letters = " << header.letters << endl;
 	db_file.close();
+}
+
+DatabaseFile* DatabaseFile::auto_create_from_fasta() {
+	InputFile db_file(config.database);
+	uint64_t magic_number;
+	if (db_file.read(&magic_number, 1) != 1 || magic_number != ReferenceHeader::MAGIC_NUMBER) {
+		message_stream << "Database file is not a DIAMOND database, treating as FASTA." << endl;
+		db_file.close();
+		config.input_ref_file = config.database;
+		TempFile *db;
+		make_db(&db);
+		DatabaseFile *r(new DatabaseFile(*db));
+		delete db;
+		return r;
+	}
+	else {
+		db_file.close();
+		return new DatabaseFile(config.database);
+	}
 }

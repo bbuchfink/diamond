@@ -39,13 +39,13 @@ using namespace std;
 
 void get_seq()
 {
-	DatabaseFile db_file;
+	DatabaseFile db_file(config.database);
 	db_file.get_seq();
 }
 
 void random_seqs()
 {
-	DatabaseFile db_file;
+	DatabaseFile db_file(config.database);
 	vector<unsigned> v;
 	db_file.load_seqs(v, std::numeric_limits<size_t>::max(), true);
 	cout << "Sequences = " << ref_seqs::get().get_length() << endl;
@@ -88,7 +88,7 @@ void sort_file()
 
 void db_stat()
 {
-	DatabaseFile db_file;
+	DatabaseFile db_file(config.database);
 	vector<unsigned> v;
 	db_file.load_seqs(v, std::numeric_limits<size_t>::max(), true);
 	cout << "Sequences = " << ref_seqs::get().get_length() << endl;
@@ -166,7 +166,7 @@ void test_io()
 	while (f.read(buf, buf_size) == buf_size)
 		total += buf_size;*/
 
-	DatabaseFile db;
+	DatabaseFile db(config.database);
 	vector<unsigned> v;
 	db.load_seqs(v, std::numeric_limits<size_t>::max(), true);
 

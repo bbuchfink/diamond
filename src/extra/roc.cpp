@@ -217,7 +217,7 @@ void roc()
 void db_annot_stats()
 {
 	read_family_mapping(false);
-	DatabaseFile db;
+	DatabaseFile db(config.database);
 	string id;
 	vector<char> seq;
 	for (size_t n = 0; n < db.ref_header.sequences; ++n) {

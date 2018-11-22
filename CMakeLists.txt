@@ -26,7 +26,11 @@ find_package(ZLIB REQUIRED)
 find_package(Threads REQUIRED)
 
 set(CMAKE_BUILD_TYPE Release)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wno-uninitialized -Wno-deprecated-declarations -Wno-ignored-attributes -Wno-unused-variable")
+if(WIN32)
+  add_definitions(-D_CRT_SECURE_NO_WARNINGS)
+else()
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wno-uninitialized -Wno-deprecated-declarations -Wno-ignored-attributes -Wno-unused-variable")
+endif()
 
 include_directories(
   "${CMAKE_SOURCE_DIR}/src"
@@ -115,6 +119,7 @@ add_executable(diamond src/run/main.cpp
   src/util/memory/memory_pool.cpp
   src/data/seed_array.cpp
   src/output/paf_format.cpp
+  src/util/system/system.cpp
 )
 
 if(EXTRA)

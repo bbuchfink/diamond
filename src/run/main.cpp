@@ -20,6 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../basic/config.h"
 #include "tools.h"
 #include "../extra/compare.h"
+#include "../data/reference.h"
 
 using std::cout;
 using std::cerr;
@@ -31,7 +32,6 @@ void opt();
 void run_masker();
 void fastq2fasta();
 void view();
-void make_db();
 void db_info();
 void test_main();
 void benchmark_sw();

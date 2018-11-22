@@ -16,11 +16,15 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
+#include <algorithm>
+#include <numeric>
 #include "../basic/config.h"
 #include "log_stream.h"
 #include "complexity_filter.h"
 #include "util.h"
 #include "escape_sequences.h"
+
+using namespace std;
 
 Message_stream message_stream;
 Message_stream verbose_stream (false);
@@ -65,3 +69,16 @@ const EscapeSequence EscapeSequences::xml_data[5] = {
 };
 
 const EscapeSequences EscapeSequences::XML(EscapeSequences::xml_data, 5);
+
+string join(char c, const vector<string> &v) {
+	string s;
+	if (v.empty())
+		return s;
+	s.reserve(accumulate(v.begin(), v.end(), (size_t)0, [](size_t a, const string &b) { return a + b.length(); }) + v.size() - 1);
+	for (size_t i = 0; i < v.size() - 1; ++i) {
+		s += v[i];
+		s += c;
+	}
+	s += v.back();
+	return s;
+}

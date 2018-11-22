@@ -192,13 +192,6 @@ private:
 	_t data_[d1][d2];
 };
 
-inline void auto_append_extension(string &str, const char *ext)
-{
-	size_t l = strlen(ext);
-	if(str.length() < l || (str.length() >= l && str.substr(str.length()-l, string::npos) != ext))
-		str += ext;
-}
-
 extern const char dir_separator;
 string extract_dir(const string &s);
 
@@ -539,5 +532,7 @@ inline set<unsigned> parse_csv(const string &s)
 		if(!i->empty()) r.insert(atoi(i->c_str()));
 	return r;
 }
+
+std::string join(char c, const std::vector<std::string> &v);
 
 #endif /* UTIL_H_ */

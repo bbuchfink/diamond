@@ -34,7 +34,7 @@ using std::string;
 struct ReferenceHeader
 {
 	ReferenceHeader() :
-		magic_number(0x24af8a415ee186dllu),
+		magic_number(MAGIC_NUMBER),
 		build(Const::build_version),
 		db_version(current_db_version),
 		sequences(0),
@@ -43,6 +43,7 @@ struct ReferenceHeader
 	uint64_t magic_number;
 	uint32_t build, db_version;
 	uint64_t sequences, letters, pos_array_offset;
+	static const uint64_t MAGIC_NUMBER = 0x24af8a415ee186dllu;
 	enum { current_db_version = 2 };
 };
 
@@ -70,23 +71,32 @@ struct Database_format_exception : public std::exception
 
 struct DatabaseFile : public InputFile
 {
-	DatabaseFile();
+
+	DatabaseFile(const string &file_name);
+	DatabaseFile(TempFile &tmp_file);
 	static void read_header(InputFile &stream, ReferenceHeader &header);
+	static DatabaseFile* auto_create_from_fasta();
 	void rewind();
 	bool load_seqs(vector<unsigned> &block_to_database_id, size_t max_letters, bool masked, bool load_ids = true, const vector<bool> *filter = NULL);
 	void get_seq();
 	void read_seq(string &id, vector<char> &seq);
 	bool has_taxon_id_lists();
 	bool has_taxon_nodes();
+	void close();
 
 	enum { min_build_required = 74 };
 
+	bool temporary;
 	size_t pos_array_offset;
 	ReferenceHeader ref_header;
 	ReferenceHeader2 header2;
+
+private:
+	void init();
+
 };
 
-void make_db();
+void make_db(TempFile **tmp_out = nullptr);
 
 struct ref_seqs
 {

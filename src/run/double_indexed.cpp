@@ -18,6 +18,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <iostream>
 #include <limits>
+#include <memory>
 #include "../data/reference.h"
 #include "../data/queries.h"
 #include "../basic/statistics.h"
@@ -34,8 +35,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../data/metadata.h"
 #include "../search/search.h"
 
-using std::endl;
-using std::cout;
+using namespace std;
 
 struct Search_context
 {
@@ -359,33 +359,33 @@ void master_thread_di()
 	}
 
 	task_timer timer("Opening the database", 1);
-	DatabaseFile db_file;
+	unique_ptr<DatabaseFile> db_file(DatabaseFile::auto_create_from_fasta());
 	timer.finish();
 
-	init_output(db_file.has_taxon_id_lists(), db_file.has_taxon_nodes());
+	init_output(db_file->has_taxon_id_lists(), db_file->has_taxon_nodes());
 
 	verbose_stream << "Reference = " << config.database << endl;
-	verbose_stream << "Sequences = " << db_file.ref_header.sequences << endl;
-	verbose_stream << "Letters = " << db_file.ref_header.letters << endl;
+	verbose_stream << "Sequences = " << db_file->ref_header.sequences << endl;
+	verbose_stream << "Letters = " << db_file->ref_header.letters << endl;
 	verbose_stream << "Block size = " << (size_t)(config.chunk_size * 1e9) << endl;
-	Config::set_option(config.db_size, (uint64_t)db_file.ref_header.letters);
-	score_matrix.set_db_letters(db_file.ref_header.letters);
+	Config::set_option(config.db_size, (uint64_t)db_file->ref_header.letters);
+	score_matrix.set_db_letters(db_file->ref_header.letters);
 
-	set_max_open_files(config.query_bins * config.threads_ + unsigned(db_file.ref_header.letters / (size_t)(config.chunk_size * 1e9)) + 16);
+	set_max_open_files(config.query_bins * config.threads_ + unsigned(db_file->ref_header.letters / (size_t)(config.chunk_size * 1e9)) + 16);
 
 	Metadata metadata;
 	if (output_format->needs_taxon_id_lists || !config.taxonlist.empty()) {
-		if (!config.taxonlist.empty() && db_file.header2.taxon_array_offset == 0)
+		if (!config.taxonlist.empty() && db_file->header2.taxon_array_offset == 0)
 			throw std::runtime_error("--taxonlist option requires taxonomy mapping built into the database.");
 		timer.go("Loading taxonomy mapping");
-		metadata.taxon_list = new TaxonList(db_file.seek(db_file.header2.taxon_array_offset), db_file.ref_header.sequences, db_file.header2.taxon_array_size);
+		metadata.taxon_list = new TaxonList(db_file->seek(db_file->header2.taxon_array_offset), db_file->ref_header.sequences, db_file->header2.taxon_array_size);
 		timer.finish();
 	}
 	if (output_format->needs_taxon_nodes || !config.taxonlist.empty()) {
-		if (!config.taxonlist.empty() && db_file.header2.taxon_nodes_offset == 0)
+		if (!config.taxonlist.empty() && db_file->header2.taxon_nodes_offset == 0)
 			throw std::runtime_error("--taxonlist option requires taxonomy nodes built into the database.");
 		timer.go("Loading taxonomy nodes");
-		metadata.taxon_nodes = new TaxonomyNodes(db_file.seek(db_file.header2.taxon_nodes_offset));
+		metadata.taxon_nodes = new TaxonomyNodes(db_file->seek(db_file->header2.taxon_nodes_offset));
 		if (!config.taxonlist.empty()) {
 			timer.go("Building taxonomy filter");
 			metadata.taxon_filter = new TaxonomyFilter(config.taxonlist, *metadata.taxon_list, *metadata.taxon_nodes);
@@ -393,5 +393,5 @@ void master_thread_di()
 		timer.finish();
 	}
 
-	master_thread(db_file, timer2, metadata);
+	master_thread(*db_file, timer2, metadata);
 }
