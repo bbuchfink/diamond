@@ -97,7 +97,7 @@ void ReferenceDictionary::build_lazy_dict(DatabaseFile &db_file)
 	}
 	db_file.rewind();
 	vector<unsigned> block_to_database_id;
-	db_file.load_seqs(block_to_database_id, std::numeric_limits<size_t>::max(), false, false, &filter);
+	db_file.load_seqs(block_to_database_id, std::numeric_limits<size_t>::max(), false, &ref_seqs::data_, &ref_ids::data_, false, &filter);
 	std::sort(m.begin(), m.end());
 	dict_to_lazy_dict_id_.clear();
 	dict_to_lazy_dict_id_.resize(dict_size);

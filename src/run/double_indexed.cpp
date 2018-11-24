@@ -34,8 +34,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../data/ref_dictionary.h"
 #include "../data/metadata.h"
 #include "../search/search.h"
+#include "workflow.h"
 
 using namespace std;
+
+namespace Workflow { namespace Search {
 
 struct Search_context
 {
@@ -239,7 +242,7 @@ void run_query_chunk(DatabaseFile &db_file,
 	vector<unsigned> block_to_database_id;
 	timer.finish();
 	
-	for (current_ref_block = 0; db_file.load_seqs(block_to_database_id, (size_t)(config.chunk_size*1e9), true, true, metadata.taxon_filter); ++current_ref_block)
+	for (current_ref_block = 0; db_file.load_seqs(block_to_database_id, (size_t)(config.chunk_size*1e9), true, &ref_seqs::data_, &ref_ids::data_, true, metadata.taxon_filter); ++current_ref_block)
 		run_ref_chunk(db_file, total_timer, query_chunk, query_len_bounds, query_buffer, master_out, tmp_file, params, metadata, block_to_database_id);
 
 	timer.go("Deallocating buffers");
@@ -270,13 +273,17 @@ void run_query_chunk(DatabaseFile &db_file,
 		ReferenceDictionary::get().clear();
 }
 
-void master_thread(DatabaseFile &db_file, Timer &total_timer, Metadata &metadata)
+void master_thread(DatabaseFile *db_file, Timer &total_timer, Metadata &metadata, const Options &options)
 {
-	if(config.query_file.empty())
-		std::cerr << "Query file parameter (--query/-q) is missing. Input will be read from stdin." << endl;
 	task_timer timer("Opening the input file", true);
-	auto_ptr<TextInputFile> query_file(new TextInputFile(config.query_file));
-	const Sequence_file_format *format_n(guess_format(*query_file));
+	unique_ptr<TextInputFile> query_file;
+	const Sequence_file_format *format_n = nullptr;
+	if (!options.self) {
+		if (config.query_file.empty())
+			std::cerr << "Query file parameter (--query/-q) is missing. Input will be read from stdin." << endl;
+		query_file.reset(new TextInputFile(config.query_file));
+		format_n = guess_format(*query_file);
+	}
 
 	current_query_chunk = 0;
 
@@ -291,14 +298,28 @@ void master_thread(DatabaseFile &db_file, Timer &total_timer, Metadata &metadata
 		aligned_file = auto_ptr<OutputFile>(new OutputFile(config.aligned_file));
 	timer.finish();
 
+	vector<unsigned> query_block_to_database_id;
+	size_t query_file_offset = 0;
+
 	for (;; ++current_query_chunk) {
 		task_timer timer("Loading query sequences", true);
-		size_t n_query_seqs;
-		n_query_seqs = load_seqs(*query_file, *format_n, &query_seqs::data_, query_ids::data_, &query_source_seqs::data_,
-			config.store_query_quality ? &query_qual : nullptr,
-			(size_t)(config.chunk_size * 1e9), config.qfilt);
-		if (n_query_seqs == 0)
-			break;
+
+		if (options.self) {
+			db_file->seek_seq(query_file_offset);
+			if (!db_file->load_seqs(query_block_to_database_id,
+				(size_t)(config.chunk_size * 1e9),
+				true,
+				&query_seqs::data_,
+				&query_ids::data_))
+				break;
+			query_file_offset = db_file->tell_seq();
+		}
+		else
+			if (!load_seqs(*query_file, *format_n, &query_seqs::data_, query_ids::data_, &query_source_seqs::data_,
+				config.store_query_quality ? &query_qual : nullptr,
+				(size_t)(config.chunk_size * 1e9), config.qfilt))
+				break;
+
 		timer.finish();
 		query_seqs::data_->print_stats();
 
@@ -306,21 +327,23 @@ void master_thread(DatabaseFile &db_file, Timer &total_timer, Metadata &metadata
 			output_format->print_header(*master_out, align_mode.mode, config.matrix.c_str(), score_matrix.gap_open(), score_matrix.gap_extend(), config.max_evalue, query_ids::get()[0].c_str(),
 				unsigned(align_mode.query_translated ? query_source_seqs::get()[0].length() : query_seqs::get()[0].length()));
 
-		if (config.masking == 1) {
+		if (config.masking == 1 && !options.self) {
 			timer.go("Masking queries");
 			mask_seqs(*query_seqs::data_, Masking::get());
 			timer.finish();
 		}
 
-		run_query_chunk(db_file, total_timer, current_query_chunk, *master_out, unaligned_file.get(), aligned_file.get(), metadata);
+		run_query_chunk(*db_file, total_timer, current_query_chunk, *master_out, unaligned_file.get(), aligned_file.get(), metadata);
 	}
 
-	timer.go("Closing the input file");
-	query_file->close();
+	if (query_file) {
+		timer.go("Closing the input file");
+		query_file->close();
+	}
 
 	timer.go("Closing the output file");
 	if (*output_format == Output_format::daa)
-		finish_daa(*master_out, db_file);
+		finish_daa(*master_out, *db_file);
 	else
 		output_format->print_footer(*master_out);
 	master_out->close();
@@ -329,8 +352,11 @@ void master_thread(DatabaseFile &db_file, Timer &total_timer, Metadata &metadata
 	if (aligned_file.get())
 		aligned_file->close();
 	
-	timer.go("Closing the database file");
-	db_file.close();
+	if (!options.db) {
+		timer.go("Closing the database file");
+		db_file->close();
+		delete db_file;
+	}
 
 	timer.go("Deallocating taxonomy");
 	metadata.free();
@@ -340,7 +366,7 @@ void master_thread(DatabaseFile &db_file, Timer &total_timer, Metadata &metadata
 	statistics.print();
 }
 
-void master_thread_di()
+void run(const Options &options)
 {
 	Timer timer2;
 	timer2.start();
@@ -359,7 +385,7 @@ void master_thread_di()
 	}
 
 	task_timer timer("Opening the database", 1);
-	unique_ptr<DatabaseFile> db_file(DatabaseFile::auto_create_from_fasta());
+	DatabaseFile *db_file = options.db ? options.db : DatabaseFile::auto_create_from_fasta();
 	timer.finish();
 
 	init_output(db_file->has_taxon_id_lists(), db_file->has_taxon_nodes());
@@ -393,5 +419,7 @@ void master_thread_di()
 		timer.finish();
 	}
 
-	master_thread(*db_file, timer2, metadata);
+	master_thread(db_file, timer2, metadata, options);
 }
+
+}}

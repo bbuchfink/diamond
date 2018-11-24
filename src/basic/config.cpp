@@ -369,6 +369,7 @@ Config::Config(int argc, const char **argv)
 	case Config::opt:
 	case Config::mask:
 	case Config::makedb:
+	case Config::cluster:
 		if (frame_shift != 0 && command == Config::blastp)
 			throw std::runtime_error("Frameshift alignments are only supported for translated searches.");
 		if (query_range_culling && frame_shift == 0)
@@ -388,7 +389,7 @@ Config::Config(int argc, const char **argv)
 	}
 
 	if (command == Config::blastp || command == Config::blastx || command == Config::benchmark || command == Config::model_sim || command == Config::opt
-		|| command == Config::mask) {
+		|| command == Config::mask || command == Config::cluster) {
 		if (tmpdir == "")
 			tmpdir = extract_dir(output_file);
 		

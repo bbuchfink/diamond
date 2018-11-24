@@ -77,12 +77,14 @@ struct DatabaseFile : public InputFile
 	static void read_header(InputFile &stream, ReferenceHeader &header);
 	static DatabaseFile* auto_create_from_fasta();
 	void rewind();
-	bool load_seqs(vector<unsigned> &block_to_database_id, size_t max_letters, bool masked, bool load_ids = true, const vector<bool> *filter = NULL);
+	bool load_seqs(vector<unsigned> &block_to_database_id, size_t max_letters, bool masked, Sequence_set **dst_seq, String_set<0> **dst_id, bool load_ids = true, const vector<bool> *filter = NULL);
 	void get_seq();
 	void read_seq(string &id, vector<char> &seq);
 	bool has_taxon_id_lists();
 	bool has_taxon_nodes();
 	void close();
+	void seek_seq(size_t i);
+	size_t tell_seq() const;
 
 	enum { min_build_required = 74 };
 

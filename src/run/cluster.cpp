@@ -19,9 +19,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <stdexcept>
 #include <string>
 #include <stdio.h>
+#include <memory>
 #include "../util/system/system.h"
 #include "../util/util.h"
 #include "../basic/config.h"
+#include "../data/reference.h"
+#include "workflow.h"
 
 using namespace std;
 
@@ -43,5 +46,17 @@ void build_homology_graph(const string &input_file) {
 }
 
 void cluster() {
-	build_homology_graph(config.query_file);
+	//build_homology_graph(config.query_file);
+	if (config.database == "")
+		throw runtime_error("Missing parameter: database file (--db/-d)");
+	config.command = Config::makedb;
+	unique_ptr<DatabaseFile> db(DatabaseFile::auto_create_from_fasta());
+
+	config.command = Config::blastp;
+	Workflow::Search::Options opt;
+	opt.db = db.get();
+	opt.self = true;
+	Workflow::Search::run(opt);
+
+	db->close();
 }
