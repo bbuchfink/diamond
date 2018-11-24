@@ -1,6 +1,7 @@
 #include <stdexcept>
 #include <string.h>
 #include "system.h"
+#include "../string/string.h"
 
 using namespace std;
 
@@ -37,11 +38,12 @@ bool exists(const std::string &file_name) {
 
 void auto_append_extension(string &str, const char *ext)
 {
-	size_t l = strlen(ext);
-	if (str.length() < l || (str.length() >= l && str.substr(str.length() - l, string::npos) != ext))
+	if (!ends_with(str, ext))
 		str += ext;
 }
 
 void auto_append_extension_if_exists(string &str, const char *ext) {
-
+	if (!ends_with(str, ext))
+		if (exists(str + ext))
+			str += ext;
 }

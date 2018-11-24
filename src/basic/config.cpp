@@ -66,7 +66,8 @@ Config::Config(int argc, const char **argv)
 		.add_command("info", "")
 		.add_command("seed-stat", "")
 		.add_command("smith-waterman", "")
-		.add_command("protein-snps", "");
+		.add_command("protein-snps", "")
+		.add_command("cluster", "");
 
 	Options_group general("General options");
 	general.add()
@@ -332,7 +333,10 @@ Config::Config(int argc, const char **argv)
 	log_stream << endl;
 
 	if (!no_auto_append) {
-		auto_append_extension(database, ".dmnd");
+		if (command == Config::makedb)
+			auto_append_extension(database, ".dmnd");
+		else
+			auto_append_extension_if_exists(database, ".dmnd");
 		if (command == Config::view)
 			auto_append_extension(daa_file, ".daa");
 		if (compression == 1)

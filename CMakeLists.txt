@@ -120,6 +120,7 @@ add_executable(diamond src/run/main.cpp
   src/data/seed_array.cpp
   src/output/paf_format.cpp
   src/util/system/system.cpp
+  src/run/cluster.cpp
 )
 
 if(EXTRA)

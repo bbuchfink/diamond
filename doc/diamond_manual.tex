@@ -1,0 +1,425 @@
+\documentclass[11pt]{article}
+\RequirePackage{helvet}
+\newcommand{\CURRENT}{0.9.22}
+\renewcommand{\familydefault}{\sfdefault}
+\usepackage{cite}
+\usepackage{url}
+\usepackage{fancyhdr}
+\usepackage{url}
+\usepackage{needspace}
+\usepackage{longtable}
+\usepackage{hyperref}
+\usepackage{fancyref}
+\addtolength{\oddsidemargin}{-0.75in}
+\addtolength{\evensidemargin}{-0.75in}
+\addtolength{\textwidth}{1.5in}
+\addtolength{\topmargin}{-0.75in}
+\addtolength{\textheight}{1.5in}
+\newenvironment{QandA}{\begin{enumerate}}
+                      {\end{enumerate}}
+\newenvironment{answered}{\par\normalfont}{}
+
+\lhead{diamond v\CURRENT}
+\rhead{\today}
+\cfoot{\thepage}
+\pagestyle{fancy}
+\hyphenation{Swiss-Prot}
+
+\parskip 0.5ex
+
+\begin{document}
+
+\section*{\Large{The DIAMOND protein aligner}}
+
+\section*{Introduction}
+DIAMOND is a sequence aligner for protein and translated DNA searches, designed for high performance analysis of big sequence data. The key features are:
+\begin{itemize}
+\item Pairwise alignment of proteins and translated DNA at 500x-20,000x speed of BLAST.
+\item Frameshift alignments for long read analysis.
+\item Low resource requirements and suitable for running on standard desktops or laptops.
+\item Various output formats, including BLAST pairwise, tabular and XML, as well as taxonomic classification.
+\end{itemize}
+DIAMOND was published in Nature Methods in 2015 \cite{Buchfink2015}. Please cite this paper when using the program in published research.
+
+Support \& updates are available at \url{http://github.com/bbuchfink/diamond/}.
+
+\section{Quick start guide}
+
+We assume to have a protein database file in FASTA format named \texttt{nr.faa} and a file of DNA reads that we want to align named \texttt{reads.fna}. In order to set up a reference database for DIAMOND, the makedb command needs to be executed with the following command line:
+\begin{quote}
+\texttt{diamond makedb --in nr.faa -d nr}
+\end{quote}
+This will create a binary DIAMOND database file with the specified name (\texttt{nr.dmnd}). The alignment task may then be initiated using the \texttt{blastx} command like this:
+\begin{quote}
+\texttt{diamond blastx -d nr -q reads.fna -o matches.m8}
+\end{quote}
+The output file here is specified with the \texttt{-o} option and named \texttt{matches.m8}. By default, it is generated in BLAST tabular format.
+
+Note:
+\begin{itemize}
+\item
+The program may use quite a lot of memory and also temporary disk space. Should the program fail due to running out of either one, you need to set a lower value for the block size parameter \texttt{-b} (see \ref{subsec:memory}).
+\item
+Use the options \texttt{--sensitive} or \texttt{--more-sensitive} for searches with higher sensitivity.
+\item
+The runtime of the program is not linear in the size of the query file and it is more efficient for large query files ($> 1$ million sequences) than for smaller ones.
+\item
+Low complexity masking is applied to the query and reference sequences by default. Masked residues appear in the output as X.
+\item
+The default e-value cutoff of DIAMOND is 0.001 while that of BLAST is 10, so by default the program will search a lot more stringently than BLAST and not report weak hits.
+\end{itemize}
+
+\section{Installation \& requirements}
+DIAMOND compiles as generic C++ code and has no particular requirements on the hardware architecture, but it makes use of the SSE instruction set of the Intel/AMD x86-64 platform if available and will run considerably faster on that platform. It runs on POSIX-compatible operating systems (Linux, FreeBSD, OS X) as well as on Microsoft Windows.
+
+A high-memory server is recommended for better performance, but the program can be run on standard desktop computers or laptops.
+
+Compiled binaries are available for download for Linux, macOS (via Bioconda), FreeBSD (via \texttt{pkg}) and Windows. For best performance, it is recommended to compile the software from source on the target system.
+\subsection{Binary download}
+\subsubsection{Linux}
+A precompiled binary is available for recent Linux systems and may be downloaded for immediate use:
+\begin{quote}
+\begin{footnotesize}
+\texttt{wget http://github.com/bbuchfink/diamond/releases/download/v\CURRENT/diamond-linux64.tar.gz}
+\texttt{tar xzf diamond-linux64.tar.gz}
+\end{footnotesize}
+\end{quote}
+The binary requires a fairly current CPU that supports POPCNT and SSSE3. If the binary does not work on your system, i.e. you are getting error messages like \texttt{Illegal instruction} or \texttt{Kernel too old}, please try another installation method or compile the software from source.
+
+\subsubsection{Linux/macOS (via Bioconda)}
+Install \href{https://bioconda.github.io/}{Bioconda} on your system if not already present, then install DIAMOND using this shell command:
+\begin{quote}
+\texttt{conda install -c bioconda diamond}
+\end{quote}
+Regularly updating to the latest version is also recommended:
+\begin{quote}
+\texttt{conda update diamond}
+\end{quote}
+
+\subsubsection{Linux (via Docker)}
+To pull the latest version of the official Docker container:
+\begin{quote}
+\texttt{docker pull buchfink/diamond}
+\end{quote}
+To pull a specific version:
+\begin{quote}
+\texttt{docker pull buchfink/diamond:version\CURRENT}
+\end{quote}
+
+\subsubsection{FreeBSD}
+On FreeBSD, you can use \texttt{pkg install diamond} to install the software.
+
+\subsubsection{Windows}
+A binary executable for Windows can be downloaded at the DIAMOND github page. You also need to install the \href{https://www.microsoft.com/en-us/download/details.aspx?id=48145}{Visual C++ Redistributable}.
+
+\subsection{Compiling from source}
+Compilation requires GCC 4.1 or later, CMake 2.6 or later as well as libpthread and zlib including development headers. To compile DIAMOND from source, invoke the following commands on the shell:
+\begin{quote}
+\texttt{wget http://github.com/bbuchfink/diamond/archive/v\CURRENT.tar.gz\\
+tar xzf v\CURRENT.tar.gz\\
+cd diamond-\CURRENT\\
+mkdir bin\\
+cd bin\\
+cmake ..\\
+make install}
+\end{quote}
+Note:
+\begin{itemize}
+\item
+Use \texttt{cmake -DCMAKE\_INSTALL\_PREFIX=... } to install to a different prefix.
+\item
+Use \texttt{cmake -DBUILD\_STATIC=ON} to create a statically linked executable.
+\end{itemize}
+
+\section{Command line options}
+\subsection{Commands}
+Commands are issued as the first parameter on the command line and set the task to be run by the program.
+\begin{description}
+\item[\texttt{makedb}]\hfill\\
+Create a DIAMOND formatted reference database from a FASTA input file.
+\item[\texttt{blastp}]\hfill\\
+Align protein query sequences against a protein reference database.
+\item[\texttt{blastx}]\hfill\\
+Align translated DNA query sequences against a protein reference database.
+\item[\texttt{view}]\hfill\\
+Generate formatted output from DAA files.
+\item[\texttt{version}]\hfill\\
+Print version information.
+\item[\texttt{dbinfo}]\hfill\\
+Print information about a database file.
+\item[\texttt{help}]\hfill\\
+Print help message.
+\end{description}
+
+\subsection{Makedb options}
+\begin{description}
+\item[\texttt{--in <file>}]\hfill\\
+Path to the input protein reference database file in FASTA format (may be gzip compressed). If this parameter is omitted, the input will be read from \texttt{stdin}.
+\item[\texttt{--db/-d <file>}]\hfill\\
+Path to the output DIAMOND database file.
+\item[\texttt{--taxonmap <file>}]\hfill\\
+Path to mapping file that maps NCBI protein accession numbers to taxon ids (gzip compressed). This parameter is  optional and needs to be supplied in order to provide taxonomy features. The file can be downloaded from NCBI: \url{ftp://ftp.ncbi.nlm.nih.gov/pub/taxonomy/accession2taxid/prot.accession2taxid.gz}.
+\item[\texttt{--taxonnodes <file>}]\hfill\\
+Path to the \texttt{nodes.dmp} file from the NCBI taxonomy.  This parameter is  optional and needs to be supplied in order to provide taxonomy features. The file is contained within this archive downloadable at NCBI: \url{ftp://ftp.ncbi.nlm.nih.gov/pub/taxonomy/taxdmp.zip}.
+\end{description}
+
+\subsection{General options}
+\label{subsec:general}
+\begin{description}
+\item[\texttt{--threads/-p \#}]\hfill\\
+Number of CPU threads. By default, the program will auto-detect and use all available virtual cores on the machine.
+\end{description}
+
+\subsection{Input options}
+\begin{description}
+\item[\texttt{--db/-d <file>}]\hfill\\
+Path to the DIAMOND database file.
+\item[\texttt{--query/-q <file>}]\hfill\\
+Path to the query input file in FASTA or FASTQ format (may be gzip compressed). If this parameter is omitted, the input will be read from \texttt{stdin}.
+\item[\texttt{--taxonlist <list>}]\hfill\\
+Comma-separated list of NCBI taxonomic IDs to filter the database by. Any taxonomic rank can be used, and only reference sequences matching one of the specified taxon ids will be searched against. Using this option requires setting the \texttt{--taxonmap} and \texttt{--taxonnodes} parameters for \texttt{makedb}.
+\item[\texttt{--query-gencode \#}]\hfill\\
+Genetic code used for translation of query in BLASTX mode. A list of possible values can be found at the \href{https://www.ncbi.nlm.nih.gov/Taxonomy/Utils/wprintgc.cgi}{NCBI website}. By default, the Standard Code is used. Note: changing the genetic code is currently not fully supported for the DAA format.
+\item[\texttt{--strand \{both, plus, minus\}}]\hfill\\
+Set strand of query to align for translated searches. By default both strands are searched.
+\item[\texttt{--min-orf/-l \#}]\hfill\\
+Ignore translated sequences that do not contain an open reading frame of at least this length. By default this feature is disabled for sequences of length below 30, set to 20 for sequences of length below 100, and set to 40 otherwise. Setting this option to \texttt{1} will disable this feature.
+\end{description}
+
+\subsection{Alignment options}
+\begin{description}
+\item[\texttt{--sensitive}]\hfill\\
+This mode is a lot more sensitive that the default and generally recommended for aligning longer sequences. The default mode is mainly designed for short read alignment, i.e. finding significant matches of \textgreater 50 bits on 30-40aa fragments.
+\item[\texttt{--more-sensitive}]\hfill\\
+This mode provides some additional sensitivity compared to the sensitive mode.
+\item[\texttt{--frameshift/-F \#}]\hfill\\
+Penalty for frameshifts in DNA-vs-protein alignments. Values around 15 are reasonable for this parameter. Enabling this feature will have the aligner tolerate missing bases in DNA sequences and is most recommended for long, error-prone sequences like MinION reads.\\
+In the pairwise output format, frameshifts will be indicated by \texttt{\textbackslash} and \texttt{/} for a shift by +1 and -1 nucleotide in the direction of translation respectively.\\
+Note that this feature is disabled by default.
+\item[\texttt{--gapopen \#}]\hfill\\
+Gap open penalty.
+\item[\texttt{--gapextend \#}]\hfill\\
+Gap extension penalty.
+\item[\texttt{--matrix <matrix name>}]\hfill\\
+Scoring matrix. The following matrices are supported, with the default being BLOSUM62.\\\\
+\begin{tabular}{l l l}
+\hline
+Matrix & Supported values for (gap open)/(gap extend) & Default gap penalties\\
+\hline
+BLOSUM45 & (10-13)/3; (12-16)/2; (16-19)/1 & 14/2\\
+BLOSUM50 & (9-13)/3; (12-16)/2; (15-19)/1 & 13/2\\
+BLOSUM62 & (6-11)/2; (9-13)/1 & 11/1\\
+BLOSUM80 & (6-9)/2; 13/2; 25/2; (9-11)/1 & 10/1\\
+BLOSUM90 & (6-9)/2; (9-11)/1 & 10/1 \\
+PAM250 & (11-15)/3; (13-17)/2; (17-21)/1 & 14/2\\
+PAM70 & (6-8)/2; (9-11)/1 & 10/1\\
+PAM30 & (5-7)/2; (8-10)/1 & 9/1\\
+\hline
+\end{tabular}
+\item[\texttt{--comp-based-stats (0,1)}]\hfill\\
+Compositional bias correction of alignment scores. 0 means no score correction, 1 means compositional bias correction as described in \cite{Hauser2016} (default). Compositionally biased sequences often cause false positive matches, which are effectively filtered by this algorithm in a way similar to the composition based statistics used by BLAST \cite{Yu2005}.
+\item[\texttt{--algo (0,1)}]\hfill\\
+Algorithm for seed search. 0 means double-indexed and 1 means query-indexed. The double-indexed algorithm is the program's main algorithm, but it is inefficient for very small query files, where the query-indexed algorithm should be used instead.\\
+By default, the program will automatically choose one of the algorithms based on the size of the query and database files. The algorithm used will be displayed at program startup.\\
+Note that while the two algorithms are configured to provide roughly the same sensitivity for the respective modes, results will not be exactly identical to each other.
+\end{description}
+
+\subsection{Output options}
+\label{subsec:output}
+\begin{description}
+\item[\texttt{--out/-o <file>}]\hfill\\
+Path to the output file. If this parameter is omitted, the results will be written to the standard output and all other program output will be suppressed.
+\item[\texttt{--outfmt/-f \#}]\hfill\\
+Format of the output file. The following values are accepted:
+\begin{description}
+\item[\texttt{0}]BLAST pairwise format.
+\item[\texttt{5}]BLAST XML format.
+\item[\texttt{6}]BLAST tabular format (default). This format can be customized, the \texttt{6} may be followed by a space-separated list of the following keywords, each specifying a field of the output.
+\begin{description}
+\item[qseqid]Query Seq - id
+\item[qlen]Query sequence length
+\item[sseqid]Subject Seq - id
+\item[sallseqid]All subject Seq - id(s), separated by a ';'
+\item[slen] Subject sequence length
+\item[qstart]Start of alignment in query
+\item[qend]End of alignment in query
+\item[sstart]Start of alignment in subject
+\item[send]End of alignment in subject
+\item[qseq]Aligned part of query sequence
+\item[sseq]Aligned part of subject sequence
+\item[full\_sseq]Full subject sequence
+\item[evalue]Expect value
+\item[bitscore]Bit score
+\item[score]Raw score
+\item[length]Alignment length
+\item[pident]Percentage of identical matches
+\item[nident]Number of identical matches
+\item[mismatch]Number of mismatches
+\item[positive]Number of positive - scoring matches
+\item[gapopen]Number of gap openings
+\item[gaps]Total number of gaps
+\item[ppos]Percentage of positive - scoring matches
+\item[qframe]Query frame
+\item[btop]Blast traceback operations(BTOP)
+\item[staxids]Unique Subject Taxonomy ID(s), separated by a ';' (in numerical order). This field requires setting the \texttt{--taxonmap} parameter for \texttt{makedb}.
+\item[stitle]Subject Title
+\item[salltitles]All Subject Title(s), separated by a '\textless\textgreater'
+\item[qcovhsp]Query Coverage Per HSP
+\item[qtitle]Query title
+\end{description}
+By default, there are 12 preconfigured fields: \texttt{qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore}.
+\item[\texttt{100}]DIAMOND alignment archive (DAA). The DAA format is a proprietary binary format that can subsequently be used to generate other output formats using the \texttt{view} command. It is also supported by MEGAN and allows a quick import of results.
+\item[\texttt{101}]SAM format.
+\item[\texttt{102}]Taxonomic classification. This format will not print alignments but only a taxonomic classification for each query using the LCA algorithm. The output lines consist of 3 tab-delimited fields:
+\begin{enumerate}
+\item Query ID
+\item NCBI taxonomy ID (0 if unclassified)
+\item E-value of the best alignment with a known taxonomic ID found for the query (0 if unclassified)
+\end{enumerate}
+The score range for the LCA algorithm is set by the \texttt{--top} parameter. The default value is 10 which means that all alignments whose score is at most 10\% lower than the best score are considered for the LCA computation.
+
+Using this format requires setting the \texttt{--taxonmap} and \texttt{--taxonnodes} parameters for \texttt{makedb}.
+\item[\texttt{103}]\href{https://github.com/lh3/miniasm/blob/master/PAF.md}{PAF} format. The custom fields in the format are AS (bit score), ZR (raw score) and ZE (e-value).
+\end{description}
+\item[\texttt{--salltitles}]\hfill\\
+Include full length subject titles into the DAA format. By default, DAA files contain only the shortened sequence id (up to the first blank character).
+\item[\texttt{--sallseqid}]\hfill\\
+Include all subject ids into the DAA file. By default only the first id of each subject is included. As the subject ids are much shorter than the full titles this option will save space compared to the \texttt{--salltitles} option.
+\item[\texttt{--compress (0,1)}]\hfill\\
+Enable compression of the output file. 0 (default) means no compression, 1 means gzip compression.
+\item[\texttt{--max-target-seqs/-k \#}]\hfill\\
+The maximum number of target sequences per query to report alignments for (default=25). Setting this to 0 will report all alignments that were found.
+\item[\texttt{--top \#}]\hfill\\
+Report alignments within the given percentage range of the top alignment score for a query (overrides \texttt{--max-target-seqs} option). For example, setting this to 10 will report all alignments whose score is at most 10\% lower than the best alignment score for a query.
+\item[\texttt{--range-culling}]\hfill\\
+Restrict hit culling to overlapping query ranges. This feature is designed for long query DNA sequences that may span several genes. In these cases, the default of reporting the 25 best overall hits could cause hits to a lower scoring gene to be overshadowed. But just increasing the number of alignments reported will bloat the output size and reduce performance.\\
+Using this feature along with \texttt{-k 25} (default), a hit will only be deleted if at least 50\% of its query range is spanned by at least 25 higher or equal scoring hits.\\
+Using this feature along with \texttt{--top 10}, a hit will only be deleted if its score is more than 10\% lower than that of a higher scoring hit over at least 50\% of its query range.\\
+The percentage is configurable using \texttt{--range-cover}. Note that this feature is currently only available in frameshift alignment mode.
+\item[\texttt{--evalue/-e \#}]\hfill\\
+Maximum expected value to report an alignment (default=0.001).
+\item[\texttt{--min-score \#}]\hfill\\
+Minimum bit score to report an alignment. Setting this option will override the \texttt{--evalue} parameter.
+\item[\texttt{--id \#}]\hfill\\
+Report only alignments above the given percentage of sequence identity.
+\item[\texttt{--query-cover \#}]\hfill\\
+Report only alignments above the given percentage of query cover.
+\item[\texttt{--subject-cover \#}]\hfill\\
+Report only alignments above the given percentage of subject cover.
+\item[\texttt{--max-hsps \#}]\hfill\\
+The maximum number of HSPs per subject sequence to report for each query. Note that in general any number of HSPs may exist for a single query/subject pair. The program's default policy is to report any HSP if its query and subject ranges are not enveloped by a higher scoring HSP and if it meets the e-value treshold.\\
+This option may be used to limit the number of HSPs reported. Setting this option to 1 will cause only the single best HSP for each query/subject pair to be reported.
+\item[\texttt{--unal (0,1)}]\hfill\\
+Report unaligned queries (0=no, 1=yes). By default, unaligned queries are reported for the BLAST pairwise, BLAST XML and SAM format.
+\item[\texttt{--no-self-hits}]\hfill\\
+Suppress reporting of identical self-hits between sequences.
+\end{description}
+
+\subsection{Memory \& performance options}
+\label{subsec:memory}
+\begin{description}
+\item[\texttt{--block-size/-b \#}]\hfill\\
+Block size in billions of sequence letters to be processed at a time. This is the main parameter for controlling the program's memory usage. Bigger numbers will increase the use of memory and temporary disk space, but also improve performance. The program can be expected to use roughly six times this number of memory (in GB). So for the default value of \texttt{-b2.0}, the memory usage will be about 12 GB.
+\item[\texttt{--tmpdir/-t <directory>}]\hfill\\
+Directory to be used for temporary storage. This is set to the output directory by default. The amount of disk space that will be used depends on the program's settings and your data. As a general rule you should ensure that 100 GB of disk space are available here. If you run the program in a cluster environment, and disk space is only available over a slow network based file system, you may want to set the \texttt{--tmpdir} option to \texttt{/dev/shm}. This will keep temporary information in memory and thus increase the program's memory usage substantially.
+\item[\texttt{--index-chunks/-c \#}]\hfill\\
+The number of chunks for processing the seed index (default=4). This option can be additionally used to tune the performance. It is recommended to set this to 1 on a high memory server, which will increase performance and memory usage, but not the usage of temporary disk space.
+\end{description}
+
+\subsection{View options}
+\begin{description}
+\item[\texttt{--daa/-a <file>}]\hfill\\
+Path to input file in DAA format.
+\item[\texttt{--out/-o <file>}]\hfill\\
+Path to output file. If this parameter is omitted, the results will be written to the standard output and all other program output will be suppressed.
+\end{description}
+These aligner parameters apply to the view command as well and work in the same way: \texttt{--outfmt}, \texttt{--compress}, \texttt{--max-target-seqs}, \texttt{--top}. Note that taxonomy features are currently not available for the DAA format.
+
+\subsection{Advanced options}
+\begin{description}
+\item[\texttt{--freq-sd \#}]\hfill\\
+During the seed search, seeds with very high frequency in the queries or the database are ignored. This option sets the number of standard deviations above the average frequency for ignoring a seed. The default values are 50 in default mode, 10 in sensitive mode, and 200 in more-sensitive mode.
+\item[\texttt{--band \#}]\hfill\\
+Dynamic programming band for seed extension. Initial seed hits are scanned across a band of this length in both directions.
+\item[\texttt{--xml-blord-format}]\hfill\\
+Use gnl\textbar BL\_ORD\_ID style format for hit IDs in XML output.
+\item[\texttt{--range-cover \#}]\hfill\\
+The percentage of a hit's query range that needs to be spanned by higher scoring hits for a hit to be deleted in range culling mode (default=50.0).
+\end{description}
+
+\section{Support \& FAQ}
+Support is provided by \href{mailto:buchfink@gmail.com}{email} or the \href{http://github.com/bbuchfink/diamond/issues/}{GitHub issues page}. For support requests it is usually helpful if you provide details about your data (size and type of sequences) and your execution environment (CPU cores, RAM, operating system).
+
+\noindent Community feedback and feature requests are also appreciated.
+\begin{QandA}
+\item \textbf{How to run the program on multiple input files?}
+\begin{answered}
+It is not recommended to run more than one instance of DIAMOND simultaneously on the same machine, because it is more efficient if you allocate more ressources to a single task by increasing the block size parameter \texttt{-b} and using lower numbers for \texttt{-c}. For this reason, input files should be processed consecutively. Pipes can also be used process multiple input files. For example, this command will build a database from all \texttt{fasta.gz} files in the current directory:
+\begin{quote}
+\texttt{zcat *.fasta.gz | diamond makedb -d diamond\_db}
+\end{quote}
+\end{answered}
+\item \textbf{The program runs for a very long time and the output file remains empty.}
+\begin{answered}
+This is normal. Larger databases are split into chunks and the output is kept in temporary files at first and only merged in the end.
+\end{answered}
+\item \textbf{There are no temporary files.}
+\begin{answered}
+The temporary files are not visible using standard shell commands because \texttt{unlink} is invoked on them after creation, which ensures that the files will be removed in case of ungraceful termination of the program.
+\end{answered}
+\item \textbf{More than one alignment is reported for a single query and subject sequence.}
+\begin{answered}
+Due to the definition of HSPs, which are pairs of segments that form a linear alignment, any number of these may be contained in a single query/subject pair. The program reports additional aligned domains by default as they may contain valuable information. This behaviour can be changed by using the \texttt{--max-hsps} option.
+\end{answered}
+\item \textbf{The program does not appear to be sensitive enough / it does not find an alignment I expect it to find or that another aligner reported.}
+\begin{answered}
+There are a number of reasons that can cause hits to not be found or reported. In particular, even identical self-alignments of protein sequences may not be reported for some of the reasons listed below.
+\begin{enumerate}
+\item The hit may not be deemed significant, i.e. its e-value is above the configured cutoff. This is possible even for short 100\% identity matches. Also note that e-value computations are not compatible for different aligners most of the time.
+\item Low complexity masking and compositional bias correction may cause hits to be filtered. This is usually desirable as these methods are highly effective in eliminating false positives. Note that differences in false positive filtering can cause substantial deviations in the output for different aligners used on the same data.
+\item Due to its seed configuration, the program is not able to align sequences shorter than 12 or 10 amino acids, for the fast mode and sensitive modes respectively.
+\item Seeds that occur too frequently in the input are ignored, which may cause problems if your data is extremely repetitive. This behaviour can be adjusted using the \texttt{--freq-sd} option.
+\item The program may not be sensitive enough for your application. You should try the more sensitive modes (options \texttt{--sensitive} and \texttt{--more-sensitive}). Still, perfect results cannot be guaranteed by heuristical algorithms, but only by a rigorous Smith-Waterman computation.
+\end{enumerate}
+\end{answered}
+\item \textbf{The program terminates with an unclear or no error message.}
+\begin{answered}
+The task may have been killed by the system for running out of memory. Use \texttt{dmesg} to check for a respective kernel message. See \ref{subsec:memory} for instructions on memory usage. If you run the program on a cluster, you may need to allocate more memory to the task.
+\end{answered}
+\item \textbf{Are results consistent for multiple calls of the program?}
+\begin{answered}
+The program has a basic consistency guarantee that the same version run on the same input with the same parameters will produce identical results, regardless of the hardware, operating system, compiler, or number of CPU threads. If this was not the case, I would consider it a bug.
+
+Beyond that, no guarantees of consistency can be made. DIAMOND like all fast aligners uses numerous heuristics that can alter results in unexpected ways. For example, it has been noted that the top hit of a BLAST search can change depending on the \texttt{-max\_target\_seqs} option. Because gapped extension is expensive, BLAST ranks all the subject sequences that were hit for a query based on ungapped extensions at seed hits and considers only a subset of the subjects for gapped extension. The pool of subjects considered is bigger for higher values of \texttt{-max\_target\_seqs}, so in rare cases the true best hit may or may not make it to the gapped extension stage depending on this parameter.
+
+Effects like this seem counterintuitive to many users, but they are a natural byproduct of heuristics used by all fast aligners. The only tools that can guarantee optimal results in any sense of the word are rigorous search tools like SSEARCH.
+\end{answered}
+
+\end{QandA}
+
+\section{Optimizing performance}
+You should take the time to configure the program to your needs instead of just running it with default settings, as this will substantially optimize the use of system resources. Some points to consider:
+\begin{itemize}
+\item
+Set the \texttt{-e} parameter (maximum expected value) as low as possible.
+\item
+Set the \texttt{-k} parameter (number of target sequences to report alignments for) as low as possible. This will improve performance and reduce the use of temporary disk space and the size of the output files.
+\item
+Consider using the \texttt{--top} parameter instead of \texttt{-k}. For example, setting \texttt{--top 5} will report all alignments whose score is at most 5\% lower than the top alignment score for a query.
+\item
+Configure the tabular output format to only report the output fields that are actually required (see \ref{subsec:output}.).
+\item
+Use the BLAST tabular format for machine-based processing of the output. Use the XML and SAM format only if required by your downstream tools or if you prefer it as a human-readable format.
+\item
+Use the option \texttt{--compress 1} to automatically generate gzip-compressed output files.
+\end{itemize}
+
+\section*{About}
+DIAMOND is developed by Benjamin Buchfink and distributed as Open Source under the GNU Affero General Public License.
+
+\noindent Bug reports, support and other inquiries may be sent to \href{mailto:buchfink@gmail.com}{Benjamin Buchfink}.
+
+\bibliographystyle{plain}
+\bibliography{diamond_manual}
+
+\end{document}

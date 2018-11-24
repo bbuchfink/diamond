@@ -4,6 +4,7 @@
 - Changed license to GPL.
 - Raised compiler requirement to GCC 4.6.
 - Added option to use the DAA output format for diamond view.
+- Added support for using a FASTA file as the --db parameter in alignment workflows.
 
 [0.9.22]
 - Added output field full_sseq to tabular output format.

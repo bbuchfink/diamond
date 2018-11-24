@@ -76,4 +76,6 @@ g++ -DNDEBUG -O3 -Wno-deprecated-declarations $1 $2 $3 \
   src/util/memory/memory_pool.cpp \
   src/data/seed_array.cpp \
   src/output/paf_format.cpp \
+  src/util/system/system.cpp \
+  src/run/cluster.cpp \
 -lz -lpthread -o diamond

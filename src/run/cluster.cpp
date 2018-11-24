@@ -16,29 +16,32 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
+#include <stdexcept>
 #include <string>
+#include <stdio.h>
 #include "../util/system/system.h"
 #include "../util/util.h"
+#include "../basic/config.h"
 
 using namespace std;
 
 void build_homology_graph(const string &input_file) {
 	FILE * stream;
-	stream = popen(join(' ', { executable_path(), "blastp",
+	stream = POPEN(join(' ', { executable_path(), "blastp",
 		"-q", input_file,
-		-d, "r");
-
-	if (stream) {
-		while (!feof(stream))
-			if (fgets(buffer, max_buffer, stream) != nullptr)
-				out.append(buffer);
-		if (pclose(stream))
-			throw runtime_error("Error running command " + cmd);
+		"-d", input_file,
+		"-c1" }).c_str(), "r");
+	if (stream == NULL)
+		throw runtime_error("Error executing popen.");
+	char buffer[512];
+	while (!feof(stream) && !ferror(stream)) {
+		if (fgets(buffer, 512, stream) != nullptr)
+			cout << buffer;
 	}
-	else
-		throw runtime_error("Error running command " + cmd);
+	if (PCLOSE(stream))
+		throw runtime_error("Error executing pclose.");
 }
 
 void cluster() {
-
+	build_homology_graph(config.query_file);
 }
