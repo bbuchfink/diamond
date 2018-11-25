@@ -85,6 +85,7 @@ struct DatabaseFile : public InputFile
 	void close();
 	void seek_seq(size_t i);
 	size_t tell_seq() const;
+	void seek_direct();
 
 	enum { min_build_required = 74 };
 

@@ -28,6 +28,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../align/align.h"
 #include "../basic/packed_sequence.h"
 #include "../data/ref_dictionary.h"
+#include "../util/io/consumer.h"
 
 inline void init_daa(OutputFile &f)
 {

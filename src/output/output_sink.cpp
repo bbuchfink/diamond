@@ -54,7 +54,7 @@ void OutputSink::flush(TextBuffer *buf)
 		size_t size = 0;
 		for (vector<TextBuffer*>::iterator j = out.begin(); j < out.end(); ++j) {
 			if (*j) {
-				f_->write((*j)->get_begin(), (*j)->size());
+				f_->consume((*j)->get_begin(), (*j)->size());
 				if (*j != buf)
 					size += (*j)->alloc_size();
 				delete *j;

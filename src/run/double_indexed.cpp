@@ -35,6 +35,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../data/metadata.h"
 #include "../search/search.h"
 #include "workflow.h"
+#include "../util/io/consumer.h"
 
 using namespace std;
 
@@ -131,7 +132,7 @@ void run_ref_chunk(DatabaseFile &db_file,
 	unsigned query_chunk,
 	pair<size_t, size_t> query_len_bounds,
 	char *query_buffer,
-	OutputFile &master_out,
+	Consumer &master_out,
 	PtrVector<TempFile> &tmp_file,
 	const Parameters &params,
 	const Metadata &metadata,
@@ -165,7 +166,7 @@ void run_ref_chunk(DatabaseFile &db_file,
 	timer.go("Deallocating buffers");
 	delete[] ref_buffer;
 
-	OutputFile* out;
+	Consumer* out;
 	if (blocked_processing) {
 		timer.go("Opening temporary output file");
 		tmp_file.push_back(new TempFile());
@@ -190,10 +191,11 @@ void run_ref_chunk(DatabaseFile &db_file,
 void run_query_chunk(DatabaseFile &db_file,
 	Timer &total_timer,
 	unsigned query_chunk,
-	OutputFile &master_out,
+	Consumer &master_out,
 	OutputFile *unaligned_file,
 	OutputFile *aligned_file,
-	const Metadata &metadata)
+	const Metadata &metadata,
+	const Options &options)
 {
 	const Parameters params(db_file.ref_header.sequences, db_file.ref_header.letters);
 
@@ -242,7 +244,13 @@ void run_query_chunk(DatabaseFile &db_file,
 	vector<unsigned> block_to_database_id;
 	timer.finish();
 	
-	for (current_ref_block = 0; db_file.load_seqs(block_to_database_id, (size_t)(config.chunk_size*1e9), true, &ref_seqs::data_, &ref_ids::data_, true, metadata.taxon_filter); ++current_ref_block)
+	for (current_ref_block = 0; db_file.load_seqs(block_to_database_id,
+		(size_t)(config.chunk_size*1e9),
+		true,
+		&ref_seqs::data_,
+		&ref_ids::data_,
+		true,
+		options.db_filter ? options.db_filter : metadata.taxon_filter); ++current_ref_block)
 		run_ref_chunk(db_file, total_timer, query_chunk, query_len_bounds, query_buffer, master_out, tmp_file, params, metadata, block_to_database_id);
 
 	timer.go("Deallocating buffers");
@@ -288,9 +296,9 @@ void master_thread(DatabaseFile *db_file, Timer &total_timer, Metadata &metadata
 	current_query_chunk = 0;
 
 	timer.go("Opening the output file");
-	auto_ptr<OutputFile> master_out(new OutputFile(config.output_file, config.compression == 1));
+	Consumer *master_out(options.consumer ? options.consumer : new OutputFile(config.output_file, config.compression == 1));
 	if (*output_format == Output_format::daa)
-		init_daa(*master_out);
+		init_daa(*static_cast<OutputFile*>(master_out));
 	auto_ptr<OutputFile> unaligned_file, aligned_file;
 	if (!config.unaligned.empty())
 		unaligned_file = auto_ptr<OutputFile>(new OutputFile(config.unaligned));
@@ -298,7 +306,6 @@ void master_thread(DatabaseFile *db_file, Timer &total_timer, Metadata &metadata
 		aligned_file = auto_ptr<OutputFile>(new OutputFile(config.aligned_file));
 	timer.finish();
 
-	vector<unsigned> query_block_to_database_id;
 	size_t query_file_offset = 0;
 
 	for (;; ++current_query_chunk) {
@@ -310,7 +317,9 @@ void master_thread(DatabaseFile *db_file, Timer &total_timer, Metadata &metadata
 				(size_t)(config.chunk_size * 1e9),
 				true,
 				&query_seqs::data_,
-				&query_ids::data_))
+				&query_ids::data_,
+				true,
+				options.db_filter))
 				break;
 			query_file_offset = db_file->tell_seq();
 		}
@@ -333,7 +342,7 @@ void master_thread(DatabaseFile *db_file, Timer &total_timer, Metadata &metadata
 			timer.finish();
 		}
 
-		run_query_chunk(*db_file, total_timer, current_query_chunk, *master_out, unaligned_file.get(), aligned_file.get(), metadata);
+		run_query_chunk(*db_file, total_timer, current_query_chunk, *master_out, unaligned_file.get(), aligned_file.get(), metadata, options);
 	}
 
 	if (query_file) {
@@ -343,10 +352,11 @@ void master_thread(DatabaseFile *db_file, Timer &total_timer, Metadata &metadata
 
 	timer.go("Closing the output file");
 	if (*output_format == Output_format::daa)
-		finish_daa(*master_out, *db_file);
+		finish_daa(*static_cast<OutputFile*>(master_out), *db_file);
 	else
 		output_format->print_footer(*master_out);
-	master_out->close();
+	master_out->finalize();
+	if (!options.consumer) delete master_out;
 	if (unaligned_file.get())
 		unaligned_file->close();
 	if (aligned_file.get())

@@ -121,6 +121,7 @@ add_executable(diamond src/run/main.cpp
   src/output/paf_format.cpp
   src/util/system/system.cpp
   src/run/cluster.cpp
+  src/util/algo/greedy_vortex_cover.cpp
 )
 
 if(EXTRA)

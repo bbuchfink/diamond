@@ -65,7 +65,7 @@ private:
 	Task_queue<_buffer, Output_writer> queue;
 };
 
-void align_queries(Trace_pt_buffer &trace_pts, OutputFile* output_file, const Parameters &params, const Metadata &metadata);
+void align_queries(Trace_pt_buffer &trace_pts, Consumer* output_file, const Parameters &params, const Metadata &metadata);
 
 namespace ExtensionPipeline {
 	namespace Greedy {

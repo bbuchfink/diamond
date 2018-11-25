@@ -204,7 +204,7 @@ void XML_format::print_match(const Hsp_context &r, const Metadata &metadata, Tex
 		<< "    </Hsp>" << '\n';
 }
 
-void XML_format::print_header(OutputFile &f, int mode, const char *matrix, int gap_open, int gap_extend, double evalue, const char *first_query_name, unsigned first_query_len) const
+void XML_format::print_header(Consumer &f, int mode, const char *matrix, int gap_open, int gap_extend, double evalue, const char *first_query_name, unsigned first_query_len) const
 {
 	std::stringstream ss;
 	ss << "<?xml version=\"1.0\"?>" << endl
@@ -231,7 +231,7 @@ void XML_format::print_header(OutputFile &f, int mode, const char *matrix, int g
 		<< "    </Parameters>" << endl
 		<< "  </BlastOutput_param>" << endl
 		<< "<BlastOutput_iterations>" << endl;
-	f.write(ss.str().c_str(), ss.str().length());
+	f.consume(ss.str().c_str(), ss.str().length());
 }
 
 void XML_format::print_query_intro(size_t query_num, const char *query_name, unsigned query_len, TextBuffer &out, bool unaligned) const
@@ -267,10 +267,10 @@ void XML_format::print_query_epilog(TextBuffer &out, const char *query_title, bo
 		<< "</Iteration>" << '\n';
 }
 
-void XML_format::print_footer(OutputFile &f) const
+void XML_format::print_footer(Consumer &f) const
 {
 	std::stringstream ss;
 	ss << "</BlastOutput_iterations>" << endl
 		<< "</BlastOutput>";
-	f.write(ss.str().c_str(), ss.str().length());
+	f.consume(ss.str().c_str(), ss.str().length());
 }

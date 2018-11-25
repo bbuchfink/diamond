@@ -252,6 +252,10 @@ size_t DatabaseFile::tell_seq() const {
 	return (pos_array_offset - ref_header.pos_array_offset) / sizeof(Pos_record);
 }
 
+void DatabaseFile::seek_direct() {
+	seek(sizeof(ReferenceHeader) + sizeof(ReferenceHeader2) + 8);
+}
+
 bool DatabaseFile::load_seqs(vector<unsigned> &block_to_database_id, size_t max_letters, bool masked, Sequence_set **dst_seq, String_set<0> **dst_id, bool load_ids, const vector<bool> *filter)
 {
 	task_timer timer("Loading reference sequences");

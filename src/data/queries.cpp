@@ -27,6 +27,7 @@ vector<bool> query_aligned;
 Seed_set *query_seeds = 0;
 Hashed_seed_set *query_seeds_hashed = 0;
 String_set<0> *query_qual = nullptr;
+vector<unsigned> query_block_to_database_id;
 
 void write_unaligned(OutputFile *file)
 {

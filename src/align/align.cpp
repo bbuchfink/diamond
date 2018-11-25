@@ -104,7 +104,7 @@ void align_worker(size_t thread_id, const Parameters *params, const Metadata *me
 	::dp_stat += dp_stat;
 }
 
-void align_queries(Trace_pt_buffer &trace_pts, OutputFile* output_file, const Parameters &params, const Metadata &metadata)
+void align_queries(Trace_pt_buffer &trace_pts, Consumer* output_file, const Parameters &params, const Metadata &metadata)
 {
 	const size_t max_size = (size_t)std::min(config.chunk_size*1e9 * 9 * 2 / config.lowmem, 2e9);
 	pair<size_t, size_t> query_range;

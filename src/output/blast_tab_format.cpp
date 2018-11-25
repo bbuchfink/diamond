@@ -72,7 +72,10 @@ const char* Blast_tab_format::field_str[] = {
 	"swdiff",		// 46
 	"time", 		// 47
 	"full_sseq",	// 48
-	"qqual"			// 49
+	"qqual",		// 49
+	"qnum",			// 50
+	"snum",			// 51
+	"scovhsp"		// 52
 };
 
 Blast_tab_format::Blast_tab_format() :
@@ -248,6 +251,15 @@ void Blast_tab_format::print_match(const Hsp_context& r, const Metadata &metadat
 			break;
 		case 49:
 			out << (*query_qual)[r.query_id].c_str();
+			break;
+		case 50:
+			out << query_block_to_database_id[r.query_id];
+			break;
+		case 51:
+			out << r.orig_subject_id;
+			break;
+		case 52:
+			out << (double)r.subject_range().length() * 100.0 / r.subject_len;
 			break;
 		default:
 			throw std::runtime_error(string("Invalid output field: ") + field_str[*i]);

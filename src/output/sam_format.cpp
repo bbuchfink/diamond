@@ -118,7 +118,7 @@ void Sam_format::print_match(const Hsp_context& r, const Metadata &metadata, Tex
 	out << '\n';
 }
 
-void Sam_format::print_header(OutputFile &f, int mode, const char *matrix, int gap_open, int gap_extend, double evalue, const char *first_query_name, unsigned first_query_len) const
+void Sam_format::print_header(Consumer &f, int mode, const char *matrix, int gap_open, int gap_extend, double evalue, const char *first_query_name, unsigned first_query_len) const
 {
 	static const char* mode_str[] = { 0, 0, "BlastP", "BlastX", "BlastN" };
 	string line = string("@HD\tVN:1.5\tSO:query\n\
@@ -126,5 +126,5 @@ void Sam_format::print_header(OutputFile &f, int mode, const char *matrix, int g
 @mm\t") + mode_str[mode] + "\n\
 @CO\t" + mode_str[mode] + "-like alignments\n\
 @CO\tReporting AS: bitScore, ZR: rawScore, ZE: expected, ZI: percent identity, ZL: reference length, ZF: frame, ZS: query start DNA coordinate\n";
-	f.write(line.c_str(), line.length());
+	f.consume(line.c_str(), line.length());
 }

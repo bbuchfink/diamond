@@ -64,7 +64,7 @@ void Pairwise_format::print_match(const Hsp_context& r, const Metadata &metadata
 	}
 }
 
-void Pairwise_format::print_footer(OutputFile &out) const
+void Pairwise_format::print_footer(Consumer &out) const
 {
 
 }
@@ -81,8 +81,8 @@ void Pairwise_format::print_query_intro(size_t query_num, const char *query_name
 	}
 }
 
-void Pairwise_format::print_header(OutputFile &f, int mode, const char *matrix, int gap_open, int gap_extend, double evalue, const char *first_query_name, unsigned first_query_len) const
+void Pairwise_format::print_header(Consumer &f, int mode, const char *matrix, int gap_open, int gap_extend, double evalue, const char *first_query_name, unsigned first_query_len) const
 {
 	static const char* header = "BLASTP 2.3.0+\n\n\n";
-	f.write(header, strlen(header));
+	f.consume(header, strlen(header));
 }

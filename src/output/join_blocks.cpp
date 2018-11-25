@@ -66,11 +66,11 @@ struct JoinFetcher
 		unaligned_from = query_last + 1;
 		query_last = query_id;
 		for (unsigned i = 0; i < buf.size(); ++i)
-			if (query_ids[i] == query_id && query_id != IntermediateRecord::finished)
+			if (query_ids[i] == query_id && query_id != IntermediateRecord::FINISHED)
 				fetch(i);
 			else
 				buf[i].clear();
-		return next() != IntermediateRecord::finished;
+		return next() != IntermediateRecord::FINISHED;
 	}
 	static PtrVector<InputFile> files;
 	static vector<unsigned> query_ids;
@@ -85,15 +85,15 @@ unsigned JoinFetcher::query_last;
 
 struct JoinWriter
 {
-	JoinWriter(OutputFile &f):
+	JoinWriter(Consumer &f):
 		f_(f)
 	{}
 	void operator()(TextBuffer& buf)
 	{
-		f_.write(buf.get_begin(), buf.size());
+		f_.consume(buf.get_begin(), buf.size());
 		buf.clear();
 	}
-	OutputFile &f_;
+	Consumer &f_;
 };
 
 struct Join_record
@@ -219,7 +219,7 @@ void join_worker(Task_queue<TextBuffer, JoinWriter> *queue, const Parameters *pa
 	Statistics stat;
 	const String_set<0>& qids = query_ids::get();
 
-	while (queue->get(n, out, fetcher) && fetcher.query_id != IntermediateRecord::finished) {
+	while (queue->get(n, out, fetcher) && fetcher.query_id != IntermediateRecord::FINISHED) {
 		stat.inc(Statistics::ALIGNED);
 		size_t seek_pos;
 
@@ -253,7 +253,7 @@ void join_worker(Task_queue<TextBuffer, JoinWriter> *queue, const Parameters *pa
 	statistics += stat;
 }
 
-void join_blocks(unsigned ref_blocks, OutputFile &master_out, const PtrVector<TempFile> &tmp_file, const Parameters &params, const Metadata &metadata, DatabaseFile &db_file)
+void join_blocks(unsigned ref_blocks, Consumer &master_out, const PtrVector<TempFile> &tmp_file, const Parameters &params, const Metadata &metadata, DatabaseFile &db_file)
 {
 	//ReferenceDictionary::get().init_rev_map();
 	task_timer timer("Building reference dictionary", 3);

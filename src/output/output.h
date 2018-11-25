@@ -28,6 +28,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../data/ref_dictionary.h"
 #include "../basic/parameters.h"
 #include "../data/metadata.h"
+#include "../util/io/consumer.h"
 
 inline unsigned get_length_flag(unsigned x)
 {
@@ -101,22 +102,21 @@ struct IntermediateRecord
 			.write_packed(match.subject_range.begin_)
 			<< match.transcript.data();
 	}
-	static void finish_file(OutputFile &f)
+	static void finish_file(Consumer &f)
 	{
-		unsigned x = finished;
-		f.write(&x, 1);
+		f.consume(reinterpret_cast<const char*>(&FINISHED), 4);
 	}
-	enum { finished = 0xffffffffu };
+	static const uint32_t FINISHED = 0xffffffffu;
 	uint32_t query_id, subject_id, score, query_begin, subject_begin, query_end;
 	uint8_t flag;
 	Packed_transcript transcript;
 };
 
-void join_blocks(unsigned ref_blocks, OutputFile &master_out, const PtrVector<TempFile> &tmp_file, const Parameters &params, const Metadata &metadata, DatabaseFile &db_file);
+void join_blocks(unsigned ref_blocks, Consumer &master_out, const PtrVector<TempFile> &tmp_file, const Parameters &params, const Metadata &metadata, DatabaseFile &db_file);
 
 struct OutputSink
 {
-	OutputSink(size_t begin, OutputFile *f) :
+	OutputSink(size_t begin, Consumer *f) :
 		f_(f),
 		next_(begin),
 		size_(0),
@@ -143,7 +143,7 @@ struct OutputSink
 private:
 	void flush(TextBuffer *buf);
 	tthread::mutex mtx_;
-	OutputFile* const f_;
+	Consumer* const f_;
 	std::map<size_t, TextBuffer*> backlog_;
 	size_t next_, size_, max_size_;
 };

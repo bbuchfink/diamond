@@ -78,4 +78,5 @@ g++ -DNDEBUG -O3 -Wno-deprecated-declarations $1 $2 $3 \
   src/output/paf_format.cpp \
   src/util/system/system.cpp \
   src/run/cluster.cpp \
+  src/util/algo/greedy_vortex_cover.cpp \
 -lz -lpthread -o diamond

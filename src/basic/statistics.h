@@ -38,7 +38,13 @@ struct Statistics
 	};
 
 	Statistics()
-	{ memset(data_, 0, sizeof(data_)); }
+	{
+		reset();
+	}
+
+	void reset() {
+		memset(data_, 0, sizeof(data_));
+	}
 
 	Statistics& operator+=(const Statistics &rhs)
 	{

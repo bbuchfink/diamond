@@ -24,11 +24,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <vector>
 #include "../algo/varint.h"
 #include "stream_entity.h"
+#include "consumer.h"
 
 using std::string;
 using std::vector;
 
-struct Serializer
+struct Serializer : public Consumer
 {
 
 	enum { VARINT = 1 };
@@ -124,6 +125,8 @@ struct Serializer
 	void close();
 	string file_name() const;
 	FILE* file();
+	virtual void consume(const char *ptr, size_t n) override;
+	virtual void finalize() override;
 	~Serializer();
 
 protected:

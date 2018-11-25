@@ -114,3 +114,11 @@ void Serializer::unset(int flag)
 		;
 	}
 }
+
+void Serializer::consume(const char *ptr, size_t n) {
+	write_raw(ptr, n);
+}
+
+void Serializer::finalize() {
+	close();
+}
