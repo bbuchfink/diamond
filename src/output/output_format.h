@@ -119,12 +119,12 @@ struct Sam_format : public Output_format
 	Sam_format():
 		Output_format(sam)
 	{ }
-	virtual void print_match(const Hsp_context& r, const Metadata &metadata, TextBuffer &out);
+	virtual void print_match(const Hsp_context& r, const Metadata &metadata, TextBuffer &out) override;
 	virtual void print_header(Consumer &f, int mode, const char *matrix, int gap_open, int gap_extend, double evalue, const char *first_query_name, unsigned first_query_len) const override;
-	virtual void print_query_intro(size_t query_num, const char *query_name, unsigned query_len, TextBuffer &out, bool unaligned) const;
+	virtual void print_query_intro(size_t query_num, const char *query_name, unsigned query_len, TextBuffer &out, bool unaligned) const override;
 	virtual ~Sam_format()
 	{ }
-	virtual Output_format* clone() const
+	virtual Output_format* clone() const override
 	{
 		return new Sam_format(*this);
 	}
@@ -137,14 +137,14 @@ struct XML_format : public Output_format
 	{
 		config.salltitles = true;
 	}
-	virtual void print_match(const Hsp_context& r, const Metadata &metadata, TextBuffer &out);
+	virtual void print_match(const Hsp_context& r, const Metadata &metadata, TextBuffer &out) override;
 	virtual void print_header(Consumer &f, int mode, const char *matrix, int gap_open, int gap_extend, double evalue, const char *first_query_name, unsigned first_query_len) const override;
-	virtual void print_query_intro(size_t query_num, const char *query_name, unsigned query_len, TextBuffer &out, bool unaligned) const;
-	virtual void print_query_epilog(TextBuffer &out, const char *query_title, bool unaligned, const Parameters &parameters) const;
+	virtual void print_query_intro(size_t query_num, const char *query_name, unsigned query_len, TextBuffer &out, bool unaligned) const override;
+	virtual void print_query_epilog(TextBuffer &out, const char *query_title, bool unaligned, const Parameters &parameters) const override;
 	virtual void print_footer(Consumer &f) const override;
 	virtual ~XML_format()
 	{ }
-	virtual Output_format* clone() const
+	virtual Output_format* clone() const override
 	{
 		return new XML_format(*this);
 	}
@@ -157,14 +157,14 @@ struct Pairwise_format : public Output_format
 	{
 		config.salltitles = true;
 	}
-	virtual void print_match(const Hsp_context& r, const Metadata &metadata, TextBuffer &out);
+	virtual void print_match(const Hsp_context& r, const Metadata &metadata, TextBuffer &out) override;
 	virtual void print_header(Consumer &f, int mode, const char *matrix, int gap_open, int gap_extend, double evalue, const char *first_query_name, unsigned first_query_len) const override;
-	virtual void print_query_intro(size_t query_num, const char *query_name, unsigned query_len, TextBuffer &out, bool unaligned) const;
-	virtual void print_query_epilog(TextBuffer &out, const char *query_title, bool unaligned, const Parameters &parameters) const;
+	virtual void print_query_intro(size_t query_num, const char *query_name, unsigned query_len, TextBuffer &out, bool unaligned) const override;
+	virtual void print_query_epilog(TextBuffer &out, const char *query_title, bool unaligned, const Parameters &parameters) const override;
 	virtual void print_footer(Consumer &f) const override;
 	virtual ~Pairwise_format()
 	{ }
-	virtual Output_format* clone() const
+	virtual Output_format* clone() const override
 	{
 		return new Pairwise_format(*this);
 	}
@@ -180,11 +180,11 @@ struct Taxon_format : public Output_format
 		needs_taxon_id_lists = true;
 		needs_taxon_nodes = true;
 	}
-	virtual void print_match(const Hsp_context& r, const Metadata &metadata, TextBuffer &out);
-	virtual void print_query_epilog(TextBuffer &out, const char *query_title, bool unaligned, const Parameters &parameters) const;
+	virtual void print_match(const Hsp_context& r, const Metadata &metadata, TextBuffer &out) override;
+	virtual void print_query_epilog(TextBuffer &out, const char *query_title, bool unaligned, const Parameters &parameters) const override;
 	virtual ~Taxon_format()
 	{ }
-	virtual Output_format* clone() const
+	virtual Output_format* clone() const override
 	{
 		return new Taxon_format(*this);
 	}

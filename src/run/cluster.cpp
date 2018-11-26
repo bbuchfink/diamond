@@ -22,6 +22,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <stdio.h>
 #include <memory>
 #include <fstream>
+#include <limits>
 #include "../util/system/system.h"
 #include "../util/util.h"
 #include "../basic/config.h"
@@ -74,6 +75,7 @@ vector<int> cluster(DatabaseFile &db, const vector<bool> *filter) {
 	config.algo = 0;
 	config.index_mode = 0;
 	config.freq_sd = 0;
+	config.max_alignments = numeric_limits<uint64_t>::max();
 
 	Workflow::Search::Options opt;
 	opt.db = &db;
@@ -92,6 +94,7 @@ void run() {
 		throw runtime_error("Missing parameter: database file (--db/-d)");
 	config.command = Config::makedb;
 	unique_ptr<DatabaseFile> db(DatabaseFile::auto_create_from_fasta());
+	const size_t seq_count = db->ref_header.sequences;
 
 	vector<int> centroid1(cluster(*db, nullptr));
 	vector<bool> rep1(rep_bitset(centroid1));
@@ -107,17 +110,28 @@ void run() {
 	message_stream << "Clustering step 2 complete. #Input sequences: " << n_rep1 << " #Clusters: " << count_if(rep2.begin(), rep2.end(), [](bool x) { return x; }) << endl;
 
 	task_timer timer("Generating output");
+	Sequence_set *rep_seqs;
+	String_set<0> *rep_ids;
+	vector<unsigned> rep_database_id, rep_block_id(seq_count);
+	db->rewind();
+	db->load_seqs(rep_database_id, (size_t)1e11, true, &rep_seqs, &rep_ids, true, &rep2);
+	for (size_t i = 0; i < rep_database_id.size(); ++i)
+		rep_block_id[rep_database_id[i]] = (unsigned)i;
+
 	ostream *out = config.output_file.empty() ? &cout : new ofstream(config.output_file.c_str());
 	vector<char> seq;
 	string id;
 	db->seek_direct();
 	for (size_t i = 0; i < db->ref_header.sequences; ++i) {
 		db->read_seq(id, seq);
-		(*out) << blast_id(id) << endl;
+		const unsigned r = rep_block_id[centroid2[i]];
+		(*out) << blast_id(id) << '\t' << blast_id((*rep_ids)[r].c_str()) << endl;
 	}
 
 	db->close();
 	if (out != &cout) delete out;
+	delete rep_seqs;
+	delete rep_ids;
 }
 
 }}

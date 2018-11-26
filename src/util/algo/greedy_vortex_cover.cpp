@@ -8,7 +8,7 @@ struct GreedyVortexCover {
 
 	GreedyVortexCover(const vector<vector<int>> &neighbors) :
 		reverse_neighbors(neighbors.size()) {
-		const size_t n = neighbors.size();
+		const int n = (int)neighbors.size();
 		centroid.insert(centroid.begin(), n, -1);
 		its.reserve(n);
 		for (int i = 0; i < n; ++i) {
