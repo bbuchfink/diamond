@@ -104,7 +104,8 @@ struct IntermediateRecord
 	}
 	static void finish_file(Consumer &f)
 	{
-		f.consume(reinterpret_cast<const char*>(&FINISHED), 4);
+		const uint32_t i = FINISHED;
+		f.consume(reinterpret_cast<const char*>(&i), 4);
 	}
 	static const uint32_t FINISHED = 0xffffffffu;
 	uint32_t query_id, subject_id, score, query_begin, subject_begin, query_end;
