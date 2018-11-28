@@ -32,6 +32,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/algo/algo.h"
 #include "../basic/statistics.h"
 #include "../util/log_stream.h"
+#include "../dp/dp.h"
+#include "../basic/masking.h"
 
 using namespace std;
 
@@ -122,10 +124,27 @@ void run() {
 	vector<char> seq;
 	string id;
 	db->seek_direct();
+	Hsp hsp;
+	size_t n;
+	out->precision(3);
+
 	for (size_t i = 0; i < db->ref_header.sequences; ++i) {
 		db->read_seq(id, seq);
 		const unsigned r = rep_block_id[centroid2[i]];
-		(*out) << blast_id(id) << '\t' << blast_id((*rep_ids)[r].c_str()) << endl;
+
+		(*out) << blast_id(id) << '\t'
+			<< blast_id((*rep_ids)[r].c_str()) << '\t';		
+		
+		if (i == centroid2[i])
+			(*out) << "100\t100\t100\t0" << endl;
+		else {
+			Masking::get().bit_to_hard_mask(seq.data(), seq.size(), n);
+			smith_waterman(sequence(seq), (*rep_seqs)[r], hsp);
+			(*out) << hsp.id_percent() << '\t'
+				<< hsp.query_cover_percent((unsigned)seq.size()) << '\t'
+				<< hsp.subject_cover_percent((unsigned)(*rep_seqs)[r].length()) << '\t'
+				<< score_matrix.bitscore(hsp.score) << endl;
+		}
 	}
 
 	db->close();

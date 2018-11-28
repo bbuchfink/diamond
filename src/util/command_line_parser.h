@@ -28,78 +28,74 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <stdint.h>
 #include "ptr_vector.h"
 
-using std::vector;
-using std::string;
-using std::pair;
-
 template<typename _t>
-inline void read_option(_t &dst, const vector<string> &v)
+inline void read_option(_t &dst, const std::vector<std::string> &v)
 { assert(false); }
 
 template<>
-inline void read_option<int>(int &dst, const vector<string> &v)
+inline void read_option<int>(int &dst, const std::vector<std::string> &v)
 { dst = atoi(v[0].c_str()); }
 
 template<>
-inline void read_option<unsigned>(unsigned &dst, const vector<string> &v)
+inline void read_option<unsigned>(unsigned &dst, const std::vector<std::string> &v)
 { dst = atoi(v[0].c_str()); }
 
 template<>
-inline void read_option<uint64_t>(uint64_t &dst, const vector<string> &v)
+inline void read_option<uint64_t>(uint64_t &dst, const std::vector<std::string> &v)
 {
 	dst = atoi(v[0].c_str());
 }
 
 template<>
-inline void read_option<double>(double &dst, const vector<string> &v)
+inline void read_option<double>(double &dst, const std::vector<std::string> &v)
 {
 	dst = atof(v[0].c_str());
 }
 
 template<>
-inline void read_option<string>(string &dst, const vector<string> &v)
+inline void read_option<std::string>(std::string &dst, const std::vector<std::string> &v)
 { dst = v[0]; }
 
 template<>
-inline void read_option<vector<string> >(vector<string> &dst, const vector<string> &v)
+inline void read_option<std::vector<std::string> >(std::vector<std::string> &dst, const std::vector<std::string> &v)
 {
 	dst = v;
 }
 
 template<>
-inline void read_option<bool>(bool &dst, const vector<string> &v)
+inline void read_option<bool>(bool &dst, const std::vector<std::string> &v)
 { dst = true; }
 
 template<typename _t>
-inline bool check_pcount(const vector<string> &v)
+inline bool check_pcount(const std::vector<std::string> &v)
 {
 	return v.size() == 1;
 }
 
 template<>
-inline bool check_pcount<bool>(const vector<string> &v)
+inline bool check_pcount<bool>(const std::vector<std::string> &v)
 {
 	return v.size() == 0;
 }
 
 template<>
-inline bool check_pcount<vector<string> >(const vector<string> &v)
+inline bool check_pcount<std::vector<std::string> >(const std::vector<std::string> &v)
 {
 	return v.size() > 0;
 }
 
 struct Option_base
 {
-	Option_base(const string &id, char short_id, const string &desc) :
+	Option_base(const std::string &id, char short_id, const std::string &desc) :
 		id(id),
 		desc(desc),
 		short_id (short_id)		
 	{}
-	virtual void read(const vector<string> &v) = 0;
+	virtual void read(const std::vector<std::string> &v) = 0;
 	virtual void set_default() = 0;
 	virtual ~Option_base()
 	{}
-	const string id, desc;
+	const std::string id, desc;
 	const char short_id;
 };
 
@@ -111,7 +107,7 @@ struct Option : public Option_base
 		default_(def),
 		store_(store)
 	{ }
-	virtual void read(const vector<string> &v)
+	virtual void read(const std::vector<std::string> &v)
 	{
 		if (!check_pcount<_t>(v))
 			throw std::runtime_error("Invalid parameter count for option '--" + id + "'");
@@ -152,7 +148,7 @@ struct Options_group
 		title (title)
 	{}
 	PtrVector<Option_base> options;
-	string title;
+	std::string title;
 };
 
 struct Command_line_parser
@@ -162,12 +158,12 @@ struct Command_line_parser
 	void store(int count, const char **str, unsigned &command);
 	void print_help();
 private:
-	void store_option(const vector<string> &v);
+	void store_option(const std::vector<std::string> &v);
 
-	std::map<string, Option_base*> map_;
+	std::map<std::string, Option_base*> map_;
 	std::map<char, Option_base*> map_short_;
-	vector<const Options_group*> groups_;
-	vector<pair<string,string> > commands_;
+	std::vector<const Options_group*> groups_;
+	std::vector<std::pair<std::string,std::string> > commands_;
 };
 
 #endif

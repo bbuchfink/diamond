@@ -355,6 +355,7 @@ Config::Config(int argc, const char **argv)
 	case Config::blastp:
 	case Config::blastx:
 	case Config::view:
+	case Config::cluster:
 		message_stream << "#CPU threads: " << threads_ << endl;
 	default:
 		;

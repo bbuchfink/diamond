@@ -225,6 +225,7 @@ void smith_waterman(sequence q, sequence s, Hsp &out)
 
 	const int gap_open = score_matrix.gap_open(), gap_extend = score_matrix.gap_extend();
 	int l, i = max_pos.first, j = max_pos.second, score;
+	out.clear();
 	out.score = dp(i, j);
 	out.query_range.end_ = i;
 	out.subject_range.end_ = j;
@@ -234,6 +235,7 @@ void smith_waterman(sequence q, sequence s, Hsp &out)
 		if (score == match_score + dp(i - 1, j - 1)) {
 			if (q[i - 1] == s[j - 1]) {
 				out.transcript.push_back(op_match);
+				++out.identities;
 			}
 			else {
 				out.transcript.push_back(op_substitution, s[j - 1]);
@@ -259,6 +261,7 @@ void smith_waterman(sequence q, sequence s, Hsp &out)
 
 	out.query_range.begin_ = i;
 	out.subject_range.begin_ = j;
+	out.query_source_range = out.query_range;
 	out.transcript.reverse();
 	out.transcript.push_terminator();
 }
