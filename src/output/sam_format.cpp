@@ -16,7 +16,10 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
+#include <sstream>
 #include "output_format.h"
+
+using namespace std;
 
 void print_md(const Hsp_context &r, TextBuffer &buf)
 {
@@ -121,10 +124,13 @@ void Sam_format::print_match(const Hsp_context& r, const Metadata &metadata, Tex
 void Sam_format::print_header(Consumer &f, int mode, const char *matrix, int gap_open, int gap_extend, double evalue, const char *first_query_name, unsigned first_query_len) const
 {
 	static const char* mode_str[] = { 0, 0, "BlastP", "BlastX", "BlastN" };
-	string line = string("@HD\tVN:1.5\tSO:query\n\
-@PG\tPN:DIAMOND\n\
-@mm\t") + mode_str[mode] + "\n\
-@CO\t" + mode_str[mode] + "-like alignments\n\
-@CO\tReporting AS: bitScore, ZR: rawScore, ZE: expected, ZI: percent identity, ZL: reference length, ZF: frame, ZS: query start DNA coordinate\n";
-	f.consume(line.c_str(), line.length());
+	stringstream h;
+	h << "@HD\tVN:1.5\tSO:query" << endl;
+	h << "@PG\tPN:DIAMOND\tVN:" << Const::version_string << "\tCL:" << config.invocation << endl;
+	h << "@mm\t" << mode_str[mode] << endl;
+	h << "@CO\t" << mode_str[mode] << "-like alignments" << endl;
+	h << "@CO\tReporting AS: bitScore, ZR: rawScore, ZE: expected, ZI: percent identity, ZL: reference length, ZF: frame, ZS: query start DNA coordinate" << endl;
+
+	const string s(h.str());
+	f.consume(s.c_str(), s.length());
 }

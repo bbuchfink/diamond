@@ -328,9 +328,8 @@ Config::Config(int argc, const char **argv)
 		;
 	}
 
-	for (int i = 0; i < argc; ++i)
-		log_stream << argv[i] << ' ';
-	log_stream << endl;
+	invocation = join(' ', vector<string>(&argv[0], &argv[argc]));
+	log_stream << invocation << endl;
 
 	if (!no_auto_append) {
 		if (command == Config::makedb)
