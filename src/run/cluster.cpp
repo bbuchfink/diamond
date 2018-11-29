@@ -98,12 +98,14 @@ void run() {
 	unique_ptr<DatabaseFile> db(DatabaseFile::auto_create_from_fasta());
 	const size_t seq_count = db->ref_header.sequences;
 
+	config.min_id = 70;
 	vector<int> centroid1(cluster(*db, nullptr));
 	vector<bool> rep1(rep_bitset(centroid1));
 	size_t n_rep1 = count_if(rep1.begin(), rep1.end(), [](bool x) { return x; });
 	message_stream << "Clustering step 1 complete. #Input sequences: " << centroid1.size() << " #Clusters: " << n_rep1 << endl;
 
 	config.mode_more_sensitive = true;
+	config.min_id = 0;
 	vector<int> centroid2(cluster(*db, &rep1));
 	vector<bool> rep2(rep_bitset(centroid2, &rep1));
 	for (size_t i = 0; i < centroid2.size(); ++i)
