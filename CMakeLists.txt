@@ -122,6 +122,7 @@ add_executable(diamond src/run/main.cpp
   src/util/system/system.cpp
   src/run/cluster.cpp
   src/util/algo/greedy_vortex_cover.cpp
+  src/util/algo/greedy_vortex_cover_weighted.cpp
 )
 
 if(EXTRA)
