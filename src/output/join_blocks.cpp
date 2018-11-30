@@ -175,7 +175,7 @@ void join_query(vector<BinaryBuffer> &buf, TextBuffer &out, Statistics &statisti
 	TranslatedSequence query_seq(get_translated_query(query));
 	BlockJoiner joiner(buf);
 	vector<IntermediateRecord> target_hsp;
-	auto_ptr<TargetCulling> culling(TargetCulling::get());
+	unique_ptr<TargetCulling> culling(TargetCulling::get());
 
 	unsigned n_target_seq = 0;
 		

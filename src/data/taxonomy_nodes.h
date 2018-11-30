@@ -21,6 +21,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <vector>
 #include <set>
+#include <string>
 #include "../util/io/serializer.h"
 #include "../util/io/deserializer.h"
 
@@ -35,7 +36,7 @@ struct TaxonomyNodes
 	unsigned get_parent(unsigned taxid) const
 	{
 		if (taxid >= parent_.size())
-			throw std::runtime_error(string("No taxonomy node found for taxon id ") + to_string(taxid));
+			throw std::runtime_error(std::string("No taxonomy node found for taxon id ") + std::to_string(taxid));
 		return parent_[taxid];
 	}
 	unsigned get_lca(unsigned t1, unsigned t2) const;

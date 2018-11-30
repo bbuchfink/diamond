@@ -158,7 +158,7 @@ void QueryMapper::rank_targets(double ratio, double factor)
 void QueryMapper::score_only_culling()
 {
 	std::stable_sort(targets.begin(), targets.end(), Target::compare);
-	auto_ptr<TargetCulling> target_culling(TargetCulling::get());
+	unique_ptr<TargetCulling> target_culling(TargetCulling::get());
 	const unsigned query_len = (unsigned)query_seq(0).length();
 	PtrVector<Target>::iterator i;
 	for (i = targets.begin(); i<targets.end();) {

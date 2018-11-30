@@ -21,7 +21,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "taxonomy.h"
 #include "../util/log_stream.h"
 
-using std::set;
+using namespace std;
 
 void TaxonomyNodes::build(Serializer &out)
 {
@@ -77,7 +77,7 @@ bool TaxonomyNodes::contained(unsigned query, const set<unsigned> &filter)
 {
 	static const int max = 64;
 	if (query >= parent_.size())
-		throw std::runtime_error(string("No taxonomy node found for taxon id ") + to_string(query));
+		throw runtime_error(string("No taxonomy node found for taxon id ") + to_string(query));
 	if (cached_[query])
 		return contained_[query];
 	if (filter.find(1) != filter.end())

@@ -371,13 +371,6 @@ bool equal(const _t *ptr, unsigned n)
 	return true;
 }
 
-inline string to_string(unsigned long long val)
-{
-	char buf[32];
-	sprintf(buf, "%llu", val);
-	return string(buf);
-}
-
 inline string print_char(char c)
 {
 	char buf[16];

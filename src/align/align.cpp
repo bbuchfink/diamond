@@ -36,7 +36,7 @@ struct Align_fetcher
 	{
 		it_ = begin;
 		end_ = end;
-		queue_ = auto_ptr<Queue>(new Queue(qbegin, qend));
+		queue_ = unique_ptr<Queue>(new Queue(qbegin, qend));
 	}
 	void operator()(size_t query)
 	{
@@ -122,7 +122,7 @@ void align_queries(Trace_pt_buffer &trace_pts, Consumer* output_file, const Para
 		v->init();
 		timer.go("Computing alignments");
 		Align_fetcher::init(query_range.first, query_range.second, v->begin(), v->end());
-		OutputSink::instance = auto_ptr<OutputSink>(new OutputSink(query_range.first, output_file));
+		OutputSink::instance = unique_ptr<OutputSink>(new OutputSink(query_range.first, output_file));
 		Thread_pool threads;
 		if (config.verbosity >= 3)
 			threads.push_back(launch_thread(heartbeat_worker, query_range.second));

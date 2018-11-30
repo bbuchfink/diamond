@@ -224,11 +224,11 @@ void banded_3frame_swipe_worker(vector<DpTarget>::iterator begin,
 	const TranslatedSequence *query,
 	Strand strand)
 {
-	const size_t CHUNK_SIZE = 8;
 	DpStat stat;
 	size_t pos;
-	while (begin + (pos = next->post_add(CHUNK_SIZE)) < end) {
-		for (vector<DpTarget>::iterator i = begin + pos; i < min(begin + pos + CHUNK_SIZE, end); i += 8) {
+	while (begin + (pos = next->post_add(config.swipe_chunk_size)) < end) {
+		const auto e = min(begin + pos + config.swipe_chunk_size, end);
+		for (vector<DpTarget>::iterator i = begin + pos; i < e; i += 8) {
 			if (score_only || config.disable_traceback)
 				banded_3frame_swipe<score_vector<int16_t>, ScoreOnly>(*query, strand, i, min(i + 8, end), stat);
 			else

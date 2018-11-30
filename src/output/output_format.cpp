@@ -22,9 +22,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../data/reference.h"
 #include "../util/escape_sequences.h"
 
-using std::endl;
+using namespace std;
 
-auto_ptr<Output_format> output_format;
+unique_ptr<Output_format> output_format;
 
 void print_escaped_until(TextBuffer &buf, const char *s, const char *delimiters, const EscapeSequences *esc)
 {
@@ -115,7 +115,7 @@ Output_format* get_output_format()
 
 void init_output(bool have_taxon_id_lists, bool have_taxon_nodes)
 {
-	output_format = auto_ptr<Output_format>(get_output_format());
+	output_format = unique_ptr<Output_format>(get_output_format());
 	if (output_format->needs_taxon_id_lists && !have_taxon_id_lists)
 		throw std::runtime_error("Output format requires taxonomy mapping information built into the database (use --taxonmap parameter for the makedb command). Taxonomy features are not supported for the DAA format.");
 	if (output_format->needs_taxon_nodes && !have_taxon_nodes)

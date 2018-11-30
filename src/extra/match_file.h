@@ -21,6 +21,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <stdio.h>
 #include <vector>
+#include <string>
 #include "../util/io/text_input_file.h"
 #include "blast_record.h"
 #include "../util/util.h"
@@ -30,7 +31,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 struct file_parse_exception : public std::runtime_error
 {
 	file_parse_exception(size_t l):
-		std::runtime_error (string("File parse error line ") + to_string((unsigned)l) + "\n")
+		std::runtime_error (std::string("File parse error line ") + std::to_string((unsigned)l) + "\n")
 	{ }
 };
 

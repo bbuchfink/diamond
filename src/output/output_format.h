@@ -20,6 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define OUTPUT_FORMAT_H_
 
 #include <exception>
+#include <memory>
 #include "../basic/match.h"
 #include "../output/daa_file.h"
 #include "../output/daa_record.h"
@@ -60,7 +61,7 @@ struct Output_format
 	enum { daa, blast_tab, blast_xml, sam, blast_pairwise, null, taxon, paf };
 };
 
-extern auto_ptr<Output_format> output_format;
+extern std::unique_ptr<Output_format> output_format;
 
 struct Null_format : public Output_format
 {
