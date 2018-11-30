@@ -184,8 +184,10 @@ void QueryMapper::score_only_culling()
 
 bool QueryMapper::prepare_output(Statistics &stat, const Metadata &metadata)
 {
+	task_timer timer("Sorting targets", config.load_balancing == Config::target_parallel ? 3 : UINT_MAX);
 	std::stable_sort(targets.begin(), targets.end(), Target::compare);
 
+	timer.go("Preparing output");
 	unsigned n_hsp = 0, n_target_seq = 0, hit_hsps = 0;
 	unique_ptr<TargetCulling> target_culling(TargetCulling::get());
 	const unsigned query_len = (unsigned)query_seq(0).length();
