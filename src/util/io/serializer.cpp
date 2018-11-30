@@ -17,6 +17,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #include <algorithm>
+#include <string.h>
 #include "serializer.h"
 
 Serializer::Serializer(StreamEntity *buffer, int flags) :
