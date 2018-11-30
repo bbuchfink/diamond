@@ -135,7 +135,7 @@ void run() {
 		(*out) << blast_id(id) << '\t'
 			<< blast_id((*rep_ids)[r].c_str()) << '\t';		
 		
-		if (i == centroid2[i])
+		if ((int)i == centroid2[i])
 			(*out) << "100\t100\t100\t0" << endl;
 		else {
 			Masking::get().bit_to_hard_mask(seq.data(), seq.size(), n);
