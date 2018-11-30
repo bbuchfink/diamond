@@ -19,10 +19,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "output.h"
 #include "../data/queries.h"
 
-using std::map;
-using std::auto_ptr;
+using namespace std;
 
-auto_ptr<OutputSink> OutputSink::instance;
+unique_ptr<OutputSink> OutputSink::instance;
 
 void OutputSink::push(size_t n, TextBuffer *buf)
 {

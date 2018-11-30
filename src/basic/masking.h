@@ -16,17 +16,11 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#include <vector>
 #include <memory>
-#include <math.h>
 #include "value.h"
 #include "score_matrix.h"
 #include "../basic/sequence.h"
-#include "../lib/tantan/tantan.hh"
 #include "../data/sequence_set.h"
-
-using std::vector;
-using std::auto_ptr;
 
 struct Masking
 {
@@ -39,7 +33,7 @@ struct Masking
 	{
 		return *instance;
 	}
-	static auto_ptr<Masking> instance;
+	static std::unique_ptr<Masking> instance;
 	static const uint8_t bit_mask;
 private:
 	enum { size = 64 };

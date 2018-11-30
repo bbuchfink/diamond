@@ -133,7 +133,7 @@ void run() {
 	size_t n;
 	out->precision(3);
 
-	for (size_t i = 0; i < db->ref_header.sequences; ++i) {
+	for (int i = 0; i < (int)db->ref_header.sequences; ++i) {
 		db->read_seq(id, seq);
 		const unsigned r = rep_block_id[centroid2[i]];
 

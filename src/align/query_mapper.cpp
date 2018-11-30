@@ -16,6 +16,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
+#include <memory>
 #include "query_mapper.h"
 #include "../data/reference.h"
 #include "extend_ungapped.h"
@@ -23,6 +24,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../output/output_format.h"
 #include "../output/daa_write.h"
 #include "../output/target_culling.h"
+
+using namespace std;
 
 bool Target::envelopes(const Hsp_traits &t, double p) const
 {
@@ -184,11 +187,11 @@ bool QueryMapper::generate_output(TextBuffer &buffer, Statistics &stat, const Me
 	std::stable_sort(targets.begin(), targets.end(), Target::compare);
 
 	unsigned n_hsp = 0, n_target_seq = 0, hit_hsps = 0;
-	auto_ptr<TargetCulling> target_culling(TargetCulling::get());
+	unique_ptr<TargetCulling> target_culling(TargetCulling::get());
 	const unsigned query_len = (unsigned)query_seq(0).length();
 	size_t seek_pos = 0;
 	const char *query_title = query_ids::get()[query_id].c_str();
-	auto_ptr<Output_format> f(output_format->clone());
+	unique_ptr<Output_format> f(output_format->clone());
 
 	for (size_t i = 0; i < targets.size(); ++i) {
 		if ((config.min_bit_score == 0 && score_matrix.evalue(targets[i].filter_score, query_len) > config.max_evalue)

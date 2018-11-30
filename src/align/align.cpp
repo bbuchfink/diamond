@@ -16,6 +16,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
+#include <memory>
 #include "../basic/value.h"
 #include "align.h"
 #include "../data/reference.h"
@@ -25,7 +26,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "query_mapper.h"
 #include "../util/merge_sort.h"
 
-using std::map;
+using namespace std;
 
 DpStat dp_stat;
 
@@ -55,10 +56,10 @@ struct Align_fetcher
 	vector<hit>::iterator begin, end;
 private:	
 	static vector<hit>::iterator it_, end_;
-	static auto_ptr<Queue> queue_;
+	static unique_ptr<Queue> queue_;
 };
 
-auto_ptr<Queue> Align_fetcher::queue_;
+unique_ptr<Queue> Align_fetcher::queue_;
 vector<hit>::iterator Align_fetcher::it_;
 vector<hit>::iterator Align_fetcher::end_;
 
@@ -125,7 +126,7 @@ void align_queries(Trace_pt_buffer &trace_pts, Consumer* output_file, const Para
 		Thread_pool threads;
 		if (config.verbosity >= 3)
 			threads.push_back(launch_thread(heartbeat_worker, query_range.second));
-		size_t n_threads = (config.threads_align == 0 ? config.threads_ : config.threads_align);
+		size_t n_threads = config.load_balancing == Config::query_parallel ? (config.threads_align == 0 ? config.threads_ : config.threads_align) : 1;
 		for (size_t i = 0; i < n_threads; ++i)
 			//threads.push_back(launch_thread(static_cast<void(*)(size_t)>(&align_worker), i));
 			threads.push_back(launch_thread(align_worker, i, &params, &metadata));
