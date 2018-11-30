@@ -16,6 +16,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
+#include <memory>
 #include "../basic/value.h"
 #include "align.h"
 #include "../data/reference.h"
@@ -25,7 +26,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "query_mapper.h"
 #include "../util/merge_sort.h"
 
-using std::map;
+using namespace std;
 
 DpStat dp_stat;
 
@@ -35,7 +36,7 @@ struct Align_fetcher
 	{
 		it_ = begin;
 		end_ = end;
-		queue_ = auto_ptr<Queue>(new Queue(qbegin, qend));
+		queue_ = unique_ptr<Queue>(new Queue(qbegin, qend));
 	}
 	void operator()(size_t query)
 	{
@@ -55,10 +56,10 @@ struct Align_fetcher
 	vector<hit>::iterator begin, end;
 private:	
 	static vector<hit>::iterator it_, end_;
-	static auto_ptr<Queue> queue_;
+	static unique_ptr<Queue> queue_;
 };
 
-auto_ptr<Queue> Align_fetcher::queue_;
+unique_ptr<Queue> Align_fetcher::queue_;
 vector<hit>::iterator Align_fetcher::it_;
 vector<hit>::iterator Align_fetcher::end_;
 
@@ -87,13 +88,16 @@ void align_worker(size_t thread_id, const Parameters *params, const Metadata *me
 			mapper = new ExtensionPipeline::BandedSwipe::Pipeline(*params, hits.query, hits.begin, hits.end, dp_stat);
 		else
 			mapper = new ExtensionPipeline::Greedy::Pipeline(*params, hits.query, hits.begin, hits.end);
+		task_timer timer("Initializing mapper", config.load_balancing == Config::target_parallel ? 3 : UINT_MAX);
 		mapper->init();
+		timer.finish();
 		mapper->run(stat);
 
+		timer.go("Generating output");
 		TextBuffer *buf = 0;
 		if (*output_format != Output_format::null) {
 			buf = new TextBuffer;
-			const bool aligned = mapper->generate_output(*buf, stat, *metadata);
+			const bool aligned = config.load_balancing == Config::query_parallel ? mapper->generate_output(*buf, stat, *metadata) : mapper->prepare_output(stat, *metadata);
 			if (aligned && (!config.unaligned.empty() || !config.aligned_file.empty()))
 				query_aligned[hits.query] = true;
 		}
@@ -121,11 +125,11 @@ void align_queries(Trace_pt_buffer &trace_pts, Consumer* output_file, const Para
 		v->init();
 		timer.go("Computing alignments");
 		Align_fetcher::init(query_range.first, query_range.second, v->begin(), v->end());
-		OutputSink::instance = auto_ptr<OutputSink>(new OutputSink(query_range.first, output_file));
+		OutputSink::instance = unique_ptr<OutputSink>(new OutputSink(query_range.first, output_file));
 		Thread_pool threads;
-		if (config.verbosity >= 3)
+		if (config.verbosity >= 3 && config.load_balancing == Config::query_parallel)
 			threads.push_back(launch_thread(heartbeat_worker, query_range.second));
-		size_t n_threads = (config.threads_align == 0 ? config.threads_ : config.threads_align);
+		size_t n_threads = config.load_balancing == Config::query_parallel ? (config.threads_align == 0 ? config.threads_ : config.threads_align) : 1;
 		for (size_t i = 0; i < n_threads; ++i)
 			//threads.push_back(launch_thread(static_cast<void(*)(size_t)>(&align_worker), i));
 			threads.push_back(launch_thread(align_worker, i, &params, &metadata));

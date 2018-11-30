@@ -21,9 +21,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <stdexcept>
 #include <string>
-#include "../util.h"
-
-using std::string;
 
 struct UnsupportedOperation : public std::runtime_error
 {
@@ -34,22 +31,22 @@ struct UnsupportedOperation : public std::runtime_error
 
 struct File_open_exception : public std::runtime_error
 {
-	File_open_exception(const string &file_name) :
-		std::runtime_error(string("Error opening file " + file_name))
+	File_open_exception(const std::string &file_name) :
+		std::runtime_error(std::string("Error opening file " + file_name))
 	{ }
 };
 
 struct File_read_exception : public std::runtime_error
 {
-	File_read_exception(const string &file_name) :
-		runtime_error(string("Error reading file ") + file_name)
+	File_read_exception(const std::string &file_name) :
+		runtime_error(std::string("Error reading file ") + file_name)
 	{ }
 };
 
 struct File_write_exception : public std::runtime_error
 {
-	File_write_exception(const string &file_name) :
-		runtime_error(string("Error writing file ") + file_name)
+	File_write_exception(const std::string &file_name) :
+		runtime_error(std::string("Error writing file ") + file_name)
 	{ }
 };
 
@@ -63,7 +60,7 @@ struct EndOfStream : public std::runtime_error
 struct StreamReadException : public std::runtime_error
 {
 	StreamReadException(size_t line_count, const char *msg) :
-		runtime_error(string("Error reading input stream at line ") + to_string(line_count) + ": " + msg)
+		runtime_error(std::string("Error reading input stream at line ") + std::to_string(line_count) + ": " + msg)
 	{}
 };
 

@@ -16,6 +16,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
+#include <memory>
 #include "../util/command_line_parser.h"
 #include "config.h"
 #include "../util/util.h"
@@ -33,6 +34,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../dp/dp.h"
 #include "masking.h"
 #include "../util/system/system.h"
+
+using namespace std;
 
 Config config;
 
@@ -229,7 +232,7 @@ Config::Config(int argc, const char **argv)
 		("sw", 0, "", use_smith_waterman)
 		("superblock", 0, "", superblock, 128)
 		("max-cells", 0, "", max_cells, 10000000u)
-		("lb", 0, "", load_balancing, (unsigned)Config::query_parallel)
+		("load-balancing", 0, "", load_balancing, (unsigned)Config::query_parallel)
 		("ext", 0, "", ext, (int)Config::greedy)
 		("br", 0, "", benchmark_ranking)
 		("log-query", 0, "", log_query)
@@ -255,7 +258,8 @@ Config::Config(int argc, const char **argv)
 		("freq-treshold", 0, "", freq_treshold)
 		("filter-locus", 0, "", filter_locus)
 		("use-dataset-field", 0, "", use_dataset_field)
-		("store-query-quality", 0, "", store_query_quality);
+		("store-query-quality", 0, "", store_query_quality)
+		("swipe-chunk-size", 0, "", swipe_chunk_size, 256u);
 		
 	parser.add(general).add(makedb).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options);
 	parser.store(argc, argv, command);
@@ -385,7 +389,7 @@ Config::Config(int argc, const char **argv)
 		}
 		message_stream << "Scoring parameters: " << score_matrix << endl;
 		if (masking == 1)
-			Masking::instance = auto_ptr<Masking>(new Masking(score_matrix));
+			Masking::instance = unique_ptr<Masking>(new Masking(score_matrix));
 	}
 
 	if (command == Config::blastp || command == Config::blastx || command == Config::benchmark || command == Config::model_sim || command == Config::opt

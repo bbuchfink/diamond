@@ -19,6 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #ifndef OUTPUT_H_
 #define OUTPUT_H_
 
+#include <memory>
 #include <map>
 #include "../util/io/output_file.h"
 #include "../basic/packed_transcript.h"
@@ -140,7 +141,7 @@ struct OutputSink
 	{
 		return next_;
 	}
-	static auto_ptr<OutputSink> instance;
+	static std::unique_ptr<OutputSink> instance;
 private:
 	void flush(TextBuffer *buf);
 	tthread::mutex mtx_;

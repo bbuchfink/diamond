@@ -16,10 +16,14 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
+#include <algorithm>
 #include "../dp.h"
 #include "swipe_matrix.h"
 #include "swipe.h"
 #include "target_iterator.h"
+#include "../../util/thread.h"
+
+using namespace std;
 
 template<typename _sv> TLS_PTR vector<_sv>* Banded3FrameSwipeTracebackMatrix<_sv>::hgap_ptr;
 template<typename _sv> TLS_PTR vector<_sv>* Banded3FrameSwipeTracebackMatrix<_sv>::score_ptr;
@@ -213,10 +217,45 @@ void banded_3frame_swipe(const TranslatedSequence &query, Strand strand, vector<
 			subject_begin[i].overflow = true;
 }
 
+void banded_3frame_swipe_worker(vector<DpTarget>::iterator begin,
+	vector<DpTarget>::iterator end,
+	Atomic<size_t> *next,
+	bool score_only,
+	const TranslatedSequence *query,
+	Strand strand)
+{
+	DpStat stat;
+	size_t pos;
+	while (begin + (pos = next->post_add(config.swipe_chunk_size)) < end) {
+		const auto e = min(begin + pos + config.swipe_chunk_size, end);
+		for (vector<DpTarget>::iterator i = begin + pos; i < e; i += 8) {
+			if (score_only || config.disable_traceback)
+				banded_3frame_swipe<score_vector<int16_t>, ScoreOnly>(*query, strand, i, min(i + 8, end), stat);
+			else
+				banded_3frame_swipe<score_vector<int16_t>, Traceback>(*query, strand, i, min(i + 8, end), stat);
+		}
+	}
+}
+
 void banded_3frame_swipe(const TranslatedSequence &query, Strand strand, vector<DpTarget>::iterator target_begin, vector<DpTarget>::iterator target_end, DpStat &stat, bool score_only)
 {
 #ifdef __SSE2__
 	std::stable_sort(target_begin, target_end);
+	if (config.load_balancing == Config::target_parallel) {
+		Thread_pool threads;
+		Atomic<size_t> next(0);
+		for (size_t i = 0; i < config.threads_; ++i)
+			threads.push_back(launch_thread(banded_3frame_swipe_worker,
+				target_begin,
+				target_end,
+				&next,
+				score_only,
+				&query,
+				strand));
+		threads.join_all();
+		return;
+	}
+
 	for (vector<DpTarget>::iterator i = target_begin; i < target_end; i += 8)
 		if (score_only || config.disable_traceback)
 			banded_3frame_swipe<score_vector<int16_t>, ScoreOnly>(query, strand, i, std::min(i + 8, target_end), stat);

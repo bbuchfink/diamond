@@ -54,6 +54,13 @@ struct Atomic
 		mtx_.unlock();
 		return r;
 	}
+	_t post_add(const _t &v) {
+		mtx_.lock();
+		_t r = v_;
+		v_ += v;
+		mtx_.unlock();
+		return r;
+	}
 private:
 	volatile _t v_;
 	tthread::mutex mtx_;

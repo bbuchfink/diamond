@@ -16,6 +16,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
+#include <memory>
 #include "output.h"
 #include "../util/io/temp_file.h"
 #include "../data/queries.h"
@@ -25,6 +26,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "target_culling.h"
 #include "../data/ref_dictionary.h"
 #include "../util/log_stream.h"
+
+using namespace std;
 
 struct JoinFetcher
 {
@@ -172,7 +175,7 @@ void join_query(vector<BinaryBuffer> &buf, TextBuffer &out, Statistics &statisti
 	TranslatedSequence query_seq(get_translated_query(query));
 	BlockJoiner joiner(buf);
 	vector<IntermediateRecord> target_hsp;
-	auto_ptr<TargetCulling> culling(TargetCulling::get());
+	unique_ptr<TargetCulling> culling(TargetCulling::get());
 
 	unsigned n_target_seq = 0;
 		
@@ -233,7 +236,7 @@ void join_worker(Task_queue<TextBuffer, JoinWriter> *queue, const Parameters *pa
 			}
 		}
 
-		auto_ptr<Output_format> f(output_format->clone());
+		unique_ptr<Output_format> f(output_format->clone());
 
 		if (*f == Output_format::daa)
 			seek_pos = write_daa_query_record(*out, query_name, query_seq);

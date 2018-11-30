@@ -16,9 +16,13 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
+#include <math.h>
 #include "masking.h"
+#include "../lib/tantan/tantan.hh"
 
-auto_ptr<Masking> Masking::instance;
+using namespace std;
+
+unique_ptr<Masking> Masking::instance;
 const uint8_t Masking::bit_mask = 128;
 
 Masking::Masking(const Score_matrix &score_matrix)

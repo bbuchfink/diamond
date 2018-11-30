@@ -22,6 +22,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <set>
 #include <iostream>
 #include <sstream>
+#include <memory>
 #include "tools.h"
 #include "../basic/config.h"
 #include "../data/sequence_set.h"
@@ -142,7 +143,7 @@ void run_masker()
 
 void fastq2fasta()
 {
-	auto_ptr<TextInputFile> f(new TextInputFile(config.query_file));
+	unique_ptr<TextInputFile> f(new TextInputFile(config.query_file));
 	vector<Letter> seq;
 	vector<char> id;
 	const FASTQ_format format;

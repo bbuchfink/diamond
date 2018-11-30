@@ -45,17 +45,19 @@ struct Neighbors : public vector<vector<int>>, public Consumer {
 	{}
 	virtual void consume(const char *ptr, size_t n) override {
 		int query, subject, count;
-		float qcov, scov;
+		float qcov, scov, bitscore;
 		const char *end = ptr + n;
 		while (ptr < end) {
 			//if (sscanf(ptr, "%i\t%i\n%n", &query, &subject, &count) != 2)
-			if (sscanf(ptr, "%i\t%i\t%f\t%f\n%n", &query, &subject, &qcov, &scov, &count) != 4)
+			if (sscanf(ptr, "%i\t%i\t%f\t%f\t%f\n%n", &query, &subject, &qcov, &scov, &bitscore, &count) != 5)
 				throw runtime_error("Cluster format error.");
 			ptr += count;
 			//cout << query << '\t' << subject << '\t' << qcov << '\t' << scov << '\t' << endl;
 			(*this)[query].push_back(subject);
+			edges.push_back({ query, subject, (int)bitscore });
 		}
 	}
+	vector<Util::Algo::Edge> edges;
 };
 
 vector<bool> rep_bitset(const vector<int> &centroid, const vector<bool> *superset = nullptr) {
@@ -71,7 +73,7 @@ vector<int> cluster(DatabaseFile &db, const vector<bool> *filter) {
 	config.command = Config::blastp;
 	config.no_self_hits = true;
 	//config.output_format = { "6", "qnum", "snum" };
-	config.output_format = { "6", "qnum", "snum", "qcovhsp", "scovhsp" };
+	config.output_format = { "6", "qnum", "snum", "qcovhsp", "scovhsp", "bitscore" };
 	config.query_cover = 80;
 	config.subject_cover = 80;
 	config.algo = 0;
@@ -87,8 +89,9 @@ vector<int> cluster(DatabaseFile &db, const vector<bool> *filter) {
 	opt.db_filter = filter;
 
 	Workflow::Search::run(opt);
-
-	return greedy_vortex_cover(nb);
+	
+	return Util::Algo::greedy_vortex_cover_weighted(nb.edges, (int)db.ref_header.sequences);
+	//return greedy_vortex_cover(nb);
 }
 
 void run() {
@@ -98,12 +101,14 @@ void run() {
 	unique_ptr<DatabaseFile> db(DatabaseFile::auto_create_from_fasta());
 	const size_t seq_count = db->ref_header.sequences;
 
+	config.min_id = 70;
 	vector<int> centroid1(cluster(*db, nullptr));
 	vector<bool> rep1(rep_bitset(centroid1));
 	size_t n_rep1 = count_if(rep1.begin(), rep1.end(), [](bool x) { return x; });
 	message_stream << "Clustering step 1 complete. #Input sequences: " << centroid1.size() << " #Clusters: " << n_rep1 << endl;
 
 	config.mode_more_sensitive = true;
+	config.min_id = 0;
 	vector<int> centroid2(cluster(*db, &rep1));
 	vector<bool> rep2(rep_bitset(centroid2, &rep1));
 	for (size_t i = 0; i < centroid2.size(); ++i)
@@ -128,7 +133,7 @@ void run() {
 	size_t n;
 	out->precision(3);
 
-	for (size_t i = 0; i < db->ref_header.sequences; ++i) {
+	for (int i = 0; i < (int)db->ref_header.sequences; ++i) {
 		db->read_seq(id, seq);
 		const unsigned r = rep_block_id[centroid2[i]];
 

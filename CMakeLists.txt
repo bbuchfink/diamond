@@ -29,7 +29,7 @@ set(CMAKE_BUILD_TYPE Release)
 if(WIN32)
   add_definitions(-D_CRT_SECURE_NO_WARNINGS)
 else()
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wno-uninitialized -Wno-deprecated-declarations -Wno-ignored-attributes -Wno-unused-variable")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wno-uninitialized -Wno-ignored-attributes -Wno-unused-variable")
 endif()
 
 include_directories(
@@ -122,6 +122,7 @@ add_executable(diamond src/run/main.cpp
   src/util/system/system.cpp
   src/run/cluster.cpp
   src/util/algo/greedy_vortex_cover.cpp
+  src/util/algo/greedy_vortex_cover_weighted.cpp
 )
 
 if(EXTRA)

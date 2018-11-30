@@ -152,12 +152,14 @@ void Pipeline::run_swipe(bool score_only)
 void Pipeline::run(Statistics &stat)
 {
 	//cout << "Query=" << query_ids::get()[this->query_id].c_str() << endl;
+	task_timer timer("Ungapped stage", config.load_balancing == Config::target_parallel ? 3 : UINT_MAX);
 	Config::set_option(config.padding, 32);
 	if (n_targets() == 0)
 		return;
 	stat.inc(Statistics::TARGET_HITS0, n_targets());
 	for (size_t i = 0; i < n_targets(); ++i)
 		target(i).ungapped_stage(*this);
+	timer.go("Ranking");
 	if (!config.query_range_culling)
 		rank_targets(config.rank_ratio == -1 ? 0.4 : config.rank_ratio, config.rank_factor == -1.0 ? 1e3 : config.rank_factor);
 	else
@@ -165,16 +167,20 @@ void Pipeline::run(Statistics &stat)
 
 	if (n_targets() > config.max_alignments) {
 		stat.inc(Statistics::TARGET_HITS1, n_targets());
+		timer.go("Swipe (score only)");
 		run_swipe(true);
+		timer.go("Culling");
 		for (size_t i = 0; i < n_targets(); ++i)
 			target(i).set_filter_score();
 		score_only_culling();
 	}
 
+	timer.go("Swipe (traceback)");
 	stat.inc(Statistics::TARGET_HITS2, n_targets());
 	for (size_t i = 0; i < n_targets(); ++i)
 		target(i).reset();
 	run_swipe(false);
+	timer.go("Inner culling");
 	for (size_t i = 0; i < n_targets(); ++i)
 		target(i).finish(*this);
 }

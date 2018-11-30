@@ -299,11 +299,11 @@ void master_thread(DatabaseFile *db_file, Timer &total_timer, Metadata &metadata
 	Consumer *master_out(options.consumer ? options.consumer : new OutputFile(config.output_file, config.compression == 1));
 	if (*output_format == Output_format::daa)
 		init_daa(*static_cast<OutputFile*>(master_out));
-	auto_ptr<OutputFile> unaligned_file, aligned_file;
+	unique_ptr<OutputFile> unaligned_file, aligned_file;
 	if (!config.unaligned.empty())
-		unaligned_file = auto_ptr<OutputFile>(new OutputFile(config.unaligned));
+		unaligned_file = unique_ptr<OutputFile>(new OutputFile(config.unaligned));
 	if (!config.aligned_file.empty())
-		aligned_file = auto_ptr<OutputFile>(new OutputFile(config.aligned_file));
+		aligned_file = unique_ptr<OutputFile>(new OutputFile(config.aligned_file));
 	timer.finish();
 
 	size_t query_file_offset = 0;

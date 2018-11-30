@@ -100,7 +100,7 @@ struct Taxonomy
 	unsigned get_parent(unsigned taxid) const
 	{
 		if (taxid >= parent_.size())
-			throw std::runtime_error(string("No taxonomy node found for taxon id ") + to_string(taxid));
+			throw std::runtime_error(std::string("No taxonomy node found for taxon id ") + std::to_string(taxid));
 		return parent_[taxid];
 	}
 

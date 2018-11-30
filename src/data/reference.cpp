@@ -20,6 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <iostream>
 #include <set>
 #include <map>
+#include <memory>
 #include "../basic/config.h"
 #include "reference.h"
 #include "load_seqs.h"
@@ -39,8 +40,7 @@ unsigned current_ref_block;
 Sequence_set* ref_seqs::data_ = 0;
 bool blocked_processing;
 
-using std::cout;
-using std::endl;
+using namespace std;
 
 Serializer& operator<<(Serializer &s, const ReferenceHeader2 &h)
 {
@@ -151,7 +151,7 @@ void make_db(TempFile **tmp_out)
 	if (config.input_ref_file == "")
 		std::cerr << "Input file parameter (--in) is missing. Input will be read from stdin." << endl;
 	task_timer timer("Opening the database file", true);
-	auto_ptr<TextInputFile> db_file (new TextInputFile(config.input_ref_file));
+	unique_ptr<TextInputFile> db_file (new TextInputFile(config.input_ref_file));
 	
 	OutputFile *out = tmp_out ? new TempFile() : new OutputFile(config.database);
 	ReferenceHeader header;
