@@ -259,7 +259,7 @@ Config::Config(int argc, const char **argv)
 		("filter-locus", 0, "", filter_locus)
 		("use-dataset-field", 0, "", use_dataset_field)
 		("store-query-quality", 0, "", store_query_quality)
-		("swipe-chunk-size", 0, "", swipe_chunk_size, 64u);
+		("swipe-chunk-size", 0, "", swipe_chunk_size, 256u);
 		
 	parser.add(general).add(makedb).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options);
 	parser.store(argc, argv, command);

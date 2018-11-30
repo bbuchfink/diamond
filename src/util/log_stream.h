@@ -21,6 +21,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <iostream>
 #include <fstream>
+#include <limits.h>
 #include "Timer.h"
 #include "tinythread.h"
 
@@ -92,7 +93,7 @@ struct task_timer
 	}
 	void finish()
 	{
-		if (!msg_)
+		if (!msg_ || level_ == UINT_MAX)
 			return;
 		//if (print_ && !Cfg::debug_log)
 		get_stream() << " [" << timer_.getElapsedTimeInSec() << "s]" << endl;
@@ -123,7 +124,9 @@ private:
 	{
 		timer_.start();
 		//if (print_ && !Cfg::debug_log) {
-			get_stream() << msg << "... " << std::flush;
+		if (level_ == UINT_MAX)
+			return;
+		get_stream() << msg << "... " << std::flush;
 			//fflush(stdout);
 		/**}
 		else if (Cfg::debug_log)

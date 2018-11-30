@@ -88,9 +88,12 @@ void align_worker(size_t thread_id, const Parameters *params, const Metadata *me
 			mapper = new ExtensionPipeline::BandedSwipe::Pipeline(*params, hits.query, hits.begin, hits.end, dp_stat);
 		else
 			mapper = new ExtensionPipeline::Greedy::Pipeline(*params, hits.query, hits.begin, hits.end);
+		task_timer timer("Initializing mapper", config.load_balancing == Config::target_parallel ? 3 : UINT_MAX);
 		mapper->init();
+		timer.finish();
 		mapper->run(stat);
 
+		timer.go("Generating output");
 		TextBuffer *buf = 0;
 		if (*output_format != Output_format::null) {
 			buf = new TextBuffer;
@@ -124,7 +127,7 @@ void align_queries(Trace_pt_buffer &trace_pts, Consumer* output_file, const Para
 		Align_fetcher::init(query_range.first, query_range.second, v->begin(), v->end());
 		OutputSink::instance = unique_ptr<OutputSink>(new OutputSink(query_range.first, output_file));
 		Thread_pool threads;
-		if (config.verbosity >= 3)
+		if (config.verbosity >= 3 && config.load_balancing == Config::query_parallel)
 			threads.push_back(launch_thread(heartbeat_worker, query_range.second));
 		size_t n_threads = config.load_balancing == Config::query_parallel ? (config.threads_align == 0 ? config.threads_ : config.threads_align) : 1;
 		for (size_t i = 0; i < n_threads; ++i)
