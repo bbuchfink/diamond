@@ -119,7 +119,7 @@ unsigned QueryMapper::count_targets()
 		/*const Diagonal_segment d = config.comp_based_stats ? xdrop_ungapped(query_seq(frame), query_cb[frame], ref_seqs::get()[l.first], hits[i].seed_offset_, (int)l.second)
 			: xdrop_ungapped(query_seq(frame), ref_seqs::get()[l.first], hits[i].seed_offset_, (int)l.second);*/
 		if (config.load_balancing == Config::target_parallel) {
-			seed_hits.emplace_back(frame, (unsigned)l.first, (unsigned)l.second, hits[i].seed_offset_, Diagonal_segment());
+			seed_hits.emplace_back(frame, (unsigned)l.first, (unsigned)l.second, (unsigned)hits[i].seed_offset_, Diagonal_segment());
 			if (l.first != subject_id) {
 				subject_id = l.first;
 				++n_subject;
