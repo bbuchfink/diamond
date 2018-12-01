@@ -101,6 +101,10 @@ struct Seed_hit
 	{
 		return x.strand() < y.strand() || (x.strand() == y.strand() && (x.diagonal() < y.diagonal() || (x.diagonal() == y.diagonal() && x.ungapped.j < y.ungapped.j)));
 	}
+	static bool compare_diag_strand2(const Seed_hit &x, const Seed_hit &y)
+	{
+		return x.strand() < y.strand() || (x.strand() == y.strand() && (x.diagonal() < y.diagonal() || (x.diagonal() == y.diagonal() && x.subject_pos_ < y.subject_pos_)));
+	}
 	struct Frame
 	{
 		unsigned operator()(const Seed_hit &x) const

@@ -208,13 +208,15 @@ void banded_3frame_swipe(const TranslatedSequence &query, Strand strand, vector<
 		++i1;
 		++j;
 	}
-	for (int i = 0; i < targets.n_targets; ++i)
+	
+	for (int i = 0; i < targets.n_targets; ++i) {
 		if (best[i] < ScoreTraits<_sv>::max_score()) {
 			subject_begin[i].overflow = false;
 			traceback<_sv>(q, strand, (int)query.source().length(), dp, subject_begin[i], best[i], max_col[i], i, i0 - j, i1 - j);
 		}
 		else
 			subject_begin[i].overflow = true;
+	}
 }
 
 void banded_3frame_swipe_worker(vector<DpTarget>::iterator begin,

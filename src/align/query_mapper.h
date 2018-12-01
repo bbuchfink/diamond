@@ -56,6 +56,8 @@ struct Target
 		for (list<Hsp_traits>::iterator i = ts.begin(); i != ts.end(); ++i)
 			i->query_source_range = TranslatedPosition::absolute_interval(TranslatedPosition(i->query_range.begin_, Frame(i->frame)), TranslatedPosition(i->query_range.end_, Frame(i->frame)), (int)query_len);
 	}
+	void add_ranges(vector<unsigned> &v);
+	bool is_outranked(const vector<unsigned> &v, double treshold);
 	bool envelopes(const Hsp_traits &t, double p) const;
 	bool is_enveloped(const Target &t, double p) const;
 	bool is_enveloped(PtrVector<Target>::const_iterator begin, PtrVector<Target>::const_iterator end, double p, int min_score) const;
@@ -70,6 +72,8 @@ struct Target
 	list<Hsp> hsps;
 	list<Hsp_traits> ts;
 	Seed_hit top_hit;
+
+	enum { INTERVAL = 64 };
 };
 
 struct QueryMapper

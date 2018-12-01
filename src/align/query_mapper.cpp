@@ -17,6 +17,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #include <memory>
+#include <algorithm>
 #include "query_mapper.h"
 #include "../data/reference.h"
 #include "extend_ungapped.h"
@@ -49,6 +50,26 @@ bool Target::is_enveloped(PtrVector<Target>::const_iterator begin, PtrVector<Tar
 		if (is_enveloped(**begin, p) && (*begin)->filter_score >= min_score)
 			return true;
 	return false;
+}
+
+void Target::add_ranges(vector<unsigned> &v) {
+	for (const Hsp &hsp : hsps) {
+		const int i0 = hsp.query_source_range.begin_ / INTERVAL,
+			i1 = min(hsp.query_source_range.end_ / INTERVAL, int(v.size() - 1));
+		for (int i = i0; i <= i1; ++i)
+			v[i] = max(v[i], hsp.score);
+	}
+}
+
+bool Target::is_outranked(const vector<unsigned> &v, double treshold) {
+	for (const Hsp &hsp : hsps) {
+		const int i0 = hsp.query_source_range.begin_ / INTERVAL,
+			i1 = min(hsp.query_source_range.end_ / INTERVAL, int(v.size() - 1));
+		for (int i = i0; i <= i1; ++i)
+			if (hsp.score >= unsigned(v[i] * treshold))
+				return false;
+	}
+	return true;
 }
 
 int QueryMapper::raw_score_cutoff() const
@@ -97,17 +118,26 @@ unsigned QueryMapper::count_targets()
 		const unsigned frame = hits[i].query_ % align_mode.query_contexts;
 		/*const Diagonal_segment d = config.comp_based_stats ? xdrop_ungapped(query_seq(frame), query_cb[frame], ref_seqs::get()[l.first], hits[i].seed_offset_, (int)l.second)
 			: xdrop_ungapped(query_seq(frame), ref_seqs::get()[l.first], hits[i].seed_offset_, (int)l.second);*/
-		const Diagonal_segment d = xdrop_ungapped(query_seq(frame), ref_seqs::get()[l.first], hits[i].seed_offset_, (int)l.second);
-		if (d.score >= config.min_ungapped_raw_score) {
+		if (config.load_balancing == Config::target_parallel) {
+			seed_hits.emplace_back(frame, (unsigned)l.first, (unsigned)l.second, hits[i].seed_offset_, Diagonal_segment());
 			if (l.first != subject_id) {
 				subject_id = l.first;
 				++n_subject;
 			}
-			seed_hits.push_back(Seed_hit(frame,
-				(unsigned)l.first,
-				(unsigned)l.second,
-				hits[i].seed_offset_,
-				d));
+		}
+		else {
+			const Diagonal_segment d = xdrop_ungapped(query_seq(frame), ref_seqs::get()[l.first], hits[i].seed_offset_, (int)l.second);
+			if (d.score >= config.min_ungapped_raw_score) {
+				if (l.first != subject_id) {
+					subject_id = l.first;
+					++n_subject;
+				}
+				seed_hits.push_back(Seed_hit(frame,
+					(unsigned)l.first,
+					(unsigned)l.second,
+					hits[i].seed_offset_,
+					d));
+			}
 		}
 	}
 	return n_subject;
@@ -250,6 +280,7 @@ bool QueryMapper::generate_output(TextBuffer &buffer, Statistics &stat, const Me
 	unique_ptr<Output_format> f(output_format->clone());
 
 	for (size_t i = 0; i < targets.size(); ++i) {
+
 		if ((config.min_bit_score == 0 && score_matrix.evalue(targets[i].filter_score, query_len) > config.max_evalue)
 			|| score_matrix.bitscore(targets[i].filter_score) < config.min_bit_score)
 			break;
