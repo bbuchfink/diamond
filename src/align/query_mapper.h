@@ -78,9 +78,8 @@ struct Target
 
 struct QueryMapper
 {
-	QueryMapper(const Parameters &params, size_t query_id, Trace_pt_list::iterator begin, Trace_pt_list::iterator end);
+	QueryMapper(const Parameters &params, size_t query_id, Trace_pt_list::iterator begin, Trace_pt_list::iterator end, bool target_parallel = false);
 	void init();
-	bool prepare_output(Statistics &stat, const Metadata &metadata);
 	bool generate_output(TextBuffer &buffer, Statistics &stat, const Metadata &metadata);
 	void rank_targets(double ratio, double factor);
 	void score_only_culling();
@@ -114,6 +113,7 @@ struct QueryMapper
 	vector<Bias_correction> query_cb;
 	vector<Long_score_profile> profile;
 	TranslatedSequence translated_query;
+	bool target_parallel;
 
 private:
 

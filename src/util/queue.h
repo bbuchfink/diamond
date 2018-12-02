@@ -24,18 +24,21 @@ struct Queue
 	enum { end = size_t(-1) };
 	Queue(size_t begin, size_t end) :
 		next_(begin),
+		block_(false),
 		end_(end)
 	{}
 	template<typename _f>
 	size_t get(_f &f)
 	{
 		mtx_.lock();
+		while (block_)
+			cond_.wait(mtx_);
 		const size_t q = next_++;
 		if (q >= end_) {
 			mtx_.unlock();
 			return Queue::end;
 		}
-		f(q);
+		block_ = f(q);
 		mtx_.unlock();
 		return q;
 	}
@@ -47,8 +50,14 @@ struct Queue
 	{
 		return end_;
 	}
+	void release() {
+		block_ = false;
+		cond_.notify_all();
+	}
 private:
 	tthread::mutex mtx_;
-	size_t next_;
+	tthread::condition_variable cond_;
+	volatile size_t next_;
+	volatile bool block_;
 	const size_t end_;
 };

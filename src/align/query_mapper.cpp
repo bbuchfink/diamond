@@ -77,14 +77,15 @@ int QueryMapper::raw_score_cutoff() const
 	return score_matrix.rawscore(config.min_bit_score == 0 ? score_matrix.bitscore(config.max_evalue, (unsigned)query_seq(0).length()) : config.min_bit_score);
 }
 
-QueryMapper::QueryMapper(const Parameters &params, size_t query_id, Trace_pt_list::iterator begin, Trace_pt_list::iterator end) :
+QueryMapper::QueryMapper(const Parameters &params, size_t query_id, Trace_pt_list::iterator begin, Trace_pt_list::iterator end, bool target_parallel) :
 	parameters(params),
 	source_hits(std::make_pair(begin, end)),
 	query_id((unsigned)query_id),
 	targets_finished(0),
 	next_target(0),
 	source_query_len(get_source_query_len((unsigned)query_id)),
-	translated_query(get_translated_query(query_id))
+	translated_query(get_translated_query(query_id)),
+	target_parallel(target_parallel)
 {
 	seed_hits.reserve(source_hits.second - source_hits.first);
 }
@@ -118,7 +119,7 @@ unsigned QueryMapper::count_targets()
 		const unsigned frame = hits[i].query_ % align_mode.query_contexts;
 		/*const Diagonal_segment d = config.comp_based_stats ? xdrop_ungapped(query_seq(frame), query_cb[frame], ref_seqs::get()[l.first], hits[i].seed_offset_, (int)l.second)
 			: xdrop_ungapped(query_seq(frame), ref_seqs::get()[l.first], hits[i].seed_offset_, (int)l.second);*/
-		if (config.load_balancing == Config::target_parallel) {
+		if (target_parallel) {
 			seed_hits.emplace_back(frame, (unsigned)l.first, (unsigned)l.second, (unsigned)hits[i].seed_offset_, Diagonal_segment());
 			if (l.first != subject_id) {
 				subject_id = l.first;
@@ -206,62 +207,6 @@ void QueryMapper::score_only_culling()
 		}
 	}
 	targets.erase(i, targets.end());
-}
-
-bool QueryMapper::prepare_output(Statistics &stat, const Metadata &metadata)
-{
-	task_timer timer("Sorting targets", config.load_balancing == Config::target_parallel ? 3 : UINT_MAX);
-	std::stable_sort(targets.begin(), targets.end(), Target::compare);
-
-	timer.go("Preparing output");
-	unsigned n_hsp = 0, n_target_seq = 0, hit_hsps = 0;
-	unique_ptr<TargetCulling> target_culling(TargetCulling::get());
-	const unsigned query_len = (unsigned)query_seq(0).length();
-	size_t seek_pos = 0;
-	const char *query_title = query_ids::get()[query_id].c_str();
-	unique_ptr<Output_format> f(output_format->clone());
-
-	for (size_t i = 0; i < targets.size(); ++i) {
-		if ((config.min_bit_score == 0 && score_matrix.evalue(targets[i].filter_score, query_len) > config.max_evalue)
-			|| score_matrix.bitscore(targets[i].filter_score) < config.min_bit_score)
-			break;
-
-		const size_t subject_id = targets[i].subject_id;
-		const unsigned subject_len = (unsigned)ref_seqs::get()[subject_id].length();
-		const char *ref_title = ref_ids::get()[subject_id].c_str();
-		targets[i].apply_filters(source_query_len, subject_len, query_title, ref_title);
-		if (targets[i].hsps.size() == 0)
-			continue;
-
-		const int c = target_culling->cull(targets[i]);
-		if (c == TargetCulling::NEXT)
-			continue;
-		else if (c == TargetCulling::FINISHED)
-			break;
-
-		if (targets[i].outranked)
-			stat.inc(Statistics::OUTRANKED_HITS);
-		target_culling->add(targets[i]);
-
-		hit_hsps = 0;
-		for (list<Hsp>::iterator j = targets[i].hsps.begin(); j != targets[i].hsps.end(); ++j) {
-			if (config.max_hsps > 0 && hit_hsps >= config.max_hsps)
-				break;
-
-			++n_hsp;
-			++hit_hsps;
-		}
-		++n_target_seq;
-	}
-
-	if (!blocked_processing) {
-		stat.inc(Statistics::MATCHES, n_hsp);
-		stat.inc(Statistics::PAIRWISE, n_target_seq);
-		if (n_hsp > 0)
-			stat.inc(Statistics::ALIGNED);
-	}
-
-	return n_hsp > 0;
 }
 
 bool QueryMapper::generate_output(TextBuffer &buffer, Statistics &stat, const Metadata &metadata)

@@ -38,7 +38,7 @@ struct Align_fetcher
 		end_ = end;
 		queue_ = unique_ptr<Queue>(new Queue(qbegin, qend));
 	}
-	void operator()(size_t query)
+	bool operator()(size_t query)
 	{
 		const unsigned q = (unsigned)query,
 			c = align_mode.query_contexts;
@@ -47,10 +47,15 @@ struct Align_fetcher
 			++it_;
 		end = it_;
 		this->query = query;
+		return end - begin > config.query_parallel_limit;
 	}
 	bool get()
 	{
 		return queue_->get(*this) != Queue::end;
+	}
+	void release() {
+		if (end - begin > config.query_parallel_limit)
+			queue_->release();
 	}
 	size_t query;
 	vector<hit>::iterator begin, end;
@@ -81,14 +86,15 @@ void align_worker(size_t thread_id, const Parameters *params, const Metadata *me
 			continue;
 		}
 
+		const bool target_parallel = hits.end - hits.begin > config.query_parallel_limit;
 		QueryMapper *mapper;
 		if (config.ext == Config::swipe)
 			mapper = new ExtensionPipeline::Swipe::Pipeline(*params, hits.query, hits.begin, hits.end);
 		else if (config.frame_shift != 0)
-			mapper = new ExtensionPipeline::BandedSwipe::Pipeline(*params, hits.query, hits.begin, hits.end, dp_stat);
+			mapper = new ExtensionPipeline::BandedSwipe::Pipeline(*params, hits.query, hits.begin, hits.end, dp_stat, target_parallel);
 		else
 			mapper = new ExtensionPipeline::Greedy::Pipeline(*params, hits.query, hits.begin, hits.end);
-		task_timer timer("Initializing mapper", config.load_balancing == Config::target_parallel ? 3 : UINT_MAX);
+		task_timer timer("Initializing mapper", target_parallel ? 3 : UINT_MAX);
 		mapper->init();
 		timer.finish();
 		mapper->run(stat);
@@ -97,13 +103,13 @@ void align_worker(size_t thread_id, const Parameters *params, const Metadata *me
 		TextBuffer *buf = 0;
 		if (*output_format != Output_format::null) {
 			buf = new TextBuffer;
-			//const bool aligned = config.load_balancing == Config::query_parallel ? mapper->generate_output(*buf, stat, *metadata) : mapper->prepare_output(stat, *metadata);
 			const bool aligned = mapper->generate_output(*buf, stat, *metadata);
 			if (aligned && (!config.unaligned.empty() || !config.aligned_file.empty()))
 				query_aligned[hits.query] = true;
 		}
 		delete mapper;
 		OutputSink::get().push(hits.query, buf);
+		hits.release();
 	}
 	statistics += stat;
 	::dp_stat += dp_stat;

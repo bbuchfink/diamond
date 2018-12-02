@@ -51,16 +51,17 @@ struct Banded3FrameSwipeMatrixRef<_sv, ScoreOnly>
 };
 
 template<typename _sv>
-void traceback(sequence *query, Strand strand, int dna_len, const Banded3FrameSwipeTracebackMatrix<_sv> &dp, DpTarget &target, typename ScoreTraits<_sv>::Score max_score, int max_col, int channel, int i0, int i1)
+void traceback(sequence *query, Strand strand, int dna_len, const Banded3FrameSwipeTracebackMatrix<_sv> &dp, DpTarget &target, typename ScoreTraits<_sv>::Score max_score, int max_col, int channel, int i0, int i1, bool parallel)
 {
 	typedef typename ScoreTraits<_sv>::Score Score;
 	const int j0 = i1 - (target.d_end - 1), d1 = target.d_end, d0 = target.d_begin;
 	typename Banded3FrameSwipeTracebackMatrix<_sv>::TracebackIterator it(dp.traceback(max_col + 1, i0 + max_col, j0 + max_col, dna_len, channel, max_score));
-	if (config.load_balancing == Config::query_parallel)
-		target.out->emplace_back();
-	else
+	if (parallel)
 		target.tmp = new Hsp();
-	Hsp &out = config.load_balancing == Config::query_parallel ? target.out->back() : *target.tmp;
+	else
+		target.out->emplace_back();
+		
+	Hsp &out = parallel ? *target.tmp : target.out->back();
 	out.score = target.score = ScoreTraits<_sv>::int_score(max_score);
 	out.transcript.reserve(size_t(out.score * config.transcript_len_estimate));
 
@@ -95,13 +96,13 @@ void traceback(sequence *query, Strand strand, int dna_len, const Banded3FrameSw
 }
 
 template<typename _sv>
-void traceback(sequence *query, Strand strand, int dna_len, const Banded3FrameSwipeMatrix<_sv> &dp, DpTarget &target, typename ScoreTraits<_sv>::Score max_score, int max_col, int channel, int i0, int i1)
+void traceback(sequence *query, Strand strand, int dna_len, const Banded3FrameSwipeMatrix<_sv> &dp, DpTarget &target, typename ScoreTraits<_sv>::Score max_score, int max_col, int channel, int i0, int i1, bool parallel)
 {
-	if (config.load_balancing == Config::query_parallel)
-		target.out->emplace_back();
-	else
+	if (parallel)
 		target.tmp = new Hsp();
-	Hsp &out = config.load_balancing == Config::query_parallel ? target.out->back() : *target.tmp;
+	else
+		target.out->emplace_back();
+	Hsp &out = parallel ? *target.tmp : target.out->back();
 	
 	const int j0 = i1 - (target.d_end - 1);
 	out.score = target.score = ScoreTraits<_sv>::int_score(max_score);
@@ -112,7 +113,7 @@ void traceback(sequence *query, Strand strand, int dna_len, const Banded3FrameSw
 }
 
 template<typename _sv, typename _traceback>
-void banded_3frame_swipe(const TranslatedSequence &query, Strand strand, vector<DpTarget>::iterator subject_begin, vector<DpTarget>::iterator subject_end, DpStat &stat)
+void banded_3frame_swipe(const TranslatedSequence &query, Strand strand, vector<DpTarget>::iterator subject_begin, vector<DpTarget>::iterator subject_end, DpStat &stat, bool parallel)
 {
 	typedef typename Banded3FrameSwipeMatrixRef<_sv, _traceback>::type Matrix;
 	typedef typename ScoreTraits<_sv>::Score Score;
@@ -219,7 +220,7 @@ void banded_3frame_swipe(const TranslatedSequence &query, Strand strand, vector<
 	for (int i = 0; i < targets.n_targets; ++i) {
 		if (best[i] < ScoreTraits<_sv>::max_score()) {
 			subject_begin[i].overflow = false;
-			traceback<_sv>(q, strand, (int)query.source().length(), dp, subject_begin[i], best[i], max_col[i], i, i0 - j, i1 - j);
+			traceback<_sv>(q, strand, (int)query.source().length(), dp, subject_begin[i], best[i], max_col[i], i, i0 - j, i1 - j, parallel);
 		}
 		else
 			subject_begin[i].overflow = true;
@@ -239,19 +240,19 @@ void banded_3frame_swipe_worker(vector<DpTarget>::iterator begin,
 		const auto e = min(begin + pos + config.swipe_chunk_size, end);
 		for (vector<DpTarget>::iterator i = begin + pos; i < e; i += 8) {
 			if (score_only || config.disable_traceback)
-				banded_3frame_swipe<score_vector<int16_t>, ScoreOnly>(*query, strand, i, min(i + 8, end), stat);
+				banded_3frame_swipe<score_vector<int16_t>, ScoreOnly>(*query, strand, i, min(i + 8, end), stat, true);
 			else
-				banded_3frame_swipe<score_vector<int16_t>, Traceback>(*query, strand, i, min(i + 8, end), stat);
+				banded_3frame_swipe<score_vector<int16_t>, Traceback>(*query, strand, i, min(i + 8, end), stat, true);
 		}
 	}
 }
 
-void banded_3frame_swipe(const TranslatedSequence &query, Strand strand, vector<DpTarget>::iterator target_begin, vector<DpTarget>::iterator target_end, DpStat &stat, bool score_only)
+void banded_3frame_swipe(const TranslatedSequence &query, Strand strand, vector<DpTarget>::iterator target_begin, vector<DpTarget>::iterator target_end, DpStat &stat, bool score_only, bool parallel)
 {
 #ifdef __SSE2__
-	task_timer timer("Banded 3frame swipe (sort)", config.load_balancing == Config::target_parallel ? 3 : UINT_MAX);
+	task_timer timer("Banded 3frame swipe (sort)", parallel ? 3 : UINT_MAX);
 	std::stable_sort(target_begin, target_end);
-	if (config.load_balancing == Config::target_parallel) {
+	if (parallel) {
 		timer.go("Banded 3frame swipe (run)");
 		Thread_pool threads;
 		Atomic<size_t> next(0);
@@ -274,21 +275,21 @@ void banded_3frame_swipe(const TranslatedSequence &query, Strand strand, vector<
 
 	for (vector<DpTarget>::iterator i = target_begin; i < target_end; i += 8)
 		if (score_only || config.disable_traceback)
-			banded_3frame_swipe<score_vector<int16_t>, ScoreOnly>(query, strand, i, std::min(i + 8, target_end), stat);
+			banded_3frame_swipe<score_vector<int16_t>, ScoreOnly>(query, strand, i, std::min(i + 8, target_end), stat, false);
 		else
-			banded_3frame_swipe<score_vector<int16_t>, Traceback>(query, strand, i, std::min(i + 8, target_end), stat);
+			banded_3frame_swipe<score_vector<int16_t>, Traceback>(query, strand, i, std::min(i + 8, target_end), stat, false);
 	for (vector<DpTarget>::iterator i = target_begin; i < target_end; ++i)
 		if (i->overflow) {
 			if (score_only || config.disable_traceback)
-				banded_3frame_swipe<int32_t, ScoreOnly>(query, strand, i, i + 1, stat);
+				banded_3frame_swipe<int32_t, ScoreOnly>(query, strand, i, i + 1, stat, false);
 			else
-				banded_3frame_swipe<int32_t, Traceback>(query, strand, i, i + 1, stat);
+				banded_3frame_swipe<int32_t, Traceback>(query, strand, i, i + 1, stat, false);
 		}
 #else
 	for (vector<DpTarget>::iterator i = target_begin; i < target_end; ++i)
 		if (score_only || config.disable_traceback)
-			banded_3frame_swipe<int32_t, ScoreOnly>(query, strand, i, i + 1, stat);
+			banded_3frame_swipe<int32_t, ScoreOnly>(query, strand, i, i + 1, stat, false);
 		else
-			banded_3frame_swipe<int32_t, Traceback>(query, strand, i, i + 1, stat);
+			banded_3frame_swipe<int32_t, Traceback>(query, strand, i, i + 1, stat, false);
 #endif
 }

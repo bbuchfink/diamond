@@ -93,8 +93,8 @@ namespace ExtensionPipeline {
 		struct Target;
 		struct Pipeline : public QueryMapper
 		{
-			Pipeline(const Parameters &params, size_t query_id, Trace_pt_list::iterator begin, Trace_pt_list::iterator end, DpStat &dp_stat) :
-				QueryMapper(params, query_id, begin, end),
+			Pipeline(const Parameters &params, size_t query_id, Trace_pt_list::iterator begin, Trace_pt_list::iterator end, DpStat &dp_stat, bool target_parallel) :
+				QueryMapper(params, query_id, begin, end, target_parallel),
 				dp_stat(dp_stat)
 			{}
 			Target& target(size_t i);

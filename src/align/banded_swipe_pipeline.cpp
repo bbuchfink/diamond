@@ -70,15 +70,15 @@ struct Target : public ::Target
 	{
 		vector<Seed_hit>::iterator hits = mapper.seed_hits.begin() + begin, hits_end = mapper.seed_hits.begin() + end;
 		Strand strand = top_hit.strand();
-		if(config.load_balancing==Config::query_parallel)
+		if(mapper.target_parallel)
 			std::stable_sort(hits, hits_end, Seed_hit::compare_diag_strand);
 		else
 			std::stable_sort(hits, hits_end, Seed_hit::compare_diag_strand2);
 
 		const auto it = find_if(hits, hits_end, [](const Seed_hit &x) { return x.strand() == REVERSE; });
-		if(strand == FORWARD || config.load_balancing == Config::target_parallel)
+		if(strand == FORWARD || mapper.target_parallel)
 			add_strand(mapper, vf, hits, it);
-		if (strand == REVERSE || config.load_balancing == Config::target_parallel)
+		if (strand == REVERSE || mapper.target_parallel)
 			add_strand(mapper, vr, it, hits_end);
 
 		//const int d = hits[0].diagonal();
@@ -149,8 +149,8 @@ void Pipeline::run_swipe(bool score_only)
 	vector<DpTarget> vf, vr;
 	for (size_t i = 0; i < n_targets(); ++i)
 		target(i).add(*this, vf, vr);
-	banded_3frame_swipe(translated_query, FORWARD, vf.begin(), vf.end(), this->dp_stat, score_only);
-	banded_3frame_swipe(translated_query, REVERSE, vr.begin(), vr.end(), this->dp_stat, score_only);
+	banded_3frame_swipe(translated_query, FORWARD, vf.begin(), vf.end(), this->dp_stat, score_only, target_parallel);
+	banded_3frame_swipe(translated_query, REVERSE, vr.begin(), vr.end(), this->dp_stat, score_only, target_parallel);
 }
 
 void build_ranking_worker(PtrVector<::Target>::iterator begin, PtrVector<::Target>::iterator end, Atomic<size_t> *next, vector<unsigned> *intervals) {
@@ -166,13 +166,13 @@ void build_ranking_worker(PtrVector<::Target>::iterator begin, PtrVector<::Targe
 void Pipeline::run(Statistics &stat)
 {
 	//cout << "Query=" << query_ids::get()[this->query_id].c_str() << endl;
-	task_timer timer("Init banded swipe pipeline", config.load_balancing == Config::target_parallel ? 3 : UINT_MAX);
+	task_timer timer("Init banded swipe pipeline", target_parallel ? 3 : UINT_MAX);
 	Config::set_option(config.padding, 32);
 	if (n_targets() == 0)
 		return;
 	stat.inc(Statistics::TARGET_HITS0, n_targets());
 
-	if (config.load_balancing == Config::query_parallel) {
+	if (!target_parallel) {
 		timer.go("Ungapped stage");
 		for (size_t i = 0; i < n_targets(); ++i)
 			target(i).ungapped_stage(*this);
@@ -192,7 +192,7 @@ void Pipeline::run(Statistics &stat)
 		timer.go("Swipe (score only)");
 		run_swipe(true);
 
-		if (config.load_balancing == Config::target_parallel) {
+		if (target_parallel) {
 			timer.go("Building score ranking intervals");
 			vector<vector<unsigned>> intervals(config.threads_);
 			const size_t interval_count = (source_query_len + ::Target::INTERVAL - 1) / ::Target::INTERVAL;
