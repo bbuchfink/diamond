@@ -132,11 +132,7 @@ unsigned QueryMapper::count_targets()
 					subject_id = l.first;
 					++n_subject;
 				}
-				seed_hits.emplace_back(frame,
-					(unsigned)l.first,
-					(unsigned)l.second,
-					hits[i].seed_offset_,
-					d);
+				seed_hits.emplace_back(frame, (unsigned)l.first, (unsigned)l.second, (unsigned)hits[i].seed_offset_, d);
 			}
 		}
 	}
