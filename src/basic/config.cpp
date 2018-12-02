@@ -148,6 +148,7 @@ Config::Config(int argc, const char **argv)
 		("gapopen", 0, "gap open penalty", gap_open, -1)
 		("gapextend", 0, "gap extension penalty", gap_extend, -1)
 		("frameshift", 'F', "frame shift penalty (default=disabled)", frame_shift)
+		("long-reads", 0, "short for --range-culling --top 10 -F 15", long_reads)
 		("matrix", 0, "score matrix for protein alignment (default=BLOSUM62)", matrix, string("blosum62"))
 		("custom-matrix", 0, "file containing custom scoring matrix", matrix_file)
 		("lambda", 0, "lambda parameter for custom matrix", lambda)
@@ -260,10 +261,18 @@ Config::Config(int argc, const char **argv)
 		("use-dataset-field", 0, "", use_dataset_field)
 		("store-query-quality", 0, "", store_query_quality)
 		("swipe-chunk-size", 0, "", swipe_chunk_size, 256u)
-		("query-parallel-limit", 0, "", query_parallel_limit, 3000000u);
+		("query-parallel-limit", 0, "", query_parallel_limit, 1000000u);
 		
 	parser.add(general).add(makedb).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options);
 	parser.store(argc, argv, command);
+
+	if (long_reads) {
+		query_range_culling = true;
+		if (toppercent == 100.0)
+			toppercent = 10.0;
+		if (frame_shift == 0)
+			frame_shift = 15;
+	}
 
 	switch (command) {
 	case Config::makedb:

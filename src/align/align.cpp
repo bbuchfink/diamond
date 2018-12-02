@@ -47,18 +47,20 @@ struct Align_fetcher
 			++it_;
 		end = it_;
 		this->query = query;
-		return end - begin > config.query_parallel_limit;
+		target_parallel = (end - begin > config.query_parallel_limit) && config.frame_shift != 0 && align_mode.mode == Align_mode::blastx && config.toppercent < 100 && config.query_range_culling;
+		return target_parallel;
 	}
 	bool get()
 	{
 		return queue_->get(*this) != Queue::end;
 	}
 	void release() {
-		if (end - begin > config.query_parallel_limit)
+		if (target_parallel)
 			queue_->release();
 	}
 	size_t query;
 	vector<hit>::iterator begin, end;
+	bool target_parallel;
 private:	
 	static vector<hit>::iterator it_, end_;
 	static unique_ptr<Queue> queue_;
@@ -86,15 +88,14 @@ void align_worker(size_t thread_id, const Parameters *params, const Metadata *me
 			continue;
 		}
 
-		const bool target_parallel = hits.end - hits.begin > config.query_parallel_limit;
 		QueryMapper *mapper;
 		if (config.ext == Config::swipe)
 			mapper = new ExtensionPipeline::Swipe::Pipeline(*params, hits.query, hits.begin, hits.end);
 		else if (config.frame_shift != 0)
-			mapper = new ExtensionPipeline::BandedSwipe::Pipeline(*params, hits.query, hits.begin, hits.end, dp_stat, target_parallel);
+			mapper = new ExtensionPipeline::BandedSwipe::Pipeline(*params, hits.query, hits.begin, hits.end, dp_stat, hits.target_parallel);
 		else
 			mapper = new ExtensionPipeline::Greedy::Pipeline(*params, hits.query, hits.begin, hits.end);
-		task_timer timer("Initializing mapper", target_parallel ? 3 : UINT_MAX);
+		task_timer timer("Initializing mapper", hits.target_parallel ? 3 : UINT_MAX);
 		mapper->init();
 		timer.finish();
 		mapper->run(stat);

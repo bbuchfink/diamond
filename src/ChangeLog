@@ -6,6 +6,8 @@
 - Added option to use the DAA output format for diamond view.
 - Added support for using a FASTA file as the --db parameter in alignment workflows.
 - Added CL (command line) and VN (version) fields to the @PG SAM format header line.
+- Fixed a performance issue for very long query sequences.
+- Added shortcut --long-reads for --range-culling --top 10 -F 15.
 
 [0.9.22]
 - Added output field full_sseq to tabular output format.
