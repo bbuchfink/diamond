@@ -56,8 +56,11 @@ void traceback(sequence *query, Strand strand, int dna_len, const Banded3FrameSw
 	typedef typename ScoreTraits<_sv>::Score Score;
 	const int j0 = i1 - (target.d_end - 1), d1 = target.d_end, d0 = target.d_begin;
 	typename Banded3FrameSwipeTracebackMatrix<_sv>::TracebackIterator it(dp.traceback(max_col + 1, i0 + max_col, j0 + max_col, dna_len, channel, max_score));
-	target.out->push_back(Hsp());
-	Hsp &out = target.out->back();
+	if (config.load_balancing == Config::query_parallel)
+		target.out->emplace_back();
+	else
+		target.tmp = new Hsp();
+	Hsp &out = config.load_balancing == Config::query_parallel ? target.out->back() : *target.tmp;
 	out.score = target.score = ScoreTraits<_sv>::int_score(max_score);
 	out.transcript.reserve(size_t(out.score * config.transcript_len_estimate));
 
@@ -94,8 +97,12 @@ void traceback(sequence *query, Strand strand, int dna_len, const Banded3FrameSw
 template<typename _sv>
 void traceback(sequence *query, Strand strand, int dna_len, const Banded3FrameSwipeMatrix<_sv> &dp, DpTarget &target, typename ScoreTraits<_sv>::Score max_score, int max_col, int channel, int i0, int i1)
 {
-	target.out->push_back(Hsp());
-	Hsp &out = target.out->back();
+	if (config.load_balancing == Config::query_parallel)
+		target.out->emplace_back();
+	else
+		target.tmp = new Hsp();
+	Hsp &out = config.load_balancing == Config::query_parallel ? target.out->back() : *target.tmp;
+	
 	const int j0 = i1 - (target.d_end - 1);
 	out.score = target.score = ScoreTraits<_sv>::int_score(max_score);
 	out.query_range.end_ = std::min(i0 + max_col + (int)dp.band() / 3 / 2, (int)query[0].length());
@@ -242,8 +249,10 @@ void banded_3frame_swipe_worker(vector<DpTarget>::iterator begin,
 void banded_3frame_swipe(const TranslatedSequence &query, Strand strand, vector<DpTarget>::iterator target_begin, vector<DpTarget>::iterator target_end, DpStat &stat, bool score_only)
 {
 #ifdef __SSE2__
+	task_timer timer("Banded 3frame swipe (sort)", config.load_balancing == Config::target_parallel ? 3 : UINT_MAX);
 	std::stable_sort(target_begin, target_end);
 	if (config.load_balancing == Config::target_parallel) {
+		timer.go("Banded 3frame swipe (run)");
 		Thread_pool threads;
 		Atomic<size_t> next(0);
 		for (size_t i = 0; i < config.threads_; ++i)
@@ -255,6 +264,11 @@ void banded_3frame_swipe(const TranslatedSequence &query, Strand strand, vector<
 				&query,
 				strand));
 		threads.join_all();
+		timer.go("Banded 3frame swipe (merge)");
+		for (auto i = target_begin; i < target_end; ++i) {
+			i->out->push_back(*i->tmp);
+			delete i->tmp;
+		}
 		return;
 	}
 

@@ -95,10 +95,10 @@ void QueryMapper::init()
 		cout << "Query = " << query_ids::get()[query_id].c_str() << endl;
 	if (config.comp_based_stats == 1)
 		for (unsigned i = 0; i < align_mode.query_contexts; ++i)
-			query_cb.push_back(Bias_correction(query_seq(i)));
+			query_cb.emplace_back(query_seq(i));
 	if (config.ext == Config::greedy || config.ext == Config::more_greedy)
 		for (unsigned i = 0; i < align_mode.query_contexts; ++i)
-			profile.push_back(Long_score_profile(query_seq(i)));
+			profile.emplace_back(query_seq(i));
 			//profile.push_back(Long_score_profile());
 	targets.resize(count_targets());
 	if (targets.empty())
@@ -132,11 +132,11 @@ unsigned QueryMapper::count_targets()
 					subject_id = l.first;
 					++n_subject;
 				}
-				seed_hits.push_back(Seed_hit(frame,
+				seed_hits.emplace_back(frame,
 					(unsigned)l.first,
 					(unsigned)l.second,
 					hits[i].seed_offset_,
-					d));
+					d);
 			}
 		}
 	}

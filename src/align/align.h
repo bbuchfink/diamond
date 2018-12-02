@@ -29,7 +29,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../data/metadata.h"
 
 using std::vector;
-using std::auto_ptr;
 
 struct Output_writer
 {

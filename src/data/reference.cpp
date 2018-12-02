@@ -132,7 +132,7 @@ void DatabaseFile::rewind()
 
 void push_seq(const sequence &seq, const sequence &id, uint64_t &offset, vector<Pos_record> &pos_array, OutputFile &out, size_t &letters, size_t &n_seqs)
 {	
-	pos_array.push_back(Pos_record(offset, seq.length()));
+	pos_array.emplace_back(offset, seq.length());
 	out.write("\xff", 1);
 	out.write(seq.data(), seq.length());
 	out.write("\xff", 1);
@@ -207,7 +207,7 @@ void make_db(TempFile **tmp_out)
 	
 	timer.go("Writing trailer");
 	header.pos_array_offset = offset;
-	pos_array.push_back(Pos_record(offset, 0));
+	pos_array.emplace_back(offset, 0);
 	out->write_raw(pos_array);
 	timer.finish();
 

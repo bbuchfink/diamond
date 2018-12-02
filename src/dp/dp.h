@@ -528,6 +528,7 @@ struct DpTarget
 	int d_begin, d_end, score, subject_id;
 	bool overflow;
 	list<Hsp> *out;
+	Hsp *tmp;
 };
 
 struct DpStat

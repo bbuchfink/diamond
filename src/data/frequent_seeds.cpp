@@ -17,9 +17,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #include <numeric>
+#include <utility>
 #include "frequent_seeds.h"
 #include "sorted_list.h"
 #include "queries.h"
+
+using namespace std;
 
 // #define MASK_FREQUENT
 
@@ -93,7 +96,7 @@ struct Frequent_seeds::Build_context
 		for (vector<uint32_t>::const_iterator i = buf.begin(); i != buf.end(); ++i)
 			hash_set.insert(*i);
 
-		frequent_seeds.tables_[sid][seedp] = hash_set;
+		frequent_seeds.tables_[sid][seedp] = move(hash_set);
 		counts[seedp] = (unsigned)n;
 	}
 	const sorted_list &ref_idx;
@@ -177,7 +180,7 @@ struct Frequent_seeds::Build_context2
 		for (vector<uint32_t>::const_iterator i = buf.begin(); i != buf.end(); ++i)
 			hash_set.insert(*i);
 
-		frequent_seeds.tables_[sid][seedp] = hash_set;
+		frequent_seeds.tables_[sid][seedp] = move(hash_set);
 		counts[seedp] = (unsigned)n;
 	}
 	const vector<JoinResult<SeedArray::Entry> >::iterator seed_hits;

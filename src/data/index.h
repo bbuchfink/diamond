@@ -20,6 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define INDEX_H_
 
 #include <vector>
+#include <memory>
 #include "sequence_set.h"
 #include "../util/hash_table.h"
 #include "seed_histogram.h"
@@ -60,7 +61,7 @@ private:
 	static void fill_tables(Atomic<unsigned> *seedp, Seed_index *idx);
 	static void count_seeds(Atomic<unsigned> *seedp, vector<size_t> *counts, sorted_list *list);
 
-	auto_ptr<char> list_buffer;
+	std::unique_ptr<char> list_buffer;
 	sorted_list list;
 	PHash_table<Entry> tables[Const::seedp];
 

@@ -20,13 +20,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define COMPRESSED_STREAM_H_
 
 #include <string>
-#include <memory>
 #include <zlib.h>
 #include "stream_entity.h"
 #include "../util.h"
 
 using std::string;
-using std::auto_ptr;
 
 struct ZlibSource : public StreamEntity
 {

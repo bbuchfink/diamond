@@ -16,6 +16,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
+#include <memory>
 #include "../basic/config.h"
 #include "../util/io/output_file.h"
 #include "../util/text_buffer.h"
@@ -29,6 +30,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../basic/parameters.h"
 #include "../data/metadata.h"
 #include "daa_write.h"
+
+using namespace std;
 
 const unsigned view_buf_size = 32;
 
@@ -46,7 +49,7 @@ struct View_writer
 	{
 		f_->close();
 	}
-	auto_ptr<OutputFile> f_;
+	unique_ptr<OutputFile> f_;
 };
 
 struct View_fetcher
@@ -75,7 +78,7 @@ struct View_fetcher
 
 void view_query(DAA_query_record &r, TextBuffer &out, Output_format &format, const Parameters &params, const Metadata &metadata)
 {
-	auto_ptr<Output_format> f(format.clone());
+	unique_ptr<Output_format> f(format.clone());
 	size_t seek_pos;
 	if (format == Output_format::daa)
 		seek_pos = write_daa_query_record(out, r.query_name.c_str(), r.query_seq.source());

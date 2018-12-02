@@ -58,12 +58,12 @@ struct Target : public ::Target
 				d1 = std::min(i->diagonal() + band, d_max);
 			}
 			else {
-				v.push_back(DpTarget(subject, d0, d1, &hsps, subject_id));
+				v.emplace_back(subject, d0, d1, &hsps, subject_id);
 				d0 = std::max(i->diagonal() - band, d_min);
 				d1 = std::min(i->diagonal() + band, d_max);
 			}
 		}
-		v.push_back(DpTarget(subject, d0, d1, &hsps, subject_id));
+		v.emplace_back(subject, d0, d1, &hsps, subject_id);
 	}
 
 	void add(QueryMapper &mapper, vector<DpTarget> &vf, vector<DpTarget> &vr)

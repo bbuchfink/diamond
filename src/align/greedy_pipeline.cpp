@@ -82,7 +82,7 @@ struct Target : public ::Target
 		if (filter_score == 0)
 			return;
 		if (config.ext == Config::more_greedy)
-			hsps.push_back(Hsp(filter_score));
+			hsps.emplace_back(filter_score);
 		else {
 			const int qlen = (int)mapper.query_seq(0).length(),
 				band_plus = qlen <= 50 ? 0 : 16;
@@ -91,7 +91,7 @@ struct Target : public ::Target
 				if (log_ga) {
 					cout << "i_begin=" << i->query_range.begin_ << " j_begin=" << i->subject_range.begin_ << " d_min=" << i->d_min << " d_max=" << i->d_max << endl;
 				}
-				hsps.push_back(Hsp());
+				hsps.emplace_back();
 				hsps.back().frame = i->frame;
 				banded_sw(mapper.query_seq(i->frame), subject, i->d_min - band_plus, i->d_max + band_plus + 1, 0, (int)subject.length(), hsps.back());
 				if (config.comp_based_stats) {
@@ -126,7 +126,7 @@ struct Target : public ::Target
 
 		ts.clear();
 		for (list<Hsp>::iterator i = hsps.begin(); i != hsps.end(); ++i)
-			ts.push_back(Hsp_traits(i->query_source_range));
+			ts.emplace_back(i->query_source_range);
 
 		if (config.use_smith_waterman && !hsps.empty()) {
 			int score;
