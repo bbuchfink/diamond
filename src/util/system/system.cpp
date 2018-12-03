@@ -10,18 +10,16 @@ using namespace std;
 #else
 #include <unistd.h>
 #include <sys/stat.h>
-#include <linux/limits.h>
 #endif
 
 string executable_path() {
-#ifdef _MSC_VER
 	char buf[4096];
+#ifdef _MSC_VER
 	if (GetModuleFileNameA(NULL, buf, sizeof(buf)) == 0)
 		throw runtime_error("Error executing GetModuleFileNameA.");
 	return string(buf);
 #else
-	char buf[PATH_MAX + 1];
-	if (readlink("/proc/self/exe", buf, PATH_MAX) < 0)
+	if (readlink("/proc/self/exe", buf, sizeof(buf)) < 0)
 		throw runtime_error("Error executing readlink on /proc/self/exe.");
 	return string(buf);
 #endif
