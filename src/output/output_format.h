@@ -87,13 +87,14 @@ struct DAA_format : public Output_format
 
 struct Blast_tab_format : public Output_format
 {
-	static const char* field_str[];
+	static const char* field_str[], *field_desc[];
 	Blast_tab_format();
-	virtual void print_query_intro(size_t query_num, const char *query_name, unsigned query_len, TextBuffer &out, bool unaligned) const;
-	virtual void print_match(const Hsp_context& r, const Metadata &metadata, TextBuffer &out);
+	virtual void print_header(Consumer &f, int mode, const char *matrix, int gap_open, int gap_extend, double evalue, const char *first_query_name, unsigned first_query_len) const override;
+	virtual void print_query_intro(size_t query_num, const char *query_name, unsigned query_len, TextBuffer &out, bool unaligned) const override;
+	virtual void print_match(const Hsp_context& r, const Metadata &metadata, TextBuffer &out) override;
 	virtual ~Blast_tab_format()
 	{ }
-	virtual Output_format* clone() const
+	virtual Output_format* clone() const override
 	{
 		return new Blast_tab_format(*this);
 	}

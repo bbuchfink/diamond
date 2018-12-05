@@ -526,6 +526,15 @@ inline set<unsigned> parse_csv(const string &s)
 	return r;
 }
 
-std::string join(char c, const std::vector<std::string> &v);
+std::string join(const char *c, const std::vector<std::string> &v);
+
+template<typename _t, typename _f>
+auto apply(const std::vector<_t> &v, _f f) -> std::vector<typename std::result_of<_f(_t)>::type> {
+	std::vector<typename std::result_of<_f(_t)>::type> r;
+	r.reserve(v.size());
+	for (const auto &i : v)
+		r.push_back(f(i));
+	return r;
+}
 
 #endif /* UTIL_H_ */

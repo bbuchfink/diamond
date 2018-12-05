@@ -70,7 +70,7 @@ const EscapeSequence EscapeSequences::xml_data[5] = {
 
 const EscapeSequences EscapeSequences::XML(EscapeSequences::xml_data, 5);
 
-string join(char c, const vector<string> &v) {
+string join(const char *c, const vector<string> &v) {
 	string s;
 	if (v.empty())
 		return s;

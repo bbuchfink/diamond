@@ -16,11 +16,15 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
+#include <sstream>
 #include <set>
+#include <numeric>
 #include "../basic/match.h"
 #include "output_format.h"
 #include "../data/taxonomy.h"
 #include "../data/queries.h"
+
+using namespace std;
 
 const char* Blast_tab_format::field_str[] = {
 	"qseqid",		// 0 means Query Seq - id
@@ -73,6 +77,62 @@ const char* Blast_tab_format::field_str[] = {
 	"time", 		// 47
 	"full_sseq",	// 48
 	"qqual",		// 49
+	"qnum",			// 50
+	"snum",			// 51
+	"scovhsp"		// 52
+};
+
+const char* Blast_tab_format::field_desc[] = {
+	"Query ID",		// 0 means Query Seq - id
+	"qgi",			// 1 means Query GI
+	"qacc",			// 2 means Query accesion
+	"qaccver",		// 3 means Query accesion.version
+	"Query length",	// 4 means Query sequence length
+	"Subject ID",		// 5 means Subject Seq - id
+	"Subject IDs",	// 6 means All subject Seq - id(s), separated by a ';'
+	"sgi",			// 7 means Subject GI
+	"sallgi",		// 8 means All subject GIs
+	"sacc",			// 9 means Subject accession
+	"saccver",		// 10 means Subject accession.version
+	"sallacc",		// 11 means All subject accessions
+	"Subject length",			// 12 means Subject sequence length
+	"Start of alignment in query",		// 13 means Start of alignment in query
+	"End of alignment in query",			// 14 means End of alignment in query
+	"Start of alignment in subject",		// 15 means Start of alignment in subject
+	"End of alignment in subject",			// 16 means End of alignment in subject
+	"Aligned part of query sequence",			// 17 means Aligned part of query sequence
+	"Aligned part of subject sequence",			// 18 means Aligned part of subject sequence
+	"Expected value",		// 19 means Expect value
+	"Bit score",		// 20 means Bit score
+	"Raw score",		// 21 means Raw score
+	"Alignment length",		// 22 means Alignment length
+	"Percentage of identical matches",		// 23 means Percentage of identical matches
+	"Number of identical matches",		// 24 means Number of identical matches
+	"Number of mismatches",		// 25 means Number of mismatches
+	"Number of positive-scoring matches",		// 26 means Number of positive - scoring matches
+	"Number of gap openings",		// 27 means Number of gap openings
+	"Total number of gaps",			// 28 means Total number of gaps
+	"Percentage of positive-scoring matches",			// 29 means Percentage of positive - scoring matches
+	"frames",		// 30 means Query and subject frames separated by a '/'
+	"Query frame",		// 31 means Query frame
+	"sframe",		// 32 means Subject frame
+	"Blast traceback operations",			// 33 means Blast traceback operations(BTOP)
+	"Subject Taxonomy IDs",		// 34 means unique Subject Taxonomy ID(s), separated by a ';'	(in numerical order)
+	"sscinames",	// 35 means unique Subject Scientific Name(s), separated by a ';'
+	"scomnames",	// 36 means unique Subject Common Name(s), separated by a ';'
+	"sblastnames",	// 37 means unique Subject Blast Name(s), separated by a ';'	(in alphabetical order)
+	"sskingdoms",	// 38 means unique Subject Super Kingdom(s), separated by a ';'	(in alphabetical order)
+	"Subject title",		// 39 means Subject Title
+	"Subject titles",	// 40 means All Subject Title(s), separated by a '<>'
+	"sstrand",		// 41 means Subject Strand
+	"qcovs",		// 42 means Query Coverage Per Subject
+	"Query coverage per HSP",		// 43 means Query Coverage Per HSP
+	"qcovus",		// 44 means Query Coverage Per Unique Subject(blastn only)
+	"Query title",		// 45 means Query title
+	"swdiff",		// 46
+	"time", 		// 47
+	"Subject sequence",	// 48
+	"Query quality values",		// 49
 	"qnum",			// 50
 	"snum",			// 51
 	"scovhsp"		// 52
@@ -328,4 +388,30 @@ void Blast_tab_format::print_query_intro(size_t query_num, const char *query_nam
 		}
 		out << '\n';
 	}
+}
+
+template<typename _t, class _f>
+auto abcdef(const vector<_t> &v, _f f) -> decltype(f()) {
+	return f(unsigned(5));
+}
+
+template<typename _t, class _f>
+auto abcdef2(const vector<_t> &v, _f f) -> typename std::result_of<_f(_t)>::type {
+	return f(unsigned(5));
+}
+
+template<class _f>
+void abcdefg(_f f) {
+	f(unsigned(5));
+}
+
+void Blast_tab_format::print_header(Consumer &f, int mode, const char *matrix, int gap_open, int gap_extend, double evalue, const char *first_query_name, unsigned first_query_len) const {
+	if (!config.output_header)
+		return;
+	stringstream ss;
+	ss << "# DIAMOND v" << Const::version_string << ". http://github.com/bbuchfink/diamond" << endl;
+	ss << "# " << config.invocation << endl;
+	ss << "# " << join(", ", apply(fields, [](unsigned i) -> string { return string(field_desc[i]); })) << endl;
+	const string s(ss.str());
+	f.consume(s.data(), s.length());
 }

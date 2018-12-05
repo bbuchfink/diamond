@@ -118,7 +118,8 @@ Config::Config(int argc, const char **argv)
 \n\tDefault: qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore", output_format)
 ("verbose", 'v', "verbose console output", verbose)
 ("log", 0, "enable debug log", debug_log)
-("quiet", 0, "disable console output", quiet);
+("quiet", 0, "disable console output", quiet)
+("header", 0, "Write header lines to blast tabular format.", output_header);
 
 	Options_group makedb("Makedb options");
 	makedb.add()
@@ -342,7 +343,7 @@ Config::Config(int argc, const char **argv)
 		;
 	}
 
-	invocation = join(' ', vector<string>(&argv[0], &argv[argc]));
+	invocation = join(" ", vector<string>(&argv[0], &argv[argc]));
 	log_stream << invocation << endl;
 
 	if (!no_auto_append) {
