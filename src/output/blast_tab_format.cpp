@@ -390,21 +390,6 @@ void Blast_tab_format::print_query_intro(size_t query_num, const char *query_nam
 	}
 }
 
-template<typename _t, class _f>
-auto abcdef(const vector<_t> &v, _f f) -> decltype(f()) {
-	return f(unsigned(5));
-}
-
-template<typename _t, class _f>
-auto abcdef2(const vector<_t> &v, _f f) -> typename std::result_of<_f(_t)>::type {
-	return f(unsigned(5));
-}
-
-template<class _f>
-void abcdefg(_f f) {
-	f(unsigned(5));
-}
-
 void Blast_tab_format::print_header(Consumer &f, int mode, const char *matrix, int gap_open, int gap_extend, double evalue, const char *first_query_name, unsigned first_query_len) const {
 	if (!config.output_header)
 		return;
