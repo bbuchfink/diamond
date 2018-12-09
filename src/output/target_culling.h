@@ -30,6 +30,7 @@ struct TargetCulling
 	virtual int cull(const vector<IntermediateRecord> &target_hsp) const = 0;
 	virtual void add(const Target &t) = 0;
 	virtual void add(const vector<IntermediateRecord> &target_hsp) = 0;
+	virtual ~TargetCulling() = default;
 	enum { FINISHED = 0, NEXT = 1, INCLUDE = 2};
 	static TargetCulling* get();
 };
@@ -70,6 +71,7 @@ struct GlobalCulling : public TargetCulling
 			top_score_ = target_hsp[0].score;
 		++n_;
 	}
+	virtual ~GlobalCulling() = default;
 private:
 	size_t n_;
 	int top_score_;
@@ -119,6 +121,7 @@ struct RangeCulling : public TargetCulling
 		for (std::vector<IntermediateRecord>::const_iterator i = target_hsp.begin(); i != target_hsp.end(); ++i)
 			p_.insert(i->absolute_query_range(), i->score);
 	}
+	virtual ~RangeCulling() = default;
 private:
 	IntervalPartition p_;
 };

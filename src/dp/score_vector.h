@@ -325,7 +325,10 @@ struct score_vector<int16_t>
 
 template<typename _t>
 struct ScoreTraits
-{};
+{
+	typedef void Score;
+	enum { CHANNELS = 0 };
+};
 
 template<>
 struct ScoreTraits<int32_t>
