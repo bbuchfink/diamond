@@ -1,6 +1,9 @@
 [0.9.24]
 - Fixed a compiler error on macOS.
 - Added --header option to output header for tabular output format.
+- The quality string output in tabular format (qqual field) is clipped to the aligned part of the query.
+- Print '*' as quality string if quality values are not available in tabular output format.
+- Added field 'full_qqual' to print unclipped query quality values to the tabular format.
 
 [0.9.23]
 - Fixed an issue that could cause too high memory usage.

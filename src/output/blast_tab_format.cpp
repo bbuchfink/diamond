@@ -79,7 +79,8 @@ const char* Blast_tab_format::field_str[] = {
 	"qqual",		// 49
 	"qnum",			// 50
 	"snum",			// 51
-	"scovhsp"		// 52
+	"scovhsp",		// 52
+	"full_qqual"	// 53
 };
 
 const char* Blast_tab_format::field_desc[] = {
@@ -132,10 +133,11 @@ const char* Blast_tab_format::field_desc[] = {
 	"swdiff",		// 46
 	"time", 		// 47
 	"Subject sequence",	// 48
-	"Query quality values",		// 49
+	"Aligned part of query quality values",		// 49
 	"qnum",			// 50
 	"snum",			// 51
-	"scovhsp"		// 52
+	"scovhsp",		// 52
+	"Query quality values"	// 53
 };
 
 Blast_tab_format::Blast_tab_format() :
@@ -158,7 +160,7 @@ Blast_tab_format::Blast_tab_format() :
 			config.salltitles = true;
 		if (j == 48)
 			config.use_lazy_dict = true;
-		if (j == 49)
+		if (j == 49 || j == 53)
 			config.store_query_quality = true;
 	}
 }
@@ -310,7 +312,7 @@ void Blast_tab_format::print_match(const Hsp_context& r, const Metadata &metadat
 			out << r.subject_seq;
 			break;
 		case 49:
-			out << (*query_qual)[r.query_id].c_str();
+			out << (query_qual && (*query_qual)[r.query_id].present() ? (*query_qual)[r.query_id].subseq(r.query_source_range().begin_, r.query_source_range().end_).c_str() : "*");
 			break;
 		case 50:
 			out << query_block_to_database_id[r.query_id];
@@ -320,6 +322,9 @@ void Blast_tab_format::print_match(const Hsp_context& r, const Metadata &metadat
 			break;
 		case 52:
 			out << (double)r.subject_range().length() * 100.0 / r.subject_len;
+			break;
+		case 53:
+			out << (query_qual && (*query_qual)[r.query_id].present() ? (*query_qual)[r.query_id].c_str() : "*");
 			break;
 		default:
 			throw std::runtime_error(string("Invalid output field: ") + field_str[*i]);
@@ -349,6 +354,7 @@ void Blast_tab_format::print_query_intro(size_t query_num, const char *query_nam
 			case 39:
 			case 40:
 			case 48:
+			case 49:
 				out << '*';
 				break;
 			case 12:
@@ -377,8 +383,8 @@ void Blast_tab_format::print_query_intro(size_t query_num, const char *query_nam
 			case 45:
 				out << query_name;
 				break;
-			case 49:
-				out << (*query_qual)[query_num].c_str();
+			case 53:
+				out << (query_qual && (*query_qual)[query_num].present() ? (*query_qual)[query_num].c_str() : "*");
 				break;
 			default:
 				throw std::runtime_error(string("Invalid output field: ") + field_str[*i]);

@@ -86,6 +86,9 @@ struct sequence
 	}
 	bool empty() const
 	{ return len_ == 0; }
+	bool present() const {
+		return len_ > 0;
+	}
 	const char* c_str() const
 	{ return reinterpret_cast<const char*>(data_); }
 	size_t print(char *ptr, unsigned begin, unsigned len) const
