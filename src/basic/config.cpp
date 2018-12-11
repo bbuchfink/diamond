@@ -94,8 +94,9 @@ Config::Config(int argc, const char **argv)
 \tsstart means Start of alignment in subject\n\
 \tsend means End of alignment in subject\n\
 \tqseq means Aligned part of query sequence\n\
+\tfull_qseq means Query sequence\n\
 \tsseq means Aligned part of subject sequence\n\
-\tfull_sseq means Full subject sequence\n\
+\tfull_sseq means Subject sequence\n\
 \tevalue means Expect value\n\
 \tbitscore means Bit score\n\
 \tscore means Raw score\n\

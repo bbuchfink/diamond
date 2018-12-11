@@ -80,7 +80,8 @@ const char* Blast_tab_format::field_str[] = {
 	"qnum",			// 50
 	"snum",			// 51
 	"scovhsp",		// 52
-	"full_qqual"	// 53
+	"full_qqual",	// 53
+	"full_qseq"		// 54
 };
 
 const char* Blast_tab_format::field_desc[] = {
@@ -137,7 +138,8 @@ const char* Blast_tab_format::field_desc[] = {
 	"qnum",			// 50
 	"snum",			// 51
 	"scovhsp",		// 52
-	"Query quality values"	// 53
+	"Query quality values",	// 53
+	"Query sequence"		// 54
 };
 
 Blast_tab_format::Blast_tab_format() :
@@ -326,6 +328,9 @@ void Blast_tab_format::print_match(const Hsp_context& r, const Metadata &metadat
 		case 53:
 			out << (query_qual && (*query_qual)[r.query_id].present() ? (*query_qual)[r.query_id].c_str() : "*");
 			break;
+		case 54:
+			r.query.source().print(out, input_value_traits);
+			break;
 		default:
 			throw std::runtime_error(string("Invalid output field: ") + field_str[*i]);
 		}
@@ -385,6 +390,9 @@ void Blast_tab_format::print_query_intro(size_t query_num, const char *query_nam
 				break;
 			case 53:
 				out << (query_qual && (*query_qual)[query_num].present() ? (*query_qual)[query_num].c_str() : "*");
+				break;
+			case 54:
+				(align_mode.query_translated ? query_source_seqs::get()[query_num] : query_seqs::get()[query_num]).print(out, input_value_traits);
 				break;
 			default:
 				throw std::runtime_error(string("Invalid output field: ") + field_str[*i]);
