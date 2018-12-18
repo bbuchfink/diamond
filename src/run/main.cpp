@@ -42,6 +42,7 @@ void info();
 void seed_stat();
 void pairwise();
 void protein_snps();
+void translate();
 
 int main(int ac, const char* av[])
 {
@@ -125,6 +126,9 @@ int main(int ac, const char* av[])
 			break;
 		case Config::cluster:
 			Workflow::Cluster::run();
+			break;
+		case Config::translate:
+			translate();
 			break;
 #ifdef EXTRA
 		case Config::test_extra:

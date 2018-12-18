@@ -360,3 +360,16 @@ void protein_snps()
 	}
 	call_protein_snps(current_gene, ref_genes[current_gene], snps, dataset);
 }
+
+void translate() {
+	input_value_traits = nucleotide_traits;
+	TextInputFile in(config.query_file);
+	vector<char> id, seq;
+	vector<char> proteins[6];
+	while (FASTA_format().get_seq(id, seq, in)) {
+		Translator::translate(seq, proteins);
+		cout << ">" << string(id.data(), id.size()) << endl;
+		cout << sequence(proteins[0]) << endl;
+	}
+	in.close();
+}
