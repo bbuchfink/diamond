@@ -38,9 +38,9 @@ FileSource::FileSource(const string &file_name) :
 	file_name_(file_name)
 {
 #ifdef _MSC_VER
-	f_ = file_name.empty() ? stdin : fopen(file_name.c_str(), "rb");
+	f_ = (file_name.empty() || file_name == "-") ? stdin : fopen(file_name.c_str(), "rb");
 #else
-	int fd_ = file_name.empty() ? 0 : POSIX_OPEN2(file_name.c_str(), O_RDONLY);
+	int fd_ = (file_name.empty() || file_name == "-") ? 0 : POSIX_OPEN2(file_name.c_str(), O_RDONLY);
 	if (fd_ < 0) {
 		perror(0);
 		throw std::runtime_error(string("Error opening file ") + file_name);

@@ -5,6 +5,7 @@
 - Print '*' as quality string if quality values are not available in tabular output format.
 - Added field 'full_qqual' to print unclipped query quality values to the tabular format.
 - Added field 'full_qseq' to print unclipped query sequence to the tabular format.
+- Added support for using the hyphen character '-' to denote the standard input for input file parameters.
 
 [0.9.23]
 - Fixed an issue that could cause too high memory usage.
