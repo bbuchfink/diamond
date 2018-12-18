@@ -22,6 +22,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <vector>
 #include <string>
 #include <string.h>
+#include <stdint.h>
 #include "../util/io/serializer.h"
 #include "../util/io/input_file.h"
 #include "../data/seed_histogram.h"
@@ -43,8 +44,8 @@ struct ReferenceHeader
 	uint64_t magic_number;
 	uint32_t build, db_version;
 	uint64_t sequences, letters, pos_array_offset;
-	static const uint64_t MAGIC_NUMBER = 0x24af8a415ee186dllu;
 	enum { current_db_version = 2 };
+	static constexpr uint64_t MAGIC_NUMBER = 0x24af8a415ee186dllu;
 };
 
 struct ReferenceHeader2
@@ -76,6 +77,7 @@ struct DatabaseFile : public InputFile
 	DatabaseFile(TempFile &tmp_file);
 	static void read_header(InputFile &stream, ReferenceHeader &header);
 	static DatabaseFile* auto_create_from_fasta();
+	static bool is_diamond_db(const string &file_name);
 	void rewind();
 	bool load_seqs(vector<unsigned> &block_to_database_id, size_t max_letters, bool masked, Sequence_set **dst_seq, String_set<0> **dst_id, bool load_ids = true, const vector<bool> *filter = NULL);
 	void get_seq();

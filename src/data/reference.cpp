@@ -401,12 +401,19 @@ void db_info()
 	db_file.close();
 }
 
-DatabaseFile* DatabaseFile::auto_create_from_fasta() {
-	InputFile db_file(config.database);
+bool DatabaseFile::is_diamond_db(const string &file_name) {
+	if (file_name == "-")
+		return false;
+	InputFile db_file(file_name);
 	uint64_t magic_number;
-	if (db_file.read(&magic_number, 1) != 1 || magic_number != ReferenceHeader::MAGIC_NUMBER) {
+	bool r = db_file.read(&magic_number, 1) == 1 && magic_number == ReferenceHeader::MAGIC_NUMBER;
+	db_file.close();
+	return r;
+}
+
+DatabaseFile* DatabaseFile::auto_create_from_fasta() {
+	if (!is_diamond_db(config.database)) {
 		message_stream << "Database file is not a DIAMOND database, treating as FASTA." << endl;
-		db_file.close();
 		config.input_ref_file = config.database;
 		TempFile *db;
 		make_db(&db);
@@ -414,8 +421,6 @@ DatabaseFile* DatabaseFile::auto_create_from_fasta() {
 		delete db;
 		return r;
 	}
-	else {
-		db_file.close();
+	else
 		return new DatabaseFile(config.database);
-	}
 }
