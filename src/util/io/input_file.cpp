@@ -41,7 +41,7 @@ InputFile::InputFile(const string &file_name, int flags) :
 	Deserializer(new InputStreamBuffer(new FileSource(file_name))),
 	file_name(file_name)
 {
-	if (file_name.empty())
+	if (file_name.empty() || file_name == "-")
 		return;
 #ifndef _MSC_VER
 	struct stat buf;
