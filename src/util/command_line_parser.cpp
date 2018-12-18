@@ -18,6 +18,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <iostream>
 #include <algorithm>
+#include <string.h>
 #include "command_line_parser.h"
 
 using namespace std;
@@ -87,7 +88,7 @@ void Command_line_parser::store(int count, const char ** str, unsigned &command)
 
 	vector<string> v;
 	for (int i = 2; i < count; ++i) {
-		if (str[i][0] == '-') {
+		if (str[i][0] == '-' && strlen(str[i]) > 1) {
 			store_option(v);
 			v.clear();
 		}
