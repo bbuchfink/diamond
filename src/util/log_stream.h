@@ -37,7 +37,7 @@ struct Message_stream
 	Message_stream& operator<<(const _t& x)
 	{
 		if(to_cout_)
-			std::cout << x;
+			std::cerr << x;
 		if (to_file_) {
 			std::ofstream f("diamond.log", std::ios_base::out | std::ios_base::app);
 			f << x;
@@ -49,7 +49,7 @@ struct Message_stream
 	Message_stream& operator<<(std::ostream & (*_Pfn)(std::ostream&))
 	{
 		if(to_cout_)
-			((*_Pfn)(std::cout));
+			((*_Pfn)(std::cerr));
 		if (to_file_) {
 			mtx.lock();
 			std::ofstream f("diamond.log", std::ios_base::out | std::ios_base::app);
