@@ -80,4 +80,5 @@ g++ -DNDEBUG -O3 -Wno-deprecated-declarations $1 $2 $3 \
   src/run/cluster.cpp \
   src/util/algo/greedy_vortex_cover.cpp \
   src/util/algo/greedy_vortex_cover_weighted.cpp \
+  src/util/sequence/sequence.cpp \
 -lz -lpthread -o diamond

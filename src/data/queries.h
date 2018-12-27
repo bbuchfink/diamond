@@ -25,6 +25,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../basic/statistics.h"
 #include "sequence_set.h"
 #include "seed_set.h"
+#include "../util/tinythread.h"
 
 extern Partitioned_histogram query_hst;
 extern unsigned current_query_chunk;
@@ -50,6 +51,7 @@ struct query_ids
 	static String_set<0> *data_;
 };
 
+extern tthread::mutex query_aligned_mtx;
 extern vector<bool> query_aligned;
 extern String_set<0> *query_qual;
 

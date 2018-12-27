@@ -1,6 +1,6 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2017 Benjamin Buchfink <buchfink@gmail.com>
+Copyright (C) 2013-2018 Benjamin Buchfink <buchfink@gmail.com>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,30 +16,17 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#ifndef CONST_H_
-#define CONST_H_
+#ifndef UTIL_SEQUENCE_SEQUENCE_H_
+#define UTIL_SEQUENCE_SEQUENCE_H_
 
-struct Const
-{
+#include <string>
+#include "../../basic/sequence.h"
+#include "../io/output_file.h"
 
-	enum {
-		build_version = 125,
-		seedp_bits = 10,
-		seedp = 1<<seedp_bits,
-		max_seed_weight = 32,
-		max_shapes = 16,
-		max_shape_len = 32
-	};
+namespace Util { namespace Sequence {
 
-	static const char* version_string;
-	static const char* program_name;
-	static const char* id_delimiters;
+void format(sequence seq, const char *id, const char *qual, OutputFile &out, const std::string &format, const Value_traits &value_traits);
 
-};
+}}
 
-#define SIMPLE_SEARCH
-// #define FREQUENCY_MASKING
-// #define ST_JOIN
-// #define NO_COLLISION_FILTER
-
-#endif /* CONST_H_ */
+#endif

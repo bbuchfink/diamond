@@ -6,6 +6,10 @@
 - Added field 'full_qqual' to print unclipped query quality values to the tabular format.
 - Added field 'full_qseq' to print unclipped query sequence to the tabular format.
 - Added support for using the hyphen character '-' to denote the standard input for input file parameters.
+- Status messages are written to stderr.
+- Fixed a bug that could incorrectly report queries as unaligned in the output of the --un option.
+- Added option '--al' to write aligned queries to file.
+- Added options '--alfmt' and '--unfmt' to set the format of the aligned/unaligned query file (supported values: fasta, fastq).
 
 [0.9.23]
 - Fixed an issue that could cause too high memory usage.

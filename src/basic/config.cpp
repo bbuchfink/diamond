@@ -133,6 +133,8 @@ Config::Config(int argc, const char **argv)
 		("strand", 0, "query strands to search (both/minus/plus)", query_strands, string("both"))
 		("un", 0, "file for unaligned queries", unaligned)
 		("al", 0, "file or aligned queries", aligned_file)
+		("unfmt", 0, "format of unaligned query file (fasta/fastq)", unfmt, string("fasta"))
+		("alfmt", 0, "format of aligned query file (fasta/fastq)", alfmt, string("fasta"))
 		("unal", 0, "report unaligned queries (0=no, 1=yes)", report_unaligned, -1)
 		("max-target-seqs", 'k', "maximum number of target sequences to report alignments for", max_alignments, uint64_t(25))
 		("top", 0, "report alignments within this percentage range of top alignment score (overrides --max-target-seqs)", toppercent, 100.0)
@@ -425,6 +427,11 @@ Config::Config(int argc, const char **argv)
 
 	if (query_strands != "both" && query_strands != "minus" && query_strands != "plus")
 		throw std::runtime_error("Invalid value for parameter --strand");
+
+	if (unfmt == "fastq" || alfmt == "fastq")
+		store_query_quality = true;
+	if (!aligned_file.empty())
+		log_stream << "Aligned file format: " << alfmt << endl;
 
 	/*log_stream << "sizeof(hit)=" << sizeof(hit) << " sizeof(packed_uint40_t)=" << sizeof(packed_uint40_t)
 		<< " sizeof(sorted_list::entry)=" << sizeof(sorted_list::entry) << endl;*/

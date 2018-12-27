@@ -17,6 +17,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #include "queries.h"
+#include "../util/sequence/sequence.h"
+#include "../basic/config.h"
+
+using namespace std;
 
 unsigned current_query_chunk;
 Sequence_set* query_source_seqs::data_ = 0;
@@ -24,6 +28,7 @@ Sequence_set* query_seqs::data_ = 0;
 String_set<0>* query_ids::data_ = 0;
 Partitioned_histogram query_hst;
 vector<bool> query_aligned;
+tthread::mutex query_aligned_mtx;
 Seed_set *query_seeds = 0;
 Hashed_seed_set *query_seeds_hashed = 0;
 String_set<0> *query_qual = nullptr;
@@ -35,11 +40,12 @@ void write_unaligned(OutputFile *file)
 	TextBuffer buf;
 	for (size_t i = 0; i < n; ++i) {
 		if (!query_aligned[i]) {
-			buf << '>' << query_ids::get()[i].c_str() << '\n';
-			(align_mode.query_translated ? query_source_seqs::get()[i] : query_seqs::get()[i]).print(buf, input_value_traits);
-			buf << '\n';
-			file->write(buf.get_begin(), buf.size());
-			buf.clear();
+			Util::Sequence::format(align_mode.query_translated ? query_source_seqs::get()[i] : query_seqs::get()[i],
+				query_ids::get()[i].c_str(),
+				query_qual ? (*query_qual)[i].c_str() : nullptr,
+				*file,
+				config.unfmt,
+				input_value_traits);
 		}
 	}
 }
@@ -50,11 +56,12 @@ void write_aligned(OutputFile *file)
 	TextBuffer buf;
 	for (size_t i = 0; i < n; ++i) {
 		if (query_aligned[i]) {
-			buf << '>' << query_ids::get()[i].c_str() << '\n';
-			(align_mode.query_translated ? query_source_seqs::get()[i] : query_seqs::get()[i]).print(buf, input_value_traits);
-			buf << '\n';
-			file->write(buf.get_begin(), buf.size());
-			buf.clear();
+			Util::Sequence::format(align_mode.query_translated ? query_source_seqs::get()[i] : query_seqs::get()[i],
+				query_ids::get()[i].c_str(),
+				query_qual ? (*query_qual)[i].c_str() : nullptr,
+				*file,
+				config.alfmt,
+				input_value_traits);
 		}
 	}
 }
