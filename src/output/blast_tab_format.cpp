@@ -409,8 +409,8 @@ void Blast_tab_format::print_header(Consumer &f, int mode, const char *matrix, i
 		return;
 	stringstream ss;
 	ss << "# DIAMOND v" << Const::version_string << ". http://github.com/bbuchfink/diamond" << endl;
-	ss << "# " << config.invocation << endl;
-	ss << "# " << join(", ", apply(fields, [](unsigned i) -> string { return string(field_desc[i]); })) << endl;
+	ss << "# Invocation: " << config.invocation << endl;
+	ss << "# Fields: " << join(", ", apply(fields, [](unsigned i) -> string { return string(field_desc[i]); })) << endl;
 	const string s(ss.str());
 	f.consume(s.data(), s.length());
 }
