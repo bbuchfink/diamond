@@ -3,6 +3,18 @@ project (DIAMOND)
 
 option(BUILD_STATIC "BUILD_STATIC" OFF)
 option(EXTRA "EXTRA" OFF)
+option(STATIC_LIBGCC "STATIC_LIBGCC" OFF)
+option(STATIC_LIBSTDC++ "STATIC_LIBSTDC++" OFF)
+option(SSSE3 "SSSE3" OFF)
+option(POPCNT "POPCNT" OFF)
+
+IF(STATIC_LIBSTDC++)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -static-libstdc++")
+endif()
+
+IF(STATIC_LIBGCC)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -static-libgcc")
+endif()
 
 if(BUILD_STATIC)
     set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
@@ -12,7 +24,17 @@ endif()
 
 set(CMAKE_CXX_STANDARD 11)
 
-if(CMAKE_BUILD_MARCH)
+if (${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
+else()
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=gnu++11")
+endif()
+
+if(SSSE3)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mssse3")
+  if(POPCNT)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mpopcnt")
+  endif()
+elseif(CMAKE_BUILD_MARCH)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=${CMAKE_BUILD_MARCH}")
 else()
   include(CheckCXXCompilerFlag)
