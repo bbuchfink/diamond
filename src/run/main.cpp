@@ -78,23 +78,11 @@ int main(int ac, const char* av[])
 		case Config::sort:
 			sort_file();
 			break;
-		case Config::roc:
-			roc();
-			break;
 		case Config::db_stat:
 			db_stat();
 			break;
-		case Config::model_sim:
-			model_sim();
-			break;
 		case Config::match_file_stat:
 			match_file_stat();
-			break;
-		case Config::model_seqs:
-			model_seqs();
-			break;
-		case Config::opt:
-			opt();
 			break;
 		case Config::mask:
 			run_masker();
@@ -107,9 +95,6 @@ int main(int ac, const char* av[])
 			break;
 		case Config::test_io:
 			test_io();
-			break;
-		case Config::db_annot_stats:
-			db_annot_stats();
 			break;
 		case Config::read_sim:
 			read_sim();
@@ -130,6 +115,12 @@ int main(int ac, const char* av[])
 			translate();
 			break;
 #ifdef EXTRA
+		case Config::model_sim:
+			model_sim();
+			break;
+		case Config::roc:
+			roc();
+			break;
 		case Config::test_extra:
 			test_main();
 			break;
@@ -138,6 +129,15 @@ int main(int ac, const char* av[])
 			break;
 		case Config::seed_stat:
 			seed_stat();
+			break;
+		case Config::model_seqs:
+			model_seqs();
+			break;
+		case Config::opt:
+			opt();
+			break;
+		case Config::db_annot_stats:
+			db_annot_stats();
 			break;
 #endif
 		default:

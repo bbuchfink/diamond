@@ -95,15 +95,12 @@ add_executable(diamond src/run/main.cpp
   src/dp/padded_banded_sw.cpp
   src/dp/needleman_wunsch.cpp
   src/output/blast_pairwise_format.cpp
-  src/extra/roc.cpp
   src/dp/comp_based_stats.cpp
-  src/extra/model_sim.cpp
   src/run/double_indexed.cpp
   src/search/collision.cpp
   src/output/sam_format.cpp
   src/align/align.cpp
   src/search/setup.cpp
-  src/extra/opt.cpp
   src/dp/diag_scores.cpp
   src/data/taxonomy.cpp
   src/lib/tantan/tantan.cc
@@ -154,6 +151,9 @@ if(EXTRA)
       src/extra/benchmark.cpp
 	  src/extra/test.cpp
 	  src/dp/sw_3frame.cpp
+	  src/extra/roc.cpp
+	  src/extra/model_sim.cpp
+	  src/extra/opt.cpp
   )
   add_definitions(-DEXTRA)
 endif()
