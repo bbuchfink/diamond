@@ -19,9 +19,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <iostream>
 #include "../basic/config.h"
 #include "tools.h"
-#include "../extra/compare.h"
 #include "../data/reference.h"
 #include "workflow.h"
+#ifdef EXTRA
+#include "../extra/compare.h"
+#endif
 
 using std::cout;
 using std::cerr;
@@ -72,9 +74,6 @@ int main(int ac, const char* av[])
 		case Config::random_seqs:
 			random_seqs();
 			break;
-		case Config::compare:
-			compare();
-			break;
 		case Config::sort:
 			sort_file();
 			break;
@@ -115,6 +114,9 @@ int main(int ac, const char* av[])
 			translate();
 			break;
 #ifdef EXTRA
+		case Config::compare:
+			compare();
+			break;
 		case Config::model_sim:
 			model_sim();
 			break;
