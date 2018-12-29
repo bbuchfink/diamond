@@ -30,7 +30,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../data/queries.h"
 #include "../data/load_seqs.h"
 #include "../data/reference.h"
-#include "../extra/match_file.h"
 #include "../basic/masking.h"
 #include "../dp/dp.h"
 #include "../util/tinythread.h"
@@ -110,14 +109,6 @@ void db_stat()
 		cout << (double)*i / letters << ',';
 	cout << endl;
 
-}
-
-void match_file_stat()
-{
-	match_file file(config.match_file1.c_str());
-	blast_match match;
-	while (file.get(match, blast_format()));
-	file.get_subst();
 }
 
 void run_masker()

@@ -23,6 +23,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "workflow.h"
 #ifdef EXTRA
 #include "../extra/compare.h"
+#include "../extra/match_file.h"
 #endif
 
 using std::cout;
@@ -79,9 +80,6 @@ int main(int ac, const char* av[])
 			break;
 		case Config::db_stat:
 			db_stat();
-			break;
-		case Config::match_file_stat:
-			match_file_stat();
 			break;
 		case Config::mask:
 			run_masker();
@@ -140,6 +138,9 @@ int main(int ac, const char* av[])
 			break;
 		case Config::db_annot_stats:
 			db_annot_stats();
+			break;
+		case Config::match_file_stat:
+			match_file_stat();
 			break;
 #endif
 		default:
