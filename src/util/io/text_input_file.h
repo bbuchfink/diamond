@@ -36,6 +36,9 @@ struct TextInputFile : public InputFile
 	void putback(char c);
 	void getline();
 	void putback_line();
+	operator bool() const {
+		return !eof();
+	}
 
 	string line;
 	size_t line_count;

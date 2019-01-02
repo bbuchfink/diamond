@@ -46,6 +46,7 @@ void seed_stat();
 void pairwise();
 void protein_snps();
 void translate();
+void filter_blasttab();
 
 int main(int ac, const char* av[])
 {
@@ -110,6 +111,9 @@ int main(int ac, const char* av[])
 			break;
 		case Config::translate:
 			translate();
+			break;
+		case Config::filter_blasttab:
+			filter_blasttab();
 			break;
 #ifdef EXTRA
 		case Config::compare:

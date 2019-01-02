@@ -71,7 +71,8 @@ Config::Config(int argc, const char **argv)
 		.add_command("smith-waterman", "")
 		.add_command("protein-snps", "")
 		.add_command("cluster", "")
-		.add_command("translate", "");
+		.add_command("translate", "")
+		.add_command("filter-blasttab", "");
 
 	Options_group general("General options");
 	general.add()

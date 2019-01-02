@@ -143,6 +143,8 @@ add_executable(diamond src/run/main.cpp
   src/util/algo/greedy_vortex_cover.cpp
   src/util/algo/greedy_vortex_cover_weighted.cpp
   src/util/sequence/sequence.cpp
+  src/tools/tsv_record.cpp
+  src/tools/tools.cpp
 )
 
 if(EXTRA)
