@@ -86,6 +86,7 @@ struct Taxonomy
 	void init();
 	void load();
 	void load_nodes();
+	void load_names();
 	void get_taxids(const char *s, std::set<unsigned> &taxons) const;
 
 	unsigned get(const Accession &accession) const
@@ -110,6 +111,7 @@ private:
 	
 	std::vector<std::pair<Accession, unsigned> > accession2taxid_;
 	std::vector<unsigned> parent_;
+	std::vector<std::string> name_;
 
 	friend struct TaxonomyNodes;
 

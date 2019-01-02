@@ -18,6 +18,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <stdio.h>
 #include <set>
+#include <stdexcept>
 #include "taxonomy.h"
 #include "../util/io/text_input_file.h"
 #include "../basic/config.h"
@@ -25,9 +26,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/log_stream.h"
 #include "reference.h"
 
-using std::cout;
-using std::endl;
-using std::set;
+using namespace std;
 
 Taxonomy taxonomy;
 
@@ -86,6 +85,20 @@ void Taxonomy::load_nodes()
 		parent_[taxid] = parent;
 	}
 	f.close();
+}
+
+void Taxonomy::load_names() {
+	TextInputFile in(config.namesdmp);
+	char name[1024], type[1024];
+	size_t id;
+	while (in.getline(), !in.eof()) {
+		if (in.line.empty())
+			continue;
+		if (sscanf(in.line.c_str(), "%zu|%1023[^\t]|%*[^\t]|%1023[^\t]|", &id, name, type) != 3)
+			throw runtime_error("Taxonomy names format error at line " + to_string(in.line_count));
+		cout << id << '\t' << name << '\t' << type << endl;
+	}
+	in.close();
 }
 
 void Taxonomy::init()

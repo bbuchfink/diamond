@@ -33,7 +33,7 @@ void TaxonList::build(OutputFile &db, FileBackedBuffer &accessions, size_t seqs)
 	vector<string> a;
 	db.set(Serializer::VARINT);
 	set<unsigned> t;
-	size_t mapped = 0, mappings = 0;
+	size_t mapped = 0, mappings = 0, len_errors = 0;
 	for (size_t i = 0; i < seqs; ++i) {
 		accessions >> a;
 		for (vector<string>::const_iterator j = a.begin(); j < a.end(); ++j) {
@@ -41,6 +41,7 @@ void TaxonList::build(OutputFile &db, FileBackedBuffer &accessions, size_t seqs)
 				t.insert(taxonomy.get(Taxonomy::Accession(j->c_str())));
 			}
 			catch (AccessionLengthError &) {
+				++len_errors;
 			}
 		}
 		t.erase(0);
@@ -52,4 +53,6 @@ void TaxonList::build(OutputFile &db, FileBackedBuffer &accessions, size_t seqs)
 	}
 	timer.finish();
 	message_stream << mapped << " sequences mapped to taxonomy, " << mappings << " total mappings." << endl;
+	if (len_errors)
+		message_stream << "Warning: " << len_errors << " sequences ignored due to accession length overflow." << endl;
 }

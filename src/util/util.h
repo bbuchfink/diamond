@@ -104,11 +104,12 @@ inline _t round_up(_t x, _t m)
 inline vector<string> tokenize(const char *str, const char *delimiters)
 {
 	vector<string> out;
+	string token;
 	while(*str != 0) {
 		while(*str != 0 && strchr(delimiters, *str))
 			++str;
-		string token;
-		while(*str != 0 && strchr(delimiters, *str) == 0)
+		token.clear();
+		while(*str != 0 && strchr(delimiters, *str) == nullptr)
 			token += *(str++);
 		if(token.length() > 0)
 			out.push_back(token);
