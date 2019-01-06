@@ -20,6 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <algorithm>
 #include <string.h>
 #include "deserializer.h"
+#include "record_reader.h"
 
 template<typename _t>
 void append(_t &container, const char *ptr, size_t n)
@@ -147,4 +148,8 @@ bool Deserializer::read_until(string &dst, char delimiter)
 bool Deserializer::read_until(vector<char> &dst, char delimiter)
 {
 	return read_to(dst, delimiter);
+}
+
+DynamicRecordReader Deserializer::read_record() {
+	return DynamicRecordReader(*this);
 }

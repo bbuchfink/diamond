@@ -1,3 +1,6 @@
+[0.9.25]
+- Added option --taxonnames to load taxonomy names for database building.
+
 [0.9.24]
 - Fixed a compiler error on macOS.
 - Added --header option to output header for tabular output format.

@@ -86,7 +86,7 @@ struct Taxonomy
 	void init();
 	void load();
 	void load_nodes();
-	void load_names();
+	size_t load_names();
 	void get_taxids(const char *s, std::set<unsigned> &taxons) const;
 
 	unsigned get(const Accession &accession) const

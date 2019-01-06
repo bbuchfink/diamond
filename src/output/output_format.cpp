@@ -116,10 +116,12 @@ Output_format* get_output_format()
 void init_output(bool have_taxon_id_lists, bool have_taxon_nodes)
 {
 	output_format = unique_ptr<Output_format>(get_output_format());
+	if(config.command == Config::view && (output_format->needs_taxon_id_lists || output_format->needs_taxon_nodes))
+		throw runtime_error("Taxonomy features are not supported for the DAA format.");
 	if (output_format->needs_taxon_id_lists && !have_taxon_id_lists)
-		throw std::runtime_error("Output format requires taxonomy mapping information built into the database (use --taxonmap parameter for the makedb command). Taxonomy features are not supported for the DAA format.");
+		throw runtime_error("Output format requires taxonomy mapping information built into the database (use --taxonmap parameter for the makedb command).");
 	if (output_format->needs_taxon_nodes && !have_taxon_nodes)
-		throw std::runtime_error("Output format requires taxonomy nodes information built into the database (use --taxonnodes parameter for the makedb command). Taxonomy features are not supported for the DAA format.");
+		throw runtime_error("Output format requires taxonomy nodes information built into the database (use --taxonnodes parameter for the makedb command).");
 	if (*output_format == Output_format::taxon && config.toppercent == 100.0)
 		config.toppercent = 10.0;
 	if (config.toppercent == 100.0) {

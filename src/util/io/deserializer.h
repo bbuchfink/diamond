@@ -25,6 +25,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 using std::vector;
 
+struct DynamicRecordReader;
+
 struct Deserializer
 {
 
@@ -130,6 +132,7 @@ struct Deserializer
 	size_t read_raw(char *ptr, size_t count);
 	bool read_until(string &dst, char delimiter);
 	bool read_until(vector<char> &dst, char delimiter);
+	DynamicRecordReader read_record();
 	~Deserializer();
 
 	bool varint;

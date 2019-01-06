@@ -33,6 +33,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "taxon_list.h"
 #include "taxonomy_nodes.h"
 #include "../util/algo/MurmurHash3.h"
+#include "../util/io/record_reader.h"
 
 String_set<0>* ref_ids::data_ = 0;
 Partitioned_histogram ref_hst;
@@ -47,17 +48,18 @@ Serializer& operator<<(Serializer &s, const ReferenceHeader2 &h)
 	s.unset(Serializer::VARINT);
 	s << sizeof(ReferenceHeader2);
 	s.write(h.hash, sizeof(h.hash));
-	s << h.taxon_array_offset << h.taxon_array_size << h.taxon_nodes_offset;
+	s << h.taxon_array_offset << h.taxon_array_size << h.taxon_nodes_offset << h.taxon_names_offset;
 	return s;
 }
 
 Deserializer& operator>>(Deserializer &d, ReferenceHeader2 &h)
 {
-	d.varint = false;
-	uint64_t size;
-	d >> size;
-	d.read(h.hash, sizeof(h.hash));
-	d >> h.taxon_array_offset >> h.taxon_array_size >> h.taxon_nodes_offset;
+	d.read_record().read(h.hash, sizeof(h.hash))
+		>> h.taxon_array_offset
+		>> h.taxon_array_size
+		>> h.taxon_nodes_offset
+		>> h.taxon_names_offset
+		>> Finish();
 	return d;
 }
 
@@ -78,8 +80,10 @@ void DatabaseFile::init()
 {
 	read_header(*this, ref_header);
 	*this >> header2;
-	if (ref_header.build < min_build_required || ref_header.db_version != ReferenceHeader::current_db_version)
-		throw std::runtime_error("Database was built with a different version of Diamond and is incompatible.");
+	if (ref_header.build < min_build_required || ref_header.db_version < MIN_DB_VERSION)
+		throw std::runtime_error("Database was built with an older version of Diamond and is incompatible.");
+	if (ref_header.db_version > ReferenceHeader::current_db_version)
+		throw std::runtime_error("Database was built with a newer version of Diamond and is incompatible.");
 	if (ref_header.sequences == 0)
 		throw std::runtime_error("Incomplete database file. Database building did not complete successfully.");
 	pos_array_offset = ref_header.pos_array_offset;

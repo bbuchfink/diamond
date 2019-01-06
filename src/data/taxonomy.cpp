@@ -25,6 +25,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/merge_sort.h"
 #include "../util/log_stream.h"
 #include "reference.h"
+#include "../util/string/string.h"
+#include "../util/string/tokenizer.h"
 
 using namespace std;
 
@@ -87,18 +89,24 @@ void Taxonomy::load_nodes()
 	f.close();
 }
 
-void Taxonomy::load_names() {
+size_t Taxonomy::load_names() {
 	TextInputFile in(config.namesdmp);
-	char name[1024], type[1024];
-	size_t id;
+	string name, type;
+	long id;
+	size_t n = 0;
 	while (in.getline(), !in.eof()) {
 		if (in.line.empty())
 			continue;
-		if (sscanf(in.line.c_str(), "%zu|%1023[^\t]|%*[^\t]|%1023[^\t]|", &id, name, type) != 3)
-			throw runtime_error("Taxonomy names format error at line " + to_string(in.line_count));
-		cout << id << '\t' << name << '\t' << type << endl;
+		Util::String::Tokenizer(in.line, "\t|\t") >> id >> name >> Util::String::Skip() >> type;
+		rstrip(type, "\t|");
+		if (type == "scientific name") {
+			name_.resize(id + 1);
+			name_[id] = name;
+			++n;
+		}
 	}
 	in.close();
+	return n;
 }
 
 void Taxonomy::init()
@@ -108,13 +116,18 @@ void Taxonomy::init()
 		timer.go("Loading taxonomy");
 		load();
 		timer.finish();
-		log_stream << "Accession mappings = " << accession2taxid_.size() << endl;
+		message_stream << "Accession mappings = " << accession2taxid_.size() << endl;
 	}
-
 	if (!config.nodesdmp.empty()) {
 		timer.go("Loading taxonomy nodes");
 		load_nodes();
 		timer.finish();
+	}
+	if (!config.namesdmp.empty()) {
+		timer.go("Loading taxonomy names");
+		size_t n = load_names();
+		timer.finish();
+		message_stream << "Loaded taxonomy names for " << n << " taxon ids." << endl;
 	}
 }
 

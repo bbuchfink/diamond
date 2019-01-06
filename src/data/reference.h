@@ -44,7 +44,7 @@ struct ReferenceHeader
 	uint64_t magic_number;
 	uint32_t build, db_version;
 	uint64_t sequences, letters, pos_array_offset;
-	enum { current_db_version = 2 };
+	enum { current_db_version = 3 };
 	static constexpr uint64_t MAGIC_NUMBER = 0x24af8a415ee186dllu;
 };
 
@@ -53,12 +53,13 @@ struct ReferenceHeader2
 	ReferenceHeader2():
 		taxon_array_offset(0),
 		taxon_array_size(0),
-		taxon_nodes_offset(0)
+		taxon_nodes_offset(0),
+		taxon_names_offset(0)
 	{
 		memset(hash, 0, sizeof(hash));
 	}
 	char hash[16];
-	uint64_t taxon_array_offset, taxon_array_size, taxon_nodes_offset;	
+	uint64_t taxon_array_offset, taxon_array_size, taxon_nodes_offset, taxon_names_offset;
 
 	friend Serializer& operator<<(Serializer &s, const ReferenceHeader2 &h);
 	friend Deserializer& operator>>(Deserializer &d, ReferenceHeader2 &h);
@@ -89,7 +90,7 @@ struct DatabaseFile : public InputFile
 	size_t tell_seq() const;
 	void seek_direct();
 
-	enum { min_build_required = 74 };
+	enum { min_build_required = 74, MIN_DB_VERSION = 2 };
 
 	bool temporary;
 	size_t pos_array_offset;
