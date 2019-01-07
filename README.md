@@ -73,6 +73,11 @@ The output file here is specified with the `–o` option and named
 -   The default e-value cutoff of DIAMOND is 0.001 while that of
     BLAST is 10, so by default the program will search a lot more
     stringently than BLAST and not report weak hits.
+    
+Support
+=======
+
+The preferred support channel is the [Diamond community website](http://www.diamondsearch.org/). It provides a platform for users to exchange their experiences and get support directly from the developer. You may also use the GitHub issue tracker or send inquiries by email.
 
 About
 =====
