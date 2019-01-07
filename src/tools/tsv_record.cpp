@@ -8,7 +8,7 @@ TextInputFile& operator>>(TextInputFile &file, TSVRecord &record) {
 	char query_buf[BUF_SIZE], subject_buf[BUF_SIZE];
 	file.getline();
 	if (!file.eof()) {
-		if (sscanf(file.line.c_str(), "%s%s%lf%llu%llu%llu%llu%llu%llu%llu%lf%lf", query_buf, subject_buf, &record.pident, &record.length, &record.mismatch,
+		if (sscanf(file.line.c_str(), "%s%s%lf%zu%zu%zu%zu%zu%zu%zu%lf%lf", query_buf, subject_buf, &record.pident, &record.length, &record.mismatch,
 			&record.gapopen, &record.qstart, &record.qend, &record.sstart, &record.send, &record.evalue, &record.bitscore) != 12)
 			throw runtime_error("Blast TSV parse error.");
 		record.qseqid = query_buf;
