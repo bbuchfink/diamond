@@ -27,6 +27,17 @@ struct DynamicRecordReader {
 		return *this;
 	}
 
+	DynamicRecordReader& operator>>(unsigned long &x)
+	{
+		if (size_ >= sizeof(unsigned long)) {
+			d_ >> x;
+			size_ -= sizeof(unsigned long);
+		}
+		else
+			x = 0;
+		return *this;
+	}
+
 	template<typename _t>
 	DynamicRecordReader& read(const _t *ptr, size_t count)
 	{
