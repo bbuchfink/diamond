@@ -106,8 +106,6 @@ struct Taxonomy
 	}
 
 	unsigned get_lca(unsigned t1, unsigned t2) const;
-
-private:
 	
 	std::vector<std::pair<Accession, unsigned> > accession2taxid_;
 	std::vector<unsigned> parent_;

@@ -22,6 +22,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "deserializer.h"
 #include "record_reader.h"
 
+using namespace std;
+
 template<typename _t>
 void append(_t &container, const char *ptr, size_t n)
 {

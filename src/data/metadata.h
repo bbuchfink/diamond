@@ -19,6 +19,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #ifndef METADATA_H_
 #define METADATA_H_
 
+#include <vector>
+#include <string>
 #include "taxon_list.h"
 #include "taxonomy_nodes.h"
 #include "taxonomy_filter.h"
@@ -26,22 +28,26 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 struct Metadata
 {
 	Metadata():
-		taxon_list(NULL),
-		taxon_nodes(NULL),
-		taxon_filter(NULL)
+		taxon_list(nullptr),
+		taxon_nodes(nullptr),
+		taxon_filter(nullptr),
+		taxonomy_scientific_names(nullptr)
 	{}
 	void free()
 	{
 		delete taxon_list;
 		delete taxon_nodes;
 		delete taxon_filter;
-		taxon_list = NULL;
-		taxon_nodes = NULL;
-		taxon_filter = NULL;
+		delete taxonomy_scientific_names;
+		taxon_list = nullptr;
+		taxon_nodes = nullptr;
+		taxon_filter = nullptr;
+		taxonomy_scientific_names = nullptr;
 	}
 	TaxonList *taxon_list;
 	TaxonomyNodes *taxon_nodes;
 	TaxonomyFilter *taxon_filter;
+	std::vector<std::string> *taxonomy_scientific_names;
 };
 
 #endif

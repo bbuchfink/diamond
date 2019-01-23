@@ -398,7 +398,7 @@ void run(const Options &options)
 	DatabaseFile *db_file = options.db ? options.db : DatabaseFile::auto_create_from_fasta();
 	timer.finish();
 
-	init_output(db_file->has_taxon_id_lists(), db_file->has_taxon_nodes());
+	init_output(db_file->has_taxon_id_lists(), db_file->has_taxon_nodes(), db_file->has_taxon_scientific_names());
 
 	verbose_stream << "Reference = " << config.database << endl;
 	verbose_stream << "Sequences = " << db_file->ref_header.sequences << endl;
@@ -426,6 +426,13 @@ void run(const Options &options)
 			timer.go("Building taxonomy filter");
 			metadata.taxon_filter = new TaxonomyFilter(config.taxonlist, *metadata.taxon_list, *metadata.taxon_nodes);
 		}
+		timer.finish();
+	}
+	if (output_format->needs_taxon_scientific_names) {
+		timer.go("Loading taxonomy names");
+		metadata.taxonomy_scientific_names = new vector<string>;
+		db_file->seek(db_file->header2.taxon_names_offset);
+		*db_file >> *metadata.taxonomy_scientific_names;
 		timer.finish();
 	}
 

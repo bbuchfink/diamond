@@ -128,6 +128,10 @@ bool DatabaseFile::has_taxon_nodes()
 	return header2.taxon_nodes_offset != 0;
 }
 
+bool DatabaseFile::has_taxon_scientific_names() {
+	return header2.taxon_names_offset != 0;
+
+}
 
 void DatabaseFile::rewind()
 {
@@ -224,6 +228,10 @@ void make_db(TempFile **tmp_out)
 	if (!config.nodesdmp.empty()) {
 		header2.taxon_nodes_offset = out->tell();
 		TaxonomyNodes::build(*out);
+	}
+	if (!config.namesdmp.empty()) {
+		header2.taxon_names_offset = out->tell();
+		*out << taxonomy.name_;
 	}
 
 	timer.go("Closing the input file");

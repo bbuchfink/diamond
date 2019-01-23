@@ -120,7 +120,7 @@ const char* Blast_tab_format::field_desc[] = {
 	"sframe",		// 32 means Subject frame
 	"Blast traceback operations",			// 33 means Blast traceback operations(BTOP)
 	"Subject Taxonomy IDs",		// 34 means unique Subject Taxonomy ID(s), separated by a ';'	(in numerical order)
-	"sscinames",	// 35 means unique Subject Scientific Name(s), separated by a ';'
+	"Subject scientific names",	// 35 means unique Subject Scientific Name(s), separated by a ';'
 	"scomnames",	// 36 means unique Subject Common Name(s), separated by a ';'
 	"sblastnames",	// 37 means unique Subject Blast Name(s), separated by a ';'	(in alphabetical order)
 	"sskingdoms",	// 38 means unique Subject Super Kingdom(s), separated by a ';'	(in alphabetical order)
@@ -157,6 +157,8 @@ Blast_tab_format::Blast_tab_format() :
 			throw std::runtime_error(string("Invalid output field: ") + *i);
 		if (j == 34)
 			needs_taxon_id_lists = true;
+		if (j == 35)
+			needs_taxon_scientific_names = true;
 		fields.push_back(j);
 		if (j == 6 || j == 39 || j == 40 || j == 34)
 			config.salltitles = true;

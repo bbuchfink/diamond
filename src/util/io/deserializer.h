@@ -20,10 +20,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define DESERIALIZER_H_
 
 #include <vector>
+#include <utility>
 #include "stream_entity.h"
 #include "../algo/varint.h"
-
-using std::vector;
 
 struct DynamicRecordReader;
 
@@ -73,28 +72,28 @@ struct Deserializer
 		return *this;
 	}
 
-	Deserializer& operator>>(string &s)
+	Deserializer& operator>>(std::string &s)
 	{
 		if (!read_until(s, '\0'))
 			throw EndOfStream();
 		return *this;
 	}
 
-	Deserializer& operator>>(vector<string> &v)
+	Deserializer& operator>>(std::vector<std::string> &v)
 	{
 		int n;
 		*this >> n;
 		v.clear();
 		v.reserve(n);
-		string s;
+		std::string s;
 		for (int i = 0; i < n; ++i) {
 			*this >> s;
-			v.push_back(s);
+			v.push_back(std::move(s));
 		}
 		return *this;
 	}
 
-	Deserializer& operator>>(vector<unsigned> &v)
+	Deserializer& operator>>(std::vector<unsigned> &v)
 	{
 		unsigned n, x;
 		*this >> n;
@@ -130,8 +129,8 @@ struct Deserializer
 	}
 
 	size_t read_raw(char *ptr, size_t count);
-	bool read_until(string &dst, char delimiter);
-	bool read_until(vector<char> &dst, char delimiter);
+	bool read_until(std::string &dst, char delimiter);
+	bool read_until(std::vector<char> &dst, char delimiter);
 	DynamicRecordReader read_record();
 	~Deserializer();
 

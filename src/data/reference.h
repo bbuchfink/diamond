@@ -85,6 +85,7 @@ struct DatabaseFile : public InputFile
 	void read_seq(string &id, vector<char> &seq);
 	bool has_taxon_id_lists();
 	bool has_taxon_nodes();
+	bool has_taxon_scientific_names();
 	void close();
 	void seek_seq(size_t i);
 	size_t tell_seq() const;

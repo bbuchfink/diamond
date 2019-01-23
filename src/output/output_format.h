@@ -36,7 +36,8 @@ struct Output_format
 	Output_format(unsigned code):
 		code(code),
 		needs_taxon_id_lists(false),
-		needs_taxon_nodes(false)
+		needs_taxon_nodes(false),
+		needs_taxon_scientific_names(false)
 	{}
 	virtual void print_query_intro(size_t query_num, const char *query_name, unsigned query_len, TextBuffer &out, bool unaligned) const
 	{}
@@ -57,7 +58,7 @@ struct Output_format
 		return code;
 	}
 	unsigned code;
-	bool needs_taxon_id_lists, needs_taxon_nodes;
+	bool needs_taxon_id_lists, needs_taxon_nodes, needs_taxon_scientific_names;
 	enum { daa, blast_tab, blast_xml, sam, blast_pairwise, null, taxon, paf };
 };
 
@@ -195,7 +196,7 @@ struct Taxon_format : public Output_format
 };
 
 Output_format* get_output_format();
-void init_output(bool have_taxon_id_lists, bool have_taxon_nodes);
+void init_output(bool have_taxon_id_lists, bool have_taxon_nodes, bool have_taxon_scientific_names);
 void print_hsp(Hsp &hsp, const TranslatedSequence &query);
 
 #endif /* OUTPUT_FORMAT_H_ */
