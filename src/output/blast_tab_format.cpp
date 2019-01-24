@@ -307,6 +307,7 @@ void Blast_tab_format::print_match(const Hsp_context& r, const Metadata &metadat
 				else
 					out << tax_id[i];
 			}
+			break;
 		}
 		case 39:
 			print_title(out, r.subject_name, true, false, "<>");
