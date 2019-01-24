@@ -157,8 +157,10 @@ Blast_tab_format::Blast_tab_format() :
 			throw std::runtime_error(string("Invalid output field: ") + *i);
 		if (j == 34)
 			needs_taxon_id_lists = true;
-		if (j == 35)
+		if (j == 35) {
 			needs_taxon_scientific_names = true;
+			needs_taxon_id_lists = true;
+		}
 		fields.push_back(j);
 		if (j == 6 || j == 39 || j == 40 || j == 34)
 			config.salltitles = true;
@@ -294,6 +296,18 @@ void Blast_tab_format::print_match(const Hsp_context& r, const Metadata &metadat
 		case 34:
 			print_staxids(out, r.orig_subject_id, metadata);
 			break;
+		case 35: {
+			const vector<string> &names = *metadata.taxonomy_scientific_names;
+			const vector<unsigned> tax_id = (*metadata.taxon_list)[r.orig_subject_id];
+			for (size_t i = 0; i < tax_id.size(); ++i) {
+				if (i > 0)
+					out << ';';
+				if (names.size() < tax_id[i] && !names[tax_id[i]].empty())
+					out << names[tax_id[i]];
+				else
+					out << tax_id[i];
+			}
+		}
 		case 39:
 			print_title(out, r.subject_name, true, false, "<>");
 			break;

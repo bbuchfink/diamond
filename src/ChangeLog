@@ -1,5 +1,6 @@
 [0.9.25]
 - Added option --taxonnames to load taxonomy names for database building.
+- Fixed a compiler error for GCC 8.2.
 
 [0.9.24]
 - Fixed a compiler error on macOS.
