@@ -302,7 +302,7 @@ void Blast_tab_format::print_match(const Hsp_context& r, const Metadata &metadat
 			for (size_t i = 0; i < tax_id.size(); ++i) {
 				if (i > 0)
 					out << ';';
-				if (names.size() < tax_id[i] && !names[tax_id[i]].empty())
+				if (tax_id[i] < names.size() && !names[tax_id[i]].empty())
 					out << names[tax_id[i]];
 				else
 					out << tax_id[i];
