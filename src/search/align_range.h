@@ -158,7 +158,7 @@ inline void align_partition(unsigned hp,
 		unsigned sid,
 		sorted_list::const_iterator i,
 		sorted_list::const_iterator j,
-		unsigned thread_id)
+		size_t thread_id)
 {
 #ifndef SIMPLE_SEARCH
 	if (hp > 0)

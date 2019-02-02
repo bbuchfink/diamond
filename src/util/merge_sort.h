@@ -36,8 +36,8 @@ void merge_sort(_it begin, _it end, unsigned n_threads, unsigned level = 0)
 	}
 
 	_it mid = begin + diff/2;
-	thread *left = launch_thread(merge_sort<_it>, begin, mid, n_threads, level+1);
-	thread *right = launch_thread(merge_sort<_it>, mid, end, n_threads, level+1);
+	tthread::thread *left = launch_thread(merge_sort<_it>, begin, mid, n_threads, level+1);
+	tthread::thread *right = launch_thread(merge_sort<_it>, mid, end, n_threads, level+1);
 	left->join();
 	right->join();
 	delete left;

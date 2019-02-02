@@ -17,8 +17,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #include <iostream>
+#include <atomic>
 #include <limits>
 #include <memory>
+#include <thread>
 #include "../data/reference.h"
 #include "../data/queries.h"
 #include "../basic/statistics.h"
@@ -41,28 +43,19 @@ using namespace std;
 
 namespace Workflow { namespace Search {
 
-struct Search_context
-{
-	Search_context(unsigned sid, const sorted_list &ref_idx, const sorted_list &query_idx) :
-		sid(sid),
-		ref_idx(ref_idx),
-		query_idx(query_idx)
-	{ }
-	void operator()(unsigned thread_id, unsigned seedp) const
-	{
+void search_worker(atomic<unsigned> *seedp, unsigned sid, const sorted_list *ref_idx, const sorted_list *query_idx, size_t thread_id) {
+	unsigned p;
+	while ((p = (*seedp)++) < Const::seedp) {
 		Statistics stat;
-		align_partition(seedp,
+		align_partition(p,
 			stat,
 			sid,
-			ref_idx.get_partition_cbegin(seedp),
-			query_idx.get_partition_cbegin(seedp),
+			ref_idx->get_partition_cbegin(p),
+			query_idx->get_partition_cbegin(p),
 			thread_id);
 		statistics += stat;
 	}
-	const unsigned sid;
-	const sorted_list &ref_idx;
-	const sorted_list &query_idx;
-};
+}
 
 void process_shape(unsigned sid,
 	unsigned query_chunk,
@@ -118,10 +111,15 @@ void process_shape(unsigned sid,
 			timer.go("Building seed filter");
 			frequent_seeds.build(sid, range, *ref_idx, query_idx);
 		}
-
-		timer.go("Searching alignments");
-		Search_context context(sid, *ref_idx, query_idx);
-		launch_scheduled_thread_pool(context, Const::seedp, config.threads_);
+		
+		vector<thread*> threads;
+		atomic<unsigned> seedp = 0;
+		for (size_t i = 0; i < config.threads_; ++i)
+			threads.push_back(new thread(search_worker, &seedp, sid, ref_idx, &query_idx, i));
+		for (auto t : threads) {
+			t->join();
+			delete t;
+		}
 
 		delete ref_idx;
 	}

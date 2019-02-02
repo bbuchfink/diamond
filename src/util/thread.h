@@ -26,7 +26,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "tinythread.h"
 #include "tls.h"
 
-using tthread::thread;
 using std::vector;
 
 template<typename _t>
@@ -145,9 +144,9 @@ void thread_worker(void *p)
 }
 
 template<typename _f>
-thread* launch_thread(_f f)
+tthread::thread* launch_thread(_f f)
 {
-	return new thread(thread_worker<_f>, new Thread_p0<_f>(f));
+	return new tthread::thread(thread_worker<_f>, new Thread_p0<_f>(f));
 }
 
 
@@ -172,9 +171,9 @@ void thread_worker(void *p)
 }
 
 template<typename _f, typename _t1>
-thread* launch_thread(_f f, _t1 p1)
+tthread::thread* launch_thread(_f f, _t1 p1)
 {
-	return new thread(thread_worker<_f, _t1>, new Thread_p1<_f, _t1>(f, p1));
+	return new tthread::thread(thread_worker<_f, _t1>, new Thread_p1<_f, _t1>(f, p1));
 }
 
 template<typename _f, typename _t1, typename _t2>
@@ -200,9 +199,9 @@ void thread_worker(void *p)
 }
 
 template<typename _f, typename _t1, typename _t2>
-thread* launch_thread(_f f, _t1 p1, _t2 p2)
+tthread::thread* launch_thread(_f f, _t1 p1, _t2 p2)
 {
-	return new thread(thread_worker<_f, _t1, _t2>, new Thread_p2<_f, _t1, _t2>(f, p1, p2));
+	return new tthread::thread(thread_worker<_f, _t1, _t2>, new Thread_p2<_f, _t1, _t2>(f, p1, p2));
 }
 
 template<typename _f, typename _t1, typename _t2, typename _t3>
@@ -230,9 +229,9 @@ void thread_worker(void *p)
 }
 
 template<typename _f, typename _t1, typename _t2, typename _t3>
-thread* launch_thread(_f f, _t1 p1, _t2 p2, _t3 p3)
+tthread::thread* launch_thread(_f f, _t1 p1, _t2 p2, _t3 p3)
 {
-	return new thread(thread_worker<_f, _t1, _t2, _t3>, new Thread_p3<_f, _t1, _t2, _t3>(f, p1, p2, p3));
+	return new tthread::thread(thread_worker<_f, _t1, _t2, _t3>, new Thread_p3<_f, _t1, _t2, _t3>(f, p1, p2, p3));
 }
 
 template<typename _f, typename _t1, typename _t2, typename _t3, typename _t4>
@@ -262,8 +261,8 @@ void thread_worker(void *p)
 }
 
 template<typename _f, typename _t1, typename _t2, typename _t3, typename _t4>
-thread* launch_thread(_f f, _t1 p1, _t2 p2, _t3 p3, _t4 p4)
-{ return new thread (thread_worker<_f,_t1,_t2,_t3,_t4>, new Thread_p4<_f,_t1,_t2,_t3,_t4> (f, p1, p2, p3, p4)); }
+tthread::thread* launch_thread(_f f, _t1 p1, _t2 p2, _t3 p3, _t4 p4)
+{ return new tthread::thread (thread_worker<_f,_t1,_t2,_t3,_t4>, new Thread_p4<_f,_t1,_t2,_t3,_t4> (f, p1, p2, p3, p4)); }
 
 template<typename _f, typename _t1, typename _t2, typename _t3, typename _t4, typename _t5>
 struct Thread_p5
@@ -294,9 +293,9 @@ void thread_worker(void *p)
 }
 
 template<typename _f, typename _t1, typename _t2, typename _t3, typename _t4, typename _t5>
-thread* launch_thread(_f f, _t1 p1, _t2 p2, _t3 p3, _t4 p4, _t5 p5)
+tthread::thread* launch_thread(_f f, _t1 p1, _t2 p2, _t3 p3, _t4 p4, _t5 p5)
 {
-	return new thread(thread_worker<_f, _t1, _t2, _t3, _t4, _t5>, new Thread_p5<_f, _t1, _t2, _t3, _t4, _t5>(f, p1, p2, p3, p4, p5));
+	return new tthread::thread(thread_worker<_f, _t1, _t2, _t3, _t4, _t5>, new Thread_p5<_f, _t1, _t2, _t3, _t4, _t5>(f, p1, p2, p3, p4, p5));
 }
 
 template<typename _f, typename _t1, typename _t2, typename _t3, typename _t4, typename _t5, typename _t6>
@@ -330,12 +329,12 @@ void thread_worker(void *p)
 }
 
 template<typename _f, typename _t1, typename _t2, typename _t3, typename _t4, typename _t5,typename _t6>
-thread* launch_thread(_f f, _t1 p1, _t2 p2, _t3 p3, _t4 p4, _t5 p5, _t6 p6)
+tthread::thread* launch_thread(_f f, _t1 p1, _t2 p2, _t3 p3, _t4 p4, _t5 p5, _t6 p6)
 {
-	return new thread(thread_worker<_f, _t1, _t2, _t3, _t4, _t5, _t6>, new Thread_p6<_f, _t1, _t2, _t3, _t4, _t5, _t6>(f, p1, p2, p3, p4, p5, p6));
+	return new tthread::thread(thread_worker<_f, _t1, _t2, _t3, _t4, _t5, _t6>, new Thread_p6<_f, _t1, _t2, _t3, _t4, _t5, _t6>(f, p1, p2, p3, p4, p5, p6));
 }
 
-struct Thread_pool : public vector<thread*>
+struct Thread_pool : public vector<tthread::thread*>
 {
 	void join_all()
 	{
