@@ -17,10 +17,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #include <iostream>
-#include <atomic>
 #include <limits>
 #include <memory>
-#include <thread>
 #include "../data/reference.h"
 #include "../data/queries.h"
 #include "../basic/statistics.h"
@@ -38,24 +36,23 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../search/search.h"
 #include "workflow.h"
 #include "../util/io/consumer.h"
+#include "../util/parallel/thread_pool.h"
 
 using namespace std;
 
 namespace Workflow { namespace Search {
 
-void search_worker(atomic<unsigned> *seedp, unsigned sid, const sorted_list *ref_idx, const sorted_list *query_idx, size_t thread_id) {
-	unsigned p;
-	while ((p = (*seedp)++) < Const::seedp) {
-		Statistics stat;
-		align_partition(p,
-			stat,
-			sid,
-			ref_idx->get_partition_cbegin(p),
-			query_idx->get_partition_cbegin(p),
-			thread_id);
-		statistics += stat;
-	}
+void search_worker(size_t p, size_t thread_id, unsigned sid, const sorted_list *ref_idx, const sorted_list *query_idx) {
+	Statistics stat;
+	align_partition((unsigned)p,
+		stat,
+		sid,
+		ref_idx->get_partition_cbegin(p),
+		query_idx->get_partition_cbegin(p),
+		thread_id);
+	statistics += stat;
 }
+
 
 void process_shape(unsigned sid,
 	unsigned query_chunk,
@@ -112,14 +109,7 @@ void process_shape(unsigned sid,
 			frequent_seeds.build(sid, range, *ref_idx, query_idx);
 		}
 		
-		vector<thread*> threads;
-		atomic<unsigned> seedp = 0;
-		for (size_t i = 0; i < config.threads_; ++i)
-			threads.push_back(new thread(search_worker, &seedp, sid, ref_idx, &query_idx, i));
-		for (auto t : threads) {
-			t->join();
-			delete t;
-		}
+		Util::Parallel::scheduled_thread_pool_auto(config.threads_, Const::seedp, search_worker, sid, ref_idx, &query_idx);
 
 		delete ref_idx;
 	}

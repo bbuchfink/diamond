@@ -28,12 +28,12 @@ char* sorted_list::alloc_buffer(const Partitioned_histogram &hst)
 sorted_list::sorted_list()
 {}
 
-sorted_list::const_iterator sorted_list::get_partition_cbegin(unsigned p) const
+sorted_list::const_iterator sorted_list::get_partition_cbegin(size_t p) const
 {
 	return const_iterator(cptr_begin(p), cptr_end(p));
 }
 
-sorted_list::iterator sorted_list::get_partition_begin(unsigned p) const
+sorted_list::iterator sorted_list::get_partition_begin(size_t p) const
 {
 	return iterator(ptr_begin(p), ptr_end(p));
 }
@@ -43,22 +43,22 @@ sorted_list::Random_access_iterator sorted_list::random_access(unsigned p, size_
 	return Random_access_iterator(cptr_begin(p) + offset, cptr_end(p));
 }
 
-sorted_list::entry* sorted_list::ptr_begin(unsigned i) const
+sorted_list::entry* sorted_list::ptr_begin(size_t i) const
 {
 	return &data_[limits_[i]];
 }
 
-sorted_list::entry* sorted_list::ptr_end(unsigned i) const
+sorted_list::entry* sorted_list::ptr_end(size_t i) const
 {
 	return &data_[limits_[i + 1]];
 }
 
-const sorted_list::entry* sorted_list::cptr_begin(unsigned i) const
+const sorted_list::entry* sorted_list::cptr_begin(size_t i) const
 {
 	return &data_[limits_[i]];
 }
 
-const sorted_list::entry* sorted_list::cptr_end(unsigned i) const
+const sorted_list::entry* sorted_list::cptr_end(size_t i) const
 {
 	return &data_[limits_[i + 1]];
 }

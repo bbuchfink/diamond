@@ -105,8 +105,8 @@ struct sorted_list
 	typedef Iterator_base<entry> iterator;
 	typedef Iterator_base<const entry> const_iterator;
 
-	const_iterator get_partition_cbegin(unsigned p) const;
-	iterator get_partition_begin(unsigned p) const;
+	const_iterator get_partition_cbegin(size_t p) const;
+	iterator get_partition_begin(size_t p) const;
 
 	struct Random_access_iterator
 	{
@@ -140,8 +140,8 @@ struct sorted_list
 		return i.i - cptr_begin(p);
 	}
 	
-	entry* ptr_begin(unsigned i) const;
-	entry* ptr_end(unsigned i) const;
+	entry* ptr_begin(size_t i) const;
+	entry* ptr_end(size_t i) const;
 
 	Random_access_iterator random_access(unsigned p, size_t offset) const;
 
@@ -186,8 +186,8 @@ private:
 		uint8_t  n[Const::seedp];
 	};
 
-	const entry* cptr_begin(unsigned i) const;
-	const entry* cptr_end(unsigned i) const;
+	const entry* cptr_begin(size_t i) const;
+	const entry* cptr_end(size_t i) const;
 
 	Ptr_set build_iterators(const shape_histogram &hst) const;
 
