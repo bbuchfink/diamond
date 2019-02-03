@@ -44,10 +44,11 @@ private:
 
 	static const double hash_table_factor;   
 
-	struct Build_context;
-	struct Build_context2;
+	static void build_worker(size_t seedp, size_t thread_id, const sorted_list *ref_idx, const sorted_list *query_idx, const SeedPartitionRange *range, unsigned sid, unsigned ref_max_n, unsigned query_max_n, vector<unsigned> *counts);
+	static void build_worker2(size_t seedp, size_t thread_id, vector<JoinResult<SeedArray::Entry>>::iterator seed_hits, const SeedPartitionRange *range, unsigned sid, unsigned ref_max_n, unsigned query_max_n, vector<unsigned> *counts);
 
 	static void compute_sd(Atomic<unsigned> *seedp, const sorted_list *ref_idx, const sorted_list *query_idx, vector<Sd> *ref_out, vector<Sd> *query_out);
+	//static void compute_sd(size_t seedp, size_t thread_id, const sorted_list *ref_idx, const sorted_list *query_idx, vector<Sd> *ref_out, vector<Sd> *query_out);
 	static void compute_sd2(Atomic<unsigned> *seedp, vector<JoinResult<SeedArray::Entry> >::iterator seed_hits, vector<Sd> *ref_out, vector<Sd> *query_out);
 
 	PHash_set<void,murmur_hash> tables_[Const::max_shapes][Const::seedp];

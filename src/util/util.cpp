@@ -20,9 +20,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <numeric>
 #include "../basic/config.h"
 #include "log_stream.h"
-#include "complexity_filter.h"
 #include "util.h"
 #include "escape_sequences.h"
+#include "tls.h"
 
 using namespace std;
 
@@ -31,7 +31,6 @@ Message_stream verbose_stream (false);
 Message_stream log_stream (false);
 tthread::mutex Message_stream::mtx;
 
-const Complexity_filter Complexity_filter::instance;
 TLS_PTR vector<Ptr_wrapper_base*> *TLS::ptr_;
 
 #ifndef _MSC_VER

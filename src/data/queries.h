@@ -20,7 +20,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define QUERIES_H_
 
 #include "../basic/translate.h"
-#include "../util/complexity_filter.h"
 #include "sorted_list.h"
 #include "../basic/statistics.h"
 #include "sequence_set.h"

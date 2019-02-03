@@ -25,6 +25,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../basic/packed_loc.h"
 #include "../util/system.h"
 #include "../util/algo/hash_join.h"
+#include "../util/parallel/thread_pool.h"
 
 #pragma pack(1)
 
@@ -68,8 +69,7 @@ struct sorted_list
 		seqs.enum_seeds(cb, seq_partition, sh, sh + 1, filter);
 		if (config.hash_join) return;
 		timer.go("Sorting seed list");
-		Sort_context sort_context(*this);
-		launch_scheduled_thread_pool(sort_context, Const::seedp, config.threads_);
+		Util::Parallel::scheduled_thread_pool_auto(config.threads_, Const::seedp, sort_worker, this);
 	}
 	
 	template<typename _t>
@@ -191,17 +191,9 @@ private:
 
 	Ptr_set build_iterators(const shape_histogram &hst) const;
 
-	struct Sort_context
-	{
-		Sort_context(sorted_list &sl):
-			sl (sl)
-		{ }
-		void operator()(unsigned thread_id, unsigned seedp) const
-		{
-			std::sort(sl.ptr_begin(seedp), sl.ptr_end(seedp));
-		}
-		sorted_list &sl;
-	};
+	static void sort_worker(size_t p, size_t thread_id, sorted_list *sl) {
+		std::sort(sl->ptr_begin(p), sl->ptr_end(p));
+	}
 
 	struct Limits : vector<size_t>
 	{

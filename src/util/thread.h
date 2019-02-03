@@ -99,32 +99,6 @@ void launch_thread_pool(_context &context, unsigned threads)
 	}
 }
 
-template<typename _context>
-struct Schedule_context
-{
-	Schedule_context(_context &context, unsigned count):
-		context (context),
-		n (0),
-		count (count)
-	{ }
-	void operator()(unsigned thread_id)
-	{
-		unsigned idx;
-		while((idx = n++) < count)
-			context(thread_id, idx);
-	}
-	_context &context;
-	Atomic<unsigned> n;
-	const unsigned count;
-};
-
-template<typename _context>
-void launch_scheduled_thread_pool(_context &context, unsigned count, unsigned threads)
-{
-	Schedule_context<_context> c (context, count);
-	launch_thread_pool(c, threads);
-}
-
 template<typename _f>
 struct Thread_p0
 {
