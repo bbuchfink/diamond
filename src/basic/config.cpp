@@ -268,7 +268,8 @@ Config::Config(int argc, const char **argv)
 		("use-dataset-field", 0, "", use_dataset_field)
 		("store-query-quality", 0, "", store_query_quality)
 		("swipe-chunk-size", 0, "", swipe_chunk_size, 256u)
-		("query-parallel-limit", 0, "", query_parallel_limit, 1000000u);
+		("query-parallel-limit", 0, "", query_parallel_limit, 1000000u)
+		("hard-masked", 0, "", hardmasked);
 		
 	parser.add(general).add(makedb).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options);
 	parser.store(argc, argv, command);

@@ -32,6 +32,7 @@ struct sequence
 {
 	static const char DELIMITER = '\x1f';
 	struct Reversed {};
+	struct Hardmasked {};
 	sequence():
 		len_ (0),
 		clipping_offset_ (0),
@@ -122,6 +123,17 @@ struct sequence
 				os << v.alphabet[l];
 			else
 				os << (char)tolower(v.alphabet[l & 127]);
+		}
+		return os;
+	}
+	TextBuffer& print(TextBuffer &os, const Value_traits &v, Hardmasked) const
+	{
+		for (unsigned i = 0; i < len_; ++i) {
+			long l = (long)data_[i];
+			if ((l & 128) == 0)
+				os << v.alphabet[l];
+			else
+				os << v.alphabet[v.mask_char];
 		}
 		return os;
 	}

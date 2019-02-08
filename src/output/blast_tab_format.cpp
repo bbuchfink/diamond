@@ -373,6 +373,7 @@ void Blast_tab_format::print_query_intro(size_t query_num, const char *query_nam
 			case 17:
 			case 18:
 			case 33:
+			case 35:
 			case 39:
 			case 40:
 			case 48:

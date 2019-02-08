@@ -1,5 +1,5 @@
 [0.9.25]
-- Added option --taxonnames to load taxonomy names for database building.
+- Added support for the sscinames output field to print subject scientific names to the tabular output format.
 - Fixed a compiler error for GCC 8.2.
 
 [0.9.24]
