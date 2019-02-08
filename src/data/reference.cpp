@@ -386,8 +386,10 @@ void DatabaseFile::get_seq()
 				sequence(seq).print(buf, value_traits, sequence::Reversed());
 				buf << '\n';
 			}
-			else if (config.hardmasked)
+			else if (config.hardmasked) {
 				sequence(seq).print(buf, value_traits, sequence::Hardmasked());
+				buf << '\n';
+			}
 			else
 				buf << sequence(seq) << '\n';
 		}

@@ -133,7 +133,7 @@ struct sequence
 			if ((l & 128) == 0)
 				os << v.alphabet[l];
 			else
-				os << v.alphabet[v.mask_char];
+				os << v.alphabet[(long)v.mask_char];
 		}
 		return os;
 	}
