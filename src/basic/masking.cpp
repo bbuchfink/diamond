@@ -46,7 +46,7 @@ void Masking::operator()(Letter *seq, size_t len) const
 {
 	tantan::maskSequences((tantan::uchar*)seq, (tantan::uchar*)(seq + len), 50,
 		(tantan::const_double_ptr*)probMatrixPointers_,
-		0.005, 0.05,
+		config.tantan_r, 0.05,
 		0.9,
 		0, 0,
 		0.5, (const tantan::uchar*)mask_table_x_);
@@ -56,7 +56,7 @@ void Masking::mask_bit(Letter *seq, size_t len) const
 {
 	tantan::maskSequences((tantan::uchar*)seq, (tantan::uchar*)(seq + len), 50,
 		(tantan::const_double_ptr*)probMatrixPointers_,
-		0.005, 0.05,
+		config.tantan_r, 0.05,
 		0.9,
 		0, 0,
 		0.5, (const tantan::uchar*)mask_table_bit_);

@@ -364,3 +364,16 @@ void translate() {
 	}
 	in.close();
 }
+
+void show_cbs() {
+	score_matrix = Score_matrix("BLOSUM62", config.gap_open, config.gap_extend, config.frame_shift);
+	init_cbs();
+	TextInputFile in(config.query_file);
+	vector<char> id, seq;
+	while (FASTA_format().get_seq(id, seq, in)) {
+		Bias_correction bc{ sequence(seq) };
+		for (size_t i = 0; i < seq.size(); ++i)
+			cout << value_traits.alphabet[seq[i]] << '\t' << bc[i] << endl;
+	}
+	in.close();
+}

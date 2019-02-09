@@ -72,7 +72,8 @@ Config::Config(int argc, const char **argv)
 		.add_command("protein-snps", "")
 		.add_command("cluster", "")
 		.add_command("translate", "")
-		.add_command("filter-blasttab", "");
+		.add_command("filter-blasttab", "")
+		.add_command("show-cbs", "");
 
 	Options_group general("General options");
 	general.add()
@@ -269,7 +270,9 @@ Config::Config(int argc, const char **argv)
 		("store-query-quality", 0, "", store_query_quality)
 		("swipe-chunk-size", 0, "", swipe_chunk_size, 256u)
 		("query-parallel-limit", 0, "", query_parallel_limit, 1000000u)
-		("hard-masked", 0, "", hardmasked);
+		("hard-masked", 0, "", hardmasked)
+		("cbs-window", 0, "", cbs_window, 40)
+		("tantan-r", 0, "", tantan_r, 0.005);
 		
 	parser.add(general).add(makedb).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options);
 	parser.store(argc, argv, command);

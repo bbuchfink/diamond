@@ -109,6 +109,7 @@ void process_shape(unsigned sid,
 			frequent_seeds.build(sid, range, *ref_idx, query_idx);
 		}
 		
+		timer.go("Searching alignments");
 		Util::Parallel::scheduled_thread_pool_auto(config.threads_, Const::seedp, search_worker, sid, ref_idx, &query_idx);
 
 		delete ref_idx;
