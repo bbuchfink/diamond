@@ -273,7 +273,8 @@ Config::Config(int argc, const char **argv)
 		("hard-masked", 0, "", hardmasked)
 		("cbs-window", 0, "", cbs_window, 40)
 		("tantan-r", 0, "", tantan_r, 0.005)
-		("tantan-s", 0, "", tantan_s, 0.5);
+		("tantan-s", 0, "", tantan_s, 0.5)
+		("no-unlink", 0, "", no_unlink);
 		
 	parser.add(general).add(makedb).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options);
 	parser.store(argc, argv, command);

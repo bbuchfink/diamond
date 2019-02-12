@@ -68,7 +68,7 @@ pair<string, int> TempFile::init()
 		perror(0);
 		throw std::runtime_error(string("Error opening temporary file ") + string(s));
 	}
-	if (unlink(s) < 0) {
+	if (!config.no_unlink && unlink(s) < 0) {
 		perror(0);
 		throw std::runtime_error("Error calling unlink.");
 	}

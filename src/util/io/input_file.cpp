@@ -28,6 +28,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "file_source.h"
 #include "compressed_stream.h"
 #include "input_stream_buffer.h"
+#include "../../basic/config.h"
 
 bool is_gzip_stream(const unsigned char *b)
 {
@@ -73,8 +74,11 @@ InputFile::InputFile(OutputFile &tmp_file, int flags) :
 void InputFile::close_and_delete()
 {
 	close();
-#ifdef _MSC_VER
-	if (remove(file_name.c_str()) != 0)
-		std::cerr << "Warning: Failed to delete temporary file " << file_name << std::endl;
+#ifdef WIN32
+	bool windows = true;
+#else
+	bool windows = false;
 #endif
+	if ((windows || config.no_unlink) && remove(file_name.c_str()) != 0)
+		std::cerr << "Warning: Failed to delete temporary file " << file_name << std::endl;
 }
