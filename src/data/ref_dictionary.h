@@ -46,12 +46,12 @@ struct ReferenceDictionary
 
 	unsigned length(uint32_t i) const
 	{
-		return len_[i];
+		return config.no_dict ? 1 : len_[i];
 	}
 
 	const char* name(uint32_t i) const
 	{
-		return name_[i].c_str();
+		return config.no_dict ? "" : name_[i].c_str();
 	}
 
 	sequence seq(size_t i) const
@@ -63,7 +63,7 @@ struct ReferenceDictionary
 	
 	unsigned database_id(unsigned dict_id) const
 	{
-		return database_id_[dict_id];
+		return config.no_dict ? 0 : database_id_[dict_id];
 	}
 
 	unsigned block_to_database_id(size_t block_id) const
