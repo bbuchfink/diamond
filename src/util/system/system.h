@@ -8,6 +8,8 @@ std::string executable_path();
 bool exists(const std::string &file_name);
 void auto_append_extension(std::string &str, const char *ext);
 void auto_append_extension_if_exists(std::string &str, const char *ext);
+size_t getCurrentRSS();
+size_t getPeakRSS();
 
 #ifdef _MSC_VER
 #define POPEN _popen

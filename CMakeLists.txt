@@ -145,6 +145,7 @@ add_executable(diamond src/run/main.cpp
   src/util/sequence/sequence.cpp
   src/tools/tsv_record.cpp
   src/tools/tools.cpp
+  src/util/system/getRSS.cpp
 )
 
 if(EXTRA)
