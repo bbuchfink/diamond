@@ -373,7 +373,7 @@ void show_cbs() {
 	while (FASTA_format().get_seq(id, seq, in)) {
 		Bias_correction bc{ sequence(seq) };
 		for (size_t i = 0; i < seq.size(); ++i)
-			cout << value_traits.alphabet[seq[i]] << '\t' << bc[i] << endl;
+			cout << value_traits.alphabet[(long)seq[i]] << '\t' << bc[i] << endl;
 	}
 	in.close();
 }
