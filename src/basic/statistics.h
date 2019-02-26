@@ -22,7 +22,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <algorithm>
 #include <stdint.h>
 #include <string.h>
-#include "../util/tinythread.h"
+#include <mutex>
 #include "../util/log_stream.h"
 #include "../util/memory/memory_pool.h"
 
@@ -101,7 +101,7 @@ struct Statistics
 	}
 
 	stat_type data_[COUNT];
-	tthread::mutex mtx_;
+	std::mutex mtx_;
 
 };
 

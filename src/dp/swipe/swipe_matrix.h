@@ -24,7 +24,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <stdlib.h>
 #include <utility>
 #include "../score_vector.h"
-#include "../../util/tls.h"
 #include "../../basic/packed_transcript.h"
 
 using std::pair;
@@ -60,9 +59,7 @@ struct SwipeMatrix
 		}
 		_sv *hgap_ptr_, *score_ptr_;
 	};
-	SwipeMatrix(int rows) :
-		hgap_(TLS::get(hgap_ptr)),
-		score_(TLS::get(score_ptr))
+	SwipeMatrix(int rows)
 	{
 		hgap_.clear();
 		hgap_.resize(rows);
@@ -85,8 +82,7 @@ struct SwipeMatrix
 		score_[l].set(c, 0);
 	}
 private:
-	std::vector<_sv> &hgap_, &score_;
-	static TLS_PTR std::vector<_sv> *hgap_ptr, *score_ptr;
+	static thread_local std::vector<_sv> hgap_, score_;
 };
 
 
@@ -122,9 +118,7 @@ struct BandedSwipeMatrix
 		}
 		sv *hgap_ptr_, *score_ptr_;
 	};
-	BandedSwipeMatrix(int band) :
-		hgap_(TLS::get(hgap_ptr)),
-		score_(TLS::get(score_ptr))
+	BandedSwipeMatrix(int band)
 	{
 		hgap_.clear();
 		hgap_.resize(band + 1);
@@ -145,8 +139,7 @@ struct BandedSwipeMatrix
 		return ColumnIterator(&hgap_[offset], &score_[offset]);
 	}
 private:
-	std::vector<sv> &hgap_, &score_;
-	static TLS_PTR std::vector<sv> *hgap_ptr, *score_ptr;
+	static thread_local std::vector<sv> hgap_, score_;
 };
 
 template<typename _score>
@@ -188,9 +181,7 @@ struct BandedSwipeTracebackMatrix
 		sv *hgap_ptr_, *score_ptr_, *hgap_ptr1_, *score_ptr1_;
 	};
 	BandedSwipeTracebackMatrix(size_t band, size_t cols) :
-		band_ (band),
-		hgap_(TLS::get(hgap_ptr)),
-		score_(TLS::get(score_ptr))
+		band_ (band)
 	{
 		hgap_.clear();
 		hgap_.resize((band + 1) * (cols + 1));
@@ -212,8 +203,7 @@ struct BandedSwipeTracebackMatrix
 	}
 private:
 	const size_t band_;
-	std::vector<sv> &hgap_, &score_;
-	static TLS_PTR std::vector<sv> *hgap_ptr, *score_ptr;
+	static thread_local std::vector<sv> hgap_, score_;
 };
 
 template<typename _sv>
@@ -260,9 +250,7 @@ struct Banded3FrameSwipeMatrix
 	};
 
 	Banded3FrameSwipeMatrix(size_t band, size_t cols) :
-		band_(band),
-		hgap_(TLS::get(hgap_ptr)),
-		score_(TLS::get(score_ptr))
+		band_(band)
 	{
 		hgap_.clear();
 		hgap_.resize(band + 3);
@@ -290,8 +278,7 @@ struct Banded3FrameSwipeMatrix
 
 private:
 	const size_t band_;
-	std::vector<_sv> &hgap_, &score_;
-	static TLS_PTR std::vector<_sv> *hgap_ptr, *score_ptr;
+	static thread_local std::vector<_sv> hgap_, score_;
 
 };
 
@@ -471,9 +458,7 @@ struct Banded3FrameSwipeTracebackMatrix
 	}
 
 	Banded3FrameSwipeTracebackMatrix(size_t band, size_t cols) :
-		band_(band),
-		hgap_(TLS::get(hgap_ptr)),
-		score_(TLS::get(score_ptr))
+		band_(band)
 	{
 		hgap_.clear();
 		hgap_.resize(band + 3);
@@ -503,8 +488,7 @@ struct Banded3FrameSwipeTracebackMatrix
 
 private:
 	const size_t band_;
-	std::vector<_sv> &hgap_, &score_;
-	static TLS_PTR std::vector<_sv> *hgap_ptr, *score_ptr;
+	static thread_local std::vector<_sv> hgap_, score_;
 
 };
 

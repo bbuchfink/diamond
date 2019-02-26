@@ -114,9 +114,6 @@ struct Range_ref
 struct Seed_filter
 {
 	Seed_filter(Statistics &stats, Trace_pt_buffer::Iterator &out, const unsigned sid) :
-		vq(TLS::get(vq_ptr)),
-		vs(TLS::get(vs_ptr)),
-		hits(TLS::get(hits_ptr)),
 		stats(stats),
 		out(out),
 		sid(sid)
@@ -130,10 +127,8 @@ struct Seed_filter
 		const Range_ref &ref,
 		unsigned level);
 
-	static TLS_PTR vector<Finger_print> *vq_ptr, *vs_ptr;
-	static TLS_PTR vector<Stage1_hit> *hits_ptr;
-	vector<Finger_print> &vq, &vs;
-	vector<Stage1_hit> &hits;
+	static thread_local vector<Finger_print> vq, vs;
+	static thread_local vector<Stage1_hit> hits;
 	Statistics &stats;
 	Trace_pt_buffer::Iterator &out;
 	const unsigned sid;

@@ -22,8 +22,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <stdint.h>
 #include <stdexcept>
 #include <vector>
+#include <mutex>
 #include <string>
-#include "../util/tinythread.h"
 #include "../util/ptr_vector.h"
 #include "../util/io/output_file.h"
 #include "reference.h"
@@ -92,7 +92,7 @@ private:
 
 	static ReferenceDictionary instance_;
 
-	tthread::mutex mtx_;
+	std::mutex mtx_;
 	vector<vector<uint32_t> > data_;
 	vector<uint32_t> len_, database_id_;
 	PtrVector<string> name_;

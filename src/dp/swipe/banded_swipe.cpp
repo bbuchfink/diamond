@@ -21,11 +21,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "swipe.h"
 #include "target_iterator.h"
 
-template<typename _score> TLS_PTR vector<score_vector<_score> >* BandedSwipeMatrix<_score>::hgap_ptr;
-template<typename _score> TLS_PTR vector<score_vector<_score> >* BandedSwipeMatrix<_score>::score_ptr;
-template<typename _score> TLS_PTR vector<score_vector<_score> >* BandedSwipeTracebackMatrix<_score>::hgap_ptr;
-template<typename _score> TLS_PTR vector<score_vector<_score> >* BandedSwipeTracebackMatrix<_score>::score_ptr;
-
 #ifdef __SSE2__
 
 template<typename _score>

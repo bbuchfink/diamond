@@ -22,7 +22,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <queue>
 #include <vector>
 #include <list>
-#include "../util/tinythread.h"
 #include "../search/trace_pt_buffer.h"
 #include "../data/queries.h"
 #include "../util/ptr_vector.h"

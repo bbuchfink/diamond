@@ -32,7 +32,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../data/reference.h"
 #include "../basic/masking.h"
 #include "../dp/dp.h"
-#include "../util/tinythread.h"
 #include "../basic/packed_transcript.h"
 
 using namespace std;
@@ -214,7 +213,7 @@ void info()
 	cout << endl;
 }
 
-void pairwise_worker(TextInputFile *in, tthread::mutex *input_lock, tthread::mutex *output_lock) {
+void pairwise_worker(TextInputFile *in, std::mutex *input_lock, std::mutex *output_lock) {
 	FASTA_format format;
 	vector<char> id_r, id_q, ref, query;
 
@@ -255,11 +254,12 @@ void pairwise()
 	score_matrix = Score_matrix("DNA", 5, 2, 0);
 
 	TextInputFile in(config.query_file);
-	tthread::mutex input_lock, output_lock;
-	Thread_pool threads;
+	std::mutex input_lock, output_lock;
+	vector<thread> threads;
 	for (unsigned i = 0; i < config.threads_; ++i)
-		threads.push_back(launch_thread(pairwise_worker, &in, &input_lock, &output_lock));
-	threads.join_all();
+		threads.emplace_back(pairwise_worker, &in, &input_lock, &output_lock);
+	for (auto &t : threads)
+		t.join();
 }
 
 void fasta_skip_to(vector<char> &id, vector<char> &seq, string &blast_id, TextInputFile &f)

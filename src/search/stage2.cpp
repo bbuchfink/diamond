@@ -24,11 +24,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../data/reference.h"
 #include "collision.h"
 
-#ifdef __SSE2__
-TLS_PTR vector<sequence>* hit_filter::subjects_ptr;
-#endif
+template<typename _score> thread_local vector<score_vector<_score>> DP_matrix<_score>::scores_;
+template<typename _score> thread_local vector<score_vector<_score>> DP_matrix<_score>::hgap_;
 
 #ifdef __SSE2__
+
+thread_local vector<sequence> hit_filter::subjects_;
 
 void search_query_offset(Loc q,
 	const sorted_list::const_iterator &s,

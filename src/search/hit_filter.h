@@ -41,8 +41,7 @@ struct hit_filter
 		seed_offset_ (std::numeric_limits<unsigned>::max()),
 		stats_ (stats),
 		q_pos_ (q_pos),
-		out_ (out),
-		subjects_ (TLS::get(subjects_ptr))
+		out_ (out)
 	{ subjects_.clear(); }
 
 	void push(Loc subject, int score)
@@ -92,9 +91,7 @@ private:
 	Statistics  &stats_;
 	Loc q_pos_;
 	Trace_pt_buffer::Iterator &out_;
-	vector<sequence> &subjects_;
-	
-	static TLS_PTR vector<sequence> *subjects_ptr;
+	static thread_local vector<sequence> subjects_;
 
 };
 

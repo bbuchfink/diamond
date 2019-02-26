@@ -18,20 +18,18 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <algorithm>
 #include <numeric>
+#include <mutex>
 #include "../basic/config.h"
 #include "log_stream.h"
 #include "util.h"
 #include "escape_sequences.h"
-#include "tls.h"
 
 using namespace std;
 
 Message_stream message_stream;
 Message_stream verbose_stream (false);
 Message_stream log_stream (false);
-tthread::mutex Message_stream::mtx;
-
-TLS_PTR vector<Ptr_wrapper_base*> *TLS::ptr_;
+std::mutex Message_stream::mtx;
 
 #ifndef _MSC_VER
 const char dir_separator = '/';

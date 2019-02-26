@@ -17,7 +17,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #include "dp.h"
-#include "../util/tls.h"
 
 struct Padded_banded_DP_matrix
 {
@@ -63,9 +62,7 @@ struct Padded_banded_DP_matrix
 	Padded_banded_DP_matrix(unsigned columns, unsigned rows, unsigned band, unsigned padding) :
 		rows_(rows),
 		band_(band),
-		padding_(padding),
-		scores_(TLS::get(scores_ptr)),
-		hgap_(TLS::get(hgap_ptr))
+		padding_(padding)
 	{
 		scores_.clear();
 		scores_.resize(2 * band + 1);
@@ -100,17 +97,13 @@ struct Padded_banded_DP_matrix
 
 private:
 
-	static TLS_PTR vector<int> *scores_ptr;
-	static TLS_PTR vector<int> *hgap_ptr;
-
 	const unsigned rows_, band_, padding_;
 	int *hgap_front_, *score_front_;
-	vector<int> &scores_, &hgap_;
+	static thread_local vector<int> scores_, hgap_;
 
 };
 
-TLS_PTR vector<int>* Padded_banded_DP_matrix::scores_ptr;
-TLS_PTR vector<int>* Padded_banded_DP_matrix::hgap_ptr;
+thread_local vector<int> Padded_banded_DP_matrix::scores_, Padded_banded_DP_matrix::hgap_;
 
 int smith_waterman(const sequence &query, const sequence &subject, unsigned band, unsigned padding, int op, int ep)
 {

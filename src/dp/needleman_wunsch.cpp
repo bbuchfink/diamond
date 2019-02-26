@@ -113,9 +113,7 @@ struct Dp_matrix
 	}
 
 	inline Dp_matrix(int query_len, int subject_len) :
-		query_len_(query_len),
-		score_(TLS::get(score_ptr)),
-		hgap_(TLS::get(hgap_ptr))
+		query_len_(query_len)
 	{
 		score_.init(query_len + 1, subject_len + 1, 0);
 		hgap_.clear();
@@ -134,15 +132,13 @@ struct Dp_matrix
 private:
 
 	const int query_len_;
-	Fixed_score_buffer<_score> &score_;
-	vector<_score> &hgap_;
-	static TLS_PTR Fixed_score_buffer<_score> *score_ptr;
-	static TLS_PTR vector<_score> *hgap_ptr;
+	static thread_local Fixed_score_buffer<_score> score_;
+	static thread_local vector<_score> hgap_;
 
 };
 
-template<typename _score, typename _mode> TLS_PTR Fixed_score_buffer<_score>* Dp_matrix<_score,_mode>::score_ptr;
-template<typename _score, typename _mode> TLS_PTR vector<_score>* Dp_matrix<_score,_mode>::hgap_ptr;
+template<typename _score, typename _mode> thread_local Fixed_score_buffer<_score> Dp_matrix<_score,_mode>::score_;
+template<typename _score, typename _mode> thread_local vector<_score> Dp_matrix<_score,_mode>::hgap_;
 
 template<typename _score, typename _mode>
 const Fixed_score_buffer<_score>& needleman_wunsch(sequence query, sequence subject, int &max_score, const _mode&, const _score&)

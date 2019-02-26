@@ -266,10 +266,11 @@ void join_blocks(unsigned ref_blocks, Consumer &master_out, const PtrVector<Temp
 	JoinFetcher::init(tmp_file);
 	JoinWriter writer(master_out);
 	Task_queue<TextBuffer, JoinWriter> queue(3 * config.threads_, writer);
-	Thread_pool threads;
+	vector<thread> threads;
 	for (unsigned i = 0; i < config.threads_; ++i)
-		threads.push_back(launch_thread(join_worker, &queue, &params, &metadata));
-	threads.join_all();
+		threads.emplace_back(join_worker, &queue, &params, &metadata);
+	for (auto &t : threads)
+		t.join();
 	JoinFetcher::finish();
 	if (*output_format != Output_format::daa && config.report_unaligned != 0) {
 		TextBuffer out;

@@ -21,10 +21,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "sse_dist.h"
 #include "seed_complexity.h"
 
-Trace_pt_buffer* Trace_pt_buffer::instance;
+thread_local vector<Finger_print> Seed_filter::vq, Seed_filter::vs;
+thread_local vector<Stage1_hit> Seed_filter::hits;
 
-TLS_PTR vector<Finger_print> *Seed_filter::vq_ptr, *Seed_filter::vs_ptr;
-TLS_PTR vector<Stage1_hit> *Seed_filter::hits_ptr;
+Trace_pt_buffer* Trace_pt_buffer::instance;
 
 const unsigned tile_size[] = { 1024, 128 };
 

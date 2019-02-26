@@ -140,10 +140,11 @@ struct Sequence_set : public String_set<sequence::DELIMITER, 1>
 	template <typename _f, typename _filter>
 	void enum_seeds(PtrVector<_f> &f, const vector<size_t> &p, size_t shape_begin, size_t shape_end, const _filter *filter) const
 	{
-		Thread_pool threads;
+		std::vector<std::thread> threads;
 		for (unsigned i = 0; i < f.size(); ++i)
-			threads.push_back(launch_thread(enum_seeds_worker<_f, _filter>, &f[i], this, (unsigned)p[i], (unsigned)p[i + 1], std::make_pair(shape_begin, shape_end), filter));
-		threads.join_all();
+			threads.emplace_back(enum_seeds_worker<_f, _filter>, &f[i], this, (unsigned)p[i], (unsigned)p[i + 1], std::make_pair(shape_begin, shape_end), filter);
+		for (auto &t : threads)
+			t.join();
 	}
 
 	virtual ~Sequence_set()

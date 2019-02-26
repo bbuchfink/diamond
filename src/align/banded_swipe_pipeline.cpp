@@ -198,11 +198,12 @@ void Pipeline::run(Statistics &stat)
 			const size_t interval_count = (source_query_len + ::Target::INTERVAL - 1) / ::Target::INTERVAL;
 			for (vector<unsigned> &v : intervals)
 				v.resize(interval_count);
-			Thread_pool threads;
+			vector<thread> threads;
 			Atomic<size_t> next(0);
 			for (unsigned i = 0; i < config.threads_; ++i)
-				threads.push_back(launch_thread(build_ranking_worker, targets.begin(), targets.end(), &next, &intervals[i]));
-			threads.join_all();
+				threads.emplace_back(build_ranking_worker, targets.begin(), targets.end(), &next, &intervals[i]);
+			for (auto &t : threads)
+				t.join();
 
 			timer.go("Merging score ranking intervals");
 			for (auto it = intervals.begin() + 1; it < intervals.end(); ++it) {

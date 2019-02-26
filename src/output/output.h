@@ -21,6 +21,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <memory>
 #include <map>
+#include <mutex>
 #include "../util/io/output_file.h"
 #include "../basic/packed_transcript.h"
 #include "../util/text_buffer.h"
@@ -144,7 +145,7 @@ struct OutputSink
 	static std::unique_ptr<OutputSink> instance;
 private:
 	void flush(TextBuffer *buf);
-	tthread::mutex mtx_;
+	std::mutex mtx_;
 	Consumer* const f_;
 	std::map<size_t, TextBuffer*> backlog_;
 	size_t next_, size_, max_size_;

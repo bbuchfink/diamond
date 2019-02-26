@@ -19,7 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #ifndef TASK_QUEUE_H_
 #define TASK_QUEUE_H_
 
-#include "tinythread.h"
+#include <mutex>
 
 // #define ENABLE_LOGGING
 
@@ -47,17 +47,16 @@ struct Task_queue
 	volatile bool get(size_t &n, _t*& res, _init &init)
 	{
 		{
-			mtx_.lock();
+			std::unique_lock<std::mutex> lock(mtx_);
 #ifdef ENABLE_LOGGING
 			log_stream << "Task_queue get() thread=" << tthread::thread::get_current_thread_id() << " waiting=" << waiting() << " head=" << head_ << " tail=" << tail_ << endl;
 #endif
 			while(waiting() && !at_end_)
-				cond_.wait(mtx_);
+				cond_.wait(lock);
 			if(at_end_) {
 #ifdef ENABLE_LOGGING
 				log_stream << "Task_queue get() thread=" << tthread::thread::get_current_thread_id() << " quit" << endl;
 #endif
-				mtx_.unlock();
 				return false;
 			}
 			n = tail_++;
@@ -67,7 +66,6 @@ struct Task_queue
 #ifdef ENABLE_LOGGING
 			log_stream << "Task_queue get() thread=" << tthread::thread::get_current_thread_id() << " n=" << n << endl;
 #endif
-			mtx_.unlock();
 		}
 		if(at_end_)
 			cond_.notify_all();
@@ -139,8 +137,8 @@ private:
 
 	vector<_t> queue_;
 	vector<bool> state_;
-	tthread::mutex mtx_;
-	tthread::condition_variable cond_;
+	std::mutex mtx_;
+	std::condition_variable cond_;
 	volatile size_t head_, tail_, limit_, head_idx_, queued_, queued_size_;
 	bool at_end_;
 	_callback &callback_;

@@ -17,7 +17,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #include <limits>
-#include "tinythread.h"
+#include <mutex>
 
 struct Queue
 {
@@ -30,16 +30,14 @@ struct Queue
 	template<typename _f>
 	size_t get(_f &f)
 	{
-		mtx_.lock();
+		std::unique_lock<std::mutex> lock(mtx_);
 		while (block_)
-			cond_.wait(mtx_);
+			cond_.wait(lock);
 		const size_t q = next_++;
 		if (q >= end_) {
-			mtx_.unlock();
 			return Queue::end;
 		}
 		block_ = f(q);
-		mtx_.unlock();
 		return q;
 	}
 	size_t next() const
@@ -55,8 +53,8 @@ struct Queue
 		cond_.notify_all();
 	}
 private:
-	tthread::mutex mtx_;
-	tthread::condition_variable cond_;
+	std::mutex mtx_;
+	std::condition_variable cond_;
 	volatile size_t next_;
 	volatile bool block_;
 	const size_t end_;

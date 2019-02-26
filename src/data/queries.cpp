@@ -28,7 +28,7 @@ Sequence_set* query_seqs::data_ = 0;
 String_set<0>* query_ids::data_ = 0;
 Partitioned_histogram query_hst;
 vector<bool> query_aligned;
-tthread::mutex query_aligned_mtx;
+std::mutex query_aligned_mtx;
 Seed_set *query_seeds = 0;
 Hashed_seed_set *query_seeds_hashed = 0;
 String_set<0> *query_qual = nullptr;

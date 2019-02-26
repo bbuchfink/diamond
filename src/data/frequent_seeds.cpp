@@ -112,10 +112,11 @@ void Frequent_seeds::build(unsigned sid, const SeedPartitionRange &range, sorted
 {
 	vector<Sd> ref_sds(range.size()), query_sds(range.size());
 	Atomic<unsigned> seedp (range.begin());
-	Thread_pool threads;
+	vector<thread> threads;
 	for (unsigned i = 0; i < config.threads_; ++i)
-		threads.push_back(launch_thread(compute_sd, &seedp, &ref_idx, &query_idx, &ref_sds, &query_sds));
-	threads.join_all();
+		threads.emplace_back(compute_sd, &seedp, &ref_idx, &query_idx, &ref_sds, &query_sds);
+	for (auto &t : threads)
+		t.join();
 
 	Sd ref_sd(ref_sds), query_sd(query_sds);
 	const unsigned ref_max_n = (unsigned)(ref_sd.mean() + config.freq_sd*ref_sd.sd()), query_max_n = (unsigned)(query_sd.mean() + config.freq_sd*query_sd.sd());
@@ -188,10 +189,11 @@ void Frequent_seeds::build(unsigned sid, const SeedPartitionRange &range, vector
 {
 	vector<Sd> ref_sds(range.size()), query_sds(range.size());
 	Atomic<unsigned> seedp(range.begin());
-	Thread_pool threads;
+	vector<thread> threads;
 	for (unsigned i = 0; i < config.threads_; ++i)
-		threads.push_back(launch_thread(compute_sd2, &seedp, seed_hits, &ref_sds, &query_sds));
-	threads.join_all();
+		threads.emplace_back(compute_sd2, &seedp, seed_hits, &ref_sds, &query_sds);
+	for (auto &t : threads)
+		t.join();
 
 	Sd ref_sd(ref_sds), query_sd(query_sds);
 	const unsigned ref_max_n = (unsigned)(ref_sd.mean() + config.freq_sd*ref_sd.sd()), query_max_n = (unsigned)(query_sd.mean() + config.freq_sd*query_sd.sd());

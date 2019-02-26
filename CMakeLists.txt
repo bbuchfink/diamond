@@ -60,7 +60,6 @@ include_directories(
 
 add_executable(diamond src/run/main.cpp
   src/basic/config.cpp
-  src/util/tinythread.cpp
   src/basic/score_matrix.cpp
   src/blast/blast_filter.cpp
   src/blast/blast_seg.cpp

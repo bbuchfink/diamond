@@ -21,7 +21,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "config.h"
 #include "../util/util.h"
 #include "../util/log_stream.h"
-#include "../util/tinythread.h"
 #include "../basic/value.h"
 #include "score_matrix.h"
 #include "../util/system.h"
@@ -376,7 +375,7 @@ Config::Config(int argc, const char **argv)
 #ifndef NDEBUG
 	verbose_stream << "Assertions enabled." << endl;
 #endif
-	set_option(threads_, tthread::thread::hardware_concurrency());
+	set_option(threads_, std::thread::hardware_concurrency());
 
 	switch (command) {
 	case Config::makedb:

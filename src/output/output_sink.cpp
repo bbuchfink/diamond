@@ -80,6 +80,6 @@ void heartbeat_worker(size_t qend)
 		}
 		else
 			++n;
-		tthread::this_thread::sleep_for(tthread::chrono::milliseconds(10));
+		std::this_thread::sleep_for(chrono::milliseconds(10));
 	}
 }

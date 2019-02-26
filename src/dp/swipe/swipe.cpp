@@ -23,15 +23,15 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../../basic/sequence.h"
 #include "target_iterator.h"
 
+template<typename _sv> thread_local std::vector<_sv> SwipeMatrix<_sv>::hgap_;
+template<typename _sv> thread_local std::vector<_sv> SwipeMatrix<_sv>::score_;
+
 // #define SW_ENABLE_DEBUG
 
 using std::vector;
 using std::pair;
 
 #ifdef __SSE2__
-
-template<typename _sv> TLS_PTR vector<_sv>* SwipeMatrix<_sv>::hgap_ptr;
-template<typename _sv> TLS_PTR vector<_sv>* SwipeMatrix<_sv>::score_ptr;
 
 template<typename _sv>
 void swipe(const sequence &query, vector<DpTarget>::const_iterator subject_begin, vector<DpTarget>::const_iterator subject_end, vector<int>::iterator out)

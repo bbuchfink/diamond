@@ -589,30 +589,24 @@ struct Greedy_aligner2
 		qp(qp),
 		query_bc(query_bc),
 		log(log),
-		frame(frame),
-		diag_scores(TLS::get(diag_scores_ptr)),
-		diags(TLS::get(diags_ptr)),
-		window(TLS::get(window_ptr))
+		frame(frame)
 	{
 	}
 
-	static TLS_PTR Diag_scores *diag_scores_ptr;
-	static TLS_PTR Diag_graph *diags_ptr;
-	static TLS_PTR map<int, unsigned> *window_ptr;
 	const sequence query, subject;
 	const Long_score_profile &qp;
 	const Bias_correction &query_bc;
 	const bool log;
 	const unsigned frame;
-	Diag_scores &diag_scores;
-	Diag_graph &diags;
-	map<int, unsigned> &window;
+	static thread_local Diag_scores diag_scores;
+	static thread_local Diag_graph diags;
+	static thread_local map<int, unsigned> window;
 
 };
 
-TLS_PTR Diag_scores *Greedy_aligner2::diag_scores_ptr;
-TLS_PTR Diag_graph *Greedy_aligner2::diags_ptr;
-TLS_PTR map<int, unsigned> *Greedy_aligner2::window_ptr;
+thread_local Diag_scores Greedy_aligner2::diag_scores;
+thread_local Diag_graph Greedy_aligner2::diags;
+thread_local map<int, unsigned> Greedy_aligner2::window;
 
 int greedy_align(sequence query, const Long_score_profile &qp, const Bias_correction &query_bc, sequence subject, vector<Seed_hit>::const_iterator begin, vector<Seed_hit>::const_iterator end, bool log, list<Hsp> &hsps, list<Hsp_traits> &ts, unsigned frame)
 {

@@ -21,6 +21,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <utility>
 #include <map>
+#include <mutex>
 #include <list>
 #include <stdint.h>
 #include <limits>
@@ -547,7 +548,7 @@ struct DpStat
 	}
 	size_t gross_cells, net_cells;
 private:
-	tthread::mutex mtx_;
+	std::mutex mtx_;
 };
 
 extern DpStat dp_stat;

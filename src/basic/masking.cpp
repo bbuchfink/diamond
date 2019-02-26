@@ -90,9 +90,10 @@ void mask_worker(Atomic<size_t> *next, Sequence_set *seqs, const Masking *maskin
 
 void mask_seqs(Sequence_set &seqs, const Masking &masking, bool hard_mask)
 {
-	Thread_pool threads;
+	vector<thread> threads;
 	Atomic<size_t> next(0);
 	for (size_t i = 0; i < config.threads_; ++i)
-		threads.push_back(launch_thread(mask_worker, &next, &seqs, &masking, hard_mask));
-	threads.join_all();
+		threads.emplace_back(mask_worker, &next, &seqs, &masking, hard_mask);
+	for (auto &t : threads)
+		t.join();
 }

@@ -67,9 +67,7 @@ struct DP_matrix
 	DP_matrix(unsigned columns, unsigned rows, unsigned band, unsigned padding):
 		rows_ (rows),
 		band_ (band),
-		padding_ (padding),
-		scores_ (TLS::get(scores_ptr)),
-		hgap_ (TLS::get(hgap_ptr))
+		padding_ (padding)
 	{
 		scores_.clear();
 		scores_.resize(2*band+1);
@@ -134,16 +132,10 @@ struct DP_matrix
 
 private:
 
-	static TLS_PTR vector<sv> *scores_ptr;
-	static TLS_PTR vector<sv> *hgap_ptr;
-
 	const unsigned rows_, band_, padding_;
 	sv *hgap_front_, *score_front_;
-	vector<sv> &scores_, &hgap_;
+	static thread_local vector<sv> scores_, hgap_;
 
 };
-
-template<typename _score> TLS_PTR vector<score_vector<_score> >* DP_matrix<_score>::scores_ptr;
-template<typename _score> TLS_PTR vector<score_vector<_score> >* DP_matrix<_score>::hgap_ptr;
 
 #endif /* DP_MATRIX_H_ */

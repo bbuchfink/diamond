@@ -22,7 +22,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <vector>
 #include <algorithm>
 #include <map>
-#include "../tinythread.h"
+#include <mutex>
 
 using std::vector;
 using std::pair;
@@ -61,7 +61,7 @@ private:
 
 	typedef map<void*, pair<size_t, size_t> > SizeMap;
 
-	tthread::mutex mtx_;
+	std::mutex mtx_;
 	vector<Arena*> arena_;
 	SizeMap size_;
 	size_t max_alloc_size_, current_alloc_size_, arena_size_;

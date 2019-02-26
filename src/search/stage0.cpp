@@ -16,6 +16,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
+#include <thread>
 #include "search.h"
 #include "../util/algo/hash_join.h"
 #include "../util/algo/radix_sort.h"
@@ -25,6 +26,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../data/frequent_seeds.h"
 #include "trace_pt_buffer.h"
 #include "align_range.h"
+
+using namespace std;
 
 void seed_join_worker(SeedArray *query_seeds, SeedArray *ref_seeds, Atomic<unsigned> *seedp, const SeedPartitionRange *seedp_range, vector<JoinResult<SeedArray::Entry> >::iterator seed_hits)
 {
@@ -79,11 +82,12 @@ void search_shape(unsigned sid, unsigned query_block)
 		timer.go("Computing hash join");
 		//MemoryPool::init((query_seeds.limits_.back() + ref_seeds.limits_.back()) * 5);
 		Atomic<unsigned> seedp(range.begin());
-		Thread_pool threads;
+		vector<thread> threads;
 		vector<JoinResult<SeedArray::Entry> > seed_hits(range.size());
 		for (size_t i = 0; i < config.threads_; ++i)
-			threads.push_back(launch_thread(seed_join_worker, &query_idx, ref_idx, &seedp, &range, seed_hits.begin()));
-		threads.join_all();
+			threads.emplace_back(seed_join_worker, &query_idx, ref_idx, &seedp, &range, seed_hits.begin());
+		for (auto &t : threads)
+			t.join();
 		delete ref_idx;
 
 		timer.go("Building seed filter");
@@ -91,8 +95,10 @@ void search_shape(unsigned sid, unsigned query_block)
 
 		timer.go("Searching alignments");
 		seedp = range.begin();
+		threads.clear();
 		for (size_t i = 0; i < config.threads_; ++i)
-			threads.push_back(launch_thread(search_worker, &seedp, &range, sid, i, seed_hits.begin()));
-		threads.join_all();
+			threads.emplace_back(search_worker, &seedp, &range, sid, i, seed_hits.begin());
+		for (auto &t : threads)
+			t.join();
 	}
 }

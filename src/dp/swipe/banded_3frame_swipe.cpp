@@ -25,10 +25,15 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 using namespace std;
 
-template<typename _sv> TLS_PTR vector<_sv>* Banded3FrameSwipeTracebackMatrix<_sv>::hgap_ptr;
-template<typename _sv> TLS_PTR vector<_sv>* Banded3FrameSwipeTracebackMatrix<_sv>::score_ptr;
-template<typename _sv> TLS_PTR vector<_sv>* Banded3FrameSwipeMatrix<_sv>::hgap_ptr;
-template<typename _sv> TLS_PTR vector<_sv>* Banded3FrameSwipeMatrix<_sv>::score_ptr;
+template<typename _score> thread_local std::vector<score_vector<_score>> BandedSwipeMatrix<_score>::hgap_;
+template<typename _score> thread_local std::vector<score_vector<_score>> BandedSwipeMatrix<_score>::score_;
+template<typename _score> thread_local std::vector<score_vector<_score>> BandedSwipeTracebackMatrix<_score>::hgap_;
+template<typename _score> thread_local std::vector<score_vector<_score>> BandedSwipeTracebackMatrix<_score>::score_;
+template<typename _sv> thread_local std::vector<_sv> Banded3FrameSwipeMatrix<_sv>::hgap_;
+template<typename _sv> thread_local std::vector<_sv> Banded3FrameSwipeMatrix<_sv>::score_;
+template<typename _sv> thread_local std::vector<_sv> Banded3FrameSwipeTracebackMatrix<_sv>::hgap_;
+template<typename _sv> thread_local std::vector<_sv> Banded3FrameSwipeTracebackMatrix<_sv>::score_;
+
 
 struct Traceback {};
 struct ScoreOnly {};
@@ -254,17 +259,18 @@ void banded_3frame_swipe(const TranslatedSequence &query, Strand strand, vector<
 	std::stable_sort(target_begin, target_end);
 	if (parallel) {
 		timer.go("Banded 3frame swipe (run)");
-		Thread_pool threads;
+		vector<thread> threads;
 		Atomic<size_t> next(0);
 		for (size_t i = 0; i < config.threads_; ++i)
-			threads.push_back(launch_thread(banded_3frame_swipe_worker,
+			threads.emplace_back(banded_3frame_swipe_worker,
 				target_begin,
 				target_end,
 				&next,
 				score_only,
 				&query,
-				strand));
-		threads.join_all();
+				strand);
+		for (auto &t : threads)
+			t.join();
 		timer.go("Banded 3frame swipe (merge)");
 		for (auto i = target_begin; i < target_end; ++i) {
 			i->out->push_back(*i->tmp);

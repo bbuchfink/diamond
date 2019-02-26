@@ -21,9 +21,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <iostream>
 #include <fstream>
+#include <mutex>
 #include <limits.h>
 #include "Timer.h"
-#include "tinythread.h"
 
 using std::endl;
 
@@ -59,7 +59,7 @@ struct Message_stream
 		}
 		return *this;
 	}
-	static tthread::mutex mtx;
+	static std::mutex mtx;
 private:
 	bool to_cout_, to_file_;
 };
