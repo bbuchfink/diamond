@@ -20,6 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define TASK_QUEUE_H_
 
 #include <mutex>
+#include <condition_variable>
 
 // #define ENABLE_LOGGING
 
