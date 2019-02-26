@@ -23,6 +23,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <string>
 #include <algorithm>
 #include <queue>
+#include <thread>
 #include "../basic/sequence.h"
 #include "string_set.h"
 #include "../util/thread.h"
