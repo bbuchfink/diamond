@@ -212,18 +212,18 @@ const Matrix_info Matrix_info::matrices[] = {
 	{ "DNA", dna_values, (const char*)DNA_scores, 1, 4, 2 }
 };
 
-Score_matrix::Score_matrix(const string & matrix, int gap_open, int gap_extend, int frameshift, uint64_t db_letters):
+Score_matrix::Score_matrix(const string & matrix, int gap_open, int gap_extend, int frameshift, int stop_match_score, uint64_t db_letters):
 	gap_open_ (gap_open == -1 ? Matrix_info::get(matrix).default_gap_open : gap_open),
 	gap_extend_ (gap_extend == -1 ? Matrix_info::get(matrix).default_gap_extend : gap_extend),
 	frame_shift_(frameshift),
 	db_letters_ ((double)db_letters),
 	constants_ (Matrix_info::get(matrix).get_constants(gap_open_, gap_extend_)),
 	name_(matrix),
-	matrix8_(Matrix_info::get(matrix).scores),
+	matrix8_(Matrix_info::get(matrix).scores, stop_match_score),
 	bias_((char)(-low_score())),
-	matrix8u_(Matrix_info::get(matrix).scores, bias_),
-	matrix16_(Matrix_info::get(matrix).scores),
-	matrix32_(Matrix_info::get(matrix).scores)
+	matrix8u_(Matrix_info::get(matrix).scores, stop_match_score, bias_),
+	matrix16_(Matrix_info::get(matrix).scores, stop_match_score),
+	matrix32_(Matrix_info::get(matrix).scores, stop_match_score)
 { }
 
 char Score_matrix::low_score() const

@@ -251,7 +251,7 @@ void pairwise()
 {
 	input_value_traits = nucleotide_traits;
 	value_traits = nucleotide_traits;
-	score_matrix = Score_matrix("DNA", 5, 2, 0);
+	score_matrix = Score_matrix("DNA", 5, 2, 0, 1);
 
 	TextInputFile in(config.query_file);
 	std::mutex input_lock, output_lock;
@@ -366,7 +366,7 @@ void translate() {
 }
 
 void show_cbs() {
-	score_matrix = Score_matrix("BLOSUM62", config.gap_open, config.gap_extend, config.frame_shift);
+	score_matrix = Score_matrix("BLOSUM62", config.gap_open, config.gap_extend, config.frame_shift, 1);
 	init_cbs();
 	TextInputFile in(config.query_file);
 	vector<char> id, seq;

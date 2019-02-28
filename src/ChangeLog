@@ -1,6 +1,7 @@
 [0.9.25]
 - Added support for the sscinames output field to print subject scientific names to the tabular output format.
 - Fixed a compiler error for GCC 8.2.
+- Added option --stop-match-score to set the match score of stop codons.
 
 [0.9.24]
 - Fixed a compiler error on macOS.

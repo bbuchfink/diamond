@@ -194,7 +194,8 @@ Config::Config(int argc, const char **argv)
 		("range-cover", 0, "percentage of query range to be covered for hit culling (default=50)", query_range_cover, 50.0)
 		("dbsize", 0, "effective database size (in letters)", db_size)
 		("no-auto-append", 0, "disable auto appending of DAA and DMND file extensions", no_auto_append)
-		("xml-blord-format", 0, "Use gnl|BL_ORD_ID| style format in XML output", xml_blord_format);
+		("xml-blord-format", 0, "Use gnl|BL_ORD_ID| style format in XML output", xml_blord_format)
+		("stop-match-score", 0, "Set the match score of stop codons against each other.", stop_match_score, 1);
 
 	Options_group view_options("View options");
 	view_options.add()
@@ -402,7 +403,7 @@ Config::Config(int argc, const char **argv)
 		if (query_range_culling && frame_shift == 0)
 			throw std::runtime_error("Query range culling is only supported in frameshift alignment mode (option -F).");
 		if (matrix_file == "")
-			score_matrix = Score_matrix(to_upper_case(matrix), gap_open, gap_extend, frame_shift);
+			score_matrix = Score_matrix(to_upper_case(matrix), gap_open, gap_extend, frame_shift, stop_match_score);
 		else {
 			if (lambda == 0 || K == 0)
 				throw std::runtime_error("Custom scoring matrices require setting the --lambda and --K options.");

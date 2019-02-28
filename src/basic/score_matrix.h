@@ -36,7 +36,7 @@ struct Score_matrix
 {
 
 	Score_matrix() {}
-	Score_matrix(const string &matrix, int gap_open, int gap_extend, int frame_shift, uint64_t db_letters = 0);
+	Score_matrix(const string &matrix, int gap_open, int gap_extend, int frame_shift, int stop_match_score, uint64_t db_letters = 0);
 	Score_matrix(const string &matrix_file, double lambda, double K, int gap_open, int gap_extend, uint64_t db_letters = 0);
 
 	friend std::ostream& operator<<(std::ostream& s, const Score_matrix &m);
@@ -137,12 +137,14 @@ private:
 	struct Scores
 	{
 		Scores() {}
-		Scores(const char *scores, char bias = 0)
+		Scores(const char *scores, int stop_match_score = 1, char bias = 0)
 		{
 			const unsigned n = value_traits.alphabet_size;
 			for (unsigned i = 0; i < 32; ++i)
 				for (unsigned j = 0; j < 32; ++j)
 					data[i * 32 + j] = i < n && j < n ? (_t)(scores[i*n + j] + (int)bias) : -(std::numeric_limits<_t>::max() / 2);
+			if (stop_match_score != 1)
+				data[24 * 32 + 24] = stop_match_score;
 		}
 #ifdef _MSC_VER
 		__declspec(align(16)) _t data[32 * 32];
