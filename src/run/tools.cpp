@@ -339,7 +339,7 @@ void protein_snps()
 		locus = stoi(t[i + 1]);
 		called_base = t[i + 3][0];
 
-		if (gene != current_gene) {
+		if (gene != current_gene || (config.use_dataset_field && t[0] != dataset)) {
 			call_protein_snps(current_gene, ref_genes[current_gene], snps, dataset);
 			snps.clear();
 			snps.insert(snps.begin(), ref_genes[gene].size(), vector<char>());
