@@ -77,4 +77,7 @@ g++ -std=gnu++11 -DNDEBUG -O3 -Wno-deprecated-declarations $1 $2 $3 \
   src/util/algo/greedy_vortex_cover.cpp \
   src/util/algo/greedy_vortex_cover_weighted.cpp \
   src/util/sequence/sequence.cpp \
+  src/tools/tsv_record.cpp \
+  src/tools/tools.cpp \
+  src/util/system/getRSS.cpp \
 -lz -lpthread -o diamond
