@@ -20,6 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define HASH_JOIN_H_
 
 #include <stdlib.h>
+#include <cstdlib>
 #include "../../basic/config.h"
 #include "../util.h"
 #include "radix_cluster.h"

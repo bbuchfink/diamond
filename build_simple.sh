@@ -1,9 +1,8 @@
 gcc -c -O3 -DNDEBUG src/blast/sm_blosum45.c src/blast/sm_blosum50.c src/blast/sm_blosum62.c src/blast/sm_blosum80.c src/blast/sm_blosum90.c src/blast/sm_pam30.c src/blast/sm_pam70.c src/blast/sm_pam250.c
-g++ -DNDEBUG -O3 -Wno-deprecated-declarations $1 $2 $3 \
+g++ -std=gnu++11 -DNDEBUG -O3 -Wno-deprecated-declarations $1 $2 $3 \
   sm*.o \
   src/run/main.cpp \
   src/basic/config.cpp \
-  src/util/tinythread.cpp \
   src/basic/score_matrix.cpp \
   src/blast/blast_filter.cpp \
   src/blast/blast_seg.cpp \
@@ -30,15 +29,12 @@ g++ -DNDEBUG -O3 -Wno-deprecated-declarations $1 $2 $3 \
   src/dp/padded_banded_sw.cpp \
   src/dp/needleman_wunsch.cpp \
   src/output/blast_pairwise_format.cpp \
-  src/extra/roc.cpp \
   src/dp/comp_based_stats.cpp \
-  src/extra/model_sim.cpp \
   src/run/double_indexed.cpp \
   src/search/collision.cpp \
   src/output/sam_format.cpp \
   src/align/align.cpp \
   src/search/setup.cpp \
-  src/extra/opt.cpp \
   src/dp/diag_scores.cpp \
   src/data/taxonomy.cpp \
   src/lib/tantan/tantan.cc \
