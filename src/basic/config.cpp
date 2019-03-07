@@ -117,7 +117,8 @@ Config::Config(int argc, const char **argv)
 \tsalltitles means All Subject Title(s), separated by a '<>'\n\
 \tqcovhsp means Query Coverage Per HSP\n\
 \tqtitle means Query title\n\
-\tqqual means Query quality values\n\
+\tqqual means Query quality values for the aligned part of the query\n\
+\tfull_qqual means Query quality values\n\
 \n\tDefault: qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore", output_format)
 ("verbose", 'v', "verbose console output", verbose)
 ("log", 0, "enable debug log", debug_log)
@@ -370,9 +371,11 @@ Config::Config(int argc, const char **argv)
 			auto_append_extension(output_file, ".gz");
 	}
 
-	message_stream << Const::program_name << " v" << Const::version_string << "." << (unsigned)Const::build_version << " | by Benjamin Buchfink <buchfink@gmail.com>" << endl;
-	message_stream << "Licensed under the GNU GPL <https://www.gnu.org/licenses/gpl.txt>" << endl;
-	message_stream << "Check http://github.com/bbuchfink/diamond for updates." << endl << endl;
+	ostream &header_out = command == Config::help ? cout : cerr;
+	header_out << Const::program_name << " v" << Const::version_string << "." << (unsigned)Const::build_version << " | by Benjamin Buchfink <buchfink@gmail.com>" << endl;
+	header_out << "Licensed under the GNU GPL <https://www.gnu.org/licenses/gpl.txt>" << endl;
+	header_out << "Check http://github.com/bbuchfink/diamond for updates." << endl << endl;
+	log_stream << Const::program_name << " v" << Const::version_string << "." << (unsigned)Const::build_version << endl;
 #ifndef NDEBUG
 	verbose_stream << "Assertions enabled." << endl;
 #endif

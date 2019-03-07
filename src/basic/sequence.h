@@ -21,6 +21,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <iostream>
 #include <vector>
+#include <string>
 #include "../basic/value.h"
 #include "../util/binary_buffer.h"
 #include "../util/text_buffer.h"
@@ -146,6 +147,9 @@ struct sequence
 	sequence subseq(int begin, int end) const
 	{
 		return sequence(*this, begin, end - 1);
+	}
+	std::string substr(int begin, int end) const {
+		return std::string(&data_[begin], &data_[end]);
 	}
 	friend TextBuffer& operator<<(TextBuffer &buf, const sequence &s)
 	{

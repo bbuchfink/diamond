@@ -331,7 +331,7 @@ void Blast_tab_format::print_match(const Hsp_context& r, const Metadata &metadat
 			out << r.subject_seq;
 			break;
 		case 49:
-			out << (query_qual && (*query_qual)[r.query_id].present() ? (*query_qual)[r.query_id].subseq(r.query_source_range().begin_, r.query_source_range().end_).c_str() : "*");
+			out << (query_qual && (*query_qual)[r.query_id].present() ? (*query_qual)[r.query_id].substr(r.query_source_range().begin_, r.query_source_range().end_).c_str() : "*");
 			break;
 		case 50:
 			out << query_block_to_database_id[r.query_id];
