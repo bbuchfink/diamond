@@ -3,6 +3,7 @@
 - Fixed a compiler error for GCC 8.2.
 - Added option --stop-match-score to set the match score of stop codons.
 - Fixed a bug that caused the qqual output field to not be correctly clipped to the aligned part of the query.
+- Added output fields qseq_gapped and sseq_gapped to the tabular format.
 
 [0.9.24]
 - Fixed a compiler error on macOS.

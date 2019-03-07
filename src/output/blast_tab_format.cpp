@@ -81,7 +81,9 @@ const char* Blast_tab_format::field_str[] = {
 	"snum",			// 51
 	"scovhsp",		// 52
 	"full_qqual",	// 53
-	"full_qseq"		// 54
+	"full_qseq",	// 54
+	"qseq_gapped",  // 55
+	"sseq_gapped"	// 56
 };
 
 const char* Blast_tab_format::field_desc[] = {
@@ -139,7 +141,9 @@ const char* Blast_tab_format::field_desc[] = {
 	"snum",			// 51
 	"scovhsp",		// 52
 	"Query quality values",	// 53
-	"Query sequence"		// 54
+	"Query sequence",		// 54
+	"Query sequence with gaps",		// 55
+	"Subject sequence with gaps"		// 56
 };
 
 Blast_tab_format::Blast_tab_format() :
@@ -348,6 +352,14 @@ void Blast_tab_format::print_match(const Hsp_context& r, const Metadata &metadat
 		case 54:
 			r.query.source().print(out, input_value_traits);
 			break;
+		case 55:
+			for (Hsp_context::Iterator i = r.begin(); i.good(); ++i)
+				out << i.query_char();
+			break;
+		case 56:
+			for (Hsp_context::Iterator i = r.begin(); i.good(); ++i)
+				out << i.subject_char();
+			break;
 		default:
 			throw std::runtime_error(string("Invalid output field: ") + field_str[*i]);
 		}
@@ -378,6 +390,8 @@ void Blast_tab_format::print_query_intro(size_t query_num, const char *query_nam
 			case 40:
 			case 48:
 			case 49:
+			case 55:
+			case 56:
 				out << '*';
 				break;
 			case 12:
