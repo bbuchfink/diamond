@@ -44,7 +44,7 @@ void Pairwise_format::print_match(const Hsp_context& r, const Metadata &metadata
 		for (unsigned i = 0; i < width && qi.good(); ++i, ++qi)
 			out << qi.query_char();
 		out << " ";
-		out.print(TranslatedPosition::oriented_position(qi.query_pos.in_strand() - 1, strand, dna_len) + 1, 0);
+		out << TranslatedPosition::oriented_position(qi.query_pos.in_strand() - 1, strand, dna_len) + 1;
 		out << '\n';
 
 		for (unsigned i = 0; i < digits + 9; ++i)
@@ -59,7 +59,7 @@ void Pairwise_format::print_match(const Hsp_context& r, const Metadata &metadata
 		for (unsigned i = 0; i < width && si.good(); ++i, ++si)
 			out << si.subject_char();
 		out << " ";
-		out.print(si.subject_pos, 0);
+		out << si.subject_pos;
 		out << "\n\n";
 	}
 }
