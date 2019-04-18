@@ -145,6 +145,7 @@ add_executable(diamond src/run/main.cpp
   src/tools/tsv_record.cpp
   src/tools/tools.cpp
   src/util/system/getRSS.cpp
+  src/util/math/sparse_matrix.cpp
 )
 
 if(EXTRA)

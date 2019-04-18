@@ -5,6 +5,8 @@
 - Fixed a bug that caused the qqual output field to not be correctly clipped to the aligned part of the query.
 - Added output fields qseq_gapped and sseq_gapped to the tabular format.
 - Raised compiler requirement to GCC 4.8.
+- Fixed a bug that caused the final sequence positions to not be printed in the pairwise format.
+- Allow using --min-score instead of --top for the LCA computation of the taxonomy output format.
 
 [0.9.24]
 - Fixed a compiler error on macOS.
