@@ -124,7 +124,7 @@ void init_output(bool have_taxon_id_lists, bool have_taxon_nodes, bool have_taxo
 		throw runtime_error("Output format requires taxonomy nodes information built into the database (use --taxonnodes parameter for the makedb command).");
 	if (output_format->needs_taxon_scientific_names && !have_taxon_scientific_names)
 		throw runtime_error("Output format requires taxonomy names information built into the database (use --taxonnames parameter for the makedb command).");
-	if (*output_format == Output_format::taxon && config.toppercent == 100.0)
+	if (*output_format == Output_format::taxon && config.toppercent == 100.0 && config.min_bit_score == 0.0)
 		config.toppercent = 10.0;
 	if (config.toppercent == 100.0) {
 		message_stream << "#Target sequences to report alignments for: ";
