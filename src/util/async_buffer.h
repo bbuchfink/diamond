@@ -26,6 +26,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "io/input_file.h"
 #include "log_stream.h"
 #include "../util/ptr_vector.h"
+#include "io/async_file.h"
 
 using std::vector;
 using std::string;
@@ -44,11 +45,9 @@ struct Async_buffer
 		bins_processed_(0)
 	{
 		log_stream << "Async_buffer() " << input_count << ',' << bin_size_ << endl;
-		for (unsigned j = 0; j < config.threads_; ++j)
-			for (unsigned i = 0; i < bins; ++i) {
-				tmp_file_.push_back(new TempFile());
-				size_.push_back(0);
-			}
+		for (unsigned i = 0; i < bins; ++i) {
+			tmp_file_.push_back(new AsyncFile());
+		}
 	}
 
 	size_t begin(size_t bin) const
@@ -65,11 +64,10 @@ struct Async_buffer
 	{
 		Iterator(Async_buffer &parent, size_t thread_num) :
 			buffer_(parent.bins()),
-			parent_(parent),
-			thread_num_(thread_num)
+			parent_(parent)
 		{
 			for (unsigned i = 0; i < parent.bins_; ++i)
-				out_.push_back(parent.get_out(thread_num_, i));
+				out_.push_back(&parent.tmp_file_[i]);
 		}
 		void push(const _t &x)
 		{
@@ -82,7 +80,6 @@ struct Async_buffer
 		void flush(unsigned bin)
 		{
 			out_[bin]->write(buffer_[bin].data(), buffer_[bin].size());
-			parent_.add_size(thread_num_, bin, buffer_[bin].size());
 			buffer_[bin].clear();
 		}
 		~Iterator()
@@ -93,9 +90,8 @@ struct Async_buffer
 	private:
 		enum { buffer_size = 65536 };
 		vector<vector<_t> > buffer_;
-		vector<TempFile*> out_;
+		vector<AsyncFile*> out_;
 		Async_buffer &parent_;
-		const size_t thread_num_;
 	};
 
 	size_t load(vector<_t> &data, size_t max_size, std::pair<size_t,size_t> &input_range)
@@ -107,8 +103,8 @@ struct Async_buffer
 			input_range = std::make_pair(0, 0);
 			return total_size*sizeof(_t);
 		}
-		size_t size = bin_size(bins_processed_), end = bins_processed_ + 1, current_size;
-		while (end < bins_ && (size + (current_size = bin_size(end)))*sizeof(_t) < max_size) {
+		size_t size = tmp_file_[bins_processed_].tell()/sizeof(_t), end = bins_processed_ + 1, current_size;
+		while (end < bins_ && (size + (current_size = tmp_file_[end].tell() / sizeof(_t))) * sizeof(_t) < max_size) {
 			size += current_size;
 			++end;
 		}
@@ -132,40 +128,18 @@ private:
 
 	void load_bin(_t*& ptr, size_t bin)
 	{
-		for (unsigned i = 0; i < config.threads_; ++i) {
-			InputFile f(tmp_file_[i*bins_ + bin]);
-			const size_t s = size_[i*bins_ + bin];
-			const size_t n = f.read(ptr, s);
-			ptr += s;
-			f.close_and_delete();
-			if (n != s)
-				throw std::runtime_error("Error reading temporary file: " + f.file_name);
-		}
-	}
-
-	size_t bin_size(size_t bin) const
-	{
-		size_t size = 0;
-		for (unsigned i = 0; i < config.threads_; ++i)
-			size += size_[i*bins_ + bin];
-		return size;
-	}
-
-	TempFile* get_out(size_t threadid, unsigned bin)
-	{
-		return &tmp_file_[threadid*bins_ + bin];
-	}
-
-	void add_size(size_t thread_id, unsigned bin, size_t n)
-	{
-		size_[thread_id*bins_ + bin] += n;
+		const size_t s = tmp_file_[bin].tell() / sizeof(_t);
+		InputFile f(tmp_file_[bin]);
+		const size_t n = f.read(ptr, s);
+		f.close_and_delete();
+		if (n != s)
+			throw std::runtime_error("Error reading temporary file: " + f.file_name);
 	}
 
 	const unsigned bins_;
 	const size_t bin_size_, input_count_;
 	size_t bins_processed_;
-	vector<size_t> size_;
-	PtrVector<TempFile> tmp_file_;
+	PtrVector<AsyncFile> tmp_file_;
 
 };
 
