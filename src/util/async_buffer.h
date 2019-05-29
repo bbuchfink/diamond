@@ -45,10 +45,8 @@ struct Async_buffer
 		bins_processed_(0)
 	{
 		log_stream << "Async_buffer() " << input_count << ',' << bin_size_ << endl;
-		for (unsigned i = 0; i < bins; ++i) {
+		for (unsigned i = 0; i < bins; ++i)
 			tmp_file_.push_back(new AsyncFile());
-			size_.push_back(0);
-		}
 	}
 
 	size_t begin(size_t bin) const
@@ -81,7 +79,6 @@ struct Async_buffer
 		void flush(unsigned bin)
 		{
 			out_[bin]->write(buffer_[bin].data(), buffer_[bin].size());
-			parent_.size_[bin] += buffer_[bin].size();
 			buffer_[bin].clear();
 		}
 		~Iterator()
