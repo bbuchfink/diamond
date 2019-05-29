@@ -47,6 +47,7 @@ struct Async_buffer
 		log_stream << "Async_buffer() " << input_count << ',' << bin_size_ << endl;
 		for (unsigned i = 0; i < bins; ++i) {
 			tmp_file_.push_back(new AsyncFile());
+			size_.push_back(0);
 		}
 	}
 
@@ -80,6 +81,7 @@ struct Async_buffer
 		void flush(unsigned bin)
 		{
 			out_[bin]->write(buffer_[bin].data(), buffer_[bin].size());
+			parent_.size_[bin] += buffer_[bin].size();
 			buffer_[bin].clear();
 		}
 		~Iterator()
@@ -131,6 +133,7 @@ private:
 		const size_t s = tmp_file_[bin].tell() / sizeof(_t);
 		InputFile f(tmp_file_[bin]);
 		const size_t n = f.read(ptr, s);
+		ptr += s;
 		f.close_and_delete();
 		if (n != s)
 			throw std::runtime_error("Error reading temporary file: " + f.file_name);

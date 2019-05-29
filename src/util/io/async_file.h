@@ -6,6 +6,10 @@
 
 struct AsyncFile : public TempFile {
 
+	AsyncFile():
+		TempFile()
+	{}
+
 	template<typename _t>
 	void write(const _t *ptr, size_t count)
 	{

@@ -47,7 +47,7 @@ endif()
 find_package(ZLIB REQUIRED)
 find_package(Threads REQUIRED)
 
-set(CMAKE_BUILD_TYPE Release)
+# set(CMAKE_BUILD_TYPE Release)
 if(WIN32)
   add_definitions(-D_CRT_SECURE_NO_WARNINGS)
 else()
