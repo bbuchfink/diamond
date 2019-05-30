@@ -119,6 +119,7 @@ Config::Config(int argc, const char **argv)
 \tqtitle means Query title\n\
 \tqqual means Query quality values for the aligned part of the query\n\
 \tfull_qqual means Query quality values\n\
+\tqstrand means Query strand\n\
 \n\tDefault: qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore", output_format)
 ("verbose", 'v', "verbose console output", verbose)
 ("log", 0, "enable debug log", debug_log)
