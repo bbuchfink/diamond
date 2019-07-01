@@ -281,9 +281,9 @@ void banded_3frame_swipe(const TranslatedSequence &query, Strand strand, vector<
 	else {
 		for (vector<DpTarget>::iterator i = target_begin; i < target_end; i += 8)
 			if (score_only || config.disable_traceback)
-				banded_3frame_swipe<score_vector<int16_t>, ScoreOnly>(query, strand, i, std::min(i + 8, target_end), stat, false);
+				banded_3frame_swipe<score_vector<int16_t>, ScoreOnly>(query, strand, i, i + std::min(vector<DpTarget>::iterator::difference_type(8), target_end - i), stat, false);
 			else
-				banded_3frame_swipe<score_vector<int16_t>, Traceback>(query, strand, i, std::min(i + 8, target_end), stat, false);
+				banded_3frame_swipe<score_vector<int16_t>, Traceback>(query, strand, i, i + std::min(vector<DpTarget>::iterator::difference_type(8), target_end - i), stat, false);
 	}
 
 	for (vector<DpTarget>::iterator i = target_begin; i < target_end; ++i)
