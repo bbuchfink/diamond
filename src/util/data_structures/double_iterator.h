@@ -2,6 +2,7 @@
 #define DOUBLE_ITERATOR_H_
 
 #include <utility>
+#include <cstddef>
 
 template<typename _it1, typename _it2, typename _t1, typename _t2>
 struct DoubleIterator {

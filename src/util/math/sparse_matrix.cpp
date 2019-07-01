@@ -73,7 +73,7 @@ SparseMatrix SparseMatrix::transpose() const {
 	typedef DoubleIterator<vector<unsigned>::iterator, vector<float>::iterator, unsigned, float> It;
 	for (unsigned i = 0; i < T.rows(); ++i) {
 		It begin{ T.idx_[i].begin(), T.value_[i].begin() }, end{ T.idx_[i].end(), T.value_[i].end() };
-		std::sort(begin, end);
+		//std::sort(begin, end);
 	}
 	return T;
 }
