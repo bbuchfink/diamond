@@ -538,4 +538,13 @@ auto apply(const std::vector<_t> &v, _f f) -> std::vector<typename std::result_o
 	return r;
 }
 
+template<typename _t1, typename _t2>
+std::vector<std::pair<_t1, _t2>> combine(const std::vector<_t1> &v1, const std::vector<_t2> &v2) {
+	std::vector<std::pair<_t1, _t2>> r;
+	r.reserve(v1.size());
+	for (size_t i = 0; i < v1.size(); ++i)
+		r.emplace_back(v1[i], v2[i]);
+	return r;
+}
+
 #endif /* UTIL_H_ */

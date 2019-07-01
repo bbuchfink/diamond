@@ -1,7 +1,9 @@
 #include "tsv_record.h"
 #include "../basic/config.h"
+#include "../util/math/sparse_matrix.h"
 
-using namespace std;
+using std::cout;
+using std::endl;
 
 void filter_blasttab() {
 	TextInputFile in("");
@@ -18,4 +20,9 @@ void filter_blasttab() {
 		if(query_hit < config.max_alignments && r.evalue <= config.max_evalue)
 			cout << r << endl;
 	}
+}
+
+void mcl() {
+	SparseMatrix graph(std::cin);
+	graph.print_stats();
 }
