@@ -65,7 +65,8 @@ struct IntervalPartition : protected std::map<int, IntervalNode>
 		Iterator& operator++()
 		{
 			i_ = j_;
-			++j_;
+			if(j_ != parent_.end())
+				++j_;
 			return *this;
 		}
 		std::pair<interval, IntervalNode> operator*() const

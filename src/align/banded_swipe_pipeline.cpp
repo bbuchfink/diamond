@@ -40,9 +40,9 @@ struct Target : public ::Target
 
 	interval ungapped_query_range(int query_dna_len) const
 	{
-		const int i0 = std::max((int)top_hit.query_pos_ - (int)top_hit.subject_pos_, 0),
-			i1 = std::min((int)top_hit.query_pos_ + (int)subject.length() - (int)top_hit.subject_pos_, query_dna_len / 3);
 		const Frame f = Frame(top_hit.frame_);
+		const int i0 = std::max((int)top_hit.query_pos_ - (int)top_hit.subject_pos_, 0),
+			i1 = std::min((int)top_hit.query_pos_ + (int)subject.length() - (int)top_hit.subject_pos_, f.length(query_dna_len));
 		return TranslatedPosition::absolute_interval(TranslatedPosition(i0, f), TranslatedPosition(i1, f), query_dna_len);
 	}
 

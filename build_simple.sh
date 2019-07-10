@@ -80,4 +80,5 @@ g++ -std=gnu++11 -DNDEBUG -O3 -Wno-deprecated-declarations $1 $2 $3 \
   src/tools/tsv_record.cpp \
   src/tools/tools.cpp \
   src/util/system/getRSS.cpp \
+  src/util/math/sparse_matrix.cpp \
 -lz -lpthread -o diamond

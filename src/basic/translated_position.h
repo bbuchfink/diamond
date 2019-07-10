@@ -19,6 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #ifndef TRANSLATED_POSITION_H_
 #define TRANSLATED_POSITION_H_
 
+#include <algorithm>
 #include "../util/interval.h"
 
 enum Strand { FORWARD = 0, REVERSE = 1 };
@@ -42,6 +43,10 @@ struct Frame
 	int signed_frame() const
 	{
 		return (offset + 1) * (strand == FORWARD ? 1 : -1);
+	}
+	int length(int dna_len) const
+	{
+		return std::max((dna_len - offset) / 3, 0);
 	}
 	int offset;
 	Strand strand;

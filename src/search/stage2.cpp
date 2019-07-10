@@ -23,6 +23,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "hit_filter.h"
 #include "../data/reference.h"
 #include "collision.h"
+#include "../dp/dp_matrix.h"
 
 template<typename _score> thread_local vector<score_vector<_score>> DP_matrix<_score>::scores_;
 template<typename _score> thread_local vector<score_vector<_score>> DP_matrix<_score>::hgap_;
