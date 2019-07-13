@@ -62,7 +62,7 @@ struct Task_queue
 			}
 			n = tail_++;
 			res = &slot(n);
-			if(!init())
+			if (!init())
 				at_end_ = true;
 #ifdef ENABLE_LOGGING
 			log_stream << "Task_queue get() thread=" << tthread::thread::get_current_thread_id() << " n=" << n << endl;

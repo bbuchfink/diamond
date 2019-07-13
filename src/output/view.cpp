@@ -104,19 +104,19 @@ void view_query(DAA_query_record &r, TextBuffer &out, Output_format &format, con
 	
 }
 
-void view_worker(DAA_file *daa, View_writer *writer, Output_format *format, const Parameters *params, const Metadata *metadata)
+void view_worker(DAA_file *daa, View_writer *writer, Task_queue<TextBuffer, View_writer> *queue, Output_format *format, const Parameters *params, const Metadata *metadata)
 {
-	Task_queue<TextBuffer, View_writer> queue(3 * config.threads_, *writer);
+	
 	try {
 		size_t n;
 		View_fetcher query_buf(*daa);
 		TextBuffer *buffer = 0;
-		while (queue.get(n, buffer, query_buf)) {
+		while (queue->get(n, buffer, query_buf)) {
 			for (unsigned j = 0; j < query_buf.n; ++j) {
 				DAA_query_record r(*daa, query_buf.buf[j], query_buf.query_num + j);
 				view_query(r, *buffer, *format, *params, *metadata);
 			}
-			queue.push(n);
+			queue->push(n);
 		}
 	}
 	catch (std::exception &e) {
@@ -160,8 +160,9 @@ void view()
 		writer(out);
 
 		vector<thread> threads;
+		Task_queue<TextBuffer, View_writer> queue(3 * config.threads_, writer);
 		for (size_t i = 0; i < config.threads_; ++i)
-			threads.emplace_back(view_worker, &daa, &writer, output_format.get(), &params, &metadata);
+			threads.emplace_back(view_worker, &daa, &writer, &queue, output_format.get(), &params, &metadata);
 		for (auto &t : threads)
 			t.join();
 	}
