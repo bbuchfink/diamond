@@ -1,14 +1,16 @@
 [0.9.25]
-- Added support for the sscinames output field to print subject scientific names to the tabular output format.
+- Added support for the `sscinames` output field to print subject scientific names to the tabular output format.
 - Fixed a compiler error for GCC 8.2.
-- Added option --stop-match-score to set the match score of stop codons.
-- Fixed a bug that caused the qqual output field to not be correctly clipped to the aligned part of the query.
-- Added output fields qseq_gapped and sseq_gapped to the tabular format.
+- Added option `--stop-match-score` to set the match score of stop codons.
+- Fixed a bug that caused the `qqual` output field to not be correctly clipped to the aligned part of the query.
+- Added output fields `qseq_gapped` and `sseq_gapped` to the tabular format.
 - Raised compiler requirement to GCC 4.8.
 - Fixed a bug that caused the final sequence positions to not be printed in the pairwise format.
-- Allow using --min-score instead of --top for the LCA computation of the taxonomy output format.
+- Allow using `--min-score` instead of `--top` for the LCA computation of the taxonomy output format.
 - Reduced the number of temporary files.
 - Added output field `qstrand` to the tabular format.
+- Database format version changed to 3.
+- Fixed a bug in the `--range-culling` mode that could cause undefined behaviour.
 
 [0.9.24]
 - Fixed a compiler error on macOS.
