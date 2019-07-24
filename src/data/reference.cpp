@@ -79,13 +79,13 @@ struct Pos_record
 void DatabaseFile::init()
 {
 	read_header(*this, ref_header);
-	*this >> header2;
 	if (ref_header.build < min_build_required || ref_header.db_version < MIN_DB_VERSION)
 		throw std::runtime_error("Database was built with an older version of Diamond and is incompatible.");
 	if (ref_header.db_version > ReferenceHeader::current_db_version)
 		throw std::runtime_error("Database was built with a newer version of Diamond and is incompatible.");
 	if (ref_header.sequences == 0)
 		throw std::runtime_error("Incomplete database file. Database building did not complete successfully.");
+	*this >> header2;
 	pos_array_offset = ref_header.pos_array_offset;
 }
 
