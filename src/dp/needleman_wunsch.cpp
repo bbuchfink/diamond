@@ -167,7 +167,7 @@ const Fixed_score_buffer<_score>& needleman_wunsch(sequence query, sequence subj
 	return mtx.score_buffer();
 }
 
-template const Fixed_score_buffer<int>& needleman_wunsch(sequence query, sequence subject, int &max_score, const Local&, const int&);
+// template const Fixed_score_buffer<int>& needleman_wunsch(sequence query, sequence subject, int &max_score, const Local&, const int&);
 
 int needleman_wunsch(sequence query, sequence subject, int qbegin, int qend, int sbegin, int send, unsigned node, unsigned edge, Diag_graph &diags, bool log)
 {
