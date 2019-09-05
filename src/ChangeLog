@@ -1,6 +1,7 @@
 [0.9.26]
 - Fixed a bug that could cause undefined behaviour when using a database file of format version < 2.
 - Fixed a compiler error when compiled as generic C++.
+- Program will no longer terminate with an error if unlink system call fails.
 
 [0.9.25]
 - Added support for the `sscinames` output field to print subject scientific names to the tabular output format.

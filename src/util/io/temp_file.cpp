@@ -35,6 +35,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "input_file.h"
 
 using std::vector;
+using std::string;
 
 unsigned TempFile::n = 0;
 uint64_t TempFile::hash_key;
@@ -61,6 +62,7 @@ pair<string, int> TempFile::init()
 #endif
 
 #ifdef _MSC_VER
+	unlinked = false;
 	return string(s);
 #else
 	int fd = mkstemp(s);
@@ -68,10 +70,10 @@ pair<string, int> TempFile::init()
 		perror(0);
 		throw std::runtime_error(string("Error opening temporary file ") + string(s));
 	}
-	if (!config.no_unlink && unlink(s) < 0) {
-		perror(0);
-		throw std::runtime_error("Error calling unlink.");
-	}
+	if (config.no_unlink)
+		unlinked = false;
+	else
+		unlinked = (unlink(s) >= 0);
 	return std::make_pair(string(s), fd);
 #endif
 }

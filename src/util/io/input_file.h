@@ -29,16 +29,19 @@ using std::vector;
 using std::string;
 using std::runtime_error;
 
+struct TempFile;
+
 struct InputFile : public Deserializer
 {
 
 	enum { BUFFERED = 1 };
 
 	InputFile(const string &file_name, int flags = 0);
-	InputFile(OutputFile &tmp_file, int flags = 0);
+	InputFile(TempFile &tmp_file, int flags = 0);
 	void close_and_delete();
 	
 	string file_name;
+	bool unlinked;
 	
 };
 

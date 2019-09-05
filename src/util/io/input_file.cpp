@@ -29,6 +29,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "compressed_stream.h"
 #include "input_stream_buffer.h"
 #include "../../basic/config.h"
+#include "temp_file.h"
 
 bool is_gzip_stream(const unsigned char *b)
 {
@@ -40,7 +41,8 @@ bool is_gzip_stream(const unsigned char *b)
 
 InputFile::InputFile(const string &file_name, int flags) :
 	Deserializer(new InputStreamBuffer(new FileSource(file_name))),
-	file_name(file_name)
+	file_name(file_name),
+	unlinked(false)
 {
 	if (file_name.empty() || file_name == "-")
 		return;
@@ -64,9 +66,10 @@ InputFile::InputFile(const string &file_name, int flags) :
 		buffer_ = new InputStreamBuffer(new ZlibSource(buffer_));
 }
 
-InputFile::InputFile(OutputFile &tmp_file, int flags) :
+InputFile::InputFile(TempFile &tmp_file, int flags) :
 	Deserializer(new InputStreamBuffer(new FileSource(tmp_file.file_name(), tmp_file.file()))),
-	file_name(tmp_file.file_name())
+	file_name(tmp_file.file_name()),
+	unlinked(tmp_file.unlinked)
 {
 	tmp_file.rewind();
 }
@@ -74,11 +77,6 @@ InputFile::InputFile(OutputFile &tmp_file, int flags) :
 void InputFile::close_and_delete()
 {
 	close();
-#ifdef WIN32
-	bool windows = true;
-#else
-	bool windows = false;
-#endif
-	if ((windows || config.no_unlink) && remove(file_name.c_str()) != 0)
+	if (!unlinked && remove(file_name.c_str()) != 0)
 		std::cerr << "Warning: Failed to delete temporary file " << file_name << std::endl;
 }

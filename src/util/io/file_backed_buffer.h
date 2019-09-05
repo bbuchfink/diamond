@@ -27,7 +27,7 @@ struct FileBackedBuffer : public TempFile, public InputFile
 
 	FileBackedBuffer():
 		TempFile(),
-		InputFile(*dynamic_cast<OutputFile*>(this))
+		InputFile(*dynamic_cast<TempFile*>(this))
 	{
 	}
 

@@ -22,22 +22,21 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <utility>
 #include "output_file.h"
 
-using std::string;
-
 struct TempFile : public OutputFile
 {
 
 	TempFile();
-	static string get_temp_dir();
+	static std::string get_temp_dir();
 	static unsigned n;
 	static uint64_t hash_key;
+	bool unlinked;
 
 private:
 
 #ifdef _MSC_VER
-	static string init();
+	std::string init();
 #else
-	static std::pair<string, int> init();
+	std::pair<std::string, int> init();
 #endif
 
 };
