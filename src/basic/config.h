@@ -175,7 +175,7 @@ struct Config
 	bool hardmasked;
 	int cbs_window;
 	double tantan_r;
-	double tantan_s;
+	double tantan_minMaskProb;
 	bool no_unlink;
 	bool no_dict;
 	int stop_match_score;
