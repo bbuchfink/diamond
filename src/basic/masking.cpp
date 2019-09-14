@@ -44,7 +44,7 @@ Masking::Masking(const Score_matrix &score_matrix)
 
 void Masking::operator()(Letter *seq, size_t len) const
 {
-	tantan::maskSequences((tantan::uchar*)seq, (tantan::uchar*)(seq + len), 50,
+	tantan::maskSequences((tantan::uchar*)seq, (tantan::uchar*)(seq + len), config.tantan_maxRepeatOffset,
 		(tantan::const_double_ptr*)probMatrixPointers_,
 		0.005, 0.05,
 		0.9,
@@ -54,7 +54,7 @@ void Masking::operator()(Letter *seq, size_t len) const
 
 void Masking::mask_bit(Letter *seq, size_t len) const
 {
-	tantan::maskSequences((tantan::uchar*)seq, (tantan::uchar*)(seq + len), 50,
+	tantan::maskSequences((tantan::uchar*)seq, (tantan::uchar*)(seq + len), config.tantan_maxRepeatOffset,
 		(tantan::const_double_ptr*)probMatrixPointers_,
 		0.005, 0.05,
 		0.9,

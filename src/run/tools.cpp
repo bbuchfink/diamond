@@ -116,6 +116,7 @@ void run_masker()
 	vector<Letter> seq, seq2;
 	vector<char> id;
 	const FASTA_format format;
+	size_t letters = 0, seqs = 0, seqs_total = 0;
 	while (format.get_seq(id, seq, f)) {
 		cout << '>' << string(id.data(), id.size()) << endl;
 		seq2 = seq;
@@ -128,6 +129,16 @@ void run_masker()
 		}
 		cout << endl;*/
 		cout << sequence(seq2.data(), seq2.size()) << endl;
+		size_t n = 0;
+		for (size_t i = 0; i < seq2.size(); ++i)
+			if (seq2[i] == value_traits.mask_char) {
+				++n;
+			}
+		letters += n;
+		if (n > 0)
+			++seqs;
+		++seqs_total;
+		cerr << "#Sequences: " << seqs << "/" << seqs_total << ", #Letters: " << letters << endl;
 	}
 }
 
