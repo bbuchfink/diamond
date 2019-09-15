@@ -48,7 +48,7 @@ void Masking::operator()(Letter *seq, size_t len) const
 		(tantan::const_double_ptr*)probMatrixPointers_,
 		0.005, 0.05,
 		0.9,
-		0, 0,
+		config.tantan_ungapped ? 0.0 : firstGapProb_, config.tantan_ungapped ? 0.0 : otherGapProb_,
 		config.tantan_minMaskProb, (const tantan::uchar*)mask_table_x_);
 }
 
@@ -58,7 +58,7 @@ void Masking::mask_bit(Letter *seq, size_t len) const
 		(tantan::const_double_ptr*)probMatrixPointers_,
 		0.005, 0.05,
 		0.9,
-		0, 0,
+		config.tantan_ungapped ? 0.0 : firstGapProb_, config.tantan_ungapped ? 0.0 : otherGapProb_,
 		config.tantan_minMaskProb, (const tantan::uchar*)mask_table_bit_);
 }
 
