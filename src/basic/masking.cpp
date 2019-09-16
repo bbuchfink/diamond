@@ -39,7 +39,6 @@ Masking::Masking(const Score_matrix &score_matrix)
 	lc.calculate(int_matrix_ptr, 20);
 	
 	const double lambda = lc.lambda(); // 0.324032
-	cerr << "Lambda=" << lambda << endl;
 	for (unsigned i = 0; i < size; ++i) {
 		mask_table_x_[i] = value_traits.mask_char;
 		mask_table_bit_[i] = (uint8_t)i | bit_mask;
