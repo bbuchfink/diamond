@@ -99,7 +99,7 @@ void mask_worker(Atomic<size_t> *next, Sequence_set *seqs, const Masking *maskin
 			masking->mask_bit(seqs->ptr(i), seqs->length(i));
 }
 
-void mask_seqs(Sequence_set &seqs, const Masking &masking, bool hard_mask)
+size_t mask_seqs(Sequence_set &seqs, const Masking &masking, bool hard_mask)
 {
 	vector<thread> threads;
 	Atomic<size_t> next(0);
@@ -107,4 +107,8 @@ void mask_seqs(Sequence_set &seqs, const Masking &masking, bool hard_mask)
 		threads.emplace_back(mask_worker, &next, &seqs, &masking, hard_mask);
 	for (auto &t : threads)
 		t.join();
+	size_t n = 0;
+	for (size_t i = 0; i < seqs.get_length(); ++i)
+		n += std::count(seqs[i].data(), seqs[i].end(), value_traits.mask_char);
+	return n;
 }

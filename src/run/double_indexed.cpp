@@ -129,7 +129,16 @@ void run_ref_chunk(DatabaseFile &db_file,
 	const vector<unsigned> &block_to_database_id)
 {
 	log_stream << "Current RSS: " << getCurrentRSS() << ", Peak RSS: " << getPeakRSS() << endl;
-	task_timer timer("Building reference histograms");
+
+	task_timer timer;
+	if (config.masking == 1) {
+		timer.go("Masking reference");
+		size_t n = mask_seqs(*ref_seqs::data_, Masking::get());
+		timer.finish();
+		log_stream << "Masked letters: " << n << endl;
+	}
+
+	timer.go("Building reference histograms");
 	if(config.algo==Config::query_indexed)
 		ref_hst = Partitioned_histogram(*ref_seqs::data_, false, query_seeds);
 	else if(query_seeds_hashed != 0)
@@ -237,7 +246,6 @@ void run_query_chunk(DatabaseFile &db_file,
 	
 	for (current_ref_block = 0; db_file.load_seqs(block_to_database_id,
 		(size_t)(config.chunk_size*1e9),
-		true,
 		&ref_seqs::data_,
 		&ref_ids::data_,
 		true,
@@ -308,7 +316,6 @@ void master_thread(DatabaseFile *db_file, Timer &total_timer, Metadata &metadata
 			db_file->seek_seq(query_file_offset);
 			if (!db_file->load_seqs(query_block_to_database_id,
 				(size_t)(config.chunk_size * 1e9),
-				true,
 				&query_seqs::data_,
 				&query_ids::data_,
 				true,

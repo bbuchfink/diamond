@@ -121,7 +121,7 @@ void run() {
 	String_set<0> *rep_ids;
 	vector<unsigned> rep_database_id, rep_block_id(seq_count);
 	db->rewind();
-	db->load_seqs(rep_database_id, (size_t)1e11, true, &rep_seqs, &rep_ids, true, &rep2);
+	db->load_seqs(rep_database_id, (size_t)1e11, &rep_seqs, &rep_ids, true, &rep2);
 	for (size_t i = 0; i < rep_database_id.size(); ++i)
 		rep_block_id[rep_database_id[i]] = (unsigned)i;
 

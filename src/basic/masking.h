@@ -41,4 +41,4 @@ private:
 	char mask_table_x_[size], mask_table_bit_[size];
 };
 
-void mask_seqs(Sequence_set &seqs, const Masking &masking, bool hard_mask = true);
+size_t mask_seqs(Sequence_set &seqs, const Masking &masking, bool hard_mask = true);

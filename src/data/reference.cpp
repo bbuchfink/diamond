@@ -179,10 +179,6 @@ void make_db(TempFile **tmp_out)
 
 	try {
 		while ((timer.go("Loading sequences"), n = load_seqs(*db_file, format, &seqs, ids, 0, nullptr, (size_t)(1e9), string())) > 0) {
-			if (config.masking == 1) {
-				timer.go("Masking sequences");
-				mask_seqs(*seqs, Masking::get(), false);
-			}
 			timer.go("Writing sequences");
 			for (size_t i = 0; i < n; ++i) {
 				sequence seq = (*seqs)[i];
@@ -268,7 +264,7 @@ void DatabaseFile::seek_direct() {
 	seek(sizeof(ReferenceHeader) + sizeof(ReferenceHeader2) + 8);
 }
 
-bool DatabaseFile::load_seqs(vector<unsigned> &block_to_database_id, size_t max_letters, bool masked, Sequence_set **dst_seq, String_set<0> **dst_id, bool load_ids, const vector<bool> *filter)
+bool DatabaseFile::load_seqs(vector<unsigned> &block_to_database_id, size_t max_letters, Sequence_set **dst_seq, String_set<0> **dst_id, bool load_ids, const vector<bool> *filter)
 {
 	task_timer timer("Loading reference sequences");
 	seek(pos_array_offset);
@@ -318,7 +314,6 @@ bool DatabaseFile::load_seqs(vector<unsigned> &block_to_database_id, size_t max_
 	(*dst_seq)->finish_reserve();
 	if(load_ids) (*dst_id)->finish_reserve();
 	seek(start_offset);
-	size_t masked_letters = 0;
 
 	for (size_t n = 0; n < seqs; ++n) {
 		if (filter && filtered_pos[n]) seek(filtered_pos[n]);
@@ -329,16 +324,12 @@ bool DatabaseFile::load_seqs(vector<unsigned> &block_to_database_id, size_t max_
 			read((*dst_id)->ptr(n), (*dst_id)->length(n) + 1);
 		else
 			if (!seek_forward('\0')) throw std::runtime_error("Unexpected end of file.");
-		if (config.masking == 1 && masked)
-			Masking::get().bit_to_hard_mask((*dst_seq)->ptr(n), (*dst_seq)->length(n), masked_letters);
-		else
-			Masking::get().remove_bit_mask((*dst_seq)->ptr(n), (*dst_seq)->length(n));
+		Masking::get().remove_bit_mask((*dst_seq)->ptr(n), (*dst_seq)->length(n));
 		if (!config.sfilt.empty() && strstr((**dst_id)[n].c_str(), config.sfilt.c_str()) == 0)
 			memset((*dst_seq)->ptr(n), value_traits.mask_char, (*dst_seq)->length(n));
 	}
 	timer.finish();
 	(*dst_seq)->print_stats();
-	log_stream << "Masked letters = " << masked_letters << endl;
 
 	blocked_processing = seqs_processed < ref_header.sequences;
 	return true;
