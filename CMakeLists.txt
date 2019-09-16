@@ -149,6 +149,7 @@ add_executable(diamond src/run/main.cpp
   src/tools/tools.cpp
   src/util/system/getRSS.cpp
   src/util/math/sparse_matrix.cpp
+  src/lib/tantan/LambdaCalculator.cc
 )
 
 if(EXTRA)

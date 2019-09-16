@@ -17,8 +17,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #include <math.h>
+#include <algorithm>
 #include "masking.h"
 #include "../lib/tantan/tantan.hh"
+#include "../lib/tantan/LambdaCalculator.hh"
 
 using namespace std;
 
@@ -27,12 +29,22 @@ const uint8_t Masking::bit_mask = 128;
 
 Masking::Masking(const Score_matrix &score_matrix)
 {
-	const double lambda = score_matrix.lambda(); // 0.324032
+	const unsigned n = value_traits.alphabet_size;
+	int int_matrix[20][20], *int_matrix_ptr[20];
+	std::copy(int_matrix, int_matrix + 20, int_matrix_ptr);
+	for (int i = 0; i < 20; ++i)
+		for (int j = 0; j < 20; ++j)
+			int_matrix[i][j] = score_matrix((char)i, (char)j);
+	cbrc::LambdaCalculator lc;
+	lc.calculate(int_matrix_ptr, 20);
+	
+	const double lambda = lc.lambda(); // 0.324032
+	cerr << "Lambda=" << lambda << endl;
 	for (unsigned i = 0; i < size; ++i) {
 		mask_table_x_[i] = value_traits.mask_char;
 		mask_table_bit_[i] = (uint8_t)i | bit_mask;
 		for (unsigned j = 0; j < size; ++j)
-			if (i < value_traits.alphabet_size && j < value_traits.alphabet_size)
+			if (i < n && j < n)
 				likelihoodRatioMatrix_[i][j] = exp(lambda * score_matrix(i, j));
 	}
 	std::copy(likelihoodRatioMatrix_, likelihoodRatioMatrix_ + size, probMatrixPointers_);
