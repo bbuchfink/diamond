@@ -93,7 +93,7 @@ struct BuildCallback
 };
 
 template<typename _filter>
-SeedArray::SeedArray(const Sequence_set &seqs, size_t shape, const shape_histogram &hst, const SeedPartitionRange &range, const vector<size_t> seq_partition, const _filter *filter)
+SeedArray::SeedArray(const Sequence_set &seqs, size_t shape, const shape_histogram &hst, const SeedPartitionRange &range, const vector<size_t> &seq_partition, const _filter *filter)
 {
 	task_timer timer("Allocating memory for seed array", 3);
 	for (size_t i = range.begin(); i < range.end(); ++i) {
@@ -108,6 +108,6 @@ SeedArray::SeedArray(const Sequence_set &seqs, size_t shape, const shape_histogr
 	seqs.enum_seeds(cb, seq_partition, shape, shape + 1, filter);
 }
 
-template SeedArray::SeedArray(const Sequence_set &, size_t, const shape_histogram &, const SeedPartitionRange &, const vector<size_t>, const No_filter *);
-template SeedArray::SeedArray(const Sequence_set &, size_t, const shape_histogram &, const SeedPartitionRange &, const vector<size_t>, const Seed_set *);
-template SeedArray::SeedArray(const Sequence_set &, size_t, const shape_histogram &, const SeedPartitionRange &, const vector<size_t>, const Hashed_seed_set *);
+template SeedArray::SeedArray(const Sequence_set &, size_t, const shape_histogram &, const SeedPartitionRange &, const vector<size_t>&, const No_filter *);
+template SeedArray::SeedArray(const Sequence_set &, size_t, const shape_histogram &, const SeedPartitionRange &, const vector<size_t>&, const Seed_set *);
+template SeedArray::SeedArray(const Sequence_set &, size_t, const shape_histogram &, const SeedPartitionRange &, const vector<size_t>&, const Hashed_seed_set *);

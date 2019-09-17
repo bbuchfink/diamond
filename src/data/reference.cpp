@@ -179,6 +179,10 @@ void make_db(TempFile **tmp_out)
 
 	try {
 		while ((timer.go("Loading sequences"), n = load_seqs(*db_file, format, &seqs, ids, 0, nullptr, (size_t)(1e9), string())) > 0) {
+			if (config.masking == 1) {
+				timer.go("Masking sequences");
+				mask_seqs(*seqs, Masking::get(), false);
+			}
 			timer.go("Writing sequences");
 			for (size_t i = 0; i < n; ++i) {
 				sequence seq = (*seqs)[i];

@@ -45,7 +45,7 @@ struct SeedArray
 	} PACKED_ATTRIBUTE;
 
 	template<typename _filter>
-	SeedArray(const Sequence_set &seqs, size_t shape, const shape_histogram &hst, const SeedPartitionRange &range, const vector<size_t> seq_partition, const _filter *filter);
+	SeedArray(const Sequence_set &seqs, size_t shape, const shape_histogram &hst, const SeedPartitionRange &range, const vector<size_t> &seq_partition, const _filter *filter);
 
 	Entry* begin(unsigned i)
 	{

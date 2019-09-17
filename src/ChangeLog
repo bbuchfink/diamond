@@ -6,6 +6,7 @@
 - Added option `--tantan-maxRepeatOffset` to set maximum tandem repeat period to consider and changed the default value to 15.
 - Added option `--tantan-ungapped` to use tantan in ungapped mode and changed the default to gapped mode.
 - Changed score matrix lambda calculation for tantan masking.
+- Reference masking is recomputed during alignment runs.
 
 [0.9.25]
 - Added support for the `sscinames` output field to print subject scientific names to the tabular output format.
