@@ -99,7 +99,7 @@ void Command_line_parser::store(int count, const char ** str, unsigned &command)
 
 void Command_line_parser::print_help()
 {
-	static const size_t col1_width = 23;
+	static const size_t col1_width = 25;
 	cout << "Syntax: diamond COMMAND [OPTIONS]" << endl << endl;
 	cout << "Commands:" << endl;
 	for (vector<pair<string, string> >::const_iterator i = commands_.begin(); i != commands_.end(); ++i)

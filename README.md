@@ -21,11 +21,6 @@ Keep posted about new developments by following me on
 ![image](https://anaconda.org/bioconda/diamond/badges/platforms.svg)
 [![image](https://anaconda.org/bioconda/diamond/badges/downloads.svg)](https://anaconda.org/bioconda/diamond)
 
-Support
-=======
-
-The preferred support channel is the [Diamond community website](http://www.diamondsearch.org/). It provides a platform for users to exchange their experiences and get support directly from the developer. You may also use the GitHub issue tracker or send inquiries by email.
-
 Quick start guide
 =================
 
@@ -37,7 +32,7 @@ quick example for setting up and using the program on Linux.
 Installing the software on your system may be done by downloading it in
 binary format for immediate use:
 
-    wget http://github.com/bbuchfink/diamond/releases/download/v0.9.25/diamond-linux64.tar.gz
+    wget http://github.com/bbuchfink/diamond/releases/download/v0.9.26/diamond-linux64.tar.gz
     tar xzf diamond-linux64.tar.gz
 
 The extracted `diamond` binary file should be moved to a directory
@@ -78,6 +73,11 @@ The output file here is specified with the `–o` option and named
 -   The default e-value cutoff of DIAMOND is 0.001 while that of
     BLAST is 10, so by default the program will search a lot more
     stringently than BLAST and not report weak hits.
+
+Support
+=======
+
+The preferred support channel is the [Diamond community website](http://www.diamondsearch.org/). It provides a platform for users to exchange their experiences and get support directly from the developer. You may also use the GitHub issue tracker or send inquiries by email.
   
 About
 =====
