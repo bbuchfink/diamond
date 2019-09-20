@@ -154,7 +154,7 @@ std::pair<size_t, size_t> table_join(const Relation<_t> &R, const Relation<_t> &
 }
 
 template<typename _t>
-void hash_join(Relation<_t> &R, Relation<_t> &S, _t *dst_r, _t *dst_s, typename _t::Value *&out_r, typename _t::Value *&out_s, unsigned total_bits = 32, unsigned shift = 0)
+void hash_join(Relation<_t> R, Relation<_t> S, _t *dst_r, _t *dst_s, typename _t::Value *&out_r, typename _t::Value *&out_s, unsigned total_bits = 32, unsigned shift = 0)
 {
 	typedef typename _t::Value Value;
 	if (R.n == 0 || S.n == 0)
@@ -190,7 +190,7 @@ void hash_join(Relation<_t> &R, Relation<_t> &S, _t *dst_r, _t *dst_s, typename 
 }
 
 template<typename _t>
-std::pair<size_t, size_t> hash_join(Relation<_t> &R, Relation<_t> &S, unsigned total_bits = 32) {
+std::pair<size_t, size_t> hash_join(Relation<_t> R, Relation<_t> S, unsigned total_bits = 32) {
 	typedef typename _t::Value Value;
 	_t *buf_r = new _t[R.n], *buf_s = new _t[S.n];
 	Value *out_r = (Value*)R.data, *out_s = (Value*)S.data;
