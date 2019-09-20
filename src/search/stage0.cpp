@@ -17,6 +17,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #include <thread>
+#include <utility>
 #include "search.h"
 #include "../util/algo/hash_join.h"
 #include "../util/algo/radix_sort.h"
@@ -26,35 +27,32 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../data/frequent_seeds.h"
 #include "trace_pt_buffer.h"
 #include "align_range.h"
+#include "../util/data_structures/double_array.h"
 
 using namespace std;
 
-void seed_join_worker(SeedArray *query_seeds, SeedArray *ref_seeds, Atomic<unsigned> *seedp, const SeedPartitionRange *seedp_range, vector<JoinResult<SeedArray::Entry> >::iterator seed_hits)
+void seed_join_worker(SeedArray *query_seeds, SeedArray *ref_seeds, Atomic<unsigned> *seedp, const SeedPartitionRange *seedp_range, size_t *query_hit_size, size_t *ref_hit_size)
 {
 	unsigned p;
-	MemoryPool tmp_pool(false);
 	while ((p = (*seedp)++) < seedp_range->end()) {
-		hash_join(
+		std::pair<size_t, size_t> size = hash_join(
 			Relation<SeedArray::Entry>(query_seeds->begin(p), query_seeds->size(p)),
 			Relation<SeedArray::Entry>(ref_seeds->begin(p), ref_seeds->size(p)),
-			*(seed_hits + (p - seedp_range->begin())),
-			tmp_pool,
 			24);
-		MemoryPool::global().free(query_seeds->begin(p));
-		MemoryPool::global().free(ref_seeds->begin(p));
+		query_hit_size[p] = size.first;
+		ref_hit_size[p] = size.second;
 	}
 }
 
-void search_worker(Atomic<unsigned> *seedp, const SeedPartitionRange *seedp_range, unsigned shape, size_t thread_id, vector<JoinResult<SeedArray::Entry> >::iterator seed_hits)
+void search_worker(Atomic<unsigned> *seedp, const SeedPartitionRange *seedp_range, unsigned shape, size_t thread_id, DoubleArray<SeedArray::_pos> *query_seed_hits, DoubleArray<SeedArray::_pos> *ref_seed_hits)
 {
 	Trace_pt_buffer::Iterator* out = new Trace_pt_buffer::Iterator(*Trace_pt_buffer::instance, thread_id);
 	Statistics stats;
 	Seed_filter seed_filter(stats, *out, shape);
 	unsigned p;
 	while ((p = (*seedp)++) < seedp_range->end())
-		for (JoinResult<SeedArray::Entry>::Iterator it = seed_hits[p - seedp_range->begin()].begin(); it.good(); ++it)
-			if (it.s[0] != 0)
-				seed_filter.run(it.r.data(), it.r.count(), it.s.data(), it.s.count());
+		for (auto it = JoinIterator<SeedArray::_pos>(query_seed_hits[p].begin(), ref_seed_hits[p].begin()); it; ++it)
+			seed_filter.run(it.r->begin(), it.r->size(), it.s->begin(), it.s->size());
 	delete out;
 	statistics += stats;
 }
@@ -62,6 +60,9 @@ void search_worker(Atomic<unsigned> *seedp, const SeedPartitionRange *seedp_rang
 void search_shape(unsigned sid, unsigned query_block)
 {
 	::partition<unsigned> p(Const::seedp, config.lowmem);
+	size_t query_hit_size[Const::seedp], ref_hit_size[Const::seedp];
+	DoubleArray<SeedArray::_pos> query_seed_hits[Const::seedp], ref_seed_hits[Const::seedp];
+
 	for (unsigned chunk = 0; chunk < p.parts; ++chunk) {
 		message_stream << "Processing query block " << query_block << ", reference block " << current_ref_block << ", shape " << sid << ", index chunk " << chunk << '.' << endl;
 		const SeedPartitionRange range(p.getMin(chunk), p.getMax(chunk));
@@ -77,28 +78,33 @@ void search_shape(unsigned sid, unsigned query_block)
 			ref_idx = new SeedArray(*ref_seqs::data_, sid, ref_hst.get(sid), range, ref_hst.partition(), &no_filter);
 
 		timer.go("Building query seed array");
-		SeedArray query_idx(*query_seqs::data_, sid, query_hst.get(sid), range, query_hst.partition(), &no_filter);
+		SeedArray *query_idx = new SeedArray(*query_seqs::data_, sid, query_hst.get(sid), range, query_hst.partition(), &no_filter);
 
 		timer.go("Computing hash join");
-		//MemoryPool::init((query_seeds.limits_.back() + ref_seeds.limits_.back()) * 5);
 		Atomic<unsigned> seedp(range.begin());
 		vector<thread> threads;
-		vector<JoinResult<SeedArray::Entry> > seed_hits(range.size());
 		for (size_t i = 0; i < config.threads_; ++i)
-			threads.emplace_back(seed_join_worker, &query_idx, ref_idx, &seedp, &range, seed_hits.begin());
+			threads.emplace_back(seed_join_worker, query_idx, ref_idx, &seedp, &range, query_hit_size, ref_hit_size);
 		for (auto &t : threads)
 			t.join();
-		delete ref_idx;
+		for (size_t i = range.begin(); i < range.end(); ++i) {
+			query_seed_hits[i] = DoubleArray<SeedArray::_pos>((SeedArray::_pos*)query_idx->begin(i), query_hit_size[i]);
+			ref_seed_hits[i] = DoubleArray<SeedArray::_pos>((SeedArray::_pos*)ref_idx->begin(i), ref_hit_size[i]);
+		}
 
 		timer.go("Building seed filter");
-		frequent_seeds.build(sid, range, seed_hits.begin());
+		frequent_seeds.build(sid, range, query_seed_hits, ref_seed_hits);
 
 		timer.go("Searching alignments");
 		seedp = range.begin();
 		threads.clear();
 		for (size_t i = 0; i < config.threads_; ++i)
-			threads.emplace_back(search_worker, &seedp, &range, sid, i, seed_hits.begin());
+			threads.emplace_back(search_worker, &seedp, &range, sid, i, query_seed_hits, ref_seed_hits);
 		for (auto &t : threads)
 			t.join();
+
+		timer.go("Deallocating buffers");
+		delete ref_idx;
+		delete query_idx;
 	}
 }

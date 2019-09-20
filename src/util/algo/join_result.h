@@ -20,13 +20,78 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define JOIN_RESULT_H_
 
 #include <algorithm>
-#include <vector>
+#include "../range.h"
 #include "../data_structures/double_array.h"
 
-using std::pair;
-using std::vector;
+template<typename _t>
+struct JoinArrayIterator {
+
+	JoinArrayIterator(_t *ptr, _t *end):
+		ptr_(ptr),
+		end_(end)
+	{}
+
+	Range<_t*> operator*() {
+		return { ptr_ + 1, ptr_ + 1 + *ptr_ };
+	}
+
+	Range<_t*>* operator->() {
+		range_ = this->operator*();
+		return &range_;
+	}
+
+	JoinArrayIterator& operator++() {
+		ptr_ += *ptr_ + 1;
+		while (ptr_ < end_ && *ptr_ == 0)
+			ptr_ += ptr_[1] + 1;
+		range_ = { ptr_ + 1, ptr_ + 1 + *ptr_ };
+		return *this;
+	}
+	
+	operator bool() const {
+		return ptr_ < end_;
+	}
+
+	void erase() {
+		ptr_[1] = *ptr_;
+		*ptr_ = 0;
+	}
+
+private:
+
+	Range<_t*> range_;
+	_t *ptr_, *end_;
+
+};
 
 template<typename _t>
+struct JoinIterator {
+
+	typename DoubleArray<_t>::Iterator r, s;
+
+	JoinIterator(typename DoubleArray<_t>::Iterator r, typename DoubleArray<_t>::Iterator s):
+		r(s),
+		s(s)
+	{}
+
+	JoinIterator& operator++() {
+		++r;
+		++s;
+		return *this;
+	}
+
+	operator bool() const {
+		return r;
+	}
+
+	void erase() {
+		r.erase();
+		s.erase();
+	}
+
+};
+
+/*template<typename _t>
 struct JoinResult : public vector<pair<DoubleArray<typename _t::Value>*, DoubleArray<typename _t::Value>*> >
 {
 
@@ -68,5 +133,5 @@ struct JoinResult : public vector<pair<DoubleArray<typename _t::Value>*, DoubleA
 	}
 
 };
-
+*/
 #endif

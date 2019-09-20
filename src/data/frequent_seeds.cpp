@@ -138,32 +138,41 @@ void Frequent_seeds::build(unsigned sid, const SeedPartitionRange &range, sorted
 	log_stream << "Masked positions = " << std::accumulate(counts.begin(), counts.end(), 0) << std::endl;
 }
 
-void Frequent_seeds::compute_sd2(Atomic<unsigned> *seedp, vector<JoinResult<SeedArray::Entry> >::iterator seed_hits, vector<Sd> *ref_out, vector<Sd> *query_out)
+void Frequent_seeds::compute_sd2(Atomic<unsigned> *seedp, DoubleArray<SeedArray::_pos> *query_seed_hits, DoubleArray<SeedArray::_pos> *ref_seed_hits, vector<Sd> *ref_out, vector<Sd> *query_out)
 {
 	unsigned p;
 	while ((p = (*seedp)++) < current_range.end()) {
 		Sd ref_sd, query_sd;
-		for (JoinResult<SeedArray::Entry>::Iterator it = seed_hits[p - current_range.begin()].begin(); it.good(); ++it) {
-			query_sd.add((double)it.r.count());
-			ref_sd.add((double)it.s.count());
+		for (auto it = JoinIterator<SeedArray::_pos>(query_seed_hits[p].begin(), ref_seed_hits[p].begin()); it; ++it) {
+			query_sd.add((double)it.r->size());
+			ref_sd.add((double)it.s->size());
 		}
 		(*ref_out)[p - current_range.begin()] = ref_sd;
 		(*query_out)[p - current_range.begin()] = query_sd;
 	}
 }
 
-void Frequent_seeds::build_worker2(size_t seedp, size_t thread_id, vector<JoinResult<SeedArray::Entry>>::iterator seed_hits, const SeedPartitionRange *range, unsigned sid, unsigned ref_max_n, unsigned query_max_n, vector<unsigned> *counts) {
+void Frequent_seeds::build_worker2(
+	size_t seedp,
+	size_t thread_id,
+	DoubleArray<SeedArray::_pos> *query_seed_hits,
+	DoubleArray<SeedArray::_pos> *ref_seed_hits,
+	const SeedPartitionRange *range,
+	unsigned sid,
+	unsigned ref_max_n,
+	unsigned query_max_n,
+	vector<unsigned> *counts) {
 	if (!range->contains((unsigned)seedp))
 		return;
 
 	vector<uint32_t> buf;
 	size_t n = 0;
-	for (JoinResult<SeedArray::Entry>::Iterator it = seed_hits[seedp - range->begin()].begin(); it.good(); ++it) {
-		if (it.s.count() > ref_max_n || it.r.count() > query_max_n) {
-			it.s[0] = 0;
-			n += (unsigned)it.s.count();
+	for (auto it = JoinIterator<SeedArray::_pos>(query_seed_hits[seedp].begin(), ref_seed_hits[seedp].begin()); it; ++it) {
+		if (it.s->size() > ref_max_n || it.r->size() > query_max_n) {
+			it.erase();
+			n += (unsigned)it.s->size();
 			Packed_seed s;
-			shapes[sid].set_seed(s, query_seqs::get().data(it.r[0]));
+			shapes[sid].set_seed(s, query_seqs::get().data(*it.r->begin()));
 			buf.push_back(seed_partition_offset(s));
 #ifdef MASK_FREQUENT
 			for (unsigned i = 0; i < merge_it.i.n; ++i) {
@@ -185,13 +194,13 @@ void Frequent_seeds::build_worker2(size_t seedp, size_t thread_id, vector<JoinRe
 	(*counts)[seedp] = (unsigned)n;
 }
 
-void Frequent_seeds::build(unsigned sid, const SeedPartitionRange &range, vector<JoinResult<SeedArray::Entry> >::iterator seed_hits)
+void Frequent_seeds::build(unsigned sid, const SeedPartitionRange &range, DoubleArray<SeedArray::_pos> *query_seed_hits, DoubleArray<SeedArray::_pos> *ref_seed_hits)
 {
 	vector<Sd> ref_sds(range.size()), query_sds(range.size());
 	Atomic<unsigned> seedp(range.begin());
 	vector<thread> threads;
 	for (unsigned i = 0; i < config.threads_; ++i)
-		threads.emplace_back(compute_sd2, &seedp, seed_hits, &ref_sds, &query_sds);
+		threads.emplace_back(compute_sd2, &seedp, query_seed_hits, ref_seed_hits, &ref_sds, &query_sds);
 	for (auto &t : threads)
 		t.join();
 
@@ -200,6 +209,6 @@ void Frequent_seeds::build(unsigned sid, const SeedPartitionRange &range, vector
 	log_stream << "Seed frequency mean (reference) = " << ref_sd.mean() << ", SD = " << ref_sd.sd() << endl;
 	log_stream << "Seed frequency mean (query) = " << query_sd.mean() << ", SD = " << query_sd.sd() << endl;
 	vector<unsigned> counts(Const::seedp);
-	Util::Parallel::scheduled_thread_pool_auto(config.threads_, Const::seedp, build_worker2, seed_hits, &range, sid, ref_max_n, query_max_n, &counts);
+	Util::Parallel::scheduled_thread_pool_auto(config.threads_, Const::seedp, build_worker2, query_seed_hits, ref_seed_hits, &range, sid, ref_max_n, query_max_n, &counts);
 	log_stream << "Masked positions = " << std::accumulate(counts.begin(), counts.end(), 0) << std::endl;
 }

@@ -24,7 +24,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <string.h>
 #include <mutex>
 #include "../util/log_stream.h"
-#include "../util/memory/memory_pool.h"
 
 typedef uint64_t stat_type;
 
@@ -94,7 +93,6 @@ struct Statistics
 		log_stream << "MSE = " << (double)data_[SQUARED_ERROR] / (double)data_[OUT_HITS] << endl;
 		//log_stream << "Cells = " << data_[CELLS] << endl;
 		verbose_stream << "Temporary disk space used: " << (double)data_[TEMP_SPACE] / (1 << 30) << " GB" << endl;
-		log_stream << "Memory pool maximum allocation size: " << (double)MemoryPool::global().max_alloc_size() / (1 << 30) << " GB" << endl;
 		log_stream << "Outranked hits = " << data_[OUTRANKED_HITS] << " (" << data_[OUTRANKED_HITS]*100.0/ data_[PAIRWISE] << "%)" << endl;
 		message_stream << "Reported " << data_[PAIRWISE] << " pairwise alignments, " << data_[MATCHES] << " HSPs." << endl;
 		message_stream << data_[ALIGNED] << " queries aligned." << endl;

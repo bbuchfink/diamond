@@ -47,6 +47,8 @@ struct SeedArray
 	template<typename _filter>
 	SeedArray(const Sequence_set &seqs, size_t shape, const shape_histogram &hst, const SeedPartitionRange &range, const vector<size_t> &seq_partition, const _filter *filter);
 
+	~SeedArray();
+
 	Entry* begin(unsigned i)
 	{
 		return data_[i];
@@ -66,6 +68,7 @@ private:
 
 	Entry *data_[Const::seedp];
 	size_t size_[Const::seedp];
+	SeedPartitionRange range_;
 
 };
 

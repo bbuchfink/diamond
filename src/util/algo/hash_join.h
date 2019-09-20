@@ -21,12 +21,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <stdlib.h>
 #include <cstdlib>
+#include <utility>
+#include <algorithm>
 #include "../../basic/config.h"
 #include "../util.h"
 #include "radix_cluster.h"
 #include "../data_structures/hash_table.h"
-#include "../memory/memory_pool.h"
-#include "join_result.h"
 
 struct RelPtr
 {
@@ -44,7 +44,7 @@ struct RelPtr
 };
 
 template<typename _t>
-void hash_table_join(const Relation<_t> &R, const Relation<_t> &S, unsigned shift, JoinResult<_t> &out)
+std::pair<size_t, size_t> hash_table_join(const Relation<_t> &R, const Relation<_t> &S, unsigned shift, typename _t::Value *dst_r, typename _t::Value *dst_s)
 {
 	typedef HashTable<unsigned, RelPtr, ExtractBits> Table;
 
@@ -72,43 +72,37 @@ void hash_table_join(const Relation<_t> &R, const Relation<_t> &S, unsigned shif
 		}
 	}
 
-	unsigned sum_r = 0, sum_s = 1;
-	DoubleArray<typename _t::Value> *hits_r = new DoubleArray<typename _t::Value>(keys_hit), *hits_s = new DoubleArray<typename _t::Value>(keys_hit);
-	unsigned *limits_r = hits_r->limits(), *limits_s = hits_s->limits();
+	unsigned sum_r = 0, sum_s = 0;
 	
 	for (unsigned i = 0; i < table.size(); ++i) {
 		p = &table.data()[i];
 		if (p->s) {
 			unsigned r = p->r, s = p->s;
-			p->r = sum_r;
-			p->s = sum_s;
-			*(limits_r++) = r;
-			*(limits_s++) = s;
-			sum_r += r;
-			sum_s += s;
+			p->r = sum_r + 1;
+			p->s = sum_s + 1;
+			dst_r[sum_r] = r;
+			dst_s[sum_s] = s;
+			sum_r += r + 1;
+			sum_s += s + 1;
 		}
 	}
-
-	hits_r->init(sum_r);
-	hits_s->init(sum_s - 1);
-	typename _t::Value *data_r = hits_r->data(), *data_s = hits_s->data();
 
 	for (const _t *i = R.data; i < R.end(); ++i) {
 		p = &table.data()[i->key];
 		if (p->s)
-			data_r[p->r++] = i->value;
+			dst_r[p->r++] = i->value;
 	}
 
 	for (const _t *i = S.data; i < hit_s; ++i) {
 		p = &table.data()[i->key];
-		data_s[p->s++ - 1] = i->value;
+		dst_s[p->s++] = i->value;
 	}
 
-	out.push_back(std::make_pair(hits_r, hits_s));
+	return { sum_r, sum_s };
 }
 
 template<typename _t>
-void table_join(const Relation<_t> &R, const Relation<_t> &S, unsigned total_bits, unsigned shift, JoinResult<_t> &out)
+std::pair<size_t, size_t> table_join(const Relation<_t> &R, const Relation<_t> &S, unsigned total_bits, unsigned shift, typename _t::Value *dst_r, typename _t::Value *dst_s)
 {
 	const unsigned keys = 1 << (total_bits - shift);
 	ExtractBits key(keys, shift);
@@ -129,71 +123,81 @@ void table_join(const Relation<_t> &R, const Relation<_t> &S, unsigned total_bit
 		}
 	}
 
-	unsigned sum_r = 0, sum_s = 1;
-	DoubleArray<typename _t::Value> *hits_r = new DoubleArray<typename _t::Value>(keys_hit), *hits_s = new DoubleArray<typename _t::Value>(keys_hit);
-	unsigned *limits_r = hits_r->limits(), *limits_s = hits_s->limits();
+	unsigned sum_r = 0, sum_s = 0;
 
 	for (unsigned i = 0; i < keys; ++i) {
 		p = &table[i];
 		if (p->s) {
 			unsigned r = p->r, s = p->s;
-			p->r = sum_r;
-			p->s = sum_s;
-			*(limits_r++) = r;
-			*(limits_s++) = s;
-			sum_r += r;
-			sum_s += s;
+			p->r = sum_r + 1;
+			p->s = sum_s + 1;
+			dst_r[sum_r] = r;
+			dst_s[sum_s] = s;
+			sum_r += r + 1;
+			sum_s += s + 1;
 		}
 	}
 
-	hits_r->init(sum_r);
-	hits_s->init(sum_s - 1);
-	typename _t::Value *data_r = hits_r->data(), *data_s = hits_s->data();
-	
 	for (const _t *i = R.data; i < R.end(); ++i) {
 		p = &table[key(i->key)];
 		if (p->s)
-			data_r[p->r++] = i->value;
+			dst_r[p->r++] = i->value;
 	}
 
 	for (const _t *i = S.data; i < hit_s; ++i) {
 		p = &table[key(i->key)];
-		data_s[p->s++ - 1] = i->value;
+		dst_s[p->s++] = i->value;
 	}
 	
 	free(table);
-	out.push_back(std::make_pair(hits_r, hits_s));
+	return { sum_r, sum_s };
 }
 
 template<typename _t>
-void hash_join(const Relation<_t> &R, const Relation<_t> &S, JoinResult<_t> &out, MemoryPool &tmp_pool, unsigned total_bits = 32, unsigned shift = 0)
+void hash_join(Relation<_t> &R, Relation<_t> &S, _t *dst_r, _t *dst_s, typename _t::Value *&out_r, typename _t::Value *&out_s, unsigned total_bits = 32, unsigned shift = 0)
 {
+	typedef typename _t::Value Value;
 	if (R.n == 0 || S.n == 0)
 		return;
 	const unsigned key_bits = total_bits - shift;
 	if (R.n < config.join_split_size || key_bits < config.join_split_key_len) {
+		std::pair<size_t, size_t> size;
 		if (next_power_of_2(R.n * config.join_ht_factor) < 1llu << key_bits)
-			hash_table_join(R, S, shift, out);
+			size = hash_table_join(R, S, shift, (Value*)dst_r, (Value*)dst_s);
 		else
-			table_join(R, S, total_bits, shift, out);
+			size = table_join(R, S, total_bits, shift, (Value*)dst_r, (Value*)dst_s);
+		if ((void*)out_r != (void*)dst_r)
+			std::copy((Value*)dst_r, (Value*)dst_r + size.first, out_r);
+		out_r += size.first;
+		if ((void*)out_s != (void*)dst_s)
+			std::copy((Value*)dst_s, (Value*)dst_s + size.second, out_s);
+		out_s += size.second;
 	}
 	else {
 		const unsigned clusters = 1 << config.radix_bits;
-		_t *outR = tmp_pool.alloc<_t>(R.n), *outS = tmp_pool.alloc<_t>(S.n);
 		unsigned *hstR = new unsigned[clusters], *hstS = new unsigned[clusters];
-		radix_cluster(R, shift, outR, hstR);
-		radix_cluster(S, shift, outS, hstS);
+		radix_cluster(R, shift, dst_r, hstR);
+		radix_cluster(S, shift, dst_s, hstS);
 
 		shift += config.radix_bits;
-		hash_join(Relation<_t>(outR, hstR[0]), Relation<_t>(outS, hstS[0]), out, tmp_pool, total_bits, shift);
+		hash_join(Relation<_t>(dst_r, hstR[0]), Relation<_t>(dst_s, hstS[0]), R.data, S.data, out_r, out_s, total_bits, shift);
 		for (unsigned i = 1; i < clusters; ++i)
-			hash_join(Relation<_t>(&outR[hstR[i - 1]], hstR[i] - hstR[i - 1]), Relation<_t>(&outS[hstS[i - 1]], hstS[i] - hstS[i - 1]), out, tmp_pool, total_bits, shift);
+			hash_join(Relation<_t>(dst_r + hstR[i - 1], hstR[i] - hstR[i - 1]), Relation<_t>(dst_s + hstS[i - 1], hstS[i] - hstS[i - 1]), R.data + hstR[i - 1], S.data + hstS[i - 1], out_r, out_s, total_bits, shift);
 
 		delete[] hstR;
 		delete[] hstS;
-		tmp_pool.free(outR);
-		tmp_pool.free(outS);
 	}
+}
+
+template<typename _t>
+std::pair<size_t, size_t> hash_join(Relation<_t> &R, Relation<_t> &S, unsigned total_bits = 32) {
+	typedef typename _t::Value Value;
+	_t *buf_r = new _t[R.n], *buf_s = new _t[S.n];
+	Value *out_r = (Value*)R.data, *out_s = (Value*)S.data;
+	hash_join(R, S, buf_r, buf_s, out_r, out_s, total_bits);
+	delete[] buf_r;
+	delete[] buf_s;
+	return { out_r - (typename _t::Value*)R.data, out_s - (typename _t::Value*)S.data };
 }
 
 #endif

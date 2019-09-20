@@ -1,106 +1,67 @@
-/****
-DIAMOND protein aligner
-Copyright (C) 2013-2018 Benjamin Buchfink <buchfink@gmail.com>
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program.  If not, see <http://www.gnu.org/licenses/>.
-****/
-
 #ifndef DOUBLE_ARRAY_H_
 #define DOUBLE_ARRAY_H_
 
-#include "../memory/memory_pool.h"
+#include "../range.h"
 
 template<typename _t>
-struct DoubleArray
-{
+struct DoubleArray {
 
-	DoubleArray(unsigned n) :
-		limits_(MemoryPool::global().alloc<unsigned>(n)),
-		data_(NULL),
-		size_(n)
-	{
-	}
+	DoubleArray()
+	{}
 
-	~DoubleArray()
-	{
-		MemoryPool::global().free(limits_);
-		MemoryPool::global().free(data_);
-	}
+	DoubleArray(_t* data, size_t size):
+		data_(data),
+		size_(size)
+	{}
 
-	void init(unsigned data_size)
-	{
-		data_ = MemoryPool::global().alloc<_t>(data_size);
-	}
+	struct Iterator {
 
-	unsigned* limits()
-	{
-		return limits_;
-	}
+		Iterator(_t *ptr, _t *end) :
+			ptr_(ptr),
+			end_(end)
+		{}
 
-	_t* data()
-	{
-		return data_;
-	}
-
-	struct Iterator
-	{
-		_t& operator[](size_t i)
-		{
-			return data_[i];
+		Range<_t*> operator*() {
+			return { ptr_ + 1, ptr_ + 1 + *ptr_ };
 		}
-		size_t count() const
-		{
-			return *limits_;
+
+		Range<_t*>* operator->() {
+			range_ = this->operator*();
+			return &range_;
 		}
-		_t* data()
-		{
-			return data_;
-		}
-		bool operator<(const Iterator &i) const
-		{
-			return limits_ < i.limits_;
-		}
-		Iterator& operator++()
-		{
-			data_ += *limits_;
-			++limits_;
+
+		Iterator& operator++() {
+			ptr_ += *ptr_ + 1;
+			while (ptr_ < end_ && *ptr_ == 0)
+				ptr_ += ptr_[1] + 1;
+			range_ = { ptr_ + 1, ptr_ + 1 + *ptr_ };
 			return *this;
 		}
-		Iterator(unsigned *limits, _t *data) :
-			limits_(limits),
-			data_(data)
-		{}
+
+		operator bool() const {
+			return ptr_ < end_;
+		}
+
+		void erase() {
+			ptr_[1] = *ptr_;
+			*ptr_ = 0;
+		}
+
 	private:
-		unsigned *limits_;
-		_t *data_;
+
+		Range<_t*> range_;
+		_t *ptr_, *end_;
+
 	};
 
-	Iterator begin()
-	{
-		return Iterator(limits_, data_);
-	}
-
-	Iterator end()
-	{
-		return Iterator(limits_ + size_, data_);
+	Iterator begin() {
+		return Iterator(data_, data_ + size_);
 	}
 
 private:
 
-	unsigned *limits_;
 	_t *data_;
-	const size_t size_;
+	size_t size_;
 
 };
 

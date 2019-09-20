@@ -21,7 +21,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <algorithm>
 #include "radix_cluster.h"
-#include "../memory/memory_pool.h"
 
 template<typename _t>
 void radix_sort(Relation<_t> &R, unsigned total_bits, _t *buf = 0)

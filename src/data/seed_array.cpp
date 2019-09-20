@@ -18,7 +18,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <stdint.h>
 #include "seed_array.h"
-#include "../util/memory/memory_pool.h"
 #include "seed_set.h"
 
 typedef vector<Array<SeedArray::Entry*, Const::seedp> > PtrSet;
@@ -93,12 +92,13 @@ struct BuildCallback
 };
 
 template<typename _filter>
-SeedArray::SeedArray(const Sequence_set &seqs, size_t shape, const shape_histogram &hst, const SeedPartitionRange &range, const vector<size_t> &seq_partition, const _filter *filter)
+SeedArray::SeedArray(const Sequence_set &seqs, size_t shape, const shape_histogram &hst, const SeedPartitionRange &range, const vector<size_t> &seq_partition, const _filter *filter):
+	range_(range)
 {
 	task_timer timer("Allocating memory for seed array", 3);
 	for (size_t i = range.begin(); i < range.end(); ++i) {
 		size_[i] = partition_size(hst, i);
-		data_[i] = MemoryPool::global().alloc<Entry>(size_[i]);
+		data_[i] = new Entry[size_[i]];
 	}
 	timer.go("Building seed array");
 	PtrSet iterators(build_iterators(*this, hst));
@@ -106,6 +106,11 @@ SeedArray::SeedArray(const Sequence_set &seqs, size_t shape, const shape_histogr
 	for (size_t i = 0; i < seq_partition.size() - 1; ++i)
 		cb.push_back(new BuildCallback(range, iterators[i].begin()));
 	seqs.enum_seeds(cb, seq_partition, shape, shape + 1, filter);
+}
+
+SeedArray::~SeedArray() {
+	for (size_t i = range_.begin(); i < range_.end(); ++i)
+		delete[] data_[i];
 }
 
 template SeedArray::SeedArray(const Sequence_set &, size_t, const shape_histogram &, const SeedPartitionRange &, const vector<size_t>&, const No_filter *);
