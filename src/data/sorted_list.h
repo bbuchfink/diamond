@@ -24,7 +24,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "seed_histogram.h"
 #include "../basic/packed_loc.h"
 #include "../util/system.h"
-#include "../util/algo/hash_join.h"
 #include "../util/parallel/thread_pool.h"
 
 #pragma pack(1)

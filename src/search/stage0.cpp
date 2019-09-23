@@ -31,16 +31,22 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 using namespace std;
 
-void seed_join_worker(SeedArray *query_seeds, SeedArray *ref_seeds, Atomic<unsigned> *seedp, const SeedPartitionRange *seedp_range, size_t *query_hit_size, size_t *ref_hit_size)
+void seed_join_worker(
+	SeedArray *query_seeds,
+	SeedArray *ref_seeds,
+	Atomic<unsigned> *seedp,
+	const SeedPartitionRange *seedp_range,
+	DoubleArray<SeedArray::_pos> *query_seed_hits,
+	DoubleArray<SeedArray::_pos> *ref_seeds_hits)
 {
 	unsigned p;
 	while ((p = (*seedp)++) < seedp_range->end()) {
-		std::pair<size_t, size_t> size = hash_join(
+		std::pair<DoubleArray<SeedArray::_pos>, DoubleArray<SeedArray::_pos>> join = hash_join(
 			Relation<SeedArray::Entry>(query_seeds->begin(p), query_seeds->size(p)),
 			Relation<SeedArray::Entry>(ref_seeds->begin(p), ref_seeds->size(p)),
 			24);
-		query_hit_size[p] = size.first;
-		ref_hit_size[p] = size.second;
+		query_seed_hits[p] = join.first;
+		ref_seeds_hits[p] = join.second;
 	}
 }
 
@@ -60,7 +66,6 @@ void search_worker(Atomic<unsigned> *seedp, const SeedPartitionRange *seedp_rang
 void search_shape(unsigned sid, unsigned query_block)
 {
 	::partition<unsigned> p(Const::seedp, config.lowmem);
-	size_t query_hit_size[Const::seedp], ref_hit_size[Const::seedp];
 	DoubleArray<SeedArray::_pos> query_seed_hits[Const::seedp], ref_seed_hits[Const::seedp];
 
 	for (unsigned chunk = 0; chunk < p.parts; ++chunk) {
@@ -84,13 +89,9 @@ void search_shape(unsigned sid, unsigned query_block)
 		Atomic<unsigned> seedp(range.begin());
 		vector<thread> threads;
 		for (size_t i = 0; i < config.threads_; ++i)
-			threads.emplace_back(seed_join_worker, query_idx, ref_idx, &seedp, &range, query_hit_size, ref_hit_size);
+			threads.emplace_back(seed_join_worker, query_idx, ref_idx, &seedp, &range, query_seed_hits, ref_seed_hits);
 		for (auto &t : threads)
 			t.join();
-		for (size_t i = range.begin(); i < range.end(); ++i) {
-			query_seed_hits[i] = DoubleArray<SeedArray::_pos>((SeedArray::_pos*)query_idx->begin(i), query_hit_size[i]);
-			ref_seed_hits[i] = DoubleArray<SeedArray::_pos>((SeedArray::_pos*)ref_idx->begin(i), ref_hit_size[i]);
-		}
 
 		timer.go("Building seed filter");
 		frequent_seeds.build(sid, range, query_seed_hits, ref_seed_hits);

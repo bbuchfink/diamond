@@ -1,6 +1,9 @@
 #ifndef DOUBLE_ARRAY_H_
 #define DOUBLE_ARRAY_H_
 
+#include <stdint.h>
+#include <stddef.h>
+#include <algorithm>
 #include "../range.h"
 
 template<typename _t>
@@ -9,20 +12,29 @@ struct DoubleArray {
 	DoubleArray()
 	{}
 
-	DoubleArray(_t* data, size_t size):
-		data_(data),
+	DoubleArray(void* data, size_t size = 0):
+		data_((char*)data),
 		size_(size)
 	{}
 
 	struct Iterator {
 
-		Iterator(_t *ptr, _t *end) :
+		Iterator(void *ptr) :
+			ptr_((char*)ptr),
+			end_(nullptr)
+		{}
+
+		Iterator(char *ptr, char *end) :
 			ptr_(ptr),
 			end_(end)
 		{}
 
+		uint32_t& count() {
+			return *(uint32_t*)ptr_;
+		}
+
 		Range<_t*> operator*() {
-			return { ptr_ + 1, ptr_ + 1 + *ptr_ };
+			return { (_t*)(ptr_ + 4), (_t*)(ptr_ + 4) + count() };
 		}
 
 		Range<_t*>* operator->() {
@@ -31,11 +43,14 @@ struct DoubleArray {
 		}
 
 		Iterator& operator++() {
-			ptr_ += *ptr_ + 1;
-			while (ptr_ < end_ && *ptr_ == 0)
-				ptr_ += ptr_[1] + 1;
-			range_ = { ptr_ + 1, ptr_ + 1 + *ptr_ };
+			next();
+			while (ptr_ < end_ && count() == 0)
+				ptr_ += (*(uint32_t*)(ptr_ + 4)) * sizeof(_t) + 4;
 			return *this;
+		}
+
+		void next() {
+			ptr_ += count() * sizeof(_t) + 4;
 		}
 
 		operator bool() const {
@@ -43,14 +58,24 @@ struct DoubleArray {
 		}
 
 		void erase() {
-			ptr_[1] = *ptr_;
-			*ptr_ = 0;
+			*(uint32_t*)(ptr_ + 4) = count();
+			count() = 0;
+		}
+
+		ptrdiff_t operator-(const Iterator &x) const {
+			return ptr_ - x.ptr_;
+		}
+
+		bool operator==(const Iterator &x) const {
+			return ptr_ == x.ptr_;
 		}
 
 	private:
 
 		Range<_t*> range_;
-		_t *ptr_, *end_;
+		char *ptr_, *end_;
+
+		friend struct DoubleArray;
 
 	};
 
@@ -58,9 +83,30 @@ struct DoubleArray {
 		return Iterator(data_, data_ + size_);
 	}
 
+	void set_end(const Iterator &it) {
+		size_ = it.ptr_ - data_;
+	}
+
+	void append(const DoubleArray &d) {
+		if (d.data_ == data_ + size_) {
+			size_ += d.size_;
+			return;
+		}
+		std::copy(d.data_, d.data_ + d.size_, data_ + size_);
+		size_ += d.size_;
+	}
+
+	uint32_t offset(const Iterator &it) const {
+		return uint32_t(it.ptr_ - data_);
+	}
+
+	_t& operator[](uint32_t i) {
+		return *(_t*)(data_ + i);
+	}
+
 private:
 
-	_t *data_;
+	char *data_;
 	size_t size_;
 
 };
