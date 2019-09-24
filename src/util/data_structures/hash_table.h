@@ -117,10 +117,10 @@ private:
 		//if(stat) ++probe_n;
 		while(true) {
 			//if(stat) ++probe_l;
+			if (p->blank())
+				return nullptr;
 			if (p->key == key)
 				return p;
-			if (p->blank())
-				return NULL;
 			++p;
 			if (p == &table[size_]) {
 				if (wrapped)

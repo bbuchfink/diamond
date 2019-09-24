@@ -185,7 +185,6 @@ void hash_join(
 	unsigned total_bits = 32,
 	unsigned shift = 0)
 {
-	typedef typename DoubleArray<typename _t::Value>::Iterator It;
 	if (R.n == 0 || S.n == 0)
 		return;
 	const unsigned key_bits = total_bits - shift;
