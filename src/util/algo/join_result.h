@@ -70,7 +70,7 @@ struct JoinIterator {
 	typename DoubleArray<_t>::Iterator r, s;
 
 	JoinIterator(typename DoubleArray<_t>::Iterator r, typename DoubleArray<_t>::Iterator s):
-		r(s),
+		r(r),
 		s(s)
 	{}
 

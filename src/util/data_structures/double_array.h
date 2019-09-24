@@ -27,7 +27,9 @@ struct DoubleArray {
 		Iterator(char *ptr, char *end) :
 			ptr_(ptr),
 			end_(end)
-		{}
+		{
+			skip_del();
+		}
 
 		uint32_t& count() {
 			return *(uint32_t*)ptr_;
@@ -44,8 +46,7 @@ struct DoubleArray {
 
 		Iterator& operator++() {
 			next();
-			while (ptr_ < end_ && count() == 0)
-				ptr_ += (*(uint32_t*)(ptr_ + 4)) * sizeof(_t) + 4;
+			skip_del();
 			return *this;
 		}
 
@@ -58,8 +59,10 @@ struct DoubleArray {
 		}
 
 		void erase() {
-			*(uint32_t*)(ptr_ + 4) = count();
+			uint32_t n = count();
+			*(uint32_t*)(ptr_ + 4) = n;
 			count() = 0;
+			ptr_ += n * sizeof(_t) + 4;
 		}
 
 		ptrdiff_t operator-(const Iterator &x) const {
@@ -71,6 +74,11 @@ struct DoubleArray {
 		}
 
 	private:
+
+		void skip_del() {
+			while (ptr_ < end_ && count() == 0)
+				ptr_ += (*(uint32_t*)(ptr_ + 4)) * sizeof(_t) + 4;
+		}
 
 		Range<_t*> range_;
 		char *ptr_, *end_;
