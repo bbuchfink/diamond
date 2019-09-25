@@ -98,7 +98,7 @@ SeedArray::SeedArray(const Sequence_set &seqs, size_t shape, const shape_histogr
 	task_timer timer("Allocating memory for seed array", 3);
 	for (size_t i = range.begin(); i < range.end(); ++i) {
 		size_[i] = partition_size(hst, i);
-		data_[i] = new Entry[size_[i]];
+		data_[i] = (Entry*)malloc(size_[i] * sizeof(Entry));
 	}
 	timer.go("Building seed array");
 	PtrSet iterators(build_iterators(*this, hst));
@@ -110,7 +110,7 @@ SeedArray::SeedArray(const Sequence_set &seqs, size_t shape, const shape_histogr
 
 SeedArray::~SeedArray() {
 	for (size_t i = range_.begin(); i < range_.end(); ++i)
-		delete[] data_[i];
+		free(data_[i]);
 }
 
 template SeedArray::SeedArray(const Sequence_set &, size_t, const shape_histogram &, const SeedPartitionRange &, const vector<size_t>&, const No_filter *);
