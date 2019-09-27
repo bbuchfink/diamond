@@ -149,7 +149,7 @@ void run_ref_chunk(DatabaseFile &db_file,
 	ReferenceDictionary::get().init(safe_cast<unsigned>(ref_seqs::get().get_length()), block_to_database_id);
 
 	timer.go("Allocating buffers");
-	char *ref_buffer = sorted_list::alloc_buffer(ref_hst);
+	char *ref_buffer = config.hash_join ? SeedArray::alloc_buffer(ref_hst) : sorted_list::alloc_buffer(ref_hst);
 
 	timer.go("Initializing temporary storage");
 	Trace_pt_buffer::instance = new Trace_pt_buffer(query_seqs::data_->get_length() / align_mode.query_contexts,
@@ -159,7 +159,7 @@ void run_ref_chunk(DatabaseFile &db_file,
 	
 	for (unsigned i = 0; i < shapes.count(); ++i)
 		if (config.hash_join)
-			search_shape(i, query_chunk);
+			search_shape(i, query_chunk, query_buffer, ref_buffer);
 		else
 			process_shape(i, query_chunk, query_buffer, ref_buffer);
 
@@ -236,7 +236,7 @@ void run_query_chunk(DatabaseFile &db_file,
 	//const bool long_addressing_query = query_seqs::data_->raw_len() > (size_t)std::numeric_limits<uint32_t>::max();
 
 	timer.go("Allocating buffers");
-	char *query_buffer = sorted_list::alloc_buffer(query_hst);
+	char *query_buffer = config.hash_join ? SeedArray::alloc_buffer(query_hst) : sorted_list::alloc_buffer(query_hst);
 	PtrVector<TempFile> tmp_file;
 	query_aligned.clear();
 	query_aligned.insert(query_aligned.end(), query_ids::get().get_length(), false);

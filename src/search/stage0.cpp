@@ -63,7 +63,7 @@ void search_worker(Atomic<unsigned> *seedp, const SeedPartitionRange *seedp_rang
 	statistics += stats;
 }
 
-void search_shape(unsigned sid, unsigned query_block)
+void search_shape(unsigned sid, unsigned query_block, char *query_buffer, char *ref_buffer)
 {
 	::partition<unsigned> p(Const::seedp, config.lowmem);
 	DoubleArray<SeedArray::_pos> query_seed_hits[Const::seedp], ref_seed_hits[Const::seedp];
@@ -76,14 +76,14 @@ void search_shape(unsigned sid, unsigned query_block)
 		task_timer timer("Building reference seed array", true);
 		SeedArray *ref_idx;
 		if (config.algo == Config::query_indexed)
-			ref_idx = new SeedArray(*ref_seqs::data_, sid, ref_hst.get(sid), range, ref_hst.partition(), query_seeds);
+			ref_idx = new SeedArray(*ref_seqs::data_, sid, ref_hst.get(sid), range, ref_hst.partition(), ref_buffer, query_seeds);
 		else if (query_seeds_hashed != 0)
-			ref_idx = new SeedArray(*ref_seqs::data_, sid, ref_hst.get(sid), range, ref_hst.partition(), query_seeds_hashed);
+			ref_idx = new SeedArray(*ref_seqs::data_, sid, ref_hst.get(sid), range, ref_hst.partition(), ref_buffer, query_seeds_hashed);
 		else
-			ref_idx = new SeedArray(*ref_seqs::data_, sid, ref_hst.get(sid), range, ref_hst.partition(), &no_filter);
+			ref_idx = new SeedArray(*ref_seqs::data_, sid, ref_hst.get(sid), range, ref_hst.partition(), ref_buffer, &no_filter);
 
 		timer.go("Building query seed array");
-		SeedArray *query_idx = new SeedArray(*query_seqs::data_, sid, query_hst.get(sid), range, query_hst.partition(), &no_filter);
+		SeedArray *query_idx = new SeedArray(*query_seqs::data_, sid, query_hst.get(sid), range, query_hst.partition(), query_buffer, &no_filter);
 
 		timer.go("Computing hash join");
 		Atomic<unsigned> seedp(range.begin());
@@ -104,7 +104,6 @@ void search_shape(unsigned sid, unsigned query_block)
 		for (auto &t : threads)
 			t.join();
 
-		timer.go("Deallocating buffers");
 		delete ref_idx;
 		delete query_idx;
 	}

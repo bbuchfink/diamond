@@ -22,6 +22,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 typedef vector<Array<SeedArray::Entry*, Const::seedp> > PtrSet;
 
+char* SeedArray::alloc_buffer(const Partitioned_histogram &hst)
+{
+	return new char[sizeof(Entry) * hst.max_chunk_size()];
+}
+
 struct BufferedWriter
 {
 	static const unsigned BUFFER_SIZE = 16;
@@ -92,15 +97,13 @@ struct BuildCallback
 };
 
 template<typename _filter>
-SeedArray::SeedArray(const Sequence_set &seqs, size_t shape, const shape_histogram &hst, const SeedPartitionRange &range, const vector<size_t> &seq_partition, const _filter *filter):
-	range_(range)
+SeedArray::SeedArray(const Sequence_set &seqs, size_t shape, const shape_histogram &hst, const SeedPartitionRange &range, const vector<size_t> &seq_partition, char *buffer, const _filter *filter) :
+	data_((Entry*)buffer)
 {
-	task_timer timer("Allocating memory for seed array", 3);
-	for (size_t i = range.begin(); i < range.end(); ++i) {
-		size_[i] = partition_size(hst, i);
-		data_[i] = (Entry*)malloc(size_[i] * sizeof(Entry));
-	}
-	timer.go("Building seed array");
+	begin_[range.begin()] = 0;
+	for (size_t i = range.begin(); i < range.end(); ++i)
+		begin_[i + 1] = begin_[i] + partition_size(hst, i);
+
 	PtrSet iterators(build_iterators(*this, hst));
 	PtrVector<BuildCallback> cb;
 	for (size_t i = 0; i < seq_partition.size() - 1; ++i)
@@ -108,11 +111,6 @@ SeedArray::SeedArray(const Sequence_set &seqs, size_t shape, const shape_histogr
 	seqs.enum_seeds(cb, seq_partition, shape, shape + 1, filter);
 }
 
-SeedArray::~SeedArray() {
-	for (size_t i = range_.begin(); i < range_.end(); ++i)
-		free(data_[i]);
-}
-
-template SeedArray::SeedArray(const Sequence_set &, size_t, const shape_histogram &, const SeedPartitionRange &, const vector<size_t>&, const No_filter *);
-template SeedArray::SeedArray(const Sequence_set &, size_t, const shape_histogram &, const SeedPartitionRange &, const vector<size_t>&, const Seed_set *);
-template SeedArray::SeedArray(const Sequence_set &, size_t, const shape_histogram &, const SeedPartitionRange &, const vector<size_t>&, const Hashed_seed_set *);
+template SeedArray::SeedArray(const Sequence_set &, size_t, const shape_histogram &, const SeedPartitionRange &, const vector<size_t>&, char *buffer, const No_filter *);
+template SeedArray::SeedArray(const Sequence_set &, size_t, const shape_histogram &, const SeedPartitionRange &, const vector<size_t>&, char *buffer, const Seed_set *);
+template SeedArray::SeedArray(const Sequence_set &, size_t, const shape_histogram &, const SeedPartitionRange &, const vector<size_t>&, char *buffer, const Hashed_seed_set *);
