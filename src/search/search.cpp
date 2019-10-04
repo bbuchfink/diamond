@@ -126,29 +126,6 @@ void Seed_filter::tiled_search(vector<Finger_print>::const_iterator q,
 	}	
 }
 
-void load_fps(const sorted_list::const_iterator &i, vector<Finger_print> &v, const Sequence_set &seqs)
-{
-	v.clear();
-	v.reserve(i.n);
-	for (unsigned j = 0; j < i.n; ++j)
-		v.push_back(Finger_print(seqs.data(i[j])));
-}
-
-void Seed_filter::run(const sorted_list::const_iterator &q, const sorted_list::const_iterator &s)
-{
-	if (config.simple_freq && !SeedComplexity::complex(query_seqs::get().data(q[0]), shapes[sid])) {
-		stats.inc(Statistics::LOW_COMPLEXITY_SEEDS);
-		return;
-	}
-	hits.clear();
-	load_fps(q, vq, *query_seqs::data_);
-	load_fps(s, vs, *ref_seqs::data_);
-	tiled_search(vq.begin(), vq.end(), vs.begin(), vs.end(), Range_ref(vq.begin(), vs.begin()), 0);
-	std::sort(hits.begin(), hits.end());
-	stats.inc(Statistics::TENTATIVE_MATCHES1, hits.size());
-	stage2_search(q, s, hits, stats, out, sid);
-}
-
 void load_fps(const Packed_loc *p, size_t n, vector<Finger_print> &v, const Sequence_set &seqs)
 {
 	v.clear();
@@ -160,6 +137,10 @@ void load_fps(const Packed_loc *p, size_t n, vector<Finger_print> &v, const Sequ
 
 void Seed_filter::run(const Packed_loc *q, size_t nq, const Packed_loc *s, size_t ns)
 {
+	if (config.simple_freq && !SeedComplexity::complex(query_seqs::get().data(q[0]), shapes[sid])) {
+		stats.inc(Statistics::LOW_COMPLEXITY_SEEDS);
+		return;
+	}
 	hits.clear();
 	load_fps(q, nq, vq, *query_seqs::data_);
 	load_fps(s, ns, vs, *ref_seqs::data_);

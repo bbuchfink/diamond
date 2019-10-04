@@ -67,7 +67,6 @@ void hash_table_join(
 		i->key = unsigned(p - table.data());
 	}
 
-	unsigned keys_hit = 0;
 	_t *hit_s = S.data;
 	for (_t *i = S.data; i < S.end(); ++i) {
 		if ((p = table.find_entry(i->key))) {
@@ -75,8 +74,6 @@ void hash_table_join(
 			hit_s->value = i->value;
 			hit_s->key = unsigned(p - table.data());
 			++hit_s;
-			if (p->s == 1)
-				++keys_hit;
 		}
 	}
 
@@ -129,14 +126,11 @@ void table_join(
 	for (_t *i = R.data; i < R.end(); ++i)
 		++table[key(i->key)].r;
 
-	unsigned keys_hit = 0;
 	_t *hit_s = S.data;
 	for (_t *i = S.data; i < S.end(); ++i) {
 		if ((p = &table[key(i->key)])->r) {
 			++p->s;
-			memcpy(hit_s++, i, sizeof(_t));
-			if (p->s == 1)
-				++keys_hit;
+			std::copy(i, i + 1, hit_s++);
 		}
 	}
 
@@ -161,14 +155,14 @@ void table_join(
 		p = &table[key(i->key)];
 		if (p->s) {
 			dst_r[p->r] = i->value;
-			p->r += sizeof(_t);
+			p->r += sizeof(typename _t::Value);
 		}
 	}
 
 	for (const _t *i = S.data; i < hit_s; ++i) {
 		p = &table[key(i->key)];
 		dst_s[p->s] = i->value;
-		p->s += sizeof(_t);
+		p->s += sizeof(typename _t::Value);
 	}
 
 	free(table);

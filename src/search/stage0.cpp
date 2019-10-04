@@ -40,11 +40,12 @@ void seed_join_worker(
 	DoubleArray<SeedArray::_pos> *ref_seeds_hits)
 {
 	unsigned p;
+	const unsigned bits = (unsigned)ceil(shapes[0].weight_ * Reduction::reduction.bit_size_exact()) - Const::seedp_bits;
 	while ((p = (*seedp)++) < seedp_range->end()) {
 		std::pair<DoubleArray<SeedArray::_pos>, DoubleArray<SeedArray::_pos>> join = hash_join(
 			Relation<SeedArray::Entry>(query_seeds->begin(p), query_seeds->size(p)),
 			Relation<SeedArray::Entry>(ref_seeds->begin(p), ref_seeds->size(p)),
-			24);
+			bits);
 		query_seed_hits[p] = join.first;
 		ref_seeds_hits[p] = join.second;
 	}

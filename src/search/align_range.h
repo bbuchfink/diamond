@@ -20,11 +20,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define ALIGN_RANGE_H_
 
 #include "../basic/statistics.h"
-#include "../data/sorted_list.h"
 #include "../search/trace_pt_buffer.h"
 #include "sse_dist.h"
 #include "../dp/dp.h"
 #include "../util/intrin.h"
+#include "../basic/shape_config.h"
 
 void setup_search_params(pair<size_t, size_t> query_len_bounds, size_t chunk_db_letters);
 void setup_search();
@@ -118,7 +118,6 @@ struct Seed_filter
 		out(out),
 		sid(sid)
 	{}
-	void run(const sorted_list::const_iterator &q, const sorted_list::const_iterator &s);
 	void run(const Packed_loc *q, size_t nq, const Packed_loc *s, size_t ns);
 	void tiled_search(vector<Finger_print>::const_iterator q,
 		vector<Finger_print>::const_iterator q_end,
@@ -134,46 +133,11 @@ struct Seed_filter
 	const unsigned sid;
 };
 
-void stage2_search(const sorted_list::const_iterator &q,
-	const sorted_list::const_iterator &s,
-	const vector<Stage1_hit> &hits,
-	Statistics &stats,
-	Trace_pt_buffer::Iterator &out,
-	const unsigned sid);
-
 void stage2_search(const Packed_loc *q,
 	const Packed_loc *s,
 	const vector<Stage1_hit> &hits,
 	Statistics &stats,
 	Trace_pt_buffer::Iterator &out,
 	const unsigned sid);
-
-inline void align_partition(unsigned hp,
-		Statistics &stats,
-		unsigned sid,
-		sorted_list::const_iterator i,
-		sorted_list::const_iterator j,
-		size_t thread_id)
-{
-#ifndef SIMPLE_SEARCH
-	if (hp > 0)
-		return;
-#endif
-	Trace_pt_buffer::Iterator* out = new Trace_pt_buffer::Iterator (*Trace_pt_buffer::instance, thread_id);
-	Seed_filter seed_filter(stats, *out, sid);
-	while(!i.at_end() && !j.at_end()) {
-		if(i.key() < j.key()) {
-			++i;
-		} else if(j.key() < i.key()) {
-			++j;
-		} else {
-			if(i[0] != 0)
-				seed_filter.run(j, i);
-			++i;
-			++j;
-		}
-	}
-	delete out;
-}
 
 #endif /* ALIGN_RANGE_H_ */

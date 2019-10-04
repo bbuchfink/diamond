@@ -41,7 +41,8 @@ struct Reduction
 		map_[(long)Translator::STOP] = value_traits.mask_char;
 		const vector<string> tokens(tokenize(definition_string, " "));
 		size_ = (unsigned)tokens.size();
-		bit_size_ = (uint64_t)ceil(log(size_) / log(2));
+		bit_size_exact_ = log(size_) / log(2);
+		bit_size_ = (uint64_t)ceil(bit_size_exact_);
 		for (unsigned i = 0; i<size_; ++i)
 			for (unsigned j = 0; j<tokens[i].length(); ++j) {
 				const char ch = tokens[i][j];
@@ -59,6 +60,10 @@ struct Reduction
 	uint64_t bit_size() const
 	{
 		return bit_size_;
+	}
+
+	double bit_size_exact() const {
+		return bit_size_exact_;
 	}
 
 	unsigned operator()(Letter a) const
@@ -108,6 +113,7 @@ private:
 #endif
 	unsigned size_;
 	uint64_t bit_size_;
+	double bit_size_exact_;
 
 };
 

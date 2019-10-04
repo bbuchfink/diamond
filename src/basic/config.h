@@ -155,7 +155,6 @@ struct Config
 	unsigned join_split_key_len;
 	unsigned radix_bits;
 	double join_ht_factor;
-	bool hash_join;
 	bool sort_join;
 	bool simple_freq;
 	double freq_treshold;

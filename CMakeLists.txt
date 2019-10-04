@@ -109,7 +109,6 @@ add_executable(diamond src/run/main.cpp
   src/basic/masking.cpp
   src/dp/swipe/swipe.cpp
   src/dp/banded_sw.cpp
-  src/data/sorted_list.cpp
   src/data/seed_set.cpp
   src/util/simd.cpp
   src/output/taxon_format.cpp

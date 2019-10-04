@@ -21,7 +21,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "../basic/const.h"
 #include "../util/hash_table.h"
-#include "sorted_list.h"
 #include "seed_array.h"
 #include "../util/algo/join_result.h"
 #include "../util/range.h"
@@ -29,7 +28,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 struct Frequent_seeds
 {
 
-	void build(unsigned sid, const SeedPartitionRange &range, sorted_list &ref_idx, const sorted_list &query_idx);
 	void build(unsigned sid, const SeedPartitionRange &range, DoubleArray<SeedArray::_pos> *query_seed_hits, DoubleArray<SeedArray::_pos> *ref_seed_hits);
 
 	bool get(const Letter *pos, unsigned sid) const
@@ -45,8 +43,7 @@ private:
 
 	static const double hash_table_factor;   
 
-	static void build_worker(size_t seedp, size_t thread_id, const sorted_list *ref_idx, const sorted_list *query_idx, const SeedPartitionRange *range, unsigned sid, unsigned ref_max_n, unsigned query_max_n, vector<unsigned> *counts);
-	static void build_worker2(
+	static void build_worker(
 		size_t seedp,
 		size_t thread_id,
 		DoubleArray<SeedArray::_pos> *query_seed_hits,
@@ -57,9 +54,7 @@ private:
 		unsigned query_max_n,
 		vector<unsigned> *counts);
 
-	static void compute_sd(Atomic<unsigned> *seedp, const sorted_list *ref_idx, const sorted_list *query_idx, vector<Sd> *ref_out, vector<Sd> *query_out);
-	//static void compute_sd(size_t seedp, size_t thread_id, const sorted_list *ref_idx, const sorted_list *query_idx, vector<Sd> *ref_out, vector<Sd> *query_out);
-	static void compute_sd2(Atomic<unsigned> *seedp, DoubleArray<SeedArray::_pos> *query_seed_hits, DoubleArray<SeedArray::_pos> *ref_seed_hits, vector<Sd> *ref_out, vector<Sd> *query_out);
+	static void compute_sd(Atomic<unsigned> *seedp, DoubleArray<SeedArray::_pos> *query_seed_hits, DoubleArray<SeedArray::_pos> *ref_seed_hits, vector<Sd> *ref_out, vector<Sd> *query_out);
 
 	PHash_set<void,murmur_hash> tables_[Const::max_shapes][Const::seedp];
 

@@ -19,8 +19,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #ifndef SEED_SET_H_
 #define SEED_SET_H_
 
+#include <vector>
 #include "sequence_set.h"
 #include "../util/hash_table.h"
+#include "../util/ptr_vector.h"
 
 struct Seed_set
 {
@@ -34,7 +36,7 @@ struct Seed_set
 		return coverage_;
 	}
 private:
-	vector<bool> data_;
+	std::vector<bool> data_;
 	double coverage_;
 };
 

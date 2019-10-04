@@ -21,10 +21,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <mutex>
 #include "../basic/translate.h"
-#include "sorted_list.h"
 #include "../basic/statistics.h"
 #include "sequence_set.h"
 #include "seed_set.h"
+#include "seed_histogram.h"
 
 extern Partitioned_histogram query_hst;
 extern unsigned current_query_chunk;

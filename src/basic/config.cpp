@@ -28,7 +28,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "shape_config.h"
 #include "../util/io/temp_file.h"
 #include "../basic/match.h"
-#include "../data/sorted_list.h"
 #include "../basic/translate.h"
 #include "../dp/dp.h"
 #include "masking.h"
@@ -266,7 +265,6 @@ Config::Config(int argc, const char **argv)
 		("join-split-key-len", 0, "", join_split_key_len, 17u)
 		("radix-bits", 0, "", radix_bits, 8u)
 		("join-ht-factor", 0, "", join_ht_factor, 1.3)
-		("hash-join", 0, "", hash_join)
 		("sort-join", 0, "", sort_join)
 		("simple-freq", 0, "", simple_freq)
 		("freq-treshold", 0, "", freq_treshold)

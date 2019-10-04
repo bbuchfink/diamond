@@ -21,6 +21,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <vector>
 #include <exception>
+#include <assert.h>
 #include "../basic/config.h"
 #include "io/temp_file.h"
 #include "io/input_file.h"

@@ -19,7 +19,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <numeric>
 #include <utility>
 #include "frequent_seeds.h"
-#include "sorted_list.h"
 #include "queries.h"
 #include "../util/parallel/thread_pool.h"
 
@@ -34,112 +33,7 @@ using namespace std;
 const double Frequent_seeds::hash_table_factor = 1.3;
 Frequent_seeds frequent_seeds;
 
-void Frequent_seeds::compute_sd(Atomic<unsigned> *seedp, const sorted_list *ref_idx, const sorted_list *query_idx, vector<Sd> *ref_out, vector<Sd> *query_out)
-{
-	unsigned p;
-	while ((p = (*seedp)++) < current_range.end()) {
-		Sd ref_sd;
-		sorted_list::const_iterator it = ref_idx->get_partition_cbegin(p);
-		while (!it.at_end()) {
-			ref_sd.add((double)it.n);
-			++it;
-		}
-		(*ref_out)[p - current_range.begin()] = ref_sd;
-
-		Sd query_sd;
-		it = query_idx->get_partition_cbegin(p);
-		while (!it.at_end()) {
-			query_sd.add((double)it.n);
-			++it;
-		}
-		(*query_out)[p - current_range.begin()] = query_sd;
-	}
-}
-
-/*void Frequent_seeds::compute_sd(size_t p, size_t thread_id, const sorted_list *ref_idx, const sorted_list *query_idx, vector<Sd> *ref_out, vector<Sd> *query_out)
-{
-	Sd ref_sd;
-	sorted_list::const_iterator it = ref_idx->get_partition_cbegin(p);
-	while (!it.at_end()) {
-		ref_sd.add((double)it.n);
-		++it;
-	}
-	(*ref_out)[p - current_range.begin()] = ref_sd;
-
-	Sd query_sd;
-	it = query_idx->get_partition_cbegin(p);
-	while (!it.at_end()) {
-		query_sd.add((double)it.n);
-		++it;
-	}
-	(*query_out)[p - current_range.begin()] = query_sd;
-}*/
-
-void Frequent_seeds::build_worker(size_t seedp, size_t thread_id, const sorted_list *ref_idx, const sorted_list *query_idx, const SeedPartitionRange *range, unsigned sid, unsigned ref_max_n, unsigned query_max_n, vector<unsigned> *counts) {
-	if (!range->contains((unsigned)seedp))
-		return;
-
-	vector<uint32_t> buf;
-	size_t n = 0;
-	Merge_iterator<sorted_list::iterator> merge_it(ref_idx->get_partition_begin(seedp), query_idx->get_partition_begin(seedp));
-	while (merge_it.next()) {
-		if (merge_it.i.n > ref_max_n || merge_it.j.n > query_max_n) {
-			merge_it.i.get(0)->value = 0;
-			n += (unsigned)merge_it.i.n;
-			buf.push_back(merge_it.i.key());
-#ifdef MASK_FREQUENT
-			for (unsigned i = 0; i < merge_it.i.n; ++i) {
-				char *p = ref_seqs::get_nc().data(merge_it.i.get(i)->value);
-				for (unsigned j = 0; j < shapes[0].weight_; ++j)
-					p[shapes[0].positions_[j]] |= 128;
-			}
-#endif
-		}
-		++merge_it;
-	}
-
-	const size_t ht_size = std::max((size_t)(buf.size() * hash_table_factor), buf.size() + 1);
-	PHash_set<void, murmur_hash> hash_set(ht_size);
-
-	for (vector<uint32_t>::const_iterator i = buf.begin(); i != buf.end(); ++i)
-		hash_set.insert(*i);
-
-	frequent_seeds.tables_[sid][seedp] = move(hash_set);
-	(*counts)[seedp] = (unsigned)n;
-}
-
-void Frequent_seeds::build(unsigned sid, const SeedPartitionRange &range, sorted_list &ref_idx, const sorted_list &query_idx)
-{
-	vector<Sd> ref_sds(range.size()), query_sds(range.size());
-	Atomic<unsigned> seedp (range.begin());
-	vector<thread> threads;
-	for (unsigned i = 0; i < config.threads_; ++i)
-		threads.emplace_back(compute_sd, &seedp, &ref_idx, &query_idx, &ref_sds, &query_sds);
-	for (auto &t : threads)
-		t.join();
-
-	Sd ref_sd(ref_sds), query_sd(query_sds);
-	const unsigned ref_max_n = (unsigned)(ref_sd.mean() + config.freq_sd*ref_sd.sd()), query_max_n = (unsigned)(query_sd.mean() + config.freq_sd*query_sd.sd());
-	log_stream << "Seed frequency mean (reference) = " << ref_sd.mean() << ", SD = " << ref_sd.sd() << endl;
-	log_stream << "Seed frequency mean (query) = " << query_sd.mean() << ", SD = " << query_sd.sd() << endl;
-	log_stream << "Seed frequency cap query: " << query_max_n << ", reference: " << ref_max_n << endl;
-	vector<unsigned> counts(Const::seedp);
-	Util::Parallel::scheduled_thread_pool_auto(
-		config.threads_,
-		Const::seedp,
-		build_worker,
-		&ref_idx,
-		&query_idx,
-		&range,
-		sid,
-		ref_max_n,
-		query_max_n,
-		&counts
-	);
-	log_stream << "Masked positions = " << std::accumulate(counts.begin(), counts.end(), 0) << std::endl;
-}
-
-void Frequent_seeds::compute_sd2(Atomic<unsigned> *seedp, DoubleArray<SeedArray::_pos> *query_seed_hits, DoubleArray<SeedArray::_pos> *ref_seed_hits, vector<Sd> *ref_out, vector<Sd> *query_out)
+void Frequent_seeds::compute_sd(Atomic<unsigned> *seedp, DoubleArray<SeedArray::_pos> *query_seed_hits, DoubleArray<SeedArray::_pos> *ref_seed_hits, vector<Sd> *ref_out, vector<Sd> *query_out)
 {
 	unsigned p;
 	while ((p = (*seedp)++) < current_range.end()) {
@@ -153,7 +47,7 @@ void Frequent_seeds::compute_sd2(Atomic<unsigned> *seedp, DoubleArray<SeedArray:
 	}
 }
 
-void Frequent_seeds::build_worker2(
+void Frequent_seeds::build_worker(
 	size_t seedp,
 	size_t thread_id,
 	DoubleArray<SeedArray::_pos> *query_seed_hits,
@@ -203,7 +97,7 @@ void Frequent_seeds::build(unsigned sid, const SeedPartitionRange &range, Double
 	Atomic<unsigned> seedp(range.begin());
 	vector<thread> threads;
 	for (unsigned i = 0; i < config.threads_; ++i)
-		threads.emplace_back(compute_sd2, &seedp, query_seed_hits, ref_seed_hits, &ref_sds, &query_sds);
+		threads.emplace_back(compute_sd, &seedp, query_seed_hits, ref_seed_hits, &ref_sds, &query_sds);
 	for (auto &t : threads)
 		t.join();
 
@@ -213,6 +107,6 @@ void Frequent_seeds::build(unsigned sid, const SeedPartitionRange &range, Double
 	log_stream << "Seed frequency mean (query) = " << query_sd.mean() << ", SD = " << query_sd.sd() << endl;
 	log_stream << "Seed frequency cap query: " << query_max_n << ", reference: " << ref_max_n << endl;
 	vector<unsigned> counts(Const::seedp);
-	Util::Parallel::scheduled_thread_pool_auto(config.threads_, Const::seedp, build_worker2, query_seed_hits, ref_seed_hits, &range, sid, ref_max_n, query_max_n, &counts);
+	Util::Parallel::scheduled_thread_pool_auto(config.threads_, Const::seedp, build_worker, query_seed_hits, ref_seed_hits, &range, sid, ref_max_n, query_max_n, &counts);
 	log_stream << "Masked positions = " << std::accumulate(counts.begin(), counts.end(), 0) << std::endl;
 }
