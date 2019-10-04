@@ -71,7 +71,8 @@ Config::Config(int argc, const char **argv)
 		.add_command("cluster", "")
 		.add_command("translate", "")
 		.add_command("filter-blasttab", "")
-		.add_command("show-cbs", "");
+		.add_command("show-cbs", "")
+		.add_command("simulate-seqs", "");
 
 	Options_group general("General options");
 	general.add()

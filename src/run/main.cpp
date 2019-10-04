@@ -48,6 +48,7 @@ void protein_snps();
 void translate();
 void filter_blasttab();
 void show_cbs();
+void simulate_seqs();
 
 int main(int ac, const char* av[])
 {
@@ -118,6 +119,9 @@ int main(int ac, const char* av[])
 			break;
 		case Config::show_cbs:
 			show_cbs();
+			break;
+		case Config::simulate_seqs:
+			simulate_seqs();
 			break;
 #ifdef EXTRA
 		case Config::compare:
