@@ -26,10 +26,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/thread.h"
 #include "../basic/seed_iterator.h"
 #include "seed_set.h"
+#include "../util/data_structures/array.h"
 
 using std::vector;
 
-typedef vector<Array<unsigned,Const::seedp> > shape_histogram;
+typedef vector<Array<unsigned, Const::seedp>> shape_histogram;
 
 struct SeedPartitionRange
 {
@@ -91,10 +92,8 @@ struct Partitioned_histogram
 		data_(shapes.count()),
 		p_(seqs.partition(config.threads_))
 	{
-		for (unsigned s = 0; s < shapes.count(); ++s) {
+		for (unsigned s = 0; s < shapes.count(); ++s)
 			data_[s].resize(p_.size() - 1);
-			memset(data_[s].data(), 0, (p_.size() - 1)*sizeof(unsigned)*Const::seedp);
-		}
 		PtrVector<Callback> cb;
 		for (size_t i = 0; i < p_.size() - 1; ++i)
 			cb.push_back(new Callback(i, data_));
