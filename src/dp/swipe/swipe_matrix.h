@@ -23,6 +23,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <string.h>
 #include <stdlib.h>
 #include <utility>
+#include <algorithm>
 #include "../score_vector.h"
 #include "../../basic/packed_transcript.h"
 
@@ -65,8 +66,8 @@ struct SwipeMatrix
 		hgap_.resize(rows);
 		score_.clear();
 		score_.resize(rows + 1);
-		memset(hgap_.data(), 0, rows * sizeof(_sv));
-		memset(score_.data(), 0, (rows + 1) * sizeof(_sv));
+		std::fill(hgap_.begin(), hgap_.end(), ScoreTraits<_sv>::zero());
+		std::fill(score_.begin(), score_.end(), ScoreTraits<_sv>::zero());
 	}
 	inline ColumnIterator begin()
 	{

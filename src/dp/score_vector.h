@@ -390,6 +390,14 @@ struct ScoreTraits<score_vector<int16_t> >
 	}
 };
 
+template<>
+struct ScoreTraits<score_vector<uint8_t>>
+{
+	static score_vector<uint8_t> zero() {
+		return score_vector<uint8_t>();
+	}
+};
+
 template<typename _t, typename _p>
 inline void store_sv(const score_vector<_t> &sv, _p *dst)
 {

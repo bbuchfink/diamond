@@ -20,6 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define HASH_TABLE2_H_
 
 #include <stdexcept>
+#include <stdlib.h>
 
 template<typename _K, typename _V, typename _HashFunction>
 struct HashTable : private _HashFunction
@@ -36,15 +37,14 @@ struct HashTable : private _HashFunction
 
 	HashTable(size_t size, const _HashFunction &hash) :
 		_HashFunction(hash),
-		table(new Entry[size]),
+		table((Entry*)calloc(size, sizeof(Entry))),
 		size_(size)
 	{
-		memset(table, 0, size_ * sizeof(Entry));
 	}
 
 	~HashTable()
 	{
-		delete[] table;
+		free(table);
 	}
 
 	_V& operator[](_K key)
