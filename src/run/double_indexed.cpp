@@ -156,7 +156,6 @@ void run_query_chunk(DatabaseFile &db_file,
 	setup_search_params(query_len_bounds, 0);
 	query_hst = Partitioned_histogram(*query_seqs::data_, false, &no_filter);
 	timer.finish();
-	//const bool long_addressing_query = query_seqs::data_->raw_len() > (size_t)std::numeric_limits<uint32_t>::max();
 
 	timer.go("Allocating buffers");
 	char *query_buffer = SeedArray::alloc_buffer(query_hst);

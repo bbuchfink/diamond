@@ -47,28 +47,17 @@ void search_query_offset(Loc q,
 		const Loc s_pos = s[i->s];
 		const Letter* subject = ref_seqs::data_->data(s_pos);
 
-		/*if (count_id(query, subject) < config.id_n)
-		continue;*/
-
-		/*if (extend_binary(query, subject) < config.bcutoff)
-		continue;*/
-
 		unsigned delta, len;
 		int score;
 		if ((score = stage2_ungapped(query, subject, sid, delta, len)) < config.min_ungapped_raw_score)
 			continue;
 
 		stats.inc(Statistics::TENTATIVE_MATCHES2);
-		/*if (filterl(query, subject) < 20)
-		continue;*/
-
-		stats.inc(Statistics::TENTATIVE_MATCHESX);
 
 		if (!is_primary_hit(query - delta, subject - delta, delta, sid, len))
 			continue;
 
 		stats.inc(Statistics::TENTATIVE_MATCHES3);
-		//cout << ref_ids::get()[ref_seqs::get().local_position(s_pos).first].c_str() << endl;
 		hf.push(s_pos, score);
 	}
 

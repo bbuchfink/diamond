@@ -49,6 +49,7 @@ void translate();
 void filter_blasttab();
 void show_cbs();
 void simulate_seqs();
+void benchmark();
 
 int main(int ac, const char* av[])
 {
@@ -122,6 +123,9 @@ int main(int ac, const char* av[])
 			break;
 		case Config::simulate_seqs:
 			simulate_seqs();
+			break;
+		case Config::benchmark:
+			benchmark();
 			break;
 #ifdef EXTRA
 		case Config::compare:

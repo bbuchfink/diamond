@@ -142,7 +142,6 @@ void align_queries(Trace_pt_buffer &trace_pts, Consumer* output_file, const Para
 			threads.emplace_back(heartbeat_worker, query_range.second);
 		size_t n_threads = config.load_balancing == Config::query_parallel ? (config.threads_align == 0 ? config.threads_ : config.threads_align) : 1;
 		for (size_t i = 0; i < n_threads; ++i)
-			//threads.push_back(launch_thread(static_cast<void(*)(size_t)>(&align_worker), i));
 			threads.emplace_back(align_worker, i, &params, &metadata);
 		for (auto &t : threads)
 			t.join();

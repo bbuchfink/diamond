@@ -134,7 +134,6 @@ struct Shape
 		for (unsigned i = 0; i < weight_; ++i) {
 			Letter l = seq[positions_[i]];
 			if (l == value_traits.mask_char || l == sequence::DELIMITER || l == Translator::STOP)
-			//if (l == value_traits.mask_char || l == sequence::DELIMITER)
 				return false;
 			unsigned r = Reduction::reduction(l);
 #ifdef FREQUENCY_MASKING
@@ -156,7 +155,6 @@ struct Shape
 		for (unsigned i = 0; i < weight_; ++i) {
 			Letter l = seq[positions_[i]];
 			if (l == value_traits.mask_char || l == sequence::DELIMITER || l == Translator::STOP)
-			//if (l == value_traits.mask_char || l == sequence::DELIMITER)
 				return false;
 			unsigned r = Reduction::reduction(l);
 			s <<= b;

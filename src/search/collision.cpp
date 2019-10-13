@@ -104,15 +104,9 @@ bool is_primary_hit(const Letter *query,
 		if (len - i > 32)
 			mask |= reduced_match32(query + 32, subject + 32, len - i - 32) << 32;
 		for (unsigned j = 0; j < 32 && i < shape_len; ++j) {
-			/*cout << sequence(&query[j], len - j) << endl;
-			cout << sequence(&subject[j], len - j) << endl;
-			print_binary(mask);
-			cout << endl;*/
 			for (unsigned k = 0; k < sid; ++k)
-				if (previous_shape_collision(mask, shapes[k].mask_, &subject[j], k) && verify_hit(&query[j], &subject[j], k)) {
-					//cout << "k=" << k << endl;
+				if (previous_shape_collision(mask, shapes[k].mask_, &subject[j], k) && verify_hit(&query[j], &subject[j], k))
 					return false;
-				}
 			if (i < seed_offset && shape_collision_left(mask, current_mask, &subject[j], sid, chunked) && verify_hit(&query[j], &subject[j], sid))
 				return false;
 			if (chunked && i > seed_offset && shape_collision_right(mask, current_mask, &subject[j], sid) && verify_hit(&query[j], &subject[j], sid))
