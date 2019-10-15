@@ -1,9 +1,11 @@
 #include <chrono>
+#include <utility>
 #include "../basic/sequence.h"
 #include "../basic/score_matrix.h"
 #include "../dp/score_vector.h"
 #include "../util/simd/transpose.h"
 #include "../dp/swipe/swipe.h"
+#include "../dp/dp.h"
 
 using std::vector;
 using std::chrono::high_resolution_clock;
@@ -129,16 +131,29 @@ void swipe_cell_update() {
 	cout << "SWIPE cell update (int8_t):\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * 16) * 1000 << " ps/Cell" << endl;
 }
 
+void swipe(const sequence &s1, const sequence &s2) {
+	sequence target[16];
+	std::fill(target, target + 16, s2);
+	static const size_t n = 10000llu;
+	high_resolution_clock::time_point t1 = high_resolution_clock::now();
+	for (size_t i = 0; i < n; ++i) {
+		vector<int> v = DP::Swipe::swipe(s1, target, target + 16);
+		global_int = v[0];
+	}
+	cout << "SWIPE:\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * s1.length() * s2.length() * 16) * 1000 << " ps/Cell" << endl;
+}
+
 }
 
 void benchmark() {
 	vector<Letter> s1, s2;
 	
-	s1 = sequence::from_string("QADATVATFFNGIDMPNQTNKTAAFLCAALGGPNAWTGRNLKEVHANMGVSNAQFTTVIGHLRSALTGAGVAAALVEQTVAVAETVRGDVVTV");
-	s2 = sequence::from_string("QNDSSIIDFIKINDLAEQIEKISKKYIVSIVLGGGNIWRGSIAKELDMDRNLADNMGMMATIINGLALENALNHLNVNTIVLSAIKCDKLVHESSANNIKKAIEKEQVMIFVAGTGFPYFTTDSCAAIRAAETESSIILMGKNGVDGVYDSDPKINPNAQFYEHITFNMALTQNLKVMDATALALCQENNINLLVFNIDKPNAIVDVLEKKNKYTIVSK");
+	s1 = sequence::from_string("mpeeeysefkelilqkelhvvyalshvcgqdrtllasillriflhekleslllctlndreismedeattlfrattlastlmeqymkatatqfvhhalkdsilkimeskqscelspskleknedvntnlthllnilselvekifmaseilpptlryiygclqksvqhkwptnttmrtrvvsgfvflrlicpailnprmfniisdspspiaartlilvaksvqnlanlvefgakepymegvnpfiksnkhrmimfldelgnvpelpdttehsrtdlsrdlaalheicvahsdelrtlsnergaqqhvlkkllaitellqqkqnqyt");
+	s2 = sequence::from_string("erlvelvtmmgdqgelpiamalanvvpcsqwdelarvlvtlfdsrhllyqllwnmfskeveladsmqtlfrgnslaskimtfcfkvygatylqklldpllrivitssdwqhvsfevdptrlepsesleenqrnllqmtekffhaiissssefppqlrsvchclyqvvsqrfpqnsigavgsamflrfinpaivspyeagildkkpppiierglklmskilqsianhvlftkeehmrpfndfvksnfdaarrffldiasdcptsdavnhslsfisdgnvlalhrllwnnqekigqylssnrdhkavgrrpfdkmatllaylgppe");
 	
 	Benchmark::benchmark_ungapped(s1, s2);
 	Benchmark::benchmark_ungapped_sse(s1, s2);
 	Benchmark::benchmark_transpose();
 	Benchmark::swipe_cell_update();
+	Benchmark::swipe(s1, s2);
 }
