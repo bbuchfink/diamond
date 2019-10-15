@@ -25,14 +25,15 @@ namespace ExtensionPipeline { namespace Swipe {
 void Pipeline::run(Statistics &stat)
 {
 	const size_t n = targets.size();
-	vector<DpTarget> seqs(n);
+	vector<sequence> seqs(n);
 	for (size_t i = 0; i < n; ++i) {
-		seqs[i].seq = ref_seqs::get()[targets[i].subject_id];
+		seqs[i] = ref_seqs::get()[targets[i].subject_id];
 	}
-	vector<int> scores(n);
-	swipe(query_seq(0), seqs.begin(), seqs.end(), scores.begin());
-	for (size_t i = 0; i < n; ++i)
+	vector<int> scores = DP::Swipe::swipe(query_seq(0), seqs.data(), seqs.data() + seqs.size());
+	for (size_t i = 0; i < n; ++i) {
 		targets[i].hsps.push_back(Hsp(scores[i]));
+		targets[i].hsps.back().frame = 0;
+	}
 }
 
 }}

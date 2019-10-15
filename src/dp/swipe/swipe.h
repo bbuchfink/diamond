@@ -44,6 +44,26 @@ inline _sv cell_update(const _sv &diagonal_cell,
 	return current_cell;
 }
 
+template<typename _sv>
+inline _sv cell_update(const _sv &diagonal_cell,
+	const _sv &scores,
+	const _sv &gap_extension,
+	const _sv &gap_open,
+	_sv &horizontal_gap,
+	_sv &vertical_gap,
+	_sv &best)
+{
+	_sv current_cell = diagonal_cell + scores;
+	current_cell.max(vertical_gap).max(horizontal_gap);
+	best.max(current_cell);
+	vertical_gap -= gap_extension;
+	horizontal_gap -= gap_extension;
+	const _sv open = current_cell - gap_open;
+	vertical_gap.max(open);
+	horizontal_gap.max(open);
+	return current_cell;
+}
+
 template<typename _score>
 inline score_vector<_score> cell_update(const score_vector<_score> &diagonal_cell,
 	const score_vector<_score> &scores,

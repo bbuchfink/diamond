@@ -1,6 +1,6 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2017 Benjamin Buchfink <buchfink@gmail.com>
+Copyright (C) 2013-2019 Benjamin Buchfink <buchfink@gmail.com>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -19,41 +19,100 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <vector>
 #include "../score_vector.h"
 #include "swipe.h"
-#include "swipe_matrix.h"
 #include "../../basic/sequence.h"
 #include "target_iterator.h"
-
-template<typename _sv> thread_local std::vector<_sv> SwipeMatrix<_sv>::hgap_;
-template<typename _sv> thread_local std::vector<_sv> SwipeMatrix<_sv>::score_;
 
 // #define SW_ENABLE_DEBUG
 
 using std::vector;
 using std::pair;
 
+namespace DP { namespace Swipe {
+
+template<typename _sv>
+struct DPMatrix
+{
+	struct ColumnIterator
+	{
+		ColumnIterator(_sv* hgap_front, _sv* score_front) :
+			hgap_ptr_(hgap_front),
+			score_ptr_(score_front)
+		{ }
+		inline void operator++()
+		{
+			++hgap_ptr_; ++score_ptr_;
+		}
+		inline _sv hgap() const
+		{
+			return *hgap_ptr_;
+		}
+		inline _sv diag() const
+		{
+			return *score_ptr_;
+		}
+		inline void set_hgap(const _sv& x)
+		{
+			*hgap_ptr_ = x;
+		}
+		inline void set_score(const _sv& x)
+		{
+			*score_ptr_ = x;
+		}
+		_sv *hgap_ptr_, *score_ptr_;
+	};
+	DPMatrix(int rows)
+	{
+		hgap_.clear();
+		hgap_.resize(rows);
+		score_.clear();
+		score_.resize(rows + 1);
+		std::fill(hgap_.begin(), hgap_.end(), ScoreTraits<_sv>::zero());
+		std::fill(score_.begin(), score_.end(), ScoreTraits<_sv>::zero());
+	}
+	inline ColumnIterator begin()
+	{
+		return ColumnIterator(&hgap_[0], &score_[0]);
+	}
+	void set_zero(int c)
+	{
+		const int l = (int)hgap_.size();
+		for (int i = 0; i < l; ++i) {
+			hgap_[i].set(c, 0);
+			score_[i].set(c, 0);
+		}
+		score_[l].set(c, 0);
+	}
+private:
+	static thread_local std::vector<_sv> hgap_, score_;
+};
+
+template<typename _sv> thread_local std::vector<_sv> DPMatrix<_sv>::hgap_;
+template<typename _sv> thread_local std::vector<_sv> DPMatrix<_sv>::score_;
+
 #ifdef __SSE2__
 
 template<typename _sv>
-void swipe(const sequence &query, vector<DpTarget>::const_iterator subject_begin, vector<DpTarget>::const_iterator subject_end, vector<int>::iterator out)
+vector<int> swipe(const sequence &query, const sequence *subject_begin, const sequence *subject_end)
 {
 #ifdef SW_ENABLE_DEBUG
 	static int v[1024][1024];
 #endif
 
 	const int qlen = (int)query.length();
-	SwipeMatrix<_sv> dp(qlen);
+	DPMatrix<_sv> dp(qlen);
 
 	const _sv open_penalty(static_cast<char>(score_matrix.gap_open() + score_matrix.gap_extend())),
 		extend_penalty(static_cast<char>(score_matrix.gap_extend())),
 		vbias(score_matrix.bias());
 	_sv best;
 	SwipeProfile<_sv> profile;
-	TargetIterator<_sv::CHANNELS> targets(subject_begin, subject_end);
+	TargetBuffer<_sv::CHANNELS> targets(subject_begin, subject_end);
+	vector<int> out(targets.n_targets);
 
 	while (targets.active.size() > 0) {
-		typename SwipeMatrix<_sv>::ColumnIterator it(dp.begin());
+		typename DPMatrix<_sv>::ColumnIterator it(dp.begin());
 		_sv vgap, hgap, last;
-		//profile.set(targets.get2<_score>());
+		profile.set(targets.seq_vector());
 		for (int i = 0; i < qlen; ++i) {
 			hgap = it.hgap();
 			const _sv next = cell_update<_sv>(it.diag(), profile.get(query[i]), extend_penalty, open_penalty, hgap, vgap, best, vbias);
@@ -90,13 +149,17 @@ void swipe(const sequence &query, vector<DpTarget>::const_iterator subject_begin
 	}
 	printf("\n");
 #endif
+
+	return out;
 }
 
 #endif
 
-void swipe(const sequence &query, vector<DpTarget>::const_iterator subject_begin, vector<DpTarget>::const_iterator subject_end, vector<int>::iterator out)
+vector<int> swipe(const sequence &query, const sequence *subject_begin, const sequence *subject_end)
 {
 #ifdef __SSE2__
-	swipe<score_vector<uint8_t> >(query, subject_begin, subject_end, out);
+	return swipe<score_vector<uint8_t>>(query, subject_begin, subject_end);
 #endif
 }
+
+}}

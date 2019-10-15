@@ -21,13 +21,14 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 // #define DP_STAT
 
+#include <stdint.h>
 #include "../dp.h"
 
 template<int _n>
 struct TargetIterator
 {
 
-	TargetIterator(vector<DpTarget>::const_iterator subject_begin, vector<DpTarget>::const_iterator subject_end) :
+	TargetIterator(const DpTarget *subject_begin, const DpTarget *subject_end) :
 		next(0),
 		n_targets(int(subject_end - subject_begin)),
 		subject_begin(subject_begin)
@@ -91,6 +92,15 @@ struct TargetIterator
 	}
 #endif
 
+	__m128i seq_vector() const {
+		uint8_t s[16];
+		for (int i = 0; i < active.size(); ++i) {
+			const int channel = active[i];
+			s[channel] = (*this)[channel];
+		}
+		return _mm_loadu_si128((const __m128i*)s);
+	}
+
 	bool init_target(int i, int channel)
 	{
 		if (next < n_targets) {
@@ -116,6 +126,70 @@ struct TargetIterator
 #endif
 	Static_vector<int, _n> active;
 	const vector<DpTarget>::const_iterator subject_begin;
+};
+
+template<int _n>
+struct TargetBuffer
+{
+
+	TargetBuffer(const sequence *subject_begin, const sequence *subject_end) :
+		next(0),
+		n_targets(int(subject_end - subject_begin)),
+		subject_begin(subject_begin)
+	{
+		for (; next < std::min(_n, n_targets); ++next) {
+			pos[next] = 0;
+			target[next] = next;
+			active.push_back(next);
+		}
+	}
+
+	char operator[](int channel) const
+	{
+		if (pos[channel] >= 0) {
+#ifdef DP_STAT
+			++live;
+#endif
+			return subject_begin[target[channel]][pos[channel]];
+		}
+		else
+			return value_traits.mask_char;
+	}
+
+	__m128i seq_vector() const {
+		uint8_t s[16];
+		for (int i = 0; i < active.size(); ++i) {
+			const int channel = active[i];
+			s[channel] = (*this)[channel];
+		}
+		return _mm_loadu_si128((const __m128i*)s);
+	}
+
+	bool init_target(int i, int channel)
+	{
+		if (next < n_targets) {
+			pos[channel] = 0;
+			target[channel] = next++;
+			return true;
+		}
+		active.erase(i);
+		return false;
+	}
+
+	bool inc(int channel)
+	{
+		++pos[channel];
+		if (pos[channel] >= (int)subject_begin[target[channel]].length())
+			return false;
+		return true;
+	}
+
+	int pos[_n], target[_n], next, n_targets, cols;
+#ifdef DP_STAT
+	int live;
+#endif
+	Static_vector<int, _n> active;
+	const sequence *subject_begin;
 };
 
 #endif
