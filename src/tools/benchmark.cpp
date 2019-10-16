@@ -88,12 +88,12 @@ void benchmark_ungapped_sse(const sequence &s1, const sequence &s2)
 	unsigned a = (unsigned)global_int & 15;
 	__m128i seq = _mm_loadu_si128((const __m128i*)s1.data());
 
-	for (size_t i = 0; i < n; ++i) {
-		
+	for (size_t i = 0; i < n; ++i) {		
 		sv.set_ssse3(i & 15, seq);
+		sum = sum + sv;
 	}
 
-	_mm_storeu_si128(&global_128, sv.data_);
+	_mm_storeu_si128(&global_128, sum.data_);
 	cout << "SSE score shuffle:\t\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * 16) * 1000 << " ps/Letter" << endl;
 }
 
@@ -104,6 +104,7 @@ void benchmark_transpose() {
 	high_resolution_clock::time_point t1 = high_resolution_clock::now();
 	for (size_t i = 0; i < n; ++i) {
 		transpose(in, out, 0);
+		in[0] = out[0];
 	}
 	cout << "Matrix transpose 16x16 bytes:\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * 256) * 1000 << " ps/Letter" << endl;
 }

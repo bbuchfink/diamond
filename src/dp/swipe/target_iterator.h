@@ -144,7 +144,11 @@ struct TargetBuffer
 		}
 	}
 
+#ifdef DP_STAT
+	char operator[](int channel)
+#else
 	char operator[](int channel) const
+#endif
 	{
 		if (pos[channel] >= 0) {
 #ifdef DP_STAT
@@ -156,7 +160,12 @@ struct TargetBuffer
 			return value_traits.mask_char;
 	}
 
-	__m128i seq_vector() const {
+#ifdef DP_STAT
+	__m128i seq_vector()
+#else
+	__m128i seq_vector() const
+#endif	
+	{
 		uint8_t s[16];
 		for (int i = 0; i < active.size(); ++i) {
 			const int channel = active[i];
