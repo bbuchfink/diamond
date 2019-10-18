@@ -389,9 +389,9 @@ template<>
 struct score_vector<int16_t>
 {
 
-	score_vector()
-	{
-	}
+	score_vector():
+		data_(_mm_set1_epi16(SHRT_MIN))
+	{}
 
 	explicit score_vector(int x)
 	{
@@ -440,12 +440,6 @@ struct score_vector<int16_t>
 #endif
 	}
 
-	score_vector& zero()
-	{
-		data_ = _mm_set1_epi16(SHRT_MIN);
-		return *this;
-	}
-
 	score_vector operator+(const score_vector &rhs) const
 	{
 		return score_vector(_mm_adds_epi16(data_, rhs.data_));
@@ -481,6 +475,11 @@ struct score_vector<int16_t>
 	__m128i cmpgt(const score_vector &rhs) const
 	{
 		return _mm_cmpgt_epi16(data_, rhs.data_);
+	}
+
+	void store(int16_t *ptr) const
+	{
+		_mm_storeu_si128((__m128i*)ptr, data_);
 	}
 
 	__m128i data_;
@@ -531,13 +530,13 @@ inline void store_sv(int32_t sv, int32_t *dst)
 #ifdef __SSE2__
 
 template<>
-struct ScoreTraits<score_vector<int16_t> >
+struct ScoreTraits<score_vector<int16_t>>
 {
 	enum { CHANNELS = 8 };
 	typedef int16_t Score;
 	static score_vector<int16_t> zero()
 	{
-		return score_vector<int16_t>().zero();
+		return score_vector<int16_t>();
 	}
 	static void saturate(score_vector<int16_t> &v)
 	{

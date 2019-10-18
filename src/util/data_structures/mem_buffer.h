@@ -1,6 +1,6 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2018 Benjamin Buchfink <buchfink@gmail.com>
+Copyright (C) 2013-2019 Benjamin Buchfink <buchfink@gmail.com>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,18 +16,57 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#ifndef SWIPE_MATRIX_H_
-#define SWIPE_MATRIX_H_
 
-#include <vector>
-#include <string.h>
+#ifndef MEM_BUFFER_H_
+#define MEM_BUFFER_H_
+
 #include <stdlib.h>
-#include <utility>
-#include <algorithm>
-#include "../score_vector.h"
-#include "../../basic/packed_transcript.h"
 
-using std::pair;
+template<typename _t>
+struct MemBuffer {
 
+	MemBuffer():
+		data_(nullptr),
+		size_(0),
+		alloc_size_(0)
+	{}
+
+	MemBuffer(size_t n):
+		data_((_t*)malloc(n * sizeof(_t))),
+		size_(n),
+		alloc_size_(n)
+	{}
+
+	~MemBuffer() {
+		free(data_);
+	}
+
+	void resize(size_t n) {
+		if (alloc_size_ < n) {
+			free(data_);
+			data_ = (_t*)malloc(n * sizeof(_t));
+			alloc_size_ = n;
+		}
+		size_ = n;
+	}
+
+	_t* begin() {
+		return data_;
+	}
+
+	_t* end() {
+		return data_ + size_;
+	}
+
+	_t& operator[](size_t i) {
+		return data_[i];
+	}
+
+private:
+
+	_t *data_;
+	size_t size_, alloc_size_;
+
+};
 
 #endif

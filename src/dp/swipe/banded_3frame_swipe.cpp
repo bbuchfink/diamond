@@ -23,18 +23,285 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "swipe.h"
 #include "target_iterator.h"
 #include "../../util/thread.h"
+#include "../../util/data_structures/mem_buffer.h"
 
 using namespace std;
 
-template<typename _score> thread_local std::vector<score_vector<_score>> BandedSwipeMatrix<_score>::hgap_;
-template<typename _score> thread_local std::vector<score_vector<_score>> BandedSwipeMatrix<_score>::score_;
-template<typename _score> thread_local std::vector<score_vector<_score>> BandedSwipeTracebackMatrix<_score>::hgap_;
-template<typename _score> thread_local std::vector<score_vector<_score>> BandedSwipeTracebackMatrix<_score>::score_;
-template<typename _sv> thread_local std::vector<_sv> Banded3FrameSwipeMatrix<_sv>::hgap_;
-template<typename _sv> thread_local std::vector<_sv> Banded3FrameSwipeMatrix<_sv>::score_;
-template<typename _sv> thread_local std::vector<_sv> Banded3FrameSwipeTracebackMatrix<_sv>::hgap_;
-template<typename _sv> thread_local std::vector<_sv> Banded3FrameSwipeTracebackMatrix<_sv>::score_;
+template<typename _sv>
+struct Banded3FrameSwipeMatrix
+{
 
+	struct ColumnIterator
+	{
+		ColumnIterator(_sv* hgap_front, _sv* score_front) :
+			hgap_ptr_(hgap_front),
+			score_ptr_(score_front)
+		{
+			sm4 = ScoreTraits<_sv>::zero();
+			sm3 = *score_ptr_;
+			sm2 = *(score_ptr_ + 1);
+		}
+		inline void operator++()
+		{
+			++hgap_ptr_; ++score_ptr_;
+			sm4 = sm3;
+			sm3 = sm2;
+			sm2 = *(score_ptr_ + 1);
+		}
+		inline _sv hgap() const
+		{
+			return *(hgap_ptr_ + 3);
+		}
+		inline void set_hgap(const _sv& x)
+		{
+			*hgap_ptr_ = x;
+		}
+		inline void set_score(const _sv& x)
+		{
+			*score_ptr_ = x;
+		}
+		void set_zero()
+		{
+			*(score_ptr_ - 1) = ScoreTraits<_sv>::zero();
+			*(score_ptr_ - 2) = ScoreTraits<_sv>::zero();
+			*(score_ptr_ - 3) = ScoreTraits<_sv>::zero();
+		}
+		_sv *hgap_ptr_, *score_ptr_;
+		_sv sm4, sm3, sm2;
+	};
+
+	Banded3FrameSwipeMatrix(size_t band, size_t cols) :
+		band_(band)
+	{
+		hgap_.resize(band + 3);
+		score_.resize(band + 1);
+		std::fill(hgap_.begin(), hgap_.end(), _sv());
+		std::fill(score_.begin(), score_.end(), _sv());
+	}
+
+	inline ColumnIterator begin(size_t offset, size_t col)
+	{
+		return ColumnIterator(&hgap_[offset], &score_[offset]);
+	}
+
+	size_t band() const
+	{
+		return band_;
+	}
+
+private:
+	const size_t band_;
+	static thread_local MemBuffer<_sv> hgap_, score_;
+
+};
+
+template<typename _sv>
+struct Banded3FrameSwipeTracebackMatrix
+{
+
+	typedef typename ScoreTraits<_sv>::Score Score;
+
+	struct ColumnIterator
+	{
+		ColumnIterator(_sv* hgap_front, _sv* score_front, _sv* score_front1) :
+			hgap_ptr_(hgap_front),
+			score_ptr_(score_front),
+			score_ptr1_(score_front1)
+		{
+			sm4 = ScoreTraits<_sv>::zero();
+			sm3 = *(score_ptr_++);
+			sm2 = *(score_ptr_);
+		}
+		inline void operator++()
+		{
+			++hgap_ptr_; ++score_ptr_; ++score_ptr1_;
+			sm4 = sm3;
+			sm3 = sm2;
+			sm2 = *score_ptr_;
+		}
+		inline _sv hgap() const
+		{
+			return *(hgap_ptr_ + 3);
+		}
+		inline void set_hgap(const _sv& x)
+		{
+			*hgap_ptr_ = x;
+		}
+		inline void set_score(const _sv& x)
+		{
+			*score_ptr1_ = x;
+		}
+		void set_zero()
+		{
+			*(score_ptr1_ - 1) = ScoreTraits<_sv>::zero();
+			*(score_ptr1_ - 2) = ScoreTraits<_sv>::zero();
+			*(score_ptr1_ - 3) = ScoreTraits<_sv>::zero();
+		}
+		_sv *hgap_ptr_, *score_ptr_, *score_ptr1_;
+		_sv sm4, sm3, sm2;
+	};
+
+	struct TracebackIterator
+	{
+		TracebackIterator(const Score *score, size_t band, int frame, int i, int j) :
+			band_(band),
+			score_(score),
+			frame(frame),
+			i(i),
+			j(j)
+		{
+			assert(i >= 0 && j >= 0);
+		}
+		Score score() const
+		{
+			return *score_;
+		}
+		Score sm3() const
+		{
+			return *(score_ - (band_ + 1) * ScoreTraits<_sv>::CHANNELS);
+		}
+		Score sm4() const
+		{
+			return *(score_ - (band_ + 2) * ScoreTraits<_sv>::CHANNELS);
+		}
+		Score sm2() const
+		{
+			return *(score_ - band_ * ScoreTraits<_sv>::CHANNELS);
+		}
+		void walk_diagonal()
+		{
+			score_ -= (band_ + 1) * ScoreTraits<_sv>::CHANNELS;
+			--i;
+			--j;
+			assert(i >= -1 && j >= -1);
+		}
+		void walk_forward_shift()
+		{
+			score_ -= (band_ + 2) * ScoreTraits<_sv>::CHANNELS;
+			--i;
+			--j;
+			--frame;
+			if (frame == -1) {
+				frame = 2;
+				--i;
+			}
+			assert(i >= -1 && j >= -1);
+		}
+		void walk_reverse_shift()
+		{
+			score_ -= band_ * ScoreTraits<_sv>::CHANNELS;
+			--i;
+			--j;
+			++frame;
+			if (frame == 3) {
+				frame = 0;
+				++i;
+			}
+			assert(i >= -1 && j >= -1);
+		}
+		pair<Edit_operation, int> walk_gap(int d0, int d1)
+		{
+			const int i0 = std::max(d0 + j, 0), j0 = std::max(i - d1, -1);
+			const Score *h = score_ - (band_ - 2) * ScoreTraits<_sv>::CHANNELS, *h0 = score_ - (j - j0) * (band_ - 2) * ScoreTraits<_sv>::CHANNELS;
+			const Score *v = score_ - 3 * ScoreTraits<_sv>::CHANNELS, *v0 = score_ - (i - i0 + 1) * 3 * ScoreTraits<_sv>::CHANNELS;
+			const Score score = this->score();
+			const Score e = score_matrix.gap_extend();
+			Score g = score_matrix.gap_open() + e;
+			int l = 1;
+			while (v > v0 && h > h0) {
+				if (score + g == *h) {
+					walk_hgap(h, l);
+					return std::make_pair(op_deletion, l);
+				}
+				else if (score + g == *v) {
+					walk_vgap(v, l);
+					return std::make_pair(op_insertion, l);
+				}
+				h -= (band_ - 2) * ScoreTraits<_sv>::CHANNELS;
+				v -= 3 * ScoreTraits<_sv>::CHANNELS;
+				++l;
+				g += e;
+			}
+			while (v > v0) {
+				if (score + g == *v) {
+					walk_vgap(v, l);
+					return std::make_pair(op_insertion, l);
+				}
+				v -= 3 * ScoreTraits<_sv>::CHANNELS;
+				++l;
+				g += e;
+			}
+			while (h > h0) {
+				if (score + g == *h) {
+					walk_hgap(h, l);
+					return std::make_pair(op_deletion, l);
+				}
+				h -= (band_ - 2) * ScoreTraits<_sv>::CHANNELS;
+				++l;
+				g += e;
+			}
+			throw std::runtime_error("Traceback error.");
+		}
+		void walk_hgap(const Score *h, int l)
+		{
+			score_ = h;
+			j -= l;
+			assert(i >= -1 && j >= -1);
+		}
+		void walk_vgap(const Score *v, int l)
+		{
+			score_ = v;
+			i -= l;
+			assert(i >= -1 && j >= -1);
+		}
+		const size_t band_;
+		const Score *score_;
+		int frame, i, j;
+	};
+
+	TracebackIterator traceback(size_t col, int i0, int j, int dna_len, size_t channel, Score score) const
+	{
+		const int i_ = std::max(-i0, 0) * 3,
+			i1 = (int)std::min(band_, size_t(dna_len - 2 - i0 * 3));
+		const Score *s = (Score*)(&score_[col*(band_ + 1) + i_]) + channel;
+		for (int i = i_; i < i1; ++i, s += ScoreTraits<_sv>::CHANNELS)
+			if (*s == score)
+				return TracebackIterator(s, band_, i % 3, i0 + i / 3, j);
+		throw std::runtime_error("Trackback error.");
+	}
+
+	Banded3FrameSwipeTracebackMatrix(size_t band, size_t cols) :
+		band_(band)
+	{
+		hgap_.resize(band + 3);
+		score_.resize((band + 1) * (cols + 1));
+		const _sv z = _sv();
+		std::fill(hgap_.begin(), hgap_.end(), z);
+		std::fill(score_.begin(), score_.begin() + band + 1, z);
+		for (size_t i = 0; i < cols; ++i)
+			score_[i*(band + 1) + band] = z;
+	}
+
+	inline ColumnIterator begin(size_t offset, size_t col)
+	{
+		return ColumnIterator(&hgap_[offset], &score_[col*(band_ + 1) + offset], &score_[(col + 1)*(band_ + 1) + offset]);
+	}
+
+	size_t band() const
+	{
+		return band_;
+	}
+
+private:
+	const size_t band_;
+	static thread_local MemBuffer<_sv> hgap_, score_;
+
+};
+
+template<typename _sv> thread_local MemBuffer<_sv> Banded3FrameSwipeMatrix<_sv>::hgap_;
+template<typename _sv> thread_local MemBuffer<_sv> Banded3FrameSwipeMatrix<_sv>::score_;
+template<typename _sv> thread_local MemBuffer<_sv> Banded3FrameSwipeTracebackMatrix<_sv>::hgap_;
+template<typename _sv> thread_local MemBuffer<_sv> Banded3FrameSwipeTracebackMatrix<_sv>::score_;
 
 struct Traceback {};
 struct ScoreOnly {};
