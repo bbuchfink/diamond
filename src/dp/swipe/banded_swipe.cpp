@@ -79,21 +79,23 @@ private:
 template<typename _sv>
 struct TracebackMatrix
 {
+
+	typedef typename ScoreTraits<_sv>::Score Score;
+
 	struct ColumnIterator
 	{
-		ColumnIterator(_sv* hgap_front, _sv* score_front, _sv* hgap_front1, _sv* score_front1) :
+		ColumnIterator(_sv* hgap_front, _sv* score_front, _sv* score_front1) :
 			hgap_ptr_(hgap_front),
 			score_ptr_(score_front),
-			hgap_ptr1_(hgap_front1),
 			score_ptr1_(score_front1)
 		{ }
 		inline void operator++()
 		{
-			++hgap_ptr_; ++score_ptr_; ++hgap_ptr1_; ++score_ptr1_;
+			++hgap_ptr_; ++score_ptr_; ++score_ptr1_;
 		}
 		inline _sv hgap() const
 		{
-			return *hgap_ptr_;
+			return *(hgap_ptr_ + 1);
 		}
 		inline _sv diag() const
 		{
@@ -101,7 +103,7 @@ struct TracebackMatrix
 		}
 		inline void set_hgap(const _sv& x)
 		{
-			*hgap_ptr1_ = x;
+			*hgap_ptr_ = x;
 		}
 		inline void set_score(const _sv& x)
 		{
@@ -109,31 +111,115 @@ struct TracebackMatrix
 		}
 		void set_zero()
 		{
-			(score_ptr1_ - 1)->zero();
+			*(score_ptr1_ - 1) = _sv();
 		}
-		_sv *hgap_ptr_, *score_ptr_, *hgap_ptr1_, *score_ptr1_;
+		_sv *hgap_ptr_, *score_ptr_, *score_ptr1_;
 	};
+
+	struct TracebackIterator
+	{
+		TracebackIterator(const Score *score, size_t band, int i, int j) :
+			band_(band),
+			score_(score),
+			i(i),
+			j(j)
+		{
+			assert(i >= 0 && j >= 0);
+		}
+		Score score() const
+		{
+			return *score_;
+		}
+		Score diag() const
+		{
+			return *(score_ - band_ * ScoreTraits<_sv>::CHANNELS);
+		}
+		void walk_diagonal()
+		{
+			score_ -= band_ * ScoreTraits<_sv>::CHANNELS;
+			--i;
+			--j;
+			assert(i >= -1 && j >= -1);
+		}
+		pair<Edit_operation, int> walk_gap(int d0, int d1)
+		{
+			const int i0 = std::max(d0 + j, 0), j0 = std::max(i - d1, -1);
+			const Score *h = score_ - (band_ - 1) * ScoreTraits<_sv>::CHANNELS, *h0 = score_ - (j - j0) * (band_ - 1) * ScoreTraits<_sv>::CHANNELS;
+			const Score *v = score_ - ScoreTraits<_sv>::CHANNELS, *v0 = score_ - (i - i0 + 1) * ScoreTraits<_sv>::CHANNELS;
+			const Score score = this->score();
+			const Score e = score_matrix.gap_extend();
+			Score g = score_matrix.gap_open() + e;
+			int l = 1;
+			while (v > v0 && h > h0) {
+				if (score + g == *h) {
+					walk_hgap(h, l);
+					return std::make_pair(op_deletion, l);
+				}
+				else if (score + g == *v) {
+					walk_vgap(v, l);
+					return std::make_pair(op_insertion, l);
+				}
+				h -= (band_ - 2) * ScoreTraits<_sv>::CHANNELS;
+				v -= 3 * ScoreTraits<_sv>::CHANNELS;
+				++l;
+				g += e;
+			}
+			while (v > v0) {
+				if (score + g == *v) {
+					walk_vgap(v, l);
+					return std::make_pair(op_insertion, l);
+				}
+				v -= 3 * ScoreTraits<_sv>::CHANNELS;
+				++l;
+				g += e;
+			}
+			while (h > h0) {
+				if (score + g == *h) {
+					walk_hgap(h, l);
+					return std::make_pair(op_deletion, l);
+				}
+				h -= (band_ - 2) * ScoreTraits<_sv>::CHANNELS;
+				++l;
+				g += e;
+			}
+			throw std::runtime_error("Traceback error.");
+		}
+		void walk_hgap(const Score *h, int l)
+		{
+			score_ = h;
+			j -= l;
+			assert(i >= -1 && j >= -1);
+		}
+		void walk_vgap(const Score *v, int l)
+		{
+			score_ = v;
+			i -= l;
+			assert(i >= -1 && j >= -1);
+		}
+		const size_t band_;
+		const Score *score_;
+		int i, j;
+	};
+
 	TracebackMatrix(size_t band, size_t cols) :
 		band_(band)
 	{
-		hgap_.resize((band + 1) * (cols + 1));
+		hgap_.resize(band + 1);
 		score_.resize(band * (cols + 1));
-		size_t i = 0;
-		_sv z = _sv();
-		for (; i < band; ++i) {
-			hgap_[i] = z;
-			score_[i] = z;
-		}
-		for (i = 0; i < cols; ++i)
-			hgap_[i*(band + 1) + band] = z;
+		std::fill(hgap_.begin(), hgap_.end(), _sv());
+		std::fill(score_.begin(), score_.begin() + band, _sv());
 	}
+
 	inline ColumnIterator begin(size_t offset, size_t col)
 	{
-		return ColumnIterator(&hgap_[col*(band_ + 1) + offset + 1], &score_[col*band_ + offset], &hgap_[(col + 1)*(band_ + 1) + offset], &score_[(col + 1)*band_ + offset]);
+		return ColumnIterator(&hgap_[offset], &score_[col*band_ + offset], &score_[(col + 1)*band_ + offset]);
 	}
+
 private:
+
 	const size_t band_;
 	static thread_local MemBuffer<_sv> hgap_, score_;
+
 };
 
 template<typename _sv> thread_local MemBuffer <_sv> Matrix<_sv>::hgap_;
