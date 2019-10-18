@@ -119,8 +119,7 @@ struct TracebackMatrix
 		hgap_.resize((band + 1) * (cols + 1));
 		score_.resize(band * (cols + 1));
 		size_t i = 0;
-		sv z;
-		z.zero();
+		_sv z = _sv()
 		for (; i < band; ++i) {
 			hgap_[i] = z;
 			score_[i] = z;

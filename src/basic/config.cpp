@@ -171,7 +171,8 @@ Config::Config(int argc, const char **argv)
 		("taxonmap", 0, "protein accession to taxid mapping file", prot_accession2taxid)
 		("taxonnodes", 0, "taxonomy nodes.dmp from NCBI", nodesdmp)
 		("taxonnames", 0, "taxonomy names.dmp from NCBI", namesdmp)
-		("taxonlist", 0, "restrict search to list of taxon ids (comma-separated)", taxonlist);
+		("taxonlist", 0, "restrict search to list of taxon ids (comma-separated)", taxonlist)
+		("taxon-exclude", 0, "exclude list of taxon ids (comma-separated)", taxon_exclude);
 
 	Options_group advanced("Advanced options");
 	advanced.add()

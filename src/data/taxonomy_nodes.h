@@ -25,9 +25,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/io/serializer.h"
 #include "../util/io/deserializer.h"
 
-using std::vector;
-using std::set;
-
 struct TaxonomyNodes
 {
 
@@ -40,8 +37,8 @@ struct TaxonomyNodes
 		return parent_[taxid];
 	}
 	unsigned get_lca(unsigned t1, unsigned t2) const;
-	bool contained(unsigned query, const set<unsigned> &filter);
-	bool contained(const vector<unsigned> query, const set<unsigned> &filter);
+	bool contained(unsigned query, const std::set<unsigned> &filter);
+	bool contained(const std::vector<unsigned> query, const std::set<unsigned> &filter);
 
 private:
 
@@ -51,8 +48,8 @@ private:
 		contained_[taxon_id] = contained;
 	}
 
-	vector<unsigned> parent_;
-	vector<bool> cached_, contained_;
+	std::vector<unsigned> parent_;
+	std::vector<bool> cached_, contained_;
 
 };
 

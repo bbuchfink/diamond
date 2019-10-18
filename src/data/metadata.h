@@ -23,7 +23,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <string>
 #include "taxon_list.h"
 #include "taxonomy_nodes.h"
-#include "taxonomy_filter.h"
+#include "taxonomy.h"
 
 struct Metadata
 {

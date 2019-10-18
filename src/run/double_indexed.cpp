@@ -347,7 +347,7 @@ void run(const Options &options)
 		metadata.taxon_nodes = new TaxonomyNodes(db_file->seek(db_file->header2.taxon_nodes_offset));
 		if (!config.taxonlist.empty()) {
 			timer.go("Building taxonomy filter");
-			metadata.taxon_filter = new TaxonomyFilter(config.taxonlist, *metadata.taxon_list, *metadata.taxon_nodes);
+			metadata.taxon_filter = new TaxonomyFilter(config.taxonlist, config.taxon_exclude, *metadata.taxon_list, *metadata.taxon_nodes);
 		}
 		timer.finish();
 	}

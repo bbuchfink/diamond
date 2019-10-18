@@ -82,4 +82,5 @@ g++ -std=gnu++11 -DNDEBUG -O3 -Wno-deprecated-declarations $1 $2 $3 \
   src/util/system/getRSS.cpp \
   src/util/math/sparse_matrix.cpp \
   src/lib/tantan/LambdaCalculator.cc \
+  src/data/taxonomy_filter.cpp \
 -lz -lpthread -o diamond

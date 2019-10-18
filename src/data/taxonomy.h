@@ -22,12 +22,14 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <set>
 #include "../basic/const.h"
 #include "../util/util.h"
+#include "taxon_list.h"
+#include "taxonomy_nodes.h"
+#include "../util/util.h"
 
-using std::vector;
-using std::pair;
-using std::string;
+#ifndef TAXONOMY_H_
+#define TAXONOMY_H_
 
-string get_accession(const string &t);
+std::string get_accession(const string &t);
 
 struct AccessionLengthError : public std::runtime_error
 {
@@ -48,9 +50,9 @@ struct Taxonomy
 				throw AccessionLengthError();
 			std::copy(s, s + l, this->s);
 		}
-		Accession(const string &s)
+		Accession(const std::string &s)
 		{
-			string t(blast_id(s));
+			std::string t(blast_id(s));
 			get_accession(t);
 			if (t.length() > max_accesion_len) {
 				//this->s[0] = 0;
@@ -74,7 +76,7 @@ struct Taxonomy
 			}
 			return strncmp(s, y.s, n) == 0;
 		}
-		static vector<string> from_title(const char *title);
+		static std::vector<std::string> from_title(const char *title);
 		friend std::ostream& operator<<(std::ostream &str, const Accession &x)
 		{
 			for (int i = 0; i < max_accesion_len && x.s[i] != 0; ++i)
@@ -117,3 +119,10 @@ struct Taxonomy
 };
 
 extern Taxonomy taxonomy;
+
+struct TaxonomyFilter : public std::vector<bool>
+{
+	TaxonomyFilter(const std::string &include, const std::string &exclude, const TaxonList &list, TaxonomyNodes &nodes);
+};
+
+#endif

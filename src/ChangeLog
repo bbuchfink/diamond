@@ -1,6 +1,7 @@
 [0.9.27]
 - Improved performance of the seed matching stage.
 - Seed frequency masking is based on hit seeds.
+- Added option `--taxon-exclude` to exclude list of taxon ids from search.
 
 [0.9.26]
 - Fixed a bug that could cause undefined behaviour when using a database file of format version < 2.

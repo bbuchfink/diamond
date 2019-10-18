@@ -490,11 +490,11 @@ inline string hex_print(const char *x, int len) {
 	return out;
 }
 
-inline set<unsigned> parse_csv(const string &s)
+inline std::set<unsigned> parse_csv(const std::string &s)
 {
-	set<unsigned> r;
-	vector<string> t(tokenize(s.c_str(), ","));
-	for (vector<string>::const_iterator i = t.begin(); i != t.end(); ++i)
+	std::set<unsigned> r;
+	std::vector<std::string> t(tokenize(s.c_str(), ","));
+	for (std::vector<std::string>::const_iterator i = t.begin(); i != t.end(); ++i)
 		if(!i->empty()) r.insert(atoi(i->c_str()));
 	return r;
 }
