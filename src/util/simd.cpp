@@ -1,6 +1,6 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2017 Benjamin Buchfink <buchfink@gmail.com>
+Copyright (C) 2013-2019 Benjamin Buchfink <buchfink@gmail.com>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -71,4 +71,23 @@ void simd_messages()
 #ifdef __POPCNT__
 	verbose_stream << "POPCNT enabled." << endl;
 #endif
+}
+
+namespace SIMD {
+
+Arch arch;
+
+void init() {
+#ifdef __SSE2__
+	int info[4];
+	cpuid(info, 0);
+	int nids = info[0];
+	if (nids >= 1) {
+		cpuid(info, 1);
+	}
+	else
+		throw std::runtime_error("Incompatible CPU type. Please try to compile the software from source.");
+#endif
+}
+
 }
