@@ -36,7 +36,7 @@ typedef double array_of_8[BLAST_NUM_STAT_VALUES];
 
 const double INT2_MAX = std::numeric_limits<double>::max();
 
-const char DNA_scores[5 * 5] = {
+const signed char DNA_scores[5 * 5] = {
 	2, -3, -3, -3, -3,
 	-3,2,-3,-3,-3,
 	-3,-3,2,-3,-3,
