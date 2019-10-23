@@ -27,6 +27,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 using namespace std;
 
+namespace DISPATCH_ARCH {
+
 template<typename _sv>
 struct Banded3FrameSwipeMatrix
 {
@@ -569,4 +571,6 @@ void banded_3frame_swipe(const TranslatedSequence &query, Strand strand, vector<
 #else
 	banded_3frame_swipe_targets<int32_t>(target_begin, target_end, score_only, query, strand, stat, false, false);
 #endif
+}
+
 }

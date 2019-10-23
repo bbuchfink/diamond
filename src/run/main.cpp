@@ -21,6 +21,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "tools.h"
 #include "../data/reference.h"
 #include "workflow.h"
+#include "../util/simd.h"
 #ifdef EXTRA
 #include "../extra/compare.h"
 #include "../extra/match_file.h"
@@ -54,7 +55,7 @@ void benchmark();
 int main(int ac, const char* av[])
 {
 	try {
-		check_simd();
+		SIMD::init();
 		config = Config(ac, av);
 
 		switch (config.command) {

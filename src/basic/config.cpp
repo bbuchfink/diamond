@@ -32,6 +32,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../dp/dp.h"
 #include "masking.h"
 #include "../util/system/system.h"
+#include "../util/simd.h"
 
 using namespace std;
 
@@ -428,7 +429,7 @@ Config::Config(int argc, const char **argv)
 		
 		init_cbs();
 		raw_ungapped_xdrop = score_matrix.rawscore(ungapped_xdrop);
-		simd_messages();
+		verbose_stream << "CPU features detected: " << SIMD::features() << endl;
 	}
 
 	Translator::init(query_gencode);

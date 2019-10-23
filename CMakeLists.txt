@@ -61,7 +61,16 @@ include_directories(
   "${CMAKE_SOURCE_DIR}/src"
   "${ZLIB_INCLUDE_DIR}")
 
-add_executable(diamond src/run/main.cpp
+set(DISPATCH_OBJECTS "src/dp/swipe/banded_3frame_swipe.cpp")
+
+add_library(arch_generic OBJECT ${DISPATCH_OBJECTS})
+target_compile_options(arch_generic PUBLIC -DDISPATCH_ARCH=ARCH_GENERIC)
+add_library(arch_sse4_1 OBJECT ${DISPATCH_OBJECTS})
+target_compile_options(arch_sse4_1 PUBLIC -DDISPATCH_ARCH=ARCH_SSE4_1 -mssse3 -mpopcnt -msse4.1)
+
+add_executable(diamond $<TARGET_OBJECTS:arch_generic>
+  $<TARGET_OBJECTS:arch_sse4_1>
+  src/run/main.cpp
   src/basic/config.cpp
   src/basic/score_matrix.cpp
   src/blast/blast_filter.cpp
@@ -117,7 +126,6 @@ add_executable(diamond src/run/main.cpp
   src/output/target_culling.cpp
   src/align/greedy_pipeline.cpp
   src/align/swipe_pipeline.cpp
-  src/dp/swipe/banded_3frame_swipe.cpp
   src/dp/swipe/banded_swipe.cpp
   src/align/banded_swipe_pipeline.cpp
   src/data/ref_dictionary.cpp

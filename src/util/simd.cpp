@@ -16,8 +16,9 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
+#include <vector>
 #include "simd.h"
-#include "log_stream.h"
+#include "util.h"
 
 #ifdef _WIN32
 #define cpuid(info,x)    __cpuidex(info,x,0)
@@ -34,48 +35,10 @@ inline void cpuid(int CPUInfo[4], int InfoType) {
 }
 #endif
 
-void check_simd()
-{
-#ifdef __SSE2__
-	int info[4];
-	cpuid(info, 0);
-	int nids = info[0];
-	if (nids >= 1) {
-		cpuid(info, 1);
-	}
-	else
-		throw std::runtime_error("Incompatible CPU type. Please try to compile the software from source.");
-#endif
-#ifdef __SSSE3__
-	if ((info[2] & (1 << 9)) == 0)
-		throw std::runtime_error("CPU does not support SSSE3. Please compile the software from source.");
-#endif
-#ifdef __POPCNT__
-	if ((info[2] & (1 << 23)) == 0)
-		throw std::runtime_error("CPU does not support POPCNT. Please compile the software from source.");
-#endif
-#ifdef __SSE4_1__
-	if ((info[2] & (1 << 19)) == 0)
-		throw std::runtime_error("CPU does not support SSE4.1. Please compile the software from source.");
-#endif
-}
-
-void simd_messages()
-{
-#ifdef __SSSE3__
-	verbose_stream << "SSSE3 enabled." << endl;
-#endif
-#ifdef __SSE4_1__
-	verbose_stream << "SSE4.1 enabled." << endl;
-#endif
-#ifdef __POPCNT__
-	verbose_stream << "POPCNT enabled." << endl;
-#endif
-}
-
 namespace SIMD {
 
-Arch arch;
+Arch arch = Arch::Generic;
+int flags = 0;
 
 void init() {
 #ifdef __SSE2__
@@ -87,7 +50,41 @@ void init() {
 	}
 	else
 		throw std::runtime_error("Incompatible CPU type. Please try to compile the software from source.");
+
+	if ((info[2] & (1 << 9)) != 0)
+		flags |= SSSE3;
+	if ((info[2] & (1 << 23)) != 0)
+		flags |= POPCNT;
+	if ((info[2] & (1 << 19)) != 0)
+		flags |= SSE4_1;
+
+	if ((flags & SSSE3) && (flags & POPCNT) && (flags & SSE4_1))
+		arch = Arch::SSE4_1;
 #endif
+
+#ifdef __SSSE3__
+	if ((flags & SSSE3) == 0)
+		throw std::runtime_error("CPU does not support SSSE3. Please compile the software from source.");
+#endif
+#ifdef __POPCNT__
+	if ((flags & POPCNT) == 0)
+		throw std::runtime_error("CPU does not support POPCNT. Please compile the software from source.");
+#endif
+#ifdef __SSE4_1__
+	if ((flags & SSE4_1) == 0)
+		throw std::runtime_error("CPU does not support SSE4.1. Please compile the software from source.");
+#endif
+}
+
+std::string features() {
+	std::vector<std::string> r;
+	if (flags & SSSE3)
+		r.push_back("ssse3");
+	if (flags & POPCNT)
+		r.push_back("popcnt");
+	if (flags & SSE4_1)
+		r.push_back("sse4.1");
+	return r.empty() ? "None" : join(" ", r);
 }
 
 }

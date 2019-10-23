@@ -20,6 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "align.h"
 #include "../dp/dp.h"
 #include "../util/interval_partition.h"
+#include "../util/simd.h"
 
 using namespace std;
 
@@ -150,8 +151,8 @@ void Pipeline::run_swipe(bool score_only)
 	for (size_t i = 0; i < n_targets(); ++i)
 		target(i).add(*this, vf, vr);
 	if (score_matrix.frame_shift()) {
-		banded_3frame_swipe(translated_query, FORWARD, vf.begin(), vf.end(), this->dp_stat, score_only, target_parallel);
-		banded_3frame_swipe(translated_query, REVERSE, vr.begin(), vr.end(), this->dp_stat, score_only, target_parallel);
+		DISPATCH(banded_3frame_swipe(translated_query, FORWARD, vf.begin(), vf.end(), this->dp_stat, score_only, target_parallel))
+		DISPATCH(banded_3frame_swipe(translated_query, REVERSE, vr.begin(), vr.end(), this->dp_stat, score_only, target_parallel))
 	}
 	else {
 		DP::BandedSwipe::swipe(query_seq(0), vf.begin(), vf.end());

@@ -19,6 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #ifndef SIMD_H_
 #define SIMD_H_
 
+#include <string>
 #include "system.h"
 
 #ifdef _MSC_VER
@@ -37,25 +38,27 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #ifdef __SSE4_1__
 #include <smmintrin.h>
 #endif
+#ifdef _MSC_VER
+#include <intrin.h>
+#endif
 
 namespace SIMD {
 
-enum class Arch { Generic, SSE4_2 };
-enum Flags { SSSE3 = 1, POPCNT = 2, SSE4_2 = 4 };
+enum class Arch { Generic, SSE4_1 };
+enum Flags { SSSE3 = 1, POPCNT = 2, SSE4_1 = 4 };
 extern Arch arch;
+extern int flags;
 
-#define DISPATCH(x) switch(SIMD::arch) {\
-case Arch::Generic: DISPATCH_GENERIC::x; break;\
-case Arch::SSE4_2: DISPATCH_SSE4_2::x;}
+#define DISPATCH(f) switch(SIMD::arch) {\
+case SIMD::Arch::Generic: ARCH_GENERIC::f; break;\
+case SIMD::Arch::SSE4_1: ARCH_SSE4_1::f;}
 
-#define DECL_DISPATCH(x) namespace ARCH_GENERIC { x; }\
-namespace ARCH_SSE4_2 { x; }
+#define DECL_DISPATCH(f) namespace ARCH_GENERIC { f; }\
+namespace ARCH_SSE4_1 { f; }
 
 void init();
+std::string features();
 
 };
-
-void check_simd();
-void simd_messages();
 
 #endif
