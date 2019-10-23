@@ -332,24 +332,36 @@ struct score_vector<int8_t>
 
 	score_vector& max(const score_vector &rhs)
 	{
+#ifdef __SSE4_1__
 		data_ = _mm_max_epi8(data_, rhs.data_);
+#endif
 		return *this;
 	}
 
 	score_vector& min(const score_vector &rhs)
 	{
+#ifdef __SSE4_1__
 		data_ = _mm_min_epi8(data_, rhs.data_);
+#endif
 		return *this;
 	}
 
 	friend score_vector max(const score_vector& lhs, const score_vector &rhs)
 	{
+#ifdef __SSE4_1__
 		return score_vector(_mm_max_epi8(lhs.data_, rhs.data_));
+#else
+		return score_vector();
+#endif
 	}
 
 	friend score_vector min(const score_vector& lhs, const score_vector &rhs)
 	{
+#ifdef __SSE4_1__
 		return score_vector(_mm_min_epi8(lhs.data_, rhs.data_));
+#else
+		return score_vector();
+#endif
 	}
 
 	uint16_t cmpeq(const score_vector &rhs) const
