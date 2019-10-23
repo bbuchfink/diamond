@@ -66,6 +66,9 @@ struct score_vector<uint8_t>
 		data_ (data)
 	{ }
 
+	score_vector(unsigned a, uint64_t seq)
+	{}
+
 	score_vector(unsigned a, const __m128i &seq)
 	{
 #ifdef __SSSE3__

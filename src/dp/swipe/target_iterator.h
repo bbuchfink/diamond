@@ -160,6 +160,7 @@ struct TargetBuffer
 			return value_traits.mask_char;
 	}
 
+#ifdef __SSSE3__
 #ifdef DP_STAT
 	__m128i seq_vector()
 #else
@@ -173,6 +174,17 @@ struct TargetBuffer
 		}
 		return _mm_loadu_si128((const __m128i*)s);
 	}
+#else
+	uint64_t seq_vector()
+	{
+		uint64_t dst = 0;
+		for (int i = 0; i < active.size(); ++i) {
+			const int channel = active[i];
+			dst |= uint64_t((*this)[channel]) << (8 * channel);
+		}
+		return dst;
+	}
+#endif
 
 	bool init_target(int i, int channel)
 	{

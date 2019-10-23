@@ -23,6 +23,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../../util/data_structures/mem_buffer.h"
 
 namespace DP { namespace BandedSwipe {
+namespace DISPATCH_ARCH {
 
 template<typename _sv>
 struct Matrix
@@ -332,4 +333,4 @@ void swipe(const sequence &query, vector<DpTarget>::iterator target_begin, vecto
 #endif
 }
 
-}}
+}}}

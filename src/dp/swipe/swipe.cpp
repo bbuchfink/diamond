@@ -28,6 +28,7 @@ using std::vector;
 using std::pair;
 
 namespace DP { namespace Swipe {
+namespace DISPATCH_ARCH {
 
 template<typename _sv>
 struct DPMatrix
@@ -162,4 +163,4 @@ vector<int> swipe(const sequence &query, const sequence *subject_begin, const se
 #endif
 }
 
-}}
+}}}

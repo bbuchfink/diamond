@@ -563,13 +563,13 @@ namespace DP {
 	
 namespace Swipe {
 
-std::vector<int> swipe(const sequence &query, const sequence *subject_begin, const sequence *subject_end);
+DECL_DISPATCH(std::vector<int> swipe(const sequence &query, const sequence *subject_begin, const sequence *subject_end))
 
 }
 
 namespace BandedSwipe {
 
-void swipe(const sequence &query, vector<DpTarget>::iterator target_begin, vector<DpTarget>::iterator target_end);
+DECL_DISPATCH(void swipe(const sequence &query, vector<DpTarget>::iterator target_begin, vector<DpTarget>::iterator target_end))
 
 }
 

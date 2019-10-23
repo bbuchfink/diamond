@@ -48,7 +48,10 @@ include_directories(
   "${CMAKE_SOURCE_DIR}/src"
   "${ZLIB_INCLUDE_DIR}")
 
-set(DISPATCH_OBJECTS "src/dp/swipe/banded_3frame_swipe.cpp")
+set(DISPATCH_OBJECTS
+"src/dp/swipe/banded_3frame_swipe.cpp"
+"src/dp/swipe/swipe.cpp"
+"src/dp/swipe/banded_swipe.cpp")
 
 add_library(arch_generic OBJECT ${DISPATCH_OBJECTS})
 target_compile_options(arch_generic PUBLIC -DDISPATCH_ARCH=ARCH_GENERIC)
@@ -103,7 +106,6 @@ add_executable(diamond $<TARGET_OBJECTS:arch_generic>
   src/data/taxonomy.cpp
   src/lib/tantan/tantan.cc
   src/basic/masking.cpp
-  src/dp/swipe/swipe.cpp
   src/dp/banded_sw.cpp
   src/data/seed_set.cpp
   src/util/simd.cpp
@@ -113,7 +115,6 @@ add_executable(diamond $<TARGET_OBJECTS:arch_generic>
   src/output/target_culling.cpp
   src/align/greedy_pipeline.cpp
   src/align/swipe_pipeline.cpp
-  src/dp/swipe/banded_swipe.cpp
   src/align/banded_swipe_pipeline.cpp
   src/data/ref_dictionary.cpp
   src/util/io/compressed_stream.cpp

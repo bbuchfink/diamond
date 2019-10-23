@@ -151,11 +151,11 @@ void Pipeline::run_swipe(bool score_only)
 	for (size_t i = 0; i < n_targets(); ++i)
 		target(i).add(*this, vf, vr);
 	if (score_matrix.frame_shift()) {
-		DISPATCH(banded_3frame_swipe(translated_query, FORWARD, vf.begin(), vf.end(), this->dp_stat, score_only, target_parallel))
-		DISPATCH(banded_3frame_swipe(translated_query, REVERSE, vr.begin(), vr.end(), this->dp_stat, score_only, target_parallel))
+		DISPATCH(::, banded_3frame_swipe(translated_query, FORWARD, vf.begin(), vf.end(), this->dp_stat, score_only, target_parallel));
+		DISPATCH(::, banded_3frame_swipe(translated_query, REVERSE, vr.begin(), vr.end(), this->dp_stat, score_only, target_parallel));
 	}
 	else {
-		DP::BandedSwipe::swipe(query_seq(0), vf.begin(), vf.end());
+		DISPATCH(DP::BandedSwipe::, swipe(query_seq(0), vf.begin(), vf.end()));
 	}
 }
 

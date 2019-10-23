@@ -24,9 +24,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #ifdef _MSC_VER
 #define __SSE2__
+#ifdef DISPATCH_ARCH
+#if DISPATCH_ARCH == ARCH_SSE4_1
 #define __SSSE3__
 #define __SSE4_1__
 #define __POPCNT__
+#endif
+#endif
 #endif
 
 #ifdef __SSSE3__
@@ -49,9 +53,7 @@ enum Flags { SSSE3 = 1, POPCNT = 2, SSE4_1 = 4 };
 extern Arch arch;
 extern int flags;
 
-#define DISPATCH(f) switch(SIMD::arch) {\
-case SIMD::Arch::Generic: ARCH_GENERIC::f; break;\
-case SIMD::Arch::SSE4_1: ARCH_SSE4_1::f;}
+#define DISPATCH(ns, f) (SIMD::arch == SIMD::Arch::SSE4_1 ? ns ## ARCH_SSE4_1::f : ns ## ARCH_GENERIC::f)
 
 #define DECL_DISPATCH(f) namespace ARCH_GENERIC { f; }\
 namespace ARCH_SSE4_1 { f; }
