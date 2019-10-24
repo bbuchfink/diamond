@@ -21,11 +21,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "../data/frequent_seeds.h"
 #include "sse_dist.h"
+#include "../util/simd.h"
 
-bool is_primary_hit(const Letter *query,
-	const Letter *subject,
-	const unsigned seed_offset,
-	const unsigned sid,
-	const unsigned len);
+DECL_DISPATCH(bool, is_primary_hit, (const Letter *query, const Letter *subject, const unsigned seed_offset, const unsigned sid, const unsigned len))
 
 #endif /* COLLISION_H_ */

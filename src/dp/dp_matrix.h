@@ -22,7 +22,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <vector>
 #include "score_vector.h"
 
-using std::vector;
+namespace Search { namespace DISPATCH_ARCH {
 
 template<typename _score>
 void array_clear(score_vector<_score> *v, unsigned n)
@@ -134,8 +134,10 @@ private:
 
 	const unsigned rows_, band_, padding_;
 	sv *hgap_front_, *score_front_;
-	static thread_local vector<sv> scores_, hgap_;
+	static thread_local std::vector<sv> scores_, hgap_;
 
 };
+
+}}
 
 #endif /* DP_MATRIX_H_ */

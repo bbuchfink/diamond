@@ -1,6 +1,6 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2017 Benjamin Buchfink <buchfink@gmail.com>
+Copyright (C) 2013-2019 Benjamin Buchfink <buchfink@gmail.com>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#include "align_range.h"
+#include "search.h"
 #include "../util/map.h"
 #include "../dp/dp.h"
 #include "../data/queries.h"
@@ -25,10 +25,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "collision.h"
 #include "../dp/dp_matrix.h"
 
-template<typename _score> thread_local vector<score_vector<_score>> DP_matrix<_score>::scores_;
-template<typename _score> thread_local vector<score_vector<_score>> DP_matrix<_score>::hgap_;
+namespace Search {
+namespace DISPATCH_ARCH {
 
 #ifdef __SSE2__
+
+template<typename _score> thread_local vector<score_vector<_score>> DP_matrix<_score>::scores_;
+template<typename _score> thread_local vector<score_vector<_score>> DP_matrix<_score>::hgap_;
 
 thread_local vector<sequence> hit_filter::subjects_;
 
@@ -115,7 +118,7 @@ void search_query_offset(Loc q,
 
 #endif
 
-void stage2_search(const Packed_loc *q,
+void stage2(const Packed_loc *q,
 	const Packed_loc *s,
 	const vector<Stage1_hit> &hits,
 	Statistics &stats,
@@ -127,3 +130,5 @@ void stage2_search(const Packed_loc *q,
 	for (Map_t::Iterator i = map.begin(); i.valid(); ++i)
 		search_query_offset(q[i.begin()->q], s, i.begin(), i.end(), stats, out, sid);
 }
+
+}}

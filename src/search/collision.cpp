@@ -16,11 +16,14 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
+#include "search.h"
 #include "collision.h"
-#include "align_range.h"
 #include "seed_complexity.h"
+#include "finger_print.h"
 
 // #define NO_COLLISION_FILTER
+
+namespace DISPATCH_ARCH {
 
 bool verify_hit(const Letter *query, const Letter *subject, unsigned sid)
 {
@@ -118,4 +121,6 @@ bool is_primary_hit(const Letter *query,
 		subject += 32;
 	}
 	return true;
+}
+
 }

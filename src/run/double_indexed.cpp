@@ -23,7 +23,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../data/queries.h"
 #include "../basic/statistics.h"
 #include "../basic/shape_config.h"
-#include "../search/align_range.h"
 #include "../util/seq_file_format.h"
 #include "../data/load_seqs.h"
 #include "../output/output_format.h"

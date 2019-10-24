@@ -2,6 +2,8 @@
 - Improved performance of the seed matching stage.
 - Seed frequency masking is based on hit seeds.
 - Added option `--taxon-exclude` to exclude list of taxon ids from search.
+- Compiling from source will no longer perform a native build. Instead, a unified binary that contains code paths
+  for multiple architectures will be produced, with dispatch logic that is invoked at runtime.
 
 [0.9.26]
 - Fixed a bug that could cause undefined behaviour when using a database file of format version < 2.

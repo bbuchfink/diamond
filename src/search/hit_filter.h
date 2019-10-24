@@ -27,7 +27,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../data/queries.h"
 #include "../data/reference.h"
 
-using std::vector;
+namespace Search { namespace DISPATCH_ARCH {
 
 #ifdef __SSE2__
 
@@ -91,10 +91,12 @@ private:
 	Statistics  &stats_;
 	Loc q_pos_;
 	Trace_pt_buffer::Iterator &out_;
-	static thread_local vector<sequence> subjects_;
+	static thread_local std::vector<sequence> subjects_;
 
 };
 
 #endif
+
+}}
 
 #endif /* HIT_FILTER_H_*/

@@ -50,7 +50,7 @@ void translate();
 void filter_blasttab();
 void show_cbs();
 void simulate_seqs();
-void benchmark();
+namespace Benchmark { DECL_DISPATCH(void, benchmark, ()) }
 
 int main(int ac, const char* av[])
 {
@@ -125,7 +125,7 @@ int main(int ac, const char* av[])
 			simulate_seqs();
 			break;
 		case Config::benchmark:
-			benchmark();
+			Benchmark::benchmark();
 			break;
 #ifdef EXTRA
 		case Config::compare:

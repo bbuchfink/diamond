@@ -51,7 +51,12 @@ include_directories(
 set(DISPATCH_OBJECTS
 "src/dp/swipe/banded_3frame_swipe.cpp"
 "src/dp/swipe/swipe.cpp"
-"src/dp/swipe/banded_swipe.cpp")
+"src/dp/swipe/banded_swipe.cpp"
+"src/search/collision.cpp"
+"src/search/stage1.cpp"
+"src/search/stage2.cpp"
+"src/tools/benchmark.cpp"
+)
 
 add_library(arch_generic OBJECT ${DISPATCH_OBJECTS})
 target_compile_options(arch_generic PUBLIC -DDISPATCH_ARCH=ARCH_GENERIC)
@@ -77,7 +82,6 @@ add_executable(diamond $<TARGET_OBJECTS:arch_generic>
   src/data/reference.cpp
   src/data/seed_histogram.cpp
   src/output/daa_record.cpp
-  src/search/search.cpp
   src/util/command_line_parser.cpp
   src/util/seq_file_format.cpp
   src/util/util.cpp 
@@ -87,7 +91,6 @@ add_executable(diamond $<TARGET_OBJECTS:arch_generic>
   src/dp/ungapped_align.cpp
   src/run/tools.cpp
   src/dp/greedy_align.cpp
-  src/search/stage2.cpp
   src/output/output_format.cpp
   src/output/join_blocks.cpp
   src/data/frequent_seeds.cpp
@@ -98,7 +101,6 @@ add_executable(diamond $<TARGET_OBJECTS:arch_generic>
   src/output/blast_pairwise_format.cpp
   src/dp/comp_based_stats.cpp
   src/run/double_indexed.cpp
-  src/search/collision.cpp
   src/output/sam_format.cpp
   src/align/align.cpp
   src/search/setup.cpp
@@ -144,7 +146,6 @@ add_executable(diamond $<TARGET_OBJECTS:arch_generic>
   src/util/system/getRSS.cpp
   src/util/math/sparse_matrix.cpp
   src/lib/tantan/LambdaCalculator.cc
-  src/tools/benchmark.cpp
   src/data/taxonomy_filter.cpp
 )
 

@@ -26,10 +26,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../data/queries.h"
 #include "../data/frequent_seeds.h"
 #include "trace_pt_buffer.h"
-#include "align_range.h"
 #include "../util/data_structures/double_array.h"
 
 using namespace std;
+
+Trace_pt_buffer* Trace_pt_buffer::instance;
 
 void seed_join_worker(
 	SeedArray *query_seeds,
@@ -55,11 +56,10 @@ void search_worker(Atomic<unsigned> *seedp, const SeedPartitionRange *seedp_rang
 {
 	Trace_pt_buffer::Iterator* out = new Trace_pt_buffer::Iterator(*Trace_pt_buffer::instance, thread_id);
 	Statistics stats;
-	Seed_filter seed_filter(stats, *out, shape);
 	unsigned p;
 	while ((p = (*seedp)++) < seedp_range->end())
 		for (auto it = JoinIterator<SeedArray::_pos>(query_seed_hits[p].begin(), ref_seed_hits[p].begin()); it; ++it)
-			seed_filter.run(it.r->begin(), it.r->size(), it.s->begin(), it.s->size());
+			Search::stage1(it.r->begin(), it.r->size(), it.s->begin(), it.s->size(), stats, *out, shape);
 	delete out;
 	statistics += stats;
 }

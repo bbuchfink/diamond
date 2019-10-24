@@ -24,6 +24,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "score_profile.h"
 #include "dp_matrix.h"
 
+namespace Search { namespace DISPATCH_ARCH {
+
 #ifdef __SSE2__
 
 template<typename _score>
@@ -120,5 +122,7 @@ void smith_waterman(const sequence &query,
 }
 
 #endif
+
+}}
 
 #endif /* SSE_SW_H_ */
