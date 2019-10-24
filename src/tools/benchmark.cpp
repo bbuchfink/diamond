@@ -139,7 +139,7 @@ void swipe(const sequence &s1, const sequence &s2) {
 	static const size_t n = 10000llu;
 	high_resolution_clock::time_point t1 = high_resolution_clock::now();
 	for (size_t i = 0; i < n; ++i) {
-		vector<int> v = DISPATCH(DP::Swipe::, swipe(s1, target, target + 16));
+		vector<int> v = DP::Swipe::swipe(s1, target, target + 16);
 		global_int = v[0];
 	}
 	cout << "SWIPE:\t\t\t\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * s1.length() * s2.length() * 16) * 1000 << " ps/Cell" << endl;
@@ -153,7 +153,7 @@ void banded_swipe(const sequence &s1, const sequence &s2) {
 	static const size_t n = 10000llu;
 	high_resolution_clock::time_point t1 = high_resolution_clock::now();
 	for (size_t i = 0; i < n; ++i) {
-		DISPATCH(DP::BandedSwipe::, swipe(s1, target.begin(), target.end()));
+		DP::BandedSwipe::swipe(s1, target.begin(), target.end());
 		out.clear();
 	}
 	cout << "Banded SWIPE:\t\t\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * s1.length() * 65 * 8) * 1000 << " ps/Cell" << endl;

@@ -37,10 +37,9 @@ inline void cpuid(int CPUInfo[4], int InfoType) {
 
 namespace SIMD {
 
-Arch arch = Arch::Generic;
 int flags = 0;
 
-void init() {
+Arch init_arch() {
 #ifdef __SSE2__
 	int info[4];
 	cpuid(info, 0);
@@ -57,9 +56,6 @@ void init() {
 		flags |= POPCNT;
 	if ((info[2] & (1 << 19)) != 0)
 		flags |= SSE4_1;
-
-	if ((flags & SSSE3) && (flags & POPCNT) && (flags & SSE4_1))
-		arch = Arch::SSE4_1;
 #endif
 
 #ifdef __SSSE3__
@@ -74,6 +70,16 @@ void init() {
 	if ((flags & SSE4_1) == 0)
 		throw std::runtime_error("CPU does not support SSE4.1. Please compile the software from source.");
 #endif
+
+	if ((flags & SSSE3) && (flags & POPCNT) && (flags & SSE4_1))
+		return Arch::SSE4_1;
+	else
+		return Arch::Generic;
+}
+
+Arch arch() {
+	static Arch a = Arch::None;
+	return a == Arch::None ? (a = init_arch()) : a;
 }
 
 std::string features() {

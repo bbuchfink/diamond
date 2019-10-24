@@ -55,7 +55,6 @@ void benchmark();
 int main(int ac, const char* av[])
 {
 	try {
-		SIMD::init();
 		config = Config(ac, av);
 
 		switch (config.command) {

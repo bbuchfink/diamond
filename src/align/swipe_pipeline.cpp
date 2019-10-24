@@ -29,7 +29,7 @@ void Pipeline::run(Statistics &stat)
 	for (size_t i = 0; i < n; ++i) {
 		seqs[i] = ref_seqs::get()[targets[i].subject_id];
 	}
-	vector<int> scores = DISPATCH(DP::Swipe::, swipe(query_seq(0), seqs.data(), seqs.data() + seqs.size()));
+	vector<int> scores = DP::Swipe::swipe(query_seq(0), seqs.data(), seqs.data() + seqs.size());
 	for (size_t i = 0; i < n; ++i) {
 		targets[i].hsps.push_back(Hsp(scores[i]));
 		targets[i].hsps.back().frame = 0;

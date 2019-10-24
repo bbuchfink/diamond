@@ -563,13 +563,13 @@ namespace DP {
 	
 namespace Swipe {
 
-DECL_DISPATCH(std::vector<int> swipe(const sequence &query, const sequence *subject_begin, const sequence *subject_end))
+DECL_DISPATCH(std::vector<int>, swipe, (const sequence &query, const sequence *subject_begin, const sequence *subject_end))
 
 }
 
 namespace BandedSwipe {
 
-DECL_DISPATCH(void swipe(const sequence &query, vector<DpTarget>::iterator target_begin, vector<DpTarget>::iterator target_end))
+DECL_DISPATCH(void, swipe, (const sequence &query, std::vector<DpTarget>::iterator target_begin, std::vector<DpTarget>::iterator target_end))
 
 }
 
@@ -580,6 +580,6 @@ void banded_sw(const sequence &query, const sequence &subject, int d_begin, int 
 void anchored_3frame_dp(const TranslatedSequence &query, sequence &subject, const DiagonalSegment &anchor, Hsp &out, int gap_open, int gap_extend, int frame_shift);
 int sw_3frame(const TranslatedSequence &query, Strand strand, const sequence &subject, int gap_open, int gap_extend, int frame_shift, Hsp &out);
 
-DECL_DISPATCH(void banded_3frame_swipe(const TranslatedSequence &query, Strand strand, vector<DpTarget>::iterator target_begin, vector<DpTarget>::iterator target_end, DpStat &stat, bool score_only, bool parallel))
+DECL_DISPATCH(void, banded_3frame_swipe, (const TranslatedSequence &query, Strand strand, vector<DpTarget>::iterator target_begin, vector<DpTarget>::iterator target_end, DpStat &stat, bool score_only, bool parallel))
 
 #endif /* FLOATING_SW_H_ */

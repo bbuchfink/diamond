@@ -20,6 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define SIMD_H_
 
 #include <string>
+#include <functional>
 #include "system.h"
 
 #ifdef _MSC_VER
@@ -48,17 +49,20 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 namespace SIMD {
 
-enum class Arch { Generic, SSE4_1 };
+enum class Arch { None, Generic, SSE4_1 };
 enum Flags { SSSE3 = 1, POPCNT = 2, SSE4_1 = 4 };
-extern Arch arch;
+Arch arch();
 extern int flags;
 
-#define DISPATCH(ns, f) (SIMD::arch == SIMD::Arch::SSE4_1 ? ns ## ARCH_SSE4_1::f : ns ## ARCH_GENERIC::f)
+#define DECL_DISPATCH(ret, name, param) namespace ARCH_GENERIC { ret name param; }\
+namespace ARCH_SSE4_1 { ret name param; }\
+inline std::function<decltype(ARCH_GENERIC::name)> dispatch_target_##name() {\
+switch(SIMD::arch()) {\
+case SIMD::Arch::SSE4_1: return ARCH_SSE4_1::name;\
+default: return ARCH_GENERIC::name;\
+}}\
+const std::function<decltype(ARCH_GENERIC::name)> name = dispatch_target_##name();
 
-#define DECL_DISPATCH(f) namespace ARCH_GENERIC { f; }\
-namespace ARCH_SSE4_1 { f; }
-
-void init();
 std::string features();
 
 };
