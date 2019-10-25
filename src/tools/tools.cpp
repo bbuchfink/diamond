@@ -5,6 +5,8 @@
 #include "../basic/value.h"
 #include "../util/util.h"
 #include "../basic/sequence.h"
+#include "../util/seq_file_format.h"
+#include "../util/sequence/sequence.h"
 
 using std::cout;
 using std::endl;
@@ -47,4 +49,24 @@ void simulate_seqs() {
 		cout << ">" << i << endl;
 		cout << sequence(generate_random_seq(l)) << endl;
 	}
+}
+
+void split() {
+	TextInputFile in(config.query_file);
+	vector<char> id, seq;
+	size_t n = 0, f = 0, b = (size_t)(config.chunk_size * 1e9);
+	OutputFile *out = new OutputFile(std::to_string(f) + ".faa.gz", true);
+	while (FASTA_format().get_seq(id, seq, in)) {
+		if (seq.size() + n > b) {
+			out->close();
+			delete out;
+			out = new OutputFile(std::to_string(++f) + ".faa.gz", true);
+			n = 0;
+		}
+		string blast_id = ::blast_id(string(id.data(), id.size()));
+		Util::Sequence::format(sequence(seq), blast_id.c_str(), nullptr, *out, "fasta", amino_acid_traits);
+		n += seq.size();
+	}
+	out->close();
+	delete out;
 }

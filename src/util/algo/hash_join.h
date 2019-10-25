@@ -29,9 +29,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../data_structures/hash_table.h"
 #include "../data_structures/double_array.h"
 
-using std::cerr;
-using std::endl;
-
 struct RelPtr
 {
 	RelPtr()
