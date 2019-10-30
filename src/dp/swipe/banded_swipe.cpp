@@ -160,8 +160,8 @@ struct TracebackMatrix
 					walk_vgap(v, l);
 					return std::make_pair(op_insertion, l);
 				}
-				h -= (band_ - 2) * ScoreTraits<_sv>::CHANNELS;
-				v -= 3 * ScoreTraits<_sv>::CHANNELS;
+				h -= (band_ - 1) * ScoreTraits<_sv>::CHANNELS;
+				v -= ScoreTraits<_sv>::CHANNELS;
 				++l;
 				g += e;
 			}
@@ -170,7 +170,7 @@ struct TracebackMatrix
 					walk_vgap(v, l);
 					return std::make_pair(op_insertion, l);
 				}
-				v -= 3 * ScoreTraits<_sv>::CHANNELS;
+				v -= ScoreTraits<_sv>::CHANNELS;
 				++l;
 				g += e;
 			}
@@ -179,7 +179,7 @@ struct TracebackMatrix
 					walk_hgap(h, l);
 					return std::make_pair(op_deletion, l);
 				}
-				h -= (band_ - 2) * ScoreTraits<_sv>::CHANNELS;
+				h -= (band_ - 1) * ScoreTraits<_sv>::CHANNELS;
 				++l;
 				g += e;
 			}
@@ -201,6 +201,17 @@ struct TracebackMatrix
 		const Score *score_;
 		int i, j;
 	};
+
+	TracebackIterator traceback(size_t col, int i0, int j, int dna_len, size_t channel, Score score) const
+	{
+		const int i_ = std::max(-i0, 0) * 3,
+			i1 = (int)std::min(band_, size_t(dna_len - 2 - i0 * 3));
+		const Score *s = (Score*)(&score_[col*(band_ + 1) + i_]) + channel;
+		for (int i = i_; i < i1; ++i, s += ScoreTraits<_sv>::CHANNELS)
+			if (*s == score)
+				return TracebackIterator(s, band_, i % 3, i0 + i / 3, j);
+		throw std::runtime_error("Trackback error.");
+	}
 
 	TracebackMatrix(size_t band, size_t cols) :
 		band_(band)
@@ -227,6 +238,48 @@ template<typename _sv> thread_local MemBuffer <_sv> Matrix<_sv>::hgap_;
 template<typename _sv> thread_local MemBuffer<_sv> Matrix<_sv>::score_;
 template<typename _sv> thread_local MemBuffer<_sv> TracebackMatrix<_sv>::hgap_;
 template<typename _sv> thread_local MemBuffer<_sv> TracebackMatrix<_sv>::score_;
+
+template<typename _sv>
+void traceback(const sequence &query, int dna_len, const TracebackMatrix<_sv> &dp, DpTarget &target, typename ScoreTraits<_sv>::Score max_score, int max_col, int channel, int i0, int i1)
+{
+	typedef typename ScoreTraits<_sv>::Score Score;
+	const int j0 = i1 - (target.d_end - 1), d1 = target.d_end, d0 = target.d_begin;
+	typename TracebackMatrix<_sv>::TracebackIterator it(dp.traceback(max_col + 1, i0 + max_col, j0 + max_col, dna_len, channel, max_score));
+	target.out->emplace_back();
+
+	Hsp &out = parallel ? *target.tmp : target.out->back();
+	out.score = target.score = ScoreTraits<_sv>::int_score(max_score);
+	out.transcript.reserve(size_t(out.score * config.transcript_len_estimate));
+
+	out.set_end(it.i + 1, it.j + 1, Frame(strand, it.frame), dna_len);
+
+	while (it.score() > ScoreTraits<_sv>::zero_score()) {
+		const Letter q = query[it.frame][it.i], s = target.seq[it.j];
+		const Score m = score_matrix(q, s), score = it.score();
+		if (score == it.sm3() + m) {
+			out.push_match(q, s, m > (Score)0);
+			it.walk_diagonal();
+		}
+		else if (score == it.sm4() + m - score_matrix.frame_shift()) {
+			out.push_match(q, s, m > (Score)0);
+			out.transcript.push_back(op_frameshift_forward);
+			it.walk_forward_shift();
+		}
+		else if (score == it.sm2() + m - score_matrix.frame_shift()) {
+			out.push_match(q, s, m > (Score)0);
+			out.transcript.push_back(op_frameshift_reverse);
+			it.walk_reverse_shift();
+		}
+		else {
+			const pair<Edit_operation, int> g(it.walk_gap(d0, d1));
+			out.push_gap(g.first, g.second, &target.seq[it.j + g.second]);
+		}
+	}
+
+	out.set_begin(it.i + 1, it.j + 1, Frame(strand, it.frame), dna_len);
+	out.transcript.reverse();
+	out.transcript.push_terminator();
+}
 
 template<typename _sv>
 void traceback(const sequence &query, Strand strand, int dna_len, const Matrix<_sv> &dp, DpTarget &target, typename ScoreTraits<_sv>::Score max_score, int max_col, int channel, int i0, int i1, bool parallel)

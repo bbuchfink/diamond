@@ -332,19 +332,20 @@ void run(const Options &options)
 	set_max_open_files(config.query_bins * config.threads_ + unsigned(db_file->ref_header.letters / (size_t)(config.chunk_size * 1e9)) + 16);
 
 	Metadata metadata;
-	if (output_format->needs_taxon_id_lists || !config.taxonlist.empty()) {
-		if (!config.taxonlist.empty() && db_file->header2.taxon_array_offset == 0)
-			throw std::runtime_error("--taxonlist option requires taxonomy mapping built into the database.");
+	const bool taxon_filter = !config.taxonlist.empty() || !config.taxon_exclude.empty();
+	if (output_format->needs_taxon_id_lists || taxon_filter) {
+		if (taxon_filter && db_file->header2.taxon_array_offset == 0)
+			throw std::runtime_error("--taxonlist/--taxon-exclude options require taxonomy mapping built into the database.");
 		timer.go("Loading taxonomy mapping");
 		metadata.taxon_list = new TaxonList(db_file->seek(db_file->header2.taxon_array_offset), db_file->ref_header.sequences, db_file->header2.taxon_array_size);
 		timer.finish();
 	}
-	if (output_format->needs_taxon_nodes || !config.taxonlist.empty()) {
-		if (!config.taxonlist.empty() && db_file->header2.taxon_nodes_offset == 0)
-			throw std::runtime_error("--taxonlist option requires taxonomy nodes built into the database.");
+	if (output_format->needs_taxon_nodes || taxon_filter) {
+		if (taxon_filter && db_file->header2.taxon_nodes_offset == 0)
+			throw std::runtime_error("--taxonlist/--taxon-exclude options require taxonomy nodes built into the database.");
 		timer.go("Loading taxonomy nodes");
 		metadata.taxon_nodes = new TaxonomyNodes(db_file->seek(db_file->header2.taxon_nodes_offset));
-		if (!config.taxonlist.empty()) {
+		if (taxon_filter) {
 			timer.go("Building taxonomy filter");
 			metadata.taxon_filter = new TaxonomyFilter(config.taxonlist, config.taxon_exclude, *metadata.taxon_list, *metadata.taxon_nodes);
 		}
