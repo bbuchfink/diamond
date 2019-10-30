@@ -247,11 +247,11 @@ void traceback(const sequence &query, int dna_len, const TracebackMatrix<_sv> &d
 	typename TracebackMatrix<_sv>::TracebackIterator it(dp.traceback(max_col + 1, i0 + max_col, j0 + max_col, dna_len, channel, max_score));
 	target.out->emplace_back();
 
-	Hsp &out = parallel ? *target.tmp : target.out->back();
+	Hsp &out = target.out->back();
 	out.score = target.score = ScoreTraits<_sv>::int_score(max_score);
 	out.transcript.reserve(size_t(out.score * config.transcript_len_estimate));
 
-	out.set_end(it.i + 1, it.j + 1, Frame(strand, it.frame), dna_len);
+	out.set_end(it.i + 1, it.j + 1, Frame(FORWARD, it.frame), dna_len);
 
 	while (it.score() > ScoreTraits<_sv>::zero_score()) {
 		const Letter q = query[it.frame][it.i], s = target.seq[it.j];
@@ -276,7 +276,7 @@ void traceback(const sequence &query, int dna_len, const TracebackMatrix<_sv> &d
 		}
 	}
 
-	out.set_begin(it.i + 1, it.j + 1, Frame(strand, it.frame), dna_len);
+	out.set_begin(it.i + 1, it.j + 1, Frame(FORWARD, it.frame), dna_len);
 	out.transcript.reverse();
 	out.transcript.push_terminator();
 }
