@@ -54,9 +54,10 @@ struct Matrix
 		{
 			*score_ptr_ = x;
 		}
+		inline void set_zero() {}
 		_sv *hgap_ptr_, *score_ptr_;
 	};
-	Matrix(int band):
+	Matrix(int band, size_t cols):
 		band_(band)
 	{
 		hgap_.resize(band + 1);
@@ -202,14 +203,14 @@ struct TracebackMatrix
 		int i, j;
 	};
 
-	TracebackIterator traceback(size_t col, int i0, int j, int dna_len, size_t channel, Score score) const
+	TracebackIterator traceback(size_t col, int i0, int j, int query_len, size_t channel, Score score) const
 	{
-		const int i_ = std::max(-i0, 0) * 3,
-			i1 = (int)std::min(band_, size_t(dna_len - 2 - i0 * 3));
-		const Score *s = (Score*)(&score_[col*(band_ + 1) + i_]) + channel;
+		const int i_ = std::max(-i0, 0),
+			i1 = (int)std::min(band_, size_t(query_len - i0));
+		const Score *s = (Score*)(&score_[col*band_ + i_]) + channel;
 		for (int i = i_; i < i1; ++i, s += ScoreTraits<_sv>::CHANNELS)
 			if (*s == score)
-				return TracebackIterator(s, band_, i % 3, i0 + i / 3, j);
+				return TracebackIterator(s, band_, i0 + i, j);
 		throw std::runtime_error("Trackback error.");
 	}
 
@@ -239,69 +240,70 @@ template<typename _sv> thread_local MemBuffer<_sv> Matrix<_sv>::score_;
 template<typename _sv> thread_local MemBuffer<_sv> TracebackMatrix<_sv>::hgap_;
 template<typename _sv> thread_local MemBuffer<_sv> TracebackMatrix<_sv>::score_;
 
+template<typename _sv, typename _traceback>
+struct MatrixTag
+{};
+
 template<typename _sv>
-void traceback(const sequence &query, int dna_len, const TracebackMatrix<_sv> &dp, DpTarget &target, typename ScoreTraits<_sv>::Score max_score, int max_col, int channel, int i0, int i1)
+struct MatrixTag<_sv, Traceback>
+{
+	typedef TracebackMatrix<_sv> Type;
+};
+
+template<typename _sv>
+struct MatrixTag<_sv, ScoreOnly>
+{
+	typedef Matrix<_sv> Type;
+};
+
+template<typename _sv>
+void traceback(const sequence &query, Frame frame, const TracebackMatrix<_sv> &dp, DpTarget &target, typename ScoreTraits<_sv>::Score max_score, int max_col, int channel, int i0, int i1)
 {
 	typedef typename ScoreTraits<_sv>::Score Score;
 	const int j0 = i1 - (target.d_end - 1), d1 = target.d_end, d0 = target.d_begin;
-	typename TracebackMatrix<_sv>::TracebackIterator it(dp.traceback(max_col + 1, i0 + max_col, j0 + max_col, dna_len, channel, max_score));
+	typename TracebackMatrix<_sv>::TracebackIterator it(dp.traceback(max_col + 1, i0 + max_col, j0 + max_col, (int)query.length(), channel, max_score));
 	target.out->emplace_back();
 
 	Hsp &out = target.out->back();
 	out.score = target.score = ScoreTraits<_sv>::int_score(max_score);
 	out.transcript.reserve(size_t(out.score * config.transcript_len_estimate));
 
-	out.set_end(it.i + 1, it.j + 1, Frame(FORWARD, it.frame), dna_len);
-
+	out.frame = frame.index();
+	out.query_range.end_ = it.i + 1;
+	out.subject_range.end_ = it.j + 1;
+	
 	while (it.score() > ScoreTraits<_sv>::zero_score()) {
-		const Letter q = query[it.frame][it.i], s = target.seq[it.j];
+		const Letter q = query[it.i], s = target.seq[it.j];
 		const Score m = score_matrix(q, s), score = it.score();
-		if (score == it.sm3() + m) {
+		if (score == it.diag() + m) {
 			out.push_match(q, s, m > (Score)0);
 			it.walk_diagonal();
-		}
-		else if (score == it.sm4() + m - score_matrix.frame_shift()) {
-			out.push_match(q, s, m > (Score)0);
-			out.transcript.push_back(op_frameshift_forward);
-			it.walk_forward_shift();
-		}
-		else if (score == it.sm2() + m - score_matrix.frame_shift()) {
-			out.push_match(q, s, m > (Score)0);
-			out.transcript.push_back(op_frameshift_reverse);
-			it.walk_reverse_shift();
-		}
-		else {
+		} else {
 			const pair<Edit_operation, int> g(it.walk_gap(d0, d1));
 			out.push_gap(g.first, g.second, &target.seq[it.j + g.second]);
 		}
 	}
 
-	out.set_begin(it.i + 1, it.j + 1, Frame(FORWARD, it.frame), dna_len);
+	out.query_range.begin_ = it.i + 1;
+	out.subject_range.begin_ = it.j + 1;
 	out.transcript.reverse();
 	out.transcript.push_terminator();
 }
 
 template<typename _sv>
-void traceback(const sequence &query, Strand strand, int dna_len, const Matrix<_sv> &dp, DpTarget &target, typename ScoreTraits<_sv>::Score max_score, int max_col, int channel, int i0, int i1, bool parallel)
+void traceback(const sequence &query, Frame frame, const Matrix<_sv> &dp, DpTarget &target, typename ScoreTraits<_sv>::Score max_score, int max_col, int channel, int i0, int i1)
 {
-	if (parallel)
-		target.tmp = new Hsp();
-	else
-		target.out->emplace_back();
-	Hsp &out = parallel ? *target.tmp : target.out->back();
-
-	const int j0 = i1 - (target.d_end - 1);
+	target.out->emplace_back();
+	Hsp &out = target.out->back();
 	out.score = target.score = ScoreTraits<_sv>::int_score(max_score);
-	out.query_range.end_ = std::min(i0 + max_col + (int)dp.band() / 3 / 2, (int)query.length());
-	out.query_range.begin_ = std::max(out.query_range.end_ - (j0 + max_col), 0);
-	out.frame = strand == FORWARD ? 0 : 3;
-	out.query_source_range = TranslatedPosition::absolute_interval(TranslatedPosition(out.query_range.begin_, Frame(out.frame)), TranslatedPosition(out.query_range.end_, Frame(out.frame)), dna_len);
+	out.frame = frame.index();
 }
 
-template<typename _sv>
-void swipe(const sequence &query, vector<DpTarget>::iterator subject_begin, vector<DpTarget>::iterator subject_end)
+template<typename _sv, typename _traceback>
+void swipe(const sequence &query, Frame frame, vector<DpTarget>::iterator subject_begin, vector<DpTarget>::iterator subject_end)
 {
 	typedef typename ScoreTraits<_sv>::Score Score;
+	typedef typename MatrixTag<_sv, _traceback>::Type Matrix;
 
 	assert(subject_end - subject_begin <= ScoreTraits<_sv>::CHANNELS);
 	const int qlen = (int)query.length();
@@ -318,72 +320,67 @@ void swipe(const sequence &query, vector<DpTarget>::iterator subject_begin, vect
 	int i0 = i1 + 1 - band;
 
 	TargetIterator<ScoreTraits<_sv>::CHANNELS> targets(subject_begin, subject_end, i1, qlen);
-	Matrix<_sv> dp(band);
+	Matrix dp(band, targets.cols);
 
 	const _sv open_penalty(static_cast<char>(score_matrix.gap_open() + score_matrix.gap_extend())),
 		extend_penalty(static_cast<char>(score_matrix.gap_extend()));
-	_sv best = _sv();
 	SwipeProfile<_sv> profile;
+
+	Score best[ScoreTraits<_sv>::CHANNELS];
+	int max_col[ScoreTraits<_sv>::CHANNELS];
+	for (int i = 0; i < ScoreTraits<_sv>::CHANNELS; ++i) {
+		best[i] = ScoreTraits<_sv>::zero_score();
+		max_col[i] = 0;
+	}
 
 	int j = 0;
 	while (targets.active.size() > 0) {
 		const int i0_ = std::max(i0, 0), i1_ = std::min(i1, qlen - 1);
 		if (i0_ > i1_)
 			break;
-		typename Matrix<_sv>::ColumnIterator it(dp.begin(i0_ - i0, j));
-		_sv vgap = _sv(), hgap = _sv();
+		typename Matrix::ColumnIterator it(dp.begin(i0_ - i0, j));
+		_sv vgap = _sv(), hgap = _sv(), col_best = _sv();
+		if (i0_ - i0 > 0)
+			it.set_zero();
 
 		profile.set(targets.get());
 		for (int i = i0_; i <= i1_; ++i) {
 			hgap = it.hgap();
-			const _sv next = cell_update<_sv>(it.diag(), profile.get(query[i]), extend_penalty, open_penalty, hgap, vgap, best);
+			const _sv next = cell_update<_sv>(it.diag(), profile.get(query[i]), extend_penalty, open_penalty, hgap, vgap, col_best);
 			it.set_hgap(hgap);
 			it.set_score(next);
 			++it;
 		}
 
+		Score col_best_[ScoreTraits<_sv>::CHANNELS];
+		store_sv(col_best, col_best_);
 		for (int i = 0; i < targets.active.size();) {
 			int channel = targets.active[i];
 			if (!targets.inc(channel))
 				targets.active.erase(i);
 			else
 				++i;
+			if (col_best_[channel] > best[channel]) {
+				best[channel] = col_best_[channel];
+				max_col[channel] = j;
+			}
 		}
 		++i0;
 		++i1;
 		++j;
 	}
 
-	Score max_score[ScoreTraits<_sv>::CHANNELS];
-	best.store(max_score);
 	for (int i = 0; i < targets.n_targets; ++i) {
-		subject_begin[i].overflow = false;
-		traceback<_sv>(query, FORWARD, (int)query.length(), dp, subject_begin[i], max_score[i], 0, i, i0 - j, i1 - j, false);
+		if (best[i] < ScoreTraits<_sv>::max_score()) {
+			subject_begin[i].overflow = false;
+			traceback<_sv>(query, frame, dp, subject_begin[i], best[i], max_col[i], i, i0 - j, i1 - j);
+		}
+		else
+			subject_begin[i].overflow = true;
 	}
 }
 
-template<typename _sv>
-void swipe_targets(const sequence &query,
-	vector<DpTarget>::iterator begin,
-	vector<DpTarget>::iterator end)
-{
-	for (vector<DpTarget>::iterator i = begin; i < end; i += ScoreTraits<_sv>::CHANNELS) {
-		/*if (!overflow_only || i->overflow) {
-			if (score_only || config.disable_traceback)
-				banded_3frame_swipe<_sv, ScoreOnly>(query, strand, i, i + std::min(vector<DpTarget>::iterator::difference_type(ScoreTraits<_sv>::CHANNELS), end - i), stat, parallel);
-			else
-				banded_3frame_swipe<_sv, Traceback>(query, strand, i, i + std::min(vector<DpTarget>::iterator::difference_type(ScoreTraits<_sv>::CHANNELS), end - i), stat, parallel);
-		}*/
-		swipe<_sv>(query, i, i + std::min(vector<DpTarget>::iterator::difference_type(ScoreTraits<_sv>::CHANNELS), end - i));
-	}
-}
-
-void swipe(const sequence &query, vector<DpTarget>::iterator target_begin, vector<DpTarget>::iterator target_end)
-{
-#ifdef __SSE2__
-	std::stable_sort(target_begin, target_end);
-	swipe_targets<score_vector<int16_t>>(query, target_begin, target_end);
-#endif
-}
+template void swipe<score_vector<int16_t>, Traceback>(const sequence&, Frame, vector<DpTarget>::iterator, vector<DpTarget>::iterator);
+template void swipe<score_vector<int16_t>, ScoreOnly>(const sequence&, Frame, vector<DpTarget>::iterator, vector<DpTarget>::iterator);
 
 }}}

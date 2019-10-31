@@ -305,22 +305,19 @@ template<typename _sv> thread_local MemBuffer<_sv> Banded3FrameSwipeMatrix<_sv>:
 template<typename _sv> thread_local MemBuffer<_sv> Banded3FrameSwipeTracebackMatrix<_sv>::hgap_;
 template<typename _sv> thread_local MemBuffer<_sv> Banded3FrameSwipeTracebackMatrix<_sv>::score_;
 
-struct Traceback {};
-struct ScoreOnly {};
-
 template<typename _sv, typename _traceback>
 struct Banded3FrameSwipeMatrixRef
 {
 };
 
 template<typename _sv>
-struct Banded3FrameSwipeMatrixRef<_sv, Traceback>
+struct Banded3FrameSwipeMatrixRef<_sv, DP::Traceback>
 {
 	typedef Banded3FrameSwipeTracebackMatrix<_sv> type;
 };
 
 template<typename _sv>
-struct Banded3FrameSwipeMatrixRef<_sv, ScoreOnly>
+struct Banded3FrameSwipeMatrixRef<_sv, DP::ScoreOnly>
 {
 	typedef Banded3FrameSwipeMatrix<_sv> type;
 };
@@ -430,8 +427,10 @@ void banded_3frame_swipe(const TranslatedSequence &query, Strand strand, vector<
 	SwipeProfile<_sv> profile;
 	Score best[ScoreTraits<_sv>::CHANNELS];
 	int max_col[ScoreTraits<_sv>::CHANNELS];
-	for (int i = 0; i < ScoreTraits<_sv>::CHANNELS; ++i)
+	for (int i = 0; i < ScoreTraits<_sv>::CHANNELS; ++i) {
 		best[i] = ScoreTraits<_sv>::zero_score();
+		max_col[i] = 0;
+	}
 
 	int j = 0;
 	while (targets.active.size() > 0) {
@@ -515,9 +514,9 @@ void banded_3frame_swipe_targets(vector<DpTarget>::iterator begin,
 	for (vector<DpTarget>::iterator i = begin; i < end; i += ScoreTraits<_sv>::CHANNELS) {
 		if (!overflow_only || i->overflow) {
 			if (score_only || config.disable_traceback)
-				banded_3frame_swipe<_sv, ScoreOnly>(query, strand, i, i + std::min(vector<DpTarget>::iterator::difference_type(ScoreTraits<_sv>::CHANNELS), end - i), stat, parallel);
+				banded_3frame_swipe<_sv, DP::ScoreOnly>(query, strand, i, i + std::min(vector<DpTarget>::iterator::difference_type(ScoreTraits<_sv>::CHANNELS), end - i), stat, parallel);
 			else
-				banded_3frame_swipe<_sv, Traceback>(query, strand, i, i + std::min(vector<DpTarget>::iterator::difference_type(ScoreTraits<_sv>::CHANNELS), end - i), stat, parallel);
+				banded_3frame_swipe<_sv, DP::Traceback>(query, strand, i, i + std::min(vector<DpTarget>::iterator::difference_type(ScoreTraits<_sv>::CHANNELS), end - i), stat, parallel);
 		}
 	}
 }

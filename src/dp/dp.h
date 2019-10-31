@@ -507,16 +507,12 @@ struct Diag_scores {
 
 struct DpTarget
 {
-	DpTarget()
-	{}
-	DpTarget(const sequence &seq):
-		seq(seq)
-	{}
 	DpTarget(const sequence &seq, int d_begin, int d_end, list<Hsp> *out = 0, int subject_id = 0) :
 		seq(seq),
 		d_begin(d_begin),
 		d_end(d_end),
 		subject_id(subject_id),
+		overflow(true),
 		out(out)
 	{}
 	int left_i1() const
@@ -560,6 +556,11 @@ void smith_waterman(sequence q, sequence s, const Diag_graph &diags);
 int score_range(sequence query, sequence subject, int i, int j, int j_end);
 
 namespace DP {
+
+struct Traceback {};
+struct ScoreOnly {};
+
+enum { TRACEBACK = 1 };
 	
 namespace Swipe {
 
@@ -569,7 +570,7 @@ DECL_DISPATCH(std::vector<int>, swipe, (const sequence &query, const sequence *s
 
 namespace BandedSwipe {
 
-DECL_DISPATCH(void, swipe, (const sequence &query, std::vector<DpTarget>::iterator target_begin, std::vector<DpTarget>::iterator target_end))
+DECL_DISPATCH(void, swipe, (const sequence &query, std::vector<DpTarget>::iterator target_begin, std::vector<DpTarget>::iterator target_end, Frame frame, int flags))
 
 }
 

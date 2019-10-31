@@ -1,6 +1,6 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2017 Benjamin Buchfink <buchfink@gmail.com>
+Copyright (C) 2013-2019 Benjamin Buchfink <buchfink@gmail.com>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -101,6 +101,10 @@ struct Target : public ::Target
 	void finish(QueryMapper &mapper)
 	{
 		inner_culling(mapper.raw_score_cutoff());
+		if (config.frame_shift)
+			return;
+		for (list<Hsp>::iterator i = hsps.begin(); i != hsps.end(); ++i)
+			i->query_source_range = TranslatedPosition::absolute_interval(TranslatedPosition(i->query_range.begin_, Frame(i->frame)), TranslatedPosition(i->query_range.end_, Frame(i->frame)), mapper.source_query_len);
 	}
 
 	bool is_outranked(const IntervalPartition &ip, int source_query_len, double rr) const
@@ -155,7 +159,7 @@ void Pipeline::run_swipe(bool score_only)
 		banded_3frame_swipe(translated_query, REVERSE, vr.begin(), vr.end(), this->dp_stat, score_only, target_parallel);
 	}
 	else {
-		DP::BandedSwipe::swipe(query_seq(0), vf.begin(), vf.end());
+		DP::BandedSwipe::swipe(query_seq(0), vf.begin(), vf.end(), Frame(0), score_only ? 0 : DP::TRACEBACK);
 	}
 }
 

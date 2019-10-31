@@ -56,6 +56,7 @@ set(DISPATCH_OBJECTS
 "src/search/stage1.cpp"
 "src/search/stage2.cpp"
 "src/tools/benchmark.cpp"
+"src/dp/swipe/swipe_wrapper.cpp"
 )
 
 add_library(arch_generic OBJECT ${DISPATCH_OBJECTS})
