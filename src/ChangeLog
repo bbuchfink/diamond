@@ -1,6 +1,6 @@
 [0.9.27]
 - Improved performance of the seed matching stage.
-- Seed frequency masking is based on hit seeds.
+- Seed frequency counts are computed based on hit seeds.
 - Added option `--taxon-exclude` to exclude list of taxon ids from search.
 - Compiling from source will no longer perform a native build. Instead, a portable binary that contains code paths
   for multiple architectures will be produced, with dispatch logic that is invoked at runtime.
