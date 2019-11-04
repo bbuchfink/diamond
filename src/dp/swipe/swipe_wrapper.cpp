@@ -20,7 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 namespace DP { namespace BandedSwipe { namespace DISPATCH_ARCH {
 
-template<typename _sv, typename _traceback> void swipe(const sequence &query, Frame frame, vector<DpTarget>::iterator subject_begin, vector<DpTarget>::iterator subject_end);
+template<typename _sv, typename _traceback> void swipe(const sequence &query, Frame frame, vector<DpTarget>::const_iterator subject_begin, vector<DpTarget>::const_iterator subject_end);
 
 template<typename _sv>
 void swipe_targets(const sequence &query,
@@ -30,8 +30,6 @@ void swipe_targets(const sequence &query,
 	int flags)
 {
 	for (vector<DpTarget>::iterator i = begin; i < end; i += ScoreTraits<_sv>::CHANNELS) {
-		if (!i->overflow)
-			continue;
 		if (flags & TRACEBACK)
 			swipe<_sv, Traceback>(query, frame, i, i + std::min(vector<DpTarget>::iterator::difference_type(ScoreTraits<_sv>::CHANNELS), end - i));
 		else

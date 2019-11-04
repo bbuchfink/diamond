@@ -257,15 +257,14 @@ struct MatrixTag<_sv, ScoreOnly>
 };
 
 template<typename _sv>
-void traceback(const sequence &query, Frame frame, const TracebackMatrix<_sv> &dp, DpTarget &target, typename ScoreTraits<_sv>::Score max_score, int max_col, int channel, int i0, int i1)
+void traceback(const sequence &query, Frame frame, const TracebackMatrix<_sv> &dp, const DpTarget &target, typename ScoreTraits<_sv>::Score max_score, int max_col, int channel, int i0, int i1)
 {
 	typedef typename ScoreTraits<_sv>::Score Score;
 	const int j0 = i1 - (target.d_end - 1), d1 = target.d_end, d0 = target.d_begin;
 	typename TracebackMatrix<_sv>::TracebackIterator it(dp.traceback(max_col + 1, i0 + max_col, j0 + max_col, (int)query.length(), channel, max_score));
-	target.out->emplace_back();
-
-	Hsp &out = target.out->back();
-	out.score = target.score = ScoreTraits<_sv>::int_score(max_score);
+	
+	Hsp out;
+	out.score = ScoreTraits<_sv>::int_score(max_score);
 	out.transcript.reserve(size_t(out.score * config.transcript_len_estimate));
 
 	out.frame = frame.index();
@@ -291,16 +290,15 @@ void traceback(const sequence &query, Frame frame, const TracebackMatrix<_sv> &d
 }
 
 template<typename _sv>
-void traceback(const sequence &query, Frame frame, const Matrix<_sv> &dp, DpTarget &target, typename ScoreTraits<_sv>::Score max_score, int max_col, int channel, int i0, int i1)
+void traceback(const sequence &query, Frame frame, const Matrix<_sv> &dp, const DpTarget &target, typename ScoreTraits<_sv>::Score max_score, int max_col, int channel, int i0, int i1)
 {
-	target.out->emplace_back();
-	Hsp &out = target.out->back();
-	out.score = target.score = ScoreTraits<_sv>::int_score(max_score);
+	Hsp out;
+	out.score = ScoreTraits<_sv>::int_score(max_score);
 	out.frame = frame.index();
 }
 
 template<typename _sv, typename _traceback>
-void swipe(const sequence &query, Frame frame, vector<DpTarget>::iterator subject_begin, vector<DpTarget>::iterator subject_end)
+void swipe(const sequence &query, Frame frame, vector<DpTarget>::const_iterator subject_begin, vector<DpTarget>::const_iterator subject_end)
 {
 	typedef typename ScoreTraits<_sv>::Score Score;
 	typedef typename MatrixTag<_sv, _traceback>::Type Matrix;
@@ -312,14 +310,14 @@ void swipe(const sequence &query, Frame frame, vector<DpTarget>::iterator subjec
 	for (vector<DpTarget>::const_iterator j = subject_begin; j < subject_end; ++j)
 		band = std::max(band, j->d_end - j->d_begin);
 
-	int i1 = INT_MAX;
-	for (vector<DpTarget>::iterator j = subject_begin; j < subject_end; ++j) {
-		j->d_begin = j->d_end - band;
+	int i1 = INT_MAX, d_begin[ScoreTraits<_sv>::CHANNELS];
+	for (vector<DpTarget>::const_iterator j = subject_begin; j < subject_end; ++j) {
+		d_begin[j - subject_begin] = j->d_end - band;
 		i1 = std::min(i1, std::max(j->d_end - 1, 0));
 	}
 	int i0 = i1 + 1 - band;
 
-	TargetIterator<ScoreTraits<_sv>::CHANNELS> targets(subject_begin, subject_end, i1, qlen);
+	TargetIterator<ScoreTraits<_sv>::CHANNELS> targets(subject_begin, subject_end, i1, qlen, d_begin);
 	Matrix dp(band, targets.cols);
 
 	const _sv open_penalty(static_cast<char>(score_matrix.gap_open() + score_matrix.gap_extend())),
@@ -372,15 +370,14 @@ void swipe(const sequence &query, Frame frame, vector<DpTarget>::iterator subjec
 
 	for (int i = 0; i < targets.n_targets; ++i) {
 		if (best[i] < ScoreTraits<_sv>::max_score()) {
-			subject_begin[i].overflow = false;
 			traceback<_sv>(query, frame, dp, subject_begin[i], best[i], max_col[i], i, i0 - j, i1 - j);
 		}
 		else
-			subject_begin[i].overflow = true;
+			;
 	}
 }
 
-template void swipe<score_vector<int16_t>, Traceback>(const sequence&, Frame, vector<DpTarget>::iterator, vector<DpTarget>::iterator);
-template void swipe<score_vector<int16_t>, ScoreOnly>(const sequence&, Frame, vector<DpTarget>::iterator, vector<DpTarget>::iterator);
+template void swipe<score_vector<int16_t>, Traceback>(const sequence&, Frame, vector<DpTarget>::const_iterator, vector<DpTarget>::const_iterator);
+template void swipe<score_vector<int16_t>, ScoreOnly>(const sequence&, Frame, vector<DpTarget>::const_iterator, vector<DpTarget>::const_iterator);
 
 }}}

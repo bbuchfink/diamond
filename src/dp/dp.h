@@ -31,8 +31,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../basic/translated_position.h"
 #include "../util/simd.h"
 
-using std::list;
-
 void init_cbs();
 
 struct No_score_correction
@@ -72,10 +70,10 @@ struct Seed_hit
 	{
 		return ungapped.score > rhs.ungapped.score;
 	}
-	bool is_enveloped(list<Hsp>::const_iterator begin, list<Hsp>::const_iterator end, int dna_len) const
+	bool is_enveloped(std::list<Hsp>::const_iterator begin, std::list<Hsp>::const_iterator end, int dna_len) const
 	{
 		const DiagonalSegment d(ungapped, ::Frame(frame_));
-		for (list<Hsp>::const_iterator i = begin; i != end; ++i)
+		for (std::list<Hsp>::const_iterator i = begin; i != end; ++i)
 			if (i->envelopes(d, dna_len))
 				return true;
 		return false;
@@ -507,13 +505,11 @@ struct Diag_scores {
 
 struct DpTarget
 {
-	DpTarget(const sequence &seq, int d_begin, int d_end, list<Hsp> *out = 0, int subject_id = 0) :
+	DpTarget(const sequence &seq, int d_begin, int d_end, int target_idx = 0) :
 		seq(seq),
 		d_begin(d_begin),
 		d_end(d_end),
-		subject_id(subject_id),
-		overflow(true),
-		out(out)
+		target_idx(target_idx)
 	{}
 	int left_i1() const
 	{
@@ -524,10 +520,7 @@ struct DpTarget
 		return left_i1() < x.left_i1();
 	}
 	sequence seq;
-	int d_begin, d_end, score, subject_id;
-	bool overflow;
-	list<Hsp> *out;
-	Hsp *tmp;
+	int d_begin, d_end, target_idx;
 };
 
 struct DpStat
@@ -581,6 +574,6 @@ void banded_sw(const sequence &query, const sequence &subject, int d_begin, int 
 void anchored_3frame_dp(const TranslatedSequence &query, sequence &subject, const DiagonalSegment &anchor, Hsp &out, int gap_open, int gap_extend, int frame_shift);
 int sw_3frame(const TranslatedSequence &query, Strand strand, const sequence &subject, int gap_open, int gap_extend, int frame_shift, Hsp &out);
 
-DECL_DISPATCH(void, banded_3frame_swipe, (const TranslatedSequence &query, Strand strand, vector<DpTarget>::iterator target_begin, vector<DpTarget>::iterator target_end, DpStat &stat, bool score_only, bool parallel))
+DECL_DISPATCH(std::list<Hsp>, banded_3frame_swipe, (const TranslatedSequence &query, Strand strand, vector<DpTarget>::iterator target_begin, vector<DpTarget>::iterator target_end, DpStat &stat, bool score_only, bool parallel))
 
 #endif /* FLOATING_SW_H_ */

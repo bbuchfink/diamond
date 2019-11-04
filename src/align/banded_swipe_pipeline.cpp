@@ -47,7 +47,7 @@ struct Target : public ::Target
 		return TranslatedPosition::absolute_interval(TranslatedPosition(i0, f), TranslatedPosition(i1, f), query_dna_len);
 	}
 
-	void add_strand(QueryMapper &mapper, vector<DpTarget> &v, vector<Seed_hit>::iterator begin, vector<Seed_hit>::iterator end)
+	void add_strand(QueryMapper &mapper, vector<DpTarget> &v, vector<Seed_hit>::iterator begin, vector<Seed_hit>::iterator end, int target_idx)
 	{
 		if (end == begin) return;
 		const int band = config.padding, d_min = -int(subject.length() - 1), d_max = int(mapper.query_seq(0).length() - 1);
@@ -59,15 +59,15 @@ struct Target : public ::Target
 				d1 = std::min(i->diagonal() + band, d_max);
 			}
 			else {
-				v.emplace_back(subject, d0, d1, &hsps, subject_id);
+				v.emplace_back(subject, d0, d1, target_idx);
 				d0 = std::max(i->diagonal() - band, d_min);
 				d1 = std::min(i->diagonal() + band, d_max);
 			}
 		}
-		v.emplace_back(subject, d0, d1, &hsps, subject_id);
+		v.emplace_back(subject, d0, d1, target_idx);
 	}
 
-	void add(QueryMapper &mapper, vector<DpTarget> &vf, vector<DpTarget> &vr)
+	void add(QueryMapper &mapper, vector<DpTarget> &vf, vector<DpTarget> &vr, int target_idx)
 	{
 		vector<Seed_hit>::iterator hits = mapper.seed_hits.begin() + begin, hits_end = mapper.seed_hits.begin() + end;
 		Strand strand = top_hit.strand();
@@ -78,9 +78,9 @@ struct Target : public ::Target
 
 		const auto it = find_if(hits, hits_end, [](const Seed_hit &x) { return x.strand() == REVERSE; });
 		if(strand == FORWARD || mapper.target_parallel)
-			add_strand(mapper, vf, hits, it);
+			add_strand(mapper, vf, hits, it, target_idx);
 		if (strand == REVERSE || mapper.target_parallel)
-			add_strand(mapper, vr, it, hits_end);
+			add_strand(mapper, vr, it, hits_end, target_idx);
 
 		//const int d = hits[0].diagonal();
 		//const DpTarget t(subject, std::max(d - 32, -int(subject.length() - 1)), std::min(d + 32, int(mapper.query_seq(0).length() - 1)), &hsps, subject_id);		
@@ -153,10 +153,14 @@ void Pipeline::run_swipe(bool score_only)
 {
 	vector<DpTarget> vf, vr;
 	for (size_t i = 0; i < n_targets(); ++i)
-		target(i).add(*this, vf, vr);
+		target(i).add(*this, vf, vr, (int)i);
 	if (score_matrix.frame_shift()) {
-		banded_3frame_swipe(translated_query, FORWARD, vf.begin(), vf.end(), this->dp_stat, score_only, target_parallel);
-		banded_3frame_swipe(translated_query, REVERSE, vr.begin(), vr.end(), this->dp_stat, score_only, target_parallel);
+		list<Hsp> hsp = banded_3frame_swipe(translated_query, FORWARD, vf.begin(), vf.end(), this->dp_stat, score_only, target_parallel);
+		hsp.splice(hsp.end(), banded_3frame_swipe(translated_query, REVERSE, vr.begin(), vr.end(), this->dp_stat, score_only, target_parallel));
+		while (!hsp.empty()) {
+			list<Hsp> &l = target(hsp.begin()->swipe_target).hsps;
+			l.splice(l.end(), hsp, hsp.begin());
+		}
 	}
 	else {
 		DP::BandedSwipe::swipe(query_seq(0), vf.begin(), vf.end(), Frame(0), score_only ? 0 : DP::TRACEBACK);

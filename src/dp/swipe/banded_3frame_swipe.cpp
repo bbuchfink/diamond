@@ -1,6 +1,6 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2018 Benjamin Buchfink <buchfink@gmail.com>
+Copyright (C) 2013-2019 Benjamin Buchfink <buchfink@gmail.com>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -18,6 +18,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <algorithm>
 #include <thread>
+#include <utility>
+#include <numeric>
 #include "../dp.h"
 #include "swipe_matrix.h"
 #include "swipe.h"
@@ -25,7 +27,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../../util/thread.h"
 #include "../../util/data_structures/mem_buffer.h"
 
-using namespace std;
+using std::list;
+using std::thread;
 
 namespace DISPATCH_ARCH {
 
@@ -323,18 +326,15 @@ struct Banded3FrameSwipeMatrixRef<_sv, DP::ScoreOnly>
 };
 
 template<typename _sv>
-void traceback(sequence *query, Strand strand, int dna_len, const Banded3FrameSwipeTracebackMatrix<_sv> &dp, DpTarget &target, typename ScoreTraits<_sv>::Score max_score, int max_col, int channel, int i0, int i1, bool parallel)
+Hsp traceback(sequence *query, Strand strand, int dna_len, const Banded3FrameSwipeTracebackMatrix<_sv> &dp, const DpTarget &target, int d_begin, typename ScoreTraits<_sv>::Score max_score, int max_col, int channel, int i0, int i1)
 {
 	typedef typename ScoreTraits<_sv>::Score Score;
-	const int j0 = i1 - (target.d_end - 1), d1 = target.d_end, d0 = target.d_begin;
+	const int j0 = i1 - (target.d_end - 1), d1 = target.d_end;
 	typename Banded3FrameSwipeTracebackMatrix<_sv>::TracebackIterator it(dp.traceback(max_col + 1, i0 + max_col, j0 + max_col, dna_len, channel, max_score));
-	if (parallel)
-		target.tmp = new Hsp();
-	else
-		target.out->emplace_back();
-		
-	Hsp &out = parallel ? *target.tmp : target.out->back();
-	out.score = target.score = ScoreTraits<_sv>::int_score(max_score);
+	
+	Hsp out;
+	out.swipe_target = target.target_idx;
+	out.score = ScoreTraits<_sv>::int_score(max_score);
 	out.transcript.reserve(size_t(out.score * config.transcript_len_estimate));
 
 	out.set_end(it.i + 1, it.j + 1, Frame(strand, it.frame), dna_len);
@@ -357,7 +357,7 @@ void traceback(sequence *query, Strand strand, int dna_len, const Banded3FrameSw
 			it.walk_reverse_shift();
 		}
 		else {
-			const pair<Edit_operation, int> g(it.walk_gap(d0, d1));
+			const pair<Edit_operation, int> g(it.walk_gap(d_begin, d1));
 			out.push_gap(g.first, g.second, &target.seq[it.j + g.second]);
 		}
 	}
@@ -365,27 +365,31 @@ void traceback(sequence *query, Strand strand, int dna_len, const Banded3FrameSw
 	out.set_begin(it.i + 1, it.j + 1, Frame(strand, it.frame), dna_len);
 	out.transcript.reverse();
 	out.transcript.push_terminator();
+	return out;
 }
 
 template<typename _sv>
-void traceback(sequence *query, Strand strand, int dna_len, const Banded3FrameSwipeMatrix<_sv> &dp, DpTarget &target, typename ScoreTraits<_sv>::Score max_score, int max_col, int channel, int i0, int i1, bool parallel)
+Hsp traceback(sequence *query, Strand strand, int dna_len, const Banded3FrameSwipeMatrix<_sv> &dp, const DpTarget &target, int d_begin, typename ScoreTraits<_sv>::Score max_score, int max_col, int channel, int i0, int i1)
 {
-	if (parallel)
-		target.tmp = new Hsp();
-	else
-		target.out->emplace_back();
-	Hsp &out = parallel ? *target.tmp : target.out->back();
-	
+	Hsp out;
 	const int j0 = i1 - (target.d_end - 1);
-	out.score = target.score = ScoreTraits<_sv>::int_score(max_score);
+	out.swipe_target = target.target_idx;
+	out.score = ScoreTraits<_sv>::int_score(max_score);
 	out.query_range.end_ = std::min(i0 + max_col + (int)dp.band() / 3 / 2, (int)query[0].length());
 	out.query_range.begin_ = std::max(out.query_range.end_ - (j0 + max_col), 0);
 	out.frame = strand == FORWARD ? 0 : 3;
 	out.query_source_range = TranslatedPosition::absolute_interval(TranslatedPosition(out.query_range.begin_, Frame(out.frame)), TranslatedPosition(out.query_range.end_, Frame(out.frame)), dna_len);
+	return out;
 }
 
 template<typename _sv, typename _traceback>
-void banded_3frame_swipe(const TranslatedSequence &query, Strand strand, vector<DpTarget>::iterator subject_begin, vector<DpTarget>::iterator subject_end, DpStat &stat, bool parallel)
+list<Hsp> banded_3frame_swipe(
+	const TranslatedSequence &query,
+	Strand strand, vector<DpTarget>::const_iterator subject_begin,
+	vector<DpTarget>::const_iterator subject_end,
+	DpStat &stat,
+	bool parallel,
+	vector<DpTarget> &overflow)
 {
 	typedef typename Banded3FrameSwipeMatrixRef<_sv, _traceback>::type Matrix;
 	typedef typename ScoreTraits<_sv>::Score Score;
@@ -399,25 +403,15 @@ void banded_3frame_swipe(const TranslatedSequence &query, Strand strand, vector<
 	for (vector<DpTarget>::const_iterator j = subject_begin; j < subject_end; ++j)
 		band = std::max(band, j->d_end - j->d_begin);
 
-	int i0 = INT_MAX, i1 = INT_MAX;
-	for (vector<DpTarget>::iterator j = subject_begin; j < subject_end; ++j) {
-		/*if (j->d_end - j->d_begin < band) {
-			const int top_max = j->d_begin - (-(int)(j->seq.length() - 1)), bottom_max = qlen - j->d_end;
-			int diff = band - (j->d_end - j->d_begin);
-			int d = std::min(std::max(diff / 2, diff - bottom_max), top_max);
-			j->d_begin -= d;
-			diff -= d;
-			if (diff > bottom_max)
-				throw std::runtime_error("");
-			j->d_end += std::min(diff, bottom_max);
-		}*/
-		j->d_begin = j->d_end - band;
+	int i0 = INT_MAX, i1 = INT_MAX, d_begin[ScoreTraits<_sv>::CHANNELS];
+	for (vector<DpTarget>::const_iterator j = subject_begin; j < subject_end; ++j) {
+		d_begin[j - subject_begin] = j->d_end - band;
 		int i2 = std::max(j->d_end - 1, 0);
 		i1 = std::min(i1, i2);
 		i0 = std::min(i0, i2 + 1 - band);
 	}
 
-	TargetIterator<ScoreTraits<_sv>::CHANNELS> targets(subject_begin, subject_end, i1, qlen);
+	TargetIterator<ScoreTraits<_sv>::CHANNELS> targets(subject_begin, subject_end, i1, qlen, d_begin);
 	Matrix dp(band * 3, targets.cols);
 
 	const _sv open_penalty(score_matrix.gap_open() + score_matrix.gap_extend()),
@@ -491,85 +485,102 @@ void banded_3frame_swipe(const TranslatedSequence &query, Strand strand, vector<
 		++j;
 	}
 	
+	list<Hsp> out;
 	for (int i = 0; i < targets.n_targets; ++i) {
-		if (best[i] < ScoreTraits<_sv>::max_score()) {
-			subject_begin[i].overflow = false;
-			traceback<_sv>(q, strand, (int)query.source().length(), dp, subject_begin[i], best[i], max_col[i], i, i0 - j, i1 - j, parallel);
-		}
+		if (best[i] < ScoreTraits<_sv>::max_score())
+			out.push_back(traceback<_sv>(q, strand, (int)query.source().length(), dp, subject_begin[i], d_begin[i], best[i], max_col[i], i, i0 - j, i1 - j));
 		else
-			subject_begin[i].overflow = true;
+			overflow.push_back(subject_begin[i]);
 	}
+	return out;
 }
 
 template<typename _sv>
-void banded_3frame_swipe_targets(vector<DpTarget>::iterator begin,
-	vector<DpTarget>::iterator end,
+list<Hsp> banded_3frame_swipe_targets(vector<DpTarget>::const_iterator begin,
+	vector<DpTarget>::const_iterator end,
 	bool score_only,
 	const TranslatedSequence &query,
 	Strand strand,
 	DpStat &stat,
 	bool parallel,
-	bool overflow_only)
+	vector<DpTarget> &overflow)
 {
-	for (vector<DpTarget>::iterator i = begin; i < end; i += ScoreTraits<_sv>::CHANNELS) {
-		if (!overflow_only || i->overflow) {
-			if (score_only || config.disable_traceback)
-				banded_3frame_swipe<_sv, DP::ScoreOnly>(query, strand, i, i + std::min(vector<DpTarget>::iterator::difference_type(ScoreTraits<_sv>::CHANNELS), end - i), stat, parallel);
-			else
-				banded_3frame_swipe<_sv, DP::Traceback>(query, strand, i, i + std::min(vector<DpTarget>::iterator::difference_type(ScoreTraits<_sv>::CHANNELS), end - i), stat, parallel);
-		}
+	list<Hsp> out;
+	for (vector<DpTarget>::const_iterator i = begin; i < end; i += ScoreTraits<_sv>::CHANNELS) {
+		if (score_only || config.disable_traceback)
+			out.splice(out.end(), banded_3frame_swipe<_sv, DP::ScoreOnly>(query, strand, i, i + std::min(vector<DpTarget>::const_iterator::difference_type(ScoreTraits<_sv>::CHANNELS), end - i), stat, parallel, overflow));
+		else
+			out.splice(out.end(), banded_3frame_swipe<_sv, DP::Traceback>(query, strand, i, i + std::min(vector<DpTarget>::const_iterator::difference_type(ScoreTraits<_sv>::CHANNELS), end - i), stat, parallel, overflow));
 	}
+	return out;
 }
 
-void banded_3frame_swipe_worker(vector<DpTarget>::iterator begin,
-	vector<DpTarget>::iterator end,
+void banded_3frame_swipe_worker(vector<DpTarget>::const_iterator begin,
+	vector<DpTarget>::const_iterator end,
 	Atomic<size_t> *next,
 	bool score_only,
 	const TranslatedSequence *query,
-	Strand strand)
+	Strand strand,
+	list<Hsp> *out,
+	vector<DpTarget> *overflow)
 {
 	DpStat stat;
 	size_t pos;
+	vector<DpTarget> of;
 	while (begin + (pos = next->post_add(config.swipe_chunk_size)) < end)
 #ifdef __SSE2__
-		banded_3frame_swipe_targets<score_vector<int16_t>>(begin + pos, min(begin + pos + config.swipe_chunk_size, end), score_only, *query, strand, stat, true, false);
+		out->splice(out->end(), banded_3frame_swipe_targets<score_vector<int16_t>>(begin + pos, min(begin + pos + config.swipe_chunk_size, end), score_only, *query, strand, stat, true, of));
 #else
-		banded_3frame_swipe_targets<int32_t>(begin + pos, min(begin + pos + config.swipe_chunk_size, end), score_only, *query, strand, stat, true, false);
+		out->splice(out->end(), banded_3frame_swipe_targets<int32_t>(begin + pos, min(begin + pos + config.swipe_chunk_size, end), score_only, *query, strand, stat, true, false, of));
 #endif
+	*overflow = std::move(of);
 }
 
-void banded_3frame_swipe(const TranslatedSequence &query, Strand strand, vector<DpTarget>::iterator target_begin, vector<DpTarget>::iterator target_end, DpStat &stat, bool score_only, bool parallel)
+list<Hsp> banded_3frame_swipe(const TranslatedSequence &query, Strand strand, vector<DpTarget>::iterator target_begin, vector<DpTarget>::iterator target_end, DpStat &stat, bool score_only, bool parallel)
 {
 #ifdef __SSE2__
 	task_timer timer("Banded 3frame swipe (sort)", parallel ? 3 : UINT_MAX);
 	std::stable_sort(target_begin, target_end);
+	list<Hsp> out;
+	vector<DpTarget> overflow;
 	if (parallel) {
 		timer.go("Banded 3frame swipe (run)");
 		vector<thread> threads;
+		vector<list<Hsp>*> thread_out;
+		vector<vector<DpTarget>> thread_overflow(config.threads_);
 		Atomic<size_t> next(0);
-		for (size_t i = 0; i < config.threads_; ++i)
+		for (size_t i = 0; i < config.threads_; ++i) {
+			thread_out.push_back(new list<Hsp>);
 			threads.emplace_back(banded_3frame_swipe_worker,
 				target_begin,
 				target_end,
 				&next,
 				score_only,
 				&query,
-				strand);
+				strand,
+				thread_out.back(),
+				&thread_overflow[i]);
+		}
 		for (auto &t : threads)
 			t.join();
 		timer.go("Banded 3frame swipe (merge)");
-		for (auto i = target_begin; i < target_end; ++i) {
-			i->out->push_back(*i->tmp);
-			delete i->tmp;
+		for (list<Hsp>* l : thread_out) {
+			out.splice(out.end(), *l);
+			delete l;
 		}
+		overflow.reserve(std::accumulate(thread_overflow.begin(), thread_overflow.end(), (size_t)0, [](size_t n, const vector<DpTarget> &v) { return n + v.size(); }));
+		for (const vector<DpTarget> &v : thread_overflow)
+			overflow.insert(overflow.end(), v.begin(), v.end());
 	}
 	else
-		banded_3frame_swipe_targets<score_vector<int16_t>>(target_begin, target_end, score_only, query, strand, stat, false, false);
+		out = banded_3frame_swipe_targets<score_vector<int16_t>>(target_begin, target_end, score_only, query, strand, stat, false, overflow);
 
-	banded_3frame_swipe_targets<int32_t>(target_begin, target_end, score_only, query, strand, stat, false, true);
+	out.splice(out.end(), banded_3frame_swipe_targets<int32_t>(overflow.begin(), overflow.end(), score_only, query, strand, stat, false, vector<DpTarget>()));
 #else
-	banded_3frame_swipe_targets<int32_t>(target_begin, target_end, score_only, query, strand, stat, false, false);
+	out = banded_3frame_swipe_targets<int32_t>(target_begin, target_end, score_only, query, strand, stat, false, overflow);
 #endif
+
+	return out;
 }
 
 }

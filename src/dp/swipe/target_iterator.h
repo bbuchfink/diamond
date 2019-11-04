@@ -28,7 +28,7 @@ template<int _n>
 struct TargetIterator
 {
 
-	TargetIterator(vector<DpTarget>::const_iterator subject_begin, vector<DpTarget>::const_iterator subject_end, int i1, int qlen) :
+	TargetIterator(vector<DpTarget>::const_iterator subject_begin, vector<DpTarget>::const_iterator subject_end, int i1, int qlen, int *d_begin) :
 		next(0),
 		n_targets(int(subject_end - subject_begin)),
 		cols(0),
@@ -37,7 +37,7 @@ struct TargetIterator
 		for (; next < std::min(_n, n_targets); ++next) {
 			const DpTarget &t = subject_begin[next];
 			pos[next] = i1 - (t.d_end - 1);
-			const int j1 = std::min(qlen - 1 - t.d_begin, (int)(t.seq.length() - 1)) + 1;
+			const int j1 = std::min(qlen - 1 - d_begin[next], (int)(t.seq.length() - 1)) + 1;
 			cols = std::max(cols, j1 - pos[next]);
 			target[next] = next;
 			active.push_back(next);
