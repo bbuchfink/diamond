@@ -542,7 +542,7 @@ list<Hsp> banded_3frame_swipe(const TranslatedSequence &query, Strand strand, ve
 	task_timer timer("Banded 3frame swipe (sort)", parallel ? 3 : UINT_MAX);
 	std::stable_sort(target_begin, target_end);
 	list<Hsp> out;
-	vector<DpTarget> overflow;
+	vector<DpTarget> overflow16, overflow32;
 	if (parallel) {
 		timer.go("Banded 3frame swipe (run)");
 		vector<thread> threads;
@@ -568,14 +568,14 @@ list<Hsp> banded_3frame_swipe(const TranslatedSequence &query, Strand strand, ve
 			out.splice(out.end(), *l);
 			delete l;
 		}
-		overflow.reserve(std::accumulate(thread_overflow.begin(), thread_overflow.end(), (size_t)0, [](size_t n, const vector<DpTarget> &v) { return n + v.size(); }));
+		overflow16.reserve(std::accumulate(thread_overflow.begin(), thread_overflow.end(), (size_t)0, [](size_t n, const vector<DpTarget> &v) { return n + v.size(); }));
 		for (const vector<DpTarget> &v : thread_overflow)
-			overflow.insert(overflow.end(), v.begin(), v.end());
+			overflow16.insert(overflow16.end(), v.begin(), v.end());
 	}
 	else
-		out = banded_3frame_swipe_targets<score_vector<int16_t>>(target_begin, target_end, score_only, query, strand, stat, false, overflow);
+		out = banded_3frame_swipe_targets<score_vector<int16_t>>(target_begin, target_end, score_only, query, strand, stat, false, overflow16);
 
-	out.splice(out.end(), banded_3frame_swipe_targets<int32_t>(overflow.begin(), overflow.end(), score_only, query, strand, stat, false, vector<DpTarget>()));
+	out.splice(out.end(), banded_3frame_swipe_targets<int32_t>(overflow16.begin(), overflow16.end(), score_only, query, strand, stat, false, overflow32));
 #else
 	out = banded_3frame_swipe_targets<int32_t>(target_begin, target_end, score_only, query, strand, stat, false, overflow);
 #endif
