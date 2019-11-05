@@ -531,18 +531,18 @@ void banded_3frame_swipe_worker(vector<DpTarget>::const_iterator begin,
 #ifdef __SSE2__
 		out->splice(out->end(), banded_3frame_swipe_targets<score_vector<int16_t>>(begin + pos, min(begin + pos + config.swipe_chunk_size, end), score_only, *query, strand, stat, true, of));
 #else
-		out->splice(out->end(), banded_3frame_swipe_targets<int32_t>(begin + pos, min(begin + pos + config.swipe_chunk_size, end), score_only, *query, strand, stat, true, false, of));
+		out->splice(out->end(), banded_3frame_swipe_targets<int32_t>(begin + pos, min(begin + pos + config.swipe_chunk_size, end), score_only, *query, strand, stat, true, of));
 #endif
 	*overflow = std::move(of);
 }
 
 list<Hsp> banded_3frame_swipe(const TranslatedSequence &query, Strand strand, vector<DpTarget>::iterator target_begin, vector<DpTarget>::iterator target_end, DpStat &stat, bool score_only, bool parallel)
 {
+	vector<DpTarget> overflow16, overflow32;
 #ifdef __SSE2__
 	task_timer timer("Banded 3frame swipe (sort)", parallel ? 3 : UINT_MAX);
 	std::stable_sort(target_begin, target_end);
 	list<Hsp> out;
-	vector<DpTarget> overflow16, overflow32;
 	if (parallel) {
 		timer.go("Banded 3frame swipe (run)");
 		vector<thread> threads;
@@ -576,11 +576,10 @@ list<Hsp> banded_3frame_swipe(const TranslatedSequence &query, Strand strand, ve
 		out = banded_3frame_swipe_targets<score_vector<int16_t>>(target_begin, target_end, score_only, query, strand, stat, false, overflow16);
 
 	out.splice(out.end(), banded_3frame_swipe_targets<int32_t>(overflow16.begin(), overflow16.end(), score_only, query, strand, stat, false, overflow32));
-#else
-	out = banded_3frame_swipe_targets<int32_t>(target_begin, target_end, score_only, query, strand, stat, false, overflow);
-#endif
-
 	return out;
+#else
+	return banded_3frame_swipe_targets<int32_t>(target_begin, target_end, score_only, query, strand, stat, false, overflow32);
+#endif
 }
 
 }

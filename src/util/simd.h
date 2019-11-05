@@ -52,7 +52,6 @@ namespace SIMD {
 enum class Arch { None, Generic, SSE4_1 };
 enum Flags { SSSE3 = 1, POPCNT = 2, SSE4_1 = 4 };
 Arch arch();
-extern int flags;
 
 #define DECL_DISPATCH(ret, name, param) namespace ARCH_GENERIC { ret name param; }\
 namespace ARCH_SSE4_1 { ret name param; }\

@@ -73,6 +73,7 @@ void benchmark_ungapped(const sequence &s1, const sequence &s2)
 	cout << "Scalar ungapped extension:\t" << (double)time_span.count() / (n*40) * 1000 << " ps/Cell" << endl;
 }
 
+#ifdef __SSSE3__
 void benchmark_ungapped_sse(const sequence &s1, const sequence &s2)
 {
 	static const size_t n = 100000000llu;
@@ -89,6 +90,7 @@ void benchmark_ungapped_sse(const sequence &s1, const sequence &s2)
 	}
 	cout << "SSE score shuffle:\t\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * 16) * 1000 << " ps/Letter" << endl;
 }
+#endif
 
 void benchmark_transpose() {
 	static const size_t n = 100000000llu;
@@ -102,6 +104,7 @@ void benchmark_transpose() {
 	cout << "Matrix transpose 16x16 bytes:\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * 256) * 1000 << " ps/Letter" << endl;
 }
 
+#ifdef __SSE2__
 void swipe_cell_update() {
 	static const size_t n = 1000000000llu;
 	high_resolution_clock::time_point t1 = high_resolution_clock::now();
@@ -122,6 +125,7 @@ void swipe_cell_update() {
 	}
 	cout << "SWIPE cell update (int8_t):\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * 16) * 1000 << " ps/Cell" << endl;
 }
+#endif
 
 void swipe(const sequence &s1, const sequence &s2) {
 	sequence target[16];
@@ -153,11 +157,15 @@ void benchmark() {
 	s2 = sequence::from_string("erlvelvtmmgdqgelpiamalanvvpcsqwdelarvlvtlfdsrhllyqllwnmfskeveladsmqtlfrgnslaskimtfcfkvygatylqklldpllrivitssdwqhvsfevdptrlepsesleenqrnllqmtekffhaiissssefppqlrsvchclyqvvsqrfpqnsigavgsamflrfinpaivspyeagildkkpppiierglklmskilqsianhvlftkeehmrpfndfvksnfdaarrffldiasdcptsdavnhslsfisdgnvlalhrllwnnqekigqylssnrdhkavgrrpfdkmatllaylgppe");
 	
 	benchmark_ungapped(s1, s2);
+#ifdef __SSSE3__
 	benchmark_ungapped_sse(s1, s2);
+#endif
 	benchmark_transpose();
-	swipe_cell_update();
+#ifdef __SSE2__
 	swipe(s1, s2);
 	banded_swipe(s1, s2);
+	swipe_cell_update();
+#endif
 }
 
 }}

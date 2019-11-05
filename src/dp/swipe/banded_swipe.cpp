@@ -377,7 +377,9 @@ void swipe(const sequence &query, Frame frame, vector<DpTarget>::const_iterator 
 	}
 }
 
+#ifdef __SSE2__
 template void swipe<score_vector<int16_t>, Traceback>(const sequence&, Frame, vector<DpTarget>::const_iterator, vector<DpTarget>::const_iterator);
 template void swipe<score_vector<int16_t>, ScoreOnly>(const sequence&, Frame, vector<DpTarget>::const_iterator, vector<DpTarget>::const_iterator);
+#endif
 
 }}}

@@ -160,6 +160,8 @@ vector<int> swipe(const sequence &query, const sequence *subject_begin, const se
 {
 #ifdef __SSE2__
 	return swipe<score_vector<uint8_t>>(query, subject_begin, subject_end);
+#else
+	return {};
 #endif
 }
 
