@@ -18,7 +18,6 @@ Keep posted about new developments by following me on
 
 [![Build Status](https://travis-ci.org/bbuchfink/diamond.svg?branch=master)](https://travis-ci.org/bbuchfink/diamond)
 [![image](https://anaconda.org/bioconda/diamond/badges/version.svg)](https://anaconda.org/bioconda/diamond)
-![image](https://anaconda.org/bioconda/diamond/badges/platforms.svg)
 [![image](https://anaconda.org/bioconda/diamond/badges/downloads.svg)](https://anaconda.org/bioconda/diamond)
 
 Quick start guide
@@ -32,7 +31,7 @@ quick example for setting up and using the program on Linux.
 Installing the software on your system may be done by downloading it in
 binary format for immediate use:
 
-    wget http://github.com/bbuchfink/diamond/releases/download/v0.9.27/diamond-linux64.tar.gz
+    wget http://github.com/bbuchfink/diamond/releases/download/v0.9.28/diamond-linux64.tar.gz
     tar xzf diamond-linux64.tar.gz
 
 The extracted `diamond` binary file should be moved to a directory

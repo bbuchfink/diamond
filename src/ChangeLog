@@ -1,5 +1,6 @@
 [0.9.28]
-- Fixed a bug that could cause alignment score overflows for scores > 65536 in frameshift alignment mode.
+- Fixed a bug that could cause alignment score overflows for scores > 65535 in frameshift alignment mode.
+- Fixed a clang compiler error.
 
 [0.9.27]
 - Improved performance of the seed matching stage.
