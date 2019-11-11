@@ -154,16 +154,18 @@ void Pipeline::run_swipe(bool score_only)
 	vector<DpTarget> vf, vr;
 	for (size_t i = 0; i < n_targets(); ++i)
 		target(i).add(*this, vf, vr, (int)i);
+	list<Hsp> hsp;
 	if (score_matrix.frame_shift()) {
-		list<Hsp> hsp = banded_3frame_swipe(translated_query, FORWARD, vf.begin(), vf.end(), this->dp_stat, score_only, target_parallel);
+		hsp = banded_3frame_swipe(translated_query, FORWARD, vf.begin(), vf.end(), this->dp_stat, score_only, target_parallel);
 		hsp.splice(hsp.end(), banded_3frame_swipe(translated_query, REVERSE, vr.begin(), vr.end(), this->dp_stat, score_only, target_parallel));
-		while (!hsp.empty()) {
-			list<Hsp> &l = target(hsp.begin()->swipe_target).hsps;
-			l.splice(l.end(), hsp, hsp.begin());
-		}
 	}
 	else {
-		DP::BandedSwipe::swipe(query_seq(0), vf.begin(), vf.end(), Frame(0), score_only ? 0 : DP::TRACEBACK);
+		hsp = DP::BandedSwipe::swipe(query_seq(0), vf.begin(), vf.end(), Frame(0), query_cb[0], score_only ? 0 : DP::TRACEBACK);
+	}
+	
+	while (!hsp.empty()) {
+		list<Hsp> &l = target(hsp.begin()->swipe_target).hsps;
+		l.splice(l.end(), hsp, hsp.begin());
 	}
 }
 

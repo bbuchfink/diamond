@@ -98,6 +98,13 @@ Bias_correction::Bias_correction(const sequence &seq):
 			this->operator[](m) = (float)background_scores[(int)r] - float(scores.scores[(int)r] - score_matrix(r, r)) / (n - 1);
 		++m;
 	}
+
+	int16.reserve(seq.length());
+	for (float f : *this) {
+		if (f > 0)
+			std::cout << f << std::endl;
+		int16.push_back(int16_t(f < 0.0f ? f - 0.5f : f + 0.5f));
+	}
 }
 
 int Bias_correction::operator()(const Hsp &hsp) const

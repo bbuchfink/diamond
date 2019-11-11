@@ -45,15 +45,16 @@ inline _sv cell_update(const _sv &diagonal_cell,
 }
 
 template<typename _sv>
-inline _sv cell_update(const _sv &diagonal_cell,
+inline _sv cell_update_cbs(const _sv &diagonal_cell,
 	const _sv &scores,
+	const _sv &query_bias,
 	const _sv &gap_extension,
 	const _sv &gap_open,
 	_sv &horizontal_gap,
 	_sv &vertical_gap,
 	_sv &best)
 {
-	_sv current_cell = diagonal_cell + scores;
+	_sv current_cell = diagonal_cell + scores + query_bias;
 	current_cell.max(vertical_gap).max(horizontal_gap);
 	best.max(current_cell);
 	vertical_gap -= gap_extension;

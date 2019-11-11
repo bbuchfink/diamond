@@ -26,6 +26,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "target_iterator.h"
 #include "../../util/thread.h"
 #include "../../util/data_structures/mem_buffer.h"
+#include "../score_vector_int16.h"
 
 using std::list;
 using std::thread;
