@@ -101,8 +101,6 @@ Bias_correction::Bias_correction(const sequence &seq):
 
 	int16.reserve(seq.length());
 	for (float f : *this) {
-		if (f > 0)
-			std::cout << f << std::endl;
 		int16.push_back(int16_t(f < 0.0f ? f - 0.5f : f + 0.5f));
 	}
 }
