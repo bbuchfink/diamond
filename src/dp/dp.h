@@ -1,6 +1,6 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2017 Benjamin Buchfink <buchfink@gmail.com>
+Copyright (C) 2013-2019 Benjamin Buchfink <buchfink@gmail.com>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -558,7 +558,7 @@ enum { TRACEBACK = 1 };
 	
 namespace Swipe {
 
-DECL_DISPATCH(std::vector<int>, swipe, (const sequence &query, const sequence *subject_begin, const sequence *subject_end))
+DECL_DISPATCH(std::list<Hsp>, swipe, (const sequence &query, const sequence *subject_begin, const sequence *subject_end, int score_cutoff))
 
 }
 

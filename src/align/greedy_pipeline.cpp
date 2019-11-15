@@ -31,7 +31,7 @@ struct Target : public ::Target
 	void ungapped_stage(QueryMapper &mapper)
 	{
 		if (config.log_subject)
-			cout << "Subject = " << ref_ids::get()[subject_id].c_str() << endl;
+			cout << "Subject = " << ref_ids::get()[subject_block_id].c_str() << endl;
 		std::stable_sort(mapper.seed_hits.begin() + begin, mapper.seed_hits.begin() + end, Seed_hit::compare_diag);
 		typedef Map<vector<Seed_hit>::const_iterator, Seed_hit::Frame> Hit_map;
 		Hit_map hit_map(mapper.seed_hits.begin() + begin, mapper.seed_hits.begin() + end);
@@ -49,7 +49,7 @@ struct Target : public ::Target
 	void greedy_stage(QueryMapper &mapper, Statistics &stat, int cutoff)
 	{
 		if (config.log_subject)
-			cout << "Subject = " << ref_ids::get()[subject_id].c_str() << endl;
+			cout << "Subject = " << ref_ids::get()[subject_block_id].c_str() << endl;
 #ifdef ENABLE_TIMING
 		High_res_timer timer;
 #endif
@@ -75,7 +75,7 @@ struct Target : public ::Target
 	{
 		const size_t n = end - begin;
 		if (config.log_subject)
-			cout << "Subject = " << ref_ids::get()[subject_id].c_str() << endl;
+			cout << "Subject = " << ref_ids::get()[subject_block_id].c_str() << endl;
 
 		stat.inc(Statistics::CELLS, mapper.query_seq(0).length() * subject.length());
 

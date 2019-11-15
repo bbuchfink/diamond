@@ -125,6 +125,19 @@ struct score_vector<int16_t>
 		_mm_storeu_si128((__m128i*)ptr, data_);
 	}
 
+	int16_t operator[](int i) const {
+		int16_t d[8];
+		store(d);
+		return d[i];
+	}
+
+	void set(int i, int16_t x) {
+		int16_t d[8];
+		store(d);
+		d[i] = x;
+		data_ = _mm_loadu_si128((__m128i*)d);
+	}
+
 	__m128i data_;
 
 };
@@ -141,7 +154,7 @@ struct ScoreTraits<score_vector<int16_t>>
 	static void saturate(score_vector<int16_t> &v)
 	{
 	}
-	static int16_t zero_score()
+	static constexpr int16_t zero_score()
 	{
 		return SHRT_MIN;
 	}

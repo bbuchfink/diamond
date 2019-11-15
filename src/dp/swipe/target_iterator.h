@@ -80,15 +80,6 @@ struct TargetIterator
 	}
 #endif
 
-	__m128i seq_vector() const {
-		uint8_t s[16];
-		for (int i = 0; i < active.size(); ++i) {
-			const int channel = active[i];
-			s[channel] = (*this)[channel];
-		}
-		return _mm_loadu_si128((const __m128i*)s);
-	}
-
 	bool init_target(int i, int channel)
 	{
 		if (next < n_targets) {
@@ -152,10 +143,10 @@ struct TargetBuffer
 #ifdef DP_STAT
 	__m128i seq_vector()
 #else
-	__m128i seq_vector() const
+	template<typename _t, int _n> __m128i seq_vector() const
 #endif	
 	{
-		uint8_t s[16];
+		_t s[_n];
 		for (int i = 0; i < active.size(); ++i) {
 			const int channel = active[i];
 			s[channel] = (*this)[channel];

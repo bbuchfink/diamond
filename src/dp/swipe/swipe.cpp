@@ -18,20 +18,21 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <vector>
 #include "../score_vector.h"
+#include "../score_vector_int8.h"
+#include "../score_vector_int16.h"
 #include "swipe.h"
 #include "../../basic/sequence.h"
 #include "target_iterator.h"
-
-// #define SW_ENABLE_DEBUG
+#include "../../util/data_structures/mem_buffer.h"
 
 using std::vector;
-using std::pair;
+using std::list;
 
 namespace DP { namespace Swipe {
 namespace DISPATCH_ARCH {
 
 template<typename _sv>
-struct DPMatrix
+struct Matrix
 {
 	struct ColumnIterator
 	{
@@ -61,11 +62,9 @@ struct DPMatrix
 		}
 		_sv *hgap_ptr_, *score_ptr_;
 	};
-	DPMatrix(int rows)
+	Matrix(int rows)
 	{
-		hgap_.clear();
 		hgap_.resize(rows);
-		score_.clear();
 		score_.resize(rows + 1);
 		std::fill(hgap_.begin(), hgap_.end(), ScoreTraits<_sv>::zero());
 		std::fill(score_.begin(), score_.end(), ScoreTraits<_sv>::zero());
@@ -78,62 +77,67 @@ struct DPMatrix
 	{
 		const int l = (int)hgap_.size();
 		for (int i = 0; i < l; ++i) {
-			hgap_[i].set(c, 0);
-			score_[i].set(c, 0);
+			hgap_[i].set(c, ScoreTraits<_sv>::zero_score());
+			score_[i].set(c, ScoreTraits<_sv>::zero_score());
 		}
-		score_[l].set(c, 0);
+		score_[l].set(c, ScoreTraits<_sv>::zero_score());
 	}
 private:
-	static thread_local std::vector<_sv> hgap_, score_;
+	static thread_local MemBuffer<_sv> hgap_, score_;
 };
 
-template<typename _sv> thread_local std::vector<_sv> DPMatrix<_sv>::hgap_;
-template<typename _sv> thread_local std::vector<_sv> DPMatrix<_sv>::score_;
+template<typename _sv> thread_local MemBuffer<_sv> Matrix<_sv>::hgap_;
+template<typename _sv> thread_local MemBuffer<_sv> Matrix<_sv>::score_;
 
 #ifdef __SSE2__
 
 template<typename _sv>
-vector<int> swipe(const sequence &query, const sequence *subject_begin, const sequence *subject_end)
+list<Hsp> swipe(const sequence &query, const sequence *subject_begin, const sequence *subject_end, int score_cutoff, vector<int> &overflow)
 {
-#ifdef SW_ENABLE_DEBUG
-	static int v[1024][1024];
-#endif
+	typedef typename ScoreTraits<_sv>::Score Score;
 
 	const int qlen = (int)query.length();
-	DPMatrix<_sv> dp(qlen);
+	Matrix<_sv> dp(qlen);
 
-	const _sv open_penalty(static_cast<char>(score_matrix.gap_open() + score_matrix.gap_extend())),
-		extend_penalty(static_cast<char>(score_matrix.gap_extend())),
-		vbias(score_matrix.bias());
+	const _sv open_penalty(static_cast<Score>(score_matrix.gap_open() + score_matrix.gap_extend())),
+		extend_penalty(static_cast<Score>(score_matrix.gap_extend()));
 	_sv best;
 	SwipeProfile<_sv> profile;
-	TargetBuffer<_sv::CHANNELS> targets(subject_begin, subject_end);
-	vector<int> out(targets.n_targets);
+	TargetBuffer<ScoreTraits<_sv>::CHANNELS> targets(subject_begin, subject_end);
+	list<Hsp> out;
 
 	while (targets.active.size() > 0) {
-		typename DPMatrix<_sv>::ColumnIterator it(dp.begin());
+		typename Matrix<_sv>::ColumnIterator it(dp.begin());
 		_sv vgap, hgap, last;
-		profile.set(targets.seq_vector());
+		profile.set(targets.seq_vector<Score, ScoreTraits<_sv>::CHANNELS>());
 		for (int i = 0; i < qlen; ++i) {
 			hgap = it.hgap();
-			const _sv next = cell_update<_sv>(it.diag(), profile.get(query[i]), extend_penalty, open_penalty, hgap, vgap, best, vbias);
+			const _sv next = cell_update_sv<_sv>(it.diag(), profile.get(query[i]), extend_penalty, open_penalty, hgap, vgap, best);
 			it.set_hgap(hgap);
 			it.set_score(last);
 			last = next;
-#ifdef SW_ENABLE_DEBUG
-			v[targets.pos[0]][i] = next[0];
-#endif
 			++it;
 		}
 		it.set_score(last);
 		
 		for (int i = 0; i < targets.active.size();) {
 			int j = targets.active[i];
-			if (!targets.inc(j)) {
-				out[targets.target[j]] = best[j];
+			if (best[j] == ScoreTraits<_sv>::max_score()) {
+				overflow.push_back(targets.target[j]);
 				if (targets.init_target(i, j)) {
 					dp.set_zero(j);
-					best.set(j, 0);
+					best.set(j, ScoreTraits<_sv>::zero_score());
+				}
+				else
+					continue;
+			}
+			if (!targets.inc(j)) {
+				const int s = ScoreTraits<_sv>::int_score(best[j]);
+				if (s >= score_cutoff) 
+					out.emplace_back(s, targets.target[j]);						
+				if (targets.init_target(i, j)) {
+					dp.set_zero(j);
+					best.set(j, ScoreTraits<_sv>::zero_score());
 				}
 				else
 					continue;
@@ -142,24 +146,27 @@ vector<int> swipe(const sequence &query, const sequence *subject_begin, const se
 		}
 	}
 
-#ifdef SW_ENABLE_DEBUG
-	for (unsigned j = 0; j < qlen; ++j) {
-		for (unsigned i = 0; i < subject_begin[0].length(); ++i)
-			printf("%4i", v[i][j]);
-		printf("\n");
-	}
-	printf("\n");
-#endif
-
 	return out;
 }
 
 #endif
 
-vector<int> swipe(const sequence &query, const sequence *subject_begin, const sequence *subject_end)
+list<Hsp> swipe(const sequence &query, const sequence *subject_begin, const sequence *subject_end, int score_cutoff)
 {
-#ifdef __SSE2__
-	return swipe<score_vector<uint8_t>>(query, subject_begin, subject_end);
+	vector<int> overflow8, overflow16;
+#ifdef __SSE4_1__
+	list<Hsp> out = swipe<score_vector<int8_t>>(query, subject_begin, subject_end, score_cutoff, overflow8);
+
+	vector<sequence> overflow_seq;
+	overflow_seq.reserve(overflow8.size());
+	for (int i : overflow8)
+		overflow_seq.push_back(subject_begin[i]);
+	list<Hsp> out16 = swipe<score_vector<int16_t>>(query, overflow_seq.data(), overflow_seq.data() + overflow_seq.size(), score_cutoff, overflow16);
+	for (Hsp &hsp : out16)
+		hsp.swipe_target = overflow8[hsp.swipe_target];
+	out.splice(out.end(), out16);
+
+	return out;
 #else
 	return {};
 #endif

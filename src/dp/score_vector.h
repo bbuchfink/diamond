@@ -446,8 +446,12 @@ inline void store_sv(int32_t sv, int32_t *dst)
 template<>
 struct ScoreTraits<score_vector<uint8_t>>
 {
+	enum { CHANNELS = 16 };
 	static score_vector<uint8_t> zero() {
 		return score_vector<uint8_t>();
+	}
+	static constexpr uint8_t max_score() {
+		return std::numeric_limits<uint8_t>::max();
 	}
 };
 

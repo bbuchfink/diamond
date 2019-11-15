@@ -50,6 +50,10 @@ struct MemBuffer {
 		size_ = n;
 	}
 
+	size_t size() const {
+		return size_;
+	}
+
 	_t* begin() {
 		return data_;
 	}

@@ -226,7 +226,7 @@ bool QueryMapper::generate_output(TextBuffer &buffer, Statistics &stat, const Me
 			|| score_matrix.bitscore(targets[i].filter_score) < config.min_bit_score)
 			break;
 
-		const size_t subject_id = targets[i].subject_id;
+		const size_t subject_id = targets[i].subject_block_id;
 		const unsigned subject_len = (unsigned)ref_seqs::get()[subject_id].length();
 		const char *ref_title = ref_ids::get()[subject_id].c_str();
 		targets[i].apply_filters(source_query_len, subject_len, query_title, ref_title);

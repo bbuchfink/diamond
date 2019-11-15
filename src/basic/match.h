@@ -1,6 +1,6 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2017 Benjamin Buchfink <buchfink@gmail.com>
+Copyright (C) 2013-2019 Benjamin Buchfink <buchfink@gmail.com>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -56,7 +56,7 @@ struct Hsp
 		sw_score(0)
 	{}
 
-	Hsp(int score) :
+	Hsp(int score, unsigned swipe_target = 0) :
 		score(unsigned(score)),
 		frame(0),
 		length(0),
@@ -65,7 +65,8 @@ struct Hsp
 		positives(0),
 		gap_openings(0),
 		gaps(0),
-		sw_score(0)
+		sw_score(0),
+		swipe_target(swipe_target)
 	{}
 
 	Hsp(const IntermediateRecord &r, unsigned query_source_len);

@@ -1,6 +1,6 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2018 Benjamin Buchfink <buchfink@gmail.com>
+Copyright (C) 2013-2019 Benjamin Buchfink <buchfink@gmail.com>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -20,7 +20,28 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define SWIPE_H_
 
 #include "../score_vector.h"
+#include "../score_vector_int8.h"
 #include "../../basic/value.h"
+
+template<typename _sv>
+inline _sv cell_update_sv(const _sv &diagonal_cell,
+	const _sv &scores,
+	const _sv &gap_extension,
+	const _sv &gap_open,
+	_sv &horizontal_gap,
+	_sv &vertical_gap,
+	_sv &best)
+{
+	_sv current_cell = diagonal_cell + scores;
+	current_cell.max(vertical_gap).max(horizontal_gap);
+	best.max(current_cell);
+	vertical_gap -= gap_extension;
+	horizontal_gap -= gap_extension;
+	const _sv open = current_cell - gap_open;
+	vertical_gap.max(open);
+	horizontal_gap.max(open);
+	return current_cell;
+}
 
 template<typename _sv>
 inline _sv cell_update(const _sv &diagonal_cell,
@@ -138,6 +159,26 @@ struct SwipeProfile
 	}
 	_sv data_[AMINO_ACID_COUNT];
 };
+
+#ifdef __SSE4_1__
+
+template<>
+struct SwipeProfile<score_vector<int8_t>>
+{
+	inline void set(const __m128i &seq)
+	{
+		assert(sizeof(data_) / sizeof(score_vector<int8_t>) >= value_traits.alphabet_size);
+		for (unsigned j = 0; j < AMINO_ACID_COUNT; ++j)
+			data_[j] = score_vector<int8_t>(j, seq);
+	}
+	inline const score_vector<int8_t>& get(Letter i) const
+	{
+		return data_[(int)i];
+	}
+	score_vector<int8_t> data_[AMINO_ACID_COUNT];
+};
+
+#endif
 
 template<>
 struct SwipeProfile<int32_t>

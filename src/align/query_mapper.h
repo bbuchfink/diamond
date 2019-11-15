@@ -40,7 +40,7 @@ struct Target
 		filter_score(score)
 	{}
 	Target(size_t begin, unsigned subject_id) :
-		subject_id(subject_id),
+		subject_block_id(subject_id),
 		subject(ref_seqs::get()[subject_id]),
 		filter_score(0),
 		outranked(false),
@@ -48,7 +48,7 @@ struct Target
 	{}		
 	static bool compare(Target* lhs, Target *rhs)
 	{
-		return lhs->filter_score > rhs->filter_score || (lhs->filter_score == rhs->filter_score && lhs->subject_id < rhs->subject_id);
+		return lhs->filter_score > rhs->filter_score || (lhs->filter_score == rhs->filter_score && lhs->subject_block_id < rhs->subject_block_id);
 	}
 	void fill_source_ranges(size_t query_len)
 	{
@@ -62,7 +62,7 @@ struct Target
 	bool is_enveloped(PtrVector<Target>::const_iterator begin, PtrVector<Target>::const_iterator end, double p, int min_score) const;
 	void inner_culling(int cutoff);
 	void apply_filters(int dna_len, int subject_len, const char *query_title, const char *ref_title);
-	unsigned subject_id;
+	unsigned subject_block_id;
 	sequence subject;
 	int filter_score;
 	float filter_time;

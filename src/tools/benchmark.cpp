@@ -113,30 +113,36 @@ void swipe_cell_update() {
 		for (size_t i = 0; i < n; ++i) {
 			diagonal_cell = cell_update(diagonal_cell, scores, gap_extension, gap_open, horizontal_gap, vertical_gap, best, vbias);
 		}
+		volatile __m128i x = diagonal_cell.data_;
 	}
 	cout << "SWIPE cell update (uint8_t):\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * 16) * 1000 << " ps/Cell" << endl;
 
+#ifdef __SSE4_1__
 	t1 = high_resolution_clock::now();
 	{
 		score_vector<int8_t> diagonal_cell, scores, gap_extension, gap_open, horizontal_gap, vertical_gap, best;
 		for (size_t i = 0; i < n; ++i) {
-			diagonal_cell = cell_update(diagonal_cell, scores, gap_extension, gap_open, horizontal_gap, vertical_gap, best);
+			diagonal_cell = cell_update_sv(diagonal_cell, scores, gap_extension, gap_open, horizontal_gap, vertical_gap, best);
 		}
+		volatile __m128i x = diagonal_cell.data_;
 	}
 	cout << "SWIPE cell update (int8_t):\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * 16) * 1000 << " ps/Cell" << endl;
+#endif
 }
 #endif
 
+#ifdef __SSE4_1__
 void swipe(const sequence &s1, const sequence &s2) {
 	sequence target[16];
 	std::fill(target, target + 16, s2);
 	static const size_t n = 10000llu;
 	high_resolution_clock::time_point t1 = high_resolution_clock::now();
 	for (size_t i = 0; i < n; ++i) {
-		vector<int> v = DP::Swipe::swipe(s1, target, target + 16);
+		volatile list<Hsp> v = DP::Swipe::swipe(s1, target, target + 16, 100);
 	}
-	cout << "SWIPE:\t\t\t\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * s1.length() * s2.length() * 16) * 1000 << " ps/Cell" << endl;
+	cout << "SWIPE (int8_t):\t\t\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * s1.length() * s2.length() * 16) * 1000 << " ps/Cell" << endl;
 }
+#endif
 
 void banded_swipe(const sequence &s1, const sequence &s2) {
 	vector<DpTarget> target;
@@ -146,26 +152,30 @@ void banded_swipe(const sequence &s1, const sequence &s2) {
 	Bias_correction cbs(s1);
 	high_resolution_clock::time_point t1 = high_resolution_clock::now();
 	for (size_t i = 0; i < n; ++i) {
-		DP::BandedSwipe::swipe(s1, target.begin(), target.end(), Frame(0), cbs, 0);
+		volatile auto out = DP::BandedSwipe::swipe(s1, target.begin(), target.end(), Frame(0), cbs, 0);
 	}
 	cout << "Banded SWIPE:\t\t\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * s1.length() * 65 * 8) * 1000 << " ps/Cell" << endl;
 }
 
 void benchmark() {
-	vector<Letter> s1, s2;
+	vector<Letter> s1, s2, s3, s4;
 	
 	s1 = sequence::from_string("mpeeeysefkelilqkelhvvyalshvcgqdrtllasillriflhekleslllctlndreismedeattlfrattlastlmeqymkatatqfvhhalkdsilkimeskqscelspskleknedvntnlthllnilselvekifmaseilpptlryiygclqksvqhkwptnttmrtrvvsgfvflrlicpailnprmfniisdspspiaartlilvaksvqnlanlvefgakepymegvnpfiksnkhrmimfldelgnvpelpdttehsrtdlsrdlaalheicvahsdelrtlsnergaqqhvlkkllaitellqqkqnqyt");
 	s2 = sequence::from_string("erlvelvtmmgdqgelpiamalanvvpcsqwdelarvlvtlfdsrhllyqllwnmfskeveladsmqtlfrgnslaskimtfcfkvygatylqklldpllrivitssdwqhvsfevdptrlepsesleenqrnllqmtekffhaiissssefppqlrsvchclyqvvsqrfpqnsigavgsamflrfinpaivspyeagildkkpppiierglklmskilqsianhvlftkeehmrpfndfvksnfdaarrffldiasdcptsdavnhslsfisdgnvlalhrllwnnqekigqylssnrdhkavgrrpfdkmatllaylgppe");
-	
+	s3 = sequence::from_string("ttfgrcavksnqagggtrshdwwpcqlrldvlrqfqpsqnplggdfdyaeafqsldyeavkkdiaalmtesqdwwpadfgnygglfvrmawhsagtyramdgrggggmgqqrfaplnswpdnqnldkarrliwpikqkygnkiswadlmlltgnvalenmgfktlgfgggradtwqsdeavywgaettfvpqgndvrynnsvdinaradklekplaathmgliyvnpegpngtpdpaasakdireafgrmgmndtetvaliagghafgkthgavkgsnigpapeaadlgmqglgwhnsvgdgngpnqmtsgleviwtktptkwsngyleslinnnwtlvespagahqweavngtvdypdpfdktkfrkatmltsdlalindpeylkisqrwlehpeeladafakawfkllhrdlgpttrylgpevp"); // d3ut2a1
+	s4 = sequence::from_string("lvhvasvekgrsyedfqkvynaialklreddeydnyigygpvlvrlawhisgtwdkhdntggsyggtyrfkkefndpsnaglqngfkflepihkefpwissgdlfslggvtavqemqgpkipwrcgrvdtpedttpdngrlpdadkdagyvrtffqrlnmndrevvalmgahalgkthlknsgyegpggaannvftnefylnllnedwklekndanneqwdsksgymmlptdysliqdpkylsivkeyandqdkffkdfskafekllengitfpkdapspfifktleeqgl"); // d2euta_
+
 	benchmark_ungapped(s1, s2);
 #ifdef __SSSE3__
 	benchmark_ungapped_sse(s1, s2);
 #endif
 	benchmark_transpose();
 #ifdef __SSE2__
-	swipe(s1, s2);
 	banded_swipe(s1, s2);
 	swipe_cell_update();
+#endif
+#ifdef __SSE4_1__
+	swipe(s3, s4);
 #endif
 }
 

@@ -1,6 +1,6 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2017 Benjamin Buchfink <buchfink@gmail.com>
+Copyright (C) 2013-2019 Benjamin Buchfink <buchfink@gmail.com>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,23 +16,27 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
+#include <vector>
 #include "align.h"
 #include "query_mapper.h"
 #include "../data/reference.h"
+
+using std::vector;
 
 namespace ExtensionPipeline { namespace Swipe {
 
 void Pipeline::run(Statistics &stat)
 {
 	const size_t n = targets.size();
-	vector<sequence> seqs(n);
-	for (size_t i = 0; i < n; ++i) {
-		seqs[i] = ref_seqs::get()[targets[i].subject_id];
-	}
-	vector<int> scores = DP::Swipe::swipe(query_seq(0), seqs.data(), seqs.data() + seqs.size());
-	for (size_t i = 0; i < n; ++i) {
-		targets[i].hsps.push_back(Hsp(scores[i]));
-		targets[i].hsps.back().frame = 0;
+	vector<sequence> seqs;
+	seqs.reserve(n);
+	for (size_t i = 0; i < n; ++i)
+		seqs.push_back(ref_seqs::get()[targets[i].subject_block_id]);
+	list<Hsp> hsp = DP::Swipe::swipe(query_seq(0), seqs.data(), seqs.data() + seqs.size(), raw_score_cutoff());
+	while (!hsp.empty()) {
+		targets[hsp.begin()->swipe_target].filter_score = hsp.begin()->score;
+		list<Hsp> &l = targets[hsp.begin()->swipe_target].hsps;		
+		l.splice(l.end(), hsp, hsp.begin());
 	}
 }
 
