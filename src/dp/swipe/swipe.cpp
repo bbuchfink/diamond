@@ -109,7 +109,7 @@ list<Hsp> swipe(const sequence &query, const sequence *subject_begin, const sequ
 	while (targets.active.size() > 0) {
 		typename Matrix<_sv>::ColumnIterator it(dp.begin());
 		_sv vgap, hgap, last;
-		profile.set(targets.seq_vector<Score, ScoreTraits<_sv>::CHANNELS>());
+		profile.set(targets.seq_vector<Score>());
 		for (int i = 0; i < qlen; ++i) {
 			hgap = it.hgap();
 			const _sv next = cell_update_sv<_sv>(it.diag(), profile.get(query[i]), extend_penalty, open_penalty, hgap, vgap, best);

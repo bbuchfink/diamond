@@ -143,7 +143,7 @@ struct TargetBuffer
 #ifdef DP_STAT
 	__m128i seq_vector()
 #else
-	template<typename _t, int _n> __m128i seq_vector() const
+	template<typename _t> __m128i seq_vector() const
 #endif	
 	{
 		_t s[_n];
