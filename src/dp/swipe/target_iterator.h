@@ -141,9 +141,9 @@ struct TargetBuffer
 
 #ifdef __SSSE3__
 #ifdef DP_STAT
-	__m128i seq_vector()
+	template<typename _t> __m128i seq_vector(const _t&)
 #else
-	template<typename _t> __m128i seq_vector() const
+	template<typename _t> __m128i seq_vector(const _t&) const
 #endif	
 	{
 		_t s[_n];
@@ -154,7 +154,7 @@ struct TargetBuffer
 		return _mm_loadu_si128((const __m128i*)s);
 	}
 #else
-	uint64_t seq_vector()
+	template<typename _t> uint64_t seq_vector(const _t&)
 	{
 		uint64_t dst = 0;
 		for (int i = 0; i < active.size(); ++i) {
