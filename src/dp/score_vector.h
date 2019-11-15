@@ -285,4 +285,24 @@ inline void store_sv(const score_vector<_t> &sv, _p *dst)
 
 #endif
 
+template<typename _sv>
+inline typename ScoreTraits<_sv>::Score extract_channel(const _sv &v, int i) {
+	return v[i];
+}
+
+template<>
+inline int extract_channel<int>(const int &v, int i) {
+	return v;
+}
+
+template<typename _sv>
+inline void set_channel(_sv &v, int i, typename ScoreTraits<_sv>::Score x) {
+	v.set(i, x);
+}
+
+template<>
+inline void set_channel<int>(int &v, int i, int x) {
+	v = x;
+}
+
 #endif /* SCORE_VECTOR_H_ */

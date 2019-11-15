@@ -32,14 +32,15 @@ inline _sv cell_update_sv(const _sv &diagonal_cell,
 	_sv &vertical_gap,
 	_sv &best)
 {
-	_sv current_cell = diagonal_cell + scores;
-	current_cell.max(vertical_gap).max(horizontal_gap);
-	best.max(current_cell);
+	using std::max;
+	_sv current_cell = max(diagonal_cell + scores, vertical_gap);
+	current_cell = max(current_cell, horizontal_gap);
+	best = max(best, current_cell);
 	vertical_gap -= gap_extension;
 	horizontal_gap -= gap_extension;
 	const _sv open = current_cell - gap_open;
-	vertical_gap.max(open);
-	horizontal_gap.max(open);
+	vertical_gap = max(vertical_gap, open);
+	horizontal_gap = max(horizontal_gap, open);
 	return current_cell;
 }
 

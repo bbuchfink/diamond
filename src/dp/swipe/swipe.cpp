@@ -77,10 +77,10 @@ struct Matrix
 	{
 		const int l = (int)hgap_.size();
 		for (int i = 0; i < l; ++i) {
-			hgap_[i].set(c, ScoreTraits<_sv>::zero_score());
-			score_[i].set(c, ScoreTraits<_sv>::zero_score());
+			set_channel(hgap_[i], c, ScoreTraits<_sv>::zero_score());
+			set_channel(score_[i], c, ScoreTraits<_sv>::zero_score());
 		}
-		score_[l].set(c, ScoreTraits<_sv>::zero_score());
+		set_channel(score_[l], c, ScoreTraits<_sv>::zero_score());
 	}
 private:
 	static thread_local MemBuffer<_sv> hgap_, score_;
@@ -101,7 +101,7 @@ list<Hsp> swipe(const sequence &query, const sequence *subject_begin, const sequ
 
 	const _sv open_penalty(static_cast<Score>(score_matrix.gap_open() + score_matrix.gap_extend())),
 		extend_penalty(static_cast<Score>(score_matrix.gap_extend()));
-	_sv best;
+	_sv best = _sv();
 	SwipeProfile<_sv> profile;
 	TargetBuffer<ScoreTraits<_sv>::CHANNELS> targets(subject_begin, subject_end);
 	list<Hsp> out;
@@ -109,6 +109,7 @@ list<Hsp> swipe(const sequence &query, const sequence *subject_begin, const sequ
 	while (targets.active.size() > 0) {
 		typename Matrix<_sv>::ColumnIterator it(dp.begin());
 		_sv vgap, hgap, last;
+		vgap = hgap = last = _sv();
 		profile.set(targets.seq_vector(Score()));
 		for (int i = 0; i < qlen; ++i) {
 			hgap = it.hgap();
@@ -122,22 +123,22 @@ list<Hsp> swipe(const sequence &query, const sequence *subject_begin, const sequ
 		
 		for (int i = 0; i < targets.active.size();) {
 			int j = targets.active[i];
-			if (best[j] == ScoreTraits<_sv>::max_score()) {
+			if (extract_channel(best, j) == ScoreTraits<_sv>::max_score()) {
 				overflow.push_back(targets.target[j]);
 				if (targets.init_target(i, j)) {
 					dp.set_zero(j);
-					best.set(j, ScoreTraits<_sv>::zero_score());
+					set_channel(best, j, ScoreTraits<_sv>::zero_score());
 				}
 				else
 					continue;
 			}
 			if (!targets.inc(j)) {
-				const int s = ScoreTraits<_sv>::int_score(best[j]);
+				const int s = ScoreTraits<_sv>::int_score(extract_channel(best, j));
 				if (s >= score_cutoff) 
 					out.emplace_back(s, targets.target[j]);						
 				if (targets.init_target(i, j)) {
 					dp.set_zero(j);
-					best.set(j, ScoreTraits<_sv>::zero_score());
+					set_channel(best, j, ScoreTraits<_sv>::zero_score());
 				}
 				else
 					continue;
@@ -153,9 +154,12 @@ list<Hsp> swipe(const sequence &query, const sequence *subject_begin, const sequ
 
 list<Hsp> swipe(const sequence &query, const sequence *subject_begin, const sequence *subject_end, int score_cutoff)
 {
-	vector<int> overflow8, overflow16;
+	vector<int> overflow8, overflow16, overflow32;
 #ifdef __SSE4_1__
 	list<Hsp> out = swipe<score_vector<int8_t>>(query, subject_begin, subject_end, score_cutoff, overflow8);
+
+	if (overflow8.empty())
+		return out;
 
 	vector<sequence> overflow_seq;
 	overflow_seq.reserve(overflow8.size());
@@ -165,6 +169,17 @@ list<Hsp> swipe(const sequence &query, const sequence *subject_begin, const sequ
 	for (Hsp &hsp : out16)
 		hsp.swipe_target = overflow8[hsp.swipe_target];
 	out.splice(out.end(), out16);
+
+	if (overflow16.empty())
+		return out;
+
+	overflow_seq.clear();
+	for (int i : overflow16)
+		overflow_seq.push_back(subject_begin[overflow8[i]]);
+	list<Hsp> out32 = swipe<int32_t>(query, overflow_seq.data(), overflow_seq.data() + overflow_seq.size(), score_cutoff, overflow32);
+	for (Hsp &hsp : out32)
+		hsp.swipe_target = overflow8[overflow16[hsp.swipe_target]];
+	out.splice(out.end(), out32);
 
 	return out;
 #else
