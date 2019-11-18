@@ -121,6 +121,7 @@ struct OutputSink
 {
 	OutputSink(size_t begin, Consumer *f) :
 		f_(f),
+		begin_(begin),
 		next_(begin),
 		size_(0),
 		max_size_(0)
@@ -142,13 +143,16 @@ struct OutputSink
 	{
 		return next_;
 	}
+	size_t begin() const {
+		return begin_;
+	}
 	static std::unique_ptr<OutputSink> instance;
 private:
 	void flush(TextBuffer *buf);
 	std::mutex mtx_;
 	Consumer* const f_;
 	std::map<size_t, TextBuffer*> backlog_;
-	size_t next_, size_, max_size_;
+	size_t begin_, next_, size_, max_size_;
 };
 
 void heartbeat_worker(size_t qend);
