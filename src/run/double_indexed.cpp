@@ -63,30 +63,32 @@ void run_ref_chunk(DatabaseFile &db_file,
 		log_stream << "Masked letters: " << n << endl;
 	}
 
-	timer.go("Building reference histograms");
-	if(config.algo==Config::query_indexed)
-		ref_hst = Partitioned_histogram(*ref_seqs::data_, false, query_seeds);
-	else if(query_seeds_hashed != 0)
-		ref_hst = Partitioned_histogram(*ref_seqs::data_, true, query_seeds_hashed);
-	else
-		ref_hst = Partitioned_histogram(*ref_seqs::data_, false, &no_filter);
-
 	ReferenceDictionary::get().init(safe_cast<unsigned>(ref_seqs::get().get_length()), block_to_database_id);
-
-	timer.go("Allocating buffers");
-	char *ref_buffer = SeedArray::alloc_buffer(ref_hst);
 
 	timer.go("Initializing temporary storage");
 	Trace_pt_buffer::instance = new Trace_pt_buffer(query_seqs::data_->get_length() / align_mode.query_contexts,
 		config.tmpdir,
 		config.query_bins);
-	timer.finish();
-	
-	for (unsigned i = 0; i < shapes.count(); ++i)
-		search_shape(i, query_chunk, query_buffer, ref_buffer);
 
-	timer.go("Deallocating buffers");
-	delete[] ref_buffer;
+	if (!config.swipe_all) {
+		timer.go("Building reference histograms");
+		if (config.algo == Config::query_indexed)
+			ref_hst = Partitioned_histogram(*ref_seqs::data_, false, query_seeds);
+		else if (query_seeds_hashed != 0)
+			ref_hst = Partitioned_histogram(*ref_seqs::data_, true, query_seeds_hashed);
+		else
+			ref_hst = Partitioned_histogram(*ref_seqs::data_, false, &no_filter);
+
+		timer.go("Allocating buffers");
+		char *ref_buffer = SeedArray::alloc_buffer(ref_hst);	
+		timer.finish();
+
+		for (unsigned i = 0; i < shapes.count(); ++i)
+			search_shape(i, query_chunk, query_buffer, ref_buffer);
+
+		timer.go("Deallocating buffers");
+		delete[] ref_buffer;
+	}
 
 	Consumer* out;
 	if (blocked_processing) {
@@ -149,22 +151,27 @@ void run_query_chunk(DatabaseFile &db_file,
 		timer.go("Building query seed hash set");
 		query_seeds_hashed = new Hashed_seed_set(query_seqs::get());
 	}
-
-	timer.go("Building query histograms");
-	const pair<size_t, size_t> query_len_bounds = query_seqs::data_->len_bounds(shapes[0].length_);
-	setup_search_params(query_len_bounds, 0);
-	query_hst = Partitioned_histogram(*query_seqs::data_, false, &no_filter);
 	timer.finish();
 
-	timer.go("Allocating buffers");
-	char *query_buffer = SeedArray::alloc_buffer(query_hst);
+	char *query_buffer = nullptr;
+	const pair<size_t, size_t> query_len_bounds = query_seqs::data_->len_bounds(shapes[0].length_);
+	setup_search_params(query_len_bounds, 0);
+
+	if (!config.swipe_all) {
+		timer.go("Building query histograms");		
+		query_hst = Partitioned_histogram(*query_seqs::data_, false, &no_filter);
+		
+		timer.go("Allocating buffers");
+		query_buffer = SeedArray::alloc_buffer(query_hst);
+		timer.finish();
+	}
+	
 	PtrVector<TempFile> tmp_file;
 	query_aligned.clear();
 	query_aligned.insert(query_aligned.end(), query_ids::get().get_length(), false);
 	db_file.rewind();
 	vector<unsigned> block_to_database_id;
-	timer.finish();
-	
+
 	for (current_ref_block = 0; db_file.load_seqs(block_to_database_id,
 		(size_t)(config.chunk_size*1e9),
 		&ref_seqs::data_,

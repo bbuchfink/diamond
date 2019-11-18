@@ -75,7 +75,7 @@ namespace ExtensionPipeline {
 				QueryMapper(params, query_id, begin, end)
 			{}
 			Target& target(size_t i);
-			virtual void run(Statistics &stat);
+			virtual void run(Statistics &stat, const sequence *subjects = nullptr, size_t subject_count = 0);
 			virtual ~Pipeline() {}
 		};
 	}
@@ -85,7 +85,7 @@ namespace ExtensionPipeline {
 			Pipeline(const Parameters &params, size_t query_id, Trace_pt_list::iterator begin, Trace_pt_list::iterator end) :
 				QueryMapper(params, query_id, begin, end)
 			{}
-			virtual void run(Statistics &stat);
+			virtual void run(Statistics &stat, const sequence *subjects = nullptr, size_t subject_count = 0);
 			virtual ~Pipeline() {}
 		};
 	}
@@ -98,7 +98,7 @@ namespace ExtensionPipeline {
 				dp_stat(dp_stat)
 			{}
 			Target& target(size_t i);
-			virtual void run(Statistics &stat);
+			virtual void run(Statistics &stat, const sequence *subjects = nullptr, size_t subject_count = 0);
 			void run_swipe(bool score_only);
 			void range_ranking();
 			DpStat &dp_stat;

@@ -17,25 +17,43 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #include <vector>
+#include <map>
 #include "align.h"
 #include "query_mapper.h"
 #include "../data/reference.h"
 
 using std::vector;
+using std::map;
 
 namespace ExtensionPipeline { namespace Swipe {
 
-void Pipeline::run(Statistics &stat)
+void Pipeline::run(Statistics &stat, const sequence *subjects, size_t subject_count)
 {
-	const size_t n = targets.size();
-	vector<sequence> seqs;
-	seqs.reserve(n);
-	for (size_t i = 0; i < n; ++i)
-		seqs.push_back(ref_seqs::get()[targets[i].subject_block_id]);
-	list<Hsp> hsp = DP::Swipe::swipe(query_seq(0), seqs.data(), seqs.data() + seqs.size(), raw_score_cutoff());
+	list<Hsp> hsp;
+	if (subjects == nullptr) {
+		vector<sequence> seqs;
+		const size_t n = targets.size();
+		seqs.reserve(n);
+		for (size_t i = 0; i < n; ++i)
+			seqs.push_back(ref_seqs::get()[targets[i].subject_block_id]);
+		 hsp = DP::Swipe::swipe(query_seq(0), seqs.data(), seqs.data() + seqs.size(), raw_score_cutoff());
+	}
+	else
+		hsp = DP::Swipe::swipe(query_seq(0), subjects, subjects + subject_count, raw_score_cutoff());	
+
+	map<unsigned, unsigned> subject_idx;
 	while (!hsp.empty()) {
-		targets[hsp.begin()->swipe_target].filter_score = hsp.begin()->score;
-		list<Hsp> &l = targets[hsp.begin()->swipe_target].hsps;		
+		unsigned i;
+		if (subjects == nullptr)
+			i = hsp.begin()->swipe_target;
+		else {
+			const auto it = subject_idx.emplace(hsp.begin()->swipe_target, (unsigned)targets.size());
+			if (it.second)
+				targets.push_back(new Target(0, hsp.begin()->swipe_target));
+			i = it.first->second;
+		}
+		targets[i].filter_score = hsp.begin()->score;
+		list<Hsp> &l = targets[i].hsps;		
 		l.splice(l.end(), hsp, hsp.begin());
 	}
 }

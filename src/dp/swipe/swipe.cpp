@@ -134,8 +134,8 @@ list<Hsp> swipe(const sequence &query, const sequence *subject_begin, const sequ
 			}
 			if (!targets.inc(j)) {
 				const int s = ScoreTraits<_sv>::int_score(extract_channel(best, j));
-				if (s >= score_cutoff) 
-					out.emplace_back(s, targets.target[j]);						
+				if (s >= score_cutoff)
+					out.emplace_back(s, targets.target[j]);
 				if (targets.init_target(i, j)) {
 					dp.set_zero(j);
 					set_channel(best, j, ScoreTraits<_sv>::zero_score());

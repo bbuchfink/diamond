@@ -145,7 +145,7 @@ Target& Pipeline::target(size_t i)
 	return (Target&)(this->targets[i]);
 }
 
-void Pipeline::run(Statistics &stat)
+void Pipeline::run(Statistics &stat, const sequence *subjects, size_t subject_count)
 {
 	if (n_targets() == 0)
 		return;

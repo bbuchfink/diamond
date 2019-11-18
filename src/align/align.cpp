@@ -70,13 +70,13 @@ unique_ptr<Queue> Align_fetcher::queue_;
 vector<hit>::iterator Align_fetcher::it_;
 vector<hit>::iterator Align_fetcher::end_;
 
-void align_worker(size_t thread_id, const Parameters *params, const Metadata *metadata)
+void align_worker(size_t thread_id, const Parameters *params, const Metadata *metadata, const sequence *subjects, size_t subject_count)
 {
 	Align_fetcher hits;
 	Statistics stat;
 	DpStat dp_stat;
 	while (hits.get()) {
-		if (hits.end == hits.begin) {
+		if ((hits.end == hits.begin) && subjects == nullptr) {
 			TextBuffer *buf = 0;
 			if (!blocked_processing && *output_format != Output_format::daa && config.report_unaligned != 0) {
 				buf = new TextBuffer;
@@ -98,7 +98,7 @@ void align_worker(size_t thread_id, const Parameters *params, const Metadata *me
 		task_timer timer("Initializing mapper", hits.target_parallel ? 3 : UINT_MAX);
 		mapper->init();
 		timer.finish();
-		mapper->run(stat);
+		mapper->run(stat, subjects, subject_count);
 
 		timer.go("Generating output");
 		TextBuffer *buf = 0;
@@ -123,6 +123,13 @@ void align_queries(Trace_pt_buffer &trace_pts, Consumer* output_file, const Para
 {
 	const size_t max_size = (size_t)std::min(config.chunk_size*1e9 * 9 * 2 / config.lowmem, 2e9);
 	pair<size_t, size_t> query_range;
+	vector<sequence> subjects;
+	if (config.swipe_all) {
+		subjects.reserve(ref_seqs::get().get_length());
+		for (size_t i = 0; i < ref_seqs::get().get_length(); ++i)
+			subjects.push_back(ref_seqs::get()[i]);
+	}
+
 	while (true) {
 		task_timer timer("Loading trace points", 3);
 		Trace_pt_list *v = new Trace_pt_list;
@@ -142,7 +149,7 @@ void align_queries(Trace_pt_buffer &trace_pts, Consumer* output_file, const Para
 			threads.emplace_back(heartbeat_worker, query_range.second);
 		size_t n_threads = config.load_balancing == Config::query_parallel ? (config.threads_align == 0 ? config.threads_ : config.threads_align) : 1;
 		for (size_t i = 0; i < n_threads; ++i)
-			threads.emplace_back(align_worker, i, &params, &metadata);
+			threads.emplace_back(align_worker, i, &params, &metadata, subjects.empty() ? nullptr : subjects.data(), subjects.size());
 		for (auto &t : threads)
 			t.join();
 		timer.finish();

@@ -1,6 +1,6 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2017 Benjamin Buchfink <buchfink@gmail.com>
+Copyright (C) 2013-2019 Benjamin Buchfink <buchfink@gmail.com>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -45,7 +45,7 @@ struct Target
 		filter_score(0),
 		outranked(false),
 		begin(begin)
-	{}		
+	{}
 	static bool compare(Target* lhs, Target *rhs)
 	{
 		return lhs->filter_score > rhs->filter_score || (lhs->filter_score == rhs->filter_score && lhs->subject_block_id < rhs->subject_block_id);
@@ -100,7 +100,7 @@ struct QueryMapper
 		for (size_t i = 0; i < targets.size(); ++i)
 			targets[i].fill_source_ranges(source_query_len);
 	}
-	virtual void run(Statistics &stat) = 0;
+	virtual void run(Statistics &stat, const sequence *subjects = nullptr, size_t subject_count = 0) = 0;
 	virtual ~QueryMapper() {}
 
 	const Parameters &parameters;

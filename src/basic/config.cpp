@@ -280,7 +280,8 @@ Config::Config(int argc, const char **argv)
 		("hard-masked", 0, "", hardmasked)
 		("cbs-window", 0, "", cbs_window, 40)
 		("no-unlink", 0, "", no_unlink)
-		("no-dict", 0, "", no_dict);
+		("no-dict", 0, "", no_dict)
+		("swipe", 0, "", swipe_all);
 		
 	parser.add(general).add(makedb).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options);
 	parser.store(argc, argv, command);
@@ -451,6 +452,11 @@ Config::Config(int argc, const char **argv)
 
 	/*log_stream << "sizeof(hit)=" << sizeof(hit) << " sizeof(packed_uint40_t)=" << sizeof(packed_uint40_t)
 		<< " sizeof(sorted_list::entry)=" << sizeof(sorted_list::entry) << endl;*/
+
+	if (swipe_all) {
+		algo = double_indexed;
+		ext = swipe;
+	}
 
 	use_lazy_dict = false;
 }
