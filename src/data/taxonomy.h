@@ -49,6 +49,7 @@ struct Taxonomy
 			if (l > max_accesion_len)
 				throw AccessionLengthError();
 			std::copy(s, s + l, this->s);
+			std::fill(this->s + l, this->s + max_accesion_len, '\0');
 		}
 		Accession(const std::string &s)
 		{
@@ -58,8 +59,8 @@ struct Taxonomy
 				//this->s[0] = 0;
 				throw AccessionLengthError();
 			}
-			else
-				std::copy(t.c_str(), t.c_str() + t.length(), this->s);
+			std::copy(t.c_str(), t.c_str() + t.length(), this->s);
+			std::fill(this->s + t.length(), this->s + max_accesion_len, '\0');
 		}
 		bool operator<(const Accession &y) const
 		{
