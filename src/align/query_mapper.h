@@ -22,6 +22,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <queue>
 #include <vector>
 #include <list>
+#include <set>
 #include "../search/trace_pt_buffer.h"
 #include "../data/queries.h"
 #include "../util/ptr_vector.h"
@@ -39,12 +40,13 @@ struct Target
 	Target(int score):
 		filter_score(score)
 	{}
-	Target(size_t begin, unsigned subject_id) :
+	Target(size_t begin, unsigned subject_id, const std::set<unsigned> &taxon_rank_ids) :
 		subject_block_id(subject_id),
 		subject(ref_seqs::get()[subject_id]),
 		filter_score(0),
 		outranked(false),
-		begin(begin)
+		begin(begin),
+		taxon_rank_ids(taxon_rank_ids)
 	{}
 	static bool compare(Target* lhs, Target *rhs)
 	{
@@ -71,15 +73,16 @@ struct Target
 	list<Hsp> hsps;
 	list<Hsp_traits> ts;
 	Seed_hit top_hit;
+	std::set<unsigned> taxon_rank_ids;
 
 	enum { INTERVAL = 64 };
 };
 
 struct QueryMapper
 {
-	QueryMapper(const Parameters &params, size_t query_id, Trace_pt_list::iterator begin, Trace_pt_list::iterator end, bool target_parallel = false);
+	QueryMapper(const Parameters &params, size_t query_id, Trace_pt_list::iterator begin, Trace_pt_list::iterator end, const Metadata &metadata, bool target_parallel = false);
 	void init();
-	bool generate_output(TextBuffer &buffer, Statistics &stat, const Metadata &metadata);
+	bool generate_output(TextBuffer &buffer, Statistics &stat);
 	void rank_targets(double ratio, double factor);
 	void score_only_culling();
 	int raw_score_cutoff() const;
@@ -113,6 +116,7 @@ struct QueryMapper
 	vector<Long_score_profile> profile;
 	TranslatedSequence translated_query;
 	bool target_parallel;
+	const Metadata &metadata;
 
 private:
 

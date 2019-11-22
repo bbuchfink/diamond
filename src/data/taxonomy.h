@@ -1,6 +1,6 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2017 Benjamin Buchfink <buchfink@gmail.com>
+Copyright (C) 2013-2019 Benjamin Buchfink <buchfink@gmail.com>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -20,6 +20,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <algorithm>
 #include <string>
 #include <set>
+#include <map>
+#include <ostream>
 #include "../basic/const.h"
 #include "../util/util.h"
 #include "taxon_list.h"
@@ -114,6 +116,7 @@ struct Taxonomy
 	std::vector<std::pair<Accession, unsigned> > accession2taxid_;
 	std::vector<unsigned> parent_;
 	std::vector<std::string> name_;
+	std::vector<Rank> rank_;
 
 	friend struct TaxonomyNodes;
 

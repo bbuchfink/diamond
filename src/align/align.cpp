@@ -90,11 +90,11 @@ void align_worker(size_t thread_id, const Parameters *params, const Metadata *me
 
 		QueryMapper *mapper;
 		if (config.ext == Config::swipe)
-			mapper = new ExtensionPipeline::Swipe::Pipeline(*params, hits.query, hits.begin, hits.end);
+			mapper = new ExtensionPipeline::Swipe::Pipeline(*params, hits.query, hits.begin, hits.end, *metadata);
 		else if (config.frame_shift != 0 || config.ext == Config::banded_swipe)
-			mapper = new ExtensionPipeline::BandedSwipe::Pipeline(*params, hits.query, hits.begin, hits.end, dp_stat, hits.target_parallel);
+			mapper = new ExtensionPipeline::BandedSwipe::Pipeline(*params, hits.query, hits.begin, hits.end, dp_stat, *metadata, hits.target_parallel);
 		else
-			mapper = new ExtensionPipeline::Greedy::Pipeline(*params, hits.query, hits.begin, hits.end);
+			mapper = new ExtensionPipeline::Greedy::Pipeline(*params, hits.query, hits.begin, hits.end, *metadata);
 		task_timer timer("Initializing mapper", hits.target_parallel ? 3 : UINT_MAX);
 		mapper->init();
 		timer.finish();
@@ -104,7 +104,7 @@ void align_worker(size_t thread_id, const Parameters *params, const Metadata *me
 		TextBuffer *buf = 0;
 		if (*output_format != Output_format::null) {
 			buf = new TextBuffer;
-			const bool aligned = mapper->generate_output(*buf, stat, *metadata);
+			const bool aligned = mapper->generate_output(*buf, stat);
 			if (aligned && (!config.unaligned.empty() || !config.aligned_file.empty())) {
 				query_aligned_mtx.lock();
 				query_aligned[hits.query] = true;

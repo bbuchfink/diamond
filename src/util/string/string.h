@@ -3,6 +3,7 @@
 
 #include <string>
 #include <string.h>
+#include <algorithm>
 
 inline bool ends_with(const std::string &s, const char *t) {
 	const size_t l = strlen(t);
@@ -18,5 +19,14 @@ inline std::string& rstrip(std::string &s, const char *t) {
 	else
 		return s;
 }
+
+inline size_t max_len(const char** s, size_t n) {
+	size_t l = 0;
+	for (size_t i = 0; i < n; ++i)
+		l = std::max(l, strlen(s[i]));
+	return l;
+}
+
+#define MAX_LEN(A) max_len(A, sizeof(A)/sizeof(A[0]))
 
 #endif

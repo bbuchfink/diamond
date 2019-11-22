@@ -340,18 +340,29 @@ void run(const Options &options)
 
 	Metadata metadata;
 	const bool taxon_filter = !config.taxonlist.empty() || !config.taxon_exclude.empty();
-	if (output_format->needs_taxon_id_lists || taxon_filter) {
-		if (taxon_filter && db_file->header2.taxon_array_offset == 0)
-			throw std::runtime_error("--taxonlist/--taxon-exclude options require taxonomy mapping built into the database.");
+	const bool taxon_culling = config.taxon_k != 0;
+	if (output_format->needs_taxon_id_lists || taxon_filter || taxon_culling) {
+		if (db_file->header2.taxon_array_offset == 0) {
+			if (taxon_filter)
+				throw std::runtime_error("--taxonlist/--taxon-exclude options require taxonomy mapping built into the database.");
+			if (taxon_culling)
+				throw std::runtime_error("--taxon-k option requires taxonomy mapping built into the database.");
+		}
 		timer.go("Loading taxonomy mapping");
 		metadata.taxon_list = new TaxonList(db_file->seek(db_file->header2.taxon_array_offset), db_file->ref_header.sequences, db_file->header2.taxon_array_size);
 		timer.finish();
 	}
-	if (output_format->needs_taxon_nodes || taxon_filter) {
-		if (taxon_filter && db_file->header2.taxon_nodes_offset == 0)
-			throw std::runtime_error("--taxonlist/--taxon-exclude options require taxonomy nodes built into the database.");
+	if (output_format->needs_taxon_nodes || taxon_filter || taxon_culling) {
+		if (db_file->header2.taxon_nodes_offset == 0) {
+			if (taxon_filter)
+				throw std::runtime_error("--taxonlist/--taxon-exclude options require taxonomy nodes built into the database.");
+			if (taxon_culling)
+				throw std::runtime_error("--taxon-k option require taxonomy nodes built into the database.");
+		}
+		if (taxon_culling && db_file->ref_header.build < 131)
+			throw std::runtime_error("--taxon-k option requires a database built with diamond version >= 0.9.30");
 		timer.go("Loading taxonomy nodes");
-		metadata.taxon_nodes = new TaxonomyNodes(db_file->seek(db_file->header2.taxon_nodes_offset));
+		metadata.taxon_nodes = new TaxonomyNodes(db_file->seek(db_file->header2.taxon_nodes_offset), db_file->ref_header.build);
 		if (taxon_filter) {
 			timer.go("Building taxonomy filter");
 			metadata.taxon_filter = new TaxonomyFilter(config.taxonlist, config.taxon_exclude, *metadata.taxon_list, *metadata.taxon_nodes);

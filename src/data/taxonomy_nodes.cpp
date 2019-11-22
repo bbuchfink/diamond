@@ -1,6 +1,6 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2018 Benjamin Buchfink <buchfink@gmail.com>
+Copyright (C) 2013-2019 Benjamin Buchfink <buchfink@gmail.com>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -17,9 +17,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #include <set>
+#include <iomanip>
 #include "taxonomy_nodes.h"
 #include "taxonomy.h"
 #include "../util/log_stream.h"
+#include "../util/string/string.h"
 
 using namespace std;
 
@@ -28,14 +30,30 @@ void TaxonomyNodes::build(Serializer &out)
 	task_timer timer("Building taxonomy nodes");
 	out.unset(Serializer::VARINT);
 	out << taxonomy.parent_;
+	out.write_raw(taxonomy.rank_);
 	timer.finish();
 	message_stream << taxonomy.parent_.size() << " taxonomy nodes processed." << endl;
+	size_t rank_count[Rank::count];
+	std::fill(rank_count, rank_count + Rank::count, 0);
+	for (const Rank r : taxonomy.rank_) {
+		++rank_count[r];
+	}
+	
+	const size_t w = MAX_LEN(Rank::names) + 2;
+	message_stream << "Number of nodes assigned to rank:" << endl;
+	for (size_t i = 0; i < Rank::count; ++i)
+		message_stream << std::left << std::setw(w) << Rank::names[i] << rank_count[i] << endl;
+	message_stream << endl;
 }
 
-TaxonomyNodes::TaxonomyNodes(Deserializer &in)
+TaxonomyNodes::TaxonomyNodes(Deserializer &in, uint32_t db_build)
 {
 	in.varint = false;
 	in >> parent_;
+	if (db_build >= 131) {
+		rank_.resize(parent_.size());
+		in.read(rank_.data(), rank_.size());
+	}
 	cached_.insert(cached_.end(), parent_.size(), false);
 	contained_.insert(contained_.end(), parent_.size(), false);
 }
@@ -105,4 +123,22 @@ bool TaxonomyNodes::contained(const vector<unsigned> query, const set<unsigned> 
 		if (contained(*i, filter))
 			return true;
 	return false;
+}
+
+unsigned TaxonomyNodes::rank_taxid(unsigned taxid, Rank rank) const {
+	static const int max = 64;
+	int n = 0;
+	while (rank_[taxid] != rank) {
+		if (++n > max)
+			throw std::runtime_error("Path in taxonomy too long (4).");
+		taxid = get_parent(taxid);
+	}
+	return taxid;
+}
+
+std::set<unsigned> TaxonomyNodes::rank_taxid(const std::vector<unsigned> &taxid, Rank rank) const {
+	set<unsigned> r;
+	for (unsigned i : taxid)
+		r.insert(rank_taxid(i, rank));
+	return r;
 }

@@ -196,6 +196,7 @@ Config::Config(int argc, const char **argv)
 		("rank-ratio", 0, "include subjects within this ratio of last hit (stage 1)", rank_ratio, -1.0)
 		("rank-ratio2", 0, "include subjects within this ratio of last hit (stage 2)", rank_ratio2, -1.0)
 		("max-hsps", 0, "maximum number of HSPs per subject sequence to save for each query", max_hsps, 0u)
+		("taxon-k", 0, "maximum number of targets to report per species", taxon_k, (uint64_t)0)
 		("range-cover", 0, "percentage of query range to be covered for hit culling (default=50)", query_range_cover, 50.0)
 		("dbsize", 0, "effective database size (in letters)", db_size)
 		("no-auto-append", 0, "disable auto appending of DAA and DMND file extensions", no_auto_append)
@@ -459,4 +460,7 @@ Config::Config(int argc, const char **argv)
 	}
 
 	use_lazy_dict = false;
+
+	if (query_range_culling && taxon_k != 0)
+		throw std::runtime_error("--taxon-k is not supported for --range-culling mode.");
 }

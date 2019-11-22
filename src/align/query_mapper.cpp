@@ -77,7 +77,7 @@ int QueryMapper::raw_score_cutoff() const
 	return score_matrix.rawscore(config.min_bit_score == 0 ? score_matrix.bitscore(config.max_evalue, (unsigned)query_seq(0).length()) : config.min_bit_score);
 }
 
-QueryMapper::QueryMapper(const Parameters &params, size_t query_id, Trace_pt_list::iterator begin, Trace_pt_list::iterator end, bool target_parallel) :
+QueryMapper::QueryMapper(const Parameters &params, size_t query_id, Trace_pt_list::iterator begin, Trace_pt_list::iterator end, const Metadata &metadata, bool target_parallel) :
 	parameters(params),
 	source_hits(std::make_pair(begin, end)),
 	query_id((unsigned)query_id),
@@ -85,7 +85,8 @@ QueryMapper::QueryMapper(const Parameters &params, size_t query_id, Trace_pt_lis
 	next_target(0),
 	source_query_len(get_source_query_len((unsigned)query_id)),
 	translated_query(get_translated_query(query_id)),
-	target_parallel(target_parallel)
+	target_parallel(target_parallel),
+	metadata(metadata)
 {
 	seed_hits.reserve(source_hits.second - source_hits.first);
 }
@@ -148,7 +149,9 @@ void QueryMapper::load_targets()
 			if (n > 0) {
 				targets[n - 1].end = i;
 			}
-			targets.get(n) = new Target(i, seed_hits[i].subject_);
+			targets.get(n) = new Target(i,
+				seed_hits[i].subject_,
+				config.taxon_k ? metadata.taxon_nodes->rank_taxid((*metadata.taxon_list)[ReferenceDictionary::get().block_to_database_id(seed_hits[i].subject_)], Rank::species) : set<unsigned>());
 			++n;
 			subject_id = seed_hits[i].subject_;
 		}
@@ -158,6 +161,8 @@ void QueryMapper::load_targets()
 
 void QueryMapper::rank_targets(double ratio, double factor)
 {
+	if (config.taxon_k && config.toppercent == 100.0)
+		return;
 	std::stable_sort(targets.begin(), targets.end(), Target::compare);
 
 	int score = 0;
@@ -209,7 +214,7 @@ void QueryMapper::score_only_culling()
 	targets.erase(i, targets.end());
 }
 
-bool QueryMapper::generate_output(TextBuffer &buffer, Statistics &stat, const Metadata &metadata)
+bool QueryMapper::generate_output(TextBuffer &buffer, Statistics &stat)
 {
 	std::stable_sort(targets.begin(), targets.end(), Target::compare);
 
@@ -227,6 +232,7 @@ bool QueryMapper::generate_output(TextBuffer &buffer, Statistics &stat, const Me
 			break;
 
 		const size_t subject_id = targets[i].subject_block_id;
+		const unsigned database_id = ReferenceDictionary::get().block_to_database_id(subject_id);
 		const unsigned subject_len = (unsigned)ref_seqs::get()[subject_id].length();
 		const char *ref_title = ref_ids::get()[subject_id].c_str();
 		targets[i].apply_filters(source_query_len, subject_len, query_title, ref_title);
@@ -268,7 +274,7 @@ bool QueryMapper::generate_output(TextBuffer &buffer, Statistics &stat, const Me
 						translated_query,
 						query_title,
 						subject_id,
-						ReferenceDictionary::get().block_to_database_id(subject_id),
+						database_id,
 						ref_title,
 						subject_len,
 						n_target_seq,

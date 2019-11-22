@@ -180,7 +180,8 @@ void join_query(vector<BinaryBuffer> &buf, TextBuffer &out, Statistics &statisti
 	unsigned n_target_seq = 0;
 		
 	while (joiner.get(target_hsp)) {
-		const int c = culling->cull(target_hsp);
+		const set<unsigned> rank_taxon_ids = config.taxon_k ? metadata.taxon_nodes->rank_taxid((*metadata.taxon_list)[dict.database_id(target_hsp.front().subject_id)], Rank::species) : set<unsigned>();
+		const int c = culling->cull(target_hsp, rank_taxon_ids);
 		if (c == TargetCulling::FINISHED)
 			break;
 		else if (c == TargetCulling::NEXT)
@@ -207,7 +208,7 @@ void join_query(vector<BinaryBuffer> &buf, TextBuffer &out, Statistics &statisti
 			}
 		}
 
-		culling->add(target_hsp);
+		culling->add(target_hsp, rank_taxon_ids);
 		++n_target_seq;
 		statistics.inc(Statistics::PAIRWISE);
 		statistics.inc(Statistics::MATCHES, hsp_num);

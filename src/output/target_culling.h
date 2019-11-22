@@ -20,6 +20,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define TARGET_CULLING_H_
 
 #include <vector>
+#include <set>
+#include <map>
 #include "../align/query_mapper.h"
 #include "../util/interval_partition.h"
 #include "output.h"
@@ -27,9 +29,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 struct TargetCulling
 {
 	virtual int cull(const Target &t) const = 0;
-	virtual int cull(const vector<IntermediateRecord> &target_hsp) const = 0;
+	virtual int cull(const vector<IntermediateRecord> &target_hsp, const std::set<unsigned> &taxon_ids) const = 0;
 	virtual void add(const Target &t) = 0;
-	virtual void add(const vector<IntermediateRecord> &target_hsp) = 0;
+	virtual void add(const vector<IntermediateRecord> &target_hsp, const std::set<unsigned> &taxon_ids) = 0;
 	virtual ~TargetCulling() = default;
 	enum { FINISHED = 0, NEXT = 1, INCLUDE = 2};
 	static TargetCulling* get();
@@ -45,15 +47,35 @@ struct GlobalCulling : public TargetCulling
 	{
 		if (top_score_ == 0)
 			return INCLUDE;
+		if (config.taxon_k) {
+			unsigned taxons_exceeded = 0;
+			for (unsigned i : t.taxon_rank_ids) {
+				auto it = taxon_count_.find(i);
+				if (it != taxon_count_.end() && it->second >= config.taxon_k)
+					++taxons_exceeded;
+			}
+			if (taxons_exceeded == t.taxon_rank_ids.size())
+				return NEXT;
+		}
 		if (config.toppercent < 100.0)
 			return (1.0 - (double)t.filter_score / top_score_) * 100.0 <= config.toppercent ? INCLUDE : FINISHED;
 		else
 			return n_ < config.max_alignments ? INCLUDE : FINISHED;
 	}
-	virtual int cull(const vector<IntermediateRecord> &target_hsp) const
+	virtual int cull(const vector<IntermediateRecord> &target_hsp, const std::set<unsigned> &taxon_ids) const
 	{
 		if (top_score_ == 0)
 			return INCLUDE;
+		if (config.taxon_k) {
+			unsigned taxons_exceeded = 0;
+			for (unsigned i : taxon_ids) {
+				auto it = taxon_count_.find(i);
+				if (it != taxon_count_.end() && it->second >= config.taxon_k)
+					++taxons_exceeded;
+			}
+			if (taxons_exceeded == taxon_ids.size())
+				return NEXT;
+		}
 		if (config.toppercent < 100.0)
 			return (1.0 - (double)target_hsp[0].score / top_score_) * 100.0 <= config.toppercent ? INCLUDE : FINISHED;
 		else
@@ -64,17 +86,24 @@ struct GlobalCulling : public TargetCulling
 		if (top_score_ == 0)
 			top_score_ = t.filter_score;
 		++n_;
+		if (config.taxon_k)
+			for (unsigned i : t.taxon_rank_ids)
+				++taxon_count_[i];
 	}
-	virtual void add(const vector<IntermediateRecord> &target_hsp)
+	virtual void add(const vector<IntermediateRecord> &target_hsp, const std::set<unsigned> &taxon_ids)
 	{
 		if (top_score_ == 0)
 			top_score_ = target_hsp[0].score;
 		++n_;
+		if (config.taxon_k)
+			for (unsigned i : taxon_ids)
+				++taxon_count_[i];
 	}
 	virtual ~GlobalCulling() = default;
 private:
 	size_t n_;
 	int top_score_;
+	std::map<unsigned, unsigned> taxon_count_;
 };
 
 struct RangeCulling : public TargetCulling
@@ -97,7 +126,7 @@ struct RangeCulling : public TargetCulling
 		}
 		return (double)c / l * 100.0 < config.query_range_cover ? INCLUDE : NEXT;
 	}
-	virtual int cull(const std::vector<IntermediateRecord> &target_hsp) const
+	virtual int cull(const std::vector<IntermediateRecord> &target_hsp, const std::set<unsigned> &taxon_ids) const
 	{
 		int c = 0, l = 0;
 		for (std::vector<IntermediateRecord>::const_iterator i = target_hsp.begin(); i != target_hsp.end(); ++i) {
@@ -116,7 +145,7 @@ struct RangeCulling : public TargetCulling
 		for (std::list<Hsp>::const_iterator i = t.hsps.begin(); i != t.hsps.end(); ++i)
 			p_.insert(i->query_source_range, i->score);
 	}
-	virtual void add(const vector<IntermediateRecord> &target_hsp)
+	virtual void add(const vector<IntermediateRecord> &target_hsp, const std::set<unsigned> &taxon_ids)
 	{
 		for (std::vector<IntermediateRecord>::const_iterator i = target_hsp.begin(); i != target_hsp.end(); ++i)
 			p_.insert(i->absolute_query_range(), i->score);

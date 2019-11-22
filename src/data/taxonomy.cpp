@@ -1,6 +1,6 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2017 Benjamin Buchfink <buchfink@gmail.com>
+Copyright (C) 2013-2019 Benjamin Buchfink <buchfink@gmail.com>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -29,6 +29,27 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/string/tokenizer.h"
 
 using namespace std;
+
+const char* Rank::names[] = {
+	"no rank", "superkingdom", "kingdom", "subkingdom", "superphylum", "phylum", "subphylum", "superclass", "class", "subclass", "infraclass", "cohort", "subcohort", "superorder",
+	"order", "suborder", "infraorder", "parvorder", "superfamily", "family", "subfamily", "tribe", "subtribe", "genus", "subgenus", "section", "subsection", "series", "species group",
+	"species subgroup", "species", "subspecies", "varietas", "forma"
+};
+
+map<std::string, Rank> Rank::init_map() {
+	map<string, Rank> r;
+	for (size_t i = 0; i < count; ++i)
+		r[names[i]] = Rank(i);
+	return r;
+}
+
+const map<std::string, Rank> Rank::rank_map = Rank::init_map();
+
+Rank::Rank(const char *s) {
+	if (rank_map.find(s) == rank_map.end())
+		throw std::runtime_error("Invalid taxonomic rank.");
+	r = rank_map.find(s)->second.r;
+}
 
 Taxonomy taxonomy;
 
@@ -79,12 +100,14 @@ void Taxonomy::load_nodes()
 {
 	TextInputFile f(config.nodesdmp);
 	unsigned taxid, parent;
+	char rank[64];
 	while (!f.eof() && (f.getline(), !f.line.empty())) {
-		if (sscanf(f.line.c_str(), "%u\t|\t%u", &taxid, &parent) != 2)
+		if (sscanf(f.line.c_str(), "%u\t|\t%u\t|\t%63[^\t]", &taxid, &parent, &rank) != 3)
 			throw std::runtime_error("Invalid nodes.dmp file format.");
-		//cout << taxid << '\t' << parent << endl;
 		parent_.resize(taxid + 1);
 		parent_[taxid] = parent;
+		rank_.resize(taxid + 1);
+		rank_[taxid] = Rank(rank);
 	}
 	f.close();
 }

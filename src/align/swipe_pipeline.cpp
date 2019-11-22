@@ -49,7 +49,7 @@ void Pipeline::run(Statistics &stat, const sequence *subjects, size_t subject_co
 		else {
 			const auto it = subject_idx.emplace(hsp.begin()->swipe_target, (unsigned)targets.size());
 			if (it.second)
-				targets.push_back(new Target(0, hsp.begin()->swipe_target));
+				targets.push_back(new Target(0, hsp.begin()->swipe_target, std::set<unsigned>()));
 			i = it.first->second;
 		}
 		targets[i].filter_score = hsp.begin()->score;

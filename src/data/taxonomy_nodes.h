@@ -19,16 +19,44 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #ifndef TAXONOMY_NODES_H_
 #define TAXONOMY_NODES_H_
 
+#include <map>
 #include <vector>
 #include <set>
 #include <string>
 #include "../util/io/serializer.h"
 #include "../util/io/deserializer.h"
 
+struct Rank {
+	Rank() :
+		r(none)
+	{}
+	Rank(size_t i) :
+		r((char)i)
+	{}
+	Rank(const char *s);
+	enum {
+		count = 34, forma = 33, varietas = 32, subspecies = 31, species = 30, species_subgroup = 29, species_group = 28, series = 27, subsection = 26, section = 25, subgenus = 24, genus = 23, subtribe = 22,
+		tribe = 21, subfamily = 20, family = 19, superfamily = 18, parvorder = 17, infraorder = 16, suborder = 15, order = 14, superorder = 13, subcohort = 12, cohort = 11, infraclass = 10,
+		subclass = 9, class_rank = 8, superclass = 7, subphylum = 6, phylum = 5, superphylum = 4, subkingdom = 3, kingdom = 2, superkingdom = 1, none = 0
+	};
+	operator int() const {
+		return (int)r;
+	}
+	friend std::ostream& operator<<(std::ostream &s, Rank &r) {
+		s << names[(int)r.r];
+		return s;
+	}
+	static const char* names[count];
+private:
+	char r;
+	static const std::map<std::string, Rank> rank_map;
+	static std::map<std::string, Rank> init_map();
+};
+
 struct TaxonomyNodes
 {
 
-	TaxonomyNodes(Deserializer &in);
+	TaxonomyNodes(Deserializer &in, uint32_t db_build);
 	static void build(Serializer &out);
 	unsigned get_parent(unsigned taxid) const
 	{
@@ -36,6 +64,8 @@ struct TaxonomyNodes
 			throw std::runtime_error(std::string("No taxonomy node found for taxon id ") + std::to_string(taxid));
 		return parent_[taxid];
 	}
+	unsigned rank_taxid(unsigned taxid, Rank rank) const;
+	std::set<unsigned> rank_taxid(const std::vector<unsigned> &taxid, Rank rank) const;
 	unsigned get_lca(unsigned t1, unsigned t2) const;
 	bool contained(unsigned query, const std::set<unsigned> &filter);
 	bool contained(const std::vector<unsigned> query, const std::set<unsigned> &filter);
@@ -49,6 +79,7 @@ private:
 	}
 
 	std::vector<unsigned> parent_;
+	std::vector<Rank> rank_;
 	std::vector<bool> cached_, contained_;
 
 };
