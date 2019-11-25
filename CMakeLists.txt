@@ -148,6 +148,7 @@ add_executable(diamond $<TARGET_OBJECTS:arch_generic>
   src/util/math/sparse_matrix.cpp
   src/lib/tantan/LambdaCalculator.cc
   src/data/taxonomy_filter.cpp
+  src/util/algo/upgma.cpp
 )
 
 if(EXTRA)

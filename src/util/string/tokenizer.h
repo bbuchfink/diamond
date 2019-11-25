@@ -8,7 +8,13 @@
 
 namespace Util { namespace String {
 
-struct TokenizerException : public std::exception {
+struct TokenizerException : public std::runtime_error {
+	TokenizerException():
+		std::runtime_error("Tokenizer Exception")
+	{}
+	TokenizerException(const std::string &msg):
+		std::runtime_error(msg)
+	{}
 };
 
 struct Skip {};
@@ -61,6 +67,23 @@ struct Tokenizer {
 		else {
 			if (*p != '\0')
 				throw TokenizerException();
+			p = nullptr;
+		}
+		return *this;
+	}
+
+	Tokenizer& operator>>(double &x) {
+		if (p == nullptr || *p == '\0')
+			throw TokenizerException("No token left");
+		char *end;
+		x = strtod(p, &end);
+		if (end == p)
+			throw TokenizerException("Unable to parse double");
+		if (strncmp(end, delimiter, len) == 0)
+			p = end + len;
+		else {
+			if (*end != '\0')
+				throw TokenizerException("Invalid char in double");
 			p = nullptr;
 		}
 		return *this;

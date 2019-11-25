@@ -74,7 +74,8 @@ Config::Config(int argc, const char **argv)
 		.add_command("filter-blasttab", "")
 		.add_command("show-cbs", "")
 		.add_command("simulate-seqs", "")
-		.add_command("split", "");
+		.add_command("split", "")
+		.add_command("upgma", "");
 
 	Options_group general("General options");
 	general.add()
