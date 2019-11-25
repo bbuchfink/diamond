@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <stdexcept>
 #include <limits.h>
+#include "../../lib/MemoryPool/MemoryPool.h"
 #include "../io/text_input_file.h"
 #include "../../basic/config.h"
 #include "../string/tokenizer.h"
@@ -47,7 +48,8 @@ struct Edge {
 	double d;
 };
 
-typedef list<Edge>::iterator EdgePtr;
+typedef list<Edge, MemoryPool<Edge>> EdgeList;
+typedef EdgeList::iterator EdgePtr;
 
 struct CmpEdge {
 	bool operator()(const EdgePtr& e, const EdgePtr &f) const {
@@ -65,7 +67,7 @@ struct Node {
 	void sort_neighbors() {
 		std::sort(neighbors.begin(), neighbors.end(), CmpNeighbor{ parent });
 	}
-	void set_parent(int parent, list<Edge> &edges) {
+	void set_parent(int parent, EdgeList &edges) {
 		this->parent = parent;
 		for (EdgePtr e : neighbors) {
 			++e->deleted;
@@ -89,7 +91,7 @@ struct Node {
 void merge_nodes(int n1,
 	int n2,
 	vector<Node> &nodes,
-	list<Edge> &edges,
+	EdgeList &edges,
 	Queue &queue,
 	double max_dist) {	
 	const int union_idx = (int)nodes.size();
@@ -128,7 +130,7 @@ void merge_nodes(int n1,
 	node2.set_parent(union_idx, edges);
 }
 
-void upgma(list<Edge> &edges, size_t node_count) {
+void upgma(EdgeList &edges, size_t node_count) {
 	vector<EdgePtr> edge_vec;
 	vector<Node> nodes;
 
@@ -172,7 +174,7 @@ void upgma() {
 	TextInputFile in(config.query_file);
 	string query, target;
 	double evalue;
-	list<Edge> edges;	
+	EdgeList edges;	
 	map<string, int> acc2idx;
 
 	message_stream << "Reading edges..." << endl;
