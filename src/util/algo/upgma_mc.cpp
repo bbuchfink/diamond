@@ -7,6 +7,8 @@
 #include <algorithm>
 #include <stdexcept>
 #include <limits.h>
+#include <stdlib.h>
+#include <iomanip>
 #include "../io/text_input_file.h"
 #include "../../basic/config.h"
 #include "../string/tokenizer.h"
@@ -20,6 +22,7 @@ using std::map;
 using std::vector;
 using std::ostream;
 using std::pair;
+using std::cout;
 
 namespace Util { namespace Algo { namespace UPGMA_MC {
 
@@ -61,7 +64,7 @@ typedef EdgeList::iterator EdgePtr;
 
 struct CmpEdge {
 	bool operator()(const EdgePtr& e, const EdgePtr &f) const {
-		return e->l > f->l;
+		return e->l > f->l || (e->l == f->l && (e->n1 > f->n1 || (e->n1 == f->n1 && e->n2 > f->n2)));
 	}
 };
 
@@ -154,26 +157,24 @@ int parent(int idx, const vector<Node> &nodes) {
 	return idx;
 }
 
-int node_idx(const string &acc, vector<Node> &nodes, map<string, int> &acc2idx, int &node_count) {
+int node_idx(const string &acc, vector<Node> &nodes, map<string, int> &acc2idx) {
 	if (acc2idx.find(acc) == acc2idx.end()) {
 		const int i = (int)acc2idx.size();
 		acc2idx[acc] = i;
-		nodes.emplace_back(1, i);
-		++node_count;
 		return i;
 	}
 	else
 		return acc2idx[acc];
 }
 
-double load_edges(TextInputFile &in, EdgeList &edges, vector<Node> &nodes, map<string, int> &acc2idx, Queue &queue, double lambda, double max_dist, int &node_count) {
+double load_edges(TextInputFile &in, EdgeList &edges, vector<Node> &nodes, map<string, int> &acc2idx, Queue &queue, double lambda, double max_dist) {
 	string query, target;
 	double evalue = max_dist;
 	message_stream << "Reading edges..." << endl;
 	while (in.getline(), (!in.eof() && edges.size() < config.upgma_edge_limit)) {
 		String::Tokenizer t(in.line, "\t");
 		t >> query >> target >> evalue;
-		const int query_idx = node_idx(query, nodes, acc2idx, node_count), target_idx = node_idx(target, nodes, acc2idx, node_count);
+		const int query_idx = node_idx(query, nodes, acc2idx), target_idx = node_idx(target, nodes, acc2idx);
 
 		if (query_idx < target_idx) {
 			const int i = parent(query_idx, nodes), j = parent(target_idx, nodes);
@@ -182,8 +183,9 @@ double load_edges(TextInputFile &in, EdgeList &edges, vector<Node> &nodes, map<s
 			else {
 				const EdgePtr e = nodes[i].find_edge(j, edges.end());
 				const double max_edges = (double)nodes[i].size*(double)nodes[j].size;
-				if (e == edges.end())
+				if (e == edges.end()) {
 					edges.emplace(edges.end(), i, j, 1, evalue); // ->set_bounds(lambda, max_dist, max_edges);
+				}
 				else {
 					++e->count;
 					e->s += evalue;
@@ -236,26 +238,32 @@ void upgma() {
 	const double max_dist = 10.0;
 	TextInputFile in(config.query_file);
 	EdgeList edges;
+	if (config.seq_no.empty())
+		throw std::runtime_error("--seq");
 	vector<Node> nodes;
+	const int n = std::atoi(config.seq_no[0].c_str());
+	for (int i = 0; i < n; ++i)
+		nodes.emplace_back(1, i);
 	map<string, int> acc2idx;
 	Queue queue;
 	double lambda = 0.0;
-	int node_count = 0;
+	int node_count = (int)nodes.size(), round = 0;
 	do {
-		lambda = load_edges(in, edges, nodes, acc2idx, queue, lambda, max_dist, node_count);
+		lambda = load_edges(in, edges, nodes, acc2idx, queue, lambda, max_dist);
 		message_stream << "Clustering nodes..." << endl;
 		message_stream << "#Edges: " << edges.size() << ", #Nodes: " << node_count << endl;
 		while (!queue.empty()) {
 			EdgePtr e = queue.top();
 			queue.pop();
 			if (!queue.empty() && !(*e <= *queue.top())) {
-				std::cout << e->u << '\t' << queue.top()->l << '\t' << lambda << endl;
+				//std::cout << e->u << '\t' << queue.top()->l << '\t' << lambda << endl;
 				queue.push(e);
 				break;
 			}
 			if (nodes[e->n1].parent == e->n1 && nodes[e->n2].parent == e->n2 && e->u < max_dist) {
 				merge_nodes(e->n1, e->n2, nodes, edges, queue, max_dist, lambda);
 				--node_count;
+				cout << nodes.back().parent << '\t' << e->n1 << '\t' << e->n2 << '\t' << std::setprecision(10) << e->u << '\t' << round << endl;
 			}
 			++e->deleted;
 			if (e->deleted == 3)
@@ -264,6 +272,7 @@ void upgma() {
 				message_stream << "#Edges: " << edges.size() << ", #Nodes: " << node_count << endl;
 		}
 		message_stream << "#Edges: " << edges.size() << ", #Nodes: " << node_count << endl;
+		++round;
 	} while (lambda < max_dist);
 	in.close();	
 }
