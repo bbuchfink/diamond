@@ -53,6 +53,7 @@ void simulate_seqs();
 void split();
 namespace Benchmark { DECL_DISPATCH(void, benchmark, ()) }
 namespace Util { namespace Algo { namespace UPGMA { void upgma(); } } }
+namespace Util { namespace Algo { namespace UPGMA_MC { void upgma(); } } }
 
 int main(int ac, const char* av[])
 {
@@ -134,6 +135,9 @@ int main(int ac, const char* av[])
 			break;
 		case Config::upgma:
 			Util::Algo::UPGMA::upgma();
+			break;
+		case Config::upgma_mc:
+			Util::Algo::UPGMA_MC::upgma();
 			break;
 #ifdef EXTRA
 		case Config::compare:

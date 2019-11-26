@@ -131,6 +131,7 @@ void merge_nodes(int n1,
 }
 
 void upgma(EdgeList &edges, size_t node_count) {
+	const double max_dist = 10.0;
 	vector<EdgePtr> edge_vec;
 	vector<Node> nodes;
 
@@ -158,8 +159,8 @@ void upgma(EdgeList &edges, size_t node_count) {
 	while (!queue.empty()) {
 		EdgePtr e = queue.top();
 		queue.pop();
-		if (nodes[e->n1].parent == e->n1 && nodes[e->n2].parent == e->n2) {
-			merge_nodes(e->n1, e->n2, nodes, edges, queue, 10.0);
+		if (nodes[e->n1].parent == e->n1 && nodes[e->n2].parent == e->n2 && e->d < max_dist) {
+			merge_nodes(e->n1, e->n2, nodes, edges, queue, max_dist);
 			--node_count;
 		}
 		++e->deleted;
@@ -188,7 +189,7 @@ void upgma() {
 		const int query_idx = acc2idx[query], target_idx = acc2idx[target];
 		if (query_idx < target_idx)
 			edges.emplace_back(query_idx, target_idx, evalue);
-		if (edges.size() % 10000 == 0)
+		if (edges.size() % 10000 == 0 && !edges.empty())
 			message_stream << "#Edges read: " << edges.size() << endl;
 	}
 	message_stream << "#Edges: " << edges.size() << ", #Nodes: " << acc2idx.size() << endl;

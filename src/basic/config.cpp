@@ -1,6 +1,6 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2017 Benjamin Buchfink <buchfink@gmail.com>
+Copyright (C) 2013-2019 Benjamin Buchfink <buchfink@gmail.com>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -75,7 +75,8 @@ Config::Config(int argc, const char **argv)
 		.add_command("show-cbs", "")
 		.add_command("simulate-seqs", "")
 		.add_command("split", "")
-		.add_command("upgma", "");
+		.add_command("upgma", "")
+		.add_command("upgmamc", "");
 
 	Options_group general("General options");
 	general.add()
@@ -283,7 +284,8 @@ Config::Config(int argc, const char **argv)
 		("cbs-window", 0, "", cbs_window, 40)
 		("no-unlink", 0, "", no_unlink)
 		("no-dict", 0, "", no_dict)
-		("swipe", 0, "", swipe_all);
+		("swipe", 0, "", swipe_all)
+		("upgma-edge-limit", 0, "", upgma_edge_limit, (uint64_t)1000000);
 		
 	parser.add(general).add(makedb).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options);
 	parser.store(argc, argv, command);

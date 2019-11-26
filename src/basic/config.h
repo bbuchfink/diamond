@@ -1,6 +1,6 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2017 Benjamin Buchfink <buchfink@gmail.com>
+Copyright (C) 2013-2019 Benjamin Buchfink <buchfink@gmail.com>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -183,11 +183,12 @@ struct Config
 	string taxon_exclude;
 	bool swipe_all;
 	uint64_t taxon_k;
+	uint64_t upgma_edge_limit;
 
 	enum {
 		makedb = 0, blastp = 1, blastx = 2, view = 3, help = 4, version = 5, getseq = 6, benchmark = 7, random_seqs = 8, compare = 9, sort = 10, roc = 11, db_stat = 12, model_sim = 13,
 		match_file_stat = 14, model_seqs = 15, opt = 16, mask = 17, fastq2fasta = 18, dbinfo = 19, test_extra = 20, test_io = 21, db_annot_stats = 22, read_sim = 23, info = 24, seed_stat = 25,
-		smith_waterman = 26, protein_snps = 27, cluster = 28, translate = 29, filter_blasttab = 30, show_cbs = 31, simulate_seqs = 32, split = 33, upgma = 34
+		smith_waterman = 26, protein_snps = 27, cluster = 28, translate = 29, filter_blasttab = 30, show_cbs = 31, simulate_seqs = 32, split = 33, upgma = 34, upgma_mc = 35
 	};
 	unsigned	command;
 
