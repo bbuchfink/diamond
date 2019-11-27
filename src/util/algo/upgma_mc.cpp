@@ -70,8 +70,15 @@ struct CmpEdge {
 
 typedef std::priority_queue<EdgePtr, vector<EdgePtr>, CmpEdge> Queue;
 
+void erase(EdgePtr &e, EdgeList &edges) {
+	++e->deleted;
+	if (e->deleted == 3)
+		edges.erase(e);
+}
+
 struct Node {
-	Node(int size, int parent):
+	Node(int idx, int size, int parent):
+		idx(idx),
 		size(size),
 		parent(parent)
 	{}
@@ -80,11 +87,8 @@ struct Node {
 	}
 	void set_parent(int parent, EdgeList &edges) {
 		this->parent = parent;
-		for (EdgePtr e : neighbors) {
-			++e->deleted;
-			if (e->deleted == 3)
-				edges.erase(e);
-		}
+		for (EdgePtr e : neighbors)
+			erase(e, edges);
 		neighbors.clear();
 		neighbors.shrink_to_fit();
 	}
@@ -94,16 +98,22 @@ struct Node {
 				return e;
 		return end;
 	}
+	bool root() const {
+		return parent == idx;
+	}
 	struct CmpNeighbor {
 		int me;
 		bool operator()(const EdgePtr &e, const EdgePtr &f) const { 
 			return e->target(me) < f->target(me);
 		}
 	};
-	int size;
-	int parent;
+	int idx, size, parent;
 	vector<EdgePtr> neighbors;
 };
+
+bool valid(const EdgePtr &e, const vector<Node> &nodes) {
+	return nodes[e->n1].root() && nodes[e->n2].root();
+}
 
 void merge_nodes(int n1,
 	int n2,
@@ -113,7 +123,7 @@ void merge_nodes(int n1,
 	double max_dist,
 	double lambda) {	
 	const int union_idx = (int)nodes.size();
-	nodes.emplace_back(nodes[n1].size + nodes[n2].size, union_idx);
+	nodes.emplace_back(union_idx, nodes[n1].size + nodes[n2].size, union_idx);
 	Node &node1 = nodes[n1], &node2 = nodes[n2], &union_node = nodes.back();
 	
 	vector<EdgePtr>::iterator i = node1.neighbors.begin(), j = node2.neighbors.begin();
@@ -168,8 +178,10 @@ int node_idx(const string &acc, vector<Node> &nodes, map<string, int> &acc2idx) 
 }
 
 double load_edges(TextInputFile &in, EdgeList &edges, vector<Node> &nodes, map<string, int> &acc2idx, Queue &queue, double lambda, double max_dist) {
+	if (edges.size() >= config.upgma_edge_limit)
+		throw std::runtime_error("Edge limit");
 	string query, target;
-	double evalue = max_dist;
+	double evalue = lambda;
 	message_stream << "Reading edges..." << endl;
 	while (in.getline(), (!in.eof() && edges.size() < config.upgma_edge_limit)) {
 		String::Tokenizer t(in.line, "\t");
@@ -177,19 +189,22 @@ double load_edges(TextInputFile &in, EdgeList &edges, vector<Node> &nodes, map<s
 		const int query_idx = node_idx(query, nodes, acc2idx), target_idx = node_idx(target, nodes, acc2idx);
 
 		if (query_idx < target_idx) {
-			const int i = parent(query_idx, nodes), j = parent(target_idx, nodes);
-			if (i == query_idx && j == target_idx)
+			int i = parent(query_idx, nodes), j = parent(target_idx, nodes);
+			if (i == query_idx && j == target_idx) {
+				if (i >= j) std::swap(i, j);
 				edges.emplace_back(i, j, 1, evalue);
+			}
 			else {
 				const EdgePtr e = nodes[i].find_edge(j, edges.end());
-				const double max_edges = (double)nodes[i].size*(double)nodes[j].size;
 				if (e == edges.end()) {
-					edges.emplace(edges.end(), i, j, 1, evalue); // ->set_bounds(lambda, max_dist, max_edges);
+					if (i >= j) std::swap(i, j);
+					const EdgePtr f = edges.emplace(edges.end(), i, j, 1, evalue);
+					nodes[i].neighbors.push_back(f);
+					nodes[j].neighbors.push_back(f);
 				}
 				else {
 					++e->count;
 					e->s += evalue;
-					//e->set_bounds(lambda, max_dist, max_edges);
 				}
 			}
 		}
@@ -243,7 +258,7 @@ void upgma() {
 	vector<Node> nodes;
 	const int n = std::atoi(config.seq_no[0].c_str());
 	for (int i = 0; i < n; ++i)
-		nodes.emplace_back(1, i);
+		nodes.emplace_back(i, 1, i);
 	map<string, int> acc2idx;
 	Queue queue;
 	double lambda = 0.0;
@@ -255,19 +270,22 @@ void upgma() {
 		while (!queue.empty()) {
 			EdgePtr e = queue.top();
 			queue.pop();
+			while (!queue.empty() && !valid(queue.top(), nodes)) {
+				EdgePtr f = queue.top();
+				erase(f, edges);
+				queue.pop();
+			}
 			if (!queue.empty() && !(*e <= *queue.top())) {
-				//std::cout << e->u << '\t' << queue.top()->l << '\t' << lambda << endl;
+				//std::cerr << e->u << '\t' << queue.top()->l << '\t' << lambda << endl;
 				queue.push(e);
 				break;
 			}
-			if (nodes[e->n1].parent == e->n1 && nodes[e->n2].parent == e->n2 && e->u < max_dist) {
+			if (valid(e, nodes) && e->u < max_dist) {
 				merge_nodes(e->n1, e->n2, nodes, edges, queue, max_dist, lambda);
 				--node_count;
 				cout << nodes.back().parent << '\t' << e->n1 << '\t' << e->n2 << '\t' << std::setprecision(10) << e->u << '\t' << round << endl;
 			}
-			++e->deleted;
-			if (e->deleted == 3)
-				edges.erase(e);
+			erase(e, edges);
 			if (edges.size() % 10000 == 0)
 				message_stream << "#Edges: " << edges.size() << ", #Nodes: " << node_count << endl;
 		}
