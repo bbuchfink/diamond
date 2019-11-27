@@ -9,6 +9,7 @@
 #include <limits.h>
 #include <stdlib.h>
 #include <iomanip>
+#include <unordered_map>
 #include "../io/text_input_file.h"
 #include "../../basic/config.h"
 #include "../string/tokenizer.h"
@@ -92,12 +93,6 @@ struct Node {
 		neighbors.clear();
 		neighbors.shrink_to_fit();
 	}
-	EdgePtr find_edge(int target, EdgePtr end) const {
-		for (EdgePtr e : neighbors)
-			if (e->n1 == target || e->n2 == target)
-				return e;
-		return end;
-	}
 	bool root() const {
 		return parent == idx;
 	}
@@ -177,9 +172,37 @@ int node_idx(const string &acc, vector<Node> &nodes, map<string, int> &acc2idx) 
 		return acc2idx[acc];
 }
 
+struct PairHash {
+	size_t operator()(const pair<int, int> &x) const {
+		return std::hash<int>()(x.first) ^ std::hash<int>()(x.second);
+	}
+};
+
 double load_edges(TextInputFile &in, EdgeList &edges, vector<Node> &nodes, map<string, int> &acc2idx, Queue &queue, double lambda, double max_dist) {
+	message_stream << "Clearing neighborhoods..." << endl;
+	for (Node &node : nodes) {
+		node.neighbors.clear();
+		node.neighbors.shrink_to_fit();
+	}
+
+	message_stream << "Clearing old edges..." << endl;
+	for (EdgeList::iterator i = edges.begin(); i != edges.end();)
+		if (!valid(i, nodes))
+			i = edges.erase(i);
+		else {
+			i->deleted = 0;
+			++i;
+		}
+
 	if (edges.size() >= config.upgma_edge_limit)
 		throw std::runtime_error("Edge limit");
+
+	message_stream << "Building edge hash map..." << endl;
+	std::unordered_map<pair<int, int>, EdgePtr, PairHash> edge_map;
+	edge_map.reserve(edges.size());
+	for (EdgePtr i = edges.begin(); i != edges.end(); ++i)
+		edge_map[{i->n1, i->n2}] = i;
+
 	string query, target;
 	double evalue = lambda;
 	message_stream << "Reading edges..." << endl;
@@ -195,44 +218,30 @@ double load_edges(TextInputFile &in, EdgeList &edges, vector<Node> &nodes, map<s
 				edges.emplace_back(i, j, 1, evalue);
 			}
 			else {
-				const EdgePtr e = nodes[i].find_edge(j, edges.end());
-				if (e == edges.end()) {
-					if (i >= j) std::swap(i, j);
+				if (i >= j) std::swap(i, j);
+				const auto e = edge_map.find({ i,j });
+				if (e == edge_map.end()) {					
 					const EdgePtr f = edges.emplace(edges.end(), i, j, 1, evalue);
-					nodes[i].neighbors.push_back(f);
-					nodes[j].neighbors.push_back(f);
+					edge_map[{i, j}] = f;
 				}
 				else {
-					++e->count;
-					e->s += evalue;
+					++e->second->count;
+					e->second->s += evalue;
 				}
 			}
 		}
 
-		if (edges.size() % 10000 == 0 && !edges.empty())
-			message_stream << "#Edges: " << edges.size() << endl;
+		/*if (edges.size() % 10000 == 0 && !edges.empty())
+			message_stream << "#Edges: " << edges.size() << endl;*/
 	}
 
 	lambda = in.eof() ? max_dist : evalue;
-	
-	message_stream << "Clearing old edges..." << endl;
-	for (EdgeList::iterator i = edges.begin(); i != edges.end();)
-		if (nodes[i->n1].parent != i->n1 || nodes[i->n2].parent != i->n2)
-			i = edges.erase(i);
-		else {
-			i->deleted = 0;
-			i->set_bounds(lambda, max_dist, (double)nodes[i->n1].size * (double)nodes[i->n2].size);
-			++i;
-		}
 
-	message_stream << "Clearing neighborhoods..." << endl;
-	for (Node &node : nodes)
-		node.neighbors.clear();
-
-	message_stream << "Building edge vector and neighborhood..." << endl;
+	message_stream << "Recomputing bounds, building edge vector and neighborhood..." << endl;
 	vector<EdgePtr> edge_vec;
 	edge_vec.reserve(edges.size());
-	for (EdgePtr i = edges.begin(); i != edges.end(); ++i) {
+	for (EdgeList::iterator i = edges.begin(); i != edges.end(); ++i) {
+		i->set_bounds(lambda, max_dist, (double)nodes[i->n1].size * (double)nodes[i->n2].size);
 		edge_vec.push_back(i);
 		nodes[i->n1].neighbors.push_back(i);
 		nodes[i->n2].neighbors.push_back(i);
