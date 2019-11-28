@@ -251,7 +251,7 @@ void upgma() {
 	message_stream << "Reading edges..." << endl;
 	EdgeVec all_edges(config.query_file.c_str());
 	message_stream << "Read " << all_edges.nodes() << " nodes, " << all_edges.size() << " edges." << endl;
-	EdgeVec::iterator begin = all_edges.begin();
+	EdgeVec::const_iterator begin = all_edges.cbegin();
 
 	EdgeList edges;
 	vector<Node> nodes;
@@ -261,7 +261,7 @@ void upgma() {
 	double lambda = 0.0;
 	int node_count = (int)nodes.size(), round = 0;
 	do {
-		lambda = load_edges(begin, all_edges.end(), edges, nodes, queue, lambda, max_dist);
+		lambda = load_edges(begin, all_edges.cend(), edges, nodes, queue, lambda, max_dist);
 		message_stream << "Clustering nodes..." << endl;
 		message_stream << "#Edges: " << edges.size() << ", #Nodes: " << node_count << endl;
 		while (!queue.empty()) {
