@@ -163,23 +163,13 @@ int parent(int idx, const vector<Node> &nodes) {
 	return idx;
 }
 
-int node_idx(const string &acc, vector<Node> &nodes, map<string, int> &acc2idx) {
-	if (acc2idx.find(acc) == acc2idx.end()) {
-		const int i = (int)acc2idx.size();
-		acc2idx[acc] = i;
-		return i;
-	}
-	else
-		return acc2idx[acc];
-}
-
 struct PairHash {
 	size_t operator()(const pair<int, int> &x) const {
 		return std::hash<int>()(x.first) ^ std::hash<int>()(x.second);
 	}
 };
 
-double load_edges(TextInputFile &in, EdgeList &edges, vector<Node> &nodes, map<string, int> &acc2idx, Queue &queue, double lambda, double max_dist) {
+double load_edges(EdgeVec::const_iterator &begin, EdgeVec::const_iterator end, EdgeList &edges, vector<Node> &nodes, Queue &queue, double lambda, double max_dist) {
 	message_stream << "Clearing neighborhoods..." << endl;
 	for (Node &node : nodes) {
 		node.neighbors.clear();
@@ -204,39 +194,36 @@ double load_edges(TextInputFile &in, EdgeList &edges, vector<Node> &nodes, map<s
 	for (EdgePtr i = edges.begin(); i != edges.end(); ++i)
 		edge_map[{i->n1, i->n2}] = i;
 
-	string query, target;
 	double evalue = lambda;
 	message_stream << "Reading edges..." << endl;
-	while (in.getline(), (!in.eof() && edges.size() < config.upgma_edge_limit)) {
-		String::Tokenizer t(in.line, "\t");
-		t >> query >> target >> evalue;
-		const int query_idx = node_idx(query, nodes, acc2idx), target_idx = node_idx(target, nodes, acc2idx);
+	while (edges.size() < config.upgma_edge_limit && begin < end) {
+		const int query_idx = begin->n1, target_idx = begin->n2;
+		evalue = begin->d;
 
-		if (query_idx < target_idx) {
-			int i = parent(query_idx, nodes), j = parent(target_idx, nodes);
-			if (i == query_idx && j == target_idx) {
-				if (i >= j) std::swap(i, j);
-				edges.emplace_back(i, j, 1, evalue);
+		int i = parent(query_idx, nodes), j = parent(target_idx, nodes);
+		if (i == query_idx && j == target_idx) {
+			if (i >= j) std::swap(i, j);
+			edges.emplace_back(i, j, 1, evalue);
+		}
+		else {
+			if (i >= j) std::swap(i, j);
+			const auto e = edge_map.find({ i,j });
+			if (e == edge_map.end()) {
+				const EdgePtr f = edges.emplace(edges.end(), i, j, 1, evalue);
+				edge_map[{i, j}] = f;
 			}
 			else {
-				if (i >= j) std::swap(i, j);
-				const auto e = edge_map.find({ i,j });
-				if (e == edge_map.end()) {					
-					const EdgePtr f = edges.emplace(edges.end(), i, j, 1, evalue);
-					edge_map[{i, j}] = f;
-				}
-				else {
-					++e->second->count;
-					e->second->s += evalue;
-				}
+				++e->second->count;
+				e->second->s += evalue;
 			}
 		}
-
+	
+		++begin;
 		/*if (edges.size() % 10000 == 0 && !edges.empty())
 			message_stream << "#Edges: " << edges.size() << endl;*/
 	}
 
-	lambda = in.eof() ? max_dist : evalue;
+	lambda = (begin == end) ? max_dist : evalue;
 
 	message_stream << "Recomputing bounds, building edge vector and neighborhood..." << endl;
 	vector<EdgePtr> edge_vec;
@@ -261,23 +248,20 @@ double load_edges(TextInputFile &in, EdgeList &edges, vector<Node> &nodes, map<s
 
 void upgma() {
 	const double max_dist = 10.0;
+	message_stream << "Reading edges..." << endl;
 	EdgeVec all_edges(config.query_file.c_str());
-	message_stream << "Read " << all_edges.acc2idx.size() << " nodes, " << all_edges.size() << " edges." << endl;
-	return;
-	TextInputFile in(config.query_file);
+	message_stream << "Read " << all_edges.nodes() << " nodes, " << all_edges.size() << " edges." << endl;
+	EdgeVec::iterator begin = all_edges.begin();
+
 	EdgeList edges;
-	if (config.seq_no.empty())
-		throw std::runtime_error("--seq");
 	vector<Node> nodes;
-	const int n = std::atoi(config.seq_no[0].c_str());
-	for (int i = 0; i < n; ++i)
+	for (int i = 0; i < (int)all_edges.nodes(); ++i)
 		nodes.emplace_back(i, 1, i);
-	map<string, int> acc2idx;
 	Queue queue;
 	double lambda = 0.0;
 	int node_count = (int)nodes.size(), round = 0;
 	do {
-		lambda = load_edges(in, edges, nodes, acc2idx, queue, lambda, max_dist);
+		lambda = load_edges(begin, all_edges.end(), edges, nodes, queue, lambda, max_dist);
 		message_stream << "Clustering nodes..." << endl;
 		message_stream << "#Edges: " << edges.size() << ", #Nodes: " << node_count << endl;
 		while (!queue.empty()) {
@@ -305,7 +289,6 @@ void upgma() {
 		message_stream << "#Edges: " << edges.size() << ", #Nodes: " << node_count << endl;
 		++round;
 	} while (lambda < max_dist);
-	in.close();	
 }
 
 }}}

@@ -17,6 +17,9 @@ struct CompactEdge {
 
 struct EdgeVec : public std::vector<CompactEdge> {
 	EdgeVec(const char *file);
+	size_t nodes() const {
+		return acc2idx.size();
+	}
 	std::unordered_map<std::string, int> acc2idx;
 };
 

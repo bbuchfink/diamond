@@ -285,7 +285,7 @@ Config::Config(int argc, const char **argv)
 		("no-unlink", 0, "", no_unlink)
 		("no-dict", 0, "", no_dict)
 		("swipe", 0, "", swipe_all)
-		("upgma-edge-limit", 0, "", upgma_edge_limit, (uint64_t)1000000);
+		("upgma-edge-limit", 0, "", upgma_edge_limit, (uint64_t)10000000);
 		
 	parser.add(general).add(makedb).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options);
 	parser.store(argc, argv, command);
