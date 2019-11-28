@@ -12,7 +12,7 @@ struct CompactEdge {
 		return d < e.d;
 	}
 	int n1, n2;
-	float d;
+	double d;
 };
 
 struct EdgeVec : public std::vector<CompactEdge> {

@@ -12,7 +12,7 @@ namespace Util { namespace Algo { namespace UPGMA_MC {
 EdgeVec::EdgeVec(const char *file) {
 	TextInputFile in(file);
 	string query, target;
-	float evalue;
+	double evalue;
 	while (in.getline(), !in.eof()) {
 		String::Tokenizer t(in.line, "\t");
 		t >> query >> target >> evalue;
