@@ -89,6 +89,23 @@ struct Tokenizer {
 		return *this;
 	}
 
+	Tokenizer& operator>>(float &x) {
+		if (p == nullptr || *p == '\0')
+			throw TokenizerException("No token left");
+		char *end;
+		x = strtof(p, &end);
+		if (end == p)
+			throw TokenizerException("Unable to parse float");
+		if (strncmp(end, delimiter, len) == 0)
+			p = end + len;
+		else {
+			if (*end != '\0')
+				throw TokenizerException("Invalid char in float");
+			p = nullptr;
+		}
+		return *this;
+	}
+
 private:
 	const char *p, *delimiter;
 	size_t len;

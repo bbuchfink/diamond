@@ -15,6 +15,7 @@
 #include "../string/tokenizer.h"
 #include "../log_stream.h"
 #include "../../lib/MemoryPool/MemoryPool.h"
+#include "edge_vec.h"
 
 using std::string;
 using std::list;
@@ -260,6 +261,9 @@ double load_edges(TextInputFile &in, EdgeList &edges, vector<Node> &nodes, map<s
 
 void upgma() {
 	const double max_dist = 10.0;
+	EdgeVec all_edges(config.query_file.c_str());
+	message_stream << "Read " << all_edges.acc2idx.size() << " nodes, " << all_edges.size() << " edges." << endl;
+	return;
 	TextInputFile in(config.query_file);
 	EdgeList edges;
 	if (config.seq_no.empty())

@@ -150,6 +150,7 @@ add_executable(diamond $<TARGET_OBJECTS:arch_generic>
   src/data/taxonomy_filter.cpp
   src/util/algo/upgma.cpp
   src/util/algo/upgma_mc.cpp
+  src/util/algo/edge_vec.cpp
 )
 
 if(EXTRA)
