@@ -169,7 +169,7 @@ struct PairHash {
 	}
 };
 
-double load_edges(EdgeVec::const_iterator &begin, EdgeVec::const_iterator end, EdgeList &edges, vector<Node> &nodes, Queue &queue, double lambda, double max_dist) {
+double load_edges(EdgeVec::const_iterator &begin, const EdgeVec::const_iterator &end, EdgeList &edges, vector<Node> &nodes, Queue &queue, double lambda, double max_dist) {
 	message_stream << "Clearing neighborhoods..." << endl;
 	for (Node &node : nodes) {
 		node.neighbors.clear();
