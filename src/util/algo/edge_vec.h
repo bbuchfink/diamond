@@ -20,7 +20,9 @@ struct EdgeVec : public std::vector<CompactEdge> {
 	size_t nodes() const {
 		return acc2idx.size();
 	}
+	std::string print(int idx) const;
 	std::unordered_map<std::string, int> acc2idx;
+	std::unordered_map<int, std::string> idx2acc;
 };
 
 }}}

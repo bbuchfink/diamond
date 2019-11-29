@@ -280,7 +280,7 @@ void upgma() {
 			if (valid(e, nodes) && e->u < max_dist) {
 				merge_nodes(e->n1, e->n2, nodes, edges, queue, max_dist, lambda);
 				--node_count;
-				cout << nodes.back().parent << '\t' << e->n1 << '\t' << e->n2 << '\t' << std::setprecision(10) << e->u << '\t' << round << endl;
+				cout << nodes.back().parent << '\t' << all_edges.print(e->n1) << '\t' << all_edges.print(e->n2) << '\t' << e->u << endl;
 			}
 			erase(e, edges);
 			if (edges.size() % 10000 == 0)
