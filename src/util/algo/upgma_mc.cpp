@@ -66,7 +66,8 @@ typedef EdgeList::iterator EdgePtr;
 
 struct CmpEdge {
 	bool operator()(const EdgePtr& e, const EdgePtr &f) const {
-		return e->l > f->l || (e->l == f->l && (e->n1 > f->n1 || (e->n1 == f->n1 && e->n2 > f->n2)));
+		//return e->l > f->l || (e->l == f->l && (e->n1 > f->n1 || (e->n1 == f->n1 && e->n2 > f->n2)));
+		return e->l > f->l || (e->l == f->l && e->u > f->u);
 	}
 };
 
@@ -200,6 +201,7 @@ double load_edges(EdgeVec& all_edges, EdgeList &edges, vector<Node> &nodes, Queu
 	while (edges.size() < config.upgma_edge_limit && (edge = all_edges.get())) {
 		const int query_idx = edge.n1, target_idx = edge.n2;
 		evalue = edge.d;
+		//cout << edge.n1 << '\t' << edge.n2 << '\t' << evalue << endl;
 
 		int i = parent(query_idx, nodes), j = parent(target_idx, nodes);
 		if (i == query_idx && j == target_idx) {
@@ -271,7 +273,7 @@ void upgma() {
 				queue.pop();
 			}
 			if (!queue.empty() && !(*e <= *queue.top())) {
-				//std::cerr << e->u << '\t' << queue.top()->l << '\t' << lambda << endl;
+				//std::cerr << e->u << '\t' << queue.top()->l << '\t' << all_edges.print(e->n1) << '\t' << all_edges.print(e->n2) << '\t' << lambda << endl;
 				queue.push(e);
 				break;
 			}

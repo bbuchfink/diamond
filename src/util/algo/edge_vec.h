@@ -23,7 +23,7 @@ struct CompactEdge {
 };
 
 struct EdgeVec {
-	static constexpr int BUCKET_COUNT = 309;
+	static constexpr int BUCKET_COUNT = 325;
 	EdgeVec(const char *file);
 	size_t nodes() const {
 		return acc2idx.size();
@@ -35,7 +35,7 @@ struct EdgeVec {
 	std::string print(int idx) const;
 private:
 	static int bucket(double d) {
-		return d == 0.0 ? 0 : std::min(307 + (int)std::log10(d), BUCKET_COUNT - 1);
+		return d == 0.0 ? 0 : std::min(323 + (int)std::log10(d), BUCKET_COUNT - 1);
 	}	
 	std::unordered_map<std::string, int> acc2idx;
 	std::unordered_map<int, std::string> idx2acc;
