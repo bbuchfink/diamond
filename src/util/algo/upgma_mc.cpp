@@ -169,7 +169,7 @@ struct PairHash {
 	}
 };
 
-double load_edges(EdgeVec::const_iterator &begin, const EdgeVec::const_iterator &end, EdgeList &edges, vector<Node> &nodes, Queue &queue, double lambda, double max_dist) {
+double load_edges(EdgeVec& all_edges, EdgeList &edges, vector<Node> &nodes, Queue &queue, double lambda, double max_dist) {
 	message_stream << "Clearing neighborhoods..." << endl;
 	for (Node &node : nodes) {
 		node.neighbors.clear();
@@ -196,9 +196,10 @@ double load_edges(EdgeVec::const_iterator &begin, const EdgeVec::const_iterator 
 
 	double evalue = lambda;
 	message_stream << "Reading edges..." << endl;
-	while (edges.size() < config.upgma_edge_limit && begin < end) {
-		const int query_idx = begin->n1, target_idx = begin->n2;
-		evalue = begin->d;
+	CompactEdge edge;
+	while (edges.size() < config.upgma_edge_limit && (edge = all_edges.get())) {
+		const int query_idx = edge.n1, target_idx = edge.n2;
+		evalue = edge.d;
 
 		int i = parent(query_idx, nodes), j = parent(target_idx, nodes);
 		if (i == query_idx && j == target_idx) {
@@ -217,13 +218,11 @@ double load_edges(EdgeVec::const_iterator &begin, const EdgeVec::const_iterator 
 				e->second->s += evalue;
 			}
 		}
-	
-		++begin;
 		/*if (edges.size() % 10000 == 0 && !edges.empty())
 			message_stream << "#Edges: " << edges.size() << endl;*/
 	}
 
-	lambda = (begin == end) ? max_dist : evalue;
+	lambda = edge ? evalue : max_dist;
 
 	message_stream << "Recomputing bounds, building edge vector and neighborhood..." << endl;
 	vector<EdgePtr> edge_vec;
@@ -251,7 +250,6 @@ void upgma() {
 	message_stream << "Reading edges..." << endl;
 	EdgeVec all_edges(config.query_file.c_str());
 	message_stream << "Read " << all_edges.nodes() << " nodes, " << all_edges.size() << " edges." << endl;
-	EdgeVec::const_iterator begin = all_edges.cbegin();
 
 	EdgeList edges;
 	vector<Node> nodes;
@@ -261,7 +259,7 @@ void upgma() {
 	double lambda = 0.0;
 	int node_count = (int)nodes.size(), round = 0;
 	do {
-		lambda = load_edges(begin, all_edges.cend(), edges, nodes, queue, lambda, max_dist);
+		lambda = load_edges(all_edges, edges, nodes, queue, lambda, max_dist);
 		message_stream << "Clustering nodes..." << endl;
 		message_stream << "#Edges: " << edges.size() << ", #Nodes: " << node_count << endl;
 		while (!queue.empty()) {
