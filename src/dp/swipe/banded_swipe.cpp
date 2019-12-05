@@ -23,6 +23,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "target_iterator.h"
 #include "../../util/data_structures/mem_buffer.h"
 #include "../score_vector_int16.h"
+#include "../../util/math/integer.h"
 
 using std::list;
 
@@ -261,7 +262,7 @@ struct MatrixTag<_sv, ScoreOnly>
 };
 
 template<typename _sv>
-Hsp traceback(const sequence &query, Frame frame, const typename ScoreTraits<_sv>::Score *bias_correction, const TracebackMatrix<_sv> &dp, const DpTarget &target, int d_begin, typename ScoreTraits<_sv>::Score max_score, int max_col, int channel, int i0, int i1)
+Hsp traceback(const sequence &query, Frame frame, const int8_t *bias_correction, const TracebackMatrix<_sv> &dp, const DpTarget &target, int d_begin, typename ScoreTraits<_sv>::Score max_score, int max_col, int channel, int i0, int i1)
 {
 	typedef typename ScoreTraits<_sv>::Score Score;
 	const int j0 = i1 - (target.d_end - 1), d1 = target.d_end;
@@ -279,7 +280,10 @@ Hsp traceback(const sequence &query, Frame frame, const typename ScoreTraits<_sv
 	while (it.score() > ScoreTraits<_sv>::zero_score()) {
 		const Letter q = query[it.i], s = target.seq[it.j];
 		const Score m = score_matrix(q, s), score = it.score();
-		if (score == it.diag() + m + bias_correction[it.i]) {
+		Score diag_score = saturated_add(it.diag(), m);
+		if (bias_correction)
+			diag_score = saturated_add(diag_score, Score(bias_correction[it.i]));
+		if (score == diag_score) {
 			out.push_match(q, s, m > (Score)0);
 			it.walk_diagonal();
 		} else {
@@ -296,7 +300,7 @@ Hsp traceback(const sequence &query, Frame frame, const typename ScoreTraits<_sv
 }
 
 template<typename _sv>
-Hsp traceback(const sequence &query, Frame frame, const typename ScoreTraits<_sv>::Score *bias_correction, const Matrix<_sv> &dp, const DpTarget &target, int d_begin, typename ScoreTraits<_sv>::Score max_score, int max_col, int channel, int i0, int i1)
+Hsp traceback(const sequence &query, Frame frame, const int8_t *bias_correction, const Matrix<_sv> &dp, const DpTarget &target, int d_begin, typename ScoreTraits<_sv>::Score max_score, int max_col, int channel, int i0, int i1)
 {
 	Hsp out;
 	out.swipe_target = target.target_idx;
@@ -311,7 +315,8 @@ list<Hsp> swipe(
 	Frame frame,
 	vector<DpTarget>::const_iterator subject_begin,
 	vector<DpTarget>::const_iterator subject_end,
-	const typename ScoreTraits<_sv>::Score *composition_bias,
+	const int8_t *composition_bias,
+	int score_cutoff,
 	vector<DpTarget> &overflow)
 {
 	typedef typename ScoreTraits<_sv>::Score Score;
@@ -358,7 +363,12 @@ list<Hsp> swipe(
 		profile.set(targets.get());
 		for (int i = i0_; i <= i1_; ++i) {
 			hgap = it.hgap();
-			const _sv next = cell_update_cbs<_sv>(it.diag(), profile.get(query[i]), _sv(composition_bias[i]), extend_penalty, open_penalty, hgap, vgap, col_best);
+			_sv next;
+			if (composition_bias)
+				next = cell_update_cbs<_sv>(it.diag(), profile.get(query[i]), _sv(Score(composition_bias[i])), extend_penalty, open_penalty, hgap, vgap, col_best);
+			else
+				next = cell_update_sv<_sv>(it.diag(), profile.get(query[i]), extend_penalty, open_penalty, hgap, vgap, col_best);
+				
 			it.set_hgap(hgap);
 			it.set_score(next);
 			++it;
@@ -385,7 +395,8 @@ list<Hsp> swipe(
 	list<Hsp> out;
 	for (int i = 0; i < targets.n_targets; ++i) {
 		if (best[i] < ScoreTraits<_sv>::max_score()) {
-			out.push_back(traceback<_sv>(query, frame, composition_bias, dp, subject_begin[i], d_begin[i], best[i], max_col[i], i, i0 - j, i1 - j));
+			if (ScoreTraits<_sv>::int_score(best[i]) >= score_cutoff)
+				out.push_back(traceback<_sv>(query, frame, composition_bias, dp, subject_begin[i], d_begin[i], best[i], max_col[i], i, i0 - j, i1 - j));
 		}
 		else
 			overflow.push_back(subject_begin[i]);
@@ -394,8 +405,10 @@ list<Hsp> swipe(
 }
 
 #ifdef __SSE2__
-template list<Hsp> swipe<score_vector<int16_t>, Traceback>(const sequence&, Frame, vector<DpTarget>::const_iterator, vector<DpTarget>::const_iterator, const int16_t*, vector<DpTarget> &overflow);
-template list<Hsp> swipe<score_vector<int16_t>, ScoreOnly>(const sequence&, Frame, vector<DpTarget>::const_iterator, vector<DpTarget>::const_iterator, const int16_t*, vector<DpTarget> &overflow);
+template list<Hsp> swipe<score_vector<int16_t>, Traceback>(const sequence&, Frame, vector<DpTarget>::const_iterator, vector<DpTarget>::const_iterator, const int8_t*, int, vector<DpTarget> &overflow);
+template list<Hsp> swipe<score_vector<int16_t>, ScoreOnly>(const sequence&, Frame, vector<DpTarget>::const_iterator, vector<DpTarget>::const_iterator, const int8_t*, int, vector<DpTarget> &overflow);
 #endif
+template list<Hsp> swipe<int32_t, Traceback>(const sequence&, Frame, vector<DpTarget>::const_iterator, vector<DpTarget>::const_iterator, const int8_t*, int, vector<DpTarget> &overflow);
+template list<Hsp> swipe<int32_t, ScoreOnly>(const sequence&, Frame, vector<DpTarget>::const_iterator, vector<DpTarget>::const_iterator, const int8_t*, int, vector<DpTarget> &overflow);
 
 }}}

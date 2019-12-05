@@ -16,6 +16,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
+#include <algorithm>
 #include "dp.h"
 
 double background_scores[20];
@@ -69,7 +70,7 @@ Bias_correction::Bias_correction(const sequence &seq):
 		scores += seq[h];
 		const Letter r = seq[m];
 		if (r < 20)
-			this->operator[](m) = (float)background_scores[(int)r] - float(scores.scores[(int)r] - score_matrix(r, r)) / (n - 1);
+			this->operator[](m) = std::min((float)background_scores[(int)r] - float(scores.scores[(int)r] - score_matrix(r, r)) / (n - 1), 0.0f);
 		++h;
 		++m;
 	}
@@ -78,7 +79,7 @@ Bias_correction::Bias_correction(const sequence &seq):
 		scores -= seq[t];
 		const Letter r = seq[m];
 		if (r < 20)
-			this->operator[](m) = (float)background_scores[(int)r] - float(scores.scores[(int)r] - score_matrix(r, r)) / (n - 1);
+			this->operator[](m) = std::min((float)background_scores[(int)r] - float(scores.scores[(int)r] - score_matrix(r, r)) / (n - 1), 0.0f);
 		++h;
 		++t;
 		++m;
@@ -88,21 +89,20 @@ Bias_correction::Bias_correction(const sequence &seq):
 		scores -= seq[t];
 		const Letter r = seq[m];
 		if (r < 20)
-			this->operator[](m) = (float)background_scores[(int)r] - float(scores.scores[(int)r] - score_matrix(r, r)) / (n - 1);
+			this->operator[](m) = std::min((float)background_scores[(int)r] - float(scores.scores[(int)r] - score_matrix(r, r)) / (n - 1), 0.0f);
 		++t;
 		++m;
 	}
 	while (m < l) {
 		const Letter r = seq[m];
 		if (r < 20)
-			this->operator[](m) = (float)background_scores[(int)r] - float(scores.scores[(int)r] - score_matrix(r, r)) / (n - 1);
+			this->operator[](m) = std::min((float)background_scores[(int)r] - float(scores.scores[(int)r] - score_matrix(r, r)) / (n - 1), 0.0f);
 		++m;
 	}
 
-	int16.reserve(seq.length());
-	for (float f : *this) {
-		int16.push_back(int16_t(f < 0.0f ? f - 0.5f : f + 0.5f));
-	}
+	int8.reserve(seq.length());
+	for (float f : *this)
+		int8.push_back(int8_t(f - 0.5f));
 }
 
 int Bias_correction::operator()(const Hsp &hsp) const

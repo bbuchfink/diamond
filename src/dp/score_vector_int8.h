@@ -39,6 +39,8 @@ struct score_vector<int8_t>
 		data_(_mm_set1_epi8(x))
 	{}
 
+	score_vector(const int8_t* s) :
+		data_(_mm_loadu_si128(reinterpret_cast<const __m128i*>(s)))
 	score_vector(unsigned a, const __m128i &seq)
 	{
 #ifdef __SSSE3__

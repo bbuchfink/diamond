@@ -160,7 +160,7 @@ void Pipeline::run_swipe(bool score_only)
 		hsp.splice(hsp.end(), banded_3frame_swipe(translated_query, REVERSE, vr.begin(), vr.end(), this->dp_stat, score_only, target_parallel));
 	}
 	else {
-		hsp = DP::BandedSwipe::swipe(query_seq(0), vf.begin(), vf.end(), Frame(0), query_cb[0], score_only ? 0 : DP::TRACEBACK);
+		hsp = DP::BandedSwipe::swipe(query_seq(0), vf.begin(), vf.end(), Frame(0), config.comp_based_stats ? &query_cb[0] : nullptr, score_only ? 0 : DP::TRACEBACK, raw_score_cutoff());
 	}
 	
 	while (!hsp.empty()) {

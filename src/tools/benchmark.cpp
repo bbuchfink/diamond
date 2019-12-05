@@ -15,6 +15,34 @@ using std::list;
 
 namespace Benchmark { namespace DISPATCH_ARCH {
 
+void scan_cols(const Long_score_profile &qp, sequence s, int i, int j, int j_end)
+{
+#ifdef __SSE2__
+	typedef score_vector<int8_t> Sv;
+	const int qlen = (int)qp.length();
+
+	int j2 = std::max(-(i - j + 15), j),
+		i3 = j2 + i - j,
+		j2_end = std::min(qlen - (i - j), j_end);
+	Sv v, max, v1, max1, v2, max2, v3, max3;
+	for (; j2 < j2_end; ++j2, ++i3) {
+		const int8_t *q = (int8_t*)qp.get(s[j2], i3);
+		v = v + score_vector<int8_t>((int8_t*)q);
+		max.max(v);
+		q += 16;
+		v1 = v1 + score_vector<int8_t>((int8_t*)q);
+		max1.max(v1);
+		q += 16;
+		v2 = v2 + score_vector<int8_t>((int8_t*)q);
+		max2.max(v2);
+		q += 16;
+		v3 = v3 + score_vector<int8_t>((int8_t*)q);
+		max3.max(v3);
+	}
+	volatile __m128i x = max.data_, y = max1.data_, z = max2.data_, w = max3.data_;
+#endif
+}
+
 int xdrop_window2(const Letter *query, const Letter *subject)
 {
 	static const int window = 40;
@@ -152,10 +180,28 @@ void banded_swipe(const sequence &s1, const sequence &s2) {
 	Bias_correction cbs(s1);
 	high_resolution_clock::time_point t1 = high_resolution_clock::now();
 	for (size_t i = 0; i < n; ++i) {
-		volatile auto out = DP::BandedSwipe::swipe(s1, target.begin(), target.end(), Frame(0), cbs, 0);
+		volatile auto out = DP::BandedSwipe::swipe(s1, target.begin(), target.end(), Frame(0), &cbs, 0, 0);
+	}
+	cout << "Banded SWIPE (CBS):\t\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * s1.length() * 65 * 8) * 1000 << " ps/Cell" << endl;
+
+	t1 = high_resolution_clock::now();
+	for (size_t i = 0; i < n; ++i) {
+		volatile auto out = DP::BandedSwipe::swipe(s1, target.begin(), target.end(), Frame(0), nullptr, 0, 0);
 	}
 	cout << "Banded SWIPE:\t\t\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * s1.length() * 65 * 8) * 1000 << " ps/Cell" << endl;
 }
+
+#ifdef __SSE2__
+void diag_scores(const sequence &s1, const sequence &s2) {
+	static const size_t n = 100000llu;
+	high_resolution_clock::time_point t1 = high_resolution_clock::now();
+	Long_score_profile p(s1);
+	for (size_t i = 0; i < n; ++i) {
+		scan_cols(p, s2, 0, 0, (int)s2.length());
+	}
+	cout << "Diagonal scores:\t\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * s2.length() * 64) * 1000 << " ps/Cell" << endl;
+}
+#endif
 
 void benchmark() {
 	vector<Letter> s1, s2, s3, s4;
@@ -173,6 +219,7 @@ void benchmark() {
 #ifdef __SSE2__
 	banded_swipe(s1, s2);
 	swipe_cell_update();
+	diag_scores(s1, s2);
 #endif
 #ifdef __SSE4_1__
 	swipe(s3, s4);

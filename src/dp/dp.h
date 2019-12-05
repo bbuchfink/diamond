@@ -48,7 +48,7 @@ struct Bias_correction : public std::vector<float>
 	}
 	int operator()(const Hsp &hsp) const;
 	int operator()(const Diagonal_segment &d) const;
-	std::vector<int16_t> int16;
+	std::vector<int8_t> int8;
 };
 
 struct Seed_hit
@@ -564,7 +564,7 @@ DECL_DISPATCH(std::list<Hsp>, swipe, (const sequence &query, const sequence *sub
 
 namespace BandedSwipe {
 
-DECL_DISPATCH(std::list<Hsp>, swipe, (const sequence &query, std::vector<DpTarget>::iterator target_begin, std::vector<DpTarget>::iterator target_end, Frame frame, const Bias_correction &composition_bias, int flags))
+DECL_DISPATCH(std::list<Hsp>, swipe, (const sequence &query, std::vector<DpTarget>::iterator target_begin, std::vector<DpTarget>::iterator target_end, Frame frame, const Bias_correction *composition_bias, int flags, int score_cutoff))
 
 }
 
