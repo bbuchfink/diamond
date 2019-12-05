@@ -41,6 +41,8 @@ struct score_vector<int8_t>
 
 	score_vector(const int8_t* s) :
 		data_(_mm_loadu_si128(reinterpret_cast<const __m128i*>(s)))
+	{ }
+
 	score_vector(unsigned a, const __m128i &seq)
 	{
 #ifdef __SSSE3__
@@ -171,6 +173,7 @@ struct ScoreTraits<score_vector<int8_t>>
 	static constexpr int8_t zero_score() {
 		return SCHAR_MIN;
 	}
+	static void saturate(score_vector<int8_t> &v) {}
 };
 
 #endif
