@@ -2,6 +2,7 @@
 #include <string.h>
 #include "system.h"
 #include "../string/string.h"
+#include "../log_stream.h"
 
 using namespace std;
 
@@ -44,4 +45,8 @@ void auto_append_extension_if_exists(string &str, const char *ext) {
 	if (!ends_with(str, ext))
 		if (exists(str + ext))
 			str += ext;
+}
+
+void log_rss() {
+	log_stream << "Current RSS: " << convert_size(getCurrentRSS()) << ", Peak RSS: " << convert_size(getPeakRSS()) << endl;
 }

@@ -4,6 +4,7 @@
 #include <string>
 #include <string.h>
 #include <algorithm>
+#include <ostream>
 
 inline bool ends_with(const std::string &s, const char *t) {
 	const size_t l = strlen(t);
@@ -28,5 +29,7 @@ inline size_t max_len(const char** s, size_t n) {
 }
 
 #define MAX_LEN(A) max_len(A, sizeof(A)/sizeof(A[0]))
+
+std::string convert_size(size_t size);
 
 #endif

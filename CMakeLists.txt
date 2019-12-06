@@ -151,6 +151,9 @@ add_executable(diamond $<TARGET_OBJECTS:arch_generic>
   src/util/algo/upgma.cpp
   src/util/algo/upgma_mc.cpp
   src/util/algo/edge_vec.cpp
+  src/util/string/string.cpp
+  src/align/extend.cpp
+  src/align/target.cpp
 )
 
 if(EXTRA)

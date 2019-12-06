@@ -57,6 +57,9 @@ struct hit
 	{
 		return (query_ / align_mode.query_contexts) / (unsigned)i;
 	}
+	unsigned frame() const {
+		return query_ % align_mode.query_contexts;
+	}
 	int64_t global_diagonal() const
 	{
 		return (int64_t)subject_ - (int64_t)seed_offset_;
@@ -83,6 +86,9 @@ struct hit
 	{
 		const uint64_t x = (uint64_t)lhs.subject_ + (uint64_t)rhs.seed_offset_, y = (uint64_t)rhs.subject_ + (uint64_t)lhs.seed_offset_;
 		return x < y || (x == y && lhs.seed_offset_ < rhs.seed_offset_);
+	}
+	static bool cmp_frame(const hit &x, const hit &y) {
+		return x.frame() < y.frame();
 	}
 	friend std::ostream& operator<<(std::ostream &s, const hit &me)
 	{
