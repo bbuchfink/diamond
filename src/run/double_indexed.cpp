@@ -53,7 +53,7 @@ void run_ref_chunk(DatabaseFile &db_file,
 	const Metadata &metadata,
 	const vector<unsigned> &block_to_database_id)
 {
-	log_stream << "Current RSS: " << getCurrentRSS() << ", Peak RSS: " << getPeakRSS() << endl;
+	log_rss();
 
 	task_timer timer;
 	if (config.masking == 1) {
@@ -185,7 +185,7 @@ void run_query_chunk(DatabaseFile &db_file,
 	delete query_seeds;
 	query_seeds = 0;
 
-	log_stream << "Current RSS: " << getCurrentRSS() << ", Peak RSS: " << getPeakRSS() << endl;
+	log_rss();
 
 	if (blocked_processing) {
 		timer.go("Joining output blocks");
@@ -300,7 +300,7 @@ void master_thread(DatabaseFile *db_file, Timer &total_timer, Metadata &metadata
 	metadata.free();
 
 	timer.finish();
-	log_stream << "Current RSS: " << getCurrentRSS() << ", Peak RSS: " << getPeakRSS() << endl;
+	log_rss();
 	message_stream << "Total time = " << total_timer.getElapsedTimeInSec() << "s" << endl;
 	statistics.print();
 }

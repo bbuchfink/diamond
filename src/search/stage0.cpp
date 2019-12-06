@@ -27,6 +27,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../data/frequent_seeds.h"
 #include "trace_pt_buffer.h"
 #include "../util/data_structures/double_array.h"
+#include "../util/system/system.h"
 
 using namespace std;
 
@@ -68,6 +69,7 @@ void search_shape(unsigned sid, unsigned query_block, char *query_buffer, char *
 {
 	::partition<unsigned> p(Const::seedp, config.lowmem);
 	DoubleArray<SeedArray::_pos> query_seed_hits[Const::seedp], ref_seed_hits[Const::seedp];
+	log_rss();
 
 	for (unsigned chunk = 0; chunk < p.parts; ++chunk) {
 		message_stream << "Processing query block " << query_block << ", reference block " << current_ref_block << ", shape " << sid << ", index chunk " << chunk << '.' << endl;

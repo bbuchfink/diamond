@@ -30,26 +30,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "score_profile.h"
 #include "../basic/translated_position.h"
 #include "../util/simd.h"
-
-void init_cbs();
-
-struct No_score_correction
-{
-	void operator()(int &score, int i, int query_anchor, int mult) const
-	{}
-};
-
-struct Bias_correction : public std::vector<float>
-{
-	Bias_correction(const sequence &seq);
-	void operator()(float &score, int i, int query_anchor, int mult) const
-	{
-		score += (*this)[query_anchor + i*mult];
-	}
-	int operator()(const Hsp &hsp) const;
-	int operator()(const Diagonal_segment &d) const;
-	std::vector<int8_t> int8;
-};
+#include "comp_based_stats.h"
+#include "ungapped.h"
 
 struct Seed_hit
 {
@@ -187,12 +169,6 @@ struct Hsp_traits
 /*template<typename _score>
 void smith_waterman(const Letter *query, local_match &segment, _score gap_open, _score gap_extend, vector<char> &transcript_buf, const _score& = int());*/
 int smith_waterman(const sequence &query, const sequence &subject, unsigned band, unsigned padding, int op, int ep);
-
-int xdrop_ungapped(const Letter *query, const Letter *subject, unsigned seed_len, unsigned &delta, unsigned &len);
-int xdrop_ungapped(const Letter *query, const Letter *subject, unsigned &delta, unsigned &len);
-int xdrop_ungapped_right(const Letter *query, const Letter *subject, int &len);
-Diagonal_segment xdrop_ungapped(const sequence &query, const Bias_correction &query_bc, const sequence &subject, int qa, int sa);
-Diagonal_segment xdrop_ungapped(const sequence &query, const sequence &subject, int qa, int sa);
 
 struct Local {};
 struct Global {};
