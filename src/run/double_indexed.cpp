@@ -213,12 +213,12 @@ void run_query_chunk(DatabaseFile &db_file,
 void master_thread(DatabaseFile *db_file, Timer &total_timer, Metadata &metadata, const Options &options)
 {
 	task_timer timer("Opening the input file", true);
-	unique_ptr<TextInputFile> query_file;
+	TextInputFile *query_file = nullptr;
 	const Sequence_file_format *format_n = nullptr;
 	if (!options.self) {
-		if (config.query_file.empty())
+		if (config.query_file.empty() && !options.query_file)
 			std::cerr << "Query file parameter (--query/-q) is missing. Input will be read from stdin." << endl;
-		query_file.reset(new TextInputFile(config.query_file));
+		query_file = options.query_file ? options.query_file : new TextInputFile(config.query_file);
 		format_n = guess_format(*query_file);
 	}
 
@@ -273,9 +273,10 @@ void master_thread(DatabaseFile *db_file, Timer &total_timer, Metadata &metadata
 		run_query_chunk(*db_file, total_timer, current_query_chunk, *master_out, unaligned_file.get(), aligned_file.get(), metadata, options);
 	}
 
-	if (query_file) {
+	if (query_file && !options.query_file) {
 		timer.go("Closing the input file");
 		query_file->close();
+		delete query_file;
 	}
 
 	timer.go("Closing the output file");

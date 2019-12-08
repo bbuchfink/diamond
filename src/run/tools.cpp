@@ -376,6 +376,24 @@ void translate() {
 	in.close();
 }
 
+void reverse() {
+	input_value_traits = amino_acid_traits;
+	TextInputFile in(config.query_file);
+	vector<char> id, seq;
+	TextBuffer buf;
+	while (FASTA_format().get_seq(id, seq, in)) {
+		buf << '>';
+		buf.write_raw(id.data(), id.size());
+		buf << '\n';
+		sequence(seq).print(buf, amino_acid_traits, sequence::Reversed());
+		buf << '\n';
+		buf << '\0';
+		cout << buf.get_begin();
+		buf.clear();
+	}
+	in.close();
+}
+
 void show_cbs() {
 	score_matrix = Score_matrix("BLOSUM62", config.gap_open, config.gap_extend, config.frame_shift, 1);
 	init_cbs();

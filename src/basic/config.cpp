@@ -76,7 +76,9 @@ Config::Config(int argc, const char **argv)
 		.add_command("simulate-seqs", "")
 		.add_command("split", "")
 		.add_command("upgma", "")
-		.add_command("upgmamc", "");
+		.add_command("upgmamc", "")
+		.add_command("test", "Run regression test.")
+		.add_command("reverse", "");
 
 	Options_group general("General options");
 	general.add()

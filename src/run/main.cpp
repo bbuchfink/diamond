@@ -49,11 +49,15 @@ void protein_snps();
 void translate();
 void filter_blasttab();
 void show_cbs();
-void simulate_seqs();
+void reverse();
+
 void split();
 namespace Benchmark { DECL_DISPATCH(void, benchmark, ()) }
 namespace Util { namespace Algo { namespace UPGMA { void upgma(); } } }
 namespace Util { namespace Algo { namespace UPGMA_MC { void upgma(); } } }
+namespace Test { void run();
+void simulate_seqs();
+}
 
 int main(int ac, const char* av[])
 {
@@ -125,7 +129,7 @@ int main(int ac, const char* av[])
 			show_cbs();
 			break;
 		case Config::simulate_seqs:
-			simulate_seqs();
+			Test::simulate_seqs();
 			break;
 		case Config::benchmark:
 			Benchmark::benchmark();
@@ -138,6 +142,12 @@ int main(int ac, const char* av[])
 			break;
 		case Config::upgma_mc:
 			Util::Algo::UPGMA_MC::upgma();
+			break;
+		case Config::regression_test:
+			Test::run();
+			break;
+		case Config::reverse_seqs:
+			reverse();
 			break;
 #ifdef EXTRA
 		case Config::compare:

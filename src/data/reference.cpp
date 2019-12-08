@@ -150,7 +150,7 @@ void push_seq(const sequence &seq, const sequence &id, uint64_t &offset, vector<
 	offset += seq.length() + id.length() + 3;
 }
 
-void make_db(TempFile **tmp_out)
+void make_db(TempFile **tmp_out, TextInputFile *input_file)
 {
 	message_stream << "Database file: " << config.input_ref_file << endl;
 	
@@ -159,7 +159,7 @@ void make_db(TempFile **tmp_out)
 	if (config.input_ref_file == "")
 		std::cerr << "Input file parameter (--in) is missing. Input will be read from stdin." << endl;
 	task_timer timer("Opening the database file", true);
-	unique_ptr<TextInputFile> db_file (new TextInputFile(config.input_ref_file));
+	unique_ptr<TextInputFile> db_file (input_file ? input_file : new TextInputFile(config.input_ref_file));
 	
 	OutputFile *out = tmp_out ? new TempFile() : new OutputFile(config.database);
 	ReferenceHeader header;

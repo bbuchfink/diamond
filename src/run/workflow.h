@@ -5,6 +5,7 @@
 
 struct DatabaseFile;
 struct Consumer;
+struct TextInputFile;
 
 namespace Workflow { 
 
@@ -20,6 +21,7 @@ struct Options {
 	bool self;
 	DatabaseFile *db;
 	Consumer *consumer;
+	TextInputFile *query_file;
 	const std::vector<bool> *db_filter;
 };
 

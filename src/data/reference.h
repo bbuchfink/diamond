@@ -25,6 +25,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <stdint.h>
 #include "../util/io/serializer.h"
 #include "../util/io/input_file.h"
+#include "../util/io/text_input_file.h"
 #include "../data/seed_histogram.h"
 #include "sequence_set.h"
 #include "metadata.h"
@@ -103,7 +104,7 @@ private:
 
 };
 
-void make_db(TempFile **tmp_out = nullptr);
+void make_db(TempFile **tmp_out = nullptr, TextInputFile *input_file = nullptr);
 
 struct ref_seqs
 {

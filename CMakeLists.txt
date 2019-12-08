@@ -154,6 +154,8 @@ add_executable(diamond $<TARGET_OBJECTS:arch_generic>
   src/util/string/string.cpp
   src/align/extend.cpp
   src/align/target.cpp
+  src/test/simulate.cpp
+  src/test/test.cpp
 )
 
 if(EXTRA)

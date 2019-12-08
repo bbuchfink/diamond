@@ -55,5 +55,4 @@ Target::Target(Trace_pt_list::const_iterator begin, Trace_pt_list::const_iterato
 			ungapped_stage(i, diagonal_segments[i].cbegin(), diagonal_segments[i].cend());
 }
 
-
 }

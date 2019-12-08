@@ -31,6 +31,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <stdio.h>
 #include <stdint.h>
 #include <set>
+#include <random>
 #include "simd.h"
 #include "../basic/const.h"
 
@@ -416,9 +417,9 @@ struct Numeric_vector : public std::vector<_t>
 };
 
 template<unsigned n>
-inline unsigned get_distribution(const double *p)
+inline unsigned get_distribution(const double *p, std::minstd_rand0 &random_engine)
 {
-	const double x = (double)rand() / RAND_MAX;
+	const double x = std::uniform_real_distribution<double>(0.0, 1.0)(random_engine);
 	double s = 0;
 	for (unsigned i = 0; i < n; ++i) {
 		s += p[i];
