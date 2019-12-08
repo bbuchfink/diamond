@@ -383,6 +383,7 @@ void reverse() {
 	TextBuffer buf;
 	while (FASTA_format().get_seq(id, seq, in)) {
 		buf << '>';
+		buf << '\\';
 		buf.write_raw(id.data(), id.size());
 		buf << '\n';
 		sequence(seq).print(buf, amino_acid_traits, sequence::Reversed());
