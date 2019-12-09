@@ -16,6 +16,7 @@ struct Options {
 		self(false),
 		db(nullptr),
 		consumer(nullptr),
+		query_file(nullptr),
 		db_filter(nullptr)
 	{}
 	bool self;
