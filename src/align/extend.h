@@ -1,8 +1,8 @@
 /****
 DIAMOND protein aligner
 Copyright (C) 2013-2020 Max Planck Society for the Advancement of Science e.V.
-						Benjamin Buchfink
-						Eberhard Karls Universitaet Tuebingen
+                        Benjamin Buchfink
+                        Eberhard Karls Universitaet Tuebingen
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -26,7 +26,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../data/metadata.h"
 
 namespace Extension {
-
+	
 void extend(const Parameters &params, size_t query_id, Trace_pt_list::iterator begin, Trace_pt_list::iterator end, const Metadata &metadata);
 
 }

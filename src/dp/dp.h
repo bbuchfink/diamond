@@ -32,6 +32,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/simd.h"
 #include "comp_based_stats.h"
 #include "ungapped.h"
+#include "hsp_traits.h"
 
 struct Seed_hit
 {
@@ -102,70 +103,6 @@ struct Seed_hit
 	unsigned prefix_score;
 };
 
-struct Hsp_traits
-{
-	Hsp_traits(unsigned frame) :
-		d_min(std::numeric_limits<int>::max()),
-		d_max(std::numeric_limits<int>::min()),
-		score(0),
-		frame((int)frame)
-	{}
-	Hsp_traits(const interval &query_source_range):
-		query_source_range(query_source_range)
-	{}
-	Hsp_traits(const Hsp &hsp)
-	{}
-	int partial_score(const Diagonal_segment &d) const
-	{
-		const double overlap = std::max(d.subject_range().overlap_factor(subject_range), d.query_range().overlap_factor(query_range));
-		return int((1 - overlap)*d.score);
-	}
-	int partial_score(const Hsp_traits &x) const
-	{
-		const double overlap = std::max(x.subject_range.overlap_factor(subject_range), x.query_range.overlap_factor(query_range));
-		return int((1 - overlap)*x.score);
-	}
-	bool disjoint(const Diagonal_segment &d) const
-	{
-		return intersect(query_range, d.query_range()).length() == 0 && intersect(subject_range, d.subject_range()).length() == 0;
-	}
-	bool disjoint(const Hsp_traits &x) const
-	{
-		return intersect(query_range, x.query_range).length() == 0 && intersect(subject_range, x.subject_range).length() == 0;
-	}
-	bool rel_disjoint(const Diagonal_segment &d) const
-	{
-		return intersect(query_range, d.query_range()).length() == 0 || intersect(subject_range, d.subject_range()).length() == 0;
-	}
-	bool rel_disjoint(const Hsp_traits &x) const
-	{
-		return intersect(query_range, x.query_range).length() == 0 || intersect(subject_range, x.subject_range).length() == 0;
-	}
-	bool collinear(const Hsp_traits &x) const
-	{
-		const int di = x.query_range.begin_ - query_range.begin_, dj = x.subject_range.begin_ - subject_range.begin_;
-		return (di >= 0 && dj >= 0) || (di <= 0 && dj <= 0);
-	}
-	bool collinear(const Diagonal_segment &d) const
-	{
-		const int di = d.i - query_range.begin_, dj = d.j - subject_range.begin_;
-		return (di >= 0 && dj >= 0) || (di <= 0 && dj <= 0);
-	}
-	static bool cmp_diag(const Hsp_traits &x, const Hsp_traits &y)
-	{
-		return x.frame < y.frame || (x.frame == y.frame && x.d_min < y.d_min);
-	}
-	struct Frame
-	{
-		unsigned operator()(const Hsp_traits &x) const
-		{
-			return x.frame;
-		}
-	};
-	int d_min, d_max, score, frame;
-	interval query_source_range, query_range, subject_range;
-};
-
 /*template<typename _score>
 void smith_waterman(const Letter *query, local_match &segment, _score gap_open, _score gap_extend, vector<char> &transcript_buf, const _score& = int());*/
 int smith_waterman(const sequence &query, const sequence &subject, unsigned band, unsigned padding, int op, int ep);
@@ -175,6 +112,7 @@ struct Global {};
 
 int greedy_align(sequence query, const Long_score_profile &qp, const Bias_correction &query_bc, sequence subject, vector<Seed_hit>::const_iterator begin, vector<Seed_hit>::const_iterator end, bool log, std::list<Hsp> &hsps, std::list<Hsp_traits> &ts, unsigned frame);
 int greedy_align(sequence query, const Long_score_profile &qp, const Bias_correction &query_bc, sequence subject, bool log, std::list<Hsp> &hsps, std::list<Hsp_traits>::const_iterator t_begin, std::list<Hsp_traits>::const_iterator t_end, std::list<Hsp_traits> &ts, int cutoff, unsigned frame);
+std::pair<int, std::list<Hsp_traits>> greedy_align(sequence query, const Bias_correction &query_bc, sequence subject, std::vector<Diagonal_segment>::const_iterator begin, std::vector<Diagonal_segment>::const_iterator end, bool log, unsigned frame);
 int estimate_score(const Long_score_profile &qp, sequence s, int d, int d1, bool log);
 
 template<typename _t>
@@ -345,6 +283,7 @@ struct Diag_graph
 	}
 
 	void load(vector<Seed_hit>::const_iterator begin, vector<Seed_hit>::const_iterator end);
+	void load(vector<Diagonal_segment>::const_iterator begin, vector<Diagonal_segment>::const_iterator end);
 	void sort();
 	void clear_edges();
 

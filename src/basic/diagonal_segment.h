@@ -110,6 +110,10 @@ struct Diagonal_segment
 		return (x.subject_end() < y.subject_end() && x.j < y.j)
 			|| (x.j - y.j < y.subject_end() - x.subject_end());
 	}
+	static bool cmp_diag(const Diagonal_segment &x, const Diagonal_segment &y)
+	{
+		return x.diag() < y.diag() || (x.diag() == y.diag() && x.j < y.j);
+	}
 	friend int abs_shift(const Diagonal_segment &x, const Diagonal_segment &y)
 	{
 		return abs(x.diag() - y.diag());

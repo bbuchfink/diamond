@@ -1,0 +1,152 @@
+/****
+DIAMOND protein aligner
+Copyright (C) 2013-2020 Max Planck Society for the Advancement of Science e.V.
+                        Benjamin Buchfink
+                        Eberhard Karls Universitaet Tuebingen
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+****/
+
+#include <limits.h>
+#include <map>
+#include <vector>
+#include <algorithm>
+#include "../basic/config.h"
+#include "../util/string/tokenizer.h"
+#include "../util/log_stream.h"
+#include "../data/reference.h"
+#include "../run/workflow.h"
+#include "../basic/statistics.h"
+#include "../util/sequence/sequence.h"
+
+using std::string;
+using std::endl;
+using std::map;
+using std::pair;
+using std::vector;
+
+struct ClusterDist : public Consumer {
+	virtual void consume(const char *ptr, size_t n) override {
+		int query, subject, count, score;
+		//double evalue;
+		const char *end = ptr + n;
+		while (ptr < end) {
+			//if (sscanf(ptr, "%i\t%i\n%n", &query, &subject, &count) != 2)
+			if (sscanf(ptr, "%i\t%i\t%i\n%n", &query, &subject, &score, &count) != 3)
+				throw runtime_error("Cluster format error.");
+			ptr += count;
+			//std::cout << query << '\t' << subject << '\t' << evalue << endl;
+			if (query != subject) {
+				sum[query] += score;
+				++counts[query];
+			}
+		}
+	}
+	map<int, uint64_t> sum;
+	map<int, int> counts;
+};
+
+size_t get_medoid(DatabaseFile *db, const vector<bool> &filter, size_t n, Sequence_set *seqs) {
+	statistics.reset();
+	config.command = Config::blastp;
+	config.no_self_hits = true;
+	config.output_format = { "6", "qnum", "snum", "score" };
+	config.swipe_all = true;
+	config.max_evalue = 100.0;
+	config.freq_sd = 0;
+	config.max_alignments = SIZE_MAX;
+	config.algo = 0;
+	config.ext = Config::swipe;
+	score_matrix.set_db_letters(1);
+
+	Workflow::Search::Options opt;
+	opt.db = db;
+	opt.self = true;
+	ClusterDist d;
+	opt.consumer = &d;
+	opt.db_filter = &filter;
+
+	Workflow::Search::run(opt);
+	
+	int max_i = -1;
+	uint64_t max_s = 0;
+	for (const pair<int, uint64_t> &i : d.sum) {
+		//std::cout << i.first << '\t' << i.second  << '\t' << (*seqs)[i.first].length() << endl;
+		//const double sum = i.second + (n - 1 - d.counts[i.first])*100.0;
+		if (i.second > max_s) {
+			max_s = i.second;
+			max_i = i.first;
+		}
+	}
+	//std::cout << "=============" << endl;
+	return max_i == -1 ? std::find(filter.begin(), filter.end(), true) - filter.begin() : max_i;
+}
+
+void get_medoids_from_tree() {
+	const size_t CLUSTER_COUNT = 1000;
+	config.masking = false;
+	DatabaseFile *db = DatabaseFile::auto_create_from_fasta();
+	message_stream << "#Sequences: " << db->ref_header.sequences << endl;
+	size_t n = db->ref_header.sequences;
+
+	vector<unsigned> block2databaseid;
+	Sequence_set *seqs;
+	String_set<'\0'> *ids;
+	db->load_seqs(block2databaseid, SIZE_MAX, &seqs, &ids, true);
+
+	map<string, string> parent;
+	map<string, size_t> acc2idx;
+	for (size_t i = 0; i < n; ++i) {
+		const string id = (*ids)[i].c_str();
+		parent[id] = id;
+		acc2idx[id] = i;
+	}
+	
+	TextInputFile tree_in(config.tree_file);
+	string p, c1, c2;
+	while (tree_in.getline(), !tree_in.eof() && n > CLUSTER_COUNT) {
+		Util::String::Tokenizer(tree_in.line, "\t") >> p >> c1 >> c2;
+		parent[c1] = p;
+		parent[c2] = p;
+		parent[p] = p;
+		--n;
+	}
+
+	map<string, vector<string>> clusters;
+	for (const pair<string, string> &i : parent) {
+		while (parent[parent[i.first]] != parent[i.first])
+			parent[i.first] = parent[parent[i.first]];
+		if (acc2idx.find(i.first) != acc2idx.end())
+			clusters[parent[i.first]].push_back(i.first);
+	}
+
+	vector<bool> filter(db->ref_header.sequences);
+	OutputFile out(config.output_file);
+	for (const pair<string, vector<string>> &i : clusters) {
+		/*for (const string &acc : i.second)
+			std::cout << acc << ' ';
+		std::cout << endl;*/
+		std::fill(filter.begin(), filter.end(), false);
+		for (const string &acc : i.second)
+			filter[acc2idx[acc]] = true;
+		const size_t medoid = get_medoid(db, filter, i.second.size(), seqs);
+		Util::Sequence::format((*seqs)[medoid], (*ids)[medoid].c_str(), nullptr, out, "fasta", amino_acid_traits);
+	}
+	out.close();
+
+	db->close_and_delete();
+	delete db;
+	delete seqs;
+	delete ids;
+}

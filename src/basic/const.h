@@ -38,6 +38,7 @@ struct Const
 };
 
 #define SIMPLE_SEARCH
+static constexpr int MAX_CONTEXT = 6;
 // #define FREQUENCY_MASKING
 // #define ST_JOIN
 // #define NO_COLLISION_FILTER

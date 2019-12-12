@@ -78,6 +78,23 @@ void Diag_graph::load(vector<Seed_hit>::const_iterator begin, vector<Seed_hit>::
 	}
 }
 
+void Diag_graph::load(vector<Diagonal_segment>::const_iterator begin, vector<Diagonal_segment>::const_iterator end)
+{
+	int d = std::numeric_limits<int>::min(), max_j_end = d;
+	for (vector<Diagonal_segment>::const_iterator i = begin; i < end; ++i) {
+		const int d2 = i->diag();
+		if (d2 != d) {
+			d = d2;
+			nodes.push_back(*i);
+			max_j_end = nodes.back().subject_end();
+		}
+		else if (max_j_end < i->j) {
+			nodes.push_back(*i);
+			max_j_end = std::max(max_j_end, nodes.back().subject_end());
+		}
+	}
+}
+
 void Diag_graph::print(sequence query, sequence subject) const
 {
 	for (int k = 0; k < (int)nodes.size(); ++k) {
@@ -583,6 +600,15 @@ struct Greedy_aligner2
 		return run(hsps, ts, 0.1, 19, band);
 	}
 
+	int run(list<Hsp> &hsps, list<Hsp_traits> &ts, vector<Diagonal_segment>::const_iterator begin, vector<Diagonal_segment>::const_iterator end, int band)
+	{
+		if (log)
+			cout << "***** Seed hit run " << begin->diag() << '\t' << (end - 1)->diag() << '\t' << (end - 1)->diag() - begin->diag() << endl;
+		diags.init();
+		diags.load(begin, end);
+		return run(hsps, ts, 0.1, 19, band);
+	}
+
 	Greedy_aligner2(const sequence &query, const Long_score_profile &qp, const Bias_correction &query_bc, const sequence &subject, bool log, unsigned frame) :
 		query(query),
 		subject(subject),
@@ -613,6 +639,17 @@ int greedy_align(sequence query, const Long_score_profile &qp, const Bias_correc
 	const int band = config.padding == 0 ? std::min(64, int(query.length()*0.5)) : config.padding;
 	Greedy_aligner2 ga(query, qp, query_bc, subject, log, frame);
 	return ga.run(hsps, ts, begin, end, band);
+}
+
+std::pair<int, list<Hsp_traits>> greedy_align(sequence query, const Bias_correction &query_bc, sequence subject, vector<Diagonal_segment>::const_iterator begin, vector<Diagonal_segment>::const_iterator end, bool log, unsigned frame)
+{
+	const int band = config.padding == 0 ? std::min(64, int(query.length()*0.5)) : config.padding;
+	Long_score_profile qp;
+	Greedy_aligner2 ga(query, qp, query_bc, subject, log, frame);
+	list<Hsp> hsps;
+	list<Hsp_traits> ts;
+	int score = ga.run(hsps, ts, begin, end, band);
+	return std::make_pair(score, std::move(ts));
 }
 
 int greedy_align(sequence query, const Long_score_profile &qp, const Bias_correction &query_bc, sequence subject, bool log, list<Hsp> &hsps, list<Hsp_traits>::const_iterator t_begin, list<Hsp_traits>::const_iterator t_end, list<Hsp_traits> &ts, int cutoff, unsigned frame)

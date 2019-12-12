@@ -78,7 +78,8 @@ Config::Config(int argc, const char **argv)
 		.add_command("upgma", "")
 		.add_command("upgmamc", "")
 		.add_command("test", "Run regression test.")
-		.add_command("reverse", "");
+		.add_command("reverse", "")
+		.add_command("compute-medoids", "");
 
 	Options_group general("General options");
 	general.add()
@@ -287,7 +288,9 @@ Config::Config(int argc, const char **argv)
 		("no-unlink", 0, "", no_unlink)
 		("no-dict", 0, "", no_dict)
 		("swipe", 0, "", swipe_all)
-		("upgma-edge-limit", 0, "", upgma_edge_limit, (uint64_t)10000000);
+		("upgma-edge-limit", 0, "", upgma_edge_limit, (uint64_t)10000000)
+		("log-extend", 0, "", log_extension)
+		("tree", 0, "", tree_file);
 		
 	parser.add(general).add(makedb).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options);
 	parser.store(argc, argv, command);
@@ -398,6 +401,7 @@ Config::Config(int argc, const char **argv)
 	case Config::blastx:
 	case Config::view:
 	case Config::cluster:
+	case Config::compute_medoids:
 		message_stream << "#CPU threads: " << threads_ << endl;
 	default:
 		;
@@ -412,6 +416,7 @@ Config::Config(int argc, const char **argv)
 	case Config::mask:
 	case Config::makedb:
 	case Config::cluster:
+	case Config::compute_medoids:
 		if (frame_shift != 0 && command == Config::blastp)
 			throw std::runtime_error("Frameshift alignments are only supported for translated searches.");
 		if (query_range_culling && frame_shift == 0)
@@ -431,7 +436,7 @@ Config::Config(int argc, const char **argv)
 	}
 
 	if (command == Config::blastp || command == Config::blastx || command == Config::benchmark || command == Config::model_sim || command == Config::opt
-		|| command == Config::mask || command == Config::cluster) {
+		|| command == Config::mask || command == Config::cluster || command == Config::compute_medoids) {
 		if (tmpdir == "")
 			tmpdir = extract_dir(output_file);
 		

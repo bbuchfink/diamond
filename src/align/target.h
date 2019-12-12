@@ -25,24 +25,56 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <set>
 #include <vector>
 #include <stdint.h>
+#include <list>
 #include "../search/trace_pt_buffer.h"
 #include "../basic/diagonal_segment.h"
+#include "../basic/const.h"
+#include "../dp/hsp_traits.h"
+#include "../dp/comp_based_stats.h"
 
 namespace Extension {
+
+struct WorkTarget {
+	WorkTarget(const sequence &seq) :
+		seq(seq),
+		filter_score(0),
+		outranked(false)
+	{}
+	bool operator<(const WorkTarget &t) const {
+		return filter_score > t.filter_score;
+	}
+	sequence seq;
+	int filter_score;
+	bool outranked;
+	std::array<std::list<Hsp_traits>, MAX_CONTEXT> hsp;
+};
+
+std::vector<WorkTarget> ungapped_stage(const sequence *query_seq, const Bias_correction *query_cb, Trace_pt_list::iterator begin, Trace_pt_list::iterator end);
+void rank_targets(std::vector<WorkTarget> &targets, double ratio, double factor);
 
 struct Context {
 };
 
 struct Target {
 
+	Target():
+		filter_score(0)
+	{}
 	Target(Trace_pt_list::const_iterator begin, Trace_pt_list::const_iterator end, uint64_t target_offset, const sequence *query_seq, const sequence &target_seq, const std::set<unsigned> &taxon_rank_ids);
-	void add_hit(unsigned context, const Diagonal_segment &d);
+	void add_hit(std::list<Hsp> &list, std::list<Hsp>::iterator it) {
+		std::list<Hsp> &l = hsps[it->frame];
+		l.splice(l.end(), list, it);
+		filter_score = std::max(filter_score, (int)l.back().score);
+	}
+	bool operator<(const Target &t) const {
+		return filter_score > t.filter_score;
+	}
 	void ungapped_stage(unsigned context, std::vector<Diagonal_segment>::const_iterator begin, std::vector<Diagonal_segment>::const_iterator end);
 
-private:
-	int filter_score_;
-	std::array<Context, 6> context_;
-	const std::set<unsigned> taxon_rank_ids;
+	int filter_score;
+	std::array<std::list<Hsp>, MAX_CONTEXT> hsps;
+	//std::array<Context, 6> context_;
+	//const std::set<unsigned> taxon_rank_ids;
 
 };
 

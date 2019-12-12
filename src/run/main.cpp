@@ -50,6 +50,7 @@ void translate();
 void filter_blasttab();
 void show_cbs();
 void reverse();
+void get_medoids_from_tree();
 
 void split();
 namespace Benchmark { DECL_DISPATCH(void, benchmark, ()) }
@@ -148,6 +149,9 @@ int main(int ac, const char* av[])
 			break;
 		case Config::reverse_seqs:
 			reverse();
+			break;
+		case Config::compute_medoids:
+			get_medoids_from_tree();
 			break;
 #ifdef EXTRA
 		case Config::compare:

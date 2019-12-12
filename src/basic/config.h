@@ -184,12 +184,14 @@ struct Config
 	bool swipe_all;
 	uint64_t taxon_k;
 	uint64_t upgma_edge_limit;
+	bool log_extension;
+	string tree_file;
 
 	enum {
 		makedb = 0, blastp = 1, blastx = 2, view = 3, help = 4, version = 5, getseq = 6, benchmark = 7, random_seqs = 8, compare = 9, sort = 10, roc = 11, db_stat = 12, model_sim = 13,
 		match_file_stat = 14, model_seqs = 15, opt = 16, mask = 17, fastq2fasta = 18, dbinfo = 19, test_extra = 20, test_io = 21, db_annot_stats = 22, read_sim = 23, info = 24, seed_stat = 25,
 		smith_waterman = 26, protein_snps = 27, cluster = 28, translate = 29, filter_blasttab = 30, show_cbs = 31, simulate_seqs = 32, split = 33, upgma = 34, upgma_mc = 35, regression_test = 36,
-		reverse_seqs = 37
+		reverse_seqs = 37, compute_medoids = 38
 	};
 	unsigned	command;
 

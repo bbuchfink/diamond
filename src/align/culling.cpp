@@ -19,15 +19,24 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #include <algorithm>
-#include <vector>
-#include "../basic/config.h"
 #include "target.h"
-#include "../basic/diagonal_segment.h"
-#include "../dp/ungapped.h"
+#include "../basic/config.h"
 
 using std::vector;
 
 namespace Extension {
 
+void score_only_culling(vector<Target> &targets) {
+	std::stable_sort(targets.begin(), targets.end());
+	vector<Target>::iterator i;
+	if (config.toppercent < 100.0) {
+		const int cutoff = (1.0 - config.toppercent / 100.0)*targets.front().filter_score;
+		while (i < targets.end() && i->filter_score >= cutoff)
+			++i;
+	}
+	else
+		i = targets.begin() + std::min(config.max_alignments, targets.size());
+	targets.erase(i, targets.end());
+}
 
 }
