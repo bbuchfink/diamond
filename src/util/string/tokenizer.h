@@ -65,10 +65,17 @@ struct Tokenizer {
 		if (strncmp(end, delimiter, len) == 0)
 			p = end + len;
 		else {
-			if (*p != '\0')
+			if (*end != '\0')
 				throw TokenizerException();
 			p = nullptr;
 		}
+		return *this;
+	}
+
+	Tokenizer& operator>>(int &x) {
+		long y;
+		*this >> y;
+		x = (int)y;
 		return *this;
 	}
 

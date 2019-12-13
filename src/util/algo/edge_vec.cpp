@@ -1,6 +1,7 @@
 #include <string>
 #include <limits.h>
 #include <math.h>
+#include <algorithm>
 #include "edge_vec.h"
 #include "../../util/io/text_input_file.h"
 #include "../../util/string/tokenizer.h"
@@ -14,6 +15,10 @@ using std::vector;
 
 namespace Util { namespace Algo { namespace UPGMA_MC {
 
+DistType dist_type() {
+	return config.upgma_dist == "bitscore" ? DistType::BITSCORE : DistType::EVALUE;
+}
+
 EdgeVec::EdgeVec(const char *file):
 	current_bucket_(-1),
 	i_(0),
@@ -21,20 +26,28 @@ EdgeVec::EdgeVec(const char *file):
 {
 	array<vector<CompactEdge>, BUCKET_COUNT> buffers;
 
+	const DistType dt = dist_type();
 	TextInputFile in(file);
 	string query, target;
-	double evalue;
+	double evalue, bitscore;
+	int qlen, slen;
 	while (in.getline(), !in.eof()) {
 		String::Tokenizer t(in.line, "\t");
-		t >> query >> target >> evalue;
+		t >> query >> target;
+		if (dt == DistType::BITSCORE)
+			t >> bitscore >> qlen >> slen;
+		else
+			t >> evalue;
 		auto i = acc2idx.emplace(query, (int)acc2idx.size()), j = acc2idx.emplace(target, (int)acc2idx.size());
 		if (i.second)
 			idx2acc[i.first->second] = i.first->first;
 		if (j.second)
 			idx2acc[j.first->second] = j.first->first;
 		if (i.first->second < j.first->second) {
-			const int b = bucket(evalue);
-			buffers[b].push_back({ i.first->second, j.first->second, evalue });
+			const double dist = (dt == DistType::BITSCORE) ? -bitscore / std::min(qlen, slen) : evalue;
+			const int b = bucket(dist, dt);
+			//std::cout << b << std::endl;
+			buffers[b].push_back({ i.first->second, j.first->second, dist });
 			if (buffers[b].size() == 4096) {
 				temp_files[b].write(buffers[b].data(), buffers[b].size());
 				buffers[b].clear();

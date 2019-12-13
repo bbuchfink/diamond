@@ -11,6 +11,10 @@
 
 namespace Util { namespace Algo { namespace UPGMA_MC {
 
+enum class DistType { EVALUE, BITSCORE };
+
+DistType dist_type();
+
 struct CompactEdge {
 	bool operator<(const CompactEdge &e) const {
 		return d < e.d;
@@ -23,7 +27,7 @@ struct CompactEdge {
 };
 
 struct EdgeVec {
-	static constexpr int BUCKET_COUNT = 325;
+	static constexpr int BUCKET_COUNT = 330;
 	EdgeVec(const char *file);
 	size_t nodes() const {
 		return acc2idx.size();
@@ -34,8 +38,11 @@ struct EdgeVec {
 	CompactEdge get();
 	std::string print(int idx) const;
 private:
-	static int bucket(double d) {
-		return d == 0.0 ? 0 : std::min(323 + (int)std::log10(d), BUCKET_COUNT - 1);
+	static int bucket(double d, DistType dt) {
+		if (dt == DistType::EVALUE)
+			return d == 0.0 ? 0 : std::min(323 + (int)std::log10(d), BUCKET_COUNT - 1);
+		else
+			return BUCKET_COUNT - 1 - std::max(std::min(int(-d * 300.0), BUCKET_COUNT - 1), 0);
 	}	
 	std::unordered_map<std::string, int> acc2idx;
 	std::unordered_map<int, std::string> idx2acc;

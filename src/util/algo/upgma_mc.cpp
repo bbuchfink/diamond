@@ -147,7 +147,7 @@ void merge_nodes(int n1,
 		}
 		if (nodes[it].parent != it || it == n1 || it == n2)
 			continue;
-		const double max_edges = (double)union_node.size*(double)nodes[it].size;		
+		const double max_edges = (double)union_node.size*(double)nodes[it].size;
 		const EdgePtr e = edges.emplace(edges.end(), it, union_idx, edge_count, s);
 		e->set_bounds(lambda, max_dist, max_edges);
 		queue.push(e);
@@ -248,7 +248,7 @@ double load_edges(EdgeVec& all_edges, EdgeList &edges, vector<Node> &nodes, Queu
 }
 
 void upgma() {
-	const double max_dist = 10.0;
+	const double max_dist = (dist_type() == DistType::BITSCORE) ? 0.0 : 10.0;
 	message_stream << "Reading edges..." << endl;
 	EdgeVec all_edges(config.query_file.c_str());
 	message_stream << "Read " << all_edges.nodes() << " nodes, " << all_edges.size() << " edges." << endl;
@@ -258,7 +258,7 @@ void upgma() {
 	for (int i = 0; i < (int)all_edges.nodes(); ++i)
 		nodes.emplace_back(i, 1, i);
 	Queue queue;
-	double lambda = 0.0;
+	double lambda = (dist_type() == DistType::BITSCORE) ? -100.0 : 0.0;
 	int node_count = (int)nodes.size(), round = 0;
 	do {
 		lambda = load_edges(all_edges, edges, nodes, queue, lambda, max_dist);
