@@ -16,5 +16,5 @@ std::vector<int> greedy_vortex_cover(const std::vector<std::vector<int>> &neighb
 std::vector<int> greedy_vortex_cover_weighted(std::vector<Edge> &edges, int vortex_count);
 
 }}
-
+xxxxxxxxxxxxxxxxxxxxxxxx
 #endif

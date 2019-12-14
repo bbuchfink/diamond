@@ -190,10 +190,10 @@ double load_edges(EdgeVec& all_edges, EdgeList &edges, vector<Node> &nodes, Queu
 		throw std::runtime_error("Edge limit");
 
 	message_stream << "Building edge hash map..." << endl;
-	std::unordered_map<pair<int, int>, EdgePtr, PairHash> edge_map;
+	std::unordered_map<uint64_t, EdgePtr> edge_map;
 	edge_map.reserve(edges.size());
 	for (EdgePtr i = edges.begin(); i != edges.end(); ++i)
-		edge_map[{i->n1, i->n2}] = i;
+		edge_map[(i->n1 << 32) | i->n2] = i;
 
 	double evalue = lambda;
 	message_stream << "Reading edges..." << endl;
@@ -210,10 +210,10 @@ double load_edges(EdgeVec& all_edges, EdgeList &edges, vector<Node> &nodes, Queu
 		}
 		else {
 			if (i >= j) std::swap(i, j);
-			const auto e = edge_map.find({ i,j });
+			const auto e = edge_map.find((i << 32) | j);
 			if (e == edge_map.end()) {
 				const EdgePtr f = edges.emplace(edges.end(), i, j, 1, evalue);
-				edge_map[{i, j}] = f;
+				edge_map[(i << 32) | j] = f;
 			}
 			else {
 				++e->second->count;
