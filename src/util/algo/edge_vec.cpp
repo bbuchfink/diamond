@@ -44,7 +44,7 @@ EdgeVec::EdgeVec(const char *file):
 		if (j.second)
 			idx2acc[j.first->second] = j.first->first;
 		if (i.first->second < j.first->second) {
-			const double dist = (dt == DistType::BITSCORE) ? -bitscore / std::min(qlen, slen) : evalue;
+			const double dist = (dt == DistType::BITSCORE) ? -bitscore / std::max(qlen, slen) : evalue;
 			const int b = bucket(dist, dt);
 			//std::cout << b << std::endl;
 			buffers[b].push_back({ i.first->second, j.first->second, dist });
