@@ -164,12 +164,6 @@ int parent(int idx, const vector<Node> &nodes) {
 	return idx;
 }
 
-struct PairHash {
-	size_t operator()(const pair<int, int> &x) const {
-		return std::hash<int>()(x.first) ^ std::hash<int>()(x.second);
-	}
-};
-
 double load_edges(EdgeVec& all_edges, EdgeList &edges, vector<Node> &nodes, Queue &queue, double lambda, double max_dist) {
 	message_stream << "Clearing neighborhoods..." << endl;
 	for (Node &node : nodes) {
@@ -195,6 +189,11 @@ double load_edges(EdgeVec& all_edges, EdgeList &edges, vector<Node> &nodes, Queu
 	for (EdgePtr i = edges.begin(); i != edges.end(); ++i)
 		edge_map[(uint64_t(i->n1) << 32) | i->n2] = i;
 
+	message_stream << "Setting parents..." << endl;
+	for (Node &node : nodes)
+		while (nodes[node.parent].parent != node.parent)
+			node.parent = nodes[node.parent].parent;
+
 	double evalue = lambda;
 	message_stream << "Reading edges..." << endl;
 	CompactEdge edge;
@@ -203,7 +202,8 @@ double load_edges(EdgeVec& all_edges, EdgeList &edges, vector<Node> &nodes, Queu
 		evalue = edge.d;
 		//cout << edge.n1 << '\t' << edge.n2 << '\t' << evalue << endl;
 
-		int i = parent(query_idx, nodes), j = parent(target_idx, nodes);
+		//int i = parent(query_idx, nodes), j = parent(target_idx, nodes);
+		int i = nodes[query_idx].parent, j = nodes[target_idx].parent;
 		if (i == query_idx && j == target_idx) {
 			if (i >= j) std::swap(i, j);
 			edges.emplace_back(i, j, 1, evalue);
