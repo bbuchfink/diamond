@@ -30,6 +30,7 @@ struct EdgeVec {
 	static constexpr int BUCKET_COUNT = 330;
 	EdgeVec(const char *file);
 	size_t nodes() const {
+		return node_count_ > 0 ? node_count_ : acc2idx.size();
 	}
 	size_t size() const {
 		return size_;
@@ -48,7 +49,6 @@ private:
 	std::array<TempFile, BUCKET_COUNT> temp_files;
 	std::vector<CompactEdge> buffer_;
 	int current_bucket_;
-	size_t i_;
 	size_t i_, size_, node_count_;
 };
 
