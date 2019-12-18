@@ -72,6 +72,12 @@ struct Deserializer
 		return *this;
 	}
 
+	Deserializer& operator>>(double &x)
+	{
+		read(x);
+		return *this;
+	}
+
 	Deserializer& operator>>(std::string &s)
 	{
 		if (!read_until(s, '\0'))

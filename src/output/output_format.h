@@ -59,7 +59,7 @@ struct Output_format
 	}
 	unsigned code;
 	bool needs_taxon_id_lists, needs_taxon_nodes, needs_taxon_scientific_names;
-	enum { daa, blast_tab, blast_xml, sam, blast_pairwise, null, taxon, paf };
+	enum { daa, blast_tab, blast_xml, sam, blast_pairwise, null, taxon, paf, bin1 };
 };
 
 extern std::unique_ptr<Output_format> output_format;
@@ -193,6 +193,21 @@ struct Taxon_format : public Output_format
 	}
 	unsigned taxid;
 	double evalue;
+};
+
+struct Bin1_format : public Output_format
+{
+	Bin1_format():
+		Output_format(bin1)
+	{}
+	virtual void print_query_intro(size_t query_num, const char *query_name, unsigned query_len, TextBuffer &out, bool unaligned) const override;
+	virtual void print_match(const Hsp_context& r, const Metadata &metadata, TextBuffer &out) override;
+	virtual ~Bin1_format()
+	{ }
+	virtual Output_format* clone() const override
+	{
+		return new Bin1_format(*this);
+	}
 };
 
 Output_format* get_output_format();

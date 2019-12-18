@@ -17,6 +17,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #include <iostream>
+#include <limits.h>
+#include <algorithm>
 #include "../data/taxonomy.h"
 #include "output_format.h"
 #include "../data/reference.h"
@@ -109,6 +111,8 @@ Output_format* get_output_format()
 		return new Taxon_format;
 	else if (f[0] == "paf" || f[0] == "103")
 		return new PAF_format;
+	else if (f[0] == "bin1")
+		return new Bin1_format;
 	else
 		throw std::runtime_error("Invalid output format. Allowed values: 0,5,6,100,101,102");
 }
@@ -277,4 +281,16 @@ void XML_format::print_footer(Consumer &f) const
 	ss << "</BlastOutput_iterations>" << endl
 		<< "</BlastOutput>";
 	f.consume(ss.str().c_str(), ss.str().length());
+}
+
+void Bin1_format::print_query_intro(size_t query_num, const char *query_name, unsigned query_len, TextBuffer &out, bool unaligned) const {
+	out.write(std::numeric_limits<uint32_t>::max());
+	out.write((uint32_t)query_num);
+}
+
+void Bin1_format::print_match(const Hsp_context& r, const Metadata &metadata, TextBuffer &out) {
+	if (r.query_id < r.subject_id) {
+		out.write((uint32_t)r.subject_id);
+		out.write(r.bit_score() / std::max((unsigned)r.query.source().length(), r.subject_len));
+	}
 }

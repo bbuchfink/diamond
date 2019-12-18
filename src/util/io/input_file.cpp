@@ -55,6 +55,8 @@ InputFile::InputFile(const string &file_name, int flags) :
 	if (!S_ISREG(buf.st_mode))
 		return;
 #endif
+	if (flags & NO_AUTODETECT)
+		return;
 	FileSource *source = dynamic_cast<FileSource*>(buffer_->root());
 	char b[2];
 	size_t n = source->read(b, 2);

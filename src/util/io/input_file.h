@@ -34,7 +34,7 @@ struct TempFile;
 struct InputFile : public Deserializer
 {
 
-	enum { BUFFERED = 1 };
+	enum { BUFFERED = 1, NO_AUTODETECT = 2 };
 
 	InputFile(const string &file_name, int flags = 0);
 	InputFile(TempFile &tmp_file, int flags = 0);
