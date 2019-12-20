@@ -21,6 +21,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <algorithm>
 #include "target.h"
 #include "../basic/config.h"
+#include "../data/reference.h"
 
 using std::vector;
 using std::list;
@@ -43,42 +44,69 @@ void Match::inner_culling(int source_query_len)
 }
 
 void score_only_culling(vector<Target> &targets) {
-	std::stable_sort(targets.begin(), targets.end());
+	std::sort(targets.begin(), targets.end());
+	if (targets.front().filter_score == 0) {
+		targets.clear();
+		return;
+	}
 
 	if (config.toppercent == 100.0 && (config.min_id > 0 || config.query_cover > 0 || config.subject_cover > 0 || config.no_self_hits))
 		return;
 
 	vector<Target>::iterator i;
 	if (config.toppercent < 100.0) {
-		const int cutoff = (1.0 - config.toppercent / 100.0)*targets.front().filter_score;
+		const int cutoff = std::max(int((1.0 - config.toppercent / 100.0)*targets.front().filter_score), 1);
 		while (i < targets.end() && i->filter_score >= cutoff)
 			++i;
 	}
-	else
+	else {
 		i = targets.begin() + std::min((size_t)config.max_alignments, targets.size());
+		while (--i > targets.begin() && i->filter_score == 0);
+		++i;
+	}
 	targets.erase(i, targets.end());
 }
 
 void Match::apply_filters(int source_query_len, const char *query_title)
 {
-	/*for (list<Hsp>::iterator i = hsps.begin(); i != hsps.end();) {
+	const char *title = ref_ids::get()[target_block_id].c_str();
+	const int len = (int)ref_seqs::get()[target_block_id].length();
+	for (list<Hsp>::iterator i = hsp.begin(); i != hsp.end();) {
 		if (i->id_percent() < config.min_id
-			|| i->query_cover_percent(dna_len) < config.query_cover
-			|| i->subject_cover_percent(subject_len) < config.subject_cover
+			|| i->query_cover_percent(source_query_len) < config.query_cover
+			|| i->subject_cover_percent(len) < config.subject_cover
 			|| (config.no_self_hits
 				&& i->identities == i->length
-				&& i->query_source_range.length() == (int)dna_len
-				&& i->subject_range.length() == (int)subject_len
-				&& strcmp(query_title, ref_title) == 0)
-			|| (config.filter_locus && !i->subject_range.includes(config.filter_locus)))
-			i = hsps.erase(i);
+				&& i->query_source_range.length() == source_query_len
+				&& i->subject_range.length() == len
+				&& strcmp(query_title, title) == 0))
+			i = hsp.erase(i);
 		else
 			++i;
-	}*/
+	}
+	filter_score = hsp.empty() ? 0 : hsp.front().score;
 }
 
-void culling(vector<Match> &targets) {
-	std::stable_sort(targets.begin(), targets.end());
+void culling(vector<Match> &targets, int source_query_len, const char *query_title) {
+	for (Match &match : targets)
+		match.apply_filters(source_query_len, query_title);
+	std::sort(targets.begin(), targets.end());
+	if (targets.empty() || targets.front().filter_score == 0) {
+		targets.clear();
+		return;
+	}
+	vector<Match>::iterator i;
+	if (config.toppercent < 100.0) {
+		const int cutoff = std::max(int((1.0 - config.toppercent / 100.0)*targets.front().filter_score), 1);
+		while (i < targets.end() && i->filter_score >= cutoff)
+			++i;
+	}
+	else {
+		i = targets.begin() + std::min((size_t)config.max_alignments, targets.size());
+		while (--i > targets.begin() && i->filter_score == 0);
+		++i;
+	}
+	targets.erase(i, targets.end());
 }
 
 }

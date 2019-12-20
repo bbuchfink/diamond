@@ -46,6 +46,8 @@ vector<Match> extend(const Parameters &params, size_t query_id, Trace_pt_list::i
 		for (unsigned i = 0; i < contexts; ++i)
 			query_cb.emplace_back(query_seq[i]);
 
+	const int source_query_len = (int)query_source_seqs::get()[query_id].length();
+
 	vector<WorkTarget> targets = ungapped_stage(query_seq.data(), query_cb.data(), begin, end);
 	stat.inc(Statistics::TARGET_HITS0, targets.size());
 
@@ -56,9 +58,11 @@ vector<Match> extend(const Parameters &params, size_t query_id, Trace_pt_list::i
 	score_only_culling(aligned_targets);
 	stat.inc(Statistics::TARGET_HITS2, targets.size());
 
-	vector<Match> matches = align(aligned_targets, query_seq.data(), query_cb.data(), (int)query_source_seqs::get()[query_id].length());
+	vector<Match> matches = align(aligned_targets, query_seq.data(), query_cb.data(), source_query_len);
+	culling(matches, source_query_len, query_ids::get()[query_id].c_str());
 	stat.inc(Statistics::TARGET_HITS3, targets.size());
 
+	return matches;
 }
 
 }

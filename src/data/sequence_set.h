@@ -129,7 +129,6 @@ struct Sequence_set : public String_set<sequence::DELIMITER, 1>
 	{
 		if (!align_mode.query_translated)
 			return TranslatedSequence((*this)[i]);
-		const size_t j = i - i % 6;
 		return TranslatedSequence(source, (*this)[i], (*this)[i + 1], (*this)[i + 2], (*this)[i + 3], (*this)[i + 4], (*this)[i + 5]);
 	}
 

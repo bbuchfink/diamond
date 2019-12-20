@@ -36,14 +36,14 @@ using std::list;
 
 namespace Extension {
 
-WorkTarget ungapped_stage(Trace_pt_list::iterator begin, Trace_pt_list::iterator end, uint64_t target_offset, const sequence *query_seq, const Bias_correction *query_cb, const sequence &target_seq) {
+WorkTarget ungapped_stage(Trace_pt_list::iterator begin, Trace_pt_list::iterator end, uint64_t target_offset, const sequence *query_seq, const Bias_correction *query_cb, size_t block_id, const sequence &target_seq) {
 	array<vector<Diagonal_segment>, MAX_CONTEXT> diagonal_segments;
-	WorkTarget target(target_seq);
+	WorkTarget target(block_id, target_seq);
 	for (Trace_pt_list::const_iterator i = begin; i < end; ++i) {
 		const unsigned frame = i->frame();
-		diagonal_segments[frame].push_back(xdrop_ungapped(query_seq[frame], target_seq, i->seed_offset_, uint64_t(i->subject_) - target_offset));
+		diagonal_segments[frame].push_back(xdrop_ungapped(query_seq[frame], target_seq, i->seed_offset_, int(uint64_t(i->subject_) - target_offset)));
 	}
-	for (int frame = 0; frame < align_mode.query_contexts; ++frame) {
+	for (unsigned frame = 0; frame < align_mode.query_contexts; ++frame) {
 		if (diagonal_segments[frame].empty())
 			continue;
 		std::stable_sort(diagonal_segments[frame].begin(), diagonal_segments[frame].end(), Diagonal_segment::cmp_diag);
@@ -64,12 +64,12 @@ vector<WorkTarget> ungapped_stage(const sequence *query_seq, const Bias_correcti
 	while (++i < end) {
 		std::pair<size_t, size_t> l = ref_seqs::data_->local_position(i->subject_);
 		if (l.first != target) {
-			targets.push_back(ungapped_stage(target_begin, i, ref_seqs::data_->position(target, 0), query_seq, query_cb, ref_seqs::get()[target]));
+			targets.push_back(ungapped_stage(target_begin, i, ref_seqs::data_->position(target, 0), query_seq, query_cb, target, ref_seqs::get()[target]));
 			target = l.first;
 			target_begin = i;
 		}
 	}
-	targets.push_back(ungapped_stage(target_begin, i, ref_seqs::data_->position(target, 0), query_seq, query_cb, ref_seqs::get()[target]));
+	targets.push_back(ungapped_stage(target_begin, i, ref_seqs::data_->position(target, 0), query_seq, query_cb, target, ref_seqs::get()[target]));
 	return targets;
 }
 

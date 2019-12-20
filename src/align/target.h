@@ -36,14 +36,16 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 namespace Extension {
 
 struct WorkTarget {
-	WorkTarget(const sequence &seq) :
+	WorkTarget(size_t block_id, const sequence &seq) :
+		block_id(block_id),
 		seq(seq),
 		filter_score(0),
 		outranked(false)
 	{}
 	bool operator<(const WorkTarget &t) const {
-		return filter_score > t.filter_score;
+		return filter_score > t.filter_score || (filter_score == t.filter_score && block_id < t.block_id);
 	}
+	size_t block_id;
 	sequence seq;
 	int filter_score;
 	bool outranked;
@@ -53,36 +55,36 @@ struct WorkTarget {
 std::vector<WorkTarget> ungapped_stage(const sequence *query_seq, const Bias_correction *query_cb, Trace_pt_list::iterator begin, Trace_pt_list::iterator end);
 void rank_targets(std::vector<WorkTarget> &targets, double ratio, double factor);
 
-struct Context {
-};
-
 struct Target {
 
-	Target(const sequence &seq):
-		filter_score(0),
-		seq(seq)
+	Target(size_t block_id, const sequence &seq):
+		block_id(block_id),
+		seq(seq),
+		filter_score(0)
 	{}
-	Target(Trace_pt_list::const_iterator begin, Trace_pt_list::const_iterator end, uint64_t target_offset, const sequence *query_seq, const sequence &target_seq, const std::set<unsigned> &taxon_rank_ids);
+
 	void add_hit(std::list<Hsp> &list, std::list<Hsp>::iterator it) {
 		std::list<Hsp> &l = hsp[it->frame];
 		l.splice(l.end(), list, it);
 		filter_score = std::max(filter_score, (int)l.back().score);
 	}
+
 	bool operator<(const Target &t) const {
-		return filter_score > t.filter_score;
+		return filter_score > t.filter_score || (filter_score == t.filter_score && block_id < t.block_id);
 	}
+
 	void inner_culling();
 
+	size_t block_id;
 	sequence seq;
 	int filter_score;
 	std::array<std::list<Hsp>, MAX_CONTEXT> hsp;
-	//const std::set<unsigned> taxon_rank_ids;
-
 };
 
 void score_only_culling(std::vector<Target> &targets);
 std::vector<Target> align(const std::vector<WorkTarget> &targets, const sequence *query_seq, const Bias_correction *query_cb);
 std::vector<Match> align(const std::vector<Target> &targets, const sequence *query_seq, const Bias_correction *query_cb, int source_query_len);
+void culling(std::vector<Match> &targets, int source_query_len, const char *query_title);
 
 }
 

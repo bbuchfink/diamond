@@ -31,7 +31,7 @@ namespace Extension {
 void add_dp_targets(const WorkTarget &target, int target_idx, const sequence *query_seq, array<vector<DpTarget>, MAX_CONTEXT> &dp_targets) {
 	const int band = config.padding > 0 ? config.padding : 32,
 		slen = (int)target.seq.length();
-	for (int frame = 0; frame < align_mode.query_contexts; ++frame) {
+	for (unsigned frame = 0; frame < align_mode.query_contexts; ++frame) {
 		const int qlen = (int)query_seq[frame].length();
 		for (const Hsp_traits &hsp : target.hsp[frame]) {
 			if (config.log_extension) {
@@ -47,13 +47,15 @@ vector<Target> align(const vector<WorkTarget> &targets, const sequence *query_se
 
 	array<vector<DpTarget>, MAX_CONTEXT> dp_targets;
 	vector<Target> r;
+	if (targets.empty())
+		return r;
 	r.reserve(targets.size());
 	for (int i = 0; i < (int)targets.size(); ++i) {
 		add_dp_targets(targets[i], i, query_seq, dp_targets);
-		r.emplace_back(targets[i].seq);
+		r.emplace_back(targets[i].block_id, targets[i].seq);
 	}
 
-	for (int frame = 0; frame < align_mode.query_contexts; ++frame) {
+	for (unsigned frame = 0; frame < align_mode.query_contexts; ++frame) {
 		if (dp_targets[frame].empty())
 			continue;
 		list<Hsp> hsp = DP::BandedSwipe::swipe(
@@ -74,7 +76,7 @@ vector<Target> align(const vector<WorkTarget> &targets, const sequence *query_se
 void add_dp_targets(const Target &target, int target_idx, const sequence *query_seq, array<vector<DpTarget>, MAX_CONTEXT> &dp_targets) {
 	const int band = config.padding > 0 ? config.padding : 32,
 		slen = (int)target.seq.length();
-	for (int frame = 0; frame < align_mode.query_contexts; ++frame) {
+	for (unsigned frame = 0; frame < align_mode.query_contexts; ++frame) {
 		const int qlen = (int)query_seq[frame].length();
 		for (const Hsp &hsp : target.hsp[frame]) {
 			dp_targets[frame].emplace_back(target.seq, hsp.query_range.begin_, hsp.query_range.end_, target_idx);
@@ -85,13 +87,15 @@ void add_dp_targets(const Target &target, int target_idx, const sequence *query_
 vector<Match> align(const vector<Target> &targets, const sequence *query_seq, const Bias_correction *query_cb, int source_query_len) {
 	array<vector<DpTarget>, MAX_CONTEXT> dp_targets;
 	vector<Match> r;
+	if (targets.empty())
+		return r;
 	r.reserve(targets.size());
 	for (int i = 0; i < (int)targets.size(); ++i) {
 		add_dp_targets(targets[i], i, query_seq, dp_targets);
-		r.emplace_back();
+		r.emplace_back(targets[i].block_id);
 	}
 
-	for (int frame = 0; frame < align_mode.query_contexts; ++frame) {
+	for (unsigned frame = 0; frame < align_mode.query_contexts; ++frame) {
 		if (dp_targets[frame].empty())
 			continue;
 		list<Hsp> hsp = DP::BandedSwipe::swipe(

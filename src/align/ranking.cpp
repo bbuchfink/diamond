@@ -31,7 +31,11 @@ void rank_targets(vector<WorkTarget> &targets, double ratio, double factor)
 {
 	if (config.taxon_k && config.toppercent == 100.0)
 		return;
-	std::stable_sort(targets.begin(), targets.end());
+	std::sort(targets.begin(), targets.end());
+	if (targets[0].filter_score == 0) {
+		targets.clear();
+		return;
+	}
 
 	int score = 0;
 	if (config.toppercent < 100) {
@@ -41,6 +45,7 @@ void rank_targets(vector<WorkTarget> &targets, double ratio, double factor)
 		size_t min_idx = std::min(targets.size(), (size_t)config.max_alignments);
 		score = int((double)targets[min_idx - 1].filter_score * ratio);
 	}
+	score = std::max(score, 1);
 
 	const size_t cap = (config.toppercent < 100 || config.max_alignments == std::numeric_limits<uint64_t>::max()) ? std::numeric_limits<uint64_t>::max() : size_t(config.max_alignments*factor);
 	size_t i = 0;

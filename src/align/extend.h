@@ -27,26 +27,30 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../search/trace_pt_buffer.h"
 #include "../data/metadata.h"
 #include "../basic/match.h"
+#include "../basic/statistics.h"
 
 namespace Extension {
 
 struct Match {
-	Match():
+	Match(size_t target_block_id):
+		target_block_id(target_block_id),
 		filter_score(0)
 	{}
 	void add_hit(std::list<Hsp> &list, std::list<Hsp>::iterator it) {
 		hsp.splice(hsp.end(), list, it);
 	}
 	bool operator<(const Match &m) const {
-		return filter_score > m.filter_score;
+		return filter_score > m.filter_score || (filter_score == m.filter_score && target_block_id < m.target_block_id);
 	}
 	void inner_culling(int source_query_len);
 	void apply_filters(int source_query_len, const char *query_title);
+	size_t target_block_id;
 	int filter_score;
 	std::list<Hsp> hsp;
 };
-	
+
 std::vector<Match> extend(const Parameters &params, size_t query_id, Trace_pt_list::iterator begin, Trace_pt_list::iterator end, const Metadata &metadata);
+bool generate_output(const std::vector<Match> &targets, TextBuffer &buffer, Statistics &stat);
 
 }
 

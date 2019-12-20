@@ -161,6 +161,7 @@ add_executable(diamond $<TARGET_OBJECTS:arch_generic>
   src/align/gapped.cpp
   src/align/culling.cpp
   src/cluster/medoid.cpp
+  src/align/output.cpp
 )
 
 if(EXTRA)
