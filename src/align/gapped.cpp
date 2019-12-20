@@ -42,14 +42,17 @@ void add_dp_targets(const WorkTarget &target, int target_idx, const sequence *qu
 	}
 }
 
-void align(const vector<WorkTarget> &targets, const sequence *query_seq, const Bias_correction *query_cb) {
+vector<Target> align(const vector<WorkTarget> &targets, const sequence *query_seq, const Bias_correction *query_cb) {
 	const int raw_score_cutoff = score_matrix.rawscore(config.min_bit_score == 0 ? score_matrix.bitscore(config.max_evalue, (unsigned)query_seq[0].length()) : config.min_bit_score);
 
 	array<vector<DpTarget>, MAX_CONTEXT> dp_targets;
-	for (int i = 0; i < (int)targets.size(); ++i)
+	vector<Target> r;
+	r.reserve(targets.size());
+	for (int i = 0; i < (int)targets.size(); ++i) {
 		add_dp_targets(targets[i], i, query_seq, dp_targets);
-	
-	vector<Target> aligned_targets(targets.size());
+		r.emplace_back(targets[i].seq);
+	}
+
 	for (int frame = 0; frame < align_mode.query_contexts; ++frame) {
 		if (dp_targets[frame].empty())
 			continue;
@@ -62,9 +65,48 @@ void align(const vector<WorkTarget> &targets, const sequence *query_seq, const B
 			0,
 			raw_score_cutoff);
 		while (!hsp.empty())
-			aligned_targets[hsp.front().swipe_target].add_hit(hsp, hsp.begin());
+			r[hsp.front().swipe_target].add_hit(hsp, hsp.begin());
 	}
 
+	return r;
+}
+
+void add_dp_targets(const Target &target, int target_idx, const sequence *query_seq, array<vector<DpTarget>, MAX_CONTEXT> &dp_targets) {
+	const int band = config.padding > 0 ? config.padding : 32,
+		slen = (int)target.seq.length();
+	for (int frame = 0; frame < align_mode.query_contexts; ++frame) {
+		const int qlen = (int)query_seq[frame].length();
+		for (const Hsp &hsp : target.hsp[frame]) {
+			dp_targets[frame].emplace_back(target.seq, hsp.query_range.begin_, hsp.query_range.end_, target_idx);
+		}
+	}
+}
+
+vector<Target> align(const vector<Target> &targets, const sequence *query_seq, const Bias_correction *query_cb) {
+	array<vector<DpTarget>, MAX_CONTEXT> dp_targets;
+	vector<Target> r;
+	r.reserve(targets.size());
+	for (int i = 0; i < (int)targets.size(); ++i) {
+		add_dp_targets(targets[i], i, query_seq, dp_targets);
+		r.emplace_back(targets[i].seq);
+	}
+
+	for (int frame = 0; frame < align_mode.query_contexts; ++frame) {
+		if (dp_targets[frame].empty())
+			continue;
+		list<Hsp> hsp = DP::BandedSwipe::swipe(
+			query_seq[frame],
+			dp_targets[frame].begin(),
+			dp_targets[frame].end(),
+			Frame(frame),
+			config.comp_based_stats ? &query_cb[frame] : nullptr,
+			DP::TRACEBACK,
+			0);
+		while (!hsp.empty())
+			r[hsp.front().swipe_target].add_hit(hsp, hsp.begin());
+	}
+
+	return r;
 }
 
 }

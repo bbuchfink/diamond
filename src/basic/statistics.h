@@ -33,7 +33,7 @@ struct Statistics
 	enum value {
 		SEED_HITS, TENTATIVE_MATCHES0, TENTATIVE_MATCHES1, TENTATIVE_MATCHES2, TENTATIVE_MATCHES3, TENTATIVE_MATCHES4, TENTATIVE_MATCHESX, MATCHES, ALIGNED, GAPPED, DUPLICATES,
 		GAPPED_HITS, QUERY_SEEDS, QUERY_SEEDS_HIT, REF_SEEDS, REF_SEEDS_HIT, QUERY_SIZE, REF_SIZE, OUT_HITS, OUT_MATCHES, COLLISION_LOOKUPS, QCOV, BIAS_ERRORS, SCORE_TOTAL, ALIGNED_QLEN, PAIRWISE, HIGH_SIM,
-		TEMP_SPACE, SECONDARY_HITS, ERASED_HITS, SQUARED_ERROR, CELLS, OUTRANKED_HITS, TARGET_HITS0, TARGET_HITS1, TARGET_HITS2, TIME_GREEDY_EXT, LOW_COMPLEXITY_SEEDS, COUNT
+		TEMP_SPACE, SECONDARY_HITS, ERASED_HITS, SQUARED_ERROR, CELLS, OUTRANKED_HITS, TARGET_HITS0, TARGET_HITS1, TARGET_HITS2, TARGET_HITS3, TIME_GREEDY_EXT, LOW_COMPLEXITY_SEEDS, COUNT
 	};
 
 	Statistics()
@@ -79,6 +79,7 @@ struct Statistics
 		log_stream << "Target hits (stage 0) = " << data_[TARGET_HITS0] << endl;
 		log_stream << "Target hits (stage 1) = " << data_[TARGET_HITS1] << endl;
 		log_stream << "Target hits (stage 2) = " << data_[TARGET_HITS2] << endl;
+		log_stream << "Target hits (stage 3) = " << data_[TARGET_HITS3] << endl;
 		log_stream << "Time (greedy extension) = " << data_[TIME_GREEDY_EXT]/1e9 << "s" << endl;
 		//log_stream << "Gapped hits = " << data_[GAPPED_HITS] << endl;
 		//log_stream << "Overlap hits = " << data_[DUPLICATES] << endl;

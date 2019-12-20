@@ -213,5 +213,6 @@ struct Bin1_format : public Output_format
 Output_format* get_output_format();
 void init_output(bool have_taxon_id_lists, bool have_taxon_nodes, bool have_taxon_scientific_names);
 void print_hsp(Hsp &hsp, const TranslatedSequence &query);
+void print_cigar(const Hsp_context &r, TextBuffer &buf);
 
 #endif /* OUTPUT_FORMAT_H_ */

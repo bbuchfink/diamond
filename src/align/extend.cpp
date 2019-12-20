@@ -52,7 +52,12 @@ void extend(const Parameters &params, size_t query_id, Trace_pt_list::iterator b
 	rank_targets(targets, config.rank_ratio == -1 ? (query_seq[0].length() > 50 ? 0.6 : 0.9) : config.rank_ratio, config.rank_factor == -1 ? 1e3 : config.rank_factor);
 	stat.inc(Statistics::TARGET_HITS1, targets.size());
 
-	array<vector<DpTarget>, MAX_CONTEXT> dp_targets;
+	vector<Target> aligned_targets = align(targets, query_seq.data(), query_cb.data());
+	score_only_culling(aligned_targets);
+	stat.inc(Statistics::TARGET_HITS2, targets.size());
+
+	aligned_targets = align(aligned_targets, query_seq.data(), query_cb.data());
+	stat.inc(Statistics::TARGET_HITS3, targets.size());
 
 }
 

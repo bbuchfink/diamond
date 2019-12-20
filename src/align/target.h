@@ -57,26 +57,31 @@ struct Context {
 
 struct Target {
 
-	Target():
-		filter_score(0)
+	Target(const sequence &seq):
+		filter_score(0),
+		seq(seq)
 	{}
 	Target(Trace_pt_list::const_iterator begin, Trace_pt_list::const_iterator end, uint64_t target_offset, const sequence *query_seq, const sequence &target_seq, const std::set<unsigned> &taxon_rank_ids);
 	void add_hit(std::list<Hsp> &list, std::list<Hsp>::iterator it) {
-		std::list<Hsp> &l = hsps[it->frame];
+		std::list<Hsp> &l = hsp[it->frame];
 		l.splice(l.end(), list, it);
 		filter_score = std::max(filter_score, (int)l.back().score);
 	}
 	bool operator<(const Target &t) const {
 		return filter_score > t.filter_score;
 	}
-	void ungapped_stage(unsigned context, std::vector<Diagonal_segment>::const_iterator begin, std::vector<Diagonal_segment>::const_iterator end);
+	void inner_culling();
 
+	sequence seq;
 	int filter_score;
-	std::array<std::list<Hsp>, MAX_CONTEXT> hsps;
-	//std::array<Context, 6> context_;
+	std::array<std::list<Hsp>, MAX_CONTEXT> hsp;
 	//const std::set<unsigned> taxon_rank_ids;
 
 };
+
+void score_only_culling(std::vector<Target> &targets);
+std::vector<Target> align(const std::vector<WorkTarget> &targets, const sequence *query_seq, const Bias_correction *query_cb);
+std::vector<Target> align(const std::vector<Target> &targets, const sequence *query_seq, const Bias_correction *query_cb);
 
 }
 

@@ -84,7 +84,8 @@ const char* Blast_tab_format::field_str[] = {
 	"full_qseq",	// 54
 	"qseq_gapped",  // 55
 	"sseq_gapped",	// 56
-	"qstrand"		// 57
+	"qstrand",		// 57
+	"cigar"			// 58
 };
 
 const char* Blast_tab_format::field_desc[] = {
@@ -145,7 +146,8 @@ const char* Blast_tab_format::field_desc[] = {
 	"Query sequence",		// 54
 	"Query sequence with gaps",		// 55
 	"Subject sequence with gaps",		// 56
-	"Query strand"						// 57
+	"Query strand",						// 57
+	"CIGAR"								// 58
 };
 
 Blast_tab_format::Blast_tab_format() :
@@ -367,6 +369,9 @@ void Blast_tab_format::print_match(const Hsp_context& r, const Metadata &metadat
 				out << ((r.blast_query_frame() > 0) ? '+' : '-');
 			else
 				out << '+';
+			break;
+		case 58:
+			print_cigar(r, out);
 			break;
 		default:
 			throw std::runtime_error(string("Invalid output field: ") + field_str[*i]);

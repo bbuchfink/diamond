@@ -306,6 +306,7 @@ Hsp traceback(const sequence &query, Frame frame, const int8_t *bias_correction,
 	out.swipe_target = target.target_idx;
 	out.score = ScoreTraits<_sv>::int_score(max_score);
 	out.frame = frame.index();
+	out.query_range = interval(target.d_begin, target.d_end);
 	return out;
 }
 

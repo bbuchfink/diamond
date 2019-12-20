@@ -28,6 +28,10 @@ namespace Extension {
 
 void score_only_culling(vector<Target> &targets) {
 	std::stable_sort(targets.begin(), targets.end());
+
+	if (config.toppercent == 100.0 && (config.min_id > 0 || config.query_cover > 0 || config.subject_cover > 0 || config.no_self_hits))
+		return;
+
 	vector<Target>::iterator i;
 	if (config.toppercent < 100.0) {
 		const int cutoff = (1.0 - config.toppercent / 100.0)*targets.front().filter_score;
