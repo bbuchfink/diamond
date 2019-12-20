@@ -31,7 +31,7 @@ using std::array;
 
 namespace Extension {
 
-void extend(const Parameters &params, size_t query_id, Trace_pt_list::iterator begin, Trace_pt_list::iterator end, const Metadata &metadata, Statistics &stat) {
+vector<Match> extend(const Parameters &params, size_t query_id, Trace_pt_list::iterator begin, Trace_pt_list::iterator end, const Metadata &metadata, Statistics &stat) {
 	const unsigned contexts = align_mode.query_contexts;
 	vector<sequence> query_seq;
 	vector<Bias_correction> query_cb;
@@ -56,7 +56,7 @@ void extend(const Parameters &params, size_t query_id, Trace_pt_list::iterator b
 	score_only_culling(aligned_targets);
 	stat.inc(Statistics::TARGET_HITS2, targets.size());
 
-	aligned_targets = align(aligned_targets, query_seq.data(), query_cb.data());
+	vector<Match> matches = align(aligned_targets, query_seq.data(), query_cb.data(), (int)query_source_seqs::get()[query_id].length());
 	stat.inc(Statistics::TARGET_HITS3, targets.size());
 
 }

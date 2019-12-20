@@ -31,6 +31,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../basic/const.h"
 #include "../dp/hsp_traits.h"
 #include "../dp/comp_based_stats.h"
+#include "extend.h"
 
 namespace Extension {
 
@@ -81,7 +82,7 @@ struct Target {
 
 void score_only_culling(std::vector<Target> &targets);
 std::vector<Target> align(const std::vector<WorkTarget> &targets, const sequence *query_seq, const Bias_correction *query_cb);
-std::vector<Target> align(const std::vector<Target> &targets, const sequence *query_seq, const Bias_correction *query_cb);
+std::vector<Match> align(const std::vector<Target> &targets, const sequence *query_seq, const Bias_correction *query_cb, int source_query_len);
 
 }
 

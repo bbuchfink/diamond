@@ -82,13 +82,13 @@ void add_dp_targets(const Target &target, int target_idx, const sequence *query_
 	}
 }
 
-vector<Target> align(const vector<Target> &targets, const sequence *query_seq, const Bias_correction *query_cb) {
+vector<Match> align(const vector<Target> &targets, const sequence *query_seq, const Bias_correction *query_cb, int source_query_len) {
 	array<vector<DpTarget>, MAX_CONTEXT> dp_targets;
-	vector<Target> r;
+	vector<Match> r;
 	r.reserve(targets.size());
 	for (int i = 0; i < (int)targets.size(); ++i) {
 		add_dp_targets(targets[i], i, query_seq, dp_targets);
-		r.emplace_back(targets[i].seq);
+		r.emplace_back();
 	}
 
 	for (int frame = 0; frame < align_mode.query_contexts; ++frame) {
@@ -105,6 +105,9 @@ vector<Target> align(const vector<Target> &targets, const sequence *query_seq, c
 		while (!hsp.empty())
 			r[hsp.front().swipe_target].add_hit(hsp, hsp.begin());
 	}
+
+	for (Match &match : r)
+		match.inner_culling(source_query_len);
 
 	return r;
 }

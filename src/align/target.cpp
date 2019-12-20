@@ -29,20 +29,5 @@ using std::vector;
 
 namespace Extension {
 
-	/*void Target::inner_culling()
-	{
-		hsps.sort();
-		if (hsps.size() > 0)
-			filter_score = hsps.front().score;
-		else
-			filter_score = 0;
-		for (list<Hsp>::iterator i = hsps.begin(); i != hsps.end();) {
-			if (i->is_enveloped_by(hsps.begin(), i, 0.5) || (int)i->score < cutoff)
-				i = hsps.erase(i);
-			else
-				++i;
-		}
-
-	}*/
 
 }

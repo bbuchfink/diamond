@@ -41,9 +41,7 @@ WorkTarget ungapped_stage(Trace_pt_list::iterator begin, Trace_pt_list::iterator
 	WorkTarget target(target_seq);
 	for (Trace_pt_list::const_iterator i = begin; i < end; ++i) {
 		const unsigned frame = i->frame();
-		const Diagonal_segment d = xdrop_ungapped(query_seq[frame], target_seq, i->seed_offset_, uint64_t(i->subject_) - target_offset);
-		if (d.score >= config.min_ungapped_raw_score)
-			diagonal_segments[frame].push_back(d);
+		diagonal_segments[frame].push_back(xdrop_ungapped(query_seq[frame], target_seq, i->seed_offset_, uint64_t(i->subject_) - target_offset));
 	}
 	for (int frame = 0; frame < align_mode.query_contexts; ++frame) {
 		if (diagonal_segments[frame].empty())
