@@ -26,10 +26,10 @@ using std::vector;
 
 namespace Extension {
 
-bool generate_output(const vector<Match> &targets, size_t query_id, TextBuffer &buffer, Statistics &stat)
+bool generate_output(const vector<Match> &targets, size_t query_block_id, TextBuffer &buffer, Statistics &stat)
 {
 	unsigned n_hsp = 0, n_target_seq = 0, hit_hsps = 0;
-	TranslatedSequence query = query_seqs::get().translated_seq(query_source_seqs::get()[query_id], query_id*align_mode.query_contexts);
+	TranslatedSequence query = query_seqs::get().translated_seq(query_source_seqs::get()[query_block_id], query_block_id*align_mode.query_contexts);
 
 	/*const unsigned query_len = (unsigned)query_seq(0).length();
 	size_t seek_pos = 0;

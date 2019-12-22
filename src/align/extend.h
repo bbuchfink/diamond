@@ -50,7 +50,7 @@ struct Match {
 };
 
 std::vector<Match> extend(const Parameters &params, size_t query_id, Trace_pt_list::iterator begin, Trace_pt_list::iterator end, const Metadata &metadata);
-bool generate_output(const std::vector<Match> &targets, TextBuffer &buffer, Statistics &stat);
+bool generate_output(const std::vector<Match> &targets, size_t query_block_id, TextBuffer &buffer, Statistics &stat);
 
 }
 

@@ -22,6 +22,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <map>
 #include <vector>
 #include <algorithm>
+#include <locale>
 #include "../basic/config.h"
 #include "../util/string/tokenizer.h"
 #include "../util/log_stream.h"
@@ -93,6 +94,16 @@ size_t get_medoid(DatabaseFile *db, const vector<bool> &filter, size_t n, Sequen
 	return max_i == -1 ? std::find(filter.begin(), filter.end(), true) - filter.begin() : max_i;
 }
 
+int get_acc2idx(const string& acc, const map<string, size_t>& acc2idx) {
+	static std::locale loc;
+	if (std::isdigit(acc[0], loc))
+		return atoi(acc.c_str());
+	else {
+		auto i = acc2idx.find(acc);
+		return i == acc2idx.end() ? -1 : (int)i->second;
+	}
+}
+
 void get_medoids_from_tree() {
 	const size_t CLUSTER_COUNT = 1000;
 	config.masking = false;
@@ -127,7 +138,8 @@ void get_medoids_from_tree() {
 	for (const pair<string, string> &i : parent) {
 		while (parent[parent[i.first]] != parent[i.first])
 			parent[i.first] = parent[parent[i.first]];
-		if (acc2idx.find(i.first) != acc2idx.end())
+		int idx = get_acc2idx(i.first, acc2idx);
+		if (idx != -1 && idx < (int)n)
 			clusters[parent[i.first]].push_back(i.first);
 	}
 
@@ -139,7 +151,7 @@ void get_medoids_from_tree() {
 		std::cout << endl;*/
 		std::fill(filter.begin(), filter.end(), false);
 		for (const string &acc : i.second)
-			filter[acc2idx[acc]] = true;
+			filter[get_acc2idx(acc, acc2idx)] = true;
 		const size_t medoid = get_medoid(db, filter, i.second.size(), seqs);
 		const string id = string((*ids)[medoid].c_str()) + ' ' + std::to_string(i.second.size());
 		Util::Sequence::format((*seqs)[medoid], id.c_str(), nullptr, out, "fasta", amino_acid_traits);
