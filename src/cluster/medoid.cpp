@@ -149,10 +149,15 @@ void get_medoids_from_tree() {
 		/*for (const string &acc : i.second)
 			std::cout << acc << ' ';
 		std::cout << endl;*/
-		std::fill(filter.begin(), filter.end(), false);
-		for (const string &acc : i.second)
-			filter[get_acc2idx(acc, acc2idx)] = true;
-		const size_t medoid = get_medoid(db, filter, i.second.size(), seqs);
+		size_t medoid;
+		if (i.second.size() == 1)
+			medoid = get_acc2idx(i.second.front(), acc2idx);
+		else {
+			std::fill(filter.begin(), filter.end(), false);
+			for (const string& acc : i.second)
+				filter[get_acc2idx(acc, acc2idx)] = true;
+			medoid = get_medoid(db, filter, i.second.size(), seqs);
+		}
 		const string id = string((*ids)[medoid].c_str()) + ' ' + std::to_string(i.second.size());
 		Util::Sequence::format((*seqs)[medoid], id.c_str(), nullptr, out, "fasta", amino_acid_traits);
 	}
