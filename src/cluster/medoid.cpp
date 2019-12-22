@@ -116,46 +116,48 @@ void get_medoids_from_tree() {
 	String_set<'\0'> *ids;
 	db->load_seqs(block2databaseid, SIZE_MAX, &seqs, &ids, true);
 
-	map<string, string> parent;
-	map<string, size_t> acc2idx;
+	map<int, int> parent;
+	map<string, int> acc2idx;
 	for (size_t i = 0; i < n; ++i) {
 		const string id = (*ids)[i].c_str();
-		parent[id] = id;
+		parent[i] = i;
 		acc2idx[id] = i;
+		acc2idx[std::to_string(i)] = i;
 	}
 	
 	TextInputFile tree_in(config.tree_file);
-	string p, c1, c2;
+	int p;
+	string c1, c2;
 	while (tree_in.getline(), !tree_in.eof() && n > CLUSTER_COUNT) {
 		Util::String::Tokenizer(tree_in.line, "\t") >> p >> c1 >> c2;
-		parent[c1] = p;
-		parent[c2] = p;
+		parent[acc2idx.find(c1) == acc2idx.end() ? atoi(c1.c_str()) : acc2idx[c1]] = p;
+		parent[acc2idx.find(c2) == acc2idx.end() ? atoi(c2.c_str()) : acc2idx[c2]] = p;
 		parent[p] = p;
 		--n;
 	}
 
-	map<string, vector<string>> clusters;
-	for (const pair<string, string> &i : parent) {
+	n = db->ref_header.sequences;
+	map<int, vector<int>> clusters;
+	for (const pair<int, int> &i : parent) {
 		while (parent[parent[i.first]] != parent[i.first])
 			parent[i.first] = parent[parent[i.first]];
-		int idx = get_acc2idx(i.first, acc2idx);
-		if (idx != -1 && idx < (int)n)
+		if(i.first < n)
 			clusters[parent[i.first]].push_back(i.first);
 	}
 
 	vector<bool> filter(db->ref_header.sequences);
 	OutputFile out(config.output_file);
-	for (const pair<string, vector<string>> &i : clusters) {
+	for (const pair<int, vector<int>> &i : clusters) {
 		/*for (const string &acc : i.second)
 			std::cout << acc << ' ';
 		std::cout << endl;*/
 		size_t medoid;
 		if (i.second.size() == 1)
-			medoid = get_acc2idx(i.second.front(), acc2idx);
+			medoid = i.second.front();
 		else {
 			std::fill(filter.begin(), filter.end(), false);
-			for (const string& acc : i.second)
-				filter[get_acc2idx(acc, acc2idx)] = true;
+			for (const int& acc : i.second)
+				filter[acc] = true;
 			medoid = get_medoid(db, filter, i.second.size(), seqs);
 		}
 		const string id = string((*ids)[medoid].c_str()) + ' ' + std::to_string(i.second.size());
