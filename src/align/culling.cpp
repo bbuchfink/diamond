@@ -43,7 +43,7 @@ void Match::inner_culling(int source_query_len)
 	}
 	if(config.max_hsps > 0 && hsp.size() > config.max_hsps) {
 		list<Hsp>::iterator i = hsp.begin();
-		for(unsigned n=0;n<config.max_hsps;++n)
+		for (unsigned n = 0; n < config.max_hsps; ++n)
 			++i;
 		hsp.erase(i, hsp.end());
 	}

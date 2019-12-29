@@ -125,8 +125,7 @@ void align_worker(size_t thread_id, const Parameters *params, const Metadata *me
 			continue;
 		}
 		vector<Extension::Match> matches = Extension::extend(*params, hits.query, hits.begin, hits.end, *metadata, stat);
-		TextBuffer *buf = new TextBuffer;
-		Extension::generate_output(matches, hits.query, *buf, stat, *metadata, *params);
+		TextBuffer *buf = Extension::generate_output(matches, hits.query, stat, *metadata, *params);
 		if (!matches.empty() && (!config.unaligned.empty() || !config.aligned_file.empty())) {
 			query_aligned_mtx.lock();
 			query_aligned[hits.query] = true;

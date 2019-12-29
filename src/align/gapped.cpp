@@ -34,7 +34,7 @@ void add_dp_targets(const WorkTarget &target, int target_idx, const sequence *qu
 	for (unsigned frame = 0; frame < align_mode.query_contexts; ++frame) {
 		const int qlen = (int)query_seq[frame].length();
 		for (const Hsp_traits &hsp : target.hsp[frame]) {
-			if (config.log_extension) {
+			if (config.log_extend) {
 				cout << "i_begin=" << hsp.query_range.begin_ << " j_begin=" << hsp.subject_range.begin_ << " d_min=" << hsp.d_min << " d_max=" << hsp.d_max << endl;
 			}
 			dp_targets[frame].emplace_back(target.seq, std::max(hsp.d_min - band, -(slen - 1)), std::min(hsp.d_max + 1 + band, qlen), target_idx);

@@ -46,7 +46,7 @@ vector<Match> extend(const Parameters &params, size_t query_id, Trace_pt_list::i
 		for (unsigned i = 0; i < contexts; ++i)
 			query_cb.emplace_back(query_seq[i]);
 
-	const int source_query_len = (int)query_source_seqs::get()[query_id].length();
+	const int source_query_len = align_mode.query_translated ? (int)query_source_seqs::get()[query_id].length() : (int)query_seqs::get()[query_id].length();
 
 	vector<WorkTarget> targets = ungapped_stage(query_seq.data(), query_cb.data(), begin, end);
 	stat.inc(Statistics::TARGET_HITS0, targets.size());

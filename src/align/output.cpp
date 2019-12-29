@@ -30,23 +30,24 @@ using std::vector;
 
 namespace Extension {
 
-void generate_output(vector<Match> &targets, size_t query_block_id, TextBuffer &buffer, Statistics &stat, const Metadata &metadata, const Parameters &parameters)
+TextBuffer* generate_output(vector<Match> &targets, size_t query_block_id, Statistics &stat, const Metadata &metadata, const Parameters &parameters)
 {
+	TextBuffer* out = new TextBuffer;
 	std::unique_ptr<Output_format> f(output_format->clone());
 	size_t seek_pos = 0;
 	unsigned n_hsp = 0, hit_hsps = 0;
-	TranslatedSequence query = query_seqs::get().translated_seq(query_source_seqs::get()[query_block_id], query_block_id*align_mode.query_contexts);
+	TranslatedSequence query = query_seqs::get().translated_seq(align_mode.query_translated ? query_source_seqs::get()[query_block_id] : query_seqs::get()[query_block_id], query_block_id*align_mode.query_contexts);
 	const unsigned query_len = (unsigned)query.index(0).length();
 	const char *query_title = query_ids::get()[query_block_id].c_str();
 	const bool aligned = !targets.empty();
 
 	if (blocked_processing) {
-		if(aligned) seek_pos = IntermediateRecord::write_query_intro(buffer, query_block_id);
+		if(aligned) seek_pos = IntermediateRecord::write_query_intro(*out, query_block_id);
 	} else {
 		if (*f == Output_format::daa) {
-			if (aligned) seek_pos = write_daa_query_record(buffer, query_title, query.source());
+			if (aligned) seek_pos = write_daa_query_record(*out, query_title, query.source());
 		} else if(aligned || config.report_unaligned)
-			f->print_query_intro(query_block_id, query_title, query.source().length(), buffer, !aligned);
+			f->print_query_intro(query_block_id, query_title, query.source().length(), *out, !aligned);
 	}
 	
 	for (size_t i = 0; i < targets.size(); ++i) {
@@ -62,11 +63,11 @@ void generate_output(vector<Match> &targets, size_t query_block_id, TextBuffer &
 		hit_hsps = 0;
 		for (Hsp &hsp : targets[i].hsp) {
 			if (blocked_processing) {
-				IntermediateRecord::write(buffer, hsp, query_block_id, subject_id);
+				IntermediateRecord::write(*out, hsp, query_block_id, subject_id);
 			}
 			else {
 				if (*f == Output_format::daa)
-					write_daa_record(buffer, hsp, subject_id);
+					write_daa_record(*out, hsp, subject_id);
 				else
 					f->print_match(Hsp_context(hsp,
 						query_block_id,
@@ -78,7 +79,7 @@ void generate_output(vector<Match> &targets, size_t query_block_id, TextBuffer &
 						subject_len,
 						i,
 						hit_hsps,
-						ref_seqs::get()[subject_id]), metadata, buffer);
+						ref_seqs::get()[subject_id]), metadata, *out);
 			}
 
 			++n_hsp;
@@ -88,12 +89,12 @@ void generate_output(vector<Match> &targets, size_t query_block_id, TextBuffer &
 
 	if (!blocked_processing) {
 		if (*f == Output_format::daa) {
-			if(aligned) finish_daa_query_record(buffer, seek_pos);
+			if(aligned) finish_daa_query_record(*out, seek_pos);
 		} else if(aligned || config.report_unaligned)
-			f->print_query_epilog(buffer, query_title, targets.empty(), parameters);
+			f->print_query_epilog(*out, query_title, targets.empty(), parameters);
 	}
 	else if(aligned)
-		IntermediateRecord::finish_query(buffer, seek_pos);
+		IntermediateRecord::finish_query(*out, seek_pos);
 
 	if (!blocked_processing) {
 		stat.inc(Statistics::MATCHES, n_hsp);
@@ -101,6 +102,7 @@ void generate_output(vector<Match> &targets, size_t query_block_id, TextBuffer &
 		if (aligned)
 			stat.inc(Statistics::ALIGNED);
 	}
+	return out;
 }
 
 }

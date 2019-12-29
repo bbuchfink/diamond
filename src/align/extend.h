@@ -28,6 +28,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../data/metadata.h"
 #include "../basic/match.h"
 #include "../basic/statistics.h"
+#include "../util/text_buffer.h"
 
 namespace Extension {
 
@@ -54,7 +55,7 @@ struct Match {
 };
 
 std::vector<Match> extend(const Parameters &params, size_t query_id, Trace_pt_list::iterator begin, Trace_pt_list::iterator end, const Metadata &metadata, Statistics &stat);
-void generate_output(vector<Match> &targets, size_t query_block_id, TextBuffer &buffer, Statistics &stat, const Metadata &metadata, const Parameters &parameters);
+TextBuffer* generate_output(vector<Match> &targets, size_t query_block_id, Statistics &stat, const Metadata &metadata, const Parameters &parameters);
 
 }
 

@@ -184,7 +184,6 @@ struct Config
 	bool swipe_all;
 	uint64_t taxon_k;
 	uint64_t upgma_edge_limit;
-	bool log_extension;
 	string tree_file;
 	string upgma_dist;
 	string upgma_input;
