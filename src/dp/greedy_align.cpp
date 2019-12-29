@@ -643,7 +643,7 @@ int greedy_align(sequence query, const Long_score_profile &qp, const Bias_correc
 
 std::pair<int, list<Hsp_traits>> greedy_align(sequence query, const Bias_correction &query_bc, sequence subject, vector<Diagonal_segment>::const_iterator begin, vector<Diagonal_segment>::const_iterator end, bool log, unsigned frame)
 {
-	const int band = config.padding == 0 ? std::min(64, int(query.length()*0.5)) : config.padding;
+	const int band = 1024;
 	Long_score_profile qp;
 	Greedy_aligner2 ga(query, qp, query_bc, subject, log, frame);
 	list<Hsp> hsps;
