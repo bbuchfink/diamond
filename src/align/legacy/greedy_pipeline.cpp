@@ -16,10 +16,10 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#include "align.h"
+#include "../align.h"
 #include "query_mapper.h"
-#include "../util/map.h"
-#include "../data/reference.h"
+#include "../../util/map.h"
+#include "../../data/reference.h"
 
 namespace ExtensionPipeline { namespace Greedy {
 

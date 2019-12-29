@@ -22,7 +22,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../data/queries.h"
 #include "../output/daa_write.h"
 #include "output_format.h"
-#include "../align/query_mapper.h"
+#include "../align/legacy/query_mapper.h"
 #include "target_culling.h"
 #include "../data/ref_dictionary.h"
 #include "../util/log_stream.h"

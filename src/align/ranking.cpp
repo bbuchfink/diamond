@@ -32,7 +32,7 @@ void rank_targets(vector<WorkTarget> &targets, double ratio, double factor)
 	if (config.taxon_k && config.toppercent == 100.0)
 		return;
 	std::sort(targets.begin(), targets.end());
-	if (targets[0].filter_score == 0) {
+	if (targets.empty() || targets[0].filter_score == 0) {
 		targets.clear();
 		return;
 	}

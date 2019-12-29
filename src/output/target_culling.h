@@ -22,7 +22,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <vector>
 #include <set>
 #include <map>
-#include "../align/query_mapper.h"
+#include "../align/legacy/query_mapper.h"
 #include "../util/interval_partition.h"
 #include "output.h"
 

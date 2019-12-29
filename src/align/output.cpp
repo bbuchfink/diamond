@@ -18,77 +18,65 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
+#include <memory>
 #include "extend.h"
 #include "target.h"
 #include "../data/queries.h"
+#include "../output/output_format.h"
+#include "../data/ref_dictionary.h"
+#include "../output/daa_write.h"
 
 using std::vector;
 
 namespace Extension {
 
-bool generate_output(const vector<Match> &targets, size_t query_block_id, TextBuffer &buffer, Statistics &stat)
+void generate_output(vector<Match> &targets, size_t query_block_id, TextBuffer &buffer, Statistics &stat, const Metadata &metadata, const Parameters &parameters)
 {
-	unsigned n_hsp = 0, n_target_seq = 0, hit_hsps = 0;
-	TranslatedSequence query = query_seqs::get().translated_seq(query_source_seqs::get()[query_block_id], query_block_id*align_mode.query_contexts);
-
-	/*const unsigned query_len = (unsigned)query_seq(0).length();
+	std::unique_ptr<Output_format> f(output_format->clone());
 	size_t seek_pos = 0;
-	const char *query_title = query_ids::get()[query_id].c_str();
-	unique_ptr<Output_format> f(output_format->clone());
+	unsigned n_hsp = 0, hit_hsps = 0;
+	TranslatedSequence query = query_seqs::get().translated_seq(query_source_seqs::get()[query_block_id], query_block_id*align_mode.query_contexts);
+	const unsigned query_len = (unsigned)query.index(0).length();
+	const char *query_title = query_ids::get()[query_block_id].c_str();
+	const bool aligned = !targets.empty();
 
+	if (blocked_processing) {
+		if(aligned) seek_pos = IntermediateRecord::write_query_intro(buffer, query_block_id);
+	} else {
+		if (*f == Output_format::daa) {
+			if (aligned) seek_pos = write_daa_query_record(buffer, query_title, query.source());
+		} else if(aligned || config.report_unaligned)
+			f->print_query_intro(query_block_id, query_title, query.source().length(), buffer, !aligned);
+	}
+	
 	for (size_t i = 0; i < targets.size(); ++i) {
 
-		if ((config.min_bit_score == 0 && score_matrix.evalue(targets[i].filter_score, query_len) > config.max_evalue)
-			|| score_matrix.bitscore(targets[i].filter_score) < config.min_bit_score)
-			break;
-
-		const size_t subject_id = targets[i].subject_block_id;
+		const size_t subject_id = targets[i].target_block_id;
 		const unsigned database_id = ReferenceDictionary::get().block_to_database_id(subject_id);
 		const unsigned subject_len = (unsigned)ref_seqs::get()[subject_id].length();
 		const char *ref_title = ref_ids::get()[subject_id].c_str();
-		targets[i].apply_filters(source_query_len, subject_len, query_title, ref_title);
-		if (targets[i].hsps.size() == 0)
-			continue;
-
-		const int c = target_culling->cull(targets[i]);
-		if (c == TargetCulling::NEXT)
-			continue;
-		else if (c == TargetCulling::FINISHED)
-			break;
 
 		if (targets[i].outranked)
 			stat.inc(Statistics::OUTRANKED_HITS);
-		target_culling->add(targets[i]);
 
 		hit_hsps = 0;
-		for (list<Hsp>::iterator j = targets[i].hsps.begin(); j != targets[i].hsps.end(); ++j) {
-			if (config.max_hsps > 0 && hit_hsps >= config.max_hsps)
-				break;
-
+		for (Hsp &hsp : targets[i].hsp) {
 			if (blocked_processing) {
-				if (n_hsp == 0)
-					seek_pos = IntermediateRecord::write_query_intro(buffer, query_id);
-				IntermediateRecord::write(buffer, *j, query_id, subject_id);
+				IntermediateRecord::write(buffer, hsp, query_block_id, subject_id);
 			}
 			else {
-				if (n_hsp == 0) {
-					if (*f == Output_format::daa)
-						seek_pos = write_daa_query_record(buffer, query_title, align_mode.query_translated ? query_source_seqs::get()[query_id] : query_seqs::get()[query_id]);
-					else
-						f->print_query_intro(query_id, query_title, source_query_len, buffer, false);
-				}
 				if (*f == Output_format::daa)
-					write_daa_record(buffer, *j, subject_id);
+					write_daa_record(buffer, hsp, subject_id);
 				else
-					f->print_match(Hsp_context(*j,
-						query_id,
-						translated_query,
+					f->print_match(Hsp_context(hsp,
+						query_block_id,
+						query,
 						query_title,
 						subject_id,
 						database_id,
 						ref_title,
 						subject_len,
-						n_target_seq,
+						i,
 						hit_hsps,
 						ref_seqs::get()[subject_id]), metadata, buffer);
 			}
@@ -96,32 +84,23 @@ bool generate_output(const vector<Match> &targets, size_t query_block_id, TextBu
 			++n_hsp;
 			++hit_hsps;
 		}
-		++n_target_seq;
-	}
-
-	if (n_hsp > 0) {
-		if (!blocked_processing) {
-			if (*f == Output_format::daa)
-				finish_daa_query_record(buffer, seek_pos);
-			else
-				f->print_query_epilog(buffer, query_title, false, parameters);
-		}
-		else
-			IntermediateRecord::finish_query(buffer, seek_pos);
-	}
-	else if (!blocked_processing && *f != Output_format::daa && config.report_unaligned != 0) {
-		f->print_query_intro(query_id, query_title, source_query_len, buffer, true);
-		f->print_query_epilog(buffer, query_title, true, parameters);
 	}
 
 	if (!blocked_processing) {
-		stat.inc(Statistics::MATCHES, n_hsp);
-		stat.inc(Statistics::PAIRWISE, n_target_seq);
-		if (n_hsp > 0)
-			stat.inc(Statistics::ALIGNED);
-	}*/
+		if (*f == Output_format::daa) {
+			if(aligned) finish_daa_query_record(buffer, seek_pos);
+		} else if(aligned || config.report_unaligned)
+			f->print_query_epilog(buffer, query_title, targets.empty(), parameters);
+	}
+	else if(aligned)
+		IntermediateRecord::finish_query(buffer, seek_pos);
 
-	return n_hsp > 0;
+	if (!blocked_processing) {
+		stat.inc(Statistics::MATCHES, n_hsp);
+		stat.inc(Statistics::PAIRWISE, targets.size());
+		if (aligned)
+			stat.inc(Statistics::ALIGNED);
+	}
 }
 
 }

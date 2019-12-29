@@ -25,7 +25,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../search/trace_pt_buffer.h"
 #include "../util/task_queue.h"
 #include "../basic/statistics.h"
-#include "query_mapper.h"
+#include "legacy/query_mapper.h"
 #include "../data/metadata.h"
 
 using std::vector;

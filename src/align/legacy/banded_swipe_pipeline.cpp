@@ -17,10 +17,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #include <algorithm>
-#include "align.h"
-#include "../dp/dp.h"
-#include "../util/interval_partition.h"
-#include "../util/simd.h"
+#include "../align.h"
+#include "../../dp/dp.h"
+#include "../../util/interval_partition.h"
+#include "../../util/simd.h"
 
 using namespace std;
 

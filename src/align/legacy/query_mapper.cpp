@@ -19,12 +19,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <memory>
 #include <algorithm>
 #include "query_mapper.h"
-#include "../data/reference.h"
-#include "extend_ungapped.h"
-#include "../output/output.h"
-#include "../output/output_format.h"
-#include "../output/daa_write.h"
-#include "../output/target_culling.h"
+#include "../../data/reference.h"
+#include "../extend_ungapped.h"
+#include "../../output/output.h"
+#include "../../output/output_format.h"
+#include "../../output/daa_write.h"
+#include "../../output/target_culling.h"
 
 using namespace std;
 

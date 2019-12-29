@@ -95,7 +95,7 @@ add_executable(diamond $<TARGET_OBJECTS:arch_generic>
   src/output/output_format.cpp
   src/output/join_blocks.cpp
   src/data/frequent_seeds.cpp
-  src/align/query_mapper.cpp
+  src/align/legacy/query_mapper.cpp
   src/output/blast_tab_format.cpp
   src/dp/padded_banded_sw.cpp
   src/dp/needleman_wunsch.cpp
@@ -116,9 +116,9 @@ add_executable(diamond $<TARGET_OBJECTS:arch_generic>
   src/output/view.cpp
   src/output/output_sink.cpp
   src/output/target_culling.cpp
-  src/align/greedy_pipeline.cpp
-  src/align/swipe_pipeline.cpp
-  src/align/banded_swipe_pipeline.cpp
+  src/align/legacy/greedy_pipeline.cpp
+  src/align/legacy/swipe_pipeline.cpp
+  src/align/legacy/banded_swipe_pipeline.cpp
   src/data/ref_dictionary.cpp
   src/util/io/compressed_stream.cpp
   src/util/io/deserializer.cpp

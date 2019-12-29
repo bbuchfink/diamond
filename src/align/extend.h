@@ -31,10 +31,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 namespace Extension {
 
+constexpr int DEFAULT_BAND = 75;
+
 struct Match {
-	Match(size_t target_block_id):
+	Match(size_t target_block_id, bool outranked):
 		target_block_id(target_block_id),
-		filter_score(0)
+		filter_score(0),
+		outranked(outranked)
 	{}
 	void add_hit(std::list<Hsp> &list, std::list<Hsp>::iterator it) {
 		hsp.splice(hsp.end(), list, it);
@@ -46,11 +49,12 @@ struct Match {
 	void apply_filters(int source_query_len, const char *query_title);
 	size_t target_block_id;
 	int filter_score;
+	bool outranked;
 	std::list<Hsp> hsp;
 };
 
-std::vector<Match> extend(const Parameters &params, size_t query_id, Trace_pt_list::iterator begin, Trace_pt_list::iterator end, const Metadata &metadata);
-bool generate_output(const std::vector<Match> &targets, size_t query_block_id, TextBuffer &buffer, Statistics &stat);
+std::vector<Match> extend(const Parameters &params, size_t query_id, Trace_pt_list::iterator begin, Trace_pt_list::iterator end, const Metadata &metadata, Statistics &stat);
+void generate_output(vector<Match> &targets, size_t query_block_id, TextBuffer &buffer, Statistics &stat, const Metadata &metadata, const Parameters &parameters);
 
 }
 

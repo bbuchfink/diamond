@@ -23,13 +23,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <vector>
 #include <list>
 #include <set>
-#include "../search/trace_pt_buffer.h"
-#include "../data/queries.h"
-#include "../util/ptr_vector.h"
-#include "../dp/dp.h"
-#include "../data/reference.h"
-#include "../basic/parameters.h"
-#include "../data/metadata.h"
+#include "../../search/trace_pt_buffer.h"
+#include "../../data/queries.h"
+#include "../../util/ptr_vector.h"
+#include "../../dp/dp.h"
+#include "../../data/reference.h"
+#include "../../basic/parameters.h"
+#include "../../data/metadata.h"
 
 using std::vector;
 using std::pair;

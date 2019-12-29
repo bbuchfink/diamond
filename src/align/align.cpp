@@ -25,8 +25,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../output/output_format.h"
 #include "../util/queue.h"
 #include "../output/output.h"
-#include "query_mapper.h"
+#include "legacy/query_mapper.h"
 #include "../util/merge_sort.h"
+#include "extend.h"
 
 using namespace std;
 
@@ -72,50 +73,66 @@ unique_ptr<Queue> Align_fetcher::queue_;
 vector<hit>::iterator Align_fetcher::it_;
 vector<hit>::iterator Align_fetcher::end_;
 
+TextBuffer* legacy_pipeline(Align_fetcher &hits, const sequence *subjects, size_t subject_count, const Metadata *metadata, const Parameters *params, Statistics &stat) {
+	if ((hits.end == hits.begin) && subjects == nullptr) {
+		TextBuffer *buf = nullptr;
+		if (!blocked_processing && *output_format != Output_format::daa && config.report_unaligned != 0) {
+			buf = new TextBuffer;
+			const char *query_title = query_ids::get()[hits.query].c_str();
+			output_format->print_query_intro(hits.query, query_title, get_source_query_len((unsigned)hits.query), *buf, true);
+			output_format->print_query_epilog(*buf, query_title, true, *params);
+		}
+		return buf;
+	}
+
+	QueryMapper *mapper;
+	if (config.ext == Config::swipe)
+		mapper = new ExtensionPipeline::Swipe::Pipeline(*params, hits.query, hits.begin, hits.end, *metadata);
+	else if (config.frame_shift != 0 || config.ext == Config::banded_swipe)
+		mapper = new ExtensionPipeline::BandedSwipe::Pipeline(*params, hits.query, hits.begin, hits.end, dp_stat, *metadata, hits.target_parallel);
+	else
+		mapper = new ExtensionPipeline::Greedy::Pipeline(*params, hits.query, hits.begin, hits.end, *metadata);
+	task_timer timer("Initializing mapper", hits.target_parallel ? 3 : UINT_MAX);
+	mapper->init();
+	timer.finish();
+	mapper->run(stat, subjects, subject_count);
+
+	timer.go("Generating output");
+	TextBuffer *buf = nullptr;
+	if (*output_format != Output_format::null) {
+		buf = new TextBuffer;
+		const bool aligned = mapper->generate_output(*buf, stat);
+		if (aligned && (!config.unaligned.empty() || !config.aligned_file.empty())) {
+			query_aligned_mtx.lock();
+			query_aligned[hits.query] = true;
+			query_aligned_mtx.unlock();
+		}
+	}
+	delete mapper;
+	return buf;
+}
+
 void align_worker(size_t thread_id, const Parameters *params, const Metadata *metadata, const sequence *subjects, size_t subject_count)
 {
 	Align_fetcher hits;
 	Statistics stat;
 	DpStat dp_stat;
 	while (hits.get()) {
-		if ((hits.end == hits.begin) && subjects == nullptr) {
-			TextBuffer *buf = 0;
-			if (!blocked_processing && *output_format != Output_format::daa && config.report_unaligned != 0) {
-				buf = new TextBuffer;
-				const char *query_title = query_ids::get()[hits.query].c_str();
-				output_format->print_query_intro(hits.query, query_title, get_source_query_len((unsigned)hits.query), *buf, true);
-				output_format->print_query_epilog(*buf, query_title, true, *params);
-			}
+		if(config.ext != Config::banded_swipe) {
+			TextBuffer *buf = legacy_pipeline(hits, subjects, subject_count, metadata, params, stat);
 			OutputSink::get().push(hits.query, buf);
+			hits.release();
 			continue;
 		}
-
-		QueryMapper *mapper;
-		if (config.ext == Config::swipe)
-			mapper = new ExtensionPipeline::Swipe::Pipeline(*params, hits.query, hits.begin, hits.end, *metadata);
-		else if (config.frame_shift != 0 || config.ext == Config::banded_swipe)
-			mapper = new ExtensionPipeline::BandedSwipe::Pipeline(*params, hits.query, hits.begin, hits.end, dp_stat, *metadata, hits.target_parallel);
-		else
-			mapper = new ExtensionPipeline::Greedy::Pipeline(*params, hits.query, hits.begin, hits.end, *metadata);
-		task_timer timer("Initializing mapper", hits.target_parallel ? 3 : UINT_MAX);
-		mapper->init();
-		timer.finish();
-		mapper->run(stat, subjects, subject_count);
-
-		timer.go("Generating output");
-		TextBuffer *buf = 0;
-		if (*output_format != Output_format::null) {
-			buf = new TextBuffer;
-			const bool aligned = mapper->generate_output(*buf, stat);
-			if (aligned && (!config.unaligned.empty() || !config.aligned_file.empty())) {
-				query_aligned_mtx.lock();
-				query_aligned[hits.query] = true;
-				query_aligned_mtx.unlock();
-			}
+		vector<Extension::Match> matches = Extension::extend(*params, hits.query, hits.begin, hits.end, *metadata, stat);
+		TextBuffer *buf = new TextBuffer;
+		Extension::generate_output(matches, hits.query, *buf, stat, *metadata, *params);
+		if (!matches.empty() && (!config.unaligned.empty() || !config.aligned_file.empty())) {
+			query_aligned_mtx.lock();
+			query_aligned[hits.query] = true;
+			query_aligned_mtx.unlock();
 		}
-		delete mapper;
 		OutputSink::get().push(hits.query, buf);
-		hits.release();
 	}
 	statistics += stat;
 	::dp_stat += dp_stat;

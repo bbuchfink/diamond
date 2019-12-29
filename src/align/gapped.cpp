@@ -29,7 +29,7 @@ using std::list;
 namespace Extension {
 
 void add_dp_targets(const WorkTarget &target, int target_idx, const sequence *query_seq, array<vector<DpTarget>, MAX_CONTEXT> &dp_targets) {
-	const int band = config.padding > 0 ? config.padding : 32,
+	const int band = config.padding > 0 ? config.padding : DEFAULT_BAND,
 		slen = (int)target.seq.length();
 	for (unsigned frame = 0; frame < align_mode.query_contexts; ++frame) {
 		const int qlen = (int)query_seq[frame].length();
@@ -52,7 +52,7 @@ vector<Target> align(const vector<WorkTarget> &targets, const sequence *query_se
 	r.reserve(targets.size());
 	for (int i = 0; i < (int)targets.size(); ++i) {
 		add_dp_targets(targets[i], i, query_seq, dp_targets);
-		r.emplace_back(targets[i].block_id, targets[i].seq);
+		r.emplace_back(targets[i].block_id, targets[i].seq, targets[i].outranked);
 	}
 
 	for (unsigned frame = 0; frame < align_mode.query_contexts; ++frame) {
@@ -74,7 +74,7 @@ vector<Target> align(const vector<WorkTarget> &targets, const sequence *query_se
 }
 
 void add_dp_targets(const Target &target, int target_idx, const sequence *query_seq, array<vector<DpTarget>, MAX_CONTEXT> &dp_targets) {
-	const int band = config.padding > 0 ? config.padding : 32,
+	const int band = config.padding > 0 ? config.padding : DEFAULT_BAND,
 		slen = (int)target.seq.length();
 	for (unsigned frame = 0; frame < align_mode.query_contexts; ++frame) {
 		const int qlen = (int)query_seq[frame].length();
@@ -92,7 +92,7 @@ vector<Match> align(const vector<Target> &targets, const sequence *query_seq, co
 	r.reserve(targets.size());
 	for (int i = 0; i < (int)targets.size(); ++i) {
 		add_dp_targets(targets[i], i, query_seq, dp_targets);
-		r.emplace_back(targets[i].block_id);
+		r.emplace_back(targets[i].block_id, targets[i].outranked);
 	}
 
 	for (unsigned frame = 0; frame < align_mode.query_contexts; ++frame) {

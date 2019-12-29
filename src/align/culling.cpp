@@ -41,11 +41,17 @@ void Match::inner_culling(int source_query_len)
 		else
 			++i;
 	}
+	if(config.max_hsps > 0 && hsp.size() > config.max_hsps) {
+		list<Hsp>::iterator i = hsp.begin();
+		for(unsigned n=0;n<config.max_hsps;++n)
+			++i;
+		hsp.erase(i, hsp.end());
+	}
 }
 
 void score_only_culling(vector<Target> &targets) {
 	std::sort(targets.begin(), targets.end());
-	if (targets.front().filter_score == 0) {
+	if (targets.empty() || targets.front().filter_score == 0) {
 		targets.clear();
 		return;
 	}

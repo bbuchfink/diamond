@@ -18,9 +18,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <vector>
 #include <map>
-#include "align.h"
+#include "../align.h"
 #include "query_mapper.h"
-#include "../data/reference.h"
+#include "../../data/reference.h"
 
 using std::vector;
 using std::map;

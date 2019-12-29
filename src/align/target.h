@@ -57,10 +57,11 @@ void rank_targets(std::vector<WorkTarget> &targets, double ratio, double factor)
 
 struct Target {
 
-	Target(size_t block_id, const sequence &seq):
+	Target(size_t block_id, const sequence &seq, bool outranked):
 		block_id(block_id),
 		seq(seq),
-		filter_score(0)
+		filter_score(0),
+		outranked(outranked)
 	{}
 
 	void add_hit(std::list<Hsp> &list, std::list<Hsp>::iterator it) {
@@ -78,6 +79,7 @@ struct Target {
 	size_t block_id;
 	sequence seq;
 	int filter_score;
+	bool outranked;
 	std::array<std::list<Hsp>, MAX_CONTEXT> hsp;
 };
 
