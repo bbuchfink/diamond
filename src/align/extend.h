@@ -46,7 +46,9 @@ struct Match {
 	bool operator<(const Match &m) const {
 		return filter_score > m.filter_score || (filter_score == m.filter_score && target_block_id < m.target_block_id);
 	}
+	Match(size_t target_block_id, bool outranked, std::array<std::list<Hsp>, MAX_CONTEXT> &hsp);
 	void inner_culling(int source_query_len);
+	void max_hsp_culling();
 	void apply_filters(int source_query_len, const char *query_title);
 	size_t target_block_id;
 	int filter_score;

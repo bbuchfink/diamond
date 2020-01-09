@@ -28,6 +28,19 @@ using std::list;
 
 namespace Extension {
 
+Match::Match(size_t target_block_id, bool outranked, std::array<std::list<Hsp>, MAX_CONTEXT> &hsps):
+	target_block_id(target_block_id),
+	outranked(outranked)
+{
+	for (unsigned i = 0; i < align_mode.query_contexts; ++i)
+		hsp.splice(hsp.end(), hsps[i]);
+	hsp.sort();
+	if (!hsp.empty())
+		filter_score = hsp.front().score;
+	if (config.max_hsps > 0)
+		max_hsp_culling();
+}
+
 void add_dp_targets(const WorkTarget &target, int target_idx, const sequence *query_seq, array<vector<DpTarget>, MAX_CONTEXT> &dp_targets) {
 	const int band = config.padding > 0 ? config.padding : DEFAULT_BAND,
 		slen = (int)target.seq.length();
@@ -84,12 +97,19 @@ void add_dp_targets(const Target &target, int target_idx, const sequence *query_
 	}
 }
 
-vector<Match> align(const vector<Target> &targets, const sequence *query_seq, const Bias_correction *query_cb, int source_query_len) {
+vector<Match> align(vector<Target> &targets, const sequence *query_seq, const Bias_correction *query_cb, int source_query_len) {
 	array<vector<DpTarget>, MAX_CONTEXT> dp_targets;
 	vector<Match> r;
 	if (targets.empty())
 		return r;
 	r.reserve(targets.size());
+
+	if (config.disable_traceback) {
+		for (Target &t : targets)
+			r.emplace_back(t.block_id, t.outranked, t.hsp);
+		return r;
+	}
+
 	for (int i = 0; i < (int)targets.size(); ++i) {
 		add_dp_targets(targets[i], i, query_seq, dp_targets);
 		r.emplace_back(targets[i].block_id, targets[i].outranked);

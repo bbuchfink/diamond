@@ -74,8 +74,6 @@ struct Target {
 		return filter_score > t.filter_score || (filter_score == t.filter_score && block_id < t.block_id);
 	}
 
-	void inner_culling();
-
 	size_t block_id;
 	sequence seq;
 	int filter_score;
@@ -85,7 +83,7 @@ struct Target {
 
 void score_only_culling(std::vector<Target> &targets);
 std::vector<Target> align(const std::vector<WorkTarget> &targets, const sequence *query_seq, const Bias_correction *query_cb);
-std::vector<Match> align(const std::vector<Target> &targets, const sequence *query_seq, const Bias_correction *query_cb, int source_query_len);
+std::vector<Match> align(std::vector<Target> &targets, const sequence *query_seq, const Bias_correction *query_cb, int source_query_len);
 void culling(std::vector<Match> &targets, int source_query_len, const char *query_title);
 
 }
