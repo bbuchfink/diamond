@@ -292,7 +292,8 @@ Config::Config(int argc, const char **argv)
 		("tree", 0, "", tree_file)
 		("upgma-dist", 0, "", upgma_dist)
 		("upgma-input", 0, "", upgma_input)
-		("log-extend", 0, "", log_extend);
+		("log-extend", 0, "", log_extend)
+		("chaining-maxgap", 0, "", chaining_maxgap, 2000);
 	
 	parser.add(general).add(makedb).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options);
 	parser.store(argc, argv, command);
