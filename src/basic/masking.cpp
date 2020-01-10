@@ -21,6 +21,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "masking.h"
 #include "../lib/tantan/tantan.hh"
 #include "../lib/tantan/LambdaCalculator.hh"
+//#include "../util/tantan.h"
 
 using namespace std;
 
@@ -61,6 +62,7 @@ void Masking::operator()(Letter *seq, size_t len) const
 		0.9,
 		config.tantan_ungapped ? 0.0 : firstGapProb_, config.tantan_ungapped ? 0.0 : otherGapProb_,
 		config.tantan_minMaskProb, (const tantan::uchar*)mask_table_x_);
+	//tantan_mask(seq, len, config.tantan_maxRepeatOffset, (tantan::const_double_ptr*)probMatrixPointers_, 0.005, 0.05, 0.9, config.tantan_minMaskProb, mask_table_x_);
 }
 
 void Masking::mask_bit(Letter *seq, size_t len) const

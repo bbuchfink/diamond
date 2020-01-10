@@ -23,6 +23,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <iostream>
 #include <sstream>
 #include <memory>
+#include <chrono>
 #include "tools.h"
 #include "../basic/config.h"
 #include "../data/sequence_set.h"
@@ -35,6 +36,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../basic/packed_transcript.h"
 
 using namespace std;
+using std::chrono::high_resolution_clock;
+using std::chrono::duration_cast;
 
 void get_seq()
 {
@@ -117,6 +120,9 @@ void run_masker()
 	vector<char> id;
 	const FASTA_format format;
 	size_t letters = 0, seqs = 0, seqs_total = 0;
+
+	high_resolution_clock::time_point t1 = high_resolution_clock::now();
+
 	while (format.get_seq(id, seq, f)) {
 		cout << '>' << string(id.data(), id.size()) << endl;
 		seq2 = seq;
@@ -138,8 +144,8 @@ void run_masker()
 		if (n > 0)
 			++seqs;
 		++seqs_total;
-		cerr << "#Sequences: " << seqs << "/" << seqs_total << ", #Letters: " << letters << endl;
 	}
+	cerr << "#Sequences: " << seqs << "/" << seqs_total << ", #Letters: " << letters << ", t=" << (double)duration_cast<std::chrono::milliseconds>(high_resolution_clock::now() - t1).count()/1000.0 << endl;
 }
 
 void fastq2fasta()

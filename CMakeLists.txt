@@ -46,7 +46,8 @@ endif()
 
 include_directories(
   "${CMAKE_SOURCE_DIR}/src"
-  "${ZLIB_INCLUDE_DIR}")
+  "${ZLIB_INCLUDE_DIR}"
+  "${CMAKE_SOURCE_DIR}/src/lib")
 
 set(DISPATCH_OBJECTS
 "src/dp/swipe/banded_3frame_swipe.cpp"
@@ -162,6 +163,7 @@ add_executable(diamond $<TARGET_OBJECTS:arch_generic>
   src/align/culling.cpp
   src/cluster/medoid.cpp
   src/align/output.cpp
+#  src/util/tantan.cpp
 )
 
 if(EXTRA)
