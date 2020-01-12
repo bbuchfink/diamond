@@ -55,3 +55,5 @@ diamond
 src/extra/
 .vs/
 CMakeSettings.json
+/src/util/tantan.cpp
+/src/util/tantan.h
