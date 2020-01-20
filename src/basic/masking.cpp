@@ -19,9 +19,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <math.h>
 #include <algorithm>
 #include "masking.h"
-#include "../lib/tantan/tantan.hh"
 #include "../lib/tantan/LambdaCalculator.hh"
-// #include "../util/tantan.h"
+#include "../util/tantan.h"
 
 using namespace std;
 
@@ -45,37 +44,20 @@ Masking::Masking(const Score_matrix &score_matrix)
 		mask_table_bit_[i] = (uint8_t)i | bit_mask;
 		for (unsigned j = 0; j < size; ++j)
 			if (i < n && j < n) {
-				likelihoodRatioMatrix_[i][j] = exp(lambda * score_matrix(i, j));
-				likelihoodRatioMatrixf_[i][j] = exp(lambda * score_matrix(i, j));
+				likelihoodRatioMatrixf_[i][j] = (float)exp(lambda * score_matrix(i, j));
 			}
 	}
-	std::copy(likelihoodRatioMatrix_, likelihoodRatioMatrix_ + size, probMatrixPointers_);
 	std::copy(likelihoodRatioMatrixf_, likelihoodRatioMatrixf_ + size, probMatrixPointersf_);
-	int firstGapCost = score_matrix.gap_extend() + score_matrix.gap_open();
-	firstGapProb_ = exp(-lambda * firstGapCost);
-	otherGapProb_ = exp(-lambda * score_matrix.gap_extend());
-	firstGapProb_ /= (1 - otherGapProb_);
 }
 
 void Masking::operator()(Letter *seq, size_t len) const
 {
-	tantan::maskSequences((tantan::uchar*)seq, (tantan::uchar*)(seq + len), config.tantan_maxRepeatOffset,
-		(tantan::const_double_ptr*)probMatrixPointers_,
-		0.005, 0.05,
-		0.9,
-		config.tantan_ungapped ? 0.0 : firstGapProb_, config.tantan_ungapped ? 0.0 : otherGapProb_,
-		config.tantan_minMaskProb, (const tantan::uchar*)mask_table_x_);
-	//tantan_mask(seq, len, config.tantan_maxRepeatOffset, (const float**)probMatrixPointersf_, 0.005, 0.05, 0.9, config.tantan_minMaskProb, mask_table_x_);
+	Util::tantan::mask(seq, len, (const float**)probMatrixPointersf_, 0.005f, 0.05f, config.tantan_minMaskProb, mask_table_x_);
 }
 
 void Masking::mask_bit(Letter *seq, size_t len) const
 {
-	tantan::maskSequences((tantan::uchar*)seq, (tantan::uchar*)(seq + len), config.tantan_maxRepeatOffset,
-		(tantan::const_double_ptr*)probMatrixPointers_,
-		0.005, 0.05,
-		0.9,
-		config.tantan_ungapped ? 0.0 : firstGapProb_, config.tantan_ungapped ? 0.0 : otherGapProb_,
-		config.tantan_minMaskProb, (const tantan::uchar*)mask_table_bit_);
+	Util::tantan::mask(seq, len, (const float**)probMatrixPointersf_, 0.005f, 0.05f, config.tantan_minMaskProb, mask_table_bit_);
 }
 
 void Masking::bit_to_hard_mask(Letter *seq, size_t len, size_t &n) const

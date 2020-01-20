@@ -108,7 +108,6 @@ add_executable(diamond $<TARGET_OBJECTS:arch_generic>
   src/search/setup.cpp
   src/dp/diag_scores.cpp
   src/data/taxonomy.cpp
-  src/lib/tantan/tantan.cc
   src/basic/masking.cpp
   src/dp/banded_sw.cpp
   src/data/seed_set.cpp
@@ -163,7 +162,7 @@ add_executable(diamond $<TARGET_OBJECTS:arch_generic>
   src/align/culling.cpp
   src/cluster/medoid.cpp
   src/align/output.cpp
-#  src/util/tantan.cpp
+  src/util/tantan.cpp
 )
 
 if(EXTRA)

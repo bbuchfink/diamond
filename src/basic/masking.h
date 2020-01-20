@@ -37,8 +37,7 @@ struct Masking
 	static const uint8_t bit_mask;
 private:
 	enum { size = 64 };
-	double likelihoodRatioMatrix_[size][size], *probMatrixPointers_[size], firstGapProb_, otherGapProb_;
-	float likelihoodRatioMatrixf_[size][size], * probMatrixPointersf_[size];
+	float likelihoodRatioMatrixf_[size][size], *probMatrixPointersf_[size];
 	char mask_table_x_[size], mask_table_bit_[size];
 };
 
