@@ -26,7 +26,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <thread>
 #include "../basic/sequence.h"
 #include "string_set.h"
-#include "../util/thread.h"
 #include "../basic/shape_config.h"
 #include "../basic/seed_iterator.h"
 #include "../util/ptr_vector.h"

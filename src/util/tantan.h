@@ -21,17 +21,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #ifndef TANTAN_H_
 #define TANTAN_H_
 
+#include "simd.h"
+
 namespace Util { namespace tantan {
 
 typedef float float_t;
 
-void mask(char *seq,
-	int len,
-	const float_t **likelihood_ratio_matrix,
-	float_t p_repeat,
-	float_t p_repeat_end,
-	float_t p_mask,
-	const char *maskTable);
+DECL_DISPATCH(void, mask, (char *seq, int len, const float_t **likelihood_ratio_matrix, float_t p_repeat, float_t p_repeat_end, float_t p_mask, const char *maskTable))
 
 }}
 

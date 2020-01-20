@@ -23,7 +23,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../basic/seed.h"
 #include "sequence_set.h"
 #include "../basic/shape_config.h"
-#include "../util/thread.h"
 #include "../basic/seed_iterator.h"
 #include "seed_set.h"
 #include "../util/data_structures/array.h"

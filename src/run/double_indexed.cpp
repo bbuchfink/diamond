@@ -337,8 +337,6 @@ void run(const Options &options)
 	Config::set_option(config.db_size, (uint64_t)db_file->ref_header.letters);
 	score_matrix.set_db_letters(db_file->ref_header.letters);
 
-	set_max_open_files(config.query_bins * config.threads_ + unsigned(db_file->ref_header.letters / (size_t)(config.chunk_size * 1e9)) + 16);
-
 	Metadata metadata;
 	const bool taxon_filter = !config.taxonlist.empty() || !config.taxon_exclude.empty();
 	const bool taxon_culling = config.taxon_k != 0;

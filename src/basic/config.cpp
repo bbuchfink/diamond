@@ -119,6 +119,7 @@ Config::Config(int argc, const char **argv)
 \tppos means Percentage of positive - scoring matches\n\
 \tqframe means Query frame\n\
 \tbtop means Blast traceback operations(BTOP)\n\
+\tcigar means CIGAR string\n\
 \tstaxids means unique Subject Taxonomy ID(s), separated by a ';' (in numerical order)\n\
 \tstitle means Subject Title\n\
 \tsalltitles means All Subject Title(s), separated by a '<>'\n\
@@ -207,9 +208,7 @@ Config::Config(int argc, const char **argv)
 		("no-auto-append", 0, "disable auto appending of DAA and DMND file extensions", no_auto_append)
 		("xml-blord-format", 0, "Use gnl|BL_ORD_ID| style format in XML output", xml_blord_format)
 		("stop-match-score", 0, "Set the match score of stop codons against each other.", stop_match_score, 1)
-		("tantan-minMaskProb", 0, "minimum repeat probability for masking (0.9)", tantan_minMaskProb, 0.9)
-		("tantan-maxRepeatOffset", 0, "maximum tandem repeat period to consider (50)", tantan_maxRepeatOffset, 15)
-		("tantan-ungapped", 0, "use tantan masking in ungapped mode", tantan_ungapped);
+		("tantan-minMaskProb", 0, "minimum repeat probability for masking (0.9)", tantan_minMaskProb, 0.9);
 
 	Options_group view_options("View options");
 	view_options.add()
@@ -293,7 +292,9 @@ Config::Config(int argc, const char **argv)
 		("upgma-dist", 0, "", upgma_dist)
 		("upgma-input", 0, "", upgma_input)
 		("log-extend", 0, "", log_extend)
-		("chaining-maxgap", 0, "", chaining_maxgap, 2000);
+		("chaining-maxgap", 0, "", chaining_maxgap, 2000)
+		("tantan-maxRepeatOffset", 0, "maximum tandem repeat period to consider (50)", tantan_maxRepeatOffset, 15)
+		("tantan-ungapped", 0, "use tantan masking in ungapped mode", tantan_ungapped);
 	
 	parser.add(general).add(makedb).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options);
 	parser.store(argc, argv, command);

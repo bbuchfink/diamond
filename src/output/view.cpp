@@ -25,7 +25,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "output_format.h"
 #include "../util/task_queue.h"
 #include "../basic/score_matrix.h"
-#include "../util/thread.h"
 #include "../data/taxonomy.h"
 #include "../basic/parameters.h"
 #include "../data/metadata.h"

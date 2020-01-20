@@ -18,6 +18,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <numeric>
 #include <utility>
+#include <atomic>
 #include "frequent_seeds.h"
 #include "queries.h"
 #include "../util/parallel/thread_pool.h"
@@ -33,7 +34,7 @@ using namespace std;
 const double Frequent_seeds::hash_table_factor = 1.3;
 Frequent_seeds frequent_seeds;
 
-void Frequent_seeds::compute_sd(Atomic<unsigned> *seedp, DoubleArray<SeedArray::_pos> *query_seed_hits, DoubleArray<SeedArray::_pos> *ref_seed_hits, vector<Sd> *ref_out, vector<Sd> *query_out)
+void Frequent_seeds::compute_sd(atomic<unsigned> *seedp, DoubleArray<SeedArray::_pos> *query_seed_hits, DoubleArray<SeedArray::_pos> *ref_seed_hits, vector<Sd> *ref_out, vector<Sd> *query_out)
 {
 	unsigned p;
 	while ((p = (*seedp)++) < current_range.end()) {
@@ -94,7 +95,7 @@ void Frequent_seeds::build_worker(
 void Frequent_seeds::build(unsigned sid, const SeedPartitionRange &range, DoubleArray<SeedArray::_pos> *query_seed_hits, DoubleArray<SeedArray::_pos> *ref_seed_hits)
 {
 	vector<Sd> ref_sds(range.size()), query_sds(range.size());
-	Atomic<unsigned> seedp(range.begin());
+	atomic<unsigned> seedp(range.begin());
 	vector<thread> threads;
 	for (unsigned i = 0; i < config.threads_; ++i)
 		threads.emplace_back(compute_sd, &seedp, query_seed_hits, ref_seed_hits, &ref_sds, &query_sds);

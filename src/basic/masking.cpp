@@ -18,6 +18,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <math.h>
 #include <algorithm>
+#include <atomic>
 #include "masking.h"
 #include "../lib/tantan/LambdaCalculator.hh"
 #include "../util/tantan.h"
@@ -76,7 +77,7 @@ void Masking::remove_bit_mask(Letter *seq, size_t len) const
 			seq[i] &= ~bit_mask;
 }
 
-void mask_worker(Atomic<size_t> *next, Sequence_set *seqs, const Masking *masking, bool hard_mask)
+void mask_worker(atomic<size_t> *next, Sequence_set *seqs, const Masking *masking, bool hard_mask)
 {
 	size_t i;
 	while ((i = (*next)++) < seqs->get_length())
@@ -89,7 +90,7 @@ void mask_worker(Atomic<size_t> *next, Sequence_set *seqs, const Masking *maskin
 size_t mask_seqs(Sequence_set &seqs, const Masking &masking, bool hard_mask)
 {
 	vector<thread> threads;
-	Atomic<size_t> next(0);
+	atomic<size_t> next(0);
 	for (size_t i = 0; i < config.threads_; ++i)
 		threads.emplace_back(mask_worker, &next, &seqs, &masking, hard_mask);
 	for (auto &t : threads)

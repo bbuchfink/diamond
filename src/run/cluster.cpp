@@ -90,8 +90,7 @@ vector<int> cluster(DatabaseFile &db, const vector<bool> *filter) {
 
 	Workflow::Search::run(opt);
 	
-	return Util::Algo::greedy_vortex_cover_weighted(nb.edges, (int)db.ref_header.sequences);
-	//return greedy_vortex_cover(nb);
+	return Util::Algo::greedy_vortex_cover(nb);
 }
 
 void run() {

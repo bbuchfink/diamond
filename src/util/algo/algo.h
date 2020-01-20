@@ -13,7 +13,6 @@ struct Edge {
 };
 
 std::vector<int> greedy_vortex_cover(const std::vector<std::vector<int>> &neighbors);
-std::vector<int> greedy_vortex_cover_weighted(std::vector<Edge> &edges, int vortex_count);
 
 }}
 

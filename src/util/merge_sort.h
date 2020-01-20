@@ -22,7 +22,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <algorithm>
 #include <stddef.h>
 #include <thread>
-#include "thread.h"
 
 template<typename _it>
 void merge_sort(_it begin, _it end, unsigned n_threads, unsigned level = 0)

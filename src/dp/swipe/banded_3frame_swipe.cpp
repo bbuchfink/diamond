@@ -20,16 +20,17 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <thread>
 #include <utility>
 #include <numeric>
+#include <atomic>
 #include "../dp.h"
 #include "swipe_matrix.h"
 #include "swipe.h"
 #include "target_iterator.h"
-#include "../../util/thread.h"
 #include "../../util/data_structures/mem_buffer.h"
 #include "../score_vector_int16.h"
 
 using std::list;
 using std::thread;
+using std::atomic;
 
 namespace DISPATCH_ARCH {
 
@@ -518,7 +519,7 @@ list<Hsp> banded_3frame_swipe_targets(vector<DpTarget>::const_iterator begin,
 
 void banded_3frame_swipe_worker(vector<DpTarget>::const_iterator begin,
 	vector<DpTarget>::const_iterator end,
-	Atomic<size_t> *next,
+	atomic<size_t> *next,
 	bool score_only,
 	const TranslatedSequence *query,
 	Strand strand,
@@ -528,7 +529,7 @@ void banded_3frame_swipe_worker(vector<DpTarget>::const_iterator begin,
 	DpStat stat;
 	size_t pos;
 	vector<DpTarget> of;
-	while (begin + (pos = next->post_add(config.swipe_chunk_size)) < end)
+	while (begin + (pos = next->fetch_add(config.swipe_chunk_size)) < end)
 #ifdef __SSE2__
 		out->splice(out->end(), banded_3frame_swipe_targets<score_vector<int16_t>>(begin + pos, min(begin + pos + config.swipe_chunk_size, end), score_only, *query, strand, stat, true, of));
 #else
@@ -549,7 +550,7 @@ list<Hsp> banded_3frame_swipe(const TranslatedSequence &query, Strand strand, ve
 		vector<thread> threads;
 		vector<list<Hsp>*> thread_out;
 		vector<vector<DpTarget>> thread_overflow(config.threads_);
-		Atomic<size_t> next(0);
+		atomic<size_t> next(0);
 		for (size_t i = 0; i < config.threads_; ++i) {
 			thread_out.push_back(new list<Hsp>);
 			threads.emplace_back(banded_3frame_swipe_worker,

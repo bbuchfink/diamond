@@ -19,6 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #ifndef FREQUENT_SEEDS_H_
 #define FREQUENT_SEEDS_H_
 
+#include <atomic>
 #include "../basic/const.h"
 #include "../util/hash_table.h"
 #include "seed_array.h"
@@ -54,7 +55,7 @@ private:
 		unsigned query_max_n,
 		vector<unsigned> *counts);
 
-	static void compute_sd(Atomic<unsigned> *seedp, DoubleArray<SeedArray::_pos> *query_seed_hits, DoubleArray<SeedArray::_pos> *ref_seed_hits, vector<Sd> *ref_out, vector<Sd> *query_out);
+	static void compute_sd(std::atomic<unsigned> *seedp, DoubleArray<SeedArray::_pos> *query_seed_hits, DoubleArray<SeedArray::_pos> *ref_seed_hits, vector<Sd> *ref_out, vector<Sd> *query_out);
 
 	PHash_set<void,murmur_hash> tables_[Const::max_shapes][Const::seedp];
 

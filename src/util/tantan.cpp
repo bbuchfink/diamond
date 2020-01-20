@@ -20,7 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 /* Based on tantan by Martin C. Frith. See:
 http://cbrc3.cbrc.jp/~martin/tantan/
-A new repeat-masking method enables specific detection of homologous sequences, MC Frith, Nucleic Acids Research 2011 39(4):e23.*/
+A new repeat-masking method enables specific detection of homologous sequences, MC Frith, Nucleic Acids Research 2011 39(4):e23. */
 
 #include <array>
 #include <stdint.h>
@@ -31,7 +31,7 @@ A new repeat-masking method enables specific detection of homologous sequences, 
 using Eigen::Array;
 using Eigen::Dynamic;
 
-namespace Util { namespace tantan {
+namespace Util { namespace tantan { namespace DISPATCH_ARCH {
 
 void mask(char *seq,
 	int len,
@@ -52,12 +52,12 @@ void mask(char *seq,
 	pb.resize(std::max(len, RESERVE));
 	scale.resize(std::max((len - 1) / 16 + 1, (RESERVE - 1) / 16 + 1));
 
-	for (int i = 0; i < AMINO_ACID_COUNT; ++i) {
+	for (int i = 0; i < (int)AMINO_ACID_COUNT; ++i) {
 		e[i].resize(std::max(RESERVE, len + WINDOW));
 		const float_t *l = likelihood_ratio_matrix[i];
 		float_t* p = &e[i][len - 1];
 		for (int j = 0; j < len; ++j)
-			*(p--) = l[seq[j]];
+			*(p--) = l[(size_t)seq[j]];
 		std::fill(e[i].data() + len, e[i].data() + len + WINDOW, (float_t)0.0);
 	}	
 
@@ -65,7 +65,7 @@ void mask(char *seq,
 		const float_t s = f.sum();
 		f *= f2f;
 		f += b * p_repeat / WINDOW;
-		f *= e[(long)seq[i]].template segment<WINDOW>(len - i, WINDOW);
+		f *= e[(size_t)seq[i]].template segment<WINDOW>(len - i, WINDOW);
 		b = b * b2b + s * p_repeat_end;
 
 		if ((i & 15) == 15) {
@@ -91,10 +91,10 @@ void mask(char *seq,
 			f *= s;
 		}
 
-		f *= e[(long)seq[i]].template segment<WINDOW>(len - i, WINDOW);
+		f *= e[(size_t)seq[i]].template segment<WINDOW>(len - i, WINDOW);
 
 		if (pf >= p_mask)
-			seq[i] = mask_table[seq[i]];
+			seq[i] = mask_table[(size_t)seq[i]];
 
 		const float_t s = f.sum();
 		f *= f2f;
@@ -103,4 +103,4 @@ void mask(char *seq,
 	}
 }
 
-}}
+}}}

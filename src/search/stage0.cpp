@@ -18,6 +18,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <thread>
 #include <utility>
+#include <atomic>
 #include "search.h"
 #include "../util/algo/hash_join.h"
 #include "../util/algo/radix_sort.h"
@@ -36,7 +37,7 @@ Trace_pt_buffer* Trace_pt_buffer::instance;
 void seed_join_worker(
 	SeedArray *query_seeds,
 	SeedArray *ref_seeds,
-	Atomic<unsigned> *seedp,
+	atomic<unsigned> *seedp,
 	const SeedPartitionRange *seedp_range,
 	DoubleArray<SeedArray::_pos> *query_seed_hits,
 	DoubleArray<SeedArray::_pos> *ref_seeds_hits)
@@ -53,7 +54,7 @@ void seed_join_worker(
 	}
 }
 
-void search_worker(Atomic<unsigned> *seedp, const SeedPartitionRange *seedp_range, unsigned shape, size_t thread_id, DoubleArray<SeedArray::_pos> *query_seed_hits, DoubleArray<SeedArray::_pos> *ref_seed_hits)
+void search_worker(atomic<unsigned> *seedp, const SeedPartitionRange *seedp_range, unsigned shape, size_t thread_id, DoubleArray<SeedArray::_pos> *query_seed_hits, DoubleArray<SeedArray::_pos> *ref_seed_hits)
 {
 	Trace_pt_buffer::Iterator* out = new Trace_pt_buffer::Iterator(*Trace_pt_buffer::instance, thread_id);
 	Statistics stats;
@@ -89,7 +90,7 @@ void search_shape(unsigned sid, unsigned query_block, char *query_buffer, char *
 		SeedArray *query_idx = new SeedArray(*query_seqs::data_, sid, query_hst.get(sid), range, query_hst.partition(), query_buffer, &no_filter);
 
 		timer.go("Computing hash join");
-		Atomic<unsigned> seedp(range.begin());
+		atomic<unsigned> seedp(range.begin());
 		vector<thread> threads;
 		for (size_t i = 0; i < config.threads_; ++i)
 			threads.emplace_back(seed_join_worker, query_idx, ref_idx, &seedp, &range, query_seed_hits, ref_seed_hits);

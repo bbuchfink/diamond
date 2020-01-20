@@ -4,6 +4,8 @@
 
 using namespace std;
 
+namespace Util { namespace Algo {
+
 struct GreedyVortexCover {
 
 	GreedyVortexCover(const vector<vector<int>> &neighbors) :
@@ -49,3 +51,5 @@ struct GreedyVortexCover {
 vector<int> greedy_vortex_cover(const vector<vector<int>> &neighbors) {
 	return GreedyVortexCover(neighbors).centroid;
 }
+
+}}

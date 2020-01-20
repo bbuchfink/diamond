@@ -31,32 +31,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #endif
 
-#ifndef _MSC_VER
-
-#include <sys/resource.h>
-
-inline void set_max_open_files(unsigned n)
-{
-	rlimit rlp;
-	if (getrlimit(RLIMIT_NOFILE, &rlp) != 0)
-		throw std::runtime_error("Error executing getrlimit.");
-	if (rlp.rlim_max < n)
-		throw std::runtime_error("Open files hard limit is too low. Set lower value for --bin parameter.");
-	if (rlp.rlim_cur < n) {
-		rlp.rlim_cur = n;
-		if (setrlimit(RLIMIT_NOFILE, &rlp) != 0)
-			throw std::runtime_error("Error executing setrlimit.");
-	}
-	//std::cout << "Soft limit = " << rlp.rlim_cur << " Hard limit = " << rlp.rlim_max << std::endl;
-}
-
-#else
-
-inline void set_max_open_files(unsigned n)
-{}
-
-#endif
-
 #ifdef __linux__
 #define POSIX_OPEN(x,y,z) open64(x,y,z)
 #define POSIX_OPEN2(x,y) open64(x,y)

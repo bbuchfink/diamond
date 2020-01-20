@@ -58,6 +58,7 @@ set(DISPATCH_OBJECTS
 "src/search/stage2.cpp"
 "src/tools/benchmark.cpp"
 "src/dp/swipe/swipe_wrapper.cpp"
+"src/util/tantan.cpp"
 )
 
 add_library(arch_generic OBJECT ${DISPATCH_OBJECTS})
@@ -140,7 +141,6 @@ add_executable(diamond $<TARGET_OBJECTS:arch_generic>
   src/util/system/system.cpp
   src/run/cluster.cpp
   src/util/algo/greedy_vortex_cover.cpp
-  src/util/algo/greedy_vortex_cover_weighted.cpp
   src/util/sequence/sequence.cpp
   src/tools/tsv_record.cpp
   src/tools/tools.cpp
@@ -162,7 +162,6 @@ add_executable(diamond $<TARGET_OBJECTS:arch_generic>
   src/align/culling.cpp
   src/cluster/medoid.cpp
   src/align/output.cpp
-  src/util/tantan.cpp
 )
 
 if(EXTRA)

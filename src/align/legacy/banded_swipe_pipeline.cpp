@@ -17,6 +17,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #include <algorithm>
+#include <atomic>
 #include "../align.h"
 #include "../../dp/dp.h"
 #include "../../util/interval_partition.h"
@@ -169,9 +170,9 @@ void Pipeline::run_swipe(bool score_only)
 	}
 }
 
-void build_ranking_worker(PtrVector<::Target>::iterator begin, PtrVector<::Target>::iterator end, Atomic<size_t> *next, vector<unsigned> *intervals) {
+void build_ranking_worker(PtrVector<::Target>::iterator begin, PtrVector<::Target>::iterator end, atomic<size_t> *next, vector<unsigned> *intervals) {
 	PtrVector<::Target>::iterator it;
-	while ((it = begin + next->post_add(64)) < end) {
+	while ((it = begin + next->fetch_add(64)) < end) {
 		auto e = min(it + 64, end);
 		for (; it < e; ++it) {
 			(*it)->add_ranges(*intervals);
@@ -214,7 +215,7 @@ void Pipeline::run(Statistics &stat, const sequence *subjects, size_t subject_co
 			for (vector<unsigned> &v : intervals)
 				v.resize(interval_count);
 			vector<thread> threads;
-			Atomic<size_t> next(0);
+			atomic<size_t> next(0);
 			for (unsigned i = 0; i < config.threads_; ++i)
 				threads.emplace_back(build_ranking_worker, targets.begin(), targets.end(), &next, &intervals[i]);
 			for (auto &t : threads)
