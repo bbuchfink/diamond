@@ -27,7 +27,7 @@ namespace Util { namespace tantan {
 
 typedef float float_t;
 
-DECL_DISPATCH(void, mask, (char *seq, int len, const float_t **likelihood_ratio_matrix, float_t p_repeat, float_t p_repeat_end, float_t p_mask, const char *maskTable))
+DECL_DISPATCH(void, mask, (char *seq, int len, const float_t **likelihood_ratio_matrix, float_t p_repeat, float_t p_repeat_end, float_t repeat_decay, float_t p_mask, const char *maskTable))
 
 }}
 

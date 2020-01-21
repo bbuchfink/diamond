@@ -38,6 +38,7 @@ void mask(char *seq,
 	const float_t **likelihood_ratio_matrix,
 	float_t p_repeat,
 	float_t p_repeat_end,
+	float_t repeat_growth,
 	float_t p_mask,
 	const char *mask_table) {
 	constexpr int WINDOW = 50, RESERVE = 50000;
@@ -45,9 +46,13 @@ void mask(char *seq,
 	thread_local std::array<Array<float_t, Dynamic, 1>, AMINO_ACID_COUNT> e;
 	thread_local Array<float_t, Dynamic, 1> pb;
 	thread_local Array<float_t, Dynamic, 1> scale;
-	Array<float_t, WINDOW, 1> f(0.0);
-	const float_t b2b = 1 - p_repeat, f2f = 1 - p_repeat_end;
+	Array<float_t, WINDOW, 1> f(0.0), d, t;
+	const float_t b2b = 1 - p_repeat, f2f = 1 - p_repeat_end, b2f0 = p_repeat * (1 - repeat_growth) / (1 - pow(repeat_growth, WINDOW));
 	float_t b = 1.0;
+	
+	d[WINDOW - 1] = b2f0;
+	for (int i = WINDOW - 2; i >= 0; --i)
+		d[i] = d[i + 1] * repeat_growth;
 
 	pb.resize(std::max(len, RESERVE));
 	scale.resize(std::max((len - 1) / 16 + 1, (RESERVE - 1) / 16 + 1));
@@ -63,8 +68,10 @@ void mask(char *seq,
 
 	for (int i = 0; i < len; ++i) {
 		const float_t s = f.sum();
+		t = b;
+		t *= d;
 		f *= f2f;
-		f += b * p_repeat / WINDOW;
+		f += t;
 		f *= e[(size_t)seq[i]].template segment<WINDOW>(len - i, WINDOW);
 		b = b * b2b + s * p_repeat_end;
 
@@ -96,10 +103,11 @@ void mask(char *seq,
 		if (pf >= p_mask)
 			seq[i] = mask_table[(size_t)seq[i]];
 
-		const float_t s = f.sum();
+		t = f;
+		t *= d;
 		f *= f2f;
 		f += p_repeat_end * b;
-		b = b2b * b + s * p_repeat / WINDOW;
+		b = b2b * b + t.sum();
 	}
 }
 

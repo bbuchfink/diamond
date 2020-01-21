@@ -53,12 +53,12 @@ Masking::Masking(const Score_matrix &score_matrix)
 
 void Masking::operator()(Letter *seq, size_t len) const
 {
-	Util::tantan::mask(seq, len, (const float**)probMatrixPointersf_, 0.005f, 0.05f, config.tantan_minMaskProb, mask_table_x_);
+	Util::tantan::mask(seq, len, (const float**)probMatrixPointersf_, 0.005f, 0.05f, 1.0f / 0.9f, config.tantan_minMaskProb, mask_table_x_);
 }
 
 void Masking::mask_bit(Letter *seq, size_t len) const
 {
-	Util::tantan::mask(seq, len, (const float**)probMatrixPointersf_, 0.005f, 0.05f, config.tantan_minMaskProb, mask_table_bit_);
+	Util::tantan::mask(seq, len, (const float**)probMatrixPointersf_, 0.005f, 0.05f, 1.0f / 0.9f, config.tantan_minMaskProb, mask_table_bit_);
 }
 
 void Masking::bit_to_hard_mask(Letter *seq, size_t len, size_t &n) const
