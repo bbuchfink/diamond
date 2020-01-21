@@ -70,7 +70,8 @@ Bias_correction::Bias_correction(const sequence &seq):
 		scores += seq[h];
 		const Letter r = seq[m];
 		if (r < 20)
-			this->operator[](m) = std::min((float)background_scores[(int)r] - float(scores.scores[(int)r] - score_matrix(r, r)) / (n - 1), 0.0f);
+			//this->operator[](m) = std::min((float)background_scores[(int)r] - float(scores.scores[(int)r] - score_matrix(r, r)) / (n - 1), 0.0f);
+			this->operator[](m) = (float)background_scores[(int)r] - float(scores.scores[(int)r] - score_matrix(r, r)) / (n - 1);
 		++h;
 		++m;
 	}
@@ -79,7 +80,8 @@ Bias_correction::Bias_correction(const sequence &seq):
 		scores -= seq[t];
 		const Letter r = seq[m];
 		if (r < 20)
-			this->operator[](m) = std::min((float)background_scores[(int)r] - float(scores.scores[(int)r] - score_matrix(r, r)) / (n - 1), 0.0f);
+			//this->operator[](m) = std::min((float)background_scores[(int)r] - float(scores.scores[(int)r] - score_matrix(r, r)) / (n - 1), 0.0f);
+			this->operator[](m) = (float)background_scores[(int)r] - float(scores.scores[(int)r] - score_matrix(r, r)) / (n - 1);
 		++h;
 		++t;
 		++m;
@@ -89,14 +91,16 @@ Bias_correction::Bias_correction(const sequence &seq):
 		scores -= seq[t];
 		const Letter r = seq[m];
 		if (r < 20)
-			this->operator[](m) = std::min((float)background_scores[(int)r] - float(scores.scores[(int)r] - score_matrix(r, r)) / (n - 1), 0.0f);
+			//this->operator[](m) = std::min((float)background_scores[(int)r] - float(scores.scores[(int)r] - score_matrix(r, r)) / (n - 1), 0.0f);
+			this->operator[](m) = (float)background_scores[(int)r] - float(scores.scores[(int)r] - score_matrix(r, r)) / (n - 1);
 		++t;
 		++m;
 	}
 	while (m < l) {
 		const Letter r = seq[m];
 		if (r < 20)
-			this->operator[](m) = std::min((float)background_scores[(int)r] - float(scores.scores[(int)r] - score_matrix(r, r)) / (n - 1), 0.0f);
+			//this->operator[](m) = std::min((float)background_scores[(int)r] - float(scores.scores[(int)r] - score_matrix(r, r)) / (n - 1), 0.0f);
+			this->operator[](m) = (float)background_scores[(int)r] - float(scores.scores[(int)r] - score_matrix(r, r)) / (n - 1);
 		++m;
 	}
 
