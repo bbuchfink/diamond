@@ -79,7 +79,8 @@ Config::Config(int argc, const char **argv)
 		.add_command("upgmamc", "")
 		.add_command("test", "Run regression test.")
 		.add_command("reverse", "")
-		.add_command("compute-medoids", "");
+		.add_command("compute-medoids", "")
+		.add_command("mutate", "");
 
 	Options_group general("General options");
 	general.add()

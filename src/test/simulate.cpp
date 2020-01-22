@@ -1,7 +1,12 @@
+#include <string>
 #include "test.h"
 #include "../util/util.h"
 #include "../basic/config.h"
 #include "../basic/sequence.h"
+#include "../util/io/text_input_file.h"
+#include "../util/seq_file_format.h"
+#include "../util/sequence/sequence.h"
+#include "../util/io/output_file.h"
 
 using std::vector;
 using std::cout;
@@ -53,12 +58,30 @@ vector<Letter> simulate_homolog(const sequence &seq, double id, std::minstd_rand
 {
 	vector<Letter> out;
 	out.reserve(seq.length());
+	std::uniform_int_distribution<int> dist(0, 3);
 	for (unsigned i = 0; i < seq.length(); ++i)
 		if ((double)rand() / RAND_MAX < id)
 			out.push_back(seq[i]);
-		else
-			out.push_back(get_distribution<20>(subst_freq[(size_t)seq[i]], random_engine));
+		else {
+			if (value_traits.alphabet_size == 5)
+				out.push_back(dist(random_engine));
+			else
+				out.push_back(get_distribution<20>(subst_freq[(size_t)seq[i]], random_engine));
+		}
 	return out;
+}
+
+void mutate() {
+	TextInputFile in(config.query_file);
+	vector<char> seq, id;
+	input_value_traits = value_traits = nucleotide_traits;
+	OutputFile out(config.output_file);
+	std::minstd_rand0 random_engine;
+	while (FASTA_format().get_seq(id, seq, in)) {
+		Util::Sequence::format(sequence(seq), std::string(id.data(), id.size()).c_str(), nullptr, out, "fasta", nucleotide_traits);
+	}
+	out.close();
+	in.close();
 }
 
 }

@@ -58,6 +58,7 @@ namespace Util { namespace Algo { namespace UPGMA { void upgma(); } } }
 namespace Util { namespace Algo { namespace UPGMA_MC { void upgma(); } } }
 namespace Test { void run();
 void simulate_seqs();
+void mutate();
 }
 
 int main(int ac, const char* av[])
@@ -152,6 +153,9 @@ int main(int ac, const char* av[])
 			break;
 		case Config::compute_medoids:
 			get_medoids_from_tree();
+			break;
+		case Config::mutate:
+			Test::mutate();
 			break;
 #ifdef EXTRA
 		case Config::compare:
