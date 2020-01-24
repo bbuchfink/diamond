@@ -86,8 +86,8 @@ const char* Blast_tab_format::field_str[] = {
 	"sseq_gapped",	// 56
 	"qstrand",		// 57
 	"cigar",		// 58
-	"skingdoms"		// 59
-	"sphylums",		// 60
+	"skingdoms",	// 59
+	"sphylums"		// 60
 };
 
 const char* Blast_tab_format::field_desc[] = {
