@@ -106,7 +106,7 @@ Bias_correction::Bias_correction(const sequence &seq):
 
 	int8.reserve(seq.length());
 	for (float f : *this)
-		int8.push_back(int8_t(f - 0.5f));
+		int8.push_back(int8_t(f < 0.0f ? f - 0.5f : f + 0.5f));
 }
 
 int Bias_correction::operator()(const Hsp &hsp) const

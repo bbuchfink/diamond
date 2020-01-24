@@ -78,7 +78,7 @@ inline _sv cell_update_cbs(const _sv &diagonal_cell,
 	_sv &best)
 {
 	using std::max;
-	_sv current_cell = diagonal_cell + scores + query_bias;
+	_sv current_cell = diagonal_cell + (scores + query_bias);
 	current_cell = max(max(current_cell, vertical_gap), horizontal_gap);
 	ScoreTraits<_sv>::saturate(current_cell);
 	best = max(best, current_cell);

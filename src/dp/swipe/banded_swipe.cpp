@@ -279,11 +279,10 @@ Hsp traceback(const sequence &query, Frame frame, const int8_t *bias_correction,
 	
 	while (it.score() > ScoreTraits<_sv>::zero_score()) {
 		const Letter q = query[it.i], s = target.seq[it.j];
-		const Score m = score_matrix(q, s), score = it.score();
-		Score diag_score = saturated_add(it.diag(), m);
+		Score m = score_matrix(q, s), score = it.score();
 		if (bias_correction)
-			diag_score = saturated_add(diag_score, Score(bias_correction[it.i]));
-		if (score == diag_score) {
+			m += Score(bias_correction[it.i]);
+		if (score == saturated_add(it.diag(), m)) {
 			out.push_match(q, s, m > (Score)0);
 			it.walk_diagonal();
 		} else {
