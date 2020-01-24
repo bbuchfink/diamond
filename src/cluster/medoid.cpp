@@ -141,7 +141,7 @@ void get_medoids_from_tree() {
 	for (const pair<int, int> &i : parent) {
 		while (parent[parent[i.first]] != parent[i.first])
 			parent[i.first] = parent[parent[i.first]];
-		if(i.first < n)
+		if(i.first < (int)n)
 			clusters[parent[i.first]].push_back(i.first);
 	}
 

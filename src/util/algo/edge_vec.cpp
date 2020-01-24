@@ -112,7 +112,7 @@ CompactEdge EdgeVec::get() {
 }
 
 std::string EdgeVec::print(int idx) const {
-	return idx < idx2acc.size() ? idx2acc.find(idx)->second : std::to_string(idx);
+	return (size_t)idx < idx2acc.size() ? idx2acc.find(idx)->second : std::to_string(idx);
 }
 
 }}}

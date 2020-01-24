@@ -6,7 +6,7 @@ using std::string;
 
 string convert_size(size_t size) {
 	static const char *SIZES[] = { "B", "KB", "MB", "GB" };
-	int div = 0;
+	size_t div = 0;
 	size_t rem = 0;
 
 	while (size >= 1024 && div < (sizeof SIZES / sizeof *SIZES)) {
