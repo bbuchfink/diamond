@@ -124,6 +124,8 @@ Config::Config(int argc, const char **argv)
 \tstaxids means unique Subject Taxonomy ID(s), separated by a ';' (in numerical order)\n\
 \tsscinames means unique Subject Scientific Name(s), separated by a ';'\n\
 \tsskingdoms means unique Subject Super Kingdom(s), separated by a ';'	(in alphabetical order)\n\
+\tskingdoms means unique Subject Kingdom(s), separated by a ';'	(in alphabetical order)\n\
+\tsphylums means unique Subject Phylum(s), separated by a ';'	(in alphabetical order)\n\
 \tstitle means Subject Title\n\
 \tsalltitles means All Subject Title(s), separated by a '<>'\n\
 \tqcovhsp means Query Coverage Per HSP\n\

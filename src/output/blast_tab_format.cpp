@@ -85,7 +85,9 @@ const char* Blast_tab_format::field_str[] = {
 	"qseq_gapped",  // 55
 	"sseq_gapped",	// 56
 	"qstrand",		// 57
-	"cigar"			// 58
+	"cigar",		// 58
+	"skingdoms"		// 59
+	"sphylums",		// 60
 };
 
 const char* Blast_tab_format::field_desc[] = {
@@ -147,7 +149,9 @@ const char* Blast_tab_format::field_desc[] = {
 	"Query sequence with gaps",		// 55
 	"Subject sequence with gaps",		// 56
 	"Query strand",						// 57
-	"CIGAR"								// 58
+	"CIGAR",								// 58
+	"Subject kingdoms",		// 59
+	"Subject phylums"		// 60
 };
 
 Blast_tab_format::Blast_tab_format() :
@@ -165,11 +169,11 @@ Blast_tab_format::Blast_tab_format() :
 			throw std::runtime_error(string("Invalid output field: ") + *i);
 		if (j == 34)
 			needs_taxon_id_lists = true;
-		if (j == 35 || j == 38) {
+		if (j == 35 || j == 38 || j == 59 || j == 60) {
 			needs_taxon_scientific_names = true;
 			needs_taxon_id_lists = true;
 		}
-		if (j == 38)
+		if (j == 38 || j == 59 || j == 60)
 			needs_taxon_nodes = true;
 		fields.push_back(j);
 		if (j == 6 || j == 39 || j == 40 || j == 34)
@@ -385,6 +389,16 @@ void Blast_tab_format::print_match(const Hsp_context& r, const Metadata &metadat
 		case 58:
 			print_cigar(r, out);
 			break;
+		case 59: {
+			const set<unsigned> tax_id = metadata.taxon_nodes->rank_taxid((*metadata.taxon_list)[r.orig_subject_id], Rank::kingdom);
+			print_taxon_names(tax_id.begin(), tax_id.end(), metadata, out);
+			break;
+		}
+		case 60: {
+			const set<unsigned> tax_id = metadata.taxon_nodes->rank_taxid((*metadata.taxon_list)[r.orig_subject_id], Rank::phylum);
+			print_taxon_names(tax_id.begin(), tax_id.end(), metadata, out);
+			break;
+		}
 		default:
 			throw std::runtime_error(string("Invalid output field: ") + field_str[*i]);
 		}
@@ -419,6 +433,8 @@ void Blast_tab_format::print_query_intro(size_t query_num, const char *query_nam
 			case 55:
 			case 56:
 			case 57:
+			case 59:
+			case 60:
 				out << '*';
 				break;
 			case 12:

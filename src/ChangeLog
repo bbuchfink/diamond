@@ -4,6 +4,7 @@
 - Changed the tantan masking to ungapped mode.
 - Changed the tantan probability decay to 1.0.
 - Improved the performance of repeat masking.
+- Added output fields sskingdoms, skingdoms, and sphylums to print subject super kingdoms, subject kingdoms, and subject phylums.
 
 [0.9.29]
 - Fixed a bug that could cause taxonomy features to function incorrectly for databases created by versions 0.9.27 and 0.9.28.
