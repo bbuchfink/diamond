@@ -41,11 +41,11 @@ struct Task_queue
 		callback_ (callback)
 	{ }
 
-	volatile bool waiting() const
+	bool waiting() const
 	{ return tail_ - head_ >= limit_; }
 
 	template<typename _init>
-	volatile bool get(size_t &n, _t*& res, _init &init)
+	bool get(size_t &n, _t*& res, _init &init)
 	{
 		{
 			std::unique_lock<std::mutex> lock(mtx_);
@@ -76,7 +76,7 @@ struct Task_queue
 	void wake_all()
 	{ cond_.notify_all(); }
 
-	volatile void push(size_t n)
+	void push(size_t n)
 	{
 		mtx_.lock();
 		if(n == head_) {
@@ -96,7 +96,7 @@ struct Task_queue
 		}
 	}
 
-	volatile unsigned flush()
+	unsigned flush()
 	{
 		bool next = false;
 		unsigned n = 0;

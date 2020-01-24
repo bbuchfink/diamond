@@ -173,7 +173,7 @@ struct DAA_file
 	const string& ref_name(size_t i) const
 	{ return ref_name_[i]; }
 
-	const uint32_t ref_len(size_t i) const
+	uint32_t ref_len(size_t i) const
 	{ return ref_len_[i]; }
 
 	double lambda() const

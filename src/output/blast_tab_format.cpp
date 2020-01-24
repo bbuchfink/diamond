@@ -127,7 +127,7 @@ const char* Blast_tab_format::field_desc[] = {
 	"Subject scientific names",	// 35 means unique Subject Scientific Name(s), separated by a ';'
 	"scomnames",	// 36 means unique Subject Common Name(s), separated by a ';'
 	"sblastnames",	// 37 means unique Subject Blast Name(s), separated by a ';'	(in alphabetical order)
-	"sskingdoms",	// 38 means unique Subject Super Kingdom(s), separated by a ';'	(in alphabetical order)
+	"Subject super kingdoms",	// 38 means unique Subject Super Kingdom(s), separated by a ';'	(in alphabetical order)
 	"Subject title",		// 39 means Subject Title
 	"Subject titles",	// 40 means All Subject Title(s), separated by a '<>'
 	"sstrand",		// 41 means Subject Strand
@@ -165,10 +165,12 @@ Blast_tab_format::Blast_tab_format() :
 			throw std::runtime_error(string("Invalid output field: ") + *i);
 		if (j == 34)
 			needs_taxon_id_lists = true;
-		if (j == 35) {
+		if (j == 35 || j == 38) {
 			needs_taxon_scientific_names = true;
 			needs_taxon_id_lists = true;
 		}
+		if (j == 38)
+			needs_taxon_nodes = true;
 		fields.push_back(j);
 		if (j == 6 || j == 39 || j == 40 || j == 34)
 			config.salltitles = true;
@@ -182,6 +184,19 @@ Blast_tab_format::Blast_tab_format() :
 void print_staxids(TextBuffer &out, unsigned subject_global_id, const Metadata &metadata)
 {
 	out.print((*metadata.taxon_list)[subject_global_id], ';');
+}
+
+template<typename _it>
+void print_taxon_names(_it begin, _it end, const Metadata &metadata, TextBuffer &out) {
+	const vector<string> &names = *metadata.taxonomy_scientific_names;
+	for (_it i = begin; i != end; ++i) {
+		if (i != begin)
+			out << ';';
+		if (*i < names.size() && !names[*i].empty())
+			out << names[*i];
+		else
+			out << *i;
+	}
 }
 
 void Blast_tab_format::print_match(const Hsp_context& r, const Metadata &metadata, TextBuffer &out)
@@ -305,16 +320,13 @@ void Blast_tab_format::print_match(const Hsp_context& r, const Metadata &metadat
 			print_staxids(out, r.orig_subject_id, metadata);
 			break;
 		case 35: {
-			const vector<string> &names = *metadata.taxonomy_scientific_names;
 			const vector<unsigned> tax_id = (*metadata.taxon_list)[r.orig_subject_id];
-			for (size_t i = 0; i < tax_id.size(); ++i) {
-				if (i > 0)
-					out << ';';
-				if (tax_id[i] < names.size() && !names[tax_id[i]].empty())
-					out << names[tax_id[i]];
-				else
-					out << tax_id[i];
-			}
+			print_taxon_names(tax_id.begin(), tax_id.end(), metadata, out);
+			break;
+		}
+		case 38: {
+			const set<unsigned> tax_id = metadata.taxon_nodes->rank_taxid((*metadata.taxon_list)[r.orig_subject_id], Rank::superkingdom);
+			print_taxon_names(tax_id.begin(), tax_id.end(), metadata, out);
 			break;
 		}
 		case 39:
@@ -399,6 +411,7 @@ void Blast_tab_format::print_query_intro(size_t query_num, const char *query_nam
 			case 18:
 			case 33:
 			case 35:
+			case 38:
 			case 39:
 			case 40:
 			case 48:

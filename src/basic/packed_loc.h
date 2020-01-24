@@ -36,7 +36,7 @@ struct packed_uint40_t
 		high ((uint8_t)(v>>32)),
 		low ((uint32_t)(v&0xfffffffflu))
 	{ }
-	operator const uint64_t() const
+	operator uint64_t() const
 	{ return (uint64_t(high) << 32) | low; }
 	bool operator<(const packed_uint40_t &rhs) const
 	{ return high < rhs.high || (high == rhs.high && low < rhs.low); }
