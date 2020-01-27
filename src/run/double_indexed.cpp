@@ -357,9 +357,15 @@ void run(const Options &options)
 				throw std::runtime_error("--taxonlist/--taxon-exclude options require taxonomy nodes built into the database.");
 			if (taxon_culling)
 				throw std::runtime_error("--taxon-k option require taxonomy nodes built into the database.");
+			if(output_format->needs_taxon_nodes)
+				throw std::runtime_error("Output format requires taxonomy nodes built into the database.");
 		}
-		if (taxon_culling && db_file->ref_header.build < 131)
-			throw std::runtime_error("--taxon-k option requires a database built with diamond version >= 0.9.30");
+		if (db_file->ref_header.build < 131) {
+			if (taxon_culling)
+				throw std::runtime_error("--taxon-k option requires a database built with diamond version >= 0.9.30");
+			if (output_format->needs_taxon_ranks)
+				throw std::runtime_error("Output fields sskingdoms, skingdoms and sphylums require a database built with diamond version >= 0.9.30");
+		}
 		timer.go("Loading taxonomy nodes");
 		metadata.taxon_nodes = new TaxonomyNodes(db_file->seek(db_file->header2.taxon_nodes_offset), db_file->ref_header.build);
 		if (taxon_filter) {

@@ -173,8 +173,10 @@ Blast_tab_format::Blast_tab_format() :
 			needs_taxon_scientific_names = true;
 			needs_taxon_id_lists = true;
 		}
-		if (j == 38 || j == 59 || j == 60)
+		if (j == 38 || j == 59 || j == 60) {
 			needs_taxon_nodes = true;
+			needs_taxon_ranks = true;
+		}
 		fields.push_back(j);
 		if (j == 6 || j == 39 || j == 40 || j == 34)
 			config.salltitles = true;
@@ -192,6 +194,10 @@ void print_staxids(TextBuffer &out, unsigned subject_global_id, const Metadata &
 
 template<typename _it>
 void print_taxon_names(_it begin, _it end, const Metadata &metadata, TextBuffer &out) {
+	if (begin == end) {
+		out << "N/A";
+		return;
+	}
 	const vector<string> &names = *metadata.taxonomy_scientific_names;
 	for (_it i = begin; i != end; ++i) {
 		if (i != begin)

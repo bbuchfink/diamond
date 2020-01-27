@@ -128,14 +128,18 @@ bool TaxonomyNodes::contained(const vector<unsigned> query, const set<unsigned> 
 unsigned TaxonomyNodes::rank_taxid(unsigned taxid, Rank rank) const {
 	static const int max = 64;
 	int n = 0;
-	while (rank_[taxid] != rank) {
+	while (true) {
+		if (taxid >= rank_.size())
+			return 0;
+		if (rank_[taxid] == rank)
+			return taxid;
 		if (taxid == 0 || taxid == 1)
 			return 0;
 		if (++n > max)
 			throw std::runtime_error("Path in taxonomy too long (4).");
 		taxid = get_parent(taxid);
 	}
-	return taxid;
+	return 0;
 }
 
 std::set<unsigned> TaxonomyNodes::rank_taxid(const std::vector<unsigned> &taxid, Rank rank) const {

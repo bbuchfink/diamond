@@ -2,7 +2,6 @@
 - Added support for output field `cigar` to the tabular format.
 - Changed the maximum repeat period to 50 for tantan masking.
 - Changed the tantan masking to ungapped mode.
-- Changed the tantan probability decay to 1.0.
 - Improved the performance of repeat masking.
 - Added output fields sskingdoms, skingdoms, and sphylums to print subject super kingdoms, subject kingdoms, and subject phylums.
 

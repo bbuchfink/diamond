@@ -58,7 +58,7 @@ struct Output_format
 		return code;
 	}
 	unsigned code;
-	bool needs_taxon_id_lists, needs_taxon_nodes, needs_taxon_scientific_names;
+	bool needs_taxon_id_lists, needs_taxon_nodes, needs_taxon_scientific_names, needs_taxon_ranks;
 	enum { daa, blast_tab, blast_xml, sam, blast_pairwise, null, taxon, paf, bin1 };
 };
 
