@@ -123,9 +123,9 @@ Config::Config(int argc, const char **argv)
 \tcigar means CIGAR string\n\
 \tstaxids means unique Subject Taxonomy ID(s), separated by a ';' (in numerical order)\n\
 \tsscinames means unique Subject Scientific Name(s), separated by a ';'\n\
-\tsskingdoms means unique Subject Super Kingdom(s), separated by a ';'	(in alphabetical order)\n\
-\tskingdoms means unique Subject Kingdom(s), separated by a ';'	(in alphabetical order)\n\
-\tsphylums means unique Subject Phylum(s), separated by a ';'	(in alphabetical order)\n\
+\tsskingdoms means unique Subject Super Kingdom(s), separated by a ';'\n\
+\tskingdoms means unique Subject Kingdom(s), separated by a ';'\n\
+\tsphylums means unique Subject Phylum(s), separated by a ';'\n\
 \tstitle means Subject Title\n\
 \tsalltitles means All Subject Title(s), separated by a '<>'\n\
 \tqcovhsp means Query Coverage Per HSP\n\
@@ -299,7 +299,8 @@ Config::Config(int argc, const char **argv)
 		("log-extend", 0, "", log_extend)
 		("chaining-maxgap", 0, "", chaining_maxgap, 2000)
 		("tantan-maxRepeatOffset", 0, "maximum tandem repeat period to consider (50)", tantan_maxRepeatOffset, 15)
-		("tantan-ungapped", 0, "use tantan masking in ungapped mode", tantan_ungapped);
+		("tantan-ungapped", 0, "use tantan masking in ungapped mode", tantan_ungapped)
+		("family-map", 0, "", family_map);
 	
 	parser.add(general).add(makedb).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options);
 	parser.store(argc, argv, command);

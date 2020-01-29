@@ -330,10 +330,10 @@ void run(const Options &options)
 
 	init_output(db_file->has_taxon_id_lists(), db_file->has_taxon_nodes(), db_file->has_taxon_scientific_names());
 
-	verbose_stream << "Reference = " << config.database << endl;
-	verbose_stream << "Sequences = " << db_file->ref_header.sequences << endl;
-	verbose_stream << "Letters = " << db_file->ref_header.letters << endl;
-	verbose_stream << "Block size = " << (size_t)(config.chunk_size * 1e9) << endl;
+	message_stream << "Reference = " << config.database << endl;
+	message_stream << "Sequences = " << db_file->ref_header.sequences << endl;
+	message_stream << "Letters = " << db_file->ref_header.letters << endl;
+	message_stream << "Block size = " << (size_t)(config.chunk_size * 1e9) << endl;
 	Config::set_option(config.db_size, (uint64_t)db_file->ref_header.letters);
 	score_matrix.set_db_letters(db_file->ref_header.letters);
 

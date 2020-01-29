@@ -162,6 +162,7 @@ add_executable(diamond $<TARGET_OBJECTS:arch_generic>
   src/align/culling.cpp
   src/cluster/medoid.cpp
   src/align/output.cpp
+  src/tools/roc.cpp
 )
 
 if(EXTRA)

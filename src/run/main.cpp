@@ -51,6 +51,7 @@ void filter_blasttab();
 void show_cbs();
 void reverse();
 void get_medoids_from_tree();
+void roc();
 
 void split();
 namespace Benchmark { DECL_DISPATCH(void, benchmark, ()) }
@@ -157,15 +158,15 @@ int main(int ac, const char* av[])
 		case Config::mutate:
 			Test::mutate();
 			break;
+		case Config::roc:
+			roc();
+			break;
 #ifdef EXTRA
 		case Config::compare:
 			compare();
 			break;
 		case Config::model_sim:
 			model_sim();
-			break;
-		case Config::roc:
-			roc();
 			break;
 		case Config::test_extra:
 			test_main();
