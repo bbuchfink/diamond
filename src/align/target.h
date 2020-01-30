@@ -35,6 +35,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 namespace Extension {
 
+enum { TARGET_PARALLEL = 1 };
+
 struct WorkTarget {
 	WorkTarget(size_t block_id, const sequence &seq) :
 		block_id(block_id),
@@ -52,7 +54,7 @@ struct WorkTarget {
 	std::array<std::list<Hsp_traits>, MAX_CONTEXT> hsp;
 };
 
-std::vector<WorkTarget> ungapped_stage(const sequence *query_seq, const Bias_correction *query_cb, Trace_pt_list::iterator begin, Trace_pt_list::iterator end);
+std::vector<WorkTarget> ungapped_stage(const sequence *query_seq, const Bias_correction *query_cb, Trace_pt_list::iterator begin, Trace_pt_list::iterator end, int flags);
 void rank_targets(std::vector<WorkTarget> &targets, double ratio, double factor);
 
 struct Target {

@@ -43,7 +43,6 @@ using namespace std;
 namespace Workflow { namespace Search {
 
 void run_ref_chunk(DatabaseFile &db_file,
-	Timer &total_timer,
 	unsigned query_chunk,
 	pair<size_t, size_t> query_len_bounds,
 	char *query_buffer,
@@ -113,7 +112,6 @@ void run_ref_chunk(DatabaseFile &db_file,
 }
 
 void run_query_chunk(DatabaseFile &db_file,
-	Timer &total_timer,
 	unsigned query_chunk,
 	Consumer &master_out,
 	OutputFile *unaligned_file,
@@ -178,7 +176,7 @@ void run_query_chunk(DatabaseFile &db_file,
 		&ref_ids::data_,
 		true,
 		options.db_filter ? options.db_filter : metadata.taxon_filter); ++current_ref_block)
-		run_ref_chunk(db_file, total_timer, query_chunk, query_len_bounds, query_buffer, master_out, tmp_file, params, metadata, block_to_database_id);
+		run_ref_chunk(db_file, query_chunk, query_len_bounds, query_buffer, master_out, tmp_file, params, metadata, block_to_database_id);
 
 	timer.go("Deallocating buffers");
 	delete[] query_buffer;
@@ -210,7 +208,7 @@ void run_query_chunk(DatabaseFile &db_file,
 		ReferenceDictionary::get().clear();
 }
 
-void master_thread(DatabaseFile *db_file, Timer &total_timer, Metadata &metadata, const Options &options)
+void master_thread(DatabaseFile *db_file, task_timer &total_timer, Metadata &metadata, const Options &options)
 {
 	task_timer timer("Opening the input file", true);
 	TextInputFile *query_file = nullptr;
@@ -270,7 +268,7 @@ void master_thread(DatabaseFile *db_file, Timer &total_timer, Metadata &metadata
 			timer.finish();
 		}
 
-		run_query_chunk(*db_file, total_timer, current_query_chunk, *master_out, unaligned_file.get(), aligned_file.get(), metadata, options);
+		run_query_chunk(*db_file, current_query_chunk, *master_out, unaligned_file.get(), aligned_file.get(), metadata, options);
 	}
 
 	if (query_file && !options.query_file) {
@@ -302,14 +300,13 @@ void master_thread(DatabaseFile *db_file, Timer &total_timer, Metadata &metadata
 
 	timer.finish();
 	log_rss();
-	message_stream << "Total time = " << total_timer.getElapsedTimeInSec() << "s" << endl;
+	message_stream << "Total time = " << total_timer.get() << "s" << endl;
 	statistics.print();
 }
 
 void run(const Options &options)
 {
-	Timer timer2;
-	timer2.start();
+	task_timer total;
 
 	align_mode = Align_mode(Align_mode::from_command(config.command));
 
@@ -382,7 +379,7 @@ void run(const Options &options)
 		timer.finish();
 	}
 
-	master_thread(db_file, timer2, metadata, options);
+	master_thread(db_file, total, metadata, options);
 }
 
 }}

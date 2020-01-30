@@ -17,10 +17,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #include <list>
+#include <atomic>
 #include "../dp.h"
 #include "../score_vector_int16.h"
 
 using std::list;
+using std::atomic;
 
 namespace DP { namespace BandedSwipe { namespace DISPATCH_ARCH {
 
@@ -53,6 +55,30 @@ list<Hsp> swipe_targets(const sequence &query,
 	}
 	return out;
 }
+
+void swipe_worker(const sequence *query,
+	vector<DpTarget>::const_iterator begin,
+	vector<DpTarget>::const_iterator end,
+	atomic<size_t> *next,
+	Frame frame,
+	const int8_t *composition_bias,
+	int flags,
+	int score_cutoff,
+	list<Hsp> *out,
+	vector<DpTarget> *overflow)
+{
+	/*DpStat stat;
+	size_t pos;
+	vector<DpTarget> of;
+	while (begin + (pos = next->fetch_add(config.swipe_chunk_size)) < end)
+#ifdef __SSE2__
+		out->splice(out->end(), banded_3frame_swipe_targets<score_vector<int16_t>>(begin + pos, min(begin + pos + config.swipe_chunk_size, end), score_only, *query, strand, stat, true, of));
+#else
+		out->splice(out->end(), banded_3frame_swipe_targets<int32_t>(begin + pos, min(begin + pos + config.swipe_chunk_size, end), score_only, *query, strand, stat, true, of));
+#endif
+	*overflow = std::move(of);*/
+}
+
 
 list<Hsp> swipe(const sequence &query, vector<DpTarget>::iterator target_begin, vector<DpTarget>::iterator target_end, Frame frame, const Bias_correction *composition_bias, int flags, int score_cutoff)
 {

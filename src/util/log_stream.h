@@ -23,7 +23,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <fstream>
 #include <mutex>
 #include <limits.h>
-#include "Timer.h"
+#include <chrono>
 
 using std::endl;
 
@@ -72,8 +72,9 @@ struct task_timer
 {
 	task_timer(unsigned level = 1) :
 		level_(level),
-		msg_(0)
+		msg_(nullptr)
 	{
+		start(nullptr);
 	}
 	task_timer(const char *msg, unsigned level=1) :
 		level_(level),
@@ -96,7 +97,7 @@ struct task_timer
 		if (!msg_ || level_ == UINT_MAX)
 			return;
 		//if (print_ && !Cfg::debug_log)
-		get_stream() << " [" << timer_.getElapsedTimeInSec() << "s]" << endl;
+		get_stream() << " [" << get() << "s]" << endl;
 		/*else if (Cfg::debug_log) {
 			log_stream << '/' << msg_ << " [" << timer_.getElapsedTimeInSec() << "s]" << endl;
 		}*/
@@ -104,7 +105,7 @@ struct task_timer
 	}
 	double get()
 	{
-		return timer_.getElapsedTimeInSec();
+		return (double)std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - t).count() / 1000.0;
 	}
 	Message_stream& get_stream() const
 	{
@@ -122,9 +123,11 @@ struct task_timer
 private:
 	void start(const char *msg)
 	{
-		timer_.start();
 		//if (print_ && !Cfg::debug_log) {
 		if (level_ == UINT_MAX)
+			return;
+		t = std::chrono::high_resolution_clock::now();
+		if (!msg)
 			return;
 		get_stream() << msg << "... " << std::flush;
 			//fflush(stdout);
@@ -134,7 +137,7 @@ private:
 	}
 	unsigned level_;
 	const char *msg_;
-	Timer timer_;
+	std::chrono::high_resolution_clock::time_point t;
 };
 
 #endif

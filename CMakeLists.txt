@@ -88,7 +88,6 @@ add_executable(diamond $<TARGET_OBJECTS:arch_generic>
   src/util/command_line_parser.cpp
   src/util/seq_file_format.cpp
   src/util/util.cpp 
-  src/util/Timer.cpp
   src/basic/basic.cpp
   src/basic/hssp.cpp
   src/dp/ungapped_align.cpp

@@ -154,8 +154,7 @@ void make_db(TempFile **tmp_out, TextInputFile *input_file)
 {
 	message_stream << "Database file: " << config.input_ref_file << endl;
 	
-	Timer total;
-	total.start();
+	task_timer total;
 	if (config.input_ref_file == "")
 		std::cerr << "Input file parameter (--in) is missing. Input will be read from stdin." << endl;
 	task_timer timer("Opening the database file", true);
@@ -253,7 +252,7 @@ void make_db(TempFile **tmp_out, TextInputFile *input_file)
 	timer.finish();
 	message_stream << "Database hash = " << hex_print(header2.hash, 16) << endl;
 	message_stream << "Processed " << n_seqs << " sequences, " << letters << " letters." << endl;
-	message_stream << "Total time = " << total.getElapsedTimeInSec() << "s" << endl;
+	message_stream << "Total time = " << total.get() << "s" << endl;
 }
 
 void DatabaseFile::seek_seq(size_t i) {

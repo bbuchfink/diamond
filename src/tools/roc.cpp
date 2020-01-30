@@ -22,6 +22,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <unordered_map>
 #include <tuple>
 #include <vector>
+#include <math.h>
 #include "../util/io/text_input_file.h"
 #include "../basic/config.h"
 #include "../util/string/tokenizer.h"
@@ -121,6 +122,8 @@ void roc() {
 			}
 			stats = QueryStats(r.qseqid, families);
 		}
+		if (r.qseqid.empty() || r.sseqid.empty() || isnan(r.evalue) || !isfinite(r.evalue) || r.evalue > 100.0 || r.evalue < 0.0)
+			throw std::runtime_error("Format error.");
 		stats.add(r, acc2fam);
 		++n;
 	}

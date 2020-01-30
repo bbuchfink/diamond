@@ -48,7 +48,7 @@ vector<Match> extend(const Parameters &params, size_t query_id, Trace_pt_list::i
 
 	const int source_query_len = align_mode.query_translated ? (int)query_source_seqs::get()[query_id].length() : (int)query_seqs::get()[query_id].length();
 
-	vector<WorkTarget> targets = ungapped_stage(query_seq.data(), query_cb.data(), begin, end);
+	vector<WorkTarget> targets = ungapped_stage(query_seq.data(), query_cb.data(), begin, end, 0);
 	stat.inc(Statistics::TARGET_HITS0, targets.size());
 
 	rank_targets(targets, config.rank_ratio == -1 ? (query_seq[0].length() > 50 ? 0.6 : 0.9) : config.rank_ratio, config.rank_factor == -1 ? 1e3 : config.rank_factor);
