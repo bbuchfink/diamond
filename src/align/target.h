@@ -35,8 +35,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 namespace Extension {
 
-enum { TARGET_PARALLEL = 1 };
-
 struct WorkTarget {
 	WorkTarget(size_t block_id, const sequence &seq) :
 		block_id(block_id),
@@ -84,8 +82,8 @@ struct Target {
 };
 
 void score_only_culling(std::vector<Target> &targets);
-std::vector<Target> align(const std::vector<WorkTarget> &targets, const sequence *query_seq, const Bias_correction *query_cb);
-std::vector<Match> align(std::vector<Target> &targets, const sequence *query_seq, const Bias_correction *query_cb, int source_query_len);
+std::vector<Target> align(const std::vector<WorkTarget> &targets, const sequence *query_seq, const Bias_correction *query_cb, int flags);
+std::vector<Match> align(std::vector<Target> &targets, const sequence *query_seq, const Bias_correction *query_cb, int source_query_len, int flags);
 void culling(std::vector<Match> &targets, int source_query_len, const char *query_title);
 
 }

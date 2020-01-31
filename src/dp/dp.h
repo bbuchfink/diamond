@@ -469,7 +469,7 @@ namespace DP {
 struct Traceback {};
 struct ScoreOnly {};
 
-enum { TRACEBACK = 1 };
+enum { TRACEBACK = 1, PARALLEL = 2 };
 	
 namespace Swipe {
 

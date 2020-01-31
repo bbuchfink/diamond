@@ -34,6 +34,8 @@ namespace Extension {
 
 constexpr int DEFAULT_BAND = 75;
 
+enum { TARGET_PARALLEL = 2 };
+
 struct Match {
 	Match(size_t target_block_id, bool outranked):
 		target_block_id(target_block_id),
@@ -56,7 +58,7 @@ struct Match {
 	std::list<Hsp> hsp;
 };
 
-std::vector<Match> extend(const Parameters &params, size_t query_id, Trace_pt_list::iterator begin, Trace_pt_list::iterator end, const Metadata &metadata, Statistics &stat);
+std::vector<Match> extend(const Parameters &params, size_t query_id, Trace_pt_list::iterator begin, Trace_pt_list::iterator end, const Metadata &metadata, Statistics &stat, int flags);
 TextBuffer* generate_output(vector<Match> &targets, size_t query_block_id, Statistics &stat, const Metadata &metadata, const Parameters &parameters);
 
 }

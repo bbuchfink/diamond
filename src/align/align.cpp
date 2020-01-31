@@ -50,7 +50,8 @@ struct Align_fetcher
 			++it_;
 		end = it_;
 		this->query = query;
-		target_parallel = (end - begin > config.query_parallel_limit) && config.frame_shift != 0 && align_mode.mode == Align_mode::blastx && config.toppercent < 100 && config.query_range_culling;
+		target_parallel = (end - begin > config.query_parallel_limit) && ((config.frame_shift != 0 && align_mode.mode == Align_mode::blastx && config.toppercent < 100 && config.query_range_culling)
+			|| config.ext == Config::banded_swipe);
 		return target_parallel;
 	}
 	bool get()
@@ -124,7 +125,7 @@ void align_worker(size_t thread_id, const Parameters *params, const Metadata *me
 			hits.release();
 			continue;
 		}
-		vector<Extension::Match> matches = Extension::extend(*params, hits.query, hits.begin, hits.end, *metadata, stat);
+		vector<Extension::Match> matches = Extension::extend(*params, hits.query, hits.begin, hits.end, *metadata, stat, hits.target_parallel ? Extension::TARGET_PARALLEL : 0);
 		TextBuffer *buf = Extension::generate_output(matches, hits.query, stat, *metadata, *params);
 		if (!matches.empty() && (!config.unaligned.empty() || !config.aligned_file.empty())) {
 			query_aligned_mtx.lock();
@@ -132,6 +133,7 @@ void align_worker(size_t thread_id, const Parameters *params, const Metadata *me
 			query_aligned_mtx.unlock();
 		}
 		OutputSink::get().push(hits.query, buf);
+		hits.release();
 	}
 	statistics += stat;
 	::dp_stat += dp_stat;
