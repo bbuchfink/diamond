@@ -77,7 +77,7 @@ Config::Config(int argc, const char **argv)
 		.add_command("split", "")
 		.add_command("upgma", "")
 		.add_command("upgmamc", "")
-		.add_command("test", "Run regression test.")
+		.add_command("test", "")
 		.add_command("reverse", "")
 		.add_command("compute-medoids", "")
 		.add_command("mutate", "");
@@ -396,9 +396,8 @@ Config::Config(int argc, const char **argv)
 	}
 
 	ostream &header_out = command == Config::help ? cout : cerr;
-	header_out << Const::program_name << " v" << Const::version_string << "." << (unsigned)Const::build_version << " | by Benjamin Buchfink <buchfink@gmail.com>" << endl;
-	header_out << "Licensed under the GNU GPL <https://www.gnu.org/licenses/gpl.txt>" << endl;
-	header_out << "Check http://github.com/bbuchfink/diamond for updates." << endl << endl;
+	header_out << Const::program_name << " v" << Const::version_string << "." << (unsigned)Const::build_version << " (C) Max Planck Society for the Advancement of Science" << endl;
+	header_out << "Documentation, support and updates available at http://www.diamondsearch.org" << endl << endl;
 	log_stream << Const::program_name << " v" << Const::version_string << "." << (unsigned)Const::build_version << endl;
 #ifndef NDEBUG
 	verbose_stream << "Assertions enabled." << endl;

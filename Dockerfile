@@ -6,7 +6,7 @@ WORKDIR /opt/diamond
 ADD . .
 
 WORKDIR build
-RUN cmake -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_BUILD_MARCH=x86-64 ..
+RUN cmake -G Ninja -DCMAKE_BUILD_TYPE=Release ..
 RUN ninja && ninja install
 
 FROM alpine:latest

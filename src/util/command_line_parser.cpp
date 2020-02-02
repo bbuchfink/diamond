@@ -119,4 +119,5 @@ void Command_line_parser::print_help()
 		}
 		cout << endl;
 	}
+	cout << "Online documentation at http://www.diamondsearch.org" << endl;
 }
