@@ -285,6 +285,7 @@ struct Diag_graph
 	void load(vector<Seed_hit>::const_iterator begin, vector<Seed_hit>::const_iterator end);
 	void load(vector<Diagonal_segment>::const_iterator begin, vector<Diagonal_segment>::const_iterator end);
 	void sort();
+	void prune();
 	void clear_edges();
 
 	vector<Edge>::iterator add_edge(const Edge &edge)

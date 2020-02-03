@@ -122,6 +122,30 @@ void Diag_graph::sort()
 	std::sort(nodes.begin(), nodes.end(), Diagonal_segment::cmp_subject);
 }
 
+void Diag_graph::prune() {
+	vector<Diagonal_node> finished;
+	list<Diagonal_node> window;
+	for (const Diagonal_node &d : nodes) {
+		size_t n = 0;
+		for (list<Diagonal_node>::iterator i = window.begin(); i != window.end();) {
+			if (i->subject_end() > d.j) {
+				if (i->score >= d.score && i->j <= d.j && i->subject_end() >= d.subject_end())
+					++n;
+				++i;
+			}
+			else {
+				finished.push_back(*i);
+				i = window.erase(i);
+			}
+		}
+		if (n <= config.chaining_range_cover)
+			window.push_back(d);
+	}
+	for (const Diagonal_node &d : window)
+		finished.push_back(d);
+	nodes = std::move(finished);
+}
+
 struct Link
 {
 	Link():
@@ -540,6 +564,8 @@ struct Greedy_aligner2
 	int run(list<Hsp> &hsps, list<Hsp_traits> &ts, double space_penalty, int cutoff, int max_shift)
 	{
 		diags.sort();
+		if(config.ext == Config::banded_swipe)
+			diags.prune();
 		if (log) {
 			diags.print(query, subject);
 			cout << endl << endl;

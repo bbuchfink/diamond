@@ -300,7 +300,8 @@ Config::Config(int argc, const char **argv)
 		("chaining-maxgap", 0, "", chaining_maxgap, 2000)
 		("tantan-maxRepeatOffset", 0, "maximum tandem repeat period to consider (50)", tantan_maxRepeatOffset, 15)
 		("tantan-ungapped", 0, "use tantan masking in ungapped mode", tantan_ungapped)
-		("family-map", 0, "", family_map);
+		("family-map", 0, "", family_map)
+		("chaining-range-cover", 0, "", chaining_range_cover, (size_t)8);
 	
 	parser.add(general).add(makedb).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options);
 	parser.store(argc, argv, command);
