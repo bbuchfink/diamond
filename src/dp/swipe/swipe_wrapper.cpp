@@ -75,8 +75,8 @@ void swipe_worker(const sequence *query,
 	DpStat stat;
 	size_t pos;
 	vector<DpTarget> of;
-	while (begin + (pos = next->fetch_add(config.swipe_chunk_size)) < end)
-		out->splice(out->end(), swipe_targets<_sv>(*query, begin + pos, std::min(begin + pos + config.swipe_chunk_size, end), frame, composition_bias, flags, score_cutoff, of));
+	while (begin + (pos = next->fetch_add(ScoreTraits<_sv>::CHANNELS)) < end)
+		out->splice(out->end(), swipe_targets<_sv>(*query, begin + pos, std::min(begin + pos + ScoreTraits<_sv>::CHANNELS, end), frame, composition_bias, flags, score_cutoff, of));
 	*overflow = std::move(of);
 }
 

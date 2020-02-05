@@ -64,13 +64,13 @@ vector<Match> extend(const Parameters &params, size_t query_id, Trace_pt_list::i
 	vector<Target> aligned_targets = align(targets, query_seq.data(), query_cb.data(), flags);
 	timer.go("Computing score only culling");
 	score_only_culling(aligned_targets);
-	stat.inc(Statistics::TARGET_HITS2, targets.size());
+	stat.inc(Statistics::TARGET_HITS2, aligned_targets.size());
 	timer.finish();
 
 	vector<Match> matches = align(aligned_targets, query_seq.data(), query_cb.data(), source_query_len, flags);
 	timer.go("Computing culling");
 	culling(matches, source_query_len, query_ids::get()[query_id].c_str());
-	stat.inc(Statistics::TARGET_HITS3, targets.size());
+	stat.inc(Statistics::TARGET_HITS3, matches.size());
 
 	return matches;
 }
