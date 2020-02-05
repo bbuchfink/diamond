@@ -22,6 +22,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <vector>
 #include <string>
 #include <stdexcept>
+#include <stdint.h>
 #include "output_file.h"
 #include "deserializer.h"
 
@@ -39,6 +40,7 @@ struct InputFile : public Deserializer
 	InputFile(const string &file_name, int flags = 0);
 	InputFile(TempFile &tmp_file, int flags = 0);
 	void close_and_delete();
+	uint64_t hash();
 	
 	string file_name;
 	bool unlinked;

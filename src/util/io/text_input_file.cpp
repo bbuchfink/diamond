@@ -28,6 +28,15 @@ TextInputFile::TextInputFile(const string &file_name) :
 {
 }
 
+TextInputFile::TextInputFile(TempFile &tmp_file) :
+	InputFile(tmp_file),
+	line_count(0),
+	line_buf_used_(0),
+	line_buf_end_(0),
+	putback_line_(false),
+	eof_(false)
+{}
+
 void TextInputFile::rewind()
 {
 	InputFile::rewind();

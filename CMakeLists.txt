@@ -38,8 +38,8 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
   set(CMAKE_BUILD_TYPE Release)
 endif()
 
-if(WIN32)
-  add_definitions(-D_CRT_SECURE_NO_WARNINGS -D_ITERATOR_DEBUG_LEVEL=0)
+if (${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
+  add_definitions(-D_CRT_SECURE_NO_WARNINGS -D_ITERATOR_DEBUG_LEVEL=0 -D__SSE2__)
 else()
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wno-uninitialized -Wno-ignored-attributes -Wno-unused-variable")
 endif()
@@ -64,7 +64,11 @@ set(DISPATCH_OBJECTS
 add_library(arch_generic OBJECT ${DISPATCH_OBJECTS})
 target_compile_options(arch_generic PUBLIC -DDISPATCH_ARCH=ARCH_GENERIC)
 add_library(arch_sse4_1 OBJECT ${DISPATCH_OBJECTS})
-target_compile_options(arch_sse4_1 PUBLIC -DDISPATCH_ARCH=ARCH_SSE4_1 -mssse3 -mpopcnt -msse4.1)
+if (${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
+	target_compile_options(arch_sse4_1 PUBLIC -DDISPATCH_ARCH=ARCH_SSE4_1 -D__SSSE3__ -D__SSE4_1__ -D__POPCNT__)
+else()
+	target_compile_options(arch_sse4_1 PUBLIC -DDISPATCH_ARCH=ARCH_SSE4_1 -mssse3 -mpopcnt -msse4.1)
+endif()
 
 add_executable(diamond $<TARGET_OBJECTS:arch_generic>
   $<TARGET_OBJECTS:arch_sse4_1>
@@ -162,6 +166,7 @@ add_executable(diamond $<TARGET_OBJECTS:arch_generic>
   src/cluster/medoid.cpp
   src/align/output.cpp
   src/tools/roc.cpp
+  src/test/data.cpp
 )
 
 if(EXTRA)

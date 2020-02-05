@@ -158,7 +158,7 @@ void make_db(TempFile **tmp_out, TextInputFile *input_file)
 	if (config.input_ref_file == "")
 		std::cerr << "Input file parameter (--in) is missing. Input will be read from stdin." << endl;
 	task_timer timer("Opening the database file", true);
-	unique_ptr<TextInputFile> db_file (input_file ? input_file : new TextInputFile(config.input_ref_file));
+	TextInputFile *db_file = input_file ? input_file : new TextInputFile(config.input_ref_file);
 	
 	OutputFile *out = tmp_out ? new TempFile() : new OutputFile(config.database);
 	ReferenceHeader header;
@@ -233,8 +233,11 @@ void make_db(TempFile **tmp_out, TextInputFile *input_file)
 		*out << taxonomy.name_;
 	}
 
-	timer.go("Closing the input file");
-	db_file->close();
+	if (!input_file) {
+		timer.go("Closing the input file");
+		db_file->close();
+		delete db_file;
+	}
 	
 	timer.go("Closing the database file");
 	header.letters = letters;

@@ -212,7 +212,7 @@ struct Config
 	int ext;
 
 	Config() {}
-	Config(int argc, const char **argv);
+	Config(int argc, const char **argv, bool check_io = true);
 
 	inline unsigned get_run_len(unsigned length)
 	{

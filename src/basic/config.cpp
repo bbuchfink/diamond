@@ -38,7 +38,7 @@ using namespace std;
 
 Config config;
 
-Config::Config(int argc, const char **argv)
+Config::Config(int argc, const char **argv, bool check_io)
 {
 	Command_line_parser parser;
 	parser.add_command("makedb", "Build DIAMOND database from a FASTA file")
@@ -203,7 +203,6 @@ Config::Config(int argc, const char **argv)
 		("band", 0, "band for dynamic programming computation", padding)
 		("shapes", 's', "number of seed shapes (0 = all available)", shapes)
 		("shape-mask", 0, "seed shapes", shape_mask)
-		("index-mode", 0, "index mode (0=4x12, 1=16x9)", index_mode)
 		("rank-ratio", 0, "include subjects within this ratio of last hit (stage 1)", rank_ratio, -1.0)
 		("rank-ratio2", 0, "include subjects within this ratio of last hit (stage 2)", rank_ratio2, -1.0)
 		("max-hsps", 0, "maximum number of HSPs per subject sequence to save for each query", max_hsps, 0u)
@@ -301,7 +300,8 @@ Config::Config(int argc, const char **argv)
 		("tantan-maxRepeatOffset", 0, "maximum tandem repeat period to consider (50)", tantan_maxRepeatOffset, 15)
 		("tantan-ungapped", 0, "use tantan masking in ungapped mode", tantan_ungapped)
 		("family-map", 0, "", family_map)
-		("chaining-range-cover", 0, "", chaining_range_cover, (size_t)8);
+		("chaining-range-cover", 0, "", chaining_range_cover, (size_t)8)
+		("index-mode", 0, "index mode (0=4x12, 1=16x9)", index_mode);
 	
 	parser.add(general).add(makedb).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options);
 	parser.store(argc, argv, command);
@@ -314,42 +314,44 @@ Config::Config(int argc, const char **argv)
 			frame_shift = 15;
 	}
 
-	switch (command) {
-	case Config::makedb:
-		if (database == "")
-			throw std::runtime_error("Missing parameter: database file (--db/-d)");
-		if (chunk_size != 0.0)
-			throw std::runtime_error("Invalid option: --block-size/-b. Block size is set for the alignment commands.");
-		break;
-	case Config::blastp:
-	case Config::blastx:
-		if (database == "")
-			throw std::runtime_error("Missing parameter: database file (--db/-d)");
-		if (daa_file.length() > 0) {
-			if (output_file.length() > 0)
-				throw std::runtime_error("Options --daa and --out cannot be used together.");
-			if (output_format.size() > 0 && output_format[0] != "daa")
-				throw std::runtime_error("Invalid parameter: --daa/-a. Output file is specified with the --out/-o parameter.");
-			output_file = daa_file;
+	if (check_io) {
+		switch (command) {
+		case Config::makedb:
+			if (database == "")
+				throw std::runtime_error("Missing parameter: database file (--db/-d)");
+			if (chunk_size != 0.0)
+				throw std::runtime_error("Invalid option: --block-size/-b. Block size is set for the alignment commands.");
+			break;
+		case Config::blastp:
+		case Config::blastx:
+			if (database == "")
+				throw std::runtime_error("Missing parameter: database file (--db/-d)");
+			if (daa_file.length() > 0) {
+				if (output_file.length() > 0)
+					throw std::runtime_error("Options --daa and --out cannot be used together.");
+				if (output_format.size() > 0 && output_format[0] != "daa")
+					throw std::runtime_error("Invalid parameter: --daa/-a. Output file is specified with the --out/-o parameter.");
+				output_file = daa_file;
+			}
+			if (daa_file.length() > 0 || (output_format.size() > 0 && (output_format[0] == "daa" || output_format[0] == "100"))) {
+				if (compression != 0)
+					throw std::runtime_error("Compression is not supported for DAA format.");
+				if (!no_auto_append)
+					auto_append_extension(output_file, ".daa");
+			}
+			break;
+		case Config::view:
+			if (daa_file == "")
+				throw std::runtime_error("Missing parameter: DAA file (--daa/-a)");
+		default:
+			;
 		}
-		if (daa_file.length() > 0 || (output_format.size() > 0 && (output_format[0] == "daa" || output_format[0] == "100"))) {
-			if (compression != 0)
-				throw std::runtime_error("Compression is not supported for DAA format.");
-			if (!no_auto_append)
-				auto_append_extension(output_file, ".daa");
-		}
-		break;
-	case Config::view:
-		if (daa_file == "")
-			throw std::runtime_error("Missing parameter: DAA file (--daa/-a)");
-	default:
-		;
-	}
 
-	switch (command) {
-	case Config::dbinfo:
-		if (database == "")
-			throw std::runtime_error("Missing parameter: database file (--db/-d)");
+		switch (command) {
+		case Config::dbinfo:
+			if (database == "")
+				throw std::runtime_error("Missing parameter: database file (--db/-d)");
+		}
 	}
 
 	if (hit_cap != 0)
@@ -411,6 +413,7 @@ Config::Config(int argc, const char **argv)
 	case Config::blastx:
 	case Config::view:
 	case Config::cluster:
+	case Config::regression_test:
 	case Config::compute_medoids:
 		message_stream << "#CPU threads: " << threads_ << endl;
 	default:
@@ -426,6 +429,7 @@ Config::Config(int argc, const char **argv)
 	case Config::mask:
 	case Config::makedb:
 	case Config::cluster:
+	case Config::regression_test:
 	case Config::compute_medoids:
 		if (frame_shift != 0 && command == Config::blastp)
 			throw std::runtime_error("Frameshift alignments are only supported for translated searches.");
@@ -446,7 +450,7 @@ Config::Config(int argc, const char **argv)
 	}
 
 	if (command == Config::blastp || command == Config::blastx || command == Config::benchmark || command == Config::model_sim || command == Config::opt
-		|| command == Config::mask || command == Config::cluster || command == Config::compute_medoids) {
+		|| command == Config::mask || command == Config::cluster || command == Config::compute_medoids || command == Config::regression_test) {
 		if (tmpdir == "")
 			tmpdir = extract_dir(output_file);
 		

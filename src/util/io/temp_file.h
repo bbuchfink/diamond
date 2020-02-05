@@ -26,6 +26,7 @@ struct TempFile : public OutputFile
 {
 
 	TempFile();
+	virtual void finalize() override {}
 	static std::string get_temp_dir();
 	static unsigned n;
 	static uint64_t hash_key;

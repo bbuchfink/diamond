@@ -31,6 +31,7 @@ using std::runtime_error;
 struct TextInputFile : public InputFile
 {
 	TextInputFile(const string &file_name);
+	TextInputFile(TempFile &tmp_file);
 	void rewind();
 	bool eof() const;
 	void putback(char c);

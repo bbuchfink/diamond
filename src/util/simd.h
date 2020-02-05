@@ -23,17 +23,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <functional>
 #include "system.h"
 
-#ifdef _MSC_VER
-#define __SSE2__
-#ifdef DISPATCH_ARCH
-#if DISPATCH_ARCH == ARCH_SSE4_1
-#define __SSSE3__
-#define __SSE4_1__
-#define __POPCNT__
-#endif
-#endif
-#endif
-
 #ifdef __SSSE3__
 #include <tmmintrin.h>
 #endif

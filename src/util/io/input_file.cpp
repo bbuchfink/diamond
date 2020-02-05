@@ -17,6 +17,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #include <iostream>
+#include <algorithm>
+#include "../util/algo/MurmurHash3.h"
 #ifndef _MSC_VER
 #include <stdio.h>
 #include <errno.h>
@@ -81,4 +83,15 @@ void InputFile::close_and_delete()
 	close();
 	if (!unlinked && remove(file_name.c_str()) != 0)
 		std::cerr << "Warning: Failed to delete temporary file " << file_name << std::endl;
+}
+
+uint64_t InputFile::hash() {
+	const size_t SIZE = 4096;
+	char buf[SIZE];
+	size_t n;
+	char h[16];
+	std::fill(h, h + 16, '\0');
+	while ((n = read_raw(buf, SIZE)) > 0)
+		MurmurHash3_x64_128(buf, n, h, h);
+	return *(uint64_t*)h;
 }
