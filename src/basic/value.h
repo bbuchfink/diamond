@@ -83,8 +83,10 @@ struct Value_traits
 	Char_representation from_char;
 };
 
-#define AMINO_ACID_ALPHABET "ARNDCQEGHILKMFPSTWYVBJZX*"
+#define AMINO_ACID_ALPHABET "ARNDCQEGHILKMFPSTWYVBJZX*_"
 #define AMINO_ACID_COUNT (sizeof(AMINO_ACID_ALPHABET) - 1)
+
+constexpr char SUPER_HARD_MASK = 25;
 
 extern const Value_traits amino_acid_traits;
 extern const Value_traits nucleotide_traits;

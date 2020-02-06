@@ -75,16 +75,6 @@ add_executable(diamond $<TARGET_OBJECTS:arch_generic>
   src/run/main.cpp
   src/basic/config.cpp
   src/basic/score_matrix.cpp
-  src/blast/blast_filter.cpp
-  src/blast/blast_seg.cpp
-  src/blast/sm_blosum45.c
-  src/blast/sm_blosum50.c
-  src/blast/sm_blosum62.c
-  src/blast/sm_blosum80.c
-  src/blast/sm_blosum90.c
-  src/blast/sm_pam30.c
-  src/blast/sm_pam70.c
-  src/blast/sm_pam250.c
   src/data/queries.cpp
   src/data/reference.cpp
   src/data/seed_histogram.cpp
@@ -167,6 +157,7 @@ add_executable(diamond $<TARGET_OBJECTS:arch_generic>
   src/align/output.cpp
   src/tools/roc.cpp
   src/test/data.cpp
+  src/basic/matrix_tables.cpp
 )
 
 if(EXTRA)

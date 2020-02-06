@@ -141,7 +141,7 @@ void align_worker(size_t thread_id, const Parameters *params, const Metadata *me
 
 void align_queries(Trace_pt_buffer &trace_pts, Consumer* output_file, const Parameters &params, const Metadata &metadata)
 {
-	const size_t max_size = (size_t)std::min(config.chunk_size*1e9 * 9 * 2 / config.lowmem, 6e9);
+	const size_t max_size = (size_t)std::min(config.chunk_size*1e9 * 9 * 2 / config.lowmem, 10e9);
 	pair<size_t, size_t> query_range;
 	vector<sequence> subjects;
 	if (config.swipe_all) {

@@ -52,7 +52,7 @@ struct TargetIterator
 #endif
 			return subject_begin[target[channel]].seq[pos[channel]];
 		} else
-			return value_traits.mask_char;
+			return SUPER_HARD_MASK;
 	}
 
 #ifdef __SSSE3__

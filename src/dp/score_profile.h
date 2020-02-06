@@ -22,6 +22,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <vector>
 #include "../basic/sequence.h"
 #include "score_vector.h"
+#include "../basic/value.h"
 
 using std::vector;
 
@@ -101,7 +102,6 @@ struct score_profile
 
 	inline void set(const __m128i &seq)
 	{
-		assert(sizeof(data_)/sizeof(score_vector<_score>) >= value_traits.alphabet_size);
 		/*unsigned j = 0;
 		do {
 			data_[j] = score_vector<_score> (j, seq);
@@ -115,7 +115,7 @@ struct score_profile
 		} while(j<24);
 		data_[j] = score_vector<_score> (j, seq);
 		assert(j+1 == Value_traits<_val>::ALPHABET_SIZE);*/
-		for (unsigned j = 0; j < value_traits.alphabet_size; ++j)
+		for (unsigned j = 0; j < AMINO_ACID_COUNT; ++j)
 			data_[j] = score_vector<_score> (j, seq);
 	}
 
@@ -124,7 +124,7 @@ struct score_profile
 		return data_[(int)i];
 	}
 
-	score_vector<_score> data_[25];
+	score_vector<_score> data_[AMINO_ACID_COUNT];
 
 };
 
@@ -136,7 +136,7 @@ struct Long_score_profile
 	{}
 	Long_score_profile(sequence seq)
 	{
-		for (unsigned l = 0; l < 25; ++l) {
+		for (unsigned l = 0; l < AMINO_ACID_COUNT; ++l) {
 			const uint8_t *scores = &score_matrix.matrix8u()[l << 5];
 			data[l].reserve(seq.length() + 2*padding);
 			data[l].insert(data[l].end(), padding, 0);
@@ -153,7 +153,7 @@ struct Long_score_profile
 	{
 		return &data[(int)l][i + padding];
 	}
-	vector<uint8_t> data[25];
+	vector<uint8_t> data[AMINO_ACID_COUNT];
 	enum { padding = 32 };
 };
 

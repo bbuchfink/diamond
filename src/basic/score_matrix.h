@@ -166,5 +166,7 @@ private:
 };
 
 extern Score_matrix score_matrix;
+typedef signed char MatrixTable[AMINO_ACID_COUNT*AMINO_ACID_COUNT];
+extern const MatrixTable s_Blosum45PSM, s_Blosum50PSM, s_Blosum62PSM, s_Blosum80PSM, s_Blosum90PSM, s_Pam250PSM, s_Pam30PSM, s_Pam70PSM;
 
 #endif /* SCORE_MATRIX_H_ */

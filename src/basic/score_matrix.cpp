@@ -22,7 +22,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <stdexcept>
 #include <fstream>
 #include "score_matrix.h"
-#include "../blast/raw_scoremat.h"
 
 using std::string;
 
@@ -201,14 +200,14 @@ struct Matrix_info
 };
 
 const Matrix_info Matrix_info::matrices[] = {
-	{ "BLOSUM45", blosum45_values, (const char*)NCBISM_Blosum45.scores, BLOSUM45_VALUES_MAX, 14, 2 },
-	{ "BLOSUM50", blosum50_values, (const char*)NCBISM_Blosum50.scores, BLOSUM50_VALUES_MAX, 13, 2 },
-	{ "BLOSUM62", blosum62_values, (const char*)NCBISM_Blosum62.scores, BLOSUM62_VALUES_MAX, 11, 1 },
-	{ "BLOSUM80", blosum80_values, (const char*)NCBISM_Blosum80.scores, BLOSUM80_VALUES_MAX, 10, 1 },
-	{ "BLOSUM90", blosum90_values, (const char*)NCBISM_Blosum90.scores, BLOSUM90_VALUES_MAX, 10, 1 },
-	{ "PAM70", pam70_values, (const char*)NCBISM_Pam70.scores, PAM70_VALUES_MAX, 10, 1 },
-	{ "PAM250", pam250_values, (const char*)NCBISM_Pam250.scores, PAM250_VALUES_MAX, 14, 2 },
-	{ "PAM30", pam30_values, (const char*)NCBISM_Pam30.scores, PAM30_VALUES_MAX, 9, 1 },
+	{ "BLOSUM45", blosum45_values, (const char*)s_Blosum45PSM, BLOSUM45_VALUES_MAX, 14, 2 },
+	{ "BLOSUM50", blosum50_values, (const char*)s_Blosum50PSM, BLOSUM50_VALUES_MAX, 13, 2 },
+	{ "BLOSUM62", blosum62_values, (const char*)s_Blosum62PSM, BLOSUM62_VALUES_MAX, 11, 1 },
+	{ "BLOSUM80", blosum80_values, (const char*)s_Blosum80PSM, BLOSUM80_VALUES_MAX, 10, 1 },
+	{ "BLOSUM90", blosum90_values, (const char*)s_Blosum90PSM, BLOSUM90_VALUES_MAX, 10, 1 },
+	{ "PAM70", pam70_values, (const char*)s_Pam70PSM, PAM70_VALUES_MAX, 10, 1 },
+	{ "PAM250", pam250_values, (const char*)s_Pam250PSM, PAM250_VALUES_MAX, 14, 2 },
+	{ "PAM30", pam30_values, (const char*)s_Pam30PSM, PAM30_VALUES_MAX, 9, 1 },
 	{ "DNA", dna_values, (const char*)DNA_scores, 1, 4, 2 }
 };
 

@@ -46,7 +46,10 @@ void run() {
 
 	Workflow::Search::run(opt);
 
-	output_file.close();
+	InputFile out_in(output_file);
+	cout << out_in.hash() << endl;
+
+	out_in.close_and_delete();
 	query_file.close_and_delete();
 	db.close();
 	delete db_file;
