@@ -138,7 +138,7 @@ list<Hsp> swipe(const sequence &query, vector<DpTarget>::iterator target_begin, 
 		out.splice(out.end(), swipe_threads<int32_t>(query, overflow16.begin(), overflow16.end(), frame, composition_bias ? composition_bias->int8.data() : nullptr, flags, score_cutoff, overflow32));
 	return out;
 #else
-	return swipe_threads<int32_t>(query, target_begin, target_end, frame, composition_bias ? composition_bias->int8.data() : nullptr, flags, overflow32);
+	return swipe_threads<int32_t>(query, target_begin, target_end, frame, composition_bias ? composition_bias->int8.data() : nullptr, flags, score_cutoff, overflow32);
 #endif
 }
 		
