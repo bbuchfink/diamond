@@ -21,6 +21,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "../simd.h"
 
+#ifdef __SSE__
+
 inline void merge(__m128i &first, __m128i &second, __m128i &temp)
 {
 	temp = first;
@@ -118,4 +120,5 @@ inline void transpose(char* in, char* out, int hIn) {
 	merge_fast_write(xmm0, xmm1, 0, 1, xmm9, (__m128i*)out);
 }
 
+#endif /* __SSE__ */
 #endif /* TRANSPOSE_H_ */

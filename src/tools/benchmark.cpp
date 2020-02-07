@@ -141,6 +141,7 @@ void benchmark_ungapped_sse(const sequence &s1, const sequence &s2)
 }
 #endif
 
+#ifdef __SSE__
 void benchmark_transpose() {
 	static const size_t n = 100000000llu;
 	static char in[256], out[256];
@@ -152,6 +153,7 @@ void benchmark_transpose() {
 	}
 	cout << "Matrix transpose 16x16 bytes:\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * 256) * 1000 << " ps/Letter" << endl;
 }
+#endif
 
 #ifdef __SSE2__
 void swipe_cell_update() {
@@ -236,7 +238,9 @@ void benchmark() {
 #ifdef __SSSE3__
 	benchmark_ungapped_sse(s1, s2);
 #endif
+#ifdef __SSE__
 	benchmark_transpose();
+#endif
 #ifdef __SSE2__
 	banded_swipe(s1, s2);
 	swipe_cell_update();
