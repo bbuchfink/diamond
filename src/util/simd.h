@@ -42,6 +42,10 @@ enum class Arch { None, Generic, SSE4_1 };
 enum Flags { SSSE3 = 1, POPCNT = 2, SSE4_1 = 4 };
 Arch arch();
 
+#if defined(_M_AMD64) && defined(_MSC_VER)
+#define __SSE__
+#endif
+
 #ifdef __SSE__
 #define DECL_DISPATCH(ret, name, param) namespace ARCH_GENERIC { ret name param; }\
 namespace ARCH_SSE4_1 { ret name param; }\

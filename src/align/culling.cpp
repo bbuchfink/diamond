@@ -64,14 +64,14 @@ void score_only_culling(vector<Target> &targets) {
 	if (config.toppercent == 100.0 && (config.min_id > 0 || config.query_cover > 0 || config.subject_cover > 0 || config.no_self_hits))
 		return;
 
-	vector<Target>::iterator i;
+	vector<Target>::iterator i = targets.begin();
 	if (config.toppercent < 100.0) {
 		const int cutoff = std::max(int((1.0 - config.toppercent / 100.0)*targets.front().filter_score), 1);
 		while (i < targets.end() && i->filter_score >= cutoff)
 			++i;
 	}
 	else {
-		i = targets.begin() + std::min((size_t)config.max_alignments, targets.size());
+		i += std::min((size_t)config.max_alignments, targets.size());
 		while (--i > targets.begin() && i->filter_score == 0);
 		++i;
 	}
@@ -106,14 +106,14 @@ void culling(vector<Match> &targets, int source_query_len, const char *query_tit
 		targets.clear();
 		return;
 	}
-	vector<Match>::iterator i;
+	vector<Match>::iterator i = targets.begin();
 	if (config.toppercent < 100.0) {
 		const int cutoff = std::max(int((1.0 - config.toppercent / 100.0)*targets.front().filter_score), 1);
 		while (i < targets.end() && i->filter_score >= cutoff)
 			++i;
 	}
 	else {
-		i = targets.begin() + std::min((size_t)config.max_alignments, targets.size());
+		i += std::min((size_t)config.max_alignments, targets.size());
 		while (--i > targets.begin() && i->filter_score == 0);
 		++i;
 	}
