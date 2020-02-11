@@ -30,6 +30,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "score_profile.h"
 #include "../basic/translated_position.h"
 #include "../util/simd.h"
+#include "../basic/statistics.h"
 #include "comp_based_stats.h"
 #include "ungapped.h"
 #include "hsp_traits.h"
@@ -480,7 +481,7 @@ DECL_DISPATCH(std::list<Hsp>, swipe, (const sequence &query, const sequence *sub
 
 namespace BandedSwipe {
 
-DECL_DISPATCH(std::list<Hsp>, swipe, (const sequence &query, std::vector<DpTarget>::iterator target_begin, std::vector<DpTarget>::iterator target_end, Frame frame, const Bias_correction *composition_bias, int flags, int score_cutoff))
+DECL_DISPATCH(std::list<Hsp>, swipe, (const sequence &query, std::vector<DpTarget>::iterator target_begin, std::vector<DpTarget>::iterator target_end, Frame frame, const Bias_correction *composition_bias, int flags, int score_cutoff, Statistics &stat))
 
 }
 

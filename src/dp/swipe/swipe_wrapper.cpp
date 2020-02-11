@@ -38,7 +38,8 @@ list<Hsp> swipe(
 	vector<DpTarget>::const_iterator subject_end,
 	const int8_t *composition_bias,
 	int score_cutoff,
-	vector<DpTarget> &overflow);
+	vector<DpTarget> &overflow,
+	Statistics &stat);
 
 template<typename _sv>
 list<Hsp> swipe_targets(const sequence &query,
@@ -48,14 +49,15 @@ list<Hsp> swipe_targets(const sequence &query,
 	const int8_t *composition_bias,
 	int flags,
 	int score_cutoff,
-	vector<DpTarget> &overflow)
+	vector<DpTarget> &overflow,
+	Statistics &stat)
 {
 	list<Hsp> out;
 	for (vector<DpTarget>::const_iterator i = begin; i < end; i += ScoreTraits<_sv>::CHANNELS) {
 		if (flags & TRACEBACK)
-			out.splice(out.end(), swipe<_sv, Traceback>(query, frame, i, i + std::min(vector<DpTarget>::const_iterator::difference_type(ScoreTraits<_sv>::CHANNELS), end - i), composition_bias, score_cutoff, overflow));
+			out.splice(out.end(), swipe<_sv, Traceback>(query, frame, i, i + std::min(vector<DpTarget>::const_iterator::difference_type(ScoreTraits<_sv>::CHANNELS), end - i), composition_bias, score_cutoff, overflow, stat));
 		else
-			out.splice(out.end(), swipe<_sv, ScoreOnly>(query, frame, i, i + std::min(vector<DpTarget>::const_iterator::difference_type(ScoreTraits<_sv>::CHANNELS), end - i), composition_bias, score_cutoff, overflow));
+			out.splice(out.end(), swipe<_sv, ScoreOnly>(query, frame, i, i + std::min(vector<DpTarget>::const_iterator::difference_type(ScoreTraits<_sv>::CHANNELS), end - i), composition_bias, score_cutoff, overflow, stat));
 	}
 	return out;
 }
@@ -70,14 +72,16 @@ void swipe_worker(const sequence *query,
 	int flags,
 	int score_cutoff,
 	list<Hsp> *out,
-	vector<DpTarget> *overflow)
+	vector<DpTarget> *overflow,
+	Statistics *stat)
 {
-	DpStat stat;
+	Statistics stat2;
 	size_t pos;
 	vector<DpTarget> of;
 	while (begin + (pos = next->fetch_add(ScoreTraits<_sv>::CHANNELS)) < end)
-		out->splice(out->end(), swipe_targets<_sv>(*query, begin + pos, std::min(begin + pos + ScoreTraits<_sv>::CHANNELS, end), frame, composition_bias, flags, score_cutoff, of));
+		out->splice(out->end(), swipe_targets<_sv>(*query, begin + pos, std::min(begin + pos + ScoreTraits<_sv>::CHANNELS, end), frame, composition_bias, flags, score_cutoff, of, stat2));
 	*overflow = std::move(of);
+	*stat += stat2;
 }
 
 template<typename _sv>
@@ -88,7 +92,8 @@ list<Hsp> swipe_threads(const sequence &query,
 	const int8_t *composition_bias,
 	int flags,
 	int score_cutoff,
-	vector<DpTarget> &overflow) {
+	vector<DpTarget> &overflow,
+	Statistics &stat) {
 	if (flags & PARALLEL) {
 		task_timer timer("Banded swipe (run)", 3);
 		const size_t n = config.threads_;
@@ -108,7 +113,8 @@ list<Hsp> swipe_threads(const sequence &query,
 				flags,
 				score_cutoff,
 				&thread_out[i],
-				&thread_overflow[i]);
+				&thread_overflow[i],
+				&stat);
 		for (auto &t : threads)
 			t.join();
 		timer.go("Banded swipe (merge)");
@@ -121,11 +127,11 @@ list<Hsp> swipe_threads(const sequence &query,
 		return out;
 	}
 	else
-		return swipe_targets<_sv>(query, begin, end, frame, composition_bias, flags, score_cutoff, overflow);
+		return swipe_targets<_sv>(query, begin, end, frame, composition_bias, flags, score_cutoff, overflow, stat);
 }
 
 
-list<Hsp> swipe(const sequence &query, vector<DpTarget>::iterator target_begin, vector<DpTarget>::iterator target_end, Frame frame, const Bias_correction *composition_bias, int flags, int score_cutoff)
+list<Hsp> swipe(const sequence &query, vector<DpTarget>::iterator target_begin, vector<DpTarget>::iterator target_end, Frame frame, const Bias_correction *composition_bias, int flags, int score_cutoff, Statistics &stat)
 {
 	vector<DpTarget> overflow16, overflow32;
 #ifdef __SSE2__
@@ -133,12 +139,12 @@ list<Hsp> swipe(const sequence &query, vector<DpTarget>::iterator target_begin, 
 	list<Hsp> out;
 	std::stable_sort(target_begin, target_end);
 	timer.finish();
-	out = swipe_threads<score_vector<int16_t>>(query, target_begin, target_end, frame, composition_bias ? composition_bias->int8.data() : nullptr, flags, score_cutoff, overflow16);
+	out = swipe_threads<score_vector<int16_t>>(query, target_begin, target_end, frame, composition_bias ? composition_bias->int8.data() : nullptr, flags, score_cutoff, overflow16, stat);
 	if (!overflow16.empty())
-		out.splice(out.end(), swipe_threads<int32_t>(query, overflow16.begin(), overflow16.end(), frame, composition_bias ? composition_bias->int8.data() : nullptr, flags, score_cutoff, overflow32));
+		out.splice(out.end(), swipe_threads<int32_t>(query, overflow16.begin(), overflow16.end(), frame, composition_bias ? composition_bias->int8.data() : nullptr, flags, score_cutoff, overflow32, stat));
 	return out;
 #else
-	return swipe_threads<int32_t>(query, target_begin, target_end, frame, composition_bias ? composition_bias->int8.data() : nullptr, flags, score_cutoff, overflow32);
+	return swipe_threads<int32_t>(query, target_begin, target_end, frame, composition_bias ? composition_bias->int8.data() : nullptr, flags, score_cutoff, overflow32, stat);
 #endif
 }
 		

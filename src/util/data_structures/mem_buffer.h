@@ -66,6 +66,10 @@ struct MemBuffer {
 		return data_[i];
 	}
 
+	const _t& operator[](size_t i) const {
+		return data_[i];
+	}
+
 private:
 
 	_t *data_;

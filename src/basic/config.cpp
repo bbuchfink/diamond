@@ -301,7 +301,8 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("tantan-ungapped", 0, "use tantan masking in ungapped mode", tantan_ungapped)
 		("family-map", 0, "", family_map)
 		("chaining-range-cover", 0, "", chaining_range_cover, (size_t)8)
-		("index-mode", 0, "index mode (0=4x12, 1=16x9)", index_mode);
+		("index-mode", 0, "index mode (0=4x12, 1=16x9)", index_mode)
+		("no-swipe-realign", 0, "", no_swipe_realign);
 	
 	parser.add(general).add(makedb).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options);
 	parser.store(argc, argv, command);

@@ -36,7 +36,7 @@ void Match::inner_culling(int source_query_len)
 	for(Hsp &h : hsp)
 		h.query_source_range = TranslatedPosition::absolute_interval(TranslatedPosition(h.query_range.begin_, Frame(h.frame)), TranslatedPosition(h.query_range.end_, Frame(h.frame)), source_query_len);
 	for (list<Hsp>::iterator i = hsp.begin(); i != hsp.end();) {
-		if (i->is_enveloped_by(hsp.begin(), i, 0.5))
+		if (i->is_enveloped_by(hsp.begin(), i, 0.9))
 			i = hsp.erase(i);
 		else
 			++i;

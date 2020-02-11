@@ -26,6 +26,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/binary_buffer.h"
 #include "../util/text_buffer.h"
 #include "translated_position.h"
+#include "../util/interval.h"
 
 using std::vector;
 
@@ -174,6 +175,17 @@ struct sequence
 		}
 		return sequence(p + 1, s - p - 1);
 	}
+	std::vector<Letter> copy() const {
+		std::vector<Letter> v;
+		v.reserve(len_);
+		for (size_t i = 0; i < len_; ++i)
+			v.push_back(data_[i]);
+		return v;
+	}
+	void mask(const interval &i) {
+		for (int j = i.begin_; j < i.end_; ++j)
+			((Letter*)data_)[j] = value_traits.mask_char;
+	}
 	/*friend std::ostream& operator<<(std::ostream &os, const sequence &s)
 	{
 		std::cout << "co = " << s.clipping_offset_ << std::endl;
@@ -187,7 +199,7 @@ struct sequence
 	static vector<Letter> from_string(const char* str, const Value_traits &vt = value_traits);
 	size_t			len_;
 	int				clipping_offset_;
-	const Letter	*data_;
+	const Letter *data_;
 };
 
 struct TranslatedSequence

@@ -55,7 +55,7 @@ void add_dp_targets(const WorkTarget &target, int target_idx, const sequence *qu
 	}
 }
 
-vector<Target> align(const vector<WorkTarget> &targets, const sequence *query_seq, const Bias_correction *query_cb, int flags) {
+vector<Target> align(const vector<WorkTarget> &targets, const sequence *query_seq, const Bias_correction *query_cb, int flags, Statistics &stat) {
 	const int raw_score_cutoff = score_matrix.rawscore(config.min_bit_score == 0 ? score_matrix.bitscore(config.max_evalue, (unsigned)query_seq[0].length()) : config.min_bit_score);
 
 	array<vector<DpTarget>, MAX_CONTEXT> dp_targets;
@@ -78,7 +78,8 @@ vector<Target> align(const vector<WorkTarget> &targets, const sequence *query_se
 			Frame(frame),
 			config.comp_based_stats ? &query_cb[frame] : nullptr,
 			flags,
-			raw_score_cutoff);
+			raw_score_cutoff,
+			stat);
 		while (!hsp.empty())
 			r[hsp.front().swipe_target].add_hit(hsp, hsp.begin());
 	}
@@ -97,7 +98,9 @@ void add_dp_targets(const Target &target, int target_idx, const sequence *query_
 	}
 }
 
-vector<Match> align(vector<Target> &targets, const sequence *query_seq, const Bias_correction *query_cb, int source_query_len, int flags) {
+vector<Match> align(vector<Target> &targets, const sequence *query_seq, const Bias_correction *query_cb, int source_query_len, int flags, Statistics &stat) {
+	const int raw_score_cutoff = score_matrix.rawscore(config.min_bit_score == 0 ? score_matrix.bitscore(config.max_evalue, (unsigned)query_seq[0].length()) : config.min_bit_score);
+
 	array<vector<DpTarget>, MAX_CONTEXT> dp_targets;
 	vector<Match> r;
 	if (targets.empty())
@@ -125,7 +128,8 @@ vector<Match> align(vector<Target> &targets, const sequence *query_seq, const Bi
 			Frame(frame),
 			config.comp_based_stats ? &query_cb[frame] : nullptr,
 			DP::TRACEBACK | flags,
-			0);
+			raw_score_cutoff,
+			stat);
 		while (!hsp.empty())
 			r[hsp.front().swipe_target].add_hit(hsp, hsp.begin());
 	}
