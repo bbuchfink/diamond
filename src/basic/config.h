@@ -192,6 +192,7 @@ struct Config
 	string family_map;
 	size_t chaining_range_cover;
 	bool no_swipe_realign;
+	bool cut_bar;
 
 	enum {
 		makedb = 0, blastp = 1, blastx = 2, view = 3, help = 4, version = 5, getseq = 6, benchmark = 7, random_seqs = 8, compare = 9, sort = 10, roc = 11, db_stat = 12, model_sim = 13,
