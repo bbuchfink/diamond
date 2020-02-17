@@ -35,20 +35,20 @@ namespace Util { namespace tantan { namespace DISPATCH_ARCH {
 
 void mask(char *seq,
 	int len,
-	const float_t **likelihood_ratio_matrix,
-	float_t p_repeat,
-	float_t p_repeat_end,
-	float_t repeat_growth,
-	float_t p_mask,
+	const float **likelihood_ratio_matrix,
+	float p_repeat,
+	float p_repeat_end,
+	float repeat_growth,
+	float p_mask,
 	const char *mask_table) {
 	constexpr int WINDOW = 50, RESERVE = 50000;
 
-	thread_local std::array<Array<float_t, Dynamic, 1>, AMINO_ACID_COUNT> e;
-	thread_local Array<float_t, Dynamic, 1> pb;
-	thread_local Array<float_t, Dynamic, 1> scale;
-	Array<float_t, WINDOW, 1> f(0.0), d, t;
-	const float_t b2b = 1 - p_repeat, f2f = 1 - p_repeat_end, b2f0 = p_repeat * (1 - repeat_growth) / (1 - pow(repeat_growth, WINDOW));
-	float_t b = 1.0;
+	thread_local std::array<Array<float, Dynamic, 1>, AMINO_ACID_COUNT> e;
+	thread_local Array<float, Dynamic, 1> pb;
+	thread_local Array<float, Dynamic, 1> scale;
+	Array<float, WINDOW, 1> f(0.0), d, t;
+	const float b2b = 1 - p_repeat, f2f = 1 - p_repeat_end, b2f0 = p_repeat * (1 - repeat_growth) / (1 - pow(repeat_growth, WINDOW));
+	float b = 1.0;
 	
 	d[WINDOW - 1] = b2f0;
 	for (int i = WINDOW - 2; i >= 0; --i)
@@ -59,15 +59,15 @@ void mask(char *seq,
 
 	for (int i = 0; i < (int)AMINO_ACID_COUNT; ++i) {
 		e[i].resize(std::max(RESERVE, len + WINDOW));
-		const float_t *l = likelihood_ratio_matrix[i];
-		float_t* p = &e[i][len - 1];
+		const float *l = likelihood_ratio_matrix[i];
+		float* p = &e[i][len - 1];
 		for (int j = 0; j < len; ++j)
 			*(p--) = l[(size_t)seq[j]];
-		std::fill(e[i].data() + len, e[i].data() + len + WINDOW, (float_t)0.0);
+		std::fill(e[i].data() + len, e[i].data() + len + WINDOW, (float)0.0);
 	}	
 
 	for (int i = 0; i < len; ++i) {
-		const float_t s = f.sum();
+		const float s = f.sum();
 		t = b;
 		t *= d;
 		f *= f2f;
@@ -76,7 +76,7 @@ void mask(char *seq,
 		b = b * b2b + s * p_repeat_end;
 
 		if ((i & 15) == 15) {
-			const float_t s = 1 / b;
+			const float s = 1 / b;
 			scale[i / 16] = s;
 			b *= s;
 			f *= s;
@@ -85,15 +85,15 @@ void mask(char *seq,
 		pb[i] = b;
 	}
 
-	const float_t z = b * b2b + f.sum() * p_repeat_end;
+	const float z = b * b2b + f.sum() * p_repeat_end;
 	b = b2b;
 	f = p_repeat_end;
 
 	for (int i = len - 1; i >= 0; --i) {
-		const float_t pf = 1 - (pb[i] * b / z);
+		const float pf = 1 - (pb[i] * b / z);
 
 		if ((i & 15) == 15) {
-			const float_t s = scale[i / 16];
+			const float s = scale[i / 16];
 			b *= s;
 			f *= s;
 		}

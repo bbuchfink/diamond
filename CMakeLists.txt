@@ -162,6 +162,7 @@ add_executable(diamond $<TARGET_OBJECTS:arch_generic>
   src/tools/roc.cpp
   src/test/data.cpp
   src/basic/matrix_tables.cpp
+  src/test/test_cases.cpp
 )
 else()
 add_executable(diamond $<TARGET_OBJECTS:arch_generic>
@@ -261,6 +262,7 @@ add_executable(diamond $<TARGET_OBJECTS:arch_generic>
   src/tools/roc.cpp
   src/test/data.cpp
   src/basic/matrix_tables.cpp
+  src/test/test_cases.cpp
 )
 endif()
 

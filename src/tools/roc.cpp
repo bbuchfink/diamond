@@ -122,7 +122,7 @@ void roc() {
 			}
 			stats = QueryStats(r.qseqid, families);
 		}
-		if (r.qseqid.empty() || r.sseqid.empty() || std::isnan(r.evalue) || !std::isfinite(r.evalue) || r.evalue > 100.0 || r.evalue < 0.0)
+		if (r.qseqid.empty() || r.sseqid.empty() || std::isnan(r.evalue) || !std::isfinite(r.evalue) || r.evalue < 0.0)
 			throw std::runtime_error("Format error.");
 		stats.add(r, acc2fam);
 		++n;

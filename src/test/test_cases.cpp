@@ -18,15 +18,16 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#ifndef TANTAN_H_
-#define TANTAN_H_
+#include "test.h"
 
-#include "simd.h"
+namespace Test {
 
-namespace Util { namespace tantan {
+const TestCase test_cases[] = {
+	{ "blastp (default)", "blastp" }
+};
 
-DECL_DISPATCH(void, mask, (char *seq, int len, const float **likelihood_ratio_matrix, float p_repeat, float p_repeat_end, float repeat_decay, float p_mask, const char *maskTable))
+const uint64_t ref_hashes[] = {
+	0
+};
 
-}}
-
-#endif
+}

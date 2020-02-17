@@ -5,6 +5,7 @@
 #include <string.h>
 #include <algorithm>
 #include <ostream>
+#include <vector>
 
 inline bool ends_with(const std::string &s, const char *t) {
 	const size_t l = strlen(t);
@@ -26,6 +27,15 @@ inline size_t max_len(const char** s, size_t n) {
 	for (size_t i = 0; i < n; ++i)
 		l = std::max(l, strlen(s[i]));
 	return l;
+}
+
+template<typename _it>
+inline std::vector<const char*> charp_array(_it begin, _it end) {
+	std::vector<const char*> v;
+	v.reserve(end - begin);
+	for (auto i = begin; i != end; ++i)
+		v.push_back(i->c_str());
+	return v;
 }
 
 #define MAX_LEN(A) max_len(A, sizeof(A)/sizeof(A[0]))
