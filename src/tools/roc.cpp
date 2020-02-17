@@ -93,6 +93,9 @@ void roc() {
 
 		auto i = fam2idx.insert({ Family(domain_class[0], fold, superfam, fam), (int)fam2idx.size() });
 		acc2fam.insert({ acc, i.first->second });
+		size_t j = acc.find_last_of('|');
+		if (j != string::npos)
+			acc2fam.insert({ acc.substr(j + 1), i.first->second });
 		//cout << acc << '\t' << domain_class << '\t' << fold << '\t' << superfam << '\t' << fam << endl;
 	}
 	mapping_file.close();
