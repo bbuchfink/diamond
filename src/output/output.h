@@ -71,10 +71,12 @@ struct IntermediateRecord
 		f.read(subject_id);
 		f.read(flag);
 		f.read_packed(flag & 3, score);
-		f.read_packed((flag >> 2) & 3, query_begin);
-		f.read_varint(query_end);
-		f.read_packed((flag >> 4) & 3, subject_begin);
-		transcript.read(f);
+		if (!config.disable_traceback) {
+			f.read_packed((flag >> 2) & 3, query_begin);
+			f.read_varint(query_end);
+			f.read_packed((flag >> 4) & 3, subject_begin);
+			transcript.read(f);
+		}
 	}
 	interval absolute_query_range() const
 	{
@@ -96,13 +98,15 @@ struct IntermediateRecord
 	static void write(TextBuffer &buf, const Hsp &match, unsigned query_id, size_t subject_id)
 	{
 		const interval oriented_range (match.oriented_range());
-		buf.write(ReferenceDictionary::get().get(current_ref_block, subject_id))
-			.write(get_segment_flag(match))
-			.write_packed(match.score)
-			.write_packed(oriented_range.begin_)
-			.write_varint(oriented_range.end_)
-			.write_packed(match.subject_range.begin_)
-			<< match.transcript.data();
+		buf.write(ReferenceDictionary::get().get(current_ref_block, subject_id));
+		buf.write(get_segment_flag(match));
+		buf.write_packed(match.score);
+		if (!config.disable_traceback) {
+			buf.write_packed(oriented_range.begin_);
+			buf.write_varint(oriented_range.end_);
+			buf.write_packed(match.subject_range.begin_);
+			buf << match.transcript.data();
+		}
 	}
 	static void finish_file(Consumer &f)
 	{

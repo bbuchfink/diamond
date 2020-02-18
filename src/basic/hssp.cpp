@@ -40,6 +40,8 @@ bool Hsp::is_weakly_enveloped(const Hsp &j) const
 Hsp_context& Hsp_context::parse()
 {
 	hsp_.length = hsp_.identities = hsp_.mismatches = hsp_.gap_openings = hsp_.positives = hsp_.gaps = 0;
+	if (config.disable_traceback)
+		return *this;
 	unsigned d = 0;
 	Iterator i = begin();
 
