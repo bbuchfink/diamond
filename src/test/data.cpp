@@ -18,9 +18,11 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
+#include "test.h"
+
 namespace Test {
 
-const char* seqs[][2] = {
+const char* seqs[PROT_COUNT][2] = {
 { "d2dc3a_",
 "eelseaerkavqamwarlyancedvgvailvrffvnfpsakqyfsqfkhmedplemerspqlrkhacrvmgalntvvenlhdpdkvssvlalvgkahalkhkvepvyfkilsgvilevva\
 eefasdfppetqrawaklrgliyshvtaaykevgwvqqvpnattppatlpss" },
@@ -1393,7 +1395,19 @@ FPDLLRKMSPPGAITELAAVEDAFVPIIKFEYSGISIDLIFSRIATLKQLPGEKDWNLKDSNLLRGLDEAELRSVNGTRV
 VAWAMMVARVCQLYPKATSAVIVSKFFGILLQWPWPNPVLLKNIESGPLQARVWNPKIYKGDGFHLMPIITPAYPSMCATFNITRSSMTVIQRELSLASDLCQKIMAGIRPWSALFTRHT\
 FFTQDYKYYISVIASSTDKEAHVKWAGFVESKVRLLVQGLERHQSIVLARPFNKGYERTNMCASPEGVEEVKNGSLAYVVKKEEGEAIKAEATNGNGTQAKTEVKADSTSEAKTEVKPEV\
 KTEDVPLNVKPEDGADAAVKLEDVQPQGTEVYTTTHYIGIELVESKLPLYDLAFSDPGLLCPCPGWISQDGFLNISPSTEAKSLDLSYQVNEFKDLCFAWELYRNELHKTCTVNIQHVRN\
-FTLPDDVFEAGEVKPTKPVKKRNVPATAQAANAANSKKRTASEEQNNPPKRQQTTVAAG" }
+FTLPDDVFEAGEVKPTKPVKKRNVPATAQAANAANSKKRTASEEQNNPPKRQQTTVAAG" },
+{ "d3d1ka_",
+"slsdkdkaavralwskigkssdaigndalsrmivvypqtkiyfshwpdvtpgspnikahgkkvmggialavskiddlktglmelseqhayklrvdpsnfkilnhcilvvistmfpkeftp\
+eahvsldkflsgvalalaeryr" },
+{ "d4esaa_",
+"slsdkdkaavkllwskiskssdaigndalsrmivvypqtktyfahwpdlspgsphvkahgktvmggialavskiddlraglldlseqhayklrvdpanfkilshcilvvismmfpkeftp\
+eahvsldkflsgvslalseryr" },
+{ "d1v4wa_",
+"ttlsdkdkstvkalwgkisksadaigadalgrmlavypqtktyfshwpdmspgsgpvkahgkkvmggvalavskiddlttglgdlselhafkmrvdpsnfkilshcilvvvakmfpkeft\
+pdahvsldkflasvalalaeryr" },
+{ "d3bj1a_",
+"slsskdkdavkalwgkiadkaeeigadalgrmlavypqtktyfshwkdlspgsapvnkhgktimgglvdavasiddlnagllalselhaftlrvdpanfkilshcilvqlavkfpkdftp\
+evhlsydkffsavaralaekyr" }
 };
 
 }

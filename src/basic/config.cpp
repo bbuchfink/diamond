@@ -303,7 +303,8 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("chaining-range-cover", 0, "", chaining_range_cover, (size_t)8)
 		("index-mode", 0, "index mode (0=4x12, 1=16x9)", index_mode)
 		("no-swipe-realign", 0, "", no_swipe_realign)
-		("cut-bar", 0, "", cut_bar);
+		("cut-bar", 0, "", cut_bar)
+		("bootstrap", 0, "", bootstrap);
 	
 	parser.add(general).add(makedb).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options);
 	parser.store(argc, argv, command);
@@ -366,7 +367,7 @@ Config::Config(int argc, const char **argv, bool check_io)
 	else if (verbose)
 		verbosity = 2;
 	else if (((command == Config::view || command == blastx || command == blastp) && output_file == "")
-		|| command == Config::version || command == getseq || command == fastq2fasta)
+		|| command == Config::version || command == getseq || command == fastq2fasta || command == regression_test)
 		verbosity = 0;
 	else
 		verbosity = 1;
@@ -400,9 +401,11 @@ Config::Config(int argc, const char **argv, bool check_io)
 			auto_append_extension(output_file, ".gz");
 	}
 
-	ostream &header_out = command == Config::help ? cout : cerr;
-	header_out << Const::program_name << " v" << Const::version_string << "." << (unsigned)Const::build_version << " (C) Max Planck Society for the Advancement of Science" << endl;
-	header_out << "Documentation, support and updates available at http://www.diamondsearch.org" << endl << endl;
+	if (verbosity >= 1 || command == regression_test) {
+		ostream &header_out = command == Config::help ? cout : cerr;
+		header_out << Const::program_name << " v" << Const::version_string << "." << (unsigned)Const::build_version << " (C) Max Planck Society for the Advancement of Science" << endl;
+		header_out << "Documentation, support and updates available at http://www.diamondsearch.org" << endl << endl;
+	}
 	log_stream << Const::program_name << " v" << Const::version_string << "." << (unsigned)Const::build_version << endl;
 #ifndef NDEBUG
 	verbose_stream << "Assertions enabled." << endl;

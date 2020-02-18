@@ -1,3 +1,6 @@
+[0.9.31]
+- Option `--quiet` will suppress startup message.
+
 [0.9.30]
 - Added support for output field `cigar` to the tabular format.
 - Changed the maximum repeat period to 50 for tantan masking.

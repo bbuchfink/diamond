@@ -1,5 +1,6 @@
 #include <stdexcept>
 #include <string.h>
+#include <iostream>
 #include "system.h"
 #include "../string/string.h"
 #include "../log_stream.h"
@@ -49,4 +50,43 @@ void auto_append_extension_if_exists(string &str, const char *ext) {
 
 void log_rss() {
 	log_stream << "Current RSS: " << convert_size(getCurrentRSS()) << ", Peak RSS: " << convert_size(getPeakRSS()) << endl;
+}
+
+void set_color(Color color) {
+#ifdef WIN32
+	HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+	WORD c = FOREGROUND_RED | FOREGROUND_BLUE | FOREGROUND_GREEN;
+	switch (color) {
+	case Color::RED:
+		c = FOREGROUND_RED;
+		break;
+	case Color::GREEN:
+		c = FOREGROUND_GREEN;
+	default:
+		break;
+	}
+	SetConsoleTextAttribute(hConsole, c);
+#else
+	cout << "\033[";
+	switch (color) {
+	case Color::RED:
+		cout << 31;
+		break;
+	case Color::GREEN:
+		cout << 32;
+		break;
+	default:
+		break;
+	}
+	cout << 'm';
+#endif
+}
+
+void reset_color() {
+#ifdef WIN32
+	HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+	SetConsoleTextAttribute(hConsole, FOREGROUND_RED | FOREGROUND_BLUE | FOREGROUND_GREEN);
+#else
+	cout << "\033[" << 39 << 'm';
+#endif
 }

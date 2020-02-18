@@ -87,6 +87,7 @@ struct DAA_header2
 	{
 		memset(block_type, 0, sizeof(block_type));
 		memset(block_size, 0, sizeof(block_size));
+		memset(this->score_matrix, 0, sizeof(this->score_matrix));
 		strcpy(this->score_matrix, score_matrix.c_str());
 	}
 	typedef enum { empty = 0, alignments = 1, ref_names = 2, ref_lengths = 3 } Block_type;

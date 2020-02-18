@@ -35,6 +35,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../run/workflow.h"
 #include "../util/util.h"
 #include "../util/string/string.h"
+#include "../util/system/system.h"
 
 using std::endl;
 using std::string;
@@ -43,7 +44,7 @@ using std::cout;
 
 namespace Test {
 
-void run_testcase(size_t i, DatabaseFile &db, TextInputFile &query_file, size_t max_width) {
+size_t run_testcase(size_t i, DatabaseFile &db, TextInputFile &query_file, size_t max_width, bool bootstrap) {
 	vector<string> args = tokenize(test_cases[i].command_line, " ");
 	args.emplace(args.begin(), "diamond");
 	config = Config((int)args.size(), charp_array(args.begin(), args.end()).data(), false);
@@ -58,13 +59,29 @@ void run_testcase(size_t i, DatabaseFile &db, TextInputFile &query_file, size_t 
 	Workflow::Search::run(opt);
 
 	InputFile out_in(output_file);
-	const bool passed = out_in.hash() == ref_hashes[i];
-	out_in.close_and_delete();
+	uint64_t hash = out_in.hash();
+	
+	if (bootstrap)
+		out_in.close();
+	else
+		out_in.close_and_delete();
 
-	cout << std::setw(max_width) << test_cases[i].desc << " [ " << (passed ? "Passed" : "Failed") << " ]" << endl;
+	if (bootstrap)
+		cout << "0x" << std::hex << hash << ',' << endl;
+	else {
+		const bool passed = hash == ref_hashes[i];
+		cout << std::setw(max_width) << std::left << test_cases[i].desc << " [ ";
+		set_color(passed ? Color::GREEN : Color::RED);
+		cout << (passed ? "Passed" : "Failed");
+		reset_color();
+		cout << " ]" << endl;
+		return passed ? 1 : 0;
+	}
+	return 0;
 }
 
-void run() {
+int run() {
+	bool bootstrap = config.bootstrap;
 	task_timer timer("Generating test dataset");
 	TempFile proteins;
 	for (size_t i = 0; i < sizeof(seqs) / sizeof(seqs[0]); ++i)
@@ -79,12 +96,16 @@ void run() {
 
 	const size_t n = sizeof(test_cases) / sizeof(test_cases[0]),
 		max_width = std::accumulate(test_cases, test_cases + n, (size_t)0, [](size_t l, const TestCase &t) { return std::max(l, strlen(t.desc)); });
+	size_t passed = 0;
 	for (size_t i = 0; i < n; ++i)
-		run_testcase(i, db, query_file, max_width);
+		passed += run_testcase(i, db, query_file, max_width, bootstrap);
+
+	cout << endl << "#Test cases passed: " << passed << '/' << n << endl;
 
 	query_file.close_and_delete();
 	db.close();
 	delete db_file;
+	return passed == n ? 0 : 1;
 }
 
 }

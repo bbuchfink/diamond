@@ -57,7 +57,7 @@ void split();
 namespace Benchmark { DECL_DISPATCH(void, benchmark, ()) }
 namespace Util { namespace Algo { namespace UPGMA { void upgma(); } } }
 namespace Util { namespace Algo { namespace UPGMA_MC { void upgma(); } } }
-namespace Test { void run();
+namespace Test { int run();
 void simulate_seqs();
 void mutate();
 }
@@ -147,7 +147,7 @@ int main(int ac, const char* av[])
 			Util::Algo::UPGMA_MC::upgma();
 			break;
 		case Config::regression_test:
-			Test::run();
+			return Test::run();
 			break;
 		case Config::reverse_seqs:
 			reverse();

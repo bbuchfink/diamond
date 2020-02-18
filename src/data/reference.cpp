@@ -155,7 +155,7 @@ void make_db(TempFile **tmp_out, TextInputFile *input_file)
 	message_stream << "Database file: " << config.input_ref_file << endl;
 	
 	task_timer total;
-	if (config.input_ref_file == "")
+	if (config.input_ref_file == "" && !input_file)
 		std::cerr << "Input file parameter (--in) is missing. Input will be read from stdin." << endl;
 	task_timer timer("Opening the database file", true);
 	TextInputFile *db_file = input_file ? input_file : new TextInputFile(config.input_ref_file);

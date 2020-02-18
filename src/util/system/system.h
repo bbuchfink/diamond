@@ -4,6 +4,10 @@
 #include <stdio.h>
 #include <string>
 
+enum class Color { RED, GREEN };
+
+void set_color(Color color);
+void reset_color();
 std::string executable_path();
 bool exists(const std::string &file_name);
 void auto_append_extension(std::string &str, const char *ext);
