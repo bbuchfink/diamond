@@ -104,6 +104,7 @@ inline void finish_daa(OutputFile &f, const DatabaseFile &db)
 
 	size_t s = 0;
 	for (PtrVector<string>::const_iterator i = dict.name_.begin(); i != dict.name_.end(); ++i) {
+		//std::cout << **i << endl;
 		f << **i;
 		s += (*i)->length() + 1;
 	}

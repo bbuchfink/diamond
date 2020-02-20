@@ -35,6 +35,8 @@ endif()
 find_package(ZLIB REQUIRED)
 find_package(Threads REQUIRED)
 
+add_subdirectory("${CMAKE_SOURCE_DIR}/src/lib/fmt")
+
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
   set(CMAKE_BUILD_TYPE Release)
 endif()
@@ -279,6 +281,6 @@ if(EXTRA)
   add_definitions(-DEXTRA)
 endif()
 
-target_link_libraries(diamond ${ZLIB_LIBRARY} ${CMAKE_THREAD_LIBS_INIT})
+target_link_libraries(diamond ${ZLIB_LIBRARY} ${CMAKE_THREAD_LIBS_INIT} fmt)
 
 install(TARGETS diamond DESTINATION bin)

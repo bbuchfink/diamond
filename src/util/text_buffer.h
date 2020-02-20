@@ -25,6 +25,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <stdint.h>
 #include <limits>
 #include <vector>
+#include <iterator>
+#include <fmt/include/fmt/format.h>
 #include "util.h"
 #include "algo/varint.h"
 
@@ -32,6 +34,8 @@ using std::vector;
 
 struct TextBuffer
 {
+
+	typedef char value_type;
 
 	TextBuffer():
 		data_ (0),
@@ -98,6 +102,10 @@ struct TextBuffer
 		reserve(len);
 		memcpy(ptr_, s, len);
 		ptr_ += len;
+	}
+
+	void push_back(char c) {
+		*(ptr_++) = c;
 	}
 
 	void write_until(const char *s, const char *delimiters)
@@ -188,7 +196,7 @@ struct TextBuffer
 	TextBuffer& operator<<(double x)
 	{
 		reserve(32);
-		ptr_ += sprintf(ptr_, "%.1lf", x);
+		fmt::format_to(std::back_inserter(*this), "{:.1f}", x);
 		return *this;
 	}
 
@@ -202,7 +210,7 @@ struct TextBuffer
 	TextBuffer& print_e(double x)
 	{
 		reserve(32);
-		ptr_ += sprintf(ptr_, "%.1le", x);
+		fmt::format_to(std::back_inserter(*this), "{:.1e}", x);
 		return *this;
 	}
 
