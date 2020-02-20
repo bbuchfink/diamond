@@ -25,10 +25,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <stdint.h>
 #include <limits>
 #include <vector>
-#include <iterator>
-#include <fmt/include/fmt/format.h>
 #include "util.h"
 #include "algo/varint.h"
+#include "string/string.h"
 
 using std::vector;
 
@@ -196,7 +195,7 @@ struct TextBuffer
 	TextBuffer& operator<<(double x)
 	{
 		reserve(32);
-		fmt::format_to(std::back_inserter(*this), "{:.1f}", x);
+		ptr_ += Util::String::format_double(x, ptr_);
 		return *this;
 	}
 
@@ -210,7 +209,7 @@ struct TextBuffer
 	TextBuffer& print_e(double x)
 	{
 		reserve(32);
-		fmt::format_to(std::back_inserter(*this), "{:.1e}", x);
+		ptr_ += sprintf(ptr_, "%.1e", x);
 		return *this;
 	}
 
