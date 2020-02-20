@@ -94,7 +94,7 @@ QueryMapper::QueryMapper(const Parameters &params, size_t query_id, Trace_pt_lis
 void QueryMapper::init()
 {
 	if(config.log_query)
-		cout << "Query = " << query_ids::get()[query_id].c_str() << endl;
+		cout << "Query = " << query_ids::get()[query_id].c_str() << '\t' << query_id << endl;
 	if (config.comp_based_stats == 1)
 		for (unsigned i = 0; i < align_mode.query_contexts; ++i)
 			query_cb.emplace_back(query_seq(i));
