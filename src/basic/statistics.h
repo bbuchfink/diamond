@@ -34,7 +34,7 @@ struct Statistics
 		SEED_HITS, TENTATIVE_MATCHES0, TENTATIVE_MATCHES1, TENTATIVE_MATCHES2, TENTATIVE_MATCHES3, TENTATIVE_MATCHES4, TENTATIVE_MATCHESX, MATCHES, ALIGNED, GAPPED, DUPLICATES,
 		GAPPED_HITS, QUERY_SEEDS, QUERY_SEEDS_HIT, REF_SEEDS, REF_SEEDS_HIT, QUERY_SIZE, REF_SIZE, OUT_HITS, OUT_MATCHES, COLLISION_LOOKUPS, QCOV, BIAS_ERRORS, SCORE_TOTAL, ALIGNED_QLEN, PAIRWISE, HIGH_SIM,
 		TEMP_SPACE, SECONDARY_HITS, ERASED_HITS, SQUARED_ERROR, CELLS, OUTRANKED_HITS, TARGET_HITS0, TARGET_HITS1, TARGET_HITS2, TARGET_HITS3, TIME_GREEDY_EXT, LOW_COMPLEXITY_SEEDS,
-		SWIPE_REALIGN, COUNT
+		SWIPE_REALIGN, EXT8, EXT16, EXT32, COUNT
 	};
 
 	Statistics()
@@ -82,6 +82,9 @@ struct Statistics
 		log_stream << "Target hits (stage 2) = " << data_[TARGET_HITS2] << endl;
 		log_stream << "Target hits (stage 3) = " << data_[TARGET_HITS3] << endl;
 		log_stream << "Swipe realignments    = " << data_[SWIPE_REALIGN] << endl;
+		log_stream << "Extensions (8 bit)    = " << data_[EXT8] << endl;
+		log_stream << "Extensions (16 bit)   = " << data_[EXT16] << endl;
+		log_stream << "Extensions (32 bit)   = " << data_[EXT32] << endl;
 		log_stream << "Time (greedy extension) = " << data_[TIME_GREEDY_EXT]/1e9 << "s" << endl;
 		//log_stream << "Gapped hits = " << data_[GAPPED_HITS] << endl;
 		//log_stream << "Overlap hits = " << data_[DUPLICATES] << endl;

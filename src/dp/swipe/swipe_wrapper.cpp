@@ -23,6 +23,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <limits.h>
 #include "../dp.h"
 #include "../score_vector_int16.h"
+#include "../score_vector_int8.h"
 
 using std::list;
 using std::atomic;
@@ -133,15 +134,24 @@ list<Hsp> swipe_threads(const sequence &query,
 
 list<Hsp> swipe(const sequence &query, vector<DpTarget>::iterator target_begin, vector<DpTarget>::iterator target_end, Frame frame, const Bias_correction *composition_bias, int flags, int score_cutoff, Statistics &stat)
 {
-	vector<DpTarget> overflow16, overflow32;
+	vector<DpTarget> overflow8, overflow16, overflow32;
 #ifdef __SSE2__
 	task_timer timer("Banded swipe (sort)", flags & PARALLEL ? 3 : UINT_MAX);
 	list<Hsp> out;
 	std::stable_sort(target_begin, target_end);
 	timer.finish();
-	out = swipe_threads<score_vector<int16_t>>(query, target_begin, target_end, frame, composition_bias ? composition_bias->int8.data() : nullptr, flags, score_cutoff, overflow16, stat);
-	if (!overflow16.empty())
-		out.splice(out.end(), swipe_threads<int32_t>(query, overflow16.begin(), overflow16.end(), frame, composition_bias ? composition_bias->int8.data() : nullptr, flags, score_cutoff, overflow32, stat));
+#ifdef __SSE4_1__
+	stat.inc(Statistics::EXT8, target_end - target_begin);
+	out = swipe_threads<score_vector<int8_t>>(query, target_begin, target_end, frame, composition_bias ? composition_bias->int8.data() : nullptr, flags, score_cutoff, overflow8, stat);
+#endif
+	if (!overflow8.empty()) {
+		stat.inc(Statistics::EXT16, overflow8.size());
+		out.splice(out.end(), swipe_threads<score_vector<int16_t>>(query, overflow8.begin(), overflow8.end(), frame, composition_bias ? composition_bias->int8.data() : nullptr, flags, score_cutoff, overflow16, stat));
+		if (!overflow16.empty()) {
+			stat.inc(Statistics::EXT32, overflow16.size());
+			out.splice(out.end(), swipe_threads<int32_t>(query, overflow16.begin(), overflow16.end(), frame, composition_bias ? composition_bias->int8.data() : nullptr, flags, score_cutoff, overflow32, stat));
+		}
+	}
 	return out;
 #else
 	return swipe_threads<int32_t>(query, target_begin, target_end, frame, composition_bias ? composition_bias->int8.data() : nullptr, flags, score_cutoff, overflow32, stat);

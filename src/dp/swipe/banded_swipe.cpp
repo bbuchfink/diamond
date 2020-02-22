@@ -25,6 +25,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../../util/data_structures/mem_buffer.h"
 #include "../score_vector_int16.h"
 #include "../../util/math/integer.h"
+#include "../score_vector_int8.h"
 
 using std::list;
 
@@ -392,7 +393,7 @@ list<Hsp> swipe(
 		if (i0_ - i0 > 0)
 			it.set_zero();
 
-		profile.set(targets.get());
+		profile.set(targets.get(Score()));
 		for (int i = i0_; i <= i1_; ++i) {
 			hgap = it.hgap();
 			_sv next;
@@ -456,6 +457,10 @@ list<Hsp> swipe(
 	return out;
 }
 
+#ifdef __SSE4_1__
+template list<Hsp> swipe<score_vector<int8_t>, Traceback>(const sequence&, Frame, vector<DpTarget>::const_iterator, vector<DpTarget>::const_iterator, const int8_t*, int, vector<DpTarget>& overflow, Statistics& stat);
+template list<Hsp> swipe<score_vector<int8_t>, ScoreOnly>(const sequence&, Frame, vector<DpTarget>::const_iterator, vector<DpTarget>::const_iterator, const int8_t*, int, vector<DpTarget>& overflow, Statistics& stat);
+#endif
 #ifdef __SSE2__
 template list<Hsp> swipe<score_vector<int16_t>, Traceback>(const sequence&, Frame, vector<DpTarget>::const_iterator, vector<DpTarget>::const_iterator, const int8_t*, int, vector<DpTarget> &overflow, Statistics &stat);
 template list<Hsp> swipe<score_vector<int16_t>, ScoreOnly>(const sequence&, Frame, vector<DpTarget>::const_iterator, vector<DpTarget>::const_iterator, const int8_t*, int, vector<DpTarget> &overflow, Statistics &stat);

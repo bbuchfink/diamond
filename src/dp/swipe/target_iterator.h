@@ -56,9 +56,9 @@ struct TargetIterator
 	}
 
 #ifdef __SSSE3__
-	__m128i get()
+	template<typename _t> __m128i get(const _t&)
 	{
-		int16_t s[8];
+		_t s[_n];
 #ifdef DP_STAT
 		live = 0;
 #endif
@@ -69,7 +69,7 @@ struct TargetIterator
 		return _mm_loadu_si128((const __m128i*)s);
 	}
 #else
-	uint64_t get()
+	template<typename _t> uint64_t get(const _t&)
 	{
 		uint64_t dst = 0;
 		for (int i = 0; i < active.size(); ++i) {
