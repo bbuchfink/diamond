@@ -563,6 +563,11 @@ struct Greedy_aligner2
 
 	int run(list<Hsp> &hsps, list<Hsp_traits> &ts, double space_penalty, int cutoff, int max_shift)
 	{
+		if (config.chaining_maxnodes > 0) {
+			std::sort(diags.nodes.begin(), diags.nodes.end(), Diagonal_segment::cmp_score);
+			if (diags.nodes.size() > config.chaining_maxnodes)
+				diags.nodes.erase(diags.nodes.begin() + config.chaining_maxnodes, diags.nodes.end());
+		}
 		diags.sort();
 		if(config.ext == Config::banded_swipe)
 			diags.prune();

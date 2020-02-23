@@ -32,8 +32,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 namespace Extension {
 
-constexpr int DEFAULT_BAND = 75;
-
 enum { TARGET_PARALLEL = 2 };
 
 struct Match {

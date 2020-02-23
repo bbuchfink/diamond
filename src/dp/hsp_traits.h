@@ -55,7 +55,7 @@ struct Hsp_traits
 		const int di = d.i - query_range.begin_, dj = d.j - subject_range.begin_;
 		return (di >= 0 && dj >= 0) || (di <= 0 && dj <= 0);
 	}
-	static bool cmp_diag(const Hsp_traits &x, const Hsp_traits &y)
+	static bool cmp_diag(const Hsp_traits& x, const Hsp_traits& y)
 	{
 		return x.frame < y.frame || (x.frame == y.frame && x.d_min < y.d_min);
 	}

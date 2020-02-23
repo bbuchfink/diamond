@@ -101,6 +101,10 @@ struct Diagonal_segment
 	{
 		return x.j < y.j || (x.j == y.j && x.i < y.i);
 	}
+	static bool cmp_score(const Diagonal_segment& x, const Diagonal_segment& y)
+	{
+		return x.score > y.score;
+	}
 	static bool cmp_subject_end(const Diagonal_segment &x, const Diagonal_segment &y)
 	{
 		return x.subject_end() < y.subject_end();

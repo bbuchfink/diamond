@@ -28,8 +28,29 @@ using std::list;
 
 namespace Extension {
 
+int band(int len) {
+	if (config.padding > 0)
+		return config.padding;
+	if (len < 50)
+		return 15;
+	if (len < 100)
+		return 20;
+	if (len < 150)
+		return 30;
+	if (len < 200)
+		return 50;
+	if (len < 250)
+		return 60;
+	if(len < 350)
+		return 100;
+	if (len < 500)
+		return 120;
+	return 150;
+}
+
 Match::Match(size_t target_block_id, bool outranked, std::array<std::list<Hsp>, MAX_CONTEXT> &hsps):
 	target_block_id(target_block_id),
+	filter_score(0),
 	outranked(outranked)
 {
 	for (unsigned i = 0; i < align_mode.query_contexts; ++i)
@@ -42,7 +63,7 @@ Match::Match(size_t target_block_id, bool outranked, std::array<std::list<Hsp>, 
 }
 
 void add_dp_targets(const WorkTarget &target, int target_idx, const sequence *query_seq, array<vector<DpTarget>, MAX_CONTEXT> &dp_targets) {
-	const int band = config.padding > 0 ? config.padding : DEFAULT_BAND,
+	const int band = Extension::band((int)query_seq->length()),
 		slen = (int)target.seq.length();
 	for (unsigned frame = 0; frame < align_mode.query_contexts; ++frame) {
 		const int qlen = (int)query_seq[frame].length();
@@ -88,7 +109,7 @@ vector<Target> align(const vector<WorkTarget> &targets, const sequence *query_se
 }
 
 void add_dp_targets(const Target &target, int target_idx, const sequence *query_seq, array<vector<DpTarget>, MAX_CONTEXT> &dp_targets) {
-	const int band = config.padding > 0 ? config.padding : DEFAULT_BAND,
+	const int band = Extension::band((int)query_seq->length()),
 		slen = (int)target.seq.length();
 	for (unsigned frame = 0; frame < align_mode.query_contexts; ++frame) {
 		const int qlen = (int)query_seq[frame].length();
