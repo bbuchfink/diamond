@@ -7,6 +7,7 @@
 #include <ostream>
 #include <vector>
 #include <math.h>
+#include <cmath>
 #include <stdio.h>
 
 inline bool ends_with(const std::string &s, const char *t) {
@@ -48,7 +49,7 @@ namespace Util { namespace String {
 
 // Workaround since sprintf is inconsistent in double rounding for different implementations.
 inline int format_double(double x, char *p) {
-	long long i = (long long)std::round(x*10.0);
+	long long i = std::llround(x*10.0);
 	return sprintf(p, "%lli.%lli", i / 10, i % 10);
 }
 

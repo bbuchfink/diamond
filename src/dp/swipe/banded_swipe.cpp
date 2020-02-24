@@ -432,7 +432,7 @@ list<Hsp> swipe(
 		if (best[i] < ScoreTraits<_sv>::max_score()) {
 			if (ScoreTraits<_sv>::int_score(best[i]) >= score_cutoff) {
 				out.push_back(traceback<_sv>(query, frame, composition_bias, dp, subject_begin[i], d_begin[i], best[i], max_col[i], i, i0 - j, i1 - j));
-				if (!config.no_swipe_realign && ::DP::BandedSwipe::DISPATCH_ARCH::realign<_sv>(out.back(), col_max, i, score_cutoff, i1 - j - (subject_begin[i].d_end - 1), _traceback()))
+				if (!realign && !config.no_swipe_realign && ::DP::BandedSwipe::DISPATCH_ARCH::realign<_sv>(out.back(), col_max, i, score_cutoff, i1 - j - (subject_begin[i].d_end - 1), _traceback()))
 					realign = true;
 			}
 		}
