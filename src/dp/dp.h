@@ -316,7 +316,7 @@ struct Diag_graph
 		int max_score = d.score;
 		vector<Edge>::const_iterator max_edge = edges.end();
 		for (vector<Edge>::const_iterator i = edges.begin() + d.link_idx - 1; i >= edges.begin() && i->node_in == node; --i)
-			if (i->j <= j && i->prefix_score > max_score) {
+			if (i->j < j && i->prefix_score > max_score) {
 				max_edge = i;
 				max_score = i->prefix_score;
 			}
