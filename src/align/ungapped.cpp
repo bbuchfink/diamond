@@ -52,8 +52,10 @@ struct SeedHit {
 WorkTarget ungapped_stage(const SeedHit *begin, const SeedHit *end, const sequence *query_seq, const Bias_correction *query_cb, size_t block_id) {
 	array<vector<Diagonal_segment>, MAX_CONTEXT> diagonal_segments;
 	WorkTarget target(block_id, ref_seqs::get()[block_id]);
-	for (const SeedHit *hit = begin; hit < end; ++hit)
-		diagonal_segments[hit->frame].push_back(xdrop_ungapped(query_seq[hit->frame], target.seq, hit->i, hit->j));
+	for (const SeedHit *hit = begin; hit < end; ++hit) {
+		const auto d = xdrop_ungapped(query_seq[hit->frame], target.seq, hit->i, hit->j);
+		if(d.score >= config.min_ungapped_raw_score) diagonal_segments[hit->frame].push_back(d);
+	}
 	for (unsigned frame = 0; frame < align_mode.query_contexts; ++frame) {
 		if (diagonal_segments[frame].empty())
 			continue;
