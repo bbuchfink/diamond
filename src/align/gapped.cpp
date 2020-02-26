@@ -62,7 +62,7 @@ Match::Match(size_t target_block_id, bool outranked, std::array<std::list<Hsp>, 
 		max_hsp_culling();
 }
 
-void add_dp_targets(const WorkTarget &target, int target_idx, const sequence *query_seq, array<vector<DpTarget>, MAX_CONTEXT> &dp_targets) {
+void add_dp_targets(const WorkTarget &target, int target_idx, const sequence *query_seq, array<array<vector<DpTarget>, 2>, MAX_CONTEXT> &dp_targets) {
 	const int band = Extension::band((int)query_seq->length()),
 		slen = (int)target.seq.length();
 	for (unsigned frame = 0; frame < align_mode.query_contexts; ++frame) {
@@ -71,7 +71,8 @@ void add_dp_targets(const WorkTarget &target, int target_idx, const sequence *qu
 			if (config.log_extend) {
 				cout << "i_begin=" << hsp.query_range.begin_ << " j_begin=" << hsp.subject_range.begin_ << " d_min=" << hsp.d_min << " d_max=" << hsp.d_max << endl;
 			}
-			dp_targets[frame].emplace_back(target.seq, std::max(hsp.d_min - band, -(slen - 1)), std::min(hsp.d_max + 1 + band, qlen), target_idx);
+			vector<DpTarget> &v = hsp.score <= config.cutoff_score_8bit ? dp_targets[frame][0] : dp_targets[frame][1];
+			v.emplace_back(target.seq, std::max(hsp.d_min - band, -(slen - 1)), std::min(hsp.d_max + 1 + band, qlen), target_idx);
 		}
 	}
 }
@@ -79,7 +80,7 @@ void add_dp_targets(const WorkTarget &target, int target_idx, const sequence *qu
 vector<Target> align(const vector<WorkTarget> &targets, const sequence *query_seq, const Bias_correction *query_cb, int flags, Statistics &stat) {
 	const int raw_score_cutoff = score_matrix.rawscore(config.min_bit_score == 0 ? score_matrix.bitscore(config.max_evalue, (unsigned)query_seq[0].length()) : config.min_bit_score);
 
-	array<vector<DpTarget>, MAX_CONTEXT> dp_targets;
+	array<array<vector<DpTarget>, 2>, MAX_CONTEXT> dp_targets;
 	vector<Target> r;
 	if (targets.empty())
 		return r;
@@ -94,8 +95,8 @@ vector<Target> align(const vector<WorkTarget> &targets, const sequence *query_se
 			continue;
 		list<Hsp> hsp = DP::BandedSwipe::swipe(
 			query_seq[frame],
-			dp_targets[frame].begin(),
-			dp_targets[frame].end(),
+			dp_targets[frame][0],
+			dp_targets[frame][1],
 			Frame(frame),
 			config.comp_based_stats ? &query_cb[frame] : nullptr,
 			flags,
@@ -108,13 +109,14 @@ vector<Target> align(const vector<WorkTarget> &targets, const sequence *query_se
 	return r;
 }
 
-void add_dp_targets(const Target &target, int target_idx, const sequence *query_seq, array<vector<DpTarget>, MAX_CONTEXT> &dp_targets) {
+void add_dp_targets(const Target &target, int target_idx, const sequence *query_seq, array<array<vector<DpTarget>, 2>, MAX_CONTEXT> &dp_targets) {
 	const int band = Extension::band((int)query_seq->length()),
 		slen = (int)target.seq.length();
 	for (unsigned frame = 0; frame < align_mode.query_contexts; ++frame) {
 		const int qlen = (int)query_seq[frame].length();
 		for (const Hsp &hsp : target.hsp[frame]) {
-			dp_targets[frame].emplace_back(target.seq, hsp.query_range.begin_, hsp.query_range.end_, target_idx);
+			vector<DpTarget> &v = hsp.score < 255 ? dp_targets[frame][0] : dp_targets[frame][1];
+			v.emplace_back(target.seq, hsp.query_range.begin_, hsp.query_range.end_, target_idx);
 		}
 	}
 }
@@ -122,7 +124,7 @@ void add_dp_targets(const Target &target, int target_idx, const sequence *query_
 vector<Match> align(vector<Target> &targets, const sequence *query_seq, const Bias_correction *query_cb, int source_query_len, int flags, Statistics &stat) {
 	const int raw_score_cutoff = score_matrix.rawscore(config.min_bit_score == 0 ? score_matrix.bitscore(config.max_evalue, (unsigned)query_seq[0].length()) : config.min_bit_score);
 
-	array<vector<DpTarget>, MAX_CONTEXT> dp_targets;
+	array<array<vector<DpTarget>, 2>, MAX_CONTEXT> dp_targets;
 	vector<Match> r;
 	if (targets.empty())
 		return r;
@@ -144,8 +146,8 @@ vector<Match> align(vector<Target> &targets, const sequence *query_seq, const Bi
 			continue;
 		list<Hsp> hsp = DP::BandedSwipe::swipe(
 			query_seq[frame],
-			dp_targets[frame].begin(),
-			dp_targets[frame].end(),
+			dp_targets[frame][0],
+			dp_targets[frame][1],
 			Frame(frame),
 			config.comp_based_stats ? &query_cb[frame] : nullptr,
 			DP::TRACEBACK | flags,

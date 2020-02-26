@@ -435,7 +435,8 @@ struct DpTarget
 	}
 	bool operator<(const DpTarget &x) const
 	{
-		return left_i1() < x.left_i1();
+		const int i = left_i1(), j = x.left_i1();
+		return i < j || (i == j && (target_idx < x.target_idx || (target_idx == x.target_idx && d_begin < x.d_begin)));
 	}
 	sequence seq;
 	int d_begin, d_end, target_idx;
@@ -481,7 +482,7 @@ DECL_DISPATCH(std::list<Hsp>, swipe, (const sequence &query, const sequence *sub
 
 namespace BandedSwipe {
 
-DECL_DISPATCH(std::list<Hsp>, swipe, (const sequence &query, std::vector<DpTarget>::iterator target_begin, std::vector<DpTarget>::iterator target_end, Frame frame, const Bias_correction *composition_bias, int flags, int score_cutoff, Statistics &stat))
+DECL_DISPATCH(std::list<Hsp>, swipe, (const sequence &query, std::vector<DpTarget> &targets8, std::vector<DpTarget> &targets16, Frame frame, const Bias_correction *composition_bias, int flags, int score_cutoff, Statistics &stat))
 
 }
 

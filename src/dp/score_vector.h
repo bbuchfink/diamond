@@ -240,7 +240,7 @@ struct ScoreTraits
 template<>
 struct ScoreTraits<int32_t>
 {
-	enum { CHANNELS = 1 };
+	enum { CHANNELS = 1, BITS = 32 };
 	typedef int32_t Score;
 	static int32_t zero()
 	{

@@ -305,7 +305,8 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("no-swipe-realign", 0, "", no_swipe_realign)
 		("cut-bar", 0, "", cut_bar)
 		("bootstrap", 0, "", bootstrap)
-		("chaining-maxnodes", 0, "", chaining_maxnodes);
+		("chaining-maxnodes", 0, "", chaining_maxnodes)
+		("cutoff-score-8bit", 0, "", cutoff_score_8bit, 255);
 	
 	parser.add(general).add(makedb).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options);
 	parser.store(argc, argv, command);
