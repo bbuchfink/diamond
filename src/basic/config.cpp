@@ -143,6 +143,10 @@ Config::Config(int argc, const char **argv, bool check_io)
 	makedb.add()
 		("in", 0, "input reference file in FASTA format", input_ref_file);
 
+	Options_group cluster("Cluster options");
+	cluster.add()
+		("calgo", 0, "Clustering algorithm (0=multi-step/1=transitive-closure)", cluster_algo, -1);
+
 	Options_group aligner("Aligner options");
 	aligner.add()
 		("query", 'q', "input query file", query_file)
@@ -306,7 +310,7 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("cut-bar", 0, "", cut_bar)
 		("bootstrap", 0, "", bootstrap);
 	
-	parser.add(general).add(makedb).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options);
+	parser.add(general).add(makedb).add(cluster).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options);
 	parser.store(argc, argv, command);
 
 	if (long_reads) {
