@@ -23,6 +23,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <limits.h>
 #include "../dp.h"
 #include "../score_vector_int16.h"
+#include "../score_vector_int8.h"
 
 using std::list;
 using std::atomic;
@@ -130,21 +131,32 @@ list<Hsp> swipe_threads(const sequence &query,
 		return swipe_targets<_sv>(query, begin, end, frame, composition_bias, flags, score_cutoff, overflow, stat);
 }
 
-
-list<Hsp> swipe(const sequence &query, vector<DpTarget>::iterator target_begin, vector<DpTarget>::iterator target_end, Frame frame, const Bias_correction *composition_bias, int flags, int score_cutoff, Statistics &stat)
+list<Hsp> swipe(const sequence &query, vector<DpTarget> &targets8, vector<DpTarget> &targets16, Frame frame, const Bias_correction *composition_bias, int flags, int score_cutoff, Statistics &stat)
 {
-	vector<DpTarget> overflow16, overflow32;
-#ifdef __SSE2__
-	task_timer timer("Banded swipe (sort)", flags & PARALLEL ? 3 : UINT_MAX);
+	vector<DpTarget> overflow8, overflow16, overflow32;
 	list<Hsp> out;
-	std::stable_sort(target_begin, target_end);
-	timer.finish();
-	out = swipe_threads<score_vector<int16_t>>(query, target_begin, target_end, frame, composition_bias ? composition_bias->int8.data() : nullptr, flags, score_cutoff, overflow16, stat);
-	if (!overflow16.empty())
-		out.splice(out.end(), swipe_threads<int32_t>(query, overflow16.begin(), overflow16.end(), frame, composition_bias ? composition_bias->int8.data() : nullptr, flags, score_cutoff, overflow32, stat));
+#ifdef __SSE4_1__
+	std::sort(targets8.begin(), targets8.end());
+	stat.inc(Statistics::EXT8, targets8.size());
+	out = swipe_threads<score_vector<int8_t>>(query, targets8.begin(), targets8.end(), frame, composition_bias ? composition_bias->int8.data() : nullptr, flags, score_cutoff, overflow8, stat);
+#else
+	overflow8 = std::move(targets8);
+#endif
+#ifdef __SSE2__
+	if (!overflow8.empty() || !targets16.empty()) {
+		overflow8.insert(overflow8.end(), targets16.begin(), targets16.end());
+		stat.inc(Statistics::EXT16, overflow8.size());
+		std::sort(overflow8.begin(), overflow8.end());
+		out.splice(out.end(), swipe_threads<score_vector<int16_t>>(query, overflow8.begin(), overflow8.end(), frame, composition_bias ? composition_bias->int8.data() : nullptr, flags, score_cutoff, overflow16, stat));
+		if (!overflow16.empty()) {
+			stat.inc(Statistics::EXT32, overflow16.size());
+			out.splice(out.end(), swipe_threads<int32_t>(query, overflow16.begin(), overflow16.end(), frame, composition_bias ? composition_bias->int8.data() : nullptr, flags, score_cutoff, overflow32, stat));
+		}
+	}
 	return out;
 #else
-	return swipe_threads<int32_t>(query, target_begin, target_end, frame, composition_bias ? composition_bias->int8.data() : nullptr, flags, score_cutoff, overflow32, stat);
+	overflow8.insert(overflow8.end(), targets16.begin(), targets16.end());
+	return swipe_threads<int32_t>(query, overflow8.begin(), overflow8.end(), frame, composition_bias ? composition_bias->int8.data() : nullptr, flags, score_cutoff, overflow32, stat);
 #endif
 }
 		

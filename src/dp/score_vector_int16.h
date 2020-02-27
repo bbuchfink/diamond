@@ -145,7 +145,7 @@ struct score_vector<int16_t>
 template<>
 struct ScoreTraits<score_vector<int16_t>>
 {
-	enum { CHANNELS = 8 };
+	enum { CHANNELS = 8, BITS = 16 };
 	typedef int16_t Score;
 	static score_vector<int16_t> zero()
 	{

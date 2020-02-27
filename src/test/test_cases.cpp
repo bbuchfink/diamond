@@ -23,7 +23,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 namespace Test {
 
 const TestCase test_cases[] = {
-{ "blastp (default)", "blastp -p4" },
+{ "blastp (default)", "blastp -p1" },
+{ "blastp (multithreaded)", "blastp -p4" },
 { "blastp (blocked)", "blastp -c1 -b0.00002 -p4" },
 { "blastp (more-sensitive)", "blastp --more-sensitive -c1 -p4" },
 { "blastp (target seqs)", "blastp -k3 -c1 -p4" },
@@ -38,6 +39,7 @@ const TestCase test_cases[] = {
 
 const uint64_t ref_hashes[] = {
 0x9bbab2d4498bdaa2,
+0x9bbab2d4498bdaa2,
 0x677b5dca34af6ff2,
 0xc6bd7cda65df9f6c,
 0x36fcb20b94621955,
@@ -47,7 +49,7 @@ const uint64_t ref_hashes[] = {
 0x8a869bfae83a7d1d,
 0xdb420eeb9c01821d,
 0x834b5c506f0a2c5a,
-0x9660705d7f35297c
+0x9660705d7f35297c,
 };
 
 }

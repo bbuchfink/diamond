@@ -25,6 +25,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../../util/data_structures/mem_buffer.h"
 #include "../score_vector_int16.h"
 #include "../../util/math/integer.h"
+#include "../score_vector_int8.h"
 
 using std::list;
 
@@ -392,7 +393,7 @@ list<Hsp> swipe(
 		if (i0_ - i0 > 0)
 			it.set_zero();
 
-		profile.set(targets.get());
+		profile.set(targets.get(Score()));
 		for (int i = i0_; i <= i1_; ++i) {
 			hgap = it.hgap();
 			_sv next;
@@ -431,7 +432,8 @@ list<Hsp> swipe(
 		if (best[i] < ScoreTraits<_sv>::max_score()) {
 			if (ScoreTraits<_sv>::int_score(best[i]) >= score_cutoff) {
 				out.push_back(traceback<_sv>(query, frame, composition_bias, dp, subject_begin[i], d_begin[i], best[i], max_col[i], i, i0 - j, i1 - j));
-				if (!config.no_swipe_realign && ::DP::BandedSwipe::DISPATCH_ARCH::realign<_sv>(out.back(), col_max, i, score_cutoff, i1 - j - (subject_begin[i].d_end - 1), _traceback()))
+				if (!realign && (config.max_hsps == 0 || config.max_hsps > 1) && !config.no_swipe_realign
+					&& ::DP::BandedSwipe::DISPATCH_ARCH::realign<_sv>(out.back(), col_max, i, score_cutoff, i1 - j - (subject_begin[i].d_end - 1), _traceback()))
 					realign = true;
 			}
 		}
@@ -456,6 +458,10 @@ list<Hsp> swipe(
 	return out;
 }
 
+#ifdef __SSE4_1__
+template list<Hsp> swipe<score_vector<int8_t>, Traceback>(const sequence&, Frame, vector<DpTarget>::const_iterator, vector<DpTarget>::const_iterator, const int8_t*, int, vector<DpTarget>& overflow, Statistics& stat);
+template list<Hsp> swipe<score_vector<int8_t>, ScoreOnly>(const sequence&, Frame, vector<DpTarget>::const_iterator, vector<DpTarget>::const_iterator, const int8_t*, int, vector<DpTarget>& overflow, Statistics& stat);
+#endif
 #ifdef __SSE2__
 template list<Hsp> swipe<score_vector<int16_t>, Traceback>(const sequence&, Frame, vector<DpTarget>::const_iterator, vector<DpTarget>::const_iterator, const int8_t*, int, vector<DpTarget> &overflow, Statistics &stat);
 template list<Hsp> swipe<score_vector<int16_t>, ScoreOnly>(const sequence&, Frame, vector<DpTarget>::const_iterator, vector<DpTarget>::const_iterator, const int8_t*, int, vector<DpTarget> &overflow, Statistics &stat);

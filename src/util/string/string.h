@@ -6,6 +6,9 @@
 #include <algorithm>
 #include <ostream>
 #include <vector>
+#include <math.h>
+#include <cmath>
+#include <stdio.h>
 
 inline bool ends_with(const std::string &s, const char *t) {
 	const size_t l = strlen(t);
@@ -41,5 +44,16 @@ inline std::vector<const char*> charp_array(_it begin, _it end) {
 #define MAX_LEN(A) max_len(A, sizeof(A)/sizeof(A[0]))
 
 std::string convert_size(size_t size);
+
+namespace Util { namespace String {
+
+// Workaround since sprintf is inconsistent in double rounding for different implementations.
+inline int format_double(double x, char *p) {
+	long long i = std::llround(x*10.0);
+	return sprintf(p, "%lli.%lli", i / 10, i % 10);
+}
+
+
+}}
 
 #endif

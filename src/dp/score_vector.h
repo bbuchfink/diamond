@@ -96,8 +96,8 @@ struct score_vector<uint8_t>
 		__m128i seq_low = _mm_or_si128(seq, high_mask);
 		__m128i seq_high = _mm_or_si128(seq, _mm_xor_si128(high_mask, _mm_set1_epi8('\x80')));
 
-		__m128i r1 = _mm_load_si128(row);
-		__m128i r2 = _mm_load_si128(row+1);
+		__m128i r1 = _mm_loadu_si128(row);
+		__m128i r2 = _mm_loadu_si128(row+1);
 		__m128i s1 = _mm_shuffle_epi8(r1, seq_low);
 		__m128i s2 = _mm_shuffle_epi8(r2, seq_high);
 		data_ = _mm_or_si128(s1, s2);
@@ -107,10 +107,11 @@ struct score_vector<uint8_t>
 	void set_generic(unsigned a, const __m128i &seq)
 	{
 		const uint8_t* row (&score_matrix.matrix8u()[a<<5]);
-		const uint8_t* seq_ptr (reinterpret_cast<const uint8_t*>(&seq));
-		uint8_t* dest (reinterpret_cast<uint8_t*>(&data_));
-		for(unsigned i=0;i<16;i++)
-			*(dest++) = row[*(seq_ptr++)];
+		uint8_t l[16], dest[16];
+		_mm_storeu_si128((__m128i*)l, seq);
+		for (unsigned i = 0; i < 16; i++)
+			dest[i] = row[(unsigned long)l[i]];
+		data_ = _mm_loadu_si128((const __m128i*)dest);
 	}
 
 	score_vector(const uint8_t* s):
@@ -149,12 +150,17 @@ struct score_vector<uint8_t>
 
 	int operator [](unsigned i) const
 	{
-		return *(((uint8_t*)&data_)+i);
+		uint8_t s[16];
+		_mm_storeu_si128((__m128i*)s, data_);
+		return (int)s[i];
 	}
 
 	void set(unsigned i, uint8_t v)
 	{
-		*(((uint8_t*)&data_)+i) = v;
+		uint8_t s[16];
+		_mm_storeu_si128((__m128i*)s, data_);
+		s[i] = v;
+		data_ = _mm_loadu_si128((const __m128i*)s);
 	}
 
 	score_vector& max(const score_vector &rhs)
@@ -234,7 +240,7 @@ struct ScoreTraits
 template<>
 struct ScoreTraits<int32_t>
 {
-	enum { CHANNELS = 1 };
+	enum { CHANNELS = 1, BITS = 32 };
 	typedef int32_t Score;
 	static int32_t zero()
 	{
