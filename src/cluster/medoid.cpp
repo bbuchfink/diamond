@@ -68,7 +68,7 @@ size_t get_medoid(DatabaseFile *db, const vector<bool> &filter, size_t n, Sequen
 	config.freq_sd = 0;
 	config.max_alignments = SIZE_MAX;
 	config.algo = 0;
-	config.ext = Config::swipe;
+	//config.ext = Config::swipe;
 	score_matrix.set_db_letters(1);
 
 	Workflow::Search::Options opt;

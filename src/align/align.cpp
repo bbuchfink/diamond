@@ -50,8 +50,7 @@ struct Align_fetcher
 			++it_;
 		end = it_;
 		this->query = query;
-		target_parallel = (end - begin > config.query_parallel_limit) && ((config.frame_shift != 0 && align_mode.mode == Align_mode::blastx && config.toppercent < 100 && config.query_range_culling)
-			|| config.ext == Config::banded_swipe);
+		target_parallel = (end - begin > config.query_parallel_limit) && ((config.frame_shift != 0 && align_mode.mode == Align_mode::blastx && config.toppercent < 100 && config.query_range_culling));
 		return target_parallel;
 	}
 	bool get()
@@ -86,13 +85,8 @@ TextBuffer* legacy_pipeline(Align_fetcher &hits, const sequence *subjects, size_
 		return buf;
 	}
 
-	QueryMapper *mapper;
-	if (config.ext == Config::swipe)
-		mapper = new ExtensionPipeline::Swipe::Pipeline(*params, hits.query, hits.begin, hits.end, *metadata);
-	else if (config.frame_shift != 0 || config.ext == Config::banded_swipe)
-		mapper = new ExtensionPipeline::BandedSwipe::Pipeline(*params, hits.query, hits.begin, hits.end, dp_stat, *metadata, hits.target_parallel);
-	else
-		mapper = new ExtensionPipeline::Greedy::Pipeline(*params, hits.query, hits.begin, hits.end, *metadata);
+	QueryMapper *mapper = new ExtensionPipeline::BandedSwipe::Pipeline(*params, hits.query, hits.begin, hits.end, dp_stat, *metadata, hits.target_parallel);
+
 	task_timer timer("Initializing mapper", hits.target_parallel ? 3 : UINT_MAX);
 	mapper->init();
 	timer.finish();
@@ -119,7 +113,7 @@ void align_worker(size_t thread_id, const Parameters *params, const Metadata *me
 	Statistics stat;
 	DpStat dp_stat;
 	while (hits.get()) {
-		if(config.ext != Config::banded_swipe) {
+		if(config.frame_shift != 0) {
 			TextBuffer *buf = legacy_pipeline(hits, subjects, subject_count, metadata, params, stat);
 			OutputSink::get().push(hits.query, buf);
 			hits.release();

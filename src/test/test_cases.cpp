@@ -33,23 +33,21 @@ const TestCase test_cases[] = {
 { "blastp (blosum50)", "blastp --matrix blosum50 -p4"},
 { "blastp (pairwise format)", "blastp -c1 -f0 -p4" },
 { "blastp (XML format)", "blastp -c1 -f xml -p4" },
-{ "blastp (DAA format)", "blastp -c1 -f daa -p1" },
 { "blastp (PAF format)", "blastp -c1 -f paf -p1" }
 };
 
 const uint64_t ref_hashes[] = {
-0x9bbab2d4498bdaa2,
-0x9bbab2d4498bdaa2,
-0x677b5dca34af6ff2,
-0xc6bd7cda65df9f6c,
-0x36fcb20b94621955,
-0x1a606470f4f55e40,
-0xbe9037e2769feb1,
-0x9bb6322d7466227e,
-0x8a869bfae83a7d1d,
-0xdb420eeb9c01821d,
-0x834b5c506f0a2c5a,
-0x9660705d7f35297c,
+0xa80c8e205ceacf7e,
+0xa80c8e205ceacf7e,
+0xe044c186ee466357,
+0xc9588cec1845dfc7,
+0x88c8b1544b2413cc,
+0x371494a1cc5866cd,
+0x1e199ada2c1e112e,
+0x1ee61f85c1e514a2,
+0x1b52b549427ad392,
+0x19db369ac6cb783,
+0x181b434a08872c61,
 };
 
 }

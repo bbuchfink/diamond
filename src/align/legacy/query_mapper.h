@@ -30,10 +30,81 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../../data/reference.h"
 #include "../../basic/parameters.h"
 #include "../../data/metadata.h"
+#include "../../dp/hsp_traits.h"
+#include "../../basic/match.h"
 
 using std::vector;
 using std::pair;
 using std::list;
+
+struct Seed_hit
+{
+	Seed_hit()
+	{}
+	Seed_hit(unsigned frame, unsigned subject, unsigned subject_pos, unsigned query_pos, const Diagonal_segment &ungapped) :
+		frame_(frame),
+		subject_(subject),
+		subject_pos_(subject_pos),
+		query_pos_(query_pos),
+		ungapped(ungapped),
+		prefix_score(ungapped.score)
+	{ }
+	int diagonal() const
+	{
+		return (int)query_pos_ - (int)subject_pos_;
+	}
+	bool operator<(const Seed_hit &rhs) const
+	{
+		return ungapped.score > rhs.ungapped.score;
+	}
+	bool is_enveloped(std::list<Hsp>::const_iterator begin, std::list<Hsp>::const_iterator end, int dna_len) const
+	{
+		const DiagonalSegment d(ungapped, ::Frame(frame_));
+		for (std::list<Hsp>::const_iterator i = begin; i != end; ++i)
+			if (i->envelopes(d, dna_len))
+				return true;
+		return false;
+	}
+	DiagonalSegment diagonal_segment() const
+	{
+		return DiagonalSegment(ungapped, ::Frame(frame_));
+	}
+	interval query_source_range(int dna_len) const
+	{
+		return diagonal_segment().query_absolute_range(dna_len);
+	}
+	Strand strand() const
+	{
+		return ::Frame(frame_).strand;
+	}
+	static bool compare_pos(const Seed_hit &x, const Seed_hit &y)
+	{
+		return Diagonal_segment::cmp_subject_end(x.ungapped, y.ungapped);
+	}
+	static bool compare_diag(const Seed_hit &x, const Seed_hit &y)
+	{
+		return x.frame_ < y.frame_ || (x.frame_ == y.frame_ && (x.diagonal() < y.diagonal() || (x.diagonal() == y.diagonal() && x.ungapped.j < y.ungapped.j)));
+	}
+	static bool compare_diag_strand(const Seed_hit &x, const Seed_hit &y)
+	{
+		return x.strand() < y.strand() || (x.strand() == y.strand() && (x.diagonal() < y.diagonal() || (x.diagonal() == y.diagonal() && x.ungapped.j < y.ungapped.j)));
+	}
+	static bool compare_diag_strand2(const Seed_hit &x, const Seed_hit &y)
+	{
+		return x.strand() < y.strand() || (x.strand() == y.strand() && (x.diagonal() < y.diagonal() || (x.diagonal() == y.diagonal() && x.subject_pos_ < y.subject_pos_)));
+	}
+	struct Frame
+	{
+		unsigned operator()(const Seed_hit &x) const
+		{
+			return x.frame_;
+		}
+	};
+
+	unsigned frame_, subject_, subject_pos_, query_pos_;
+	Diagonal_segment ungapped;
+	unsigned prefix_score;
+};
 
 struct Target
 {
@@ -113,7 +184,6 @@ struct QueryMapper
 	PtrVector<Target> targets;
 	vector<Seed_hit> seed_hits;
 	vector<Bias_correction> query_cb;
-	vector<Long_score_profile> profile;
 	TranslatedSequence translated_query;
 	bool target_parallel;
 	const Metadata &metadata;

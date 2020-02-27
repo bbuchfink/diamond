@@ -196,6 +196,7 @@ struct Config
 	bool bootstrap;
 	size_t chaining_maxnodes;
 	int cutoff_score_8bit;
+	double inner_culling_overlap;
 
 	enum {
 		makedb = 0, blastp = 1, blastx = 2, view = 3, help = 4, version = 5, getseq = 6, benchmark = 7, random_seqs = 8, compare = 9, sort = 10, roc = 11, db_stat = 12, model_sim = 13,
@@ -210,11 +211,6 @@ struct Config
 
 	enum { query_parallel = 0, target_parallel = 1 };
 	unsigned load_balancing;
-
-	enum {
-		swipe = 0, greedy = 1, floating_xdrop = 4, more_greedy = 2, most_greedy=3, banded_swipe=4
-	};
-	int ext;
 
 	Config() {}
 	Config(int argc, const char **argv, bool check_io = true);

@@ -129,6 +129,7 @@ Config::Config(int argc, const char **argv, bool check_io)
 \tstitle means Subject Title\n\
 \tsalltitles means All Subject Title(s), separated by a '<>'\n\
 \tqcovhsp means Query Coverage Per HSP\n\
+\tscovhsp means Subject Coverage Per HSP\n\
 \tqtitle means Query title\n\
 \tqqual means Query quality values for the aligned part of the query\n\
 \tfull_qqual means Query quality values\n\
@@ -206,6 +207,7 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("rank-ratio", 0, "include subjects within this ratio of last hit (stage 1)", rank_ratio, -1.0)
 		("rank-ratio2", 0, "include subjects within this ratio of last hit (stage 2)", rank_ratio2, -1.0)
 		("max-hsps", 0, "maximum number of HSPs per subject sequence to save for each query", max_hsps, 0u)
+		("culling-overlap", 0, "minimum range overlap with higher scoring hit to delete a hit (0.5)", inner_culling_overlap, 50.0)
 		("taxon-k", 0, "maximum number of targets to report per species", taxon_k, (uint64_t)0)
 		("range-cover", 0, "percentage of query range to be covered for hit culling (default=50)", query_range_cover, 50.0)
 		("dbsize", 0, "effective database size (in letters)", db_size)
@@ -259,7 +261,6 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("superblock", 0, "", superblock, 128)
 		("max-cells", 0, "", max_cells, 10000000u)
 		("load-balancing", 0, "", load_balancing, (unsigned)Config::query_parallel)
-		("ext", 0, "", ext, (int)Config::greedy)
 		("br", 0, "", benchmark_ranking)
 		("log-query", 0, "", log_query)
 		("log-subject", 0, "", log_subject)
@@ -306,7 +307,7 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("cut-bar", 0, "", cut_bar)
 		("bootstrap", 0, "", bootstrap)
 		("chaining-maxnodes", 0, "", chaining_maxnodes)
-		("cutoff-score-8bit", 0, "", cutoff_score_8bit, 255);
+		("cutoff-score-8bit", 0, "", cutoff_score_8bit, 240);
 	
 	parser.add(general).add(makedb).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options);
 	parser.store(argc, argv, command);
@@ -487,7 +488,6 @@ Config::Config(int argc, const char **argv, bool check_io)
 
 	if (swipe_all) {
 		algo = double_indexed;
-		ext = swipe;
 	}
 
 	use_lazy_dict = false;

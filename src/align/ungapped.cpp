@@ -29,12 +29,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../dp/comp_based_stats.h"
 #include "target.h"
 #include "../dp/ungapped.h"
-#include "../dp/dp.h"
 #include "target.h"
 #include "../data/reference.h"
 #include "../util/data_structures/flat_array.h"
 #include "../util/log_stream.h"
 #include "../util/parallel/thread_pool.h"
+#include "../chaining/chaining.h"
 
 using std::array;
 using std::vector;

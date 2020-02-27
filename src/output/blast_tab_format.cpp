@@ -143,7 +143,7 @@ const char* Blast_tab_format::field_desc[] = {
 	"Aligned part of query quality values",		// 49
 	"qnum",			// 50
 	"snum",			// 51
-	"scovhsp",		// 52
+	"Subject coverage per HSP",		// 52
 	"Query quality values",	// 53
 	"Query sequence",		// 54
 	"Query sequence with gaps",		// 55
@@ -460,6 +460,7 @@ void Blast_tab_format::print_query_intro(size_t query_num, const char *query_nam
 			case 28:
 			case 29:
 			case 43:
+			case 52:
 				out << "-1";
 				break;			
 			case 31:

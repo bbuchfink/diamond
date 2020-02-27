@@ -21,6 +21,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <algorithm>
 #include "../util/interval.h"
+#include "value.h"
 
 enum Strand { FORWARD = 0, REVERSE = 1 };
 

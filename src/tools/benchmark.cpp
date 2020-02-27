@@ -27,6 +27,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../dp/swipe/swipe.h"
 #include "../dp/dp.h"
 #include "../dp/score_vector_int8.h"
+#include "../dp/score_profile.h"
 
 using std::vector;
 using std::chrono::high_resolution_clock;

@@ -98,10 +98,6 @@ void QueryMapper::init()
 	if (config.comp_based_stats == 1)
 		for (unsigned i = 0; i < align_mode.query_contexts; ++i)
 			query_cb.emplace_back(query_seq(i));
-	if (config.ext == Config::greedy || config.ext == Config::more_greedy)
-		for (unsigned i = 0; i < align_mode.query_contexts; ++i)
-			profile.emplace_back(query_seq(i));
-			//profile.push_back(Long_score_profile());
 	targets.resize(count_targets());
 	if (targets.empty())
 		return;
