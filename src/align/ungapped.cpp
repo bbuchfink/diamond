@@ -63,6 +63,7 @@ WorkTarget ungapped_stage(const SeedHit *begin, const SeedHit *end, const sequen
 		pair<int, list<Hsp_traits>> hsp = greedy_align(query_seq[frame], query_cb[frame], target.seq, diagonal_segments[frame].begin(), diagonal_segments[frame].end(), config.log_extend, frame);
 		target.filter_score = std::max(target.filter_score, hsp.first);
 		target.hsp[frame] = std::move(hsp.second);
+		target.hsp[frame].sort(Hsp_traits::cmp_diag);
 	}
 	return target;
 }

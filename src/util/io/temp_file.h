@@ -25,7 +25,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 struct TempFile : public OutputFile
 {
 
-	TempFile();
+	TempFile(bool unlink = true);
 	virtual void finalize() override {}
 	static std::string get_temp_dir();
 	static unsigned n;
@@ -35,9 +35,9 @@ struct TempFile : public OutputFile
 private:
 
 #ifdef _MSC_VER
-	std::string init();
+	std::string init(bool unlink);
 #else
-	std::pair<std::string, int> init();
+	std::pair<std::string, int> init(bool unlink);
 #endif
 
 };

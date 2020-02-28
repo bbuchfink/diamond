@@ -53,7 +53,7 @@ size_t run_testcase(size_t i, DatabaseFile &db, TextInputFile &query_file, size_
 	opt.db = &db;
 	query_file.rewind();
 	opt.query_file = &query_file;
-	TempFile output_file;
+	TempFile output_file(!bootstrap);
 	opt.consumer = &output_file;
 
 	Workflow::Search::run(opt);

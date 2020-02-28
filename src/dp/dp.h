@@ -149,10 +149,12 @@ extern size_t cells;
 
 struct DpTarget
 {
-	DpTarget(const sequence &seq, int d_begin, int d_end, int target_idx = 0) :
+	DpTarget(const sequence &seq, int d_begin, int d_end, int j_begin, int j_end, int target_idx = 0) :
 		seq(seq),
 		d_begin(d_begin),
 		d_end(d_end),
+		j_begin(j_begin),
+		j_end(j_end),
 		target_idx(target_idx)
 	{}
 	int left_i1() const
@@ -165,7 +167,7 @@ struct DpTarget
 		return i < j || (i == j && (target_idx < x.target_idx || (target_idx == x.target_idx && d_begin < x.d_begin)));
 	}
 	sequence seq;
-	int d_begin, d_end, target_idx;
+	int d_begin, d_end, j_begin, j_end, target_idx;
 };
 
 struct DpStat

@@ -307,7 +307,8 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("cut-bar", 0, "", cut_bar)
 		("bootstrap", 0, "", bootstrap)
 		("chaining-maxnodes", 0, "", chaining_maxnodes)
-		("cutoff-score-8bit", 0, "", cutoff_score_8bit, 240);
+		("cutoff-score-8bit", 0, "", cutoff_score_8bit, 240)
+		("min-band-overlap", 0, "", min_band_overlap, 0.5);
 	
 	parser.add(general).add(makedb).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options);
 	parser.store(argc, argv, command);

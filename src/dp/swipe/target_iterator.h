@@ -22,7 +22,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 // #define DP_STAT
 
 #include <stdint.h>
+#include <algorithm>
 #include "../dp.h"
+#include "../basic/value.h"
 
 template<int _n>
 struct TargetIterator
@@ -59,6 +61,7 @@ struct TargetIterator
 	template<typename _t> __m128i get(const _t&)
 	{
 		_t s[_n];
+		std::fill(s, s + _n, SUPER_HARD_MASK);
 #ifdef DP_STAT
 		live = 0;
 #endif

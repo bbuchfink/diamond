@@ -41,7 +41,7 @@ unsigned TempFile::n = 0;
 uint64_t TempFile::hash_key;
 
 #ifdef _MSC_VER
-string TempFile::init()
+string TempFile::init(bool unlink)
 #else
 pair<string, int> TempFile::init()
 #endif
@@ -70,7 +70,7 @@ pair<string, int> TempFile::init()
 		perror(0);
 		throw std::runtime_error(string("Error opening temporary file ") + string(s));
 	}
-	if (config.no_unlink)
+	if (config.no_unlink || !unlink)
 		unlinked = false;
 	else
 		unlinked = (unlink(s) >= 0);
@@ -78,11 +78,11 @@ pair<string, int> TempFile::init()
 #endif
 }
 
-TempFile::TempFile():
+TempFile::TempFile(bool unlink):
 #ifdef _MSC_VER
-	OutputFile(init(), false, "w+b")
+	OutputFile(init(unlink), false, "w+b")
 #else
-	OutputFile(init(), "w+b")
+	OutputFile(init(unlink), "w+b")
 #endif
 {
 }

@@ -311,34 +311,6 @@ Hsp traceback(const sequence &query, Frame frame, const int8_t *bias_correction,
 	return out;
 }
 
-template<typename _sv>
-bool realign(const Hsp &hsp, const MemBuffer<typename ScoreTraits<_sv>::Score[ScoreTraits<_sv>::CHANNELS]> &col_max, int channel, int score_cutoff, int j0, const Traceback&) {
-	typedef typename ScoreTraits<_sv>::Score Score;
-	Score min = ScoreTraits<_sv>::zero_score();
-	//cout << j0 << '\t' << hsp.subject_range.begin_ << endl;
-	for (int j = std::max(j0, 0); j < hsp.subject_range.begin_; ++j) {
-		const Score s = col_max[j - j0][channel];
-		min = std::min(min, s);
-		//cout << min << '\t' << s << endl;
-		//cout << s - min << endl;
-		if (s - min >= score_cutoff)
-			return true;
-	}
-	min = std::numeric_limits<Score>::max();
-	for (int j = hsp.subject_range.end_; j < (int)col_max.size() + j0; ++j) {
-		const Score s = col_max[j - j0][channel];
-		min = std::min(min, s);
-		if (s - min >= score_cutoff)
-			return true;
-	}
-	return false;
-}
-
-template<typename _sv>
-bool realign(const Hsp &hsp, const MemBuffer<typename ScoreTraits<_sv>::Score[ScoreTraits<_sv>::CHANNELS]> &col_max, int channel, int score_cutoff, int j0, const ScoreOnly&) {
-	return false;
-}
-
 template<typename _sv, typename _traceback>
 list<Hsp> swipe(
 	const sequence &query,
@@ -427,14 +399,16 @@ list<Hsp> swipe(
 	}
 
 	list<Hsp> out;
+	static int rc = 0;
+	//bool realign = (rc++==0);
 	bool realign = false;
 	for (int i = 0; i < targets.n_targets; ++i) {
 		if (best[i] < ScoreTraits<_sv>::max_score()) {
 			if (ScoreTraits<_sv>::int_score(best[i]) >= score_cutoff) {
 				out.push_back(traceback<_sv>(query, frame, composition_bias, dp, subject_begin[i], d_begin[i], best[i], max_col[i], i, i0 - j, i1 - j));
-				if (!realign && (config.max_hsps == 0 || config.max_hsps > 1) && !config.no_swipe_realign
+				/*if (!realign && (config.max_hsps == 0 || config.max_hsps > 1) && !config.no_swipe_realign
 					&& ::DP::BandedSwipe::DISPATCH_ARCH::realign<_sv>(out.back(), col_max, i, score_cutoff, i1 - j - (subject_begin[i].d_end - 1), _traceback()))
-					realign = true;
+					realign = true;*/
 			}
 		}
 		else
