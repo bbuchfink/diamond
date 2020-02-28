@@ -21,7 +21,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <stddef.h>
 #include "../util/simd.h"
-#include "../dp/dp.h"
+#include "../dp/ungapped.h"
 #include "../basic/shape_config.h"
 #include "../basic/statistics.h"
 #include "trace_pt_buffer.h"

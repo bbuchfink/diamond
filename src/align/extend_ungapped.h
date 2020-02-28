@@ -21,6 +21,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "../dp/dp.h"
 #include "../data/reference.h"
+#include "../dp/ungapped.h"
 
 inline Diagonal_segment ungapped_extension(unsigned subject, unsigned subject_pos, unsigned query_pos, const sequence &query)
 {

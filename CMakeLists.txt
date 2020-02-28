@@ -90,7 +90,7 @@ add_executable(diamond $<TARGET_OBJECTS:arch_generic>
   src/basic/hssp.cpp
   src/dp/ungapped_align.cpp
   src/run/tools.cpp
-  src/dp/greedy_align.cpp
+  src/chaining/greedy_align.cpp
   src/output/output_format.cpp
   src/output/join_blocks.cpp
   src/data/frequent_seeds.cpp
@@ -104,7 +104,6 @@ add_executable(diamond $<TARGET_OBJECTS:arch_generic>
   src/output/sam_format.cpp
   src/align/align.cpp
   src/search/setup.cpp
-  src/dp/diag_scores.cpp
   src/data/taxonomy.cpp
   src/basic/masking.cpp
   src/dp/banded_sw.cpp
@@ -114,7 +113,6 @@ add_executable(diamond $<TARGET_OBJECTS:arch_generic>
   src/output/view.cpp
   src/output/output_sink.cpp
   src/output/target_culling.cpp
-  src/align/legacy/greedy_pipeline.cpp
   src/align/legacy/swipe_pipeline.cpp
   src/align/legacy/banded_swipe_pipeline.cpp
   src/data/ref_dictionary.cpp
@@ -163,6 +161,7 @@ add_executable(diamond $<TARGET_OBJECTS:arch_generic>
   src/test/data.cpp
   src/basic/matrix_tables.cpp
   src/test/test_cases.cpp
+  src/chaining/smith_waterman.cpp
 )
 else()
 add_executable(diamond $<TARGET_OBJECTS:arch_generic>
@@ -190,7 +189,7 @@ add_executable(diamond $<TARGET_OBJECTS:arch_generic>
   src/basic/hssp.cpp
   src/dp/ungapped_align.cpp
   src/run/tools.cpp
-  src/dp/greedy_align.cpp
+  src/chaining/greedy_align.cpp
   src/output/output_format.cpp
   src/output/join_blocks.cpp
   src/data/frequent_seeds.cpp
@@ -204,7 +203,6 @@ add_executable(diamond $<TARGET_OBJECTS:arch_generic>
   src/output/sam_format.cpp
   src/align/align.cpp
   src/search/setup.cpp
-  src/dp/diag_scores.cpp
   src/data/taxonomy.cpp
   src/basic/masking.cpp
   src/dp/banded_sw.cpp
@@ -214,7 +212,6 @@ add_executable(diamond $<TARGET_OBJECTS:arch_generic>
   src/output/view.cpp
   src/output/output_sink.cpp
   src/output/target_culling.cpp
-  src/align/legacy/greedy_pipeline.cpp
   src/align/legacy/swipe_pipeline.cpp
   src/align/legacy/banded_swipe_pipeline.cpp
   src/data/ref_dictionary.cpp
@@ -263,6 +260,7 @@ add_executable(diamond $<TARGET_OBJECTS:arch_generic>
   src/test/data.cpp
   src/basic/matrix_tables.cpp
   src/test/test_cases.cpp
+  src/chaining/smith_waterman.cpp
 )
 endif()
 

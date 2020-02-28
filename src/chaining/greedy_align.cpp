@@ -21,7 +21,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <map>
 #include <list>
 #include <set>
-#include "dp.h"
 #include "../basic/sequence.h"
 #include "../basic/match.h"
 #include "../basic/score_matrix.h"
@@ -29,6 +28,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../align/extend_ungapped.h"
 #include "../dp/score_profile.h"
 #include "../output/output_format.h"
+#include "../dp/hsp_traits.h"
+#include "chaining.h"
 
 using std::map;
 using std::list;
@@ -59,23 +60,6 @@ void Diag_graph::clear_edges()
 	edges.clear();
 	for (vector<Diagonal_node>::iterator i = nodes.begin(); i < nodes.end(); ++i)
 		i->deactivate();
-}
-
-void Diag_graph::load(vector<Seed_hit>::const_iterator begin, vector<Seed_hit>::const_iterator end)
-{
-	int d = std::numeric_limits<int>::min(), max_j_end = d;
-	for (vector<Seed_hit>::const_iterator i = begin; i < end; ++i) {
-		const int d2 = i->diagonal();
-		if (d2 != d) {
-			d = d2;
-			nodes.push_back(i->ungapped);
-			max_j_end = nodes.back().subject_end();
-		}
-		else if (max_j_end < i->ungapped.j) {
-			nodes.push_back(i->ungapped);
-			max_j_end = std::max(max_j_end, nodes.back().subject_end());
-		}
-	}
 }
 
 void Diag_graph::load(vector<Diagonal_segment>::const_iterator begin, vector<Diagonal_segment>::const_iterator end)
@@ -569,8 +553,7 @@ struct Greedy_aligner2
 				diags.nodes.erase(diags.nodes.begin() + config.chaining_maxnodes, diags.nodes.end());
 		}
 		diags.sort();
-		if(config.ext == Config::banded_swipe)
-			diags.prune();
+		diags.prune();
 		if (log) {
 			diags.print(query, subject);
 			cout << endl << endl;
@@ -588,47 +571,6 @@ struct Greedy_aligner2
 			cout << endl << endl;
 		}
 		return max_score;
-	}
-
-	int run(list<Hsp> &hsps, list<Hsp_traits>::const_iterator t_begin, list<Hsp_traits>::const_iterator t_end, list<Hsp_traits> &ts, int band, int cutoff)
-	{
-		if (t_end == t_begin)
-			return 0;
-		if(log)
-			cout << "***** Scan run n_hsp=" << 0 << " cutoff=" << cutoff << endl;
-		diags.init();
-		list<Hsp_traits>::const_iterator i = t_begin;
-		const int ql = (int)query.length();
-		int d_begin = std::max(i->d_min - band, -((int)subject.length() - 1)),
-			d_end = d_begin + make_multiple(std::min(i->d_max + band, ql) - d_begin, 16);
-		++i;
-		for (; i != t_end; ++i) {
-			if (i->d_min - band >= d_end) {
-				if (log)
-					cout << "Scan " << d_begin << '\t' << d_end << '\t' << d_end - d_begin << endl;
-				diag_scores.scan_diags(d_begin, d_end, query, subject, qp, query_bc, log, diags.nodes, true);
-				d_begin = i->d_min - band;
-				d_end = d_begin + make_multiple(std::min(i->d_max + band, ql) - d_begin, 16);
-			}
-			else
-				d_end = std::max(d_end, d_begin + make_multiple(std::min(i->d_max + band, ql) - d_begin, 16));
-		}
-		if (log)
-			cout << "Scan " << d_begin << '\t' << d_end << '\t' << d_end - d_begin << endl;
-		diag_scores.scan_diags(d_begin, d_end, query, subject, qp, query_bc, log, diags.nodes, true);
-		if (log)
-			cout << endl;
-
-		return run(hsps, ts, config.space_penalty, cutoff, 999);
-	}
-
-	int run(list<Hsp> &hsps, list<Hsp_traits> &ts, vector<Seed_hit>::const_iterator begin, vector<Seed_hit>::const_iterator end, int band)
-	{
-		if (log)
-			cout << "***** Seed hit run " << begin->diagonal() << '\t' << (end - 1)->diagonal() << '\t' << (end - 1)->diagonal() - begin->diagonal() << endl;
-		diags.init();
-		diags.load(begin, end);
-		return run(hsps, ts, 0.1, 19, band);
 	}
 
 	int run(list<Hsp> &hsps, list<Hsp_traits> &ts, vector<Diagonal_segment>::const_iterator begin, vector<Diagonal_segment>::const_iterator end, int band)
@@ -655,22 +597,13 @@ struct Greedy_aligner2
 	const Bias_correction &query_bc;
 	const bool log;
 	const unsigned frame;
-	static thread_local Diag_scores diag_scores;
 	static thread_local Diag_graph diags;
 	static thread_local map<int, unsigned> window;
 
 };
 
-thread_local Diag_scores Greedy_aligner2::diag_scores;
 thread_local Diag_graph Greedy_aligner2::diags;
 thread_local map<int, unsigned> Greedy_aligner2::window;
-
-int greedy_align(sequence query, const Long_score_profile &qp, const Bias_correction &query_bc, sequence subject, vector<Seed_hit>::const_iterator begin, vector<Seed_hit>::const_iterator end, bool log, list<Hsp> &hsps, list<Hsp_traits> &ts, unsigned frame)
-{
-	const int band = config.padding == 0 ? std::min(64, int(query.length()*0.5)) : config.padding;
-	Greedy_aligner2 ga(query, qp, query_bc, subject, log, frame);
-	return ga.run(hsps, ts, begin, end, band);
-}
 
 std::pair<int, list<Hsp_traits>> greedy_align(sequence query, const Bias_correction &query_bc, sequence subject, vector<Diagonal_segment>::const_iterator begin, vector<Diagonal_segment>::const_iterator end, bool log, unsigned frame)
 {
@@ -681,11 +614,4 @@ std::pair<int, list<Hsp_traits>> greedy_align(sequence query, const Bias_correct
 	list<Hsp_traits> ts;
 	int score = ga.run(hsps, ts, begin, end, band);
 	return std::make_pair(score, std::move(ts));
-}
-
-int greedy_align(sequence query, const Long_score_profile &qp, const Bias_correction &query_bc, sequence subject, bool log, list<Hsp> &hsps, list<Hsp_traits>::const_iterator t_begin, list<Hsp_traits>::const_iterator t_end, list<Hsp_traits> &ts, int cutoff, unsigned frame)
-{
-	const int band = config.padding == 0 ? std::min(64, int(query.length()*0.5)) : config.padding;
-	Greedy_aligner2 ga(query, qp, query_bc, subject, log, frame);
-	return ga.run(hsps, t_begin, t_end, ts, band, cutoff);
 }

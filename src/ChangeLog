@@ -1,5 +1,11 @@
-[0.9.31]
+[0.10.0]
+- Improved performance.
+- Composition based statistics uses integer scoring.
 - Option `--quiet` will suppress startup message.
+- Added output field `scovhsp` to print the subject coverage per HSP to the tabular format.
+- Added option `--culling-overlap` to set the minimum overlap with a higher scoring hit for a hit to be deleted and set the
+  default value from 90% to 50%.
+- Added command `diamond test` to run a series of regression tests.
 
 [0.9.30]
 - Added support for output field `cigar` to the tabular format.

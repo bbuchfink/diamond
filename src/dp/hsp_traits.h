@@ -5,6 +5,7 @@
 #include <algorithm>
 #include "../util/interval.h"
 #include "../basic/diagonal_segment.h"
+#include "../basic/match.h"
 
 struct Hsp_traits
 {
