@@ -43,7 +43,7 @@ uint64_t TempFile::hash_key;
 #ifdef _MSC_VER
 string TempFile::init(bool unlink)
 #else
-pair<string, int> TempFile::init()
+pair<string, int> TempFile::init(bool unlink)
 #endif
 {
 	vector<char> buf(config.tmpdir.length() + 64);
