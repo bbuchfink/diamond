@@ -67,10 +67,12 @@ void add_dp_targets(const WorkTarget &target, int target_idx, const sequence *qu
 	const int band = Extension::band((int)query_seq->length()),
 		slen = (int)target.seq.length();
 	for (unsigned frame = 0; frame < align_mode.query_contexts; ++frame) {
+
 		if (target.hsp[frame].empty())
 			continue;
 		const int qlen = (int)query_seq[frame].length();
-		int d0 = INT_MAX, d1 = INT_MIN, j0 = INT_MAX, j1 = INT_MIN;
+		int d0 = INT_MAX, d1 = INT_MIN, j0 = INT_MAX, j1 = INT_MIN, bits = 0;
+
 		for (const Hsp_traits &hsp : target.hsp[frame]) {
 			const int b0 = std::max(hsp.d_min - band, -(slen - 1)),
 				b1 = std::min(hsp.d_max + 1 + band, qlen);
@@ -80,17 +82,21 @@ void add_dp_targets(const WorkTarget &target, int target_idx, const sequence *qu
 				d1 = std::max(d1, b1);
 				j0 = std::min(j0, hsp.subject_range.begin_);
 				j1 = std::max(j1, hsp.subject_range.end_);
+				bits = std::max(bits, hsp.score <= config.cutoff_score_8bit ? 0 : 1);
 			}
 			else {
-
-			}
-
-			if (config.log_extend) {
-				cout << "i_begin=" << hsp.query_range.begin_ << " j_begin=" << hsp.subject_range.begin_ << " d_min=" << hsp.d_min << " d_max=" << hsp.d_max << endl;
-			}
-			vector<DpTarget> &v = hsp.score <= config.cutoff_score_8bit ? dp_targets[frame][0] : dp_targets[frame][1];
-			//v.emplace_back(target.seq, std::max(hsp.d_min - band, -(slen - 1)), std::min(hsp.d_max + 1 + band, qlen), target_idx);
+				if (d0 != INT_MAX)
+					dp_targets[frame][bits].emplace_back(target.seq, d0, d1, j0, j1, target_idx);
+				d0 = b0;
+				d1 = b1;
+				j0 = hsp.subject_range.begin_;
+				j1 = hsp.subject_range.end_;
+				bits = hsp.score <= config.cutoff_score_8bit ? 0 : 1;
+			}			
 		}
+
+		dp_targets[frame][bits].emplace_back(target.seq, d0, d1, j0, j1, target_idx);
+
 	}
 }
 
@@ -133,7 +139,7 @@ void add_dp_targets(const Target &target, int target_idx, const sequence *query_
 		const int qlen = (int)query_seq[frame].length();
 		for (const Hsp &hsp : target.hsp[frame]) {
 			vector<DpTarget> &v = hsp.score < 255 ? dp_targets[frame][0] : dp_targets[frame][1];
-			v.emplace_back(target.seq, hsp.query_range.begin_, hsp.query_range.end_, target_idx);
+			v.emplace_back(target.seq, hsp.query_range.begin_, hsp.query_range.end_, hsp.subject_range.begin_, hsp.subject_range.end_, target_idx);
 		}
 	}
 }

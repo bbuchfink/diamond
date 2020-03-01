@@ -60,12 +60,12 @@ struct Target : public ::Target
 				d1 = std::min(i->diagonal() + band, d_max);
 			}
 			else {
-				v.emplace_back(subject, d0, d1, target_idx);
+				v.emplace_back(subject, d0, d1, 0, 0, target_idx);
 				d0 = std::max(i->diagonal() - band, d_min);
 				d1 = std::min(i->diagonal() + band, d_max);
 			}
 		}
-		v.emplace_back(subject, d0, d1, target_idx);
+		v.emplace_back(subject, d0, d1, 0, 0, target_idx);
 	}
 
 	void add(QueryMapper &mapper, vector<DpTarget> &vf, vector<DpTarget> &vr, int target_idx)
