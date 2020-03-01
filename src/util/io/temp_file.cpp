@@ -73,7 +73,7 @@ pair<string, int> TempFile::init(bool unlink)
 	if (config.no_unlink || !unlink)
 		unlinked = false;
 	else
-		unlinked = (unlink(s) >= 0);
+		unlinked = (::unlink(s) >= 0);
 	return std::make_pair(string(s), fd);
 #endif
 }
