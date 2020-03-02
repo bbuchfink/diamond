@@ -100,7 +100,8 @@ int run() {
 	for (size_t i = 0; i < n; ++i)
 		passed += run_testcase(i, db, query_file, max_width, bootstrap);
 
-	cout << endl << "#Test cases passed: " << passed << '/' << n << endl;
+	cout << endl << "#Test cases passed: " << passed << '/' << n << endl << endl;
+	cout << "Regression tests are still a beta feature. Failure of a test does not necessarily imply the incorect operation of the program." << endl;
 
 	query_file.close_and_delete();
 	db.close();

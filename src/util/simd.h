@@ -23,6 +23,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <functional>
 #include "system.h"
 
+#if defined(_M_AMD64) && defined(_MSC_VER)
+#define __SSE__
+#define __SSE2__
+#endif
+
 #ifdef __SSSE3__
 #include <tmmintrin.h>
 #endif
@@ -41,10 +46,6 @@ namespace SIMD {
 enum class Arch { None, Generic, SSE4_1 };
 enum Flags { SSSE3 = 1, POPCNT = 2, SSE4_1 = 4 };
 Arch arch();
-
-#if defined(_M_AMD64) && defined(_MSC_VER)
-#define __SSE__
-#endif
 
 #ifdef __SSE__
 #define DECL_DISPATCH(ret, name, param) namespace ARCH_GENERIC { ret name param; }\

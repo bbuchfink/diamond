@@ -46,7 +46,7 @@ const uint64_t ref_hashes[] = {
 0xa4ecd1f3f1439b0f,
 0x12885fdee89cd143,
 0x4cc995d9b6626493,
-0xc5fbb49e5116f840,
+0x1183b85b862637b3,
 0x6fa5019017db2bbd,
 };
 

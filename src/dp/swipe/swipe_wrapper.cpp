@@ -156,6 +156,7 @@ list<Hsp> swipe(const sequence &query, vector<DpTarget> &targets8, vector<DpTarg
 	return out;
 #else
 	overflow8.insert(overflow8.end(), targets16.begin(), targets16.end());
+	stat.inc(Statistics::EXT32, overflow8.size());
 	return swipe_threads<int32_t>(query, overflow8.begin(), overflow8.end(), frame, composition_bias ? composition_bias->int8.data() : nullptr, flags, score_cutoff, overflow32, stat);
 #endif
 }
