@@ -37,17 +37,17 @@ const TestCase test_cases[] = {
 };
 
 const uint64_t ref_hashes[] = {
-0xa80c8e205ceacf7e,
-0xa80c8e205ceacf7e,
-0xe044c186ee466357,
-0xc9588cec1845dfc7,
-0x88c8b1544b2413cc,
-0x371494a1cc5866cd,
-0x1e199ada2c1e112e,
-0x1ee61f85c1e514a2,
-0x1b52b549427ad392,
-0x19db369ac6cb783,
-0x181b434a08872c61,
+0xd03ed9ee31fc5d64,
+0xd03ed9ee31fc5d64,
+0x361c617388d5cb55,
+0x47b6f14da0c6a7d3,
+0x938b7662efce5ee4,
+0x8ac0057c68f8c239,
+0xa4ecd1f3f1439b0f,
+0x12885fdee89cd143,
+0x4cc995d9b6626493,
+0xc5fbb49e5116f840,
+0x6fa5019017db2bbd,
 };
 
 }

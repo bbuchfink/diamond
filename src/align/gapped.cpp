@@ -22,6 +22,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "target.h"
 #include "../dp/dp.h"
 #include "../util/interval.h"
+#include "../data/reference.h"
 
 using std::vector;
 using std::array;
@@ -160,6 +161,8 @@ vector<Match> align(vector<Target> &targets, const sequence *query_seq, const Bi
 	}
 
 	for (int i = 0; i < (int)targets.size(); ++i) {
+		if (config.log_subject)
+			std::cout << "Target=" << ref_ids::get()[targets[i].block_id].c_str() << " id=" << i << endl;
 		add_dp_targets(targets[i], i, query_seq, dp_targets);
 		r.emplace_back(targets[i].block_id, targets[i].outranked);
 	}

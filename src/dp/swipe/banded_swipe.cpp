@@ -26,6 +26,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../score_vector_int16.h"
 #include "../../util/math/integer.h"
 #include "../score_vector_int8.h"
+#include "../../basic/config.h"
 
 using std::list;
 
@@ -155,41 +156,40 @@ struct TracebackMatrix
 			const int i0 = std::max(d0 + j, 0), j0 = std::max(i - d1, -1);
 			const Score *h = score_ - (band_ - 1) * ScoreTraits<_sv>::CHANNELS, *h0 = score_ - (j - j0) * (band_ - 1) * ScoreTraits<_sv>::CHANNELS;
 			const Score *v = score_ - ScoreTraits<_sv>::CHANNELS, *v0 = score_ - (i - i0 + 1) * ScoreTraits<_sv>::CHANNELS;
-			const Score score = this->score();
 			const Score e = score_matrix.gap_extend();
-			Score g = score_matrix.gap_open() + e;
+			Score score = this->score() + (Score)score_matrix.gap_open() + e;			
 			int l = 1;
 			while (v > v0 && h > h0) {
-				if (score + g == *h) {
+				if (score == *h) {
 					walk_hgap(h, l);
 					return std::make_pair(op_deletion, l);
 				}
-				else if (score + g == *v) {
+				else if (score == *v) {
 					walk_vgap(v, l);
 					return std::make_pair(op_insertion, l);
 				}
 				h -= (band_ - 1) * ScoreTraits<_sv>::CHANNELS;
 				v -= ScoreTraits<_sv>::CHANNELS;
 				++l;
-				g += e;
+				score += e;
 			}
 			while (v > v0) {
-				if (score + g == *v) {
+				if (score == *v) {
 					walk_vgap(v, l);
 					return std::make_pair(op_insertion, l);
 				}
 				v -= ScoreTraits<_sv>::CHANNELS;
 				++l;
-				g += e;
+				score += e;
 			}
 			while (h > h0) {
-				if (score + g == *h) {
+				if (score == *h) {
 					walk_hgap(h, l);
 					return std::make_pair(op_deletion, l);
 				}
 				h -= (band_ - 1) * ScoreTraits<_sv>::CHANNELS;
 				++l;
-				g += e;
+				score += e;
 			}
 			throw std::runtime_error("Traceback error.");
 		}
@@ -312,6 +312,16 @@ Hsp traceback(const sequence &query, Frame frame, const int8_t *bias_correction,
 	return out;
 }
 
+template<typename _traceback>
+bool realign(const Hsp &hsp, const DpTarget &dp_target) {
+	return false;
+}
+
+template<>
+bool realign<Traceback>(const Hsp &hsp, const DpTarget &dp_target) {
+	return hsp.subject_range.begin_ - config.min_realign_overhang > dp_target.j_begin || hsp.subject_range.end_ + config.min_realign_overhang  < dp_target.j_end;
+}
+
 template<typename _sv, typename _traceback>
 list<Hsp> swipe(
 	const sequence &query,
@@ -397,16 +407,14 @@ list<Hsp> swipe(
 	}
 
 	list<Hsp> out;
-	static int rc = 0;
-	//bool realign = (rc++==0);
 	bool realign = false;
 	for (int i = 0; i < targets.n_targets; ++i) {
 		if (best[i] < ScoreTraits<_sv>::max_score()) {
 			if (ScoreTraits<_sv>::int_score(best[i]) >= score_cutoff) {
 				out.push_back(traceback<_sv>(query, frame, composition_bias, dp, subject_begin[i], d_begin[i], best[i], max_col[i], i, i0 - j, i1 - j));
-				/*if (!realign && (config.max_hsps == 0 || config.max_hsps > 1) && !config.no_swipe_realign
-					&& ::DP::BandedSwipe::DISPATCH_ARCH::realign<_sv>(out.back(), col_max, i, score_cutoff, i1 - j - (subject_begin[i].d_end - 1), _traceback()))
-					realign = true;*/
+				if (!realign && (config.max_hsps == 0 || config.max_hsps > 1) && !config.no_swipe_realign
+					&& ::DP::BandedSwipe::DISPATCH_ARCH::realign<_traceback>(out.back(), subject_begin[i]))
+					realign = true;
 			}
 		}
 		else
