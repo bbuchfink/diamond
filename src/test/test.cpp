@@ -101,7 +101,7 @@ int run() {
 		passed += run_testcase(i, db, query_file, max_width, bootstrap);
 
 	cout << endl << "#Test cases passed: " << passed << '/' << n << endl << endl;
-	cout << "Regression tests are still a beta feature. Failure of a test does not necessarily imply the incorect operation of the program." << endl;
+	cout << "Regression tests are still a beta feature. Failure of a test does not necessarily imply the incorrect operation of the program." << endl;
 
 	query_file.close_and_delete();
 	db.close();

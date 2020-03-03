@@ -50,7 +50,7 @@ struct Align_fetcher
 			++it_;
 		end = it_;
 		this->query = query;
-		target_parallel = (end - begin > config.query_parallel_limit) && ((config.frame_shift != 0 && align_mode.mode == Align_mode::blastx && config.toppercent < 100 && config.query_range_culling));
+		target_parallel = (end - begin > config.query_parallel_limit) && (config.frame_shift == 0 || (config.toppercent < 100 && config.query_range_culling));
 		return target_parallel;
 	}
 	bool get()
