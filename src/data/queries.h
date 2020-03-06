@@ -45,14 +45,14 @@ struct query_seqs
 
 struct query_ids
 {
-	static const String_set<0>& get()
+	static const String_set<char, 0>& get()
 	{ return *data_; }
-	static String_set<0> *data_;
+	static String_set<char, 0> *data_;
 };
 
 extern std::mutex query_aligned_mtx;
 extern vector<bool> query_aligned;
-extern String_set<0> *query_qual;
+extern String_set<char, 0> *query_qual;
 
 void write_unaligned(OutputFile *file);
 void write_aligned(OutputFile *file);

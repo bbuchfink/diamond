@@ -78,7 +78,7 @@ TextBuffer* legacy_pipeline(Align_fetcher &hits, const sequence *subjects, size_
 		TextBuffer *buf = nullptr;
 		if (!blocked_processing && *output_format != Output_format::daa && config.report_unaligned != 0) {
 			buf = new TextBuffer;
-			const char *query_title = query_ids::get()[hits.query].c_str();
+			const char *query_title = query_ids::get()[hits.query];
 			output_format->print_query_intro(hits.query, query_title, get_source_query_len((unsigned)hits.query), *buf, true);
 			output_format->print_query_epilog(*buf, query_title, true, *params);
 		}

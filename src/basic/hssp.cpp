@@ -235,7 +235,7 @@ void Hsp::push_match(Letter q, Letter s, bool positive)
 	++length;
 }
 
-void Hsp::push_gap(Edit_operation op, int length, const char *subject)
+void Hsp::push_gap(Edit_operation op, int length, const Letter *subject)
 {
 	++gap_openings;
 	this->length += length;

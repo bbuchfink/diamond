@@ -89,11 +89,6 @@ struct sequence
 	}
 	bool empty() const
 	{ return len_ == 0; }
-	bool present() const {
-		return len_ > 0;
-	}
-	const char* c_str() const
-	{ return reinterpret_cast<const char*>(data_); }
 	size_t print(char *ptr, unsigned begin, unsigned len) const
 	{
 		for(unsigned i=begin;i<begin+len;++i)
@@ -148,9 +143,6 @@ struct sequence
 	sequence subseq(int begin, int end) const
 	{
 		return sequence(*this, begin, end - 1);
-	}
-	std::string substr(int begin, int end) const {
-		return std::string(&data_[begin], &data_[end]);
 	}
 	friend TextBuffer& operator<<(TextBuffer &buf, const sequence &s)
 	{

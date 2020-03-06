@@ -27,7 +27,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "config.h"
 #include "../util/util.h"
 
-typedef char Letter;
+typedef signed char Letter;
 typedef enum { amino_acid=0, nucleotide=1 } Sequence_type;
 struct Amino_acid {};
 struct Nucleotide {};

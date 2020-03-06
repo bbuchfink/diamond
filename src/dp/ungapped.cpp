@@ -19,6 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #include <assert.h>
+#include <algorithm>
 #include "ungapped.h"
 #include "../util/simd/transpose.h"
 #include "score_vector_int8.h"
@@ -33,15 +34,17 @@ void window_ungapped(const Letter *query, const Letter **subjects, size_t subjec
 
 	Letter subject_vector[16 * 16];
 	Sv score, best;
+	const Letter *subject_ptr[16];
+	std::copy(subjects, subjects + subject_count, subject_ptr);
 
 	for (int i = 0; i < window; i += 16) {
-		transpose((const signed char**)subjects, subject_count, (signed char*)subject_vector);
+		transpose(subject_ptr, subject_count, subject_vector);
 		for (int j = 0; j < 16;) {
 			const Sv match(unsigned(*query), _mm_loadu_si128((const __m128i*)&subject_vector[j * 16]));
 			score = score + match;
 			best = max(best, score);
 			++query;
-			subjects[j] += 16;
+			subject_ptr[j] += 16;
 			++j;
 		}
 	}

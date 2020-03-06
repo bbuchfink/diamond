@@ -25,7 +25,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 struct Seed_iterator
 {
-	Seed_iterator(vector<char> &seq, const Shape &sh):
+	Seed_iterator(vector<Letter> &seq, const Shape &sh):
 		ptr_ (seq.data()),
 		end_ (ptr_ + seq.size() - sh.length_ + 1)
 	{}
@@ -38,7 +38,7 @@ struct Seed_iterator
 		return sh.set_seed_reduced(seed, ptr_++);
 	}
 private:
-	const char *ptr_, *end_;
+	const Letter *ptr_, *end_;
 };
 
 template<uint64_t _b>

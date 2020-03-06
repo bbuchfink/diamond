@@ -19,6 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <sstream>
 #include <set>
 #include <numeric>
+#include <string.h>
 #include "../basic/match.h"
 #include "output_format.h"
 #include "../data/taxonomy.h"
@@ -360,9 +361,19 @@ void Blast_tab_format::print_match(const Hsp_context& r, const Metadata &metadat
 		case 48:
 			out << r.subject_seq;
 			break;
-		case 49:
-			out << (query_qual && (*query_qual)[r.query_id].present() ? (*query_qual)[r.query_id].substr(r.query_source_range().begin_, r.query_source_range().end_).c_str() : "*");
+		case 49: {
+			if (!query_qual) {
+				out << '*';
+				break;
+			}
+			const char *q = (*query_qual)[r.query_id];
+			if (strlen(q) == 0) {
+				out << '*';
+				break;
+			}
+			out << string(q + r.query_source_range().begin_, q + r.query_source_range().end_).c_str();
 			break;
+		}			
 		case 50:
 			out << query_block_to_database_id[r.query_id];
 			break;

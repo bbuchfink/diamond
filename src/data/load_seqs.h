@@ -54,18 +54,18 @@ inline size_t push_seq(Sequence_set &ss, Sequence_set** source_seqs, const vecto
 inline size_t load_seqs(TextInputFile &file,
 	const Sequence_file_format &format,
 	Sequence_set** seqs,
-	String_set<0>*& ids,
+	String_set<char, 0>*& ids,
 	Sequence_set** source_seqs,
-	String_set<0>** quals,
+	String_set<char, 0>** quals,
 	size_t max_letters,
 	const string &filter)
 {
 	*seqs = new Sequence_set();
-	ids = new String_set<0>();
+	ids = new String_set<char, 0>();
 	if(source_seqs)
 		*source_seqs = new Sequence_set();
 	if (quals)
-		*quals = new String_set<0>();
+		*quals = new String_set<char, 0>();
 	size_t letters = 0, n = 0;
 	vector<Letter> seq;
 	vector<char> id, qual;

@@ -22,14 +22,14 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <vector>
 #include <stddef.h>
 #include "../util/io/output_file.h"
+#include "../basic/sequence.h"
 
 using std::vector;
 
-template<char _pchar = '\xff', size_t _padding = 1lu>
+template<typename _t, char _pchar = '\xff', size_t _padding = 1lu>
 struct String_set
 {
 
-	typedef char _t;
 	enum { PERIMETER_PADDING = 256 };
 	static const char DELIMITER = _pchar;
 
@@ -108,14 +108,16 @@ struct String_set
 	size_t position(size_t i, size_t j) const
 	{ return limits_[i] + j; }
 
-	std::pair<size_t,size_t> local_position(size_t p) const
+	std::pair<size_t, size_t> local_position(size_t p) const
 	{
 		size_t i = std::upper_bound(limits_.begin(), limits_.end(), p) - limits_.begin() - 1;
-		return std::pair<size_t,size_t> (i, p - limits_[i]);
+		return std::pair<size_t, size_t>(i, p - limits_[i]);
 	}
 
-	sequence operator[](size_t i) const
-	{ return sequence (ptr(i), length(i)); }
+	const _t* operator[](size_t i) const
+	{
+		return ptr(i);
+	}
 
 private:
 

@@ -60,8 +60,11 @@ void search_query_offset(Loc q,
 			DP::window_ungapped(query - config.window, subjects, n, config.window * 2, scores);
 
 			for (size_t j = 0; j < n; ++j)
-				if (scores[j] >= config.min_ungapped_raw_score)
+				if (scores[j] >= config.min_ungapped_raw_score) {
 					stats.inc(Statistics::TENTATIVE_MATCHES2);
+					/*if (!is_primary_hit(query - config.window, subject - config.window, delta, sid, len))
+						continue;*/
+				}
 		}
 
 	}

@@ -35,7 +35,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/algo/MurmurHash3.h"
 #include "../util/io/record_reader.h"
 
-String_set<0>* ref_ids::data_ = 0;
+String_set<char, 0>* ref_ids::data_ = 0;
 Partitioned_histogram ref_hst;
 unsigned current_ref_block;
 Sequence_set* ref_seqs::data_ = 0;
@@ -138,16 +138,16 @@ void DatabaseFile::rewind()
 	pos_array_offset = ref_header.pos_array_offset;
 }
 
-void push_seq(const sequence &seq, const sequence &id, uint64_t &offset, vector<Pos_record> &pos_array, OutputFile &out, size_t &letters, size_t &n_seqs)
+void push_seq(const sequence &seq, const char *id, size_t id_len, uint64_t &offset, vector<Pos_record> &pos_array, OutputFile &out, size_t &letters, size_t &n_seqs)
 {	
 	pos_array.emplace_back(offset, seq.length());
 	out.write("\xff", 1);
 	out.write(seq.data(), seq.length());
 	out.write("\xff", 1);
-	out.write(id.data(), id.length() + 1);
+	out.write(id, id_len + 1);
 	letters += seq.length();
 	++n_seqs;
-	offset += seq.length() + id.length() + 3;
+	offset += seq.length() + id_len + 3;
 }
 
 void make_db(TempFile **tmp_out, TextInputFile *input_file)
@@ -171,7 +171,7 @@ void make_db(TempFile **tmp_out, TextInputFile *input_file)
 	uint64_t offset = out->tell();
 
 	Sequence_set *seqs;
-	String_set<0> *ids;
+	String_set<char, 0> *ids;
 	const FASTA_format format;
 	vector<Pos_record> pos_array;
 	FileBackedBuffer accessions;
@@ -187,7 +187,7 @@ void make_db(TempFile **tmp_out, TextInputFile *input_file)
 				sequence seq = (*seqs)[i];
 				if (seq.length() == 0)
 					throw std::runtime_error("File format error: sequence of length 0 at line " + to_string(db_file->line_count));
-				push_seq(seq, (*ids)[i], offset, pos_array, *out, letters, n_seqs);
+				push_seq(seq, (*ids)[i], ids->length(i), offset, pos_array, *out, letters, n_seqs);
 			}
 			if (!config.prot_accession2taxid.empty()) {
 				timer.go("Writing accessions");
@@ -196,9 +196,9 @@ void make_db(TempFile **tmp_out, TextInputFile *input_file)
 			}
 			timer.go("Hashing sequences");
 			for (size_t i = 0; i < n; ++i) {
-				sequence seq = (*seqs)[i], id = (*ids)[i];
+				sequence seq = (*seqs)[i];
 				MurmurHash3_x64_128(seq.data(), (int)seq.length(), header2.hash, header2.hash);
-				MurmurHash3_x64_128(id.data(), (int)id.length(), header2.hash, header2.hash);
+				MurmurHash3_x64_128((*ids)[i], ids->length(i), header2.hash, header2.hash);
 			}
 			delete seqs;
 			delete ids;
@@ -270,7 +270,7 @@ void DatabaseFile::seek_direct() {
 	seek(sizeof(ReferenceHeader) + sizeof(ReferenceHeader2) + 8);
 }
 
-bool DatabaseFile::load_seqs(vector<unsigned> &block_to_database_id, size_t max_letters, Sequence_set **dst_seq, String_set<0> **dst_id, bool load_ids, const vector<bool> *filter)
+bool DatabaseFile::load_seqs(vector<unsigned> &block_to_database_id, size_t max_letters, Sequence_set **dst_seq, String_set<char, 0> **dst_id, bool load_ids, const vector<bool> *filter)
 {
 	task_timer timer("Loading reference sequences");
 	seek(pos_array_offset);
@@ -280,7 +280,7 @@ bool DatabaseFile::load_seqs(vector<unsigned> &block_to_database_id, size_t max_
 	block_to_database_id.clear();
 
 	*dst_seq = new Sequence_set;
-	if(load_ids) *dst_id = new String_set<0>;
+	if(load_ids) *dst_id = new String_set<char, 0>;
 
 	Pos_record r;
 	read(&r, 1);
@@ -341,7 +341,7 @@ bool DatabaseFile::load_seqs(vector<unsigned> &block_to_database_id, size_t max_
 	return true;
 }
 
-void DatabaseFile::read_seq(string &id, vector<char> &seq)
+void DatabaseFile::read_seq(string &id, vector<Letter> &seq)
 {
 	char c;
 	read(&c, 1);

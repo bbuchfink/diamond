@@ -160,14 +160,13 @@ void benchmark_ungapped_sse(const sequence &s1, const sequence &s2) {
 	static const size_t n = 1000000llu;
 	high_resolution_clock::time_point t1 = high_resolution_clock::now();
 
-	const Letter* targets[16], *targets2[16];
+	const Letter* targets[16];
 	int out[16];
 	for (int i = 0; i < 16; ++i)
 		targets[i] = s2.data();
 
 	for (size_t i = 0; i < n; ++i) {
-		std::copy(targets, targets + 16, targets2);
-		DP::window_ungapped(s1.data(), targets2, 16, 64, out);
+		DP::window_ungapped(s1.data(), targets, 16, 64, out);
 	}
 	cout << "SSE ungapped extend:\t\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * 16 * 64) * 1000 << " ps/Cell" << endl;
 }

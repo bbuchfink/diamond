@@ -42,7 +42,7 @@ struct SeedComplexity
 			prob_[i] = 1000;
 	}
 
-	static bool complex(const char *seq, Shape shape)
+	static bool complex(const Letter *seq, Shape shape)
 	{
 		double p = 0;
 		for (unsigned i = 0; i < shape.weight_; ++i)
