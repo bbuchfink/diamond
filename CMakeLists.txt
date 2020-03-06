@@ -60,6 +60,7 @@ set(DISPATCH_OBJECTS
 "src/tools/benchmark.cpp"
 "src/dp/swipe/swipe_wrapper.cpp"
 "src/util/tantan.cpp"
+"src/dp/ungapped.cpp"
 )
 
 add_library(arch_generic OBJECT ${DISPATCH_OBJECTS})

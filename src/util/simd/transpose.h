@@ -59,8 +59,8 @@ inline void merge_fast(__m128i &in0, __m128i &in1, __m128i &tmp)
 inline void merge_fast_write(__m128i &reg1, __m128i &reg2, int off1, int off2, __m128i &tmp, __m128i *outreg)
 {
 	merge_fast(reg1, reg2, tmp);
-	_mm_store_si128(outreg+off1, reg1);
-	_mm_store_si128(outreg+off2, tmp);
+	_mm_storeu_si128(outreg+off1, reg1);
+	_mm_storeu_si128(outreg+off2, tmp);
 }
 
 inline void merge2_fast(__m128i &in0, __m128i &in1, __m128i &in2, __m128i &in3, __m128i &tmp)
@@ -110,6 +110,103 @@ inline void transpose(char* in, char* out, int hIn) {
 
 	merge_fast_write(xmm8, xmm9, 14, 15, xmm0, (__m128i*)out);
 	xmm0 = _mm_load_si128((__m128i*)out);
+
+	merge_fast_write(xmm4, xmm5, 12, 13, xmm9, (__m128i*)out);
+	merge_fast_write(xmm14, xmm15, 10, 11, xmm9, (__m128i*)out);
+	merge_fast_write(xmm6, xmm7, 8, 9, xmm9, (__m128i*)out);
+	merge_fast_write(xmm2, xmm3, 6, 7, xmm9, (__m128i*)out);
+	merge_fast_write(xmm12, xmm13, 4, 5, xmm9, (__m128i*)out);
+	merge_fast_write(xmm10, xmm11, 2, 3, xmm9, (__m128i*)out);
+	merge_fast_write(xmm0, xmm1, 0, 1, xmm9, (__m128i*)out);
+}
+
+inline void transpose(const signed char **in, signed char* out) {
+	__m128i xmm0, xmm1, xmm2, xmm3, xmm4, xmm5, xmm6, xmm7, xmm8, xmm9, xmm10, xmm11, xmm12, xmm13, xmm14, xmm15;
+	xmm0 = _mm_loadu_si128((__m128i*)*in); ++in;
+	xmm1 = _mm_loadu_si128((__m128i*)*in); ++in;
+	xmm2 = _mm_loadu_si128((__m128i*)*in); ++in;
+	xmm3 = _mm_loadu_si128((__m128i*)*in); ++in;
+	xmm4 = _mm_loadu_si128((__m128i*)*in); ++in;
+	xmm5 = _mm_loadu_si128((__m128i*)*in); ++in;
+	xmm6 = _mm_loadu_si128((__m128i*)*in); ++in;
+	xmm7 = _mm_loadu_si128((__m128i*)*in); ++in;
+	xmm8 = _mm_loadu_si128((__m128i*)*in); ++in;
+	xmm9 = _mm_loadu_si128((__m128i*)*in); ++in;
+	xmm10 = _mm_loadu_si128((__m128i*)*in); ++in;
+	xmm11 = _mm_loadu_si128((__m128i*)*in); ++in;
+	xmm12 = _mm_loadu_si128((__m128i*)*in); ++in;
+	xmm13 = _mm_loadu_si128((__m128i*)*in); ++in;
+	xmm14 = _mm_loadu_si128((__m128i*)*in); ++in;
+
+	merge3_fast(xmm0, xmm2, xmm4, xmm6, xmm8, xmm10, xmm12, xmm14, xmm15);
+	xmm6 = xmm15;
+
+	_mm_store_si128((__m128i*)out, xmm0);
+	xmm15 = _mm_loadu_si128((__m128i*)*in);
+
+	merge3_fast(xmm1, xmm3, xmm5, xmm7, xmm9, xmm11, xmm13, xmm15, xmm0);
+	xmm7 = xmm0;
+
+	merge_fast_write(xmm8, xmm9, 14, 15, xmm0, (__m128i*)out);
+	xmm0 = _mm_loadu_si128((__m128i*)out);
+
+	merge_fast_write(xmm4, xmm5, 12, 13, xmm9, (__m128i*)out);
+	merge_fast_write(xmm14, xmm15, 10, 11, xmm9, (__m128i*)out);
+	merge_fast_write(xmm6, xmm7, 8, 9, xmm9, (__m128i*)out);
+	merge_fast_write(xmm2, xmm3, 6, 7, xmm9, (__m128i*)out);
+	merge_fast_write(xmm12, xmm13, 4, 5, xmm9, (__m128i*)out);
+	merge_fast_write(xmm10, xmm11, 2, 3, xmm9, (__m128i*)out);
+	merge_fast_write(xmm0, xmm1, 0, 1, xmm9, (__m128i*)out);
+}
+
+inline void transpose(const signed char **in, size_t n, signed char* out) {
+	__m128i xmm0, xmm1, xmm2, xmm3, xmm4, xmm5, xmm6, xmm7, xmm8, xmm9, xmm10, xmm11, xmm12, xmm13, xmm14, xmm15;
+	switch (n) {
+	case 16:
+		xmm0 = _mm_loadu_si128((__m128i*)*in); ++in;
+	case 15:
+		xmm1 = _mm_loadu_si128((__m128i*)*in); ++in;
+	case 14:
+		xmm2 = _mm_loadu_si128((__m128i*)*in); ++in;
+	case 13:
+		xmm3 = _mm_loadu_si128((__m128i*)*in); ++in;
+	case 12:
+		xmm4 = _mm_loadu_si128((__m128i*)*in); ++in;
+	case 11:
+		xmm5 = _mm_loadu_si128((__m128i*)*in); ++in;
+	case 10:
+		xmm6 = _mm_loadu_si128((__m128i*)*in); ++in;
+	case 9:
+		xmm7 = _mm_loadu_si128((__m128i*)*in); ++in;
+	case 8:
+		xmm8 = _mm_loadu_si128((__m128i*)*in); ++in;
+	case 7:
+		xmm9 = _mm_loadu_si128((__m128i*)*in); ++in;
+	case 6:
+		xmm10 = _mm_loadu_si128((__m128i*)*in); ++in;
+	case 5:
+		xmm11 = _mm_loadu_si128((__m128i*)*in); ++in;
+	case 4:
+		xmm12 = _mm_loadu_si128((__m128i*)*in); ++in;
+	case 3:
+		xmm13 = _mm_loadu_si128((__m128i*)*in); ++in;
+	case 2:
+		xmm14 = _mm_loadu_si128((__m128i*)*in); ++in;
+	default:
+		;
+	}
+
+	merge3_fast(xmm0, xmm2, xmm4, xmm6, xmm8, xmm10, xmm12, xmm14, xmm15);
+	xmm6 = xmm15;
+
+	_mm_store_si128((__m128i*)out, xmm0);
+	xmm15 = _mm_loadu_si128((__m128i*)*in);
+
+	merge3_fast(xmm1, xmm3, xmm5, xmm7, xmm9, xmm11, xmm13, xmm15, xmm0);
+	xmm7 = xmm0;
+
+	merge_fast_write(xmm8, xmm9, 14, 15, xmm0, (__m128i*)out);
+	xmm0 = _mm_loadu_si128((__m128i*)out);
 
 	merge_fast_write(xmm4, xmm5, 12, 13, xmm9, (__m128i*)out);
 	merge_fast_write(xmm14, xmm15, 10, 11, xmm9, (__m128i*)out);

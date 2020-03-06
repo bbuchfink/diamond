@@ -20,6 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <chrono>
 #include <utility>
+#include <algorithm>
 #include "../basic/sequence.h"
 #include "../basic/score_matrix.h"
 #include "../dp/score_vector.h"
@@ -28,6 +29,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../dp/dp.h"
 #include "../dp/score_vector_int8.h"
 #include "../dp/score_profile.h"
+#include "../dp/ungapped.h"
+#include "../search/finger_print.h"
 
 using std::vector;
 using std::chrono::high_resolution_clock;
@@ -65,45 +68,54 @@ void scan_cols(const Long_score_profile &qp, sequence s, int i, int j, int j_end
 #endif
 }
 
-int xdrop_window2(const Letter *query, const Letter *subject)
-{
-	static const int window = 40;
-	int score(0), st(0), n = 0, i = 0;
-
+int xdrop_window2(const Letter *query, const Letter *subject) {
+	static const int window = 64;
+	int score(0), st(0), n = 0;
 	const Letter *q(query), *s(subject);
 
 	st = score;
 	while (n < window)
 	{
 		st += score_matrix(*q, *s);
-		if (st > score) {
-			score = st;
-			i = n;
-		}
+		score = std::max(score, st);
 		++q;
 		++s;
 		++n;
 
 		st += score_matrix(*q, *s);
-		if (st > score) {
-			score = st;
-			i = n;
-		}
+		score = std::max(score, st);
 		++q;
 		++s;
 		++n;
 
 		st += score_matrix(*q, *s);
-		if (st > score) {
-			score = st;
-			i = n;
-		}
+		score = std::max(score, st);
+		++q;
+		++s;
+		++n;
+
+		st += score_matrix(*q, *s);
+		score = std::max(score, st);
 		++q;
 		++s;
 		++n;
 	}
-	return st * i;
+	return score;
 }
+
+#ifdef __SSE4_1__
+void benchmark_hamming(const sequence &s1, const sequence &s2) {
+	static const size_t n = 100000000llu;
+	high_resolution_clock::time_point t1 = high_resolution_clock::now();
+
+	Byte_finger_print_48 f1(s1.data()), f2 (s2.data());
+	for (size_t i = 0; i < n; ++i) {
+		f1.r1 = _mm_xor_si128(f1.r1, f1.r2);
+		volatile unsigned y = f1.match(f2);
+	}
+	cout << "SSE hamming distance:\t\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * 48) * 1000 << " ps/Cell" << endl;
+}
+#endif
 
 void benchmark_ungapped(const sequence &s1, const sequence &s2)
 {
@@ -117,14 +129,15 @@ void benchmark_ungapped(const sequence &s1, const sequence &s2)
 		volatile int score = xdrop_window2(q, s);
 
 	}
+	
 	high_resolution_clock::time_point t2 = high_resolution_clock::now();
 	std::chrono::nanoseconds time_span = duration_cast<std::chrono::nanoseconds>(t2 - t1);
 
-	cout << "Scalar ungapped extension:\t" << (double)time_span.count() / (n*40) * 1000 << " ps/Cell" << endl;
+	cout << "Scalar ungapped extension:\t" << (double)time_span.count() / (n*64) * 1000 << " ps/Cell" << endl;
 }
 
 #ifdef __SSSE3__
-void benchmark_ungapped_sse(const sequence &s1, const sequence &s2)
+void benchmark_ssse3_shuffle(const sequence &s1, const sequence &s2)
 {
 	static const size_t n = 100000000llu;
 	high_resolution_clock::time_point t1 = high_resolution_clock::now();
@@ -138,7 +151,25 @@ void benchmark_ungapped_sse(const sequence &s1, const sequence &s2)
 		sv.set_ssse3(i & 15, seq);
 		volatile __m128i x = sv.data_;
 	}
-	cout << "SSE score shuffle:\t\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * 16) * 1000 << " ps/Letter" << endl;
+	cout << "SSSE3 score shuffle:\t\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * 16) * 1000 << " ps/Letter" << endl;
+}
+#endif
+
+#ifdef __SSE4_1__
+void benchmark_ungapped_sse(const sequence &s1, const sequence &s2) {
+	static const size_t n = 1000000llu;
+	high_resolution_clock::time_point t1 = high_resolution_clock::now();
+
+	const Letter* targets[16], *targets2[16];
+	int out[16];
+	for (int i = 0; i < 16; ++i)
+		targets[i] = s2.data();
+
+	for (size_t i = 0; i < n; ++i) {
+		std::copy(targets, targets + 16, targets2);
+		DP::window_ungapped(s1.data(), targets2, 16, 64, out);
+	}
+	cout << "SSE ungapped extend:\t\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * 16 * 64) * 1000 << " ps/Cell" << endl;
 }
 #endif
 
@@ -231,14 +262,23 @@ void diag_scores(const sequence &s1, const sequence &s2) {
 void benchmark() {
 	vector<Letter> s1, s2, s3, s4;
 	
-	s1 = sequence::from_string("mpeeeysefkelilqkelhvvyalshvcgqdrtllasillriflhekleslllctlndreismedeattlfrattlastlmeqymkatatqfvhhalkdsilkimeskqscelspskleknedvntnlthllnilselvekifmaseilpptlryiygclqksvqhkwptnttmrtrvvsgfvflrlicpailnprmfniisdspspiaartlilvaksvqnlanlvefgakepymegvnpfiksnkhrmimfldelgnvpelpdttehsrtdlsrdlaalheicvahsdelrtlsnergaqqhvlkkllaitellqqkqnqyt");
-	s2 = sequence::from_string("erlvelvtmmgdqgelpiamalanvvpcsqwdelarvlvtlfdsrhllyqllwnmfskeveladsmqtlfrgnslaskimtfcfkvygatylqklldpllrivitssdwqhvsfevdptrlepsesleenqrnllqmtekffhaiissssefppqlrsvchclyqvvsqrfpqnsigavgsamflrfinpaivspyeagildkkpppiierglklmskilqsianhvlftkeehmrpfndfvksnfdaarrffldiasdcptsdavnhslsfisdgnvlalhrllwnnqekigqylssnrdhkavgrrpfdkmatllaylgppe");
+	s1 = sequence::from_string("mpeeeysefkelilqkelhvvyalshvcgqdrtllasillriflhekleslllctlndreismedeattlfrattlastlmeqymkatatqfvhhalkdsilkimeskqscelspskleknedvntnlthllnilselvekifmaseilpptlryiygclqksvqhkwptnttmrtrvvsgfvflrlicpailnprmfniisdspspiaartlilvaksvqnlanlvefgakepymegvnpfiksnkhrmimfldelgnvpelpdttehsrtdlsrdlaalheicvahsdelrtlsnergaqqhvlkkllaitellqqkqnqyt"); // d1wera_
+	s2 = sequence::from_string("erlvelvtmmgdqgelpiamalanvvpcsqwdelarvlvtlfdsrhllyqllwnmfskeveladsmqtlfrgnslaskimtfcfkvygatylqklldpllrivitssdwqhvsfevdptrlepsesleenqrnllqmtekffhaiissssefppqlrsvchclyqvvsqrfpqnsigavgsamflrfinpaivspyeagildkkpppiierglklmskilqsianhvlftkeehmrpfndfvksnfdaarrffldiasdcptsdavnhslsfisdgnvlalhrllwnnqekigqylssnrdhkavgrrpfdkmatllaylgppe"); // d1nf1a_
 	s3 = sequence::from_string("ttfgrcavksnqagggtrshdwwpcqlrldvlrqfqpsqnplggdfdyaeafqsldyeavkkdiaalmtesqdwwpadfgnygglfvrmawhsagtyramdgrggggmgqqrfaplnswpdnqnldkarrliwpikqkygnkiswadlmlltgnvalenmgfktlgfgggradtwqsdeavywgaettfvpqgndvrynnsvdinaradklekplaathmgliyvnpegpngtpdpaasakdireafgrmgmndtetvaliagghafgkthgavkgsnigpapeaadlgmqglgwhnsvgdgngpnqmtsgleviwtktptkwsngyleslinnnwtlvespagahqweavngtvdypdpfdktkfrkatmltsdlalindpeylkisqrwlehpeeladafakawfkllhrdlgpttrylgpevp"); // d3ut2a1
 	s4 = sequence::from_string("lvhvasvekgrsyedfqkvynaialklreddeydnyigygpvlvrlawhisgtwdkhdntggsyggtyrfkkefndpsnaglqngfkflepihkefpwissgdlfslggvtavqemqgpkipwrcgrvdtpedttpdngrlpdadkdagyvrtffqrlnmndrevvalmgahalgkthlknsgyegpggaannvftnefylnllnedwklekndanneqwdsksgymmlptdysliqdpkylsivkeyandqdkffkdfskafekllengitfpkdapspfifktleeqgl"); // d2euta_
 
-	benchmark_ungapped(s1, s2);
+	sequence ss1 = sequence(s1).subseq(34, s1.size());
+	sequence ss2 = sequence(s2).subseq(33, s2.size());
+
+#ifdef __SSE4_1__
+	benchmark_hamming(s1, s2);
+#endif
+	benchmark_ungapped(ss1, ss2);
 #ifdef __SSSE3__
-	benchmark_ungapped_sse(s1, s2);
+	benchmark_ssse3_shuffle(s1, s2);
+#endif
+#ifdef __SSE4_1__
+	benchmark_ungapped_sse(ss1, ss2);
 #endif
 #ifdef __SSE__
 	benchmark_transpose();
