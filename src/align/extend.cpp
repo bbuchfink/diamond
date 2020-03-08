@@ -38,7 +38,7 @@ vector<Match> extend(const Parameters &params, size_t query_id, Trace_pt_list::i
 	vector<Bias_correction> query_cb;
 
 	if (config.log_query || flags & TARGET_PARALLEL)
-		log_stream << "Query = " << query_ids::get()[query_id].c_str() << endl;
+		log_stream << "Query = " << query_ids::get()[query_id] << endl;
 
 	for (unsigned i = 0; i < contexts; ++i)
 		query_seq.push_back(query_seqs::get()[query_id*contexts + i]);
@@ -69,7 +69,7 @@ vector<Match> extend(const Parameters &params, size_t query_id, Trace_pt_list::i
 
 	vector<Match> matches = align(aligned_targets, query_seq.data(), query_cb.data(), source_query_len, flags, stat);
 	timer.go("Computing culling");
-	culling(matches, source_query_len, query_ids::get()[query_id].c_str());
+	culling(matches, source_query_len, query_ids::get()[query_id]);
 	stat.inc(Statistics::TARGET_HITS3, matches.size());
 
 	return matches;

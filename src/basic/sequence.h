@@ -22,6 +22,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <iostream>
 #include <vector>
 #include <string>
+#include <assert.h>
 #include "../basic/value.h"
 #include "../util/binary_buffer.h"
 #include "../util/text_buffer.h"

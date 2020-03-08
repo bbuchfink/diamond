@@ -21,6 +21,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <vector>
 #include <utility>
+#include <iterator>
 #include "stream_entity.h"
 #include "../algo/varint.h"
 
@@ -80,7 +81,7 @@ struct Deserializer
 
 	Deserializer& operator>>(std::string &s)
 	{
-		if (!read_until(s, '\0'))
+		if (!read_to(std::back_inserter(s), '\0'))
 			throw EndOfStream();
 		return *this;
 	}
@@ -134,18 +135,33 @@ struct Deserializer
 		return begin_;
 	}
 
+	template<typename _it>
+	bool read_to(_it& dst, char delimiter)
+	{
+		int d = delimiter;
+		do {
+			const char* p = (const char*)memchr((void*)begin_, d, avail());
+			if (p == 0) {
+				std::copy(begin_, end_, dst);
+			}
+			else {
+				const size_t n = p - begin_;
+				std::copy(begin_, begin_ + n, dst);
+				begin_ += n + 1;
+				return true;
+			}
+		} while (fetch());
+		return false;
+	}
+	
 	size_t read_raw(char *ptr, size_t count);
-	bool read_until(std::string &dst, char delimiter);
-	bool read_until(std::vector<char> &dst, char delimiter);
 	DynamicRecordReader read_record();
 	~Deserializer();
 
 	bool varint;
 
 protected:
-
-	template<typename _t>
-	bool read_to(_t &container, char delimiter);
+	
 	void pop(char *dst, size_t n);
 	bool fetch();
 

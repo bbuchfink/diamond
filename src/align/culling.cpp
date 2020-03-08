@@ -81,7 +81,7 @@ void score_only_culling(vector<Target> &targets) {
 
 void Match::apply_filters(int source_query_len, const char *query_title)
 {
-	const char *title = ref_ids::get()[target_block_id].c_str();
+	const char *title = ref_ids::get()[target_block_id];
 	const int len = (int)ref_seqs::get()[target_block_id].length();
 	for (list<Hsp>::iterator i = hsp.begin(); i != hsp.end();) {
 		if (i->id_percent() < config.min_id

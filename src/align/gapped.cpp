@@ -162,7 +162,7 @@ vector<Match> align(vector<Target> &targets, const sequence *query_seq, const Bi
 
 	for (int i = 0; i < (int)targets.size(); ++i) {
 		if (config.log_subject)
-			std::cout << "Target=" << ref_ids::get()[targets[i].block_id].c_str() << " id=" << i << endl;
+			std::cout << "Target=" << ref_ids::get()[targets[i].block_id] << " id=" << i << endl;
 		add_dp_targets(targets[i], i, query_seq, dp_targets);
 		r.emplace_back(targets[i].block_id, targets[i].outranked);
 	}

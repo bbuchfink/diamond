@@ -79,7 +79,7 @@ void heartbeat_worker(size_t qend)
 	size_t next;
 	while ((next = OutputSink::get().next()) < qend) {
 		if (n == interval) {
-			const string title(query_ids::get()[next].c_str());
+			const string title(query_ids::get()[next]);
 			verbose_stream << "Queries=" << next
 				<< " size=" << megabytes(OutputSink::get().size())
 				<< " max_size=" << megabytes(OutputSink::get().max_size())

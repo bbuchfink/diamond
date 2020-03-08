@@ -21,9 +21,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <algorithm>
 #include <stdexcept>
 #include <fstream>
+#include <vector>
+#include <sstream>
 #include "score_matrix.h"
 
 using std::string;
+using std::vector;
 
 Score_matrix score_matrix;
 

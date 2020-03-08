@@ -83,7 +83,7 @@ struct DatabaseFile : public InputFile
 	void rewind();
 	bool load_seqs(vector<unsigned> &block_to_database_id, size_t max_letters, Sequence_set **dst_seq, String_set<char, 0> **dst_id, bool load_ids = true, const vector<bool> *filter = NULL);
 	void get_seq();
-	void read_seq(string &id, vector<char> &seq);
+	void read_seq(string &id, vector<Letter> &seq);
 	bool has_taxon_id_lists();
 	bool has_taxon_nodes();
 	bool has_taxon_scientific_names();

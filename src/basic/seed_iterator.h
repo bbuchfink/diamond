@@ -59,7 +59,7 @@ struct Hashed_seed_iterator
 	bool get(uint64_t &seed, uint64_t mask)
 	{
 		last_ <<= _b;
-		const char l = *(ptr_++);
+		const Letter l = *(ptr_++);
 		if (l == value_traits.mask_char)
 			return false;
 		last_ |= Reduction::reduction(l);
@@ -67,7 +67,7 @@ struct Hashed_seed_iterator
 		return true;
 	}
 private:
-	const char *ptr_, *end_;
+	const Letter *ptr_, *end_;
 	uint64_t last_;
 };
 
@@ -90,7 +90,7 @@ struct Contiguous_seed_iterator
 	{
 		last_ <<= _b;
 		last_ &= (1 << (_b*_l)) - 1;
-		const char l = *(ptr_++);
+		const Letter l = *(ptr_++);
 		if (l == value_traits.mask_char)
 			return false;
 		last_ |= Reduction::reduction(l);
@@ -102,7 +102,7 @@ struct Contiguous_seed_iterator
 		return _l;
 	}
 private:
-	const char *ptr_, *end_;
+	const Letter *ptr_, *end_;
 	uint64_t last_;
 };
 

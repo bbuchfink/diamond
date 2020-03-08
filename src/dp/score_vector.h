@@ -19,6 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #ifndef SCORE_VECTOR_H_
 #define SCORE_VECTOR_H_
 
+#include <algorithm>
 #include <limits.h>
 #include "../util/simd.h"
 #include "../basic/score_matrix.h"
@@ -58,8 +59,8 @@ struct score_vector<uint8_t>
 		data_ = _mm_setzero_si128();
 	}
 
-	explicit score_vector(char x):
-		data_ (_mm_set(x))
+	explicit score_vector(uint8_t x):
+		data_ (_mm_set1_epi8((char)x))
 	{ }
 
 	explicit score_vector(__m128i data):
@@ -131,12 +132,6 @@ struct score_vector<uint8_t>
 	score_vector& operator-=(const score_vector &rhs)
 	{
 		data_ = _mm_subs_epu8(data_, rhs.data_);
-		return *this;
-	}
-
-	score_vector& operator++()
-	{
-		data_ = _mm_adds_epu8(data_, _mm_set(1));
 		return *this;
 	}
 

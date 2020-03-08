@@ -1,4 +1,4 @@
-[0.10.0]
+[0.9.31]
 - Improved performance.
 - Composition based statistics use integer scoring.
 - Option `--quiet` will suppress startup message.

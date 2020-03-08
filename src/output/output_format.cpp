@@ -19,6 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <iostream>
 #include <limits.h>
 #include <algorithm>
+#include <sstream>
 #include "../data/taxonomy.h"
 #include "output_format.h"
 #include "../data/reference.h"

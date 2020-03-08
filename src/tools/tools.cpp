@@ -36,7 +36,8 @@ void mcl() {
 
 void split() {
 	TextInputFile in(config.query_file);
-	vector<char> id, seq;
+	vector<char> id;
+	vector<Letter> seq;
 	size_t n = 0, f = 0, b = (size_t)(config.chunk_size * 1e9);
 	OutputFile *out = new OutputFile(std::to_string(f) + ".faa.gz", true);
 	while (FASTA_format().get_seq(id, seq, in)) {

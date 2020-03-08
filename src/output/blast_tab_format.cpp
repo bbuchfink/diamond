@@ -384,7 +384,7 @@ void Blast_tab_format::print_match(const Hsp_context& r, const Metadata &metadat
 			out << (double)r.subject_range().length() * 100.0 / r.subject_len;
 			break;
 		case 53:
-			out << (query_qual && (*query_qual)[r.query_id].present() ? (*query_qual)[r.query_id].c_str() : "*");
+			out << (query_qual && strlen((*query_qual)[r.query_id]) ? (*query_qual)[r.query_id] : "*");
 			break;
 		case 54:
 			r.query.source().print(out, input_value_traits);
@@ -482,7 +482,7 @@ void Blast_tab_format::print_query_intro(size_t query_num, const char *query_nam
 				out << query_name;
 				break;
 			case 53:
-				out << (query_qual && (*query_qual)[query_num].present() ? (*query_qual)[query_num].c_str() : "*");
+				out << (query_qual && strlen((*query_qual)[query_num]) ? (*query_qual)[query_num] : "*");
 				break;
 			case 54:
 				(align_mode.query_translated ? query_source_seqs::get()[query_num] : query_seqs::get()[query_num]).print(out, input_value_traits);

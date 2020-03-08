@@ -113,13 +113,13 @@ void get_medoids_from_tree() {
 
 	vector<unsigned> block2databaseid;
 	Sequence_set *seqs;
-	String_set<'\0'> *ids;
+	String_set<char, '\0'> *ids;
 	db->load_seqs(block2databaseid, SIZE_MAX, &seqs, &ids, true);
 
 	map<int, int> parent;
 	map<string, int> acc2idx;
 	for (size_t i = 0; i < n; ++i) {
-		const string id = (*ids)[i].c_str();
+		const string id = (*ids)[i];
 		parent[i] = i;
 		acc2idx[id] = i;
 		acc2idx[std::to_string(i)] = i;
@@ -160,7 +160,7 @@ void get_medoids_from_tree() {
 				filter[acc] = true;
 			medoid = get_medoid(db, filter, i.second.size(), seqs);
 		}
-		const string id = string((*ids)[medoid].c_str()) + ' ' + std::to_string(i.second.size());
+		const string id = string((*ids)[medoid]) + ' ' + std::to_string(i.second.size());
 		Util::Sequence::format((*seqs)[medoid], id.c_str(), nullptr, out, "fasta", amino_acid_traits);
 	}
 	out.close();

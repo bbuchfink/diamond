@@ -19,6 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <limits>
 #include <iostream>
 #include <set>
+#include <iterator>
 #include <map>
 #include <memory>
 #include "../basic/config.h"
@@ -35,7 +36,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/algo/MurmurHash3.h"
 #include "../util/io/record_reader.h"
 
-String_set<char, 0>* ref_ids::data_ = 0;
+String_set<char, '\0'>* ref_ids::data_ = 0;
 Partitioned_histogram ref_hst;
 unsigned current_ref_block;
 Sequence_set* ref_seqs::data_ = 0;
@@ -192,7 +193,7 @@ void make_db(TempFile **tmp_out, TextInputFile *input_file)
 			if (!config.prot_accession2taxid.empty()) {
 				timer.go("Writing accessions");
 				for (size_t i = 0; i < n; ++i)
-					accessions << Taxonomy::Accession::from_title((*ids)[i].c_str());
+					accessions << Taxonomy::Accession::from_title((*ids)[i]);
 			}
 			timer.go("Hashing sequences");
 			for (size_t i = 0; i < n; ++i) {
@@ -331,7 +332,7 @@ bool DatabaseFile::load_seqs(vector<unsigned> &block_to_database_id, size_t max_
 		else
 			if (!seek_forward('\0')) throw std::runtime_error("Unexpected end of file.");
 		Masking::get().remove_bit_mask((*dst_seq)->ptr(n), (*dst_seq)->length(n));
-		if (!config.sfilt.empty() && strstr((**dst_id)[n].c_str(), config.sfilt.c_str()) == 0)
+		if (!config.sfilt.empty() && strstr((**dst_id)[n], config.sfilt.c_str()) == 0)
 			memset((*dst_seq)->ptr(n), value_traits.mask_char, (*dst_seq)->length(n));
 	}
 	timer.finish();
@@ -345,8 +346,8 @@ void DatabaseFile::read_seq(string &id, vector<Letter> &seq)
 {
 	char c;
 	read(&c, 1);
-	read_until(seq, '\xff');
-	read_until(id, '\0');
+	read_to(std::back_inserter(seq), '\xff');
+	read_to(std::back_inserter(id), '\0');
 }
 
 void DatabaseFile::get_seq()

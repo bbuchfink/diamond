@@ -217,5 +217,6 @@ inline void transpose(const signed char **in, size_t n, signed char* out) {
 	merge_fast_write(xmm0, xmm1, 0, 1, xmm9, (__m128i*)out);
 }
 
-#endif /* __SSE__ */
-#endif /* TRANSPOSE_H_ */
+#endif
+
+#endif

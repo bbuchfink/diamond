@@ -33,7 +33,7 @@ using Eigen::Dynamic;
 
 namespace Util { namespace tantan { namespace DISPATCH_ARCH {
 
-void mask(char *seq,
+void mask(Letter *seq,
 	int len,
 	const float **likelihood_ratio_matrix,
 	float p_repeat,

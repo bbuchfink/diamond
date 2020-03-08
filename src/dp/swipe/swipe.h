@@ -19,6 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #ifndef SWIPE_H_
 #define SWIPE_H_
 
+#include <assert.h>
 #include "../score_vector.h"
 #include "../score_vector_int8.h"
 #include "../../basic/value.h"

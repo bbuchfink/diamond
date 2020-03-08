@@ -56,9 +56,9 @@ const double subst_freq[20][20] = {
 	{ 0.0629104,0.0481246,0.0279043,0.0248727,0.0132862,0.0319342,0.0336743,0.0255073,0.0636279,0.0693312,0.123129,0.03326,0.0336581,0.1923,0.0183125,0.0405417,0.039996,0.0424192,0,0.0752103, },
 	{ 0.122866,0.0265131,0.0140538,0.0140485,0.020662,0.0200589,0.0307184,0.022685,0.010223,0.253759,0.190633,0.0272914,0.0436694,0.0420276,0.0241076,0.034372,0.0705984,0.00696795,0.0247446,0, } };
 
-vector<char> generate_random_seq(size_t length, std::minstd_rand0 &random_engine)
+vector<Letter> generate_random_seq(size_t length, std::minstd_rand0 &random_engine)
 {
-	vector<char> seq;
+	vector<Letter> seq;
 	seq.reserve(length);
 	for (size_t i = 0; i < length; ++i)
 		seq.push_back(get_distribution<20>(background_freq, random_engine));
@@ -93,7 +93,8 @@ vector<Letter> simulate_homolog(const sequence &seq, double id, std::minstd_rand
 
 void mutate() {
 	TextInputFile in(config.query_file);
-	vector<char> seq, id;
+	vector<char> id;
+	vector<Letter> seq;
 	input_value_traits = value_traits = nucleotide_traits;
 	OutputFile out(config.output_file);
 	std::minstd_rand0 random_engine;

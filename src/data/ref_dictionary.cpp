@@ -73,7 +73,7 @@ uint32_t ReferenceDictionary::get(unsigned block, size_t block_id)
 		if (!config.no_dict) {
 			len_.push_back((uint32_t)ref_seqs::get().length(block_id));
 			database_id_.push_back((*block_to_database_id_)[block_id]);
-			const char *title = ref_ids::get()[block_id].c_str();
+			const char *title = ref_ids::get()[block_id];
 			if (config.salltitles)
 				name_.push_back(new string(title));
 			else if (config.sallseqid)

@@ -117,7 +117,7 @@ void run() {
 
 	task_timer timer("Generating output");
 	Sequence_set *rep_seqs;
-	String_set<0> *rep_ids;
+	String_set<char, 0> *rep_ids;
 	vector<unsigned> rep_database_id, rep_block_id(seq_count);
 	db->rewind();
 	db->load_seqs(rep_database_id, (size_t)1e11, &rep_seqs, &rep_ids, true, &rep2);
@@ -125,7 +125,7 @@ void run() {
 		rep_block_id[rep_database_id[i]] = (unsigned)i;
 
 	ostream *out = config.output_file.empty() ? &cout : new ofstream(config.output_file.c_str());
-	vector<char> seq;
+	vector<Letter> seq;
 	string id;
 	db->seek_direct();
 	Hsp hsp;
@@ -137,7 +137,7 @@ void run() {
 		const unsigned r = rep_block_id[centroid2[i]];
 
 		(*out) << blast_id(id) << '\t'
-			<< blast_id((*rep_ids)[r].c_str()) << '\t';		
+			<< blast_id((*rep_ids)[r]) << '\t';		
 		
 		if ((int)i == centroid2[i])
 			(*out) << "100\t100\t100\t0" << endl;

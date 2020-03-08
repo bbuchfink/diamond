@@ -163,6 +163,7 @@ add_executable(diamond $<TARGET_OBJECTS:arch_generic>
   src/basic/matrix_tables.cpp
   src/test/test_cases.cpp
   src/chaining/smith_waterman.cpp
+  src/basic/value.cpp
 )
 else()
 add_executable(diamond $<TARGET_OBJECTS:arch_generic>
@@ -262,6 +263,7 @@ add_executable(diamond $<TARGET_OBJECTS:arch_generic>
   src/basic/matrix_tables.cpp
   src/test/test_cases.cpp
   src/chaining/smith_waterman.cpp
+  src/basic/value.cpp
 )
 endif()
 
