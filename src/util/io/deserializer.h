@@ -22,6 +22,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <vector>
 #include <utility>
 #include <iterator>
+#include <string.h>
 #include "stream_entity.h"
 #include "../algo/varint.h"
 
