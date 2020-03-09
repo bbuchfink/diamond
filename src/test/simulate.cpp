@@ -93,7 +93,7 @@ vector<Letter> simulate_homolog(const sequence &seq, double id, std::minstd_rand
 
 void mutate() {
 	TextInputFile in(config.query_file);
-	vector<char> id;
+	string id;
 	vector<Letter> seq;
 	input_value_traits = value_traits = nucleotide_traits;
 	OutputFile out(config.output_file);

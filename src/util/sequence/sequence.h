@@ -20,12 +20,25 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define UTIL_SEQUENCE_SEQUENCE_H_
 
 #include <string>
+#include <string.h>
 #include "../../basic/sequence.h"
 #include "../io/output_file.h"
 
 namespace Util { namespace Sequence {
 
 void format(sequence seq, const char *id, const char *qual, OutputFile &out, const std::string &format, const Value_traits &value_traits);
+
+inline sequence clip(const Letter *seq, int len, int anchor) {
+	const Letter *a = seq + anchor, *begin = seq, *end = seq + len, *p;
+	for(;;) {
+		p = (const Letter*)memchr(begin, (int)sequence::DELIMITER, end - begin);
+		if (p == nullptr)
+			return sequence(begin, end);
+		if (p >= a)
+			return sequence(begin, p);
+		begin = p + 1;
+	}
+}
 
 }}
 

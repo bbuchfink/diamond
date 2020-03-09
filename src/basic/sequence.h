@@ -33,7 +33,7 @@ using std::vector;
 
 struct sequence
 {
-	static const char DELIMITER = '\x1f';
+	static constexpr Letter DELIMITER = '\x1f';
 	struct Reversed {};
 	struct Hardmasked {};
 	sequence():
@@ -46,6 +46,11 @@ struct sequence
 		clipping_offset_ (clipping_offset),
 		data_ (data)
 	{ }
+	sequence(const Letter *begin, const Letter *end) :
+		len_(end - begin),
+		clipping_offset_(0),
+		data_(begin)
+	{}
 	sequence(const vector<Letter> &data):
 		len_(data.size()),
 		clipping_offset_(0),

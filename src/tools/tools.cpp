@@ -36,7 +36,7 @@ void mcl() {
 
 void split() {
 	TextInputFile in(config.query_file);
-	vector<char> id;
+	string id;
 	vector<Letter> seq;
 	size_t n = 0, f = 0, b = (size_t)(config.chunk_size * 1e9);
 	OutputFile *out = new OutputFile(std::to_string(f) + ".faa.gz", true);
@@ -47,7 +47,7 @@ void split() {
 			out = new OutputFile(std::to_string(++f) + ".faa.gz", true);
 			n = 0;
 		}
-		string blast_id = ::blast_id(string(id.data(), id.size()));
+		string blast_id = ::blast_id(id);
 		Util::Sequence::format(sequence(seq), blast_id.c_str(), nullptr, *out, "fasta", amino_acid_traits);
 		n += seq.size();
 	}

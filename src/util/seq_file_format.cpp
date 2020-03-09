@@ -18,6 +18,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "seq_file_format.h"
 
+using std::string;
+using std::vector;
+
 struct Raw_text {};
 struct Sequence_data {};
 
@@ -40,7 +43,7 @@ void copy_line(const string & s, vector<_t>& v, size_t d, _what)
 		v.push_back(convert_char<_what>(*i));
 }
 
-bool FASTA_format::get_seq(vector<char>& id, vector<Letter>& seq, TextInputFile & s, vector<char> *qual) const
+bool FASTA_format::get_seq(string& id, vector<Letter>& seq, TextInputFile & s, vector<char> *qual) const
 {
 	// !!!
 	while (s.getline(), s.line.empty() && !s.eof());
@@ -48,9 +51,8 @@ bool FASTA_format::get_seq(vector<char>& id, vector<Letter>& seq, TextInputFile 
 		return false;
 	if (s.line[0] != '>')
 		throw StreamReadException(s.line_count, "FASTA format error: Missing '>' at record start.");
-	id.clear();
 	seq.clear();
-	copy_line(s.line, id, 1, Raw_text());
+	id = s.line.substr(1);
 	while (true) {
 		s.getline();
 		if (s.line.empty()) {
@@ -73,16 +75,15 @@ bool FASTA_format::get_seq(vector<char>& id, vector<Letter>& seq, TextInputFile 
 	return true;
 }
 
-bool FASTQ_format::get_seq(vector<char>& id, vector<Letter>& seq, TextInputFile & s, vector<char> *qual) const
+bool FASTQ_format::get_seq(string& id, vector<Letter>& seq, TextInputFile & s, vector<char> *qual) const
 {
 	while (s.getline(), s.line.empty() && !s.eof());
 	if (s.eof())
 		return false;
 	if (s.line[0] != '@')
 		throw StreamReadException(s.line_count, "FASTQ format error: Missing '@' at record start.");
-	id.clear();
 	seq.clear();
-	copy_line(s.line, id, 1, Raw_text());
+	id = s.line.substr(1);
 	s.getline();
 	try {
 		copy_line(s.line, seq, 0, Sequence_data());

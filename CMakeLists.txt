@@ -164,6 +164,7 @@ add_executable(diamond $<TARGET_OBJECTS:arch_generic>
   src/test/test_cases.cpp
   src/chaining/smith_waterman.cpp
   src/basic/value.cpp
+  src/tools/merge_tsv.cpp
 )
 else()
 add_executable(diamond $<TARGET_OBJECTS:arch_generic>
@@ -264,6 +265,7 @@ add_executable(diamond $<TARGET_OBJECTS:arch_generic>
   src/test/test_cases.cpp
   src/chaining/smith_waterman.cpp
   src/basic/value.cpp
+  src/tools/merge_tsv.cpp
 )
 endif()
 

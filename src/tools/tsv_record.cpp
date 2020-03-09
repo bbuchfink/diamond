@@ -6,6 +6,7 @@ using namespace std;
 TextInputFile& operator>>(TextInputFile &file, TSVRecord &record) {
 	constexpr size_t BUF_SIZE = 512;
 	char query_buf[BUF_SIZE], subject_buf[BUF_SIZE];
+	record.qseqid.clear();
 	file.getline();
 	if (!file.eof()) {
 		if (sscanf(file.line.c_str(), "%s%s%lf%zu%zu%zu%zu%zu%zu%zu%lf%lf", query_buf, subject_buf, &record.pident, &record.length, &record.mismatch,
@@ -17,7 +18,7 @@ TextInputFile& operator>>(TextInputFile &file, TSVRecord &record) {
 	return file;
 }
 
-std::ostream& operator<<(std::ostream &str, TSVRecord &record) {
+std::ostream& operator<<(std::ostream &str, const TSVRecord &record) {
 	str << record.qseqid << '\t'
 		<< record.sseqid << '\t'
 		<< record.pident << '\t'

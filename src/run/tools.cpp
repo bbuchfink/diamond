@@ -117,14 +117,14 @@ void run_masker()
 {
 	TextInputFile f(config.query_file);
 	vector<Letter> seq, seq2;
-	vector<char> id;
+	string id;
 	const FASTA_format format;
 	size_t letters = 0, seqs = 0, seqs_total = 0;
 
 	high_resolution_clock::time_point t1 = high_resolution_clock::now();
 
 	while (format.get_seq(id, seq, f)) {
-		cout << '>' << string(id.data(), id.size()) << endl;
+		cout << '>' << id << endl;
 		seq2 = seq;
 		Masking::get()(seq2.data(), seq2.size());
 		/*for (size_t i = 0; i < seq.size(); ++i) {
@@ -152,12 +152,12 @@ void fastq2fasta()
 {
 	unique_ptr<TextInputFile> f(new TextInputFile(config.query_file));
 	vector<Letter> seq;
-	vector<char> id;
+	string id;
 	const FASTQ_format format;
 	input_value_traits = value_traits = nucleotide_traits;
 	size_t n = 0, max = atoi(config.seq_no[0].c_str());
 	while (n < max && format.get_seq(id, seq, *f)) {
-		cout << '>' << string(id.data(), id.size()) << endl;
+		cout << '>' << id << endl;
 		cout << sequence(seq.data(), seq.size()) << endl;
 		++n;
 	}
@@ -190,7 +190,7 @@ void read_sim()
 	TextInputFile in(config.query_file);
 	OutputFile out(config.output_file);
 	FASTA_format format;
-	vector<char> id;
+	string id;
 	vector<Letter> seq;
 	input_value_traits = nucleotide_traits;
 	TextBuffer buf;
@@ -233,7 +233,7 @@ void info()
 
 void pairwise_worker(TextInputFile *in, std::mutex *input_lock, std::mutex *output_lock) {
 	FASTA_format format;
-	vector<char> id_r, id_q;
+	string id_r, id_q;
 	vector<Letter> ref, query;
 
 	while(true) {
@@ -247,7 +247,7 @@ void pairwise_worker(TextInputFile *in, std::mutex *input_lock, std::mutex *outp
 			return;
 		}
 		input_lock->unlock();
-		const string ir = blast_id(string(id_r.data(), id_r.size())), iq = blast_id(string(id_q.data(), id_q.size()));
+		const string ir = blast_id(id_r), iq = blast_id(id_q);
 		Hsp hsp;
 		smith_waterman(sequence(query), sequence(ref), hsp);
 		Hsp_context context(hsp, 0, TranslatedSequence(query), "", 0, 0, "", 0, 0, 0, sequence());
@@ -281,9 +281,9 @@ void pairwise()
 		t.join();
 }
 
-void fasta_skip_to(vector<char> &id, vector<Letter> &seq, string &blast_id, TextInputFile &f)
+void fasta_skip_to(string &id, vector<Letter> &seq, string &blast_id, TextInputFile &f)
 {
-	while (::blast_id(string(id.data(), id.size())) != blast_id) {
+	while (::blast_id(id) != blast_id) {
 		if (!FASTA_format().get_seq(id, seq, f))
 			throw runtime_error("Sequence not found in FASTA file.");
 	}
@@ -292,12 +292,12 @@ void fasta_skip_to(vector<char> &id, vector<Letter> &seq, string &blast_id, Text
 void translate() {
 	input_value_traits = nucleotide_traits;
 	TextInputFile in(config.query_file);
-	vector<char> id;
+	string id;
 	vector<Letter> seq;
 	vector<Letter> proteins[6];
 	while (FASTA_format().get_seq(id, seq, in)) {
 		Translator::translate(seq, proteins);
-		cout << ">" << string(id.data(), id.size()) << endl;
+		cout << ">" << id << endl;
 		cout << sequence(proteins[0]) << endl;
 	}
 	in.close();
@@ -306,7 +306,7 @@ void translate() {
 void reverse() {
 	input_value_traits = amino_acid_traits;
 	TextInputFile in(config.query_file);
-	vector<char> id;
+	string id;
 	vector<Letter> seq;
 	TextBuffer buf;
 	while (FASTA_format().get_seq(id, seq, in)) {
@@ -327,7 +327,7 @@ void show_cbs() {
 	score_matrix = Score_matrix("BLOSUM62", config.gap_open, config.gap_extend, config.frame_shift, 1);
 	init_cbs();
 	TextInputFile in(config.query_file);
-	vector<char> id;
+	string id;
 	vector<Letter> seq;
 	while (FASTA_format().get_seq(id, seq, in)) {
 		Bias_correction bc{ sequence(seq) };

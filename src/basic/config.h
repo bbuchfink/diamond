@@ -28,7 +28,7 @@ using std::vector;
 
 struct Config
 {
-	string	input_ref_file;
+	vector<string> input_ref_file;
 	unsigned	threads_;
 	string	database;
 	string	query_file;
@@ -200,6 +200,7 @@ struct Config
 	double min_band_overlap;
 	int min_realign_overhang;
 	bool fast_stage2;
+	int ungapped_window;
 
 	enum {
 		makedb = 0, blastp = 1, blastx = 2, view = 3, help = 4, version = 5, getseq = 6, benchmark = 7, random_seqs = 8, compare = 9, sort = 10, roc = 11, db_stat = 12, model_sim = 13,

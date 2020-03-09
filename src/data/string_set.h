@@ -19,12 +19,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #ifndef STRING_SET_H_
 #define STRING_SET_H_
 
+#include <assert.h>
 #include <vector>
 #include <stddef.h>
-#include "../util/io/output_file.h"
 #include "../basic/sequence.h"
-
-using std::vector;
 
 template<typename _t, char _pchar = '\xff', size_t _padding = 1lu>
 struct String_set
@@ -51,10 +49,12 @@ struct String_set
 		limits_.push_back(raw_len() + n + _padding);
 	}
 
-	void push_back(const vector<_t> &v)
+	template<typename _it>
+	void push_back(_it begin, _it end)
 	{
-		limits_.push_back(raw_len() + v.size() + _padding);
-		data_.insert(data_.end(), v.begin(), v.end());
+		assert(begin <= end);
+		limits_.push_back(raw_len() + (end - begin) + _padding);
+		data_.insert(data_.end(), begin, end);
 		data_.insert(data_.end(), _padding, _pchar);
 	}
 
@@ -83,12 +83,6 @@ struct String_set
 
 	size_t get_length() const
 	{ return limits_.size() - 1; }
-
-	/*void save(OutputFile &file) const
-	{
-		file.write(limits_);
-		file.write(data_);
-	}*/
 
 	size_t raw_len() const
 	{ return limits_.back(); }
@@ -121,8 +115,8 @@ struct String_set
 
 private:
 
-	vector<_t> data_;
-	vector<size_t> limits_;
+	std::vector<_t> data_;
+	std::vector<size_t> limits_;
 
 };
 

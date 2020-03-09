@@ -153,13 +153,17 @@ void push_seq(const sequence &seq, const char *id, size_t id_len, uint64_t &offs
 
 void make_db(TempFile **tmp_out, TextInputFile *input_file)
 {
-	message_stream << "Database file: " << config.input_ref_file << endl;
+	if (config.input_ref_file.size() > 1)
+		throw std::runtime_error("Too many arguments provided for option --in.");
+	const string input_file_name = config.input_ref_file.empty() ? string() : config.input_ref_file.front();
+	if (input_file_name.empty() && !input_file)
+		std::cerr << "Input file parameter (--in) is missing. Input will be read from stdin." << endl;
+	if(!input_file && !input_file_name.empty())
+		message_stream << "Database input file: " << input_file_name << endl;
 	
 	task_timer total;
-	if (config.input_ref_file == "" && !input_file)
-		std::cerr << "Input file parameter (--in) is missing. Input will be read from stdin." << endl;
 	task_timer timer("Opening the database file", true);
-	TextInputFile *db_file = input_file ? input_file : new TextInputFile(config.input_ref_file);
+	TextInputFile *db_file = input_file ? input_file : new TextInputFile(input_file_name);
 	
 	OutputFile *out = tmp_out ? new TempFile() : new OutputFile(config.database);
 	ReferenceHeader header;
@@ -428,7 +432,7 @@ bool DatabaseFile::is_diamond_db(const string &file_name) {
 DatabaseFile* DatabaseFile::auto_create_from_fasta() {
 	if (!is_diamond_db(config.database)) {
 		message_stream << "Database file is not a DIAMOND database, treating as FASTA." << endl;
-		config.input_ref_file = config.database;
+		config.input_ref_file = { config.database };
 		TempFile *db;
 		make_db(&db);
 		DatabaseFile *r(new DatabaseFile(*db));
