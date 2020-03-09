@@ -271,7 +271,7 @@ const char* custom_scores(const string &matrix_file)
 	std::stringstream ss;
 	vector<Letter> pos;
 	unsigned n = 0;
-	memset(scores, 0xff, sizeof(scores));
+	std::fill(scores, scores + sizeof(scores), '\xff');
 	if (matrix_file == "")
 		return scores;
 	std::ifstream f(matrix_file.c_str());
