@@ -136,7 +136,7 @@ struct Deserializer
 	}
 
 	template<typename _it>
-	bool read_to(_it& dst, char delimiter)
+	bool read_to(_it dst, char delimiter)
 	{
 		int d = delimiter;
 		do {
