@@ -61,7 +61,6 @@ void merge_tsv() {
 	size_t records = 0;
 	for (size_t i = 0; i < n; ++i) {
 		files.emplace_back(config.input_ref_file[i]);
-		files.back().getline();
 		files.back() >> r;
 		if (!r.blank()) {
 			queue.emplace(std::move(r), i);

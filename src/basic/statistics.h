@@ -74,8 +74,7 @@ struct Statistics
 		log_stream << "Hits (filter stage 0) = " << data_[SEED_HITS] << endl;
 		log_stream << "Hits (filter stage 1) = " << data_[TENTATIVE_MATCHES1] << " (" << data_[TENTATIVE_MATCHES1]*100.0/ data_[SEED_HITS] << " %)" << endl;
 		log_stream << "Hits (filter stage 2) = " << data_[TENTATIVE_MATCHES2] << " (" << data_[TENTATIVE_MATCHES2] * 100.0 / data_[TENTATIVE_MATCHES1] << " %)" << endl;
-		log_stream << "Hits (filter stage x) = " << data_[TENTATIVE_MATCHESX] << " (" << data_[TENTATIVE_MATCHESX] * 100.0 / data_[TENTATIVE_MATCHES2] << " %)" << endl;
-		log_stream << "Hits (filter stage 3) = " << data_[TENTATIVE_MATCHES3] << " (" << data_[TENTATIVE_MATCHES3] * 100.0 / data_[TENTATIVE_MATCHESX] << " %)" << endl;
+		log_stream << "Hits (filter stage 3) = " << data_[TENTATIVE_MATCHES3] << " (" << data_[TENTATIVE_MATCHES3] * 100.0 / data_[TENTATIVE_MATCHES2] << " %)" << endl;
 		log_stream << "Hits (filter stage 4) = " << data_[TENTATIVE_MATCHES4] << " (" << data_[TENTATIVE_MATCHES4] * 100.0 / data_[TENTATIVE_MATCHES3] << " %)" << endl;
 		log_stream << "Target hits (stage 0) = " << data_[TARGET_HITS0] << endl;
 		log_stream << "Target hits (stage 1) = " << data_[TARGET_HITS1] << endl;

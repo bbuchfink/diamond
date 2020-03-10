@@ -31,6 +31,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../dp/score_profile.h"
 #include "../dp/ungapped.h"
 #include "../search/finger_print.h"
+#include "../dp/ungapped_simd.h"
 
 using std::vector;
 using std::chrono::high_resolution_clock;
@@ -166,7 +167,7 @@ void benchmark_ungapped_sse(const sequence &s1, const sequence &s2) {
 		targets[i] = s2.data();
 
 	for (size_t i = 0; i < n; ++i) {
-		DP::window_ungapped(s1.data(), targets, 16, 64, out);
+		DP::DISPATCH_ARCH::window_ungapped(s1.data(), targets, 16, 64, out);
 	}
 	cout << "SSE ungapped extend:\t\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * 16 * 64) * 1000 << " ps/Cell" << endl;
 }
