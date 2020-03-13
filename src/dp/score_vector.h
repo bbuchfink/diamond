@@ -135,6 +135,11 @@ struct score_vector<uint8_t>
 		return *this;
 	}
 
+	score_vector& operator &=(const score_vector& rhs) {
+		data_ = _mm_and_si128(data_, rhs.data_);
+		return *this;
+	}
+
 	__m128i operator==(const score_vector &rhs) const
 	{
 		return _mm_cmpeq_epi8(data_, rhs.data_);
@@ -257,11 +262,18 @@ struct ScoreTraits<int32_t>
 	{
 		return INT_MAX;
 	}
+	static constexpr int max_int_score() {
+		return INT_MAX;
+	}
 };
 
-inline void store_sv(int32_t sv, int32_t *dst)
+static inline void store_sv(int32_t sv, int32_t *dst)
 {
 	*dst = sv;
+}
+
+static inline int32_t load_sv(const int32_t *x) {
+	return *x;
 }
 
 #ifdef __SSE2__
@@ -279,7 +291,7 @@ struct ScoreTraits<score_vector<uint8_t>>
 };
 
 template<typename _t, typename _p>
-inline void store_sv(const score_vector<_t> &sv, _p *dst)
+static inline void store_sv(const score_vector<_t> &sv, _p *dst)
 {
 	_mm_storeu_si128((__m128i*)dst, sv.data_);
 }
@@ -287,23 +299,25 @@ inline void store_sv(const score_vector<_t> &sv, _p *dst)
 #endif
 
 template<typename _sv>
-inline typename ScoreTraits<_sv>::Score extract_channel(const _sv &v, int i) {
+static inline typename ScoreTraits<_sv>::Score extract_channel(const _sv &v, int i) {
 	return v[i];
 }
 
 template<>
-inline int extract_channel<int>(const int &v, int i) {
+static inline int extract_channel<int>(const int &v, int i) {
 	return v;
 }
 
 template<typename _sv>
-inline void set_channel(_sv &v, int i, typename ScoreTraits<_sv>::Score x) {
+static inline void set_channel(_sv &v, int i, typename ScoreTraits<_sv>::Score x) {
 	v.set(i, x);
 }
 
 template<>
-inline void set_channel<int>(int &v, int i, int x) {
+static inline void set_channel<int>(int &v, int i, int x) {
 	v = x;
 }
+
+struct Saturated {};
 
 #endif /* SCORE_VECTOR_H_ */

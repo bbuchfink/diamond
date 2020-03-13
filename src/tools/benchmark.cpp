@@ -41,7 +41,7 @@ using std::list;
 
 namespace Benchmark { namespace DISPATCH_ARCH {
 
-void scan_cols(const Long_score_profile &qp, sequence s, int i, int j, int j_end)
+static void scan_cols(const Long_score_profile &qp, sequence s, int i, int j, int j_end)
 {
 #ifdef __SSE4_1__
 	typedef score_vector<int8_t> Sv;
@@ -69,7 +69,7 @@ void scan_cols(const Long_score_profile &qp, sequence s, int i, int j, int j_end
 #endif
 }
 
-int xdrop_window2(const Letter *query, const Letter *subject) {
+static int xdrop_window(const Letter *query, const Letter *subject) {
 	static const int window = 64;
 	int score(0), st(0), n = 0;
 	const Letter *q(query), *s(subject);
@@ -127,7 +127,7 @@ void benchmark_ungapped(const sequence &s1, const sequence &s2)
 
 	for (size_t i = 0; i < n; ++i) {
 
-		volatile int score = xdrop_window2(q, s);
+		volatile int score = xdrop_window(q, s);
 
 	}
 	
@@ -167,7 +167,7 @@ void benchmark_ungapped_sse(const sequence &s1, const sequence &s2) {
 		targets[i] = s2.data();
 
 	for (size_t i = 0; i < n; ++i) {
-		DP::DISPATCH_ARCH::window_ungapped(s1.data(), targets, 16, 64, out);
+		DP::window_ungapped(s1.data(), targets, 16, 64, out);
 	}
 	cout << "SSE ungapped extend:\t\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * 16 * 64) * 1000 << " ps/Cell" << endl;
 }
@@ -175,7 +175,7 @@ void benchmark_ungapped_sse(const sequence &s1, const sequence &s2) {
 
 #ifdef __SSE__
 void benchmark_transpose() {
-	static const size_t n = 100000000llu;
+	static const size_t n = 10000000llu;
 	static char in[256], out[256];
 
 	high_resolution_clock::time_point t1 = high_resolution_clock::now();
@@ -205,7 +205,7 @@ void swipe_cell_update() {
 	{
 		score_vector<int8_t> diagonal_cell, scores, gap_extension, gap_open, horizontal_gap, vertical_gap, best;
 		for (size_t i = 0; i < n; ++i) {
-			diagonal_cell = cell_update_sv(diagonal_cell, scores, gap_extension, gap_open, horizontal_gap, vertical_gap, best);
+			diagonal_cell = swipe_cell_update(diagonal_cell, scores, nullptr, gap_extension, gap_open, horizontal_gap, vertical_gap, best);
 		}
 		volatile __m128i x = diagonal_cell.data_;
 	}
@@ -232,6 +232,7 @@ void banded_swipe(const sequence &s1, const sequence &s2) {
 	for (size_t i = 0; i < 8; ++i)
 		target16.emplace_back(s2, -32, 32, 0, 0);
 	static const size_t n = 10000llu;
+	//static const size_t n = 1llu;
 	Statistics stat;
 	Bias_correction cbs(s1);
 	high_resolution_clock::time_point t1 = high_resolution_clock::now();

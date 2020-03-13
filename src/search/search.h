@@ -46,7 +46,7 @@ struct Stage1_hit
 	unsigned q, s;
 };
 
-inline int stage2_ungapped(const Letter *query, const Letter *subject, unsigned sid, unsigned &delta, unsigned &len)
+static inline int stage2_ungapped(const Letter *query, const Letter *subject, unsigned sid, unsigned &delta, unsigned &len)
 {
 	return xdrop_ungapped(query, subject, shapes[sid].length_, delta, len);
 }

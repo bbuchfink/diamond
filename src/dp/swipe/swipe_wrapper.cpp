@@ -31,13 +31,13 @@ using std::thread;
 
 namespace DP { namespace BandedSwipe { namespace DISPATCH_ARCH {
 
-template<typename _sv, typename _traceback>
+template<typename _sv, typename _traceback, typename _cbs>
 list<Hsp> swipe(
 	const sequence &query,
 	Frame frame,
 	vector<DpTarget>::const_iterator subject_begin,
 	vector<DpTarget>::const_iterator subject_end,
-	const int8_t *composition_bias,
+	_cbs composition_bias,
 	int score_cutoff,
 	vector<DpTarget> &overflow,
 	Statistics &stat);
@@ -55,10 +55,18 @@ list<Hsp> swipe_targets(const sequence &query,
 {
 	list<Hsp> out;
 	for (vector<DpTarget>::const_iterator i = begin; i < end; i += ScoreTraits<_sv>::CHANNELS) {
-		if (flags & TRACEBACK)
-			out.splice(out.end(), swipe<_sv, Traceback>(query, frame, i, i + std::min(vector<DpTarget>::const_iterator::difference_type(ScoreTraits<_sv>::CHANNELS), end - i), composition_bias, score_cutoff, overflow, stat));
-		else
-			out.splice(out.end(), swipe<_sv, ScoreOnly>(query, frame, i, i + std::min(vector<DpTarget>::const_iterator::difference_type(ScoreTraits<_sv>::CHANNELS), end - i), composition_bias, score_cutoff, overflow, stat));
+		if (flags & TRACEBACK) {
+			if (composition_bias == nullptr)
+				out.splice(out.end(), swipe<_sv, Traceback>(query, frame, i, i + std::min(vector<DpTarget>::const_iterator::difference_type(ScoreTraits<_sv>::CHANNELS), end - i), NoCBS(), score_cutoff, overflow, stat));
+			else
+				out.splice(out.end(), swipe<_sv, Traceback>(query, frame, i, i + std::min(vector<DpTarget>::const_iterator::difference_type(ScoreTraits<_sv>::CHANNELS), end - i), composition_bias, score_cutoff, overflow, stat));
+		}
+		else {
+			if (composition_bias == nullptr)
+				out.splice(out.end(), swipe<_sv, ScoreOnly>(query, frame, i, i + std::min(vector<DpTarget>::const_iterator::difference_type(ScoreTraits<_sv>::CHANNELS), end - i), NoCBS(), score_cutoff, overflow, stat));
+			else
+				out.splice(out.end(), swipe<_sv, ScoreOnly>(query, frame, i, i + std::min(vector<DpTarget>::const_iterator::difference_type(ScoreTraits<_sv>::CHANNELS), end - i), composition_bias, score_cutoff, overflow, stat));
+		}
 	}
 	return out;
 }

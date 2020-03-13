@@ -22,7 +22,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <numeric>
 #include <atomic>
 #include "../dp.h"
-#include "swipe_matrix.h"
 #include "swipe.h"
 #include "target_iterator.h"
 #include "../../util/data_structures/mem_buffer.h"

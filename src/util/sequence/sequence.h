@@ -28,7 +28,7 @@ namespace Util { namespace Sequence {
 
 void format(sequence seq, const char *id, const char *qual, OutputFile &out, const std::string &format, const Value_traits &value_traits);
 
-inline sequence clip(const Letter *seq, int len, int anchor) {
+static inline sequence clip(const Letter *seq, int len, int anchor) {
 	const Letter *a = seq + anchor, *begin = seq, *end = seq + len, *p;
 	for(;;) {
 		p = (const Letter*)memchr(begin, (int)sequence::DELIMITER, end - begin);

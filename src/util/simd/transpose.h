@@ -23,7 +23,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #ifdef __SSE__
 
-inline void merge(__m128i &first, __m128i &second, __m128i &temp)
+static inline void merge(__m128i &first, __m128i &second, __m128i &temp)
 {
 	temp = first;
 	first = _mm_unpacklo_epi8(first, second);
@@ -31,7 +31,7 @@ inline void merge(__m128i &first, __m128i &second, __m128i &temp)
 	second = temp;
 }
 
-inline void merge2(__m128i &col0, __m128i &col1, __m128i &col2, __m128i &col3, __m128i &temp)
+static inline void merge2(__m128i &col0, __m128i &col1, __m128i &col2, __m128i &col3, __m128i &temp)
 {
 	merge(col0, col2, temp);
 	merge(col1, col3, temp);
@@ -39,7 +39,7 @@ inline void merge2(__m128i &col0, __m128i &col1, __m128i &col2, __m128i &col3, _
 	merge(col2, col3, temp);
 }
 
-inline void merge3(__m128i &col0, __m128i &col1, __m128i &col2, __m128i &col3, __m128i &col4, __m128i &col5, __m128i &col6, __m128i &col7, __m128i &tmp)
+static inline void merge3(__m128i &col0, __m128i &col1, __m128i &col2, __m128i &col3, __m128i &col4, __m128i &col5, __m128i &col6, __m128i &col7, __m128i &tmp)
 {
 	merge2(col0, col2, col4, col6, tmp);
 	merge2(col1, col3, col5, col7, tmp);
@@ -49,21 +49,21 @@ inline void merge3(__m128i &col0, __m128i &col1, __m128i &col2, __m128i &col3, _
 	merge(col6, col7, tmp);
 }
 
-inline void merge_fast(__m128i &in0, __m128i &in1, __m128i &tmp)
+static inline void merge_fast(__m128i &in0, __m128i &in1, __m128i &tmp)
 {
 	tmp = in0;
 	in0 = _mm_unpacklo_epi8(in0, in1);
 	tmp = _mm_unpackhi_epi8(tmp, in1);
 }
 
-inline void merge_fast_write(__m128i &reg1, __m128i &reg2, int off1, int off2, __m128i &tmp, __m128i *outreg)
+static inline void merge_fast_write(__m128i &reg1, __m128i &reg2, int off1, int off2, __m128i &tmp, __m128i *outreg)
 {
 	merge_fast(reg1, reg2, tmp);
 	_mm_storeu_si128(outreg+off1, reg1);
 	_mm_storeu_si128(outreg+off2, tmp);
 }
 
-inline void merge2_fast(__m128i &in0, __m128i &in1, __m128i &in2, __m128i &in3, __m128i &tmp)
+static inline void merge2_fast(__m128i &in0, __m128i &in1, __m128i &in2, __m128i &in3, __m128i &tmp)
 {
 	merge_fast(in0, in2, tmp);
 	merge_fast(in1, in3, in2);
@@ -71,7 +71,7 @@ inline void merge2_fast(__m128i &in0, __m128i &in1, __m128i &in2, __m128i &in3, 
 	merge_fast(tmp, in2, in1);
 }
 
-inline void merge3_fast(__m128i &in0, __m128i &in1, __m128i &in2, __m128i &in3, __m128i &in4, __m128i &in5, __m128i &in6, __m128i &in7, __m128i &tmp)
+static inline void merge3_fast(__m128i &in0, __m128i &in1, __m128i &in2, __m128i &in3, __m128i &in4, __m128i &in5, __m128i &in6, __m128i &in7, __m128i &tmp)
 {
 	merge2_fast(in0, in2, in4, in6, tmp);
 	merge2_fast(in1, in3, in5, in7, in4);
@@ -81,7 +81,7 @@ inline void merge3_fast(__m128i &in0, __m128i &in1, __m128i &in2, __m128i &in3, 
 	merge_fast(in2, in3, in4);
 }
 
-inline void transpose(char* in, char* out, int hIn) {
+static inline void transpose(char* in, char* out, int hIn) {
 	__m128i xmm0, xmm1, xmm2, xmm3, xmm4, xmm5, xmm6, xmm7, xmm8, xmm9, xmm10, xmm11, xmm12, xmm13, xmm14, xmm15;
 	xmm0 = _mm_load_si128((__m128i*)in); in += 16;
 	xmm1 = _mm_load_si128((__m128i*)in); in += 16;
@@ -120,7 +120,7 @@ inline void transpose(char* in, char* out, int hIn) {
 	merge_fast_write(xmm0, xmm1, 0, 1, xmm9, (__m128i*)out);
 }
 
-inline void transpose(const signed char **in, signed char* out) {
+static inline void transpose(const signed char **in, signed char* out) {
 	__m128i xmm0, xmm1, xmm2, xmm3, xmm4, xmm5, xmm6, xmm7, xmm8, xmm9, xmm10, xmm11, xmm12, xmm13, xmm14, xmm15;
 	xmm0 = _mm_loadu_si128((__m128i*)*in); ++in;
 	xmm1 = _mm_loadu_si128((__m128i*)*in); ++in;
@@ -159,7 +159,7 @@ inline void transpose(const signed char **in, signed char* out) {
 	merge_fast_write(xmm0, xmm1, 0, 1, xmm9, (__m128i*)out);
 }
 
-inline void transpose(const signed char **in, size_t n, signed char* out) {
+static inline void transpose(const signed char **in, size_t n, signed char* out) {
 	__m128i xmm0, xmm1, xmm2, xmm3, xmm4, xmm5, xmm6, xmm7, xmm8, xmm9, xmm10, xmm11, xmm12, xmm13, xmm14, xmm15;
 	switch (n) {
 	case 16:

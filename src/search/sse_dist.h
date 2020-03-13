@@ -24,7 +24,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/simd.h"
 
 #ifdef __SSSE3__
-inline __m128i reduce_seq_ssse3(const Letter *seq)
+static inline __m128i reduce_seq_ssse3(const Letter *seq)
 {
 	const __m128i *row = reinterpret_cast<const __m128i*>(Reduction::reduction.map8());
 	const __m128i s = _mm_loadu_si128((const __m128i*)seq);
@@ -41,7 +41,7 @@ inline __m128i reduce_seq_ssse3(const Letter *seq)
 #endif
 
 #ifdef __SSE2__
-inline __m128i reduce_seq_generic(const Letter *seq)
+static inline __m128i reduce_seq_generic(const Letter *seq)
 {
 	uint8_t d[16];
 	for (unsigned i = 0; i < 16; ++i)
@@ -49,7 +49,7 @@ inline __m128i reduce_seq_generic(const Letter *seq)
 	return _mm_loadu_si128((const __m128i*)d);
 }
 
-inline __m128i reduce_seq(const Letter *seq)
+static inline __m128i reduce_seq(const Letter *seq)
 {
 #ifdef __SSSE3__
 	return reduce_seq_ssse3(seq);
@@ -59,7 +59,7 @@ inline __m128i reduce_seq(const Letter *seq)
 }
 #endif
 
-inline unsigned match_block_reduced(const Letter *x, const Letter *y)
+static inline unsigned match_block_reduced(const Letter *x, const Letter *y)
 {
 #ifdef __SSE2__
 	const __m128i r1 = reduce_seq(x);
@@ -76,7 +76,7 @@ inline unsigned match_block_reduced(const Letter *x, const Letter *y)
 #endif
 }
 
-inline uint64_t reduced_match32(const Letter* q, const Letter *s, unsigned len)
+static inline uint64_t reduced_match32(const Letter* q, const Letter *s, unsigned len)
 {
 	uint64_t x = match_block_reduced(q + 16, s + 16) << 16 | match_block_reduced(q, s);
 	if(len < 32)

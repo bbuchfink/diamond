@@ -23,9 +23,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/simd/transpose.h"
 #include "score_vector_int8.h"
 
-namespace DP { namespace DISPATCH_ARCH {
+namespace DP {
 
-inline void window_ungapped(const Letter *query, const Letter **subjects, size_t subject_count, int window, int *out) {
+static inline void window_ungapped(const Letter *query, const Letter **subjects, size_t subject_count, int window, int *out) {
 #ifdef __SSE4_1__
 	typedef score_vector<int8_t> Sv;
 	assert(window % 16 == 0);
@@ -55,4 +55,4 @@ inline void window_ungapped(const Letter *query, const Letter **subjects, size_t
 #endif
 }
 
-}}
+}
