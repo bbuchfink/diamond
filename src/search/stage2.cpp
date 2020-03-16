@@ -26,6 +26,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../dp/ungapped.h"
 #include "../util/sequence/sequence.h"
 #include "../dp/ungapped_simd.h"
+#include "../dp/dp.h"
 
 namespace Search {
 namespace DISPATCH_ARCH {

@@ -6,9 +6,14 @@ option(EXTRA "EXTRA" OFF)
 option(STATIC_LIBGCC "STATIC_LIBGCC" OFF)
 option(STATIC_LIBSTDC++ "STATIC_LIBSTDC++" OFF)
 option(X86 "X86" ON)
+option(STRICT_BAND "STRICT_BAND" ON)
 
-IF(STATIC_LIBSTDC++)
+if(STATIC_LIBSTDC++)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -static-libstdc++")
+endif()
+
+if(STRICT_BAND)
+  add_definitions(-DSTRICT_BAND)
 endif()
 
 IF(STATIC_LIBGCC)

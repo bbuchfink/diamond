@@ -39,11 +39,8 @@ struct TargetIterator
 		for (; next < std::min(_n, n_targets); ++next) {
 			const DpTarget &t = subject_begin[next];
 			pos[next] = i1 - (t.d_end - 1);
-#ifdef NO_STRICT_BAND
 			const int d0 = d_begin[next];
-#else
-			const int d0 = t.d_begin;
-#endif
+			//const int d0 = t.d_begin;
 			const int j1 = std::min(qlen - 1 - d0, (int)(t.seq.length() - 1)) + 1;
 			cols = std::max(cols, j1 - pos[next]);
 			target[next] = next;

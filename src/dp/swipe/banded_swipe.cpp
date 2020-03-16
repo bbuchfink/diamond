@@ -30,8 +30,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../../basic/config.h"
 #include "../util/data_structures/range_partition.h"
 
-//#define NO_STRICT_BAND
-
 using std::list;
 using std::pair;
 
@@ -351,7 +349,7 @@ list<Hsp> swipe(
 {
 	typedef typename ScoreTraits<_sv>::Score Score;
 	typedef typename MatrixTag<_sv, _traceback>::Type Matrix;
-	constexpr int CHANNELS = ScoreTraits<_sv>::CHANNELS;
+ 	constexpr int CHANNELS = ScoreTraits<_sv>::CHANNELS;
 
 	assert(subject_end - subject_begin <= CHANNELS);
 	const int qlen = (int)query.length();
@@ -362,18 +360,18 @@ list<Hsp> swipe(
 
 	int i1 = INT_MAX, d_begin[CHANNELS];
 	const int target_count = int(subject_end - subject_begin);
-#ifndef NO_STRICT_BAND
+#ifdef STRICT_BAND
 	int band_offset[CHANNELS];
 #endif
 	for (int i = 0; i < target_count; ++i) {
 		d_begin[i] = subject_begin[i].d_end - band;
-#ifndef NO_STRICT_BAND
+#ifdef STRICT_BAND
 		band_offset[i] = subject_begin[i].d_begin - d_begin[i];
 #endif		
 		i1 = std::min(i1, std::max(subject_begin[i].d_end - 1, 0));
 	}
 	int i0 = i1 + 1 - band;
-#ifndef NO_STRICT_BAND
+#ifdef STRICT_BAND
 	RangePartition<CHANNELS, Score> band_parts(band_offset, target_count, band);
 #endif
 	
@@ -386,11 +384,9 @@ list<Hsp> swipe(
 
 	Score best[CHANNELS];
 	int max_col[CHANNELS];
-	for (int i = 0; i < CHANNELS; ++i) {
-		best[i] = ScoreTraits<_sv>::zero_score();
-		max_col[i] = 0;
-	}
-
+	std::fill(best, best + CHANNELS, ScoreTraits<_sv>::zero_score());
+	std::fill(max_col, max_col + CHANNELS, 0);
+	
 	int j = 0;
 	while (targets.active.size() > 0) {
 		const int i0_ = std::max(i0, 0), i1_ = std::min(i1, qlen - 1) + 1;
@@ -403,12 +399,11 @@ list<Hsp> swipe(
 
 		profile.set(targets.get(Score()));
 
-#ifndef NO_STRICT_BAND
+#ifdef STRICT_BAND
 		for (int part = 0; part < band_parts.count(); ++part) {
 			const int i_begin = std::max(i0 + band_parts.begin(part), i0_);
 			const int i_end = std::min(i0 + band_parts.end(part), i1_);
 			const _sv target_mask = load_sv(band_parts.mask(part));
-			//std::cout << i_begin << '\t' << i_end << endl;
 			for (int i = i_begin; i < i_end; ++i) {
 #else
 			for (int i = i0_; i < i1_; ++i) {
@@ -416,8 +411,8 @@ list<Hsp> swipe(
 				hgap = it.hgap();
 				_sv next;
 				_sv match_scores = profile.get(query[i]);
-#ifndef NO_STRICT_BAND
-				match_scores -= target_mask;
+#ifdef STRICT_BAND
+				match_scores += target_mask;
 #endif
 				next = swipe_cell_update<_sv>(it.diag(), match_scores, composition_bias[i], extend_penalty, open_penalty, hgap, vgap, col_best);
 
@@ -425,7 +420,7 @@ list<Hsp> swipe(
 				it.set_score(next);
 				++it;
 			}
-#ifndef NO_STRICT_BAND
+#ifdef STRICT_BAND
 		}
 #endif
 
@@ -448,14 +443,14 @@ list<Hsp> swipe(
 	}
 
 	list<Hsp> out;
-	bool realign = false;
+	int realign = 0;
 	for (int i = 0; i < targets.n_targets; ++i) {
 		if (best[i] < ScoreTraits<_sv>::max_score()) {
 			if (ScoreTraits<_sv>::int_score(best[i]) >= score_cutoff) {
 				out.push_back(traceback<_sv>(query, frame, composition_bias, dp, subject_begin[i], d_begin[i], best[i], max_col[i], i, i0 - j, i1 - j));
-				if (!realign && (config.max_hsps == 0 || config.max_hsps > 1) && !config.no_swipe_realign
+				if ((config.max_hsps == 0 || config.max_hsps > 1) && !config.no_swipe_realign
 					&& ::DP::BandedSwipe::DISPATCH_ARCH::realign<_traceback>(out.back(), subject_begin[i]))
-					realign = true;
+					realign |= 1 << i;
 			}
 		}
 		else
@@ -464,17 +459,19 @@ list<Hsp> swipe(
 	if (realign) {
 		stat.inc(Statistics::SWIPE_REALIGN);
 		vector<vector<Letter>> seqs;
-		vector<DpTarget> targets;
-		for (vector<DpTarget>::const_iterator i = subject_begin; i < subject_end; ++i) {
-			seqs.push_back(i->seq.copy());
-			targets.push_back(*i);
-			targets.back().seq = sequence(seqs.back());
-			for (const Hsp &hsp : out)
-				if (hsp.swipe_target == i->target_idx)
-					targets.back().seq.mask(hsp.subject_range);
+		vector<DpTarget> realign_targets;
+		for (int i = 0; i < targets.n_targets; ++i) {
+			if ((realign & (1 << i)) == 0)
+				continue;
+			seqs.push_back(subject_begin[i].seq.copy());
+			realign_targets.push_back(subject_begin[i]);
+			realign_targets.back().seq = sequence(seqs.back());
+			for (const Hsp& hsp : out)
+				if (hsp.swipe_target == subject_begin[i].target_idx)
+					realign_targets.back().seq.mask(hsp.subject_range);
 		}
 		vector<DpTarget> overflow;
-		out.splice(out.end(), swipe<_sv, _traceback>(query, frame, targets.begin(), targets.end(), composition_bias, score_cutoff, overflow, stat));
+		out.splice(out.end(), swipe<_sv, _traceback>(query, frame, realign_targets.begin(), realign_targets.end(), composition_bias, score_cutoff, overflow, stat));
 	}
 	return out;
 }

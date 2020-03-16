@@ -202,7 +202,7 @@ struct ScoreOnly {};
 enum { TRACEBACK = 1, PARALLEL = 2 };
 
 struct NoCBS {
-	void* operator[](int i) const { return nullptr; }
+	constexpr void* operator[](int i) const { return nullptr; }
 };
 	
 namespace Swipe {

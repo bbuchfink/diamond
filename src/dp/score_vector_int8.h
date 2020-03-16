@@ -100,6 +100,11 @@ struct score_vector<int8_t>
 		return score_vector(_mm_subs_epi8(data_, rhs.data_));
 	}
 
+	score_vector& operator+=(const score_vector& rhs) {
+		data_ = _mm_adds_epi8(data_, rhs.data_);
+		return *this;
+	}
+
 	score_vector& operator-=(const score_vector& rhs)
 	{
 		data_ = _mm_subs_epi8(data_, rhs.data_);
