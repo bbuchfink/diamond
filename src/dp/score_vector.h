@@ -304,7 +304,7 @@ static inline typename ScoreTraits<_sv>::Score extract_channel(const _sv &v, int
 }
 
 template<>
-static inline int extract_channel<int>(const int &v, int i) {
+inline int extract_channel<int>(const int &v, int i) {
 	return v;
 }
 
@@ -314,7 +314,7 @@ static inline void set_channel(_sv &v, int i, typename ScoreTraits<_sv>::Score x
 }
 
 template<>
-static inline void set_channel<int>(int &v, int i, int x) {
+inline void set_channel<int>(int &v, int i, int x) {
 	v = x;
 }
 
