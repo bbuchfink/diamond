@@ -51,10 +51,6 @@ struct score_vector<int8_t>
 		data_(_mm_loadu_si128(reinterpret_cast<const __m128i*>(s)))
 	{ }
 
-	score_vector(int x, const Saturated&) :
-		data_(_mm_set1_epi8(signed char(SCHAR_MIN + x)))
-	{}
-
 	score_vector(unsigned a, const __m128i &seq)
 	{
 #ifdef __SSSE3__

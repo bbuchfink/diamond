@@ -318,6 +318,4 @@ inline void set_channel<int>(int &v, int i, int x) {
 	v = x;
 }
 
-struct Saturated {};
-
 #endif /* SCORE_VECTOR_H_ */

@@ -53,10 +53,6 @@ struct score_vector<int16_t>
 		data_(_mm_loadu_si128((const __m128i*)x))
 	{}
 
-	score_vector(int x, const Saturated&) :
-		data_(_mm_set1_epi16(short(SHRT_MIN + x)))
-	{}
-
 	score_vector(unsigned a, uint64_t seq)
 	{
 		const uint16_t* row((uint16_t*)&score_matrix.matrix16()[a << 5]);
