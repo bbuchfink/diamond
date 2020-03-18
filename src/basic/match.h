@@ -158,7 +158,7 @@ struct Hsp
 
 	bool operator<(const Hsp &rhs) const
 	{
-		return score > rhs.score;
+		return score > rhs.score || (score == rhs.score && query_source_range.begin_ < rhs.query_source_range.begin_);
 	}
 
 	double id_percent() const
