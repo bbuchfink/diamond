@@ -6,6 +6,7 @@
 - Added option `--culling-overlap` to set the minimum overlap with a higher scoring hit for a hit to be deleted and changed the
   default value from 90% to 50%.
 - Added command `diamond test` to run a series of regression tests.
+- Fixed an off-by-one error of the query end position in the XML output format.
 
 [0.9.30]
 - Added support for output field `cigar` to the tabular format.
