@@ -57,6 +57,14 @@ struct FlatArray {
 		return &data_[limits_[i + 1]];
 	}
 
+	_t* begin(size_t i) {
+		return &data_[limits_[i]];
+	}
+
+	_t* end(size_t i) {
+		return &data_[limits_[i + 1]];
+	}
+
 private:
 
 	std::vector<_t> data_;

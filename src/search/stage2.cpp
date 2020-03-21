@@ -16,6 +16,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
+#include <limits.h>
 #include "search.h"
 #include "../util/map.h"
 #include "../data/queries.h"
@@ -49,7 +50,9 @@ void search_query_offset(Loc q,
 	if (hits_end <= hits)
 		return;
 	const Letter* query = query_seqs::data_->data(q);
+#ifdef LEFTMOST_SEED_FILTER
 	hit_filter hf(stats, q, out);
+#endif
 
 	if (config.fast_stage2) {
 
@@ -58,6 +61,7 @@ void search_query_offset(Loc q,
 
 		const sequence query_clipped = Util::Sequence::clip(query - config.ungapped_window, config.ungapped_window*2, config.ungapped_window);
 		const int window_left = int(query - query_clipped.data()), window = (int)query_clipped.length();
+		unsigned query_id = UINT_MAX, seed_offset = UINT_MAX;
 		
 		for (vector<Stage1_hit>::const_iterator i = hits; i < hits_end; i += 16) {
 
@@ -69,6 +73,7 @@ void search_query_offset(Loc q,
 			for (size_t j = 0; j < n; ++j)
 				if (scores[j] >= config.min_ungapped_raw_score) {
 					stats.inc(Statistics::TENTATIVE_MATCHES2);
+#ifdef LEFTMOST_SEED_FILTER
 					const sequence subject_clipped = Util::Sequence::clip(subjects[j], window, window_left);
 					const int delta = int(subject_clipped.data() - subjects[j]);
 					assert(delta <= window_left);
@@ -76,12 +81,20 @@ void search_query_offset(Loc q,
 						stats.inc(Statistics::TENTATIVE_MATCHES3);
 						hf.push(s[(i + j)->s], scores[j]);
 					}
+#else
+					if (query_id == UINT_MAX) {
+						std::pair<size_t, size_t> l = query_seqs::data_->local_position(q);
+						query_id = (unsigned)l.first;
+						seed_offset = (unsigned)l.second;
+					}
+					out.push(hit(query_id, s[(i + j)->s], seed_offset));
+#endif
 				}
 		}
 
 	}
 	else {
-
+#ifdef LEFTMOST_SEED_FILTER
 		for (vector<Stage1_hit>::const_iterator i = hits; i < hits_end; ++i) {
 			const Loc s_pos = s[i->s];
 			const Letter* subject = ref_seqs::data_->data(s_pos);
@@ -99,10 +112,12 @@ void search_query_offset(Loc q,
 			stats.inc(Statistics::TENTATIVE_MATCHES3);
 			hf.push(s_pos, score);
 		}
+#endif
 
 	}
-
+#ifdef LEFTMOST_SEED_FILTER
 	hf.finish();
+#endif
 }
 
 #else

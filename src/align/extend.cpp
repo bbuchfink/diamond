@@ -55,7 +55,7 @@ vector<Match> extend(const Parameters &params, size_t query_id, Trace_pt_list::i
 
 	vector<WorkTarget> targets = ungapped_stage(query_seq.data(), query_cb.data(), begin, end, flags);
 	stat.inc(Statistics::TARGET_HITS0, targets.size());
-
+	
 	timer.go("Computing ranking");
 	rank_targets(targets, config.rank_ratio == -1 ? (query_seq[0].length() > 50 ? 0.6 : 0.9) : config.rank_ratio, config.rank_factor == -1 ? 1e3 : config.rank_factor);
 	stat.inc(Statistics::TARGET_HITS1, targets.size());

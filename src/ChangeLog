@@ -1,3 +1,6 @@
+[0.9.32]
+- Fixed a bug that would generate an incorrect count of positive scoring letters in all output formats.
+
 [0.9.31]
 - Improved performance.
 - Composition based statistics use integer scoring.
