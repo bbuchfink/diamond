@@ -23,6 +23,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../basic/sequence.h"
 #include "score_vector.h"
 #include "../basic/value.h"
+#include "comp_based_stats.h"
 
 using std::vector;
 
@@ -130,18 +131,18 @@ struct score_profile
 
 #endif
 
-struct Long_score_profile
+struct LongScoreProfile
 {
-	Long_score_profile()
+	LongScoreProfile()
 	{}
-	Long_score_profile(sequence seq)
+	LongScoreProfile(sequence seq, const Bias_correction &cbs)
 	{
 		for (unsigned l = 0; l < AMINO_ACID_COUNT; ++l) {
-			const uint8_t *scores = &score_matrix.matrix8u()[l << 5];
-			data[l].reserve(seq.length() + 2*padding);
+			const int8_t* scores = &score_matrix.matrix8()[l << 5];
+			data[l].reserve(seq.length() + 2 * padding);
 			data[l].insert(data[l].end(), padding, 0);
 			for (unsigned i = 0; i < seq.length(); ++i)
-				data[l].push_back(scores[(int)seq[i]]);
+				data[l].push_back(scores[(int)seq[i]] + cbs.int8[i]);
 			data[l].insert(data[l].end(), padding, 0);
 		}
 	}
@@ -149,12 +150,12 @@ struct Long_score_profile
 	{
 		return data[0].size() - 2 * padding;
 	}
-	const uint8_t* get(Letter l, int i) const
+	const int8_t* get(Letter l, int i) const
 	{
 		return &data[(int)l][i + padding];
 	}
-	vector<uint8_t> data[AMINO_ACID_COUNT];
-	enum { padding = 32 };
+	vector<int8_t> data[AMINO_ACID_COUNT];
+	enum { padding = 128 };
 };
 
 #endif /* SCORE_PROFILE_H_ */

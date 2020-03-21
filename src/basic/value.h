@@ -20,6 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define VALUE_H_
 
 #include <stdexcept>
+#include <string>
 #include "const.h"
 
 typedef signed char Letter;

@@ -296,9 +296,9 @@ Hsp traceback(const sequence &query, Frame frame, _cbs bias_correction, const Tr
 	
 	while (it.score() > ScoreTraits<_sv>::zero_score()) {
 		const Letter q = query[it.i], s = target.seq[it.j];
-		Score m = score_matrix(q, s), score = it.score();
-		m = add_cbs(m, bias_correction[it.i]);
-		if (score == saturated_add(it.diag(), m)) {
+		const Score m = score_matrix(q, s), score = it.score();
+		const Score m2 = add_cbs(m, bias_correction[it.i]);
+		if (score == saturated_add(it.diag(), m2)) {
 			out.push_match(q, s, m > (Score)0);
 			it.walk_diagonal();
 		} else {
@@ -497,6 +497,5 @@ template list<Hsp> swipe<score_vector<int16_t>, ScoreOnly, NoCBS>(const sequence
 #endif
 template list<Hsp> swipe<int32_t, Traceback, NoCBS>(const sequence&, Frame, vector<DpTarget>::const_iterator, vector<DpTarget>::const_iterator, NoCBS, int, vector<DpTarget>&, Statistics&);
 template list<Hsp> swipe<int32_t, ScoreOnly, NoCBS>(const sequence&, Frame, vector<DpTarget>::const_iterator, vector<DpTarget>::const_iterator, NoCBS, int, vector<DpTarget>&, Statistics&);
-
 
 }}}

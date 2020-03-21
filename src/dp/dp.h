@@ -26,6 +26,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../basic/match.h"
 #include "comp_based_stats.h"
 #include "../basic/statistics.h"
+#include "score_profile.h"
 
 int smith_waterman(const sequence &query, const sequence &subject, unsigned band, unsigned padding, int op, int ep);
 
@@ -200,6 +201,7 @@ struct Traceback {};
 struct ScoreOnly {};
 
 enum { TRACEBACK = 1, PARALLEL = 2 };
+enum { GAPPED_FILTER_BAND = 128 };
 
 struct NoCBS {
 	constexpr void* operator[](int i) const { return nullptr; }
@@ -216,6 +218,8 @@ namespace BandedSwipe {
 DECL_DISPATCH(std::list<Hsp>, swipe, (const sequence &query, std::vector<DpTarget> &targets8, std::vector<DpTarget> &targets16, Frame frame, const Bias_correction *composition_bias, int flags, int score_cutoff, Statistics &stat))
 
 }
+
+DECL_DISPATCH(void, scan_diags, (const LongScoreProfile& qp, sequence s, int d_begin, int j_begin, int j_end, int* out))
 
 }
 

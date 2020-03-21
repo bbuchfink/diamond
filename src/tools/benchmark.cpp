@@ -41,7 +41,7 @@ using std::list;
 
 namespace Benchmark { namespace DISPATCH_ARCH {
 
-static void scan_cols(const Long_score_profile &qp, sequence s, int i, int j, int j_end)
+static void scan_cols(const LongScoreProfile &qp, sequence s, int i, int j, int j_end)
 {
 #ifdef __SSE4_1__
 	typedef score_vector<int8_t> Sv;
@@ -252,11 +252,29 @@ void banded_swipe(const sequence &s1, const sequence &s2) {
 void diag_scores(const sequence &s1, const sequence &s2) {
 	static const size_t n = 100000llu;
 	high_resolution_clock::time_point t1 = high_resolution_clock::now();
-	Long_score_profile p(s1);
+	Bias_correction cbs(s1);
+	LongScoreProfile p(s1, cbs);
 	for (size_t i = 0; i < n; ++i) {
 		scan_cols(p, s2, 0, 0, (int)s2.length());
 	}
 	cout << "Diagonal scores:\t\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * s2.length() * 64) * 1000 << " ps/Cell" << endl;
+}
+#endif
+
+#ifdef __SSE4_1__
+void diag_scores2(const sequence& s1, const sequence& s2) {
+	static const size_t n = 100000llu;
+	high_resolution_clock::time_point t1 = high_resolution_clock::now();
+	Bias_correction cbs(s1);
+	LongScoreProfile p(s1, cbs);
+	int scores[64];
+	for (size_t i = 0; i < n; ++i) {
+		DP::scan_diags(p, s2, -32, 0, (int)s2.length(), &scores[0]);
+	}
+	cout << "Diagonal scores (2):\t\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * s2.length() * DP::GAPPED_FILTER_BAND) * 1000 << " ps/Cell" << endl;
+	/*for (int i = 0; i < 64; ++i)
+		cout << i << '\t' << scores[i] << endl;*/
+	//cout << diag_alignment(scores) << endl;
 }
 #endif
 
@@ -291,6 +309,7 @@ void benchmark() {
 #ifdef __SSE4_1__
 	swipe(s3, s4);
 	diag_scores(s1, s2);
+	diag_scores2(s1, s2);
 #endif
 }
 

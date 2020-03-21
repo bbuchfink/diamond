@@ -65,6 +65,7 @@ set(DISPATCH_OBJECTS
 "src/tools/benchmark.cpp"
 "src/dp/swipe/swipe_wrapper.cpp"
 "src/util/tantan.cpp"
+"src/dp/scan_diags.cpp"
 )
 
 add_library(arch_generic OBJECT ${DISPATCH_OBJECTS})
@@ -151,7 +152,6 @@ set(OBJECTS
   src/util/algo/edge_vec.cpp
   src/util/string/string.cpp
   src/align/extend.cpp
-  src/align/target.cpp
   src/test/simulate.cpp
   src/test/test.cpp
   src/align/ranking.cpp
@@ -167,7 +167,9 @@ set(OBJECTS
   src/chaining/smith_waterman.cpp
   src/basic/value.cpp
   src/tools/merge_tsv.cpp
-  src/output/xml_format.cpp)
+  src/output/xml_format.cpp
+  src/align/gapped_filter.cpp
+)
 
 if(X86)
 add_executable(diamond $<TARGET_OBJECTS:arch_generic>
