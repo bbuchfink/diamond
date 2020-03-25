@@ -272,14 +272,13 @@ void diag_scores2(const sequence& s1, const sequence& s2) {
 		DP::scan_diags(p, s2, -32, 0, (int)s2.length(), &scores[0]);
 	}
 	cout << "Diagonal scores (2):\t\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * s2.length() * DP::GAPPED_FILTER_BAND) * 1000 << " ps/Cell" << endl;
-	/*for (int i = 0; i < 64; ++i)
-		cout << i << '\t' << scores[i] << endl;*/
-	//cout << diag_alignment(scores) << endl;
 }
 #endif
 
 void benchmark() {
 	vector<Letter> s1, s2, s3, s4;
+	cout << int((0x89 & 0x88)) << endl;
+	cout << int((0x89 & 0x88) == 0) << endl;
 	
 	s1 = sequence::from_string("mpeeeysefkelilqkelhvvyalshvcgqdrtllasillriflhekleslllctlndreismedeattlfrattlastlmeqymkatatqfvhhalkdsilkimeskqscelspskleknedvntnlthllnilselvekifmaseilpptlryiygclqksvqhkwptnttmrtrvvsgfvflrlicpailnprmfniisdspspiaartlilvaksvqnlanlvefgakepymegvnpfiksnkhrmimfldelgnvpelpdttehsrtdlsrdlaalheicvahsdelrtlsnergaqqhvlkkllaitellqqkqnqyt"); // d1wera_
 	s2 = sequence::from_string("erlvelvtmmgdqgelpiamalanvvpcsqwdelarvlvtlfdsrhllyqllwnmfskeveladsmqtlfrgnslaskimtfcfkvygatylqklldpllrivitssdwqhvsfevdptrlepsesleenqrnllqmtekffhaiissssefppqlrsvchclyqvvsqrfpqnsigavgsamflrfinpaivspyeagildkkpppiierglklmskilqsianhvlftkeehmrpfndfvksnfdaarrffldiasdcptsdavnhslsfisdgnvlalhrllwnnqekigqylssnrdhkavgrrpfdkmatllaylgppe"); // d1nf1a_
