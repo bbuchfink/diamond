@@ -36,6 +36,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "workflow.h"
 #include "../util/io/consumer.h"
 #include "../util/parallel/thread_pool.h"
+#include "../util/parallel/parallelizer.h"
 #include "../util/system/system.h"
 
 using namespace std;
@@ -79,7 +80,7 @@ void run_ref_chunk(DatabaseFile &db_file,
 			ref_hst = Partitioned_histogram(*ref_seqs::data_, false, &no_filter);
 
 		timer.go("Allocating buffers");
-		char *ref_buffer = SeedArray::alloc_buffer(ref_hst);	
+		char *ref_buffer = SeedArray::alloc_buffer(ref_hst);
 		timer.finish();
 
 		for (unsigned i = 0; i < shapes.count(); ++i)
@@ -156,14 +157,14 @@ void run_query_chunk(DatabaseFile &db_file,
 	setup_search_params(query_len_bounds, 0);
 
 	if (!config.swipe_all) {
-		timer.go("Building query histograms");		
+		timer.go("Building query histograms");
 		query_hst = Partitioned_histogram(*query_seqs::data_, false, &no_filter);
-		
+
 		timer.go("Allocating buffers");
 		query_buffer = SeedArray::alloc_buffer(query_hst);
 		timer.finish();
 	}
-	
+
 	PtrVector<TempFile> tmp_file;
 	query_aligned.clear();
 	query_aligned.insert(query_aligned.end(), query_ids::get().get_length(), false);
@@ -210,6 +211,9 @@ void run_query_chunk(DatabaseFile &db_file,
 
 void master_thread(DatabaseFile *db_file, task_timer &total_timer, Metadata &metadata, const Options &options)
 {
+	Parallelizer P = Parallelizer::get();
+	P.init();
+
 	task_timer timer("Opening the input file", true);
 	TextInputFile *query_file = nullptr;
 	const Sequence_file_format *format_n = nullptr;
@@ -288,7 +292,7 @@ void master_thread(DatabaseFile *db_file, task_timer &total_timer, Metadata &met
 		unaligned_file->close();
 	if (aligned_file.get())
 		aligned_file->close();
-	
+
 	if (!options.db) {
 		timer.go("Closing the database file");
 		db_file->close();

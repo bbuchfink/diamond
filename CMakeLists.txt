@@ -174,6 +174,8 @@ set(OBJECTS
   src/tools/merge_tsv.cpp
   src/output/xml_format.cpp
   src/align/gapped_filter.cpp
+  src/util/parallel/filestack.cpp
+  src/util/parallel/parallelizer.cpp
 )
 
 if(X86)

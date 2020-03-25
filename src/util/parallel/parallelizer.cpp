@@ -21,6 +21,9 @@ using namespace std;
 #endif
 
 
+Parallelizer Parallelizer::instance_;
+
+
 string join_path(const string & path_1, const string & path_2) {
 // #ifdef WINDOWS
 //     const string sep = "\";
@@ -31,8 +34,11 @@ string join_path(const string & path_1, const string & path_2) {
 }
 
 
+Parallelizer::Parallelizer() : work_directory("libworkstack"), n_registered(0), master_flag(true), i_barrier(0) {
+    // call init() later explicitly when necessary
+}
 
-Parallelizer::Parallelizer() : work_directory("libworkstack"), n_registered(0), i_barrier(0) {
+void Parallelizer::init() {
     {
         char* env_str = std::getenv("TMPDIR");
         if (env_str) {
@@ -98,6 +104,10 @@ Parallelizer::Parallelizer() : work_directory("libworkstack"), n_registered(0), 
     }
 
     register_workers();
+}
+
+
+void Parallelizer::clear() {
 }
 
 Parallelizer::~Parallelizer() {

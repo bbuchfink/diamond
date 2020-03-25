@@ -15,6 +15,9 @@ class Parallelizer {
         Parallelizer();
         ~Parallelizer();
 
+        void init();
+        void clear();
+
         std::string get_id();
         int get_n_registered();
 
@@ -34,14 +37,20 @@ class Parallelizer {
         const std::string WORKERS = "workers";
         const std::string REGISTER = "register";
 
+        static Parallelizer& get() {
+            return instance_;
+        }
+
     private:
+	    static Parallelizer instance_;
+
         const std::string BARRIER = "barrier";
         std::string work_directory;
         std::string barrier_file;
 
         std::string id;
-        bool master_flag;
         int n_registered;
+        bool master_flag;
         int i_barrier;
 
         std::string get_barrier_file_name(const std::string & step, const std::string & tag, int i);
