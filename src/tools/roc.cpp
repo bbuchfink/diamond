@@ -28,6 +28,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/string/tokenizer.h"
 #include "../util/log_stream.h"
 #include "tsv_record.h"
+#include "../util/string/tokenizer.h"
 
 using std::string;
 using std::cout;
@@ -43,20 +44,20 @@ struct QueryStats {
 		count(families, 0),
 		have_rev_hit(false)
 	{}
-	void add(const TSVRecord &r, const unordered_multimap<string, int> &acc2fam) {
+	void add(const string &sseqid, const unordered_multimap<string, int> &acc2fam) {
 		if (have_rev_hit)
 			return;
-		if (r.sseqid == last_subject)
+		if (sseqid == last_subject)
 			return;
-		if (r.sseqid[0] == '\\')
+		if (sseqid[0] == '\\')
 			have_rev_hit = true;
 		else {
-			auto i = acc2fam.equal_range(r.sseqid);
+			auto i = acc2fam.equal_range(sseqid);
 			if (i.first == i.second)
 				throw std::runtime_error("Accession not mapped.");
 			for (auto j = i.first; j != i.second; ++j)
 				++count[j->second];
-			last_subject = r.sseqid;
+			last_subject = sseqid;
 		}
 	}
 	double auc1(const vector<int> &fam_count, const unordered_multimap<string, int> &acc2fam) const {
@@ -112,12 +113,15 @@ void roc() {
 
 	timer.go("Processing alignments");
 	TextInputFile in(config.query_file);
-	TSVRecord r;
+	string qseqid, sseqid;
 	size_t n = 0, queries = 0;
 	double auc1 = 0.0;
 	QueryStats stats("", families);
-	while (in >> r, !in.eof()) {
-		if (r.qseqid != stats.query) {
+	while (in.getline(), !in.eof()) {
+		if (in.line.empty())
+			break;
+		Util::String::Tokenizer(in.line, "\t") >> qseqid >> sseqid;
+		if (qseqid != stats.query) {
 			if (!stats.query.empty()) {
 				const double a = stats.auc1(fam_count, acc2fam);
 				if (a != -1.0) {
@@ -125,11 +129,11 @@ void roc() {
 					++queries;
 				}
 			}
-			stats = QueryStats(r.qseqid, families);
+			stats = QueryStats(qseqid, families);
 		}
-		if (r.qseqid.empty() || r.sseqid.empty() || std::isnan(r.evalue) || !std::isfinite(r.evalue) || r.evalue < 0.0)
-			throw std::runtime_error("Format error.");
-		stats.add(r, acc2fam);
+		/*if (r.qseqid.empty() || r.sseqid.empty() || std::isnan(r.evalue) || !std::isfinite(r.evalue) || r.evalue < 0.0)
+			throw std::runtime_error("Format error.");*/
+		stats.add(sseqid, acc2fam);
 		++n;
 	}
 	const double a = stats.auc1(fam_count, acc2fam);
