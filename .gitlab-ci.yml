@@ -6,7 +6,7 @@ linux_cmake:
     before_script:
         - mkdir build
         - cd build
-        - cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo ..
+        - cmake -DCMAKE_BUILD_TYPE=Debug ..
         - make -j4 diamond
     script:
         - /bin/true
