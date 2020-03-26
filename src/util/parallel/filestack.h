@@ -1,9 +1,20 @@
 #ifndef _FILESTACK_H_
 #define _FILESTACK_H_
 
+#include <iostream>
 #include <string>
 #include <unistd.h>
 #include <fcntl.h>
+
+
+// #undef DEBUG
+#define DEBUG
+#ifdef DEBUG
+#define DBG(x) (std::cerr << __PRETTY_FUNCTION__ << ":" << __FUNCTION__ << ":" << __LINE__ << " " << x << std::endl)
+#else
+#define DBG(x)
+#endif
+
 
 class FileStack {
     public:

@@ -212,7 +212,9 @@ void run_query_chunk(DatabaseFile &db_file,
 void master_thread(DatabaseFile *db_file, task_timer &total_timer, Metadata &metadata, const Options &options)
 {
 	Parallelizer P = Parallelizer::get();
-	P.init();
+	if (config.multiprocessing) {
+		P.init();
+	}
 
 	task_timer timer("Opening the input file", true);
 	TextInputFile *query_file = nullptr;

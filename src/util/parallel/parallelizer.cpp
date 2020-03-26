@@ -13,14 +13,6 @@
 using namespace std;
 
 
-#undef DEBUG
-#ifdef DEBUG
-#define DBG(x) (std::cerr << x << std::endl)
-#else
-#define DBG(x)
-#endif
-
-
 Parallelizer Parallelizer::instance_;
 
 
@@ -48,6 +40,7 @@ void Parallelizer::init() {
         if (env_str) {
             work_directory = work_directory + "_" + string(env_str);
         }
+        DBG(work_directory);
     }
 
     {

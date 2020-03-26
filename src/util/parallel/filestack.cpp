@@ -16,14 +16,6 @@
 using namespace std;
 
 
-#undef DEBUG
-#ifdef DEBUG
-#define DBG(x) (std::cerr << x << std::endl)
-#else
-#define DBG(x)
-#endif
-
-
 const string default_file_name = "default_stack.idx";
 const int default_max_line_length = 4096;
 

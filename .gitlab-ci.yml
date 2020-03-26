@@ -4,6 +4,9 @@ linux_cmake:
     tags:
         - centos
     before_script:
+        - source /opt/gcc/gccvars_8.4.0.sh
+        - export CC=`which gcc`
+        - export CXX=`which g++`
         - mkdir build
         - cd build
         - cmake -DCMAKE_BUILD_TYPE=Debug ..
