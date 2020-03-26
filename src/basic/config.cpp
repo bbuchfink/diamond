@@ -203,6 +203,7 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("band", 0, "band for dynamic programming computation", padding)
 		("shapes", 's', "number of seed shapes (0 = all available)", shapes)
 		("shape-mask", 0, "seed shapes", shape_mask)
+		("multiprocessing", 0, "enable distributed-memory parallel processing", multiprocessing)
 		("rank-ratio", 0, "include subjects within this ratio of last hit (stage 1)", rank_ratio, -1.0)
 		("rank-ratio2", 0, "include subjects within this ratio of last hit (stage 2)", rank_ratio2, -1.0)
 		("max-hsps", 0, "maximum number of HSPs per subject sequence to save for each query", max_hsps, 0u)
@@ -315,7 +316,7 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("gapped-filter-score", 0, "", gapped_filter_score, 0.0)
 		("gapped-filter-evalue", 0, "", gapped_filter_evalue, 0.0)
 		("gapped-filter-window", 0, "", gapped_filter_window, 200);
-	
+
 	parser.add(general).add(makedb).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options);
 	parser.store(argc, argv, command);
 
@@ -468,7 +469,7 @@ Config::Config(int argc, const char **argv, bool check_io)
 		|| command == Config::mask || command == Config::cluster || command == Config::compute_medoids || command == Config::regression_test) {
 		if (tmpdir == "")
 			tmpdir = extract_dir(output_file);
-		
+
 		init_cbs();
 		raw_ungapped_xdrop = score_matrix.rawscore(ungapped_xdrop);
 		verbose_stream << "CPU features detected: " << SIMD::features() << endl;
