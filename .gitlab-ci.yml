@@ -12,6 +12,7 @@ linux_cmake:
         - cmake -DCMAKE_BUILD_TYPE=Debug ..
         - make -j4 diamond
     script:
-        - /bin/true
+        - ./diamond test
     after_script:
         - /bin/true
+
