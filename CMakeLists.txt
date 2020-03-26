@@ -94,7 +94,7 @@ set(OBJECTS
   src/output/daa_record.cpp
   src/util/command_line_parser.cpp
   src/util/seq_file_format.cpp
-  src/util/util.cpp 
+  src/util/util.cpp
   src/basic/basic.cpp
   src/basic/hssp.cpp
   src/dp/ungapped_align.cpp
@@ -176,6 +176,7 @@ set(OBJECTS
   src/align/gapped_filter.cpp
   src/util/parallel/filestack.cpp
   src/util/parallel/parallelizer.cpp
+  src/util/parallel/multiprocessing.cpp
 )
 
 if(X86)

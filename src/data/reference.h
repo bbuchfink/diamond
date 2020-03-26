@@ -21,6 +21,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <vector>
 #include <string>
+#include <iostream>
 #include <string.h>
 #include <stdint.h>
 #include "../util/io/serializer.h"
@@ -72,6 +73,19 @@ struct Database_format_exception : public std::exception
 	{ return "Database file is not a DIAMOND database."; }
 };
 
+
+struct Chunk
+{
+	Chunk() : i(0), offset(0), n_seqs(0)
+	{}
+	Chunk(size_t i_, size_t offset_, size_t n_seqs_): i(i_), offset(offset_), n_seqs(n_seqs_)
+	{}
+	size_t i;
+	size_t offset;
+	size_t n_seqs;
+};
+
+
 struct DatabaseFile : public InputFile
 {
 
@@ -81,7 +95,20 @@ struct DatabaseFile : public InputFile
 	static DatabaseFile* auto_create_from_fasta();
 	static bool is_diamond_db(const string &file_name);
 	void rewind();
+
+	void create_partition(size_t max_letters);
+	void save_partition(const string & partition_file_name);
+	void load_partition(const string & partition_file_name);
+	void clear_partition();
+
 	bool load_seqs(vector<unsigned> &block_to_database_id, size_t max_letters, Sequence_set **dst_seq, String_set<char, 0> **dst_id, bool load_ids = true, const vector<bool> *filter = NULL);
+/*
+	// load sequences as limited by the max number of letters
+	bool load_seqs(vector<unsigned> &block_to_database_id, size_t max_letters, Sequence_set **dst_seq, String_set<0> **dst_id, bool load_ids = true, const vector<bool> *filter = NULL);
+	// load sequences as specified by chunk
+	bool load_seqs(vector<unsigned> &block_to_database_id, const Chunk & chunk, Sequence_set **dst_seq, String_set<0> **dst_id, bool load_ids = true, const vector<bool> *filter = NULL);
+*/
+
 	void get_seq();
 	void read_seq(string &id, vector<Letter> &seq);
 	bool has_taxon_id_lists();
@@ -98,6 +125,17 @@ struct DatabaseFile : public InputFile
 	size_t pos_array_offset;
 	ReferenceHeader ref_header;
 	ReferenceHeader2 header2;
+
+	struct Partition
+	{
+		Partition() : max_letters(0), n_seqs_total(0)
+		{}
+
+		size_t max_letters;
+		size_t n_seqs_total;
+		vector<Chunk> chunks;
+	};
+	Partition partition;
 
 private:
 	void init();
@@ -138,5 +176,8 @@ inline vector<string> seq_titles(const char *title)
 {
 	return tokenize(title, "\1");
 }
+
+Chunk to_chunk(const string & line);
+string to_string(const Chunk & c);
 
 #endif /* REFERENCE_H_ */

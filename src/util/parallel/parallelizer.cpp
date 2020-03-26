@@ -7,6 +7,7 @@
 #include <unistd.h>
 #include <sys/stat.h>
 
+#define DEBUG
 #include "filestack.h"
 #include "parallelizer.h"
 
@@ -40,7 +41,7 @@ void Parallelizer::init() {
         if (env_str) {
             work_directory = work_directory + "_" + string(env_str);
         }
-        DBG(work_directory);
+        DBG("work_directory = " + work_directory);
     }
 
     {
@@ -77,6 +78,7 @@ void Parallelizer::init() {
         }
         // TODO: use hostname and process id, alternatively
         id = "rank_" + to_string(rank);
+        DBG("id = " + id);
     }
 
     create_stack(LOG, id);
@@ -138,6 +140,8 @@ bool Parallelizer::barrier(const string & tag) {
     cmd_fs.poll_query(msg);
     ack_fs.push(id);
 
+    DBG(msg);
+
     static const string msg_ok = "GOON";
     if (is_master()) {
         const size_t n_workers = get_stack(WORKERS)->size();
@@ -145,6 +149,8 @@ bool Parallelizer::barrier(const string & tag) {
         cmd_fs.push(msg_ok);
     }
     cmd_fs.poll_query(msg_ok);
+
+    DBG(msg_ok);
 
     if (is_master()) {
         clean(continuous_cleanup_list);
@@ -158,6 +164,7 @@ bool Parallelizer::barrier(const string & tag) {
 
 
 bool Parallelizer::register_workers(const double sleep_s) {
+    DBG(id);
     get_stack(REGISTER)->push(id);
     sleep(sleep_s);
     if (is_master()) {
@@ -166,6 +173,7 @@ bool Parallelizer::register_workers(const double sleep_s) {
             get_stack(WORKERS)->push(line);
             n_registered++;
         }
+        DBG("n_registered = " + to_string(n_registered));
     }
     return true;
 }
@@ -179,6 +187,7 @@ bool Parallelizer::create_stack(const std::string & tag, std::string sfx) {
         const string file_name = join_path(work_directory, tag + sfx);
         fs_map.emplace(tag, shared_ptr<FileStack>(new FileStack(file_name)));
         final_cleanup_list.push_back(file_name);
+        DBG(file_name);
         return true;
     } else {
         return false;

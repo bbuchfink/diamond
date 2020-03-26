@@ -7,10 +7,8 @@
 #include <fcntl.h>
 
 
-// #undef DEBUG
-#define DEBUG
 #ifdef DEBUG
-#define DBG(x) (std::cerr << __PRETTY_FUNCTION__ << ":" << __FUNCTION__ << ":" << __LINE__ << " " << x << std::endl)
+#define DBG(x) (std::cerr << __PRETTY_FUNCTION__ << ":" << __LINE__ << " " << x << std::endl)
 #else
 #define DBG(x)
 #endif

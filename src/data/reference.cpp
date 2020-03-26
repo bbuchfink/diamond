@@ -22,6 +22,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <iterator>
 #include <map>
 #include <memory>
+#include <algorithm>
 #include "../basic/config.h"
 #include "reference.h"
 #include "load_seqs.h"
@@ -35,6 +36,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "taxonomy_nodes.h"
 #include "../util/algo/MurmurHash3.h"
 #include "../util/io/record_reader.h"
+#include "../util/parallel/multiprocessing.h"
 
 String_set<char, '\0'>* ref_ids::data_ = 0;
 Partitioned_histogram ref_hst;
@@ -140,7 +142,7 @@ void DatabaseFile::rewind()
 }
 
 void push_seq(const sequence &seq, const char *id, size_t id_len, uint64_t &offset, vector<Pos_record> &pos_array, OutputFile &out, size_t &letters, size_t &n_seqs)
-{	
+{
 	pos_array.emplace_back(offset, seq.length());
 	out.write("\xff", 1);
 	out.write(seq.data(), seq.length());
@@ -160,11 +162,11 @@ void make_db(TempFile **tmp_out, TextInputFile *input_file)
 		std::cerr << "Input file parameter (--in) is missing. Input will be read from stdin." << endl;
 	if(!input_file && !input_file_name.empty())
 		message_stream << "Database input file: " << input_file_name << endl;
-	
+
 	task_timer total;
 	task_timer timer("Opening the database file", true);
 	TextInputFile *db_file = input_file ? input_file : new TextInputFile(input_file_name);
-	
+
 	OutputFile *out = tmp_out ? new TempFile() : new OutputFile(config.database);
 	ReferenceHeader header;
 	ReferenceHeader2 header2;
@@ -216,7 +218,7 @@ void make_db(TempFile **tmp_out, TextInputFile *input_file)
 	}
 
 	timer.finish();
-	
+
 	timer.go("Writing trailer");
 	header.pos_array_offset = offset;
 	pos_array.emplace_back(offset, 0);
@@ -243,7 +245,7 @@ void make_db(TempFile **tmp_out, TextInputFile *input_file)
 		db_file->close();
 		delete db_file;
 	}
-	
+
 	timer.go("Closing the database file");
 	header.letters = letters;
 	header.sequences = n_seqs;
@@ -441,4 +443,91 @@ DatabaseFile* DatabaseFile::auto_create_from_fasta() {
 	}
 	else
 		return new DatabaseFile(config.database);
+}
+
+// khr : function to identify work blocks for parallel processing
+// input  : database block
+// output : start offset, number of sequences
+void DatabaseFile::create_partition(size_t max_letters) {
+	task_timer timer("Create partition of DatabaseFile");
+	size_t letters = 0, seqs = 0, total_seqs = 0;
+	size_t i_chunk = 0;
+
+	rewind();
+	seek(pos_array_offset);
+
+	Pos_record r, r_next;
+	size_t pos;
+	bool first = true;
+
+	read(&r, 1);
+	while (r.seq_len) {
+		if (first) {
+			pos = pos_array_offset;
+			first = false;
+		}
+		letters += r.seq_len;
+		++seqs;
+		++total_seqs;
+		read(&r_next, 1);
+		if ((letters > max_letters) || (r_next.seq_len == 0)) {
+			partition.chunks.push_back(Chunk(i_chunk, pos, seqs));
+			first = true;
+			seqs = 0;
+			letters = 0;
+			++i_chunk;
+		}
+		pos_array_offset += sizeof(Pos_record);
+		r = r_next;
+	}
+
+	reverse(partition.chunks.begin(), partition.chunks.end());
+
+	partition.max_letters = max_letters;
+	partition.n_seqs_total = total_seqs;
+}
+
+void DatabaseFile::save_partition(const string & partition_file_name) {
+	ofstream out;
+	out.open(partition_file_name);
+	// out << "# file=" << file_name << endl;
+	// out << "# max_letters=" << partition.max_letters << endl;
+	// out << "# n_chunks=" << partition.chunks.size() << endl;
+	// out << "# n_seqs_total=" << partition.n_seqs_total << endl;
+	for (auto i : partition.chunks) {
+		out << to_string(i) << endl;
+	}
+}
+
+Chunk to_chunk(const string & line) {
+	vector<string> tokens = split(line, ' ');
+	return Chunk(stoull(tokens[0]), stoull(tokens[1]), stoull(tokens[2]));
+}
+
+string to_string(const Chunk & c) {
+	const string buf = to_string(c.i) + " " + to_string(c.offset) + " " + to_string(c.n_seqs);
+	return buf;
+}
+
+void DatabaseFile::load_partition(const string & partition_file_name) {
+	ifstream in;
+	in.open(partition_file_name);
+
+	string line;
+
+	clear_partition();
+	// getline(in, line); // skip file name
+	// getline(in, line); tokens = split(line, '='); partition.max_letters = stoull(tokens[1]);
+	// getline(in, line); // skip number of chunks
+	// getline(in, line); tokens = split(line, '='); partition.n_seqs_total = stoull(tokens[1]);
+	while (getline(in, line)) {
+		auto chunk = to_chunk(line);
+		partition.chunks.push_back(chunk);
+	}
+}
+
+void DatabaseFile::clear_partition() {
+	partition.max_letters = 0;
+	partition.n_seqs_total = 0;
+	partition.chunks.clear();
 }

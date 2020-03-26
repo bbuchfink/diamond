@@ -11,6 +11,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
+#define DEBUG
 #include "filestack.h"
 
 using namespace std;
@@ -21,16 +22,14 @@ const int default_max_line_length = 4096;
 
 
 FileStack::FileStack() : FileStack::FileStack(default_file_name) {
-    DBG(__PRETTY_FUNCTION__);
     std::cerr << "FileStack: Using default file name " << default_file_name << std::endl;
 }
 
 FileStack::FileStack(const string & file_name) : FileStack::FileStack(file_name, default_max_line_length) {
-    DBG(__PRETTY_FUNCTION__);
 }
 
 FileStack::FileStack(const string & file_name, int maximum_line_length) {
-    DBG(__PRETTY_FUNCTION__);
+    DBG("");
     fd = open(file_name.c_str(), O_RDWR | O_CREAT, 00664);
     if (fd == -1) {
         throw(std::runtime_error("could not open file " + file_name));
@@ -41,12 +40,12 @@ FileStack::FileStack(const string & file_name, int maximum_line_length) {
 }
 
 FileStack::~FileStack() {
-    DBG(__PRETTY_FUNCTION__);
+    DBG("");
     close(fd);
 }
 
 int FileStack::lock() {
-    DBG(__PRETTY_FUNCTION__);
+    DBG("");
     int fcntl_status = -1;
     if (fd >= 0) {
         memset(&lck, 0, sizeof(lck));
@@ -67,7 +66,7 @@ int FileStack::lock() {
 }
 
 int FileStack::unlock() {
-    DBG(__PRETTY_FUNCTION__);
+    DBG("");
     int fcntl_status = -1;
     if (fd >= 0) {
         lck.l_type = F_UNLCK;
@@ -82,17 +81,17 @@ int FileStack::unlock() {
 }
 
 int FileStack::pop(string & buf) {
-    DBG(__PRETTY_FUNCTION__);
+    DBG("");
     return pop(buf, false);
 }
 
 int FileStack::top(string & buf) {
-    DBG(__PRETTY_FUNCTION__);
+    DBG("");
     return pop(buf, true);
 }
 
 int FileStack::pop(int & i) {
-    DBG(__PRETTY_FUNCTION__);
+    DBG("");
     string buf;
     const int get_status = pop(buf, false);
     if (get_status > 0) {
@@ -103,7 +102,7 @@ int FileStack::pop(int & i) {
 }
 
 int FileStack::top(int & i) {
-    DBG(__PRETTY_FUNCTION__);
+    DBG("");
     string buf;
     const int get_status = pop(buf, true);
     if (get_status > 0) {
@@ -114,7 +113,7 @@ int FileStack::top(int & i) {
 }
 
 int FileStack::pop(string & buf, const bool keep_flag) {
-    DBG(__PRETTY_FUNCTION__);
+    DBG("");
     buf.clear();
     bool locked_internally = false;
     if (! locked) {
@@ -169,7 +168,7 @@ int FileStack::pop(string & buf, const bool keep_flag) {
 }
 
 int FileStack::push(string buf) {
-    DBG(__PRETTY_FUNCTION__);
+    DBG("");
     bool added_newline = false;
     if (buf.back() != '\n') {
         buf.append(1, '\n');
@@ -192,13 +191,13 @@ int FileStack::push(string buf) {
 }
 
 int FileStack::push(int i) {
-    DBG(__PRETTY_FUNCTION__);
+    DBG("");
     string buf = to_string(i);
     return push(buf);
 }
 
 int FileStack::set_max_line_length(int n) {
-    DBG(__PRETTY_FUNCTION__);
+    DBG("");
     const int minimum_line_length = 8;
     if (n < minimum_line_length) {
         n = minimum_line_length;
@@ -208,12 +207,12 @@ int FileStack::set_max_line_length(int n) {
 }
 
 int FileStack::get_max_line_length() {
-    DBG(__PRETTY_FUNCTION__);
+    DBG("");
     return max_line_length;
 }
 
 size_t FileStack::size() {
-    DBG(__PRETTY_FUNCTION__);
+    DBG("");
     size_t n_bytes, i, c = 0;
     const size_t chunk_size = default_max_line_length;
     char * raw = new char[chunk_size * sizeof(char)];
@@ -232,7 +231,7 @@ size_t FileStack::size() {
 }
 
 int FileStack::clear() {
-    DBG(__PRETTY_FUNCTION__);
+    DBG("");
     lock();
     lseek(fd, 0, SEEK_SET);
     int stat = ftruncate(fd, 0);
@@ -241,16 +240,16 @@ int FileStack::clear() {
 }
 
 bool FileStack::poll_query(const string & query, const double sleep_s, const size_t max_iter) {
-    DBG(__PRETTY_FUNCTION__);
+    DBG("");
     string buf;
     const chrono::duration<double> sleep_time(sleep_s);
     for (size_t i=0; i < max_iter; ++i) {
         top(buf);
         if (buf.find(query) != string::npos) {
-            DBG(string(__PRETTY_FUNCTION__) + " success : poll_iteration=" + to_string(i) + ", query=" + "\"" + query + "\"");
+            DBG(string("") + " success : poll_iteration=" + to_string(i) + ", query=" + "\"" + query + "\"");
             return true;
         } else {
-            DBG(string(__PRETTY_FUNCTION__) + " ongoing : poll_iteration=" + to_string(i) + ", query=" + "\"" + query + "\"");
+            DBG(string("") + " ongoing : poll_iteration=" + to_string(i) + ", query=" + "\"" + query + "\"");
         }
         if (buf.find("STOP") != string::npos) {
             throw(runtime_error("STOP on FileStack " + file_name));
@@ -263,7 +262,7 @@ bool FileStack::poll_query(const string & query, const double sleep_s, const siz
 };
 
 bool FileStack::poll_size(const size_t size, const double sleep_s, const size_t max_iter) {
-    DBG(__PRETTY_FUNCTION__);
+    DBG("");
     string buf;
     const chrono::duration<double> sleep_time(sleep_s);
     for (size_t i=0; i < max_iter; ++i) {
