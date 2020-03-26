@@ -1,0 +1,14 @@
+linux_cmake:
+    variables:
+        GIT_STRATEGY: clone
+    tags:
+        - centos
+    before_script:
+        - mkdir build
+        - cd build
+        - cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo ..
+        - make -j4 diamond
+    script:
+        - /bin/true
+    after_script:
+        - /bin/true
