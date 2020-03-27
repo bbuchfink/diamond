@@ -46,6 +46,19 @@ namespace Workflow { namespace Search {
 
 static const string reference_partition = "ref_part";
 
+void init_dict_ref_chunk(DatabaseFile &db_file,
+	unsigned query_chunk,
+	pair<size_t, size_t> query_len_bounds,
+	char *query_buffer,
+	Consumer &master_out,
+	PtrVector<TempFile> &tmp_file,
+	const Parameters &params,
+	const Metadata &metadata,
+	const vector<unsigned> &block_to_database_id)
+{
+	ReferenceDictionary::get().init(safe_cast<unsigned>(ref_seqs::get().get_length()), block_to_database_id);
+}
+
 void run_ref_chunk(DatabaseFile &db_file,
 	unsigned query_chunk,
 	pair<size_t, size_t> query_len_bounds,
@@ -176,6 +189,20 @@ void run_query_chunk(DatabaseFile &db_file,
 	vector<unsigned> block_to_database_id;
 
 	if (config.multiprocessing) {
+		{
+			timer.go("Initializing reference dictionary");
+			db_file.rewind();
+			for (current_ref_block = 0; db_file.load_seqs(block_to_database_id, (size_t)(config.chunk_size*1e9), &ref_seqs::data_, &ref_ids::data_, true,
+					options.db_filter ? options.db_filter : metadata.taxon_filter);
+						++current_ref_block)
+			{
+				init_dict_ref_chunk(db_file, query_chunk, query_len_bounds, query_buffer, master_out, tmp_file, params, metadata, block_to_database_id);
+			}
+			db_file.rewind();
+			current_ref_block = 0;
+			timer.finish();
+		}
+
 		auto work = P.get_stack(reference_partition);
 		string buf;
 		while (work->pop(buf)) {
