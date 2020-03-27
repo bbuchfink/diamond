@@ -36,12 +36,15 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "workflow.h"
 #include "../util/io/consumer.h"
 #include "../util/parallel/thread_pool.h"
+#include "../util/parallel/multiprocessing.h"
 #include "../util/parallel/parallelizer.h"
 #include "../util/system/system.h"
 
 using namespace std;
 
 namespace Workflow { namespace Search {
+
+static const string reference_partition = "ref_part";
 
 void run_ref_chunk(DatabaseFile &db_file,
 	unsigned query_chunk,
@@ -121,6 +124,7 @@ void run_query_chunk(DatabaseFile &db_file,
 	const Options &options)
 {
 	const Parameters params(db_file.ref_header.sequences, db_file.ref_header.letters);
+	Parallelizer P = Parallelizer::get();
 
 	task_timer timer("Building query seed set");
 	if (query_chunk == 0)
@@ -171,13 +175,24 @@ void run_query_chunk(DatabaseFile &db_file,
 	db_file.rewind();
 	vector<unsigned> block_to_database_id;
 
-	for (current_ref_block = 0; db_file.load_seqs(block_to_database_id,
-		(size_t)(config.chunk_size*1e9),
-		&ref_seqs::data_,
-		&ref_ids::data_,
-		true,
-		options.db_filter ? options.db_filter : metadata.taxon_filter); ++current_ref_block)
-		run_ref_chunk(db_file, query_chunk, query_len_bounds, query_buffer, master_out, tmp_file, params, metadata, block_to_database_id);
+	if (config.multiprocessing) {
+		auto work = P.get_stack(reference_partition);
+		string buf;
+		while (work->pop(buf)) {
+			Chunk chunk = to_chunk(buf);
+			// load
+			// process
+		}
+	} else {
+		for (current_ref_block = 0;
+			 db_file.load_seqs(block_to_database_id, (size_t)(config.chunk_size*1e9),
+			 				   &ref_seqs::data_, &ref_ids::data_, true,
+								options.db_filter ? options.db_filter : metadata.taxon_filter);
+			 ++current_ref_block) {
+
+			run_ref_chunk(db_file, query_chunk, query_len_bounds, query_buffer, master_out, tmp_file, params, metadata, block_to_database_id);
+		}
+	}
 
 	timer.go("Deallocating buffers");
 	delete[] query_buffer;
@@ -212,8 +227,14 @@ void run_query_chunk(DatabaseFile &db_file,
 void master_thread(DatabaseFile *db_file, task_timer &total_timer, Metadata &metadata, const Options &options)
 {
 	Parallelizer P = Parallelizer::get();
+	string mp_reference_partition_file;
 	if (config.multiprocessing) {
 		P.init();
+		mp_reference_partition_file = join_path(P.get_work_directory(), "reference_partition");
+		if (P.is_master()) {
+			db_file->create_partition((size_t)(config.chunk_size*1e9));
+		}
+		P.barrier(AUTOTAG);
 	}
 
 	task_timer timer("Opening the input file", true);
@@ -243,6 +264,14 @@ void master_thread(DatabaseFile *db_file, task_timer &total_timer, Metadata &met
 
 	for (;; ++current_query_chunk) {
 		task_timer timer("Loading query sequences", true);
+
+		if (config.multiprocessing) {
+			if (P.is_master()) {
+				db_file->save_partition(mp_reference_partition_file);
+			}
+			P.barrier(AUTOTAG);
+			P.create_stack_from_file(reference_partition, mp_reference_partition_file);
+		}
 
 		if (options.self) {
 			db_file->seek_seq(query_file_offset);

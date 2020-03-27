@@ -12,5 +12,7 @@ vector<string> split(const string & str, const char delim);
 string join(const vector<string> & tokens, const char delim);
 string quote(const string & str);
 string unquote(const string & str);
+void copy(const string & src_file_name, const string & dst_file_name);
+string join_path(const string & path_1, const string & path_2);
 
 #endif

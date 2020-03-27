@@ -8,7 +8,7 @@
 #include <algorithm>
 #include "filestack.h"
 
-#define AUTOTAG std::string(__FILE__)+"_"+std::to_string(__LINE__)
+#define AUTOTAG std::string(__FUNCTION__)+"_"+std::to_string(__LINE__)
 
 class Parallelizer {
     public:
@@ -19,12 +19,15 @@ class Parallelizer {
         void clear();
 
         std::string get_id();
+        std::string get_work_directory();
         int get_n_registered();
 
         bool is_master();
         bool register_workers(const double sleep_s=3.0);
 
         bool barrier(const std::string & tag);
+
+        bool create_stack_from_file(const std::string & tag, const std::string & file_name);
 
         bool create_stack(const std::string & tag, std::string sfx="");
         bool delete_stack(const std::string & tag);
@@ -52,6 +55,7 @@ class Parallelizer {
         int n_registered;
         bool master_flag;
         int i_barrier;
+        bool initialized;
 
         std::string get_barrier_file_name(const std::string & step, const std::string & tag, int i);
 

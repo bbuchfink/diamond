@@ -488,8 +488,7 @@ void DatabaseFile::create_partition(size_t max_letters) {
 }
 
 void DatabaseFile::save_partition(const string & partition_file_name) {
-	ofstream out;
-	out.open(partition_file_name);
+	ofstream out(partition_file_name);
 	// out << "# file=" << file_name << endl;
 	// out << "# max_letters=" << partition.max_letters << endl;
 	// out << "# n_chunks=" << partition.chunks.size() << endl;
@@ -510,11 +509,8 @@ string to_string(const Chunk & c) {
 }
 
 void DatabaseFile::load_partition(const string & partition_file_name) {
-	ifstream in;
-	in.open(partition_file_name);
-
 	string line;
-
+	ifstream in(partition_file_name);
 	clear_partition();
 	// getline(in, line); // skip file name
 	// getline(in, line); tokens = split(line, '='); partition.max_letters = stoull(tokens[1]);

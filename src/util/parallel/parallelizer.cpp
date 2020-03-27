@@ -7,6 +7,7 @@
 #include <unistd.h>
 #include <sys/stat.h>
 
+#include "multiprocessing.h"
 #define DEBUG
 #include "filestack.h"
 #include "parallelizer.h"
@@ -16,15 +17,6 @@ using namespace std;
 
 Parallelizer Parallelizer::instance_;
 
-
-string join_path(const string & path_1, const string & path_2) {
-// #ifdef WINDOWS
-//     const string sep = "\";
-// #else
-    const string sep = "/";
-// #endif
-    return path_1 + sep + path_2;
-}
 
 
 Parallelizer::Parallelizer() : work_directory("libworkstack"), n_registered(0), master_flag(true), i_barrier(0) {
@@ -99,6 +91,8 @@ void Parallelizer::init() {
     }
 
     register_workers();
+
+    initialized = true;
 }
 
 
@@ -114,6 +108,10 @@ string Parallelizer::get_id() {
     return id;
 }
 
+string Parallelizer::get_work_directory() {
+    return work_directory;
+};
+
 int Parallelizer::get_n_registered() {
     return n_registered;
 }
@@ -127,9 +125,15 @@ string Parallelizer::get_barrier_file_name(const string & step, const string & t
 }
 
 bool Parallelizer::barrier(const string & tag) {
+    if (! initialized) {
+        return false;
+    }
+
     auto cmd_file_name = get_barrier_file_name("cmd", tag, i_barrier);
+    DBG(cmd_file_name);
     auto cmd_fs = FileStack(cmd_file_name);
     auto ack_file_name = get_barrier_file_name("ack", tag, i_barrier);
+    DBG(ack_file_name);
     auto ack_fs = FileStack(ack_file_name);
 
     static const string msg = "WAIT";
@@ -185,6 +189,16 @@ bool Parallelizer::create_stack(const std::string & tag, std::string sfx) {
             sfx = "_" + sfx;
         }
         const string file_name = join_path(work_directory, tag + sfx);
+        DBG(file_name);
+        return create_stack_from_file(tag, file_name);
+    } else {
+        return false;
+    }
+}
+
+
+bool Parallelizer::create_stack_from_file(const std::string & tag, const std::string & file_name) {
+    if (fs_map.find(tag) == fs_map.end()) {
         fs_map.emplace(tag, shared_ptr<FileStack>(new FileStack(file_name)));
         final_cleanup_list.push_back(file_name);
         DBG(file_name);

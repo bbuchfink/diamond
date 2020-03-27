@@ -2,6 +2,7 @@
 
 #include <string>
 #include <vector>
+#include <fstream>
 #include <sstream>
 #include "multiprocessing.h"
 
@@ -39,4 +40,19 @@ string unquote(const string & str) {
 	} else {
 		return str;
 	}
+}
+
+void copy(const string & src_file_name, const string & dst_file_name) {
+	ifstream src(src_file_name, ios::binary);
+	ofstream dst(dst_file_name, ios::binary);
+	dst << src.rdbuf();
+}
+
+string join_path(const string & path_1, const string & path_2) {
+#ifdef __unix
+    const string sep = "/";
+#else
+    const string sep = "\\";
+#endif
+    return path_1 + sep + path_2;
 }
