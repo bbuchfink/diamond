@@ -39,6 +39,10 @@ struct FlatArray {
 		limits_.push_back(limits_.back());
 	}
 
+	void pop_back() {
+		limits_.pop_back();
+	}
+
 	void clear() {
 		data_.clear();
 		limits_.clear();

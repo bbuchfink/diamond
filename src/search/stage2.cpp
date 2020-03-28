@@ -79,7 +79,13 @@ void search_query_offset(Loc q,
 					assert(delta <= window_left);
 					if (is_primary_hit(query_clipped.data() + delta, subject_clipped.data(), window_left - delta, sid, (unsigned)subject_clipped.length())) {
 						stats.inc(Statistics::TENTATIVE_MATCHES3);
-						hf.push(s[(i + j)->s], scores[j]);
+						//hf.push(s[(i + j)->s], scores[j]);
+						if (query_id == UINT_MAX) {
+							std::pair<size_t, size_t> l = query_seqs::data_->local_position(q);
+							query_id = (unsigned)l.first;
+							seed_offset = (unsigned)l.second;
+						}
+						out.push(hit(query_id, s[(i + j)->s], seed_offset));
 					}
 #else
 					if (query_id == UINT_MAX) {
