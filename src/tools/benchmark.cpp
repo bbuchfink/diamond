@@ -21,6 +21,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <chrono>
 #include <utility>
 #include <algorithm>
+#include <bitset>
 #include "../basic/sequence.h"
 #include "../basic/score_matrix.h"
 #include "../dp/score_vector.h"
@@ -269,17 +270,50 @@ void diag_scores2(const sequence& s1, const sequence& s2) {
 	LongScoreProfile p(s1, cbs);
 	int scores[64];
 	for (size_t i = 0; i < n; ++i) {
-		DP::scan_diags(p, s2, -32, 0, (int)s2.length(), &scores[0]);
+		DP::scan_diags128(p, s2, -32, 0, (int)s2.length(), &scores[0]);
 	}
-	cout << "Diagonal scores (2):\t\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * s2.length() * DP::GAPPED_FILTER_BAND) * 1000 << " ps/Cell" << endl;
+	cout << "Diagonal scores (2):\t\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * s2.length() * 128) * 1000 << " ps/Cell" << endl;
 }
 #endif
 
+#define POT (1<<22)
+
+static int simple_filter(uint64_t x, const std::bitset<POT> &l, const char *p) {
+	uint64_t y = 0x2F7;
+	int n = 0;
+	for (int i = 0; i < 64; ++i) {
+		/*if ((x & y) == y)
+			++n;
+		/*if (l[x & 0xFFFF])
+			++n;*/
+		//cout << (x & ((1 << 29) - 1)) << endl;
+		n += l[x & (POT-1)];
+		x >>= 1;
+	}
+	return n;
+}
+
+void left_most() {
+	static const size_t n = 10000000llu;
+	volatile int k = 0;
+	uint64_t x = 0x06818cf789c4eb39;
+	std::bitset<POT> l;
+	static char p[POT];
+	for (int i = 0; i < POT; ++i) {
+		l[i] = rand() & 1;
+		p[i] = rand() & 1;
+	}
+	high_resolution_clock::time_point t1 = high_resolution_clock::now();
+	for (size_t i = 0; i < n; ++i) {
+		k += simple_filter(x, l, p);
+		x = x * 0xd18767c842a0b111 + 0x97804822cc50f045;
+	}
+	cout << "Left most:\t\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n) * 1000 << " ps/Run" << endl;
+}
+
 void benchmark() {
 	vector<Letter> s1, s2, s3, s4;
-	cout << int((0x89 & 0x88)) << endl;
-	cout << int((0x89 & 0x88) == 0) << endl;
-	
+		
 	s1 = sequence::from_string("mpeeeysefkelilqkelhvvyalshvcgqdrtllasillriflhekleslllctlndreismedeattlfrattlastlmeqymkatatqfvhhalkdsilkimeskqscelspskleknedvntnlthllnilselvekifmaseilpptlryiygclqksvqhkwptnttmrtrvvsgfvflrlicpailnprmfniisdspspiaartlilvaksvqnlanlvefgakepymegvnpfiksnkhrmimfldelgnvpelpdttehsrtdlsrdlaalheicvahsdelrtlsnergaqqhvlkkllaitellqqkqnqyt"); // d1wera_
 	s2 = sequence::from_string("erlvelvtmmgdqgelpiamalanvvpcsqwdelarvlvtlfdsrhllyqllwnmfskeveladsmqtlfrgnslaskimtfcfkvygatylqklldpllrivitssdwqhvsfevdptrlepsesleenqrnllqmtekffhaiissssefppqlrsvchclyqvvsqrfpqnsigavgsamflrfinpaivspyeagildkkpppiierglklmskilqsianhvlftkeehmrpfndfvksnfdaarrffldiasdcptsdavnhslsfisdgnvlalhrllwnnqekigqylssnrdhkavgrrpfdkmatllaylgppe"); // d1nf1a_
 	s3 = sequence::from_string("ttfgrcavksnqagggtrshdwwpcqlrldvlrqfqpsqnplggdfdyaeafqsldyeavkkdiaalmtesqdwwpadfgnygglfvrmawhsagtyramdgrggggmgqqrfaplnswpdnqnldkarrliwpikqkygnkiswadlmlltgnvalenmgfktlgfgggradtwqsdeavywgaettfvpqgndvrynnsvdinaradklekplaathmgliyvnpegpngtpdpaasakdireafgrmgmndtetvaliagghafgkthgavkgsnigpapeaadlgmqglgwhnsvgdgngpnqmtsgleviwtktptkwsngyleslinnnwtlvespagahqweavngtvdypdpfdktkfrkatmltsdlalindpeylkisqrwlehpeeladafakawfkllhrdlgpttrylgpevp"); // d3ut2a1
@@ -288,6 +322,7 @@ void benchmark() {
 	sequence ss1 = sequence(s1).subseq(34, s1.size());
 	sequence ss2 = sequence(s2).subseq(33, s2.size());
 
+	left_most();
 #ifdef __SSE4_1__
 	benchmark_hamming(s1, s2);
 #endif

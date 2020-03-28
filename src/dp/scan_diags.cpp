@@ -26,13 +26,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 namespace DP { namespace DISPATCH_ARCH {
 
-void scan_diags(const LongScoreProfile& qp, sequence s, int d_begin, int j_begin, int j_end, int *out)
+void scan_diags128(const LongScoreProfile& qp, sequence s, int d_begin, int j_begin, int j_end, int *out)
 {
 #ifdef __SSE4_1__
 	typedef score_vector<int8_t> Sv;
 	const int qlen = (int)qp.length();
 
-	const int j0 = std::max(j_begin, -(d_begin + GAPPED_FILTER_BAND - 1)),
+	const int j0 = std::max(j_begin, -(d_begin + 128 - 1)),
 		i0 = d_begin + j0,
 		j1 = std::min(qlen - d_begin, j_end);
 	Sv v1, max1, v2, max2, v3, max3, v4, max4, v5, max5, v6, max6, v7, max7, v8, max8;
@@ -62,7 +62,7 @@ void scan_diags(const LongScoreProfile& qp, sequence s, int d_begin, int j_begin
 		v8 += score_vector<int8_t>(q);
 		max8.max(v8);
 	}
-	int8_t scores[GAPPED_FILTER_BAND];
+	int8_t scores[128];
 	max1.store(scores);
 	max2.store(scores + 16);
 	max3.store(scores + 32);
@@ -71,18 +71,18 @@ void scan_diags(const LongScoreProfile& qp, sequence s, int d_begin, int j_begin
 	max6.store(scores + 80);
 	max7.store(scores + 96);
 	max8.store(scores + 112);
-	for (int i = 0; i < GAPPED_FILTER_BAND; ++i)
+	for (int i = 0; i < 128; ++i)
 		out[i] = ScoreTraits<Sv>::int_score(scores[i]);
 #endif
 }
 
-/*void scan_diags(const LongScoreProfile& qp, sequence s, int d_begin, int j_begin, int j_end, int* out)
+void scan_diags64(const LongScoreProfile& qp, sequence s, int d_begin, int j_begin, int j_end, int* out)
 {
 #ifdef __SSE4_1__
 	typedef score_vector<int8_t> Sv;
 	const int qlen = (int)qp.length();
 
-	const int j0 = std::max(j_begin, -(d_begin + GAPPED_FILTER_BAND - 1)),
+	const int j0 = std::max(j_begin, -(d_begin + 64 - 1)),
 		i0 = d_begin + j0,
 		j1 = std::min(qlen - d_begin, j_end);
 	Sv v1, max1, v2, max2, v3, max3, v4, max4;
@@ -100,14 +100,36 @@ void scan_diags(const LongScoreProfile& qp, sequence s, int d_begin, int j_begin
 		v4 += score_vector<int8_t>(q);
 		max4.max(v4);
 	}
-	int8_t scores[GAPPED_FILTER_BAND];
+	int8_t scores[64];
 	max1.store(scores);
 	max2.store(scores + 16);
 	max3.store(scores + 32);
 	max4.store(scores + 48);
-	for (int i = 0; i < GAPPED_FILTER_BAND; ++i)
+	for (int i = 0; i < 64; ++i)
 		out[i] = ScoreTraits<Sv>::int_score(scores[i]);
 #endif
-}*/
+}
+
+int diag_alignment(const int* s, int count) {
+	int best = 0, best_gap = -score_matrix.gap_open(), d = -1;
+	for (int i = 0; i < count; ++i) {
+		if (s[i] < config.gapped_filter_diag_score)
+			continue;
+		const int gap_score = -score_matrix.gap_extend() * (i - d) + best_gap;
+		int n = s[i];
+		if (gap_score + s[i] > best) {
+			best = n = gap_score + s[i];
+		}
+		if (s[i] > best) {
+			best = n = s[i];
+		}
+		const int open_score = -score_matrix.gap_open() + n;
+		if (open_score > gap_score) {
+			best_gap = open_score;
+			d = i;
+		}
+	}
+	return best;
+}
 
 }}
