@@ -210,7 +210,7 @@ void run_query_chunk(DatabaseFile &db_file,
 		while (work->pop(buf)) {
 			Chunk chunk = to_chunk(buf);
 			db_file.load_seqs(block_to_database_id, (size_t)(0), &ref_seqs::data_, &ref_ids::data_, true, options.db_filter ? options.db_filter : metadata.taxon_filter, chunk);
-			// run_ref_chunk(db_file, query_chunk, query_len_bounds, query_buffer, master_out, tmp_file, params, metadata, block_to_database_id);
+			run_ref_chunk(db_file, query_chunk, query_len_bounds, query_buffer, master_out, tmp_file, params, metadata, block_to_database_id);
 		}
 	} else {
 		for (current_ref_block = 0;
@@ -259,6 +259,7 @@ void master_thread(DatabaseFile *db_file, task_timer &total_timer, Metadata &met
 		mp_reference_partition_file = join_path(P->get_work_directory(), "reference_partition");
 		if (P->is_master()) {
 			db_file->create_partition((size_t)(config.chunk_size*1e9));
+			db_file->save_partition(mp_reference_partition_file + "_DBG");
 		}
 		P->barrier(AUTOTAG);
 	}

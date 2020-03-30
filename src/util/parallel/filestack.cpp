@@ -163,6 +163,7 @@ int FileStack::pop(string & buf, const bool keep_flag) {
     if (stat == -1) {
         return stat;
     } else {
+        DBG(buf);
         return buf.size();
     }
 }
@@ -187,6 +188,7 @@ int FileStack::push(string buf) {
     if (added_newline) {
         buf.pop_back();
     }
+    DBG(buf);
     return n;
 }
 
