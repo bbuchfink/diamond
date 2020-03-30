@@ -277,10 +277,16 @@ void DatabaseFile::seek_direct() {
 	seek(sizeof(ReferenceHeader) + sizeof(ReferenceHeader2) + 8);
 }
 
-bool DatabaseFile::load_seqs(vector<unsigned> &block_to_database_id, size_t max_letters, Sequence_set **dst_seq, String_set<char, 0> **dst_id, bool load_ids, const vector<bool> *filter)
+bool DatabaseFile::load_seqs(vector<unsigned> &block_to_database_id, const size_t max_letters,
+	Sequence_set **dst_seq, String_set<char, 0> **dst_id, bool load_ids, const vector<bool> *filter, const Chunk & chunk)
 {
 	task_timer timer("Loading reference sequences");
-	seek(pos_array_offset);
+
+	if (max_letters > 0)
+		seek(pos_array_offset);
+	else
+		seek(chunk.offset);
+
 	size_t database_id = tell_seq();
 	size_t letters = 0, seqs = 0, id_letters = 0, seqs_processed = 0;
 	vector<uint64_t> filtered_pos;
@@ -294,7 +300,15 @@ bool DatabaseFile::load_seqs(vector<unsigned> &block_to_database_id, size_t max_
 	uint64_t start_offset = r.pos;
 	bool last = false;
 
-	while (r.seq_len > 0 && letters < max_letters) {
+	auto goon = [&] () {
+		if (max_letters > 0)
+			return (r.seq_len > 0 && letters < max_letters);
+		else
+			return (seqs < chunk.n_seqs);
+	};
+
+	// while (r.seq_len > 0 && letters < max_letters) {
+	while (goon()) {
 		Pos_record r_next;
 		read(&r_next, 1);
 		if (!filter || (*filter)[database_id]) {

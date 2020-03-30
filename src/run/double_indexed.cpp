@@ -137,7 +137,7 @@ void run_query_chunk(DatabaseFile &db_file,
 	const Options &options)
 {
 	const Parameters params(db_file.ref_header.sequences, db_file.ref_header.letters);
-	Parallelizer P = Parallelizer::get();
+	auto P = Parallelizer::get();
 
 	task_timer timer("Building query seed set");
 	if (query_chunk == 0)
@@ -187,14 +187,16 @@ void run_query_chunk(DatabaseFile &db_file,
 	query_aligned.insert(query_aligned.end(), query_ids::get().get_length(), false);
 	db_file.rewind();
 	vector<unsigned> block_to_database_id;
+	Chunk chunk;
 
 	if (config.multiprocessing) {
+/*
 		{
 			timer.go("Initializing reference dictionary");
 			db_file.rewind();
-			for (current_ref_block = 0; db_file.load_seqs(block_to_database_id, (size_t)(config.chunk_size*1e9), &ref_seqs::data_, &ref_ids::data_, true,
-					options.db_filter ? options.db_filter : metadata.taxon_filter);
-						++current_ref_block)
+			for (current_ref_block = 0;
+				 db_file.load_seqs(block_to_database_id, (size_t)(config.chunk_size*1e9), &ref_seqs::data_, &ref_ids::data_, true, options.db_filter ? options.db_filter : metadata.taxon_filter);
+				 ++current_ref_block)
 			{
 				init_dict_ref_chunk(db_file, query_chunk, query_len_bounds, query_buffer, master_out, tmp_file, params, metadata, block_to_database_id);
 			}
@@ -202,21 +204,18 @@ void run_query_chunk(DatabaseFile &db_file,
 			current_ref_block = 0;
 			timer.finish();
 		}
-
-		auto work = P.get_stack(reference_partition);
+*/
+		auto work = P->get_stack(reference_partition);
 		string buf;
 		while (work->pop(buf)) {
 			Chunk chunk = to_chunk(buf);
-			// load
-			// process
+			db_file.load_seqs(block_to_database_id, (size_t)(0), &ref_seqs::data_, &ref_ids::data_, true, options.db_filter ? options.db_filter : metadata.taxon_filter, chunk);
+			// run_ref_chunk(db_file, query_chunk, query_len_bounds, query_buffer, master_out, tmp_file, params, metadata, block_to_database_id);
 		}
 	} else {
 		for (current_ref_block = 0;
-			 db_file.load_seqs(block_to_database_id, (size_t)(config.chunk_size*1e9),
-			 				   &ref_seqs::data_, &ref_ids::data_, true,
-								options.db_filter ? options.db_filter : metadata.taxon_filter);
+			 db_file.load_seqs(block_to_database_id, (size_t)(config.chunk_size*1e9), &ref_seqs::data_, &ref_ids::data_, true, options.db_filter ? options.db_filter : metadata.taxon_filter);
 			 ++current_ref_block) {
-
 			run_ref_chunk(db_file, query_chunk, query_len_bounds, query_buffer, master_out, tmp_file, params, metadata, block_to_database_id);
 		}
 	}
@@ -253,15 +252,15 @@ void run_query_chunk(DatabaseFile &db_file,
 
 void master_thread(DatabaseFile *db_file, task_timer &total_timer, Metadata &metadata, const Options &options)
 {
-	Parallelizer P = Parallelizer::get();
+	auto P = Parallelizer::get();
 	string mp_reference_partition_file;
 	if (config.multiprocessing) {
-		P.init();
-		mp_reference_partition_file = join_path(P.get_work_directory(), "reference_partition");
-		if (P.is_master()) {
+		P->init();
+		mp_reference_partition_file = join_path(P->get_work_directory(), "reference_partition");
+		if (P->is_master()) {
 			db_file->create_partition((size_t)(config.chunk_size*1e9));
 		}
-		P.barrier(AUTOTAG);
+		P->barrier(AUTOTAG);
 	}
 
 	task_timer timer("Opening the input file", true);
@@ -293,11 +292,11 @@ void master_thread(DatabaseFile *db_file, task_timer &total_timer, Metadata &met
 		task_timer timer("Loading query sequences", true);
 
 		if (config.multiprocessing) {
-			if (P.is_master()) {
+			if (P->is_master()) {
 				db_file->save_partition(mp_reference_partition_file);
 			}
-			P.barrier(AUTOTAG);
-			P.create_stack_from_file(reference_partition, mp_reference_partition_file);
+			P->barrier(AUTOTAG);
+			P->create_stack_from_file(reference_partition, mp_reference_partition_file);
 		}
 
 		if (options.self) {
@@ -331,6 +330,8 @@ void master_thread(DatabaseFile *db_file, task_timer &total_timer, Metadata &met
 		}
 
 		run_query_chunk(*db_file, current_query_chunk, *master_out, unaligned_file.get(), aligned_file.get(), metadata, options);
+
+		P->delete_stack(reference_partition);
 	}
 
 	if (query_file && !options.query_file) {

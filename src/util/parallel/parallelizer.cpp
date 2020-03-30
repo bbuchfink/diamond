@@ -15,15 +15,25 @@
 using namespace std;
 
 
-Parallelizer Parallelizer::instance_;
+std::shared_ptr<Parallelizer> Parallelizer::instance_ptr = nullptr;
 
+std::shared_ptr<Parallelizer> Parallelizer::get() {
+    DBG("");
+    if (! instance_ptr) {
+        instance_ptr = shared_ptr<Parallelizer>(new Parallelizer());
+    }
+    return instance_ptr;
+}
 
 
 Parallelizer::Parallelizer() : work_directory("libworkstack"), n_registered(0), master_flag(true), i_barrier(0) {
-    // call init() later explicitly when necessary
+    DBG("");
+    // call init() later explicitly for final inizialization including worker registration
 }
 
+
 void Parallelizer::init() {
+    DBG("");
     {
         char* env_str = std::getenv("TMPDIR");
         if (env_str) {
@@ -100,6 +110,7 @@ void Parallelizer::clear() {
 }
 
 Parallelizer::~Parallelizer() {
+    DBG("");
     clean(continuous_cleanup_list);
     // clean(final_cleanup_list);
 }
@@ -237,4 +248,11 @@ bool Parallelizer::clean(vector<string> & file_list) {
     }
     file_list.clear();
     return true;
+}
+
+
+
+void Parallelizer::list_filestacks() {
+    for (auto item : fs_map)
+        cerr << item.first << " : " << item.second << endl;
 }

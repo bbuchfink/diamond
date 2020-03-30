@@ -40,12 +40,11 @@ class Parallelizer {
         const std::string WORKERS = "workers";
         const std::string REGISTER = "register";
 
-        static Parallelizer& get() {
-            return instance_;
-        }
+        static std::shared_ptr<Parallelizer> get();
+
 
     private:
-	    static Parallelizer instance_;
+	    static std::shared_ptr<Parallelizer> instance_ptr;
 
         const std::string BARRIER = "barrier";
         std::string work_directory;
@@ -60,10 +59,14 @@ class Parallelizer {
         std::string get_barrier_file_name(const std::string & step, const std::string & tag, int i);
 
         bool clean(std::vector<std::string> & file_list);
+
         std::vector<std::string> continuous_cleanup_list;
         std::vector<std::string> final_cleanup_list;
 
         std::unordered_map<std::string, std::shared_ptr<FileStack>> fs_map;
+
+
+        void list_filestacks();
 };
 
 #endif
