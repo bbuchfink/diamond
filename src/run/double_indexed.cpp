@@ -243,6 +243,8 @@ void run_query_chunk(DatabaseFile &db_file,
 				ReferenceDictionary::get().restore_blocks(current_ref_block);
 				join_blocks(current_ref_block, master_out, tmp_file, params, metadata, db_file);
 			}
+
+			P->barrier(AUTOTAG);
 		} else {
 			join_blocks(current_ref_block, master_out, tmp_file, params, metadata, db_file);
 		}
