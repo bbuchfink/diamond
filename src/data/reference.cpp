@@ -358,7 +358,9 @@ bool DatabaseFile::load_seqs(vector<unsigned> &block_to_database_id, const size_
 	timer.finish();
 	(*dst_seq)->print_stats();
 
-	blocked_processing = seqs_processed < ref_header.sequences;
+	// blocked_processing = seqs_processed < ref_header.sequences;
+	blocked_processing = true;
+
 	return true;
 }
 

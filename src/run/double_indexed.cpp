@@ -190,9 +190,9 @@ void run_query_chunk(DatabaseFile &db_file,
 	Chunk chunk;
 
 	if (config.multiprocessing) {
-/*
+		unsigned int max_ref_block;
 		{
-			timer.go("Initializing reference dictionary");
+			timer.go("Preparing reference dictionary");
 			db_file.rewind();
 			for (current_ref_block = 0;
 				 db_file.load_seqs(block_to_database_id, (size_t)(config.chunk_size*1e9), &ref_seqs::data_, &ref_ids::data_, true, options.db_filter ? options.db_filter : metadata.taxon_filter);
@@ -204,14 +204,20 @@ void run_query_chunk(DatabaseFile &db_file,
 			current_ref_block = 0;
 			timer.finish();
 		}
-*/
+
 		auto work = P->get_stack(reference_partition);
+		auto done = P->get_stack(P->LOG);
 		string buf;
 		while (work->pop(buf)) {
 			Chunk chunk = to_chunk(buf);
+
 			db_file.load_seqs(block_to_database_id, (size_t)(0), &ref_seqs::data_, &ref_ids::data_, true, options.db_filter ? options.db_filter : metadata.taxon_filter, chunk);
+
 			run_ref_chunk(db_file, query_chunk, query_len_bounds, query_buffer, master_out, tmp_file, params, metadata, block_to_database_id);
+
+			done->push(buf);
 		}
+		current_ref_block = max_ref_block;
 	} else {
 		for (current_ref_block = 0;
 			 db_file.load_seqs(block_to_database_id, (size_t)(config.chunk_size*1e9), &ref_seqs::data_, &ref_ids::data_, true, options.db_filter ? options.db_filter : metadata.taxon_filter);
