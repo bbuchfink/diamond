@@ -200,8 +200,9 @@ void run_query_chunk(DatabaseFile &db_file,
 			{
 				init_dict_ref_chunk(db_file, query_chunk, query_len_bounds, query_buffer, master_out, tmp_file, params, metadata, block_to_database_id);
 			}
-			db_file.rewind();
+			max_ref_block = current_ref_block;
 			current_ref_block = 0;
+			db_file.rewind();
 			timer.finish();
 		}
 
@@ -212,7 +213,6 @@ void run_query_chunk(DatabaseFile &db_file,
 			Chunk chunk = to_chunk(buf);
 
 			db_file.load_seqs(block_to_database_id, (size_t)(0), &ref_seqs::data_, &ref_ids::data_, true, options.db_filter ? options.db_filter : metadata.taxon_filter, chunk);
-
 			run_ref_chunk(db_file, query_chunk, query_len_bounds, query_buffer, master_out, tmp_file, params, metadata, block_to_database_id);
 
 			done->push(buf);
@@ -339,6 +339,8 @@ void master_thread(DatabaseFile *db_file, task_timer &total_timer, Metadata &met
 		run_query_chunk(*db_file, current_query_chunk, *master_out, unaligned_file.get(), aligned_file.get(), metadata, options);
 
 		P->delete_stack(reference_partition);
+
+		// break;
 	}
 
 	if (query_file && !options.query_file) {

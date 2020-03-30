@@ -282,10 +282,12 @@ bool DatabaseFile::load_seqs(vector<unsigned> &block_to_database_id, const size_
 {
 	task_timer timer("Loading reference sequences");
 
-	if (max_letters > 0)
+	if (max_letters > 0) {
 		seek(pos_array_offset);
-	else
+	} else {
+		current_ref_block = chunk.i;
 		seek(chunk.offset);
+	}
 
 	size_t database_id = tell_seq();
 	size_t letters = 0, seqs = 0, id_letters = 0, seqs_processed = 0;
