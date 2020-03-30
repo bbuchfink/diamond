@@ -20,6 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "reference.h"
 #include "ref_dictionary.h"
 #include "../util/util.h"
+#include "../util/parallel/multiprocessing.h"
 
 using std::pair;
 
@@ -120,3 +121,54 @@ void ReferenceDictionary::build_lazy_dict(DatabaseFile &db_file)
 	}
 }
 */
+
+
+void ReferenceDictionary::save_block(size_t block) {
+	const string o_file = join_path(config.tmpdir, "ref_dictionary_" + std::to_string(block) + ".tmp");
+	std::ofstream os(o_file, std::ios::out | std::ios::trunc | std::ios::binary);
+	save_vector(os, data_[block]);
+	save_vector(os, len_);
+	save_vector(os, database_id_);
+	size_t sz = name_.size();
+	save_scalar(os, sz);
+	for (auto i = name_.begin(); i < name_.end(); ++i) {
+		save_vector(os, **i);
+	}
+}
+
+void ReferenceDictionary::load_block(size_t block, ReferenceDictionary & d) {
+	const string i_file = join_path(config.tmpdir, "ref_dictionary_" + std::to_string(block) + ".tmp");
+	std::ifstream is(i_file, std::ios::in | std::ios::binary);
+	load_vector(is, d.data_[block]);
+	load_vector(is, d.len_);
+	load_vector(is, d.database_id_);
+	size_t sz;
+	load_scalar(is, sz);
+	for (size_t i = 0; i < sz; ++i) {
+		string * buf = new string();  // TODO: use smart pointers (at least), temporarily done in this way just as elsewhere in the code
+		load_string(is, *buf);
+		d.name_.push_back(buf);
+	}
+}
+
+void ReferenceDictionary::restore_blocks(size_t n_blocks) {
+	len_.clear();
+	name_.clear();
+	database_id_.clear();
+	for (size_t i = 0; i < n_blocks; ++i) {
+		ReferenceDictionary d;
+		d.data_.resize(n_blocks);
+		load_block(i, d);
+		data_[i] = d.data_[i];
+		d.data_[i].clear();
+		len_.insert(len_.end(), d.len_.begin(), d.len_.end());
+		d.len_.clear();
+		database_id_.insert(database_id_.end(), d.database_id_.begin(), d.database_id_.end());
+		d.database_id_.clear();
+		for (auto i = d.name_.begin(); i < d.name_.end(); ++i) {
+			name_.push_back(new string(**i));
+		}
+		d.clear();
+	}
+	next_ = name_.size();
+}

@@ -60,7 +60,7 @@ struct ReferenceDictionary
 	}
 
 	//void init_rev_map();
-	
+
 	unsigned database_id(unsigned dict_id) const
 	{
 		return config.no_dict ? 0 : database_id_[dict_id];
@@ -87,6 +87,10 @@ struct ReferenceDictionary
 	{
 		return next_;
 	}
+
+	void save_block(size_t block);
+	void load_block(size_t block, ReferenceDictionary & d);
+	void restore_blocks(size_t n_blocks);
 
 private:
 

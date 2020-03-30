@@ -215,6 +215,8 @@ void run_query_chunk(DatabaseFile &db_file,
 			db_file.load_seqs(block_to_database_id, (size_t)(0), &ref_seqs::data_, &ref_ids::data_, true, options.db_filter ? options.db_filter : metadata.taxon_filter, chunk);
 			run_ref_chunk(db_file, query_chunk, query_len_bounds, query_buffer, master_out, tmp_file, params, metadata, block_to_database_id);
 
+			ReferenceDictionary::get().save_block(chunk.i);
+
 			done->push(buf);
 		}
 		current_ref_block = max_ref_block;
@@ -235,7 +237,15 @@ void run_query_chunk(DatabaseFile &db_file,
 
 	if (blocked_processing) {
 		timer.go("Joining output blocks");
-		join_blocks(current_ref_block, master_out, tmp_file, params, metadata, db_file);
+
+		if (config.multiprocessing) {
+			if (P->is_master()) {
+				ReferenceDictionary::get().restore_blocks(current_ref_block);
+				join_blocks(current_ref_block, master_out, tmp_file, params, metadata, db_file);
+			}
+		} else {
+			join_blocks(current_ref_block, master_out, tmp_file, params, metadata, db_file);
+		}
 	}
 
 	if (unaligned_file) {
