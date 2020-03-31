@@ -80,7 +80,9 @@ void run_ref_chunk(DatabaseFile &db_file,
 		log_stream << "Masked letters: " << n << endl;
 	}
 
-	ReferenceDictionary::get().init(safe_cast<unsigned>(ref_seqs::get().get_length()), block_to_database_id);
+	if (!config.multiprocessing) {
+		ReferenceDictionary::get().init(safe_cast<unsigned>(ref_seqs::get().get_length()), block_to_database_id);
+	}
 
 	timer.go("Initializing temporary storage");
 	Trace_pt_buffer::instance = new Trace_pt_buffer(query_seqs::data_->get_length() / align_mode.query_contexts,
@@ -260,6 +262,8 @@ void run_query_chunk(DatabaseFile &db_file,
 		timer.go("Joining output blocks");
 
 		if (config.multiprocessing) {
+			P->barrier(AUTOTAG);
+
 			if (P->is_master()) {
 				ReferenceDictionary::get().restore_blocks(current_ref_block);
 
@@ -273,8 +277,6 @@ void run_query_chunk(DatabaseFile &db_file,
 						tmp_file_names.push_back(unquote(t));
 					}
 				}
-
-				// std::reverse(tmp_file_names.begin(), tmp_file_names.end());
 
 				join_blocks(current_ref_block, master_out, tmp_file, params, metadata, db_file, tmp_file_names);
 			}
@@ -387,7 +389,7 @@ void master_thread(DatabaseFile *db_file, task_timer &total_timer, Metadata &met
 
 		P->delete_stack(reference_partition);
 
-		// break;
+		break;
 	}
 
 	if (query_file && !options.query_file) {
