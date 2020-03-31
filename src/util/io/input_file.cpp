@@ -81,8 +81,11 @@ InputFile::InputFile(TempFile &tmp_file, int flags) :
 void InputFile::close_and_delete()
 {
 	close();
+	// TODO: restore proper behaviour
+/*
 	if (!unlinked && remove(file_name.c_str()) != 0)
 		std::cerr << "Warning: Failed to delete temporary file " << file_name << std::endl;
+*/
 }
 
 uint64_t InputFile::hash() {
