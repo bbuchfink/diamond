@@ -152,9 +152,7 @@ void ReferenceDictionary::load_block(size_t block, ReferenceDictionary & d) {
 }
 
 void ReferenceDictionary::restore_blocks(size_t n_blocks) {
-	len_.clear();
-	name_.clear();
-	database_id_.clear();
+	clear_vectors();
 	for (size_t i = 0; i < n_blocks; ++i) {
 		ReferenceDictionary d;
 		d.data_.resize(n_blocks);
@@ -166,9 +164,16 @@ void ReferenceDictionary::restore_blocks(size_t n_blocks) {
 		database_id_.insert(database_id_.end(), d.database_id_.begin(), d.database_id_.end());
 		d.database_id_.clear();
 		for (auto i = d.name_.begin(); i < d.name_.end(); ++i) {
-			name_.push_back(new string(**i));
+			name_.push_back(new string(**i));  // TODO: use smart pointers (at least), temporarily done in this way just as elsewhere in the code
 		}
 		d.clear();
 	}
 	next_ = name_.size();
+}
+
+void ReferenceDictionary::clear_vectors() {
+	len_.clear();
+	name_.clear();
+	database_id_.clear();
+	name_.clear();
 }

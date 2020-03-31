@@ -18,6 +18,7 @@ class Parallelizer {
         void init();
         void clear();
 
+        int get_rank();
         std::string get_id();
         std::string get_work_directory();
         int get_n_registered();
@@ -50,6 +51,7 @@ class Parallelizer {
         std::string work_directory;
         std::string barrier_file;
 
+        int rank;
         std::string id;
         int n_registered;
         bool master_flag;

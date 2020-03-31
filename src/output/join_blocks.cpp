@@ -40,6 +40,17 @@ struct JoinFetcher
 		}
 		query_last = (unsigned)-1;
 	}
+
+	static void init(const vector<string> & tmp_file_names)
+	{
+		for (auto file_name : tmp_file_names) {
+			files.push_back(new InputFile(file_name));
+			query_ids.push_back(0);
+			files.back().read(&query_ids.back(), 1);
+		}
+		query_last = (unsigned)-1;
+	}
+
 	static void finish()
 	{
 		for (PtrVector<InputFile>::iterator i = files.begin(); i != files.end(); ++i)
@@ -256,14 +267,21 @@ void join_worker(Task_queue<TextBuffer, JoinWriter> *queue, const Parameters *pa
 	statistics += stat;
 }
 
-void join_blocks(unsigned ref_blocks, Consumer &master_out, const PtrVector<TempFile> &tmp_file, const Parameters &params, const Metadata &metadata, DatabaseFile &db_file)
+void join_blocks(unsigned ref_blocks, Consumer &master_out, const PtrVector<TempFile> &tmp_file, const Parameters &params, const Metadata &metadata, DatabaseFile &db_file,
+	const vector<string> tmp_file_names)
 {
 	//ReferenceDictionary::get().init_rev_map();
 	task_timer timer("Building reference dictionary", 3);
 	if (config.use_lazy_dict)
 		ReferenceDictionary::get().build_lazy_dict(db_file);
 	timer.go("Joining output blocks");
-	JoinFetcher::init(tmp_file);
+
+	if (tmp_file_names.size() > 0) {
+		JoinFetcher::init(tmp_file_names);
+	} else {
+		JoinFetcher::init(tmp_file);
+	}
+
 	JoinWriter writer(master_out);
 	Task_queue<TextBuffer, JoinWriter> queue(3 * config.threads_, writer);
 	vector<thread> threads;

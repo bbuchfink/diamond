@@ -19,6 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <iostream>
 #include <limits>
 #include <memory>
+#include <algorithm>
 #include "../data/reference.h"
 #include "../data/queries.h"
 #include "../basic/statistics.h"
@@ -216,6 +217,7 @@ void run_query_chunk(DatabaseFile &db_file,
 			run_ref_chunk(db_file, query_chunk, query_len_bounds, query_buffer, master_out, tmp_file, params, metadata, block_to_database_id);
 
 			ReferenceDictionary::get().save_block(chunk.i);
+			ReferenceDictionary::get().clear_vectors();
 
 			done->push(buf);
 		}
@@ -235,13 +237,46 @@ void run_query_chunk(DatabaseFile &db_file,
 
 	log_rss();
 
+	const string s_tag = "temp_files_query_" + to_string(query_chunk);
+	if (config.multiprocessing) {
+		P->create_stack(s_tag);
+		auto temp_files_stack = P->get_stack(s_tag);
+
+		vector<string> tokens;
+		tokens.push_back(to_string(P->get_rank()));
+		for (auto f : tmp_file) {
+			tokens.push_back(quote(f->file_name()));
+		}
+		const string line = join(tokens, ';');
+		temp_files_stack->push(line);
+
+		for (auto f : tmp_file) {
+			f->close();
+		}
+		tmp_file.clear();
+	}
+
 	if (blocked_processing) {
 		timer.go("Joining output blocks");
 
 		if (config.multiprocessing) {
 			if (P->is_master()) {
 				ReferenceDictionary::get().restore_blocks(current_ref_block);
-				join_blocks(current_ref_block, master_out, tmp_file, params, metadata, db_file);
+
+				auto temp_files_stack = P->get_stack(s_tag);
+				vector<string> tmp_file_names;
+				string line;
+				while (temp_files_stack->pop(line) > 0) {
+					vector<string> tokens = split(line, ';');
+					tokens.erase(tokens.begin());  // remove worker rank
+					for (auto t : tokens) {
+						tmp_file_names.push_back(unquote(t));
+					}
+				}
+
+				// std::reverse(tmp_file_names.begin(), tmp_file_names.end());
+
+				join_blocks(current_ref_block, master_out, tmp_file, params, metadata, db_file, tmp_file_names);
 			}
 
 			P->barrier(AUTOTAG);

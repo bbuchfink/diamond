@@ -91,6 +91,7 @@ struct ReferenceDictionary
 	void save_block(size_t block);
 	void load_block(size_t block, ReferenceDictionary & d);
 	void restore_blocks(size_t n_blocks);
+	void clear_vectors();
 
 private:
 

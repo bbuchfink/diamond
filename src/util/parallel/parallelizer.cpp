@@ -59,7 +59,6 @@ void Parallelizer::init() {
     }
 
     {
-        int rank = -1;
         const vector<string> env_opts = {"SLURM_PROCID", "PARALLEL_RANK"};
         for (auto env : env_opts) {
             const char* env_str = std::getenv(env.c_str());
@@ -117,6 +116,10 @@ Parallelizer::~Parallelizer() {
 
 string Parallelizer::get_id() {
     return id;
+}
+
+int Parallelizer::get_rank() {
+    return rank;
 }
 
 string Parallelizer::get_work_directory() {
