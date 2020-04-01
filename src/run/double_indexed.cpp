@@ -212,6 +212,7 @@ void run_query_chunk(DatabaseFile &db_file,
 		auto work = P->get_stack(reference_partition);
 		auto done = P->get_stack(P->LOG);
 		string buf;
+// if (P->get_rank() > 0) {
 		while (work->pop(buf)) {
 			Chunk chunk = to_chunk(buf);
 
@@ -223,6 +224,7 @@ void run_query_chunk(DatabaseFile &db_file,
 
 			done->push(buf);
 		}
+// }
 		current_ref_block = max_ref_block;
 	} else {
 		for (current_ref_block = 0;
@@ -277,6 +279,8 @@ void run_query_chunk(DatabaseFile &db_file,
 						tmp_file_names.push_back(unquote(t));
 					}
 				}
+
+				// reverse(tmp_file_names.begin(), tmp_file_names.end());
 
 				join_blocks(current_ref_block, master_out, tmp_file, params, metadata, db_file, tmp_file_names);
 			}
