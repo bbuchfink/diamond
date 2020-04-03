@@ -303,7 +303,7 @@ Hsp traceback(const sequence &query, Frame frame, _cbs bias_correction, const Tr
 			it.walk_diagonal();
 		} else {
 			const pair<Edit_operation, int> g(it.walk_gap(d_begin, d1));
-			out.push_gap(g.first, g.second, &target.seq[it.j + g.second]);
+			out.push_gap(g.first, g.second, target.seq.data() + it.j + g.second);
 		}
 	}
 

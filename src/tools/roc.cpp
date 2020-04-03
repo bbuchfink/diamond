@@ -38,6 +38,36 @@ using std::map;
 using std::unordered_multimap;
 using std::vector;
 
+typedef tuple<char, int, int, int> Family;
+
+static map<Family, int> fam2idx;
+
+struct FamilyMapping : public unordered_multimap<string, int> {
+
+	FamilyMapping(const string &file_name) {
+
+		TextInputFile mapping_file(file_name);
+		string acc, domain_class;
+		int fold, superfam, fam;
+
+		while (mapping_file.getline(), !mapping_file.eof()) {
+			Util::String::Tokenizer(mapping_file.line, "\t") >> Util::String::Skip() >> acc >> Util::String::Skip() >> domain_class >> fold >> superfam >> fam;
+			if (acc.empty() || domain_class.empty() || domain_class.length() > 1)
+				throw std::runtime_error("Format error.");
+
+			auto i = fam2idx.insert({ Family(domain_class[0], fold, superfam, fam), (int)fam2idx.size() });
+			if (config.cut_bar) {
+				size_t j = acc.find_last_of('|');
+				if (j != string::npos)
+					acc = acc.substr(j + 1);
+			}
+			insert({ acc, i.first->second });
+			//cout << acc << '\t' << domain_class << '\t' << fold << '\t' << superfam << '\t' << fam << endl;
+		}
+	}
+
+};
+
 struct QueryStats {
 	QueryStats(const string &query, int families):
 		query(query),
@@ -78,32 +108,16 @@ struct QueryStats {
 };
 
 void roc() {
-	typedef tuple<char, int, int, int> Family;
-
-	TextInputFile mapping_file(config.family_map);
-	string acc, domain_class;
-	int fold, superfam, fam;
-	map<Family, int> fam2idx;
-	unordered_multimap<string, int> acc2fam;
-
 	task_timer timer("Loading family mapping");
-	while (mapping_file.getline(), !mapping_file.eof()) {
-		Util::String::Tokenizer(mapping_file.line, "\t") >> Util::String::Skip() >> acc >> Util::String::Skip() >> domain_class >> fold >> superfam >> fam;
-		if (acc.empty() || domain_class.empty() || domain_class.length() > 1)
-			throw std::runtime_error("Format error.");
-
-		auto i = fam2idx.insert({ Family(domain_class[0], fold, superfam, fam), (int)fam2idx.size() });
-		if (config.cut_bar) {
-			size_t j = acc.find_last_of('|');
-			if (j != string::npos)
-				acc = acc.substr(j + 1);
-		}
-		acc2fam.insert({ acc, i.first->second });
-		//cout << acc << '\t' << domain_class << '\t' << fold << '\t' << superfam << '\t' << fam << endl;
-	}
-	mapping_file.close();
+	FamilyMapping acc2fam(config.family_map);
 	timer.finish();
 	message_stream << "#Mappings: " << acc2fam.size() << endl;
+	message_stream << "#Families: " << fam2idx.size() << endl;
+
+	timer.go("Loading query family mapping");
+	FamilyMapping acc2fam_query(config.family_map_query);
+	timer.finish();
+	message_stream << "#Mappings: " << acc2fam_query.size() << endl;
 	message_stream << "#Families: " << fam2idx.size() << endl;
 
 	const int families = (int)fam2idx.size();
@@ -123,10 +137,11 @@ void roc() {
 		Util::String::Tokenizer(in.line, "\t") >> qseqid >> sseqid;
 		if (qseqid != stats.query) {
 			if (!stats.query.empty()) {
-				const double a = stats.auc1(fam_count, acc2fam);
+				const double a = stats.auc1(fam_count, acc2fam_query);
 				if (a != -1.0) {
 					auc1 += a;
 					++queries;
+					cout << stats.query << '\t' << a << endl;
 				}
 			}
 			stats = QueryStats(qseqid, families);
@@ -136,7 +151,7 @@ void roc() {
 		stats.add(sseqid, acc2fam);
 		++n;
 	}
-	const double a = stats.auc1(fam_count, acc2fam);
+	const double a = stats.auc1(fam_count, acc2fam_query);
 	if (a != -1.0) {
 		auc1 += a;
 		++queries;

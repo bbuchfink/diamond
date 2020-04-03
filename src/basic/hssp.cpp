@@ -244,5 +244,9 @@ void Hsp::push_gap(Edit_operation op, int length, const Letter *subject)
 		transcript.push_back(op_insertion, (unsigned)length);
 	else
 		for (int i = 0; i < length; ++i)
+#ifdef SEQ_MASK
+			transcript.push_back(op_deletion, letter_mask(subject[-i]));
+#else
 			transcript.push_back(op_deletion, subject[-i]);
+#endif
 }

@@ -103,7 +103,7 @@ void Sam_format::print_match(const Hsp_context& r, const Metadata &metadata, Tex
 		<< '*' << '\t'
 		<< '0' << '\t'
 		<< '0' << '\t'
-		<< sequence(&r.query.index(r.frame())[r.query_range().begin_], r.query_range().length()) << '\t'
+		<< sequence(r.query.index(r.frame()).data() + r.query_range().begin_, r.query_range().length()) << '\t'
 		<< '*' << '\t'
 		<< "AS:i:" << (uint32_t)score_matrix.bitscore(r.score()) << '\t'
 		<< "NM:i:" << r.length() - r.identities() << '\t'

@@ -22,6 +22,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <stdexcept>
 #include <string>
 #include "const.h"
+#include "../util/simd.h"
 
 typedef signed char Letter;
 typedef enum { amino_acid=0, nucleotide=1 } Sequence_type;
@@ -67,13 +68,25 @@ struct Value_traits
 #define AMINO_ACID_COUNT (sizeof(AMINO_ACID_ALPHABET) - 1)
 
 constexpr Letter SUPER_HARD_MASK = 25;
+constexpr Letter LETTER_MASK = 31;
+constexpr Letter SEED_MASK = 32;
+
+static inline Letter letter_mask(Letter x) {
+	return Letter(x & LETTER_MASK);
+}
+
+#ifdef __SSE2__
+static inline __m128i letter_mask(__m128i x) {
+	return _mm_and_si128(x, _mm_set1_epi8(LETTER_MASK));
+}
+#endif
 
 extern const Value_traits amino_acid_traits;
 extern const Value_traits nucleotide_traits;
 extern Value_traits value_traits;
 extern Value_traits input_value_traits;
 
-inline char to_char(Letter a)
+static inline char to_char(Letter a)
 {
 	return value_traits.alphabet[(long)a];
 }

@@ -175,16 +175,6 @@ struct DiagonalSegment
 		return i - j;
 	}
 
-	DiagonalSegment& set_score(const TranslatedSequence &query, const sequence &subject)
-	{
-		TranslatedPosition i1 = i;
-		int j1 = j;
-		for (; j1 < subject_end(); ++j1)
-			score += score_matrix(query[i1], subject[j1]);
-		return *this;
-	}
-
-
 	friend std::ostream& operator<<(std::ostream &s, const DiagonalSegment &d)
 	{
 		s << "i=(" << d.i << ") j=" << d.j << " len=" << d.len << " score=" << d.score << std::endl;

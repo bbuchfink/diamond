@@ -190,6 +190,7 @@ struct Config
 	bool log_extend;
 	int chaining_maxgap;
 	string family_map;
+	string family_map_query;
 	size_t chaining_range_cover;
 	bool no_swipe_realign;
 	bool cut_bar;

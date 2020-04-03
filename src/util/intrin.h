@@ -24,7 +24,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <intrin.h>
 #endif
 
-inline unsigned popcount32(unsigned x)
+static inline unsigned popcount32(unsigned x)
 {
 #ifdef _MSC_VER
 	return __popcnt(x);
@@ -33,7 +33,7 @@ inline unsigned popcount32(unsigned x)
 #endif
 }
 
-inline unsigned popcount64(unsigned long long x)
+static inline unsigned popcount64(unsigned long long x)
 {
 #ifdef _MSC_VER
 	return (unsigned)__popcnt64(x);
@@ -42,7 +42,7 @@ inline unsigned popcount64(unsigned long long x)
 #endif
 }
 
-inline int ctz(uint32_t x)
+static inline int ctz(uint32_t x)
 {
 #ifdef _MSC_VER
 	unsigned long i;
@@ -53,7 +53,8 @@ inline int ctz(uint32_t x)
 #endif
 }
 
-inline int ctz(uint64_t x)
+
+static inline int ctz(uint64_t x)
 {
 #ifdef _MSC_VER
 	if (x)
@@ -62,6 +63,16 @@ inline int ctz(uint64_t x)
 		return CHAR_BIT * sizeof(x);
 #else
 	return __builtin_ctzll(x);
+#endif
+}
+
+static inline int clz(uint64_t x) {
+#ifdef _MSC_VER
+	unsigned long i;
+	unsigned char c = _BitScanReverse64(&i, x);
+	return 63 - (int)i;
+#else
+	return __builtin_clzll(x);
 #endif
 }
 

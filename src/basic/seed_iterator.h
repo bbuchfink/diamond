@@ -50,7 +50,11 @@ struct Hashed_seed_iterator
 		last_(0)
 	{
 		for (uint64_t i = 0; i < sh.length_ - 1; ++i)
+#ifdef SEQ_MASK
+			last_ = (last_ << _b) | Reduction::reduction(letter_mask(*(ptr_++)));
+#else
 			last_ = (last_ << _b) | Reduction::reduction(*(ptr_++));
+#endif
 	}
 	bool good() const
 	{
@@ -59,7 +63,11 @@ struct Hashed_seed_iterator
 	bool get(uint64_t &seed, uint64_t mask)
 	{
 		last_ <<= _b;
+#ifdef SEQ_MASK
+		const Letter l = *(ptr_++) & LETTER_MASK;
+#else
 		const Letter l = *(ptr_++);
+#endif
 		if (l == value_traits.mask_char)
 			return false;
 		last_ |= Reduction::reduction(l);
@@ -80,7 +88,11 @@ struct Contiguous_seed_iterator
 		last_(0)
 	{
 		for (uint64_t i = 0; i < _l - 1; ++i)
+#ifdef SEQ_MASK
+			last_ = (last_ << _b) | Reduction::reduction(letter_mask(*(ptr_++)));
+#else
 			last_ = (last_ << _b) | Reduction::reduction(*(ptr_++));
+#endif
 	}
 	bool good() const
 	{
@@ -90,7 +102,11 @@ struct Contiguous_seed_iterator
 	{
 		last_ <<= _b;
 		last_ &= (1 << (_b*_l)) - 1;
+#ifdef SEQ_MASK
+		const Letter l = *(ptr_++) & LETTER_MASK;
+#else
 		const Letter l = *(ptr_++);
+#endif
 		if (l == value_traits.mask_char)
 			return false;
 		last_ |= Reduction::reduction(l);

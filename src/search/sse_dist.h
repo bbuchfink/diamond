@@ -27,7 +27,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 static inline __m128i reduce_seq_ssse3(const Letter *seq)
 {
 	const __m128i *row = reinterpret_cast<const __m128i*>(Reduction::reduction.map8());
-	const __m128i s = _mm_loadu_si128((const __m128i*)seq);
+	__m128i s = _mm_loadu_si128((const __m128i*)seq);
+#ifdef SEQ_MASK
+	s = letter_mask(s);
+#endif
 	__m128i high_mask = _mm_slli_epi16(_mm_and_si128(s, _mm_set1_epi8('\x10')), 3);
 	__m128i seq_low = _mm_or_si128(s, high_mask);
 	__m128i seq_high = _mm_or_si128(s, _mm_xor_si128(high_mask, _mm_set1_epi8('\x80')));
@@ -45,7 +48,11 @@ static inline __m128i reduce_seq_generic(const Letter *seq)
 {
 	uint8_t d[16];
 	for (unsigned i = 0; i < 16; ++i)
+#ifdef SEQ_MASK
+		d[i] = Reduction::reduction(letter_mask(*(seq++)));
+#else
 		d[i] = Reduction::reduction(*(seq++));
+#endif
 	return _mm_loadu_si128((const __m128i*)d);
 }
 
@@ -69,7 +76,11 @@ static inline unsigned match_block_reduced(const Letter *x, const Letter *y)
 	unsigned r = 0;
 	for (int i = 15; i >= 0; --i) {
 		r <<= 1;
+#ifdef SEQ_MASK
+		if (Reduction::reduction(letter_mask(x[i])) == Reduction::reduction(letter_mask(y[i])))
+#else
 		if (Reduction::reduction(x[i]) == Reduction::reduction(y[i]))
+#endif
 			r |= 1;		
 	}
 	return r;

@@ -23,13 +23,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "queries.h"
 #include "../util/parallel/thread_pool.h"
 
-using namespace std;
-
-// #define MASK_FREQUENT
-
-#ifdef MASK_FREQUENT
-#include "../data/reference.h"
-#endif
+using std::atomic;
 
 const double Frequent_seeds::hash_table_factor = 1.3;
 Frequent_seeds frequent_seeds;
@@ -69,14 +63,19 @@ void Frequent_seeds::build_worker(
 			Packed_seed s;
 			shapes[sid].set_seed(s, query_seqs::get().data(*it.r->begin()));
 			buf.push_back(seed_partition_offset(s));
-			it.erase();
-#ifdef MASK_FREQUENT
-			for (unsigned i = 0; i < merge_it.i.n; ++i) {
-				char *p = ref_seqs::get_nc().data(merge_it.i.get(i)->value);
-				for (unsigned j = 0; j < shapes[0].weight_; ++j)
-					p[shapes[0].positions_[j]] |= 128;
+
+#ifdef SEQ_MASK
+			if (config.fast_stage2) {
+				Range<SeedArray::_pos*> query_hits = *it.r;
+				for (SeedArray::_pos* i = query_hits.begin(); i < query_hits.end(); ++i) {
+					Letter* p = query_seqs::get_nc().data(*i);
+					*p |= SEED_MASK;
+				}
 			}
 #endif
+
+			it.erase();
+
 		}
 		else
 			++it;
@@ -88,7 +87,7 @@ void Frequent_seeds::build_worker(
 	for (vector<uint32_t>::const_iterator i = buf.begin(); i != buf.end(); ++i)
 		hash_set.insert(*i);
 
-	frequent_seeds.tables_[sid][seedp] = move(hash_set);
+	frequent_seeds.tables_[sid][seedp] = std::move(hash_set);
 	(*counts)[seedp] = (unsigned)n;
 }
 
@@ -96,7 +95,7 @@ void Frequent_seeds::build(unsigned sid, const SeedPartitionRange &range, Double
 {
 	vector<Sd> ref_sds(range.size()), query_sds(range.size());
 	atomic<unsigned> seedp(range.begin());
-	vector<thread> threads;
+	vector<std::thread> threads;
 	for (unsigned i = 0; i < config.threads_; ++i)
 		threads.emplace_back(compute_sd, &seedp, query_seed_hits, ref_seed_hits, &ref_sds, &query_sds);
 	for (auto &t : threads)

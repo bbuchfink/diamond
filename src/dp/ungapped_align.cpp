@@ -32,7 +32,11 @@ int xdrop_ungapped(const Letter *query, const Letter *subject, unsigned seed_len
 		&& *q != sequence::DELIMITER
 		&& *s != sequence::DELIMITER)
 	{
+#ifdef SEQ_MASK
+		st += score_matrix(letter_mask(*q), letter_mask(*s));
+#else
 		st += score_matrix(*q, *s);
+#endif
 		score = std::max(score, st);
 		--q;
 		--s;
@@ -49,7 +53,11 @@ int xdrop_ungapped(const Letter *query, const Letter *subject, unsigned seed_len
 		&& *q != sequence::DELIMITER
 		&& *s != sequence::DELIMITER)
 	{
+#ifdef SEQ_MASK
+		st += score_matrix(letter_mask(*q), letter_mask(*s));
+#else
 		st += score_matrix(*q, *s);
+#endif
 		score = std::max(score, st);
 		++q;
 		++s;
@@ -57,7 +65,11 @@ int xdrop_ungapped(const Letter *query, const Letter *subject, unsigned seed_len
 	}
 
 	for (unsigned i = 0; i<seed_len; ++i)
+#ifdef SEQ_MASK
+		score += score_matrix(letter_mask(query[i]), letter_mask(subject[i]));
+#else
 		score += score_matrix(query[i], subject[i]);
+#endif
 
 	len = delta + n + seed_len;
 	return score;
@@ -73,7 +85,11 @@ int xdrop_ungapped(const Letter *query, const Letter *subject, unsigned &delta, 
 		&& *q != sequence::DELIMITER
 		&& *s != sequence::DELIMITER)
 	{
+#ifdef SEQ_MASK
+		st += score_matrix(letter_mask(*q), letter_mask(*s));
+#else
 		st += score_matrix(*q, *s);
+#endif
 		if (st > score) {
 			score = st;
 			delta = n;
@@ -92,7 +108,11 @@ int xdrop_ungapped(const Letter *query, const Letter *subject, unsigned &delta, 
 		&& *q != sequence::DELIMITER
 		&& *s != sequence::DELIMITER)
 	{
+#ifdef SEQ_MASK
+		st += score_matrix(letter_mask(*q), letter_mask(*s));
+#else
 		st += score_matrix(*q, *s);
+#endif
 		if (st > score) {
 			score = st;
 			len = n;
@@ -202,7 +222,11 @@ int xdrop_ungapped_right(const Letter *query, const Letter *subject, int &len)
 		&& *q != sequence::DELIMITER
 		&& *s != sequence::DELIMITER)
 	{
+#ifdef SEQ_MASK
+		st += score_matrix(letter_mask(*q), letter_mask(*s));
+#else
 		st += score_matrix(*q, *s);
+#endif
 		if (st > score) {
 			score = st;
 			len = n;
