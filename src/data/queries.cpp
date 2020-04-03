@@ -25,13 +25,13 @@ using namespace std;
 unsigned current_query_chunk;
 Sequence_set* query_source_seqs::data_ = 0;
 Sequence_set* query_seqs::data_ = 0;
-String_set<char, 0>* query_ids::data_ = 0;
+String_set<char, '\0'>* query_ids::data_ = 0;
 Partitioned_histogram query_hst;
 vector<bool> query_aligned;
 std::mutex query_aligned_mtx;
 Seed_set *query_seeds = 0;
 Hashed_seed_set *query_seeds_hashed = 0;
-String_set<char, 0> *query_qual = nullptr;
+String_set<char, '\0'> *query_qual = nullptr;
 vector<unsigned> query_block_to_database_id;
 
 void write_unaligned(OutputFile *file)

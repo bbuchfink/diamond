@@ -87,7 +87,11 @@ struct sequence_stream
 			mask |= 1 << n;
 			return false;
 		}
-		*dest = *(src++) & 0x7f;
+#ifdef SEQ_MASK
+		*dest = *(src++) & LETTER_MASK;
+#else
+		*dest = *(src++);
+#endif
 		dest += 16/sizeof(_score);
 		return true;
 	}
@@ -103,19 +107,6 @@ struct score_profile
 
 	inline void set(const __m128i &seq)
 	{
-		/*unsigned j = 0;
-		do {
-			data_[j] = score_vector<_score> (j, seq);
-			++j;
-			data_[j] = score_vector<_score> (j, seq);
-			++j;
-			data_[j] = score_vector<_score> (j, seq);
-			++j;
-			data_[j] = score_vector<_score> (j, seq);
-			++j;
-		} while(j<24);
-		data_[j] = score_vector<_score> (j, seq);
-		assert(j+1 == Value_traits<_val>::ALPHABET_SIZE);*/
 		for (unsigned j = 0; j < AMINO_ACID_COUNT; ++j)
 			data_[j] = score_vector<_score> (j, seq);
 	}

@@ -300,6 +300,7 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("tantan-maxRepeatOffset", 0, "maximum tandem repeat period to consider (50)", tantan_maxRepeatOffset, 15)
 		("tantan-ungapped", 0, "use tantan masking in ungapped mode", tantan_ungapped)
 		("family-map", 0, "", family_map)
+		("family-map-query", 0, "", family_map_query)
 		("chaining-range-cover", 0, "", chaining_range_cover, (size_t)8)
 		("index-mode", 0, "index mode (0=4x12, 1=16x9)", index_mode)
 		("no-swipe-realign", 0, "", no_swipe_realign)
@@ -501,4 +502,13 @@ Config::Config(int argc, const char **argv, bool check_io)
 
 	if (query_range_culling && taxon_k != 0)
 		throw std::runtime_error("--taxon-k is not supported for --range-culling mode.");
+
+	log_stream << "MAX_SHAPE_LEN=" << MAX_SHAPE_LEN;
+#ifdef SEQ_MASK
+	log_stream << " SEQ_MASK";
+#endif
+#ifdef STRICT_BAND
+	log_stream << " STRICT_BAND";
+#endif
+	log_stream << endl;
 }

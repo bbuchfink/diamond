@@ -59,7 +59,7 @@ struct sequence
 	sequence(const sequence &seq, int from, int to):
 		len_(to-from+1),
 		clipping_offset_(0),
-		data_(&seq[from])
+		data_(seq.data() + from)
 	{}
 	size_t length() const
 	{
@@ -89,22 +89,34 @@ struct sequence
 	{
 		return data_ + padding;
 	}
-	const Letter& operator [](size_t i) const
+	const Letter operator [](size_t i) const
 	{
+#ifdef SEQ_MASK
+		return data_[i] & LETTER_MASK;
+#else
 		return data_[i];
+#endif
 	}
 	bool empty() const
 	{ return len_ == 0; }
 	size_t print(char *ptr, unsigned begin, unsigned len) const
 	{
 		for(unsigned i=begin;i<begin+len;++i)
+#ifdef SEQ_MASK
+			* (ptr++) = to_char(data_[i] & LETTER_MASK);
+#else
 			*(ptr++) = to_char(data_[i]);
+#endif
 		return len;
 	}
 	TextBuffer& print(TextBuffer &buf, size_t begin, size_t end, const Value_traits& value_traits) const
 	{
 		for (size_t i = begin; i < end; ++i)
+#ifdef SEQ_MASK
+			buf << value_traits.alphabet[(long)(data_[i] & LETTER_MASK)];
+#else
 			buf << value_traits.alphabet[(long)data_[i]];
+#endif
 		return buf;
 	}
 	std::ostream& print(std::ostream &os, const Value_traits &v) const

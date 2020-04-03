@@ -38,7 +38,15 @@ static inline void window_ungapped(const Letter *query, const Letter **subjects,
 	for (int i = 0; i < window; i += 16) {
 		transpose(subject_ptr, subject_count, subject_vector);
 		for (int j = 0; j < 16;) {
-			const Sv match(unsigned(*query), _mm_loadu_si128((const __m128i*)&subject_vector[j * 16]));
+			__m128i subject_letters = _mm_loadu_si128((const __m128i*) & subject_vector[j * 16]);
+#ifdef SEQ_MASK
+			subject_letters = _mm_and_si128(subject_letters, _mm_set1_epi8(LETTER_MASK));
+#endif
+			unsigned query_letter = unsigned(*query);
+#ifdef SEQ_MASK
+			query_letter &= (unsigned)LETTER_MASK;
+#endif
+			const Sv match(query_letter, subject_letters);
 			score = score + match;
 			best = max(best, score);
 			++query;
