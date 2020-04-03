@@ -175,5 +175,4 @@ void ReferenceDictionary::clear_vectors() {
 	len_.clear();
 	name_.clear();
 	database_id_.clear();
-	name_.clear();
 }

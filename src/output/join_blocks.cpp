@@ -156,12 +156,13 @@ struct BlockJoiner
 		}
 		std::make_heap(records.begin(), records.end());
 	}
-	bool get(vector<IntermediateRecord> &target_hsp)
+	bool get(vector<IntermediateRecord> &target_hsp, unsigned & block_idx)
 	{
 		if (records.empty())
 			return false;
 		const Join_record &first = records.front();
 		const unsigned block = first.block_;
+		block_idx = block;
 		const unsigned subject = first.info_.subject_id;
 		target_hsp.clear();
 		do {
@@ -189,8 +190,9 @@ void join_query(vector<BinaryBuffer> &buf, TextBuffer &out, Statistics &statisti
 	unique_ptr<TargetCulling> culling(TargetCulling::get());
 
 	unsigned n_target_seq = 0;
+	unsigned block_idx = 0;
 
-	while (joiner.get(target_hsp)) {
+	while (joiner.get(target_hsp, block_idx)) {
 		const set<unsigned> rank_taxon_ids = config.taxon_k ? metadata.taxon_nodes->rank_taxid((*metadata.taxon_list)[dict.database_id(target_hsp.front().subject_id)], Rank::species) : set<unsigned>();
 		const int c = culling->cull(target_hsp, rank_taxon_ids);
 		if (c == TargetCulling::FINISHED)
