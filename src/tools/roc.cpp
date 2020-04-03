@@ -97,10 +97,12 @@ struct QueryStats {
 			//throw std::runtime_error("Accession not mapped.");
 		double r = 0.0, n = 0.0;
 		for (auto j = i.first; j != i.second; ++j) {
+			if (fam_count[j->second] == 0)
+				continue;
 			r += double(count[j->second]) / double(fam_count[j->second]);
 			n += 1.0;
 		}
-		return r / n;
+		return n > 0.0 ? r / n : 1.0;
 	}
 	string query, last_subject;
 	vector<int> count;
@@ -155,6 +157,7 @@ void roc() {
 	if (a != -1.0) {
 		auc1 += a;
 		++queries;
+		cout << stats.query << '\t' << a << endl;
 	}
 	in.close();
 	timer.finish();
