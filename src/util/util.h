@@ -177,14 +177,6 @@ inline string* get_str(const char *s, const char *delimiters)
 	return new string (s, find_first_of(s, delimiters));
 }
 
-#ifdef __SSE2__
-inline __m128i _mm_set(char a)
-{
-	const int x = (int)a;
-	return _mm_set1_epi32(x << 24 | x << 16 | x << 8 | x);
-}
-#endif
-
 template<typename _t, unsigned d1, unsigned d2>
 struct Static_matrix
 {

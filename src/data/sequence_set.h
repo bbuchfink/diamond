@@ -29,12 +29,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../basic/shape_config.h"
 #include "../basic/seed_iterator.h"
 #include "../util/ptr_vector.h"
+#include "../basic/value.h"
 
 using std::cout;
 using std::endl;
 using std::pair;
 
-struct Sequence_set : public String_set<sequence::DELIMITER, 1>
+struct Sequence_set : public String_set<Letter, sequence::DELIMITER, 1>
 {
 
 	Sequence_set()
@@ -43,6 +44,11 @@ struct Sequence_set : public String_set<sequence::DELIMITER, 1>
 	void print_stats() const
 	{
 		verbose_stream << "Sequences = " << this->get_length() << ", letters = " << this->letters() << ", average length = " << this->avg_len() << endl;
+	}
+
+	sequence operator[](size_t i) const
+	{
+		return sequence(ptr(i), length(i));
 	}
 
 	pair<size_t, size_t> len_bounds(size_t min_len) const
@@ -154,7 +160,7 @@ private:
 	template<typename _f, typename _filter>
 	void enum_seeds(_f *f, unsigned begin, unsigned end, pair<size_t, size_t> shape_range, const _filter *filter) const
 	{
-		vector<char> buf(max_len(begin, end));
+		vector<Letter> buf(max_len(begin, end));
 		uint64_t key;
 		for (unsigned i = begin; i < end; ++i) {
 			const sequence seq = (*this)[i];

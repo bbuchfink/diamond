@@ -32,10 +32,10 @@ struct TestCase {
 	const char *desc, *command_line;
 };
 
-std::vector<char> generate_random_seq(size_t length, std::minstd_rand0 &rand_engine);
-std::vector<char> simulate_homolog(const sequence &seq, double id, std::minstd_rand0 &random_engine);
+std::vector<Letter> generate_random_seq(size_t length, std::minstd_rand0 &rand_engine);
+std::vector<Letter> simulate_homolog(const sequence &seq, double id, std::minstd_rand0 &random_engine);
 
-enum { CASE_COUNT = 11, PROT_COUNT = 387 };
+enum { CASE_COUNT = 11, PROT_COUNT = 389 };
 
 extern const char* seqs[PROT_COUNT][2];
 extern const TestCase test_cases[CASE_COUNT];

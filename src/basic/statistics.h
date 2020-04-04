@@ -33,7 +33,7 @@ struct Statistics
 	enum value {
 		SEED_HITS, TENTATIVE_MATCHES0, TENTATIVE_MATCHES1, TENTATIVE_MATCHES2, TENTATIVE_MATCHES3, TENTATIVE_MATCHES4, TENTATIVE_MATCHESX, MATCHES, ALIGNED, GAPPED, DUPLICATES,
 		GAPPED_HITS, QUERY_SEEDS, QUERY_SEEDS_HIT, REF_SEEDS, REF_SEEDS_HIT, QUERY_SIZE, REF_SIZE, OUT_HITS, OUT_MATCHES, COLLISION_LOOKUPS, QCOV, BIAS_ERRORS, SCORE_TOTAL, ALIGNED_QLEN, PAIRWISE, HIGH_SIM,
-		TEMP_SPACE, SECONDARY_HITS, ERASED_HITS, SQUARED_ERROR, CELLS, OUTRANKED_HITS, TARGET_HITS0, TARGET_HITS1, TARGET_HITS2, TARGET_HITS3, TIME_GREEDY_EXT, LOW_COMPLEXITY_SEEDS,
+		TEMP_SPACE, SECONDARY_HITS, ERASED_HITS, SQUARED_ERROR, CELLS, OUTRANKED_HITS, TARGET_HITS0, TARGET_HITS1, TARGET_HITS2, TARGET_HITS3, TARGET_HITS4, TIME_GREEDY_EXT, LOW_COMPLEXITY_SEEDS,
 		SWIPE_REALIGN, EXT8, EXT16, EXT32, COUNT
 	};
 
@@ -74,13 +74,13 @@ struct Statistics
 		log_stream << "Hits (filter stage 0) = " << data_[SEED_HITS] << endl;
 		log_stream << "Hits (filter stage 1) = " << data_[TENTATIVE_MATCHES1] << " (" << data_[TENTATIVE_MATCHES1]*100.0/ data_[SEED_HITS] << " %)" << endl;
 		log_stream << "Hits (filter stage 2) = " << data_[TENTATIVE_MATCHES2] << " (" << data_[TENTATIVE_MATCHES2] * 100.0 / data_[TENTATIVE_MATCHES1] << " %)" << endl;
-		log_stream << "Hits (filter stage x) = " << data_[TENTATIVE_MATCHESX] << " (" << data_[TENTATIVE_MATCHESX] * 100.0 / data_[TENTATIVE_MATCHES2] << " %)" << endl;
-		log_stream << "Hits (filter stage 3) = " << data_[TENTATIVE_MATCHES3] << " (" << data_[TENTATIVE_MATCHES3] * 100.0 / data_[TENTATIVE_MATCHESX] << " %)" << endl;
+		log_stream << "Hits (filter stage 3) = " << data_[TENTATIVE_MATCHES3] << " (" << data_[TENTATIVE_MATCHES3] * 100.0 / data_[TENTATIVE_MATCHES2] << " %)" << endl;
 		log_stream << "Hits (filter stage 4) = " << data_[TENTATIVE_MATCHES4] << " (" << data_[TENTATIVE_MATCHES4] * 100.0 / data_[TENTATIVE_MATCHES3] << " %)" << endl;
 		log_stream << "Target hits (stage 0) = " << data_[TARGET_HITS0] << endl;
 		log_stream << "Target hits (stage 1) = " << data_[TARGET_HITS1] << endl;
 		log_stream << "Target hits (stage 2) = " << data_[TARGET_HITS2] << endl;
 		log_stream << "Target hits (stage 3) = " << data_[TARGET_HITS3] << endl;
+		log_stream << "Target hits (stage 4) = " << data_[TARGET_HITS4] << endl;
 		log_stream << "Swipe realignments    = " << data_[SWIPE_REALIGN] << endl;
 		log_stream << "Extensions (8 bit)    = " << data_[EXT8] << endl;
 		log_stream << "Extensions (16 bit)   = " << data_[EXT16] << endl;

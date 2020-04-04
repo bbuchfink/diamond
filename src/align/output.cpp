@@ -38,7 +38,7 @@ TextBuffer* generate_output(vector<Match> &targets, size_t query_block_id, Stati
 	unsigned n_hsp = 0, hit_hsps = 0;
 	TranslatedSequence query = query_seqs::get().translated_seq(align_mode.query_translated ? query_source_seqs::get()[query_block_id] : query_seqs::get()[query_block_id], query_block_id*align_mode.query_contexts);
 	const unsigned query_len = (unsigned)query.index(0).length();
-	const char *query_title = query_ids::get()[query_block_id].c_str();
+	const char *query_title = query_ids::get()[query_block_id];
 	const bool aligned = !targets.empty();
 
 	if (blocked_processing) {
@@ -55,7 +55,7 @@ TextBuffer* generate_output(vector<Match> &targets, size_t query_block_id, Stati
 		const size_t subject_id = targets[i].target_block_id;
 		const unsigned database_id = ReferenceDictionary::get().block_to_database_id(subject_id);
 		const unsigned subject_len = (unsigned)ref_seqs::get()[subject_id].length();
-		const char *ref_title = ref_ids::get()[subject_id].c_str();
+		const char *ref_title = ref_ids::get()[subject_id];
 
 		if (targets[i].outranked)
 			stat.inc(Statistics::OUTRANKED_HITS);

@@ -221,19 +221,19 @@ void join_worker(Task_queue<TextBuffer, JoinWriter> *queue, const Parameters *pa
 	size_t n;
 	TextBuffer *out;
 	Statistics stat;
-	const String_set<0>& qids = query_ids::get();
+	const String_set<char, 0>& qids = query_ids::get();
 
 	while (queue->get(n, out, fetcher) && fetcher.query_id != IntermediateRecord::FINISHED) {
 		stat.inc(Statistics::ALIGNED);
 		size_t seek_pos;
 
-		const char * query_name = qids[qids.check_idx(fetcher.query_id)].c_str();
+		const char * query_name = qids[qids.check_idx(fetcher.query_id)];
 		const sequence query_seq = align_mode.query_translated ? query_source_seqs::get()[fetcher.query_id] : query_seqs::get()[fetcher.query_id];
 
 		if (*output_format != Output_format::daa && config.report_unaligned != 0) {
 			for (unsigned i = fetcher.unaligned_from; i < fetcher.query_id; ++i) {
-				output_format->print_query_intro(i, query_ids::get()[i].c_str(), get_source_query_len(i), *out, true);
-				output_format->print_query_epilog(*out, query_ids::get()[i].c_str(), true, *params);
+				output_format->print_query_intro(i, query_ids::get()[i], get_source_query_len(i), *out, true);
+				output_format->print_query_epilog(*out, query_ids::get()[i], true, *params);
 			}
 		}
 
@@ -276,8 +276,8 @@ void join_blocks(unsigned ref_blocks, Consumer &master_out, const PtrVector<Temp
 	if (*output_format != Output_format::daa && config.report_unaligned != 0) {
 		TextBuffer out;
 		for (unsigned i = JoinFetcher::query_last + 1; i < query_ids::get().get_length(); ++i) {
-			output_format->print_query_intro(i, query_ids::get()[i].c_str(), get_source_query_len(i), out, true);
-			output_format->print_query_epilog(out, query_ids::get()[i].c_str(), true, params);
+			output_format->print_query_intro(i, query_ids::get()[i], get_source_query_len(i), out, true);
+			output_format->print_query_epilog(out, query_ids::get()[i], true, params);
 		}
 		writer(out);
 	}

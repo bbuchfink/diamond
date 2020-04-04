@@ -19,6 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <limits>
 #include <iostream>
 #include <set>
+#include <iterator>
 #include <map>
 #include <memory>
 #include "../basic/config.h"
@@ -35,7 +36,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/algo/MurmurHash3.h"
 #include "../util/io/record_reader.h"
 
-String_set<0>* ref_ids::data_ = 0;
+String_set<char, '\0'>* ref_ids::data_ = 0;
 Partitioned_histogram ref_hst;
 unsigned current_ref_block;
 Sequence_set* ref_seqs::data_ = 0;
@@ -138,27 +139,31 @@ void DatabaseFile::rewind()
 	pos_array_offset = ref_header.pos_array_offset;
 }
 
-void push_seq(const sequence &seq, const sequence &id, uint64_t &offset, vector<Pos_record> &pos_array, OutputFile &out, size_t &letters, size_t &n_seqs)
+void push_seq(const sequence &seq, const char *id, size_t id_len, uint64_t &offset, vector<Pos_record> &pos_array, OutputFile &out, size_t &letters, size_t &n_seqs)
 {	
 	pos_array.emplace_back(offset, seq.length());
 	out.write("\xff", 1);
 	out.write(seq.data(), seq.length());
 	out.write("\xff", 1);
-	out.write(id.data(), id.length() + 1);
+	out.write(id, id_len + 1);
 	letters += seq.length();
 	++n_seqs;
-	offset += seq.length() + id.length() + 3;
+	offset += seq.length() + id_len + 3;
 }
 
 void make_db(TempFile **tmp_out, TextInputFile *input_file)
 {
-	message_stream << "Database file: " << config.input_ref_file << endl;
+	if (config.input_ref_file.size() > 1)
+		throw std::runtime_error("Too many arguments provided for option --in.");
+	const string input_file_name = config.input_ref_file.empty() ? string() : config.input_ref_file.front();
+	if (input_file_name.empty() && !input_file)
+		std::cerr << "Input file parameter (--in) is missing. Input will be read from stdin." << endl;
+	if(!input_file && !input_file_name.empty())
+		message_stream << "Database input file: " << input_file_name << endl;
 	
 	task_timer total;
-	if (config.input_ref_file == "" && !input_file)
-		std::cerr << "Input file parameter (--in) is missing. Input will be read from stdin." << endl;
 	task_timer timer("Opening the database file", true);
-	TextInputFile *db_file = input_file ? input_file : new TextInputFile(config.input_ref_file);
+	TextInputFile *db_file = input_file ? input_file : new TextInputFile(input_file_name);
 	
 	OutputFile *out = tmp_out ? new TempFile() : new OutputFile(config.database);
 	ReferenceHeader header;
@@ -171,7 +176,7 @@ void make_db(TempFile **tmp_out, TextInputFile *input_file)
 	uint64_t offset = out->tell();
 
 	Sequence_set *seqs;
-	String_set<0> *ids;
+	String_set<char, 0> *ids;
 	const FASTA_format format;
 	vector<Pos_record> pos_array;
 	FileBackedBuffer accessions;
@@ -187,18 +192,18 @@ void make_db(TempFile **tmp_out, TextInputFile *input_file)
 				sequence seq = (*seqs)[i];
 				if (seq.length() == 0)
 					throw std::runtime_error("File format error: sequence of length 0 at line " + to_string(db_file->line_count));
-				push_seq(seq, (*ids)[i], offset, pos_array, *out, letters, n_seqs);
+				push_seq(seq, (*ids)[i], ids->length(i), offset, pos_array, *out, letters, n_seqs);
 			}
 			if (!config.prot_accession2taxid.empty()) {
 				timer.go("Writing accessions");
 				for (size_t i = 0; i < n; ++i)
-					accessions << Taxonomy::Accession::from_title((*ids)[i].c_str());
+					accessions << Taxonomy::Accession::from_title((*ids)[i]);
 			}
 			timer.go("Hashing sequences");
 			for (size_t i = 0; i < n; ++i) {
-				sequence seq = (*seqs)[i], id = (*ids)[i];
+				sequence seq = (*seqs)[i];
 				MurmurHash3_x64_128(seq.data(), (int)seq.length(), header2.hash, header2.hash);
-				MurmurHash3_x64_128(id.data(), (int)id.length(), header2.hash, header2.hash);
+				MurmurHash3_x64_128((*ids)[i], ids->length(i), header2.hash, header2.hash);
 			}
 			delete seqs;
 			delete ids;
@@ -270,7 +275,7 @@ void DatabaseFile::seek_direct() {
 	seek(sizeof(ReferenceHeader) + sizeof(ReferenceHeader2) + 8);
 }
 
-bool DatabaseFile::load_seqs(vector<unsigned> &block_to_database_id, size_t max_letters, Sequence_set **dst_seq, String_set<0> **dst_id, bool load_ids, const vector<bool> *filter)
+bool DatabaseFile::load_seqs(vector<unsigned> &block_to_database_id, size_t max_letters, Sequence_set **dst_seq, String_set<char, 0> **dst_id, bool load_ids, const vector<bool> *filter)
 {
 	task_timer timer("Loading reference sequences");
 	seek(pos_array_offset);
@@ -280,7 +285,7 @@ bool DatabaseFile::load_seqs(vector<unsigned> &block_to_database_id, size_t max_
 	block_to_database_id.clear();
 
 	*dst_seq = new Sequence_set;
-	if(load_ids) *dst_id = new String_set<0>;
+	if(load_ids) *dst_id = new String_set<char, 0>;
 
 	Pos_record r;
 	read(&r, 1);
@@ -331,7 +336,7 @@ bool DatabaseFile::load_seqs(vector<unsigned> &block_to_database_id, size_t max_
 		else
 			if (!seek_forward('\0')) throw std::runtime_error("Unexpected end of file.");
 		Masking::get().remove_bit_mask((*dst_seq)->ptr(n), (*dst_seq)->length(n));
-		if (!config.sfilt.empty() && strstr((**dst_id)[n].c_str(), config.sfilt.c_str()) == 0)
+		if (!config.sfilt.empty() && strstr((**dst_id)[n], config.sfilt.c_str()) == 0)
 			memset((*dst_seq)->ptr(n), value_traits.mask_char, (*dst_seq)->length(n));
 	}
 	timer.finish();
@@ -341,12 +346,12 @@ bool DatabaseFile::load_seqs(vector<unsigned> &block_to_database_id, size_t max_
 	return true;
 }
 
-void DatabaseFile::read_seq(string &id, vector<char> &seq)
+void DatabaseFile::read_seq(string &id, vector<Letter> &seq)
 {
 	char c;
 	read(&c, 1);
-	read_until(seq, '\xff');
-	read_until(id, '\0');
+	read_to(std::back_inserter(seq), '\xff');
+	read_to(std::back_inserter(id), '\0');
 }
 
 void DatabaseFile::get_seq()
@@ -427,7 +432,7 @@ bool DatabaseFile::is_diamond_db(const string &file_name) {
 DatabaseFile* DatabaseFile::auto_create_from_fasta() {
 	if (!is_diamond_db(config.database)) {
 		message_stream << "Database file is not a DIAMOND database, treating as FASTA." << endl;
-		config.input_ref_file = config.database;
+		config.input_ref_file = { config.database };
 		TempFile *db;
 		make_db(&db);
 		DatabaseFile *r(new DatabaseFile(*db));

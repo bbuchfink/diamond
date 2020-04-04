@@ -113,7 +113,7 @@ list<Hsp> swipe(const sequence &query, const sequence *subject_begin, const sequ
 		profile.set(targets.seq_vector(Score()));
 		for (int i = 0; i < qlen; ++i) {
 			hgap = it.hgap();
-			const _sv next = cell_update_sv<_sv>(it.diag(), profile.get(query[i]), extend_penalty, open_penalty, hgap, vgap, best);
+			const _sv next = swipe_cell_update<_sv>(it.diag(), profile.get(query[i]), nullptr, extend_penalty, open_penalty, hgap, vgap, best);
 			it.set_hgap(hgap);
 			it.set_score(last);
 			last = next;

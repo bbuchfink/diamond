@@ -22,6 +22,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <iostream>
 #include <vector>
 #include <string>
+#include <assert.h>
 #include "../basic/value.h"
 #include "../util/binary_buffer.h"
 #include "../util/text_buffer.h"
@@ -32,7 +33,7 @@ using std::vector;
 
 struct sequence
 {
-	static const char DELIMITER = '\x1f';
+	static constexpr Letter DELIMITER = '\x1f';
 	struct Reversed {};
 	struct Hardmasked {};
 	sequence():
@@ -45,6 +46,11 @@ struct sequence
 		clipping_offset_ (clipping_offset),
 		data_ (data)
 	{ }
+	sequence(const Letter *begin, const Letter *end) :
+		len_(end - begin),
+		clipping_offset_(0),
+		data_(begin)
+	{}
 	sequence(const vector<Letter> &data):
 		len_(data.size()),
 		clipping_offset_(0),
@@ -89,11 +95,6 @@ struct sequence
 	}
 	bool empty() const
 	{ return len_ == 0; }
-	bool present() const {
-		return len_ > 0;
-	}
-	const char* c_str() const
-	{ return reinterpret_cast<const char*>(data_); }
 	size_t print(char *ptr, unsigned begin, unsigned len) const
 	{
 		for(unsigned i=begin;i<begin+len;++i)
@@ -148,9 +149,6 @@ struct sequence
 	sequence subseq(int begin, int end) const
 	{
 		return sequence(*this, begin, end - 1);
-	}
-	std::string substr(int begin, int end) const {
-		return std::string(&data_[begin], &data_[end]);
 	}
 	friend TextBuffer& operator<<(TextBuffer &buf, const sequence &s)
 	{

@@ -259,7 +259,7 @@ void master_thread(DatabaseFile *db_file, task_timer &total_timer, Metadata &met
 		query_seqs::data_->print_stats();
 
 		if (current_query_chunk == 0 && *output_format != Output_format::daa)
-			output_format->print_header(*master_out, align_mode.mode, config.matrix.c_str(), score_matrix.gap_open(), score_matrix.gap_extend(), config.max_evalue, query_ids::get()[0].c_str(),
+			output_format->print_header(*master_out, align_mode.mode, config.matrix.c_str(), score_matrix.gap_open(), score_matrix.gap_extend(), config.max_evalue, query_ids::get()[0],
 				unsigned(align_mode.query_translated ? query_source_seqs::get()[0].length() : query_seqs::get()[0].length()));
 
 		if (config.masking == 1 && !options.self) {

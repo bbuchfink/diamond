@@ -22,7 +22,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 // #define DP_STAT
 
 #include <stdint.h>
+#include <algorithm>
 #include "../dp.h"
+#include "../basic/value.h"
 
 template<int _n>
 struct TargetIterator
@@ -37,7 +39,9 @@ struct TargetIterator
 		for (; next < std::min(_n, n_targets); ++next) {
 			const DpTarget &t = subject_begin[next];
 			pos[next] = i1 - (t.d_end - 1);
-			const int j1 = std::min(qlen - 1 - d_begin[next], (int)(t.seq.length() - 1)) + 1;
+			const int d0 = d_begin[next];
+			//const int d0 = t.d_begin;
+			const int j1 = std::min(qlen - 1 - d0, (int)(t.seq.length() - 1)) + 1;
 			cols = std::max(cols, j1 - pos[next]);
 			target[next] = next;
 			active.push_back(next);
@@ -59,6 +63,7 @@ struct TargetIterator
 	template<typename _t> __m128i get(const _t&)
 	{
 		_t s[_n];
+		std::fill(s, s + _n, SUPER_HARD_MASK);
 #ifdef DP_STAT
 		live = 0;
 #endif

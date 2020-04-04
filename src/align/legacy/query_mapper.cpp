@@ -94,7 +94,7 @@ QueryMapper::QueryMapper(const Parameters &params, size_t query_id, Trace_pt_lis
 void QueryMapper::init()
 {
 	if(config.log_query)
-		cout << "Query = " << query_ids::get()[query_id].c_str() << '\t' << query_id << endl;
+		cout << "Query = " << query_ids::get()[query_id] << '\t' << query_id << endl;
 	if (config.comp_based_stats == 1)
 		for (unsigned i = 0; i < align_mode.query_contexts; ++i)
 			query_cb.emplace_back(query_seq(i));
@@ -218,7 +218,7 @@ bool QueryMapper::generate_output(TextBuffer &buffer, Statistics &stat)
 	unique_ptr<TargetCulling> target_culling(TargetCulling::get());
 	const unsigned query_len = (unsigned)query_seq(0).length();
 	size_t seek_pos = 0;
-	const char *query_title = query_ids::get()[query_id].c_str();
+	const char *query_title = query_ids::get()[query_id];
 	unique_ptr<Output_format> f(output_format->clone());
 
 	for (size_t i = 0; i < targets.size(); ++i) {
@@ -230,7 +230,7 @@ bool QueryMapper::generate_output(TextBuffer &buffer, Statistics &stat)
 		const size_t subject_id = targets[i].subject_block_id;
 		const unsigned database_id = ReferenceDictionary::get().block_to_database_id(subject_id);
 		const unsigned subject_len = (unsigned)ref_seqs::get()[subject_id].length();
-		const char *ref_title = ref_ids::get()[subject_id].c_str();
+		const char *ref_title = ref_ids::get()[subject_id];
 		targets[i].apply_filters(source_query_len, subject_len, query_title, ref_title);
 		if (targets[i].hsps.size() == 0)
 			continue;

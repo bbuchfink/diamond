@@ -20,6 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <chrono>
 #include <utility>
+#include <algorithm>
 #include "../basic/sequence.h"
 #include "../basic/score_matrix.h"
 #include "../dp/score_vector.h"
@@ -28,6 +29,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../dp/dp.h"
 #include "../dp/score_vector_int8.h"
 #include "../dp/score_profile.h"
+#include "../dp/ungapped.h"
+#include "../search/finger_print.h"
+#include "../dp/ungapped_simd.h"
 
 using std::vector;
 using std::chrono::high_resolution_clock;
@@ -37,7 +41,7 @@ using std::list;
 
 namespace Benchmark { namespace DISPATCH_ARCH {
 
-void scan_cols(const Long_score_profile &qp, sequence s, int i, int j, int j_end)
+static void scan_cols(const LongScoreProfile &qp, sequence s, int i, int j, int j_end)
 {
 #ifdef __SSE4_1__
 	typedef score_vector<int8_t> Sv;
@@ -65,45 +69,54 @@ void scan_cols(const Long_score_profile &qp, sequence s, int i, int j, int j_end
 #endif
 }
 
-int xdrop_window2(const Letter *query, const Letter *subject)
-{
-	static const int window = 40;
-	int score(0), st(0), n = 0, i = 0;
-
+static int xdrop_window(const Letter *query, const Letter *subject) {
+	static const int window = 64;
+	int score(0), st(0), n = 0;
 	const Letter *q(query), *s(subject);
 
 	st = score;
 	while (n < window)
 	{
 		st += score_matrix(*q, *s);
-		if (st > score) {
-			score = st;
-			i = n;
-		}
+		score = std::max(score, st);
 		++q;
 		++s;
 		++n;
 
 		st += score_matrix(*q, *s);
-		if (st > score) {
-			score = st;
-			i = n;
-		}
+		score = std::max(score, st);
 		++q;
 		++s;
 		++n;
 
 		st += score_matrix(*q, *s);
-		if (st > score) {
-			score = st;
-			i = n;
-		}
+		score = std::max(score, st);
+		++q;
+		++s;
+		++n;
+
+		st += score_matrix(*q, *s);
+		score = std::max(score, st);
 		++q;
 		++s;
 		++n;
 	}
-	return st * i;
+	return score;
 }
+
+#ifdef __SSE4_1__
+void benchmark_hamming(const sequence &s1, const sequence &s2) {
+	static const size_t n = 100000000llu;
+	high_resolution_clock::time_point t1 = high_resolution_clock::now();
+
+	Byte_finger_print_48 f1(s1.data()), f2 (s2.data());
+	for (size_t i = 0; i < n; ++i) {
+		f1.r1 = _mm_xor_si128(f1.r1, f1.r2);
+		volatile unsigned y = f1.match(f2);
+	}
+	cout << "SSE hamming distance:\t\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * 48) * 1000 << " ps/Cell" << endl;
+}
+#endif
 
 void benchmark_ungapped(const sequence &s1, const sequence &s2)
 {
@@ -114,17 +127,18 @@ void benchmark_ungapped(const sequence &s1, const sequence &s2)
 
 	for (size_t i = 0; i < n; ++i) {
 
-		volatile int score = xdrop_window2(q, s);
+		volatile int score = xdrop_window(q, s);
 
 	}
+	
 	high_resolution_clock::time_point t2 = high_resolution_clock::now();
 	std::chrono::nanoseconds time_span = duration_cast<std::chrono::nanoseconds>(t2 - t1);
 
-	cout << "Scalar ungapped extension:\t" << (double)time_span.count() / (n*40) * 1000 << " ps/Cell" << endl;
+	cout << "Scalar ungapped extension:\t" << (double)time_span.count() / (n*64) * 1000 << " ps/Cell" << endl;
 }
 
 #ifdef __SSSE3__
-void benchmark_ungapped_sse(const sequence &s1, const sequence &s2)
+void benchmark_ssse3_shuffle(const sequence &s1, const sequence &s2)
 {
 	static const size_t n = 100000000llu;
 	high_resolution_clock::time_point t1 = high_resolution_clock::now();
@@ -138,13 +152,30 @@ void benchmark_ungapped_sse(const sequence &s1, const sequence &s2)
 		sv.set_ssse3(i & 15, seq);
 		volatile __m128i x = sv.data_;
 	}
-	cout << "SSE score shuffle:\t\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * 16) * 1000 << " ps/Letter" << endl;
+	cout << "SSSE3 score shuffle:\t\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * 16) * 1000 << " ps/Letter" << endl;
+}
+#endif
+
+#ifdef __SSE4_1__
+void benchmark_ungapped_sse(const sequence &s1, const sequence &s2) {
+	static const size_t n = 1000000llu;
+	high_resolution_clock::time_point t1 = high_resolution_clock::now();
+
+	const Letter* targets[16];
+	int out[16];
+	for (int i = 0; i < 16; ++i)
+		targets[i] = s2.data();
+
+	for (size_t i = 0; i < n; ++i) {
+		DP::window_ungapped(s1.data(), targets, 16, 64, out);
+	}
+	cout << "SSE ungapped extend:\t\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * 16 * 64) * 1000 << " ps/Cell" << endl;
 }
 #endif
 
 #ifdef __SSE__
 void benchmark_transpose() {
-	static const size_t n = 100000000llu;
+	static const size_t n = 10000000llu;
 	static char in[256], out[256];
 
 	high_resolution_clock::time_point t1 = high_resolution_clock::now();
@@ -174,7 +205,7 @@ void swipe_cell_update() {
 	{
 		score_vector<int8_t> diagonal_cell, scores, gap_extension, gap_open, horizontal_gap, vertical_gap, best;
 		for (size_t i = 0; i < n; ++i) {
-			diagonal_cell = cell_update_sv(diagonal_cell, scores, gap_extension, gap_open, horizontal_gap, vertical_gap, best);
+			diagonal_cell = swipe_cell_update(diagonal_cell, scores, nullptr, gap_extension, gap_open, horizontal_gap, vertical_gap, best);
 		}
 		volatile __m128i x = diagonal_cell.data_;
 	}
@@ -197,30 +228,32 @@ void swipe(const sequence &s1, const sequence &s2) {
 #endif
 
 void banded_swipe(const sequence &s1, const sequence &s2) {
-	vector<DpTarget> target, target16;
+	vector<DpTarget> target8, target16;
 	for (size_t i = 0; i < 8; ++i)
-		target.emplace_back(s2, -32, 32);
+		target16.emplace_back(s2, -32, 32, 0, 0);
 	static const size_t n = 10000llu;
+	//static const size_t n = 1llu;
 	Statistics stat;
 	Bias_correction cbs(s1);
 	high_resolution_clock::time_point t1 = high_resolution_clock::now();
 	for (size_t i = 0; i < n; ++i) {
-		volatile auto out = DP::BandedSwipe::swipe(s1, target, target16, Frame(0), &cbs, 0, 0, stat);
+		volatile auto out = DP::BandedSwipe::swipe(s1, target8, target16, Frame(0), &cbs, 0, 0, stat);
 	}
-	cout << "Banded SWIPE (CBS):\t\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * s1.length() * 65 * 8) * 1000 << " ps/Cell" << endl;
+	cout << "Banded SWIPE (int16_t, CBS):\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * s1.length() * 65 * 8) * 1000 << " ps/Cell" << endl;
 
 	t1 = high_resolution_clock::now();
 	for (size_t i = 0; i < n; ++i) {
-		volatile auto out = DP::BandedSwipe::swipe(s1, target, target16, Frame(0), nullptr, 0, 0, stat);
+		volatile auto out = DP::BandedSwipe::swipe(s1, target8, target16, Frame(0), nullptr, 0, 0, stat);
 	}
-	cout << "Banded SWIPE:\t\t\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * s1.length() * 65 * 8) * 1000 << " ps/Cell" << endl;
+	cout << "Banded SWIPE (int16_t):\t\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * s1.length() * 65 * 8) * 1000 << " ps/Cell" << endl;
 }
 
 #ifdef __SSE4_1__
 void diag_scores(const sequence &s1, const sequence &s2) {
 	static const size_t n = 100000llu;
 	high_resolution_clock::time_point t1 = high_resolution_clock::now();
-	Long_score_profile p(s1);
+	Bias_correction cbs(s1);
+	LongScoreProfile p(s1, cbs);
 	for (size_t i = 0; i < n; ++i) {
 		scan_cols(p, s2, 0, 0, (int)s2.length());
 	}
@@ -228,17 +261,42 @@ void diag_scores(const sequence &s1, const sequence &s2) {
 }
 #endif
 
+#ifdef __SSE4_1__
+void diag_scores2(const sequence& s1, const sequence& s2) {
+	static const size_t n = 100000llu;
+	high_resolution_clock::time_point t1 = high_resolution_clock::now();
+	Bias_correction cbs(s1);
+	LongScoreProfile p(s1, cbs);
+	int scores[64];
+	for (size_t i = 0; i < n; ++i) {
+		DP::scan_diags(p, s2, -32, 0, (int)s2.length(), &scores[0]);
+	}
+	cout << "Diagonal scores (2):\t\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * s2.length() * DP::GAPPED_FILTER_BAND) * 1000 << " ps/Cell" << endl;
+}
+#endif
+
 void benchmark() {
 	vector<Letter> s1, s2, s3, s4;
+	cout << int((0x89 & 0x88)) << endl;
+	cout << int((0x89 & 0x88) == 0) << endl;
 	
-	s1 = sequence::from_string("mpeeeysefkelilqkelhvvyalshvcgqdrtllasillriflhekleslllctlndreismedeattlfrattlastlmeqymkatatqfvhhalkdsilkimeskqscelspskleknedvntnlthllnilselvekifmaseilpptlryiygclqksvqhkwptnttmrtrvvsgfvflrlicpailnprmfniisdspspiaartlilvaksvqnlanlvefgakepymegvnpfiksnkhrmimfldelgnvpelpdttehsrtdlsrdlaalheicvahsdelrtlsnergaqqhvlkkllaitellqqkqnqyt");
-	s2 = sequence::from_string("erlvelvtmmgdqgelpiamalanvvpcsqwdelarvlvtlfdsrhllyqllwnmfskeveladsmqtlfrgnslaskimtfcfkvygatylqklldpllrivitssdwqhvsfevdptrlepsesleenqrnllqmtekffhaiissssefppqlrsvchclyqvvsqrfpqnsigavgsamflrfinpaivspyeagildkkpppiierglklmskilqsianhvlftkeehmrpfndfvksnfdaarrffldiasdcptsdavnhslsfisdgnvlalhrllwnnqekigqylssnrdhkavgrrpfdkmatllaylgppe");
+	s1 = sequence::from_string("mpeeeysefkelilqkelhvvyalshvcgqdrtllasillriflhekleslllctlndreismedeattlfrattlastlmeqymkatatqfvhhalkdsilkimeskqscelspskleknedvntnlthllnilselvekifmaseilpptlryiygclqksvqhkwptnttmrtrvvsgfvflrlicpailnprmfniisdspspiaartlilvaksvqnlanlvefgakepymegvnpfiksnkhrmimfldelgnvpelpdttehsrtdlsrdlaalheicvahsdelrtlsnergaqqhvlkkllaitellqqkqnqyt"); // d1wera_
+	s2 = sequence::from_string("erlvelvtmmgdqgelpiamalanvvpcsqwdelarvlvtlfdsrhllyqllwnmfskeveladsmqtlfrgnslaskimtfcfkvygatylqklldpllrivitssdwqhvsfevdptrlepsesleenqrnllqmtekffhaiissssefppqlrsvchclyqvvsqrfpqnsigavgsamflrfinpaivspyeagildkkpppiierglklmskilqsianhvlftkeehmrpfndfvksnfdaarrffldiasdcptsdavnhslsfisdgnvlalhrllwnnqekigqylssnrdhkavgrrpfdkmatllaylgppe"); // d1nf1a_
 	s3 = sequence::from_string("ttfgrcavksnqagggtrshdwwpcqlrldvlrqfqpsqnplggdfdyaeafqsldyeavkkdiaalmtesqdwwpadfgnygglfvrmawhsagtyramdgrggggmgqqrfaplnswpdnqnldkarrliwpikqkygnkiswadlmlltgnvalenmgfktlgfgggradtwqsdeavywgaettfvpqgndvrynnsvdinaradklekplaathmgliyvnpegpngtpdpaasakdireafgrmgmndtetvaliagghafgkthgavkgsnigpapeaadlgmqglgwhnsvgdgngpnqmtsgleviwtktptkwsngyleslinnnwtlvespagahqweavngtvdypdpfdktkfrkatmltsdlalindpeylkisqrwlehpeeladafakawfkllhrdlgpttrylgpevp"); // d3ut2a1
 	s4 = sequence::from_string("lvhvasvekgrsyedfqkvynaialklreddeydnyigygpvlvrlawhisgtwdkhdntggsyggtyrfkkefndpsnaglqngfkflepihkefpwissgdlfslggvtavqemqgpkipwrcgrvdtpedttpdngrlpdadkdagyvrtffqrlnmndrevvalmgahalgkthlknsgyegpggaannvftnefylnllnedwklekndanneqwdsksgymmlptdysliqdpkylsivkeyandqdkffkdfskafekllengitfpkdapspfifktleeqgl"); // d2euta_
 
-	benchmark_ungapped(s1, s2);
+	sequence ss1 = sequence(s1).subseq(34, s1.size());
+	sequence ss2 = sequence(s2).subseq(33, s2.size());
+
+#ifdef __SSE4_1__
+	benchmark_hamming(s1, s2);
+#endif
+	benchmark_ungapped(ss1, ss2);
 #ifdef __SSSE3__
-	benchmark_ungapped_sse(s1, s2);
+	benchmark_ssse3_shuffle(s1, s2);
+#endif
+#ifdef __SSE4_1__
+	benchmark_ungapped_sse(ss1, ss2);
 #endif
 #ifdef __SSE__
 	benchmark_transpose();
@@ -250,6 +308,7 @@ void benchmark() {
 #ifdef __SSE4_1__
 	swipe(s3, s4);
 	diag_scores(s1, s2);
+	diag_scores2(s1, s2);
 #endif
 }
 

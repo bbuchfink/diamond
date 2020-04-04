@@ -68,7 +68,6 @@ Config::Config(int argc, const char **argv, bool check_io)
 		.add_command("info", "")
 		.add_command("seed-stat", "")
 		.add_command("smith-waterman", "")
-		.add_command("protein-snps", "")
 		.add_command("cluster", "")
 		.add_command("translate", "")
 		.add_command("filter-blasttab", "")
@@ -311,7 +310,15 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("cut-bar", 0, "", cut_bar)
 		("bootstrap", 0, "", bootstrap)
 		("chaining-maxnodes", 0, "", chaining_maxnodes)
-		("cutoff-score-8bit", 0, "", cutoff_score_8bit, 240);
+		("cutoff-score-8bit", 0, "", cutoff_score_8bit, 240)
+		("min-band-overlap", 0, "", min_band_overlap, 0.2)
+		("min-realign-overhang", 0, "", min_realign_overhang, 30)
+		("fast-stage2", 0, "", fast_stage2)
+		("ungapped-window", 0, "", ungapped_window, 48)
+		("gapped-filter-diag-score", 0, "", gapped_filter_diag_score, 20)
+		("gapped-filter-score", 0, "", gapped_filter_score, 0.0)
+		("gapped-filter-evalue", 0, "", gapped_filter_evalue, 0.0)
+		("gapped-filter-window", 0, "", gapped_filter_window, 200);
 	
 	parser.add(general).add(makedb).add(cluster).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options);
 	parser.store(argc, argv, command);

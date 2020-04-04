@@ -38,7 +38,7 @@ vector<Match> extend(const Parameters &params, size_t query_id, Trace_pt_list::i
 	vector<Bias_correction> query_cb;
 
 	if (config.log_query || flags & TARGET_PARALLEL)
-		log_stream << "Query = " << query_ids::get()[query_id].c_str() << endl;
+		log_stream << "Query = " << query_ids::get()[query_id] << endl;
 
 	for (unsigned i = 0; i < contexts; ++i)
 		query_seq.push_back(query_seqs::get()[query_id*contexts + i]);
@@ -55,22 +55,26 @@ vector<Match> extend(const Parameters &params, size_t query_id, Trace_pt_list::i
 
 	vector<WorkTarget> targets = ungapped_stage(query_seq.data(), query_cb.data(), begin, end, flags);
 	stat.inc(Statistics::TARGET_HITS0, targets.size());
-
+	
 	timer.go("Computing ranking");
 	rank_targets(targets, config.rank_ratio == -1 ? (query_seq[0].length() > 50 ? 0.6 : 0.9) : config.rank_ratio, config.rank_factor == -1 ? 1e3 : config.rank_factor);
 	stat.inc(Statistics::TARGET_HITS1, targets.size());
 	timer.finish();
 
+	if (config.gapped_filter_score > 0.0 || config.gapped_filter_evalue > 0.0)
+		targets = gapped_filter(query_seq.data(), query_cb.data(), targets);
+	stat.inc(Statistics::TARGET_HITS2, targets.size());
+
 	vector<Target> aligned_targets = align(targets, query_seq.data(), query_cb.data(), flags, stat);
 	timer.go("Computing score only culling");
 	score_only_culling(aligned_targets);
-	stat.inc(Statistics::TARGET_HITS2, aligned_targets.size());
+	stat.inc(Statistics::TARGET_HITS3, aligned_targets.size());
 	timer.finish();
 
 	vector<Match> matches = align(aligned_targets, query_seq.data(), query_cb.data(), source_query_len, flags, stat);
 	timer.go("Computing culling");
-	culling(matches, source_query_len, query_ids::get()[query_id].c_str());
-	stat.inc(Statistics::TARGET_HITS3, matches.size());
+	culling(matches, source_query_len, query_ids::get()[query_id]);
+	stat.inc(Statistics::TARGET_HITS4, matches.size());
 
 	return matches;
 }

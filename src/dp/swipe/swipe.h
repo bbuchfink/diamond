@@ -19,13 +19,15 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #ifndef SWIPE_H_
 #define SWIPE_H_
 
+#include <assert.h>
 #include "../score_vector.h"
 #include "../score_vector_int8.h"
 #include "../../basic/value.h"
 
 template<typename _sv>
-inline _sv cell_update_sv(const _sv &diagonal_cell,
+static inline _sv swipe_cell_update(const _sv &diagonal_cell,
 	const _sv &scores,
+	void*,
 	const _sv &gap_extension,
 	const _sv &gap_open,
 	_sv &horizontal_gap,
@@ -46,7 +48,30 @@ inline _sv cell_update_sv(const _sv &diagonal_cell,
 }
 
 template<typename _sv>
-inline _sv cell_update(const _sv &diagonal_cell,
+static inline _sv swipe_cell_update(const _sv &diagonal_cell,
+	const _sv &scores,
+	int8_t query_bias,
+	const _sv &gap_extension,
+	const _sv &gap_open,
+	_sv &horizontal_gap,
+	_sv &vertical_gap,
+	_sv &best)
+{
+	using std::max;
+	_sv current_cell = diagonal_cell + (scores + _sv((typename ScoreTraits<_sv>::Score)query_bias));
+	current_cell = max(max(current_cell, vertical_gap), horizontal_gap);
+	ScoreTraits<_sv>::saturate(current_cell);
+	best = max(best, current_cell);
+	vertical_gap -= gap_extension;
+	horizontal_gap -= gap_extension;
+	const _sv open = current_cell - gap_open;
+	vertical_gap = max(vertical_gap, open);
+	horizontal_gap = max(horizontal_gap, open);
+	return current_cell;
+}
+
+template<typename _sv>
+static inline _sv cell_update(const _sv &diagonal_cell,
 	const _sv &scores,
 	const _sv &gap_extension,
 	const _sv &gap_open,
@@ -67,31 +92,8 @@ inline _sv cell_update(const _sv &diagonal_cell,
 	return current_cell;
 }
 
-template<typename _sv>
-inline _sv cell_update_cbs(const _sv &diagonal_cell,
-	const _sv &scores,
-	const _sv &query_bias,
-	const _sv &gap_extension,
-	const _sv &gap_open,
-	_sv &horizontal_gap,
-	_sv &vertical_gap,
-	_sv &best)
-{
-	using std::max;
-	_sv current_cell = diagonal_cell + (scores + query_bias);
-	current_cell = max(max(current_cell, vertical_gap), horizontal_gap);
-	ScoreTraits<_sv>::saturate(current_cell);
-	best = max(best, current_cell);
-	vertical_gap -= gap_extension;
-	horizontal_gap -= gap_extension;
-	const _sv open = current_cell - gap_open;
-	vertical_gap = max(vertical_gap, open);
-	horizontal_gap = max(horizontal_gap, open);
-	return current_cell;
-}
-
 template<typename _score>
-inline score_vector<_score> cell_update(const score_vector<_score> &diagonal_cell,
+static inline score_vector<_score> cell_update(const score_vector<_score> &diagonal_cell,
 	const score_vector<_score> &scores,
 	const score_vector<_score> &gap_extension,
 	const score_vector<_score> &gap_open,
@@ -111,7 +113,7 @@ inline score_vector<_score> cell_update(const score_vector<_score> &diagonal_cel
 }
 
 template<typename _sv>
-inline _sv cell_update(const _sv &diagonal_cell,
+static inline _sv cell_update(const _sv &diagonal_cell,
 	const _sv &shift_cell0,
 	const _sv &shift_cell1,
 	const _sv &scores,

@@ -20,11 +20,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define SEQ_FILE_FORMAT_H_
 
 #include <vector>
+#include <string>
 #include "../basic/value.h"
 #include "io/text_input_file.h"
-
-using std::vector;
-using std::pair;
 
 struct file_format_exception : public std::exception
 {
@@ -37,7 +35,7 @@ struct file_format_exception : public std::exception
 struct Sequence_file_format
 {
 
-	virtual bool get_seq(vector<char> &id, vector<Letter> &seq, TextInputFile &s, vector<char> *qual = nullptr) const = 0;
+	virtual bool get_seq(std::string &id, std::vector<Letter> &seq, TextInputFile &s, std::vector<char> *qual = nullptr) const = 0;
 	virtual ~Sequence_file_format()
 	{ }
 	
@@ -49,7 +47,7 @@ struct FASTA_format : public Sequence_file_format
 	FASTA_format()
 	{ }
 
-	virtual bool get_seq(vector<char> &id, vector<Letter> &seq, TextInputFile &s, vector<char> *qual = nullptr) const;
+	virtual bool get_seq(std::string &id, std::vector<Letter> &seq, TextInputFile &s, std::vector<char> *qual = nullptr) const override;
 
 	virtual ~FASTA_format()
 	{ }
@@ -62,7 +60,7 @@ struct FASTQ_format : public Sequence_file_format
 	FASTQ_format()
 	{ }
 
-	virtual bool get_seq(vector<char> &id, vector<Letter> &seq, TextInputFile &s, vector<char> *qual = nullptr) const;
+	virtual bool get_seq(std::string &id, std::vector<Letter> &seq, TextInputFile &s, std::vector<char> *qual = nullptr) const override;
 
 	virtual ~FASTQ_format()
 	{ }

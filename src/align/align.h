@@ -67,18 +67,6 @@ private:
 void align_queries(Trace_pt_buffer &trace_pts, Consumer* output_file, const Parameters &params, const Metadata &metadata);
 
 namespace ExtensionPipeline {
-	namespace Greedy {
-		struct Target;
-		struct Pipeline : public QueryMapper
-		{
-			Pipeline(const Parameters &params, size_t query_id, Trace_pt_list::iterator begin, Trace_pt_list::iterator end, const Metadata &metadata) :
-				QueryMapper(params, query_id, begin, end, metadata)
-			{}
-			Target& target(size_t i);
-			virtual void run(Statistics &stat, const sequence *subjects = nullptr, size_t subject_count = 0);
-			virtual ~Pipeline() {}
-		};
-	}
 	namespace Swipe {
 		struct Pipeline : public QueryMapper
 		{

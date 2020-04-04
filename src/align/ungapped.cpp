@@ -45,14 +45,24 @@ using std::mutex;
 namespace Extension {
 
 struct SeedHit {
+	int diag() const {
+		return i - j;
+	}
+	bool operator<(const SeedHit& x) const {
+		const int d1 = diag(), d2 = x.diag();
+		return d1 < d2 || (d1 == d2 && j < x.j);
+	}
 	int i, j;
 	unsigned frame;
 };
 
-WorkTarget ungapped_stage(const SeedHit *begin, const SeedHit *end, const sequence *query_seq, const Bias_correction *query_cb, size_t block_id) {
+WorkTarget ungapped_stage(SeedHit *begin, SeedHit *end, const sequence *query_seq, const Bias_correction *query_cb, size_t block_id) {
 	array<vector<Diagonal_segment>, MAX_CONTEXT> diagonal_segments;
 	WorkTarget target(block_id, ref_seqs::get()[block_id]);
+	std::sort(begin, end);
 	for (const SeedHit *hit = begin; hit < end; ++hit) {
+		if (!diagonal_segments[hit->frame].empty() && diagonal_segments[hit->frame].back().diag() == hit->diag() && diagonal_segments[hit->frame].back().subject_end() >= hit->j)
+			continue;
 		const auto d = xdrop_ungapped(query_seq[hit->frame], target.seq, hit->i, hit->j);
 		if(d.score >= config.min_ungapped_raw_score) diagonal_segments[hit->frame].push_back(d);
 	}
@@ -63,11 +73,12 @@ WorkTarget ungapped_stage(const SeedHit *begin, const SeedHit *end, const sequen
 		pair<int, list<Hsp_traits>> hsp = greedy_align(query_seq[frame], query_cb[frame], target.seq, diagonal_segments[frame].begin(), diagonal_segments[frame].end(), config.log_extend, frame);
 		target.filter_score = std::max(target.filter_score, hsp.first);
 		target.hsp[frame] = std::move(hsp.second);
+		target.hsp[frame].sort(Hsp_traits::cmp_diag);
 	}
 	return target;
 }
 
-void ungapped_stage_worker(size_t i, size_t thread_id, const sequence *query_seq, const Bias_correction *query_cb, const FlatArray<SeedHit> *seed_hits, size_t *target_block_ids, vector<WorkTarget> *out, mutex *mtx) {
+void ungapped_stage_worker(size_t i, size_t thread_id, const sequence *query_seq, const Bias_correction *query_cb, FlatArray<SeedHit> *seed_hits, size_t *target_block_ids, vector<WorkTarget> *out, mutex *mtx) {
 	WorkTarget target = ungapped_stage(seed_hits->begin(i), seed_hits->end(i), query_seq, query_cb, target_block_ids[i]);
 	{
 		std::lock_guard<mutex> guard(*mtx);

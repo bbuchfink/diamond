@@ -21,6 +21,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <algorithm>
 #include "target.h"
 #include "../dp/dp.h"
+#include "../util/interval.h"
+#include "../data/reference.h"
 
 using std::vector;
 using std::array;
@@ -66,14 +68,36 @@ void add_dp_targets(const WorkTarget &target, int target_idx, const sequence *qu
 	const int band = Extension::band((int)query_seq->length()),
 		slen = (int)target.seq.length();
 	for (unsigned frame = 0; frame < align_mode.query_contexts; ++frame) {
+
+		if (target.hsp[frame].empty())
+			continue;
 		const int qlen = (int)query_seq[frame].length();
+		int d0 = INT_MAX, d1 = INT_MIN, j0 = INT_MAX, j1 = INT_MIN, bits = 0;
+
 		for (const Hsp_traits &hsp : target.hsp[frame]) {
-			if (config.log_extend) {
-				cout << "i_begin=" << hsp.query_range.begin_ << " j_begin=" << hsp.subject_range.begin_ << " d_min=" << hsp.d_min << " d_max=" << hsp.d_max << endl;
+			const int b0 = std::max(hsp.d_min - band, -(slen - 1)),
+				b1 = std::min(hsp.d_max + 1 + band, qlen);
+			const double overlap = intersect(interval(d0, d1), interval(b0, b1)).length();
+			if (overlap / (d1 - d0) >= config.min_band_overlap || overlap / (b1 - b0) >= config.min_band_overlap) {
+				d0 = std::min(d0, b0);
+				d1 = std::max(d1, b1);
+				j0 = std::min(j0, hsp.subject_range.begin_);
+				j1 = std::max(j1, hsp.subject_range.end_);
+				bits = std::max(bits, hsp.score <= config.cutoff_score_8bit ? 0 : 1);
 			}
-			vector<DpTarget> &v = hsp.score <= config.cutoff_score_8bit ? dp_targets[frame][0] : dp_targets[frame][1];
-			v.emplace_back(target.seq, std::max(hsp.d_min - band, -(slen - 1)), std::min(hsp.d_max + 1 + band, qlen), target_idx);
+			else {
+				if (d0 != INT_MAX)
+					dp_targets[frame][bits].emplace_back(target.seq, d0, d1, j0, j1, target_idx);
+				d0 = b0;
+				d1 = b1;
+				j0 = hsp.subject_range.begin_;
+				j1 = hsp.subject_range.end_;
+				bits = hsp.score <= config.cutoff_score_8bit ? 0 : 1;
+			}			
 		}
+
+		dp_targets[frame][bits].emplace_back(target.seq, d0, d1, j0, j1, target_idx);
+
 	}
 }
 
@@ -116,7 +140,7 @@ void add_dp_targets(const Target &target, int target_idx, const sequence *query_
 		const int qlen = (int)query_seq[frame].length();
 		for (const Hsp &hsp : target.hsp[frame]) {
 			vector<DpTarget> &v = hsp.score < 255 ? dp_targets[frame][0] : dp_targets[frame][1];
-			v.emplace_back(target.seq, hsp.query_range.begin_, hsp.query_range.end_, target_idx);
+			v.emplace_back(target.seq, hsp.query_range.begin_, hsp.query_range.end_, hsp.subject_range.begin_, hsp.subject_range.end_, target_idx);
 		}
 	}
 }
@@ -137,6 +161,8 @@ vector<Match> align(vector<Target> &targets, const sequence *query_seq, const Bi
 	}
 
 	for (int i = 0; i < (int)targets.size(); ++i) {
+		if (config.log_subject)
+			std::cout << "Target=" << ref_ids::get()[targets[i].block_id] << " id=" << i << endl;
 		add_dp_targets(targets[i], i, query_seq, dp_targets);
 		r.emplace_back(targets[i].block_id, targets[i].outranked);
 	}

@@ -44,6 +44,14 @@ struct score_vector<int16_t>
 	explicit score_vector(__m128i data) :
 		data_(data)
 	{ }
+	
+	explicit score_vector(const int16_t *x):
+		data_(_mm_loadu_si128((const __m128i*)x))
+	{}
+
+	explicit score_vector(const uint16_t *x) :
+		data_(_mm_loadu_si128((const __m128i*)x))
+	{}
 
 	score_vector(unsigned a, uint64_t seq)
 	{
@@ -93,9 +101,24 @@ struct score_vector<int16_t>
 		return score_vector(_mm_subs_epi16(data_, rhs.data_));
 	}
 
+	score_vector& operator+=(const score_vector& rhs) {
+		data_ = _mm_adds_epi16(data_, rhs.data_);
+		return *this;
+	}
+
 	score_vector& operator-=(const score_vector &rhs)
 	{
 		data_ = _mm_subs_epi16(data_, rhs.data_);
+		return *this;
+	}
+
+	score_vector& operator &=(const score_vector& rhs) {
+		data_ = _mm_and_si128(data_, rhs.data_);
+		return *this;
+	}
+
+	score_vector& operator++() {
+		data_ = _mm_adds_epi16(data_, _mm_set1_epi16(1));
 		return *this;
 	}
 
@@ -147,6 +170,7 @@ struct ScoreTraits<score_vector<int16_t>>
 {
 	enum { CHANNELS = 8, BITS = 16 };
 	typedef int16_t Score;
+	typedef uint16_t Unsigned;
 	static score_vector<int16_t> zero()
 	{
 		return score_vector<int16_t>();
@@ -162,11 +186,22 @@ struct ScoreTraits<score_vector<int16_t>>
 	{
 		return (uint16_t)s ^ 0x8000;
 	}
-	static int16_t max_score()
+	static constexpr int16_t max_score()
 	{
 		return SHRT_MAX;
 	}
+	static constexpr int max_int_score() {
+		return SHRT_MAX - SHRT_MIN;
+	}
 };
+
+static inline score_vector<int16_t> load_sv(const int16_t *x) {
+	return score_vector<int16_t>(x);
+}
+
+static inline score_vector<int16_t> load_sv(const uint16_t *x) {
+	return score_vector<int16_t>(x);
+}
 
 #endif
 

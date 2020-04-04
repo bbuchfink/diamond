@@ -20,6 +20,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define ESCAPE_SEQUENCES_H_
 
 #include <limits.h>
+#include "text_buffer.h"
+#include "util.h"
 
 struct EscapeSequence
 {
@@ -71,5 +73,27 @@ private:
 	static const EscapeSequence xml_data[5];
 
 };
+
+inline void print_escaped_until(TextBuffer& buf, const char* s, const char* delimiters, const EscapeSequences* esc)
+{
+	if (esc == 0)
+		buf.write_until(s, delimiters);
+	else {
+		std::string tmp;
+		esc->escape(s, find_first_of(s, delimiters), tmp);
+		buf << tmp;
+	}
+}
+
+inline void print_escaped(TextBuffer& buf, const std::string& s, const EscapeSequences* esc)
+{
+	if (esc == 0)
+		buf << s;
+	else {
+		std::string tmp;
+		esc->escape(s, tmp);
+		buf << tmp;
+	}
+}
 
 #endif

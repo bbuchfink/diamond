@@ -31,15 +31,23 @@ struct score_vector<int8_t>
 		data_(_mm_set1_epi8(std::numeric_limits<char>::min()))
 	{}
 
-	score_vector(__m128i data):
+	explicit score_vector(__m128i data):
 		data_(data)
 	{}
 
-	score_vector(int8_t x):
+	explicit score_vector(int8_t x):
 		data_(_mm_set1_epi8(x))
 	{}
 
-	score_vector(const int8_t* s) :
+	explicit score_vector(int x):
+		data_(_mm_set1_epi8(x))
+	{}
+
+	explicit score_vector(const int8_t* s) :
+		data_(_mm_loadu_si128(reinterpret_cast<const __m128i*>(s)))
+	{ }
+
+	explicit score_vector(const uint8_t* s) :
 		data_(_mm_loadu_si128(reinterpret_cast<const __m128i*>(s)))
 	{ }
 
@@ -88,15 +96,24 @@ struct score_vector<int8_t>
 		return score_vector(_mm_subs_epi8(data_, rhs.data_));
 	}
 
-	score_vector& operator-=(const score_vector &rhs)
+	score_vector& operator+=(const score_vector& rhs) {
+		data_ = _mm_adds_epi8(data_, rhs.data_);
+		return *this;
+	}
+
+	score_vector& operator-=(const score_vector& rhs)
 	{
 		data_ = _mm_subs_epi8(data_, rhs.data_);
 		return *this;
 	}
 
-	score_vector& operator++()
-	{
-		data_ = _mm_adds_epi8(data_, _mm_set(1));
+	score_vector& operator &=(const score_vector& rhs) {
+		data_ = _mm_and_si128(data_, rhs.data_);
+		return *this;
+	}
+
+	score_vector& operator++() {
+		data_ = _mm_adds_epi8(data_, _mm_set1_epi8(1));
 		return *this;
 	}
 
@@ -160,21 +177,33 @@ struct ScoreTraits<score_vector<int8_t>>
 {
 	enum { CHANNELS = 16, BITS = 8 };
 	typedef int8_t Score;
+	typedef uint8_t Unsigned;
 	static score_vector<int8_t> zero() {
 		return score_vector<int8_t>();
 	}
 	static constexpr int8_t max_score() {
-		return std::numeric_limits<int8_t>::max();
+		return SCHAR_MAX;
 	}
 	static int int_score(int8_t s)
 	{
 		return (int)s - SCHAR_MIN;
+	}
+	static constexpr int max_int_score() {
+		return SCHAR_MAX - SCHAR_MIN;
 	}
 	static constexpr int8_t zero_score() {
 		return SCHAR_MIN;
 	}
 	static void saturate(score_vector<int8_t> &v) {}
 };
+
+static inline score_vector<int8_t> load_sv(const int8_t *x) {
+	return score_vector<int8_t>(x);
+}
+
+static inline score_vector<int8_t> load_sv(const uint8_t *x) {
+	return score_vector<int8_t>(x);
+}
 
 #endif
 

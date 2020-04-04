@@ -19,15 +19,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #ifndef VALUE_H_
 #define VALUE_H_
 
-#include <assert.h>
-#include <string.h>
-#include <sstream>
 #include <stdexcept>
+#include <string>
 #include "const.h"
-#include "config.h"
-#include "../util/util.h"
 
-typedef char Letter;
+typedef signed char Letter;
 typedef enum { amino_acid=0, nucleotide=1 } Sequence_type;
 struct Amino_acid {};
 struct Nucleotide {};
@@ -35,10 +31,8 @@ struct Nucleotide {};
 struct invalid_sequence_char_exception : public std::exception
 {
 	const std::string msg;
-	invalid_sequence_char_exception(char ch) :
-		msg(std::string("Invalid character (") + print_char(ch) + ") in sequence")
-	{ }
-	~invalid_sequence_char_exception() throw()
+	invalid_sequence_char_exception(char ch);
+	~invalid_sequence_char_exception() noexcept
 	{ }
 	virtual const char* what() const throw()
 	{
@@ -48,21 +42,7 @@ struct invalid_sequence_char_exception : public std::exception
 
 struct Char_representation
 {
-	Char_representation(unsigned size, const char *chars, char mask, const char *mask_chars)
-	{
-		memset(data_, invalid, sizeof(data_));
-		for (unsigned i = 0; i<size; ++i) {
-			assert(chars[i] != (char)invalid);
-			data_[(long)chars[i]] = i;
-			data_[(long)tolower(chars[i])] = i;
-		}
-		while (*mask_chars != 0) {
-			const char ch = *mask_chars;
-			data_[(long)ch] = mask;
-			data_[(long)tolower(ch)] = mask;
-			++mask_chars;
-		}
-	}
+	Char_representation(unsigned size, const char* chars, char mask, const char* mask_chars);
 	Letter operator()(char c) const
 	{
 		if (data_[(long)c] == invalid)
@@ -86,7 +66,7 @@ struct Value_traits
 #define AMINO_ACID_ALPHABET "ARNDCQEGHILKMFPSTWYVBJZX*_"
 #define AMINO_ACID_COUNT (sizeof(AMINO_ACID_ALPHABET) - 1)
 
-constexpr char SUPER_HARD_MASK = 25;
+constexpr Letter SUPER_HARD_MASK = 25;
 
 extern const Value_traits amino_acid_traits;
 extern const Value_traits nucleotide_traits;
@@ -118,4 +98,4 @@ struct Align_mode
 extern Align_mode align_mode;
 extern const double background_freq[20];
 
-#endif /* VALUE_H_ */
+#endif

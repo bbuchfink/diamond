@@ -19,6 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #ifndef SCORE_VECTOR_H_
 #define SCORE_VECTOR_H_
 
+#include <algorithm>
 #include <limits.h>
 #include "../util/simd.h"
 #include "../basic/score_matrix.h"
@@ -58,8 +59,8 @@ struct score_vector<uint8_t>
 		data_ = _mm_setzero_si128();
 	}
 
-	explicit score_vector(char x):
-		data_ (_mm_set(x))
+	explicit score_vector(uint8_t x):
+		data_ (_mm_set1_epi8((char)x))
 	{ }
 
 	explicit score_vector(__m128i data):
@@ -134,9 +135,8 @@ struct score_vector<uint8_t>
 		return *this;
 	}
 
-	score_vector& operator++()
-	{
-		data_ = _mm_adds_epu8(data_, _mm_set(1));
+	score_vector& operator &=(const score_vector& rhs) {
+		data_ = _mm_and_si128(data_, rhs.data_);
 		return *this;
 	}
 
@@ -262,11 +262,18 @@ struct ScoreTraits<int32_t>
 	{
 		return INT_MAX;
 	}
+	static constexpr int max_int_score() {
+		return INT_MAX;
+	}
 };
 
-inline void store_sv(int32_t sv, int32_t *dst)
+static inline void store_sv(int32_t sv, int32_t *dst)
 {
 	*dst = sv;
+}
+
+static inline int32_t load_sv(const int32_t *x) {
+	return *x;
 }
 
 #ifdef __SSE2__
@@ -284,7 +291,7 @@ struct ScoreTraits<score_vector<uint8_t>>
 };
 
 template<typename _t, typename _p>
-inline void store_sv(const score_vector<_t> &sv, _p *dst)
+static inline void store_sv(const score_vector<_t> &sv, _p *dst)
 {
 	_mm_storeu_si128((__m128i*)dst, sv.data_);
 }
@@ -292,7 +299,7 @@ inline void store_sv(const score_vector<_t> &sv, _p *dst)
 #endif
 
 template<typename _sv>
-inline typename ScoreTraits<_sv>::Score extract_channel(const _sv &v, int i) {
+static inline typename ScoreTraits<_sv>::Score extract_channel(const _sv &v, int i) {
 	return v[i];
 }
 
@@ -302,7 +309,7 @@ inline int extract_channel<int>(const int &v, int i) {
 }
 
 template<typename _sv>
-inline void set_channel(_sv &v, int i, typename ScoreTraits<_sv>::Score x) {
+static inline void set_channel(_sv &v, int i, typename ScoreTraits<_sv>::Score x) {
 	v.set(i, x);
 }
 

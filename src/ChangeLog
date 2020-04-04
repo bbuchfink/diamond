@@ -1,11 +1,15 @@
-[0.10.0]
+[0.9.32]
+- Fixed a bug that would generate an incorrect count of positive scoring letters in all output formats.
+
+[0.9.31]
 - Improved performance.
-- Composition based statistics uses integer scoring.
+- Composition based statistics use integer scoring.
 - Option `--quiet` will suppress startup message.
 - Added output field `scovhsp` to print the subject coverage per HSP to the tabular format.
-- Added option `--culling-overlap` to set the minimum overlap with a higher scoring hit for a hit to be deleted and set the
+- Added option `--culling-overlap` to set the minimum overlap with a higher scoring hit for a hit to be deleted and changed the
   default value from 90% to 50%.
 - Added command `diamond test` to run a series of regression tests.
+- Fixed an off-by-one error of the query end position in the XML output format.
 
 [0.9.30]
 - Added support for output field `cigar` to the tabular format.

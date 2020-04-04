@@ -81,9 +81,9 @@ struct DatabaseFile : public InputFile
 	static DatabaseFile* auto_create_from_fasta();
 	static bool is_diamond_db(const string &file_name);
 	void rewind();
-	bool load_seqs(vector<unsigned> &block_to_database_id, size_t max_letters, Sequence_set **dst_seq, String_set<0> **dst_id, bool load_ids = true, const vector<bool> *filter = NULL);
+	bool load_seqs(vector<unsigned> &block_to_database_id, size_t max_letters, Sequence_set **dst_seq, String_set<char, 0> **dst_id, bool load_ids = true, const vector<bool> *filter = NULL);
 	void get_seq();
-	void read_seq(string &id, vector<char> &seq);
+	void read_seq(string &id, vector<Letter> &seq);
 	bool has_taxon_id_lists();
 	bool has_taxon_nodes();
 	bool has_taxon_scientific_names();
@@ -117,20 +117,20 @@ struct ref_seqs
 
 struct ref_ids
 {
-	static const String_set<0>& get()
+	static const String_set<char, 0>& get()
 	{ return *data_; }
-	static String_set<0> *data_;
+	static String_set<char, 0> *data_;
 };
 
 extern Partitioned_histogram ref_hst;
 extern unsigned current_ref_block;
 extern bool blocked_processing;
 
-inline size_t max_id_len(const String_set<0> &ids)
+inline size_t max_id_len(const String_set<char, 0> &ids)
 {
 	size_t max (0);
 	for(size_t i=0;i<ids.get_length(); ++i)
-		max = std::max(max, find_first_of(ids[i].c_str(), Const::id_delimiters));
+		max = std::max(max, find_first_of(ids[i], Const::id_delimiters));
 	return max;
 }
 

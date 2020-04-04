@@ -16,14 +16,18 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
+#include <limits.h>
 #include "search.h"
 #include "../util/map.h"
-#include "../dp/dp.h"
 #include "../data/queries.h"
 #include "hit_filter.h"
 #include "../data/reference.h"
 #include "collision.h"
 #include "../dp/dp_matrix.h"
+#include "../dp/ungapped.h"
+#include "../util/sequence/sequence.h"
+#include "../dp/ungapped_simd.h"
+#include "../dp/dp.h"
 
 namespace Search {
 namespace DISPATCH_ARCH {
@@ -43,28 +47,77 @@ void search_query_offset(Loc q,
 	Trace_pt_buffer::Iterator &out,
 	const unsigned sid)
 {
+	if (hits_end <= hits)
+		return;
 	const Letter* query = query_seqs::data_->data(q);
+#ifdef LEFTMOST_SEED_FILTER
 	hit_filter hf(stats, q, out);
+#endif
 
-	for (vector<Stage1_hit>::const_iterator i = hits; i < hits_end; ++i) {
-		const Loc s_pos = s[i->s];
-		const Letter* subject = ref_seqs::data_->data(s_pos);
+	if (config.fast_stage2) {
 
-		unsigned delta, len;
-		int score;
-		if ((score = stage2_ungapped(query, subject, sid, delta, len)) < config.min_ungapped_raw_score)
-			continue;
+		const Letter *subjects[16];
+		int scores[16];
 
-		stats.inc(Statistics::TENTATIVE_MATCHES2);
+		const sequence query_clipped = Util::Sequence::clip(query - config.ungapped_window, config.ungapped_window*2, config.ungapped_window);
+		const int window_left = int(query - query_clipped.data()), window = (int)query_clipped.length();
+		unsigned query_id = UINT_MAX, seed_offset = UINT_MAX;
+		
+		for (vector<Stage1_hit>::const_iterator i = hits; i < hits_end; i += 16) {
 
-		if (!is_primary_hit(query - delta, subject - delta, delta, sid, len))
-			continue;
+			const size_t n = std::min(vector<Stage1_hit>::const_iterator::difference_type(16), hits_end - i);
+			for (size_t j = 0; j < n; ++j)
+				subjects[j] = ref_seqs::data_->data(s[(i + j)->s]) - window_left;
+			DP::window_ungapped(query_clipped.data(), subjects, n, window, scores);
+			
+			for (size_t j = 0; j < n; ++j)
+				if (scores[j] >= config.min_ungapped_raw_score) {
+					stats.inc(Statistics::TENTATIVE_MATCHES2);
+#ifdef LEFTMOST_SEED_FILTER
+					const sequence subject_clipped = Util::Sequence::clip(subjects[j], window, window_left);
+					const int delta = int(subject_clipped.data() - subjects[j]);
+					assert(delta <= window_left);
+					if (is_primary_hit(query_clipped.data() + delta, subject_clipped.data(), window_left - delta, sid, (unsigned)subject_clipped.length())) {
+						stats.inc(Statistics::TENTATIVE_MATCHES3);
+						hf.push(s[(i + j)->s], scores[j]);
+					}
+#else
+					if (query_id == UINT_MAX) {
+						std::pair<size_t, size_t> l = query_seqs::data_->local_position(q);
+						query_id = (unsigned)l.first;
+						seed_offset = (unsigned)l.second;
+					}
+					out.push(hit(query_id, s[(i + j)->s], seed_offset));
+#endif
+				}
+		}
 
-		stats.inc(Statistics::TENTATIVE_MATCHES3);
-		hf.push(s_pos, score);
 	}
+	else {
+#ifdef LEFTMOST_SEED_FILTER
+		for (vector<Stage1_hit>::const_iterator i = hits; i < hits_end; ++i) {
+			const Loc s_pos = s[i->s];
+			const Letter* subject = ref_seqs::data_->data(s_pos);
 
+			unsigned delta, len;
+			int score;
+			if ((score = stage2_ungapped(query, subject, sid, delta, len)) < config.min_ungapped_raw_score)
+				continue;
+
+			stats.inc(Statistics::TENTATIVE_MATCHES2);
+
+			if (!is_primary_hit(query - delta, subject - delta, delta, sid, len))
+				continue;
+
+			stats.inc(Statistics::TENTATIVE_MATCHES3);
+			hf.push(s_pos, score);
+		}
+#endif
+
+	}
+#ifdef LEFTMOST_SEED_FILTER
 	hf.finish();
+#endif
 }
 
 #else

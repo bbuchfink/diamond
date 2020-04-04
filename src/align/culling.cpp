@@ -30,11 +30,11 @@ namespace Extension {
 
 void Match::inner_culling(int source_query_len)
 {
+	for (Hsp& h : hsp)
+		h.query_source_range = TranslatedPosition::absolute_interval(TranslatedPosition(h.query_range.begin_, Frame(h.frame)), TranslatedPosition(h.query_range.end_, Frame(h.frame)), source_query_len);
 	hsp.sort();
 	if (!hsp.empty())
 		filter_score = hsp.front().score;
-	for(Hsp &h : hsp)
-		h.query_source_range = TranslatedPosition::absolute_interval(TranslatedPosition(h.query_range.begin_, Frame(h.frame)), TranslatedPosition(h.query_range.end_, Frame(h.frame)), source_query_len);
 	const double overlap = config.inner_culling_overlap / 100.0;
 	for (list<Hsp>::iterator i = hsp.begin(); i != hsp.end();) {
 		if (i->is_enveloped_by(hsp.begin(), i, overlap))
@@ -81,7 +81,7 @@ void score_only_culling(vector<Target> &targets) {
 
 void Match::apply_filters(int source_query_len, const char *query_title)
 {
-	const char *title = ref_ids::get()[target_block_id].c_str();
+	const char *title = ref_ids::get()[target_block_id];
 	const int len = (int)ref_seqs::get()[target_block_id].length();
 	for (list<Hsp>::iterator i = hsp.begin(); i != hsp.end();) {
 		if (i->id_percent() < config.min_id

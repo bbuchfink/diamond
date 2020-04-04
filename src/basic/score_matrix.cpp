@@ -21,9 +21,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <algorithm>
 #include <stdexcept>
 #include <fstream>
+#include <vector>
+#include <sstream>
 #include "score_matrix.h"
 
 using std::string;
+using std::vector;
 
 Score_matrix score_matrix;
 
@@ -268,7 +271,7 @@ const char* custom_scores(const string &matrix_file)
 	std::stringstream ss;
 	vector<Letter> pos;
 	unsigned n = 0;
-	memset(scores, 0xff, sizeof(scores));
+	std::fill(scores, scores + sizeof(scores), '\xff');
 	if (matrix_file == "")
 		return scores;
 	std::ifstream f(matrix_file.c_str());

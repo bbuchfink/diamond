@@ -158,7 +158,7 @@ struct Hsp
 
 	bool operator<(const Hsp &rhs) const
 	{
-		return score > rhs.score;
+		return score > rhs.score || (score == rhs.score && query_source_range.begin_ < rhs.query_source_range.begin_);
 	}
 
 	double id_percent() const
@@ -197,7 +197,7 @@ struct Hsp
 	bool is_weakly_enveloped_by(std::list<Hsp>::const_iterator begin, std::list<Hsp>::const_iterator end, int cutoff) const;
 	void push_back(const DiagonalSegment &d, const TranslatedSequence &query, const sequence &subject, bool reversed);
 	void push_match(Letter q, Letter s, bool positive);
-	void push_gap(Edit_operation op, int length, const char *subject);
+	void push_gap(Edit_operation op, int length, const Letter *subject);
 	void splice(const DiagonalSegment &d0, const DiagonalSegment &d1, const TranslatedSequence &query, const sequence &subject, bool reversed);
 	void set_begin(const DiagonalSegment &d, int dna_len);
 	void set_end(const DiagonalSegment &d, int dna_len);

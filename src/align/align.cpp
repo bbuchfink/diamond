@@ -50,7 +50,7 @@ struct Align_fetcher
 			++it_;
 		end = it_;
 		this->query = query;
-		target_parallel = (end - begin > config.query_parallel_limit) && ((config.frame_shift != 0 && align_mode.mode == Align_mode::blastx && config.toppercent < 100 && config.query_range_culling));
+		target_parallel = (end - begin > config.query_parallel_limit) && (config.frame_shift == 0 || (config.toppercent < 100 && config.query_range_culling));
 		return target_parallel;
 	}
 	bool get()
@@ -78,7 +78,7 @@ TextBuffer* legacy_pipeline(Align_fetcher &hits, const sequence *subjects, size_
 		TextBuffer *buf = nullptr;
 		if (!blocked_processing && *output_format != Output_format::daa && config.report_unaligned != 0) {
 			buf = new TextBuffer;
-			const char *query_title = query_ids::get()[hits.query].c_str();
+			const char *query_title = query_ids::get()[hits.query];
 			output_format->print_query_intro(hits.query, query_title, get_source_query_len((unsigned)hits.query), *buf, true);
 			output_format->print_query_epilog(*buf, query_title, true, *params);
 		}

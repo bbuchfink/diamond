@@ -45,7 +45,6 @@ void read_sim();
 void info();
 void seed_stat();
 void pairwise();
-void protein_snps();
 void translate();
 void filter_blasttab();
 void show_cbs();
@@ -115,9 +114,6 @@ int main(int ac, const char* av[])
 			break;
 		case Config::smith_waterman:
 			pairwise();
-			break;
-		case Config::protein_snps:
-			protein_snps();
 			break;
 		case Config::cluster:
 			Workflow::Cluster::run();

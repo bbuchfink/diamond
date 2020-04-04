@@ -19,22 +19,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <assert.h>
 #include <algorithm>
 #include <string.h>
+#include <iterator>
 #include "deserializer.h"
 #include "record_reader.h"
 
 using namespace std;
-
-template<typename _t>
-void append(_t &container, const char *ptr, size_t n)
-{
-	container.append(ptr, n);
-}
-
-template<>
-void append<vector<char> >(vector<char> &container, const char *ptr, size_t n)
-{
-	container.insert(container.end(), ptr, ptr + n);
-}
 
 Deserializer::Deserializer(StreamEntity* buffer):
 	varint(false),
@@ -109,25 +98,6 @@ void Deserializer::pop(char *dst, size_t n)
 	begin_ += n;
 }
 
-template<typename _t>
-bool Deserializer::read_to(_t &container, char delimiter)
-{
-	int d = delimiter;
-	container.clear();
-	do {
-		const char *p = (const char*)memchr((void*)begin_, d, avail());
-		if (p == 0)
-			append(container, begin_, avail());
-		else {
-			const size_t n = p - begin_;
-			append(container, begin_, n);
-			begin_ += n + 1;
-			return true;
-		}
-	} while (fetch());
-	return !container.empty();
-}
-
 bool Deserializer::seek_forward(char delimiter)
 {
 	int d = delimiter;
@@ -140,16 +110,6 @@ bool Deserializer::seek_forward(char delimiter)
 		}
 	} while (fetch());
 	return false;
-}
-
-bool Deserializer::read_until(string &dst, char delimiter)
-{
-	return read_to(dst, delimiter);
-}
-
-bool Deserializer::read_until(vector<char> &dst, char delimiter)
-{
-	return read_to(dst, delimiter);
 }
 
 DynamicRecordReader Deserializer::read_record() {
