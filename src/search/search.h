@@ -25,6 +25,15 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../basic/shape_config.h"
 #include "../basic/statistics.h"
 #include "trace_pt_buffer.h"
+#include "../util/algo/pattern_matcher.h"
+
+namespace Search {
+
+struct Context {
+	const PatternMatcher previous_matcher, current_matcher;
+};
+
+}
 
 struct Stage1_hit
 {
@@ -59,14 +68,15 @@ void setup_search_cont();
 
 namespace Search {
 
-DECL_DISPATCH(void, stage1, (const Packed_loc *q, size_t nq, const Packed_loc *s, size_t ns, Statistics &stats, Trace_pt_buffer::Iterator &out, const unsigned sid))
+DECL_DISPATCH(void, stage1, (const Packed_loc *q, size_t nq, const Packed_loc *s, size_t ns, Statistics &stats, Trace_pt_buffer::Iterator &out, const unsigned sid, const Context &context))
 DECL_DISPATCH(void, stage2, (\
 	const Packed_loc *q,\
 	const Packed_loc *s,\
 	const vector<Stage1_hit> &hits,\
 	Statistics &stats,\
 	Trace_pt_buffer::Iterator &out,\
-	const unsigned sid))
+	const unsigned sid,
+	const Context &context))
 
 }
 

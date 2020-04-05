@@ -19,6 +19,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #ifndef SHAPE_CONFIG_H_
 #define SHAPE_CONFIG_H_
 
+#include <vector>
+#include <stdint.h>
 #include "shape.h"
 
 extern const char* shape_codes[12][Const::max_shapes];
@@ -63,6 +65,13 @@ public:
 		for (unsigned i = 0; i < cfg.n_; ++i)
 			s << cfg.shapes_[i] << (i<cfg.n_-1?",":"");
 		return s;
+	}
+
+	std::vector<uint32_t> patterns(unsigned begin, unsigned end) const {
+		std::vector<uint32_t> v;
+		for (unsigned i = begin; i < end; ++i)
+			v.push_back(shapes_[i].mask_);
+		return v;
 	}
 
 private:
