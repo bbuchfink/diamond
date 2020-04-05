@@ -76,4 +76,15 @@ static inline int clz(uint64_t x) {
 #endif
 }
 
+static inline int clz(uint32_t x) {
+#ifdef _MSC_VER
+	unsigned long i;
+	unsigned char c = _BitScanReverse(&i, x);
+	return 31 - (int)i;
+#else
+	return __builtin_clz(x);
+#endif
+}
+
+
 #endif

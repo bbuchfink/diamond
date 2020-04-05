@@ -19,6 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #ifndef SSE_DIST_H_
 #define SSE_DIST_H_
 
+#include <assert.h>
 #include "../basic/reduction.h"
 #include "../basic/value.h"
 #include "../util/simd.h"
@@ -87,12 +88,32 @@ static inline unsigned match_block_reduced(const Letter *x, const Letter *y)
 #endif
 }
 
-static inline uint64_t reduced_match32(const Letter* q, const Letter *s, unsigned len)
+static inline uint64_t reduced_match32(const Letter* q, const Letter* s, unsigned len)
 {
 	uint64_t x = match_block_reduced(q + 16, s + 16) << 16 | match_block_reduced(q, s);
-	if(len < 32)
+	if (len < 32)
 		x &= (1 << len) - 1;
 	return x;
+}
+
+static inline uint64_t reduced_match(const Letter* q, const Letter* s, int len) {
+	assert(len <= 64);
+	if (len < 64) {
+		const uint64_t mask = (1llu << len) - 1;
+		uint64_t m = match_block_reduced(q, s);
+		if (len <= 16)
+			return m & mask;
+		m |= (uint64_t)match_block_reduced(q + 16, s + 16) << 16;
+		if (len <= 32)
+			return m & mask;
+		m |= (uint64_t)match_block_reduced(q + 32, s + 32) << 32;
+		if (len <= 48)
+			return m & mask;
+		m |= (uint64_t)match_block_reduced(q + 48, s + 48) << 48;
+		return m & mask;
+	}
+	else
+		return (uint64_t)match_block_reduced(q, s) | ((uint64_t)match_block_reduced(q + 16, s + 16) << 16) | ((uint64_t)match_block_reduced(q + 32, s + 32) << 32) | ((uint64_t)match_block_reduced(q + 48, s + 48) << 48);
 }
 
 #endif /* SSE_DIST_H_ */

@@ -148,7 +148,7 @@ void load_fps(const Packed_loc *p, size_t n, vector<Finger_print> &v, const Sequ
 		v.push_back(Finger_print(seqs.data(*p)));
 }
 
-void stage1(const Packed_loc *q, size_t nq, const Packed_loc *s, size_t ns, Statistics &stats, Trace_pt_buffer::Iterator &out, const unsigned sid)
+void stage1(const Packed_loc *q, size_t nq, const Packed_loc *s, size_t ns, Statistics &stats, Trace_pt_buffer::Iterator &out, const unsigned sid, const Context &context)
 {
 	thread_local vector<Finger_print> vq, vs;
 	thread_local vector<Stage1_hit> hits;
@@ -162,7 +162,7 @@ void stage1(const Packed_loc *q, size_t nq, const Packed_loc *s, size_t ns, Stat
 	tiled_search(vq.begin(), vq.end(), vs.begin(), vs.end(), Range_ref(vq.begin(), vs.begin()), 0, hits, stats);
 	std::sort(hits.begin(), hits.end());
 	stats.inc(Statistics::TENTATIVE_MATCHES1, hits.size());
-	stage2(q, s, hits, stats, out, sid);
+	stage2(q, s, hits, stats, out, sid, context);
 }
 
 }}

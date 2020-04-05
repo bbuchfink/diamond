@@ -503,6 +503,9 @@ Config::Config(int argc, const char **argv, bool check_io)
 	if (query_range_culling && taxon_k != 0)
 		throw std::runtime_error("--taxon-k is not supported for --range-culling mode.");
 
+	if (fast_stage2 && (lowmem != 1))
+		throw std::runtime_error("--fast-stage2 needs -c1.");
+
 	log_stream << "MAX_SHAPE_LEN=" << MAX_SHAPE_LEN;
 #ifdef SEQ_MASK
 	log_stream << " SEQ_MASK";
