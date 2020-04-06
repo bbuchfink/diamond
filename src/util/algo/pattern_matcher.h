@@ -22,10 +22,12 @@ struct PatternMatcher {
 			min_len_ = std::min(min_len_, len);
 		}
 		suffix_mask_ = (1 << max_len) - 1;
+		std::fill(table_, table_ + SIZE, '\0');
 		for (uint32_t s = 0; s <= suffix_mask_; ++s) {
 			for (size_t i = 0; i < count; ++i)
 				if ((s & begin[i]) == begin[i])
-					table_[s] = true;
+					//table_[s] = true;
+					table_[s] = 1;
 		}
 	}
 
@@ -46,7 +48,8 @@ private:
 	static constexpr uint64_t SIZE = 1 << MAX_SHAPE_LEN;
 
 	uint32_t min_len_, suffix_mask_;
-	std::bitset<SIZE> table_;
+	//std::bitset<SIZE> table_;
+	unsigned char table_[SIZE];
 	
 };
 
