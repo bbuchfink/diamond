@@ -53,6 +53,7 @@ struct WorkTarget {
 		block_id(block_id),
 		seq(seq),
 		filter_score(0),
+		ungapped_score(0),
 		outranked(false)
 	{}
 	bool operator<(const WorkTarget &t) const {
@@ -60,7 +61,7 @@ struct WorkTarget {
 	}
 	size_t block_id;
 	sequence seq;
-	int filter_score;
+	int filter_score, ungapped_score;
 	bool outranked;
 	std::array<std::list<Hsp_traits>, MAX_CONTEXT> hsp;
 };
@@ -70,10 +71,11 @@ void rank_targets(std::vector<WorkTarget> &targets, double ratio, double factor)
 
 struct Target {
 
-	Target(size_t block_id, const sequence &seq, bool outranked):
+	Target(size_t block_id, const sequence &seq, bool outranked, int ungapped_score):
 		block_id(block_id),
 		seq(seq),
 		filter_score(0),
+		ungapped_score(ungapped_score),
 		outranked(outranked)
 	{}
 
@@ -89,7 +91,7 @@ struct Target {
 
 	size_t block_id;
 	sequence seq;
-	int filter_score;
+	int filter_score, ungapped_score;
 	bool outranked;
 	std::array<std::list<Hsp>, MAX_CONTEXT> hsp;
 };

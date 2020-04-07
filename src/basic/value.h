@@ -69,7 +69,7 @@ struct Value_traits
 
 constexpr Letter SUPER_HARD_MASK = 25;
 constexpr Letter LETTER_MASK = 31;
-constexpr Letter SEED_MASK = 32;
+constexpr Letter SEED_MASK = -128;
 
 static inline Letter letter_mask(Letter x) {
 	return Letter(x & LETTER_MASK);

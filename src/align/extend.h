@@ -35,9 +35,10 @@ namespace Extension {
 enum { TARGET_PARALLEL = 2 };
 
 struct Match {
-	Match(size_t target_block_id, bool outranked):
+	Match(size_t target_block_id, bool outranked, int ungapped_score):
 		target_block_id(target_block_id),
 		filter_score(0),
+		ungapped_score(ungapped_score),
 		outranked(outranked)
 	{}
 	void add_hit(std::list<Hsp> &list, std::list<Hsp>::iterator it) {
@@ -46,12 +47,12 @@ struct Match {
 	bool operator<(const Match &m) const {
 		return filter_score > m.filter_score || (filter_score == m.filter_score && target_block_id < m.target_block_id);
 	}
-	Match(size_t target_block_id, bool outranked, std::array<std::list<Hsp>, MAX_CONTEXT> &hsp);
+	Match(size_t target_block_id, bool outranked, std::array<std::list<Hsp>, MAX_CONTEXT> &hsp, int ungapped_score);
 	void inner_culling(int source_query_len);
 	void max_hsp_culling();
 	void apply_filters(int source_query_len, const char *query_title);
 	size_t target_block_id;
-	int filter_score;
+	int filter_score, ungapped_score;
 	bool outranked;
 	std::list<Hsp> hsp;
 };

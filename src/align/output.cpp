@@ -79,7 +79,8 @@ TextBuffer* generate_output(vector<Match> &targets, size_t query_block_id, Stati
 						subject_len,
 						i,
 						hit_hsps,
-						ref_seqs::get()[subject_id]), metadata, *out);
+						ref_seqs::get()[subject_id],
+						targets[i].ungapped_score), metadata, *out);
 			}
 
 			++n_hsp;

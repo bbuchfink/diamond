@@ -51,7 +51,10 @@ WorkTarget ungapped_stage(SeedHit *begin, SeedHit *end, const sequence *query_se
 		if (!diagonal_segments[hit->frame].empty() && diagonal_segments[hit->frame].back().diag() == hit->diag() && diagonal_segments[hit->frame].back().subject_end() >= hit->j)
 			continue;
 		const auto d = xdrop_ungapped(query_seq[hit->frame], target.seq, hit->i, hit->j);
-		if(d.score >= config.min_ungapped_raw_score) diagonal_segments[hit->frame].push_back(d);
+		if (d.score >= config.min_ungapped_raw_score) {
+			target.ungapped_score = std::max(target.ungapped_score, d.score);
+			diagonal_segments[hit->frame].push_back(d);
+		}
 	}
 	for (unsigned frame = 0; frame < align_mode.query_contexts; ++frame) {
 		if (diagonal_segments[frame].empty())

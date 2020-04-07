@@ -116,4 +116,22 @@ static inline uint64_t reduced_match(const Letter* q, const Letter* s, int len) 
 		return (uint64_t)match_block_reduced(q, s) | ((uint64_t)match_block_reduced(q + 16, s + 16) << 16) | ((uint64_t)match_block_reduced(q + 32, s + 32) << 32) | ((uint64_t)match_block_reduced(q + 48, s + 48) << 48);
 }
 
+#ifdef __SSE2__
+
+static inline uint64_t seed_mask(const Letter* s, int len) {
+	assert(len <= 64);
+	uint64_t mask = 0;
+	const __m128i m = _mm_set1_epi8(SEED_MASK);
+	for (int i = 0; i < len; i += 16) {
+		const __m128i mask_bits = _mm_and_si128(_mm_loadu_si128((const __m128i*)s), m);
+		mask |= (uint64_t)_mm_movemask_epi8(mask_bits) << i;
+		s += 16;
+	}
+	if (len < 64)
+		mask &= (1llu << len) - 1;
+	return mask;
+}
+
+#endif
+
 #endif /* SSE_DIST_H_ */
