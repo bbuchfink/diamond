@@ -226,7 +226,8 @@ struct Hsp_context
 		unsigned subject_len,
 		unsigned hit_num,
 		unsigned hsp_num,
-		const sequence &subject_seq
+		const sequence &subject_seq,
+		int ungapped_score = 0
 	) :
 		query(query),
 		query_name(query_name),
@@ -237,6 +238,7 @@ struct Hsp_context
 		subject_len(subject_len),
 		hit_num(hit_num),
 		hsp_num(hsp_num),
+		ungapped_score(ungapped_score),
 		subject_seq(subject_seq),
 		hsp_(hsp)		
 	{}
@@ -359,6 +361,7 @@ struct Hsp_context
 	const TranslatedSequence query;
 	const char *query_name, *subject_name;
 	const unsigned query_id, subject_id, orig_subject_id, subject_len, hit_num, hsp_num;
+	int ungapped_score;
 	const sequence subject_seq;
 private:	
 	Hsp &hsp_;
