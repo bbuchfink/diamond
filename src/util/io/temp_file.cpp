@@ -88,6 +88,11 @@ TempFile::TempFile(bool unlink):
 {
 }
 
+TempFile::TempFile(const std::string & file_name):
+	OutputFile(file_name)
+{
+}
+
 string TempFile::get_temp_dir()
 {
 	TempFile t;

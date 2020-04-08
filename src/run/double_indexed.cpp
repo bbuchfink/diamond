@@ -16,6 +16,9 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
+#include <string>
+#include <sstream>
+#include <iomanip>
 #include <iostream>
 #include <limits>
 #include <memory>
@@ -112,7 +115,14 @@ void run_ref_chunk(DatabaseFile &db_file,
 	Consumer* out;
 	if (blocked_processing) {
 		timer.go("Opening temporary output file");
-		tmp_file.push_back(new TempFile());
+		if (config.multiprocessing) {
+			stringstream ss;
+			ss << std::setfill('0') << std::setw(6) << current_ref_block;
+			const string file_name = "ref_chunk_block_" + ss.str();
+			tmp_file.push_back(new TempFile(file_name));
+		} else {
+			tmp_file.push_back(new TempFile());
+		}
 		out = &tmp_file.back();
 	}
 	else
@@ -212,7 +222,7 @@ void run_query_chunk(DatabaseFile &db_file,
 		auto work = P->get_stack(reference_partition);
 		auto done = P->get_stack(P->LOG);
 		string buf;
-if (P->get_rank() > 0) {
+// if (P->get_rank() > 0) {
 		while (work->pop(buf)) {
 			Chunk chunk = to_chunk(buf);
 
@@ -224,7 +234,7 @@ if (P->get_rank() > 0) {
 
 			done->push(buf);
 		}
-}
+// }
 		current_ref_block = max_ref_block;
 	} else {
 		for (current_ref_block = 0;
@@ -279,6 +289,7 @@ if (P->get_rank() > 0) {
 						tmp_file_names.push_back(unquote(t));
 					}
 				}
+				std::sort(tmp_file_names.begin(), tmp_file_names.end());
 
 				join_blocks(current_ref_block, master_out, tmp_file, params, metadata, db_file, tmp_file_names);
 			}
