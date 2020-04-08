@@ -212,7 +212,7 @@ void run_query_chunk(DatabaseFile &db_file,
 		auto work = P->get_stack(reference_partition);
 		auto done = P->get_stack(P->LOG);
 		string buf;
-// if (P->get_rank() > 0) {
+if (P->get_rank() > 0) {
 		while (work->pop(buf)) {
 			Chunk chunk = to_chunk(buf);
 
@@ -220,11 +220,11 @@ void run_query_chunk(DatabaseFile &db_file,
 			run_ref_chunk(db_file, query_chunk, query_len_bounds, query_buffer, master_out, tmp_file, params, metadata, block_to_database_id);
 
 			ReferenceDictionary::get().save_block(chunk.i);
-			ReferenceDictionary::get().clear_vectors();
+			ReferenceDictionary::get().clear_block(chunk.i);
 
 			done->push(buf);
 		}
-// }
+}
 		current_ref_block = max_ref_block;
 	} else {
 		for (current_ref_block = 0;
@@ -279,8 +279,6 @@ void run_query_chunk(DatabaseFile &db_file,
 						tmp_file_names.push_back(unquote(t));
 					}
 				}
-
-				// reverse(tmp_file_names.begin(), tmp_file_names.end());
 
 				join_blocks(current_ref_block, master_out, tmp_file, params, metadata, db_file, tmp_file_names);
 			}
@@ -393,7 +391,7 @@ void master_thread(DatabaseFile *db_file, task_timer &total_timer, Metadata &met
 
 		P->delete_stack(reference_partition);
 
-		break;
+		// break;
 	}
 
 	if (query_file && !options.query_file) {

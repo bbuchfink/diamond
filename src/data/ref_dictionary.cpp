@@ -16,6 +16,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
+#include <cstdio>
 #include <utility>
 #include "reference.h"
 #include "ref_dictionary.h"
@@ -25,6 +26,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 using std::pair;
 
 ReferenceDictionary ReferenceDictionary::instance_;
+std::unordered_map<size_t,ReferenceDictionary> ReferenceDictionary::block_instances_;
 
 string* get_allseqids(const char *s)
 {
@@ -41,9 +43,11 @@ string* get_allseqids(const char *s)
 void ReferenceDictionary::clear()
 {
 	data_.clear();
+	block_data_.clear();
 	len_.clear();
 	database_id_.clear();
 	name_.clear();
+	block_instances_.clear();
 	next_ = 0;
 }
 
@@ -126,6 +130,7 @@ void ReferenceDictionary::build_lazy_dict(DatabaseFile &db_file)
 void ReferenceDictionary::save_block(size_t block) {
 	const string o_file = join_path(config.tmpdir, "ref_dictionary_" + std::to_string(block) + ".tmp");
 	std::ofstream os(o_file, std::ios::out | std::ios::trunc | std::ios::binary);
+	save_scalar(os, next_);
 	save_vector(os, data_[block]);
 	save_vector(os, len_);
 	save_vector(os, database_id_);
@@ -139,40 +144,33 @@ void ReferenceDictionary::save_block(size_t block) {
 void ReferenceDictionary::load_block(size_t block, ReferenceDictionary & d) {
 	const string i_file = join_path(config.tmpdir, "ref_dictionary_" + std::to_string(block) + ".tmp");
 	std::ifstream is(i_file, std::ios::in | std::ios::binary);
-	load_vector(is, d.data_[block]);
+	load_scalar(is, d.next_);
+	load_vector(is, d.block_data_);
 	load_vector(is, d.len_);
 	load_vector(is, d.database_id_);
 	size_t sz;
 	load_scalar(is, sz);
 	for (size_t i = 0; i < sz; ++i) {
-		string * buf = new string();  // TODO: use smart pointers (at least), temporarily done in this way just as elsewhere in the code
+		string * buf = new string();
 		load_string(is, *buf);
 		d.name_.push_back(buf);
 	}
+	is.close();
+	std::remove(i_file.c_str());
 }
 
 void ReferenceDictionary::restore_blocks(size_t n_blocks) {
-	clear_vectors();
 	for (size_t i = 0; i < n_blocks; ++i) {
-		ReferenceDictionary d;
-		d.data_.resize(n_blocks);
+		ReferenceDictionary & d = block_instances_[i];
 		load_block(i, d);
-		data_[i] = d.data_[i];
-		d.data_[i].clear();
-		len_.insert(len_.end(), d.len_.begin(), d.len_.end());
-		d.len_.clear();
-		database_id_.insert(database_id_.end(), d.database_id_.begin(), d.database_id_.end());
-		d.database_id_.clear();
-		for (auto i = d.name_.begin(); i < d.name_.end(); ++i) {
-			name_.push_back(new string(**i));  // TODO: use smart pointers (at least), temporarily done in this way just as elsewhere in the code
-		}
-		d.clear();
 	}
-	next_ = name_.size();
 }
 
-void ReferenceDictionary::clear_vectors() {
+void ReferenceDictionary::clear_block(size_t block) {
 	len_.clear();
 	name_.clear();
 	database_id_.clear();
+	block_data_.clear();
+	data_[block].clear();
+	next_ = 0;
 }

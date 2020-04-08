@@ -37,17 +37,32 @@ struct JoinFetcher
 			files.push_back(new InputFile(**i));
 			query_ids.push_back(0);
 			files.back().read(&query_ids.back(), 1);
+
 		}
+
+		// cerr << "query_ids ";
+		// for (auto q : query_ids) {
+		// 	cerr << q << " ";
+		// }
+		// cerr << endl;
+
 		query_last = (unsigned)-1;
 	}
 
 	static void init(const vector<string> & tmp_file_names)
 	{
 		for (auto file_name : tmp_file_names) {
-			files.push_back(new InputFile(file_name));
+			files.push_back(new InputFile(file_name, InputFile::NO_AUTODETECT));
 			query_ids.push_back(0);
 			files.back().read(&query_ids.back(), 1);
 		}
+
+		// cerr << "query_ids ";
+		// for (auto q : query_ids) {
+		// 	cerr << q << " ";
+		// }
+		// cerr << endl;
+
 		query_last = (unsigned)-1;
 	}
 
@@ -84,6 +99,9 @@ struct JoinFetcher
 				fetch(i);
 			else
 				buf[i].clear();
+
+		// cerr << next() << " - " << IntermediateRecord::FINISHED << endl;
+
 		return next() != IntermediateRecord::FINISHED;
 	}
 	static PtrVector<InputFile> files;
@@ -183,7 +201,7 @@ struct BlockJoiner
 
 void join_query(vector<BinaryBuffer> &buf, TextBuffer &out, Statistics &statistics, unsigned query, const char *query_name, unsigned query_source_len, Output_format &f, const Metadata &metadata)
 {
-	const ReferenceDictionary& dict = ReferenceDictionary::get();
+	ReferenceDictionary& dict = ReferenceDictionary::get();
 	TranslatedSequence query_seq(get_translated_query(query));
 	BlockJoiner joiner(buf);
 	vector<IntermediateRecord> target_hsp;
@@ -193,7 +211,16 @@ void join_query(vector<BinaryBuffer> &buf, TextBuffer &out, Statistics &statisti
 	unsigned block_idx = 0;
 
 	while (joiner.get(target_hsp, block_idx)) {
-		const set<unsigned> rank_taxon_ids = config.taxon_k ? metadata.taxon_nodes->rank_taxid((*metadata.taxon_list)[dict.database_id(target_hsp.front().subject_id)], Rank::species) : set<unsigned>();
+		ReferenceDictionary * dict_ptr;
+		if (config.multiprocessing) {
+			dict_ptr = & ReferenceDictionary::get(block_idx);
+		} else {
+			dict_ptr = & dict;
+		}
+
+		// cout << "###" << block_idx << endl;
+
+		const set<unsigned> rank_taxon_ids = config.taxon_k ? metadata.taxon_nodes->rank_taxid((*metadata.taxon_list)[dict_ptr->database_id(target_hsp.front().subject_id)], Rank::species) : set<unsigned>();
 		const int c = culling->cull(target_hsp, rank_taxon_ids);
 		if (c == TargetCulling::FINISHED)
 			break;
@@ -202,6 +229,9 @@ void join_query(vector<BinaryBuffer> &buf, TextBuffer &out, Statistics &statisti
 
 		unsigned hsp_num = 0;
 		for (vector<IntermediateRecord>::const_iterator i = target_hsp.begin(); i != target_hsp.end(); ++i, ++hsp_num) {
+
+			// cout << "# " << block_idx << " : " << i->subject_id << " : " << dict_ptr->name_.size() << " : " << dict_ptr->next_ << endl;
+
 			if (f == Output_format::daa)
 				write_daa_record(out, *i);
 			else {
@@ -210,13 +240,13 @@ void join_query(vector<BinaryBuffer> &buf, TextBuffer &out, Statistics &statisti
 					query,
 					query_seq,
 					query_name,
-					dict.check_id(i->subject_id),
-					dict.database_id(i->subject_id),
-					dict.name(i->subject_id),
-					dict.length(i->subject_id),
+					dict_ptr->check_id(i->subject_id),
+					dict_ptr->database_id(i->subject_id),
+					dict_ptr->name(i->subject_id),
+					dict_ptr->length(i->subject_id),
 					n_target_seq,
 					hsp_num,
-					config.use_lazy_dict ? dict.seq(i->subject_id) : sequence()
+					config.use_lazy_dict ? dict_ptr->seq(i->subject_id) : sequence()
 					).parse(), metadata, out);
 			}
 		}
@@ -237,10 +267,15 @@ void join_worker(Task_queue<TextBuffer, JoinWriter> *queue, const Parameters *pa
 	const String_set<char, 0>& qids = query_ids::get();
 
 	while (queue->get(n, out, fetcher) && fetcher.query_id != IntermediateRecord::FINISHED) {
+	// while (queue->get(n, out, fetcher))  {
 		stat.inc(Statistics::ALIGNED);
 		size_t seek_pos;
 
+// cout << "PRE " << fetcher.query_id << " : " << IntermediateRecord::FINISHED << endl;
+		// if (fetcher.query_id == IntermediateRecord::FINISHED) break;
 		const char * query_name = qids[qids.check_idx(fetcher.query_id)];
+// cout << "POST" << endl;
+
 		const sequence query_seq = align_mode.query_translated ? query_source_seqs::get()[fetcher.query_id] : query_seqs::get()[fetcher.query_id];
 
 		if (*output_format != Output_format::daa && config.report_unaligned != 0) {
