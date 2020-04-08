@@ -69,25 +69,39 @@ struct FamilyMapping : public unordered_multimap<string, int> {
 };
 
 struct QueryStats {
-	QueryStats(const string &query, int families):
+	QueryStats(const string &query, int families, const unordered_multimap<string, int>& acc2fam):
 		query(query),
 		count(families, 0),
 		have_rev_hit(false)
-	{}
-	void add(const string &sseqid, const unordered_multimap<string, int> &acc2fam) {
+	{
+		if (config.output_hits) {
+			query_family.insert(query_family.begin(), families, false);
+			auto i = acc2fam.equal_range(query);
+			for (auto j = i.first; j != i.second; ++j)
+				query_family[j->second] = true;
+		}
+	}
+	bool add(const string &sseqid, const unordered_multimap<string, int> &acc2fam) {
 		if (have_rev_hit)
-			return;
+			return false;
 		if (sseqid == last_subject)
-			return;
-		if (sseqid[0] == '\\')
+			return false;
+		if (sseqid[0] == '\\') {
 			have_rev_hit = true;
+			return false;
+		}
 		else {
+			bool match_query = false;
 			auto i = acc2fam.equal_range(sseqid);
 			if (i.first == i.second)
 				throw std::runtime_error("Accession not mapped.");
-			for (auto j = i.first; j != i.second; ++j)
+			for (auto j = i.first; j != i.second; ++j) {
 				++count[j->second];
+				if (config.output_hits && query_family[j->second])
+					match_query = true;
+			}
 			last_subject = sseqid;
+			return match_query;
 		}
 	}
 	double auc1(const vector<int> &fam_count, const unordered_multimap<string, int> &acc2fam) const {
@@ -106,6 +120,7 @@ struct QueryStats {
 	}
 	string query, last_subject;
 	vector<int> count;
+	vector<bool> query_family;
 	bool have_rev_hit;
 };
 
@@ -132,7 +147,7 @@ void roc() {
 	string qseqid, sseqid;
 	size_t n = 0, queries = 0;
 	double auc1 = 0.0;
-	QueryStats stats("", families);
+	QueryStats stats("", families, acc2fam_query);
 	while (in.getline(), !in.eof()) {
 		if (in.line.empty())
 			break;
@@ -143,21 +158,22 @@ void roc() {
 				if (a != -1.0) {
 					auc1 += a;
 					++queries;
-					cout << stats.query << '\t' << a << endl;
+					if(!config.output_hits) cout << stats.query << '\t' << a << endl;
 				}
 			}
-			stats = QueryStats(qseqid, families);
+			stats = QueryStats(qseqid, families, acc2fam_query);
 		}
 		/*if (r.qseqid.empty() || r.sseqid.empty() || std::isnan(r.evalue) || !std::isfinite(r.evalue) || r.evalue < 0.0)
 			throw std::runtime_error("Format error.");*/
-		stats.add(sseqid, acc2fam);
+		if (stats.add(sseqid, acc2fam) && config.output_hits)
+			cout << in.line << endl;
 		++n;
 	}
 	const double a = stats.auc1(fam_count, acc2fam_query);
 	if (a != -1.0) {
 		auc1 += a;
 		++queries;
-		cout << stats.query << '\t' << a << endl;
+		if(!config.output_hits) cout << stats.query << '\t' << a << endl;
 	}
 	in.close();
 	timer.finish();

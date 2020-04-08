@@ -15,7 +15,6 @@ static inline bool left_most_filter(const sequence &query,
 	const Context &context,
 	bool first_shape)
 {
-	//return true;
 	constexpr int WINDOW_LEFT = 16, WINDOW_RIGHT = 32;
 
 	int d = std::max(seed_offset - WINDOW_LEFT, 0), window_left = std::min(WINDOW_LEFT, seed_offset);
