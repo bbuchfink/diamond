@@ -29,6 +29,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../data/reference.h"
 #include "workflow.h"
 #include "disjoint_set.h"
+#include "sparse_matrix.h"
 #include "../util/io/consumer.h"
 #include "../util/algo/algo.h"
 #include "../basic/statistics.h"
@@ -87,6 +88,48 @@ public:
 	}
 };
 
+template <typename T>
+class SparseMatrixStream : public Consumer {
+	SparseSimpleMatrix<T>* m = nullptr;
+	LazyDisjointSet<size_t>* disjointSet;
+	virtual void consume(const char *ptr, size_t n) override {
+		size_t query, subject, count;
+		float qcov, scov, bitscore;
+		const char *end = ptr + n;
+		while (ptr < end) {
+			//if (sscanf(ptr, "%i\t%i\n%n", &query, &subject, &count) != 2)
+			if (sscanf(ptr, "%lu\t%lu\t%f\t%f\t%f\n%ln", &query, &subject, &qcov, &scov, &bitscore, &count) != 5) 
+				throw runtime_error("Cluster format error.");
+			m->set_elm(query, subject, bitscore);
+			disjointSet->merge(query, subject);
+			ptr += count;
+		}
+	}
+public:
+	SparseMatrixStream(size_t n, bool symmetric){
+		disjointSet = new LazyDisjointIntegralSet<size_t>(n); 
+		if( symmetric ){
+			m = new SparseSymmetricSimpleMatrix<T>(n);
+		}
+		else{
+			m = new SparseSimpleMatrixImpl<T>(n, n);
+		}
+	}
+	~SparseMatrixStream(){
+		if(m) delete m;
+		delete disjointSet;
+	}
+	SparseSimpleMatrix<T>* getMatrix(){
+		cout << " getting matrix " << m->get_nrows() << " " << m->get_ncols() << " " << m->get_n_nonzero_elements() << " sparsity "<< (1.0 * m->get_n_nonzero_elements()) / (m->get_nrows()* m->get_ncols()) << endl;
+		SparseSimpleMatrix<T>* h = m;
+		m = nullptr;
+		return h;
+	}
+	vector<unordered_set<size_t>> getListOfSets(){
+		return disjointSet->getListOfSets();
+	}
+};
+
 vector<bool> rep_bitset(const vector<int> &centroid, const vector<bool> *superset = nullptr) {
 	vector<bool> r(centroid.size());
 	for (int c : centroid)
@@ -116,7 +159,7 @@ vector<int> cluster(DatabaseFile &db, const vector<bool> *filter) {
 	opt.db_filter = filter;
 
 	Workflow::Search::run(opt);
-	
+
 	return Util::Algo::greedy_vortex_cover(nb);
 }
 
@@ -158,10 +201,8 @@ void run_two_step_clustering(DatabaseFile& db){
 	for (int i = 0; i < (int)db.ref_header.sequences; ++i) {
 		db.read_seq(id, seq);
 		const unsigned r = rep_block_id[centroid2[i]];
-
 		(*out) << blast_id(id) << '\t'
 			<< blast_id((*rep_ids)[r]) << '\t';		
-		
 		if ((int)i == centroid2[i])
 			(*out) << "100\t100\t100\t0" << endl;
 		else {
@@ -241,6 +282,191 @@ void run_transitive_closure_clustering(DatabaseFile& db){
 	// }
 }
 
+SparseSimpleMatrix<float>* get_gamma(SparseSimpleMatrix<float>* m, uint32_t r){
+	SparseSimpleMatrix<float>* gamma = new SparseSimpleMatrixImpl<float>(m->get_nrows(), m->get_ncols());
+	float* column_sum = new float[m->get_ncols()];
+	for(uint32_t icol = 0; icol< m->get_ncols(); icol++){
+		column_sum[icol] = 0.0f;
+	}
+	for(auto it = m->begin(); it != m->end(); it++){
+		uint32_t i,j;
+		m->get_indices(it->first, &i, &j);
+		float el = pow(it->second, r);
+		gamma->set_elm(i,j,el);
+		column_sum[j] += el;
+	}
+	for(auto it = gamma->begin(); it != gamma->end(); it++){
+		uint32_t i,j;
+		gamma->get_indices(it->first, &i, &j);
+		gamma->set_elm(i,j, it->second/column_sum[j]);
+	}
+	return gamma;
+}
+SimpleMatrix<float>* get_gamma(SimpleMatrix<float>* m, uint32_t r){
+	SimpleMatrix<float>* gamma = new SparseSimpleMatrixImpl<float>(m->get_nrows(), m->get_ncols());
+	float* column_sum = new float[m->get_ncols()];
+	for(uint32_t icol = 0; icol< m->get_ncols(); icol++){
+		column_sum[icol] = 0.0f;
+	}
+	for(uint32_t irow = 0; irow < m->get_nrows(); irow++){
+		for(uint32_t icol = 0; icol < m->get_ncols(); icol++){
+			column_sum[icol]+=pow(m->get_elm(irow, icol), r);
+		}
+	}
+	for(uint32_t irow = 0; irow < m->get_nrows(); irow++){
+		for(uint32_t icol = 0; icol < m->get_ncols(); icol++){
+			gamma->set_elm(irow, icol, pow(m->get_elm(irow, icol),r) / column_sum[icol]);
+		}
+	}
+	return gamma;
+}
+
+SimpleMatrix<float>* get_exp(SimpleMatrix<float>* m, uint32_t r){
+	// TODO: make this more efficient
+	SimpleMatrix<float>* tmp1 = m->multiply(m);
+	for(uint32_t i = 2; i<r; i++){
+		SimpleMatrix<float>* tmp2 = tmp1->multiply(tmp1);
+		delete tmp1;
+		tmp1 = tmp2;
+	}
+	return tmp1;
+}
+vector<unordered_set<uint32_t>> get_list(SimpleMatrix<float>* m){
+	LazyDisjointIntegralSet<uint32_t> disjointSet(m->get_ncols());
+	for(uint32_t irow = 0; irow < m->get_nrows(); irow++){
+		for(uint32_t icol = 0; icol < m->get_ncols(); icol++){
+			if(abs(m->get_elm(irow, icol)) > 1e-13){
+				disjointSet.merge(irow, icol);
+			}
+		}
+	}
+	return disjointSet.getListOfSets();
+}
+vector<unordered_set<uint32_t>> get_list(SparseSimpleMatrix<float>* m){
+	LazyDisjointIntegralSet<uint32_t> disjointSet(m->get_ncols());
+	for(auto it = m->begin(); it != m->end(); it++){
+		uint32_t irow, icol;
+		m->get_indices(it->first, &irow, &icol);
+		disjointSet.merge(irow, icol);
+	}
+	return disjointSet.getListOfSets();
+}
+
+
+vector<unordered_set<uint32_t>> markov_process(SimpleMatrix<float>* m){
+	uint32_t iteration = 0;
+	double diff_norm = std::numeric_limits<double>::max();
+	while( iteration < 100 && diff_norm > 1e-3 ){
+		SimpleMatrix<float>* msquared = get_exp(m, 2);
+		SimpleMatrix<float>* m_update = get_gamma(msquared, 2);
+		delete msquared;
+		SimpleMatrix<float>* diff_m = m_update->minus(m);
+		diff_norm = diff_m->norm(2.0,2.0);
+		delete m;
+		delete diff_m;
+		m = m_update;
+		m_update = nullptr;
+		iteration++;
+	}
+	cout<< "Markov Process converged after " << iteration <<" iterations " << diff_norm << endl;
+	return get_list(m);
+}
+
+void run_markov_clustering(DatabaseFile& db){
+	// testing
+	// SparseSimpleMatrix<float>* tmp = new SparseSimpleMatrixImpl<float>(12, 12);
+	// tmp->set_elm(0, 0, 0.2f);
+	// tmp->set_elm(0, 1, 0.25f);
+	// tmp->set_elm(0, 5, 0.333f);
+	// tmp->set_elm(0, 6, 0.25f);
+	// tmp->set_elm(0, 9, 0.25f);
+	// tmp->set_elm(1, 0, 0.20f);
+	// tmp->set_elm(1, 1, 0.25f);
+	// tmp->set_elm(1, 2, 0.25f);
+	// tmp->set_elm(1, 4, 0.20f);
+	// tmp->set_elm(2, 1, 0.25f);
+	// tmp->set_elm(2, 2, 0.25f);
+	// tmp->set_elm(2, 3, 0.20f);
+	// tmp->set_elm(2, 4, 0.20f);
+	// tmp->set_elm(3, 2, 0.25f);
+	// tmp->set_elm(3, 3, 0.20f);
+	// tmp->set_elm(3, 7, 0.20f);
+	// tmp->set_elm(3, 8, 0.20f);
+	// tmp->set_elm(3, 10, 0.20f);
+	// tmp->set_elm(4, 1, 0.25f);
+	// tmp->set_elm(4, 2, 0.25f);
+	// tmp->set_elm(4, 4, 0.20f);
+	// tmp->set_elm(4, 6, 0.25f);
+	// tmp->set_elm(4, 7, 0.20f);
+	// tmp->set_elm(5, 0, 0.20f);
+	// tmp->set_elm(5, 5, 0.333f);
+	// tmp->set_elm(5, 9, 0.25f);
+	// tmp->set_elm(6, 0, 0.20f);
+	// tmp->set_elm(6, 4, 0.20f);
+	// tmp->set_elm(6, 6, 0.25f);
+	// tmp->set_elm(6, 9, 0.25f);
+	// tmp->set_elm(7, 3, 0.20f);
+	// tmp->set_elm(7, 4, 0.20f);
+	// tmp->set_elm(7, 7, 0.20f);
+	// tmp->set_elm(7, 8, 0.20f);
+	// tmp->set_elm(7, 10, 0.20f);
+	// tmp->set_elm(8, 3, 0.20f);
+	// tmp->set_elm(8, 7, 0.20f);
+	// tmp->set_elm(8, 8, 0.20f);
+	// tmp->set_elm(8, 10, 0.20f);
+	// tmp->set_elm(8, 11, 0.333f);
+	// tmp->set_elm(9, 0, 0.20f);
+	// tmp->set_elm(9, 5, 0.333f);
+	// tmp->set_elm(9, 6, 0.25f);
+	// tmp->set_elm(9, 9, 0.25f);
+	// tmp->set_elm(10, 3, 0.20f);
+	// tmp->set_elm(10, 7, 0.20f);
+	// tmp->set_elm(10, 8, 0.20f);
+	// tmp->set_elm(10, 10, 0.20f);
+	// tmp->set_elm(10, 11, 0.333f);
+	// tmp->set_elm(11, 8, 0.20f);
+	// tmp->set_elm(11, 10, 0.20f);
+	// tmp->set_elm(11, 11, 0.333f);
+	// auto cr = markov_process(tmp);
+	// cout << "Found "<<cr.size()<<" clusters"<<endl;
+	// for(auto& set: cr){
+	// 	cout<< "set :";
+	// 	for(auto item : set){
+	// 		cout<< " " << item;
+	// 	}
+	// 	cout<<endl;
+	// }
+	// delete tmp;
+	// return;
+
+
+	const size_t seq_count = db.ref_header.sequences;
+	statistics.reset();
+	config.command = Config::blastp;
+	config.no_self_hits = true;
+	//config.output_format = { "6", "qnum", "snum" };
+	config.output_format = { "6", "qnum", "snum", "qcovhsp", "scovhsp", "bitscore" };
+	config.query_cover = 80;
+	config.subject_cover = 80;
+	config.algo = 0;
+	config.index_mode = 0;
+	config.freq_sd = 0;
+	config.max_alignments = numeric_limits<uint64_t>::max();
+
+	Workflow::Search::Options opt;
+	opt.db = &db;
+	opt.self = true;
+	SparseMatrixStream<float> ms(db.ref_header.sequences, false);
+	opt.consumer = &ms;
+	opt.db_filter = nullptr;
+	Workflow::Search::run(opt);
+
+	SparseSimpleMatrix<float>* m = ms.getMatrix();
+
+	auto clusterResult = markov_process(m);
+	cout << "Found "<<clusterResult.size()<<" clusters"<<endl;
+}
+
 void run() {
 	if (config.database == "")
 		throw runtime_error("Missing parameter: database file (--db/-d)");
@@ -252,6 +478,9 @@ void run() {
 			break;
 		case Config::transitive_closure:
 			run_transitive_closure_clustering(*db);
+			break;
+		case Config::markov_clustering:
+			run_markov_clustering(*db);
 			break;
 	}
 	db->close();
