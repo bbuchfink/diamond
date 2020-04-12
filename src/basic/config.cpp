@@ -316,7 +316,8 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("gapped-filter-score", 0, "", gapped_filter_score, 0.0)
 		("gapped-filter-evalue", 0, "", gapped_filter_evalue, 0.0)
 		("gapped-filter-window", 0, "", gapped_filter_window, 200)
-		("output-hits", 0, "", output_hits);
+		("output-hits", 0, "", output_hits)
+		("ungapped-evalue", 0, "", ungapped_evalue, 50000.0);
 	
 	parser.add(general).add(makedb).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options);
 	parser.store(argc, argv, command);
