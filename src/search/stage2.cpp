@@ -59,6 +59,10 @@ void search_query_offset(Loc q,
 	const sequence query_clipped = Util::Sequence::clip(query - config.ungapped_window, config.ungapped_window * 2, config.ungapped_window);
 	const int window_left = int(query - query_clipped.data()), window = (int)query_clipped.length();
 	unsigned query_id = UINT_MAX, seed_offset = UINT_MAX;
+	std::pair<size_t, size_t> l = query_seqs::data_->local_position(q);
+	query_id = (unsigned)l.first;
+	seed_offset = (unsigned)l.second;
+	const unsigned query_len = query_seqs::data_->length(query_id);
 
 	for (vector<Stage1_hit>::const_iterator i = hits; i < hits_end; i += 16) {
 
@@ -68,7 +72,8 @@ void search_query_offset(Loc q,
 		DP::window_ungapped(query_clipped.data(), subjects, n, window, scores);
 
 		for (size_t j = 0; j < n; ++j)
-			if (scores[j] >= config.min_ungapped_raw_score) {
+			//if (scores[j] >= config.min_ungapped_raw_score) {
+			if (score_matrix.evalue(scores[j], query_len) <= config.ungapped_evalue) {
 				stats.inc(Statistics::TENTATIVE_MATCHES2);
 				/*const sequence subject_clipped = Util::Sequence::clip(subjects[j], window, window_left);
 				const int delta = int(subject_clipped.data() - subjects[j]);
@@ -76,11 +81,11 @@ void search_query_offset(Loc q,
 				if (is_primary_hit(query_clipped.data() + delta, subject_clipped.data(), window_left - delta, sid, (unsigned)subject_clipped.length())) {*/
 				if(left_most_filter(query_clipped, subjects[j], window_left, shapes[sid].length_, context, sid == 0)) {
 					stats.inc(Statistics::TENTATIVE_MATCHES3);
-					if (query_id == UINT_MAX) {
+					/*if (query_id == UINT_MAX) {
 						std::pair<size_t, size_t> l = query_seqs::data_->local_position(q);
 						query_id = (unsigned)l.first;
 						seed_offset = (unsigned)l.second;
-					}
+					}*/
 					out.push(hit(query_id, s[(i + j)->s], seed_offset));
 				}
 			}
