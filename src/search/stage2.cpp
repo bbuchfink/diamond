@@ -73,7 +73,7 @@ void search_query_offset(Loc q,
 
 		for (size_t j = 0; j < n; ++j)
 			//if (scores[j] >= config.min_ungapped_raw_score) {
-			if (score_matrix.evalue(scores[j], query_len) <= config.ungapped_evalue) {
+			if (score_matrix.evalue_norm(scores[j], query_len) <= config.ungapped_evalue) {
 				stats.inc(Statistics::TENTATIVE_MATCHES2);
 				/*const sequence subject_clipped = Util::Sequence::clip(subjects[j], window, window_left);
 				const int delta = int(subject_clipped.data() - subjects[j]);
