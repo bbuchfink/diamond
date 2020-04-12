@@ -317,7 +317,9 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("gapped-filter-evalue", 0, "", gapped_filter_evalue, 0.0)
 		("gapped-filter-window", 0, "", gapped_filter_window, 200)
 		("output-hits", 0, "", output_hits)
-		("ungapped-evalue", 0, "", ungapped_evalue, 100000.0);
+		("ungapped-evalue", 0, "", ungapped_evalue, 100000.0)
+		("no-logfile", 0, "", no_logfile),
+		("no-heartbeat", 0, "", no_heartbeat);
 	
 	parser.add(general).add(makedb).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options);
 	parser.store(argc, argv, command);
@@ -390,9 +392,9 @@ Config::Config(int argc, const char **argv, bool check_io)
 		message_stream = Message_stream(false);
 		break;
 	case 3:
-		log_stream = Message_stream(true, true);
-		verbose_stream = Message_stream(true, true);
-		message_stream = Message_stream(true, true);
+		log_stream = Message_stream(true, !config.no_logfile);
+		verbose_stream = Message_stream(true, !config.no_logfile);
+		message_stream = Message_stream(true, !config.no_logfile);
 		break;
 	case 2:
 		verbose_stream = Message_stream();
