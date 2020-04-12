@@ -83,6 +83,11 @@ struct Score_matrix
 	double evalue(int raw_score, unsigned query_len) const
 	{ return db_letters_ * query_len * pow(2, -bitscore(raw_score)); }
 
+	double evalue_norm(int raw_score, unsigned query_len) const
+	{
+		return 1e9 * query_len * pow(2, -bitscore(raw_score));
+	}
+
 	double bitscore(double evalue, unsigned query_len) const
 	{ return -log(evalue/db_letters_/query_len)/log(2); }
 

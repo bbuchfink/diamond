@@ -33,7 +33,7 @@ namespace Extension {
 
 static bool score_cutoff(int score, int query_len) {
 	if (config.gapped_filter_evalue > 0.0) {
-		return score_matrix.evalue(score, query_len) <= config.gapped_filter_evalue;
+		return score_matrix.evalue_norm(score, query_len) <= config.gapped_filter_evalue;
 	}
 	else
 		return score_matrix.bitscore(score) >= config.gapped_filter_score;
@@ -96,7 +96,7 @@ bool gapped_filter(const SeedHit *begin, const SeedHit *end, const LongScoreProf
 	for (const SeedHit* hit = begin; hit < end; ++hit) {
 		stat.inc(Statistics::GAPPED_FILTER_HITS1);
 		const int f1 = gapped_filter(*hit, query_profile, target, 64, window1, DP::scan_diags64);
-		if (score_matrix.evalue(f1, qlen) <= evalue1) {
+		if (score_matrix.evalue_norm(f1, qlen) <= evalue1) {
 			stat.inc(Statistics::GAPPED_FILTER_HITS2);
 			const int f2 = gapped_filter(*hit, query_profile, target, 128, config.gapped_filter_window, DP::scan_diags128);
 			if (score_cutoff(f2, qlen))
