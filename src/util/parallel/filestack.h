@@ -40,8 +40,8 @@ class FileStack {
         int lock();
         int unlock();
 
-        bool poll_query(const std::string & query, const double sleep_s=0.25, const size_t max_iter=1200);
-        bool poll_size(const size_t size, const double sleep_s=0.25, const size_t max_iter=1200);
+        bool poll_query(const std::string & query, const double sleep_s=0.5, const size_t max_iter=7200);
+        bool poll_size(const size_t size, const double sleep_s=0.5, const size_t max_iter=7200);
 
     private:
         int fd;

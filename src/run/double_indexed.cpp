@@ -222,7 +222,7 @@ void run_query_chunk(DatabaseFile &db_file,
 		auto work = P->get_stack(reference_partition);
 		auto done = P->get_stack(P->LOG);
 		string buf;
-// if (P->get_rank() > 0) {
+
 		while (work->pop(buf)) {
 			Chunk chunk = to_chunk(buf);
 
@@ -234,7 +234,7 @@ void run_query_chunk(DatabaseFile &db_file,
 
 			done->push(buf);
 		}
-// }
+
 		current_ref_block = max_ref_block;
 	} else {
 		for (current_ref_block = 0;
@@ -323,7 +323,7 @@ void master_thread(DatabaseFile *db_file, task_timer &total_timer, Metadata &met
 	auto P = Parallelizer::get();
 	string mp_reference_partition_file;
 	if (config.multiprocessing) {
-		P->init();
+		P->init(config.tmpdir);
 		mp_reference_partition_file = join_path(P->get_work_directory(), "reference_partition");
 		if (P->is_master()) {
 			db_file->create_partition((size_t)(config.chunk_size*1e9));

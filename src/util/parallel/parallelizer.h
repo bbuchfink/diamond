@@ -15,7 +15,7 @@ class Parallelizer {
         Parallelizer();
         ~Parallelizer();
 
-        void init();
+        void init(const std::string & tempdir = std::string());
         void clear();
 
         int get_rank();

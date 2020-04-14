@@ -32,14 +32,18 @@ Parallelizer::Parallelizer() : work_directory("libworkstack"), n_registered(0), 
 }
 
 
-void Parallelizer::init() {
+void Parallelizer::init(const string & tempdir) {
     DBG("");
     {
-        char* env_str = std::getenv("TMPDIR");
-        if (env_str) {
-            work_directory = join_path(string(env_str), work_directory);
+        // --- might go elsewhere, probably into config.cpp
+        // char* env_str = std::getenv("TMPDIR");
+        // if (env_str) {
+        //     work_directory = join_path(string(env_str), work_directory);
+        // }
+        if (tempdir.size() > 0) {
+            work_directory = join_path(tempdir, work_directory);
         }
-        env_str = std::getenv("SLURM_JOBID");
+        char * env_str = std::getenv("SLURM_JOBID");
         if (env_str) {
             work_directory = work_directory + "_" + string(env_str);
         }

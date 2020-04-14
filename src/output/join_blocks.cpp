@@ -39,13 +39,6 @@ struct JoinFetcher
 			files.back().read(&query_ids.back(), 1);
 
 		}
-
-		// cerr << "query_ids ";
-		// for (auto q : query_ids) {
-		// 	cerr << q << " ";
-		// }
-		// cerr << endl;
-
 		query_last = (unsigned)-1;
 	}
 
@@ -56,13 +49,6 @@ struct JoinFetcher
 			query_ids.push_back(0);
 			files.back().read(&query_ids.back(), 1);
 		}
-
-		// cerr << "query_ids ";
-		// for (auto q : query_ids) {
-		// 	cerr << q << " ";
-		// }
-		// cerr << endl;
-
 		query_last = (unsigned)-1;
 	}
 
@@ -99,9 +85,6 @@ struct JoinFetcher
 				fetch(i);
 			else
 				buf[i].clear();
-
-		// cerr << next() << " - " << IntermediateRecord::FINISHED << endl;
-
 		return next() != IntermediateRecord::FINISHED;
 	}
 	static PtrVector<InputFile> files;
@@ -218,8 +201,6 @@ void join_query(vector<BinaryBuffer> &buf, TextBuffer &out, Statistics &statisti
 			dict_ptr = & dict;
 		}
 
-		// cout << "###" << block_idx << endl;
-
 		const set<unsigned> rank_taxon_ids = config.taxon_k ? metadata.taxon_nodes->rank_taxid((*metadata.taxon_list)[dict_ptr->database_id(target_hsp.front().subject_id)], Rank::species) : set<unsigned>();
 		const int c = culling->cull(target_hsp, rank_taxon_ids);
 		if (c == TargetCulling::FINISHED)
@@ -229,9 +210,6 @@ void join_query(vector<BinaryBuffer> &buf, TextBuffer &out, Statistics &statisti
 
 		unsigned hsp_num = 0;
 		for (vector<IntermediateRecord>::const_iterator i = target_hsp.begin(); i != target_hsp.end(); ++i, ++hsp_num) {
-
-			// cout << "# " << block_idx << " : " << i->subject_id << " : " << dict_ptr->name_.size() << " : " << dict_ptr->next_ << endl;
-
 			if (f == Output_format::daa)
 				write_daa_record(out, *i);
 			else {
@@ -267,14 +245,10 @@ void join_worker(Task_queue<TextBuffer, JoinWriter> *queue, const Parameters *pa
 	const String_set<char, 0>& qids = query_ids::get();
 
 	while (queue->get(n, out, fetcher) && fetcher.query_id != IntermediateRecord::FINISHED) {
-	// while (queue->get(n, out, fetcher))  {
 		stat.inc(Statistics::ALIGNED);
 		size_t seek_pos;
 
-// cout << "PRE " << fetcher.query_id << " : " << IntermediateRecord::FINISHED << endl;
-		// if (fetcher.query_id == IntermediateRecord::FINISHED) break;
 		const char * query_name = qids[qids.check_idx(fetcher.query_id)];
-// cout << "POST" << endl;
 
 		const sequence query_seq = align_mode.query_translated ? query_source_seqs::get()[fetcher.query_id] : query_seqs::get()[fetcher.query_id];
 
