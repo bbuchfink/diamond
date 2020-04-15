@@ -16,6 +16,9 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
+#include <string>
+#include <sstream>
+#include <iomanip>
 #include <cstdio>
 #include <utility>
 #include "reference.h"
@@ -126,9 +129,14 @@ void ReferenceDictionary::build_lazy_dict(DatabaseFile &db_file)
 }
 */
 
+string _get_file_name(size_t block) {
+	std::stringstream ss;
+	ss << std::setfill('0') << std::setw(6) << block;
+	return join_path(config.parallel_tmpdir, "ref_dictionary_" + ss.str());
+}
 
 void ReferenceDictionary::save_block(size_t block) {
-	const string o_file = join_path(config.parallel_tmpdir, "ref_dictionary_" + std::to_string(block) + ".tmp");
+	const string o_file = _get_file_name(block);
 	std::ofstream os(o_file, std::ios::out | std::ios::trunc | std::ios::binary);
 	save_scalar(os, next_);
 	save_vector(os, data_[block]);
@@ -142,7 +150,7 @@ void ReferenceDictionary::save_block(size_t block) {
 }
 
 void ReferenceDictionary::load_block(size_t block, ReferenceDictionary & d) {
-	const string i_file = join_path(config.parallel_tmpdir, "ref_dictionary_" + std::to_string(block) + ".tmp");
+	const string i_file = _get_file_name(block);
 	std::ifstream is(i_file, std::ios::in | std::ios::binary);
 	load_scalar(is, d.next_);
 	load_vector(is, d.block_data_);
