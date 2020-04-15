@@ -119,7 +119,7 @@ void run_ref_chunk(DatabaseFile &db_file,
 		if (config.multiprocessing) {
 			stringstream ss;
 			ss << std::setfill('0') << std::setw(6) << current_ref_block;
-			const string file_name = join_path(config.tmpdir, "ref_chunk_block_" + ss.str());
+			const string file_name = join_path(config.parallel_tmpdir, "ref_chunk_block_" + ss.str());
 			tmp_file.push_back(new TempFile(file_name));
 		} else {
 			tmp_file.push_back(new TempFile());
