@@ -17,6 +17,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #include <memory>
+#include <cstdlib>
 #include "../util/command_line_parser.h"
 #include "config.h"
 #include "../util/util.h"
@@ -33,6 +34,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "masking.h"
 #include "../util/system/system.h"
 #include "../util/simd.h"
+#include "../util/parallel/multiprocessing.h"
 
 using namespace std;
 
@@ -506,5 +508,12 @@ Config::Config(int argc, const char **argv, bool check_io)
 
 	if (parallel_tmpdir == "") {
 		parallel_tmpdir = tmpdir;
+	} else {
+		if (multiprocessing) {
+			char * env_str = std::getenv("SLURM_JOBID");
+			if (env_str) {
+				parallel_tmpdir = join_path(parallel_tmpdir, "diamond_job_"+string(env_str));
+			}
+		}
 	}
 }

@@ -43,10 +43,10 @@ void Parallelizer::init(const string & tempdir) {
         if (tempdir.size() > 0) {
             work_directory = join_path(tempdir, work_directory);
         }
-        char * env_str = std::getenv("SLURM_JOBID");
-        if (env_str) {
-            work_directory = work_directory + "_" + string(env_str);
-        }
+        // char * env_str = std::getenv("SLURM_JOBID");
+        // if (env_str) {
+        //     work_directory = work_directory + "_" + string(env_str);
+        // }
         DBG("work_directory = " + work_directory);
     }
 
