@@ -18,6 +18,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <memory>
 #include <cstdlib>
+#include <sys/stat.h>
 #include "../util/command_line_parser.h"
 #include "config.h"
 #include "../util/util.h"
@@ -513,6 +514,15 @@ Config::Config(int argc, const char **argv, bool check_io)
 			char * env_str = std::getenv("SLURM_JOBID");
 			if (env_str) {
 				parallel_tmpdir = join_path(parallel_tmpdir, "diamond_job_"+string(env_str));
+			}
+			errno = 0;
+			int s = mkdir(parallel_tmpdir.c_str(), 00770);
+			if (s != 0) {
+				if (errno == EEXIST) {
+					// directory did already exist
+				} else {
+					throw(std::runtime_error("could not create parallel temporary directory " + parallel_tmpdir));
+				}
 			}
 		}
 	}
