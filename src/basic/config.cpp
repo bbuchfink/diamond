@@ -166,6 +166,7 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("block-size", 'b', "sequence block size in billions of letters (default=2.0)", chunk_size)
 		("index-chunks", 'c', "number of chunks for index processing", lowmem)
 		("tmpdir", 't', "directory for temporary files", tmpdir)
+		("parallel-tmpdir", 0, "directory for temporary files used by multiprocessing", parallel_tmpdir)
 		("gapopen", 0, "gap open penalty", gap_open, -1)
 		("gapextend", 0, "gap extension penalty", gap_extend, -1)
 		("frameshift", 'F', "frame shift penalty (default=disabled)", frame_shift)
@@ -502,4 +503,8 @@ Config::Config(int argc, const char **argv, bool check_io)
 
 	if (query_range_culling && taxon_k != 0)
 		throw std::runtime_error("--taxon-k is not supported for --range-culling mode.");
+
+	if (parallel_tmpdir == "") {
+		parallel_tmpdir = tmpdir;
+	}
 }

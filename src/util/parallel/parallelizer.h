@@ -24,7 +24,7 @@ class Parallelizer {
         int get_n_registered();
 
         bool is_master();
-        bool register_workers(const double sleep_s=3.0);
+        bool register_workers(const double sleep_s=5.0);
 
         bool barrier(const std::string & tag);
 

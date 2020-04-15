@@ -74,7 +74,6 @@ pair<string, int> TempFile::init(bool unlink)
 		unlinked = false;
 	else
 		unlinked = (::unlink(s) >= 0);
-		// unlinked = true;  // TODO: restore proper behaviour
 	return std::make_pair(string(s), fd);
 #endif
 }

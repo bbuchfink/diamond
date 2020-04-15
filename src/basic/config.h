@@ -62,6 +62,7 @@ struct Config
 	bool		disable_traceback;
 	double	max_seed_freq;
 	string	tmpdir;
+	string	parallel_tmpdir;
 	bool		long_mode;
 	int		gapped_xdrop;
 	double	max_evalue;
