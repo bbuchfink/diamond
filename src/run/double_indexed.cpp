@@ -294,6 +294,7 @@ void run_query_chunk(DatabaseFile &db_file,
 
 				join_blocks(current_ref_block, master_out, tmp_file, params, metadata, db_file, tmp_file_names);
 
+				ReferenceDictionary::get().clear_block_instances();
 				for (auto f : tmp_file_names) {
 					std::remove(f.c_str());
 				}

@@ -50,8 +50,15 @@ void ReferenceDictionary::clear()
 	len_.clear();
 	database_id_.clear();
 	name_.clear();
-	block_instances_.clear();
 	next_ = 0;
+}
+
+void ReferenceDictionary::clear_block_instances()
+{
+	for (std::unordered_map<size_t,ReferenceDictionary>::iterator it = block_instances_.begin(); it != block_instances_.end(); it++) {
+		it->second.clear();
+	}
+	block_instances_.clear();
 }
 
 void ReferenceDictionary::init(unsigned ref_count, const vector<unsigned> &block_to_database_id)
