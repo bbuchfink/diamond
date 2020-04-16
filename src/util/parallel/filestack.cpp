@@ -11,7 +11,8 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
-#define DEBUG
+// #define DEBUG
+#undef DEBUG
 #include "filestack.h"
 
 using namespace std;

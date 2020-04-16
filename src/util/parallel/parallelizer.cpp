@@ -8,7 +8,8 @@
 #include <sys/stat.h>
 
 #include "multiprocessing.h"
-#define DEBUG
+// #define DEBUG
+#undef DEBUG
 #include "filestack.h"
 #include "parallelizer.h"
 

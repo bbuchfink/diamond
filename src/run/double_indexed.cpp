@@ -51,6 +51,7 @@ namespace Workflow { namespace Search {
 
 static const string reference_partition = "ref_part";
 
+/*
 void init_dict_ref_chunk(DatabaseFile &db_file,
 	unsigned query_chunk,
 	pair<size_t, size_t> query_len_bounds,
@@ -63,6 +64,7 @@ void init_dict_ref_chunk(DatabaseFile &db_file,
 {
 	ReferenceDictionary::get().init(safe_cast<unsigned>(ref_seqs::get().get_length()), block_to_database_id);
 }
+*/
 
 void run_ref_chunk(DatabaseFile &db_file,
 	unsigned query_chunk,
@@ -84,9 +86,7 @@ void run_ref_chunk(DatabaseFile &db_file,
 		log_stream << "Masked letters: " << n << endl;
 	}
 
-	if (!config.multiprocessing) {
-		ReferenceDictionary::get().init(safe_cast<unsigned>(ref_seqs::get().get_length()), block_to_database_id);
-	}
+	ReferenceDictionary::get().init(safe_cast<unsigned>(ref_seqs::get().get_length()), block_to_database_id);
 
 	timer.go("Initializing temporary storage");
 	Trace_pt_buffer::instance = new Trace_pt_buffer(query_seqs::data_->get_length() / align_mode.query_contexts,
@@ -196,6 +196,8 @@ void run_query_chunk(DatabaseFile &db_file,
 		timer.finish();
 	}
 
+	log_rss();
+
 	PtrVector<TempFile> tmp_file;
 	query_aligned.clear();
 	query_aligned.insert(query_aligned.end(), query_ids::get().get_length(), false);
@@ -203,22 +205,26 @@ void run_query_chunk(DatabaseFile &db_file,
 	vector<unsigned> block_to_database_id;
 	Chunk chunk;
 
+	log_rss();
+
 	if (config.multiprocessing) {
 		unsigned int max_ref_block;
 		{
 			timer.go("Preparing reference dictionary");
 			db_file.rewind();
 			for (current_ref_block = 0;
-				 db_file.load_seqs(block_to_database_id, (size_t)(config.chunk_size*1e9), &ref_seqs::data_, &ref_ids::data_, true, options.db_filter ? options.db_filter : metadata.taxon_filter);
+				 db_file.load_seqs(block_to_database_id, (size_t)(config.chunk_size*1e9), nullptr, nullptr, true, options.db_filter ? options.db_filter : metadata.taxon_filter, false);
 				 ++current_ref_block)
 			{
-				init_dict_ref_chunk(db_file, query_chunk, query_len_bounds, query_buffer, master_out, tmp_file, params, metadata, block_to_database_id);
+				// empty
 			}
 			max_ref_block = current_ref_block;
 			current_ref_block = 0;
 			db_file.rewind();
 			timer.finish();
 		}
+
+		log_rss();
 
 		auto work = P->get_stack(reference_partition);
 		auto done = P->get_stack(P->LOG);
@@ -227,13 +233,14 @@ void run_query_chunk(DatabaseFile &db_file,
 		while (work->pop(buf)) {
 			Chunk chunk = to_chunk(buf);
 
-			db_file.load_seqs(block_to_database_id, (size_t)(0), &ref_seqs::data_, &ref_ids::data_, true, options.db_filter ? options.db_filter : metadata.taxon_filter, chunk);
+			db_file.load_seqs(block_to_database_id, (size_t)(0), &ref_seqs::data_, &ref_ids::data_, true, options.db_filter ? options.db_filter : metadata.taxon_filter, true, chunk);
 			run_ref_chunk(db_file, query_chunk, query_len_bounds, query_buffer, master_out, tmp_file, params, metadata, block_to_database_id);
 
 			ReferenceDictionary::get().save_block(chunk.i);
 			ReferenceDictionary::get().clear_block(chunk.i);
 
 			done->push(buf);
+			log_rss();
 		}
 
 		current_ref_block = max_ref_block;
@@ -243,6 +250,7 @@ void run_query_chunk(DatabaseFile &db_file,
 			 ++current_ref_block) {
 			run_ref_chunk(db_file, query_chunk, query_len_bounds, query_buffer, master_out, tmp_file, params, metadata, block_to_database_id);
 		}
+		log_rss();
 	}
 
 	timer.go("Deallocating buffers");
@@ -270,6 +278,8 @@ void run_query_chunk(DatabaseFile &db_file,
 		}
 		tmp_file.clear();
 	}
+
+	log_rss();
 
 	if (blocked_processing) {
 		timer.go("Joining output blocks");
@@ -408,7 +418,9 @@ void master_thread(DatabaseFile *db_file, task_timer &total_timer, Metadata &met
 
 		P->delete_stack(reference_partition);
 
-		// break;
+		// mem debug
+		// if (current_query_chunk >= 1)
+			// break;
 	}
 
 	if (query_file && !options.query_file) {

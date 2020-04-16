@@ -101,7 +101,7 @@ struct DatabaseFile : public InputFile
 	void load_partition(const string & partition_file_name);
 	void clear_partition();
 
-	bool load_seqs(vector<unsigned> &block_to_database_id, size_t max_letters, Sequence_set **dst_seq, String_set<char, 0> **dst_id, bool load_ids = true, const vector<bool> *filter = NULL, const Chunk & chunk = Chunk());
+	bool load_seqs(vector<unsigned> &block_to_database_id, size_t max_letters, Sequence_set **dst_seq, String_set<char, 0> **dst_id, bool load_ids = true, const vector<bool> *filter = NULL, const bool fetch_seqs = true, const Chunk & chunk = Chunk());
 
 	void get_seq();
 	void read_seq(string &id, vector<Letter> &seq);

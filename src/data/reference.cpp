@@ -278,7 +278,7 @@ void DatabaseFile::seek_direct() {
 }
 
 bool DatabaseFile::load_seqs(vector<unsigned> &block_to_database_id, const size_t max_letters,
-	Sequence_set **dst_seq, String_set<char, 0> **dst_id, bool load_ids, const vector<bool> *filter, const Chunk & chunk)
+	Sequence_set **dst_seq, String_set<char, 0> **dst_id, bool load_ids, const vector<bool> *filter, const bool fetch_seqs, const Chunk & chunk)
 {
 	task_timer timer("Loading reference sequences");
 
@@ -294,8 +294,10 @@ bool DatabaseFile::load_seqs(vector<unsigned> &block_to_database_id, const size_
 	vector<uint64_t> filtered_pos;
 	block_to_database_id.clear();
 
-	*dst_seq = new Sequence_set;
-	if(load_ids) *dst_id = new String_set<char, 0>;
+	if (fetch_seqs) {
+		*dst_seq = new Sequence_set;
+		if(load_ids) *dst_id = new String_set<char, 0>;
+	}
 
 	Pos_record r;
 	read(&r, 1);
@@ -315,10 +317,14 @@ bool DatabaseFile::load_seqs(vector<unsigned> &block_to_database_id, const size_
 		read(&r_next, 1);
 		if (!filter || (*filter)[database_id]) {
 			letters += r.seq_len;
-			(*dst_seq)->reserve(r.seq_len);
+			if (fetch_seqs) {
+				(*dst_seq)->reserve(r.seq_len);
+			}
 			const size_t id_len = r_next.pos - r.pos - r.seq_len - 3;
 			id_letters += id_len;
-			if (load_ids) (*dst_id)->reserve(id_len);
+			if (fetch_seqs) {
+				if (load_ids) (*dst_id)->reserve(id_len);
+			}
 			++seqs;
 			block_to_database_id.push_back((unsigned)database_id);
 			if (filter) filtered_pos.push_back(last ? 0 : r.pos);
@@ -333,32 +339,36 @@ bool DatabaseFile::load_seqs(vector<unsigned> &block_to_database_id, const size_
 	}
 
 	if (seqs == 0) {
-		delete (*dst_seq);
-		(*dst_seq) = NULL;
-		if (load_ids) delete (*dst_id);
-		(*dst_id) = NULL;
+		if (fetch_seqs) {
+			delete (*dst_seq);
+			(*dst_seq) = NULL;
+			if (load_ids) delete (*dst_id);
+			(*dst_id) = NULL;
+		}
 		return false;
 	}
 
-	(*dst_seq)->finish_reserve();
-	if(load_ids) (*dst_id)->finish_reserve();
-	seek(start_offset);
+	if (fetch_seqs) {
+		(*dst_seq)->finish_reserve();
+		if(load_ids) (*dst_id)->finish_reserve();
+		seek(start_offset);
 
-	for (size_t n = 0; n < seqs; ++n) {
-		if (filter && filtered_pos[n]) seek(filtered_pos[n]);
-		read((*dst_seq)->ptr(n) - 1, (*dst_seq)->length(n) + 2);
-		*((*dst_seq)->ptr(n) - 1) = sequence::DELIMITER;
-		*((*dst_seq)->ptr(n) + (*dst_seq)->length(n)) = sequence::DELIMITER;
-		if (load_ids)
-			read((*dst_id)->ptr(n), (*dst_id)->length(n) + 1);
-		else
-			if (!seek_forward('\0')) throw std::runtime_error("Unexpected end of file.");
-		Masking::get().remove_bit_mask((*dst_seq)->ptr(n), (*dst_seq)->length(n));
-		if (!config.sfilt.empty() && strstr((**dst_id)[n], config.sfilt.c_str()) == 0)
-			memset((*dst_seq)->ptr(n), value_traits.mask_char, (*dst_seq)->length(n));
+		for (size_t n = 0; n < seqs; ++n) {
+			if (filter && filtered_pos[n]) seek(filtered_pos[n]);
+			read((*dst_seq)->ptr(n) - 1, (*dst_seq)->length(n) + 2);
+			*((*dst_seq)->ptr(n) - 1) = sequence::DELIMITER;
+			*((*dst_seq)->ptr(n) + (*dst_seq)->length(n)) = sequence::DELIMITER;
+			if (load_ids)
+				read((*dst_id)->ptr(n), (*dst_id)->length(n) + 1);
+			else
+				if (!seek_forward('\0')) throw std::runtime_error("Unexpected end of file.");
+			Masking::get().remove_bit_mask((*dst_seq)->ptr(n), (*dst_seq)->length(n));
+			if (!config.sfilt.empty() && strstr((**dst_id)[n], config.sfilt.c_str()) == 0)
+				memset((*dst_seq)->ptr(n), value_traits.mask_char, (*dst_seq)->length(n));
+		}
+		timer.finish();
+		(*dst_seq)->print_stats();
 	}
-	timer.finish();
-	(*dst_seq)->print_stats();
 
 	// blocked_processing = seqs_processed < ref_header.sequences;
 	blocked_processing = true;
