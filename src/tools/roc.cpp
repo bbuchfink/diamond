@@ -220,18 +220,18 @@ void roc() {
 			}
 			query = acc;
 			++queries;
+			if (queries % 10000 == 0)
+				message_stream << "#Queries = " << queries << endl;
 		}
 		buf.append(in.line);
 		buf.append("\n");
-		if (queries % 10000 == 0)
-			message_stream << "#Queries = " << queries << endl;
 		++n;
 	}
 	{
 		std::lock_guard<std::mutex> lock(mtx);
 		buffers.push(std::move(buf));
-		cdv.notify_one();
 		finished = true;
+		cdv.notify_all();
 	}
 
 	for (thread& t : threads)
