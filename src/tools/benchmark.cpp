@@ -276,41 +276,6 @@ void diag_scores2(const sequence& s1, const sequence& s2) {
 }
 #endif
 
-#define POT (1<<22)
-
-static int simple_filter(uint64_t x, const std::bitset<POT> &l, const char *p) {
-	uint64_t y = 0x2F7;
-	int n = 0;
-	for (int i = 0; i < 64; ++i) {
-		/*if ((x & y) == y)
-			++n;
-		/*if (l[x & 0xFFFF])
-			++n;*/
-		//cout << (x & ((1 << 29) - 1)) << endl;
-		n += l[x & (POT-1)];
-		x >>= 1;
-	}
-	return n;
-}
-
-void left_most() {
-	static const size_t n = 10000000llu;
-	volatile int k = 0;
-	uint64_t x = 0x06818cf789c4eb39;
-	std::bitset<POT> l;
-	static char p[POT];
-	for (int i = 0; i < POT; ++i) {
-		l[i] = rand() & 1;
-		p[i] = rand() & 1;
-	}
-	high_resolution_clock::time_point t1 = high_resolution_clock::now();
-	for (size_t i = 0; i < n; ++i) {
-		k += simple_filter(x, l, p);
-		x = x * 0xd18767c842a0b111 + 0x97804822cc50f045;
-	}
-	cout << "Left most:\t\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n) * 1000 << " ps/Run" << endl;
-}
-
 void benchmark() {
 	vector<Letter> s1, s2, s3, s4;
 		
@@ -322,7 +287,6 @@ void benchmark() {
 	sequence ss1 = sequence(s1).subseq(34, s1.size());
 	sequence ss2 = sequence(s2).subseq(33, s2.size());
 
-	left_most();
 #ifdef __SSE4_1__
 	benchmark_hamming(s1, s2);
 #endif
