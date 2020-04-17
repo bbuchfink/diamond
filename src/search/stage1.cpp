@@ -18,10 +18,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <vector>
 #include "search.h"
-#include "hit_filter.h"
 #include "sse_dist.h"
 #include "seed_complexity.h"
 #include "finger_print.h"
+#include "../data/reference.h"
+#include "../data/queries.h"
 
 using std::vector;
 
