@@ -25,13 +25,14 @@ struct Record {
 	}
 
 	Record(TextInputFile &file, size_t file_id) :
+		query_id(BLANK),
 		file(file_id)
 	{
-		file.getline();
-		if (file.line.empty()) {
-			query_id = BLANK;
+		if (file.eof())
 			return;
-		}
+		file.getline();
+		if (file.line.empty())
+			return;
 		Util::String::Tokenizer(file.line, "\t") >> query_id >> query_acc >> subject_acc >> evalue;
 	}
 
@@ -44,7 +45,7 @@ struct Record {
 	}
 
 	friend std::ostream& operator<<(std::ostream& os, const Record& r) {
-		os << r.query_acc << '\t' << r.subject_acc << '\t' << r.evalue << endl;
+		os << r.query_acc << '\t' << r.subject_acc << '\t' << r.evalue;
 		return os;
 	}
 
@@ -63,6 +64,7 @@ void merge_tsv() {
 	const size_t n = config.input_ref_file.size();
 	message_stream << "#Input files: " << n << endl;
 	vector<TextInputFile> files;
+	files.reserve(n);
 	std::priority_queue<Record> queue;
 	size_t records = 0;
 	for (size_t i = 0; i < n; ++i) {
