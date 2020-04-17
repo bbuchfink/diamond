@@ -210,7 +210,7 @@ void run_query_chunk(DatabaseFile &db_file,
 	if (config.multiprocessing) {
 		unsigned int max_ref_block;
 		{
-			timer.go("Preparing reference dictionary");
+			timer.go("Scan reference database for blocks");
 			db_file.rewind();
 			for (current_ref_block = 0;
 				 db_file.load_seqs(block_to_database_id, (size_t)(config.chunk_size*1e9), nullptr, nullptr, true, options.db_filter ? options.db_filter : metadata.taxon_filter, false);
