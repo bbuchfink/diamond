@@ -121,16 +121,16 @@ public:
 	pair<vector<vector<uint32_t>>, vector<Eigen::SparseMatrix<T>>> getComponents(){
 		vector<unordered_set<size_t>> sets = disjointSet->getListOfSets();
 		vector<vector<Eigen::Triplet<T>>> split(sets.size());
+		unordered_map<size_t, uint32_t> indexToSetId;
 		for(uint32_t iset = 0; iset < sets.size(); iset++){
 			split.push_back(vector<Eigen::Triplet<T>>());
+			for(size_t index : sets[iset]){
+				indexToSetId.emplace(index, iset);
+			}
 		}
 		for(Eigen::Triplet<T> d : data){
-			for(uint32_t iset = 0; iset < sets.size(); iset++){
-				if(sets[iset].count(d.col()) != 0){
-					split[iset].emplace_back(d.row(), d.col(), d.value());
-					break;
-				}
-			}
+			assert(indexToSetId[d.row()] == indexToSetId[d.row()]);
+			split[indexToSetId[d.row()]].emplace_back(d.row(), d.col(), d.value());
 		}
 		vector<vector<uint32_t>> indices(sets.size());
 		vector<Eigen::SparseMatrix<T>> components(sets.size());
@@ -337,37 +337,10 @@ vector<unordered_set<uint32_t>> get_list(Eigen::SparseMatrix<float>* m){
 	return disjointSet.getListOfSets();
 }
 
-void print(Eigen::SparseMatrix<float>* m, bool sparse){
-	if(sparse){
-		for (uint32_t k=0; k<m->outerSize(); ++k){
-			for (Eigen::SparseMatrix<float>::InnerIterator it(*m, k); it; ++it){
-				printf("%lu %lu %16.14f\n", it.row(), it.col(), it.value());
-			}
-		}
-	}
-	else{
-		for(uint32_t irow = 0; irow < m->rows(); irow++){
-			for(uint32_t icol = 0; icol < m->cols(); icol++){
-				printf(" %8.4f", m->coeffRef(irow, icol));
-			}
-			printf("\n");
-		}
-	}
-		printf("\n");
-}
-
 vector<unordered_set<uint32_t>> markov_process(Eigen::SparseMatrix<float>* m){
 	uint32_t iteration = 0;
 	double diff_norm = std::numeric_limits<double>::max();
-	// TODO: Add loops TODO: make sure self-hits are found and have the same unit as the off diagonal elements (bit score or other measure used) before calling this routine, then only check that diagonal elements exist
-	// for(uint32_t idiag = 0; idiag<m->get_nrows(); idiag++){
-	// 	float e = m->get_elm(idiag, idiag);
-	// 	if( abs(e) < 1e-13 ){
-	// 		//cout << "WARNING: did not find a self-hit for "<< idiag << endl;
-	// 		m->set_elm(idiag, idiag, 1.0);
-	// 	}
-	// }
-	//*m  = get_gamma(m,1);
+	*m  = get_gamma(m,1); // This is to get a matrix of random walks on the graph -> TODO: find out if something else is more suitable
 	while( iteration < 100 && diff_norm > 1e-6*m->rows() ){
 		Eigen::SparseMatrix<float> msquared = ((*m) * (*m)).pruned(1.0, std::numeric_limits<float>::epsilon());
 		Eigen::SparseMatrix<float> m_update = get_gamma(&msquared, 2);
@@ -375,7 +348,6 @@ vector<unordered_set<uint32_t>> markov_process(Eigen::SparseMatrix<float>* m){
 		*m = m_update.pruned(1.0, std::numeric_limits<float>::epsilon());
 		iteration++;
 	}
-	//cout<< "Markov Process converged after " << iteration <<" iterations " << diff_norm << endl;
 	return get_list(m);
 }
 
