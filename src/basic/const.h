@@ -28,7 +28,6 @@ struct Const
 		seedp = 1<<seedp_bits,
 		max_seed_weight = 32,
 		max_shapes = 16,
-		max_shape_len = 32
 	};
 
 	static const char* version_string;

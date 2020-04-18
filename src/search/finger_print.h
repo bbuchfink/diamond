@@ -26,9 +26,15 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 struct Byte_finger_print_48
 {
 	Byte_finger_print_48(const Letter *q) :
+#ifdef SEQ_MASK
+		r1(letter_mask(_mm_loadu_si128((__m128i const*)(q - 16)))),
+		r2(letter_mask(_mm_loadu_si128((__m128i const*)(q)))),
+		r3(letter_mask(_mm_loadu_si128((__m128i const*)(q + 16))))
+#else
 		r1(_mm_loadu_si128((__m128i const*)(q - 16))),
 		r2(_mm_loadu_si128((__m128i const*)(q))),
 		r3(_mm_loadu_si128((__m128i const*)(q + 16)))
+#endif
 	{}
 	static uint64_t match_block(__m128i x, __m128i y)
 	{
@@ -51,6 +57,10 @@ struct Byte_finger_print_48
 	{
 		//printf("%llx\n", q);
 		memcpy(r, q - 16, 48);
+#ifdef SEQ_MASK
+		for (int i = 0; i < 48; ++i)
+			r[i] &= LETTER_MASK;
+#endif
 	}
 	unsigned match(const Byte_finger_print_48 &rhs) const
 	{

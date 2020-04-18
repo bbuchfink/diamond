@@ -55,7 +55,7 @@ void setup_search()
 {
 	if (config.algo == Config::double_indexed) {
 		if (config.mode_very_sensitive) {
-			Config::set_option(config.index_mode, 4u);
+			Config::set_option(config.index_mode, 12u);
 			Config::set_option(config.freq_sd, 200.0);
 		} else if (config.mode_more_sensitive) {
 			Config::set_option(config.index_mode, 9u);
@@ -101,7 +101,7 @@ void setup_search_params(pair<size_t, size_t> query_len_bounds, size_t chunk_db_
 
 	if (config.mode_very_sensitive) {
 		Reduction::reduction = Reduction("A KR EDNQ C G H ILVM FYW P ST"); // murphy.10
-		Config::set_option(config.index_mode, 4u);
+		Config::set_option(config.index_mode, 12u);
 		::shapes = shape_config(config.index_mode, config.shapes, config.shape_mask);
 		config.seed_anchor = std::min(::shapes[0].length_ - 1, 8u);
 		Config::set_option(config.min_identities, 9u);

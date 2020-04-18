@@ -30,7 +30,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/data_structures/double_array.h"
 #include "../util/system/system.h"
 
-using namespace std;
+using std::vector;
+using std::atomic;
 
 Trace_pt_buffer* Trace_pt_buffer::instance;
 
@@ -54,14 +55,14 @@ void seed_join_worker(
 	}
 }
 
-void search_worker(atomic<unsigned> *seedp, const SeedPartitionRange *seedp_range, unsigned shape, size_t thread_id, DoubleArray<SeedArray::_pos> *query_seed_hits, DoubleArray<SeedArray::_pos> *ref_seed_hits)
+void search_worker(atomic<unsigned> *seedp, const SeedPartitionRange *seedp_range, unsigned shape, size_t thread_id, DoubleArray<SeedArray::_pos> *query_seed_hits, DoubleArray<SeedArray::_pos> *ref_seed_hits, const Search::Context *context)
 {
 	Trace_pt_buffer::Iterator* out = new Trace_pt_buffer::Iterator(*Trace_pt_buffer::instance, thread_id);
 	Statistics stats;
 	unsigned p;
 	while ((p = (*seedp)++) < seedp_range->end())
 		for (auto it = JoinIterator<SeedArray::_pos>(query_seed_hits[p].begin(), ref_seed_hits[p].begin()); it; ++it)
-			Search::stage1(it.r->begin(), it.r->size(), it.s->begin(), it.s->size(), stats, *out, shape);
+			Search::stage1(it.r->begin(), it.r->size(), it.s->begin(), it.s->size(), stats, *out, shape, *context);
 	delete out;
 	statistics += stats;
 }
@@ -91,7 +92,7 @@ void search_shape(unsigned sid, unsigned query_block, char *query_buffer, char *
 
 		timer.go("Computing hash join");
 		atomic<unsigned> seedp(range.begin());
-		vector<thread> threads;
+		vector<std::thread> threads;
 		for (size_t i = 0; i < config.threads_; ++i)
 			threads.emplace_back(seed_join_worker, query_idx, ref_idx, &seedp, &range, query_seed_hits, ref_seed_hits);
 		for (auto &t : threads)
@@ -100,15 +101,23 @@ void search_shape(unsigned sid, unsigned query_block, char *query_buffer, char *
 		timer.go("Building seed filter");
 		frequent_seeds.build(sid, range, query_seed_hits, ref_seed_hits);
 
+		Search::Context* context = nullptr;
+		if (config.fast_stage2) {
+			timer.go("Building pattern matcher");
+			const vector<uint32_t> patterns = shapes.patterns(0, sid + 1);
+			context = new Search::Context{ {patterns.data(), patterns.data() + patterns.size() - 1 }, {patterns.data(), patterns.data() + patterns.size() } };
+		}
+
 		timer.go("Searching alignments");
 		seedp = range.begin();
 		threads.clear();
 		for (size_t i = 0; i < config.threads_; ++i)
-			threads.emplace_back(search_worker, &seedp, &range, sid, i, query_seed_hits, ref_seed_hits);
+			threads.emplace_back(search_worker, &seedp, &range, sid, i, query_seed_hits, ref_seed_hits, context);
 		for (auto &t : threads)
 			t.join();
 
 		delete ref_idx;
 		delete query_idx;
+		delete context;
 	}
 }

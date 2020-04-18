@@ -35,8 +35,17 @@ struct FlatArray {
 		++limits_.back();
 	}
 
+	void push_back(const _t* begin, const _t* end) {
+		data_.insert(data_.end(), begin, end);
+		limits_.push_back(limits_.back() + end - begin);
+	}
+
 	void next() {
 		limits_.push_back(limits_.back());
+	}
+
+	void pop_back() {
+		limits_.pop_back();
 	}
 
 	void clear() {

@@ -133,6 +133,9 @@ struct Shape
 #endif
 		for (unsigned i = 0; i < weight_; ++i) {
 			Letter l = seq[positions_[i]];
+#ifdef SEQ_MASK
+			l &= LETTER_MASK;
+#endif
 			if (l == value_traits.mask_char || l == sequence::DELIMITER || l == Translator::STOP)
 				return false;
 			unsigned r = Reduction::reduction(l);
@@ -154,6 +157,9 @@ struct Shape
 		const uint64_t b = Reduction::reduction.bit_size();
 		for (unsigned i = 0; i < weight_; ++i) {
 			Letter l = seq[positions_[i]];
+#ifdef SEQ_MASK
+			l &= LETTER_MASK;
+#endif
 			if (l == value_traits.mask_char || l == sequence::DELIMITER || l == Translator::STOP)
 				return false;
 			unsigned r = Reduction::reduction(l);
@@ -168,6 +174,9 @@ struct Shape
 		s = 0;
 		for (unsigned i = 0; i < weight_; ++i) {
 			Letter l = seq[positions_[i]];
+#ifdef SEQ_MASK
+			l &= LETTER_MASK;
+#endif
 			if (l == value_traits.mask_char)
 				return false;
 			s *= Reduction::reduction.size();
@@ -180,6 +189,9 @@ struct Shape
 	{
 		for (unsigned i = 0; i < weight_; ++i) {
 			Letter l = seq[positions_[i]];
+#ifdef SEQ_MASK
+			l &= LETTER_MASK;
+#endif
 			if (l >= 20)
 				return false;
 			s[i] = l;
@@ -192,27 +204,6 @@ struct Shape
 		for (unsigned i = 0; i < sh.length_; ++i)
 			s << ((sh.mask_ & (1 << i)) ? '1' : '0');
 		return s;
-	}
-
-	int score(const Letter *x, const Letter *y) const
-	{
-		int score = 0;
-		for (unsigned i = 0; i < weight_; ++i)
-			score += score_matrix(x[positions_[i]], y[positions_[i]]);
-		return score;
-	}
-
-	bool hit(const Letter *x, const Letter *y, const Trail &trail) const
-	{
-		for (unsigned i = 0; i < weight_; ++i)
-#if OPT_W==1
-			if (trail[0](x[positions_[i]]) != trail[0](y[positions_[i]]))
-				return false;
-#else
-			if (trail[i](x[positions_[i]]) != trail[i](y[positions_[i]]))
-				return false;
-#endif
-		return true;
 	}
 
 	bool contiguous() const
