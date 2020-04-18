@@ -16,6 +16,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
+#include <Eigen/Sparse>
 #include <algorithm>
 #include <stdexcept>
 #include <string>
@@ -29,7 +30,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../data/reference.h"
 #include "workflow.h"
 #include "disjoint_set.h"
-#include "sparse_matrix.h"
 #include "../util/io/consumer.h"
 #include "../util/algo/algo.h"
 #include "../basic/statistics.h"
@@ -90,43 +90,72 @@ public:
 
 template <typename T>
 class SparseMatrixStream : public Consumer {
-	SparseSimpleMatrix<T>* m = nullptr;
+	size_t n;
+	vector<Eigen::Triplet<T>> data;
 	LazyDisjointSet<size_t>* disjointSet;
 	virtual void consume(const char *ptr, size_t n) override {
 		size_t query, subject, count;
-		float qcov, scov, bitscore;
+		float qcov, scov, bitscore, id;
 		const char *end = ptr + n;
 		while (ptr < end) {
 			//if (sscanf(ptr, "%i\t%i\n%n", &query, &subject, &count) != 2)
-			if (sscanf(ptr, "%lu\t%lu\t%f\t%f\t%f\n%ln", &query, &subject, &qcov, &scov, &bitscore, &count) != 5) 
+			if (sscanf(ptr, "%lu\t%lu\t%f\t%f\t%f\t%f\n%ln", &query, &subject, &qcov, &scov, &bitscore, &id, &count) != 6) 
 				throw runtime_error("Cluster format error.");
-			m->set_elm(query, subject, bitscore);
+			data.emplace_back(query, subject, (qcov/100.0f) * (scov/100.0f) * (id/100.0f));
 			disjointSet->merge(query, subject);
 			ptr += count;
 		}
 	}
 public:
-	SparseMatrixStream(size_t n, bool symmetric){
+	SparseMatrixStream(size_t n){
+		this->n = n;
 		disjointSet = new LazyDisjointIntegralSet<size_t>(n); 
-		if( symmetric ){
-			m = new SparseSymmetricSimpleMatrix<T>(n);
-		}
-		else{
-			m = new SparseSimpleMatrixImpl<T>(n, n);
+		// Note: this makes sure the self hits are always included, the value needs to be aligned with the measure used in consume!
+		for(uint32_t idiag=0; idiag<n; idiag++){
+			data.emplace_back(idiag, idiag, 1.0);
 		}
 	}
 	~SparseMatrixStream(){
-		if(m) delete m;
 		delete disjointSet;
 	}
-	SparseSimpleMatrix<T>* getMatrix(){
-		cout << " getting matrix " << m->get_nrows() << " " << m->get_ncols() << " " << m->get_n_nonzero_elements() << " sparsity "<< (1.0 * m->get_n_nonzero_elements()) / (m->get_nrows()* m->get_ncols()) << endl;
-		SparseSimpleMatrix<T>* h = m;
-		m = nullptr;
-		return h;
+	pair<vector<vector<uint32_t>>, vector<Eigen::SparseMatrix<T>>> getComponents(){
+		vector<unordered_set<size_t>> sets = disjointSet->getListOfSets();
+		vector<vector<Eigen::Triplet<T>>> split(sets.size());
+		for(uint32_t iset = 0; iset < sets.size(); iset++){
+			split.push_back(vector<Eigen::Triplet<T>>());
+		}
+		for(Eigen::Triplet<T> d : data){
+			for(uint32_t iset = 0; iset < sets.size(); iset++){
+				if(sets[iset].count(d.col()) != 0){
+					split[iset].emplace_back(d.row(), d.col(), d.value());
+					break;
+				}
+			}
+		}
+		vector<vector<uint32_t>> indices(sets.size());
+		vector<Eigen::SparseMatrix<T>> components(sets.size());
+		for(uint32_t iset = 0; iset < sets.size(); iset++){
+			Eigen::SparseMatrix<T> component(sets[iset].size(), sets[iset].size());
+			vector<uint32_t> order(sets[iset].begin(), sets[iset].end());
+			map<uint32_t, uint32_t> index_map;
+			uint32_t iel = 0;
+			for(uint32_t el: order){
+				index_map.emplace(el, iel++);
+			}
+			vector<Eigen::Triplet<T>> remapped(split[iset].size());
+			for(Eigen::Triplet<T> t : split[iset]){
+				remapped.emplace_back(index_map[t.row()], index_map[t.col()], t.value());
+			}
+			component.setFromTriplets(remapped.begin(), remapped.end());
+			components.emplace_back(move(component));
+			indices.emplace_back(move(order));
+		}
+		return std::make_pair(indices, components);
 	}
-	vector<unordered_set<size_t>> getListOfSets(){
-		return disjointSet->getListOfSets();
+	Eigen::SparseMatrix<T> getMatrix(){
+		Eigen::SparseMatrix<T> m(n,n);
+		m.setFromTriplets(data.begin(), data.end());
+		return m;
 	}
 };
 
@@ -282,152 +311,132 @@ void run_transitive_closure_clustering(DatabaseFile& db){
 	// }
 }
 
-SparseSimpleMatrix<float>* get_gamma(SparseSimpleMatrix<float>* m, uint32_t r){
-	SparseSimpleMatrix<float>* gamma = new SparseSimpleMatrixImpl<float>(m->get_nrows(), m->get_ncols());
-	float* column_sum = new float[m->get_ncols()];
-	for(uint32_t icol = 0; icol< m->get_ncols(); icol++){
-		column_sum[icol] = 0.0f;
-	}
-	for(auto it = m->begin(); it != m->end(); it++){
-		uint32_t i,j;
-		m->get_indices(it->first, &i, &j);
-		float el = pow(it->second, r);
-		gamma->set_elm(i,j,el);
-		column_sum[j] += el;
-	}
-	for(auto it = gamma->begin(); it != gamma->end(); it++){
-		uint32_t i,j;
-		gamma->get_indices(it->first, &i, &j);
-		gamma->set_elm(i,j, it->second/column_sum[j]);
-	}
-	return gamma;
-}
-SimpleMatrix<float>* get_gamma(SimpleMatrix<float>* m, uint32_t r){
-	SimpleMatrix<float>* gamma = new SparseSimpleMatrixImpl<float>(m->get_nrows(), m->get_ncols());
-	float* column_sum = new float[m->get_ncols()];
-	for(uint32_t icol = 0; icol< m->get_ncols(); icol++){
-		column_sum[icol] = 0.0f;
-	}
-	for(uint32_t irow = 0; irow < m->get_nrows(); irow++){
-		for(uint32_t icol = 0; icol < m->get_ncols(); icol++){
-			column_sum[icol]+=pow(m->get_elm(irow, icol), r);
+Eigen::SparseMatrix<float> get_gamma(Eigen::SparseMatrix<float>* m, float r){
+	vector<Eigen::Triplet<float>> data;
+	for (uint32_t k=0; k<m->outerSize(); ++k){
+		float colSum = 0.0f;
+		for (Eigen::SparseMatrix<float>::InnerIterator it(*m, k); it; ++it){
+			colSum += pow(it.value(),r);
+		}
+		for (Eigen::SparseMatrix<float>::InnerIterator it(*m, k); it; ++it){
+			data.emplace_back(it.row(), it.col(), pow(it.value(),r) / colSum);
 		}
 	}
-	for(uint32_t irow = 0; irow < m->get_nrows(); irow++){
-		for(uint32_t icol = 0; icol < m->get_ncols(); icol++){
-			gamma->set_elm(irow, icol, pow(m->get_elm(irow, icol),r) / column_sum[icol]);
-		}
-	}
-	return gamma;
+	Eigen::SparseMatrix<float> gamma(m->rows(), m->cols());
+	gamma.setFromTriplets(data.begin(), data.end());
+	return gamma.pruned(1.0, std::numeric_limits<float>::epsilon());
 }
 
-SimpleMatrix<float>* get_exp(SimpleMatrix<float>* m, uint32_t r){
-	// TODO: make this more efficient
-	SimpleMatrix<float>* tmp1 = m->multiply(m);
-	for(uint32_t i = 2; i<r; i++){
-		SimpleMatrix<float>* tmp2 = tmp1->multiply(tmp1);
-		delete tmp1;
-		tmp1 = tmp2;
+vector<unordered_set<uint32_t>> get_list(Eigen::SparseMatrix<float>* m){
+	LazyDisjointIntegralSet<uint32_t> disjointSet(m->cols());
+	for (uint32_t k=0; k<m->outerSize(); ++k){
+		for (Eigen::SparseMatrix<float>::InnerIterator it(*m, k); it; ++it){
+			disjointSet.merge(it.row(), it.col());
+		}
 	}
-	return tmp1;
+	return disjointSet.getListOfSets();
 }
-vector<unordered_set<uint32_t>> get_list(SimpleMatrix<float>* m){
-	LazyDisjointIntegralSet<uint32_t> disjointSet(m->get_ncols());
-	for(uint32_t irow = 0; irow < m->get_nrows(); irow++){
-		for(uint32_t icol = 0; icol < m->get_ncols(); icol++){
-			if(abs(m->get_elm(irow, icol)) > 1e-13){
-				disjointSet.merge(irow, icol);
+
+void print(Eigen::SparseMatrix<float>* m, bool sparse){
+	if(sparse){
+		for (uint32_t k=0; k<m->outerSize(); ++k){
+			for (Eigen::SparseMatrix<float>::InnerIterator it(*m, k); it; ++it){
+				printf("%lu %lu %16.14f\n", it.row(), it.col(), it.value());
 			}
 		}
 	}
-	return disjointSet.getListOfSets();
-}
-vector<unordered_set<uint32_t>> get_list(SparseSimpleMatrix<float>* m){
-	LazyDisjointIntegralSet<uint32_t> disjointSet(m->get_ncols());
-	for(auto it = m->begin(); it != m->end(); it++){
-		uint32_t irow, icol;
-		m->get_indices(it->first, &irow, &icol);
-		disjointSet.merge(irow, icol);
+	else{
+		for(uint32_t irow = 0; irow < m->rows(); irow++){
+			for(uint32_t icol = 0; icol < m->cols(); icol++){
+				printf(" %8.4f", m->coeffRef(irow, icol));
+			}
+			printf("\n");
+		}
 	}
-	return disjointSet.getListOfSets();
+		printf("\n");
 }
 
-
-vector<unordered_set<uint32_t>> markov_process(SimpleMatrix<float>* m){
+vector<unordered_set<uint32_t>> markov_process(Eigen::SparseMatrix<float>* m){
 	uint32_t iteration = 0;
 	double diff_norm = std::numeric_limits<double>::max();
-	while( iteration < 100 && diff_norm > 1e-3 ){
-		SimpleMatrix<float>* msquared = get_exp(m, 2);
-		SimpleMatrix<float>* m_update = get_gamma(msquared, 2);
-		delete msquared;
-		SimpleMatrix<float>* diff_m = m_update->minus(m);
-		diff_norm = diff_m->norm(2.0,2.0);
-		delete m;
-		delete diff_m;
-		m = m_update;
-		m_update = nullptr;
+	// TODO: Add loops TODO: make sure self-hits are found and have the same unit as the off diagonal elements (bit score or other measure used) before calling this routine, then only check that diagonal elements exist
+	// for(uint32_t idiag = 0; idiag<m->get_nrows(); idiag++){
+	// 	float e = m->get_elm(idiag, idiag);
+	// 	if( abs(e) < 1e-13 ){
+	// 		//cout << "WARNING: did not find a self-hit for "<< idiag << endl;
+	// 		m->set_elm(idiag, idiag, 1.0);
+	// 	}
+	// }
+	//*m  = get_gamma(m,1);
+	while( iteration < 100 && diff_norm > 1e-6*m->rows() ){
+		Eigen::SparseMatrix<float> msquared = ((*m) * (*m)).pruned(1.0, std::numeric_limits<float>::epsilon());
+		Eigen::SparseMatrix<float> m_update = get_gamma(&msquared, 2);
+		diff_norm = (*m - m_update).norm();
+		*m = m_update.pruned(1.0, std::numeric_limits<float>::epsilon());
 		iteration++;
 	}
-	cout<< "Markov Process converged after " << iteration <<" iterations " << diff_norm << endl;
+	//cout<< "Markov Process converged after " << iteration <<" iterations " << diff_norm << endl;
 	return get_list(m);
 }
 
 void run_markov_clustering(DatabaseFile& db){
 	// testing
-	// SparseSimpleMatrix<float>* tmp = new SparseSimpleMatrixImpl<float>(12, 12);
-	// tmp->set_elm(0, 0, 0.2f);
-	// tmp->set_elm(0, 1, 0.25f);
-	// tmp->set_elm(0, 5, 0.333f);
-	// tmp->set_elm(0, 6, 0.25f);
-	// tmp->set_elm(0, 9, 0.25f);
-	// tmp->set_elm(1, 0, 0.20f);
-	// tmp->set_elm(1, 1, 0.25f);
-	// tmp->set_elm(1, 2, 0.25f);
-	// tmp->set_elm(1, 4, 0.20f);
-	// tmp->set_elm(2, 1, 0.25f);
-	// tmp->set_elm(2, 2, 0.25f);
-	// tmp->set_elm(2, 3, 0.20f);
-	// tmp->set_elm(2, 4, 0.20f);
-	// tmp->set_elm(3, 2, 0.25f);
-	// tmp->set_elm(3, 3, 0.20f);
-	// tmp->set_elm(3, 7, 0.20f);
-	// tmp->set_elm(3, 8, 0.20f);
-	// tmp->set_elm(3, 10, 0.20f);
-	// tmp->set_elm(4, 1, 0.25f);
-	// tmp->set_elm(4, 2, 0.25f);
-	// tmp->set_elm(4, 4, 0.20f);
-	// tmp->set_elm(4, 6, 0.25f);
-	// tmp->set_elm(4, 7, 0.20f);
-	// tmp->set_elm(5, 0, 0.20f);
-	// tmp->set_elm(5, 5, 0.333f);
-	// tmp->set_elm(5, 9, 0.25f);
-	// tmp->set_elm(6, 0, 0.20f);
-	// tmp->set_elm(6, 4, 0.20f);
-	// tmp->set_elm(6, 6, 0.25f);
-	// tmp->set_elm(6, 9, 0.25f);
-	// tmp->set_elm(7, 3, 0.20f);
-	// tmp->set_elm(7, 4, 0.20f);
-	// tmp->set_elm(7, 7, 0.20f);
-	// tmp->set_elm(7, 8, 0.20f);
-	// tmp->set_elm(7, 10, 0.20f);
-	// tmp->set_elm(8, 3, 0.20f);
-	// tmp->set_elm(8, 7, 0.20f);
-	// tmp->set_elm(8, 8, 0.20f);
-	// tmp->set_elm(8, 10, 0.20f);
-	// tmp->set_elm(8, 11, 0.333f);
-	// tmp->set_elm(9, 0, 0.20f);
-	// tmp->set_elm(9, 5, 0.333f);
-	// tmp->set_elm(9, 6, 0.25f);
-	// tmp->set_elm(9, 9, 0.25f);
-	// tmp->set_elm(10, 3, 0.20f);
-	// tmp->set_elm(10, 7, 0.20f);
-	// tmp->set_elm(10, 8, 0.20f);
-	// tmp->set_elm(10, 10, 0.20f);
-	// tmp->set_elm(10, 11, 0.333f);
-	// tmp->set_elm(11, 8, 0.20f);
-	// tmp->set_elm(11, 10, 0.20f);
-	// tmp->set_elm(11, 11, 0.333f);
-	// auto cr = markov_process(tmp);
+	// vector<Eigen::Triplet<float>> data;
+	// data.emplace_back(0, 0, 0.2f);
+	// data.emplace_back(0, 1, 0.25f);
+	// data.emplace_back(0, 5, 0.333f);
+	// data.emplace_back(0, 6, 0.25f);
+	// data.emplace_back(0, 9, 0.25f);
+	// data.emplace_back(1, 0, 0.20f);
+	// data.emplace_back(1, 1, 0.25f);
+	// data.emplace_back(1, 2, 0.25f);
+	// data.emplace_back(1, 4, 0.20f);
+	// data.emplace_back(2, 1, 0.25f);
+	// data.emplace_back(2, 2, 0.25f);
+	// data.emplace_back(2, 3, 0.20f);
+	// data.emplace_back(2, 4, 0.20f);
+	// data.emplace_back(3, 2, 0.25f);
+	// data.emplace_back(3, 3, 0.20f);
+	// data.emplace_back(3, 7, 0.20f);
+	// data.emplace_back(3, 8, 0.20f);
+	// data.emplace_back(3, 10, 0.20f);
+	// data.emplace_back(4, 1, 0.25f);
+	// data.emplace_back(4, 2, 0.25f);
+	// data.emplace_back(4, 4, 0.20f);
+	// data.emplace_back(4, 6, 0.25f);
+	// data.emplace_back(4, 7, 0.20f);
+	// data.emplace_back(5, 0, 0.20f);
+	// data.emplace_back(5, 5, 0.333f);
+	// data.emplace_back(5, 9, 0.25f);
+	// data.emplace_back(6, 0, 0.20f);
+	// data.emplace_back(6, 4, 0.20f);
+	// data.emplace_back(6, 6, 0.25f);
+	// data.emplace_back(6, 9, 0.25f);
+	// data.emplace_back(7, 3, 0.20f);
+	// data.emplace_back(7, 4, 0.20f);
+	// data.emplace_back(7, 7, 0.20f);
+	// data.emplace_back(7, 8, 0.20f);
+	// data.emplace_back(7, 10, 0.20f);
+	// data.emplace_back(8, 3, 0.20f);
+	// data.emplace_back(8, 7, 0.20f);
+	// data.emplace_back(8, 8, 0.20f);
+	// data.emplace_back(8, 10, 0.20f);
+	// data.emplace_back(8, 11, 0.333f);
+	// data.emplace_back(9, 0, 0.20f);
+	// data.emplace_back(9, 5, 0.333f);
+	// data.emplace_back(9, 6, 0.25f);
+	// data.emplace_back(9, 9, 0.25f);
+	// data.emplace_back(10, 3, 0.20f);
+	// data.emplace_back(10, 7, 0.20f);
+	// data.emplace_back(10, 8, 0.20f);
+	// data.emplace_back(10, 10, 0.20f);
+	// data.emplace_back(10, 11, 0.333f);
+	// data.emplace_back(11, 8, 0.20f);
+	// data.emplace_back(11, 10, 0.20f);
+	// data.emplace_back(11, 11, 0.333f);
+	// Eigen::SparseMatrix<float> tmp(12,12);
+	// tmp.setFromTriplets(data.begin(), data.end());
+	// auto cr = markov_process(&tmp);
 	// cout << "Found "<<cr.size()<<" clusters"<<endl;
 	// for(auto& set: cr){
 	// 	cout<< "set :";
@@ -436,16 +445,13 @@ void run_markov_clustering(DatabaseFile& db){
 	// 	}
 	// 	cout<<endl;
 	// }
-	// delete tmp;
 	// return;
-
 
 	const size_t seq_count = db.ref_header.sequences;
 	statistics.reset();
 	config.command = Config::blastp;
 	config.no_self_hits = true;
-	//config.output_format = { "6", "qnum", "snum" };
-	config.output_format = { "6", "qnum", "snum", "qcovhsp", "scovhsp", "bitscore" };
+	config.output_format = { "6", "qnum", "snum", "qcovhsp", "scovhsp", "bitscore", "pident" };
 	config.query_cover = 80;
 	config.subject_cover = 80;
 	config.algo = 0;
@@ -456,15 +462,65 @@ void run_markov_clustering(DatabaseFile& db){
 	Workflow::Search::Options opt;
 	opt.db = &db;
 	opt.self = true;
-	SparseMatrixStream<float> ms(db.ref_header.sequences, false);
+	SparseMatrixStream<float> ms(db.ref_header.sequences);
 	opt.consumer = &ms;
 	opt.db_filter = nullptr;
 	Workflow::Search::run(opt);
 
-	SparseSimpleMatrix<float>* m = ms.getMatrix();
+	auto componentInfo = ms.getComponents();
+	vector<vector<uint32_t>> indices = get<0>(componentInfo);
+	vector<Eigen::SparseMatrix<float>> components = get<1>(componentInfo);
+	uint32_t nComponents = count_if(indices.begin(), indices.end(), [](vector<uint32_t> v){ return v.size() > 0;});
+	uint32_t nComponentsLt1 = count_if(indices.begin(), indices.end(), [](vector<uint32_t> v){ return v.size() > 1;});
 
-	auto clusterResult = markov_process(m);
-	cout << "Found "<<clusterResult.size()<<" clusters"<<endl;
+	cout << "DIAMOND done" << endl;
+	cout << "************" << endl;
+	cout << "Found " << nComponentsLt1 <<" ("<<nComponents<< " incl. singletons) disconnected components" << endl;
+
+	vector<unordered_set<uint32_t>> clustering_result;
+	float max_sparsity = 0.0f;
+	float min_sparsity = 1.0f;
+	bool full = false;
+	if( full ){
+		// TODO: According to the SIAM publication this is not valid, just for debugging
+		Eigen::SparseMatrix<float> m = ms.getMatrix();
+		for(unordered_set<uint32_t> subset : markov_process(&m)){
+			clustering_result.emplace_back(subset);
+		}
+	}
+	else {
+		// TODO: check if using dense matrices for non-sparse components improves performance
+		for(uint32_t iComponent = 0; iComponent<indices.size(); iComponent++){
+			vector<uint32_t> order = indices[iComponent];
+			if(order.size() > 1){
+				Eigen::SparseMatrix<float> m = components[iComponent];
+				float sparsity = 1.0-(1.0 * m.nonZeros()) / (m.rows()*m.cols());
+				max_sparsity = max(max_sparsity, sparsity);
+				min_sparsity = min(min_sparsity, sparsity);
+				// map back to original ids
+				for(unordered_set<uint32_t> subset : markov_process(&m)){
+					unordered_set<uint32_t> s;
+					for(uint32_t el : subset){
+						s.emplace(order[el]);
+					}
+					clustering_result.emplace_back(s);
+				}
+			}
+			else if (order.size() == 1){
+				clustering_result.emplace_back(order.begin(), order.end());
+			}
+		}
+	}
+	uint32_t nClusters = clustering_result.size();
+	uint32_t nClustersLt1 = count_if(clustering_result.begin(), clustering_result.end(), [](unordered_set<uint32_t> v){ return v.size() > 1;});
+	cout << "Found "<<nClustersLt1<< " ("<< nClusters<<" incl. singletons) clusters with min sparsity "<<min_sparsity<< " and max. sparsity " << max_sparsity << endl;
+	// for(auto& set: clustering_result){
+	// 	cout<< "set :";
+	// 	for(auto item : set){
+	// 		cout<< " " << item;
+	// 	}
+	// 	cout<<endl;
+	// }
 }
 
 void run() {

@@ -217,7 +217,7 @@ struct Config
 	enum { double_indexed = 0, query_indexed = 1, subject_indexed = 2 };
 	int algo;
 
-	enum { multi_step = 0, transitive_closure = 1};
+	enum { multi_step = 0, transitive_closure = 1, markov_clustering = 2};
 	int cluster_algo;
 
 	enum { query_parallel = 0, target_parallel = 1 };
