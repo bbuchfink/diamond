@@ -79,7 +79,8 @@ Config::Config(int argc, const char **argv, bool check_io)
 		.add_command("test", "")
 		.add_command("reverse", "")
 		.add_command("compute-medoids", "")
-		.add_command("mutate", "");
+		.add_command("mutate", "")
+		.add_command("merge-tsv", "");
 
 	Options_group general("General options");
 	general.add()

@@ -56,7 +56,7 @@ struct Tokenizer {
 	}
 
 	Tokenizer& operator>>(long int &x) {
-		if (p == nullptr || *p == '\0')
+		if (!good())
 			throw TokenizerException();
 		char *end;
 		x = strtol(p, &end, 10);
@@ -80,7 +80,7 @@ struct Tokenizer {
 	}
 
 	Tokenizer& operator>>(double &x) {
-		if (p == nullptr || *p == '\0')
+		if (!good())
 			throw TokenizerException("No token left");
 		char *end;
 		x = strtod(p, &end);
@@ -97,7 +97,7 @@ struct Tokenizer {
 	}
 
 	Tokenizer& operator>>(float &x) {
-		if (p == nullptr || *p == '\0')
+		if (!good())
 			throw TokenizerException("No token left");
 		char *end;
 		x = strtof(p, &end);
@@ -111,6 +111,15 @@ struct Tokenizer {
 			p = nullptr;
 		}
 		return *this;
+	}
+
+	bool good() const {
+		return p != nullptr && *p != '\0';
+	}
+
+	void skip_to(char c) {
+		const char* q = strchr(p, c);
+		p = q ? q + 1 : nullptr;
 	}
 
 private:
