@@ -83,36 +83,6 @@ static vector<int> fam_count;
 static std::mutex mtx, mtx_out;
 static std::condition_variable cdv;
 
-typedef tuple<char, int, int, int> Family;
-
-static map<Family, int> fam2idx;
-
-struct FamilyMapping : public unordered_multimap<string, int> {
-
-	FamilyMapping(const string &file_name) {
-
-		TextInputFile mapping_file(file_name);
-		string acc, domain_class;
-		int fold, superfam, fam;
-
-		while (mapping_file.getline(), !mapping_file.eof()) {
-			Util::String::Tokenizer(mapping_file.line, "\t") >> Util::String::Skip() >> acc >> Util::String::Skip() >> domain_class >> fold >> superfam >> fam;
-			if (acc.empty() || domain_class.empty() || domain_class.length() > 1)
-				throw std::runtime_error("Format error.");
-
-			auto i = fam2idx.insert({ Family(domain_class[0], fold, superfam, fam), (int)fam2idx.size() });
-			if (config.cut_bar) {
-				size_t j = acc.find_last_of('|');
-				if (j != string::npos)
-					acc = acc.substr(j + 1);
-			}
-			insert({ acc, i.first->second });
-			//cout << acc << '\t' << domain_class << '\t' << fold << '\t' << superfam << '\t' << fam << endl;
-		}
-	}
-
-};
-
 struct QueryStats {
 	QueryStats(const string &query, int families, const unordered_multimap<string, int>& acc2fam):
 		query(query),
@@ -209,13 +179,13 @@ static void worker() {
 
 void roc() {
 	task_timer timer("Loading family mapping");
-	acc2fam = std::move(FamilyMapping(config.family_map));
+	acc2fam = FamilyMapping(config.family_map);
 	timer.finish();
 	message_stream << "#Mappings: " << acc2fam.size() << endl;
 	message_stream << "#Families: " << fam2idx.size() << endl;
 
 	timer.go("Loading query family mapping");
-	acc2fam_query = std::move(FamilyMapping(config.family_map_query));
+	acc2fam_query = FamilyMapping(config.family_map_query);
 	timer.finish();
 	message_stream << "#Mappings: " << acc2fam_query.size() << endl;
 	message_stream << "#Families: " << fam2idx.size() << endl;
