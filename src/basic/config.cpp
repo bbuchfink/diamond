@@ -145,7 +145,7 @@ Config::Config(int argc, const char **argv, bool check_io)
 
 	Options_group cluster("Cluster options");
 	cluster.add()
-		("calgo", 0, "Clustering algorithm (0=multi-step/1=transitive-closure)", cluster_algo, -1);
+		("cluster-algo", 0, "Clustering algorithm (\"multi-step\", \"mcl\")", cluster_algo);
 
 	Options_group aligner("Aligner options");
 	aligner.add()

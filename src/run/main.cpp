@@ -116,8 +116,15 @@ int main(int ac, const char* av[])
 			pairwise();
 			break;
 		case Config::cluster:
-			Workflow::Cluster::run();
-			break;
+			if(config.cluster_algo == "multi-step"){
+				Workflow::Cluster::MultiStep::run();
+			}
+			else if(config.cluster_algo == "mcl"){
+				Workflow::Cluster::MCL::run();
+			}
+			else{
+				throw std::runtime_error("The --cluster-algo option currently only accepts \"multi-step\" and \"mcl\"");
+			}
 		case Config::translate:
 			translate();
 			break;

@@ -151,7 +151,6 @@ set(OBJECTS
   src/data/seed_array.cpp
   src/output/paf_format.cpp
   src/util/system/system.cpp
-  src/run/cluster.cpp
   src/util/algo/greedy_vortex_cover.cpp
   src/util/sequence/sequence.cpp
   src/tools/tsv_record.cpp
@@ -172,6 +171,8 @@ set(OBJECTS
   src/align/gapped.cpp
   src/align/culling.cpp
   src/cluster/medoid.cpp
+  src/cluster/multi_step_cluster.cpp
+  src/cluster/mcl.cpp
   src/align/output.cpp
   src/tools/roc.cpp
   src/test/data.cpp

@@ -31,9 +31,12 @@ void run(const Options &options);
 }
 
 namespace Cluster {
-
+namespace MultiStep {
 void run();
-
+}
+namespace MCL {
+void run();
+}
 }
 
 }
