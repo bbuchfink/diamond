@@ -1,5 +1,7 @@
 [0.9.32]
 - Fixed a bug that would generate an incorrect count of positive scoring letters in all output formats.
+- Fixed a compiler error on macOS.
+- Fixed an `illegal instruction` error on macOS.
 
 [0.9.31]
 - Improved performance.

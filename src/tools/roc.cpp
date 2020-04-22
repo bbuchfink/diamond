@@ -23,6 +23,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <tuple>
 #include <vector>
 #include <math.h>
+#include <mutex>
+#include <condition_variable>
+#include <queue>
+#include <thread>
 #include "../util/io/text_input_file.h"
 #include "../basic/config.h"
 #include "../util/string/tokenizer.h"
@@ -37,12 +41,16 @@ using std::tuple;
 using std::map;
 using std::unordered_multimap;
 using std::vector;
+using std::queue;
+using std::thread;
 
 typedef tuple<char, int, int, int> Family;
 
 static map<Family, int> fam2idx;
 
 struct FamilyMapping : public unordered_multimap<string, int> {
+
+	FamilyMapping() {}
 
 	FamilyMapping(const string &file_name) {
 
@@ -67,6 +75,13 @@ struct FamilyMapping : public unordered_multimap<string, int> {
 	}
 
 };
+
+static FamilyMapping acc2fam;
+static FamilyMapping acc2fam_query;
+static int families;
+static vector<int> fam_count;
+static std::mutex mtx, mtx_out;
+static std::condition_variable cdv;
 
 struct QueryStats {
 	QueryStats(const string &query, int families, const unordered_multimap<string, int>& acc2fam):
@@ -107,8 +122,7 @@ struct QueryStats {
 	double auc1(const vector<int> &fam_count, const unordered_multimap<string, int> &acc2fam) const {
 		auto i = acc2fam.equal_range(query);
 		if (i.first == i.second)
-			return -1.0;
-			//throw std::runtime_error("Accession not mapped.");
+			throw std::runtime_error("Query accession not mapped.");
 		double r = 0.0, n = 0.0;
 		for (auto j = i.first; j != i.second; ++j) {
 			if (fam_count[j->second] == 0)
@@ -124,60 +138,107 @@ struct QueryStats {
 	bool have_rev_hit;
 };
 
+double query_roc(const string& buf) {
+	string acc;
+	Util::String::Tokenizer(buf, "\t") >> acc;
+	QueryStats stats(acc, families, acc2fam_query);
+	Util::String::Tokenizer tok(buf, "\t");
+	while(tok.good() && !stats.have_rev_hit) {
+		tok >> Util::String::Skip() >> acc;
+		/*if (r.qseqid.empty() || r.sseqid.empty() || std::isnan(r.evalue) || !std::isfinite(r.evalue) || r.evalue < 0.0)
+			throw std::runtime_error("Format error.");*/
+		if (stats.add(acc, acc2fam) && config.output_hits)
+			cout << acc << endl;
+		tok.skip_to('\n');
+	}
+	const double a = stats.auc1(fam_count, acc2fam_query);
+	if (!config.output_hits) {
+		std::lock_guard<std::mutex> lock(mtx_out);
+		cout << stats.query << '\t' << a << endl;
+	}
+	return a;
+}
+
+static queue<string> buffers;
+static bool finished = false;
+
+static void worker() {
+	string buf;
+	while (true) {
+		{
+			std::unique_lock<std::mutex> lock(mtx);
+			while (buffers.empty() && !finished) cdv.wait(lock);
+			if (buffers.empty() && finished)
+				return;
+			buf = std::move(buffers.front());
+			buffers.pop();
+		}
+		query_roc(buf);
+	}
+}
+
 void roc() {
 	task_timer timer("Loading family mapping");
-	FamilyMapping acc2fam(config.family_map);
+	acc2fam = FamilyMapping(config.family_map);
 	timer.finish();
 	message_stream << "#Mappings: " << acc2fam.size() << endl;
 	message_stream << "#Families: " << fam2idx.size() << endl;
 
 	timer.go("Loading query family mapping");
-	FamilyMapping acc2fam_query(config.family_map_query);
+	acc2fam_query = FamilyMapping(config.family_map_query);
 	timer.finish();
 	message_stream << "#Mappings: " << acc2fam_query.size() << endl;
 	message_stream << "#Families: " << fam2idx.size() << endl;
 
-	const int families = (int)fam2idx.size();
-	vector<int> fam_count(families);
+	families = (int)fam2idx.size();
+	fam_count.insert(fam_count.begin(), families, 0);
 	for (auto i = acc2fam.begin(); i != acc2fam.end(); ++i)
 		++fam_count[i->second];
 
+	vector<thread> threads;
+	for (unsigned i = 0; i < config.threads_; ++i)
+		threads.emplace_back(worker);
+
 	timer.go("Processing alignments");
 	TextInputFile in(config.query_file);
-	string qseqid, sseqid;
-	size_t n = 0, queries = 0;
-	double auc1 = 0.0;
-	QueryStats stats("", families, acc2fam_query);
+	string query, acc;
+	size_t n = 0, queries = 0, buf_size = 0;
+	string buf;
+	
 	while (in.getline(), !in.eof()) {
 		if (in.line.empty())
 			break;
-		Util::String::Tokenizer(in.line, "\t") >> qseqid >> sseqid;
-		if (qseqid != stats.query) {
-			if (!stats.query.empty()) {
-				const double a = stats.auc1(fam_count, acc2fam_query);
-				if (a != -1.0) {
-					auc1 += a;
-					++queries;
-					if(!config.output_hits) cout << stats.query << '\t' << a << endl;
-				}
+		Util::String::Tokenizer(in.line, "\t") >> acc;
+		if (acc != query) {
+			if (!query.empty()) {
+				std::lock_guard<std::mutex> lock(mtx);
+				buf_size = std::max(buf_size, buf.size());
+				buffers.push(std::move(buf));
+				buf = string();
+				buf.reserve(buf_size);
+				cdv.notify_one();
 			}
-			stats = QueryStats(qseqid, families, acc2fam_query);
+			query = acc;
+			++queries;
+			if (queries % 10000 == 0)
+				message_stream << "#Queries = " << queries << endl;
 		}
-		/*if (r.qseqid.empty() || r.sseqid.empty() || std::isnan(r.evalue) || !std::isfinite(r.evalue) || r.evalue < 0.0)
-			throw std::runtime_error("Format error.");*/
-		if (stats.add(sseqid, acc2fam) && config.output_hits)
-			cout << in.line << endl;
+		buf.append(in.line);
+		buf.append("\n");
 		++n;
 	}
-	const double a = stats.auc1(fam_count, acc2fam_query);
-	if (a != -1.0) {
-		auc1 += a;
-		++queries;
-		if(!config.output_hits) cout << stats.query << '\t' << a << endl;
+	{
+		std::lock_guard<std::mutex> lock(mtx);
+		buffers.push(std::move(buf));
+		finished = true;
+		cdv.notify_all();
 	}
+
+	for (thread& t : threads)
+		t.join();
+	
 	in.close();
 	timer.finish();
 	message_stream << "#Records: " << n << endl;
 	message_stream << "#Queries: " << queries << endl;
-	message_stream << "AUC1: " << auc1 / queries << endl;
 }
