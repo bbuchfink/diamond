@@ -217,7 +217,7 @@ static inline score_vector<int16_t> load_sv(const uint16_t *x) {
 
 
 template<>
-static inline void store_sv<int16_t, int16_t>(const score_vector<int16_t>& sv, int16_t* dst)
+inline void store_sv<int16_t, int16_t>(const score_vector<int16_t>& sv, int16_t* dst)
 {
 	_mm_storeu_si128((__m128i*)dst, sv.data_);
 }
