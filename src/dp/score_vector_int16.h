@@ -27,6 +27,12 @@ template<>
 struct score_vector<int16_t>
 {
 
+#ifdef __AVX2__
+	typedef __m256i Register;
+#else
+	typedef __m128i Register;
+#endif
+
 	score_vector() :
 		data_(_mm_set1_epi16(SHRT_MIN))
 	{}
@@ -74,9 +80,10 @@ struct score_vector<int16_t>
 		data_ = _mm_set_epi64x(c, b);
 	}
 
-	score_vector(unsigned a, const __m128i &seq, const score_vector &bias)
+	score_vector(unsigned a, Register seq, const score_vector &bias)
 	{
-#ifdef __SSSE3__
+#ifdef __AVX2__
+#elif defined(__SSSE3__)
 		const __m128i *row = reinterpret_cast<const __m128i*>(&score_matrix.matrix8u()[a << 5]);
 
 		__m128i high_mask = _mm_slli_epi16(_mm_and_si128(seq, _mm_set1_epi8('\x10')), 3);
@@ -171,6 +178,11 @@ struct ScoreTraits<score_vector<int16_t>>
 	enum { CHANNELS = 8, BITS = 16 };
 	typedef int16_t Score;
 	typedef uint16_t Unsigned;
+#ifdef __AVX2__
+	typedef __m256i Register;
+#else
+	typedef __m128i Register;
+#endif
 	static score_vector<int16_t> zero()
 	{
 		return score_vector<int16_t>();
@@ -202,6 +214,15 @@ static inline score_vector<int16_t> load_sv(const int16_t *x) {
 static inline score_vector<int16_t> load_sv(const uint16_t *x) {
 	return score_vector<int16_t>(x);
 }
+
+
+template<>
+static inline void store_sv<int16_t, int16_t>(const score_vector<int16_t>& sv, int16_t* dst)
+{
+	_mm_storeu_si128((__m128i*)dst, sv.data_);
+}
+
+
 
 #endif
 

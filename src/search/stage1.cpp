@@ -23,6 +23,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "finger_print.h"
 #include "../data/reference.h"
 #include "../data/queries.h"
+#include "../util/memory/alignment.h"
 
 using std::vector;
 
@@ -31,31 +32,35 @@ namespace DISPATCH_ARCH {
 
 const unsigned tile_size[] = { 1024, 128 };
 
+constexpr ptrdiff_t INNER_LOOP_QUERIES = 6;
+typedef vector<Finger_print, AlignmentAllocator<Finger_print, 32>> Container;
+typedef Container::const_iterator Ptr;
+
 struct Range_ref
 {
-	Range_ref(vector<Finger_print>::const_iterator q_begin, vector<Finger_print>::const_iterator s_begin) :
+	Range_ref(Ptr q_begin, Ptr s_begin) :
 		q_begin(q_begin),
 		s_begin(s_begin)
 	{}
-	const vector<Finger_print>::const_iterator q_begin, s_begin;
+	const Ptr q_begin, s_begin;
 };
 
 #define FAST_COMPARE2(q, s, stats, q_ref, s_ref, q_offset, s_offset, hits) if (q.match(s) >= config.min_identities) stats.inc(Statistics::TENTATIVE_MATCHES1)
 #define FAST_COMPARE(q, s, stats, q_ref, s_ref, q_offset, s_offset, hits) if (q.match(s) >= config.min_identities) hits.push_back(Stage1_hit(q_ref, q_offset, s_ref, s_offset))
 
-void query_register_search(vector<Finger_print>::const_iterator q,
-	vector<Finger_print>::const_iterator s,
-	vector<Finger_print>::const_iterator s_end,
+void query_register_search(Ptr q,
+	Ptr s,
+	Ptr s_end,
 	const Range_ref &ref,
 	vector<Stage1_hit> &hits,
 	Statistics &stats)
 {
 	const unsigned q_ref = unsigned(q - ref.q_begin);
 	unsigned s_ref = unsigned(s - ref.s_begin);
-	Finger_print q1 = *(q++), q2 = *(q++), q3 = *(q++), q4 = *(q++), q5 = *(q++), q6 = *q;
-	const vector<Finger_print>::const_iterator end2 = s_end - (s_end - s) % 4;
+	alignas(32) Finger_print q1 = *(q++), q2 = *(q++), q3 = *(q++), q4 = *(q++), q5 = *(q++), q6 = *q;
+	const Ptr end2 = s_end - (s_end - s) % 4;
 	for (; s < end2; ) {
-		Finger_print s1 = *(s++), s2 = *(s++), s3 = *(s++), s4 = *(s++);
+		alignas(32) Finger_print s1 = *(s++), s2 = *(s++), s3 = *(s++), s4 = *(s++);
 		stats.inc(Statistics::SEED_HITS, 6 * 4);
 		FAST_COMPARE(q1, s1, stats, q_ref, s_ref, 0, 0, hits);
 		FAST_COMPARE(q2, s1, stats, q_ref, s_ref, 1, 0, hits);
@@ -95,10 +100,10 @@ void query_register_search(vector<Finger_print>::const_iterator q,
 	}
 }
 
-void inner_search(vector<Finger_print>::const_iterator q,
-	vector<Finger_print>::const_iterator q_end,
-	vector<Finger_print>::const_iterator s,
-	vector<Finger_print>::const_iterator s_end,
+void inner_search(Ptr q,
+	Ptr q_end,
+	Ptr s,
+	Ptr s_end,
 	const Range_ref &ref,
 	vector<Stage1_hit> &hits,
 	Statistics &stats)
@@ -106,7 +111,7 @@ void inner_search(vector<Finger_print>::const_iterator q,
 	unsigned q_ref = unsigned(q - ref.q_begin);
 	for (; q < q_end; ++q) {
 		unsigned s_ref = unsigned(s - ref.s_begin);
-		for (vector<Finger_print>::const_iterator s2 = s; s2 < s_end; ++s2) {
+		for (Ptr s2 = s; s2 < s_end; ++s2) {
 			stats.inc(Statistics::SEED_HITS);
 			FAST_COMPARE((*q), *s2, stats, q_ref, s_ref, 0, 0, hits);
 			++s_ref;
@@ -115,10 +120,10 @@ void inner_search(vector<Finger_print>::const_iterator q,
 	}
 }
 
-void tiled_search(vector<Finger_print>::const_iterator q,
-	vector<Finger_print>::const_iterator q_end,
-	vector<Finger_print>::const_iterator s,
-	vector<Finger_print>::const_iterator s_end,
+void tiled_search(Ptr q,
+	Ptr q_end,
+	Ptr s,
+	Ptr s_end,
 	const Range_ref &ref,
 	unsigned level,
 	std::vector<Stage1_hit> &hits,
@@ -128,19 +133,19 @@ void tiled_search(vector<Finger_print>::const_iterator q,
 	case 0:
 	case 1:
 		for (; q < q_end; q += std::min(q_end - q, (ptrdiff_t)tile_size[level]))
-			for (vector<Finger_print>::const_iterator s2 = s; s2 < s_end; s2 += std::min(s_end - s2, (ptrdiff_t)tile_size[level]))
+			for (Ptr s2 = s; s2 < s_end; s2 += std::min(s_end - s2, (ptrdiff_t)tile_size[level]))
 				tiled_search(q, q + std::min(q_end - q, (ptrdiff_t)tile_size[level]), s2, s2 + std::min(s_end - s2, (ptrdiff_t)tile_size[level]), ref, level + 1, hits, stats);
 		break;
 	case 2:
-		for (; q < q_end; q += std::min(q_end - q, (ptrdiff_t)6))
-			if (q_end - q < 6)
+		for (; q < q_end; q += std::min(q_end - q, (ptrdiff_t)INNER_LOOP_QUERIES))
+			if (q_end - q < INNER_LOOP_QUERIES)
 				inner_search(q, q_end, s, s_end, ref, hits, stats);
 			else
 				query_register_search(q, s, s_end, ref, hits, stats);
 	}
 }
 
-void load_fps(const Packed_loc *p, size_t n, vector<Finger_print> &v, const Sequence_set &seqs)
+void load_fps(const Packed_loc *p, size_t n, Container &v, const Sequence_set &seqs)
 {
 	v.clear();
 	v.reserve(n);
@@ -151,7 +156,7 @@ void load_fps(const Packed_loc *p, size_t n, vector<Finger_print> &v, const Sequ
 
 void stage1(const Packed_loc *q, size_t nq, const Packed_loc *s, size_t ns, Statistics &stats, Trace_pt_buffer::Iterator &out, const unsigned sid, const Context &context)
 {
-	thread_local vector<Finger_print> vq, vs;
+	thread_local Container vq, vs;
 	thread_local vector<Stage1_hit> hits;
 	if (config.simple_freq && !SeedComplexity::complex(query_seqs::get().data(q[0]), shapes[sid])) {
 		stats.inc(Statistics::LOW_COMPLEXITY_SEEDS);

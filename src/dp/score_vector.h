@@ -293,7 +293,11 @@ struct ScoreTraits<score_vector<uint8_t>>
 template<typename _t, typename _p>
 static inline void store_sv(const score_vector<_t> &sv, _p *dst)
 {
+#ifdef __AVX2__
+	_mm256_storeu_si256((__m256i*)dst, sv.data_);
+#else
 	_mm_storeu_si128((__m128i*)dst, sv.data_);
+#endif
 }
 
 #endif

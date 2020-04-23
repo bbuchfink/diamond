@@ -438,7 +438,7 @@ list<Hsp> banded_3frame_swipe(
 		_sv vgap0, vgap1, vgap2, hgap, col_best;
 		vgap0 = vgap1 = vgap2 = col_best = ScoreTraits<_sv>::zero();
 
-		profile.set(targets.get(Score()));
+		profile.set(targets.get());
 		for (int i = i0_; i <= i1_; ++i) {
 			hgap = it.hgap();
 			_sv next = cell_update<_sv>(it.sm3, it.sm4, it.sm2, profile.get(q[0][i]), extend_penalty, open_penalty, frameshift_penalty, hgap, vgap0, col_best);

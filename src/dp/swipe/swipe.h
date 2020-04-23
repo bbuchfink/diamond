@@ -143,8 +143,9 @@ static inline _sv cell_update(const _sv &diagonal_cell,
 template<typename _sv>
 struct SwipeProfile
 {
+
 #ifdef __SSSE3__
-	inline void set(const __m128i &seq)
+	inline void set(typename ScoreTraits<_sv>::Register seq)
 	{
 		assert(sizeof(data_) / sizeof(_sv) >= value_traits.alphabet_size);
 		_sv bias(score_matrix.bias());
@@ -171,7 +172,7 @@ struct SwipeProfile
 template<>
 struct SwipeProfile<score_vector<int8_t>>
 {
-	inline void set(const __m128i &seq)
+	inline void set(ScoreTraits<score_vector<int8_t>>::Register seq)
 	{
 		assert(sizeof(data_) / sizeof(score_vector<int8_t>) >= value_traits.alphabet_size);
 		for (unsigned j = 0; j < AMINO_ACID_COUNT; ++j)
@@ -189,6 +190,14 @@ struct SwipeProfile<score_vector<int8_t>>
 template<>
 struct SwipeProfile<int32_t>
 {
+#ifdef __AVX2__
+	void set(const __m256i& seq)
+	{
+		int16_t s[32];
+		_mm256_storeu_si256((__m256i*)s, seq);
+		row = score_matrix.row((char)s[0]);
+	}
+#endif
 #ifdef __SSE2__
 	void set(const __m128i& seq)
 	{

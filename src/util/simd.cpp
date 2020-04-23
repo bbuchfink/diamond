@@ -56,6 +56,11 @@ Arch init_arch() {
 		flags |= POPCNT;
 	if ((info[2] & (1 << 19)) != 0)
 		flags |= SSE4_1;
+	if (nids >= 7) {
+		cpuid(info, 7);
+		if ((info[1] & (1 << 5)) != 0)
+			flags |= AVX2;
+	}
 #endif
 
 #ifdef __SSSE3__
@@ -70,7 +75,13 @@ Arch init_arch() {
 	if ((flags & SSE4_1) == 0)
 		throw std::runtime_error("CPU does not support SSE4.1. Please compile the software from source.");
 #endif
+#ifdef __AVX2__
+	if ((flags & AVX2) == 0)
+		throw std::runtime_error("CPU does not support AVX2. Please compile the software from source.");
+#endif
 
+	if ((flags & SSSE3) && (flags & POPCNT) && (flags & SSE4_1) && (flags & AVX2))
+		return Arch::AVX2;
 	if ((flags & SSSE3) && (flags & POPCNT) && (flags & SSE4_1))
 		return Arch::SSE4_1;
 	else
@@ -90,6 +101,8 @@ std::string features() {
 		r.push_back("popcnt");
 	if (flags & SSE4_1)
 		r.push_back("sse4.1");
+	if (flags & AVX2)
+		r.push_back("avx2");
 	return r.empty() ? "None" : join(" ", r);
 }
 

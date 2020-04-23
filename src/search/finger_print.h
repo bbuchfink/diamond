@@ -21,6 +21,52 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "../util/simd.h"
 
+#ifdef __AVX2__
+
+struct Byte_finger_print_32
+{
+	Byte_finger_print_32(const Letter* q) :
+#ifdef SEQ_MASK
+		r1(letter_mask(_mm256_loadu_si256((__m256i const*)(q - 16))))
+#else
+		r1(_mm256_loadu_si256((__m256i const*)(q - 16)))
+#endif
+	{}
+	static uint64_t match_block(__m256i x, __m256i y)
+	{
+		return (uint64_t)_mm256_movemask_epi8(_mm256_cmpeq_epi8(x, y));
+	}
+	unsigned match(const Byte_finger_print_32& rhs) const
+	{
+		return popcount64(match_block(r1, rhs.r1));
+	}
+	__m256i r1;
+};
+
+struct Byte_finger_print_64
+{
+	Byte_finger_print_64(const Letter* q) :
+#ifdef SEQ_MASK
+		r1(letter_mask(_mm256_loadu_si256((__m256i const*)(q - 32)))),
+		r2(letter_mask(_mm256_loadu_si256((__m256i const*)q)))
+#else
+		r1(_mm256_loadu_si256((__m256i const*)(q - 32))),
+		r2(_mm256_loadu_si256((__m256i const*)q))
+#endif
+	{}
+	static uint64_t match_block(__m256i x, __m256i y)
+	{
+		return (uint64_t)_mm256_movemask_epi8(_mm256_cmpeq_epi8(x, y));
+	}
+	unsigned match(const Byte_finger_print_64& rhs) const
+	{
+		return popcount64(match_block(r1, rhs.r1) << 32 | match_block(r2, rhs.r2));
+	}
+	__m256i r1, r2;
+};
+
+#endif
+
 #ifdef __SSE2__
 
 struct Byte_finger_print_48
@@ -76,6 +122,10 @@ struct Byte_finger_print_48
 
 #endif
 
+#ifdef __AVX2__
+typedef Byte_finger_print_64 Finger_print;
+#else
 typedef Byte_finger_print_48 Finger_print;
+#endif
 
 #endif

@@ -42,34 +42,6 @@ using std::list;
 
 namespace Benchmark { namespace DISPATCH_ARCH {
 
-static void scan_cols(const LongScoreProfile &qp, sequence s, int i, int j, int j_end)
-{
-#ifdef __SSE4_1__
-	typedef score_vector<int8_t> Sv;
-	const int qlen = (int)qp.length();
-
-	int j2 = std::max(-(i - j + 15), j),
-		i3 = j2 + i - j,
-		j2_end = std::min(qlen - (i - j), j_end);
-	Sv v, max, v1, max1, v2, max2, v3, max3;
-	for (; j2 < j2_end; ++j2, ++i3) {
-		const int8_t *q = (int8_t*)qp.get(s[j2], i3);
-		v = v + score_vector<int8_t>(q);
-		max.max(v);
-		q += 16;
-		v1 = v1 + score_vector<int8_t>(q);
-		max1.max(v1);
-		q += 16;
-		v2 = v2 + score_vector<int8_t>(q);
-		max2.max(v2);
-		q += 16;
-		v3 = v3 + score_vector<int8_t>(q);
-		max3.max(v3);
-	}
-	volatile __m128i x = max.data_, y = max1.data_, z = max2.data_, w = max3.data_;
-#endif
-}
-
 static int xdrop_window(const Letter *query, const Letter *subject) {
 	static const int window = 64;
 	int score(0), st(0), n = 0;
@@ -208,7 +180,7 @@ void swipe_cell_update() {
 		for (size_t i = 0; i < n; ++i) {
 			diagonal_cell = swipe_cell_update(diagonal_cell, scores, nullptr, gap_extension, gap_open, horizontal_gap, vertical_gap, best);
 		}
-		volatile __m128i x = diagonal_cell.data_;
+		volatile auto x = diagonal_cell.data_;
 	}
 	cout << "SWIPE cell update (int8_t):\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * 16) * 1000 << " ps/Cell" << endl;
 #endif
@@ -256,7 +228,7 @@ void diag_scores(const sequence &s1, const sequence &s2) {
 	Bias_correction cbs(s1);
 	LongScoreProfile p(s1, cbs);
 	for (size_t i = 0; i < n; ++i) {
-		scan_cols(p, s2, 0, 0, (int)s2.length());
+		//scan_cols(p, s2, 0, 0, (int)s2.length());
 	}
 	cout << "Diagonal scores:\t\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * s2.length() * 64) * 1000 << " ps/Cell" << endl;
 }

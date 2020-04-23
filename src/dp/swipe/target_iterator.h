@@ -26,9 +26,55 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../dp.h"
 #include "../basic/value.h"
 
+template<typename _t, int _n> struct ElementType {
+	typedef _t Type;
+};
+
+#ifdef __SSE2__
+
+template<> struct ElementType<__m128i, 16> {
+	typedef uint8_t Type;
+};
+
+template<> struct ElementType<__m128i, 8> {
+	typedef uint16_t Type;
+};
+
+template<> struct ElementType<__m128i, 1> {
+	typedef uint16_t Type;
+};
+
+#endif
+
+#ifdef __AVX2__
+
+template<> struct ElementType<__m256i, 32> {
+	typedef uint8_t Type;
+};
+
+template<> struct ElementType<__m256i, 16> {
+	typedef uint16_t Type;
+};
+
+template<> struct ElementType<__m256i, 8> {
+	typedef uint16_t Type;
+};
+
+template<> struct ElementType<__m256i, 1> {
+	typedef uint16_t Type;
+};
+
+#endif
+
 template<int _n>
 struct TargetIterator
 {
+
+#ifdef __AVX2__
+	typedef __m256i SeqVector;
+#elif defined(__SSE2__)
+	typedef __m128i SeqVector;
+#endif
 
 	TargetIterator(vector<DpTarget>::const_iterator subject_begin, vector<DpTarget>::const_iterator subject_end, int i1, int qlen, int *d_begin) :
 		next(0),
@@ -60,9 +106,9 @@ struct TargetIterator
 	}
 
 #ifdef __SSSE3__
-	template<typename _t> __m128i get(const _t&)
+	SeqVector get()
 	{
-		_t s[_n];
+		alignas(32) typename ElementType<SeqVector, _n>::Type s[_n];
 		std::fill(s, s + _n, SUPER_HARD_MASK);
 #ifdef DP_STAT
 		live = 0;
@@ -71,10 +117,14 @@ struct TargetIterator
 			const int channel = active[i];
 			s[channel] = (*this)[channel];
 		}
-		return _mm_loadu_si128((const __m128i*)s);
+#ifdef __AVX2__
+		return _mm256_load_si256((const __m256i*)s);
+#else
+		return _mm_load_si128((const __m128i*)s);
+#endif
 	}
 #else
-	template<typename _t> uint64_t get(const _t&)
+	uint64_t get()
 	{
 		uint64_t dst = 0;
 		for (int i = 0; i < active.size(); ++i) {
@@ -116,6 +166,12 @@ template<int _n>
 struct TargetBuffer
 {
 
+#ifdef __AVX2__
+	typedef __m256i SeqVector;
+#elif defined(__SSE2__)
+	typedef __m128i SeqVector;
+#endif
+
 	TargetBuffer(const sequence *subject_begin, const sequence *subject_end) :
 		next(0),
 		n_targets(int(subject_end - subject_begin)),
@@ -146,20 +202,24 @@ struct TargetBuffer
 
 #ifdef __SSSE3__
 #ifdef DP_STAT
-	template<typename _t> __m128i seq_vector(const _t&)
+	template<typename _t> SeqVector seq_vector()
 #else
-	template<typename _t> __m128i seq_vector(const _t&) const
+	SeqVector seq_vector() const
 #endif	
 	{
-		_t s[_n];
+		alignas(32) typename ElementType<SeqVector, _n>::Type s[_n];
 		for (int i = 0; i < active.size(); ++i) {
 			const int channel = active[i];
 			s[channel] = (*this)[channel];
 		}
-		return _mm_loadu_si128((const __m128i*)s);
+#ifdef __AVX2__
+		return _mm256_load_si256((const __m256i*)s);
+#else
+		return _mm_load_si128((const __m128i*)s);
+#endif
 	}
 #else
-	template<typename _t> uint64_t seq_vector(const _t&)
+	uint64_t seq_vector()
 	{
 		uint64_t dst = 0;
 		for (int i = 0; i < active.size(); ++i) {

@@ -397,7 +397,7 @@ list<Hsp> swipe(
 		if (i0_ - i0 > 0)
 			it.set_zero();
 
-		profile.set(targets.get(Score()));
+		profile.set(targets.get());
 
 #ifdef STRICT_BAND
 		for (int part = 0; part < band_parts.count(); ++part) {
