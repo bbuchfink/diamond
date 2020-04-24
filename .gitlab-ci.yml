@@ -1,14 +1,15 @@
 linux_x86_64:
     image: gitlab-registry.mpcdf.mpg.de/khr/diamond/ubuntu1804
     before_script:
-        - export NCPUS=`grep -c ^processor /proc/cpuinfo`
         - mkdir build
         - cd build
         - cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo ..
+        - export NCPUS=`grep -c ^processor /proc/cpuinfo`
+        - echo "Processors used for build: ${NCPUS}"
         - make -j${NCPUS} diamond
     script:
         - ldd diamond
         #- ./diamond test  # 2 of the IO tests fail currently
     after_script:
-        - make distclean
+        - make clean
 
