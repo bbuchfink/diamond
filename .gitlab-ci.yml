@@ -5,7 +5,7 @@ linux_x86_64:
         - cd build
         - cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo ..
         - export NCPUS=`grep -c ^processor /proc/cpuinfo`
-        - echo "Processors used for build: ${NCPUS}"
+        - echo "NCPUS = ${NCPUS}"
         - make -j${NCPUS} diamond
     script:
         - ldd diamond
