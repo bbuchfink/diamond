@@ -10,6 +10,4 @@ linux_x86_64:
     script:
         - ldd diamond
         #- ./diamond test  # 2 of the IO tests fail currently
-    after_script:
-        - make clean
 
