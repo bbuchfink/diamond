@@ -1,19 +1,30 @@
-linux_cmake:
-    variables:
-        GIT_STRATEGY: clone
-    tags:
-        - centos
+ubuntu1804:
+    image: gitlab-registry.mpcdf.mpg.de/khr/diamond/ubuntu1804
     before_script:
-        - source /opt/gcc/gccvars_8.4.0.sh
-        - export CC=`which gcc`
-        - export CXX=`which g++`
         - mkdir build
         - cd build
         - cmake -DCMAKE_BUILD_TYPE=Debug ..
-        - make -j4 diamond
+        - make -j2 diamond
     script:
         - ldd diamond
-        #- ./diamond test
-    after_script:
-        - /bin/true
+        - ./diamond test
+
+#linux_cmake:
+#    variables:
+#        GIT_STRATEGY: clone
+#    tags:
+#        - centos
+#    before_script:
+#        - source /opt/gcc/gccvars_8.4.0.sh
+#        - export CC=`which gcc`
+#        - export CXX=`which g++`
+#        - mkdir build
+#        - cd build
+#        - cmake -DCMAKE_BUILD_TYPE=Debug ..
+#        - make -j4 diamond
+#    script:
+#        - ldd diamond
+#        #- ./diamond test
+#    after_script:
+#        - /bin/true
 
