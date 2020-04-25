@@ -171,6 +171,7 @@ set(OBJECTS
   src/align/gapped.cpp
   src/align/culling.cpp
   src/cluster/medoid.cpp
+  src/cluster/cluster_registry.cpp
   src/cluster/multi_step_cluster.cpp
   src/cluster/mcl.cpp
   src/align/output.cpp

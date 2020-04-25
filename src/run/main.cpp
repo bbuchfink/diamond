@@ -21,6 +21,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "tools.h"
 #include "../data/reference.h"
 #include "workflow.h"
+#include "../cluster/cluster_registry.h"
 #include "../util/simd.h"
 #ifdef EXTRA
 #include "../extra/compare.h"
@@ -117,15 +118,8 @@ int main(int ac, const char* av[])
 			pairwise();
 			break;
 		case Config::cluster:
-			if(config.cluster_algo == "multi-step"){
-				Workflow::Cluster::MultiStep::run();
-			}
-			else if(config.cluster_algo == "mcl"){
-				Workflow::Cluster::MCL::run();
-			}
-			else{
-				throw std::runtime_error("The --cluster-algo option currently only accepts \"multi-step\" and \"mcl\"");
-			}
+			Workflow::Cluster::ClusterRegistry::get(config.cluster_algo)->run();
+			break;
 		case Config::translate:
 			translate();
 			break;
