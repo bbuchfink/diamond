@@ -8,6 +8,5 @@ linux_x86_64:
         - echo "NCPUS = ${NCPUS}"
         - make -j${NCPUS} diamond
     script:
-        - ldd diamond
-        #- ./diamond test  # 2 of the IO tests fail currently
+        - ./diamond --threads=${NCPUS} --test
 
