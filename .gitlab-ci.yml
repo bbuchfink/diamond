@@ -9,4 +9,5 @@ linux_x86_64:
         - make -j${NCPUS} diamond
     script:
         - ./diamond test --threads ${NCPUS}
+        - valgrind --leak-check=yes ./diamond test --threads ${NCPUS}
 
