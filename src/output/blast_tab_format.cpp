@@ -88,7 +88,8 @@ const char* Blast_tab_format::field_str[] = {
 	"qstrand",		// 57
 	"cigar",		// 58
 	"skingdoms",	// 59
-	"sphylums"		// 60
+	"sphylums",		// 60
+	"ungapped_score"	// 61
 };
 
 const char* Blast_tab_format::field_desc[] = {
@@ -152,7 +153,8 @@ const char* Blast_tab_format::field_desc[] = {
 	"Query strand",						// 57
 	"CIGAR",								// 58
 	"Subject kingdoms",		// 59
-	"Subject phylums"		// 60
+	"Subject phylums",		// 60
+	"Ungapped score"		// 61
 };
 
 Blast_tab_format::Blast_tab_format() :
@@ -375,7 +377,7 @@ void Blast_tab_format::print_match(const Hsp_context& r, const Metadata &metadat
 			break;
 		}			
 		case 50:
-			out << query_block_to_database_id[r.query_id];
+			out << (blocked_processing ? query_block_to_database_id[r.query_id] : r.query_id);
 			break;
 		case 51:
 			out << r.orig_subject_id;
@@ -416,6 +418,9 @@ void Blast_tab_format::print_match(const Hsp_context& r, const Metadata &metadat
 			print_taxon_names(tax_id.begin(), tax_id.end(), metadata, out);
 			break;
 		}
+		case 61:
+			out << score_matrix.bitscore(r.ungapped_score);
+			break;
 		default:
 			throw std::runtime_error(string("Invalid output field: ") + field_str[*i]);
 		}
@@ -472,6 +477,7 @@ void Blast_tab_format::print_query_intro(size_t query_num, const char *query_nam
 			case 29:
 			case 43:
 			case 52:
+			case 61:
 				out << "-1";
 				break;			
 			case 31:

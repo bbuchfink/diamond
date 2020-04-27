@@ -191,6 +191,7 @@ struct Config
 	bool log_extend;
 	int chaining_maxgap;
 	string family_map;
+	string family_map_query;
 	size_t chaining_range_cover;
 	bool no_swipe_realign;
 	bool cut_bar;
@@ -206,6 +207,10 @@ struct Config
 	double gapped_filter_score;
 	double gapped_filter_evalue;
 	int gapped_filter_window;
+	bool output_hits;
+	double ungapped_evalue;
+	bool no_logfile;
+	bool no_heartbeat;
 
 	bool multiprocessing;
 
@@ -213,7 +218,7 @@ struct Config
 		makedb = 0, blastp = 1, blastx = 2, view = 3, help = 4, version = 5, getseq = 6, benchmark = 7, random_seqs = 8, compare = 9, sort = 10, roc = 11, db_stat = 12, model_sim = 13,
 		match_file_stat = 14, model_seqs = 15, opt = 16, mask = 17, fastq2fasta = 18, dbinfo = 19, test_extra = 20, test_io = 21, db_annot_stats = 22, read_sim = 23, info = 24, seed_stat = 25,
 		smith_waterman = 26, cluster = 27, translate = 28, filter_blasttab = 29, show_cbs = 30, simulate_seqs = 31, split = 32, upgma = 33, upgma_mc = 34, regression_test = 35,
-		reverse_seqs = 36, compute_medoids = 37, mutate = 38
+		reverse_seqs = 36, compute_medoids = 37, mutate = 38, merge_tsv = 39
 	};
 	unsigned	command;
 

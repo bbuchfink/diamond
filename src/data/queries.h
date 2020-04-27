@@ -41,6 +41,9 @@ struct query_seqs
 {
 	static const Sequence_set& get()
 	{ return *data_; }
+	static Sequence_set& get_nc() {
+		return *data_;
+	}
 	static Sequence_set *data_;
 };
 

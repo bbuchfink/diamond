@@ -159,7 +159,7 @@ void align_queries(Trace_pt_buffer &trace_pts, Consumer* output_file, const Para
 		Align_fetcher::init(query_range.first, query_range.second, v->begin(), v->end());
 		OutputSink::instance = unique_ptr<OutputSink>(new OutputSink(query_range.first, output_file));
 		vector<thread> threads;
-		if (config.verbosity >= 3 && config.load_balancing == Config::query_parallel)
+		if (config.verbosity >= 3 && config.load_balancing == Config::query_parallel && !config.no_heartbeat)
 			threads.emplace_back(heartbeat_worker, query_range.second);
 		size_t n_threads = config.load_balancing == Config::query_parallel ? (config.threads_align == 0 ? config.threads_ : config.threads_align) : 1;
 		for (size_t i = 0; i < n_threads; ++i)

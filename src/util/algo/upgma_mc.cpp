@@ -241,7 +241,7 @@ double load_edges(EdgeVec& all_edges, EdgeList &edges, vector<Node> &nodes, Queu
 		node.sort_neighbors();
 
 	message_stream << "Building priority queue..." << endl;
-	queue = std::move(Queue(CmpEdge(), std::move(edge_vec)));
+	queue = Queue(CmpEdge(), std::move(edge_vec));
 	message_stream << "#Edges: " << edges.size() << endl;
 
 	return lambda;

@@ -23,6 +23,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <tuple>
 #include <vector>
 #include <math.h>
+#include <mutex>
+#include <condition_variable>
+#include <queue>
+#include <thread>
 #include "../util/io/text_input_file.h"
 #include "../basic/config.h"
 #include "../util/string/tokenizer.h"
@@ -37,113 +41,204 @@ using std::tuple;
 using std::map;
 using std::unordered_multimap;
 using std::vector;
+using std::queue;
+using std::thread;
+
+typedef tuple<char, int, int, int> Family;
+
+static map<Family, int> fam2idx;
+
+struct FamilyMapping : public unordered_multimap<string, int> {
+
+	FamilyMapping() {}
+
+	FamilyMapping(const string &file_name) {
+
+		TextInputFile mapping_file(file_name);
+		string acc, domain_class;
+		int fold, superfam, fam;
+
+		while (mapping_file.getline(), !mapping_file.eof()) {
+			Util::String::Tokenizer(mapping_file.line, "\t") >> Util::String::Skip() >> acc >> Util::String::Skip() >> domain_class >> fold >> superfam >> fam;
+			if (acc.empty() || domain_class.empty() || domain_class.length() > 1)
+				throw std::runtime_error("Format error.");
+
+			auto i = fam2idx.insert({ Family(domain_class[0], fold, superfam, fam), (int)fam2idx.size() });
+			if (config.cut_bar) {
+				size_t j = acc.find_last_of('|');
+				if (j != string::npos)
+					acc = acc.substr(j + 1);
+			}
+			insert({ acc, i.first->second });
+			//cout << acc << '\t' << domain_class << '\t' << fold << '\t' << superfam << '\t' << fam << endl;
+		}
+	}
+
+};
+
+static FamilyMapping acc2fam;
+static FamilyMapping acc2fam_query;
+static int families;
+static vector<int> fam_count;
+static std::mutex mtx, mtx_out;
+static std::condition_variable cdv;
 
 struct QueryStats {
-	QueryStats(const string &query, int families):
+	QueryStats(const string &query, int families, const unordered_multimap<string, int>& acc2fam):
 		query(query),
 		count(families, 0),
 		have_rev_hit(false)
-	{}
-	void add(const string &sseqid, const unordered_multimap<string, int> &acc2fam) {
+	{
+		if (config.output_hits) {
+			query_family.insert(query_family.begin(), families, false);
+			auto i = acc2fam.equal_range(query);
+			for (auto j = i.first; j != i.second; ++j)
+				query_family[j->second] = true;
+		}
+	}
+	bool add(const string &sseqid, const unordered_multimap<string, int> &acc2fam) {
 		if (have_rev_hit)
-			return;
+			return false;
 		if (sseqid == last_subject)
-			return;
-		if (sseqid[0] == '\\')
+			return false;
+		if (sseqid[0] == '\\') {
 			have_rev_hit = true;
+			return false;
+		}
 		else {
+			bool match_query = false;
 			auto i = acc2fam.equal_range(sseqid);
 			if (i.first == i.second)
 				throw std::runtime_error("Accession not mapped.");
-			for (auto j = i.first; j != i.second; ++j)
+			for (auto j = i.first; j != i.second; ++j) {
 				++count[j->second];
+				if (config.output_hits && query_family[j->second])
+					match_query = true;
+			}
 			last_subject = sseqid;
+			return match_query;
 		}
 	}
 	double auc1(const vector<int> &fam_count, const unordered_multimap<string, int> &acc2fam) const {
 		auto i = acc2fam.equal_range(query);
 		if (i.first == i.second)
-			return -1.0;
-			//throw std::runtime_error("Accession not mapped.");
+			throw std::runtime_error("Query accession not mapped.");
 		double r = 0.0, n = 0.0;
 		for (auto j = i.first; j != i.second; ++j) {
+			if (fam_count[j->second] == 0)
+				continue;
 			r += double(count[j->second]) / double(fam_count[j->second]);
 			n += 1.0;
 		}
-		return r / n;
+		return n > 0.0 ? r / n : 1.0;
 	}
 	string query, last_subject;
 	vector<int> count;
+	vector<bool> query_family;
 	bool have_rev_hit;
 };
 
-void roc() {
-	typedef tuple<char, int, int, int> Family;
-
-	TextInputFile mapping_file(config.family_map);
-	string acc, domain_class;
-	int fold, superfam, fam;
-	map<Family, int> fam2idx;
-	unordered_multimap<string, int> acc2fam;
-
-	task_timer timer("Loading family mapping");
-	while (mapping_file.getline(), !mapping_file.eof()) {
-		Util::String::Tokenizer(mapping_file.line, "\t") >> Util::String::Skip() >> acc >> Util::String::Skip() >> domain_class >> fold >> superfam >> fam;
-		if (acc.empty() || domain_class.empty() || domain_class.length() > 1)
-			throw std::runtime_error("Format error.");
-
-		auto i = fam2idx.insert({ Family(domain_class[0], fold, superfam, fam), (int)fam2idx.size() });
-		if (config.cut_bar) {
-			size_t j = acc.find_last_of('|');
-			if (j != string::npos)
-				acc = acc.substr(j + 1);
-		}
-		acc2fam.insert({ acc, i.first->second });
-		//cout << acc << '\t' << domain_class << '\t' << fold << '\t' << superfam << '\t' << fam << endl;
+double query_roc(const string& buf) {
+	string acc;
+	Util::String::Tokenizer(buf, "\t") >> acc;
+	QueryStats stats(acc, families, acc2fam_query);
+	Util::String::Tokenizer tok(buf, "\t");
+	while(tok.good() && !stats.have_rev_hit) {
+		tok >> Util::String::Skip() >> acc;
+		/*if (r.qseqid.empty() || r.sseqid.empty() || std::isnan(r.evalue) || !std::isfinite(r.evalue) || r.evalue < 0.0)
+			throw std::runtime_error("Format error.");*/
+		if (stats.add(acc, acc2fam) && config.output_hits)
+			cout << acc << endl;
+		tok.skip_to('\n');
 	}
-	mapping_file.close();
+	const double a = stats.auc1(fam_count, acc2fam_query);
+	if (!config.output_hits) {
+		std::lock_guard<std::mutex> lock(mtx_out);
+		cout << stats.query << '\t' << a << endl;
+	}
+	return a;
+}
+
+static queue<string> buffers;
+static bool finished = false;
+
+static void worker() {
+	string buf;
+	while (true) {
+		{
+			std::unique_lock<std::mutex> lock(mtx);
+			while (buffers.empty() && !finished) cdv.wait(lock);
+			if (buffers.empty() && finished)
+				return;
+			buf = std::move(buffers.front());
+			buffers.pop();
+		}
+		query_roc(buf);
+	}
+}
+
+void roc() {
+	task_timer timer("Loading family mapping");
+	acc2fam = FamilyMapping(config.family_map);
 	timer.finish();
 	message_stream << "#Mappings: " << acc2fam.size() << endl;
 	message_stream << "#Families: " << fam2idx.size() << endl;
 
-	const int families = (int)fam2idx.size();
-	vector<int> fam_count(families);
+	timer.go("Loading query family mapping");
+	acc2fam_query = FamilyMapping(config.family_map_query);
+	timer.finish();
+	message_stream << "#Mappings: " << acc2fam_query.size() << endl;
+	message_stream << "#Families: " << fam2idx.size() << endl;
+
+	families = (int)fam2idx.size();
+	fam_count.insert(fam_count.begin(), families, 0);
 	for (auto i = acc2fam.begin(); i != acc2fam.end(); ++i)
 		++fam_count[i->second];
 
+	vector<thread> threads;
+	for (unsigned i = 0; i < config.threads_; ++i)
+		threads.emplace_back(worker);
+
 	timer.go("Processing alignments");
 	TextInputFile in(config.query_file);
-	string qseqid, sseqid;
-	size_t n = 0, queries = 0;
-	double auc1 = 0.0;
-	QueryStats stats("", families);
+	string query, acc;
+	size_t n = 0, queries = 0, buf_size = 0;
+	string buf;
+	
 	while (in.getline(), !in.eof()) {
 		if (in.line.empty())
 			break;
-		Util::String::Tokenizer(in.line, "\t") >> qseqid >> sseqid;
-		if (qseqid != stats.query) {
-			if (!stats.query.empty()) {
-				const double a = stats.auc1(fam_count, acc2fam);
-				if (a != -1.0) {
-					auc1 += a;
-					++queries;
-				}
+		Util::String::Tokenizer(in.line, "\t") >> acc;
+		if (acc != query) {
+			if (!query.empty()) {
+				std::lock_guard<std::mutex> lock(mtx);
+				buf_size = std::max(buf_size, buf.size());
+				buffers.push(std::move(buf));
+				buf = string();
+				buf.reserve(buf_size);
+				cdv.notify_one();
 			}
-			stats = QueryStats(qseqid, families);
+			query = acc;
+			++queries;
+			if (queries % 10000 == 0)
+				message_stream << "#Queries = " << queries << endl;
 		}
-		/*if (r.qseqid.empty() || r.sseqid.empty() || std::isnan(r.evalue) || !std::isfinite(r.evalue) || r.evalue < 0.0)
-			throw std::runtime_error("Format error.");*/
-		stats.add(sseqid, acc2fam);
+		buf.append(in.line);
+		buf.append("\n");
 		++n;
 	}
-	const double a = stats.auc1(fam_count, acc2fam);
-	if (a != -1.0) {
-		auc1 += a;
-		++queries;
+	{
+		std::lock_guard<std::mutex> lock(mtx);
+		buffers.push(std::move(buf));
+		finished = true;
+		cdv.notify_all();
 	}
+
+	for (thread& t : threads)
+		t.join();
+	
 	in.close();
 	timer.finish();
 	message_stream << "#Records: " << n << endl;
 	message_stream << "#Queries: " << queries << endl;
-	message_stream << "AUC1: " << auc1 / queries << endl;
 }

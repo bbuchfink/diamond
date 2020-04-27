@@ -87,7 +87,11 @@ struct sequence_stream
 			mask |= 1 << n;
 			return false;
 		}
-		*dest = *(src++) & 0x7f;
+#ifdef SEQ_MASK
+		*dest = *(src++) & LETTER_MASK;
+#else
+		*dest = *(src++);
+#endif
 		dest += 16/sizeof(_score);
 		return true;
 	}
@@ -103,19 +107,6 @@ struct score_profile
 
 	inline void set(const __m128i &seq)
 	{
-		/*unsigned j = 0;
-		do {
-			data_[j] = score_vector<_score> (j, seq);
-			++j;
-			data_[j] = score_vector<_score> (j, seq);
-			++j;
-			data_[j] = score_vector<_score> (j, seq);
-			++j;
-			data_[j] = score_vector<_score> (j, seq);
-			++j;
-		} while(j<24);
-		data_[j] = score_vector<_score> (j, seq);
-		assert(j+1 == Value_traits<_val>::ALPHABET_SIZE);*/
 		for (unsigned j = 0; j < AMINO_ACID_COUNT; ++j)
 			data_[j] = score_vector<_score> (j, seq);
 	}
@@ -143,6 +134,17 @@ struct LongScoreProfile
 			data[l].insert(data[l].end(), padding, 0);
 			for (unsigned i = 0; i < seq.length(); ++i)
 				data[l].push_back(scores[(int)seq[i]] + cbs.int8[i]);
+			data[l].insert(data[l].end(), padding, 0);
+		}
+	}
+	LongScoreProfile(sequence seq)
+	{
+		for (unsigned l = 0; l < AMINO_ACID_COUNT; ++l) {
+			const int8_t* scores = &score_matrix.matrix8()[l << 5];
+			data[l].reserve(seq.length() + 2 * padding);
+			data[l].insert(data[l].end(), padding, 0);
+			for (unsigned i = 0; i < seq.length(); ++i)
+				data[l].push_back(scores[(int)seq[i]]);
 			data[l].insert(data[l].end(), padding, 0);
 		}
 	}

@@ -31,7 +31,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../dp/ungapped.h"
 #include "target.h"
 #include "../data/reference.h"
-#include "../util/data_structures/flat_array.h"
 #include "../util/log_stream.h"
 #include "../util/parallel/thread_pool.h"
 #include "../chaining/chaining.h"
@@ -44,18 +43,6 @@ using std::mutex;
 
 namespace Extension {
 
-struct SeedHit {
-	int diag() const {
-		return i - j;
-	}
-	bool operator<(const SeedHit& x) const {
-		const int d1 = diag(), d2 = x.diag();
-		return d1 < d2 || (d1 == d2 && j < x.j);
-	}
-	int i, j;
-	unsigned frame;
-};
-
 WorkTarget ungapped_stage(SeedHit *begin, SeedHit *end, const sequence *query_seq, const Bias_correction *query_cb, size_t block_id) {
 	array<vector<Diagonal_segment>, MAX_CONTEXT> diagonal_segments;
 	WorkTarget target(block_id, ref_seqs::get()[block_id]);
@@ -64,7 +51,10 @@ WorkTarget ungapped_stage(SeedHit *begin, SeedHit *end, const sequence *query_se
 		if (!diagonal_segments[hit->frame].empty() && diagonal_segments[hit->frame].back().diag() == hit->diag() && diagonal_segments[hit->frame].back().subject_end() >= hit->j)
 			continue;
 		const auto d = xdrop_ungapped(query_seq[hit->frame], target.seq, hit->i, hit->j);
-		if(d.score >= config.min_ungapped_raw_score) diagonal_segments[hit->frame].push_back(d);
+		if (d.score >= config.min_ungapped_raw_score) {
+			target.ungapped_score = std::max(target.ungapped_score, d.score);
+			diagonal_segments[hit->frame].push_back(d);
+		}
 	}
 	for (unsigned frame = 0; frame < align_mode.query_contexts; ++frame) {
 		if (diagonal_segments[frame].empty())
@@ -78,7 +68,7 @@ WorkTarget ungapped_stage(SeedHit *begin, SeedHit *end, const sequence *query_se
 	return target;
 }
 
-void ungapped_stage_worker(size_t i, size_t thread_id, const sequence *query_seq, const Bias_correction *query_cb, FlatArray<SeedHit> *seed_hits, size_t *target_block_ids, vector<WorkTarget> *out, mutex *mtx) {
+void ungapped_stage_worker(size_t i, size_t thread_id, const sequence *query_seq, const Bias_correction *query_cb, FlatArray<SeedHit> *seed_hits, const size_t *target_block_ids, vector<WorkTarget> *out, mutex *mtx) {
 	WorkTarget target = ungapped_stage(seed_hits->begin(i), seed_hits->end(i), query_seq, query_cb, target_block_ids[i]);
 	{
 		std::lock_guard<mutex> guard(*mtx);
@@ -86,35 +76,17 @@ void ungapped_stage_worker(size_t i, size_t thread_id, const sequence *query_seq
 	}
 }
 
-vector<WorkTarget> ungapped_stage(const sequence *query_seq, const Bias_correction *query_cb, Trace_pt_list::iterator begin, Trace_pt_list::iterator end, int flags) {
-	task_timer timer("Loading seed hits", flags & TARGET_PARALLEL ? 3 : UINT_MAX);
+vector<WorkTarget> ungapped_stage(const sequence *query_seq, const Bias_correction *query_cb, FlatArray<SeedHit> &seed_hits, const size_t *target_block_ids, int flags) {
 	vector<WorkTarget> targets;
-	if (begin >= end)
+	if (seed_hits.size() == 0)
 		return targets;
-	std::sort(begin, end, hit::cmp_subject);
-	size_t target = SIZE_MAX;
-	thread_local FlatArray<SeedHit> hits;
-	thread_local vector<size_t> target_block_ids;
-	hits.clear();
-	target_block_ids.clear();
-	for (Trace_pt_list::iterator i = begin; i < end; ++i) {
-		std::pair<size_t, size_t> l = ref_seqs::data_->local_position(i->subject_);
-		if (l.first != target) {
-			hits.next();
-			target = l.first;
-			target_block_ids.push_back(target);
-		}
-		hits.push_back({ (int)i->seed_offset_, (int)l.second, i->query_ % align_mode.query_contexts });
-	}
-
-	timer.go("Computing chaining");
 	if (flags & TARGET_PARALLEL) {
 		mutex mtx;
-		Util::Parallel::scheduled_thread_pool_auto(config.threads_, hits.size(), ungapped_stage_worker, query_seq, query_cb, &hits, target_block_ids.data(), &targets, &mtx);
+		Util::Parallel::scheduled_thread_pool_auto(config.threads_, seed_hits.size(), ungapped_stage_worker, query_seq, query_cb, &seed_hits, target_block_ids, &targets, &mtx);
 	}
 	else
-		for (size_t i = 0; i < hits.size(); ++i)
-			targets.push_back(ungapped_stage(hits.begin(i), hits.end(i), query_seq, query_cb, target_block_ids[i]));
+		for (size_t i = 0; i < seed_hits.size(); ++i)
+			targets.push_back(ungapped_stage(seed_hits.begin(i), seed_hits.end(i), query_seq, query_cb, target_block_ids[i]));
 
 	return targets;
 }
