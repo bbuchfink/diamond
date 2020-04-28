@@ -123,7 +123,7 @@ struct Byte_finger_print_48
 #endif
 
 #ifdef __AVX2__
-typedef Byte_finger_print_64 Finger_print;
+typedef Byte_finger_print_48 Finger_print;
 #else
 typedef Byte_finger_print_48 Finger_print;
 #endif

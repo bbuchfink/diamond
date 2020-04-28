@@ -19,8 +19,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #ifndef TARGET_ITERATOR_H_
 #define TARGET_ITERATOR_H_
 
-// #define DP_STAT
-
 #include <stdint.h>
 #include <algorithm>
 #include "../dp.h"
@@ -65,6 +63,8 @@ template<> struct ElementType<__m256i, 1> {
 };
 
 #endif
+
+namespace DISPATCH_ARCH {
 
 template<int _n>
 struct TargetIterator
@@ -256,5 +256,7 @@ struct TargetBuffer
 	Static_vector<int, _n> active;
 	const sequence *subject_begin;
 };
+
+}
 
 #endif

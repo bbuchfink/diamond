@@ -33,6 +33,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 using std::list;
 using std::pair;
 
+using namespace DISPATCH_ARCH;
+
 namespace DP { namespace BandedSwipe {
 namespace DISPATCH_ARCH {
 
@@ -93,7 +95,8 @@ template<typename _sv>
 struct TracebackMatrix
 {
 
-	typedef typename ScoreTraits<_sv>::Score Score;
+	typedef typename ::DISPATCH_ARCH::ScoreTraits<_sv>::Score Score;
+	static constexpr int CHANNELS = ::DISPATCH_ARCH::ScoreTraits<_sv>::CHANNELS;
 
 	struct ColumnIterator
 	{
@@ -145,7 +148,7 @@ struct TracebackMatrix
 		}
 		Score diag() const
 		{
-			return *(score_ - band_ * ScoreTraits<_sv>::CHANNELS);
+			return *(score_ - band_ * CHANNELS);
 		}
 		void walk_diagonal()
 		{
@@ -157,8 +160,8 @@ struct TracebackMatrix
 		pair<Edit_operation, int> walk_gap(int d0, int d1)
 		{
 			const int i0 = std::max(d0 + j, 0), j0 = std::max(i - d1, -1);
-			const Score *h = score_ - (band_ - 1) * ScoreTraits<_sv>::CHANNELS, *h0 = score_ - (j - j0) * (band_ - 1) * ScoreTraits<_sv>::CHANNELS;
-			const Score *v = score_ - ScoreTraits<_sv>::CHANNELS, *v0 = score_ - (i - i0 + 1) * ScoreTraits<_sv>::CHANNELS;
+			const Score *h = score_ - (band_ - 1) * CHANNELS, *h0 = score_ - (j - j0) * (band_ - 1) * CHANNELS;
+			const Score *v = score_ - CHANNELS, *v0 = score_ - (i - i0 + 1) * CHANNELS;
 			const Score e = score_matrix.gap_extend();
 			Score score = this->score() + (Score)score_matrix.gap_open() + e;			
 			int l = 1;
@@ -171,8 +174,8 @@ struct TracebackMatrix
 					walk_vgap(v, l);
 					return std::make_pair(op_insertion, l);
 				}
-				h -= (band_ - 1) * ScoreTraits<_sv>::CHANNELS;
-				v -= ScoreTraits<_sv>::CHANNELS;
+				h -= (band_ - 1) * CHANNELS;
+				v -= CHANNELS;
 				++l;
 				score += e;
 			}
@@ -181,7 +184,7 @@ struct TracebackMatrix
 					walk_vgap(v, l);
 					return std::make_pair(op_insertion, l);
 				}
-				v -= ScoreTraits<_sv>::CHANNELS;
+				v -= CHANNELS;
 				++l;
 				score += e;
 			}
@@ -190,7 +193,7 @@ struct TracebackMatrix
 					walk_hgap(h, l);
 					return std::make_pair(op_deletion, l);
 				}
-				h -= (band_ - 1) * ScoreTraits<_sv>::CHANNELS;
+				h -= (band_ - 1) * CHANNELS;
 				++l;
 				score += e;
 			}
@@ -218,7 +221,7 @@ struct TracebackMatrix
 		const int i_ = std::max(-i0, 0),
 			i1 = (int)std::min(band_, size_t(query_len - i0));
 		const Score *s = (Score*)(&score_[col*band_ + i_]) + channel;
-		for (int i = i_; i < i1; ++i, s += ScoreTraits<_sv>::CHANNELS)
+		for (int i = i_; i < i1; ++i, s += CHANNELS)
 			if (*s == score)
 				return TracebackIterator(s, band_, i0 + i, j);
 		throw std::runtime_error("Trackback error.");
@@ -243,7 +246,6 @@ struct TracebackMatrix
 private:
 
 	const size_t band_;
-	
 
 };
 

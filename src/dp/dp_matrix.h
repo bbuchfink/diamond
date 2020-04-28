@@ -25,18 +25,18 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 namespace Search { namespace DISPATCH_ARCH {
 
 template<typename _score>
-void array_clear(score_vector<_score> *v, unsigned n)
+void array_clear(::DISPATCH_ARCH::score_vector<_score> *v, unsigned n)
 {
-	score_vector<_score> *end (v+n);
+	::DISPATCH_ARCH::score_vector<_score> *end (v+n);
 	while(v < end)
-		*(v++) = score_vector<_score> ();
+		*(v++) = ::DISPATCH_ARCH::score_vector<_score> ();
 }
 
 template<typename _score>
 struct DP_matrix
 {
 
-	typedef score_vector<_score> sv;
+	typedef ::DISPATCH_ARCH::score_vector<_score> sv;
 
 	struct Column_iterator
 	{

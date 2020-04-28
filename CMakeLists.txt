@@ -64,7 +64,6 @@ else()
 endif()
 
 include_directories(
-  "${CMAKE_SOURCE_DIR}/src"
   "${ZLIB_INCLUDE_DIR}"
   "${CMAKE_SOURCE_DIR}/src/lib")
 
@@ -88,7 +87,7 @@ add_library(arch_sse4_1 OBJECT ${DISPATCH_OBJECTS})
 add_library(arch_avx2 OBJECT ${DISPATCH_OBJECTS})
 if (${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
 	target_compile_options(arch_sse4_1 PUBLIC -DDISPATCH_ARCH=ARCH_SSE4_1 -D__SSSE3__ -D__SSE4_1__ -D__POPCNT__)
-    target_compile_options(arch_avx2 PUBLIC -DDISPATCH_ARCH=ARCH_AVX2 -D__SSSE3__ -D__SSE4_1__ -D__POPCNT__ -D__AVX2__)
+    target_compile_options(arch_avx2 PUBLIC -DDISPATCH_ARCH=ARCH_AVX2 /arch:AVX2 -D__SSSE3__ -D__SSE4_1__ -D__POPCNT__)
 else()
 	target_compile_options(arch_sse4_1 PUBLIC -DDISPATCH_ARCH=ARCH_SSE4_1 -mssse3 -mpopcnt -msse4.1)
     target_compile_options(arch_avx2 PUBLIC -DDISPATCH_ARCH=ARCH_AVX2 -mssse3 -mpopcnt -msse4.1 -msse4.2 -mavx -mavx2)
@@ -188,9 +187,9 @@ set(OBJECTS
 )
 
 if(X86)
-add_executable(diamond $<TARGET_OBJECTS:arch_generic>
+add_executable(diamond $<TARGET_OBJECTS:arch_avx2>
+  $<TARGET_OBJECTS:arch_generic>
   $<TARGET_OBJECTS:arch_sse4_1>
-  $<TARGET_OBJECTS:arch_avx2>
   ${OBJECTS}
 )
 else()

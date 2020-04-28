@@ -40,6 +40,8 @@ struct score_traits<uint8_t>
 	typedef uint16_t Mask;
 };
 
+namespace DISPATCH_ARCH {
+
 template<typename _score>
 struct score_vector
 { };
@@ -267,17 +269,7 @@ struct ScoreTraits<int32_t>
 	}
 };
 
-static inline void store_sv(int32_t sv, int32_t *dst)
-{
-	*dst = sv;
-}
-
-static inline int32_t load_sv(const int32_t *x) {
-	return *x;
-}
-
 #ifdef __SSE2__
-
 template<>
 struct ScoreTraits<score_vector<uint8_t>>
 {
@@ -289,9 +281,23 @@ struct ScoreTraits<score_vector<uint8_t>>
 		return std::numeric_limits<uint8_t>::max();
 	}
 };
+#endif
+
+}
+
+static inline void store_sv(int32_t sv, int32_t *dst)
+{
+	*dst = sv;
+}
+
+static inline int32_t load_sv(const int32_t *x) {
+	return *x;
+}
+
+#ifdef __SSE2__
 
 template<typename _t, typename _p>
-static inline void store_sv(const score_vector<_t> &sv, _p *dst)
+static inline void store_sv(const DISPATCH_ARCH::score_vector<_t> &sv, _p *dst)
 {
 #ifdef __AVX2__
 	_mm256_storeu_si256((__m256i*)dst, sv.data_);
@@ -303,7 +309,7 @@ static inline void store_sv(const score_vector<_t> &sv, _p *dst)
 #endif
 
 template<typename _sv>
-static inline typename ScoreTraits<_sv>::Score extract_channel(const _sv &v, int i) {
+static inline typename DISPATCH_ARCH::ScoreTraits<_sv>::Score extract_channel(const _sv &v, int i) {
 	return v[i];
 }
 
@@ -313,7 +319,7 @@ inline int extract_channel<int>(const int &v, int i) {
 }
 
 template<typename _sv>
-static inline void set_channel(_sv &v, int i, typename ScoreTraits<_sv>::Score x) {
+static inline void set_channel(_sv &v, int i, typename DISPATCH_ARCH::ScoreTraits<_sv>::Score x) {
 	v.set(i, x);
 }
 

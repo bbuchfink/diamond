@@ -35,8 +35,8 @@ namespace DISPATCH_ARCH {
 
 #ifdef __SSE2__
 
-template<typename _score> thread_local vector<score_vector<_score>> DP_matrix<_score>::scores_;
-template<typename _score> thread_local vector<score_vector<_score>> DP_matrix<_score>::hgap_;
+template<typename _score> thread_local vector<::DISPATCH_ARCH::score_vector<_score>> DP_matrix<_score>::scores_;
+template<typename _score> thread_local vector<::DISPATCH_ARCH::score_vector<_score>> DP_matrix<_score>::hgap_;
 
 thread_local vector<sequence> hit_filter::subjects_;
 

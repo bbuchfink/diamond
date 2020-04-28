@@ -21,19 +21,131 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #ifndef SCORE_VECTOR_INT16_H_
 #define SCORE_VECTOR_INT16_H_
 
-#ifdef __SSE2__
+namespace DISPATCH_ARCH {
+
+#ifdef __AVX2__
 
 template<>
 struct score_vector<int16_t>
 {
 
-#ifdef __AVX2__
 	typedef __m256i Register;
-#else
-	typedef __m128i Register;
-#endif
 
 	score_vector() :
+		data_(_mm256_set1_epi16(SHRT_MIN))
+	{}
+
+	explicit score_vector(int x)
+	{
+		data_ = _mm256_set1_epi16(x);
+	}
+
+	explicit score_vector(int16_t x)
+	{
+		data_ = _mm256_set1_epi16(x);
+	}
+
+	explicit score_vector(__m256i data) :
+		data_(data)
+	{ }
+
+	explicit score_vector(const int16_t* x) :
+		data_(_mm256_loadu_si256((const __m256i*)x))
+	{}
+
+	explicit score_vector(const uint16_t* x) :
+		data_(_mm256_loadu_si256((const __m256i*)x))
+	{}
+
+	score_vector(unsigned a, Register seq)
+	{
+		const __m128i* row = reinterpret_cast<const __m128i*>(&score_matrix.matrix8u()[a << 5]);
+
+		__m256i high_mask = _mm256_slli_epi16(_mm256_and_si256(seq, _mm256_set1_epi8('\x10')), 3);
+		__m256i seq_low = _mm256_or_si256(seq, high_mask);
+		__m256i seq_high = _mm256_or_si256(seq, _mm256_xor_si256(high_mask, _mm256_set1_epi8('\x80')));
+
+		__m256i r1 = _mm256_loadu2_m128i(row, row);
+		__m256i r2 = _mm256_loadu2_m128i(row + 1, row + 1);
+		__m256i s1 = _mm256_shuffle_epi8(r1, seq_low);
+		__m256i s2 = _mm256_shuffle_epi8(r2, seq_high);
+		data_ = _mm256_and_si256(_mm256_or_si256(s1, s2), _mm256_set1_epi16(255));
+		data_ = _mm256_subs_epi16(data_, _mm256_set1_epi16(score_matrix.bias()));
+	}
+
+	score_vector operator+(const score_vector& rhs) const
+	{
+		return score_vector(_mm256_adds_epi16(data_, rhs.data_));
+	}
+
+	score_vector operator-(const score_vector& rhs) const
+	{
+		return score_vector(_mm256_subs_epi16(data_, rhs.data_));
+	}
+
+	score_vector& operator+=(const score_vector& rhs) {
+		data_ = _mm256_adds_epi16(data_, rhs.data_);
+		return *this;
+	}
+
+	score_vector& operator-=(const score_vector& rhs)
+	{
+		data_ = _mm256_subs_epi16(data_, rhs.data_);
+		return *this;
+	}
+
+	score_vector& operator &=(const score_vector& rhs) {
+		data_ = _mm256_and_si256(data_, rhs.data_);
+		return *this;
+	}
+
+	score_vector& operator++() {
+		data_ = _mm256_adds_epi16(data_, _mm256_set1_epi16(1));
+		return *this;
+	}
+
+	score_vector& max(const score_vector& rhs)
+	{
+		data_ = _mm256_max_epi16(data_, rhs.data_);
+		return *this;
+	}
+
+	friend score_vector max(const score_vector& lhs, const score_vector& rhs)
+	{
+		return score_vector(_mm256_max_epi16(lhs.data_, rhs.data_));
+	}
+
+	void store(int16_t* ptr) const
+	{
+		_mm256_storeu_si256((__m256i*)ptr, data_);
+	}
+
+	int16_t operator[](int i) const {
+		int16_t d[16];
+		store(d);
+		return d[i];
+	}
+
+	void set(int i, int16_t x) {
+		alignas(32) int16_t d[16];
+		store(d);
+		d[i] = x;
+		data_ = _mm256_load_si256((__m256i*)d);
+	}
+
+	__m256i data_;
+
+};
+
+#elif defined(__SSE2__)
+
+template<>
+struct score_vector<int16_t>
+{
+
+	typedef __m128i Register;
+
+	inline score_vector() :
 		data_(_mm_set1_epi16(SHRT_MIN))
 	{}
 
@@ -80,10 +192,8 @@ struct score_vector<int16_t>
 		data_ = _mm_set_epi64x(c, b);
 	}
 
-	score_vector(unsigned a, Register seq, const score_vector &bias)
+	score_vector(unsigned a, Register seq)
 	{
-#ifdef __AVX2__
-#elif defined(__SSSE3__)
 		const __m128i *row = reinterpret_cast<const __m128i*>(&score_matrix.matrix8u()[a << 5]);
 
 		__m128i high_mask = _mm_slli_epi16(_mm_and_si128(seq, _mm_set1_epi8('\x10')), 3);
@@ -94,8 +204,8 @@ struct score_vector<int16_t>
 		__m128i r2 = _mm_load_si128(row + 1);
 		__m128i s1 = _mm_shuffle_epi8(r1, seq_low);
 		__m128i s2 = _mm_shuffle_epi8(r2, seq_high);
-		data_ = _mm_subs_epi16(_mm_and_si128(_mm_or_si128(s1, s2), _mm_set1_epi16(255)), bias.data_);
-#endif
+		data_ = _mm_and_si128(_mm_or_si128(s1, s2), _mm_set1_epi16(255));
+		data_ = _mm_subs_epi16(data_, _mm_set1_epi16(score_matrix.bias()));
 	}
 
 	score_vector operator+(const score_vector &rhs) const
@@ -140,16 +250,6 @@ struct score_vector<int16_t>
 		return score_vector(_mm_max_epi16(lhs.data_, rhs.data_));
 	}
 
-	uint16_t cmpeq(const score_vector &rhs) const
-	{
-		return _mm_movemask_epi8(_mm_cmpeq_epi16(data_, rhs.data_));
-	}
-
-	__m128i cmpgt(const score_vector &rhs) const
-	{
-		return _mm_cmpgt_epi16(data_, rhs.data_);
-	}
-
 	void store(int16_t *ptr) const
 	{
 		_mm_storeu_si128((__m128i*)ptr, data_);
@@ -172,10 +272,18 @@ struct score_vector<int16_t>
 
 };
 
+#endif
+
+#ifdef __SSE2__
+
 template<>
 struct ScoreTraits<score_vector<int16_t>>
 {
-	enum { CHANNELS = 8, BITS = 16 };
+#ifdef __AVX2__
+	enum { CHANNELS = 16 };
+#else
+	enum { CHANNELS = 8 };
+#endif
 	typedef int16_t Score;
 	typedef uint16_t Unsigned;
 #ifdef __AVX2__
@@ -207,22 +315,19 @@ struct ScoreTraits<score_vector<int16_t>>
 	}
 };
 
-static inline score_vector<int16_t> load_sv(const int16_t *x) {
-	return score_vector<int16_t>(x);
+#endif
+
 }
 
-static inline score_vector<int16_t> load_sv(const uint16_t *x) {
-	return score_vector<int16_t>(x);
+#ifdef __SSE2__
+
+static inline DISPATCH_ARCH::score_vector<int16_t> load_sv(const int16_t *x) {
+	return DISPATCH_ARCH::score_vector<int16_t>(x);
 }
 
-
-template<>
-inline void store_sv<int16_t, int16_t>(const score_vector<int16_t>& sv, int16_t* dst)
-{
-	_mm_storeu_si128((__m128i*)dst, sv.data_);
+static inline DISPATCH_ARCH::score_vector<int16_t> load_sv(const uint16_t *x) {
+	return DISPATCH_ARCH::score_vector<int16_t>(x);
 }
-
-
 
 #endif
 

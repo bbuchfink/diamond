@@ -29,22 +29,22 @@ namespace Search { namespace DISPATCH_ARCH {
 #ifdef __SSE2__
 
 template<typename _score>
-inline score_vector<_score> cell_update(const score_vector<_score> &diagonal_cell,
-						 const score_vector<_score> &scores,
-						 const score_vector<_score> &gap_extension,
-						 const score_vector<_score> &gap_open,
-						 score_vector<_score> &horizontal_gap,
-						 score_vector<_score> &vertical_gap,
-						 score_vector<_score> &best,
-						 const score_vector<_score> &vbias)
+inline ::DISPATCH_ARCH::score_vector<_score> cell_update(const ::DISPATCH_ARCH::score_vector<_score>& diagonal_cell,
+	const ::DISPATCH_ARCH::score_vector<_score>& scores,
+	const ::DISPATCH_ARCH::score_vector<_score>& gap_extension,
+	const ::DISPATCH_ARCH::score_vector<_score>& gap_open,
+	::DISPATCH_ARCH::score_vector<_score>& horizontal_gap,
+	::DISPATCH_ARCH::score_vector<_score>& vertical_gap,
+	::DISPATCH_ARCH::score_vector<_score>& best,
+	const ::DISPATCH_ARCH::score_vector<_score>& vbias)
 {
-	score_vector<_score> current_cell = diagonal_cell + scores;
+	::DISPATCH_ARCH::score_vector<_score> current_cell = diagonal_cell + scores;
 	current_cell.unbias(vbias);
 	current_cell.max(vertical_gap).max(horizontal_gap);
 	best.max(current_cell);
 	vertical_gap -= gap_extension;
-	horizontal_gap -=  gap_extension;
-	score_vector<_score> open = current_cell - gap_open;
+	horizontal_gap -= gap_extension;
+	::DISPATCH_ARCH::score_vector<_score> open = current_cell - gap_open;
 	vertical_gap.max(open);
 	horizontal_gap.max(open);
 	return current_cell;
@@ -62,6 +62,7 @@ void smith_waterman(const sequence &query,
 			const _score&,
 			Statistics &stats)
 {
+	using namespace ::DISPATCH_ARCH;
 	#ifdef SW_ENABLE_DEBUG
 	int v[1024][1024];
 	#endif

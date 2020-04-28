@@ -29,16 +29,19 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../dp/swipe/swipe.h"
 #include "../dp/dp.h"
 #include "../dp/score_vector_int8.h"
+#include "../dp/score_vector_int16.h"
 #include "../dp/score_profile.h"
 #include "../dp/ungapped.h"
 #include "../search/finger_print.h"
 #include "../dp/ungapped_simd.h"
+#include "../util/simd/vector.h"
 
 using std::vector;
 using std::chrono::high_resolution_clock;
 using std::chrono::nanoseconds;
 using std::chrono::duration_cast;
 using std::list;
+using namespace DISPATCH_ARCH;
 
 namespace Benchmark { namespace DISPATCH_ARCH {
 
@@ -118,12 +121,12 @@ void benchmark_ssse3_shuffle(const sequence &s1, const sequence &s2)
 
 	const Letter *q = s1.data(), *s = s2.data();
 	int score = 0;
-	score_vector<uint8_t> sv;
-	__m128i seq = _mm_loadu_si128((const __m128i*)s1.data());
+	score_vector<int8_t> sv;
+	SIMD::Vector<int8_t> seq(s1.data());
 
 	for (size_t i = 0; i < n; ++i) {		
-		sv.set_ssse3(i & 15, seq);
-		volatile __m128i x = sv.data_;
+		sv  = score_vector<int8_t>(i & 15, seq);
+		volatile auto x = sv.data_;
 	}
 	cout << "SSSE3 score shuffle:\t\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * 16) * 1000 << " ps/Letter" << endl;
 }
@@ -178,7 +181,7 @@ void swipe_cell_update() {
 	{
 		score_vector<int8_t> diagonal_cell, scores, gap_extension, gap_open, horizontal_gap, vertical_gap, best;
 		for (size_t i = 0; i < n; ++i) {
-			diagonal_cell = swipe_cell_update(diagonal_cell, scores, nullptr, gap_extension, gap_open, horizontal_gap, vertical_gap, best);
+			diagonal_cell = ::swipe_cell_update(diagonal_cell, scores, nullptr, gap_extension, gap_open, horizontal_gap, vertical_gap, best);
 		}
 		volatile auto x = diagonal_cell.data_;
 	}
@@ -189,14 +192,15 @@ void swipe_cell_update() {
 
 #ifdef __SSE4_1__
 void swipe(const sequence &s1, const sequence &s2) {
-	sequence target[16];
-	std::fill(target, target + 16, s2);
-	static const size_t n = 10000llu;
+	constexpr int CHANNELS = ::DISPATCH_ARCH::ScoreTraits<score_vector<int8_t>>::CHANNELS;
+	sequence target[CHANNELS];
+	std::fill(target, target + CHANNELS, s2);
+	static const size_t n = 1000llu;
 	high_resolution_clock::time_point t1 = high_resolution_clock::now();
 	for (size_t i = 0; i < n; ++i) {
-		volatile list<Hsp> v = DP::Swipe::swipe(s1, target, target + 16, 100);
+		volatile list<Hsp> v = DP::Swipe::swipe(s1, target, target + CHANNELS, 100);
 	}
-	cout << "SWIPE (int8_t):\t\t\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * s1.length() * s2.length() * 16) * 1000 << " ps/Cell" << endl;
+	cout << "SWIPE (int8_t):\t\t\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * s1.length() * s2.length() * CHANNELS) * 1000 << " ps/Cell" << endl;
 }
 #endif
 
@@ -222,29 +226,16 @@ void banded_swipe(const sequence &s1, const sequence &s2) {
 }
 
 #ifdef __SSE4_1__
-void diag_scores(const sequence &s1, const sequence &s2) {
+void diag_scores(const sequence& s1, const sequence& s2) {
 	static const size_t n = 100000llu;
 	high_resolution_clock::time_point t1 = high_resolution_clock::now();
 	Bias_correction cbs(s1);
 	LongScoreProfile p(s1, cbs);
+	int scores[128];
 	for (size_t i = 0; i < n; ++i) {
-		//scan_cols(p, s2, 0, 0, (int)s2.length());
+		DP::scan_diags128(p, s2, -32, 0, (int)s2.length(), scores);
 	}
-	cout << "Diagonal scores:\t\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * s2.length() * 64) * 1000 << " ps/Cell" << endl;
-}
-#endif
-
-#ifdef __SSE4_1__
-void diag_scores2(const sequence& s1, const sequence& s2) {
-	static const size_t n = 100000llu;
-	high_resolution_clock::time_point t1 = high_resolution_clock::now();
-	Bias_correction cbs(s1);
-	LongScoreProfile p(s1, cbs);
-	int scores[64];
-	for (size_t i = 0; i < n; ++i) {
-		DP::scan_diags128(p, s2, -32, 0, (int)s2.length(), &scores[0]);
-	}
-	cout << "Diagonal scores (2):\t\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * s2.length() * 128) * 1000 << " ps/Cell" << endl;
+	cout << "Diagonal scores:\t\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * s2.length() * 128) * 1000 << " ps/Cell" << endl;
 }
 #endif
 
@@ -260,6 +251,10 @@ void benchmark() {
 	sequence ss2 = sequence(s2).subseq(33, s2.size());
 
 #ifdef __SSE4_1__
+	swipe(s3, s4);
+	diag_scores(s1, s2);
+#endif
+#ifdef __SSE4_1__
 	benchmark_hamming(s1, s2);
 #endif
 	benchmark_ungapped(ss1, ss2);
@@ -267,7 +262,7 @@ void benchmark() {
 	benchmark_ssse3_shuffle(s1, s2);
 #endif
 #ifdef __SSE4_1__
-	benchmark_ungapped_sse(ss1, ss2);
+	//benchmark_ungapped_sse(ss1, ss2);
 #endif
 #ifdef __SSE__
 	benchmark_transpose();
@@ -275,11 +270,6 @@ void benchmark() {
 #ifdef __SSE2__
 	banded_swipe(s1, s2);
 	swipe_cell_update();
-#endif
-#ifdef __SSE4_1__
-	swipe(s3, s4);
-	diag_scores(s1, s2);
-	diag_scores2(s1, s2);
 #endif
 }
 

@@ -27,6 +27,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 using std::vector;
 using std::list;
+using namespace DISPATCH_ARCH;
 
 namespace DP { namespace Swipe {
 namespace DISPATCH_ARCH {

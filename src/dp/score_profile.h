@@ -101,6 +101,8 @@ struct sequence_stream
 	unsigned mask;
 };
 
+namespace DISPATCH_ARCH {
+
 template<typename _score>
 struct score_profile
 {
@@ -119,6 +121,8 @@ struct score_profile
 	score_vector<_score> data_[AMINO_ACID_COUNT];
 
 };
+
+}
 
 #endif
 

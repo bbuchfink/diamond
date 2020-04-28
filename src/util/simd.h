@@ -71,6 +71,9 @@ const std::function<decltype(ARCH_GENERIC::name)> name = dispatch_target_##name(
 
 std::string features();
 
+template<typename _t>
+struct Vector {};
+
 };
 
 #endif
