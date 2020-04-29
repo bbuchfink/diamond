@@ -37,7 +37,7 @@ static inline _sv swipe_cell_update(const _sv &diagonal_cell,
 	using std::max;
 	_sv current_cell = max(diagonal_cell + scores, vertical_gap);
 	current_cell = max(current_cell, horizontal_gap);
-	ScoreTraits<_sv>::saturate(current_cell);
+	::DISPATCH_ARCH::ScoreTraits<_sv>::saturate(current_cell);
 	best = max(best, current_cell);
 	vertical_gap -= gap_extension;
 	horizontal_gap -= gap_extension;
@@ -58,9 +58,9 @@ static inline _sv swipe_cell_update(const _sv &diagonal_cell,
 	_sv &best)
 {
 	using std::max;
-	_sv current_cell = diagonal_cell + (scores + _sv((typename ScoreTraits<_sv>::Score)query_bias));
+	_sv current_cell = diagonal_cell + (scores + _sv((typename ::DISPATCH_ARCH::ScoreTraits<_sv>::Score)query_bias));
 	current_cell = max(max(current_cell, vertical_gap), horizontal_gap);
-	ScoreTraits<_sv>::saturate(current_cell);
+	::DISPATCH_ARCH::ScoreTraits<_sv>::saturate(current_cell);
 	best = max(best, current_cell);
 	vertical_gap -= gap_extension;
 	horizontal_gap -= gap_extension;
@@ -101,6 +101,7 @@ static inline DISPATCH_ARCH::score_vector<_score> cell_update(const DISPATCH_ARC
 	DISPATCH_ARCH::score_vector<_score> &vertical_gap,
 	DISPATCH_ARCH::score_vector<_score> &best)
 {
+	using namespace ::DISPATCH_ARCH;
 	score_vector<_score> current_cell = diagonal_cell + scores;
 	current_cell.max(vertical_gap).max(horizontal_gap);
 	best.max(current_cell);

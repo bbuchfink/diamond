@@ -26,6 +26,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../basic/score_matrix.h"
 #include "../data/reference.h"
 #include "../util/parallel/thread_pool.h"
+#include "../dp/scan_diags.h"
 
 using std::mutex;
 

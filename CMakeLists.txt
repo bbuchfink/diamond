@@ -78,6 +78,7 @@ set(DISPATCH_OBJECTS
 "src/dp/swipe/swipe_wrapper.cpp"
 "src/util/tantan.cpp"
 "src/dp/scan_diags.cpp"
+"src/dp/ungapped_simd.cpp"
 )
 
 add_library(arch_generic OBJECT ${DISPATCH_OBJECTS})
@@ -188,8 +189,8 @@ set(OBJECTS
 
 if(X86)
 add_executable(diamond $<TARGET_OBJECTS:arch_avx2>
-  $<TARGET_OBJECTS:arch_generic>
   $<TARGET_OBJECTS:arch_sse4_1>
+  $<TARGET_OBJECTS:arch_generic>
   ${OBJECTS}
 )
 else()

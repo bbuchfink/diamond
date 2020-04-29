@@ -69,7 +69,7 @@ void search_query_offset(Loc q,
 		const size_t n = std::min(vector<Stage1_hit>::const_iterator::difference_type(16), hits_end - i);
 		for (size_t j = 0; j < n; ++j)
 			subjects[j] = ref_seqs::data_->data(s[(i + j)->s]) - window_left;
-		DP::window_ungapped(query_clipped.data(), subjects, n, window, scores);
+		DP::ARCH_SSE4_1::window_ungapped(query_clipped.data(), subjects, n, window, scores);
 
 		for (size_t j = 0; j < n; ++j)
 			//if (scores[j] >= config.min_ungapped_raw_score) {

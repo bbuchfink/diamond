@@ -154,6 +154,32 @@ struct score_vector<int8_t>
 
 };
 
+template<>
+struct ScoreTraits<score_vector<int8_t>>
+{
+	enum { CHANNELS = 32 };
+	typedef int8_t Score;
+	typedef uint8_t Unsigned;
+	typedef __m256i Register;
+	static score_vector<int8_t> zero() {
+		return score_vector<int8_t>();
+	}
+	static constexpr int8_t max_score() {
+		return SCHAR_MAX;
+	}
+	static int int_score(int8_t s)
+	{
+		return (int)s - SCHAR_MIN;
+	}
+	static constexpr int max_int_score() {
+		return SCHAR_MAX - SCHAR_MIN;
+	}
+	static constexpr int8_t zero_score() {
+		return SCHAR_MIN;
+	}
+	static void saturate(score_vector<int8_t>& v) {}
+};
+
 #elif defined(__SSE4_1__)
 
 template<>
@@ -285,25 +311,13 @@ struct score_vector<int8_t>
 
 };
 
-#endif
-
-#ifdef __SSE4_1__
-
 template<>
 struct ScoreTraits<score_vector<int8_t>>
 {
-#ifdef __AVX2__
-	enum { CHANNELS = 32 };
-#else
 	enum { CHANNELS = 16 };
-#endif
 	typedef int8_t Score;
 	typedef uint8_t Unsigned;
-#ifdef __AVX2__
-	typedef __m256i Register;
-#else
 	typedef __m128i Register;
-#endif
 	static score_vector<int8_t> zero() {
 		return score_vector<int8_t>();
 	}
@@ -320,7 +334,7 @@ struct ScoreTraits<score_vector<int8_t>>
 	static constexpr int8_t zero_score() {
 		return SCHAR_MIN;
 	}
-	static void saturate(score_vector<int8_t> &v) {}
+	static void saturate(score_vector<int8_t>& v) {}
 };
 
 #endif

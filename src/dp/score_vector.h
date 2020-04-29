@@ -42,9 +42,21 @@ struct score_traits<uint8_t>
 
 namespace DISPATCH_ARCH {
 
+template<typename _t>
+struct ScoreTraits
+{
+	typedef void Score;
+	enum { CHANNELS = 0 };
+};
+
+
 template<typename _score>
 struct score_vector
 { };
+
+}
+
+namespace DISPATCH_ARCH {
 
 #ifdef __SSE2__
 
@@ -231,13 +243,6 @@ struct score_vector<uint8_t>
 };
 
 #endif
-
-template<typename _t>
-struct ScoreTraits
-{
-	typedef void Score;
-	enum { CHANNELS = 0 };
-};
 
 template<>
 struct ScoreTraits<int32_t>
