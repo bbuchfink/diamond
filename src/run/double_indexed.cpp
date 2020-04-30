@@ -51,6 +51,11 @@ namespace Workflow { namespace Search {
 
 static const string reference_partition = "ref_part";
 
+string get_ref_block_tmpfile_name(size_t query, size_t block) {
+	const string file_name = append_label("ref_block_", query) + append_label("_", block);
+	return join_path(config.parallel_tmpdir, file_name);
+}
+
 void run_ref_chunk(DatabaseFile &db_file,
 	unsigned query_chunk,
 	pair<size_t, size_t> query_len_bounds,
@@ -102,9 +107,7 @@ void run_ref_chunk(DatabaseFile &db_file,
 	if (blocked_processing) {
 		timer.go("Opening temporary output file");
 		if (config.multiprocessing) {
-			stringstream ss;
-			ss << std::setfill('0') << std::setw(6) << current_ref_block;
-			const string file_name = join_path(config.parallel_tmpdir, "ref_chunk_block_" + ss.str());
+			const string file_name = get_ref_block_tmpfile_name(query_chunk, current_ref_block);
 			tmp_file.push_back(new TempFile(file_name));
 		} else {
 			tmp_file.push_back(new TempFile());
@@ -225,19 +228,7 @@ void run_query_chunk(DatabaseFile &db_file,
 
 	log_rss();
 
-	const string s_tag = "temp_files_query_" + to_string(query_chunk);
 	if (config.multiprocessing) {
-		P->create_stack(s_tag);
-		auto temp_files_stack = P->get_stack(s_tag);
-
-		vector<string> tokens;
-		tokens.push_back(to_string(P->get_rank()));
-		for (auto f : tmp_file) {
-			tokens.push_back(quote(f->file_name()));
-		}
-		const string line = join(tokens, ';');
-		temp_files_stack->push(line);
-
 		for (auto f : tmp_file) {
 			f->close();
 		}
@@ -256,17 +247,10 @@ void run_query_chunk(DatabaseFile &db_file,
 				current_ref_block = db_file.get_n_partition_chunks();
 				ReferenceDictionary::get().restore_blocks(current_ref_block);
 
-				auto temp_files_stack = P->get_stack(s_tag);
 				vector<string> tmp_file_names;
-				string line;
-				while (temp_files_stack->pop(line) > 0) {
-					vector<string> tokens = split(line, ';');
-					tokens.erase(tokens.begin());  // remove worker rank
-					for (auto t : tokens) {
-						tmp_file_names.push_back(unquote(t));
-					}
+				for (size_t i=0; i<current_ref_block; ++i) {
+					tmp_file_names.push_back(get_ref_block_tmpfile_name(query_chunk, i));
 				}
-				std::sort(tmp_file_names.begin(), tmp_file_names.end());
 
 				join_blocks(current_ref_block, master_out, tmp_file, params, metadata, db_file, tmp_file_names);
 

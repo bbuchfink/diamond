@@ -6,6 +6,8 @@
 #include <vector>
 #include <iostream>
 #include <fstream>
+#include <sstream>
+#include <iomanip>
 
 using std::vector;
 using std::string;
@@ -62,6 +64,13 @@ std::ostream& save_vector(std::ostream& os, CONTAINER const& v)
     os.write(reinterpret_cast<char const*>(&size), sizeof(size));
     os.write(reinterpret_cast<char const*>(v.data()), v.size() * sizeof(typename CONTAINER::value_type));
     return os;
+}
+
+template<typename T>
+std::string append_label(const std::string & str, const T & label, const size_t width=6) {
+	std::stringstream ss;
+	ss << std::setfill('0') << std::setw(width) << label;
+	return str + ss.str();
 }
 
 #endif

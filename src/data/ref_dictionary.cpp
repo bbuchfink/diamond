@@ -17,8 +17,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #include <string>
-#include <sstream>
-#include <iomanip>
+// #include <sstream>
+// #include <iomanip>
 #include <cstdio>
 #include <utility>
 #include "reference.h"
@@ -136,9 +136,7 @@ void ReferenceDictionary::build_lazy_dict(DatabaseFile &db_file)
 */
 
 string _get_file_name(size_t block) {
-	std::stringstream ss;
-	ss << std::setfill('0') << std::setw(6) << block;
-	return join_path(config.parallel_tmpdir, "ref_dictionary_" + ss.str());
+	return join_path(config.parallel_tmpdir, append_label("ref_dictionary_", block));
 }
 
 void ReferenceDictionary::save_block(size_t block) {
