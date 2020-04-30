@@ -51,21 +51,6 @@ namespace Workflow { namespace Search {
 
 static const string reference_partition = "ref_part";
 
-/*
-void init_dict_ref_chunk(DatabaseFile &db_file,
-	unsigned query_chunk,
-	pair<size_t, size_t> query_len_bounds,
-	char *query_buffer,
-	Consumer &master_out,
-	PtrVector<TempFile> &tmp_file,
-	const Parameters &params,
-	const Metadata &metadata,
-	const vector<unsigned> &block_to_database_id)
-{
-	ReferenceDictionary::get().init(safe_cast<unsigned>(ref_seqs::get().get_length()), block_to_database_id);
-}
-*/
-
 void run_ref_chunk(DatabaseFile &db_file,
 	unsigned query_chunk,
 	pair<size_t, size_t> query_len_bounds,
@@ -208,24 +193,6 @@ void run_query_chunk(DatabaseFile &db_file,
 	log_rss();
 
 	if (config.multiprocessing) {
-		unsigned int max_ref_block;
-		{
-			timer.go("Scan reference database for blocks");
-			db_file.rewind();
-			for (current_ref_block = 0;
-				 db_file.load_seqs(block_to_database_id, (size_t)(config.chunk_size*1e9), nullptr, nullptr, true, options.db_filter ? options.db_filter : metadata.taxon_filter, false);
-				 ++current_ref_block)
-			{
-				// empty
-			}
-			max_ref_block = current_ref_block;
-			current_ref_block = 0;
-			db_file.rewind();
-			timer.finish();
-		}
-
-		log_rss();
-
 		auto work = P->get_stack(reference_partition);
 		auto done = P->get_stack(P->LOG);
 		string buf;
@@ -242,8 +209,6 @@ void run_query_chunk(DatabaseFile &db_file,
 			done->push(buf);
 			log_rss();
 		}
-
-		current_ref_block = max_ref_block;
 	} else {
 		for (current_ref_block = 0;
 			 db_file.load_seqs(block_to_database_id, (size_t)(config.chunk_size*1e9), &ref_seqs::data_, &ref_ids::data_, true, options.db_filter ? options.db_filter : metadata.taxon_filter);
@@ -288,6 +253,7 @@ void run_query_chunk(DatabaseFile &db_file,
 			P->barrier(AUTOTAG);
 
 			if (P->is_master()) {
+				current_ref_block = db_file.get_n_partition_chunks();
 				ReferenceDictionary::get().restore_blocks(current_ref_block);
 
 				auto temp_files_stack = P->get_stack(s_tag);
@@ -343,7 +309,6 @@ void master_thread(DatabaseFile *db_file, task_timer &total_timer, Metadata &met
 		mp_reference_partition_file = join_path(P->get_work_directory(), "reference_partition");
 		if (P->is_master()) {
 			db_file->create_partition((size_t)(config.chunk_size*1e9));
-			// db_file->save_partition(mp_reference_partition_file + "_DBG");
 		}
 		P->barrier(AUTOTAG);
 	}
@@ -417,10 +382,6 @@ void master_thread(DatabaseFile *db_file, task_timer &total_timer, Metadata &met
 		run_query_chunk(*db_file, current_query_chunk, *master_out, unaligned_file.get(), aligned_file.get(), metadata, options);
 
 		P->delete_stack(reference_partition);
-
-		// mem debug
-		// if (current_query_chunk >= 1)
-			// break;
 	}
 
 	if (query_file && !options.query_file) {

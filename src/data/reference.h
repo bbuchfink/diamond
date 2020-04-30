@@ -100,6 +100,7 @@ struct DatabaseFile : public InputFile
 	void save_partition(const string & partition_file_name);
 	void load_partition(const string & partition_file_name);
 	void clear_partition();
+	size_t get_n_partition_chunks();
 
 	bool load_seqs(vector<unsigned> &block_to_database_id, size_t max_letters, Sequence_set **dst_seq, String_set<char, 0> **dst_id, bool load_ids = true, const vector<bool> *filter = NULL, const bool fetch_seqs = true, const Chunk & chunk = Chunk());
 
