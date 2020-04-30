@@ -97,10 +97,11 @@ struct ReferenceDictionary
 	}
 
 	void clear_block(size_t block);
-	void save_block(size_t block);
-	void load_block(size_t block, ReferenceDictionary & d);
-	void restore_blocks(size_t n_blocks);
 	void clear_block_instances();
+
+	void save_block(size_t query, size_t block);
+	void load_block(size_t query, size_t block, ReferenceDictionary & d);
+	void restore_blocks(size_t query, size_t n_blocks);
 
 private:
 

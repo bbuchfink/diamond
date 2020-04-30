@@ -206,7 +206,7 @@ void run_query_chunk(DatabaseFile &db_file,
 			db_file.load_seqs(block_to_database_id, (size_t)(0), &ref_seqs::data_, &ref_ids::data_, true, options.db_filter ? options.db_filter : metadata.taxon_filter, true, chunk);
 			run_ref_chunk(db_file, query_chunk, query_len_bounds, query_buffer, master_out, tmp_file, params, metadata, block_to_database_id);
 
-			ReferenceDictionary::get().save_block(chunk.i);
+			ReferenceDictionary::get().save_block(query_chunk, chunk.i);
 			ReferenceDictionary::get().clear_block(chunk.i);
 
 			done->push(buf);
@@ -245,7 +245,7 @@ void run_query_chunk(DatabaseFile &db_file,
 
 			if (P->is_master()) {
 				current_ref_block = db_file.get_n_partition_chunks();
-				ReferenceDictionary::get().restore_blocks(current_ref_block);
+				ReferenceDictionary::get().restore_blocks(query_chunk, current_ref_block);
 
 				vector<string> tmp_file_names;
 				for (size_t i=0; i<current_ref_block; ++i) {

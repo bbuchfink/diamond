@@ -135,12 +135,13 @@ void ReferenceDictionary::build_lazy_dict(DatabaseFile &db_file)
 }
 */
 
-string _get_file_name(size_t block) {
-	return join_path(config.parallel_tmpdir, append_label("ref_dictionary_", block));
+string _get_file_name(size_t query, size_t block) {
+	const string file_name = append_label("ref_dictionary_", query) + append_label("_", block);
+	return join_path(config.parallel_tmpdir, file_name);
 }
 
-void ReferenceDictionary::save_block(size_t block) {
-	const string o_file = _get_file_name(block);
+void ReferenceDictionary::save_block(size_t query, size_t block) {
+	const string o_file = _get_file_name(query, block);
 	std::ofstream os(o_file, std::ios::out | std::ios::trunc | std::ios::binary);
 	save_scalar(os, next_);
 	save_vector(os, len_);
@@ -152,8 +153,8 @@ void ReferenceDictionary::save_block(size_t block) {
 	}
 }
 
-void ReferenceDictionary::load_block(size_t block, ReferenceDictionary & d) {
-	const string i_file = _get_file_name(block);
+void ReferenceDictionary::load_block(size_t query, size_t block, ReferenceDictionary & d) {
+	const string i_file = _get_file_name(query, block);
 	std::ifstream is(i_file, std::ios::in | std::ios::binary);
 	load_scalar(is, d.next_);
 	load_vector(is, d.len_);
@@ -169,10 +170,10 @@ void ReferenceDictionary::load_block(size_t block, ReferenceDictionary & d) {
 	std::remove(i_file.c_str());
 }
 
-void ReferenceDictionary::restore_blocks(size_t n_blocks) {
+void ReferenceDictionary::restore_blocks(size_t query, size_t n_blocks) {
 	for (size_t i = 0; i < n_blocks; ++i) {
 		ReferenceDictionary & d = block_instances_[i];
-		load_block(i, d);
+		load_block(query, i, d);
 	}
 }
 
