@@ -112,7 +112,6 @@ private:
 	vector<vector<uint32_t>> data_;
 	// vector<vector<uint32_t>> init_data_;
 
-	vector<uint32_t> block_data_;
 	vector<uint32_t> len_, database_id_;
 	PtrVector<string> name_;
 	//vector<uint32_t> rev_map_;

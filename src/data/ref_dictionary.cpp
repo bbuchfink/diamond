@@ -46,7 +46,6 @@ string* get_allseqids(const char *s)
 void ReferenceDictionary::clear()
 {
 	data_.clear();
-	block_data_.clear();
 	len_.clear();
 	database_id_.clear();
 	name_.clear();
@@ -146,7 +145,6 @@ void ReferenceDictionary::save_block(size_t block) {
 	const string o_file = _get_file_name(block);
 	std::ofstream os(o_file, std::ios::out | std::ios::trunc | std::ios::binary);
 	save_scalar(os, next_);
-	save_vector(os, data_[block]);
 	save_vector(os, len_);
 	save_vector(os, database_id_);
 	size_t sz = name_.size();
@@ -160,7 +158,6 @@ void ReferenceDictionary::load_block(size_t block, ReferenceDictionary & d) {
 	const string i_file = _get_file_name(block);
 	std::ifstream is(i_file, std::ios::in | std::ios::binary);
 	load_scalar(is, d.next_);
-	load_vector(is, d.block_data_);
 	load_vector(is, d.len_);
 	load_vector(is, d.database_id_);
 	size_t sz;
@@ -185,7 +182,6 @@ void ReferenceDictionary::clear_block(size_t block) {
 	len_.clear();
 	name_.clear();
 	database_id_.clear();
-	block_data_.clear();
 	data_[block].clear();
 	next_ = 0;
 }
