@@ -129,6 +129,8 @@ static inline uint64_t seed_mask(const Letter* s, int len) {
 	if (len < 64)
 		mask &= (1llu << len) - 1;
 	return mask;
+#else
+	return 0;
 #endif
 }
 

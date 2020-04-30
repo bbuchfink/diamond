@@ -187,7 +187,7 @@ struct score_vector<int8_t>
 {
 
 	score_vector():
-		data_(_mm_set1_epi8(std::numeric_limits<char>::min()))
+		data_(_mm_set1_epi8(SCHAR_MIN))
 	{}
 
 	explicit score_vector(__m128i data):

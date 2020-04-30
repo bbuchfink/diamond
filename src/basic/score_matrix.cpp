@@ -38,18 +38,6 @@ typedef double array_of_8[BLAST_NUM_STAT_VALUES];
 
 const double INT2_MAX = std::numeric_limits<double>::max();
 
-const signed char DNA_scores[5 * 5] = {
-	2, -3, -3, -3, -3,
-	-3,2,-3,-3,-3,
-	-3,-3,2,-3,-3,
-	-3,-3,-3,2,-3,
-	-3,-3,-3,-3,2
-};
-
-static array_of_8 dna_values[1] = {
-	{ 5, 2, (double)INT2_MAX, 0, 0, 0, 0, 0, 0, 0, 0 }
-};
-
 #define BLOSUM45_VALUES_MAX 14 /**< Number of different combinations supported for BLOSUM45. */
 static array_of_8 blosum45_values[BLOSUM45_VALUES_MAX] = {
 	{ (double)INT2_MAX, (double)INT2_MAX, (double)INT2_MAX, 0.2291, 0.0924, 0.2514, 0.9113, -5.7, 0.641318, 9.611060, 9.611060 },
@@ -177,7 +165,7 @@ struct Matrix_info
 {
 	const char *name;
 	const array_of_8 *constants;
-	const char *scores;
+	const signed char *scores;
 	const unsigned count;
 	const int default_gap_open, default_gap_extend;
 
@@ -199,19 +187,18 @@ struct Matrix_info
 		return 0;
 	}
 
-	static const Matrix_info matrices[9];
+	static const Matrix_info matrices[8];
 };
 
 const Matrix_info Matrix_info::matrices[] = {
-	{ "BLOSUM45", blosum45_values, (const char*)s_Blosum45PSM, BLOSUM45_VALUES_MAX, 14, 2 },
-	{ "BLOSUM50", blosum50_values, (const char*)s_Blosum50PSM, BLOSUM50_VALUES_MAX, 13, 2 },
-	{ "BLOSUM62", blosum62_values, (const char*)s_Blosum62PSM, BLOSUM62_VALUES_MAX, 11, 1 },
-	{ "BLOSUM80", blosum80_values, (const char*)s_Blosum80PSM, BLOSUM80_VALUES_MAX, 10, 1 },
-	{ "BLOSUM90", blosum90_values, (const char*)s_Blosum90PSM, BLOSUM90_VALUES_MAX, 10, 1 },
-	{ "PAM70", pam70_values, (const char*)s_Pam70PSM, PAM70_VALUES_MAX, 10, 1 },
-	{ "PAM250", pam250_values, (const char*)s_Pam250PSM, PAM250_VALUES_MAX, 14, 2 },
-	{ "PAM30", pam30_values, (const char*)s_Pam30PSM, PAM30_VALUES_MAX, 9, 1 },
-	{ "DNA", dna_values, (const char*)DNA_scores, 1, 4, 2 }
+	{ "BLOSUM45", blosum45_values, (const signed char*)s_Blosum45PSM, BLOSUM45_VALUES_MAX, 14, 2 },
+	{ "BLOSUM50", blosum50_values, (const signed char*)s_Blosum50PSM, BLOSUM50_VALUES_MAX, 13, 2 },
+	{ "BLOSUM62", blosum62_values, (const signed char*)s_Blosum62PSM, BLOSUM62_VALUES_MAX, 11, 1 },
+	{ "BLOSUM80", blosum80_values, (const signed char*)s_Blosum80PSM, BLOSUM80_VALUES_MAX, 10, 1 },
+	{ "BLOSUM90", blosum90_values, (const signed char*)s_Blosum90PSM, BLOSUM90_VALUES_MAX, 10, 1 },
+	{ "PAM70", pam70_values, (const signed char*)s_Pam70PSM, PAM70_VALUES_MAX, 10, 1 },
+	{ "PAM250", pam250_values, (const signed char*)s_Pam250PSM, PAM250_VALUES_MAX, 14, 2 },
+	{ "PAM30", pam30_values, (const signed char*)s_Pam30PSM, PAM30_VALUES_MAX, 9, 1 }
 };
 
 Score_matrix::Score_matrix(const string & matrix, int gap_open, int gap_extend, int frameshift, int stop_match_score, uint64_t db_letters):
@@ -228,21 +215,21 @@ Score_matrix::Score_matrix(const string & matrix, int gap_open, int gap_extend, 
 	matrix32_(Matrix_info::get(matrix).scores, stop_match_score)
 { }
 
-char Score_matrix::low_score() const
+int8_t Score_matrix::low_score() const
 {
-	char low = std::numeric_limits<char>::max();
-	for (Letter i = 0; i < (char)value_traits.alphabet_size; ++i)
-		for (Letter j = i + 1; j < (char)value_traits.alphabet_size; ++j)
-			low = std::min(low, (char)this->operator()(i, j));
+	int8_t low = std::numeric_limits<int8_t>::max();
+	for (Letter i = 0; i < (Letter)value_traits.alphabet_size; ++i)
+		for (Letter j = i + 1; j < (Letter)value_traits.alphabet_size; ++j)
+			low = std::min(low, (int8_t)this->operator()(i, j));
 	return low;
 }
 
-char Score_matrix::high_score() const
+int8_t Score_matrix::high_score() const
 {
-	char high = std::numeric_limits<char>::min();
-	for (Letter i = 0; i < (char)value_traits.alphabet_size; ++i)
-		for (Letter j = i; j < (char)value_traits.alphabet_size; ++j)
-			high = std::max(high, (char)this->operator()(i, j));
+	int8_t high = std::numeric_limits<int8_t>::min();
+	for (Letter i = 0; i < (Letter)value_traits.alphabet_size; ++i)
+		for (Letter j = i; j < (Letter)value_traits.alphabet_size; ++j)
+			high = std::max(high, (int8_t)this->operator()(i, j));
 	return high;
 }
 
@@ -264,9 +251,9 @@ std::ostream& operator<<(std::ostream& s, const Score_matrix &m)
 	return s;
 }
 
-const char* custom_scores(const string &matrix_file)
+const signed char* custom_scores(const string &matrix_file)
 {
-	static char scores[25 * 25];
+	static signed char scores[25 * 25];
 	string l, s;
 	std::stringstream ss;
 	vector<Letter> pos;
