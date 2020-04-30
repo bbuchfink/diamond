@@ -370,8 +370,10 @@ bool DatabaseFile::load_seqs(vector<unsigned> &block_to_database_id, const size_
 		(*dst_seq)->print_stats();
 	}
 
-	// blocked_processing = seqs_processed < ref_header.sequences;
-	blocked_processing = true;
+	if (config.multiprocessing)
+		blocked_processing = true;
+	else
+		blocked_processing = seqs_processed < ref_header.sequences;
 
 	return true;
 }
