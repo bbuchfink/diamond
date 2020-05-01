@@ -50,6 +50,14 @@ using namespace std;
 namespace Workflow { namespace Search {
 
 static const string reference_partition = "ref_part";
+static const string reference_partition_done = "ref_part_done";
+
+string get_ref_part_file_name(size_t query, string suffix="") {
+	if (suffix.size() > 0)
+		suffix.append("_");
+	const string file_name = append_label(reference_partition + "_" + suffix, query);
+	return join_path(config.parallel_tmpdir, file_name);
+}
 
 string get_ref_block_tmpfile_name(size_t query, size_t block) {
 	const string file_name = append_label("ref_block_", query) + append_label("_", block);
@@ -130,6 +138,13 @@ void run_ref_chunk(DatabaseFile &db_file,
 	timer.finish();
 }
 
+void deallocate_queries() {
+	delete query_seqs::data_;
+	delete query_ids::data_;
+	delete query_source_seqs::data_;
+	delete query_qual;
+}
+
 void run_query_chunk(DatabaseFile &db_file,
 	unsigned query_chunk,
 	Consumer &master_out,
@@ -197,7 +212,9 @@ void run_query_chunk(DatabaseFile &db_file,
 
 	if (config.multiprocessing) {
 		auto work = P->get_stack(reference_partition);
-		auto done = P->get_stack(P->LOG);
+		P->create_stack_from_file(reference_partition_done, get_ref_part_file_name(query_chunk, "done"));
+		auto done = P->get_stack(reference_partition_done);
+		auto log_done = P->get_stack(P->LOG);
 		string buf;
 
 		while (work->pop(buf)) {
@@ -210,6 +227,7 @@ void run_query_chunk(DatabaseFile &db_file,
 			ReferenceDictionary::get().clear_block(chunk.i);
 
 			done->push(buf);
+			log_done->push(buf);
 			log_rss();
 		}
 	} else {
@@ -241,10 +259,14 @@ void run_query_chunk(DatabaseFile &db_file,
 		timer.go("Joining output blocks");
 
 		if (config.multiprocessing) {
-			P->barrier(AUTOTAG);
+			// P->barrier(AUTOTAG);
 
 			if (P->is_master()) {
 				current_ref_block = db_file.get_n_partition_chunks();
+
+				auto done = P->get_stack(reference_partition_done);
+				done->poll_size(current_ref_block);
+
 				ReferenceDictionary::get().restore_blocks(query_chunk, current_ref_block);
 
 				vector<string> tmp_file_names;
@@ -259,8 +281,9 @@ void run_query_chunk(DatabaseFile &db_file,
 					std::remove(f.c_str());
 				}
 			}
+			P->delete_stack(reference_partition_done);
 
-			P->barrier(AUTOTAG);
+			// P->barrier(AUTOTAG);
 		} else {
 			join_blocks(current_ref_block, master_out, tmp_file, params, metadata, db_file);
 		}
@@ -276,21 +299,18 @@ void run_query_chunk(DatabaseFile &db_file,
 	}
 
 	timer.go("Deallocating queries");
-	delete query_seqs::data_;
-	delete query_ids::data_;
-	delete query_source_seqs::data_;
-	delete query_qual;
+	deallocate_queries();
 	if (*output_format != Output_format::daa)
 		ReferenceDictionary::get().clear();
 }
 
+
+
 void master_thread(DatabaseFile *db_file, task_timer &total_timer, Metadata &metadata, const Options &options)
 {
 	auto P = Parallelizer::get();
-	string mp_reference_partition_file;
 	if (config.multiprocessing) {
 		P->init(config.parallel_tmpdir);
-		mp_reference_partition_file = join_path(P->get_work_directory(), "reference_partition");
 		if (P->is_master()) {
 			db_file->create_partition((size_t)(config.chunk_size*1e9));
 		}
@@ -322,16 +342,47 @@ void master_thread(DatabaseFile *db_file, task_timer &total_timer, Metadata &met
 
 	size_t query_file_offset = 0;
 
+	if (config.multiprocessing) {
+		task_timer timer("Counting query blocks", true);
+		// TODO fix memory efficiency
+		if (P->is_master()) {
+			for (;; ++current_query_chunk) {
+				if (options.self) {
+					db_file->seek_seq(query_file_offset);
+					if (!db_file->load_seqs(query_block_to_database_id,
+						(size_t)(config.chunk_size * 1e9),
+						&query_seqs::data_,
+						&query_ids::data_,
+						true,
+						options.db_filter))
+						break;
+					deallocate_queries();
+					query_file_offset = db_file->tell_seq();
+				} else {
+					if (!load_seqs(*query_file, *format_n, &query_seqs::data_, query_ids::data_, &query_source_seqs::data_,
+						config.store_query_quality ? &query_qual : nullptr,
+						(size_t)(config.chunk_size * 1e9), config.qfilt))
+						break;
+					deallocate_queries();
+				}
+			}
+			if (options.self) {
+				db_file->rewind();
+				query_file_offset = 0;
+			} else {
+				query_file->rewind();
+			}
+
+			for (size_t i=0; i<current_query_chunk; ++i) {
+				db_file->save_partition(get_ref_part_file_name(i));
+			}
+		}
+		P->barrier(AUTOTAG);
+	}
+
+	current_query_chunk = 0;
 	for (;; ++current_query_chunk) {
 		task_timer timer("Loading query sequences", true);
-
-		if (config.multiprocessing) {
-			if (P->is_master()) {
-				db_file->save_partition(mp_reference_partition_file);
-			}
-			P->barrier(AUTOTAG);
-			P->create_stack_from_file(reference_partition, mp_reference_partition_file);
-		}
 
 		if (options.self) {
 			db_file->seek_seq(query_file_offset);
@@ -363,9 +414,13 @@ void master_thread(DatabaseFile *db_file, task_timer &total_timer, Metadata &met
 			timer.finish();
 		}
 
+		if (config.multiprocessing)
+			P->create_stack_from_file(reference_partition, get_ref_part_file_name(current_query_chunk));
+
 		run_query_chunk(*db_file, current_query_chunk, *master_out, unaligned_file.get(), aligned_file.get(), metadata, options);
 
-		P->delete_stack(reference_partition);
+		if (config.multiprocessing)
+			P->delete_stack(reference_partition);
 	}
 
 	if (query_file && !options.query_file) {
