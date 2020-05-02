@@ -33,21 +33,34 @@ namespace Extension {
 int band(int len) {
 	if (config.padding > 0)
 		return config.padding;
-	if (len < 50)
-		return 15;
-	if (len < 100)
-		return 20;
-	if (len < 150)
-		return 30;
-	if (len < 200)
-		return 50;
-	if (len < 250)
-		return 60;
-	if(len < 350)
-		return 100;
-	if (len < 500)
-		return 120;
-	return 150;
+	if (config.fast_stage2) {
+		if (len < 50)
+			return 12;
+		if (len < 100)
+			return 16;
+		if (len < 250)
+			return 30;
+		if (len < 350)
+			return 40;
+		return 64;
+	}
+	else {
+		if (len < 50)
+			return 15;
+		if (len < 100)
+			return 20;
+		if (len < 150)
+			return 30;
+		if (len < 200)
+			return 50;
+		if (len < 250)
+			return 60;
+		if (len < 350)
+			return 100;
+		if (len < 500)
+			return 120;
+		return 150;
+	}
 }
 
 Match::Match(size_t target_block_id, bool outranked, std::array<std::list<Hsp>, MAX_CONTEXT> &hsps, int ungapped_score):

@@ -27,6 +27,11 @@ namespace DISPATCH_ARCH { namespace SIMD {
 template<>
 struct Vector<int8_t> {
 
+	static constexpr size_t CHANNELS = 32;
+
+	Vector()
+	{}
+
 	Vector(const signed char* p) :
 		v(_mm256_loadu_si256((const __m256i*)p))
 	{}

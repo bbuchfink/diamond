@@ -21,7 +21,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "score_vector_int8.h"
 #include "../util/simd/vector.h"
 #include "ungapped_simd.h"
-#include "../util/simd/transpose16x16.h"
+#include "../util/simd/transpose.h"
 
 using namespace DISPATCH_ARCH;
 
@@ -31,17 +31,18 @@ void window_ungapped(const Letter *query, const Letter **subjects, size_t subjec
 #ifdef __SSE4_1__
 	typedef score_vector<int8_t> Sv;
 	typedef ::DISPATCH_ARCH::SIMD::Vector<int8_t> SeqV;
-	assert(window % 16 == 0);
+	constexpr size_t CHANNELS = ::DISPATCH_ARCH::ScoreTraits<Sv>::CHANNELS;
+	assert(subject_count <= CHANNELS);
 
-	alignas(16) Letter subject_vector[16 * 16];
+	alignas(CHANNELS) Letter subject_vector[CHANNELS * CHANNELS];
 	Sv score, best;
-	const Letter *subject_ptr[16];
+	const Letter* subject_ptr[CHANNELS], * query_end = query + window;
 	std::copy(subjects, subjects + subject_count, subject_ptr);
 
-	for (int i = 0; i < window; i += 16) {
-		transpose16x16(subject_ptr, subject_count, subject_vector);
-		for (int j = 0; j < 16;) {
-			SeqV subject_letters(&subject_vector[j * 16]);
+	for (int i = 0; i < window; i += CHANNELS) {
+		transpose(subject_ptr, subject_count, subject_vector, SeqV());
+		for (int j = 0; j < CHANNELS && query < query_end;) {
+			SeqV subject_letters(&subject_vector[j * CHANNELS]);
 			unsigned query_letter = unsigned(*query);
 #ifdef SEQ_MASK
 			query_letter &= (unsigned)LETTER_MASK;
@@ -50,16 +51,27 @@ void window_ungapped(const Letter *query, const Letter **subjects, size_t subjec
 			score = score + match;
 			best = max(best, score);
 			++query;
-			subject_ptr[j] += 16;
+			subject_ptr[j] += CHANNELS;
 			++j;
 		}
 	}
 
-	int8_t best2[16];
+	int8_t best2[CHANNELS];
 	best.store(best2);
-	const size_t d = 16 - subject_count;
+	const size_t d = CHANNELS - subject_count;
 	for (size_t i = 0; i < subject_count; ++i)
 		out[i] = ScoreTraits<Sv>::int_score(best2[d + i]);
+#endif
+}
+
+void window_ungapped_best(const Letter* query, const Letter** subjects, size_t subject_count, int window, int* out) {
+#ifdef __AVX2__
+	if (subject_count <= 16)
+		::DP::ARCH_SSE4_1::window_ungapped(query, subjects, subject_count, window, out);
+	else
+		::DP::ARCH_AVX2::window_ungapped(query, subjects, subject_count, window, out);
+#else
+	window_ungapped(query, subjects, subject_count, window, out);
 #endif
 }
 

@@ -21,8 +21,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "../simd.h"
 
-static inline void transpose16x16(const signed char **data, size_t n, signed char *out) {
-	__m128i r0, r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11, r12, r13, r14, r15;
+#define UNPACK128_LO_HI_EPI8(a, b) t = r##a; r##a = _mm_unpacklo_epi8(t, r##b); r##b = _mm_unpackhi_epi8(t, r##b);
+#define UNPACK128_LO_HI_EPI16(a, b) t = r##a; r##a = _mm_unpacklo_epi16(t, r##b); r##b = _mm_unpackhi_epi16(t, r##b);
+#define UNPACK128_LO_HI_EPI32(a, b) t = r##a; r##a = _mm_unpacklo_epi32(t, r##b); r##b = _mm_unpackhi_epi32(t, r##b);
+#define UNPACK128_LO_HI_EPI64(a, b) t = r##a; r##a = _mm_unpacklo_epi64(t, r##b); r##b = _mm_unpackhi_epi64(t, r##b);
+
+static inline void transpose(const signed char **data, size_t n, signed char *out, const __m128i&) {
+	__m128i r0, r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11, r12, r13, r14, r15, t;
 	
 	switch (n) {
 	case 16:
@@ -59,105 +64,41 @@ static inline void transpose16x16(const signed char **data, size_t n, signed cha
 		r15 = _mm_loadu_si128((const __m128i*)*data);
 	}
 
-	__m128i t = r0;
-	r0 = _mm_unpacklo_epi8(t, r1);
-	r1 = _mm_unpackhi_epi8(t, r1);
-	t = r2;
-	r2 = _mm_unpacklo_epi8(t, r3);
-	r3 = _mm_unpackhi_epi8(t, r3);
-	t = r4;
-	r4 = _mm_unpacklo_epi8(t, r5);
-	r5 = _mm_unpackhi_epi8(t, r5);
-	t = r6;
-	r6 = _mm_unpacklo_epi8(t, r7);
-	r7 = _mm_unpackhi_epi8(t, r7);
-	t = r8;
-	r8 = _mm_unpacklo_epi8(t, r9);
-	r9 = _mm_unpackhi_epi8(t, r9);
-	t = r10;
-	r10 = _mm_unpacklo_epi8(t, r11);
-	r11 = _mm_unpackhi_epi8(t, r11);
-	t = r12;
-	r12 = _mm_unpacklo_epi8(t, r13);
-	r13 = _mm_unpackhi_epi8(t, r13);
-	t = r14;
-	r14 = _mm_unpacklo_epi8(t, r15);
-	r15 = _mm_unpackhi_epi8(t, r15);
+	UNPACK128_LO_HI_EPI8(0, 1)
+	UNPACK128_LO_HI_EPI8(2, 3)
+	UNPACK128_LO_HI_EPI8(4, 5)
+	UNPACK128_LO_HI_EPI8(6, 7)
+	UNPACK128_LO_HI_EPI8(8, 9)
+	UNPACK128_LO_HI_EPI8(10, 11)
+	UNPACK128_LO_HI_EPI8(12, 13)
+	UNPACK128_LO_HI_EPI8(14, 15)
 
-	t = r0;
-	r0 = _mm_unpacklo_epi16(t, r2);
-	r2 = _mm_unpackhi_epi16(t, r2);
-	t = r4;
-	r4 = _mm_unpacklo_epi16(t, r6);
-	r6 = _mm_unpackhi_epi16(t, r6);
-	t = r8;
-	r8 = _mm_unpacklo_epi16(t, r10);
-	r10 = _mm_unpackhi_epi16(t, r10);
-	t = r12;
-	r12 = _mm_unpacklo_epi16(t, r14);
-	r14 = _mm_unpackhi_epi16(t, r14);
-	t = r1;
-	r1 = _mm_unpacklo_epi16(t, r3);
-	r3 = _mm_unpackhi_epi16(t, r3);
-	t = r5;
-	r5 = _mm_unpacklo_epi16(t, r7);
-	r7 = _mm_unpackhi_epi16(t, r7);
-	t = r9;
-	r9 = _mm_unpacklo_epi16(t, r11);
-	r11 = _mm_unpackhi_epi16(t, r11);
-	t = r13;
-	r13 = _mm_unpacklo_epi16(t, r15);
-	r15 = _mm_unpackhi_epi16(t, r15);
+	UNPACK128_LO_HI_EPI16(0, 2)
+	UNPACK128_LO_HI_EPI16(4, 6)
+	UNPACK128_LO_HI_EPI16(8, 10)
+	UNPACK128_LO_HI_EPI16(12, 14)
+	UNPACK128_LO_HI_EPI16(1, 3)
+	UNPACK128_LO_HI_EPI16(5, 7)
+	UNPACK128_LO_HI_EPI16(9, 11)
+	UNPACK128_LO_HI_EPI16(13, 15)
 
-	t = r0;
-	r0 = _mm_unpacklo_epi32(t, r4);
-	r4 = _mm_unpackhi_epi32(t, r4);
-	t = r8;
-	r8 = _mm_unpacklo_epi32(t, r12);
-	r12 = _mm_unpackhi_epi32(t, r12);
-	t = r2;
-	r2 = _mm_unpacklo_epi32(t, r6);
-	r6 = _mm_unpackhi_epi32(t, r6);
-	t = r10;
-	r10 = _mm_unpacklo_epi32(t, r14);
-	r14 = _mm_unpackhi_epi32(t, r14);
-	t = r1;
-	r1 = _mm_unpacklo_epi32(t, r5);
-	r5 = _mm_unpackhi_epi32(t, r5);
-	t = r9;
-	r9 = _mm_unpacklo_epi32(t, r13);
-	r13 = _mm_unpackhi_epi32(t, r13);
-	t = r3;
-	r3 = _mm_unpacklo_epi32(t, r7);
-	r7 = _mm_unpackhi_epi32(t, r7);
-	t = r11;
-	r11 = _mm_unpacklo_epi32(t, r15);
-	r15 = _mm_unpackhi_epi32(t, r15);
+	UNPACK128_LO_HI_EPI32(0, 4)
+	UNPACK128_LO_HI_EPI32(8, 12)
+	UNPACK128_LO_HI_EPI32(2, 6)
+	UNPACK128_LO_HI_EPI32(10, 14)
+	UNPACK128_LO_HI_EPI32(1, 5)
+	UNPACK128_LO_HI_EPI32(9, 13)
+	UNPACK128_LO_HI_EPI32(3, 7)
+	UNPACK128_LO_HI_EPI32(11, 15)
 
-	t = r0;
-	r0 = _mm_unpacklo_epi64(t, r8);
-	r8 = _mm_unpackhi_epi64(t, r8);
-	t = r4;
-	r4 = _mm_unpacklo_epi64(t, r12);
-	r12 = _mm_unpackhi_epi64(t, r12);
-	t = r2;
-	r2 = _mm_unpacklo_epi64(t, r10);
-	r10 = _mm_unpackhi_epi64(t, r10);
-	t = r6;
-	r6 = _mm_unpacklo_epi64(t, r14);
-	r14 = _mm_unpackhi_epi64(t, r14);
-	t = r1;
-	r1 = _mm_unpacklo_epi64(t, r9);
-	r9 = _mm_unpackhi_epi64(t, r9);
-	t = r5;
-	r5 = _mm_unpacklo_epi64(t, r13);
-	r13 = _mm_unpackhi_epi64(t, r13);
-	t = r3;
-	r3 = _mm_unpacklo_epi64(t, r11);
-	r11 = _mm_unpackhi_epi64(t, r11);
-	t = r7;
-	r7 = _mm_unpacklo_epi64(t, r15);
-	r15 = _mm_unpackhi_epi64(t, r15);
+	UNPACK128_LO_HI_EPI64(0, 8)
+	UNPACK128_LO_HI_EPI64(4, 12)
+	UNPACK128_LO_HI_EPI64(2, 10)
+	UNPACK128_LO_HI_EPI64(6, 14)
+	UNPACK128_LO_HI_EPI64(1, 9)
+	UNPACK128_LO_HI_EPI64(5, 13)
+	UNPACK128_LO_HI_EPI64(3, 11)
+	UNPACK128_LO_HI_EPI64(7, 15)
 
 	__m128i* ptr = (__m128i*)out;
 	_mm_store_si128(ptr++, r0);

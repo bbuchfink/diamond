@@ -29,6 +29,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../dp/ungapped_simd.h"
 #include "../dp/dp.h"
 #include "left_most.h"
+#include "../util/simd/vector.h"
 
 namespace Search {
 namespace DISPATCH_ARCH {
@@ -49,12 +50,13 @@ void search_query_offset(Loc q,
 	const unsigned sid,
 	const Context &context)
 {
+	constexpr auto N = vector<Stage1_hit>::const_iterator::difference_type(::DISPATCH_ARCH::SIMD::Vector<int8_t>::CHANNELS);
 	if (hits_end <= hits)
 		return;
 	const Letter* query = query_seqs::data_->data(q);
 
-	const Letter* subjects[16];
-	int scores[16];
+	const Letter* subjects[N];
+	int scores[N];
 
 	const sequence query_clipped = Util::Sequence::clip(query - config.ungapped_window, config.ungapped_window * 2, config.ungapped_window);
 	const int window_left = int(query - query_clipped.data()), window = (int)query_clipped.length();
@@ -64,12 +66,12 @@ void search_query_offset(Loc q,
 	seed_offset = (unsigned)l.second;
 	const unsigned query_len = query_seqs::data_->length(query_id);
 
-	for (vector<Stage1_hit>::const_iterator i = hits; i < hits_end; i += 16) {
+	for (vector<Stage1_hit>::const_iterator i = hits; i < hits_end; i += N) {
 
-		const size_t n = std::min(vector<Stage1_hit>::const_iterator::difference_type(16), hits_end - i);
+		const size_t n = std::min(N, hits_end - i);
 		for (size_t j = 0; j < n; ++j)
 			subjects[j] = ref_seqs::data_->data(s[(i + j)->s]) - window_left;
-		DP::ARCH_SSE4_1::window_ungapped(query_clipped.data(), subjects, n, window, scores);
+		DP::window_ungapped_best(query_clipped.data(), subjects, n, window, scores);
 
 		for (size_t j = 0; j < n; ++j)
 			//if (scores[j] >= config.min_ungapped_raw_score) {
