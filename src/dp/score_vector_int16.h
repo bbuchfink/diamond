@@ -199,6 +199,7 @@ struct score_vector<int16_t>
 
 	score_vector(unsigned a, Register seq)
 	{
+#ifdef __SSSE3__
 		const __m128i *row = reinterpret_cast<const __m128i*>(&score_matrix.matrix8u()[a << 5]);
 
 		__m128i high_mask = _mm_slli_epi16(_mm_and_si128(seq, _mm_set1_epi8('\x10')), 3);
@@ -211,6 +212,7 @@ struct score_vector<int16_t>
 		__m128i s2 = _mm_shuffle_epi8(r2, seq_high);
 		data_ = _mm_and_si128(_mm_or_si128(s1, s2), _mm_set1_epi16(255));
 		data_ = _mm_subs_epi16(data_, _mm_set1_epi16(score_matrix.bias()));
+#endif
 	}
 
 	score_vector operator+(const score_vector &rhs) const
