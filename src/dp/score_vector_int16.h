@@ -65,8 +65,13 @@ struct score_vector<int16_t>
 		__m256i seq_low = _mm256_or_si256(seq, high_mask);
 		__m256i seq_high = _mm256_or_si256(seq, _mm256_xor_si256(high_mask, _mm256_set1_epi8('\x80')));
 
-		__m256i r1 = _mm256_loadu2_m128i(row, row);
-		__m256i r2 = _mm256_loadu2_m128i(row + 1, row + 1);
+		//__m256i r1 = _mm256_loadu2_m128i(row, row);
+		//__m256i r2 = _mm256_loadu2_m128i(row + 1, row + 1);
+
+		__m128i row1 = _mm_load_si128(row), row2 = _mm_load_si128(row + 1);
+		__m256i r1 = _mm256_set_m128i(row1, row1);
+		__m256i r2 = _mm256_set_m128i(row2, row2);
+
 		__m256i s1 = _mm256_shuffle_epi8(r1, seq_low);
 		__m256i s2 = _mm256_shuffle_epi8(r2, seq_high);
 		data_ = _mm256_and_si256(_mm256_or_si256(s1, s2), _mm256_set1_epi16(255));
