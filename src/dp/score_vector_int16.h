@@ -69,8 +69,12 @@ struct score_vector<int16_t>
 		//__m256i r2 = _mm256_loadu2_m128i(row + 1, row + 1);
 
 		__m128i row1 = _mm_load_si128(row), row2 = _mm_load_si128(row + 1);
-		__m256i r1 = _mm256_set_m128i(row1, row1);
-		__m256i r2 = _mm256_set_m128i(row2, row2);
+
+		//__m256i r1 = _mm256_set_m128i(row1, row1);
+		//__m256i r2 = _mm256_set_m128i(row2, row2);
+
+		__m256i r1 = _mm256_insertf128_si256(_mm256_castsi128_si256(row1), (row1), 1);
+		__m256i r2 = _mm256_insertf128_si256(_mm256_castsi128_si256(row2), (row2), 1);
 
 		__m256i s1 = _mm256_shuffle_epi8(r1, seq_low);
 		__m256i s2 = _mm256_shuffle_epi8(r2, seq_high);
