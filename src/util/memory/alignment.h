@@ -5,6 +5,24 @@
 #include <malloc.h>
 #include <cstddef>
 
+static inline void* aligned_malloc(size_t n, size_t align) {
+#ifdef WIN32
+    return _aligned_malloc(n , align);
+#else
+    void* p;
+    posix_memalign(&p, align, n);
+    return p;
+#endif
+}
+
+static inline void aligned_free(void* p) {
+#ifdef WIN32
+    _aligned_free(p);
+#else
+    free(p);
+#endif
+}
+
 template <typename T, std::size_t N = 16>
 class AlignmentAllocator {
 public:
@@ -35,21 +53,11 @@ public:
     }
 
     inline pointer allocate(size_type n) {
-#ifdef WIN32
-        return (pointer)_aligned_malloc(n * sizeof(value_type), N);
-#else
-        void* p;
-        posix_memalign(&p, N, n * sizeof(value_type));
-        return (pointer)p;
-#endif
+        return (pointer)aligned_malloc(n * sizeof(value_type), N);
     }
 
     inline void deallocate(pointer p, size_type) {
-#ifdef WIN32
-    _aligned_free (p);
-#else
-    free(p);
-#endif
+        aligned_free(p);
     }
 
     inline void construct(pointer p, const value_type& wert) {

@@ -21,9 +21,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define MEM_BUFFER_H_
 
 #include <stdlib.h>
+#include "../memory/alignment.h"
 
 template<typename _t>
 struct MemBuffer {
+
+	enum { ALIGN = 32 };
 
 	MemBuffer():
 		data_(nullptr),
@@ -32,19 +35,19 @@ struct MemBuffer {
 	{}
 
 	MemBuffer(size_t n):
-		data_((_t*)malloc(n * sizeof(_t))),
+		data_((_t*)aligned_malloc(n * sizeof(_t), ALIGN)),
 		size_(n),
 		alloc_size_(n)
 	{}
 
 	~MemBuffer() {
-		free(data_);
+		aligned_free(data_);
 	}
 
 	void resize(size_t n) {
 		if (alloc_size_ < n) {
-			free(data_);
-			data_ = (_t*)malloc(n * sizeof(_t));
+			aligned_free(data_);
+			data_ = (_t*)aligned_malloc(n * sizeof(_t), ALIGN);
 			alloc_size_ = n;
 		}
 		size_ = n;
