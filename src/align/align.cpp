@@ -19,6 +19,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #include <memory>
+#ifdef __cpp_lib_execution
+#include <execution>
+#endif
 #include "../basic/value.h"
 #include "align.h"
 #include "../data/reference.h"
@@ -153,7 +156,11 @@ void align_queries(Trace_pt_buffer &trace_pts, Consumer* output_file, const Para
 			break;
 		}
 		timer.go("Sorting trace points");
+#ifdef __cpp_lib_execution
+		std::sort(std::execution::parallel_policy(), v->begin(), v->end());
+#else		
 		merge_sort(v->begin(), v->end(), config.threads_);
+#endif
 		v->init();
 		timer.go("Computing alignments");
 		Align_fetcher::init(query_range.first, query_range.second, v->begin(), v->end());

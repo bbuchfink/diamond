@@ -59,22 +59,15 @@ struct score_vector<int16_t>
 
 	score_vector(unsigned a, Register seq)
 	{
-		const __m128i* row = reinterpret_cast<const __m128i*>(&score_matrix.matrix8u()[a << 5]);
+		const __m256i* row_lo = reinterpret_cast<const __m256i*>(&score_matrix.matrix8u_low()[a << 5]);
+		const __m256i* row_hi = reinterpret_cast<const __m256i*>(&score_matrix.matrix8u_high()[a << 5]);
 
 		__m256i high_mask = _mm256_slli_epi16(_mm256_and_si256(seq, _mm256_set1_epi8('\x10')), 3);
 		__m256i seq_low = _mm256_or_si256(seq, high_mask);
 		__m256i seq_high = _mm256_or_si256(seq, _mm256_xor_si256(high_mask, _mm256_set1_epi8('\x80')));
 
-		//__m256i r1 = _mm256_loadu2_m128i(row, row);
-		//__m256i r2 = _mm256_loadu2_m128i(row + 1, row + 1);
-
-		__m128i row1 = _mm_load_si128(row), row2 = _mm_load_si128(row + 1);
-
-		//__m256i r1 = _mm256_set_m128i(row1, row1);
-		//__m256i r2 = _mm256_set_m128i(row2, row2);
-
-		__m256i r1 = _mm256_insertf128_si256(_mm256_castsi128_si256(row1), (row1), 1);
-		__m256i r2 = _mm256_insertf128_si256(_mm256_castsi128_si256(row2), (row2), 1);
+		__m256i r1 = _mm256_load_si256(row_lo);
+		__m256i r2 = _mm256_load_si256(row_hi);
 
 		__m256i s1 = _mm256_shuffle_epi8(r1, seq_low);
 		__m256i s2 = _mm256_shuffle_epi8(r2, seq_high);

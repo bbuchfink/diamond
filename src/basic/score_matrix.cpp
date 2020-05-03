@@ -211,6 +211,10 @@ Score_matrix::Score_matrix(const string & matrix, int gap_open, int gap_extend, 
 	matrix8_(Matrix_info::get(matrix).scores, stop_match_score),
 	bias_((char)(-low_score())),
 	matrix8u_(Matrix_info::get(matrix).scores, stop_match_score, bias_),
+	matrix8_low_(Matrix_info::get(matrix).scores, stop_match_score, 0, 16),
+	matrix8_high_(Matrix_info::get(matrix).scores, stop_match_score, 0, 16, 16),
+	matrix8u_low_(Matrix_info::get(matrix).scores, stop_match_score, bias_, 16),
+	matrix8u_high_(Matrix_info::get(matrix).scores, stop_match_score, bias_, 16, 16),
 	matrix16_(Matrix_info::get(matrix).scores, stop_match_score),
 	matrix32_(Matrix_info::get(matrix).scores, stop_match_score)
 { }
@@ -299,6 +303,10 @@ Score_matrix::Score_matrix(const string &matrix_file, double lambda, double K, i
 	matrix8_(custom_scores(matrix_file)),
 	bias_((char)(-low_score())),
 	matrix8u_(custom_scores(matrix_file), bias_),
+	matrix8_low_(custom_scores(matrix_file), bias_),
+	matrix8_high_(custom_scores(matrix_file), bias_),
+	matrix8u_low_(custom_scores(matrix_file), bias_),
+	matrix8u_high_(custom_scores(matrix_file), bias_),
 	matrix16_(custom_scores(matrix_file)),
 	matrix32_(custom_scores(matrix_file))
 {

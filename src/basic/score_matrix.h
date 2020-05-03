@@ -44,6 +44,26 @@ struct Score_matrix
 	const int8_t* matrix8() const
 	{ return matrix8_.data; }
 
+	const int8_t* matrix8_low() const
+	{
+		return matrix8_low_.data;
+	}
+
+	const int8_t* matrix8_high() const
+	{
+		return matrix8_high_.data;
+	}
+
+	const int8_t* matrix8u_low() const
+	{
+		return matrix8u_low_.data;
+	}
+
+	const int8_t* matrix8u_high() const
+	{
+		return matrix8u_high_.data;
+	}
+
 	const uint8_t* matrix8u() const
 	{ return matrix8u_.data; }
 
@@ -142,19 +162,21 @@ private:
 	struct Scores
 	{
 		Scores() {}
-		Scores(const int8_t *scores, int stop_match_score = 1, int8_t bias = 0)
+		Scores(const int8_t *scores, int stop_match_score = 1, int8_t bias = 0, unsigned modulo = 32, unsigned offset = 0)
 		{
 			const unsigned n = value_traits.alphabet_size;
 			for (unsigned i = 0; i < 32; ++i)
-				for (unsigned j = 0; j < 32; ++j)
-					data[i * 32 + j] = i < n && j < n ? (_t)(scores[i*n + j] + (int)bias) : -(std::numeric_limits<_t>::max() / 2);
+				for (unsigned j = 0; j < 32; ++j) {
+					const unsigned j2 = j % modulo + offset;
+					data[i * 32 + j] = i < n && j2 < n ? (_t)(scores[i * n + j2] + (int)bias) : -(std::numeric_limits<_t>::max() / 2);
+				}
 			if (stop_match_score != 1)
 				data[24 * 32 + 24] = stop_match_score;
 		}
 #ifdef _MSC_VER
-		__declspec(align(16)) _t data[32 * 32];
+		__declspec(align(32)) _t data[32 * 32];
 #else
-		_t data[32 * 32] __attribute__((aligned(16)));
+		_t data[32 * 32] __attribute__((aligned(32)));
 #endif
 	};
 
@@ -165,6 +187,10 @@ private:
 	Scores<int8_t> matrix8_;
 	int8_t bias_;
 	Scores<uint8_t> matrix8u_;
+	Scores<int8_t> matrix8_low_;
+	Scores<int8_t> matrix8_high_;
+	Scores<int8_t> matrix8u_low_;
+	Scores<int8_t> matrix8u_high_;
 	Scores<int16_t> matrix16_;
 	Scores<int> matrix32_;
 
