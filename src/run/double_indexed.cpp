@@ -374,7 +374,8 @@ void master_thread(DatabaseFile *db_file, task_timer &total_timer, Metadata &met
 			}
 
 			for (size_t i=0; i<current_query_chunk; ++i) {
-				db_file->save_partition(get_ref_part_file_name(i));
+				const string annotation = "# query_chunk=" + to_string(i);
+				db_file->save_partition(get_ref_part_file_name(i), annotation);
 			}
 		}
 		P->barrier(AUTOTAG);

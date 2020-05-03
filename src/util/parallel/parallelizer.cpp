@@ -217,6 +217,7 @@ bool Parallelizer::create_stack(const std::string & tag, std::string sfx) {
 
 
 bool Parallelizer::create_stack_from_file(const std::string & tag, const std::string & file_name) {
+/*
     if (fs_map.find(tag) == fs_map.end()) {
         fs_map.emplace(tag, shared_ptr<FileStack>(new FileStack(file_name)));
         final_cleanup_list.push_back(file_name);
@@ -225,6 +226,11 @@ bool Parallelizer::create_stack_from_file(const std::string & tag, const std::st
     } else {
         return false;
     }
+*/
+    delete_stack(tag);
+    fs_map.emplace(tag, shared_ptr<FileStack>(new FileStack(file_name)));
+    DBG(file_name);
+    return true;
 }
 
 

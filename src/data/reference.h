@@ -97,7 +97,7 @@ struct DatabaseFile : public InputFile
 	void rewind();
 
 	void create_partition(size_t max_letters);
-	void save_partition(const string & partition_file_name);
+	void save_partition(const string & partition_file_name, const string & annotation = "");
 	void load_partition(const string & partition_file_name);
 	void clear_partition();
 	size_t get_n_partition_chunks();
