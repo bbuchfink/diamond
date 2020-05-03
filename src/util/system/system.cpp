@@ -13,6 +13,7 @@
 #endif
 
 using std::string;
+using std::cout;
 
 string executable_path() {
 	char buf[4096];
@@ -22,7 +23,7 @@ string executable_path() {
 	return string(buf);
 #else
 	if (readlink("/proc/self/exe", buf, sizeof(buf)) < 0)
-		throw runtime_error("Error executing readlink on /proc/self/exe.");
+		throw std::runtime_error("Error executing readlink on /proc/self/exe.");
 	return string(buf);
 #endif
 }
