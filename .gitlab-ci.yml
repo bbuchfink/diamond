@@ -1,5 +1,5 @@
 linux_x86_64:
-    image: gitlab-registry.mpcdf.mpg.de/khr/diamond/ubuntu1804
+    image: gitlab-registry.mpcdf.mpg.de/khr/docker/diamond/ubuntu1804
     before_script:
         - mkdir build
         - cd build
