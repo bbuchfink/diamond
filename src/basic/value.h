@@ -51,7 +51,7 @@ struct Char_representation
 		return data_[(long)c];
 	}
 private:
-	static const char invalid;
+	static const Letter invalid;
 	Letter data_[256];
 };
 

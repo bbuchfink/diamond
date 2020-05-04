@@ -60,7 +60,7 @@ struct Score_matrix
 		return matrix8_.data[(int(a) << 5) + int(b)];
 	}
 
-	const int* row(char a) const
+	const int* row(Letter a) const
 	{
 		return &matrix32_.data[(int)a << 5];
 	}
@@ -106,8 +106,8 @@ struct Score_matrix
 		return log(k());
 	}
 
-	char low_score() const;
-	char high_score() const;
+	int8_t low_score() const;
+	int8_t high_score() const;
 
 	int gap_open() const
 	{
@@ -142,7 +142,7 @@ private:
 	struct Scores
 	{
 		Scores() {}
-		Scores(const char *scores, int stop_match_score = 1, char bias = 0)
+		Scores(const int8_t *scores, int stop_match_score = 1, int8_t bias = 0)
 		{
 			const unsigned n = value_traits.alphabet_size;
 			for (unsigned i = 0; i < 32; ++i)
@@ -163,7 +163,7 @@ private:
 	const double *constants_;
 	string name_;
 	Scores<int8_t> matrix8_;
-	char bias_;
+	int8_t bias_;
 	Scores<uint8_t> matrix8u_;
 	Scores<int16_t> matrix16_;
 	Scores<int> matrix32_;
@@ -171,7 +171,7 @@ private:
 };
 
 extern Score_matrix score_matrix;
-typedef signed char MatrixTable[AMINO_ACID_COUNT*AMINO_ACID_COUNT];
+typedef int8_t MatrixTable[AMINO_ACID_COUNT*AMINO_ACID_COUNT];
 extern const MatrixTable s_Blosum45PSM, s_Blosum50PSM, s_Blosum62PSM, s_Blosum80PSM, s_Blosum90PSM, s_Pam250PSM, s_Pam30PSM, s_Pam70PSM;
 
 #endif /* SCORE_MATRIX_H_ */

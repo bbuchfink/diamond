@@ -189,8 +189,10 @@ void stage2(const Packed_loc *q,
 	typedef Map<vector<Stage1_hit>::const_iterator, Stage1_hit::Query> Map_t;
 	Map_t map(hits.begin(), hits.end());
 	if (config.fast_stage2) {
+#ifdef __SSE2__
 		for (Map_t::Iterator i = map.begin(); i.valid(); ++i)
 			search_query_offset(q[i.begin()->q], s, i.begin(), i.end(), stats, out, sid, context);
+#endif
 	}
 	else {
 		for (Map_t::Iterator i = map.begin(); i.valid(); ++i)

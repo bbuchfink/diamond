@@ -76,7 +76,7 @@ struct Reduction
 		return map_[a];
 	}
 
-	const char* map8() const
+	const Letter* map8() const
 	{
 		return map8_;
 	}
@@ -107,9 +107,9 @@ private:
 
 	unsigned map_[256];
 #ifdef _MSC_VER
-	__declspec(align(16)) char map8_[256];
+	__declspec(align(16)) Letter map8_[256];
 #else
-	char map8_[256] __attribute__((aligned(16)));
+	Letter map8_[256] __attribute__((aligned(16)));
 #endif
 	unsigned size_;
 	uint64_t bit_size_;
