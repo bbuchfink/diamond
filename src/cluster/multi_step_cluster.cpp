@@ -21,6 +21,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 using namespace std;
 
 namespace Workflow { namespace Cluster{ 
+string MultiStep::get_key() {
+	return "multi-step";
+}
+string MultiStep::get_description(){
+	return "A greedy stepwise vortex cover algorithm";
+}
+
 vector<bool> MultiStep::rep_bitset(const vector<int> &centroid, const vector<bool> *superset) {
 	vector<bool> r(centroid.size());
 	for (int c : centroid)
@@ -54,7 +61,7 @@ vector<int> MultiStep::cluster(DatabaseFile &db, const vector<bool> *filter) {
 	return Util::Algo::greedy_vortex_cover(nb);
 }
 
-void MultiStep::run_clustering() {
+void MultiStep::run() {
 	if (config.database == "")
 		throw runtime_error("Missing parameter: database file (--db/-d)");
 	config.command = Config::makedb;

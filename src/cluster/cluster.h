@@ -21,5 +21,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 class ClusteringAlgorithm {
 public:
 	virtual void run() = 0;
-	static std::string get_key();
+	virtual std::string get_key() = 0;
+	virtual std::string get_description() = 0;
 };

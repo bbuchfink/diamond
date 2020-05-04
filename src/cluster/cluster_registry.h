@@ -33,7 +33,7 @@ private:
 public:
 	static map<string, ClusteringAlgorithm*> regMap;
 	static ClusteringAlgorithm* get(string key){
-		auto ca = ClusterRegistry::regMap.find(key);
+		map<string, ClusteringAlgorithm*>::iterator ca = ClusterRegistry::regMap.find(key);
 		if(ca == ClusterRegistry::regMap.end()){
 			throw std::runtime_error("Clustering algorithm not found.");
 		}
