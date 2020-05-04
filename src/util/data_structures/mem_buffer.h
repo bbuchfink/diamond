@@ -21,6 +21,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define MEM_BUFFER_H_
 
 #include <stdlib.h>
+#include <exception>
 #include "../memory/alignment.h"
 
 template<typename _t>
@@ -38,7 +39,10 @@ struct MemBuffer {
 		data_((_t*)aligned_malloc(n * sizeof(_t), ALIGN)),
 		size_(n),
 		alloc_size_(n)
-	{}
+	{
+		if (data_ == nullptr)
+			throw std::bad_alloc();
+	}
 
 	~MemBuffer() {
 		aligned_free(data_);
@@ -48,6 +52,8 @@ struct MemBuffer {
 		if (alloc_size_ < n) {
 			aligned_free(data_);
 			data_ = (_t*)aligned_malloc(n * sizeof(_t), ALIGN);
+			if (data_ == nullptr)
+				throw std::bad_alloc();
 			alloc_size_ = n;
 		}
 		size_ = n;
