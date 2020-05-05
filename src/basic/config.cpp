@@ -147,7 +147,10 @@ Config::Config(int argc, const char **argv, bool check_io)
 
 	Options_group cluster("Cluster options");
 	cluster.add()
-		("cluster-algo", 0, "Clustering algorithm (\"multi-step\", \"mcl\")", cluster_algo);
+		("cluster-algo", 0, "Clustering algorithm (\"multi-step\", \"mcl\")", cluster_algo)
+		("mcl-expansion", 0, "MCL expansion coefficient (default=2.0)", cluster_mcl_expansion, 2.0)
+		("mcl-inflation", 0, "MCL inflation coefficient (default=2.0)", cluster_mcl_inflation, 2.0)
+		("mcl-sparsity-switch", 0, "MCL switch to sparse matrix computation (default=0.8) ", cluster_mcl_sparsity_switch, 0.8);
 
 	Options_group aligner("Aligner options");
 	aligner.add()

@@ -50,8 +50,8 @@ private:
 	void get_gamma(Eigen::MatrixXf* in, Eigen::MatrixXf* out, float r);
 	vector<unordered_set<uint32_t>> get_list(Eigen::SparseMatrix<float>* m);
 	vector<unordered_set<uint32_t>> get_list(Eigen::MatrixXf* m);
-	vector<unordered_set<uint32_t>> markov_process(Eigen::SparseMatrix<float>* m);
-	vector<unordered_set<uint32_t>> markov_process(Eigen::MatrixXf* m);
+	vector<unordered_set<uint32_t>> markov_process(Eigen::SparseMatrix<float>* m, float inflation, float expansion);
+	vector<unordered_set<uint32_t>> markov_process(Eigen::MatrixXf* m, float inflation, float expansion);
 public:
 	void run();
 	string get_key();

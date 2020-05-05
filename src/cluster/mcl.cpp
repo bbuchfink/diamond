@@ -42,21 +42,22 @@ void MCL::get_exp(Eigen::SparseMatrix<float>* in, Eigen::SparseMatrix<float>* ou
 }
 
 void MCL::get_exp(Eigen::MatrixXf* in, Eigen::MatrixXf* out, float r){
-	if( r - (int) r == 0 ){
-		// TODO: at some r it may be more beneficial to diagnoalize in and only take the exponents of the eigenvalues
+	// TODO: at some r it may be more beneficial to diagnoalize in and only take the exponents of the eigenvalues
+	if( r - (int) r == 0){
 		*out = *in;
 		for(uint32_t i=1; i<r; i++){ 
-			(*out) *= (*in);
+			*out *= *in;
 		}
 	}
 	else{ 
+		// TODO: check whether the matrix is self-adjoint and use SelfAdjointEigenSolver instead
 		Eigen::EigenSolver<Eigen::MatrixXf> solver(*in);
 		Eigen::MatrixXcf d = solver.eigenvalues().asDiagonal();
 		for(uint32_t idiag = 0; idiag<d.rows(); idiag++){
 			d(idiag, idiag) = pow(d(idiag, idiag), r);
 		}
 		Eigen::MatrixXcf V = solver.eigenvectors();
-		(*out) = (V * d * V.transpose()).real();
+		out->noalias() = (V * d.real() * V.inverse()).real();
 	}
 }
 
@@ -76,13 +77,14 @@ void MCL::get_gamma(Eigen::SparseMatrix<float>* in, Eigen::SparseMatrix<float>* 
 }
 
 void MCL::get_gamma(Eigen::MatrixXf* in, Eigen::MatrixXf* out, float r){
+	// Note that Eigen matrices are column-major, so this is the most efficient way
 	for (uint32_t icol=0; icol<in->cols(); ++icol){
 		float colSum = 0.0f;
 		for (uint32_t irow=0; irow<in->rows(); ++irow){
-			colSum += pow((*in)(irow, icol) , r);
+			colSum += pow(in->coeffRef(irow, icol) , r);
 		}
 		for (uint32_t irow=0; irow<in->rows(); ++irow){
-			(*out)(irow, icol) =  pow((*in)(irow, icol) , r)/colSum;
+			out->coeffRef(irow, icol) =  pow(in->coeffRef(irow, icol) , r) / colSum;
 		}
 	}
 }
@@ -101,7 +103,7 @@ vector<unordered_set<uint32_t>> MCL::get_list(Eigen::MatrixXf* m){
 	LazyDisjointIntegralSet<uint32_t> disjointSet(m->cols());
 	for (uint32_t icol=0; icol<m->cols(); ++icol){
 		for (uint32_t irow=0; irow<m->rows(); ++irow){
-			if( abs((*m)(irow, icol)) > 1e-7 ){
+			if( abs((*m)(irow, icol)) > std::numeric_limits<float>::epsilon()){
 				disjointSet.merge(irow, icol);
 			}
 		}
@@ -109,15 +111,51 @@ vector<unordered_set<uint32_t>> MCL::get_list(Eigen::MatrixXf* m){
 	return disjointSet.getListOfSets();
 }
 
-vector<unordered_set<uint32_t>> MCL::markov_process(Eigen::SparseMatrix<float>* m){
+// void printMatrix(Eigen::SparseMatrix<float>* m){
+// 	printf("[");
+// 	for (uint32_t irow=0; irow<m->rows(); ++irow){
+// 		printf("[");
+// 		for (uint32_t icol=0; icol<m->cols(); ++icol){
+// 			printf("%12.7f",m->coeffRef(irow, icol));
+// 		}
+// 		if(irow<m->rows() - 1){
+// 			printf("];\n");
+// 		}
+// 		else{
+// 			printf("]");
+// 		}
+// 	}
+// 	printf("]\n\n");
+// }
+// void printMatrix(Eigen::MatrixXf* m){
+// 	printf("[");
+// 	for (uint32_t irow=0; irow<m->rows(); ++irow){
+// 		printf("[");
+// 		for (uint32_t icol=0; icol<m->cols(); ++icol){
+// 			printf("%12.7f",m->coeffRef(irow, icol));
+// 		}
+// 		if(irow<m->rows() - 1){
+// 			printf("];\n");
+// 		}
+// 		else{
+// 			printf("]");
+// 		}
+// 	}
+// 	printf("]\n\n");
+// }
+
+vector<unordered_set<uint32_t>> MCL::markov_process(Eigen::SparseMatrix<float>* m, float inflation, float expansion){
+	for (uint32_t idiag=0; idiag<m->cols(); ++idiag){
+		assert(abs(m->coeffRef(idiag, idiag)) > std::numeric_limits<float>::epsilon());
+	}
 	uint32_t iteration = 0;
-	double diff_norm = std::numeric_limits<double>::max();
+	float diff_norm = std::numeric_limits<float>::max();
 	Eigen::SparseMatrix<float> msquared(m->rows(), m->cols());
 	Eigen::SparseMatrix<float> m_update(m->rows(), m->cols());
 	get_gamma(m, m, 1); // This is to get a matrix of random walks on the graph -> TODO: find out if something else is more suitable
 	while( iteration < 100 && diff_norm > 1e-6*m->rows() ){
-		get_exp(m, &msquared, 2);
-		get_gamma(&msquared, &m_update, 2);
+		get_exp(m, &msquared, expansion);
+		get_gamma(&msquared, &m_update, inflation);
 		*m -= m_update;
 		diff_norm = m->norm();
 		*m = m_update;
@@ -126,15 +164,19 @@ vector<unordered_set<uint32_t>> MCL::markov_process(Eigen::SparseMatrix<float>* 
 	return get_list(m);
 }
 
-vector<unordered_set<uint32_t>> MCL::markov_process(Eigen::MatrixXf* m){
+vector<unordered_set<uint32_t>> MCL::markov_process(Eigen::MatrixXf* m, float inflation, float expansion){
+	for (uint32_t idiag=0; idiag<m->cols(); ++idiag){
+		assert(abs(m->coeffRef(idiag, idiag)) > std::numeric_limits<float>::epsilon());
+	}
 	uint32_t iteration = 0;
-	double diff_norm = std::numeric_limits<double>::max();
+	float diff_norm = std::numeric_limits<float>::max();
 	Eigen::MatrixXf msquared(m->rows(), m->cols());
 	Eigen::MatrixXf m_update(m->rows(), m->cols());
 	get_gamma(m, m, 1); // This is to get a matrix of random walks on the graph -> TODO: find out if something else is more suitable
 	while( iteration < 100 && diff_norm > 1e-6*m->rows() ){
-		get_exp(m, &msquared, 2);
-		get_gamma(&msquared, &m_update, 2);
+		get_exp(m, &msquared, expansion);
+		if(isnan(msquared.norm())) break; // converged if expansion is not integral
+		get_gamma(&msquared, &m_update, inflation);
 		*m -= m_update;
 		diff_norm = m->norm();
 		*m = m_update;
@@ -230,9 +272,25 @@ void MCL::run(){
 	// data.emplace_back(11, 8, 0.20f);
 	// data.emplace_back(11, 10, 0.20f);
 	// data.emplace_back(11, 11, 0.333f);
-	// Eigen::SparseMatrix<float> tmp(12,12);
-	// tmp.setFromTriplets(data.begin(), data.end());
-	// auto cr = markov_process(&tmp);
+	// vector<unordered_set<uint32_t>> cr;
+	// float inf = 2.0;
+	// float exp = 2.0;
+	// if(false){
+	// 	Eigen::SparseMatrix<float> tmp(12,12);
+	// 	tmp.setFromTriplets(data.begin(), data.end());
+	// 	printMatrix(&tmp);
+	// 	cr = markov_process(&tmp, inf, exp);
+	// 	printMatrix(&tmp);
+	// }
+	// else{
+	// 	Eigen::MatrixXf tmp = Eigen::MatrixXf::Zero(12,12);
+	// 	for(Eigen::Triplet<float> const & t : data){
+	// 		tmp(t.row(), t.col()) = t.value();
+	// 	}
+	// 	printMatrix(&tmp);
+	// 	cr = markov_process(&tmp, inf, exp);
+	// 	printMatrix(&tmp);
+	// }
 	// cout << "Found "<<cr.size()<<" clusters"<<endl;
 	// for(auto& set: cr){
 	// 	cout<< "set :";
@@ -282,11 +340,13 @@ void MCL::run(){
 	uint32_t nClustersEq1 = 0;
 	uint32_t n_dense_calculations = 0;
 	uint32_t n_sparse_calculations = 0;
+	float inflation = (float) config.cluster_mcl_inflation;
+	float expansion = (float) config.cluster_mcl_expansion;
 
 	if( full ){
 		// TODO: According to the SIAM publication this is not valid, just for debugging
 		Eigen::SparseMatrix<float> m = ms.getMatrix();
-		for(unordered_set<uint32_t> subset : markov_process(&m)){
+		for(unordered_set<uint32_t> subset : markov_process(&m, inflation, expansion)){
 			for(uint32_t el : subset){
 				clustering_result[el] = cluster_id;
 			}
@@ -295,7 +355,7 @@ void MCL::run(){
 		}
 	}
 	else {
-		// TODO: check if using dense matrices for non-sparse components improves performance
+		// TODO: check when/if using dense matrices for non-sparse components improves performance
 		for(uint32_t iComponent = 0; iComponent<indices.size(); iComponent++){
 			vector<uint32_t> order = indices[iComponent];
 			if(order.size() > 1){
@@ -306,19 +366,21 @@ void MCL::run(){
 				min_sparsity = min(min_sparsity, sparsity);
 				// map back to original ids
 				vector<unordered_set<uint32_t>> list_of_sets;
-				if(sparsity >= 0.8){ //TODO: a size limit should be given as well
+
+				//TODO: a size limit for the dense matrix should control this as well
+				if(sparsity >= config.cluster_mcl_sparsity_switch && expansion - (int) expansion == 0){ 
 					n_sparse_calculations++;
 					Eigen::SparseMatrix<float> m_sparse(order.size(), order.size());
 					m_sparse.setFromTriplets(m.begin(), m.end());
-					list_of_sets = markov_process(&m_sparse);
+					list_of_sets = markov_process(&m_sparse, inflation, expansion);
 				}
 				else{
 					n_dense_calculations++;
-					Eigen::MatrixXf m_dense(order.size(), order.size());
+					Eigen::MatrixXf m_dense = Eigen::MatrixXf::Zero(order.size(), order.size());
 					for(Eigen::Triplet<float> const & t : m){
 						m_dense(t.row(), t.col()) = t.value();
 					}
-					list_of_sets = markov_process(&m_dense);
+					list_of_sets = markov_process(&m_dense, inflation, expansion);
 				}
 				for(unordered_set<uint32_t> subset : list_of_sets){
 					for(uint32_t el : subset){
