@@ -52,6 +52,10 @@ private:
 	vector<unordered_set<uint32_t>> get_list(Eigen::MatrixXf* m);
 	vector<unordered_set<uint32_t>> markov_process(Eigen::SparseMatrix<float>* m, float inflation, float expansion);
 	vector<unordered_set<uint32_t>> markov_process(Eigen::MatrixXf* m, float inflation, float expansion);
+	double sparse_create_time, dense_create_time = 0.0;
+	double sparse_exp_time, dense_int_exp_time, dense_gen_exp_time = 0.0;
+	double sparse_gamma_time, dense_gamma_time = 0.0;
+	double sparse_list_time, dense_list_time = 0.0;
 public:
 	void run();
 	string get_key();
@@ -62,36 +66,36 @@ template <typename T>
 class SparseMatrixStream : public Consumer {
 	size_t n;
 	vector<Eigen::Triplet<T>> data;
-	LazyDisjointSet<size_t>* disjointSet;
+	LazyDisjointSet<uint32_t>* disjointSet;
 	virtual void consume(const char *ptr, size_t n) override {
-		size_t query, subject, count;
-		float qcov, scov, bitscore, id;
 		const char *end = ptr + n;
+		uint32_t query = *(uint32_t*) ptr;
+		ptr += sizeof(uint32_t);
 		while (ptr < end) {
-			if (sscanf(ptr, "%lu\t%lu\t%f\t%f\t%f\t%f\n%ln", &query, &subject, &qcov, &scov, &bitscore, &id, &count) != 6) 
-				throw runtime_error("Cluster format error.");
-			const float value = (qcov/100.0f) * (scov/100.0f) * (id/100.0f);
+			const uint32_t subject = *(uint32_t*) ptr;
+			ptr += sizeof(uint32_t);
+			const double value = *(double*) ptr;
+			ptr += sizeof(double);
 			data.emplace_back(query, subject, value);
 			disjointSet->merge(query, subject);
-			ptr += count;
 		}
 	}
 public:
 	SparseMatrixStream(size_t n){
 		this->n = n;
-		disjointSet = new LazyDisjointIntegralSet<size_t>(n); 
+		disjointSet = new LazyDisjointIntegralSet<uint32_t>(n); 
 	}
 
 	~SparseMatrixStream(){
 		delete disjointSet;
 	}
 	pair<vector<vector<uint32_t>>, vector<vector<Eigen::Triplet<T>>>> getComponents(){
-		vector<unordered_set<size_t>> sets = disjointSet->getListOfSets();
+		vector<unordered_set<uint32_t>> sets = disjointSet->getListOfSets();
 		vector<vector<Eigen::Triplet<T>>> split(sets.size());
 		vector<uint32_t> indexToSetId(this->n, sets.size());
 		for(uint32_t iset = 0; iset < sets.size(); iset++){
 			split.push_back(vector<Eigen::Triplet<T>>());
-			for(size_t index : sets[iset]){
+			for(uint32_t index : sets[iset]){
 				indexToSetId[index] = iset;
 			}
 		}

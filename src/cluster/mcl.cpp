@@ -28,6 +28,7 @@ string MCL::get_description() {
 }
 
 void MCL::get_exp(Eigen::SparseMatrix<float>* in, Eigen::SparseMatrix<float>* out, float r){
+	std::chrono::high_resolution_clock::time_point t = std::chrono::high_resolution_clock::now();
 	if( r - (int) r == 0 ){
 		// TODO: at some r it may be more beneficial to diagnoalize in and only take the exponents of the eigenvalues
 		*out = *in;
@@ -39,29 +40,38 @@ void MCL::get_exp(Eigen::SparseMatrix<float>* in, Eigen::SparseMatrix<float>* ou
 		throw runtime_error(" Eigen does not provide an eigenvalue solver for sparse matrices");
 	}
 	*out = out->pruned();
+	sparse_exp_time += (double) std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - t).count() / 1000.0;
 }
 
 void MCL::get_exp(Eigen::MatrixXf* in, Eigen::MatrixXf* out, float r){
 	// TODO: at some r it may be more beneficial to diagnoalize in and only take the exponents of the eigenvalues
-	if( r - (int) r == 0){
+	std::chrono::high_resolution_clock::time_point t = std::chrono::high_resolution_clock::now();
+	if(r - (int) r == 0){
 		*out = *in;
 		for(uint32_t i=1; i<r; i++){ 
-			*out *= *in;
+			(*out) *= (*in);
 		}
+		dense_int_exp_time += (double) std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - t).count() / 1000.0;
 	}
 	else{ 
 		// TODO: check whether the matrix is self-adjoint and use SelfAdjointEigenSolver instead
+		// TODO: try and get out->noalias() = in->pow(r); to work (unsupported! http://eigen.tuxfamily.org/dox/unsupported/group__MatrixFunctions__Module.html).
 		Eigen::EigenSolver<Eigen::MatrixXf> solver(*in);
 		Eigen::MatrixXcf d = solver.eigenvalues().asDiagonal();
 		for(uint32_t idiag = 0; idiag<d.rows(); idiag++){
 			d(idiag, idiag) = pow(d(idiag, idiag), r);
 		}
 		Eigen::MatrixXcf V = solver.eigenvectors();
-		out->noalias() = (V * d.real() * V.inverse()).real();
+		double thr = 0.5 * abs(V.determinant());
+		if( thr > std::numeric_limits<float>::epsilon() ){
+			out->noalias() = (V * d.real() * V.inverse()).real();
+		}
+		dense_gen_exp_time += (double) std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - t).count() / 1000.0;
 	}
 }
 
 void MCL::get_gamma(Eigen::SparseMatrix<float>* in, Eigen::SparseMatrix<float>* out, float r){
+	std::chrono::high_resolution_clock::time_point t = std::chrono::high_resolution_clock::now();
 	vector<Eigen::Triplet<float>> data;
 	for (uint32_t k=0; k<in->outerSize(); ++k){
 		float colSum = 0.0f;
@@ -74,9 +84,11 @@ void MCL::get_gamma(Eigen::SparseMatrix<float>* in, Eigen::SparseMatrix<float>* 
 	}
 	out->setFromTriplets(data.begin(), data.end(), [] (const float&, const float &b) { return b; });
 	*out = out->pruned(1.0, std::numeric_limits<float>::epsilon());
+	sparse_gamma_time += (double) std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - t).count() / 1000.0;
 }
 
 void MCL::get_gamma(Eigen::MatrixXf* in, Eigen::MatrixXf* out, float r){
+	std::chrono::high_resolution_clock::time_point t = std::chrono::high_resolution_clock::now();
 	// Note that Eigen matrices are column-major, so this is the most efficient way
 	for (uint32_t icol=0; icol<in->cols(); ++icol){
 		float colSum = 0.0f;
@@ -87,19 +99,23 @@ void MCL::get_gamma(Eigen::MatrixXf* in, Eigen::MatrixXf* out, float r){
 			out->coeffRef(irow, icol) =  pow(in->coeffRef(irow, icol) , r) / colSum;
 		}
 	}
+	dense_gamma_time += (double) std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - t).count() / 1000.0;
 }
 
 vector<unordered_set<uint32_t>> MCL::get_list(Eigen::SparseMatrix<float>* m){
+	std::chrono::high_resolution_clock::time_point t = std::chrono::high_resolution_clock::now();
 	LazyDisjointIntegralSet<uint32_t> disjointSet(m->cols());
 	for (uint32_t k=0; k<m->outerSize(); ++k){
 		for (Eigen::SparseMatrix<float>::InnerIterator it(*m, k); it; ++it){
 			disjointSet.merge(it.row(), it.col());
 		}
 	}
+	sparse_list_time += (double) std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - t).count() / 1000.0;
 	return disjointSet.getListOfSets();
 }
 
 vector<unordered_set<uint32_t>> MCL::get_list(Eigen::MatrixXf* m){
+	std::chrono::high_resolution_clock::time_point t = std::chrono::high_resolution_clock::now();
 	LazyDisjointIntegralSet<uint32_t> disjointSet(m->cols());
 	for (uint32_t icol=0; icol<m->cols(); ++icol){
 		for (uint32_t irow=0; irow<m->rows(); ++irow){
@@ -108,6 +124,7 @@ vector<unordered_set<uint32_t>> MCL::get_list(Eigen::MatrixXf* m){
 			}
 		}
 	}
+	dense_list_time += (double) std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - t).count() / 1000.0;
 	return disjointSet.getListOfSets();
 }
 
@@ -173,9 +190,8 @@ vector<unordered_set<uint32_t>> MCL::markov_process(Eigen::MatrixXf* m, float in
 	Eigen::MatrixXf msquared(m->rows(), m->cols());
 	Eigen::MatrixXf m_update(m->rows(), m->cols());
 	get_gamma(m, m, 1); // This is to get a matrix of random walks on the graph -> TODO: find out if something else is more suitable
-	while( iteration < 100 && diff_norm > 1e-6*m->rows() ){
+	while( iteration < 100 && diff_norm > std::numeric_limits<float>::epsilon()*m->rows() ){
 		get_exp(m, &msquared, expansion);
-		if(isnan(msquared.norm())) break; // converged if expansion is not integral
 		get_gamma(&msquared, &m_update, inflation);
 		*m -= m_update;
 		diff_norm = m->norm();
@@ -305,7 +321,7 @@ void MCL::run(){
 	statistics.reset();
 	config.command = Config::blastp;
 	config.no_self_hits = false;
-	config.output_format = { "6", "qnum", "snum", "qcovhsp", "scovhsp", "bitscore", "pident" };
+	config.output_format = { "clus" };
 	config.query_cover = 80;
 	config.subject_cover = 80;
 	config.algo = 0;
@@ -368,10 +384,12 @@ void MCL::run(){
 				vector<unordered_set<uint32_t>> list_of_sets;
 
 				//TODO: a size limit for the dense matrix should control this as well
+				std::chrono::high_resolution_clock::time_point t = std::chrono::high_resolution_clock::now();
 				if(sparsity >= config.cluster_mcl_sparsity_switch && expansion - (int) expansion == 0){ 
 					n_sparse_calculations++;
 					Eigen::SparseMatrix<float> m_sparse(order.size(), order.size());
 					m_sparse.setFromTriplets(m.begin(), m.end());
+					sparse_create_time += (double) std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - t).count() / 1000.0;
 					list_of_sets = markov_process(&m_sparse, inflation, expansion);
 				}
 				else{
@@ -380,6 +398,7 @@ void MCL::run(){
 					for(Eigen::Triplet<float> const & t : m){
 						m_dense(t.row(), t.col()) = t.value();
 					}
+					dense_create_time += (double) std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - t).count() / 1000.0;
 					list_of_sets = markov_process(&m_dense, inflation, expansion);
 				}
 				for(unordered_set<uint32_t> subset : list_of_sets){
@@ -399,6 +418,10 @@ void MCL::run(){
 	timer.finish();
 	cout << "Found "<<cluster_id - nClustersEq1<< " ("<< cluster_id <<" incl. singletons) clusters with min sparsity "<<min_sparsity<< " and max. sparsity " << max_sparsity << " with " << n_dense_calculations << " dense, and " << n_sparse_calculations << " sparse calculations " << endl;
 
+	cout << "Time used for matrix creation: " << sparse_create_time + dense_create_time <<" (sparse: " << sparse_create_time << ", dense: " << dense_create_time <<")" << endl;
+	cout << "Time used for exp: " << sparse_exp_time + dense_int_exp_time + dense_gen_exp_time << " (sparse: " << sparse_exp_time << ", dense int: " << dense_int_exp_time << ", dense gen: " << dense_gen_exp_time <<")" << endl; 
+	cout << "Time used for gamma: " << sparse_gamma_time + dense_gamma_time <<" (sparse: " << sparse_gamma_time << ", dense: " << dense_gamma_time <<")" << endl;
+	cout << "Time used for listing: " << sparse_list_time + dense_list_time <<" (sparse: " << sparse_list_time << ", dense: " << dense_list_time <<")" << endl;
 	timer.go("Cluster output");
 	ostream *out = config.output_file.empty() ? &cout : new ofstream(config.output_file.c_str());
 	vector<Letter> seq;
