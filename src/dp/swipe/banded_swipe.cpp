@@ -29,6 +29,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../score_vector_int8.h"
 #include "../../basic/config.h"
 #include "../util/data_structures/range_partition.h"
+#include "../../util/intrin.h"
 
 using std::list;
 using std::pair;
@@ -400,12 +401,19 @@ list<Hsp> swipe(
 			it.set_zero();
 
 		profile.set(targets.get());
+#ifdef DP_STAT
+		const uint64_t live = targets.live();
+#endif
 
 #ifdef STRICT_BAND
 		for (int part = 0; part < band_parts.count(); ++part) {
 			const int i_begin = std::max(i0 + band_parts.begin(part), i0_);
 			const int i_end = std::min(i0 + band_parts.end(part), i1_);
 			const _sv target_mask = load_sv(band_parts.mask(part));
+#ifdef DP_STAT
+			stat.inc(Statistics::GROSS_DP_CELLS, uint64_t(i_end - i_begin) * CHANNELS);
+			stat.inc(Statistics::NET_DP_CELLS, uint64_t(i_end - i_begin) * popcount64(live & band_parts.bit_mask(part)));
+#endif
 			for (int i = i_begin; i < i_end; ++i) {
 #else
 			for (int i = i0_; i < i1_; ++i) {

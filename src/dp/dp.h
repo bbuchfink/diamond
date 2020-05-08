@@ -25,6 +25,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../basic/match.h"
 #include "comp_based_stats.h"
 #include "../basic/statistics.h"
+#include "../basic/config.h"
 
 int smith_waterman(const sequence &query, const sequence &subject, unsigned band, unsigned padding, int op, int ep);
 
@@ -148,25 +149,35 @@ extern size_t cells;
 
 struct DpTarget
 {
-	DpTarget(const sequence &seq, int d_begin, int d_end, int j_begin, int j_end, int target_idx = 0) :
+	DpTarget(const sequence &seq, int d_begin, int d_end, int j_begin, int j_end, int target_idx = 0, int qlen = 0) :
 		seq(seq),
 		d_begin(d_begin),
 		d_end(d_end),
 		j_begin(j_begin),
 		j_end(j_end),
 		target_idx(target_idx)
-	{}
+	{
+		int pos = std::max(d_end - 1, 0) - (d_end - 1);
+		const int d0 = d_begin;
+		const int j1 = std::min(qlen - 1 - d0, (int)(seq.length() - 1)) + 1;
+		cols = j1 - pos;
+	}
 	int left_i1() const
 	{
 		return std::max(d_end - 1, 0);
 	}
+	int band() const {
+		return d_end - d_begin;
+	}
 	bool operator<(const DpTarget &x) const
 	{
-		const int i = left_i1(), j = x.left_i1();
-		return i < j || (i == j && (target_idx < x.target_idx || (target_idx == x.target_idx && d_begin < x.d_begin)));
+		const int i = left_i1(), j = x.left_i1(), b1 = band(), b2 = x.band(), bin_b1 = b1 / config.band_bin, bin_b2 = b2 / config.band_bin,
+			t1 = cols, t2 = x.cols, bin_t1 = t1 / config.col_bin, bin_t2 = t2 / config.col_bin;
+		return bin_b1 < bin_b2 || (bin_b1 == bin_b2 && (bin_t1 < bin_t2 || (bin_t1 == bin_t2 && i < j)));
+		//return i < j || (i == j && (target_idx < x.target_idx || (target_idx == x.target_idx && d_begin < x.d_begin)));
 	}
 	sequence seq;
-	int d_begin, d_end, j_begin, j_end, target_idx;
+	int d_begin, d_end, j_begin, j_end, target_idx, cols;
 };
 
 struct DpStat

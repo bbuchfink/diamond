@@ -94,25 +94,29 @@ struct TargetIterator
 		}
 	}
 
-	char operator[](int channel)
+	uint64_t live() const {
+		uint64_t n = 0;
+		for (int i = 0; i < active.size(); ++i) {
+			const int channel = active[i];
+			if (pos[channel] >= 0)
+				n |= 1llu << channel;
+		}
+		return n;
+	}
+
+	char operator[](int channel) const
 	{
 		if (pos[channel] >= 0) {
-#ifdef DP_STAT
-			++live;
-#endif
 			return subject_begin[target[channel]].seq[pos[channel]];
 		} else
 			return SUPER_HARD_MASK;
 	}
 
 #ifdef __SSSE3__
-	SeqVector get()
+	SeqVector get() const
 	{
 		alignas(32) typename ElementType<SeqVector, _n>::Type s[_n];
 		std::fill(s, s + _n, SUPER_HARD_MASK);
-#ifdef DP_STAT
-		live = 0;
-#endif
 		for (int i = 0; i < active.size(); ++i) {
 			const int channel = active[i];
 			s[channel] = (*this)[channel];
@@ -124,7 +128,7 @@ struct TargetIterator
 #endif
 	}
 #else
-	uint64_t get()
+	uint64_t get() const
 	{
 		uint64_t dst = 0;
 		for (int i = 0; i < active.size(); ++i) {
@@ -155,9 +159,6 @@ struct TargetIterator
 	}
 
 	int pos[_n], target[_n], next, n_targets, cols;
-#ifdef DP_STAT
-	int live;
-#endif
 	Static_vector<int, _n> active;
 	const vector<DpTarget>::const_iterator subject_begin;
 };
@@ -202,7 +203,7 @@ struct TargetBuffer
 
 #ifdef __SSSE3__
 #ifdef DP_STAT
-	template<typename _t> SeqVector seq_vector()
+	SeqVector seq_vector()
 #else
 	SeqVector seq_vector() const
 #endif	

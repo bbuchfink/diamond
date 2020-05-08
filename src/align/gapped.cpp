@@ -101,7 +101,7 @@ void add_dp_targets(const WorkTarget &target, int target_idx, const sequence *qu
 			}
 			else {
 				if (d0 != INT_MAX)
-					dp_targets[frame][bits].emplace_back(target.seq, d0, d1, j0, j1, target_idx);
+					dp_targets[frame][bits].emplace_back(target.seq, d0, d1, j0, j1, target_idx, (int)query_seq->length());
 				d0 = b0;
 				d1 = b1;
 				j0 = hsp.subject_range.begin_;
@@ -110,7 +110,7 @@ void add_dp_targets(const WorkTarget &target, int target_idx, const sequence *qu
 			}			
 		}
 
-		dp_targets[frame][bits].emplace_back(target.seq, d0, d1, j0, j1, target_idx);
+		dp_targets[frame][bits].emplace_back(target.seq, d0, d1, j0, j1, target_idx, (int)query_seq->length());
 
 	}
 }

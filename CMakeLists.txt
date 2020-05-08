@@ -9,6 +9,7 @@ option(X86 "X86" ON)
 option(STRICT_BAND "STRICT_BAND" ON)
 option(LEFTMOST_SEED_FILTER "LEFTMOST_SEED_FILTER" ON)
 option(SEQ_MASK "SEQ_MASK" ON)
+option(DP_STAT "DP_STAT" OFF)
 set(MAX_SHAPE_LEN 17)
 
 if(STATIC_LIBSTDC++)
@@ -25,6 +26,10 @@ endif()
 
 if(LEFTMOST_SEED_FILTER)
   add_definitions(-DLEFTMOST_SEED_FILTER)
+endif()
+
+if(DP_STAT)
+  add_definitions(-DDP_STAT)
 endif()
 
 add_definitions(-DMAX_SHAPE_LEN=${MAX_SHAPE_LEN})

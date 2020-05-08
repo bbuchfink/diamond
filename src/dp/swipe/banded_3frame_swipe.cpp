@@ -464,8 +464,8 @@ list<Hsp> banded_3frame_swipe(
 		}
 
 #ifdef DP_STAT
-		stat.net_cells += targets.live * (i1_ - i0_ + 1) * 3;
-		stat.gross_cells += ScoreTraits<_sv>::CHANNELS * (i1_ - i0_ + 1) * 3;
+		//stat.net_cells += targets.live * (i1_ - i0_ + 1) * 3;
+		//stat.gross_cells += ScoreTraits<_sv>::CHANNELS * (i1_ - i0_ + 1) * 3;
 #endif
 
 		Score col_best_[ScoreTraits<_sv>::CHANNELS];

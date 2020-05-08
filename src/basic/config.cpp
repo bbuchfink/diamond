@@ -320,7 +320,9 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("output-hits", 0, "", output_hits)
 		("ungapped-evalue", 0, "", ungapped_evalue, 100000.0)
 		("no-logfile", 0, "", no_logfile)
-		("no-heartbeat", 0, "", no_heartbeat);
+		("no-heartbeat", 0, "", no_heartbeat)
+		("band-bin", 0, "", band_bin, 16)
+		("col-bin", 0, "", col_bin, 100);
 	
 	parser.add(general).add(makedb).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options);
 	parser.store(argc, argv, command);
