@@ -24,6 +24,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <mutex>
 #include <limits.h>
 #include <chrono>
+#include <stdint.h>
 
 using std::endl;
 
@@ -86,7 +87,7 @@ struct task_timer
 	{
 		finish();
 	}
-	void go(const char *msg)
+	void go(const char* msg = nullptr)
 	{
 		finish();
 		start(msg);
@@ -96,16 +97,21 @@ struct task_timer
 	{
 		if (!msg_ || level_ == UINT_MAX)
 			return;
-		//if (print_ && !Cfg::debug_log)
 		get_stream() << " [" << get() << "s]" << endl;
-		/*else if (Cfg::debug_log) {
-			log_stream << '/' << msg_ << " [" << timer_.getElapsedTimeInSec() << "s]" << endl;
-		}*/
 		msg_ = 0;
 	}
 	double get()
 	{
 		return (double)std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - t).count() / 1000.0;
+	}
+	uint64_t milliseconds() const {
+		return (uint64_t)std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - t).count();
+	}
+	uint64_t microseconds() const {
+		return (uint64_t)std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - t).count();
+	}
+	uint64_t nanoseconds() const {
+		return (uint64_t)std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::high_resolution_clock::now() - t).count();
 	}
 	Message_stream& get_stream() const
 	{
@@ -123,17 +129,13 @@ struct task_timer
 private:
 	void start(const char *msg)
 	{
-		//if (print_ && !Cfg::debug_log) {
 		if (level_ == UINT_MAX)
 			return;
 		t = std::chrono::high_resolution_clock::now();
 		if (!msg)
 			return;
 		get_stream() << msg << "... " << std::flush;
-			//fflush(stdout);
-		/**}
-		else if (Cfg::debug_log)
-			log_stream << msg << "..." << endl;*/
+
 	}
 	unsigned level_;
 	const char *msg_;

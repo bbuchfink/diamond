@@ -164,7 +164,7 @@ struct TracebackMatrix
 			const Score *h = score_ - (band_ - 1) * CHANNELS, *h0 = score_ - (j - j0) * (band_ - 1) * CHANNELS;
 			const Score *v = score_ - CHANNELS, *v0 = score_ - (i - i0 + 1) * CHANNELS;
 			const Score e = score_matrix.gap_extend();
-			Score score = this->score() + (Score)score_matrix.gap_open() + e;			
+			Score score = this->score() + (Score)score_matrix.gap_open() + e;
 			int l = 1;
 			while (v > v0 && h > h0) {
 				if (score == *h) {
