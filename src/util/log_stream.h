@@ -129,9 +129,9 @@ struct task_timer
 private:
 	void start(const char *msg)
 	{
+		t = std::chrono::high_resolution_clock::now();
 		if (level_ == UINT_MAX)
 			return;
-		t = std::chrono::high_resolution_clock::now();
 		if (!msg)
 			return;
 		get_stream() << msg << "... " << std::flush;

@@ -170,16 +170,8 @@ void align_queries(Trace_pt_buffer &trace_pts, Consumer* output_file, const Para
 			threads.emplace_back(align_worker, i, &params, &metadata, subjects.empty() ? nullptr : subjects.data(), subjects.size());
 		for (auto &t : threads)
 			t.join();
-		timer.finish();
-
-		double t = timer.get();
-		log_stream << "Gross cells = " << dp_stat.gross_cells << endl;
-		log_stream << "Gross GCUPS = " << (double)dp_stat.gross_cells / 1e9 / t << endl;
-		log_stream << "Gross GCUPS/thread = " << (double)dp_stat.gross_cells / n_threads / 1e9 / t << endl;
-		log_stream << "Net cells = " << dp_stat.net_cells << endl;
-		log_stream << "Net GCUPS = " << (double)dp_stat.net_cells / 1e9 / t << endl;
-		log_stream << "Net GCUPS/thread = " << (double)dp_stat.net_cells / n_threads / 1e9 / t << endl;
-
+		statistics.inc(Statistics::TIME_EXT, timer.microseconds());
+		
 		timer.go("Deallocating buffers");
 		delete v;
 	}

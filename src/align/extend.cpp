@@ -81,6 +81,7 @@ vector<Match> extend(const Parameters &params, size_t query_id, Trace_pt_list::i
 	if (config.gapped_filter_score > 0.0 || config.gapped_filter_evalue > 0.0) {
 		timer.go("Computing gapped filter");
 		gapped_filter(query_seq.data(), query_cb.data(), seed_hits, target_block_ids, stat, flags);
+		stat.inc(Statistics::TIME_GAPPED_FILTER, timer.microseconds());
 	}
 	stat.inc(Statistics::TARGET_HITS1, target_block_ids.size());
 
