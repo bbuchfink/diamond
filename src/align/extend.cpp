@@ -77,17 +77,21 @@ vector<Match> extend(const Parameters &params, size_t query_id, Trace_pt_list::i
 	thread_local vector<size_t> target_block_ids;
 	load_hits(begin, end, seed_hits, target_block_ids);
 	stat.inc(Statistics::TARGET_HITS0, target_block_ids.size());
+	stat.inc(Statistics::TIME_LOAD_HIT_TARGETS, timer.microseconds());
 
 	if (config.gapped_filter_score > 0.0 || config.gapped_filter_evalue > 0.0) {
 		timer.go("Computing gapped filter");
 		gapped_filter(query_seq.data(), query_cb.data(), seed_hits, target_block_ids, stat, flags);
-		stat.inc(Statistics::TIME_GAPPED_FILTER, timer.microseconds());
+		if ((flags & TARGET_PARALLEL) == 0)
+			stat.inc(Statistics::TIME_GAPPED_FILTER, timer.microseconds());
 	}
 	stat.inc(Statistics::TARGET_HITS1, target_block_ids.size());
 
 	timer.go("Computing chaining");
 	vector<WorkTarget> targets = ungapped_stage(query_seq.data(), query_cb.data(), seed_hits, target_block_ids.data(), flags);
 	stat.inc(Statistics::TARGET_HITS2, targets.size());
+	if ((flags & TARGET_PARALLEL) == 0)
+		stat.inc(Statistics::TIME_CHAINING, timer.microseconds());
 	
 	timer.go("Computing ranking");
 	rank_targets(targets, config.rank_ratio == -1 ? (query_seq[0].length() > 50 ? 0.6 : 0.9) : config.rank_ratio, config.rank_factor == -1 ? 1e3 : config.rank_factor);

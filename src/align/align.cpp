@@ -153,12 +153,14 @@ void align_queries(Trace_pt_buffer &trace_pts, Consumer* output_file, const Para
 			delete v;
 			break;
 		}
+		statistics.inc(Statistics::TIME_LOAD_SEED_HITS, timer.microseconds());
 		timer.go("Sorting trace points");
 		if (config.fast_stage2)
 			radix_sort(v->data(), v->data() + v->size(), (uint32_t)query_range.second);
 		else
 			merge_sort(v->begin(), v->end(), config.threads_);
 		v->init();
+		statistics.inc(Statistics::TIME_SORT_SEED_HITS, timer.microseconds());
 		timer.go("Computing alignments");
 		Align_fetcher::init(query_range.first, query_range.second, v->begin(), v->end());
 		OutputSink::instance = unique_ptr<OutputSink>(new OutputSink(query_range.first, output_file));
