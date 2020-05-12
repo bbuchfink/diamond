@@ -26,7 +26,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 using namespace std;
 
 unique_ptr<Masking> Masking::instance;
-const uint8_t Masking::bit_mask = 128;
+const int8_t Masking::bit_mask = (int8_t)128;
 
 Masking::Masking(const Score_matrix &score_matrix)
 {
@@ -42,7 +42,7 @@ Masking::Masking(const Score_matrix &score_matrix)
 	const double lambda = lc.lambda(); // 0.324032
 	for (unsigned i = 0; i < size; ++i) {
 		mask_table_x_[i] = value_traits.mask_char;
-		mask_table_bit_[i] = (uint8_t)i | bit_mask;
+		mask_table_bit_[i] = (int8_t)i | bit_mask;
 		for (unsigned j = 0; j < size; ++j)
 			if (i < n && j < n) {
 				likelihoodRatioMatrixf_[i][j] = (float)exp(lambda * score_matrix(i, j));

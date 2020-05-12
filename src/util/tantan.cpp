@@ -40,7 +40,7 @@ void mask(Letter *seq,
 	float p_repeat_end,
 	float repeat_growth,
 	float p_mask,
-	const char *mask_table) {
+	const Letter *mask_table) {
 	constexpr int WINDOW = 50, RESERVE = 50000;
 
 	thread_local std::array<Array<float, Dynamic, 1>, AMINO_ACID_COUNT> e;
