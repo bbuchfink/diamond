@@ -412,7 +412,7 @@ list<Hsp> banded_3frame_swipe(
 		i0 = std::min(i0, i2 + 1 - band);
 	}
 
-	TargetIterator<ScoreTraits<_sv>::CHANNELS> targets(subject_begin, subject_end, i1, qlen, d_begin);
+	TargetIterator<Score> targets(subject_begin, subject_end, i1, qlen, d_begin);
 	Matrix dp(band * 3, targets.cols);
 
 	const _sv open_penalty(score_matrix.gap_open() + score_matrix.gap_extend()),

@@ -104,7 +104,7 @@ list<Hsp> swipe(const sequence &query, const sequence *subject_begin, const sequ
 		extend_penalty(static_cast<Score>(score_matrix.gap_extend()));
 	_sv best = _sv();
 	SwipeProfile<_sv> profile;
-	TargetBuffer<ScoreTraits<_sv>::CHANNELS> targets(subject_begin, subject_end);
+	TargetBuffer<Score> targets(subject_begin, subject_end);
 	list<Hsp> out;
 
 	while (targets.active.size() > 0) {

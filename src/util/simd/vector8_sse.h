@@ -44,6 +44,47 @@ struct Vector<int8_t> {
 
 };
 
+template<>
+struct Vector<int16_t> {
+
+	static constexpr size_t CHANNELS = 8;
+
+	Vector()
+	{}
+
+	Vector(const int16_t* p) :
+		v(_mm_loadu_si128((const __m128i*)p))
+	{}
+
+	operator __m128i() const {
+		return v;
+	}
+
+	__m128i v;
+
+};
+
+template<>
+struct Vector<int32_t> {
+
+	static constexpr size_t CHANNELS = 1;
+
+	Vector()
+	{}
+
+	Vector(const int32_t* p) :
+		v(*p)
+	{}
+
+	operator int32_t() const {
+		return v;
+	}
+
+	int32_t v;
+
+};
+
+
 }}
 
 #endif

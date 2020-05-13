@@ -378,7 +378,7 @@ list<Hsp> swipe(
 	RangePartition<CHANNELS, Score> band_parts(band_offset, target_count, band);
 #endif
 	
-	TargetIterator<CHANNELS> targets(subject_begin, subject_end, i1, qlen, d_begin);
+	TargetIterator<Score> targets(subject_begin, subject_end, i1, qlen, d_begin);
 	Matrix dp(band, targets.cols);
 
 	const _sv open_penalty(static_cast<char>(score_matrix.gap_open() + score_matrix.gap_extend())),
