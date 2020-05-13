@@ -23,6 +23,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <limits.h>
 #include "../util/simd.h"
 #include "../basic/score_matrix.h"
+#include "../util/simd/vector.h"
 
 template<typename _score>
 struct score_traits

@@ -23,7 +23,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 namespace DISPATCH_ARCH {
 
-#ifdef __AVX2__
+#if ARCH_ID == 2
 
 template<>
 struct score_vector<int16_t>
@@ -283,18 +283,14 @@ struct score_vector<int16_t>
 template<>
 struct ScoreTraits<score_vector<int16_t>>
 {
-#ifdef __AVX2__
+	typedef ::DISPATCH_ARCH::SIMD::Vector<int16_t> Vector;
+#if ARCH_ID == 2
 	enum { CHANNELS = 16 };
 #else
 	enum { CHANNELS = 8 };
 #endif
 	typedef int16_t Score;
 	typedef uint16_t Unsigned;
-#ifdef __AVX2__
-	typedef __m256i Register;
-#else
-	typedef __m128i Register;
-#endif
 	static score_vector<int16_t> zero()
 	{
 		return score_vector<int16_t>();

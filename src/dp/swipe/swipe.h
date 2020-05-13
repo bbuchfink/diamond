@@ -23,6 +23,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../score_vector.h"
 #include "../score_vector_int8.h"
 #include "../../basic/value.h"
+#include "../util/simd/vector.h"
 
 template<typename _sv>
 static inline _sv swipe_cell_update(const _sv &diagonal_cell,
@@ -148,7 +149,7 @@ struct SwipeProfile
 {
 
 #ifdef __SSSE3__
-	inline void set(typename ScoreTraits<_sv>::Register seq)
+	inline void set(typename ScoreTraits<_sv>::Vector seq)
 	{
 		assert(sizeof(data_) / sizeof(_sv) >= value_traits.alphabet_size);
 		for (unsigned j = 0; j < AMINO_ACID_COUNT; ++j)

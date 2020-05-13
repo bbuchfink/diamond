@@ -160,9 +160,9 @@ template<>
 struct ScoreTraits<score_vector<int8_t>>
 {
 	enum { CHANNELS = 32 };
+	typedef ::DISPATCH_ARCH::SIMD::Vector<int8_t> Vector;
 	typedef int8_t Score;
 	typedef uint8_t Unsigned;
-	typedef __m256i Register;
 	static score_vector<int8_t> zero() {
 		return score_vector<int8_t>();
 	}
@@ -317,9 +317,9 @@ template<>
 struct ScoreTraits<score_vector<int8_t>>
 {
 	enum { CHANNELS = 16 };
+	typedef ::DISPATCH_ARCH::SIMD::Vector<int8_t> Vector;
 	typedef int8_t Score;
 	typedef uint8_t Unsigned;
-	typedef __m128i Register;
 	static score_vector<int8_t> zero() {
 		return score_vector<int8_t>();
 	}
