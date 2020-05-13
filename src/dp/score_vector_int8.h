@@ -23,7 +23,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 namespace DISPATCH_ARCH {
 
-#ifdef __AVX2__
+#if ARCH_ID == 2
 
 template<>
 struct score_vector<int8_t>

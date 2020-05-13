@@ -21,7 +21,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "../simd.h"
 
-#ifdef __AVX2__
+#if ARCH_ID == 2
 #include "vector8_avx2.h"
 #elif defined(__SSE2__)
 #include "vector8_sse.h"

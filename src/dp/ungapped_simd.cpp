@@ -33,7 +33,7 @@ void window_ungapped(const Letter *query, const Letter **subjects, size_t subjec
 	typedef ::DISPATCH_ARCH::SIMD::Vector<int8_t> SeqV;
 	constexpr size_t CHANNELS = ::DISPATCH_ARCH::ScoreTraits<Sv>::CHANNELS;
 	assert(subject_count <= CHANNELS);
-
+	
 	alignas(CHANNELS) Letter subject_vector[CHANNELS * CHANNELS];
 	Sv score, best;
 	const Letter* subject_ptr[CHANNELS], * query_end = query + window;
