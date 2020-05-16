@@ -1,5 +1,10 @@
 language: c++
 
+addons:
+  apt:
+    packages:
+      - gdb
+
 arch:
 #  - amd64
 #  - arm64
