@@ -1,19 +1,19 @@
 language: c++
 
-addons:
-  apt:
-    packages:
-      - gdb
+#addons:
+#  apt:
+#    packages:
+#      - gdb
 
 arch:
-#  - amd64
-#  - arm64
-#  - ppc64le
+  - amd64
+  - arm64
+  - ppc64le
   - s390x
 
 compiler:
   - g++
-#  - clang
+  - clang
 
 install: skip
 
@@ -22,5 +22,5 @@ script:
   - cd build
   - cmake ..
   - make
-  - gdb --ex=r -return-child-result -batch -ex bt --args ./diamond test
-#  - ./diamond test
+#  - gdb --ex=r -return-child-result -batch -ex bt --args ./diamond test
+  - ./diamond test
