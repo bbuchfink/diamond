@@ -44,7 +44,7 @@ using std::cout;
 
 namespace Test {
 
-size_t run_testcase(size_t i, DatabaseFile &db, TextInputFile &query_file, size_t max_width, bool bootstrap, bool log) {
+size_t run_testcase(size_t i, DatabaseFile &db, TextInputFile &query_file, size_t max_width, bool bootstrap, bool log, bool to_cout) {
 	vector<string> args = tokenize(test_cases[i].command_line, " ");
 	args.emplace(args.begin(), "diamond");
 	if (log)
@@ -56,9 +56,13 @@ size_t run_testcase(size_t i, DatabaseFile &db, TextInputFile &query_file, size_
 	query_file.rewind();
 	opt.query_file = &query_file;
 	TempFile output_file(!bootstrap);
-	opt.consumer = &output_file;
+	if (!to_cout)
+		opt.consumer = &output_file;
 
 	Workflow::Search::run(opt);
+
+	if (to_cout)
+		return 0;
 
 	InputFile out_in(output_file);
 	uint64_t hash = out_in.hash();
@@ -83,7 +87,7 @@ size_t run_testcase(size_t i, DatabaseFile &db, TextInputFile &query_file, size_
 }
 
 int run() {
-	const bool bootstrap = config.bootstrap, log = config.debug_log;
+	const bool bootstrap = config.bootstrap, log = config.debug_log, to_cout = config.output_file == "stdout";
 	task_timer timer("Generating test dataset");
 	TempFile proteins;
 	for (size_t i = 0; i < sizeof(seqs) / sizeof(seqs[0]); ++i)
@@ -100,7 +104,7 @@ int run() {
 		max_width = std::accumulate(test_cases, test_cases + n, (size_t)0, [](size_t l, const TestCase &t) { return std::max(l, strlen(t.desc)); });
 	size_t passed = 0;
 	for (size_t i = 0; i < n; ++i)
-		passed += run_testcase(i, db, query_file, max_width, bootstrap, log);
+		passed += run_testcase(i, db, query_file, max_width, bootstrap, log, to_cout);
 
 	cout << endl << "#Test cases passed: " << passed << '/' << n << endl; // << endl;
 	//cout << "Regression tests are still a beta feature. Failure of a test does not necessarily imply the incorrect operation of the program." << endl;
