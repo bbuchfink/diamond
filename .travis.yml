@@ -1,8 +1,20 @@
-matrix:
-  include:
-    - language: c++
-      compiler: g++
-      script: mkdir build; cd build; cmake ..; make
-    - language: c++
-      compiler: clang
-      script: mkdir build; cd build; cmake ..; make
+language: c++
+
+arch:
+  - amd64
+  - arm64
+  - ppc64le
+  - s390x
+
+compiler:
+  - g++
+  - clang
+
+install: skip
+
+script:
+  - mkdir build
+  - cd build
+  - cmake ..
+  - make
+  - ./diamond test
