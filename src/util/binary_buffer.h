@@ -66,6 +66,14 @@ struct BinaryBuffer : public vector<char>
 			case 2: read(dst);
 			}
 		}
+		void read_packed(uint8_t length, int32_t& dst)
+		{
+			switch (length) {
+			case 0: uint8_t x; read(x); dst = (int32_t)x; break;
+			case 1: uint16_t y; read(y); dst = (int32_t)y; break;
+			case 2: read(dst);
+			}
+		}
 		void read_varint(uint32_t &dst)
 		{
 			::read_varint(*this, dst);

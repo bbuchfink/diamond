@@ -4,13 +4,18 @@
 #include <stdlib.h>
 #include <malloc.h>
 #include <cstddef>
+#include <exception>
 
 static inline void* aligned_malloc(size_t n, size_t align) {
 #ifdef WIN32
-    return _aligned_malloc(n , align);
+    void* p = _aligned_malloc(n, align);
+    if (p == nullptr)
+        throw std::bad_alloc();
+    return p;
 #else
     void* p;
-    posix_memalign(&p, align, n);
+    if (posix_memalign(&p, align, n) == nullptr)
+        throw std::bad_alloc();
     return p;
 #endif
 }

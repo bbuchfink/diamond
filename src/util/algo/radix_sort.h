@@ -29,11 +29,11 @@ void radix_sort(_t* begin, _t* end, uint32_t max_key) {
 	const size_t n = end - begin;
 	if (n <= 1)
 		return;
-	const size_t bit_len = bit_length(max_key), rounds = (bit_len + config.radix_bits - 1) / config.radix_bits;
+	const uint32_t bit_len = (uint32_t)bit_length(max_key), rounds = (bit_len + config.radix_bits - 1) / config.radix_bits;
 	_t* buf = (_t*)new char[n * sizeof(_t)];
 
 	_t* in = begin, * out = buf;
-	for (int i = 0; i < rounds; ++i) {
+	for (uint32_t i = 0; i < rounds; ++i) {
 		parallel_radix_cluster(Relation<_t>(in, n), i * config.radix_bits, out);
 		std::swap(in, out);
 	}

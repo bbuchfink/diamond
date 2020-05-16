@@ -237,3 +237,19 @@ int xdrop_ungapped_right(const Letter *query, const Letter *subject, int &len)
 	}
 	return score;
 }
+
+int ungapped_window(const Letter* query, const Letter* subject, int window) {
+	int score = 0, st = 0, n = 0;
+	const Letter* q = query, * s = subject;
+
+	while (n < window)
+	{
+		st += score_matrix(*q, *s);
+		st = std::max(st, 0);
+		score = std::max(score, st);
+		++q;
+		++s;
+		++n;
+	}
+	return score;
+}

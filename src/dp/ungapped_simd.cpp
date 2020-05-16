@@ -39,9 +39,9 @@ void window_ungapped(const Letter *query, const Letter **subjects, size_t subjec
 	const Letter* subject_ptr[CHANNELS], * query_end = query + window;
 	std::copy(subjects, subjects + subject_count, subject_ptr);
 
-	for (int i = 0; i < window; i += CHANNELS) {
+	for (size_t i = 0; i < window; i += CHANNELS) {
 		transpose(subject_ptr, subject_count, subject_vector, SeqV());
-		for (int j = 0; j < CHANNELS && query < query_end;) {
+		for (size_t j = 0; j < CHANNELS && query < query_end;) {
 			SeqV subject_letters(&subject_vector[j * CHANNELS]);
 			unsigned query_letter = unsigned(*query);
 #ifdef SEQ_MASK

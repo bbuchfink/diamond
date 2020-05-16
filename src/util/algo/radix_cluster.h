@@ -103,7 +103,7 @@ void radix_cluster(const Relation<_t> &in, unsigned shift, _t *out, unsigned *hs
 }
 
 template<typename _t>
-void parallel_radix_cluster_build_hst(Relation<_t> in, unsigned shift, size_t* hst)
+void parallel_radix_cluster_build_hst(Relation<_t> in, uint32_t shift, size_t* hst)
 {
 	const unsigned clusters = 1 << config.radix_bits;
 	ExtractBits radix(clusters, shift);
@@ -112,7 +112,7 @@ void parallel_radix_cluster_build_hst(Relation<_t> in, unsigned shift, size_t* h
 }
 
 template<typename _t>
-void parallel_radix_cluster_scatter(Relation<_t> in, unsigned shift, size_t* hst, _t* out) {
+void parallel_radix_cluster_scatter(Relation<_t> in, uint32_t shift, size_t* hst, _t* out) {
 	const unsigned clusters = 1 << config.radix_bits;
 	ExtractBits radix(clusters, shift);
 	for (const _t* i = in.data; i < in.end(); ++i) {
@@ -122,7 +122,7 @@ void parallel_radix_cluster_scatter(Relation<_t> in, unsigned shift, size_t* hst
 }
 
 template<typename _t>
-void parallel_radix_cluster(const Relation<_t>& in, unsigned shift, _t* out)
+void parallel_radix_cluster(const Relation<_t>& in, uint32_t shift, _t* out)
 {
 	const unsigned clusters = 1 << config.radix_bits;
 	std::vector<size_t> hst(clusters, 0);

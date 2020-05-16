@@ -47,41 +47,6 @@ using namespace DISPATCH_ARCH;
 
 namespace Benchmark { namespace DISPATCH_ARCH {
 
-static int xdrop_window(const Letter *query, const Letter *subject) {
-	static const int window = 64;
-	int score(0), st(0), n = 0;
-	const Letter *q(query), *s(subject);
-
-	st = score;
-	while (n < window)
-	{
-		st += score_matrix(*q, *s);
-		score = std::max(score, st);
-		++q;
-		++s;
-		++n;
-
-		st += score_matrix(*q, *s);
-		score = std::max(score, st);
-		++q;
-		++s;
-		++n;
-
-		st += score_matrix(*q, *s);
-		score = std::max(score, st);
-		++q;
-		++s;
-		++n;
-
-		st += score_matrix(*q, *s);
-		score = std::max(score, st);
-		++q;
-		++s;
-		++n;
-	}
-	return score;
-}
-
 #ifdef __SSE4_1__
 void benchmark_hamming(const sequence &s1, const sequence &s2) {
 	static const size_t n = 100000000llu;
@@ -105,7 +70,7 @@ void benchmark_ungapped(const sequence &s1, const sequence &s2)
 
 	for (size_t i = 0; i < n; ++i) {
 
-		volatile int score = xdrop_window(q, s);
+		volatile int score = ungapped_window(q, s, 64);
 
 	}
 	

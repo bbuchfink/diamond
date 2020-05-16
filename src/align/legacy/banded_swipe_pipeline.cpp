@@ -165,7 +165,7 @@ void Pipeline::run_swipe(bool score_only)
 	}
 }
 
-void build_ranking_worker(PtrVector<::Target>::iterator begin, PtrVector<::Target>::iterator end, atomic<size_t> *next, vector<unsigned> *intervals) {
+void build_ranking_worker(PtrVector<::Target>::iterator begin, PtrVector<::Target>::iterator end, atomic<size_t> *next, vector<int32_t> *intervals) {
 	PtrVector<::Target>::iterator it;
 	while ((it = begin + next->fetch_add(64)) < end) {
 		auto e = min(it + 64, end);
@@ -205,9 +205,9 @@ void Pipeline::run(Statistics &stat, const sequence *subjects, size_t subject_co
 
 		if (target_parallel) {
 			timer.go("Building score ranking intervals");
-			vector<vector<unsigned>> intervals(config.threads_);
+			vector<vector<int32_t>> intervals(config.threads_);
 			const size_t interval_count = (source_query_len + ::Target::INTERVAL - 1) / ::Target::INTERVAL;
-			for (vector<unsigned> &v : intervals)
+			for (vector<int32_t> &v : intervals)
 				v.resize(interval_count);
 			vector<thread> threads;
 			atomic<size_t> next(0);
@@ -218,7 +218,7 @@ void Pipeline::run(Statistics &stat, const sequence *subjects, size_t subject_co
 
 			timer.go("Merging score ranking intervals");
 			for (auto it = intervals.begin() + 1; it < intervals.end(); ++it) {
-				vector<unsigned>::iterator i = intervals[0].begin(), i1 = intervals[0].end(), j = it->begin();
+				vector<int32_t>::iterator i = intervals[0].begin(), i1 = intervals[0].end(), j = it->begin();
 				for (; i < i1; ++i, ++j)
 					*i = max(*i, *j);
 			}
