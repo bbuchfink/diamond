@@ -55,18 +55,20 @@ size_t run_testcase(size_t i, DatabaseFile &db, TextInputFile &query_file, size_
 	opt.db = &db;
 	query_file.rewind();
 	opt.query_file = &query_file;
+
+	if (to_cout) {
+		Workflow::Search::run(opt);
+		return 0;
+	}
+	
 	TempFile output_file(!bootstrap);
-	if (!to_cout)
-		opt.consumer = &output_file;
+	opt.consumer = &output_file;
 
 	Workflow::Search::run(opt);
 
-	if (to_cout)
-		return 0;
-
 	InputFile out_in(output_file);
 	uint64_t hash = out_in.hash();
-	
+
 	if (bootstrap)
 		out_in.close();
 	else
@@ -107,8 +109,7 @@ int run() {
 		passed += run_testcase(i, db, query_file, max_width, bootstrap, log, to_cout);
 
 	cout << endl << "#Test cases passed: " << passed << '/' << n << endl; // << endl;
-	//cout << "Regression tests are still a beta feature. Failure of a test does not necessarily imply the incorrect operation of the program." << endl;
-
+	
 	query_file.close_and_delete();
 	db.close();
 	delete db_file;
