@@ -23,4 +23,4 @@ script:
   - cmake ..
   - make
 #  - gdb --ex=r -return-child-result -batch -ex bt --args ./diamond test
-  - ./diamond test
+  - ./diamond test --log

@@ -1,3 +1,7 @@
+[0.9.33]
+- Fixed a bug on big-endian architectures.
+- Fixed compiler errors for generic builds.
+
 [0.9.32]
 - Fixed a bug that would generate an incorrect count of positive scoring letters in all output formats.
 - Fixed a compiler error on macOS.
