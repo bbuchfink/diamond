@@ -154,7 +154,7 @@ struct Deserializer
 		} while (fetch());
 		return false;
 	}
-	
+
 	size_t read_raw(char *ptr, size_t count);
 	DynamicRecordReader read_record();
 	~Deserializer();

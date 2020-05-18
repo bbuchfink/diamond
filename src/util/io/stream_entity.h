@@ -78,6 +78,10 @@ struct StreamEntity
 	{
 		throw UnsupportedOperation();
 	}
+	virtual void putback(const char *p, size_t count)
+	{
+		throw UnsupportedOperation();
+	}
 	virtual FILE* file()
 	{
 		return prev_->file();
