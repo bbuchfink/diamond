@@ -44,15 +44,23 @@ using std::cout;
 
 namespace Test {
 
-size_t run_testcase(size_t i, DatabaseFile &db, TextInputFile &query_file, size_t max_width, bool bootstrap) {
+size_t run_testcase(size_t i, DatabaseFile &db, TextInputFile &query_file, size_t max_width, bool bootstrap, bool log, bool to_cout) {
 	vector<string> args = tokenize(test_cases[i].command_line, " ");
 	args.emplace(args.begin(), "diamond");
+	if (log)
+		args.push_back("--log");
 	config = Config((int)args.size(), charp_array(args.begin(), args.end()).data(), false);
 	statistics.reset();
 	Workflow::Search::Options opt;
 	opt.db = &db;
 	query_file.rewind();
 	opt.query_file = &query_file;
+
+	if (to_cout) {
+		Workflow::Search::run(opt);
+		return 0;
+	}
+	
 	TempFile output_file(!bootstrap);
 	opt.consumer = &output_file;
 
@@ -60,7 +68,7 @@ size_t run_testcase(size_t i, DatabaseFile &db, TextInputFile &query_file, size_
 
 	InputFile out_in(output_file);
 	uint64_t hash = out_in.hash();
-	
+
 	if (bootstrap)
 		out_in.close();
 	else
@@ -81,7 +89,7 @@ size_t run_testcase(size_t i, DatabaseFile &db, TextInputFile &query_file, size_
 }
 
 int run() {
-	bool bootstrap = config.bootstrap;
+	const bool bootstrap = config.bootstrap, log = config.debug_log, to_cout = config.output_file == "stdout";
 	task_timer timer("Generating test dataset");
 	TempFile proteins;
 	for (size_t i = 0; i < sizeof(seqs) / sizeof(seqs[0]); ++i)
@@ -98,11 +106,10 @@ int run() {
 		max_width = std::accumulate(test_cases, test_cases + n, (size_t)0, [](size_t l, const TestCase &t) { return std::max(l, strlen(t.desc)); });
 	size_t passed = 0;
 	for (size_t i = 0; i < n; ++i)
-		passed += run_testcase(i, db, query_file, max_width, bootstrap);
+		passed += run_testcase(i, db, query_file, max_width, bootstrap, log, to_cout);
 
 	cout << endl << "#Test cases passed: " << passed << '/' << n << endl; // << endl;
-	//cout << "Regression tests are still a beta feature. Failure of a test does not necessarily imply the incorrect operation of the program." << endl;
-
+	
 	query_file.close_and_delete();
 	db.close();
 	delete db_file;
