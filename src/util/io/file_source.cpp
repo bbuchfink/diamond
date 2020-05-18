@@ -94,13 +94,13 @@ void FileSource::seek_forward(size_t n)
 #endif
 }
 
-void FileSource::putback(char c)
+/*void FileSource::putback(char c)
 {
 	if ((char)ungetc((int)c, f_) != c) {
 		perror(0);
 		throw std::runtime_error("Error calling ungetc.");
 	}
-}
+}*/
 
 size_t FileSource::read(char *ptr, size_t count)
 {
