@@ -343,6 +343,10 @@ void MCL::run(){
 	auto componentInfo = ms.getComponents();
 	vector<vector<uint32_t>> indices = get<0>(componentInfo);
 	vector<vector<Eigen::Triplet<float>>> components = get<1>(componentInfo);
+	std::vector<uint32_t> sort_order(components.size());
+	std::iota(sort_order.begin(), sort_order.end(), 0);
+	std::sort(sort_order.begin(), sort_order.end(), [&](uint32_t i, uint32_t j){return indices[i].size() > indices[j].size();});
+
 	uint32_t nComponents = count_if(indices.begin(), indices.end(), [](vector<uint32_t> v){ return v.size() > 0;});
 	uint32_t nComponentsLt1 = count_if(indices.begin(), indices.end(), [](vector<uint32_t> v){ return v.size() > 1;});
 	timer.finish();
@@ -378,7 +382,7 @@ void MCL::run(){
 		// 	threads.emplace_back(seed_join_worker, query_idx, ref_idx, &seedp, &range, query_seed_hits, ref_seed_hits);
 		// for (auto &t : threads)
 		// 	t.join();
-		for(uint32_t iComponent = 0; iComponent<indices.size(); iComponent++){
+		for(uint32_t iComponent : sort_order){
 			vector<uint32_t> order = indices[iComponent];
 			if(order.size() > 1){
 				vector<Eigen::Triplet<float>> m = components[iComponent];
