@@ -1,6 +1,6 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2018 Benjamin Buchfink <buchfink@gmail.com>
+Copyright (C) 2020 Patrick Ettenhuber <pettenhuber@gmail.com>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -321,13 +321,14 @@ void MCL::run(){
 	statistics.reset();
 	config.command = Config::blastp;
 	config.no_self_hits = false;
-	config.output_format = { "clus" };
-	config.query_cover = 80;
-	config.subject_cover = 80;
+	string format = config.cluster_similarity;
+	if(format.empty()){
+		format = "qcovhsp/100*scovhsp/100*pident/100";
+	}
+	config.output_format = {"clus", format};
 	config.algo = 0;
 	config.index_mode = 0;
 	config.freq_sd = 0;
-	config.max_alignments = numeric_limits<uint64_t>::max();
 
 	Workflow::Search::Options opt;
 	opt.db = &(*db);
@@ -372,6 +373,11 @@ void MCL::run(){
 	}
 	else {
 		// TODO: check when/if using dense matrices for non-sparse components improves performance
+		// vector<std::thread> threads;
+		// for (size_t i = 0; i < config.threads_; ++i)
+		// 	threads.emplace_back(seed_join_worker, query_idx, ref_idx, &seedp, &range, query_seed_hits, ref_seed_hits);
+		// for (auto &t : threads)
+		// 	t.join();
 		for(uint32_t iComponent = 0; iComponent<indices.size(); iComponent++){
 			vector<uint32_t> order = indices[iComponent];
 			if(order.size() > 1){

@@ -92,7 +92,7 @@ Output_format* get_output_format()
 	else if (f[0] == "bin1")
 		return new Bin1_format;
 	else if (f[0] == "clus")
-		return new Clustering_format;
+		return new Clustering_format(&f[1]);
 	else
 		throw std::runtime_error("Invalid output format. Allowed values: 0,5,6,100,101,102");
 }
@@ -135,17 +135,3 @@ void Bin1_format::print_match(const Hsp_context& r, const Metadata &metadata, Te
 	}
 }
 
-void Clustering_format::print_query_intro(size_t query_num, const char *query_name, unsigned query_len, TextBuffer &out, bool unaligned) const {
-	out.write((uint32_t)query_num);
-}
-
-void Clustering_format::print_match(const Hsp_context& r, const Metadata &metadata, TextBuffer &out) {
-	if (r.query_id <= r.subject_id) {
-		out.write((uint32_t)r.subject_id);
-		// TODO: enable other clustering measures
-		double m = (double) r.query_source_range().length()*1.0 / r.query.source().length();
-		m *= (double) r.subject_range().length() * 1.0 / r.subject_len;
-		m *= (double)r.identities() * 1.0 / r.length();
-		out.write(m);
-	}
-}

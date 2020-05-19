@@ -212,9 +212,9 @@ struct Bin1_format : public Output_format
 
 struct Clustering_format : public Output_format
 {
-	Clustering_format():
-		Output_format(bin1)
-	{}
+	const string* const format;
+	Clustering_format(const string* const format): Output_format(bin1), format(format) {
+	}
 	virtual void print_query_intro(size_t query_num, const char *query_name, unsigned query_len, TextBuffer &out, bool unaligned) const override;
 	virtual void print_match(const Hsp_context& r, const Metadata &metadata, TextBuffer &out) override;
 	virtual ~Clustering_format()

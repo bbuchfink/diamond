@@ -224,8 +224,9 @@ struct Config
 
 	string cluster_algo;
 	double cluster_mcl_inflation;
-	double cluster_mcl_expansion;
+	uint32_t cluster_mcl_expansion;
 	double cluster_mcl_sparsity_switch;
+	string	cluster_similarity;
 
 	enum { query_parallel = 0, target_parallel = 1 };
 	unsigned load_balancing;

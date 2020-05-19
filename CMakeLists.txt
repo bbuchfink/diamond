@@ -122,6 +122,8 @@ set(OBJECTS
   src/run/tools.cpp
   src/chaining/greedy_align.cpp
   src/output/output_format.cpp
+  src/output/clustering_variables.cpp
+  src/output/clustering_format.cpp
   src/output/join_blocks.cpp
   src/data/frequent_seeds.cpp
   src/align/legacy/query_mapper.cpp
