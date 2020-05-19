@@ -64,6 +64,17 @@ Deserializer& operator>>(Deserializer &d, ReferenceHeader2 &h)
 	return d;
 }
 
+InputFile& operator>>(InputFile& file, ReferenceHeader& h)
+{
+	file >> h.magic_number >> h.build >> h.db_version >> h.sequences >> h.letters >> h.pos_array_offset;
+	return file;
+}
+
+Serializer& operator<<(Serializer& file, const ReferenceHeader& h)
+{
+	file << h.magic_number << h.build << h.db_version << h.sequences << h.letters << h.pos_array_offset;
+	return file;
+}
 
 struct Pos_record
 {
@@ -75,7 +86,19 @@ struct Pos_record
 	{}
 	uint64_t pos;
 	uint32_t seq_len;
+	enum { SIZE = 16 };
 };
+
+InputFile& operator>>(InputFile& file, Pos_record& r) {
+	uint32_t p;
+	file >> r.pos >> r.seq_len >> p;
+	return file;
+}
+
+Serializer& operator<<(Serializer& file, const Pos_record& r) {
+	file << r.pos << r.seq_len << (uint32_t)0;
+	return file;
+}
 
 void DatabaseFile::init()
 {
@@ -113,8 +136,7 @@ void DatabaseFile::close() {
 
 void DatabaseFile::read_header(InputFile &stream, ReferenceHeader &header)
 {
-	if (stream.read(&header, 1) != 1)
-		throw Database_format_exception();
+	stream >> header;
 	if (header.magic_number != ReferenceHeader().magic_number)
 		throw Database_format_exception();
 }
@@ -169,7 +191,7 @@ void make_db(TempFile **tmp_out, TextInputFile *input_file)
 	ReferenceHeader header;
 	ReferenceHeader2 header2;
 
-	out->write(&header, 1);
+	*out << header;
 	*out << header2;
 
 	size_t letters = 0, n = 0, n_seqs = 0;
@@ -220,7 +242,8 @@ void make_db(TempFile **tmp_out, TextInputFile *input_file)
 	timer.go("Writing trailer");
 	header.pos_array_offset = offset;
 	pos_array.emplace_back(offset, 0);
-	out->write_raw(pos_array);
+	for (const Pos_record& r : pos_array)
+		*out << r;
 	timer.finish();
 
 	taxonomy.init();
@@ -248,7 +271,7 @@ void make_db(TempFile **tmp_out, TextInputFile *input_file)
 	header.letters = letters;
 	header.sequences = n_seqs;
 	out->seek(0);
-	out->write(&header, 1);
+	*out << header;
 	*out << header2;
 	if (tmp_out) {
 		*tmp_out = static_cast<TempFile*>(out);
@@ -288,13 +311,13 @@ bool DatabaseFile::load_seqs(vector<unsigned> &block_to_database_id, size_t max_
 	if(load_ids) *dst_id = new String_set<char, 0>;
 
 	Pos_record r;
-	read(&r, 1);
+	(*this) >> r;
 	uint64_t start_offset = r.pos;
 	bool last = false;
 
 	while (r.seq_len > 0 && letters < max_letters) {
 		Pos_record r_next;
-		read(&r_next, 1);
+		(*this) >> r_next;
 		if (!filter || (*filter)[database_id]) {
 			letters += r.seq_len;
 			(*dst_seq)->reserve(r.seq_len);
@@ -308,7 +331,7 @@ bool DatabaseFile::load_seqs(vector<unsigned> &block_to_database_id, size_t max_
 		}
 		else
 			last = false;
-		pos_array_offset += sizeof(Pos_record);
+		pos_array_offset += Pos_record::SIZE;
 		++database_id;
 		++seqs_processed;
 		r = r_next;
