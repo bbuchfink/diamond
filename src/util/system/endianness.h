@@ -29,13 +29,13 @@ template<typename _t>
 void to_host_endianness(_t &x) {}
 
 template<>
-static inline void to_host_endianness<uint64_t>(uint64_t& x)
+inline void to_host_endianness<uint64_t>(uint64_t& x)
 {
 	x = le64toh(x);
 }
 
 template<>
-static inline void to_host_endianness<uint32_t>(uint32_t& x)
+inline void to_host_endianness<uint32_t>(uint32_t& x)
 {
 	x = le32toh(x);
 }
@@ -46,13 +46,13 @@ _t to_little_endianness(_t x) {
 }
 
 template<>
-static inline uint64_t to_little_endianness<uint64_t>(uint64_t x)
+inline uint64_t to_little_endianness<uint64_t>(uint64_t x)
 {
 	return htole64(x);
 }
 
 template<>
-static inline uint32_t to_little_endianness<uint32_t>(uint32_t x)
+inline uint32_t to_little_endianness<uint32_t>(uint32_t x)
 {
 	return htole32(x);
 }
