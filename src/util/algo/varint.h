@@ -23,9 +23,18 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <stdexcept>
 #include "../intrin.h"
 
+static inline bool is_little_endian() {
+	static int32_t test = 1;
+	return *reinterpret_cast<int8_t*>(&test) == 1;
+}
+
 template<typename _out>
-inline void write_varint(unsigned x, _out &out)
+inline void write_varint(uint32_t x, _out &out)
 {
+	if (!is_little_endian()) {
+		out.write(x);
+		return;
+	}
 	if (x < 1 << 7) {
 		out.write((uint8_t)(x << 1 | 1));
 	}
@@ -48,6 +57,10 @@ inline void write_varint(unsigned x, _out &out)
 template<typename _buf>
 void read_varint(_buf &buf, uint32_t &dst)
 {
+	if (!is_little_endian()) {
+		buf.read(dst);
+		return;
+	}
 	uint8_t b0, b1;
 	uint16_t b2;
 	uint32_t b3;

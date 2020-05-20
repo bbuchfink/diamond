@@ -1,8 +1,26 @@
-matrix:
-  include:
-    - language: c++
-      compiler: g++
-      script: mkdir build; cd build; cmake ..; make
-    - language: c++
-      compiler: clang
-      script: mkdir build; cd build; cmake ..; make
+language: c++
+
+#addons:
+#  apt:
+#    packages:
+#      - gdb
+
+arch:
+  - amd64
+  - arm64
+  - ppc64le
+  - s390x
+
+compiler:
+  - g++
+  - clang
+
+install: skip
+
+script:
+  - mkdir build
+  - cd build
+  - cmake ..
+  - make
+#  - gdb --ex=r -return-child-result -batch -ex bt --args ./diamond test
+  - ./diamond test

@@ -23,7 +23,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 using std::make_pair;
 
 InputStreamBuffer::InputStreamBuffer(StreamEntity *prev):
-	StreamEntity(prev)
+	StreamEntity(prev),
+	putback_count_(0)
 {
 }
 
@@ -44,6 +45,17 @@ void InputStreamBuffer::seek_forward(size_t n)
 
 pair<const char*, const char*> InputStreamBuffer::read()
 {
-	size_t n = prev_->read(buf_, BUF_SIZE);
+	size_t n;
+	if (putback_count_ > 0) {
+		n = putback_count_;
+		putback_count_ = 0;
+	}
+	else
+		n = prev_->read(buf_, BUF_SIZE);
 	return make_pair(buf_, buf_ + n);
+}
+
+void InputStreamBuffer::putback(const char* p, size_t n) {
+	std::copy(p, p + n, buf_);
+	putback_count_ = n;
 }

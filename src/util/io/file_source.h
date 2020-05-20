@@ -38,7 +38,7 @@ struct FileSource : public StreamEntity
 	{
 		return f_;
 	}
-	void putback(char c);
+	//void putback(char c);
 	~FileSource()
 	{}
 protected:

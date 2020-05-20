@@ -48,6 +48,7 @@ struct ReferenceHeader
 	uint64_t sequences, letters, pos_array_offset;
 	enum { current_db_version = 3 };
 	static constexpr uint64_t MAGIC_NUMBER = 0x24af8a415ee186dllu;
+	friend InputFile& operator>>(InputFile& file, ReferenceHeader& h);
 };
 
 struct ReferenceHeader2

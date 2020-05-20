@@ -88,12 +88,12 @@ struct IntermediateRecord
 	static size_t write_query_intro(TextBuffer &buf, unsigned query_id)
 	{
 		size_t seek_pos = buf.size();
-		buf.write(query_id).write(0u);
+		buf.write((uint32_t)query_id).write((uint32_t)0);
 		return seek_pos;
 	}
 	static void finish_query(TextBuffer &buf, size_t seek_pos)
 	{
-		*(unsigned*)(&buf[seek_pos + sizeof(unsigned)]) = safe_cast<unsigned>(buf.size() - seek_pos - sizeof(unsigned) * 2);
+		*(uint32_t*)(&buf[seek_pos + sizeof(uint32_t)]) = safe_cast<uint32_t>(buf.size() - seek_pos - sizeof(uint32_t) * 2);
 	}
 	static void write(TextBuffer &buf, const Hsp &match, unsigned query_id, size_t subject_id)
 	{

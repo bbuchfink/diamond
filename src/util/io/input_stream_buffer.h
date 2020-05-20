@@ -29,10 +29,12 @@ struct InputStreamBuffer : public StreamEntity
 	virtual void seek(size_t pos);
 	virtual void seek_forward(size_t n);
 	virtual pair<const char*, const char*> read();
+	virtual void putback(const char* p, size_t n) override;
 private:
 	enum { BUF_SIZE = 4096 };
 
 	char buf_[BUF_SIZE];
+	size_t putback_count_;
 };
 
 #endif

@@ -62,10 +62,11 @@ InputFile::InputFile(const string &file_name, int flags) :
 	FileSource *source = dynamic_cast<FileSource*>(buffer_->root());
 	char b[2];
 	size_t n = source->read(b, 2);
-	if (n == 2)
+	/*if (n == 2)
 		source->putback(b[1]);
 	if (n >= 1)
-		source->putback(b[0]);
+		source->putback(b[0]);*/
+	buffer_->putback(b, n);
 	if (n == 2 && is_gzip_stream((const unsigned char*)b))
 		buffer_ = new InputStreamBuffer(new ZlibSource(buffer_));
 }
