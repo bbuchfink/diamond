@@ -1,5 +1,5 @@
 os:
-  - linux
+#  - linux
   - osx
 
 language: c++
@@ -9,14 +9,14 @@ language: c++
 #    packages:
 #      - gdb
 
-arch:
-  - amd64
-  - arm64
-  - ppc64le
-  - s390x
+#arch:
+#  - amd64
+#  - arm64
+#  - ppc64le
+#  - s390x
 
 compiler:
-  - g++
+#  - g++
   - clang
 
 install: skip
@@ -27,4 +27,5 @@ script:
   - cmake ..
   - make
 #  - gdb --ex=r -return-child-result -batch -ex bt --args ./diamond test
-  - ./diamond test
+  - lldb --batch --one-line r --one-line-on-crash bt -- ./diamond test
+#  - ./diamond test
