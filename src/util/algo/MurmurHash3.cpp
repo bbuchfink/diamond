@@ -60,7 +60,7 @@ FORCE_INLINE uint32_t getblock32 ( const uint32_t * p, int i )
 
 FORCE_INLINE uint64_t getblock64 ( const uint64_t * p, int i )
 {
-  return htole64(p[i]);
+  return to_little_endianness(p[i]);
 }
 
 //-----------------------------------------------------------------------------
