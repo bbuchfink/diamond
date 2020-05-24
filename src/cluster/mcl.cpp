@@ -21,6 +21,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 using namespace std;
 
 namespace Workflow { namespace Cluster{
+
 string MCL::get_key() {
 	return "mcl";
 }
@@ -29,7 +30,7 @@ string MCL::get_description() {
 }
 
 void MCL::get_exp(Eigen::SparseMatrix<float>* in, Eigen::SparseMatrix<float>* out, float r){
-	std::chrono::high_resolution_clock::time_point t = std::chrono::high_resolution_clock::now();
+	chrono::high_resolution_clock::time_point t = chrono::high_resolution_clock::now();
 	if( r - (int) r == 0 ){
 		// TODO: at some r it may be more beneficial to diagnoalize in and only take the exponents of the eigenvalues
 		*out = *in;
@@ -41,18 +42,18 @@ void MCL::get_exp(Eigen::SparseMatrix<float>* in, Eigen::SparseMatrix<float>* ou
 		throw runtime_error(" Eigen does not provide an eigenvalue solver for sparse matrices");
 	}
 	*out = out->pruned();
-	sparse_exp_time += (double) std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - t).count() / 1000.0;
+	sparse_exp_time += chrono::duration_cast<chrono::milliseconds>(chrono::high_resolution_clock::now() - t).count();
 }
 
 void MCL::get_exp(Eigen::MatrixXf* in, Eigen::MatrixXf* out, float r){
 	// TODO: at some r it may be more beneficial to diagnoalize in and only take the exponents of the eigenvalues
-	std::chrono::high_resolution_clock::time_point t = std::chrono::high_resolution_clock::now();
+	chrono::high_resolution_clock::time_point t = chrono::high_resolution_clock::now();
 	if(r - (int) r == 0){
 		*out = *in;
 		for(uint32_t i=1; i<r; i++){ 
 			(*out) *= (*in);
 		}
-		dense_int_exp_time += (double) std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - t).count() / 1000.0;
+		dense_int_exp_time += chrono::duration_cast<chrono::milliseconds>(chrono::high_resolution_clock::now() - t).count();
 	}
 	else{ 
 		// TODO: check whether the matrix is self-adjoint and use SelfAdjointEigenSolver instead
@@ -64,15 +65,15 @@ void MCL::get_exp(Eigen::MatrixXf* in, Eigen::MatrixXf* out, float r){
 		}
 		Eigen::MatrixXcf V = solver.eigenvectors();
 		double thr = 0.5 * abs(V.determinant());
-		if( thr > std::numeric_limits<float>::epsilon() ){
+		if( thr > numeric_limits<float>::epsilon() ){
 			out->noalias() = (V * d.real() * V.inverse()).real();
 		}
-		dense_gen_exp_time += (double) std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - t).count() / 1000.0;
+		dense_gen_exp_time += chrono::duration_cast<chrono::milliseconds>(chrono::high_resolution_clock::now() - t).count();
 	}
 }
 
 void MCL::get_gamma(Eigen::SparseMatrix<float>* in, Eigen::SparseMatrix<float>* out, float r){
-	std::chrono::high_resolution_clock::time_point t = std::chrono::high_resolution_clock::now();
+	chrono::high_resolution_clock::time_point t = chrono::high_resolution_clock::now();
 	vector<Eigen::Triplet<float>> data;
 	for (uint32_t k=0; k<in->outerSize(); ++k){
 		float colSum = 0.0f;
@@ -84,12 +85,12 @@ void MCL::get_gamma(Eigen::SparseMatrix<float>* in, Eigen::SparseMatrix<float>* 
 		}
 	}
 	out->setFromTriplets(data.begin(), data.end(), [] (const float&, const float &b) { return b; });
-	*out = out->pruned(1.0, std::numeric_limits<float>::epsilon());
-	sparse_gamma_time += (double) std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - t).count() / 1000.0;
+	*out = out->pruned(1.0, numeric_limits<float>::epsilon());
+	sparse_gamma_time += chrono::duration_cast<chrono::milliseconds>(chrono::high_resolution_clock::now() - t).count();
 }
 
 void MCL::get_gamma(Eigen::MatrixXf* in, Eigen::MatrixXf* out, float r){
-	std::chrono::high_resolution_clock::time_point t = std::chrono::high_resolution_clock::now();
+	chrono::high_resolution_clock::time_point t = chrono::high_resolution_clock::now();
 	// Note that Eigen matrices are column-major, so this is the most efficient way
 	for (uint32_t icol=0; icol<in->cols(); ++icol){
 		float colSum = 0.0f;
@@ -100,32 +101,32 @@ void MCL::get_gamma(Eigen::MatrixXf* in, Eigen::MatrixXf* out, float r){
 			out->coeffRef(irow, icol) =  pow(in->coeffRef(irow, icol) , r) / colSum;
 		}
 	}
-	dense_gamma_time += (double) std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - t).count() / 1000.0;
+	dense_gamma_time += chrono::duration_cast<chrono::milliseconds>(chrono::high_resolution_clock::now() - t).count();
 }
 
 vector<unordered_set<uint32_t>> MCL::get_list(Eigen::SparseMatrix<float>* m){
-	std::chrono::high_resolution_clock::time_point t = std::chrono::high_resolution_clock::now();
+	chrono::high_resolution_clock::time_point t = chrono::high_resolution_clock::now();
 	LazyDisjointIntegralSet<uint32_t> disjointSet(m->cols());
 	for (uint32_t k=0; k<m->outerSize(); ++k){
 		for (Eigen::SparseMatrix<float>::InnerIterator it(*m, k); it; ++it){
 			disjointSet.merge(it.row(), it.col());
 		}
 	}
-	sparse_list_time += (double) std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - t).count() / 1000.0;
+	sparse_list_time += chrono::duration_cast<chrono::milliseconds>(chrono::high_resolution_clock::now() - t).count();
 	return disjointSet.getListOfSets();
 }
 
 vector<unordered_set<uint32_t>> MCL::get_list(Eigen::MatrixXf* m){
-	std::chrono::high_resolution_clock::time_point t = std::chrono::high_resolution_clock::now();
+	chrono::high_resolution_clock::time_point t = chrono::high_resolution_clock::now();
 	LazyDisjointIntegralSet<uint32_t> disjointSet(m->cols());
 	for (uint32_t icol=0; icol<m->cols(); ++icol){
 		for (uint32_t irow=0; irow<m->rows(); ++irow){
-			if( abs((*m)(irow, icol)) > std::numeric_limits<float>::epsilon()){
+			if( abs((*m)(irow, icol)) > numeric_limits<float>::epsilon()){
 				disjointSet.merge(irow, icol);
 			}
 		}
 	}
-	dense_list_time += (double) std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - t).count() / 1000.0;
+	dense_list_time += chrono::duration_cast<chrono::milliseconds>(chrono::high_resolution_clock::now() - t).count();
 	return disjointSet.getListOfSets();
 }
 
@@ -164,10 +165,10 @@ vector<unordered_set<uint32_t>> MCL::get_list(Eigen::MatrixXf* m){
 
 vector<unordered_set<uint32_t>> MCL::markov_process(Eigen::SparseMatrix<float>* m, float inflation, float expansion){
 	for (uint32_t idiag=0; idiag<m->cols(); ++idiag){
-		assert(abs(m->coeffRef(idiag, idiag)) > std::numeric_limits<float>::epsilon());
+		assert(abs(m->coeffRef(idiag, idiag)) > numeric_limits<float>::epsilon());
 	}
 	uint32_t iteration = 0;
-	float diff_norm = std::numeric_limits<float>::max();
+	float diff_norm = numeric_limits<float>::max();
 	Eigen::SparseMatrix<float> msquared(m->rows(), m->cols());
 	Eigen::SparseMatrix<float> m_update(m->rows(), m->cols());
 	get_gamma(m, m, 1); // This is to get a matrix of random walks on the graph -> TODO: find out if something else is more suitable
@@ -184,14 +185,14 @@ vector<unordered_set<uint32_t>> MCL::markov_process(Eigen::SparseMatrix<float>* 
 
 vector<unordered_set<uint32_t>> MCL::markov_process(Eigen::MatrixXf* m, float inflation, float expansion){
 	for (uint32_t idiag=0; idiag<m->cols(); ++idiag){
-		assert(abs(m->coeffRef(idiag, idiag)) > std::numeric_limits<float>::epsilon());
+		assert(abs(m->coeffRef(idiag, idiag)) > numeric_limits<float>::epsilon());
 	}
 	uint32_t iteration = 0;
-	float diff_norm = std::numeric_limits<float>::max();
+	float diff_norm = numeric_limits<float>::max();
 	Eigen::MatrixXf msquared(m->rows(), m->cols());
 	Eigen::MatrixXf m_update(m->rows(), m->cols());
 	get_gamma(m, m, 1); // This is to get a matrix of random walks on the graph -> TODO: find out if something else is more suitable
-	while( iteration < 100 && diff_norm > std::numeric_limits<float>::epsilon()*m->rows() ){
+	while( iteration < 100 && diff_norm > numeric_limits<float>::epsilon()*m->rows() ){
 		get_exp(m, &msquared, expansion);
 		get_gamma(&msquared, &m_update, inflation);
 		*m -= m_update;
@@ -344,9 +345,9 @@ void MCL::run(){
 	auto componentInfo = ms.getComponents();
 	vector<vector<uint32_t>> indices = get<0>(componentInfo);
 	vector<vector<Eigen::Triplet<float>>> components = get<1>(componentInfo);
-	std::vector<uint32_t> sort_order(components.size());
-	std::iota(sort_order.begin(), sort_order.end(), 0);
-	std::sort(sort_order.begin(), sort_order.end(), [&](uint32_t i, uint32_t j){return indices[i].size() > indices[j].size();});
+	vector<uint32_t> sort_order(components.size());
+	iota(sort_order.begin(), sort_order.end(), 0);
+	sort(sort_order.begin(), sort_order.end(), [&](uint32_t i, uint32_t j){return indices[i].size() > indices[j].size();});
 
 	uint32_t nComponents = count_if(indices.begin(), indices.end(), [](vector<uint32_t> v){ return v.size() > 0;});
 	uint32_t nComponentsLt1 = count_if(indices.begin(), indices.end(), [](vector<uint32_t> v){ return v.size() > 1;});
@@ -355,52 +356,47 @@ void MCL::run(){
 
 	timer.go("Clustering components");
 	bool full = false;
-	vector<uint32_t> clustering_result(db->ref_header.sequences, std::numeric_limits<uint32_t>::max());
-	float max_sparsity = 0.0f;
-	float min_sparsity = 1.0f;
-	uint32_t cluster_id = 0;
-	uint32_t nClustersEq1 = 0;
-	uint32_t n_dense_calculations = 0;
-	uint32_t n_sparse_calculations = 0;
-	float inflation = (float) config.cluster_mcl_inflation;
-	float expansion = (float) config.cluster_mcl_expansion;
-
-	if( full ){
-		// TODO: According to the SIAM publication this is not valid, just for debugging
-		Eigen::SparseMatrix<float> m = ms.getMatrix();
-		for(unordered_set<uint32_t> subset : markov_process(&m, inflation, expansion)){
-			for(uint32_t el : subset){
-				clustering_result[el] = cluster_id;
-			}
-			cluster_id++;
-			if(subset.size() == 1) nClustersEq1 ++;
-		}
+	// Note, we will access the clustering_result from several threads below and a vector does not guarantee thread-safety in these situations.
+	// Note also, that the use of the disjoint_set structure guarantees that each thread will access a different part of the clustering_result
+	uint32_t* clustering_result = new uint32_t[db->ref_header.sequences];
+	for(uint64_t iseq = 0; iseq < db->ref_header.sequences; iseq++){
+		clustering_result[iseq]  = numeric_limits<uint32_t>::max();
 	}
-	else {
-		// TODO: check when/if using dense matrices for non-sparse components improves performance
-		// vector<std::thread> threads;
-		// for (size_t i = 0; i < config.threads_; ++i)
-		// 	threads.emplace_back(seed_join_worker, query_idx, ref_idx, &seedp, &range, query_seed_hits, ref_seed_hits);
-		// for (auto &t : threads)
-		// 	t.join();
-		for(uint32_t iComponent : sort_order){
+
+	uint32_t nThreads = min(config.threads_, nComponentsLt1);
+	float* max_sparsities = new float[nThreads];
+	float* min_sparsities = new float[nThreads];
+	atomic_uint32_t cluster_id(0);
+	atomic_uint32_t nClustersEq1(0);
+	atomic_uint32_t n_dense_calculations(0);
+	atomic_uint32_t n_sparse_calculations(0);
+	const float inflation = (float) config.cluster_mcl_inflation;
+	const float expansion = (float) config.cluster_mcl_expansion;
+
+	atomic_uint32_t component_counter(0);
+
+	auto mcl_clustering = [&](uint32_t iThr){
+		const uint32_t max_counter = sort_order.size();
+		uint32_t my_counter = component_counter.fetch_add(1, memory_order_relaxed);
+		while(my_counter < max_counter){
+			uint32_t iComponent = sort_order[my_counter];
 			vector<uint32_t> order = indices[iComponent];
 			if(order.size() > 1){
 				vector<Eigen::Triplet<float>> m = components[iComponent];
 				assert(m.size() <= order.size() * order.size());
 				float sparsity = 1.0-(1.0 * m.size()) / (order.size()*order.size());
-				max_sparsity = max(max_sparsity, sparsity);
-				min_sparsity = min(min_sparsity, sparsity);
+				max_sparsities[iThr] = max(max_sparsities[iThr], sparsity);
+				min_sparsities[iThr] = min(min_sparsities[iThr], sparsity);
 				// map back to original ids
 				vector<unordered_set<uint32_t>> list_of_sets;
 
 				//TODO: a size limit for the dense matrix should control this as well
-				std::chrono::high_resolution_clock::time_point t = std::chrono::high_resolution_clock::now();
+				chrono::high_resolution_clock::time_point t = chrono::high_resolution_clock::now();
 				if(sparsity >= config.cluster_mcl_sparsity_switch && expansion - (int) expansion == 0){ 
 					n_sparse_calculations++;
 					Eigen::SparseMatrix<float> m_sparse(order.size(), order.size());
 					m_sparse.setFromTriplets(m.begin(), m.end());
-					sparse_create_time += (double) std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - t).count() / 1000.0;
+					sparse_create_time += chrono::duration_cast<chrono::milliseconds>(chrono::high_resolution_clock::now() - t).count();
 					list_of_sets = markov_process(&m_sparse, inflation, expansion);
 				}
 				else{
@@ -409,30 +405,83 @@ void MCL::run(){
 					for(Eigen::Triplet<float> const & t : m){
 						m_dense(t.row(), t.col()) = t.value();
 					}
-					dense_create_time += (double) std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - t).count() / 1000.0;
+					dense_create_time += chrono::duration_cast<chrono::milliseconds>(chrono::high_resolution_clock::now() - t).count();
 					list_of_sets = markov_process(&m_dense, inflation, expansion);
 				}
 				for(unordered_set<uint32_t> subset : list_of_sets){
+					// FIXME: this does not assign stable cluster ids
+					uint32_t c_id = cluster_id.fetch_add(1, memory_order_relaxed);
 					for(uint32_t el : subset){
-						clustering_result[order[el]] = cluster_id;
+						clustering_result[order[el]] = c_id;
 					}
-					cluster_id++;
 					if(subset.size() == 1) nClustersEq1 ++;
 				}
 			}
 			else if (order.size() == 1){
-				clustering_result[order[0]] = cluster_id++;
+				uint32_t c_id = cluster_id.fetch_add(1, memory_order_relaxed);
+				clustering_result[order[0]] = c_id;
 				nClustersEq1++;
 			}
+			my_counter = component_counter.fetch_add(1, memory_order_relaxed);
 		}
-	}
-	timer.finish();
-	cout << "Found "<<cluster_id - nClustersEq1<< " ("<< cluster_id <<" incl. singletons) clusters with min sparsity "<<min_sparsity<< " and max. sparsity " << max_sparsity << " with " << n_dense_calculations << " dense, and " << n_sparse_calculations << " sparse calculations " << endl;
+	};
 
-	cout << "Time used for matrix creation: " << sparse_create_time + dense_create_time <<" (sparse: " << sparse_create_time << ", dense: " << dense_create_time <<")" << endl;
-	cout << "Time used for exp: " << sparse_exp_time + dense_int_exp_time + dense_gen_exp_time << " (sparse: " << sparse_exp_time << ", dense int: " << dense_int_exp_time << ", dense gen: " << dense_gen_exp_time <<")" << endl; 
-	cout << "Time used for gamma: " << sparse_gamma_time + dense_gamma_time <<" (sparse: " << sparse_gamma_time << ", dense: " << dense_gamma_time <<")" << endl;
-	cout << "Time used for listing: " << sparse_list_time + dense_list_time <<" (sparse: " << sparse_list_time << ", dense: " << dense_list_time <<")" << endl;
+	vector<thread> threads;
+	for(uint32_t iThread = 0; iThread < nThreads ; iThread++ ) {
+		min_sparsities[iThread] = 1.0f;
+		max_sparsities[iThread] = 0.0f;
+		threads.emplace_back(mcl_clustering, iThread);
+	}
+
+	float min_sparsity = 1.0f;
+	float max_sparsity = 0.0f;
+	for(uint32_t iThread = 0; iThread < nThreads ; iThread++ ) {
+		threads[iThread].join();
+		min_sparsity = min(min_sparsity, min_sparsities[iThread]);
+		max_sparsity = max(max_sparsity, max_sparsities[iThread]);
+	}
+	delete[] min_sparsities;
+	delete[] max_sparsities;
+
+	timer.finish();
+	cout << "Found "
+		<< cluster_id - nClustersEq1
+		<< " ("<< cluster_id <<" incl. singletons) clusters with min sparsity "
+		<< min_sparsity 
+		<< " and max. sparsity " 
+		<< max_sparsity 
+		<< " with " 
+		<< n_dense_calculations 
+		<< " dense, and " 
+		<< n_sparse_calculations 
+		<< " sparse calculations " << endl;
+	cout << "Time used for matrix creation: " 
+		<< (sparse_create_time.load() + dense_create_time.load())/1000.0 
+		<<" (sparse: " 
+		<< sparse_create_time.load()/1000.0 
+		<< ", dense: " 
+		<< dense_create_time.load()/1000.0 <<")" << endl;
+	cout << "Time used for exp: " 
+		<< (sparse_exp_time.load() + dense_int_exp_time.load() + dense_gen_exp_time.load())/1000.0 
+		<< " (sparse: " 
+		<< sparse_exp_time.load()/1000.0 
+		<< ", dense int: " 
+		<< dense_int_exp_time.load()/1000.0 
+		<< ", dense gen: " 
+		<< dense_gen_exp_time.load()/1000.0 <<")" << endl; 
+	cout << "Time used for gamma: " 
+		<< (sparse_gamma_time.load() + dense_gamma_time.load())/1000.0 
+		<< " (sparse: " 
+		<< sparse_gamma_time.load()/1000.0 
+		<< ", dense: " 
+		<< dense_gamma_time.load()/1000.0 <<")" << endl;
+	cout << "Time used for listing: " 
+		<< (sparse_list_time.load() + dense_list_time.load())/1000.0 
+		<< " (sparse: " 
+		<< sparse_list_time.load()/1000.0 
+		<< ", dense: " 
+		<< dense_list_time.load()/1000.0 <<")" << endl;
+
 	timer.go("Cluster output");
 	ostream *out = config.output_file.empty() ? &cout : new ofstream(config.output_file.c_str());
 	vector<Letter> seq;
@@ -449,6 +498,7 @@ void MCL::run(){
 	}
 	if (out != &cout) delete out;
 	db->close();
+	delete clustering_result;
 	timer.finish();
 }
 }}

@@ -27,6 +27,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <memory>
 #include <fstream>
 #include <limits>
+#include <atomic>
 #include "../util/system/system.h"
 #include "../util/util.h"
 #include "../basic/config.h"
@@ -53,10 +54,15 @@ private:
 	vector<unordered_set<uint32_t>> get_list(Eigen::MatrixXf* m);
 	vector<unordered_set<uint32_t>> markov_process(Eigen::SparseMatrix<float>* m, float inflation, float expansion);
 	vector<unordered_set<uint32_t>> markov_process(Eigen::MatrixXf* m, float inflation, float expansion);
-	double sparse_create_time, dense_create_time = 0.0;
-	double sparse_exp_time, dense_int_exp_time, dense_gen_exp_time = 0.0;
-	double sparse_gamma_time, dense_gamma_time = 0.0;
-	double sparse_list_time, dense_list_time = 0.0;
+	atomic_uint64_t sparse_create_time = {0};
+	atomic_uint64_t dense_create_time = {0};
+	atomic_uint64_t sparse_exp_time = {0};
+	atomic_uint64_t dense_int_exp_time = {0};
+	atomic_uint64_t dense_gen_exp_time = {0};
+	atomic_uint64_t sparse_gamma_time = {0};
+	atomic_uint64_t dense_gamma_time = {0};
+	atomic_uint64_t sparse_list_time = {0};
+	atomic_uint64_t dense_list_time = {0};
 public:
 	void run();
 	string get_key();
