@@ -111,7 +111,7 @@ class RecursiveParser{
 			advance(4); // 'log('
 			double result1 = expression();
 			advance(1); // ')'
-			return std::exp(result1);
+			return std::log(result1);
 		}
 		else {
 			return VariableRegistry::get(variable())->get(r);
