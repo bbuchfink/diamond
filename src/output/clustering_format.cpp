@@ -107,6 +107,12 @@ class RecursiveParser{
 			advance(1); // ')'
 			return std::exp(result1);
 		}
+		else if (peek() == 'l' && peek(1)=='o' && peek(2)=='g' && peek(3)=='('){
+			advance(4); // 'log('
+			double result1 = expression();
+			advance(1); // ')'
+			return std::exp(result1);
+		}
 		else {
 			return VariableRegistry::get(variable())->get(r);
 		}
