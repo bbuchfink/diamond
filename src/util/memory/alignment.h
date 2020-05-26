@@ -14,7 +14,7 @@ static inline void* aligned_malloc(size_t n, size_t align) {
     return p;
 #else
     void* p;
-    if (posix_memalign(&p, align, n) == nullptr)
+    if (posix_memalign(&p, align, n) != 0)
         throw std::bad_alloc();
     return p;
 #endif
