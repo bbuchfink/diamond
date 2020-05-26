@@ -25,6 +25,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <string.h>
 #include "stream_entity.h"
 #include "../algo/varint.h"
+#include "../system/endianness.h"
 
 struct DynamicRecordReader;
 
@@ -53,6 +54,7 @@ struct Deserializer
 			read_varint(*this, x);
 		else
 			read(x);
+		to_host_endianness(x);
 		return *this;
 	}
 
@@ -65,12 +67,14 @@ struct Deserializer
 	Deserializer& operator>>(unsigned long &x)
 	{
 		read(x);
+		to_host_endianness(x);
 		return *this;
 	}
 
 	Deserializer& operator>>(unsigned long long &x)
 	{
 		read(x);
+		to_host_endianness(x);
 		return *this;
 	}
 
@@ -154,7 +158,7 @@ struct Deserializer
 		} while (fetch());
 		return false;
 	}
-	
+
 	size_t read_raw(char *ptr, size_t count);
 	DynamicRecordReader read_record();
 	~Deserializer();

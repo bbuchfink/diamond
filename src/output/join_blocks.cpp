@@ -47,13 +47,13 @@ struct JoinFetcher
 		files.clear();
 		query_ids.clear();
 	}
-	static unsigned next()
+	static uint32_t next()
 	{
 		return *std::min_element(query_ids.begin(), query_ids.end());
 	}
 	void fetch(unsigned b)
 	{
-		unsigned size;
+		uint32_t size;
 		files[b].read(&size, 1);
 		buf[b].clear();
 		buf[b].resize(size);
@@ -76,10 +76,10 @@ struct JoinFetcher
 		return next() != IntermediateRecord::FINISHED;
 	}
 	static PtrVector<InputFile> files;
-	static vector<unsigned> query_ids;
+	static vector<uint32_t> query_ids;
 	static unsigned query_last;
 	vector<BinaryBuffer> buf;
-	unsigned query_id, unaligned_from;
+	uint32_t query_id, unaligned_from;
 };
 
 PtrVector<InputFile> JoinFetcher::files;

@@ -23,6 +23,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #ifdef _WIN32
 #define cpuid(info,x)    __cpuidex(info,x,0)
 #else
+#ifdef __SSE2__
 inline void cpuid(int CPUInfo[4], int InfoType) {
 	__asm__ __volatile__(
 		"cpuid":
@@ -33,6 +34,7 @@ inline void cpuid(int CPUInfo[4], int InfoType) {
 		"a" (InfoType), "c" (0)
 		);
 }
+#endif
 #endif
 
 namespace SIMD {

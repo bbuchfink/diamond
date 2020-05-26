@@ -8,6 +8,7 @@
 // non-native version will be less than optimal.
 
 #include "MurmurHash3.h"
+#include "../system/endianness.h"
 
 //-----------------------------------------------------------------------------
 // Platform-specific functions and macros
@@ -59,7 +60,7 @@ FORCE_INLINE uint32_t getblock32 ( const uint32_t * p, int i )
 
 FORCE_INLINE uint64_t getblock64 ( const uint64_t * p, int i )
 {
-  return p[i];
+  return to_little_endianness(p[i]);
 }
 
 //-----------------------------------------------------------------------------

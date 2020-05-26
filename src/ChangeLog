@@ -1,6 +1,8 @@
 [0.9.33]
+- Fixed a bug on big-endian architectures.
+- Fixed bugs for compilers with unsigned char.
 - Fixed compiler errors for generic builds.
-- Fixed errors occuring when compiled with unsigned char type.
+- Added compatibility of database files between little and big endian architectures.
 
 [0.9.32]
 - Fixed a bug that would generate an incorrect count of positive scoring letters in all output formats.
