@@ -54,15 +54,15 @@ private:
 	vector<unordered_set<uint32_t>> get_list(Eigen::MatrixXf* m);
 	vector<unordered_set<uint32_t>> markov_process(Eigen::SparseMatrix<float>* m, float inflation, float expansion);
 	vector<unordered_set<uint32_t>> markov_process(Eigen::MatrixXf* m, float inflation, float expansion);
-	atomic_uint64_t sparse_create_time = {0};
-	atomic_uint64_t dense_create_time = {0};
-	atomic_uint64_t sparse_exp_time = {0};
-	atomic_uint64_t dense_int_exp_time = {0};
-	atomic_uint64_t dense_gen_exp_time = {0};
-	atomic_uint64_t sparse_gamma_time = {0};
-	atomic_uint64_t dense_gamma_time = {0};
-	atomic_uint64_t sparse_list_time = {0};
-	atomic_uint64_t dense_list_time = {0};
+	atomic_ullong sparse_create_time = {0};
+	atomic_ullong dense_create_time = {0};
+	atomic_ullong sparse_exp_time = {0};
+	atomic_ullong dense_int_exp_time = {0};
+	atomic_ullong dense_gen_exp_time = {0};
+	atomic_ullong sparse_gamma_time = {0};
+	atomic_ullong dense_gamma_time = {0};
+	atomic_ullong sparse_list_time = {0};
+	atomic_ullong dense_list_time = {0};
 public:
 	void run();
 	string get_key();

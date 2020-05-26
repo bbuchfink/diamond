@@ -366,14 +366,14 @@ void MCL::run(){
 	uint32_t nThreads = min(config.threads_, nComponentsLt1);
 	float* max_sparsities = new float[nThreads];
 	float* min_sparsities = new float[nThreads];
-	atomic_uint32_t cluster_id(0);
-	atomic_uint32_t nClustersEq1(0);
-	atomic_uint32_t n_dense_calculations(0);
-	atomic_uint32_t n_sparse_calculations(0);
+	atomic_uint cluster_id(0);
+	atomic_uint nClustersEq1(0);
+	atomic_uint n_dense_calculations(0);
+	atomic_uint n_sparse_calculations(0);
 	const float inflation = (float) config.cluster_mcl_inflation;
 	const float expansion = (float) config.cluster_mcl_expansion;
 
-	atomic_uint32_t component_counter(0);
+	atomic_uint component_counter(0);
 
 	auto mcl_clustering = [&](uint32_t iThr){
 		const uint32_t max_counter = sort_order.size();
@@ -498,7 +498,7 @@ void MCL::run(){
 	}
 	if (out != &cout) delete out;
 	db->close();
-	delete clustering_result;
+	delete[] clustering_result;
 	timer.finish();
 }
 }}
