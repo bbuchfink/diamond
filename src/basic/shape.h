@@ -104,7 +104,6 @@ struct Shape
 		id_ (id),
 		long_mask_(0)
 	{
-		assert(id < Const::max_shapes);
 		assert(strlen(code) <= 32);
 		memset(positions_, 0, sizeof(uint32_t)*Const::max_seed_weight);
 		const uint64_t b = Reduction::reduction.bit_size();
