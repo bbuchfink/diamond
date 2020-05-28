@@ -54,7 +54,7 @@ struct Deserializer
 			read_varint(*this, x);
 		else
 			read(x);
-		to_host_endianness(x);
+		x = big_endian_byteswap(x);
 		return *this;
 	}
 
@@ -67,14 +67,14 @@ struct Deserializer
 	Deserializer& operator>>(unsigned long &x)
 	{
 		read(x);
-		to_host_endianness(x);
+		x = big_endian_byteswap(x);
 		return *this;
 	}
 
 	Deserializer& operator>>(unsigned long long &x)
 	{
 		read(x);
-		to_host_endianness(x);
+		x = big_endian_byteswap(x);
 		return *this;
 	}
 

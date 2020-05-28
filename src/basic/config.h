@@ -205,6 +205,7 @@ struct Config
 	int gapped_filter_diag_score;
 	double gapped_filter_score;
 	double gapped_filter_evalue;
+	double gapped_filter_evalue2;
 	int gapped_filter_window;
 	bool output_hits;
 	double ungapped_evalue;

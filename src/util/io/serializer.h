@@ -48,19 +48,19 @@ struct Serializer : public Consumer
 		if (varint_)
 			write_varint(x, *this);
 		else
-			write(to_little_endianness(x));
+			write(big_endian_byteswap(x));
 		return *this;
 	}
 
 	Serializer& operator<<(unsigned long x)
 	{
-		write(to_little_endianness(x));
+		write(big_endian_byteswap(x));
 		return *this;
 	}
 
 	Serializer& operator<<(unsigned long long x)
 	{
-		write(to_little_endianness(x));
+		write(big_endian_byteswap(x));
 		return *this;
 	}
 

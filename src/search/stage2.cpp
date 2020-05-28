@@ -30,6 +30,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../dp/dp.h"
 #include "left_most.h"
 #include "../util/simd/vector.h"
+#include "../dp/scan_diags.h"
 
 namespace Search {
 namespace DISPATCH_ARCH {
@@ -41,6 +42,13 @@ template<typename _score> thread_local vector<::DISPATCH_ARCH::score_vector<_sco
 
 thread_local vector<sequence> hit_filter::subjects_;
 
+bool gapped_filter(const LongScoreProfile& query_profile, const Letter *subject, int query_len) {
+	const int l = (int)query_profile.length();
+	int scores[64];
+	DP::scan_diags64(query_profile, sequence(subject, l), -32, 0, l, scores);
+	return score_matrix.evalue_norm(DP::diag_alignment(scores, 64), query_len) <= config.gapped_filter_evalue2;
+}
+
 void search_query_offset(Loc q,
 	const Packed_loc* s,
 	vector<Stage1_hit>::const_iterator hits,
@@ -50,6 +58,8 @@ void search_query_offset(Loc q,
 	const unsigned sid,
 	const Context &context)
 {
+	thread_local LongScoreProfile query_profile;
+
 	constexpr auto N = vector<Stage1_hit>::const_iterator::difference_type(::DISPATCH_ARCH::SIMD::Vector<int8_t>::CHANNELS);
 	if (hits_end <= hits)
 		return;
@@ -65,7 +75,8 @@ void search_query_offset(Loc q,
 	query_id = (unsigned)l.first;
 	seed_offset = (unsigned)l.second;
 	const unsigned query_len = query_seqs::data_->length(query_id);
-
+	bool ps = false;
+	
 	for (vector<Stage1_hit>::const_iterator i = hits; i < hits_end; i += N) {
 
 		const size_t n = std::min(N, hits_end - i);
@@ -74,21 +85,22 @@ void search_query_offset(Loc q,
 		DP::window_ungapped_best(query_clipped.data(), subjects, n, window, scores);
 
 		for (size_t j = 0; j < n; ++j)
-			//if (scores[j] >= config.min_ungapped_raw_score) {
 			if (score_matrix.evalue_norm(scores[j], query_len) <= config.ungapped_evalue) {
 				stats.inc(Statistics::TENTATIVE_MATCHES2);
-				/*const sequence subject_clipped = Util::Sequence::clip(subjects[j], window, window_left);
-				const int delta = int(subject_clipped.data() - subjects[j]);
-				assert(delta <= window_left);
-				if (is_primary_hit(query_clipped.data() + delta, subject_clipped.data(), window_left - delta, sid, (unsigned)subject_clipped.length())) {*/
 				if(left_most_filter(query_clipped, subjects[j], window_left, shapes[sid].length_, context, sid == 0)) {
 					stats.inc(Statistics::TENTATIVE_MATCHES3);
-					/*if (query_id == UINT_MAX) {
-						std::pair<size_t, size_t> l = query_seqs::data_->local_position(q);
-						query_id = (unsigned)l.first;
-						seed_offset = (unsigned)l.second;
-					}*/
-					out.push(hit(query_id, s[(i + j)->s], seed_offset));
+					if (config.gapped_filter_evalue2 == 0.0)
+						out.push(hit(query_id, s[(i + j)->s], seed_offset));
+					else {
+						if (!ps) {
+							query_profile.set(query_clipped);
+							ps = true;
+						}
+						if (gapped_filter(query_profile, subjects[j], query_len)) {
+							stats.inc(Statistics::TENTATIVE_MATCHES4);
+							out.push(hit(query_id, s[(i + j)->s], seed_offset));
+						}
+					}
 				}
 			}
 	}
