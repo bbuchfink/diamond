@@ -50,10 +50,9 @@ private:
 	void get_exp(Eigen::MatrixXf* in, Eigen::MatrixXf* out, float r);
 	void get_gamma(Eigen::SparseMatrix<float>* in, Eigen::SparseMatrix<float>* out, float r);
 	void get_gamma(Eigen::MatrixXf* in, Eigen::MatrixXf* out, float r);
-	vector<unordered_set<uint32_t>> get_list(Eigen::SparseMatrix<float>* m);
-	vector<unordered_set<uint32_t>> get_list(Eigen::MatrixXf* m);
-	vector<unordered_set<uint32_t>> markov_process(Eigen::SparseMatrix<float>* m, float inflation, float expansion);
-	vector<unordered_set<uint32_t>> markov_process(Eigen::MatrixXf* m, float inflation, float expansion);
+	void markov_process(Eigen::SparseMatrix<float>* m, float inflation, float expansion);
+	void markov_process(Eigen::MatrixXf* m, float inflation, float expansion);
+#ifdef MCL_TIMINGS
 	atomic_ullong sparse_create_time = {0};
 	atomic_ullong dense_create_time = {0};
 	atomic_ullong sparse_exp_time = {0};
@@ -63,6 +62,7 @@ private:
 	atomic_ullong dense_gamma_time = {0};
 	atomic_ullong sparse_list_time = {0};
 	atomic_ullong dense_list_time = {0};
+#endif
 public:
 	void run();
 	string get_key();
