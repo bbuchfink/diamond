@@ -33,7 +33,7 @@ namespace DISPATCH_ARCH {
 const unsigned tile_size[] = { 1024, 128 };
 
 constexpr ptrdiff_t INNER_LOOP_QUERIES = 6;
-typedef vector<Finger_print, AlignmentAllocator<Finger_print, 32>> Container;
+typedef vector<Finger_print, AlignmentAllocator<Finger_print, 16>> Container;
 typedef Container::const_iterator Ptr;
 
 struct Range_ref
@@ -57,10 +57,10 @@ void query_register_search(Ptr q,
 {
 	const unsigned q_ref = unsigned(q - ref.q_begin);
 	unsigned s_ref = unsigned(s - ref.s_begin);
-	alignas(32) Finger_print q1 = *(q++), q2 = *(q++), q3 = *(q++), q4 = *(q++), q5 = *(q++), q6 = *q;
+	alignas(16) Finger_print q1 = *(q++), q2 = *(q++), q3 = *(q++), q4 = *(q++), q5 = *(q++), q6 = *q;
 	const Ptr end2 = s_end - (s_end - s) % 4;
 	for (; s < end2; ) {
-		alignas(32) Finger_print s1 = *(s++), s2 = *(s++), s3 = *(s++), s4 = *(s++);
+		alignas(16) Finger_print s1 = *(s++), s2 = *(s++), s3 = *(s++), s4 = *(s++);
 		stats.inc(Statistics::SEED_HITS, 6 * 4);
 		FAST_COMPARE(q1, s1, stats, q_ref, s_ref, 0, 0, hits);
 		FAST_COMPARE(q2, s1, stats, q_ref, s_ref, 1, 0, hits);
@@ -151,7 +151,7 @@ void load_fps(const Packed_loc *p, size_t n, Container &v, const Sequence_set &s
 	v.reserve(n);
 	const Packed_loc *end = p + n;
 	for (; p < end; ++p)
-		v.push_back(Finger_print(seqs.data(*p)));
+		v.emplace_back(seqs.data(*p));
 }
 
 void stage1(const Packed_loc *q, size_t nq, const Packed_loc *s, size_t ns, Statistics &stats, Trace_pt_buffer::Iterator &out, const unsigned sid, const Context &context)
