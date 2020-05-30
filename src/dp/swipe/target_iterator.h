@@ -25,46 +25,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../basic/value.h"
 #include "../../util/simd/vector.h"
 
-template<typename _t, int _n> struct ElementType {
-	typedef _t Type;
-};
-
-#ifdef __SSE2__
-
-template<> struct ElementType<__m128i, 16> {
-	typedef uint8_t Type;
-};
-
-template<> struct ElementType<__m128i, 8> {
-	typedef uint16_t Type;
-};
-
-template<> struct ElementType<__m128i, 1> {
-	typedef uint16_t Type;
-};
-
-#endif
-
-#ifdef __AVX2__
-
-template<> struct ElementType<__m256i, 32> {
-	typedef uint8_t Type;
-};
-
-template<> struct ElementType<__m256i, 16> {
-	typedef uint16_t Type;
-};
-
-template<> struct ElementType<__m256i, 8> {
-	typedef uint16_t Type;
-};
-
-template<> struct ElementType<__m256i, 1> {
-	typedef uint16_t Type;
-};
-
-#endif
-
 template<typename _t>
 struct TargetIterator
 {
@@ -162,14 +122,14 @@ struct TargetBuffer
 {
 
 	typedef ::DISPATCH_ARCH::SIMD::Vector<_t> SeqVector;
-	static constexpr int _n = SeqVector::CHANNELS;
+	enum { CHANNELS = SeqVector::CHANNELS };
 
 	TargetBuffer(const sequence *subject_begin, const sequence *subject_end) :
 		next(0),
 		n_targets(int(subject_end - subject_begin)),
 		subject_begin(subject_begin)
 	{
-		for (; next < std::min(_n, n_targets); ++next) {
+		for (; next < std::min((int)CHANNELS, n_targets); ++next) {
 			pos[next] = 0;
 			target[next] = next;
 			active.push_back(next);
@@ -188,7 +148,7 @@ struct TargetBuffer
 #ifdef __SSSE3__
 	SeqVector seq_vector() const
 	{
-		alignas(32) _t s[_n];
+		alignas(32) _t s[CHANNELS];
 		for (int i = 0; i < active.size(); ++i) {
 			const int channel = active[i];
 			s[channel] = (*this)[channel];
@@ -226,8 +186,8 @@ struct TargetBuffer
 		return true;
 	}
 
-	int pos[_n], target[_n], next, n_targets, cols;
-	Static_vector<int, _n> active;
+	int pos[CHANNELS], target[CHANNELS], next, n_targets, cols;
+	Static_vector<int, CHANNELS> active;
 	const sequence *subject_begin;
 };
 
