@@ -65,8 +65,6 @@ template<> struct ElementType<__m256i, 1> {
 
 #endif
 
-namespace DISPATCH_ARCH {
-
 template<typename _t>
 struct TargetIterator
 {
@@ -230,7 +228,5 @@ struct TargetBuffer
 	Static_vector<int, _n> active;
 	const sequence *subject_begin;
 };
-
-}
 
 #endif

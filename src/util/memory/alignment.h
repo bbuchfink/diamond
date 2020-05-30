@@ -2,7 +2,6 @@
 #define ALIGNMENT_H_
 
 #include <stdlib.h>
-#include <malloc.h>
 #include <cstddef>
 #include <exception>
 

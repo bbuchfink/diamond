@@ -10,13 +10,13 @@ language: c++
 #      - gdb
 
 arch:
-  - amd64
+#  - amd64
   - arm64
-  - ppc64le
-  - s390x
+#  - ppc64le
+#  - s390x
 
 compiler:
-  - g++
+#  - g++
   - clang
 
 install: skip
