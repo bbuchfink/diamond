@@ -311,7 +311,7 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("cutoff-score-8bit", 0, "", cutoff_score_8bit, 240)
 		("min-band-overlap", 0, "", min_band_overlap, 0.2)
 		("min-realign-overhang", 0, "", min_realign_overhang, 30)
-		("fast-stage2", 0, "", fast_stage2)
+		("beta", 0, "", beta)
 		("ungapped-window", 0, "", ungapped_window, 48)
 		("gapped-filter-diag-score", 0, "", gapped_filter_diag_score, 20)
 		("gapped-filter-score", 0, "", gapped_filter_score, 0.0)
@@ -511,8 +511,8 @@ Config::Config(int argc, const char **argv, bool check_io)
 	if (query_range_culling && taxon_k != 0)
 		throw std::runtime_error("--taxon-k is not supported for --range-culling mode.");
 
-	if (fast_stage2 && (lowmem != 1))
-		throw std::runtime_error("--fast-stage2 needs -c1.");
+	if (beta && (lowmem != 1))
+		throw std::runtime_error("--beta needs -c1.");
 
 	log_stream << "MAX_SHAPE_LEN=" << MAX_SHAPE_LEN;
 #ifdef SEQ_MASK

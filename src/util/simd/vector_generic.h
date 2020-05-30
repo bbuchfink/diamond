@@ -18,17 +18,60 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#ifndef SIMD_VECTOR_H_
-#define SIMD_VECTOR_H_
+#pragma once
 
+#include <stdint.h>
 #include "../simd.h"
 
-#if ARCH_ID == 2
-#include "vector8_avx2.h"
-#elif defined(__SSE2__)
-#include "vector8_sse.h"
-#else
-#include "vector_generic.h"
-#endif
+namespace DISPATCH_ARCH { namespace SIMD {
 
-#endif
+template<>
+struct Vector<int8_t> {
+
+	static constexpr size_t CHANNELS = 1;
+
+	Vector()
+	{}
+
+	Vector(const signed char* p) :
+		v(*p)
+	{}
+
+	int8_t v;
+
+};
+
+template<>
+struct Vector<int16_t> {
+
+	static constexpr size_t CHANNELS = 1;
+
+	Vector()
+	{}
+
+	Vector(const int16_t* p) :
+		v(*p)
+	{}
+
+	int16_t v;
+
+};
+
+template<>
+struct Vector<int32_t> {
+
+	static constexpr size_t CHANNELS = 1;
+
+	Vector()
+	{}
+
+	Vector(const int32_t* p) :
+		v(*p)
+	{}
+
+	int32_t v;
+
+};
+
+
+}}

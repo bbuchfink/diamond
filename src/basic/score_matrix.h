@@ -103,7 +103,7 @@ struct Score_matrix
 	double evalue(int raw_score, unsigned query_len) const
 	{ return db_letters_ * query_len * pow(2, -bitscore(raw_score)); }
 
-	double evalue_norm(int raw_score, unsigned query_len) const
+	double evalue_norm(int raw_score, int query_len) const
 	{
 		return 1e9 * query_len * pow(2, -bitscore(raw_score));
 	}
@@ -168,16 +168,12 @@ private:
 			for (unsigned i = 0; i < 32; ++i)
 				for (unsigned j = 0; j < 32; ++j) {
 					const unsigned j2 = j % modulo + offset;
-					data[i * 32 + j] = i < n && j2 < n ? (_t)(scores[i * n + j2] + (int)bias) : -(std::numeric_limits<_t>::max() / 2);
+					data[i * 32 + j] = i < n && j2 < n ? (_t)(scores[i * n + j2] + (int)bias) : SCHAR_MIN;
 				}
 			if (stop_match_score != 1)
 				data[24 * 32 + 24] = stop_match_score;
 		}
-#ifdef _MSC_VER
-		__declspec(align(32)) _t data[32 * 32];
-#else
-		_t data[32 * 32] __attribute__((aligned(32)));
-#endif
+		alignas(32) _t data[32 * 32];
 	};
 
 	int gap_open_, gap_extend_, frame_shift_;

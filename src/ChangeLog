@@ -1,4 +1,7 @@
 [0.9.33]
+- Improved performance and sensitivity.
+- Increased use of temporary disk space.
+- Implemented support for the AVX2 instruction set.
 - Fixed a bug on big-endian architectures.
 - Fixed bugs for compilers with unsigned char.
 - Fixed compiler errors for generic builds.

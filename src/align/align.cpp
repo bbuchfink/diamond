@@ -155,7 +155,7 @@ void align_queries(Trace_pt_buffer &trace_pts, Consumer* output_file, const Para
 		}
 		statistics.inc(Statistics::TIME_LOAD_SEED_HITS, timer.microseconds());
 		timer.go("Sorting trace points");
-		if (config.fast_stage2)
+		if (config.beta)
 			radix_sort(v->data(), v->data() + v->size(), (uint32_t)query_range.second);
 		else
 			merge_sort(v->begin(), v->end(), config.threads_);

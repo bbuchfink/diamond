@@ -200,7 +200,7 @@ struct Config
 	double inner_culling_overlap;
 	double min_band_overlap;
 	int min_realign_overhang;
-	bool fast_stage2;
+	bool beta;
 	int ungapped_window;
 	int gapped_filter_diag_score;
 	double gapped_filter_score;

@@ -2,6 +2,8 @@
 DIAMOND protein aligner
 Copyright (C) 2020 Max Planck Society for the Advancement of Science e.V.
 
+Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
+
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
@@ -16,9 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#ifndef TRANSPOSE16X16_H_
-#define TRANSPOSE16X16_H_
-
+#pragma once
 #include "../simd.h"
 
 #define UNPACK128_LO_HI_EPI8(a, b) t = r##a; r##a = _mm_unpacklo_epi8(t, r##b); r##b = _mm_unpackhi_epi8(t, r##b);
@@ -28,7 +28,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 static inline void transpose(const signed char **data, size_t n, signed char *out, const __m128i&) {
 	__m128i r0, r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11, r12, r13, r14, r15, t;
-	// r0 = r1 = r2 = r3 = r4 = r5 = r6 = r7 = r8 = r9 = r10 = r11 = r12 = r13 = r14 = r15 = _mm_setzero_si128();
+	r0 = r1 = r2 = r3 = r4 = r5 = r6 = r7 = r8 = r9 = r10 = r11 = r12 = r13 = r14 = r15 = _mm_setzero_si128();
 	
 	switch (n) {
 	case 16:
@@ -119,5 +119,3 @@ static inline void transpose(const signed char **data, size_t n, signed char *ou
 	_mm_store_si128(ptr++, r7);
 	_mm_store_si128(ptr, r15);
 }
-
-#endif

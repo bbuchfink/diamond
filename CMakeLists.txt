@@ -133,7 +133,6 @@ set(OBJECTS
   src/data/frequent_seeds.cpp
   src/align/legacy/query_mapper.cpp
   src/output/blast_tab_format.cpp
-  src/dp/padded_banded_sw.cpp
   src/dp/needleman_wunsch.cpp
   src/output/blast_pairwise_format.cpp
   src/dp/comp_based_stats.cpp

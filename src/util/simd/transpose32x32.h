@@ -2,6 +2,8 @@
 DIAMOND protein aligner
 Copyright (C) 2020 Max Planck Society for the Advancement of Science e.V.
 
+Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
+
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
@@ -16,9 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#ifndef TRANSPOSE32X32_H_
-#define TRANSPOSE32X32_H_
-
+#pragma once
 #include "../simd.h"
 
 #define UNPACK256_LO_HI_EPI8(a, b) t = r##a; r##a = _mm256_unpacklo_epi8(t, r##b); r##b = _mm256_unpackhi_epi8(t, r##b);
@@ -184,5 +184,3 @@ static inline void transpose(const signed char** data, size_t n, signed char* ou
 	_mm256_store_si256(ptr++, r23);
 	_mm256_store_si256(ptr++, r31);
 }
-
-#endif

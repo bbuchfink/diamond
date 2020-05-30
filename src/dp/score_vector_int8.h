@@ -16,9 +16,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#ifndef SCORE_VECTOR_INT8_H_
-#define SCORE_VECTOR_INT8_H_
-
+#pragma once
 #include "score_vector.h"
 
 namespace DISPATCH_ARCH {
@@ -352,7 +350,5 @@ static inline DISPATCH_ARCH::score_vector<int8_t> load_sv(const int8_t *x) {
 static inline DISPATCH_ARCH::score_vector<int8_t> load_sv(const uint8_t *x) {
 	return DISPATCH_ARCH::score_vector<int8_t>(x);
 }
-
-#endif
 
 #endif
