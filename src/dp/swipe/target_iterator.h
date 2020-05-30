@@ -70,7 +70,9 @@ struct TargetIterator
 {
 
 	typedef ::DISPATCH_ARCH::SIMD::Vector<_t> SeqVector;
-	static constexpr int _n = SeqVector::CHANNELS;
+	enum {
+		CHANNELS = SeqVector::CHANNELS
+	};
 
 	TargetIterator(vector<DpTarget>::const_iterator subject_begin, vector<DpTarget>::const_iterator subject_end, int i1, int qlen, int *d_begin) :
 		next(0),
@@ -78,7 +80,7 @@ struct TargetIterator
 		cols(0),
 		subject_begin(subject_begin)
 	{
-		for (; next < std::min(_n, n_targets); ++next) {
+		for (; next < std::min((int)CHANNELS, n_targets); ++next) {
 			const DpTarget &t = subject_begin[next];
 			pos[next] = i1 - (t.d_end - 1);
 			const int d0 = d_begin[next];
@@ -111,8 +113,8 @@ struct TargetIterator
 #ifdef __SSSE3__
 	SeqVector get() const
 	{
-		alignas(32) _t s[_n];
-		std::fill(s, s + _n, SUPER_HARD_MASK);
+		alignas(32) _t s[CHANNELS];
+		std::fill(s, s + CHANNELS, SUPER_HARD_MASK);
 		for (int i = 0; i < active.size(); ++i) {
 			const int channel = active[i];
 			s[channel] = (*this)[channel];
@@ -150,8 +152,8 @@ struct TargetIterator
 		return true;
 	}
 
-	int pos[_n], target[_n], next, n_targets, cols;
-	Static_vector<int, _n> active;
+	int pos[CHANNELS], target[CHANNELS], next, n_targets, cols;
+	Static_vector<int, CHANNELS> active;
 	const vector<DpTarget>::const_iterator subject_begin;
 };
 
