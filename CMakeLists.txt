@@ -24,6 +24,8 @@ elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^s390")
   set(X86 OFF)
 endif()
 
+add_definitions(-DEIGEN_DONT_VECTORIZE)
+
 if(STATIC_LIBSTDC++)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -static-libstdc++")
 endif()
