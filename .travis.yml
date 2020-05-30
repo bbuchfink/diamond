@@ -1,5 +1,5 @@
 os:
-  - linux
+#  - linux
   - osx
 
 language: c++
@@ -11,7 +11,7 @@ language: c++
 
 arch:
 #  - amd64
-  - arm64
+#  - arm64
 #  - ppc64le
 #  - s390x
 
@@ -27,5 +27,5 @@ script:
   - cmake -DCMAKE_BUILD_TYPE=Release ..
   - make
 #  - gdb --ex=r -return-child-result -batch -ex bt --args ./diamond test
-#  - lldb --batch --one-line r --one-line-on-crash bt -- ./diamond test
-  - ./diamond test
+  - lldb --batch --one-line r --one-line-on-crash bt -- ./diamond test
+#  - ./diamond test
