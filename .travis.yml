@@ -24,7 +24,7 @@ install: skip
 script:
   - mkdir build
   - cd build
-  - cmake -DCMAKE_BUILD_TYPE=Release ..
+  - cmake -DCMAKE_BUILD_TYPE=Debug ..
   - make
 #  - gdb --ex=r -return-child-result -batch -ex bt --args ./diamond test
   - lldb --batch --one-line r --one-line-on-crash bt -- ./diamond test
