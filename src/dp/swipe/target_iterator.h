@@ -16,14 +16,14 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#ifndef TARGET_ITERATOR_H_
-#define TARGET_ITERATOR_H_
-
+#pragma once
 #include <stdint.h>
 #include <algorithm>
 #include "../dp.h"
 #include "../basic/value.h"
 #include "../../util/simd/vector.h"
+
+namespace DISPATCH_ARCH {
 
 template<typename _t>
 struct TargetIterator
@@ -149,6 +149,7 @@ struct TargetBuffer
 	SeqVector seq_vector() const
 	{
 		alignas(32) _t s[CHANNELS];
+		std::fill(s, s + CHANNELS, SUPER_HARD_MASK);
 		for (int i = 0; i < active.size(); ++i) {
 			const int channel = active[i];
 			s[channel] = (*this)[channel];
@@ -191,4 +192,4 @@ struct TargetBuffer
 	const sequence *subject_begin;
 };
 
-#endif
+}

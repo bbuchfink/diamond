@@ -87,7 +87,11 @@ struct Matrix
 	int band() const {
 		return band_;
 	}
+#ifdef __APPLE__
+	MemBuffer<_sv> hgap_, score_;
+#else
 	static thread_local MemBuffer<_sv> hgap_, score_;
+#endif
 private:
 	int band_;	
 };
@@ -242,7 +246,11 @@ struct TracebackMatrix
 		return ColumnIterator(&hgap_[offset], &score_[col*band_ + offset], &score_[(col + 1)*band_ + offset]);
 	}
 
+#ifdef __APPLE__
+	MemBuffer<_sv> hgap_, score_;
+#else
 	static thread_local MemBuffer<_sv> hgap_, score_;
+#endif
 
 private:
 
@@ -250,10 +258,12 @@ private:
 
 };
 
+#ifndef __APPLE__
 template<typename _sv> thread_local MemBuffer<_sv> Matrix<_sv>::hgap_;
 template<typename _sv> thread_local MemBuffer<_sv> Matrix<_sv>::score_;
 template<typename _sv> thread_local MemBuffer<_sv> TracebackMatrix<_sv>::hgap_;
 template<typename _sv> thread_local MemBuffer<_sv> TracebackMatrix<_sv>::score_;
+#endif
 
 template<typename _sv, typename _traceback>
 struct MatrixTag
@@ -378,7 +388,7 @@ list<Hsp> swipe(
 	RangePartition<CHANNELS, Score> band_parts(band_offset, target_count, band);
 #endif
 	
-	TargetIterator<Score> targets(subject_begin, subject_end, i1, qlen, d_begin);
+	::DISPATCH_ARCH::TargetIterator<Score> targets(subject_begin, subject_end, i1, qlen, d_begin);
 	Matrix dp(band, targets.cols);
 
 	const _sv open_penalty(static_cast<char>(score_matrix.gap_open() + score_matrix.gap_extend())),

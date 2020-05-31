@@ -16,9 +16,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#ifndef SIMD_H_
-#define SIMD_H_
-
+#pragma once
 #include <string>
 #include <functional>
 #include "system.h"
@@ -80,4 +78,7 @@ struct Vector {};
 
 }}
 
+#ifdef __APPLE__
+#define _mm_set1_epi8(x) _mm_set_epi8(x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x)
+#define _mm256_set1_epi8(x) _mm256_set_epi8(x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x)
 #endif

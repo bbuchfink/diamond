@@ -23,7 +23,6 @@ http://cbrc3.cbrc.jp/~martin/tantan/
 A new repeat-masking method enables specific detection of homologous sequences, MC Frith, Nucleic Acids Research 2011 39(4):e23. */
 
 #include <array>
-#include <iostream>
 #include <stdint.h>
 #include <algorithm>
 #include <Eigen/Core>
@@ -73,16 +72,12 @@ void mask(Letter *seq,
 		t *= d;
 		f *= f2f;
 		f += t;
-		if((size_t)seq[i]>=AMINO_ACID_COUNT)
-			std::cerr << "a" << std::endl;
-
+		
 		f *= e[(size_t)seq[i]].template segment<WINDOW>(len - i, WINDOW);
 		b = b * b2b + s * p_repeat_end;
 
 		if ((i & 15) == 15) {
 			const float s = 1 / b;
-			if (i / 16 >= scale.size())
-				std::cerr << "b" << std::endl;
 			scale[i / 16] = s;
 			b *= s;
 			f *= s;
@@ -99,15 +94,11 @@ void mask(Letter *seq,
 		const float pf = 1 - (pb[i] * b / z);
 
 		if ((i & 15) == 15) {
-			if (i / 16 >= scale.size())
-				std::cerr << "c" << std::endl;
 			const float s = scale[i / 16];
 			b *= s;
 			f *= s;
 		}
 
-		if ((size_t)seq[i] >= AMINO_ACID_COUNT)
-			std::cerr << "d" << std::endl;
 		f *= e[(size_t)seq[i]].template segment<WINDOW>(len - i, WINDOW);
 
 		if (pf >= p_mask)
