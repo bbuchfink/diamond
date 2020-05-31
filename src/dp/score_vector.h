@@ -75,7 +75,7 @@ struct score_vector<uint8_t>
 	}
 
 	explicit score_vector(uint8_t x):
-		data_ (_mm_set1_epi8((char)x))
+		data_ (::SIMD::_mm_set1_epi8((char)x))
 	{ }
 
 	explicit score_vector(__m128i data):
@@ -108,9 +108,9 @@ struct score_vector<uint8_t>
 #ifdef __SSSE3__
 		const __m128i *row = reinterpret_cast<const __m128i*>(&score_matrix.matrix8u()[a << 5]);
 
-		__m128i high_mask = _mm_slli_epi16(_mm_and_si128(seq, _mm_set1_epi8('\x10')), 3);
+		__m128i high_mask = _mm_slli_epi16(_mm_and_si128(seq, ::SIMD::_mm_set1_epi8('\x10')), 3);
 		__m128i seq_low = _mm_or_si128(seq, high_mask);
-		__m128i seq_high = _mm_or_si128(seq, _mm_xor_si128(high_mask, _mm_set1_epi8('\x80')));
+		__m128i seq_high = _mm_or_si128(seq, _mm_xor_si128(high_mask, ::SIMD::_mm_set1_epi8('\x80')));
 
 		__m128i r1 = _mm_loadu_si128(row);
 		__m128i r2 = _mm_loadu_si128(row+1);

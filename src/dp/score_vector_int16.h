@@ -16,10 +16,9 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
+#pragma once
 #include "score_vector.h"
-
-#ifndef SCORE_VECTOR_INT16_H_
-#define SCORE_VECTOR_INT16_H_
+#include "../util/simd.h"
 
 namespace DISPATCH_ARCH {
 
@@ -32,17 +31,17 @@ struct score_vector<int16_t>
 	typedef __m256i Register;
 
 	score_vector() :
-		data_(_mm256_set1_epi16(SHRT_MIN))
+		data_(::SIMD::_mm256_set1_epi16(SHRT_MIN))
 	{}
 
 	explicit score_vector(int x)
 	{
-		data_ = _mm256_set1_epi16(x);
+		data_ = ::SIMD::_mm256_set1_epi16(x);
 	}
 
 	explicit score_vector(int16_t x)
 	{
-		data_ = _mm256_set1_epi16(x);
+		data_ = ::SIMD::_mm256_set1_epi16(x);
 	}
 
 	explicit score_vector(__m256i data) :
@@ -62,17 +61,17 @@ struct score_vector<int16_t>
 		const __m256i* row_lo = reinterpret_cast<const __m256i*>(&score_matrix.matrix8u_low()[a << 5]);
 		const __m256i* row_hi = reinterpret_cast<const __m256i*>(&score_matrix.matrix8u_high()[a << 5]);
 
-		__m256i high_mask = _mm256_slli_epi16(_mm256_and_si256(seq, _mm256_set1_epi8('\x10')), 3);
+		__m256i high_mask = _mm256_slli_epi16(_mm256_and_si256(seq, ::SIMD::_mm256_set1_epi8('\x10')), 3);
 		__m256i seq_low = _mm256_or_si256(seq, high_mask);
-		__m256i seq_high = _mm256_or_si256(seq, _mm256_xor_si256(high_mask, _mm256_set1_epi8('\x80')));
+		__m256i seq_high = _mm256_or_si256(seq, _mm256_xor_si256(high_mask, ::SIMD::_mm256_set1_epi8('\x80')));
 
 		__m256i r1 = _mm256_load_si256(row_lo);
 		__m256i r2 = _mm256_load_si256(row_hi);
 
 		__m256i s1 = _mm256_shuffle_epi8(r1, seq_low);
 		__m256i s2 = _mm256_shuffle_epi8(r2, seq_high);
-		data_ = _mm256_and_si256(_mm256_or_si256(s1, s2), _mm256_set1_epi16(255));
-		data_ = _mm256_subs_epi16(data_, _mm256_set1_epi16(score_matrix.bias()));
+		data_ = _mm256_and_si256(_mm256_or_si256(s1, s2), ::SIMD::_mm256_set1_epi16(255));
+		data_ = _mm256_subs_epi16(data_, ::SIMD::_mm256_set1_epi16(score_matrix.bias()));
 	}
 
 	score_vector operator+(const score_vector& rhs) const
@@ -102,7 +101,7 @@ struct score_vector<int16_t>
 	}
 
 	score_vector& operator++() {
-		data_ = _mm256_adds_epi16(data_, _mm256_set1_epi16(1));
+		data_ = _mm256_adds_epi16(data_, ::SIMD::_mm256_set1_epi16(1));
 		return *this;
 	}
 
@@ -148,17 +147,17 @@ struct score_vector<int16_t>
 	typedef __m128i Register;
 
 	inline score_vector() :
-		data_(_mm_set1_epi16(SHRT_MIN))
+		data_(::SIMD::_mm_set1_epi16(SHRT_MIN))
 	{}
 
 	explicit score_vector(int x)
 	{
-		data_ = _mm_set1_epi16(x);
+		data_ = ::SIMD::_mm_set1_epi16(x);
 	}
 
 	explicit score_vector(int16_t x)
 	{
-		data_ = _mm_set1_epi16(x);
+		data_ = ::SIMD::_mm_set1_epi16(x);
 	}
 
 	explicit score_vector(__m128i data) :
@@ -199,16 +198,16 @@ struct score_vector<int16_t>
 #ifdef __SSSE3__
 		const __m128i *row = reinterpret_cast<const __m128i*>(&score_matrix.matrix8u()[a << 5]);
 
-		__m128i high_mask = _mm_slli_epi16(_mm_and_si128(seq, _mm_set1_epi8('\x10')), 3);
+		__m128i high_mask = _mm_slli_epi16(_mm_and_si128(seq, ::SIMD::_mm_set1_epi8('\x10')), 3);
 		__m128i seq_low = _mm_or_si128(seq, high_mask);
-		__m128i seq_high = _mm_or_si128(seq, _mm_xor_si128(high_mask, _mm_set1_epi8('\x80')));
+		__m128i seq_high = _mm_or_si128(seq, _mm_xor_si128(high_mask, ::SIMD::_mm_set1_epi8('\x80')));
 
 		__m128i r1 = _mm_load_si128(row);
 		__m128i r2 = _mm_load_si128(row + 1);
 		__m128i s1 = _mm_shuffle_epi8(r1, seq_low);
 		__m128i s2 = _mm_shuffle_epi8(r2, seq_high);
-		data_ = _mm_and_si128(_mm_or_si128(s1, s2), _mm_set1_epi16(255));
-		data_ = _mm_subs_epi16(data_, _mm_set1_epi16(score_matrix.bias()));
+		data_ = _mm_and_si128(_mm_or_si128(s1, s2), ::SIMD::_mm_set1_epi16(255));
+		data_ = _mm_subs_epi16(data_, ::SIMD::_mm_set1_epi16(score_matrix.bias()));
 #endif
 	}
 
@@ -239,7 +238,7 @@ struct score_vector<int16_t>
 	}
 
 	score_vector& operator++() {
-		data_ = _mm_adds_epi16(data_, _mm_set1_epi16(1));
+		data_ = _mm_adds_epi16(data_, ::SIMD::_mm_set1_epi16(1));
 		return *this;
 	}
 
@@ -328,7 +327,5 @@ static inline DISPATCH_ARCH::score_vector<int16_t> load_sv(const int16_t *x) {
 static inline DISPATCH_ARCH::score_vector<int16_t> load_sv(const uint16_t *x) {
 	return DISPATCH_ARCH::score_vector<int16_t>(x);
 }
-
-#endif
 
 #endif

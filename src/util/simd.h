@@ -78,7 +78,38 @@ struct Vector {};
 
 }}
 
+namespace SIMD {
+
+static inline __m128i _mm_set1_epi8(char v) {
 #ifdef __APPLE__
-#define _mm_set1_epi8(x) _mm_set_epi8(x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x)
-#define _mm256_set1_epi8(x) _mm256_set_epi8(x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x)
+	return _mm_set_epi8(v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v);
+#else
+	return ::_mm_set1_epi8(v);
 #endif
+}
+
+static inline __m128i _mm_set1_epi16(short v) {
+#ifdef __APPLE__
+	return _mm_set_epi16(v, v, v, v, v, v, v, v);
+#else
+	return ::_mm_set1_epi16(v);
+#endif
+}
+
+static inline __m256i _mm256_set1_epi8(char v) {
+#ifdef __APPLE__
+	return _mm256_set_epi8(v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v);
+#else
+	return ::_mm256_set1_epi8(v);
+#endif
+}
+
+static inline __m256i _mm256_set1_epi16(short v) {
+#ifdef __APPLE__
+	return _mm256_set_epi16(v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v);
+#else
+	return ::_mm256_set1_epi16(v);
+#endif
+}
+
+}
