@@ -80,6 +80,8 @@ struct Vector {};
 
 namespace SIMD {
 
+#ifdef __SSE2__
+
 static inline __m128i _mm_set1_epi8(char v) {
 #ifdef __APPLE__
 	return _mm_set_epi8(v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v);
@@ -96,6 +98,10 @@ static inline __m128i _mm_set1_epi16(short v) {
 #endif
 }
 
+#endif
+
+#ifdef __AVX2__
+
 static inline __m256i _mm256_set1_epi8(char v) {
 #ifdef __APPLE__
 	return _mm256_set_epi8(v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v);
@@ -111,5 +117,7 @@ static inline __m256i _mm256_set1_epi16(short v) {
 	return ::_mm256_set1_epi16(v);
 #endif
 }
+
+#endif
 
 }
