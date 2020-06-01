@@ -162,8 +162,6 @@ struct LongScoreProfile
 	}
 	const int8_t* get(Letter l, int i) const
 	{
-		if (l >= AMINO_ACID_COUNT)
-			return &data[0][0];
 		return &data[(int)l][i + padding];
 	}
 	vector<int8_t> data[AMINO_ACID_COUNT];

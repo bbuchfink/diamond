@@ -66,7 +66,7 @@ bool Target::is_outranked(const vector<int32_t> &v, double treshold) {
 		const int i0 = hsp.query_source_range.begin_ / INTERVAL,
 			i1 = min(hsp.query_source_range.end_ / INTERVAL, int(v.size() - 1));
 		for (int i = i0; i <= i1; ++i)
-			if (hsp.score >= unsigned(v[i] * treshold))
+			if (hsp.score >= v[i] * treshold)
 				return false;
 	}
 	return true;

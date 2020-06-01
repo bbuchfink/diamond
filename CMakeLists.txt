@@ -58,11 +58,6 @@ endif()
 
 set(CMAKE_CXX_STANDARD 11)
 
-if (${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
-else()
-#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=gnu++11")
-endif()
-
 if(CMAKE_BUILD_MARCH)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=${CMAKE_BUILD_MARCH}")
 endif()
@@ -77,7 +72,7 @@ endif()
 if (${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
   add_definitions(-D_CRT_SECURE_NO_WARNINGS -D_ITERATOR_DEBUG_LEVEL=0)
 else()
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wno-implicit-fallthrough -Wreturn-type -Wno-unused -Wno-unused-parameter -Wno-unused-variable")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wno-implicit-fallthrough -Wreturn-type -Wno-unused -Wno-unused-parameter -Wno-unused-variable -Wno-uninitialized")
   # -fsanitize=address -fno-omit-frame-pointer 
 endif()
 
@@ -214,19 +209,6 @@ else()
 add_executable(diamond $<TARGET_OBJECTS:arch_generic>
   ${OBJECTS}
 )
-endif()
-
-if(EXTRA)
-  target_sources(diamond
-    PUBLIC
-      src/extra/benchmark.cpp
-	  src/extra/test.cpp
-	  src/dp/sw_3frame.cpp
-	  src/extra/roc.cpp
-	  src/extra/model_sim.cpp
-	  src/extra/opt.cpp
-  )
-  add_definitions(-DEXTRA)
 endif()
 
 target_link_libraries(diamond ${ZLIB_LIBRARY} ${CMAKE_THREAD_LIBS_INIT})

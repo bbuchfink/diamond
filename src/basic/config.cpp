@@ -214,7 +214,8 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("no-auto-append", 0, "disable auto appending of DAA and DMND file extensions", no_auto_append)
 		("xml-blord-format", 0, "Use gnl|BL_ORD_ID| style format in XML output", xml_blord_format)
 		("stop-match-score", 0, "Set the match score of stop codons against each other.", stop_match_score, 1)
-		("tantan-minMaskProb", 0, "minimum repeat probability for masking (0.9)", tantan_minMaskProb, 0.9);
+		("tantan-minMaskProb", 0, "minimum repeat probability for masking (0.9)", tantan_minMaskProb, 0.9)
+		("file-buffer-size", 0, "file buffer size in bytes (67108864)", file_buffer_size, (size_t)67108864);
 
 	Options_group view_options("View options");
 	view_options.add()

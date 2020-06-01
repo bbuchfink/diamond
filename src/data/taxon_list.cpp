@@ -24,7 +24,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 using std::set;
 
 TaxonList::TaxonList(Deserializer &in, size_t size, size_t data_size):
-	CompactArray<vector<unsigned> >(in, size, data_size)
+	CompactArray<vector<uint32_t>>(in, size, data_size)
 {}
 
 void TaxonList::build(OutputFile &db, FileBackedBuffer &accessions, size_t seqs)

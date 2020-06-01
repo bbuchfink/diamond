@@ -94,5 +94,7 @@ uint64_t InputFile::hash() {
 	std::fill(h, h + 16, '\0');
 	while ((n = read_raw(buf, SIZE)) > 0)
 		MurmurHash3_x64_128(buf, n, h, h);
-	return *(uint64_t*)h;
+	uint64_t r;
+	memcpy(&r, h, 8);
+	return r;
 }

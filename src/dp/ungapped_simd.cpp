@@ -28,11 +28,11 @@ using namespace DISPATCH_ARCH;
 
 namespace DP { namespace DISPATCH_ARCH {
 
-void window_ungapped(const Letter *query, const Letter **subjects, size_t subject_count, int window, int *out) {
+void window_ungapped(const Letter *query, const Letter **subjects, int subject_count, int window, int *out) {
 #ifdef __SSE4_1__
 	typedef score_vector<int8_t> Sv;
 	typedef ::DISPATCH_ARCH::SIMD::Vector<int8_t> SeqV;
-	constexpr size_t CHANNELS = ::DISPATCH_ARCH::ScoreTraits<Sv>::CHANNELS;
+	constexpr int CHANNELS = ::DISPATCH_ARCH::ScoreTraits<Sv>::CHANNELS;
 	assert(subject_count <= CHANNELS);
 	
 	alignas(CHANNELS) Letter subject_vector[CHANNELS * CHANNELS];
@@ -40,7 +40,7 @@ void window_ungapped(const Letter *query, const Letter **subjects, size_t subjec
 	const Letter* subject_ptr[CHANNELS], * query_end = query + window;
 	std::copy(subjects, subjects + subject_count, subject_ptr);
 
-	for (size_t i = 0; i < window; i += CHANNELS) {
+	for (int i = 0; i < window; i += CHANNELS) {
 		transpose(subject_ptr, subject_count, subject_vector, SeqV());
 		for (size_t j = 0; j < CHANNELS && query < query_end;) {
 			SeqV subject_letters(&subject_vector[j * CHANNELS]);
@@ -59,17 +59,17 @@ void window_ungapped(const Letter *query, const Letter **subjects, size_t subjec
 
 	int8_t best2[CHANNELS];
 	best.store(best2);
-	const size_t d = CHANNELS - subject_count;
-	for (size_t i = 0; i < subject_count; ++i)
+	const int d = CHANNELS - subject_count;
+	for (int i = 0; i < subject_count; ++i)
 		out[i] = ScoreTraits<Sv>::int_score(best2[d + i]);
 #endif
 }
 
-void window_ungapped_best(const Letter* query, const Letter** subjects, size_t subject_count, int window, int* out) {
+void window_ungapped_best(const Letter* query, const Letter** subjects, int subject_count, int window, int* out) {
 #ifdef __SSE4_1__
 	if (subject_count < 4) {
 #endif
-		for (size_t i = 0; i < subject_count; ++i)
+		for (int i = 0; i < subject_count; ++i)
 			out[i] = ungapped_window(query, subjects[i], window);
 #ifdef __SSE4_1__
 	}
