@@ -18,6 +18,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "seed_set.h"
 #include "../util/ptr_vector.h"
+#include "../util/math/integer.h"
 
 No_filter no_filter;
 

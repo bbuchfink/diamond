@@ -1,6 +1,13 @@
 [0.9.33]
+- Improved performance and sensitivity.
+- Increased use of temporary disk space.
+- Implemented support for the AVX2 instruction set.
 - Fixed a bug on big-endian architectures.
+- Fixed bugs for compilers with unsigned char.
 - Fixed compiler errors for generic builds.
+- Added compatibility of database files between little and big endian architectures.
+- Fixed various issues related to `Illegal instruction` errors on macOS.
+- Added option `--file-buffer-size` to set the size of the I/O buffers and set the default value to 64 MB.
 
 [0.9.32]
 - Fixed a bug that would generate an incorrect count of positive scoring letters in all output formats.

@@ -23,6 +23,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <limits.h>
 #include "../util/simd.h"
 #include "../basic/score_matrix.h"
+#include "../util/simd/vector.h"
 
 template<typename _score>
 struct score_traits
@@ -40,9 +41,23 @@ struct score_traits<uint8_t>
 	typedef uint16_t Mask;
 };
 
+namespace DISPATCH_ARCH {
+
+template<typename _t>
+struct ScoreTraits
+{
+	typedef void Score;
+	enum { CHANNELS = 0 };
+};
+
+
 template<typename _score>
 struct score_vector
 { };
+
+}
+
+namespace DISPATCH_ARCH {
 
 #ifdef __SSE2__
 
@@ -60,7 +75,7 @@ struct score_vector<uint8_t>
 	}
 
 	explicit score_vector(uint8_t x):
-		data_ (_mm_set1_epi8((char)x))
+		data_ (::SIMD::_mm_set1_epi8((char)x))
 	{ }
 
 	explicit score_vector(__m128i data):
@@ -93,9 +108,9 @@ struct score_vector<uint8_t>
 #ifdef __SSSE3__
 		const __m128i *row = reinterpret_cast<const __m128i*>(&score_matrix.matrix8u()[a << 5]);
 
-		__m128i high_mask = _mm_slli_epi16(_mm_and_si128(seq, _mm_set1_epi8('\x10')), 3);
+		__m128i high_mask = _mm_slli_epi16(_mm_and_si128(seq, ::SIMD::_mm_set1_epi8('\x10')), 3);
 		__m128i seq_low = _mm_or_si128(seq, high_mask);
-		__m128i seq_high = _mm_or_si128(seq, _mm_xor_si128(high_mask, _mm_set1_epi8('\x80')));
+		__m128i seq_high = _mm_or_si128(seq, _mm_xor_si128(high_mask, ::SIMD::_mm_set1_epi8('\x80')));
 
 		__m128i r1 = _mm_loadu_si128(row);
 		__m128i r2 = _mm_loadu_si128(row+1);
@@ -230,13 +245,6 @@ struct score_vector<uint8_t>
 
 #endif
 
-template<typename _t>
-struct ScoreTraits
-{
-	typedef void Score;
-	enum { CHANNELS = 0 };
-};
-
 template<>
 struct ScoreTraits<int32_t>
 {
@@ -267,17 +275,7 @@ struct ScoreTraits<int32_t>
 	}
 };
 
-static inline void store_sv(int32_t sv, int32_t *dst)
-{
-	*dst = sv;
-}
-
-static inline int32_t load_sv(const int32_t *x) {
-	return *x;
-}
-
 #ifdef __SSE2__
-
 template<>
 struct ScoreTraits<score_vector<uint8_t>>
 {
@@ -289,17 +287,35 @@ struct ScoreTraits<score_vector<uint8_t>>
 		return std::numeric_limits<uint8_t>::max();
 	}
 };
+#endif
+
+}
+
+static inline void store_sv(int32_t sv, int32_t *dst)
+{
+	*dst = sv;
+}
+
+static inline int32_t load_sv(const int32_t *x) {
+	return *x;
+}
+
+#ifdef __SSE2__
 
 template<typename _t, typename _p>
-static inline void store_sv(const score_vector<_t> &sv, _p *dst)
+static inline void store_sv(const DISPATCH_ARCH::score_vector<_t> &sv, _p *dst)
 {
+#if ARCH_ID == 2
+	_mm256_storeu_si256((__m256i*)dst, sv.data_);
+#else
 	_mm_storeu_si128((__m128i*)dst, sv.data_);
+#endif
 }
 
 #endif
 
 template<typename _sv>
-static inline typename ScoreTraits<_sv>::Score extract_channel(const _sv &v, int i) {
+static inline typename DISPATCH_ARCH::ScoreTraits<_sv>::Score extract_channel(const _sv &v, int i) {
 	return v[i];
 }
 
@@ -309,7 +325,7 @@ inline int extract_channel<int>(const int &v, int i) {
 }
 
 template<typename _sv>
-static inline void set_channel(_sv &v, int i, typename ScoreTraits<_sv>::Score x) {
+static inline void set_channel(_sv &v, int i, typename DISPATCH_ARCH::ScoreTraits<_sv>::Score x) {
 	v.set(i, x);
 }
 

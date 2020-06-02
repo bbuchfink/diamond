@@ -41,6 +41,10 @@ struct hit
 		subject_(subject),
 		seed_offset_(seed_offset)
 	{ }
+	operator uint32_t() const
+	{
+		return query_;
+	}
 	bool operator<(const hit &rhs) const
 	{
 		return query_ < rhs.query_;

@@ -19,11 +19,14 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <algorithm>
 #include <string.h>
 #include "input_stream_buffer.h"
+#include "../../basic/config.h"
 
 using std::make_pair;
 
 InputStreamBuffer::InputStreamBuffer(StreamEntity *prev):
-	StreamEntity(prev)
+	StreamEntity(prev),
+	buf_(new char[config.file_buffer_size]),
+	putback_count_(0)
 {
 }
 
@@ -44,6 +47,17 @@ void InputStreamBuffer::seek_forward(size_t n)
 
 pair<const char*, const char*> InputStreamBuffer::read()
 {
-	size_t n = prev_->read(buf_, BUF_SIZE);
-	return make_pair(buf_, buf_ + n);
+	size_t n;
+	if (putback_count_ > 0) {
+		n = putback_count_;
+		putback_count_ = 0;
+	}
+	else
+		n = prev_->read(buf_.get(), config.file_buffer_size);
+	return make_pair(buf_.get(), buf_.get() + n);
+}
+
+void InputStreamBuffer::putback(const char* p, size_t n) {
+	std::copy(p, p + n, buf_.get());
+	putback_count_ = n;
 }

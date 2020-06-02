@@ -209,7 +209,6 @@ Diagonal_segment xdrop_ungapped(const sequence &query, const sequence &subject, 
 	return Diagonal_segment(qa - delta, sa - delta, len + delta, score);
 }
 
-
 int xdrop_ungapped_right(const Letter *query, const Letter *subject, int &len)
 {
 	int score(0), st(0), n = 1;
@@ -231,6 +230,25 @@ int xdrop_ungapped_right(const Letter *query, const Letter *subject, int &len)
 			score = st;
 			len = n;
 		}
+		++q;
+		++s;
+		++n;
+	}
+	return score;
+}
+
+int ungapped_window(const Letter* query, const Letter* subject, int window) {
+	int score = 0, st = 0, n = 0;
+	const Letter* q = query, * s = subject;
+	while (n < window)
+	{
+#ifdef SEQ_MASK
+		st += score_matrix(letter_mask(*q), *s);
+#else
+		st += score_matrix(*q, *s);
+#endif
+		st = std::max(st, 0);
+		score = std::max(score, st);
 		++q;
 		++s;
 		++n;

@@ -47,7 +47,7 @@ bool FASTA_format::get_seq(string& id, vector<Letter>& seq, TextInputFile & s, v
 {
 	// !!!
 	while (s.getline(), s.line.empty() && !s.eof());
-	if (s.eof())
+	if (s.line.empty() && s.eof())
 		return false;
 	if (s.line[0] != '>')
 		throw StreamReadException(s.line_count, "FASTA format error: Missing '>' at record start.");
@@ -78,7 +78,7 @@ bool FASTA_format::get_seq(string& id, vector<Letter>& seq, TextInputFile & s, v
 bool FASTQ_format::get_seq(string& id, vector<Letter>& seq, TextInputFile & s, vector<char> *qual) const
 {
 	while (s.getline(), s.line.empty() && !s.eof());
-	if (s.eof())
+	if (s.line.empty() && s.eof())
 		return false;
 	if (s.line[0] != '@')
 		throw StreamReadException(s.line_count, "FASTQ format error: Missing '@' at record start.");

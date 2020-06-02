@@ -5,8 +5,6 @@
 #include "../string/string.h"
 #include "../log_stream.h"
 
-using namespace std;
-
 #ifdef _MSC_VER
 #include <windows.h>
 #else
@@ -14,15 +12,18 @@ using namespace std;
 #include <sys/stat.h>
 #endif
 
+using std::string;
+using std::cout;
+
 string executable_path() {
 	char buf[4096];
 #ifdef _MSC_VER
 	if (GetModuleFileNameA(NULL, buf, sizeof(buf)) == 0)
-		throw runtime_error("Error executing GetModuleFileNameA.");
+		throw std::runtime_error("Error executing GetModuleFileNameA.");
 	return string(buf);
 #else
 	if (readlink("/proc/self/exe", buf, sizeof(buf)) < 0)
-		throw runtime_error("Error executing readlink on /proc/self/exe.");
+		throw std::runtime_error("Error executing readlink on /proc/self/exe.");
 	return string(buf);
 #endif
 }

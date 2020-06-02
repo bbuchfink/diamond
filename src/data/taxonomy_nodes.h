@@ -79,7 +79,7 @@ private:
 		contained_[taxon_id] = contained;
 	}
 
-	std::vector<unsigned> parent_;
+	std::vector<uint32_t> parent_;
 	std::vector<Rank> rank_;
 	std::vector<bool> cached_, contained_;
 

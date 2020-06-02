@@ -34,7 +34,8 @@ struct Statistics
 		SEED_HITS, TENTATIVE_MATCHES0, TENTATIVE_MATCHES1, TENTATIVE_MATCHES2, TENTATIVE_MATCHES3, TENTATIVE_MATCHES4, TENTATIVE_MATCHESX, MATCHES, ALIGNED, GAPPED, DUPLICATES,
 		GAPPED_HITS, QUERY_SEEDS, QUERY_SEEDS_HIT, REF_SEEDS, REF_SEEDS_HIT, QUERY_SIZE, REF_SIZE, OUT_HITS, OUT_MATCHES, COLLISION_LOOKUPS, QCOV, BIAS_ERRORS, SCORE_TOTAL, ALIGNED_QLEN, PAIRWISE, HIGH_SIM,
 		TEMP_SPACE, SECONDARY_HITS, ERASED_HITS, SQUARED_ERROR, CELLS, OUTRANKED_HITS, TARGET_HITS0, TARGET_HITS1, TARGET_HITS2, TARGET_HITS3, TARGET_HITS4, TARGET_HITS5, TIME_GREEDY_EXT, LOW_COMPLEXITY_SEEDS,
-		SWIPE_REALIGN, EXT8, EXT16, EXT32, GAPPED_FILTER_TARGETS, GAPPED_FILTER_HITS1, GAPPED_FILTER_HITS2, COUNT
+		SWIPE_REALIGN, EXT8, EXT16, EXT32, GAPPED_FILTER_TARGETS, GAPPED_FILTER_HITS1, GAPPED_FILTER_HITS2, GROSS_DP_CELLS, NET_DP_CELLS, TIME_TARGET_SORT, TIME_SW, TIME_EXT, TIME_GAPPED_FILTER,
+		TIME_LOAD_HIT_TARGETS, TIME_CHAINING, TIME_LOAD_SEED_HITS, TIME_SORT_SEED_HITS, COUNT
 	};
 
 	Statistics()
@@ -86,10 +87,22 @@ struct Statistics
 		log_stream << "Extensions (8 bit)    = " << data_[EXT8] << endl;
 		log_stream << "Extensions (16 bit)   = " << data_[EXT16] << endl;
 		log_stream << "Extensions (32 bit)   = " << data_[EXT32] << endl;
+#ifdef DP_STAT
+		log_stream << "Gross DP Cells        = " << data_[GROSS_DP_CELLS] << endl;
+		log_stream << "Net DP Cells          = " << data_[NET_DP_CELLS] << " (" << data_[NET_DP_CELLS] * 100.0 / data_[GROSS_DP_CELLS] << " %)" << endl;
+#endif
 		log_stream << "Gapped filter (targets) = " << data_[GAPPED_FILTER_TARGETS] << endl;
 		log_stream << "Gapped filter (hits) stage 1 = " << data_[GAPPED_FILTER_HITS1] << endl;
 		log_stream << "Gapped filter (hits) stage 2 = " << data_[GAPPED_FILTER_HITS2] << endl;
-		log_stream << "Time (greedy extension) = " << data_[TIME_GREEDY_EXT]/1e9 << "s" << endl;
+		log_stream << "Time (Load seed hit targets) = " << (double)data_[TIME_LOAD_HIT_TARGETS] / 1e6 << "s (CPU)" << endl;
+		log_stream << "Time (Gapped filter)         = " << (double)data_[TIME_GAPPED_FILTER] / 1e6 << "s (CPU)" << endl;
+		log_stream << "Time (Chaining)              = " << (double)data_[TIME_CHAINING] / 1e6 << "s (CPU)" << endl;
+		log_stream << "Time (DP target sorting)     = " << (double)data_[TIME_TARGET_SORT] / 1e6 << "s (CPU)" << endl;
+		log_stream << "Time (Smith Waterman)        = " << (double)data_[TIME_SW] / 1e6 << "s (CPU)" << endl;
+		log_stream << "Time (Load seed hits)        = " << (double)data_[TIME_LOAD_SEED_HITS] / 1e6 << "s (wall)" << endl;
+		log_stream << "Time (Sort seed hits)        = " << (double)data_[TIME_SORT_SEED_HITS] / 1e6 << "s (wall)" << endl;
+		log_stream << "Time (Extension)             = " << (double)data_[TIME_EXT] / 1e6 << "s (wall)" << endl;
+		//log_stream << "Time (greedy extension)      = " << data_[TIME_GREEDY_EXT]/1e9 << "s" << endl;
 		//log_stream << "Gapped hits = " << data_[GAPPED_HITS] << endl;
 		//log_stream << "Overlap hits = " << data_[DUPLICATES] << endl;
 		//log_stream << "Secondary hits = " << data_[SECONDARY_HITS] << endl;

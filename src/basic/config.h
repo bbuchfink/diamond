@@ -200,16 +200,20 @@ struct Config
 	double inner_culling_overlap;
 	double min_band_overlap;
 	int min_realign_overhang;
-	bool fast_stage2;
+	bool beta;
 	int ungapped_window;
 	int gapped_filter_diag_score;
 	double gapped_filter_score;
 	double gapped_filter_evalue;
+	double gapped_filter_evalue2;
 	int gapped_filter_window;
 	bool output_hits;
 	double ungapped_evalue;
 	bool no_logfile;
 	bool no_heartbeat;
+	int band_bin;
+	int col_bin;
+	size_t file_buffer_size;
 
 	enum {
 		makedb = 0, blastp = 1, blastx = 2, view = 3, help = 4, version = 5, getseq = 6, benchmark = 7, random_seqs = 8, compare = 9, sort = 10, roc = 11, db_stat = 12, model_sim = 13,

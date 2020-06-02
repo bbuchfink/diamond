@@ -27,6 +27,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 using std::vector;
 using std::list;
+using namespace DISPATCH_ARCH;
 
 namespace DP { namespace Swipe {
 namespace DISPATCH_ARCH {
@@ -103,14 +104,14 @@ list<Hsp> swipe(const sequence &query, const sequence *subject_begin, const sequ
 		extend_penalty(static_cast<Score>(score_matrix.gap_extend()));
 	_sv best = _sv();
 	SwipeProfile<_sv> profile;
-	TargetBuffer<ScoreTraits<_sv>::CHANNELS> targets(subject_begin, subject_end);
+	TargetBuffer<Score> targets(subject_begin, subject_end);
 	list<Hsp> out;
 
 	while (targets.active.size() > 0) {
 		typename Matrix<_sv>::ColumnIterator it(dp.begin());
 		_sv vgap, hgap, last;
 		vgap = hgap = last = _sv();
-		profile.set(targets.seq_vector(Score()));
+		profile.set(targets.seq_vector());
 		for (int i = 0; i < qlen; ++i) {
 			hgap = it.hgap();
 			const _sv next = swipe_cell_update<_sv>(it.diag(), profile.get(query[i]), nullptr, extend_penalty, open_penalty, hgap, vgap, best);

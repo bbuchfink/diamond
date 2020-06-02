@@ -1,10 +1,31 @@
-#ifndef LEFT_MOST_H_
-#define LEFT_MOST_H_
+/****
+DIAMOND protein aligner
+Copyright (C) 2020 Max Planck Society for the Advancement of Science e.V.
+
+Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+****/
+
+#pragma once
 
 #include <algorithm>
 #include "search.h"
 #include "sse_dist.h"
 #include "../util/sequence/sequence.h"
+#include "../basic/config.h"
+#include "collision.h"
 
 namespace Search {
 
@@ -13,7 +34,8 @@ static inline bool left_most_filter(const sequence &query,
 	const int seed_offset,
 	const int seed_len,
 	const Context &context,
-	bool first_shape)
+	bool first_shape,
+	size_t shape_id)
 {
 	constexpr int WINDOW_LEFT = 16, WINDOW_RIGHT = 32;
 
@@ -30,6 +52,9 @@ static inline bool left_most_filter(const sequence &query,
 	s += d;
 	window_left -= d;
 	window -= d;
+
+	if (!config.beta)
+		return is_primary_hit(q, s, window_left, (unsigned)shape_id, window);
 
 	const uint64_t match_mask = reduced_match(q, s, window),
 		query_seed_mask = ~seed_mask(q, window);
@@ -52,5 +77,3 @@ static inline bool left_most_filter(const sequence &query,
 }
 
 }
-
-#endif

@@ -1,6 +1,8 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2017 Benjamin Buchfink <buchfink@gmail.com>
+Copyright (C) 2020 Max Planck Society for the Advancement of Science e.V.
+
+Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,28 +18,17 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#ifndef DIRECTION_H_
-#define DIRECTION_H_
+#ifndef SIMD_VECTOR_H_
+#define SIMD_VECTOR_H_
 
-struct Right { enum { mult = 1 }; };
-struct Left { enum { mult = -1 }; };
+#include "../simd.h"
 
-Letter get_dir(const Letter* x, int i, const Right&)
-{ return *(x+i); }
+#if ARCH_ID == 2
+#include "vector8_avx2.h"
+#elif defined(__SSE2__)
+#include "vector8_sse.h"
+#else
+#include "vector_generic.h"
+#endif
 
-Letter get_dir(const Letter* x, int i, const Left&)
-{ return *(x-i); }
-
-const Letter* get_dir_ptr(const Letter* x, int i, const Right&)
-{ return x+i; }
-
-const Letter* get_dir_ptr(const Letter* x, int i, const Left&)
-{ return x-i; }
-
-const Letter* inc_dir(const Letter* x, const Right&)
-{ return x+1; }
-
-const Letter* inc_dir(const Letter* x, const Left&)
-{ return x-1; }
-
-#endif /* DIRECTION_H_ */
+#endif

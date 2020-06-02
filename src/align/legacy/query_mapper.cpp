@@ -52,7 +52,7 @@ bool Target::is_enveloped(PtrVector<Target>::const_iterator begin, PtrVector<Tar
 	return false;
 }
 
-void Target::add_ranges(vector<unsigned> &v) {
+void Target::add_ranges(vector<int32_t> &v) {
 	for (const Hsp &hsp : hsps) {
 		const int i0 = hsp.query_source_range.begin_ / INTERVAL,
 			i1 = min(hsp.query_source_range.end_ / INTERVAL, int(v.size() - 1));
@@ -61,12 +61,12 @@ void Target::add_ranges(vector<unsigned> &v) {
 	}
 }
 
-bool Target::is_outranked(const vector<unsigned> &v, double treshold) {
+bool Target::is_outranked(const vector<int32_t> &v, double treshold) {
 	for (const Hsp &hsp : hsps) {
 		const int i0 = hsp.query_source_range.begin_ / INTERVAL,
 			i1 = min(hsp.query_source_range.end_ / INTERVAL, int(v.size() - 1));
 		for (int i = i0; i <= i1; ++i)
-			if (hsp.score >= unsigned(v[i] * treshold))
+			if (hsp.score >= v[i] * treshold)
 				return false;
 	}
 	return true;

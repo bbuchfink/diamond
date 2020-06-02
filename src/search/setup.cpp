@@ -109,6 +109,7 @@ void setup_search_params(pair<size_t, size_t> query_len_bounds, size_t chunk_db_
 		Config::set_option(config.window, 60u);
 		Config::set_option(config.hit_band, 8);
 		Config::set_option(config.min_hit_score, 23.0);
+		Config::set_option(config.ungapped_evalue, 100000.0);
 	}
 	else {
 
@@ -133,6 +134,8 @@ void setup_search_params(pair<size_t, size_t> query_len_bounds, size_t chunk_db_
 			Config::set_option(config.hit_band, 5);
 			Config::set_option(config.min_hit_score, std::min(29.0, b));
 		}
+
+		Config::set_option(config.ungapped_evalue, 10000.0);
 	}
 
 	config.min_ungapped_raw_score = score_matrix.rawscore(config.min_ungapped_score);

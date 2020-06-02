@@ -228,7 +228,7 @@ private:
 	static void enum_seeds_worker(_f *f, const Sequence_set *seqs, unsigned begin, unsigned end, pair<size_t,size_t> shape_range, const _filter *filter)
 	{
 		static const char *errmsg = "Unsupported contiguous seed.";
-		if (shape_range.second - shape_range.first == 1 && shapes[shape_range.first].contiguous()) {
+		if (shape_range.second - shape_range.first == 1 && shapes[shape_range.first].contiguous() && shapes.count() == 1) {
 			const uint64_t b = Reduction::reduction.bit_size(), l = shapes[shape_range.first].length_;
 			switch (l) {
 			case 7:
