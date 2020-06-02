@@ -20,6 +20,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "clustering_variables.h"
 
 std::map<std::string, Variable*> VariableRegistry::regMap;
+QueryLength VariableRegistry::queryLength;
+SubjectLength VariableRegistry::subjectLength;
 QueryStart VariableRegistry::queryStart;
 QueryEnd VariableRegistry::queryEnd;
 SubjectStart VariableRegistry::subjectStart;

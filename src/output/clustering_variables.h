@@ -239,7 +239,9 @@ public:
 class VariableRegistry{
 private:
 	VariableRegistry(){};
-	// To include new clustering algorithms add the instantiation here and in the cluster_registry.cpp file. Then add it to the StaticConstructor below
+	// To include new variables add the instantiation here and in the clustering_variable.cpp file. Then add it to the StaticConstructor below
+	static QueryLength queryLength;
+	static SubjectLength subjectLength;
 	static QueryStart queryStart;
 	static QueryEnd queryEnd;
 	static SubjectStart subjectStart;
@@ -266,7 +268,7 @@ public:
 	static Variable* get(std::string key){
 		std::map<std::string, Variable*>::iterator ca = VariableRegistry::regMap.find(key);
 		if(ca == VariableRegistry::regMap.end()){
-			throw std::runtime_error(std::string("Variable not found:")+ key);
+			throw std::runtime_error(std::string("Unknown variable: ")+ key);
 		}
 		return ca->second;
 	}
@@ -284,6 +286,8 @@ public:
 	}
 	static struct StaticConstructor {
 		StaticConstructor() {
+			regMap.emplace(queryLength.get_name(), &queryLength);
+			regMap.emplace(subjectLength.get_name(), &subjectLength);
 			regMap.emplace(queryStart.get_name(), &queryStart);
 			regMap.emplace(queryEnd.get_name(), &queryEnd);
 			regMap.emplace(subjectStart.get_name(), &subjectStart);

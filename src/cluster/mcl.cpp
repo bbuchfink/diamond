@@ -17,6 +17,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 #include "mcl.h"
+
 #define MASK_INVERSE 0xC0000000
 #define MASK_NORMAL_NODE 0x40000000
 #define MASK_ATTRACTOR_NODE 0x80000000
@@ -319,12 +320,9 @@ void MCL::run(){
 	config.no_self_hits = false;
 	string format = config.cluster_similarity;
 	if(format.empty()){
-		format = "qcovhsp/100*scovhsp/100*pident/100";
+		format = "qcovhsp*scovhsp*pident";
 	}
 	config.output_format = {"clus", format};
-	config.algo = 0;
-	config.index_mode = 0;
-	config.freq_sd = 0;
 
 	Workflow::Search::Options opt;
 	opt.db = &(*db);
@@ -353,9 +351,7 @@ void MCL::run(){
 	// Note, we will access the clustering_result from several threads below and a vector does not guarantee thread-safety in these situations.
 	// Note also, that the use of the disjoint_set structure guarantees that each thread will access a different part of the clustering_result
 	uint32_t* clustering_result = new uint32_t[db->ref_header.sequences];
-	for(uint64_t iseq = 0; iseq < db->ref_header.sequences; iseq++){
-		clustering_result[iseq]  = numeric_limits<uint32_t>::max();
-	}
+	fill(clustering_result, clustering_result+db->ref_header.sequences, 0);
 
 	uint32_t nThreads = min(config.threads_, nComponentsLt1);
 	// note that the disconnected components are sorted by size
@@ -366,7 +362,7 @@ void MCL::run(){
 	const float expansion = (float) config.cluster_mcl_expansion;
 
 	atomic_uint n_clusters_found(0);
-	atomic_uint component_counter(0);
+	atomic_uint component_counter(nThreads);
 	atomic_uint n_dense_calculations(0);
 	atomic_uint n_sparse_calculations(0);
 	atomic_uint nClustersEq1(0);
@@ -376,9 +372,9 @@ void MCL::run(){
 		uint32_t n_sparse = 0;
 		uint32_t n_singletons = 0;
 		uint32_t cluster_id = iThr;
-		//uint32_t my_counter = component_counter.fetch_add(1, memory_order_relaxed);
-		//while(my_counter < max_counter){
-		for(uint32_t my_counter = iThr; my_counter<max_counter; my_counter += nThreads){
+		uint32_t my_counter = iThr;
+		while(my_counter < max_counter){
+		//for(uint32_t my_counter = iThr; my_counter<max_counter; my_counter += nThreads){
 			uint32_t iComponent = sort_order[my_counter];
 			vector<uint32_t> order = indices[iComponent];
 			if(order.size() > 1){
@@ -466,7 +462,7 @@ void MCL::run(){
 				cluster_id += nThreads;
 				n_singletons++;
 			}
-			//my_counter = component_counter.fetch_add(1, memory_order_relaxed);
+			my_counter = component_counter.fetch_add(1, memory_order_relaxed);
 		}
 		n_clusters_found.fetch_add((cluster_id-iThr)/nThreads, memory_order_relaxed);
 		n_dense_calculations.fetch_add(n_dense, memory_order_relaxed);
@@ -492,25 +488,19 @@ void MCL::run(){
 	delete[] max_sparsities;
 
 	timer.finish();
-	cout << "Found "
-		<< n_clusters_found - nClustersEq1
-		<< " ("<< n_clusters_found <<" incl. singletons) clusters with min sparsity "
-		<< min_sparsity 
-		<< " and max. sparsity " 
-		<< max_sparsity 
-		<< " with " 
-		<< n_dense_calculations 
-		<< " dense, and " 
-		<< n_sparse_calculations 
-		<< " sparse calculations " << endl;
+	message_stream << "Clusters found " << n_clusters_found - nClustersEq1 << " ("<< n_clusters_found <<" incl. singletons)" << endl; 
+	message_stream << "\t min sparsity " << min_sparsity << endl;
+	message_stream << "\t max sparsity " << max_sparsity << endl;
+	message_stream << "\t number of dense calculations " << n_dense_calculations << endl;
+	message_stream << "\t number of sparse calculations " << n_sparse_calculations << endl;
 #ifdef MCL_TIMINGS
-	cout << "Time used for matrix creation: " 
+	message_stream << "Time used for matrix creation: " 
 		<< (sparse_create_time.load() + dense_create_time.load())/1000.0 
 		<<" (sparse: " 
 		<< sparse_create_time.load()/1000.0 
 		<< ", dense: " 
 		<< dense_create_time.load()/1000.0 <<")" << endl;
-	cout << "Time used for exp: " 
+	message_stream << "Time used for exp: " 
 		<< (sparse_exp_time.load() + dense_int_exp_time.load() + dense_gen_exp_time.load())/1000.0 
 		<< " (sparse: " 
 		<< sparse_exp_time.load()/1000.0 
@@ -518,13 +508,13 @@ void MCL::run(){
 		<< dense_int_exp_time.load()/1000.0 
 		<< ", dense gen: " 
 		<< dense_gen_exp_time.load()/1000.0 <<")" << endl; 
-	cout << "Time used for gamma: " 
+	message_stream << "Time used for gamma: " 
 		<< (sparse_gamma_time.load() + dense_gamma_time.load())/1000.0 
 		<< " (sparse: " 
 		<< sparse_gamma_time.load()/1000.0 
 		<< ", dense: " 
 		<< dense_gamma_time.load()/1000.0 <<")" << endl;
-	cout << "Time used for listing: " 
+	message_stream << "Time used for listing: " 
 		<< (sparse_list_time.load() + dense_list_time.load())/1000.0 
 		<< " (sparse: " 
 		<< sparse_list_time.load()/1000.0 

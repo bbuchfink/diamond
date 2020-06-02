@@ -474,14 +474,16 @@ Config::Config(int argc, const char **argv, bool check_io)
 				throw std::runtime_error("Custom scoring matrices require setting the --gapopen and --gapextend options.");
 			score_matrix = Score_matrix(matrix_file, lambda, K, gap_open, gap_extend);
 		}
-		if(command == Config::cluster && !Workflow::Cluster::ClusterRegistry::has(cluster_algo)){
-			ostream &header_out = command == Config::help ? cout : cerr;
-			header_out << "Unkown clustering algorithm: " << cluster_algo << endl;
-			header_out << "Available options are: " << endl;
-			for(string c_algo : Workflow::Cluster::ClusterRegistry::getKeys()){
-				header_out << "\t" << c_algo << "\t"<< Workflow::Cluster::ClusterRegistry::get(c_algo)->get_description() << endl;
+		if(command == Config::cluster){
+			if(!Workflow::Cluster::ClusterRegistry::has(cluster_algo)){
+				ostream &header_out = command == Config::help ? cout : cerr;
+				header_out << "Unkown clustering algorithm: " << cluster_algo << endl;
+				header_out << "Available options are: " << endl;
+				for(string c_algo : Workflow::Cluster::ClusterRegistry::getKeys()){
+					header_out << "\t" << c_algo << "\t"<< Workflow::Cluster::ClusterRegistry::get(c_algo)->get_description() << endl;
+				}
+				throw std::runtime_error("Clustering algorithm not found.");
 			}
-			throw std::runtime_error("Clustering algorithm not found.");
 		}
 		message_stream << "Scoring parameters: " << score_matrix << endl;
 		if (masking == 1)
