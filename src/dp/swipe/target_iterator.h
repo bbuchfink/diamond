@@ -16,19 +16,23 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#ifndef TARGET_ITERATOR_H_
-#define TARGET_ITERATOR_H_
-
-// #define DP_STAT
-
+#pragma once
 #include <stdint.h>
 #include <algorithm>
 #include "../dp.h"
 #include "../basic/value.h"
+#include "../../util/simd/vector.h"
 
-template<int _n>
+namespace DISPATCH_ARCH {
+
+template<typename _t>
 struct TargetIterator
 {
+
+	typedef ::DISPATCH_ARCH::SIMD::Vector<_t> SeqVector;
+	enum {
+		CHANNELS = SeqVector::CHANNELS
+	};
 
 	TargetIterator(vector<DpTarget>::const_iterator subject_begin, vector<DpTarget>::const_iterator subject_end, int i1, int qlen, int *d_begin) :
 		next(0),
@@ -36,7 +40,7 @@ struct TargetIterator
 		cols(0),
 		subject_begin(subject_begin)
 	{
-		for (; next < std::min(_n, n_targets); ++next) {
+		for (; next < std::min((int)CHANNELS, n_targets); ++next) {
 			const DpTarget &t = subject_begin[next];
 			pos[next] = i1 - (t.d_end - 1);
 			const int d0 = d_begin[next];
@@ -48,33 +52,37 @@ struct TargetIterator
 		}
 	}
 
-	char operator[](int channel)
+	uint64_t live() const {
+		uint64_t n = 0;
+		for (int i = 0; i < active.size(); ++i) {
+			const int channel = active[i];
+			if (pos[channel] >= 0)
+				n |= 1llu << channel;
+		}
+		return n;
+	}
+
+	char operator[](int channel) const
 	{
 		if (pos[channel] >= 0) {
-#ifdef DP_STAT
-			++live;
-#endif
 			return subject_begin[target[channel]].seq[pos[channel]];
 		} else
 			return SUPER_HARD_MASK;
 	}
 
 #ifdef __SSSE3__
-	template<typename _t> __m128i get(const _t&)
+	SeqVector get() const
 	{
-		_t s[_n];
-		std::fill(s, s + _n, SUPER_HARD_MASK);
-#ifdef DP_STAT
-		live = 0;
-#endif
+		alignas(32) _t s[CHANNELS];
+		std::fill(s, s + CHANNELS, SUPER_HARD_MASK);
 		for (int i = 0; i < active.size(); ++i) {
 			const int channel = active[i];
 			s[channel] = (*this)[channel];
 		}
-		return _mm_loadu_si128((const __m128i*)s);
+		return SeqVector(s);
 	}
 #else
-	template<typename _t> uint64_t get(const _t&)
+	uint64_t get() const
 	{
 		uint64_t dst = 0;
 		for (int i = 0; i < active.size(); ++i) {
@@ -104,40 +112,33 @@ struct TargetIterator
 		return true;
 	}
 
-	int pos[_n], target[_n], next, n_targets, cols;
-#ifdef DP_STAT
-	int live;
-#endif
-	Static_vector<int, _n> active;
+	int pos[CHANNELS], target[CHANNELS], next, n_targets, cols;
+	Static_vector<int, CHANNELS> active;
 	const vector<DpTarget>::const_iterator subject_begin;
 };
 
-template<int _n>
+template<typename _t>
 struct TargetBuffer
 {
+
+	typedef ::DISPATCH_ARCH::SIMD::Vector<_t> SeqVector;
+	enum { CHANNELS = SeqVector::CHANNELS };
 
 	TargetBuffer(const sequence *subject_begin, const sequence *subject_end) :
 		next(0),
 		n_targets(int(subject_end - subject_begin)),
 		subject_begin(subject_begin)
 	{
-		for (; next < std::min(_n, n_targets); ++next) {
+		for (; next < std::min((int)CHANNELS, n_targets); ++next) {
 			pos[next] = 0;
 			target[next] = next;
 			active.push_back(next);
 		}
 	}
 
-#ifdef DP_STAT
-	char operator[](int channel)
-#else
 	char operator[](int channel) const
-#endif
 	{
 		if (pos[channel] >= 0) {
-#ifdef DP_STAT
-			++live;
-#endif
 			return subject_begin[target[channel]][pos[channel]];
 		}
 		else
@@ -145,21 +146,18 @@ struct TargetBuffer
 	}
 
 #ifdef __SSSE3__
-#ifdef DP_STAT
-	template<typename _t> __m128i seq_vector(const _t&)
-#else
-	template<typename _t> __m128i seq_vector(const _t&) const
-#endif	
+	SeqVector seq_vector() const
 	{
-		_t s[_n];
+		alignas(32) _t s[CHANNELS];
+		std::fill(s, s + CHANNELS, SUPER_HARD_MASK);
 		for (int i = 0; i < active.size(); ++i) {
 			const int channel = active[i];
 			s[channel] = (*this)[channel];
 		}
-		return _mm_loadu_si128((const __m128i*)s);
+		return SeqVector(s);
 	}
 #else
-	template<typename _t> uint64_t seq_vector(const _t&)
+	uint64_t seq_vector()
 	{
 		uint64_t dst = 0;
 		for (int i = 0; i < active.size(); ++i) {
@@ -189,12 +187,9 @@ struct TargetBuffer
 		return true;
 	}
 
-	int pos[_n], target[_n], next, n_targets, cols;
-#ifdef DP_STAT
-	int live;
-#endif
-	Static_vector<int, _n> active;
+	int pos[CHANNELS], target[CHANNELS], next, n_targets, cols;
+	Static_vector<int, CHANNELS> active;
 	const sequence *subject_begin;
 };
 
-#endif
+}

@@ -65,7 +65,7 @@ void Frequent_seeds::build_worker(
 			buf.push_back(seed_partition_offset(s));
 
 #ifdef SEQ_MASK
-			if (config.fast_stage2) {
+			if (config.beta) {
 				Range<SeedArray::_pos*> query_hits = *it.r;
 				for (SeedArray::_pos* i = query_hits.begin(); i < query_hits.end(); ++i) {
 					Letter* p = query_seqs::get_nc().data(*i);

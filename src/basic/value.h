@@ -77,7 +77,13 @@ static inline Letter letter_mask(Letter x) {
 
 #ifdef __SSE2__
 static inline __m128i letter_mask(__m128i x) {
-	return _mm_and_si128(x, _mm_set1_epi8(LETTER_MASK));
+	return _mm_and_si128(x, SIMD::_mm_set1_epi8(LETTER_MASK));
+}
+#endif
+
+#ifdef __AVX2__
+static inline __m256i letter_mask(__m256i x) {
+	return _mm256_and_si256(x, ::SIMD::_mm256_set1_epi8(LETTER_MASK));
 }
 #endif
 

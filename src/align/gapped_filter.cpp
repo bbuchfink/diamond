@@ -26,6 +26,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../basic/score_matrix.h"
 #include "../data/reference.h"
 #include "../util/parallel/thread_pool.h"
+#include "../dp/scan_diags.h"
 
 using std::mutex;
 
@@ -43,7 +44,7 @@ bool gapped_filter(const LongScoreProfile *query_profile, const WorkTarget& targ
 	const int slen = (int)target.seq.length(), qlen = (int)query_profile[0].length();
 	int scores[128];
 	stat.inc(Statistics::GAPPED_FILTER_TARGETS);
-	for (int frame = 0; frame < align_mode.query_contexts; ++frame)
+	for (unsigned frame = 0; frame < align_mode.query_contexts; ++frame)
 		for (const Hsp_traits& hsp : target.hsp[frame]) {
 			stat.inc(Statistics::GAPPED_FILTER_HITS1);
 			const int d = std::max((hsp.d_max + hsp.d_min) / 2 - 128 / 2, -(slen - 1)),

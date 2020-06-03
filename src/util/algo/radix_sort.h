@@ -16,31 +16,32 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#ifndef RADIX_SORT2_H_
-#define RADIX_SORT2_H_
+#ifndef RADIX_SORT_H_
+#define RADIX_SORT_H_
 
-#include <algorithm>
+#include <utility>
+#include <stdint.h>
 #include "radix_cluster.h"
+#include "../math/integer.h"
 
-/*template<typename _t>
-void radix_sort(Relation<_t> &R, unsigned total_bits, _t *buf = 0)
-{
-	bool dealloc = false;
-	if (!buf) {
-		//buf = new _t[R.n];
-		//buf = (_t*)new char[sizeof(_t)*R.n];
-		buf = (_t*)MemoryPool::global().alloc(sizeof(_t)*R.n);
-		dealloc = true;
-	}
-	unsigned *hst = new unsigned[1 << config.radix_bits];
-	_t *in = R.data, *out = buf;
-	for (int bits = (int)total_bits; bits > 0; bits -= config.radix_bits) {
-		radix_cluster(Relation<_t>(in, R.n), total_bits - bits, out, hst);
+template<typename _t>
+void radix_sort(_t* begin, _t* end, uint32_t max_key) {
+	const size_t n = end - begin;
+	if (n <= 1)
+		return;
+	const uint32_t bit_len = (uint32_t)bit_length(max_key), rounds = (bit_len + config.radix_bits - 1) / config.radix_bits;
+	_t* buf = (_t*)new char[n * sizeof(_t)];
+
+	_t* in = begin, * out = buf;
+	for (uint32_t i = 0; i < rounds; ++i) {
+		parallel_radix_cluster(Relation<_t>(in, n), i * config.radix_bits, out);
 		std::swap(in, out);
 	}
-	//if(dealloc) delete[] buf;
-	if (dealloc) MemoryPool::global().free(buf);
-	delete[] hst;
-}*/
+
+	if (out == begin)
+		std::copy(buf, buf + n, begin);
+
+	delete[] buf;
+}
 
 #endif

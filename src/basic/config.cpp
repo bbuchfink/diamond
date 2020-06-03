@@ -219,7 +219,8 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("no-auto-append", 0, "disable auto appending of DAA and DMND file extensions", no_auto_append)
 		("xml-blord-format", 0, "Use gnl|BL_ORD_ID| style format in XML output", xml_blord_format)
 		("stop-match-score", 0, "Set the match score of stop codons against each other.", stop_match_score, 1)
-		("tantan-minMaskProb", 0, "minimum repeat probability for masking (0.9)", tantan_minMaskProb, 0.9);
+		("tantan-minMaskProb", 0, "minimum repeat probability for masking (0.9)", tantan_minMaskProb, 0.9)
+		("file-buffer-size", 0, "file buffer size in bytes (67108864)", file_buffer_size, (size_t)67108864);
 
 	Options_group view_options("View options");
 	view_options.add()
@@ -316,16 +317,19 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("cutoff-score-8bit", 0, "", cutoff_score_8bit, 240)
 		("min-band-overlap", 0, "", min_band_overlap, 0.2)
 		("min-realign-overhang", 0, "", min_realign_overhang, 30)
-		("fast-stage2", 0, "", fast_stage2)
+		("beta", 0, "", beta)
 		("ungapped-window", 0, "", ungapped_window, 48)
 		("gapped-filter-diag-score", 0, "", gapped_filter_diag_score, 20)
 		("gapped-filter-score", 0, "", gapped_filter_score, 0.0)
 		("gapped-filter-evalue", 0, "", gapped_filter_evalue, 0.0)
+		("gapped-filter-evalue2", 0, "", gapped_filter_evalue2, 0.0)
 		("gapped-filter-window", 0, "", gapped_filter_window, 200)
 		("output-hits", 0, "", output_hits)
-		("ungapped-evalue", 0, "", ungapped_evalue, 100000.0)
+		("ungapped-evalue", 0, "", ungapped_evalue)
 		("no-logfile", 0, "", no_logfile)
-		("no-heartbeat", 0, "", no_heartbeat);
+		("no-heartbeat", 0, "", no_heartbeat)
+		("band-bin", 0, "", band_bin, 24)
+		("col-bin", 0, "", col_bin, 400);
 
 	parser.add(general).add(makedb).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options);
 	parser.store(argc, argv, command);
@@ -533,8 +537,8 @@ Config::Config(int argc, const char **argv, bool check_io)
 		}
 	}
 
-	if (fast_stage2 && (lowmem != 1))
-		throw std::runtime_error("--fast-stage2 needs -c1.");
+	if (beta && (lowmem != 1))
+		throw std::runtime_error("--beta needs -c1.");
 
 	if (multiprocessing) {
 	}

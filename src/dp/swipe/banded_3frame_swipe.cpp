@@ -412,7 +412,7 @@ list<Hsp> banded_3frame_swipe(
 		i0 = std::min(i0, i2 + 1 - band);
 	}
 
-	TargetIterator<ScoreTraits<_sv>::CHANNELS> targets(subject_begin, subject_end, i1, qlen, d_begin);
+	TargetIterator<Score> targets(subject_begin, subject_end, i1, qlen, d_begin);
 	Matrix dp(band * 3, targets.cols);
 
 	const _sv open_penalty(score_matrix.gap_open() + score_matrix.gap_extend()),
@@ -438,7 +438,7 @@ list<Hsp> banded_3frame_swipe(
 		_sv vgap0, vgap1, vgap2, hgap, col_best;
 		vgap0 = vgap1 = vgap2 = col_best = ScoreTraits<_sv>::zero();
 
-		profile.set(targets.get(Score()));
+		profile.set(targets.get());
 		for (int i = i0_; i <= i1_; ++i) {
 			hgap = it.hgap();
 			_sv next = cell_update<_sv>(it.sm3, it.sm4, it.sm2, profile.get(q[0][i]), extend_penalty, open_penalty, frameshift_penalty, hgap, vgap0, col_best);
@@ -464,8 +464,8 @@ list<Hsp> banded_3frame_swipe(
 		}
 
 #ifdef DP_STAT
-		stat.net_cells += targets.live * (i1_ - i0_ + 1) * 3;
-		stat.gross_cells += ScoreTraits<_sv>::CHANNELS * (i1_ - i0_ + 1) * 3;
+		//stat.net_cells += targets.live * (i1_ - i0_ + 1) * 3;
+		//stat.gross_cells += ScoreTraits<_sv>::CHANNELS * (i1_ - i0_ + 1) * 3;
 #endif
 
 		Score col_best_[ScoreTraits<_sv>::CHANNELS];

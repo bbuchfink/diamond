@@ -41,7 +41,7 @@ struct packed_uint40_t
 	bool operator<(const packed_uint40_t &rhs) const
 	{ return high < rhs.high || (high == rhs.high && low < rhs.low); }
 	friend uint64_t operator-(const packed_uint40_t &x, const packed_uint40_t &y)
-	{ return (const uint64_t)(x) - (const uint64_t)(y); }
+	{ return (uint64_t)(x) - (uint64_t)(y); }
 } PACKED_ATTRIBUTE ;
 
 typedef packed_uint40_t Packed_loc;

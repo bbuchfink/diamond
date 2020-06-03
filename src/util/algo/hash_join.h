@@ -28,6 +28,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "radix_cluster.h"
 #include "../data_structures/hash_table.h"
 #include "../data_structures/double_array.h"
+#include "../math/integer.h"
 
 struct RelPtr
 {

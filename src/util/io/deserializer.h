@@ -52,9 +52,10 @@ struct Deserializer
 	{
 		if (varint)
 			read_varint(*this, x);
-		else
+		else {
 			read(x);
-		to_host_endianness(x);
+			x = big_endian_byteswap(x);
+		}
 		return *this;
 	}
 
@@ -67,14 +68,14 @@ struct Deserializer
 	Deserializer& operator>>(unsigned long &x)
 	{
 		read(x);
-		to_host_endianness(x);
+		x = big_endian_byteswap(x);
 		return *this;
 	}
 
 	Deserializer& operator>>(unsigned long long &x)
 	{
 		read(x);
-		to_host_endianness(x);
+		x = big_endian_byteswap(x);
 		return *this;
 	}
 
@@ -93,21 +94,21 @@ struct Deserializer
 
 	Deserializer& operator>>(std::vector<std::string> &v)
 	{
-		int n;
+		uint32_t n;
 		*this >> n;
 		v.clear();
 		v.reserve(n);
 		std::string s;
-		for (int i = 0; i < n; ++i) {
+		for (uint32_t i = 0; i < n; ++i) {
 			*this >> s;
 			v.push_back(std::move(s));
 		}
 		return *this;
 	}
 
-	Deserializer& operator>>(std::vector<unsigned> &v)
+	Deserializer& operator>>(std::vector<uint32_t> &v)
 	{
-		unsigned n, x;
+		uint32_t n, x;
 		*this >> n;
 		v.clear();
 		v.reserve(n);

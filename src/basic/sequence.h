@@ -89,7 +89,7 @@ struct sequence
 	{
 		return data_ + padding;
 	}
-	const Letter operator [](size_t i) const
+	Letter operator [](size_t i) const
 	{
 #ifdef SEQ_MASK
 		return data_[i] & LETTER_MASK;

@@ -2,59 +2,34 @@
 #define ENDIANNESS_H_
 
 #include <stdint.h>
+#include "../../lib/psnip/endian.h"
 
-#ifdef WIN32
-
-static inline uint64_t htole64(uint64_t host_64bits) {
-	return host_64bits;
-}
-
-static inline uint32_t htole32(uint32_t host_32bits) {
-	return host_32bits;
-}
-
-static inline uint32_t le32toh(uint32_t little_endian_32bits) {
-	return little_endian_32bits;
-}
-
-static inline uint64_t le64toh(uint64_t little_endian_64bits) {
-	return little_endian_64bits;
-}
-
-#else
-#include <endian.h>
-#endif
-
-template<typename _t>
-void to_host_endianness(_t &x) {}
-
-template<>
-inline void to_host_endianness<uint64_t>(uint64_t& x)
-{
-	x = le64toh(x);
-}
-
-template<>
-inline void to_host_endianness<uint32_t>(uint32_t& x)
-{
-	x = le32toh(x);
+static inline bool is_little_endian() {
+	static int32_t test = 1;
+	return *reinterpret_cast<int8_t*>(&test) == 1;
 }
 
 template<typename _t>
-_t to_little_endianness(_t x) {
+_t big_endian_byteswap(_t x) {
 	return x;
 }
 
 template<>
-inline uint64_t to_little_endianness<uint64_t>(uint64_t x)
+inline uint64_t big_endian_byteswap<uint64_t>(uint64_t x)
 {
-	return htole64(x);
+	return psnip_endian_le64(x);
 }
 
 template<>
-inline uint32_t to_little_endianness<uint32_t>(uint32_t x)
+inline uint32_t big_endian_byteswap<uint32_t>(uint32_t x)
 {
-	return htole32(x);
+	return psnip_endian_le32(x);
+}
+
+template<>
+inline uint16_t big_endian_byteswap<uint16_t>(uint16_t x)
+{
+	return psnip_endian_le16(x);
 }
 
 #endif

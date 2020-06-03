@@ -9,7 +9,8 @@ option(X86 "X86" ON)
 option(STRICT_BAND "STRICT_BAND" ON)
 option(LEFTMOST_SEED_FILTER "LEFTMOST_SEED_FILTER" ON)
 option(SEQ_MASK "SEQ_MASK" ON)
-set(MAX_SHAPE_LEN 17)
+option(DP_STAT "DP_STAT" OFF)
+set(MAX_SHAPE_LEN 19)
 
 if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(arm.*|ARM.*)")
   set(X86 OFF)
@@ -39,6 +40,10 @@ if(LEFTMOST_SEED_FILTER)
   add_definitions(-DLEFTMOST_SEED_FILTER)
 endif()
 
+if(DP_STAT)
+  add_definitions(-DDP_STAT)
+endif()
+
 add_definitions(-DMAX_SHAPE_LEN=${MAX_SHAPE_LEN})
 
 IF(STATIC_LIBGCC)
@@ -52,11 +57,6 @@ if(BUILD_STATIC)
 endif()
 
 set(CMAKE_CXX_STANDARD 11)
-
-if (${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
-else()
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=gnu++11")
-endif()
 
 if(CMAKE_BUILD_MARCH)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=${CMAKE_BUILD_MARCH}")
@@ -72,11 +72,11 @@ endif()
 if (${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
   add_definitions(-D_CRT_SECURE_NO_WARNINGS -D_ITERATOR_DEBUG_LEVEL=0)
 else()
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wno-uninitialized -Wno-ignored-attributes -Wno-unused-variable")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wno-implicit-fallthrough -Wreturn-type -Wno-unused -Wno-unused-parameter -Wno-unused-variable -Wno-uninitialized")
+  # -fsanitize=address -fno-omit-frame-pointer 
 endif()
 
 include_directories(
-  "${CMAKE_SOURCE_DIR}/src"
   "${ZLIB_INCLUDE_DIR}"
   "${CMAKE_SOURCE_DIR}/src/lib")
 
@@ -91,17 +91,20 @@ set(DISPATCH_OBJECTS
 "src/dp/swipe/swipe_wrapper.cpp"
 "src/util/tantan.cpp"
 "src/dp/scan_diags.cpp"
+"src/dp/ungapped_simd.cpp"
 )
 
 add_library(arch_generic OBJECT ${DISPATCH_OBJECTS})
-target_compile_options(arch_generic PUBLIC -DDISPATCH_ARCH=ARCH_GENERIC)
+target_compile_options(arch_generic PUBLIC -DDISPATCH_ARCH=ARCH_GENERIC -DARCH_ID=0 -DEigen=Eigen_GENERIC)
 if(X86)
 add_library(arch_sse4_1 OBJECT ${DISPATCH_OBJECTS})
+add_library(arch_avx2 OBJECT ${DISPATCH_OBJECTS})
 if (${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
-	target_compile_options(arch_sse4_1 PUBLIC -DDISPATCH_ARCH=ARCH_SSE4_1 -D__SSSE3__ -D__SSE4_1__ -D__POPCNT__)
-    #target_compile_options(arch_sse4_1 PUBLIC -DDISPATCH_ARCH=ARCH_SSE4_1)
+	target_compile_options(arch_sse4_1 PUBLIC -DDISPATCH_ARCH=ARCH_SSE4_1 -DARCH_ID=1 -D__SSSE3__ -D__SSE4_1__ -D__POPCNT__ -DEigen=Eigen_SSE4_1)
+    target_compile_options(arch_avx2 PUBLIC -DDISPATCH_ARCH=ARCH_AVX2 -DARCH_ID=2 /arch:AVX2 -D__SSSE3__ -D__SSE4_1__ -D__POPCNT__ -DEigen=Eigen_AVX2)
 else()
-	target_compile_options(arch_sse4_1 PUBLIC -DDISPATCH_ARCH=ARCH_SSE4_1 -mssse3 -mpopcnt -msse4.1)
+	target_compile_options(arch_sse4_1 PUBLIC -DDISPATCH_ARCH=ARCH_SSE4_1 -DARCH_ID=1 -mssse3 -mpopcnt -msse4.1 -DEigen=Eigen_SSE4_1)
+    target_compile_options(arch_avx2 PUBLIC -DDISPATCH_ARCH=ARCH_AVX2 -DARCH_ID=2 -mssse3 -mpopcnt -msse4.1 -msse4.2 -mavx -mavx2 -DEigen=Eigen_AVX2)
 endif()
 endif(X86)
 
@@ -126,7 +129,6 @@ set(OBJECTS
   src/data/frequent_seeds.cpp
   src/align/legacy/query_mapper.cpp
   src/output/blast_tab_format.cpp
-  src/dp/padded_banded_sw.cpp
   src/dp/needleman_wunsch.cpp
   src/output/blast_pairwise_format.cpp
   src/dp/comp_based_stats.cpp
@@ -201,27 +203,15 @@ set(OBJECTS
 )
 
 if(X86)
-add_executable(diamond $<TARGET_OBJECTS:arch_generic>
+add_executable(diamond $<TARGET_OBJECTS:arch_avx2>
   $<TARGET_OBJECTS:arch_sse4_1>
+  $<TARGET_OBJECTS:arch_generic>
   ${OBJECTS}
 )
 else()
 add_executable(diamond $<TARGET_OBJECTS:arch_generic>
   ${OBJECTS}
 )
-endif()
-
-if(EXTRA)
-  target_sources(diamond
-    PUBLIC
-      src/extra/benchmark.cpp
-	  src/extra/test.cpp
-	  src/dp/sw_3frame.cpp
-	  src/extra/roc.cpp
-	  src/extra/model_sim.cpp
-	  src/extra/opt.cpp
-  )
-  add_definitions(-DEXTRA)
 endif()
 
 target_link_libraries(diamond ${ZLIB_LIBRARY} ${CMAKE_THREAD_LIBS_INIT})

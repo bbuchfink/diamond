@@ -20,10 +20,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define SHAPE_CONFIG_H_
 
 #include <vector>
+#include <algorithm>
 #include <stdint.h>
+#include <string>
 #include "shape.h"
 
-extern const char* shape_codes[13][Const::max_shapes];
+extern std::vector<std::vector<std::string>> shape_codes;
 
 class shape_config
 {
@@ -40,10 +42,9 @@ public:
 		mode_ (mode)
 	{
 		if (shape_mask.size() == 0) {
-			unsigned maxShapes = count == 0 ? Const::max_shapes : count;
+			unsigned maxShapes = count == 0 ? (unsigned)shape_codes[mode_].size() : count;
 			for (unsigned i = 0; i < maxShapes; ++i)
-				if (shape_codes[mode_][i])
-					shapes_[n_++] = Shape(shape_codes[mode_][i], i);
+				shapes_[n_++] = Shape(shape_codes[mode_][i].c_str(), i);
 		}
 		else {
 			for (unsigned i = 0; i < (count == 0 ? shape_mask.size() : std::min((unsigned)shape_mask.size(), count)); ++i)

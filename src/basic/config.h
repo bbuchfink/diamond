@@ -201,16 +201,20 @@ struct Config
 	double inner_culling_overlap;
 	double min_band_overlap;
 	int min_realign_overhang;
-	bool fast_stage2;
+	bool beta;
 	int ungapped_window;
 	int gapped_filter_diag_score;
 	double gapped_filter_score;
 	double gapped_filter_evalue;
+	double gapped_filter_evalue2;
 	int gapped_filter_window;
 	bool output_hits;
 	double ungapped_evalue;
 	bool no_logfile;
 	bool no_heartbeat;
+	int band_bin;
+	int col_bin;
+	size_t file_buffer_size;
 
 	bool multiprocessing;
 

@@ -1,6 +1,10 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2017 Benjamin Buchfink <buchfink@gmail.com>
+Copyright (C) 2013-2020 Max Planck Society for the Advancement of Science e.V.
+                        Benjamin Buchfink
+                        Eberhard Karls Universitaet Tuebingen
+
+Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,9 +20,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#ifndef ASYNC_BUFFER_H_
-#define ASYNC_BUFFER_H_
-
+#pragma once
 #include <vector>
 #include <exception>
 #include <assert.h>
@@ -29,17 +31,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/ptr_vector.h"
 #include "io/async_file.h"
 
-using std::vector;
-using std::string;
-using std::endl;
-
 template<typename _t>
 struct Async_buffer
 {
 
-	typedef vector<_t> Vector;
+	typedef std::vector<_t> Vector;
 
-	Async_buffer(size_t input_count, const string &tmpdir, unsigned bins) :
+	Async_buffer(size_t input_count, const std::string &tmpdir, unsigned bins) :
 		bins_(bins),
 		bin_size_((input_count + bins_ - 1) / bins_),
 		input_count_(input_count),
@@ -89,12 +87,12 @@ struct Async_buffer
 		}
 	private:
 		enum { buffer_size = 65536 };
-		vector<vector<_t> > buffer_;
-		vector<AsyncFile*> out_;
+		std::vector<std::vector<_t>> buffer_;
+		std::vector<AsyncFile*> out_;
 		Async_buffer &parent_;
 	};
 
-	size_t load(vector<_t> &data, size_t max_size, std::pair<size_t,size_t> &input_range)
+	size_t load(std::vector<_t> &data, size_t max_size, std::pair<size_t,size_t> &input_range)
 	{
 		static size_t total_size;
 		if (bins_processed_ == 0)
@@ -143,5 +141,3 @@ private:
 	PtrVector<AsyncFile> tmp_file_;
 
 };
-
-#endif /* ASYNC_BUFFER_H_ */

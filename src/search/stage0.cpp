@@ -102,11 +102,8 @@ void search_shape(unsigned sid, unsigned query_block, char *query_buffer, char *
 		frequent_seeds.build(sid, range, query_seed_hits, ref_seed_hits);
 
 		Search::Context* context = nullptr;
-		if (config.fast_stage2) {
-			timer.go("Building pattern matcher");
-			const vector<uint32_t> patterns = shapes.patterns(0, sid + 1);
-			context = new Search::Context{ {patterns.data(), patterns.data() + patterns.size() - 1 }, {patterns.data(), patterns.data() + patterns.size() } };
-		}
+		const vector<uint32_t> patterns = shapes.patterns(0, sid + 1);
+		context = new Search::Context{ {patterns.data(), patterns.data() + patterns.size() - 1 }, {patterns.data(), patterns.data() + patterns.size() } };
 
 		timer.go("Searching alignments");
 		seedp = range.begin();

@@ -16,20 +16,22 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
+#include "../../basic/config.h"
 #include "output_stream_buffer.h"
 
 OutputStreamBuffer::OutputStreamBuffer(StreamEntity* prev):
-	StreamEntity(prev)
+	StreamEntity(prev),
+	buf_(new char[config.file_buffer_size])
 {}
 
 pair<char*, char*> OutputStreamBuffer::write_buffer()
 {
-	return std::make_pair(buf_, buf_ + BUF_SIZE);
+	return std::make_pair(buf_.get(), buf_.get() + config.file_buffer_size);
 }
 
 void OutputStreamBuffer::flush(size_t count)
 {
-	prev_->write(buf_, count);
+	prev_->write(buf_.get(), count);
 }
 
 void OutputStreamBuffer::seek(size_t pos)

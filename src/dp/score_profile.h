@@ -101,6 +101,8 @@ struct sequence_stream
 	unsigned mask;
 };
 
+namespace DISPATCH_ARCH {
+
 template<typename _score>
 struct score_profile
 {
@@ -119,6 +121,8 @@ struct score_profile
 	score_vector<_score> data_[AMINO_ACID_COUNT];
 
 };
+
+}
 
 #endif
 
@@ -139,8 +143,12 @@ struct LongScoreProfile
 	}
 	LongScoreProfile(sequence seq)
 	{
+		set(seq);
+	}
+	void set(sequence seq) {
 		for (unsigned l = 0; l < AMINO_ACID_COUNT; ++l) {
 			const int8_t* scores = &score_matrix.matrix8()[l << 5];
+			data[l].clear();
 			data[l].reserve(seq.length() + 2 * padding);
 			data[l].insert(data[l].end(), padding, 0);
 			for (unsigned i = 0; i < seq.length(); ++i)

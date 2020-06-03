@@ -16,9 +16,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#ifndef SIMD_H_
-#define SIMD_H_
-
+#pragma once
 #include <string>
 #include <functional>
 #include "system.h"
@@ -37,28 +35,32 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #ifdef __SSE4_1__
 #include <smmintrin.h>
 #endif
+#ifdef __AVX2__
+#include <immintrin.h>
+#endif
 #ifdef _MSC_VER
 #include <intrin.h>
 #endif
 
 namespace SIMD {
 
-enum class Arch { None, Generic, SSE4_1 };
-enum Flags { SSSE3 = 1, POPCNT = 2, SSE4_1 = 4 };
+enum class Arch { None, Generic, SSE4_1, AVX2 };
+enum Flags { SSSE3 = 1, POPCNT = 2, SSE4_1 = 4, AVX2 = 8 };
 Arch arch();
 
 #ifdef __SSE__
 #define DECL_DISPATCH(ret, name, param) namespace ARCH_GENERIC { ret name param; }\
 namespace ARCH_SSE4_1 { ret name param; }\
+namespace ARCH_AVX2 { ret name param; }\
 inline std::function<decltype(ARCH_GENERIC::name)> dispatch_target_##name() {\
-switch(SIMD::arch()) {\
-case SIMD::Arch::SSE4_1: return ARCH_SSE4_1::name;\
+switch(::SIMD::arch()) {\
+case ::SIMD::Arch::SSE4_1: return ARCH_SSE4_1::name;\
+case ::SIMD::Arch::AVX2: return ARCH_AVX2::name;\
 default: return ARCH_GENERIC::name;\
 }}\
 const std::function<decltype(ARCH_GENERIC::name)> name = dispatch_target_##name();
 #else
 #define DECL_DISPATCH(ret, name, param) namespace ARCH_GENERIC { ret name param; }\
-namespace ARCH_SSE4_1 { ret name param; }\
 inline std::function<decltype(ARCH_GENERIC::name)> dispatch_target_##name() {\
 return ARCH_GENERIC::name;\
 }\
@@ -67,6 +69,55 @@ const std::function<decltype(ARCH_GENERIC::name)> name = dispatch_target_##name(
 
 std::string features();
 
-};
+}
+
+namespace DISPATCH_ARCH { namespace SIMD {
+
+template<typename _t>
+struct Vector {};
+
+}}
+
+namespace SIMD {
+
+#ifdef __SSE2__
+
+static inline __m128i _mm_set1_epi8(char v) {
+#ifdef __APPLE__
+	return _mm_set_epi8(v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v);
+#else
+	return ::_mm_set1_epi8(v);
+#endif
+}
+
+static inline __m128i _mm_set1_epi16(short v) {
+#ifdef __APPLE__
+	return _mm_set_epi16(v, v, v, v, v, v, v, v);
+#else
+	return ::_mm_set1_epi16(v);
+#endif
+}
 
 #endif
+
+#ifdef __AVX2__
+
+static inline __m256i _mm256_set1_epi8(char v) {
+#ifdef __APPLE__
+	return _mm256_set_epi8(v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v);
+#else
+	return ::_mm256_set1_epi8(v);
+#endif
+}
+
+static inline __m256i _mm256_set1_epi16(short v) {
+#ifdef __APPLE__
+	return _mm256_set_epi16(v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v);
+#else
+	return ::_mm256_set1_epi16(v);
+#endif
+}
+
+#endif
+
+}

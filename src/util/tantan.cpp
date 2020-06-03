@@ -72,6 +72,7 @@ void mask(Letter *seq,
 		t *= d;
 		f *= f2f;
 		f += t;
+		
 		f *= e[(size_t)seq[i]].template segment<WINDOW>(len - i, WINDOW);
 		b = b * b2b + s * p_repeat_end;
 

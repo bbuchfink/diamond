@@ -20,6 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define OUTPUT_STREAM_BUFFER_H_
 
 #include <utility>
+#include <memory>
 #include "stream_entity.h"
 
 struct OutputStreamBuffer : public StreamEntity
@@ -31,9 +32,8 @@ struct OutputStreamBuffer : public StreamEntity
 	virtual void rewind();
 	virtual size_t tell();
 private:
-	enum { BUF_SIZE = 4096 };
 
-	char buf_[BUF_SIZE];
+	std::unique_ptr<char> buf_;
 };
 
 #endif

@@ -23,6 +23,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../score_vector.h"
 #include "../score_vector_int8.h"
 #include "../../basic/value.h"
+#include "../util/simd/vector.h"
 
 template<typename _sv>
 static inline _sv swipe_cell_update(const _sv &diagonal_cell,
@@ -37,7 +38,7 @@ static inline _sv swipe_cell_update(const _sv &diagonal_cell,
 	using std::max;
 	_sv current_cell = max(diagonal_cell + scores, vertical_gap);
 	current_cell = max(current_cell, horizontal_gap);
-	ScoreTraits<_sv>::saturate(current_cell);
+	::DISPATCH_ARCH::ScoreTraits<_sv>::saturate(current_cell);
 	best = max(best, current_cell);
 	vertical_gap -= gap_extension;
 	horizontal_gap -= gap_extension;
@@ -58,9 +59,9 @@ static inline _sv swipe_cell_update(const _sv &diagonal_cell,
 	_sv &best)
 {
 	using std::max;
-	_sv current_cell = diagonal_cell + (scores + _sv((typename ScoreTraits<_sv>::Score)query_bias));
+	_sv current_cell = diagonal_cell + (scores + _sv((typename ::DISPATCH_ARCH::ScoreTraits<_sv>::Score)query_bias));
 	current_cell = max(max(current_cell, vertical_gap), horizontal_gap);
-	ScoreTraits<_sv>::saturate(current_cell);
+	::DISPATCH_ARCH::ScoreTraits<_sv>::saturate(current_cell);
 	best = max(best, current_cell);
 	vertical_gap -= gap_extension;
 	horizontal_gap -= gap_extension;
@@ -93,14 +94,15 @@ static inline _sv cell_update(const _sv &diagonal_cell,
 }
 
 template<typename _score>
-static inline score_vector<_score> cell_update(const score_vector<_score> &diagonal_cell,
-	const score_vector<_score> &scores,
-	const score_vector<_score> &gap_extension,
-	const score_vector<_score> &gap_open,
-	score_vector<_score> &horizontal_gap,
-	score_vector<_score> &vertical_gap,
-	score_vector<_score> &best)
+static inline DISPATCH_ARCH::score_vector<_score> cell_update(const DISPATCH_ARCH::score_vector<_score> &diagonal_cell,
+	const DISPATCH_ARCH::score_vector<_score> &scores,
+	const DISPATCH_ARCH::score_vector<_score> &gap_extension,
+	const DISPATCH_ARCH::score_vector<_score> &gap_open,
+	DISPATCH_ARCH::score_vector<_score> &horizontal_gap,
+	DISPATCH_ARCH::score_vector<_score> &vertical_gap,
+	DISPATCH_ARCH::score_vector<_score> &best)
 {
+	using namespace ::DISPATCH_ARCH;
 	score_vector<_score> current_cell = diagonal_cell + scores;
 	current_cell.max(vertical_gap).max(horizontal_gap);
 	best.max(current_cell);
@@ -130,7 +132,7 @@ static inline _sv cell_update(const _sv &diagonal_cell,
 	current_cell = max(current_cell, shift_cell0 + f);
 	current_cell = max(current_cell, shift_cell1 + f);
 	current_cell = max(max(current_cell, vertical_gap), horizontal_gap);
-	ScoreTraits<_sv>::saturate(current_cell);
+	::DISPATCH_ARCH::ScoreTraits<_sv>::saturate(current_cell);
 	best = max(best, current_cell);
 	vertical_gap -= gap_extension;
 	horizontal_gap -= gap_extension;
@@ -140,16 +142,18 @@ static inline _sv cell_update(const _sv &diagonal_cell,
 	return current_cell;
 }
 
+namespace DISPATCH_ARCH {
+
 template<typename _sv>
 struct SwipeProfile
 {
+
 #ifdef __SSSE3__
-	inline void set(const __m128i &seq)
+	inline void set(typename ScoreTraits<_sv>::Vector seq)
 	{
 		assert(sizeof(data_) / sizeof(_sv) >= value_traits.alphabet_size);
-		_sv bias(score_matrix.bias());
 		for (unsigned j = 0; j < AMINO_ACID_COUNT; ++j)
-			data_[j] = _sv(j, seq, bias);
+			data_[j] = _sv(j, seq);
 	}
 #else
 	inline void set(uint64_t seq)
@@ -166,29 +170,17 @@ struct SwipeProfile
 	_sv data_[AMINO_ACID_COUNT];
 };
 
-#ifdef __SSE4_1__
-
-template<>
-struct SwipeProfile<score_vector<int8_t>>
-{
-	inline void set(const __m128i &seq)
-	{
-		assert(sizeof(data_) / sizeof(score_vector<int8_t>) >= value_traits.alphabet_size);
-		for (unsigned j = 0; j < AMINO_ACID_COUNT; ++j)
-			data_[j] = score_vector<int8_t>(j, seq);
-	}
-	inline const score_vector<int8_t>& get(Letter i) const
-	{
-		return data_[(int)i];
-	}
-	score_vector<int8_t> data_[AMINO_ACID_COUNT];
-};
-
-#endif
-
 template<>
 struct SwipeProfile<int32_t>
 {
+#ifdef __AVX2__
+	void set(const __m256i& seq)
+	{
+		int16_t s[32];
+		_mm256_storeu_si256((__m256i*)s, seq);
+		row = score_matrix.row((char)s[0]);
+	}
+#endif
 #ifdef __SSE2__
 	void set(const __m128i& seq)
 	{
@@ -207,5 +199,7 @@ struct SwipeProfile<int32_t>
 	}
 	const int32_t *row;
 };
+
+}
 
 #endif

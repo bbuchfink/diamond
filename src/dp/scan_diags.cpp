@@ -24,11 +24,42 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "dp.h"
 #include "score_vector_int8.h"
 
+using namespace DISPATCH_ARCH;
+
 namespace DP { namespace DISPATCH_ARCH {
 
 void scan_diags128(const LongScoreProfile& qp, sequence s, int d_begin, int j_begin, int j_end, int *out)
 {
-#ifdef __SSE4_1__
+#ifdef __AVX2__
+	typedef score_vector<int8_t> Sv;
+	const int qlen = (int)qp.length();
+
+	const int j0 = std::max(j_begin, -(d_begin + 128 - 1)),
+		i0 = d_begin + j0,
+		j1 = std::min(qlen - d_begin, j_end);
+	Sv v1, max1, v2, max2, v3, max3, v4, max4;
+	for (int i = i0, j = j0; j < j1; ++j, ++i) {
+		const int8_t* q = qp.get(s[j], i);
+		v1 += score_vector<int8_t>(q);
+		max1.max(v1);
+		q += 32;
+		v2 += score_vector<int8_t>(q);
+		max2.max(v2);
+		q += 32;
+		v3 += score_vector<int8_t>(q);
+		max3.max(v3);
+		q += 32;
+		v4 += score_vector<int8_t>(q);
+		max4.max(v4);
+	}
+	int8_t scores[128];
+	max1.store(scores);
+	max2.store(scores + 32);
+	max3.store(scores + 64);
+	max4.store(scores + 96);
+	for (int i = 0; i < 128; ++i)
+		out[i] = ScoreTraits<Sv>::int_score(scores[i]);
+#elif defined(__SSE4_1__)
 	typedef score_vector<int8_t> Sv;
 	const int qlen = (int)qp.length();
 
@@ -78,7 +109,84 @@ void scan_diags128(const LongScoreProfile& qp, sequence s, int d_begin, int j_be
 
 void scan_diags64(const LongScoreProfile& qp, sequence s, int d_begin, int j_begin, int j_end, int* out)
 {
-#ifdef __SSE4_1__
+#ifdef __AVX2__
+	typedef score_vector<int8_t> Sv;
+	const int qlen = (int)qp.length();
+
+	const int j0 = std::max(j_begin, -(d_begin + 64 - 1)),
+		i0 = d_begin + j0,
+		j1 = std::min(qlen - d_begin, j_end);
+	Sv v1, max1, v2, max2;
+	for (int i = i0, j = j0; j < j1; ++j, ++i) {
+		const int8_t* q = qp.get(s[j], i);
+		v1 += score_vector<int8_t>(q);
+		max1.max(v1);
+		q += 32;
+		v2 += score_vector<int8_t>(q);
+		max2.max(v2);
+	}
+	int8_t scores[64];
+	max1.store(scores);
+	max2.store(scores + 32);
+	for (int i = 0; i < 64; ++i)
+		out[i] = ScoreTraits<Sv>::int_score(scores[i]);
+#elif defined(__SSE4_1__)
+	typedef score_vector<int8_t> Sv;
+	const int qlen = (int)qp.length();
+
+	const int j0 = std::max(j_begin, -(d_begin + 64 - 1)),
+		i0 = d_begin + j0,
+		j1 = std::min(qlen - d_begin, j_end);
+	Sv v1, max1, v2, max2, v3, max3, v4, max4;
+	for (int i = i0, j = j0; j < j1; ++j, ++i) {
+		const int8_t* q = qp.get(s[j], i);
+		v1 += score_vector<int8_t>(q);
+		max1.max(v1);
+		q += 16;
+		v2 += score_vector<int8_t>(q);
+		max2.max(v2);
+		q += 16;
+		v3 += score_vector<int8_t>(q);
+		max3.max(v3);
+		q += 16;
+		v4 += score_vector<int8_t>(q);
+		max4.max(v4);
+	}
+	int8_t scores[64];
+	max1.store(scores);
+	max2.store(scores + 16);
+	max3.store(scores + 32);
+	max4.store(scores + 48);
+	for (int i = 0; i < 64; ++i)
+		out[i] = ScoreTraits<Sv>::int_score(scores[i]);
+#endif
+}
+
+void scan_diags(const LongScoreProfile& qp, sequence s, int d_begin, int d_end, int j_begin, int j_end, int* out)
+{
+#ifdef __AVX2__
+	typedef score_vector<int8_t> Sv;
+	const int qlen = (int)qp.length(), band = d_end - d_begin;
+	assert(band % 32 == 0);
+
+	const int j0 = std::max(j_begin, -(d_end - 1)),
+		i0 = d_begin + j0,
+		j1 = std::min(qlen - d_begin, j_end);
+	Sv v1, max1, v2, max2;
+	for (int i = i0, j = j0; j < j1; ++j, ++i) {
+		const int8_t* q = qp.get(s[j], i);
+		v1 += score_vector<int8_t>(q);
+		max1.max(v1);
+		q += 32;
+		v2 += score_vector<int8_t>(q);
+		max2.max(v2);
+	}
+	int8_t scores[64];
+	max1.store(scores);
+	max2.store(scores + 32);
+	for (int i = 0; i < 64; ++i)
+		out[i] = ScoreTraits<Sv>::int_score(scores[i]);
+#elif defined(__SSE4_1__)
 	typedef score_vector<int8_t> Sv;
 	const int qlen = (int)qp.length();
 

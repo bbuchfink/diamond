@@ -1,3 +1,7 @@
+os:
+  - linux
+  - osx
+
 language: c++
 
 #addons:
@@ -20,7 +24,8 @@ install: skip
 script:
   - mkdir build
   - cd build
-  - cmake ..
+  - cmake -DCMAKE_BUILD_TYPE=Release ..
   - make
 #  - gdb --ex=r -return-child-result -batch -ex bt --args ./diamond test
+#  - lldb --batch --one-line r --one-line-on-crash bt -- ./diamond test
   - ./diamond test

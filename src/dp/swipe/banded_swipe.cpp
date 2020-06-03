@@ -29,9 +29,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../score_vector_int8.h"
 #include "../../basic/config.h"
 #include "../util/data_structures/range_partition.h"
+#include "../../util/intrin.h"
 
 using std::list;
 using std::pair;
+
+using namespace DISPATCH_ARCH;
 
 namespace DP { namespace BandedSwipe {
 namespace DISPATCH_ARCH {
@@ -84,7 +87,11 @@ struct Matrix
 	int band() const {
 		return band_;
 	}
+#ifdef __APPLE__
+	MemBuffer<_sv> hgap_, score_;
+#else
 	static thread_local MemBuffer<_sv> hgap_, score_;
+#endif
 private:
 	int band_;	
 };
@@ -93,7 +100,8 @@ template<typename _sv>
 struct TracebackMatrix
 {
 
-	typedef typename ScoreTraits<_sv>::Score Score;
+	typedef typename ::DISPATCH_ARCH::ScoreTraits<_sv>::Score Score;
+	static constexpr int CHANNELS = ::DISPATCH_ARCH::ScoreTraits<_sv>::CHANNELS;
 
 	struct ColumnIterator
 	{
@@ -145,7 +153,7 @@ struct TracebackMatrix
 		}
 		Score diag() const
 		{
-			return *(score_ - band_ * ScoreTraits<_sv>::CHANNELS);
+			return *(score_ - band_ * CHANNELS);
 		}
 		void walk_diagonal()
 		{
@@ -157,10 +165,10 @@ struct TracebackMatrix
 		pair<Edit_operation, int> walk_gap(int d0, int d1)
 		{
 			const int i0 = std::max(d0 + j, 0), j0 = std::max(i - d1, -1);
-			const Score *h = score_ - (band_ - 1) * ScoreTraits<_sv>::CHANNELS, *h0 = score_ - (j - j0) * (band_ - 1) * ScoreTraits<_sv>::CHANNELS;
-			const Score *v = score_ - ScoreTraits<_sv>::CHANNELS, *v0 = score_ - (i - i0 + 1) * ScoreTraits<_sv>::CHANNELS;
+			const Score *h = score_ - (band_ - 1) * CHANNELS, *h0 = score_ - (j - j0) * (band_ - 1) * CHANNELS;
+			const Score *v = score_ - CHANNELS, *v0 = score_ - (i - i0 + 1) * CHANNELS;
 			const Score e = score_matrix.gap_extend();
-			Score score = this->score() + (Score)score_matrix.gap_open() + e;			
+			Score score = this->score() + (Score)score_matrix.gap_open() + e;
 			int l = 1;
 			while (v > v0 && h > h0) {
 				if (score == *h) {
@@ -171,8 +179,8 @@ struct TracebackMatrix
 					walk_vgap(v, l);
 					return std::make_pair(op_insertion, l);
 				}
-				h -= (band_ - 1) * ScoreTraits<_sv>::CHANNELS;
-				v -= ScoreTraits<_sv>::CHANNELS;
+				h -= (band_ - 1) * CHANNELS;
+				v -= CHANNELS;
 				++l;
 				score += e;
 			}
@@ -181,7 +189,7 @@ struct TracebackMatrix
 					walk_vgap(v, l);
 					return std::make_pair(op_insertion, l);
 				}
-				v -= ScoreTraits<_sv>::CHANNELS;
+				v -= CHANNELS;
 				++l;
 				score += e;
 			}
@@ -190,7 +198,7 @@ struct TracebackMatrix
 					walk_hgap(h, l);
 					return std::make_pair(op_deletion, l);
 				}
-				h -= (band_ - 1) * ScoreTraits<_sv>::CHANNELS;
+				h -= (band_ - 1) * CHANNELS;
 				++l;
 				score += e;
 			}
@@ -218,7 +226,7 @@ struct TracebackMatrix
 		const int i_ = std::max(-i0, 0),
 			i1 = (int)std::min(band_, size_t(query_len - i0));
 		const Score *s = (Score*)(&score_[col*band_ + i_]) + channel;
-		for (int i = i_; i < i1; ++i, s += ScoreTraits<_sv>::CHANNELS)
+		for (int i = i_; i < i1; ++i, s += CHANNELS)
 			if (*s == score)
 				return TracebackIterator(s, band_, i0 + i, j);
 		throw std::runtime_error("Trackback error.");
@@ -238,19 +246,24 @@ struct TracebackMatrix
 		return ColumnIterator(&hgap_[offset], &score_[col*band_ + offset], &score_[(col + 1)*band_ + offset]);
 	}
 
+#ifdef __APPLE__
+	MemBuffer<_sv> hgap_, score_;
+#else
 	static thread_local MemBuffer<_sv> hgap_, score_;
+#endif
 
 private:
 
 	const size_t band_;
-	
 
 };
 
+#ifndef __APPLE__
 template<typename _sv> thread_local MemBuffer<_sv> Matrix<_sv>::hgap_;
 template<typename _sv> thread_local MemBuffer<_sv> Matrix<_sv>::score_;
 template<typename _sv> thread_local MemBuffer<_sv> TracebackMatrix<_sv>::hgap_;
 template<typename _sv> thread_local MemBuffer<_sv> TracebackMatrix<_sv>::score_;
+#endif
 
 template<typename _sv, typename _traceback>
 struct MatrixTag
@@ -375,7 +388,7 @@ list<Hsp> swipe(
 	RangePartition<CHANNELS, Score> band_parts(band_offset, target_count, band);
 #endif
 	
-	TargetIterator<CHANNELS> targets(subject_begin, subject_end, i1, qlen, d_begin);
+	::DISPATCH_ARCH::TargetIterator<Score> targets(subject_begin, subject_end, i1, qlen, d_begin);
 	Matrix dp(band, targets.cols);
 
 	const _sv open_penalty(static_cast<char>(score_matrix.gap_open() + score_matrix.gap_extend())),
@@ -397,13 +410,20 @@ list<Hsp> swipe(
 		if (i0_ - i0 > 0)
 			it.set_zero();
 
-		profile.set(targets.get(Score()));
+		profile.set(targets.get());
+#ifdef DP_STAT
+		const uint64_t live = targets.live();
+#endif
 
 #ifdef STRICT_BAND
 		for (int part = 0; part < band_parts.count(); ++part) {
 			const int i_begin = std::max(i0 + band_parts.begin(part), i0_);
 			const int i_end = std::min(i0 + band_parts.end(part), i1_);
 			const _sv target_mask = load_sv(band_parts.mask(part));
+#ifdef DP_STAT
+			stat.inc(Statistics::GROSS_DP_CELLS, uint64_t(i_end - i_begin) * CHANNELS);
+			stat.inc(Statistics::NET_DP_CELLS, uint64_t(i_end - i_begin) * popcount64(live & band_parts.bit_mask(part)));
+#endif
 			for (int i = i_begin; i < i_end; ++i) {
 #else
 			for (int i = i0_; i < i1_; ++i) {

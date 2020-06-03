@@ -48,19 +48,19 @@ struct Serializer : public Consumer
 		if (varint_)
 			write_varint(x, *this);
 		else
-			write(to_little_endianness(x));
+			write(big_endian_byteswap(x));
 		return *this;
 	}
 
 	Serializer& operator<<(unsigned long x)
 	{
-		write(to_little_endianness(x));
+		write(big_endian_byteswap(x));
 		return *this;
 	}
 
 	Serializer& operator<<(unsigned long long x)
 	{
-		write(to_little_endianness(x));
+		write(big_endian_byteswap(x));
 		return *this;
 	}
 
@@ -88,7 +88,7 @@ struct Serializer : public Consumer
 
 	Serializer& operator<<(const vector<string> &v)
 	{
-		*this << (int)v.size();
+		*this << (uint32_t)v.size();
 		for (vector<string>::const_iterator i = v.begin(); i < v.end(); ++i)
 			*this << *i;
 		return *this;
