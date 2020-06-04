@@ -148,7 +148,7 @@ void benchmark_transpose() {
 	}
 	cout << "Matrix transpose 16x16 bytes:\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * 256) * 1000 << " ps/Letter" << endl;
 
-#ifdef __AVX2__
+#if ARCH_ID == 2
 	{
 		static signed char in[32 * 32], out[32 * 32];
 		signed char* v[32];
