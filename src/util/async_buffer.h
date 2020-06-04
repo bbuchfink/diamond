@@ -43,7 +43,7 @@ struct Async_buffer
 		input_count_(input_count),
 		bins_processed_(0)
 	{
-		log_stream << "Async_buffer() " << input_count << ',' << bin_size_ << endl;
+		log_stream << "Async_buffer() " << input_count << ',' << bin_size_ << std::endl;
 		for (unsigned i = 0; i < bins; ++i)
 			tmp_file_.push_back(new AsyncFile());
 	}
@@ -106,7 +106,7 @@ struct Async_buffer
 			size += current_size;
 			++end;
 		}
-		log_stream << "Async_buffer.load() " << size << "(" << (double)size*sizeof(_t) / (1 << 30) << " GB)" << endl;
+		log_stream << "Async_buffer.load() " << size << "(" << (double)size*sizeof(_t) / (1 << 30) << " GB)" << std::endl;
 		total_size += size;
 		data.resize(size);
 		_t* ptr = data.data();
