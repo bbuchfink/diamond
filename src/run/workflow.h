@@ -8,7 +8,6 @@ struct Consumer;
 struct TextInputFile;
 
 namespace Workflow { 
-
 namespace Search {
 
 struct Options {
@@ -29,13 +28,6 @@ struct Options {
 void run(const Options &options);
 
 }
-
-namespace Cluster {
-
-void run();
-
-}
-
 }
 
 #endif
