@@ -132,8 +132,8 @@ struct Async_buffer
 		return bins_;
 	}
 
-	static size_t max_usage() {
-		return global_max * sizeof(_t);
+	size_t total_size() {
+		return total_size_ * sizeof(_t);
 	}
 
 private:
