@@ -80,7 +80,7 @@ void benchmark_ungapped(const sequence &s1, const sequence &s2)
 	cout << "Scalar ungapped extension:\t" << (double)time_span.count() / (n*64) * 1000 << " ps/Cell" << endl;
 }
 
-#ifdef __SSSE3__
+#if defined(__SSSE3__) && defined(__SSE4_1__)
 void benchmark_ssse3_shuffle(const sequence &s1, const sequence &s2)
 {
 	static const size_t n = 100000000llu;
@@ -262,7 +262,7 @@ void benchmark() {
 	benchmark_hamming(s1, s2);
 #endif
 	benchmark_ungapped(ss1, ss2);
-#ifdef __SSSE3__
+#if defined(__SSSE3__) && defined(__SSE4_1__)
 	benchmark_ssse3_shuffle(s1, s2);
 #endif
 #ifdef __SSE4_1__
