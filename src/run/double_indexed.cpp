@@ -42,7 +42,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/parallel/thread_pool.h"
 #include "../util/system/system.h"
 
-using namespace std;
+using std::unique_ptr;
 
 namespace Workflow { namespace Search {
 

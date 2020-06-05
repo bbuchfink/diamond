@@ -151,7 +151,7 @@ struct Target
 
 struct QueryMapper
 {
-	QueryMapper(const Parameters &params, size_t query_id, Trace_pt_list::iterator begin, Trace_pt_list::iterator end, const Metadata &metadata, bool target_parallel = false);
+	QueryMapper(const Parameters &params, size_t query_id, hit* begin, hit* end, const Metadata &metadata, bool target_parallel = false);
 	void init();
 	bool generate_output(TextBuffer &buffer, Statistics &stat);
 	void rank_targets(double ratio, double factor);
@@ -178,7 +178,7 @@ struct QueryMapper
 	virtual ~QueryMapper() {}
 
 	const Parameters &parameters;
-	pair<Trace_pt_list::iterator, Trace_pt_list::iterator> source_hits;
+	pair<hit*, hit*> source_hits;
 	unsigned query_id, targets_finished, next_target;
 	unsigned source_query_len, unaligned_from;
 	PtrVector<Target> targets;
@@ -190,7 +190,7 @@ struct QueryMapper
 
 private:
 
-	static pair<Trace_pt_list::iterator, Trace_pt_list::iterator> get_query_data();
+	static pair<hit*, hit*> get_query_data();
 	unsigned count_targets();
 	sequence query_source_seq() const
 	{
