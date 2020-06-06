@@ -124,7 +124,7 @@ struct Async_buffer
 			load_worker_->join();
 			delete load_worker_;
 		}
-		return { data_next_, input_range_next_.first, input_range_next_.second };
+		return std::tuple<MemBuffer<_t>*, size_t, size_t> { data_next_, input_range_next_.first, input_range_next_.second };
 	}
 
 	unsigned bins() const
