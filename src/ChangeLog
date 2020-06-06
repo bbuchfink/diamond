@@ -1,5 +1,6 @@
 [0.9.34]
 - Fixed a compiler error for native builds.
+- Fixed a compiler error for GCC 4.8.
 - Implementened asynchronous loading of seed hits.
 
 [0.9.33]

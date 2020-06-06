@@ -30,9 +30,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../../basic/config.h"
 #include "../util/data_structures/range_partition.h"
 #include "../../util/intrin.h"
+#include "../../util/memory/alignment.h"
 
 using std::list;
 using std::pair;
+using std::vector;
 
 using namespace DISPATCH_ARCH;
 
@@ -349,6 +351,27 @@ bool realign<Traceback>(const Hsp &hsp, const DpTarget &dp_target) {
 	return hsp.subject_range.begin_ - config.min_realign_overhang > dp_target.j_begin || hsp.subject_range.end_ + config.min_realign_overhang  < dp_target.j_end;
 }
 
+template<typename _sv, typename _cbs>
+struct CBSBuffer {
+	CBSBuffer(const NoCBS&, int) {}
+	void* operator()(int i) const {
+		return nullptr;
+	}
+};
+
+template<typename _sv>
+struct CBSBuffer<_sv, const int8_t*> {
+	CBSBuffer(const int8_t* v, int l) {
+		data.reserve(l);
+		for (int i = 0; i < l; ++i)
+			data.emplace_back(typename ::DISPATCH_ARCH::ScoreTraits<_sv>::Score(v[i]));
+	}
+	_sv operator()(int i) const {
+		return data[i];
+	}
+	vector<_sv, AlignmentAllocator<_sv, 32>> data;
+};
+
 template<typename _sv, typename _traceback, typename _cbs>
 list<Hsp> swipe(
 	const sequence &query,
@@ -399,6 +422,7 @@ list<Hsp> swipe(
 	int max_col[CHANNELS];
 	std::fill(best, best + CHANNELS, ScoreTraits<_sv>::zero_score());
 	std::fill(max_col, max_col + CHANNELS, 0);
+	CBSBuffer<_sv, _cbs> cbs_buf(composition_bias, qlen);
 	
 	int j = 0;
 	while (targets.active.size() > 0) {
@@ -434,7 +458,8 @@ list<Hsp> swipe(
 #ifdef STRICT_BAND
 				match_scores += target_mask;
 #endif
-				next = swipe_cell_update<_sv>(it.diag(), match_scores, composition_bias[i], extend_penalty, open_penalty, hgap, vgap, col_best);
+				//next = swipe_cell_update<_sv>(it.diag(), match_scores, composition_bias[i], extend_penalty, open_penalty, hgap, vgap, col_best);
+				next = swipe_cell_update<_sv>(it.diag(), match_scores, cbs_buf(i), extend_penalty, open_penalty, hgap, vgap, col_best);
 
 				it.set_hgap(hgap);
 				it.set_score(next);
