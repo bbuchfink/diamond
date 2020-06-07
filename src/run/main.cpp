@@ -21,6 +21,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "tools.h"
 #include "../data/reference.h"
 #include "workflow.h"
+#include "../cluster/cluster_registry.h"
 #include "../util/simd.h"
 #ifdef EXTRA
 #include "../extra/compare.h"
@@ -117,7 +118,7 @@ int main(int ac, const char* av[])
 			pairwise();
 			break;
 		case Config::cluster:
-			Workflow::Cluster::run();
+			Workflow::Cluster::ClusterRegistry::get(config.cluster_algo)->run();
 			break;
 		case Config::translate:
 			translate();

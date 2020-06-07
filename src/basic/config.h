@@ -230,6 +230,12 @@ struct Config
 	enum { double_indexed = 0, query_indexed = 1, subject_indexed = 2 };
 	int algo;
 
+	string cluster_algo;
+	double cluster_mcl_inflation;
+	uint32_t cluster_mcl_expansion;
+	double cluster_mcl_sparsity_switch;
+	string	cluster_similarity;
+
 	enum { query_parallel = 0, target_parallel = 1 };
 	unsigned load_balancing;
 
