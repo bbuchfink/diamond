@@ -49,5 +49,3 @@ void run(const Options &options);
 
 }
 }
-
-#endif

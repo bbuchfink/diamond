@@ -33,20 +33,20 @@ struct MemBuffer {
 	{}
 
 	MemBuffer(size_t n):
-		data_((_t*)aligned_malloc(n * sizeof(_t), ALIGN)),
+		data_((_t*)Util::Memory::aligned_malloc(n * sizeof(_t), ALIGN)),
 		size_(n),
 		alloc_size_(n)
 	{
 	}
 
 	~MemBuffer() {
-		aligned_free(data_);
+		Util::Memory::aligned_free(data_);
 	}
 
 	void resize(size_t n) {
 		if (alloc_size_ < n) {
-			aligned_free(data_);
-			data_ = (_t*)aligned_malloc(n * sizeof(_t), ALIGN);
+			Util::Memory::aligned_free(data_);
+			data_ = (_t*)Util::Memory::aligned_malloc(n * sizeof(_t), ALIGN);
 			alloc_size_ = n;
 		}
 		size_ = n;

@@ -369,7 +369,7 @@ struct CBSBuffer<_sv, const int8_t*> {
 	_sv operator()(int i) const {
 		return data[i];
 	}
-	vector<_sv, AlignmentAllocator<_sv, 32>> data;
+	vector<_sv, Util::Memory::AlignmentAllocator<_sv, 32>> data;
 };
 
 template<typename _sv, typename _traceback, typename _cbs>
