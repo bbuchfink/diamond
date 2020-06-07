@@ -1,6 +1,7 @@
 [0.9.34]
 - Fixed a compiler error for native builds.
 - Fixed a compiler error for GCC 4.8.
+- Fixed a compiler error when support for SSSE3 was enabled without support for SSE4.1.
 - Implementened asynchronous loading of seed hits.
 
 [0.9.33]

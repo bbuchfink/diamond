@@ -76,8 +76,9 @@ else()
   # -fsanitize=address -fno-omit-frame-pointer 
 endif()
 
-if (CMAKE_COMPILER_IS_GNUCC AND CMAKE_CXX_COMPILER_VERSION VERSION_EQUAL 4.8)
+if (CMAKE_COMPILER_IS_GNUCC AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 5)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fabi-version=7")
+  message("Setting -fabi-version for GCC 4.x")
 endif()
 
 include_directories(
