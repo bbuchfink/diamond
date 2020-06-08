@@ -1,6 +1,9 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2019 Benjamin Buchfink <buchfink@gmail.com>
+Copyright (C) 2016-2020 Max Planck Society for the Advancement of Science e.V.
+                        Benjamin Buchfink
+						
+Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,10 +19,9 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#ifndef FINGER_PRINT_H_
-#define FINGER_PRINT_H_
-
+#pragma once
 #include "../util/simd.h"
+#include "../basic/config.h"
 
 #ifdef __AVX2__
 
@@ -90,6 +92,9 @@ struct Byte_finger_print_48
 	{
 		return popcount64(match_block(r3, rhs.r3) << 32 | match_block(r1, rhs.r1) << 16 | match_block(r2, rhs.r2));
 	}
+	bool operator==(const Byte_finger_print_48& rhs) const {
+		return match(rhs) >= config.min_identities;
+	}
 	alignas(16) __m128i r1, r2, r3;
 };
 
@@ -126,6 +131,4 @@ struct Byte_finger_print_48
 typedef Byte_finger_print_48 Finger_print;
 #else
 typedef Byte_finger_print_48 Finger_print;
-#endif
-
 #endif

@@ -339,7 +339,8 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("band-bin", 0, "", band_bin, 24)
 		("col-bin", 0, "", col_bin, 400)
 		("self", 0, "", self)
-		("trace-pt-fetch-size", 0, "", trace_pt_fetch_size, (size_t)10e9);
+		("trace-pt-fetch-size", 0, "", trace_pt_fetch_size, (size_t)10e9)
+		("tile-size", 0, "", tile_size, (uint32_t)1024);
 	
 	parser.add(general).add(makedb).add(cluster).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options);
 	parser.store(argc, argv, command);

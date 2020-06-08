@@ -1,6 +1,9 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2019 Benjamin Buchfink <buchfink@gmail.com>
+Copyright (C) 2016-2020 Max Planck Society for the Advancement of Science e.V.
+                        Benjamin Buchfink
+						
+Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -145,7 +148,7 @@ void tiled_search(Ptr q,
 	}
 }
 
-void load_fps(const Packed_loc *p, size_t n, Container &v, const Sequence_set &seqs)
+static void load_fps(const Packed_loc *p, size_t n, Container &v, const Sequence_set &seqs)
 {
 	v.clear();
 	v.reserve(n);
@@ -154,7 +157,7 @@ void load_fps(const Packed_loc *p, size_t n, Container &v, const Sequence_set &s
 		v.emplace_back(seqs.data(*p));
 }
 
-void stage1(const Packed_loc *q, size_t nq, const Packed_loc *s, size_t ns, Statistics &stats, Trace_pt_buffer::Iterator &out, const unsigned sid, const Context &context)
+void stage1_legacy(const Packed_loc *q, size_t nq, const Packed_loc *s, size_t ns, Statistics &stats, Trace_pt_buffer::Iterator &out, const unsigned sid, const Context &context)
 {
 	thread_local Container vq, vs;
 	thread_local vector<Stage1_hit> hits;

@@ -1,3 +1,6 @@
+[0.9.35]
+- Fixed a bug in `diamond view` that would cause high memory usage and erroneous output.
+
 [0.9.34]
 - Fixed a compiler error for native builds.
 - Fixed a compiler error for GCC 4.8.
@@ -29,6 +32,7 @@
   default value from 90% to 50%.
 - Added command `diamond test` to run a series of regression tests.
 - Fixed an off-by-one error of the query end position in the XML output format.
+- (Update 2020/06/08) Due to a bug, since this version DAA files are not backward compatible with previous versions when using frameshift alignment (option `-F`).
 
 [0.9.30]
 - Added support for output field `cigar` to the tabular format.
