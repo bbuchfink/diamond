@@ -28,11 +28,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "trace_pt_buffer.h"
 #include "../util/algo/pattern_matcher.h"
 #include "../util/data_structures/flat_array.h"
+#include "../util/scores/cutoff_table.h"
 
 namespace Search {
 
 struct Context {
 	const PatternMatcher previous_matcher, current_matcher;
+	const Util::Scores::CutoffTable cutoff_table;
 };
 
 }

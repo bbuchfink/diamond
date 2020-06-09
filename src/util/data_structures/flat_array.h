@@ -56,6 +56,10 @@ struct FlatArray {
 		return limits_.size() - 1;
 	}
 
+	size_t data_size() const {
+		return data_.size();
+	}
+
 	const _t* begin(size_t i) const {
 		return &data_[limits_[i]];
 	}

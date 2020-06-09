@@ -106,7 +106,10 @@ void search_shape(unsigned sid, unsigned query_block, char *query_buffer, char *
 
 		Search::Context* context = nullptr;
 		const vector<uint32_t> patterns = shapes.patterns(0, sid + 1);
-		context = new Search::Context{ {patterns.data(), patterns.data() + patterns.size() - 1 }, {patterns.data(), patterns.data() + patterns.size() } };
+		context = new Search::Context{ {patterns.data(), patterns.data() + patterns.size() - 1 },
+			{patterns.data(), patterns.data() + patterns.size() },
+			config.ungapped_evalue
+		};
 
 		timer.go("Searching alignments");
 		seedp = range.begin();

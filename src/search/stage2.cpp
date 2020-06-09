@@ -118,8 +118,6 @@ void search_query_offset(Loc q,
 	// thread_local LongScoreProfile query_profile;
 
 	constexpr auto N = vector<Stage1_hit>::const_iterator::difference_type(::DISPATCH_ARCH::SIMD::Vector<int8_t>::CHANNELS);
-	if (hits_end <= hits)
-		return;
 	const Letter* query = query_seqs::data_->data(q);
 
 	const Letter* subjects[N];
@@ -133,6 +131,7 @@ void search_query_offset(Loc q,
 	seed_offset = (unsigned)l.second;
 	const int query_len = query_seqs::data_->length(query_id);
 	const double ungapped_cutoff = ungapped_evalue(query_len);
+	const int score_cutoff = context.cutoff_table(query_len);
 	// bool ps = false;
 
 	for (const uint32_t *i = hits; i < hits_end; i += N) {
@@ -144,6 +143,7 @@ void search_query_offset(Loc q,
 
 		for (size_t j = 0; j < n; ++j)
 			if (score_matrix.evalue_norm(scores[j], query_len) <= ungapped_cutoff) {
+			//if(scores[j] > score_cutoff) {
 				stats.inc(Statistics::TENTATIVE_MATCHES2);
 				if (left_most_filter(query_clipped, subjects[j], window_left, shapes[sid].length_, context, sid == 0, sid)) {
 					stats.inc(Statistics::TENTATIVE_MATCHES3);
@@ -191,6 +191,7 @@ struct Stage2 {
 	{}
 
 	void operator()(const FlatArray<uint32_t> &hits, uint32_t query_begin, uint32_t subject_begin) {
+		stat.inc(Statistics::TENTATIVE_MATCHES1, hits.data_size());
 		const uint32_t query_count = (uint32_t)hits.size();
 		const Packed_loc* q_begin = q + query_begin, * s_begin = s + subject_begin;
 		for (uint32_t i = 0; i < query_count; ++i) {
@@ -223,6 +224,7 @@ static void load_fps(const Packed_loc* p, size_t n, Container& v, const Sequence
 void stage1(const Packed_loc* q, size_t nq, const Packed_loc* s, size_t ns, Statistics& stats, Trace_pt_buffer::Iterator& out, const unsigned sid, const Context& context)
 {
 	thread_local Container vq, vs;
+	stats.inc(Statistics::SEED_HITS, nq * ns);
 	load_fps(q, nq, vq, *query_seqs::data_);
 	load_fps(s, ns, vs, *ref_seqs::data_);
 	Stage2 callback(q, s, stats, out, sid, context);

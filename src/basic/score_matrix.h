@@ -113,6 +113,11 @@ struct Score_matrix
 	double bitscore(double evalue, unsigned query_len) const
 	{ return -log(evalue/db_letters_/query_len)/log(2); }
 
+	double bitscore_norm(double evalue, unsigned query_len) const
+	{
+		return -log(evalue / 1e9 / query_len) / log(2);
+	}
+
 	double lambda() const
 	{
 		return constants_[3];
