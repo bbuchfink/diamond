@@ -243,6 +243,16 @@ void diag_scores(const sequence& s1, const sequence& s2) {
 }
 #endif
 
+void evalue() {
+	static const size_t n = 1000000llu;
+	high_resolution_clock::time_point t1 = high_resolution_clock::now();
+	volatile double x = 0.0;
+	for (size_t i = 0; i < n; ++i) {
+		x += score_matrix.evalue_norm((int)i, 300);
+	}
+	cout << "Evalue:\t\t\t\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n) << " ns" << endl;
+}
+
 void benchmark() {
 	vector<Letter> s1, s2, s3, s4;
 		
@@ -254,6 +264,7 @@ void benchmark() {
 	sequence ss1 = sequence(s1).subseq(34, s1.size());
 	sequence ss2 = sequence(s2).subseq(33, s2.size());
 
+	evalue();
 #ifdef __SSE4_1__
 	swipe(s3, s4);
 	diag_scores(s1, s2);

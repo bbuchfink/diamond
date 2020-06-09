@@ -207,6 +207,7 @@ Score_matrix::Score_matrix(const string & matrix, int gap_open, int gap_extend, 
 	frame_shift_(frameshift),
 	db_letters_ ((double)db_letters),
 	constants_ (Matrix_info::get(matrix).get_constants(gap_open_, gap_extend_)),
+	ln_k_(log(k())),
 	name_(matrix),
 	matrix8_(Matrix_info::get(matrix).scores, stop_match_score),
 	bias_((char)(-low_score())),
@@ -308,7 +309,8 @@ Score_matrix::Score_matrix(const string &matrix_file, double lambda, double K, i
 	matrix8u_low_(custom_scores(matrix_file), bias_),
 	matrix8u_high_(custom_scores(matrix_file), bias_),
 	matrix16_(custom_scores(matrix_file)),
-	matrix32_(custom_scores(matrix_file))
+	matrix32_(custom_scores(matrix_file)),
+	ln_k_(log(K))
 {
 	static double constants[5];
 	constants[3] = lambda;

@@ -1,6 +1,10 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2018 Benjamin Buchfink <buchfink@gmail.com>
+Copyright (C) 2013-2020 Max Planck Society for the Advancement of Science e.V.
+                        Benjamin Buchfink
+                        Eberhard Karls Universitaet Tuebingen
+						
+Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,9 +20,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#ifndef SCORE_MATRIX_H_
-#define SCORE_MATRIX_H_
-
+#pragma once
 #include <limits>
 #include <iostream>
 #include <math.h>
@@ -35,7 +37,7 @@ const double LN_2 = 0.69314718055994530941723212145818;
 struct Score_matrix
 {
 
-	Score_matrix() {}
+	Score_matrix() :ln_k_(0.0) {}
 	Score_matrix(const string &matrix, int gap_open, int gap_extend, int frame_shift, int stop_match_score, uint64_t db_letters = 0);
 	Score_matrix(const string &matrix_file, double lambda, double K, int gap_open, int gap_extend, uint64_t db_letters = 0);
 
@@ -123,7 +125,7 @@ struct Score_matrix
 
 	double ln_k() const
 	{
-		return log(k());
+		return ln_k_;
 	}
 
 	int8_t low_score() const;
@@ -178,7 +180,8 @@ private:
 
 	int gap_open_, gap_extend_, frame_shift_;
 	double db_letters_;
-	const double *constants_;
+	const double* constants_;
+	double ln_k_;
 	string name_;
 	Scores<int8_t> matrix8_;
 	int8_t bias_;
@@ -195,5 +198,3 @@ private:
 extern Score_matrix score_matrix;
 typedef int8_t MatrixTable[AMINO_ACID_COUNT*AMINO_ACID_COUNT];
 extern const MatrixTable s_Blosum45PSM, s_Blosum50PSM, s_Blosum62PSM, s_Blosum80PSM, s_Blosum90PSM, s_Pam250PSM, s_Pam30PSM, s_Pam70PSM;
-
-#endif /* SCORE_MATRIX_H_ */
