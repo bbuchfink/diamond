@@ -72,6 +72,29 @@ static inline _sv swipe_cell_update(const _sv &diagonal_cell,
 }
 
 template<typename _sv>
+static inline _sv swipe_cell_update(const _sv& diagonal_cell,
+	const _sv& scores,
+	const _sv& query_bias,
+	const _sv& gap_extension,
+	const _sv& gap_open,
+	_sv& horizontal_gap,
+	_sv& vertical_gap,
+	_sv& best)
+{
+	using std::max;
+	_sv current_cell = diagonal_cell + (scores + query_bias);
+	current_cell = max(max(current_cell, vertical_gap), horizontal_gap);
+	::DISPATCH_ARCH::ScoreTraits<_sv>::saturate(current_cell);
+	best = max(best, current_cell);
+	vertical_gap -= gap_extension;
+	horizontal_gap -= gap_extension;
+	const _sv open = current_cell - gap_open;
+	vertical_gap = max(vertical_gap, open);
+	horizontal_gap = max(horizontal_gap, open);
+	return current_cell;
+}
+
+template<typename _sv>
 static inline _sv cell_update(const _sv &diagonal_cell,
 	const _sv &scores,
 	const _sv &gap_extension,

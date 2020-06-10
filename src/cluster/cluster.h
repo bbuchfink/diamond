@@ -1,9 +1,7 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2016-2020 Max Planck Society for the Advancement of Science e.V.
-                        Benjamin Buchfink
-						
-Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
+Copyright (C) 2020 QIAGEN A/S (Aarhus, Denmark)
+Code developed by Patrick Ettenhuber <patrick.ettenhuber@qiagen.com>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -20,32 +18,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #pragma once
-#include <vector>
-#include "../basic/config.h"
-
-struct DatabaseFile;
-struct Consumer;
-struct TextInputFile;
-
-namespace Workflow { 
-namespace Search {
-
-struct Options {
-	Options():
-		self(config.self),
-		db(nullptr),
-		consumer(nullptr),
-		query_file(nullptr),
-		db_filter(nullptr)
-	{}
-	bool self;
-	DatabaseFile *db;
-	Consumer *consumer;
-	TextInputFile *query_file;
-	const std::vector<bool> *db_filter;
+#include <string>
+class ClusteringAlgorithm {
+public:
+	virtual void run() = 0;
+	virtual std::string get_key() = 0;
+	virtual std::string get_description() = 0;
 };
-
-void run(const Options &options);
-
-}
-}

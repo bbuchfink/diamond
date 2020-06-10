@@ -72,8 +72,13 @@ endif()
 if (${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
   add_definitions(-D_CRT_SECURE_NO_WARNINGS -D_ITERATOR_DEBUG_LEVEL=0)
 else()
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wno-implicit-fallthrough -Wreturn-type -Wno-unused -Wno-unused-parameter -Wno-unused-variable -Wno-uninitialized")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=gnu++11 -Wall -Wextra -Wno-implicit-fallthrough -Wreturn-type -Wno-unused -Wno-unused-parameter -Wno-unused-variable -Wno-uninitialized -Wno-deprecated-copy")
   # -fsanitize=address -fno-omit-frame-pointer 
+endif()
+
+if (CMAKE_COMPILER_IS_GNUCC AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 5)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fabi-version=7")
+  message("Setting -fabi-version for GCC 4.x")
 endif()
 
 include_directories(
@@ -125,6 +130,8 @@ set(OBJECTS
   src/run/tools.cpp
   src/chaining/greedy_align.cpp
   src/output/output_format.cpp
+  src/output/clustering_variables.cpp
+  src/output/clustering_format.cpp
   src/output/join_blocks.cpp
   src/data/frequent_seeds.cpp
   src/align/legacy/query_mapper.cpp
@@ -166,7 +173,6 @@ set(OBJECTS
   src/data/seed_array.cpp
   src/output/paf_format.cpp
   src/util/system/system.cpp
-  src/run/cluster.cpp
   src/util/algo/greedy_vortex_cover.cpp
   src/util/sequence/sequence.cpp
   src/tools/tsv_record.cpp
@@ -187,6 +193,9 @@ set(OBJECTS
   src/align/gapped.cpp
   src/align/culling.cpp
   src/cluster/medoid.cpp
+  src/cluster/cluster_registry.cpp
+  src/cluster/multi_step_cluster.cpp
+  src/cluster/mcl.cpp
   src/align/output.cpp
   src/tools/roc.cpp
   src/test/data.cpp

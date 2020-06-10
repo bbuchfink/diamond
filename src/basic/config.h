@@ -1,6 +1,10 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2019 Benjamin Buchfink <buchfink@gmail.com>
+Copyright (C) 2013-2020 Max Planck Society for the Advancement of Science e.V.
+                        Benjamin Buchfink
+                        Eberhard Karls Universitaet Tuebingen
+						
+Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,9 +20,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#ifndef CONFIG_H_
-#define CONFIG_H_
-
+#pragma once
 #include <string>
 #include <vector>
 #include <stdint.h>
@@ -215,6 +217,8 @@ struct Config
 	int band_bin;
 	int col_bin;
 	size_t file_buffer_size;
+	bool self;
+	size_t trace_pt_fetch_size;
 
 	bool multiprocessing;
 
@@ -228,6 +232,12 @@ struct Config
 
 	enum { double_indexed = 0, query_indexed = 1, subject_indexed = 2 };
 	int algo;
+
+	string cluster_algo;
+	double cluster_mcl_inflation;
+	uint32_t cluster_mcl_expansion;
+	double cluster_mcl_sparsity_switch;
+	string	cluster_similarity;
 
 	enum { query_parallel = 0, target_parallel = 1 };
 	unsigned load_balancing;
@@ -292,5 +302,3 @@ struct Config
 };
 
 extern Config config;
-
-#endif

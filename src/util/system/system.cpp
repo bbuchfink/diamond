@@ -14,6 +14,7 @@
 
 using std::string;
 using std::cout;
+using std::endl;
 
 string executable_path() {
 	char buf[4096];

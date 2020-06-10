@@ -1,6 +1,10 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2019 Benjamin Buchfink <buchfink@gmail.com>
+Copyright (C) 2013-2020 Max Planck Society for the Advancement of Science e.V.
+                        Benjamin Buchfink
+                        Eberhard Karls Universitaet Tuebingen
+
+Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -30,6 +34,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "shape_config.h"
 #include "../util/io/temp_file.h"
 #include "../basic/match.h"
+#include "../cluster/cluster_registry.h"
 #include "../basic/translate.h"
 #include "../dp/dp.h"
 #include "masking.h"
@@ -146,6 +151,14 @@ Config::Config(int argc, const char **argv, bool check_io)
 	Options_group makedb("Makedb options");
 	makedb.add()
 		("in", 0, "input reference file in FASTA format", input_ref_file);
+
+	Options_group cluster("Cluster options");
+	cluster.add()
+		("cluster-algo", 0, "Clustering algorithm (\"multi-step\", \"mcl\")", cluster_algo)
+		("cluster-similarity", 0, "Clustering similarity measure", cluster_similarity)
+		("mcl-expansion", 0, "MCL expansion coefficient (default=2)", cluster_mcl_expansion, (uint32_t) 2)
+		("mcl-inflation", 0, "MCL inflation coefficient (default=2.0)", cluster_mcl_inflation, 2.0)
+		("mcl-sparsity-switch", 0, "MCL switch to sparse matrix computation (default=0.8) ", cluster_mcl_sparsity_switch, 0.8);
 
 	Options_group aligner("Aligner options");
 	aligner.add()
@@ -329,9 +342,11 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("no-logfile", 0, "", no_logfile)
 		("no-heartbeat", 0, "", no_heartbeat)
 		("band-bin", 0, "", band_bin, 24)
-		("col-bin", 0, "", col_bin, 400);
+		("col-bin", 0, "", col_bin, 400)
+		("self", 0, "", self)
+		("trace-pt-fetch-size", 0, "", trace_pt_fetch_size, (size_t)10e9);
 
-	parser.add(general).add(makedb).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options);
+	parser.add(general).add(makedb).add(cluster).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options);
 	parser.store(argc, argv, command);
 
 	if (long_reads) {
@@ -473,6 +488,15 @@ Config::Config(int argc, const char **argv, bool check_io)
 			if (gap_open == -1 || gap_extend == -1)
 				throw std::runtime_error("Custom scoring matrices require setting the --gapopen and --gapextend options.");
 			score_matrix = Score_matrix(matrix_file, lambda, K, gap_open, gap_extend);
+		}
+		if(command == Config::cluster && !Workflow::Cluster::ClusterRegistry::has(cluster_algo)){
+			ostream &header_out = command == Config::help ? cout : cerr;
+			header_out << "Unkown clustering algorithm: " << cluster_algo << endl;
+			header_out << "Available options are: " << endl;
+			for(string c_algo : Workflow::Cluster::ClusterRegistry::getKeys()){
+				header_out << "\t" << c_algo << "\t"<< Workflow::Cluster::ClusterRegistry::get(c_algo)->get_description() << endl;
+			}
+			throw std::runtime_error("Clustering algorithm not found.");
 		}
 		message_stream << "Scoring parameters: " << score_matrix << endl;
 		if (masking == 1)

@@ -1,6 +1,9 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2019 Benjamin Buchfink <buchfink@gmail.com>
+Copyright (C) 2016-2020 Max Planck Society for the Advancement of Science e.V.
+						Benjamin Buchfink
+
+Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -100,14 +103,13 @@ void Taxonomy::load_nodes()
 {
 	TextInputFile f(config.nodesdmp);
 	unsigned taxid, parent;
-	char rank[64];
+	string rank;
 	while (!f.eof() && (f.getline(), !f.line.empty())) {
-		if (sscanf(f.line.c_str(), "%u\t|\t%u\t|\t%63[^\t]", &taxid, &parent, &rank) != 3)
-			throw std::runtime_error("Invalid nodes.dmp file format.");
+		Util::String::Tokenizer(f.line, "\t|\t") >> taxid >> parent >> rank;
 		parent_.resize(taxid + 1);
 		parent_[taxid] = parent;
 		rank_.resize(taxid + 1);
-		rank_[taxid] = Rank(rank);
+		rank_[taxid] = Rank(rank.c_str());
 	}
 	f.close();
 }

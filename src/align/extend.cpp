@@ -33,14 +33,14 @@ using std::array;
 
 namespace Extension {
 
-void load_hits(Trace_pt_list::iterator begin, Trace_pt_list::iterator end, FlatArray<SeedHit> &hits, vector<size_t> &target_block_ids) {
+void load_hits(hit* begin, hit* end, FlatArray<SeedHit> &hits, vector<size_t> &target_block_ids) {
 	hits.clear();
 	target_block_ids.clear();
 	if (begin >= end)
 		return;
 	std::sort(begin, end, hit::cmp_subject);
 	size_t target = SIZE_MAX;
-	for (Trace_pt_list::iterator i = begin; i < end; ++i) {
+	for (hit* i = begin; i < end; ++i) {
 		std::pair<size_t, size_t> l = ref_seqs::data_->local_position(i->subject_);
 		if (l.first != target) {
 			hits.next();
@@ -51,7 +51,7 @@ void load_hits(Trace_pt_list::iterator begin, Trace_pt_list::iterator end, FlatA
 	}
 }
 
-vector<Match> extend(const Parameters &params, size_t query_id, Trace_pt_list::iterator begin, Trace_pt_list::iterator end, const Metadata &metadata, Statistics &stat, int flags) {
+vector<Match> extend(const Parameters &params, size_t query_id, hit* begin, hit* end, const Metadata &metadata, Statistics &stat, int flags) {
 	const unsigned contexts = align_mode.query_contexts;
 	vector<sequence> query_seq;
 	vector<Bias_correction> query_cb;

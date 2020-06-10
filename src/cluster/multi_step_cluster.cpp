@@ -16,51 +16,19 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#include <algorithm>
-#include <stdexcept>
-#include <string>
-#include <stdio.h>
-#include <memory>
-#include <fstream>
-#include <limits>
-#include "../util/system/system.h"
-#include "../util/util.h"
-#include "../basic/config.h"
-#include "../data/reference.h"
-#include "workflow.h"
-#include "../util/io/consumer.h"
-#include "../util/algo/algo.h"
-#include "../basic/statistics.h"
-#include "../util/log_stream.h"
-#include "../dp/dp.h"
-#include "../basic/masking.h"
+#include "multi_step_cluster.h"
 
 using namespace std;
 
-namespace Workflow { namespace Cluster {
+namespace Workflow { namespace Cluster{ 
+string MultiStep::get_key() {
+	return "multi-step";
+}
+string MultiStep::get_description(){
+	return "A greedy stepwise vortex cover algorithm";
+}
 
-struct Neighbors : public vector<vector<int>>, public Consumer {
-	Neighbors(size_t n):
-		vector<vector<int>>(n)
-	{}
-	virtual void consume(const char *ptr, size_t n) override {
-		int query, subject, count;
-		float qcov, scov, bitscore;
-		const char *end = ptr + n;
-		while (ptr < end) {
-			//if (sscanf(ptr, "%i\t%i\n%n", &query, &subject, &count) != 2)
-			if (sscanf(ptr, "%i\t%i\t%f\t%f\t%f\n%n", &query, &subject, &qcov, &scov, &bitscore, &count) != 5)
-				throw runtime_error("Cluster format error.");
-			ptr += count;
-			//cout << query << '\t' << subject << '\t' << qcov << '\t' << scov << '\t' << endl;
-			(*this)[query].push_back(subject);
-			edges.push_back({ query, subject, (int)bitscore });
-		}
-	}
-	vector<Util::Algo::Edge> edges;
-};
-
-vector<bool> rep_bitset(const vector<int> &centroid, const vector<bool> *superset = nullptr) {
+vector<bool> MultiStep::rep_bitset(const vector<int> &centroid, const vector<bool> *superset) {
 	vector<bool> r(centroid.size());
 	for (int c : centroid)
 		if(!superset || (*superset)[c])
@@ -68,7 +36,7 @@ vector<bool> rep_bitset(const vector<int> &centroid, const vector<bool> *superse
 	return r;
 }
 
-vector<int> cluster(DatabaseFile &db, const vector<bool> *filter) {
+vector<int> MultiStep::cluster(DatabaseFile &db, const vector<bool> *filter) {
 	statistics.reset();
 	config.command = Config::blastp;
 	config.no_self_hits = true;
@@ -89,11 +57,11 @@ vector<int> cluster(DatabaseFile &db, const vector<bool> *filter) {
 	opt.db_filter = filter;
 
 	Workflow::Search::run(opt);
-	
+
 	return Util::Algo::greedy_vortex_cover(nb);
 }
 
-void run() {
+void MultiStep::run() {
 	if (config.database == "")
 		throw runtime_error("Missing parameter: database file (--db/-d)");
 	config.command = Config::makedb;
@@ -135,10 +103,8 @@ void run() {
 	for (int i = 0; i < (int)db->ref_header.sequences; ++i) {
 		db->read_seq(id, seq);
 		const unsigned r = rep_block_id[centroid2[i]];
-
 		(*out) << blast_id(id) << '\t'
 			<< blast_id((*rep_ids)[r]) << '\t';		
-		
 		if ((int)i == centroid2[i])
 			(*out) << "100\t100\t100\t0" << endl;
 		else {
@@ -150,11 +116,9 @@ void run() {
 				<< score_matrix.bitscore(hsp.score) << endl;
 		}
 	}
-
-	db->close();
 	if (out != &cout) delete out;
 	delete rep_seqs;
 	delete rep_ids;
+	db->close();
 }
-
 }}

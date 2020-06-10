@@ -77,7 +77,7 @@ int QueryMapper::raw_score_cutoff() const
 	return score_matrix.rawscore(config.min_bit_score == 0 ? score_matrix.bitscore(config.max_evalue, (unsigned)query_seq(0).length()) : config.min_bit_score);
 }
 
-QueryMapper::QueryMapper(const Parameters &params, size_t query_id, Trace_pt_list::iterator begin, Trace_pt_list::iterator end, const Metadata &metadata, bool target_parallel) :
+QueryMapper::QueryMapper(const Parameters &params, size_t query_id, hit* begin, hit* end, const Metadata &metadata, bool target_parallel) :
 	parameters(params),
 	source_hits(std::make_pair(begin, end)),
 	query_id((unsigned)query_id),
@@ -108,7 +108,7 @@ unsigned QueryMapper::count_targets()
 {
 	std::sort(source_hits.first, source_hits.second, hit::cmp_subject);
 	const size_t n = source_hits.second - source_hits.first;
-	const Trace_pt_list::iterator hits = source_hits.first;
+	const hit* hits = source_hits.first;
 	size_t subject_id = std::numeric_limits<size_t>::max();
 	unsigned n_subject = 0;
 	for (size_t i = 0; i < n; ++i) {
