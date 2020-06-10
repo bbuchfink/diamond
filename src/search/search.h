@@ -35,6 +35,7 @@ namespace Search {
 struct Context {
 	const PatternMatcher previous_matcher, current_matcher;
 	const Util::Scores::CutoffTable cutoff_table;
+	const int short_query_ungapped_cutoff;
 };
 
 }
@@ -72,16 +73,7 @@ void setup_search_cont();
 
 namespace Search {
 
-DECL_DISPATCH(void, stage1_legacy, (const Packed_loc *q, size_t nq, const Packed_loc *s, size_t ns, Statistics &stats, Trace_pt_buffer::Iterator &out, const unsigned sid, const Context &context))
 DECL_DISPATCH(void, stage1, (const Packed_loc* q, size_t nq, const Packed_loc* s, size_t ns, Statistics& stats, Trace_pt_buffer::Iterator& out, const unsigned sid, const Context& context))
-DECL_DISPATCH(void, stage2, (\
-	const Packed_loc *q,\
-	const Packed_loc *s,\
-	const vector<Stage1_hit> &hits,\
-	Statistics &stats,\
-	Trace_pt_buffer::Iterator &out,\
-	const unsigned sid,
-	const Context &context))
 
 }
 

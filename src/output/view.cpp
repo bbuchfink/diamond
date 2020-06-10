@@ -137,7 +137,7 @@ void view()
 	message_stream << "DB sequences used = " << daa.db_seqs_used() << endl;
 	message_stream << "DB letters = " << daa.db_letters() << endl;
 
-	const Parameters params(daa.db_seqs(), daa.db_letters());
+	const Parameters params{ daa.db_seqs(), daa.db_letters(), 0.0, 0.0 };
 	Metadata metadata;
 
 	init_output(false, false, false);

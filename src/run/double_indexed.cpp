@@ -123,7 +123,12 @@ void run_query_chunk(DatabaseFile &db_file,
 	const Metadata &metadata,
 	const Options &options)
 {
-	const Parameters params(db_file.ref_header.sequences, db_file.ref_header.letters);
+	const Parameters params {
+		db_file.ref_header.sequences,
+		db_file.ref_header.letters,
+		config.gapped_filter_evalue1,
+		config.gapped_filter_evalue
+	};
 
 	task_timer timer("Building query seed set");
 	if (query_chunk == 0)

@@ -79,9 +79,9 @@ vector<Match> extend(const Parameters &params, size_t query_id, hit* begin, hit*
 	stat.inc(Statistics::TARGET_HITS0, target_block_ids.size());
 	stat.inc(Statistics::TIME_LOAD_HIT_TARGETS, timer.microseconds());
 
-	if (config.gapped_filter_score > 0.0 || config.gapped_filter_evalue > 0.0) {
+	if (config.gapped_filter_evalue > 0.0) {
 		timer.go("Computing gapped filter");
-		gapped_filter(query_seq.data(), query_cb.data(), seed_hits, target_block_ids, stat, flags);
+		gapped_filter(query_seq.data(), query_cb.data(), seed_hits, target_block_ids, stat, flags, params);
 		if ((flags & TARGET_PARALLEL) == 0)
 			stat.inc(Statistics::TIME_GAPPED_FILTER, timer.microseconds());
 	}

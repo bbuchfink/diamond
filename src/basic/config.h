@@ -205,9 +205,7 @@ struct Config
 	bool beta;
 	int ungapped_window;
 	int gapped_filter_diag_score;
-	double gapped_filter_score;
 	double gapped_filter_evalue;
-	double gapped_filter_evalue2;
 	int gapped_filter_window;
 	bool output_hits;
 	double ungapped_evalue;
@@ -219,6 +217,9 @@ struct Config
 	bool self;
 	size_t trace_pt_fetch_size;
 	uint32_t tile_size;
+	double short_query_ungapped_bitscore;
+	int short_query_max_len;
+	double gapped_filter_evalue1;
 
 	enum {
 		makedb = 0, blastp = 1, blastx = 2, view = 3, help = 4, version = 5, getseq = 6, benchmark = 7, random_seqs = 8, compare = 9, sort = 10, roc = 11, db_stat = 12, model_sim = 13,

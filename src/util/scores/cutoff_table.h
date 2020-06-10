@@ -20,6 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #pragma once
 #include "../../basic/score_matrix.h"
+#include "../intrin.h"
 
 namespace Util { namespace Scores {
 
@@ -32,7 +33,7 @@ struct CutoffTable {
 	}
 
 	int operator()(int query_len) const {
-		const int b = floor(log(query_len) / log(2)) + 1;
+		const int b = 32 - clz((uint32_t)query_len);
 		return data_[b];
 	}
 
