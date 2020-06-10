@@ -3,7 +3,7 @@ DIAMOND protein aligner
 Copyright (C) 2013-2020 Max Planck Society for the Advancement of Science e.V.
                         Benjamin Buchfink
                         Eberhard Karls Universitaet Tuebingen
-						
+
 Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
 
 This program is free software: you can redistribute it and/or modify
@@ -378,7 +378,7 @@ void master_thread(DatabaseFile *db_file, task_timer &total_timer, Metadata &met
 			}
 
 			for (size_t i=0; i<current_query_chunk; ++i) {
-				const string annotation = "# query_chunk=" + to_string(i);
+				const string annotation = "# query_chunk=" + std::to_string(i);
 				db_file->save_partition(get_ref_part_file_name(i), annotation);
 			}
 		}
