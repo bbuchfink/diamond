@@ -20,9 +20,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <numeric>
 #include "mcl.h"
 
-#define MASK_INVERSE 0x8000000000000000
-#define MASK_NORMAL_NODE 0x8000000000000000
-#define MASK_ATTRACTOR_NODE 0x0000000000000000
+#define MASK_INVERSE        0xC000000000000000
+#define MASK_NORMAL_NODE    0x4000000000000000
+#define MASK_ATTRACTOR_NODE 0x8000000000000000
+#define MASK_SINGLE_NODE    0xC000000000000000
+
 
 using namespace std;
 
@@ -349,11 +351,11 @@ void MCL::run(){
 	// Note, we will access the clustering_result from several threads below and a vector does not guarantee thread-safety in these situations.
 	// Note also, that the use of the disjoint_set structure guarantees that each thread will access a different part of the clustering_result
 	uint64_t* clustering_result = new uint64_t[db->ref_header.sequences];
-	fill(clustering_result, clustering_result+db->ref_header.sequences, 0);
+	fill(clustering_result, clustering_result+db->ref_header.sequences, 0UL);
 
 	uint32_t nThreads = min(config.threads_, nComponentsLt1);
 	// note that the disconnected components are sorted by size
-	const uint32_t max_counter = sort_order.size();
+	const uint32_t max_counter = nComponents;
 	float* max_sparsities = new float[nThreads];
 	float* min_sparsities = new float[nThreads];
 	const float inflation = (float) config.cluster_mcl_inflation;
@@ -371,7 +373,7 @@ void MCL::run(){
 		uint32_t n_sparse = 0;
 		uint32_t n_singletons = 0;
 		uint64_t cluster_id = iThr;
-		uint32_t my_counter = iThr;
+		uint32_t my_counter = iThr*chunk_size;
 		while(my_counter < max_counter){
 			for(uint32_t chunk_counter = my_counter; chunk_counter<min(my_counter+chunk_size, max_counter); chunk_counter++){
 				uint32_t iComponent = sort_order[chunk_counter];
@@ -446,7 +448,7 @@ void MCL::run(){
 #endif
 					}
 					for(unordered_set<uint32_t> subset : list_of_sets){
-						assert(cluster_id < 0x0fffffffffffffff);
+						assert(cluster_id < 0x3fffffffffffffff);
 						for(uint32_t el : subset){
 							const uint64_t mask = attractors.find(el) == attractors.end() ? MASK_NORMAL_NODE : MASK_ATTRACTOR_NODE;
 							clustering_result[order[el]] = mask | cluster_id;
@@ -456,8 +458,8 @@ void MCL::run(){
 					}
 				}
 				else if (order.size() == 1){
-					assert(cluster_id < 0x0fffffffffffffff);
-					clustering_result[order[0]] = MASK_ATTRACTOR_NODE | cluster_id;
+					assert(cluster_id < 0x3fffffffffffffff);
+					clustering_result[order[0]] = MASK_SINGLE_NODE | cluster_id;
 					cluster_id += nThreads;
 					n_singletons++;
 				}
@@ -532,9 +534,12 @@ void MCL::run(){
 	out->precision(3);
 	for (int i = 0; i < (int)db->ref_header.sequences; ++i) {
 		db->read_seq(id, seq);
-		const uint32_t res = clustering_result[i];
+		const uint64_t res = clustering_result[i];
 		(*out) << blast_id(id) << '\t' << (res & (~MASK_INVERSE)) << '\t';
 		switch(res & MASK_INVERSE){
+			case MASK_SINGLE_NODE:
+				(*out) << 's';
+				break;
 			case MASK_ATTRACTOR_NODE:
 				(*out) << 'a';
 				break;
@@ -542,6 +547,7 @@ void MCL::run(){
 				(*out) << 'n';
 				break;
 			default:
+				// Note that this is a sanity check that we have touched all elements in clustering_result
 				(*out) << (res & MASK_INVERSE) <<endl;
 				throw runtime_error("Unknown node label");
 		}
