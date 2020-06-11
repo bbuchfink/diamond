@@ -24,13 +24,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 class Variable{
 public:
-	virtual std::string get_name() = 0;
 	virtual double get(const Hsp_context& r) = 0;
+	virtual ~Variable(){};
 };
 
 class QueryLength: public Variable{
 public:
-	std::string get_name(){
+	static const std::string get_name(){
 		return "qlen";
 	}
 	double get(const Hsp_context& r){
@@ -39,7 +39,7 @@ public:
 };
 class SubjectLength: public Variable{
 public:
-	std::string get_name(){
+	static const std::string get_name(){
 		return "slen";
 	}
 	double get(const Hsp_context& r){
@@ -48,7 +48,7 @@ public:
 };
 class QueryStart: public Variable{
 public:
-	std::string get_name(){
+	static const std::string get_name(){
 		return "qstart";
 	}
 	double get(const Hsp_context& r){
@@ -57,7 +57,7 @@ public:
 };
 class QueryEnd: public Variable{
 public:
-	std::string get_name(){
+	static const std::string get_name(){
 		return "qend";
 	}
 	double get(const Hsp_context& r){
@@ -66,7 +66,7 @@ public:
 };
 class SubjectStart: public Variable{
 public:
-	std::string get_name(){
+	static const std::string get_name(){
 		return "sstart";
 	}
 	double get(const Hsp_context& r){
@@ -75,7 +75,7 @@ public:
 };
 class SubjectEnd: public Variable{
 public:
-	std::string get_name(){
+	static const std::string get_name(){
 		return "send";
 	}
 	double get(const Hsp_context& r){
@@ -84,7 +84,7 @@ public:
 };
 class EValue: public Variable{
 public:
-	std::string get_name(){
+	static const std::string get_name(){
 		return "evalue";
 	}
 	double get(const Hsp_context& r){
@@ -93,7 +93,7 @@ public:
 };
 class BitScore: public Variable{
 public:
-	std::string get_name(){
+	static const std::string get_name(){
 		return "bitscore";
 	}
 	double get(const Hsp_context& r){
@@ -102,7 +102,7 @@ public:
 };
 class Score: public Variable{
 public:
-	std::string get_name(){
+	static const std::string get_name(){
 		return "score";
 	}
 	double get(const Hsp_context& r){
@@ -111,7 +111,7 @@ public:
 };
 class Length: public Variable{
 public:
-	std::string get_name(){
+	static const std::string get_name(){
 		return "length";
 	}
 	double get(const Hsp_context& r){
@@ -120,7 +120,7 @@ public:
 };
 class PercentIdenticalMatches: public Variable{
 public:
-	std::string get_name(){
+	static const std::string get_name(){
 		return "pident";
 	}
 	double get(const Hsp_context& r){
@@ -129,7 +129,7 @@ public:
 };
 class NumberIdenticalMatches: public Variable{
 public:
-	std::string get_name(){
+	static const std::string get_name(){
 		return "nident";
 	}
 	double get(const Hsp_context& r){
@@ -138,7 +138,7 @@ public:
 };
 class NumberMismatches: public Variable{
 public:
-	std::string get_name(){
+	static const std::string get_name(){
 		return "mismatch";
 	}
 	double get(const Hsp_context& r){
@@ -147,7 +147,7 @@ public:
 };
 class NumberPositiveMatches: public Variable{
 public:
-	std::string get_name(){
+	static const std::string get_name(){
 		return "positive";
 	}
 	double get(const Hsp_context& r){
@@ -156,7 +156,7 @@ public:
 };
 class NumberGapOpenings: public Variable{
 public:
-	std::string get_name(){
+	static const std::string get_name(){
 		return "gapopen";
 	}
 	double get(const Hsp_context& r){
@@ -165,7 +165,7 @@ public:
 };
 class NumberGaps: public Variable{
 public:
-	std::string get_name(){
+	static const std::string get_name(){
 		return "gaps";
 	}
 	double get(const Hsp_context& r){
@@ -174,7 +174,7 @@ public:
 };
 class PercentagePositiveMatches: public Variable{
 public:
-	std::string get_name(){
+	static const std::string get_name(){
 		return "ppos";
 	}
 	double get(const Hsp_context& r){
@@ -183,7 +183,7 @@ public:
 };
 class QueryFrame: public Variable{
 public:
-	std::string get_name(){
+	static const std::string get_name(){
 		return "qframe";
 	}
 	double get(const Hsp_context& r){
@@ -192,7 +192,7 @@ public:
 };
 class QueryCoveragePerHsp: public Variable{
 public:
-	std::string get_name(){
+	static const std::string get_name(){
 		return "qcovhsp";
 	}
 	double get(const Hsp_context& r){
@@ -201,7 +201,7 @@ public:
 };
 class SwDiff: public Variable{
 public:
-	std::string get_name(){
+	static const std::string get_name(){
 		return "swdiff";
 	}
 	double get(const Hsp_context& r){
@@ -210,7 +210,7 @@ public:
 };
 class Time: public Variable{
 public:
-	std::string get_name(){
+	static const std::string get_name(){
 		return "time";
 	}
 	double get(const Hsp_context& r){
@@ -219,7 +219,7 @@ public:
 };
 class SubjectCoveragePerHsp: public Variable{
 public:
-	std::string get_name(){
+	static const std::string get_name(){
 		return "scovhsp";
 	}
 	double get(const Hsp_context& r){
@@ -228,7 +228,7 @@ public:
 };
 class UngappedScore: public Variable{
 public:
-	std::string get_name(){
+	static const std::string get_name(){
 		return "ungapped_score";
 	}
 	double get(const Hsp_context& r){
@@ -236,46 +236,52 @@ public:
 	}
 };
 
-class VariableRegistry{
-private:
-	VariableRegistry(){};
-	// To include new variables add the instantiation here and in the clustering_variable.cpp file. Then add it to the StaticConstructor below
-	static QueryLength queryLength;
-	static SubjectLength subjectLength;
-	static QueryStart queryStart;
-	static QueryEnd queryEnd;
-	static SubjectStart subjectStart;
-	static SubjectEnd subjectEnd;
-	static EValue eValue;
-	static BitScore bitScore;
-	static Score score;
-	static Length length;
-	static PercentIdenticalMatches percentIdenticalMatches;
-	static NumberIdenticalMatches numberIdenticalMatches;
-	static NumberMismatches numberMismatches;
-	static NumberPositiveMatches numberPositiveMatches;
-	static NumberGapOpenings numberGapOpenings;
-	static NumberGaps numberGaps;
-	static PercentagePositiveMatches percentagePositiveMatches;
-	static QueryFrame queryFrame;
-	static QueryCoveragePerHsp queryCoveragePerHsp;
-	static SwDiff swdiff;
-	static Time time;
-	static SubjectCoveragePerHsp subjectCoveragePerHsp;
-	static UngappedScore ungappedScore;
+class StaticVariableRegistry{
+	std::map<std::string, Variable*> regMap;
 public:
-	static std::map<std::string, Variable*> regMap;
-	static Variable* get(std::string key){
-		std::map<std::string, Variable*>::iterator ca = VariableRegistry::regMap.find(key);
-		if(ca == VariableRegistry::regMap.end()){
+	StaticVariableRegistry(){
+		// To include new variables add the instantiation here and in the clustering_variable.cpp file. Then add it to the StaticConstructor below
+		regMap[QueryLength::get_name()] = new QueryLength();
+		regMap[SubjectLength::get_name()] = new SubjectLength();
+		regMap[QueryStart::get_name()] = new QueryStart();
+		regMap[QueryEnd::get_name()] = new QueryEnd();
+		regMap[SubjectStart::get_name()] = new SubjectStart();
+		regMap[SubjectEnd::get_name()] = new SubjectEnd();
+		regMap[EValue::get_name()] = new EValue();
+		regMap[BitScore::get_name()] = new BitScore();
+		regMap[Score::get_name()] = new Score();
+		regMap[Length::get_name()] = new Length();
+		regMap[PercentIdenticalMatches::get_name()] = new PercentIdenticalMatches();
+		regMap[NumberIdenticalMatches::get_name()] = new NumberIdenticalMatches();
+		regMap[NumberMismatches::get_name()] = new NumberMismatches();
+		regMap[NumberPositiveMatches::get_name()] = new NumberPositiveMatches();
+		regMap[NumberGapOpenings::get_name()] = new NumberGapOpenings();
+		regMap[NumberGaps::get_name()] = new NumberGaps();
+		regMap[PercentagePositiveMatches::get_name()] = new PercentagePositiveMatches();
+		regMap[QueryFrame::get_name()] = new QueryFrame();
+		regMap[QueryCoveragePerHsp::get_name()] = new QueryCoveragePerHsp();
+		regMap[SwDiff::get_name()] = new SwDiff();
+		regMap[Time::get_name()] = new Time();
+		regMap[SubjectCoveragePerHsp::get_name()] = new SubjectCoveragePerHsp();
+		regMap[UngappedScore::get_name()] = new UngappedScore();
+	}
+	~StaticVariableRegistry(){
+		for(auto it = regMap.begin(); it != regMap.end(); it++){
+			delete it->second;
+			it->second = nullptr;
+		}
+	}
+	Variable* get(std::string key) const {
+		auto ca = regMap.find(key);
+		if(ca == regMap.end()){
 			throw std::runtime_error(std::string("Unknown variable: ")+ key);
 		}
 		return ca->second;
 	}
-	static bool has(std::string key){
-		return VariableRegistry::regMap.find(key) != VariableRegistry::regMap.end();
+	bool has(std::string key) const {
+		return regMap.find(key) != regMap.end();
 	}
-	static vector<std::string> getKeys(){
+	vector<std::string> getKeys() const {
 		auto it = regMap.begin();
 		vector<std::string> keys;
 		while(it != regMap.end()){
@@ -284,31 +290,19 @@ public:
 		}
 		return keys;
 	}
-	static struct StaticConstructor {
-		StaticConstructor() {
-			regMap.emplace(queryLength.get_name(), &queryLength);
-			regMap.emplace(subjectLength.get_name(), &subjectLength);
-			regMap.emplace(queryStart.get_name(), &queryStart);
-			regMap.emplace(queryEnd.get_name(), &queryEnd);
-			regMap.emplace(subjectStart.get_name(), &subjectStart);
-			regMap.emplace(subjectEnd.get_name(), &subjectEnd);
-			regMap.emplace(eValue.get_name(), &eValue);
-			regMap.emplace(bitScore.get_name(), &bitScore);
-			regMap.emplace(score.get_name(), &score);
-			regMap.emplace(length.get_name(), &length);
-			regMap.emplace(percentIdenticalMatches.get_name(), &percentIdenticalMatches);
-			regMap.emplace(numberIdenticalMatches.get_name(), &numberIdenticalMatches);
-			regMap.emplace(numberMismatches.get_name(), &numberMismatches);
-			regMap.emplace(numberPositiveMatches.get_name(), &numberPositiveMatches);
-			regMap.emplace(numberGapOpenings.get_name(), &numberGapOpenings);
-			regMap.emplace(numberGaps.get_name(), &numberGaps);
-			regMap.emplace(percentagePositiveMatches.get_name(), &percentagePositiveMatches);
-			regMap.emplace(queryFrame.get_name(), &queryFrame);
-			regMap.emplace(queryCoveragePerHsp.get_name(), &queryCoveragePerHsp);
-			regMap.emplace(swdiff.get_name(), &swdiff);
-			regMap.emplace(time.get_name(), &time);
-			regMap.emplace(subjectCoveragePerHsp.get_name(), &subjectCoveragePerHsp);
-			regMap.emplace(ungappedScore.get_name(), &ungappedScore);
-		}
-	} _staticConstructor;
+
+};
+
+class VariableRegistry{
+	static StaticVariableRegistry vr;
+public:
+	static Variable* get(std::string key){
+		return vr.get(key);
+	}
+	static bool has(std::string key){
+		return vr.has(key);
+	}
+	static vector<std::string> getKeys(){
+		return vr.getKeys();
+	}
 };

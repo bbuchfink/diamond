@@ -28,6 +28,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <fstream>
 #include <limits>
 #include <atomic>
+#include <mutex>
 #include "../util/system/system.h"
 #include "../util/util.h"
 #include "../basic/config.h"
@@ -64,9 +65,12 @@ private:
 	atomic_ullong dense_list_time = {0};
 #endif
 public:
+	~MCL(){};
 	void run();
-	string get_key();
 	string get_description();
+	static string get_key(){
+		return "mcl";
+	}
 };
 
 template <typename T>
@@ -74,19 +78,32 @@ class SparseMatrixStream : public Consumer {
 	size_t n;
 	vector<Eigen::Triplet<T>> data;
 	LazyDisjointSet<uint32_t>* disjointSet;
+	mutex mutex;
 	virtual void consume(const char *ptr, size_t n) override {
 		const char *end = ptr + n;
-		uint32_t query = *(uint32_t*) ptr;
-		ptr += sizeof(uint32_t);
-		while (ptr < end) {
-			const uint32_t subject = *(uint32_t*) ptr;
+		if (n >= sizeof(uint32_t)) {
+			assert((n - sizeof(uint32_t)) % (sizeof(uint32_t)+sizeof(double)) == 0);
+			uint32_t query = *(uint32_t*) ptr;
 			ptr += sizeof(uint32_t);
-			const double value = *(double*) ptr;
-			ptr += sizeof(double);
-			data.emplace_back(query, subject, value);
-			disjointSet->merge(query, subject);
+			while (ptr < end) {
+				const uint32_t subject = *(uint32_t*) ptr;
+				ptr += sizeof(uint32_t);
+				const double value = *(double*) ptr;
+				ptr += sizeof(double);
+				mutex.lock();
+				data.emplace_back(query, subject, value);
+				disjointSet->merge(query, subject);
+				mutex.unlock();
+			}
 		}
 	}
+
+	struct CoordinateCmp {
+		bool operator()(const Eigen::Triplet<T>& lhs, const Eigen::Triplet<T>& rhs) const { 
+			return lhs.row() == rhs.row() ? lhs.col() < rhs.col() : lhs.row() < rhs.row() ; 
+		}
+	};
+
 public:
 	SparseMatrixStream(size_t n){
 		this->n = n;
@@ -98,18 +115,23 @@ public:
 	}
 	pair<vector<vector<uint32_t>>, vector<vector<Eigen::Triplet<T>>>> getComponents(){
 		vector<unordered_set<uint32_t>> sets = disjointSet->getListOfSets();
-		vector<vector<Eigen::Triplet<T>>> split(sets.size());
 		vector<uint32_t> indexToSetId(this->n, sets.size());
 		for(uint32_t iset = 0; iset < sets.size(); iset++){
-			split.push_back(vector<Eigen::Triplet<T>>());
 			for(uint32_t index : sets[iset]){
 				indexToSetId[index] = iset;
 			}
 		}
+		vector<set<Eigen::Triplet<T>, CoordinateCmp>> split(sets.size());
 		for(Eigen::Triplet<T> t : data){
 			uint32_t iset = indexToSetId[t.row()];
 			assert( iset == indexToSetId[t.col()]);
-			split[iset].emplace_back(t.row(), t.col(), t.value());
+			auto it = split[iset].find(t);
+			if(it == split[iset].end()){
+				split[iset].emplace(t.row(), t.col(), t.value());
+			}
+			else if (t.value() > it->value()){
+				split[iset].emplace_hint(split[iset].erase(it), t.row(), t.col(), t.value());
+			}
 		}
 		vector<vector<uint32_t>> indices(sets.size());
 		vector<vector<Eigen::Triplet<T>>> components(sets.size());

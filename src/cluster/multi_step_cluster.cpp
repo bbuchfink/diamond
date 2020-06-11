@@ -21,9 +21,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 using namespace std;
 
 namespace Workflow { namespace Cluster{ 
-string MultiStep::get_key() {
-	return "multi-step";
-}
 string MultiStep::get_description(){
 	return "A greedy stepwise vortex cover algorithm";
 }

@@ -18,18 +18,14 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 #include "mcl.h"
 
-#define MASK_INVERSE 0xC0000000
-#define MASK_NORMAL_NODE 0x40000000
-#define MASK_ATTRACTOR_NODE 0x80000000
-#define MASK_SINGLE_NODE 0xC0000000
+#define MASK_INVERSE 0x8000000000000000
+#define MASK_NORMAL_NODE 0x8000000000000000
+#define MASK_ATTRACTOR_NODE 0x0000000000000000
 
 using namespace std;
 
 namespace Workflow { namespace Cluster{
 
-string MCL::get_key() {
-	return "mcl";
-}
 string MCL::get_description() {
 	return "Markov clustering according to doi:10.1137/040608635";
 }
@@ -344,13 +340,13 @@ void MCL::run(){
 	uint32_t nComponents = count_if(indices.begin(), indices.end(), [](vector<uint32_t> v){ return v.size() > 0;});
 	uint32_t nComponentsLt1 = count_if(indices.begin(), indices.end(), [](vector<uint32_t> v){ return v.size() > 1;});
 	timer.finish();
-	cout << "Found " << nComponentsLt1 <<" ("<<nComponents<< " incl. singletons) disconnected components" << endl;
+	message_stream << "Found " << nComponentsLt1 <<" ("<<nComponents<< " incl. singletons) disconnected components" << endl;
 
 	timer.go("Clustering components");
 	bool full = false;
 	// Note, we will access the clustering_result from several threads below and a vector does not guarantee thread-safety in these situations.
 	// Note also, that the use of the disjoint_set structure guarantees that each thread will access a different part of the clustering_result
-	uint32_t* clustering_result = new uint32_t[db->ref_header.sequences];
+	uint64_t* clustering_result = new uint64_t[db->ref_header.sequences];
 	fill(clustering_result, clustering_result+db->ref_header.sequences, 0);
 
 	uint32_t nThreads = min(config.threads_, nComponentsLt1);
@@ -361,8 +357,9 @@ void MCL::run(){
 	const float inflation = (float) config.cluster_mcl_inflation;
 	const float expansion = (float) config.cluster_mcl_expansion;
 
+	const uint32_t chunk_size = 100;
 	atomic_uint n_clusters_found(0);
-	atomic_uint component_counter(nThreads);
+	atomic_uint component_counter(nThreads*chunk_size);
 	atomic_uint n_dense_calculations(0);
 	atomic_uint n_sparse_calculations(0);
 	atomic_uint nClustersEq1(0);
@@ -371,98 +368,99 @@ void MCL::run(){
 		uint32_t n_dense = 0;
 		uint32_t n_sparse = 0;
 		uint32_t n_singletons = 0;
-		uint32_t cluster_id = iThr;
+		uint64_t cluster_id = iThr;
 		uint32_t my_counter = iThr;
 		while(my_counter < max_counter){
-		//for(uint32_t my_counter = iThr; my_counter<max_counter; my_counter += nThreads){
-			uint32_t iComponent = sort_order[my_counter];
-			vector<uint32_t> order = indices[iComponent];
-			if(order.size() > 1){
-				vector<Eigen::Triplet<float>> m = components[iComponent];
-				assert(m.size() <= order.size() * order.size());
-				float sparsity = 1.0-(1.0 * m.size()) / (order.size()*order.size());
-				max_sparsities[iThr] = max(max_sparsities[iThr], sparsity);
-				min_sparsities[iThr] = min(min_sparsities[iThr], sparsity);
-				// map back to original ids
-				vector<unordered_set<uint32_t>> list_of_sets;
-				unordered_set<uint32_t> attractors;
+			for(uint32_t chunk_counter = my_counter; chunk_counter<min(my_counter+chunk_size, max_counter); chunk_counter++){
+				uint32_t iComponent = sort_order[chunk_counter];
+				vector<uint32_t> order = indices[iComponent];
+				if(order.size() > 1){
+					vector<Eigen::Triplet<float>> m = components[iComponent];
+					assert(m.size() <= order.size() * order.size());
+					float sparsity = 1.0-(1.0 * m.size()) / (order.size()*order.size());
+					max_sparsities[iThr] = max(max_sparsities[iThr], sparsity);
+					min_sparsities[iThr] = min(min_sparsities[iThr], sparsity);
+					// map back to original ids
+					vector<unordered_set<uint32_t>> list_of_sets;
+					unordered_set<uint32_t> attractors;
 
-				//TODO: a size limit for the dense matrix should control this as well
-#ifdef MCL_TIMINGS
-				chrono::high_resolution_clock::time_point t = chrono::high_resolution_clock::now();
-#endif
-				if(sparsity >= config.cluster_mcl_sparsity_switch && expansion - (int) expansion == 0){ 
-					n_sparse++;
-					Eigen::SparseMatrix<float> m_sparse(order.size(), order.size());
-					m_sparse.setFromTriplets(m.begin(), m.end());
-#ifdef MCL_TIMINGS
-					sparse_create_time += chrono::duration_cast<chrono::milliseconds>(chrono::high_resolution_clock::now() - t).count();
-#endif
-					markov_process(&m_sparse, inflation, expansion);
+					//TODO: a size limit for the dense matrix should control this as well
 #ifdef MCL_TIMINGS
 					chrono::high_resolution_clock::time_point t = chrono::high_resolution_clock::now();
 #endif
-					LazyDisjointIntegralSet<uint32_t> disjointSet(m_sparse.cols());
-					for (uint32_t k=0; k<m_sparse.outerSize(); ++k){
-						for (Eigen::SparseMatrix<float>::InnerIterator it(m_sparse, k); it; ++it){
-							assert(abs(it.value()) > numeric_limits<float>::epsilon());
-							disjointSet.merge(it.row(), it.col());
-							if(it.row() == it.col()){
-								attractors.emplace(it.row());
-							}
-						}
-					}
-					list_of_sets = disjointSet.getListOfSets();
+					if(sparsity >= config.cluster_mcl_sparsity_switch && expansion - (int) expansion == 0){ 
+						n_sparse++;
+						Eigen::SparseMatrix<float> m_sparse(order.size(), order.size());
+						m_sparse.setFromTriplets(m.begin(), m.end());
 #ifdef MCL_TIMINGS
-					sparse_list_time += chrono::duration_cast<chrono::milliseconds>(chrono::high_resolution_clock::now() - t).count();
+						sparse_create_time += chrono::duration_cast<chrono::milliseconds>(chrono::high_resolution_clock::now() - t).count();
 #endif
-				}
-				else{
-					n_dense++;
-					Eigen::MatrixXf m_dense = Eigen::MatrixXf::Zero(order.size(), order.size());
-					for(Eigen::Triplet<float> const & t : m){
-						m_dense(t.row(), t.col()) = t.value();
-					}
+						markov_process(&m_sparse, inflation, expansion);
 #ifdef MCL_TIMINGS
-					dense_create_time += chrono::duration_cast<chrono::milliseconds>(chrono::high_resolution_clock::now() - t).count();
+						chrono::high_resolution_clock::time_point t = chrono::high_resolution_clock::now();
 #endif
-					markov_process(&m_dense, inflation, expansion);
-#ifdef MCL_TIMINGS
-					chrono::high_resolution_clock::time_point t = chrono::high_resolution_clock::now();
-#endif
-					LazyDisjointIntegralSet<uint32_t> disjointSet(m_dense.cols());
-					for (uint32_t icol=0; icol<m_dense.cols(); ++icol){
-						for (uint32_t irow=0; irow<m_dense.rows(); ++irow){
-							if( abs(m_dense(irow, icol)) > numeric_limits<float>::epsilon()){
-								disjointSet.merge(irow, icol);
-								if(irow == icol){
-									attractors.emplace(irow);
+						LazyDisjointIntegralSet<uint32_t> disjointSet(m_sparse.cols());
+						for (uint32_t k=0; k<m_sparse.outerSize(); ++k){
+							for (Eigen::SparseMatrix<float>::InnerIterator it(m_sparse, k); it; ++it){
+								assert(abs(it.value()) > numeric_limits<float>::epsilon());
+								disjointSet.merge(it.row(), it.col());
+								if(it.row() == it.col()){
+									attractors.emplace(it.row());
 								}
 							}
 						}
-					}
-					list_of_sets = disjointSet.getListOfSets();
+						list_of_sets = disjointSet.getListOfSets();
 #ifdef MCL_TIMINGS
-					dense_list_time += chrono::duration_cast<chrono::milliseconds>(chrono::high_resolution_clock::now() - t).count();
+						sparse_list_time += chrono::duration_cast<chrono::milliseconds>(chrono::high_resolution_clock::now() - t).count();
 #endif
-				}
-				for(unordered_set<uint32_t> subset : list_of_sets){
-					assert(cluster_id < 0x00ffffff);
-					for(uint32_t el : subset){
-						const uint32_t mask = attractors.find(el) == attractors.end() ? MASK_NORMAL_NODE : MASK_ATTRACTOR_NODE;
-						clustering_result[order[el]] = mask | cluster_id;
 					}
-					if(subset.size() == 1) n_singletons++;
+					else{
+						n_dense++;
+						Eigen::MatrixXf m_dense = Eigen::MatrixXf::Zero(order.size(), order.size());
+						for(Eigen::Triplet<float> const & t : m){
+							m_dense(t.row(), t.col()) = t.value();
+						}
+#ifdef MCL_TIMINGS
+						dense_create_time += chrono::duration_cast<chrono::milliseconds>(chrono::high_resolution_clock::now() - t).count();
+#endif
+						markov_process(&m_dense, inflation, expansion);
+#ifdef MCL_TIMINGS
+						chrono::high_resolution_clock::time_point t = chrono::high_resolution_clock::now();
+#endif
+						LazyDisjointIntegralSet<uint32_t> disjointSet(m_dense.cols());
+						for (uint32_t icol=0; icol<m_dense.cols(); ++icol){
+							for (uint32_t irow=0; irow<m_dense.rows(); ++irow){
+								if( abs(m_dense(irow, icol)) > numeric_limits<float>::epsilon()){
+									disjointSet.merge(irow, icol);
+									if(irow == icol){
+										attractors.emplace(irow);
+									}
+								}
+							}
+						}
+						list_of_sets = disjointSet.getListOfSets();
+#ifdef MCL_TIMINGS
+						dense_list_time += chrono::duration_cast<chrono::milliseconds>(chrono::high_resolution_clock::now() - t).count();
+#endif
+					}
+					for(unordered_set<uint32_t> subset : list_of_sets){
+						assert(cluster_id < 0x0fffffffffffffff);
+						for(uint32_t el : subset){
+							const uint64_t mask = attractors.find(el) == attractors.end() ? MASK_NORMAL_NODE : MASK_ATTRACTOR_NODE;
+							clustering_result[order[el]] = mask | cluster_id;
+						}
+						if(subset.size() == 1) n_singletons++;
+						cluster_id += nThreads;
+					}
+				}
+				else if (order.size() == 1){
+					assert(cluster_id < 0x0fffffffffffffff);
+					clustering_result[order[0]] = MASK_ATTRACTOR_NODE | cluster_id;
 					cluster_id += nThreads;
+					n_singletons++;
 				}
 			}
-			else if (order.size() == 1){
-				assert(cluster_id < 0x00ffffff);
-				clustering_result[order[0]] = MASK_SINGLE_NODE | cluster_id;
-				cluster_id += nThreads;
-				n_singletons++;
-			}
-			my_counter = component_counter.fetch_add(1, memory_order_relaxed);
+			my_counter = component_counter.fetch_add(chunk_size, memory_order_relaxed);
 		}
 		n_clusters_found.fetch_add((cluster_id-iThr)/nThreads, memory_order_relaxed);
 		n_dense_calculations.fetch_add(n_dense, memory_order_relaxed);
@@ -535,9 +533,6 @@ void MCL::run(){
 		const uint32_t res = clustering_result[i];
 		(*out) << blast_id(id) << '\t' << (res & (~MASK_INVERSE)) << '\t';
 		switch(res & MASK_INVERSE){
-			case MASK_SINGLE_NODE:
-				(*out) << 's';
-				break;
 			case MASK_ATTRACTOR_NODE:
 				(*out) << 'a';
 				break;

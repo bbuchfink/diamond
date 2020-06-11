@@ -45,9 +45,12 @@ private:
 	vector<bool> rep_bitset(const vector<int> &centroid, const vector<bool> *superset = nullptr);
 	vector<int> cluster(DatabaseFile &db, const vector<bool> *filter);
 public:
+	~MultiStep(){};
 	void run();
-	string get_key();
 	string get_description();
+	static string get_key(){
+		return "multi-step";
+	}
 };
 
 struct Neighbors : public vector<vector<int>>, public Consumer {
