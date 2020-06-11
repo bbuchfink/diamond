@@ -1,6 +1,10 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2018 Benjamin Buchfink <buchfink@gmail.com>
+Copyright (C) 2013-2020 Max Planck Society for the Advancement of Science e.V.
+                        Benjamin Buchfink
+                        Eberhard Karls Universitaet Tuebingen
+						
+Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -38,7 +42,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/parallel/thread_pool.h"
 #include "../util/system/system.h"
 
-using namespace std;
+using std::unique_ptr;
 
 namespace Workflow { namespace Search {
 

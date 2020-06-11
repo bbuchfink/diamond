@@ -69,6 +69,7 @@ struct Statistics
 
 	void print() const
 	{
+		using std::endl;
 		//log_stream << "Used ref size = " << data_[REF_SIZE] << endl;
 		//log_stream << "Traceback errors = " << data_[BIAS_ERRORS] << endl;
 		log_stream << "Low complexity seeds  = " << data_[LOW_COMPLEXITY_SEEDS] << endl;

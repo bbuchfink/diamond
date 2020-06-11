@@ -1,6 +1,10 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2017 Benjamin Buchfink <buchfink@gmail.com>
+Copyright (C) 2013-2020 Max Planck Society for the Advancement of Science e.V.
+                        Benjamin Buchfink
+                        Eberhard Karls Universitaet Tuebingen
+						
+Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,9 +20,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#ifndef ALIGN_H_
-#define ALIGN_H_
-
+#pragma once
 #include <memory>
 #include <vector>
 #include <map>
@@ -27,8 +29,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../basic/statistics.h"
 #include "legacy/query_mapper.h"
 #include "../data/metadata.h"
-
-using std::vector;
 
 struct Output_writer
 {
@@ -44,33 +44,13 @@ private:
 	OutputFile* const f_;
 };
 
-template<typename _buffer>
-struct Ring_buffer_sink
-{
-	Ring_buffer_sink(OutputFile *output_file):
-		writer(output_file),
-		queue(config.threads_ * 4, writer)
-	{}
-	bool get(size_t &i, _buffer *& buffer, Trace_pt_list::Query_range &query_range)
-	{
-		return queue.get(i, buffer, query_range);
-	}
-	void push(size_t i)
-	{
-		queue.push(i);
-	}
-private:
-	Output_writer writer;
-	Task_queue<_buffer, Output_writer> queue;
-};
-
 void align_queries(Trace_pt_buffer &trace_pts, Consumer* output_file, const Parameters &params, const Metadata &metadata);
 
 namespace ExtensionPipeline {
 	namespace Swipe {
 		struct Pipeline : public QueryMapper
 		{
-			Pipeline(const Parameters &params, size_t query_id, Trace_pt_list::iterator begin, Trace_pt_list::iterator end, const Metadata &metadata) :
+			Pipeline(const Parameters &params, size_t query_id, hit* begin, hit* end, const Metadata &metadata) :
 				QueryMapper(params, query_id, begin, end, metadata)
 			{}
 			virtual void run(Statistics &stat, const sequence *subjects = nullptr, size_t subject_count = 0);
@@ -81,7 +61,7 @@ namespace ExtensionPipeline {
 		struct Target;
 		struct Pipeline : public QueryMapper
 		{
-			Pipeline(const Parameters &params, size_t query_id, Trace_pt_list::iterator begin, Trace_pt_list::iterator end, DpStat &dp_stat, const Metadata &metadata, bool target_parallel) :
+			Pipeline(const Parameters &params, size_t query_id, hit* begin, hit* end, DpStat &dp_stat, const Metadata &metadata, bool target_parallel) :
 				QueryMapper(params, query_id, begin, end, metadata, target_parallel),
 				dp_stat(dp_stat)
 			{}
@@ -93,6 +73,3 @@ namespace ExtensionPipeline {
 		};
 	}
 }
-
-
-#endif

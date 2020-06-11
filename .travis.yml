@@ -2,6 +2,10 @@ os:
   - linux
   - osx
 
+dist:
+  - xenial
+  - trusty
+
 language: c++
 
 #addons:

@@ -1,6 +1,10 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2017 Benjamin Buchfink <buchfink@gmail.com>
+Copyright (C) 2013-2020 Max Planck Society for the Advancement of Science e.V.
+						Benjamin Buchfink
+						Eberhard Karls Universitaet Tuebingen
+
+Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,17 +20,13 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#ifndef LOG_STREAM_H_
-#define LOG_STREAM_H_
-
+#pragma once
 #include <iostream>
 #include <fstream>
 #include <mutex>
 #include <limits.h>
 #include <chrono>
 #include <stdint.h>
-
-using std::endl;
 
 struct Message_stream
 {
@@ -97,7 +97,7 @@ struct task_timer
 	{
 		if (!msg_ || level_ == UINT_MAX)
 			return;
-		get_stream() << " [" << get() << "s]" << endl;
+		get_stream() << " [" << get() << "s]" << std::endl;
 		msg_ = 0;
 	}
 	double get()
@@ -141,5 +141,3 @@ private:
 	const char *msg_;
 	std::chrono::high_resolution_clock::time_point t;
 };
-
-#endif

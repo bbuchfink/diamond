@@ -33,7 +33,7 @@ namespace DISPATCH_ARCH {
 const unsigned tile_size[] = { 1024, 128 };
 
 constexpr ptrdiff_t INNER_LOOP_QUERIES = 6;
-typedef vector<Finger_print, AlignmentAllocator<Finger_print, 16>> Container;
+typedef vector<Finger_print, Util::Memory::AlignmentAllocator<Finger_print, 16>> Container;
 typedef Container::const_iterator Ptr;
 
 struct Range_ref

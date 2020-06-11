@@ -1,6 +1,10 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2017 Benjamin Buchfink <buchfink@gmail.com>
+Copyright (C) 2013-2020 Max Planck Society for the Advancement of Science e.V.
+                        Benjamin Buchfink
+                        Eberhard Karls Universitaet Tuebingen
+						
+Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,14 +20,12 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#ifndef CONST_H_
-#define CONST_H_
-
+#pragma once
 struct Const
 {
 
 	enum {
-		build_version = 134,
+		build_version = 135,
 		seedp_bits = 10,
 		seedp = 1<<seedp_bits,
 		max_seed_weight = 32,
@@ -41,5 +43,3 @@ static constexpr int MAX_CONTEXT = 6;
 // #define FREQUENCY_MASKING
 // #define ST_JOIN
 // #define NO_COLLISION_FILTER
-
-#endif /* CONST_H_ */
