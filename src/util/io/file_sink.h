@@ -1,6 +1,9 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2018 Benjamin Buchfink <buchfink@gmail.com>
+Copyright (C) 2016-2020 Max Planck Society for the Advancement of Science e.V.
+						Benjamin Buchfink
+
+Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,11 +19,10 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#ifndef FILE_SINK_H_
-#define FILE_SINK_H_
-
+#pragma once
 #include <string>
 #include <stdexcept>
+#include <mutex>
 #include "stream_entity.h"
 #include "exceptions.h"
 
@@ -28,9 +30,9 @@ using std::string;
 
 struct FileSink : public StreamEntity
 {
-	FileSink(const string &file_name, const char *mode = "wb");
+	FileSink(const string &file_name, const char *mode = "wb", bool async = false, size_t buffer_size = 0);
 #ifndef _MSC_VER
-	FileSink(const string &file_name, int fd, const char *mode);
+	FileSink(const string &file_name, int fd, const char *mode, bool async = false, size_t buffer_size = 0);
 #endif
 	virtual void close();
 	virtual void write(const char *ptr, size_t count);
@@ -48,7 +50,7 @@ struct FileSink : public StreamEntity
 protected:
 	FILE *f_;
 	const string file_name_;
+	std::mutex mtx_;
+	const bool async_;
 	friend struct FileSource;
 };
-
-#endif

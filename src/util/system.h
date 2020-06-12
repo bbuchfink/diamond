@@ -1,6 +1,10 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2017 Benjamin Buchfink <buchfink@gmail.com>
+Copyright (C) 2013-2020 Max Planck Society for the Advancement of Science e.V.
+                        Benjamin Buchfink
+                        Eberhard Karls Universitaet Tuebingen
+						
+Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,9 +20,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#ifndef SYSTEM_H_
-#define SYSTEM_H_
-
+#pragma once
 #include <stdexcept>
 
 #ifdef _MSC_VER
@@ -38,5 +40,3 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define POSIX_OPEN(x,y,z) open(x,y,z)
 #define POSIX_OPEN2(x,y) open(x,y)
 #endif
-
-#endif /* SYSTEM_H_ */

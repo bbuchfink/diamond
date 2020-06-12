@@ -1,6 +1,10 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2017 Benjamin Buchfink <buchfink@gmail.com>
+Copyright (C) 2013-2020 Max Planck Society for the Advancement of Science e.V.
+                        Benjamin Buchfink
+                        Eberhard Karls Universitaet Tuebingen
+						
+Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,9 +20,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#ifndef TEXT_BUFFER_H_
-#define TEXT_BUFFER_H_
-
+#pragma once
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdexcept>
@@ -28,8 +30,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "util.h"
 #include "algo/varint.h"
 #include "string/string.h"
-
-using std::vector;
 
 struct TextBuffer
 {
@@ -252,5 +252,3 @@ protected:
 	size_t alloc_size_;
 
 };
-
-#endif /* TEXT_BUFFER_H_ */

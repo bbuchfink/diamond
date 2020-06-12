@@ -23,6 +23,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #pragma once
 #include "../util/async_buffer.h"
 #include "../basic/match.h"
+#include "../util/io/deserializer.h"
+#include "../data/reference.h"
 
 #pragma pack(1)
 
@@ -100,6 +102,29 @@ struct hit
 	{
 		s << me.query_ << '\t' << me.subject_ << '\t' << me.seed_offset_ << '\n';
 		return s;
+	}
+	template<typename _it>
+	static size_t read(Deserializer& s, _it it) {
+		const bool l = long_subject_offsets();
+		uint32_t query_id, seed_offset;
+		s.varint = true;
+		s >> query_id >> seed_offset;
+		s.varint = false;
+		Packed_loc subject_loc;
+		size_t count = 0;
+		for (;;) {
+			if (l)
+				s.read(subject_loc);
+			else {
+				uint32_t x;
+				s >> x;
+				subject_loc = x;
+			}
+			if (subject_loc == 0)
+				return count;
+			*it = { query_id, subject_loc, seed_offset };
+			++count;
+		}
 	}
 } PACKED_ATTRIBUTE;
 

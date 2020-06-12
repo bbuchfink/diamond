@@ -26,6 +26,8 @@ struct MemBuffer {
 
 	enum { ALIGN = 32 };
 
+	typedef _t value_type;
+
 	MemBuffer():
 		data_(nullptr),
 		size_(0),

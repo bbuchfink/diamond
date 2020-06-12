@@ -32,6 +32,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../dp/scan_diags.h"
 #include "finger_print.h"
 #include "../util/algo/all_vs_all.h"
+#include "../util/text_buffer.h"
+#include "../util/memory/alignment.h"
+
+using std::vector;
 
 namespace Search {
 namespace DISPATCH_ARCH {
@@ -53,8 +57,10 @@ void search_query_offset(Loc q,
 	const Context& context)
 {
 	// thread_local LongScoreProfile query_profile;
+	thread_local TextBuffer output_buf;
 
 	constexpr auto N = vector<Stage1_hit>::const_iterator::difference_type(::DISPATCH_ARCH::SIMD::Vector<int8_t>::CHANNELS);
+	const bool long_subject_offsets = ::long_subject_offsets();
 	const Letter* query = query_seqs::data_->data(q);
 
 	const Letter* subjects[N];
@@ -68,6 +74,7 @@ void search_query_offset(Loc q,
 	seed_offset = (unsigned)l.second;
 	const int query_len = query_seqs::data_->length(query_id);
 	const int score_cutoff = query_len > config.short_query_max_len ? context.cutoff_table(query_len) : context.short_query_ungapped_cutoff;
+	size_t hit_count = 0;
 	// bool ps = false;
 
 	for (const uint32_t *i = hits; i < hits_end; i += N) {
@@ -83,7 +90,17 @@ void search_query_offset(Loc q,
 				if (left_most_filter(query_clipped, subjects[j], window_left, shapes[sid].length_, context, sid == 0, sid)) {
 					stats.inc(Statistics::TENTATIVE_MATCHES3);
 					//if (config.gapped_filter_evalue2 == 0.0)
-					out.push(hit(query_id, s[*(i + j)], seed_offset));
+					if (hit_count == 0) {
+						output_buf.clear();
+						output_buf.write_varint(query_id);
+						output_buf.write_varint(seed_offset);
+					}
+					if (long_subject_offsets)
+						output_buf.write_raw((const char*)&s[*(i + j)], 5);
+					else
+						output_buf.write(s[*(i + j)].low);
+					//out.push(hit(query_id, s[*(i + j)], seed_offset));
+					++hit_count;
 					/*else {
 						if (!ps) {
 							query_profile.set(query_clipped);
@@ -98,6 +115,13 @@ void search_query_offset(Loc q,
 			}
 	}
 
+	if (hit_count > 0) {
+		if (long_subject_offsets)
+			output_buf.write(packed_uint40_t(0));
+		else
+			output_buf.write((uint32_t)0);
+		out.push(query_id / align_mode.query_contexts, output_buf.get_begin(), output_buf.size(), hit_count);
+	}
 }
 
 struct Stage2 {

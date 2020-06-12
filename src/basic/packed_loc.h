@@ -1,6 +1,10 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2017 Benjamin Buchfink <buchfink@gmail.com>
+Copyright (C) 2013-2020 Max Planck Society for the Advancement of Science e.V.
+                        Benjamin Buchfink
+                        Eberhard Karls Universitaet Tuebingen
+						
+Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,9 +20,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#ifndef PACKED_LOC_H_
-#define PACKED_LOC_H_
-
+#pragma once
 #include <stdint.h>
 #include "../util/system.h"
 
@@ -36,6 +38,11 @@ struct packed_uint40_t
 		high ((uint8_t)(v>>32)),
 		low ((uint32_t)(v&0xfffffffflu))
 	{ }
+	packed_uint40_t& operator=(uint32_t x) {
+		high = 0;
+		low = x;
+		return *this;
+	}
 	operator uint64_t() const
 	{ return (uint64_t(high) << 32) | low; }
 	bool operator<(const packed_uint40_t &rhs) const
@@ -49,4 +56,3 @@ typedef size_t Loc;
 
 #pragma pack()
 
-#endif /* PACKED_LOC_H_ */
