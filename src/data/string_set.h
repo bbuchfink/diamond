@@ -1,6 +1,10 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2017 Benjamin Buchfink <buchfink@gmail.com>
+Copyright (C) 2013-2020 Max Planck Society for the Advancement of Science e.V.
+                        Benjamin Buchfink
+                        Eberhard Karls Universitaet Tuebingen
+						
+Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,9 +20,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#ifndef STRING_SET_H_
-#define STRING_SET_H_
-
+#pragma once
 #include <assert.h>
 #include <vector>
 #include <stddef.h>
@@ -113,11 +115,17 @@ struct String_set
 		return ptr(i);
 	}
 
+	typename std::vector<size_t>::const_iterator limits_begin() const {
+		return limits_.begin();
+	}
+
+	typename std::vector<size_t>::const_iterator limits_end() const {
+		return limits_.end();
+	}
+
 private:
 
 	std::vector<_t> data_;
 	std::vector<size_t> limits_;
 
 };
-
-#endif /* STRING_SET_H_ */

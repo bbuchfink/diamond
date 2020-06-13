@@ -106,7 +106,7 @@ void QueryMapper::init()
 
 unsigned QueryMapper::count_targets()
 {
-	std::sort(source_hits.first, source_hits.second, hit::cmp_subject);
+	std::sort(source_hits.first, source_hits.second, hit::CmpSubject());
 	const size_t n = source_hits.second - source_hits.first;
 	const hit* hits = source_hits.first;
 	size_t subject_id = std::numeric_limits<size_t>::max();

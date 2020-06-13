@@ -1,6 +1,8 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2018 Benjamin Buchfink <buchfink@gmail.com>
+Copyright (C) 2020 Max Planck Society for the Advancement of Science e.V.
+
+Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,16 +18,15 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#ifndef RADIX_SORT_H_
-#define RADIX_SORT_H_
-
+#pragma once
 #include <utility>
 #include <stdint.h>
 #include "radix_cluster.h"
 #include "../math/integer.h"
 
-template<typename _t>
+template<typename _t, typename _get_key>
 void radix_sort(_t* begin, _t* end, uint32_t max_key) {
+	typedef typename _t::Key Key;
 	const size_t n = end - begin;
 	if (n <= 1)
 		return;
@@ -34,7 +35,7 @@ void radix_sort(_t* begin, _t* end, uint32_t max_key) {
 
 	_t* in = begin, * out = buf;
 	for (uint32_t i = 0; i < rounds; ++i) {
-		parallel_radix_cluster(Relation<_t>(in, n), i * config.radix_bits, out);
+		parallel_radix_cluster<_t, _get_key>(Relation<_t>(in, n), i * config.radix_bits, out);
 		std::swap(in, out);
 	}
 
@@ -43,5 +44,3 @@ void radix_sort(_t* begin, _t* end, uint32_t max_key) {
 
 	delete[] buf;
 }
-
-#endif

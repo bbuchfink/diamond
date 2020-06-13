@@ -18,6 +18,9 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
+#include <algorithm>
+#include <utility>
+#include <math.h>
 #include "extend.h"
 #include "../data/queries.h"
 #include "../basic/config.h"
@@ -30,24 +33,42 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 using std::vector;
 using std::list;
 using std::array;
+using std::pair;
 
 namespace Extension {
 
-void load_hits(hit* begin, hit* end, FlatArray<SeedHit> &hits, vector<size_t> &target_block_ids) {
+void load_hits(hit* begin, hit* end, FlatArray<SeedHit> &hits, vector<uint32_t> &target_block_ids) {
 	hits.clear();
 	target_block_ids.clear();
 	if (begin >= end)
 		return;
-	std::sort(begin, end, hit::cmp_subject);
-	size_t target = SIZE_MAX;
-	for (hit* i = begin; i < end; ++i) {
-		std::pair<size_t, size_t> l = ref_seqs::data_->local_position(i->subject_);
-		if (l.first != target) {
-			hits.next();
-			target = l.first;
-			target_block_ids.push_back(target);
+	std::sort(begin, end, hit::CmpSubject());
+	const size_t total_subjects = ref_seqs::get().get_length();
+	if (std::log2(total_subjects) * (end - begin) < total_subjects / 10 ) {
+		size_t target = SIZE_MAX;
+		for (hit* i = begin; i < end; ++i) {
+			std::pair<size_t, size_t> l = ref_seqs::data_->local_position(i->subject_);
+			if (l.first != target) {
+				hits.next();
+				target = l.first;
+				target_block_ids.push_back((uint32_t)target);
+			}
+			hits.push_back({ (int)i->seed_offset_, (int)l.second, i->query_ % align_mode.query_contexts });
 		}
-		hits.push_back({ (int)i->seed_offset_, (int)l.second, i->query_ % align_mode.query_contexts });
+	} else {
+		typename vector<size_t>::const_iterator limit_begin = ref_seqs::get().limits_begin(), it = limit_begin;
+		uint32_t target = UINT32_MAX;
+		for (const hit* i = begin; i < end; ++i) {
+			const size_t subject_offset = i->subject_;
+			while (*it <= subject_offset) ++it;
+			uint32_t t = (uint32_t)(it - limit_begin) - 1;
+			if (t != target) {
+				hits.next();
+				target_block_ids.push_back(t);
+				target = t;
+			}
+			hits.push_back({ (int)i->seed_offset_, (int)(subject_offset - *(it - 1)), i->query_ % align_mode.query_contexts });
+		}
 	}
 }
 
@@ -74,7 +95,7 @@ vector<Match> extend(const Parameters &params, size_t query_id, hit* begin, hit*
 
 	timer.go("Loading seed hits");
 	thread_local FlatArray<SeedHit> seed_hits;
-	thread_local vector<size_t> target_block_ids;
+	thread_local vector<uint32_t> target_block_ids;
 	load_hits(begin, end, seed_hits, target_block_ids);
 	stat.inc(Statistics::TARGET_HITS0, target_block_ids.size());
 	stat.inc(Statistics::TIME_LOAD_HIT_TARGETS, timer.microseconds());

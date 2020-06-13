@@ -80,7 +80,7 @@ int gapped_filter(const SeedHit &hit, const LongScoreProfile *query_profile, con
 	return DP::diag_alignment(scores, band);
 }
 
-bool gapped_filter(const SeedHit *begin, const SeedHit *end, const LongScoreProfile *query_profile, size_t target_block_id, Statistics &stat, const Parameters &params) {
+bool gapped_filter(const SeedHit *begin, const SeedHit *end, const LongScoreProfile *query_profile, uint32_t target_block_id, Statistics &stat, const Parameters &params) {
 	constexpr int window1 = 100;
 		
 	const int qlen = (int)query_profile->length();
@@ -98,7 +98,7 @@ bool gapped_filter(const SeedHit *begin, const SeedHit *end, const LongScoreProf
 	return false;
 }
 
-void gapped_filter_worker(size_t i, size_t thread_id, const LongScoreProfile *query_profile, const FlatArray<SeedHit>* seed_hits, const size_t* target_block_ids, FlatArray<SeedHit>* out, vector<size_t> *target_ids_out, mutex* mtx, const Parameters *params) {
+void gapped_filter_worker(size_t i, size_t thread_id, const LongScoreProfile *query_profile, const FlatArray<SeedHit>* seed_hits, const uint32_t* target_block_ids, FlatArray<SeedHit>* out, vector<uint32_t> *target_ids_out, mutex* mtx, const Parameters *params) {
 	thread_local Statistics stat;
 	if (gapped_filter(seed_hits->begin(i), seed_hits->end(i), query_profile, target_block_ids[i], stat, *params)) {
 		std::lock_guard<mutex> guard(*mtx);
@@ -107,7 +107,7 @@ void gapped_filter_worker(size_t i, size_t thread_id, const LongScoreProfile *qu
 	}
 }
 
-void gapped_filter(const sequence* query, const Bias_correction* query_cbs, FlatArray<SeedHit>& seed_hits, std::vector<size_t>& target_block_ids, Statistics& stat, int flags, const Parameters &params) {
+void gapped_filter(const sequence* query, const Bias_correction* query_cbs, FlatArray<SeedHit>& seed_hits, std::vector<uint32_t>& target_block_ids, Statistics& stat, int flags, const Parameters &params) {
 	if (seed_hits.size() == 0)
 		return;
 	vector<LongScoreProfile> query_profile;
@@ -116,7 +116,7 @@ void gapped_filter(const sequence* query, const Bias_correction* query_cbs, Flat
 		query_profile.emplace_back(query[i], query_cbs[i]);
 	
 	FlatArray<SeedHit> hits_out;
-	vector<size_t> target_ids_out;
+	vector<uint32_t> target_ids_out;
 	
 	if(flags & TARGET_PARALLEL) {
 		mutex mtx;

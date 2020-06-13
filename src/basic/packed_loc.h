@@ -45,6 +45,15 @@ struct packed_uint40_t
 	}
 	operator uint64_t() const
 	{ return (uint64_t(high) << 32) | low; }
+	operator int64_t() const {
+		return (int64_t(high) << 32) | (int64_t)low;
+	}
+	operator uint32_t() const {
+		return low;
+	}
+	bool operator==(const packed_uint40_t& rhs) const {
+		return high == rhs.high && low == rhs.low;
+	}
 	bool operator<(const packed_uint40_t &rhs) const
 	{ return high < rhs.high || (high == rhs.high && low < rhs.low); }
 	friend uint64_t operator-(const packed_uint40_t &x, const packed_uint40_t &y)

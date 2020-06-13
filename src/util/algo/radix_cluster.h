@@ -1,6 +1,9 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2018 Benjamin Buchfink <buchfink@gmail.com>
+Copyright (C) 2016-2020 Max Planck Society for the Advancement of Science e.V.
+                        Benjamin Buchfink
+						
+Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,9 +19,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#ifndef RADIX_CLUSTER_H_
-#define RADIX_CLUSTER_H_
-
+#pragma once
 #include <string.h>
 #include <thread>
 #include <algorithm>
@@ -47,25 +48,28 @@ struct Relation
 	}
 };
 
+template<typename _t>
 struct ExtractBits
 {
-	ExtractBits(unsigned n, unsigned shift) :
+	ExtractBits(_t n, uint32_t shift) :
 		shift(shift),
 		mask(n - 1)
 	{}
-	unsigned operator()(unsigned x) const
+	_t operator()(_t x) const
 	{
 		return (x >> shift) & mask;
 	}
-	unsigned shift, mask;
+	uint32_t shift;
+	_t mask;
 };
 
 template<typename _t>
 void radix_cluster(const Relation<_t> &in, unsigned shift, _t *out, unsigned *hst)
 {
+	typedef typename _t::Key Key;
 	static const size_t BUF_SIZE = 8;
 	const unsigned clusters = 1 << config.radix_bits;
-	ExtractBits radix(clusters, shift);
+	ExtractBits<Key> radix(clusters, shift);
 
 	memset(hst, 0, clusters*sizeof(unsigned));
 	for (const _t *i = in.data; i < in.end(); ++i)
@@ -102,29 +106,32 @@ void radix_cluster(const Relation<_t> &in, unsigned shift, _t *out, unsigned *hs
 	}
 }
 
-template<typename _t>
+template<typename _t, typename _get_key>
 void parallel_radix_cluster_build_hst(Relation<_t> in, uint32_t shift, size_t* hst)
 {
-	const unsigned clusters = 1 << config.radix_bits;
-	ExtractBits radix(clusters, shift);
+	typedef typename _t::Key Key;
+	const Key clusters = (Key)1 << config.radix_bits;
+	ExtractBits<Key> radix(clusters, shift);
 	for (const _t* i = in.data; i < in.end(); ++i)
-		++hst[radix((uint32_t)*i)];
+		++hst[radix(_get_key()(*i))];
 }
 
-template<typename _t>
+template<typename _t, typename _get_key>
 void parallel_radix_cluster_scatter(Relation<_t> in, uint32_t shift, size_t* hst, _t* out) {
-	const unsigned clusters = 1 << config.radix_bits;
-	ExtractBits radix(clusters, shift);
+	typedef typename _t::Key Key;
+	const Key clusters = (Key)1 << config.radix_bits;
+	ExtractBits<Key> radix(clusters, shift);
 	for (const _t* i = in.data; i < in.end(); ++i) {
-		const unsigned r = radix((uint32_t)*i);
+		const unsigned r = radix(_get_key()(*i));
 		out[hst[r]++] = *i;
 	}
 }
 
-template<typename _t>
+template<typename _t, typename _get_key>
 void parallel_radix_cluster(const Relation<_t>& in, uint32_t shift, _t* out)
 {
-	const unsigned clusters = 1 << config.radix_bits;
+	typedef typename _t::Key Key;
+	const Key clusters = (Key)1 << config.radix_bits;
 	std::vector<size_t> hst(clusters, 0);
 		
 	const size_t nt = config.threads_;
@@ -136,7 +143,7 @@ void parallel_radix_cluster(const Relation<_t>& in, uint32_t shift, _t* out)
 		thread_hst.emplace_back(clusters, 0);
 	std::vector<std::thread> threads;
 	for (unsigned i = 0; i < nt; ++i) {
-		threads.emplace_back(parallel_radix_cluster_build_hst<_t>, in.part(p.getMin(i), p.getCount(i)), shift, thread_hst[i].data());
+		threads.emplace_back(parallel_radix_cluster_build_hst<_t, _get_key>, in.part(p.getMin(i), p.getCount(i)), shift, thread_hst[i].data());
 	}
 	for (unsigned i = 0; i < nt; ++i) {
 		threads[i].join();
@@ -160,9 +167,7 @@ void parallel_radix_cluster(const Relation<_t>& in, uint32_t shift, _t* out)
 
 	threads.clear();
 	for (unsigned i = 0; i < nt; ++i)
-		threads.emplace_back(parallel_radix_cluster_scatter<_t>, in.part(p.getMin(i), p.getCount(i)), shift, thread_hst[i].data(), out);
+		threads.emplace_back(parallel_radix_cluster_scatter<_t, _get_key>, in.part(p.getMin(i), p.getCount(i)), shift, thread_hst[i].data(), out);
 	for (unsigned i = 0; i < nt; ++i)
 		threads[i].join();
 }
-
-#endif

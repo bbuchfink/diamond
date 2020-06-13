@@ -31,6 +31,7 @@ struct SeedArray
 
 	struct Entry
 	{
+		typedef uint32_t Key;
 		Entry() :
 			key(),
 			value()
@@ -39,7 +40,7 @@ struct SeedArray
 			key(key),
 			value(value)
 		{ }
-		unsigned key;
+		uint32_t key;
 		_pos value;
 		typedef _pos Value;
 	} PACKED_ATTRIBUTE;

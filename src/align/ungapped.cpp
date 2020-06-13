@@ -43,7 +43,7 @@ using std::mutex;
 
 namespace Extension {
 
-WorkTarget ungapped_stage(SeedHit *begin, SeedHit *end, const sequence *query_seq, const Bias_correction *query_cb, size_t block_id) {
+WorkTarget ungapped_stage(SeedHit *begin, SeedHit *end, const sequence *query_seq, const Bias_correction *query_cb, uint32_t block_id) {
 	array<vector<Diagonal_segment>, MAX_CONTEXT> diagonal_segments;
 	WorkTarget target(block_id, ref_seqs::get()[block_id]);
 	std::sort(begin, end);
@@ -68,7 +68,7 @@ WorkTarget ungapped_stage(SeedHit *begin, SeedHit *end, const sequence *query_se
 	return target;
 }
 
-void ungapped_stage_worker(size_t i, size_t thread_id, const sequence *query_seq, const Bias_correction *query_cb, FlatArray<SeedHit> *seed_hits, const size_t *target_block_ids, vector<WorkTarget> *out, mutex *mtx) {
+void ungapped_stage_worker(size_t i, size_t thread_id, const sequence *query_seq, const Bias_correction *query_cb, FlatArray<SeedHit> *seed_hits, const uint32_t*target_block_ids, vector<WorkTarget> *out, mutex *mtx) {
 	WorkTarget target = ungapped_stage(seed_hits->begin(i), seed_hits->end(i), query_seq, query_cb, target_block_ids[i]);
 	{
 		std::lock_guard<mutex> guard(*mtx);
@@ -76,7 +76,7 @@ void ungapped_stage_worker(size_t i, size_t thread_id, const sequence *query_seq
 	}
 }
 
-vector<WorkTarget> ungapped_stage(const sequence *query_seq, const Bias_correction *query_cb, FlatArray<SeedHit> &seed_hits, const size_t *target_block_ids, int flags) {
+vector<WorkTarget> ungapped_stage(const sequence *query_seq, const Bias_correction *query_cb, FlatArray<SeedHit> &seed_hits, const uint32_t *target_block_ids, int flags) {
 	vector<WorkTarget> targets;
 	if (seed_hits.size() == 0)
 		return targets;

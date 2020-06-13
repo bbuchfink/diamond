@@ -53,10 +53,10 @@ void hash_table_join(
 	DoubleArray<typename _t::Value> &dst_r,
 	DoubleArray<typename _t::Value> &dst_s)
 {
-	typedef HashTable<unsigned, RelPtr, ExtractBits> Table;
+	typedef HashTable<unsigned, RelPtr, ExtractBits<uint32_t>> Table;
 	
 	uint32_t N = (uint32_t)next_power_of_2(R.n * config.join_ht_factor);
-	Table table(N, ExtractBits(N, shift));
+	Table table(N, ExtractBits<uint32_t>(N, shift));
 	typename Table::Entry *p;
 
 	for (_t *i = R.data; i < R.end(); ++i) {
@@ -117,7 +117,7 @@ void table_join(
 	DoubleArray<typename _t::Value> &dst_s)
 {
 	const unsigned keys = 1 << (total_bits - shift);
-	ExtractBits key(keys, shift);
+	ExtractBits<uint32_t> key(keys, shift);
 	RelPtr *table = (RelPtr*)calloc(keys, sizeof(RelPtr));
 	RelPtr *p;
 

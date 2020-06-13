@@ -113,12 +113,13 @@ struct Async_buffer
 			data_next_ = nullptr;
 			return;
 		}
-		size_t size = count_[bins_processed_], end = bins_processed_ + 1, current_size;
+		size_t size = count_[bins_processed_], end = bins_processed_ + 1, current_size, disk_size = 0;
 		while (end < bins_ && (size + (current_size = count_[end])) * sizeof(_t) < max_size) {
 			size += current_size;
+			disk_size += tmp_file_[end].tell();
 			++end;
 		}
-		log_stream << "Async_buffer.load() " << size << "(" << (double)size * sizeof(_t) / (1 << 30) << " GB)" << std::endl;
+		log_stream << "Async_buffer.load() " << size << "(" << (double)size * sizeof(_t) / (1 << 30) << " GB, " << (double)disk_size / (1 << 30) << " GB on disk)" << std::endl;
 		total_size_ += size;
 		data_next_ = new std::vector<_t>;
 		data_next_->reserve(size);

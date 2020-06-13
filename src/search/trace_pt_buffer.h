@@ -1,9 +1,9 @@
 /****
 DIAMOND protein aligner
 Copyright (C) 2013-2020 Max Planck Society for the Advancement of Science e.V.
-                        Benjamin Buchfink
-                        Eberhard Karls Universitaet Tuebingen
-						
+						Benjamin Buchfink
+						Eberhard Karls Universitaet Tuebingen
+
 Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
 
 This program is free software: you can redistribute it and/or modify
@@ -31,9 +31,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 struct hit
 {
 	typedef uint32_t Seed_offset;
+	typedef uint32_t Key;
 
-	unsigned	query_;
-	Packed_loc	subject_;
+	uint32_t query_;
+	Packed_loc subject_;
 	Seed_offset	seed_offset_;
 	hit() :
 		query_(),
@@ -45,17 +46,13 @@ struct hit
 		subject_(subject),
 		seed_offset_(seed_offset)
 	{ }
-	operator uint32_t() const
-	{
-		return query_;
-	}
-	bool operator<(const hit &rhs) const
+	bool operator<(const hit& rhs) const
 	{
 		return query_ < rhs.query_;
 	}
 	bool blank() const
 	{
-		return subject_ == 0;
+		return uint64_t(subject_) == 0;
 	}
 	unsigned operator%(unsigned i) const
 	{
@@ -85,11 +82,23 @@ struct hit
 			return query_id<_d>(x);
 		}
 	};
-	static bool cmp_subject(const hit &lhs, const hit &rhs)
-	{
-		return lhs.subject_ < rhs.subject_
-			|| (lhs.subject_ == rhs.subject_ && lhs.seed_offset_ < rhs.seed_offset_);
-	}
+	struct Query {
+		unsigned operator()(const hit& h) const {
+			return h.query_;
+		}
+	};
+	struct Subject {
+		Packed_loc operator()(const hit& h) const {
+			return h.subject_;
+		}
+	};
+	struct CmpSubject {
+		bool operator()(const hit& lhs, const hit& rhs) const
+		{
+			return lhs.subject_ < rhs.subject_
+				|| (lhs.subject_ == rhs.subject_ && lhs.seed_offset_ < rhs.seed_offset_);
+		}
+	};
 	static bool cmp_normalized_subject(const hit &lhs, const hit &rhs)
 	{
 		const uint64_t x = (uint64_t)lhs.subject_ + (uint64_t)rhs.seed_offset_, y = (uint64_t)rhs.subject_ + (uint64_t)lhs.seed_offset_;
@@ -100,7 +109,7 @@ struct hit
 	}
 	friend std::ostream& operator<<(std::ostream &s, const hit &me)
 	{
-		s << me.query_ << '\t' << me.subject_ << '\t' << me.seed_offset_ << '\n';
+		s << me.query_ << '\t' << uint64_t(me.subject_) << '\t' << me.seed_offset_ << '\n';
 		return s;
 	}
 	template<typename _it>
@@ -120,7 +129,7 @@ struct hit
 				s >> x;
 				subject_loc = x;
 			}
-			if (subject_loc == 0)
+			if (uint64_t(subject_loc) == 0)
 				return count;
 			*it = { query_id, subject_loc, seed_offset };
 			++count;
