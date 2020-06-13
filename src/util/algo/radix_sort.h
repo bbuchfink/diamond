@@ -25,7 +25,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../math/integer.h"
 
 template<typename _t, typename _get_key>
-void radix_sort(_t* begin, _t* end, uint32_t max_key) {
+void radix_sort(_t* begin, _t* end, uint32_t max_key, size_t threads) {
 	typedef typename _t::Key Key;
 	const size_t n = end - begin;
 	if (n <= 1)
@@ -35,7 +35,14 @@ void radix_sort(_t* begin, _t* end, uint32_t max_key) {
 
 	_t* in = begin, * out = buf;
 	for (uint32_t i = 0; i < rounds; ++i) {
-		parallel_radix_cluster<_t, _get_key>(Relation<_t>(in, n), i * config.radix_bits, out);
+		if(threads > 1)
+			parallel_radix_cluster<_t, _get_key>(Relation<_t>(in, n), i * config.radix_bits, out, threads);
+		else {
+			unsigned *hst = new unsigned[1 << config.radix_bits];
+			radix_cluster< _t, _get_key>(Relation<_t>(in, n), i * config.radix_bits, out, hst);
+			delete[] hst;
+		}
+
 		std::swap(in, out);
 	}
 

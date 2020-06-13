@@ -29,6 +29,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../dp/dp.h"
 #include "../util/log_stream.h"
 #include "../data/reference.h"
+#include "../util/algo/radix_sort.h"
 
 using std::vector;
 using std::list;
@@ -42,7 +43,8 @@ void load_hits(hit* begin, hit* end, FlatArray<SeedHit> &hits, vector<uint32_t> 
 	target_block_ids.clear();
 	if (begin >= end)
 		return;
-	std::sort(begin, end, hit::CmpSubject());
+	//std::sort(begin, end, hit::CmpSubject());
+	radix_sort<hit, hit::Subject>(begin, end, ref_seqs::get().raw_len(), 1);
 	const size_t total_subjects = ref_seqs::get().get_length();
 	if (std::log2(total_subjects) * (end - begin) < total_subjects / 10 ) {
 		size_t target = SIZE_MAX;

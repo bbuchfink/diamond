@@ -63,7 +63,7 @@ struct ExtractBits
 	_t mask;
 };
 
-template<typename _t>
+template<typename _t, typename _get_key>
 void radix_cluster(const Relation<_t> &in, unsigned shift, _t *out, unsigned *hst)
 {
 	typedef typename _t::Key Key;
@@ -73,7 +73,7 @@ void radix_cluster(const Relation<_t> &in, unsigned shift, _t *out, unsigned *hs
 
 	memset(hst, 0, clusters*sizeof(unsigned));
 	for (const _t *i = in.data; i < in.end(); ++i)
-		++hst[radix(i->key)];
+		++hst[radix(_get_key()(*i))];
 	unsigned sum = 0;
 	for (unsigned i = 0; i < clusters; ++i) {
 		const unsigned c = hst[i];
@@ -87,7 +87,7 @@ void radix_cluster(const Relation<_t> &in, unsigned shift, _t *out, unsigned *hs
 		memset(buf_n, 0, clusters*sizeof(unsigned));
 
 		for (const _t *i = in.data; i < in.end(); ++i) {
-			const unsigned r = radix(i->key);
+			const unsigned r = radix(_get_key()(*i));
 			buf[r*BUF_SIZE + buf_n[r]++] = *i;	
 			if (buf_n[r] == BUF_SIZE) {
 				memcpy(out + hst[r], buf + r*BUF_SIZE, BUF_SIZE*sizeof(_t));
@@ -100,7 +100,7 @@ void radix_cluster(const Relation<_t> &in, unsigned shift, _t *out, unsigned *hs
 	}
 	else {
 		for (const _t *i = in.data; i < in.end(); ++i) {
-			const unsigned r = radix(i->key);
+			const unsigned r = radix(_get_key()(*i));
 			out[hst[r]++] = *i;
 		}
 	}
@@ -128,13 +128,13 @@ void parallel_radix_cluster_scatter(Relation<_t> in, uint32_t shift, size_t* hst
 }
 
 template<typename _t, typename _get_key>
-void parallel_radix_cluster(const Relation<_t>& in, uint32_t shift, _t* out)
+void parallel_radix_cluster(const Relation<_t>& in, uint32_t shift, _t* out, size_t thread_count)
 {
 	typedef typename _t::Key Key;
 	const Key clusters = (Key)1 << config.radix_bits;
 	std::vector<size_t> hst(clusters, 0);
 		
-	const size_t nt = config.threads_;
+	const size_t nt = thread_count;
 	::partition<size_t> p(in.n, nt);
 	
 	std::vector<std::vector<size_t>> thread_hst;

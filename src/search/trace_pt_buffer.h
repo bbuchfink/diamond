@@ -31,7 +31,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 struct hit
 {
 	typedef uint32_t Seed_offset;
-	typedef uint32_t Key;
+	typedef uint64_t Key;
 
 	uint32_t query_;
 	Packed_loc subject_;
@@ -88,7 +88,7 @@ struct hit
 		}
 	};
 	struct Subject {
-		Packed_loc operator()(const hit& h) const {
+		uint64_t operator()(const hit& h) const {
 			return h.subject_;
 		}
 	};

@@ -192,8 +192,8 @@ void hash_join(
 	else {
 		const unsigned clusters = 1 << config.radix_bits;
 		unsigned *hstR = new unsigned[clusters], *hstS = new unsigned[clusters];
-		radix_cluster(R, shift, dst_r, hstR);
-		radix_cluster(S, shift, dst_s, hstS);
+		radix_cluster<_t, typename _t::GetKey>(R, shift, dst_r, hstR);
+		radix_cluster<_t, typename _t::GetKey>(S, shift, dst_s, hstS);
 
 		shift += config.radix_bits;
 		hash_join(Relation<_t>(dst_r, hstR[0]), Relation<_t>(dst_s, hstS[0]), R.data, S.data, out_r, out_s, total_bits, shift);
