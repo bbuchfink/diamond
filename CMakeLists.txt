@@ -10,6 +10,7 @@ option(STRICT_BAND "STRICT_BAND" ON)
 option(LEFTMOST_SEED_FILTER "LEFTMOST_SEED_FILTER" ON)
 option(SEQ_MASK "SEQ_MASK" ON)
 option(DP_STAT "DP_STAT" OFF)
+option(HIT_SCORES "HIT_SCORES" OFF)
 set(MAX_SHAPE_LEN 19)
 
 if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(arm.*|ARM.*)")
@@ -30,6 +31,10 @@ endif()
 
 if(STRICT_BAND)
   add_definitions(-DSTRICT_BAND)
+endif()
+
+if(HIT_SCORES)
+  add_definitions(-DHIT_SCORES)
 endif()
 
 if(SEQ_MASK)

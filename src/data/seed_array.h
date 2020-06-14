@@ -31,7 +31,6 @@ struct SeedArray
 
 	struct Entry
 	{
-		typedef uint32_t Key;
 		Entry() :
 			key(),
 			value()

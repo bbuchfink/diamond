@@ -52,6 +52,10 @@ struct FlatArray {
 		limits_.push_back(0);
 	}
 
+	void reserve(size_t n) {
+		data_.reserve(n);
+	}
+
 	size_t size() const {
 		return limits_.size() - 1;
 	}

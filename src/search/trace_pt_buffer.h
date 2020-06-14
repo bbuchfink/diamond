@@ -1,9 +1,9 @@
 /****
 DIAMOND protein aligner
 Copyright (C) 2013-2020 Max Planck Society for the Advancement of Science e.V.
-						Benjamin Buchfink
-						Eberhard Karls Universitaet Tuebingen
-
+                        Benjamin Buchfink
+                        Eberhard Karls Universitaet Tuebingen
+						
 Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
 
 This program is free software: you can redistribute it and/or modify
@@ -21,6 +21,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #pragma once
+#include <stdint.h>
 #include "../util/async_buffer.h"
 #include "../basic/match.h"
 #include "../util/io/deserializer.h"
@@ -36,15 +37,21 @@ struct hit
 	uint32_t query_;
 	Packed_loc subject_;
 	Seed_offset	seed_offset_;
+#ifdef HIT_SCORES
+	uint16_t score_;
+#endif
 	hit() :
 		query_(),
 		subject_(),
 		seed_offset_()
 	{ }
-	hit(unsigned query, Packed_loc subject, Seed_offset seed_offset) :
+	hit(unsigned query, Packed_loc subject, Seed_offset seed_offset, uint16_t score = 0) :
 		query_(query),
 		subject_(subject),
 		seed_offset_(seed_offset)
+#ifdef HIT_SCORES
+		,score_(score)
+#endif
 	{ }
 	bool operator<(const hit& rhs) const
 	{
@@ -118,20 +125,26 @@ struct hit
 		uint32_t query_id, seed_offset;
 		s.varint = true;
 		s >> query_id >> seed_offset;
-		s.varint = false;
 		Packed_loc subject_loc;
 		size_t count = 0;
+		uint32_t x;
 		for (;;) {
+			s.varint = false;
 			if (l)
 				s.read(subject_loc);
 			else {
-				uint32_t x;
 				s >> x;
 				subject_loc = x;
 			}
 			if (uint64_t(subject_loc) == 0)
 				return count;
-			*it = { query_id, subject_loc, seed_offset };
+#ifdef HIT_SCORES
+			s.varint = true;
+			s >> x;
+			*it = { query_id, subject_loc, seed_offset, (uint16_t)x };
+#else
+			* it = { query_id, subject_loc, seed_offset };
+#endif			
 			++count;
 		}
 	}
