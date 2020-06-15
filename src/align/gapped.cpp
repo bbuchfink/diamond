@@ -144,7 +144,13 @@ vector<Target> align(const vector<WorkTarget> &targets, const sequence *query_se
 			r[hsp.front().swipe_target].add_hit(hsp, hsp.begin());
 	}
 
-	return r;
+	vector<Target> r2;
+	r2.reserve(r.size());
+	for (vector<Target>::iterator i = r.begin(); i != r.end(); ++i)
+		if (i->filter_score > 0)
+			r2.push_back(std::move(*i));
+
+	return r2;
 }
 
 void add_dp_targets(const Target &target, int target_idx, const sequence *query_seq, array<array<vector<DpTarget>, 2>, MAX_CONTEXT> &dp_targets) {
