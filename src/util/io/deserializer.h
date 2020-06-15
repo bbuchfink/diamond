@@ -87,6 +87,7 @@ struct Deserializer
 
 	Deserializer& operator>>(std::string &s)
 	{
+		s.clear();
 		if (!read_to(std::back_inserter(s), '\0'))
 			throw EndOfStream();
 		return *this;
