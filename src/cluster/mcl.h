@@ -28,7 +28,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <fstream>
 #include <limits>
 #include <atomic>
-#include <mutex>
 #include "../util/system/system.h"
 #include "../util/util.h"
 #include "../basic/config.h"
@@ -78,22 +77,19 @@ class SparseMatrixStream : public Consumer {
 	size_t n;
 	vector<Eigen::Triplet<T>> data;
 	LazyDisjointSet<uint32_t>* disjointSet;
-	mutex mutex;
 	virtual void consume(const char *ptr, size_t n) override {
 		const char *end = ptr + n;
 		if (n >= sizeof(uint32_t)) {
 			assert((n - sizeof(uint32_t)) % (sizeof(uint32_t)+sizeof(double)) == 0);
 			uint32_t query = *(uint32_t*) ptr;
 			ptr += sizeof(uint32_t);
-			while (ptr < end) {
+			while (ptr + (sizeof(uint32_t)+sizeof(double)) <= end) {
 				const uint32_t subject = *(uint32_t*) ptr;
 				ptr += sizeof(uint32_t);
 				const double value = *(double*) ptr;
 				ptr += sizeof(double);
-				mutex.lock();
 				data.emplace_back(query, subject, value);
 				disjointSet->merge(query, subject);
-				mutex.unlock();
 			}
 		}
 	}
