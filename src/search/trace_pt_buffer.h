@@ -133,7 +133,7 @@ struct hit
 			if (l)
 				s.read(subject_loc);
 			else {
-				s >> x;
+				s.read(x);
 				subject_loc = x;
 			}
 			if (uint64_t(subject_loc) == 0)
