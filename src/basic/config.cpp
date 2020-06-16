@@ -155,6 +155,7 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("cluster-similarity", 0, "Clustering similarity measure", cluster_similarity)
 		("mcl-expansion", 0, "MCL expansion coefficient (default=2)", cluster_mcl_expansion, (uint32_t) 2)
 		("mcl-inflation", 0, "MCL inflation coefficient (default=2.0)", cluster_mcl_inflation, 2.0)
+		("mcl-chunk-size", 0, "MCL chunk size per thread (default=100)", cluster_mcl_chunk_size, (uint32_t) 100)
 		("mcl-sparsity-switch", 0, "MCL switch to sparse matrix computation (default=0.8) ", cluster_mcl_sparsity_switch, 0.8);
 
 	Options_group aligner("Aligner options");

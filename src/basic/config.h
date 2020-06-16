@@ -235,6 +235,7 @@ struct Config
 	uint32_t cluster_mcl_expansion;
 	double cluster_mcl_sparsity_switch;
 	string	cluster_similarity;
+	uint32_t cluster_mcl_chunk_size;
 
 	enum { query_parallel = 0, target_parallel = 1 };
 	unsigned load_balancing;

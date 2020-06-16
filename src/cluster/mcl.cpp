@@ -354,7 +354,7 @@ void MCL::run(){
 	fill(clustering_result, clustering_result+db->ref_header.sequences, 0UL);
 
 	// note that the disconnected components are sorted by size
-	const uint32_t chunk_size = 100;
+	const uint32_t chunk_size = config.cluster_mcl_chunk_size;
 	const uint32_t max_counter = nComponents;
 	uint32_t nThreads = min(config.threads_, nComponents / chunk_size);
 	const float inflation = (float) config.cluster_mcl_inflation;
