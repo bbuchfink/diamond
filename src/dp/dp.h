@@ -1,6 +1,9 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2019 Benjamin Buchfink <buchfink@gmail.com>
+Copyright (C) 2016-2020 Max Planck Society for the Advancement of Science e.V.
+                        Benjamin Buchfink
+						
+Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,9 +19,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#ifndef DP_H_
-#define DP_H_
-
+#pragma once
 #include <list>
 #include <vector>
 #include "../basic/sequence.h"
@@ -209,7 +210,7 @@ namespace DP {
 struct Traceback {};
 struct ScoreOnly {};
 
-enum { TRACEBACK = 1, PARALLEL = 2 };
+enum { TRACEBACK = 1, PARALLEL = 2, FULL_MATRIX = 4 };
 
 struct NoCBS {
 	constexpr void* operator[](int i) const { return nullptr; }
@@ -217,7 +218,7 @@ struct NoCBS {
 	
 namespace Swipe {
 
-DECL_DISPATCH(std::list<Hsp>, swipe, (const sequence &query, const sequence *subject_begin, const sequence *subject_end, int score_cutoff))
+//DECL_DISPATCH(std::list<Hsp>, swipe, (const sequence &query, const sequence *subject_begin, const sequence *subject_end, int score_cutoff))
 
 }
 
@@ -235,5 +236,3 @@ void anchored_3frame_dp(const TranslatedSequence &query, sequence &subject, cons
 int sw_3frame(const TranslatedSequence &query, Strand strand, const sequence &subject, int gap_open, int gap_extend, int frame_shift, Hsp &out);
 
 DECL_DISPATCH(std::list<Hsp>, banded_3frame_swipe, (const TranslatedSequence &query, Strand strand, vector<DpTarget>::iterator target_begin, vector<DpTarget>::iterator target_end, DpStat &stat, bool score_only, bool parallel))
-
-#endif

@@ -130,10 +130,12 @@ vector<Target> extend(const Parameters& params,
 	if ((flags & TARGET_PARALLEL) == 0)
 		stat.inc(Statistics::TIME_CHAINING, timer.microseconds());
 
-	timer.go("Computing ranking");
-	rank_targets(targets, config.rank_ratio == -1 ? (query_seq[0].length() > 50 ? 0.6 : 0.9) : config.rank_ratio, config.rank_factor == -1 ? 1e3 : config.rank_factor);
-	stat.inc(Statistics::TARGET_HITS4, targets.size());
-	timer.finish();
+	if (config.ext != "full") {
+		timer.go("Computing ranking");
+		rank_targets(targets, config.rank_ratio == -1 ? (query_seq[0].length() > 50 ? 0.6 : 0.9) : config.rank_ratio, config.rank_factor == -1 ? 1e3 : config.rank_factor);
+		stat.inc(Statistics::TARGET_HITS4, targets.size());
+		timer.finish();
+	}
 
 	return align(targets, query_seq, query_cb, flags, stat);
 }

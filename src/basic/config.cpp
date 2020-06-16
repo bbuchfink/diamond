@@ -343,7 +343,8 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("short-query-max-len", 0, "", short_query_max_len, 60)
 		("gapped-filter-evalue1", 0, "", gapped_filter_evalue1, 1.0e+04)
 		("ext-chunk-size", 0, "", ext_chunk_size, (size_t)0)
-		("ext-yield", 0, "", ext_min_yield);
+		("ext-yield", 0, "", ext_min_yield)
+		("ext", 0, "", ext);
 	
 	parser.add(general).add(makedb).add(cluster).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options);
 	parser.store(argc, argv, command);

@@ -201,7 +201,7 @@ void swipe(const sequence &s1, const sequence &s2) {
 	static const size_t n = 1000llu;
 	high_resolution_clock::time_point t1 = high_resolution_clock::now();
 	for (size_t i = 0; i < n; ++i) {
-		volatile list<Hsp> v = ::DP::Swipe::swipe(s1, target, target + CHANNELS, 100);
+		//volatile list<Hsp> v = ::DP::Swipe::swipe(s1, target, target + CHANNELS, 100);
 	}
 	cout << "SWIPE (int8_t):\t\t\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * s1.length() * s2.length() * CHANNELS) * 1000 << " ps/Cell" << endl;
 }
