@@ -353,15 +353,16 @@ void MCL::run(){
 	uint64_t* clustering_result = new uint64_t[db->ref_header.sequences];
 	fill(clustering_result, clustering_result+db->ref_header.sequences, 0UL);
 
-	uint32_t nThreads = min(config.threads_, nComponentsLt1);
 	// note that the disconnected components are sorted by size
+	const uint32_t chunk_size = 100;
 	const uint32_t max_counter = nComponents;
-	float* max_sparsities = new float[nThreads];
-	float* min_sparsities = new float[nThreads];
+	uint32_t nThreads = min(config.threads_, nComponents / chunk_size);
 	const float inflation = (float) config.cluster_mcl_inflation;
 	const float expansion = (float) config.cluster_mcl_expansion;
 
-	const uint32_t chunk_size = 100;
+	// Collect some stats on the way
+	float* max_sparsities = new float[nThreads];
+	float* min_sparsities = new float[nThreads];
 	atomic_uint n_clusters_found(0);
 	atomic_uint component_counter(nThreads*chunk_size);
 	atomic_uint n_dense_calculations(0);
@@ -374,6 +375,8 @@ void MCL::run(){
 		uint32_t n_singletons = 0;
 		uint64_t cluster_id = iThr;
 		uint32_t my_counter = iThr*chunk_size;
+		float max_sparsity = 0.0f;
+		float min_sparsity = 1.0f;
 		while(my_counter < max_counter){
 			for(uint32_t chunk_counter = my_counter; chunk_counter<min(my_counter+chunk_size, max_counter); chunk_counter++){
 				uint32_t iComponent = sort_order[chunk_counter];
@@ -382,8 +385,8 @@ void MCL::run(){
 					vector<Eigen::Triplet<float>> m = components[iComponent];
 					assert(m.size() <= order.size() * order.size());
 					float sparsity = 1.0-(1.0 * m.size()) / (order.size()*order.size());
-					max_sparsities[iThr] = max(max_sparsities[iThr], sparsity);
-					min_sparsities[iThr] = min(min_sparsities[iThr], sparsity);
+					max_sparsity = max(max_sparsity, sparsity);
+					min_sparsity = min(min_sparsity, sparsity);
 					// map back to original ids
 					vector<unordered_set<uint32_t>> list_of_sets;
 					unordered_set<uint32_t> attractors;
@@ -470,6 +473,8 @@ void MCL::run(){
 		n_dense_calculations.fetch_add(n_dense, memory_order_relaxed);
 		n_sparse_calculations.fetch_add(n_sparse, memory_order_relaxed);
 		nClustersEq1.fetch_add(n_singletons, memory_order_relaxed);
+		max_sparsities[iThr] = max_sparsity;
+		min_sparsities[iThr] = min_sparsity;
 	};
 
 	vector<thread> threads;
@@ -491,6 +496,7 @@ void MCL::run(){
 
 	timer.finish();
 	message_stream << "Clusters found " << n_clusters_found - nClustersEq1 << " ("<< n_clusters_found <<" incl. singletons)" << endl; 
+	message_stream << "\t max size " << indices[sort_order[0]].size() << endl;
 	message_stream << "\t min sparsity " << min_sparsity << endl;
 	message_stream << "\t max sparsity " << max_sparsity << endl;
 	message_stream << "\t number of dense calculations " << n_dense_calculations << endl;
@@ -548,8 +554,7 @@ void MCL::run(){
 				break;
 			default:
 				// Note that this is a sanity check that we have touched all elements in clustering_result
-				(*out) << (res & MASK_INVERSE) <<endl;
-				throw runtime_error("Unknown node label");
+				(*out) << 'u' << "\tERROR: This should not occur";
 		}
 		(*out) << endl;
 		id.clear();
