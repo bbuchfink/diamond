@@ -130,7 +130,7 @@ list<Hsp> swipe(const sequence& query, Frame frame, vector<DpTarget>::const_iter
 		vgap = hgap = last = col_best = _sv();
 		profile.set(targets.seq_vector());
 #ifdef DP_STAT
-		stat.inc(Statistics::GROSS_DP_CELLS, uint64_t(qlen) * CHANNELS);
+		stats.inc(Statistics::GROSS_DP_CELLS, uint64_t(qlen) * CHANNELS);
 #endif
 		for (int i = 0; i < qlen; ++i) {
 			hgap = it.hgap();
