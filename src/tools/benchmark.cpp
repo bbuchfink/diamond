@@ -199,9 +199,15 @@ void swipe(const sequence &s1, const sequence &s2) {
 	sequence target[CHANNELS];
 	std::fill(target, target + CHANNELS, s2);
 	static const size_t n = 1000llu;
+	vector<DpTarget> target8, target16;
+	for (size_t i = 0; i < 8; ++i)
+		target16.emplace_back(s2, -32, 32, 0, 0);
+	Bias_correction cbs(s1);
+	Statistics stat;
 	high_resolution_clock::time_point t1 = high_resolution_clock::now();
 	for (size_t i = 0; i < n; ++i) {
 		//volatile list<Hsp> v = ::DP::Swipe::swipe(s1, target, target + CHANNELS, 100);
+		volatile auto out = ::DP::BandedSwipe::swipe(s1, target8, target16, Frame(0), &cbs, 0, 0, stat);
 	}
 	cout << "SWIPE (int8_t):\t\t\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * s1.length() * s2.length() * CHANNELS) * 1000 << " ps/Cell" << endl;
 }

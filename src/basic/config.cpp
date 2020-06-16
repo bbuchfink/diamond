@@ -344,7 +344,8 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("gapped-filter-evalue1", 0, "", gapped_filter_evalue1, 1.0e+04)
 		("ext-chunk-size", 0, "", ext_chunk_size, (size_t)0)
 		("ext-yield", 0, "", ext_min_yield)
-		("ext", 0, "", ext);
+		("ext", 0, "", ext)
+		("full-sw-len", 0, "", full_sw_len);
 	
 	parser.add(general).add(makedb).add(cluster).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options);
 	parser.store(argc, argv, command);
