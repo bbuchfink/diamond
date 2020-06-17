@@ -211,6 +211,7 @@ void run_query_chunk(DatabaseFile &db_file,
 	db_file.rewind();
 	vector<unsigned> block_to_database_id;
 	Chunk chunk;
+	bool mp_last_chunk = false;
 
 	log_rss();
 
@@ -220,9 +221,12 @@ void run_query_chunk(DatabaseFile &db_file,
 		auto done = P->get_stack(reference_partition_done);
 		auto log_done = P->get_stack(P->LOG);
 		string buf;
+		off_t n_bytes_after_pop;
 
-		while (work->pop(buf)) {
+		while (work->pop(buf, n_bytes_after_pop)) {
 			Chunk chunk = to_chunk(buf);
+			if (n_bytes_after_pop == 0)
+				mp_last_chunk = true;
 
 			db_file.load_seqs(block_to_database_id, (size_t)(0), &ref_seqs::data_, &ref_ids::data_, true, options.db_filter ? options.db_filter : metadata.taxon_filter, true, chunk);
 			run_ref_chunk(db_file, query_chunk, query_len_bounds, query_buffer, master_out, tmp_file, params, metadata, block_to_database_id);
@@ -263,9 +267,9 @@ void run_query_chunk(DatabaseFile &db_file,
 		timer.go("Joining output blocks");
 
 		if (config.multiprocessing) {
-			// P->barrier(AUTOTAG);
 
-			if (P->is_master()) {
+			// if (P->is_master()) {
+			if (mp_last_chunk) {
 				current_ref_block = db_file.get_n_partition_chunks();
 
 				auto done = P->get_stack(reference_partition_done);
@@ -278,7 +282,21 @@ void run_query_chunk(DatabaseFile &db_file,
 					tmp_file_names.push_back(get_ref_block_tmpfile_name(query_chunk, i));
 				}
 
-				join_blocks(current_ref_block, master_out, tmp_file, params, metadata, db_file, tmp_file_names);
+				const string query_chunk_output_file = append_label(config.output_file + "_", current_query_chunk);
+				Consumer *query_chunk_out(new OutputFile(query_chunk_output_file, config.compression == 1));
+				// if (*output_format != Output_format::daa)
+				// 	output_format->print_header(*query_chunk_out, align_mode.mode, config.matrix.c_str(), score_matrix.gap_open(), score_matrix.gap_extend(), config.max_evalue, query_ids::get()[0],
+				// 		unsigned(align_mode.query_translated ? query_source_seqs::get()[0].length() : query_seqs::get()[0].length()));
+
+				join_blocks(current_ref_block, *query_chunk_out, tmp_file, params, metadata, db_file, tmp_file_names);
+
+				// if (*output_format == Output_format::daa)
+				// 	// finish_daa(*static_cast<OutputFile*>(query_chunk_out), *db_file);
+				// 	throw std::runtime_error("output_format::daa");
+				// else
+				// 	output_format->print_footer(*query_chunk_out);
+				query_chunk_out->finalize();
+				delete query_chunk_out;
 
 				ReferenceDictionary::get().clear_block_instances();
 				for (auto f : tmp_file_names) {
@@ -287,7 +305,6 @@ void run_query_chunk(DatabaseFile &db_file,
 			}
 			P->delete_stack(reference_partition_done);
 
-			// P->barrier(AUTOTAG);
 		} else {
 			join_blocks(current_ref_block, master_out, tmp_file, params, metadata, db_file);
 		}
@@ -315,10 +332,10 @@ void master_thread(DatabaseFile *db_file, task_timer &total_timer, Metadata &met
 	auto P = Parallelizer::get();
 	if (config.multiprocessing) {
 		P->init(config.parallel_tmpdir);
-		if (P->is_master()) {
+		// if (P->is_master()) {
 			db_file->create_partition((size_t)(config.chunk_size*1e9));
-		}
-		P->barrier(AUTOTAG);
+		// }
+		// P->barrier(AUTOTAG);
 	}
 
 	task_timer timer("Opening the input file", true);
@@ -410,15 +427,15 @@ void master_thread(DatabaseFile *db_file, task_timer &total_timer, Metadata &met
 		query_seqs::data_->print_stats();
 
 		Consumer * consumer_out;
-		if (config.multiprocessing) {
-			const string query_chunk_output_file = append_label(config.output_file + "_", current_query_chunk);
-			Consumer *query_chunk_out(new OutputFile(query_chunk_output_file, config.compression == 1));
-			if (*output_format == Output_format::daa)
-				init_daa(*static_cast<OutputFile*>(query_chunk_out));
-			consumer_out = query_chunk_out;
-		} else {
+		// if (config.multiprocessing) {
+		// 	const string query_chunk_output_file = append_label(config.output_file + "_", current_query_chunk);
+		// 	Consumer *query_chunk_out(new OutputFile(query_chunk_output_file, config.compression == 1));
+		// 	if (*output_format == Output_format::daa)
+		// 		init_daa(*static_cast<OutputFile*>(query_chunk_out));
+		// 	consumer_out = query_chunk_out;
+		// } else {
 			consumer_out = master_out;
-		}
+		// }
 
 		if (current_query_chunk == 0 && *output_format != Output_format::daa)
 			output_format->print_header(*consumer_out, align_mode.mode, config.matrix.c_str(), score_matrix.gap_open(), score_matrix.gap_extend(), config.max_evalue, query_ids::get()[0],
@@ -438,12 +455,12 @@ void master_thread(DatabaseFile *db_file, task_timer &total_timer, Metadata &met
 		if (config.multiprocessing) {
 			P->delete_stack(reference_partition);
 
-			if (*output_format == Output_format::daa)
-				finish_daa(*static_cast<OutputFile*>(consumer_out), *db_file);
-			else
-				output_format->print_footer(*consumer_out);
-			consumer_out->finalize();
-			delete consumer_out;
+			// if (*output_format == Output_format::daa)
+			// 	finish_daa(*static_cast<OutputFile*>(consumer_out), *db_file);
+			// else
+			// 	output_format->print_footer(*consumer_out);
+			// consumer_out->finalize();
+			// delete consumer_out;
 		}
 	}
 

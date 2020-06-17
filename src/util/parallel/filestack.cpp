@@ -83,18 +83,26 @@ int FileStack::unlock() {
 
 int FileStack::pop(string & buf) {
     DBG("");
-    return pop(buf, false);
+    off_t n_bytes_after_pop;
+    return pop(buf, false, n_bytes_after_pop);
 }
 
 int FileStack::top(string & buf) {
     DBG("");
-    return pop(buf, true);
+    off_t n_bytes_after_pop;
+    return pop(buf, true, n_bytes_after_pop);
+}
+
+int FileStack::pop(string & buf, off_t & n_bytes_after_pop) {
+    DBG("");
+    return pop(buf, false, n_bytes_after_pop);
 }
 
 int FileStack::pop(int & i) {
     DBG("");
     string buf;
-    const int get_status = pop(buf, false);
+    off_t n_bytes_after_pop;
+    const int get_status = pop(buf, false, n_bytes_after_pop);
     if (get_status > 0) {
         return i = stoi(buf);
     } else {
@@ -105,7 +113,8 @@ int FileStack::pop(int & i) {
 int FileStack::top(int & i) {
     DBG("");
     string buf;
-    const int get_status = pop(buf, true);
+    off_t n_bytes_after_pop;
+    const int get_status = pop(buf, true, n_bytes_after_pop);
     if (get_status > 0) {
         return i = stoi(buf);
     } else {
@@ -113,7 +122,7 @@ int FileStack::top(int & i) {
     }
 }
 
-int FileStack::pop(string & buf, const bool keep_flag) {
+int FileStack::pop(string & buf, const bool keep_flag, off_t & n_bytes_after_pop) {
     DBG("");
     buf.clear();
     bool locked_internally = false;
@@ -158,6 +167,7 @@ int FileStack::pop(string & buf, const bool keep_flag) {
         // fprintf(stderr, "chunk end   : %c|", chunk[end]);
         // fprintf(stderr, "%s|", buf.c_str());
     }
+    n_bytes_after_pop = lseek(fd, 0, SEEK_END);
     if (locked_internally) {
         unlock();
     }
