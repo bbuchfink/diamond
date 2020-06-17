@@ -333,7 +333,7 @@ void master_thread(DatabaseFile *db_file, task_timer &total_timer, Metadata &met
 	if (config.multiprocessing) {
 		P->init(config.parallel_tmpdir);
 		// if (P->is_master()) {
-			db_file->create_partition((size_t)(config.chunk_size*1e9));
+			db_file->create_partition_balanced((size_t)(config.chunk_size*1e9));
 		// }
 		// P->barrier(AUTOTAG);
 	}

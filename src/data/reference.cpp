@@ -3,7 +3,7 @@ DIAMOND protein aligner
 Copyright (C) 2013-2020 Max Planck Society for the Advancement of Science e.V.
                         Benjamin Buchfink
                         Eberhard Karls Universitaet Tuebingen
-						
+
 Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
 
 This program is free software: you can redistribute it and/or modify
@@ -27,6 +27,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <map>
 #include <memory>
 #include <algorithm>
+#include <cmath>
 #include "../basic/config.h"
 #include "reference.h"
 #include "load_seqs.h"
@@ -500,6 +501,13 @@ DatabaseFile* DatabaseFile::auto_create_from_fasta() {
 	}
 	else
 		return new DatabaseFile(config.database);
+}
+
+void DatabaseFile::create_partition_balanced(size_t max_letters) {
+	double n = std::ceil(static_cast<double>(ref_header.letters) / static_cast<double>(max_letters));
+	size_t max_letters_balanced = static_cast<size_t>(std::ceil(static_cast<double>(ref_header.letters)/n));
+	cout << "Balanced partitioning using " << max_letters_balanced << " (" << max_letters << ")" << endl;
+	this->create_partition(max_letters_balanced);
 }
 
 void DatabaseFile::create_partition(size_t max_letters) {
