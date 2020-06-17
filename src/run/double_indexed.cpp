@@ -387,18 +387,6 @@ void master_thread(DatabaseFile *db_file, task_timer &total_timer, Metadata &met
 
 	current_query_chunk = 0;
 	for (;; ++current_query_chunk) {
-		Consumer * consumer_out;
-
-		if (config.multiprocessing) {
-			const string query_chunk_output_file = config.output_file + std::to_string(current_query_chunk);
-			Consumer *query_chunk_out(new OutputFile(query_chunk_output_file, config.compression == 1));
-			if (*output_format == Output_format::daa)
-				init_daa(*static_cast<OutputFile*>(query_chunk_out));
-			consumer_out = query_chunk_out;
-		} else {
-			consumer_out = master_out;
-		}
-
 		task_timer timer("Loading query sequences", true);
 
 		if (options.self) {
@@ -420,6 +408,17 @@ void master_thread(DatabaseFile *db_file, task_timer &total_timer, Metadata &met
 
 		timer.finish();
 		query_seqs::data_->print_stats();
+
+		Consumer * consumer_out;
+		if (config.multiprocessing) {
+			const string query_chunk_output_file = append_label(config.output_file + "_", current_query_chunk);
+			Consumer *query_chunk_out(new OutputFile(query_chunk_output_file, config.compression == 1));
+			if (*output_format == Output_format::daa)
+				init_daa(*static_cast<OutputFile*>(query_chunk_out));
+			consumer_out = query_chunk_out;
+		} else {
+			consumer_out = master_out;
+		}
 
 		if (current_query_chunk == 0 && *output_format != Output_format::daa)
 			output_format->print_header(*consumer_out, align_mode.mode, config.matrix.c_str(), score_matrix.gap_open(), score_matrix.gap_extend(), config.max_evalue, query_ids::get()[0],
