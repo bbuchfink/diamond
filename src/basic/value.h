@@ -59,11 +59,12 @@ private:
 
 struct Value_traits
 {
-	Value_traits(const char *alphabet, Letter mask_char, const char *ignore);
+	Value_traits(const char *alphabet, Letter mask_char, const char *ignore, Sequence_type seq_type);
 	const char *alphabet;
 	unsigned alphabet_size;
 	Letter mask_char;
 	Char_representation from_char;
+	Sequence_type seq_type;
 };
 
 #define AMINO_ACID_ALPHABET "ARNDCQEGHILKMFPSTWYVBJZX*_"

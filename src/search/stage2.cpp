@@ -99,9 +99,7 @@ void search_query_offset(Loc q,
 						output_buf.write_raw((const char*)&s[*(i + j)], 5);
 					else
 						output_buf.write(s[*(i + j)].low);
-#ifdef HIT_SCORES
 					output_buf.write_varint((uint32_t)scores[j]);
-#endif
 					++hit_count;
 					/*else {
 						if (!ps) {

@@ -1,7 +1,7 @@
 /****
 DIAMOND protein aligner
 Copyright (C) 2016-2020 Max Planck Society for the Advancement of Science e.V.
-						Benjamin Buchfink
+                        Benjamin Buchfink
 
 Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
 
@@ -36,7 +36,7 @@ using namespace std;
 const char* Rank::names[] = {
 	"no rank", "superkingdom", "kingdom", "subkingdom", "superphylum", "phylum", "subphylum", "superclass", "class", "subclass", "infraclass", "cohort", "subcohort", "superorder",
 	"order", "suborder", "infraorder", "parvorder", "superfamily", "family", "subfamily", "tribe", "subtribe", "genus", "subgenus", "section", "subsection", "series", "species group",
-	"species subgroup", "species", "subspecies", "varietas", "forma"
+	"species subgroup", "species", "subspecies", "varietas", "forma", "strain"
 };
 
 map<std::string, Rank> Rank::init_map() {

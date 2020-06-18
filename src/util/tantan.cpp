@@ -43,6 +43,9 @@ void mask(Letter *seq,
 	const Letter *mask_table) {
 	constexpr int WINDOW = 50, RESERVE = 50000;
 
+	if (len == 0)
+		return;
+
 	thread_local std::array<Array<float, Dynamic, 1>, AMINO_ACID_COUNT> e;
 	thread_local Array<float, Dynamic, 1> pb;
 	thread_local Array<float, Dynamic, 1> scale;

@@ -2,6 +2,8 @@
 - Fixed a bug in `diamond view` that would cause high memory usage and erroneous output.
 - Reduced the use of temporary disk space.
 - Fixed a database compatibility issue with big endian architectures.
+- Fixed a bug that would cause a crash for query sequences shorter than 5 letters in blastx mode.
+- Fixed a bug that would cause a crash when using a FASTA file as database parameter in blastx mode.
 
 [0.9.34]
 - Fixed a compiler error for native builds.

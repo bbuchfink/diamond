@@ -37,9 +37,7 @@ struct hit
 	uint32_t query_;
 	Packed_loc subject_;
 	Seed_offset	seed_offset_;
-#ifdef HIT_SCORES
 	uint16_t score_;
-#endif
 	hit() :
 		query_(),
 		subject_(),
@@ -48,10 +46,8 @@ struct hit
 	hit(unsigned query, Packed_loc subject, Seed_offset seed_offset, uint16_t score = 0) :
 		query_(query),
 		subject_(subject),
-		seed_offset_(seed_offset)
-#ifdef HIT_SCORES
-		,score_(score)
-#endif
+		seed_offset_(seed_offset),
+		score_(score)
 	{ }
 	bool operator<(const hit& rhs) const
 	{
@@ -138,13 +134,9 @@ struct hit
 			}
 			if (uint64_t(subject_loc) == 0)
 				return count;
-#ifdef HIT_SCORES
 			s.varint = true;
 			s >> x;
 			*it = { query_id, subject_loc, seed_offset, (uint16_t)x };
-#else
-			* it = { query_id, subject_loc, seed_offset };
-#endif			
 			++count;
 		}
 	}

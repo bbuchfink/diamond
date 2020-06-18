@@ -99,7 +99,7 @@ void mutate() {
 	OutputFile out(config.output_file);
 	std::minstd_rand0 random_engine;
 	std::uniform_real_distribution<double> id_dist(0.3, 1.0);
-	while (FASTA_format().get_seq(id, seq, in)) {
+	while (FASTA_format().get_seq(id, seq, in, value_traits)) {
 		const double i = id_dist(random_engine);
 		Util::Sequence::format(sequence(simulate_homolog(sequence(seq), i, random_engine)), std::to_string(int(i*100)).c_str(), nullptr, out, "fasta", nucleotide_traits);
 	}

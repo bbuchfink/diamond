@@ -1,6 +1,10 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2017 Benjamin Buchfink <buchfink@gmail.com>
+Copyright (C) 2013-2020 Max Planck Society for the Advancement of Science e.V.
+                        Benjamin Buchfink
+                        Eberhard Karls Universitaet Tuebingen
+						
+Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -25,25 +29,25 @@ struct Raw_text {};
 struct Sequence_data {};
 
 template<typename _t>
-inline char convert_char(char a)
+inline char convert_char(char a, const Value_traits& value_traits)
 {
 	return a;
 }
 
 template<>
-inline char convert_char<Sequence_data>(char a)
+inline char convert_char<Sequence_data>(char a, const Value_traits& value_traits)
 {
-	return input_value_traits.from_char(a);
+	return value_traits.from_char(a);
 }
 
 template<typename _t, typename _what>
-void copy_line(const string & s, vector<_t>& v, size_t d, _what)
+void copy_line(const string & s, vector<_t>& v, size_t d, const Value_traits& value_traits, _what)
 {
 	for (string::const_iterator i = s.begin() + d; i != s.end(); ++i)
-		v.push_back(convert_char<_what>(*i));
+		v.push_back(convert_char<_what>(*i, value_traits));
 }
 
-bool FASTA_format::get_seq(string& id, vector<Letter>& seq, TextInputFile & s, vector<char> *qual) const
+bool FASTA_format::get_seq(string& id, vector<Letter>& seq, TextInputFile & s, const Value_traits& value_traits, vector<char> *qual) const
 {
 	// !!!
 	while (s.getline(), s.line.empty() && !s.eof());
@@ -66,7 +70,7 @@ bool FASTA_format::get_seq(string& id, vector<Letter>& seq, TextInputFile & s, v
 			break;
 		}
 		try {
-			copy_line(s.line, seq, 0, Sequence_data());
+			copy_line(s.line, seq, 0, value_traits, Sequence_data());
 		}
 		catch (invalid_sequence_char_exception &e) {
 			throw StreamReadException(s.line_count, e.what());
@@ -75,7 +79,7 @@ bool FASTA_format::get_seq(string& id, vector<Letter>& seq, TextInputFile & s, v
 	return true;
 }
 
-bool FASTQ_format::get_seq(string& id, vector<Letter>& seq, TextInputFile & s, vector<char> *qual) const
+bool FASTQ_format::get_seq(string& id, vector<Letter>& seq, TextInputFile & s, const Value_traits& value_traits, vector<char> *qual) const
 {
 	while (s.getline(), s.line.empty() && !s.eof());
 	if (s.line.empty() && s.eof())
@@ -86,7 +90,7 @@ bool FASTQ_format::get_seq(string& id, vector<Letter>& seq, TextInputFile & s, v
 	id = s.line.substr(1);
 	s.getline();
 	try {
-		copy_line(s.line, seq, 0, Sequence_data());
+		copy_line(s.line, seq, 0, value_traits, Sequence_data());
 	}
 	catch (invalid_sequence_char_exception &e) {
 		throw StreamReadException(s.line_count, e.what());
@@ -97,7 +101,7 @@ bool FASTQ_format::get_seq(string& id, vector<Letter>& seq, TextInputFile & s, v
 	s.getline();
 	if (qual) {
 		qual->clear();
-		copy_line(s.line, *qual, 0, Raw_text());
+		copy_line(s.line, *qual, 0, value_traits, Raw_text());
 	}
 	return true;
 }

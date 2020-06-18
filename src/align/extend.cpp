@@ -62,20 +62,16 @@ void load_hits(hit* begin, hit* end, FlatArray<SeedHit> &hits, vector<uint32_t> 
 			std::pair<size_t, size_t> l = ref_seqs::data_->local_position(i->subject_);
 			const uint32_t t = (uint32_t)l.first;
 			if (t != target) {
-#ifdef HIT_SCORES
 				if (target != UINT32_MAX) {
 					target_scores.push_back({ uint32_t(target_block_ids.size() - 1), score });
 					score = 0;
 				}
-#endif
 				hits.next();
 				target = t;
 				target_block_ids.push_back(target);
 			}
 			hits.push_back({ (int)i->seed_offset_, (int)l.second, i->query_ % align_mode.query_contexts });
-#ifdef HIT_SCORES
 			score = std::max(score, i->score_);
-#endif
 		}
 	} else {
 		typename vector<size_t>::const_iterator limit_begin = ref_seqs::get().limits_begin(), it = limit_begin;
@@ -84,20 +80,16 @@ void load_hits(hit* begin, hit* end, FlatArray<SeedHit> &hits, vector<uint32_t> 
 			while (*it <= subject_offset) ++it;
 			uint32_t t = (uint32_t)(it - limit_begin) - 1;
 			if (t != target) {
-#ifdef HIT_SCORES
 				if (target != UINT32_MAX) {
 					target_scores.push_back({ uint32_t(target_block_ids.size() - 1), score });
 					score = 0;
 				}
-#endif
 				hits.next();
 				target_block_ids.push_back(t);
 				target = t;
 			}
 			hits.push_back({ (int)i->seed_offset_, (int)(subject_offset - *(it - 1)), i->query_ % align_mode.query_contexts });
-#ifdef HIT_SCORES
 			score = std::max(score, i->score_);
-#endif
 		}
 	}
 	if (target != UINT32_MAX)
@@ -177,18 +169,31 @@ vector<Match> extend(const Parameters &params, size_t query_id, hit* begin, hit*
 		timer.finish();
 	}
 
-	const size_t chunk_size = config.ext_chunk_size > 0 ? config.ext_chunk_size : 100000;
+	const size_t chunk_size = config.ext_chunk_size > 0 ? config.ext_chunk_size : target_block_ids.size();
 	vector<Target> aligned_targets;
 	for (vector<TargetScore>::const_iterator i = target_scores.cbegin(); i < target_scores.cend(); i += chunk_size) {
 		seed_hits_chunk.clear();
 		target_block_ids_chunk.clear();
 		const vector<TargetScore>::const_iterator end = std::min(i + chunk_size, target_scores.cend());
-		for (vector<TargetScore>::const_iterator j = i; j < end; ++j) {
-			target_block_ids_chunk.push_back(target_block_ids[j->target]);
-			seed_hits_chunk.push_back(seed_hits.begin(j->target), seed_hits.end(j->target));
+		const bool multi_chunk = (end - i) < target_scores.size();
+
+		if (multi_chunk) {
+			for (vector<TargetScore>::const_iterator j = i; j < end; ++j) {
+				target_block_ids_chunk.push_back(target_block_ids[j->target]);
+				seed_hits_chunk.push_back(seed_hits.begin(j->target), seed_hits.end(j->target));
+			}
 		}
+		else {
+			target_block_ids_chunk = std::move(target_block_ids);
+			seed_hits_chunk = std::move(seed_hits);
+		}
+
 		vector<Target> v = extend(params, query_id, query_seq.data(), query_cb.data(), seed_hits_chunk, target_block_ids_chunk, metadata, stat, flags);
-		aligned_targets.insert(aligned_targets.end(), v.begin(), v.end());
+		if (multi_chunk)
+			aligned_targets.insert(aligned_targets.end(), v.begin(), v.end());
+		else
+			aligned_targets = std::move(v);
+
 		if ((double)v.size() / (end - i) < config.ext_min_yield)
 			break;
 	}

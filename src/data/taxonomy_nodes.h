@@ -1,6 +1,9 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2018 Benjamin Buchfink <buchfink@gmail.com>
+Copyright (C) 2016-2020 Max Planck Society for the Advancement of Science e.V.
+                        Benjamin Buchfink
+						
+Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,9 +19,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#ifndef TAXONOMY_NODES_H_
-#define TAXONOMY_NODES_H_
-
+#pragma once
 #include <map>
 #include <vector>
 #include <set>
@@ -36,7 +37,7 @@ struct Rank {
 	{}
 	Rank(const char *s);
 	enum {
-		count = 34, forma = 33, varietas = 32, subspecies = 31, species = 30, species_subgroup = 29, species_group = 28, series = 27, subsection = 26, section = 25, subgenus = 24, genus = 23, subtribe = 22,
+		count = 35, strain = 34, forma = 33, varietas = 32, subspecies = 31, species = 30, species_subgroup = 29, species_group = 28, series = 27, subsection = 26, section = 25, subgenus = 24, genus = 23, subtribe = 22,
 		tribe = 21, subfamily = 20, family = 19, superfamily = 18, parvorder = 17, infraorder = 16, suborder = 15, order = 14, superorder = 13, subcohort = 12, cohort = 11, infraclass = 10,
 		subclass = 9, class_rank = 8, superclass = 7, subphylum = 6, phylum = 5, superphylum = 4, subkingdom = 3, kingdom = 2, superkingdom = 1, none = 0
 	};
@@ -84,5 +85,3 @@ private:
 	std::vector<bool> cached_, contained_;
 
 };
-
-#endif
