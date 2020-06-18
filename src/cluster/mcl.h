@@ -74,31 +74,39 @@ public:
 
 template <typename T>
 class SparseMatrixStream : public Consumer {
-	size_t n;
-	vector<Eigen::Triplet<T>> data;
-	LazyDisjointSet<uint32_t>* disjointSet;
-	virtual void consume(const char *ptr, size_t n) override {
-		const char *end = ptr + n;
-		if (n >= sizeof(uint32_t)) {
-			assert((n - sizeof(uint32_t)) % (sizeof(uint32_t)+sizeof(double)) == 0);
-			uint32_t query = *(uint32_t*) ptr;
-			ptr += sizeof(uint32_t);
-			while (ptr + (sizeof(uint32_t)+sizeof(double)) <= end) {
-				const uint32_t subject = *(uint32_t*) ptr;
-				ptr += sizeof(uint32_t);
-				const double value = *(double*) ptr;
-				ptr += sizeof(double);
-				data.emplace_back(query, subject, value);
-				disjointSet->merge(query, subject);
-			}
-		}
-	}
-
 	struct CoordinateCmp {
 		bool operator()(const Eigen::Triplet<T>& lhs, const Eigen::Triplet<T>& rhs) const { 
 			return lhs.row() == rhs.row() ? lhs.col() < rhs.col() : lhs.row() < rhs.row() ; 
 		}
 	};
+	size_t n;
+	set<Eigen::Triplet<T>, CoordinateCmp> data;
+	LazyDisjointSet<uint32_t>* disjointSet;
+	virtual void consume(const char *ptr, size_t n) override {
+		const char *end = ptr + n;
+		if (n >= sizeof(uint32_t)) {
+			while (ptr  < end) {
+				const uint32_t query = *(uint32_t*) ptr;
+				ptr += sizeof(uint32_t);
+				const uint32_t subject = *(uint32_t*) ptr;
+				ptr += sizeof(uint32_t);
+				const double value = *(double*) ptr;
+				ptr += sizeof(double);
+				Eigen::Triplet<T> t(query, subject, value);
+				auto it = data.find(t);
+				if(it == data.end()){
+					data.emplace(move(t));
+					disjointSet->merge(query, subject);
+				}
+				else{
+					cout << "duplicate found " << query << " " << subject << endl;
+					if (t.value() > it->value()){
+						data.emplace_hint(data.erase(it), move(t));
+					}
+				}
+			}
+		}
+	}
 
 public:
 	SparseMatrixStream(size_t n){
@@ -117,17 +125,11 @@ public:
 				indexToSetId[index] = iset;
 			}
 		}
-		vector<set<Eigen::Triplet<T>, CoordinateCmp>> split(sets.size());
+		vector<vector<Eigen::Triplet<T>>> split(sets.size());
 		for(Eigen::Triplet<T> t : data){
 			uint32_t iset = indexToSetId[t.row()];
 			assert( iset == indexToSetId[t.col()]);
-			auto it = split[iset].find(t);
-			if(it == split[iset].end()){
-				split[iset].emplace(t.row(), t.col(), t.value());
-			}
-			else if (t.value() > it->value()){
-				split[iset].emplace_hint(split[iset].erase(it), t.row(), t.col(), t.value());
-			}
+			split[iset].emplace_back(t.row(), t.col(), t.value());
 		}
 		vector<vector<uint32_t>> indices(sets.size());
 		vector<vector<Eigen::Triplet<T>>> components(sets.size());
