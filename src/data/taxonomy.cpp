@@ -31,7 +31,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/string/string.h"
 #include "../util/string/tokenizer.h"
 
-using namespace std;
+using std::string;
+using std::map;
 
 const char* Rank::names[] = {
 	"no rank", "superkingdom", "kingdom", "subkingdom", "superphylum", "phylum", "subphylum", "superclass", "class", "subclass", "infraclass", "cohort", "subcohort", "superorder",
@@ -50,7 +51,7 @@ const map<std::string, Rank> Rank::rank_map = Rank::init_map();
 
 Rank::Rank(const char *s) {
 	if (rank_map.find(s) == rank_map.end())
-		throw std::runtime_error("Invalid taxonomic rank.");
+		throw std::runtime_error("Invalid taxonomic rank: " + string(s));
 	r = rank_map.find(s)->second.r;
 }
 
