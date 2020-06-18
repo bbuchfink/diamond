@@ -18,6 +18,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #include <numeric>
+#include <iomanip>
 #include "mcl.h"
 
 #define MASK_INVERSE        0xC000000000000000
@@ -35,9 +36,7 @@ string MCL::get_description() {
 }
 
 void MCL::get_exp(Eigen::SparseMatrix<float>* in, Eigen::SparseMatrix<float>* out, float r){
-#ifdef MCL_TIMINGS
 	chrono::high_resolution_clock::time_point t = chrono::high_resolution_clock::now();
-#endif
 	if( r - (int) r == 0 ){
 		// TODO: at some r it may be more beneficial to diagnoalize in and only take the exponents of the eigenvalues
 		*out = *in;
@@ -49,24 +48,18 @@ void MCL::get_exp(Eigen::SparseMatrix<float>* in, Eigen::SparseMatrix<float>* ou
 		throw runtime_error(" Eigen does not provide an eigenvalue solver for sparse matrices");
 	}
 	*out = out->pruned();
-#ifdef MCL_TIMINGS
 	sparse_exp_time += chrono::duration_cast<chrono::milliseconds>(chrono::high_resolution_clock::now() - t).count();
-#endif
 }
 
 void MCL::get_exp(Eigen::MatrixXf* in, Eigen::MatrixXf* out, float r){
 	// TODO: at some r it may be more beneficial to diagnoalize in and only take the exponents of the eigenvalues
-#ifdef MCL_TIMINGS
 	chrono::high_resolution_clock::time_point t = chrono::high_resolution_clock::now();
-#endif
 	if(r - (int) r == 0){
 		*out = *in;
 		for(uint32_t i=1; i<r; i++){ 
 			(*out) *= (*in);
 		}
-#ifdef MCL_TIMINGS
 		dense_int_exp_time += chrono::duration_cast<chrono::milliseconds>(chrono::high_resolution_clock::now() - t).count();
-#endif
 	}
 	else{ 
 		// TODO: check whether the matrix is self-adjoint and use SelfAdjointEigenSolver instead
@@ -81,16 +74,12 @@ void MCL::get_exp(Eigen::MatrixXf* in, Eigen::MatrixXf* out, float r){
 		if( thr > numeric_limits<float>::epsilon() ){
 			out->noalias() = (V * d.real() * V.inverse()).real();
 		}
-#ifdef MCL_TIMINGS
 		dense_gen_exp_time += chrono::duration_cast<chrono::milliseconds>(chrono::high_resolution_clock::now() - t).count();
-#endif
 	}
 }
 
 void MCL::get_gamma(Eigen::SparseMatrix<float>* in, Eigen::SparseMatrix<float>* out, float r){
-#ifdef MCL_TIMINGS
 	chrono::high_resolution_clock::time_point t = chrono::high_resolution_clock::now();
-#endif
 	vector<Eigen::Triplet<float>> data;
 	for (uint32_t k=0; k<in->outerSize(); ++k){
 		float colSum = 0.0f;
@@ -103,15 +92,11 @@ void MCL::get_gamma(Eigen::SparseMatrix<float>* in, Eigen::SparseMatrix<float>* 
 	}
 	out->setFromTriplets(data.begin(), data.end(), [] (const float&, const float &b) { return b; });
 	*out = out->pruned(1.0, numeric_limits<float>::epsilon());
-#ifdef MCL_TIMINGS
 	sparse_gamma_time += chrono::duration_cast<chrono::milliseconds>(chrono::high_resolution_clock::now() - t).count();
-#endif
 }
 
 void MCL::get_gamma(Eigen::MatrixXf* in, Eigen::MatrixXf* out, float r){
-#ifdef MCL_TIMINGS
 	chrono::high_resolution_clock::time_point t = chrono::high_resolution_clock::now();
-#endif
 	// Note that Eigen matrices are column-major, so this is the most efficient way
 	for (uint32_t icol=0; icol<in->cols(); ++icol){
 		float colSum = 0.0f;
@@ -122,43 +107,8 @@ void MCL::get_gamma(Eigen::MatrixXf* in, Eigen::MatrixXf* out, float r){
 			out->coeffRef(irow, icol) =  pow(in->coeffRef(irow, icol) , r) / colSum;
 		}
 	}
-#ifdef MCL_TIMINGS
 	dense_gamma_time += chrono::duration_cast<chrono::milliseconds>(chrono::high_resolution_clock::now() - t).count();
-#endif
 }
-
-// void printMatrix(Eigen::SparseMatrix<float>* m){
-// 	printf("[");
-// 	for (uint32_t irow=0; irow<m->rows(); ++irow){
-// 		printf("[");
-// 		for (uint32_t icol=0; icol<m->cols(); ++icol){
-// 			printf("%12.7f",m->coeffRef(irow, icol));
-// 		}
-// 		if(irow<m->rows() - 1){
-// 			printf("];\n");
-// 		}
-// 		else{
-// 			printf("]");
-// 		}
-// 	}
-// 	printf("]\n\n");
-// }
-// void printMatrix(Eigen::MatrixXf* m){
-// 	printf("[");
-// 	for (uint32_t irow=0; irow<m->rows(); ++irow){
-// 		printf("[");
-// 		for (uint32_t icol=0; icol<m->cols(); ++icol){
-// 			printf("%12.7f",m->coeffRef(irow, icol));
-// 		}
-// 		if(irow<m->rows() - 1){
-// 			printf("];\n");
-// 		}
-// 		else{
-// 			printf("]");
-// 		}
-// 	}
-// 	printf("]\n\n");
-// }
 
 void MCL::markov_process(Eigen::SparseMatrix<float>* m, float inflation, float expansion){
 	for (uint32_t idiag=0; idiag<m->cols(); ++idiag){
@@ -337,14 +287,15 @@ void MCL::run(){
 	auto componentInfo = ms.getComponents();
 	vector<vector<uint32_t>> indices = get<0>(componentInfo);
 	vector<vector<Eigen::Triplet<float>>> components = get<1>(componentInfo);
-	vector<uint32_t> sort_order(components.size());
-	iota(sort_order.begin(), sort_order.end(), 0);
-	sort(sort_order.begin(), sort_order.end(), [&](uint32_t i, uint32_t j){return indices[i].size() > indices[j].size();});
-
 	uint32_t nComponents = count_if(indices.begin(), indices.end(), [](vector<uint32_t> v){ return v.size() > 0;});
 	uint32_t nComponentsLt1 = count_if(indices.begin(), indices.end(), [](vector<uint32_t> v){ return v.size() > 1;});
-	timer.finish();
 	message_stream << "Found " << nComponentsLt1 <<" ("<<nComponents<< " incl. singletons) disconnected components" << endl;
+
+	// Sort to get the largest chunks first
+	vector<uint32_t> sort_order(indices.size());
+	iota(sort_order.begin(), sort_order.end(), 0);
+	sort(sort_order.begin(), sort_order.end(), [&](uint32_t i, uint32_t j){return indices[i].size() > indices[j].size();});
+	timer.finish();
 
 	timer.go("Clustering components");
 	bool full = false;
@@ -363,6 +314,8 @@ void MCL::run(){
 	// Collect some stats on the way
 	float* max_sparsities = new float[nThreads];
 	float* min_sparsities = new float[nThreads];
+	uint32_t* jobs_per_thread = new uint32_t[nThreads];
+	float* time_per_thread = new float[nThreads];
 	atomic_uint n_clusters_found(0);
 	atomic_uint component_counter(nThreads*chunk_size);
 	atomic_uint n_dense_calculations(0);
@@ -370,6 +323,7 @@ void MCL::run(){
 	atomic_uint nClustersEq1(0);
 
 	auto mcl_clustering = [&](const uint32_t iThr){
+		chrono::high_resolution_clock::time_point thread_start = chrono::high_resolution_clock::now();
 		uint32_t n_dense = 0;
 		uint32_t n_sparse = 0;
 		uint32_t n_singletons = 0;
@@ -392,20 +346,14 @@ void MCL::run(){
 					unordered_set<uint32_t> attractors;
 
 					//TODO: a size limit for the dense matrix should control this as well
-#ifdef MCL_TIMINGS
 					chrono::high_resolution_clock::time_point t = chrono::high_resolution_clock::now();
-#endif
 					if(sparsity >= config.cluster_mcl_sparsity_switch && expansion - (int) expansion == 0){ 
 						n_sparse++;
 						Eigen::SparseMatrix<float> m_sparse(order.size(), order.size());
 						m_sparse.setFromTriplets(m.begin(), m.end());
-#ifdef MCL_TIMINGS
 						sparse_create_time += chrono::duration_cast<chrono::milliseconds>(chrono::high_resolution_clock::now() - t).count();
-#endif
 						markov_process(&m_sparse, inflation, expansion);
-#ifdef MCL_TIMINGS
 						chrono::high_resolution_clock::time_point t = chrono::high_resolution_clock::now();
-#endif
 						LazyDisjointIntegralSet<uint32_t> disjointSet(m_sparse.cols());
 						for (uint32_t k=0; k<m_sparse.outerSize(); ++k){
 							for (Eigen::SparseMatrix<float>::InnerIterator it(m_sparse, k); it; ++it){
@@ -417,9 +365,7 @@ void MCL::run(){
 							}
 						}
 						list_of_sets = disjointSet.getListOfSets();
-#ifdef MCL_TIMINGS
 						sparse_list_time += chrono::duration_cast<chrono::milliseconds>(chrono::high_resolution_clock::now() - t).count();
-#endif
 					}
 					else{
 						n_dense++;
@@ -427,13 +373,9 @@ void MCL::run(){
 						for(Eigen::Triplet<float> const & t : m){
 							m_dense(t.row(), t.col()) = t.value();
 						}
-#ifdef MCL_TIMINGS
 						dense_create_time += chrono::duration_cast<chrono::milliseconds>(chrono::high_resolution_clock::now() - t).count();
-#endif
 						markov_process(&m_dense, inflation, expansion);
-#ifdef MCL_TIMINGS
 						chrono::high_resolution_clock::time_point t = chrono::high_resolution_clock::now();
-#endif
 						LazyDisjointIntegralSet<uint32_t> disjointSet(m_dense.cols());
 						for (uint32_t icol=0; icol<m_dense.cols(); ++icol){
 							for (uint32_t irow=0; irow<m_dense.rows(); ++irow){
@@ -446,9 +388,7 @@ void MCL::run(){
 							}
 						}
 						list_of_sets = disjointSet.getListOfSets();
-#ifdef MCL_TIMINGS
 						dense_list_time += chrono::duration_cast<chrono::milliseconds>(chrono::high_resolution_clock::now() - t).count();
-#endif
 					}
 					for(unordered_set<uint32_t> subset : list_of_sets){
 						assert(cluster_id < 0x3fffffffffffffff);
@@ -473,8 +413,10 @@ void MCL::run(){
 		n_dense_calculations.fetch_add(n_dense, memory_order_relaxed);
 		n_sparse_calculations.fetch_add(n_sparse, memory_order_relaxed);
 		nClustersEq1.fetch_add(n_singletons, memory_order_relaxed);
+		jobs_per_thread[iThr] = n_dense + n_sparse + n_singletons;
 		max_sparsities[iThr] = max_sparsity;
 		min_sparsities[iThr] = min_sparsity;
+		time_per_thread[iThr] = (chrono::duration_cast<chrono::milliseconds>(chrono::high_resolution_clock::now() - thread_start).count()) / 1000.0;
 	};
 
 	vector<thread> threads;
@@ -493,15 +435,33 @@ void MCL::run(){
 	}
 	delete[] min_sparsities;
 	delete[] max_sparsities;
-
 	timer.finish();
+
+	// Output stats
+	message_stream << "Jobs per thread: ";
+	for(uint32_t iThread = 0; iThread < nThreads ; iThread++ ) {
+		message_stream << " " << setw(8) << right << jobs_per_thread[iThread];
+	}
+	message_stream << endl; 
+	message_stream << "Time per thread: ";
+	for(uint32_t iThread = 0; iThread < nThreads ; iThread++ ) {
+		message_stream << " " << setw(8) << right << time_per_thread[iThread];
+	}
+	message_stream << endl;
+	delete[] time_per_thread;
+	delete[] jobs_per_thread;
+
+	float median = nComponents > 0 && nComponents % 2 == 0 ? 
+		(indices[sort_order[nComponents/2]].size() + indices[sort_order[nComponents/2+1]].size()) / 2.0 : 
+		indices[sort_order[nComponents/2+1]].size();
 	message_stream << "Clusters found " << n_clusters_found - nClustersEq1 << " ("<< n_clusters_found <<" incl. singletons)" << endl; 
-	message_stream << "\t max size " << indices[sort_order[0]].size() << endl;
+	message_stream << "\t max. size " << indices[sort_order[0]].size() << endl;
+	message_stream << "\t med. size " << median << endl;
+	message_stream << "\t min. size " << indices[sort_order[nComponents-1]].size() << endl;
 	message_stream << "\t min sparsity " << min_sparsity << endl;
 	message_stream << "\t max sparsity " << max_sparsity << endl;
 	message_stream << "\t number of dense calculations " << n_dense_calculations << endl;
 	message_stream << "\t number of sparse calculations " << n_sparse_calculations << endl;
-#ifdef MCL_TIMINGS
 	message_stream << "Time used for matrix creation: " 
 		<< (sparse_create_time.load() + dense_create_time.load())/1000.0 
 		<<" (sparse: " 
@@ -528,7 +488,6 @@ void MCL::run(){
 		<< sparse_list_time.load()/1000.0 
 		<< ", dense: " 
 		<< dense_list_time.load()/1000.0 <<")" << endl;
-#endif
 
 	timer.go("Cluster output");
 	ostream *out = config.output_file.empty() ? &cout : new ofstream(config.output_file.c_str());
@@ -540,21 +499,22 @@ void MCL::run(){
 	out->precision(3);
 	for (int i = 0; i < (int)db->ref_header.sequences; ++i) {
 		db->read_seq(id, seq);
-		const uint64_t res = clustering_result[i];
-		(*out) << blast_id(id) << '\t' << (res & (~MASK_INVERSE)) << '\t';
-		switch(res & MASK_INVERSE){
+		const uint64_t cid = (~MASK_INVERSE) & clustering_result[i];
+		const uint64_t lab = MASK_INVERSE & clustering_result[i];
+		(*out) << blast_id(id) << '\t' ;
+		switch(lab){
 			case MASK_SINGLE_NODE:
-				(*out) << 's';
+				(*out) << cid << '\t'<< 's';
 				break;
 			case MASK_ATTRACTOR_NODE:
-				(*out) << 'a';
+				(*out) << cid << '\t'<< 'a';
 				break;
 			case MASK_NORMAL_NODE:
-				(*out) << 'n';
+				(*out) << cid << '\t'<< 'n';
 				break;
 			default:
 				// Note that this is a sanity check that we have touched all elements in clustering_result
-				(*out) << 'u' << "\tERROR: This should not occur";
+				(*out) << -1 << '\t' << 'u';
 		}
 		(*out) << endl;
 		id.clear();

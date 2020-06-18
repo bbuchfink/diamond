@@ -52,7 +52,6 @@ private:
 	void get_gamma(Eigen::MatrixXf* in, Eigen::MatrixXf* out, float r);
 	void markov_process(Eigen::SparseMatrix<float>* m, float inflation, float expansion);
 	void markov_process(Eigen::MatrixXf* m, float inflation, float expansion);
-#ifdef MCL_TIMINGS
 	atomic_ullong sparse_create_time = {0};
 	atomic_ullong dense_create_time = {0};
 	atomic_ullong sparse_exp_time = {0};
@@ -62,7 +61,6 @@ private:
 	atomic_ullong dense_gamma_time = {0};
 	atomic_ullong sparse_list_time = {0};
 	atomic_ullong dense_list_time = {0};
-#endif
 public:
 	~MCL(){};
 	void run();
@@ -98,11 +96,8 @@ class SparseMatrixStream : public Consumer {
 					data.emplace(move(t));
 					disjointSet->merge(query, subject);
 				}
-				else{
-					cout << "duplicate found " << query << " " << subject << endl;
-					if (t.value() > it->value()){
-						data.emplace_hint(data.erase(it), move(t));
-					}
+				else if (t.value() > it->value()){
+					data.emplace_hint(data.erase(it), move(t));
 				}
 			}
 		}
