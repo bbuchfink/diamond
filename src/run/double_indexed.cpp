@@ -221,12 +221,9 @@ void run_query_chunk(DatabaseFile &db_file,
 		auto done = P->get_stack(reference_partition_done);
 		auto log_done = P->get_stack(P->LOG);
 		string buf;
-		off_t n_bytes_after_pop;
 
-		while (work->pop(buf, n_bytes_after_pop)) {
+		while (work->pop(buf)) {
 			Chunk chunk = to_chunk(buf);
-			if (n_bytes_after_pop == 0)
-				mp_last_chunk = true;
 
 			db_file.load_seqs(block_to_database_id, (size_t)(0), &ref_seqs::data_, &ref_ids::data_, true, options.db_filter ? options.db_filter : metadata.taxon_filter, true, chunk);
 			run_ref_chunk(db_file, query_chunk, query_len_bounds, query_buffer, master_out, tmp_file, params, metadata, block_to_database_id);
@@ -234,7 +231,12 @@ void run_query_chunk(DatabaseFile &db_file,
 			ReferenceDictionary::get().save_block(query_chunk, chunk.i);
 			ReferenceDictionary::get().clear_block(chunk.i);
 
-			done->push(buf);
+			size_t size_after_push = 0;
+			done->push(buf, size_after_push);
+			if (size_after_push == db_file.get_n_partition_chunks()) {
+				mp_last_chunk = true;
+			}
+
 			log_done->push(buf);
 			log_rss();
 		}
@@ -272,8 +274,8 @@ void run_query_chunk(DatabaseFile &db_file,
 			if (mp_last_chunk) {
 				current_ref_block = db_file.get_n_partition_chunks();
 
-				auto done = P->get_stack(reference_partition_done);
-				done->poll_size(current_ref_block);
+				// auto done = P->get_stack(reference_partition_done);
+				// done->poll_size(current_ref_block);
 
 				ReferenceDictionary::get().restore_blocks(query_chunk, current_ref_block);
 
@@ -332,10 +334,7 @@ void master_thread(DatabaseFile *db_file, task_timer &total_timer, Metadata &met
 	auto P = Parallelizer::get();
 	if (config.multiprocessing) {
 		P->init(config.parallel_tmpdir);
-		// if (P->is_master()) {
-			db_file->create_partition_balanced((size_t)(config.chunk_size*1e9));
-		// }
-		// P->barrier(AUTOTAG);
+		db_file->create_partition_balanced((size_t)(config.chunk_size*1e9));
 	}
 
 	task_timer timer("Opening the input file", true);
@@ -349,24 +348,12 @@ void master_thread(DatabaseFile *db_file, task_timer &total_timer, Metadata &met
 	}
 
 	current_query_chunk = 0;
-
-	timer.go("Opening the output file");
-	Consumer *master_out(options.consumer ? options.consumer : new OutputFile(config.output_file, config.compression == 1));
-	if (*output_format == Output_format::daa)
-		init_daa(*static_cast<OutputFile*>(master_out));
-	unique_ptr<OutputFile> unaligned_file, aligned_file;
-	if (!config.unaligned.empty())
-		unaligned_file = unique_ptr<OutputFile>(new OutputFile(config.unaligned));
-	if (!config.aligned_file.empty())
-		aligned_file = unique_ptr<OutputFile>(new OutputFile(config.aligned_file));
-	timer.finish();
-
 	size_t query_file_offset = 0;
 
-	if (config.multiprocessing) {
+	if (config.multiprocessing && config.mp_init) {
 		task_timer timer("Counting query blocks", true);
 		// TODO fix memory efficiency
-		if (P->is_master()) {
+		// if (P->is_master()) {
 			for (;; ++current_query_chunk) {
 				if (options.self) {
 					db_file->seek_seq(query_file_offset);
@@ -398,11 +385,24 @@ void master_thread(DatabaseFile *db_file, task_timer &total_timer, Metadata &met
 				const string annotation = "# query_chunk=" + std::to_string(i);
 				db_file->save_partition(get_ref_part_file_name(i), annotation);
 			}
-		}
-		P->barrier(AUTOTAG);
+		// }
+		// P->barrier(AUTOTAG);
+		return;
 	}
 
 	current_query_chunk = 0;
+
+	timer.go("Opening the output file");
+	Consumer *master_out(options.consumer ? options.consumer : new OutputFile(config.output_file, config.compression == 1));
+	if (*output_format == Output_format::daa)
+		init_daa(*static_cast<OutputFile*>(master_out));
+	unique_ptr<OutputFile> unaligned_file, aligned_file;
+	if (!config.unaligned.empty())
+		unaligned_file = unique_ptr<OutputFile>(new OutputFile(config.unaligned));
+	if (!config.aligned_file.empty())
+		aligned_file = unique_ptr<OutputFile>(new OutputFile(config.aligned_file));
+	timer.finish();
+
 	for (;; ++current_query_chunk) {
 		task_timer timer("Loading query sequences", true);
 
@@ -426,19 +426,8 @@ void master_thread(DatabaseFile *db_file, task_timer &total_timer, Metadata &met
 		timer.finish();
 		query_seqs::data_->print_stats();
 
-		Consumer * consumer_out;
-		// if (config.multiprocessing) {
-		// 	const string query_chunk_output_file = append_label(config.output_file + "_", current_query_chunk);
-		// 	Consumer *query_chunk_out(new OutputFile(query_chunk_output_file, config.compression == 1));
-		// 	if (*output_format == Output_format::daa)
-		// 		init_daa(*static_cast<OutputFile*>(query_chunk_out));
-		// 	consumer_out = query_chunk_out;
-		// } else {
-			consumer_out = master_out;
-		// }
-
 		if (current_query_chunk == 0 && *output_format != Output_format::daa)
-			output_format->print_header(*consumer_out, align_mode.mode, config.matrix.c_str(), score_matrix.gap_open(), score_matrix.gap_extend(), config.max_evalue, query_ids::get()[0],
+			output_format->print_header(*master_out, align_mode.mode, config.matrix.c_str(), score_matrix.gap_open(), score_matrix.gap_extend(), config.max_evalue, query_ids::get()[0],
 				unsigned(align_mode.query_translated ? query_source_seqs::get()[0].length() : query_seqs::get()[0].length()));
 
 		if (config.masking == 1 && !options.self) {
@@ -450,18 +439,10 @@ void master_thread(DatabaseFile *db_file, task_timer &total_timer, Metadata &met
 		if (config.multiprocessing)
 			P->create_stack_from_file(reference_partition, get_ref_part_file_name(current_query_chunk));
 
-		run_query_chunk(*db_file, current_query_chunk, *consumer_out, unaligned_file.get(), aligned_file.get(), metadata, options);
+		run_query_chunk(*db_file, current_query_chunk, *master_out, unaligned_file.get(), aligned_file.get(), metadata, options);
 
-		if (config.multiprocessing) {
+		if (config.multiprocessing)
 			P->delete_stack(reference_partition);
-
-			// if (*output_format == Output_format::daa)
-			// 	finish_daa(*static_cast<OutputFile*>(consumer_out), *db_file);
-			// else
-			// 	output_format->print_footer(*consumer_out);
-			// consumer_out->finalize();
-			// delete consumer_out;
-		}
 	}
 
 	if (query_file && !options.query_file) {

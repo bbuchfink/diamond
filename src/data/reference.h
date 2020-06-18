@@ -99,6 +99,7 @@ struct DatabaseFile : public InputFile
 
 	void create_partition(size_t max_letters);
 	void create_partition_balanced(size_t max_letters);
+	void create_partition_fixednumber(size_t n);
 
 	void save_partition(const string & partition_file_name, const string & annotation = "");
 	void load_partition(const string & partition_file_name);

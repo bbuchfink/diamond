@@ -222,6 +222,7 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("shapes", 's', "number of seed shapes (0 = all available)", shapes)
 		("shape-mask", 0, "seed shapes", shape_mask)
 		("multiprocessing", 0, "enable distributed-memory parallel processing", multiprocessing)
+		("mp-init", 0, "initialize multiprocessing run", mp_init)
 		("rank-ratio", 0, "include subjects within this ratio of last hit (stage 1)", rank_ratio, -1.0)
 		("rank-ratio2", 0, "include subjects within this ratio of last hit (stage 2)", rank_ratio2, -1.0)
 		("max-hsps", 0, "maximum number of HSPs per subject sequence to save for each query", max_hsps, 0u)
@@ -545,10 +546,10 @@ Config::Config(int argc, const char **argv, bool check_io)
 		parallel_tmpdir = tmpdir;
 	} else {
 		if (multiprocessing) {
-			char * env_str = std::getenv("SLURM_JOBID");
-			if (env_str) {
-				parallel_tmpdir = join_path(parallel_tmpdir, "diamond_job_"+string(env_str));
-			}
+			// char * env_str = std::getenv("SLURM_JOBID");
+			// if (env_str) {
+			// 	parallel_tmpdir = join_path(parallel_tmpdir, "diamond_job_"+string(env_str));
+			// }
 			errno = 0;
 			int s = mkdir(parallel_tmpdir.c_str(), 00770);
 			if (s != 0) {

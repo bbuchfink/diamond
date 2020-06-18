@@ -64,26 +64,32 @@ void Parallelizer::init(const string & tempdir) {
     }
 
     {
-        const vector<string> env_opts = {"SLURM_PROCID", "PARALLEL_RANK"};
-        for (auto env : env_opts) {
-            const char* env_str = std::getenv(env.c_str());
-            if (env_str) {
-                rank = std::stoi(env_str);
-                break;
-            }
-        }
-        if (rank < 0) {
-            const string msg = "parallel: Could not determine the parallel rank. Please set it via one of the environment variables "
-                + env_opts[0] + ", " + env_opts[1] + ".";
-            throw std::runtime_error(msg);
-        }
-        if (rank == 0) {
-            master_flag = true;
-        } else {
-            master_flag = false;
-        }
+        // const vector<string> env_opts = {"SLURM_PROCID", "PARALLEL_RANK"};
+        // for (auto env : env_opts) {
+        //     const char* env_str = std::getenv(env.c_str());
+        //     if (env_str) {
+        //         rank = std::stoi(env_str);
+        //         break;
+        //     }
+        // }
+        // if (rank < 0) {
+        //     const string msg = "parallel: Could not determine the parallel rank. Please set it via one of the environment variables "
+        //         + env_opts[0] + ", " + env_opts[1] + ".";
+        //     throw std::runtime_error(msg);
+        // }
+        // if (rank == 0) {
+        //     master_flag = true;
+        // } else {
+        //     master_flag = false;
+        // }
         // TODO: use hostname and process id, alternatively
-        id = "rank_" + to_string(rank);
+        // id = "rank_" + to_string(rank);
+
+        char hostname[1024];
+        hostname[1023] = '\0';
+        gethostname(hostname, 1023);
+
+        id = string(hostname) + "_" + to_string(getpid());
         DBG("id = " + id);
     }
 
@@ -94,17 +100,16 @@ void Parallelizer::init(const string & tempdir) {
 
     barrier_file = join_path(work_directory, BARRIER);
 
-    get_stack(LOG)->clear();
-    if (is_master()) {
-        get_stack(COMMAND)->clear();
-        get_stack(WORKERS)->clear();
-        get_stack(REGISTER)->clear();
-        sleep(1.0);
-    } else {
-        sleep(1.0);
-    }
-
-    register_workers();
+    // get_stack(LOG)->clear();
+    // if (is_master()) {
+    //     get_stack(COMMAND)->clear();
+    //     get_stack(WORKERS)->clear();
+    //     get_stack(REGISTER)->clear();
+    //     sleep(1.0);
+    // } else {
+    //     sleep(1.0);
+    // }
+    // register_workers();
 
     initialized = true;
 }

@@ -23,15 +23,16 @@ class FileStack {
 
         size_t size();
 
-        int pop(std::string & buf);
-        int pop(std::string & buf, off_t & n_bytes_after_pop);
         int pop(int & i);
+        int pop(std::string & buf);
+        int pop(std::string & buf, size_t & size_after_pop);
 
-        int top(std::string & buf);
         int top(int & i);
+        int top(std::string & buf);
 
-        int push(std::string buf);
         int push(int i);
+        int push(std::string buf);
+        int push(std::string buf, size_t & size_after_push);
 
         int get_max_line_length();
         int set_max_line_length(int n);
@@ -51,7 +52,7 @@ class FileStack {
         std::string file_name;
         off_t max_line_length;
 
-        int pop(std::string &, const bool, off_t &);
+        int pop(std::string &, const bool, size_t &);
 };
 
 #endif

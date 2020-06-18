@@ -503,6 +503,12 @@ DatabaseFile* DatabaseFile::auto_create_from_fasta() {
 		return new DatabaseFile(config.database);
 }
 
+void DatabaseFile::create_partition_fixednumber(size_t n) {
+	size_t max_letters_balanced = static_cast<size_t>(std::ceil(static_cast<double>(ref_header.letters)/static_cast<double>(n)));
+	cout << "Fixed number partitioning using " << max_letters_balanced << " (" << n << ")" << endl;
+	this->create_partition(max_letters_balanced);
+}
+
 void DatabaseFile::create_partition_balanced(size_t max_letters) {
 	double n = std::ceil(static_cast<double>(ref_header.letters) / static_cast<double>(max_letters));
 	size_t max_letters_balanced = static_cast<size_t>(std::ceil(static_cast<double>(ref_header.letters)/n));
@@ -555,6 +561,7 @@ size_t DatabaseFile::get_n_partition_chunks() {
 
 void DatabaseFile::save_partition(const string & partition_file_name, const string & annotation) {
 	ofstream out(partition_file_name);
+	cout << "WRITING " << partition_file_name << endl;
 	for (auto i : partition.chunks) {
 		out << to_string(i);
 		if (annotation.size() > 0) {

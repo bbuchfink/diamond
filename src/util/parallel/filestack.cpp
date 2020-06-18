@@ -3,6 +3,7 @@
 #include <chrono>
 #include <thread>
 #include <stdexcept>
+#include <limits>
 
 #include <cstdio>
 #include <cstring>
@@ -45,6 +46,8 @@ FileStack::~FileStack() {
     close(fd);
 }
 
+
+
 int FileStack::lock() {
     DBG("");
     int fcntl_status = -1;
@@ -81,48 +84,9 @@ int FileStack::unlock() {
     return fcntl_status;
 }
 
-int FileStack::pop(string & buf) {
-    DBG("");
-    off_t n_bytes_after_pop;
-    return pop(buf, false, n_bytes_after_pop);
-}
 
-int FileStack::top(string & buf) {
-    DBG("");
-    off_t n_bytes_after_pop;
-    return pop(buf, true, n_bytes_after_pop);
-}
 
-int FileStack::pop(string & buf, off_t & n_bytes_after_pop) {
-    DBG("");
-    return pop(buf, false, n_bytes_after_pop);
-}
-
-int FileStack::pop(int & i) {
-    DBG("");
-    string buf;
-    off_t n_bytes_after_pop;
-    const int get_status = pop(buf, false, n_bytes_after_pop);
-    if (get_status > 0) {
-        return i = stoi(buf);
-    } else {
-        return -1;
-    }
-}
-
-int FileStack::top(int & i) {
-    DBG("");
-    string buf;
-    off_t n_bytes_after_pop;
-    const int get_status = pop(buf, true, n_bytes_after_pop);
-    if (get_status > 0) {
-        return i = stoi(buf);
-    } else {
-        return -1;
-    }
-}
-
-int FileStack::pop(string & buf, const bool keep_flag, off_t & n_bytes_after_pop) {
+int FileStack::pop(string & buf, const bool keep_flag, size_t & size_after_pop) {
     DBG("");
     buf.clear();
     bool locked_internally = false;
@@ -167,7 +131,9 @@ int FileStack::pop(string & buf, const bool keep_flag, off_t & n_bytes_after_pop
         // fprintf(stderr, "chunk end   : %c|", chunk[end]);
         // fprintf(stderr, "%s|", buf.c_str());
     }
-    n_bytes_after_pop = lseek(fd, 0, SEEK_END);
+    if (size_after_pop != numeric_limits<size_t>::max()) {
+        size_after_pop = this->size();
+    }
     if (locked_internally) {
         unlock();
     }
@@ -179,7 +145,50 @@ int FileStack::pop(string & buf, const bool keep_flag, off_t & n_bytes_after_pop
     }
 }
 
-int FileStack::push(string buf) {
+int FileStack::pop(string & buf) {
+    DBG("");
+    size_t size_after_pop = numeric_limits<size_t>::max();
+    return pop(buf, false, size_after_pop);
+}
+
+int FileStack::top(string & buf) {
+    DBG("");
+    size_t size_after_pop = numeric_limits<size_t>::max();
+    return pop(buf, true, size_after_pop);
+}
+
+int FileStack::pop(string & buf, size_t & size_after_pop) {
+    DBG("");
+    return pop(buf, false, size_after_pop);
+}
+
+int FileStack::pop(int & i) {
+    DBG("");
+    string buf;
+    size_t size_after_pop = numeric_limits<size_t>::max();
+    const int get_status = pop(buf, false, size_after_pop);
+    if (get_status > 0) {
+        return i = stoi(buf);
+    } else {
+        return -1;
+    }
+}
+
+int FileStack::top(int & i) {
+    DBG("");
+    string buf;
+    size_t size_after_pop = numeric_limits<size_t>::max();
+    const int get_status = pop(buf, true, size_after_pop);
+    if (get_status > 0) {
+        return i = stoi(buf);
+    } else {
+        return -1;
+    }
+}
+
+
+
+int FileStack::push(string buf, size_t & size_after_push) {
     DBG("");
     bool added_newline = false;
     if (buf.back() != '\n') {
@@ -193,6 +202,9 @@ int FileStack::push(string buf) {
     }
     lseek(fd, 0, SEEK_END);
     const size_t n = write(fd, buf.c_str(), buf.size());
+    if (size_after_push != numeric_limits<size_t>::max()) {
+        size_after_push = size();
+    }
     if (locked_internally) {
         unlock();
     }
@@ -203,33 +215,32 @@ int FileStack::push(string buf) {
     return n;
 }
 
+int FileStack::push(string buf) {
+    DBG("");
+    size_t size_after_push = numeric_limits<size_t>::max();
+    return push(buf, size_after_push);
+}
+
 int FileStack::push(int i) {
     DBG("");
     string buf = to_string(i);
     return push(buf);
 }
 
-int FileStack::set_max_line_length(int n) {
-    DBG("");
-    const int minimum_line_length = 8;
-    if (n < minimum_line_length) {
-        n = minimum_line_length;
-    }
-    max_line_length = n;
-    return max_line_length;
-}
 
-int FileStack::get_max_line_length() {
-    DBG("");
-    return max_line_length;
-}
 
 size_t FileStack::size() {
     DBG("");
     size_t n_bytes, i, c = 0;
     const size_t chunk_size = default_max_line_length;
     char * raw = new char[chunk_size * sizeof(char)];
-    lock();
+
+    bool locked_internally = false;
+    if (! locked) {
+        lock();
+        locked_internally = true;
+    }
+
     lseek(fd, 0, SEEK_SET);
     while ((n_bytes = read(fd, raw, chunk_size)) > 0) {
         for (i=0; i<n_bytes; i++) {
@@ -238,19 +249,35 @@ size_t FileStack::size() {
             }
         }
     }
-    unlock();
+
+    if (locked_internally) {
+        unlock();
+    }
+
     delete [] raw;
     return c;
 }
 
 int FileStack::clear() {
     DBG("");
-    lock();
+
+    bool locked_internally = false;
+    if (! locked) {
+        lock();
+        locked_internally = true;
+    }
+
     lseek(fd, 0, SEEK_SET);
     int stat = ftruncate(fd, 0);
-    unlock();
+
+    if (locked_internally) {
+        unlock();
+    }
+
     return stat;
 }
+
+
 
 bool FileStack::poll_query(const string & query, const double sleep_s, const size_t max_iter) {
     DBG("");
@@ -288,3 +315,20 @@ bool FileStack::poll_size(const size_t size, const double sleep_s, const size_t 
                       + " within " + to_string(double(max_iter) * sleep_s) + " seconds."));
     return false;  // TODO : finally decide on the semantics
 };
+
+
+
+int FileStack::set_max_line_length(int n) {
+    DBG("");
+    const int minimum_line_length = 8;
+    if (n < minimum_line_length) {
+        n = minimum_line_length;
+    }
+    max_line_length = n;
+    return max_line_length;
+}
+
+int FileStack::get_max_line_length() {
+    DBG("");
+    return max_line_length;
+}
