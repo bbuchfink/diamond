@@ -327,12 +327,14 @@ void MCL::run(){
 		uint32_t n_dense = 0;
 		uint32_t n_sparse = 0;
 		uint32_t n_singletons = 0;
+		uint32_t n_jobs_done = 0;
 		uint64_t cluster_id = iThr;
 		uint32_t my_counter = iThr*chunk_size;
 		float max_sparsity = 0.0f;
 		float min_sparsity = 1.0f;
 		while(my_counter < max_counter){
 			for(uint32_t chunk_counter = my_counter; chunk_counter<min(my_counter+chunk_size, max_counter); chunk_counter++){
+				n_jobs_done++;
 				uint32_t iComponent = sort_order[chunk_counter];
 				vector<uint32_t> order = indices[iComponent];
 				if(order.size() > 1){
@@ -413,7 +415,7 @@ void MCL::run(){
 		n_dense_calculations.fetch_add(n_dense, memory_order_relaxed);
 		n_sparse_calculations.fetch_add(n_sparse, memory_order_relaxed);
 		nClustersEq1.fetch_add(n_singletons, memory_order_relaxed);
-		jobs_per_thread[iThr] = n_dense + n_sparse + n_singletons;
+		jobs_per_thread[iThr] = n_jobs_done;
 		max_sparsities[iThr] = max_sparsity;
 		min_sparsities[iThr] = min_sparsity;
 		time_per_thread[iThr] = (chrono::duration_cast<chrono::milliseconds>(chrono::high_resolution_clock::now() - thread_start).count()) / 1000.0;
