@@ -83,7 +83,7 @@ void add_dp_targets(const WorkTarget &target, int target_idx, const sequence *qu
 		slen = (int)target.seq.length();
 	for (unsigned frame = 0; frame < align_mode.query_contexts; ++frame) {
 
-		if (config.ext == "full" && query_seq[0].length() < config.full_sw_len) {
+		if (config.ext == "full" && (int)query_seq[0].length() < config.full_sw_len) {
 			dp_targets[frame][0].emplace_back(target.seq, 0, 0, 0, 0, target_idx, (int)query_seq->length());
 			continue;
 		}
@@ -132,7 +132,7 @@ vector<Target> align(const vector<WorkTarget> &targets, const sequence *query_se
 		r.emplace_back(targets[i].block_id, targets[i].seq, targets[i].outranked, targets[i].ungapped_score);
 	}
 
-	if (config.ext == "full" && query_seq[0].length() < config.full_sw_len)
+	if (config.ext == "full" && (int)query_seq[0].length() < config.full_sw_len)
 		flags |= DP::FULL_MATRIX;
 
 	for (unsigned frame = 0; frame < align_mode.query_contexts; ++frame) {

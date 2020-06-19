@@ -37,7 +37,7 @@ struct Rank {
 	{}
 	Rank(const char *s);
 	enum {
-		count = 44, strain = 34, biotype = 35, clade = 36, forma_specialis = 37, genotype = 38, isolate = 39, morph = 40, pathogroup = 41, serogroup = 42, serotype = 43,
+		count = 45, strain = 34, biotype = 35, clade = 36, forma_specialis = 37, genotype = 38, isolate = 39, morph = 40, pathogroup = 41, serogroup = 42, serotype = 43, subvariety = 44,
 		forma = 33, varietas = 32, subspecies = 31, species = 30, species_subgroup = 29, species_group = 28, series = 27, subsection = 26, section = 25, subgenus = 24, genus = 23, subtribe = 22,
 		tribe = 21, subfamily = 20, family = 19, superfamily = 18, parvorder = 17, infraorder = 16, suborder = 15, order = 14, superorder = 13, subcohort = 12, cohort = 11, infraclass = 10,
 		subclass = 9, class_rank = 8, superclass = 7, subphylum = 6, phylum = 5, superphylum = 4, subkingdom = 3, kingdom = 2, superkingdom = 1, none = 0

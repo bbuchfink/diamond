@@ -4,7 +4,7 @@
 - Fixed a database compatibility issue with big endian architectures.
 - Fixed a bug that would cause a crash for query sequences shorter than 5 letters in blastx mode.
 - Fixed a bug that would cause a crash when using a FASTA file as database parameter in blastx mode.
-- Added support for the following new ranks in the NCBI taxonomy: biotype, clade, forma specialis, genotype, isolate, morph, pathogroup, serogroup, serotype, strain.
+- Added support for the following new ranks in the NCBI taxonomy: biotype, clade, forma specialis, genotype, isolate, morph, pathogroup, serogroup, serotype, strain, subvariety.
 
 [0.9.34]
 - Fixed a compiler error for native builds.

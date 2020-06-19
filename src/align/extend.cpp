@@ -175,7 +175,8 @@ vector<Match> extend(const Parameters &params, size_t query_id, hit* begin, hit*
 		seed_hits_chunk.clear();
 		target_block_ids_chunk.clear();
 		const vector<TargetScore>::const_iterator end = std::min(i + chunk_size, target_scores.cend());
-		const bool multi_chunk = (end - i) < target_scores.size();
+		const size_t chunk_size = (size_t)(end - i);
+		const bool multi_chunk = chunk_size < target_scores.size();
 
 		if (multi_chunk) {
 			for (vector<TargetScore>::const_iterator j = i; j < end; ++j) {
@@ -194,7 +195,7 @@ vector<Match> extend(const Parameters &params, size_t query_id, hit* begin, hit*
 		else
 			aligned_targets = std::move(v);
 
-		if ((double)v.size() / (end - i) < config.ext_min_yield)
+		if ((double)v.size() / chunk_size < config.ext_min_yield)
 			break;
 	}
 
