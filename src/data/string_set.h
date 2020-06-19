@@ -92,10 +92,10 @@ struct String_set
 	size_t letters() const
 	{ return raw_len() - get_length() - PERIMETER_PADDING; }
 
-	_t* data(ptrdiff_t p = 0)
+	_t* data(uint64_t p = 0)
 	{ return &data_[p]; }
 
-	const _t* data(ptrdiff_t p = 0) const
+	const _t* data(uint64_t p = 0) const
 	{ return &data_[p]; }
 
 	size_t position(const _t* p) const
