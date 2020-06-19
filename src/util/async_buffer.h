@@ -52,6 +52,7 @@ struct Async_buffer
 		count_ = new std::atomic_size_t[bins];
 		for (unsigned i = 0; i < bins; ++i) {
 			tmp_file_.push_back(new AsyncFile());
+			count_[i] = (size_t)0;
 		}
 	}
 
