@@ -3,7 +3,6 @@ os:
   - osx
 
 dist:
-  - xenial
   - trusty
 
 language: c++

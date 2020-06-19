@@ -207,7 +207,8 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("bin", 0, "number of query bins for seed search", query_bins, 16u)
 		("min-orf", 'l', "ignore translated sequences without an open reading frame of at least this length", run_len)
 		("freq-sd", 0, "number of standard deviations for ignoring frequent seeds", freq_sd, 0.0)
-		("id2", 0, "minimum number of identities for stage 1 hit", min_identities)		
+		("id2", 0, "minimum number of identities for stage 1 hit", min_identities)
+		("xdrop", 'x', "xdrop for ungapped alignment", ungapped_xdrop, 12.3)
 		("band", 0, "band for dynamic programming computation", padding)
 		("shapes", 's', "number of seed shapes (0 = all available)", shapes)
 		("shape-mask", 0, "seed shapes", shape_mask)
@@ -235,7 +236,6 @@ Config::Config(int argc, const char **argv, bool check_io)
 	Options_group deprecated_options("");
 	deprecated_options.add()
 		("window", 'w', "window size for local hit search", window)
-		("xdrop", 'x', "xdrop for ungapped alignment", ungapped_xdrop, 12.3)
 		("ungapped-score", 0, "minimum alignment score to continue local extension", min_ungapped_score)
 		("hit-band", 0, "band for hit verification", hit_band)
 		("hit-score", 0, "minimum score to keep a tentative alignment", min_hit_score)
@@ -350,7 +350,7 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("ext", 0, "", ext)
 		("full-sw-len", 0, "", full_sw_len);
 	
-	parser.add(general).add(makedb).add(cluster).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options);
+	parser.add(general).add(makedb).add(cluster).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options).add(deprecated_options);
 	parser.store(argc, argv, command);
 
 	if (long_reads) {

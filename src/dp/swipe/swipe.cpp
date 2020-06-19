@@ -104,8 +104,6 @@ Hsp traceback(const sequence& query, Frame frame, _cbs bias_correction, const Ma
 	return out;
 }
 
-#ifdef __SSE2__
-
 template<typename _sv, typename _traceback, typename _cbs>
 //list<Hsp> swipe(const sequence &query, const sequence *subject_begin, const sequence *subject_end, int score_cutoff, vector<int> &overflow)
 list<Hsp> swipe(const sequence& query, Frame frame, vector<DpTarget>::const_iterator subject_begin, vector<DpTarget>::const_iterator subject_end, _cbs composition_bias, int score_cutoff, vector<DpTarget>& overflow, Statistics &stats)
@@ -172,8 +170,6 @@ list<Hsp> swipe(const sequence& query, Frame frame, vector<DpTarget>::const_iter
 
 	return out;
 }
-
-#endif
 
 /*list<Hsp> swipe(const sequence &query, const sequence *subject_begin, const sequence *subject_end, int score_cutoff)
 {

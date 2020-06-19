@@ -29,6 +29,7 @@ const vector<TestCase> test_cases = {
 { "blastp (multithreaded)", "blastp -p4" },
 { "blastp (blocked)", "blastp -c1 -b0.00002 -p4" },
 { "blastp (more-sensitive)", "blastp --more-sensitive -c1 -p4" },
+{ "blastp (target-parallel)", "blastp --more-sensitive -c1 -p4 --query-parallel-limit 1" },
 { "blastp (target seqs)", "blastp -k3 -c1 -p4" },
 { "blastp (top)", "blastp --top 10 -p4"},
 { "blastp (evalue)", "blastp -e10000 --more-sensitive -c1 -p4" },
@@ -43,12 +44,13 @@ const vector<uint64_t> ref_hashes = {
 0x4f959b7506a0b621,
 0x2d95a36e0a13bf9b,
 0x959b05442e7bfebf,
+0x959b05442e7bfebf,
 0x3bd7a39c0bd45a3,
 0x8ac0057c68f8c239,
 0xcc42d6752cbc88c1,
 0xa76a583e6fe4c891,
 0xc40f9bffc00c4f97,
-0xda437ed1f7ddb589,
+0x1d42766969a3525d,
 0xdf32d46bc18e400a,
 };
 
