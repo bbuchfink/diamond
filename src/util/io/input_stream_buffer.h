@@ -31,6 +31,6 @@ struct InputStreamBuffer : public StreamEntity
 	virtual void putback(const char* p, size_t n) override;
 private:
 	
-	std::unique_ptr<char> buf_;
+	std::unique_ptr<char[]> buf_;
 	size_t putback_count_;
 };

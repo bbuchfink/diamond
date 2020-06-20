@@ -33,7 +33,7 @@ struct OutputStreamBuffer : public StreamEntity
 	virtual size_t tell();
 private:
 
-	std::unique_ptr<char> buf_;
+	std::unique_ptr<char[]> buf_;
 };
 
 #endif
