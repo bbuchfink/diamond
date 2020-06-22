@@ -215,7 +215,7 @@ void roc() {
 				buf_size = std::max(buf_size, buf.size());
 				buffers.push(std::move(buf));
 				buf = string();
-				buf.reserve(buf_size);
+				//buf.reserve(buf_size);
 				cdv.notify_one();
 			}
 			query = acc;

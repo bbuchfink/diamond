@@ -26,8 +26,14 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/sequence/sequence.h"
 #include "../basic/config.h"
 #include "collision.h"
+#include "finger_print.h"
 
 namespace Search {
+
+static inline bool verify_hit(const Letter* q, const Letter* s) {
+	Finger_print fq(q), fs(s);
+	return fq.match(fs) >= config.min_identities;
+}
 
 static inline bool left_most_filter(const sequence &query,
 	const Letter* subject,
@@ -63,7 +69,7 @@ static inline bool left_most_filter(const sequence &query,
 		match_mask_left = ((1llu << len_left) - 1) & match_mask,
 		query_mask_left = ((1llu << len_left) - 1) & query_seed_mask;
 
-	const uint32_t left_hit = context.current_matcher.hit(match_mask_left, len_left) & query_mask_left;
+	uint32_t left_hit = context.current_matcher.hit(match_mask_left, len_left) & query_mask_left;
 
 	if (first_shape)
 		return left_hit == 0;
@@ -73,7 +79,17 @@ static inline bool left_most_filter(const sequence &query,
 		query_mask_right = query_seed_mask >> (window_left + 1);
 	
 	const uint32_t right_hit = context.previous_matcher.hit(match_mask_right, len_right) & query_mask_right;
-	return left_hit == 0 && right_hit == 0;
+	if (left_hit == 0 && right_hit == 0)
+		return true;
+
+	while (left_hit != 0) {
+		int i = ctz(left_hit);
+		if (verify_hit(q + i, s + i))
+			return true;
+		left_hit >>= i + 1;
+	}
+
+	return false;
 }
 
 }
