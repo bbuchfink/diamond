@@ -277,43 +277,101 @@ void MCL::run(){
 	Workflow::Search::Options opt;
 	opt.db = &(*db);
 	opt.self = true;
-	SparseMatrixStream<float> ms(db->ref_header.sequences);
-	opt.consumer = &ms;
-	opt.db_filter = nullptr;
-	Workflow::Search::run(opt);
 
+	vector<vector<uint32_t>> indices;
+	vector<vector<Eigen::Triplet<float>>> components;
+	uint32_t nComponents;
+	uint32_t nComponentsLt1;
+	uint64_t nElements;
 	task_timer timer;
-	timer.go("Computing independent components");
-	auto componentInfo = ms.getComponents();
-	vector<vector<uint32_t>> indices = get<0>(componentInfo);
-	vector<vector<Eigen::Triplet<float>>> components = get<1>(componentInfo);
-	uint32_t nComponents = count_if(indices.begin(), indices.end(), [](vector<uint32_t> v){ return v.size() > 0;});
-	uint32_t nComponentsLt1 = count_if(indices.begin(), indices.end(), [](vector<uint32_t> v){ return v.size() > 1;});
-	message_stream << "Found " << nComponentsLt1 <<" ("<<nComponents<< " incl. singletons) disconnected components" << endl;
+	{ // we want to clear ms, therefore the scope
+		SparseMatrixStream<float> ms(db->ref_header.sequences);
+		opt.consumer = &ms;
+		opt.db_filter = nullptr;
+		Workflow::Search::run(opt);
+
+		timer.go("Computing independent components");
+		auto componentInfo = ms.getComponents();
+		indices = get<0>(componentInfo);
+		components = get<1>(componentInfo);
+		nComponents = count_if(indices.begin(), indices.end(), [](vector<uint32_t> v){ return v.size() > 0;});
+		nComponentsLt1 = count_if(indices.begin(), indices.end(), [](vector<uint32_t> v){ return v.size() > 1;});
+		nElements = ms.getNumberOfElements();
+	}
 
 	// Sort to get the largest chunks first
 	vector<uint32_t> sort_order(indices.size());
 	iota(sort_order.begin(), sort_order.end(), 0);
 	sort(sort_order.begin(), sort_order.end(), [&](uint32_t i, uint32_t j){return indices[i].size() > indices[j].size();});
+
+	// ** Stats ** //
+	vector<float> sparsities(nComponentsLt1);
+	uint64_t icomp = 0;
+	generate(sparsities.begin(), sparsities.end(), [&icomp, &sort_order, &indices, &components](){ 
+				const uint32_t iComponent = sort_order[icomp++];
+				const uint32_t ssize = components[iComponent].size();
+				const uint64_t dsize = indices[iComponent].size() * indices[iComponent].size();
+				return 1.0-(1.0 * ssize) / dsize;
+			});
+	float sparsity_of_max = sparsities[0];
+	float sparsity_of_med = nComponentsLt1 > 0 && nComponentsLt1 % 2 == 0 ? 
+		(sparsities[nComponentsLt1/2] + sparsities[nComponentsLt1/2+1]) / 2.0 : 
+		sparsities[nComponentsLt1/2+1] ;
+	float sparsity_of_min = sparsities[nComponentsLt1-1];
+
+	// rough memory calc before sorting sparsities
+	const uint32_t chunk_size = config.cluster_mcl_chunk_size;
+	uint32_t nThreads = min(config.threads_, nComponents / chunk_size);
+	float mem_req = nElements * (2 * sizeof(uint32_t) + sizeof(float));
+	for(uint32_t iThr = 0; iThr < nThreads; iThr++){
+		float this_mem_req;
+		if(sparsities[iThr] >= config.cluster_mcl_sparsity_switch){ 
+			this_mem_req = indices[sort_order[iThr]].size() * (2 * sizeof(uint32_t) + sizeof(float));
+		}
+		else{
+			this_mem_req = indices[sort_order[iThr]].size() * indices[sort_order[iThr]].size();
+		}
+		mem_req += 3*this_mem_req; // we need three matrices of this size
+	}
+	sort(sparsities.rbegin(), sparsities.rend());
+	float med_sparsity = nComponentsLt1 > 0 && nComponentsLt1 % 2 == 0 ? 
+		(sparsities[nComponentsLt1/2] + sparsities[nComponentsLt1/2+1]) / 2.0 : 
+		sparsities[nComponentsLt1/2+1] ;
+	float median1 = nComponents > 0 && nComponents % 2 == 0 ? 
+		(indices[sort_order[nComponents/2]].size() + indices[sort_order[nComponents/2+1]].size()) / 2.0 : 
+		indices[sort_order[nComponents/2+1]].size();
+	float median2 = nComponentsLt1 > 0 && nComponentsLt1 % 2 == 0 ? 
+		(indices[sort_order[nComponentsLt1/2]].size() + indices[sort_order[nComponentsLt1/2+1]].size()) / 2.0 : 
+		indices[sort_order[nComponentsLt1/2+1]].size();
 	timer.finish();
 
+	message_stream << "Number of DIAMOND hits:          " << nElements << endl;
+	message_stream << "Number of independet components: " << nComponentsLt1 <<" ("<<nComponents<< " incl. singletons)" << endl;
+	message_stream << "Component size distribution: "<< endl;
+	message_stream << "\t max: " << indices[sort_order[0]].size() << endl;
+	message_stream << "\t med: " << median2 << " ("<<median1<< " incl. singletons)"<<endl;
+	message_stream << "\t min: " << indices[sort_order[nComponentsLt1-1]].size() << " ("<<indices[sort_order[nComponents-1]].size()<< " incl. singletons)"<<endl;
+	message_stream << "Component sparsity distribution (excluding singletons): "<< endl;
+	message_stream << "\t of max. size: " << sparsity_of_max << " max. sparsity: " << sparsities[0] << endl;
+	message_stream << "\t of med. size: " << sparsity_of_med << " med. sparsity: " << med_sparsity << endl;
+	message_stream << "\t of min. size: " << sparsity_of_min << " min. sparsity: " << sparsities[nComponentsLt1-1] << endl;
+	message_stream << "Rough memory requirements: " << mem_req/(1024*1024) << "MB" << endl;
+
+	sparsities.clear();
+	// ** End of stats ** //
+
 	timer.go("Clustering components");
-	bool full = false;
 	// Note, we will access the clustering_result from several threads below and a vector does not guarantee thread-safety in these situations.
 	// Note also, that the use of the disjoint_set structure guarantees that each thread will access a different part of the clustering_result
 	uint64_t* clustering_result = new uint64_t[db->ref_header.sequences];
 	fill(clustering_result, clustering_result+db->ref_header.sequences, 0UL);
 
 	// note that the disconnected components are sorted by size
-	const uint32_t chunk_size = config.cluster_mcl_chunk_size;
 	const uint32_t max_counter = nComponents;
-	uint32_t nThreads = min(config.threads_, nComponents / chunk_size);
 	const float inflation = (float) config.cluster_mcl_inflation;
 	const float expansion = (float) config.cluster_mcl_expansion;
 
 	// Collect some stats on the way
-	float* max_sparsities = new float[nThreads];
-	float* min_sparsities = new float[nThreads];
 	uint32_t* jobs_per_thread = new uint32_t[nThreads];
 	float* time_per_thread = new float[nThreads];
 	atomic_uint n_clusters_found(0);
@@ -330,8 +388,6 @@ void MCL::run(){
 		uint32_t n_jobs_done = 0;
 		uint64_t cluster_id = iThr;
 		uint32_t my_counter = iThr*chunk_size;
-		float max_sparsity = 0.0f;
-		float min_sparsity = 1.0f;
 		while(my_counter < max_counter){
 			for(uint32_t chunk_counter = my_counter; chunk_counter<min(my_counter+chunk_size, max_counter); chunk_counter++){
 				n_jobs_done++;
@@ -340,15 +396,13 @@ void MCL::run(){
 				if(order.size() > 1){
 					vector<Eigen::Triplet<float>> m = components[iComponent];
 					assert(m.size() <= order.size() * order.size());
-					float sparsity = 1.0-(1.0 * m.size()) / (order.size()*order.size());
-					max_sparsity = max(max_sparsity, sparsity);
-					min_sparsity = min(min_sparsity, sparsity);
 					// map back to original ids
 					vector<unordered_set<uint32_t>> list_of_sets;
 					unordered_set<uint32_t> attractors;
 
-					//TODO: a size limit for the dense matrix should control this as well
+					const float sparsity = 1.0-(1.0 * m.size()) / (order.size()*order.size());
 					chrono::high_resolution_clock::time_point t = chrono::high_resolution_clock::now();
+					//TODO: a size limit for the dense matrix should control this as well
 					if(sparsity >= config.cluster_mcl_sparsity_switch && expansion - (int) expansion == 0){ 
 						n_sparse++;
 						Eigen::SparseMatrix<float> m_sparse(order.size(), order.size());
@@ -416,52 +470,34 @@ void MCL::run(){
 		n_sparse_calculations.fetch_add(n_sparse, memory_order_relaxed);
 		nClustersEq1.fetch_add(n_singletons, memory_order_relaxed);
 		jobs_per_thread[iThr] = n_jobs_done;
-		max_sparsities[iThr] = max_sparsity;
-		min_sparsities[iThr] = min_sparsity;
 		time_per_thread[iThr] = (chrono::duration_cast<chrono::milliseconds>(chrono::high_resolution_clock::now() - thread_start).count()) / 1000.0;
 	};
 
 	vector<thread> threads;
-	for(uint32_t iThread = 0; iThread < nThreads ; iThread++ ) {
-		min_sparsities[iThread] = 1.0f;
-		max_sparsities[iThread] = 0.0f;
+	for(uint32_t iThread = 0; iThread < nThreads ; iThread++) {
 		threads.emplace_back(mcl_clustering, iThread);
 	}
 
-	float min_sparsity = 1.0f;
-	float max_sparsity = 0.0f;
-	for(uint32_t iThread = 0; iThread < nThreads ; iThread++ ) {
+	for(uint32_t iThread = 0; iThread < nThreads ; iThread++) {
 		threads[iThread].join();
-		min_sparsity = min(min_sparsity, min_sparsities[iThread]);
-		max_sparsity = max(max_sparsity, max_sparsities[iThread]);
 	}
-	delete[] min_sparsities;
-	delete[] max_sparsities;
 	timer.finish();
 
 	// Output stats
 	message_stream << "Jobs per thread: ";
-	for(uint32_t iThread = 0; iThread < nThreads ; iThread++ ) {
+	for(uint32_t iThread = 0; iThread < nThreads ; iThread++) {
 		message_stream << " " << setw(8) << right << jobs_per_thread[iThread];
 	}
 	message_stream << endl; 
 	message_stream << "Time per thread: ";
-	for(uint32_t iThread = 0; iThread < nThreads ; iThread++ ) {
+	for(uint32_t iThread = 0; iThread < nThreads ; iThread++) {
 		message_stream << " " << setw(8) << right << time_per_thread[iThread];
 	}
 	message_stream << endl;
 	delete[] time_per_thread;
 	delete[] jobs_per_thread;
 
-	float median = nComponents > 0 && nComponents % 2 == 0 ? 
-		(indices[sort_order[nComponents/2]].size() + indices[sort_order[nComponents/2+1]].size()) / 2.0 : 
-		indices[sort_order[nComponents/2+1]].size();
 	message_stream << "Clusters found " << n_clusters_found - nClustersEq1 << " ("<< n_clusters_found <<" incl. singletons)" << endl; 
-	message_stream << "\t max. size " << indices[sort_order[0]].size() << endl;
-	message_stream << "\t med. size " << median << endl;
-	message_stream << "\t min. size " << indices[sort_order[nComponents-1]].size() << endl;
-	message_stream << "\t min sparsity " << min_sparsity << endl;
-	message_stream << "\t max sparsity " << max_sparsity << endl;
 	message_stream << "\t number of dense calculations " << n_dense_calculations << endl;
 	message_stream << "\t number of sparse calculations " << n_sparse_calculations << endl;
 	message_stream << "Time used for matrix creation: " 

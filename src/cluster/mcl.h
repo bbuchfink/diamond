@@ -110,7 +110,7 @@ public:
 	}
 
 	~SparseMatrixStream(){
-		delete disjointSet;
+		if(disjointSet) delete disjointSet;
 	}
 	pair<vector<vector<uint32_t>>, vector<vector<Eigen::Triplet<T>>>> getComponents(){
 		vector<unordered_set<uint32_t>> sets = disjointSet->getListOfSets();
@@ -149,6 +149,9 @@ public:
 		Eigen::SparseMatrix<T> m(n,n);
 		m.setFromTriplets(data.begin(), data.end());
 		return m;
+	}
+	uint64_t getNumberOfElements(){
+		return data.size();
 	}
 };
 }}
