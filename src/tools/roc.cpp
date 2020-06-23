@@ -159,21 +159,22 @@ double query_roc(const string& buf) {
 	return a;
 }
 
-static queue<string> buffers;
+static queue<string*> buffers;
 static bool finished = false;
 
 static void worker() {
-	string buf;
+	string* buf;
 	while (true) {
 		{
 			std::unique_lock<std::mutex> lock(mtx);
 			while (buffers.empty() && !finished) cdv.wait(lock);
 			if (buffers.empty() && finished)
 				return;
-			buf = std::move(buffers.front());
+			buf = buffers.front();
 			buffers.pop();
 		}
-		query_roc(buf);
+		query_roc(*buf);
+		delete buf;
 	}
 }
 
@@ -203,7 +204,7 @@ void roc() {
 	TextInputFile in(config.query_file);
 	string query, acc;
 	size_t n = 0, queries = 0, buf_size = 0;
-	string buf;
+	string* buf = new string;
 	
 	while (in.getline(), !in.eof()) {
 		if (in.line.empty())
@@ -212,9 +213,9 @@ void roc() {
 		if (acc != query) {
 			if (!query.empty()) {
 				std::lock_guard<std::mutex> lock(mtx);
-				buf_size = std::max(buf_size, buf.size());
-				buffers.push(std::move(buf));
-				buf = string();
+				//buf_size = std::max(buf_size, buf.size());
+				buffers.push(buf);
+				buf = new string;
 				//buf.reserve(buf_size);
 				cdv.notify_one();
 			}
@@ -223,13 +224,13 @@ void roc() {
 			if (queries % 10000 == 0)
 				message_stream << "#Queries = " << queries << endl;
 		}
-		buf.append(in.line);
-		buf.append("\n");
+		buf->append(in.line);
+		buf->append("\n");
 		++n;
 	}
 	{
 		std::lock_guard<std::mutex> lock(mtx);
-		buffers.push(std::move(buf));
+		buffers.push(buf);
 		finished = true;
 		cdv.notify_all();
 	}
