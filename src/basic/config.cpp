@@ -348,7 +348,8 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("ext-chunk-size", 0, "", ext_chunk_size, (size_t)0)
 		("ext-yield", 0, "", ext_min_yield)
 		("ext", 0, "", ext)
-		("full-sw-len", 0, "", full_sw_len);
+		("full-sw-len", 0, "", full_sw_len)
+		("relaxed-evalue-factor", 0, "", relaxed_evalue_factor, 1.0);
 	
 	parser.add(general).add(makedb).add(cluster).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options).add(deprecated_options);
 	parser.store(argc, argv, command);

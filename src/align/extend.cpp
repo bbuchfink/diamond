@@ -170,16 +170,19 @@ vector<Match> extend(const Parameters &params, size_t query_id, hit* begin, hit*
 	}
 
 	const size_t chunk_size = config.ext_chunk_size > 0 ? config.ext_chunk_size : target_block_ids.size();
+	const int relaxed_cutoff = score_matrix.rawscore(score_matrix.bitscore(config.max_evalue * config.relaxed_evalue_factor, (unsigned)query_seq[0].length()));
+	vector<TargetScore>::const_iterator i0 = target_scores.cbegin(), i1 = std::min(i0 + config.ext_chunk_size, target_scores.cend());
+	while (i1 < target_scores.cend() && i1->score >= relaxed_cutoff) ++i1;
+
 	vector<Target> aligned_targets;
-	for (vector<TargetScore>::const_iterator i = target_scores.cbegin(); i < target_scores.cend(); i += chunk_size) {
+	while(i0 < target_scores.cend()) {
 		seed_hits_chunk.clear();
 		target_block_ids_chunk.clear();
-		const vector<TargetScore>::const_iterator end = std::min(i + chunk_size, target_scores.cend());
-		const size_t chunk_size = (size_t)(end - i);
-		const bool multi_chunk = chunk_size < target_scores.size();
+		const size_t current_chunk_size = (size_t)(i1 - i0);
+		const bool multi_chunk = current_chunk_size < target_scores.size();
 
 		if (multi_chunk) {
-			for (vector<TargetScore>::const_iterator j = i; j < end; ++j) {
+			for (vector<TargetScore>::const_iterator j = i0; j < i1; ++j) {
 				target_block_ids_chunk.push_back(target_block_ids[j->target]);
 				seed_hits_chunk.push_back(seed_hits.begin(j->target), seed_hits.end(j->target));
 			}
@@ -195,8 +198,11 @@ vector<Match> extend(const Parameters &params, size_t query_id, hit* begin, hit*
 		else
 			aligned_targets = std::move(v);
 
-		if ((double)v.size() / chunk_size < config.ext_min_yield)
+		if ((double)v.size() / current_chunk_size < config.ext_min_yield)
 			break;
+
+		i0 = i1;
+		i1 = std::min(i1 + chunk_size, target_scores.cend());
 	}
 
 	timer.go("Computing score only culling");
