@@ -46,12 +46,18 @@ struct Async_buffer
 		bin_size_((input_count + bins_ - 1) / bins_),
 		input_count_(input_count),
 		bins_processed_(0),
-		total_size_(0),
-		count_(bins)
+		total_size_(0)
 	{
 		log_stream << "Async_buffer() " << input_count << ',' << bin_size_ << std::endl;
-		for (unsigned i = 0; i < bins; ++i)
+		count_ = new std::atomic_size_t[bins];
+		for (unsigned i = 0; i < bins; ++i) {
 			tmp_file_.push_back(new AsyncFile());
+			count_[i] = (size_t)0;
+		}
+	}
+
+	~Async_buffer() {
+		delete[] count_;
 	}
 
 	size_t begin(size_t bin) const
@@ -154,7 +160,7 @@ private:
 		size_t count = 0;
 		try {
 			while(true) count += _t::read(f, it);
-		} catch(EndOfStream) {}
+		} catch(EndOfStream&) {}
 		f.close_and_delete();
 		if (count != count_[bin])
 			throw std::runtime_error("Mismatching hit count / possibly corrupted temporary file: " + f.file_name);
@@ -164,7 +170,7 @@ private:
 	const size_t bin_size_, input_count_;
 	size_t bins_processed_, total_size_;
 	PtrVector<AsyncFile> tmp_file_;
-	std::vector<std::atomic_size_t> count_;
+	std::atomic_size_t *count_;
 	std::pair<size_t, size_t> input_range_next_;
 	std::vector<_t>* data_next_;
 	std::thread* load_worker_;

@@ -3,6 +3,7 @@ os:
   - osx
 
 dist:
+#  - xenial
   - trusty
 
 language: c++
@@ -11,6 +12,7 @@ language: c++
 #  apt:
 #    packages:
 #      - gdb
+#      - libclang-common-6.0-dev
 
 arch:
   - amd64

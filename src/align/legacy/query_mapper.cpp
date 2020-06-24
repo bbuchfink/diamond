@@ -112,7 +112,7 @@ unsigned QueryMapper::count_targets()
 	size_t subject_id = std::numeric_limits<size_t>::max();
 	unsigned n_subject = 0;
 	for (size_t i = 0; i < n; ++i) {
-		std::pair<size_t, size_t> l = ref_seqs::data_->local_position(hits[i].subject_);
+		std::pair<size_t, size_t> l = ref_seqs::data_->local_position((uint64_t)hits[i].subject_);
 		const unsigned frame = hits[i].query_ % align_mode.query_contexts;
 		/*const Diagonal_segment d = config.comp_based_stats ? xdrop_ungapped(query_seq(frame), query_cb[frame], ref_seqs::get()[l.first], hits[i].seed_offset_, (int)l.second)
 			: xdrop_ungapped(query_seq(frame), ref_seqs::get()[l.first], hits[i].seed_offset_, (int)l.second);*/

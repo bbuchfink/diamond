@@ -59,7 +59,7 @@ void load_hits(hit* begin, hit* end, FlatArray<SeedHit> &hits, vector<uint32_t> 
 	uint16_t score = 0;
 	if (std::log2(total_subjects) * (end - begin) < total_subjects / 10 ) {
 		for (hit* i = begin; i < end; ++i) {
-			std::pair<size_t, size_t> l = ref_seqs::data_->local_position(i->subject_);
+			std::pair<size_t, size_t> l = ref_seqs::data_->local_position((uint64_t)i->subject_);
 			const uint32_t t = (uint32_t)l.first;
 			if (t != target) {
 				if (target != UINT32_MAX) {
@@ -76,7 +76,7 @@ void load_hits(hit* begin, hit* end, FlatArray<SeedHit> &hits, vector<uint32_t> 
 	} else {
 		typename vector<size_t>::const_iterator limit_begin = ref_seqs::get().limits_begin(), it = limit_begin;
 		for (const hit* i = begin; i < end; ++i) {
-			const size_t subject_offset = i->subject_;
+			const size_t subject_offset = (uint64_t)i->subject_;
 			while (*it <= subject_offset) ++it;
 			uint32_t t = (uint32_t)(it - limit_begin) - 1;
 			if (t != target) {

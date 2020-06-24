@@ -47,7 +47,7 @@ namespace DISPATCH_ARCH {
 	return score_matrix.evalue_norm(DP::diag_alignment(scores, 64), query_len) <= config.gapped_filter_evalue2;
 }*/
 
-void search_query_offset(Loc q,
+void search_query_offset(uint64_t q,
 	const Packed_loc* s,
 	const uint32_t *hits,
 	const uint32_t *hits_end,
