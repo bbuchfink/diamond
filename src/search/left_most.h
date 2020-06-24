@@ -33,11 +33,25 @@ namespace Search {
 
 static inline bool verify_hit(const Letter* q, const Letter* s, int score_cutoff) {
 	Finger_print fq(q), fs(s);
-	if (fq.match(fs) < config.min_identities)
-		return false;
-	const sequence query_clipped = Util::Sequence::clip(q - config.ungapped_window, config.ungapped_window * 2, config.ungapped_window);
+	const unsigned id = fq.match(fs);
+	return id >= config.min_identities;
+	/*const sequence query_clipped = Util::Sequence::clip(q - config.ungapped_window, config.ungapped_window * 2, config.ungapped_window);
 	const int window_left = int(q - query_clipped.data()), window = (int)query_clipped.length();
-	return ungapped_window(query_clipped.data(), s - window_left, window) > score_cutoff;
+	const int ungapped = ungapped_window(query_clipped.data(), s - window_left, window);
+	std::cerr << "previous hit ungapped=" << ungapped << endl;
+	return ungapped > score_cutoff;*/
+}
+
+static inline bool verify_hits(uint32_t mask, const Letter* q, const Letter* s, int score_cutoff) {
+	int shift = 0;
+	while (mask != 0) {
+		int i = ctz(mask);
+		if (verify_hit(q + i + shift, s + i + shift, score_cutoff))
+			return true;
+		mask >>= i + 1;
+		shift += i + 1;
+	}
+	return false;
 }
 
 static inline bool left_most_filter(const sequence &query,
@@ -75,47 +89,18 @@ static inline bool left_most_filter(const sequence &query,
 		match_mask_left = ((1llu << len_left) - 1) & match_mask,
 		query_mask_left = ((1llu << len_left) - 1) & query_seed_mask;
 
-	uint32_t left_hit = context.current_matcher.hit(match_mask_left, len_left) & query_mask_left;
+	const uint32_t left_hit = context.current_matcher.hit(match_mask_left, len_left) & query_mask_left;
 
-	if (first_shape) {
-		int shift = 0;
-		while (left_hit != 0) {
-			int i = ctz(left_hit);
-			if (verify_hit(q + i + shift, s + i + shift, score_cutoff))
-				return false;
-			left_hit >>= i + 1;
-			shift += i + 1;
-		}
-		return true;
-	}
+	if (first_shape)
+		return left_hit == 0 || !verify_hits(left_hit, q, s, score_cutoff);
 
 	const uint32_t len_right = window - window_left - 1,
 		match_mask_right = match_mask >> (window_left + 1),
 		query_mask_right = query_seed_mask >> (window_left + 1);
 	
-	uint32_t right_hit = context.previous_matcher.hit(match_mask_right, len_right) & query_mask_right;
-	if (left_hit == 0 && right_hit == 0)
-		return true;
+	const uint32_t right_hit = context.previous_matcher.hit(match_mask_right, len_right) & query_mask_right;
 
-	int shift = 0;
-	while (left_hit != 0) {
-		int i = ctz(left_hit);
-		if (verify_hit(q + i + shift, s + i + shift, score_cutoff))
-			return false;
-		left_hit >>= i + 1;
-		shift += i + 1;
-	}
-
-	shift = 0;
-	while (right_hit != 0) {
-		int i = ctz(right_hit);
-		if (verify_hit(q + window_left + 1 + shift, s + window_left + 1 + shift, score_cutoff))
-			return false;
-		right_hit >>= i + 1;
-		shift += i + 1;
-	}
-
-	return true;
+	return (left_hit == 0 || !verify_hits(left_hit, q, s, score_cutoff)) && (right_hit == 0 || !verify_hits(right_hit, q + window_left + 1, s + window_left + 1, score_cutoff));
 }
 
 }

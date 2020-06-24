@@ -84,8 +84,8 @@ void search_query_offset(Loc q,
 			subjects[j] = ref_seqs::data_->data(s[*(i + j)]) - window_left;
 		DP::window_ungapped_best(query_clipped.data(), subjects, n, window, scores);
 
-		for (size_t j = 0; j < n; ++j)
-			if(scores[j] > score_cutoff) {
+		for (size_t j = 0; j < n; ++j) {
+			if (scores[j] > score_cutoff) {
 				stats.inc(Statistics::TENTATIVE_MATCHES2);
 				if (left_most_filter(query_clipped, subjects[j], window_left, shapes[sid].length_, context, sid == 0, sid, score_cutoff)) {
 					stats.inc(Statistics::TENTATIVE_MATCHES3);
@@ -113,6 +113,7 @@ void search_query_offset(Loc q,
 					}*/
 				}
 			}
+		}
 	}
 
 	if (hit_count > 0) {
