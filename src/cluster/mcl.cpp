@@ -304,6 +304,9 @@ void MCL::run(){
 	iota(sort_order.begin(), sort_order.end(), 0);
 	sort(sort_order.begin(), sort_order.end(), [&](uint32_t i, uint32_t j){return indices[i].size() > indices[j].size();});
 
+	const uint32_t chunk_size = config.cluster_mcl_chunk_size;
+	const uint32_t nThreads = min(config.threads_, nComponents / chunk_size);
+
 	// ** Stats ** //
 	vector<float> sparsities(nComponentsLt1);
 	uint64_t icomp = 0;
@@ -313,26 +316,32 @@ void MCL::run(){
 				const uint64_t dsize = indices[iComponent].size() * indices[iComponent].size();
 				return 1.0-(1.0 * ssize) / dsize;
 			});
+
+	// rough memory calc before sorting sparsities
+	vector<float> memories(nComponentsLt1);
+	icomp = 0;
+	generate(memories.begin(), memories.end(), [&](){ 
+				const uint32_t iComponent = sort_order[icomp++];
+				if(sparsities[icomp - 1] >= config.cluster_mcl_sparsity_switch){ 
+					return indices[iComponent].size() * (2 * sizeof(uint32_t) + sizeof(float));
+				}
+				else{
+					return sizeof(float) * indices[iComponent].size() * indices[iComponent].size();
+				}
+			});
+	sort(memories.rbegin(), memories.rend());
+	float mem_req = nElements * (2 * sizeof(uint32_t) + sizeof(float));
+	for(uint32_t iThr = 0; iThr < nThreads; iThr++){
+		mem_req += 3*memories[iThr]; // we need three matrices of this size
+	}
+	memories.clear();
+
 	float sparsity_of_max = sparsities[0];
 	float sparsity_of_med = nComponentsLt1 > 0 && nComponentsLt1 % 2 == 0 ? 
 		(sparsities[nComponentsLt1/2] + sparsities[nComponentsLt1/2+1]) / 2.0 : 
 		sparsities[nComponentsLt1/2+1] ;
 	float sparsity_of_min = sparsities[nComponentsLt1-1];
 
-	// rough memory calc before sorting sparsities
-	const uint32_t chunk_size = config.cluster_mcl_chunk_size;
-	uint32_t nThreads = min(config.threads_, nComponents / chunk_size);
-	float mem_req = nElements * (2 * sizeof(uint32_t) + sizeof(float));
-	for(uint32_t iThr = 0; iThr < nThreads; iThr++){
-		float this_mem_req;
-		if(sparsities[iThr] >= config.cluster_mcl_sparsity_switch){ 
-			this_mem_req = indices[sort_order[iThr]].size() * (2 * sizeof(uint32_t) + sizeof(float));
-		}
-		else{
-			this_mem_req = indices[sort_order[iThr]].size() * indices[sort_order[iThr]].size();
-		}
-		mem_req += 3*this_mem_req; // we need three matrices of this size
-	}
 	sort(sparsities.rbegin(), sparsities.rend());
 	float med_sparsity = nComponentsLt1 > 0 && nComponentsLt1 % 2 == 0 ? 
 		(sparsities[nComponentsLt1/2] + sparsities[nComponentsLt1/2+1]) / 2.0 : 
@@ -348,14 +357,17 @@ void MCL::run(){
 	message_stream << "Number of DIAMOND hits:          " << nElements << endl;
 	message_stream << "Number of independet components: " << nComponentsLt1 <<" ("<<nComponents<< " incl. singletons)" << endl;
 	message_stream << "Component size distribution: "<< endl;
-	message_stream << "\t max: " << indices[sort_order[0]].size() << endl;
-	message_stream << "\t med: " << median2 << " ("<<median1<< " incl. singletons)"<<endl;
-	message_stream << "\t min: " << indices[sort_order[nComponentsLt1-1]].size() << " ("<<indices[sort_order[nComponents-1]].size()<< " incl. singletons)"<<endl;
+	message_stream << "\t max: " << setw(12) << indices[sort_order[0]].size() << endl;
+	message_stream << "\t med: " << setw(12) << median2 << " ("<<median1<< " incl. singletons)"<<endl;
+	message_stream << "\t min: " << setw(12) << indices[sort_order[nComponentsLt1-1]].size() << " ("<<indices[sort_order[nComponents-1]].size()<< " incl. singletons)"<<endl;
 	message_stream << "Component sparsity distribution (excluding singletons): "<< endl;
-	message_stream << "\t of max. size: " << sparsity_of_max << " max. sparsity: " << sparsities[0] << endl;
-	message_stream << "\t of med. size: " << sparsity_of_med << " med. sparsity: " << med_sparsity << endl;
-	message_stream << "\t of min. size: " << sparsity_of_min << " min. sparsity: " << sparsities[nComponentsLt1-1] << endl;
-	message_stream << "Rough memory requirements: " << mem_req/(1024*1024) << "MB" << endl;
+	message_stream << "\t of max. size: " << setw(12) << sparsity_of_max << " max. sparsity: " << setw(12) << sparsities[0] << endl;
+	message_stream << "\t of med. size: " << setw(12) << sparsity_of_med << " med. sparsity: " << setw(12) << med_sparsity << endl;
+	message_stream << "\t of min. size: " << setw(12) << sparsity_of_min << " min. sparsity: " << setw(12) << sparsities[nComponentsLt1-1] << endl;
+	message_stream << "Rough memory requirements: ";
+	string uints[] = {"", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"};
+	uint32_t idx = ((uint32_t)log(mem_req)/log(1024));
+	message_stream << setprecision(2) << mem_req/pow(1024,idx) << uints[idx] << endl;
 
 	sparsities.clear();
 	// ** End of stats ** //
