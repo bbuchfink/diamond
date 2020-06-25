@@ -47,6 +47,7 @@ using namespace std;
 namespace Workflow { namespace Cluster{
 class MCL: public ClusteringAlgorithm {
 private: 
+	void print_stats(uint64_t nElements, uint32_t nComponents, uint32_t nComponentsLt1, vector<uint32_t>& sort_order, vector<vector<uint32_t>>& indices, vector<vector<Eigen::Triplet<float>>>& components);
 	void get_exp(Eigen::SparseMatrix<float>* in, Eigen::SparseMatrix<float>* out, float r);
 	void get_exp(Eigen::MatrixXf* in, Eigen::MatrixXf* out, float r);
 	void get_gamma(Eigen::SparseMatrix<float>* in, Eigen::SparseMatrix<float>* out, float r);
@@ -83,7 +84,13 @@ class SparseMatrixStream : public Consumer {
 	set<Eigen::Triplet<T>, CoordinateCmp> data;
 	LazyDisjointSet<uint32_t>* disjointSet;
 	ofstream* os;
-	ifstream* is;
+	inline void write_triplet(const uint32_t* const query, const uint32_t* const subject, const double* const value){
+		if(os){
+			os->write((char*) query, sizeof(uint32_t));
+			os->write((char*) subject, sizeof(uint32_t));
+			os->write((char*) value, sizeof(double));
+		}
+	}
 	virtual void consume(const char *ptr, size_t n) override {
 		const char *end = ptr + n;
 		if (n >= sizeof(uint32_t)) {
@@ -99,14 +106,11 @@ class SparseMatrixStream : public Consumer {
 				if(it == data.end()){
 					data.emplace(move(t));
 					disjointSet->merge(query, subject);
+					write_triplet(&query, &subject, &value);
 				}
 				else if (t.value() > it->value()){
 					data.emplace_hint(data.erase(it), move(t));
-				}
-				if(os){
-					os->write((char*) &query, sizeof(uint32_t));
-					os->write((char*) &subject, sizeof(uint32_t));
-					os->write((char*) &value, sizeof(double));
+					write_triplet(&query, &subject, &value);
 				}
 			}
 		}
