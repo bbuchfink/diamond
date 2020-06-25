@@ -1,6 +1,9 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2018 Benjamin Buchfink <buchfink@gmail.com>
+Copyright (C) 2016-2020 Max Planck Society for the Advancement of Science e.V.
+                        Benjamin Buchfink
+						
+Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -36,8 +39,9 @@ using std::endl;
 using std::string;
 using std::runtime_error;
 
-FileSink::FileSink(const string &file_name, const char *mode):
-	file_name_(file_name)
+FileSink::FileSink(const string &file_name, const char *mode, bool async, size_t buffer_size):
+	file_name_(file_name),
+	async_(async)
 {
 #ifdef _MSC_VER
 	f_ = file_name.length() == 0 ? stdout : fopen(file_name.c_str(), mode);
@@ -53,17 +57,24 @@ FileSink::FileSink(const string &file_name, const char *mode):
 		perror(0);
 		throw File_open_exception(file_name);
 	}
+	if (buffer_size != 0)
+		if (setvbuf(f_, nullptr, _IOFBF, buffer_size) != 0)
+			throw std::runtime_error("Error calling setvbuf.");
 }
 
 #ifndef _MSC_VER
-FileSink::FileSink(const string &file_name, int fd, const char *mode):
+FileSink::FileSink(const string &file_name, int fd, const char *mode, bool async, size_t buffer_size):
 	f_(fdopen(fd, mode)),
-	file_name_(file_name)	
+	file_name_(file_name),
+	async_(async)
 {
 	if (f_ == 0) {
 		perror(0);
 		throw File_open_exception(file_name);
 	}
+	if (buffer_size != 0)
+		if (setvbuf(f_, nullptr, _IOFBF, buffer_size) != 0)
+			throw std::runtime_error("Error calling setvbuf.");
 }
 #endif
 
@@ -80,11 +91,14 @@ void FileSink::close()
 
 void FileSink::write(const char *ptr, size_t count)
 {
+	if (async_) mtx_.lock();
 	size_t n;
 	if ((n = fwrite((const void*)ptr, 1, count, f_)) != count) {
+		if (async_) mtx_.unlock();
 		perror(0);
 		throw File_write_exception(file_name_);
 	}
+	if (async_) mtx_.unlock();
 }
 
 void FileSink::seek(size_t p)

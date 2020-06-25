@@ -82,7 +82,7 @@ size_t get_medoid(DatabaseFile *db, const vector<bool> &filter, size_t n, Sequen
 	
 	int max_i = -1;
 	uint64_t max_s = 0;
-	for (const pair<int, uint64_t> &i : d.sum) {
+	for (pair<int, uint64_t> i : d.sum) {
 		//std::cout << i.first << '\t' << i.second  << '\t' << (*seqs)[i.first].length() << endl;
 		//const double sum = i.second + (n - 1 - d.counts[i.first])*100.0;
 		if (i.second > max_s) {
@@ -138,7 +138,7 @@ void get_medoids_from_tree() {
 
 	n = db->ref_header.sequences;
 	map<int, vector<int>> clusters;
-	for (const pair<int, int> &i : parent) {
+	for (pair<int, int> i : parent) {
 		while (parent[parent[i.first]] != parent[i.first])
 			parent[i.first] = parent[parent[i.first]];
 		if(i.first < (int)n)
@@ -147,7 +147,7 @@ void get_medoids_from_tree() {
 
 	vector<bool> filter(db->ref_header.sequences);
 	OutputFile out(config.output_file);
-	for (const pair<int, vector<int>> &i : clusters) {
+	for (const pair<const int, vector<int>> &i : clusters) {
 		/*for (const string &acc : i.second)
 			std::cout << acc << ' ';
 		std::cout << endl;*/

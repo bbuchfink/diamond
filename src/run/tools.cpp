@@ -123,7 +123,7 @@ void run_masker()
 
 	high_resolution_clock::time_point t1 = high_resolution_clock::now();
 
-	while (format.get_seq(id, seq, f)) {
+	while (format.get_seq(id, seq, f, value_traits)) {
 		cout << '>' << id << endl;
 		seq2 = seq;
 		Masking::get()(seq2.data(), seq2.size());
@@ -156,7 +156,7 @@ void fastq2fasta()
 	const FASTQ_format format;
 	input_value_traits = value_traits = nucleotide_traits;
 	size_t n = 0, max = atoi(config.seq_no[0].c_str());
-	while (n < max && format.get_seq(id, seq, *f)) {
+	while (n < max && format.get_seq(id, seq, *f, value_traits)) {
 		cout << '>' << id << endl;
 		cout << sequence(seq.data(), seq.size()) << endl;
 		++n;
@@ -194,7 +194,7 @@ void read_sim()
 	vector<Letter> seq;
 	input_value_traits = nucleotide_traits;
 	TextBuffer buf;
-	while (format.get_seq(id, seq, in)) {
+	while (format.get_seq(id, seq, in, value_traits)) {
 		buf << '>' << id << '\n';
 		for (size_t i = 0; i < seq.size(); ++i) {
 			if ((double)rand() / RAND_MAX <= ID)
@@ -238,11 +238,11 @@ void pairwise_worker(TextInputFile *in, std::mutex *input_lock, std::mutex *outp
 
 	while(true) {
 		input_lock->lock();
-		if (!format.get_seq(id_r, ref, *in)) {
+		if (!format.get_seq(id_r, ref, *in, value_traits)) {
 			input_lock->unlock();
 			return;
 		}
-		if (!format.get_seq(id_q, query, *in)) {
+		if (!format.get_seq(id_q, query, *in, value_traits)) {
 			input_lock->unlock();
 			return;
 		}
@@ -284,7 +284,7 @@ void pairwise()
 void fasta_skip_to(string &id, vector<Letter> &seq, string &blast_id, TextInputFile &f)
 {
 	while (::blast_id(id) != blast_id) {
-		if (!FASTA_format().get_seq(id, seq, f))
+		if (!FASTA_format().get_seq(id, seq, f, value_traits))
 			throw runtime_error("Sequence not found in FASTA file.");
 	}
 }
@@ -295,7 +295,7 @@ void translate() {
 	string id;
 	vector<Letter> seq;
 	vector<Letter> proteins[6];
-	while (FASTA_format().get_seq(id, seq, in)) {
+	while (FASTA_format().get_seq(id, seq, in, input_value_traits)) {
 		Translator::translate(seq, proteins);
 		cout << ">" << id << endl;
 		cout << sequence(proteins[0]) << endl;
@@ -309,7 +309,7 @@ void reverse() {
 	string id;
 	vector<Letter> seq;
 	TextBuffer buf;
-	while (FASTA_format().get_seq(id, seq, in)) {
+	while (FASTA_format().get_seq(id, seq, in, value_traits)) {
 		buf << '>';
 		buf << '\\';
 		buf.write_raw(id.data(), id.size());
@@ -329,7 +329,7 @@ void show_cbs() {
 	TextInputFile in(config.query_file);
 	string id;
 	vector<Letter> seq;
-	while (FASTA_format().get_seq(id, seq, in)) {
+	while (FASTA_format().get_seq(id, seq, in, value_traits)) {
 		Bias_correction bc{ sequence(seq) };
 		for (size_t i = 0; i < seq.size(); ++i)
 			cout << value_traits.alphabet[(long)seq[i]] << '\t' << bc[i] << endl;

@@ -25,12 +25,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <vector>
 #include <stdint.h>
 
-using std::string;
-using std::vector;
-
 struct Config
 {
-	vector<string> input_ref_file;
+
+	using string = std::string;
+	using string_vector = std::vector<std::string>;
+
+	string_vector input_ref_file;
 	unsigned	threads_;
 	string	database;
 	string	query_file;
@@ -80,7 +81,7 @@ struct Config
 	unsigned	compress_temp;
 	double	toppercent;
 	string	daa_file;
-	vector<string>	output_format;
+	string_vector	output_format;
 	string	output_file;
 	bool		forwardonly;
 	unsigned fetch_size;
@@ -93,9 +94,8 @@ struct Config
 	unsigned local_align_mode;
 	bool extend_all;
 	bool slow_search;
-	vector<string> seq_no;
+	string_vector seq_no;
 	double rank_ratio;
-	double rank_ratio2;
 	double rank_factor;
 	bool ht_mode;
 	bool old_freq;
@@ -104,7 +104,7 @@ struct Config
 	bool mode_more_sensitive;
 	string matrix_file;
 	double lambda, K;
-	vector<string> shape_mask;
+	string_vector shape_mask;
 	unsigned seed_anchor;
 	unsigned query_gencode;
 	string unaligned;
@@ -205,9 +205,7 @@ struct Config
 	bool beta;
 	int ungapped_window;
 	int gapped_filter_diag_score;
-	double gapped_filter_score;
 	double gapped_filter_evalue;
-	double gapped_filter_evalue2;
 	int gapped_filter_window;
 	bool output_hits;
 	double ungapped_evalue;
@@ -218,6 +216,14 @@ struct Config
 	size_t file_buffer_size;
 	bool self;
 	size_t trace_pt_fetch_size;
+	uint32_t tile_size;
+	double short_query_ungapped_bitscore;
+	int short_query_max_len;
+	double gapped_filter_evalue1;
+	size_t ext_chunk_size;
+	double ext_min_yield;
+	string ext;
+	int full_sw_len;
 
 	enum {
 		makedb = 0, blastp = 1, blastx = 2, view = 3, help = 4, version = 5, getseq = 6, benchmark = 7, random_seqs = 8, compare = 9, sort = 10, roc = 11, db_stat = 12, model_sim = 13,

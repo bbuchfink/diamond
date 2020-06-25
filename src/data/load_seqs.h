@@ -1,6 +1,10 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2017 Benjamin Buchfink <buchfink@gmail.com>
+Copyright (C) 2013-2020 Max Planck Society for the Advancement of Science e.V.
+                        Benjamin Buchfink
+                        Eberhard Karls Universitaet Tuebingen
+						
+Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,17 +20,15 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#ifndef LOAD_SEQS_H_
-#define LOAD_SEQS_H_
-
+#pragma once
 #include <iostream>
 #include "sequence_set.h"
 #include "../basic/translate.h"
 #include "../util/seq_file_format.h"
 
-inline size_t push_seq(Sequence_set &ss, Sequence_set** source_seqs, const vector<Letter> &seq, unsigned frame_mask)
+inline size_t push_seq(Sequence_set &ss, Sequence_set** source_seqs, const vector<Letter> &seq, unsigned frame_mask, Sequence_type seq_type)
 {
-	if (config.command == Config::blastp || config.command == Config::makedb || config.command == Config::random_seqs || config.command == Config::compute_medoids) {
+	if (seq_type == Sequence_type::amino_acid) {
 		ss.push_back(seq.cbegin(), seq.cend());
 		return seq.size();
 	}
@@ -58,7 +60,8 @@ inline size_t load_seqs(TextInputFile &file,
 	Sequence_set** source_seqs,
 	String_set<char, '\0'>** quals,
 	size_t max_letters,
-	const string &filter)
+	const string &filter,
+	const Value_traits &value_traits)
 {
 	*seqs = new Sequence_set();
 	ids = new String_set<char, '\0'>();
@@ -78,10 +81,10 @@ inline size_t load_seqs(TextInputFile &file,
 	else if (config.query_strands == "minus")
 		frame_mask = ((1 << 3) - 1) << 3;
 
-	while (letters < max_letters && format.get_seq(id, seq, file, quals ? &qual : nullptr)) {
+	while (letters < max_letters && format.get_seq(id, seq, file, value_traits, quals ? &qual : nullptr)) {
 		if (seq.size() > 0 && (filter.empty() || id2.assign(id.data(), id.data() + id.size()).find(filter, 0) != string::npos)) {
 			ids->push_back(id.begin(), id.end());
-			letters += push_seq(**seqs, source_seqs, seq, frame_mask);
+			letters += push_seq(**seqs, source_seqs, seq, frame_mask, value_traits.seq_type);
 			if (quals)
 				(*quals)->push_back(qual.begin(), qual.end());
 			++n;
@@ -105,5 +108,3 @@ inline size_t load_seqs(TextInputFile &file,
 	}
 	return n;
 }
-
-#endif /* LOAD_SEQS_H_ */

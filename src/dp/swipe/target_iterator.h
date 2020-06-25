@@ -1,6 +1,9 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2018 Benjamin Buchfink <buchfink@gmail.com>
+Copyright (C) 2016-2020 Max Planck Society for the Advancement of Science e.V.
+                        Benjamin Buchfink
+						
+Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -124,7 +127,8 @@ struct TargetBuffer
 	typedef ::DISPATCH_ARCH::SIMD::Vector<_t> SeqVector;
 	enum { CHANNELS = SeqVector::CHANNELS };
 
-	TargetBuffer(const sequence *subject_begin, const sequence *subject_end) :
+	//TargetBuffer(const sequence *subject_begin, const sequence *subject_end) :
+	TargetBuffer(typename std::vector<DpTarget>::const_iterator subject_begin, typename std::vector<DpTarget>::const_iterator subject_end):
 		next(0),
 		n_targets(int(subject_end - subject_begin)),
 		subject_begin(subject_begin)
@@ -139,10 +143,10 @@ struct TargetBuffer
 	char operator[](int channel) const
 	{
 		if (pos[channel] >= 0) {
-			return subject_begin[target[channel]][pos[channel]];
+			return dp_target(channel).seq[pos[channel]];
 		}
 		else
-			return value_traits.mask_char;
+			return SUPER_HARD_MASK;;
 	}
 
 #ifdef __SSSE3__
@@ -182,14 +186,19 @@ struct TargetBuffer
 	bool inc(int channel)
 	{
 		++pos[channel];
-		if (pos[channel] >= (int)subject_begin[target[channel]].length())
+		if (pos[channel] >= (int)dp_target(channel).seq.length())
 			return false;
 		return true;
 	}
 
+	const DpTarget& dp_target(int channel) const {
+		return subject_begin[target[channel]];
+	}
+
 	int pos[CHANNELS], target[CHANNELS], next, n_targets, cols;
 	Static_vector<int, CHANNELS> active;
-	const sequence *subject_begin;
+	const vector<DpTarget>::const_iterator subject_begin;
+	//const sequence *subject_begin;
 };
 
 }

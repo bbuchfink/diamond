@@ -1,6 +1,9 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2019 Benjamin Buchfink <buchfink@gmail.com>
+Copyright (C) 2016-2020 Max Planck Society for the Advancement of Science e.V.
+                        Benjamin Buchfink
+						
+Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,6 +19,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
+
 #include <list>
 #include <atomic>
 #include <thread>
@@ -29,6 +33,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 using std::list;
 using std::atomic;
 using std::thread;
+
+namespace DP { namespace Swipe { namespace DISPATCH_ARCH {
+
+template<typename _sv, typename _traceback, typename _cbs>
+list<Hsp> swipe(const sequence& query, Frame frame, vector<DpTarget>::const_iterator subject_begin, vector<DpTarget>::const_iterator subject_end, _cbs composition_bias, int score_cutoff, vector<DpTarget>& overflow, Statistics& stats);
+
+}}}
 
 namespace DP { namespace BandedSwipe { namespace DISPATCH_ARCH {
 
@@ -56,18 +67,23 @@ list<Hsp> swipe_targets(const sequence &query,
 {
 	constexpr auto CHANNELS = vector<DpTarget>::const_iterator::difference_type(::DISPATCH_ARCH::ScoreTraits<_sv>::CHANNELS);
 	list<Hsp> out;
-	for (vector<DpTarget>::const_iterator i = begin; i < end; i += CHANNELS) {
-		if (flags & TRACEBACK) {
-			if (composition_bias == nullptr)
-				out.splice(out.end(), swipe<_sv, Traceback>(query, frame, i, i + std::min(CHANNELS, end - i), NoCBS(), score_cutoff, overflow, stat));
-			else
-				out.splice(out.end(), swipe<_sv, Traceback>(query, frame, i, i + std::min(CHANNELS, end - i), composition_bias, score_cutoff, overflow, stat));
-		}
-		else {
-			if (composition_bias == nullptr)
-				out.splice(out.end(), swipe<_sv, ScoreOnly>(query, frame, i, i + std::min(CHANNELS, end - i), NoCBS(), score_cutoff, overflow, stat));
-			else
-				out.splice(out.end(), swipe<_sv, ScoreOnly>(query, frame, i, i + std::min(CHANNELS, end - i), composition_bias, score_cutoff, overflow, stat));
+	if (flags & DP::FULL_MATRIX) {
+		return DP::Swipe::DISPATCH_ARCH::swipe<_sv, ScoreOnly>(query, frame, begin, end, NoCBS(), score_cutoff, overflow, stat);
+	}
+	else {
+		for (vector<DpTarget>::const_iterator i = begin; i < end; i += CHANNELS) {
+			if (flags & TRACEBACK) {
+				if (composition_bias == nullptr)
+					out.splice(out.end(), swipe<_sv, Traceback>(query, frame, i, i + std::min(CHANNELS, end - i), NoCBS(), score_cutoff, overflow, stat));
+				else
+					out.splice(out.end(), swipe<_sv, Traceback>(query, frame, i, i + std::min(CHANNELS, end - i), composition_bias, score_cutoff, overflow, stat));
+			}
+			else {
+				if (composition_bias == nullptr)
+					out.splice(out.end(), swipe<_sv, ScoreOnly>(query, frame, i, i + std::min(CHANNELS, end - i), NoCBS(), score_cutoff, overflow, stat));
+				else
+					out.splice(out.end(), swipe<_sv, ScoreOnly>(query, frame, i, i + std::min(CHANNELS, end - i), composition_bias, score_cutoff, overflow, stat));
+			}
 		}
 	}
 	return out;

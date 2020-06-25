@@ -39,9 +39,15 @@ struct SeedArray
 			key(key),
 			value(value)
 		{ }
-		unsigned key;
+		uint32_t key;
 		_pos value;
+		struct GetKey {
+			uint32_t operator()(const Entry& e) const {
+				return e.key;
+			}
+		};
 		typedef _pos Value;
+		typedef uint32_t Key;
 	} PACKED_ATTRIBUTE;
 
 	template<typename _filter>

@@ -1,6 +1,10 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2017 Benjamin Buchfink <buchfink@gmail.com>
+Copyright (C) 2013-2020 Max Planck Society for the Advancement of Science e.V.
+                        Benjamin Buchfink
+                        Eberhard Karls Universitaet Tuebingen
+						
+Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,9 +20,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#ifndef SEQ_FILE_FORMAT_H_
-#define SEQ_FILE_FORMAT_H_
-
+#pragma once
 #include <vector>
 #include <string>
 #include "../basic/value.h"
@@ -35,7 +37,7 @@ struct file_format_exception : public std::exception
 struct Sequence_file_format
 {
 
-	virtual bool get_seq(std::string &id, std::vector<Letter> &seq, TextInputFile &s, std::vector<char> *qual = nullptr) const = 0;
+	virtual bool get_seq(std::string &id, std::vector<Letter> &seq, TextInputFile &s, const Value_traits& value_traits, std::vector<char> *qual = nullptr) const = 0;
 	virtual ~Sequence_file_format()
 	{ }
 	
@@ -47,7 +49,7 @@ struct FASTA_format : public Sequence_file_format
 	FASTA_format()
 	{ }
 
-	virtual bool get_seq(std::string &id, std::vector<Letter> &seq, TextInputFile &s, std::vector<char> *qual = nullptr) const override;
+	virtual bool get_seq(std::string &id, std::vector<Letter> &seq, TextInputFile &s, const Value_traits& value_traits, std::vector<char> *qual = nullptr) const override;
 
 	virtual ~FASTA_format()
 	{ }
@@ -60,7 +62,7 @@ struct FASTQ_format : public Sequence_file_format
 	FASTQ_format()
 	{ }
 
-	virtual bool get_seq(std::string &id, std::vector<Letter> &seq, TextInputFile &s, std::vector<char> *qual = nullptr) const override;
+	virtual bool get_seq(std::string &id, std::vector<Letter> &seq, TextInputFile &s, const Value_traits& value_traits, std::vector<char> *qual = nullptr) const override;
 
 	virtual ~FASTQ_format()
 	{ }
@@ -68,5 +70,3 @@ struct FASTQ_format : public Sequence_file_format
 };
 
 const Sequence_file_format* guess_format(TextInputFile &file);
-
-#endif /* SEQ_FILE_FORMAT_H_ */

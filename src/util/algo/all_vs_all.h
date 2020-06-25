@@ -19,64 +19,29 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #pragma once
-#include "../memory/alignment.h"
+#include <stdint.h>
+#include <algorithm>
+#include "../data_structures/flat_array.h"
 
 template<typename _t>
-struct MemBuffer {
-
-	enum { ALIGN = 32 };
-
-	typedef _t value_type;
-
-	MemBuffer():
-		data_(nullptr),
-		size_(0),
-		alloc_size_(0)
-	{}
-
-	MemBuffer(size_t n):
-		data_((_t*)Util::Memory::aligned_malloc(n * sizeof(_t), ALIGN)),
-		size_(n),
-		alloc_size_(n)
-	{
+void all_vs_all(const _t* a, uint32_t na, const _t* b, uint32_t nb, FlatArray<uint32_t>& out) {
+	for (uint32_t i = 0; i < na; ++i) {
+		const _t e = a[i];
+		out.next();
+		for (uint32_t j = 0; j < nb; ++j)
+			if (e == b[j])
+				out.push_back(j);
 	}
+}
 
-	~MemBuffer() {
-		Util::Memory::aligned_free(data_);
-	}
-
-	void resize(size_t n) {
-		if (alloc_size_ < n) {
-			Util::Memory::aligned_free(data_);
-			data_ = (_t*)Util::Memory::aligned_malloc(n * sizeof(_t), ALIGN);
-			alloc_size_ = n;
+template<typename _t, typename _f>
+void all_vs_all(const _t* a, uint32_t na, const _t* b, uint32_t nb, uint32_t tile_size, _f &callback) {
+	thread_local FlatArray<uint32_t> out;
+	for (uint32_t i = 0; i < na; i += tile_size) {
+		for (uint32_t j = 0; j < nb; j += tile_size) {
+			out.clear();
+			all_vs_all(a + i, std::min(tile_size, na - i), b + j, std::min(tile_size, nb - j), out);
+			callback(out, i, j);
 		}
-		size_ = n;
 	}
-
-	size_t size() const {
-		return size_;
-	}
-
-	_t* begin() {
-		return data_;
-	}
-
-	_t* end() {
-		return data_ + size_;
-	}
-
-	_t& operator[](size_t i) {
-		return data_[i];
-	}
-
-	const _t& operator[](size_t i) const {
-		return data_[i];
-	}
-
-private:
-
-	_t *data_;
-	size_t size_, alloc_size_;
-
-};
+}

@@ -36,10 +36,11 @@ void Pipeline::run(Statistics &stat, const sequence *subjects, size_t subject_co
 		seqs.reserve(n);
 		for (size_t i = 0; i < n; ++i)
 			seqs.push_back(ref_seqs::get()[targets[i].subject_block_id]);
-		 hsp = DP::Swipe::swipe(query_seq(0), seqs.data(), seqs.data() + seqs.size(), raw_score_cutoff());
+		//hsp = DP::Swipe::swipe(query_seq(0), seqs.data(), seqs.data() + seqs.size(), raw_score_cutoff());
 	}
-	else
-		hsp = DP::Swipe::swipe(query_seq(0), subjects, subjects + subject_count, raw_score_cutoff());	
+	else {
+	}
+		//hsp = DP::Swipe::swipe(query_seq(0), subjects, subjects + subject_count, raw_score_cutoff());	
 
 	map<unsigned, unsigned> subject_idx;
 	while (!hsp.empty()) {

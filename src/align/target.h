@@ -1,8 +1,8 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2020 Max Planck Society for the Advancement of Science e.V.
-                        Benjamin Buchfink
-                        Eberhard Karls Universitaet Tuebingen
+Copyright (C) 2020 Max Planck Society for the Advancement of Science e.V.
+
+Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -18,9 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#ifndef TARGET_H_
-#define TARGET_H_
-
+#pragma once
 #include <array>
 #include <set>
 #include <vector>
@@ -33,6 +31,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../dp/comp_based_stats.h"
 #include "extend.h"
 #include "../util/data_structures/flat_array.h"
+#include "../basic/parameters.h"
 
 namespace Extension {
 
@@ -66,7 +65,7 @@ struct WorkTarget {
 	std::array<std::list<Hsp_traits>, MAX_CONTEXT> hsp;
 };
 
-std::vector<WorkTarget> ungapped_stage(const sequence* query_seq, const Bias_correction* query_cb, FlatArray<SeedHit>& seed_hits, const size_t* target_block_ids, int flags);
+std::vector<WorkTarget> ungapped_stage(const sequence* query_seq, const Bias_correction* query_cb, FlatArray<SeedHit>& seed_hits, const uint32_t* target_block_ids, int flags);
 void rank_targets(std::vector<WorkTarget> &targets, double ratio, double factor);
 
 struct Target {
@@ -98,11 +97,9 @@ struct Target {
 
 void score_only_culling(std::vector<Target> &targets);
 std::vector<WorkTarget> gapped_filter(const sequence *query, const Bias_correction* query_cbs, std::vector<WorkTarget>& targets, Statistics &stat);
-void gapped_filter(const sequence* query, const Bias_correction* query_cbs, FlatArray<SeedHit> &seed_hits, std::vector<size_t> &target_block_ids, Statistics& stat, int flags);
+void gapped_filter(const sequence* query, const Bias_correction* query_cbs, FlatArray<SeedHit> &seed_hits, std::vector<uint32_t> &target_block_ids, Statistics& stat, int flags, const Parameters &params);
 std::vector<Target> align(const std::vector<WorkTarget> &targets, const sequence *query_seq, const Bias_correction *query_cb, int flags, Statistics &stat);
 std::vector<Match> align(std::vector<Target> &targets, const sequence *query_seq, const Bias_correction *query_cb, int source_query_len, int flags, Statistics &stat);
 void culling(std::vector<Match> &targets, int source_query_len, const char *query_title);
 
 }
-
-#endif

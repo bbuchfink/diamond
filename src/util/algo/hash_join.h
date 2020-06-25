@@ -53,10 +53,10 @@ void hash_table_join(
 	DoubleArray<typename _t::Value> &dst_r,
 	DoubleArray<typename _t::Value> &dst_s)
 {
-	typedef HashTable<unsigned, RelPtr, ExtractBits> Table;
+	typedef HashTable<unsigned, RelPtr, ExtractBits<uint32_t>> Table;
 	
 	uint32_t N = (uint32_t)next_power_of_2(R.n * config.join_ht_factor);
-	Table table(N, ExtractBits(N, shift));
+	Table table(N, ExtractBits<uint32_t>(N, shift));
 	typename Table::Entry *p;
 
 	for (_t *i = R.data; i < R.end(); ++i) {
@@ -117,7 +117,7 @@ void table_join(
 	DoubleArray<typename _t::Value> &dst_s)
 {
 	const unsigned keys = 1 << (total_bits - shift);
-	ExtractBits key(keys, shift);
+	ExtractBits<uint32_t> key(keys, shift);
 	RelPtr *table = (RelPtr*)calloc(keys, sizeof(RelPtr));
 	RelPtr *p;
 
@@ -192,8 +192,8 @@ void hash_join(
 	else {
 		const unsigned clusters = 1 << config.radix_bits;
 		unsigned *hstR = new unsigned[clusters], *hstS = new unsigned[clusters];
-		radix_cluster(R, shift, dst_r, hstR);
-		radix_cluster(S, shift, dst_s, hstS);
+		radix_cluster<_t, typename _t::GetKey>(R, shift, dst_r, hstR);
+		radix_cluster<_t, typename _t::GetKey>(S, shift, dst_s, hstS);
 
 		shift += config.radix_bits;
 		hash_join(Relation<_t>(dst_r, hstR[0]), Relation<_t>(dst_s, hstS[0]), R.data, S.data, out_r, out_s, total_bits, shift);

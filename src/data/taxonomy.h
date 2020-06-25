@@ -1,6 +1,9 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2019 Benjamin Buchfink <buchfink@gmail.com>
+Copyright (C) 2016-2020 Max Planck Society for the Advancement of Science e.V.
+                        Benjamin Buchfink
+						
+Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,6 +19,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
+#pragma once
 #include <vector>
 #include <algorithm>
 #include <string>
@@ -27,9 +31,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "taxon_list.h"
 #include "taxonomy_nodes.h"
 #include "../util/util.h"
-
-#ifndef TAXONOMY_H_
-#define TAXONOMY_H_
 
 std::string get_accession(const string &t);
 
@@ -128,5 +129,3 @@ struct TaxonomyFilter : public std::vector<bool>
 {
 	TaxonomyFilter(const std::string &include, const std::string &exclude, const TaxonList &list, TaxonomyNodes &nodes);
 };
-
-#endif

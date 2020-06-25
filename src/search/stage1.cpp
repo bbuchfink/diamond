@@ -1,6 +1,9 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2019 Benjamin Buchfink <buchfink@gmail.com>
+Copyright (C) 2016-2020 Max Planck Society for the Advancement of Science e.V.
+                        Benjamin Buchfink
+						
+Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -145,30 +148,13 @@ void tiled_search(Ptr q,
 	}
 }
 
-void load_fps(const Packed_loc *p, size_t n, Container &v, const Sequence_set &seqs)
+static void load_fps(const Packed_loc *p, size_t n, Container &v, const Sequence_set &seqs)
 {
 	v.clear();
 	v.reserve(n);
 	const Packed_loc *end = p + n;
 	for (; p < end; ++p)
 		v.emplace_back(seqs.data(*p));
-}
-
-void stage1(const Packed_loc *q, size_t nq, const Packed_loc *s, size_t ns, Statistics &stats, Trace_pt_buffer::Iterator &out, const unsigned sid, const Context &context)
-{
-	thread_local Container vq, vs;
-	thread_local vector<Stage1_hit> hits;
-	if (config.simple_freq && !SeedComplexity::complex(query_seqs::get().data(q[0]), shapes[sid])) {
-		stats.inc(Statistics::LOW_COMPLEXITY_SEEDS);
-		return;
-	}
-	hits.clear();
-	load_fps(q, nq, vq, *query_seqs::data_);
-	load_fps(s, ns, vs, *ref_seqs::data_);
-	tiled_search(vq.begin(), vq.end(), vs.begin(), vs.end(), Range_ref(vq.begin(), vs.begin()), 0, hits, stats);
-	std::sort(hits.begin(), hits.end());
-	stats.inc(Statistics::TENTATIVE_MATCHES1, hits.size());
-	stage2(q, s, hits, stats, out, sid, context);
 }
 
 }}

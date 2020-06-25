@@ -1,9 +1,7 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2020 Max Planck Society for the Advancement of Science e.V.
-                        Benjamin Buchfink
-                        Eberhard Karls Universitaet Tuebingen
-						
+Copyright (C) 2020 Max Planck Society for the Advancement of Science e.V.
+
 Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
 
 This program is free software: you can redistribute it and/or modify
@@ -21,22 +19,30 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #pragma once
-#include <stdexcept>
+#include "../../basic/score_matrix.h"
+#include "../intrin.h"
 
-#ifdef _MSC_VER
+namespace Util { namespace Scores {
 
-#define PACKED_ATTRIBUTE
+struct CutoffTable {
+	
+	CutoffTable(double evalue) {
+		for (int b = 1; b <= MAX_BITS; ++b) {
+			data_[b] = score_matrix.rawscore(score_matrix.bitscore_norm(evalue, 1 << (b - 1)));
+		}
+	}
 
-#else
+	int operator()(int query_len) const {
+		const int b = 32 - clz((uint32_t)query_len);
+		return data_[b];
+	}
 
-#define PACKED_ATTRIBUTE __attribute__((packed))
+private:
 
-#endif
+	enum { MAX_BITS = 31 };
 
-#ifdef __linux__
-#define POSIX_OPEN(x,y,z) open64(x,y,z)
-#define POSIX_OPEN2(x,y) open64(x,y)
-#else
-#define POSIX_OPEN(x,y,z) open(x,y,z)
-#define POSIX_OPEN2(x,y) open(x,y)
-#endif
+	int data_[MAX_BITS + 1];
+
+};
+
+}}
