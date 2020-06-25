@@ -26,6 +26,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <stdio.h>
 #include <memory>
 #include <fstream>
+#include <iostream>
 #include <limits>
 #include <atomic>
 #include "../util/system/system.h"
@@ -50,8 +51,9 @@ private:
 	void get_exp(Eigen::MatrixXf* in, Eigen::MatrixXf* out, float r);
 	void get_gamma(Eigen::SparseMatrix<float>* in, Eigen::SparseMatrix<float>* out, float r);
 	void get_gamma(Eigen::MatrixXf* in, Eigen::MatrixXf* out, float r);
-	void markov_process(Eigen::SparseMatrix<float>* m, float inflation, float expansion);
-	void markov_process(Eigen::MatrixXf* m, float inflation, float expansion);
+	void markov_process(Eigen::SparseMatrix<float>* m, float inflation, float expansion, uint32_t max_iter);
+	void markov_process(Eigen::MatrixXf* m, float inflation, float expansion, uint32_t max_iter);
+	atomic_ullong failed_to_converge = {0};
 	atomic_ullong sparse_create_time = {0};
 	atomic_ullong dense_create_time = {0};
 	atomic_ullong sparse_exp_time = {0};
@@ -80,6 +82,8 @@ class SparseMatrixStream : public Consumer {
 	size_t n;
 	set<Eigen::Triplet<T>, CoordinateCmp> data;
 	LazyDisjointSet<uint32_t>* disjointSet;
+	ofstream* os;
+	ifstream* is;
 	virtual void consume(const char *ptr, size_t n) override {
 		const char *end = ptr + n;
 		if (n >= sizeof(uint32_t)) {
@@ -99,19 +103,59 @@ class SparseMatrixStream : public Consumer {
 				else if (t.value() > it->value()){
 					data.emplace_hint(data.erase(it), move(t));
 				}
+				if(os){
+					os->write((char*) &query, sizeof(uint32_t));
+					os->write((char*) &subject, sizeof(uint32_t));
+					os->write((char*) &value, sizeof(double));
+				}
 			}
 		}
 	}
 
 public:
+	SparseMatrixStream(size_t n, string graph_file_name){
+		this->n = n;
+		disjointSet = new LazyDisjointIntegralSet<uint32_t>(n); 
+		if(graph_file_name.empty()){
+			os = nullptr;
+		}
+		else{
+			os = new ofstream(graph_file_name, ios::out | ios::binary);
+			os->write((char*) &n, sizeof(size_t));
+		}
+	}
 	SparseMatrixStream(size_t n){
 		this->n = n;
 		disjointSet = new LazyDisjointIntegralSet<uint32_t>(n); 
+		os = nullptr;
 	}
 
 	~SparseMatrixStream(){
 		if(disjointSet) delete disjointSet;
+		if(os){
+			os->close();
+			delete os;
+		}
 	}
+
+	static SparseMatrixStream fromFile(string graph_file_name){
+		ifstream in(graph_file_name, ios::in | ios::binary);
+		if(!in){
+			throw runtime_error("Cannot read the graph file");
+		}
+		size_t n;
+		in.read((char*) &n, sizeof(size_t));
+		SparseMatrixStream sms(n);
+		size_t buffer_size = 2*sizeof(uint32_t)+sizeof(double);
+		char* buffer = new char[buffer_size];
+		while(in.good()){
+			in.read(buffer, buffer_size);
+			sms.consume(buffer, buffer_size);
+		}
+		in.close();
+		return sms;
+	}
+
 	pair<vector<vector<uint32_t>>, vector<vector<Eigen::Triplet<T>>>> getComponents(){
 		vector<unordered_set<uint32_t>> sets = disjointSet->getListOfSets();
 		vector<uint32_t> indexToSetId(this->n, sets.size());

@@ -110,7 +110,7 @@ void MCL::get_gamma(Eigen::MatrixXf* in, Eigen::MatrixXf* out, float r){
 	dense_gamma_time += chrono::duration_cast<chrono::milliseconds>(chrono::high_resolution_clock::now() - t).count();
 }
 
-void MCL::markov_process(Eigen::SparseMatrix<float>* m, float inflation, float expansion){
+void MCL::markov_process(Eigen::SparseMatrix<float>* m, float inflation, float expansion, uint32_t max_iter){
 	for (uint32_t idiag=0; idiag<m->cols(); ++idiag){
 		assert(abs(m->coeffRef(idiag, idiag)) > numeric_limits<float>::epsilon());
 	}
@@ -119,7 +119,7 @@ void MCL::markov_process(Eigen::SparseMatrix<float>* m, float inflation, float e
 	Eigen::SparseMatrix<float> msquared(m->rows(), m->cols());
 	Eigen::SparseMatrix<float> m_update(m->rows(), m->cols());
 	get_gamma(m, m, 1); // This is to get a matrix of random walks on the graph -> TODO: find out if something else is more suitable
-	while( iteration < 100 && diff_norm > 1e-6*m->rows() ){
+	while( iteration < max_iter && diff_norm > 1e-6*m->rows() ){
 		get_exp(m, &msquared, expansion);
 		get_gamma(&msquared, &m_update, inflation);
 		*m -= m_update;
@@ -127,9 +127,12 @@ void MCL::markov_process(Eigen::SparseMatrix<float>* m, float inflation, float e
 		*m = m_update;
 		iteration++;
 	}
+	if( iteration == max_iter ){
+		failed_to_converge++;
+	}
 }
 
-void MCL::markov_process(Eigen::MatrixXf* m, float inflation, float expansion){
+void MCL::markov_process(Eigen::MatrixXf* m, float inflation, float expansion, uint32_t max_iter){
 	for (uint32_t idiag=0; idiag<m->cols(); ++idiag){
 		assert(abs(m->coeffRef(idiag, idiag)) > numeric_limits<float>::epsilon());
 	}
@@ -138,7 +141,7 @@ void MCL::markov_process(Eigen::MatrixXf* m, float inflation, float expansion){
 	Eigen::MatrixXf msquared(m->rows(), m->cols());
 	Eigen::MatrixXf m_update(m->rows(), m->cols());
 	get_gamma(m, m, 1); // This is to get a matrix of random walks on the graph -> TODO: find out if something else is more suitable
-	while( iteration < 100 && diff_norm > numeric_limits<float>::epsilon()*m->rows() ){
+	while( iteration < max_iter && diff_norm > numeric_limits<float>::epsilon()*m->rows() ){
 		get_exp(m, &msquared, expansion);
 		get_gamma(&msquared, &m_update, inflation);
 		*m -= m_update;
@@ -146,11 +149,13 @@ void MCL::markov_process(Eigen::MatrixXf* m, float inflation, float expansion){
 		*m = m_update;
 		iteration++;
 	}
+	if( iteration == max_iter ){
+		failed_to_converge++;
+	}
 }
 
 void MCL::run(){
-	if (config.database == "")
-		throw runtime_error("Missing parameter: database file (--db/-d)");
+	if (config.database == "") throw runtime_error("Missing parameter: database file (--db/-d)");
 	config.command = Config::makedb;
 	unique_ptr<DatabaseFile> db(DatabaseFile::auto_create_from_fasta());
 
@@ -280,12 +285,20 @@ void MCL::run(){
 
 	vector<vector<uint32_t>> indices;
 	vector<vector<Eigen::Triplet<float>>> components;
-	uint32_t nComponents;
-	uint32_t nComponentsLt1;
 	uint64_t nElements;
 	task_timer timer;
-	{ // we want to clear ms, therefore the scope
-		SparseMatrixStream<float> ms(db->ref_header.sequences);
+	if(config.cluster_mcl_restart){
+		timer.go("Computing independent components");
+		SparseMatrixStream<float> ms = SparseMatrixStream<float>::fromFile(config.cluster_mcl_graph_file);
+		cout<<" DONE " << endl;
+		auto componentInfo = ms.getComponents();
+		indices = get<0>(componentInfo);
+		components = get<1>(componentInfo);
+		nElements = ms.getNumberOfElements();
+		cout<<" DONE DONE" << endl;
+	}
+	else{
+		SparseMatrixStream<float> ms(db->ref_header.sequences, config.cluster_mcl_graph_file);
 		opt.consumer = &ms;
 		opt.db_filter = nullptr;
 		Workflow::Search::run(opt);
@@ -294,10 +307,10 @@ void MCL::run(){
 		auto componentInfo = ms.getComponents();
 		indices = get<0>(componentInfo);
 		components = get<1>(componentInfo);
-		nComponents = count_if(indices.begin(), indices.end(), [](vector<uint32_t> v){ return v.size() > 0;});
-		nComponentsLt1 = count_if(indices.begin(), indices.end(), [](vector<uint32_t> v){ return v.size() > 1;});
 		nElements = ms.getNumberOfElements();
 	}
+	uint32_t nComponents = count_if(indices.begin(), indices.end(), [](vector<uint32_t> v){ return v.size() > 0;});
+	uint32_t nComponentsLt1 = count_if(indices.begin(), indices.end(), [](vector<uint32_t> v){ return v.size() > 1;});
 
 	// Sort to get the largest chunks first
 	vector<uint32_t> sort_order(indices.size());
@@ -382,6 +395,7 @@ void MCL::run(){
 	const uint32_t max_counter = nComponents;
 	const float inflation = (float) config.cluster_mcl_inflation;
 	const float expansion = (float) config.cluster_mcl_expansion;
+	const uint32_t max_iter = config.cluster_mcl_max_iter;
 
 	// Collect some stats on the way
 	uint32_t* jobs_per_thread = new uint32_t[nThreads];
@@ -420,7 +434,7 @@ void MCL::run(){
 						Eigen::SparseMatrix<float> m_sparse(order.size(), order.size());
 						m_sparse.setFromTriplets(m.begin(), m.end());
 						sparse_create_time += chrono::duration_cast<chrono::milliseconds>(chrono::high_resolution_clock::now() - t).count();
-						markov_process(&m_sparse, inflation, expansion);
+						markov_process(&m_sparse, inflation, expansion, max_iter);
 						chrono::high_resolution_clock::time_point t = chrono::high_resolution_clock::now();
 						LazyDisjointIntegralSet<uint32_t> disjointSet(m_sparse.cols());
 						for (uint32_t k=0; k<m_sparse.outerSize(); ++k){
@@ -442,7 +456,7 @@ void MCL::run(){
 							m_dense(t.row(), t.col()) = t.value();
 						}
 						dense_create_time += chrono::duration_cast<chrono::milliseconds>(chrono::high_resolution_clock::now() - t).count();
-						markov_process(&m_dense, inflation, expansion);
+						markov_process(&m_dense, inflation, expansion, max_iter);
 						chrono::high_resolution_clock::time_point t = chrono::high_resolution_clock::now();
 						LazyDisjointIntegralSet<uint32_t> disjointSet(m_dense.cols());
 						for (uint32_t icol=0; icol<m_dense.cols(); ++icol){
