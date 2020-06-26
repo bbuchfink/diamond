@@ -19,6 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #ifndef SERIALIZER_H_
 #define SERIALIZER_H_
 
+#include <iostream>
 #include <string>
 #include <set>
 #include <vector>
