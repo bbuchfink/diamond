@@ -187,35 +187,35 @@ int FileStack::top(int & i) {
 }
 
 
-
-int FileStack::push(string buf, size_t & size_after_push) {
+int FileStack::push_non_locked(const string & buf) {
     DBG("");
-    bool added_newline = false;
-    if (buf.back() != '\n') {
-        buf.append(1, '\n');
-        added_newline = true;
+    static const string nl("\n");
+    lseek(fd, 0, SEEK_END);
+    size_t n = write(fd, buf.c_str(), buf.size());
+    if (buf.back() != nl.back()) {
+        n += write(fd, nl.c_str(), nl.size());
     }
+    return n;
+}
+
+int FileStack::push(const string & buf, size_t & size_after_push) {
+    DBG("");
     bool locked_internally = false;
     if (! locked) {
         lock();
         locked_internally = true;
     }
-    lseek(fd, 0, SEEK_END);
-    const size_t n = write(fd, buf.c_str(), buf.size());
+    size_t n = push_non_locked(buf);
     if (size_after_push != numeric_limits<size_t>::max()) {
         size_after_push = size();
     }
     if (locked_internally) {
         unlock();
     }
-    if (added_newline) {
-        buf.pop_back();
-    }
-    DBG(buf);
     return n;
 }
 
-int FileStack::push(string buf) {
+int FileStack::push(const string & buf) {
     DBG("");
     size_t size_after_push = numeric_limits<size_t>::max();
     return push(buf, size_after_push);

@@ -31,8 +31,9 @@ class FileStack {
         int top(std::string & buf);
 
         int push(int i);
-        int push(std::string buf);
-        int push(std::string buf, size_t & size_after_push);
+        int push(const std::string & buf);
+        int push(const std::string & buf, size_t & size_after_push);
+        int push_non_locked(const std::string & buf);
 
         int get_max_line_length();
         int set_max_line_length(int n);
