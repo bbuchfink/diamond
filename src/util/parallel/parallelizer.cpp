@@ -111,6 +111,8 @@ void Parallelizer::init(const string & tempdir) {
     // }
     // register_workers();
 
+    log("PARALLELIZER BEGIN");
+
     initialized = true;
 }
 
@@ -120,6 +122,7 @@ void Parallelizer::clear() {
 
 Parallelizer::~Parallelizer() {
     DBG("");
+    log("PARALLELIZER END");
     clean(continuous_cleanup_list);
     // clean(final_cleanup_list);
 }
@@ -274,4 +277,17 @@ bool Parallelizer::clean(vector<string> & file_list) {
 void Parallelizer::list_filestacks() {
     for (auto item : fs_map)
         cerr << item.first << " : " << item.second << endl;
+}
+
+
+void Parallelizer::log(const string & buf) {
+	auto log_stack = get_stack(LOG);
+
+    // we use ms since the Epoch as the universal timestamp
+    const auto ms = chrono::duration_cast<chrono::milliseconds>(
+            chrono::system_clock::now() - chrono::time_point<chrono::system_clock>{}
+        ).count();
+    const string tagged_buf = to_string(ms) + ' ' + buf + '\n';
+
+    log_stack->push_non_locked(tagged_buf);
 }

@@ -36,6 +36,8 @@ class Parallelizer {
 
         static void sleep(const double sleep_s);
 
+        void log(const std::string & buf);
+
         const std::string LOG = "log";
         const std::string COMMAND = "command";
         const std::string WORKERS = "workers";
@@ -66,7 +68,6 @@ class Parallelizer {
         std::vector<std::string> final_cleanup_list;
 
         std::unordered_map<std::string, std::shared_ptr<FileStack>> fs_map;
-
 
         void list_filestacks();
 };

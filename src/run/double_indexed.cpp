@@ -219,11 +219,12 @@ void run_query_chunk(DatabaseFile &db_file,
 		auto work = P->get_stack(reference_partition);
 		P->create_stack_from_file(reference_partition_done, get_ref_part_file_name(query_chunk, "done"));
 		auto done = P->get_stack(reference_partition_done);
-		auto log_done = P->get_stack(P->LOG);
 		string buf;
 
 		while (work->pop(buf)) {
 			Chunk chunk = to_chunk(buf);
+
+			P->log("SEARCH BEGIN "+std::to_string(query_chunk)+" "+std::to_string(chunk.i));
 
 			db_file.load_seqs(block_to_database_id, (size_t)(0), &ref_seqs::data_, &ref_ids::data_, true, options.db_filter ? options.db_filter : metadata.taxon_filter, true, chunk);
 			run_ref_chunk(db_file, query_chunk, query_len_bounds, query_buffer, master_out, tmp_file, params, metadata, block_to_database_id);
@@ -237,7 +238,8 @@ void run_query_chunk(DatabaseFile &db_file,
 				mp_last_chunk = true;
 			}
 
-			log_done->push(buf);
+			P->log("SEARCH END "+std::to_string(query_chunk)+" "+std::to_string(chunk.i));
+
 			log_rss();
 		}
 	} else {
@@ -272,6 +274,9 @@ void run_query_chunk(DatabaseFile &db_file,
 
 			// if (P->is_master()) {
 			if (mp_last_chunk) {
+
+				P->log("JOIN BEGIN "+std::to_string(query_chunk));
+
 				current_ref_block = db_file.get_n_partition_chunks();
 
 				// auto done = P->get_stack(reference_partition_done);
@@ -304,6 +309,8 @@ void run_query_chunk(DatabaseFile &db_file,
 				for (auto f : tmp_file_names) {
 					std::remove(f.c_str());
 				}
+
+				P->log("JOIN END "+std::to_string(query_chunk));
 			}
 			P->delete_stack(reference_partition_done);
 
