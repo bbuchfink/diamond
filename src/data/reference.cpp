@@ -76,6 +76,7 @@ InputFile& operator>>(InputFile& file, ReferenceHeader& h)
 
 Serializer& operator<<(Serializer& file, const ReferenceHeader& h)
 {
+	file.unset(Serializer::VARINT);
 	file << h.magic_number << h.build << h.db_version << h.sequences << h.letters << h.pos_array_offset;
 	return file;
 }
