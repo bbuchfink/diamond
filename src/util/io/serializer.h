@@ -88,6 +88,7 @@ struct Serializer : public Consumer
 
 	Serializer& operator<<(const vector<string> &v)
 	{
+		varint_ = false;
 		*this << (uint32_t)v.size();
 		for (vector<string>::const_iterator i = v.begin(); i < v.end(); ++i)
 			*this << *i;

@@ -98,6 +98,7 @@ struct Deserializer
 	Deserializer& operator>>(std::vector<std::string> &v)
 	{
 		uint32_t n;
+		varint = false;
 		*this >> n;
 		v.clear();
 		v.reserve(n);

@@ -27,6 +27,7 @@ const double SINGLE_INDEXED_SEED_SPACE_MAX_COVERAGE = 0.15;
 void setup_search_cont()
 {
 	unsigned index_mode;
+	Reduction::reduction = Reduction("A KR EDNQ C G H ILVM FYW P ST");
 	if (config.mode_more_sensitive) {
 		index_mode = 11;
 	}

@@ -40,3 +40,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define POSIX_OPEN(x,y,z) open(x,y,z)
 #define POSIX_OPEN2(x,y) open(x,y)
 #endif
+
+#if defined(__s390x__) && defined(__clang__)
+#define TLS_FIX_S390X
+#else
+#define TLS_FIX_S390X thread_local
+#endif

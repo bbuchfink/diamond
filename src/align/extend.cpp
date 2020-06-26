@@ -29,6 +29,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../dp/dp.h"
 #include "../util/log_stream.h"
 #include "../data/reference.h"
+#include "../util/system.h"
 
 using std::vector;
 using std::list;
@@ -154,7 +155,7 @@ vector<Match> extend(const Parameters &params, size_t query_id, hit* begin, hit*
 	const int source_query_len = align_mode.query_translated ? (int)query_source_seqs::get()[query_id].length() : (int)query_seqs::get()[query_id].length();
 
 	timer.go("Loading seed hits");
-	thread_local FlatArray<SeedHit> seed_hits, seed_hits_chunk;
+	TLS_FIX_S390X FlatArray<SeedHit> seed_hits, seed_hits_chunk;
 	thread_local vector<uint32_t> target_block_ids, target_block_ids_chunk;
 	thread_local vector<TargetScore> target_scores;
 	load_hits(begin, end, seed_hits, target_block_ids, target_scores);
