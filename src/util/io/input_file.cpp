@@ -72,7 +72,7 @@ InputFile::InputFile(const string &file_name, int flags) :
 }
 
 InputFile::InputFile(TempFile &tmp_file, int flags) :
-	Deserializer(new InputStreamBuffer(new FileSource(tmp_file.file_name(), tmp_file.file()))),
+	Deserializer(new InputStreamBuffer(new FileSource(tmp_file.file_name(), tmp_file.file()), flags)),
 	file_name(tmp_file.file_name()),
 	unlinked(tmp_file.unlinked)
 {

@@ -34,6 +34,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "log_stream.h"
 #include "../util/ptr_vector.h"
 #include "io/async_file.h"
+#include "io/input_stream_buffer.h"
 
 template<typename _t>
 struct Async_buffer
@@ -155,7 +156,7 @@ private:
 
 	void load_bin(std::vector<_t> &out, size_t bin)
 	{
-		InputFile f(tmp_file_[bin]);
+		InputFile f(tmp_file_[bin], InputStreamBuffer::ASYNC);
 		auto it = std::back_inserter(out);
 		size_t count = 0;
 		try {
