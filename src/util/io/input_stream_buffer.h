@@ -1,6 +1,9 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2018 Benjamin Buchfink <buchfink@gmail.com>
+Copyright (C) 2016-2020 Max Planck Society for the Advancement of Science e.V.
+                        Benjamin Buchfink
+						
+Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -19,18 +22,25 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #pragma once
 #include <utility>
 #include <memory>
+#include <thread>
 #include "stream_entity.h"
 
 struct InputStreamBuffer : public StreamEntity
 {
-	InputStreamBuffer(StreamEntity* prev);
+	enum { ASYNC = 4 };
+	InputStreamBuffer(StreamEntity* prev, int flags = 0);
 	virtual void rewind() override;
 	virtual void seek(size_t pos) override;
 	virtual void seek_forward(size_t n) override;
 	virtual pair<const char*, const char*> read() override;
 	virtual void putback(const char* p, size_t n) override;
+	virtual void close() override;
 private:
+
+	static void load_worker(InputStreamBuffer *buf);
 	
-	std::unique_ptr<char[]> buf_;
-	size_t putback_count_;
+	std::unique_ptr<char[]> buf_, load_buf_;
+	size_t putback_count_, load_count_;
+	bool async_;
+	std::thread* load_worker_;
 };

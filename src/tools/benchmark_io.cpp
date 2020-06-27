@@ -26,6 +26,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/log_stream.h"
 #include "../search/trace_pt_buffer.h"
 #include "../data/reference.h"
+#include "../util/io/input_stream_buffer.h"
 
 using std::vector;
 using std::string;
@@ -33,7 +34,7 @@ using std::endl;
 
 void benchmark_io() {
 	const string file_name = "diamond_io_benchmark.tmp";
-	const size_t total_count = 1000000000, query_count = 50, raw_size = 5749705002;
+	const size_t total_count = 1000000000, query_count = 50;
 	
 	task_timer timer;
 
@@ -41,29 +42,31 @@ void benchmark_io() {
 		timer.go("Writing output file");
 		OutputFile out(file_name);
 		std::default_random_engine generator;
-		std::uniform_int_distribution<uint32_t> query(0, 2000000), seed(0, 20000), subject(1, UINT32_MAX), score(30, 255);
+		std::uniform_int_distribution<uint32_t> query(0, 2000000), seed(0, 20000), subject(1, UINT32_MAX);
+		std::uniform_int_distribution<uint16_t> score(30, 1000);
 		for (size_t i = 0; i < total_count / query_count; ++i) {
 			out.set(Serializer::VARINT);
 			out << query(generator) << seed(generator);
+			out.unset(Serializer::VARINT);
 			for (size_t j = 0; j < query_count; ++j) {
-				out.unset(Serializer::VARINT);
 				out << subject(generator);
-				out.set(Serializer::VARINT);
-				out << score(generator);
+				out.write(score(generator));
 			}
 			out.unset(Serializer::VARINT);
 			out << (uint32_t)0;
 		}
 		const size_t s = out.tell();
 		message_stream << "Written " << (double)s / (1 << 30) << "GB. (" << s << ")" << endl;
-		message_stream << "Throughput: " << (double)raw_size / (1 << 20) / timer.seconds() << " MB/s" << endl;
+		message_stream << "Throughput: " << (double)s / (1 << 20) / timer.seconds() << " MB/s" << endl;
 		out.close();
 	}
 
+	const size_t raw_size = file_size(file_name.c_str());
+	message_stream << "File size = " << raw_size << endl;
 	timer.go("Reading input file");
 	ref_seqs::data_ = new Sequence_set();
-	InputFile in(file_name);
-	if (config.raw) {		
+	InputFile in(file_name, InputStreamBuffer::ASYNC);
+	if (config.raw) {
 		char* buf = new char[raw_size];
 		in.read(buf, raw_size);
 		delete[] buf;

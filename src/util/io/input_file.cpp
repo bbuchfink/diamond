@@ -42,7 +42,7 @@ bool is_gzip_stream(const unsigned char *b)
 }
 
 InputFile::InputFile(const string &file_name, int flags) :
-	Deserializer(new InputStreamBuffer(new FileSource(file_name))),
+	Deserializer(new InputStreamBuffer(new FileSource(file_name), flags)),
 	file_name(file_name),
 	unlinked(false)
 {
