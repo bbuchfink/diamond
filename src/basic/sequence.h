@@ -33,7 +33,7 @@ using std::vector;
 
 struct sequence
 {
-	static constexpr Letter DELIMITER = '\x1f';
+	static constexpr Letter DELIMITER = DELIMITER_LETTER;
 	struct Reversed {};
 	struct Hardmasked {};
 	sequence():

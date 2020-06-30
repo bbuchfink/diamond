@@ -266,8 +266,6 @@ const Letter Translator::reverseLetter[5] = { 3, 2, 1, 0, 4 };
 Letter Translator::lookup[5][5][5];
 Letter Translator::lookupReverse[5][5][5];
 
-const Letter Translator::STOP(value_traits.from_char('*'));
-
 const char* Translator::codes[] = {
 	0,
 	"FFLLSSSSYY**CC*WLLLLPPPPHHQQRRRRIIIMTTTTNNKKSSRRVVVVAAAADDEEGGGG", // 1

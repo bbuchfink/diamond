@@ -32,7 +32,6 @@ public:
 	static const Letter reverseLetter[5];
 	static Letter lookup[5][5][5];
 	static Letter lookupReverse[5][5][5];
-	static const Letter STOP;
 	static const char* codes[27];
 
 	static void init(unsigned id);
@@ -92,7 +91,7 @@ public:
 
 	static Letter const* nextChar(Letter const*p, Letter const*end)
 	{
-		while(*(p) != STOP && p < end)
+		while(*(p) != STOP_LETTER && p < end)
 			++p;
 		return p;
 	}
@@ -101,7 +100,7 @@ public:
 	{
 		Letter *last = &query[0]-1, *i = &query[0], *end = &query.back();
 		while (i <= end) {
-			if(*i == STOP) {
+			if(*i == STOP_LETTER) {
 				if(last != 0 && i - last - 1 < (int)run_len) {
 					for(Letter *j = last+1; j < i; ++j)
 						*j = 23;
