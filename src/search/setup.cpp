@@ -1,6 +1,10 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2017 Benjamin Buchfink <buchfink@gmail.com>
+Copyright (C) 2013-2020 Max Planck Society for the Advancement of Science e.V.
+                        Benjamin Buchfink
+                        Eberhard Karls Universitaet Tuebingen
+						
+Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -28,12 +32,8 @@ void setup_search_cont()
 {
 	unsigned index_mode;
 	Reduction::reduction = Reduction("A KR EDNQ C G H ILVM FYW P ST");
-	if (config.mode_more_sensitive) {
+	if (config.sensitivity == Sensitivity::SENSITIVE || config.sensitivity == Sensitivity::MORE_SENSITIVE)
 		index_mode = 11;
-	}
-	else if (config.mode_sensitive) {
-		index_mode = 11;
-	}
 	else {
 		index_mode = 10;
 		Reduction::reduction = Reduction("KR EQ D N C G H F Y IV LM W P S T A");
@@ -45,7 +45,7 @@ bool use_single_indexed(double coverage, size_t query_letters, size_t ref_letter
 {
 	if (coverage >= SINGLE_INDEXED_SEED_SPACE_MAX_COVERAGE)
 		return false;
-	if (config.mode_more_sensitive || config.mode_sensitive) {
+	if (config.sensitivity >= Sensitivity::SENSITIVE) {
 		return query_letters < 300000llu && query_letters * 20000llu < ref_letters;
 	}
 	else
@@ -55,14 +55,14 @@ bool use_single_indexed(double coverage, size_t query_letters, size_t ref_letter
 void setup_search()
 {
 	if (config.algo == Config::double_indexed) {
-		if (config.mode_very_sensitive) {
+		if (config.sensitivity == Sensitivity::VERY_SENSITIVE) {
 			Config::set_option(config.index_mode, 12u);
 			Config::set_option(config.freq_sd, 200.0);
-		} else if (config.mode_more_sensitive) {
+		} else if (config.sensitivity == Sensitivity::MORE_SENSITIVE) {
 			Config::set_option(config.index_mode, 9u);
 			Config::set_option(config.freq_sd, 200.0);
 		}
-		else if (config.mode_sensitive) {
+		else if (config.sensitivity == Sensitivity::SENSITIVE) {
 			Config::set_option(config.index_mode, 9u);
 			Config::set_option(config.freq_sd, 10.0);
 		}
@@ -74,10 +74,10 @@ void setup_search()
 		::shapes = shape_config(config.index_mode, config.shapes, config.shape_mask);
 	}
 	else {
-		if (config.mode_more_sensitive) {
+		if (config.sensitivity == Sensitivity::MORE_SENSITIVE) {
 			Config::set_option(config.freq_sd, 200.0);
 		}
-		else if (config.mode_sensitive) {
+		else if (config.sensitivity == Sensitivity::SENSITIVE) {
 			Config::set_option(config.freq_sd, 20.0);
 		}
 		else {
@@ -100,14 +100,14 @@ void setup_search_params(pair<size_t, size_t> query_len_bounds, size_t chunk_db_
 {
 	const double b = config.min_bit_score == 0 ? score_matrix.bitscore(config.max_evalue, (unsigned)query_len_bounds.first) : config.min_bit_score;
 
-	if (config.mode_very_sensitive) {
+	if (config.sensitivity == Sensitivity::VERY_SENSITIVE) {
 		Reduction::reduction = Reduction("A KR EDNQ C G H ILVM FYW P ST"); // murphy.10
 		Config::set_option(config.index_mode, 12u);
 		::shapes = shape_config(config.index_mode, config.shapes, config.shape_mask);
 		config.seed_anchor = std::min(::shapes[0].length_ - 1, 8u);
 		Config::set_option(config.min_identities, 9u);
 		Config::set_option(config.min_ungapped_score, 19.0);
-		Config::set_option(config.window, 60u);
+		//Config::set_option(config.window, 60u);
 		Config::set_option(config.hit_band, 8);
 		Config::set_option(config.min_hit_score, 23.0);
 		Config::set_option(config.ungapped_evalue, 100000.0);
@@ -126,12 +126,12 @@ void setup_search_params(pair<size_t, size_t> query_len_bounds, size_t chunk_db_
 
 		if (query_len_bounds.second <= 80) {
 			const int band = config.read_padding(query_len_bounds.second);
-			Config::set_option(config.window, (unsigned)(query_len_bounds.second + band));
+			//Config::set_option(config.window, (unsigned)(query_len_bounds.second + band));
 			Config::set_option(config.hit_band, band);
 			Config::set_option(config.min_hit_score, b);
 		}
 		else {
-			Config::set_option(config.window, 40u);
+			//Config::set_option(config.window, 40u);
 			Config::set_option(config.hit_band, 5);
 			Config::set_option(config.min_hit_score, std::min(29.0, b));
 		}

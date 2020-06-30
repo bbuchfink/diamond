@@ -26,6 +26,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../../basic/config.h"
 
 using std::make_pair;
+using std::pair;
 
 InputStreamBuffer::InputStreamBuffer(StreamEntity* prev, int flags) :
 	StreamEntity(prev),
@@ -63,6 +64,7 @@ pair<const char*, const char*> InputStreamBuffer::read()
 	else {
 		if (load_worker_) {
 			load_worker_->join();
+			delete load_worker_;
 			load_worker_ = nullptr;
 			std::swap(buf_, load_buf_);
 			n = load_count_;
@@ -84,8 +86,10 @@ void InputStreamBuffer::putback(const char* p, size_t n) {
 }
 
 void InputStreamBuffer::close() {
-	if (load_worker_)
+	if (load_worker_) {
 		load_worker_->join();
-	load_worker_ = nullptr;
+		delete load_worker_;
+		load_worker_ = nullptr;
+	}
 	prev_->close();
 }
