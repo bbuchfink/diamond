@@ -91,6 +91,9 @@ void run_ref_chunk(DatabaseFile &db_file,
 
 		timer.go("Deallocating buffers");
 		delete[] ref_buffer;
+
+		timer.go("Clearing query masking");
+		Frequent_seeds::clear_masking(*query_seqs::data_);
 	}
 
 	Consumer* out;
