@@ -559,7 +559,7 @@ struct Greedy_aligner2
 				total_len += it->len;
 				++it;
 			}
-			diags.nodes.erase(it, diags.nodes.end());
+			diags.nodes.erase(std::max(diags.nodes.begin() + config.chaining_min_nodes, it), diags.nodes.end());
 		}
 		diags.sort();
 		diags.prune();

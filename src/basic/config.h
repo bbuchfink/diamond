@@ -197,7 +197,6 @@ struct Config
 	double inner_culling_overlap;
 	double min_band_overlap;
 	int min_realign_overhang;
-	bool beta;
 	int ungapped_window;
 	int gapped_filter_diag_score;
 	double gapped_filter_evalue;
@@ -224,6 +223,7 @@ struct Config
 	bool raw;
 	bool mode_ultra_sensitive;
 	double chaining_len_cap;
+	size_t chaining_min_nodes;
 
 	Sensitivity sensitivity;
 
