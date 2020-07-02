@@ -33,7 +33,7 @@ namespace Extension {
 int band(int len) {
 	if (config.padding > 0)
 		return config.padding;
-	if (config.beta) {
+	if (config.sensitivity <= Sensitivity::SENSITIVE) {
 		if (len < 50)
 			return 12;
 		if (len < 100)

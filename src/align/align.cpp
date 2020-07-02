@@ -160,10 +160,10 @@ void align_queries(Trace_pt_buffer &trace_pts, Consumer* output_file, const Para
 		trace_pts.load(max_size);
 
 		timer.go("Sorting trace points");
-		if (config.beta)
+		//if (config.beta)
 			radix_sort<hit, hit::Query>(hit_buf->data(), hit_buf->data() + hit_buf->size(), (uint32_t)query_range.second, config.threads_);
-		else
-			merge_sort(hit_buf->begin(), hit_buf->end(), config.threads_);
+		//else
+			//merge_sort(hit_buf->begin(), hit_buf->end(), config.threads_);
 		statistics.inc(Statistics::TIME_SORT_SEED_HITS, timer.microseconds());
 
 		timer.go("Computing alignments");
