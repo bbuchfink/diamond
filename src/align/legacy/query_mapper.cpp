@@ -125,7 +125,7 @@ unsigned QueryMapper::count_targets()
 		}
 		else {
 			const Diagonal_segment d = xdrop_ungapped(query_seq(frame), ref_seqs::get()[l.first], hits[i].seed_offset_, (int)l.second);
-			if (d.score >= config.min_ungapped_raw_score) {
+			if (d.score > 0) {
 				if (l.first != subject_id) {
 					subject_id = l.first;
 					++n_subject;

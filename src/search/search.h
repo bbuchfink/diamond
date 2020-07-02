@@ -62,7 +62,6 @@ struct Stage1_hit
 
 void search_shape(unsigned sid, unsigned query_block, char *query_buffer, char *ref_buffer);
 bool use_single_indexed(double coverage, size_t query_letters, size_t ref_letters);
-void setup_search_params(pair<size_t, size_t> query_len_bounds, size_t chunk_db_letters);
 void setup_search();
 void setup_search_cont();
 

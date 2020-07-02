@@ -550,6 +550,17 @@ struct Greedy_aligner2
 			if (diags.nodes.size() > config.chaining_maxnodes)
 				diags.nodes.erase(diags.nodes.begin() + config.chaining_maxnodes, diags.nodes.end());
 		}
+		if (config.chaining_len_cap > 0.0) {
+			std::sort(diags.nodes.begin(), diags.nodes.end(), Diagonal_segment::cmp_score);
+			const double cap = query.length() * config.chaining_len_cap;
+			double total_len = 0.0;
+			auto it = diags.nodes.begin();
+			while (it < diags.nodes.end() && total_len < cap) {
+				total_len += it->len;
+				++it;
+			}
+			diags.nodes.erase(it, diags.nodes.end());
+		}
 		diags.sort();
 		diags.prune();
 		if (log) {

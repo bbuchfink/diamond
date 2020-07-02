@@ -240,7 +240,7 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("seq", 0, "Sequence numbers to display.", seq_no);
 
 	double rank_ratio2;
-	unsigned window;
+	unsigned window, min_ungapped_score, hit_band, min_hit_score;
 	Options_group deprecated_options("");
 	deprecated_options.add()
 		("window", 'w', "window size for local hit search", window)
@@ -360,7 +360,8 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("relaxed-evalue-factor", 0, "", relaxed_evalue_factor, 1.0)
 		("type", 0, "", type)
 		("raw", 0, "", raw)
-		("ultra-sensitive", 0, "", mode_ultra_sensitive);
+		("ultra-sensitive", 0, "", mode_ultra_sensitive)
+		("chaining-len-cap", 0, "", chaining_len_cap);
 	
 	parser.add(general).add(makedb).add(cluster).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options).add(deprecated_options);
 	parser.store(argc, argv, command);
