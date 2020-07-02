@@ -360,7 +360,7 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("type", 0, "", type)
 		("raw", 0, "", raw)
 		("ultra-sensitive", 0, "", mode_ultra_sensitive)
-		("chaining-len-cap", 0, "", chaining_len_cap)
+		("chaining-len-cap", 0, "", chaining_len_cap, 2.0)
 		("chaining-min-nodes", 0, "", chaining_min_nodes, (size_t)200);
 	
 	parser.add(general).add(makedb).add(cluster).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options).add(deprecated_options);
