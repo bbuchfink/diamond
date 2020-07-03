@@ -1,6 +1,10 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2018 Benjamin Buchfink <buchfink@gmail.com>
+Copyright (C) 2013-2020 Max Planck Society for the Advancement of Science e.V.
+                        Benjamin Buchfink
+                        Eberhard Karls Universitaet Tuebingen
+
+Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,14 +20,13 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#ifndef REFERENCE_H_
-#define REFERENCE_H_
-
+#pragma once
 #include <vector>
 #include <string>
 #include <iostream>
 #include <string.h>
 #include <stdint.h>
+#include <limits.h>
 #include "../util/io/serializer.h"
 #include "../util/io/input_file.h"
 #include "../util/io/text_input_file.h"
@@ -179,4 +182,6 @@ inline vector<string> seq_titles(const char *title)
 Chunk to_chunk(const string & line);
 string to_string(const Chunk & c);
 
-#endif /* REFERENCE_H_ */
+static inline bool long_subject_offsets() {
+	return ref_seqs::get().raw_len() > (size_t)std::numeric_limits<uint32_t>::max();
+}

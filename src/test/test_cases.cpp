@@ -20,13 +20,17 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "test.h"
 
+using std::vector;
+
 namespace Test {
 
-const TestCase test_cases[] = {
+const vector<TestCase> test_cases = {
 { "blastp (default)", "blastp -p1" },
 { "blastp (multithreaded)", "blastp -p4" },
 { "blastp (blocked)", "blastp -c1 -b0.00002 -p4" },
 { "blastp (more-sensitive)", "blastp --more-sensitive -c1 -p4" },
+{ "blastp (target-parallel)", "blastp --more-sensitive -c1 -p4 --query-parallel-limit 1" },
+{ "blastp (query-indexed)", "blastp --more-sensitive -c1 -p4 --algo 1" },
 { "blastp (target seqs)", "blastp -k3 -c1 -p4" },
 { "blastp (top)", "blastp --top 10 -p4"},
 { "blastp (evalue)", "blastp -e10000 --more-sensitive -c1 -p4" },
@@ -36,17 +40,19 @@ const TestCase test_cases[] = {
 { "blastp (PAF format)", "blastp -c1 -f paf -p1" }
 };
 
-const uint64_t ref_hashes[] = {
+const vector<uint64_t> ref_hashes = {
 0x4f959b7506a0b621,
 0x4f959b7506a0b621,
 0x2d95a36e0a13bf9b,
-0x2f1bee0a2fa8ff5e,
-0x3bd7a39c0bd45a3,
+0x959b05442e7bfebf,
+0x959b05442e7bfebf,
+0x9713e8c96114d257,
+0x66b239e917fb14d1,
 0x8ac0057c68f8c239,
-0xa2ea51fd070b9485,
-0x7c90bb1c62c71cfb,
+0xcc42d6752cbc88c1,
+0xa76a583e6fe4c891,
 0xc40f9bffc00c4f97,
-0xda437ed1f7ddb589,
+0x791b24944e18a96c,
 0xdf32d46bc18e400a,
 };
 

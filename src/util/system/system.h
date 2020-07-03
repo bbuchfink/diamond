@@ -15,6 +15,7 @@ void auto_append_extension_if_exists(std::string &str, const char *ext);
 size_t getCurrentRSS();
 size_t getPeakRSS();
 void log_rss();
+size_t file_size(const char* name);
 
 #ifdef _MSC_VER
 #define POPEN _popen

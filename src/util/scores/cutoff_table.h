@@ -1,9 +1,7 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2020 Max Planck Society for the Advancement of Science e.V.
-                        Benjamin Buchfink
-                        Eberhard Karls Universitaet Tuebingen
-						
+Copyright (C) 2020 Max Planck Society for the Advancement of Science e.V.
+
 Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
 
 This program is free software: you can redistribute it and/or modify
@@ -21,25 +19,30 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #pragma once
-struct Const
-{
+#include "../../basic/score_matrix.h"
+#include "../intrin.h"
 
-	enum {
-		build_version = 137,
-		seedp_bits = 10,
-		seedp = 1<<seedp_bits,
-		max_seed_weight = 32,
-		max_shapes = 64
-	};
+namespace Util { namespace Scores {
 
-	static const char* version_string;
-	static const char* program_name;
-	static const char* id_delimiters;
+struct CutoffTable {
+	
+	CutoffTable(double evalue) {
+		for (int b = 1; b <= MAX_BITS; ++b) {
+			data_[b] = score_matrix.rawscore(score_matrix.bitscore_norm(evalue, 1 << (b - 1)));
+		}
+	}
+
+	int operator()(int query_len) const {
+		const int b = 32 - clz((uint32_t)query_len);
+		return data_[b];
+	}
+
+private:
+
+	enum { MAX_BITS = 31 };
+
+	int data_[MAX_BITS + 1];
 
 };
 
-#define SIMPLE_SEARCH
-static constexpr int MAX_CONTEXT = 6;
-// #define FREQUENCY_MASKING
-// #define ST_JOIN
-// #define NO_COLLISION_FILTER
+}}

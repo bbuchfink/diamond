@@ -91,9 +91,9 @@ struct Seed
 		}
 		return s;
 	}
-	void enum_neighborhood(int treshold, vector<Seed> &out);
+	void enum_neighborhood(int treshold, std::vector<Seed> &out);
 private:
-	void enum_neighborhood(unsigned pos, int treshold, vector<Seed>& out, int score);
+	void enum_neighborhood(unsigned pos, int treshold, std::vector<Seed>& out, int score);
 	Letter data_[Const::max_seed_weight];
 };
 

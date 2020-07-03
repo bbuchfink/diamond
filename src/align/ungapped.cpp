@@ -1,8 +1,8 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2020 Max Planck Society for the Advancement of Science e.V.
-                        Benjamin Buchfink
-                        Eberhard Karls Universitaet Tuebingen
+Copyright (C) 2020 Max Planck Society for the Advancement of Science e.V.
+
+Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -43,9 +43,11 @@ using std::mutex;
 
 namespace Extension {
 
-WorkTarget ungapped_stage(SeedHit *begin, SeedHit *end, const sequence *query_seq, const Bias_correction *query_cb, size_t block_id) {
+WorkTarget ungapped_stage(SeedHit *begin, SeedHit *end, const sequence *query_seq, const Bias_correction *query_cb, uint32_t block_id) {
 	array<vector<Diagonal_segment>, MAX_CONTEXT> diagonal_segments;
 	WorkTarget target(block_id, ref_seqs::get()[block_id]);
+	if (config.ext == "full" && (int)query_seq[0].length() < config.full_sw_len)
+		return target;
 	std::sort(begin, end);
 	for (const SeedHit *hit = begin; hit < end; ++hit) {
 		if (!diagonal_segments[hit->frame].empty() && diagonal_segments[hit->frame].back().diag() == hit->diag() && diagonal_segments[hit->frame].back().subject_end() >= hit->j)
@@ -68,7 +70,7 @@ WorkTarget ungapped_stage(SeedHit *begin, SeedHit *end, const sequence *query_se
 	return target;
 }
 
-void ungapped_stage_worker(size_t i, size_t thread_id, const sequence *query_seq, const Bias_correction *query_cb, FlatArray<SeedHit> *seed_hits, const size_t *target_block_ids, vector<WorkTarget> *out, mutex *mtx) {
+void ungapped_stage_worker(size_t i, size_t thread_id, const sequence *query_seq, const Bias_correction *query_cb, FlatArray<SeedHit> *seed_hits, const uint32_t*target_block_ids, vector<WorkTarget> *out, mutex *mtx) {
 	WorkTarget target = ungapped_stage(seed_hits->begin(i), seed_hits->end(i), query_seq, query_cb, target_block_ids[i]);
 	{
 		std::lock_guard<mutex> guard(*mtx);
@@ -76,7 +78,7 @@ void ungapped_stage_worker(size_t i, size_t thread_id, const sequence *query_seq
 	}
 }
 
-vector<WorkTarget> ungapped_stage(const sequence *query_seq, const Bias_correction *query_cb, FlatArray<SeedHit> &seed_hits, const size_t *target_block_ids, int flags) {
+vector<WorkTarget> ungapped_stage(const sequence *query_seq, const Bias_correction *query_cb, FlatArray<SeedHit> &seed_hits, const uint32_t *target_block_ids, int flags) {
 	vector<WorkTarget> targets;
 	if (seed_hits.size() == 0)
 		return targets;

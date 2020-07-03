@@ -72,8 +72,8 @@ endif()
 if (${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
   add_definitions(-D_CRT_SECURE_NO_WARNINGS -D_ITERATOR_DEBUG_LEVEL=0)
 else()
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=gnu++11 -Wall -Wextra -Wno-implicit-fallthrough -Wreturn-type -Wno-unused -Wno-unused-parameter -Wno-unused-variable -Wno-uninitialized -Wno-deprecated-copy")
-  # -fsanitize=address -fno-omit-frame-pointer 
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=gnu++11 -Wall -Wextra -Wno-implicit-fallthrough -Wreturn-type -Wno-unused -Wno-unused-parameter -Wno-unused-variable -Wno-uninitialized -Wno-deprecated-copy -Wno-unknown-warning-option")
+  # -fsanitize=address -fno-omit-frame-pointer
 endif()
 
 if (CMAKE_COMPILER_IS_GNUCC AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 5)
@@ -209,14 +209,15 @@ set(OBJECTS
   src/util/parallel/filestack.cpp
   src/util/parallel/parallelizer.cpp
   src/util/parallel/multiprocessing.cpp
+  src/tools/benchmark_io.cpp
 )
 
 if(X86)
-add_executable(diamond $<TARGET_OBJECTS:arch_avx2>
-  $<TARGET_OBJECTS:arch_sse4_1>
-  $<TARGET_OBJECTS:arch_generic>
-  ${OBJECTS}
-)
+  add_executable(diamond $<TARGET_OBJECTS:arch_avx2>
+    $<TARGET_OBJECTS:arch_sse4_1>
+    $<TARGET_OBJECTS:arch_generic>
+    ${OBJECTS}
+  )
 else()
 add_executable(diamond $<TARGET_OBJECTS:arch_generic>
   ${OBJECTS}

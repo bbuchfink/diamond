@@ -38,6 +38,31 @@ bool exists(const std::string &file_name) {
 #endif
 }
 
+size_t file_size(const char* name)
+{
+#ifdef WIN32
+	HANDLE hFile = CreateFile(name, GENERIC_READ,
+		FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING,
+		FILE_ATTRIBUTE_NORMAL, NULL);
+	if (hFile == INVALID_HANDLE_VALUE)
+		return -1; // error condition, could call GetLastError to find out more
+
+	LARGE_INTEGER size;
+	if (!GetFileSizeEx(hFile, &size))
+	{
+		CloseHandle(hFile);
+		return -1; // error condition, could call GetLastError to find out more
+	}
+
+	CloseHandle(hFile);
+	return size.QuadPart;
+#else
+	struct stat stat_buf;
+	int rc = stat(name, &stat_buf);
+	return rc == 0 ? stat_buf.st_size : -1;
+#endif
+}
+
 void auto_append_extension(string &str, const char *ext)
 {
 	if (!ends_with(str, ext))

@@ -33,9 +33,9 @@ struct Statistics
 	enum value {
 		SEED_HITS, TENTATIVE_MATCHES0, TENTATIVE_MATCHES1, TENTATIVE_MATCHES2, TENTATIVE_MATCHES3, TENTATIVE_MATCHES4, TENTATIVE_MATCHESX, MATCHES, ALIGNED, GAPPED, DUPLICATES,
 		GAPPED_HITS, QUERY_SEEDS, QUERY_SEEDS_HIT, REF_SEEDS, REF_SEEDS_HIT, QUERY_SIZE, REF_SIZE, OUT_HITS, OUT_MATCHES, COLLISION_LOOKUPS, QCOV, BIAS_ERRORS, SCORE_TOTAL, ALIGNED_QLEN, PAIRWISE, HIGH_SIM,
-		TEMP_SPACE, SECONDARY_HITS, ERASED_HITS, SQUARED_ERROR, CELLS, OUTRANKED_HITS, TARGET_HITS0, TARGET_HITS1, TARGET_HITS2, TARGET_HITS3, TARGET_HITS4, TARGET_HITS5, TIME_GREEDY_EXT, LOW_COMPLEXITY_SEEDS,
+		TEMP_SPACE, SECONDARY_HITS, ERASED_HITS, SQUARED_ERROR, CELLS, OUTRANKED_HITS, TARGET_HITS0, TARGET_HITS1, TARGET_HITS2, TARGET_HITS3, TARGET_HITS4, TARGET_HITS5, TARGET_HITS6, TIME_GREEDY_EXT, LOW_COMPLEXITY_SEEDS,
 		SWIPE_REALIGN, EXT8, EXT16, EXT32, GAPPED_FILTER_TARGETS, GAPPED_FILTER_HITS1, GAPPED_FILTER_HITS2, GROSS_DP_CELLS, NET_DP_CELLS, TIME_TARGET_SORT, TIME_SW, TIME_EXT, TIME_GAPPED_FILTER,
-		TIME_LOAD_HIT_TARGETS, TIME_CHAINING, TIME_LOAD_SEED_HITS, TIME_SORT_SEED_HITS, COUNT
+		TIME_LOAD_HIT_TARGETS, TIME_CHAINING, TIME_LOAD_SEED_HITS, TIME_SORT_SEED_HITS, TIME_SORT_TARGETS_BY_SCORE, COUNT
 	};
 
 	Statistics()
@@ -84,6 +84,7 @@ struct Statistics
 		log_stream << "Target hits (stage 3) = " << data_[TARGET_HITS3] << endl;
 		log_stream << "Target hits (stage 4) = " << data_[TARGET_HITS4] << endl;
 		log_stream << "Target hits (stage 5) = " << data_[TARGET_HITS5] << endl;
+		log_stream << "Target hits (stage 6) = " << data_[TARGET_HITS6] << endl;
 		log_stream << "Swipe realignments    = " << data_[SWIPE_REALIGN] << endl;
 		log_stream << "Extensions (8 bit)    = " << data_[EXT8] << endl;
 		log_stream << "Extensions (16 bit)   = " << data_[EXT16] << endl;
@@ -96,6 +97,7 @@ struct Statistics
 		log_stream << "Gapped filter (hits) stage 1 = " << data_[GAPPED_FILTER_HITS1] << endl;
 		log_stream << "Gapped filter (hits) stage 2 = " << data_[GAPPED_FILTER_HITS2] << endl;
 		log_stream << "Time (Load seed hit targets) = " << (double)data_[TIME_LOAD_HIT_TARGETS] / 1e6 << "s (CPU)" << endl;
+		log_stream << "Time (Sort targets by score) = " << (double)data_[TIME_SORT_TARGETS_BY_SCORE] / 1e6 << "s (CPU)" << endl;
 		log_stream << "Time (Gapped filter)         = " << (double)data_[TIME_GAPPED_FILTER] / 1e6 << "s (CPU)" << endl;
 		log_stream << "Time (Chaining)              = " << (double)data_[TIME_CHAINING] / 1e6 << "s (CPU)" << endl;
 		log_stream << "Time (DP target sorting)     = " << (double)data_[TIME_TARGET_SORT] / 1e6 << "s (CPU)" << endl;

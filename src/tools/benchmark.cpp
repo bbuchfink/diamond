@@ -38,6 +38,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/simd/transpose.h"
 #include "../dp/scan_diags.h"
 
+void benchmark_io();
+
 using std::vector;
 using std::chrono::high_resolution_clock;
 using std::chrono::nanoseconds;
@@ -199,9 +201,15 @@ void swipe(const sequence &s1, const sequence &s2) {
 	sequence target[CHANNELS];
 	std::fill(target, target + CHANNELS, s2);
 	static const size_t n = 1000llu;
+	vector<DpTarget> target8, target16;
+	for (size_t i = 0; i < 8; ++i)
+		target16.emplace_back(s2, -32, 32, 0, 0);
+	Bias_correction cbs(s1);
+	Statistics stat;
 	high_resolution_clock::time_point t1 = high_resolution_clock::now();
 	for (size_t i = 0; i < n; ++i) {
-		volatile list<Hsp> v = ::DP::Swipe::swipe(s1, target, target + CHANNELS, 100);
+		//volatile list<Hsp> v = ::DP::Swipe::swipe(s1, target, target + CHANNELS, 100);
+		volatile auto out = ::DP::BandedSwipe::swipe(s1, target8, target16, Frame(0), &cbs, 0, 0, stat);
 	}
 	cout << "SWIPE (int8_t):\t\t\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * s1.length() * s2.length() * CHANNELS) * 1000 << " ps/Cell" << endl;
 }
@@ -243,7 +251,22 @@ void diag_scores(const sequence& s1, const sequence& s2) {
 }
 #endif
 
+void evalue() {
+	static const size_t n = 1000000llu;
+	high_resolution_clock::time_point t1 = high_resolution_clock::now();
+	volatile double x = 0.0;
+	for (size_t i = 0; i < n; ++i) {
+		x += score_matrix.evalue_norm((int)i, 300);
+	}
+	cout << "Evalue:\t\t\t\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n) << " ns" << endl;
+}
+
 void benchmark() {
+	if (config.type == "io") {
+		benchmark_io();
+		return;
+	}
+
 	vector<Letter> s1, s2, s3, s4;
 		
 	s1 = sequence::from_string("mpeeeysefkelilqkelhvvyalshvcgqdrtllasillriflhekleslllctlndreismedeattlfrattlastlmeqymkatatqfvhhalkdsilkimeskqscelspskleknedvntnlthllnilselvekifmaseilpptlryiygclqksvqhkwptnttmrtrvvsgfvflrlicpailnprmfniisdspspiaartlilvaksvqnlanlvefgakepymegvnpfiksnkhrmimfldelgnvpelpdttehsrtdlsrdlaalheicvahsdelrtlsnergaqqhvlkkllaitellqqkqnqyt"); // d1wera_
@@ -254,6 +277,7 @@ void benchmark() {
 	sequence ss1 = sequence(s1).subseq(34, s1.size());
 	sequence ss2 = sequence(s2).subseq(33, s2.size());
 
+	evalue();
 #ifdef __SSE4_1__
 	swipe(s3, s4);
 	diag_scores(s1, s2);

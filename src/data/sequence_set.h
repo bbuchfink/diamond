@@ -70,7 +70,7 @@ struct Sequence_set : public String_set<Letter, sequence::DELIMITER, 1>
 		return max;
 	}
 
-	sequence window_infix(size_t offset, unsigned &left) const
+	/*sequence window_infix(size_t offset, unsigned &left) const
 	{
 		const Letter* begin(this->data(offset));
 		unsigned n(0);
@@ -100,7 +100,7 @@ struct Sequence_set : public String_set<Letter, sequence::DELIMITER, 1>
 		++begin;
 		const Letter* s(this->data(offset - config.window));
 		return sequence(s, 2 * config.window, (int)(begin - s));
-	}
+	}*/
 
 	vector<size_t> partition(unsigned n_part) const
 	{

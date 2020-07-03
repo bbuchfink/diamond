@@ -21,39 +21,41 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #pragma once
+#include <stdint.h>
 #include "../util/async_buffer.h"
 #include "../basic/match.h"
+#include "../util/io/deserializer.h"
+#include "../data/reference.h"
 
 #pragma pack(1)
 
 struct hit
 {
 	typedef uint32_t Seed_offset;
+	typedef uint64_t Key;
 
-	unsigned	query_;
-	Packed_loc	subject_;
+	uint32_t query_;
+	Packed_loc subject_;
 	Seed_offset	seed_offset_;
+	uint16_t score_;
 	hit() :
 		query_(),
 		subject_(),
 		seed_offset_()
 	{ }
-	hit(unsigned query, Packed_loc subject, Seed_offset seed_offset) :
+	hit(unsigned query, Packed_loc subject, Seed_offset seed_offset, uint16_t score = 0) :
 		query_(query),
 		subject_(subject),
-		seed_offset_(seed_offset)
+		seed_offset_(seed_offset),
+		score_(score)
 	{ }
-	operator uint32_t() const
-	{
-		return query_;
-	}
-	bool operator<(const hit &rhs) const
+	bool operator<(const hit& rhs) const
 	{
 		return query_ < rhs.query_;
 	}
 	bool blank() const
 	{
-		return subject_ == 0;
+		return uint64_t(subject_) == 0;
 	}
 	unsigned operator%(unsigned i) const
 	{
@@ -83,11 +85,23 @@ struct hit
 			return query_id<_d>(x);
 		}
 	};
-	static bool cmp_subject(const hit &lhs, const hit &rhs)
-	{
-		return lhs.subject_ < rhs.subject_
-			|| (lhs.subject_ == rhs.subject_ && lhs.seed_offset_ < rhs.seed_offset_);
-	}
+	struct Query {
+		unsigned operator()(const hit& h) const {
+			return h.query_;
+		}
+	};
+	struct Subject {
+		uint64_t operator()(const hit& h) const {
+			return h.subject_;
+		}
+	};
+	struct CmpSubject {
+		bool operator()(const hit& lhs, const hit& rhs) const
+		{
+			return lhs.subject_ < rhs.subject_
+				|| (lhs.subject_ == rhs.subject_ && lhs.seed_offset_ < rhs.seed_offset_);
+		}
+	};
 	static bool cmp_normalized_subject(const hit &lhs, const hit &rhs)
 	{
 		const uint64_t x = (uint64_t)lhs.subject_ + (uint64_t)rhs.seed_offset_, y = (uint64_t)rhs.subject_ + (uint64_t)lhs.seed_offset_;
@@ -98,8 +112,36 @@ struct hit
 	}
 	friend std::ostream& operator<<(std::ostream &s, const hit &me)
 	{
-		s << me.query_ << '\t' << me.subject_ << '\t' << me.seed_offset_ << '\n';
+		s << me.query_ << '\t' << uint64_t(me.subject_) << '\t' << me.seed_offset_ << '\n';
 		return s;
+	}
+	template<typename _it>
+	static size_t read(Deserializer& s, _it it) {
+		const bool l = long_subject_offsets();
+		uint32_t query_id, seed_offset;
+		s.varint = true;
+		s >> query_id >> seed_offset;
+		Packed_loc subject_loc;
+		size_t count = 0;
+		uint32_t x;
+		s.varint = false;
+		for (;;) {
+			if (l) {
+				s.read(subject_loc);
+				if (uint64_t(subject_loc) == 0)
+					return count;
+			}
+			else {
+				s.read(x);
+				if (x == 0)
+					return count;
+				subject_loc = x;
+			}
+			uint16_t score;
+			s.read(score);
+			*it = { query_id, subject_loc, seed_offset, score };
+			++count;
+		}
 	}
 } PACKED_ATTRIBUTE;
 

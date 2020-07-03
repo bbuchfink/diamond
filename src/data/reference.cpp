@@ -73,12 +73,14 @@ Deserializer& operator>>(Deserializer &d, ReferenceHeader2 &h)
 
 InputFile& operator>>(InputFile& file, ReferenceHeader& h)
 {
+	file.varint = false;
 	file >> h.magic_number >> h.build >> h.db_version >> h.sequences >> h.letters >> h.pos_array_offset;
 	return file;
 }
 
 Serializer& operator<<(Serializer& file, const ReferenceHeader& h)
 {
+	file.unset(Serializer::VARINT);
 	file << h.magic_number << h.build << h.db_version << h.sequences << h.letters << h.pos_array_offset;
 	return file;
 }
@@ -211,7 +213,7 @@ void make_db(TempFile **tmp_out, TextInputFile *input_file)
 	FileBackedBuffer accessions;
 
 	try {
-		while ((timer.go("Loading sequences"), n = load_seqs(*db_file, format, &seqs, ids, 0, nullptr, (size_t)(1e9), string())) > 0) {
+		while ((timer.go("Loading sequences"), n = load_seqs(*db_file, format, &seqs, ids, 0, nullptr, (size_t)(1e9), string(), amino_acid_traits)) > 0) {
 			if (config.masking == 1) {
 				timer.go("Masking sequences");
 				mask_seqs(*seqs, Masking::get(), false);
@@ -483,8 +485,12 @@ bool DatabaseFile::is_diamond_db(const string &file_name) {
 	if (file_name == "-")
 		return false;
 	InputFile db_file(file_name);
-	uint64_t magic_number;
-	bool r = db_file.read(&magic_number, 1) == 1 && magic_number == ReferenceHeader::MAGIC_NUMBER;
+	uint64_t magic_number = 0;
+	try {
+		db_file >> magic_number;
+	}
+	catch (EndOfStream) {}
+	bool r = (magic_number == ReferenceHeader::MAGIC_NUMBER);
 	db_file.close();
 	return r;
 }

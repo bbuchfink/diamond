@@ -151,23 +151,23 @@ void align_queries(Trace_pt_buffer &trace_pts, Consumer* output_file, const Para
 
 	while (true) {
 		task_timer timer("Loading trace points", 3);
-		tuple<MemBuffer<hit>*, size_t, size_t> input = trace_pts.retrieve();
+		tuple<vector<hit>*, size_t, size_t> input = trace_pts.retrieve();
 		if (get<0>(input) == nullptr)
 			break;
 		statistics.inc(Statistics::TIME_LOAD_SEED_HITS, timer.microseconds());
-		MemBuffer<hit>* hit_buf = get<0>(input);
+		vector<hit>* hit_buf = get<0>(input);
 		query_range = { get<1>(input), get<2>(input) };
+		trace_pts.load(max_size);
 
 		timer.go("Sorting trace points");
 		if (config.beta)
-			radix_sort(hit_buf->begin(), hit_buf->end(), (uint32_t)query_range.second);
+			radix_sort<hit, hit::Query>(hit_buf->data(), hit_buf->data() + hit_buf->size(), (uint32_t)query_range.second, config.threads_);
 		else
 			merge_sort(hit_buf->begin(), hit_buf->end(), config.threads_);
 		statistics.inc(Statistics::TIME_SORT_SEED_HITS, timer.microseconds());
-		trace_pts.load(max_size);
 
 		timer.go("Computing alignments");
-		Align_fetcher::init(query_range.first, query_range.second, hit_buf->begin(), hit_buf->end());
+		Align_fetcher::init(query_range.first, query_range.second, hit_buf->data(), hit_buf->data() + hit_buf->size());
 		OutputSink::instance = unique_ptr<OutputSink>(new OutputSink(query_range.first, output_file));
 		vector<std::thread> threads;
 		if (config.verbosity >= 3 && config.load_balancing == Config::query_parallel && !config.no_heartbeat)

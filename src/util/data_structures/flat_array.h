@@ -1,8 +1,8 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2020 Max Planck Society for the Advancement of Science e.V.
-                        Benjamin Buchfink
-                        Eberhard Karls Universitaet Tuebingen
+Copyright (C) 2020 Max Planck Society for the Advancement of Science e.V.
+
+Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -18,9 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#ifndef FLAT_ARRAY_H_
-#define FLAT_ARRAY_H_
-
+#pragma once
 #include <vector>
 
 template<typename _t>
@@ -54,8 +52,16 @@ struct FlatArray {
 		limits_.push_back(0);
 	}
 
+	void reserve(size_t n) {
+		data_.reserve(n);
+	}
+
 	size_t size() const {
 		return limits_.size() - 1;
+	}
+
+	size_t data_size() const {
+		return data_.size();
 	}
 
 	const _t* begin(size_t i) const {
@@ -80,5 +86,3 @@ private:
 	std::vector<size_t> limits_;
 
 };
-
-#endif

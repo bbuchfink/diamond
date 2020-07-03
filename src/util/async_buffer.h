@@ -26,13 +26,15 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <assert.h>
 #include <thread>
 #include <tuple>
+#include <iterator>
+#include <atomic>
 #include "../basic/config.h"
 #include "io/temp_file.h"
 #include "io/input_file.h"
 #include "log_stream.h"
 #include "../util/ptr_vector.h"
 #include "io/async_file.h"
-#include "data_structures/mem_buffer.h"
+#include "io/input_stream_buffer.h"
 
 template<typename _t>
 struct Async_buffer
@@ -48,8 +50,15 @@ struct Async_buffer
 		total_size_(0)
 	{
 		log_stream << "Async_buffer() " << input_count << ',' << bin_size_ << std::endl;
-		for (unsigned i = 0; i < bins; ++i)
+		count_ = new std::atomic_size_t[bins];
+		for (unsigned i = 0; i < bins; ++i) {
 			tmp_file_.push_back(new AsyncFile());
+			count_[i] = (size_t)0;
+		}
+	}
+
+	~Async_buffer() {
+		delete[] count_;
 	}
 
 	size_t begin(size_t bin) const
@@ -66,17 +75,20 @@ struct Async_buffer
 	{
 		Iterator(Async_buffer &parent, size_t thread_num) :
 			buffer_(parent.bins()),
+			count_(parent.bins(), 0),
 			parent_(parent)
 		{
-			for (unsigned i = 0; i < parent.bins_; ++i)
+			for (unsigned i = 0; i < parent.bins_; ++i) {
 				out_.push_back(&parent.tmp_file_[i]);
+			}
 		}
-		void push(const _t &x)
+		void push(unsigned id, const char *data, size_t size, size_t count)
 		{
-			const unsigned bin = (unsigned)(x / parent_.bin_size_);
+			const unsigned bin = id / parent_.bin_size_;
 			assert(bin < parent_.bins());
-			buffer_[bin].push_back(x);
-			if (buffer_[bin].size() == buffer_size)
+			buffer_[bin].insert(buffer_[bin].end(), data, data + size);
+			count_[bin] += count;
+			if (buffer_[bin].size() >= buffer_size)
 				flush(bin);
 		}
 		void flush(unsigned bin)
@@ -86,45 +98,49 @@ struct Async_buffer
 		}
 		~Iterator()
 		{
-			for (unsigned bin = 0; bin < parent_.bins_; ++bin)
+			for (unsigned bin = 0; bin < parent_.bins_; ++bin) {
 				flush(bin);
+				parent_.count_[bin] += count_[bin];
+			}
 		}
 	private:
 		enum { buffer_size = 65536 };
-		std::vector<std::vector<_t>> buffer_;
+		std::vector<std::vector<char>> buffer_;
+		std::vector<size_t> count_;
 		std::vector<AsyncFile*> out_;
 		Async_buffer &parent_;
 	};
 
 	void load(size_t max_size) {
 		auto worker = [&](size_t end) {
-			_t* ptr = data_next_->begin();
 			for (; bins_processed_ < end; ++bins_processed_)
-				ptr += load_bin(ptr, bins_processed_);
+				load_bin(*data_next_, bins_processed_);
 		};
 		if (bins_processed_ == bins_) {
 			data_next_ = nullptr;
 			return;
 		}
-		size_t size = tmp_file_[bins_processed_].tell() / sizeof(_t), end = bins_processed_ + 1, current_size;
-		while (end < bins_ && (size + (current_size = tmp_file_[end].tell() / sizeof(_t))) * sizeof(_t) < max_size) {
+		size_t size = count_[bins_processed_], end = bins_processed_ + 1, current_size, disk_size = 0;
+		while (end < bins_ && (size + (current_size = count_[end])) * sizeof(_t) < max_size) {
 			size += current_size;
+			disk_size += tmp_file_[end].tell();
 			++end;
 		}
-		log_stream << "Async_buffer.load() " << size << "(" << (double)size * sizeof(_t) / (1 << 30) << " GB)" << std::endl;
+		log_stream << "Async_buffer.load() " << size << "(" << (double)size * sizeof(_t) / (1 << 30) << " GB, " << (double)disk_size / (1 << 30) << " GB on disk)" << std::endl;
 		total_size_ += size;
-		data_next_ = new MemBuffer<_t>(size);
+		data_next_ = new std::vector<_t>;
+		data_next_->reserve(size);
 		input_range_next_.first = begin(bins_processed_);
 		input_range_next_.second = this->end(end - 1);
 		load_worker_ = new std::thread(worker, end);
 	}
 
-	std::tuple<MemBuffer<_t>*, size_t, size_t> retrieve() {
+	std::tuple<std::vector<_t>*, size_t, size_t> retrieve() {
 		if (data_next_ != nullptr) {
 			load_worker_->join();
 			delete load_worker_;
 		}
-		return std::tuple<MemBuffer<_t>*, size_t, size_t> { data_next_, input_range_next_.first, input_range_next_.second };
+		return std::tuple<std::vector<_t>*, size_t, size_t> { data_next_, input_range_next_.first, input_range_next_.second };
 	}
 
 	unsigned bins() const
@@ -138,23 +154,26 @@ struct Async_buffer
 
 private:
 
-	size_t load_bin(_t* ptr, size_t bin)
+	void load_bin(std::vector<_t> &out, size_t bin)
 	{
-		const size_t s = tmp_file_[bin].tell() / sizeof(_t);
-		InputFile f(tmp_file_[bin]);
-		const size_t n = f.read(ptr, s);
+		InputFile f(tmp_file_[bin], InputStreamBuffer::ASYNC);
+		auto it = std::back_inserter(out);
+		size_t count = 0;
+		try {
+			while(true) count += _t::read(f, it);
+		} catch(EndOfStream&) {}
 		f.close_and_delete();
-		if (n != s)
-			throw std::runtime_error("Error reading temporary file: " + f.file_name);
-		return s;
+		if (count != count_[bin])
+			throw std::runtime_error("Mismatching hit count / possibly corrupted temporary file: " + f.file_name);
 	}
 
 	const unsigned bins_;
 	const size_t bin_size_, input_count_;
 	size_t bins_processed_, total_size_;
 	PtrVector<AsyncFile> tmp_file_;
+	std::atomic_size_t *count_;
 	std::pair<size_t, size_t> input_range_next_;
-	MemBuffer<_t>* data_next_;
+	std::vector<_t>* data_next_;
 	std::thread* load_worker_;
 
 };

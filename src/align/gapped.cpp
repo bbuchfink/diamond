@@ -83,6 +83,10 @@ void add_dp_targets(const WorkTarget &target, int target_idx, const sequence *qu
 		slen = (int)target.seq.length();
 	for (unsigned frame = 0; frame < align_mode.query_contexts; ++frame) {
 
+		if (config.ext == "full" && (int)query_seq[0].length() < config.full_sw_len) {
+			dp_targets[frame][0].emplace_back(target.seq, 0, 0, 0, 0, target_idx, (int)query_seq->length());
+			continue;
+		}
 		if (target.hsp[frame].empty())
 			continue;
 		const int qlen = (int)query_seq[frame].length();
@@ -107,7 +111,7 @@ void add_dp_targets(const WorkTarget &target, int target_idx, const sequence *qu
 				j0 = hsp.subject_range.begin_;
 				j1 = hsp.subject_range.end_;
 				bits = hsp.score <= config.cutoff_score_8bit ? 0 : 1;
-			}			
+			}
 		}
 
 		dp_targets[frame][bits].emplace_back(target.seq, d0, d1, j0, j1, target_idx, (int)query_seq->length());
@@ -128,6 +132,9 @@ vector<Target> align(const vector<WorkTarget> &targets, const sequence *query_se
 		r.emplace_back(targets[i].block_id, targets[i].seq, targets[i].outranked, targets[i].ungapped_score);
 	}
 
+	if (config.ext == "full" && (int)query_seq[0].length() < config.full_sw_len)
+		flags |= DP::FULL_MATRIX;
+
 	for (unsigned frame = 0; frame < align_mode.query_contexts; ++frame) {
 		if (dp_targets[frame].empty())
 			continue;
@@ -144,7 +151,13 @@ vector<Target> align(const vector<WorkTarget> &targets, const sequence *query_se
 			r[hsp.front().swipe_target].add_hit(hsp, hsp.begin());
 	}
 
-	return r;
+	vector<Target> r2;
+	r2.reserve(r.size());
+	for (vector<Target>::iterator i = r.begin(); i != r.end(); ++i)
+		if (i->filter_score > 0)
+			r2.push_back(std::move(*i));
+
+	return r2;
 }
 
 void add_dp_targets(const Target &target, int target_idx, const sequence *query_seq, array<array<vector<DpTarget>, 2>, MAX_CONTEXT> &dp_targets) {
@@ -168,7 +181,7 @@ vector<Match> align(vector<Target> &targets, const sequence *query_seq, const Bi
 		return r;
 	r.reserve(targets.size());
 
-	if (config.disable_traceback) {
+	if (config.disable_traceback || config.ext == "full") {
 		for (Target &t : targets)
 			r.emplace_back(t.block_id, t.outranked, t.hsp, t.ungapped_score);
 		return r;

@@ -126,7 +126,7 @@ private:
 	}
 
 	size_t size_;
-	std::unique_ptr<entry> table;	
+	std::unique_ptr<entry[]> table;	
 
 };
 
@@ -227,7 +227,7 @@ private:
 		}
 	}
 
-	std::unique_ptr<fp> table;
+	std::unique_ptr<fp[]> table;
 	size_t size_;
 
 };

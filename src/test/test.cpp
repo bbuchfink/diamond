@@ -92,8 +92,8 @@ int run() {
 	const bool bootstrap = config.bootstrap, log = config.debug_log, to_cout = config.output_file == "stdout";
 	task_timer timer("Generating test dataset");
 	TempFile proteins;
-	for (size_t i = 0; i < sizeof(seqs) / sizeof(seqs[0]); ++i)
-		Util::Sequence::format(sequence::from_string(seqs[i][1]), seqs[i][0], nullptr, proteins, "fasta", amino_acid_traits);
+	for (size_t i = 0; i < seqs.size(); ++i)
+		Util::Sequence::format(sequence::from_string(seqs[i].second.c_str()), seqs[i].first.c_str(), nullptr, proteins, "fasta", amino_acid_traits);
 	TextInputFile query_file(proteins);
 	timer.finish();
 
@@ -102,8 +102,8 @@ int run() {
 	make_db(&db_file, &query_file);
 	DatabaseFile db(*db_file);
 
-	const size_t n = sizeof(test_cases) / sizeof(test_cases[0]),
-		max_width = std::accumulate(test_cases, test_cases + n, (size_t)0, [](size_t l, const TestCase &t) { return std::max(l, strlen(t.desc)); });
+	const size_t n = test_cases.size(),
+		max_width = std::accumulate(test_cases.begin(), test_cases.end(), (size_t)0, [](size_t l, const TestCase& t) { return std::max(l, strlen(t.desc)); });
 	size_t passed = 0;
 	for (size_t i = 0; i < n; ++i)
 		passed += run_testcase(i, db, query_file, max_width, bootstrap, log, to_cout);
