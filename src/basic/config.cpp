@@ -21,12 +21,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #include <memory>
-<<<<<<< HEAD
 #include <cstdlib>
 #include <sys/stat.h>
-=======
 #include <exception>
->>>>>>> master
 #include "../util/command_line_parser.h"
 #include "config.h"
 #include "../util/util.h"
@@ -226,17 +223,14 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("band", 0, "band for dynamic programming computation", padding)
 		("shapes", 's', "number of seed shapes (0 = all available)", shapes)
 		("shape-mask", 0, "seed shapes", shape_mask)
-<<<<<<< HEAD
 		("multiprocessing", 0, "enable distributed-memory parallel processing", multiprocessing)
 		("mp-init", 0, "initialize multiprocessing run", mp_init)
-		("rank-ratio", 0, "include subjects within this ratio of last hit (stage 1)", rank_ratio, -1.0)
-		("rank-ratio2", 0, "include subjects within this ratio of last hit (stage 2)", rank_ratio2, -1.0)
-		("max-hsps", 0, "maximum number of HSPs per subject sequence to save for each query", max_hsps, 0u)
-		("culling-overlap", 0, "minimum range overlap with higher scoring hit to delete a hit (0.5)", inner_culling_overlap, 50.0)
-=======
+		// ("rank-ratio", 0, "include subjects within this ratio of last hit (stage 1)", rank_ratio, -1.0)
+		// ("rank-ratio2", 0, "include subjects within this ratio of last hit (stage 2)", rank_ratio2, -1.0)
+		// ("max-hsps", 0, "maximum number of HSPs per subject sequence to save for each query", max_hsps, 0u)
+		// ("culling-overlap", 0, "minimum range overlap with higher scoring hit to delete a hit (0.5)", inner_culling_overlap, 50.0)
 		("rank-ratio", 0, "include subjects within this ratio of last hit", rank_ratio, -1.0)
 		("culling-overlap", 0, "minimum range overlap with higher scoring hit to delete a hit (default=50%)", inner_culling_overlap, 50.0)
->>>>>>> master
 		("taxon-k", 0, "maximum number of targets to report per species", taxon_k, (uint64_t)0)
 		("range-cover", 0, "percentage of query range to be covered for range culling (default=50%)", query_range_cover, 50.0)
 		("dbsize", 0, "effective database size (in letters)", db_size)
@@ -364,11 +358,6 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("band-bin", 0, "", band_bin, 24)
 		("col-bin", 0, "", col_bin, 400)
 		("self", 0, "", self)
-<<<<<<< HEAD
-		("trace-pt-fetch-size", 0, "", trace_pt_fetch_size, (size_t)10e9);
-
-	parser.add(general).add(makedb).add(cluster).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options);
-=======
 		("trace-pt-fetch-size", 0, "", trace_pt_fetch_size, (size_t)10e9)
 		("tile-size", 0, "", tile_size, (uint32_t)1024)
 		("short-query-ungapped-bitscore", 0, "", short_query_ungapped_bitscore, 25.0)
@@ -384,7 +373,6 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("ultra-sensitive", 0, "", mode_ultra_sensitive);
 
 	parser.add(general).add(makedb).add(cluster).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options).add(deprecated_options);
->>>>>>> master
 	parser.store(argc, argv, command);
 
 	if (long_reads) {
