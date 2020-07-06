@@ -196,7 +196,7 @@ void MCL::print_stats(uint64_t nElements, uint32_t nComponents, uint32_t nCompon
 		mem_req += 3*memories[iThr]; // we need three matrices of this size
 	}
 	
-	float neighbors_of_max = sparsities[0];
+	float neighbors_of_max = neighbors[0];
 	float neighbors_of_med = nComponentsLt1 > 0 && nComponentsLt1 % 2 == 0 ? 
 		(neighbors[nComponentsLt1/2] + neighbors[nComponentsLt1/2+1]) / 2.0 : 
 		neighbors[nComponentsLt1/2+1] ;
@@ -210,6 +210,7 @@ void MCL::print_stats(uint64_t nElements, uint32_t nComponents, uint32_t nCompon
 
 	sort(sparsities.rbegin(), sparsities.rend());
 	sort(neighbors.rbegin(), neighbors.rend());
+
 	float med_sparsity = nComponentsLt1 > 0 && nComponentsLt1 % 2 == 0 ? 
 		(sparsities[nComponentsLt1/2] + sparsities[nComponentsLt1/2+1]) / 2.0 : 
 		sparsities[nComponentsLt1/2+1] ;
@@ -362,7 +363,6 @@ void MCL::run(){
 	statistics.reset();
 
 	vector<vector<uint32_t>> indices;
-	vector<vector<Eigen::Triplet<float>>> components;
 	uint64_t nElements;
 	task_timer timer;
 	if(config.cluster_mcl_restart){
@@ -372,7 +372,6 @@ void MCL::run(){
 		timer.go("Computing independent components");
 		auto componentInfo = ms.getComponents();
 		indices = get<0>(componentInfo);
-		components = get<1>(componentInfo);
 		nElements = ms.getNumberOfElements();
 	}
 	else{
@@ -394,7 +393,6 @@ void MCL::run(){
 		timer.go("Computing independent components");
 		auto componentInfo = ms.getComponents();
 		indices = get<0>(componentInfo);
-		components = get<1>(componentInfo);
 		nElements = ms.getNumberOfElements();
 	}
 	uint32_t nComponents = count_if(indices.begin(), indices.end(), [](vector<uint32_t> v){ return v.size() > 0;});
@@ -405,8 +403,7 @@ void MCL::run(){
 	iota(sort_order.begin(), sort_order.end(), 0);
 	sort(sort_order.begin(), sort_order.end(), [&](uint32_t i, uint32_t j){return indices[i].size() > indices[j].size();});
 	timer.finish();
-
-	print_stats(nElements, nComponents, nComponentsLt1, sort_order, indices, components);
+	//print_stats(nElements, nComponents, nComponentsLt1, sort_order, indices, components);
 
 	timer.go("Clustering components");
 	// Note, we will access the clustering_result from several threads below and a vector does not guarantee thread-safety in these situations.
@@ -440,12 +437,24 @@ void MCL::run(){
 		uint64_t cluster_id = iThr;
 		uint32_t my_counter = iThr*chunk_size;
 		while(my_counter < max_counter){
-			for(uint32_t chunk_counter = my_counter; chunk_counter<min(my_counter+chunk_size, max_counter); chunk_counter++){
+			unordered_set<uint32_t> all;
+			uint32_t upper_limit =  min(my_counter+chunk_size, max_counter);
+			for(uint32_t chunk_counter = my_counter; chunk_counter<upper_limit; chunk_counter++){
+				all.insert(indices[sort_order[chunk_counter]].begin(), indices[sort_order[chunk_counter]].end());
+			}
+			auto c = SparseMatrixStream<float>::collect_components(all, config.cluster_mcl_graph_file);
+			vector<vector<uint32_t>> loc_i = get<0>(c);
+			vector<vector<Eigen::Triplet<float>>> loc_c = get<1>(c);
+			vector<uint32_t> local_order(loc_i.size());
+			iota(local_order.begin(), local_order.end(), 0);
+			sort(local_order.begin(), local_order.end(), [&](uint32_t i, uint32_t j){return loc_i[i].size() > loc_i[j].size();});
+			uint32_t ichunk = 0;
+			for(uint32_t chunk_counter = my_counter; chunk_counter<upper_limit; chunk_counter++){
 				n_jobs_done++;
-				uint32_t iComponent = sort_order[chunk_counter];
-				vector<uint32_t> order = indices[iComponent];
+				uint32_t iComponent = local_order[ichunk++];
+				vector<uint32_t> order = loc_i[iComponent];
 				if(order.size() > 1){
-					vector<Eigen::Triplet<float>> m = components[iComponent];
+					vector<Eigen::Triplet<float>> m = loc_c[iComponent];
 					assert(m.size() <= order.size() * order.size());
 					// map back to original ids
 					vector<unordered_set<uint32_t>> list_of_sets;
@@ -549,6 +558,7 @@ void MCL::run(){
 	delete[] jobs_per_thread;
 
 	message_stream << "Clusters found " << n_clusters_found - nClustersEq1 << " ("<< n_clusters_found <<" incl. singletons)" << endl; 
+	message_stream << "\t number of failed calculations " << failed_to_converge.load() << endl;
 	message_stream << "\t number of dense calculations " << n_dense_calculations << endl;
 	message_stream << "\t number of sparse calculations " << n_sparse_calculations << endl;
 	message_stream << "Time used for matrix creation: " 
