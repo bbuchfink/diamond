@@ -27,7 +27,7 @@ std::shared_ptr<Parallelizer> Parallelizer::get() {
 }
 
 
-Parallelizer::Parallelizer() : work_directory("parallelizer"), n_registered(0), master_flag(true), i_barrier(0) {
+Parallelizer::Parallelizer() : work_directory("parallelizer"), n_registered(0), master_flag(true), i_barrier(0), initialized(false) {
     DBG("");
     // call init() later explicitly for final inizialization including worker registration
 }
