@@ -278,15 +278,11 @@ void run_query_chunk(DatabaseFile &db_file,
 
 		if (config.multiprocessing) {
 
-			// if (P->is_master()) {
 			if (mp_last_chunk) {
 
 				P->log("JOIN BEGIN "+std::to_string(query_chunk));
 
 				current_ref_block = db_file.get_n_partition_chunks();
-
-				// auto done = P->get_stack(reference_partition_done);
-				// done->poll_size(current_ref_block);
 
 				ReferenceDictionary::get().restore_blocks(query_chunk, current_ref_block);
 
@@ -365,41 +361,39 @@ void master_thread(DatabaseFile *db_file, task_timer &total_timer, Metadata &met
 
 	if (config.multiprocessing && config.mp_init) {
 		task_timer timer("Counting query blocks", true);
-		// TODO fix memory efficiency
-		// if (P->is_master()) {
-			for (;; ++current_query_chunk) {
-				if (options.self) {
-					db_file->seek_seq(query_file_offset);
-					if (!db_file->load_seqs(query_block_to_database_id,
-						(size_t)(config.chunk_size * 1e9),
-						&query_seqs::data_,
-						&query_ids::data_,
-						true,
-						options.db_filter))
-						break;
-					deallocate_queries();
-					query_file_offset = db_file->tell_seq();
-				} else {
-					if (!load_seqs(*query_file, *format_n, &query_seqs::data_, query_ids::data_, &query_source_seqs::data_,
-						config.store_query_quality ? &query_qual : nullptr,
-						(size_t)(config.chunk_size * 1e9), config.qfilt, input_value_traits))
-						break;
-					deallocate_queries();
-				}
-			}
-			if (options.self) {
-				db_file->rewind();
-				query_file_offset = 0;
-			} else {
-				query_file->rewind();
-			}
 
-			for (size_t i=0; i<current_query_chunk; ++i) {
-				const string annotation = "# query_chunk=" + std::to_string(i);
-				db_file->save_partition(get_ref_part_file_name(i), annotation);
+		for (;; ++current_query_chunk) {
+			if (options.self) {
+				db_file->seek_seq(query_file_offset);
+				if (!db_file->load_seqs(query_block_to_database_id,
+					(size_t)(config.chunk_size * 1e9),
+					&query_seqs::data_,
+					&query_ids::data_,
+					true,
+					options.db_filter))
+					break;
+				deallocate_queries();
+				query_file_offset = db_file->tell_seq();
+			} else {
+				if (!load_seqs(*query_file, *format_n, &query_seqs::data_, query_ids::data_, &query_source_seqs::data_,
+					config.store_query_quality ? &query_qual : nullptr,
+					(size_t)(config.chunk_size * 1e9), config.qfilt, input_value_traits))
+					break;
+				deallocate_queries();
 			}
-		// }
-		// P->barrier(AUTOTAG);
+		}
+		if (options.self) {
+			db_file->rewind();
+			query_file_offset = 0;
+		} else {
+			query_file->rewind();
+		}
+
+		for (size_t i=0; i<current_query_chunk; ++i) {
+			const string annotation = "# query_chunk=" + std::to_string(i);
+			db_file->save_partition(get_ref_part_file_name(i), annotation);
+		}
+
 		return;
 	}
 

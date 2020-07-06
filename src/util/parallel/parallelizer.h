@@ -45,6 +45,7 @@ class Parallelizer {
 
         static std::shared_ptr<Parallelizer> get();
 
+        void list_filestacks();
 
     private:
 	    static std::shared_ptr<Parallelizer> instance_ptr;
@@ -68,8 +69,6 @@ class Parallelizer {
         std::vector<std::string> final_cleanup_list;
 
         std::unordered_map<std::string, std::shared_ptr<FileStack>> fs_map;
-
-        void list_filestacks();
 };
 
 #endif

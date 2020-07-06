@@ -35,63 +35,26 @@ Parallelizer::Parallelizer() : work_directory("parallelizer"), n_registered(0), 
 
 void Parallelizer::init(const string & tempdir) {
     DBG("");
-    {
-        // --- might go elsewhere, probably into config.cpp
-        // char* env_str = std::getenv("TMPDIR");
-        // if (env_str) {
-        //     work_directory = join_path(string(env_str), work_directory);
-        // }
-        if (tempdir.size() > 0) {
-            work_directory = join_path(tempdir, work_directory);
-        }
-        // char * env_str = std::getenv("SLURM_JOBID");
-        // if (env_str) {
-        //     work_directory = work_directory + "_" + string(env_str);
-        // }
-        DBG("work_directory = " + work_directory);
+    if (tempdir.size() > 0) {
+        work_directory = join_path(tempdir, work_directory);
     }
+    DBG("work_directory = " + work_directory);
 
-    {
-        errno = 0;
-        int s = mkdir(work_directory.c_str(), 00770);
-        if (s != 0) {
-            if (errno == EEXIST) {
-                // directory did already exist
-            } else {
-                throw(runtime_error("could not create working directory " + work_directory + " for parallelizer"));
-            }
+    errno = 0;
+    int s = mkdir(work_directory.c_str(), 00770);
+    if (s != 0) {
+        if (errno == EEXIST) {
+            // directory did already exist
+        } else {
+            throw(runtime_error("could not create working directory " + work_directory + " for parallelizer"));
         }
     }
 
-    {
-        // const vector<string> env_opts = {"SLURM_PROCID", "PARALLEL_RANK"};
-        // for (auto env : env_opts) {
-        //     const char* env_str = std::getenv(env.c_str());
-        //     if (env_str) {
-        //         rank = std::stoi(env_str);
-        //         break;
-        //     }
-        // }
-        // if (rank < 0) {
-        //     const string msg = "parallel: Could not determine the parallel rank. Please set it via one of the environment variables "
-        //         + env_opts[0] + ", " + env_opts[1] + ".";
-        //     throw std::runtime_error(msg);
-        // }
-        // if (rank == 0) {
-        //     master_flag = true;
-        // } else {
-        //     master_flag = false;
-        // }
-        // TODO: use hostname and process id, alternatively
-        // id = "rank_" + to_string(rank);
-
-        char hostname[1024];
-        hostname[1023] = '\0';
-        gethostname(hostname, 1023);
-
-        id = string(hostname) + "_" + to_string(getpid());
-        DBG("id = " + id);
-    }
+    char hostname[1024];
+    hostname[1023] = '\0';
+    gethostname(hostname, 1023);
+    id = string(hostname) + "_" + to_string(getpid());
+    DBG("id = " + id);
 
     create_stack(LOG, id);
     create_stack(COMMAND);
@@ -99,17 +62,6 @@ void Parallelizer::init(const string & tempdir) {
     create_stack(REGISTER);
 
     barrier_file = join_path(work_directory, BARRIER);
-
-    // get_stack(LOG)->clear();
-    // if (is_master()) {
-    //     get_stack(COMMAND)->clear();
-    //     get_stack(WORKERS)->clear();
-    //     get_stack(REGISTER)->clear();
-    //     sleep(1.0);
-    // } else {
-    //     sleep(1.0);
-    // }
-    // register_workers();
 
     log("PARALLELIZER BEGIN");
 
@@ -122,9 +74,11 @@ void Parallelizer::clear() {
 
 Parallelizer::~Parallelizer() {
     DBG("");
-    log("PARALLELIZER END");
-    clean(continuous_cleanup_list);
-    // clean(final_cleanup_list);
+    if (initialized) {
+        log("PARALLELIZER END");
+        clean(continuous_cleanup_list);
+        clean(final_cleanup_list);
+    }
 }
 
 string Parallelizer::get_id() {
@@ -137,7 +91,7 @@ int Parallelizer::get_rank() {
 
 string Parallelizer::get_work_directory() {
     return work_directory;
-};
+}
 
 int Parallelizer::get_n_registered() {
     return n_registered;
@@ -225,16 +179,6 @@ bool Parallelizer::create_stack(const std::string & tag, std::string sfx) {
 
 
 bool Parallelizer::create_stack_from_file(const std::string & tag, const std::string & file_name) {
-/*
-    if (fs_map.find(tag) == fs_map.end()) {
-        fs_map.emplace(tag, shared_ptr<FileStack>(new FileStack(file_name)));
-        final_cleanup_list.push_back(file_name);
-        DBG(file_name);
-        return true;
-    } else {
-        return false;
-    }
-*/
     delete_stack(tag);
     fs_map.emplace(tag, shared_ptr<FileStack>(new FileStack(file_name)));
     DBG(file_name);
@@ -243,6 +187,7 @@ bool Parallelizer::create_stack_from_file(const std::string & tag, const std::st
 
 
 std::shared_ptr<FileStack> Parallelizer::get_stack(const std::string & tag) {
+	// cerr << __PRETTY_FUNCTION__ << endl;
     return fs_map.at(tag);
 }
 
@@ -273,8 +218,8 @@ bool Parallelizer::clean(vector<string> & file_list) {
 }
 
 
-
 void Parallelizer::list_filestacks() {
+	// cerr << __PRETTY_FUNCTION__ << endl;
     for (auto item : fs_map)
         cerr << item.first << " : " << item.second << endl;
 }

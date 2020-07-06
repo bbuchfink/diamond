@@ -126,10 +126,6 @@ int FileStack::pop(string & buf, const bool keep_flag, size_t & size_after_pop) 
                 stat = ftruncate(fd, size - line_size);
             }
         }
-        // fprintf(stderr, "%d %d\n", begin, end);
-        // fprintf(stderr, "chunk begin : %c|", chunk[begin]);
-        // fprintf(stderr, "chunk end   : %c|", chunk[end]);
-        // fprintf(stderr, "%s|", buf.c_str());
     }
     if (size_after_pop != numeric_limits<size_t>::max()) {
         size_after_pop = this->size();
