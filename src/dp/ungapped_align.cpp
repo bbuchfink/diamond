@@ -19,7 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "dp.h"
 #include "../basic/score_matrix.h"
 
-int xdrop_ungapped(const Letter *query, const Letter *subject, unsigned seed_len, unsigned &delta, unsigned &len)
+/*int xdrop_ungapped(const Letter *query, const Letter *subject, unsigned seed_len, unsigned &delta, unsigned &len)
 {
 	int score(0), st(0);
 	unsigned n(0);
@@ -73,7 +73,7 @@ int xdrop_ungapped(const Letter *query, const Letter *subject, unsigned seed_len
 
 	len = delta + n + seed_len;
 	return score;
-}
+}*/
 
 int xdrop_ungapped(const Letter *query, const Letter *subject, unsigned &delta, unsigned &len)
 {

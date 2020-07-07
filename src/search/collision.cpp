@@ -21,8 +21,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "seed_complexity.h"
 #include "finger_print.h"
 
-// #define NO_COLLISION_FILTER
-
 namespace DISPATCH_ARCH {
 
 bool verify_hit(const Letter *query, const Letter *subject, unsigned sid)
@@ -31,8 +29,8 @@ bool verify_hit(const Letter *query, const Letter *subject, unsigned sid)
 	if (fq.match(fs) < config.min_identities)
 		return false;
 	return true;
-	unsigned delta, len;
-	return stage2_ungapped(query, subject, sid, delta, len) >= config.min_ungapped_raw_score;
+	/*unsigned delta, len;
+	return stage2_ungapped(query, subject, sid, delta, len) >= config.min_ungapped_raw_score;*/
 }
 
 inline bool match_shape_mask(const uint64_t mask, const uint64_t shape_mask)
@@ -94,10 +92,6 @@ bool is_primary_hit(const Letter *query,
 	const unsigned sid,
 	const unsigned len)
 {
-#ifdef NO_COLLISION_FILTER
-	return true;
-#endif
-	assert(len > 0 && len <= config.window * 2);
 	const bool chunked(config.lowmem > 1);
 	uint64_t mask = reduced_match32(query, subject, len);
 	unsigned i = 0;

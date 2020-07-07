@@ -104,6 +104,9 @@ struct task_timer
 	{
 		return (double)std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - t).count() / 1000.0;
 	}
+	uint64_t seconds() const {
+		return (uint64_t)std::chrono::duration_cast<std::chrono::seconds>(std::chrono::high_resolution_clock::now() - t).count();
+	}
 	uint64_t milliseconds() const {
 		return (uint64_t)std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - t).count();
 	}

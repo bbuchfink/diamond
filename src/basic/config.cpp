@@ -21,6 +21,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #include <memory>
+#include <exception>
 #include "../util/command_line_parser.h"
 #include "config.h"
 #include "../util/util.h"
@@ -42,6 +43,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 using namespace std;
 
 Config config;
+
+void Config::set_sens(Sensitivity sens) {
+	if (sensitivity != Sensitivity::FAST)
+		throw std::runtime_error("Sensitivity switches are mutually exclusive.");
+	sensitivity = sens;
+}
 
 Config::Config(int argc, const char **argv, bool check_io)
 {
@@ -237,6 +244,7 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("seq", 0, "Sequence numbers to display.", seq_no);
 
 	double rank_ratio2;
+	unsigned window;
 	Options_group deprecated_options("");
 	deprecated_options.add()
 		("window", 'w', "window size for local hit search", window)
@@ -352,7 +360,11 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("ext-chunk-size", 0, "", ext_chunk_size, (size_t)0)
 		("ext-yield", 0, "", ext_min_yield)
 		("ext", 0, "", ext)
-		("full-sw-len", 0, "", full_sw_len);
+		("full-sw-len", 0, "", full_sw_len)
+		("relaxed-evalue-factor", 0, "", relaxed_evalue_factor, 1.0)
+		("type", 0, "", type)
+		("raw", 0, "", raw)
+		("ultra-sensitive", 0, "", mode_ultra_sensitive);
 	
 	parser.add(general).add(makedb).add(cluster).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options).add(deprecated_options);
 	parser.store(argc, argv, command);
@@ -523,6 +535,12 @@ Config::Config(int argc, const char **argv, bool check_io)
 		verbose_stream << "CPU features detected: " << SIMD::features() << endl;
 	}
 
+	sensitivity = Sensitivity::FAST;
+	if (mode_sensitive) set_sens(Sensitivity::SENSITIVE);
+	if (mode_more_sensitive) set_sens(Sensitivity::MORE_SENSITIVE);
+	if (mode_very_sensitive) set_sens(Sensitivity::VERY_SENSITIVE);
+	if (mode_ultra_sensitive) set_sens(Sensitivity::ULTRA_SENSITIVE);
+
 	Translator::init(query_gencode);
 
 	if (command == blastx)
@@ -550,9 +568,6 @@ Config::Config(int argc, const char **argv, bool check_io)
 
 	if (query_range_culling && taxon_k != 0)
 		throw std::runtime_error("--taxon-k is not supported for --range-culling mode.");
-
-	if (beta && (lowmem != 1))
-		throw std::runtime_error("--beta needs -c1.");
 
 	log_stream << "MAX_SHAPE_LEN=" << MAX_SHAPE_LEN;
 #ifdef SEQ_MASK

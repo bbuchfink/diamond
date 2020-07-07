@@ -124,19 +124,22 @@ struct hit
 		Packed_loc subject_loc;
 		size_t count = 0;
 		uint32_t x;
+		s.varint = false;
 		for (;;) {
-			s.varint = false;
-			if (l)
+			if (l) {
 				s.read(subject_loc);
+				if (uint64_t(subject_loc) == 0)
+					return count;
+			}
 			else {
 				s.read(x);
+				if (x == 0)
+					return count;
 				subject_loc = x;
 			}
-			if (uint64_t(subject_loc) == 0)
-				return count;
-			s.varint = true;
-			s >> x;
-			*it = { query_id, subject_loc, seed_offset, (uint16_t)x };
+			uint16_t score;
+			s.read(score);
+			*it = { query_id, subject_loc, seed_offset, score };
 			++count;
 		}
 	}
