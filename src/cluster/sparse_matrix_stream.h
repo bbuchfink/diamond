@@ -83,7 +83,6 @@ class SparseMatrixStream : public Consumer {
 						const uint32_t irow = t.row();
 						const uint32_t icol = t.col();
 						const T val = t.value();
-						cout << irow  << " " << icol << " " << val << endl;
 						write_triplet(&irow, &icol, &val);
 					}
 				}
@@ -275,20 +274,19 @@ public:
 			in.read((char*) &first_component, sizeof(uint32_t));
 			uint32_t size;
 			in.read((char*) &size, sizeof(uint32_t));
+			const unsigned long long block_size = size*unit_size;
+
 			if(set.count(first_component) == 1){
 				unsigned long long bytes_read = 0;
-				//for(uint32_t ichunk = 0; ichunk < ceil(size*unit_size/(1.0 * buffer_size)); ichunk++){
-				//	if(ichunk > 0){
-				//		cout << ichunk << " have a big chunk " << buffer_size << " " << unit_size << " " << bytes_read << " " << endl;
-				//	}
-					unsigned long long bytes = size*unit_size;//min(buffer_size - (buffer_size % unit_size), size*unit_size - bytes_read);
+				for(uint32_t ichunk = 0; ichunk < ceil(block_size/(1.0 * buffer_size)); ichunk++){
+					const unsigned long long bytes = min(buffer_size - (buffer_size % unit_size), block_size - bytes_read);
 					in.read(buffer, bytes);
 					sms.consume(buffer, bytes);
 					bytes_read += bytes;
-				//}
+				}
 			}
 			else{
-				in.ignore(size*unit_size);
+				in.ignore(block_size);
 			}
 		}
 		in.close();

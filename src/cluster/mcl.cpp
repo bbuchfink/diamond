@@ -387,12 +387,6 @@ void MCL::run(){
 		timer.go("Computing independent components");
 		indices = ms.get_indices();
 		nElements = ms.getNumberOfElements();
-		for(auto idks : indices){
-			sort(idks.begin(), idks.end());
-			for(auto i : idks) cout << i << " ";
-			cout << endl;
-		}
-		return;
 	}
 	else{
 		config.command = Config::blastp;
