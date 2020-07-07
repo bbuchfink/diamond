@@ -20,6 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <numeric>
 #include <iomanip>
 #include "mcl.h"
+#include "sparse_matrix_stream.h"
 
 #define MASK_INVERSE        0xC000000000000000
 #define MASK_NORMAL_NODE    0x4000000000000000
@@ -275,6 +276,20 @@ void MCL::run(){
 	// 	}
 	// 	cout<<endl;
 	// }
+	// unordered_set<uint32_t> s ( {183, 239, 23834, 3399, 484, 2} );
+	// LazyDisjointTypeSet<uint32_t> ts(&s);
+
+	// ts.merge(183, 3399);
+	// ts.merge(23834, 2);
+	// ts.merge(183, 484);
+	// auto lo = ts.getListOfSets();
+	// for(auto& set: lo){
+	// 	cout<< "set :";
+	// 	for(auto item:set){
+	// 		cout<< " " << item;
+	// 	}
+	// 	cout<<endl;
+	// }
 	// 
 	// testing
 	// vector<Eigen::Triplet<float>> data;
@@ -370,9 +385,14 @@ void MCL::run(){
 		SparseMatrixStream<float> ms = SparseMatrixStream<float>::fromFile(config.cluster_mcl_graph_file);
 		timer.finish();
 		timer.go("Computing independent components");
-		auto componentInfo = ms.getComponents();
-		indices = get<0>(componentInfo);
+		indices = ms.get_indices();
 		nElements = ms.getNumberOfElements();
+		for(auto idks : indices){
+			sort(idks.begin(), idks.end());
+			for(auto i : idks) cout << i << " ";
+			cout << endl;
+		}
+		return;
 	}
 	else{
 		config.command = Config::blastp;
@@ -386,13 +406,12 @@ void MCL::run(){
 		opt.db = &(*db);
 		opt.self = true;
 		SparseMatrixStream<float> ms(db->ref_header.sequences, config.cluster_mcl_graph_file);
+		//ms.set_max_mem(0.0003);
 		opt.consumer = &ms;
-		//opt.db_filter = nullptr;
 		Workflow::Search::run(opt);
-
 		timer.go("Computing independent components");
-		auto componentInfo = ms.getComponents();
-		indices = get<0>(componentInfo);
+		ms.flush();
+		indices = ms.get_indices();
 		nElements = ms.getNumberOfElements();
 	}
 	uint32_t nComponents = count_if(indices.begin(), indices.end(), [](vector<uint32_t> v){ return v.size() > 0;});
@@ -439,34 +458,32 @@ void MCL::run(){
 		while(my_counter < max_counter){
 			unordered_set<uint32_t> all;
 			uint32_t upper_limit =  min(my_counter+chunk_size, max_counter);
+			vector<vector<uint32_t>*> loc_i;
 			for(uint32_t chunk_counter = my_counter; chunk_counter<upper_limit; chunk_counter++){
-				all.insert(indices[sort_order[chunk_counter]].begin(), indices[sort_order[chunk_counter]].end());
+				loc_i.push_back(&indices[sort_order[chunk_counter]]);
 			}
-			auto c = SparseMatrixStream<float>::collect_components(all, config.cluster_mcl_graph_file);
-			vector<vector<uint32_t>> loc_i = get<0>(c);
-			vector<vector<Eigen::Triplet<float>>> loc_c = get<1>(c);
-			vector<uint32_t> local_order(loc_i.size());
-			iota(local_order.begin(), local_order.end(), 0);
-			sort(local_order.begin(), local_order.end(), [&](uint32_t i, uint32_t j){return loc_i[i].size() > loc_i[j].size();});
+			vector<vector<Eigen::Triplet<float>>> loc_c = SparseMatrixStream<float>::collect_components(&loc_i, config.cluster_mcl_graph_file);
 			uint32_t ichunk = 0;
+			if( loc_i.size() != loc_c.size()){
+				cout << iThr << " encountered shit " << endl;
+			}
 			for(uint32_t chunk_counter = my_counter; chunk_counter<upper_limit; chunk_counter++){
 				n_jobs_done++;
-				uint32_t iComponent = local_order[ichunk++];
-				vector<uint32_t> order = loc_i[iComponent];
-				if(order.size() > 1){
-					vector<Eigen::Triplet<float>> m = loc_c[iComponent];
-					assert(m.size() <= order.size() * order.size());
+				vector<uint32_t>* order = loc_i[ichunk];
+				if(order->size() > 1){
+					vector<Eigen::Triplet<float>>* m = &loc_c[ichunk];
+					assert(m->size() <= order->size() * order->size());
 					// map back to original ids
 					vector<unordered_set<uint32_t>> list_of_sets;
 					unordered_set<uint32_t> attractors;
 
-					const float sparsity = 1.0-(1.0 * m.size()) / (order.size()*order.size());
+					const float sparsity = 1.0-(1.0 * m->size()) / (order->size()*order->size());
 					chrono::high_resolution_clock::time_point t = chrono::high_resolution_clock::now();
 					//TODO: a size limit for the dense matrix should control this as well
 					if(sparsity >= config.cluster_mcl_sparsity_switch && expansion - (int) expansion == 0){ 
 						n_sparse++;
-						Eigen::SparseMatrix<float> m_sparse(order.size(), order.size());
-						m_sparse.setFromTriplets(m.begin(), m.end());
+						Eigen::SparseMatrix<float> m_sparse(order->size(), order->size());
+						m_sparse.setFromTriplets(m->begin(), m->end());
 						sparse_create_time += chrono::duration_cast<chrono::milliseconds>(chrono::high_resolution_clock::now() - t).count();
 						markov_process(&m_sparse, inflation, expansion, max_iter);
 						chrono::high_resolution_clock::time_point t = chrono::high_resolution_clock::now();
@@ -485,8 +502,8 @@ void MCL::run(){
 					}
 					else{
 						n_dense++;
-						Eigen::MatrixXf m_dense = Eigen::MatrixXf::Zero(order.size(), order.size());
-						for(Eigen::Triplet<float> const & t : m){
+						Eigen::MatrixXf m_dense = Eigen::MatrixXf::Zero(order->size(), order->size());
+						for(Eigen::Triplet<float> const & t : *m){
 							m_dense(t.row(), t.col()) = t.value();
 						}
 						dense_create_time += chrono::duration_cast<chrono::milliseconds>(chrono::high_resolution_clock::now() - t).count();
@@ -510,18 +527,19 @@ void MCL::run(){
 						assert(cluster_id < 0x3fffffffffffffff);
 						for(uint32_t el : subset){
 							const uint64_t mask = attractors.find(el) == attractors.end() ? MASK_NORMAL_NODE : MASK_ATTRACTOR_NODE;
-							clustering_result[order[el]] = mask | cluster_id;
+							clustering_result[(*order)[el]] = mask | cluster_id;
 						}
 						if(subset.size() == 1) n_singletons++;
 						cluster_id += nThreads;
 					}
 				}
-				else if (order.size() == 1){
+				else if (order->size() == 1){
 					assert(cluster_id < 0x3fffffffffffffff);
-					clustering_result[order[0]] = MASK_SINGLE_NODE | cluster_id;
+					clustering_result[(*order)[0]] = MASK_SINGLE_NODE | cluster_id;
 					cluster_id += nThreads;
 					n_singletons++;
 				}
+				ichunk++;
 			}
 			my_counter = component_counter.fetch_add(chunk_size, memory_order_relaxed);
 		}
