@@ -464,9 +464,6 @@ void MCL::run(){
 			}
 			vector<vector<Eigen::Triplet<float>>> loc_c = SparseMatrixStream<float>::collect_components(&loc_i, config.cluster_mcl_graph_file);
 			uint32_t ichunk = 0;
-			if( loc_i.size() != loc_c.size()){
-				cout << iThr << " encountered shit " << endl;
-			}
 			for(uint32_t chunk_counter = my_counter; chunk_counter<upper_limit; chunk_counter++){
 				n_jobs_done++;
 				vector<uint32_t>* order = loc_i[ichunk];
