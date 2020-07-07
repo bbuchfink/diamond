@@ -489,7 +489,7 @@ bool DatabaseFile::is_diamond_db(const string &file_name) {
 	try {
 		db_file >> magic_number;
 	}
-	catch (EndOfStream) {}
+	catch (EndOfStream&) {}
 	bool r = (magic_number == ReferenceHeader::MAGIC_NUMBER);
 	db_file.close();
 	return r;

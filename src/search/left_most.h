@@ -25,9 +25,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "sse_dist.h"
 #include "../util/sequence/sequence.h"
 #include "../basic/config.h"
-#include "collision.h"
 #include "finger_print.h"
-#include "../dp/ungapped.h"
 
 namespace Search {
 
@@ -46,10 +44,6 @@ static inline bool verify_hit(const Letter* q, const Letter* s, int score_cutoff
 	Finger_print fq(q), fs(s);
 	const unsigned id = fq.match(fs);
 	return id >= config.min_identities;
-	/*const sequence query_clipped = Util::Sequence::clip(q - config.ungapped_window, config.ungapped_window * 2, config.ungapped_window);
-	const int window_left = int(q - query_clipped.data()), window = (int)query_clipped.length();
-	const int ungapped = ungapped_window(query_clipped.data(), s - window_left, window);
-	return ungapped > score_cutoff;*/
 }
 
 static inline bool verify_hits(uint32_t mask, const Letter* q, const Letter* s, int score_cutoff, bool left, uint32_t match_mask, unsigned sid) {
@@ -89,9 +83,6 @@ static inline bool left_most_filter(const sequence &query,
 	s += d;
 	window_left -= d;
 	window -= d;
-
-	if (!config.beta)
-		return is_primary_hit(q, s, window_left, (unsigned)shape_id, window);
 
 	const uint64_t match_mask = reduced_match(q, s, window),
 		query_seed_mask = ~seed_mask(q, window);

@@ -250,7 +250,7 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("seq", 0, "Sequence numbers to display.", seq_no);
 
 	double rank_ratio2;
-	unsigned window;
+	unsigned window, min_ungapped_score, hit_band, min_hit_score;
 	Options_group deprecated_options("");
 	deprecated_options.add()
 		("window", 'w', "window size for local hit search", window)
@@ -321,7 +321,7 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("use-dataset-field", 0, "", use_dataset_field)
 		("store-query-quality", 0, "", store_query_quality)
 		("swipe-chunk-size", 0, "", swipe_chunk_size, 256u)
-		("query-parallel-limit", 0, "", query_parallel_limit, 1000000u)
+		("query-parallel-limit", 0, "", query_parallel_limit, 3000000u)
 		("hard-masked", 0, "", hardmasked)
 		("cbs-window", 0, "", cbs_window, 40)
 		("no-unlink", 0, "", no_unlink)
@@ -346,7 +346,6 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("cutoff-score-8bit", 0, "", cutoff_score_8bit, 240)
 		("min-band-overlap", 0, "", min_band_overlap, 0.2)
 		("min-realign-overhang", 0, "", min_realign_overhang, 30)
-		("beta", 0, "", beta)
 		("ungapped-window", 0, "", ungapped_window, 48)
 		("gapped-filter-diag-score", 0, "", gapped_filter_diag_score, 20)
 		("gapped-filter-evalue", 0, "", gapped_filter_evalue, 0.0)
@@ -370,7 +369,9 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("relaxed-evalue-factor", 0, "", relaxed_evalue_factor, 1.0)
 		("type", 0, "", type)
 		("raw", 0, "", raw)
-		("ultra-sensitive", 0, "", mode_ultra_sensitive);
+		("ultra-sensitive", 0, "", mode_ultra_sensitive)
+		("chaining-len-cap", 0, "", chaining_len_cap, 2.0)
+		("chaining-min-nodes", 0, "", chaining_min_nodes, (size_t)200);
 
 	parser.add(general).add(makedb).add(cluster).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options).add(deprecated_options);
 	parser.store(argc, argv, command);
@@ -592,9 +593,6 @@ Config::Config(int argc, const char **argv, bool check_io)
 			}
 		}
 	}
-
-	if (beta && (lowmem != 1))
-		throw std::runtime_error("--beta needs -c1.");
 
 	log_stream << "MAX_SHAPE_LEN=" << MAX_SHAPE_LEN;
 #ifdef SEQ_MASK

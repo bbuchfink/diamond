@@ -39,8 +39,6 @@ struct Config
 	string	query_file;
 	unsigned	merge_seq_treshold;
 	unsigned	hit_cap;
-	double min_ungapped_score;
-	int		min_ungapped_raw_score;
 	unsigned shapes;
 	unsigned	index_mode;
 	uint64_t	max_alignments;
@@ -55,9 +53,6 @@ struct Config
 	unsigned min_identities2;
 	double ungapped_xdrop;
 	int		raw_ungapped_xdrop;
-	double		min_hit_score;
-	int min_hit_raw_score;
-	int		hit_band;
 	unsigned	min_compressed_identities;
 	int		min_seed_score;
 	unsigned	seed_signatures;
@@ -107,7 +102,6 @@ struct Config
 	string matrix_file;
 	double lambda, K;
 	string_vector shape_mask;
-	unsigned seed_anchor;
 	unsigned query_gencode;
 	string unaligned;
 	double space_penalty;
@@ -204,7 +198,6 @@ struct Config
 	double inner_culling_overlap;
 	double min_band_overlap;
 	int min_realign_overhang;
-	bool beta;
 	int ungapped_window;
 	int gapped_filter_diag_score;
 	double gapped_filter_evalue;
@@ -230,6 +223,8 @@ struct Config
 	string type;
 	bool raw;
 	bool mode_ultra_sensitive;
+	double chaining_len_cap;
+	size_t chaining_min_nodes;
 
 	Sensitivity sensitivity;
 
@@ -279,34 +274,6 @@ struct Config
 			return (1.0 - (double)score / top_score) * 100 <= toppercent;
 		else
 			return n_target_seq < max_alignments;
-	}
-
-	/*unsigned read_padding(size_t len)
-	{
-		if (padding == 0) {
-			if (len <= 255)
-				return 10;
-			else
-				return 32;
-		}
-		else
-			return padding;
-	}*/
-
-	unsigned read_padding(size_t len)
-	{
-		if (padding == 0) {
-			if (mode_very_sensitive)
-				return 60;
-			else if (len <= 35)
-				return 5;
-			else if (len <= 55)
-				return 16;
-			else
-				return 32;
-		}
-		else
-			return padding;
 	}
 
 	void set_sens(Sensitivity sens);
