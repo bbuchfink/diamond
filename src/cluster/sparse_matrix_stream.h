@@ -87,6 +87,7 @@ class SparseMatrixStream : public Consumer {
 					}
 				}
 			}
+			os->flush();
 		}
 	}
 	virtual void consume(const char *ptr, size_t n) override {
