@@ -179,13 +179,13 @@ public:
 	SparseMatrixStream(size_t n, string graph_file_name){
 		this->n = n;
 		disjointSet = new LazyDisjointIntegralSet<uint32_t>(n); 
-		this->max_size = 5.0; // 5 GB default flush
+		this->max_size = 2.0; // 2 GB default flush
 		os = getStream(graph_file_name);
 	}
 	SparseMatrixStream(unordered_set<uint32_t>* set){
 		this->n = set->size();
 		disjointSet = new LazyDisjointTypeSet<uint32_t>(set); 
-		this->max_size = 5.0; // 5 GB default flush
+		this->max_size = 2.0; // 2 GB default flush
 		os = nullptr;
 	}
 	SparseMatrixStream(size_t n){
@@ -227,22 +227,25 @@ public:
 		}
 		SparseMatrixStream sms(n);
 		size_t unit_size = 2*sizeof(uint32_t)+sizeof(double);
-		unsigned long long buffer_size = (2ULL*1024*1024*1024 / unit_size) * unit_size;
+		unsigned long long buffer_size = (5ULL*1024*1024 / unit_size) * unit_size;
 		char* buffer = new char[buffer_size];
 		while(in.good()){
 			uint32_t first_component;
 			in.read((char*) &first_component, sizeof(uint32_t));
 			uint32_t size;
 			in.read((char*) &size, sizeof(uint32_t));
-			if(size*unit_size > buffer_size){
-				delete[] buffer;
-				buffer_size = size*unit_size;
-				buffer = new char[buffer_size];
+			const unsigned long long block_size = size*unit_size;
+
+			unsigned long long bytes_read = 0;
+			for(uint32_t ichunk = 0; ichunk < ceil(block_size/(1.0 * buffer_size)); ichunk++){
+				const unsigned long long bytes = min(buffer_size - (buffer_size % unit_size), block_size - bytes_read);
+				in.read(buffer, bytes);
+				sms.build_graph(buffer, bytes);
+				bytes_read += bytes;
 			}
-			in.read(buffer, size*unit_size);
-			sms.build_graph(buffer, size*unit_size);
 		}
 		in.close();
+		delete[] buffer;
 		return sms;
 	}
 
@@ -266,8 +269,8 @@ public:
 
 		SparseMatrixStream sms(&set);
 		size_t unit_size = 2*sizeof(uint32_t)+sizeof(double);
-		// This is per thread, so only 250MB buffer allowed 
-		unsigned long long buffer_size = 250ULL*1024*1024;
+		// This is per thread, so only 5MB buffer allowed 
+		unsigned long long buffer_size = 5ULL*1024*1024;
 		char* buffer = new char[buffer_size];
 		while(in.good()){
 			uint32_t first_component;
@@ -290,6 +293,7 @@ public:
 			}
 		}
 		in.close();
+		delete[] buffer;
 		return sms.getComponents(indices);
 	}
 
