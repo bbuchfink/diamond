@@ -277,7 +277,7 @@ struct Config
 	bool mem_buffered() const { return tmpdir == "/dev/shm"; }
 
   	template<typename _t>
-	static void set_option(_t& option, _t value) { if (option == 0) option = value; }
+	static void set_option(_t& option, _t value, _t default = 0) { if (option == default) option = value; }
 };
 
 extern Config config;
