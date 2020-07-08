@@ -121,22 +121,23 @@ public:
 	}
 
 	virtual vector<unordered_set<T>> getListOfSets() {
-		unordered_map<const T*, unordered_set<T>*> map;
+		unordered_map<const T*, uint32_t> map;
+		uint32_t index = 0;
 		for (Node<T>* n : *(getNodes())) {
 			if (n == nullptr) {
 				continue;
 			}
 			const T* r = getRoot(n)->getValue();
-			auto it = map.find(r);
-			T v = *(n->getValue());
-			if (it == map.end()) {
-				it = map.emplace(r, new unordered_set<T>()).first;
+			if (map.find(r) == map.end()) {
+				map.emplace(r, index++);
 			}
-			it->second->emplace(v);
 		}
-		vector<unordered_set<T>> listOfSets;
-		for(auto el=map.begin(); el != map.end(); el++){
-			listOfSets.emplace_back(move(*(el->second)));
+		vector<unordered_set<T>> listOfSets(map.size());
+		for (Node<T>* n : *(getNodes())) {
+			if (n == nullptr) {
+				continue;
+			}
+			listOfSets[map[getRoot(n)->getValue()]].insert(*(n->getValue()));
 		}
 		return listOfSets;
 	}
