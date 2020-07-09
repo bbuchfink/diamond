@@ -400,7 +400,7 @@ void MCL::run(){
 		opt.db = &(*db);
 		opt.self = true;
 		SparseMatrixStream<float> ms(db->ref_header.sequences, config.cluster_mcl_graph_file);
-		//ms.set_max_mem(0.0003);
+		ms.set_max_mem(config.chunk_size);
 		opt.consumer = &ms;
 		Workflow::Search::run(opt);
 		timer.go("Computing independent components");
@@ -431,7 +431,9 @@ void MCL::run(){
 	const float expansion = (float) config.cluster_mcl_expansion;
 	const uint32_t max_counter = nComponents;
 	const uint32_t max_iter = config.cluster_mcl_max_iter;
-
+	uint32_t max_job_size = 0;
+	for(uint32_t i=0; i<chunk_size; i++) max_job_size+=indices[sort_order[i]].size();
+	
 	// Collect some stats on the way
 	uint32_t* jobs_per_thread = new uint32_t[nThreads];
 	float* time_per_thread = new float[nThreads];
@@ -449,12 +451,15 @@ void MCL::run(){
 		uint32_t n_jobs_done = 0;
 		uint64_t cluster_id = iThr;
 		uint32_t my_counter = iThr*chunk_size;
+		uint32_t my_chunk_size = chunk_size;
 		while(my_counter < max_counter){
 			unordered_set<uint32_t> all;
-			uint32_t upper_limit =  min(my_counter+chunk_size, max_counter);
+			uint32_t upper_limit =  min(my_counter+my_chunk_size, max_counter);
 			vector<vector<uint32_t>*> loc_i;
+			my_chunk_size = 0;
 			for(uint32_t chunk_counter = my_counter; chunk_counter<upper_limit; chunk_counter++){
 				loc_i.push_back(&indices[sort_order[chunk_counter]]);
+				my_chunk_size += indices[sort_order[chunk_counter]].size();
 			}
 			vector<vector<Eigen::Triplet<float>>> loc_c = SparseMatrixStream<float>::collect_components(&loc_i, config.cluster_mcl_graph_file);
 			uint32_t ichunk = 0;
@@ -532,7 +537,10 @@ void MCL::run(){
 				}
 				ichunk++;
 			}
-			my_counter = component_counter.fetch_add(chunk_size, memory_order_relaxed);
+			my_chunk_size = 0;
+			for(auto const i : loc_i) my_chunk_size += i->size();
+			my_chunk_size = loc_i.size() * (max_job_size / my_chunk_size);
+			my_counter = component_counter.fetch_add(my_chunk_size, memory_order_relaxed);
 		}
 		n_clusters_found.fetch_add((cluster_id-iThr)/nThreads, memory_order_relaxed);
 		n_dense_calculations.fetch_add(n_dense, memory_order_relaxed);
