@@ -40,9 +40,15 @@ class SparseMatrixStream : public Consumer {
 		}
 	};
 	size_t n;
+	uint32_t nThreads;
+	const size_t unit_size = 2*sizeof(uint32_t)+sizeof(double);
+	const unsigned long long read_buffer_size = 5ULL*1024*1024; // per thread 5MB buffer allowed 
+	bool in_memory, is_tmp_file;
 	float max_size;
+	char* buffer;
 	set<Eigen::Triplet<T>, CoordinateCmp> data;
 	LazyDisjointSet<uint32_t>* disjointSet;
+	string file_name;
 	ofstream* os;
 	inline void write_triplet(const uint32_t* const query, const uint32_t* const subject, const T* const value){
 		if(os){
@@ -65,6 +71,7 @@ class SparseMatrixStream : public Consumer {
 
 	void dump(){
 		if(os && data.size() > 0){
+			this->in_memory = false;
 			vector<vector<uint32_t>> indices = get_indices();
 			map<uint32_t, uint32_t> indexToSetId;
 			for(uint32_t iset = 0; iset < indices.size(); iset++){
@@ -109,7 +116,7 @@ class SparseMatrixStream : public Consumer {
 				else if (t.value() > it->value()){
 					data.emplace_hint(data.erase(it), move(t));
 				}
-				if(os && (data.size()*2.0*sizeof(uint32_t)+sizeof(double))/(1024ULL*1024*1024) >= max_size){
+				if(os && (data.size()*unit_size)/(1024ULL*1024*1024) >= max_size){
 					dump();
 					data.clear();
 				}
@@ -132,9 +139,6 @@ class SparseMatrixStream : public Consumer {
 	}
 
 	ofstream* getStream(string graph_file_name){
-		if(graph_file_name.empty()){
-			return nullptr;
-		}
 		ofstream* os = new ofstream(graph_file_name, ios::out | ios::binary);
 		os->write((char*) &n, sizeof(size_t));
 		const uint32_t indexversion = 0;
@@ -176,42 +180,87 @@ class SparseMatrixStream : public Consumer {
 		return components;
 	}
 
+	SparseMatrixStream(size_t n){
+		this->n = n;
+		disjointSet = new LazyDisjointIntegralSet<uint32_t>(n); 
+		this->in_memory = true;
+		this->is_tmp_file = false;
+		os = nullptr;
+		nThreads = 0;
+	}
+
+	SparseMatrixStream(unordered_set<uint32_t>* set){
+		this->n = set->size();
+		disjointSet = new LazyDisjointTypeSet<uint32_t>(set); 
+		this->max_size = 2.0; // 2 GB default flush
+		this->in_memory = true;
+		this->is_tmp_file = false;
+		os = nullptr;
+		nThreads = 0;
+	}
+
 public:
 	SparseMatrixStream(size_t n, string graph_file_name){
 		this->n = n;
 		disjointSet = new LazyDisjointIntegralSet<uint32_t>(n); 
 		this->max_size = 2.0; // 2 GB default flush
-		os = getStream(graph_file_name);
-	}
-	SparseMatrixStream(unordered_set<uint32_t>* set){
-		this->n = set->size();
-		disjointSet = new LazyDisjointTypeSet<uint32_t>(set); 
-		this->max_size = 2.0; // 2 GB default flush
-		os = nullptr;
-	}
-	SparseMatrixStream(size_t n){
-		this->n = n;
-		disjointSet = new LazyDisjointIntegralSet<uint32_t>(n); 
-		os = nullptr;
+		this->in_memory = false;
+		if(graph_file_name.empty()){
+			this->is_tmp_file = true;
+			file_name = "tmp.bin";
+		}
+		else{
+			this->is_tmp_file = false;
+			file_name = graph_file_name;
+		}
+		os = getStream(file_name);
+		nThreads = 0;
 	}
 
 	~SparseMatrixStream(){
-		dump();
-		data.clear();
-		if(disjointSet) delete disjointSet;
+		clear_disjoint_set();
 		if(os){
 			os->close();
 			delete os;
+			os = nullptr;
 		}
+		release_read_buffer();
+		if(is_tmp_file) remove(file_name.c_str());
 	}
 
-	void flush(){
-		dump();
-		data.clear();
+	void done(){
+		if(!in_memory){
+			dump();
+			data.clear();
+		}
+		if(os){
+			os->close();
+			delete os;
+			os = nullptr;
+		}
 	}
 	
 	void set_max_mem(float max_size){
 		this->max_size = max_size;
+	}
+
+	void allocate_read_buffer(uint32_t nThreads){
+		if(!in_memory){
+			this->nThreads = nThreads;
+			char* buffer = new char[nThreads * read_buffer_size];
+		}
+	}
+	void release_read_buffer(){
+		if(buffer){
+			delete[] buffer;
+			buffer = nullptr;
+		}
+	}
+	void clear_disjoint_set(){
+		if(disjointSet){
+			delete disjointSet;
+			disjointSet = nullptr;
+		}
 	}
 
 	static SparseMatrixStream fromFile(string graph_file_name){
@@ -247,55 +296,59 @@ public:
 		}
 		in.close();
 		delete[] buffer;
+		sms.finalize();
+		sms.in_memory = false;
 		return sms;
 	}
 
-	static vector<vector<Eigen::Triplet<T>>> collect_components(vector<vector<uint32_t>*>* indices, string graph_file_name){
-		ifstream in(graph_file_name, ios::in | ios::binary);
-		if(!in){
-			throw runtime_error("Cannot read the graph file");
+	vector<vector<Eigen::Triplet<T>>> collect_components(vector<vector<uint32_t>*>* indices, uint32_t iThread){
+		if(in_memory){
+			return getComponents(indices);
 		}
-		size_t n;
-		in.read((char*) &n, sizeof(size_t));
-		uint32_t indexversion;
-		in.read((char*) &indexversion, sizeof(uint32_t));
-		if(indexversion != 0){
-			throw runtime_error("This file cannot be read");
-		}
+		else{
+			if(nThreads == 0){
+				throw runtime_error("Number of threads cannot be 0 for collect_components.");
+			}
+			ifstream in(file_name, ios::in | ios::binary);
+			if(!in){
+				throw runtime_error("Cannot read the graph file");
+			}
+			size_t n;
+			in.read((char*) &n, sizeof(size_t));
+			uint32_t indexversion;
+			in.read((char*) &indexversion, sizeof(uint32_t));
+			if(indexversion != 0){
+				throw runtime_error("This file cannot be read");
+			}
 
-		unordered_set<uint32_t> set;
-		for(const vector<uint32_t>* const idxs : *indices){
-			set.insert(idxs->begin(), idxs->end());
-		}
+			unordered_set<uint32_t> set;
+			for(const vector<uint32_t>* const idxs : *indices){
+				set.insert(idxs->begin(), idxs->end());
+			}
 
-		SparseMatrixStream sms(&set);
-		size_t unit_size = 2*sizeof(uint32_t)+sizeof(double);
-		// This is per thread, so only 5MB buffer allowed 
-		unsigned long long buffer_size = 5ULL*1024*1024;
-		char* buffer = new char[buffer_size];
-		while(in.good()){
-			uint32_t first_component;
-			in.read((char*) &first_component, sizeof(uint32_t));
-			uint32_t size;
-			in.read((char*) &size, sizeof(uint32_t));
-			const unsigned long long block_size = size*unit_size;
-
-			if(set.count(first_component) == 1){
-				unsigned long long bytes_read = 0;
-				for(uint32_t ichunk = 0; ichunk < ceil(block_size/(1.0 * buffer_size)); ichunk++){
-					const unsigned long long bytes = min(buffer_size - (buffer_size % unit_size), block_size - bytes_read);
-					in.read(buffer, bytes);
-					sms.consume(buffer, bytes);
-					bytes_read += bytes;
+			SparseMatrixStream sms(&set);
+			while(in.good()){
+				uint32_t first_component;
+				in.read((char*) &first_component, sizeof(uint32_t));
+				uint32_t size;
+				in.read((char*) &size, sizeof(uint32_t));
+				const unsigned long long block_size = size*unit_size;
+				if(set.count(first_component) == 1){
+					unsigned long long bytes_read = 0;
+					for(uint32_t ichunk = 0; ichunk < ceil(block_size/(1.0 * read_buffer_size)); ichunk++){
+						const unsigned long long bytes = min(read_buffer_size - (read_buffer_size % unit_size), block_size - bytes_read);
+						in.read(buffer+(iThread*read_buffer_size), bytes);
+						sms.consume(buffer+(iThread*read_buffer_size), bytes);
+						bytes_read += bytes;
+					}
+				}
+				else{
+					in.ignore(block_size);
 				}
 			}
-			else{
-				in.ignore(block_size);
-			}
+			in.close();
+			return sms.getComponents(indices);
 		}
-		in.close();
-		delete[] buffer;
-		return sms.getComponents(indices);
 	}
 
 	vector<vector<uint32_t>> get_indices(){
@@ -305,12 +358,6 @@ public:
 			indices.emplace_back(sets[iset].begin(), sets[iset].end());
 		}
 		return indices;
-	}
-
-	Eigen::SparseMatrix<T> getMatrix(){
-		Eigen::SparseMatrix<T> m(n,n);
-		m.setFromTriplets(data.begin(), data.end());
-		return m;
 	}
 	uint64_t getNumberOfElements(){
 		return data.size();
