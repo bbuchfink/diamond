@@ -8,6 +8,7 @@ linux_x86_64:
         - echo "NCPUS = ${NCPUS}"
         - make -j${NCPUS} diamond
     script:
-        - ./diamond test --threads ${NCPUS}
-        - valgrind --leak-check=yes ./diamond test --threads ${NCPUS}
+        - echo "Build OK, skipping tests."
+#        - ./diamond test --threads ${NCPUS}
+#        - valgrind --leak-check=yes ./diamond test --threads ${NCPUS}
 
