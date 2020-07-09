@@ -24,7 +24,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../basic/sequence.h"
 #include "../basic/match.h"
 #include "../basic/score_matrix.h"
-//#include "../align/extend_ungapped.h"
+#include "../align/extend_ungapped.h"
 #include "../output/output_format.h"
 #include "../dp/hsp_traits.h"
 #include "chaining.h"

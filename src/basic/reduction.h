@@ -1,10 +1,6 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2020 Max Planck Society for the Advancement of Science e.V.
-                        Benjamin Buchfink
-                        Eberhard Karls Universitaet Tuebingen
-						
-Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
+Copyright (C) 2013-2017 Benjamin Buchfink <buchfink@gmail.com>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -20,7 +16,9 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#pragma once
+#ifndef REDUCTION_H_
+#define REDUCTION_H_
+
 #include <vector>
 #include <string>
 #include <string.h>
@@ -28,6 +26,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/util.h"
 #include "sequence.h"
 #include "translate.h"
+
+using std::string;
+using std::vector;
 
 struct Reduction
 {
@@ -115,3 +116,5 @@ private:
 	double bit_size_exact_;
 
 };
+
+#endif /* REDUCTION_H_ */

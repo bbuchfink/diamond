@@ -29,7 +29,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../dp/dp.h"
 #include "../util/log_stream.h"
 #include "../data/reference.h"
-#include "../util/system.h"
 
 using std::vector;
 using std::list;
@@ -155,7 +154,7 @@ vector<Match> extend(const Parameters &params, size_t query_id, hit* begin, hit*
 	const int source_query_len = align_mode.query_translated ? (int)query_source_seqs::get()[query_id].length() : (int)query_seqs::get()[query_id].length();
 
 	timer.go("Loading seed hits");
-	TLS_FIX_S390X FlatArray<SeedHit> seed_hits, seed_hits_chunk;
+	thread_local FlatArray<SeedHit> seed_hits, seed_hits_chunk;
 	thread_local vector<uint32_t> target_block_ids, target_block_ids_chunk;
 	thread_local vector<TargetScore> target_scores;
 	load_hits(begin, end, seed_hits, target_block_ids, target_scores);
@@ -171,19 +170,16 @@ vector<Match> extend(const Parameters &params, size_t query_id, hit* begin, hit*
 	}
 
 	const size_t chunk_size = config.ext_chunk_size > 0 ? config.ext_chunk_size : target_block_ids.size();
-	const int relaxed_cutoff = score_matrix.rawscore(score_matrix.bitscore(config.max_evalue * config.relaxed_evalue_factor, (unsigned)query_seq[0].length()));
-	vector<TargetScore>::const_iterator i0 = target_scores.cbegin(), i1 = std::min(i0 + config.ext_chunk_size, target_scores.cend());
-	while (i1 < target_scores.cend() && i1->score >= relaxed_cutoff) ++i1;
-
 	vector<Target> aligned_targets;
-	while(i0 < target_scores.cend()) {
+	for (vector<TargetScore>::const_iterator i = target_scores.cbegin(); i < target_scores.cend(); i += chunk_size) {
 		seed_hits_chunk.clear();
 		target_block_ids_chunk.clear();
-		const size_t current_chunk_size = (size_t)(i1 - i0);
-		const bool multi_chunk = current_chunk_size < target_scores.size();
+		const vector<TargetScore>::const_iterator end = std::min(i + chunk_size, target_scores.cend());
+		const size_t chunk_size = (size_t)(end - i);
+		const bool multi_chunk = chunk_size < target_scores.size();
 
 		if (multi_chunk) {
-			for (vector<TargetScore>::const_iterator j = i0; j < i1; ++j) {
+			for (vector<TargetScore>::const_iterator j = i; j < end; ++j) {
 				target_block_ids_chunk.push_back(target_block_ids[j->target]);
 				seed_hits_chunk.push_back(seed_hits.begin(j->target), seed_hits.end(j->target));
 			}
@@ -199,11 +195,8 @@ vector<Match> extend(const Parameters &params, size_t query_id, hit* begin, hit*
 		else
 			aligned_targets = std::move(v);
 
-		if ((double)v.size() / current_chunk_size < config.ext_min_yield)
+		if ((double)v.size() / chunk_size < config.ext_min_yield)
 			break;
-
-		i0 = i1;
-		i1 = std::min(i1 + chunk_size, target_scores.cend());
 	}
 
 	timer.go("Computing score only culling");

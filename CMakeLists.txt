@@ -206,15 +206,14 @@ set(OBJECTS
   src/tools/merge_tsv.cpp
   src/output/xml_format.cpp
   src/align/gapped_filter.cpp
-  src/tools/benchmark_io.cpp
 )
 
 if(X86)
-  add_executable(diamond $<TARGET_OBJECTS:arch_avx2>
-    $<TARGET_OBJECTS:arch_sse4_1>
-    $<TARGET_OBJECTS:arch_generic>
-    ${OBJECTS}
-  )
+add_executable(diamond $<TARGET_OBJECTS:arch_avx2>
+  $<TARGET_OBJECTS:arch_sse4_1>
+  $<TARGET_OBJECTS:arch_generic>
+  ${OBJECTS}
+)
 else()
 add_executable(diamond $<TARGET_OBJECTS:arch_generic>
   ${OBJECTS}

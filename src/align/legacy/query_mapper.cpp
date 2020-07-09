@@ -20,7 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <algorithm>
 #include "query_mapper.h"
 #include "../../data/reference.h"
-#include "../../dp/ungapped.h"
+#include "../extend_ungapped.h"
 #include "../../output/output.h"
 #include "../../output/output_format.h"
 #include "../../output/daa_write.h"

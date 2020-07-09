@@ -38,8 +38,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/simd/transpose.h"
 #include "../dp/scan_diags.h"
 
-void benchmark_io();
-
 using std::vector;
 using std::chrono::high_resolution_clock;
 using std::chrono::nanoseconds;
@@ -262,11 +260,6 @@ void evalue() {
 }
 
 void benchmark() {
-	if (config.type == "io") {
-		benchmark_io();
-		return;
-	}
-
 	vector<Letter> s1, s2, s3, s4;
 		
 	s1 = sequence::from_string("mpeeeysefkelilqkelhvvyalshvcgqdrtllasillriflhekleslllctlndreismedeattlfrattlastlmeqymkatatqfvhhalkdsilkimeskqscelspskleknedvntnlthllnilselvekifmaseilpptlryiygclqksvqhkwptnttmrtrvvsgfvflrlicpailnprmfniisdspspiaartlilvaksvqnlanlvefgakepymegvnpfiksnkhrmimfldelgnvpelpdttehsrtdlsrdlaalheicvahsdelrtlsnergaqqhvlkkllaitellqqkqnqyt"); // d1wera_

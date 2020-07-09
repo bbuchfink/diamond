@@ -25,8 +25,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <vector>
 #include <stdint.h>
 
-enum class Sensitivity { FAST = 0, SENSITIVE = 1, MORE_SENSITIVE = 2, VERY_SENSITIVE = 3, ULTRA_SENSITIVE = 4 };
-
 struct Config
 {
 
@@ -55,6 +53,7 @@ struct Config
 	unsigned min_identities2;
 	double ungapped_xdrop;
 	int		raw_ungapped_xdrop;
+	unsigned window;
 	double		min_hit_score;
 	int min_hit_raw_score;
 	int		hit_band;
@@ -225,12 +224,6 @@ struct Config
 	double ext_min_yield;
 	string ext;
 	int full_sw_len;
-	double relaxed_evalue_factor;
-	string type;
-	bool raw;
-	bool mode_ultra_sensitive;
-
-	Sensitivity sensitivity;
 
 	enum {
 		makedb = 0, blastp = 1, blastx = 2, view = 3, help = 4, version = 5, getseq = 6, benchmark = 7, random_seqs = 8, compare = 9, sort = 10, roc = 11, db_stat = 12, model_sim = 13,
@@ -309,8 +302,6 @@ struct Config
 		else
 			return padding;
 	}
-
-	void set_sens(Sensitivity sens);
 
 	bool mem_buffered() const { return tmpdir == "/dev/shm"; }
 
