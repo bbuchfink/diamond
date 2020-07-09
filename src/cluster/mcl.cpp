@@ -245,18 +245,17 @@ void MCL::print_stats(uint64_t nElements, uint32_t nComponents, uint32_t nCompon
 	message_stream << setprecision(2) << mem_req/pow(1024,idx) << uints[idx] << endl;
 }
 
-SparseMatrixStream<float> get_graph_handle(DatabaseFile& db){
+SparseMatrixStream<float>* get_graph_handle(DatabaseFile& db){
 	if(config.cluster_mcl_restart){
 		task_timer timer;
 		timer.go("Reading cluster checkpoint file");
-		SparseMatrixStream<float> ms = SparseMatrixStream<float>::fromFile(config.cluster_mcl_graph_file);
+		SparseMatrixStream<float>* ms = SparseMatrixStream<float>::fromFile(config.cluster_mcl_graph_file, config.chunk_size);
 		timer.finish();
-		ms.done();
+		ms->done();
 		return ms;
 	}
 	config.command = Config::blastp;
 	config.no_self_hits = false;
-	config.max_alignments=25;
 	string format = config.cluster_similarity;
 	if(format.empty()){
 		format = "qcovhsp*scovhsp*pident";
@@ -265,11 +264,13 @@ SparseMatrixStream<float> get_graph_handle(DatabaseFile& db){
 	Workflow::Search::Options opt;
 	opt.db = &db;
 	opt.self = true;
-	SparseMatrixStream<float> ms(db.ref_header.sequences, config.cluster_mcl_graph_file);
-	ms.set_max_mem(config.chunk_size);
-	opt.consumer = &ms;
+	SparseMatrixStream<float>* ms = new SparseMatrixStream<float>(db.ref_header.sequences, config.cluster_mcl_graph_file);
+	if(config.chunk_size > 0){
+		ms->set_max_mem(config.chunk_size);
+	}
+	opt.consumer = ms;
 	Workflow::Search::run(opt);
-	ms.done();
+	ms->done();
 	return ms;
 }
 
@@ -401,12 +402,12 @@ void MCL::run(){
 	if (config.database == "") throw runtime_error("Missing parameter: database file (--db/-d)");
 	unique_ptr<DatabaseFile> db(DatabaseFile::auto_create_from_fasta());
 	statistics.reset();
-	SparseMatrixStream<float> ms = get_graph_handle(*db);
+	SparseMatrixStream<float>* ms = get_graph_handle(*db);
 	task_timer timer;
 	timer.go("Computing independent components");
-	vector<vector<uint32_t>> indices = ms.get_indices();
-	ms.clear_disjoint_set();
-	uint64_t nElements = ms.getNumberOfElements();
+	vector<vector<uint32_t>> indices = ms->get_indices();
+	ms->clear_disjoint_set();
+	uint64_t nElements = ms->getNumberOfElements();
 	uint32_t nComponents = count_if(indices.begin(), indices.end(), [](vector<uint32_t> v){ return v.size() > 0;});
 	uint32_t nComponentsLt1 = count_if(indices.begin(), indices.end(), [](vector<uint32_t> v){ return v.size() > 1;});
 
@@ -426,7 +427,7 @@ void MCL::run(){
 	// note that the disconnected components are sorted by size
 	const uint32_t chunk_size = config.cluster_mcl_chunk_size;
 	const uint32_t nThreads = min(config.threads_, nComponents / chunk_size);
-	ms.allocate_read_buffer(nThreads);
+	ms->allocate_read_buffer(nThreads);
 	const float inflation = (float) config.cluster_mcl_inflation;
 	const float expansion = (float) config.cluster_mcl_expansion;
 	const uint32_t max_counter = nComponents;
@@ -461,7 +462,7 @@ void MCL::run(){
 				loc_i.push_back(&indices[sort_order[chunk_counter]]);
 				my_chunk_size += indices[sort_order[chunk_counter]].size();
 			}
-			vector<vector<Eigen::Triplet<float>>> loc_c = ms.collect_components(&loc_i, iThr);
+			vector<vector<Eigen::Triplet<float>>> loc_c = ms->collect_components(&loc_i, iThr);
 			uint32_t ichunk = 0;
 			for(uint32_t chunk_counter = my_counter; chunk_counter<upper_limit; chunk_counter++){
 				n_jobs_done++;
@@ -558,7 +559,8 @@ void MCL::run(){
 	for(uint32_t iThread = 0; iThread < nThreads ; iThread++) {
 		threads[iThread].join();
 	}
-	ms.release_read_buffer();
+	ms->release_read_buffer();
+	delete ms;
 	timer.finish();
 
 	// Output stats

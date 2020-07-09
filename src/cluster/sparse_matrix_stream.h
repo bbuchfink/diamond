@@ -41,8 +41,8 @@ class SparseMatrixStream : public Consumer {
 	};
 	size_t n;
 	uint32_t nThreads;
-	const size_t unit_size = 2*sizeof(uint32_t)+sizeof(double);
-	const unsigned long long read_buffer_size = 5ULL*1024*1024; // per thread 5MB buffer allowed 
+	const static size_t unit_size = 2*sizeof(uint32_t)+sizeof(double);
+	const static unsigned long long read_buffer_size = 5ULL*1024*1024; // per thread 5MB buffer allowed 
 	bool in_memory, is_tmp_file;
 	float max_size;
 	char* buffer;
@@ -99,7 +99,7 @@ class SparseMatrixStream : public Consumer {
 	}
 	virtual void consume(const char *ptr, size_t n) override {
 		const char *end = ptr + n;
-		if (n >= sizeof(uint32_t)) {
+		if (n >= unit_size) {
 			while (ptr  < end) {
 				const uint32_t query = *(uint32_t*) ptr;
 				ptr += sizeof(uint32_t);
@@ -116,7 +116,7 @@ class SparseMatrixStream : public Consumer {
 				else if (t.value() > it->value()){
 					data.emplace_hint(data.erase(it), move(t));
 				}
-				if(os && (data.size()*unit_size)/(1024ULL*1024*1024) >= max_size){
+				if(os && (data.size()*unit_size*1.0)/(1024ULL*1024*1024) > max_size){
 					dump();
 					data.clear();
 				}
@@ -183,8 +183,10 @@ class SparseMatrixStream : public Consumer {
 	SparseMatrixStream(size_t n){
 		this->n = n;
 		disjointSet = new LazyDisjointIntegralSet<uint32_t>(n); 
-		this->in_memory = true;
+		this->in_memory = false;
+		this->max_size = 2.0; // 2 GB default flush
 		this->is_tmp_file = false;
+		this->buffer = nullptr;
 		os = nullptr;
 		nThreads = 0;
 	}
@@ -195,6 +197,7 @@ class SparseMatrixStream : public Consumer {
 		this->max_size = 2.0; // 2 GB default flush
 		this->in_memory = true;
 		this->is_tmp_file = false;
+		this->buffer = nullptr;
 		os = nullptr;
 		nThreads = 0;
 	}
@@ -205,6 +208,7 @@ public:
 		disjointSet = new LazyDisjointIntegralSet<uint32_t>(n); 
 		this->max_size = 2.0; // 2 GB default flush
 		this->in_memory = false;
+		this->buffer = nullptr;
 		if(graph_file_name.empty()){
 			this->is_tmp_file = true;
 			file_name = "tmp.bin";
@@ -247,7 +251,7 @@ public:
 	void allocate_read_buffer(uint32_t nThreads){
 		if(!in_memory){
 			this->nThreads = nThreads;
-			char* buffer = new char[nThreads * read_buffer_size];
+			buffer = new char[nThreads * read_buffer_size];
 		}
 	}
 	void release_read_buffer(){
@@ -263,7 +267,7 @@ public:
 		}
 	}
 
-	static SparseMatrixStream fromFile(string graph_file_name){
+	static SparseMatrixStream<T>* fromFile(string graph_file_name, float max_size){
 		ifstream in(graph_file_name, ios::in | ios::binary);
 		if(!in){
 			throw runtime_error("Cannot read the graph file");
@@ -275,10 +279,9 @@ public:
 		if(indexversion != 0){
 			throw runtime_error("This file cannot be read");
 		}
-		SparseMatrixStream sms(n);
-		size_t unit_size = 2*sizeof(uint32_t)+sizeof(double);
-		unsigned long long buffer_size = (5ULL*1024*1024 / unit_size) * unit_size;
-		char* buffer = new char[buffer_size];
+		SparseMatrixStream* sms = new SparseMatrixStream<T>(n);
+		if(max_size>0) sms->set_max_mem(max_size);
+		char* local_buffer = new char[read_buffer_size];
 		while(in.good()){
 			uint32_t first_component;
 			in.read((char*) &first_component, sizeof(uint32_t));
@@ -287,17 +290,26 @@ public:
 			const unsigned long long block_size = size*unit_size;
 
 			unsigned long long bytes_read = 0;
-			for(uint32_t ichunk = 0; ichunk < ceil(block_size/(1.0 * buffer_size)); ichunk++){
-				const unsigned long long bytes = min(buffer_size - (buffer_size % unit_size), block_size - bytes_read);
-				in.read(buffer, bytes);
-				sms.build_graph(buffer, bytes);
+			for(uint32_t ichunk = 0; ichunk < ceil(block_size/(1.0 * read_buffer_size)); ichunk++){
+				const unsigned long long bytes = min(read_buffer_size - (read_buffer_size % unit_size), block_size - bytes_read);
+				in.read(local_buffer, bytes);
+				if((sms->data.size()*unit_size*1.0)/(1024ULL*1024*1024) < sms->max_size){
+					sms->consume(local_buffer, bytes);
+				}
+				else{
+					sms->build_graph(local_buffer, bytes);
+				}
 				bytes_read += bytes;
 			}
 		}
 		in.close();
-		delete[] buffer;
-		sms.finalize();
-		sms.in_memory = false;
+		if((sms->data.size()*unit_size*1.0)/(1024ULL*1024*1024) >= sms->max_size){
+			sms->data.clear();
+			sms->in_memory = false;
+		}
+		delete[] local_buffer;
+		sms->finalize();
+		sms->file_name=graph_file_name;
 		return sms;
 	}
 
@@ -306,8 +318,8 @@ public:
 			return getComponents(indices);
 		}
 		else{
-			if(nThreads == 0){
-				throw runtime_error("Number of threads cannot be 0 for collect_components.");
+			if(buffer == nullptr || nThreads == 0){
+				throw runtime_error("The global buffer needs to be allocated with allocate_read_buffer with at least one thread");
 			}
 			ifstream in(file_name, ios::in | ios::binary);
 			if(!in){
