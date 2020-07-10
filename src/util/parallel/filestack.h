@@ -30,6 +30,8 @@ class FileStack {
         int top(int & i);
         int top(std::string & buf);
 
+        int remove(const std::string & line);
+
         int push(int i);
         int push(const std::string & buf);
         int push(const std::string & buf, size_t & size_after_push);
