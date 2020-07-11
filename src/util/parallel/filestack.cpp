@@ -193,6 +193,7 @@ int FileStack::remove(const string & line) {
         locked_internally = true;
     }
     const off_t size = lseek(fd, 0, SEEK_END);
+    lseek(fd, 0, SEEK_SET);
 
     char * raw = new char[size * sizeof(char)];
     const ssize_t n_read = read(fd, raw, size);
