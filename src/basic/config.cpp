@@ -361,7 +361,8 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("raw", 0, "", raw)
 		("ultra-sensitive", 0, "", mode_ultra_sensitive)
 		("chaining-len-cap", 0, "", chaining_len_cap, 2.0)
-		("chaining-min-nodes", 0, "", chaining_min_nodes, (size_t)200);
+		("chaining-min-nodes", 0, "", chaining_min_nodes, (size_t)200)
+		("fast-tsv", 0, "", fast_tsv);
 	
 	parser.add(general).add(makedb).add(cluster).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options).add(deprecated_options);
 	parser.store(argc, argv, command);
@@ -535,6 +536,9 @@ Config::Config(int argc, const char **argv, bool check_io)
 	if (mode_more_sensitive) set_sens(Sensitivity::MORE_SENSITIVE);
 	if (mode_very_sensitive) set_sens(Sensitivity::VERY_SENSITIVE);
 	if (mode_ultra_sensitive) set_sens(Sensitivity::ULTRA_SENSITIVE);
+
+	if (ext != "banded-fast" && ext != "")
+		throw std::runtime_error("Possible values for --ext are: banded-fast");
 
 	Translator::init(query_gencode);
 

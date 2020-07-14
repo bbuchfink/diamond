@@ -87,4 +87,8 @@ Hsp::Hsp(const IntermediateRecord &r, unsigned query_source_len):
 		frame = 0;
 		query_range.begin_ = r.query_begin;
 	}
+	if (config.fast_tsv) {
+		length = r.len;
+		identities = r.identities;
+	}
 }

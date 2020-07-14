@@ -71,7 +71,11 @@ struct IntermediateRecord
 		f.read(subject_id);
 		f.read(flag);
 		f.read_packed(flag & 3, score);
-		if (!config.disable_traceback) {
+		if (config.fast_tsv) {
+			f.read(len);
+			f.read(identities);
+		}
+		else if (!config.disable_traceback) {
 			f.read_packed((flag >> 2) & 3, query_begin);
 			f.read_varint(query_end);
 			f.read_packed((flag >> 4) & 3, subject_begin);
@@ -101,7 +105,11 @@ struct IntermediateRecord
 		buf.write(ReferenceDictionary::get().get(current_ref_block, subject_id));
 		buf.write(get_segment_flag(match));
 		buf.write_packed(match.score);
-		if (!config.disable_traceback) {
+		if (config.fast_tsv) {
+			buf.write(match.length);
+			buf.write(match.identities);
+		}
+		else if (!config.disable_traceback) {
 			buf.write_packed(oriented_range.begin_);
 			buf.write_varint(oriented_range.end_);
 			buf.write_packed(match.subject_range.begin_);
@@ -115,6 +123,7 @@ struct IntermediateRecord
 	}
 	static const uint32_t FINISHED = 0xffffffffu;
 	uint32_t query_id, subject_id, score, query_begin, subject_begin, query_end;
+	int len, identities;		// for --fast-tsv
 	uint8_t flag;
 	Packed_transcript transcript;
 };
