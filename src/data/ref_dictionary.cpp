@@ -136,7 +136,7 @@ void ReferenceDictionary::build_lazy_dict(DatabaseFile &db_file)
 */
 
 string _get_file_name(size_t query, size_t block) {
-	const string file_name = append_label("ref_dict_", query) + append_label("_", block);
+	const string file_name = append_label("ref_dictionary_", query) + append_label("_", block);
 	return join_path(config.parallel_tmpdir, file_name);
 }
 

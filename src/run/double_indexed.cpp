@@ -53,21 +53,13 @@ using std::unique_ptr;
 
 namespace Workflow { namespace Search {
 
-static const string label_align = "align";
-static const string stack_align_todo = label_align + "_todo";
-static const string stack_align_wip = label_align + "_wip";
-static const string stack_align_done = label_align + "_done";
+static const string reference_partition = "ref_part";
+static const string reference_partition_done = "ref_part_done";
 
-static const string label_join = "join";
-static const string stack_join_todo = label_join + "_todo";
-static const string stack_join_wip = label_join + "_wip";
-static const string stack_join_done = label_join + "_done";
-
-
-string get_ref_part_file_name(const string & prefix, size_t query, string suffix="") {
+string get_ref_part_file_name(size_t query, string suffix="") {
 	if (suffix.size() > 0)
 		suffix.append("_");
-	const string file_name = append_label(prefix + "_" + suffix, query);
+	const string file_name = append_label(reference_partition + "_" + suffix, query);
 	return join_path(config.parallel_tmpdir, file_name);
 }
 
@@ -237,9 +229,9 @@ void run_query_chunk(DatabaseFile &db_file,
 	log_rss();
 
 	if (config.multiprocessing) {
-		auto work = P->get_stack(stack_align_todo);
-		P->create_stack_from_file(stack_align_done, get_ref_part_file_name(stack_align_done, query_chunk));
-		auto done = P->get_stack(stack_align_done);
+		auto work = P->get_stack(reference_partition);
+		P->create_stack_from_file(reference_partition_done, get_ref_part_file_name(query_chunk, "done"));
+		auto done = P->get_stack(reference_partition_done);
 		string buf;
 
 		while (work->pop(buf)) {
@@ -329,7 +321,7 @@ void run_query_chunk(DatabaseFile &db_file,
 
 				P->log("JOIN END "+std::to_string(query_chunk));
 			}
-			P->delete_stack(stack_align_done);
+			P->delete_stack(reference_partition_done);
 
 		} else {
 			join_blocks(current_ref_block, master_out, tmp_file, params, metadata, db_file);
@@ -406,7 +398,7 @@ void master_thread(DatabaseFile *db_file, task_timer &total_timer, Metadata &met
 
 		for (size_t i=0; i<current_query_chunk; ++i) {
 			const string annotation = "# query_chunk=" + std::to_string(i);
-			db_file->save_partition(get_ref_part_file_name(stack_align_todo, i), annotation);
+			db_file->save_partition(get_ref_part_file_name(i), annotation);
 		}
 
 		return;
@@ -459,12 +451,12 @@ void master_thread(DatabaseFile *db_file, task_timer &total_timer, Metadata &met
 		}
 
 		if (config.multiprocessing)
-			P->create_stack_from_file(stack_align_todo, get_ref_part_file_name(stack_align_todo, current_query_chunk));
+			P->create_stack_from_file(reference_partition, get_ref_part_file_name(current_query_chunk));
 
 		run_query_chunk(*db_file, current_query_chunk, *master_out, unaligned_file.get(), aligned_file.get(), metadata, options);
 
 		if (config.multiprocessing)
-			P->delete_stack(stack_align_todo);
+			P->delete_stack(reference_partition);
 	}
 
 	if (query_file && !options.query_file) {
