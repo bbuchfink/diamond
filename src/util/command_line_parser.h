@@ -43,7 +43,7 @@ inline void read_option<unsigned>(unsigned &dst, const std::vector<std::string> 
 template<>
 inline void read_option<uint64_t>(uint64_t &dst, const std::vector<std::string> &v)
 {
-	dst = atoi(v[0].c_str());
+	dst = atoll(v[0].c_str());
 }
 
 template<>
