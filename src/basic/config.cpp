@@ -220,6 +220,7 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("shapes", 's', "number of seed shapes (0 = all available)", shapes)
 		("shape-mask", 0, "seed shapes", shape_mask)
 		("rank-ratio", 0, "include subjects within this ratio of last hit", rank_ratio, -1.0)
+		("ext-chunk-size", 0, "chunk size for adaptive ranking (default=400)", ext_chunk_size, (size_t)400)
 		("culling-overlap", 0, "minimum range overlap with higher scoring hit to delete a hit (default=50%)", inner_culling_overlap, 50.0)
 		("taxon-k", 0, "maximum number of targets to report per species", taxon_k, (uint64_t)0)
 		("range-cover", 0, "percentage of query range to be covered for range culling (default=50%)", query_range_cover, 50.0)
@@ -352,7 +353,6 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("short-query-ungapped-bitscore", 0, "", short_query_ungapped_bitscore, 25.0)
 		("short-query-max-len", 0, "", short_query_max_len, 60)
 		("gapped-filter-evalue1", 0, "", gapped_filter_evalue1, 1.0e+04)
-		("ext-chunk-size", 0, "", ext_chunk_size, (size_t)0)
 		("ext-yield", 0, "", ext_min_yield)
 		("ext", 0, "", ext)
 		("full-sw-len", 0, "", full_sw_len)
@@ -366,6 +366,9 @@ Config::Config(int argc, const char **argv, bool check_io)
 	
 	parser.add(general).add(makedb).add(cluster).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options).add(deprecated_options);
 	parser.store(argc, argv, command);
+
+	if (toppercent != 100.0 && max_alignments != 25)
+		throw std::runtime_error("--top and --max-target-seqs are mutually exclusive.");
 
 	if (long_reads) {
 		query_range_culling = true;

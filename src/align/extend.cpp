@@ -170,7 +170,8 @@ vector<Match> extend(const Parameters &params, size_t query_id, hit* begin, hit*
 		timer.finish();
 	}
 
-	const size_t chunk_size = config.ext_chunk_size > 0 ? config.ext_chunk_size : target_block_ids.size();
+	const bool use_chunks = config.ext_chunk_size > 0 && config.max_alignments >= target_block_ids.size() && config.toppercent == 100.0;
+	const size_t chunk_size = use_chunks ? config.ext_chunk_size : target_block_ids.size();
 	const int relaxed_cutoff = score_matrix.rawscore(score_matrix.bitscore(config.max_evalue * config.relaxed_evalue_factor, (unsigned)query_seq[0].length()));
 	vector<TargetScore>::const_iterator i0 = target_scores.cbegin(), i1 = std::min(i0 + config.ext_chunk_size, target_scores.cend());
 	while (i1 < target_scores.cend() && i1->score >= relaxed_cutoff) ++i1;
@@ -194,12 +195,13 @@ vector<Match> extend(const Parameters &params, size_t query_id, hit* begin, hit*
 		}
 
 		vector<Target> v = extend(params, query_id, query_seq.data(), query_cb.data(), seed_hits_chunk, target_block_ids_chunk, metadata, stat, flags);
+		const size_t n = v.size();
 		if (multi_chunk)
 			aligned_targets.insert(aligned_targets.end(), v.begin(), v.end());
 		else
 			aligned_targets = std::move(v);
 
-		if ((double)v.size() / current_chunk_size < config.ext_min_yield)
+		if (use_chunks && n == 0)
 			break;
 
 		i0 = i1;
