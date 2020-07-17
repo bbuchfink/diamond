@@ -108,7 +108,7 @@ vector<Target> extend(const Parameters& params,
 	int flags)
 {
 	stat.inc(Statistics::TARGET_HITS1, target_block_ids.size());
-	task_timer timer(flags & TARGET_PARALLEL ? 3 : UINT_MAX);
+	task_timer timer(flags & TARGET_PARALLEL ? config.target_parallel_verbosity : UINT_MAX);
 	if (config.gapped_filter_evalue > 0.0) {
 		timer.go("Computing gapped filter");
 		gapped_filter(query_seq, query_cb, seed_hits, target_block_ids, stat, flags, params);
@@ -144,7 +144,7 @@ vector<Match> extend(const Parameters &params, size_t query_id, hit* begin, hit*
 	for (unsigned i = 0; i < contexts; ++i)
 		query_seq.push_back(query_seqs::get()[query_id*contexts + i]);
 
-	task_timer timer(flags & TARGET_PARALLEL ? 3 : UINT_MAX);
+	task_timer timer(flags & TARGET_PARALLEL ? config.target_parallel_verbosity : UINT_MAX);
 	if (config.comp_based_stats == 1) {
 		timer.go("Computing CBS");
 		for (unsigned i = 0; i < contexts; ++i)

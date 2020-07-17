@@ -122,7 +122,7 @@ list<Hsp> swipe_threads(const sequence &query,
 	vector<DpTarget> &overflow,
 	Statistics &stat) {
 	if (flags & PARALLEL) {
-		task_timer timer("Banded swipe (run)", 3);
+		task_timer timer("Banded swipe (run)", config.target_parallel_verbosity);
 		const size_t n = config.threads_;
 		vector<thread> threads;
 		vector<list<Hsp>> thread_out(n);

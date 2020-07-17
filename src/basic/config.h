@@ -225,6 +225,7 @@ struct Config
 	double chaining_len_cap;
 	size_t chaining_min_nodes;
 	bool fast_tsv;
+	unsigned target_parallel_verbosity;
 
 	Sensitivity sensitivity;
 
