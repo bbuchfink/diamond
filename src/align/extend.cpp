@@ -201,7 +201,7 @@ vector<Match> extend(const Parameters &params, size_t query_id, hit* begin, hit*
 		else
 			aligned_targets = std::move(v);
 
-		if (use_chunks && n == 0)
+		if (use_chunks && (n == 0))
 			break;
 
 		i0 = i1;

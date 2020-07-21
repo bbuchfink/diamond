@@ -197,7 +197,7 @@ void roc() {
 		++fam_count[i->second];
 
 	vector<thread> threads;
-	for (unsigned i = 0; i < config.threads_; ++i)
+	for (unsigned i = 0; i < std::min(config.threads_, 6u); ++i)
 		threads.emplace_back(worker);
 
 	timer.go("Processing alignments");

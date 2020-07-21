@@ -142,8 +142,8 @@ void align_worker(size_t thread_id, const Parameters *params, const Metadata *me
 void align_queries(Trace_pt_buffer &trace_pts, Consumer* output_file, const Parameters &params, const Metadata &metadata)
 {
 	size_t max_size = std::min(size_t(config.chunk_size*1e9 * 9 * 2) / config.lowmem, config.trace_pt_fetch_size);
-	if (config.memory_limit)
-		max_size = std::max(max_size, config.memory_limit);
+	if (config.memory_limit != 0.0)
+		max_size = std::max(max_size, size_t(config.memory_limit * 1e9));
 	pair<size_t, size_t> query_range;
 	vector<sequence> subjects;
 	if (config.swipe_all) {

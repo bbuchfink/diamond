@@ -89,6 +89,7 @@ struct DAA_format : public Output_format
 struct Blast_tab_format : public Output_format
 {
 	static const char* field_str[], *field_desc[];
+	static const bool field_traceback[];
 	Blast_tab_format();
 	virtual void print_header(Consumer &f, int mode, const char *matrix, int gap_open, int gap_extend, double evalue, const char *first_query_name, unsigned first_query_len) const override;
 	virtual void print_query_intro(size_t query_num, const char *query_name, unsigned query_len, TextBuffer &out, bool unaligned) const override;

@@ -92,6 +92,71 @@ const char* Blast_tab_format::field_str[] = {
 	"ungapped_score"	// 61
 };
 
+const bool Blast_tab_format::field_traceback[] = {
+	false,		// 0 means Query Seq - id
+	false,			// 1 means Query GI
+	false,			// 2 means Query accesion
+	false,		// 3 means Query accesion.version
+	false,			// 4 means Query sequence length
+	false,		// 5 means Subject Seq - id
+	false,	// 6 means All subject Seq - id(s), separated by a ';'
+	false,			// 7 means Subject GI
+	false,		// 8 means All subject GIs
+	false,			// 9 means Subject accession
+	false,		// 10 means Subject accession.version
+	false,		// 11 means All subject accessions
+	false,			// 12 means Subject sequence length
+	true,		// 13 means Start of alignment in query
+	true,			// 14 means End of alignment in query
+	true,		// 15 means Start of alignment in subject
+	true,			// 16 means End of alignment in subject
+	true,			// 17 means Aligned part of query sequence
+	true,			// 18 means Aligned part of subject sequence
+	false,		// 19 means Expect value
+	false,		// 20 means Bit score
+	false,		// 21 means Raw score
+	true,		// 22 means Alignment length
+	true,		// 23 means Percentage of identical matches
+	true,		// 24 means Number of identical matches
+	true,		// 25 means Number of mismatches
+	true,		// 26 means Number of positive - scoring matches
+	true,		// 27 means Number of gap openings
+	true,			// 28 means Total number of gaps
+	true,			// 29 means Percentage of positive - scoring matches
+	false,		// 30 means Query and subject frames separated by a '/'
+	false,		// 31 means Query frame
+	false,		// 32 means Subject frame
+	true,			// 33 means Blast traceback operations(BTOP)
+	false,		// 34 means unique Subject Taxonomy ID(s), separated by a ';'	(in numerical order)
+	false,	// 35 means unique Subject Scientific Name(s), separated by a ';'
+	false,	// 36 means unique Subject Common Name(s), separated by a ';'
+	false,	// 37 means unique Subject Blast Name(s), separated by a ';'	(in alphabetical order)
+	false,	// 38 means unique Subject Super Kingdom(s), separated by a ';'	(in alphabetical order)
+	false,		// 39 means Subject Title
+	false,	// 40 means All Subject Title(s), separated by a '<>'
+	false,		// 41 means Subject Strand
+	true,		// 42 means Query Coverage Per Subject
+	true,		// 43 means Query Coverage Per HSP
+	true,		// 44 means Query Coverage Per Unique Subject(blastn only)
+	false,		// 45 means Query title
+	false,		// 46
+	false, 		// 47
+	false,	// 48
+	true,		// 49
+	false,			// 50
+	false,			// 51
+	true,		// 52
+	false,	// 53
+	false,	// 54
+	true,  // 55
+	true,	// 56
+	false,		// 57
+	true,		// 58
+	false,	// 59
+	false,		// 60
+	false	// 61
+};
+
 const char* Blast_tab_format::field_desc[] = {
 	"Query ID",		// 0 means Query Seq - id
 	"qgi",			// 1 means Query GI
@@ -166,6 +231,7 @@ Blast_tab_format::Blast_tab_format() :
 		fields = vector<unsigned>(stdf, stdf + 12);
 		return;
 	}
+	bool need_traceback = false;
 	for (vector<string>::const_iterator i = f.begin() + 1; i != f.end(); ++i) {
 		int j = get_idx(field_str, sizeof(field_str) / sizeof(field_str[0]), i->c_str());
 		if(j == -1)
@@ -187,7 +253,11 @@ Blast_tab_format::Blast_tab_format() :
 			config.use_lazy_dict = true;
 		if (j == 49 || j == 53)
 			config.store_query_quality = true;
+		if (field_traceback[j])
+			need_traceback = true;
 	}
+	if (config.max_hsps == 1 && !need_traceback)
+		config.disable_traceback = true;
 }
 
 void print_staxids(TextBuffer &out, unsigned subject_global_id, const Metadata &metadata)

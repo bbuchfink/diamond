@@ -178,7 +178,7 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("unal", 0, "report unaligned queries (0=no, 1=yes)", report_unaligned, -1)
 		("max-target-seqs", 'k', "maximum number of target sequences to report alignments for (default=25)", max_alignments, uint64_t(25))
 		("top", 0, "report alignments within this percentage range of top alignment score (overrides --max-target-seqs)", toppercent, 100.0)
-		("max-hsps", 0, "maximum number of HSPs per subject sequence to report for each query (default=unlimited)", max_hsps, 0u)
+		("max-hsps", 0, "maximum number of HSPs per target sequence to report for each query (default=1)", max_hsps, 1u)
 		("range-culling", 0, "restrict hit culling to overlapping query ranges", query_range_culling)
 		("compress", 0, "compression for output files (0=none, 1=gzip)", compression)
 		("evalue", 'e', "maximum e-value to report alignments (default=0.001)", max_evalue, 0.001)
@@ -229,7 +229,8 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("xml-blord-format", 0, "Use gnl|BL_ORD_ID| style format in XML output", xml_blord_format)
 		("stop-match-score", 0, "Set the match score of stop codons against each other.", stop_match_score, 1)
 		("tantan-minMaskProb", 0, "minimum repeat probability for masking (default=0.9)", tantan_minMaskProb, 0.9)
-		("file-buffer-size", 0, "file buffer size in bytes (default=67108864)", file_buffer_size, (size_t)67108864);
+		("file-buffer-size", 0, "file buffer size in bytes (default=67108864)", file_buffer_size, (size_t)67108864)
+		("memory-limit", 'M', "Memory limit for extension stage in GB", memory_limit);
 
 	Options_group view_options("View options");
 	view_options.add()
@@ -363,8 +364,7 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("chaining-len-cap", 0, "", chaining_len_cap, 2.0)
 		("chaining-min-nodes", 0, "", chaining_min_nodes, (size_t)200)
 		("fast-tsv", 0, "", fast_tsv)
-		("target-parallel-verbosity", 0, "", target_parallel_verbosity, UINT_MAX)
-		("memory-limit", 'M', "", memory_limit);
+		("target-parallel-verbosity", 0, "", target_parallel_verbosity, UINT_MAX);
 	
 	parser.add(general).add(makedb).add(cluster).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options).add(deprecated_options);
 	parser.store(argc, argv, command);
