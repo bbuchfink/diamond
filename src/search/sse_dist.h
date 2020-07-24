@@ -127,6 +127,11 @@ static inline uint64_t seed_mask(const Letter* s, int len) {
 		mask &= (1llu << len) - 1;
 	return mask;
 #else
-	return 0;
+	uint64_t mask = 0;
+	for (int i = 0; i < len; ++i) {
+		if ((s[i] & SEED_MASK) != 0)
+			mask |= 1llu << i;
+	}
+	return mask;
 #endif
 }
