@@ -154,6 +154,8 @@ void run_query_chunk(DatabaseFile &db_file,
 		}
 	}
 	else if (config.algo == Config::query_indexed) {
+		if (config.sensitivity >= Sensitivity::VERY_SENSITIVE)
+			throw std::runtime_error("Query-indexed algorithm not available for this sensitivity setting.");
 		query_seeds = new Seed_set(query_seqs::get(), 2);
 		timer.finish();
 		log_stream << "Seed space coverage = " << query_seeds->coverage() << endl;
@@ -328,14 +330,10 @@ void run(const Options &options)
 
 	message_stream << "Temporary directory: " << TempFile::get_temp_dir() << endl;
 
-	if (config.mode_very_sensitive) {
+	if (config.sensitivity >= Sensitivity::VERY_SENSITIVE)
 		Config::set_option(config.chunk_size, 0.4);
-		Config::set_option(config.lowmem, 1u);
-	}
-	else {
+	else
 		Config::set_option(config.chunk_size, 2.0);
-		Config::set_option(config.lowmem, 4u);
-	}
 
 	task_timer timer("Opening the database", 1);
 	DatabaseFile *db_file = options.db ? options.db : DatabaseFile::auto_create_from_fasta();

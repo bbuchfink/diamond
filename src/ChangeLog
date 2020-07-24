@@ -1,3 +1,16 @@
+[2.0.0]
+- Added the sensitivity modes `--very-sensitive` and `--ultra-sensitive`.
+- The `--block-size`/`-b` parameter is set to 0.4 and the `--index-chunks`/`-c` parameter is set to 1 by default
+  in the new sensitivity modes.
+- Improved performance.
+- Added the option `--ext` with possible values `banded-fast` and `banded-slow` to adjust band setup for Smith
+  Waterman extensions (new default is `banded-fast` for the default and sensitive mode, and `banded-slow` otherwise).
+- Added automatic disabling of alignment traceback if not required by the user-defined output fields in tabular
+  output format.
+- Changed the default value of the `--max-hsps` parameter to 1.
+- Changed the default value of the `--freq-sd` parameter from 10 to 20 for the sensitive mode.
+- Fixed a compiler error on FreeBSD.
+
 [0.9.36]
 - Fixed a bug that could cause `makedb` to produce invalid database files when using taxonomy features.
 - Fixed a bug that could cause a crash when running in query-indexed mode.

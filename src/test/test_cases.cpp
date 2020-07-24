@@ -29,6 +29,9 @@ const vector<TestCase> test_cases = {
 { "blastp (multithreaded)", "blastp -p4" },
 { "blastp (blocked)", "blastp -c1 -b0.00002 -p4" },
 { "blastp (more-sensitive)", "blastp --more-sensitive -c1 -p4" },
+{ "blastp (very-sensitive)", "blastp --very-sensitive -c1 -p4" },
+{ "blastp (ultra-sensitive)", "blastp --ultra-sensitive -c1 -p4" },
+{ "blastp (max-hsps)", "blastp --more-sensitive -c1 -p4 --max-hsps 0" },
 { "blastp (target-parallel)", "blastp --more-sensitive -c1 -p4 --query-parallel-limit 1" },
 { "blastp (query-indexed)", "blastp --more-sensitive -c1 -p4 --algo 1" },
 { "blastp (target seqs)", "blastp -k3 -c1 -p4" },
@@ -41,19 +44,22 @@ const vector<TestCase> test_cases = {
 };
 
 const vector<uint64_t> ref_hashes = {
-0x4f959b7506a0b621,
-0x4f959b7506a0b621,
-0x2d95a36e0a13bf9b,
-0x959b05442e7bfebf,
-0x959b05442e7bfebf,
-0x9713e8c96114d257,
-0x66b239e917fb14d1,
+0xea2c4d83866391cc,
+0xea2c4d83866391cc,
+0x5534fb26c4951ea8,
+0xb08613ba4d95d8e5,
+0x322ccc108a8fcd4f,
+0xd248fd6f8a681713,
+0xa682a0031cf6e942,
+0xb08613ba4d95d8e5,
+0x3b287684ae0261e,
+0xe16c417914681afd,
 0x8ac0057c68f8c239,
-0xcc42d6752cbc88c1,
-0xa76a583e6fe4c891,
-0xc40f9bffc00c4f97,
-0x791b24944e18a96c,
-0xdf32d46bc18e400a,
+0xb06d5eaf6438c123,
+0x3953a4a82ee229b8,
+0x4239facd8427148a,
+0xa22dad750780029f,
+0xb51769cee7147e17
 };
 
 }
