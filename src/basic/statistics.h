@@ -35,7 +35,7 @@ struct Statistics
 		GAPPED_HITS, QUERY_SEEDS, QUERY_SEEDS_HIT, REF_SEEDS, REF_SEEDS_HIT, QUERY_SIZE, REF_SIZE, OUT_HITS, OUT_MATCHES, COLLISION_LOOKUPS, QCOV, BIAS_ERRORS, SCORE_TOTAL, ALIGNED_QLEN, PAIRWISE, HIGH_SIM,
 		TEMP_SPACE, SECONDARY_HITS, ERASED_HITS, SQUARED_ERROR, CELLS, OUTRANKED_HITS, TARGET_HITS0, TARGET_HITS1, TARGET_HITS2, TARGET_HITS3, TARGET_HITS4, TARGET_HITS5, TARGET_HITS6, TIME_GREEDY_EXT, LOW_COMPLEXITY_SEEDS,
 		SWIPE_REALIGN, EXT8, EXT16, EXT32, GAPPED_FILTER_TARGETS, GAPPED_FILTER_HITS1, GAPPED_FILTER_HITS2, GROSS_DP_CELLS, NET_DP_CELLS, TIME_TARGET_SORT, TIME_SW, TIME_EXT, TIME_GAPPED_FILTER,
-		TIME_LOAD_HIT_TARGETS, TIME_CHAINING, TIME_LOAD_SEED_HITS, TIME_SORT_SEED_HITS, TIME_SORT_TARGETS_BY_SCORE, TIME_TARGET_PARALLEL, COUNT
+		TIME_LOAD_HIT_TARGETS, TIME_CHAINING, TIME_LOAD_SEED_HITS, TIME_SORT_SEED_HITS, TIME_SORT_TARGETS_BY_SCORE, TIME_TARGET_PARALLEL, TIME_TRACEBACK_SW, TIME_TRACEBACK, COUNT
 	};
 
 	Statistics()
@@ -102,6 +102,8 @@ struct Statistics
 		log_stream << "Time (Chaining)              = " << (double)data_[TIME_CHAINING] / 1e6 << "s (CPU)" << endl;
 		log_stream << "Time (DP target sorting)     = " << (double)data_[TIME_TARGET_SORT] / 1e6 << "s (CPU)" << endl;
 		log_stream << "Time (Smith Waterman)        = " << (double)data_[TIME_SW] / 1e6 << "s (CPU)" << endl;
+		log_stream << "Time (Smith Waterman TB)     = " << (double)data_[TIME_TRACEBACK_SW] / 1e6 << "s (CPU)" << endl;
+		log_stream << "Time (Traceback)             = " << (double)data_[TIME_TRACEBACK] / 1e6 << "s (CPU)" << endl;
 		log_stream << "Time (Target parallel)       = " << (double)data_[TIME_TARGET_PARALLEL] / 1e6 << "s (wall)" << endl;
 		log_stream << "Time (Load seed hits)        = " << (double)data_[TIME_LOAD_SEED_HITS] / 1e6 << "s (wall)" << endl;
 		log_stream << "Time (Sort seed hits)        = " << (double)data_[TIME_SORT_SEED_HITS] / 1e6 << "s (wall)" << endl;

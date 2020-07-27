@@ -492,6 +492,7 @@ list<Hsp> swipe(
 
 	list<Hsp> out;
 	int realign = 0;
+	task_timer timer;
 	for (int i = 0; i < targets.n_targets; ++i) {
 		if (best[i] < ScoreTraits<_sv>::max_score()) {
 			if (ScoreTraits<_sv>::int_score(best[i]) >= score_cutoff) {
@@ -504,6 +505,8 @@ list<Hsp> swipe(
 		else
 			overflow.push_back(subject_begin[i]);
 	}
+	stat.inc(Statistics::TIME_TRACEBACK, timer.microseconds());
+
 	if (realign) {
 		stat.inc(Statistics::SWIPE_REALIGN);
 		vector<vector<Letter>> seqs;
