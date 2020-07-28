@@ -251,11 +251,11 @@ struct TracebackMatrix
 		return ColumnIterator(&hgap_[offset], &score_[col*band_ + offset], &score_[(col + 1)*band_ + offset]);
 	}
 
-#ifdef __APPLE__
+//#ifdef __APPLE__
 	MemBuffer<_sv> hgap_, score_;
-#else
-	static thread_local MemBuffer<_sv> hgap_, score_;
-#endif
+//#else
+//	static thread_local MemBuffer<_sv> hgap_, score_;
+//#endif
 
 private:
 
@@ -266,8 +266,8 @@ private:
 #ifndef __APPLE__
 template<typename _sv> thread_local MemBuffer<_sv> Matrix<_sv>::hgap_;
 template<typename _sv> thread_local MemBuffer<_sv> Matrix<_sv>::score_;
-template<typename _sv> thread_local MemBuffer<_sv> TracebackMatrix<_sv>::hgap_;
-template<typename _sv> thread_local MemBuffer<_sv> TracebackMatrix<_sv>::score_;
+//template<typename _sv> thread_local MemBuffer<_sv> TracebackMatrix<_sv>::hgap_;
+//template<typename _sv> thread_local MemBuffer<_sv> TracebackMatrix<_sv>::score_;
 #endif
 
 template<typename _sv, typename _traceback>
