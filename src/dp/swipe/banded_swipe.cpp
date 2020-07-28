@@ -263,6 +263,63 @@ private:
 
 };
 
+template<typename _sv>
+struct TraceBackVectorMatrix
+{
+	struct ColumnIterator
+	{
+		ColumnIterator(_sv* hgap_front, _sv* score_front) :
+			hgap_ptr_(hgap_front),
+			score_ptr_(score_front)
+		{ }
+		inline void operator++()
+		{
+			++hgap_ptr_; ++score_ptr_;
+		}
+		inline _sv hgap() const
+		{
+			return *(hgap_ptr_ + 1);
+		}
+		inline _sv diag() const
+		{
+			return *score_ptr_;
+		}
+		inline void set_hgap(const _sv& x)
+		{
+			*hgap_ptr_ = x;
+		}
+		inline void set_score(const _sv& x)
+		{
+			*score_ptr_ = x;
+		}
+		inline void set_zero() {}
+		_sv *hgap_ptr_, *score_ptr_;
+	};
+	Matrix(int band, size_t cols) :
+		band_(band)
+	{
+		hgap_.resize(band + 1);
+		score_.resize(band);
+		std::fill(hgap_.begin(), hgap_.end(), _sv());
+		std::fill(score_.begin(), score_.end(), _sv());
+
+	}
+	inline ColumnIterator begin(int offset, int col)
+	{
+		return ColumnIterator(&hgap_[offset], &score_[offset]);
+	}
+	int band() const {
+		return band_;
+	}
+#ifdef __APPLE__
+	MemBuffer<_sv> hgap_, score_;
+#else
+	static thread_local MemBuffer<_sv> hgap_, score_;
+#endif
+private:
+	int band_;
+};
+
 #ifndef __APPLE__
 template<typename _sv> thread_local MemBuffer<_sv> Matrix<_sv>::hgap_;
 template<typename _sv> thread_local MemBuffer<_sv> Matrix<_sv>::score_;

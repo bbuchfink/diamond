@@ -288,8 +288,10 @@ struct ScoreTraits<score_vector<int16_t>>
 	typedef ::DISPATCH_ARCH::SIMD::Vector<int16_t> Vector;
 #if ARCH_ID == 2
 	enum { CHANNELS = 16 };
+	typedef uint16_t Mask;
 #else
 	enum { CHANNELS = 8 };
+	typedef uint8_t Mask;
 #endif
 	typedef int16_t Score;
 	typedef uint16_t Unsigned;

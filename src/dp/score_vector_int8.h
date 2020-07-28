@@ -161,6 +161,7 @@ struct ScoreTraits<score_vector<int8_t>>
 	typedef ::DISPATCH_ARCH::SIMD::Vector<int8_t> Vector;
 	typedef int8_t Score;
 	typedef uint8_t Unsigned;
+	typedef uint32_t Mask;
 	static score_vector<int8_t> zero() {
 		return score_vector<int8_t>();
 	}
@@ -318,6 +319,7 @@ struct ScoreTraits<score_vector<int8_t>>
 	typedef ::DISPATCH_ARCH::SIMD::Vector<int8_t> Vector;
 	typedef int8_t Score;
 	typedef uint8_t Unsigned;
+	typedef uint16_t Mask;
 	static score_vector<int8_t> zero() {
 		return score_vector<int8_t>();
 	}

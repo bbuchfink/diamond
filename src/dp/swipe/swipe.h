@@ -80,7 +80,9 @@ static inline _sv swipe_cell_update(const _sv& diagonal_cell,
 	const _sv& gap_open,
 	_sv& horizontal_gap,
 	_sv& vertical_gap,
-	_sv& best)
+	_sv& best,
+	typename ::DISPATCH_ARCH::ScoreTraits<_sv>::Mask hgap_mask,
+	typename ::DISPATCH_ARCH::ScoreTraits<_sv>::Mask vgap_mask)
 {
 	using std::max;
 	_sv current_cell = diagonal_cell + (scores + query_bias);
