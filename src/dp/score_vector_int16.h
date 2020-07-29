@@ -114,6 +114,14 @@ struct score_vector<int16_t>
 		return *this;
 	}
 
+	friend score_vector blend(const score_vector &v, const score_vector &w, const score_vector &mask) {
+		return score_vector(_mm256_blendv_epi8(v.data_, w.data_, mask.data_));
+	}
+	
+	score_vector operator==(const score_vector &v) {
+		return score_vector(_mm256_cmpeq_epi16(data_, v.data_));
+	}
+
 	friend score_vector max(const score_vector& lhs, const score_vector& rhs)
 	{
 		return score_vector(_mm256_max_epi16(lhs.data_, rhs.data_));
@@ -245,6 +253,10 @@ struct score_vector<int16_t>
 		return *this;
 	}
 
+	score_vector operator==(const score_vector &v) {
+		return score_vector(_mm_cmpeq_epi16(data_, v.data_));
+	}
+
 	score_vector& max(const score_vector &rhs)
 	{
 		data_ = _mm_max_epi16(data_, rhs.data_);
@@ -254,6 +266,10 @@ struct score_vector<int16_t>
 	friend score_vector max(const score_vector& lhs, const score_vector &rhs)
 	{
 		return score_vector(_mm_max_epi16(lhs.data_, rhs.data_));
+	}
+
+	friend score_vector blend(const score_vector &v, const score_vector &w, const score_vector &mask) {
+		return score_vector(_mm_blendv_epi8(v.data_, w.data_, mask.data_));
 	}
 
 	void store(int16_t *ptr) const

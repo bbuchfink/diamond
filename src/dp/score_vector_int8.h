@@ -99,9 +99,12 @@ struct score_vector<int8_t>
 		return *this;
 	}
 
-	__m256i operator==(const score_vector& rhs) const
-	{
-		return _mm256_cmpeq_epi8(data_, rhs.data_);
+	friend score_vector blend(const score_vector &v, const score_vector &w, const score_vector &mask) {
+		return score_vector(_mm256_blendv_epi8(v.data_, w.data_, mask.data_));
+	}
+
+	score_vector operator==(const score_vector &v) {
+		return score_vector(_mm256_cmpeq_epi8(data_, v.data_));
 	}
 
 	int operator [](unsigned i) const
@@ -257,9 +260,12 @@ struct score_vector<int8_t>
 		return *this;
 	}
 
-	__m128i operator==(const score_vector &rhs) const
-	{
-		return _mm_cmpeq_epi8(data_, rhs.data_);
+	friend score_vector blend(const score_vector &v, const score_vector &w, const score_vector &mask) {
+		return score_vector(_mm_blendv_epi8(v.data_, w.data_, mask.data_));
+	}
+
+	score_vector operator==(const score_vector &v) {
+		return score_vector(_mm_cmpeq_epi8(data_, v.data_));
 	}
 
 	int operator [](unsigned i) const

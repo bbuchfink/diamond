@@ -208,6 +208,7 @@ int score_range(sequence query, sequence subject, int i, int j, int j_end);
 namespace DP {
 
 struct Traceback {};
+struct StatTraceback {};
 struct ScoreOnly {};
 
 enum { TRACEBACK = 1, PARALLEL = 2, FULL_MATRIX = 4 };

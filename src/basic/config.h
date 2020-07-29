@@ -227,6 +227,7 @@ struct Config
 	bool fast_tsv;
 	unsigned target_parallel_verbosity;
 	double memory_limit;
+	bool stat_traceback;
 
 	Sensitivity sensitivity;
 

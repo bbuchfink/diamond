@@ -289,6 +289,10 @@ struct ScoreTraits<score_vector<uint8_t>>
 };
 #endif
 
+static inline int blend(int v, int w, int mask) {
+	return mask ? w : v;
+}
+
 }
 
 static inline void store_sv(int32_t sv, int32_t *dst)
