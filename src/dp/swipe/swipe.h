@@ -23,6 +23,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <assert.h>
 #include "../score_vector.h"
 #include "../score_vector_int8.h"
+#include "../score_vector_int16.h"
 #include "../../basic/value.h"
 #include "../util/simd/vector.h"
 
