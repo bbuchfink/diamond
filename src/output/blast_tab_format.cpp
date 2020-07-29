@@ -256,7 +256,7 @@ Blast_tab_format::Blast_tab_format() :
 		if (field_traceback[j])
 			need_traceback = true;
 	}
-	if (config.max_hsps == 1 && !need_traceback)
+	if (config.max_hsps == 1 && !need_traceback && !config.query_range_culling && config.min_id == 0.0 && config.query_cover == 0.0 && config.subject_cover == 0.0)
 		config.disable_traceback = true;
 }
 

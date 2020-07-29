@@ -1,3 +1,7 @@
+[2.0.1]
+- Fixed a bug that could cause filtering hits for identity or range cover not to function correctly when using
+  the tabular format without hit coordinate or identity fields.
+
 [2.0.0]
 - Added the sensitivity modes `--very-sensitive` and `--ultra-sensitive`.
 - The `--block-size`/`-b` parameter is set to 0.4 and the `--index-chunks`/`-c` parameter is set to 1 by default
