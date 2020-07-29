@@ -186,7 +186,7 @@ void swipe_cell_update() {
 	{
 		score_vector<int8_t> diagonal_cell, scores, gap_extension, gap_open, horizontal_gap, vertical_gap, best;
 		for (size_t i = 0; i < n; ++i) {
-			diagonal_cell = ::swipe_cell_update(diagonal_cell, scores, nullptr, gap_extension, gap_open, horizontal_gap, vertical_gap, best);
+			diagonal_cell = ::swipe_cell_update(diagonal_cell, scores, nullptr, gap_extension, gap_open, horizontal_gap, vertical_gap, best, nullptr, nullptr, nullptr);
 		}
 		volatile auto x = diagonal_cell.data_;
 	}
@@ -216,6 +216,7 @@ void swipe(const sequence &s1, const sequence &s2) {
 #endif
 
 void banded_swipe(const sequence &s1, const sequence &s2) {
+	config.stat_traceback = true;
 	vector<DpTarget> target8, target16;
 	for (size_t i = 0; i < 8; ++i)
 		target16.emplace_back(s2, -32, 32, 0, 0);
@@ -227,13 +228,19 @@ void banded_swipe(const sequence &s1, const sequence &s2) {
 	for (size_t i = 0; i < n; ++i) {
 		volatile auto out = ::DP::BandedSwipe::swipe(s1, target8, target16, Frame(0), &cbs, 0, 0, stat);
 	}
-	cout << "Banded SWIPE (int16_t, CBS):\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * s1.length() * 65 * 8) * 1000 << " ps/Cell" << endl;
-
+	cout << "Banded SWIPE (int16_t, CBS):\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * s1.length() * 65 * 16) * 1000 << " ps/Cell" << endl;
+	
 	t1 = high_resolution_clock::now();
 	for (size_t i = 0; i < n; ++i) {
 		volatile auto out = ::DP::BandedSwipe::swipe(s1, target8, target16, Frame(0), nullptr, 0, 0, stat);
 	}
-	cout << "Banded SWIPE (int16_t):\t\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * s1.length() * 65 * 8) * 1000 << " ps/Cell" << endl;
+	cout << "Banded SWIPE (int16_t):\t\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * s1.length() * 65 * 16) * 1000 << " ps/Cell" << endl;
+
+	t1 = high_resolution_clock::now();
+	for (size_t i = 0; i < n; ++i) {
+		volatile auto out = ::DP::BandedSwipe::swipe(s1, target8, target16, Frame(0), &cbs, DP::TRACEBACK, 0, stat);
+	}
+	cout << "Banded SWIPE (int16_t, CBS, TB):" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * s1.length() * 65 * 16) * 1000 << " ps/Cell" << endl;
 }
 
 #ifdef __SSE4_1__
@@ -277,6 +284,10 @@ void benchmark() {
 	sequence ss1 = sequence(s1).subseq(34, s1.size());
 	sequence ss2 = sequence(s2).subseq(33, s2.size());
 
+#ifdef __SSE2__
+	banded_swipe(s1, s2);
+	swipe_cell_update();
+#endif
 	evalue();
 #ifdef __SSE4_1__
 	swipe(s3, s4);
@@ -294,10 +305,6 @@ void benchmark() {
 #endif
 #ifdef __SSE2__
 	benchmark_transpose();
-#endif
-#ifdef __SSE2__
-	banded_swipe(s1, s2);
-	swipe_cell_update();
 #endif
 }
 
