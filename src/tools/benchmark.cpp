@@ -186,7 +186,7 @@ void swipe_cell_update() {
 	{
 		score_vector<int8_t> diagonal_cell, scores, gap_extension, gap_open, horizontal_gap, vertical_gap, best;
 		for (size_t i = 0; i < n; ++i) {
-			diagonal_cell = ::swipe_cell_update(diagonal_cell, scores, nullptr, gap_extension, gap_open, horizontal_gap, vertical_gap, best, nullptr, nullptr, nullptr, nullptr);
+			diagonal_cell = ::swipe_cell_update(diagonal_cell, scores, nullptr, gap_extension, gap_open, horizontal_gap, vertical_gap, best, nullptr, nullptr, nullptr, (void*)nullptr);
 		}
 		volatile auto x = diagonal_cell.data_;
 	}
