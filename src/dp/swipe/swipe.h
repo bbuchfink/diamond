@@ -180,12 +180,12 @@ static inline _sv swipe_cell_update(const _sv& diagonal_cell,
 	vertical_gap = max(vertical_gap, open);
 	horizontal_gap = max(horizontal_gap, open);
 
-	trace_stat_vertical.length += one;
+	/*trace_stat_vertical.length += one;
 	trace_stat_horizontal.length += one;
 	trace_stat_diag.length += one;
 	trace_stat_diag.length = blend(trace_stat_diag.length, trace_stat_vertical.length, vgap_mask);
 	trace_stat_diag.length = blend(trace_stat_diag.length, trace_stat_horizontal.length, hgap_mask);
-	trace_stat_diag.length = blend(trace_stat_diag.length, zero2, zero_mask);
+	trace_stat_diag.length = blend(trace_stat_diag.length, zero2, zero_mask);*/
 	
 	return current_cell;
 }
