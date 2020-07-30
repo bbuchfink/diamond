@@ -365,7 +365,8 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("chaining-min-nodes", 0, "", chaining_min_nodes, (size_t)200)
 		("fast-tsv", 0, "", fast_tsv)
 		("target-parallel-verbosity", 0, "", target_parallel_verbosity, UINT_MAX)
-		("stat-traceback", 0, "", stat_traceback);
+		("stat-traceback", 0, "", stat_traceback)
+		("vector-traceback", 0, "", vector_traceback);
 	
 	parser.add(general).add(makedb).add(cluster).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options).add(deprecated_options);
 	parser.store(argc, argv, command);

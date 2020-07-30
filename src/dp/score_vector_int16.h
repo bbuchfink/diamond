@@ -122,6 +122,10 @@ struct score_vector<int16_t>
 		return score_vector(_mm256_cmpeq_epi16(data_, v.data_));
 	}
 
+	friend uint32_t cmp_mask(const score_vector &v, const score_vector &w) {
+		return _mm256_movemask_epi8(_mm256_cmpeq_epi16(v.data_, w.data_));
+	}
+
 	friend score_vector max(const score_vector& lhs, const score_vector& rhs)
 	{
 		return score_vector(_mm256_max_epi16(lhs.data_, rhs.data_));
@@ -257,6 +261,10 @@ struct score_vector<int16_t>
 		return score_vector(_mm_cmpeq_epi16(data_, v.data_));
 	}
 
+	friend uint32_t cmp_mask(const score_vector &v, const score_vector &w) {
+		return (uint32_t)_mm_movemask_epi8(_mm_cmpeq_epi16(v.data_, w.data_));
+	}
+
 	score_vector& max(const score_vector &rhs)
 	{
 		data_ = _mm_max_epi16(data_, rhs.data_);
@@ -305,9 +313,11 @@ struct ScoreTraits<score_vector<int16_t>>
 #if ARCH_ID == 2
 	enum { CHANNELS = 16 };
 	typedef uint16_t Mask;
+	typedef uint32_t TraceMask;
 #else
 	enum { CHANNELS = 8 };
 	typedef uint8_t Mask;
+	typedef uint16_t TraceMask;
 #endif
 	typedef int16_t Score;
 	typedef uint16_t Unsigned;

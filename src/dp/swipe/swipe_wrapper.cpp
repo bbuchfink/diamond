@@ -79,6 +79,12 @@ list<Hsp> swipe_targets(const sequence &query,
 					else
 						out.splice(out.end(), swipe<_sv, StatTraceback>(query, frame, i, i + std::min(CHANNELS, end - i), composition_bias, score_cutoff, overflow, stat));
 				}
+				else if (config.vector_traceback) {
+					if (composition_bias == nullptr)
+						out.splice(out.end(), swipe<_sv, VectorTraceback>(query, frame, i, i + std::min(CHANNELS, end - i), NoCBS(), score_cutoff, overflow, stat));
+					else
+						out.splice(out.end(), swipe<_sv, VectorTraceback>(query, frame, i, i + std::min(CHANNELS, end - i), composition_bias, score_cutoff, overflow, stat));
+				}
 				else {
 					if (composition_bias == nullptr)
 						out.splice(out.end(), swipe<_sv, Traceback>(query, frame, i, i + std::min(CHANNELS, end - i), NoCBS(), score_cutoff, overflow, stat));

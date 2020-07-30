@@ -209,6 +209,7 @@ namespace DP {
 
 struct Traceback {};
 struct StatTraceback {};
+struct VectorTraceback {};
 struct ScoreOnly {};
 
 enum { TRACEBACK = 1, PARALLEL = 2, FULL_MATRIX = 4 };

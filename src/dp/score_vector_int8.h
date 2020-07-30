@@ -107,6 +107,10 @@ struct score_vector<int8_t>
 		return score_vector(_mm256_cmpeq_epi8(data_, v.data_));
 	}
 
+	friend uint32_t cmp_mask(const score_vector &v, const score_vector &w) {
+		return (uint32_t)_mm256_movemask_epi8(_mm256_cmpeq_epi8(v.data_, w.data_));
+	}
+
 	int operator [](unsigned i) const
 	{
 		return *(((uint8_t*)&data_) + i);
@@ -165,6 +169,7 @@ struct ScoreTraits<score_vector<int8_t>>
 	typedef int8_t Score;
 	typedef uint8_t Unsigned;
 	typedef uint32_t Mask;
+	typedef uint64_t TraceMask;
 	static score_vector<int8_t> zero() {
 		return score_vector<int8_t>();
 	}
@@ -268,6 +273,10 @@ struct score_vector<int8_t>
 		return score_vector(_mm_cmpeq_epi8(data_, v.data_));
 	}
 
+	friend uint32_t cmp_mask(const score_vector &v, const score_vector &w) {
+		return _mm_movemask_epi8(_mm_cmpeq_epi8(v.data_, w.data_));
+	}
+
 	int operator [](unsigned i) const
 	{
 		return *(((uint8_t*)&data_) + i);
@@ -326,6 +335,7 @@ struct ScoreTraits<score_vector<int8_t>>
 	typedef int8_t Score;
 	typedef uint8_t Unsigned;
 	typedef uint16_t Mask;
+	typedef uint32_t TraceMask;
 	static score_vector<int8_t> zero() {
 		return score_vector<int8_t>();
 	}

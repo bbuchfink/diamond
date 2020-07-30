@@ -228,6 +228,7 @@ struct Config
 	unsigned target_parallel_verbosity;
 	double memory_limit;
 	bool stat_traceback;
+	bool vector_traceback;
 
 	Sensitivity sensitivity;
 
