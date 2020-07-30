@@ -27,6 +27,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../../basic/value.h"
 #include "../util/simd/vector.h"
 
+static inline int cmp_mask(int x, int y) {
+	return x == y;
+}
+
 template<typename _sv>
 struct TraceStat {
 	_sv length;
@@ -48,7 +52,36 @@ static inline _sv swipe_cell_update(const _sv &diagonal_cell,
 	_sv &best,
 	void*,
 	void*,
+	void*,
 	void*)
+{
+	using std::max;
+	_sv current_cell = max(diagonal_cell + scores, vertical_gap);
+	current_cell = max(current_cell, horizontal_gap);
+	::DISPATCH_ARCH::ScoreTraits<_sv>::saturate(current_cell);
+	best = max(best, current_cell);
+	vertical_gap -= gap_extension;
+	horizontal_gap -= gap_extension;
+	const _sv open = current_cell - gap_open;
+	vertical_gap = max(vertical_gap, open);
+	horizontal_gap = max(horizontal_gap, open);
+	return current_cell;
+}
+
+
+template<typename _sv>
+static inline _sv swipe_cell_update(const _sv &diagonal_cell,
+	const _sv &scores,
+	void*,
+	const _sv &gap_extension,
+	const _sv &gap_open,
+	_sv &horizontal_gap,
+	_sv &vertical_gap,
+	_sv &best,
+	void*,
+	void*,
+	void*,
+	typename ::DISPATCH_ARCH::ScoreTraits<_sv>::TraceMask *trace_mask)
 {
 	using std::max;
 	_sv current_cell = max(diagonal_cell + scores, vertical_gap);
@@ -74,7 +107,8 @@ static inline _sv swipe_cell_update(const _sv &diagonal_cell,
 	_sv &best,
 	TraceStat<_sv> &trace_stat_diag,
 	TraceStat<_sv> &trace_stat_vertical,
-	TraceStat<_sv> &trace_stat_horizontal)
+	TraceStat<_sv> &trace_stat_horizontal,
+	void*)
 {
 	using std::max;
 	_sv current_cell = max(diagonal_cell + scores, vertical_gap);
@@ -98,6 +132,7 @@ static inline _sv swipe_cell_update(const _sv& diagonal_cell,
 	_sv& horizontal_gap,
 	_sv& vertical_gap,
 	_sv& best,
+	void*,
 	void*,
 	void*,
 	void*)
@@ -126,7 +161,8 @@ static inline _sv swipe_cell_update(const _sv& diagonal_cell,
 	_sv& best,
 	TraceStat<_sv> &trace_stat_diag,
 	TraceStat<_sv> &trace_stat_vertical,
-	TraceStat<_sv> &trace_stat_horizontal)
+	TraceStat<_sv> &trace_stat_horizontal,
+	void*)
 {
 	typedef typename ::DISPATCH_ARCH::ScoreTraits<_sv>::Score Score;
 	using std::max;
@@ -163,13 +199,16 @@ static inline _sv swipe_cell_update(const _sv& diagonal_cell,
 	_sv& horizontal_gap,
 	_sv& vertical_gap,
 	_sv& best,
-	typename ::DISPATCH_ARCH::ScoreTraits<_sv>::Mask hgap_mask,
-	typename ::DISPATCH_ARCH::ScoreTraits<_sv>::Mask vgap_mask)
+	void*,
+	void*,
+	void*,
+	typename ::DISPATCH_ARCH::ScoreTraits<_sv>::TraceMask *trace_mask)
 {
 	using std::max;
 	_sv current_cell = diagonal_cell + (scores + query_bias);
 	current_cell = max(max(current_cell, vertical_gap), horizontal_gap);
 	::DISPATCH_ARCH::ScoreTraits<_sv>::saturate(current_cell);
+	*trace_mask = cmp_mask(current_cell, vertical_gap);
 	best = max(best, current_cell);
 	vertical_gap -= gap_extension;
 	horizontal_gap -= gap_extension;

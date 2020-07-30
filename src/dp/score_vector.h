@@ -250,6 +250,7 @@ struct ScoreTraits<int32_t>
 {
 	enum { CHANNELS = 1, BITS = 32 };
 	typedef int32_t Score;
+	typedef uint8_t TraceMask;
 	static int32_t zero()
 	{
 		return 0;
