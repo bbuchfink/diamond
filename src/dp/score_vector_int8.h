@@ -100,15 +100,15 @@ struct score_vector<int8_t>
 	}
 
 	friend score_vector blend(const score_vector &v, const score_vector &w, const score_vector &mask) {
-		return score_vector(); // _mm256_blendv_epi8(v.data_, w.data_, mask.data_));
+		return score_vector(_mm256_blendv_epi8(v.data_, w.data_, mask.data_));
 	}
 
 	score_vector operator==(const score_vector &v) {
 		return score_vector(_mm256_cmpeq_epi8(data_, v.data_));
 	}
 
-	friend int cmp_mask(const score_vector &v, const score_vector &w) {
-		return _mm256_movemask_epi8(_mm256_cmpeq_epi8(v.data_, w.data_));
+	friend uint32_t cmp_mask(const score_vector &v, const score_vector &w) {
+		return (uint32_t)_mm256_movemask_epi8(_mm256_cmpeq_epi8(v.data_, w.data_));
 	}
 
 	int operator [](unsigned i) const
@@ -266,14 +266,14 @@ struct score_vector<int8_t>
 	}
 
 	friend score_vector blend(const score_vector &v, const score_vector &w, const score_vector &mask) {
-		return score_vector(); // _mm_blendv_epi8(v.data_, w.data_, mask.data_));
+		return score_vector(_mm_blendv_epi8(v.data_, w.data_, mask.data_));
 	}
 
 	score_vector operator==(const score_vector &v) {
 		return score_vector(_mm_cmpeq_epi8(data_, v.data_));
 	}
 
-	friend int cmp_mask(const score_vector &v, const score_vector &w) {
+	friend uint32_t cmp_mask(const score_vector &v, const score_vector &w) {
 		return _mm_movemask_epi8(_mm_cmpeq_epi8(v.data_, w.data_));
 	}
 
