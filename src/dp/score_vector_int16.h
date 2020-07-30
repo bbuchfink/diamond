@@ -115,7 +115,7 @@ struct score_vector<int16_t>
 	}
 
 	friend score_vector blend(const score_vector &v, const score_vector &w, const score_vector &mask) {
-		return score_vector(_mm256_blendv_epi8(v.data_, w.data_, mask.data_));
+		return score_vector(); // _mm256_blendv_epi8(v.data_, w.data_, mask.data_));
 	}
 	
 	score_vector operator==(const score_vector &v) {
@@ -277,7 +277,7 @@ struct score_vector<int16_t>
 	}
 
 	friend score_vector blend(const score_vector &v, const score_vector &w, const score_vector &mask) {
-		return score_vector(_mm_blendv_epi8(v.data_, w.data_, mask.data_));
+		return score_vector(); // _mm_blendv_epi8(v.data_, w.data_, mask.data_));
 	}
 
 	void store(int16_t *ptr) const
