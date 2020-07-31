@@ -46,7 +46,6 @@ template<typename _sv>
 struct Matrix
 {
 	typedef void* Stat;
-	typedef void* RowCounter;
 	struct ColumnIterator
 	{
 		ColumnIterator(_sv* hgap_front, _sv* score_front) :
@@ -116,7 +115,6 @@ struct TracebackMatrix
 {
 
 	typedef void* Stat;
-	typedef void* RowCounter;
 	typedef typename ::DISPATCH_ARCH::ScoreTraits<_sv>::Score Score;
 	static constexpr int CHANNELS = ::DISPATCH_ARCH::ScoreTraits<_sv>::CHANNELS;
 
@@ -290,7 +288,6 @@ struct TracebackVectorMatrix
 {
 	typedef typename ScoreTraits<_sv>::TraceMask TraceMask;
 	typedef void* Stat;
-	typedef RowCounter<_sv> RowCounter;
 	struct ColumnIterator
 	{
 		ColumnIterator(_sv* hgap_front, _sv* score_front, TraceMask* trace_mask_front) :
@@ -418,7 +415,6 @@ template<typename _sv>
 struct TracebackStatMatrix
 {
 	typedef TraceStat<_sv> Stat;
-	typedef void* RowCounter;
 	struct ColumnIterator
 	{
 		ColumnIterator(_sv* hgap_front, _sv* score_front, TraceStat<_sv> *stat_front, TraceStat<_sv> *hstat_front) :
