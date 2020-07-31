@@ -169,7 +169,19 @@ struct ScoreTraits<score_vector<int8_t>>
 	typedef int8_t Score;
 	typedef uint8_t Unsigned;
 	typedef uint32_t Mask;
-	typedef uint64_t TraceMask;
+	struct TraceMask {
+		static uint64_t make(uint32_t vmask, uint32_t hmask) {
+			return (uint64_t)vmask << 32 | (uint64_t)hmask;
+		}
+		static uint64_t vmask(int channel) {
+			return (uint64_t)1 << (channel + 32);
+		}
+		static uint64_t hmask(int channel) {
+			return (uint64_t)1 << channel;
+		}
+		uint64_t gap;
+		uint64_t open;
+	};
 	static score_vector<int8_t> zero() {
 		return score_vector<int8_t>();
 	}
@@ -335,7 +347,19 @@ struct ScoreTraits<score_vector<int8_t>>
 	typedef int8_t Score;
 	typedef uint8_t Unsigned;
 	typedef uint16_t Mask;
-	typedef uint32_t TraceMask;
+	struct TraceMask {
+		static uint32_t make(uint32_t vmask, uint32_t hmask) {
+			return vmask << 16 | hmask;
+		}
+		static uint32_t vmask(int channel) {
+			return 1 << (channel + 16);
+		}
+		static uint32_t hmask(int channel) {
+			return 1 << channel;
+		}
+		uint32_t gap;
+		uint32_t open;
+	};
 	static score_vector<int8_t> zero() {
 		return score_vector<int8_t>();
 	}

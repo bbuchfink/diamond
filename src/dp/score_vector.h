@@ -250,7 +250,19 @@ struct ScoreTraits<int32_t>
 {
 	enum { CHANNELS = 1, BITS = 32 };
 	typedef int32_t Score;
-	typedef uint8_t TraceMask;
+	struct TraceMask {
+		static uint8_t make(int vmask, int hmask) {
+			return vmask << 1 | hmask;
+		}
+		static uint8_t vmask(int channel) {
+			return 2;
+		}
+		static uint8_t hmask(int channel) {
+			return 1;
+		}
+		uint8_t gap;
+		uint8_t open;
+	};
 	static int32_t zero()
 	{
 		return 0;

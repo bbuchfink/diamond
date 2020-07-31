@@ -338,8 +338,8 @@ struct TracebackVectorMatrix
 		TracebackIterator(const TraceMask *mask, size_t band, int i, int j, size_t channel) :
 			band_(band),
 			mask_(mask),
-			channel_mask_vgap(TraceMask(1) << (channel * 2 + 1)),
-			channel_mask_hgap(TraceMask(1) << (channel * 2)),
+			channel_mask_vgap(TraceMask::vmask(channel)),
+			channel_mask_hgap(TraceMask::hmask(channel)),
 			i(i),
 			j(j)
 		{
@@ -357,13 +357,13 @@ struct TracebackVectorMatrix
 		}
 		pair<Edit_operation, int> walk_gap()
 		{
-			if (*mask_ & channel_mask_vgap) {
+			if (mask_->gap & channel_mask_vgap) {
 				int l = 0;
 				do {
 					++l;
 					--i;
 					--mask_;
-				} while ((*mask_ & channel_mask_vgap) && (i > 0));
+				} while (((mask_->open & channel_mask_vgap) == 0) && (i > 0));
 				return std::make_pair(op_insertion, l);
 			}
 			else {
@@ -372,12 +372,13 @@ struct TracebackVectorMatrix
 					++l;
 					--j;
 					mask_ -= band_ - 1;
-				} while ((*mask_ & channel_mask_hgap) && (j > 0));
+				} while (((mask_->open & channel_mask_hgap) == 0) && (j > 0));
 				return std::make_pair(op_deletion, l);
 			}
 		}
 		const size_t band_;
-		const TraceMask* mask_, channel_mask_vgap, channel_mask_hgap;
+		const TraceMask* mask_;
+		const decltype(TraceMask::gap) channel_mask_vgap, channel_mask_hgap;
 		int i, j;
 	};
 
@@ -606,10 +607,9 @@ Hsp traceback(const sequence &query, Frame frame, _cbs bias_correction, const Tr
 {
 	typedef typename ScoreTraits<_sv>::Score Score;
 	typedef typename ScoreTraits<_sv>::TraceMask TraceMask;
-	const TraceMask channel_mask = TraceMask(3) << (channel * 2);
+	const decltype(TraceMask::gap) channel_mask = TraceMask::vmask(channel) | TraceMask::hmask(channel);
 	const int j0 = i1 - (target.d_end - 1), d1 = target.d_end;
 	typename TracebackVectorMatrix<_sv>::TracebackIterator it(dp.traceback(max_col + 1, i0 + max_col, max_band_i, j0 + max_col, (int)query.length(), channel));
-
 	Hsp out;
 	out.swipe_target = target.target_idx;
 	out.score = ScoreTraits<_sv>::int_score(max_score);
@@ -618,10 +618,11 @@ Hsp traceback(const sequence &query, Frame frame, _cbs bias_correction, const Tr
 	out.frame = frame.index();
 	out.query_range.end_ = it.i + 1;
 	out.subject_range.end_ = it.j + 1;
+	const int end_score = out.score;
 	int score = 0;
 
-	while ((it.mask() & channel_mask) != channel_mask && it.i >= 0 && it.j >= 0) {
-		if((it.mask() & channel_mask) == 0) {
+	while (it.i >= 0 && it.j >= 0 && score < end_score) {
+		if((it.mask().gap & channel_mask) == 0) {
 			const Letter q = query[it.i], s = target.seq[it.j];
 			const int m = score_matrix(q, s);
 			const int m2 = add_cbs(m, bias_correction[it.i]);
@@ -634,8 +635,10 @@ Hsp traceback(const sequence &query, Frame frame, _cbs bias_correction, const Tr
 			out.push_gap(g.first, g.second, target.seq.data() + it.j + g.second);
 			score -= score_matrix.gap_open() + g.second * score_matrix.gap_extend();
 		}
-		cout << score << endl;
 	}
+
+	if (score != end_score)
+		throw std::runtime_error("Traceback error.");
 
 	out.query_range.begin_ = it.i + 1;
 	out.subject_range.begin_ = it.j + 1;
@@ -736,7 +739,7 @@ list<Hsp> swipe(
 			break;
 		typename Matrix::ColumnIterator it(dp.begin(band_offset, j));
 		_sv vgap = _sv(), hgap = _sv(), col_best = _sv();
-		Stat stat_v;
+		Stat stat_v = Stat();
 		RowCounter<_sv> row_counter(band_offset);
 
 		if (band_offset > 0)

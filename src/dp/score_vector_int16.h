@@ -313,11 +313,37 @@ struct ScoreTraits<score_vector<int16_t>>
 #if ARCH_ID == 2
 	enum { CHANNELS = 16 };
 	typedef uint16_t Mask;
-	typedef uint32_t TraceMask;
+	struct TraceMask {
+		uint32_t gap;
+		uint32_t open;
+		static uint32_t make(uint32_t vmask, uint32_t hmask) {
+			return (vmask & VMASK) | (hmask & HMASK);
+		}
+		static uint32_t vmask(int channel) {
+			return 2 << (2 * channel);
+		}
+		static uint32_t hmask(int channel) {
+			return 1 << (2 * channel);
+		}
+		static const uint32_t VMASK = 0xAAAAAAAAu, HMASK = 0x55555555u;
+	};
 #else
 	enum { CHANNELS = 8 };
 	typedef uint8_t Mask;
-	typedef uint16_t TraceMask;
+	struct TraceMask {
+		static uint16_t make(uint16_t vmask, uint16_t hmask) {
+			return (vmask & VMASK) | (hmask & HMASK);
+		}
+		static uint16_t vmask(int channel) {
+			return 2 << (2 * channel);
+		}
+		static uint16_t hmask(int channel) {
+			return 1 << (2 * channel);
+		}
+		uint16_t gap;
+		uint16_t open;
+		static const uint16_t VMASK = 0xAAAAu, HMASK = 0x5555u;
+	};
 #endif
 	typedef int16_t Score;
 	typedef uint16_t Unsigned;
