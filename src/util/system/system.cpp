@@ -123,7 +123,7 @@ double total_ram() {
 #ifdef WIN32
 	return 0.0;
 #else
-	sysinfo info;
+	struct sysinfo info;
 	if (sysinfo(&info) != 0)
 		return 0.0;
 	return (double)info.totalram / double(1 << 30);
