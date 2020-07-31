@@ -238,11 +238,15 @@ void run_query_chunk(DatabaseFile &db_file,
 
 	if (config.multiprocessing) {
 		auto work = P->get_stack(stack_align_todo);
+		P->create_stack_from_file(stack_align_wip, get_ref_part_file_name(stack_align_wip, query_chunk));
+		auto wip = P->get_stack(stack_align_wip);
 		P->create_stack_from_file(stack_align_done, get_ref_part_file_name(stack_align_done, query_chunk));
 		auto done = P->get_stack(stack_align_done);
 		string buf;
 
 		while (work->pop(buf)) {
+			wip->push(buf);
+
 			Chunk chunk = to_chunk(buf);
 
 			P->log("SEARCH BEGIN "+std::to_string(query_chunk)+" "+std::to_string(chunk.i));
@@ -258,9 +262,9 @@ void run_query_chunk(DatabaseFile &db_file,
 			if (size_after_push == db_file.get_n_partition_chunks()) {
 				mp_last_chunk = true;
 			}
+			wip->pop(buf);
 
 			P->log("SEARCH END "+std::to_string(query_chunk)+" "+std::to_string(chunk.i));
-
 			log_rss();
 		}
 	} else {
