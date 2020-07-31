@@ -44,7 +44,7 @@ struct TraceStat {
 template<typename _sv>
 struct RowCounter {
 	RowCounter(int offset):
-		i(ScoreTraits<_sv>::zero_score() + typename ScoreTraits<_sv>::Score(offset)),
+		i(::DISPATCH_ARCH::ScoreTraits<_sv>::zero_score() + typename ::DISPATCH_ARCH::ScoreTraits<_sv>::Score(offset)),
 		i_max()
 	{
 	}

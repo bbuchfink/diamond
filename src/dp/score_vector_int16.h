@@ -277,7 +277,13 @@ struct score_vector<int16_t>
 	}
 
 	friend score_vector blend(const score_vector &v, const score_vector &w, const score_vector &mask) {
+#ifdef __SSE4_1__
 		return score_vector(_mm_blendv_epi8(v.data_, w.data_, mask.data_));
+#else
+		__m128i a = _mm_andnot_si128(mask.data_, v.data_);
+		__m128i b = _mm_and_si128(mask.data_, w.data_);
+		return score_vector(_mm_or_si128(a, b));
+#endif
 	}
 
 	void store(int16_t *ptr) const
