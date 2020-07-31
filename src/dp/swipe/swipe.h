@@ -31,6 +31,10 @@ static inline uint8_t cmp_mask(int x, int y) {
 	return x == y;
 }
 
+static inline int blend(int v, int w, int mask) {
+	return mask ? w : v;
+}
+
 template<typename _sv>
 struct TraceStat {
 	_sv length;
