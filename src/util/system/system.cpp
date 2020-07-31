@@ -10,6 +10,7 @@
 #else
 #include <unistd.h>
 #include <sys/stat.h>
+#include <sys/sysinfo.h>
 #endif
 
 using std::string;
@@ -115,5 +116,16 @@ void reset_color() {
 	SetConsoleTextAttribute(hConsole, FOREGROUND_RED | FOREGROUND_BLUE | FOREGROUND_GREEN);
 #else
 	cout << "\033[" << 39 << 'm';
+#endif
+}
+
+double total_ram() {
+#ifdef WIN32
+	return 0.0;
+#else
+	sysinfo info;
+	if (sysinfo(&info) != 0)
+		return 0.0;
+	return (double)info.totalram / double(1 << 30);
 #endif
 }

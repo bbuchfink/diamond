@@ -34,6 +34,7 @@ const vector<TestCase> test_cases = {
 { "blastp (max-hsps)", "blastp --more-sensitive -c1 -p4 --max-hsps 0" },
 { "blastp (target-parallel)", "blastp --more-sensitive -c1 -p4 --query-parallel-limit 1" },
 { "blastp (query-indexed)", "blastp --more-sensitive -c1 -p4 --algo 1" },
+{ "blastp (comp-based-stats)", "blastp --more-sensitive -c1 -p4 --comp-based-stats 0" },
 { "blastp (target seqs)", "blastp -k3 -c1 -p4" },
 { "blastp (top)", "blastp --top 10 -p4"},
 { "blastp (evalue)", "blastp -e10000 --more-sensitive -c1 -p4" },

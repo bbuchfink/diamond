@@ -100,16 +100,26 @@ static inline _sv swipe_cell_update(const _sv &diagonal_cell,
 	typename ::DISPATCH_ARCH::ScoreTraits<_sv>::TraceMask *trace_mask,
 	RowCounter<_sv>& row_counter)
 {
+	typedef typename ::DISPATCH_ARCH::ScoreTraits<_sv>::TraceMask TraceMask;
 	using std::max;
 	_sv current_cell = max(diagonal_cell + scores, vertical_gap);
 	current_cell = max(current_cell, horizontal_gap);
 	::DISPATCH_ARCH::ScoreTraits<_sv>::saturate(current_cell);
+
+	trace_mask->gap = TraceMask::make(cmp_mask(current_cell, vertical_gap), cmp_mask(current_cell, horizontal_gap));
+
 	best = max(best, current_cell);
+	row_counter.i_max = blend(row_counter.i_max, row_counter.i, best == current_cell);
+	row_counter.i += _sv(typename ::DISPATCH_ARCH::ScoreTraits<_sv>::Score(1));
+
 	vertical_gap -= gap_extension;
 	horizontal_gap -= gap_extension;
 	const _sv open = current_cell - gap_open;
 	vertical_gap = max(vertical_gap, open);
 	horizontal_gap = max(horizontal_gap, open);
+
+	trace_mask->open = TraceMask::make(cmp_mask(vertical_gap, open), cmp_mask(horizontal_gap, open));
+
 	return current_cell;
 }
 
@@ -226,7 +236,6 @@ static inline _sv swipe_cell_update(const _sv& diagonal_cell,
 	RowCounter<_sv> &row_counter)
 {
 	typedef typename ::DISPATCH_ARCH::ScoreTraits<_sv>::TraceMask TraceMask;
-	static const uint32_t VMASK = 0xAAAAAAAAu, HMASK = 0x55555555u;
 	using std::max;
 	_sv current_cell = diagonal_cell + (scores + query_bias);
 	current_cell = max(max(current_cell, vertical_gap), horizontal_gap);

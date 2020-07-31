@@ -24,7 +24,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../dp/hsp_traits.h"
 #include "../dp/comp_based_stats.h"
 
-std::pair<int, std::list<Hsp_traits>> greedy_align(sequence query, const Bias_correction &query_bc, sequence subject, std::vector<Diagonal_segment>::const_iterator begin, std::vector<Diagonal_segment>::const_iterator end, bool log, unsigned frame);
+std::pair<int, std::list<Hsp_traits>> greedy_align(sequence query, sequence subject, std::vector<Diagonal_segment>::const_iterator begin, std::vector<Diagonal_segment>::const_iterator end, bool log, unsigned frame);
 
 struct Diagonal_node : public Diagonal_segment
 {

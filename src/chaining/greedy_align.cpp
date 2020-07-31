@@ -591,17 +591,17 @@ struct Greedy_aligner2
 		return run(hsps, ts, 0.1, 19, band);
 	}
 
-	Greedy_aligner2(const sequence &query, const Bias_correction &query_bc, const sequence &subject, bool log, unsigned frame) :
+	Greedy_aligner2(const sequence &query, const sequence &subject, bool log, unsigned frame) :
 		query(query),
 		subject(subject),
-		query_bc(query_bc),
+		//query_bc(query_bc),
 		log(log),
 		frame(frame)
 	{
 	}
 
 	const sequence query, subject;
-	const Bias_correction &query_bc;
+	//const Bias_correction &query_bc;
 	const bool log;
 	const unsigned frame;
 	static thread_local Diag_graph diags;
@@ -612,10 +612,10 @@ struct Greedy_aligner2
 thread_local Diag_graph Greedy_aligner2::diags;
 thread_local map<int, unsigned> Greedy_aligner2::window;
 
-std::pair<int, list<Hsp_traits>> greedy_align(sequence query, const Bias_correction &query_bc, sequence subject, vector<Diagonal_segment>::const_iterator begin, vector<Diagonal_segment>::const_iterator end, bool log, unsigned frame)
+std::pair<int, list<Hsp_traits>> greedy_align(sequence query, sequence subject, vector<Diagonal_segment>::const_iterator begin, vector<Diagonal_segment>::const_iterator end, bool log, unsigned frame)
 {
 	const int band = config.chaining_maxgap;
-	Greedy_aligner2 ga(query, query_bc, subject, log, frame);
+	Greedy_aligner2 ga(query, subject, log, frame);
 	list<Hsp> hsps;
 	list<Hsp_traits> ts;
 	int score = ga.run(hsps, ts, begin, end, band);

@@ -1,6 +1,8 @@
 [2.0.1]
+- Fixed an issue that could cause increased memory usage and runtimes for very long queries.
+- Fixed a bug that could cause a crash when using `--comp-based-stats 0`.
 - Fixed a bug that could cause filtering hits for identity or range cover not to function correctly when using
-  the tabular format without hit coordinate or identity fields.
+  the tabular format without traceback being enabled.
 
 [2.0.0]
 - Added the sensitivity modes `--very-sensitive` and `--ultra-sensitive`.

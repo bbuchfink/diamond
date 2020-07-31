@@ -16,6 +16,7 @@ size_t getCurrentRSS();
 size_t getPeakRSS();
 void log_rss();
 size_t file_size(const char* name);
+double total_ram();
 
 #ifdef _MSC_VER
 #define POPEN _popen

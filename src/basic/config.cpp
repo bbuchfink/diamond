@@ -44,6 +44,17 @@ using namespace std;
 
 Config config;
 
+void print_warnings() {
+	if (config.sensitivity >= Sensitivity::VERY_SENSITIVE)
+		return;
+	const double ram = total_ram();
+	int b = 0, c = 4;
+	if (ram >= 63) {
+	} else if (ram >= 31) {
+		b = 4;
+	}
+}
+
 void Config::set_sens(Sensitivity sens) {
 	if (sensitivity != Sensitivity::FAST)
 		throw std::runtime_error("Sensitivity switches are mutually exclusive.");
