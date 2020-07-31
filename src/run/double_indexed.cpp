@@ -298,7 +298,18 @@ void run_query_chunk(DatabaseFile &db_file,
 		if (config.multiprocessing) {
 
 			if (mp_last_chunk) {
+				P->create_stack_from_file(stack_join_todo, get_ref_part_file_name(stack_join_todo, query_chunk));
+				auto work = P->get_stack(stack_join_todo);
 
+				P->create_stack_from_file(stack_join_wip, get_ref_part_file_name(stack_join_wip, query_chunk));
+				auto wip = P->get_stack(stack_join_wip);
+
+				P->create_stack_from_file(stack_join_done, get_ref_part_file_name(stack_join_done, query_chunk));
+				auto done = P->get_stack(stack_join_done);
+				string buf;
+
+				work->pop(buf);
+				wip->push(buf);
 				P->log("JOIN BEGIN "+std::to_string(query_chunk));
 
 				current_ref_block = db_file.get_n_partition_chunks();
@@ -331,6 +342,8 @@ void run_query_chunk(DatabaseFile &db_file,
 					std::remove(f.c_str());
 				}
 
+				done->push(buf);
+				wip->pop(buf);
 				P->log("JOIN END "+std::to_string(query_chunk));
 			}
 			P->delete_stack(stack_align_done);
