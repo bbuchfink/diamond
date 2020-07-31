@@ -567,7 +567,7 @@ size_t DatabaseFile::get_n_partition_chunks() {
 
 void DatabaseFile::save_partition(const string & partition_file_name, const string & annotation) {
 	ofstream out(partition_file_name);
-	cout << "WRITING " << partition_file_name << endl;
+	// cout << "WRITING " << partition_file_name << endl;
 	for (auto i : partition.chunks) {
 		out << to_string(i);
 		if (annotation.size() > 0) {

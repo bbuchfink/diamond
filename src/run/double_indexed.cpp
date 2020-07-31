@@ -424,10 +424,10 @@ void master_thread(DatabaseFile *db_file, task_timer &total_timer, Metadata &met
 		for (size_t i=0; i<current_query_chunk; ++i) {
 			const string annotation = "# query_chunk=" + std::to_string(i);
 			db_file->save_partition(get_ref_part_file_name(stack_align_todo, i), annotation);
-			auto tag = get_ref_part_file_name(stack_join_todo, i);
-			P->create_stack(tag);
-			P->get_stack(tag)->push("TOKEN");
-			P->delete_stack(tag);
+
+			P->create_stack_from_file(stack_join_todo, get_ref_part_file_name(stack_join_todo, i));
+			P->get_stack(stack_join_todo)->push("TOKEN");
+			P->delete_stack(stack_join_todo);
 		}
 
 		return;
