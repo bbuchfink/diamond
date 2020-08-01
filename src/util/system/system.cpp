@@ -10,7 +10,9 @@
 #else
 #include <unistd.h>
 #include <sys/stat.h>
+#ifndef __APPLE__
 #include <sys/sysinfo.h>
+#endif
 #endif
 
 using std::string;
@@ -125,7 +127,7 @@ void reset_color(bool err) {
 }
 
 double total_ram() {
-#ifdef WIN32
+#if defined(WIN32) || defined(__APPLE__)
 	return 0.0;
 #else
 	struct sysinfo info;
