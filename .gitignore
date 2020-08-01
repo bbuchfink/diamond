@@ -55,3 +55,4 @@ diamond
 src/extra/
 .vs/
 CMakeSettings.json
+.unison

@@ -3,7 +3,7 @@ DIAMOND protein aligner
 Copyright (C) 2013-2020 Max Planck Society for the Advancement of Science e.V.
                         Benjamin Buchfink
                         Eberhard Karls Universitaet Tuebingen
-						
+
 Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
 
 This program is free software: you can redistribute it and/or modify
@@ -26,6 +26,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <iterator>
 #include <map>
 #include <memory>
+#include <algorithm>
+#include <cmath>
 #include "../basic/config.h"
 #include "reference.h"
 #include "load_seqs.h"
@@ -39,6 +41,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "taxonomy_nodes.h"
 #include "../util/algo/MurmurHash3.h"
 #include "../util/io/record_reader.h"
+#include "../util/parallel/multiprocessing.h"
 
 String_set<char, '\0'>* ref_ids::data_ = 0;
 Partitioned_histogram ref_hst;
@@ -168,7 +171,7 @@ void DatabaseFile::rewind()
 }
 
 void push_seq(const sequence &seq, const char *id, size_t id_len, uint64_t &offset, vector<Pos_record> &pos_array, OutputFile &out, size_t &letters, size_t &n_seqs)
-{	
+{
 	pos_array.emplace_back(offset, seq.length());
 	out.write("\xff", 1);
 	out.write(seq.data(), seq.length());
@@ -188,11 +191,11 @@ void make_db(TempFile **tmp_out, TextInputFile *input_file)
 		std::cerr << "Input file parameter (--in) is missing. Input will be read from stdin." << endl;
 	if(!input_file && !input_file_name.empty())
 		message_stream << "Database input file: " << input_file_name << endl;
-	
+
 	task_timer total;
 	task_timer timer("Opening the database file", true);
 	TextInputFile *db_file = input_file ? input_file : new TextInputFile(input_file_name);
-	
+
 	OutputFile *out = tmp_out ? new TempFile() : new OutputFile(config.database);
 	ReferenceHeader header;
 	ReferenceHeader2 header2;
@@ -244,7 +247,7 @@ void make_db(TempFile **tmp_out, TextInputFile *input_file)
 	}
 
 	timer.finish();
-	
+
 	timer.go("Writing trailer");
 	header.pos_array_offset = offset;
 	pos_array.emplace_back(offset, 0);
@@ -272,7 +275,7 @@ void make_db(TempFile **tmp_out, TextInputFile *input_file)
 		db_file->close();
 		delete db_file;
 	}
-	
+
 	timer.go("Closing the database file");
 	header.letters = letters;
 	header.sequences = n_seqs;
@@ -304,32 +307,54 @@ void DatabaseFile::seek_direct() {
 	seek(sizeof(ReferenceHeader) + sizeof(ReferenceHeader2) + 8);
 }
 
-bool DatabaseFile::load_seqs(vector<unsigned> &block_to_database_id, size_t max_letters, Sequence_set **dst_seq, String_set<char, 0> **dst_id, bool load_ids, const vector<bool> *filter)
+bool DatabaseFile::load_seqs(vector<unsigned> &block_to_database_id, const size_t max_letters,
+	Sequence_set **dst_seq, String_set<char, 0> **dst_id, bool load_ids, const vector<bool> *filter, const bool fetch_seqs, const Chunk & chunk)
 {
 	task_timer timer("Loading reference sequences");
-	seek(pos_array_offset);
+
+	if (max_letters > 0) {
+		seek(pos_array_offset);
+	} else {
+		current_ref_block = chunk.i;
+		seek(chunk.offset);
+	}
+
 	size_t database_id = tell_seq();
 	size_t letters = 0, seqs = 0, id_letters = 0, seqs_processed = 0;
 	vector<uint64_t> filtered_pos;
 	block_to_database_id.clear();
 
-	*dst_seq = new Sequence_set;
-	if(load_ids) *dst_id = new String_set<char, 0>;
+	if (fetch_seqs) {
+		*dst_seq = new Sequence_set;
+		if(load_ids) *dst_id = new String_set<char, 0>;
+	}
 
 	Pos_record r;
 	(*this) >> r;
 	uint64_t start_offset = r.pos;
 	bool last = false;
 
-	while (r.seq_len > 0 && letters < max_letters) {
+	auto goon = [&] () {
+		if (max_letters > 0)
+			return (r.seq_len > 0 && letters < max_letters);
+		else
+			return (seqs < chunk.n_seqs);
+	};
+
+	// while (r.seq_len > 0 && letters < max_letters) {
+	while (goon()) {
 		Pos_record r_next;
 		(*this) >> r_next;
 		if (!filter || (*filter)[database_id]) {
 			letters += r.seq_len;
-			(*dst_seq)->reserve(r.seq_len);
+			if (fetch_seqs) {
+				(*dst_seq)->reserve(r.seq_len);
+			}
 			const size_t id_len = r_next.pos - r.pos - r.seq_len - 3;
 			id_letters += id_len;
-			if (load_ids) (*dst_id)->reserve(id_len);
+			if (fetch_seqs) {
+				if (load_ids) (*dst_id)->reserve(id_len);
+			}
 			++seqs;
 			block_to_database_id.push_back((unsigned)database_id);
 			if (filter) filtered_pos.push_back(last ? 0 : r.pos);
@@ -344,34 +369,42 @@ bool DatabaseFile::load_seqs(vector<unsigned> &block_to_database_id, size_t max_
 	}
 
 	if (seqs == 0) {
-		delete (*dst_seq);
-		(*dst_seq) = NULL;
-		if (load_ids) delete (*dst_id);
-		(*dst_id) = NULL;
+		if (fetch_seqs) {
+			delete (*dst_seq);
+			(*dst_seq) = NULL;
+			if (load_ids) delete (*dst_id);
+			(*dst_id) = NULL;
+		}
 		return false;
 	}
 
-	(*dst_seq)->finish_reserve();
-	if(load_ids) (*dst_id)->finish_reserve();
-	seek(start_offset);
+	if (fetch_seqs) {
+		(*dst_seq)->finish_reserve();
+		if(load_ids) (*dst_id)->finish_reserve();
+		seek(start_offset);
 
-	for (size_t n = 0; n < seqs; ++n) {
-		if (filter && filtered_pos[n]) seek(filtered_pos[n]);
-		read((*dst_seq)->ptr(n) - 1, (*dst_seq)->length(n) + 2);
-		*((*dst_seq)->ptr(n) - 1) = sequence::DELIMITER;
-		*((*dst_seq)->ptr(n) + (*dst_seq)->length(n)) = sequence::DELIMITER;
-		if (load_ids)
-			read((*dst_id)->ptr(n), (*dst_id)->length(n) + 1);
-		else
-			if (!seek_forward('\0')) throw std::runtime_error("Unexpected end of file.");
-		Masking::get().remove_bit_mask((*dst_seq)->ptr(n), (*dst_seq)->length(n));
-		if (!config.sfilt.empty() && strstr((**dst_id)[n], config.sfilt.c_str()) == 0)
-			memset((*dst_seq)->ptr(n), value_traits.mask_char, (*dst_seq)->length(n));
+		for (size_t n = 0; n < seqs; ++n) {
+			if (filter && filtered_pos[n]) seek(filtered_pos[n]);
+			read((*dst_seq)->ptr(n) - 1, (*dst_seq)->length(n) + 2);
+			*((*dst_seq)->ptr(n) - 1) = sequence::DELIMITER;
+			*((*dst_seq)->ptr(n) + (*dst_seq)->length(n)) = sequence::DELIMITER;
+			if (load_ids)
+				read((*dst_id)->ptr(n), (*dst_id)->length(n) + 1);
+			else
+				if (!seek_forward('\0')) throw std::runtime_error("Unexpected end of file.");
+			Masking::get().remove_bit_mask((*dst_seq)->ptr(n), (*dst_seq)->length(n));
+			if (!config.sfilt.empty() && strstr((**dst_id)[n], config.sfilt.c_str()) == 0)
+				memset((*dst_seq)->ptr(n), value_traits.mask_char, (*dst_seq)->length(n));
+		}
+		timer.finish();
+		(*dst_seq)->print_stats();
 	}
-	timer.finish();
-	(*dst_seq)->print_stats();
 
-	blocked_processing = seqs_processed < ref_header.sequences;
+	if (config.multiprocessing)
+		blocked_processing = true;
+	else
+		blocked_processing = seqs_processed < ref_header.sequences;
+
 	return true;
 }
 
@@ -474,4 +507,98 @@ DatabaseFile* DatabaseFile::auto_create_from_fasta() {
 	}
 	else
 		return new DatabaseFile(config.database);
+}
+
+void DatabaseFile::create_partition_fixednumber(size_t n) {
+	size_t max_letters_balanced = static_cast<size_t>(std::ceil(static_cast<double>(ref_header.letters)/static_cast<double>(n)));
+	cout << "Fixed number partitioning using " << max_letters_balanced << " (" << n << ")" << endl;
+	this->create_partition(max_letters_balanced);
+}
+
+void DatabaseFile::create_partition_balanced(size_t max_letters) {
+	double n = std::ceil(static_cast<double>(ref_header.letters) / static_cast<double>(max_letters));
+	size_t max_letters_balanced = static_cast<size_t>(std::ceil(static_cast<double>(ref_header.letters)/n));
+	cout << "Balanced partitioning using " << max_letters_balanced << " (" << max_letters << ")" << endl;
+	this->create_partition(max_letters_balanced);
+}
+
+void DatabaseFile::create_partition(size_t max_letters) {
+	task_timer timer("Create partition of DatabaseFile");
+	size_t letters = 0, seqs = 0, total_seqs = 0;
+	size_t i_chunk = 0;
+
+	rewind();
+	seek(pos_array_offset);
+
+	Pos_record r, r_next;
+	size_t pos;
+	bool first = true;
+
+	read(&r, 1);
+	while (r.seq_len) {
+		if (first) {
+			pos = pos_array_offset;
+			first = false;
+		}
+		letters += r.seq_len;
+		++seqs;
+		++total_seqs;
+		read(&r_next, 1);
+		if ((letters > max_letters) || (r_next.seq_len == 0)) {
+			partition.chunks.push_back(Chunk(i_chunk, pos, seqs));
+			first = true;
+			seqs = 0;
+			letters = 0;
+			++i_chunk;
+		}
+		pos_array_offset += sizeof(Pos_record);
+		r = r_next;
+	}
+
+	reverse(partition.chunks.begin(), partition.chunks.end());
+
+	partition.max_letters = max_letters;
+	partition.n_seqs_total = total_seqs;
+}
+
+size_t DatabaseFile::get_n_partition_chunks() {
+	return partition.chunks.size();
+}
+
+void DatabaseFile::save_partition(const string & partition_file_name, const string & annotation) {
+	ofstream out(partition_file_name);
+	// cout << "WRITING " << partition_file_name << endl;
+	for (auto i : partition.chunks) {
+		out << to_string(i);
+		if (annotation.size() > 0) {
+			out << " " << annotation;
+		}
+		out << endl;
+	}
+}
+
+Chunk to_chunk(const string & line) {
+	vector<string> tokens = split(line, ' ');
+	return Chunk(stoull(tokens[0]), stoull(tokens[1]), stoull(tokens[2]));
+}
+
+string to_string(const Chunk & c) {
+	const string buf = to_string(c.i) + " " + to_string(c.offset) + " " + to_string(c.n_seqs);
+	return buf;
+}
+
+void DatabaseFile::load_partition(const string & partition_file_name) {
+	string line;
+	ifstream in(partition_file_name);
+	clear_partition();
+	while (getline(in, line)) {
+		auto chunk = to_chunk(line);
+		partition.chunks.push_back(chunk);
+	}
+}
+
+void DatabaseFile::clear_partition() {
+	partition.max_letters = 0;
+	partition.n_seqs_total = 0;
+	partition.chunks.clear();
 }

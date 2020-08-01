@@ -26,6 +26,7 @@ struct TempFile : public OutputFile
 {
 
 	TempFile(bool unlink = true);
+	TempFile(const std::string & file_name);
 	virtual void finalize() override {}
 	static std::string get_temp_dir();
 	static unsigned n;

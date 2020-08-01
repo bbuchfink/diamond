@@ -22,6 +22,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <stdint.h>
 #include <stdexcept>
 #include <vector>
+#include <unordered_map>
 #include <mutex>
 #include <string>
 #include "../util/ptr_vector.h"
@@ -60,7 +61,7 @@ struct ReferenceDictionary
 	}
 
 	//void init_rev_map();
-	
+
 	unsigned database_id(unsigned dict_id) const
 	{
 		return config.no_dict ? 0 : database_id_[dict_id];
@@ -83,17 +84,35 @@ struct ReferenceDictionary
 		return instance_;
 	}
 
+	static ReferenceDictionary& get(int block)
+	{
+		return block_instances_[block];
+	}
+
+
+
 	uint32_t seqs() const
 	{
 		return next_;
 	}
 
+	void clear_block(size_t block);
+	void clear_block_instances();
+
+	void save_block(size_t query, size_t block);
+	void load_block(size_t query, size_t block, ReferenceDictionary & d);
+	void restore_blocks(size_t query, size_t n_blocks);
+
 private:
 
 	static ReferenceDictionary instance_;
+	static std::unordered_map<size_t,ReferenceDictionary> block_instances_;
 
 	std::mutex mtx_;
-	vector<vector<uint32_t> > data_;
+
+	vector<vector<uint32_t>> data_;
+	// vector<vector<uint32_t>> init_data_;
+
 	vector<uint32_t> len_, database_id_;
 	PtrVector<string> name_;
 	//vector<uint32_t> rev_map_;

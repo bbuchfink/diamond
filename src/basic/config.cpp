@@ -3,7 +3,7 @@ DIAMOND protein aligner
 Copyright (C) 2013-2020 Max Planck Society for the Advancement of Science e.V.
                         Benjamin Buchfink
                         Eberhard Karls Universitaet Tuebingen
-						
+
 Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
 
 This program is free software: you can redistribute it and/or modify
@@ -21,6 +21,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #include <memory>
+#include <cstdlib>
+#include <sys/stat.h>
 #include <exception>
 #include <iomanip>
 #include "../util/command_line_parser.h"
@@ -40,6 +42,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "masking.h"
 #include "../util/system/system.h"
 #include "../util/simd.h"
+#include "../util/parallel/multiprocessing.h"
 
 using namespace std;
 
@@ -223,6 +226,7 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("block-size", 'b', "sequence block size in billions of letters (default=2.0)", chunk_size)
 		("index-chunks", 'c', "number of chunks for index processing (default=4)", lowmem)
 		("tmpdir", 't', "directory for temporary files", tmpdir)
+		("parallel-tmpdir", 0, "directory for temporary files used by multiprocessing", parallel_tmpdir)
 		("gapopen", 0, "gap open penalty", gap_open, -1)
 		("gapextend", 0, "gap extension penalty", gap_extend, -1)
 		("frameshift", 'F', "frame shift penalty (default=disabled)", frame_shift)
@@ -251,6 +255,12 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("band", 0, "band for dynamic programming computation", padding)
 		("shapes", 's', "number of seed shapes (default=all available)", shapes)
 		("shape-mask", 0, "seed shapes", shape_mask)
+		("multiprocessing", 0, "enable distributed-memory parallel processing", multiprocessing)
+		("mp-init", 0, "initialize multiprocessing run", mp_init)
+		// ("rank-ratio", 0, "include subjects within this ratio of last hit (stage 1)", rank_ratio, -1.0)
+		// ("rank-ratio2", 0, "include subjects within this ratio of last hit (stage 2)", rank_ratio2, -1.0)
+		// ("max-hsps", 0, "maximum number of HSPs per subject sequence to save for each query", max_hsps, 0u)
+		// ("culling-overlap", 0, "minimum range overlap with higher scoring hit to delete a hit (0.5)", inner_culling_overlap, 50.0)
 		("rank-ratio", 0, "include subjects within this ratio of last hit", rank_ratio, -1.0)
 		("ext-chunk-size", 0, "chunk size for adaptive ranking (default=400)", ext_chunk_size, (size_t)400)
 		("ext", 0, "Extension mode (banded-fast/banded-slow)", ext)
@@ -562,7 +572,7 @@ Config::Config(int argc, const char **argv, bool check_io)
 		|| command == Config::mask || command == Config::cluster || command == Config::compute_medoids || command == Config::regression_test) {
 		if (tmpdir == "")
 			tmpdir = extract_dir(output_file);
-		
+
 		init_cbs();
 		raw_ungapped_xdrop = score_matrix.rawscore(ungapped_xdrop);
 		verbose_stream << "CPU features detected: " << SIMD::features() << endl;
@@ -604,6 +614,28 @@ Config::Config(int argc, const char **argv, bool check_io)
 
 	if (query_range_culling && taxon_k != 0)
 		throw std::runtime_error("--taxon-k is not supported for --range-culling mode.");
+
+	if (parallel_tmpdir == "") {
+		parallel_tmpdir = tmpdir;
+	} else {
+#ifndef WIN32
+		if (multiprocessing) {
+			// char * env_str = std::getenv("SLURM_JOBID");
+			// if (env_str) {
+			// 	parallel_tmpdir = join_path(parallel_tmpdir, "diamond_job_"+string(env_str));
+			// }
+			errno = 0;
+			int s = mkdir(parallel_tmpdir.c_str(), 00770);
+			if (s != 0) {
+				if (errno == EEXIST) {
+					// directory did already exist
+				} else {
+					throw(std::runtime_error("could not create parallel temporary directory " + parallel_tmpdir));
+				}
+			}
+		}
+#endif
+	}
 
 	log_stream << "MAX_SHAPE_LEN=" << MAX_SHAPE_LEN;
 #ifdef SEQ_MASK

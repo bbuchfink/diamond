@@ -16,14 +16,20 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
+#include <string>
+// #include <sstream>
+// #include <iomanip>
+#include <cstdio>
 #include <utility>
 #include "reference.h"
 #include "ref_dictionary.h"
 #include "../util/util.h"
+#include "../util/parallel/multiprocessing.h"
 
 using std::pair;
 
 ReferenceDictionary ReferenceDictionary::instance_;
+std::unordered_map<size_t,ReferenceDictionary> ReferenceDictionary::block_instances_;
 
 string* get_allseqids(const char *s)
 {
@@ -44,6 +50,14 @@ void ReferenceDictionary::clear()
 	database_id_.clear();
 	name_.clear();
 	next_ = 0;
+}
+
+void ReferenceDictionary::clear_block_instances()
+{
+	for (std::unordered_map<size_t,ReferenceDictionary>::iterator it = block_instances_.begin(); it != block_instances_.end(); it++) {
+		it->second.clear();
+	}
+	block_instances_.clear();
 }
 
 void ReferenceDictionary::init(unsigned ref_count, const vector<unsigned> &block_to_database_id)
@@ -120,3 +134,53 @@ void ReferenceDictionary::build_lazy_dict(DatabaseFile &db_file)
 	}
 }
 */
+
+string _get_file_name(size_t query, size_t block) {
+	const string file_name = append_label("ref_dict_", query) + append_label("_", block);
+	return join_path(config.parallel_tmpdir, file_name);
+}
+
+void ReferenceDictionary::save_block(size_t query, size_t block) {
+	const string o_file = _get_file_name(query, block);
+	std::ofstream os(o_file, std::ios::out | std::ios::trunc | std::ios::binary);
+	save_scalar(os, next_);
+	save_vector(os, len_);
+	save_vector(os, database_id_);
+	size_t sz = name_.size();
+	save_scalar(os, sz);
+	for (auto i = name_.begin(); i < name_.end(); ++i) {
+		save_vector(os, **i);
+	}
+}
+
+void ReferenceDictionary::load_block(size_t query, size_t block, ReferenceDictionary & d) {
+	const string i_file = _get_file_name(query, block);
+	std::ifstream is(i_file, std::ios::in | std::ios::binary);
+	load_scalar(is, d.next_);
+	load_vector(is, d.len_);
+	load_vector(is, d.database_id_);
+	size_t sz;
+	load_scalar(is, sz);
+	for (size_t i = 0; i < sz; ++i) {
+		string * buf = new string();
+		load_string(is, *buf);
+		d.name_.push_back(buf);
+	}
+	is.close();
+	std::remove(i_file.c_str());
+}
+
+void ReferenceDictionary::restore_blocks(size_t query, size_t n_blocks) {
+	for (size_t i = 0; i < n_blocks; ++i) {
+		ReferenceDictionary & d = block_instances_[i];
+		load_block(query, i, d);
+	}
+}
+
+void ReferenceDictionary::clear_block(size_t block) {
+	len_.clear();
+	name_.clear();
+	database_id_.clear();
+	data_[block].clear();
+	next_ = 0;
+}

@@ -73,7 +73,7 @@ if (${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
   add_definitions(-D_CRT_SECURE_NO_WARNINGS -D_ITERATOR_DEBUG_LEVEL=0)
 else()
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=gnu++11 -Wall -Wextra -Wno-implicit-fallthrough -Wreturn-type -Wno-unused -Wno-unused-parameter -Wno-unused-variable -Wno-uninitialized -Wno-deprecated-copy -Wno-unknown-warning-option")
-  # -fsanitize=address -fno-omit-frame-pointer 
+  # -fsanitize=address -fno-omit-frame-pointer
 endif()
 
 if (CMAKE_COMPILER_IS_GNUCC AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 5)
@@ -123,7 +123,7 @@ set(OBJECTS
   src/output/daa_record.cpp
   src/util/command_line_parser.cpp
   src/util/seq_file_format.cpp
-  src/util/util.cpp 
+  src/util/util.cpp
   src/basic/basic.cpp
   src/basic/hssp.cpp
   src/dp/ungapped_align.cpp
@@ -206,6 +206,9 @@ set(OBJECTS
   src/tools/merge_tsv.cpp
   src/output/xml_format.cpp
   src/align/gapped_filter.cpp
+  src/util/parallel/filestack.cpp
+  src/util/parallel/parallelizer.cpp
+  src/util/parallel/multiprocessing.cpp
   src/tools/benchmark_io.cpp
 )
 
