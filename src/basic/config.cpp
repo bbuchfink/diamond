@@ -46,7 +46,7 @@ using namespace std;
 Config config;
 
 void print_warnings() {
-	if (config.sensitivity >= Sensitivity::VERY_SENSITIVE)
+	if (config.sensitivity >= Sensitivity::VERY_SENSITIVE || config.verbosity == 0)
 		return;
 	const double ram = total_ram();
 	int b = 2, c = 4;
@@ -64,9 +64,9 @@ void print_warnings() {
 	} else if (ram >= 31) {
 		b = 4;
 	}
-	if (b > 2) {
+	if ((b > 2 && b > config.chunk_size) || c < config.lowmem) {
 		set_color(Color::YELLOW, true);
-		cerr << "The host system is detected to have " << std::setprecision(1) << " GB of RAM. It is recommended to adjust the block size for better performance using these parameters: -b" << b;
+		cerr << "The host system is detected to have " << std::setprecision(1) << ram << " GB of RAM. It is recommended to increase the block size for better performance using these parameters: -b" << b;
 		if (c != 4)
 			cerr << " -c" << c;
 		cerr << endl;

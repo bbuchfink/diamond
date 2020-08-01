@@ -106,7 +106,7 @@ void set_color(Color color, bool err) {
 		s << 32;
 		break;
 	case Color::YELLOW:
-		s << "1; 33";
+		s << "1;33";
 		break;
 	default:
 		break;
@@ -120,7 +120,7 @@ void reset_color(bool err) {
 	HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
 	SetConsoleTextAttribute(hConsole, FOREGROUND_RED | FOREGROUND_BLUE | FOREGROUND_GREEN);
 #else
-	(err ? cerr : cout) << "\033[" << 39 << 'm';
+	(err ? cerr : cout) << "\033[" << "0;39" << 'm';
 #endif
 }
 
