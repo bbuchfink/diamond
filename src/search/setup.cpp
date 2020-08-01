@@ -116,6 +116,8 @@ void setup_search()
 		::shapes = shape_config(config.index_mode, config.shapes, config.shape_mask);
 	}
 
+	print_warnings();
+
 	SeedComplexity::init(Reduction::reduction);
 
 	message_stream << "Algorithm: " << (config.algo == Config::double_indexed ? "Double-indexed" : "Query-indexed") << endl;

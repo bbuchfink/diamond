@@ -336,8 +336,6 @@ void run(const Options &options)
 	else
 		Config::set_option(config.chunk_size, 2.0);
 
-	print_warnings();
-
 	task_timer timer("Opening the database", 1);
 	DatabaseFile *db_file = options.db ? options.db : DatabaseFile::auto_create_from_fasta();
 	timer.finish();
