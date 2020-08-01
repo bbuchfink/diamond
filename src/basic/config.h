@@ -285,4 +285,5 @@ struct Config
 	static void set_option(_t& option, _t value, _t def = 0) { if (option == def) option = value; }
 };
 
+void print_warnings();
 extern Config config;

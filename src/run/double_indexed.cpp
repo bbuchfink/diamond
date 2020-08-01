@@ -320,6 +320,7 @@ void master_thread(DatabaseFile *db_file, task_timer &total_timer, Metadata &met
 	log_rss();
 	message_stream << "Total time = " << total_timer.get() << "s" << endl;
 	statistics.print();
+	print_warnings();
 }
 
 void run(const Options &options)
@@ -334,6 +335,8 @@ void run(const Options &options)
 		Config::set_option(config.chunk_size, 0.4);
 	else
 		Config::set_option(config.chunk_size, 2.0);
+
+	print_warnings();
 
 	task_timer timer("Opening the database", 1);
 	DatabaseFile *db_file = options.db ? options.db : DatabaseFile::auto_create_from_fasta();

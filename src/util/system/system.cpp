@@ -80,7 +80,7 @@ void log_rss() {
 	log_stream << "Current RSS: " << convert_size(getCurrentRSS()) << ", Peak RSS: " << convert_size(getPeakRSS()) << endl;
 }
 
-void set_color(Color color) {
+void set_color(Color color, bool err) {
 #ifdef WIN32
 	HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
 	WORD c = FOREGROUND_RED | FOREGROUND_BLUE | FOREGROUND_GREEN;
@@ -95,27 +95,31 @@ void set_color(Color color) {
 	}
 	SetConsoleTextAttribute(hConsole, c);
 #else
-	cout << "\033[";
+	auto &s = err ? cerr : cout;
+	s << "\033[";
 	switch (color) {
 	case Color::RED:
-		cout << 31;
+		s << 31;
 		break;
 	case Color::GREEN:
-		cout << 32;
+		s << 32;
+		break;
+	case Color::YELLOW:
+		s << "1; 33";
 		break;
 	default:
 		break;
 	}
-	cout << 'm';
+	s << "m";
 #endif
 }
 
-void reset_color() {
+void reset_color(bool err) {
 #ifdef WIN32
 	HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
 	SetConsoleTextAttribute(hConsole, FOREGROUND_RED | FOREGROUND_BLUE | FOREGROUND_GREEN);
 #else
-	cout << "\033[" << 39 << 'm';
+	(err ? cerr : cout) << "\033[" << 39 << 'm';
 #endif
 }
 

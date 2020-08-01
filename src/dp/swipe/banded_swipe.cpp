@@ -603,7 +603,7 @@ Hsp traceback(const sequence &query, Frame frame, _cbs bias_correction, const Tr
 {
 	typedef typename ScoreTraits<_sv>::Score Score;
 	typedef typename ScoreTraits<_sv>::TraceMask TraceMask;
-	const decltype(TraceMask::gap) channel_mask = TraceMask::vmask(channel) | TraceMask::hmask(channel);
+	const auto channel_mask = TraceMask::vmask(channel) | TraceMask::hmask(channel);
 	const int j0 = i1 - (target.d_end - 1), d1 = target.d_end;
 	typename TracebackVectorMatrix<_sv>::TracebackIterator it(dp.traceback(max_col + 1, i0 + max_col, max_band_i, j0 + max_col, (int)query.length(), channel));
 	Hsp out;

@@ -1,6 +1,7 @@
 [2.0.1]
 - Fixed an issue that could cause increased memory usage and runtimes for very long queries.
 - Fixed a bug that could cause a crash when using `--comp-based-stats 0`.
+- Fixed a bug that could cause a crash for small input files in certain cases.
 - Fixed a bug that could cause filtering hits for identity or range cover not to function correctly when using
   the tabular format without traceback being enabled.
 

@@ -22,6 +22,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <memory>
 #include <exception>
+#include <iomanip>
 #include "../util/command_line_parser.h"
 #include "config.h"
 #include "../util/util.h"
@@ -48,10 +49,28 @@ void print_warnings() {
 	if (config.sensitivity >= Sensitivity::VERY_SENSITIVE)
 		return;
 	const double ram = total_ram();
-	int b = 0, c = 4;
-	if (ram >= 63) {
+	int b = 2, c = 4;
+	if (ram >= 511) {
+		b = 12;
+		c = 1;
+	} else if (ram >= 255) {
+		b = 8;
+		c = 1;
+	} else if (ram >= 127) {
+		b = 5;
+		c = 1;
+	} else if (ram >= 63) {
+		b = 6;
 	} else if (ram >= 31) {
 		b = 4;
+	}
+	if (b > 2) {
+		set_color(Color::YELLOW, true);
+		cerr << "The host system is detected to have " << std::setprecision(1) << " GB of RAM. It is recommended to adjust the block size for better performance using these parameters: -b" << b;
+		if (c != 4)
+			cerr << " -c" << c;
+		cerr << endl;
+		reset_color(true);
 	}
 }
 
