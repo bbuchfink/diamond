@@ -9,7 +9,7 @@
 using namespace std;
 
 vector<string> split(const string & str, const char delim) {
-	auto strstr = stringstream(str);
+	stringstream strstr(str);
 	string segment;
 	vector<string> segments;
 	while(getline(strstr, segment, delim))

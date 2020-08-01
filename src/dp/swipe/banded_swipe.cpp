@@ -479,6 +479,7 @@ struct TracebackStatMatrix
 	}
 #ifdef __APPLE__
 	MemBuffer<_sv> hgap_, score_;
+	MemBuffer<Stat> stat_, hstat_;
 #else
 	static thread_local MemBuffer<_sv> hgap_, score_;
 	static thread_local MemBuffer<Stat> stat_, hstat_;
