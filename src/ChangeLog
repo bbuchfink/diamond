@@ -4,6 +4,7 @@
 - Fixed a bug that could cause a crash for small input files in certain cases.
 - Fixed a bug that could cause filtering hits for identity or range cover not to function correctly when using
   the tabular format without traceback being enabled.
+- Added warning messages to recommend block size parameters based on system RAM.
 
 [2.0.0]
 - Added the sensitivity modes `--very-sensitive` and `--ultra-sensitive`.
