@@ -131,6 +131,6 @@ double total_ram() {
 	struct sysinfo info;
 	if (sysinfo(&info) != 0)
 		return 0.0;
-	return (double)info.totalram / double(1 << 30);
+	return (double)info.totalram / 1e9;
 #endif
 }
