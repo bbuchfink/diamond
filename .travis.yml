@@ -3,8 +3,8 @@ os:
   - osx
 
 dist:
-  - xenial
-#  - trusty
+#  - xenial
+  - trusty
 
 language: c++
 
@@ -22,7 +22,7 @@ arch:
 
 compiler:
   - g++
-  - clang
+#  - clang
 
 install: skip
 
