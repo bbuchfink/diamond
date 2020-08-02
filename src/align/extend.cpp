@@ -190,8 +190,8 @@ vector<Match> extend(const Parameters &params, size_t query_id, hit* begin, hit*
 			}
 		}
 		else {
-			target_block_ids_chunk = std::move(target_block_ids);
-			seed_hits_chunk = std::move(seed_hits);
+			target_block_ids_chunk = TLS_FIX_S390X_MOVE(target_block_ids);
+			seed_hits_chunk = TLS_FIX_S390X_MOVE(seed_hits);
 		}
 
 		vector<Target> v = extend(params, query_id, query_seq.data(), query_cb.data(), seed_hits_chunk, target_block_ids_chunk, metadata, stat, flags);
@@ -199,7 +199,7 @@ vector<Match> extend(const Parameters &params, size_t query_id, hit* begin, hit*
 		if (multi_chunk)
 			aligned_targets.insert(aligned_targets.end(), v.begin(), v.end());
 		else
-			aligned_targets = std::move(v);
+			aligned_targets = TLS_FIX_S390X_MOVE(v);
 
 		if (use_chunks && (n == 0))
 			break;
