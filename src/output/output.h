@@ -75,7 +75,7 @@ struct IntermediateRecord
 			f.read(len);
 			f.read(identities);
 		}
-		else if (!config.disable_traceback) {
+		else if (config.traceback_mode != TracebackMode::SCORE_ONLY) {
 			f.read_packed((flag >> 2) & 3, query_begin);
 			f.read_varint(query_end);
 			f.read_packed((flag >> 4) & 3, subject_begin);
@@ -109,7 +109,7 @@ struct IntermediateRecord
 			buf.write(match.length);
 			buf.write(match.identities);
 		}
-		else if (!config.disable_traceback) {
+		else if (config.traceback_mode != TracebackMode::SCORE_ONLY) {
 			buf.write_packed(oriented_range.begin_);
 			buf.write_varint(oriented_range.end_);
 			buf.write_packed(match.subject_range.begin_);

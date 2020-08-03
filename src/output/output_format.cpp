@@ -121,7 +121,9 @@ void init_output(bool have_taxon_id_lists, bool have_taxon_nodes, bool have_taxo
 	}
 	else
 		message_stream << "Percentage range of top alignment score to report hits: " << config.toppercent << endl;
-	log_stream << "Computing alignment tracebacks: " << !config.disable_traceback << endl;
+	if (config.traceback_mode == TracebackMode::NONE)
+		config.traceback_mode = TracebackMode::VECTOR;
+	log_stream << "Traceback mode: " << (int)config.traceback_mode << endl;
 }
 
 void Bin1_format::print_query_intro(size_t query_num, const char *query_name, unsigned query_len, TextBuffer &out, bool unaligned) const {

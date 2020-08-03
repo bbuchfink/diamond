@@ -256,8 +256,8 @@ Blast_tab_format::Blast_tab_format() :
 		if (field_traceback[j])
 			need_traceback = true;
 	}
-	if (config.max_hsps == 1 && !need_traceback && !config.query_range_culling && config.min_id == 0.0 && config.query_cover == 0.0 && config.subject_cover == 0.0)
-		config.disable_traceback = true;
+	if (config.traceback_mode == TracebackMode::NONE && config.max_hsps == 1 && !need_traceback && !config.query_range_culling && config.min_id == 0.0 && config.query_cover == 0.0 && config.subject_cover == 0.0)
+		config.traceback_mode = TracebackMode::SCORE_ONLY;
 }
 
 void print_staxids(TextBuffer &out, unsigned subject_global_id, const Metadata &metadata)

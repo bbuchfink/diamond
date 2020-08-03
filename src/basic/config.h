@@ -26,6 +26,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <stdint.h>
 
 enum class Sensitivity { FAST = 0, SENSITIVE = 1, MORE_SENSITIVE = 2, VERY_SENSITIVE = 3, ULTRA_SENSITIVE = 4 };
+enum class TracebackMode { NONE = 0, SCORE_ONLY = 1, STAT = 2, VECTOR = 3, SCORE_BUFFER = 4 };
 
 struct Config
 {
@@ -58,7 +59,6 @@ struct Config
 	unsigned	seed_signatures;
 	double	min_bit_score;
 	unsigned	run_len;
-	bool		disable_traceback;
 	double	max_seed_freq;
 	string	tmpdir;
 	string	parallel_tmpdir;
@@ -228,10 +228,9 @@ struct Config
 	bool fast_tsv;
 	unsigned target_parallel_verbosity;
 	double memory_limit;
-	bool stat_traceback;
-	bool vector_traceback;
-
+	
 	Sensitivity sensitivity;
+	TracebackMode traceback_mode;
 
 	bool multiprocessing;
 	bool mp_init;

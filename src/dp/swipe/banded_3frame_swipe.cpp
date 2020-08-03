@@ -508,7 +508,7 @@ list<Hsp> banded_3frame_swipe_targets(vector<DpTarget>::const_iterator begin,
 {
 	list<Hsp> out;
 	for (vector<DpTarget>::const_iterator i = begin; i < end; i += ScoreTraits<_sv>::CHANNELS) {
-		if (score_only || config.disable_traceback)
+		if (score_only || config.traceback_mode == TracebackMode::SCORE_ONLY)
 			out.splice(out.end(), banded_3frame_swipe<_sv, DP::ScoreOnly>(query, strand, i, i + std::min(vector<DpTarget>::const_iterator::difference_type(ScoreTraits<_sv>::CHANNELS), end - i), stat, parallel, overflow));
 		else
 			out.splice(out.end(), banded_3frame_swipe<_sv, DP::Traceback>(query, strand, i, i + std::min(vector<DpTarget>::const_iterator::difference_type(ScoreTraits<_sv>::CHANNELS), end - i), stat, parallel, overflow));

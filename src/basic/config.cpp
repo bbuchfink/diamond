@@ -25,6 +25,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <sys/stat.h>
 #include <exception>
 #include <iomanip>
+#include <numeric>
 #include "../util/command_line_parser.h"
 #include "config.h"
 #include "../util/util.h"
@@ -77,6 +78,16 @@ void print_warnings() {
 	}
 }
 
+template<typename _t>
+_t set_string_option(const string& s, const string& name, const vector<pair<string, _t>>& values) {
+	if (s.empty())
+		return (_t)0;
+	for (auto& i : values)
+		if (s == i.first)
+			return i.second;
+	throw std::runtime_error("Invalid argument for option " + name + ". Allowed values are:" + std::accumulate(values.begin(), values.end(), string(), [](const string& s, const pair<string, _t>& v) { return s + ' ' + v.first; }));
+}
+
 void Config::set_sens(Sensitivity sens) {
 	if (sensitivity != Sensitivity::FAST)
 		throw std::runtime_error("Sensitivity switches are mutually exclusive.");
@@ -126,6 +137,8 @@ Config::Config(int argc, const char **argv, bool check_io)
 		.add_command("compute-medoids", "")
 		.add_command("mutate", "")
 		.add_command("merge-tsv", "");
+
+	string traceback_mode_str;
 
 	Options_group general("General options");
 	general.add()
@@ -341,7 +354,6 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("hashed-seeds", 0, "", hashed_seeds)
 		("rank-factor", 0, "", rank_factor, -1.0)
 		("transcript-len-estimate", 0, "", transcript_len_estimate, 1.0)
-		("no-traceback", 0, "", disable_traceback)
 		("family-counts", 0, "", family_counts_file)
 		("radix-cluster-buffered", 0, "", radix_cluster_buffered)
 		("join-split-size", 0, "", join_split_size, 100000u)
@@ -405,11 +417,16 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("chaining-min-nodes", 0, "", chaining_min_nodes, (size_t)200)
 		("fast-tsv", 0, "", fast_tsv)
 		("target-parallel-verbosity", 0, "", target_parallel_verbosity, UINT_MAX)
-		("stat-traceback", 0, "", stat_traceback)
-		("vector-traceback", 0, "", vector_traceback, true);
+		("traceback-mode", 0, "", traceback_mode_str);
 	
 	parser.add(general).add(makedb).add(cluster).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options).add(deprecated_options);
 	parser.store(argc, argv, command);
+
+	traceback_mode = set_string_option<TracebackMode>(traceback_mode_str, "--traceback-mode",
+		{ {"score", TracebackMode::SCORE_ONLY },
+		{"stat", TracebackMode::STAT},
+		{"vector", TracebackMode::VECTOR},
+		{"buffer", TracebackMode::SCORE_BUFFER} });
 
 	if (toppercent != 100.0 && max_alignments != 25)
 		throw std::runtime_error("--top and --max-target-seqs are mutually exclusive.");

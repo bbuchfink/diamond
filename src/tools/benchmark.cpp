@@ -217,7 +217,6 @@ void swipe(const sequence &s1, const sequence &s2) {
 #endif
 
 void banded_swipe(const sequence &s1, const sequence &s2) {
-	config.vector_traceback = true;
 	vector<DpTarget> target8, target16;
 	for (size_t i = 0; i < 8; ++i)
 		target16.emplace_back(s2, -32, 32, 0, 0);

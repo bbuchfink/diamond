@@ -181,7 +181,7 @@ vector<Match> align(vector<Target> &targets, const sequence *query_seq, const Bi
 		return r;
 	r.reserve(targets.size());
 
-	if (config.disable_traceback || config.ext == "full") {
+	if (config.traceback_mode == TracebackMode::SCORE_ONLY || config.ext == "full") {
 		for (Target &t : targets)
 			r.emplace_back(t.block_id, t.outranked, t.hsp, t.ungapped_score);
 		return r;

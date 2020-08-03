@@ -42,7 +42,7 @@ Hsp_context& Hsp_context::parse()
 	if (config.fast_tsv)
 		return *this;
 	hsp_.length = hsp_.identities = hsp_.mismatches = hsp_.gap_openings = hsp_.positives = hsp_.gaps = 0;
-	if (config.disable_traceback)
+	if (config.traceback_mode == TracebackMode::SCORE_ONLY)
 		return *this;
 	unsigned d = 0;
 	Iterator i = begin();

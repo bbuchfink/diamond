@@ -73,13 +73,13 @@ list<Hsp> swipe_targets(const sequence &query,
 	else {
 		for (vector<DpTarget>::const_iterator i = begin; i < end; i += CHANNELS) {
 			if (flags & TRACEBACK) {
-				if (config.stat_traceback) {
+				if (config.traceback_mode == TracebackMode::STAT) {
 					if (composition_bias == nullptr)
 						out.splice(out.end(), swipe<_sv, StatTraceback>(query, frame, i, i + std::min(CHANNELS, end - i), NoCBS(), score_cutoff, overflow, stat));
 					else
 						out.splice(out.end(), swipe<_sv, StatTraceback>(query, frame, i, i + std::min(CHANNELS, end - i), composition_bias, score_cutoff, overflow, stat));
 				}
-				else if (config.vector_traceback) {
+				else if (config.traceback_mode == TracebackMode::VECTOR) {
 					if (composition_bias == nullptr)
 						out.splice(out.end(), swipe<_sv, VectorTraceback>(query, frame, i, i + std::min(CHANNELS, end - i), NoCBS(), score_cutoff, overflow, stat));
 					else
