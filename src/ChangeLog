@@ -1,3 +1,6 @@
+[2.0.2]
+- Fixed an issue that could cause long runtimes when using the `--taxon-list` option.
+
 [2.0.1]
 - Added feature for using the tool in a distributed computing environment.
 - Fixed an issue that could cause increased memory usage and runtimes for very long queries.
