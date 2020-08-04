@@ -1,6 +1,10 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2017 Benjamin Buchfink <buchfink@gmail.com>
+Copyright (C) 2013-2020 Max Planck Society for the Advancement of Science e.V.
+                        Benjamin Buchfink
+                        Eberhard Karls Universitaet Tuebingen
+						
+Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,9 +20,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#ifndef OUTPUT_H_
-#define OUTPUT_H_
-
+#pragma once
 #include <memory>
 #include <map>
 #include <mutex>
@@ -31,6 +33,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../basic/parameters.h"
 #include "../data/metadata.h"
 #include "../util/io/consumer.h"
+#include "output_format.h"
 
 inline unsigned get_length_flag(unsigned x)
 {
@@ -105,15 +108,22 @@ struct IntermediateRecord
 		buf.write(ReferenceDictionary::get().get(current_ref_block, subject_id));
 		buf.write(get_segment_flag(match));
 		buf.write_packed(match.score);
-		if (config.fast_tsv) {
-			buf.write(match.length);
-			buf.write(match.identities);
-		}
-		else if (config.traceback_mode != TracebackMode::SCORE_ONLY) {
-			buf.write_packed(oriented_range.begin_);
-			buf.write_varint(oriented_range.end_);
-			buf.write_packed(match.subject_range.begin_);
+		if (!output_format->needs_transcript && !output_format->needs_stats)
+			return;
+
+		buf.write_packed(oriented_range.begin_);		
+		buf.write_packed(match.subject_range.begin_);
+
+		if(output_format->needs_transcript)
 			buf << match.transcript.data();
+		else if (output_format->needs_stats) {
+			buf.write_varint(oriented_range.end_);
+			buf.write_varint(match.subject_range.end_);
+			buf.write_varint(match.identities);
+			buf.write_varint(match.mismatches);
+			buf.write_varint(match.positives); 
+			buf.write_varint(match.gap_openings);
+			buf.write_varint(match.gaps);
 		}
 	}
 	static void finish_file(Consumer &f)
@@ -170,5 +180,3 @@ private:
 };
 
 void heartbeat_worker(size_t qend);
-
-#endif

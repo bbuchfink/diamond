@@ -1,6 +1,10 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2018 Benjamin Buchfink <buchfink@gmail.com>
+Copyright (C) 2013-2020 Max Planck Society for the Advancement of Science e.V.
+                        Benjamin Buchfink
+                        Eberhard Karls Universitaet Tuebingen
+						
+Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,9 +20,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#ifndef UTIL_H_
-#define UTIL_H_
-
+#pragma once
 #include <vector>
 #include <algorithm>
 #include <iostream>
@@ -306,14 +308,6 @@ private:
 	vector<_t> data_;
 };
 
-inline int get_idx(const char **a, size_t n, const char *s)
-{
-	for (size_t i = 0; i < n; ++i)
-		if (strcmp(a[i], s) == 0)
-			return (int)i;
-	return -1;
-}
-
 template<int n>
 inline int round_down(int x)
 {
@@ -506,5 +500,3 @@ std::vector<std::pair<_t1, _t2>> combine(const std::vector<_t1> &v1, const std::
 		r.emplace_back(v1[i], v2[i]);
 	return r;
 }
-
-#endif /* UTIL_H_ */

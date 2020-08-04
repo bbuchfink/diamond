@@ -113,6 +113,7 @@ struct DatabaseFile : public InputFile
 
 	void get_seq();
 	void read_seq(string &id, vector<Letter> &seq);
+	void skip_seq();
 	bool has_taxon_id_lists();
 	bool has_taxon_nodes();
 	bool has_taxon_scientific_names();

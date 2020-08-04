@@ -228,6 +228,8 @@ struct Config
 	bool fast_tsv;
 	unsigned target_parallel_verbosity;
 	double memory_limit;
+	size_t global_ranking_targets;
+
 	
 	Sensitivity sensitivity;
 	TracebackMode traceback_mode;

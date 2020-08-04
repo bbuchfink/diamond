@@ -247,6 +247,8 @@ int FileStack::push_non_locked(const string & buf) {
         n += write(fd, nl.c_str(), nl.size());
     }
     return n;
+#else
+	return 0;
 #endif
 }
 

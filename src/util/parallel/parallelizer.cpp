@@ -61,8 +61,8 @@ void Parallelizer::init(const string & tempdir) {
 #ifdef WIN32    
 #else
     gethostname(hostname, 1023);
+	id = string(hostname) + "_" + to_string(getpid());
 #endif
-    id = string(hostname) + "_" + to_string(getpid());
     DBG("id = " + id);
 
     create_stack(LOG, id);

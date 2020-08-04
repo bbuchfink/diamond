@@ -270,10 +270,6 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("shape-mask", 0, "seed shapes", shape_mask)
 		("multiprocessing", 0, "enable distributed-memory parallel processing", multiprocessing)
 		("mp-init", 0, "initialize multiprocessing run", mp_init)
-		// ("rank-ratio", 0, "include subjects within this ratio of last hit (stage 1)", rank_ratio, -1.0)
-		// ("rank-ratio2", 0, "include subjects within this ratio of last hit (stage 2)", rank_ratio2, -1.0)
-		// ("max-hsps", 0, "maximum number of HSPs per subject sequence to save for each query", max_hsps, 0u)
-		// ("culling-overlap", 0, "minimum range overlap with higher scoring hit to delete a hit (0.5)", inner_culling_overlap, 50.0)
 		("rank-ratio", 0, "include subjects within this ratio of last hit", rank_ratio, -1.0)
 		("ext-chunk-size", 0, "chunk size for adaptive ranking (default=400)", ext_chunk_size, (size_t)400)
 		("ext", 0, "Extension mode (banded-fast/banded-slow)", ext)
@@ -418,6 +414,7 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("fast-tsv", 0, "", fast_tsv)
 		("target-parallel-verbosity", 0, "", target_parallel_verbosity, UINT_MAX)
 		("traceback-mode", 0, "", traceback_mode_str);
+		("ext-targets", 0, "", global_ranking_targets);
 	
 	parser.add(general).add(makedb).add(cluster).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options).add(deprecated_options);
 	parser.store(argc, argv, command);

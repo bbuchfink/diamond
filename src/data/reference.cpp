@@ -320,8 +320,9 @@ bool DatabaseFile::load_seqs(vector<unsigned> &block_to_database_id, const size_
 	}
 
 	size_t database_id = tell_seq();
-	size_t letters = 0, seqs = 0, id_letters = 0, seqs_processed = 0;
+	size_t letters = 0, seqs = 0, id_letters = 0, seqs_processed = 0, filtered_seq_count = 0;
 	vector<uint64_t> filtered_pos;
+	vector<bool> filtered_seqs;
 	block_to_database_id.clear();
 
 	if (fetch_seqs) {
@@ -355,20 +356,28 @@ bool DatabaseFile::load_seqs(vector<unsigned> &block_to_database_id, const size_
 			if (fetch_seqs) {
 				if (load_ids) (*dst_id)->reserve(id_len);
 			}
-			++seqs;
+			//++seqs;
+			++filtered_seq_count;
 			block_to_database_id.push_back((unsigned)database_id);
-			if (filter) filtered_pos.push_back(last ? 0 : r.pos);
+			if (filter) {
+				filtered_pos.push_back(last ? 0 : r.pos);
+				filtered_seqs.push_back(true);
+			}
 			last = true;
 		}
-		else
+		else {
 			last = false;
+			if (filter)
+				filtered_seqs.push_back(false);
+		}
 		pos_array_offset += Pos_record::SIZE;
 		++database_id;
 		++seqs_processed;
 		r = r_next;
+		++seqs;
 	}
 
-	if (seqs == 0) {
+	if (seqs == 0 || filtered_seq_count == 0) {
 		if (fetch_seqs) {
 			delete (*dst_seq);
 			(*dst_seq) = NULL;
@@ -383,8 +392,13 @@ bool DatabaseFile::load_seqs(vector<unsigned> &block_to_database_id, const size_
 		if(load_ids) (*dst_id)->finish_reserve();
 		seek(start_offset);
 
-		for (size_t n = 0; n < seqs; ++n) {
-			if (filter && filtered_pos[n]) seek(filtered_pos[n]);
+		size_t n = 0;
+		for (size_t i = 0; i < seqs; ++i) {
+			//if (filter && filtered_pos[n]) seek(filtered_pos[n]);
+			if (filter && !filtered_seqs[i]) {
+				skip_seq();
+				continue;
+			}
 			read((*dst_seq)->ptr(n) - 1, (*dst_seq)->length(n) + 2);
 			*((*dst_seq)->ptr(n) - 1) = sequence::DELIMITER;
 			*((*dst_seq)->ptr(n) + (*dst_seq)->length(n)) = sequence::DELIMITER;
@@ -393,8 +407,7 @@ bool DatabaseFile::load_seqs(vector<unsigned> &block_to_database_id, const size_
 			else
 				if (!seek_forward('\0')) throw std::runtime_error("Unexpected end of file.");
 			Masking::get().remove_bit_mask((*dst_seq)->ptr(n), (*dst_seq)->length(n));
-			if (!config.sfilt.empty() && strstr((**dst_id)[n], config.sfilt.c_str()) == 0)
-				memset((*dst_seq)->ptr(n), value_traits.mask_char, (*dst_seq)->length(n));
+			++n;
 		}
 		timer.finish();
 		(*dst_seq)->print_stats();
@@ -414,6 +427,17 @@ void DatabaseFile::read_seq(string &id, vector<Letter> &seq)
 	read(&c, 1);
 	read_to(std::back_inserter(seq), '\xff');
 	read_to(std::back_inserter(id), '\0');
+}
+
+void DatabaseFile::skip_seq()
+{
+	char c;
+	if(read(&c, 1) != 1)
+		throw std::runtime_error("Unexpected end of file.");
+	if(!seek_forward('\xff'))
+		throw std::runtime_error("Unexpected end of file.");
+	if(!seek_forward('\0'))
+		throw std::runtime_error("Unexpected end of file.");
 }
 
 void DatabaseFile::get_seq()
