@@ -20,6 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <set>
 #include <numeric>
 #include <string.h>
+#include <algorithm>
 #include "../basic/match.h"
 #include "output_format.h"
 #include "../data/taxonomy.h"
@@ -27,199 +28,69 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 using namespace std;
 
-const char* Blast_tab_format::field_str[] = {
-	"qseqid",		// 0 means Query Seq - id
-	"qgi",			// 1 means Query GI
-	"qacc",			// 2 means Query accesion
-	"qaccver",		// 3 means Query accesion.version
-	"qlen",			// 4 means Query sequence length
-	"sseqid",		// 5 means Subject Seq - id
-	"sallseqid",	// 6 means All subject Seq - id(s), separated by a ';'
-	"sgi",			// 7 means Subject GI
-	"sallgi",		// 8 means All subject GIs
-	"sacc",			// 9 means Subject accession
-	"saccver",		// 10 means Subject accession.version
-	"sallacc",		// 11 means All subject accessions
-	"slen",			// 12 means Subject sequence length
-	"qstart",		// 13 means Start of alignment in query
-	"qend",			// 14 means End of alignment in query
-	"sstart",		// 15 means Start of alignment in subject
-	"send",			// 16 means End of alignment in subject
-	"qseq",			// 17 means Aligned part of query sequence
-	"sseq",			// 18 means Aligned part of subject sequence
-	"evalue",		// 19 means Expect value
-	"bitscore",		// 20 means Bit score
-	"score",		// 21 means Raw score
-	"length",		// 22 means Alignment length
-	"pident",		// 23 means Percentage of identical matches
-	"nident",		// 24 means Number of identical matches
-	"mismatch",		// 25 means Number of mismatches
-	"positive",		// 26 means Number of positive - scoring matches
-	"gapopen",		// 27 means Number of gap openings
-	"gaps",			// 28 means Total number of gaps
-	"ppos",			// 29 means Percentage of positive - scoring matches
-	"frames",		// 30 means Query and subject frames separated by a '/'
-	"qframe",		// 31 means Query frame
-	"sframe",		// 32 means Subject frame
-	"btop",			// 33 means Blast traceback operations(BTOP)
-	"staxids",		// 34 means unique Subject Taxonomy ID(s), separated by a ';'	(in numerical order)
-	"sscinames",	// 35 means unique Subject Scientific Name(s), separated by a ';'
-	"scomnames",	// 36 means unique Subject Common Name(s), separated by a ';'
-	"sblastnames",	// 37 means unique Subject Blast Name(s), separated by a ';'	(in alphabetical order)
-	"sskingdoms",	// 38 means unique Subject Super Kingdom(s), separated by a ';'	(in alphabetical order)
-	"stitle",		// 39 means Subject Title
-	"salltitles",	// 40 means All Subject Title(s), separated by a '<>'
-	"sstrand",		// 41 means Subject Strand
-	"qcovs",		// 42 means Query Coverage Per Subject
-	"qcovhsp",		// 43 means Query Coverage Per HSP
-	"qcovus",		// 44 means Query Coverage Per Unique Subject(blastn only)
-	"qtitle",		// 45 means Query title
-	"swdiff",		// 46
-	"time", 		// 47
-	"full_sseq",	// 48
-	"qqual",		// 49
-	"qnum",			// 50
-	"snum",			// 51
-	"scovhsp",		// 52
-	"full_qqual",	// 53
-	"full_qseq",	// 54
-	"qseq_gapped",  // 55
-	"sseq_gapped",	// 56
-	"qstrand",		// 57
-	"cigar",		// 58
-	"skingdoms",	// 59
-	"sphylums",		// 60
-	"ungapped_score"	// 61
-};
-
-const bool Blast_tab_format::field_traceback[] = {
-	false,		// 0 means Query Seq - id
-	false,			// 1 means Query GI
-	false,			// 2 means Query accesion
-	false,		// 3 means Query accesion.version
-	false,			// 4 means Query sequence length
-	false,		// 5 means Subject Seq - id
-	false,	// 6 means All subject Seq - id(s), separated by a ';'
-	false,			// 7 means Subject GI
-	false,		// 8 means All subject GIs
-	false,			// 9 means Subject accession
-	false,		// 10 means Subject accession.version
-	false,		// 11 means All subject accessions
-	false,			// 12 means Subject sequence length
-	true,		// 13 means Start of alignment in query
-	true,			// 14 means End of alignment in query
-	true,		// 15 means Start of alignment in subject
-	true,			// 16 means End of alignment in subject
-	true,			// 17 means Aligned part of query sequence
-	true,			// 18 means Aligned part of subject sequence
-	false,		// 19 means Expect value
-	false,		// 20 means Bit score
-	false,		// 21 means Raw score
-	true,		// 22 means Alignment length
-	true,		// 23 means Percentage of identical matches
-	true,		// 24 means Number of identical matches
-	true,		// 25 means Number of mismatches
-	true,		// 26 means Number of positive - scoring matches
-	true,		// 27 means Number of gap openings
-	true,			// 28 means Total number of gaps
-	true,			// 29 means Percentage of positive - scoring matches
-	false,		// 30 means Query and subject frames separated by a '/'
-	false,		// 31 means Query frame
-	false,		// 32 means Subject frame
-	true,			// 33 means Blast traceback operations(BTOP)
-	false,		// 34 means unique Subject Taxonomy ID(s), separated by a ';'	(in numerical order)
-	false,	// 35 means unique Subject Scientific Name(s), separated by a ';'
-	false,	// 36 means unique Subject Common Name(s), separated by a ';'
-	false,	// 37 means unique Subject Blast Name(s), separated by a ';'	(in alphabetical order)
-	false,	// 38 means unique Subject Super Kingdom(s), separated by a ';'	(in alphabetical order)
-	false,		// 39 means Subject Title
-	false,	// 40 means All Subject Title(s), separated by a '<>'
-	false,		// 41 means Subject Strand
-	true,		// 42 means Query Coverage Per Subject
-	true,		// 43 means Query Coverage Per HSP
-	true,		// 44 means Query Coverage Per Unique Subject(blastn only)
-	false,		// 45 means Query title
-	false,		// 46
-	false, 		// 47
-	false,	// 48
-	true,		// 49
-	false,			// 50
-	false,			// 51
-	true,		// 52
-	false,	// 53
-	false,	// 54
-	true,  // 55
-	true,	// 56
-	false,		// 57
-	true,		// 58
-	false,	// 59
-	false,		// 60
-	false	// 61
-};
-
-const char* Blast_tab_format::field_desc[] = {
-	"Query ID",		// 0 means Query Seq - id
-	"qgi",			// 1 means Query GI
-	"qacc",			// 2 means Query accesion
-	"qaccver",		// 3 means Query accesion.version
-	"Query length",	// 4 means Query sequence length
-	"Subject ID",		// 5 means Subject Seq - id
-	"Subject IDs",	// 6 means All subject Seq - id(s), separated by a ';'
-	"sgi",			// 7 means Subject GI
-	"sallgi",		// 8 means All subject GIs
-	"sacc",			// 9 means Subject accession
-	"saccver",		// 10 means Subject accession.version
-	"sallacc",		// 11 means All subject accessions
-	"Subject length",			// 12 means Subject sequence length
-	"Start of alignment in query",		// 13 means Start of alignment in query
-	"End of alignment in query",			// 14 means End of alignment in query
-	"Start of alignment in subject",		// 15 means Start of alignment in subject
-	"End of alignment in subject",			// 16 means End of alignment in subject
-	"Aligned part of query sequence",			// 17 means Aligned part of query sequence
-	"Aligned part of subject sequence",			// 18 means Aligned part of subject sequence
-	"Expected value",		// 19 means Expect value
-	"Bit score",		// 20 means Bit score
-	"Raw score",		// 21 means Raw score
-	"Alignment length",		// 22 means Alignment length
-	"Percentage of identical matches",		// 23 means Percentage of identical matches
-	"Number of identical matches",		// 24 means Number of identical matches
-	"Number of mismatches",		// 25 means Number of mismatches
-	"Number of positive-scoring matches",		// 26 means Number of positive - scoring matches
-	"Number of gap openings",		// 27 means Number of gap openings
-	"Total number of gaps",			// 28 means Total number of gaps
-	"Percentage of positive-scoring matches",			// 29 means Percentage of positive - scoring matches
-	"frames",		// 30 means Query and subject frames separated by a '/'
-	"Query frame",		// 31 means Query frame
-	"sframe",		// 32 means Subject frame
-	"Blast traceback operations",			// 33 means Blast traceback operations(BTOP)
-	"Subject Taxonomy IDs",		// 34 means unique Subject Taxonomy ID(s), separated by a ';'	(in numerical order)
-	"Subject scientific names",	// 35 means unique Subject Scientific Name(s), separated by a ';'
-	"scomnames",	// 36 means unique Subject Common Name(s), separated by a ';'
-	"sblastnames",	// 37 means unique Subject Blast Name(s), separated by a ';'	(in alphabetical order)
-	"Subject super kingdoms",	// 38 means unique Subject Super Kingdom(s), separated by a ';'	(in alphabetical order)
-	"Subject title",		// 39 means Subject Title
-	"Subject titles",	// 40 means All Subject Title(s), separated by a '<>'
-	"sstrand",		// 41 means Subject Strand
-	"qcovs",		// 42 means Query Coverage Per Subject
-	"Query coverage per HSP",		// 43 means Query Coverage Per HSP
-	"qcovus",		// 44 means Query Coverage Per Unique Subject(blastn only)
-	"Query title",		// 45 means Query title
-	"swdiff",		// 46
-	"time", 		// 47
-	"Subject sequence",	// 48
-	"Aligned part of query quality values",		// 49
-	"qnum",			// 50
-	"snum",			// 51
-	"Subject coverage per HSP",		// 52
-	"Query quality values",	// 53
-	"Query sequence",		// 54
-	"Query sequence with gaps",		// 55
-	"Subject sequence with gaps",		// 56
-	"Query strand",						// 57
-	"CIGAR",								// 58
-	"Subject kingdoms",		// 59
-	"Subject phylums",		// 60
-	"Ungapped score"		// 61
+const vector<OutputField> Blast_tab_format::field_def = {
+{ "qseqid", "Query ID", false, false },		// 0 means Query Seq - id
+{ "qgi", "qgi", false, false },			// 1 means Query GI
+{ "qacc", "qacc", false, false },			// 2 means Query accesion
+{ "qaccver", "qaccver", false, false },		// 3 means Query accesion.version
+{ "qlen", "Query length", false, false },			// 4 means Query sequence length
+{ "sseqid",	"Subject ID", false, false },	// 5 means Subject Seq - id
+{ "sallseqid", "Subject IDs", false, false },	// 6 means All subject Seq - id(s), separated by a ';'
+{ "sgi", "sgi", false, false },			// 7 means Subject GI
+{ "sallgi", "sallgi", false, false },		// 8 means All subject GIs
+{ "sacc", "sacc", false, false },			// 9 means Subject accession
+{ "saccver", "saccver", false, false },		// 10 means Subject accession.version
+{ "sallacc", "sallacc", false, false },		// 11 means All subject accessions
+{ "slen", "Subject length", false, false },			// 12 means Subject sequence length
+{ "qstart", "Start of alignment in query", false, true },		// 13 means Start of alignment in query
+{ "qend", "End of alignment in query", false, true },			// 14 means End of alignment in query
+{ "sstart", "Start of alignment in subject", false, true },		// 15 means Start of alignment in subject
+{ "send", "End of alignment in subject", false, true },			// 16 means End of alignment in subject
+{ "qseq", "Aligned part of query sequence", false, true },			// 17 means Aligned part of query sequence
+{ "sseq", "Aligned part of subject sequence", true, false },			// 18 means Aligned part of subject sequence
+{ "evalue", "Expected value", false, false },		// 19 means Expect value
+{ "bitscore", "Bit score", false, false },		// 20 means Bit score
+{ "score", "Raw score", false, false },		// 21 means Raw score
+{ "length", "Alignment length", false, true },		// 22 means Alignment length
+{ "pident", "Percentage of identical matches", false, true },		// 23 means Percentage of identical matches
+{ "nident", "Number of identical matches", false, true },		// 24 means Number of identical matches
+{ "mismatch", "Number of mismatches", false, true },		// 25 means Number of mismatches
+{ "positive", "Number of positive-scoring matches", false, true },		// 26 means Number of positive - scoring matches
+{ "gapopen", "Number of gap openings", false, true },		// 27 means Number of gap openings
+{ "gaps", "Total number of gaps", false, true },			// 28 means Total number of gaps
+{ "ppos", "Percentage of positive-scoring matches", false, true },			// 29 means Percentage of positive - scoring matches
+{ "frames", "frames", false, false },		// 30 means Query and subject frames separated by a '/'
+{ "qframe", "Query frame", false, false },		// 31 means Query frame
+{ "sframe", "sframe", false, false },		// 32 means Subject frame
+{ "btop", "Blast traceback operations", true, false },			// 33 means Blast traceback operations(BTOP)
+{ "staxids", "Subject Taxonomy IDs", false, false },		// 34 means unique Subject Taxonomy ID(s), separated by a ';'	(in numerical order)
+{ "sscinames", "Subject scientific names", false, false },	// 35 means unique Subject Scientific Name(s), separated by a ';'
+{ "scomnames", "scomnames", false, false },	// 36 means unique Subject Common Name(s), separated by a ';'
+{ "sblastnames", "sblastnames", false, false },	// 37 means unique Subject Blast Name(s), separated by a ';'	(in alphabetical order)
+{ "sskingdoms",	"Subject super kingdoms", false, false }, // 38 means unique Subject Super Kingdom(s), separated by a ';'	(in alphabetical order)
+{ "stitle", "Subject title", false, false },		// 39 means Subject Title
+{ "salltitles", "Subject titles", false, false },	// 40 means All Subject Title(s), separated by a '<>'
+{ "sstrand", "sstrand", false, false },		// 41 means Subject Strand
+{ "qcovs", "qcovs", false, true },		// 42 means Query Coverage Per Subject
+{ "qcovhsp", "Query coverage per HSP", false, true },		// 43 means Query Coverage Per HSP
+{ "qcovus", "qcovus", false, true },		// 44 means Query Coverage Per Unique Subject(blastn only)
+{ "qtitle", "Query title", false, false },		// 45 means Query title
+{ "swdiff", "swdiff", false, false },		// 46
+{ "time", "time", false, false }, 		// 47
+{ "full_sseq", "Subject sequence", false, false },	// 48
+{ "qqual", "Aligned part of query quality values", false, true },		// 49
+{ "qnum", "qnum", false, false },			// 50
+{ "snum", "snum", false, false },			// 51
+{ "scovhsp", "Subject coverage per HSP", false, true },		// 52
+{ "full_qqual", "Query quality values", false, false},	// 53
+{ "full_qseq", "Query sequence", false, false },	// 54
+{ "qseq_gapped", "Query sequence with gaps", true, false },  // 55
+{ "sseq_gapped", "Subject sequence with gaps", true, false },	// 56
+{ "qstrand", "Query strand", false, false },		// 57
+{ "cigar", "CIGAR", true, false },		// 58
+{ "skingdoms", "Subject kingdoms", false, false },	// 59
+{ "sphylums", "Subject phylums", false, false },		// 60
+{ "ungapped_score", "Ungapped score", false, false }	// 61
 };
 
 Blast_tab_format::Blast_tab_format() :
@@ -229,13 +100,17 @@ Blast_tab_format::Blast_tab_format() :
 	const vector<string> &f = config.output_format;
 	if (f.size() <= 1) {
 		fields = vector<unsigned>(stdf, stdf + 12);
+		needs_transcript = false;
+		needs_stats = true;
 		return;
 	}
-	bool need_traceback = false;
+	needs_transcript = false;
+	needs_stats = false;
 	for (vector<string>::const_iterator i = f.begin() + 1; i != f.end(); ++i) {
-		int j = get_idx(field_str, sizeof(field_str) / sizeof(field_str[0]), i->c_str());
-		if(j == -1)
+		auto it = std::find_if(field_def.begin(), field_def.end(), [i](const OutputField &f) {return f.key == *i; });
+		if(it == field_def.end())
 			throw std::runtime_error(string("Invalid output field: ") + *i);
+		const auto j = it - field_def.begin();
 		if (j == 34)
 			needs_taxon_id_lists = true;
 		if (j == 35 || j == 38 || j == 59 || j == 60) {
@@ -253,10 +128,12 @@ Blast_tab_format::Blast_tab_format() :
 			config.use_lazy_dict = true;
 		if (j == 49 || j == 53)
 			config.store_query_quality = true;
-		if (field_traceback[j])
-			need_traceback = true;
+		if (field_def[j].need_transcript)
+			needs_transcript = true;
+		if (field_def[j].need_stats)
+			needs_stats = true;
 	}
-	if (config.max_hsps == 1 && !need_traceback && !config.query_range_culling && config.min_id == 0.0 && config.query_cover == 0.0 && config.subject_cover == 0.0)
+	if (config.max_hsps == 1 && !needs_transcript && !needs_stats && !config.query_range_culling && config.min_id == 0.0 && config.query_cover == 0.0 && config.subject_cover == 0.0)
 		config.disable_traceback = true;
 }
 
@@ -493,7 +370,7 @@ void Blast_tab_format::print_match(const Hsp_context& r, const Metadata &metadat
 			out << score_matrix.bitscore(r.ungapped_score);
 			break;
 		default:
-			throw std::runtime_error(string("Invalid output field: ") + field_str[*i]);
+			throw std::runtime_error(string("Invalid output field: ") + field_def[*i].key);
 		}
 		if (i < fields.end() - 1)
 			out << '\t';
@@ -565,7 +442,7 @@ void Blast_tab_format::print_query_intro(size_t query_num, const char *query_nam
 				(align_mode.query_translated ? query_source_seqs::get()[query_num] : query_seqs::get()[query_num]).print(out, input_value_traits);
 				break;
 			default:
-				throw std::runtime_error(string("Invalid output field: ") + field_str[*i]);
+				throw std::runtime_error(string("Invalid output field: ") + field_def[*i].key);
 			}
 			if (i < fields.end() - 1)
 				out << '\t';			
@@ -580,7 +457,7 @@ void Blast_tab_format::print_header(Consumer &f, int mode, const char *matrix, i
 	stringstream ss;
 	ss << "# DIAMOND v" << Const::version_string << ". http://github.com/bbuchfink/diamond" << endl;
 	ss << "# Invocation: " << config.invocation << endl;
-	ss << "# Fields: " << join(", ", apply(fields, [](unsigned i) -> string { return string(field_desc[i]); })) << endl;
+	ss << "# Fields: " << join(", ", apply(fields, [](unsigned i) -> string { return string(field_def[i].description); })) << endl;
 	const string s(ss.str());
 	f.consume(s.data(), s.length());
 }

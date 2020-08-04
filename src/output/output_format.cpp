@@ -121,6 +121,7 @@ void init_output(bool have_taxon_id_lists, bool have_taxon_nodes, bool have_taxo
 	}
 	else
 		message_stream << "Percentage range of top alignment score to report hits: " << config.toppercent << endl;
+	log_stream << "Format options: transcript=" << output_format->needs_transcript << " stats=" << output_format->needs_stats << endl;
 	log_stream << "Computing alignment tracebacks: " << !config.disable_traceback << endl;
 }
 

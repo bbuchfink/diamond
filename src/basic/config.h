@@ -230,6 +230,7 @@ struct Config
 	double memory_limit;
 	bool stat_traceback;
 	bool vector_traceback;
+	size_t global_ranking_targets;
 
 	Sensitivity sensitivity;
 
