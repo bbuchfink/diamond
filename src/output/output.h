@@ -74,15 +74,23 @@ struct IntermediateRecord
 		f.read(subject_id);
 		f.read(flag);
 		f.read_packed(flag & 3, score);
-		if (config.fast_tsv) {
-			f.read(len);
-			f.read(identities);
-		}
-		else if (config.traceback_mode != TracebackMode::SCORE_ONLY) {
-			f.read_packed((flag >> 2) & 3, query_begin);
-			f.read_varint(query_end);
-			f.read_packed((flag >> 4) & 3, subject_begin);
+
+		if (!output_format->needs_transcript && !output_format->needs_stats)
+			return;
+
+		f.read_packed((flag >> 2) & 3, query_begin);
+		f.read_varint(query_end);
+		f.read_packed((flag >> 4) & 3, subject_begin);
+
+		if (output_format->needs_transcript)
 			transcript.read(f);
+		else if (output_format->needs_stats) {
+			f.read_varint(subject_end);
+			f.read_varint(identities);
+			f.read_varint(mismatches);
+			f.read_varint(positives);
+			f.read_varint(gap_openings);
+			f.read_varint(gaps);
 		}
 	}
 	interval absolute_query_range() const
@@ -111,13 +119,13 @@ struct IntermediateRecord
 		if (!output_format->needs_transcript && !output_format->needs_stats)
 			return;
 
-		buf.write_packed(oriented_range.begin_);		
+		buf.write_packed(oriented_range.begin_);
+		buf.write_varint(oriented_range.end_);
 		buf.write_packed(match.subject_range.begin_);
 
 		if(output_format->needs_transcript)
 			buf << match.transcript.data();
 		else if (output_format->needs_stats) {
-			buf.write_varint(oriented_range.end_);
 			buf.write_varint(match.subject_range.end_);
 			buf.write_varint(match.identities);
 			buf.write_varint(match.mismatches);
@@ -132,8 +140,7 @@ struct IntermediateRecord
 		f.consume(reinterpret_cast<const char*>(&i), 4);
 	}
 	static const uint32_t FINISHED = 0xffffffffu;
-	uint32_t query_id, subject_id, score, query_begin, subject_begin, query_end;
-	int len, identities;		// for --fast-tsv
+	uint32_t query_id, subject_id, score, query_begin, subject_begin, query_end, subject_end, identities, mismatches, positives, gap_openings, gaps;
 	uint8_t flag;
 	Packed_transcript transcript;
 };

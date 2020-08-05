@@ -1,6 +1,10 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2017 Benjamin Buchfink <buchfink@gmail.com>
+Copyright (C) 2013-2020 Max Planck Society for the Advancement of Science e.V.
+                        Benjamin Buchfink
+                        Eberhard Karls Universitaet Tuebingen
+						
+Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -17,6 +21,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #include "../align/align.h"
+#include "../output/output.h"
+#include "../output/output_format.h"
 
 std::pair<int, int> Hsp::diagonal_bounds() const
 {
@@ -39,11 +45,15 @@ bool Hsp::is_weakly_enveloped(const Hsp &j) const
 
 Hsp_context& Hsp_context::parse()
 {
-	if (config.fast_tsv)
+	if (!output_format->needs_transcript) {
+		hsp_.query_source_range = TranslatedPosition::absolute_interval(
+			TranslatedPosition(hsp_.query_range.begin_, Frame(hsp_.frame)),
+			TranslatedPosition(hsp_.query_range.end_, Frame(hsp_.frame)),
+			(int)query.source().length());
 		return *this;
+	}
+
 	hsp_.length = hsp_.identities = hsp_.mismatches = hsp_.gap_openings = hsp_.positives = hsp_.gaps = 0;
-	if (config.traceback_mode == TracebackMode::SCORE_ONLY)
-		return *this;
 	unsigned d = 0;
 	Iterator i = begin();
 
@@ -251,4 +261,32 @@ void Hsp::push_gap(Edit_operation op, int length, const Letter *subject)
 #else
 			transcript.push_back(op_deletion, subject[-i]);
 #endif
+}
+
+Hsp::Hsp(const IntermediateRecord &r, unsigned query_source_len) :
+	score(r.score),
+	transcript(r.transcript)
+{
+	subject_range.begin_ = r.subject_begin;
+	if (align_mode.mode == Align_mode::blastx) {
+		frame = (r.flag&(1 << 6)) == 0 ? r.query_begin % 3 : 3 + (query_source_len - 1 - r.query_begin) % 3;
+		set_translated_query_begin(r.query_begin, query_source_len);
+	}
+	else {
+		frame = 0;
+		query_range.begin_ = r.query_begin;
+	}
+	if (output_format->needs_stats && !output_format->needs_transcript) {
+		identities = r.identities;
+		gaps = r.gaps;
+		gap_openings = r.gap_openings;
+		mismatches = r.mismatches;
+		positives = r.positives;
+		length = identities + mismatches + gaps;
+		if (align_mode.mode == Align_mode::blastx)
+			set_translated_query_end(r.query_end, query_source_len);
+		else
+			query_range.end_ = r.query_end + 1;
+		subject_range.end_ = r.subject_end;
+	}
 }

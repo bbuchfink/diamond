@@ -154,6 +154,15 @@ struct Hsp
 			query_range.begin_ = (dna_len + f - oriented_query_begin) / 3;
 	}
 
+	void set_translated_query_end(unsigned oriented_query_end, unsigned dna_len)
+	{
+		int f = frame <= 2 ? frame + 1 : 2 - frame;
+		if (f > 0)
+			query_range.end_ = (oriented_query_end - 2 - (f - 1)) / 3 + 1;
+		else
+			query_range.end_ = (dna_len + f - oriented_query_end) / 3 + 1;
+	}
+
 	int blast_query_frame() const
 	{
 		return align_mode.query_translated ? (frame <= 2 ? (int)frame + 1 : 2 - (int)frame) : 0;
