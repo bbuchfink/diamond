@@ -413,8 +413,8 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("chaining-min-nodes", 0, "", chaining_min_nodes, (size_t)200)
 		("fast-tsv", 0, "", fast_tsv)
 		("target-parallel-verbosity", 0, "", target_parallel_verbosity, UINT_MAX)
+		("ext-targets", 0, "", global_ranking_targets)
 		("traceback-mode", 0, "", traceback_mode_str);
-		("ext-targets", 0, "", global_ranking_targets);
 	
 	parser.add(general).add(makedb).add(cluster).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options).add(deprecated_options);
 	parser.store(argc, argv, command);

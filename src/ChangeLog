@@ -1,4 +1,6 @@
 [2.0.2]
+- Fixed a bug that could cause incomplete results in `blastx` mode.
+- Reduced the use of temporary disk space.
 - Fixed an issue that could cause long runtimes when using the `--taxon-list` option.
 
 [2.0.1]

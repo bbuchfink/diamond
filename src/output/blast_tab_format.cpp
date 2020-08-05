@@ -104,8 +104,10 @@ Blast_tab_format::Blast_tab_format() :
 	const vector<string> &f = config.output_format;
 	if (f.size() <= 1) {
 		fields = vector<unsigned>(stdf, stdf + 12);
-		needs_transcript = false;
-		needs_stats = true;
+		if (config.frame_shift == 0) {
+			needs_transcript = false;
+			needs_stats = true;
+		}
 		return;
 	}
 	needs_transcript = false;
@@ -137,6 +139,8 @@ Blast_tab_format::Blast_tab_format() :
 		if (field_def[j].need_stats)
 			needs_stats = true;
 	}
+	if (config.frame_shift != 0 && needs_stats)
+		needs_transcript = true;
 	if (config.traceback_mode == TracebackMode::NONE && config.max_hsps == 1 && !needs_transcript && !needs_stats && !config.query_range_culling && config.min_id == 0.0 && config.query_cover == 0.0 && config.subject_cover == 0.0)
 		config.traceback_mode = TracebackMode::SCORE_ONLY;
 }
