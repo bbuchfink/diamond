@@ -1,6 +1,10 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2017 Benjamin Buchfink <buchfink@gmail.com>
+Copyright (C) 2013-2020 Max Planck Society for the Advancement of Science e.V.
+                        Benjamin Buchfink
+                        Eberhard Karls Universitaet Tuebingen
+						
+Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,12 +20,9 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#ifndef STATISTICS_H_
-#define STATISTICS_H_
-
+#pragma once
 #include <algorithm>
 #include <stdint.h>
-#include <string.h>
 #include <mutex>
 #include "../util/log_stream.h"
 
@@ -33,7 +34,7 @@ struct Statistics
 	enum value {
 		SEED_HITS, TENTATIVE_MATCHES0, TENTATIVE_MATCHES1, TENTATIVE_MATCHES2, TENTATIVE_MATCHES3, TENTATIVE_MATCHES4, TENTATIVE_MATCHESX, MATCHES, ALIGNED, GAPPED, DUPLICATES,
 		GAPPED_HITS, QUERY_SEEDS, QUERY_SEEDS_HIT, REF_SEEDS, REF_SEEDS_HIT, QUERY_SIZE, REF_SIZE, OUT_HITS, OUT_MATCHES, COLLISION_LOOKUPS, QCOV, BIAS_ERRORS, SCORE_TOTAL, ALIGNED_QLEN, PAIRWISE, HIGH_SIM,
-		TEMP_SPACE, SECONDARY_HITS, ERASED_HITS, SQUARED_ERROR, CELLS, OUTRANKED_HITS, TARGET_HITS0, TARGET_HITS1, TARGET_HITS2, TARGET_HITS3, TARGET_HITS4, TARGET_HITS5, TARGET_HITS6, TIME_GREEDY_EXT, LOW_COMPLEXITY_SEEDS,
+		SEARCH_TEMP_SPACE, SECONDARY_HITS, ERASED_HITS, SQUARED_ERROR, CELLS, OUTRANKED_HITS, TARGET_HITS0, TARGET_HITS1, TARGET_HITS2, TARGET_HITS3, TARGET_HITS4, TARGET_HITS5, TARGET_HITS6, TIME_GREEDY_EXT, LOW_COMPLEXITY_SEEDS,
 		SWIPE_REALIGN, EXT8, EXT16, EXT32, GAPPED_FILTER_TARGETS, GAPPED_FILTER_HITS1, GAPPED_FILTER_HITS2, GROSS_DP_CELLS, NET_DP_CELLS, TIME_TARGET_SORT, TIME_SW, TIME_EXT, TIME_GAPPED_FILTER,
 		TIME_LOAD_HIT_TARGETS, TIME_CHAINING, TIME_LOAD_SEED_HITS, TIME_SORT_SEED_HITS, TIME_SORT_TARGETS_BY_SCORE, TIME_TARGET_PARALLEL, TIME_TRACEBACK_SW, TIME_TRACEBACK, COUNT
 	};
@@ -44,7 +45,7 @@ struct Statistics
 	}
 
 	void reset() {
-		memset(data_, 0, sizeof(data_));
+		std::fill(data_, data_ + COUNT, (stat_type)0);
 	}
 
 	Statistics& operator+=(const Statistics &rhs)
@@ -72,12 +73,12 @@ struct Statistics
 		using std::endl;
 		//log_stream << "Used ref size = " << data_[REF_SIZE] << endl;
 		//log_stream << "Traceback errors = " << data_[BIAS_ERRORS] << endl;
-		log_stream << "Low complexity seeds  = " << data_[LOW_COMPLEXITY_SEEDS] << endl;
+		//log_stream << "Low complexity seeds  = " << data_[LOW_COMPLEXITY_SEEDS] << endl;
 		log_stream << "Hits (filter stage 0) = " << data_[SEED_HITS] << endl;
 		log_stream << "Hits (filter stage 1) = " << data_[TENTATIVE_MATCHES1] << " (" << data_[TENTATIVE_MATCHES1]*100.0/ data_[SEED_HITS] << " %)" << endl;
 		log_stream << "Hits (filter stage 2) = " << data_[TENTATIVE_MATCHES2] << " (" << data_[TENTATIVE_MATCHES2] * 100.0 / data_[TENTATIVE_MATCHES1] << " %)" << endl;
 		log_stream << "Hits (filter stage 3) = " << data_[TENTATIVE_MATCHES3] << " (" << data_[TENTATIVE_MATCHES3] * 100.0 / data_[TENTATIVE_MATCHES2] << " %)" << endl;
-		log_stream << "Hits (filter stage 4) = " << data_[TENTATIVE_MATCHES4] << " (" << data_[TENTATIVE_MATCHES4] * 100.0 / data_[TENTATIVE_MATCHES3] << " %)" << endl;
+		//log_stream << "Hits (filter stage 4) = " << data_[TENTATIVE_MATCHES4] << " (" << data_[TENTATIVE_MATCHES4] * 100.0 / data_[TENTATIVE_MATCHES3] << " %)" << endl;
 		log_stream << "Target hits (stage 0) = " << data_[TARGET_HITS0] << endl;
 		log_stream << "Target hits (stage 1) = " << data_[TARGET_HITS1] << endl;
 		log_stream << "Target hits (stage 2) = " << data_[TARGET_HITS2] << endl;
@@ -119,10 +120,11 @@ struct Statistics
 		//log_stream << "Total score = " << data_[SCORE_TOTAL] << endl;
 		//log_stream << "Aligned query len = " << data_[ALIGNED_QLEN] << endl;
 		//log_stream << "Gapped matches = " << data_[GAPPED] << endl;
-		log_stream << "MSE = " << (double)data_[SQUARED_ERROR] / (double)data_[OUT_HITS] << endl;
+		//log_stream << "MSE = " << (double)data_[SQUARED_ERROR] / (double)data_[OUT_HITS] << endl;
 		//log_stream << "Cells = " << data_[CELLS] << endl;
-		verbose_stream << "Temporary disk space used: " << (double)data_[TEMP_SPACE] / (1 << 30) << " GB" << endl;
-		log_stream << "Outranked hits = " << data_[OUTRANKED_HITS] << " (" << data_[OUTRANKED_HITS]*100.0/ data_[PAIRWISE] << "%)" << endl;
+		verbose_stream << "Temporary disk space used (search): " << (double)data_[SEARCH_TEMP_SPACE] / (1 << 30) << " GB" << endl;
+		if(data_[OUTRANKED_HITS])
+			log_stream << "Outranked hits = " << data_[OUTRANKED_HITS] << " (" << data_[OUTRANKED_HITS]*100.0/ data_[PAIRWISE] << "%)" << endl;
 		message_stream << "Reported " << data_[PAIRWISE] << " pairwise alignments, " << data_[MATCHES] << " HSPs." << endl;
 		message_stream << data_[ALIGNED] << " queries aligned." << endl;
 	}
@@ -133,5 +135,3 @@ struct Statistics
 };
 
 extern Statistics statistics;
-
-#endif /* STATISTICS_H_ */

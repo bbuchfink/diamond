@@ -187,4 +187,5 @@ void align_queries(Trace_pt_buffer &trace_pts, Consumer* output_file, const Para
 		timer.go("Deallocating buffers");
 		delete hit_buf;
 	}
+	statistics.max(Statistics::SEARCH_TEMP_SPACE, trace_pts.total_disk_size());
 }
