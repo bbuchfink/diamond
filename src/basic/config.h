@@ -25,7 +25,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <vector>
 #include <stdint.h>
 
-enum class Sensitivity { FAST = 0, SENSITIVE = 1, MORE_SENSITIVE = 2, VERY_SENSITIVE = 3, ULTRA_SENSITIVE = 4 };
+enum class Sensitivity { FAST = 0, MID_SENSITIVE = 1, SENSITIVE = 2, MORE_SENSITIVE = 3, VERY_SENSITIVE = 4, ULTRA_SENSITIVE = 5 };
 enum class TracebackMode { NONE = 0, SCORE_ONLY = 1, STAT = 2, VECTOR = 3, SCORE_BUFFER = 4 };
 
 struct Config
@@ -229,8 +229,8 @@ struct Config
 	unsigned target_parallel_verbosity;
 	double memory_limit;
 	size_t global_ranking_targets;
+	bool mode_mid_sensitive;
 
-	
 	Sensitivity sensitivity;
 	TracebackMode traceback_mode;
 
