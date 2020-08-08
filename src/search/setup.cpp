@@ -59,21 +59,21 @@ void setup_search()
 	if (config.sensitivity == Sensitivity::ULTRA_SENSITIVE) {
 		Config::set_option(config.freq_sd, 20.0);
 		Config::set_option(config.min_identities, 9u);
-		Config::set_option(config.ungapped_evalue, 300000.0);
+		Config::set_option(config.ungapped_evalue, 300000.0, -1.0);
 		Config::set_option(config.gapped_filter_evalue, 10.0, -1.0);
 		Config::set_option(config.lowmem, 1u);
 		Config::set_option(config.query_bins, 64u);
 	} else if (config.sensitivity == Sensitivity::VERY_SENSITIVE) {
 		Config::set_option(config.freq_sd, 15.0);
 		Config::set_option(config.min_identities, 9u);
-		Config::set_option(config.ungapped_evalue, 100000.0);
+		Config::set_option(config.ungapped_evalue, 100000.0, -1.0);
 		Config::set_option(config.gapped_filter_evalue, 10.0, -1.0);
 		Config::set_option(config.lowmem, 1u);
 		Config::set_option(config.query_bins, 16u);
 	} else if (config.sensitivity == Sensitivity::MORE_SENSITIVE) {
 		Config::set_option(config.freq_sd, 200.0);
 		Config::set_option(config.min_identities, 11u);
-		Config::set_option(config.ungapped_evalue, 10000.0);
+		Config::set_option(config.ungapped_evalue, 10000.0, -1.0);
 		Config::set_option(config.gapped_filter_evalue, 10.0, -1.0);
 		Config::set_option(config.lowmem, 4u);
 		Config::set_option(config.query_bins, 16u);
@@ -81,7 +81,7 @@ void setup_search()
 	else if (config.sensitivity == Sensitivity::SENSITIVE) {
 		Config::set_option(config.freq_sd, 20.0);
 		Config::set_option(config.min_identities, 11u);
-		Config::set_option(config.ungapped_evalue, 10000.0);
+		Config::set_option(config.ungapped_evalue, 10000.0, -1.0);
 		Config::set_option(config.gapped_filter_evalue, 10.0, -1.0);
 		Config::set_option(config.lowmem, 4u);
 		Config::set_option(config.query_bins, 16u);
@@ -89,7 +89,7 @@ void setup_search()
 	else {
 		Config::set_option(config.freq_sd, 50.0);
 		Config::set_option(config.min_identities, 11u);
-		Config::set_option(config.ungapped_evalue, 10000.0);
+		Config::set_option(config.ungapped_evalue, 10000.0, -1.0);
 		Config::set_option(config.lowmem, 4u);
 		Config::set_option(config.query_bins, 16u);
 	}

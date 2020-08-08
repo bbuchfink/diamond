@@ -65,6 +65,7 @@ void search_query_offset(uint64_t q,
 
 	const Letter* subjects[N];
 	int scores[N];
+	std::fill(scores, scores + N, INT_MAX);
 
 	const sequence query_clipped = Util::Sequence::clip(query - config.ungapped_window, config.ungapped_window * 2, config.ungapped_window);
 	const int window_left = int(query - query_clipped.data()), window = (int)query_clipped.length();
@@ -82,7 +83,8 @@ void search_query_offset(uint64_t q,
 		const size_t n = std::min(N, hits_end - i);
 		for (size_t j = 0; j < n; ++j)
 			subjects[j] = ref_seqs::data_->data(s[*(i + j)]) - window_left;
-		DP::window_ungapped_best(query_clipped.data(), subjects, n, window, scores);
+		if(config.ungapped_evalue != 0.0)
+			DP::window_ungapped_best(query_clipped.data(), subjects, n, window, scores);
 
 		for (size_t j = 0; j < n; ++j) {
 			if (scores[j] > score_cutoff) {
