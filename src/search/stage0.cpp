@@ -70,14 +70,19 @@ void search_worker(atomic<unsigned> *seedp, const SeedPartitionRange *seedp_rang
 	statistics += stats;
 }
 
-void search_shape(unsigned sid, unsigned query_block, char *query_buffer, char *ref_buffer)
+void search_shape(unsigned sid, unsigned query_block, char *query_buffer, char *ref_buffer, const Parameters &params)
 {
 	::partition<unsigned> p(Const::seedp, config.lowmem);
 	DoubleArray<SeedArray::_pos> query_seed_hits[Const::seedp], ref_seed_hits[Const::seedp];
 	log_rss();
 
 	for (unsigned chunk = 0; chunk < p.parts; ++chunk) {
-		message_stream << "Processing query block " << query_block << ", reference block " << current_ref_block << ", shape " << sid << ", index chunk " << chunk << '.' << endl;
+		message_stream << "Processing query block " << query_block + 1
+			<< ", reference block " << (current_ref_block + 1) << "/" << params.ref_blocks
+			<< ", shape " << (sid + 1) << "/" << shapes.count();
+		if (config.lowmem > 1)
+			message_stream << ", index chunk " << chunk + 1 << "/" << config.lowmem;
+		message_stream << '.' << endl;
 		const SeedPartitionRange range(p.getMin(chunk), p.getMax(chunk));
 		current_range = range;
 

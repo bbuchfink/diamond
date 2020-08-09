@@ -117,7 +117,7 @@ void run_ref_chunk(DatabaseFile &db_file,
 		timer.finish();
 
 		for (unsigned i = 0; i < shapes.count(); ++i)
-			search_shape(i, query_chunk, query_buffer, ref_buffer);
+			search_shape(i, query_chunk, query_buffer, ref_buffer, params);
 
 		timer.go("Deallocating buffers");
 		delete[] ref_buffer;
@@ -173,6 +173,7 @@ void run_query_chunk(DatabaseFile &db_file,
 	const Parameters params {
 		db_file.ref_header.sequences,
 		db_file.ref_header.letters,
+		db_file.total_blocks(),
 		config.gapped_filter_evalue1,
 		config.gapped_filter_evalue
 	};

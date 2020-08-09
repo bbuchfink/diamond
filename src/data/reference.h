@@ -121,6 +121,7 @@ struct DatabaseFile : public InputFile
 	void seek_seq(size_t i);
 	size_t tell_seq() const;
 	void seek_direct();
+	size_t total_blocks() const;
 
 	enum { min_build_required = 74, MIN_DB_VERSION = 2 };
 

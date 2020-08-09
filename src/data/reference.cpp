@@ -170,6 +170,11 @@ void DatabaseFile::rewind()
 	pos_array_offset = ref_header.pos_array_offset;
 }
 
+size_t DatabaseFile::total_blocks() const {
+	const size_t c = config.chunk_size * 1e9;
+	return (this->ref_header.letters + c - 1) / c;
+}
+
 void push_seq(const sequence &seq, const char *id, size_t id_len, uint64_t &offset, vector<Pos_record> &pos_array, OutputFile &out, size_t &letters, size_t &n_seqs)
 {
 	pos_array.emplace_back(offset, seq.length());
