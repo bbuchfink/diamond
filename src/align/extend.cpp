@@ -123,7 +123,7 @@ vector<Target> extend(const Parameters& params,
 	if ((flags & TARGET_PARALLEL) == 0)
 		stat.inc(Statistics::TIME_CHAINING, timer.microseconds());
 
-	if (config.ext != "full") {
+	if (config.ext != "full" && !config.adaptive_ranking) {
 		timer.go("Computing ranking");
 		rank_targets(targets, config.rank_ratio == -1 ? (query_seq[0].length() > 50 ? 0.6 : 0.9) : config.rank_ratio, config.rank_factor == -1 ? 1e3 : config.rank_factor);
 		stat.inc(Statistics::TARGET_HITS4, targets.size());
@@ -170,7 +170,7 @@ vector<Match> extend(const Parameters &params, size_t query_id, hit* begin, hit*
 		timer.finish();
 	}
 
-	const bool use_chunks = config.ext_chunk_size > 0 && config.max_alignments >= target_block_ids.size() && config.toppercent == 100.0;
+	const bool use_chunks = config.ext_chunk_size > 0 && ((config.max_alignments >= target_block_ids.size() && config.toppercent == 100.0) || config.adaptive_ranking);
 	const size_t chunk_size = use_chunks ? config.ext_chunk_size : target_block_ids.size();
 	const int relaxed_cutoff = score_matrix.rawscore(score_matrix.bitscore(config.max_evalue * config.relaxed_evalue_factor, (unsigned)query_seq[0].length()));
 	vector<TargetScore>::const_iterator i0 = target_scores.cbegin(), i1 = std::min(i0 + config.ext_chunk_size, target_scores.cend());
@@ -196,12 +196,14 @@ vector<Match> extend(const Parameters &params, size_t query_id, hit* begin, hit*
 
 		vector<Target> v = extend(params, query_id, query_seq.data(), query_cb.data(), seed_hits_chunk, target_block_ids_chunk, metadata, stat, flags);
 		const size_t n = v.size();
+		size_t new_hits = 0;
 		if (multi_chunk)
-			aligned_targets.insert(aligned_targets.end(), v.begin(), v.end());
+			//aligned_targets.insert(aligned_targets.end(), v.begin(), v.end());
+			new_hits = score_only_culling(aligned_targets, v.begin(), v.end());
 		else
 			aligned_targets = TLS_FIX_S390X_MOVE(v);
 
-		if (use_chunks && (n == 0))
+		if (use_chunks && (n == 0 || new_hits == 0))
 			break;
 
 		i0 = i1;
@@ -210,7 +212,7 @@ vector<Match> extend(const Parameters &params, size_t query_id, hit* begin, hit*
 
 	stat.inc(Statistics::TARGET_HITS5, aligned_targets.size());
 	timer.go("Computing score only culling");
-	score_only_culling(aligned_targets);
+	score_only_culling(aligned_targets, aligned_targets.end(), aligned_targets.end());
 	stat.inc(Statistics::TARGET_HITS6, aligned_targets.size());
 	timer.finish();
 

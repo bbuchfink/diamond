@@ -230,6 +230,7 @@ struct Config
 	double memory_limit;
 	size_t global_ranking_targets;
 	bool mode_mid_sensitive;
+	bool adaptive_ranking;
 
 	Sensitivity sensitivity;
 	TracebackMode traceback_mode;

@@ -55,15 +55,35 @@ void Match::max_hsp_culling() {
 	}
 }
 
-void score_only_culling(vector<Target> &targets) {
+bool add_more_targets(const vector<Target> &targets, vector<Target>::const_iterator begin, vector<Target>::const_iterator end) {
+	if (targets.empty())
+		return true;
+	if (config.toppercent == 100.0 && targets.size() < config.max_alignments)
+		return true;
+	if (config.toppercent == 100.0 && (config.min_id > 0 || config.query_cover > 0 || config.subject_cover > 0 || config.no_self_hits))
+		return true;
+	int max_score = 0;
+	for (auto i = begin; i < end; ++i)
+		max_score = std::max(max_score, i->filter_score);
+	if (config.toppercent == 100.0)
+		return max_score >= targets.back().filter_score;
+	else
+		return max_score >= int((1.0 - config.toppercent / 100.0)*targets.front().filter_score);
+}
+
+size_t score_only_culling(vector<Target> &targets, vector<Target>::const_iterator begin, vector<Target>::const_iterator end) {
+	const size_t n = targets.size();
+	if (add_more_targets(targets, begin, end))
+		targets.insert(targets.end(), begin, end);
+
 	std::sort(targets.begin(), targets.end());
 	if (targets.empty() || targets.front().filter_score == 0) {
 		targets.clear();
-		return;
+		return 0;
 	}
 
 	if (config.toppercent == 100.0 && (config.min_id > 0 || config.query_cover > 0 || config.subject_cover > 0 || config.no_self_hits))
-		return;
+		return targets.size() - n;
 
 	vector<Target>::iterator i = targets.begin();
 	if (config.toppercent < 100.0) {
@@ -77,6 +97,7 @@ void score_only_culling(vector<Target> &targets) {
 		++i;
 	}
 	targets.erase(i, targets.end());
+	return targets.size() >= n ? targets.size() - n : 0;
 }
 
 void Match::apply_filters(int source_query_len, const char *query_title)

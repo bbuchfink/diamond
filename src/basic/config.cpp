@@ -415,7 +415,8 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("target-parallel-verbosity", 0, "", target_parallel_verbosity, UINT_MAX)
 		("ext-targets", 0, "", global_ranking_targets)
 		("traceback-mode", 0, "", traceback_mode_str)
-		("mid-sensitive", 0, "", mode_mid_sensitive);
+		("mid-sensitive", 0, "", mode_mid_sensitive)
+		("adaptive-ranking", 0, "", adaptive_ranking);
 	
 	parser.add(general).add(makedb).add(cluster).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options).add(deprecated_options);
 	parser.store(argc, argv, command);
