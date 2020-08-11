@@ -211,7 +211,7 @@ vector<Match> extend(const Parameters &params, size_t query_id, hit* begin, hit*
 	stat.inc(Statistics::TARGET_HITS5, aligned_targets.size());
 	timer.go("Computing score only culling");
 	score_only_culling(aligned_targets);
-	stat.inc(Statistics::TARGET_HITS5, aligned_targets.size());
+	stat.inc(Statistics::TARGET_HITS6, aligned_targets.size());
 	timer.finish();
 
 	vector<Match> matches = align(aligned_targets, query_seq.data(), query_cb.data(), source_query_len, flags, stat);
