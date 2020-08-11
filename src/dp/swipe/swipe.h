@@ -71,7 +71,7 @@ struct RowCounter {
 	void store(Score *ptr) {
 		store_sv(i_max, ptr);
 	}
-	static constexpr int MAX_LEN = ::DISPATCH_ARCH::ScoreTraits<_sv>::max_int_score() + 1;
+	static constexpr int MAX_LEN = ::DISPATCH_ARCH::ScoreTraits<_sv>::max_int_score();
 	_sv i;
 	_sv i_max;
 };
