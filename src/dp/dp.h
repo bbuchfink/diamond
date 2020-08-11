@@ -211,6 +211,7 @@ struct Traceback {};
 struct StatTraceback {};
 struct VectorTraceback {};
 struct ScoreOnly {};
+struct ScoreWithCoords {};
 
 enum { TRACEBACK = 1, PARALLEL = 2, FULL_MATRIX = 4 };
 

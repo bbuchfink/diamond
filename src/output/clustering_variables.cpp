@@ -37,8 +37,6 @@ NumberGaps VariableRegistry::numberGaps;
 PercentagePositiveMatches VariableRegistry::percentagePositiveMatches;
 QueryFrame VariableRegistry::queryFrame;
 QueryCoveragePerHsp VariableRegistry::queryCoveragePerHsp;
-SwDiff VariableRegistry::swdiff;
-Time VariableRegistry::time;
 SubjectCoveragePerHsp VariableRegistry::subjectCoveragePerHsp;
 UngappedScore VariableRegistry::ungappedScore;
 VariableRegistry::StaticConstructor VariableRegistry::_staticConstructor;

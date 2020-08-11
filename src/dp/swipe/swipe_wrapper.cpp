@@ -19,7 +19,6 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-
 #include <list>
 #include <atomic>
 #include <thread>
@@ -54,6 +53,23 @@ list<Hsp> swipe(
 	vector<DpTarget> &overflow,
 	Statistics &stat);
 
+template<typename _sv, typename _traceback>
+list<Hsp> swipe_dispatch_cbs(
+	const sequence &query,
+	Frame frame,
+	vector<DpTarget>::const_iterator subject_begin,
+	vector<DpTarget>::const_iterator subject_end,
+	const int8_t* composition_bias,
+	int score_cutoff,
+	vector<DpTarget> &overflow,
+	Statistics &stat)
+{
+	if (composition_bias == nullptr)
+		return swipe<_sv, _traceback>(query, frame, subject_begin, subject_end, NoCBS(), score_cutoff, overflow, stat);
+	else
+		return swipe<_sv, _traceback>(query, frame, subject_begin, subject_end, composition_bias, score_cutoff, overflow, stat);
+}
+
 template<typename _sv>
 list<Hsp> swipe_targets(const sequence &query,
 	vector<DpTarget>::const_iterator begin,
@@ -73,31 +89,13 @@ list<Hsp> swipe_targets(const sequence &query,
 	else {
 		for (vector<DpTarget>::const_iterator i = begin; i < end; i += CHANNELS) {
 			if (flags & TRACEBACK) {
-				if (config.traceback_mode == TracebackMode::STAT) {
-					if (composition_bias == nullptr)
-						out.splice(out.end(), swipe<_sv, StatTraceback>(query, frame, i, i + std::min(CHANNELS, end - i), NoCBS(), score_cutoff, overflow, stat));
-					else
-						out.splice(out.end(), swipe<_sv, StatTraceback>(query, frame, i, i + std::min(CHANNELS, end - i), composition_bias, score_cutoff, overflow, stat));
-				}
-				else if (config.traceback_mode == TracebackMode::VECTOR) {
-					if (composition_bias == nullptr)
-						out.splice(out.end(), swipe<_sv, VectorTraceback>(query, frame, i, i + std::min(CHANNELS, end - i), NoCBS(), score_cutoff, overflow, stat));
-					else
-						out.splice(out.end(), swipe<_sv, VectorTraceback>(query, frame, i, i + std::min(CHANNELS, end - i), composition_bias, score_cutoff, overflow, stat));
-				}
-				else {
-					if (composition_bias == nullptr)
-						out.splice(out.end(), swipe<_sv, Traceback>(query, frame, i, i + std::min(CHANNELS, end - i), NoCBS(), score_cutoff, overflow, stat));
-					else
-						out.splice(out.end(), swipe<_sv, Traceback>(query, frame, i, i + std::min(CHANNELS, end - i), composition_bias, score_cutoff, overflow, stat));
-				}
-			}
-			else {
-				if (composition_bias == nullptr)
-					out.splice(out.end(), swipe<_sv, ScoreOnly>(query, frame, i, i + std::min(CHANNELS, end - i), NoCBS(), score_cutoff, overflow, stat));
+				if (config.traceback_mode == TracebackMode::VECTOR)
+					out.splice(out.end(), swipe_dispatch_cbs<_sv, VectorTraceback>(query, frame, i, i + std::min(CHANNELS, end - i), composition_bias, score_cutoff, overflow, stat));
 				else
-					out.splice(out.end(), swipe<_sv, ScoreOnly>(query, frame, i, i + std::min(CHANNELS, end - i), composition_bias, score_cutoff, overflow, stat));
+					out.splice(out.end(), swipe_dispatch_cbs<_sv, Traceback>(query, frame, i, i + std::min(CHANNELS, end - i), composition_bias, score_cutoff, overflow, stat));
 			}
+			else
+				out.splice(out.end(), swipe_dispatch_cbs<_sv, ScoreOnly>(query, frame, i, i + std::min(CHANNELS, end - i), composition_bias, score_cutoff, overflow, stat));
 		}
 	}
 	return out;

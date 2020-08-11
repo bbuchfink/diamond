@@ -121,8 +121,8 @@ list<Hsp> swipe(const sequence& query, Frame frame, vector<DpTarget>::const_iter
 	SwipeProfile<_sv> profile;
 	TargetBuffer<Score> targets(subject_begin, subject_end);
 	list<Hsp> out;
-	RowCounter<_sv> row_counter(0);
-
+	DummyRowCounter row_counter;
+	
 	while (targets.active.size() > 0) {
 		typename Matrix<_sv>::ColumnIterator it(dp.begin());
 		_sv vgap, hgap, last, col_best;
@@ -133,7 +133,7 @@ list<Hsp> swipe(const sequence& query, Frame frame, vector<DpTarget>::const_iter
 #endif
 		for (int i = 0; i < qlen; ++i) {
 			hgap = it.hgap();
-			const _sv next = swipe_cell_update<_sv>(it.diag(), profile.get(query[i]), nullptr, extend_penalty, open_penalty, hgap, vgap, col_best, nullptr, nullptr, nullptr, (void*)nullptr, row_counter);
+			const _sv next = swipe_cell_update<_sv>(it.diag(), profile.get(query[i]), nullptr, extend_penalty, open_penalty, hgap, vgap, col_best, nullptr, nullptr, nullptr, nullptr, row_counter);
 			it.set_hgap(hgap);
 			it.set_score(last);
 			last = next;

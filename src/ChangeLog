@@ -1,6 +1,8 @@
 [2.0.3]
 - Added a new sensitivity mode that is between the default mode and the sensitive mode
   in sensitivity (option `--mid-sensitive`).
+- Fixed a bug that could cause secondary HSPs within one target not to be reported
+  if the `--max-hsps` option was used with a non-default setting.
 
 [2.0.2]
 - Fixed a bug that could cause incomplete results in `blastx` mode.

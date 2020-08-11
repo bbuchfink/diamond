@@ -199,24 +199,6 @@ public:
 		return (double)r.query_source_range().length()*100.0 / r.query.source().length();
 	}
 };
-class SwDiff: public Variable{
-public:
-	std::string get_name(){
-		return "swdiff";
-	}
-	double get(const Hsp_context& r){
-		return r.sw_score() - r.bit_score();
-	}
-};
-class Time: public Variable{
-public:
-	std::string get_name(){
-		return "time";
-	}
-	double get(const Hsp_context& r){
-		return r.time();
-	}
-};
 class SubjectCoveragePerHsp: public Variable{
 public:
 	std::string get_name(){
@@ -257,8 +239,6 @@ private:
 	static PercentagePositiveMatches percentagePositiveMatches;
 	static QueryFrame queryFrame;
 	static QueryCoveragePerHsp queryCoveragePerHsp;
-	static SwDiff swdiff;
-	static Time time;
 	static SubjectCoveragePerHsp subjectCoveragePerHsp;
 	static UngappedScore ungappedScore;
 public:
@@ -301,8 +281,6 @@ public:
 			regMap.emplace(percentagePositiveMatches.get_name(), &percentagePositiveMatches);
 			regMap.emplace(queryFrame.get_name(), &queryFrame);
 			regMap.emplace(queryCoveragePerHsp.get_name(), &queryCoveragePerHsp);
-			regMap.emplace(swdiff.get_name(), &swdiff);
-			regMap.emplace(time.get_name(), &time);
 			regMap.emplace(subjectCoveragePerHsp.get_name(), &subjectCoveragePerHsp);
 			regMap.emplace(ungappedScore.get_name(), &ungappedScore);
 		}

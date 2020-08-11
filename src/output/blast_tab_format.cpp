@@ -310,10 +310,10 @@ void Blast_tab_format::print_match(const Hsp_context& r, const Metadata &metadat
 			out << r.query_name;
 			break;
 		case 46:
-			out << r.sw_score() - r.bit_score();
+			out << 0;
 			break;
 		case 47:
-			out << r.time();
+			out << 0;
 			break;
 		case 48:
 			out << r.subject_seq;

@@ -21,11 +21,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #pragma once
 #include <assert.h>
+#include <limits>
 #include "../score_vector.h"
 #include "../score_vector_int8.h"
 #include "../score_vector_int16.h"
 #include "../../basic/value.h"
 #include "../util/simd/vector.h"
+#include "../../util/system.h"
 
 static inline uint8_t cmp_mask(int x, int y) {
 	return x == y;
@@ -45,21 +47,67 @@ struct TraceStat {
 	_sv mismatch;
 };
 
+struct DummyRowCounter {
+	DummyRowCounter() {}
+	DummyRowCounter(int) {}
+	void store(void*) {}
+	template<typename _sv>
+	FORCE_INLINE void inc(const _sv&, const _sv&) {}
+	enum { MAX_LEN = INT_MAX };
+};
+
 template<typename _sv>
 struct RowCounter {
-	RowCounter(int offset):
-		i(::DISPATCH_ARCH::ScoreTraits<_sv>::zero_score() + typename ::DISPATCH_ARCH::ScoreTraits<_sv>::Score(offset)),
+	typedef typename ::DISPATCH_ARCH::ScoreTraits<_sv>::Score Score;
+	RowCounter(int i):
+		i(::DISPATCH_ARCH::ScoreTraits<_sv>::zero_score() + Score(i)),
 		i_max()
 	{
 	}
+	FORCE_INLINE void inc(const _sv& best, const _sv& current_cell) {
+		i_max = blend(i_max, i, best == current_cell);
+		i += _sv(Score(1));
+	}
+	void store(Score *ptr) {
+		store_sv(i_max, ptr);
+	}
+	enum { MAX_LEN = std::min((long long)std::numeric_limits<Score>::max() - (long long)std::numeric_limits<Score>::min() + 1ll, (long long)INT_MAX) };
 	_sv i;
 	_sv i_max;
 };
 
 template<typename _sv>
-static inline _sv swipe_cell_update(const _sv &diagonal_cell,
+FORCE_INLINE _sv add_cbs(const _sv &v, void*) {
+	return v;
+}
+
+template<typename _sv>
+FORCE_INLINE _sv add_cbs(const _sv& v, const _sv& query_bias) {
+	return v + query_bias;
+}
+
+template<typename _sv>
+FORCE_INLINE void make_gap_mask(typename ::DISPATCH_ARCH::ScoreTraits<_sv>::TraceMask *trace_mask, const _sv& current_cell, const _sv& vertical_gap, const _sv& horizontal_gap) {
+	trace_mask->gap = ::DISPATCH_ARCH::ScoreTraits<_sv>::TraceMask::make(cmp_mask(current_cell, vertical_gap), cmp_mask(current_cell, horizontal_gap));
+}
+
+template<typename _sv>
+FORCE_INLINE void make_gap_mask(std::nullptr_t, const _sv&, const _sv&, const _sv&) {
+}
+
+template<typename _sv>
+FORCE_INLINE void make_open_mask(typename ::DISPATCH_ARCH::ScoreTraits<_sv>::TraceMask *trace_mask, const _sv& open, const _sv& vertical_gap, const _sv& horizontal_gap) {
+	trace_mask->open = ::DISPATCH_ARCH::ScoreTraits<_sv>::TraceMask::make(cmp_mask(vertical_gap, open), cmp_mask(horizontal_gap, open));
+}
+
+template<typename _sv>
+FORCE_INLINE void make_open_mask(std::nullptr_t, const _sv&, const _sv&, const _sv&) {
+}
+
+template<typename _sv, typename _cbs, typename _trace_mask, typename _row_counter>
+FORCE_INLINE _sv swipe_cell_update(const _sv &diagonal_cell,
 	const _sv &scores,
-	void*,
+	_cbs query_bias,
 	const _sv &gap_extension,
 	const _sv &gap_open,
 	_sv &horizontal_gap,
@@ -68,49 +116,20 @@ static inline _sv swipe_cell_update(const _sv &diagonal_cell,
 	void*,
 	void*,
 	void*,
-	void*,
-	const RowCounter<_sv>&)
+	_trace_mask trace_mask,
+	_row_counter& row_counter)
 {
 	using std::max;
-	_sv current_cell = max(diagonal_cell + scores, vertical_gap);
-	current_cell = max(current_cell, horizontal_gap);
-	::DISPATCH_ARCH::ScoreTraits<_sv>::saturate(current_cell);
-	best = max(best, current_cell);
-	vertical_gap -= gap_extension;
-	horizontal_gap -= gap_extension;
-	const _sv open = current_cell - gap_open;
-	vertical_gap = max(vertical_gap, open);
-	horizontal_gap = max(horizontal_gap, open);
-	return current_cell;
-}
 
-
-template<typename _sv>
-static inline _sv swipe_cell_update(const _sv &diagonal_cell,
-	const _sv &scores,
-	void*,
-	const _sv &gap_extension,
-	const _sv &gap_open,
-	_sv &horizontal_gap,
-	_sv &vertical_gap,
-	_sv &best,
-	void*,
-	void*,
-	void*,
-	typename ::DISPATCH_ARCH::ScoreTraits<_sv>::TraceMask *trace_mask,
-	RowCounter<_sv>& row_counter)
-{
-	typedef typename ::DISPATCH_ARCH::ScoreTraits<_sv>::TraceMask TraceMask;
-	using std::max;
-	_sv current_cell = max(diagonal_cell + scores, vertical_gap);
-	current_cell = max(current_cell, horizontal_gap);
+	_sv current_cell = diagonal_cell + add_cbs(scores, query_bias);
+	current_cell = max(max(current_cell, vertical_gap), horizontal_gap);
 	::DISPATCH_ARCH::ScoreTraits<_sv>::saturate(current_cell);
 
-	trace_mask->gap = TraceMask::make(cmp_mask(current_cell, vertical_gap), cmp_mask(current_cell, horizontal_gap));
+	make_gap_mask(trace_mask, current_cell, vertical_gap, horizontal_gap);
 
 	best = max(best, current_cell);
-	row_counter.i_max = blend(row_counter.i_max, row_counter.i, best == current_cell);
-	row_counter.i += _sv(typename ::DISPATCH_ARCH::ScoreTraits<_sv>::Score(1));
+
+	row_counter.inc(best, current_cell);
 
 	vertical_gap -= gap_extension;
 	horizontal_gap -= gap_extension;
@@ -118,12 +137,12 @@ static inline _sv swipe_cell_update(const _sv &diagonal_cell,
 	vertical_gap = max(vertical_gap, open);
 	horizontal_gap = max(horizontal_gap, open);
 
-	trace_mask->open = TraceMask::make(cmp_mask(vertical_gap, open), cmp_mask(horizontal_gap, open));
+	make_open_mask(trace_mask, open, vertical_gap, horizontal_gap);
 
 	return current_cell;
 }
 
-template<typename _sv>
+/*template<typename _sv>
 static inline _sv swipe_cell_update(const _sv &diagonal_cell,
 	const _sv &scores,
 	void*,
@@ -141,34 +160,6 @@ static inline _sv swipe_cell_update(const _sv &diagonal_cell,
 	using std::max;
 	_sv current_cell = max(diagonal_cell + scores, vertical_gap);
 	current_cell = max(current_cell, horizontal_gap);
-	::DISPATCH_ARCH::ScoreTraits<_sv>::saturate(current_cell);
-	best = max(best, current_cell);
-	vertical_gap -= gap_extension;
-	horizontal_gap -= gap_extension;
-	const _sv open = current_cell - gap_open;
-	vertical_gap = max(vertical_gap, open);
-	horizontal_gap = max(horizontal_gap, open);
-	return current_cell;
-}
-
-template<typename _sv>
-static inline _sv swipe_cell_update(const _sv& diagonal_cell,
-	const _sv& scores,
-	const _sv& query_bias,
-	const _sv& gap_extension,
-	const _sv& gap_open,
-	_sv& horizontal_gap,
-	_sv& vertical_gap,
-	_sv& best,
-	void*,
-	void*,
-	void*,
-	void*,
-	const RowCounter<_sv>&)
-{
-	using std::max;
-	_sv current_cell = diagonal_cell + (scores + query_bias);
-	current_cell = max(max(current_cell, vertical_gap), horizontal_gap);
 	::DISPATCH_ARCH::ScoreTraits<_sv>::saturate(current_cell);
 	best = max(best, current_cell);
 	vertical_gap -= gap_extension;
@@ -217,46 +208,8 @@ static inline _sv swipe_cell_update(const _sv& diagonal_cell,
 	trace_stat_diag.length = blend(trace_stat_diag.length, trace_stat_horizontal.length, hgap_mask);
 	trace_stat_diag.length = blend(trace_stat_diag.length, zero2, zero_mask);*/
 	
-	return current_cell;
-}
-
-template<typename _sv>
-static inline _sv swipe_cell_update(const _sv& diagonal_cell,
-	const _sv& scores,
-	const _sv& query_bias,
-	const _sv& gap_extension,
-	const _sv& gap_open,
-	_sv& horizontal_gap,
-	_sv& vertical_gap,
-	_sv& best,
-	void*,
-	void*,
-	void*,
-	typename ::DISPATCH_ARCH::ScoreTraits<_sv>::TraceMask *trace_mask,
-	RowCounter<_sv> &row_counter)
-{
-	typedef typename ::DISPATCH_ARCH::ScoreTraits<_sv>::TraceMask TraceMask;
-	using std::max;
-	_sv current_cell = diagonal_cell + (scores + query_bias);
-	current_cell = max(max(current_cell, vertical_gap), horizontal_gap);
-	::DISPATCH_ARCH::ScoreTraits<_sv>::saturate(current_cell);
-
-	trace_mask->gap = TraceMask::make(cmp_mask(current_cell, vertical_gap), cmp_mask(current_cell, horizontal_gap));
-
-	best = max(best, current_cell);
-	row_counter.i_max = blend(row_counter.i_max, row_counter.i, best == current_cell);
-	row_counter.i += _sv(typename ::DISPATCH_ARCH::ScoreTraits<_sv>::Score(1));
-
-	vertical_gap -= gap_extension;
-	horizontal_gap -= gap_extension;
-	const _sv open = current_cell - gap_open;
-	vertical_gap = max(vertical_gap, open);
-	horizontal_gap = max(horizontal_gap, open);
-
-	trace_mask->open = TraceMask::make(cmp_mask(vertical_gap, open), cmp_mask(horizontal_gap, open));
-
-	return current_cell;
-}
+/*	return current_cell;
+}*/
 
 template<typename _sv>
 static inline _sv cell_update(const _sv &diagonal_cell,

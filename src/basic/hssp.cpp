@@ -206,7 +206,7 @@ void Hsp::set_end(int i, int j, Frame frame, int dna_len)
 
 void Hsp::clear()
 {
-	score = frame = length = identities = mismatches = positives = gap_openings = gaps = sw_score = 0;
+	score = frame = length = identities = mismatches = positives = gap_openings = gaps = 0;
 	transcript.clear();
 }
 

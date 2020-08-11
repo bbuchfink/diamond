@@ -118,7 +118,7 @@ struct score_vector<int16_t>
 		return score_vector(_mm256_blendv_epi8(v.data_, w.data_, mask.data_));
 	}
 	
-	score_vector operator==(const score_vector &v) {
+	score_vector operator==(const score_vector &v) const {
 		return score_vector(_mm256_cmpeq_epi16(data_, v.data_));
 	}
 
@@ -257,7 +257,7 @@ struct score_vector<int16_t>
 		return *this;
 	}
 
-	score_vector operator==(const score_vector &v) {
+	score_vector operator==(const score_vector &v) const {
 		return score_vector(_mm_cmpeq_epi16(data_, v.data_));
 	}
 

@@ -187,7 +187,7 @@ void swipe_cell_update() {
 	{
 		score_vector<int8_t> diagonal_cell, scores, gap_extension, gap_open, horizontal_gap, vertical_gap, best;
 		for (size_t i = 0; i < n; ++i) {
-			diagonal_cell = ::swipe_cell_update(diagonal_cell, scores, nullptr, gap_extension, gap_open, horizontal_gap, vertical_gap, best, nullptr, nullptr, nullptr, (void*)nullptr, row_counter);
+			diagonal_cell = ::swipe_cell_update(diagonal_cell, scores, nullptr, gap_extension, gap_open, horizontal_gap, vertical_gap, best, nullptr, nullptr, nullptr, nullptr, row_counter);
 		}
 		volatile auto x = diagonal_cell.data_;
 	}
@@ -218,6 +218,7 @@ void swipe(const sequence &s1, const sequence &s2) {
 
 void banded_swipe(const sequence &s1, const sequence &s2) {
 	vector<DpTarget> target8, target16;
+	config.traceback_mode = TracebackMode::SCORE_BUFFER;
 	for (size_t i = 0; i < 8; ++i)
 		target16.emplace_back(s2, -32, 32, 0, 0);
 	static const size_t n = 10000llu;

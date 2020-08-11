@@ -166,8 +166,8 @@ void add_dp_targets(const Target &target, int target_idx, const sequence *query_
 	for (unsigned frame = 0; frame < align_mode.query_contexts; ++frame) {
 		const int qlen = (int)query_seq[frame].length();
 		for (const Hsp &hsp : target.hsp[frame]) {
-			vector<DpTarget>& v = hsp.score < 255 && (hsp.query_range.end_ - hsp.query_range.begin_ < 256) ? dp_targets[frame][0] : dp_targets[frame][1];
-			v.emplace_back(target.seq, hsp.query_range.begin_, hsp.query_range.end_, hsp.subject_range.begin_, hsp.subject_range.end_, target_idx);
+			vector<DpTarget>& v = hsp.score < 255 && (hsp.d_end - hsp.d_begin < 256) ? dp_targets[frame][0] : dp_targets[frame][1];
+			v.emplace_back(target.seq, hsp.d_begin, hsp.d_end, hsp.seed_hit_range.begin_, hsp.seed_hit_range.end_, target_idx);
 		}
 	}
 }

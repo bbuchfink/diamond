@@ -55,8 +55,7 @@ struct Hsp
 		mismatches(0),
 		positives(0),
 		gap_openings(0),
-		gaps(0),
-		sw_score(0)
+		gaps(0)
 	{}
 
 	Hsp(int score, int swipe_target = 0) :
@@ -68,7 +67,6 @@ struct Hsp
 		positives(0),
 		gap_openings(0),
 		gaps(0),
-		sw_score(0),
 		swipe_target(swipe_target)
 	{}
 
@@ -219,9 +217,8 @@ struct Hsp
 
 	bool is_weakly_enveloped(const Hsp &j) const;
 	std::pair<int, int> diagonal_bounds() const;
-	int score, frame, length, identities, mismatches, positives, gap_openings, gaps, sw_score, swipe_target;
-	float time;
-	interval query_source_range, query_range, subject_range;
+	int score, frame, length, identities, mismatches, positives, gap_openings, gaps, swipe_target, d_begin, d_end;
+	interval query_source_range, query_range, subject_range, seed_hit_range;
 	Packed_transcript transcript;
 };
 
@@ -333,14 +330,6 @@ struct Hsp_context
 	double bit_score() const
 	{
 		return score_matrix.bitscore(score());
-	}
-	double sw_score() const
-	{
-		return score_matrix.bitscore(hsp_.sw_score);
-	}
-	double time() const
-	{
-		return hsp_.time;
 	}
 	unsigned frame() const
 	{ return hsp_.frame; }
