@@ -503,35 +503,35 @@ template<typename _sv>
 struct MatrixTraits<_sv, StatTraceback>
 {
 	typedef TracebackStatMatrix<_sv> Type;
-	typedef DummyRowCounter RowCounter;
+	typedef DummyRowCounter MyRowCounter;
 };
 
 template<typename _sv>
 struct MatrixTraits<_sv, Traceback>
 {
 	typedef TracebackMatrix<_sv> Type;
-	typedef DummyRowCounter RowCounter;
+	typedef DummyRowCounter MyRowCounter;
 };
 
 template<typename _sv>
 struct MatrixTraits<_sv, VectorTraceback>
 {
 	typedef TracebackVectorMatrix<_sv> Type;
-	typedef RowCounter<_sv> RowCounter;
+	typedef RowCounter<_sv> MyRowCounter;
 };
 
 template<typename _sv>
 struct MatrixTraits<_sv, ScoreOnly>
 {
 	typedef Matrix<_sv> Type;
-	typedef DummyRowCounter RowCounter;
+	typedef DummyRowCounter MyRowCounter;
 };
 
 template<typename _sv>
 struct MatrixTraits<_sv, ScoreWithCoords>
 {
 	typedef Matrix<_sv> Type;
-	typedef RowCounter<_sv> RowCounter;
+	typedef RowCounter<_sv> MyRowCounter;
 };
 
 template<typename _score>
@@ -716,7 +716,7 @@ list<Hsp> swipe(
 	for (vector<DpTarget>::const_iterator j = subject_begin; j < subject_end; ++j)
 		band = std::max(band, j->d_end - j->d_begin);
 
-	if (band > MatrixTraits<_sv, _traceback>::RowCounter::MAX_LEN)
+	if (band > MatrixTraits<_sv, _traceback>::MyRowCounter::MAX_LEN)
 		throw std::runtime_error("Band size exceeds row counter maximum.");
 
 	int i1 = INT_MAX, d_begin[CHANNELS];
@@ -758,7 +758,7 @@ list<Hsp> swipe(
 		typename Matrix::ColumnIterator it(dp.begin(band_offset, j));
 		_sv vgap = _sv(), hgap = _sv(), col_best = _sv();
 		Stat stat_v = Stat();
-		typename MatrixTraits<_sv, _traceback>::RowCounter row_counter(band_offset);
+		typename MatrixTraits<_sv, _traceback>::MyRowCounter row_counter(band_offset);
 
 		if (band_offset > 0)
 			it.set_zero();
