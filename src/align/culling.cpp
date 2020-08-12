@@ -73,7 +73,8 @@ bool add_more_targets(const vector<Target> &targets, vector<Target>::const_itera
 
 size_t score_only_culling(vector<Target> &targets, vector<Target>::const_iterator begin, vector<Target>::const_iterator end) {
 	const size_t n = targets.size();
-	if (add_more_targets(targets, begin, end))
+	const bool more = add_more_targets(targets, begin, end);
+	if (more)
 		targets.insert(targets.end(), begin, end);
 
 	std::sort(targets.begin(), targets.end());
@@ -83,7 +84,7 @@ size_t score_only_culling(vector<Target> &targets, vector<Target>::const_iterato
 	}
 
 	if (config.toppercent == 100.0 && (config.min_id > 0 || config.query_cover > 0 || config.subject_cover > 0 || config.no_self_hits))
-		return targets.size() - n;
+		return 1;
 
 	vector<Target>::iterator i = targets.begin();
 	if (config.toppercent < 100.0) {
@@ -97,7 +98,7 @@ size_t score_only_culling(vector<Target> &targets, vector<Target>::const_iterato
 		++i;
 	}
 	targets.erase(i, targets.end());
-	return targets.size() >= n ? targets.size() - n : 0;
+	return more ? 1 : 0;
 }
 
 void Match::apply_filters(int source_query_len, const char *query_title)

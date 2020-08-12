@@ -163,14 +163,15 @@ vector<Match> extend(const Parameters &params, size_t query_id, hit* begin, hit*
 	stat.inc(Statistics::TIME_LOAD_HIT_TARGETS, timer.microseconds());
 	timer.finish();
 
-	if (config.ext_chunk_size > 0) {
+	const bool use_chunks = config.ext_chunk_size > 0 && ((config.max_alignments >= target_block_ids.size() && config.toppercent == 100.0) || config.adaptive_ranking);
+
+	if (use_chunks) {
 		timer.go("Sorting targets by score");
 		std::sort(target_scores.begin(), target_scores.end());
 		stat.inc(Statistics::TIME_SORT_TARGETS_BY_SCORE, timer.microseconds());
 		timer.finish();
 	}
-
-	const bool use_chunks = config.ext_chunk_size > 0 && ((config.max_alignments >= target_block_ids.size() && config.toppercent == 100.0) || config.adaptive_ranking);
+		
 	const size_t chunk_size = use_chunks ? config.ext_chunk_size : target_block_ids.size();
 	const int relaxed_cutoff = score_matrix.rawscore(score_matrix.bitscore(config.max_evalue * config.relaxed_evalue_factor, (unsigned)query_seq[0].length()));
 	vector<TargetScore>::const_iterator i0 = target_scores.cbegin(), i1 = std::min(i0 + config.ext_chunk_size, target_scores.cend());
