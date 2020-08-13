@@ -55,25 +55,29 @@ void Match::max_hsp_culling() {
 	}
 }
 
-bool add_more_targets(const vector<Target> &targets, vector<Target>::const_iterator begin, vector<Target>::const_iterator end) {
+bool add_more_targets(const vector<Target> &targets, vector<Target>::const_iterator begin, vector<Target>::const_iterator end, int low_score) {
 	if (targets.empty())
-		return true;
-	if (config.toppercent == 100.0 && targets.size() < config.max_alignments)
-		return true;
-	if (config.toppercent == 100.0 && (config.min_id > 0 || config.query_cover > 0 || config.subject_cover > 0 || config.no_self_hits))
 		return true;
 	int max_score = 0;
 	for (auto i = begin; i < end; ++i)
 		max_score = std::max(max_score, i->filter_score);
+	if (max_score <= low_score)
+		return false;
+
+	if (config.toppercent == 100.0 && targets.size() < config.max_alignments)
+		return true;
+	if (config.toppercent == 100.0 && (config.min_id > 0 || config.query_cover > 0 || config.subject_cover > 0 || config.no_self_hits))
+		return true;
+	
 	if (config.toppercent == 100.0)
 		return max_score >= targets.back().filter_score;
 	else
 		return max_score >= int((1.0 - config.toppercent / 100.0)*targets.front().filter_score);
 }
 
-size_t score_only_culling(vector<Target> &targets, vector<Target>::const_iterator begin, vector<Target>::const_iterator end) {
+size_t score_only_culling(vector<Target> &targets, vector<Target>::const_iterator begin, vector<Target>::const_iterator end, int low_score) {
 	const size_t n = targets.size();
-	const bool more = add_more_targets(targets, begin, end);
+	const bool more = add_more_targets(targets, begin, end, low_score);
 	if (more)
 		targets.insert(targets.end(), begin, end);
 

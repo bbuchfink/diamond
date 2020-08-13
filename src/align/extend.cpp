@@ -21,6 +21,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <algorithm>
 #include <utility>
 #include <math.h>
+#include <mutex>
 #include "extend.h"
 #include "../data/queries.h"
 #include "../basic/config.h"
@@ -134,6 +135,16 @@ vector<Target> extend(const Parameters& params,
 }
 
 vector<Match> extend(const Parameters &params, size_t query_id, hit* begin, hit* end, const Metadata &metadata, Statistics &stat, int flags) {
+	static vector<int> worst_score;
+	static std::mutex mtx;
+	int worst = 0;
+	{
+		std::lock_guard<std::mutex> lock(mtx);
+		if (worst_score.empty())
+			worst_score.insert(worst_score.end(), query_ids::get().get_length(), 0);
+		worst = worst_score[query_id];
+	}
+
 	const unsigned contexts = align_mode.query_contexts;
 	vector<sequence> query_seq;
 	vector<Bias_correction> query_cb;
@@ -200,7 +211,7 @@ vector<Match> extend(const Parameters &params, size_t query_id, hit* begin, hit*
 		size_t new_hits = 0;
 		if (multi_chunk)
 			//aligned_targets.insert(aligned_targets.end(), v.begin(), v.end());
-			new_hits = score_only_culling(aligned_targets, v.begin(), v.end());
+			new_hits = score_only_culling(aligned_targets, v.begin(), v.end(), worst);
 		else
 			aligned_targets = TLS_FIX_S390X_MOVE(v);
 
@@ -213,9 +224,14 @@ vector<Match> extend(const Parameters &params, size_t query_id, hit* begin, hit*
 
 	stat.inc(Statistics::TARGET_HITS5, aligned_targets.size());
 	timer.go("Computing score only culling");
-	score_only_culling(aligned_targets, aligned_targets.end(), aligned_targets.end());
+	score_only_culling(aligned_targets, aligned_targets.end(), aligned_targets.end(), worst);
 	stat.inc(Statistics::TARGET_HITS6, aligned_targets.size());
 	timer.finish();
+
+	if(!aligned_targets.empty()) {
+		std::lock_guard<std::mutex> lock(mtx);
+		worst_score[query_id] = std::max(worst, aligned_targets.back().filter_score);
+	}
 
 	vector<Match> matches = align(aligned_targets, query_seq.data(), query_cb.data(), source_query_len, flags, stat);
 	timer.go("Computing culling");
