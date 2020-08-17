@@ -48,6 +48,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/parallel/multiprocessing.h"
 #include "../util/parallel/parallelizer.h"
 #include "../util/system/system.h"
+#include "../align/target.h"
 
 using std::unique_ptr;
 
@@ -232,6 +233,7 @@ void run_query_chunk(DatabaseFile &db_file,
 	PtrVector<TempFile> tmp_file;
 	query_aligned.clear();
 	query_aligned.insert(query_aligned.end(), query_ids::get().get_length(), false);
+	Extension::memory = new Extension::Memory(query_ids::get().get_length());
 	db_file.rewind();
 	vector<unsigned> block_to_database_id;
 	Chunk chunk;
@@ -282,6 +284,7 @@ void run_query_chunk(DatabaseFile &db_file,
 	timer.go("Deallocating buffers");
 	delete[] query_buffer;
 	delete query_seeds;
+	delete Extension::memory;
 	query_seeds = 0;
 
 	log_rss();
