@@ -49,7 +49,7 @@ TextBuffer* generate_output(vector<Match> &targets, size_t query_block_id, Stati
 		} else if(aligned || config.report_unaligned)
 			f->print_query_intro(query_block_id, query_title, query.source().length(), *out, !aligned);
 	}
-	
+		
 	for (size_t i = 0; i < targets.size(); ++i) {
 
 		const size_t subject_id = targets[i].target_block_id;

@@ -210,6 +210,7 @@ set(OBJECTS
   src/util/parallel/parallelizer.cpp
   src/util/parallel/multiprocessing.cpp
   src/tools/benchmark_io.cpp
+  src/align/memory.cpp
 )
 
 if(X86)

@@ -102,4 +102,16 @@ std::vector<Target> align(const std::vector<WorkTarget> &targets, const sequence
 std::vector<Match> align(std::vector<Target> &targets, const sequence *query_seq, const Bias_correction *query_cb, int source_query_len, int flags, Statistics &stat);
 void culling(std::vector<Match> &targets, int source_query_len, const char *query_title);
 
+struct Memory {
+	Memory(size_t query_count);
+	int& low_score(size_t query_id);
+	int& mid_score(size_t query_id);
+	void update(size_t query_id, std::vector<Target>::const_iterator begin, std::vector<Target>::const_iterator end);
+private:
+	enum { N = 2 };
+	std::vector<int> scores_, count_;
+};
+
+extern Memory* memory;
+
 }
