@@ -106,10 +106,11 @@ struct Memory {
 	Memory(size_t query_count);
 	int& low_score(size_t query_id);
 	int& mid_score(size_t query_id);
+	int& min_score(size_t query_id, size_t i);
 	void update(size_t query_id, std::vector<Target>::const_iterator begin, std::vector<Target>::const_iterator end);
 private:
-	enum { N = 2 };
 	std::vector<int> scores_, count_;
+	const size_t N;
 };
 
 extern Memory* memory;

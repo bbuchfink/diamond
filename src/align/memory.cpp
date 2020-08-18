@@ -21,6 +21,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <utility>
 #include "../basic/config.h"
 #include "target.h"
+#include "../util/util.h"
 
 using std::pair;
 
@@ -29,6 +30,7 @@ namespace Extension {
 Memory* memory;
 
 Memory::Memory(size_t query_count):
+	N(config.memory_intervals),
 	scores_(query_count * N, 0),
 	count_(query_count, 0)
 {
@@ -40,6 +42,10 @@ int& Memory::low_score(size_t query_id) {
 
 int& Memory::mid_score(size_t query_id) {
 	return scores_[query_id*N];
+}
+
+int& Memory::min_score(size_t query_id, size_t i) {
+	return scores_[query_id*N + i];
 }
 
 static pair<size_t, int> update_range(vector<Target>::const_iterator& begin, vector<Target>::const_iterator end, size_t size, size_t& count, int& low_score) {
@@ -71,7 +77,33 @@ static pair<size_t, int> update_range(vector<Target>::const_iterator& begin, vec
 void Memory::update(size_t query_id, std::vector<Target>::const_iterator begin, std::vector<Target>::const_iterator end) {
 	if (config.no_query_memory)
 		return;
-	const size_t cutoff = config.max_alignments, mid_size = (cutoff+1) / 2, low_size = cutoff - mid_size;
+
+	const size_t cutoff = config.max_alignments;
+	partition<size_t> p(cutoff, N);
+	size_t total = count_[query_id], overflow_count = 0;
+	int overflow_score = 0;
+	for (size_t i = 0; i < p.parts; ++i) {
+		const size_t size = p.getCount(i);
+		size_t count = std::min(total, size);
+		int low_score = this->min_score(query_id, i);
+		if (overflow_count >= size)
+			low_score = std::max(low_score, overflow_score);
+		auto it = begin;
+		pair<size_t, int> r = update_range(begin, end, size, count, low_score);
+		
+		overflow_count = r.first;
+		overflow_score = r.second;
+		this->min_score(query_id, i) = low_score;
+		const size_t n = begin - it;
+		total += n;
+		total -= count;
+		count_[query_id] += n;
+	}
+
+	count_[query_id] = std::min(count_[query_id], (int)cutoff);
+
+
+	/*const size_t cutoff = config.max_alignments, mid_size = (cutoff+1) / 2, low_size = cutoff - mid_size;
 	size_t total_count = (size_t)count_[query_id], mid_count = std::min(mid_size, total_count), low_count = total_count - mid_count;
 	int low_score = this->low_score(query_id), mid_score = this->mid_score(query_id);
 
@@ -83,7 +115,7 @@ void Memory::update(size_t query_id, std::vector<Target>::const_iterator begin, 
 	
 	update_range(begin, end, low_size, low_count, low_score);
 	this->low_score(query_id) = low_score;
-	this->count_[query_id] = mid_count + low_count;
+	this->count_[query_id] = mid_count + low_count;*/
 }
 
 }

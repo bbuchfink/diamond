@@ -232,6 +232,7 @@ struct Config
 	bool mode_mid_sensitive;
 	bool adaptive_ranking;
 	bool no_query_memory;
+	size_t memory_intervals;
 
 	Sensitivity sensitivity;
 	TracebackMode traceback_mode;
