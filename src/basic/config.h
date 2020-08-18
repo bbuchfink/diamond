@@ -231,6 +231,7 @@ struct Config
 	size_t global_ranking_targets;
 	bool mode_mid_sensitive;
 	bool adaptive_ranking;
+	bool no_query_memory;
 
 	Sensitivity sensitivity;
 	TracebackMode traceback_mode;

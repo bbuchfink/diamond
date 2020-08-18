@@ -19,6 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #include <utility>
+#include "../basic/config.h"
 #include "target.h"
 
 using std::pair;
@@ -34,7 +35,7 @@ Memory::Memory(size_t query_count):
 }
 
 int& Memory::low_score(size_t query_id) {
-	return scores_[query_id*N + (N-1)];
+	return scores_[query_id*N + (N - 1)];
 }
 
 int& Memory::mid_score(size_t query_id) {
@@ -68,6 +69,8 @@ static pair<size_t, int> update_range(vector<Target>::const_iterator& begin, vec
 }
 
 void Memory::update(size_t query_id, std::vector<Target>::const_iterator begin, std::vector<Target>::const_iterator end) {
+	if (config.no_query_memory)
+		return;
 	const size_t cutoff = config.max_alignments, mid_size = (cutoff+1) / 2, low_size = cutoff - mid_size;
 	size_t total_count = (size_t)count_[query_id], mid_count = std::min(mid_size, total_count), low_count = total_count - mid_count;
 	int low_score = this->low_score(query_id), mid_score = this->mid_score(query_id);
