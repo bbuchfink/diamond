@@ -175,9 +175,10 @@ vector<Match> extend(const Parameters &params, size_t query_id, hit* begin, hit*
 		
 	const size_t chunk_size = use_chunks ? config.ext_chunk_size : target_block_ids.size();
 	const int relaxed_cutoff = score_matrix.rawscore(score_matrix.bitscore(config.max_evalue * config.relaxed_evalue_factor, (unsigned)query_seq[0].length()));
-	vector<TargetScore>::const_iterator i0 = target_scores.cbegin(), i1 = std::min(i0 + config.ext_chunk_size, target_scores.cend());
+	vector<TargetScore>::const_iterator i0 = target_scores.cbegin(), i1 = std::min(i0 + chunk_size, target_scores.cend());
 	while (i1 < target_scores.cend() && i1->score >= relaxed_cutoff) ++i1;
-	const int low_score = memory->low_score(query_id);
+	const int low_score = config.adaptive_ranking ? memory->low_score(query_id) : 0;
+	const size_t previous_count = config.adaptive_ranking ? memory->count(query_id) : 0;
 
 	vector<Target> aligned_targets;
 	while(i0 < target_scores.cend()) {
@@ -202,11 +203,13 @@ vector<Match> extend(const Parameters &params, size_t query_id, hit* begin, hit*
 		size_t new_hits = 0;
 		if (multi_chunk)
 			//aligned_targets.insert(aligned_targets.end(), v.begin(), v.end());
-			new_hits = score_only_culling(aligned_targets, v.begin(), v.end(), low_score);
+			new_hits = score_only_culling(aligned_targets, v.begin(), v.end(), low_score, previous_count);
 		else
 			aligned_targets = TLS_FIX_S390X_MOVE(v);
 
-		if (use_chunks && (n == 0 || new_hits == 0))
+		if (use_chunks && n == 0)
+			break;
+		if (use_chunks && config.adaptive_ranking && new_hits == 0)
 			break;
 
 		i0 = i1;
@@ -215,8 +218,9 @@ vector<Match> extend(const Parameters &params, size_t query_id, hit* begin, hit*
 
 	stat.inc(Statistics::TARGET_HITS5, aligned_targets.size());
 	timer.go("Computing score only culling");
-	score_only_culling(aligned_targets, aligned_targets.end(), aligned_targets.end(), low_score);
-	memory->update(query_id, aligned_targets.begin(), aligned_targets.end());
+	score_only_culling(aligned_targets, aligned_targets.end(), aligned_targets.end(), low_score, previous_count);
+	if(config.adaptive_ranking)
+		memory->update(query_id, aligned_targets.begin(), aligned_targets.end());
 	stat.inc(Statistics::TARGET_HITS6, aligned_targets.size());
 	timer.finish();
 

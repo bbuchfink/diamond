@@ -95,7 +95,7 @@ struct Target {
 	std::array<std::list<Hsp>, MAX_CONTEXT> hsp;
 };
 
-size_t score_only_culling(std::vector<Target> &targets, vector<Target>::const_iterator begin, vector<Target>::const_iterator end, int low_score);
+size_t score_only_culling(std::vector<Target> &targets, vector<Target>::const_iterator begin, vector<Target>::const_iterator end, int low_score, size_t previous_count);
 std::vector<WorkTarget> gapped_filter(const sequence *query, const Bias_correction* query_cbs, std::vector<WorkTarget>& targets, Statistics &stat);
 void gapped_filter(const sequence* query, const Bias_correction* query_cbs, FlatArray<SeedHit> &seed_hits, std::vector<uint32_t> &target_block_ids, Statistics& stat, int flags, const Parameters &params);
 std::vector<Target> align(const std::vector<WorkTarget> &targets, const sequence *query_seq, const Bias_correction *query_cb, int flags, Statistics &stat);
@@ -107,6 +107,7 @@ struct Memory {
 	int& low_score(size_t query_id);
 	int& mid_score(size_t query_id);
 	int& min_score(size_t query_id, size_t i);
+	size_t count(size_t query_id) const;
 	void update(size_t query_id, std::vector<Target>::const_iterator begin, std::vector<Target>::const_iterator end);
 private:
 	std::vector<int> scores_, count_;

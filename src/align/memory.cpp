@@ -27,7 +27,7 @@ using std::pair;
 
 namespace Extension {
 
-Memory* memory;
+Memory* memory = nullptr;
 
 Memory::Memory(size_t query_count):
 	N(config.memory_intervals),
@@ -46,6 +46,10 @@ int& Memory::mid_score(size_t query_id) {
 
 int& Memory::min_score(size_t query_id, size_t i) {
 	return scores_[query_id*N + i];
+}
+
+size_t Memory::count(size_t query_id) const {
+	return (size_t)count_[query_id];
 }
 
 static pair<size_t, int> update_range(vector<Target>::const_iterator& begin, vector<Target>::const_iterator end, size_t size, size_t& count, int& low_score) {
@@ -101,21 +105,6 @@ void Memory::update(size_t query_id, std::vector<Target>::const_iterator begin, 
 	}
 
 	count_[query_id] = std::min(count_[query_id], (int)cutoff);
-
-
-	/*const size_t cutoff = config.max_alignments, mid_size = (cutoff+1) / 2, low_size = cutoff - mid_size;
-	size_t total_count = (size_t)count_[query_id], mid_count = std::min(mid_size, total_count), low_count = total_count - mid_count;
-	int low_score = this->low_score(query_id), mid_score = this->mid_score(query_id);
-
-	pair<size_t, int> r = update_range(begin, end, mid_size, mid_count, mid_score);
-	this->mid_score(query_id) = mid_score;
-	low_count = std::min(low_count + r.first, low_size);
-	if (r.first >= low_size)
-		low_score = r.second;
-	
-	update_range(begin, end, low_size, low_count, low_score);
-	this->low_score(query_id) = low_score;
-	this->count_[query_id] = mid_count + low_count;*/
 }
 
 }

@@ -233,7 +233,8 @@ void run_query_chunk(DatabaseFile &db_file,
 	PtrVector<TempFile> tmp_file;
 	query_aligned.clear();
 	query_aligned.insert(query_aligned.end(), query_ids::get().get_length(), false);
-	Extension::memory = new Extension::Memory(query_ids::get().get_length());
+	if(config.adaptive_ranking)
+		Extension::memory = new Extension::Memory(query_ids::get().get_length());
 	db_file.rewind();
 	vector<unsigned> block_to_database_id;
 	Chunk chunk;
