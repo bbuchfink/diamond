@@ -32,7 +32,9 @@ Memory* memory = nullptr;
 Memory::Memory(size_t query_count):
 	N(config.memory_intervals),
 	scores_(query_count * N, 0),
-	count_(query_count, 0)
+	count_(query_count, 0),
+	ranking_low_score_(query_count, 0),
+	ranking_failed_count_(query_count, 0)
 {
 }
 
@@ -106,5 +108,13 @@ void Memory::update(size_t query_id, std::vector<Target>::const_iterator begin, 
 
 	count_[query_id] = std::min(count_[query_id], (int)cutoff);
 }
+
+void Memory::update_failed_count(size_t query_id, size_t failed_count, int ranking_low_score) {
+	if (ranking_low_score >= ranking_low_score_[query_id]) {
+		ranking_low_score_[query_id] = ranking_low_score;
+		ranking_failed_count_[query_id] = failed_count;
+	}
+}
+
 
 }

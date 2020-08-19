@@ -186,6 +186,9 @@ vector<Match> extend(const Parameters &params, size_t query_id, hit* begin, hit*
 		target_block_ids_chunk.clear();
 		const size_t current_chunk_size = (size_t)(i1 - i0);
 		const bool multi_chunk = current_chunk_size < target_scores.size();
+		if (config.adaptive_ranking && memory->ranking_failed_count(query_id) >= chunk_size && memory->ranking_low_score(query_id) >= i0->score) {
+			break;
+		}
 
 		if (multi_chunk) {
 			for (vector<TargetScore>::const_iterator j = i0; j < i1; ++j) {
@@ -209,8 +212,11 @@ vector<Match> extend(const Parameters &params, size_t query_id, hit* begin, hit*
 
 		if (use_chunks && n == 0)
 			break;
-		if (use_chunks && config.adaptive_ranking && new_hits == 0)
+		if (use_chunks && config.adaptive_ranking && new_hits == 0) {
+			if(current_chunk_size >= chunk_size)
+				memory->update_failed_count(query_id, current_chunk_size, (i1 - 1)->score);
 			break;
+		}
 
 		i0 = i1;
 		i1 = std::min(i1 + chunk_size, target_scores.cend());

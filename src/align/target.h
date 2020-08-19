@@ -109,9 +109,16 @@ struct Memory {
 	int& min_score(size_t query_id, size_t i);
 	size_t count(size_t query_id) const;
 	void update(size_t query_id, std::vector<Target>::const_iterator begin, std::vector<Target>::const_iterator end);
+	void update_failed_count(size_t query_id, size_t failed_count, int ranking_low_score);
+	int ranking_low_score(size_t query_id) const {
+		return ranking_low_score_[query_id];
+	}
+	size_t ranking_failed_count(size_t query_id) const {
+		return ranking_failed_count_[query_id];
+	}
 private:
-	std::vector<int> scores_, count_;
 	const size_t N;
+	std::vector<int> scores_, count_, ranking_low_score_, ranking_failed_count_;
 };
 
 extern Memory* memory;
