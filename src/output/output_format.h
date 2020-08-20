@@ -40,6 +40,7 @@ struct Output_format
 		needs_taxon_id_lists(false),
 		needs_taxon_nodes(false),
 		needs_taxon_scientific_names(false),
+		needs_taxon_ranks(false),
 		needs_transcript(true),
 		needs_stats(false)
 	{}
