@@ -30,8 +30,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 namespace Extension {
 
-enum { TARGET_PARALLEL = 2 };
-
 struct Match {
 	Match(size_t target_block_id, bool outranked, int ungapped_score):
 		target_block_id(target_block_id),
@@ -48,7 +46,7 @@ struct Match {
 	Match(size_t target_block_id, bool outranked, std::array<std::list<Hsp>, MAX_CONTEXT> &hsp, int ungapped_score);
 	void inner_culling(int source_query_len);
 	void max_hsp_culling();
-	void apply_filters(int source_query_len, const char *query_title);
+	void apply_filters(int source_query_len, const char *query_title, const sequence& query_seq);
 	size_t target_block_id;
 	int filter_score, ungapped_score;
 	bool outranked;

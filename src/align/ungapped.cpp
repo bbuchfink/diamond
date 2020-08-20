@@ -34,6 +34,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/log_stream.h"
 #include "../util/parallel/thread_pool.h"
 #include "../chaining/chaining.h"
+#include "../dp/dp.h"
 
 using std::array;
 using std::vector;
@@ -82,7 +83,7 @@ vector<WorkTarget> ungapped_stage(const sequence *query_seq, const Bias_correcti
 	vector<WorkTarget> targets;
 	if (seed_hits.size() == 0)
 		return targets;
-	if (flags & TARGET_PARALLEL) {
+	if (flags & DP::PARALLEL) {
 		mutex mtx;
 		Util::Parallel::scheduled_thread_pool_auto(config.threads_, seed_hits.size(), ungapped_stage_worker, query_seq, query_cb, &seed_hits, target_block_ids, &targets, &mtx);
 	}

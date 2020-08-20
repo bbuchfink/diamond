@@ -5,6 +5,13 @@
   the status messages.
 - Fixed a bug that could cause secondary HSPs within one target not to be reported
   if the `--max-hsps` option was used with a non-default setting.
+- Fixed a bug that could cause an invalid error message with regard to the database
+  format in certain cases.
+- The `--no-self-hits` option is no longer supported in `blastx` mode.
+- Changed the semantics of the `--no-self-hits` option to check for equality of both
+  sequence and sequence id, independent of the computed alignment.
+- The selection of the top hit when using `--top` will respect the identity, coverage
+  and no-self-hits filter settings.
 
 [2.0.2]
 - Fixed a bug that could cause incomplete results in `blastx` mode.

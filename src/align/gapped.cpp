@@ -119,7 +119,7 @@ void add_dp_targets(const WorkTarget &target, int target_idx, const sequence *qu
 	}
 }
 
-vector<Target> align(const vector<WorkTarget> &targets, const sequence *query_seq, const Bias_correction *query_cb, int flags, Statistics &stat) {
+vector<Target> align(const vector<WorkTarget> &targets, const sequence *query_seq, const Bias_correction *query_cb, int source_query_len, int flags, Statistics &stat) {
 	const int raw_score_cutoff = score_matrix.rawscore(config.min_bit_score == 0 ? score_matrix.bitscore(config.max_evalue, (unsigned)query_seq[0].length()) : config.min_bit_score);
 
 	array<array<vector<DpTarget>, 2>, MAX_CONTEXT> dp_targets;
@@ -154,8 +154,11 @@ vector<Target> align(const vector<WorkTarget> &targets, const sequence *query_se
 	vector<Target> r2;
 	r2.reserve(r.size());
 	for (vector<Target>::iterator i = r.begin(); i != r.end(); ++i)
-		if (i->filter_score > 0)
+		if (i->filter_score > 0) {
+			if(flags & DP::TRACEBACK)
+				i->inner_culling(source_query_len);
 			r2.push_back(std::move(*i));
+		}
 
 	return r2;
 }
@@ -172,7 +175,7 @@ void add_dp_targets(const Target &target, int target_idx, const sequence *query_
 	}
 }
 
-vector<Match> align(vector<Target> &targets, const sequence *query_seq, const Bias_correction *query_cb, int source_query_len, int flags, Statistics &stat) {
+vector<Match> align(vector<Target> &targets, const sequence *query_seq, const Bias_correction *query_cb, int source_query_len, int flags, Statistics &stat, bool first_round_traceback) {
 	const int raw_score_cutoff = score_matrix.rawscore(config.min_bit_score == 0 ? score_matrix.bitscore(config.max_evalue, (unsigned)query_seq[0].length()) : config.min_bit_score);
 
 	array<array<vector<DpTarget>, 2>, MAX_CONTEXT> dp_targets;
@@ -181,7 +184,7 @@ vector<Match> align(vector<Target> &targets, const sequence *query_seq, const Bi
 		return r;
 	r.reserve(targets.size());
 
-	if (config.traceback_mode == TracebackMode::SCORE_ONLY || config.ext == "full") {
+	if (config.traceback_mode == TracebackMode::SCORE_ONLY || config.ext == "full" || first_round_traceback) {
 		for (Target &t : targets)
 			r.emplace_back(t.block_id, t.outranked, t.hsp, t.ungapped_score);
 		return r;

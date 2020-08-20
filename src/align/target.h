@@ -88,6 +88,10 @@ struct Target {
 		return filter_score > t.filter_score || (filter_score == t.filter_score && block_id < t.block_id);
 	}
 
+	void apply_filters(int source_query_len, const char *query_title, const sequence& query_seq);
+	void inner_culling(int source_query_len);
+	void max_hsp_culling();
+
 	size_t block_id;
 	sequence seq;
 	int filter_score, ungapped_score;
@@ -95,12 +99,11 @@ struct Target {
 	std::array<std::list<Hsp>, MAX_CONTEXT> hsp;
 };
 
-size_t score_only_culling(std::vector<Target> &targets, vector<Target>::const_iterator begin, vector<Target>::const_iterator end, int low_score, size_t previous_count);
+bool append_hits(std::vector<Target>& targets, std::vector<Target>::const_iterator begin, std::vector<Target>::const_iterator end, int low_score, size_t previous_count, int source_query_len, const char* query_title, const sequence& query_seq);
 std::vector<WorkTarget> gapped_filter(const sequence *query, const Bias_correction* query_cbs, std::vector<WorkTarget>& targets, Statistics &stat);
 void gapped_filter(const sequence* query, const Bias_correction* query_cbs, FlatArray<SeedHit> &seed_hits, std::vector<uint32_t> &target_block_ids, Statistics& stat, int flags, const Parameters &params);
-std::vector<Target> align(const std::vector<WorkTarget> &targets, const sequence *query_seq, const Bias_correction *query_cb, int flags, Statistics &stat);
-std::vector<Match> align(std::vector<Target> &targets, const sequence *query_seq, const Bias_correction *query_cb, int source_query_len, int flags, Statistics &stat);
-void culling(std::vector<Match> &targets, int source_query_len, const char *query_title);
+std::vector<Target> align(const std::vector<WorkTarget> &targets, const sequence *query_seq, const Bias_correction *query_cb, int source_query_len, int flags, Statistics &stat);
+std::vector<Match> align(std::vector<Target> &targets, const sequence *query_seq, const Bias_correction *query_cb, int source_query_len, int flags, Statistics &stat, bool first_round_traceback);
 
 struct Memory {
 	Memory(size_t query_count);

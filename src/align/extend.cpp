@@ -31,6 +31,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/log_stream.h"
 #include "../data/reference.h"
 #include "../util/system.h"
+#include "culling.h"
 
 using std::vector;
 using std::list;
@@ -101,6 +102,7 @@ void load_hits(hit* begin, hit* end, FlatArray<SeedHit> &hits, vector<uint32_t> 
 vector<Target> extend(const Parameters& params,
 	size_t query_id,
 	const sequence *query_seq,
+	int source_query_len,
 	const Bias_correction *query_cb,
 	FlatArray<SeedHit> &seed_hits,
 	vector<uint32_t> &target_block_ids,
@@ -109,11 +111,11 @@ vector<Target> extend(const Parameters& params,
 	int flags)
 {
 	stat.inc(Statistics::TARGET_HITS1, target_block_ids.size());
-	task_timer timer(flags & TARGET_PARALLEL ? config.target_parallel_verbosity : UINT_MAX);
+	task_timer timer(flags & DP::PARALLEL ? config.target_parallel_verbosity : UINT_MAX);
 	if (config.gapped_filter_evalue > 0.0) {
 		timer.go("Computing gapped filter");
 		gapped_filter(query_seq, query_cb, seed_hits, target_block_ids, stat, flags, params);
-		if ((flags & TARGET_PARALLEL) == 0)
+		if ((flags & DP::PARALLEL) == 0)
 			stat.inc(Statistics::TIME_GAPPED_FILTER, timer.microseconds());
 	}
 	stat.inc(Statistics::TARGET_HITS2, target_block_ids.size());
@@ -121,7 +123,7 @@ vector<Target> extend(const Parameters& params,
 	timer.go("Computing chaining");
 	vector<WorkTarget> targets = ungapped_stage(query_seq, query_cb, seed_hits, target_block_ids.data(), flags);
 	stat.inc(Statistics::TARGET_HITS3, targets.size());
-	if ((flags & TARGET_PARALLEL) == 0)
+	if ((flags & DP::PARALLEL) == 0)
 		stat.inc(Statistics::TIME_CHAINING, timer.microseconds());
 
 	if (config.ext != "full" && !config.adaptive_ranking) {
@@ -131,21 +133,22 @@ vector<Target> extend(const Parameters& params,
 		timer.finish();
 	}
 
-	return align(targets, query_seq, query_cb, flags, stat);
+	return align(targets, query_seq, query_cb, source_query_len, flags, stat);
 }
 
 vector<Match> extend(const Parameters &params, size_t query_id, hit* begin, hit* end, const Metadata &metadata, Statistics &stat, int flags) {
 	const unsigned contexts = align_mode.query_contexts;
 	vector<sequence> query_seq;
 	vector<Bias_correction> query_cb;
+	const char* query_title = query_ids::get()[query_id];
 
-	if (config.log_query || flags & TARGET_PARALLEL)
-		log_stream << "Query=" << query_ids::get()[query_id] << " Hits=" << end - begin << endl;
+	if (config.log_query || flags & DP::PARALLEL)
+		log_stream << "Query=" << query_title << " Hits=" << end - begin << endl;
 
 	for (unsigned i = 0; i < contexts; ++i)
 		query_seq.push_back(query_seqs::get()[query_id*contexts + i]);
 
-	task_timer timer(flags & TARGET_PARALLEL ? config.target_parallel_verbosity : UINT_MAX);
+	task_timer timer(flags & DP::PARALLEL ? config.target_parallel_verbosity : UINT_MAX);
 	if (config.comp_based_stats == 1) {
 		timer.go("Computing CBS");
 		for (unsigned i = 0; i < contexts; ++i)
@@ -177,8 +180,11 @@ vector<Match> extend(const Parameters &params, size_t query_id, hit* begin, hit*
 	const int relaxed_cutoff = score_matrix.rawscore(score_matrix.bitscore(config.max_evalue * config.relaxed_evalue_factor, (unsigned)query_seq[0].length()));
 	vector<TargetScore>::const_iterator i0 = target_scores.cbegin(), i1 = std::min(i0 + chunk_size, target_scores.cend());
 	while (i1 < target_scores.cend() && i1->score >= relaxed_cutoff) ++i1;
-	const int low_score = config.adaptive_ranking ? memory->low_score(query_id) : 0;
-	const size_t previous_count = config.adaptive_ranking ? memory->count(query_id) : 0;
+	const int low_score = config.query_memory ? memory->low_score(query_id) : 0;
+	const size_t previous_count = config.query_memory ? memory->count(query_id) : 0;
+	bool first_round_traceback = config.min_id > 0 || config.query_cover > 0 || config.subject_cover > 0;
+	if (first_round_traceback)
+		flags |= DP::TRACEBACK;
 
 	vector<Target> aligned_targets;
 	while(i0 < target_scores.cend()) {
@@ -186,9 +192,8 @@ vector<Match> extend(const Parameters &params, size_t query_id, hit* begin, hit*
 		target_block_ids_chunk.clear();
 		const size_t current_chunk_size = (size_t)(i1 - i0);
 		const bool multi_chunk = current_chunk_size < target_scores.size();
-		if (config.adaptive_ranking && memory->ranking_failed_count(query_id) >= chunk_size && memory->ranking_low_score(query_id) >= i0->score) {
+		if (config.query_memory && memory->ranking_failed_count(query_id) >= chunk_size && memory->ranking_low_score(query_id) >= i0->score)
 			break;
-		}
 
 		if (multi_chunk) {
 			for (vector<TargetScore>::const_iterator j = i0; j < i1; ++j) {
@@ -201,19 +206,18 @@ vector<Match> extend(const Parameters &params, size_t query_id, hit* begin, hit*
 			seed_hits_chunk = TLS_FIX_S390X_MOVE(seed_hits);
 		}
 
-		vector<Target> v = extend(params, query_id, query_seq.data(), query_cb.data(), seed_hits_chunk, target_block_ids_chunk, metadata, stat, flags);
+		vector<Target> v = extend(params, query_id, query_seq.data(), source_query_len, query_cb.data(), seed_hits_chunk, target_block_ids_chunk, metadata, stat, flags);
 		const size_t n = v.size();
-		size_t new_hits = 0;
+		bool new_hits = false;
 		if (multi_chunk)
-			//aligned_targets.insert(aligned_targets.end(), v.begin(), v.end());
-			new_hits = score_only_culling(aligned_targets, v.begin(), v.end(), low_score, previous_count);
+			new_hits = append_hits(aligned_targets, v.begin(), v.end(), low_score, previous_count, source_query_len, query_title, query_seq.front());
 		else
 			aligned_targets = TLS_FIX_S390X_MOVE(v);
 
 		if (use_chunks && n == 0)
 			break;
-		if (use_chunks && config.adaptive_ranking && new_hits == 0) {
-			if(current_chunk_size >= chunk_size)
+		if (use_chunks && config.adaptive_ranking && !new_hits) {
+			if(config.query_memory && current_chunk_size >= chunk_size)
 				memory->update_failed_count(query_id, current_chunk_size, (i1 - 1)->score);
 			break;
 		}
@@ -224,15 +228,15 @@ vector<Match> extend(const Parameters &params, size_t query_id, hit* begin, hit*
 
 	stat.inc(Statistics::TARGET_HITS5, aligned_targets.size());
 	timer.go("Computing score only culling");
-	score_only_culling(aligned_targets, aligned_targets.end(), aligned_targets.end(), low_score, previous_count);
+	culling(aligned_targets, source_query_len, query_title, query_seq.front());
 	if(config.adaptive_ranking)
 		memory->update(query_id, aligned_targets.begin(), aligned_targets.end());
 	stat.inc(Statistics::TARGET_HITS6, aligned_targets.size());
 	timer.finish();
 
-	vector<Match> matches = align(aligned_targets, query_seq.data(), query_cb.data(), source_query_len, flags, stat);
+	vector<Match> matches = align(aligned_targets, query_seq.data(), query_cb.data(), source_query_len, flags, stat, first_round_traceback);
 	timer.go("Computing culling");
-	culling(matches, source_query_len, query_ids::get()[query_id]);
+	culling(matches, source_query_len, query_title, query_seq.front());
 	stat.inc(Statistics::TARGET_HITS7, matches.size());
 
 	return matches;

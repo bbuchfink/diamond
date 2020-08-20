@@ -123,7 +123,7 @@ void align_worker(size_t thread_id, const Parameters *params, const Metadata *me
 			continue;
 		}
 		task_timer timer;
-		vector<Extension::Match> matches = Extension::extend(*params, hits.query, hits.begin, hits.end, *metadata, stat, hits.target_parallel ? Extension::TARGET_PARALLEL : 0);
+		vector<Extension::Match> matches = Extension::extend(*params, hits.query, hits.begin, hits.end, *metadata, stat, hits.target_parallel ? DP::PARALLEL : 0);
 		TextBuffer *buf = Extension::generate_output(matches, hits.query, stat, *metadata, *params);
 		if (!matches.empty() && (!config.unaligned.empty() || !config.aligned_file.empty())) {
 			query_aligned_mtx.lock();

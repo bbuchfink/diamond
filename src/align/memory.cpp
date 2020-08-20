@@ -81,7 +81,7 @@ static pair<size_t, int> update_range(vector<Target>::const_iterator& begin, vec
 }
 
 void Memory::update(size_t query_id, std::vector<Target>::const_iterator begin, std::vector<Target>::const_iterator end) {
-	if (config.no_query_memory)
+	if (!config.query_memory)
 		return;
 
 	const size_t cutoff = config.max_alignments;
@@ -110,7 +110,7 @@ void Memory::update(size_t query_id, std::vector<Target>::const_iterator begin, 
 }
 
 void Memory::update_failed_count(size_t query_id, size_t failed_count, int ranking_low_score) {
-	if (ranking_low_score >= ranking_low_score_[query_id] && !config.no_query_memory) {
+	if (ranking_low_score >= ranking_low_score_[query_id] && config.query_memory) {
 		ranking_low_score_[query_id] = ranking_low_score;
 		ranking_failed_count_[query_id] = failed_count;
 	}

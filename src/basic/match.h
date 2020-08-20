@@ -55,7 +55,10 @@ struct Hsp
 		mismatches(0),
 		positives(0),
 		gap_openings(0),
-		gaps(0)
+		gaps(0),
+		swipe_target(0),
+		d_begin(0),
+		d_end(0)
 	{}
 
 	Hsp(int score, int swipe_target = 0) :
@@ -67,7 +70,9 @@ struct Hsp
 		positives(0),
 		gap_openings(0),
 		gaps(0),
-		swipe_target(swipe_target)
+		swipe_target(swipe_target),
+		d_begin(0),
+		d_end(0)
 	{}
 
 	Hsp(const IntermediateRecord &r, unsigned query_source_len);

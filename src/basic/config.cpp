@@ -417,7 +417,7 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("traceback-mode", 0, "", traceback_mode_str)
 		("mid-sensitive", 0, "", mode_mid_sensitive)
 		("adaptive-ranking", 0, "", adaptive_ranking)
-		("no-query-memory", 0, "", no_query_memory)
+		("query-memory", 0, "", query_memory)
 		("memory-intervals", 0, "", memory_intervals, (size_t)2);
 	
 	parser.add(general).add(makedb).add(cluster).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options).add(deprecated_options);
@@ -431,6 +431,9 @@ Config::Config(int argc, const char **argv, bool check_io)
 
 	if (toppercent != 100.0 && max_alignments != 25)
 		throw std::runtime_error("--top and --max-target-seqs are mutually exclusive.");
+
+	if (command == blastx && no_self_hits)
+		throw std::runtime_error("--no-self-hits option is not supported in blastx mode.");
 
 	if (long_reads) {
 		query_range_culling = true;

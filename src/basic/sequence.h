@@ -196,6 +196,14 @@ struct sequence
 		for (int j = i.begin_; j < i.end_; ++j)
 			((Letter*)data_)[j] = value_traits.mask_char;
 	}
+	bool operator==(const sequence& s) const {
+		if (len_ != s.len_)
+			return false;
+		for (size_t i = 0; i < len_; ++i)
+			if (letter_mask(data_[i]) != letter_mask(s.data_[i]))
+				return false;
+		return true;
+	}
 	/*friend std::ostream& operator<<(std::ostream &os, const sequence &s)
 	{
 		std::cout << "co = " << s.clipping_offset_ << std::endl;

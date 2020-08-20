@@ -231,7 +231,7 @@ struct Config
 	size_t global_ranking_targets;
 	bool mode_mid_sensitive;
 	bool adaptive_ranking;
-	bool no_query_memory;
+	bool query_memory;
 	size_t memory_intervals;
 
 	Sensitivity sensitivity;
@@ -295,3 +295,7 @@ struct Config
 
 void print_warnings();
 extern Config config;
+
+static inline int top_cutoff_score(int top_score) {
+	return int((1.0 - config.toppercent / 100.0)*top_score);
+}

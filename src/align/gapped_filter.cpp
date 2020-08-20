@@ -121,7 +121,7 @@ void gapped_filter(const sequence* query, const Bias_correction* query_cbs, Flat
 	FlatArray<SeedHit> hits_out;
 	vector<uint32_t> target_ids_out;
 	
-	if(flags & TARGET_PARALLEL) {
+	if(flags & DP::PARALLEL) {
 		mutex mtx;
 		Util::Parallel::scheduled_thread_pool_auto(config.threads_, seed_hits.size(), gapped_filter_worker, query_profile.data(), &seed_hits, target_block_ids.data(), &hits_out, &target_ids_out, &mtx, &params);
 	}
