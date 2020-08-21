@@ -92,8 +92,8 @@ struct Config
 	bool extend_all;
 	bool slow_search;
 	string_vector seq_no;
-	double rank_ratio;
 	double rank_factor;
+	double rank_ratio;
 	bool ht_mode;
 	bool old_freq;
 	double freq_sd;
@@ -230,7 +230,7 @@ struct Config
 	double memory_limit;
 	size_t global_ranking_targets;
 	bool mode_mid_sensitive;
-	bool adaptive_ranking;
+	bool no_ranking;
 	bool query_memory;
 	size_t memory_intervals;
 

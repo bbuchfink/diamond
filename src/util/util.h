@@ -457,9 +457,15 @@ inline double megabytes(size_t x)
 	return (double)x / (1 << 20);
 }
 
-inline int make_multiple(int x, int m)
+template<typename _t>
+inline _t make_multiple(_t x, _t m)
 {
-	return x % m == 0 ? x : x + m - x%m;
+	if (x % m == 0)
+		return x;
+	_t d = m - x % m;
+	if (std::numeric_limits<_t>::max() - d < x)
+		return x;
+	return x + d;
 }
 
 inline string hex_print(const char *x, int len) {

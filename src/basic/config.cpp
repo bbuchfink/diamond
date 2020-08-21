@@ -270,8 +270,8 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("shape-mask", 0, "seed shapes", shape_mask)
 		("multiprocessing", 0, "enable distributed-memory parallel processing", multiprocessing)
 		("mp-init", 0, "initialize multiprocessing run", mp_init)
-		("rank-ratio", 0, "include subjects within this ratio of last hit", rank_ratio, -1.0)
-		("ext-chunk-size", 0, "chunk size for adaptive ranking (default=400)", ext_chunk_size, (size_t)400)
+		("ext-chunk-size", 0, "chunk size for adaptive ranking (default=auto)", ext_chunk_size)
+		("no-ranking", 0, "disable ranking heuristic", no_ranking)
 		("ext", 0, "Extension mode (banded-fast/banded-slow)", ext)
 		("culling-overlap", 0, "minimum range overlap with higher scoring hit to delete a hit (default=50%)", inner_culling_overlap, 50.0)
 		("taxon-k", 0, "maximum number of targets to report per species", taxon_k, (uint64_t)0)
@@ -302,7 +302,8 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("hit-band", 0, "band for hit verification", hit_band)
 		("hit-score", 0, "minimum score to keep a tentative alignment", min_hit_score)
 		("gapped-xdrop", 'X', "xdrop for gapped alignment in bits", gapped_xdrop, 20)
-		("rank-ratio2", 0, "include subjects within this ratio of last hit (stage 2)", rank_ratio2, -1.0);
+		("rank-ratio2", 0, "include subjects within this ratio of last hit (stage 2)", rank_ratio2, -1.0)
+		("rank-ratio", 0, "include subjects within this ratio of last hit", rank_ratio, -1.0);
 
 	Options_group hidden_options("");
 	hidden_options.add()
@@ -416,7 +417,6 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("ext-targets", 0, "", global_ranking_targets)
 		("traceback-mode", 0, "", traceback_mode_str)
 		("mid-sensitive", 0, "", mode_mid_sensitive)
-		("adaptive-ranking", 0, "", adaptive_ranking)
 		("query-memory", 0, "", query_memory)
 		("memory-intervals", 0, "", memory_intervals, (size_t)2);
 	

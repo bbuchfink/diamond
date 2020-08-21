@@ -32,6 +32,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../data/reference.h"
 #include "../util/system.h"
 #include "culling.h"
+#include "../util/util.h"
 
 using std::vector;
 using std::list;
@@ -39,6 +40,16 @@ using std::array;
 using std::pair;
 
 namespace Extension {
+
+size_t ranking_chunk_size(size_t target_count) {
+	if (config.no_ranking)
+		return target_count;
+	if (config.ext_chunk_size > 0)
+		return config.ext_chunk_size;
+	if (config.toppercent < 100.0)
+		return 32;
+	return std::min(make_multiple(config.max_alignments, (uint64_t)32), (uint64_t)400);
+}
 
 struct TargetScore {
 	uint32_t target;
@@ -122,16 +133,8 @@ vector<Target> extend(const Parameters& params,
 
 	timer.go("Computing chaining");
 	vector<WorkTarget> targets = ungapped_stage(query_seq, query_cb, seed_hits, target_block_ids.data(), flags);
-	stat.inc(Statistics::TARGET_HITS3, targets.size());
 	if ((flags & DP::PARALLEL) == 0)
 		stat.inc(Statistics::TIME_CHAINING, timer.microseconds());
-
-	if (config.ext != "full" && !config.adaptive_ranking) {
-		timer.go("Computing ranking");
-		rank_targets(targets, config.rank_ratio == -1 ? (query_seq[0].length() > 50 ? 0.6 : 0.9) : config.rank_ratio, config.rank_factor == -1 ? 1e3 : config.rank_factor);
-		stat.inc(Statistics::TARGET_HITS4, targets.size());
-		timer.finish();
-	}
 
 	return align(targets, query_seq, query_cb, source_query_len, flags, stat);
 }
@@ -166,21 +169,23 @@ vector<Match> extend(const Parameters &params, size_t query_id, hit* begin, hit*
 	stat.inc(Statistics::TARGET_HITS0, target_block_ids.size());
 	stat.inc(Statistics::TIME_LOAD_HIT_TARGETS, timer.microseconds());
 	timer.finish();
+	const size_t target_count = target_block_ids.size();
+	
+	const size_t chunk_size = ranking_chunk_size(target_count);
 
-	const bool use_chunks = config.ext_chunk_size > 0 && ((config.max_alignments >= target_block_ids.size() && config.toppercent == 100.0) || config.adaptive_ranking);
-
-	if (use_chunks) {
+	if (chunk_size < target_count) {
 		timer.go("Sorting targets by score");
 		std::sort(target_scores.begin(), target_scores.end());
 		stat.inc(Statistics::TIME_SORT_TARGETS_BY_SCORE, timer.microseconds());
 		timer.finish();
 	}
 		
-	const size_t chunk_size = use_chunks ? config.ext_chunk_size : target_block_ids.size();
-	const int relaxed_cutoff = score_matrix.rawscore(score_matrix.bitscore(config.max_evalue * config.relaxed_evalue_factor, (unsigned)query_seq[0].length()));
+	const int relaxed_cutoff = score_matrix.rawscore(config.min_bit_score == 0.0
+		? score_matrix.bitscore(config.max_evalue * config.relaxed_evalue_factor, (unsigned)query_seq[0].length())
+		: config.min_bit_score);
 	vector<TargetScore>::const_iterator i0 = target_scores.cbegin(), i1 = std::min(i0 + chunk_size, target_scores.cend());
-	if(config.toppercent == 100.0 && config.max_alignments >= target_block_ids.size())
-		while (i1 < target_scores.cend() && i1->score >= relaxed_cutoff) ++i1;
+	if (config.toppercent == 100.0)
+		while (i1 < target_scores.cend() && i1->score >= relaxed_cutoff && (i1 - i0) < config.max_alignments) ++i1;
 	const int low_score = config.query_memory ? memory->low_score(query_id) : 0;
 	const size_t previous_count = config.query_memory ? memory->count(query_id) : 0;
 	bool first_round_traceback = config.min_id > 0 || config.query_cover > 0 || config.subject_cover > 0;
@@ -208,16 +213,14 @@ vector<Match> extend(const Parameters &params, size_t query_id, hit* begin, hit*
 		}
 
 		vector<Target> v = extend(params, query_id, query_seq.data(), source_query_len, query_cb.data(), seed_hits_chunk, target_block_ids_chunk, metadata, stat, flags);
-		const size_t n = v.size();
+		stat.inc(Statistics::TARGET_HITS3, v.size());
 		bool new_hits = false;
 		if (multi_chunk)
 			new_hits = append_hits(aligned_targets, v.begin(), v.end(), low_score, previous_count, source_query_len, query_title, query_seq.front());
 		else
 			aligned_targets = TLS_FIX_S390X_MOVE(v);
 
-		if (use_chunks && n == 0)
-			break;
-		if (use_chunks && config.adaptive_ranking && !new_hits) {
+		if (v.empty() || !new_hits) {
 			if(config.query_memory && current_chunk_size >= chunk_size)
 				memory->update_failed_count(query_id, current_chunk_size, (i1 - 1)->score);
 			break;
@@ -227,18 +230,15 @@ vector<Match> extend(const Parameters &params, size_t query_id, hit* begin, hit*
 		i1 = std::min(i1 + chunk_size, target_scores.cend());
 	}
 
-	stat.inc(Statistics::TARGET_HITS5, aligned_targets.size());
 	timer.go("Computing score only culling");
 	culling(aligned_targets, source_query_len, query_title, query_seq.front());
-	if(config.adaptive_ranking)
+	if(config.query_memory)
 		memory->update(query_id, aligned_targets.begin(), aligned_targets.end());
-	stat.inc(Statistics::TARGET_HITS6, aligned_targets.size());
+	stat.inc(Statistics::TARGET_HITS4, aligned_targets.size());
 	timer.finish();
 
 	vector<Match> matches = align(aligned_targets, query_seq.data(), query_cb.data(), source_query_len, flags, stat, first_round_traceback);
-	timer.go("Computing culling");
-	culling(matches, source_query_len, query_title, query_seq.front());
-	stat.inc(Statistics::TARGET_HITS7, matches.size());
+	std::sort(matches.begin(), matches.end());
 
 	return matches;
 }
