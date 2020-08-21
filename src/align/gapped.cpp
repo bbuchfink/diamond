@@ -101,7 +101,7 @@ void add_dp_targets(const WorkTarget &target, int target_idx, const sequence *qu
 				d1 = std::max(d1, b1);
 				j0 = std::min(j0, hsp.subject_range.begin_);
 				j1 = std::max(j1, hsp.subject_range.end_);
-				bits = std::max(bits, hsp.score <= config.cutoff_score_8bit ? 0 : 1);
+				bits = std::max(bits, (hsp.score <= config.cutoff_score_8bit && (d1 - d0) < 256) ? 0 : 1);
 			}
 			else {
 				if (d0 != INT_MAX)
@@ -110,7 +110,7 @@ void add_dp_targets(const WorkTarget &target, int target_idx, const sequence *qu
 				d1 = b1;
 				j0 = hsp.subject_range.begin_;
 				j1 = hsp.subject_range.end_;
-				bits = hsp.score <= config.cutoff_score_8bit ? 0 : 1;
+				bits = (hsp.score <= config.cutoff_score_8bit && (d1 - d0) < 256) ? 0 : 1;
 			}
 		}
 

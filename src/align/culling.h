@@ -29,8 +29,6 @@ void culling(std::vector<_t> &targets, int source_query_len, const char* query_t
 		for (_t& match : targets)
 			match.apply_filters(source_query_len, query_title, query_seq);
 
-	const size_t n = targets.size();
-
 	std::sort(targets.begin(), targets.end());
 	if (targets.empty() || targets.front().filter_score == 0) {
 		targets.clear();

@@ -107,32 +107,6 @@ bool append_hits(vector<Target>& targets, vector<Target>::const_iterator begin, 
 	return append;
 }
 
-/*void score_only_culling(vector<Target> &targets) {
-	const size_t n = targets.size();	
-
-	std::sort(targets.begin(), targets.end());
-	if (targets.empty() || targets.front().filter_score == 0) {
-		targets.clear();
-		return;
-	}
-
-	if (config.toppercent == 100.0 && (config.min_id > 0 || config.query_cover > 0 || config.subject_cover > 0 || config.no_self_hits))
-		return;
-
-	vector<Target>::iterator i = targets.begin();
-	if (config.toppercent < 100.0) {
-		const int cutoff = std::max(int((1.0 - config.toppercent / 100.0)*targets.front().filter_score), 1);
-		while (i < targets.end() && i->filter_score >= cutoff)
-			++i;
-	}
-	else {
-		i += std::min((size_t)config.max_alignments, targets.size());
-		while (--i > targets.begin() && i->filter_score == 0);
-		++i;
-	}
-	targets.erase(i, targets.end());
-}*/
-
 bool filter_hsp(const Hsp& hsp, int source_query_len, const char *query_title, int subject_len, const char* subject_title, const sequence& query_seq, const sequence& subject_seq) {
 	return 	hsp.id_percent() < config.min_id
 		|| hsp.query_cover_percent(source_query_len) < config.query_cover
@@ -153,8 +127,8 @@ void Target::apply_filters(int source_query_len, const char *query_title, const 
 			if (filter_hsp(*i, source_query_len, query_title, len, title, query_seq, seq))
 				i = hsp[frame].erase(i);
 			else {
-				++i;
 				filter_score = std::max(filter_score, i->score);
+				++i;
 			}
 		}
 	}
@@ -173,27 +147,5 @@ void Match::apply_filters(int source_query_len, const char *query_title, const s
 	}
 	filter_score = hsp.empty() ? 0 : hsp.front().score;
 }
-
-/*void culling(vector<Match> &targets, int source_query_len, const char *query_title) {
-	for (Match &match : targets)
-		match.apply_filters(source_query_len, query_title);
-	std::sort(targets.begin(), targets.end());
-	if (targets.empty() || targets.front().filter_score == 0) {
-		targets.clear();
-		return;
-	}
-	vector<Match>::iterator i = targets.begin();
-	if (config.toppercent < 100.0) {
-		const int cutoff = std::max(int((1.0 - config.toppercent / 100.0)*targets.front().filter_score), 1);
-		while (i < targets.end() && i->filter_score >= cutoff)
-			++i;
-	}
-	else {
-		i += std::min((size_t)config.max_alignments, targets.size());
-		while (--i > targets.begin() && i->filter_score == 0);
-		++i;
-	}
-	targets.erase(i, targets.end());
-}*/
 
 }

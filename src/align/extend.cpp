@@ -179,7 +179,8 @@ vector<Match> extend(const Parameters &params, size_t query_id, hit* begin, hit*
 	const size_t chunk_size = use_chunks ? config.ext_chunk_size : target_block_ids.size();
 	const int relaxed_cutoff = score_matrix.rawscore(score_matrix.bitscore(config.max_evalue * config.relaxed_evalue_factor, (unsigned)query_seq[0].length()));
 	vector<TargetScore>::const_iterator i0 = target_scores.cbegin(), i1 = std::min(i0 + chunk_size, target_scores.cend());
-	while (i1 < target_scores.cend() && i1->score >= relaxed_cutoff) ++i1;
+	if(config.toppercent == 100.0 && config.max_alignments >= target_block_ids.size())
+		while (i1 < target_scores.cend() && i1->score >= relaxed_cutoff) ++i1;
 	const int low_score = config.query_memory ? memory->low_score(query_id) : 0;
 	const size_t previous_count = config.query_memory ? memory->count(query_id) : 0;
 	bool first_round_traceback = config.min_id > 0 || config.query_cover > 0 || config.subject_cover > 0;
