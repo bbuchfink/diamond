@@ -54,26 +54,42 @@ void print_warnings() {
 		return;
 	const double ram = total_ram();
 	unsigned b = 2, c = 4;
-	if (ram >= 511) {
-		b = 12;
-		c = 1;
-	} else if (ram >= 255) {
-		b = 8;
-		c = 1;
-	} else if (ram >= 127) {
-		b = 5;
-		c = 1;
-	} else if (ram >= 63) {
-		b = 6;
-	} else if (ram >= 31) {
-		b = 4;
+	stringstream msg;
+	if (config.sensitivity >= Sensitivity::SENSITIVE) {
+		if (ram >= 63) {
+			c = 1;
+			if(c < config.lowmem)
+				msg << "use this parameter for better performance: -c1";
+		}
 	}
-	if ((b > 2 && b > config.chunk_size) || c < config.lowmem) {
+	else {
+		if (ram >= 511) {
+			b = 12;
+			c = 1;
+		}
+		else if (ram >= 255) {
+			b = 8;
+			c = 1;
+		}
+		else if (ram >= 127) {
+			b = 5;
+			c = 1;
+		}
+		else if (ram >= 63) {
+			b = 6;
+		}
+		else if (ram >= 31) {
+			b = 4;
+		}
+		if ((b > 2 && b > config.chunk_size) || c < config.lowmem) {
+			msg << "increase the block size for better performance using these parameters : -b" << b;
+			if (c != 4)
+				msg << " -c" << c;
+		}
+	}
+	if (!msg.str().empty()) {
 		set_color(Color::YELLOW, true);
-		cerr << "The host system is detected to have " << (size_t)ram << " GB of RAM. It is recommended to increase the block size for better performance using these parameters: -b" << b;
-		if (c != 4)
-			cerr << " -c" << c;
-		cerr << endl;
+		cerr << "The host system is detected to have " << (size_t)ram << " GB of RAM. It is recommended to " << msg.str() << endl;
 		reset_color(true);
 	}
 }
@@ -418,7 +434,9 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("traceback-mode", 0, "", traceback_mode_str)
 		("mid-sensitive", 0, "", mode_mid_sensitive)
 		("query-memory", 0, "", query_memory)
-		("memory-intervals", 0, "", memory_intervals, (size_t)2);
+		("memory-intervals", 0, "", memory_intervals, (size_t)2)
+		("seed-hit-density", 0, "", seedhit_density)
+		("chunk-size-multiplier", 0, "", chunk_size_multiplier, (size_t)4);
 	
 	parser.add(general).add(makedb).add(cluster).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options).add(deprecated_options);
 	parser.store(argc, argv, command);

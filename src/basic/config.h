@@ -233,6 +233,8 @@ struct Config
 	bool no_ranking;
 	bool query_memory;
 	size_t memory_intervals;
+	size_t seedhit_density;
+	size_t chunk_size_multiplier;
 
 	Sensitivity sensitivity;
 	TracebackMode traceback_mode;

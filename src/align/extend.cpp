@@ -41,6 +41,8 @@ using std::pair;
 
 namespace Extension {
 
+constexpr uint64_t MAX_CHUNK_SIZE = 400;
+
 size_t ranking_chunk_size(size_t target_count) {
 	if (config.no_ranking)
 		return target_count;
@@ -48,7 +50,11 @@ size_t ranking_chunk_size(size_t target_count) {
 		return config.ext_chunk_size;
 	if (config.toppercent < 100.0)
 		return 32;
-	return std::min(make_multiple(config.max_alignments, (uint64_t)32), (uint64_t)400);
+	return std::min(make_multiple(config.max_alignments, (uint64_t)32), MAX_CHUNK_SIZE);
+}
+
+size_t chunk_size_multiplier(const FlatArray<SeedHit>& seed_hits, int query_len) {
+	return seed_hits.size() * query_len / seed_hits.data_size() < config.seedhit_density ? config.chunk_size_multiplier : 1;
 }
 
 struct TargetScore {
@@ -67,7 +73,6 @@ void load_hits(hit* begin, hit* end, FlatArray<SeedHit> &hits, vector<uint32_t> 
 	if (begin >= end)
 		return;
 	std::sort(begin, end, hit::CmpSubject());
-	//radix_sort<hit, hit::Subject>(begin, end, ref_seqs::get().raw_len(), 1);
 	const size_t total_subjects = ref_seqs::get().get_length();
 	uint32_t target = UINT32_MAX;
 	uint16_t score = 0;
@@ -189,6 +194,7 @@ vector<Match> extend(const Parameters &params, size_t query_id, hit* begin, hit*
 	const int low_score = config.query_memory ? memory->low_score(query_id) : 0;
 	const size_t previous_count = config.query_memory ? memory->count(query_id) : 0;
 	bool first_round_traceback = config.min_id > 0 || config.query_cover > 0 || config.subject_cover > 0;
+	size_t multiplier = 1;
 	if (first_round_traceback)
 		flags |= DP::TRACEBACK;
 
@@ -213,6 +219,7 @@ vector<Match> extend(const Parameters &params, size_t query_id, hit* begin, hit*
 		}
 
 		vector<Target> v = extend(params, query_id, query_seq.data(), source_query_len, query_cb.data(), seed_hits_chunk, target_block_ids_chunk, metadata, stat, flags);
+		const size_t n = v.size();
 		stat.inc(Statistics::TARGET_HITS3, v.size());
 		bool new_hits = false;
 		if (multi_chunk)
@@ -220,17 +227,22 @@ vector<Match> extend(const Parameters &params, size_t query_id, hit* begin, hit*
 		else
 			aligned_targets = TLS_FIX_S390X_MOVE(v);
 
-		if (v.empty() || !new_hits) {
+		if (n == 0 || !new_hits) {
 			if(config.query_memory && current_chunk_size >= chunk_size)
 				memory->update_failed_count(query_id, current_chunk_size, (i1 - 1)->score);
 			break;
 		}
 
+		multiplier = std::max(multiplier, chunk_size_multiplier(seed_hits_chunk, (int)query_seq.front().length()));
+
 		i0 = i1;
-		i1 = std::min(i1 + chunk_size, target_scores.cend());
+		i1 = std::min(i1 + std::min(chunk_size * multiplier, MAX_CHUNK_SIZE), target_scores.cend());
 	}
 
-	timer.go("Computing score only culling");
+	if (multiplier > 1)
+		stat.inc(Statistics::HARD_QUERIES);
+
+	timer.go("Computing culling");
 	culling(aligned_targets, source_query_len, query_title, query_seq.front());
 	if(config.query_memory)
 		memory->update(query_id, aligned_targets.begin(), aligned_targets.end());
