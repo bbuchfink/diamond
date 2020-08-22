@@ -235,6 +235,7 @@ struct Config
 	size_t memory_intervals;
 	size_t seedhit_density;
 	size_t chunk_size_multiplier;
+	double ranking_score_drop_factor;
 
 	Sensitivity sensitivity;
 	TracebackMode traceback_mode;

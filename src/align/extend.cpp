@@ -195,6 +195,7 @@ vector<Match> extend(const Parameters &params, size_t query_id, hit* begin, hit*
 	const size_t previous_count = config.query_memory ? memory->count(query_id) : 0;
 	bool first_round_traceback = config.min_id > 0 || config.query_cover > 0 || config.subject_cover > 0;
 	size_t multiplier = 1;
+	int tail_score = 0;
 	if (first_round_traceback)
 		flags |= DP::TRACEBACK;
 
@@ -218,6 +219,8 @@ vector<Match> extend(const Parameters &params, size_t query_id, hit* begin, hit*
 			seed_hits_chunk = TLS_FIX_S390X_MOVE(seed_hits);
 		}
 
+		multiplier = std::max(multiplier, chunk_size_multiplier(seed_hits_chunk, (int)query_seq.front().length()));
+
 		vector<Target> v = extend(params, query_id, query_seq.data(), source_query_len, query_cb.data(), seed_hits_chunk, target_block_ids_chunk, metadata, stat, flags);
 		const size_t n = v.size();
 		stat.inc(Statistics::TARGET_HITS3, v.size());
@@ -228,12 +231,12 @@ vector<Match> extend(const Parameters &params, size_t query_id, hit* begin, hit*
 			aligned_targets = TLS_FIX_S390X_MOVE(v);
 
 		if (n == 0 || !new_hits) {
-			if(config.query_memory && current_chunk_size >= chunk_size)
+			if (config.query_memory && current_chunk_size >= chunk_size)
 				memory->update_failed_count(query_id, current_chunk_size, (i1 - 1)->score);
-			break;
-		}
-
-		multiplier = std::max(multiplier, chunk_size_multiplier(seed_hits_chunk, (int)query_seq.front().length()));
+			if (tail_score == 0 || double((i1 - 1)->score) / (double)tail_score < config.ranking_score_drop_factor)
+				break;
+		} else
+			tail_score = (i1 - 1)->score;
 
 		i0 = i1;
 		i1 = std::min(i1 + std::min(chunk_size * multiplier, MAX_CHUNK_SIZE), target_scores.cend());
