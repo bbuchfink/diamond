@@ -38,40 +38,27 @@ struct sequence
 	struct Hardmasked {};
 	sequence():
 		len_ (0),
-		clipping_offset_ (0),
 		data_ (0)
 	{ }
-	sequence(const Letter *data, size_t len, int clipping_offset = 0):
+	sequence(const Letter *data, size_t len):
 		len_ (len),
-		clipping_offset_ (clipping_offset),
 		data_ (data)
 	{ }
 	sequence(const Letter *begin, const Letter *end) :
 		len_(end - begin),
-		clipping_offset_(0),
 		data_(begin)
 	{}
 	sequence(const vector<Letter> &data):
 		len_(data.size()),
-		clipping_offset_(0),
 		data_(data.data())
 	{}
 	sequence(const sequence &seq, int from, int to):
 		len_(to-from+1),
-		clipping_offset_(0),
 		data_(seq.data() + from)
 	{}
 	size_t length() const
 	{
 		return len_;
-	}
-	size_t clipped_length() const
-	{
-		return len_ - clipping_offset_;
-	}
-	size_t aligned_clip(unsigned padding) const
-	{
-		return clipping_offset_ > (int)padding ? clipping_offset_ - padding : 0;
 	}
 	const Letter* data() const
 	{
@@ -80,10 +67,6 @@ struct sequence
 	const Letter* end() const
 	{
 		return data_ + len_;
-	}
-	const Letter* clipped_data() const
-	{
-		return data_ + clipping_offset_;
 	}
 	const Letter* aligned_data(unsigned padding) const
 	{
@@ -99,6 +82,9 @@ struct sequence
 	}
 	bool empty() const
 	{ return len_ == 0; }
+	sequence operator+(int d) const {
+		return sequence(data_ + d, len_ - (size_t)d);
+	}
 	size_t print(char *ptr, unsigned begin, unsigned len) const
 	{
 		for(unsigned i=begin;i<begin+len;++i)
@@ -216,7 +202,6 @@ struct sequence
 	}*/
 	static vector<Letter> from_string(const char* str, const Value_traits &vt = value_traits);
 	size_t			len_;
-	int				clipping_offset_;
 	const Letter *data_;
 };
 
