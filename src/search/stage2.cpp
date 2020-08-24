@@ -69,7 +69,7 @@ void search_query_offset(uint64_t q,
 	const int score_cutoff = query_len > config.short_query_max_len ? context.cutoff_table(query_len) : context.short_query_ungapped_cutoff;
 	size_t hit_count = 0;
 
-	const int interval_mod = config.left_most_interval > 0 ? seed_offset % config.left_most_interval : 0, interval_overhang = std::max(window_left - interval_mod, 0);
+	const int interval_mod = config.left_most_interval > 0 ? seed_offset % config.left_most_interval : window_left, interval_overhang = std::max(window_left - interval_mod, 0);
 
 	for (const uint32_t *i = hits; i < hits_end; i += N) {
 
