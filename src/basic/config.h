@@ -236,6 +236,7 @@ struct Config
 	size_t seedhit_density;
 	size_t chunk_size_multiplier;
 	double ranking_score_drop_factor;
+	double ranking_cutoff_bitscore;
 	int left_most_interval;
 
 	Sensitivity sensitivity;

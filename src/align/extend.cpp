@@ -233,7 +233,8 @@ vector<Match> extend(const Parameters &params, size_t query_id, hit* begin, hit*
 		if (n == 0 || !new_hits) {
 			if (config.query_memory && current_chunk_size >= chunk_size)
 				memory->update_failed_count(query_id, current_chunk_size, (i1 - 1)->score);
-			if (tail_score == 0 || double((i1 - 1)->score) / (double)tail_score <= config.ranking_score_drop_factor)
+			const double tail_bit_score = score_matrix.bitscore((i1 - 1)->score);
+			if (tail_score == 0 || double((i1 - 1)->score) / (double)tail_score <= config.ranking_score_drop_factor || tail_bit_score < config.ranking_cutoff_bitscore)
 				break;
 		} else
 			tail_score = (i1 - 1)->score;

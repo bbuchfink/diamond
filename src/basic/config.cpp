@@ -438,7 +438,8 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("seed-hit-density", 0, "", seedhit_density)
 		("chunk-size-multiplier", 0, "", chunk_size_multiplier, (size_t)4)
 		("score-drop-factor", 0, "", ranking_score_drop_factor, 0.95)
-		("left-most-interval", 0, "", left_most_interval, 32);
+		("left-most-interval", 0, "", left_most_interval, 32)
+		("ranking-cutoff-bitscore", 0, "", ranking_cutoff_bitscore, 25.0);
 	
 	parser.add(general).add(makedb).add(cluster).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options).add(deprecated_options);
 	parser.store(argc, argv, command);
