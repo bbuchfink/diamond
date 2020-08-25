@@ -226,7 +226,7 @@ vector<Match> extend(const Parameters &params, size_t query_id, hit* begin, hit*
 		stat.inc(Statistics::TARGET_HITS3, v.size());
 		bool new_hits = false;
 		if (multi_chunk)
-			new_hits = append_hits(aligned_targets, v.begin(), v.end(), low_score, previous_count, source_query_len, query_title, query_seq.front());
+			new_hits = append_hits(aligned_targets, v.begin(), v.end(), chunk_size, source_query_len, query_title, query_seq.front());
 		else
 			aligned_targets = TLS_FIX_S390X_MOVE(v);
 
@@ -247,7 +247,7 @@ vector<Match> extend(const Parameters &params, size_t query_id, hit* begin, hit*
 		stat.inc(Statistics::HARD_QUERIES);*/
 
 	timer.go("Computing culling");
-	culling(aligned_targets, source_query_len, query_title, query_seq.front());
+	culling(aligned_targets, source_query_len, query_title, query_seq.front(), 0);
 	if(config.query_memory)
 		memory->update(query_id, aligned_targets.begin(), aligned_targets.end());
 	stat.inc(Statistics::TARGET_HITS4, aligned_targets.size());

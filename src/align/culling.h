@@ -24,7 +24,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../basic/sequence.h"
 
 template<typename _t>
-void culling(std::vector<_t> &targets, int source_query_len, const char* query_title, const sequence& query_seq) {
+void culling(std::vector<_t> &targets, int source_query_len, const char* query_title, const sequence& query_seq, size_t min_keep) {
 	if (config.min_id > 0 || config.query_cover > 0 || config.subject_cover > 0 || config.no_self_hits)
 		for (_t& match : targets)
 			match.apply_filters(source_query_len, query_title, query_seq);
@@ -37,12 +37,15 @@ void culling(std::vector<_t> &targets, int source_query_len, const char* query_t
 
 	typename std::vector<_t>::iterator i = targets.begin();
 	if (config.toppercent < 100.0) {
+		size_t n = 0;
 		const int cutoff = std::max(top_cutoff_score(targets.front().filter_score), 1);
-		while (i < targets.end() && i->filter_score >= cutoff)
+		while (i < targets.end() && (i->filter_score >= cutoff || n < min_keep)) {
 			++i;
+			++n;
+		}
 	}
 	else {
-		i += std::min((size_t)config.max_alignments, targets.size());
+		i += std::min(std::max((size_t)config.max_alignments, min_keep), targets.size());
 		while (--i > targets.begin() && i->filter_score == 0);
 		++i;
 	}
