@@ -301,6 +301,7 @@ struct Config
 void print_warnings();
 extern Config config;
 
-static inline int top_cutoff_score(int top_score) {
-	return int((1.0 - config.toppercent / 100.0)*top_score);
+template<typename _t>
+_t top_cutoff_score(_t top_score) {
+	return _t((1.0 - config.toppercent / 100.0)*top_score);
 }

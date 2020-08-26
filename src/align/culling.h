@@ -38,8 +38,8 @@ void culling(std::vector<_t> &targets, int source_query_len, const char* query_t
 	typename std::vector<_t>::iterator i = targets.begin();
 	if (config.toppercent < 100.0) {
 		size_t n = 0;
-		const int cutoff = std::max(top_cutoff_score(targets.front().filter_score), 1);
-		while (i < targets.end() && (i->filter_score >= cutoff || n < min_keep)) {
+		const double cutoff = std::max(top_cutoff_score(score_matrix.bitscore(targets.front().filter_score)), 1.0);
+		while (i < targets.end() && (score_matrix.bitscore(i->filter_score) >= cutoff || n < min_keep)) {
 			++i;
 			++n;
 		}

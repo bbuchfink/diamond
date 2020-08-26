@@ -59,7 +59,7 @@ struct GlobalCulling : public TargetCulling
 				return NEXT;
 		}
 		if (config.toppercent < 100.0)
-			return (1.0 - (double)t.filter_score / top_score_) * 100.0 <= config.toppercent ? INCLUDE : FINISHED;
+			return (1.0 - score_matrix.bitscore(t.filter_score) / top_score_) * 100.0 <= config.toppercent ? INCLUDE : FINISHED;
 		else
 			return n_ < config.max_alignments ? INCLUDE : FINISHED;
 	}
@@ -78,14 +78,14 @@ struct GlobalCulling : public TargetCulling
 				return NEXT;
 		}
 		if (config.toppercent < 100.0)
-			return (1.0 - (double)target_hsp[0].score / top_score_) * 100.0 <= config.toppercent ? INCLUDE : FINISHED;
+			return (1.0 - score_matrix.bitscore(target_hsp[0].score) / top_score_) * 100.0 <= config.toppercent ? INCLUDE : FINISHED;
 		else
 			return n_ < config.max_alignments ? INCLUDE : FINISHED;
 	}
 	virtual void add(const Target &t)
 	{
 		if (top_score_ == 0)
-			top_score_ = t.filter_score;
+			top_score_ = score_matrix.bitscore(t.filter_score);
 		++n_;
 		if (config.taxon_k)
 			for (unsigned i : t.taxon_rank_ids)
@@ -94,7 +94,7 @@ struct GlobalCulling : public TargetCulling
 	virtual void add(const vector<IntermediateRecord> &target_hsp, const std::set<unsigned> &taxon_ids)
 	{
 		if (top_score_ == 0)
-			top_score_ = target_hsp[0].score;
+			top_score_ = score_matrix.bitscore(target_hsp[0].score);
 		++n_;
 		if (config.taxon_k)
 			for (unsigned i : taxon_ids)
@@ -103,7 +103,7 @@ struct GlobalCulling : public TargetCulling
 	virtual ~GlobalCulling() = default;
 private:
 	size_t n_;
-	int top_score_;
+	double top_score_;
 	std::map<unsigned, unsigned> taxon_count_;
 };
 
