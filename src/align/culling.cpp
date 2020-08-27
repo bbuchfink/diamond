@@ -79,7 +79,7 @@ bool append_hits(vector<Target>& targets, vector<Target>::const_iterator begin, 
 	bool append = false;
 
 	if (config.toppercent != 100.0 || targets.size() >= config.max_alignments) {
-		culling(targets, source_query_len, query_title, query_seq, 0);
+		culling(targets, source_query_len, query_title, query_seq, chunk_size);
 	}
 	else
 		append = true;
