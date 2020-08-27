@@ -48,11 +48,11 @@ size_t ranking_chunk_size(size_t target_count) {
 		return target_count;
 	if (config.ext_chunk_size > 0)
 		return config.ext_chunk_size;
-	const double letters = ref_seqs::get().letters(), default_letters = config.sensitivity >= Sensitivity::VERY_SENSITIVE ? 400 * 1e6 : 2 * 1e9;
-	const uint64_t block_mult = std::max(uint64_t(letters / default_letters), (uint64_t)1);
+	const double letters = ref_seqs::get().letters(), default_letters = config.sensitivity >= Sensitivity::VERY_SENSITIVE ? 800 * 1e6 : 2 * 1e9;
+	const uint64_t block_mult = std::max(uint64_t(std::round(letters / default_letters)), (uint64_t)1);
 	if (config.toppercent < 100.0)
-		return MIN_CHUNK_SIZE;
-	return std::max(MIN_CHUNK_SIZE, std::min(make_multiple(config.max_alignments, (uint64_t)32), MAX_CHUNK_SIZE));
+		return MIN_CHUNK_SIZE * block_mult;
+	return std::max(MIN_CHUNK_SIZE, std::min(make_multiple(config.max_alignments, (uint64_t)32), MAX_CHUNK_SIZE)) * block_mult;
 }
 
 size_t chunk_size_multiplier(const FlatArray<SeedHit>& seed_hits, int query_len) {
