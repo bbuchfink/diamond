@@ -200,6 +200,7 @@ struct Config
 	int min_realign_overhang;
 	int ungapped_window;
 	int gapped_filter_diag_score;
+	double gapped_filter_diag_bit_score;
 	double gapped_filter_evalue;
 	int gapped_filter_window;
 	bool output_hits;

@@ -77,35 +77,35 @@ struct RowCounter {
 };
 
 template<typename _sv>
-FORCE_INLINE _sv add_cbs(const _sv &v, void*) {
+MSC_INLINE _sv add_cbs(const _sv &v, void*) {
 	return v;
 }
 
 template<typename _sv>
-FORCE_INLINE _sv add_cbs(const _sv& v, const _sv& query_bias) {
+MSC_INLINE _sv add_cbs(const _sv& v, const _sv& query_bias) {
 	return v + query_bias;
 }
 
 template<typename _sv>
-FORCE_INLINE void make_gap_mask(typename ::DISPATCH_ARCH::ScoreTraits<_sv>::TraceMask *trace_mask, const _sv& current_cell, const _sv& vertical_gap, const _sv& horizontal_gap) {
+MSC_INLINE void make_gap_mask(typename ::DISPATCH_ARCH::ScoreTraits<_sv>::TraceMask *trace_mask, const _sv& current_cell, const _sv& vertical_gap, const _sv& horizontal_gap) {
 	trace_mask->gap = ::DISPATCH_ARCH::ScoreTraits<_sv>::TraceMask::make(cmp_mask(current_cell, vertical_gap), cmp_mask(current_cell, horizontal_gap));
 }
 
 template<typename _sv>
-FORCE_INLINE void make_gap_mask(std::nullptr_t, const _sv&, const _sv&, const _sv&) {
+MSC_INLINE void make_gap_mask(std::nullptr_t, const _sv&, const _sv&, const _sv&) {
 }
 
 template<typename _sv>
-FORCE_INLINE void make_open_mask(typename ::DISPATCH_ARCH::ScoreTraits<_sv>::TraceMask *trace_mask, const _sv& open, const _sv& vertical_gap, const _sv& horizontal_gap) {
+MSC_INLINE void make_open_mask(typename ::DISPATCH_ARCH::ScoreTraits<_sv>::TraceMask *trace_mask, const _sv& open, const _sv& vertical_gap, const _sv& horizontal_gap) {
 	trace_mask->open = ::DISPATCH_ARCH::ScoreTraits<_sv>::TraceMask::make(cmp_mask(vertical_gap, open), cmp_mask(horizontal_gap, open));
 }
 
 template<typename _sv>
-FORCE_INLINE void make_open_mask(std::nullptr_t, const _sv&, const _sv&, const _sv&) {
+MSC_INLINE void make_open_mask(std::nullptr_t, const _sv&, const _sv&, const _sv&) {
 }
 
 template<typename _sv, typename _cbs, typename _trace_mask, typename _row_counter>
-FORCE_INLINE _sv swipe_cell_update(const _sv &diagonal_cell,
+MSC_INLINE _sv swipe_cell_update(const _sv &diagonal_cell,
 	const _sv &scores,
 	_cbs query_bias,
 	const _sv &gap_extension,
@@ -201,14 +201,14 @@ static inline _sv swipe_cell_update(const _sv& diagonal_cell,
 	vertical_gap = max(vertical_gap, open);
 	horizontal_gap = max(horizontal_gap, open);
 
-	/*trace_stat_vertical.length += one;
+	trace_stat_vertical.length += one;
 	trace_stat_horizontal.length += one;
 	trace_stat_diag.length += one;
 	trace_stat_diag.length = blend(trace_stat_diag.length, trace_stat_vertical.length, vgap_mask);
 	trace_stat_diag.length = blend(trace_stat_diag.length, trace_stat_horizontal.length, hgap_mask);
-	trace_stat_diag.length = blend(trace_stat_diag.length, zero2, zero_mask);*/
+	trace_stat_diag.length = blend(trace_stat_diag.length, zero2, zero_mask);
 	
-/*	return current_cell;
+	return current_cell;
 }*/
 
 template<typename _sv>

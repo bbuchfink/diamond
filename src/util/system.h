@@ -27,11 +27,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #define PACKED_ATTRIBUTE
 #define FORCE_INLINE __forceinline
+#define MSC_INLINE __forceinline
 
 #else
 
 #define PACKED_ATTRIBUTE __attribute__((packed))
 #define FORCE_INLINE __attribute__((always_inline))
+#define MSC_INLINE
 
 #endif
 

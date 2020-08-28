@@ -130,6 +130,7 @@ void setup_search()
 	print_warnings();
 
 	SeedComplexity::init(Reduction::reduction);
+	config.gapped_filter_diag_score = score_matrix.rawscore(config.gapped_filter_diag_bit_score);
 
 	message_stream << "Algorithm: " << (config.algo == Config::double_indexed ? "Double-indexed" : "Query-indexed") << endl;
 	verbose_stream << "Reduction: " << Reduction::reduction << endl;
