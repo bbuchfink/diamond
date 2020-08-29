@@ -42,7 +42,7 @@ struct Config
 	unsigned	hit_cap;
 	unsigned shapes;
 	unsigned	index_mode;
-	uint64_t	max_alignments;
+	size_t	max_alignments;
 	string	match_file1;
 	string	match_file2;
 	int		padding;
