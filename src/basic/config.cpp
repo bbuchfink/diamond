@@ -627,6 +627,9 @@ Config::Config(int argc, const char **argv, bool check_io)
 	if (mode_very_sensitive) set_sens(Sensitivity::VERY_SENSITIVE);
 	if (mode_ultra_sensitive) set_sens(Sensitivity::ULTRA_SENSITIVE);
 
+	if (algo == Config::query_indexed && (sensitivity == Sensitivity::MID_SENSITIVE || sensitivity >= Sensitivity::VERY_SENSITIVE))
+		throw std::runtime_error("Query-indexed mode is not supported for this sensitivity setting.");
+
 	if (ext != "banded-fast" && ext != "banded-slow" && ext != "")
 		throw std::runtime_error("Possible values for --ext are: banded-fast, banded-slow");
 
