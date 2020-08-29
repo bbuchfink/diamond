@@ -45,7 +45,7 @@ void culling(std::vector<_t> &targets, int source_query_len, const char* query_t
 		}
 	}
 	else {
-		i += std::min(std::max((size_t)config.max_alignments, min_keep), targets.size());
+		i += std::min(std::max(config.max_alignments, min_keep), targets.size());
 		while (--i > targets.begin() && i->filter_score == 0);
 		++i;
 	}

@@ -47,7 +47,7 @@ vector<int> MultiStep::cluster(DatabaseFile &db, const vector<bool> *filter) {
 	config.algo = 0;
 	config.index_mode = 0;
 	config.freq_sd = 0;
-	config.max_alignments = numeric_limits<uint64_t>::max();
+	config.max_alignments = numeric_limits<size_t>::max();
 
 	Workflow::Search::Options opt;
 	opt.db = &db;

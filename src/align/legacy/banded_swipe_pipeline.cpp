@@ -127,7 +127,7 @@ void Pipeline::range_ranking()
 {
 	const double rr = config.rank_ratio == -1 ? 0.4 : config.rank_ratio;
 	std::stable_sort(targets.begin(), targets.end(), Target::compare);
-	IntervalPartition ip((int)std::min(config.max_alignments, (uint64_t)INT_MAX));
+	IntervalPartition ip((int)std::min(config.max_alignments, (size_t)INT_MAX));
 	for (PtrVector< ::Target>::iterator i = targets.begin(); i < targets.end();) {
 		Target* t = ((Target*)*i);
 		if (t->is_outranked(ip, source_query_len, rr)) {

@@ -113,7 +113,7 @@ void init_output(bool have_taxon_id_lists, bool have_taxon_nodes, bool have_taxo
 	if (config.toppercent == 100.0) {
 		message_stream << "#Target sequences to report alignments for: ";
 		if (config.max_alignments == 0) {
-			config.max_alignments = std::numeric_limits<uint64_t>::max();
+			config.max_alignments = std::numeric_limits<size_t>::max();
 			message_stream << "unlimited" << endl;
 		}
 		else

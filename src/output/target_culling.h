@@ -110,7 +110,7 @@ private:
 struct RangeCulling : public TargetCulling
 {
 	RangeCulling() :
-		p_((int)std::min(config.max_alignments, (uint64_t)INT_MAX))
+		p_((int)std::min(config.max_alignments, (size_t)INT_MAX))
 	{}
 	virtual int cull(const Target &t) const
 	{

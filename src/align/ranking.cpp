@@ -42,12 +42,12 @@ void rank_targets(vector<WorkTarget> &targets, double ratio, double factor)
 		score = int((double)targets[0].filter_score * (1.0 - config.toppercent / 100.0) * ratio);
 	}
 	else {
-		size_t min_idx = std::min(targets.size(), (size_t)config.max_alignments);
+		size_t min_idx = std::min(targets.size(), config.max_alignments);
 		score = int((double)targets[min_idx - 1].filter_score * ratio);
 	}
 	score = std::max(score, 1);
 
-	const size_t cap = (config.toppercent < 100 || config.max_alignments == std::numeric_limits<uint64_t>::max()) ? std::numeric_limits<uint64_t>::max() : size_t(config.max_alignments*factor);
+	const size_t cap = (config.toppercent < 100 || config.max_alignments == std::numeric_limits<size_t>::max()) ? std::numeric_limits<size_t>::max() : size_t(config.max_alignments*factor);
 	size_t i = 0;
 	for (; i < targets.size(); ++i)
 		if (targets[i].filter_score < score || i >= cap)
