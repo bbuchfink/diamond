@@ -27,6 +27,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <stdint.h>
 #include "../util/log_stream.h"
 #include "value.h"
+#include "../lib/alp/sls_alignment_evaluer.hpp"
 
 using std::string;
 using std::cout;
@@ -197,6 +198,7 @@ private:
 	Scores<int8_t> matrix8u_high_;
 	Scores<int16_t> matrix16_;
 	Scores<int> matrix32_;
+	Sls::AlignmentEvaluer evaluer;
 
 };
 

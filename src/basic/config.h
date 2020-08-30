@@ -239,6 +239,7 @@ struct Config
 	double ranking_score_drop_factor;
 	double ranking_cutoff_bitscore;
 	int left_most_interval;
+	bool alp;
 
 	Sensitivity sensitivity;
 	TracebackMode traceback_mode;

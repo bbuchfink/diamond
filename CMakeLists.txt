@@ -211,6 +211,21 @@ set(OBJECTS
   src/util/parallel/multiprocessing.cpp
   src/tools/benchmark_io.cpp
   src/align/memory.cpp
+  src/lib/alp/njn_dynprogprob.cpp
+  src/lib/alp/njn_dynprogproblim.cpp
+  src/lib/alp/njn_dynprogprobproto.cpp
+  src/lib/alp/njn_ioutil.cpp
+  src/lib/alp/njn_localmaxstat.cpp
+  src/lib/alp/njn_localmaxstatmatrix.cpp
+  src/lib/alp/njn_localmaxstatutil.cpp
+  src/lib/alp/njn_random.cpp
+  src/lib/alp/sls_alignment_evaluer.cpp
+  src/lib/alp/sls_alp.cpp
+  src/lib/alp/sls_alp_data.cpp
+  src/lib/alp/sls_alp_regression.cpp
+  src/lib/alp/sls_alp_sim.cpp
+  src/lib/alp/sls_basic.cpp
+  src/lib/alp/sls_pvalues.cpp
 )
 
 if(X86)
