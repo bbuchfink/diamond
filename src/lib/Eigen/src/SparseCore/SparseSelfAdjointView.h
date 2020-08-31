@@ -154,7 +154,7 @@ template<typename MatrixType, unsigned int _Mode> class SparseSelfAdjointView
       EIGEN_ONLY_USED_FOR_DEBUG(rows);
       EIGEN_ONLY_USED_FOR_DEBUG(cols);
       eigen_assert(rows == this->rows() && cols == this->cols()
-                && "SparseSelfadjointView::resize() does not actually allow to resize.");
+                && "SparseSelfadjointView::resize() does not actually allow one to resize.");
     }
     
   protected:
