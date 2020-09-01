@@ -48,6 +48,7 @@ Partitioned_histogram ref_hst;
 unsigned current_ref_block;
 Sequence_set* ref_seqs::data_ = 0;
 bool blocked_processing;
+std::vector<uint32_t> block_to_database_id;
 
 using namespace std;
 
@@ -312,8 +313,7 @@ void DatabaseFile::seek_direct() {
 	seek(sizeof(ReferenceHeader) + sizeof(ReferenceHeader2) + 8);
 }
 
-bool DatabaseFile::load_seqs(vector<unsigned> &block_to_database_id, const size_t max_letters,
-	Sequence_set **dst_seq, String_set<char, 0> **dst_id, bool load_ids, const vector<bool> *filter, const bool fetch_seqs, const Chunk & chunk)
+bool DatabaseFile::load_seqs(vector<uint32_t>* block2db_id, const size_t max_letters, Sequence_set **dst_seq, String_set<char, 0> **dst_id, bool load_ids, const vector<bool> *filter, const bool fetch_seqs, const Chunk & chunk)
 {
 	task_timer timer("Loading reference sequences");
 
@@ -328,7 +328,7 @@ bool DatabaseFile::load_seqs(vector<unsigned> &block_to_database_id, const size_
 	size_t letters = 0, seqs = 0, id_letters = 0, seqs_processed = 0, filtered_seq_count = 0;
 	vector<uint64_t> filtered_pos;
 	vector<bool> filtered_seqs;
-	block_to_database_id.clear();
+	if (block2db_id) block2db_id->clear();
 
 	if (fetch_seqs) {
 		*dst_seq = new Sequence_set;
@@ -363,7 +363,7 @@ bool DatabaseFile::load_seqs(vector<unsigned> &block_to_database_id, const size_
 			}
 			//++seqs;
 			++filtered_seq_count;
-			block_to_database_id.push_back((unsigned)database_id);
+			if (block2db_id) block2db_id->push_back((unsigned)database_id);
 			if (filter) {
 				filtered_pos.push_back(last ? 0 : r.pos);
 				filtered_seqs.push_back(true);

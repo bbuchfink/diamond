@@ -146,6 +146,15 @@ vector<Target> extend(const Parameters& params,
 	return align(targets, query_seq, query_cb, source_query_len, flags, stat);
 }
 
+vector<Match> ranking_list(vector<TargetScore>::const_iterator begin, vector<TargetScore>::const_iterator end, vector<uint32_t>::const_iterator target_block_ids) {
+	size_t n = 0;
+	vector<Match> r;
+	for (auto i = begin; i < end && n < config.global_ranking_targets; ++i, ++n) {
+		r.emplace_back(target_block_ids[i->target], 0, i->score);
+	}
+	return r;
+}
+
 vector<Match> extend(const Parameters &params, size_t query_id, hit* begin, hit* end, const Metadata &metadata, Statistics &stat, int flags) {
 	const unsigned contexts = align_mode.query_contexts;
 	vector<sequence> query_seq;
@@ -180,11 +189,13 @@ vector<Match> extend(const Parameters &params, size_t query_id, hit* begin, hit*
 	
 	const size_t chunk_size = ranking_chunk_size(target_count);
 
-	if (chunk_size < target_count) {
+	if (chunk_size < target_count || config.global_ranking_targets > 0) {
 		timer.go("Sorting targets by score");
 		std::sort(target_scores.begin(), target_scores.end());
 		stat.inc(Statistics::TIME_SORT_TARGETS_BY_SCORE, timer.microseconds());
 		timer.finish();
+		if (config.global_ranking_targets > 0)
+			return ranking_list(target_scores.begin(), target_scores.end(), target_block_ids.begin());
 	}
 		
 	const int relaxed_cutoff = score_matrix.rawscore(config.min_bit_score == 0.0

@@ -31,11 +31,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 namespace Extension {
 
 struct Match {
-	Match(size_t target_block_id, bool outranked, int ungapped_score):
+	Match(size_t target_block_id, int ungapped_score, int filter_score = 0):
 		target_block_id(target_block_id),
-		filter_score(0),
-		ungapped_score(ungapped_score),
-		outranked(outranked)
+		filter_score(filter_score),
+		ungapped_score(ungapped_score)
 	{}
 	void add_hit(std::list<Hsp> &list, std::list<Hsp>::iterator it) {
 		hsp.splice(hsp.end(), list, it);
@@ -43,13 +42,12 @@ struct Match {
 	bool operator<(const Match &m) const {
 		return filter_score > m.filter_score || (filter_score == m.filter_score && target_block_id < m.target_block_id);
 	}
-	Match(size_t target_block_id, bool outranked, std::array<std::list<Hsp>, MAX_CONTEXT> &hsp, int ungapped_score);
+	Match(size_t target_block_id, std::array<std::list<Hsp>, MAX_CONTEXT> &hsp, int ungapped_score);
 	void inner_culling(int source_query_len);
 	void max_hsp_culling();
 	void apply_filters(int source_query_len, const char *query_title, const sequence& query_seq);
 	size_t target_block_id;
 	int filter_score, ungapped_score;
-	bool outranked;
 	std::list<Hsp> hsp;
 };
 

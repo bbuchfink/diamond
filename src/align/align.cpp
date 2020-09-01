@@ -126,9 +126,8 @@ void align_worker(size_t thread_id, const Parameters *params, const Metadata *me
 		vector<Extension::Match> matches = Extension::extend(*params, hits.query, hits.begin, hits.end, *metadata, stat, hits.target_parallel ? DP::PARALLEL : 0);
 		TextBuffer *buf = Extension::generate_output(matches, hits.query, stat, *metadata, *params);
 		if (!matches.empty() && (!config.unaligned.empty() || !config.aligned_file.empty())) {
-			query_aligned_mtx.lock();
+			std::lock_guard<std::mutex> lock(query_aligned_mtx);
 			query_aligned[hits.query] = true;
-			query_aligned_mtx.unlock();
 		}
 		OutputSink::get().push(hits.query, buf);
 		if (hits.target_parallel)

@@ -30,8 +30,17 @@ using std::vector;
 
 namespace Extension {
 
+TextBuffer* serialize_ranking_list(vector<Match>::const_iterator begin, vector<Match>::const_iterator end) {
+	TextBuffer* out = new TextBuffer;
+	for (auto i = begin; i < end; ++i)
+		IntermediateRecord::write(*out, i->target_block_id, i->filter_score);
+	return out;
+}
+
 TextBuffer* generate_output(vector<Match> &targets, size_t query_block_id, Statistics &stat, const Metadata &metadata, const Parameters &parameters)
 {
+	if (config.global_ranking_targets > 0)
+		return serialize_ranking_list(targets.begin(), targets.end());
 	TextBuffer* out = new TextBuffer;
 	std::unique_ptr<Output_format> f(output_format->clone());
 	size_t seek_pos = 0;
@@ -56,9 +65,6 @@ TextBuffer* generate_output(vector<Match> &targets, size_t query_block_id, Stati
 		const unsigned database_id = ReferenceDictionary::get().block_to_database_id(subject_id);
 		const unsigned subject_len = (unsigned)ref_seqs::get()[subject_id].length();
 		const char *ref_title = ref_ids::get()[subject_id];
-
-		if (targets[i].outranked)
-			stat.inc(Statistics::OUTRANKED_HITS);
 
 		hit_hsps = 0;
 		for (Hsp &hsp : targets[i].hsp) {

@@ -111,10 +111,9 @@ void get_medoids_from_tree() {
 	message_stream << "#Sequences: " << db->ref_header.sequences << endl;
 	size_t n = db->ref_header.sequences;
 
-	vector<unsigned> block2databaseid;
 	Sequence_set *seqs;
 	String_set<char, '\0'> *ids;
-	db->load_seqs(block2databaseid, SIZE_MAX, &seqs, &ids, true);
+	db->load_seqs(nullptr, SIZE_MAX, &seqs, &ids, true);
 
 	map<int, int> parent;
 	map<string, int> acc2idx;

@@ -131,7 +131,6 @@ struct Config
 	int superblock;
 	unsigned max_cells;
 	int masking;
-	bool benchmark_ranking;
 	bool log_query;
 	bool log_subject;
 	unsigned threads_align;

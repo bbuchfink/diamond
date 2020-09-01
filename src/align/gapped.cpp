@@ -63,11 +63,10 @@ int band(int len) {
 	}
 }
 
-Match::Match(size_t target_block_id, bool outranked, std::array<std::list<Hsp>, MAX_CONTEXT> &hsps, int ungapped_score):
+Match::Match(size_t target_block_id, std::array<std::list<Hsp>, MAX_CONTEXT> &hsps, int ungapped_score):
 	target_block_id(target_block_id),
 	filter_score(0),
-	ungapped_score(ungapped_score),
-	outranked(outranked)
+	ungapped_score(ungapped_score)
 {
 	for (unsigned i = 0; i < align_mode.query_contexts; ++i)
 		hsp.splice(hsp.end(), hsps[i]);
@@ -129,7 +128,7 @@ vector<Target> align(const vector<WorkTarget> &targets, const sequence *query_se
 	r.reserve(targets.size());
 	for (int i = 0; i < (int)targets.size(); ++i) {
 		add_dp_targets(targets[i], i, query_seq, dp_targets);
-		r.emplace_back(targets[i].block_id, targets[i].seq, targets[i].outranked, targets[i].ungapped_score);
+		r.emplace_back(targets[i].block_id, targets[i].seq, targets[i].ungapped_score);
 	}
 
 	if (config.ext == "full" && (int)query_seq[0].length() < config.full_sw_len)
@@ -186,7 +185,7 @@ vector<Match> align(vector<Target> &targets, const sequence *query_seq, const Bi
 
 	if (config.traceback_mode == TracebackMode::SCORE_ONLY || config.ext == "full" || first_round_traceback) {
 		for (Target &t : targets)
-			r.emplace_back(t.block_id, t.outranked, t.hsp, t.ungapped_score);
+			r.emplace_back(t.block_id, t.hsp, t.ungapped_score);
 		return r;
 	}
 
@@ -194,7 +193,7 @@ vector<Match> align(vector<Target> &targets, const sequence *query_seq, const Bi
 		if (config.log_subject)
 			std::cout << "Target=" << ref_ids::get()[targets[i].block_id] << " id=" << i << endl;
 		add_dp_targets(targets[i], i, query_seq, dp_targets);
-		r.emplace_back(targets[i].block_id, targets[i].outranked, targets[i].ungapped_score);
+		r.emplace_back(targets[i].block_id, targets[i].ungapped_score);
 	}
 
 	for (unsigned frame = 0; frame < align_mode.query_contexts; ++frame) {

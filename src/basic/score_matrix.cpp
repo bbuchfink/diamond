@@ -220,8 +220,8 @@ Score_matrix::Score_matrix(const string & matrix, int gap_open, int gap_extend, 
 	matrix16_(Matrix_info::get(matrix).scores, stop_match_score),
 	matrix32_(Matrix_info::get(matrix).scores, stop_match_score)
 { 
-	static const int N = 20;
-	//if (config.alp) {
+	/*static const int N = 20;
+	if (config.alp) {
 		long m[N][N];
 		long* p[N];
 		for (int i = 0; i < N; ++i) {
@@ -231,7 +231,7 @@ Score_matrix::Score_matrix(const string & matrix, int gap_open, int gap_extend, 
 		}
 		evaluer.initGapped(N, p, background_freq, background_freq, gap_open_, gap_extend_, gap_open_, gap_extend_, false, 0.01, 0.05, 60.0, 1024.0, 0);
 		cout << evaluer.parameters().lambda << ' ' << evaluer.parameters().K << endl;
-	//}
+	}*/
 }
 
 int8_t Score_matrix::low_score() const

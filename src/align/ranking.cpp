@@ -53,11 +53,7 @@ void rank_targets(vector<WorkTarget> &targets, double ratio, double factor)
 		if (targets[i].filter_score < score || i >= cap)
 			break;
 
-	if (config.benchmark_ranking)
-		for (size_t j = i; j < targets.size(); ++j)
-			targets[j].outranked = true;
-	else
-		targets.erase(targets.begin() + i, targets.end());
+	targets.erase(targets.begin() + i, targets.end());
 }
 
 }

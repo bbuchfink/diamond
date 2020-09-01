@@ -213,7 +213,7 @@ struct VectorTraceback {};
 struct ScoreOnly {};
 struct ScoreWithCoords {};
 
-enum { TRACEBACK = 1, PARALLEL = 2, FULL_MATRIX = 4 };
+enum { TRACEBACK = 1, PARALLEL = 2, FULL_MATRIX = 4, WITH_COORDINATES = 8 };
 
 struct NoCBS {
 	constexpr void* operator[](int i) const { return nullptr; }
