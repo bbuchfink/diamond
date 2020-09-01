@@ -598,7 +598,7 @@ Config::Config(int argc, const char **argv, bool check_io)
 		}
 		if(command == Config::cluster && !Workflow::Cluster::ClusterRegistry::has(cluster_algo)){
 			ostream &header_out = command == Config::help ? cout : cerr;
-			header_out << "Unkown clustering algorithm: " << cluster_algo << endl;
+			header_out << "Unknown clustering algorithm: " << cluster_algo << endl;
 			header_out << "Available options are: " << endl;
 			for(string c_algo : Workflow::Cluster::ClusterRegistry::getKeys()){
 				header_out << "\t" << c_algo << "\t"<< Workflow::Cluster::ClusterRegistry::get(c_algo)->get_description() << endl;
