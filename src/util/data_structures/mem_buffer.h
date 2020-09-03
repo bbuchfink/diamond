@@ -66,6 +66,14 @@ struct MemBuffer {
 		return data_ + size_;
 	}
 
+	const _t* begin() const {
+		return data_;
+	}
+
+	const _t* end() const {
+		return data_ + size_;
+	}
+
 	_t& operator[](size_t i) {
 		return data_[i];
 	}

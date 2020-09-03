@@ -84,7 +84,10 @@ list<Hsp> swipe_targets(const sequence &query,
 	constexpr auto CHANNELS = vector<DpTarget>::const_iterator::difference_type(::DISPATCH_ARCH::ScoreTraits<_sv>::CHANNELS);
 	list<Hsp> out;
 	if (flags & DP::FULL_MATRIX) {
-		return DP::Swipe::DISPATCH_ARCH::swipe<_sv, ScoreOnly>(query, frame, begin, end, NoCBS(), score_cutoff, overflow, stat);
+		if (flags & TRACEBACK)
+			return DP::Swipe::DISPATCH_ARCH::swipe<_sv, VectorTraceback>(query, frame, begin, end, NoCBS(), score_cutoff, overflow, stat);
+		else
+			return DP::Swipe::DISPATCH_ARCH::swipe<_sv, ScoreOnly>(query, frame, begin, end, NoCBS(), score_cutoff, overflow, stat);
 	}
 	else {
 		for (vector<DpTarget>::const_iterator i = begin; i < end; i += CHANNELS) {
@@ -133,6 +136,8 @@ list<Hsp> swipe_threads(const sequence &query,
 	int score_cutoff,
 	vector<DpTarget> &overflow,
 	Statistics &stat) {
+	if (end <= begin)
+		return {};
 	if (flags & PARALLEL) {
 		task_timer timer("Banded swipe (run)", config.target_parallel_verbosity);
 		const size_t n = config.threads_;

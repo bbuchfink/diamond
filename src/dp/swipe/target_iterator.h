@@ -127,7 +127,6 @@ struct TargetBuffer
 	typedef ::DISPATCH_ARCH::SIMD::Vector<_t> SeqVector;
 	enum { CHANNELS = SeqVector::CHANNELS };
 
-	//TargetBuffer(const sequence *subject_begin, const sequence *subject_end) :
 	TargetBuffer(typename std::vector<DpTarget>::const_iterator subject_begin, typename std::vector<DpTarget>::const_iterator subject_end):
 		next(0),
 		n_targets(int(subject_end - subject_begin)),
@@ -138,6 +137,13 @@ struct TargetBuffer
 			target[next] = next;
 			active.push_back(next);
 		}
+	}
+
+	int max_len() const {
+		int l = 0;
+		for (int i = 0; i < n_targets; ++i)
+			l = std::max(l, (int)subject_begin[i].seq.length());
+		return l;
 	}
 
 	char operator[](int channel) const
@@ -198,7 +204,7 @@ struct TargetBuffer
 	int pos[CHANNELS], target[CHANNELS], next, n_targets, cols;
 	Static_vector<int, CHANNELS> active;
 	const vector<DpTarget>::const_iterator subject_begin;
-	//const sequence *subject_begin;
+
 };
 
 }

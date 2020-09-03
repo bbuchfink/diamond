@@ -125,14 +125,14 @@ struct Join_record
 
 	bool db_precedence(const Join_record &rhs) const
 	{
-		return block_ < rhs.block_ || (block_ == rhs.block_ && info_.subject_id < rhs.info_.subject_id);
+		return block_ < rhs.block_ || (block_ == rhs.block_ && info_.subject_dict_id < rhs.info_.subject_dict_id);
 	}
 
 	Join_record(unsigned ref_block, unsigned subject, BinaryBuffer::Iterator &it):
 		block_(ref_block)
 	{
 		info_.read(it);
-		same_subject_ = info_.subject_id == subject;
+		same_subject_ = info_.subject_dict_id == subject;
 	}
 
 	static bool push_next(unsigned block, unsigned subject, BinaryBuffer::Iterator &it, vector<Join_record> &v)
@@ -168,11 +168,11 @@ struct BlockJoiner
 		const Join_record &first = records.front();
 		const unsigned block = first.block_;
 		block_idx = block;
-		const unsigned subject = first.info_.subject_id;
+		const unsigned subject = first.info_.subject_dict_id;
 		target_hsp.clear();
 		do {
 			const Join_record &next = records.front();
-			if (next.block_ != block || next.info_.subject_id != subject)
+			if (next.block_ != block || next.info_.subject_dict_id != subject)
 				return true;
 			target_hsp.push_back(next.info_);
 			std::pop_heap(records.begin(), records.end());
@@ -205,7 +205,7 @@ void join_query(vector<BinaryBuffer> &buf, TextBuffer &out, Statistics &statisti
 			dict_ptr = & dict;
 		}
 
-		const set<unsigned> rank_taxon_ids = config.taxon_k ? metadata.taxon_nodes->rank_taxid((*metadata.taxon_list)[dict_ptr->database_id(target_hsp.front().subject_id)], Rank::species) : set<unsigned>();
+		const set<unsigned> rank_taxon_ids = config.taxon_k ? metadata.taxon_nodes->rank_taxid((*metadata.taxon_list)[dict_ptr->database_id(target_hsp.front().subject_dict_id)], Rank::species) : set<unsigned>();
 		const int c = culling->cull(target_hsp, rank_taxon_ids);
 		if (c == TargetCulling::FINISHED)
 			break;
@@ -222,13 +222,13 @@ void join_query(vector<BinaryBuffer> &buf, TextBuffer &out, Statistics &statisti
 					query,
 					query_seq,
 					query_name,
-					dict_ptr->check_id(i->subject_id),
-					dict_ptr->database_id(i->subject_id),
-					dict_ptr->name(i->subject_id),
-					dict_ptr->length(i->subject_id),
+					dict_ptr->check_id(i->subject_dict_id),
+					dict_ptr->database_id(i->subject_dict_id),
+					dict_ptr->name(i->subject_dict_id),
+					dict_ptr->length(i->subject_dict_id),
 					n_target_seq,
 					hsp_num,
-					config.use_lazy_dict ? dict_ptr->seq(i->subject_id) : sequence()
+					config.use_lazy_dict ? dict_ptr->seq(i->subject_dict_id) : sequence()
 					).parse(), metadata, out);
 			}
 		}

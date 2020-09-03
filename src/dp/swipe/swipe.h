@@ -143,34 +143,6 @@ MSC_INLINE _sv swipe_cell_update(const _sv &diagonal_cell,
 }
 
 /*template<typename _sv>
-static inline _sv swipe_cell_update(const _sv &diagonal_cell,
-	const _sv &scores,
-	void*,
-	const _sv &gap_extension,
-	const _sv &gap_open,
-	_sv &horizontal_gap,
-	_sv &vertical_gap,
-	_sv &best,
-	TraceStat<_sv> &trace_stat_diag,
-	TraceStat<_sv> &trace_stat_vertical,
-	TraceStat<_sv> &trace_stat_horizontal,
-	void*,
-	const RowCounter<_sv>&)
-{
-	using std::max;
-	_sv current_cell = max(diagonal_cell + scores, vertical_gap);
-	current_cell = max(current_cell, horizontal_gap);
-	::DISPATCH_ARCH::ScoreTraits<_sv>::saturate(current_cell);
-	best = max(best, current_cell);
-	vertical_gap -= gap_extension;
-	horizontal_gap -= gap_extension;
-	const _sv open = current_cell - gap_open;
-	vertical_gap = max(vertical_gap, open);
-	horizontal_gap = max(horizontal_gap, open);
-	return current_cell;
-}
-
-template<typename _sv>
 static inline _sv swipe_cell_update(const _sv& diagonal_cell,
 	const _sv& scores,
 	const _sv& query_bias,

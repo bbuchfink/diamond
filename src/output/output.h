@@ -136,8 +136,8 @@ struct IntermediateRecord
 	}
 	static void write(TextBuffer& buf, uint32_t target_block_id, int score) {
 		buf.write(ReferenceDictionary::get().get(current_ref_block, target_block_id));
-		uint16_t score = (uint16_t)std::min(score, USHRT_MAX);
-		buf.write(score);
+		const uint16_t s = (uint16_t)std::min(score, USHRT_MAX);
+		buf.write(s);
 	}
 	static void finish_file(Consumer &f)
 	{

@@ -47,7 +47,7 @@ namespace Extension {
 WorkTarget ungapped_stage(SeedHit *begin, SeedHit *end, const sequence *query_seq, const Bias_correction *query_cb, uint32_t block_id) {
 	array<vector<Diagonal_segment>, MAX_CONTEXT> diagonal_segments;
 	WorkTarget target(block_id, ref_seqs::get()[block_id]);
-	if (config.ext == "full" && (int)query_seq[0].length() < config.full_sw_len)
+	if (config.ext == "full")
 		return target;
 	std::sort(begin, end);
 	for (const SeedHit *hit = begin; hit < end; ++hit) {
