@@ -22,12 +22,14 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #pragma once
 #include <assert.h>
 #include <limits>
+#include <vector>
 #include "../score_vector.h"
 #include "../score_vector_int8.h"
 #include "../score_vector_int16.h"
 #include "../../basic/value.h"
 #include "../util/simd/vector.h"
 #include "../../util/system.h"
+#include "../../util/memory/alignment.h"
 
 static inline uint8_t cmp_mask(int x, int y) {
 	return x == y;
@@ -86,6 +88,16 @@ MSC_INLINE _sv add_cbs(const _sv& v, const _sv& query_bias) {
 	return v + query_bias;
 }
 
+template<typename _score>
+_score add_cbs_scalar(_score x, int8_t b) {
+	return x + _score(b);
+}
+
+template<typename _score>
+_score add_cbs_scalar(_score x, void *b) {
+	return x;
+}
+
 template<typename _sv>
 MSC_INLINE void make_gap_mask(typename ::DISPATCH_ARCH::ScoreTraits<_sv>::TraceMask *trace_mask, const _sv& current_cell, const _sv& vertical_gap, const _sv& horizontal_gap) {
 	trace_mask->gap = ::DISPATCH_ARCH::ScoreTraits<_sv>::TraceMask::make(cmp_mask(current_cell, vertical_gap), cmp_mask(current_cell, horizontal_gap));
@@ -103,6 +115,32 @@ MSC_INLINE void make_open_mask(typename ::DISPATCH_ARCH::ScoreTraits<_sv>::Trace
 template<typename _sv>
 MSC_INLINE void make_open_mask(std::nullptr_t, const _sv&, const _sv&, const _sv&) {
 }
+
+namespace DP {
+	struct NoCBS;
+}
+
+template<typename _sv, typename _cbs>
+struct CBSBuffer {
+	CBSBuffer(const DP::NoCBS&, int) {}
+	void* operator()(int i) const {
+		return nullptr;
+	}
+};
+
+template<typename _sv>
+struct CBSBuffer<_sv, const int8_t*> {
+	CBSBuffer(const int8_t* v, int l) {
+		data.reserve(l);
+		for (int i = 0; i < l; ++i)
+			data.emplace_back(typename ::DISPATCH_ARCH::ScoreTraits<_sv>::Score(v[i]));
+	}
+	_sv operator()(int i) const {
+		return data[i];
+	}
+	std::vector<_sv, Util::Memory::AlignmentAllocator<_sv, 32>> data;
+};
+
 
 template<typename _sv, typename _cbs, typename _trace_mask, typename _row_counter>
 MSC_INLINE _sv swipe_cell_update(const _sv &diagonal_cell,
@@ -182,49 +220,6 @@ static inline _sv swipe_cell_update(const _sv& diagonal_cell,
 	
 	return current_cell;
 }*/
-
-template<typename _sv>
-static inline _sv cell_update(const _sv &diagonal_cell,
-	const _sv &scores,
-	const _sv &gap_extension,
-	const _sv &gap_open,
-	_sv &horizontal_gap,
-	_sv &vertical_gap,
-	_sv &best,
-	const _sv &vbias)
-{
-	_sv current_cell = diagonal_cell + scores;
-	current_cell -= vbias;
-	current_cell.max(vertical_gap).max(horizontal_gap);
-	best.max(current_cell);
-	vertical_gap -= gap_extension;
-	horizontal_gap -= gap_extension;
-	const _sv open = current_cell - gap_open;
-	vertical_gap.max(open);
-	horizontal_gap.max(open);
-	return current_cell;
-}
-
-template<typename _score>
-static inline DISPATCH_ARCH::score_vector<_score> cell_update(const DISPATCH_ARCH::score_vector<_score> &diagonal_cell,
-	const DISPATCH_ARCH::score_vector<_score> &scores,
-	const DISPATCH_ARCH::score_vector<_score> &gap_extension,
-	const DISPATCH_ARCH::score_vector<_score> &gap_open,
-	DISPATCH_ARCH::score_vector<_score> &horizontal_gap,
-	DISPATCH_ARCH::score_vector<_score> &vertical_gap,
-	DISPATCH_ARCH::score_vector<_score> &best)
-{
-	using namespace ::DISPATCH_ARCH;
-	score_vector<_score> current_cell = diagonal_cell + scores;
-	current_cell.max(vertical_gap).max(horizontal_gap);
-	best.max(current_cell);
-	vertical_gap -= gap_extension;
-	horizontal_gap -= gap_extension;
-	const score_vector<_score> open = current_cell - gap_open;
-	vertical_gap.max(open);
-	horizontal_gap.max(open);
-	return current_cell;
-}
 
 template<typename _sv>
 static inline _sv cell_update(const _sv &diagonal_cell,

@@ -70,6 +70,23 @@ list<Hsp> swipe_dispatch_cbs(
 		return swipe<_sv, _traceback>(query, frame, subject_begin, subject_end, composition_bias, score_cutoff, overflow, stat);
 }
 
+template<typename _sv, typename _traceback>
+list<Hsp> full_swipe_dispatch_cbs(
+	const sequence &query,
+	Frame frame,
+	vector<DpTarget>::const_iterator subject_begin,
+	vector<DpTarget>::const_iterator subject_end,
+	const int8_t* composition_bias,
+	int score_cutoff,
+	vector<DpTarget> &overflow,
+	Statistics &stat)
+{
+	if (composition_bias == nullptr)
+		return DP::Swipe::DISPATCH_ARCH::swipe<_sv, _traceback>(query, frame, subject_begin, subject_end, NoCBS(), score_cutoff, overflow, stat);
+	else
+		return DP::Swipe::DISPATCH_ARCH::swipe<_sv, _traceback>(query, frame, subject_begin, subject_end, composition_bias, score_cutoff, overflow, stat);
+}
+
 template<typename _sv>
 list<Hsp> swipe_targets(const sequence &query,
 	vector<DpTarget>::const_iterator begin,
@@ -85,9 +102,9 @@ list<Hsp> swipe_targets(const sequence &query,
 	list<Hsp> out;
 	if (flags & DP::FULL_MATRIX) {
 		if (flags & TRACEBACK)
-			return DP::Swipe::DISPATCH_ARCH::swipe<_sv, VectorTraceback>(query, frame, begin, end, NoCBS(), score_cutoff, overflow, stat);
+			return full_swipe_dispatch_cbs<_sv, VectorTraceback>(query, frame, begin, end, composition_bias, score_cutoff, overflow, stat);
 		else
-			return DP::Swipe::DISPATCH_ARCH::swipe<_sv, ScoreOnly>(query, frame, begin, end, NoCBS(), score_cutoff, overflow, stat);
+			return full_swipe_dispatch_cbs<_sv, ScoreOnly>(query, frame, begin, end, composition_bias, score_cutoff, overflow, stat);
 	}
 	else {
 		for (vector<DpTarget>::const_iterator i = begin; i < end; i += CHANNELS) {

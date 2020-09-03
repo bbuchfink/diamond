@@ -311,7 +311,7 @@ Hsp traceback(const sequence &query, Frame frame, _cbs bias_correction, const Tr
 		if ((it.mask().gap & channel_mask) == 0) {
 			const Letter q = query[it.i], s = target.seq[it.j];
 			const int m = score_matrix(q, s);
-			const int m2 = add_cbs(m, bias_correction[it.i]);
+			const int m2 = add_cbs_scalar(m, bias_correction[it.i]);
 			score += m2;
 			out.push_match(q, s, m > (Score)0);
 			it.walk_diagonal();
@@ -354,6 +354,7 @@ list<Hsp> swipe(const sequence& query, Frame frame, vector<DpTarget>::const_iter
 	SwipeProfile<_sv> profile;
 	TargetBuffer<Score> targets(subject_begin, subject_end);
 	Matrix dp(qlen, targets.max_len());
+	CBSBuffer<_sv, _cbs> cbs_buf(composition_bias, qlen);
 	list<Hsp> out;
 	int col = 0;
 	
@@ -368,7 +369,7 @@ list<Hsp> swipe(const sequence& query, Frame frame, vector<DpTarget>::const_iter
 #endif
 		for (int i = 0; i < qlen; ++i) {
 			hgap = it.hgap();
-			const _sv next = swipe_cell_update<_sv>(it.diag(), profile.get(query[i]), nullptr, extend_penalty, open_penalty, hgap, vgap, col_best, nullptr, nullptr, nullptr, it.trace_mask(), row_counter);
+			const _sv next = swipe_cell_update<_sv>(it.diag(), profile.get(query[i]), cbs_buf(i), extend_penalty, open_penalty, hgap, vgap, col_best, nullptr, nullptr, nullptr, it.trace_mask(), row_counter);
 			it.set_hgap(hgap);
 			it.set_score(last);
 			last = next;
@@ -414,6 +415,17 @@ list<Hsp> swipe(const sequence& query, Frame frame, vector<DpTarget>::const_iter
 
 	return out;
 }
+
+#ifdef __SSE4_1__
+template list<Hsp> swipe<score_vector<int8_t>, VectorTraceback, const int8_t*>(const sequence&, Frame, vector<DpTarget>::const_iterator, vector<DpTarget>::const_iterator, const int8_t*, int, vector<DpTarget>&, Statistics&);
+template list<Hsp> swipe<score_vector<int8_t>, ScoreOnly, const int8_t*>(const sequence&, Frame, vector<DpTarget>::const_iterator, vector<DpTarget>::const_iterator, const int8_t*, int, vector<DpTarget>&, Statistics&);
+#endif
+#ifdef __SSE2__
+template list<Hsp> swipe<score_vector<int16_t>, VectorTraceback, const int8_t*>(const sequence&, Frame, vector<DpTarget>::const_iterator, vector<DpTarget>::const_iterator, const int8_t*, int, vector<DpTarget>&, Statistics&);
+template list<Hsp> swipe<score_vector<int16_t>, ScoreOnly, const int8_t*>(const sequence&, Frame, vector<DpTarget>::const_iterator, vector<DpTarget>::const_iterator, const int8_t*, int, vector<DpTarget>&, Statistics&);
+#endif
+template list<Hsp> swipe<int32_t, VectorTraceback, const int8_t*>(const sequence&, Frame, vector<DpTarget>::const_iterator, vector<DpTarget>::const_iterator, const int8_t*, int, vector<DpTarget>&, Statistics&);
+template list<Hsp> swipe<int32_t, ScoreOnly, const int8_t*>(const sequence&, Frame, vector<DpTarget>::const_iterator, vector<DpTarget>::const_iterator, const int8_t*, int, vector<DpTarget>&, Statistics&);
 
 #ifdef __SSE4_1__
 template list<Hsp> swipe<score_vector<int8_t>, VectorTraceback, NoCBS>(const sequence&, Frame, vector<DpTarget>::const_iterator, vector<DpTarget>::const_iterator, NoCBS, int, vector<DpTarget>&, Statistics&);
