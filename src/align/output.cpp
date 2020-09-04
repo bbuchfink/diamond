@@ -30,17 +30,8 @@ using std::vector;
 
 namespace Extension {
 
-TextBuffer* serialize_ranking_list(vector<Match>::const_iterator begin, vector<Match>::const_iterator end) {
-	TextBuffer* out = new TextBuffer;
-	for (auto i = begin; i < end; ++i)
-		IntermediateRecord::write(*out, i->target_block_id, i->filter_score);
-	return out;
-}
-
 TextBuffer* generate_output(vector<Match> &targets, size_t query_block_id, Statistics &stat, const Metadata &metadata, const Parameters &parameters)
 {
-	if (config.global_ranking_targets > 0)
-		return serialize_ranking_list(targets.begin(), targets.end());
 	TextBuffer* out = new TextBuffer;
 	std::unique_ptr<Output_format> f(output_format->clone());
 	size_t seek_pos = 0;
@@ -92,6 +83,8 @@ TextBuffer* generate_output(vector<Match> &targets, size_t query_block_id, Stati
 			++n_hsp;
 			++hit_hsps;
 		}
+		if(config.global_ranking_targets > 0)
+			IntermediateRecord::write(*out, subject_id, targets[i].filter_score);
 	}
 
 	if (!blocked_processing) {

@@ -30,6 +30,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "target_culling.h"
 #include "../data/ref_dictionary.h"
 #include "../util/log_stream.h"
+#include "../align/global_ranking/global_ranking.h"
 
 using namespace std;
 
@@ -186,7 +187,16 @@ struct BlockJoiner
 	vector<BinaryBuffer::Iterator> it;
 };
 
-void join_query(vector<BinaryBuffer> &buf, TextBuffer &out, Statistics &statistics, unsigned query, const char *query_name, unsigned query_source_len, Output_format &f, const Metadata &metadata)
+void join_query(
+	vector<BinaryBuffer> &buf,
+	TextBuffer &out,
+	Statistics &statistics,
+	unsigned query,
+	const char *query_name,
+	unsigned query_source_len,
+	Output_format &f,
+	const Metadata &metadata,
+	BitVector& ranking_db_filter)
 {
 	ReferenceDictionary& dict = ReferenceDictionary::get();
 	TranslatedSequence query_seq(get_translated_query(query));
@@ -216,6 +226,8 @@ void join_query(vector<BinaryBuffer> &buf, TextBuffer &out, Statistics &statisti
 		for (vector<IntermediateRecord>::const_iterator i = target_hsp.begin(); i != target_hsp.end(); ++i, ++hsp_num) {
 			if (f == Output_format::daa)
 				write_daa_record(out, *i);
+			else if (config.global_ranking_targets > 0)
+				Extension::GlobalRanking::write_merged_query_list(*i, dict, out, ranking_db_filter, statistics);
 			else {
 				Hsp hsp(*i, query_source_len);
 				f.print_match(Hsp_context(hsp,
@@ -235,21 +247,24 @@ void join_query(vector<BinaryBuffer> &buf, TextBuffer &out, Statistics &statisti
 
 		culling->add(target_hsp, rank_taxon_ids);
 		++n_target_seq;
-		statistics.inc(Statistics::PAIRWISE);
-		statistics.inc(Statistics::MATCHES, hsp_num);
+		if (!config.global_ranking_targets) {
+			statistics.inc(Statistics::PAIRWISE);
+			statistics.inc(Statistics::MATCHES, hsp_num);
+		}
 	}
 }
 
-void join_worker(Task_queue<TextBuffer, JoinWriter> *queue, const Parameters *params, const Metadata *metadata)
+void join_worker(Task_queue<TextBuffer, JoinWriter> *queue, const Parameters *params, const Metadata *metadata, BitVector* ranking_db_filter_out)
 {
 	JoinFetcher fetcher;
 	size_t n;
 	TextBuffer *out;
 	Statistics stat;
 	const String_set<char, 0>& qids = query_ids::get();
+	BitVector ranking_db_filter(config.global_ranking_targets > 0 ? params->db_seqs : 0);
 
 	while (queue->get(n, out, fetcher) && fetcher.query_id != IntermediateRecord::FINISHED) {
-		stat.inc(Statistics::ALIGNED);
+		if(!config.global_ranking_targets) stat.inc(Statistics::ALIGNED);
 		size_t seek_pos;
 
 		const char * query_name = qids[qids.check_idx(fetcher.query_id)];
@@ -267,19 +282,24 @@ void join_worker(Task_queue<TextBuffer, JoinWriter> *queue, const Parameters *pa
 
 		if (*f == Output_format::daa)
 			seek_pos = write_daa_query_record(*out, query_name, query_seq);
+		else if (config.global_ranking_targets)
+			seek_pos = Extension::GlobalRanking::write_merged_query_list_intro(fetcher.query_id, *out);
 		else
 			f->print_query_intro(fetcher.query_id, query_name, (unsigned)query_seq.length(), *out, false);
 
-		join_query(fetcher.buf, *out, stat, fetcher.query_id, query_name, (unsigned)query_seq.length(), *f, *metadata);
+		join_query(fetcher.buf, *out, stat, fetcher.query_id, query_name, (unsigned)query_seq.length(), *f, *metadata, ranking_db_filter);
 
 		if (*f == Output_format::daa)
 			finish_daa_query_record(*out, seek_pos);
+		else if (config.global_ranking_targets)
+			Extension::GlobalRanking::finish_merged_query_list(*out, seek_pos);
 		else
 			f->print_query_epilog(*out, query_name, false, *params);
 		queue->push(n);
 	}
 
 	statistics += stat;
+	if(config.global_ranking_targets) (*ranking_db_filter_out) |= ranking_db_filter;
 }
 
 void join_blocks(unsigned ref_blocks, Consumer &master_out, const PtrVector<TempFile> &tmp_file, const Parameters &params, const Metadata &metadata, DatabaseFile &db_file,
@@ -300,8 +320,9 @@ void join_blocks(unsigned ref_blocks, Consumer &master_out, const PtrVector<Temp
 	JoinWriter writer(master_out);
 	Task_queue<TextBuffer, JoinWriter> queue(3 * config.threads_, writer);
 	vector<thread> threads;
+	BitVector ranking_db_filter(config.global_ranking_targets > 0 ? params.db_seqs : 0);
 	for (unsigned i = 0; i < config.threads_; ++i)
-		threads.emplace_back(join_worker, &queue, &params, &metadata);
+		threads.emplace_back(join_worker, &queue, &params, &metadata, &ranking_db_filter);
 	for (auto &t : threads)
 		t.join();
 	JoinFetcher::finish();

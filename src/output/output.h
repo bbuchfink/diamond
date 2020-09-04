@@ -72,6 +72,11 @@ struct IntermediateRecord
 	void read(BinaryBuffer::Iterator &f)
 	{
 		f.read(subject_dict_id);
+		if (config.global_ranking_targets > 0) {
+			uint16_t s;
+			f.read(s);
+			return;
+		}
 		f.read(flag);
 		f.read_packed(flag & 3, score);
 

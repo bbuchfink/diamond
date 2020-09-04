@@ -226,6 +226,7 @@ set(OBJECTS
   src/lib/alp/sls_alp_sim.cpp
   src/lib/alp/sls_basic.cpp
   src/lib/alp/sls_pvalues.cpp
+  src/align/global_ranking/global_ranking.cpp
 )
 
 if(X86)

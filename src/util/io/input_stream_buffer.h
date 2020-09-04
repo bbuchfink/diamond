@@ -35,12 +35,13 @@ struct InputStreamBuffer : public StreamEntity
 	virtual pair<const char*, const char*> read() override;
 	virtual void putback(const char* p, size_t n) override;
 	virtual void close() override;
+	virtual size_t tell() override;
 private:
 
 	static void load_worker(InputStreamBuffer *buf);
 	
 	std::unique_ptr<char[]> buf_, load_buf_;
-	size_t putback_count_, load_count_;
+	size_t putback_count_, load_count_, file_offset_;
 	bool async_;
 	std::thread* load_worker_;
 };

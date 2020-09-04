@@ -35,6 +35,7 @@ using std::string;
 using std::runtime_error;
 
 FileSource::FileSource(const string &file_name) :
+	StreamEntity(true),
 	file_name_(file_name)
 {
 #ifdef _MSC_VER
@@ -54,6 +55,7 @@ FileSource::FileSource(const string &file_name) :
 }
 
 FileSource::FileSource(const string &file_name, FILE *file):
+	StreamEntity(true),
 	f_(file),
 	file_name_(file_name)
 {
@@ -125,4 +127,21 @@ void FileSource::close()
 		}
 		f_ = 0;
 	}
+}
+
+size_t FileSource::tell()
+{
+#ifdef _MSC_VER
+	int64_t x;
+	if ((x = _ftelli64(f_)) == (int64_t)-1)
+		throw std::runtime_error("Error executing ftell on stream " + file_name_);
+	return (size_t)x;
+#else
+	const long n = ftell(f_);
+	if (n < 0) {
+		perror(0);
+		throw std::runtime_error("Error calling ftell.");
+	}
+	return n;
+#endif
 }

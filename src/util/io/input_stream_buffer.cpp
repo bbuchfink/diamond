@@ -29,7 +29,7 @@ using std::make_pair;
 using std::pair;
 
 InputStreamBuffer::InputStreamBuffer(StreamEntity* prev, int flags) :
-	StreamEntity(prev),
+	StreamEntity(prev, prev->seekable()),
 	buf_(new char[config.file_buffer_size]),
 	load_buf_((flags& ASYNC) != 0 ? new char[config.file_buffer_size] : nullptr),
 	putback_count_(0),
@@ -68,8 +68,12 @@ pair<const char*, const char*> InputStreamBuffer::read()
 			load_worker_ = nullptr;
 			std::swap(buf_, load_buf_);
 			n = load_count_;
-		} else
+		}
+		else {
 			n = prev_->read(buf_.get(), config.file_buffer_size);
+			if (prev_->seekable())
+				file_offset_ = prev_->tell();
+		}
 		if (async_)
 			load_worker_ = new std::thread(load_worker, this);
 	}
@@ -92,4 +96,10 @@ void InputStreamBuffer::close() {
 		load_worker_ = nullptr;
 	}
 	prev_->close();
+}
+
+size_t InputStreamBuffer::tell() {
+	if (!seekable())
+		throw std::runtime_error("Calling tell on non seekable stream.");
+	return file_offset_;
 }

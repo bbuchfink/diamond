@@ -289,7 +289,7 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("mp-init", 0, "initialize multiprocessing run", mp_init)
 		("ext-chunk-size", 0, "chunk size for adaptive ranking (default=auto)", ext_chunk_size)
 		("no-ranking", 0, "disable ranking heuristic", no_ranking)
-		("ext", 0, "Extension mode (banded-fast/banded-slow)", ext)
+		("ext", 0, "Extension mode (banded-fast/banded-slow/full)", ext)
 		("culling-overlap", 0, "minimum range overlap with higher scoring hit to delete a hit (default=50%)", inner_culling_overlap, 50.0)
 		("taxon-k", 0, "maximum number of targets to report per species", taxon_k, (uint64_t)0)
 		("range-cover", 0, "percentage of query range to be covered for range culling (default=50%)", query_range_cover, 50.0)
@@ -463,6 +463,9 @@ Config::Config(int argc, const char **argv, bool check_io)
 		if (frame_shift == 0)
 			frame_shift = 15;
 	}
+
+	if (global_ranking_targets > 0 && (query_range_culling || taxon_k || multiprocessing || mp_init))
+		throw std::runtime_error("Global ranking is not supported in this mode.");
 
 	if (check_io) {
 		switch (command) {

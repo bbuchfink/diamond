@@ -399,11 +399,11 @@ bool DatabaseFile::load_seqs(vector<uint32_t>* block2db_id, const size_t max_let
 
 		size_t n = 0;
 		for (size_t i = 0; i < seqs; ++i) {
-			//if (filter && filtered_pos[n]) seek(filtered_pos[n]);
-			if (filter && !filtered_seqs[i]) {
+			if (filter && filtered_pos[n]) seek(filtered_pos[n]);
+			/*if (filter && !filtered_seqs[i]) {
 				skip_seq();
 				continue;
-			}
+			}*/
 			read((*dst_seq)->ptr(n) - 1, (*dst_seq)->length(n) + 2);
 			*((*dst_seq)->ptr(n) - 1) = sequence::DELIMITER;
 			*((*dst_seq)->ptr(n) + (*dst_seq)->length(n)) = sequence::DELIMITER;
