@@ -59,10 +59,11 @@ struct Neighbors : public vector<vector<int>>, public Consumer {
 		float qcov, scov, bitscore;
 		const char *end = ptr + n;
 		while (ptr < end) {
-			//if (sscanf(ptr, "%i\t%i\n%n", &query, &subject, &count) != 2)
 			if (sscanf(ptr, "%i\t%i\t%f\t%f\t%f\n%n", &query, &subject, &qcov, &scov, &bitscore, &count) != 5)
 				throw runtime_error("Cluster format error.");
 			ptr += count;
+			if (query == subject)
+				continue;
 			//cout << query << '\t' << subject << '\t' << qcov << '\t' << scov << '\t' << endl;
 			(*this)[query].push_back(subject);
 			edges.push_back({ query, subject, (int)bitscore });

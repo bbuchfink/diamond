@@ -330,10 +330,10 @@ void Blast_tab_format::print_match(const Hsp_context& r, const Metadata &metadat
 			}
 			out << string(q + r.query_source_range().begin_, q + r.query_source_range().end_).c_str();
 			break;
-		}			
+		}
 		case 50:
-			//out << (blocked_processing ? query_block_to_database_id[r.query_id] : r.query_id);
-			out << r.query_id;
+			out << query_block_to_database_id[r.query_id];
+			//out << r.query_id;
 			break;
 		case 51:
 			out << r.orig_subject_id;

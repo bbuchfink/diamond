@@ -430,6 +430,8 @@ void DatabaseFile::read_seq(string &id, vector<Letter> &seq)
 {
 	char c;
 	read(&c, 1);
+	seq.clear();
+	id.clear();
 	read_to(std::back_inserter(seq), '\xff');
 	read_to(std::back_inserter(id), '\0');
 }
