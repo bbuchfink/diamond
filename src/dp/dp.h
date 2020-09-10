@@ -163,6 +163,10 @@ struct DpTarget
 		const int j1 = std::min(qlen - 1 - d0, (int)(seq.length() - 1)) + 1;
 		cols = j1 - pos;
 	}
+	DpTarget(const sequence& seq, int target_idx):
+		seq(seq),
+		target_idx(target_idx)
+	{}
 	int left_i1() const
 	{
 		return std::max(d_end - 1, 0);

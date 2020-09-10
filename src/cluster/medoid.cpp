@@ -58,7 +58,7 @@ struct ClusterDist : public Consumer {
 	map<int, int> counts;
 };
 
-size_t get_medoid(DatabaseFile *db, const vector<bool> &filter, size_t n, Sequence_set *seqs) {
+size_t get_medoid(DatabaseFile *db, const BitVector &filter, size_t n, Sequence_set *seqs) {
 	statistics.reset();
 	config.command = Config::blastp;
 	config.no_self_hits = true;
@@ -91,7 +91,8 @@ size_t get_medoid(DatabaseFile *db, const vector<bool> &filter, size_t n, Sequen
 		}
 	}
 	//std::cout << "=============" << endl;
-	return max_i == -1 ? std::find(filter.begin(), filter.end(), true) - filter.begin() : max_i;
+	//return max_i == -1 ? std::find(filter.begin(), filter.end(), true) - filter.begin() : max_i;
+	return 0;
 }
 
 int get_acc2idx(const string& acc, const map<string, size_t>& acc2idx) {
@@ -144,7 +145,7 @@ void get_medoids_from_tree() {
 			clusters[parent[i.first]].push_back(i.first);
 	}
 
-	vector<bool> filter(db->ref_header.sequences);
+	BitVector filter(db->ref_header.sequences);
 	OutputFile out(config.output_file);
 	for (const pair<const int, vector<int>> &i : clusters) {
 		/*for (const string &acc : i.second)
@@ -154,9 +155,9 @@ void get_medoids_from_tree() {
 		if (i.second.size() == 1)
 			medoid = i.second.front();
 		else {
-			std::fill(filter.begin(), filter.end(), false);
+			filter.reset();
 			for (const int& acc : i.second)
-				filter[acc] = true;
+				filter.set(acc);
 			medoid = get_medoid(db, filter, i.second.size(), seqs);
 		}
 		const string id = string((*ids)[medoid]) + ' ' + std::to_string(i.second.size());

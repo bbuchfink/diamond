@@ -23,6 +23,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <mutex>
 #include <vector>
 #include <stdint.h>
+#include <algorithm>
+#include "../intrin.h"
 
 struct BitVector {
 
@@ -35,20 +37,29 @@ struct BitVector {
 		data_[i >> 6] |= uint64_t(1) << (i & 63);
 	}
 
-	bool get(size_t i) {
+	bool get(size_t i) const {
 		return data_[i >> 6] & (uint64_t(1) << (i & 63));
 	}
 
 	BitVector& operator|=(const BitVector& v) {
-		std::lock_guard<std::mutex> lock(mtx_);
 		for (size_t i = 0; i < data_.size(); ++i)
 			data_[i] |= v.data_[i];
 		return *this;
 	}
 
+	void reset() {
+		std::fill(data_.begin(), data_.end(), 0);
+	}
+
+	size_t one_count() const {
+		size_t n = 0;
+		for (uint64_t x : data_)
+			n += popcount64(x);
+		return n;
+	}
+
 private:
 
 	std::vector<uint64_t> data_;
-	std::mutex mtx_;
 
 };

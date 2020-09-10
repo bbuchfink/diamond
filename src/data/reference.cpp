@@ -313,7 +313,7 @@ void DatabaseFile::seek_direct() {
 	seek(sizeof(ReferenceHeader) + sizeof(ReferenceHeader2) + 8);
 }
 
-bool DatabaseFile::load_seqs(vector<uint32_t>* block2db_id, const size_t max_letters, Sequence_set **dst_seq, String_set<char, 0> **dst_id, bool load_ids, const vector<bool> *filter, const bool fetch_seqs, const Chunk & chunk)
+bool DatabaseFile::load_seqs(vector<uint32_t>* block2db_id, const size_t max_letters, Sequence_set **dst_seq, String_set<char, 0> **dst_id, bool load_ids, const BitVector* filter, const bool fetch_seqs, const Chunk & chunk)
 {
 	task_timer timer("Loading reference sequences");
 
@@ -351,7 +351,7 @@ bool DatabaseFile::load_seqs(vector<uint32_t>* block2db_id, const size_t max_let
 	while (goon()) {
 		Pos_record r_next;
 		(*this) >> r_next;
-		if (!filter || (*filter)[database_id]) {
+		if (!filter || filter->get(database_id)) {
 			letters += r.seq_len;
 			if (fetch_seqs) {
 				(*dst_seq)->reserve(r.seq_len);
@@ -397,22 +397,20 @@ bool DatabaseFile::load_seqs(vector<uint32_t>* block2db_id, const size_t max_let
 		if(load_ids) (*dst_id)->finish_reserve();
 		seek(start_offset);
 
-		size_t n = 0;
-		for (size_t i = 0; i < seqs; ++i) {
-			if (filter && filtered_pos[n]) seek(filtered_pos[n]);
+		for (size_t i = 0; i < filtered_seq_count; ++i) {
+			if (filter && filtered_pos[i]) seek(filtered_pos[i]);
 			/*if (filter && !filtered_seqs[i]) {
 				skip_seq();
 				continue;
 			}*/
-			read((*dst_seq)->ptr(n) - 1, (*dst_seq)->length(n) + 2);
-			*((*dst_seq)->ptr(n) - 1) = sequence::DELIMITER;
-			*((*dst_seq)->ptr(n) + (*dst_seq)->length(n)) = sequence::DELIMITER;
+			read((*dst_seq)->ptr(i) - 1, (*dst_seq)->length(i) + 2);
+			*((*dst_seq)->ptr(i) - 1) = sequence::DELIMITER;
+			*((*dst_seq)->ptr(i) + (*dst_seq)->length(i)) = sequence::DELIMITER;
 			if (load_ids)
-				read((*dst_id)->ptr(n), (*dst_id)->length(n) + 1);
+				read((*dst_id)->ptr(i), (*dst_id)->length(i) + 1);
 			else
 				if (!seek_forward('\0')) throw std::runtime_error("Unexpected end of file.");
-			Masking::get().remove_bit_mask((*dst_seq)->ptr(n), (*dst_seq)->length(n));
-			++n;
+			Masking::get().remove_bit_mask((*dst_seq)->ptr(i), (*dst_seq)->length(i));
 		}
 		timer.finish();
 		(*dst_seq)->print_stats();

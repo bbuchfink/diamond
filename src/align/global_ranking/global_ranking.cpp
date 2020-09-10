@@ -18,7 +18,11 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
+#include <mutex>
 #include "global_ranking.h"
+
+using std::mutex;
+using std::vector;
 
 namespace Extension { namespace GlobalRanking {
 
@@ -37,6 +41,28 @@ void write_merged_query_list(const IntermediateRecord& r, const ReferenceDiction
 
 void finish_merged_query_list(TextBuffer& buf, size_t seek_pos) {
 	*(uint32_t*)(&buf[seek_pos + sizeof(uint32_t)]) = safe_cast<uint32_t>(buf.size() - seek_pos - sizeof(uint32_t) * 2);
+}
+
+pair<uint32_t, vector<uint32_t>> fetch_query_targets(InputFile& query_list) {
+	static mutex mtx;
+	std::lock_guard<mutex> lock(mtx);
+	vector<uint32_t> r;
+	uint32_t query_id, size;
+	try {
+		query_list >> query_id;
+	}
+	catch (EndOfStream&) {
+		return { 0,r };
+	}
+	query_list >> size;
+	size_t n = size / 4;
+	r.reserve(n);
+	for (size_t i = 0; i < n; ++i) {
+		uint32_t target;
+		query_list >> target;
+		r.push_back(target);
+	}
+	return { query_id, std::move(r) };
 }
 
 }}

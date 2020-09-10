@@ -256,6 +256,7 @@ void join_query(
 
 void join_worker(Task_queue<TextBuffer, JoinWriter> *queue, const Parameters *params, const Metadata *metadata, BitVector* ranking_db_filter_out)
 {
+	static std::mutex mtx;
 	JoinFetcher fetcher;
 	size_t n;
 	TextBuffer *out;
@@ -299,7 +300,10 @@ void join_worker(Task_queue<TextBuffer, JoinWriter> *queue, const Parameters *pa
 	}
 
 	statistics += stat;
-	if(config.global_ranking_targets) (*ranking_db_filter_out) |= ranking_db_filter;
+	if (config.global_ranking_targets) {
+		std::lock_guard<std::mutex> lock(mtx);
+		(*ranking_db_filter_out) |= ranking_db_filter;
+	}
 }
 
 void join_blocks(unsigned ref_blocks, Consumer &master_out, const PtrVector<TempFile> &tmp_file, const Parameters &params, const Metadata &metadata, DatabaseFile &db_file,
@@ -317,7 +321,10 @@ void join_blocks(unsigned ref_blocks, Consumer &master_out, const PtrVector<Temp
 		JoinFetcher::init(tmp_file);
 	}
 
-	JoinWriter writer(master_out);
+	unique_ptr<TempFile> merged_query_list;
+	if (config.global_ranking_targets)
+		merged_query_list.reset(new TempFile());
+	JoinWriter writer(config.global_ranking_targets ? *merged_query_list : master_out);
 	Task_queue<TextBuffer, JoinWriter> queue(3 * config.threads_, writer);
 	vector<thread> threads;
 	BitVector ranking_db_filter(config.global_ranking_targets > 0 ? params.db_seqs : 0);
@@ -334,9 +341,13 @@ void join_blocks(unsigned ref_blocks, Consumer &master_out, const PtrVector<Temp
 		}
 		writer(out);
 	}
+
 	if (config.use_lazy_dict) {
 		timer.go("Deallocating dictionary");
 		delete ref_seqs::data_;
 		ref_seqs::data_ = NULL;
 	}
+
+	if (config.global_ranking_targets)
+		Extension::GlobalRanking::extend(db_file, *merged_query_list, ranking_db_filter, master_out);
 }

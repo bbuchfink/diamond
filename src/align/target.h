@@ -95,6 +95,15 @@ struct Target {
 	std::array<std::list<Hsp>, MAX_CONTEXT> hsp;
 };
 
+struct TargetScore {
+	uint32_t target;
+	uint16_t score;
+	bool operator<(const TargetScore& x) const {
+		return score > x.score || (score == x.score && target < x.target);
+	}
+};
+
+void load_hits(hit* begin, hit* end, FlatArray<SeedHit> &hits, std::vector<uint32_t> &target_block_ids, std::vector<TargetScore> &target_scores);
 bool append_hits(std::vector<Target>& targets, std::vector<Target>::const_iterator begin, std::vector<Target>::const_iterator end, size_t chunk_size, int source_query_len, const char* query_title, const sequence& query_seq);
 std::vector<WorkTarget> gapped_filter(const sequence *query, const Bias_correction* query_cbs, std::vector<WorkTarget>& targets, Statistics &stat);
 void gapped_filter(const sequence* query, const Bias_correction* query_cbs, FlatArray<SeedHit> &seed_hits, std::vector<uint32_t> &target_block_ids, Statistics& stat, int flags, const Parameters &params);

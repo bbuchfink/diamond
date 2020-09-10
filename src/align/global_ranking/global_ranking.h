@@ -27,5 +27,7 @@ namespace Extension { namespace GlobalRanking {
 void write_merged_query_list(const IntermediateRecord& r, const ReferenceDictionary& dict, TextBuffer& out, BitVector& ranking_db_filter, Statistics& stat);
 size_t write_merged_query_list_intro(uint32_t query_id, TextBuffer& buf);
 void finish_merged_query_list(TextBuffer& buf, size_t seek_pos);
+void extend(DatabaseFile& db, TempFile& merged_query_list, BitVector& ranking_db_filter, Consumer& master_out);
+std::pair<uint32_t, std::vector<uint32_t>> fetch_query_targets(InputFile& query_list);
 
 }}
