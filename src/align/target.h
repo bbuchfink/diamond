@@ -43,7 +43,7 @@ struct SeedHit {
 		const int d1 = diag(), d2 = x.diag();
 		return d1 < d2 || (d1 == d2 && j < x.j);
 	}
-	int i, j;
+	int i, j, score;
 	unsigned frame;
 };
 
@@ -63,7 +63,7 @@ struct WorkTarget {
 	std::array<std::list<Hsp_traits>, MAX_CONTEXT> hsp;
 };
 
-std::vector<WorkTarget> ungapped_stage(const sequence* query_seq, const Bias_correction* query_cb, FlatArray<SeedHit>& seed_hits, const uint32_t* target_block_ids, int flags);
+std::vector<WorkTarget> ungapped_stage(const sequence* query_seq, const Bias_correction* query_cb, FlatArray<SeedHit>& seed_hits, const std::vector<uint32_t>& target_block_ids, int flags);
 void rank_targets(std::vector<WorkTarget> &targets, double ratio, double factor);
 
 struct Target {
@@ -109,6 +109,16 @@ std::vector<WorkTarget> gapped_filter(const sequence *query, const Bias_correcti
 void gapped_filter(const sequence* query, const Bias_correction* query_cbs, FlatArray<SeedHit> &seed_hits, std::vector<uint32_t> &target_block_ids, Statistics& stat, int flags, const Parameters &params);
 std::vector<Target> align(const std::vector<WorkTarget> &targets, const sequence *query_seq, const Bias_correction *query_cb, int source_query_len, int flags, Statistics &stat);
 std::vector<Match> align(std::vector<Target> &targets, const sequence *query_seq, const Bias_correction *query_cb, int source_query_len, int flags, Statistics &stat, bool first_round_traceback);
+
+std::vector<Match> extend(
+	size_t query_id,
+	const Parameters &params,
+	const Metadata &metadata,
+	Statistics &stat,
+	int flags,
+	const FlatArray<SeedHit>& seed_hits,
+	const std::vector<uint32_t>& target_block_ids,
+	const std::vector<TargetScore>& target_scores);
 
 struct Memory {
 	Memory(size_t query_count);

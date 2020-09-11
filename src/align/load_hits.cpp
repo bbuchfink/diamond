@@ -46,7 +46,7 @@ void load_hits(hit* begin, hit* end, FlatArray<SeedHit> &hits, vector<uint32_t> 
 				target = t;
 				target_block_ids.push_back(target);
 			}
-			hits.push_back({ (int)i->seed_offset_, (int)l.second, i->query_ % align_mode.query_contexts });
+			hits.push_back({ (int)i->seed_offset_, (int)l.second, i->score_, i->query_ % align_mode.query_contexts });
 			score = std::max(score, i->score_);
 		}
 	}
@@ -65,7 +65,7 @@ void load_hits(hit* begin, hit* end, FlatArray<SeedHit> &hits, vector<uint32_t> 
 				target_block_ids.push_back(t);
 				target = t;
 			}
-			hits.push_back({ (int)i->seed_offset_, (int)(subject_offset - *(it - 1)), i->query_ % align_mode.query_contexts });
+			hits.push_back({ (int)i->seed_offset_, (int)(subject_offset - *(it - 1)), i->score_, i->query_ % align_mode.query_contexts });
 			score = std::max(score, i->score_);
 		}
 	}

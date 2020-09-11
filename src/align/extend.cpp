@@ -44,7 +44,7 @@ namespace Extension {
 constexpr size_t MAX_CHUNK_SIZE = 400, MIN_CHUNK_SIZE = 128;
 
 size_t ranking_chunk_size(size_t target_count) {
-	if (config.no_ranking)
+	if (config.no_ranking || config.global_ranking_targets > 0)
 		return target_count;
 	if (config.ext_chunk_size > 0)
 		return config.ext_chunk_size;
@@ -72,7 +72,7 @@ vector<Target> extend(const Parameters& params,
 {
 	stat.inc(Statistics::TARGET_HITS2, target_block_ids.size());
 	task_timer timer(flags & DP::PARALLEL ? config.target_parallel_verbosity : UINT_MAX);
-	if (config.gapped_filter_evalue > 0.0) {
+	if (config.gapped_filter_evalue > 0.0 && config.global_ranking_targets == 0) {
 		timer.go("Computing gapped filter");
 		gapped_filter(query_seq, query_cb, seed_hits, target_block_ids, stat, flags, params);
 		if ((flags & DP::PARALLEL) == 0)
@@ -81,7 +81,7 @@ vector<Target> extend(const Parameters& params,
 	stat.inc(Statistics::TARGET_HITS3, target_block_ids.size());
 
 	timer.go("Computing chaining");
-	vector<WorkTarget> targets = ungapped_stage(query_seq, query_cb, seed_hits, target_block_ids.data(), flags);
+	vector<WorkTarget> targets = ungapped_stage(query_seq, query_cb, seed_hits, target_block_ids, flags);
 	if ((flags & DP::PARALLEL) == 0)
 		stat.inc(Statistics::TIME_CHAINING, timer.microseconds());
 
@@ -105,8 +105,8 @@ vector<Match> extend(
 	int flags,
 	const FlatArray<SeedHit>& seed_hits,
 	const vector<uint32_t>& target_block_ids,
-	const vector<TargetScore>& target_scores) {
-
+	const vector<TargetScore>& target_scores)
+{
 	const unsigned contexts = align_mode.query_contexts;
 	vector<sequence> query_seq;
 	vector<Bias_correction> query_cb;

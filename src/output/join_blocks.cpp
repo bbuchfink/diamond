@@ -349,5 +349,5 @@ void join_blocks(unsigned ref_blocks, Consumer &master_out, const PtrVector<Temp
 	}
 
 	if (config.global_ranking_targets)
-		Extension::GlobalRanking::extend(db_file, *merged_query_list, ranking_db_filter, master_out);
+		Extension::GlobalRanking::extend(db_file, *merged_query_list, ranking_db_filter, params, metadata, master_out);
 }

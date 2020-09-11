@@ -24,7 +24,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <thread>
 #include "global_ranking.h"
 #include "../output/output.h"
+#include "../target.h"
 #include "../dp/dp.h"
+#include "../data/queries.h"
 
 using std::unique_ptr;
 using std::mutex;
@@ -35,22 +37,54 @@ namespace Extension { namespace GlobalRanking {
 
 typedef unordered_map<uint32_t, uint32_t> TargetMap;
 
-void extend_query(uint32_t query_id, vector<uint32_t>::const_iterator target_begin, vector<uint32_t>::const_iterator target_end, const TargetMap& db2block_id) {
-	vector<DpTarget> dp_targets;
-	const size_t n = target_end - target_begin;
-	dp_targets.reserve(n);
-	for (size_t i = 0; i < n; ++i)
-		dp_targets.emplace_back(ref_seqs::get()[db2block_id.at(target_begin[i])], i);
-}
-
-void align_worker(InputFile* query_list, const TargetMap* db2block_id) {
-	pair<uint32_t, vector<uint32_t>> input;
-	while (input = fetch_query_targets(*query_list), !input.second.empty()) {
-		extend_query(input.first, input.second.begin(), input.second.end(), *db2block_id);
+void extend_query(const QueryList& query_list, const TargetMap& db2block_id, const Parameters& params, const Metadata& metadata, Statistics& stats) {
+	thread_local vector<uint32_t> target_block_ids;
+	thread_local vector<TargetScore> target_scores;
+	thread_local FlatArray<SeedHit> seed_hits;
+	const size_t n = query_list.targets.size();
+	target_block_ids.clear();
+	target_block_ids.reserve(n);
+	target_scores.clear();
+	target_scores.reserve(n);
+	seed_hits.clear();
+	seed_hits.reserve(n);
+	for (size_t i = 0; i < n; ++i) {
+		target_block_ids.push_back(db2block_id.at(query_list.targets[i].database_id));
+		target_scores.push_back({ (uint32_t)i, query_list.targets[i].score });
+		seed_hits.next();
+		seed_hits.push_back({ 0,0,query_list.targets[i].score,0 });
 	}
+	
+	int flags = DP::FULL_MATRIX;
+	
+	vector<Match> matches = Extension::extend(
+		query_list.query_block_id,
+		params,
+		metadata,
+		stats,
+		flags,
+		seed_hits,
+		target_block_ids,
+		target_scores);
+
+	TextBuffer* buf = Extension::generate_output(matches, query_list.query_block_id, stats, metadata, params);
+	if (!matches.empty() && (!config.unaligned.empty() || !config.aligned_file.empty())) {
+		std::lock_guard<std::mutex> lock(query_aligned_mtx);
+		query_aligned[query_list.query_block_id] = true;
+	}
+	OutputSink::get().push(query_list.query_block_id, buf);
 }
 
-void extend(DatabaseFile& db, TempFile& merged_query_list, BitVector& ranking_db_filter, Consumer& master_out) {
+void align_worker(InputFile* query_list, const TargetMap* db2block_id, const Parameters* params, const Metadata* metadata) {
+	QueryList input;
+	Statistics stats;
+	while (input = fetch_query_targets(*query_list), !input.targets.empty()) {
+		extend_query(input, *db2block_id, *params, *metadata, stats);
+	}
+	statistics += stats;
+}
+
+void extend(DatabaseFile& db, TempFile& merged_query_list, BitVector& ranking_db_filter, const Parameters& params, const Metadata& metadata, Consumer& master_out) {
 	task_timer timer("Loading reference sequences");
 	InputFile query_list(merged_query_list);
 	vector<uint32_t> block2db_id;
@@ -67,7 +101,7 @@ void extend(DatabaseFile& db, TempFile& merged_query_list, BitVector& ranking_db
 	OutputSink::instance.reset(new OutputSink(0, &master_out));
 	vector<thread> threads;
 	for (size_t i = 0; i < config.threads_; ++i)
-		threads.emplace_back(align_worker, &query_list, &db2block_id);
+		threads.emplace_back(align_worker, &query_list, &db2block_id, &params, &metadata);
 	for (auto& i : threads)
 		i.join();
 

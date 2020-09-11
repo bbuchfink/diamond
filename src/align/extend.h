@@ -53,5 +53,6 @@ struct Match {
 
 std::vector<Match> extend(const Parameters &params, size_t query_id, hit* begin, hit* end, const Metadata &metadata, Statistics &stat, int flags);
 TextBuffer* generate_output(vector<Match> &targets, size_t query_block_id, Statistics &stat, const Metadata &metadata, const Parameters &parameters);
+TextBuffer* generate_intermediate_output(vector<Match> &targets, size_t query_block_id);
 
 }

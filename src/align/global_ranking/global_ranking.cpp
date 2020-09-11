@@ -35,6 +35,7 @@ size_t write_merged_query_list_intro(uint32_t query_id, TextBuffer& buf) {
 void write_merged_query_list(const IntermediateRecord& r, const ReferenceDictionary& dict, TextBuffer& out, BitVector& ranking_db_filter, Statistics& stat) {
 	const uint32_t database_id = dict.database_id(r.subject_dict_id);
 	out.write(database_id);
+	out.write(uint16_t(r.score));
 	ranking_db_filter.set(database_id);
 	stat.inc(Statistics::TARGET_HITS1);
 }
@@ -43,26 +44,27 @@ void finish_merged_query_list(TextBuffer& buf, size_t seek_pos) {
 	*(uint32_t*)(&buf[seek_pos + sizeof(uint32_t)]) = safe_cast<uint32_t>(buf.size() - seek_pos - sizeof(uint32_t) * 2);
 }
 
-pair<uint32_t, vector<uint32_t>> fetch_query_targets(InputFile& query_list) {
+QueryList fetch_query_targets(InputFile& query_list) {
 	static mutex mtx;
 	std::lock_guard<mutex> lock(mtx);
-	vector<uint32_t> r;
-	uint32_t query_id, size;
+	QueryList r;
+	uint32_t size;
 	try {
-		query_list >> query_id;
+		query_list >> r.query_block_id;
 	}
 	catch (EndOfStream&) {
-		return { 0,r };
+		return r;
 	}
 	query_list >> size;
-	size_t n = size / 4;
-	r.reserve(n);
+	size_t n = size / 6;
+	r.targets.reserve(n);
 	for (size_t i = 0; i < n; ++i) {
 		uint32_t target;
-		query_list >> target;
-		r.push_back(target);
+		uint16_t score;
+		query_list >> target >> score;
+		r.targets.push_back({ target,score });
 	}
-	return { query_id, std::move(r) };
+	return r;
 }
 
 }}

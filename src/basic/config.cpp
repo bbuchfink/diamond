@@ -456,6 +456,9 @@ Config::Config(int argc, const char **argv, bool check_io)
 	if (command == blastx && no_self_hits)
 		throw std::runtime_error("--no-self-hits option is not supported in blastx mode.");
 
+	if (command == blastx && ext == "full")
+		throw std::runtime_error("Full matrix extension is not supported in blastx mode.");
+
 	if (long_reads) {
 		query_range_culling = true;
 		if (toppercent == 100.0)
@@ -464,8 +467,14 @@ Config::Config(int argc, const char **argv, bool check_io)
 			frame_shift = 15;
 	}
 
-	if (global_ranking_targets > 0 && (query_range_culling || taxon_k || multiprocessing || mp_init))
+	if (global_ranking_targets > 0 && (query_range_culling || taxon_k || multiprocessing || mp_init || (command == blastx)))
 		throw std::runtime_error("Global ranking is not supported in this mode.");
+
+	if (global_ranking_targets > 0) {
+		if (ext != "" && ext != "full")
+			throw std::runtime_error("Global ranking only supports full matrix extension.");
+		ext = "full";
+	}
 
 	if (check_io) {
 		switch (command) {
@@ -634,7 +643,7 @@ Config::Config(int argc, const char **argv, bool check_io)
 		throw std::runtime_error("Query-indexed mode is not supported for this sensitivity setting.");
 
 	if (ext != "banded-fast" && ext != "banded-slow" && ext != "full" && ext != "")
-		throw std::runtime_error("Possible values for --ext are: banded-fast, banded-slow");
+		throw std::runtime_error("Possible values for --ext are: banded-fast, banded-slow, full");
 
 	Translator::init(query_gencode);
 
