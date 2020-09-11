@@ -476,6 +476,9 @@ Config::Config(int argc, const char **argv, bool check_io)
 		ext = "full";
 	}
 
+	if (max_hsps > 1 && ext == "full")
+		throw std::runtime_error("--max-hsps > 1 is not supported for full matrix extension.");
+
 	if (check_io) {
 		switch (command) {
 		case Config::makedb:

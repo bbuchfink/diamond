@@ -27,6 +27,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../target.h"
 #include "../dp/dp.h"
 #include "../data/queries.h"
+#include "../basic/masking.h"
 
 using std::unique_ptr;
 using std::mutex;
@@ -96,6 +97,13 @@ void extend(DatabaseFile& db, TempFile& merged_query_list, BitVector& ranking_db
 		db2block_id[block2db_id[i]] = i;
 	timer.finish();
 	verbose_stream << "#Ranked database sequences: " << ref_seqs::get().get_length() << endl;
+
+	if (config.masking == 1) {
+		timer.go("Masking reference");
+		size_t n = mask_seqs(*ref_seqs::data_, Masking::get());
+		timer.finish();
+		log_stream << "Masked letters: " << n << endl;
+	}
 
 	timer.go("Computing alignments");
 	OutputSink::instance.reset(new OutputSink(0, &master_out));
