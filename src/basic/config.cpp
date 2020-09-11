@@ -591,7 +591,7 @@ Config::Config(int argc, const char **argv, bool check_io)
 		if (query_range_culling && frame_shift == 0)
 			throw std::runtime_error("Query range culling is only supported in frameshift alignment mode (option -F).");
 		if (matrix_file == "")
-			score_matrix = Score_matrix(to_upper_case(matrix), gap_open, gap_extend, frame_shift, stop_match_score);
+			score_matrix = Score_matrix(to_upper_case(matrix), gap_open, gap_extend, frame_shift, stop_match_score, 0, alp);
 		else {
 			if (lambda == 0 || K == 0)
 				throw std::runtime_error("Custom scoring matrices require setting the --lambda and --K options.");

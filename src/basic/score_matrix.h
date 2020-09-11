@@ -39,7 +39,7 @@ struct Score_matrix
 {
 
 	Score_matrix() :ln_k_(0.0) {}
-	Score_matrix(const string &matrix, int gap_open, int gap_extend, int frame_shift, int stop_match_score, uint64_t db_letters = 0);
+	Score_matrix(const string &matrix, int gap_open, int gap_extend, int frame_shift, int stop_match_score, uint64_t db_letters = 0, bool use_alp=false);
 	Score_matrix(const string &matrix_file, double lambda, double K, int gap_open, int gap_extend, uint64_t db_letters = 0);
 
 	friend std::ostream& operator<<(std::ostream& s, const Score_matrix &m);
