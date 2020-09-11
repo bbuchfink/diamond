@@ -28,15 +28,15 @@ string MultiStep::get_description(){
 	return "A greedy stepwise vortex cover algorithm";
 }
 
-vector<bool> MultiStep::rep_bitset(const vector<int> &centroid, const vector<bool> *superset) {
-	vector<bool> r(centroid.size());
+BitVector MultiStep::rep_bitset(const vector<int> &centroid, const BitVector *superset) {
+	BitVector r(centroid.size());
 	for (int c : centroid)
-		if(!superset || (*superset)[c])
-			r[c] = true;
+		if (!superset || superset->get(c))
+			r.set(c);
 	return r;
 }
 
-vector<int> MultiStep::cluster(DatabaseFile &db, const vector<bool> *filter) {
+vector<int> MultiStep::cluster(DatabaseFile &db, const BitVector *filter) {
 	statistics.reset();
 	config.command = Config::blastp;
 	config.no_self_hits = true;
@@ -70,18 +70,18 @@ void MultiStep::run() {
 
 	config.min_id = 70;
 	vector<int> centroid1(cluster(*db, nullptr));
-	vector<bool> rep1(rep_bitset(centroid1));
-	size_t n_rep1 = count_if(rep1.begin(), rep1.end(), [](bool x) { return x; });
+	BitVector rep1(rep_bitset(centroid1));
+	size_t n_rep1 = rep1.one_count();
 	message_stream << "Clustering step 1 complete. #Input sequences: " << centroid1.size() << " #Clusters: " << n_rep1 << endl;
 
 	config.mode_more_sensitive = true;
 	config.min_id = 0;
 	vector<int> centroid2(cluster(*db, &rep1));
-	vector<bool> rep2(rep_bitset(centroid2, &rep1));
+	BitVector rep2(rep_bitset(centroid2, &rep1));
 	for (size_t i = 0; i < centroid2.size(); ++i)
-		if (!rep1[i])
+		if (!rep1.get(i))
 			centroid2[i] = centroid2[centroid1[i]];
-	message_stream << "Clustering step 2 complete. #Input sequences: " << n_rep1 << " #Clusters: " << count_if(rep2.begin(), rep2.end(), [](bool x) { return x; }) << endl;
+	message_stream << "Clustering step 2 complete. #Input sequences: " << n_rep1 << " #Clusters: " << rep2.one_count() << endl;
 
 	task_timer timer("Generating output");
 	Sequence_set *rep_seqs;

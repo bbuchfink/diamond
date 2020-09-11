@@ -42,16 +42,19 @@ InputStreamBuffer::InputStreamBuffer(StreamEntity* prev, int flags) :
 void InputStreamBuffer::rewind()
 {
 	prev_->rewind();
+	file_offset_ = 0;
 }
 
 void InputStreamBuffer::seek(size_t pos)
 {
 	prev_->seek(pos);
+	file_offset_ = 0;
 }
 
 void InputStreamBuffer::seek_forward(size_t n)
 {
 	prev_->seek_forward(n);
+	file_offset_ = 0;
 }
 
 pair<const char*, const char*> InputStreamBuffer::read()

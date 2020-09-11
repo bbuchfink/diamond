@@ -42,8 +42,8 @@ namespace Workflow { namespace Cluster{
 
 class MultiStep : public ClusteringAlgorithm {
 private:
-	vector<bool> rep_bitset(const vector<int> &centroid, const vector<bool> *superset = nullptr);
-	vector<int> cluster(DatabaseFile &db, const vector<bool> *filter);
+	BitVector rep_bitset(const vector<int> &centroid, const BitVector *superset = nullptr);
+	vector<int> cluster(DatabaseFile &db, const BitVector *filter);
 public:
 	void run();
 	string get_key();

@@ -75,6 +75,7 @@ struct IntermediateRecord
 		if (config.global_ranking_targets > 0) {
 			uint16_t s;
 			f.read(s);
+			score = s;
 			return;
 		}
 		f.read(flag);

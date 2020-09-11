@@ -51,7 +51,7 @@ void Deserializer::rewind()
 
 Deserializer& Deserializer::seek(size_t pos)
 {
-	if (buffer_->seekable()) {
+	if (buffer_->seekable() && buffer_->tell()) {
 		const size_t d = buffer_->tell() - pos;
 		if (pos < buffer_->tell() && begin_ + d <= end_) {
 			begin_ = end_ - d;
