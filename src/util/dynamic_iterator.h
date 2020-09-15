@@ -47,7 +47,7 @@ struct VectorIterator : public DynamicIterator<_t> {
 
 	virtual _t operator++(int) override {
 		const size_t j = i_++;
-		if (i_ < count)
+		if (i_ < DynamicIterator<_t>::count)
 			return begin_[i_];
 		else
 			return _t();
@@ -75,7 +75,7 @@ struct ContainerIterator : public DynamicIterator<_t> {
 
 	virtual _t operator++(int) override {
 		const size_t j = i_++;
-		if (j < count)
+		if (j < DynamicIterator<_t>::count)
 			return _t(container_[j], j);
 		else
 			return _t();
