@@ -18,6 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
+#include <map>
 #include <algorithm>
 #include "target.h"
 #include "../dp/dp.h"
@@ -27,6 +28,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 using std::vector;
 using std::array;
 using std::list;
+using std::map;
 
 namespace Extension {
 
@@ -122,7 +124,7 @@ void add_dp_targets(const WorkTarget &target, int target_idx, const sequence *qu
 }
 
 vector<Target> align(const vector<WorkTarget> &targets, const sequence *query_seq, const Bias_correction *query_cb, int source_query_len, int flags, Statistics &stat) {
-	const int raw_score_cutoff = score_matrix.rawscore(config.min_bit_score == 0 ? score_matrix.bitscore(config.max_evalue, (unsigned)query_seq[0].length()) : config.min_bit_score);
+	const int raw_score_cutoff = Extension::raw_score_cutoff(query_seq[0].length());
 
 	array<array<vector<DpTarget>, 2>, MAX_CONTEXT> dp_targets;
 	vector<Target> r;
@@ -144,6 +146,7 @@ vector<Target> align(const vector<WorkTarget> &targets, const sequence *query_se
 			query_seq[frame],
 			dp_targets[frame][0],
 			dp_targets[frame][1],
+			nullptr,
 			Frame(frame),
 			config.comp_based_stats ? &query_cb[frame] : nullptr,
 			flags,
@@ -165,6 +168,38 @@ vector<Target> align(const vector<WorkTarget> &targets, const sequence *query_se
 	return r2;
 }
 
+vector<Target> full_db_align(const sequence *query_seq, const Bias_correction *query_cb, int flags, Statistics &stat) {
+	const int raw_score_cutoff = Extension::raw_score_cutoff(query_seq[0].length());
+	ContainerIterator<DpTarget, Sequence_set> target_it(*ref_seqs::data_, ref_seqs::data_->get_length());
+	vector<DpTarget> v;
+	vector<Target> r;
+
+	list<Hsp> hsp = DP::BandedSwipe::swipe(
+		query_seq[0],
+		v,
+		v,
+		&target_it,
+		Frame(0),
+		config.comp_based_stats ? &query_cb[0] : nullptr,
+		flags | DP::FULL_MATRIX,
+		raw_score_cutoff,
+		stat);
+
+	map<unsigned, unsigned> subject_idx;
+	while (!hsp.empty()) {
+		size_t block_id = hsp.begin()->swipe_target;
+		const auto it = subject_idx.emplace(block_id, (unsigned)r.size());
+		if (it.second)
+			r.emplace_back(block_id, ref_seqs::get()[block_id], 0);
+		unsigned i = it.first->second;
+		r[i].filter_score = hsp.begin()->score;
+		list<Hsp> &l = r[i].hsp[0];
+		l.splice(l.end(), hsp, hsp.begin());
+	}
+
+	return r;
+}
+
 void add_dp_targets(const Target &target, int target_idx, const sequence *query_seq, array<array<vector<DpTarget>, 2>, MAX_CONTEXT> &dp_targets) {
 	const int band = Extension::band((int)query_seq->length()),
 		slen = (int)target.seq.length();
@@ -179,7 +214,7 @@ void add_dp_targets(const Target &target, int target_idx, const sequence *query_
 }
 
 vector<Match> align(vector<Target> &targets, const sequence *query_seq, const Bias_correction *query_cb, int source_query_len, int flags, Statistics &stat, bool first_round_traceback) {
-	const int raw_score_cutoff = score_matrix.rawscore(config.min_bit_score == 0 ? score_matrix.bitscore(config.max_evalue, (unsigned)query_seq[0].length()) : config.min_bit_score);
+	const int raw_score_cutoff = Extension::raw_score_cutoff(query_seq[0].length());
 
 	array<array<vector<DpTarget>, 2>, MAX_CONTEXT> dp_targets;
 	vector<Match> r;
@@ -210,6 +245,7 @@ vector<Match> align(vector<Target> &targets, const sequence *query_seq, const Bi
 			query_seq[frame],
 			dp_targets[frame][0],
 			dp_targets[frame][1],
+			nullptr,
 			Frame(frame),
 			config.comp_based_stats ? &query_cb[frame] : nullptr,
 			DP::TRACEBACK | flags,

@@ -190,6 +190,9 @@ vector<Match> extend(
 		i1 = std::min(i1 + std::min(chunk_size, MAX_CHUNK_SIZE), target_scores.cend());
 	}
 
+	if (config.swipe_all)
+		aligned_targets = full_db_align(query_seq.data(), query_cb.data(), flags, stat);
+
 	/*if (multiplier > 1)
 		stat.inc(Statistics::HARD_QUERIES);*/
 

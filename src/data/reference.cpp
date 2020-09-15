@@ -43,10 +43,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/io/record_reader.h"
 #include "../util/parallel/multiprocessing.h"
 
-String_set<char, '\0'>* ref_ids::data_ = 0;
+String_set<char, '\0'>* ref_ids::data_ = nullptr;
 Partitioned_histogram ref_hst;
 unsigned current_ref_block;
-Sequence_set* ref_seqs::data_ = 0;
+Sequence_set* ref_seqs::data_ = nullptr;
 bool blocked_processing;
 std::vector<uint32_t> block_to_database_id;
 
