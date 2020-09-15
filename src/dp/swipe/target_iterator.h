@@ -186,7 +186,7 @@ struct TargetBuffer
 			target[channel] = next++;
 			return true;
 		}
-4		active.erase(i);
+		active.erase(i);
 		return false;
 	}
 
