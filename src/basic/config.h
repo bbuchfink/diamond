@@ -240,6 +240,7 @@ struct Config
 	int left_most_interval;
 	bool alp;
 	bool forward_fp;
+	bool no_ref_masking;
 
 	Sensitivity sensitivity;
 	TracebackMode traceback_mode;

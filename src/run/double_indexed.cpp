@@ -89,7 +89,7 @@ void run_ref_chunk(DatabaseFile &db_file,
 	log_rss();
 
 	task_timer timer;
-	if (config.masking == 1) {
+	if (config.masking == 1 && !config.no_ref_masking) {
 		timer.go("Masking reference");
 		size_t n = mask_seqs(*ref_seqs::data_, Masking::get());
 		timer.finish();
