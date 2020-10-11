@@ -439,7 +439,8 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("score-drop-factor", 0, "", ranking_score_drop_factor, 0.95)
 		("left-most-interval", 0, "", left_most_interval, 32)
 		("ranking-cutoff-bitscore", 0, "", ranking_cutoff_bitscore, 25.0)
-		("alp", 0, "", alp);
+		("alp", 0, "", alp)
+		("forward-fp", 0, "", forward_fp);
 	
 	parser.add(general).add(makedb).add(cluster).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options).add(deprecated_options);
 	parser.store(argc, argv, command);
@@ -456,7 +457,7 @@ Config::Config(int argc, const char **argv, bool check_io)
 	if (command == blastx && no_self_hits)
 		throw std::runtime_error("--no-self-hits option is not supported in blastx mode.");
 
-	if (command == blastx && ext == "full")
+	if (command == blastx && (ext == "full" || swipe_all))
 		throw std::runtime_error("Full matrix extension is not supported in blastx mode.");
 
 	if (long_reads) {
@@ -475,6 +476,9 @@ Config::Config(int argc, const char **argv, bool check_io)
 			throw std::runtime_error("Global ranking only supports full matrix extension.");
 		ext = "full";
 	}
+
+	if (swipe_all)
+		ext = "full";
 
 	if (max_hsps > 1 && ext == "full")
 		throw std::runtime_error("--max-hsps > 1 is not supported for full matrix extension.");

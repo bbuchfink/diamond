@@ -152,7 +152,6 @@ set(OBJECTS
   src/output/view.cpp
   src/output/output_sink.cpp
   src/output/target_culling.cpp
-  src/align/legacy/swipe_pipeline.cpp
   src/align/legacy/banded_swipe_pipeline.cpp
   src/data/ref_dictionary.cpp
   src/util/io/compressed_stream.cpp

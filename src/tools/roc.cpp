@@ -18,6 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
+#include <set>
 #include <map>
 #include <unordered_map>
 #include <tuple>
@@ -43,10 +44,13 @@ using std::unordered_multimap;
 using std::vector;
 using std::queue;
 using std::thread;
+using std::set;
 
+typedef tuple<char, int> Fold;
 typedef tuple<char, int, int, int> Family;
 
 static map<Family, int> fam2idx;
+static map<int, Fold> fam2fold;
 
 struct FamilyMapping : public unordered_multimap<string, int> {
 
@@ -70,6 +74,7 @@ struct FamilyMapping : public unordered_multimap<string, int> {
 					acc = acc.substr(j + 1);
 			}
 			insert({ acc, i.first->second });
+			fam2fold[i.first->second] = { domain_class[0], fold };
 			//cout << acc << '\t' << domain_class << '\t' << fold << '\t' << superfam << '\t' << fam << endl;
 		}
 	}
@@ -95,6 +100,11 @@ struct QueryStats {
 			for (auto j = i.first; j != i.second; ++j)
 				query_family[j->second] = true;
 		}
+		if (config.forward_fp) {
+			auto i = acc2fam.equal_range(query);
+			for (auto j = i.first; j != i.second; ++j)
+				query_fold.insert(fam2fold[j->second]);
+		}
 	}
 	bool add(const string &sseqid, const unordered_multimap<string, int> &acc2fam) {
 		if (have_rev_hit)
@@ -110,11 +120,16 @@ struct QueryStats {
 			auto i = acc2fam.equal_range(sseqid);
 			if (i.first == i.second)
 				throw std::runtime_error("Accession not mapped.");
+			bool same_fold = false;
 			for (auto j = i.first; j != i.second; ++j) {
 				++count[j->second];
 				if (config.output_hits && query_family[j->second])
 					match_query = true;
+				if (config.forward_fp && query_fold.find(fam2fold[j->second]) != query_fold.end())
+					same_fold = true;
 			}
+			if (config.forward_fp && !same_fold)
+				have_rev_hit = true;
 			last_subject = sseqid;
 			return match_query;
 		}
@@ -135,6 +150,7 @@ struct QueryStats {
 	string query, last_subject;
 	vector<int> count;
 	vector<bool> query_family;
+	set<Fold> query_fold;
 	bool have_rev_hit;
 };
 
