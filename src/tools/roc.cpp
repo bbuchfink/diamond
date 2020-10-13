@@ -108,6 +108,8 @@ struct Histogram {
 	}
 
 	static int bin(double evalue) {
+		if (evalue == 0.0)
+			return 0;
 		int bin = std::round(std::log2(evalue)) - DBL_MIN_EXP;
 		if (bin < 0 || bin >= BINS)
 			throw std::runtime_error("Evalue exceeds binning range.");
