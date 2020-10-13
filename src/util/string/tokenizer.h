@@ -150,7 +150,9 @@ struct Tokenizer {
 
 	std::string getline() const {
 		const char* q = strchr(p, '\n');
-		return q ? std::string(p, q) : std::string();
+		if (q == nullptr)
+			q = strchr(p, '\0');
+		return std::string(p, q);
 	}
 
 private:

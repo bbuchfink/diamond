@@ -259,20 +259,23 @@ struct QueryStats {
 };
 
 double query_roc(const string& buf, Histogram& hist) {
-	string query, acc;
+	string query, acc, line;
 	Util::String::Tokenizer(buf, "\t") >> query;
 	QueryStats stats(query, families, acc2fam_query);
-	Util::String::Tokenizer tok(buf, "\t");
+	Util::String::Tokenizer tok(buf, "\n");
 	double evalue = 0.0;
-	while(tok.good() && !stats.have_rev_hit) {
-		tok >> Util::String::Skip() >> acc;
+	while(tok.good() && (!stats.have_rev_hit || get_roc)) {
+		tok >> line;
+		if (line.empty())
+			break;
+		Util::String::Tokenizer tok2(line, "\t");
+		tok2 >> Util::String::Skip() >> acc;
 		if (get_roc)
-			tok >> evalue;
+			tok2 >> evalue;
 		/*if (r.qseqid.empty() || r.sseqid.empty() || std::isnan(r.evalue) || !std::isfinite(r.evalue) || r.evalue < 0.0)
 			throw std::runtime_error("Format error.");*/
 		if (stats.add(acc, evalue, acc2fam) && config.output_hits)
-			cout << query << '\t' << acc << '\t' << tok.getline() << endl;
-		tok.skip_to('\n');
+			cout << line << endl;
 	}
 	const double a = stats.auc1(fam_count, acc2fam_query);
 	if (get_roc)

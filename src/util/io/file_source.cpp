@@ -25,6 +25,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <fcntl.h>
 #include <unistd.h>
 #include <errno.h>
+#include <stdio.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 #endif
 
 #include "file_source.h"
@@ -41,6 +44,15 @@ FileSource::FileSource(const string &file_name) :
 #ifdef _MSC_VER
 	f_ = (file_name.empty() || file_name == "-") ? stdin : fopen(file_name.c_str(), "rb");
 #else
+
+	struct stat buf;
+	if (stat(file_name.c_str(), &buf) < 0) {
+		perror(0);
+		throw std::runtime_error(string("Error calling stat on file ") + file_name);
+	}
+	if (!S_ISREG(buf.st_mode))
+		seekable_ = false;
+
 	int fd_ = (file_name.empty() || file_name == "-") ? 0 : POSIX_OPEN2(file_name.c_str(), O_RDONLY);
 	if (fd_ < 0) {
 		perror(0);
@@ -55,7 +67,7 @@ FileSource::FileSource(const string &file_name) :
 }
 
 FileSource::FileSource(const string &file_name, FILE *file):
-	StreamEntity(true),
+	StreamEntity(false),
 	f_(file),
 	file_name_(file_name)
 {
