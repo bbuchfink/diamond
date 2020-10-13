@@ -93,6 +93,13 @@ static std::mutex mtx, mtx_out, mtx_hist;
 static std::condition_variable cdv;
 static bool get_roc;
 
+static double coverage(int count, int family) {
+	const int n = fam_count[family];
+	if (n == 0)
+		return 1.0;
+	return double(count) / double(n);
+}
+
 struct Histogram {
 
 	Histogram() {
@@ -212,12 +219,10 @@ struct QueryStats {
 			throw std::runtime_error("Query accession not mapped.");
 		double r = 0.0, n = 0.0;
 		for (auto j = i.first; j != i.second; ++j) {
-			if (fam_count[j->second] == 0)
-				continue;
-			r += double(count[j->second]) / double(fam_count[j->second]);
+			r += coverage(count[j->second], j->second);
 			n += 1.0;
 		}
-		return n > 0.0 ? r / n : 1.0;
+		return r / n;
 	}
 
 	int family_count() const {
@@ -236,7 +241,7 @@ struct QueryStats {
 			double cov = 0.0;
 			for(auto it = family_idx.begin(); it != family_idx.end(); ++it) {
 				s[it->second] += true_positives[it->second][i];
-				cov += double(s[it->second]) / double(fam_count[it->first]);
+				cov += coverage(s[it->second], it->first);
 			}
 			hist.coverage[i] += cov / n;
 		}
@@ -322,10 +327,6 @@ void roc() {
 	fam_count.insert(fam_count.begin(), families, 0);
 	for (auto i = acc2fam.begin(); i != acc2fam.end(); ++i)
 		++fam_count[i->second];
-
-	for (size_t i = 0; i < fam_count.size(); ++i)
-		if (fam_count[i] == 0)
-			throw std::runtime_error("Family of size 0");
 
 	vector<thread> threads;
 	for (unsigned i = 0; i < std::min(config.threads_, 6u); ++i)
