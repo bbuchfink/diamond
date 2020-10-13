@@ -148,6 +148,11 @@ struct Tokenizer {
 		p = q ? q + 1 : nullptr;
 	}
 
+	std::string getline() const {
+		const char* q = strchr(p, '\n');
+		return q ? std::string(p, q) : std::string();
+	}
+
 private:
 	const char *p, *delimiter;
 	size_t len;
