@@ -29,6 +29,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <condition_variable>
 #include <queue>
 #include <thread>
+#include <limits.h>
 #include "../util/io/text_input_file.h"
 #include "../basic/config.h"
 #include "../util/string/tokenizer.h"
