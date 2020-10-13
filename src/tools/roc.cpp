@@ -294,8 +294,11 @@ static void worker() {
 		{
 			std::unique_lock<std::mutex> lock(mtx);
 			while (buffers.empty() && !finished) cdv.wait(lock);
-			if (buffers.empty() && finished)
+			if (buffers.empty() && finished) {
+				std::lock_guard<std::mutex> lock(mtx_hist);
+				histogram += hist;
 				return;
+			}
 			buf = buffers.front();
 			buffers.pop();
 		}
