@@ -209,7 +209,8 @@ struct QueryStats {
 			}
 			if (config.forward_fp && !same_fold) {
 				have_rev_hit = true;
-				++false_positives[Histogram::bin(evalue)];
+				if(get_roc)
+					++false_positives[Histogram::bin(evalue)];
 			}
 			return match_query;
 		}
