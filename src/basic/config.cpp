@@ -224,6 +224,7 @@ Config::Config(int argc, const char **argv, bool check_io)
 	Options_group cluster("");
 	cluster.add()
 		("cluster-algo", 0, "Clustering algorithm (\"multi-step\", \"mcl\")", cluster_algo)
+		("cluster-steps", 0, "Clustering steps (\"fast\",\"mid-sensitive\",\"sensitive\", \"more-sensitive\", \"very-sensitive\", \"ultra-sensitive\")", cluster_steps)
 		("cluster-similarity", 0, "Clustering similarity measure", cluster_similarity)
 		("mcl-expansion", 0, "MCL expansion coefficient (default=2)", cluster_mcl_expansion, (uint32_t) 2)
 		("mcl-inflation", 0, "MCL inflation coefficient (default=2.0)", cluster_mcl_inflation, 2.0)

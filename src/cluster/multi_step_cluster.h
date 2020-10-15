@@ -44,6 +44,8 @@ class MultiStep : public ClusteringAlgorithm {
 private:
 	vector<bool> rep_bitset(const vector<int> &centroid, const vector<bool> *superset = nullptr);
 	vector<int> cluster(DatabaseFile &db, const vector<bool> *filter);
+	vector<bool> steps(vector <vector<bool>> reps, vector <vector<int>> centroids);
+
 public:
 	void run();
 	string get_key();
