@@ -300,14 +300,14 @@ struct Banded3FrameSwipeTracebackMatrix
 
 private:
 	const size_t band_;
-	static thread_local MemBuffer<_sv> hgap_, score_;
+	static thread_local MemBuffer<_sv> hgap_;
+	MemBuffer<_sv> score_;
 
 };
 
 template<typename _sv> thread_local MemBuffer<_sv> Banded3FrameSwipeMatrix<_sv>::hgap_;
 template<typename _sv> thread_local MemBuffer<_sv> Banded3FrameSwipeMatrix<_sv>::score_;
 template<typename _sv> thread_local MemBuffer<_sv> Banded3FrameSwipeTracebackMatrix<_sv>::hgap_;
-template<typename _sv> thread_local MemBuffer<_sv> Banded3FrameSwipeTracebackMatrix<_sv>::score_;
 
 template<typename _sv, typename _traceback>
 struct Banded3FrameSwipeMatrixRef
@@ -530,7 +530,10 @@ void banded_3frame_swipe_worker(vector<DpTarget>::const_iterator begin,
 	vector<DpTarget> of;
 	while (begin + (pos = next->fetch_add(config.swipe_chunk_size)) < end)
 #ifdef __SSE2__
-		out->splice(out->end(), banded_3frame_swipe_targets<score_vector<int16_t>>(begin + pos, min(begin + pos + config.swipe_chunk_size, end), score_only, *query, strand, stat, true, of));
+		if(score_only)
+			out->splice(out->end(), banded_3frame_swipe_targets<score_vector<int16_t>>(begin + pos, min(begin + pos + config.swipe_chunk_size, end), score_only, *query, strand, stat, true, of));
+		else
+			out->splice(out->end(), banded_3frame_swipe_targets<int32_t>(begin + pos, min(begin + pos + config.swipe_chunk_size, end), score_only, *query, strand, stat, true, of));
 #else
 		out->splice(out->end(), banded_3frame_swipe_targets<int32_t>(begin + pos, min(begin + pos + config.swipe_chunk_size, end), score_only, *query, strand, stat, true, of));
 #endif
@@ -573,8 +576,12 @@ list<Hsp> banded_3frame_swipe(const TranslatedSequence &query, Strand strand, ve
 		for (const vector<DpTarget> &v : thread_overflow)
 			overflow16.insert(overflow16.end(), v.begin(), v.end());
 	}
-	else
-		out = banded_3frame_swipe_targets<score_vector<int16_t>>(target_begin, target_end, score_only, query, strand, stat, false, overflow16);
+	else {
+		if(score_only)
+			out = banded_3frame_swipe_targets<score_vector<int16_t>>(target_begin, target_end, score_only, query, strand, stat, false, overflow16);
+		else
+			out = banded_3frame_swipe_targets<int32_t>(target_begin, target_end, score_only, query, strand, stat, false, overflow16);
+	}
 
 	out.splice(out.end(), banded_3frame_swipe_targets<int32_t>(overflow16.begin(), overflow16.end(), score_only, query, strand, stat, false, overflow32));
 	return out;
