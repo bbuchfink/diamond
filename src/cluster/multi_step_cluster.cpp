@@ -39,7 +39,7 @@ BitVector MultiStep::rep_bitset(const vector<int> &centroid, const BitVector *su
 vector<int> MultiStep::cluster(DatabaseFile &db, const BitVector *filter) {
 	statistics.reset();
 	config.command = Config::blastp;
-	config.no_self_hits = true;
+	//config.no_self_hits = true;
 	//config.output_format = { "6", "qnum", "snum" };
 	config.output_format = { "6", "qnum", "snum", "qcovhsp", "scovhsp", "bitscore" };
 	config.query_cover = 80;
@@ -58,6 +58,8 @@ vector<int> MultiStep::cluster(DatabaseFile &db, const BitVector *filter) {
 
 	Workflow::Search::run(opt);
 
+	message_stream << "Edges = " << nb.edges.size() << endl;
+
 	return Util::Algo::greedy_vortex_cover(nb);
 }
 
@@ -68,14 +70,12 @@ void MultiStep::run() {
 	unique_ptr<DatabaseFile> db(DatabaseFile::auto_create_from_fasta());
 	const size_t seq_count = db->ref_header.sequences;
 
-	config.min_id = 70;
 	vector<int> centroid1(cluster(*db, nullptr));
 	BitVector rep1(rep_bitset(centroid1));
 	size_t n_rep1 = rep1.one_count();
 	message_stream << "Clustering step 1 complete. #Input sequences: " << centroid1.size() << " #Clusters: " << n_rep1 << endl;
 
-	config.mode_more_sensitive = true;
-	config.min_id = 0;
+	config.sensitivity = Sensitivity::SENSITIVE;
 	vector<int> centroid2(cluster(*db, &rep1));
 	BitVector rep2(rep_bitset(centroid2, &rep1));
 	for (size_t i = 0; i < centroid2.size(); ++i)
@@ -104,8 +104,8 @@ void MultiStep::run() {
 		db->read_seq(id, seq);
 		const unsigned r = rep_block_id[centroid2[i]];
 		(*out) << blast_id(id) << '\t'
-			<< blast_id((*rep_ids)[r]) << '\t';		
-		if ((int)i == centroid2[i])
+			<< blast_id((*rep_ids)[r]) << '\n';
+		/*if ((int)i == centroid2[i])
 			(*out) << "100\t100\t100\t0" << endl;
 		else {
 			Masking::get().bit_to_hard_mask(seq.data(), seq.size(), n);
@@ -114,7 +114,7 @@ void MultiStep::run() {
 				<< hsp.query_cover_percent((unsigned)seq.size()) << '\t'
 				<< hsp.subject_cover_percent((unsigned)(*rep_seqs)[r].length()) << '\t'
 				<< score_matrix.bitscore(hsp.score) << endl;
-		}
+		}*/
 	}
 	if (out != &cout) delete out;
 	delete rep_seqs;
