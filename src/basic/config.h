@@ -131,7 +131,6 @@ struct Config
 	int superblock;
 	unsigned max_cells;
 	int masking;
-	bool benchmark_ranking;
 	bool log_query;
 	bool log_subject;
 	unsigned threads_align;
@@ -239,6 +238,10 @@ struct Config
 	double ranking_score_drop_factor;
 	double ranking_cutoff_bitscore;
 	int left_most_interval;
+	bool alp;
+	bool forward_fp;
+	bool no_ref_masking;
+	string roc_file;
 
 	Sensitivity sensitivity;
 	TracebackMode traceback_mode;

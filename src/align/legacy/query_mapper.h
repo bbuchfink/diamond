@@ -174,7 +174,7 @@ struct QueryMapper
 		for (size_t i = 0; i < targets.size(); ++i)
 			targets[i].fill_source_ranges(source_query_len);
 	}
-	virtual void run(Statistics &stat, const sequence *subjects = nullptr, size_t subject_count = 0) = 0;
+	virtual void run(Statistics &stat) = 0;
 	virtual ~QueryMapper() {}
 
 	const Parameters &parameters;

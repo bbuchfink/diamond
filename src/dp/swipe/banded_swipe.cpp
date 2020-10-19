@@ -534,16 +534,6 @@ struct MatrixTraits<_sv, ScoreWithCoords>
 	typedef RowCounter<_sv> MyRowCounter;
 };
 
-template<typename _score>
-_score add_cbs(_score x, int8_t b) {
-	return x + _score(b);
-}
-
-template<typename _score>
-_score add_cbs(_score x, void *b) {
-	return x;
-}
-
 template<typename _sv, typename _cbs>
 Hsp traceback(const sequence &query, Frame frame, _cbs bias_correction, const TracebackMatrix<_sv> &dp, const DpTarget &target, int d_begin, typename ScoreTraits<_sv>::Score max_score, int max_col, int channel, int i0, int i1, int max_band_i)
 {
@@ -563,7 +553,7 @@ Hsp traceback(const sequence &query, Frame frame, _cbs bias_correction, const Tr
 	while (it.score() > ScoreTraits<_sv>::zero_score()) {
 		const Letter q = query[it.i], s = target.seq[it.j];
 		const Score m = score_matrix(q, s), score = it.score();
-		const Score m2 = add_cbs(m, bias_correction[it.i]);
+		const Score m2 = add_cbs_scalar(m, bias_correction[it.i]);
 		if (score == saturated_add(it.diag(), m2)) {
 			out.push_match(q, s, m > (Score)0);
 			it.walk_diagonal();
@@ -635,7 +625,7 @@ Hsp traceback(const sequence &query, Frame frame, _cbs bias_correction, const Tr
 		if((it.mask().gap & channel_mask) == 0) {
 			const Letter q = query[it.i], s = target.seq[it.j];
 			const int m = score_matrix(q, s);
-			const int m2 = add_cbs(m, bias_correction[it.i]);
+			const int m2 = add_cbs_scalar(m, bias_correction[it.i]);
 			score += m2;
 			out.push_match(q, s, m > (Score)0);
 			it.walk_diagonal();
@@ -671,27 +661,6 @@ template<>
 bool realign<VectorTraceback>(const Hsp &hsp, const DpTarget &dp_target) {
 	return hsp.subject_range.begin_ - config.min_realign_overhang > dp_target.j_begin || hsp.subject_range.end_ + config.min_realign_overhang < dp_target.j_end;
 }
-
-template<typename _sv, typename _cbs>
-struct CBSBuffer {
-	CBSBuffer(const NoCBS&, int) {}
-	void* operator()(int i) const {
-		return nullptr;
-	}
-};
-
-template<typename _sv>
-struct CBSBuffer<_sv, const int8_t*> {
-	CBSBuffer(const int8_t* v, int l) {
-		data.reserve(l);
-		for (int i = 0; i < l; ++i)
-			data.emplace_back(typename ::DISPATCH_ARCH::ScoreTraits<_sv>::Score(v[i]));
-	}
-	_sv operator()(int i) const {
-		return data[i];
-	}
-	vector<_sv, Util::Memory::AlignmentAllocator<_sv, 32>> data;
-};
 
 template<typename _sv, typename _traceback, typename _cbs>
 list<Hsp> swipe(

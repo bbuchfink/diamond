@@ -84,13 +84,12 @@ void run_ref_chunk(DatabaseFile &db_file,
 	Consumer &master_out,
 	PtrVector<TempFile> &tmp_file,
 	const Parameters &params,
-	const Metadata &metadata,
-	const vector<unsigned> &block_to_database_id)
+	const Metadata &metadata)
 {
 	log_rss();
 
 	task_timer timer;
-	if (config.masking == 1) {
+	if (config.masking == 1 && !config.no_ref_masking) {
 		timer.go("Masking reference");
 		size_t n = mask_seqs(*ref_seqs::data_, Masking::get());
 		timer.finish();
@@ -236,7 +235,6 @@ void run_query_chunk(DatabaseFile &db_file,
 	if(config.query_memory)
 		Extension::memory = new Extension::Memory(query_ids::get().get_length());
 	db_file.rewind();
-	vector<unsigned> block_to_database_id;
 	Chunk chunk;
 	bool mp_last_chunk = false;
 
@@ -257,8 +255,8 @@ void run_query_chunk(DatabaseFile &db_file,
 
 			P->log("SEARCH BEGIN "+std::to_string(query_chunk)+" "+std::to_string(chunk.i));
 
-			db_file.load_seqs(block_to_database_id, (size_t)(0), &ref_seqs::data_, &ref_ids::data_, true, options.db_filter ? options.db_filter : metadata.taxon_filter, true, chunk);
-			run_ref_chunk(db_file, query_chunk, query_len_bounds, query_buffer, master_out, tmp_file, params, metadata, block_to_database_id);
+			db_file.load_seqs(&block_to_database_id, (size_t)(0), &ref_seqs::data_, &ref_ids::data_, true, options.db_filter ? options.db_filter : metadata.taxon_filter, true, chunk);
+			run_ref_chunk(db_file, query_chunk, query_len_bounds, query_buffer, master_out, tmp_file, params, metadata);
 
 			ReferenceDictionary::get().save_block(query_chunk, chunk.i);
 			ReferenceDictionary::get().clear_block(chunk.i);
@@ -275,9 +273,9 @@ void run_query_chunk(DatabaseFile &db_file,
 		}
 	} else {
 		for (current_ref_block = 0;
-			 db_file.load_seqs(block_to_database_id, (size_t)(config.chunk_size*1e9), &ref_seqs::data_, &ref_ids::data_, true, options.db_filter ? options.db_filter : metadata.taxon_filter);
+			 db_file.load_seqs(&block_to_database_id, (size_t)(config.chunk_size*1e9), &ref_seqs::data_, &ref_ids::data_, true, options.db_filter ? options.db_filter : metadata.taxon_filter);
 			 ++current_ref_block) {
-			run_ref_chunk(db_file, query_chunk, query_len_bounds, query_buffer, master_out, tmp_file, params, metadata, block_to_database_id);
+			run_ref_chunk(db_file, query_chunk, query_len_bounds, query_buffer, master_out, tmp_file, params, metadata);
 		}
 		log_rss();
 	}
@@ -404,8 +402,7 @@ void master_thread(DatabaseFile *db_file, task_timer &total_timer, Metadata &met
 		for (;; ++current_query_chunk) {
 			if (options.self) {
 				db_file->seek_seq(query_file_offset);
-				if (!db_file->load_seqs(query_block_to_database_id,
-					(size_t)(config.chunk_size * 1e9),
+				if (!db_file->load_seqs(&query_block_to_database_id, (size_t)(config.chunk_size * 1e9),
 					&query_seqs::data_,
 					&query_ids::data_,
 					true,
@@ -458,7 +455,7 @@ void master_thread(DatabaseFile *db_file, task_timer &total_timer, Metadata &met
 
 		if (options.self) {
 			db_file->seek_seq(query_file_offset);
-			if (!db_file->load_seqs(query_block_to_database_id,
+			if (!db_file->load_seqs(&query_block_to_database_id,
 				(size_t)(config.chunk_size * 1e9),
 				&query_seqs::data_,
 				&query_ids::data_,

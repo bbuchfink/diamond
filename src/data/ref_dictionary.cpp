@@ -102,18 +102,17 @@ uint32_t ReferenceDictionary::get(unsigned block, size_t block_id)
 
 void ReferenceDictionary::build_lazy_dict(DatabaseFile &db_file)
 {
-	vector<bool> filter(db_file.ref_header.sequences);
+	BitVector filter(db_file.ref_header.sequences);
 	vector<pair<unsigned, unsigned> > m;
 	const size_t dict_size = database_id_.size();
 	m.reserve(dict_size);
 	unsigned n = 0;
 	for (vector<uint32_t>::const_iterator i = database_id_.begin(); i < database_id_.end(); ++i) {
-		filter[*i] = true;
+		filter.set(*i);
 		m.push_back(std::make_pair(*i, n++));
 	}
 	db_file.rewind();
-	vector<unsigned> block_to_database_id;
-	db_file.load_seqs(block_to_database_id, std::numeric_limits<size_t>::max(), &ref_seqs::data_, &ref_ids::data_, false, &filter);
+	db_file.load_seqs(nullptr, std::numeric_limits<size_t>::max(), &ref_seqs::data_, &ref_ids::data_, false, &filter);
 	std::sort(m.begin(), m.end());
 	dict_to_lazy_dict_id_.clear();
 	dict_to_lazy_dict_id_.resize(dict_size);

@@ -53,7 +53,7 @@ namespace ExtensionPipeline {
 			Pipeline(const Parameters &params, size_t query_id, hit* begin, hit* end, const Metadata &metadata) :
 				QueryMapper(params, query_id, begin, end, metadata)
 			{}
-			virtual void run(Statistics &stat, const sequence *subjects = nullptr, size_t subject_count = 0);
+			virtual void run(Statistics &stat) override;
 			virtual ~Pipeline() {}
 		};
 	}
@@ -66,7 +66,7 @@ namespace ExtensionPipeline {
 				dp_stat(dp_stat)
 			{}
 			Target& target(size_t i);
-			virtual void run(Statistics &stat, const sequence *subjects = nullptr, size_t subject_count = 0);
+			virtual void run(Statistics &stat) override;
 			void run_swipe(bool score_only);
 			void range_ranking();
 			DpStat &dp_stat;
