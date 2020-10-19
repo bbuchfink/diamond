@@ -78,7 +78,7 @@ struct FamilyMapping : public unordered_multimap<string, int> {
 					acc = acc.substr(j + 1);
 			}
 			insert({ acc, i.first->second });
-			fam2fold[i.first->second] = { domain_class[0], fold };
+			fam2fold[i.first->second] = Fold(domain_class[0], fold);
 			//cout << acc << '\t' << domain_class << '\t' << fold << '\t' << superfam << '\t' << fam << endl;
 		}
 	}
