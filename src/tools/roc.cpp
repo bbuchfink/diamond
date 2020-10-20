@@ -78,7 +78,7 @@ struct FamilyMapping : public unordered_multimap<string, int> {
 					acc = acc.substr(j + 1);
 			}
 			insert({ acc, i.first->second });
-			fam2fold[i.first->second] = { domain_class[0], fold };
+			fam2fold[i.first->second] = Fold(domain_class[0], fold);
 			//cout << acc << '\t' << domain_class << '\t' << fold << '\t' << superfam << '\t' << fam << endl;
 		}
 	}
@@ -110,7 +110,8 @@ struct Histogram {
 	static int bin(double evalue) {
 		if (evalue == 0.0)
 			return 0;
-		int bin = std::max(int(std::round(std::log2(evalue))), DBL_MIN_EXP) - DBL_MIN_EXP;
+		int bin = int(std::round(std::log2(evalue) * MULT)) - (DBL_MIN_EXP*MULT);
+		bin = std::max(bin, 0);
 		if (bin < 0 || bin >= BINS)
 			throw std::runtime_error("Evalue exceeds binning range.");
 		return bin;
@@ -130,7 +131,7 @@ struct Histogram {
 		return os;
 	}
 
-	enum { BINS = -DBL_MIN_EXP + 15 };
+	enum { MULT = 1, BINS = (-DBL_MIN_EXP + 15)*MULT };
 
 	array<size_t, BINS> false_positives;
 	array<double, BINS> coverage;
