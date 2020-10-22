@@ -180,6 +180,45 @@ MSC_INLINE _sv swipe_cell_update(const _sv &diagonal_cell,
 	return current_cell;
 }
 
+template<typename _sv, typename _cbs, typename _trace_mask, typename _row_counter>
+MSC_INLINE _sv swipe_cell_update(const _sv &diagonal_cell,
+	const _sv &scores,
+	_cbs query_bias,
+	_sv target_bias,
+	const _sv &gap_extension,
+	const _sv &gap_open,
+	_sv &horizontal_gap,
+	_sv &vertical_gap,
+	_sv &best,
+	void*,
+	void*,
+	void*,
+	_trace_mask trace_mask,
+	_row_counter& row_counter)
+{
+	using std::max;
+
+	_sv current_cell = diagonal_cell + add_cbs(scores, query_bias) + target_bias;
+	current_cell = max(max(current_cell, vertical_gap), horizontal_gap);
+	::DISPATCH_ARCH::ScoreTraits<_sv>::saturate(current_cell);
+
+	make_gap_mask(trace_mask, current_cell, vertical_gap, horizontal_gap);
+
+	best = max(best, current_cell);
+
+	row_counter.inc(best, current_cell);
+
+	vertical_gap -= gap_extension;
+	horizontal_gap -= gap_extension;
+	const _sv open = current_cell - gap_open;
+	vertical_gap = max(vertical_gap, open);
+	horizontal_gap = max(horizontal_gap, open);
+
+	make_open_mask(trace_mask, open, vertical_gap, horizontal_gap);
+
+	return current_cell;
+}
+
 /*template<typename _sv>
 static inline _sv swipe_cell_update(const _sv& diagonal_cell,
 	const _sv& scores,

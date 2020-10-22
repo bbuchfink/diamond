@@ -758,7 +758,10 @@ list<Hsp> swipe(
 				match_scores += target_mask;
 #endif
 				//next = swipe_cell_update<_sv>(it.diag(), match_scores, composition_bias[i], extend_penalty, open_penalty, hgap, vgap, col_best);
-				next = swipe_cell_update<_sv>(it.diag(), match_scores, cbs_buf(i), extend_penalty, open_penalty, hgap, vgap, col_best, it.stat(), stat_v, stat_h, it.trace_mask(), row_counter);
+				if(config.target_bias)
+					next = swipe_cell_update<_sv>(it.diag(), match_scores, cbs_buf(i), targets.cbs(_sv()), extend_penalty, open_penalty, hgap, vgap, col_best, it.stat(), stat_v, stat_h, it.trace_mask(), row_counter);
+				else
+					next = swipe_cell_update<_sv>(it.diag(), match_scores, cbs_buf(i), extend_penalty, open_penalty, hgap, vgap, col_best, it.stat(), stat_v, stat_h, it.trace_mask(), row_counter);
 
 				it.set_hgap(hgap);
 				it.set_score(next);

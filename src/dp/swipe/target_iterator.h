@@ -26,6 +26,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../basic/value.h"
 #include "../../util/simd/vector.h"
 #include "../../util/dynamic_iterator.h"
+#include "../comp_based_stats.h"
 
 namespace DISPATCH_ARCH {
 
@@ -34,6 +35,7 @@ struct TargetIterator
 {
 
 	typedef ::DISPATCH_ARCH::SIMD::Vector<_t> SeqVector;
+	typedef ::DISPATCH_ARCH::score_vector<_t> ScoreVector;
 	enum {
 		CHANNELS = SeqVector::CHANNELS
 	};
@@ -53,6 +55,8 @@ struct TargetIterator
 			cols = std::max(cols, j1 - pos[next]);
 			target[next] = next;
 			active.push_back(next);
+			if(config.target_bias)
+				cbs_.emplace_back(t.seq);
 		}
 	}
 
@@ -72,6 +76,19 @@ struct TargetIterator
 			return subject_begin[target[channel]].seq[pos[channel]];
 		} else
 			return SUPER_HARD_MASK;
+	}
+
+	template<typename _sv>
+	_sv cbs(const _sv&) const {
+		alignas(32) _t s[CHANNELS];
+		std::fill(s, s + CHANNELS, 0);
+		for (int i = 0; i < active.size(); ++i) {
+			const int channel = active[i];
+			if (pos[channel] < 0)
+				continue;
+			s[channel] = cbs_[channel].int8[pos[channel]];
+		}
+		return _sv(s);
 	}
 
 #ifdef __SSSE3__
@@ -102,6 +119,8 @@ struct TargetIterator
 		if (next < n_targets) {
 			pos[channel] = 0;
 			target[channel] = next++;
+			if (config.target_bias)
+				cbs_[channel] = Bias_correction(subject_begin[target[channel]].seq);
 			return true;
 		}
 		active.erase(i);
@@ -118,6 +137,7 @@ struct TargetIterator
 
 	int pos[CHANNELS], target[CHANNELS], next, n_targets, cols;
 	Static_vector<int, CHANNELS> active;
+	std::vector<Bias_correction> cbs_;
 	const vector<DpTarget>::const_iterator subject_begin;
 };
 

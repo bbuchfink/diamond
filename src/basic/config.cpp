@@ -442,7 +442,8 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("alp", 0, "", alp)
 		("forward-fp", 0, "", forward_fp)
 		("no-ref-masking", 0, "", no_ref_masking)
-		("roc-file", 0, "", roc_file);
+		("roc-file", 0, "", roc_file)
+		("target-bias", 0, "", target_bias);
 	
 	parser.add(general).add(makedb).add(cluster).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options).add(deprecated_options);
 	parser.store(argc, argv, command);
