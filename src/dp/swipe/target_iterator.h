@@ -88,7 +88,7 @@ struct TargetIterator
 				continue;
 			s[channel] = cbs_[channel].int8[pos[channel]];
 		}
-		return _sv(s);
+		return load_sv(s);
 	}
 
 #ifdef __SSSE3__
