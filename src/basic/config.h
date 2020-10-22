@@ -272,7 +272,7 @@ struct Config
 		{"mid-sensitive", Sensitivity::MID_SENSITIVE},
 		{"more-sensitive", Sensitivity::MORE_SENSITIVE},
 		{"very-sensitive", Sensitivity::VERY_SENSITIVE},
-		{"ultra-sensitive", Sensitivity::SENSITIVE}
+		{"ultra-sensitive", Sensitivity::ULTRA_SENSITIVE}
 	};
 
 	enum { query_parallel = 0, target_parallel = 1 };
