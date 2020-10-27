@@ -65,39 +65,33 @@ vector<int> MultiStep::cluster(DatabaseFile& db, const vector<bool>* filter) {
 }
 
 
-void MultiStep::steps(vector <vector<bool>> &reps, vector <vector <int>> &centroids, int count) {
-	count = count + 1;
+void MultiStep::steps(vector<bool>& current_reps, vector <bool>& previous_reps, vector <int>& current_centroids, vector <int>& previous_centroids, int count) {
+	count++;
 
-	if (reps.empty()) {
-		vector <bool> rep_c(rep_bitset(centroids.front()));
-		reps.push_back(rep_c);
+	if (previous_reps.empty()) {
+		current_reps = (rep_bitset(current_centroids));
 	}
 
 	else {
-		vector<bool> rep_c(rep_bitset(centroids.back(), &reps.back()));
-		reps.push_back(rep_c);
+		current_reps = (rep_bitset(current_centroids, &previous_reps));
 
-		for (size_t i = 0; i < centroids.back().size(); ++i)
-			if (!reps.front()[i])
-				centroids.back()[i] = centroids.back()[centroids.front()[i]];
+		for (size_t i = 0; i < current_centroids.size(); ++i)
+			if (!previous_reps[i])
+				current_centroids[i] = current_centroids[previous_centroids[i]];
 	}
 
-	size_t n_rep_1 = count_if(reps.front().begin(), reps.front().end(), [](bool x) { return x; });
-	size_t n_rep_2 = count_if(reps.back().begin(), reps.back().end(), [](bool x) { return x; });
+	size_t n_rep_1 = count_if(previous_reps.begin(), previous_reps.end(), [](bool x) { return x; });
+	size_t n_rep_2 = count_if(current_reps.begin(), current_reps.end(), [](bool x) { return x; });
 
-	if (n_rep_1 == n_rep_2) {
-		message_stream << "Clustering step " << count << " complete. #Input sequences: " << centroids.front().size() << " #Clusters: " << n_rep_1 << endl;
+	if (n_rep_1 == 0) {
+		n_rep_1 = current_centroids.size();
 	}
 
-	else {
-		message_stream << "Clustering step " << count << " complete. #Input sequences: " << n_rep_1 << " #Clusters: " << n_rep_2 << endl;
-		
-		centroids.front().swap(centroids.back());
-		centroids.pop_back();
+	message_stream << "Clustering step " << count << " complete. #Input sequences: " << n_rep_1 << " #Clusters: " << n_rep_2 << endl;
 
-		reps.front().swap(reps.back());
-		reps.pop_back();
-	}
+	previous_centroids = current_centroids;
+	previous_reps = current_reps;
+
 }
 		
 void MultiStep::run() {
@@ -107,32 +101,29 @@ void MultiStep::run() {
 	unique_ptr<DatabaseFile> db(DatabaseFile::auto_create_from_fasta());
 	const size_t seq_count = db->ref_header.sequences;
 
-	vector<vector<int>> centroids;
-	vector<vector<bool>> reps;
+	vector <bool> current_reps;
+	vector <bool> previous_reps;
 
+	vector<int> current_centroids;
+	vector<int> previous_centroids;
 	
-	for (int i = 0; i <= config.cluster_steps.size(); i++) {
-		int c = i - 1;
+	for (int i = 0; i < config.cluster_steps.size(); i++) {
+		
+		if (config.sens_map.find(config.cluster_steps[i]) == config.sens_map.end()) {
+			throw std::runtime_error("Invalid value for parameter --cluster-steps");
+		}
+			
+		config.sensitivity = config.sens_map[config.cluster_steps[i]];
 
 		if (i == 0) {
-			vector<int> centroid_current(cluster(*db, nullptr));
-			centroids.push_back(centroid_current);
+			current_centroids = cluster(*db, nullptr);
 		}
 
 		else {
-			if (config.cluster_steps[c] != "fast" && config.cluster_steps[c] != "sensitive" && config.cluster_steps[c] != "mid-sensitive" &&
-				config.cluster_steps[c] != "more-sensitive" && config.cluster_steps[c] != "very-sensitive" &&
-				config.cluster_steps[c] != "ultra-sensitive") {
-				throw std::runtime_error("Invalid value for parameter --cluster-steps");
-			}
-
-			else {
-				config.sensitivity = config.sens_map[config.cluster_steps[c]];
-				vector<int> centroid_current(cluster(*db, &reps.back()));
-				centroids.push_back(centroid_current);
-			}
+			current_centroids = cluster(*db, &previous_reps);
 		}
-		steps(reps, centroids, i);
+
+		steps(current_reps, previous_reps, current_centroids, previous_centroids, i);
 	}
 	
 
@@ -141,7 +132,7 @@ void MultiStep::run() {
 	String_set<char, 0>* rep_ids;
 	vector<unsigned> rep_database_id, rep_block_id(seq_count);
 	db->rewind();
-	db->load_seqs(rep_database_id, (size_t)1e11, &rep_seqs, &rep_ids, true, &reps.back());
+	db->load_seqs(rep_database_id, (size_t)1e11, &rep_seqs, &rep_ids, true, &current_reps);
 	for (size_t i = 0; i < rep_database_id.size(); ++i)
 		rep_block_id[rep_database_id[i]] = (unsigned)i;
 
@@ -155,7 +146,7 @@ void MultiStep::run() {
 
 	for (int i = 0; i < (int)db->ref_header.sequences; ++i) {
 		db->read_seq(id, seq);
-		const unsigned r = rep_block_id[centroids.back()[i]];
+		const unsigned r = rep_block_id[current_centroids[i]];
 		(*out) << blast_id(id) << '\t'
 			<< blast_id((*rep_ids)[r]) << '\n';
 		/*if ((int)i == centroid2[i])
