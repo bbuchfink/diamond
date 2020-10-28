@@ -31,6 +31,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <thread>
 #include <limits.h>
 #include <float.h>
+#include <sstream>
 #include "../util/io/text_input_file.h"
 #include "../basic/config.h"
 #include "../util/string/tokenizer.h"
@@ -49,6 +50,7 @@ using std::queue;
 using std::thread;
 using std::set;
 using std::array;
+using std::stringstream;
 
 typedef tuple<char, int> Fold;
 typedef tuple<char, int, int, int> Family;
@@ -263,6 +265,9 @@ struct QueryStats {
 };
 
 double query_roc(const string& buf, Histogram& hist) {
+	static thread_local stringstream out_buf;
+	out_buf.clear();
+
 	string query, acc, line;
 	Util::String::Tokenizer(buf, "\t") >> query;
 	QueryStats stats(query, families, acc2fam_query);
@@ -279,7 +284,7 @@ double query_roc(const string& buf, Histogram& hist) {
 		/*if (r.qseqid.empty() || r.sseqid.empty() || std::isnan(r.evalue) || !std::isfinite(r.evalue) || r.evalue < 0.0)
 			throw std::runtime_error("Format error.");*/
 		if (stats.add(acc, evalue, acc2fam) && config.output_hits)
-			cout << line << endl;
+			out_buf << line << endl;
 	}
 	const double a = stats.auc1(fam_count, acc2fam_query);
 	if (get_roc)
@@ -287,6 +292,10 @@ double query_roc(const string& buf, Histogram& hist) {
 	if (!config.output_hits) {
 		std::lock_guard<std::mutex> lock(mtx_out);
 		cout << stats.query << '\t' << a << endl;
+	}
+	else {
+		std::lock_guard<std::mutex> lock(mtx_out);
+		cout << out_buf.str();
 	}
 	return a;
 }
