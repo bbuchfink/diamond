@@ -87,11 +87,10 @@ void MultiStep::steps(vector<bool>& current_reps, vector <bool>& previous_reps, 
 		n_rep_1 = current_centroids.size();
 	}
 
-	message_stream << "Clustering step " << count << " complete. #Input sequences: " << n_rep_1 << " #Clusters: " << n_rep_2 << endl;
+	message_stream << "Clustering step " << count << " complete. #Input sequences: " << n_rep_1  << " #Clusters: " << n_rep_2 << endl;
 
-	previous_centroids = current_centroids;
-	previous_reps = current_reps;
-
+	previous_centroids = move(current_centroids);
+	previous_reps = move(current_reps);
 }
 		
 void MultiStep::run() {
@@ -114,25 +113,16 @@ void MultiStep::run() {
 		}
 			
 		config.sensitivity = config.sens_map[config.cluster_steps[i]];
-
-		if (i == 0) {
-			current_centroids = cluster(*db, nullptr);
-		}
-
-		else {
-			current_centroids = cluster(*db, &previous_reps);
-		}
-
+		current_centroids = cluster(*db, i==0 ? nullptr: &previous_reps);
 		steps(current_reps, previous_reps, current_centroids, previous_centroids, i);
 	}
 	
-
 	task_timer timer("Generating output");
 	Sequence_set* rep_seqs;
 	String_set<char, 0>* rep_ids;
 	vector<unsigned> rep_database_id, rep_block_id(seq_count);
 	db->rewind();
-	db->load_seqs(rep_database_id, (size_t)1e11, &rep_seqs, &rep_ids, true, &current_reps);
+	db->load_seqs(rep_database_id, (size_t)1e11, &rep_seqs, &rep_ids, true, &previous_reps);
 	for (size_t i = 0; i < rep_database_id.size(); ++i)
 		rep_block_id[rep_database_id[i]] = (unsigned)i;
 
@@ -146,7 +136,7 @@ void MultiStep::run() {
 
 	for (int i = 0; i < (int)db->ref_header.sequences; ++i) {
 		db->read_seq(id, seq);
-		const unsigned r = rep_block_id[current_centroids[i]];
+		const unsigned r = rep_block_id[previous_centroids[i]];
 		(*out) << blast_id(id) << '\t'
 			<< blast_id((*rep_ids)[r]) << '\n';
 		/*if ((int)i == centroid2[i])
