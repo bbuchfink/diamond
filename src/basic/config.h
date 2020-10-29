@@ -243,6 +243,7 @@ struct Config
 	bool no_ref_masking;
 	string roc_file;
 	bool target_bias;
+	bool check_multi_target;
 
 	Sensitivity sensitivity;
 	TracebackMode traceback_mode;

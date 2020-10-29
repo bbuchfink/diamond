@@ -22,6 +22,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <set>
 #include <map>
 #include <unordered_map>
+#include <unordered_set>
 #include <tuple>
 #include <vector>
 #include <math.h>
@@ -45,6 +46,7 @@ using std::endl;
 using std::tuple;
 using std::map;
 using std::unordered_multimap;
+using std::unordered_set;
 using std::vector;
 using std::queue;
 using std::thread;
@@ -188,6 +190,11 @@ struct QueryStats {
 			return false;
 		if (sseqid == last_subject)
 			return false;
+		if (config.check_multi_target) {
+			if (previous_targets.find(sseqid) != previous_targets.end())
+				return false;
+			previous_targets.insert(sseqid);
+		}
 		last_subject = sseqid;
 		if (sseqid[0] == '\\') {
 			have_rev_hit = true;
@@ -259,6 +266,7 @@ struct QueryStats {
 	set<Fold> query_fold;
 	map<int, int> family_idx;
 	vector<int> false_positives;
+	unordered_set<string> previous_targets;
 	vector<vector<int>> true_positives;
 	bool have_rev_hit;
 
