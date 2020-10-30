@@ -273,9 +273,6 @@ struct QueryStats {
 };
 
 double query_roc(const string& buf, Histogram& hist) {
-	static thread_local stringstream out_buf;
-	out_buf.clear();
-
 	string query, acc, line;
 	Util::String::Tokenizer(buf, "\t") >> query;
 	QueryStats stats(query, families, acc2fam_query);
@@ -292,7 +289,7 @@ double query_roc(const string& buf, Histogram& hist) {
 		/*if (r.qseqid.empty() || r.sseqid.empty() || std::isnan(r.evalue) || !std::isfinite(r.evalue) || r.evalue < 0.0)
 			throw std::runtime_error("Format error.");*/
 		if (stats.add(acc, evalue, acc2fam) && config.output_hits)
-			out_buf << line << endl;
+			cout << line << endl;
 	}
 	const double a = stats.auc1(fam_count, acc2fam_query);
 	if (get_roc)
@@ -300,10 +297,6 @@ double query_roc(const string& buf, Histogram& hist) {
 	if (!config.output_hits) {
 		std::lock_guard<std::mutex> lock(mtx_out);
 		cout << stats.query << '\t' << a << endl;
-	}
-	else {
-		std::lock_guard<std::mutex> lock(mtx_out);
-		cout << out_buf.str();
 	}
 	return a;
 }
@@ -382,6 +375,8 @@ void roc() {
 			++queries;
 			if (queries % 10000 == 0)
 				message_stream << "#Queries = " << queries << endl;
+			while (buffers.size() > 100)
+				std::this_thread::sleep_for(std::chrono::seconds(1));
 		}
 		buf->append(in.line);
 		buf->append("\n");
