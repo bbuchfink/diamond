@@ -41,7 +41,7 @@ static void print() {
 		return;
 	cout << query_aln;
 	for (int i = 0; i < 10; ++i)
-		cout << '\t' << totals[i] ? (double)counts[i] / (double)totals[i] : '1';
+		cout << '\t' << (totals[i] ? ((double)counts[i] / (double)totals[i]) : -1.0);
 	cout << endl;
 }
 
