@@ -8,11 +8,11 @@
 using std::cout;
 using std::endl;
 using std::array;
-using std::unordered_map;
+using std::unordered_multimap;
 
 static string query_aln;
 static array<int, 10> totals, counts;
-unordered_map<string, uint8_t> acc2id;
+unordered_multimap<string, uint8_t> acc2id;
 static size_t unmapped_query = 0;
 
 static void fetch_map(TextInputFile& map_in, const string& query) {
@@ -31,7 +31,7 @@ static void fetch_map(TextInputFile& map_in, const string& query) {
 			}
 		}
 		int bin = std::min((int)(id*100.0) / 10, 9);
-		acc2id[target] = (uint8_t)bin;
+		acc2id.emplace(target, (uint8_t)bin);
 		++totals[bin];
 	}
 }
@@ -69,13 +69,14 @@ void roc_id() {
 				message_stream << queries << ' ' << hits << ' ' << unmapped << endl;
 		}
 
-		auto it = acc2id.find(target);
-		if (it == acc2id.end()) {
+		auto it = acc2id.equal_range(target);
+		if (it.first == it.second) {
 			++unmapped_query;
 			++unmapped;
 			continue;
 		}
-		++counts[(int)it->second];
+		for (auto i = it.first; i != it.second; ++i)
+			++counts[(int)i->second];
 	}
 	print();
 
