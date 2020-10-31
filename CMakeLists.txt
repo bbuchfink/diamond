@@ -228,6 +228,7 @@ set(OBJECTS
   src/align/global_ranking/global_ranking.cpp
   src/align/global_ranking/extend.cpp
   src/align/load_hits.cpp
+  src/tools/rocid.cpp
 )
 
 if(X86)

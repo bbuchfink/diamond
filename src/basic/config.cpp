@@ -152,7 +152,8 @@ Config::Config(int argc, const char **argv, bool check_io)
 		.add_command("reverse", "")
 		.add_command("compute-medoids", "")
 		.add_command("mutate", "")
-		.add_command("merge-tsv", "");
+		.add_command("merge-tsv", "")
+		.add_command("roc-id", "");
 
 	string traceback_mode_str;
 

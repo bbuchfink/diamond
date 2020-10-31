@@ -53,6 +53,7 @@ void reverse();
 void get_medoids_from_tree();
 void roc();
 void merge_tsv();
+void roc_id();
 
 void split();
 namespace Benchmark { DECL_DISPATCH(void, benchmark, ()) }
@@ -161,6 +162,9 @@ int main(int ac, const char* av[])
 			break;
 		case Config::merge_tsv:
 			merge_tsv();
+			break;
+		case Config::rocid:
+			roc_id();
 			break;
 #ifdef EXTRA
 		case Config::compare:
