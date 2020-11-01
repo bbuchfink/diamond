@@ -244,6 +244,7 @@ struct Config
 	string roc_file;
 	bool target_bias;
 	bool check_multi_target;
+	bool output_fp;
 
 	Sensitivity sensitivity;
 	TracebackMode traceback_mode;

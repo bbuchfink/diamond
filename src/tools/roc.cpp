@@ -185,11 +185,13 @@ struct QueryStats {
 		++true_positives[it->second][Histogram::bin(evalue)];
 	}
 
-	bool add(const string &sseqid, double evalue, const unordered_multimap<string, int> &acc2fam) {
+	enum { UNKNOWN = 0, TP = 1, FP = 2 };
+
+	int add(const string &sseqid, double evalue, const unordered_multimap<string, int> &acc2fam) {
 		if (have_rev_hit && !get_roc)
-			return false;
+			return UNKNOWN;
 		if (sseqid == last_subject)
-			return false;
+			return UNKNOWN;
 		if (config.check_multi_target) {
 			if (previous_targets.find(sseqid) != previous_targets.end())
 				return false;
@@ -200,7 +202,7 @@ struct QueryStats {
 			have_rev_hit = true;
 			if (get_roc)
 				++false_positives[Histogram::bin(evalue)];
-			return false;
+			return FP;
 		}
 		else {
 			bool match_query = false;
@@ -221,8 +223,9 @@ struct QueryStats {
 				have_rev_hit = true;
 				if(get_roc)
 					++false_positives[Histogram::bin(evalue)];
+				return FP;
 			}
-			return match_query;
+			return match_query ? TP : UNKNOWN;
 		}
 	}
 
@@ -288,7 +291,8 @@ double query_roc(const string& buf, Histogram& hist) {
 			tok2 >> evalue;
 		/*if (r.qseqid.empty() || r.sseqid.empty() || std::isnan(r.evalue) || !std::isfinite(r.evalue) || r.evalue < 0.0)
 			throw std::runtime_error("Format error.");*/
-		if (stats.add(acc, evalue, acc2fam) && config.output_hits)
+		int c = stats.add(acc, evalue, acc2fam);
+		if ((c == QueryStats::TP && config.output_hits) || (c == QueryStats::FP && config.output_fp))
 			cout << line << endl;
 	}
 	const double a = stats.auc1(fam_count, acc2fam_query);
