@@ -298,7 +298,7 @@ double query_roc(const string& buf, Histogram& hist) {
 	const double a = stats.auc1(fam_count, acc2fam_query);
 	if (get_roc)
 		stats.update_hist(hist, fam_count);
-	if (!config.output_hits) {
+	if (!config.output_hits && !config.output_fp) {
 		std::lock_guard<std::mutex> lock(mtx_out);
 		cout << stats.query << '\t' << a << endl;
 	}
