@@ -350,7 +350,10 @@ void roc() {
 	families = (int)fam2idx.size();
 	fam_count.insert(fam_count.begin(), families, 0);
 	for (auto i = acc2fam.begin(); i != acc2fam.end(); ++i)
-		++fam_count[i->second];
+		if (config.family_cap == 0)
+			++fam_count[i->second];
+		else
+			fam_count[i->second] = config.family_cap;
 
 	vector<thread> threads;
 	for (unsigned i = 0; i < std::min(config.threads_, 6u); ++i)

@@ -245,6 +245,7 @@ struct Config
 	bool target_bias;
 	bool check_multi_target;
 	bool output_fp;
+	int family_cap;
 
 	Sensitivity sensitivity;
 	TracebackMode traceback_mode;

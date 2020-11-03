@@ -446,7 +446,8 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("roc-file", 0, "", roc_file)
 		("target-bias", 0, "", target_bias)
 		("check-multi-target", 0, "" , check_multi_target)
-		("output-fp", 0, "", output_fp);
+		("output-fp", 0, "", output_fp)
+		("family-cap", 0, "", family_cap);
 	
 	parser.add(general).add(makedb).add(cluster).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options).add(deprecated_options);
 	parser.store(argc, argv, command);
