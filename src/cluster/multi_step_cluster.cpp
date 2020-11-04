@@ -42,7 +42,8 @@ vector<int> MultiStep::cluster(DatabaseFile& db, const vector<bool>* filter) {
 	config.command = Config::blastp;
 	//config.no_self_hits = true;
 	//config.output_format = { "6", "qnum", "snum" };
-	config.output_format = { "6", "qnum", "snum", "qcovhsp", "scovhsp", "bitscore" };
+	//config.output_format = { "6", "qnum", "snum", "qcovhsp", "scovhsp", "bitscore" };
+	config.output_format = { "bin" };
 	config.query_cover = 80;
 	config.subject_cover = 80;
 	config.algo = 0;

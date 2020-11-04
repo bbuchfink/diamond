@@ -56,19 +56,19 @@ struct Neighbors : public vector<vector<int>>, public Consumer {
 	Neighbors(size_t n):
 		vector<vector<int>>(n)
 	{}
-	virtual void consume(const char *ptr, size_t n) override {
-		int query, subject, count;
-		float qcov, scov, bitscore;
-		const char *end = ptr + n;
-		while (ptr < end) {
-			if (sscanf(ptr, "%i\t%i\t%f\t%f\t%f\n%n", &query, &subject, &qcov, &scov, &bitscore, &count) != 5)
-				throw runtime_error("Cluster format error.");
-			ptr += count;
-			if (query == subject)
-				continue;
-			//cout << query << '\t' << subject << '\t' << qcov << '\t' << scov << '\t' << endl;
-			(*this)[query].push_back(subject);
-			edges.push_back({ query, subject, (int)bitscore });
+	virtual void consume(const char* ptr, size_t n) override {
+		const static size_t unit_size = 2 * sizeof(uint32_t) + sizeof(double);
+		const char* end = ptr + n;
+		if (n >= unit_size) {
+			while (ptr < end) {
+				const uint32_t query = *(uint32_t*)ptr;
+				ptr += sizeof(uint32_t);
+				const uint32_t subject = *(uint32_t*)ptr;
+				ptr += sizeof(uint32_t);
+
+				(*this)[query].push_back(subject);
+				edges.push_back({ query, subject });
+			}
 		}
 	}
 	vector<Util::Algo::Edge> edges;
