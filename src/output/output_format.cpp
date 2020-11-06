@@ -95,7 +95,7 @@ Output_format* get_output_format()
 	else if (f[0] == "clus")
 		return new Clustering_format(&f[1]);
 	else if (f[0] == "bin")
-		return new Binary_format(&f[1]);
+		return new Binary_format;
 	else
 		throw std::runtime_error("Invalid output format: " + join(" ", f) + "\nAllowed values: 0,5,xml,6,tab,100,daa,101,sam,102,103,paf");
 }
@@ -140,11 +140,6 @@ void Bin1_format::print_match(const Hsp_context& r, const Metadata &metadata, Te
 		out.write((uint32_t)r.subject_id);
 		out.write(r.bit_score() / std::max((unsigned)r.query.source().length(), r.subject_len));
 	}
-}
-
-void Binary_format::print_query_intro(size_t query_num, const char* query_name, unsigned query_len, TextBuffer& out, bool unaligned) const
-{
-
 }
 
 void Binary_format::print_match(const Hsp_context& r, const Metadata& metadata, TextBuffer& out)
