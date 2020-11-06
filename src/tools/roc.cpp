@@ -18,6 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
+#include <atomic>
 #include <array>
 #include <set>
 #include <map>
@@ -96,6 +97,7 @@ static vector<int> fam_count;
 static std::mutex mtx, mtx_out, mtx_hist;
 static std::condition_variable cdv;
 static bool get_roc;
+static std::atomic<size_t> query_with_fp = 0;
 
 static double coverage(int count, int family) {
 	const int n = fam_count[family];
@@ -302,6 +304,8 @@ double query_roc(const string& buf, Histogram& hist) {
 		std::lock_guard<std::mutex> lock(mtx_out);
 		cout << stats.query << '\t' << a << endl;
 	}
+	if (stats.have_rev_hit)
+		++query_with_fp;
 	return a;
 }
 
@@ -383,7 +387,7 @@ void roc() {
 			if (queries % 10000 == 0)
 				message_stream << "#Queries = " << queries << endl;
 			while (buffers.size() > 100)
-				std::this_thread::sleep_for(std::chrono::seconds(1));
+				std::this_thread::sleep_for(std::chrono::milliseconds(1));
 		}
 		buf->append(in.line);
 		buf->append("\n");
@@ -409,4 +413,5 @@ void roc() {
 
 	message_stream << "#Records: " << n << endl;
 	message_stream << "#Queries: " << queries << endl;
+	message_stream << "#Queries w/ FP: " << query_with_fp << endl;
 }
