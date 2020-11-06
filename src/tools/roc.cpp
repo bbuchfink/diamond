@@ -97,7 +97,7 @@ static vector<int> fam_count;
 static std::mutex mtx, mtx_out, mtx_hist;
 static std::condition_variable cdv;
 static bool get_roc;
-static std::atomic<size_t> query_with_fp = 0;
+static std::atomic<size_t> query_with_fp(0);
 
 static double coverage(int count, int family) {
 	const int n = fam_count[family];
