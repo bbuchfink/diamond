@@ -240,7 +240,6 @@ struct Binary_format : public Output_format
 	Binary_format() :
 		Output_format(bin1)
 	{}
-	virtual void print_query_intro(size_t query_num, const char* query_name, unsigned query_len, TextBuffer& out, bool unaligned) const override {};
 	virtual void print_match(const Hsp_context& r, const Metadata& metadata, TextBuffer& out) override;
 	virtual ~Binary_format()
 	{ }
