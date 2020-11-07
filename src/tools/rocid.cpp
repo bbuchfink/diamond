@@ -27,6 +27,7 @@ static void fetch_map(TextInputFile& map_in, const string& query) {
 	acc2id.clear();
 	fam2idx.clear();
 	counts.clear();
+	totals.clear();
 	while (map_in.getline(), !map_in.eof()) {
 		Util::String::Tokenizer(map_in.line, "\t") >> q >> target >> id >> family;
 		if (q != query) {
