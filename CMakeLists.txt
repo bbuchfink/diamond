@@ -229,6 +229,7 @@ set(OBJECTS
   src/align/global_ranking/extend.cpp
   src/align/load_hits.cpp
   src/tools/rocid.cpp
+  src/basic/cbs.cpp
 )
 
 if(X86)

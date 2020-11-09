@@ -246,6 +246,7 @@ struct Config
 	bool check_multi_target;
 	bool output_fp;
 	int family_cap;
+	int cbs_matrix_scale;
 
 	Sensitivity sensitivity;
 	TracebackMode traceback_mode;

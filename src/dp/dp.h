@@ -28,6 +28,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../basic/statistics.h"
 #include "../basic/config.h"
 #include "../util/dynamic_iterator.h"
+#include "../basic/cbs.h"
 
 int smith_waterman(const sequence &query, const sequence &subject, unsigned band, unsigned padding, int op, int ep);
 
@@ -154,7 +155,7 @@ struct DpTarget
 	DpTarget():
 		target_idx(-1)
 	{}
-	DpTarget(const sequence &seq, int d_begin, int d_end, int j_begin, int j_end, int target_idx = 0, int qlen = 0) :
+	DpTarget(const sequence &seq, int d_begin, int d_end, int j_begin, int j_end, int target_idx = 0, int qlen = 0, const double* query_comp = nullptr) :
 		seq(seq),
 		d_begin(d_begin),
 		d_end(d_end),
@@ -166,6 +167,8 @@ struct DpTarget
 		const int d0 = d_begin;
 		const int j1 = std::min(qlen - 1 - d0, (int)(seq.length() - 1)) + 1;
 		cols = j1 - pos;
+		if (query_comp)
+			matrix = TargetMatrix(query_comp, seq);
 	}
 	DpTarget(const sequence& seq, int target_idx):
 		seq(seq),
@@ -190,6 +193,7 @@ struct DpTarget
 	}
 	sequence seq;
 	int d_begin, d_end, j_begin, j_end, target_idx, cols;
+	TargetMatrix matrix;
 };
 
 struct DpStat

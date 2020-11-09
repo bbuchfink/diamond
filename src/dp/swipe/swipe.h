@@ -30,6 +30,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/simd/vector.h"
 #include "../../util/system.h"
 #include "../../util/memory/alignment.h"
+#include "../../util/simd/transpose32x32.h"
 
 static inline uint8_t cmp_mask(int x, int y) {
 	return x == y;
@@ -180,45 +181,6 @@ MSC_INLINE _sv swipe_cell_update(const _sv &diagonal_cell,
 	return current_cell;
 }
 
-template<typename _sv, typename _cbs, typename _trace_mask, typename _row_counter>
-MSC_INLINE _sv swipe_cell_update(const _sv &diagonal_cell,
-	const _sv &scores,
-	_cbs query_bias,
-	_sv target_bias,
-	const _sv &gap_extension,
-	const _sv &gap_open,
-	_sv &horizontal_gap,
-	_sv &vertical_gap,
-	_sv &best,
-	void*,
-	void*,
-	void*,
-	_trace_mask trace_mask,
-	_row_counter& row_counter)
-{
-	using std::max;
-
-	_sv current_cell = diagonal_cell + add_cbs(scores, query_bias) + target_bias;
-	current_cell = max(max(current_cell, vertical_gap), horizontal_gap);
-	::DISPATCH_ARCH::ScoreTraits<_sv>::saturate(current_cell);
-
-	make_gap_mask(trace_mask, current_cell, vertical_gap, horizontal_gap);
-
-	best = max(best, current_cell);
-
-	row_counter.inc(best, current_cell);
-
-	vertical_gap -= gap_extension;
-	horizontal_gap -= gap_extension;
-	const _sv open = current_cell - gap_open;
-	vertical_gap = max(vertical_gap, open);
-	horizontal_gap = max(horizontal_gap, open);
-
-	make_open_mask(trace_mask, open, vertical_gap, horizontal_gap);
-
-	return current_cell;
-}
-
 /*template<typename _sv>
 static inline _sv swipe_cell_update(const _sv& diagonal_cell,
 	const _sv& scores,
@@ -309,11 +271,24 @@ struct SwipeProfile
 			data_[j] = _sv(j, seq);
 	}
 #endif
+
 	inline const _sv& get(Letter i) const
 	{
 		return data_[(int)i];
 	}
-	_sv data_[AMINO_ACID_COUNT];
+
+	void set(const int8_t** target_scores) {
+#ifdef __AVX2__
+		transpose(target_scores, 32, (int8_t*)data_, __m256i());
+		for (int i = 0; i < AMINO_ACID_COUNT; ++i) {
+			data_[i].expand_from_8bit();
+		}
+#endif
+	}
+
+	//_sv data_[AMINO_ACID_COUNT];
+	_sv data_[32];
+
 };
 
 template<>
@@ -324,7 +299,8 @@ struct SwipeProfile<int32_t>
 	{
 		int16_t s[32];
 		_mm256_storeu_si256((__m256i*)s, seq);
-		row = score_matrix.row((char)s[0]);
+		const int* row = score_matrix.row((char)s[0]);
+		std::copy(row, row + 32, this->row);
 	}
 #endif
 #ifdef __SSE2__
@@ -332,18 +308,24 @@ struct SwipeProfile<int32_t>
 	{
 		int16_t s[8];
 		_mm_storeu_si128((__m128i*)s, seq);
-		row = score_matrix.row((char)s[0]);
+		const int* row = score_matrix.row((char)s[0]);
+		std::copy(row, row + 32, this->row);
 	}
 #endif
 	void set(uint64_t seq)
 	{
-		row = score_matrix.row((char)seq);
+		const int* row = score_matrix.row((char)seq);
+		std::copy(row, row + 32, this->row);
+	}
+	void set(const int8_t** target_scores) {
+		for (int i = 0; i < 32; ++i)
+			row[i] = target_scores[0][i];
 	}
 	int32_t get(char i) const
 	{
 		return row[(int)i];
 	}
-	const int32_t *row;
+	int32_t row[32];
 };
 
 }

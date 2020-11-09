@@ -114,6 +114,17 @@ struct TargetIterator
 	}
 #endif
 
+	const int8_t** get(const int8_t** target_scores) const {
+		static const int8_t blank[32] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+		std::fill(target_scores, target_scores + 32, blank);
+		for (int i = 0; i < active.size(); ++i) {
+			const int channel = active[i];
+			const char l = (*this)[channel];
+			target_scores[channel] = &(subject_begin[target[channel]].matrix.scores[32 * (int)l]);
+		}
+		return target_scores;
+	}
+
 	bool init_target(int i, int channel)
 	{
 		if (next < n_targets) {

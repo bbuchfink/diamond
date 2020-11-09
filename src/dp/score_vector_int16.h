@@ -149,6 +149,15 @@ struct score_vector<int16_t>
 		data_ = _mm256_load_si256((__m256i*)d);
 	}
 
+	void expand_from_8bit() {
+		alignas(32) int8_t v[32];
+		alignas(32) int16_t w[16];
+		_mm256_storeu_si256((__m256i*)v, data_);
+		for (int i = 0; i < 16; ++i)
+			w[i] = v[i];
+		data_ = _mm256_load_si256((__m256i*)w);
+	}
+
 	__m256i data_;
 
 };

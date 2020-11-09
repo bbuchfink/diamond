@@ -157,6 +157,8 @@ struct score_vector<int8_t>
 		return s;
 	}
 
+	void expand_from_8bit() {}
+
 	__m256i data_;
 
 };
