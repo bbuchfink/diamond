@@ -30,7 +30,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/simd/vector.h"
 #include "../../util/system.h"
 #include "../../util/memory/alignment.h"
+#ifdef __AVX2__
 #include "../../util/simd/transpose32x32.h"
+#endif
 
 static inline uint8_t cmp_mask(int x, int y) {
 	return x == y;
