@@ -595,7 +595,7 @@ Blast_CompositionBasedStats(int** matrix, double* LambdaRatio,
     return 0;
 }
 
-inline std::array<double, 20> composition(const sequence& s) {
+std::array<double, 20> composition(const sequence& s) {
     std::array<double, 20> r;
     r.fill(0.0);
     int n = 0;
