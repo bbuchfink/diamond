@@ -282,7 +282,7 @@ struct SwipeProfile
 	void set(const int8_t** target_scores) {
 #if ARCH_ID == 2
 		transpose(target_scores, 32, (int8_t*)data_, __m256i());
-		for (int i = 0; i < AMINO_ACID_COUNT; ++i) {
+		for (size_t i = 0; i < AMINO_ACID_COUNT; ++i) {
 			data_[i].expand_from_8bit();
 		}
 #endif

@@ -624,8 +624,8 @@ TargetMatrix::TargetMatrix(const double* query_comp, const sequence& target) :
         p2[i] = &s2[i * 20];
     }
     Blast_CompositionBasedStats(p2.data(), &lambda_ratio, p1.data(), query_comp, c.data());
-    for (int i = 0; i < AMINO_ACID_COUNT; ++i) {
-        for (int j = 0; j < AMINO_ACID_COUNT; ++j)
+    for (size_t i = 0; i < AMINO_ACID_COUNT; ++i) {
+        for (size_t j = 0; j < AMINO_ACID_COUNT; ++j)
             if (i < 20 && j < 20) {
                 scores[i * 32 + j] = s2[i * 20 + j];
                 //std::cerr << s2[i * 20 + j] << ' ';
