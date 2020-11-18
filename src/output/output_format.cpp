@@ -94,7 +94,7 @@ Output_format* get_output_format()
 	else if (f[0] == "clus")
 		return new Clustering_format(&f[1]);
 	else
-		throw std::runtime_error("Invalid output format: " + join(" ", f) + "\nAllowed values: 0,5,xml,6,tab,100,daa,101,sam,102,103,paf");
+		throw std::runtime_error("Invalid output format: " + f[0] + "\nAllowed values: 0,5,xml,6,tab,100,daa,101,sam,102,103,paf");
 }
 
 void init_output(bool have_taxon_id_lists, bool have_taxon_nodes, bool have_taxon_scientific_names)
