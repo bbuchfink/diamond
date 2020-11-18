@@ -1,6 +1,4 @@
 [2.0.5]
-- Added the option `--ext full` to compute full-matrix Smith Waterman extensions
-  (default is banded).
 - Fixed an issue that could cause high memory use in frameshift alignment mode.
 
 [2.0.4]

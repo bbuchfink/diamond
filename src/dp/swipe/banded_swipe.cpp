@@ -803,7 +803,7 @@ list<Hsp> swipe(
 	task_timer timer;
 	for (int i = 0; i < targets.n_targets; ++i) {
 		if (best[i] < ScoreTraits<_sv>::max_score()) {
-			if (ScoreTraits<_sv>::int_score(best[i]) >= score_cutoff * config.cbs_matrix_scale * subject_begin[i].matrix.lambda_ratio) {
+			if (ScoreTraits<_sv>::int_score(best[i]) >= (score_cutoff * config.cbs_matrix_scale)) {
 				out.push_back(traceback<_sv>(query, frame, composition_bias, dp, subject_begin[i], d_begin[i], best[i], max_col[i], i, i0 - j, i1 - j, max_band_row[i]));
 				if ((config.max_hsps == 0 || config.max_hsps > 1) && !config.no_swipe_realign
 					&& ::DP::BandedSwipe::DISPATCH_ARCH::realign<_traceback>(out.back(), subject_begin[i]))
