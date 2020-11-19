@@ -159,7 +159,7 @@ struct QueryStats {
 			for (auto j = i.first; j != i.second; ++j)
 				query_family[j->second] = true;
 		}
-		if (config.forward_fp) {
+		if (!config.no_forward_fp) {
 			auto i = acc2fam.equal_range(query);
 			for (auto j = i.first; j != i.second; ++j)
 				query_fold.insert(fam2fold[j->second]);
@@ -218,10 +218,10 @@ struct QueryStats {
 				add_family_hit(j->second, evalue);
 				if (config.output_hits && query_family[j->second])
 					match_query = true;
-				if (config.forward_fp && query_fold.find(fam2fold[j->second]) != query_fold.end())
+				if (!config.no_forward_fp && query_fold.find(fam2fold[j->second]) != query_fold.end())
 					same_fold = true;
 			}
-			if (config.forward_fp && !same_fold) {
+			if (!config.no_forward_fp && !same_fold) {
 				have_rev_hit = true;
 				if(get_roc)
 					++false_positives[Histogram::bin(evalue)];

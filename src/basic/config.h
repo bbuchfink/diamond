@@ -239,7 +239,7 @@ struct Config
 	double ranking_cutoff_bitscore;
 	int left_most_interval;
 	bool alp;
-	bool forward_fp;
+	bool no_forward_fp;
 	bool no_ref_masking;
 	string roc_file;
 	bool target_bias;
