@@ -71,7 +71,7 @@ The output file here is specified with the `–o` option and named
     
 Documentation
 =============
-The online documentation is located at <http://www.diamondsearch.org>. For the markdown source code and an offline, text-based documentation, see: <https://github.com/bbuchfink/diamond/docs>.
+The online documentation is located at <http://www.diamondsearch.org>. For the markdown source code and an offline, text-based documentation, see: <https://github.com/bbuchfink/diamond/tree/master/docs>.
 
 
 About
