@@ -210,13 +210,17 @@ list<Hsp> swipe(const sequence &query, vector<DpTarget> &targets8, vector<DpTarg
 	list<Hsp> out;
 	auto time_stat = (flags & TRACEBACK) ? Statistics::TIME_TRACEBACK_SW : Statistics::TIME_SW;
 #ifdef __SSE4_1__
-	task_timer timer;
-	std::sort(targets8.begin(), targets8.end());
-	stat.inc(Statistics::TIME_TARGET_SORT, timer.microseconds());
-	stat.inc(Statistics::EXT8, targets8.size());
-	timer.go();
-	out = swipe_threads<::DISPATCH_ARCH::score_vector<int8_t>>(query, targets8.begin(), targets8.end(), targets, frame, composition_bias ? composition_bias->int8.data() : nullptr, flags, score_cutoff, overflow8, stat);
-	if((flags & PARALLEL) == 0) stat.inc(time_stat, timer.microseconds());
+	if (config.cbs_matrix_scale < 16) {
+		task_timer timer;
+		std::sort(targets8.begin(), targets8.end());
+		stat.inc(Statistics::TIME_TARGET_SORT, timer.microseconds());
+		stat.inc(Statistics::EXT8, targets8.size());
+		timer.go();
+		out = swipe_threads<::DISPATCH_ARCH::score_vector<int8_t>>(query, targets8.begin(), targets8.end(), targets, frame, composition_bias ? composition_bias->int8.data() : nullptr, flags, score_cutoff, overflow8, stat);
+		if ((flags & PARALLEL) == 0) stat.inc(time_stat, timer.microseconds());
+	}
+	else
+		overflow8 = std::move(targets8);
 #else
 	overflow8 = std::move(targets8);
 #endif

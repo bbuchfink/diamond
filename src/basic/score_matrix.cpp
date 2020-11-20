@@ -16,6 +16,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
+#include <math.h>
 #include <string>
 #include <limits>
 #include <algorithm>
@@ -25,6 +26,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <sstream>
 #include "score_matrix.h"
 #include "config.h"
+#include "cbs.h"
 
 using std::string;
 using std::vector;
@@ -202,7 +204,7 @@ const Matrix_info Matrix_info::matrices[] = {
 	{ "PAM30", pam30_values, (const signed char*)s_Pam30PSM, PAM30_VALUES_MAX, 9, 1 }
 };
 
-Score_matrix::Score_matrix(const string & matrix, int gap_open, int gap_extend, int frameshift, int stop_match_score, uint64_t db_letters, bool use_alp):
+Score_matrix::Score_matrix(const string & matrix, int gap_open, int gap_extend, int frameshift, int stop_match_score, uint64_t db_letters, bool use_alp, int scale):
 	gap_open_ (gap_open == -1 ? Matrix_info::get(matrix).default_gap_open : gap_open),
 	gap_extend_ (gap_extend == -1 ? Matrix_info::get(matrix).default_gap_extend : gap_extend),
 	frame_shift_(frameshift),
@@ -218,7 +220,8 @@ Score_matrix::Score_matrix(const string & matrix, int gap_open, int gap_extend, 
 	matrix8u_low_(Matrix_info::get(matrix).scores, stop_match_score, bias_, 16),
 	matrix8u_high_(Matrix_info::get(matrix).scores, stop_match_score, bias_, 16, 16),
 	matrix16_(Matrix_info::get(matrix).scores, stop_match_score),
-	matrix32_(Matrix_info::get(matrix).scores, stop_match_score)
+	matrix32_(Matrix_info::get(matrix).scores, stop_match_score),
+	matrix32_scaled_(BLOSUM62_FREQRATIOS, BLOSUM62_UNGAPPED_LAMBDA, Matrix_info::get(matrix).scores, scale)
 { 
 	static const int N = 20;
 	if (use_alp) {
@@ -331,3 +334,27 @@ Score_matrix::Score_matrix(const string &matrix_file, double lambda, double K, i
 	constants[4] = K;
 	constants_ = constants;
 }
+
+template<typename _t>
+Score_matrix::Scores<_t>::Scores(const double freq_ratios[28][28], double lambda, const int8_t* scores, int scale) {
+	const int n = value_traits.alphabet_size;
+	for (int i = 0; i < 32; ++i)
+		for (int j = 0; j < 32; ++j) {
+			if (i < 20 && j < 20)
+				data[i * 32 + j] = std::round(std::log(freq_ratios[ALPH_TO_NCBI[i]][ALPH_TO_NCBI[j]]) / lambda * scale);
+			else if (i < n && j < n)
+				data[i * 32 + j] = std::max((int)scores[i * n + j] * scale, SCHAR_MIN);
+			else
+				data[i * 32 + j] = SCHAR_MIN;
+		}
+}
+
+template<typename _t>
+std::vector<const _t*> Score_matrix::Scores<_t>::pointers() const {
+	vector<const _t*> r(32);
+	for (int i = 0; i < 32; ++i)
+		r[i] = &data[i * 32];
+	return r;
+}
+
+template struct Score_matrix::Scores<int>;

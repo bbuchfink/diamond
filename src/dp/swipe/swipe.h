@@ -288,6 +288,15 @@ struct SwipeProfile
 #endif
 	}
 
+	void set(const int32_t** target_scores) {
+		typename ScoreTraits<_sv>::Score s[ScoreTraits<_sv>::CHANNELS];
+		for (size_t i = 0; i < AMINO_ACID_COUNT; ++i) {
+			for (size_t j = 0; j < ScoreTraits<_sv>::CHANNELS; ++j)
+				s[j] = target_scores[j][i];
+			data_[i] = load_sv(s);
+		}
+	}
+
 	//_sv data_[AMINO_ACID_COUNT];
 	_sv data_[32];
 
@@ -320,6 +329,10 @@ struct SwipeProfile<int32_t>
 		std::copy(row, row + 32, this->row);
 	}
 	void set(const int8_t** target_scores) {
+		for (int i = 0; i < 32; ++i)
+			row[i] = target_scores[0][i];
+	}
+	void set(const int32_t * *target_scores) {
 		for (int i = 0; i < 32; ++i)
 			row[i] = target_scores[0][i];
 	}

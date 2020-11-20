@@ -39,7 +39,7 @@ struct Score_matrix
 {
 
 	Score_matrix() :ln_k_(0.0) {}
-	Score_matrix(const string &matrix, int gap_open, int gap_extend, int frame_shift, int stop_match_score, uint64_t db_letters = 0, bool use_alp=false);
+	Score_matrix(const string &matrix, int gap_open, int gap_extend, int frame_shift, int stop_match_score, uint64_t db_letters = 0, bool use_alp=false, int scale=1);
 	Score_matrix(const string &matrix_file, double lambda, double K, int gap_open, int gap_extend, uint64_t db_letters = 0);
 
 	friend std::ostream& operator<<(std::ostream& s, const Score_matrix &m);
@@ -76,6 +76,10 @@ struct Score_matrix
 	const int* matrix32() const
 	{
 		return matrix32_.data;
+	}
+
+	std::vector<const int*> matrix32_scaled_pointers() const {
+		return matrix32_scaled_.pointers();
 	}
 
 	int operator()(Letter a, Letter b) const
@@ -181,6 +185,16 @@ private:
 			if (stop_match_score != 1)
 				data[24 * 32 + 24] = stop_match_score;
 		}
+		Scores(const double freq_ratios[28][28], double lambda, const int8_t* scores, int scale);
+		std::vector<const _t*> pointers() const;
+		friend std::ostream& operator<<(std::ostream& s, const Scores& scores) {
+			for (int i = 0; i < 20; ++i) {
+				for (int j = 0; j < 20; ++j)
+					s << scores.data[i * 32 + j] << '\t';
+				s << endl;
+			}
+			return s;
+		}
 		alignas(32) _t data[32 * 32];
 	};
 
@@ -197,7 +211,7 @@ private:
 	Scores<int8_t> matrix8u_low_;
 	Scores<int8_t> matrix8u_high_;
 	Scores<int16_t> matrix16_;
-	Scores<int> matrix32_;
+	Scores<int> matrix32_, matrix32_scaled_;
 	Sls::AlignmentEvaluer evaluer;
 
 };

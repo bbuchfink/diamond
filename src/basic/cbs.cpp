@@ -8,10 +8,13 @@
 #include "cbs.h"
 #include "config.h"
 
+using std::vector;
+
 #define BLAST_KARLIN_LAMBDA_ACCURACY_DEFAULT    (1.e-5)
 #define BLAST_KARLIN_LAMBDA_ITER_DEFAULT        17
 #define COMPO_SCORE_MIN (-128)
 #define LambdaRatioLowerBound 0.5
+const int ALPH_TO_NCBI[] = { 1, 16, 13, 4, 3, 15, 5, 7, 8, 9, 11, 10, 12, 6, 14, 17, 18, 20, 22, 19 };
 
 typedef struct Blast_ScoreFreq {
     int         score_min; /**< lowest allowed scores */
@@ -421,7 +424,7 @@ s_CalcLambda(double probs[], int min_score, int max_score, double lambda0)
 }
 
 inline static void s_GetScoreRange(int* obs_min, int* obs_max,
-    int** matrix, int rows)
+    const int* const* matrix, int rows)
 {
     int aa;                    /* index of an amino-acid in the 20
                                   letter alphabet */
@@ -444,7 +447,7 @@ inline static void s_GetScoreRange(int* obs_min, int* obs_max,
 
 inline static int
 s_GetMatrixScoreProbs(double** scoreProb, int* obs_min, int* obs_max,
-    int** matrix, int alphsize,
+    const int* const* matrix, int alphsize,
     const double* subjectProbArray,
     const double* queryProbArray)
 {
@@ -515,11 +518,9 @@ s_RoundScoreMatrix(int** matrix, int rows, int cols,
 
 inline static int
 s_ScaleSquareMatrix(int** matrix, int alphsize,
-    int** start_matrix,
     const double row_prob[], const double col_prob[],
     double Lambda)
 {
-    static const int alph_map[] = { 1, 16, 13, 4, 3, 15, 5, 7, 8, 9, 11, 10, 12, 6, 14, 17, 18, 20, 22, 19 };
     double** scores;     /* a double precision matrix of scores */
     int i;                /* iteration index */
 
@@ -528,7 +529,7 @@ s_ScaleSquareMatrix(int** matrix, int alphsize,
 
     for (i = 0; i < alphsize; i++) {
         for (int j = 0; j < alphsize; ++j)
-            scores[i][j] = BLOSUM62_FREQRATIOS[alph_map[i]][alph_map[j]];
+            scores[i][j] = BLOSUM62_FREQRATIOS[ALPH_TO_NCBI[i]][ALPH_TO_NCBI[j]];
         //memcpy(scores[i], freq_ratios[i], alphsize * sizeof(double));
     }
     Blast_FreqRatioToScore(scores, alphsize, alphsize, Lambda);
@@ -545,26 +546,26 @@ s_ScaleSquareMatrix(int** matrix, int alphsize,
 
 inline int
 Blast_CompositionBasedStats(int** matrix, double* LambdaRatio,
-    int** matrix_in,
+    const int* const* matrix_in,
     const double queryProb[], const double resProb[])
 {
-    static double ungappedLambda = 0.0;
     double correctUngappedLambda; /* new value of ungapped lambda */
     int obs_min, obs_max;         /* smallest and largest score in the
                                      unscaled matrix */
     double* scoreArray;           /* an array of score probabilities */
     int out_of_memory;            /* status flag to indicate out of memory */
 
-    if (ungappedLambda == 0.0) {
+    /*if (ungappedLambda == 0.0) {
 
         s_GetMatrixScoreProbs(&scoreArray, &obs_min, &obs_max, matrix_in, 20, BLOSUM62_bg, BLOSUM62_bg);
         ungappedLambda = s_CalcLambda(scoreArray, obs_min, obs_max, 0.5);
         //std::cerr << "lambda=" << ungappedLambda << endl;
         free(scoreArray);
 
-    }
+    }*/
 
     out_of_memory = s_GetMatrixScoreProbs(&scoreArray, &obs_min, &obs_max, matrix_in, 20, resProb, queryProb);
+    const double ungappedLambda = BLOSUM62_UNGAPPED_LAMBDA / config.cbs_matrix_scale;
 
     if (out_of_memory)
         return -1;
@@ -586,7 +587,6 @@ Blast_CompositionBasedStats(int** matrix, double* LambdaRatio,
         double scaledLambda = ungappedLambda / (*LambdaRatio);
 
         s_ScaleSquareMatrix(matrix, 20,
-            matrix_in,
             queryProb, resProb, scaledLambda);
 
     }
@@ -612,15 +612,15 @@ std::array<double, 20> composition(const sequence& s) {
 }
 
 TargetMatrix::TargetMatrix(const double* query_comp, const sequence& target) :
-    scores(32 * AMINO_ACID_COUNT)
+    scores(32 * AMINO_ACID_COUNT),
+    scores32(32 * AMINO_ACID_COUNT)
 {
+    const vector<const int*> p1 = score_matrix.matrix32_scaled_pointers();
+
     auto c = composition(target);
-    std::vector<int> s1(20 * 20), s2(20 * 20);
-    std::vector<int*> p1(20), p2(20);
+    std::vector<int> s2(20 * 20);
+    std::vector<int*> p2(20);
     for (int i = 0; i < 20; ++i) {
-        p1[i] = &s1[i * 20];
-        for (int j = 0; j < 20; ++j)
-            s1[i * 20 + j] = score_matrix(i, j) * config.cbs_matrix_scale;
         p2[i] = &s2[i * 20];
     }
     Blast_CompositionBasedStats(p2.data(), &lambda_ratio, p1.data(), query_comp, c.data());
@@ -628,10 +628,13 @@ TargetMatrix::TargetMatrix(const double* query_comp, const sequence& target) :
         for (size_t j = 0; j < AMINO_ACID_COUNT; ++j)
             if (i < 20 && j < 20) {
                 scores[i * 32 + j] = s2[i * 20 + j];
+                scores32[i * 32 + j] = s2[i * 20 + j];
                 //std::cerr << s2[i * 20 + j] << ' ';
             }
-            else
-                scores[i * 32 + j] = score_matrix(i, j);
+            else {
+                scores[i * 32 + j] = score_matrix(i, j) * config.cbs_matrix_scale;
+                scores32[i * 32 + j] = score_matrix(i, j) * config.cbs_matrix_scale;
+            }
         //std::cerr << endl;
     }
 }

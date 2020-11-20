@@ -125,6 +125,18 @@ struct TargetIterator
 		return target_scores;
 	}
 
+	std::vector<const int32_t*> get32() const {
+		static const int32_t blank[32] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+		std::vector<const int32_t*> target_scores(CHANNELS);
+		std::fill(target_scores.begin(), target_scores.end(), blank);
+		for (int i = 0; i < active.size(); ++i) {
+			const int channel = active[i];
+			const char l = (*this)[channel];
+			target_scores[channel] = &(subject_begin[target[channel]].matrix.scores32[32 * (int)l]);
+		}
+		return target_scores;
+	}
+
 	bool init_target(int i, int channel)
 	{
 		if (next < n_targets) {
