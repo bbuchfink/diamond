@@ -27,7 +27,7 @@ typedef struct Blast_ScoreFreq {
 } Blast_ScoreFreq;
 
 /** Underlying frequency ratios for BLOSUM62 */
-static const double BLOSUM62_FREQRATIOS[28][28] =
+const double BLOSUM62_FREQRATIOS[28][28] =
 { {0.00000000e+00, 0.00000000e+00, 0.00000000e+00, 0.00000000e+00,
   0.00000000e+00, 0.00000000e+00, 0.00000000e+00, 0.00000000e+00,
   0.00000000e+00, 0.00000000e+00, 0.00000000e+00, 0.00000000e+00,
