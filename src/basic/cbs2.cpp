@@ -1,3 +1,155 @@
+#include "config.h"
+
+/** Joint probabilities for BLOSUM62 */
+static constexpr int COMPO_NUM_TRUE_AA = 20;
+static const int kReMatrixAdjustmentPseudocounts = 20;
+/** relative entropy of BLOSUM62 */
+static const double kFixedReBlosum62 = 0.44;
+
+static const double
+BLOSUM62_JOINT_PROBS[COMPO_NUM_TRUE_AA][COMPO_NUM_TRUE_AA] =
+{
+  {2.1497573378347484e-02, 2.3470224274721213e-03, 1.9493235258876179e-03,
+   2.1674844853066858e-03, 1.5903351423026848e-03, 1.9242657898716525e-03,
+   2.9879059292799641e-03, 5.8158526388051033e-03, 1.1076584657559144e-03,
+   3.1880644746334580e-03, 4.4186245468471547e-03, 3.3466571942021082e-03,
+   1.3412107617355408e-03, 1.6360627863999076e-03, 2.1568959784943114e-03,
+   6.2524987419815400e-03, 3.7180506975672363e-03, 4.0281679108936688e-04,
+   1.2999956675626666e-03, 5.0679056444508912e-03},
+  {2.3470224274721213e-03, 1.7757465118386322e-02, 1.9786027128591904e-03,
+   1.5865480081162602e-03, 3.9365984789376245e-04, 2.4858611089731411e-03,
+   2.6933867548771758e-03, 1.7221140903704937e-03, 1.2407382229440791e-03,
+   1.2435878276496955e-03, 2.4193952633248727e-03, 6.2339060289407083e-03,
+   8.0309461712520876e-04, 9.3181986323789834e-04, 9.5783034332718700e-04,
+   2.2660898636037261e-03, 1.7802796534180537e-03, 2.6571979312581875e-04,
+   9.2634607111251918e-04, 1.5810185245264004e-03},
+  {1.9493235258876179e-03, 1.9786027128591904e-03, 1.4140291972553610e-02,
+   3.7201973506001745e-03, 4.3845466068066216e-04, 1.5304436972610567e-03,
+   2.2097156829738759e-03, 2.8591871815612977e-03, 1.4301072616183181e-03,
+   9.9437221166923172e-04, 1.3690958423974782e-03, 2.4402105140841090e-03,
+   5.2943633069226512e-04, 7.5004227978192801e-04, 8.6016459857770028e-04,
+   3.1466019144814608e-03, 2.2360795375444384e-03, 1.6159545671597605e-04,
+   7.0048422794024819e-04, 1.2014015528772706e-03},
+  {2.1674844853066858e-03, 1.5865480081162602e-03, 3.7201973506001745e-03,
+   2.1274574617480089e-02, 3.9909227141697264e-04, 1.6481246723433428e-03,
+   4.9158017471929655e-03, 2.5221102126636373e-03, 9.5384849402143984e-04,
+   1.2347404942429857e-03, 1.5202051791453383e-03, 2.4453087721980561e-03,
+   4.6429229320514104e-04, 7.6023722413111566e-04, 1.2373315413524663e-03,
+   2.8035127901697272e-03, 1.8961512776990257e-03, 1.6218020183662784e-04,
+   5.9842263937853702e-04, 1.3158365660538270e-03},
+  {1.5903351423026848e-03, 3.9365984789376245e-04, 4.3845466068066216e-04,
+   3.9909227141697264e-04, 1.1931352277704348e-02, 3.0937204045913537e-04,
+   3.8338775043186374e-04, 7.6951976030099293e-04, 2.2976387481074697e-04,
+   1.0956590131781735e-03, 1.5682982157153873e-03, 5.0124929379033781e-04,
+   3.7717165634097634e-04, 5.1389991547056834e-04, 3.6111795849154795e-04,
+   1.0432626586831986e-03, 9.3041313726939057e-04, 1.4474923964368156e-04,
+   3.4603772624580643e-04, 1.3606607271146112e-03},
+  {1.9242657898716525e-03, 2.4858611089731411e-03, 1.5304436972610567e-03,
+   1.6481246723433428e-03, 3.0937204045913537e-04, 7.3292255467189687e-03,
+   3.5385780499965817e-03, 1.3683038039160171e-03, 1.0489026828741754e-03,
+   8.9102936026571569e-04, 1.6174411456311808e-03, 3.0968229715707327e-03,
+   7.3993258722701268e-04, 5.4255147972143906e-04, 8.4668181752066874e-04,
+   1.8931125300036275e-03, 1.3796838284921874e-03, 2.2737931366728891e-04,
+   6.7584155312457842e-04, 1.1660966117775285e-03},
+  {2.9879059292799641e-03, 2.6933867548771758e-03, 2.2097156829738759e-03,
+   4.9158017471929655e-03, 3.8338775043186374e-04, 3.5385780499965817e-03,
+   1.6133927472163669e-02, 1.9380952488713059e-03, 1.3667885452189439e-03,
+   1.2192061706431622e-03, 2.0030316026648431e-03, 4.1322603720305197e-03,
+   6.7909745467514783e-04, 8.5179405867513139e-04, 1.4216207127018586e-03,
+   2.9539180653600089e-03, 2.0493063257644955e-03, 2.6488552587183780e-04,
+   8.7044186256788659e-04, 1.6987763526262680e-03},
+  {5.8158526388051033e-03, 1.7221140903704937e-03, 2.8591871815612977e-03,
+   2.5221102126636373e-03, 7.6951976030099293e-04, 1.3683038039160171e-03,
+   1.9380952488713059e-03, 3.7804346453413303e-02, 9.5813607255887238e-04,
+   1.3849118546156933e-03, 2.0864716056392773e-03, 2.5392537741810947e-03,
+   7.3281559749652399e-04, 1.1976708695723554e-03, 1.3641171883713547e-03,
+   3.8342830901664762e-03, 2.1858459940987062e-03, 4.0740829083805248e-04,
+   8.3467413018106177e-04, 1.8218235950233687e-03},
+  {1.1076584657559144e-03, 1.2407382229440791e-03, 1.4301072616183181e-03,
+   9.5384849402143984e-04, 2.2976387481074697e-04, 1.0489026828741754e-03,
+   1.3667885452189439e-03, 9.5813607255887238e-04, 9.2802502369336622e-03,
+   5.8089627083019206e-04, 9.8696608463236094e-04, 1.1873625842258938e-03,
+   3.8264639620910225e-04, 8.1041076335565583e-04, 4.7770135861914477e-04,
+   1.1052034635193162e-03, 7.4371746073077327e-04, 1.5168037757411286e-04,
+   1.5213771111755425e-03, 6.4882907765797669e-04},
+  {3.1880644746334580e-03, 1.2435878276496955e-03, 9.9437221166923172e-04,
+   1.2347404942429857e-03, 1.0956590131781735e-03, 8.9102936026571569e-04,
+   1.2192061706431622e-03, 1.3849118546156933e-03, 5.8089627083019206e-04,
+   1.8441526588740136e-02, 1.1382470627796603e-02, 1.5655862274689192e-03,
+   2.5081290988482057e-03, 3.0458868657559346e-03, 1.0068164685944146e-03,
+   1.7225081689171561e-03, 2.6953622613315018e-03, 3.6183761166072852e-04,
+   1.3821121844492116e-03, 1.1972663837662637e-02},
+  {4.4186245468471547e-03, 2.4193952633248727e-03, 1.3690958423974782e-03,
+   1.5202051791453383e-03, 1.5682982157153873e-03, 1.6174411456311808e-03,
+   2.0030316026648431e-03, 2.0864716056392773e-03, 9.8696608463236094e-04,
+   1.1382470627796603e-02, 3.7141460156350926e-02, 2.4634345023228079e-03,
+   4.9293545515183088e-03, 5.4151301166464015e-03, 1.4146090399381900e-03,
+   2.4277107072013821e-03, 3.3238031308707055e-03, 7.3206640617832933e-04,
+   2.2096734692836624e-03, 9.4786263030457313e-03},
+  {3.3466571942021082e-03, 6.2339060289407083e-03, 2.4402105140841090e-03,
+   2.4453087721980561e-03, 5.0124929379033781e-04, 3.0968229715707327e-03,
+   4.1322603720305197e-03, 2.5392537741810947e-03, 1.1873625842258938e-03,
+   1.5655862274689192e-03, 2.4634345023228079e-03, 1.6113385590544604e-02,
+   9.0876633395557617e-04, 9.4875149773685364e-04, 1.5773020912564391e-03,
+   3.1016069999481111e-03, 2.3467014804084987e-03, 2.7198500003555514e-04,
+   9.9908866586876396e-04, 1.9360424083099779e-03},
+  {1.3412107617355408e-03, 8.0309461712520876e-04, 5.2943633069226512e-04,
+   4.6429229320514104e-04, 3.7717165634097634e-04, 7.3993258722701268e-04,
+   6.7909745467514783e-04, 7.3281559749652399e-04, 3.8264639620910225e-04,
+   2.5081290988482057e-03, 4.9293545515183088e-03, 9.0876633395557617e-04,
+   4.0477309321969848e-03, 1.1901770463553603e-03, 4.0824445213456919e-04,
+   8.5603787638552766e-04, 1.0095451907679563e-03, 1.9872537223131380e-04,
+   5.7145288352831449e-04, 2.3123361470140736e-03},
+  {1.6360627863999076e-03, 9.3181986323789834e-04, 7.5004227978192801e-04,
+   7.6023722413111566e-04, 5.1389991547056834e-04, 5.4255147972143906e-04,
+   8.5179405867513139e-04, 1.1976708695723554e-03, 8.1041076335565583e-04,
+   3.0458868657559346e-03, 5.4151301166464015e-03, 9.4875149773685364e-04,
+   1.1901770463553603e-03, 1.8277684015431908e-02, 5.2528021756783813e-04,
+   1.1939618185901600e-03, 1.1624184369750680e-03, 8.4917468952377874e-04,
+   4.2392005745634370e-03, 2.5763052227920180e-03},
+  {2.1568959784943114e-03, 9.5783034332718700e-04, 8.6016459857770028e-04,
+   1.2373315413524663e-03, 3.6111795849154795e-04, 8.4668181752066874e-04,
+   1.4216207127018586e-03, 1.3641171883713547e-03, 4.7770135861914477e-04,
+   1.0068164685944146e-03, 1.4146090399381900e-03, 1.5773020912564391e-03,
+   4.0824445213456919e-04, 5.2528021756783813e-04, 1.9066033679132538e-02,
+   1.6662567934883051e-03, 1.3511005665728870e-03, 1.4152209821874487e-04,
+   4.5224391125285910e-04, 1.2451325046931832e-03},
+  {6.2524987419815400e-03, 2.2660898636037261e-03, 3.1466019144814608e-03,
+   2.8035127901697272e-03, 1.0432626586831986e-03, 1.8931125300036275e-03,
+   2.9539180653600089e-03, 3.8342830901664762e-03, 1.1052034635193162e-03,
+   1.7225081689171561e-03, 2.4277107072013821e-03, 3.1016069999481111e-03,
+   8.5603787638552766e-04, 1.1939618185901600e-03, 1.6662567934883051e-03,
+   1.2585947097159817e-02, 4.7004857686835334e-03, 2.8731729176487776e-04,
+   1.0299846310599138e-03, 2.3587292053265561e-03},
+  {3.7180506975672363e-03, 1.7802796534180537e-03, 2.2360795375444384e-03,
+   1.8961512776990257e-03, 9.3041313726939057e-04, 1.3796838284921874e-03,
+   2.0493063257644955e-03, 2.1858459940987062e-03, 7.4371746073077327e-04,
+   2.6953622613315018e-03, 3.3238031308707055e-03, 2.3467014804084987e-03,
+   1.0095451907679563e-03, 1.1624184369750680e-03, 1.3511005665728870e-03,
+   4.7004857686835334e-03, 1.2514818886617953e-02, 2.8575770858467209e-04,
+   9.4161039895612720e-04, 3.6402328079338207e-03},
+  {4.0281679108936688e-04, 2.6571979312581875e-04, 1.6159545671597605e-04,
+   1.6218020183662784e-04, 1.4474923964368156e-04, 2.2737931366728891e-04,
+   2.6488552587183780e-04, 4.0740829083805248e-04, 1.5168037757411286e-04,
+   3.6183761166072852e-04, 7.3206640617832933e-04, 2.7198500003555514e-04,
+   1.9872537223131380e-04, 8.4917468952377874e-04, 1.4152209821874487e-04,
+   2.8731729176487776e-04, 2.8575770858467209e-04, 6.4699301717154852e-03,
+   8.8744160259272527e-04, 3.5578318710317554e-04},
+  {1.2999956675626666e-03, 9.2634607111251918e-04, 7.0048422794024819e-04,
+   5.9842263937853702e-04, 3.4603772624580643e-04, 6.7584155312457842e-04,
+   8.7044186256788659e-04, 8.3467413018106177e-04, 1.5213771111755425e-03,
+   1.3821121844492116e-03, 2.2096734692836624e-03, 9.9908866586876396e-04,
+   5.7145288352831449e-04, 4.2392005745634370e-03, 4.5224391125285910e-04,
+   1.0299846310599138e-03, 9.4161039895612720e-04, 8.8744160259272527e-04,
+   1.0246100213822419e-02, 1.5489827890922993e-03},
+  {5.0679056444508912e-03, 1.5810185245264004e-03, 1.2014015528772706e-03,
+   1.3158365660538270e-03, 1.3606607271146112e-03, 1.1660966117775285e-03,
+   1.6987763526262680e-03, 1.8218235950233687e-03, 6.4882907765797669e-04,
+   1.1972663837662637e-02, 9.4786263030457313e-03, 1.9360424083099779e-03,
+   2.3123361470140736e-03, 2.5763052227920180e-03, 1.2451325046931832e-03,
+   2.3587292053265561e-03, 3.6402328079338207e-03, 3.5578318710317554e-04,
+   1.5489827890922993e-03, 1.9631915140537640e-02} };
+
 /**
  * @file optimize_target_freq.c
  * Routines for finding an optimal set of target frequencies for the
@@ -68,7 +220,6 @@
 #include "cbs.h"
 //#include <algo/blast/composition_adjustment/optimize_target_freq.h>
 
-static constexpr int COMPO_NUM_TRUE_AA = 20;
 /** bound on error for Newton's method */
 static const double kCompoAdjustErrTolerance = 0.00000001;
 /** iteration limit for Newton's method */
@@ -808,15 +959,13 @@ normal_return:
 void
 Blast_ApplyPseudocounts(double* probs20,
     int number_of_observations,
-    const double* background_probs20,
-    int pseudocounts)
+    const double* background_probs20)
 {
     int i;                 /* loop index */
     double weight;         /* weight assigned to pseudocounts */
     double sum;            /* sum of the observed frequencies */
     /* pseudocounts as a double */
-    double dpseudocounts = pseudocounts;
-
+    double dpseudocounts = kReMatrixAdjustmentPseudocounts;
     /* Normalize probabilities */
     sum = 0.0;
     for (i = 0; i < COMPO_NUM_TRUE_AA; i++) {
@@ -831,6 +980,90 @@ Blast_ApplyPseudocounts(double* probs20,
             + weight * background_probs20[i];
     }
 }
+
+/* Documented in composition_adjustment.h. */
+void
+Blast_TrueAaToStdTargetFreqs(double** StdFreq, int StdAlphsize,
+    const double* freq)
+{
+    /* Note I'm using a rough convention for this routine that uppercase
+     * letters refer to quantities in the standard (larger) alphabet
+     * and lowercase letters refer to the true amino acid (smaller)
+     * alphabet.
+     */
+     /* Shorter names for the sizes of the two alphabets */
+    const int small_alphsize = COMPO_NUM_TRUE_AA;
+    int A, B;          /* characters in the std (big) alphabet */
+    int a, b;          /* characters in the small alphabet */
+    double sum;        /* sum of values in target_freq; used to normalize */
+    sum = 0.0;
+    for (a = 0; a < small_alphsize; a++) {
+        for (b = 0; b < small_alphsize; b++) {
+            sum += freq[a * 20  + b];
+        }
+    }
+    for (A = 0; A < StdAlphsize; A++) {
+        /* for all rows */
+        //if (alphaConvert[A] < 0) {
+        //    /* the row corresponds to a nonstandard reside */
+        //    for (B = 0; B < StdAlphsize; B++) {
+        //        StdFreq[A][B] = 0.0;
+        //    }
+        //}
+        //else {
+            /* the row corresponds to a standard reside */
+            a = A;
+
+            for (B = 0; B < StdAlphsize; B++) {
+                /* for all columns */
+                if (B < 0) {
+                    /* the column corresponds to a nonstandard reside */
+                    StdFreq[A][B] = 0.0;
+                }
+                else {
+                    /* the column corresponds to a standard reside */
+                    b = B;
+                    StdFreq[A][B] = freq[a * 20 + b] / sum;
+                }
+            }
+            /* Set values for two-character ambiguities */
+            //StdFreq[A][eBchar] = StdFreq[A][eDchar] + StdFreq[A][eNchar];
+            //StdFreq[A][eZchar] = StdFreq[A][eEchar] + StdFreq[A][eQchar];
+            //if (StdAlphsize > eJchar) {
+            //    StdFreq[A][eJchar] = StdFreq[A][eIchar] + StdFreq[A][eLchar];
+            //}
+        //}
+    }
+    /* Add rows to set values for two-character ambiguities */
+    //memcpy(StdFreq[eBchar], StdFreq[eDchar], StdAlphsize * sizeof(double));
+    //Nlm_AddVectors(StdFreq[eBchar], StdAlphsize, 1.0, StdFreq[eNchar]);
+
+    //memcpy(StdFreq[eZchar], StdFreq[eEchar], StdAlphsize * sizeof(double));
+    //Nlm_AddVectors(StdFreq[eZchar], StdAlphsize, 1.0, StdFreq[eQchar]);
+
+    //if (StdAlphsize > eJchar) {
+    //    memcpy(StdFreq[eJchar], StdFreq[eIchar], StdAlphsize * sizeof(double));
+    //    Nlm_AddVectors(StdFreq[eJchar], StdAlphsize, 1.0, StdFreq[eLchar]);
+    //}
+}
+
+/* Documented in composition_adjustment.h. */
+void
+Blast_CalcFreqRatios(double** ratios, int alphsize,
+    const double row_prob[], const double col_prob[])
+{
+    int i, j;
+    for (i = 0; i < alphsize; i++) {
+        if (row_prob[i] > 0) {
+            for (j = 0; j < alphsize; j++) {
+                if (col_prob[j] > 0) {
+                    ratios[i][j] /= (row_prob[i] * col_prob[j]);
+                }
+            }
+        }
+    }
+}
+
 
 
 /**
@@ -851,7 +1084,7 @@ Blast_ApplyPseudocounts(double* probs20,
  */
 static int
 s_ScoresStdAlphabet(int** Matrix, int Alphsize,
-    double** target_freq, int** StartMatrix,
+    const double* target_freq,
     const double row_prob[], const double col_prob[],
     double Lambda)
 {
@@ -865,22 +1098,22 @@ s_ScoresStdAlphabet(int** Matrix, int Alphsize,
     //double RowProb[COMPO_LARGEST_ALPHABET];
     //double ColProb[COMPO_LARGEST_ALPHABET];
     ///* A double precision score matrix */
-    //double** Scores = Nlm_DenseMatrixNew(Alphsize, Alphsize);
-    //if (Scores == NULL) {
-    //    return -1;
-    //}
+    double** Scores = Nlm_DenseMatrixNew(Alphsize, Alphsize);
+    if (Scores == NULL) {
+        return -1;
+    }
     //s_UnpackLetterProbs(RowProb, Alphsize, row_prob);
     //s_SetPairAmbigProbsToSum(RowProb, Alphsize);
 
     //s_UnpackLetterProbs(ColProb, Alphsize, col_prob);
     //s_SetPairAmbigProbsToSum(ColProb, Alphsize);
 
-    //Blast_TrueAaToStdTargetFreqs(Scores, Alphsize, target_freq);
-    //Blast_CalcFreqRatios(Scores, Alphsize, RowProb, ColProb);
-    //Blast_FreqRatioToScore(Scores, Alphsize, Alphsize, Lambda);
+    Blast_TrueAaToStdTargetFreqs(Scores, Alphsize, target_freq);
+    Blast_CalcFreqRatios(Scores, Alphsize, row_prob, col_prob);
+    Blast_FreqRatioToScore(Scores, Alphsize, Alphsize, Lambda);
     //s_SetXUOScores(Scores, Alphsize, RowProb, ColProb);
 
-    //s_RoundScoreMatrix(Matrix, Alphsize, Alphsize, Scores);
+    s_RoundScoreMatrix(Matrix, Alphsize, Alphsize, Scores);
     //Nlm_DenseMatrixFree(&Scores);
 
     //for (i = 0; i < Alphsize; i++) {
@@ -898,17 +1131,15 @@ Blast_CompositionMatrixAdj(int** matrix,
     int length1,
     int length2,
     const double* stdaa_row_probs,
-    const double* stdaa_col_probs,
-    int pseudocounts,
-    double specifiedRE,
-    Blast_CompositionWorkspace* NRrecord,
-    const Blast_MatrixInfo* matrixInfo)
+    const double* stdaa_col_probs)
 {
     int iteration_count, status;
     double row_probs[COMPO_NUM_TRUE_AA], col_probs[COMPO_NUM_TRUE_AA];
     /* Target RE when optimizing the matrix; zero if the relative
        entropy should not be constrained. */
     double dummy, desired_re = 0.0;
+    std::copy(stdaa_row_probs, stdaa_row_probs + 20, row_probs);
+    std::copy(stdaa_col_probs, stdaa_col_probs + 20, col_probs);
 
     switch (matrix_adjust_rule) {
     //case eUnconstrainedRelEntropy:
@@ -931,7 +1162,7 @@ Blast_CompositionMatrixAdj(int** matrix,
     //    desired_re = Blast_TargetFreqEntropy(NRrecord->mat_b);
     //    break;
     case eUserSpecifiedRelEntropy:
-        desired_re = specifiedRE;
+        desired_re = kFixedReBlosum62;
         break;
     default:  /* I assert that we can't get here */
         fprintf(stderr, "Unknown flag for setting relative entropy"
@@ -939,15 +1170,17 @@ Blast_CompositionMatrixAdj(int** matrix,
         exit(1);
     }
     Blast_ApplyPseudocounts(row_probs, length1,
-        NRrecord->first_standard_freq, pseudocounts);
+        BLOSUM62_bg);
     Blast_ApplyPseudocounts(col_probs, length2,
-        NRrecord->second_standard_freq, pseudocounts);
+        BLOSUM62_bg);
+
+    vector<double> mat_final(20 * 20);
 
     status =
-        Blast_OptimizeTargetFrequencies(&NRrecord->mat_final[0][0],
+        Blast_OptimizeTargetFrequencies(mat_final.data(),
             COMPO_NUM_TRUE_AA,
             &iteration_count,
-            &NRrecord->mat_b[0][0],
+            &BLOSUM62_JOINT_PROBS[0][0],
             row_probs, col_probs,
             (desired_re > 0.0),
             desired_re,
@@ -958,10 +1191,9 @@ Blast_CompositionMatrixAdj(int** matrix,
         return status;
 
     return
-        s_ScoresStdAlphabet(matrix, alphsize, NRrecord->mat_final,
-            matrixInfo->startMatrix,
+        s_ScoresStdAlphabet(matrix, alphsize, mat_final.data(),
             row_probs, col_probs,
-            matrixInfo->ungappedLambda);
+            BLOSUM62_UNGAPPED_LAMBDA / config.cbs_matrix_scale);
 }
 
 

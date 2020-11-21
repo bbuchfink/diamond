@@ -481,7 +481,7 @@ s_GetMatrixScoreProbs(double** scoreProb, int* obs_min, int* obs_max,
     return 0;
 }
 
-inline void
+void
 Blast_FreqRatioToScore(double** matrix, int rows, int cols, double Lambda)
 {
     int i;
@@ -498,7 +498,7 @@ Blast_FreqRatioToScore(double** matrix, int rows, int cols, double Lambda)
     }
 }
 
-inline static void
+void
 s_RoundScoreMatrix(int** matrix, int rows, int cols,
     double** floatScoreMatrix)
 {
@@ -611,7 +611,7 @@ std::array<double, 20> composition(const sequence& s) {
     return r;
 }
 
-TargetMatrix::TargetMatrix(const double* query_comp, const sequence& target) :
+TargetMatrix::TargetMatrix(const double* query_comp, int query_len, const sequence& target) :
     scores(32 * AMINO_ACID_COUNT),
     scores32(32 * AMINO_ACID_COUNT)
 {
@@ -623,13 +623,26 @@ TargetMatrix::TargetMatrix(const double* query_comp, const sequence& target) :
     for (int i = 0; i < 20; ++i) {
         p2[i] = &s2[i * 20];
     }
-    Blast_CompositionBasedStats(p2.data(), &lambda_ratio, p1.data(), query_comp, c.data());
+
+    if(false)
+        Blast_CompositionBasedStats(p2.data(), &lambda_ratio, p1.data(), query_comp, c.data());
+    else {
+        int r = Blast_CompositionMatrixAdj(p2.data(),
+                20,
+                eUserSpecifiedRelEntropy,
+                query_len,
+                (int)target.length(),
+                query_comp,
+                c.data());
+    }
+
+
     for (size_t i = 0; i < AMINO_ACID_COUNT; ++i) {
         for (size_t j = 0; j < AMINO_ACID_COUNT; ++j)
             if (i < 20 && j < 20) {
-                scores[i * 32 + j] = s2[i * 20 + j];
-                scores32[i * 32 + j] = s2[i * 20 + j];
-                //std::cerr << s2[i * 20 + j] << ' ';
+                scores[i * 32 + j] = s2[j * 20 + i];
+                scores32[i * 32 + j] = s2[j * 20 + i];
+                //std::cerr << s2[j * 20 + i] << ' ';
             }
             else {
                 scores[i * 32 + j] = std::max(score_matrix(i, j) * config.cbs_matrix_scale, SCHAR_MIN);

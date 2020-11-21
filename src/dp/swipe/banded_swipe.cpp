@@ -630,7 +630,7 @@ Hsp traceback(const sequence &query, Frame frame, _cbs bias_correction, const Tr
 	while (it.i >= 0 && it.j >= 0 && score < end_score) {
 		if((it.mask().gap & channel_mask) == 0) {
 			const Letter q = query[it.i], s = target.seq[it.j];
-			const int m = config.comp_based_stats == 2 ? target.matrix.scores32[int(q) * 32 + (int)s] : score_matrix(q, s);
+			const int m = config.comp_based_stats == 2 ? target.matrix.scores32[int(s) * 32 + (int)q] : score_matrix(q, s);
 			const int m2 = add_cbs_scalar(m, bias_correction[it.i]);
 			score += m2;
 			out.push_match(q, s, m > (Score)0);

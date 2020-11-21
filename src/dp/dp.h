@@ -168,7 +168,7 @@ struct DpTarget
 		const int j1 = std::min(qlen - 1 - d0, (int)(seq.length() - 1)) + 1;
 		cols = j1 - pos;
 		if (query_comp)
-			matrix = TargetMatrix(query_comp, seq);
+			matrix = TargetMatrix(query_comp, qlen, seq);
 	}
 	DpTarget(const sequence& seq, int target_idx):
 		seq(seq),

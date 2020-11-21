@@ -12,7 +12,7 @@ struct TargetMatrix {
         lambda_ratio(1.0)
     {}
 
-    TargetMatrix(const double* query_comp, const sequence& target);
+    TargetMatrix(const double* query_comp, int query_len, const sequence& target);
 
     std::vector<int8_t> scores;
     std::vector<int32_t> scores32;
@@ -63,12 +63,14 @@ typedef struct Blast_MatrixInfo {
                                     in standard context */
 } Blast_MatrixInfo;
 
-int Blast_CompositionMatrixAdj(int** matrix,
+int
+Blast_CompositionMatrixAdj(int** matrix,
     int alphsize,
     EMatrixAdjustRule matrix_adjust_rule,
-    int length1, int length2,
-    const double* probArray1,
-    const double* probArray2,
-    int pseudocounts, double specifiedRE,
-    Blast_CompositionWorkspace* NRrecord,
-    const Blast_MatrixInfo* matrixInfo);
+    int length1,
+    int length2,
+    const double* stdaa_row_probs,
+    const double* stdaa_col_probs);
+
+void Blast_FreqRatioToScore(double** matrix, int rows, int cols, double Lambda);
+void s_RoundScoreMatrix(int** matrix, int rows, int cols, double** floatScoreMatrix);
