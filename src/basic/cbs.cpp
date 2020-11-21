@@ -632,7 +632,7 @@ TargetMatrix::TargetMatrix(const double* query_comp, const sequence& target) :
                 //std::cerr << s2[i * 20 + j] << ' ';
             }
             else {
-                scores[i * 32 + j] = score_matrix(i, j) * config.cbs_matrix_scale;
+                scores[i * 32 + j] = std::max(score_matrix(i, j) * config.cbs_matrix_scale, SCHAR_MIN);
                 scores32[i * 32 + j] = score_matrix(i, j) * config.cbs_matrix_scale;
             }
         //std::cerr << endl;

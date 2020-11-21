@@ -140,6 +140,11 @@ void run_ref_chunk(DatabaseFile &db_file,
 	else
 		out = &master_out;
 
+	if (config.comp_based_stats == 2) {
+		timer.go("SEG masking targets");
+		mask_seqs(*ref_seqs::data_, Masking::get(), true, Masking::Algo::SEG);
+	}
+
 	timer.go("Computing alignments");
 	align_queries(*Trace_pt_buffer::instance, out, params, metadata);
 	delete Trace_pt_buffer::instance;

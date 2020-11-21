@@ -22,6 +22,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "masking.h"
 #include "../lib/tantan/LambdaCalculator.hh"
 #include "../util/tantan.h"
+#include "../lib/blast/blast_filter.h"
 
 using namespace std;
 
@@ -49,11 +50,34 @@ Masking::Masking(const Score_matrix &score_matrix)
 			}
 	}
 	std::copy(likelihoodRatioMatrixf_, likelihoodRatioMatrixf_ + size, probMatrixPointersf_);
+
+	blast_seg_ = SegParametersNewAa();
 }
 
-void Masking::operator()(Letter *seq, size_t len) const
+Masking::~Masking() {
+	SegParametersFree(blast_seg_);
+}
+
+void Masking::operator()(Letter *seq, size_t len, Algo algo) const
 {
-	Util::tantan::mask(seq, (int)len, (const float**)probMatrixPointersf_, 0.005f, 0.05f, 1.0f / 0.9f, (float)config.tantan_minMaskProb, mask_table_x_);
+	if(algo == Algo::TANTAN)
+		Util::tantan::mask(seq, (int)len, (const float**)probMatrixPointersf_, 0.005f, 0.05f, 1.0f / 0.9f, (float)config.tantan_minMaskProb, mask_table_x_);
+	else {
+		BlastSeqLoc* seg_locs;
+		SeqBufferSeg((uint8_t*)seq, len, 0u, blast_seg_, &seg_locs);
+		unsigned nMasked = 0;
+
+		if (seg_locs) {
+			BlastSeqLoc* l = seg_locs;
+			do {
+				for (signed i = l->ssr->left; i <= l->ssr->right; i++) {
+					nMasked++;
+					seq[i] = value_traits.mask_char;
+				}
+			} while ((l = l->next) != 0);
+			BlastSeqLocFree(seg_locs);
+		}
+	}
 }
 
 void Masking::mask_bit(Letter *seq, size_t len) const
@@ -77,22 +101,22 @@ void Masking::remove_bit_mask(Letter *seq, size_t len) const
 			seq[i] &= ~bit_mask;
 }
 
-void mask_worker(atomic<size_t> *next, Sequence_set *seqs, const Masking *masking, bool hard_mask)
+void mask_worker(atomic<size_t> *next, Sequence_set *seqs, const Masking *masking, bool hard_mask, Masking::Algo algo)
 {
 	size_t i;
 	while ((i = (*next)++) < seqs->get_length())
 		if (hard_mask)
-			masking->operator()(seqs->ptr(i), seqs->length(i));
+			masking->operator()(seqs->ptr(i), seqs->length(i), algo);
 		else
 			masking->mask_bit(seqs->ptr(i), seqs->length(i));
 }
 
-size_t mask_seqs(Sequence_set &seqs, const Masking &masking, bool hard_mask)
+size_t mask_seqs(Sequence_set &seqs, const Masking &masking, bool hard_mask, Masking::Algo algo)
 {
 	vector<thread> threads;
 	atomic<size_t> next(0);
 	for (size_t i = 0; i < config.threads_; ++i)
-		threads.emplace_back(mask_worker, &next, &seqs, &masking, hard_mask);
+		threads.emplace_back(mask_worker, &next, &seqs, &masking, hard_mask, algo);
 	for (auto &t : threads)
 		t.join();
 	size_t n = 0;

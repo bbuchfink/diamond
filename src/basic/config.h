@@ -247,6 +247,7 @@ struct Config
 	bool output_fp;
 	int family_cap;
 	int cbs_matrix_scale;
+	size_t query_count;
 
 	Sensitivity sensitivity;
 	TracebackMode traceback_mode;

@@ -133,7 +133,7 @@ struct Histogram {
 
 	friend std::ostream& operator<<(std::ostream& os, const Histogram& h) {
 		for (int i = 0; i < BINS; ++i)
-			os << h.coverage[i] << '\t' << h.false_positives[i] << endl;
+			os << (h.coverage[i] / config.query_count) << '\t' << ((double)h.false_positives[i] / config.query_count) << endl;
 		return os;
 	}
 

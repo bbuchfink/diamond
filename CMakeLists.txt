@@ -230,6 +230,10 @@ set(OBJECTS
   src/align/load_hits.cpp
   src/tools/rocid.cpp
   src/basic/cbs.cpp
+  src/lib/blast/blast_seg.cpp
+  src/lib/blast/blast_filter.cpp
+  src/basic/cbs2.cpp
+  src/lib/blast/nlm_linear_algebra.cpp
 )
 
 if(X86)
