@@ -358,3 +358,66 @@ std::vector<const _t*> Score_matrix::Scores<_t>::pointers() const {
 }
 
 template struct Score_matrix::Scores<int>;
+
+double
+Score_matrix::BLAST_SpougeStoE(int y_, int m_, int n_) const
+{
+	// the score and lambda may have been rescaled.  We will compute the scaling factor
+	// and use it to scale a, alpha, and Sigma similarly.
+	double scale_factor = 1;
+
+	// the pair-wise e-value must be scaled back to db-wise e-value
+	double db_scale_factor = (double)db_letters_ / (double)n_;
+
+	double lambda_ = this->lambda() * scale_factor;
+	double k_ = this->k();
+	double ai_hat_ = constants_[6] * scale_factor;
+	double bi_hat_ = -26.601600;
+	double alphai_hat_ = constants_[9] * scale_factor;
+	double betai_hat_ = -903.315360;
+	double sigma_hat_ = constants_[10] * scale_factor;
+	double tau_hat_ = -928.116960;
+
+	/* here we consider symmetric matrix only */
+		double aj_hat_ = ai_hat_;
+	double bj_hat_ = bi_hat_;
+	double alphaj_hat_ = alphai_hat_;
+	double betaj_hat_ = betai_hat_;
+
+	/* this is 1/sqrt(2.0*PI) */
+	static double const_val = 0.39894228040143267793994605993438;
+
+	double m_li_y, vi_y, sqrt_vi_y, m_F, P_m_F;
+	double n_lj_y, vj_y, sqrt_vj_y, n_F, P_n_F;
+	double c_y, p1, p2, area;
+	double e_value;
+
+	m_li_y = m_ - (ai_hat_ * y_ + bi_hat_);
+	vi_y = std::max(2.0 * alphai_hat_ / lambda_, alphai_hat_ * y_ + betai_hat_);
+	sqrt_vi_y = sqrt(vi_y);
+	m_F = m_li_y / sqrt_vi_y;
+	P_m_F = std::erfc(-m_F / sqrt(2.0)) / 2.0;
+	p1 = m_li_y * P_m_F + sqrt_vi_y * const_val * exp(-0.5 * m_F * m_F);
+
+	n_lj_y = n_ - (aj_hat_ * y_ + bj_hat_);
+	vj_y = std::max(2.0 * alphaj_hat_ / lambda_, alphaj_hat_ * y_ + betaj_hat_);
+	sqrt_vj_y = sqrt(vj_y);
+	n_F = n_lj_y / sqrt_vj_y;
+	P_n_F = std::erfc(-n_F / sqrt(2.0)) / 2.0;
+	p2 = n_lj_y * P_n_F + sqrt_vj_y * const_val * exp(-0.5 * n_F * n_F);
+
+	c_y = std::max(2.0 * sigma_hat_ / lambda_, sigma_hat_ * y_ + tau_hat_);
+	area = p1 * p2 + c_y * P_m_F * P_n_F;
+
+	e_value = area * k_ * exp(-lambda_ * y_) * db_scale_factor;
+
+	return e_value;
+}
+
+double Score_matrix::evalue(int raw_score, unsigned query_len, unsigned subject_len) const
+{
+	if (config.comp_based_stats != 2)
+		return db_letters_ * query_len * pow(2, -bitscore(raw_score));
+	else
+		return BLAST_SpougeStoE(raw_score, query_len, subject_len);
+}

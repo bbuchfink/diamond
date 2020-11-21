@@ -330,7 +330,7 @@ struct Hsp_context
 	{ return hsp_.score; }
 	double evalue() const
 	{
-		return score_matrix.evalue(score(), (unsigned)query.index(0).length());
+		return score_matrix.evalue(score(), (unsigned)query.index(0).length(), subject_len);
 	}
 	double bit_score() const
 	{

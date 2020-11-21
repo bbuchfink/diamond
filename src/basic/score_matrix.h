@@ -107,8 +107,7 @@ struct Score_matrix
 	int rawscore(double bitscore) const
 	{ return (int)ceil(rawscore(bitscore, double ())); }
 
-	double evalue(int raw_score, unsigned query_len) const
-	{ return db_letters_ * query_len * pow(2, -bitscore(raw_score)); }
+	double evalue(int raw_score, unsigned query_len, unsigned subject_len = 0) const;
 
 	double evalue_norm(int raw_score, int query_len) const
 	{
@@ -167,6 +166,7 @@ struct Score_matrix
 	}
 
 	double avg_id_score() const;
+	double BLAST_SpougeStoE(int score, int m_, int n_) const;
 
 private:
 
