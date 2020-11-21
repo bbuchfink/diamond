@@ -1114,7 +1114,7 @@ s_ScoresStdAlphabet(int** Matrix, int Alphsize,
     //s_SetXUOScores(Scores, Alphsize, RowProb, ColProb);
 
     s_RoundScoreMatrix(Matrix, Alphsize, Alphsize, Scores);
-    //Nlm_DenseMatrixFree(&Scores);
+    Nlm_DenseMatrixFree(&Scores);
 
     //for (i = 0; i < Alphsize; i++) {
     //    Matrix[i][eStopChar] = StartMatrix[i][eStopChar];
