@@ -76,18 +76,6 @@ struct TargetIterator
 			return SUPER_HARD_MASK;
 	}
 
-	template<typename _sv>
-	_sv cbs(const _sv&) const {
-		alignas(32) _t s[CHANNELS];
-		std::fill(s, s + CHANNELS, 0);
-		for (int i = 0; i < active.size(); ++i) {
-			const int channel = active[i];
-			if (pos[channel] < 0)
-				continue;
-			s[channel] = cbs_[channel].int8[pos[channel]];
-		}
-		return load_sv(s);
-	}
 
 #ifdef __SSSE3__
 	SeqVector get() const
