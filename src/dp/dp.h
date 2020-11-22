@@ -191,6 +191,12 @@ struct DpTarget
 	bool blank() const {
 		return target_idx == -1;
 	}
+	bool adjusted_matrix() const {
+		return !matrix.scores.empty();
+	}
+	int matrix_scale() const {
+		return adjusted_matrix() ? config.cbs_matrix_scale : 1;
+	}
 	sequence seq;
 	int d_begin, d_end, j_begin, j_end, target_idx, cols;
 	TargetMatrix matrix;

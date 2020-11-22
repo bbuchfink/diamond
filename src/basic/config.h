@@ -248,6 +248,7 @@ struct Config
 	int family_cap;
 	int cbs_matrix_scale;
 	size_t query_count;
+	double cbs_angle;
 
 	Sensitivity sensitivity;
 	TracebackMode traceback_mode;

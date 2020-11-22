@@ -79,9 +79,10 @@ Match::Match(size_t target_block_id, std::array<std::list<Hsp>, MAX_CONTEXT> &hs
 		max_hsp_culling();
 }
 
-void add_dp_targets(const WorkTarget &target, int target_idx, const sequence *query_seq, array<array<vector<DpTarget>, 2>, MAX_CONTEXT> &dp_targets, int flags, const double* query_comp) {
+size_t add_dp_targets(const WorkTarget &target, int target_idx, const sequence *query_seq, array<array<vector<DpTarget>, 2>, MAX_CONTEXT> &dp_targets, int flags, const double* query_comp) {
 	const int band = Extension::band((int)query_seq->length()),
 		slen = (int)target.seq.length();
+	bool use_cbs = false;
 	for (unsigned frame = 0; frame < align_mode.query_contexts; ++frame) {
 
 		if (config.ext == "full") {
@@ -108,8 +109,11 @@ void add_dp_targets(const WorkTarget &target, int target_idx, const sequence *qu
 				bits = std::max(bits, (hsp.score <= config.cutoff_score_8bit && (d1 - d0) < 256) ? 0 : 1);
 			}
 			else {
-				if (d0 != INT_MAX)
+				if (d0 != INT_MAX) {
 					dp_targets[frame][bits].emplace_back(target.seq, d0, d1, j0, j1, target_idx, (int)query_seq->length(), query_comp);
+					if (dp_targets[frame][bits].back().adjusted_matrix())
+						use_cbs = true;
+				}
 				d0 = b0;
 				d1 = b1;
 				j0 = hsp.subject_range.begin_;
@@ -119,8 +123,11 @@ void add_dp_targets(const WorkTarget &target, int target_idx, const sequence *qu
 		}
 
 		dp_targets[frame][bits].emplace_back(target.seq, d0, d1, j0, j1, target_idx, (int)query_seq->length(), query_comp);
+		if (dp_targets[frame][bits].back().adjusted_matrix())
+			use_cbs = true;
 
 	}
+	return use_cbs ? 1 : 0;
 }
 
 vector<Target> align(const vector<WorkTarget> &targets, const sequence *query_seq, const Bias_correction *query_cb, int source_query_len, int flags, Statistics &stat) {
@@ -135,10 +142,12 @@ vector<Target> align(const vector<WorkTarget> &targets, const sequence *query_se
 	if (targets.empty())
 		return r;
 	r.reserve(targets.size());
+	size_t cbs_targets = 0;
 	for (int i = 0; i < (int)targets.size(); ++i) {
-		add_dp_targets(targets[i], i, query_seq, dp_targets, flags, config.comp_based_stats == 2 ? query_comp.data() : nullptr);
+		cbs_targets += add_dp_targets(targets[i], i, query_seq, dp_targets, flags, config.comp_based_stats == 2 ? query_comp.data() : nullptr);
 		r.emplace_back(targets[i].block_id, targets[i].seq, targets[i].ungapped_score);
 	}
+	stat.inc(Statistics::TARGET_HITS3_CBS, cbs_targets);
 
 	if (config.ext == "full")
 		flags |= DP::FULL_MATRIX;

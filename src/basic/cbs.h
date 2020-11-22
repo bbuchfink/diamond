@@ -8,15 +8,13 @@ std::array<double, 20> composition(const sequence& s);
 
 struct TargetMatrix {
 
-    TargetMatrix() :
-        lambda_ratio(1.0)
+    TargetMatrix()
     {}
 
     TargetMatrix(const double* query_comp, int query_len, const sequence& target);
 
     std::vector<int8_t> scores;
     std::vector<int32_t> scores32;
-    double lambda_ratio;
 
 };
 
@@ -74,3 +72,9 @@ Blast_CompositionMatrixAdj(int** matrix,
 
 void Blast_FreqRatioToScore(double** matrix, int rows, int cols, double Lambda);
 void s_RoundScoreMatrix(int** matrix, int rows, int cols, double** floatScoreMatrix);
+
+EMatrixAdjustRule
+s_TestToApplyREAdjustmentConditional(int Len_query,
+    int Len_match,
+    const double* P_query,
+    const double* P_match);

@@ -611,18 +611,23 @@ std::array<double, 20> composition(const sequence& s) {
     return r;
 }
 
-TargetMatrix::TargetMatrix(const double* query_comp, int query_len, const sequence& target) :
-    scores(32 * AMINO_ACID_COUNT),
-    scores32(32 * AMINO_ACID_COUNT)
+TargetMatrix::TargetMatrix(const double* query_comp, int query_len, const sequence& target)
 {
-    const vector<const int*> p1 = score_matrix.matrix32_scaled_pointers();
-
     auto c = composition(target);
+    auto r = s_TestToApplyREAdjustmentConditional(query_len, (int)target.length(), query_comp, c.data());
+    if (r == eCompoScaleOldMatrix)
+        return;
+
+    scores.resize(32 * AMINO_ACID_COUNT);
+    scores32.resize(32 * AMINO_ACID_COUNT);
+
+    const vector<const int*> p1 = score_matrix.matrix32_scaled_pointers();
     std::vector<int> s2(20 * 20);
     std::vector<int*> p2(20);
     for (int i = 0; i < 20; ++i) {
         p2[i] = &s2[i * 20];
     }
+    double lambda_ratio;
 
     if(false)
         Blast_CompositionBasedStats(p2.data(), &lambda_ratio, p1.data(), query_comp, c.data());

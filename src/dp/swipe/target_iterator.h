@@ -55,8 +55,6 @@ struct TargetIterator
 			cols = std::max(cols, j1 - pos[next]);
 			target[next] = next;
 			active.push_back(next);
-			if(config.target_bias)
-				cbs_.emplace_back(t.seq);
 		}
 	}
 
@@ -131,8 +129,9 @@ struct TargetIterator
 		std::fill(target_scores.begin(), target_scores.end(), blank);
 		for (int i = 0; i < active.size(); ++i) {
 			const int channel = active[i];
-			const char l = (*this)[channel];
-			target_scores[channel] = &(subject_begin[target[channel]].matrix.scores32[32 * (int)l]);
+			const int l = (int)(*this)[channel];
+			const DpTarget& dp_target = subject_begin[target[channel]];
+			target_scores[channel] = dp_target.adjusted_matrix() ? &dp_target.matrix.scores32[32 * l] : &score_matrix.matrix32()[32 * l];
 		}
 		return target_scores;
 	}
@@ -142,8 +141,6 @@ struct TargetIterator
 		if (next < n_targets) {
 			pos[channel] = 0;
 			target[channel] = next++;
-			if (config.target_bias)
-				cbs_[channel] = Bias_correction(subject_begin[target[channel]].seq);
 			return true;
 		}
 		active.erase(i);
@@ -158,9 +155,16 @@ struct TargetIterator
 		return true;
 	}
 
+	uint32_t cbs_mask() const {
+		uint32_t r = 0;
+		for (uint32_t i = 0; i < (uint32_t)n_targets; ++i)
+			if (subject_begin[i].adjusted_matrix())
+				r |= 1 << i;
+		return r;
+	}
+
 	int pos[CHANNELS], target[CHANNELS], next, n_targets, cols;
 	Static_vector<int, CHANNELS> active;
-	std::vector<Bias_correction> cbs_;
 	const vector<DpTarget>::const_iterator subject_begin;
 };
 

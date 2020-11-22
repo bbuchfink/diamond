@@ -1280,12 +1280,11 @@ Blast_GetRelativeEntropy(const double A[], const double B[])
  * Decide whether a relative-entropy score adjustment should be used
  * based on lengths and letter counts of the two matched sequences;
  * matrix_name is the underlying score matrix */
-static EMatrixAdjustRule
+EMatrixAdjustRule
 s_TestToApplyREAdjustmentConditional(int Len_query,
     int Len_match,
     const double* P_query,
-    const double* P_match,
-    const char* matrix_name)
+    const double* P_match)
 {
     EMatrixAdjustRule which_rule; /* which relative entropy mode to
                                      return */
@@ -1341,9 +1340,9 @@ s_TestToApplyREAdjustmentConditional(int Len_query,
         which_rule = eUserSpecifiedRelEntropy;
     }
     else {
-        if ((D_m_q > QUERY_MATCH_DISTANCE_THRESHOLD) &&
-            (len_large / len_small > LENGTH_RATIO_THRESHOLD) &&
-            (angle > ANGLE_DEGREE_THRESHOLD)) {
+        if (//(D_m_q > QUERY_MATCH_DISTANCE_THRESHOLD) &&
+            //(len_large / len_small > LENGTH_RATIO_THRESHOLD) &&
+            (angle > config.cbs_angle)) {
             which_rule = eCompoScaleOldMatrix;
         }
         else {
@@ -1351,17 +1350,4 @@ s_TestToApplyREAdjustmentConditional(int Len_query,
         }
     }
     return which_rule;
-}
-
-/* Documented in compo_mode_condition.h. */
-EMatrixAdjustRule
-Blast_ChooseMatrixAdjustRule(int length1,
-    int length2,
-    const double* probArray1,
-    const double* probArray2,
-    const char* matrixName)
-{
-    return
-        s_TestToApplyREAdjustmentConditional(length1, length2,
-            probArray1, probArray2, matrixName);
 }

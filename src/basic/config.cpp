@@ -449,7 +449,8 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("output-fp", 0, "", output_fp)
 		("family-cap", 0, "", family_cap)
 		("cbs-matrix-scale", 0, "", cbs_matrix_scale, 1)
-		("query-count", 0, "", query_count, (size_t)1);
+		("query-count", 0, "", query_count, (size_t)1)
+		("cbs-angle", 0, "", cbs_angle, 70.0);
 	
 	parser.add(general).add(makedb).add(cluster).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options).add(deprecated_options);
 	parser.store(argc, argv, command);

@@ -315,6 +315,10 @@ static inline int32_t load_sv(const int32_t *x) {
 	return *x;
 }
 
+static inline int32_t load_sv(int32_t a, int32_t b, uint32_t mask) {
+	return mask ? b : a;
+}
+
 #ifdef __SSE2__
 
 template<typename _t, typename _p>
