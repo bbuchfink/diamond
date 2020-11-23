@@ -249,6 +249,7 @@ struct Config
 	int cbs_matrix_scale;
 	size_t query_count;
 	double cbs_angle;
+	bool target_seg;
 
 	Sensitivity sensitivity;
 	TracebackMode traceback_mode;
