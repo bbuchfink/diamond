@@ -105,8 +105,9 @@ struct TargetIterator
 		std::fill(target_scores, target_scores + 32, blank);
 		for (int i = 0; i < active.size(); ++i) {
 			const int channel = active[i];
-			const char l = (*this)[channel];
-			target_scores[channel] = &(subject_begin[target[channel]].matrix.scores[32 * (int)l]);
+			const int l = (int)(*this)[channel];
+			const DpTarget& dp_target = subject_begin[target[channel]];
+			target_scores[channel] = dp_target.adjusted_matrix() ? &dp_target.matrix.scores[32 * l] : &score_matrix.matrix8()[32 * l];
 		}
 		return target_scores;
 	}
