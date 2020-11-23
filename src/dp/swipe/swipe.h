@@ -134,7 +134,7 @@ struct CBSBuffer {
 template<typename _sv>
 struct CBSBuffer<_sv, const int8_t*> {
 	CBSBuffer(const int8_t* v, int l, uint32_t channel_mask) {
-		typedef typename typename ::DISPATCH_ARCH::ScoreTraits<_sv>::Score Score;
+		typedef typename ::DISPATCH_ARCH::ScoreTraits<_sv>::Score Score;
 		data.reserve(l);
 		for (int i = 0; i < l; ++i)
 			data.push_back(load_sv(Score(v[i]), (Score)0, channel_mask));
