@@ -168,6 +168,15 @@ struct score_vector<int16_t>
 		data_ = _mm256_load_si256((__m256i*)w);
 	}
 
+	friend std::ostream& operator<<(std::ostream& s, score_vector v)
+	{
+		int16_t x[16];
+		v.store(x);
+		for (unsigned i = 0; i < 16; ++i)
+			printf("%3i ", (int)x[i]);
+		return s;
+	}
+
 	__m256i data_;
 
 };
@@ -331,6 +340,15 @@ struct score_vector<int16_t>
 		store(d);
 		d[i] = x;
 		data_ = _mm_loadu_si128((__m128i*)d);
+	}
+
+	friend std::ostream& operator<<(std::ostream& s, score_vector v)
+	{
+		int16_t x[8];
+		v.store(x);
+		for (unsigned i = 0; i < 8; ++i)
+			printf("%3i ", (int)x[i]);
+		return s;
 	}
 
 	__m128i data_;

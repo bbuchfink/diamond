@@ -119,7 +119,7 @@ vector<Match> extend(
 		query_seq.push_back(query_seqs::get()[query_id*contexts + i]);
 
 	task_timer timer(flags & DP::PARALLEL ? config.target_parallel_verbosity : UINT_MAX);
-	if (config.comp_based_stats == 1) {
+	if (config.comp_based_stats != 0) {
 		timer.go("Computing CBS");
 		for (unsigned i = 0; i < contexts; ++i)
 			query_cb.emplace_back(query_seq[i]);

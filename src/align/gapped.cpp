@@ -161,7 +161,7 @@ vector<Target> align(const vector<WorkTarget> &targets, const sequence *query_se
 			dp_targets[frame][1],
 			nullptr,
 			Frame(frame),
-			config.comp_based_stats == 1 ? &query_cb[frame] : nullptr,
+			config.comp_based_stats != 0 ? &query_cb[frame] : nullptr,
 			flags,
 			raw_score_cutoff,
 			stat);
@@ -263,7 +263,7 @@ vector<Match> align(vector<Target> &targets, const sequence *query_seq, const Bi
 			dp_targets[frame][1],
 			nullptr,
 			Frame(frame),
-			config.comp_based_stats == 1 ? &query_cb[frame] : nullptr,
+			config.comp_based_stats != 0 ? &query_cb[frame] : nullptr,
 			DP::TRACEBACK | flags,
 			raw_score_cutoff,
 			stat);

@@ -623,16 +623,17 @@ Hsp traceback(const sequence &query, Frame frame, _cbs bias_correction, const Tr
 	out.query_range.end_ = it.i + 1;
 	out.subject_range.end_ = it.j + 1;
 	const int end_score = out.score;
-	if (config.comp_based_stats == 2 && target.adjusted_matrix())
+	const bool adjusted_matrix = target.adjusted_matrix();
+	if (config.comp_based_stats == 2 && adjusted_matrix)
 		out.score = std::round((double)out.score / (double)config.cbs_matrix_scale);
 	int score = 0;
-	const int* matrix = target.adjusted_matrix() ? target.matrix.scores32.data() : score_matrix.matrix32();
+	const int* matrix = adjusted_matrix ? target.matrix.scores32.data() : score_matrix.matrix32();
 
 	while (it.i >= 0 && it.j >= 0 && score < end_score) {
 		if((it.mask().gap & channel_mask) == 0) {
 			const Letter q = query[it.i], s = target.seq[it.j];
 			const int m = matrix[int(s) * 32 + (int)q];
-			const int m2 = add_cbs_scalar(m, bias_correction[it.i]);
+			const int m2 = adjusted_matrix ? m : add_cbs_scalar(m, bias_correction[it.i]);
 			score += m2;
 			out.push_match(q, s, m > (Score)0);
 			it.walk_diagonal();
@@ -728,7 +729,7 @@ list<Hsp> swipe(
 	std::fill(best, best + CHANNELS, ScoreTraits<_sv>::zero_score());
 	std::fill(max_col, max_col + CHANNELS, 0);
 	std::fill(max_band_row, max_band_row + CHANNELS, 0);
-	CBSBuffer<_sv, _cbs> cbs_buf(composition_bias, qlen);
+	CBSBuffer<_sv, _cbs> cbs_buf(composition_bias, qlen, cbs_mask);
 
 	int j = 0;
 	while (targets.active.size() > 0) {

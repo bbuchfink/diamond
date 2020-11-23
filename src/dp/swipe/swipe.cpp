@@ -354,7 +354,7 @@ list<Hsp> swipe(const sequence& query, Frame frame, DynamicIterator<DpTarget>& t
 	SwipeProfile<_sv> profile;
 	AsyncTargetBuffer<Score> targets(target_it);
 	Matrix dp(qlen, targets.max_len());
-	CBSBuffer<_sv, _cbs> cbs_buf(composition_bias, qlen);
+	CBSBuffer<_sv, _cbs> cbs_buf(composition_bias, qlen, 0);
 	list<Hsp> out;
 	int col = 0;
 	

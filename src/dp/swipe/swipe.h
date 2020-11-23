@@ -125,7 +125,7 @@ namespace DP {
 
 template<typename _sv, typename _cbs>
 struct CBSBuffer {
-	CBSBuffer(const DP::NoCBS&, int) {}
+	CBSBuffer(const DP::NoCBS&, int, uint32_t) {}
 	void* operator()(int i) const {
 		return nullptr;
 	}
@@ -133,10 +133,11 @@ struct CBSBuffer {
 
 template<typename _sv>
 struct CBSBuffer<_sv, const int8_t*> {
-	CBSBuffer(const int8_t* v, int l) {
+	CBSBuffer(const int8_t* v, int l, uint32_t channel_mask) {
+		typedef typename typename ::DISPATCH_ARCH::ScoreTraits<_sv>::Score Score;
 		data.reserve(l);
 		for (int i = 0; i < l; ++i)
-			data.emplace_back(typename ::DISPATCH_ARCH::ScoreTraits<_sv>::Score(v[i]));
+			data.push_back(load_sv(Score(v[i]), (Score)0, channel_mask));
 	}
 	_sv operator()(int i) const {
 		return data[i];
