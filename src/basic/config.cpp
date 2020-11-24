@@ -452,8 +452,9 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("query-count", 0, "", query_count, (size_t)1)
 		("cbs-angle", 0, "", cbs_angle, 50.0)
 		("target-seg", 0, "", target_seg)
-		("cbs-err-tolerance", 0, "", cbs_err_tolerance, 0.00000001)
-		("cbs-it-limit", 0, "", cbs_it_limit, 2000);
+		("cbs-err-tolerance", 0, "", cbs_err_tolerance, 0.1)
+		("cbs-it-limit", 0, "", cbs_it_limit, 10)
+		("simple-cbs", 0, "", simple_cbs);
 	
 	parser.add(general).add(makedb).add(cluster).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options).add(deprecated_options);
 	parser.store(argc, argv, command);

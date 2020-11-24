@@ -629,7 +629,34 @@ TargetMatrix::TargetMatrix(const double* query_comp, int query_len, const sequen
     }
     double lambda_ratio;
 
-    if(false)
+    if (config.simple_cbs) {
+        int r = Blast_CompositionMatrixAdj(p2.data(),
+            20,
+            eUserSpecifiedRelEntropy,
+            query_len,
+            query_len,
+            query_comp,
+            query_comp);
+
+        std::vector<int> s3(20 * 20);
+        std::vector<int*> p3(20);
+        for (int i = 0; i < 20; ++i) {
+            p3[i] = &s3[i * 20];
+        }
+
+        r = Blast_CompositionMatrixAdj(p3.data(),
+            20,
+            eUserSpecifiedRelEntropy,
+            (int)target.length(),
+            (int)target.length(),
+            c.data(),
+            c.data());
+
+        for (int i = 0; i < 20 * 20; ++i)
+            s2[i] = (s2[i] + s3[i]) / 2;
+            //s2[i] = std::max(s2[i], s3[i]);
+
+    } else if (false)
         Blast_CompositionBasedStats(p2.data(), &lambda_ratio, p1.data(), query_comp, c.data());
     else {
         int r = Blast_CompositionMatrixAdj(p2.data(),
