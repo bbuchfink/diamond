@@ -221,10 +221,7 @@ BLOSUM62_JOINT_PROBS[COMPO_NUM_TRUE_AA][COMPO_NUM_TRUE_AA] =
 //#include <algo/blast/composition_adjustment/optimize_target_freq.h>
 
 /** bound on error for Newton's method */
-static const double kCompoAdjustErrTolerance = 0.00000001;
 /** iteration limit for Newton's method */
-static const int kCompoAdjustIterationLimit = 2000;
-
 
  /**
   * Compute the symmetric product A D A^T, where A is the matrix of
@@ -1184,8 +1181,8 @@ Blast_CompositionMatrixAdj(int** matrix,
             row_probs, col_probs,
             (desired_re > 0.0),
             desired_re,
-            kCompoAdjustErrTolerance,
-            kCompoAdjustIterationLimit);
+            config.cbs_err_tolerance,
+            config.cbs_it_limit);
 
     if (status != 0)            /* Did not compute the target freqs */
         return status;

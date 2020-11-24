@@ -250,6 +250,8 @@ struct Config
 	size_t query_count;
 	double cbs_angle;
 	bool target_seg;
+	double cbs_err_tolerance;
+	int cbs_it_limit;
 
 	Sensitivity sensitivity;
 	TracebackMode traceback_mode;
