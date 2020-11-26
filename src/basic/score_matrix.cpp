@@ -416,7 +416,7 @@ Score_matrix::BLAST_SpougeStoE(int y_, int m_, int n_) const
 
 double Score_matrix::evalue(int raw_score, unsigned query_len, unsigned subject_len) const
 {
-	if (config.comp_based_stats != 2)
+	if (config.comp_based_stats <= 1)
 		return db_letters_ * query_len * pow(2, -bitscore(raw_score));
 	else
 		return BLAST_SpougeStoE(raw_score, query_len, subject_len);

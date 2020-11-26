@@ -453,8 +453,7 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("cbs-angle", 0, "", cbs_angle, 50.0)
 		("target-seg", 0, "", target_seg)
 		("cbs-err-tolerance", 0, "", cbs_err_tolerance, 0.1)
-		("cbs-it-limit", 0, "", cbs_it_limit, 10)
-		("simple-cbs", 0, "", simple_cbs);
+		("cbs-it-limit", 0, "", cbs_it_limit, 10);
 	
 	parser.add(general).add(makedb).add(cluster).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options).add(deprecated_options);
 	parser.store(argc, argv, command);
@@ -490,6 +489,12 @@ Config::Config(int argc, const char **argv, bool check_io)
 			throw std::runtime_error("Global ranking only supports full matrix extension.");
 		ext = "full";
 	}
+
+	if (comp_based_stats >= CBS::COUNT)
+		throw std::runtime_error("Invalid value for --comp-based-stats. Permitted values: 0, 1, 2, 3, 4.");
+
+	if (command == blastx && !CBS::support_translated(comp_based_stats))
+		throw std::runtime_error("This mode of composition based stats is not supported for translated searches.");
 
 	if (swipe_all)
 		ext = "full";
@@ -639,7 +644,7 @@ Config::Config(int argc, const char **argv, bool check_io)
 			throw std::runtime_error("Clustering algorithm not found.");
 		}
 		message_stream << "Scoring parameters: " << score_matrix << endl;
-		if (masking == 1 || comp_based_stats == 2 || target_seg)
+		if (masking == 1 || CBS::seg(comp_based_stats) || target_seg)
 			Masking::instance = unique_ptr<Masking>(new Masking(score_matrix));
 	}
 

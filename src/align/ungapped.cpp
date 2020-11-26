@@ -44,9 +44,9 @@ using std::mutex;
 
 namespace Extension {
 
-WorkTarget ungapped_stage(SeedHit *begin, SeedHit *end, const sequence *query_seq, const Bias_correction *query_cb, uint32_t block_id) {
+WorkTarget ungapped_stage(SeedHit *begin, SeedHit *end, const sequence *query_seq, const Bias_correction *query_cb, const double* query_comp, uint32_t block_id) {
 	array<vector<Diagonal_segment>, MAX_CONTEXT> diagonal_segments;
-	WorkTarget target(block_id, ref_seqs::get()[block_id]);
+	WorkTarget target(block_id, ref_seqs::get()[block_id], (int)query_seq[0].length(), query_comp);
 	if (config.ext == "full") {
 		for (const SeedHit *hit = begin; hit < end; ++hit)
 			target.ungapped_score = std::max(target.ungapped_score, hit->score);
@@ -74,25 +74,25 @@ WorkTarget ungapped_stage(SeedHit *begin, SeedHit *end, const sequence *query_se
 	return target;
 }
 
-void ungapped_stage_worker(size_t i, size_t thread_id, const sequence *query_seq, const Bias_correction *query_cb, FlatArray<SeedHit> *seed_hits, const uint32_t*target_block_ids, vector<WorkTarget> *out, mutex *mtx) {
-	WorkTarget target = ungapped_stage(seed_hits->begin(i), seed_hits->end(i), query_seq, query_cb, target_block_ids[i]);
+void ungapped_stage_worker(size_t i, size_t thread_id, const sequence *query_seq, const Bias_correction *query_cb, const double* query_comp, FlatArray<SeedHit> *seed_hits, const uint32_t*target_block_ids, vector<WorkTarget> *out, mutex *mtx) {
+	WorkTarget target = ungapped_stage(seed_hits->begin(i), seed_hits->end(i), query_seq, query_cb, query_comp, target_block_ids[i]);
 	{
 		std::lock_guard<mutex> guard(*mtx);
 		out->push_back(std::move(target));
 	}
 }
 
-vector<WorkTarget> ungapped_stage(const sequence *query_seq, const Bias_correction *query_cb, FlatArray<SeedHit> &seed_hits, const vector<uint32_t>& target_block_ids, int flags) {
+vector<WorkTarget> ungapped_stage(const sequence *query_seq, const Bias_correction *query_cb, const double* query_comp, FlatArray<SeedHit> &seed_hits, const vector<uint32_t>& target_block_ids, int flags) {
 	vector<WorkTarget> targets;
 	if (target_block_ids.size() == 0)
 		return targets;
 	if (flags & DP::PARALLEL) {
 		mutex mtx;
-		Util::Parallel::scheduled_thread_pool_auto(config.threads_, seed_hits.size(), ungapped_stage_worker, query_seq, query_cb, &seed_hits, target_block_ids.data(), &targets, &mtx);
+		Util::Parallel::scheduled_thread_pool_auto(config.threads_, seed_hits.size(), ungapped_stage_worker, query_seq, query_cb, query_comp, &seed_hits, target_block_ids.data(), &targets, &mtx);
 	}
 	else {
 		for (size_t i = 0; i < target_block_ids.size(); ++i)
-			targets.push_back(ungapped_stage(seed_hits.begin(i), seed_hits.end(i), query_seq, query_cb, target_block_ids[i]));
+			targets.push_back(ungapped_stage(seed_hits.begin(i), seed_hits.end(i), query_seq, query_cb, query_comp, target_block_ids[i]));
 	}
 
 	return targets;

@@ -613,6 +613,8 @@ std::array<double, 20> composition(const sequence& s) {
 
 TargetMatrix::TargetMatrix(const double* query_comp, int query_len, const sequence& target)
 {
+    if (!CBS::matrix_adjust(config.comp_based_stats))
+        return;
     auto c = composition(target);
     auto r = s_TestToApplyREAdjustmentConditional(query_len, (int)target.length(), query_comp, c.data());
     if (r == eCompoScaleOldMatrix)
@@ -629,7 +631,7 @@ TargetMatrix::TargetMatrix(const double* query_comp, int query_len, const sequen
     }
     double lambda_ratio;
 
-    if (config.simple_cbs) {
+    if (config.comp_based_stats == CBS::HAUSER_AND_SPLIT_MATRIX_ADJUST) {
         int r = Blast_CompositionMatrixAdj(p2.data(),
             20,
             eUserSpecifiedRelEntropy,
@@ -638,7 +640,7 @@ TargetMatrix::TargetMatrix(const double* query_comp, int query_len, const sequen
             query_comp,
             query_comp);
 
-        /*std::vector<int> s3(20 * 20);
+        std::vector<int> s3(20 * 20);
         std::vector<int*> p3(20);
         for (int i = 0; i < 20; ++i) {
             p3[i] = &s3[i * 20];
@@ -653,7 +655,7 @@ TargetMatrix::TargetMatrix(const double* query_comp, int query_len, const sequen
             c.data());
 
         for (int i = 0; i < 20 * 20; ++i)
-            s2[i] = (s2[i] + s3[i]) / 2;*/
+            s2[i] = (s2[i] + s3[i]) / 2;
             //s2[i] = std::max(s2[i], s3[i]);
 
     } else if (false)

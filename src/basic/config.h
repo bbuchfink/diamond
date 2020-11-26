@@ -252,7 +252,6 @@ struct Config
 	bool target_seg;
 	double cbs_err_tolerance;
 	int cbs_it_limit;
-	bool simple_cbs;
 
 	Sensitivity sensitivity;
 	TracebackMode traceback_mode;

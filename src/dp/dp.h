@@ -153,22 +153,22 @@ extern size_t cells;
 struct DpTarget
 {
 	DpTarget():
-		target_idx(-1)
+		target_idx(-1),
+		matrix(nullptr)
 	{}
-	DpTarget(const sequence &seq, int d_begin, int d_end, int j_begin, int j_end, int target_idx = 0, int qlen = 0, const double* query_comp = nullptr) :
+	DpTarget(const sequence &seq, int d_begin, int d_end, int j_begin, int j_end, int target_idx = 0, int qlen = 0, const TargetMatrix* matrix = nullptr) :
 		seq(seq),
 		d_begin(d_begin),
 		d_end(d_end),
 		j_begin(j_begin),
 		j_end(j_end),
-		target_idx(target_idx)
+		target_idx(target_idx),
+		matrix(matrix)
 	{
 		int pos = std::max(d_end - 1, 0) - (d_end - 1);
 		const int d0 = d_begin;
 		const int j1 = std::min(qlen - 1 - d0, (int)(seq.length() - 1)) + 1;
 		cols = j1 - pos;
-		if (query_comp)
-			matrix = TargetMatrix(query_comp, qlen, seq);
 	}
 	DpTarget(const sequence& seq, int target_idx):
 		seq(seq),
@@ -192,14 +192,14 @@ struct DpTarget
 		return target_idx == -1;
 	}
 	bool adjusted_matrix() const {
-		return !matrix.scores.empty();
+		return matrix != nullptr;
 	}
 	int matrix_scale() const {
 		return adjusted_matrix() ? config.cbs_matrix_scale : 1;
 	}
 	sequence seq;
 	int d_begin, d_end, j_begin, j_end, target_idx, cols;
-	TargetMatrix matrix;
+	const TargetMatrix* matrix;
 };
 
 struct DpStat

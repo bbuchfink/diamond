@@ -64,6 +64,7 @@ vector<Target> extend(const Parameters& params,
 	const sequence *query_seq,
 	int source_query_len,
 	const Bias_correction *query_cb,
+	const double* query_comp,
 	FlatArray<SeedHit> &seed_hits,
 	vector<uint32_t> &target_block_ids,
 	const Metadata& metadata,
@@ -81,7 +82,7 @@ vector<Target> extend(const Parameters& params,
 	stat.inc(Statistics::TARGET_HITS3, target_block_ids.size());
 
 	timer.go("Computing chaining");
-	vector<WorkTarget> targets = ungapped_stage(query_seq, query_cb, seed_hits, target_block_ids, flags);
+	vector<WorkTarget> targets = ungapped_stage(query_seq, query_cb, query_comp, seed_hits, target_block_ids, flags);
 	if ((flags & DP::PARALLEL) == 0)
 		stat.inc(Statistics::TIME_CHAINING, timer.microseconds());
 
@@ -119,12 +120,15 @@ vector<Match> extend(
 		query_seq.push_back(query_seqs::get()[query_id*contexts + i]);
 
 	task_timer timer(flags & DP::PARALLEL ? config.target_parallel_verbosity : UINT_MAX);
-	if (config.comp_based_stats != 0) {
+	if (CBS::hauser(config.comp_based_stats)) {
 		timer.go("Computing CBS");
 		for (unsigned i = 0; i < contexts; ++i)
 			query_cb.emplace_back(query_seq[i]);
 		timer.finish();
 	}
+	array<double, 20> query_comp;
+	if (CBS::matrix_adjust(config.comp_based_stats))
+		query_comp = composition(query_seq[0]);
 
 	const int source_query_len = align_mode.query_translated ? (int)query_source_seqs::get()[query_id].length() : (int)query_seqs::get()[query_id].length();
 	const int relaxed_cutoff = score_matrix.rawscore(config.min_bit_score == 0.0
@@ -167,7 +171,7 @@ vector<Match> extend(
 
 		//multiplier = std::max(multiplier, chunk_size_multiplier(seed_hits_chunk, (int)query_seq.front().length()));
 
-		vector<Target> v = extend(params, query_id, query_seq.data(), source_query_len, query_cb.data(), seed_hits_chunk, target_block_ids_chunk, metadata, stat, flags);
+		vector<Target> v = extend(params, query_id, query_seq.data(), source_query_len, query_cb.data(), query_comp.data(), seed_hits_chunk, target_block_ids_chunk, metadata, stat, flags);
 		const size_t n = v.size();
 		stat.inc(Statistics::TARGET_HITS4, v.size());
 		bool new_hits = false;

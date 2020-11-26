@@ -107,7 +107,7 @@ struct TargetIterator
 			const int channel = active[i];
 			const int l = (int)(*this)[channel];
 			const DpTarget& dp_target = subject_begin[target[channel]];
-			target_scores[channel] = dp_target.adjusted_matrix() ? &dp_target.matrix.scores[32 * l] : &score_matrix.matrix8()[32 * l];
+			target_scores[channel] = dp_target.adjusted_matrix() ? &dp_target.matrix->scores[32 * l] : &score_matrix.matrix8()[32 * l];
 		}
 		return target_scores;
 	}
@@ -120,7 +120,7 @@ struct TargetIterator
 			const int channel = active[i];
 			const int l = (int)(*this)[channel];
 			const DpTarget& dp_target = subject_begin[target[channel]];
-			target_scores[channel] = dp_target.adjusted_matrix() ? &dp_target.matrix.scores32[32 * l] : &score_matrix.matrix32()[32 * l];
+			target_scores[channel] = dp_target.adjusted_matrix() ? &dp_target.matrix->scores32[32 * l] : &score_matrix.matrix32()[32 * l];
 		}
 		return target_scores;
 	}

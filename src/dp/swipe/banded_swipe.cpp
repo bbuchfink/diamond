@@ -578,7 +578,7 @@ Hsp traceback(const sequence &query, Frame frame, _cbs bias_correction, const Ma
 	Hsp out;
 	out.swipe_target = target.target_idx;
 	out.score = ScoreTraits<_sv>::int_score(max_score);
-	if (config.comp_based_stats == 2 && target.adjusted_matrix())
+	if (target.adjusted_matrix())
 		out.score = std::round((double)out.score / (double)config.cbs_matrix_scale);
 	out.frame = frame.index();
 	out.d_begin = target.d_begin;
@@ -624,10 +624,10 @@ Hsp traceback(const sequence &query, Frame frame, _cbs bias_correction, const Tr
 	out.subject_range.end_ = it.j + 1;
 	const int end_score = out.score;
 	const bool adjusted_matrix = target.adjusted_matrix();
-	if (config.comp_based_stats == 2 && adjusted_matrix)
+	if (adjusted_matrix)
 		out.score = std::round((double)out.score / (double)config.cbs_matrix_scale);
 	int score = 0;
-	const int* matrix = adjusted_matrix ? target.matrix.scores32.data() : score_matrix.matrix32();
+	const int* matrix = adjusted_matrix ? target.matrix->scores32.data() : score_matrix.matrix32();
 
 	while (it.i >= 0 && it.j >= 0 && score < end_score) {
 		if((it.mask().gap & channel_mask) == 0) {
@@ -744,7 +744,7 @@ list<Hsp> swipe(
 		if (band_offset > 0)
 			it.set_zero();
 
-		if (config.comp_based_stats == 2) {
+		if (CBS::matrix_adjust(config.comp_based_stats)) {
 			if (config.cbs_matrix_scale >= 16)
 				profile.set(targets.get32().data());
 			else

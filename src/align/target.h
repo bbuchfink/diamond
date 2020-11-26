@@ -32,6 +32,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "extend.h"
 #include "../util/data_structures/flat_array.h"
 #include "../basic/parameters.h"
+#include "../basic/cbs.h"
 
 namespace Extension {
 
@@ -48,31 +49,37 @@ struct SeedHit {
 };
 
 struct WorkTarget {
-	WorkTarget(size_t block_id, const sequence &seq) :
+	WorkTarget(size_t block_id, const sequence &seq, int query_len, const double* query_comp) :
 		block_id(block_id),
 		seq(seq),
 		filter_score(0),
-		ungapped_score(0)
+		ungapped_score(0),
+		matrix(query_comp, query_len, seq)
 	{}
 	bool operator<(const WorkTarget &t) const {
 		return filter_score > t.filter_score || (filter_score == t.filter_score && block_id < t.block_id);
+	}
+	bool adjusted_matrix() const {
+		return !matrix.scores.empty();
 	}
 	size_t block_id;
 	sequence seq;
 	int filter_score, ungapped_score;
 	std::array<std::list<Hsp_traits>, MAX_CONTEXT> hsp;
+	TargetMatrix matrix;
 };
 
-std::vector<WorkTarget> ungapped_stage(const sequence* query_seq, const Bias_correction* query_cb, FlatArray<SeedHit>& seed_hits, const std::vector<uint32_t>& target_block_ids, int flags);
+std::vector<WorkTarget> ungapped_stage(const sequence* query_seq, const Bias_correction* query_cb, const double* query_comp, FlatArray<SeedHit>& seed_hits, const std::vector<uint32_t>& target_block_ids, int flags);
 void rank_targets(std::vector<WorkTarget> &targets, double ratio, double factor);
 
 struct Target {
 
-	Target(size_t block_id, const sequence &seq, int ungapped_score):
+	Target(size_t block_id, const sequence &seq, int ungapped_score, const TargetMatrix& matrix):
 		block_id(block_id),
 		seq(seq),
 		filter_score(0),
-		ungapped_score(ungapped_score)
+		ungapped_score(ungapped_score),
+		matrix(matrix)
 	{}
 
 	void add_hit(std::list<Hsp> &list, std::list<Hsp>::iterator it) {
@@ -85,6 +92,10 @@ struct Target {
 		return filter_score > t.filter_score || (filter_score == t.filter_score && block_id < t.block_id);
 	}
 
+	bool adjusted_matrix() const {
+		return !matrix.scores.empty();
+	}
+
 	void apply_filters(int source_query_len, const char *query_title, const sequence& query_seq);
 	void inner_culling(int source_query_len);
 	void max_hsp_culling();
@@ -93,6 +104,7 @@ struct Target {
 	sequence seq;
 	int filter_score, ungapped_score;
 	std::array<std::list<Hsp>, MAX_CONTEXT> hsp;
+	TargetMatrix matrix;
 };
 
 struct TargetScore {

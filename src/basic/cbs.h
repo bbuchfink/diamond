@@ -78,3 +78,62 @@ s_TestToApplyREAdjustmentConditional(int Len_query,
     int Len_match,
     const double* P_query,
     const double* P_match);
+
+struct CBS {
+    static bool seg(unsigned code) {
+        switch (code) {
+        case 0:
+        case 1:
+            return false;
+        case 2:
+        case 3:
+        case 4:
+            return true;
+        default:
+            throw std::runtime_error("Unknown CBS code.");
+        }
+    }
+    static bool hauser(unsigned code) {
+        switch (code) {
+        case 0:
+        case 4:
+            return false;
+        case 1:
+        case 2:
+        case 3:
+            return true;
+        default:
+            throw std::runtime_error("Unknown CBS code.");
+        }
+    }
+    static bool matrix_adjust(unsigned code) {
+        switch (code) {
+        case DISABLED:
+        case HAUSER:
+            return false;
+        case HAUSER_AND_SPLIT_MATRIX_ADJUST:
+        case HAUSER_AND_MATRIX_ADJUST:
+        case MATRIX_ADJUST:
+            return true;
+        default:
+            throw std::runtime_error("Unknown CBS code.");
+        }
+    }
+    static bool support_translated(unsigned code) {
+        switch (code) {
+        case DISABLED:
+        case HAUSER:
+            return true;
+        default:
+            return false;
+        }
+    }
+    enum {
+        DISABLED = 0,
+        HAUSER = 1,
+        HAUSER_AND_SPLIT_MATRIX_ADJUST = 2,
+        HAUSER_AND_MATRIX_ADJUST = 3,
+        MATRIX_ADJUST = 4,
+        COUNT
+    };
+};

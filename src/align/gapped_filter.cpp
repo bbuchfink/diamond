@@ -113,7 +113,7 @@ void gapped_filter(const sequence* query, const Bias_correction* query_cbs, Flat
 	vector<LongScoreProfile> query_profile;
 	query_profile.reserve(align_mode.query_contexts);
 	for (unsigned i = 0; i < align_mode.query_contexts; ++i)
-		if(config.comp_based_stats != 0)
+		if(CBS::hauser(config.comp_based_stats))
 			query_profile.emplace_back(query[i], query_cbs[i]);
 		else
 			query_profile.emplace_back(query[i]);
