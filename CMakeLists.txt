@@ -235,6 +235,7 @@ set(OBJECTS
   src/basic/cbs2.cpp
   src/lib/blast/nlm_linear_algebra.cpp
   src/basic/cbs3.cpp
+  src/stats/matrices/blosum62.cpp
 )
 
 if(X86)

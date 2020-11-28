@@ -40,7 +40,6 @@ struct TargetMatrix {
 
 };
 
-constexpr int TRUE_AA = 20;
 extern const int ALPH_TO_NCBI[20];
 extern const double BLOSUM62_FREQRATIOS[28][28];
 constexpr double BLOSUM62_UNGAPPED_LAMBDA = 0.3176;
