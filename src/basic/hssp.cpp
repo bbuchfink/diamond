@@ -45,7 +45,7 @@ bool Hsp::is_weakly_enveloped(const Hsp &j) const
 
 Hsp_context& Hsp_context::parse()
 {
-	if (!output_format->needs_transcript) {
+	if (!output_format->needs_transcript && config.command != Config::view) {
 		hsp_.query_source_range = TranslatedPosition::absolute_interval(
 			TranslatedPosition(hsp_.query_range.begin_, Frame(hsp_.frame)),
 			TranslatedPosition(hsp_.query_range.end_, Frame(hsp_.frame)),
