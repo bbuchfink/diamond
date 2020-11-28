@@ -1,3 +1,23 @@
+/****
+DIAMOND protein aligner
+Copyright (C) 2020 Max Planck Society for the Advancement of Science e.V.
+
+Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+****/
+
 #include <array>
 #include <vector>
 #include <algorithm>
@@ -595,9 +615,8 @@ Blast_CompositionBasedStats(int** matrix, double* LambdaRatio,
     return 0;
 }
 
-std::array<double, 20> composition(const sequence& s) {
-    std::array<double, 20> r;
-    r.fill(0.0);
+std::vector<double> composition(const sequence& s) {
+    std::vector<double> r(20, 0.0);
     int n = 0;
     for (size_t i = 0; i < s.length(); ++i) {
         int l = s[i];
@@ -606,9 +625,30 @@ std::array<double, 20> composition(const sequence& s) {
             ++n;
         }
     }
+    if (n == 0)
+        return r;
     for (int i = 0; i < 20; ++i)
         r[i] /= n;
     return r;
+}
+
+vector<int> CompositionMatrixAdjust(int query_len, int target_len, const double* query_comp, const double* target_comp, int scale) {
+    vector<int> v(TRUE_AA * TRUE_AA);
+    vector<int*> p;
+    p.reserve(TRUE_AA);
+    for (int i = 0; i < TRUE_AA; ++i)
+        p.push_back(&v[i * TRUE_AA]);
+    int r = Blast_CompositionMatrixAdj(p.data(),
+        TRUE_AA,
+        eUserSpecifiedRelEntropy,
+        query_len,
+        target_len,
+        query_comp,
+        target_comp,
+        BLOSUM62_UNGAPPED_LAMBDA / scale);
+    if (r != 0)
+        throw std::runtime_error("Error computing composition matrix adjust.");
+    return v;
 }
 
 TargetMatrix::TargetMatrix(const double* query_comp, int query_len, const sequence& target)
@@ -623,59 +663,21 @@ TargetMatrix::TargetMatrix(const double* query_comp, int query_len, const sequen
     scores.resize(32 * AMINO_ACID_COUNT);
     scores32.resize(32 * AMINO_ACID_COUNT);
 
-    const vector<const int*> p1 = score_matrix.matrix32_scaled_pointers();
-    std::vector<int> s2(20 * 20);
-    std::vector<int*> p2(20);
-    for (int i = 0; i < 20; ++i) {
-        p2[i] = &s2[i * 20];
-    }
-    double lambda_ratio;
+    //const vector<const int*> p1 = score_matrix.matrix32_scaled_pointers();
+    //double lambda_ratio;
 
-    if (config.comp_based_stats == CBS::HAUSER_AND_SPLIT_MATRIX_ADJUST) {
-        int r = Blast_CompositionMatrixAdj(p2.data(),
-            20,
-            eUserSpecifiedRelEntropy,
-            query_len,
-            query_len,
-            query_comp,
-            query_comp);
-
-        std::vector<int> s3(20 * 20);
-        std::vector<int*> p3(20);
-        for (int i = 0; i < 20; ++i) {
-            p3[i] = &s3[i * 20];
-        }
-
-        r = Blast_CompositionMatrixAdj(p3.data(),
-            20,
-            eUserSpecifiedRelEntropy,
-            (int)target.length(),
-            (int)target.length(),
-            c.data(),
-            c.data());
-
-        for (int i = 0; i < 20 * 20; ++i)
-            s2[i] = (s2[i] + s3[i]) / 2;
-            //s2[i] = std::max(s2[i], s3[i]);
-
-    } else if (false)
-        Blast_CompositionBasedStats(p2.data(), &lambda_ratio, p1.data(), query_comp, c.data());
-    else {
-        int r = Blast_CompositionMatrixAdj(p2.data(),
-                20,
-                eUserSpecifiedRelEntropy,
-                query_len,
-                (int)target.length(),
-                query_comp,
-                c.data());
-    }
+    //if (false)
+        //Blast_CompositionBasedStats(p2.data(), &lambda_ratio, p1.data(), query_comp, c.data());
+    //else {
+    vector<int> s = CompositionMatrixAdjust(query_len, (int)target.length(), query_comp, c.data(), config.cbs_matrix_scale);
+    //}
 
 
     for (size_t i = 0; i < AMINO_ACID_COUNT; ++i) {
         for (size_t j = 0; j < AMINO_ACID_COUNT; ++j)
             if (i < 20 && j < 20) {
-                scores[i * 32 + j] = s2[j * 20 + i];
-                scores32[i * 32 + j] = s2[j * 20 + i];
+                scores[i * 32 + j] = s[j * 20 + i];
+                scores32[i * 32 + j] = s[j * 20 + i];
                 //std::cerr << s2[j * 20 + i] << ' ';
             }
             else {
@@ -683,5 +685,24 @@ TargetMatrix::TargetMatrix(const double* query_comp, int query_len, const sequen
                 scores32[i * 32 + j] = score_matrix(i, j) * config.cbs_matrix_scale;
             }
         //std::cerr << endl;
+    }
+}
+
+TargetMatrix::TargetMatrix(const int16_t* query_matrix, const int16_t* target_matrix):
+    scores(32*AMINO_ACID_COUNT),
+    scores32(32*AMINO_ACID_COUNT)
+{
+    const double f = (double)config.cbs_matrix_scale / (double)CBS::AVG_MATRIX_SCALE;
+    for (size_t i = 0; i < AMINO_ACID_COUNT; ++i) {
+        for (size_t j = 0; j < AMINO_ACID_COUNT; ++j)
+            if (i < 20 && j < 20) {
+                const int score = std::round(((double)query_matrix[i * 20 + j] + (double)target_matrix[i * 20 + j]) * f / 2.0);
+                scores[i * 32 + j] = score;
+                scores32[i * 32 + j] = score;
+            }
+            else {
+                scores[i * 32 + j] = std::max(score_matrix(i, j) * config.cbs_matrix_scale, SCHAR_MIN);
+                scores32[i * 32 + j] = score_matrix(i, j) * config.cbs_matrix_scale;
+            }
     }
 }

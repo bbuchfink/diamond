@@ -82,7 +82,7 @@ vector<Target> extend(const Parameters& params,
 	stat.inc(Statistics::TARGET_HITS3, target_block_ids.size());
 
 	timer.go("Computing chaining");
-	vector<WorkTarget> targets = ungapped_stage(query_seq, query_cb, query_comp, seed_hits, target_block_ids, flags);
+	vector<WorkTarget> targets = ungapped_stage(query_seq, query_cb, query_comp, seed_hits, target_block_ids, flags, stat);
 	if ((flags & DP::PARALLEL) == 0)
 		stat.inc(Statistics::TIME_CHAINING, timer.microseconds());
 
@@ -126,7 +126,7 @@ vector<Match> extend(
 			query_cb.emplace_back(query_seq[i]);
 		timer.finish();
 	}
-	array<double, 20> query_comp;
+	vector<double> query_comp;
 	if (CBS::matrix_adjust(config.comp_based_stats))
 		query_comp = composition(query_seq[0]);
 

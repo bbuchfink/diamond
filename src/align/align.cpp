@@ -29,6 +29,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/merge_sort.h"
 #include "extend.h"
 #include "../util/algo/radix_sort.h"
+#include "target.h"
 
 using std::get;
 using std::tuple;
@@ -144,6 +145,8 @@ void align_queries(Trace_pt_buffer &trace_pts, Consumer* output_file, const Para
 	if (config.memory_limit != 0.0)
 		max_size = std::max(max_size, size_t(config.memory_limit * 1e9));
 	pair<size_t, size_t> query_range;
+	Extension::target_matrices.insert(Extension::target_matrices.end(), ref_seqs::get().get_length(), nullptr);
+	Extension::target_matrix_count = 0;
 	
 	trace_pts.load(max_size);
 
@@ -181,4 +184,8 @@ void align_queries(Trace_pt_buffer &trace_pts, Consumer* output_file, const Para
 		delete hit_buf;
 	}
 	statistics.max(Statistics::SEARCH_TEMP_SPACE, trace_pts.total_disk_size());
+	for (auto i : Extension::target_matrices)
+		delete[] i;
+	Extension::target_matrices.clear();
+	statistics.inc(Statistics::MATRIX_ADJUST_COUNT, Extension::target_matrix_count);
 }

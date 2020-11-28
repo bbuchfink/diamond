@@ -24,6 +24,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <vector>
 #include <stdint.h>
 #include <list>
+#include <mutex>
 #include "../search/trace_pt_buffer.h"
 #include "../basic/diagonal_segment.h"
 #include "../basic/const.h"
@@ -35,6 +36,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../basic/cbs.h"
 
 namespace Extension {
+
+extern std::vector<int16_t*> target_matrices;
+extern std::mutex target_matrices_lock;
+extern std::atomic<size_t> target_matrix_count;
 
 struct SeedHit {
 	int diag() const {
@@ -49,13 +54,35 @@ struct SeedHit {
 };
 
 struct WorkTarget {
-	WorkTarget(size_t block_id, const sequence &seq, int query_len, const double* query_comp) :
+	WorkTarget(size_t block_id, const sequence& seq, int query_len, const double* query_comp, const int16_t** query_matrix) :
 		block_id(block_id),
 		seq(seq),
 		filter_score(0),
-		ungapped_score(0),
-		matrix(query_comp, query_len, seq)
-	{}
+		ungapped_score(0)
+	{
+		if (config.comp_based_stats == CBS::HAUSER_AND_AVG_MATRIX_ADJUST) {
+			const int l = (int)seq.length();
+			const auto c = composition(seq);
+			auto r = s_TestToApplyREAdjustmentConditional(query_len, l, query_comp, c.data());
+			if (r == eCompoScaleOldMatrix)
+				return;
+			if (*query_matrix == nullptr) {
+				*query_matrix = make_16bit_matrix(CompositionMatrixAdjust(query_len, query_len, query_comp, query_comp, CBS::AVG_MATRIX_SCALE));
+				++target_matrix_count;
+			}
+			if (target_matrices[block_id] == nullptr) {
+				int16_t* target_matrix = make_16bit_matrix(CompositionMatrixAdjust(l, l, c.data(), c.data(), CBS::AVG_MATRIX_SCALE));
+				{
+					std::lock_guard<std::mutex> lock(target_matrices_lock);
+					target_matrices[block_id] = target_matrix;
+					++target_matrix_count;
+				}
+			}
+			matrix = TargetMatrix(*query_matrix, target_matrices[block_id]);
+		}
+		else
+			matrix = TargetMatrix(query_comp, query_len, seq);
+	}
 	bool operator<(const WorkTarget &t) const {
 		return filter_score > t.filter_score || (filter_score == t.filter_score && block_id < t.block_id);
 	}
@@ -69,7 +96,7 @@ struct WorkTarget {
 	TargetMatrix matrix;
 };
 
-std::vector<WorkTarget> ungapped_stage(const sequence* query_seq, const Bias_correction* query_cb, const double* query_comp, FlatArray<SeedHit>& seed_hits, const std::vector<uint32_t>& target_block_ids, int flags);
+std::vector<WorkTarget> ungapped_stage(const sequence* query_seq, const Bias_correction* query_cb, const double* query_comp, FlatArray<SeedHit>& seed_hits, const std::vector<uint32_t>& target_block_ids, int flags, Statistics& stat);
 void rank_targets(std::vector<WorkTarget> &targets, double ratio, double factor);
 
 struct Target {
