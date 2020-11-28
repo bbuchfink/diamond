@@ -646,8 +646,12 @@ vector<int> CompositionMatrixAdjust(int query_len, int target_len, const double*
         query_comp,
         target_comp,
         BLOSUM62_UNGAPPED_LAMBDA / scale);
-    if (r != 0)
-        throw std::runtime_error("Error computing composition matrix adjust.");
+    if (r != 0) {
+        for (int i = 0; i < TRUE_AA; ++i)
+            for (int j = 0; j < TRUE_AA; ++j)
+                v[i * 20 + j] = score_matrix(i, j) * scale;
+        //throw std::runtime_error("Error computing composition matrix adjust.");
+    }
     return v;
 }
 
