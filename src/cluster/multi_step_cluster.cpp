@@ -17,6 +17,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #include "multi_step_cluster.h"
+#include <unordered_map>
 
 using namespace std;
 
@@ -62,7 +63,48 @@ vector<int> MultiStep::cluster(DatabaseFile& db, const vector<bool>* filter) {
 
 	message_stream << "Edges = " << nb.edges.size() << endl;
 
+	vector<uint32_t> components(nb.index.size());
+
+	for (size_t k = 0; k < nb.index.size(); k++) {
+		uint32_t curr = nb.index[k];
+		while (nb.index[curr] != curr) {
+			curr = nb.index[curr];
+		}
+		components[k] = curr;
+	}
+
+	sort(components.begin(), components.end());
+
+	message_stream << "connected components and their number of nodes: " << endl;
+	unordered_map <uint32_t,uint32_t> count_components;
+	for (size_t  i = 0; i < components.size(); i++) {
+		size_t count = 1;
+		size_t limit = components.size() - 1;
+		while (i < limit && components[i] == components[i + 1]) {
+			count++;
+			i++;
+		}
+		message_stream << components[i] << "\t" << count << endl;
+		count_components[components[i]] = count;
+	}
+
+	uint32_t comp_count = count_components.size() + count_components[0] - 1;
+	message_stream << "Number of connected components: " << comp_count << endl;
+
+	message_stream << "average number of nodes per connected component: " << components.size()/comp_count << endl;
+
+	int32_t large = 0;
+	for (auto& it : count_components) {
+		if (it.first != 0) {
+			if (it.second > large)
+				large = it.second;
+		}
+	}
+	
+	message_stream << "Largest connected component has " << large << " nodes." << endl;
+	
 	return Util::Algo::greedy_vortex_cover(nb);
+	
 }
 
 
@@ -117,7 +159,7 @@ void MultiStep::run() {
 		current_centroids = cluster(*db, i==0 ? nullptr: &previous_reps);
 		steps(current_reps, previous_reps, current_centroids, previous_centroids, i);
 	}
-	
+		
 	task_timer timer("Generating output");
 	Sequence_set* rep_seqs;
 	String_set<char, 0>* rep_ids;

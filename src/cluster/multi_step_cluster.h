@@ -56,9 +56,11 @@ struct Neighbors : public vector<vector<int>>, public Consumer {
 	Neighbors(size_t n):
 		vector<vector<int>>(n)
 	{}
+	vector<uint32_t> index;
+	
 	virtual void consume(const char* ptr, size_t n) override {
 		const char* end = ptr + n;
-		
+
 		while (ptr < end) {
 			const uint32_t query = *(uint32_t*)ptr;
 			ptr += sizeof(uint32_t);
@@ -67,6 +69,14 @@ struct Neighbors : public vector<vector<int>>, public Consumer {
 
 			(*this)[query].push_back(subject);
 			edges.push_back({ query, subject });
+
+			index.resize((*this).size());
+			index[query] = query;
+			for (size_t i = 0; i < (*this)[query].size(); i++) {
+				if ((*this)[query][i] <  index[query]) {
+					index[query] = (*this)[query][i];
+				}
+			}
 		}
 	}
 	vector<Util::Algo::Edge> edges;
