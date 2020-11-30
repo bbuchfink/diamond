@@ -56,6 +56,10 @@ vector<int> MultiStep::cluster(DatabaseFile& db, const vector<bool>* filter) {
 	opt.db = &db;
 	opt.self = true;
 	Neighbors nb(db.ref_header.sequences);
+	nb.index.resize(nb.size());
+	for (size_t i = 0; i< nb.index.size(); i++)
+		nb.index[i] = i;
+
 	opt.consumer = &nb;
 	opt.db_filter = filter;
 
@@ -63,42 +67,34 @@ vector<int> MultiStep::cluster(DatabaseFile& db, const vector<bool>* filter) {
 
 	message_stream << "Edges = " << nb.edges.size() << endl;
 
-	vector<uint32_t> components(nb.index.size());
-
-	for (size_t k = 0; k < nb.index.size(); k++) {
+	for (size_t k = 0; k < nb.size(); k++) {
+		vector<uint32_t> seen_nodes;
 		uint32_t curr = nb.index[k];
-		while (nb.index[curr] != curr) {
+		while (nb.index[curr] != curr){
+			seen_nodes.push_back(nb.index[curr]);
 			curr = nb.index[curr];
 		}
-		components[k] = curr;
+
+		nb.index[k] = curr;
+		for (size_t i : seen_nodes) {
+			nb.index[i] = curr;
+		}
+		seen_nodes.clear();
 	}
 
-	sort(components.begin(), components.end());
-
-	message_stream << "connected components and their number of nodes: " << endl;
 	unordered_map <uint32_t,uint32_t> count_components;
-	for (size_t  i = 0; i < components.size(); i++) {
-		size_t count = 1;
-		size_t limit = components.size() - 1;
-		while (i < limit && components[i] == components[i + 1]) {
-			count++;
-			i++;
-		}
-		message_stream << components[i] << "\t" << count << endl;
-		count_components[components[i]] = count;
+	for (size_t  i = 0; i < nb.index.size(); i++) {
+
+		++count_components[nb.index[i]];
 	}
 
-	uint32_t comp_count = count_components.size() + count_components[0] - 1;
-	message_stream << "Number of connected components: " << comp_count << endl;
+	message_stream << "Number of connected components: " << count_components.size() << endl;
 
-	message_stream << "average number of nodes per connected component: " << components.size()/comp_count << endl;
+	message_stream << "average number of nodes per connected component: " << nb.index.size()/count_components.size() << endl;
 
-	int32_t large = 0;
+	uint32_t large = 0;
 	for (auto& it : count_components) {
-		if (it.first != 0) {
-			if (it.second > large)
-				large = it.second;
-		}
+		large = max(large, it.second);
 	}
 	
 	message_stream << "Largest connected component has " << large << " nodes." << endl;
