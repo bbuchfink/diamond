@@ -25,7 +25,7 @@ CentOS 7, macOS 10.13 and Microsoft Windows 10.
 A precompiled binary is available for recent Linux systems and may be
 downloaded for immediate use:
 
-    wget http://github.com/bbuchfink/diamond/releases/download/v2.0.4/diamond-linux64.tar.gz
+    wget http://github.com/bbuchfink/diamond/releases/download/v2.0.5/diamond-linux64.tar.gz
     tar xzf diamond-linux64.tar.gz
 
 If the binary does not work on your system, i.e. you are getting error
@@ -51,7 +51,7 @@ To pull the latest version of the official Docker container:
 
 To pull a specific version:
 
-    docker pull buchfink/diamond:version2.0.4
+    docker pull buchfink/diamond:version2.0.5
 
 ### FreeBSD
 
@@ -69,9 +69,9 @@ Compilation requires GCC 4.8.1 or later, CMake 2.6 or later as well as
 from source, invoke the following commands on the shell:
 
 ```bash
-wget http://github.com/bbuchfink/diamond/archive/v2.0.4.tar.gz
-tar xzf v2.0.4.tar.gz
-cd diamond-2.0.4
+wget http://github.com/bbuchfink/diamond/archive/v2.0.5.tar.gz
+tar xzf v2.0.5.tar.gz
+cd diamond-2.0.5
 mkdir bin
 cd bin
 cmake ..
