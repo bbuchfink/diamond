@@ -57,7 +57,6 @@ struct WorkTarget {
 	WorkTarget(size_t block_id, const sequence& seq, int query_len, const double* query_comp, const int16_t** query_matrix) :
 		block_id(block_id),
 		seq(seq),
-		filter_score(0),
 		ungapped_score(0)
 	{
 		if (config.comp_based_stats == CBS::HAUSER_AND_AVG_MATRIX_ADJUST) {
@@ -83,21 +82,17 @@ struct WorkTarget {
 		else
 			matrix = TargetMatrix(query_comp, query_len, seq);
 	}
-	bool operator<(const WorkTarget &t) const {
-		return filter_score > t.filter_score || (filter_score == t.filter_score && block_id < t.block_id);
-	}
 	bool adjusted_matrix() const {
 		return !matrix.scores.empty();
 	}
 	size_t block_id;
 	sequence seq;
-	int filter_score, ungapped_score;
+	int ungapped_score;
 	std::array<std::list<Hsp_traits>, MAX_CONTEXT> hsp;
 	TargetMatrix matrix;
 };
 
 std::vector<WorkTarget> ungapped_stage(const sequence* query_seq, const Bias_correction* query_cb, const double* query_comp, FlatArray<SeedHit>& seed_hits, const std::vector<uint32_t>& target_block_ids, int flags, Statistics& stat);
-void rank_targets(std::vector<WorkTarget> &targets, double ratio, double factor);
 
 struct Target {
 
@@ -105,6 +100,7 @@ struct Target {
 		block_id(block_id),
 		seq(seq),
 		filter_score(0),
+		filter_evalue(DBL_MAX),
 		ungapped_score(ungapped_score),
 		matrix(matrix)
 	{}
@@ -112,11 +108,16 @@ struct Target {
 	void add_hit(std::list<Hsp> &list, std::list<Hsp>::iterator it) {
 		std::list<Hsp> &l = hsp[it->frame];
 		l.splice(l.end(), list, it);
-		filter_score = std::max(filter_score, (int)l.back().score);
+		filter_evalue = std::min(filter_evalue, l.back().evalue);
+		filter_score = std::max(filter_score, l.back().score);
 	}
 
-	bool operator<(const Target &t) const {
-		return filter_score > t.filter_score || (filter_score == t.filter_score && block_id < t.block_id);
+	static bool comp_evalue(const Target &t, const Target& u) {
+		return t.filter_evalue < u.filter_evalue || (t.filter_evalue == u.filter_evalue && t.block_id < u.block_id);
+	}
+
+	static bool comp_score(const Target& t, const Target& u) {
+		return t.filter_score > u.filter_score || (t.filter_score == u.filter_score && t.block_id < u.block_id);
 	}
 
 	bool adjusted_matrix() const {
@@ -129,7 +130,9 @@ struct Target {
 
 	size_t block_id;
 	sequence seq;
-	int filter_score, ungapped_score;
+	int filter_score;
+	double filter_evalue;
+	int ungapped_score;
 	std::array<std::list<Hsp>, MAX_CONTEXT> hsp;
 	TargetMatrix matrix;
 };
@@ -143,6 +146,7 @@ struct TargetScore {
 };
 
 void load_hits(hit* begin, hit* end, FlatArray<SeedHit> &hits, std::vector<uint32_t> &target_block_ids, std::vector<TargetScore> &target_scores);
+void culling(std::vector<Target>& targets, int source_query_len, const char* query_title, const sequence& query_seq, size_t min_keep);
 bool append_hits(std::vector<Target>& targets, std::vector<Target>::const_iterator begin, std::vector<Target>::const_iterator end, size_t chunk_size, int source_query_len, const char* query_title, const sequence& query_seq);
 std::vector<WorkTarget> gapped_filter(const sequence *query, const Bias_correction* query_cbs, std::vector<WorkTarget>& targets, Statistics &stat);
 void gapped_filter(const sequence* query, const Bias_correction* query_cbs, FlatArray<SeedHit> &seed_hits, std::vector<uint32_t> &target_block_ids, Statistics& stat, int flags, const Parameters &params);

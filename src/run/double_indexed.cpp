@@ -175,14 +175,6 @@ void run_query_chunk(DatabaseFile &db_file,
 {
 	auto P = Parallelizer::get();
 
-	const Parameters params {
-		db_file.ref_header.sequences,
-		db_file.ref_header.letters,
-		db_file.total_blocks(),
-		config.gapped_filter_evalue1,
-		config.gapped_filter_evalue
-	};
-
 	task_timer timer("Building query seed set");
 	if (query_chunk == 0)
 		setup_search_cont();
@@ -219,6 +211,14 @@ void run_query_chunk(DatabaseFile &db_file,
 		query_seeds_hashed = new Hashed_seed_set(query_seqs::get());
 	}
 	timer.finish();
+
+	const Parameters params{
+	db_file.ref_header.sequences,
+	db_file.ref_header.letters,
+	db_file.total_blocks(),
+	config.gapped_filter_evalue1,
+	config.gapped_filter_evalue
+	};
 
 	char *query_buffer = nullptr;
 	const pair<size_t, size_t> query_len_bounds = query_seqs::data_->len_bounds(shapes[0].length_);

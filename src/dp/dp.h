@@ -248,7 +248,7 @@ namespace Swipe {
 
 namespace BandedSwipe {
 
-DECL_DISPATCH(std::list<Hsp>, swipe, (const sequence &query, std::vector<DpTarget> &targets8, std::vector<DpTarget> &targets16, DynamicIterator<DpTarget>* targets, Frame frame, const Bias_correction *composition_bias, int flags, int score_cutoff, Statistics &stat))
+DECL_DISPATCH(std::list<Hsp>, swipe, (const sequence &query, std::vector<DpTarget> &targets8, std::vector<DpTarget> &targets16, DynamicIterator<DpTarget>* targets, Frame frame, const Bias_correction *composition_bias, int flags, Statistics &stat))
 
 }
 

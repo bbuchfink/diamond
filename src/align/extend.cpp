@@ -31,7 +31,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/log_stream.h"
 #include "../data/reference.h"
 #include "../util/system.h"
-#include "culling.h"
 #include "../util/util.h"
 
 using std::vector;
@@ -208,8 +207,7 @@ vector<Match> extend(
 	timer.finish();
 
 	vector<Match> matches = align(aligned_targets, query_seq.data(), query_cb.data(), source_query_len, flags, stat, first_round_traceback);
-	std::sort(matches.begin(), matches.end());
-
+	std::sort(matches.begin(), matches.end(), config.toppercent == 100.0 ? Match::cmp_evalue : Match::cmp_score);
 	return matches;
 }
 

@@ -1,3 +1,10 @@
+[2.0.6]
+- Fixed a bug that could cause incorrect alignment coordinates, gaps counts and sequence
+  identities being reported by `diamond view`.
+- Targets are sorted by bit score instead of e-value when the `--top` parameter is used
+  in the alignment output.
+- Disabled support of custom scoring matrices for the DAA format.
+
 [2.0.5]
 - Fixed an issue that could cause high memory use in frameshift alignment mode.
 

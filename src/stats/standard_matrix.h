@@ -20,10 +20,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #pragma once
 
+#include <map>
 #include <array>
 #include <limits.h>
 #include <vector>
 #include "../basic/value.h"
+
+namespace Stats {
 
 const double INT2_MAX = std::numeric_limits<double>::max();
 
@@ -43,7 +46,19 @@ struct StandardMatrix {
 		double sigma;
 	};
 
+	int default_gap_exist, default_gap_extend;
 	std::vector<Parameters> parameters;
+	std::array<int8_t, AMINO_ACID_COUNT * AMINO_ACID_COUNT> scores;
 	double joint_probs[TRUE_AA][TRUE_AA];
+	std::array<double, TRUE_AA> background_freqs;
+
+	const Parameters& constants(int gap_exist, int gap_extend) const;
+	const Parameters& ungapped_constants() const;
+	static const StandardMatrix& get(const std::string& name);
+	static const std::map<std::string, const StandardMatrix&> matrices;
 
 };
+
+extern const StandardMatrix blosum45, blosum50, blosum62, blosum80, blosum90, pam250, pam30, pam70;
+
+}

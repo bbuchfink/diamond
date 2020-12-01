@@ -68,13 +68,16 @@ int band(int len) {
 Match::Match(size_t target_block_id, std::array<std::list<Hsp>, MAX_CONTEXT> &hsps, int ungapped_score):
 	target_block_id(target_block_id),
 	filter_score(0),
+	filter_evalue(DBL_MAX),
 	ungapped_score(ungapped_score)
 {
 	for (unsigned i = 0; i < align_mode.query_contexts; ++i)
 		hsp.splice(hsp.end(), hsps[i]);
 	hsp.sort();
-	if (!hsp.empty())
+	if (!hsp.empty()) {
+		filter_evalue = hsp.front().evalue;
 		filter_score = hsp.front().score;
+	}
 	if (config.max_hsps > 0)
 		max_hsp_culling();
 }
@@ -124,8 +127,6 @@ void add_dp_targets(const WorkTarget &target, int target_idx, const sequence *qu
 }
 
 vector<Target> align(const vector<WorkTarget> &targets, const sequence *query_seq, const Bias_correction *query_cb, int source_query_len, int flags, Statistics &stat) {
-	const int raw_score_cutoff = Extension::raw_score_cutoff(query_seq[0].length());
-
 	array<array<vector<DpTarget>, 2>, MAX_CONTEXT> dp_targets;
 	vector<Target> r;
 	if (targets.empty())
@@ -154,7 +155,6 @@ vector<Target> align(const vector<WorkTarget> &targets, const sequence *query_se
 			Frame(frame),
 			CBS::hauser(config.comp_based_stats) ? &query_cb[frame] : nullptr,
 			flags,
-			raw_score_cutoff,
 			stat);
 		while (!hsp.empty())
 			r[hsp.front().swipe_target].add_hit(hsp, hsp.begin());
@@ -163,7 +163,7 @@ vector<Target> align(const vector<WorkTarget> &targets, const sequence *query_se
 	vector<Target> r2;
 	r2.reserve(r.size());
 	for (vector<Target>::iterator i = r.begin(); i != r.end(); ++i)
-		if (i->filter_score > 0) {
+		if (i->filter_evalue != DBL_MAX) {
 			if(flags & DP::TRACEBACK)
 				i->inner_culling(source_query_len);
 			r2.push_back(std::move(*i));
@@ -173,7 +173,6 @@ vector<Target> align(const vector<WorkTarget> &targets, const sequence *query_se
 }
 
 vector<Target> full_db_align(const sequence *query_seq, const Bias_correction *query_cb, int flags, Statistics &stat) {
-	const int raw_score_cutoff = Extension::raw_score_cutoff(query_seq[0].length());
 	ContainerIterator<DpTarget, Sequence_set> target_it(*ref_seqs::data_, ref_seqs::data_->get_length());
 	vector<DpTarget> v;
 	vector<Target> r;
@@ -187,7 +186,6 @@ vector<Target> full_db_align(const sequence *query_seq, const Bias_correction *q
 		Frame(0),
 		CBS::hauser(config.comp_based_stats) ? &query_cb[0] : nullptr,
 		flags | DP::FULL_MATRIX,
-		raw_score_cutoff,
 		stat);
 
 	map<unsigned, unsigned> subject_idx;
@@ -220,8 +218,6 @@ void add_dp_targets(const Target &target, int target_idx, const sequence *query_
 }
 
 vector<Match> align(vector<Target> &targets, const sequence *query_seq, const Bias_correction *query_cb, int source_query_len, int flags, Statistics &stat, bool first_round_traceback) {
-	const int raw_score_cutoff = Extension::raw_score_cutoff(query_seq[0].length());
-
 	array<array<vector<DpTarget>, 2>, MAX_CONTEXT> dp_targets;
 	vector<Match> r;
 	if (targets.empty())
@@ -255,7 +251,6 @@ vector<Match> align(vector<Target> &targets, const sequence *query_seq, const Bi
 			Frame(frame),
 			CBS::hauser(config.comp_based_stats) ? &query_cb[frame] : nullptr,
 			DP::TRACEBACK | flags,
-			raw_score_cutoff,
 			stat);
 		while (!hsp.empty())
 			r[hsp.front().swipe_target].add_hit(hsp, hsp.begin());

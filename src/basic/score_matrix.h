@@ -28,6 +28,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/log_stream.h"
 #include "value.h"
 #include "../lib/alp/sls_alignment_evaluer.hpp"
+#include "../stats/standard_matrix.h"
 
 using std::string;
 using std::cout;
@@ -39,7 +40,7 @@ struct Score_matrix
 {
 
 	Score_matrix() :ln_k_(0.0) {}
-	Score_matrix(const string &matrix, int gap_open, int gap_extend, int frame_shift, int stop_match_score, uint64_t db_letters = 0, bool use_alp=false, int scale=1);
+	Score_matrix(const string &matrix, int gap_open, int gap_extend, int frame_shift, int stop_match_score, uint64_t db_letters = 0, int scale=1);
 	Score_matrix(const string &matrix_file, double lambda, double K, int gap_open, int gap_extend, uint64_t db_letters = 0);
 
 	friend std::ostream& operator<<(std::ostream& s, const Score_matrix &m);
@@ -107,7 +108,7 @@ struct Score_matrix
 	int rawscore(double bitscore) const
 	{ return (int)ceil(rawscore(bitscore, double ())); }
 
-	double evalue(int raw_score, unsigned query_len, unsigned subject_len = 0) const;
+	double evalue(int raw_score, unsigned query_len, unsigned subject_len) const;
 
 	double evalue_norm(int raw_score, int query_len) const
 	{
@@ -166,7 +167,7 @@ struct Score_matrix
 	}
 
 	double avg_id_score() const;
-	double BLAST_SpougeStoE(int score, int m_, int n_) const;
+	bool report_cutoff(int score, double evalue) const;
 
 private:
 
@@ -198,6 +199,7 @@ private:
 		alignas(32) _t data[32 * 32];
 	};
 
+	const Stats::StandardMatrix* standard_matrix_;
 	int gap_open_, gap_extend_, frame_shift_;
 	double db_letters_;
 	const double* constants_;

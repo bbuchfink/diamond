@@ -186,8 +186,7 @@ void QueryMapper::score_only_culling()
 	const unsigned query_len = (unsigned)query_seq(0).length();
 	PtrVector<Target>::iterator i;
 	for (i = targets.begin(); i<targets.end();) {
-		if ((config.min_bit_score == 0 && score_matrix.evalue((*i)->filter_score, query_len) > config.max_evalue)
-			|| score_matrix.bitscore((*i)->filter_score) < config.min_bit_score)
+		if (score_matrix.report_cutoff((*i)->filter_score, (*i)->filter_evalue))
 			break;
 		const int c = target_culling->cull(**i);
 		if (c == TargetCulling::FINISHED)
@@ -216,7 +215,7 @@ bool QueryMapper::generate_output(TextBuffer &buffer, Statistics &stat)
 
 	for (size_t i = 0; i < targets.size(); ++i) {
 
-		if ((config.min_bit_score == 0 && score_matrix.evalue(targets[i].filter_score, query_len) > config.max_evalue)
+		if ((config.min_bit_score == 0 && targets[i].filter_evalue > config.max_evalue)
 			|| score_matrix.bitscore(targets[i].filter_score) < config.min_bit_score)
 			break;
 

@@ -334,7 +334,7 @@ Hsp traceback(const sequence &query, Frame frame, _cbs bias_correction, const Tr
 }
 
 template<typename _sv, typename _traceback, typename _cbs>
-list<Hsp> swipe(const sequence& query, Frame frame, DynamicIterator<DpTarget>& target_it, _cbs composition_bias, int score_cutoff, vector<DpTarget>& overflow, Statistics &stats)
+list<Hsp> swipe(const sequence& query, Frame frame, DynamicIterator<DpTarget>& target_it, _cbs composition_bias, vector<DpTarget>& overflow, Statistics &stats)
 {
 	typedef typename ScoreTraits<_sv>::Score Score;
 	typedef typename MatrixTraits<_sv, _traceback>::Type Matrix;
@@ -395,7 +395,7 @@ list<Hsp> swipe(const sequence& query, Frame frame, DynamicIterator<DpTarget>& t
 				reinit = true;
 			} else if (!targets.inc(c)) {
 				const int s = ScoreTraits<_sv>::int_score(best[c]);
-				if (s >= score_cutoff)
+				if (false)
 					out.push_back(traceback<_sv>(query, frame, composition_bias, dp, targets.dp_targets[c], best[c], max_col[c], max_i[c], max_j[c], c));
 				reinit = true;				
 			}
@@ -417,25 +417,25 @@ list<Hsp> swipe(const sequence& query, Frame frame, DynamicIterator<DpTarget>& t
 }
 
 #ifdef __SSE4_1__
-template list<Hsp> swipe<score_vector<int8_t>, VectorTraceback, const int8_t*>(const sequence&, Frame, DynamicIterator<DpTarget>& target_it, const int8_t*, int, vector<DpTarget>&, Statistics&);
-template list<Hsp> swipe<score_vector<int8_t>, ScoreOnly, const int8_t*>(const sequence&, Frame, DynamicIterator<DpTarget>& target_it, const int8_t*, int, vector<DpTarget>&, Statistics&);
+template list<Hsp> swipe<score_vector<int8_t>, VectorTraceback, const int8_t*>(const sequence&, Frame, DynamicIterator<DpTarget>& target_it, const int8_t*, vector<DpTarget>&, Statistics&);
+template list<Hsp> swipe<score_vector<int8_t>, ScoreOnly, const int8_t*>(const sequence&, Frame, DynamicIterator<DpTarget>& target_it, const int8_t*, vector<DpTarget>&, Statistics&);
 #endif
 #ifdef __SSE2__
-template list<Hsp> swipe<score_vector<int16_t>, VectorTraceback, const int8_t*>(const sequence&, Frame, DynamicIterator<DpTarget>& target_it, const int8_t*, int, vector<DpTarget>&, Statistics&);
-template list<Hsp> swipe<score_vector<int16_t>, ScoreOnly, const int8_t*>(const sequence&, Frame, DynamicIterator<DpTarget>& target_it, const int8_t*, int, vector<DpTarget>&, Statistics&);
+template list<Hsp> swipe<score_vector<int16_t>, VectorTraceback, const int8_t*>(const sequence&, Frame, DynamicIterator<DpTarget>& target_it, const int8_t*, vector<DpTarget>&, Statistics&);
+template list<Hsp> swipe<score_vector<int16_t>, ScoreOnly, const int8_t*>(const sequence&, Frame, DynamicIterator<DpTarget>& target_it, const int8_t*, vector<DpTarget>&, Statistics&);
 #endif
-template list<Hsp> swipe<int32_t, VectorTraceback, const int8_t*>(const sequence&, Frame, DynamicIterator<DpTarget>& target_it, const int8_t*, int, vector<DpTarget>&, Statistics&);
-template list<Hsp> swipe<int32_t, ScoreOnly, const int8_t*>(const sequence&, Frame, DynamicIterator<DpTarget>& target_it, const int8_t*, int, vector<DpTarget>&, Statistics&);
+template list<Hsp> swipe<int32_t, VectorTraceback, const int8_t*>(const sequence&, Frame, DynamicIterator<DpTarget>& target_it, const int8_t*, vector<DpTarget>&, Statistics&);
+template list<Hsp> swipe<int32_t, ScoreOnly, const int8_t*>(const sequence&, Frame, DynamicIterator<DpTarget>& target_it, const int8_t*, vector<DpTarget>&, Statistics&);
 
 #ifdef __SSE4_1__
-template list<Hsp> swipe<score_vector<int8_t>, VectorTraceback, NoCBS>(const sequence&, Frame, DynamicIterator<DpTarget>& target_it, NoCBS, int, vector<DpTarget>&, Statistics&);
-template list<Hsp> swipe<score_vector<int8_t>, ScoreOnly, NoCBS>(const sequence&, Frame, DynamicIterator<DpTarget>& target_it, NoCBS, int, vector<DpTarget>&, Statistics&);
+template list<Hsp> swipe<score_vector<int8_t>, VectorTraceback, NoCBS>(const sequence&, Frame, DynamicIterator<DpTarget>& target_it, NoCBS, vector<DpTarget>&, Statistics&);
+template list<Hsp> swipe<score_vector<int8_t>, ScoreOnly, NoCBS>(const sequence&, Frame, DynamicIterator<DpTarget>& target_it, NoCBS, vector<DpTarget>&, Statistics&);
 #endif
 #ifdef __SSE2__
-template list<Hsp> swipe<score_vector<int16_t>, VectorTraceback, NoCBS>(const sequence&, Frame, DynamicIterator<DpTarget>& target_it, NoCBS, int, vector<DpTarget>&, Statistics&);
-template list<Hsp> swipe<score_vector<int16_t>, ScoreOnly, NoCBS>(const sequence&, Frame, DynamicIterator<DpTarget>& target_it, NoCBS, int, vector<DpTarget>&, Statistics&);
+template list<Hsp> swipe<score_vector<int16_t>, VectorTraceback, NoCBS>(const sequence&, Frame, DynamicIterator<DpTarget>& target_it, NoCBS, vector<DpTarget>&, Statistics&);
+template list<Hsp> swipe<score_vector<int16_t>, ScoreOnly, NoCBS>(const sequence&, Frame, DynamicIterator<DpTarget>& target_it, NoCBS, vector<DpTarget>&, Statistics&);
 #endif
-template list<Hsp> swipe<int32_t, VectorTraceback, NoCBS>(const sequence&, Frame, DynamicIterator<DpTarget>& target_it, NoCBS, int, vector<DpTarget>&, Statistics&);
-template list<Hsp> swipe<int32_t, ScoreOnly, NoCBS>(const sequence&, Frame, DynamicIterator<DpTarget>& target_it, NoCBS, int, vector<DpTarget>&, Statistics&);
+template list<Hsp> swipe<int32_t, VectorTraceback, NoCBS>(const sequence&, Frame, DynamicIterator<DpTarget>& target_it, NoCBS, vector<DpTarget>&, Statistics&);
+template list<Hsp> swipe<int32_t, ScoreOnly, NoCBS>(const sequence&, Frame, DynamicIterator<DpTarget>& target_it, NoCBS, vector<DpTarget>&, Statistics&);
 
 }}}

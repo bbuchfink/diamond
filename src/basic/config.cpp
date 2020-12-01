@@ -440,7 +440,6 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("score-drop-factor", 0, "", ranking_score_drop_factor, 0.95)
 		("left-most-interval", 0, "", left_most_interval, 32)
 		("ranking-cutoff-bitscore", 0, "", ranking_cutoff_bitscore, 25.0)
-		("alp", 0, "", alp)
 		("no-forward-fp", 0, "", no_forward_fp)
 		("no-ref-masking", 0, "", no_ref_masking)
 		("roc-file", 0, "", roc_file)
@@ -452,8 +451,8 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("query-count", 0, "", query_count, (size_t)1)
 		("cbs-angle", 0, "", cbs_angle, 50.0)
 		("target-seg", 0, "", target_seg)
-		("cbs-err-tolerance", 0, "", cbs_err_tolerance, 0.1)
-		("cbs-it-limit", 0, "", cbs_it_limit, 10);
+		("cbs-err-tolerance", 0, "", cbs_err_tolerance, 0.00000001)
+		("cbs-it-limit", 0, "", cbs_it_limit, 2000);
 	
 	parser.add(general).add(makedb).add(cluster).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options).add(deprecated_options);
 	parser.store(argc, argv, command);
@@ -625,13 +624,16 @@ Config::Config(int argc, const char **argv, bool check_io)
 			throw std::runtime_error("Frameshift alignments are only supported for translated searches.");
 		if (query_range_culling && frame_shift == 0)
 			throw std::runtime_error("Query range culling is only supported in frameshift alignment mode (option -F).");
-		if (matrix_file == "")
-			score_matrix = Score_matrix(to_upper_case(matrix), gap_open, gap_extend, frame_shift, stop_match_score, 0, alp, cbs_matrix_scale);
+		if (matrix_file == "") {
+			score_matrix = Score_matrix(to_upper_case(matrix), gap_open, gap_extend, frame_shift, stop_match_score, 0, cbs_matrix_scale);
+		}
 		else {
 			if (lambda == 0 || K == 0)
 				throw std::runtime_error("Custom scoring matrices require setting the --lambda and --K options.");
 			if (gap_open == -1 || gap_extend == -1)
 				throw std::runtime_error("Custom scoring matrices require setting the --gapopen and --gapextend options.");
+			if (output_format.front() == "daa" || output_format.front() == "100")
+				throw std::runtime_error("Custom scoring matrices are not supported for the DAA format.");
 			score_matrix = Score_matrix(matrix_file, lambda, K, gap_open, gap_extend);
 		}
 		if(command == Config::cluster && !Workflow::Cluster::ClusterRegistry::has(cluster_algo)){

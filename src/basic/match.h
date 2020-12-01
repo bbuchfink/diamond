@@ -224,6 +224,7 @@ struct Hsp
 	std::pair<int, int> diagonal_bounds() const;
 	int score, frame, length, identities, mismatches, positives, gap_openings, gaps, swipe_target, d_begin, d_end;
 	interval query_source_range, query_range, subject_range, seed_hit_range;
+	double evalue;
 	Packed_transcript transcript;
 };
 
@@ -330,7 +331,7 @@ struct Hsp_context
 	{ return hsp_.score; }
 	double evalue() const
 	{
-		return score_matrix.evalue(score(), (unsigned)query.index(0).length(), subject_len);
+		return hsp_.evalue;
 	}
 	double bit_score() const
 	{

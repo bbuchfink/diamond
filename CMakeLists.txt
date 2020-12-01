@@ -99,11 +99,11 @@ set(DISPATCH_OBJECTS
 "src/dp/ungapped_simd.cpp"
 )
 
-add_library(arch_generic OBJECT ${DISPATCH_OBJECTS} "src/basic/cbs3.cpp")
+add_library(arch_generic OBJECT ${DISPATCH_OBJECTS})
 target_compile_options(arch_generic PUBLIC -DDISPATCH_ARCH=ARCH_GENERIC -DARCH_ID=0 -DEigen=Eigen_GENERIC)
 if(X86)
-add_library(arch_sse4_1 OBJECT ${DISPATCH_OBJECTS} "src/basic/cbs3.cpp")
-add_library(arch_avx2 OBJECT ${DISPATCH_OBJECTS} "src/basic/cbs3.cpp")
+add_library(arch_sse4_1 OBJECT ${DISPATCH_OBJECTS})
+add_library(arch_avx2 OBJECT ${DISPATCH_OBJECTS})
 if (${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
 	target_compile_options(arch_sse4_1 PUBLIC -DDISPATCH_ARCH=ARCH_SSE4_1 -DARCH_ID=1 -D__SSSE3__ -D__SSE4_1__ -D__POPCNT__ -DEigen=Eigen_SSE4_1)
     target_compile_options(arch_avx2 PUBLIC -DDISPATCH_ARCH=ARCH_AVX2 -DARCH_ID=2 /arch:AVX2 -D__SSSE3__ -D__SSE4_1__ -D__POPCNT__ -DEigen=Eigen_AVX2)
@@ -187,7 +187,6 @@ set(OBJECTS
   src/align/extend.cpp
   src/test/simulate.cpp
   src/test/test.cpp
-  src/align/ranking.cpp
   src/align/ungapped.cpp
   src/align/gapped.cpp
   src/align/culling.cpp
@@ -235,7 +234,15 @@ set(OBJECTS
   src/basic/cbs2.cpp
   src/lib/blast/nlm_linear_algebra.cpp
   src/basic/cbs3.cpp
+  src/stats/matrices/blosum45.cpp
+  src/stats/matrices/blosum50.cpp
   src/stats/matrices/blosum62.cpp
+  src/stats/matrices/blosum80.cpp
+  src/stats/matrices/blosum90.cpp
+  src/stats/matrices/pam250.cpp
+  src/stats/matrices/pam30.cpp
+  src/stats/matrices/pam70.cpp
+  src/stats/stats.cpp
 )
 
 if(X86)

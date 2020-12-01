@@ -238,7 +238,6 @@ struct Config
 	double ranking_score_drop_factor;
 	double ranking_cutoff_bitscore;
 	int left_most_interval;
-	bool alp;
 	bool no_forward_fp;
 	bool no_ref_masking;
 	string roc_file;

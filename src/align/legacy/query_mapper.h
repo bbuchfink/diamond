@@ -108,20 +108,22 @@ struct Seed_hit
 
 struct Target
 {
-	Target(int score):
-		filter_score(score)
+	Target(int filter_score, double filter_evalue):
+		filter_score(filter_score),
+		filter_evalue(filter_evalue)
 	{}
 	Target(size_t begin, unsigned subject_id, const std::set<unsigned> &taxon_rank_ids) :
 		subject_block_id(subject_id),
 		subject(ref_seqs::get()[subject_id]),
 		filter_score(0),
+		filter_evalue(DBL_MAX),
 		outranked(false),
 		begin(begin),
 		taxon_rank_ids(taxon_rank_ids)
 	{}
 	static bool compare(Target* lhs, Target *rhs)
 	{
-		return lhs->filter_score > rhs->filter_score || (lhs->filter_score == rhs->filter_score && lhs->subject_block_id < rhs->subject_block_id);
+		return lhs->filter_evalue < rhs->filter_evalue || (lhs->filter_evalue == rhs->filter_evalue && lhs->subject_block_id < rhs->subject_block_id);
 	}
 	void fill_source_ranges(size_t query_len)
 	{
@@ -138,6 +140,7 @@ struct Target
 	unsigned subject_block_id;
 	sequence subject;
 	int filter_score;
+	double filter_evalue;
 	float filter_time;
 	bool outranked;
 	size_t begin, end;
