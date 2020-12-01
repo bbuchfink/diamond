@@ -35,6 +35,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../dp/dp.h"
 #include "../basic/masking.h"
 #include "cluster.h"
+#include <unordered_map>
 
 using namespace std;
 
@@ -43,8 +44,10 @@ namespace Workflow { namespace Cluster{
 class MultiStep : public ClusteringAlgorithm {
 private:
 	vector<bool> rep_bitset(const vector<int> &centroid, const vector<bool> *superset = nullptr);
-	vector<int> cluster(DatabaseFile &db, const vector<bool> *filter);
-	void steps (vector<bool> &current_reps, vector<bool> &previous_reps, vector<int> &current_centroids, vector<int> &previous_centroids, int count);
+	vector<int> cluster(DatabaseFile& db, const vector<bool>* filter);
+	void find_connected_components(vector<uint32_t>& sindex, unordered_map <uint32_t, uint32_t>& comp);
+	uint32_t find_max(unordered_map <uint32_t, uint32_t> comp);
+	void steps(vector<bool>& current_reps, vector<bool>& previous_reps, vector<int>& current_centroids, vector<int>& previous_centroids, int count);
 
 public:
 	void run();
@@ -55,9 +58,13 @@ public:
 struct Neighbors : public vector<vector<int>>, public Consumer {
 	Neighbors(size_t n) :
 		vector<vector<int>>(n) {
+		smallest_index.resize((*this).size());
+		for (size_t i = 0; i < smallest_index.size(); i++) {
+			smallest_index[i] = i;
+		}
 	}
 
-	vector<uint32_t> index;	
+	vector<uint32_t> smallest_index;
 	
 	
 	virtual void consume(const char* ptr, size_t n) override {
@@ -72,11 +79,11 @@ struct Neighbors : public vector<vector<int>>, public Consumer {
 			(*this)[query].push_back(subject);
 			edges.push_back({ query, subject });
 
-			if (subject < index[query])
-				index[query] = subject;
+			if (subject < smallest_index[query])
+				smallest_index[query] = subject;
 
-			if (query < index[subject])
-				index[subject] = query;
+			if (query < smallest_index[subject])
+				smallest_index[subject] = query;
 		}
 	}
 	vector<Util::Algo::Edge> edges;

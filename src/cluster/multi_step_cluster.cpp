@@ -56,9 +56,6 @@ vector<int> MultiStep::cluster(DatabaseFile& db, const vector<bool>* filter) {
 	opt.db = &db;
 	opt.self = true;
 	Neighbors nb(db.ref_header.sequences);
-	nb.index.resize(nb.size());
-	for (size_t i = 0; i< nb.index.size(); i++)
-		nb.index[i] = i;
 
 	opt.consumer = &nb;
 	opt.db_filter = filter;
@@ -67,40 +64,45 @@ vector<int> MultiStep::cluster(DatabaseFile& db, const vector<bool>* filter) {
 
 	message_stream << "Edges = " << nb.edges.size() << endl;
 
-	for (size_t k = 0; k < nb.size(); k++) {
-		vector<uint32_t> seen_nodes;
-		uint32_t curr = nb.index[k];
-		while (nb.index[curr] != curr){
-			seen_nodes.push_back(nb.index[curr]);
-			curr = nb.index[curr];
+	unordered_map <uint32_t, uint32_t> components;
+	find_connected_components(nb.smallest_index, components);
+	message_stream << "Number of connected components: " << components.size() << endl;
+	message_stream << "average number of nodes per connected component: " << (double) nb.smallest_index.size()/components.size() << endl;
+	message_stream << "Largest connected component has " << (find_max(components)) << " nodes." << endl;
+	
+	return Util::Algo::greedy_vortex_cover(nb);
+	
+}
+void MultiStep::find_connected_components(vector<uint32_t>& sindex, unordered_map<uint32_t, uint32_t>& comp){
+	vector<uint32_t> seen_nodes;
+	uint32_t curr = 0;
+	for (size_t k = 0; k < sindex.size(); k++) {
+		curr = sindex[k];
+		while (sindex[curr] != curr) {
+			seen_nodes.push_back(sindex[curr]);
+			curr = sindex[curr];
 		}
 
-		nb.index[k] = curr;
+		sindex[k] = curr;
 		for (size_t i : seen_nodes) {
-			nb.index[i] = curr;
+			sindex[i] = curr;
 		}
 		seen_nodes.clear();
 	}
 
-	unordered_map <uint32_t,uint32_t> count_components;
-	for (size_t  i = 0; i < nb.index.size(); i++) {
 
-		++count_components[nb.index[i]];
+	for (size_t i = 0; i < sindex.size(); i++) {
+		++comp[sindex[i]];
 	}
+}
 
-	message_stream << "Number of connected components: " << count_components.size() << endl;
-
-	message_stream << "average number of nodes per connected component: " << nb.index.size()/count_components.size() << endl;
-
+uint32_t MultiStep::find_max(unordered_map<uint32_t, uint32_t> comp)
+{
 	uint32_t large = 0;
-	for (auto& it : count_components) {
+	for (auto& it : comp) {
 		large = max(large, it.second);
 	}
-	
-	message_stream << "Largest connected component has " << large << " nodes." << endl;
-	
-	return Util::Algo::greedy_vortex_cover(nb);
-	
+	return large;
 }
 
 
