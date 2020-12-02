@@ -41,7 +41,7 @@ struct Match {
 		hsp.splice(hsp.end(), list, it);
 	}
 	static bool cmp_evalue(const Match& m, const Match& n) {
-		return m.filter_evalue < n.filter_evalue || (m.filter_evalue == n.filter_evalue && m.target_block_id < n.target_block_id);
+		return m.filter_evalue < n.filter_evalue || (m.filter_evalue == n.filter_evalue && cmp_score(m, n));
 	}
 	static bool cmp_score(const Match& m, const Match& n) {
 		return m.filter_score > n.filter_score || (m.filter_score == n.filter_score && m.target_block_id < n.target_block_id);

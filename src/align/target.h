@@ -113,7 +113,7 @@ struct Target {
 	}
 
 	static bool comp_evalue(const Target &t, const Target& u) {
-		return t.filter_evalue < u.filter_evalue || (t.filter_evalue == u.filter_evalue && t.block_id < u.block_id);
+		return t.filter_evalue < u.filter_evalue || (t.filter_evalue == u.filter_evalue && comp_score(t, u));
 	}
 
 	static bool comp_score(const Target& t, const Target& u) {

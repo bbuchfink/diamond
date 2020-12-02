@@ -197,7 +197,6 @@ set(OBJECTS
   src/align/output.cpp
   src/tools/roc.cpp
   src/test/data.cpp
-  src/basic/matrix_tables.cpp
   src/test/test_cases.cpp
   src/chaining/smith_waterman.cpp
   src/basic/value.cpp

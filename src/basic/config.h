@@ -157,7 +157,6 @@ struct Config
 	double freq_treshold;
 	bool use_lazy_dict;
 	string aligned_file;
-	int filter_locus;
 	bool use_dataset_field;
 	bool store_query_quality;
 	string invocation;

@@ -121,9 +121,13 @@ struct Target
 		begin(begin),
 		taxon_rank_ids(taxon_rank_ids)
 	{}
-	static bool compare(Target* lhs, Target *rhs)
+	static bool compare_evalue(Target* lhs, Target *rhs)
 	{
-		return lhs->filter_evalue < rhs->filter_evalue || (lhs->filter_evalue == rhs->filter_evalue && lhs->subject_block_id < rhs->subject_block_id);
+		return lhs->filter_evalue < rhs->filter_evalue || (lhs->filter_evalue == rhs->filter_evalue && compare_score(lhs, rhs));
+	}
+	static bool compare_score(Target* lhs, Target* rhs)
+	{
+		return lhs->filter_score > rhs->filter_score || (lhs->filter_score == rhs->filter_score && lhs->subject_block_id < rhs->subject_block_id);
 	}
 	void fill_source_ranges(size_t query_len)
 	{
@@ -135,7 +139,7 @@ struct Target
 	bool envelopes(const Hsp_traits &t, double p) const;
 	bool is_enveloped(const Target &t, double p) const;
 	bool is_enveloped(PtrVector<Target>::const_iterator begin, PtrVector<Target>::const_iterator end, double p, int min_score) const;
-	void inner_culling(int cutoff);
+	void inner_culling();
 	void apply_filters(int dna_len, int subject_len, const char *query_title, const char *ref_title);
 	unsigned subject_block_id;
 	sequence subject;
@@ -159,7 +163,6 @@ struct QueryMapper
 	bool generate_output(TextBuffer &buffer, Statistics &stat);
 	void rank_targets(double ratio, double factor);
 	void score_only_culling();
-	int raw_score_cutoff() const;
 	size_t n_targets() const
 	{
 		return targets.size();

@@ -121,7 +121,7 @@ struct Join_record
 
 	static bool cmp_evalue(const Join_record& lhs, const Join_record &rhs)
 	{
-		return rhs.same_subject_ ||  (!rhs.same_subject_ && (lhs.info_.evalue > rhs.info_.evalue || (lhs.info_.evalue == rhs.info_.evalue && rhs.db_precedence(lhs))));
+		return rhs.same_subject_ || (!rhs.same_subject_ && (lhs.info_.evalue > rhs.info_.evalue || (lhs.info_.evalue == rhs.info_.evalue && cmp_score(lhs, rhs))));
 	}
 
 	static bool cmp_score(const Join_record& lhs, const Join_record& rhs)
