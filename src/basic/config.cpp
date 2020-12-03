@@ -631,6 +631,8 @@ Config::Config(int argc, const char **argv, bool check_io)
 				throw std::runtime_error("Custom scoring matrices require setting the --gapopen and --gapextend options.");
 			if (!output_format.empty() && (output_format.front() == "daa" || output_format.front() == "100"))
 				throw std::runtime_error("Custom scoring matrices are not supported for the DAA format.");
+			if (config.comp_based_stats > 1)
+				throw std::runtime_error("This value for --comp-based-stats is not supported when using a custom scoring matrix.");
 			score_matrix = Score_matrix(matrix_file, gap_open, gap_extend, stop_match_score, Score_matrix::Custom());
 		}
 		if(command == Config::cluster && !Workflow::Cluster::ClusterRegistry::has(cluster_algo)){
