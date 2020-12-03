@@ -4,6 +4,9 @@
 - Targets are sorted by bit score instead of e-value when the `--top` parameter is used
   in the alignment output.
 - Disabled support of custom scoring matrices for the DAA format.
+- Fixed a bug that caused the use of a custom scoring matrix not to function correctly.
+- Enabled the use of a custom scoring matrix without having to specify the statistical
+  parameters.
 
 [2.0.5]
 - Fixed an issue that could cause high memory use in frameshift alignment mode.

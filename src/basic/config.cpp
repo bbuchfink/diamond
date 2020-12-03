@@ -264,8 +264,6 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("long-reads", 0, "short for --range-culling --top 10 -F 15", long_reads)
 		("matrix", 0, "score matrix for protein alignment (default=BLOSUM62)", matrix, string("blosum62"))
 		("custom-matrix", 0, "file containing custom scoring matrix", matrix_file)
-		("lambda", 0, "lambda parameter for custom matrix", lambda)
-		("K", 0, "K parameter for custom matrix", K)
 		("comp-based-stats", 0, "enable composition based statistics (0/1=default)", comp_based_stats, 1u)
 		("masking", 0, "enable masking of low complexity regions (0/1=default)", masking, 1)
 		("query-gencode", 0, "genetic code to use to translate query (see user manual)", query_gencode, 1u)
@@ -321,7 +319,9 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("hit-score", 0, "minimum score to keep a tentative alignment", min_hit_score)
 		("gapped-xdrop", 'X', "xdrop for gapped alignment in bits", gapped_xdrop, 20)
 		("rank-ratio2", 0, "include subjects within this ratio of last hit (stage 2)", rank_ratio2, -1.0)
-		("rank-ratio", 0, "include subjects within this ratio of last hit", rank_ratio, -1.0);
+		("rank-ratio", 0, "include subjects within this ratio of last hit", rank_ratio, -1.0)
+		("lambda", 0, "lambda parameter for custom matrix", lambda)
+		("K", 0, "K parameter for custom matrix", K);
 
 	Options_group hidden_options("");
 	hidden_options.add()
@@ -627,13 +627,11 @@ Config::Config(int argc, const char **argv, bool check_io)
 			score_matrix = Score_matrix(to_upper_case(matrix), gap_open, gap_extend, frame_shift, stop_match_score, 0, cbs_matrix_scale);
 		}
 		else {
-			if (lambda == 0 || K == 0)
-				throw std::runtime_error("Custom scoring matrices require setting the --lambda and --K options.");
 			if (gap_open == -1 || gap_extend == -1)
 				throw std::runtime_error("Custom scoring matrices require setting the --gapopen and --gapextend options.");
-			if (output_format.front() == "daa" || output_format.front() == "100")
+			if (!output_format.empty() && (output_format.front() == "daa" || output_format.front() == "100"))
 				throw std::runtime_error("Custom scoring matrices are not supported for the DAA format.");
-			score_matrix = Score_matrix(matrix_file, lambda, K, gap_open, gap_extend);
+			score_matrix = Score_matrix(matrix_file, gap_open, gap_extend, stop_match_score, Score_matrix::Custom());
 		}
 		if(command == Config::cluster && !Workflow::Cluster::ClusterRegistry::has(cluster_algo)){
 			ostream &header_out = command == Config::help ? cout : cerr;

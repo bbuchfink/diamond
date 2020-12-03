@@ -39,9 +39,11 @@ const double LN_2 = 0.69314718055994530941723212145818;
 struct Score_matrix
 {
 
+	struct Custom {};
+
 	Score_matrix() :ln_k_(0.0) {}
-	Score_matrix(const string &matrix, int gap_open, int gap_extend, int frame_shift, int stop_match_score, uint64_t db_letters = 0, int scale=1);
-	Score_matrix(const string &matrix_file, double lambda, double K, int gap_open, int gap_extend, uint64_t db_letters = 0);
+	Score_matrix(const string& matrix, int gap_open, int gap_extend, int frame_shift, int stop_match_score, uint64_t db_letters = 0, int scale = 1);
+	Score_matrix(const string &matrix_file, int gap_open, int gap_extend, int stop_match_score, const Custom&, uint64_t db_letters = 0);
 
 	friend std::ostream& operator<<(std::ostream& s, const Score_matrix &m);
 
@@ -125,12 +127,12 @@ struct Score_matrix
 
 	double lambda() const
 	{
-		return constants_[3];
+		return evaluer.parameters().lambda;
 	}
 
 	double k() const
 	{
-		return constants_[4];
+		return evaluer.parameters().K;
 	}
 
 	double ln_k() const
@@ -200,9 +202,9 @@ private:
 	};
 
 	const Stats::StandardMatrix* standard_matrix_;
+	const int8_t* score_array_;
 	int gap_open_, gap_extend_, frame_shift_;
 	double db_letters_;
-	const double* constants_;
 	double ln_k_;
 	string name_;
 	Scores<int8_t> matrix8_;

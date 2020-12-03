@@ -43,8 +43,6 @@ Score_matrix::Score_matrix(const string & matrix, int gap_open, int gap_extend, 
 	gap_extend_ (gap_extend == -1 ? standard_matrix_->default_gap_extend : gap_extend),
 	frame_shift_(frameshift),
 	db_letters_ ((double)db_letters),
-	constants_ ((const double*)&standard_matrix_->constants(gap_open_, gap_extend_)),
-	ln_k_(log(k())),
 	name_(matrix),
 	matrix8_(standard_matrix_->scores.data(), stop_match_score),
 	bias_((char)(-low_score())),
@@ -61,6 +59,7 @@ Score_matrix::Score_matrix(const string & matrix, int gap_open, int gap_extend, 
 	const double G = gap_open_ + gap_extend_, b = 2.0 * G * (u.alpha - p.alpha), beta = 2.0 * G * (u.alpha_v - p.alpha_v);
 	Sls::AlignmentEvaluerParameters params{ p.Lambda, p.K, p.alpha, b, p.alpha, b, p.alpha_v, beta, p.alpha_v, beta, p.sigma, 2.0 * G * (u.alpha_v - p.sigma) };
 	evaluer.initParameters(params);
+	ln_k_ = std::log(evaluer.parameters().K);
 }
 
 int8_t Score_matrix::low_score() const
@@ -101,12 +100,12 @@ std::ostream& operator<<(std::ostream& s, const Score_matrix &m)
 
 const signed char* custom_scores(const string &matrix_file)
 {
-	static signed char scores[25 * 25];
+	static signed char scores[AMINO_ACID_COUNT * AMINO_ACID_COUNT];
 	string l, s;
 	std::stringstream ss;
 	vector<Letter> pos;
 	unsigned n = 0;
-	std::fill(scores, scores + sizeof(scores), '\xff');
+	std::fill(scores, scores + sizeof(scores), int8_t(-1));
 	if (matrix_file == "")
 		return scores;
 	std::ifstream f(matrix_file.c_str());
@@ -130,7 +129,7 @@ const signed char* custom_scores(const string &matrix_file)
 			for (unsigned i = 0; i < pos.size(); ++i) {
 				int score;
 				ss >> score;
-				scores[(int)pos[n] * 25 + (int)pos[i]] = score;
+				scores[(int)pos[n] * AMINO_ACID_COUNT + (int)pos[i]] = score;
 			}
 			ss.clear();
 			++n;
@@ -139,26 +138,33 @@ const signed char* custom_scores(const string &matrix_file)
 	return scores;
 }
 
-Score_matrix::Score_matrix(const string &matrix_file, double lambda, double K, int gap_open, int gap_extend, uint64_t db_letters):
+Score_matrix::Score_matrix(const string& matrix_file, int gap_open, int gap_extend, int stop_match_score, const Custom&, uint64_t db_letters) :
+	score_array_(custom_scores(matrix_file)),
 	gap_open_(gap_open),
 	gap_extend_(gap_extend),
 	db_letters_((double)db_letters),
-	ln_k_(log(K)),
 	name_("custom"),
-	matrix8_(custom_scores(matrix_file)),
+	matrix8_(score_array_, stop_match_score),
 	bias_((char)(-low_score())),
-	matrix8u_(custom_scores(matrix_file), bias_),
-	matrix8_low_(custom_scores(matrix_file), bias_),
-	matrix8_high_(custom_scores(matrix_file), bias_),
-	matrix8u_low_(custom_scores(matrix_file), bias_),
-	matrix8u_high_(custom_scores(matrix_file), bias_),
-	matrix16_(custom_scores(matrix_file)),
-	matrix32_(custom_scores(matrix_file))
+	matrix8u_(score_array_, stop_match_score, bias_),
+	matrix8_low_(score_array_, stop_match_score, 0, 16),
+	matrix8_high_(score_array_, stop_match_score, 0, 16, 16),
+	matrix8u_low_(score_array_, stop_match_score, bias_, 16),
+	matrix8u_high_(score_array_, stop_match_score, bias_, 16, 16),
+	matrix16_(score_array_, stop_match_score),
+	matrix32_(score_array_, stop_match_score)
 {
-	static double constants[5];
-	constants[3] = lambda;
-	constants[4] = K;
-	constants_ = constants;
+	const int N = TRUE_AA;
+	long m[N][N];
+	long* p[N];
+	for (int i = 0; i < N; ++i) {
+		for (int j = 0; j < N; ++j)
+			m[i][j] = score_array_[i * AMINO_ACID_COUNT + j];
+		p[i] = m[i];
+	}
+	const double* bg = Stats::blosum62.background_freqs.data();
+	evaluer.initGapped(N, p, bg, bg, gap_open_, gap_extend_, gap_open_, gap_extend_, false, 0.01, 0.05, 120.0, 1024.0, 1);
+	ln_k_ = std::log(evaluer.parameters().K);
 }
 
 template<typename _t>
