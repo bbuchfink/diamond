@@ -21,6 +21,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #pragma once
 #include <list>
 #include <algorithm>
+#include <float.h>
 #include "../basic/parameters.h"
 #include "../search/trace_pt_buffer.h"
 #include "../data/metadata.h"

@@ -25,6 +25,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <stdint.h>
 #include <list>
 #include <mutex>
+#include <float.h>
 #include "../search/trace_pt_buffer.h"
 #include "../basic/diagonal_segment.h"
 #include "../basic/const.h"
