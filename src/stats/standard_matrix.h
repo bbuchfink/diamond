@@ -24,11 +24,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <array>
 #include <limits.h>
 #include <vector>
+#include <float.h>
 #include "../basic/value.h"
 
 namespace Stats {
 
-const double INT2_MAX = std::numeric_limits<double>::max();
+const double INT2_MAX = DBL_MAX;
 
 struct StandardMatrix {
 
