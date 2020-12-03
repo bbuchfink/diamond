@@ -44,6 +44,10 @@ if(DP_STAT)
   add_definitions(-DDP_STAT)
 endif()
 
+if(EXTRA)
+  add_definitions(-DEXTRA)
+endif()
+
 add_definitions(-DMAX_SHAPE_LEN=${MAX_SHAPE_LEN})
 
 IF(STATIC_LIBGCC)

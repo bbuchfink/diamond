@@ -85,7 +85,7 @@ struct Statistics
 		log_stream << "Target hits (stage 2) = " << data_[TARGET_HITS2] << endl;
 		log_stream << "Target hits (stage 3) = " << data_[TARGET_HITS3] << " (" << data_[TARGET_HITS3_CBS] << " (" << (double)data_[TARGET_HITS3_CBS] * 100.0 / data_[TARGET_HITS3] << "%) with CBS)" << endl;
 		log_stream << "Target hits (stage 4) = " << data_[TARGET_HITS4] << endl;
-		log_stream << "Target hits (stage 4) = " << data_[TARGET_HITS5] << endl;
+		log_stream << "Target hits (stage 5) = " << data_[TARGET_HITS5] << endl;
 		log_stream << "Swipe realignments    = " << data_[SWIPE_REALIGN] << endl;
 		log_stream << "Matrix adjusts        = " << data_[MATRIX_ADJUST_COUNT] << endl;
 		log_stream << "Extensions (8 bit)    = " << data_[EXT8] << endl;

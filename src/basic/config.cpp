@@ -672,7 +672,11 @@ Config::Config(int argc, const char **argv, bool check_io)
 	/*if (ext != "banded-fast" && ext != "banded-slow" && ext != "full" && ext != "")
 		throw std::runtime_error("Possible values for --ext are: banded-fast, banded-slow, full");*/
 
-	if (ext != "banded-fast" && ext != "banded-slow" && ext != "")
+	set<string> ext_modes = { "", "banded-fast", "banded-slow" };
+#ifdef EXTRA
+	ext_modes.insert("full");
+#endif
+	if (ext_modes.find(ext) == ext_modes.end())
 		throw std::runtime_error("Possible values for --ext are: banded-fast, banded-slow");
 
 	Translator::init(query_gencode);

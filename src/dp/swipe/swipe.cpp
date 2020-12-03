@@ -280,17 +280,18 @@ struct MatrixTraits<_sv, ScoreOnly>
 };
 
 template<typename _sv, typename _cbs>
-Hsp traceback(const sequence& query, Frame frame, _cbs bias_correction, const Matrix<_sv>& dp, const DpTarget& target, typename ScoreTraits<_sv>::Score max_score, int max_col, int max_i, int max_j, int channel)
+Hsp traceback(const sequence& query, Frame frame, _cbs bias_correction, const Matrix<_sv>& dp, const DpTarget& target, typename ScoreTraits<_sv>::Score max_score, double evalue, int max_col, int max_i, int max_j, int channel)
 {
 	Hsp out;
 	out.swipe_target = target.target_idx;
 	out.score = ScoreTraits<_sv>::int_score(max_score);
+	out.evalue = evalue;
 	out.frame = frame.index();
 	return out;
 }
 
 template<typename _sv, typename _cbs>
-Hsp traceback(const sequence &query, Frame frame, _cbs bias_correction, const TracebackVectorMatrix<_sv> &dp, const DpTarget &target, typename ScoreTraits<_sv>::Score max_score, int max_col, int max_i, int max_j, int channel)
+Hsp traceback(const sequence &query, Frame frame, _cbs bias_correction, const TracebackVectorMatrix<_sv> &dp, const DpTarget &target, typename ScoreTraits<_sv>::Score max_score, double evalue, int max_col, int max_i, int max_j, int channel)
 {
 	typedef typename ScoreTraits<_sv>::Score Score;
 	typedef typename ScoreTraits<_sv>::TraceMask TraceMask;
@@ -299,6 +300,7 @@ Hsp traceback(const sequence &query, Frame frame, _cbs bias_correction, const Tr
 	Hsp out;
 	out.swipe_target = target.target_idx;
 	out.score = ScoreTraits<_sv>::int_score(max_score);
+	out.evalue = evalue;
 	out.transcript.reserve(size_t(out.score * config.transcript_len_estimate));
 
 	out.frame = frame.index();
@@ -395,8 +397,9 @@ list<Hsp> swipe(const sequence& query, Frame frame, DynamicIterator<DpTarget>& t
 				reinit = true;
 			} else if (!targets.inc(c)) {
 				const int s = ScoreTraits<_sv>::int_score(best[c]);
-				if (false)
-					out.push_back(traceback<_sv>(query, frame, composition_bias, dp, targets.dp_targets[c], best[c], max_col[c], max_i[c], max_j[c], c));
+				const double evalue = score_matrix.evalue(s, qlen, (unsigned)targets.dp_targets[c].seq.length());
+				if (score_matrix.report_cutoff(s, evalue))
+					out.push_back(traceback<_sv>(query, frame, composition_bias, dp, targets.dp_targets[c], best[c], evalue, max_col[c], max_i[c], max_j[c], c));
 				reinit = true;				
 			}
 			if (reinit) {

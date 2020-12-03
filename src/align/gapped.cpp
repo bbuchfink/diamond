@@ -195,9 +195,7 @@ vector<Target> full_db_align(const sequence *query_seq, const Bias_correction *q
 		if (it.second)
 			r.emplace_back(block_id, ref_seqs::get()[block_id], 0, matrix);
 		unsigned i = it.first->second;
-		r[i].filter_score = hsp.begin()->score;
-		list<Hsp> &l = r[i].hsp[0];
-		l.splice(l.end(), hsp, hsp.begin());
+		r[i].add_hit(hsp, hsp.begin());
 	}
 
 	return r;

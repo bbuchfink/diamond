@@ -112,7 +112,7 @@ vector<Match> extend(
 	vector<Bias_correction> query_cb;
 	const char* query_title = query_ids::get()[query_id];
 
-	if (config.log_query || flags & DP::PARALLEL)
+	if (config.log_query || ((flags & DP::PARALLEL) && !config.swipe_all))
 		log_stream << "Query=" << query_title << " Hits=" << seed_hits.data_size() << endl;
 
 	for (unsigned i = 0; i < contexts; ++i)
