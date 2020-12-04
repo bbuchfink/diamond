@@ -85,7 +85,7 @@ Match::Match(size_t target_block_id, std::array<std::list<Hsp>, MAX_CONTEXT> &hs
 void add_dp_targets(const WorkTarget &target, int target_idx, const sequence *query_seq, array<array<vector<DpTarget>, 2>, MAX_CONTEXT> &dp_targets, int flags) {
 	const int band = Extension::band((int)query_seq->length()),
 		slen = (int)target.seq.length();
-	const TargetMatrix* matrix = target.matrix.scores.empty() ? nullptr : &target.matrix;
+	const Stats::TargetMatrix* matrix = target.matrix.scores.empty() ? nullptr : &target.matrix;
 	for (unsigned frame = 0; frame < align_mode.query_contexts; ++frame) {
 
 		if (config.ext == "full") {
@@ -153,7 +153,7 @@ vector<Target> align(const vector<WorkTarget> &targets, const sequence *query_se
 			dp_targets[frame][1],
 			nullptr,
 			Frame(frame),
-			CBS::hauser(config.comp_based_stats) ? &query_cb[frame] : nullptr,
+			Stats::CBS::hauser(config.comp_based_stats) ? &query_cb[frame] : nullptr,
 			flags,
 			stat);
 		while (!hsp.empty())
@@ -176,7 +176,7 @@ vector<Target> full_db_align(const sequence *query_seq, const Bias_correction *q
 	ContainerIterator<DpTarget, Sequence_set> target_it(*ref_seqs::data_, ref_seqs::data_->get_length());
 	vector<DpTarget> v;
 	vector<Target> r;
-	TargetMatrix matrix;
+	Stats::TargetMatrix matrix;
 
 	list<Hsp> hsp = DP::BandedSwipe::swipe(
 		query_seq[0],
@@ -184,7 +184,7 @@ vector<Target> full_db_align(const sequence *query_seq, const Bias_correction *q
 		v,
 		&target_it,
 		Frame(0),
-		CBS::hauser(config.comp_based_stats) ? &query_cb[0] : nullptr,
+		Stats::CBS::hauser(config.comp_based_stats) ? &query_cb[0] : nullptr,
 		flags | DP::FULL_MATRIX,
 		stat);
 
@@ -204,7 +204,7 @@ vector<Target> full_db_align(const sequence *query_seq, const Bias_correction *q
 void add_dp_targets(const Target &target, int target_idx, const sequence *query_seq, array<array<vector<DpTarget>, 2>, MAX_CONTEXT> &dp_targets) {
 	const int band = Extension::band((int)query_seq->length()),
 		slen = (int)target.seq.length();
-	const TargetMatrix* matrix = target.adjusted_matrix() ? &target.matrix : nullptr;
+	const Stats::TargetMatrix* matrix = target.adjusted_matrix() ? &target.matrix : nullptr;
 	for (unsigned frame = 0; frame < align_mode.query_contexts; ++frame) {
 		const int qlen = (int)query_seq[frame].length();
 		for (const Hsp &hsp : target.hsp[frame]) {
@@ -247,7 +247,7 @@ vector<Match> align(vector<Target> &targets, const sequence *query_seq, const Bi
 			dp_targets[frame][1],
 			nullptr,
 			Frame(frame),
-			CBS::hauser(config.comp_based_stats) ? &query_cb[frame] : nullptr,
+			Stats::CBS::hauser(config.comp_based_stats) ? &query_cb[frame] : nullptr,
 			DP::TRACEBACK | flags,
 			stat);
 		while (!hsp.empty())

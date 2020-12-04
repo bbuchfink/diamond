@@ -19,7 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #pragma once
 #include <memory>
 #include "value.h"
-#include "score_matrix.h"
+#include "../stats/score_matrix.h"
 #include "../basic/sequence.h"
 #include "../data/sequence_set.h"
 #include "../lib/blast/blast_seg.h"

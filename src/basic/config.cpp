@@ -31,7 +31,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/util.h"
 #include "../util/log_stream.h"
 #include "../basic/value.h"
-#include "score_matrix.h"
+#include "../stats/score_matrix.h"
 #include "../util/system.h"
 #include "reduction.h"
 #include "shape_config.h"
@@ -50,7 +50,7 @@ using namespace std;
 Config config;
 
 void print_warnings() {
-	if (config.sensitivity >= Sensitivity::VERY_SENSITIVE || config.verbosity == 0)
+	if (config.sensitivity >= Sensitivity::VERY_SENSITIVE || config.verbosity == 0 || config.swipe_all)
 		return;
 	const double ram = total_ram();
 	unsigned b = 2, c = 4;
@@ -488,10 +488,10 @@ Config::Config(int argc, const char **argv, bool check_io)
 		ext = "full";
 	}
 
-	if (comp_based_stats >= CBS::COUNT)
+	if (comp_based_stats >= Stats::CBS::COUNT)
 		throw std::runtime_error("Invalid value for --comp-based-stats. Permitted values: 0, 1, 2, 3, 4.");
 
-	if (command == blastx && !CBS::support_translated(comp_based_stats))
+	if (command == blastx && !Stats::CBS::support_translated(comp_based_stats))
 		throw std::runtime_error("This mode of composition based stats is not supported for translated searches.");
 
 	if (swipe_all)
@@ -645,7 +645,7 @@ Config::Config(int argc, const char **argv, bool check_io)
 			throw std::runtime_error("Clustering algorithm not found.");
 		}
 		message_stream << "Scoring parameters: " << score_matrix << endl;
-		if (masking == 1 || CBS::seg(comp_based_stats) || target_seg)
+		if (masking == 1 || Stats::CBS::seg(comp_based_stats) || target_seg)
 			Masking::instance = unique_ptr<Masking>(new Masking(score_matrix));
 	}
 

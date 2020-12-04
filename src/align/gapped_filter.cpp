@@ -23,7 +23,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <mutex>
 #include "target.h"
 #include "../dp/dp.h"
-#include "../basic/score_matrix.h"
+#include "../stats/score_matrix.h"
 #include "../data/reference.h"
 #include "../util/parallel/thread_pool.h"
 #include "../dp/scan_diags.h"
@@ -113,7 +113,7 @@ void gapped_filter(const sequence* query, const Bias_correction* query_cbs, Flat
 	vector<LongScoreProfile> query_profile;
 	query_profile.reserve(align_mode.query_contexts);
 	for (unsigned i = 0; i < align_mode.query_contexts; ++i)
-		if(CBS::hauser(config.comp_based_stats))
+		if(Stats::CBS::hauser(config.comp_based_stats))
 			query_profile.emplace_back(query[i], query_cbs[i]);
 		else
 			query_profile.emplace_back(query[i]);

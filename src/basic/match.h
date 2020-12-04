@@ -31,7 +31,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/system.h"
 #include "value.h"
 #include "packed_transcript.h"
-#include "score_matrix.h"
+#include "../stats/score_matrix.h"
 #include "translated_position.h"
 #include "diagonal_segment.h"
 

@@ -26,7 +26,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../basic/value.h"
 #include "../../util/simd/vector.h"
 #include "../../util/dynamic_iterator.h"
-#include "../comp_based_stats.h"
+#include "../../stats/hauser_correction.h"
 
 namespace DISPATCH_ARCH {
 

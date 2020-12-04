@@ -22,7 +22,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <array>
 #include <vector>
-#include "sequence.h"
+#include "../basic/sequence.h"
+
+namespace Stats {
 
 std::vector<double> composition(const sequence& s);
 
@@ -39,11 +41,6 @@ struct TargetMatrix {
     std::vector<int32_t> scores32;
 
 };
-
-extern const int ALPH_TO_NCBI[20];
-extern const double BLOSUM62_FREQRATIOS[28][28];
-constexpr double BLOSUM62_UNGAPPED_LAMBDA = 0.3176;
-extern const double BLOSUM62_bg[20];
 
 /** An collection of constants that specify all rules that may
  *  be used to generate a compositionally adjusted matrix.  */
@@ -83,16 +80,6 @@ typedef struct Blast_MatrixInfo {
                                     in standard context */
 } Blast_MatrixInfo;
 
-int
-Blast_CompositionMatrixAdj(int** matrix,
-    int alphsize,
-    EMatrixAdjustRule matrix_adjust_rule,
-    int length1,
-    int length2,
-    const double* stdaa_row_probs,
-    const double* stdaa_col_probs,
-    double lambda);
-
 void Blast_FreqRatioToScore(double** matrix, int rows, int cols, double Lambda);
 void s_RoundScoreMatrix(int** matrix, int rows, int cols, double** floatScoreMatrix);
 
@@ -100,7 +87,8 @@ EMatrixAdjustRule
 s_TestToApplyREAdjustmentConditional(int Len_query,
     int Len_match,
     const double* P_query,
-    const double* P_match);
+    const double* P_match,
+    const double* background_freqs);
 
 struct CBS {
     static bool seg(unsigned code) {
@@ -170,11 +158,15 @@ struct CBS {
     static constexpr int AVG_MATRIX_SCALE = 32;
 };
 
-std::vector<int> CompositionMatrixAdjust(int query_len, int target_len, const double* query_comp, const double* target_comp, int scale);
+std::vector<int> CompositionMatrixAdjust(int query_len, int target_len, const double* query_comp, const double* target_comp, int scale, double ungapped_lambda, const double* joint_probs, const double* background_freqs);
 
 inline int16_t* make_16bit_matrix(const std::vector<int>& matrix) {
     int16_t* out = new int16_t[TRUE_AA * TRUE_AA];
     for (int i = 0; i < TRUE_AA * TRUE_AA; ++i)
         out[i] = matrix[i];
     return out;
+}
+
+extern const int ALPH_TO_NCBI[];
+
 }

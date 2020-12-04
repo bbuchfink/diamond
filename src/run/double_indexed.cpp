@@ -140,7 +140,7 @@ void run_ref_chunk(DatabaseFile &db_file,
 	else
 		out = &master_out;
 
-	if (CBS::seg(config.comp_based_stats) || config.target_seg) {
+	if (Stats::CBS::seg(config.comp_based_stats) || config.target_seg) {
 		timer.go("SEG masking targets");
 		mask_seqs(*ref_seqs::data_, Masking::get(), true, Masking::Algo::SEG);
 	}

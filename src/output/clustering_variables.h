@@ -19,7 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <map>
 #include <string>
-#include "../basic/score_matrix.h"
+#include "../stats/score_matrix.h"
 #include "../basic/match.h"
 
 class Variable{

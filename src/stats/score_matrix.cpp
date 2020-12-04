@@ -29,8 +29,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <vector>
 #include <sstream>
 #include "score_matrix.h"
-#include "config.h"
-#include "cbs.h"
+#include "../basic/config.h"
+#include "../stats/cbs.h"
 
 using std::string;
 using std::vector;
@@ -53,7 +53,7 @@ Score_matrix::Score_matrix(const string & matrix, int gap_open, int gap_extend, 
 	matrix8u_high_(standard_matrix_->scores.data(), stop_match_score, bias_, 16, 16),
 	matrix16_(standard_matrix_->scores.data(), stop_match_score),
 	matrix32_(standard_matrix_->scores.data(), stop_match_score),
-	matrix32_scaled_(BLOSUM62_FREQRATIOS, BLOSUM62_UNGAPPED_LAMBDA, standard_matrix_->scores.data(), scale)
+	matrix32_scaled_(standard_matrix_->freq_ratios, standard_matrix_->ungapped_constants().Lambda, standard_matrix_->scores.data(), scale)
 {
 	const Stats::StandardMatrix::Parameters& p = standard_matrix_->constants(gap_open_, gap_extend_), & u = standard_matrix_->ungapped_constants();
 	const double G = gap_open_ + gap_extend_, b = 2.0 * G * (u.alpha - p.alpha), beta = 2.0 * G * (u.alpha_v - p.alpha_v);
@@ -168,12 +168,12 @@ Score_matrix::Score_matrix(const string& matrix_file, int gap_open, int gap_exte
 }
 
 template<typename _t>
-Score_matrix::Scores<_t>::Scores(const double freq_ratios[28][28], double lambda, const int8_t* scores, int scale) {
+Score_matrix::Scores<_t>::Scores(const double (&freq_ratios)[Stats::NCBI_ALPH][Stats::NCBI_ALPH], double lambda, const int8_t* scores, int scale) {
 	const int n = value_traits.alphabet_size;
 	for (int i = 0; i < 32; ++i)
 		for (int j = 0; j < 32; ++j) {
-			if (i < 20 && j < 20)
-				data[i * 32 + j] = std::round(std::log(freq_ratios[ALPH_TO_NCBI[i]][ALPH_TO_NCBI[j]]) / lambda * scale);
+			if (i < TRUE_AA && j < TRUE_AA)
+				data[i * 32 + j] = std::round(std::log(freq_ratios[Stats::ALPH_TO_NCBI[i]][Stats::ALPH_TO_NCBI[j]]) / lambda * scale);
 			else if (i < n && j < n)
 				data[i * 32 + j] = std::max((int)scores[i * n + j] * scale, SCHAR_MIN);
 			else

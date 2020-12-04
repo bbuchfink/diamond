@@ -26,7 +26,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <math.h>
 #include <stdint.h>
 #include "../util/log_stream.h"
-#include "value.h"
+#include "../basic/value.h"
 #include "../lib/alp/sls_alignment_evaluer.hpp"
 #include "../stats/standard_matrix.h"
 
@@ -168,6 +168,18 @@ struct Score_matrix
 		db_letters_ = (double)n;
 	}
 
+	const double* joint_probs() const {
+		return (const double*)standard_matrix_->joint_probs;
+	}
+
+	const double* background_freqs() const {
+		return standard_matrix_->background_freqs.data();
+	}
+
+	double ungapped_lambda() const {
+		return standard_matrix_->ungapped_constants().Lambda;
+	}
+
 	double avg_id_score() const;
 	bool report_cutoff(int score, double evalue) const;
 
@@ -188,7 +200,7 @@ private:
 			if (stop_match_score != 1)
 				data[24 * 32 + 24] = stop_match_score;
 		}
-		Scores(const double freq_ratios[28][28], double lambda, const int8_t* scores, int scale);
+		Scores(const double (&freq_ratios)[Stats::NCBI_ALPH][Stats::NCBI_ALPH], double lambda, const int8_t* scores, int scale);
 		std::vector<const _t*> pointers() const;
 		friend std::ostream& operator<<(std::ostream& s, const Scores& scores) {
 			for (int i = 0; i < 20; ++i) {

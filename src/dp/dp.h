@@ -24,11 +24,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <vector>
 #include "../basic/sequence.h"
 #include "../basic/match.h"
-#include "comp_based_stats.h"
+#include "../stats/hauser_correction.h"
 #include "../basic/statistics.h"
 #include "../basic/config.h"
 #include "../util/dynamic_iterator.h"
-#include "../basic/cbs.h"
+#include "../stats/cbs.h"
 
 int smith_waterman(const sequence &query, const sequence &subject, unsigned band, unsigned padding, int op, int ep);
 
@@ -156,7 +156,7 @@ struct DpTarget
 		target_idx(-1),
 		matrix(nullptr)
 	{}
-	DpTarget(const sequence &seq, int d_begin, int d_end, int j_begin, int j_end, int target_idx = 0, int qlen = 0, const TargetMatrix* matrix = nullptr) :
+	DpTarget(const sequence &seq, int d_begin, int d_end, int j_begin, int j_end, int target_idx = 0, int qlen = 0, const Stats::TargetMatrix* matrix = nullptr) :
 		seq(seq),
 		d_begin(d_begin),
 		d_end(d_end),
@@ -199,7 +199,7 @@ struct DpTarget
 	}
 	sequence seq;
 	int d_begin, d_end, j_begin, j_end, target_idx, cols;
-	const TargetMatrix* matrix;
+	const Stats::TargetMatrix* matrix;
 };
 
 struct DpStat

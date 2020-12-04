@@ -24,7 +24,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/binary_buffer.h"
 #include "output_format.h"
 #include "../util/task_queue.h"
-#include "../basic/score_matrix.h"
+#include "../stats/score_matrix.h"
 #include "../data/taxonomy.h"
 #include "../basic/parameters.h"
 #include "../data/metadata.h"

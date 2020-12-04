@@ -1,6 +1,7 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2020 Max Planck Society for the Advancement of Science e.V.
+Copyright (C) 2016-2020 Max Planck Society for the Advancement of Science e.V.
+						Benjamin Buchfink
 
 Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
 
@@ -19,30 +20,28 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #pragma once
-#include "../../stats/score_matrix.h"
-#include "../intrin.h"
+#include <vector>
+#include <stdint.h>
+#include "../basic/sequence.h"
+#include "../basic/diagonal_segment.h"
+#include "../basic/match.h"
 
-namespace Util { namespace Scores {
+void init_cbs();
 
-struct CutoffTable {
-	
-	CutoffTable(double evalue) {
-		for (int b = 1; b <= MAX_BITS; ++b) {			
-			data_[b] = score_matrix.rawscore(score_matrix.bitscore_norm(evalue, 1 << (b - 1)));
-		}
-	}
-
-	int operator()(int query_len) const {
-		const int b = 32 - clz((uint32_t)query_len);
-		return data_[b];
-	}
-
-private:
-
-	enum { MAX_BITS = 31 };
-
-	int data_[MAX_BITS + 1];
-
+struct No_score_correction
+{
+	void operator()(int &score, int i, int query_anchor, int mult) const
+	{}
 };
 
-}}
+struct Bias_correction : public std::vector<float>
+{
+	Bias_correction(const sequence &seq);
+	void operator()(float &score, int i, int query_anchor, int mult) const
+	{
+		score += (*this)[query_anchor + i * mult];
+	}
+	int operator()(const Hsp &hsp) const;
+	int operator()(const Diagonal_segment &d) const;
+	std::vector<int8_t> int8;
+};

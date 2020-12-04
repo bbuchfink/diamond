@@ -25,7 +25,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "extend.h"
 #include "../data/queries.h"
 #include "../basic/config.h"
-#include "../dp/comp_based_stats.h"
+#include "../stats/hauser_correction.h"
 #include "target.h"
 #include "../dp/dp.h"
 #include "../util/log_stream.h"
@@ -91,8 +91,9 @@ vector<Target> extend(const Parameters& params,
 vector<Match> ranking_list(vector<TargetScore>::const_iterator begin, vector<TargetScore>::const_iterator end, vector<uint32_t>::const_iterator target_block_ids) {
 	size_t n = 0;
 	vector<Match> r;
+	r.reserve(std::min(size_t(end - begin), config.global_ranking_targets));
 	for (auto i = begin; i < end && n < config.global_ranking_targets; ++i, ++n) {
-		r.emplace_back(target_block_ids[i->target], 0, i->score);
+		r.emplace_back(target_block_ids[i->target], i->score);
 	}
 	return r;
 }
@@ -119,15 +120,15 @@ vector<Match> extend(
 		query_seq.push_back(query_seqs::get()[query_id*contexts + i]);
 
 	task_timer timer(flags & DP::PARALLEL ? config.target_parallel_verbosity : UINT_MAX);
-	if (CBS::hauser(config.comp_based_stats)) {
+	if (Stats::CBS::hauser(config.comp_based_stats)) {
 		timer.go("Computing CBS");
 		for (unsigned i = 0; i < contexts; ++i)
 			query_cb.emplace_back(query_seq[i]);
 		timer.finish();
 	}
 	vector<double> query_comp;
-	if (CBS::matrix_adjust(config.comp_based_stats))
-		query_comp = composition(query_seq[0]);
+	if (Stats::CBS::matrix_adjust(config.comp_based_stats))
+		query_comp = Stats::composition(query_seq[0]);
 
 	const int source_query_len = align_mode.query_translated ? (int)query_source_seqs::get()[query_id].length() : (int)query_seqs::get()[query_id].length();
 	const int relaxed_cutoff = score_matrix.rawscore(config.min_bit_score == 0.0

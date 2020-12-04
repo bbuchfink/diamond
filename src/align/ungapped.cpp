@@ -26,7 +26,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <mutex>
 #include <limits.h>
 #include "../basic/config.h"
-#include "../dp/comp_based_stats.h"
+#include "../stats/hauser_correction.h"
 #include "target.h"
 #include "../dp/ungapped.h"
 #include "target.h"
@@ -46,14 +46,14 @@ namespace Extension {
 
 std::vector<int16_t*> target_matrices;
 std::mutex target_matrices_lock;
-atomic<size_t> target_matrix_count;
+atomic<size_t> target_matrix_count(0);
 
 WorkTarget ungapped_stage(SeedHit *begin, SeedHit *end, const sequence *query_seq, const Bias_correction *query_cb, const double* query_comp, const int16_t** query_matrix, uint32_t block_id, Statistics& stat) {
 	array<vector<Diagonal_segment>, MAX_CONTEXT> diagonal_segments;
 	task_timer timer;
 	WorkTarget target(block_id, ref_seqs::get()[block_id], (int)query_seq[0].length(), query_comp, query_matrix);
 	stat.inc(Statistics::TIME_MATRIX_ADJUST, timer.microseconds());
-	if (!CBS::avg_matrix(config.comp_based_stats) && target.adjusted_matrix())
+	if (!Stats::CBS::avg_matrix(config.comp_based_stats) && target.adjusted_matrix())
 		stat.inc(Statistics::MATRIX_ADJUST_COUNT);
 
 	if (config.ext == "full") {

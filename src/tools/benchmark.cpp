@@ -24,7 +24,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <bitset>
 #include <iomanip>
 #include "../basic/sequence.h"
-#include "../basic/score_matrix.h"
+#include "../stats/score_matrix.h"
 #include "../dp/score_vector.h"
 #include "../dp/swipe/swipe.h"
 #include "../dp/dp.h"

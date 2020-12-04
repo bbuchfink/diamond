@@ -145,8 +145,10 @@ void align_queries(Trace_pt_buffer &trace_pts, Consumer* output_file, const Para
 	if (config.memory_limit != 0.0)
 		max_size = std::max(max_size, size_t(config.memory_limit * 1e9));
 	pair<size_t, size_t> query_range;
-	Extension::target_matrices.insert(Extension::target_matrices.end(), ref_seqs::get().get_length(), nullptr);
-	Extension::target_matrix_count = 0;
+	if (Stats::CBS::avg_matrix(config.comp_based_stats)) {
+		Extension::target_matrices.insert(Extension::target_matrices.end(), ref_seqs::get().get_length(), nullptr);
+		Extension::target_matrix_count = 0;
+	}
 	
 	trace_pts.load(max_size);
 

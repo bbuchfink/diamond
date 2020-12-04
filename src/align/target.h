@@ -30,11 +30,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../basic/diagonal_segment.h"
 #include "../basic/const.h"
 #include "../dp/hsp_traits.h"
-#include "../dp/comp_based_stats.h"
+#include "../stats/hauser_correction.h"
 #include "extend.h"
 #include "../util/data_structures/flat_array.h"
 #include "../basic/parameters.h"
-#include "../basic/cbs.h"
+#include "../stats/cbs.h"
 
 namespace Extension {
 
@@ -60,28 +60,28 @@ struct WorkTarget {
 		seq(seq),
 		ungapped_score(0)
 	{
-		if (config.comp_based_stats == CBS::HAUSER_AND_AVG_MATRIX_ADJUST) {
+		if (config.comp_based_stats == Stats::CBS::HAUSER_AND_AVG_MATRIX_ADJUST) {
 			const int l = (int)seq.length();
-			const auto c = composition(seq);
-			auto r = s_TestToApplyREAdjustmentConditional(query_len, l, query_comp, c.data());
-			if (r == eCompoScaleOldMatrix)
+			const auto c = Stats::composition(seq);
+			auto r = Stats::s_TestToApplyREAdjustmentConditional(query_len, l, query_comp, c.data(), score_matrix.background_freqs());
+			if (r == Stats::eCompoScaleOldMatrix)
 				return;
 			if (*query_matrix == nullptr) {
-				*query_matrix = make_16bit_matrix(CompositionMatrixAdjust(query_len, query_len, query_comp, query_comp, CBS::AVG_MATRIX_SCALE));
+				*query_matrix = Stats::make_16bit_matrix(Stats::CompositionMatrixAdjust(query_len, query_len, query_comp, query_comp, Stats::CBS::AVG_MATRIX_SCALE, score_matrix.ungapped_lambda(), score_matrix.joint_probs(), score_matrix.background_freqs()));
 				++target_matrix_count;
 			}
 			if (target_matrices[block_id] == nullptr) {
-				int16_t* target_matrix = make_16bit_matrix(CompositionMatrixAdjust(l, l, c.data(), c.data(), CBS::AVG_MATRIX_SCALE));
+				int16_t* target_matrix = Stats::make_16bit_matrix(Stats::CompositionMatrixAdjust(l, l, c.data(), c.data(), Stats::CBS::AVG_MATRIX_SCALE, score_matrix.ungapped_lambda(), score_matrix.joint_probs(), score_matrix.background_freqs()));
 				{
 					std::lock_guard<std::mutex> lock(target_matrices_lock);
 					target_matrices[block_id] = target_matrix;
 					++target_matrix_count;
 				}
 			}
-			matrix = TargetMatrix(*query_matrix, target_matrices[block_id]);
+			matrix = Stats::TargetMatrix(*query_matrix, target_matrices[block_id]);
 		}
 		else
-			matrix = TargetMatrix(query_comp, query_len, seq);
+			matrix = Stats::TargetMatrix(query_comp, query_len, seq);
 	}
 	bool adjusted_matrix() const {
 		return !matrix.scores.empty();
@@ -90,14 +90,14 @@ struct WorkTarget {
 	sequence seq;
 	int ungapped_score;
 	std::array<std::list<Hsp_traits>, MAX_CONTEXT> hsp;
-	TargetMatrix matrix;
+	Stats::TargetMatrix matrix;
 };
 
 std::vector<WorkTarget> ungapped_stage(const sequence* query_seq, const Bias_correction* query_cb, const double* query_comp, FlatArray<SeedHit>& seed_hits, const std::vector<uint32_t>& target_block_ids, int flags, Statistics& stat);
 
 struct Target {
 
-	Target(size_t block_id, const sequence &seq, int ungapped_score, const TargetMatrix& matrix):
+	Target(size_t block_id, const sequence &seq, int ungapped_score, const Stats::TargetMatrix& matrix):
 		block_id(block_id),
 		seq(seq),
 		filter_score(0),
@@ -135,7 +135,7 @@ struct Target {
 	double filter_evalue;
 	int ungapped_score;
 	std::array<std::list<Hsp>, MAX_CONTEXT> hsp;
-	TargetMatrix matrix;
+	Stats::TargetMatrix matrix;
 };
 
 struct TargetScore {
