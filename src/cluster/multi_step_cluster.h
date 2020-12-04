@@ -47,7 +47,7 @@ private:
 	vector<int> cluster(DatabaseFile& db, const BitVector* filter);
 	void find_connected_components(vector<uint32_t>& sindex, unordered_map <uint32_t, uint32_t>& comp);
 	uint32_t find_max(unordered_map <uint32_t, uint32_t> comp);
-	void steps(vector<bool>& current_reps, vector<bool>& previous_reps, vector<int>& current_centroids, vector<int>& previous_centroids, int count);
+	void steps(BitVector& current_reps, BitVector& previous_reps, vector<int>& current_centroids, vector<int>& previous_centroids, int count);
 
 public:
 	void run();

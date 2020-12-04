@@ -106,29 +106,27 @@ uint32_t MultiStep::find_max(unordered_map<uint32_t, uint32_t> comp)
 }
 
 
-void MultiStep::steps(vector<bool>& current_reps, vector <bool>& previous_reps, vector <int>& current_centroids, vector <int>& previous_centroids, int count) {
-	count++;
+void MultiStep::steps(BitVector& current_reps, BitVector& previous_reps, vector <int>& current_centroids, vector <int>& previous_centroids, int count) {
 
-	if (previous_reps.empty()) {
-		current_reps = (rep_bitset(current_centroids));
+	if (count == 0) {
+		current_reps = rep_bitset(current_centroids);
 	}
-
 	else {
-		current_reps = (rep_bitset(current_centroids, &previous_reps));
+		current_reps = rep_bitset(current_centroids, &previous_reps);
 
 		for (size_t i = 0; i < current_centroids.size(); ++i)
-			if (!previous_reps[i])
+			if (!previous_reps.get(i))
 				current_centroids[i] = current_centroids[previous_centroids[i]];
 	}
 
-	size_t n_rep_1 = count_if(previous_reps.begin(), previous_reps.end(), [](bool x) { return x; });
-	size_t n_rep_2 = count_if(current_reps.begin(), current_reps.end(), [](bool x) { return x; });
+	size_t n_rep_1 = previous_reps.one_count();
+	size_t n_rep_2 = current_reps.one_count();
 
 	if (n_rep_1 == 0) {
 		n_rep_1 = current_centroids.size();
 	}
 
-	message_stream << "Clustering step " << count << " complete. #Input sequences: " << n_rep_1  << " #Clusters: " << n_rep_2 << endl;
+	message_stream << "Clustering step " << count + 1 << " complete. #Input sequences: " << n_rep_1 << " #Clusters: " << n_rep_2 << endl;
 
 	previous_centroids = move(current_centroids);
 	previous_reps = move(current_reps);
