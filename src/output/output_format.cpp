@@ -23,6 +23,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "output_format.h"
 #include "../data/reference.h"
 #include "../util/escape_sequences.h"
+#include "../data/queries.h"
 
 using namespace std;
 
@@ -93,6 +94,8 @@ Output_format* get_output_format()
 		return new Bin1_format;
 	else if (f[0] == "clus")
 		return new Clustering_format(&f[1]);
+	else if (f[0] == "bin")
+		return new Binary_format;
 	else
 		throw std::runtime_error("Invalid output format: " + f[0] + "\nAllowed values: 0,5,xml,6,tab,100,daa,101,sam,102,103,paf");
 }
@@ -139,5 +142,11 @@ void Bin1_format::print_match(const Hsp_context& r, const Metadata &metadata, Te
 		out.write((uint32_t)r.subject_id);
 		out.write(r.bit_score() / std::max((unsigned)r.query.source().length(), r.subject_len));
 	}
+}
+
+void Binary_format::print_match(const Hsp_context& r, const Metadata& metadata, TextBuffer& out)
+{
+	out.write((uint32_t)query_block_to_database_id[r.query_id]);
+	out.write((uint32_t)r.orig_subject_id);
 }
 

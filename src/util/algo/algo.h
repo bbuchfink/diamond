@@ -6,7 +6,7 @@
 namespace Util { namespace Algo {
 
 struct Edge {
-	int v1, v2, weight;
+	uint32_t v1, v2, weight;
 	bool operator<(const Edge &x) const {
 		return weight > x.weight;
 	}
