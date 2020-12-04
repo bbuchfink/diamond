@@ -35,6 +35,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../dp/dp.h"
 #include "../basic/masking.h"
 #include "cluster.h"
+#include <unordered_map>
 
 using namespace std;
 
@@ -43,7 +44,11 @@ namespace Workflow { namespace Cluster{
 class MultiStep : public ClusteringAlgorithm {
 private:
 	BitVector rep_bitset(const vector<int> &centroid, const BitVector *superset = nullptr);
-	vector<int> cluster(DatabaseFile &db, const BitVector *filter);
+	vector<int> cluster(DatabaseFile& db, const BitVector* filter);
+	void find_connected_components(vector<uint32_t>& sindex, unordered_map <uint32_t, uint32_t>& comp);
+	uint32_t find_max(unordered_map <uint32_t, uint32_t> comp);
+	void steps(BitVector& current_reps, BitVector& previous_reps, vector<int>& current_centroids, vector<int>& previous_centroids, int count);
+
 public:
 	void run();
 	string get_key();
@@ -51,22 +56,34 @@ public:
 };
 
 struct Neighbors : public vector<vector<int>>, public Consumer {
-	Neighbors(size_t n):
-		vector<vector<int>>(n)
-	{}
-	virtual void consume(const char *ptr, size_t n) override {
-		int query, subject, count;
-		float qcov, scov, bitscore;
-		const char *end = ptr + n;
+	Neighbors(size_t n) :
+		vector<vector<int>>(n) {
+		smallest_index.resize((*this).size());
+		for (size_t i = 0; i < smallest_index.size(); i++) {
+			smallest_index[i] = i;
+		}
+	}
+
+	vector<uint32_t> smallest_index;
+	
+	
+	virtual void consume(const char* ptr, size_t n) override {
+		const char* end = ptr + n;
+
 		while (ptr < end) {
-			if (sscanf(ptr, "%i\t%i\t%f\t%f\t%f\n%n", &query, &subject, &qcov, &scov, &bitscore, &count) != 5)
-				throw runtime_error("Cluster format error.");
-			ptr += count;
-			if (query == subject)
-				continue;
-			//cout << query << '\t' << subject << '\t' << qcov << '\t' << scov << '\t' << endl;
+			const uint32_t query = *(uint32_t*)ptr;
+			ptr += sizeof(uint32_t);
+			const uint32_t subject = *(uint32_t*)ptr;
+			ptr += sizeof(uint32_t);
+
 			(*this)[query].push_back(subject);
-			edges.push_back({ query, subject, (int)bitscore });
+			edges.push_back({ query, subject });
+
+			if (subject < smallest_index[query])
+				smallest_index[query] = subject;
+
+			if (query < smallest_index[subject])
+				smallest_index[subject] = query;
 		}
 	}
 	vector<Util::Algo::Edge> edges;

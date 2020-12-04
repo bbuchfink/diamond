@@ -1,6 +1,9 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2018 Benjamin Buchfink <buchfink@gmail.com>
+Copyright (C) 2016-2020 Max Planck Society for the Advancement of Science e.V.
+                        Benjamin Buchfink
+						
+Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -33,9 +36,10 @@ Command_line_parser & Command_line_parser::add(const Options_group & group)
 	return *this;
 }
 
-Command_line_parser & Command_line_parser::add_command(const char * s, const char *desc)
+Command_line_parser & Command_line_parser::add_command(const char * s, const char *desc, unsigned code)
 {
-	commands_.push_back(pair<string,string>(s,desc));
+	command_codes_[s] = code;
+	commands_.emplace_back(s, desc);
 	return *this;
 }
 
@@ -43,7 +47,7 @@ void Command_line_parser::store_option(const vector<string> &v)
 {
 	if (v.size() == 0)
 		return;
-	Option_base* o = 0;
+	Option_base* o = nullptr;
 	string id;
 	vector<string> v2;
 
@@ -64,7 +68,7 @@ void Command_line_parser::store_option(const vector<string> &v)
 	} else
 		throw runtime_error("Command line options must begin with - or --.");
 	
-	if(o == 0)
+	if(o == nullptr || o->disabled)
 		throw runtime_error("Invalid option: " + id);
 	else {
 		v2.insert(v2.end(), v.begin() + 1, v.end());
@@ -76,12 +80,13 @@ void Command_line_parser::store(int count, const char ** str, unsigned &command)
 {
 	if (count < 2)
 		throw runtime_error("Syntax: diamond COMMAND [OPTIONS]. To print help message: diamond help");
-	const string cmd(str[1]);
-	for (command = 0; command < commands_.size(); ++command)
-		if (commands_[command].first == cmd || "--" + commands_[command].first == cmd)
-			break;
-	if (command == commands_.size())
+	string cmd(str[1]);
+	if (cmd.compare(0, 2, "--") == 0)
+		cmd = cmd.substr(2);
+	auto it = command_codes_.find(cmd);
+	if (it == command_codes_.end())
 		throw runtime_error("Invalid command: " + cmd + ". To print help message: diamond help");
+	command = it->second;
 
 	for (map<string, Option_base*>::const_iterator i = map_.begin(); i != map_.end(); ++i)
 		i->second->set_default();
@@ -103,7 +108,7 @@ void Command_line_parser::print_help()
 	cout << "Syntax: diamond COMMAND [OPTIONS]" << endl << endl;
 	cout << "Commands:" << endl;
 	for (vector<pair<string, string> >::const_iterator i = commands_.begin(); i != commands_.end(); ++i)
-		if(i->second != "")
+		if (i->second != "")
 			cout << i->first << '\t' << i->second << endl;
 	cout << endl;
 	for (vector<const Options_group*>::const_iterator i = groups_.begin(); i != groups_.end(); ++i) {
@@ -111,6 +116,8 @@ void Command_line_parser::print_help()
 			continue;
 		cout << (*i)->title << ":" << endl;
 		for (vector<Option_base*>::const_iterator j = (*i)->options.begin(); j != (*i)->options.end(); ++j) {
+			if((*j)->desc.empty())
+				continue;
 			string col1 = "--" + (*j)->id;
 			if ((*j)->short_id)
 				col1 += string(" (-") + (*j)->short_id + ")";

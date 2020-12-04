@@ -1,6 +1,9 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2017 Benjamin Buchfink <buchfink@gmail.com>
+Copyright (C) 2016-2020 Max Planck Society for the Advancement of Science e.V.
+                        Benjamin Buchfink
+						
+Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,9 +19,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#ifndef COMMAND_LINE_PARSER_H_
-#define COMMAND_LINE_PARSER_H_
-
+#pragma once
 #include <vector>
 #include <map>
 #include <string>
@@ -106,10 +107,11 @@ inline bool check_pcount<std::vector<std::string> >(const std::vector<std::strin
 
 struct Option_base
 {
-	Option_base(const std::string &id, char short_id, const std::string &desc) :
+	Option_base(const std::string &id, char short_id, const std::string &desc, bool disabled) :
 		id(id),
 		desc(desc),
-		short_id (short_id)		
+		short_id (short_id),
+		disabled(disabled)
 	{}
 	virtual void read(const std::vector<std::string> &v) = 0;
 	virtual void set_default() = 0;
@@ -117,13 +119,14 @@ struct Option_base
 	{}
 	const std::string id, desc;
 	const char short_id;
+	bool disabled;
 };
 
 template<typename _t>
 struct Option : public Option_base
 {
-	Option(const char *id, char short_id, const char *desc, _t &store, _t def) :
-		Option_base(id, short_id, desc),
+	Option(const char *id, char short_id, const char *desc, bool disabled, _t &store, _t def) :
+		Option_base(id, short_id, desc, disabled),
 		default_(def),
 		store_(store)
 	{ }
@@ -154,7 +157,7 @@ struct Options_group
 		template<typename _t>
 		Add_f& operator()(const char *id, char short_id, const char *desc, _t &store, _t def = _t())
 		{
-			parent_.options.push_back(new Option<_t>(id, short_id, desc, store, def));
+			parent_.options.push_back(new Option<_t>(id, short_id, desc, parent_.disabled, store, def));
 			return *this;
 		}
 	private:
@@ -164,17 +167,19 @@ struct Options_group
 	{
 		return Add_f(*this);
 	}
-	Options_group(const char *title):
-		title (title)
+	Options_group(const char *title, bool disabled = false):
+		title (title),
+		disabled(disabled)
 	{}
 	PtrVector<Option_base> options;
 	std::string title;
+	bool disabled;
 };
 
 struct Command_line_parser
 {
 	Command_line_parser& add(const Options_group &group);
-	Command_line_parser& add_command(const char *s, const char *desc);
+	Command_line_parser& add_command(const char *s, const char *desc, unsigned code);
 	void store(int count, const char **str, unsigned &command);
 	void print_help();
 private:
@@ -183,7 +188,6 @@ private:
 	std::map<std::string, Option_base*> map_;
 	std::map<char, Option_base*> map_short_;
 	std::vector<const Options_group*> groups_;
-	std::vector<std::pair<std::string,std::string> > commands_;
+	std::map<std::string, unsigned> command_codes_;
+	std::vector<std::pair<std::string, std::string>> commands_;
 };
-
-#endif

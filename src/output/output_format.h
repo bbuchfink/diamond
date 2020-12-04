@@ -235,6 +235,20 @@ struct Clustering_format : public Output_format
 	}
 };
 
+struct Binary_format : public Output_format
+{
+	Binary_format() :
+		Output_format(bin1)
+	{}
+	virtual void print_match(const Hsp_context& r, const Metadata& metadata, TextBuffer& out) override;
+	virtual ~Binary_format()
+	{ }
+	virtual Output_format* clone() const override
+	{
+		return new Binary_format(*this);
+	}
+};
+
 Output_format* get_output_format();
 void init_output(bool have_taxon_id_lists, bool have_taxon_nodes, bool have_taxon_scientific_names);
 void print_hsp(Hsp &hsp, const TranslatedSequence &query);
