@@ -99,9 +99,16 @@ struct score_vector<int8_t>
 		return *this;
 	}
 
-	__m256i operator==(const score_vector& rhs) const
-	{
-		return _mm256_cmpeq_epi8(data_, rhs.data_);
+	friend score_vector blend(const score_vector &v, const score_vector &w, const score_vector &mask) {
+		return score_vector(_mm256_blendv_epi8(v.data_, w.data_, mask.data_));
+	}
+
+	score_vector operator==(const score_vector &v) const {
+		return score_vector(_mm256_cmpeq_epi8(data_, v.data_));
+	}
+
+	friend FORCE_INLINE uint32_t cmp_mask(const score_vector &v, const score_vector &w) {
+		return (uint32_t)_mm256_movemask_epi8(_mm256_cmpeq_epi8(v.data_, w.data_));
 	}
 
 	int operator [](unsigned i) const
@@ -150,6 +157,8 @@ struct score_vector<int8_t>
 		return s;
 	}
 
+	void expand_from_8bit() {}
+
 	__m256i data_;
 
 };
@@ -161,6 +170,20 @@ struct ScoreTraits<score_vector<int8_t>>
 	typedef ::DISPATCH_ARCH::SIMD::Vector<int8_t> Vector;
 	typedef int8_t Score;
 	typedef uint8_t Unsigned;
+	typedef uint32_t Mask;
+	struct TraceMask {
+		static FORCE_INLINE uint64_t make(uint32_t vmask, uint32_t hmask) {
+			return (uint64_t)vmask << 32 | (uint64_t)hmask;
+		}
+		static uint64_t vmask(int channel) {
+			return (uint64_t)1 << (channel + 32);
+		}
+		static uint64_t hmask(int channel) {
+			return (uint64_t)1 << channel;
+		}
+		uint64_t gap;
+		uint64_t open;
+	};
 	static score_vector<int8_t> zero() {
 		return score_vector<int8_t>();
 	}
@@ -256,9 +279,16 @@ struct score_vector<int8_t>
 		return *this;
 	}
 
-	__m128i operator==(const score_vector &rhs) const
-	{
-		return _mm_cmpeq_epi8(data_, rhs.data_);
+	friend score_vector blend(const score_vector &v, const score_vector &w, const score_vector &mask) {
+		return score_vector(_mm_blendv_epi8(v.data_, w.data_, mask.data_));
+	}
+
+	score_vector operator==(const score_vector &v) const {
+		return score_vector(_mm_cmpeq_epi8(data_, v.data_));
+	}
+
+	friend FORCE_INLINE uint32_t cmp_mask(const score_vector &v, const score_vector &w) {
+		return _mm_movemask_epi8(_mm_cmpeq_epi8(v.data_, w.data_));
 	}
 
 	int operator [](unsigned i) const
@@ -318,6 +348,20 @@ struct ScoreTraits<score_vector<int8_t>>
 	typedef ::DISPATCH_ARCH::SIMD::Vector<int8_t> Vector;
 	typedef int8_t Score;
 	typedef uint8_t Unsigned;
+	typedef uint16_t Mask;
+	struct TraceMask {
+		static FORCE_INLINE uint32_t make(uint32_t vmask, uint32_t hmask) {
+			return vmask << 16 | hmask;
+		}
+		static uint32_t vmask(int channel) {
+			return 1 << (channel + 16);
+		}
+		static uint32_t hmask(int channel) {
+			return 1 << channel;
+		}
+		uint32_t gap;
+		uint32_t open;
+	};
 	static score_vector<int8_t> zero() {
 		return score_vector<int8_t>();
 	}

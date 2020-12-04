@@ -29,7 +29,7 @@ using std::vector;
 
 #ifdef __SSE2__
 
-struct sequence_stream
+/*struct sequence_stream
 {
 	sequence_stream():
 		next (buffer_len),
@@ -122,7 +122,7 @@ struct score_profile
 
 };
 
-}
+}*/
 
 #endif
 

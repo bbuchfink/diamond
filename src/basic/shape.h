@@ -1,6 +1,10 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2017 Benjamin Buchfink <buchfink@gmail.com>
+Copyright (C) 2013-2020 Max Planck Society for the Advancement of Science e.V.
+                        Benjamin Buchfink
+                        Eberhard Karls Universitaet Tuebingen
+						
+Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,9 +20,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#ifndef SHAPE_H_
-#define SHAPE_H_
-
+#pragma once
 #include <string.h>
 #include "const.h"
 #include "value.h"
@@ -28,62 +30,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/util.h"
 #include "config.h"
 #include "translate.h"
-
-/*struct All_partitions {};
-struct Filter_partition {};
-
-template<typename _f>
-bool include_partition(unsigned p)
-{
-	return true;
-}
-
-template<>
-bool include_partition<Filter_partition>(unsigned p)
-{
-	return current_range.contains(p);
-}*/
-
-
-struct Letter_trail
-{
-	Letter_trail()
-	{
-		bucket[0] = 0;
-		for (int i = 1; i < 20; ++i)
-			bucket[i] = -1;
-	}
-	Letter_trail(const Reduction &reduction)
-	{
-		for (size_t i = 0; i < 20; ++i)
-			bucket[i] = reduction(i);
-	}
-	int operator()(char l) const
-	{
-		return bucket[(long)l];
-	}
-	int next() const
-	{
-		for (int i = 0; i < 20; ++i)
-			if (bucket[i] == -1)
-				return i;
-		return -1;
-	}
-	int buckets() const
-	{
-		int m = 0;
-		for (int i = 0; i < 20; ++i)
-			m = std::max(m, bucket[i]);
-		return m + 1;
-	}
-	double background_p() const;
-	double foreground_p(double id) const;
-	friend std::ostream& operator<<(std::ostream &s, const Letter_trail &t);
-	int bucket[20];
-};
-
-#define OPT_W 7
-typedef Letter_trail Trail[OPT_W];
 
 struct Shape
 {
@@ -135,7 +81,7 @@ struct Shape
 #ifdef SEQ_MASK
 			l &= LETTER_MASK;
 #endif
-			if (l == value_traits.mask_char || l == sequence::DELIMITER || l == Translator::STOP)
+			if (!is_amino_acid(l))
 				return false;
 			unsigned r = Reduction::reduction(l);
 #ifdef FREQUENCY_MASKING
@@ -159,7 +105,7 @@ struct Shape
 #ifdef SEQ_MASK
 			l &= LETTER_MASK;
 #endif
-			if (l == value_traits.mask_char || l == sequence::DELIMITER || l == Translator::STOP)
+			if (l == value_traits.mask_char || l == sequence::DELIMITER || l == STOP_LETTER)
 				return false;
 			unsigned r = Reduction::reduction(l);
 			s <<= b;
@@ -219,5 +165,3 @@ struct Shape
 	uint64_t long_mask_;
 
 };
-
-#endif /* SHAPE_H_ */

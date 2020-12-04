@@ -34,6 +34,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "log_stream.h"
 #include "../util/ptr_vector.h"
 #include "io/async_file.h"
+#include "io/input_stream_buffer.h"
 
 template<typename _t>
 struct Async_buffer
@@ -46,7 +47,7 @@ struct Async_buffer
 		bin_size_((input_count + bins_ - 1) / bins_),
 		input_count_(input_count),
 		bins_processed_(0),
-		total_size_(0)
+		total_disk_size_(0)
 	{
 		log_stream << "Async_buffer() " << input_count << ',' << bin_size_ << std::endl;
 		count_ = new std::atomic_size_t[bins];
@@ -119,14 +120,14 @@ struct Async_buffer
 			data_next_ = nullptr;
 			return;
 		}
-		size_t size = count_[bins_processed_], end = bins_processed_ + 1, current_size, disk_size = 0;
+		size_t size = count_[bins_processed_], end = bins_processed_ + 1, current_size, disk_size = tmp_file_[bins_processed_].tell();
 		while (end < bins_ && (size + (current_size = count_[end])) * sizeof(_t) < max_size) {
 			size += current_size;
 			disk_size += tmp_file_[end].tell();
 			++end;
 		}
 		log_stream << "Async_buffer.load() " << size << "(" << (double)size * sizeof(_t) / (1 << 30) << " GB, " << (double)disk_size / (1 << 30) << " GB on disk)" << std::endl;
-		total_size_ += size;
+		total_disk_size_ += disk_size;
 		data_next_ = new std::vector<_t>;
 		data_next_->reserve(size);
 		input_range_next_.first = begin(bins_processed_);
@@ -147,15 +148,15 @@ struct Async_buffer
 		return bins_;
 	}
 
-	size_t total_size() {
-		return total_size_ * sizeof(_t);
+	size_t total_disk_size() {
+		return total_disk_size_;
 	}
 
 private:
 
 	void load_bin(std::vector<_t> &out, size_t bin)
 	{
-		InputFile f(tmp_file_[bin]);
+		InputFile f(tmp_file_[bin], InputStreamBuffer::ASYNC);
 		auto it = std::back_inserter(out);
 		size_t count = 0;
 		try {
@@ -168,7 +169,7 @@ private:
 
 	const unsigned bins_;
 	const size_t bin_size_, input_count_;
-	size_t bins_processed_, total_size_;
+	size_t bins_processed_, total_disk_size_;
 	PtrVector<AsyncFile> tmp_file_;
 	std::atomic_size_t *count_;
 	std::pair<size_t, size_t> input_range_next_;

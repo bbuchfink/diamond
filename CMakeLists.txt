@@ -73,7 +73,7 @@ if (${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
   add_definitions(-D_CRT_SECURE_NO_WARNINGS -D_ITERATOR_DEBUG_LEVEL=0)
 else()
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=gnu++11 -Wall -Wextra -Wno-implicit-fallthrough -Wreturn-type -Wno-unused -Wno-unused-parameter -Wno-unused-variable -Wno-uninitialized -Wno-deprecated-copy -Wno-unknown-warning-option")
-  # -fsanitize=address -fno-omit-frame-pointer 
+  # -fsanitize=address -fno-omit-frame-pointer
 endif()
 
 if (CMAKE_COMPILER_IS_GNUCC AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 5)
@@ -123,7 +123,7 @@ set(OBJECTS
   src/output/daa_record.cpp
   src/util/command_line_parser.cpp
   src/util/seq_file_format.cpp
-  src/util/util.cpp 
+  src/util/util.cpp
   src/basic/basic.cpp
   src/basic/hssp.cpp
   src/dp/ungapped_align.cpp
@@ -152,7 +152,6 @@ set(OBJECTS
   src/output/view.cpp
   src/output/output_sink.cpp
   src/output/target_culling.cpp
-  src/align/legacy/swipe_pipeline.cpp
   src/align/legacy/banded_swipe_pipeline.cpp
   src/data/ref_dictionary.cpp
   src/util/io/compressed_stream.cpp
@@ -206,14 +205,39 @@ set(OBJECTS
   src/tools/merge_tsv.cpp
   src/output/xml_format.cpp
   src/align/gapped_filter.cpp
+  src/util/parallel/filestack.cpp
+  src/util/parallel/parallelizer.cpp
+  src/util/parallel/multiprocessing.cpp
+  src/tools/benchmark_io.cpp
+  src/align/memory.cpp
+  src/lib/alp/njn_dynprogprob.cpp
+  src/lib/alp/njn_dynprogproblim.cpp
+  src/lib/alp/njn_dynprogprobproto.cpp
+  src/lib/alp/njn_ioutil.cpp
+  src/lib/alp/njn_localmaxstat.cpp
+  src/lib/alp/njn_localmaxstatmatrix.cpp
+  src/lib/alp/njn_localmaxstatutil.cpp
+  src/lib/alp/njn_random.cpp
+  src/lib/alp/sls_alignment_evaluer.cpp
+  src/lib/alp/sls_alp.cpp
+  src/lib/alp/sls_alp_data.cpp
+  src/lib/alp/sls_alp_regression.cpp
+  src/lib/alp/sls_alp_sim.cpp
+  src/lib/alp/sls_basic.cpp
+  src/lib/alp/sls_pvalues.cpp
+  src/align/global_ranking/global_ranking.cpp
+  src/align/global_ranking/extend.cpp
+  src/align/load_hits.cpp
+  src/tools/rocid.cpp
+  src/basic/cbs.cpp
 )
 
 if(X86)
-add_executable(diamond $<TARGET_OBJECTS:arch_avx2>
-  $<TARGET_OBJECTS:arch_sse4_1>
-  $<TARGET_OBJECTS:arch_generic>
-  ${OBJECTS}
-)
+  add_executable(diamond $<TARGET_OBJECTS:arch_avx2>
+    $<TARGET_OBJECTS:arch_sse4_1>
+    $<TARGET_OBJECTS:arch_generic>
+    ${OBJECTS}
+  )
 else()
 add_executable(diamond $<TARGET_OBJECTS:arch_generic>
   ${OBJECTS}

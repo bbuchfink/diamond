@@ -29,6 +29,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/algo/pattern_matcher.h"
 #include "../util/data_structures/flat_array.h"
 #include "../util/scores/cutoff_table.h"
+#include "../basic/parameters.h"
 
 namespace Search {
 
@@ -60,14 +61,8 @@ struct Stage1_hit
 	unsigned q, s;
 };
 
-static inline int stage2_ungapped(const Letter *query, const Letter *subject, unsigned sid, unsigned &delta, unsigned &len)
-{
-	return xdrop_ungapped(query, subject, shapes[sid].length_, delta, len);
-}
-
-void search_shape(unsigned sid, unsigned query_block, char *query_buffer, char *ref_buffer);
+void search_shape(unsigned sid, unsigned query_block, char *query_buffer, char *ref_buffer, const Parameters &params);
 bool use_single_indexed(double coverage, size_t query_letters, size_t ref_letters);
-void setup_search_params(pair<size_t, size_t> query_len_bounds, size_t chunk_db_letters);
 void setup_search();
 void setup_search_cont();
 

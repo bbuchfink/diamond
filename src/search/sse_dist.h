@@ -1,6 +1,10 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2017 Benjamin Buchfink <buchfink@gmail.com>
+Copyright (C) 2013-2020 Max Planck Society for the Advancement of Science e.V.
+                        Benjamin Buchfink
+                        Eberhard Karls Universitaet Tuebingen
+						
+Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,18 +20,16 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#ifndef SSE_DIST_H_
-#define SSE_DIST_H_
-
+#pragma once
 #include <assert.h>
 #include "../basic/reduction.h"
 #include "../basic/value.h"
 #include "../util/simd.h"
 
 #ifdef __SSSE3__
-static inline __m128i reduce_seq_ssse3(const Letter *seq)
+static inline __m128i reduce_seq_ssse3(const Letter *seq, const Letter* map)
 {
-	const __m128i *row = reinterpret_cast<const __m128i*>(Reduction::reduction.map8());
+	const __m128i *row = reinterpret_cast<const __m128i*>(map);
 	__m128i s = _mm_loadu_si128((const __m128i*)seq);
 #ifdef SEQ_MASK
 	s = letter_mask(s);
@@ -45,24 +47,20 @@ static inline __m128i reduce_seq_ssse3(const Letter *seq)
 #endif
 
 #ifdef __SSE2__
-static inline __m128i reduce_seq_generic(const Letter *seq)
+static inline __m128i reduce_seq_generic(const Letter *seq, const Letter *map)
 {
-	uint8_t d[16];
+	alignas(16) uint8_t d[16];
 	for (unsigned i = 0; i < 16; ++i)
-#ifdef SEQ_MASK
-		d[i] = Reduction::reduction(letter_mask(*(seq++)));
-#else
-		d[i] = Reduction::reduction(*(seq++));
-#endif
-	return _mm_loadu_si128((const __m128i*)d);
+		d[i] = map[(long)letter_mask(*(seq++))];
+	return _mm_load_si128((const __m128i*)d);
 }
 
-static inline __m128i reduce_seq(const Letter *seq)
+static inline __m128i reduce_seq(const Letter *seq, const Letter *map)
 {
 #ifdef __SSSE3__
-	return reduce_seq_ssse3(seq);
+	return reduce_seq_ssse3(seq, map);
 #else
-	return reduce_seq_generic(seq);
+	return reduce_seq_generic(seq, map);
 #endif
 }
 #endif
@@ -70,19 +68,18 @@ static inline __m128i reduce_seq(const Letter *seq)
 static inline unsigned match_block_reduced(const Letter *x, const Letter *y)
 {
 #ifdef __SSE2__
-	const __m128i r1 = reduce_seq(x);
-	const __m128i r2 = reduce_seq(y);
+	const __m128i r1 = reduce_seq(x, Reduction::reduction.map8());
+	const __m128i r2 = reduce_seq(y, Reduction::reduction.map8b());
 	return _mm_movemask_epi8(_mm_cmpeq_epi8(r1, r2));
 #else
 	unsigned r = 0;
 	for (int i = 15; i >= 0; --i) {
 		r <<= 1;
-#ifdef SEQ_MASK
-		if (Reduction::reduction(letter_mask(x[i])) == Reduction::reduction(letter_mask(y[i])))
-#else
-		if (Reduction::reduction(x[i]) == Reduction::reduction(y[i]))
-#endif
-			r |= 1;		
+		const Letter lx = letter_mask(x[i]), ly = letter_mask(y[i]);
+		if (!is_amino_acid(lx) || !is_amino_acid(ly))
+			continue;
+		if (Reduction::reduction(lx) == Reduction::reduction(ly))
+			r |= 1;
 	}
 	return r;
 #endif
@@ -130,8 +127,11 @@ static inline uint64_t seed_mask(const Letter* s, int len) {
 		mask &= (1llu << len) - 1;
 	return mask;
 #else
-	return 0;
+	uint64_t mask = 0;
+	for (int i = 0; i < len; ++i) {
+		if ((s[i] & SEED_MASK) != 0)
+			mask |= 1llu << i;
+	}
+	return mask;
 #endif
 }
-
-#endif /* SSE_DIST_H_ */

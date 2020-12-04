@@ -6,14 +6,23 @@
 #include "../log_stream.h"
 
 #ifdef _MSC_VER
-#include <windows.h>
+  #include <windows.h>
 #else
-#include <unistd.h>
-#include <sys/stat.h>
+  #include <unistd.h>
+  #include <sys/stat.h>
+  #ifndef  __APPLE__
+    #ifdef __FreeBSD__
+      #include <sys/types.h>
+      #include <sys/sysctl.h>
+    #else
+      #include <sys/sysinfo.h>
+    #endif
+  #endif
 #endif
 
 using std::string;
 using std::cout;
+using std::cerr;
 using std::endl;
 
 string executable_path() {
@@ -38,6 +47,31 @@ bool exists(const std::string &file_name) {
 #endif
 }
 
+size_t file_size(const char* name)
+{
+#ifdef WIN32
+	HANDLE hFile = CreateFile(name, GENERIC_READ,
+		FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING,
+		FILE_ATTRIBUTE_NORMAL, NULL);
+	if (hFile == INVALID_HANDLE_VALUE)
+		return -1; // error condition, could call GetLastError to find out more
+
+	LARGE_INTEGER size;
+	if (!GetFileSizeEx(hFile, &size))
+	{
+		CloseHandle(hFile);
+		return -1; // error condition, could call GetLastError to find out more
+	}
+
+	CloseHandle(hFile);
+	return size.QuadPart;
+#else
+	struct stat stat_buf;
+	int rc = stat(name, &stat_buf);
+	return rc == 0 ? stat_buf.st_size : -1;
+#endif
+}
+
 void auto_append_extension(string &str, const char *ext)
 {
 	if (!ends_with(str, ext))
@@ -54,7 +88,7 @@ void log_rss() {
 	log_stream << "Current RSS: " << convert_size(getCurrentRSS()) << ", Peak RSS: " << convert_size(getPeakRSS()) << endl;
 }
 
-void set_color(Color color) {
+void set_color(Color color, bool err) {
 #ifdef WIN32
 	HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
 	WORD c = FOREGROUND_RED | FOREGROUND_BLUE | FOREGROUND_GREEN;
@@ -69,26 +103,51 @@ void set_color(Color color) {
 	}
 	SetConsoleTextAttribute(hConsole, c);
 #else
-	cout << "\033[";
+	auto &s = err ? cerr : cout;
+	s << "\033[";
 	switch (color) {
 	case Color::RED:
-		cout << 31;
+		s << 31;
 		break;
 	case Color::GREEN:
-		cout << 32;
+		s << 32;
+		break;
+	case Color::YELLOW:
+		s << "1;33";
 		break;
 	default:
 		break;
 	}
-	cout << 'm';
+	s << "m";
 #endif
 }
 
-void reset_color() {
+void reset_color(bool err) {
 #ifdef WIN32
 	HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
 	SetConsoleTextAttribute(hConsole, FOREGROUND_RED | FOREGROUND_BLUE | FOREGROUND_GREEN);
 #else
-	cout << "\033[" << 39 << 'm';
+	(err ? cerr : cout) << "\033[" << "0;39" << 'm';
+#endif
+}
+
+double total_ram() {
+#if defined(WIN32) || defined(__APPLE__)
+	return 0.0;
+#elif defined(__FreeBSD__)
+	int mib[2] = { CTL_HW, HW_REALMEM };
+	u_int namelen = sizeof(mib) / sizeof(mib[0]);
+	uint64_t oldp;
+	size_t oldlenp = sizeof(oldp);
+
+	if (sysctl(mib, namelen, &oldp, &oldlenp, NULL, 0) < 0)
+		return 0.0;
+	else
+		return oldp / 1e9;
+#else
+	struct sysinfo info;
+	if (sysinfo(&info) != 0)
+		return 0.0;
+	return (double)info.totalram / 1e9;
 #endif
 }

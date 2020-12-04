@@ -73,18 +73,3 @@ BinaryBuffer::Iterator& operator>>(BinaryBuffer::Iterator &it, DAA_query_record:
 	r.context().parse();
 	return it;
 }
-
-Hsp::Hsp(const IntermediateRecord &r, unsigned query_source_len):
-	score(r.score),
-	transcript(r.transcript)
-{
-	subject_range.begin_ = r.subject_begin;
-	if (align_mode.mode == Align_mode::blastx) {
-		frame = (r.flag&(1 << 6)) == 0 ? r.query_begin % 3 : 3 + (query_source_len - 1 - r.query_begin) % 3;
-		set_translated_query_begin(r.query_begin, query_source_len);
-	}
-	else {
-		frame = 0;
-		query_range.begin_ = r.query_begin;
-	}
-}

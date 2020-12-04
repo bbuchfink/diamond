@@ -134,8 +134,8 @@ void parallel_radix_cluster(const Relation<_t>& in, uint32_t shift, _t* out, siz
 	const Key clusters = (Key)1 << config.radix_bits;
 	std::vector<size_t> hst(clusters, 0);
 		
-	const size_t nt = thread_count;
-	::partition<size_t> p(in.n, nt);
+	::partition<size_t> p(in.n, thread_count);
+	const size_t nt = p.parts;
 	
 	std::vector<std::vector<size_t>> thread_hst;
 	thread_hst.reserve(nt);

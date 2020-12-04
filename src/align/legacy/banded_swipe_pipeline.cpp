@@ -127,16 +127,11 @@ void Pipeline::range_ranking()
 {
 	const double rr = config.rank_ratio == -1 ? 0.4 : config.rank_ratio;
 	std::stable_sort(targets.begin(), targets.end(), Target::compare);
-	IntervalPartition ip((int)std::min(config.max_alignments, (uint64_t)INT_MAX));
+	IntervalPartition ip((int)std::min(config.max_alignments, (size_t)INT_MAX));
 	for (PtrVector< ::Target>::iterator i = targets.begin(); i < targets.end();) {
 		Target* t = ((Target*)*i);
 		if (t->is_outranked(ip, source_query_len, rr)) {
-			if (config.benchmark_ranking) {
-				t->outranked = true;
-				++i;
-			}
-			else
-				i = targets.erase(i, i + 1);
+			i = targets.erase(i, i + 1);
 		}
 		else {
 			ip.insert(t->ungapped_query_range(source_query_len), t->filter_score);
@@ -175,7 +170,7 @@ void build_ranking_worker(PtrVector<::Target>::iterator begin, PtrVector<::Targe
 	}
 }
 
-void Pipeline::run(Statistics &stat, const sequence *subjects, size_t subject_count)
+void Pipeline::run(Statistics &stat)
 {
 	task_timer timer("Init banded swipe pipeline", target_parallel ? 3 : UINT_MAX);
 	Config::set_option(config.padding, 32);

@@ -123,7 +123,7 @@ struct functor_traits<std::binary_compose<T0,T1,T2> >
 
 #endif // EIGEN_STDEXT_SUPPORT
 
-// allow to add new functors and specializations of functor_traits from outside Eigen.
+// allow one to add new functors and specializations of functor_traits from outside Eigen.
 // this macro is really needed because functor_traits must be specialized after it is declared but before it is used...
 #ifdef EIGEN_FUNCTORS_PLUGIN
 #include EIGEN_FUNCTORS_PLUGIN

@@ -40,13 +40,6 @@ using std::vector;
 namespace Search {
 namespace DISPATCH_ARCH {
 
-/*static bool gapped_filter(const LongScoreProfile& query_profile, const Letter *subject, int query_len) {
-	const int l = (int)query_profile.length();
-	int scores[64];
-	DP::scan_diags64(query_profile, sequence(subject, l), -32, 0, l, scores);
-	return score_matrix.evalue_norm(DP::diag_alignment(scores, 64), query_len) <= config.gapped_filter_evalue2;
-}*/
-
 void search_query_offset(uint64_t q,
 	const Packed_loc* s,
 	const uint32_t *hits,
@@ -56,7 +49,6 @@ void search_query_offset(uint64_t q,
 	const unsigned sid,
 	const Context& context)
 {
-	// thread_local LongScoreProfile query_profile;
 	thread_local TextBuffer output_buf;
 
 	constexpr auto N = vector<Stage1_hit>::const_iterator::difference_type(::DISPATCH_ARCH::SIMD::Vector<int8_t>::CHANNELS);
@@ -65,6 +57,7 @@ void search_query_offset(uint64_t q,
 
 	const Letter* subjects[N];
 	int scores[N];
+	std::fill(scores, scores + N, INT_MAX);
 
 	const sequence query_clipped = Util::Sequence::clip(query - config.ungapped_window, config.ungapped_window * 2, config.ungapped_window);
 	const int window_left = int(query - query_clipped.data()), window = (int)query_clipped.length();
@@ -75,21 +68,22 @@ void search_query_offset(uint64_t q,
 	const int query_len = query_seqs::data_->length(query_id);
 	const int score_cutoff = query_len > config.short_query_max_len ? context.cutoff_table(query_len) : context.short_query_ungapped_cutoff;
 	size_t hit_count = 0;
-	// bool ps = false;
+
+	const int interval_mod = config.left_most_interval > 0 ? seed_offset % config.left_most_interval : window_left, interval_overhang = std::max(window_left - interval_mod, 0);
 
 	for (const uint32_t *i = hits; i < hits_end; i += N) {
 
 		const size_t n = std::min(N, hits_end - i);
 		for (size_t j = 0; j < n; ++j)
 			subjects[j] = ref_seqs::data_->data(s[*(i + j)]) - window_left;
-		DP::window_ungapped_best(query_clipped.data(), subjects, n, window, scores);
+		if(config.ungapped_evalue != 0.0)
+			DP::window_ungapped_best(query_clipped.data(), subjects, n, window, scores);
 
-		for (size_t j = 0; j < n; ++j)
-			if(scores[j] > score_cutoff) {
+		for (size_t j = 0; j < n; ++j) {
+			if (scores[j] > score_cutoff) {
 				stats.inc(Statistics::TENTATIVE_MATCHES2);
-				if (left_most_filter(query_clipped, subjects[j], window_left, shapes[sid].length_, context, sid == 0, sid)) {
+				if (left_most_filter(query_clipped + interval_overhang, subjects[j] + interval_overhang, window_left - interval_overhang, shapes[sid].length_, context, sid == 0, sid, score_cutoff)) {
 					stats.inc(Statistics::TENTATIVE_MATCHES3);
-					//if (config.gapped_filter_evalue2 == 0.0)
 					if (hit_count == 0) {
 						output_buf.clear();
 						output_buf.write_varint(query_id);
@@ -99,20 +93,11 @@ void search_query_offset(uint64_t q,
 						output_buf.write_raw((const char*)&s[*(i + j)], 5);
 					else
 						output_buf.write(s[*(i + j)].low);
-					output_buf.write_varint((uint32_t)scores[j]);
+					output_buf.write((uint16_t)scores[j]);
 					++hit_count;
-					/*else {
-						if (!ps) {
-							query_profile.set(query_clipped);
-							ps = true;
-						}
-						if (gapped_filter(query_profile, subjects[j], query_len)) {
-							stats.inc(Statistics::TENTATIVE_MATCHES4);
-							out.push(hit(query_id, s[(i + j)->s], seed_offset));
-						}
-					}*/
 				}
 			}
+		}
 	}
 
 	if (hit_count > 0) {

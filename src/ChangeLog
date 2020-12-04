@@ -1,3 +1,63 @@
+[2.0.5]
+- Fixed an issue that could cause high memory use in frameshift alignment mode.
+
+[2.0.4]
+- Fixed a bug that could cause the `--max-target-seqs/-k`, `--ext-chunk-size` and 
+  `--file-buffer-size` options not to function correctly on macOS.
+
+[2.0.3]
+- Added a new sensitivity mode that is between the default mode and the sensitive mode
+  in sensitivity (option `--mid-sensitive`).
+- Added counters for total number of reference blocks, shapes and index chunks to
+  the status messages.
+- Fixed a bug (persisting since v2.0.2) that could cause secondary HSPs within one
+  target not to be reported if the `--max-hsps` option was used with a non-default setting.
+- Fixed a bug that could cause an invalid error message with regard to the database
+  format in certain cases.
+- The `--no-self-hits` option is no longer supported in `blastx` mode.
+- Changed the semantics of the `--no-self-hits` option to check for equality of both
+  sequence and sequence id, independent of the computed alignment.
+- The selection of the top hit when using `--top` will respect the identity, coverage
+  and no-self-hits filter settings (does not apply when frameshift alignment is
+  enabled).
+- The inclusion criterion for `--top` is applied to the bit score instead of the raw
+  score and is no longer affected by integer rounding (does not apply when frameshift
+  alignment is enabled).
+- Improved the accuracy of the ranking heuristic.
+- Added the options `--ext-chunk-size` and `--no-ranking` to control the ranking
+  heuristic.
+
+[2.0.2]
+- Fixed a bug (persisting since v2.0.0) that could cause incomplete results in `blastx` mode.
+- Reduced the use of temporary disk space.
+- Fixed an issue that could cause long runtimes when using the `--taxon-list` option.
+
+[2.0.1]
+- Added feature for using the tool in a distributed computing environment.
+- Fixed an issue that could cause increased memory usage and runtimes for very long queries.
+- Fixed a bug that could cause a crash when using `--comp-based-stats 0`.
+- Fixed a bug that could cause a crash for small input files in certain cases.
+- Fixed a bug that could cause filtering hits for identity or range cover not to function correctly when using
+  the tabular format without traceback being enabled.
+- Added warning messages to recommend block size parameters based on system RAM.
+
+[2.0.0]
+- Added the sensitivity modes `--very-sensitive` and `--ultra-sensitive`.
+- The `--block-size`/`-b` parameter is set to 0.4 and the `--index-chunks`/`-c` parameter is set to 1 by default
+  in the new sensitivity modes.
+- Improved performance.
+- Added the option `--ext` with possible values `banded-fast` and `banded-slow` to adjust band setup for Smith
+  Waterman extensions (new default is `banded-fast` for the default and sensitive mode, and `banded-slow` otherwise).
+- Added automatic disabling of alignment traceback if not required by the user-defined output fields in tabular
+  output format.
+- Changed the default value of the `--max-hsps` parameter to 1.
+- Changed the default value of the `--freq-sd` parameter from 10 to 20 for the sensitive mode.
+- Fixed a compiler error on FreeBSD.
+
+[0.9.36]
+- Fixed a bug that could cause `makedb` to produce invalid database files when using taxonomy features.
+- Fixed a bug that could cause a crash when running in query-indexed mode.
+
 [0.9.35]
 - Fixed a bug in `diamond view` that would cause high memory usage and erroneous output.
 - Reduced the use of temporary disk space.

@@ -1,6 +1,9 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2017 Benjamin Buchfink <buchfink@gmail.com>
+Copyright (C) 2016-2020 Max Planck Society for the Advancement of Science e.V.
+                        Benjamin Buchfink
+						
+Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -60,20 +63,16 @@ void Frequent_seeds::build_worker(
 	for (auto it = JoinIterator<SeedArray::_pos>(query_seed_hits[seedp].begin(), ref_seed_hits[seedp].begin()); it;) {
 		if (it.s->size() > ref_max_n || it.r->size() > query_max_n) {
 			n += (unsigned)it.s->size();
-			Packed_seed s;
-			shapes[sid].set_seed(s, query_seqs::get().data(*it.r->begin()));
-			buf.push_back(seed_partition_offset(s));
+			//Packed_seed s;
+			//shapes[sid].set_seed(s, query_seqs::get().data(*it.r->begin()));
+			//buf.push_back(seed_partition_offset(s));
 
-#ifdef SEQ_MASK
-			if (config.beta) {
-				Range<SeedArray::_pos*> query_hits = *it.r;
-				for (SeedArray::_pos* i = query_hits.begin(); i < query_hits.end(); ++i) {
-					Letter* p = query_seqs::get_nc().data(*i);
-					*p |= SEED_MASK;
-				}
+			Range<SeedArray::_pos*> query_hits = *it.r;
+			for (SeedArray::_pos* i = query_hits.begin(); i < query_hits.end(); ++i) {
+				Letter* p = query_seqs::get_nc().data(*i);
+				*p |= SEED_MASK;
 			}
-#endif
-
+			
 			it.erase();
 
 		}
@@ -109,4 +108,13 @@ void Frequent_seeds::build(unsigned sid, const SeedPartitionRange &range, Double
 	vector<unsigned> counts(Const::seedp);
 	Util::Parallel::scheduled_thread_pool_auto(config.threads_, Const::seedp, build_worker, query_seed_hits, ref_seed_hits, &range, sid, ref_max_n, query_max_n, &counts);
 	log_stream << "Masked positions = " << std::accumulate(counts.begin(), counts.end(), 0) << std::endl;
+}
+
+void Frequent_seeds::clear_masking(Sequence_set& seqs) {
+	for (size_t i = 0; i < seqs.get_length(); ++i) {
+		const size_t len = seqs.length(i);
+		Letter* p = seqs.ptr(i), *end = p + len;
+		for (; p < end; ++p)
+			*p = letter_mask(*p);
+	}
 }

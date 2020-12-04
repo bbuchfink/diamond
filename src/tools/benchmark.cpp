@@ -38,6 +38,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/simd/transpose.h"
 #include "../dp/scan_diags.h"
 
+void benchmark_io();
+
 using std::vector;
 using std::chrono::high_resolution_clock;
 using std::chrono::nanoseconds;
@@ -170,21 +172,22 @@ void benchmark_transpose() {
 void swipe_cell_update() {
 	static const size_t n = 1000000000llu;
 	high_resolution_clock::time_point t1 = high_resolution_clock::now();
-	{
+	/*{
 		score_vector<uint8_t> diagonal_cell, scores, gap_extension, gap_open, horizontal_gap, vertical_gap, best, vbias;
 		for (size_t i = 0; i < n; ++i) {
 			diagonal_cell = cell_update(diagonal_cell, scores, gap_extension, gap_open, horizontal_gap, vertical_gap, best, vbias);
 		}
 		volatile __m128i x = diagonal_cell.data_;
 	}
-	cout << "SWIPE cell update (uint8_t):\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * 16) * 1000 << " ps/Cell" << endl;
+	cout << "SWIPE cell update (uint8_t):\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * 16) * 1000 << " ps/Cell" << endl;*/
 
 #ifdef __SSE4_1__
 	t1 = high_resolution_clock::now();
+	RowCounter<score_vector<int8_t>> row_counter(0);
 	{
 		score_vector<int8_t> diagonal_cell, scores, gap_extension, gap_open, horizontal_gap, vertical_gap, best;
 		for (size_t i = 0; i < n; ++i) {
-			diagonal_cell = ::swipe_cell_update(diagonal_cell, scores, nullptr, gap_extension, gap_open, horizontal_gap, vertical_gap, best);
+			diagonal_cell = ::swipe_cell_update(diagonal_cell, scores, nullptr, gap_extension, gap_open, horizontal_gap, vertical_gap, best, nullptr, nullptr, nullptr, nullptr, row_counter);
 		}
 		volatile auto x = diagonal_cell.data_;
 	}
@@ -196,25 +199,38 @@ void swipe_cell_update() {
 #ifdef __SSE4_1__
 void swipe(const sequence &s1, const sequence &s2) {
 	constexpr int CHANNELS = ::DISPATCH_ARCH::ScoreTraits<score_vector<int8_t>>::CHANNELS;
-	sequence target[CHANNELS];
-	std::fill(target, target + CHANNELS, s2);
 	static const size_t n = 1000llu;
 	vector<DpTarget> target8, target16;
-	for (size_t i = 0; i < 8; ++i)
-		target16.emplace_back(s2, -32, 32, 0, 0);
+	for (size_t i = 0; i < 32; ++i)
+		target8.emplace_back(s2, 0, 0, 0, 0);
 	Bias_correction cbs(s1);
 	Statistics stat;
+	sequence query = s1;
+	query.len_ = std::min(query.len_, (size_t)255);
+
 	high_resolution_clock::time_point t1 = high_resolution_clock::now();
 	for (size_t i = 0; i < n; ++i) {
-		//volatile list<Hsp> v = ::DP::Swipe::swipe(s1, target, target + CHANNELS, 100);
-		volatile auto out = ::DP::BandedSwipe::swipe(s1, target8, target16, Frame(0), &cbs, 0, 0, stat);
+		volatile list<Hsp> v = ::DP::BandedSwipe::swipe(query, target8, target16, nullptr, Frame(0), nullptr, DP::FULL_MATRIX, 0, stat);
 	}
-	cout << "SWIPE (int8_t):\t\t\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * s1.length() * s2.length() * CHANNELS) * 1000 << " ps/Cell" << endl;
+	cout << "SWIPE (int8_t):\t\t\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * query.length() * s2.length() * CHANNELS) * 1000 << " ps/Cell" << endl;
+
+	t1 = high_resolution_clock::now();
+	for (size_t i = 0; i < n; ++i) {
+		volatile list<Hsp> v = ::DP::BandedSwipe::swipe(query, target8, target16, nullptr, Frame(0), &cbs, DP::FULL_MATRIX, 0, stat);
+	}
+	cout << "SWIPE (int8_t, CBS):\t\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * query.length() * s2.length() * CHANNELS) * 1000 << " ps/Cell" << endl;
+
+	t1 = high_resolution_clock::now();
+	for (size_t i = 0; i < n; ++i) {
+		volatile list<Hsp> v = ::DP::BandedSwipe::swipe(query, target8, target16, nullptr, Frame(0), nullptr, DP::FULL_MATRIX | DP::TRACEBACK, 0, stat);
+	}
+	cout << "SWIPE (int8_t, TB):\t\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * query.length() * s2.length() * CHANNELS) * 1000 << " ps/Cell" << endl;
 }
 #endif
 
 void banded_swipe(const sequence &s1, const sequence &s2) {
 	vector<DpTarget> target8, target16;
+	config.traceback_mode = TracebackMode::SCORE_BUFFER;
 	for (size_t i = 0; i < 8; ++i)
 		target16.emplace_back(s2, -32, 32, 0, 0);
 	static const size_t n = 10000llu;
@@ -223,15 +239,21 @@ void banded_swipe(const sequence &s1, const sequence &s2) {
 	Bias_correction cbs(s1);
 	high_resolution_clock::time_point t1 = high_resolution_clock::now();
 	for (size_t i = 0; i < n; ++i) {
-		volatile auto out = ::DP::BandedSwipe::swipe(s1, target8, target16, Frame(0), &cbs, 0, 0, stat);
+		volatile auto out = ::DP::BandedSwipe::swipe(s1, target8, target16, nullptr, Frame(0), &cbs, 0, 0, stat);
 	}
-	cout << "Banded SWIPE (int16_t, CBS):\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * s1.length() * 65 * 8) * 1000 << " ps/Cell" << endl;
+	cout << "Banded SWIPE (int16_t, CBS):\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * s1.length() * 65 * 16) * 1000 << " ps/Cell" << endl;
+	
+	t1 = high_resolution_clock::now();
+	for (size_t i = 0; i < n; ++i) {
+		volatile auto out = ::DP::BandedSwipe::swipe(s1, target8, target16, nullptr, Frame(0), nullptr, 0, 0, stat);
+	}
+	cout << "Banded SWIPE (int16_t):\t\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * s1.length() * 65 * 16) * 1000 << " ps/Cell" << endl;
 
 	t1 = high_resolution_clock::now();
 	for (size_t i = 0; i < n; ++i) {
-		volatile auto out = ::DP::BandedSwipe::swipe(s1, target8, target16, Frame(0), nullptr, 0, 0, stat);
+		volatile auto out = ::DP::BandedSwipe::swipe(s1, target8, target16, nullptr, Frame(0), &cbs, DP::TRACEBACK, 0, stat);
 	}
-	cout << "Banded SWIPE (int16_t):\t\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * s1.length() * 65 * 8) * 1000 << " ps/Cell" << endl;
+	cout << "Banded SWIPE (int16_t, CBS, TB):" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * s1.length() * 65 * 16) * 1000 << " ps/Cell" << endl;
 }
 
 #ifdef __SSE4_1__
@@ -260,6 +282,11 @@ void evalue() {
 }
 
 void benchmark() {
+	if (config.type == "io") {
+		benchmark_io();
+		return;
+	}
+
 	vector<Letter> s1, s2, s3, s4;
 		
 	s1 = sequence::from_string("mpeeeysefkelilqkelhvvyalshvcgqdrtllasillriflhekleslllctlndreismedeattlfrattlastlmeqymkatatqfvhhalkdsilkimeskqscelspskleknedvntnlthllnilselvekifmaseilpptlryiygclqksvqhkwptnttmrtrvvsgfvflrlicpailnprmfniisdspspiaartlilvaksvqnlanlvefgakepymegvnpfiksnkhrmimfldelgnvpelpdttehsrtdlsrdlaalheicvahsdelrtlsnergaqqhvlkkllaitellqqkqnqyt"); // d1wera_
@@ -270,11 +297,15 @@ void benchmark() {
 	sequence ss1 = sequence(s1).subseq(34, s1.size());
 	sequence ss2 = sequence(s2).subseq(33, s2.size());
 
-	evalue();
 #ifdef __SSE4_1__
 	swipe(s3, s4);
 	diag_scores(s1, s2);
 #endif
+#ifdef __SSE2__
+	banded_swipe(s1, s2);
+	swipe_cell_update();
+#endif
+	evalue();
 #ifdef __SSE4_1__
 	benchmark_hamming(s1, s2);
 #endif
@@ -287,10 +318,6 @@ void benchmark() {
 #endif
 #ifdef __SSE2__
 	benchmark_transpose();
-#endif
-#ifdef __SSE2__
-	banded_swipe(s1, s2);
-	swipe_cell_update();
 #endif
 }
 

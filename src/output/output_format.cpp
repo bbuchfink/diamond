@@ -94,7 +94,7 @@ Output_format* get_output_format()
 	else if (f[0] == "clus")
 		return new Clustering_format(&f[1]);
 	else
-		throw std::runtime_error("Invalid output format. Allowed values: 0,5,6,100,101,102");
+		throw std::runtime_error("Invalid output format: " + f[0] + "\nAllowed values: 0,5,xml,6,tab,100,daa,101,sam,102,103,paf");
 }
 
 void init_output(bool have_taxon_id_lists, bool have_taxon_nodes, bool have_taxon_scientific_names)
@@ -108,12 +108,14 @@ void init_output(bool have_taxon_id_lists, bool have_taxon_nodes, bool have_taxo
 		throw runtime_error("Output format requires taxonomy nodes information built into the database (use --taxonnodes parameter for the makedb command).");
 	if (output_format->needs_taxon_scientific_names && !have_taxon_scientific_names)
 		throw runtime_error("Output format requires taxonomy names information built into the database (use --taxonnames parameter for the makedb command).");
+	if (*output_format == Output_format::daa && config.multiprocessing)
+		throw std::runtime_error("The DAA format is not supported in multiprocessing mode.");
 	if (*output_format == Output_format::taxon && config.toppercent == 100.0 && config.min_bit_score == 0.0)
 		config.toppercent = 10.0;
 	if (config.toppercent == 100.0) {
 		message_stream << "#Target sequences to report alignments for: ";
 		if (config.max_alignments == 0) {
-			config.max_alignments = std::numeric_limits<uint64_t>::max();
+			config.max_alignments = std::numeric_limits<size_t>::max();
 			message_stream << "unlimited" << endl;
 		}
 		else
@@ -121,6 +123,10 @@ void init_output(bool have_taxon_id_lists, bool have_taxon_nodes, bool have_taxo
 	}
 	else
 		message_stream << "Percentage range of top alignment score to report hits: " << config.toppercent << endl;
+	if (config.traceback_mode == TracebackMode::NONE)
+		config.traceback_mode = TracebackMode::VECTOR;
+	log_stream << "Traceback mode: " << (int)config.traceback_mode << endl;
+	log_stream << "Format options: transcript=" << output_format->needs_transcript << " stats=" << output_format->needs_stats << endl;
 }
 
 void Bin1_format::print_query_intro(size_t query_num, const char *query_name, unsigned query_len, TextBuffer &out, bool unaligned) const {

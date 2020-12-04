@@ -104,6 +104,25 @@ void scan_diags128(const LongScoreProfile& qp, sequence s, int d_begin, int j_be
 	max8.store(scores + 112);
 	for (int i = 0; i < 128; ++i)
 		out[i] = ScoreTraits<Sv>::int_score(scores[i]);
+#else
+	const int qlen = (int)qp.length();
+
+	const int j0 = std::max(j_begin, -(d_begin + 128 - 1)),
+		i0 = d_begin + j0,
+		j1 = std::min(qlen - d_begin, j_end);
+	int v[8 * 16], max[8 * 16];
+	std::fill(v, v + 128, 0);
+	std::fill(max, max + 128, 0);
+	for (int i = i0, j = j0; j < j1; ++j, ++i) {
+		const int8_t* q = qp.get(s[j], i);
+		for (int k = 0; k < 128; ++k) {
+			v[k] += q[k];
+			v[k] = std::max(v[k], 0);
+			max[k] = std::max(max[k], v[k]);
+		}
+	}
+	for (int i = 0; i < 128; ++i)
+		out[i] = max[i];
 #endif
 }
 
@@ -159,6 +178,25 @@ void scan_diags64(const LongScoreProfile& qp, sequence s, int d_begin, int j_beg
 	max4.store(scores + 48);
 	for (int i = 0; i < 64; ++i)
 		out[i] = ScoreTraits<Sv>::int_score(scores[i]);
+#else
+	const int qlen = (int)qp.length();
+
+	const int j0 = std::max(j_begin, -(d_begin + 64 - 1)),
+		i0 = d_begin + j0,
+		j1 = std::min(qlen - d_begin, j_end);
+	int v[64], max[64];
+	std::fill(v, v + 64, 0);
+	std::fill(max, max + 64, 0);
+	for (int i = i0, j = j0; j < j1; ++j, ++i) {
+		const int8_t* q = qp.get(s[j], i);
+		for (int k = 0; k < 64; ++k) {
+			v[k] += q[k];
+			v[k] = std::max(v[k], 0);
+			max[k] = std::max(max[k], v[k]);
+		}
+	}
+	for (int i = 0; i < 64; ++i)
+		out[i] = max[i];
 #endif
 }
 
@@ -215,6 +253,25 @@ void scan_diags(const LongScoreProfile& qp, sequence s, int d_begin, int d_end, 
 	max4.store(scores + 48);
 	for (int i = 0; i < 64; ++i)
 		out[i] = ScoreTraits<Sv>::int_score(scores[i]);
+#else
+	const int qlen = (int)qp.length();
+
+	const int j0 = std::max(j_begin, -(d_begin + 64 - 1)),
+		i0 = d_begin + j0,
+		j1 = std::min(qlen - d_begin, j_end);
+	int v[64], max[64];
+	std::fill(v, v + 64, 0);
+	std::fill(max, max + 64, 0);
+	for (int i = i0, j = j0; j < j1; ++j, ++i) {
+		const int8_t* q = qp.get(s[j], i);
+		for (int k = 0; k < 64; ++k) {
+			v[k] += q[k];
+			v[k] = std::max(v[k], 0);
+			max[k] = std::max(max[k], v[k]);
+		}
+	}
+	for (int i = 0; i < 64; ++i)
+		out[i] = max[i];
 #endif
 }
 

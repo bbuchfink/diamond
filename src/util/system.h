@@ -26,10 +26,14 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #ifdef _MSC_VER
 
 #define PACKED_ATTRIBUTE
+#define FORCE_INLINE __forceinline
+#define MSC_INLINE __forceinline
 
 #else
 
 #define PACKED_ATTRIBUTE __attribute__((packed))
+#define FORCE_INLINE __attribute__((always_inline))
+#define MSC_INLINE
 
 #endif
 
@@ -39,4 +43,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #else
 #define POSIX_OPEN(x,y,z) open(x,y,z)
 #define POSIX_OPEN2(x,y) open(x,y)
+#endif
+
+#if defined(__s390x__) && defined(__clang__)
+#define TLS_FIX_S390X
+#define TLS_FIX_S390X_MOVE(x) x
+#else
+#define TLS_FIX_S390X thread_local
+#define TLS_FIX_S390X_MOVE(x) std::move(x)
 #endif

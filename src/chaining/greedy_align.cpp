@@ -1,6 +1,9 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2017 Benjamin Buchfink <buchfink@gmail.com>
+Copyright (C) 2016-2020 Max Planck Society for the Advancement of Science e.V.
+                        Benjamin Buchfink
+						
+Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -24,7 +27,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../basic/sequence.h"
 #include "../basic/match.h"
 #include "../basic/score_matrix.h"
-#include "../align/extend_ungapped.h"
+//#include "../align/extend_ungapped.h"
 #include "../output/output_format.h"
 #include "../dp/hsp_traits.h"
 #include "chaining.h"
@@ -550,6 +553,17 @@ struct Greedy_aligner2
 			if (diags.nodes.size() > config.chaining_maxnodes)
 				diags.nodes.erase(diags.nodes.begin() + config.chaining_maxnodes, diags.nodes.end());
 		}
+		if (config.chaining_len_cap > 0.0 && diags.nodes.size() > config.chaining_min_nodes) {
+			std::sort(diags.nodes.begin(), diags.nodes.end(), Diagonal_segment::cmp_score);
+			const double cap = query.length() * config.chaining_len_cap;
+			double total_len = 0.0;
+			auto it = diags.nodes.begin();
+			while (it < diags.nodes.end() && total_len < cap) {
+				total_len += it->len;
+				++it;
+			}
+			diags.nodes.erase(std::max(diags.nodes.begin() + config.chaining_min_nodes, it), diags.nodes.end());
+		}
 		diags.sort();
 		diags.prune();
 		if (log) {
@@ -580,17 +594,17 @@ struct Greedy_aligner2
 		return run(hsps, ts, 0.1, 19, band);
 	}
 
-	Greedy_aligner2(const sequence &query, const Bias_correction &query_bc, const sequence &subject, bool log, unsigned frame) :
+	Greedy_aligner2(const sequence &query, const sequence &subject, bool log, unsigned frame) :
 		query(query),
 		subject(subject),
-		query_bc(query_bc),
+		//query_bc(query_bc),
 		log(log),
 		frame(frame)
 	{
 	}
 
 	const sequence query, subject;
-	const Bias_correction &query_bc;
+	//const Bias_correction &query_bc;
 	const bool log;
 	const unsigned frame;
 	static thread_local Diag_graph diags;
@@ -601,10 +615,12 @@ struct Greedy_aligner2
 thread_local Diag_graph Greedy_aligner2::diags;
 thread_local map<int, unsigned> Greedy_aligner2::window;
 
-std::pair<int, list<Hsp_traits>> greedy_align(sequence query, const Bias_correction &query_bc, sequence subject, vector<Diagonal_segment>::const_iterator begin, vector<Diagonal_segment>::const_iterator end, bool log, unsigned frame)
+std::pair<int, list<Hsp_traits>> greedy_align(sequence query, sequence subject, vector<Diagonal_segment>::const_iterator begin, vector<Diagonal_segment>::const_iterator end, bool log, unsigned frame)
 {
 	const int band = config.chaining_maxgap;
-	Greedy_aligner2 ga(query, query_bc, subject, log, frame);
+	if (end - begin == 1)
+		return { begin->score, { { begin->diag(), begin->diag(), begin->score, (int)frame, begin->query_range(), begin->subject_range() } } };
+	Greedy_aligner2 ga(query, subject, log, frame);
 	list<Hsp> hsps;
 	list<Hsp_traits> ts;
 	int score = ga.run(hsps, ts, begin, end, band);

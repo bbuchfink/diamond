@@ -1,6 +1,10 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2017 Benjamin Buchfink <buchfink@gmail.com>
+Copyright (C) 2013-2020 Max Planck Society for the Advancement of Science e.V.
+                        Benjamin Buchfink
+                        Eberhard Karls Universitaet Tuebingen
+						
+Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,9 +20,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#ifndef OUTPUT_FORMAT_H_
-#define OUTPUT_FORMAT_H_
-
+#pragma once
 #include <exception>
 #include <memory>
 #include "../basic/match.h"
@@ -37,7 +39,10 @@ struct Output_format
 		code(code),
 		needs_taxon_id_lists(false),
 		needs_taxon_nodes(false),
-		needs_taxon_scientific_names(false)
+		needs_taxon_scientific_names(false),
+		needs_taxon_ranks(false),
+		needs_transcript(true),
+		needs_stats(false)
 	{}
 	virtual void print_query_intro(size_t query_num, const char *query_name, unsigned query_len, TextBuffer &out, bool unaligned) const
 	{}
@@ -58,7 +63,7 @@ struct Output_format
 		return code;
 	}
 	unsigned code;
-	bool needs_taxon_id_lists, needs_taxon_nodes, needs_taxon_scientific_names, needs_taxon_ranks;
+	bool needs_taxon_id_lists, needs_taxon_nodes, needs_taxon_scientific_names, needs_taxon_ranks, needs_transcript, needs_stats;
 	enum { daa, blast_tab, blast_xml, sam, blast_pairwise, null, taxon, paf, bin1 };
 };
 
@@ -86,9 +91,14 @@ struct DAA_format : public Output_format
 	}
 };
 
+struct OutputField {
+	const std::string key, description;
+	const bool need_transcript, need_stats;
+};
+
 struct Blast_tab_format : public Output_format
 {
-	static const char* field_str[], *field_desc[];
+	static const std::vector<OutputField> field_def;
 	Blast_tab_format();
 	virtual void print_header(Consumer &f, int mode, const char *matrix, int gap_open, int gap_extend, double evalue, const char *first_query_name, unsigned first_query_len) const override;
 	virtual void print_query_intro(size_t query_num, const char *query_name, unsigned query_len, TextBuffer &out, bool unaligned) const override;
@@ -230,4 +240,3 @@ void init_output(bool have_taxon_id_lists, bool have_taxon_nodes, bool have_taxo
 void print_hsp(Hsp &hsp, const TranslatedSequence &query);
 void print_cigar(const Hsp_context &r, TextBuffer &buf);
 
-#endif /* OUTPUT_FORMAT_H_ */

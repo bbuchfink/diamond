@@ -20,7 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <algorithm>
 #include "query_mapper.h"
 #include "../../data/reference.h"
-#include "../extend_ungapped.h"
+#include "../../dp/ungapped.h"
 #include "../../output/output.h"
 #include "../../output/output_format.h"
 #include "../../output/daa_write.h"
@@ -125,7 +125,7 @@ unsigned QueryMapper::count_targets()
 		}
 		else {
 			const Diagonal_segment d = xdrop_ungapped(query_seq(frame), ref_seqs::get()[l.first], hits[i].seed_offset_, (int)l.second);
-			if (d.score >= config.min_ungapped_raw_score) {
+			if (d.score > 0) {
 				if (l.first != subject_id) {
 					subject_id = l.first;
 					++n_subject;
@@ -166,21 +166,17 @@ void QueryMapper::rank_targets(double ratio, double factor)
 		score = int((double)targets[0].filter_score * (1.0 - config.toppercent / 100.0) * ratio);
 	}
 	else {
-		size_t min_idx = std::min(targets.size(), (size_t)config.max_alignments);
+		size_t min_idx = std::min(targets.size(), config.max_alignments);
 		score = int((double)targets[min_idx - 1].filter_score * ratio);
 	}
 
-	const size_t cap = (config.toppercent < 100 || config.max_alignments == std::numeric_limits<uint64_t>::max()) ? std::numeric_limits<uint64_t>::max() : size_t(config.max_alignments*factor);
+	const size_t cap = (config.toppercent < 100 || config.max_alignments == std::numeric_limits<size_t>::max()) ? std::numeric_limits<size_t>::max() : size_t(config.max_alignments*factor);
 	size_t i = 0;
 	for (; i < targets.size(); ++i)
 		if (targets[i].filter_score < score || i >= cap)
 			break;
 
-	if (config.benchmark_ranking)
-		for (size_t j = i; j < targets.size(); ++j)
-			targets[j].outranked = true;
-	else
-		targets.erase(targets.begin() + i, targets.end());
+	targets.erase(targets.begin() + i, targets.end());
 }
 
 void QueryMapper::score_only_culling()
@@ -197,10 +193,7 @@ void QueryMapper::score_only_culling()
 		if (c == TargetCulling::FINISHED)
 			break;
 		else if (c == TargetCulling::NEXT) {
-			if (config.benchmark_ranking)
-				(*i++)->outranked = true;
-			else
-				i = targets.erase(i, i + 1);
+			i = targets.erase(i, i + 1);
 		}
 		else {
 			target_culling->add(**i);
@@ -241,8 +234,6 @@ bool QueryMapper::generate_output(TextBuffer &buffer, Statistics &stat)
 		else if (c == TargetCulling::FINISHED)
 			break;
 
-		if (targets[i].outranked)
-			stat.inc(Statistics::OUTRANKED_HITS);
 		target_culling->add(targets[i]);
 		
 		hit_hsps = 0;

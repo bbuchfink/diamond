@@ -70,12 +70,23 @@ struct Value_traits
 #define AMINO_ACID_ALPHABET "ARNDCQEGHILKMFPSTWYVBJZX*_"
 #define AMINO_ACID_COUNT (sizeof(AMINO_ACID_ALPHABET) - 1)
 
+constexpr Letter MASK_LETTER = 23;
+constexpr Letter STOP_LETTER = 24;
 constexpr Letter SUPER_HARD_MASK = 25;
+constexpr Letter DELIMITER_LETTER = 31;
 constexpr Letter LETTER_MASK = 31;
 constexpr Letter SEED_MASK = -128;
 
+static inline bool is_amino_acid(Letter x) {
+	return x != MASK_LETTER && x != DELIMITER_LETTER && x != STOP_LETTER;
+}
+
 static inline Letter letter_mask(Letter x) {
+#ifdef SEQ_MASK
 	return Letter(x & LETTER_MASK);
+#else
+	return x;
+#endif
 }
 
 #ifdef __SSE2__

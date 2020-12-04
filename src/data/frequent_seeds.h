@@ -1,6 +1,9 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2017 Benjamin Buchfink <buchfink@gmail.com>
+Copyright (C) 2016-2020 Max Planck Society for the Advancement of Science e.V.
+                        Benjamin Buchfink
+						
+Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,9 +19,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#ifndef FREQUENT_SEEDS_H_
-#define FREQUENT_SEEDS_H_
-
+#pragma once
 #include <atomic>
 #include "../basic/const.h"
 #include "../util/hash_table.h"
@@ -39,6 +40,8 @@ struct Frequent_seeds
 			return true;
 		return tables_[sid][seed_partition(seed)].contains(seed_partition_offset(seed));
 	}
+
+	static void clear_masking(Sequence_set& seqs);
 
 private:
 
@@ -63,4 +66,3 @@ private:
 
 extern Frequent_seeds frequent_seeds;
 
-#endif

@@ -52,7 +52,7 @@ Seed_set::Seed_set(const Sequence_set &seqs, double max_coverage):
 		throw std::runtime_error("Contiguous seed required.");
 	PtrVector<Seed_set_callback> v;
 	v.push_back(new Seed_set_callback(data_, size_t(max_coverage*pow(Reduction::reduction.size(), shapes[0].length_))));
-	seqs.enum_seeds(v, seqs.partition(1), 0, 1, &no_filter);
+	seqs.enum_seeds(v, seqs.partition(1), 0, 1, &no_filter, true);
 	coverage_ = (double)v.back().coverage / pow(Reduction::reduction.size(), shapes[0].length_);
 }
 

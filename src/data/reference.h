@@ -3,7 +3,7 @@ DIAMOND protein aligner
 Copyright (C) 2013-2020 Max Planck Society for the Advancement of Science e.V.
                         Benjamin Buchfink
                         Eberhard Karls Universitaet Tuebingen
-						
+
 Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
 
 This program is free software: you can redistribute it and/or modify
@@ -23,6 +23,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #pragma once
 #include <vector>
 #include <string>
+#include <iostream>
 #include <string.h>
 #include <stdint.h>
 #include <limits.h>
@@ -32,6 +33,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../data/seed_histogram.h"
 #include "sequence_set.h"
 #include "metadata.h"
+#include "../util/data_structures/bit_vector.h"
 
 using std::vector;
 using std::string;
@@ -76,6 +78,19 @@ struct Database_format_exception : public std::exception
 	{ return "Database file is not a DIAMOND database."; }
 };
 
+
+struct Chunk
+{
+	Chunk() : i(0), offset(0), n_seqs(0)
+	{}
+	Chunk(size_t i_, size_t offset_, size_t n_seqs_): i(i_), offset(offset_), n_seqs(n_seqs_)
+	{}
+	size_t i;
+	size_t offset;
+	size_t n_seqs;
+};
+
+
 struct DatabaseFile : public InputFile
 {
 
@@ -85,9 +100,21 @@ struct DatabaseFile : public InputFile
 	static DatabaseFile* auto_create_from_fasta();
 	static bool is_diamond_db(const string &file_name);
 	void rewind();
-	bool load_seqs(vector<unsigned> &block_to_database_id, size_t max_letters, Sequence_set **dst_seq, String_set<char, 0> **dst_id, bool load_ids = true, const vector<bool> *filter = NULL);
+
+	void create_partition(size_t max_letters);
+	void create_partition_balanced(size_t max_letters);
+	void create_partition_fixednumber(size_t n);
+
+	void save_partition(const string & partition_file_name, const string & annotation = "");
+	void load_partition(const string & partition_file_name);
+	void clear_partition();
+	size_t get_n_partition_chunks();
+
+	bool load_seqs(std::vector<uint32_t>* block2db_id, size_t max_letters, Sequence_set **dst_seq, String_set<char, 0> **dst_id, bool load_ids = true, const BitVector* filter = nullptr, const bool fetch_seqs = true, const Chunk & chunk = Chunk());
+
 	void get_seq();
 	void read_seq(string &id, vector<Letter> &seq);
+	void skip_seq();
 	bool has_taxon_id_lists();
 	bool has_taxon_nodes();
 	bool has_taxon_scientific_names();
@@ -95,6 +122,7 @@ struct DatabaseFile : public InputFile
 	void seek_seq(size_t i);
 	size_t tell_seq() const;
 	void seek_direct();
+	size_t total_blocks() const;
 
 	enum { min_build_required = 74, MIN_DB_VERSION = 2 };
 
@@ -102,6 +130,17 @@ struct DatabaseFile : public InputFile
 	size_t pos_array_offset;
 	ReferenceHeader ref_header;
 	ReferenceHeader2 header2;
+
+	struct Partition
+	{
+		Partition() : max_letters(0), n_seqs_total(0)
+		{}
+
+		size_t max_letters;
+		size_t n_seqs_total;
+		vector<Chunk> chunks;
+	};
+	Partition partition;
 
 private:
 	void init();
@@ -129,6 +168,7 @@ struct ref_ids
 extern Partitioned_histogram ref_hst;
 extern unsigned current_ref_block;
 extern bool blocked_processing;
+extern std::vector<uint32_t> block_to_database_id;
 
 inline size_t max_id_len(const String_set<char, 0> &ids)
 {
@@ -142,6 +182,9 @@ inline vector<string> seq_titles(const char *title)
 {
 	return tokenize(title, "\1");
 }
+
+Chunk to_chunk(const string & line);
+string to_string(const Chunk & c);
 
 static inline bool long_subject_offsets() {
 	return ref_seqs::get().raw_len() > (size_t)std::numeric_limits<uint32_t>::max();

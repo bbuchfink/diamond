@@ -1,6 +1,10 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2019 Benjamin Buchfink <buchfink@gmail.com>
+Copyright (C) 2013-2020 Max Planck Society for the Advancement of Science e.V.
+                        Benjamin Buchfink
+                        Eberhard Karls Universitaet Tuebingen
+						
+Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,9 +20,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#ifndef SCORE_VECTOR_H_
-#define SCORE_VECTOR_H_
-
+#pragma once
 #include <algorithm>
 #include <limits.h>
 #include "../util/simd.h"
@@ -250,6 +252,19 @@ struct ScoreTraits<int32_t>
 {
 	enum { CHANNELS = 1, BITS = 32 };
 	typedef int32_t Score;
+	struct TraceMask {
+		static uint8_t make(int vmask, int hmask) {
+			return vmask << 1 | hmask;
+		}
+		static uint8_t vmask(int channel) {
+			return 2;
+		}
+		static uint8_t hmask(int channel) {
+			return 1;
+		}
+		uint8_t gap;
+		uint8_t open;
+	};
 	static int32_t zero()
 	{
 		return 0;
@@ -333,5 +348,3 @@ template<>
 inline void set_channel<int>(int &v, int i, int x) {
 	v = x;
 }
-
-#endif /* SCORE_VECTOR_H_ */

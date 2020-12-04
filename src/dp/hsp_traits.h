@@ -20,6 +20,14 @@ struct Hsp_traits
 	{}
 	Hsp_traits(const Hsp &hsp)
 	{}
+	Hsp_traits(int d_min, int d_max, int score, int frame, const interval& query_range, const interval& subject_range):
+		d_min(d_min),
+		d_max(d_max),
+		score(score),
+		frame(frame),
+		query_range(query_range),
+		subject_range(subject_range)
+	{}
 	int partial_score(const Diagonal_segment &d) const
 	{
 		const double overlap = std::max(d.subject_range().overlap_factor(subject_range), d.query_range().overlap_factor(query_range));

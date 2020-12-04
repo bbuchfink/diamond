@@ -30,7 +30,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 template<typename _t>
 inline void read_option(_t &dst, const std::vector<std::string> &v)
-{ assert(false); }
+{
+	throw std::runtime_error("Invalid option type.");
+}
 
 template<>
 inline void read_option<int>(int &dst, const std::vector<std::string> &v)
@@ -41,9 +43,27 @@ inline void read_option<unsigned>(unsigned &dst, const std::vector<std::string> 
 { dst = atoi(v[0].c_str()); }
 
 template<>
-inline void read_option<uint64_t>(uint64_t &dst, const std::vector<std::string> &v)
+inline void read_option<long>(long& dst, const std::vector<std::string>& v)
 {
-	dst = atoi(v[0].c_str());
+	dst = atoll(v[0].c_str());
+}
+
+template<>
+inline void read_option<unsigned long>(unsigned long& dst, const std::vector<std::string>& v)
+{
+	dst = atoll(v[0].c_str());
+}
+
+template<>
+inline void read_option<long long>(long long& dst, const std::vector<std::string>& v)
+{
+	dst = atoll(v[0].c_str());
+}
+
+template<>
+inline void read_option<unsigned long long>(unsigned long long& dst, const std::vector<std::string>& v)
+{
+	dst = atoll(v[0].c_str());
 }
 
 template<>

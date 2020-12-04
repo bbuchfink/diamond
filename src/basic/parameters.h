@@ -25,6 +25,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 struct Parameters
 {
-	const uint64_t db_seqs, db_letters;
+	const uint64_t db_seqs, db_letters, ref_blocks;
 	const Util::Scores::CutoffTable cutoff_gapped1, cutoff_gapped2;
 };

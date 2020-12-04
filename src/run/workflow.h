@@ -20,8 +20,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #pragma once
-#include <vector>
 #include "../basic/config.h"
+#include "../util/data_structures/bit_vector.h"
 
 struct DatabaseFile;
 struct Consumer;
@@ -42,7 +42,7 @@ struct Options {
 	DatabaseFile *db;
 	Consumer *consumer;
 	TextInputFile *query_file;
-	const std::vector<bool> *db_filter;
+	const BitVector* db_filter;
 };
 
 void run(const Options &options);

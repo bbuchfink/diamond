@@ -1,6 +1,9 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2017 Benjamin Buchfink <buchfink@gmail.com>
+Copyright (C) 2016-2020 Max Planck Society for the Advancement of Science e.V.
+                        Benjamin Buchfink
+						
+Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,9 +19,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#ifndef TARGET_CULLING_H_
-#define TARGET_CULLING_H_
-
+#pragma once
 #include <vector>
 #include <set>
 #include <map>
@@ -58,13 +59,13 @@ struct GlobalCulling : public TargetCulling
 				return NEXT;
 		}
 		if (config.toppercent < 100.0)
-			return (1.0 - (double)t.filter_score / top_score_) * 100.0 <= config.toppercent ? INCLUDE : FINISHED;
+			return (1.0 - score_matrix.bitscore(t.filter_score) / top_score_) * 100.0 <= config.toppercent ? INCLUDE : FINISHED;
 		else
 			return n_ < config.max_alignments ? INCLUDE : FINISHED;
 	}
 	virtual int cull(const vector<IntermediateRecord> &target_hsp, const std::set<unsigned> &taxon_ids) const
 	{
-		if (top_score_ == 0)
+		if (top_score_ == 0.0)
 			return INCLUDE;
 		if (config.taxon_k) {
 			unsigned taxons_exceeded = 0;
@@ -76,15 +77,17 @@ struct GlobalCulling : public TargetCulling
 			if (taxons_exceeded == taxon_ids.size())
 				return NEXT;
 		}
-		if (config.toppercent < 100.0)
-			return (1.0 - (double)target_hsp[0].score / top_score_) * 100.0 <= config.toppercent ? INCLUDE : FINISHED;
+		if (config.global_ranking_targets)
+			return n_ < config.global_ranking_targets ? INCLUDE : FINISHED;
+		else if (config.toppercent < 100.0)
+			return (1.0 - score_matrix.bitscore(target_hsp[0].score) / top_score_) * 100.0 <= config.toppercent ? INCLUDE : FINISHED;
 		else
 			return n_ < config.max_alignments ? INCLUDE : FINISHED;
 	}
 	virtual void add(const Target &t)
 	{
 		if (top_score_ == 0)
-			top_score_ = t.filter_score;
+			top_score_ = score_matrix.bitscore(t.filter_score);
 		++n_;
 		if (config.taxon_k)
 			for (unsigned i : t.taxon_rank_ids)
@@ -93,7 +96,7 @@ struct GlobalCulling : public TargetCulling
 	virtual void add(const vector<IntermediateRecord> &target_hsp, const std::set<unsigned> &taxon_ids)
 	{
 		if (top_score_ == 0)
-			top_score_ = target_hsp[0].score;
+			top_score_ = score_matrix.bitscore(target_hsp[0].score);
 		++n_;
 		if (config.taxon_k)
 			for (unsigned i : taxon_ids)
@@ -102,14 +105,14 @@ struct GlobalCulling : public TargetCulling
 	virtual ~GlobalCulling() = default;
 private:
 	size_t n_;
-	int top_score_;
+	double top_score_;
 	std::map<unsigned, unsigned> taxon_count_;
 };
 
 struct RangeCulling : public TargetCulling
 {
 	RangeCulling() :
-		p_((int)std::min(config.max_alignments, (uint64_t)INT_MAX))
+		p_((int)std::min(config.max_alignments, (size_t)INT_MAX))
 	{}
 	virtual int cull(const Target &t) const
 	{
@@ -154,5 +157,3 @@ struct RangeCulling : public TargetCulling
 private:
 	IntervalPartition p_;
 };
-
-#endif

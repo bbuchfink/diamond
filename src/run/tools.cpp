@@ -48,8 +48,7 @@ void get_seq()
 void random_seqs()
 {
 	DatabaseFile db_file(config.database);
-	vector<unsigned> v;
-	db_file.load_seqs(v, std::numeric_limits<size_t>::max(), &ref_seqs::data_, &ref_ids::data_);
+	db_file.load_seqs(nullptr, std::numeric_limits<size_t>::max(), &ref_seqs::data_, &ref_ids::data_);
 	cout << "Sequences = " << ref_seqs::get().get_length() << endl;
 	std::set<unsigned> n;
 	const size_t count = atoi(config.seq_no[0].c_str());
@@ -91,8 +90,7 @@ void sort_file()
 void db_stat()
 {
 	DatabaseFile db_file(config.database);
-	vector<unsigned> v;
-	db_file.load_seqs(v, std::numeric_limits<size_t>::max(), &ref_seqs::data_, &ref_ids::data_);
+	db_file.load_seqs(nullptr, std::numeric_limits<size_t>::max(), &ref_seqs::data_, &ref_ids::data_);
 	cout << "Sequences = " << ref_seqs::get().get_length() << endl;
 
 	size_t letters = 0;
@@ -175,8 +173,7 @@ void test_io()
 		total += buf_size;*/
 
 	DatabaseFile db(config.database);
-	vector<unsigned> v;
-	db.load_seqs(v, std::numeric_limits<size_t>::max(), &ref_seqs::data_, &ref_ids::data_);
+	db.load_seqs(nullptr, std::numeric_limits<size_t>::max(), &ref_seqs::data_, &ref_ids::data_);
 
 	size_t total = ref_seqs::get().raw_len() + ref_ids::get().raw_len();
 	//cout << "MBytes/sec = " << total / 1e6 / t.getElapsedTime() << endl;

@@ -67,6 +67,16 @@ struct Deserializer
 		return *this;
 	}
 
+	Deserializer& operator>>(short& x) {
+		read(x);
+		return *this;
+	}
+
+	Deserializer& operator>>(unsigned short& x) {
+		read(x);
+		return *this;
+	}
+
 	Deserializer& operator>>(unsigned long &x)
 	{
 		read(x);
@@ -98,6 +108,7 @@ struct Deserializer
 	Deserializer& operator>>(std::vector<std::string> &v)
 	{
 		uint32_t n;
+		varint = false;
 		*this >> n;
 		v.clear();
 		v.reserve(n);

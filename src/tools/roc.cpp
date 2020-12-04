@@ -18,8 +18,12 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
+#include <atomic>
+#include <array>
+#include <set>
 #include <map>
 #include <unordered_map>
+#include <unordered_set>
 #include <tuple>
 #include <vector>
 #include <math.h>
@@ -27,6 +31,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <condition_variable>
 #include <queue>
 #include <thread>
+#include <limits.h>
+#include <float.h>
+#include <sstream>
 #include "../util/io/text_input_file.h"
 #include "../basic/config.h"
 #include "../util/string/tokenizer.h"
@@ -40,13 +47,19 @@ using std::endl;
 using std::tuple;
 using std::map;
 using std::unordered_multimap;
+using std::unordered_set;
 using std::vector;
 using std::queue;
 using std::thread;
+using std::set;
+using std::array;
+using std::stringstream;
 
+typedef tuple<char, int> Fold;
 typedef tuple<char, int, int, int> Family;
 
 static map<Family, int> fam2idx;
+static map<int, Fold> fam2fold;
 
 struct FamilyMapping : public unordered_multimap<string, int> {
 
@@ -70,6 +83,7 @@ struct FamilyMapping : public unordered_multimap<string, int> {
 					acc = acc.substr(j + 1);
 			}
 			insert({ acc, i.first->second });
+			fam2fold[i.first->second] = Fold(domain_class[0], fold);
 			//cout << acc << '\t' << domain_class << '\t' << fold << '\t' << superfam << '\t' << fam << endl;
 		}
 	}
@@ -80,10 +94,60 @@ static FamilyMapping acc2fam;
 static FamilyMapping acc2fam_query;
 static int families;
 static vector<int> fam_count;
-static std::mutex mtx, mtx_out;
+static std::mutex mtx, mtx_out, mtx_hist;
 static std::condition_variable cdv;
+static bool get_roc;
+static std::atomic<size_t> query_with_fp(0);
+
+static double coverage(int count, int family) {
+	const int n = fam_count[family];
+	if (n == 0)
+		return 1.0;
+	return double(count) / double(n);
+}
+
+struct Histogram {
+
+	Histogram() {
+		std::fill(false_positives.begin(), false_positives.end(), 0);
+		std::fill(coverage.begin(), coverage.end(), 0.0);
+	}
+
+	static int bin(double evalue) {
+		if (evalue == 0.0)
+			return 0;
+		int bin = int(std::round(std::log2(evalue) * MULT)) - (DBL_MIN_EXP*MULT);
+		bin = std::max(bin, 0);
+		if (bin < 0 || bin >= BINS)
+			throw std::runtime_error("Evalue exceeds binning range.");
+		return bin;
+	}
+
+	Histogram& operator+=(const Histogram& h) {
+		for (int i = 0; i < BINS; ++i) {
+			false_positives[i] += h.false_positives[i];
+			coverage[i] += h.coverage[i];
+		}
+		return *this;
+	}
+
+	friend std::ostream& operator<<(std::ostream& os, const Histogram& h) {
+		for (int i = 0; i < BINS; ++i)
+			os << h.coverage[i] << '\t' << h.false_positives[i] << endl;
+		return os;
+	}
+
+	enum { MULT = 1, BINS = (-DBL_MIN_EXP + 15)*MULT };
+
+	array<size_t, BINS> false_positives;
+	array<double, BINS> coverage;
+
+};
+
+static Histogram histogram;
 
 struct QueryStats {
+
 	QueryStats(const string &query, int families, const unordered_multimap<string, int>& acc2fam):
 		query(query),
 		count(families, 0),
@@ -95,89 +159,186 @@ struct QueryStats {
 			for (auto j = i.first; j != i.second; ++j)
 				query_family[j->second] = true;
 		}
+		if (!config.no_forward_fp) {
+			auto i = acc2fam.equal_range(query);
+			for (auto j = i.first; j != i.second; ++j)
+				query_fold.insert(fam2fold[j->second]);
+		}
+		if (get_roc) {
+			auto i = acc2fam.equal_range(query);
+			int n = 0;
+			for (auto j = i.first; j != i.second; ++j) {
+				family_idx[j->second] = family_idx.size();
+				++n;
+			}
+			false_positives.insert(false_positives.end(), Histogram::BINS, 0);
+			true_positives.reserve(n);
+			for (int i = 0; i < n; ++i)
+				true_positives.emplace_back(Histogram::BINS, 0);
+		}
 	}
-	bool add(const string &sseqid, const unordered_multimap<string, int> &acc2fam) {
-		if (have_rev_hit)
-			return false;
+
+	void add_family_hit(int family, double evalue) {
+		if (!get_roc)
+			return;
+		auto it = family_idx.find(family);
+		if (it == family_idx.end())
+			return;
+		++true_positives[it->second][Histogram::bin(evalue)];
+	}
+
+	enum { UNKNOWN = 0, TP = 1, FP = 2 };
+
+	int add(const string &sseqid, double evalue, const unordered_multimap<string, int> &acc2fam) {
+		if (have_rev_hit && !get_roc)
+			return UNKNOWN;
 		if (sseqid == last_subject)
-			return false;
+			return UNKNOWN;
+		if (config.check_multi_target) {
+			if (previous_targets.find(sseqid) != previous_targets.end())
+				return false;
+			previous_targets.insert(sseqid);
+		}
+		last_subject = sseqid;
 		if (sseqid[0] == '\\') {
 			have_rev_hit = true;
-			return false;
+			if (get_roc)
+				++false_positives[Histogram::bin(evalue)];
+			return FP;
 		}
 		else {
 			bool match_query = false;
 			auto i = acc2fam.equal_range(sseqid);
 			if (i.first == i.second)
 				throw std::runtime_error("Accession not mapped.");
+			bool same_fold = false;
 			for (auto j = i.first; j != i.second; ++j) {
-				++count[j->second];
+				if (!have_rev_hit)
+					++count[j->second];
+				add_family_hit(j->second, evalue);
 				if (config.output_hits && query_family[j->second])
 					match_query = true;
+				if (!config.no_forward_fp && query_fold.find(fam2fold[j->second]) != query_fold.end())
+					same_fold = true;
 			}
-			last_subject = sseqid;
-			return match_query;
+			if (!config.no_forward_fp && !same_fold) {
+				have_rev_hit = true;
+				if(get_roc)
+					++false_positives[Histogram::bin(evalue)];
+				return FP;
+			}
+			return match_query ? TP : UNKNOWN;
 		}
 	}
+
 	double auc1(const vector<int> &fam_count, const unordered_multimap<string, int> &acc2fam) const {
 		auto i = acc2fam.equal_range(query);
 		if (i.first == i.second)
 			throw std::runtime_error("Query accession not mapped.");
 		double r = 0.0, n = 0.0;
 		for (auto j = i.first; j != i.second; ++j) {
-			if (fam_count[j->second] == 0)
-				continue;
-			r += double(count[j->second]) / double(fam_count[j->second]);
+			r += coverage(count[j->second], j->second);
 			n += 1.0;
 		}
-		return n > 0.0 ? r / n : 1.0;
+		return r / n;
 	}
+
+	int family_count() const {
+		return (int)family_idx.size();
+	}
+
+	void update_hist(Histogram& hist, const vector<int>& fam_count) {
+		int t = 0;
+		for (int i = 0; i < Histogram::BINS; ++i) {
+			t += false_positives[i];
+			hist.false_positives[i] += (size_t)t;
+		}
+		const int n = family_count();
+		vector<int> s(n, 0);
+		for (int i = 0; i < Histogram::BINS; ++i) {
+			double cov = 0.0;
+			for(auto it = family_idx.begin(); it != family_idx.end(); ++it) {
+				s[it->second] += true_positives[it->second][i];
+				cov += coverage(s[it->second], it->first);
+			}
+			hist.coverage[i] += cov / n;
+		}
+	}
+
 	string query, last_subject;
 	vector<int> count;
 	vector<bool> query_family;
+	set<Fold> query_fold;
+	map<int, int> family_idx;
+	vector<int> false_positives;
+	unordered_set<string> previous_targets;
+	vector<vector<int>> true_positives;
 	bool have_rev_hit;
+
 };
 
-double query_roc(const string& buf) {
-	string acc;
-	Util::String::Tokenizer(buf, "\t") >> acc;
-	QueryStats stats(acc, families, acc2fam_query);
-	Util::String::Tokenizer tok(buf, "\t");
-	while(tok.good() && !stats.have_rev_hit) {
-		tok >> Util::String::Skip() >> acc;
+double query_roc(const string& buf, Histogram& hist) {
+	string query, acc, line;
+	Util::String::Tokenizer(buf, "\t") >> query;
+	QueryStats stats(query, families, acc2fam_query);
+	Util::String::Tokenizer tok(buf, "\n");
+	double evalue = 0.0;
+	while(tok.good() && (!stats.have_rev_hit || get_roc)) {
+		tok >> line;
+		if (line.empty())
+			break;
+		Util::String::Tokenizer tok2(line, "\t");
+		tok2 >> Util::String::Skip() >> acc;
+		if (get_roc)
+			tok2 >> evalue;
 		/*if (r.qseqid.empty() || r.sseqid.empty() || std::isnan(r.evalue) || !std::isfinite(r.evalue) || r.evalue < 0.0)
 			throw std::runtime_error("Format error.");*/
-		if (stats.add(acc, acc2fam) && config.output_hits)
-			cout << acc << endl;
-		tok.skip_to('\n');
+		int c = stats.add(acc, evalue, acc2fam);
+		if ((c == QueryStats::TP && config.output_hits) || (c == QueryStats::FP && config.output_fp))
+			cout << line << endl;
 	}
 	const double a = stats.auc1(fam_count, acc2fam_query);
-	if (!config.output_hits) {
+	if (get_roc)
+		stats.update_hist(hist, fam_count);
+	if (!config.output_hits && !config.output_fp) {
 		std::lock_guard<std::mutex> lock(mtx_out);
 		cout << stats.query << '\t' << a << endl;
 	}
+	if (stats.have_rev_hit)
+		++query_with_fp;
 	return a;
 }
 
-static queue<string> buffers;
+static queue<string*> buffers;
 static bool finished = false;
 
 static void worker() {
-	string buf;
+	string* buf;
+	Histogram hist;
 	while (true) {
 		{
 			std::unique_lock<std::mutex> lock(mtx);
 			while (buffers.empty() && !finished) cdv.wait(lock);
-			if (buffers.empty() && finished)
+			if (buffers.empty() && finished) {
+				std::lock_guard<std::mutex> lock(mtx_hist);
+				histogram += hist;
 				return;
-			buf = std::move(buffers.front());
+			}
+			buf = buffers.front();
 			buffers.pop();
 		}
-		query_roc(buf);
+		query_roc(*buf, hist);
+		delete buf;
+	}
+	{
+		std::lock_guard<std::mutex> lock(mtx_hist);
+		histogram += hist;
 	}
 }
 
 void roc() {
+	get_roc = !config.roc_file.empty();
+
 	task_timer timer("Loading family mapping");
 	acc2fam = FamilyMapping(config.family_map);
 	timer.finish();
@@ -193,17 +354,20 @@ void roc() {
 	families = (int)fam2idx.size();
 	fam_count.insert(fam_count.begin(), families, 0);
 	for (auto i = acc2fam.begin(); i != acc2fam.end(); ++i)
-		++fam_count[i->second];
+		if (config.family_cap == 0)
+			++fam_count[i->second];
+		else
+			fam_count[i->second] = config.family_cap;
 
 	vector<thread> threads;
-	for (unsigned i = 0; i < config.threads_; ++i)
+	for (unsigned i = 0; i < std::min(config.threads_, 6u); ++i)
 		threads.emplace_back(worker);
 
 	timer.go("Processing alignments");
 	TextInputFile in(config.query_file);
 	string query, acc;
 	size_t n = 0, queries = 0, buf_size = 0;
-	string buf;
+	string* buf = new string;
 	
 	while (in.getline(), !in.eof()) {
 		if (in.line.empty())
@@ -212,24 +376,26 @@ void roc() {
 		if (acc != query) {
 			if (!query.empty()) {
 				std::lock_guard<std::mutex> lock(mtx);
-				buf_size = std::max(buf_size, buf.size());
-				buffers.push(std::move(buf));
-				buf = string();
-				buf.reserve(buf_size);
+				//buf_size = std::max(buf_size, buf.size());
+				buffers.push(buf);
+				buf = new string;
+				//buf.reserve(buf_size);
 				cdv.notify_one();
 			}
 			query = acc;
 			++queries;
 			if (queries % 10000 == 0)
 				message_stream << "#Queries = " << queries << endl;
+			while (buffers.size() > 100)
+				std::this_thread::sleep_for(std::chrono::milliseconds(1));
 		}
-		buf.append(in.line);
-		buf.append("\n");
+		buf->append(in.line);
+		buf->append("\n");
 		++n;
 	}
 	{
 		std::lock_guard<std::mutex> lock(mtx);
-		buffers.push(std::move(buf));
+		buffers.push(buf);
 		finished = true;
 		cdv.notify_all();
 	}
@@ -239,6 +405,13 @@ void roc() {
 	
 	in.close();
 	timer.finish();
+
+	if (get_roc) {
+		std::ofstream out(config.roc_file);
+		out << histogram;
+	}
+
 	message_stream << "#Records: " << n << endl;
 	message_stream << "#Queries: " << queries << endl;
+	message_stream << "#Queries w/ FP: " << query_with_fp << endl;
 }

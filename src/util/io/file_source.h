@@ -28,6 +28,7 @@ struct FileSource : public StreamEntity
 	virtual void rewind();
 	virtual void seek(size_t pos);
 	virtual void seek_forward(size_t n);
+	virtual size_t tell() override;
 	virtual size_t read(char *ptr, size_t count);
 	virtual void close();
 	virtual const string& file_name() const

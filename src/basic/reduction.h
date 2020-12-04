@@ -1,6 +1,10 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2017 Benjamin Buchfink <buchfink@gmail.com>
+Copyright (C) 2013-2020 Max Planck Society for the Advancement of Science e.V.
+                        Benjamin Buchfink
+                        Eberhard Karls Universitaet Tuebingen
+						
+Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,9 +20,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#ifndef REDUCTION_H_
-#define REDUCTION_H_
-
+#pragma once
 #include <vector>
 #include <string>
 #include <string.h>
@@ -27,9 +29,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "sequence.h"
 #include "translate.h"
 
-using std::string;
-using std::vector;
-
 struct Reduction
 {
 
@@ -37,8 +36,9 @@ struct Reduction
 	{
 		memset(map_, 0, sizeof(map_));
 		memset(map8_, 0, sizeof(map8_));
-		map_[(long)value_traits.mask_char] = value_traits.mask_char;
-		map_[(long)Translator::STOP] = value_traits.mask_char;
+		memset(map8b_, 0, sizeof(map8b_));
+		map_[(long)MASK_LETTER] = MASK_LETTER;
+		map_[(long)STOP_LETTER] = MASK_LETTER;
 		const vector<string> tokens(tokenize(definition_string, " "));
 		size_ = (unsigned)tokens.size();
 		bit_size_exact_ = log(size_) / log(2);
@@ -48,8 +48,14 @@ struct Reduction
 				const char ch = tokens[i][j];
 				map_[(long)value_traits.from_char(ch)] = i;
 				map8_[(long)value_traits.from_char(ch)] = i;
+				map8b_[(long)value_traits.from_char(ch)] = i;
 			}
-		map8_[(long)value_traits.mask_char] = (char)size_;
+		map8_[(long)MASK_LETTER] = (Letter)size_;
+		map8_[(long)STOP_LETTER] = (Letter)size_;
+		map8_[(long)DELIMITER_LETTER] = (Letter)size_;
+		map8b_[(long)MASK_LETTER] = (Letter)(size_ + 1);
+		map8b_[(long)STOP_LETTER] = (Letter)(size_ + 1);
+		map8b_[(long)DELIMITER_LETTER] = (Letter)(size_ + 1);
 	}
 
 	unsigned size() const
@@ -81,6 +87,11 @@ struct Reduction
 		return map8_;
 	}
 
+	const Letter* map8b() const
+	{
+		return map8b_;
+	}
+
 	inline friend std::ostream& operator<<(std::ostream &os, const Reduction &r)
 	{
 		for (unsigned i = 0; i < r.size_; ++i) {
@@ -106,15 +117,9 @@ struct Reduction
 private:
 
 	unsigned map_[256];
-#ifdef _MSC_VER
-	__declspec(align(16)) Letter map8_[256];
-#else
-	Letter map8_[256] __attribute__((aligned(16)));
-#endif
+	alignas(16) Letter map8_[256], map8b_[256];
 	unsigned size_;
 	uint64_t bit_size_;
 	double bit_size_exact_;
 
 };
-
-#endif /* REDUCTION_H_ */

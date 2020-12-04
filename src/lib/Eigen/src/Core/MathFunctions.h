@@ -37,7 +37,7 @@ namespace internal {
   * - otherwise, global_math_functions_filtering_base<T>::type is a typedef for T.
   *
   * How it's used:
-  * To allow to defined the global math functions (like sin...) in certain cases, like the Array expressions.
+  * To allow one to defined the global math functions (like sin...) in certain cases, like the Array expressions.
   * When you do sin(array1+array2), the object array1+array2 has a complicated expression type, all what you want to know
   * is that it inherits ArrayBase. So we implement a partial specialization of sin_impl for ArrayBase<Derived>.
   * So we must make sure to use sin_impl<ArrayBase<Derived> > and not sin_impl<Derived>, otherwise our partial specialization

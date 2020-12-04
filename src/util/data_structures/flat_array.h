@@ -80,6 +80,10 @@ struct FlatArray {
 		return &data_[limits_[i + 1]];
 	}
 
+	size_t count(size_t i) const {
+		return limits_[i + 1] - limits_[i];
+	}
+
 private:
 
 	std::vector<_t> data_;

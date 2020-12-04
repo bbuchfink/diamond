@@ -22,7 +22,7 @@ arch:
 
 compiler:
   - g++
-  - clang
+#  - clang
 
 install: skip
 

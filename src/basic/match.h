@@ -56,7 +56,9 @@ struct Hsp
 		positives(0),
 		gap_openings(0),
 		gaps(0),
-		sw_score(0)
+		swipe_target(0),
+		d_begin(0),
+		d_end(0)
 	{}
 
 	Hsp(int score, int swipe_target = 0) :
@@ -68,8 +70,9 @@ struct Hsp
 		positives(0),
 		gap_openings(0),
 		gaps(0),
-		sw_score(0),
-		swipe_target(swipe_target)
+		swipe_target(swipe_target),
+		d_begin(0),
+		d_end(0)
 	{}
 
 	Hsp(const IntermediateRecord &r, unsigned query_source_len);
@@ -154,6 +157,15 @@ struct Hsp
 			query_range.begin_ = (dna_len + f - oriented_query_begin) / 3;
 	}
 
+	void set_translated_query_end(unsigned oriented_query_end, unsigned dna_len)
+	{
+		int f = frame <= 2 ? frame + 1 : 2 - frame;
+		if (f > 0)
+			query_range.end_ = (oriented_query_end - 2 - (f - 1)) / 3 + 1;
+		else
+			query_range.end_ = (dna_len + f - oriented_query_end) / 3 + 1;
+	}
+
 	int blast_query_frame() const
 	{
 		return align_mode.query_translated ? (frame <= 2 ? (int)frame + 1 : 2 - (int)frame) : 0;
@@ -210,9 +222,8 @@ struct Hsp
 
 	bool is_weakly_enveloped(const Hsp &j) const;
 	std::pair<int, int> diagonal_bounds() const;
-	int score, frame, length, identities, mismatches, positives, gap_openings, gaps, sw_score, swipe_target;
-	float time;
-	interval query_source_range, query_range, subject_range;
+	int score, frame, length, identities, mismatches, positives, gap_openings, gaps, swipe_target, d_begin, d_end;
+	interval query_source_range, query_range, subject_range, seed_hit_range;
 	Packed_transcript transcript;
 };
 
@@ -324,14 +335,6 @@ struct Hsp_context
 	double bit_score() const
 	{
 		return score_matrix.bitscore(score());
-	}
-	double sw_score() const
-	{
-		return score_matrix.bitscore(hsp_.sw_score);
-	}
-	double time() const
-	{
-		return hsp_.time;
 	}
 	unsigned frame() const
 	{ return hsp_.frame; }

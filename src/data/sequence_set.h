@@ -70,38 +70,6 @@ struct Sequence_set : public String_set<Letter, sequence::DELIMITER, 1>
 		return max;
 	}
 
-	sequence window_infix(size_t offset, unsigned &left) const
-	{
-		const Letter* begin(this->data(offset));
-		unsigned n(0);
-		while (*begin != sequence::DELIMITER && n <= config.window) {
-			--begin;
-			++n;
-		}
-		++begin;
-		left = config.window + 1 - n;
-		const Letter* end(this->data(offset));
-		n = 0;
-		while (*end != sequence::DELIMITER && n < config.window) {
-			++end;
-			++n;
-		}
-		return sequence(begin, end - begin);
-	}
-
-	sequence fixed_window_infix(size_t offset) const
-	{
-		const Letter* begin(this->data(offset));
-		unsigned n(0);
-		while (*begin != sequence::DELIMITER && n <= config.window) {
-			--begin;
-			++n;
-		}
-		++begin;
-		const Letter* s(this->data(offset - config.window));
-		return sequence(s, 2 * config.window, (int)(begin - s));
-	}
-
 	vector<size_t> partition(unsigned n_part) const
 	{
 		vector<size_t> v;
@@ -143,11 +111,11 @@ struct Sequence_set : public String_set<Letter, sequence::DELIMITER, 1>
 	}
 
 	template <typename _f, typename _filter>
-	void enum_seeds(PtrVector<_f> &f, const vector<size_t> &p, size_t shape_begin, size_t shape_end, const _filter *filter) const
+	void enum_seeds(PtrVector<_f> &f, const vector<size_t> &p, size_t shape_begin, size_t shape_end, const _filter *filter, bool contig = false) const
 	{
 		std::vector<std::thread> threads;
 		for (unsigned i = 0; i < f.size(); ++i)
-			threads.emplace_back(enum_seeds_worker<_f, _filter>, &f[i], this, (unsigned)p[i], (unsigned)p[i + 1], std::make_pair(shape_begin, shape_end), filter);
+			threads.emplace_back(enum_seeds_worker<_f, _filter>, &f[i], this, (unsigned)p[i], (unsigned)p[i + 1], std::make_pair(shape_begin, shape_end), filter, contig);
 		for (auto &t : threads)
 			t.join();
 	}
@@ -225,10 +193,10 @@ private:
 	}
 
 	template<typename _f, typename _filter>
-	static void enum_seeds_worker(_f *f, const Sequence_set *seqs, unsigned begin, unsigned end, pair<size_t,size_t> shape_range, const _filter *filter)
+	static void enum_seeds_worker(_f *f, const Sequence_set *seqs, unsigned begin, unsigned end, pair<size_t,size_t> shape_range, const _filter *filter, bool contig)
 	{
 		static const char *errmsg = "Unsupported contiguous seed.";
-		if (shape_range.second - shape_range.first == 1 && shapes[shape_range.first].contiguous() && shapes.count() == 1) {
+		if (shape_range.second - shape_range.first == 1 && shapes[shape_range.first].contiguous() && shapes.count() == 1 && (config.algo == Config::query_indexed || contig)) {
 			const uint64_t b = Reduction::reduction.bit_size(), l = shapes[shape_range.first].length_;
 			switch (l) {
 			case 7:
