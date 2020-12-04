@@ -176,11 +176,7 @@ void QueryMapper::rank_targets(double ratio, double factor)
 		if (targets[i].filter_score < score || i >= cap)
 			break;
 
-	if (config.benchmark_ranking)
-		for (size_t j = i; j < targets.size(); ++j)
-			targets[j].outranked = true;
-	else
-		targets.erase(targets.begin() + i, targets.end());
+	targets.erase(targets.begin() + i, targets.end());
 }
 
 void QueryMapper::score_only_culling()
@@ -197,10 +193,7 @@ void QueryMapper::score_only_culling()
 		if (c == TargetCulling::FINISHED)
 			break;
 		else if (c == TargetCulling::NEXT) {
-			if (config.benchmark_ranking)
-				(*i++)->outranked = true;
-			else
-				i = targets.erase(i, i + 1);
+			i = targets.erase(i, i + 1);
 		}
 		else {
 			target_culling->add(**i);
@@ -241,8 +234,6 @@ bool QueryMapper::generate_output(TextBuffer &buffer, Statistics &stat)
 		else if (c == TargetCulling::FINISHED)
 			break;
 
-		if (targets[i].outranked)
-			stat.inc(Statistics::OUTRANKED_HITS);
 		target_culling->add(targets[i]);
 		
 		hit_hsps = 0;

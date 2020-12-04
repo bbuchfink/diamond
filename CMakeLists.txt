@@ -152,7 +152,6 @@ set(OBJECTS
   src/output/view.cpp
   src/output/output_sink.cpp
   src/output/target_culling.cpp
-  src/align/legacy/swipe_pipeline.cpp
   src/align/legacy/banded_swipe_pipeline.cpp
   src/data/ref_dictionary.cpp
   src/util/io/compressed_stream.cpp
@@ -211,6 +210,26 @@ set(OBJECTS
   src/util/parallel/multiprocessing.cpp
   src/tools/benchmark_io.cpp
   src/align/memory.cpp
+  src/lib/alp/njn_dynprogprob.cpp
+  src/lib/alp/njn_dynprogproblim.cpp
+  src/lib/alp/njn_dynprogprobproto.cpp
+  src/lib/alp/njn_ioutil.cpp
+  src/lib/alp/njn_localmaxstat.cpp
+  src/lib/alp/njn_localmaxstatmatrix.cpp
+  src/lib/alp/njn_localmaxstatutil.cpp
+  src/lib/alp/njn_random.cpp
+  src/lib/alp/sls_alignment_evaluer.cpp
+  src/lib/alp/sls_alp.cpp
+  src/lib/alp/sls_alp_data.cpp
+  src/lib/alp/sls_alp_regression.cpp
+  src/lib/alp/sls_alp_sim.cpp
+  src/lib/alp/sls_basic.cpp
+  src/lib/alp/sls_pvalues.cpp
+  src/align/global_ranking/global_ranking.cpp
+  src/align/global_ranking/extend.cpp
+  src/align/load_hits.cpp
+  src/tools/rocid.cpp
+  src/basic/cbs.cpp
 )
 
 if(X86)

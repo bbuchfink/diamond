@@ -59,7 +59,7 @@ inline void finish_daa_query_record(TextBuffer &buf, size_t seek_pos)
 
 inline void write_daa_record(TextBuffer &buf, const IntermediateRecord &r)
 {
-	buf.write(r.subject_id).write(r.flag);
+	buf.write(r.subject_dict_id).write(r.flag);
 	buf.write_packed(r.score);
 	buf.write_packed(r.query_begin);
 	buf.write_packed(r.subject_begin);

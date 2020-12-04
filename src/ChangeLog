@@ -1,3 +1,6 @@
+[2.0.5]
+- Fixed an issue that could cause high memory use in frameshift alignment mode.
+
 [2.0.4]
 - Fixed a bug that could cause the `--max-target-seqs/-k`, `--ext-chunk-size` and 
   `--file-buffer-size` options not to function correctly on macOS.

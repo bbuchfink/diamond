@@ -25,6 +25,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../dp.h"
 #include "../basic/value.h"
 #include "../../util/simd/vector.h"
+#include "../../util/dynamic_iterator.h"
+#include "../comp_based_stats.h"
 
 namespace DISPATCH_ARCH {
 
@@ -33,6 +35,7 @@ struct TargetIterator
 {
 
 	typedef ::DISPATCH_ARCH::SIMD::Vector<_t> SeqVector;
+	typedef ::DISPATCH_ARCH::score_vector<_t> ScoreVector;
 	enum {
 		CHANNELS = SeqVector::CHANNELS
 	};
@@ -52,6 +55,8 @@ struct TargetIterator
 			cols = std::max(cols, j1 - pos[next]);
 			target[next] = next;
 			active.push_back(next);
+			if(config.target_bias)
+				cbs_.emplace_back(t.seq);
 		}
 	}
 
@@ -71,6 +76,19 @@ struct TargetIterator
 			return subject_begin[target[channel]].seq[pos[channel]];
 		} else
 			return SUPER_HARD_MASK;
+	}
+
+	template<typename _sv>
+	_sv cbs(const _sv&) const {
+		alignas(32) _t s[CHANNELS];
+		std::fill(s, s + CHANNELS, 0);
+		for (int i = 0; i < active.size(); ++i) {
+			const int channel = active[i];
+			if (pos[channel] < 0)
+				continue;
+			s[channel] = cbs_[channel].int8[pos[channel]];
+		}
+		return load_sv(s);
 	}
 
 #ifdef __SSSE3__
@@ -96,11 +114,24 @@ struct TargetIterator
 	}
 #endif
 
+	const int8_t** get(const int8_t** target_scores) const {
+		static const int8_t blank[32] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+		std::fill(target_scores, target_scores + 32, blank);
+		for (int i = 0; i < active.size(); ++i) {
+			const int channel = active[i];
+			const char l = (*this)[channel];
+			target_scores[channel] = &(subject_begin[target[channel]].matrix.scores[32 * (int)l]);
+		}
+		return target_scores;
+	}
+
 	bool init_target(int i, int channel)
 	{
 		if (next < n_targets) {
 			pos[channel] = 0;
 			target[channel] = next++;
+			if (config.target_bias)
+				cbs_[channel] = Bias_correction(subject_begin[target[channel]].seq);
 			return true;
 		}
 		active.erase(i);
@@ -117,6 +148,7 @@ struct TargetIterator
 
 	int pos[CHANNELS], target[CHANNELS], next, n_targets, cols;
 	Static_vector<int, CHANNELS> active;
+	std::vector<Bias_correction> cbs_;
 	const vector<DpTarget>::const_iterator subject_begin;
 };
 
@@ -127,7 +159,6 @@ struct TargetBuffer
 	typedef ::DISPATCH_ARCH::SIMD::Vector<_t> SeqVector;
 	enum { CHANNELS = SeqVector::CHANNELS };
 
-	//TargetBuffer(const sequence *subject_begin, const sequence *subject_end) :
 	TargetBuffer(typename std::vector<DpTarget>::const_iterator subject_begin, typename std::vector<DpTarget>::const_iterator subject_end):
 		next(0),
 		n_targets(int(subject_end - subject_begin)),
@@ -138,6 +169,13 @@ struct TargetBuffer
 			target[next] = next;
 			active.push_back(next);
 		}
+	}
+
+	int max_len() const {
+		int l = 0;
+		for (int i = 0; i < n_targets; ++i)
+			l = std::max(l, (int)subject_begin[i].seq.length());
+		return l;
 	}
 
 	char operator[](int channel) const
@@ -198,7 +236,93 @@ struct TargetBuffer
 	int pos[CHANNELS], target[CHANNELS], next, n_targets, cols;
 	Static_vector<int, CHANNELS> active;
 	const vector<DpTarget>::const_iterator subject_begin;
-	//const sequence *subject_begin;
+
+};
+
+template<typename _t>
+struct AsyncTargetBuffer
+{
+
+	typedef ::DISPATCH_ARCH::SIMD::Vector<_t> SeqVector;
+	enum { CHANNELS = SeqVector::CHANNELS };
+
+	AsyncTargetBuffer(DynamicIterator<DpTarget>& target_it):
+		target_it(target_it)
+	{
+		for (int i = 0; i < CHANNELS; ++i) {
+			DpTarget t = target_it++;
+			if (t.blank())
+				return;
+			pos[i] = 0;
+			dp_targets[i] = t;
+			active.push_back(i);
+		}
+	}
+
+	int max_len() const {
+		int l = 0;
+		for (size_t i = 0; i < target_it.count; ++i)
+			l = std::max(l, (int)target_it[i].seq.length());
+		return l;
+	}
+
+	char operator[](int channel) const
+	{
+		if (pos[channel] >= 0) {
+			return dp_targets[channel].seq[pos[channel]];
+		}
+		else
+			return SUPER_HARD_MASK;;
+	}
+
+#ifdef __SSSE3__
+	SeqVector seq_vector() const
+	{
+		alignas(32) _t s[CHANNELS];
+		std::fill(s, s + CHANNELS, SUPER_HARD_MASK);
+		for (int i = 0; i < active.size(); ++i) {
+			const int channel = active[i];
+			s[channel] = (*this)[channel];
+		}
+		return SeqVector(s);
+	}
+#else
+	uint64_t seq_vector()
+	{
+		uint64_t dst = 0;
+		for (int i = 0; i < active.size(); ++i) {
+			const int channel = active[i];
+			dst |= uint64_t((*this)[channel]) << (8 * channel);
+		}
+		return dst;
+	}
+#endif
+
+	bool init_target(int i, int channel)
+	{
+		DpTarget t = target_it++;
+		if (!t.blank()) {
+			pos[channel] = 0;
+			dp_targets[channel] = t;
+			return true;
+		}
+		active.erase(i);
+		return false;
+	}
+
+	bool inc(int channel)
+	{
+		++pos[channel];
+		if (pos[channel] >= (int)dp_targets[channel].seq.length())
+			return false;
+		return true;
+	}
+
+	int pos[CHANNELS];
+	Static_vector<int, CHANNELS> active;
+	DynamicIterator<DpTarget>& target_it;
+	DpTarget dp_targets[CHANNELS];
+
 };
 
 }

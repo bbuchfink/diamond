@@ -19,6 +19,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
+#include <array>
 #include <algorithm>
 #include <utility>
 #include <list>
@@ -36,6 +37,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 using std::list;
 using std::pair;
 using std::vector;
+using std::array;
 
 using namespace DISPATCH_ARCH;
 
@@ -534,16 +536,6 @@ struct MatrixTraits<_sv, ScoreWithCoords>
 	typedef RowCounter<_sv> MyRowCounter;
 };
 
-template<typename _score>
-_score add_cbs(_score x, int8_t b) {
-	return x + _score(b);
-}
-
-template<typename _score>
-_score add_cbs(_score x, void *b) {
-	return x;
-}
-
 template<typename _sv, typename _cbs>
 Hsp traceback(const sequence &query, Frame frame, _cbs bias_correction, const TracebackMatrix<_sv> &dp, const DpTarget &target, int d_begin, typename ScoreTraits<_sv>::Score max_score, int max_col, int channel, int i0, int i1, int max_band_i)
 {
@@ -563,7 +555,7 @@ Hsp traceback(const sequence &query, Frame frame, _cbs bias_correction, const Tr
 	while (it.score() > ScoreTraits<_sv>::zero_score()) {
 		const Letter q = query[it.i], s = target.seq[it.j];
 		const Score m = score_matrix(q, s), score = it.score();
-		const Score m2 = add_cbs(m, bias_correction[it.i]);
+		const Score m2 = add_cbs_scalar(m, bias_correction[it.i]);
 		if (score == saturated_add(it.diag(), m2)) {
 			out.push_match(q, s, m > (Score)0);
 			it.walk_diagonal();
@@ -586,6 +578,8 @@ Hsp traceback(const sequence &query, Frame frame, _cbs bias_correction, const Ma
 	Hsp out;
 	out.swipe_target = target.target_idx;
 	out.score = ScoreTraits<_sv>::int_score(max_score);
+	if (config.comp_based_stats == 2)
+		out.score = std::round((double)out.score / target.matrix.lambda_ratio / (double)config.cbs_matrix_scale);
 	out.frame = frame.index();
 	out.d_begin = target.d_begin;
 	out.d_end = target.d_end;
@@ -623,19 +617,21 @@ Hsp traceback(const sequence &query, Frame frame, _cbs bias_correction, const Tr
 	Hsp out;
 	out.swipe_target = target.target_idx;
 	out.score = ScoreTraits<_sv>::int_score(max_score);
+	if (config.comp_based_stats == 2)
+		out.score = std::round(double(out.score) / target.matrix.lambda_ratio / config.cbs_matrix_scale);
 	out.transcript.reserve(size_t(out.score * config.transcript_len_estimate));
 
 	out.frame = frame.index();
 	out.query_range.end_ = it.i + 1;
 	out.subject_range.end_ = it.j + 1;
-	const int end_score = out.score;
+	const int end_score = out.score * config.cbs_matrix_scale;
 	int score = 0;
 
 	while (it.i >= 0 && it.j >= 0 && score < end_score) {
 		if((it.mask().gap & channel_mask) == 0) {
 			const Letter q = query[it.i], s = target.seq[it.j];
-			const int m = score_matrix(q, s);
-			const int m2 = add_cbs(m, bias_correction[it.i]);
+			const int m = config.comp_based_stats == 2 ? target.matrix.scores[int(q) * 32 + (int)s] : score_matrix(q, s);
+			const int m2 = add_cbs_scalar(m, bias_correction[it.i]);
 			score += m2;
 			out.push_match(q, s, m > (Score)0);
 			it.walk_diagonal();
@@ -643,12 +639,12 @@ Hsp traceback(const sequence &query, Frame frame, _cbs bias_correction, const Tr
 		else {
 			const pair<Edit_operation, int> g(it.walk_gap());
 			out.push_gap(g.first, g.second, target.seq.data() + it.j + g.second);
-			score -= score_matrix.gap_open() + g.second * score_matrix.gap_extend();
+			score -= (score_matrix.gap_open() + g.second * score_matrix.gap_extend()) * config.cbs_matrix_scale;
 		}
 	}
 
-	if (score != end_score)
-		throw std::runtime_error("Traceback error.");
+	/*if (score != end_score)
+		throw std::runtime_error("Traceback error.");*/
 
 	out.query_range.begin_ = it.i + 1;
 	out.subject_range.begin_ = it.j + 1;
@@ -671,27 +667,6 @@ template<>
 bool realign<VectorTraceback>(const Hsp &hsp, const DpTarget &dp_target) {
 	return hsp.subject_range.begin_ - config.min_realign_overhang > dp_target.j_begin || hsp.subject_range.end_ + config.min_realign_overhang < dp_target.j_end;
 }
-
-template<typename _sv, typename _cbs>
-struct CBSBuffer {
-	CBSBuffer(const NoCBS&, int) {}
-	void* operator()(int i) const {
-		return nullptr;
-	}
-};
-
-template<typename _sv>
-struct CBSBuffer<_sv, const int8_t*> {
-	CBSBuffer(const int8_t* v, int l) {
-		data.reserve(l);
-		for (int i = 0; i < l; ++i)
-			data.emplace_back(typename ::DISPATCH_ARCH::ScoreTraits<_sv>::Score(v[i]));
-	}
-	_sv operator()(int i) const {
-		return data[i];
-	}
-	vector<_sv, Util::Memory::AlignmentAllocator<_sv, 32>> data;
-};
 
 template<typename _sv, typename _traceback, typename _cbs>
 list<Hsp> swipe(
@@ -739,9 +714,10 @@ list<Hsp> swipe(
 	::DISPATCH_ARCH::TargetIterator<Score> targets(subject_begin, subject_end, i1, qlen, d_begin);
 	Matrix dp(band, targets.cols);
 
-	const _sv open_penalty(static_cast<char>(score_matrix.gap_open() + score_matrix.gap_extend())),
-		extend_penalty(static_cast<char>(score_matrix.gap_extend()));
+	const _sv open_penalty(static_cast<int8_t>((score_matrix.gap_open() + score_matrix.gap_extend()) * config.cbs_matrix_scale)),
+		extend_penalty(static_cast<int8_t>(score_matrix.gap_extend() * config.cbs_matrix_scale));
 	SwipeProfile<_sv> profile;
+	array<const int8_t*, 32> target_scores;
 
 	Score best[CHANNELS];
 	int max_col[CHANNELS], max_band_row[CHANNELS];
@@ -763,7 +739,10 @@ list<Hsp> swipe(
 		if (band_offset > 0)
 			it.set_zero();
 
-		profile.set(targets.get());
+		if (config.comp_based_stats == 2)
+			profile.set(targets.get(target_scores.data()));
+		else
+			profile.set(targets.get());
 #ifdef DP_STAT
 		const uint64_t live = targets.live();
 #endif
@@ -788,7 +767,6 @@ list<Hsp> swipe(
 #ifdef STRICT_BAND
 				match_scores += target_mask;
 #endif
-				//next = swipe_cell_update<_sv>(it.diag(), match_scores, composition_bias[i], extend_penalty, open_penalty, hgap, vgap, col_best);
 				next = swipe_cell_update<_sv>(it.diag(), match_scores, cbs_buf(i), extend_penalty, open_penalty, hgap, vgap, col_best, it.stat(), stat_v, stat_h, it.trace_mask(), row_counter);
 
 				it.set_hgap(hgap);
@@ -825,7 +803,7 @@ list<Hsp> swipe(
 	task_timer timer;
 	for (int i = 0; i < targets.n_targets; ++i) {
 		if (best[i] < ScoreTraits<_sv>::max_score()) {
-			if (ScoreTraits<_sv>::int_score(best[i]) >= score_cutoff) {
+			if (ScoreTraits<_sv>::int_score(best[i]) >= (score_cutoff * config.cbs_matrix_scale)) {
 				out.push_back(traceback<_sv>(query, frame, composition_bias, dp, subject_begin[i], d_begin[i], best[i], max_col[i], i, i0 - j, i1 - j, max_band_row[i]));
 				if ((config.max_hsps == 0 || config.max_hsps > 1) && !config.no_swipe_realign
 					&& ::DP::BandedSwipe::DISPATCH_ARCH::realign<_traceback>(out.back(), subject_begin[i]))

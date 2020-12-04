@@ -76,8 +76,8 @@ unique_ptr<Queue> Align_fetcher::queue_;
 hit* Align_fetcher::it_;
 hit* Align_fetcher::end_;
 
-TextBuffer* legacy_pipeline(Align_fetcher &hits, const sequence *subjects, size_t subject_count, const Metadata *metadata, const Parameters *params, Statistics &stat) {
-	if ((hits.end == hits.begin) && subjects == nullptr) {
+TextBuffer* legacy_pipeline(Align_fetcher &hits, const Metadata *metadata, const Parameters *params, Statistics &stat) {
+	if (hits.end == hits.begin) {
 		TextBuffer *buf = nullptr;
 		if (!blocked_processing && *output_format != Output_format::daa && config.report_unaligned != 0) {
 			buf = new TextBuffer;
@@ -93,7 +93,7 @@ TextBuffer* legacy_pipeline(Align_fetcher &hits, const sequence *subjects, size_
 	task_timer timer("Initializing mapper", hits.target_parallel ? 3 : UINT_MAX);
 	mapper->init();
 	timer.finish();
-	mapper->run(stat, subjects, subject_count);
+	mapper->run(stat);
 
 	timer.go("Generating output");
 	TextBuffer *buf = nullptr;
@@ -110,25 +110,24 @@ TextBuffer* legacy_pipeline(Align_fetcher &hits, const sequence *subjects, size_
 	return buf;
 }
 
-void align_worker(size_t thread_id, const Parameters *params, const Metadata *metadata, const sequence *subjects, size_t subject_count)
+void align_worker(size_t thread_id, const Parameters *params, const Metadata *metadata)
 {
 	Align_fetcher hits;
 	Statistics stat;
 	DpStat dp_stat;
 	while (hits.get()) {
 		if(config.frame_shift != 0) {
-			TextBuffer *buf = legacy_pipeline(hits, subjects, subject_count, metadata, params, stat);
+			TextBuffer *buf = legacy_pipeline(hits, metadata, params, stat);
 			OutputSink::get().push(hits.query, buf);
 			hits.release();
 			continue;
 		}
 		task_timer timer;
-		vector<Extension::Match> matches = Extension::extend(*params, hits.query, hits.begin, hits.end, *metadata, stat, hits.target_parallel ? DP::PARALLEL : 0);
-		TextBuffer *buf = Extension::generate_output(matches, hits.query, stat, *metadata, *params);
+		vector<Extension::Match> matches = Extension::extend(*params, hits.query, hits.begin, hits.end, *metadata, stat, hits.target_parallel || config.swipe_all ? DP::PARALLEL : 0);
+		TextBuffer *buf = blocked_processing ? Extension::generate_intermediate_output(matches, hits.query) : Extension::generate_output(matches, hits.query, stat, *metadata, *params);
 		if (!matches.empty() && (!config.unaligned.empty() || !config.aligned_file.empty())) {
-			query_aligned_mtx.lock();
+			std::lock_guard<std::mutex> lock(query_aligned_mtx);
 			query_aligned[hits.query] = true;
-			query_aligned_mtx.unlock();
 		}
 		OutputSink::get().push(hits.query, buf);
 		if (hits.target_parallel)
@@ -145,13 +144,7 @@ void align_queries(Trace_pt_buffer &trace_pts, Consumer* output_file, const Para
 	if (config.memory_limit != 0.0)
 		max_size = std::max(max_size, size_t(config.memory_limit * 1e9));
 	pair<size_t, size_t> query_range;
-	vector<sequence> subjects;
-	if (config.swipe_all) {
-		subjects.reserve(ref_seqs::get().get_length());
-		for (size_t i = 0; i < ref_seqs::get().get_length(); ++i)
-			subjects.push_back(ref_seqs::get()[i]);
-	}
-
+	
 	trace_pts.load(max_size);
 
 	while (true) {
@@ -175,11 +168,11 @@ void align_queries(Trace_pt_buffer &trace_pts, Consumer* output_file, const Para
 		Align_fetcher::init(query_range.first, query_range.second, hit_buf->data(), hit_buf->data() + hit_buf->size());
 		OutputSink::instance = unique_ptr<OutputSink>(new OutputSink(query_range.first, output_file));
 		vector<std::thread> threads;
-		if (config.verbosity >= 3 && config.load_balancing == Config::query_parallel && !config.no_heartbeat)
+		if (config.verbosity >= 3 && config.load_balancing == Config::query_parallel && !config.no_heartbeat && !config.swipe_all)
 			threads.emplace_back(heartbeat_worker, query_range.second);
-		size_t n_threads = config.load_balancing == Config::query_parallel ? (config.threads_align == 0 ? config.threads_ : config.threads_align) : 1;
+		size_t n_threads = (config.load_balancing == Config::query_parallel && !config.swipe_all) ? (config.threads_align == 0 ? config.threads_ : config.threads_align) : 1;
 		for (size_t i = 0; i < n_threads; ++i)
-			threads.emplace_back(align_worker, i, &params, &metadata, subjects.empty() ? nullptr : subjects.data(), subjects.size());
+			threads.emplace_back(align_worker, i, &params, &metadata);
 		for (auto &t : threads)
 			t.join();
 		statistics.inc(Statistics::TIME_EXT, timer.microseconds());

@@ -43,8 +43,8 @@ namespace Workflow { namespace Cluster{
 
 class MultiStep : public ClusteringAlgorithm {
 private:
-	vector<bool> rep_bitset(const vector<int> &centroid, const vector<bool> *superset = nullptr);
-	vector<int> cluster(DatabaseFile& db, const vector<bool>* filter);
+	BitVector rep_bitset(const vector<int> &centroid, const BitVector *superset = nullptr);
+	vector<int> cluster(DatabaseFile& db, const BitVector* filter);
 	void find_connected_components(vector<uint32_t>& sindex, unordered_map <uint32_t, uint32_t>& comp);
 	uint32_t find_max(unordered_map <uint32_t, uint32_t> comp);
 	void steps(vector<bool>& current_reps, vector<bool>& previous_reps, vector<int>& current_centroids, vector<int>& previous_centroids, int count);

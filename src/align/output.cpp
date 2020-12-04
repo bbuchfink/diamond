@@ -41,15 +41,11 @@ TextBuffer* generate_output(vector<Match> &targets, size_t query_block_id, Stati
 	const char *query_title = query_ids::get()[query_block_id];
 	const bool aligned = !targets.empty();
 
-	if (blocked_processing) {
-		if(aligned) seek_pos = IntermediateRecord::write_query_intro(*out, query_block_id);
-	} else {
-		if (*f == Output_format::daa) {
-			if (aligned) seek_pos = write_daa_query_record(*out, query_title, query.source());
-		} else if(aligned || config.report_unaligned)
-			f->print_query_intro(query_block_id, query_title, query.source().length(), *out, !aligned);
-	}
-		
+	if (*f == Output_format::daa) {
+		if (aligned) seek_pos = write_daa_query_record(*out, query_title, query.source());
+	} else if(aligned || config.report_unaligned)
+		f->print_query_intro(query_block_id, query_title, query.source().length(), *out, !aligned);
+			
 	for (size_t i = 0; i < targets.size(); ++i) {
 
 		const size_t subject_id = targets[i].target_block_id;
@@ -57,52 +53,59 @@ TextBuffer* generate_output(vector<Match> &targets, size_t query_block_id, Stati
 		const unsigned subject_len = (unsigned)ref_seqs::get()[subject_id].length();
 		const char *ref_title = ref_ids::get()[subject_id];
 
-		if (targets[i].outranked)
-			stat.inc(Statistics::OUTRANKED_HITS);
-
 		hit_hsps = 0;
 		for (Hsp &hsp : targets[i].hsp) {
-			if (blocked_processing) {
-				IntermediateRecord::write(*out, hsp, query_block_id, subject_id);
-			}
-			else {
-				if (*f == Output_format::daa)
-					write_daa_record(*out, hsp, subject_id);
-				else
-					f->print_match(Hsp_context(hsp,
-						query_block_id,
-						query,
-						query_title,
-						subject_id,
-						database_id,
-						ref_title,
-						subject_len,
-						i,
-						hit_hsps,
-						ref_seqs::get()[subject_id],
-						targets[i].ungapped_score), metadata, *out);
-			}
-
+			if (*f == Output_format::daa)
+				write_daa_record(*out, hsp, subject_id);
+			else
+				f->print_match(Hsp_context(hsp,
+					query_block_id,
+					query,
+					query_title,
+					subject_id,
+					database_id,
+					ref_title,
+					subject_len,
+					i,
+					hit_hsps,
+					ref_seqs::get()[subject_id],
+					targets[i].ungapped_score), metadata, *out);
+			
 			++n_hsp;
 			++hit_hsps;
 		}
 	}
 
-	if (!blocked_processing) {
-		if (*f == Output_format::daa) {
-			if(aligned) finish_daa_query_record(*out, seek_pos);
-		} else if(aligned || config.report_unaligned)
-			f->print_query_epilog(*out, query_title, targets.empty(), parameters);
-	}
-	else if(aligned)
-		IntermediateRecord::finish_query(*out, seek_pos);
+	if (*f == Output_format::daa) {
+		if(aligned) finish_daa_query_record(*out, seek_pos);
+	} else if(aligned || config.report_unaligned)
+		f->print_query_epilog(*out, query_title, targets.empty(), parameters);
+	
+	stat.inc(Statistics::MATCHES, n_hsp);
+	stat.inc(Statistics::PAIRWISE, targets.size());
+	if (aligned)
+		stat.inc(Statistics::ALIGNED);
+	return out;
+}
 
-	if (!blocked_processing) {
-		stat.inc(Statistics::MATCHES, n_hsp);
-		stat.inc(Statistics::PAIRWISE, targets.size());
-		if (aligned)
-			stat.inc(Statistics::ALIGNED);
+TextBuffer* generate_intermediate_output(vector<Match> &targets, size_t query_block_id)
+{
+	TextBuffer* out = new TextBuffer;
+	if (targets.empty())
+		return out;
+	size_t seek_pos = 0;
+	seek_pos = IntermediateRecord::write_query_intro(*out, query_block_id);
+	
+	for (size_t i = 0; i < targets.size(); ++i) {
+
+		const size_t subject_id = targets[i].target_block_id;
+		for (Hsp &hsp : targets[i].hsp)
+			IntermediateRecord::write(*out, hsp, query_block_id, subject_id);
+		if (config.global_ranking_targets > 0)
+			IntermediateRecord::write(*out, subject_id, targets[i].filter_score);
 	}
+
+	IntermediateRecord::finish_query(*out, seek_pos);
 	return out;
 }
 

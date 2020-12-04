@@ -152,7 +152,8 @@ Config::Config(int argc, const char **argv, bool check_io)
 		.add_command("reverse", "")
 		.add_command("compute-medoids", "")
 		.add_command("mutate", "")
-		.add_command("merge-tsv", "");
+		.add_command("merge-tsv", "")
+		.add_command("roc-id", "");
 
 	string traceback_mode_str;
 
@@ -290,7 +291,7 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("mp-init", 0, "initialize multiprocessing run", mp_init)
 		("ext-chunk-size", 0, "chunk size for adaptive ranking (default=auto)", ext_chunk_size)
 		("no-ranking", 0, "disable ranking heuristic", no_ranking)
-		("ext", 0, "Extension mode (banded-fast/banded-slow)", ext)
+		("ext", 0, "Extension mode (banded-fast/banded-slow/full)", ext)
 		("culling-overlap", 0, "minimum range overlap with higher scoring hit to delete a hit (default=50%)", inner_culling_overlap, 50.0)
 		("taxon-k", 0, "maximum number of targets to report per species", taxon_k, (uint64_t)0)
 		("range-cover", 0, "percentage of query range to be covered for range culling (default=50%)", query_range_cover, 50.0)
@@ -358,7 +359,6 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("superblock", 0, "", superblock, 128)
 		("max-cells", 0, "", max_cells, 10000000u)
 		("load-balancing", 0, "", load_balancing, (unsigned)Config::query_parallel)
-		("br", 0, "", benchmark_ranking)
 		("log-query", 0, "", log_query)
 		("log-subject", 0, "", log_subject)
 		("palign", 0, "", threads_align)
@@ -440,7 +440,16 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("chunk-size-multiplier", 0, "", chunk_size_multiplier, (size_t)4)
 		("score-drop-factor", 0, "", ranking_score_drop_factor, 0.95)
 		("left-most-interval", 0, "", left_most_interval, 32)
-		("ranking-cutoff-bitscore", 0, "", ranking_cutoff_bitscore, 25.0);
+		("ranking-cutoff-bitscore", 0, "", ranking_cutoff_bitscore, 25.0)
+		("alp", 0, "", alp)
+		("no-forward-fp", 0, "", no_forward_fp)
+		("no-ref-masking", 0, "", no_ref_masking)
+		("roc-file", 0, "", roc_file)
+		("target-bias", 0, "", target_bias)
+		("check-multi-target", 0, "" , check_multi_target)
+		("output-fp", 0, "", output_fp)
+		("family-cap", 0, "", family_cap)
+		("cbs-matrix-scale", 0, "", cbs_matrix_scale, 1);
 	
 	parser.add(general).add(makedb).add(cluster).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options).add(deprecated_options);
 	parser.store(argc, argv, command);
@@ -457,6 +466,9 @@ Config::Config(int argc, const char **argv, bool check_io)
 	if (command == blastx && no_self_hits)
 		throw std::runtime_error("--no-self-hits option is not supported in blastx mode.");
 
+	if (command == blastx && (ext == "full" || swipe_all))
+		throw std::runtime_error("Full matrix extension is not supported in blastx mode.");
+
 	if (long_reads) {
 		query_range_culling = true;
 		if (toppercent == 100.0)
@@ -464,6 +476,21 @@ Config::Config(int argc, const char **argv, bool check_io)
 		if (frame_shift == 0)
 			frame_shift = 15;
 	}
+
+	if (global_ranking_targets > 0 && (query_range_culling || taxon_k || multiprocessing || mp_init || (command == blastx)))
+		throw std::runtime_error("Global ranking is not supported in this mode.");
+
+	if (global_ranking_targets > 0) {
+		if (ext != "" && ext != "full")
+			throw std::runtime_error("Global ranking only supports full matrix extension.");
+		ext = "full";
+	}
+
+	if (swipe_all)
+		ext = "full";
+
+	if (max_hsps > 1 && ext == "full")
+		throw std::runtime_error("--max-hsps > 1 is not supported for full matrix extension.");
 
 	if (check_io) {
 		switch (command) {
@@ -589,7 +616,7 @@ Config::Config(int argc, const char **argv, bool check_io)
 		if (query_range_culling && frame_shift == 0)
 			throw std::runtime_error("Query range culling is only supported in frameshift alignment mode (option -F).");
 		if (matrix_file == "")
-			score_matrix = Score_matrix(to_upper_case(matrix), gap_open, gap_extend, frame_shift, stop_match_score);
+			score_matrix = Score_matrix(to_upper_case(matrix), gap_open, gap_extend, frame_shift, stop_match_score, 0, alp);
 		else {
 			if (lambda == 0 || K == 0)
 				throw std::runtime_error("Custom scoring matrices require setting the --lambda and --K options.");
@@ -630,6 +657,9 @@ Config::Config(int argc, const char **argv, bool check_io)
 
 	if (algo == Config::query_indexed && (sensitivity == Sensitivity::MID_SENSITIVE || sensitivity >= Sensitivity::VERY_SENSITIVE))
 		throw std::runtime_error("Query-indexed mode is not supported for this sensitivity setting.");
+
+	/*if (ext != "banded-fast" && ext != "banded-slow" && ext != "full" && ext != "")
+		throw std::runtime_error("Possible values for --ext are: banded-fast, banded-slow, full");*/
 
 	if (ext != "banded-fast" && ext != "banded-slow" && ext != "")
 		throw std::runtime_error("Possible values for --ext are: banded-fast, banded-slow");

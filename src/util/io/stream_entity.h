@@ -28,11 +28,13 @@ using std::pair;
 
 struct StreamEntity
 {
-	StreamEntity():
-		prev_(NULL)
+	StreamEntity(bool seekable = false):
+		prev_(NULL),
+		seekable_(seekable)
 	{}
-	StreamEntity(StreamEntity *prev):
-		prev_(prev)
+	StreamEntity(StreamEntity *prev, bool seekable = false):
+		prev_(prev),
+		seekable_(seekable)
 	{}
 	virtual void rewind()
 	{
@@ -94,8 +96,12 @@ struct StreamEntity
 	{
 		delete prev_;
 	}
+	bool seekable() const {
+		return seekable_;
+	}
 protected:
 	StreamEntity *prev_;
+	bool seekable_;
 };
 
 #endif

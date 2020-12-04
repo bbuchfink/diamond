@@ -1,10 +1,28 @@
+/****
+DIAMOND protein aligner
+Copyright (C) 2020 Max Planck Society for the Advancement of Science e.V.
+
+Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+****/
+
+#pragma once
 #include <limits.h>
 #include <stdint.h>
 #include <algorithm>
 #include <math.h>
-
-#ifndef INTEGER_H_
-#define INTEGER_H_
 
 static inline int8_t saturated_add(int8_t x, int8_t y) {
 	return (int8_t)std::max(int32_t(x) + int32_t(y), (int32_t)std::numeric_limits<int8_t>::min());
@@ -27,4 +45,18 @@ static inline uint64_t next_power_of_2(double x)
 	return 1llu << uint64_t(ceil(log(x) / log(2)));
 }
 
-#endif
+template<typename _it, int N>
+bool next_combination(_it begin, _it end) {
+	_it i = begin;
+	while (i < end) {
+		if (*i < N - 1) {
+			++(*i);
+			return true;
+		}
+		else {
+			*i = 0;
+			++i;
+		}
+	}
+	return false;
+}

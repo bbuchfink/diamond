@@ -30,15 +30,15 @@ string MultiStep::get_description() {
 	return "A greedy stepwise vortex cover algorithm";
 }
 
-vector<bool> MultiStep::rep_bitset(const vector<int>& centroid, const vector<bool>* superset) {
-	vector<bool> r(centroid.size());
+BitVector MultiStep::rep_bitset(const vector<int> &centroid, const BitVector *superset) {
+	BitVector r(centroid.size());
 	for (int c : centroid)
-		if (!superset || (*superset)[c])
-			r[c] = true;
+		if (!superset || superset->get(c))
+			r.set(c);
 	return r;
 }
 
-vector<int> MultiStep::cluster(DatabaseFile& db, const vector<bool>* filter) {
+vector<int> MultiStep::cluster(DatabaseFile &db, const BitVector *filter) {
 	statistics.reset();
 	config.command = Config::blastp;
 	//config.no_self_hits = true;
@@ -141,8 +141,8 @@ void MultiStep::run() {
 	unique_ptr<DatabaseFile> db(DatabaseFile::auto_create_from_fasta());
 	const size_t seq_count = db->ref_header.sequences;
 
-	vector <bool> current_reps;
-	vector <bool> previous_reps;
+	BitVector current_reps;
+	BitVector previous_reps;
 
 	vector<int> current_centroids;
 	vector<int> previous_centroids;
@@ -163,7 +163,7 @@ void MultiStep::run() {
 	String_set<char, 0>* rep_ids;
 	vector<unsigned> rep_database_id, rep_block_id(seq_count);
 	db->rewind();
-	db->load_seqs(rep_database_id, (size_t)1e11, &rep_seqs, &rep_ids, true, &previous_reps);
+	db->load_seqs(&rep_database_id, (size_t)1e11, &rep_seqs, &rep_ids, true, &previous_reps);
 	for (size_t i = 0; i < rep_database_id.size(); ++i)
 		rep_block_id[rep_database_id[i]] = (unsigned)i;
 

@@ -47,8 +47,11 @@ namespace Extension {
 WorkTarget ungapped_stage(SeedHit *begin, SeedHit *end, const sequence *query_seq, const Bias_correction *query_cb, uint32_t block_id) {
 	array<vector<Diagonal_segment>, MAX_CONTEXT> diagonal_segments;
 	WorkTarget target(block_id, ref_seqs::get()[block_id]);
-	if (config.ext == "full" && (int)query_seq[0].length() < config.full_sw_len)
+	if (config.ext == "full") {
+		for (const SeedHit *hit = begin; hit < end; ++hit)
+			target.ungapped_score = std::max(target.ungapped_score, hit->score);
 		return target;
+	}
 	std::sort(begin, end);
 	for (const SeedHit *hit = begin; hit < end; ++hit) {
 		if (!diagonal_segments[hit->frame].empty() && diagonal_segments[hit->frame].back().diag() == hit->diag() && diagonal_segments[hit->frame].back().subject_end() >= hit->j)
@@ -79,17 +82,18 @@ void ungapped_stage_worker(size_t i, size_t thread_id, const sequence *query_seq
 	}
 }
 
-vector<WorkTarget> ungapped_stage(const sequence *query_seq, const Bias_correction *query_cb, FlatArray<SeedHit> &seed_hits, const uint32_t *target_block_ids, int flags) {
+vector<WorkTarget> ungapped_stage(const sequence *query_seq, const Bias_correction *query_cb, FlatArray<SeedHit> &seed_hits, const vector<uint32_t>& target_block_ids, int flags) {
 	vector<WorkTarget> targets;
-	if (seed_hits.size() == 0)
+	if (target_block_ids.size() == 0)
 		return targets;
 	if (flags & DP::PARALLEL) {
 		mutex mtx;
-		Util::Parallel::scheduled_thread_pool_auto(config.threads_, seed_hits.size(), ungapped_stage_worker, query_seq, query_cb, &seed_hits, target_block_ids, &targets, &mtx);
+		Util::Parallel::scheduled_thread_pool_auto(config.threads_, seed_hits.size(), ungapped_stage_worker, query_seq, query_cb, &seed_hits, target_block_ids.data(), &targets, &mtx);
 	}
-	else
-		for (size_t i = 0; i < seed_hits.size(); ++i)
+	else {
+		for (size_t i = 0; i < target_block_ids.size(); ++i)
 			targets.push_back(ungapped_stage(seed_hits.begin(i), seed_hits.end(i), query_seq, query_cb, target_block_ids[i]));
+	}
 
 	return targets;
 }
