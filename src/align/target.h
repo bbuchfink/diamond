@@ -43,7 +43,7 @@ struct SeedHit {
 		const int d1 = diag(), d2 = x.diag();
 		return d1 < d2 || (d1 == d2 && j < x.j);
 	}
-	int i, j;
+	int i, j, score;
 	unsigned frame;
 };
 
@@ -52,8 +52,7 @@ struct WorkTarget {
 		block_id(block_id),
 		seq(seq),
 		filter_score(0),
-		ungapped_score(0),
-		outranked(false)
+		ungapped_score(0)
 	{}
 	bool operator<(const WorkTarget &t) const {
 		return filter_score > t.filter_score || (filter_score == t.filter_score && block_id < t.block_id);
@@ -61,21 +60,19 @@ struct WorkTarget {
 	size_t block_id;
 	sequence seq;
 	int filter_score, ungapped_score;
-	bool outranked;
 	std::array<std::list<Hsp_traits>, MAX_CONTEXT> hsp;
 };
 
-std::vector<WorkTarget> ungapped_stage(const sequence* query_seq, const Bias_correction* query_cb, FlatArray<SeedHit>& seed_hits, const uint32_t* target_block_ids, int flags);
+std::vector<WorkTarget> ungapped_stage(const sequence* query_seq, const Bias_correction* query_cb, FlatArray<SeedHit>& seed_hits, const std::vector<uint32_t>& target_block_ids, int flags);
 void rank_targets(std::vector<WorkTarget> &targets, double ratio, double factor);
 
 struct Target {
 
-	Target(size_t block_id, const sequence &seq, bool outranked, int ungapped_score):
+	Target(size_t block_id, const sequence &seq, int ungapped_score):
 		block_id(block_id),
 		seq(seq),
 		filter_score(0),
-		ungapped_score(ungapped_score),
-		outranked(outranked)
+		ungapped_score(ungapped_score)
 	{}
 
 	void add_hit(std::list<Hsp> &list, std::list<Hsp>::iterator it) {
@@ -95,15 +92,34 @@ struct Target {
 	size_t block_id;
 	sequence seq;
 	int filter_score, ungapped_score;
-	bool outranked;
 	std::array<std::list<Hsp>, MAX_CONTEXT> hsp;
 };
 
+struct TargetScore {
+	uint32_t target;
+	uint16_t score;
+	bool operator<(const TargetScore& x) const {
+		return score > x.score || (score == x.score && target < x.target);
+	}
+};
+
+void load_hits(hit* begin, hit* end, FlatArray<SeedHit> &hits, std::vector<uint32_t> &target_block_ids, std::vector<TargetScore> &target_scores);
 bool append_hits(std::vector<Target>& targets, std::vector<Target>::const_iterator begin, std::vector<Target>::const_iterator end, size_t chunk_size, int source_query_len, const char* query_title, const sequence& query_seq);
 std::vector<WorkTarget> gapped_filter(const sequence *query, const Bias_correction* query_cbs, std::vector<WorkTarget>& targets, Statistics &stat);
 void gapped_filter(const sequence* query, const Bias_correction* query_cbs, FlatArray<SeedHit> &seed_hits, std::vector<uint32_t> &target_block_ids, Statistics& stat, int flags, const Parameters &params);
 std::vector<Target> align(const std::vector<WorkTarget> &targets, const sequence *query_seq, const Bias_correction *query_cb, int source_query_len, int flags, Statistics &stat);
 std::vector<Match> align(std::vector<Target> &targets, const sequence *query_seq, const Bias_correction *query_cb, int source_query_len, int flags, Statistics &stat, bool first_round_traceback);
+std::vector<Target> full_db_align(const sequence *query_seq, const Bias_correction *query_cb, int flags, Statistics &stat);
+
+std::vector<Match> extend(
+	size_t query_id,
+	const Parameters &params,
+	const Metadata &metadata,
+	Statistics &stat,
+	int flags,
+	const FlatArray<SeedHit>& seed_hits,
+	const std::vector<uint32_t>& target_block_ids,
+	const std::vector<TargetScore>& target_scores);
 
 struct Memory {
 	Memory(size_t query_count);

@@ -28,7 +28,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "sequence.h"
 #include "masking.h"
 
-const char* Const::version_string = "2.0.4";
+const char* Const::version_string = "2.0.5";
 const char* Const::program_name = "diamond";
 const char* Const::id_delimiters = " \a\b\f\n\r\t\v\1";
 

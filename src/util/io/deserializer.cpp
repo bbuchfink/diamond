@@ -46,20 +46,27 @@ void Deserializer::close()
 void Deserializer::rewind()
 {
 	buffer_->rewind();
-	begin_ = end_ = NULL;
+	begin_ = end_ = nullptr;
 }
 
 Deserializer& Deserializer::seek(size_t pos)
 {
+	if (buffer_->seekable() && buffer_->tell()) {
+		const size_t d = buffer_->tell() - pos;
+		if (pos < buffer_->tell() && begin_ + d <= end_) {
+			begin_ = end_ - d;
+			return *this;
+		}
+	}
 	buffer_->seek(pos);
-	begin_ = end_ = NULL;
+	begin_ = end_ = nullptr;
 	return *this;
 }
 
 void Deserializer::seek_forward(size_t n)
 {
 	buffer_->seek_forward(n);
-	begin_ = end_ = NULL;
+	begin_ = end_ = nullptr;
 }
 
 size_t Deserializer::read_raw(char *ptr, size_t count)

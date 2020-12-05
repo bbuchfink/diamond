@@ -27,6 +27,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "comp_based_stats.h"
 #include "../basic/statistics.h"
 #include "../basic/config.h"
+#include "../util/dynamic_iterator.h"
+#include "../basic/cbs.h"
 
 int smith_waterman(const sequence &query, const sequence &subject, unsigned band, unsigned padding, int op, int ep);
 
@@ -150,7 +152,10 @@ extern size_t cells;
 
 struct DpTarget
 {
-	DpTarget(const sequence &seq, int d_begin, int d_end, int j_begin, int j_end, int target_idx = 0, int qlen = 0) :
+	DpTarget():
+		target_idx(-1)
+	{}
+	DpTarget(const sequence &seq, int d_begin, int d_end, int j_begin, int j_end, int target_idx = 0, int qlen = 0, const double* query_comp = nullptr) :
 		seq(seq),
 		d_begin(d_begin),
 		d_end(d_end),
@@ -162,7 +167,13 @@ struct DpTarget
 		const int d0 = d_begin;
 		const int j1 = std::min(qlen - 1 - d0, (int)(seq.length() - 1)) + 1;
 		cols = j1 - pos;
+		if (query_comp)
+			matrix = TargetMatrix(query_comp, seq);
 	}
+	DpTarget(const sequence& seq, int target_idx):
+		seq(seq),
+		target_idx(target_idx)
+	{}
 	int left_i1() const
 	{
 		return std::max(d_end - 1, 0);
@@ -177,8 +188,12 @@ struct DpTarget
 		return bin_b1 < bin_b2 || (bin_b1 == bin_b2 && (bin_t1 < bin_t2 || (bin_t1 == bin_t2 && i < j)));
 		//return i < j || (i == j && (target_idx < x.target_idx || (target_idx == x.target_idx && d_begin < x.d_begin)));
 	}
+	bool blank() const {
+		return target_idx == -1;
+	}
 	sequence seq;
 	int d_begin, d_end, j_begin, j_end, target_idx, cols;
+	TargetMatrix matrix;
 };
 
 struct DpStat
@@ -213,7 +228,7 @@ struct VectorTraceback {};
 struct ScoreOnly {};
 struct ScoreWithCoords {};
 
-enum { TRACEBACK = 1, PARALLEL = 2, FULL_MATRIX = 4 };
+enum { TRACEBACK = 1, PARALLEL = 2, FULL_MATRIX = 4, WITH_COORDINATES = 8 };
 
 struct NoCBS {
 	constexpr void* operator[](int i) const { return nullptr; }
@@ -227,7 +242,7 @@ namespace Swipe {
 
 namespace BandedSwipe {
 
-DECL_DISPATCH(std::list<Hsp>, swipe, (const sequence &query, std::vector<DpTarget> &targets8, std::vector<DpTarget> &targets16, Frame frame, const Bias_correction *composition_bias, int flags, int score_cutoff, Statistics &stat))
+DECL_DISPATCH(std::list<Hsp>, swipe, (const sequence &query, std::vector<DpTarget> &targets8, std::vector<DpTarget> &targets16, DynamicIterator<DpTarget>* targets, Frame frame, const Bias_correction *composition_bias, int flags, int score_cutoff, Statistics &stat))
 
 }
 

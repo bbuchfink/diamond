@@ -71,7 +71,13 @@ struct IntermediateRecord
 {
 	void read(BinaryBuffer::Iterator &f)
 	{
-		f.read(subject_id);
+		f.read(subject_dict_id);
+		if (config.global_ranking_targets > 0) {
+			uint16_t s;
+			f.read(s);
+			score = s;
+			return;
+		}
 		f.read(flag);
 		f.read_packed(flag & 3, score);
 
@@ -134,13 +140,18 @@ struct IntermediateRecord
 			buf.write_varint(match.gaps);
 		}
 	}
+	static void write(TextBuffer& buf, uint32_t target_block_id, int score) {
+		buf.write(ReferenceDictionary::get().get(current_ref_block, target_block_id));
+		const uint16_t s = (uint16_t)std::min(score, USHRT_MAX);
+		buf.write(s);
+	}
 	static void finish_file(Consumer &f)
 	{
 		const uint32_t i = FINISHED;
 		f.consume(reinterpret_cast<const char*>(&i), 4);
 	}
 	static const uint32_t FINISHED = 0xffffffffu;
-	uint32_t query_id, subject_id, score, query_begin, subject_begin, query_end, subject_end, identities, mismatches, positives, gap_openings, gaps;
+	uint32_t query_id, subject_dict_id, score, query_begin, subject_begin, query_end, subject_end, identities, mismatches, positives, gap_openings, gaps;
 	uint8_t flag;
 	Packed_transcript transcript;
 };

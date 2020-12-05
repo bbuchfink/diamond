@@ -62,7 +62,7 @@ struct ReferenceDictionary
 
 	//void init_rev_map();
 
-	unsigned database_id(unsigned dict_id) const
+	uint32_t database_id(unsigned dict_id) const
 	{
 		return config.no_dict ? 0 : database_id_[dict_id];
 	}

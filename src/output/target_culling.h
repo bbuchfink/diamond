@@ -65,7 +65,7 @@ struct GlobalCulling : public TargetCulling
 	}
 	virtual int cull(const vector<IntermediateRecord> &target_hsp, const std::set<unsigned> &taxon_ids) const
 	{
-		if (top_score_ == 0)
+		if (top_score_ == 0.0)
 			return INCLUDE;
 		if (config.taxon_k) {
 			unsigned taxons_exceeded = 0;
@@ -77,7 +77,9 @@ struct GlobalCulling : public TargetCulling
 			if (taxons_exceeded == taxon_ids.size())
 				return NEXT;
 		}
-		if (config.toppercent < 100.0)
+		if (config.global_ranking_targets)
+			return n_ < config.global_ranking_targets ? INCLUDE : FINISHED;
+		else if (config.toppercent < 100.0)
 			return (1.0 - score_matrix.bitscore(target_hsp[0].score) / top_score_) * 100.0 <= config.toppercent ? INCLUDE : FINISHED;
 		else
 			return n_ < config.max_alignments ? INCLUDE : FINISHED;

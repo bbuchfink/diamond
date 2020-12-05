@@ -122,7 +122,7 @@ struct score_vector<int16_t>
 		return score_vector(_mm256_cmpeq_epi16(data_, v.data_));
 	}
 
-	friend uint32_t cmp_mask(const score_vector &v, const score_vector &w) {
+	friend FORCE_INLINE uint32_t cmp_mask(const score_vector &v, const score_vector &w) {
 		return _mm256_movemask_epi8(_mm256_cmpeq_epi16(v.data_, w.data_));
 	}
 
@@ -147,6 +147,15 @@ struct score_vector<int16_t>
 		store(d);
 		d[i] = x;
 		data_ = _mm256_load_si256((__m256i*)d);
+	}
+
+	void expand_from_8bit() {
+		alignas(32) int8_t v[32];
+		alignas(32) int16_t w[16];
+		_mm256_storeu_si256((__m256i*)v, data_);
+		for (int i = 0; i < 16; ++i)
+			w[i] = v[i];
+		data_ = _mm256_load_si256((__m256i*)w);
 	}
 
 	__m256i data_;
@@ -261,7 +270,7 @@ struct score_vector<int16_t>
 		return score_vector(_mm_cmpeq_epi16(data_, v.data_));
 	}
 
-	friend uint32_t cmp_mask(const score_vector &v, const score_vector &w) {
+	friend FORCE_INLINE uint32_t cmp_mask(const score_vector &v, const score_vector &w) {
 		return (uint32_t)_mm_movemask_epi8(_mm_cmpeq_epi16(v.data_, w.data_));
 	}
 
@@ -322,7 +331,7 @@ struct ScoreTraits<score_vector<int16_t>>
 	struct TraceMask {
 		uint32_t gap;
 		uint32_t open;
-		static uint32_t make(uint32_t vmask, uint32_t hmask) {
+		static FORCE_INLINE uint32_t make(uint32_t vmask, uint32_t hmask) {
 			return (vmask & VMASK) | (hmask & HMASK);
 		}
 		static uint32_t vmask(int channel) {
@@ -337,7 +346,7 @@ struct ScoreTraits<score_vector<int16_t>>
 	enum { CHANNELS = 8 };
 	typedef uint8_t Mask;
 	struct TraceMask {
-		static uint16_t make(uint16_t vmask, uint16_t hmask) {
+		static FORCE_INLINE uint16_t make(uint16_t vmask, uint16_t hmask) {
 			return (vmask & VMASK) | (hmask & HMASK);
 		}
 		static uint16_t vmask(int channel) {

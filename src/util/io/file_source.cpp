@@ -25,6 +25,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <fcntl.h>
 #include <unistd.h>
 #include <errno.h>
+#include <stdio.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 #endif
 
 #include "file_source.h"
@@ -35,12 +38,23 @@ using std::string;
 using std::runtime_error;
 
 FileSource::FileSource(const string &file_name) :
+	StreamEntity(true),
 	file_name_(file_name)
 {
+	const bool is_stdin = file_name.empty() || file_name == "-";
 #ifdef _MSC_VER
-	f_ = (file_name.empty() || file_name == "-") ? stdin : fopen(file_name.c_str(), "rb");
+	f_ = is_stdin ? stdin : fopen(file_name.c_str(), "rb");
 #else
-	int fd_ = (file_name.empty() || file_name == "-") ? 0 : POSIX_OPEN2(file_name.c_str(), O_RDONLY);
+
+	struct stat buf;
+	if (!is_stdin && stat(file_name.c_str(), &buf) < 0) {
+		perror(0);
+		throw std::runtime_error(string("Error calling stat on file ") + file_name);
+	}
+	if (is_stdin || !S_ISREG(buf.st_mode))
+		seekable_ = false;
+
+	int fd_ = is_stdin ? 0 : POSIX_OPEN2(file_name.c_str(), O_RDONLY);
 	if (fd_ < 0) {
 		perror(0);
 		throw std::runtime_error(string("Error opening file ") + file_name);
@@ -54,6 +68,7 @@ FileSource::FileSource(const string &file_name) :
 }
 
 FileSource::FileSource(const string &file_name, FILE *file):
+	StreamEntity(false),
 	f_(file),
 	file_name_(file_name)
 {
@@ -125,4 +140,21 @@ void FileSource::close()
 		}
 		f_ = 0;
 	}
+}
+
+size_t FileSource::tell()
+{
+#ifdef _MSC_VER
+	int64_t x;
+	if ((x = _ftelli64(f_)) == (int64_t)-1)
+		throw std::runtime_error("Error executing ftell on stream " + file_name_);
+	return (size_t)x;
+#else
+	const long n = ftell(f_);
+	if (n < 0) {
+		perror(0);
+		throw std::runtime_error("Error calling ftell.");
+	}
+	return n;
+#endif
 }

@@ -33,6 +33,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../data/seed_histogram.h"
 #include "sequence_set.h"
 #include "metadata.h"
+#include "../util/data_structures/bit_vector.h"
 
 using std::vector;
 using std::string;
@@ -109,7 +110,7 @@ struct DatabaseFile : public InputFile
 	void clear_partition();
 	size_t get_n_partition_chunks();
 
-	bool load_seqs(vector<unsigned> &block_to_database_id, size_t max_letters, Sequence_set **dst_seq, String_set<char, 0> **dst_id, bool load_ids = true, const vector<bool> *filter = NULL, const bool fetch_seqs = true, const Chunk & chunk = Chunk());
+	bool load_seqs(std::vector<uint32_t>* block2db_id, size_t max_letters, Sequence_set **dst_seq, String_set<char, 0> **dst_id, bool load_ids = true, const BitVector* filter = nullptr, const bool fetch_seqs = true, const Chunk & chunk = Chunk());
 
 	void get_seq();
 	void read_seq(string &id, vector<Letter> &seq);
@@ -167,6 +168,7 @@ struct ref_ids
 extern Partitioned_histogram ref_hst;
 extern unsigned current_ref_block;
 extern bool blocked_processing;
+extern std::vector<uint32_t> block_to_database_id;
 
 inline size_t max_id_len(const String_set<char, 0> &ids)
 {
