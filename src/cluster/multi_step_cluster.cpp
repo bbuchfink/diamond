@@ -63,18 +63,24 @@ vector<int> MultiStep::cluster(DatabaseFile& db, const vector<bool>* filter) {
 	Workflow::Search::run(opt);
 
 	message_stream << "Edges = " << nb.edges.size() << endl;
-
-	unordered_map <uint32_t, uint32_t> components;
-	find_connected_components(nb.smallest_index, components);
+	unordered_map<uint32_t, uint32_t> sumup_edges;
+	unordered_map <uint32_t, uint32_t> components = find_connected_components(nb.smallest_index, nb.number_edges, sumup_edges);
 	message_stream << "Number of connected components: " << components.size() << endl;
-	message_stream << "average number of nodes per connected component: " << (double) nb.smallest_index.size()/components.size() << endl;
-	message_stream << "Largest connected component has " << (find_max(components)) << " nodes." << endl;
-	
+	message_stream << "Average number of nodes per connected component: " << (double) nb.smallest_index.size()/components.size() << endl;
+
+	uint32_t large = max_element(components.begin(), components.end(), [](const pair<uint32_t, uint32_t>& left, const pair<uint32_t, uint32_t>& right) {return left.second < right.second; })->second;
+	message_stream << "Largest connected component has " << large << " nodes." << endl;
+
+	vector <vector<uint32_t>> cluster_set = mapping(sumup_edges);
+	message_stream << "Number of sets: " << cluster_set.size() << endl;
+
 	return Util::Algo::greedy_vortex_cover(nb);
 	
 }
-void MultiStep::find_connected_components(vector<uint32_t>& sindex, unordered_map<uint32_t, uint32_t>& comp){
+unordered_map<uint32_t, uint32_t> MultiStep::find_connected_components(vector<uint32_t>& sindex, vector <uint32_t> nedges, unordered_map <uint32_t, uint32_t>& sumup_edges){
 	vector<uint32_t> seen_nodes;
+	unordered_map<uint32_t, uint32_t> comp;
+
 	uint32_t curr = 0;
 	for (size_t k = 0; k < sindex.size(); k++) {
 		curr = sindex[k];
@@ -93,16 +99,34 @@ void MultiStep::find_connected_components(vector<uint32_t>& sindex, unordered_ma
 
 	for (size_t i = 0; i < sindex.size(); i++) {
 		++comp[sindex[i]];
+		sumup_edges[sindex[i]] += nedges[i];
 	}
+
+	return comp;
 }
 
-uint32_t MultiStep::find_max(unordered_map<uint32_t, uint32_t> comp)
-{
-	uint32_t large = 0;
-	for (auto& it : comp) {
-		large = max(large, it.second);
+
+vector<vector<uint32_t>> MultiStep::mapping(unordered_map<uint32_t, uint32_t> sumup_edges) {
+	vector <vector<uint32_t>> set;
+	vector <uint32_t> size;
+	bool TooBig;
+
+	for (auto& it : sumup_edges) {
+		TooBig = true;
+		for (size_t j = 0; j < set.size(); j++) {
+			if ((it.second + size[j]) <= config.max_size_set) {
+				set[j].push_back(it.first);
+				size[j] += it.second;
+				TooBig = false;
+				break;
+			}
+		}
+		if (TooBig || set.empty()) {
+			set.push_back({ it.first });
+			size.push_back({ it.second });
+		}
 	}
-	return large;
+	return set;
 }
 
 

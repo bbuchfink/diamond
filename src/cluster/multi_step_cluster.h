@@ -45,8 +45,8 @@ class MultiStep : public ClusteringAlgorithm {
 private:
 	vector<bool> rep_bitset(const vector<int> &centroid, const vector<bool> *superset = nullptr);
 	vector<int> cluster(DatabaseFile& db, const vector<bool>* filter);
-	void find_connected_components(vector<uint32_t>& sindex, unordered_map <uint32_t, uint32_t>& comp);
-	uint32_t find_max(unordered_map <uint32_t, uint32_t> comp);
+	unordered_map<uint32_t,uint32_t> find_connected_components(vector<uint32_t>& sindex, vector<uint32_t> nedges, unordered_map<uint32_t, uint32_t>& sumup_edges);
+	vector<vector<uint32_t>> mapping(unordered_map<uint32_t, uint32_t> sumup_edges);
 	void steps(vector<bool>& current_reps, vector<bool>& previous_reps, vector<int>& current_centroids, vector<int>& previous_centroids, int count);
 
 public:
@@ -62,9 +62,11 @@ struct Neighbors : public vector<vector<int>>, public Consumer {
 		for (size_t i = 0; i < smallest_index.size(); i++) {
 			smallest_index[i] = i;
 		}
+		number_edges.resize((*this).size());
 	}
 
 	vector<uint32_t> smallest_index;
+	vector<uint32_t> number_edges;
 	
 	
 	virtual void consume(const char* ptr, size_t n) override {
@@ -84,6 +86,8 @@ struct Neighbors : public vector<vector<int>>, public Consumer {
 
 			if (query < smallest_index[subject])
 				smallest_index[subject] = query;
+
+			++number_edges[query];
 		}
 	}
 	vector<Util::Algo::Edge> edges;
