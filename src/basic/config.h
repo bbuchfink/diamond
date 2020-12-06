@@ -267,7 +267,7 @@ struct Config
 	int algo;
 
 	string cluster_algo;
-	uint32_t max_size_set;
+	size_t max_size_set;
 	string_vector cluster_steps;
 	double cluster_mcl_inflation;
 	uint32_t cluster_mcl_expansion;
