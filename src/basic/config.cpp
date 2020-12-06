@@ -646,6 +646,11 @@ Config::Config(int argc, const char **argv, bool check_io)
 		init_cbs();
 		raw_ungapped_xdrop = score_matrix.rawscore(ungapped_xdrop);
 		verbose_stream << "CPU features detected: " << SIMD::features() << endl;
+#if defined(RUNTIME_DISPATCH) && defined(__SSE__)
+		verbose_stream << "Runtime dispatch: enabled" << endl;
+#else
+		verbose_stream << "Runtime dispatch: disabled" << endl;
+#endif
 	}
 
 	sensitivity = Sensitivity::FAST;

@@ -64,6 +64,9 @@ set(CMAKE_CXX_STANDARD 11)
 
 if(CMAKE_BUILD_MARCH)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=${CMAKE_BUILD_MARCH}")
+  set(X86 OFF)
+else()
+  add_definitions(-DRUNTIME_DISPATCH)
 endif()
 
 find_package(ZLIB REQUIRED)
@@ -103,17 +106,17 @@ set(DISPATCH_OBJECTS
 "src/dp/ungapped_simd.cpp"
 )
 
-add_library(arch_generic OBJECT ${DISPATCH_OBJECTS}   )
+add_library(arch_generic OBJECT ${DISPATCH_OBJECTS})
 target_compile_options(arch_generic PUBLIC -DDISPATCH_ARCH=ARCH_GENERIC -DARCH_ID=0 -DEigen=Eigen_GENERIC)
 if(X86)
-add_library(arch_sse4_1 OBJECT ${DISPATCH_OBJECTS}   )
-#add_library(arch_avx2 OBJECT ${DISPATCH_OBJECTS}   )
+add_library(arch_sse4_1 OBJECT ${DISPATCH_OBJECTS})
+add_library(arch_avx2 OBJECT ${DISPATCH_OBJECTS})
 if (${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
 	target_compile_options(arch_sse4_1 PUBLIC -DDISPATCH_ARCH=ARCH_SSE4_1 -DARCH_ID=1 -D__SSSE3__ -D__SSE4_1__ -D__POPCNT__ -DEigen=Eigen_SSE4_1)
-    #target_compile_options(arch_avx2 PUBLIC -DDISPATCH_ARCH=ARCH_AVX2 -DARCH_ID=2 /arch:AVX2 -D__SSSE3__ -D__SSE4_1__ -D__POPCNT__ -DEigen=Eigen_AVX2)
+    target_compile_options(arch_avx2 PUBLIC -DDISPATCH_ARCH=ARCH_AVX2 -DARCH_ID=2 /arch:AVX2 -D__SSSE3__ -D__SSE4_1__ -D__POPCNT__ -DEigen=Eigen_AVX2)
 else()
 	target_compile_options(arch_sse4_1 PUBLIC -DDISPATCH_ARCH=ARCH_SSE4_1 -DARCH_ID=1 -mssse3 -mpopcnt -msse4.1 -DEigen=Eigen_SSE4_1)
-    #target_compile_options(arch_avx2 PUBLIC -DDISPATCH_ARCH=ARCH_AVX2 -DARCH_ID=2 -mssse3 -mpopcnt -msse4.1 -msse4.2 -mavx -mavx2 -DEigen=Eigen_AVX2)
+    target_compile_options(arch_avx2 PUBLIC -DDISPATCH_ARCH=ARCH_AVX2 -DARCH_ID=2 -mssse3 -mpopcnt -msse4.1 -msse4.2 -mavx -mavx2 -DEigen=Eigen_AVX2)
 endif()
 endif(X86)
 
@@ -237,11 +240,10 @@ set(OBJECTS
 )
 
 if(X86)
-  add_executable(diamond #$<TARGET_OBJECTS:arch_avx2>
+  add_executable(diamond $<TARGET_OBJECTS:arch_avx2>
     $<TARGET_OBJECTS:arch_sse4_1>
     $<TARGET_OBJECTS:arch_generic>
-    ${OBJECTS}
-     )
+    ${OBJECTS})
 else()
 add_executable(diamond $<TARGET_OBJECTS:arch_generic>
   ${OBJECTS}

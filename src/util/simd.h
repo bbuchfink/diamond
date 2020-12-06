@@ -48,13 +48,14 @@ enum class Arch { None, Generic, SSE4_1, AVX2 };
 enum Flags { SSSE3 = 1, POPCNT = 2, SSE4_1 = 4, AVX2 = 8 };
 Arch arch();
 
-#ifdef __SSE__
+#if defined(RUNTIME_DISPATCH) && defined(__SSE__)
 #define DECL_DISPATCH(ret, name, param) namespace ARCH_GENERIC { ret name param; }\
 namespace ARCH_SSE4_1 { ret name param; }\
 namespace ARCH_AVX2 { ret name param; }\
 inline std::function<decltype(ARCH_GENERIC::name)> dispatch_target_##name() {\
 switch(::SIMD::arch()) {\
 case ::SIMD::Arch::SSE4_1: return ARCH_SSE4_1::name;\
+case ::SIMD::Arch::AVX2: return ARCH_AVX2::name;\
 default: return ARCH_GENERIC::name;\
 }}\
 const std::function<decltype(ARCH_GENERIC::name)> name = dispatch_target_##name();
@@ -69,8 +70,6 @@ const std::function<decltype(ARCH_GENERIC::name)> name = dispatch_target_##name(
 std::string features();
 
 }
-
-// case ::SIMD::Arch::AVX2: return ARCH_AVX2::name;\
 
 namespace DISPATCH_ARCH { namespace SIMD {
 
