@@ -165,7 +165,7 @@ struct BlockJoiner
 			it.push_back(buf[i].begin());
 			Join_record::push_next(i, std::numeric_limits<unsigned>::max(), it.back(), records);
 		}
-		std::make_heap(records.begin(), records.end(), config.toppercent == 100.0 ? Join_record::cmp_evalue : Join_record::cmp_score);
+		std::make_heap(records.begin(), records.end(), (config.toppercent == 100.0 && config.global_ranking_targets == 0) ? Join_record::cmp_evalue : Join_record::cmp_score);
 	}
 	bool get(vector<IntermediateRecord> &target_hsp, unsigned & block_idx)
 	{
@@ -176,7 +176,7 @@ struct BlockJoiner
 		block_idx = block;
 		const unsigned subject = first.info_.subject_dict_id;
 		target_hsp.clear();
-		const auto pred = config.toppercent == 100.0 ? Join_record::cmp_evalue : Join_record::cmp_score;
+		const auto pred = (config.toppercent == 100.0 && config.global_ranking_targets == 0) ? Join_record::cmp_evalue : Join_record::cmp_score;
 		do {
 			const Join_record &next = records.front();
 			if (next.block_ != block || next.info_.subject_dict_id != subject)

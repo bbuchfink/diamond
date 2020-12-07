@@ -10,6 +10,8 @@
   in the alignment output.
 - Disabled support of custom scoring matrices for the DAA format.
 - Fixed a bug that caused the use of a custom scoring matrix not to function correctly.
+- Fixed an issue that caused the portable binary not to function on systems that do not
+  support AVX.
 
 [2.0.5]
 - Fixed an issue that could cause high memory use in frameshift alignment mode.
