@@ -67,7 +67,7 @@ WorkTarget ungapped_stage(SeedHit *begin, SeedHit *end, const sequence *query_se
 			continue;
 		const auto d = xdrop_ungapped(query_seq[hit->frame], target.seq, hit->i, hit->j);
 		if (d.score > 0) {
-			target.ungapped_score = std::max(target.ungapped_score, d.score);
+			target.ungapped_score = std::max(target.ungapped_score, hit->score);
 			diagonal_segments[hit->frame].push_back(d);
 		}
 	}
