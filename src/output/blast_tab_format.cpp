@@ -375,7 +375,7 @@ void Blast_tab_format::print_match(const Hsp_context& r, const Metadata &metadat
 			break;
 		}
 		case 61:
-			out << score_matrix.bitscore(r.ungapped_score);
+			out << r.ungapped_score;
 			break;
 		default:
 			throw std::runtime_error(string("Invalid output field: ") + field_def[*i].key);
