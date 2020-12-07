@@ -44,7 +44,7 @@ namespace Workflow { namespace Cluster{
 
 	struct NodEdgSet {
 		uint32_t nodes;
-		uint32_t edges;
+		size_t edges;
 		uint32_t set;
 	};
 
@@ -52,7 +52,7 @@ class MultiStep : public ClusteringAlgorithm {
 private:
 	BitVector rep_bitset(const vector<int> &centroid, const BitVector *superset = nullptr);
 	vector<int> cluster(DatabaseFile& db, const BitVector* filter);
-	unordered_map<uint32_t, NodEdgSet> find_connected_components(vector<uint32_t>& sindex, vector<uint32_t> nedges);
+	unordered_map<uint32_t, NodEdgSet> find_connected_components(vector<uint32_t>& sindex, const vector<size_t>& nedges);
 	void mapping_comp_set(unordered_map<uint32_t, NodEdgSet>& comp);
 	void steps(BitVector& current_reps, BitVector& previous_reps, vector<int>& current_centroids, vector<int>& previous_centroids, int count);
 
@@ -63,17 +63,12 @@ public:
 };
 
 struct Neighbors : public vector<vector<int>>, public Consumer {
-	Neighbors(size_t n) :
-		vector<vector<int>>(n) {
-		smallest_index.resize((*this).size());
+	Neighbors(size_t n) : vector<vector<int>>(n), smallest_index(n,0), number_edges(n,0){
 		iota(smallest_index.begin(), smallest_index.end(), 0);
-		
-		number_edges.resize((*this).size());
-		fill(number_edges.begin(), number_edges.end(), 0);
 	}
 
 	vector<uint32_t> smallest_index;
-	vector<uint32_t> number_edges;
+	vector<size_t> number_edges;
 	
 	
 	virtual void consume(const char* ptr, size_t n) override {

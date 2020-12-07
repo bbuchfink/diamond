@@ -80,7 +80,7 @@ vector<int> MultiStep::cluster(DatabaseFile& db, const BitVector* filter) {
 
 }
 
-unordered_map<uint32_t, NodEdgSet> MultiStep::find_connected_components(vector<uint32_t>& sindex, vector <uint32_t> nedges){
+unordered_map<uint32_t, NodEdgSet> MultiStep::find_connected_components(vector<uint32_t>& sindex, const vector <size_t>& nedges){
 	vector<uint32_t> seen_nodes;
 	unordered_map<uint32_t, NodEdgSet> ne;
 
@@ -101,14 +101,15 @@ unordered_map<uint32_t, NodEdgSet> MultiStep::find_connected_components(vector<u
 
 
 	for (size_t i = 0; i < sindex.size(); i++) {
-		ne[sindex[i]] = {++ne[sindex[i]].nodes, ne[sindex[i]].edges += nedges[i]};
+		++ne[sindex[i]].nodes;
+		ne[sindex[i]].edges += nedges[i];
 	}
 	return ne;
 }
 
 void MultiStep::mapping_comp_set(unordered_map<uint32_t, NodEdgSet>& comp) {
 	vector <vector<uint32_t>> set;
-	vector <uint32_t> size;
+	vector <size_t> size;
 	
 	bool TooBig;
 
