@@ -137,7 +137,6 @@ void MultiStep::steps(BitVector& current_reps, BitVector& previous_reps, vector 
 	if (count == 0) {
 		current_reps = rep_bitset(current_centroids);
 	}
-
 	else {
 		current_reps = rep_bitset(current_centroids, &previous_reps);
 
@@ -153,7 +152,7 @@ void MultiStep::steps(BitVector& current_reps, BitVector& previous_reps, vector 
 		n_rep_1 = current_centroids.size();
 	}
 
-	message_stream << "Clustering step " << count + 1 << " complete. #Input sequences: " << n_rep_1  << " #Clusters: " << n_rep_2 << endl;
+	message_stream << "Clustering step " << count + 1 << " complete. #Input sequences: " << n_rep_1 << " #Clusters: " << n_rep_2 << endl;
 
 	previous_centroids = move(current_centroids);
 	previous_reps = move(current_reps);

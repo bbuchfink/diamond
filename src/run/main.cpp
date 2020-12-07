@@ -23,10 +23,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "workflow.h"
 #include "../cluster/cluster_registry.h"
 #include "../util/simd.h"
-#ifdef EXTRA
-#include "../extra/compare.h"
-#include "../extra/match_file.h"
-#endif
 
 using std::cout;
 using std::cerr;
@@ -166,35 +162,6 @@ int main(int ac, const char* av[])
 		case Config::rocid:
 			roc_id();
 			break;
-#ifdef EXTRA
-		case Config::compare:
-			compare();
-			break;
-		case Config::model_sim:
-			model_sim();
-			break;
-		case Config::test_extra:
-			test_main();
-			break;
-		case Config::benchmark:
-			benchmark_sw();
-			break;
-		case Config::seed_stat:
-			seed_stat();
-			break;
-		case Config::model_seqs:
-			model_seqs();
-			break;
-		case Config::opt:
-			opt();
-			break;
-		case Config::db_annot_stats:
-			db_annot_stats();
-			break;
-		case Config::match_file_stat:
-			match_file_stat();
-			break;
-#endif
 		default:
 			return 1;
 		}
