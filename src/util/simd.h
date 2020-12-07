@@ -48,7 +48,7 @@ enum class Arch { None, Generic, SSE4_1, AVX2 };
 enum Flags { SSSE3 = 1, POPCNT = 2, SSE4_1 = 4, AVX2 = 8 };
 Arch arch();
 
-#if defined(RUNTIME_DISPATCH) && defined(__SSE__)
+#ifdef __SSE__
 
 #define DECL_DISPATCH(ret, name, param) namespace ARCH_GENERIC { ret name param; }\
 namespace ARCH_SSE4_1 { ret name param; }\
@@ -68,9 +68,6 @@ inline std::function<decltype(ARCH_GENERIC::name)> dispatch_target_##name() {\
 return ARCH_GENERIC::name;\
 }\
 const std::function<decltype(ARCH_GENERIC::name)> name = dispatch_target_##name();
-
-#define ARCH_SSE4_1 ARCH_GENERIC
-#define ARCH_AVX2 ARCH_GENERIC
 
 #endif
 

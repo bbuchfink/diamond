@@ -64,9 +64,6 @@ set(CMAKE_CXX_STANDARD 11)
 
 if(CMAKE_BUILD_MARCH)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=${CMAKE_BUILD_MARCH}")
-  set(X86 OFF)
-else()
-  add_definitions(-DRUNTIME_DISPATCH)
 endif()
 
 find_package(ZLIB REQUIRED)
