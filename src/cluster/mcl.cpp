@@ -73,7 +73,6 @@ vector<Eigen::Triplet<float>> multiply(Eigen::SparseMatrix<float>* a, Eigen::Spa
 }
 
 void MCL::get_exp(Eigen::SparseMatrix<float>* in, Eigen::SparseMatrix<float>* out, float r, uint32_t nThr){
-	printf("Exp %u\n",nThr);
 	chrono::high_resolution_clock::time_point t = chrono::high_resolution_clock::now();
 	if( r - (int) r == 0 ){
 		// TODO: at some r it may be more beneficial to diagnoalize in and only take the exponents of the eigenvalues
@@ -159,7 +158,6 @@ vector<Eigen::Triplet<float>> gammaIze(Eigen::SparseMatrix<float>* in, float r, 
 }
 
 void MCL::get_gamma(Eigen::SparseMatrix<float>* in, Eigen::SparseMatrix<float>* out, float r, uint32_t nThr){
-	printf("Gamma %u\n",nThr);
 	chrono::high_resolution_clock::time_point t = chrono::high_resolution_clock::now();
 	vector<Eigen::Triplet<float>> data;
 	std::mutex m;
@@ -185,7 +183,6 @@ void MCL::get_gamma(Eigen::SparseMatrix<float>* in, Eigen::SparseMatrix<float>* 
 }
 
 float get_norm(Eigen::SparseMatrix<float>* in, uint32_t nThr){
-	printf("Norm %u\n",nThr);
 	vector<float> data(nThr);
 	fill(data.begin(), data.end(), 0.0);
 	auto norm = [&](const uint32_t iThr){
@@ -240,7 +237,6 @@ void MCL::markov_process(Eigen::SparseMatrix<float>* m, float inflation, float e
 		diff_norm = get_norm(m, getThreads());
 		*m = m_update;
 		iteration++;
-		printf("Iteration %f\n", diff_norm);
 	}
 	if( iteration == max_iter ){
 		failed_to_converge++;
@@ -600,7 +596,6 @@ void MCL::run(){
 						auto getThreads = [&threads_done, &nThreads, &iThr](){
 							uint32_t td=threads_done.load();
 							uint32_t rt=nThreads-td;
-							printf("Threads done %u Running Threads %u Available on iThr=%u: %u\n", td, rt, iThr, 1 + td / rt + (iThr < (td % rt) ? 1 : 0));
 							return 1 + td / rt + (iThr < (td % rt) ? 1 : 0);
 						};
 						markov_process(&m_sparse, inflation, expansion, max_iter, getThreads);
