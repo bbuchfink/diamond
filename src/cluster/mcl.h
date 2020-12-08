@@ -45,11 +45,11 @@ namespace Workflow { namespace Cluster{
 class MCL: public ClusteringAlgorithm {
 private: 
 	void print_stats(uint64_t nElements, uint32_t nComponents, uint32_t nComponentsLt1, vector<uint32_t>& sort_order, vector<vector<uint32_t>>& indices, vector<vector<Eigen::Triplet<float>>>& components);
-	void get_exp(Eigen::SparseMatrix<float>* in, Eigen::SparseMatrix<float>* out, float r);
+	void get_exp(Eigen::SparseMatrix<float>* in, Eigen::SparseMatrix<float>* out, float r, uint32_t nThr);
 	void get_exp(Eigen::MatrixXf* in, Eigen::MatrixXf* out, float r);
-	void get_gamma(Eigen::SparseMatrix<float>* in, Eigen::SparseMatrix<float>* out, float r);
+	void get_gamma(Eigen::SparseMatrix<float>* in, Eigen::SparseMatrix<float>* out, float r, uint32_t nThr);
 	void get_gamma(Eigen::MatrixXf* in, Eigen::MatrixXf* out, float r);
-	void markov_process(Eigen::SparseMatrix<float>* m, float inflation, float expansion, uint32_t max_iter);
+	void markov_process(Eigen::SparseMatrix<float>* m, float inflation, float expansion, uint32_t max_iter, function<uint32_t()> getThreads);
 	void markov_process(Eigen::MatrixXf* m, float inflation, float expansion, uint32_t max_iter);
 	atomic_ullong failed_to_converge = {0};
 	atomic_ullong sparse_create_time = {0};

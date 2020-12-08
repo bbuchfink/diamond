@@ -36,13 +36,71 @@ string MCL::get_description() {
 	return "Markov clustering according to doi:10.1137/040608635";
 }
 
-void MCL::get_exp(Eigen::SparseMatrix<float>* in, Eigen::SparseMatrix<float>* out, float r){
+inline uint64_t get_idx(uint32_t i_idx, uint32_t n_cols, uint32_t j_idx){
+	return i_idx * n_cols + j_idx;
+}
+
+inline void get_indices (uint64_t combined, uint32_t* i, uint32_t n_cols, uint32_t* j){
+	*j = combined % n_cols;
+	*i = ( combined - *j) / n_cols;
+}
+
+vector<Eigen::Triplet<float>> multiply(Eigen::SparseMatrix<float>* a, Eigen::SparseMatrix<float>* b , uint32_t iThr, uint32_t nThr){
+	uint32_t n_cols = b->cols();
+	uint32_t n_rows = a->rows();
+	std::vector<float> result_col(n_rows, 0.0);
+	vector<Eigen::Triplet<float>> data;
+	for (uint32_t j=0; j<n_cols; ++j) {
+		if(j%nThr == iThr){
+			fill(result_col.begin(), result_col.end(), 0.0);
+			for (Eigen::SparseMatrix<float>::InnerIterator  rhsIt(*b, j); rhsIt; ++rhsIt) {
+				const float y = rhsIt.value();
+				const uint32_t k = rhsIt.row();
+				for (Eigen::SparseMatrix<float>::InnerIterator lhsIt(*a, k); lhsIt; ++lhsIt) {
+					const uint32_t i = lhsIt.row();
+					const float x = lhsIt.value();
+					result_col[i] += x*y;
+				}
+			}
+			for (uint32_t i=0; i<n_rows; ++i) {
+				if(result_col[i] > numeric_limits<float>::epsilon()) {
+					data.emplace_back(i, j, result_col[i]);
+				}
+			}
+		}
+	}
+	return data;
+}
+
+void MCL::get_exp(Eigen::SparseMatrix<float>* in, Eigen::SparseMatrix<float>* out, float r, uint32_t nThr){
+	printf("Exp %u\n",nThr);
 	chrono::high_resolution_clock::time_point t = chrono::high_resolution_clock::now();
 	if( r - (int) r == 0 ){
 		// TODO: at some r it may be more beneficial to diagnoalize in and only take the exponents of the eigenvalues
 		*out = *in;
 		for(uint32_t i=1; i<r; i++){ 
-			(*out) = (*out)*(*in);
+			// Note: this is a workaround for a crash in Eigen
+			vector<Eigen::Triplet<float>> data;
+			std::mutex m;
+			auto mult = [&](const uint32_t iThr){
+				vector<Eigen::Triplet<float>> t_data = multiply(in, out, iThr, nThr);
+				m.lock();
+				data.insert(data.end(), t_data.begin(), t_data.end());
+				m.unlock();
+			};
+
+			vector<thread> threads;
+			for(uint32_t iThread = 0; iThread < nThr ; iThread++) {
+				threads.emplace_back(mult, iThread);
+			}
+
+			for(uint32_t iThread = 0; iThread < nThr ; iThread++) {
+				threads[iThread].join();
+			}
+			out->setZero();
+			out->setFromTriplets(data.begin(), data.end(), [] (const float&, const float &b) { return b; });
+			*out = out->pruned(1.0, numeric_limits<float>::epsilon());
+			//(*out) = (*out)*(*in);
 		}
 	}
 	else{ 
@@ -60,6 +118,7 @@ void MCL::get_exp(Eigen::MatrixXf* in, Eigen::MatrixXf* out, float r){
 		for(uint32_t i=1; i<r; i++){ 
 			(*out) *= (*in);
 		}
+		//*out = in->pow(r)
 		dense_int_exp_time += chrono::duration_cast<chrono::milliseconds>(chrono::high_resolution_clock::now() - t).count();
 	}
 	else{ 
@@ -79,21 +138,75 @@ void MCL::get_exp(Eigen::MatrixXf* in, Eigen::MatrixXf* out, float r){
 	}
 }
 
-void MCL::get_gamma(Eigen::SparseMatrix<float>* in, Eigen::SparseMatrix<float>* out, float r){
-	chrono::high_resolution_clock::time_point t = chrono::high_resolution_clock::now();
+
+vector<Eigen::Triplet<float>> gammaIze(Eigen::SparseMatrix<float>* in, float r, uint32_t iThr, uint32_t nThr){
 	vector<Eigen::Triplet<float>> data;
 	for (uint32_t k=0; k<in->outerSize(); ++k){
-		float colSum = 0.0f;
-		for (Eigen::SparseMatrix<float>::InnerIterator it(*in, k); it; ++it){
-			colSum += pow(it.value(),r);
-		}
-		for (Eigen::SparseMatrix<float>::InnerIterator it(*in, k); it; ++it){
-			data.emplace_back(it.row(), it.col(), pow(it.value(),r) / colSum);
+		if( k%nThr == iThr){
+			float colSum = 0.0f;
+			for (Eigen::SparseMatrix<float>::InnerIterator it(*in, k); it; ++it){
+				colSum += pow(it.value(),r);
+			}
+			for (Eigen::SparseMatrix<float>::InnerIterator it(*in, k); it; ++it){
+				float val = pow(it.value(), r) / colSum;
+				if(val > numeric_limits<float>::epsilon()) {
+					data.emplace_back(it.row(), it.col(), val);
+				}
+			}
 		}
 	}
+	return data;
+}
+
+void MCL::get_gamma(Eigen::SparseMatrix<float>* in, Eigen::SparseMatrix<float>* out, float r, uint32_t nThr){
+	printf("Gamma %u\n",nThr);
+	chrono::high_resolution_clock::time_point t = chrono::high_resolution_clock::now();
+	vector<Eigen::Triplet<float>> data;
+	std::mutex m;
+	auto mult = [&](const uint32_t iThr){
+		vector<Eigen::Triplet<float>> t_data = gammaIze(in, r, iThr, nThr);
+		m.lock();
+		data.insert(data.end(), t_data.begin(), t_data.end());
+		m.unlock();
+	};
+
+	vector<thread> threads;
+	for(uint32_t iThread = 0; iThread < nThr ; iThread++) {
+		threads.emplace_back(mult, iThread);
+	}
+
+	for(uint32_t iThread = 0; iThread < nThr ; iThread++) {
+		threads[iThread].join();
+	}
+	out->setZero();
 	out->setFromTriplets(data.begin(), data.end(), [] (const float&, const float &b) { return b; });
 	*out = out->pruned(1.0, numeric_limits<float>::epsilon());
 	sparse_gamma_time += chrono::duration_cast<chrono::milliseconds>(chrono::high_resolution_clock::now() - t).count();
+}
+
+float get_norm(Eigen::SparseMatrix<float>* in, uint32_t nThr){
+	printf("Norm %u\n",nThr);
+	vector<float> data(nThr);
+	fill(data.begin(), data.end(), 0.0);
+	auto norm = [&](const uint32_t iThr){
+		for (uint32_t k=0; k<in->outerSize(); ++k){
+			if( k%nThr == iThr){
+				for (Eigen::SparseMatrix<float>::InnerIterator it(*in, k); it; ++it){
+					data[iThr] += pow(it.value(),2.0);
+				}
+			}
+		}
+	};
+
+	vector<thread> threads;
+	for(uint32_t iThread = 0; iThread < nThr ; iThread++) {
+		threads.emplace_back(norm, iThread);
+	}
+
+	for(uint32_t iThread = 0; iThread < nThr ; iThread++) {
+		threads[iThread].join();
+	}
+	return pow(accumulate(data.begin(), data.end(), 0.0f), 0.5f);
 }
 
 void MCL::get_gamma(Eigen::MatrixXf* in, Eigen::MatrixXf* out, float r){
@@ -111,7 +224,7 @@ void MCL::get_gamma(Eigen::MatrixXf* in, Eigen::MatrixXf* out, float r){
 	dense_gamma_time += chrono::duration_cast<chrono::milliseconds>(chrono::high_resolution_clock::now() - t).count();
 }
 
-void MCL::markov_process(Eigen::SparseMatrix<float>* m, float inflation, float expansion, uint32_t max_iter){
+void MCL::markov_process(Eigen::SparseMatrix<float>* m, float inflation, float expansion, uint32_t max_iter, function<uint32_t()> getThreads){
 	for (uint32_t idiag=0; idiag<m->cols(); ++idiag){
 		assert(abs(m->coeffRef(idiag, idiag)) > numeric_limits<float>::epsilon());
 	}
@@ -119,14 +232,15 @@ void MCL::markov_process(Eigen::SparseMatrix<float>* m, float inflation, float e
 	float diff_norm = numeric_limits<float>::max();
 	Eigen::SparseMatrix<float> msquared(m->rows(), m->cols());
 	Eigen::SparseMatrix<float> m_update(m->rows(), m->cols());
-	get_gamma(m, m, 1); // This is to get a matrix of random walks on the graph -> TODO: find out if something else is more suitable
+	get_gamma(m, m, 1, getThreads()); // This is to get a matrix of random walks on the graph -> TODO: find out if something else is more suitable
 	while( iteration < max_iter && diff_norm > 1e-6*m->rows() ){
-		get_exp(m, &msquared, expansion);
-		get_gamma(&msquared, &m_update, inflation);
+		get_exp(m, &msquared, expansion, getThreads());
+		get_gamma(&msquared, &m_update, inflation, getThreads());
 		*m -= m_update;
-		diff_norm = m->norm();
+		diff_norm = get_norm(m, getThreads());
 		*m = m_update;
 		iteration++;
+		printf("Iteration %f\n", diff_norm);
 	}
 	if( iteration == max_iter ){
 		failed_to_converge++;
@@ -443,6 +557,7 @@ void MCL::run(){
 	atomic_uint n_dense_calculations(0);
 	atomic_uint n_sparse_calculations(0);
 	atomic_uint nClustersEq1(0);
+	atomic_uint threads_done(0);
 
 	auto mcl_clustering = [&](const uint32_t iThr){
 		chrono::high_resolution_clock::time_point thread_start = chrono::high_resolution_clock::now();
@@ -482,7 +597,13 @@ void MCL::run(){
 						Eigen::SparseMatrix<float> m_sparse(order->size(), order->size());
 						m_sparse.setFromTriplets(m->begin(), m->end());
 						sparse_create_time += chrono::duration_cast<chrono::milliseconds>(chrono::high_resolution_clock::now() - t).count();
-						markov_process(&m_sparse, inflation, expansion, max_iter);
+						auto getThreads = [&threads_done, &nThreads, &iThr](){
+							uint32_t td=threads_done.load();
+							uint32_t rt=nThreads-td;
+							printf("Threads done %u Running Threads %u Available on iThr=%u: %u\n", td, rt, iThr, 1 + td / rt + (iThr < (td % rt) ? 1 : 0));
+							return 1 + td / rt + (iThr < (td % rt) ? 1 : 0);
+						};
+						markov_process(&m_sparse, inflation, expansion, max_iter, getThreads);
 						chrono::high_resolution_clock::time_point t = chrono::high_resolution_clock::now();
 						LazyDisjointIntegralSet<uint32_t> disjointSet(m_sparse.cols());
 						for (uint32_t k=0; k<m_sparse.outerSize(); ++k){
@@ -548,6 +669,7 @@ void MCL::run(){
 		n_sparse_calculations.fetch_add(n_sparse, memory_order_relaxed);
 		nClustersEq1.fetch_add(n_singletons, memory_order_relaxed);
 		jobs_per_thread[iThr] = n_jobs_done;
+		threads_done.fetch_add(1, memory_order_relaxed);
 		time_per_thread[iThr] = (chrono::duration_cast<chrono::milliseconds>(chrono::high_resolution_clock::now() - thread_start).count()) / 1000.0;
 	};
 
