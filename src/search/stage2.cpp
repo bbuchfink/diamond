@@ -76,8 +76,7 @@ void search_query_offset(uint64_t q,
 		const size_t n = std::min(N, hits_end - i);
 		for (size_t j = 0; j < n; ++j)
 			subjects[j] = ref_seqs::data_->data(s[*(i + j)]) - window_left;
-		if(config.ungapped_evalue != 0.0)
-			DP::window_ungapped_best(query_clipped.data(), subjects, n, window, scores);
+		DP::window_ungapped_best(query_clipped.data(), subjects, n, window, scores);
 
 		for (size_t j = 0; j < n; ++j) {
 			if (scores[j] > score_cutoff) {

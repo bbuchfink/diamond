@@ -23,6 +23,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../../util/data_structures/bit_vector.h"
 #include "../data/metadata.h"
 #include "../basic/parameters.h"
+#include "../extend.h"
+#include "../target.h"
 
 namespace Extension { namespace GlobalRanking {
 
@@ -38,6 +40,7 @@ struct QueryList {
 	std::vector<Target> targets;
 };
 
+std::vector<Extension::Match> ranking_list(size_t query_id, std::vector<TargetScore>::iterator begin, std::vector<TargetScore>::iterator end, std::vector<uint32_t>::const_iterator target_block_ids, const FlatArray<SeedHit>& seed_hits);
 void write_merged_query_list(const IntermediateRecord& r, const ReferenceDictionary& dict, TextBuffer& out, BitVector& ranking_db_filter, Statistics& stat);
 size_t write_merged_query_list_intro(uint32_t query_id, TextBuffer& buf);
 void finish_merged_query_list(TextBuffer& buf, size_t seek_pos);

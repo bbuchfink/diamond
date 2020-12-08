@@ -20,11 +20,48 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <mutex>
 #include "global_ranking.h"
+#include "../data/queries.h"
+#include "../util/sequence/sequence.h"
+#include "../../dp/ungapped.h"
 
 using std::mutex;
 using std::vector;
 
 namespace Extension { namespace GlobalRanking {
+
+uint16_t recompute_overflow_scores(const SeedHit* begin, const SeedHit* end, size_t query_id, uint32_t target_id) {
+	const auto query = query_seqs::get()[query_id];
+	const auto target = ref_seqs::get()[target_id];
+	int score = 0;
+	for (auto it = begin; it < end; ++it) {
+		if (it->score != UCHAR_MAX)
+			continue;
+		const sequence query_clipped = Util::Sequence::clip(query.data() + it->i - config.ungapped_window, config.ungapped_window * 2, config.ungapped_window);
+		const ptrdiff_t window_left = query.data() + it->i - query_clipped.data();
+		const int s = ungapped_window(query_clipped.data(), target.data() + it->j - window_left, (int)query_clipped.length());
+		score = std::max(score, s);
+	}
+	return (uint16_t)std::min(score, USHRT_MAX);
+}
+
+std::vector<Extension::Match> ranking_list(size_t query_id, std::vector<TargetScore>::iterator begin, std::vector<TargetScore>::iterator end, std::vector<uint32_t>::const_iterator target_block_ids, const FlatArray<SeedHit>& seed_hits) {
+	size_t overflows = 0;
+	for (auto it = begin; it < end && it->score >= UCHAR_MAX; ++it)
+		if (it->score == UCHAR_MAX) {
+			it->score = recompute_overflow_scores(seed_hits.begin(it->target), seed_hits.end(it->target), query_id, target_block_ids[it->target]);
+			++overflows;
+		}
+	if (overflows > 0)
+		std::sort(begin, end); // should also sort by target block id
+
+	size_t n = 0;
+	vector<Match> r;
+	r.reserve(std::min(size_t(end - begin), config.global_ranking_targets));
+	for (auto i = begin; i < end && n < config.global_ranking_targets; ++i, ++n) {
+		r.emplace_back(target_block_ids[i->target], i->score);
+	}
+	return r;
+}
 
 size_t write_merged_query_list_intro(uint32_t query_id, TextBuffer& buf) {
 	size_t seek_pos = buf.size();
