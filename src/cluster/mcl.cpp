@@ -63,7 +63,7 @@ vector<Eigen::Triplet<float>> multiply(Eigen::SparseMatrix<float>* a, Eigen::Spa
 				}
 			}
 			for (uint32_t i=0; i<n_rows; ++i) {
-				if(result_col[i] > numeric_limits<float>::epsilon()) {
+				if(abs(result_col[i]) > numeric_limits<float>::epsilon()) {
 					data.emplace_back(i, j, result_col[i]);
 				}
 			}
@@ -148,7 +148,7 @@ vector<Eigen::Triplet<float>> gammaIze(Eigen::SparseMatrix<float>* in, float r, 
 			}
 			for (Eigen::SparseMatrix<float>::InnerIterator it(*in, k); it; ++it){
 				float val = pow(it.value(), r) / colSum;
-				if(val > numeric_limits<float>::epsilon()) {
+				if(abs(val) > numeric_limits<float>::epsilon()) {
 					data.emplace_back(it.row(), it.col(), val);
 				}
 			}
