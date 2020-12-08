@@ -81,10 +81,11 @@ void finish_merged_query_list(TextBuffer& buf, size_t seek_pos) {
 	*(uint32_t*)(&buf[seek_pos + sizeof(uint32_t)]) = safe_cast<uint32_t>(buf.size() - seek_pos - sizeof(uint32_t) * 2);
 }
 
-QueryList fetch_query_targets(InputFile& query_list) {
+QueryList fetch_query_targets(InputFile& query_list, uint32_t& next_query) {
 	static mutex mtx;
 	std::lock_guard<mutex> lock(mtx);
 	QueryList r;
+	r.last_query_block_id = next_query;
 	uint32_t size;
 	try {
 		query_list >> r.query_block_id;
@@ -92,6 +93,7 @@ QueryList fetch_query_targets(InputFile& query_list) {
 	catch (EndOfStream&) {
 		return r;
 	}
+	next_query = r.query_block_id + 1;
 	query_list >> size;
 	size_t n = size / 6;
 	r.targets.reserve(n);

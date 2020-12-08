@@ -88,7 +88,7 @@ TextBuffer* generate_output(vector<Match> &targets, size_t query_block_id, Stati
 	return out;
 }
 
-TextBuffer* generate_intermediate_output(vector<Match> &targets, size_t query_block_id)
+TextBuffer* generate_intermediate_output(const vector<Match> &targets, size_t query_block_id)
 {
 	TextBuffer* out = new TextBuffer;
 	if (targets.empty())
@@ -99,7 +99,7 @@ TextBuffer* generate_intermediate_output(vector<Match> &targets, size_t query_bl
 	for (size_t i = 0; i < targets.size(); ++i) {
 
 		const size_t subject_id = targets[i].target_block_id;
-		for (Hsp &hsp : targets[i].hsp)
+		for (const Hsp &hsp : targets[i].hsp)
 			IntermediateRecord::write(*out, hsp, query_block_id, subject_id);
 		if (config.global_ranking_targets > 0)
 			IntermediateRecord::write(*out, subject_id, targets[i].ungapped_score);

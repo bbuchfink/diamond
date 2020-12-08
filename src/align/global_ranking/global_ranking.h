@@ -35,7 +35,7 @@ struct QueryList {
 		uint16_t score;
 	};
 
-	uint32_t query_block_id;
+	uint32_t query_block_id, last_query_block_id;
 
 	std::vector<Target> targets;
 };
@@ -45,6 +45,6 @@ void write_merged_query_list(const IntermediateRecord& r, const ReferenceDiction
 size_t write_merged_query_list_intro(uint32_t query_id, TextBuffer& buf);
 void finish_merged_query_list(TextBuffer& buf, size_t seek_pos);
 void extend(DatabaseFile& db, TempFile& merged_query_list, BitVector& ranking_db_filter, const Parameters& params, const Metadata& metadata, Consumer& master_out);
-QueryList fetch_query_targets(InputFile& query_list);
+QueryList fetch_query_targets(InputFile& query_list, uint32_t& next_query);
 
 }}
