@@ -44,6 +44,10 @@ if(DP_STAT)
   add_definitions(-DDP_STAT)
 endif()
 
+if(EXTRA)
+  add_definitions(-DEXTRA)
+endif()
+
 add_definitions(-DMAX_SHAPE_LEN=${MAX_SHAPE_LEN})
 
 IF(STATIC_LIBGCC)
@@ -60,6 +64,9 @@ set(CMAKE_CXX_STANDARD 11)
 
 if(CMAKE_BUILD_MARCH)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=${CMAKE_BUILD_MARCH}")
+  set(X86 OFF)
+else()
+  add_definitions(-DRUNTIME_DISPATCH)
 endif()
 
 find_package(ZLIB REQUIRED)
@@ -236,8 +243,7 @@ if(X86)
   add_executable(diamond $<TARGET_OBJECTS:arch_avx2>
     $<TARGET_OBJECTS:arch_sse4_1>
     $<TARGET_OBJECTS:arch_generic>
-    ${OBJECTS}
-  )
+    ${OBJECTS})
 else()
 add_executable(diamond $<TARGET_OBJECTS:arch_generic>
   ${OBJECTS}

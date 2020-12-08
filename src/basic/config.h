@@ -24,6 +24,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <string>
 #include <vector>
 #include <stdint.h>
+#include <map>
 
 enum class Sensitivity { FAST = 0, MID_SENSITIVE = 1, SENSITIVE = 2, MORE_SENSITIVE = 3, VERY_SENSITIVE = 4, ULTRA_SENSITIVE = 5 };
 enum class TracebackMode { NONE = 0, SCORE_ONLY = 1, STAT = 2, VECTOR = 3, SCORE_BUFFER = 4 };
@@ -268,6 +269,8 @@ struct Config
 	string cluster_algo;
 	string	cluster_similarity;
 
+	size_t max_size_set;
+	string_vector cluster_steps;
 	double cluster_mcl_inflation;
 	uint32_t cluster_mcl_expansion;
 	double cluster_mcl_sparsity_switch;
@@ -275,6 +278,16 @@ struct Config
 	uint32_t cluster_mcl_max_iter;
 	string	cluster_mcl_graph_file;
 	bool	cluster_mcl_restart;
+
+	
+	std::map<std::string, Sensitivity> sens_map{
+		{"fast", Sensitivity::FAST},
+		{"sensitive", Sensitivity::SENSITIVE},
+		{"mid-sensitive", Sensitivity::MID_SENSITIVE},
+		{"more-sensitive", Sensitivity::MORE_SENSITIVE},
+		{"very-sensitive", Sensitivity::VERY_SENSITIVE},
+		{"ultra-sensitive", Sensitivity::ULTRA_SENSITIVE}
+	};
 
 	enum { query_parallel = 0, target_parallel = 1 };
 	unsigned load_balancing;

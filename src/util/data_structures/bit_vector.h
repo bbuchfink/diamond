@@ -28,6 +28,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 struct BitVector {
 
+	BitVector() {}
+
 	BitVector(size_t n) :
 		data_((n + 63) / 64, 0)
 	{
