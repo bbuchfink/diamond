@@ -267,12 +267,17 @@ struct Config
 	int algo;
 
 	string cluster_algo;
+	string	cluster_similarity;
+
 	size_t max_size_set;
 	string_vector cluster_steps;
 	double cluster_mcl_inflation;
 	uint32_t cluster_mcl_expansion;
 	double cluster_mcl_sparsity_switch;
-	string	cluster_similarity;
+	uint32_t cluster_mcl_chunk_size;
+	uint32_t cluster_mcl_max_iter;
+	string	cluster_mcl_graph_file;
+	bool	cluster_mcl_restart;
 
 	
 	std::map<std::string, Sensitivity> sens_map{

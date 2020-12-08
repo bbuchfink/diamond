@@ -22,8 +22,5 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 using namespace std;
 
 namespace Workflow { namespace Cluster{
-	map<string, ClusteringAlgorithm*> ClusterRegistry::regMap;
-	MCL ClusterRegistry::mcl;
-	MultiStep ClusterRegistry::multiStep;
-	ClusterRegistry::StaticConstructor ClusterRegistry::_staticConstructor;
+	const ClusterRegistryStatic ClusterRegistry::reg;
 }}

@@ -57,9 +57,12 @@ private:
 	void steps(BitVector& current_reps, BitVector& previous_reps, vector<int>& current_centroids, vector<int>& previous_centroids, int count);
 
 public:
+	~MultiStep(){};
 	void run();
-	string get_key();
 	string get_description();
+	static string get_key(){
+		return "multi-step";
+	}
 };
 
 struct Neighbors : public vector<vector<int>>, public Consumer {
