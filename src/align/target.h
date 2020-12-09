@@ -72,11 +72,16 @@ struct WorkTarget {
 			}
 			if (target_matrices[block_id] == nullptr) {
 				int16_t* target_matrix = Stats::make_16bit_matrix(Stats::CompositionMatrixAdjust(l, l, c.data(), c.data(), Stats::CBS::AVG_MATRIX_SCALE, score_matrix.ungapped_lambda(), score_matrix.joint_probs(), score_matrix.background_freqs()));
+				bool del = false;
 				{
 					std::lock_guard<std::mutex> lock(target_matrices_lock);
-					target_matrices[block_id] = target_matrix;
-					++target_matrix_count;
+					if (target_matrices[block_id] == nullptr)
+						target_matrices[block_id] = target_matrix;
+					else del = true;
 				}
+				if (del)
+					delete[] target_matrix;
+				++target_matrix_count;
 			}
 			matrix = Stats::TargetMatrix(*query_matrix, target_matrices[block_id]);
 		}

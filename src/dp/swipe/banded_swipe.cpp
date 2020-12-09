@@ -747,8 +747,8 @@ list<Hsp> swipe(
 		if (band_offset > 0)
 			it.set_zero();
 
-		if (Stats::CBS::matrix_adjust(config.comp_based_stats)) {
-			if (config.cbs_matrix_scale >= 16)
+		if (cbs_mask != 0) {
+			if (targets.custom_matrix_16bit)
 				profile.set(targets.get32().data());
 			else
 				profile.set(targets.get(target_scores.data()));

@@ -480,7 +480,7 @@ Config::Config(int argc, const char **argv, bool check_io)
 			frame_shift = 15;
 	}
 
-	if (global_ranking_targets > 0 && (query_range_culling || taxon_k || multiprocessing || mp_init || (command == blastx)))
+	if (global_ranking_targets > 0 && (query_range_culling || taxon_k || multiprocessing || mp_init || (command == blastx) || comp_based_stats >= 2))
 		throw std::runtime_error("Global ranking is not supported in this mode.");
 
 	if (global_ranking_targets > 0) {
@@ -500,6 +500,9 @@ Config::Config(int argc, const char **argv, bool check_io)
 
 	if (max_hsps > 1 && ext == "full")
 		throw std::runtime_error("--max-hsps > 1 is not supported for full matrix extension.");
+
+	if (ext == "full" && comp_based_stats >= 2)
+		throw std::runtime_error("This mode of composition based stats is not supported for full matrix extension.");
 
 	if (check_io) {
 		switch (command) {

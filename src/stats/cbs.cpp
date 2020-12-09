@@ -45,34 +45,34 @@ TargetMatrix::TargetMatrix(const double* query_comp, int query_len, const sequen
 {
     if (!CBS::matrix_adjust(config.comp_based_stats))
         return;
+
     auto c = composition(target);
-    auto r = s_TestToApplyREAdjustmentConditional(query_len, (int)target.length(), query_comp, c.data(), score_matrix.background_freqs());
-    if (r == eCompoScaleOldMatrix)
-        return;
+    if (CBS::conditioned(config.comp_based_stats)) {
+        auto r = s_TestToApplyREAdjustmentConditional(query_len, (int)target.length(), query_comp, c.data(), score_matrix.background_freqs());
+        if (r == eCompoScaleOldMatrix)
+            return;
+    }
 
     scores.resize(32 * AMINO_ACID_COUNT);
     scores32.resize(32 * AMINO_ACID_COUNT);
-
-    //const vector<const int*> p1 = score_matrix.matrix32_scaled_pointers();
-    //double lambda_ratio;
-
-    //if (false)
-        //Blast_CompositionBasedStats(p2.data(), &lambda_ratio, p1.data(), query_comp, c.data());
-    //else {
+    score_min = INT_MAX;
+    score_max = INT_MIN;
     vector<int> s = CompositionMatrixAdjust(query_len, (int)target.length(), query_comp, c.data(), config.cbs_matrix_scale, score_matrix.ungapped_lambda(), score_matrix.joint_probs(), score_matrix.background_freqs());
-    //}
-
-
+    
     for (size_t i = 0; i < AMINO_ACID_COUNT; ++i) {
         for (size_t j = 0; j < AMINO_ACID_COUNT; ++j)
             if (i < 20 && j < 20) {
                 scores[i * 32 + j] = s[j * 20 + i];
                 scores32[i * 32 + j] = s[j * 20 + i];
+                score_min = std::min(score_min, s[j * 20 + i]);
+                score_max = std::max(score_max, s[j * 20 + i]);
                 //std::cerr << s2[j * 20 + i] << ' ';
             }
             else {
                 scores[i * 32 + j] = std::max(score_matrix(i, j) * config.cbs_matrix_scale, SCHAR_MIN);
                 scores32[i * 32 + j] = score_matrix(i, j) * config.cbs_matrix_scale;
+                score_min = std::min(score_min, scores32[i * 32 + j]);
+                score_max = std::max(score_max, scores32[i * 32 + j]);
             }
         //std::cerr << endl;
     }
@@ -80,7 +80,9 @@ TargetMatrix::TargetMatrix(const double* query_comp, int query_len, const sequen
 
 TargetMatrix::TargetMatrix(const int16_t* query_matrix, const int16_t* target_matrix) :
     scores(32 * AMINO_ACID_COUNT),
-    scores32(32 * AMINO_ACID_COUNT)
+    scores32(32 * AMINO_ACID_COUNT),
+    score_min(INT_MAX),
+    score_max(INT_MIN)
 {
     const double f = (double)config.cbs_matrix_scale / (double)CBS::AVG_MATRIX_SCALE;
     for (size_t i = 0; i < AMINO_ACID_COUNT; ++i) {
@@ -89,10 +91,15 @@ TargetMatrix::TargetMatrix(const int16_t* query_matrix, const int16_t* target_ma
                 const int score = std::round(((double)query_matrix[i * 20 + j] + (double)target_matrix[i * 20 + j]) * f / 2.0);
                 scores[i * 32 + j] = score;
                 scores32[i * 32 + j] = score;
+                score_min = std::min(score_min, score);
+                score_max = std::max(score_max, score);
             }
             else {
-                scores[i * 32 + j] = std::max(score_matrix(i, j) * config.cbs_matrix_scale, SCHAR_MIN);
-                scores32[i * 32 + j] = score_matrix(i, j) * config.cbs_matrix_scale;
+                const int score = score_matrix(i, j) * config.cbs_matrix_scale;
+                scores[i * 32 + j] = score;
+                scores32[i * 32 + j] = score;
+                score_min = std::min(score_min, score);
+                score_max = std::max(score_max, score);
             }
     }
 }

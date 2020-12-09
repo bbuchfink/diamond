@@ -44,6 +44,7 @@ struct TargetIterator
 		next(0),
 		n_targets(int(subject_end - subject_begin)),
 		cols(0),
+		custom_matrix_16bit(false),
 		subject_begin(subject_begin)
 	{
 		for (; next < std::min((int)CHANNELS, n_targets); ++next) {
@@ -55,6 +56,8 @@ struct TargetIterator
 			cols = std::max(cols, j1 - pos[next]);
 			target[next] = next;
 			active.push_back(next);
+			if (t.adjusted_matrix() && (t.matrix->score_max > SCHAR_MAX || t.matrix->score_min < SCHAR_MIN))
+				custom_matrix_16bit = true;
 		}
 	}
 
@@ -153,6 +156,7 @@ struct TargetIterator
 	}
 
 	int pos[CHANNELS], target[CHANNELS], next, n_targets, cols;
+	bool custom_matrix_16bit;
 	Static_vector<int, CHANNELS> active;
 	const vector<DpTarget>::const_iterator subject_begin;
 };

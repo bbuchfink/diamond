@@ -40,6 +40,8 @@ struct TargetMatrix {
     std::vector<int8_t> scores;
     std::vector<int32_t> scores32;
 
+    int score_min, score_max;
+
 };
 
 /** An collection of constants that specify all rules that may
@@ -142,6 +144,15 @@ struct CBS {
     static bool avg_matrix(unsigned code) {
         switch (code) {
         case HAUSER_AND_AVG_MATRIX_ADJUST:
+            return true;
+        default:
+            return false;
+        }
+    }
+    static bool conditioned(unsigned code) {
+        switch (code) {
+        case HAUSER_AND_AVG_MATRIX_ADJUST:
+        case HAUSER_AND_MATRIX_ADJUST:
             return true;
         default:
             return false;
