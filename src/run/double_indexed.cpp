@@ -89,17 +89,12 @@ void run_ref_chunk(DatabaseFile &db_file,
 	log_rss();
 
 	task_timer timer;
-	if (config.masking == 1 && !config.no_ref_masking) {
+	/*if (config.masking == 1 && !config.no_ref_masking) {
 		timer.go("Masking reference");
 		size_t n = mask_seqs(*ref_seqs::data_, Masking::get());
 		timer.finish();
 		log_stream << "Masked letters: " << n << endl;
-	}
-
-	if (config.target_seg == 1) {
-		timer.go("SEG masking targets");
-		mask_seqs(*ref_seqs::data_, Masking::get(), true, Masking::Algo::SEG);
-	}
+	}*/
 
 	ReferenceDictionary::get().init(safe_cast<unsigned>(ref_seqs::get().get_length()), block_to_database_id);
 
@@ -145,10 +140,17 @@ void run_ref_chunk(DatabaseFile &db_file,
 	else
 		out = &master_out;
 
-	/*if (config.target_seg == 1) {
+	if (config.masking == 1 && !config.no_ref_masking) {
+		timer.go("Masking reference");
+		size_t n = mask_seqs(*ref_seqs::data_, Masking::get());
+		timer.finish();
+		log_stream << "Masked letters: " << n << endl;
+	}
+
+	if (config.target_seg == 1) {
 		timer.go("SEG masking targets");
 		mask_seqs(*ref_seqs::data_, Masking::get(), true, Masking::Algo::SEG);
-	}*/
+	}
 
 	timer.go("Computing alignments");
 	align_queries(*Trace_pt_buffer::instance, out, params, metadata);

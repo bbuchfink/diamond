@@ -450,7 +450,7 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("cbs-matrix-scale", 0, "", cbs_matrix_scale, 1)
 		("query-count", 0, "", query_count, (size_t)1)
 		("cbs-angle", 0, "", cbs_angle, 50.0)
-		("target-seg", 0, "", target_seg, 1)
+		("target-seg", 0, "", target_seg, 0)
 		("cbs-err-tolerance", 0, "", cbs_err_tolerance, 0.00000001)
 		("cbs-it-limit", 0, "", cbs_it_limit, 2000);
 	
@@ -489,8 +489,13 @@ Config::Config(int argc, const char **argv, bool check_io)
 		ext = "full";
 	}
 
+#ifdef EXTRA
 	if (comp_based_stats >= Stats::CBS::COUNT)
 		throw std::runtime_error("Invalid value for --comp-based-stats. Permitted values: 0, 1, 2, 3, 4.");
+#else
+	if (comp_based_stats >= 2)
+		throw std::runtime_error("Invalid value for --comp-based-stats. Permitted values: 0, 1.");
+#endif
 
 	if (command == blastx && !Stats::CBS::support_translated(comp_based_stats))
 		throw std::runtime_error("This mode of composition based stats is not supported for translated searches.");
