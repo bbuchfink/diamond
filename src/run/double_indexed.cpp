@@ -96,6 +96,11 @@ void run_ref_chunk(DatabaseFile &db_file,
 		log_stream << "Masked letters: " << n << endl;
 	}
 
+	if (config.target_seg == 1) {
+		timer.go("SEG masking targets");
+		mask_seqs(*ref_seqs::data_, Masking::get(), true, Masking::Algo::SEG);
+	}
+
 	ReferenceDictionary::get().init(safe_cast<unsigned>(ref_seqs::get().get_length()), block_to_database_id);
 
 	timer.go("Initializing temporary storage");
@@ -140,10 +145,10 @@ void run_ref_chunk(DatabaseFile &db_file,
 	else
 		out = &master_out;
 
-	if (config.target_seg == 1) {
+	/*if (config.target_seg == 1) {
 		timer.go("SEG masking targets");
 		mask_seqs(*ref_seqs::data_, Masking::get(), true, Masking::Algo::SEG);
-	}
+	}*/
 
 	timer.go("Computing alignments");
 	align_queries(*Trace_pt_buffer::instance, out, params, metadata);

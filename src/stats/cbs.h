@@ -93,19 +93,6 @@ s_TestToApplyREAdjustmentConditional(int Len_query,
     const double* background_freqs);
 
 struct CBS {
-    static bool seg(unsigned code) {
-        switch (code) {
-        case 0:
-        case 1:
-            return false;
-        case 2:
-        case 3:
-        case 4:
-            return true;
-        default:
-            throw std::runtime_error("Unknown CBS code.");
-        }
-    }
     static bool hauser(unsigned code) {
         switch (code) {
         case 0:

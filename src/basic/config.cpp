@@ -652,7 +652,7 @@ Config::Config(int argc, const char **argv, bool check_io)
 			throw std::runtime_error("Clustering algorithm not found.");
 		}
 		message_stream << "Scoring parameters: " << score_matrix << endl;
-		if (masking == 1 || Stats::CBS::seg(comp_based_stats) || target_seg)
+		if (masking == 1 || target_seg)
 			Masking::instance = unique_ptr<Masking>(new Masking(score_matrix));
 	}
 
