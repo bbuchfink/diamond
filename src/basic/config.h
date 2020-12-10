@@ -248,7 +248,7 @@ struct Config
 	int cbs_matrix_scale;
 	size_t query_count;
 	double cbs_angle;
-	bool target_seg;
+	int target_seg;
 	double cbs_err_tolerance;
 	int cbs_it_limit;
 

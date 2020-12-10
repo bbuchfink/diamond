@@ -450,7 +450,7 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("cbs-matrix-scale", 0, "", cbs_matrix_scale, 1)
 		("query-count", 0, "", query_count, (size_t)1)
 		("cbs-angle", 0, "", cbs_angle, 50.0)
-		("target-seg", 0, "", target_seg)
+		("target-seg", 0, "", target_seg, 1)
 		("cbs-err-tolerance", 0, "", cbs_err_tolerance, 0.00000001)
 		("cbs-it-limit", 0, "", cbs_it_limit, 2000);
 	
@@ -503,6 +503,9 @@ Config::Config(int argc, const char **argv, bool check_io)
 
 	if (ext == "full" && comp_based_stats >= 2)
 		throw std::runtime_error("This mode of composition based stats is not supported for full matrix extension.");
+
+	if (target_seg < 0 || target_seg > 1)
+		throw std::runtime_error("Permitted values for --target-seg: 0, 1");
 
 	if (check_io) {
 		switch (command) {
