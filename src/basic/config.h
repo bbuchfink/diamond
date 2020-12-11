@@ -251,6 +251,8 @@ struct Config
 	int target_seg;
 	double cbs_err_tolerance;
 	int cbs_it_limit;
+	double query_match_distance_threshold;
+	double length_ratio_threshold;
 
 	Sensitivity sensitivity;
 	TracebackMode traceback_mode;

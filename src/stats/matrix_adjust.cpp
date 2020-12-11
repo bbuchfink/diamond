@@ -1079,8 +1079,6 @@ Blast_CompositionMatrixAdj(int** matrix,
 /** some digits of PI */
 #define PI 3.1415926543
 /** @{ thresholds used to determine which composition mode to use */
-#define QUERY_MATCH_DISTANCE_THRESHOLD 0.16
-#define LENGTH_RATIO_THRESHOLD 3.0
 #define HIGH_PAIR_THRESHOLD 0.4
 #define LENGTH_LOWER_THRESHOLD 50
 /** @} */
@@ -1217,8 +1215,8 @@ s_TestToApplyREAdjustmentConditional(int Len_query,
         which_rule = eUserSpecifiedRelEntropy;
     }
     else {
-        if (//(D_m_q > QUERY_MATCH_DISTANCE_THRESHOLD) &&
-            //(len_large / len_small > LENGTH_RATIO_THRESHOLD) &&
+        if ((D_m_q > config.query_match_distance_threshold) &&
+            (len_large / len_small > config.length_ratio_threshold) &&
             (angle > config.cbs_angle)) {
             which_rule = eCompoScaleOldMatrix;
         }

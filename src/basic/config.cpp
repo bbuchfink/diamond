@@ -452,7 +452,9 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("cbs-angle", 0, "", cbs_angle, 50.0)
 		("target-seg", 0, "", target_seg, 0)
 		("cbs-err-tolerance", 0, "", cbs_err_tolerance, 0.00000001)
-		("cbs-it-limit", 0, "", cbs_it_limit, 2000);
+		("cbs-it-limit", 0, "", cbs_it_limit, 2000)
+		("query-match-distance-threshold", 0, "", query_match_distance_threshold, 0.16)
+		("length-ratio-threshold", 0, "", length_ratio_threshold, 3.0);
 	
 	parser.add(general).add(makedb).add(cluster).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options).add(deprecated_options);
 	parser.store(argc, argv, command);
