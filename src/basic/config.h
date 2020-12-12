@@ -158,7 +158,6 @@ struct Config
 	double freq_treshold;
 	bool use_lazy_dict;
 	string aligned_file;
-	int filter_locus;
 	bool use_dataset_field;
 	bool store_query_quality;
 	string invocation;
@@ -239,7 +238,6 @@ struct Config
 	double ranking_score_drop_factor;
 	double ranking_cutoff_bitscore;
 	int left_most_interval;
-	bool alp;
 	bool no_forward_fp;
 	bool no_ref_masking;
 	string roc_file;
@@ -248,6 +246,11 @@ struct Config
 	bool output_fp;
 	int family_cap;
 	int cbs_matrix_scale;
+	size_t query_count;
+	double cbs_angle;
+	bool target_seg;
+	double cbs_err_tolerance;
+	int cbs_it_limit;
 
 	Sensitivity sensitivity;
 	TracebackMode traceback_mode;

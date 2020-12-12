@@ -27,7 +27,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../output/daa_file.h"
 #include "../output/daa_record.h"
 #include "../util/io/output_file.h"
-#include "../basic/score_matrix.h"
+#include "../stats/score_matrix.h"
 #include "../util/escape_sequences.h"
 #include "../basic/parameters.h"
 #include "../data/metadata.h"

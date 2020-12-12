@@ -25,7 +25,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../basic/value.h"
 #include "../basic/translate.h"
 #include "../basic/packed_transcript.h"
-#include "../basic/score_matrix.h"
+#include "../stats/score_matrix.h"
 #include "../basic/match.h"
 
 using std::string;

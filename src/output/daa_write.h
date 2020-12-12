@@ -23,7 +23,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <stdint.h>
 #include "output.h"
 #include "daa_file.h"
-#include "../basic/score_matrix.h"
+#include "../stats/score_matrix.h"
 #include "../data/reference.h"
 #include "../align/align.h"
 #include "../basic/packed_sequence.h"

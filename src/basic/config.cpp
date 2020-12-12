@@ -31,7 +31,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/util.h"
 #include "../util/log_stream.h"
 #include "../basic/value.h"
-#include "score_matrix.h"
+#include "../stats/score_matrix.h"
 #include "../util/system.h"
 #include "reduction.h"
 #include "shape_config.h"
@@ -50,7 +50,7 @@ using namespace std;
 Config config;
 
 void print_warnings() {
-	if (config.sensitivity >= Sensitivity::VERY_SENSITIVE || config.verbosity == 0)
+	if (config.sensitivity >= Sensitivity::VERY_SENSITIVE || config.verbosity == 0 || config.swipe_all)
 		return;
 	const double ram = total_ram();
 	unsigned b = 2, c = 4;
@@ -263,8 +263,6 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("long-reads", 0, "short for --range-culling --top 10 -F 15", long_reads)
 		("matrix", 0, "score matrix for protein alignment (default=BLOSUM62)", matrix, string("blosum62"))
 		("custom-matrix", 0, "file containing custom scoring matrix", matrix_file)
-		("lambda", 0, "lambda parameter for custom matrix", lambda)
-		("K", 0, "K parameter for custom matrix", K)
 		("comp-based-stats", 0, "enable composition based statistics (0/1=default)", comp_based_stats, 1u)
 		("masking", 0, "enable masking of low complexity regions (0/1=default)", masking, 1)
 		("query-gencode", 0, "genetic code to use to translate query (see user manual)", query_gencode, 1u)
@@ -326,7 +324,9 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("hit-score", 0, "minimum score to keep a tentative alignment", min_hit_score)
 		("gapped-xdrop", 'X', "xdrop for gapped alignment in bits", gapped_xdrop, 20)
 		("rank-ratio2", 0, "include subjects within this ratio of last hit (stage 2)", rank_ratio2, -1.0)
-		("rank-ratio", 0, "include subjects within this ratio of last hit", rank_ratio, -1.0);
+		("rank-ratio", 0, "include subjects within this ratio of last hit", rank_ratio, -1.0)
+		("lambda", 0, "lambda parameter for custom matrix", lambda)
+		("K", 0, "K parameter for custom matrix", K);
 
 #ifdef EXTRA
 	Options_group hidden_options("");
@@ -386,7 +386,6 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("sort-join", 0, "", sort_join)
 		("simple-freq", 0, "", simple_freq)
 		("freq-treshold", 0, "", freq_treshold)
-		("filter-locus", 0, "", filter_locus)
 		("use-dataset-field", 0, "", use_dataset_field)
 		("store-query-quality", 0, "", store_query_quality)
 		("swipe-chunk-size", 0, "", swipe_chunk_size, 256u)
@@ -445,13 +444,17 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("score-drop-factor", 0, "", ranking_score_drop_factor, 0.95)
 		("left-most-interval", 0, "", left_most_interval, 32)
 		("ranking-cutoff-bitscore", 0, "", ranking_cutoff_bitscore, 25.0)
-		("alp", 0, "", alp)
 		("no-forward-fp", 0, "", no_forward_fp)
 		("no-ref-masking", 0, "", no_ref_masking)
 		("target-bias", 0, "", target_bias)
 		("output-fp", 0, "", output_fp)
 		("family-cap", 0, "", family_cap)
-		("cbs-matrix-scale", 0, "", cbs_matrix_scale, 1);
+		("cbs-matrix-scale", 0, "", cbs_matrix_scale, 1)
+		("query-count", 0, "", query_count, (size_t)1)
+		("cbs-angle", 0, "", cbs_angle, 50.0)
+		("target-seg", 0, "", target_seg)
+		("cbs-err-tolerance", 0, "", cbs_err_tolerance, 0.00000001)
+		("cbs-it-limit", 0, "", cbs_it_limit, 2000);
 	
 	parser.add(general).add(makedb).add(cluster).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options).add(deprecated_options);
 	parser.store(argc, argv, command);
@@ -487,6 +490,12 @@ Config::Config(int argc, const char **argv, bool check_io)
 			throw std::runtime_error("Global ranking only supports full matrix extension.");
 		ext = "full";
 	}
+
+	if (comp_based_stats >= Stats::CBS::COUNT)
+		throw std::runtime_error("Invalid value for --comp-based-stats. Permitted values: 0, 1, 2, 3, 4.");
+
+	if (command == blastx && !Stats::CBS::support_translated(comp_based_stats))
+		throw std::runtime_error("This mode of composition based stats is not supported for translated searches.");
 
 	if (swipe_all)
 		ext = "full";
@@ -617,14 +626,17 @@ Config::Config(int argc, const char **argv, bool check_io)
 			throw std::runtime_error("Frameshift alignments are only supported for translated searches.");
 		if (query_range_culling && frame_shift == 0)
 			throw std::runtime_error("Query range culling is only supported in frameshift alignment mode (option -F).");
-		if (matrix_file == "")
-			score_matrix = Score_matrix(to_upper_case(matrix), gap_open, gap_extend, frame_shift, stop_match_score, 0, alp);
+		if (matrix_file == "") {
+			score_matrix = Score_matrix(to_upper_case(matrix), gap_open, gap_extend, frame_shift, stop_match_score, 0, cbs_matrix_scale);
+		}
 		else {
-			if (lambda == 0 || K == 0)
-				throw std::runtime_error("Custom scoring matrices require setting the --lambda and --K options.");
 			if (gap_open == -1 || gap_extend == -1)
 				throw std::runtime_error("Custom scoring matrices require setting the --gapopen and --gapextend options.");
-			score_matrix = Score_matrix(matrix_file, lambda, K, gap_open, gap_extend);
+			if (!output_format.empty() && (output_format.front() == "daa" || output_format.front() == "100"))
+				throw std::runtime_error("Custom scoring matrices are not supported for the DAA format.");
+			if (config.comp_based_stats > 1)
+				throw std::runtime_error("This value for --comp-based-stats is not supported when using a custom scoring matrix.");
+			score_matrix = Score_matrix(matrix_file, gap_open, gap_extend, stop_match_score, Score_matrix::Custom());
 		}
 		if(command == Config::cluster && !Workflow::Cluster::ClusterRegistry::has(cluster_algo)){
 			ostream &header_out = command == Config::help ? cout : cerr;
@@ -636,7 +648,7 @@ Config::Config(int argc, const char **argv, bool check_io)
 			throw std::runtime_error("Clustering algorithm not found.");
 		}
 		message_stream << "Scoring parameters: " << score_matrix << endl;
-		if (masking == 1)
+		if (masking == 1 || Stats::CBS::seg(comp_based_stats) || target_seg)
 			Masking::instance = unique_ptr<Masking>(new Masking(score_matrix));
 	}
 
@@ -668,7 +680,11 @@ Config::Config(int argc, const char **argv, bool check_io)
 	/*if (ext != "banded-fast" && ext != "banded-slow" && ext != "full" && ext != "")
 		throw std::runtime_error("Possible values for --ext are: banded-fast, banded-slow, full");*/
 
-	if (ext != "banded-fast" && ext != "banded-slow" && ext != "")
+	set<string> ext_modes = { "", "banded-fast", "banded-slow" };
+#ifdef EXTRA
+	ext_modes.insert("full");
+#endif
+	if (ext_modes.find(ext) == ext_modes.end())
 		throw std::runtime_error("Possible values for --ext are: banded-fast, banded-slow");
 
 	Translator::init(query_gencode);

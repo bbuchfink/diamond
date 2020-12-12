@@ -102,7 +102,7 @@ TextBuffer* generate_intermediate_output(vector<Match> &targets, size_t query_bl
 		for (Hsp &hsp : targets[i].hsp)
 			IntermediateRecord::write(*out, hsp, query_block_id, subject_id);
 		if (config.global_ranking_targets > 0)
-			IntermediateRecord::write(*out, subject_id, targets[i].filter_score);
+			IntermediateRecord::write(*out, subject_id, targets[i].ungapped_score);
 	}
 
 	IntermediateRecord::finish_query(*out, seek_pos);

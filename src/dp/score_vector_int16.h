@@ -59,6 +59,16 @@ struct score_vector<int16_t>
 		data_(_mm256_loadu_si256((const __m256i*)x))
 	{}
 
+	score_vector(int16_t a, int16_t b, uint32_t mask) {
+		alignas(32) int16_t s[16];
+		for (uint32_t i = 0; i < 16; ++i)
+			if (mask & (1 << i))
+				s[i] = b;
+			else
+				s[i] = a;
+		data_ = _mm256_load_si256(reinterpret_cast<const __m256i*>(s));
+	}
+
 	score_vector(unsigned a, Register seq)
 	{
 		const __m256i* row_lo = reinterpret_cast<const __m256i*>(&score_matrix.matrix8u_low()[a << 5]);
@@ -158,6 +168,15 @@ struct score_vector<int16_t>
 		data_ = _mm256_load_si256((__m256i*)w);
 	}
 
+	friend std::ostream& operator<<(std::ostream& s, score_vector v)
+	{
+		int16_t x[16];
+		v.store(x);
+		for (unsigned i = 0; i < 16; ++i)
+			printf("%3i ", (int)x[i]);
+		return s;
+	}
+
 	__m256i data_;
 
 };
@@ -195,6 +214,16 @@ struct score_vector<int16_t>
 	explicit score_vector(const uint16_t *x) :
 		data_(_mm_loadu_si128((const __m128i*)x))
 	{}
+
+	score_vector(int16_t a, int16_t b, uint32_t mask) {
+		alignas(32) int16_t s[8];
+		for (uint32_t i = 0; i < 8; ++i)
+			if (mask & (1 << i))
+				s[i] = b;
+			else
+				s[i] = a;
+		data_ = _mm_load_si128(reinterpret_cast<const __m128i*>(s));
+	}
 
 	score_vector(unsigned a, uint64_t seq)
 	{
@@ -313,6 +342,15 @@ struct score_vector<int16_t>
 		data_ = _mm_loadu_si128((__m128i*)d);
 	}
 
+	friend std::ostream& operator<<(std::ostream& s, score_vector v)
+	{
+		int16_t x[8];
+		v.store(x);
+		for (unsigned i = 0; i < 8; ++i)
+			printf("%3i ", (int)x[i]);
+		return s;
+	}
+
 	__m128i data_;
 
 };
@@ -398,6 +436,10 @@ static inline DISPATCH_ARCH::score_vector<int16_t> load_sv(const int16_t *x) {
 
 static inline DISPATCH_ARCH::score_vector<int16_t> load_sv(const uint16_t *x) {
 	return DISPATCH_ARCH::score_vector<int16_t>(x);
+}
+
+static inline DISPATCH_ARCH::score_vector<int16_t> load_sv(int16_t a, int16_t b, uint32_t mask) {
+	return DISPATCH_ARCH::score_vector<int16_t>(a, b, mask);
 }
 
 #endif

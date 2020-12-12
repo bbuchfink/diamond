@@ -33,7 +33,7 @@ const int Infinity = -1;
 /** This value means that the cost to evaluate an expression coefficient is either very expensive or
   * cannot be known at compile time.
   *
-  * This value has to be positive to (1) simplify cost computation, and (2) allow one to distinguish between a very expensive and very very expensive expressions.
+  * This value has to be positive to (1) simplify cost computation, and (2) allow to distinguish between a very expensive and very very expensive expressions.
   * It thus must also be large enough to make sure unrolling won't happen and that sub expressions will be evaluated, but not too large to avoid overflow.
   */
 const int HugeCost = 10000;
@@ -153,7 +153,7 @@ const unsigned int DirectAccessBit = 0x40;
   *
   * means the first coefficient packet is guaranteed to be aligned.
   * An expression cannot has the AlignedBit without the PacketAccessBit flag.
-  * In other words, this means we are allowing one to perform an aligned packet access to the first element regardless
+  * In other words, this means we are allow to perform an aligned packet access to the first element regardless
   * of the expression kind:
   * \code
   * expression.packet<Aligned>(0);

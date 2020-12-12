@@ -90,8 +90,11 @@ struct Target : public ::Target
 	void set_filter_score()
 	{
 		filter_score = 0;
-		for (list<Hsp>::const_iterator i = hsps.begin(); i != hsps.end(); ++i)
+		filter_evalue = DBL_MAX;
+		for (list<Hsp>::const_iterator i = hsps.begin(); i != hsps.end(); ++i) {
 			filter_score = std::max(filter_score, (int)i->score);
+			filter_evalue = std::min(filter_evalue, i->evalue);
+		}
 	}
 
 	void reset()
@@ -101,7 +104,7 @@ struct Target : public ::Target
 
 	void finish(QueryMapper &mapper)
 	{
-		inner_culling(mapper.raw_score_cutoff());
+		inner_culling();
 		if (config.frame_shift)
 			return;
 		for (list<Hsp>::iterator i = hsps.begin(); i != hsps.end(); ++i)
@@ -126,7 +129,7 @@ struct Target : public ::Target
 void Pipeline::range_ranking()
 {
 	const double rr = config.rank_ratio == -1 ? 0.4 : config.rank_ratio;
-	std::stable_sort(targets.begin(), targets.end(), Target::compare);
+	std::stable_sort(targets.begin(), targets.end(), Target::compare_score);
 	IntervalPartition ip((int)std::min(config.max_alignments, (size_t)INT_MAX));
 	for (PtrVector< ::Target>::iterator i = targets.begin(); i < targets.end();) {
 		Target* t = ((Target*)*i);
