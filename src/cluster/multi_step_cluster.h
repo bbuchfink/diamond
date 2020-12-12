@@ -37,6 +37,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "cluster.h"
 #include <unordered_map>
 #include <numeric>
+#include "../util/io/temp_file.h"
 
 using namespace std;
 
@@ -63,16 +64,27 @@ public:
 };
 
 struct Neighbors : public vector<vector<int>>, public Consumer {
-	Neighbors(size_t n) : vector<vector<int>>(n), smallest_index(n,0), number_edges(n,0){
+	Neighbors(size_t n) : vector<vector<int>>(n), smallest_index(n,0), number_edges(n,0) {
 		iota(smallest_index.begin(), smallest_index.end(), 0);
 	}
 
 	vector<uint32_t> smallest_index;
 	vector<size_t> number_edges;
-	
-	
+	vector<TempFile*> tempfiles;
+	size_t size;
+
+
 	virtual void consume(const char* ptr, size_t n) override {
 		const char* end = ptr + n;
+
+		if (config.external) {
+			size += n;
+			if (tempfiles.empty() || size >= UINT32_MAX) {
+				tempfiles.push_back(new TempFile());
+				size = 0;
+			}
+			tempfiles.back()->write(ptr, n);
+		}
 
 		while (ptr < end) {
 			const uint32_t query = *(uint32_t*)ptr;
@@ -81,7 +93,6 @@ struct Neighbors : public vector<vector<int>>, public Consumer {
 			ptr += sizeof(uint32_t);
 
 			(*this)[query].push_back(subject);
-			edges.push_back({ query, subject });
 
 			if (subject < smallest_index[query])
 				smallest_index[query] = subject;
@@ -90,8 +101,9 @@ struct Neighbors : public vector<vector<int>>, public Consumer {
 				smallest_index[subject] = query;
 
 			++number_edges[query];
+
 		}
 	}
-	vector<Util::Algo::Edge> edges;
+
 };
 }}
