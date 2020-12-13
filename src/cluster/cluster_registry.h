@@ -25,40 +25,53 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 using namespace std;
 
 namespace Workflow { namespace Cluster{
-class ClusterRegistry{
-private:
-	ClusterRegistry(){};
-	// To include new clustering algorithms add the instantiation here and in the cluster_registry.cpp file. Then add it to the StaticConstructor below
-	static MCL mcl;
-	static MultiStep multiStep;
+class ClusterRegistryStatic{
+	map<string, ClusteringAlgorithm*> regMap;
 public:
-	static map<string, ClusteringAlgorithm*> regMap;
-	static ClusteringAlgorithm* get(string key){
-		map<string, ClusteringAlgorithm*>::iterator ca = ClusterRegistry::regMap.find(key);
-		if(ca == ClusterRegistry::regMap.end()){
+	ClusterRegistryStatic(){
+		// To include new clustering algorithms add them into regMap
+		regMap[MultiStep::get_key()] = new MultiStep();
+		regMap[MCL::get_key()] = new MCL();
+	}
+	~ClusterRegistryStatic(){
+		for(auto it = regMap.begin(); it != regMap.end(); it++){
+			delete it->second;
+			it->second = nullptr;
+		}
+	}
+	ClusteringAlgorithm* get(string key) const{
+		auto ca = regMap.find(key);
+		if(ca == regMap.end()){
 			throw std::runtime_error("Clustering algorithm not found.");
 		}
 		return ca->second;
 	}
-	static bool has(string key){
-		return ClusterRegistry::regMap.find(key) != ClusterRegistry::regMap.end();
+	bool has(string key) const{
+		return regMap.find(key) != regMap.end();
 	}
-	static vector<string> getKeys(){
-		auto it = regMap.begin();
+	vector<string> getKeys() const{
 		vector<string> keys;
-		while(it != regMap.end()){
+		for(auto it = regMap.begin(); it != regMap.end(); it++){
 			keys.push_back(it->first);
-			it++;
 		}
 		return keys;
 	}
-	static struct StaticConstructor {
-		StaticConstructor() {
-			// Add any new clustering algorithm here
-			regMap.emplace(multiStep.get_key(), &multiStep);
-			regMap.emplace(mcl.get_key(), &mcl);
-		}
-	} _staticConstructor;
+
+};
+
+class ClusterRegistry{
+private:
+	static const ClusterRegistryStatic reg;
+public:
+	static ClusteringAlgorithm* get(string key){
+		return reg.get(key);
+	}
+	static bool has(string key){
+		return reg.has(key);
+	}
+	static vector<string> getKeys(){
+		return reg.getKeys();
+	}
 };
 
 }}

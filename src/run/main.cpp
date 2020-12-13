@@ -22,6 +22,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../data/reference.h"
 #include "workflow.h"
 #include "../cluster/cluster_registry.h"
+#include "../output/recursive_parser.h"
 #include "../util/simd.h"
 
 using std::cout;
@@ -115,6 +116,17 @@ int main(int ac, const char* av[])
 			pairwise();
 			break;
 		case Config::cluster:
+			// Why is cluster_similarity not set at the end of the Config constructor?
+			if(!config.cluster_similarity.empty()){
+				RecursiveParser rp(nullptr, config.cluster_similarity.c_str(), true);
+				try{
+					rp.evaluate();
+				}
+				catch (const runtime_error& e){
+					message_stream << "Could not evaluate the expression: " << config.cluster_similarity << endl;
+					throw e;
+				}
+			}
 			Workflow::Cluster::ClusterRegistry::get(config.cluster_algo)->run();
 			break;
 		case Config::translate:
