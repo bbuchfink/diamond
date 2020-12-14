@@ -98,14 +98,14 @@ std::ostream& operator<<(std::ostream& s, const Score_matrix &m)
 	return s;
 }
 
-const signed char* custom_scores(const string &matrix_file, int default)
+const signed char* custom_scores(const string &matrix_file, int mask_score)
 {
 	static signed char scores[AMINO_ACID_COUNT * AMINO_ACID_COUNT];
 	string l, s;
 	std::stringstream ss;
 	vector<Letter> pos;
 	unsigned n = 0;
-	std::fill(scores, scores + sizeof(scores), int8_t(default));
+	std::fill(scores, scores + sizeof(scores), int8_t(mask_score));
 	if (matrix_file == "")
 		return scores;
 	std::ifstream f(matrix_file.c_str());
