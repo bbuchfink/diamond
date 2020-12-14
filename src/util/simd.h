@@ -123,6 +123,8 @@ static inline __m256i _mm256_set1_epi16(short v) {
 #endif
 }
 
+#define _mm256_set_m128i(v0, v1) _mm256_insertf128_si256(_mm256_castsi128_si256(v1), (v0), 1)
+
 inline void print_8(__m256i x, std::ostream& s) {
 	alignas(32) int8_t v[32];
 	_mm256_store_si256((__m256i*)v, x);
