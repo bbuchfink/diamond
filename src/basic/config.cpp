@@ -261,8 +261,8 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("long-reads", 0, "short for --range-culling --top 10 -F 15", long_reads)
 		("matrix", 0, "score matrix for protein alignment (default=BLOSUM62)", matrix, string("blosum62"))
 		("custom-matrix", 0, "file containing custom scoring matrix", matrix_file)
-		("comp-based-stats", 0, "enable composition based statistics (0/1=default)", comp_based_stats, 1u)
-		("masking", 0, "enable masking of low complexity regions (0/1=default)", masking, 1)
+		("comp-based-stats", 0, "composition based statistics mode (0-4)", comp_based_stats, 1u)
+		("masking", 0, "enable tantan masking of repeat regions (0/1=default)", masking, -1)
 		("query-gencode", 0, "genetic code to use to translate query (see user manual)", query_gencode, 1u)
 		("salltitles", 0, "include full subject titles in DAA file", salltitles)
 		("sallseqid", 0, "include all subject ids in DAA file", sallseqid)
@@ -313,7 +313,7 @@ Config::Config(int argc, const char **argv, bool check_io)
 	getseq_options.add()
 		("seq", 0, "Sequence numbers to display.", seq_no);
 
-	double rank_ratio2;
+	double rank_ratio2, lambda, K;
 	unsigned window, min_ungapped_score, hit_band, min_hit_score;
 	Options_group deprecated_options("");
 	deprecated_options.add()
@@ -450,11 +450,11 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("cbs-matrix-scale", 0, "", cbs_matrix_scale, 1)
 		("query-count", 0, "", query_count, (size_t)1)
 		("cbs-angle", 0, "", cbs_angle, 50.0)
-		("target-seg", 0, "", target_seg, 0)
+		("target-seg", 0, "", target_seg, -1)
 		("cbs-err-tolerance", 0, "", cbs_err_tolerance, 0.00000001)
 		("cbs-it-limit", 0, "", cbs_it_limit, 2000)
-		("query-match-distance-threshold", 0, "", query_match_distance_threshold, 0.16)
-		("length-ratio-threshold", 0, "", length_ratio_threshold, 3.0);
+		("query-match-distance-threshold", 0, "", query_match_distance_threshold, 0.0)
+		("length-ratio-threshold", 0, "", length_ratio_threshold, 0.0);
 	
 	parser.add(general).add(makedb).add(cluster).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options).add(deprecated_options);
 	parser.store(argc, argv, command);
@@ -491,13 +491,14 @@ Config::Config(int argc, const char **argv, bool check_io)
 		ext = "full";
 	}
 
-#ifdef EXTRA
 	if (comp_based_stats >= Stats::CBS::COUNT)
 		throw std::runtime_error("Invalid value for --comp-based-stats. Permitted values: 0, 1, 2, 3, 4.");
-#else
-	if (comp_based_stats >= 2)
-		throw std::runtime_error("Invalid value for --comp-based-stats. Permitted values: 0, 1.");
-#endif
+
+	if (masking == -1)
+		masking = Stats::CBS::tantan(comp_based_stats);
+
+	if (target_seg == -1)
+		target_seg = Stats::CBS::target_seg(comp_based_stats);
 
 	if (command == blastx && !Stats::CBS::support_translated(comp_based_stats))
 		throw std::runtime_error("This mode of composition based stats is not supported for translated searches.");
@@ -513,6 +514,9 @@ Config::Config(int argc, const char **argv, bool check_io)
 
 	if (target_seg < 0 || target_seg > 1)
 		throw std::runtime_error("Permitted values for --target-seg: 0, 1");
+
+	if (masking < 0 || masking > 1)
+		throw std::runtime_error("Permitted values for --masking: 0, 1");
 
 	if (check_io) {
 		switch (command) {
@@ -645,7 +649,7 @@ Config::Config(int argc, const char **argv, bool check_io)
 				throw std::runtime_error("Custom scoring matrices require setting the --gapopen and --gapextend options.");
 			if (!output_format.empty() && (output_format.front() == "daa" || output_format.front() == "100"))
 				throw std::runtime_error("Custom scoring matrices are not supported for the DAA format.");
-			if (config.comp_based_stats > 1)
+			if (comp_based_stats > 1)
 				throw std::runtime_error("This value for --comp-based-stats is not supported when using a custom scoring matrix.");
 			score_matrix = Score_matrix(matrix_file, gap_open, gap_extend, stop_match_score, Score_matrix::Custom());
 		}

@@ -98,17 +98,18 @@ std::ostream& operator<<(std::ostream& s, const Score_matrix &m)
 	return s;
 }
 
-const signed char* custom_scores(const string &matrix_file)
+const signed char* custom_scores(const string &matrix_file, int default)
 {
 	static signed char scores[AMINO_ACID_COUNT * AMINO_ACID_COUNT];
 	string l, s;
 	std::stringstream ss;
 	vector<Letter> pos;
 	unsigned n = 0;
-	std::fill(scores, scores + sizeof(scores), int8_t(-1));
+	std::fill(scores, scores + sizeof(scores), int8_t(default));
 	if (matrix_file == "")
 		return scores;
 	std::ifstream f(matrix_file.c_str());
+	int min_score = INT_MAX;
 	while (!f.eof()) {
 		std::getline(f, l);
 		if (l[0] == '#')
@@ -130,16 +131,21 @@ const signed char* custom_scores(const string &matrix_file)
 				int score;
 				ss >> score;
 				scores[(int)pos[n] * AMINO_ACID_COUNT + (int)pos[i]] = score;
+				min_score = std::min(min_score, score);
 			}
 			ss.clear();
 			++n;
 		}
 	}
+	for (int i = 0; i < AMINO_ACID_COUNT; ++i) {
+		scores[i * AMINO_ACID_COUNT + SUPER_HARD_MASK] = min_score;
+		scores[(int)SUPER_HARD_MASK * AMINO_ACID_COUNT + i] = min_score;
+	}
 	return scores;
 }
 
 Score_matrix::Score_matrix(const string& matrix_file, int gap_open, int gap_extend, int stop_match_score, const Custom&, uint64_t db_letters) :
-	score_array_(custom_scores(matrix_file)),
+	score_array_(custom_scores(matrix_file, -gap_extend)),
 	gap_open_(gap_open),
 	gap_extend_(gap_extend),
 	db_letters_((double)db_letters),
@@ -163,7 +169,12 @@ Score_matrix::Score_matrix(const string& matrix_file, int gap_open, int gap_exte
 		p[i] = m[i];
 	}
 	const double* bg = Stats::blosum62.background_freqs.data();
-	evaluer.initGapped(N, p, bg, bg, gap_open_, gap_extend_, gap_open_, gap_extend_, false, 0.01, 0.05, 120.0, 1024.0, 1);
+	try {
+		evaluer.initGapped(N, p, bg, bg, gap_open_, gap_extend_, gap_open_, gap_extend_, false, 0.01, 0.05, 120.0, 1024.0, 1);
+	}
+	catch (...) {
+		throw std::runtime_error("The ALP library failed to compute the statistical parameters for this matrix. It may help to adjust the gap penalty settings.");
+	}
 	ln_k_ = std::log(evaluer.parameters().K);
 }
 

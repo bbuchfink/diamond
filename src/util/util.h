@@ -65,16 +65,6 @@ struct partition
 	{ return i < remainder ? (size + 1) : size; }
 };
 
-#ifdef __SSE2__
-inline void print(const __m128i &x)
-{
-	char *p=(char*)&x;
-	for(unsigned i=0;i<16;++i)
-		std::cout << int(*(p++)) << ' ';
-	std::cout << std::endl;
-}
-#endif
-
 template<typename _it, typename _key>
 inline vector<size_t> map_partition(_it begin, _it end, const _key& key, size_t min_size, size_t max_segments, size_t min_segments)
 {

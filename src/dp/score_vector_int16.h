@@ -160,12 +160,12 @@ struct score_vector<int16_t>
 	}
 
 	void expand_from_8bit() {
-		alignas(32) int8_t v[32];
-		alignas(32) int16_t w[16];
-		_mm256_storeu_si256((__m256i*)v, data_);
-		for (int i = 0; i < 16; ++i)
-			w[i] = v[i];
-		data_ = _mm256_load_si256((__m256i*)w);
+		__m128i in = _mm256_extractf128_si256(data_, 0);
+		__m128i mask = _mm_set1_epi8((char)0x80);
+		__m128i sign = _mm_cmpeq_epi8(_mm_and_si128(in, mask), mask);
+		__m128i low = _mm_unpacklo_epi8(in, sign);
+		__m128i hi = _mm_unpackhi_epi8(in, sign);
+		data_ = _mm256_set_m128i(hi, low);
 	}
 
 	friend std::ostream& operator<<(std::ostream& s, score_vector v)
@@ -340,6 +340,12 @@ struct score_vector<int16_t>
 		store(d);
 		d[i] = x;
 		data_ = _mm_loadu_si128((__m128i*)d);
+	}
+
+	void expand_from_8bit() {
+		__m128i mask = _mm_set1_epi8((char)0x80);
+		__m128i sign = _mm_cmpeq_epi8(_mm_and_si128(data_, mask), mask);
+		data_ = _mm_unpacklo_epi8(data_, sign);
 	}
 
 	friend std::ostream& operator<<(std::ostream& s, score_vector v)

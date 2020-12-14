@@ -30,9 +30,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/simd/vector.h"
 #include "../../util/system.h"
 #include "../../util/memory/alignment.h"
-#ifdef __AVX2__
-#include "../../util/simd/transpose32x32.h"
-#endif
+#include "../../util/simd/transpose.h"
 
 static inline uint8_t cmp_mask(int x, int y) {
 	return x == y;
@@ -283,9 +281,18 @@ struct SwipeProfile
 	void set(const int8_t** target_scores) {
 #if ARCH_ID == 2
 		transpose(target_scores, 32, (int8_t*)data_, __m256i());
-		for (size_t i = 0; i < AMINO_ACID_COUNT; ++i) {
+		for (size_t i = 0; i < AMINO_ACID_COUNT; ++i)
 			data_[i].expand_from_8bit();
-		}
+#elif defined(__SSE2__)
+		transpose(target_scores, 16, (int8_t*)data_, __m128i());
+		for (int i = 0; i < 16; ++i)
+			target_scores[i] += 16;
+		transpose(target_scores, 16, (int8_t*)(&data_[16]), __m128i());
+		for (size_t i = 0; i < AMINO_ACID_COUNT; ++i)
+			data_[i].expand_from_8bit();
+#else
+		for (int i = 0; i < AMINO_ACID_COUNT; ++i)
+			data_[i] = target_scores[0][i];
 #endif
 	}
 

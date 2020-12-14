@@ -1215,7 +1215,7 @@ s_TestToApplyREAdjustmentConditional(int Len_query,
         which_rule = eUserSpecifiedRelEntropy;
     }
     else {
-        if ((D_m_q > config.query_match_distance_threshold) &&
+        if ((D_m_q >= config.query_match_distance_threshold) &&
             (len_large / len_small > config.length_ratio_threshold) &&
             (angle > config.cbs_angle)) {
             which_rule = eCompoScaleOldMatrix;

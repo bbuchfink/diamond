@@ -19,6 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #pragma once
 #include <string>
 #include <functional>
+#include <ostream>
 #include "system.h"
 
 #if defined(_M_AMD64) && defined(_MSC_VER)
@@ -120,6 +121,20 @@ static inline __m256i _mm256_set1_epi16(short v) {
 #else
 	return ::_mm256_set1_epi16(v);
 #endif
+}
+
+inline void print_8(__m256i x, std::ostream& s) {
+	alignas(32) int8_t v[32];
+	_mm256_store_si256((__m256i*)v, x);
+	for (unsigned i = 0; i < 32; ++i)
+		s << (int)v[i] << ' ';
+}
+
+inline void print_16(__m256i x, std::ostream& s) {
+	alignas(32) int16_t v[16];
+	_mm256_store_si256((__m256i*)v, x);
+	for (unsigned i = 0; i < 16; ++i)
+		s << (int)v[i] << ' ';
 }
 
 #endif

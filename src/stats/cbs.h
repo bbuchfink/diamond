@@ -145,6 +145,25 @@ struct CBS {
             return false;
         }
     }
+    static int tantan(unsigned code) {
+        switch (code) {
+        case DISABLED:
+        case HAUSER:
+            return 1;
+        default:
+            return 0;
+        }
+    }
+    static int target_seg(unsigned code) {
+        switch (code) {
+        case HAUSER_AND_AVG_MATRIX_ADJUST:
+        case HAUSER_AND_MATRIX_ADJUST:
+        case MATRIX_ADJUST:
+            return 1;
+        default:
+            return 0;
+        }
+    }
     enum {
         DISABLED = 0,
         HAUSER = 1,

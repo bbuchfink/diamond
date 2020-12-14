@@ -101,7 +101,6 @@ struct Config
 	unsigned target_fetch_size;
 	bool mode_more_sensitive;
 	string matrix_file;
-	double lambda, K;
 	string_vector shape_mask;
 	unsigned query_gencode;
 	string unaligned;
