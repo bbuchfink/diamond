@@ -222,9 +222,6 @@ void MCL::get_gamma(Eigen::MatrixXf* in, Eigen::MatrixXf* out, float r){
 }
 
 void MCL::markov_process(Eigen::SparseMatrix<float>* m, float inflation, float expansion, uint32_t max_iter, function<uint32_t()> getThreads){
-	for (uint32_t idiag=0; idiag<m->cols(); ++idiag){
-		assert(abs(m->coeffRef(idiag, idiag)) > numeric_limits<float>::epsilon());
-	}
 	uint32_t iteration = 0;
 	float diff_norm = numeric_limits<float>::max();
 	Eigen::SparseMatrix<float> msquared(m->rows(), m->cols());
@@ -244,9 +241,6 @@ void MCL::markov_process(Eigen::SparseMatrix<float>* m, float inflation, float e
 }
 
 void MCL::markov_process(Eigen::MatrixXf* m, float inflation, float expansion, uint32_t max_iter){
-	for (uint32_t idiag=0; idiag<m->cols(); ++idiag){
-		assert(abs(m->coeffRef(idiag, idiag)) > numeric_limits<float>::epsilon());
-	}
 	uint32_t iteration = 0;
 	float diff_norm = numeric_limits<float>::max();
 	Eigen::MatrixXf msquared(m->rows(), m->cols());
@@ -537,6 +531,7 @@ void MCL::run(){
 	// note that the disconnected components are sorted by size
 	const uint32_t chunk_size = config.cluster_mcl_chunk_size;
 	const uint32_t nThreads = min(config.threads_, nComponents / chunk_size);
+	const uint32_t exessThreads = config.threads_ - nThreads;
 	ms->allocate_read_buffer(nThreads);
 	const float inflation = (float) config.cluster_mcl_inflation;
 	const float expansion = (float) config.cluster_mcl_expansion;
@@ -593,10 +588,10 @@ void MCL::run(){
 						Eigen::SparseMatrix<float> m_sparse(order->size(), order->size());
 						m_sparse.setFromTriplets(m->begin(), m->end());
 						sparse_create_time += chrono::duration_cast<chrono::milliseconds>(chrono::high_resolution_clock::now() - t).count();
-						auto getThreads = [&threads_done, &nThreads, &iThr](){
+						auto getThreads = [&threads_done, &nThreads, &exessThreads, &iThr](){
 							uint32_t td=threads_done.load();
-							uint32_t rt=nThreads-td;
-							return 1 + td / rt + (iThr < (td % rt) ? 1 : 0);
+							uint32_t rt= nThreads - td;
+							return 1 + (td+exessThreads) / rt + (iThr < ((td+exessThreads) % rt) ? 1 : 0);
 						};
 						markov_process(&m_sparse, inflation, expansion, max_iter, getThreads);
 						chrono::high_resolution_clock::time_point t = chrono::high_resolution_clock::now();
