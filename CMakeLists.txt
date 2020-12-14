@@ -249,14 +249,9 @@ set(OBJECTS
 )
 
 if(X86)
-  add_executable(diamond $<TARGET_OBJECTS:arch_avx2>
-    $<TARGET_OBJECTS:arch_sse4_1>
-    $<TARGET_OBJECTS:arch_generic>
-    ${OBJECTS})
+  add_executable(diamond $<TARGET_OBJECTS:arch_generic> $<TARGET_OBJECTS:arch_sse4_1> $<TARGET_OBJECTS:arch_avx2> ${OBJECTS})
 else()
-add_executable(diamond $<TARGET_OBJECTS:arch_generic>
-  ${OBJECTS}
-)
+  add_executable(diamond $<TARGET_OBJECTS:arch_generic> ${OBJECTS})
 endif()
 
 target_link_libraries(diamond ${ZLIB_LIBRARY} ${CMAKE_THREAD_LIBS_INIT})
