@@ -18,9 +18,21 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #pragma once
 #include <string>
-#include <functional>
 #include <ostream>
 #include "system.h"
+
+#ifndef _MSC_VER
+#pragma GCC push_options
+#pragma GCC target("arch=x86-64")
+#pragma clang attribute push (__attribute__((target("arch=x86-64"))), apply_to=function)
+#endif
+
+#include <functional>
+
+#ifndef _MSC_VER
+#pragma GCC pop_options
+#pragma clang attribute pop
+#endif
 
 #if defined(_M_AMD64) && defined(_MSC_VER)
 #define __SSE__
