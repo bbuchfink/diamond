@@ -1231,7 +1231,7 @@ vector<int> CompositionMatrixAdjust(int query_len, int target_len, const double*
     vector<int> v(TRUE_AA * TRUE_AA);
     vector<int*> p;
     p.reserve(TRUE_AA);
-    for (int i = 0; i < TRUE_AA; ++i)
+    for (size_t i = 0; i < TRUE_AA; ++i)
         p.push_back(&v[i * TRUE_AA]);
     int r = Blast_CompositionMatrixAdj(p.data(),
         TRUE_AA,

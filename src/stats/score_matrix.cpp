@@ -180,9 +180,9 @@ Score_matrix::Score_matrix(const string& matrix_file, int gap_open, int gap_exte
 
 template<typename _t>
 Score_matrix::Scores<_t>::Scores(const double (&freq_ratios)[Stats::NCBI_ALPH][Stats::NCBI_ALPH], double lambda, const int8_t* scores, int scale) {
-	const int n = value_traits.alphabet_size;
-	for (int i = 0; i < 32; ++i)
-		for (int j = 0; j < 32; ++j) {
+	const size_t n = value_traits.alphabet_size;
+	for (size_t i = 0; i < 32; ++i)
+		for (size_t j = 0; j < 32; ++j) {
 			if (i < TRUE_AA && j < TRUE_AA)
 				data[i * 32 + j] = std::round(std::log(freq_ratios[Stats::ALPH_TO_NCBI[i]][Stats::ALPH_TO_NCBI[j]]) / lambda * scale);
 			else if (i < n && j < n)

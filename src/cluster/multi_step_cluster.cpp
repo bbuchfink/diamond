@@ -145,7 +145,7 @@ void MultiStep::run() {
 	vector<int> current_centroids;
 	vector<int> previous_centroids;
 	
-	for (int i = 0; i < config.cluster_steps.size(); i++) {
+	for (size_t i = 0; i < config.cluster_steps.size(); i++) {
 		
 		if (config.sens_map.find(config.cluster_steps[i]) == config.sens_map.end()) {
 			throw std::runtime_error("Invalid value for parameter --cluster-steps");
