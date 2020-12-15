@@ -18,26 +18,4 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #include "clustering_variables.h"
-
-std::map<std::string, Variable*> VariableRegistry::regMap;
-QueryStart VariableRegistry::queryStart;
-QueryEnd VariableRegistry::queryEnd;
-SubjectStart VariableRegistry::subjectStart;
-SubjectEnd VariableRegistry::subjectEnd;
-EValue VariableRegistry::eValue;
-BitScore VariableRegistry::bitScore;
-Score VariableRegistry::score;
-Length VariableRegistry::length;
-PercentIdenticalMatches VariableRegistry::percentIdenticalMatches;
-NumberIdenticalMatches VariableRegistry::numberIdenticalMatches;
-NumberMismatches VariableRegistry::numberMismatches;
-NumberPositiveMatches VariableRegistry::numberPositiveMatches;
-NumberGapOpenings VariableRegistry::numberGapOpenings;
-NumberGaps VariableRegistry::numberGaps;
-PercentagePositiveMatches VariableRegistry::percentagePositiveMatches;
-QueryFrame VariableRegistry::queryFrame;
-QueryCoveragePerHsp VariableRegistry::queryCoveragePerHsp;
-SubjectCoveragePerHsp VariableRegistry::subjectCoveragePerHsp;
-UngappedScore VariableRegistry::ungappedScore;
-VariableRegistry::StaticConstructor VariableRegistry::_staticConstructor;
-
+StaticVariableRegistry VariableRegistry::vr;

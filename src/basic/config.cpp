@@ -222,10 +222,15 @@ Config::Config(int argc, const char **argv, bool check_io)
 	cluster.add()
 		("cluster-algo", 0, "Clustering algorithm (\"multi-step\", \"mcl\")", cluster_algo)
 		("cluster-steps", 0, "Clustering steps (\"fast\",\"mid-sensitive\",\"sensitive\", \"more-sensitive\", \"very-sensitive\", \"ultra-sensitive\")", cluster_steps, { "sensitive" })
+		("max-size-set", 0, "Maximum size of a set", max_size_set, (size_t) 100)
 		("cluster-similarity", 0, "Clustering similarity measure", cluster_similarity)
 		("mcl-expansion", 0, "MCL expansion coefficient (default=2)", cluster_mcl_expansion, (uint32_t) 2)
 		("mcl-inflation", 0, "MCL inflation coefficient (default=2.0)", cluster_mcl_inflation, 2.0)
-		("mcl-sparsity-switch", 0, "MCL switch to sparse matrix computation (default=0.8) ", cluster_mcl_sparsity_switch, 0.8);
+		("mcl-chunk-size", 0, "MCL chunk size per thread (default=100)", cluster_mcl_chunk_size, (uint32_t) 1)
+		("mcl-max-iterations", 0, "MCL maximum iterations (default=100)", cluster_mcl_max_iter, (uint32_t) 100)
+		("mcl-sparsity-switch", 0, "MCL switch to sparse matrix computation (default=0.8) ", cluster_mcl_sparsity_switch, 0.8)
+		("mcl-graph-file", 0, "Filename for dumping the graph or reading the graph if mcl-restart", cluster_mcl_graph_file)
+		("mcl-restart", 0, "Restart MCL from dumped graph", cluster_mcl_restart);
 
 	Options_group aligner("Aligner options");
 	aligner.add()
@@ -653,14 +658,16 @@ Config::Config(int argc, const char **argv, bool check_io)
 				throw std::runtime_error("This value for --comp-based-stats is not supported when using a custom scoring matrix.");
 			score_matrix = Score_matrix(matrix_file, gap_open, gap_extend, stop_match_score, Score_matrix::Custom());
 		}
-		if(command == Config::cluster && !Workflow::Cluster::ClusterRegistry::has(cluster_algo)){
-			ostream &header_out = command == Config::help ? cout : cerr;
-			header_out << "Unknown clustering algorithm: " << cluster_algo << endl;
-			header_out << "Available options are: " << endl;
-			for(string c_algo : Workflow::Cluster::ClusterRegistry::getKeys()){
-				header_out << "\t" << c_algo << "\t"<< Workflow::Cluster::ClusterRegistry::get(c_algo)->get_description() << endl;
+		if(command == Config::cluster){
+			if(!Workflow::Cluster::ClusterRegistry::has(cluster_algo)){
+				ostream &header_out = command == Config::help ? cout : cerr;
+				header_out << "Unkown clustering algorithm: " << cluster_algo << endl;
+				header_out << "Available options are: " << endl;
+				for(string c_algo : Workflow::Cluster::ClusterRegistry::getKeys()){
+					header_out << "\t" << c_algo << "\t"<< Workflow::Cluster::ClusterRegistry::get(c_algo)->get_description() << endl;
+				}
+				throw std::runtime_error("Clustering algorithm not found.");
 			}
-			throw std::runtime_error("Clustering algorithm not found.");
 		}
 		message_stream << "Scoring parameters: " << score_matrix << endl;
 		if (masking == 1 || target_seg)

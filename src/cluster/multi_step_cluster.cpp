@@ -23,9 +23,6 @@ using namespace std;
 
 namespace Workflow { namespace Cluster {
 	
-string MultiStep::get_key() {
-	return "multi-step";
-}
 string MultiStep::get_description() {
 	return "A greedy stepwise vortex cover algorithm";
 }
@@ -38,7 +35,7 @@ BitVector MultiStep::rep_bitset(const vector<int> &centroid, const BitVector *su
 	return r;
 }
 
-vector<int> MultiStep::cluster(DatabaseFile &db, const BitVector *filter) {
+vector<int> MultiStep::cluster(DatabaseFile& db, const BitVector* filter) {
 	statistics.reset();
 	config.command = Config::blastp;
 	//config.no_self_hits = true;
@@ -64,17 +61,26 @@ vector<int> MultiStep::cluster(DatabaseFile &db, const BitVector *filter) {
 
 	//message_stream << "Edges = " << nb.edges.size() << endl;
 
-	unordered_map <uint32_t, uint32_t> components;
-	find_connected_components(nb.smallest_index, components);
+	unordered_map <uint32_t, NodEdgSet> components = find_connected_components(nb.smallest_index, nb.number_edges);
 	message_stream << "Number of connected components: " << components.size() << endl;
-	message_stream << "average number of nodes per connected component: " << (double) nb.smallest_index.size()/components.size() << endl;
-	message_stream << "Largest connected component has " << (find_max(components)) << " nodes." << endl;
+	message_stream << "Average number of nodes per connected component: " << (double)nb.smallest_index.size() / components.size() << endl;
+
+	uint32_t large = max_element(components.begin(), components.end(), [](const pair<uint32_t, NodEdgSet>& left, const pair<uint32_t, NodEdgSet>& right) {return left.second.nodes < right.second.nodes; })-> second.nodes;
+	message_stream << "Largest connected component has " << large << " nodes." << endl;
 	
-	return Util::Algo::greedy_vortex_cover(nb);
+	mapping_comp_set(components);
+
+	uint32_t number_sets = max_element(components.begin(), components.end(), [](const pair<uint32_t, NodEdgSet>& left, const pair<uint32_t, NodEdgSet>& right) {return left.second.set < right.second.set; })->second.set;
+	message_stream << "Number of sets: " << number_sets << endl;
 	
+ 	return Util::Algo::greedy_vortex_cover(nb);
+
 }
-void MultiStep::find_connected_components(vector<uint32_t>& sindex, unordered_map<uint32_t, uint32_t>& comp){
+
+unordered_map<uint32_t, NodEdgSet> MultiStep::find_connected_components(vector<uint32_t>& sindex, const vector <size_t>& nedges){
 	vector<uint32_t> seen_nodes;
+	unordered_map<uint32_t, NodEdgSet> ne;
+
 	uint32_t curr = 0;
 	for (size_t k = 0; k < sindex.size(); k++) {
 		curr = sindex[k];
@@ -92,17 +98,35 @@ void MultiStep::find_connected_components(vector<uint32_t>& sindex, unordered_ma
 
 
 	for (size_t i = 0; i < sindex.size(); i++) {
-		++comp[sindex[i]];
+		++ne[sindex[i]].nodes;
+		ne[sindex[i]].edges += nedges[i];
 	}
+	return ne;
 }
 
-uint32_t MultiStep::find_max(unordered_map<uint32_t, uint32_t> comp)
-{
-	uint32_t large = 0;
+void MultiStep::mapping_comp_set(unordered_map<uint32_t, NodEdgSet>& comp) {
+	vector <vector<uint32_t>> set;
+	vector <size_t> size;
+	
+	bool TooBig;
+
 	for (auto& it : comp) {
-		large = max(large, it.second);
+		TooBig = true;
+		for (size_t j = 0; j < set.size(); j++) {
+			if ((it.second.edges + size[j]) <= config.max_size_set) {
+				set[j].push_back(it.first);
+				size[j] += it.second.edges;
+				comp[it.first].set = j;
+				TooBig = false;
+				break;
+			}
+		}
+		if (TooBig || set.empty()) {
+			set.push_back({ it.first });
+			size.push_back({ it.second.edges });
+			comp[it.first].set = set.size() - 1;
+		}
 	}
-	return large;
 }
 
 
