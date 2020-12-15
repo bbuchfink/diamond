@@ -32,6 +32,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../dp/hsp_traits.h"
 #include "chaining.h"
 
+using std::endl;
+using std::cout;
 using std::map;
 using std::list;
 using std::set;

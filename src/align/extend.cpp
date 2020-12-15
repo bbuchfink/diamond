@@ -38,6 +38,7 @@ using std::vector;
 using std::list;
 using std::array;
 using std::pair;
+using std::endl;
 
 namespace Extension {
 

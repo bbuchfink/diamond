@@ -1,3 +1,4 @@
+#include <iostream>
 #include <vector>
 #include "tsv_record.h"
 #include "../basic/config.h"

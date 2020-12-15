@@ -23,23 +23,17 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #pragma once
 #include <vector>
 #include <algorithm>
-#include <iostream>
 #include <string.h>
 #include <math.h>
 #include <ctype.h>
 #include <string>
 #include <limits>
 #include <stdexcept>
-#include <stdio.h>
 #include <stdint.h>
 #include <set>
 #include <random>
 #include "simd.h"
 #include "../basic/const.h"
-
-using std::vector;
-using std::string;
-using std::set;
 
 template<typename _t=size_t>
 struct partition
@@ -66,11 +60,11 @@ struct partition
 };
 
 template<typename _it, typename _key>
-inline vector<size_t> map_partition(_it begin, _it end, const _key& key, size_t min_size, size_t max_segments, size_t min_segments)
+inline std::vector<size_t> map_partition(_it begin, _it end, const _key& key, size_t min_size, size_t max_segments, size_t min_segments)
 {
 	const size_t n = end - begin;
 	const ::partition<size_t> p (n, std::max(min_segments, std::min(max_segments, n/min_size)));
-	vector<size_t> v (p.parts+1);
+	std::vector<size_t> v (p.parts+1);
 	v[0] = p.getMin(0);
 	v[p.parts] = p.getMax(p.parts-1);
 	for(unsigned i=0;i<p.parts-1;++i) {
@@ -94,10 +88,10 @@ template<typename _t>
 inline _t round_up(_t x, _t m)
 { return div_up(x, m) * m; }
 
-inline vector<string> tokenize(const char *str, const char *delimiters)
+inline std::vector<std::string> tokenize(const char *str, const char *delimiters)
 {
-	vector<string> out;
-	string token;
+	std::vector<std::string> out;
+	std::string token;
 	while(*str != 0) {
 		while(*str != 0 && strchr(delimiters, *str))
 			++str;
@@ -108,7 +102,7 @@ inline vector<string> tokenize(const char *str, const char *delimiters)
 			out.push_back(token);
 	}
 	if(out.size() == 0)
-		out.push_back(string ());
+		out.push_back(std::string ());
 	return out;
 }
 
@@ -139,12 +133,12 @@ inline size_t find_first_of(const char *s, const char *delimiters)
 	return t-s;
 }
 
-inline string blast_id(const string &title)
+inline std::string blast_id(const std::string &title)
 {
 	return title.substr(0, find_first_of(title.c_str(), Const::id_delimiters));
 }
 
-inline void get_title_def(const string &s, string &title, string &def)
+inline void get_title_def(const std::string &s, std::string &title, std::string &def)
 {
 	const size_t i = find_first_of(s.c_str(), Const::id_delimiters);
 	title = s.substr(0, i);
@@ -164,9 +158,9 @@ inline size_t print_str(char* buf, const char *s, size_t n)
 inline size_t print_str(char *buf, const char *s, const char *delimiters)
 { return print_str(buf, s, find_first_of(s, delimiters)); }
 
-inline string* get_str(const char *s, const char *delimiters)
+inline std::string* get_str(const char *s, const char *delimiters)
 {
-	return new string (s, find_first_of(s, delimiters));
+	return new std::string (s, find_first_of(s, delimiters));
 }
 
 template<typename _t, unsigned d1, unsigned d2>
@@ -179,7 +173,7 @@ private:
 };
 
 extern const char dir_separator;
-string extract_dir(const string &s);
+std::string extract_dir(const std::string &s);
 
 inline std::ostream& indent(std::ostream &str, unsigned n)
 {
@@ -238,7 +232,7 @@ struct Sd
 		Q(0),
 		k(1)
 	{}
-	Sd(const vector<Sd> &groups);
+	Sd(const std::vector<Sd> &groups);
 	void add(double x)
 	{
 		const double d = x - A;
@@ -258,18 +252,18 @@ private:
 	double A, Q, k;	
 };
 
-inline string to_upper_case(const string &s)
+inline std::string to_upper_case(const std::string &s)
 {
-	string r;
-	for (string::const_iterator i = s.begin(); i != s.end(); ++i)
+	std::string r;
+	for (std::string::const_iterator i = s.begin(); i != s.end(); ++i)
 		r.push_back(toupper(*i));
 	return r;
 }
 
-inline string to_lower_case(const string &s)
+inline std::string to_lower_case(const std::string &s)
 {
-	string r;
-	for (string::const_iterator i = s.begin(); i != s.end(); ++i)
+	std::string r;
+	for (std::string::const_iterator i = s.begin(); i != s.end(); ++i)
 		r.push_back(tolower(*i));
 	return r;
 }
@@ -295,7 +289,7 @@ struct Matrix
 	}
 private:
 	int cols_;
-	vector<_t> data_;
+	std::vector<_t> data_;
 };
 
 template<int n>
@@ -321,14 +315,14 @@ bool equal(const _t *ptr, unsigned n)
 	return true;
 }
 
-inline string print_char(char c)
+inline std::string print_char(char c)
 {
 	char buf[16];
 	if (c < 32)
 		sprintf(buf, "ASCII %u", (unsigned)c);
 	else
 		sprintf(buf, "%c", c);
-	return string(buf);
+	return std::string(buf);
 }
 
 template<typename _t, int n>
@@ -405,13 +399,7 @@ inline unsigned get_distribution(const double *p, std::minstd_rand0 &random_engi
 	return n - 1;
 }
 
-inline void print_binary(uint64_t x)
-{
-	for (unsigned i = 0; i < 64; ++i) {
-		std::cout << (x & 1);
-		x >>= 1;
-	}
-}
+void print_binary(uint64_t x);
 
 template<typename _t>
 inline _t safe_cast(size_t x)
@@ -458,8 +446,8 @@ inline _t make_multiple(_t x, _t m)
 	return x + d;
 }
 
-inline string hex_print(const char *x, int len) {
-	string out;
+inline std::string hex_print(const char *x, int len) {
+	std::string out;
 	char d[3];
 	for (int i = 0; i < len; i++) {
 		sprintf(d, "%02x", (unsigned char)x[i]);

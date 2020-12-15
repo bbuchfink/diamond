@@ -47,19 +47,19 @@ struct EscapeSequences
 		return (const char*)seq_[(size_t)c];
 	}
 
-	void escape(const char *s, size_t len, string &out) const
+	void escape(const char *s, size_t len, std::string &out) const
 	{
 		out.reserve(len);
 		for (size_t i = 0; i < len; ++i)
 			out += escape(*(s++));
 	}
 
-	void escape(const char *s, string &out) const
+	void escape(const char *s, std::string &out) const
 	{
 		escape(s, strlen(s), out);
 	}
 
-	void escape(const string &s, string &out) const
+	void escape(const std::string &s, std::string &out) const
 	{
 		escape(s.c_str(), s.length(), out);
 	}

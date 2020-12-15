@@ -22,17 +22,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #pragma once
 #include <limits>
-#include <iostream>
+#include <ostream>
 #include <math.h>
 #include <stdint.h>
 #include "../util/log_stream.h"
 #include "../basic/value.h"
 #include "../lib/alp/sls_alignment_evaluer.hpp"
 #include "../stats/standard_matrix.h"
-
-using std::string;
-using std::cout;
-using std::endl;
 
 const double LN_2 = 0.69314718055994530941723212145818;
 
@@ -42,8 +38,8 @@ struct Score_matrix
 	struct Custom {};
 
 	Score_matrix() :ln_k_(0.0) {}
-	Score_matrix(const string& matrix, int gap_open, int gap_extend, int frame_shift, int stop_match_score, uint64_t db_letters = 0, int scale = 1);
-	Score_matrix(const string &matrix_file, int gap_open, int gap_extend, int stop_match_score, const Custom&, uint64_t db_letters = 0);
+	Score_matrix(const std::string& matrix, int gap_open, int gap_extend, int frame_shift, int stop_match_score, uint64_t db_letters = 0, int scale = 1);
+	Score_matrix(const std::string &matrix_file, int gap_open, int gap_extend, int stop_match_score, const Custom&, uint64_t db_letters = 0);
 
 	friend std::ostream& operator<<(std::ostream& s, const Score_matrix &m);
 
@@ -206,7 +202,7 @@ private:
 			for (int i = 0; i < 20; ++i) {
 				for (int j = 0; j < 20; ++j)
 					s << scores.data[i * 32 + j] << '\t';
-				s << endl;
+				s << std::endl;
 			}
 			return s;
 		}
@@ -218,7 +214,7 @@ private:
 	int gap_open_, gap_extend_, frame_shift_;
 	double db_letters_;
 	double ln_k_;
-	string name_;
+	std::string name_;
 	Scores<int8_t> matrix8_;
 	int8_t bias_;
 	Scores<uint8_t> matrix8u_;

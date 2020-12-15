@@ -29,6 +29,7 @@ using std::vector;
 using std::array;
 using std::list;
 using std::map;
+using std::endl;
 
 namespace Extension {
 

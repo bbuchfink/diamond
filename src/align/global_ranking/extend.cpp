@@ -33,6 +33,7 @@ using std::unique_ptr;
 using std::mutex;
 using std::thread;
 using std::unordered_map;
+using std::endl;
 
 namespace Extension { namespace GlobalRanking {
 

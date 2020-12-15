@@ -23,7 +23,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #pragma once
 #include <vector>
 #include <string>
-#include <iostream>
 #include <string.h>
 #include <stdint.h>
 #include <limits.h>

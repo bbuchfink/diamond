@@ -43,6 +43,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <intrin.h>
 #endif
 
+#ifdef _MSC_VER
+#define ATTGEN
+#else
+#define ATTGEN __attribute__ ((target("arch=generic")))
+#endif
+
 namespace SIMD {
 
 enum class Arch { None, Generic, SSE4_1, AVX2 };
@@ -54,7 +60,7 @@ Arch arch();
 #define DECL_DISPATCH(ret, name, param) namespace ARCH_GENERIC { ret name param; }\
 namespace ARCH_SSE4_1 { ret name param; }\
 namespace ARCH_AVX2 { ret name param; }\
-inline std::function<decltype(ARCH_GENERIC::name)> dispatch_target_##name() {\
+inline ATTGEN std::function<decltype(ARCH_GENERIC::name)> dispatch_target_##name() {\
 switch(::SIMD::arch()) {\
 case ::SIMD::Arch::SSE4_1: return ARCH_SSE4_1::name;\
 case ::SIMD::Arch::AVX2: return ARCH_AVX2::name;\

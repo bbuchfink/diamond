@@ -35,6 +35,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 using std::vector;
 using std::atomic;
+using std::endl;
 
 Trace_pt_buffer* Trace_pt_buffer::instance;
 

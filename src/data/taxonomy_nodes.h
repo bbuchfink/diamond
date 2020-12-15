@@ -24,7 +24,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <vector>
 #include <set>
 #include <string>
-#include <iostream>
 #include "../util/io/serializer.h"
 #include "../util/io/deserializer.h"
 

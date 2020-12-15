@@ -51,6 +51,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../align/target.h"
 
 using std::unique_ptr;
+using std::endl;
 
 namespace Workflow { namespace Search {
 

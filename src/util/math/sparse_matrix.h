@@ -27,7 +27,6 @@ SOFTWARE.
 #ifndef SPARSE_MATRIX_H_
 #define SPARSE_MATRIX_H_
 
-#include <iostream>
 #include <vector>
 #include <tuple>
 

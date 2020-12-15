@@ -19,6 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #include <string>
+#include <iostream>
 #include "test.h"
 #include "../util/util.h"
 #include "../basic/config.h"

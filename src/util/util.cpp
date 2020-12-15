@@ -19,6 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <algorithm>
 #include <numeric>
 #include <mutex>
+#include <iostream>
 #include "../basic/config.h"
 #include "log_stream.h"
 #include "util.h"
@@ -78,4 +79,32 @@ string join(const char *c, const vector<string> &v) {
 	}
 	s += v.back();
 	return s;
+}
+
+Message_stream& Message_stream::operator<<(std::ostream& (*_Pfn)(std::ostream&))
+{
+	if (to_cout_)
+		((*_Pfn)(std::cerr));
+	if (to_file_) {
+		mtx.lock();
+		std::ofstream f("diamond.log", std::ios_base::out | std::ios_base::app);
+		((*_Pfn)(f));
+		f.close();
+		mtx.unlock();
+	}
+	return *this;
+}
+
+Message_stream::Message_stream(bool to_cout, bool to_file) :
+	to_cout_(to_cout),
+	to_file_(to_file),
+	out_stream_(&std::cerr)
+{}
+
+void print_binary(uint64_t x)
+{
+	for (unsigned i = 0; i < 64; ++i) {
+		std::cout << (x & 1);
+		x >>= 1;
+	}
 }
