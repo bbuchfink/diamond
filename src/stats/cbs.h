@@ -179,7 +179,7 @@ std::vector<int> CompositionMatrixAdjust(int query_len, int target_len, const do
 
 inline int16_t* make_16bit_matrix(const std::vector<int>& matrix) {
     int16_t* out = new int16_t[TRUE_AA * TRUE_AA];
-    for (int i = 0; i < TRUE_AA * TRUE_AA; ++i)
+    for (size_t i = 0; i < TRUE_AA * TRUE_AA; ++i)
         out[i] = matrix[i];
     return out;
 }

@@ -15,7 +15,7 @@
   in the alignment output.
 - Disabled support of custom scoring matrices for the DAA format.
 - Fixed a bug that caused the use of a custom scoring matrix not to function correctly.
-- Fixed an issue that caused the portable binary not to function on systems that do not
+- Fixed an issue that caused the portable binary not to function on systems that did not
   support AVX.
 - Added the option `--no-unlink` to prevent unlinking of temporary files.
 

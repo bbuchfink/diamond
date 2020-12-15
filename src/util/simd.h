@@ -21,16 +21,18 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <ostream>
 #include "system.h"
 
-#ifndef _MSC_VER
+#ifdef __GNUC__
 #pragma GCC push_options
 #pragma GCC target("arch=x86-64")
+#elif defined(__clang__)
 #pragma clang attribute push (__attribute__((target("arch=x86-64"))), apply_to=function)
 #endif
 
 #include <functional>
 
-#ifndef _MSC_VER
+#ifdef __GNUC__
 #pragma GCC pop_options
+#elif defined(__clang__)
 #pragma clang attribute pop
 #endif
 
@@ -55,12 +57,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <intrin.h>
 #endif
 
-#ifdef _MSC_VER
-#define ATTGEN
-#else
-#define ATTGEN __attribute__ ((target("arch=x86-64")))
-#endif
-
 namespace SIMD {
 
 enum class Arch { None, Generic, SSE4_1, AVX2 };
@@ -69,16 +65,30 @@ Arch arch();
 
 #ifdef __SSE__
 
+#ifdef __GNUC__
+#pragma GCC push_options
+#pragma GCC target("arch=x86-64")
+#elif defined(__clang__)
+#pragma clang attribute push (__attribute__((target("arch=x86-64"))), apply_to=function)
+#endif
+
+
 #define DECL_DISPATCH(ret, name, param) namespace ARCH_GENERIC { ret name param; }\
 namespace ARCH_SSE4_1 { ret name param; }\
 namespace ARCH_AVX2 { ret name param; }\
-inline ATTGEN std::function<decltype(ARCH_GENERIC::name)> dispatch_target_##name() {\
+static inline std::function<decltype(ARCH_GENERIC::name)> dispatch_target_##name() {\
 switch(::SIMD::arch()) {\
 case ::SIMD::Arch::SSE4_1: return ARCH_SSE4_1::name;\
 case ::SIMD::Arch::AVX2: return ARCH_AVX2::name;\
 default: return ARCH_GENERIC::name;\
 }}\
 const std::function<decltype(ARCH_GENERIC::name)> name = dispatch_target_##name();
+
+#ifdef __GNUC__
+#pragma GCC pop_options
+#elif defined(__clang__)
+#pragma clang attribute pop
+#endif
 
 #else
 
