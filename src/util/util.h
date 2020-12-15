@@ -364,7 +364,7 @@ template<typename _t>
 struct Numeric_vector : public std::vector<_t>
 {
 	Numeric_vector(size_t n):
-		vector<_t>(n)
+		std::vector<_t>(n)
 	{}
 	Numeric_vector& operator+=(Numeric_vector &x)
 	{
