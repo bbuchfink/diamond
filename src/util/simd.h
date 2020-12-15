@@ -46,7 +46,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #ifdef _MSC_VER
 #define ATTGEN
 #else
-#define ATTGEN __attribute__ ((target("arch=generic")))
+#define ATTGEN __attribute__ ((target("arch=x86-64")))
 #endif
 
 namespace SIMD {

@@ -82,18 +82,18 @@ struct Fixed_score_buffer
 		s << '\t';
 		for (int j = 0; j < int(buf.data_.size() / buf.col_size_); ++j)
 			s << j << '\t';
-		s << endl;
+		s << std::endl;
 		for (int i = 0; i < int(buf.col_size_); ++i) {
 			s << i << '\t';
 			for (int j = 0; j < int(buf.data_.size() / buf.col_size_); ++j)
 				s << buf(i, j) << '\t';
-			s << endl;
+			s << std::endl;
 		}
 		return s;
 	}
 
 private:
-	vector<_t> data_;
+	std::vector<_t> data_;
 	size_t col_size_;
 
 };
