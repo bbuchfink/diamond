@@ -24,18 +24,18 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <ostream>
 #include "system.h"
 
-#ifdef __GNUC__
+#if defined(__GNUC__) && defined(__SSE__)
 #pragma GCC push_options
 #pragma GCC target("arch=x86-64")
-#elif defined(__clang__)
+#elif defined(__clang__) && defined(__SSE__)
 #pragma clang attribute push (__attribute__((target("arch=x86-64"))), apply_to=function)
 #endif
 
 #include <functional>
 
-#ifdef __GNUC__
+#ifdef __GNUC__ && defined(__SSE__)
 #pragma GCC pop_options
-#elif defined(__clang__)
+#elif defined(__clang__) && defined(__SSE__)
 #pragma clang attribute pop
 #endif
 
@@ -68,10 +68,10 @@ Arch arch();
 
 #ifdef __SSE__
 
-#ifdef __GNUC__
+#if defined(__GNUC__) && defined(__SSE__)
 #pragma GCC push_options
 #pragma GCC target("arch=x86-64")
-#elif defined(__clang__)
+#elif defined(__clang__) && defined(__SSE__)
 #pragma clang attribute push (__attribute__((target("arch=x86-64"))), apply_to=function)
 #endif
 
@@ -86,9 +86,9 @@ default: return ARCH_GENERIC::name;\
 }}\
 const std::function<decltype(ARCH_GENERIC::name)> name = dispatch_target_##name();
 
-#ifdef __GNUC__
+#ifdef __GNUC__ && defined(__SSE__)
 #pragma GCC pop_options
-#elif defined(__clang__)
+#elif defined(__clang__) && defined(__SSE__)
 #pragma clang attribute pop
 #endif
 
