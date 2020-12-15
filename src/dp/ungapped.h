@@ -21,7 +21,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #pragma once
 #include "../basic/value.h"
 #include "../basic/diagonal_segment.h"
-#include "comp_based_stats.h"
+#include "../stats/hauser_correction.h"
 
 //int xdrop_ungapped(const Letter *query, const Letter *subject, unsigned seed_len, unsigned &delta, unsigned &len);
 //int xdrop_ungapped(const Letter *query, const Letter *subject, unsigned &delta, unsigned &len);

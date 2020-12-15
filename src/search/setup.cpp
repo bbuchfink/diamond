@@ -25,6 +25,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "seed_complexity.h"
 #include "search.h"
 
+using std::endl;
+
 double SeedComplexity::prob_[AMINO_ACID_COUNT];
 const double SINGLE_INDEXED_SEED_SPACE_MAX_COVERAGE = 0.15;
 

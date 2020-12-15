@@ -23,5 +23,5 @@ TargetCulling* TargetCulling::get()
 	if (config.query_range_culling)
 		return new RangeCulling;
 	else
-		return new GlobalCulling;
+		return new GlobalCulling();
 }

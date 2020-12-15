@@ -2,7 +2,7 @@
 #define TSV_RECORD_H_
 
 #include <string>
-#include <iostream>
+#include <ostream>
 #include "../util/io/text_input_file.h"
 
 struct TSVRecord  {

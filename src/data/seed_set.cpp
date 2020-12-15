@@ -20,6 +20,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/ptr_vector.h"
 #include "../util/math/integer.h"
 
+using std::endl;
+
 No_filter no_filter;
 
 struct Seed_set_callback

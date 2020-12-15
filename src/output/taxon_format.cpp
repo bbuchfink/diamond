@@ -21,6 +21,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../data/taxonomy.h"
 
 using std::set;
+using std::endl;
 
 void Taxon_format::print_match(const Hsp_context &r, const Metadata &metadata, TextBuffer &out)
 {

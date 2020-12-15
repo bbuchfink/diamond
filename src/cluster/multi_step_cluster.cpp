@@ -59,7 +59,7 @@ vector<int> MultiStep::cluster(DatabaseFile& db, const BitVector* filter) {
 
 	Workflow::Search::run(opt);
 
-	message_stream << "Edges = " << nb.edges.size() << endl;
+	//message_stream << "Edges = " << nb.edges.size() << endl;
 
 	unordered_map <uint32_t, NodEdgSet> components = find_connected_components(nb.smallest_index, nb.number_edges);
 	message_stream << "Number of connected components: " << components.size() << endl;
@@ -169,7 +169,7 @@ void MultiStep::run() {
 	vector<int> current_centroids;
 	vector<int> previous_centroids;
 	
-	for (int i = 0; i < config.cluster_steps.size(); i++) {
+	for (size_t i = 0; i < config.cluster_steps.size(); i++) {
 		
 		if (config.sens_map.find(config.cluster_steps[i]) == config.sens_map.end()) {
 			throw std::runtime_error("Invalid value for parameter --cluster-steps");

@@ -327,7 +327,7 @@ struct Banded3FrameSwipeMatrixRef<_sv, DP::ScoreOnly>
 };
 
 template<typename _sv>
-Hsp traceback(sequence *query, Strand strand, int dna_len, const Banded3FrameSwipeTracebackMatrix<_sv> &dp, const DpTarget &target, int d_begin, typename ScoreTraits<_sv>::Score max_score, int max_col, int channel, int i0, int i1)
+Hsp traceback(sequence *query, Strand strand, int dna_len, const Banded3FrameSwipeTracebackMatrix<_sv> &dp, const DpTarget &target, int d_begin, typename ScoreTraits<_sv>::Score max_score, double evalue, int max_col, int channel, int i0, int i1)
 {
 	typedef typename ScoreTraits<_sv>::Score Score;
 	const int j0 = i1 - (target.d_end - 1), d1 = target.d_end;
@@ -336,6 +336,7 @@ Hsp traceback(sequence *query, Strand strand, int dna_len, const Banded3FrameSwi
 	Hsp out;
 	out.swipe_target = target.target_idx;
 	out.score = ScoreTraits<_sv>::int_score(max_score);
+	out.evalue = evalue;
 	out.transcript.reserve(size_t(out.score * config.transcript_len_estimate));
 
 	out.set_end(it.i + 1, it.j + 1, Frame(strand, it.frame), dna_len);
@@ -370,12 +371,13 @@ Hsp traceback(sequence *query, Strand strand, int dna_len, const Banded3FrameSwi
 }
 
 template<typename _sv>
-Hsp traceback(sequence *query, Strand strand, int dna_len, const Banded3FrameSwipeMatrix<_sv> &dp, const DpTarget &target, int d_begin, typename ScoreTraits<_sv>::Score max_score, int max_col, int channel, int i0, int i1)
+Hsp traceback(sequence *query, Strand strand, int dna_len, const Banded3FrameSwipeMatrix<_sv> &dp, const DpTarget &target, int d_begin, typename ScoreTraits<_sv>::Score max_score, double evalue, int max_col, int channel, int i0, int i1)
 {
 	Hsp out;
 	const int j0 = i1 - (target.d_end - 1);
 	out.swipe_target = target.target_idx;
 	out.score = ScoreTraits<_sv>::int_score(max_score);
+	out.evalue = evalue;
 	out.query_range.end_ = std::min(i0 + max_col + (int)dp.band() / 3 / 2, (int)query[0].length());
 	out.query_range.begin_ = std::max(out.query_range.end_ - (j0 + max_col), 0);
 	out.frame = strand == FORWARD ? 0 : 3;
@@ -488,8 +490,12 @@ list<Hsp> banded_3frame_swipe(
 	
 	list<Hsp> out;
 	for (int i = 0; i < targets.n_targets; ++i) {
-		if (best[i] < ScoreTraits<_sv>::max_score())
-			out.push_back(traceback<_sv>(q, strand, (int)query.source().length(), dp, subject_begin[i], d_begin[i], best[i], max_col[i], i, i0 - j, i1 - j));
+		if (best[i] < ScoreTraits<_sv>::max_score()) {
+			const int score = ScoreTraits<_sv>::int_score(best[i]);
+			const double evalue = score_matrix.evalue(score, qlen, (unsigned)subject_begin[i].seq.length());
+			if (score_matrix.report_cutoff(score, evalue))
+				out.push_back(traceback<_sv>(q, strand, (int)query.source().length(), dp, subject_begin[i], d_begin[i], best[i], evalue, max_col[i], i, i0 - j, i1 - j));
+		}
 		else
 			overflow.push_back(subject_begin[i]);
 	}

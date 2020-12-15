@@ -80,6 +80,7 @@ struct IntermediateRecord
 		}
 		f.read(flag);
 		f.read_packed(flag & 3, score);
+		f.read(evalue);
 
 		if (!output_format->needs_transcript && !output_format->needs_stats)
 			return;
@@ -122,6 +123,7 @@ struct IntermediateRecord
 		buf.write(ReferenceDictionary::get().get(current_ref_block, subject_id));
 		buf.write(get_segment_flag(match));
 		buf.write_packed(match.score);
+		buf.write(match.evalue);
 		if (!output_format->needs_transcript && !output_format->needs_stats)
 			return;
 
@@ -151,7 +153,8 @@ struct IntermediateRecord
 		f.consume(reinterpret_cast<const char*>(&i), 4);
 	}
 	static const uint32_t FINISHED = 0xffffffffu;
-	uint32_t query_id, subject_dict_id, score, query_begin, subject_begin, query_end, subject_end, identities, mismatches, positives, gap_openings, gaps;
+	uint32_t score, query_id, subject_dict_id, query_begin, subject_begin, query_end, subject_end, identities, mismatches, positives, gap_openings, gaps;
+	double evalue;
 	uint8_t flag;
 	Packed_transcript transcript;
 };

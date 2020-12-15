@@ -265,6 +265,7 @@ void Hsp::push_gap(Edit_operation op, int length, const Letter *subject)
 
 Hsp::Hsp(const IntermediateRecord &r, unsigned query_source_len) :
 	score(r.score),
+	evalue(r.evalue),
 	transcript(r.transcript)
 {
 	subject_range.begin_ = r.subject_begin;

@@ -22,7 +22,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <utility>
 #include <list>
 #include "../dp/hsp_traits.h"
-#include "../dp/comp_based_stats.h"
+#include "../stats/hauser_correction.h"
 
 std::pair<int, std::list<Hsp_traits>> greedy_align(sequence query, sequence subject, std::vector<Diagonal_segment>::const_iterator begin, std::vector<Diagonal_segment>::const_iterator end, bool log, unsigned frame);
 

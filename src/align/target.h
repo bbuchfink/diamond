@@ -24,16 +24,23 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <vector>
 #include <stdint.h>
 #include <list>
+#include <mutex>
+#include <float.h>
 #include "../search/trace_pt_buffer.h"
 #include "../basic/diagonal_segment.h"
 #include "../basic/const.h"
 #include "../dp/hsp_traits.h"
-#include "../dp/comp_based_stats.h"
+#include "../stats/hauser_correction.h"
 #include "extend.h"
 #include "../util/data_structures/flat_array.h"
 #include "../basic/parameters.h"
+#include "../stats/cbs.h"
 
 namespace Extension {
+
+extern std::vector<int16_t*> target_matrices;
+extern std::mutex target_matrices_lock;
+extern std::atomic<size_t> target_matrix_count;
 
 struct SeedHit {
 	int diag() const {
@@ -48,41 +55,79 @@ struct SeedHit {
 };
 
 struct WorkTarget {
-	WorkTarget(size_t block_id, const sequence &seq) :
+	WorkTarget(size_t block_id, const sequence& seq, int query_len, const double* query_comp, const int16_t** query_matrix) :
 		block_id(block_id),
 		seq(seq),
-		filter_score(0),
 		ungapped_score(0)
-	{}
-	bool operator<(const WorkTarget &t) const {
-		return filter_score > t.filter_score || (filter_score == t.filter_score && block_id < t.block_id);
+	{
+		if (config.comp_based_stats == Stats::CBS::HAUSER_AND_AVG_MATRIX_ADJUST) {
+			const int l = (int)seq.length();
+			const auto c = Stats::composition(seq);
+			auto r = Stats::s_TestToApplyREAdjustmentConditional(query_len, l, query_comp, c.data(), score_matrix.background_freqs());
+			if (r == Stats::eCompoScaleOldMatrix)
+				return;
+			if (*query_matrix == nullptr) {
+				*query_matrix = Stats::make_16bit_matrix(Stats::CompositionMatrixAdjust(query_len, query_len, query_comp, query_comp, Stats::CBS::AVG_MATRIX_SCALE, score_matrix.ungapped_lambda(), score_matrix.joint_probs(), score_matrix.background_freqs()));
+				++target_matrix_count;
+			}
+			if (target_matrices[block_id] == nullptr) {
+				int16_t* target_matrix = Stats::make_16bit_matrix(Stats::CompositionMatrixAdjust(l, l, c.data(), c.data(), Stats::CBS::AVG_MATRIX_SCALE, score_matrix.ungapped_lambda(), score_matrix.joint_probs(), score_matrix.background_freqs()));
+				bool del = false;
+				{
+					std::lock_guard<std::mutex> lock(target_matrices_lock);
+					if (target_matrices[block_id] == nullptr)
+						target_matrices[block_id] = target_matrix;
+					else del = true;
+				}
+				if (del)
+					delete[] target_matrix;
+				++target_matrix_count;
+			}
+			matrix = Stats::TargetMatrix(*query_matrix, target_matrices[block_id]);
+		}
+		else
+			matrix = Stats::TargetMatrix(query_comp, query_len, seq);
+	}
+	bool adjusted_matrix() const {
+		return !matrix.scores.empty();
 	}
 	size_t block_id;
 	sequence seq;
-	int filter_score, ungapped_score;
+	int ungapped_score;
 	std::array<std::list<Hsp_traits>, MAX_CONTEXT> hsp;
+	Stats::TargetMatrix matrix;
 };
 
-std::vector<WorkTarget> ungapped_stage(const sequence* query_seq, const Bias_correction* query_cb, FlatArray<SeedHit>& seed_hits, const std::vector<uint32_t>& target_block_ids, int flags);
-void rank_targets(std::vector<WorkTarget> &targets, double ratio, double factor);
+std::vector<WorkTarget> ungapped_stage(const sequence* query_seq, const Bias_correction* query_cb, const double* query_comp, FlatArray<SeedHit>& seed_hits, const std::vector<uint32_t>& target_block_ids, int flags, Statistics& stat);
 
 struct Target {
 
-	Target(size_t block_id, const sequence &seq, int ungapped_score):
+	Target(size_t block_id, const sequence &seq, int ungapped_score, const Stats::TargetMatrix& matrix):
 		block_id(block_id),
 		seq(seq),
 		filter_score(0),
-		ungapped_score(ungapped_score)
+		filter_evalue(DBL_MAX),
+		ungapped_score(ungapped_score),
+		matrix(matrix)
 	{}
 
 	void add_hit(std::list<Hsp> &list, std::list<Hsp>::iterator it) {
 		std::list<Hsp> &l = hsp[it->frame];
 		l.splice(l.end(), list, it);
-		filter_score = std::max(filter_score, (int)l.back().score);
+		filter_evalue = std::min(filter_evalue, l.back().evalue);
+		filter_score = std::max(filter_score, l.back().score);
 	}
 
-	bool operator<(const Target &t) const {
-		return filter_score > t.filter_score || (filter_score == t.filter_score && block_id < t.block_id);
+	static bool comp_evalue(const Target &t, const Target& u) {
+		return t.filter_evalue < u.filter_evalue || (t.filter_evalue == u.filter_evalue && comp_score(t, u));
+	}
+
+	static bool comp_score(const Target& t, const Target& u) {
+		return t.filter_score > u.filter_score || (t.filter_score == u.filter_score && t.block_id < u.block_id);
+	}
+
+	bool adjusted_matrix() const {
+		return !matrix.scores.empty();
 	}
 
 	void apply_filters(int source_query_len, const char *query_title, const sequence& query_seq);
@@ -91,8 +136,11 @@ struct Target {
 
 	size_t block_id;
 	sequence seq;
-	int filter_score, ungapped_score;
+	int filter_score;
+	double filter_evalue;
+	int ungapped_score;
 	std::array<std::list<Hsp>, MAX_CONTEXT> hsp;
+	Stats::TargetMatrix matrix;
 };
 
 struct TargetScore {
@@ -104,6 +152,7 @@ struct TargetScore {
 };
 
 void load_hits(hit* begin, hit* end, FlatArray<SeedHit> &hits, std::vector<uint32_t> &target_block_ids, std::vector<TargetScore> &target_scores);
+void culling(std::vector<Target>& targets, int source_query_len, const char* query_title, const sequence& query_seq, size_t min_keep);
 bool append_hits(std::vector<Target>& targets, std::vector<Target>::const_iterator begin, std::vector<Target>::const_iterator end, size_t chunk_size, int source_query_len, const char* query_title, const sequence& query_seq);
 std::vector<WorkTarget> gapped_filter(const sequence *query, const Bias_correction* query_cbs, std::vector<WorkTarget>& targets, Statistics &stat);
 void gapped_filter(const sequence* query, const Bias_correction* query_cbs, FlatArray<SeedHit> &seed_hits, std::vector<uint32_t> &target_block_ids, Statistics& stat, int flags, const Parameters &params);

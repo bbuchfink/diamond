@@ -1,3 +1,24 @@
+[2.0.6]
+- Changed the computation of expected values to use the method described in Park, Y.,
+  Sheetlin, S., Ma, N. et al. New finite-size correction for local alignment score
+  distributions. *BMC Res Notes* **5**, 286 (2012).
+- Enabled the use of a custom scoring matrix without having to specify the statistical
+  parameters (option `--custom-matrix`).
+- Added support for compositional matrix adjust as described in Yi-Kuo Yu, Stephen F.
+  Altschul, The construction of amino acid substitution matrices for the comparison of
+  proteins with non-standard compositions, *Bioinformatics*, Volume 21, Issue 7, 1 April
+  2005, Pages 902–911. Three additional modes have been added that can be enabled by
+  setting `--comp-based-stats (2,3,4)` (*the feature is not enabled by default*).
+- Fixed a bug that could cause incorrect alignment coordinates, gaps counts and sequence
+  identities being reported by `diamond view`.
+- Targets are sorted by bit score instead of e-value in the alignment output when the
+  `--top` parameter is used.
+- Disabled support of custom scoring matrices for the DAA format.
+- Fixed a bug that caused the use of a custom scoring matrix not to function correctly.
+- Fixed an issue that caused the portable binary not to function on systems that did not
+  support AVX.
+- Added the option `--no-unlink` to prevent unlinking of temporary files.
+
 [2.0.5]
 - Fixed an issue that could cause high memory use in frameshift alignment mode.
 

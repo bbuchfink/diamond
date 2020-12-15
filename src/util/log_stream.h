@@ -21,7 +21,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #pragma once
-#include <iostream>
+#include <ostream>
 #include <fstream>
 #include <mutex>
 #include <limits.h>
@@ -30,15 +30,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 struct Message_stream
 {
-	Message_stream(bool to_cout = true, bool to_file = false) :
-		to_cout_(to_cout),
-		to_file_(to_file)
-	{}
+	Message_stream(bool to_cout = true, bool to_file = false);
 	template<typename _t>
 	Message_stream& operator<<(const _t& x)
 	{
 		if(to_cout_)
-			std::cerr << x;
+			(*out_stream_) << x;
 		if (to_file_) {
 			std::ofstream f("diamond.log", std::ios_base::out | std::ios_base::app);
 			f << x;
@@ -47,21 +44,10 @@ struct Message_stream
 		return *this;
 	}
 	//Message_stream& operator<<(std::ostream & (__cdecl *_Pfn)(std::ostream&))
-	Message_stream& operator<<(std::ostream & (*_Pfn)(std::ostream&))
-	{
-		if(to_cout_)
-			((*_Pfn)(std::cerr));
-		if (to_file_) {
-			mtx.lock();
-			std::ofstream f("diamond.log", std::ios_base::out | std::ios_base::app);
-			((*_Pfn)(f));
-			f.close();
-			mtx.unlock();
-		}
-		return *this;
-	}
+	Message_stream& operator<<(std::ostream& (*_Pfn)(std::ostream&));
 	static std::mutex mtx;
 private:
+	std::ostream* out_stream_;
 	bool to_cout_, to_file_;
 };
 

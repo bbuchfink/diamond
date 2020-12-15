@@ -1,6 +1,9 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2017 Benjamin Buchfink <buchfink@gmail.com>
+Copyright (C) 2016-2020 Max Planck Society for the Advancement of Science e.V.
+                        Benjamin Buchfink
+						
+Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,8 +19,9 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
+
 #include <algorithm>
-#include "dp.h"
+#include "../dp/dp.h"
 
 double background_scores[20];
 const double background_freq[] = { 0.0844581,0.0581912,0.0421072,0.0546748,0.0146359,0.040118,0.0621211,0.0669379,0.0225159,0.0547866,0.0957934,0.0523275,0.0218629,0.038769,0.0505311,
@@ -25,9 +29,9 @@ const double background_freq[] = { 0.0844581,0.0581912,0.0421072,0.0546748,0.014
 
 void init_cbs()
 {	
-	for (unsigned i = 0; i < 20; ++i) {
+	for (size_t i = 0; i < 20; ++i) {
 		background_scores[i] = 0;
-		for (unsigned j = 0; j < 20; ++j)
+		for (size_t j = 0; j < 20; ++j)
 			background_scores[i] += background_freq[j] * score_matrix(i, j);
 	}
 }

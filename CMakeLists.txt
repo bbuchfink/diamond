@@ -64,9 +64,6 @@ set(CMAKE_CXX_STANDARD 11)
 
 if(CMAKE_BUILD_MARCH)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=${CMAKE_BUILD_MARCH}")
-  set(X86 OFF)
-else()
-  add_definitions(-DRUNTIME_DISPATCH)
 endif()
 
 find_package(ZLIB REQUIRED)
@@ -123,7 +120,7 @@ endif(X86)
 set(OBJECTS
   src/run/main.cpp
   src/basic/config.cpp
-  src/basic/score_matrix.cpp
+  src/stats/score_matrix.cpp
   src/data/queries.cpp
   src/data/reference.cpp
   src/data/seed_histogram.cpp
@@ -145,7 +142,6 @@ set(OBJECTS
   src/output/blast_tab_format.cpp
   src/dp/needleman_wunsch.cpp
   src/output/blast_pairwise_format.cpp
-  src/dp/comp_based_stats.cpp
   src/run/double_indexed.cpp
   src/output/sam_format.cpp
   src/align/align.cpp
@@ -194,7 +190,6 @@ set(OBJECTS
   src/align/extend.cpp
   src/test/simulate.cpp
   src/test/test.cpp
-  src/align/ranking.cpp
   src/align/ungapped.cpp
   src/align/gapped.cpp
   src/align/culling.cpp
@@ -205,7 +200,6 @@ set(OBJECTS
   src/align/output.cpp
   src/tools/roc.cpp
   src/test/data.cpp
-  src/basic/matrix_tables.cpp
   src/test/test_cases.cpp
   src/chaining/smith_waterman.cpp
   src/basic/value.cpp
@@ -236,18 +230,28 @@ set(OBJECTS
   src/align/global_ranking/extend.cpp
   src/align/load_hits.cpp
   src/tools/rocid.cpp
-  src/basic/cbs.cpp
+  src/lib/blast/blast_seg.cpp
+  src/lib/blast/blast_filter.cpp
+  src/lib/blast/nlm_linear_algebra.cpp
+  src/stats/matrices/blosum45.cpp
+  src/stats/matrices/blosum50.cpp
+  src/stats/matrices/blosum62.cpp
+  src/stats/matrices/blosum80.cpp
+  src/stats/matrices/blosum90.cpp
+  src/stats/matrices/pam250.cpp
+  src/stats/matrices/pam30.cpp
+  src/stats/matrices/pam70.cpp
+  src/stats/stats.cpp
+  src/stats/cbs.cpp
+  src/stats/comp_based_stats.cpp
+  src/stats/hauser_correction.cpp
+  src/stats/matrix_adjust.cpp
 )
 
 if(X86)
-  add_executable(diamond $<TARGET_OBJECTS:arch_avx2>
-    $<TARGET_OBJECTS:arch_sse4_1>
-    $<TARGET_OBJECTS:arch_generic>
-    ${OBJECTS})
+  add_executable(diamond $<TARGET_OBJECTS:arch_generic> $<TARGET_OBJECTS:arch_sse4_1> $<TARGET_OBJECTS:arch_avx2> ${OBJECTS})
 else()
-add_executable(diamond $<TARGET_OBJECTS:arch_generic>
-  ${OBJECTS}
-)
+  add_executable(diamond $<TARGET_OBJECTS:arch_generic> ${OBJECTS})
 endif()
 
 target_link_libraries(diamond ${ZLIB_LIBRARY} ${CMAKE_THREAD_LIBS_INIT})

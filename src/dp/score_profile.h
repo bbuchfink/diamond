@@ -23,7 +23,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../basic/sequence.h"
 #include "score_vector.h"
 #include "../basic/value.h"
-#include "comp_based_stats.h"
+#include "../stats/hauser_correction.h"
 
 using std::vector;
 
