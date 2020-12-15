@@ -45,7 +45,7 @@ struct Rank {
 		return (int)r;
 	}
 	friend std::ostream& operator<<(std::ostream &s, Rank &r) {
-		s << names[(int)r.r];
+		s << std::string(names[(int)r.r]);
 		return s;
 	}
 	static const char* names[count];
