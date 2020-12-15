@@ -45,15 +45,15 @@ Score_matrix::Score_matrix(const string & matrix, int gap_open, int gap_extend, 
 	db_letters_ ((double)db_letters),
 	name_(matrix),
 	matrix8_(standard_matrix_->scores.data(), stop_match_score),
+	matrix32_(standard_matrix_->scores.data(), stop_match_score),
+	matrix32_scaled_(standard_matrix_->freq_ratios, standard_matrix_->ungapped_constants().Lambda, standard_matrix_->scores.data(), scale),
 	bias_((char)(-low_score())),
 	matrix8u_(standard_matrix_->scores.data(), stop_match_score, bias_),
 	matrix8_low_(standard_matrix_->scores.data(), stop_match_score, 0, 16),
 	matrix8_high_(standard_matrix_->scores.data(), stop_match_score, 0, 16, 16),
 	matrix8u_low_(standard_matrix_->scores.data(), stop_match_score, bias_, 16),
 	matrix8u_high_(standard_matrix_->scores.data(), stop_match_score, bias_, 16, 16),
-	matrix16_(standard_matrix_->scores.data(), stop_match_score),
-	matrix32_(standard_matrix_->scores.data(), stop_match_score),
-	matrix32_scaled_(standard_matrix_->freq_ratios, standard_matrix_->ungapped_constants().Lambda, standard_matrix_->scores.data(), scale)
+	matrix16_(standard_matrix_->scores.data(), stop_match_score)
 {
 	const Stats::StandardMatrix::Parameters& p = standard_matrix_->constants(gap_open_, gap_extend_), & u = standard_matrix_->ungapped_constants();
 	const double G = gap_open_ + gap_extend_, b = 2.0 * G * (u.alpha - p.alpha), beta = 2.0 * G * (u.alpha_v - p.alpha_v);
@@ -83,7 +83,7 @@ int8_t Score_matrix::high_score() const
 double Score_matrix::avg_id_score() const
 {
 	double s = 0;
-	for (int i = 0; i < 20; ++i)
+	for (size_t i = 0; i < 20; ++i)
 		s += this->operator()(i, i);
 	return s / 20;
 }
@@ -137,9 +137,9 @@ const signed char* custom_scores(const string &matrix_file, int mask_score)
 			++n;
 		}
 	}
-	for (int i = 0; i < AMINO_ACID_COUNT; ++i) {
+	for (size_t i = 0; i < AMINO_ACID_COUNT; ++i) {
 		scores[i * AMINO_ACID_COUNT + SUPER_HARD_MASK] = min_score;
-		scores[(int)SUPER_HARD_MASK * AMINO_ACID_COUNT + i] = min_score;
+		scores[(size_t)SUPER_HARD_MASK * AMINO_ACID_COUNT + i] = min_score;
 	}
 	return scores;
 }
@@ -151,14 +151,14 @@ Score_matrix::Score_matrix(const string& matrix_file, int gap_open, int gap_exte
 	db_letters_((double)db_letters),
 	name_("custom"),
 	matrix8_(score_array_, stop_match_score),
+	matrix32_(score_array_, stop_match_score),
 	bias_((char)(-low_score())),
 	matrix8u_(score_array_, stop_match_score, bias_),
 	matrix8_low_(score_array_, stop_match_score, 0, 16),
 	matrix8_high_(score_array_, stop_match_score, 0, 16, 16),
 	matrix8u_low_(score_array_, stop_match_score, bias_, 16),
 	matrix8u_high_(score_array_, stop_match_score, bias_, 16, 16),
-	matrix16_(score_array_, stop_match_score),
-	matrix32_(score_array_, stop_match_score)
+	matrix16_(score_array_, stop_match_score)
 {
 	const int N = TRUE_AA;
 	long m[N][N];

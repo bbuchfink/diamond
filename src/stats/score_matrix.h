@@ -83,7 +83,12 @@ struct Score_matrix
 
 	int operator()(Letter a, Letter b) const
 	{
-		return matrix8_.data[(int(a) << 5) + int(b)];
+		return matrix32_.data[(int(a) << 5) + int(b)];
+	}
+
+	int operator()(size_t a, size_t b) const
+	{
+		return matrix32_.data[(a << 5) + b];
 	}
 
 	const int* row(Letter a) const
@@ -216,6 +221,7 @@ private:
 	double ln_k_;
 	std::string name_;
 	Scores<int8_t> matrix8_;
+	Scores<int> matrix32_, matrix32_scaled_;
 	int8_t bias_;
 	Scores<uint8_t> matrix8u_;
 	Scores<int8_t> matrix8_low_;
@@ -223,7 +229,6 @@ private:
 	Scores<int8_t> matrix8u_low_;
 	Scores<int8_t> matrix8u_high_;
 	Scores<int16_t> matrix16_;
-	Scores<int> matrix32_, matrix32_scaled_;
 	Sls::AlignmentEvaluer evaluer;
 
 };

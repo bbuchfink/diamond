@@ -123,8 +123,8 @@ Config::Config(int argc, const char **argv, bool check_io)
 		.add_command("dbinfo", "Print information about a DIAMOND database file", dbinfo)
 		.add_command("test", "Run regression tests", regression_test)
 		.add_command("roc", "", roc)
-#ifdef EXTRA
 		.add_command("benchmark", "", benchmark)
+#ifdef EXTRA
 		.add_command("random-seqs", "", random_seqs)
 		.add_command("sort", "", sort)
 		.add_command("dbstat", "", db_stat)

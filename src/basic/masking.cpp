@@ -34,17 +34,17 @@ Masking::Masking(const Score_matrix &score_matrix)
 	const unsigned n = value_traits.alphabet_size;
 	int int_matrix[20][20], *int_matrix_ptr[20];
 	std::copy(int_matrix, int_matrix + 20, int_matrix_ptr);
-	for (int i = 0; i < 20; ++i)
-		for (int j = 0; j < 20; ++j)
-			int_matrix[i][j] = score_matrix((char)i, (char)j);
+	for (size_t i = 0; i < 20; ++i)
+		for (size_t j = 0; j < 20; ++j)
+			int_matrix[i][j] = score_matrix(i, j);
 	cbrc::LambdaCalculator lc;
 	lc.calculate(int_matrix_ptr, 20);
 	
 	const double lambda = lc.lambda(); // 0.324032
-	for (unsigned i = 0; i < size; ++i) {
+	for (size_t i = 0; i < size; ++i) {
 		mask_table_x_[i] = value_traits.mask_char;
 		mask_table_bit_[i] = (int8_t)i | bit_mask;
-		for (unsigned j = 0; j < size; ++j)
+		for (size_t j = 0; j < size; ++j)
 			if (i < n && j < n) {
 				likelihoodRatioMatrixf_[i][j] = (float)exp(lambda * score_matrix(i, j));
 			}

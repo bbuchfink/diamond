@@ -62,7 +62,7 @@ vector<int> MultiStep::cluster(DatabaseFile &db, const BitVector *filter) {
 
 	Workflow::Search::run(opt);
 
-	message_stream << "Edges = " << nb.edges.size() << endl;
+	//message_stream << "Edges = " << nb.edges.size() << endl;
 
 	unordered_map <uint32_t, uint32_t> components;
 	find_connected_components(nb.smallest_index, components);

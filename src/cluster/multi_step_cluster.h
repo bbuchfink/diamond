@@ -77,7 +77,6 @@ struct Neighbors : public vector<vector<int>>, public Consumer {
 			ptr += sizeof(uint32_t);
 
 			(*this)[query].push_back(subject);
-			edges.push_back({ query, subject });
 
 			if (subject < smallest_index[query])
 				smallest_index[query] = subject;
@@ -86,7 +85,7 @@ struct Neighbors : public vector<vector<int>>, public Consumer {
 				smallest_index[subject] = query;
 		}
 	}
-	vector<Util::Algo::Edge> edges;
+	
 };
 
 }}

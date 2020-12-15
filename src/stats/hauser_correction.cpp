@@ -29,9 +29,9 @@ const double background_freq[] = { 0.0844581,0.0581912,0.0421072,0.0546748,0.014
 
 void init_cbs()
 {	
-	for (unsigned i = 0; i < 20; ++i) {
+	for (size_t i = 0; i < 20; ++i) {
 		background_scores[i] = 0;
-		for (unsigned j = 0; j < 20; ++j)
+		for (size_t j = 0; j < 20; ++j)
 			background_scores[i] += background_freq[j] * score_matrix(i, j);
 	}
 }

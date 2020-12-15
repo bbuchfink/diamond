@@ -357,7 +357,7 @@ s_ScaleSquareMatrix(int** matrix, int alphsize,
     return 0;
 }
 
-inline int
+int
 Blast_CompositionBasedStats(int** matrix, double* LambdaRatio,
     const int* const* matrix_in,
     const double queryProb[], const double resProb[], double lambda, const double(&freq_ratios)[NCBI_ALPH][NCBI_ALPH])

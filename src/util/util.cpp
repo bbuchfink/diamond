@@ -96,9 +96,9 @@ Message_stream& Message_stream::operator<<(std::ostream& (*_Pfn)(std::ostream&))
 }
 
 Message_stream::Message_stream(bool to_cout, bool to_file) :
+	out_stream_(&std::cerr),
 	to_cout_(to_cout),
-	to_file_(to_file),
-	out_stream_(&std::cerr)
+	to_file_(to_file)	
 {}
 
 void print_binary(uint64_t x)
