@@ -18,6 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
+#include <iostream>
 #include <atomic>
 #include <array>
 #include <set>
@@ -133,7 +134,7 @@ struct Histogram {
 
 	friend std::ostream& operator<<(std::ostream& os, const Histogram& h) {
 		for (int i = 0; i < BINS; ++i)
-			os << h.coverage[i] << '\t' << h.false_positives[i] << endl;
+			os << (h.coverage[i] / config.query_count) << '\t' << ((double)h.false_positives[i] / config.query_count) << endl;
 		return os;
 	}
 
@@ -338,6 +339,12 @@ static void worker() {
 
 void roc() {
 	get_roc = !config.roc_file.empty();
+
+	if (config.family_map.empty())
+		throw std::runtime_error("Missing option: --family-map");
+
+	if (config.family_map_query.empty())
+		throw std::runtime_error("Missing option: --family-map-query");
 
 	task_timer timer("Loading family mapping");
 	acc2fam = FamilyMapping(config.family_map);

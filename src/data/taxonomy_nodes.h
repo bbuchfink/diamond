@@ -24,7 +24,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <vector>
 #include <set>
 #include <string>
-#include <iostream>
 #include "../util/io/serializer.h"
 #include "../util/io/deserializer.h"
 
@@ -46,7 +45,7 @@ struct Rank {
 		return (int)r;
 	}
 	friend std::ostream& operator<<(std::ostream &s, Rank &r) {
-		s << names[(int)r.r];
+		s << std::string(names[(int)r.r]);
 		return s;
 	}
 	static const char* names[count];

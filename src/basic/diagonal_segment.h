@@ -20,7 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define DIAGONAL_SEGMENT_H_
 
 #include "translated_position.h"
-#include "score_matrix.h"
+#include "../stats/score_matrix.h"
 #include "sequence.h"
 
 struct Diagonal_segment

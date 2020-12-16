@@ -51,6 +51,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../align/target.h"
 
 using std::unique_ptr;
+using std::endl;
 
 namespace Workflow { namespace Search {
 
@@ -140,6 +141,11 @@ void run_ref_chunk(DatabaseFile &db_file,
 	else
 		out = &master_out;
 
+	if (config.target_seg == 1) {
+		timer.go("SEG masking targets");
+		mask_seqs(*ref_seqs::data_, Masking::get(), true, Masking::Algo::SEG);
+	}
+
 	timer.go("Computing alignments");
 	align_queries(*Trace_pt_buffer::instance, out, params, metadata);
 	delete Trace_pt_buffer::instance;
@@ -169,14 +175,6 @@ void run_query_chunk(DatabaseFile &db_file,
 	const Options &options)
 {
 	auto P = Parallelizer::get();
-
-	const Parameters params {
-		db_file.ref_header.sequences,
-		db_file.ref_header.letters,
-		db_file.total_blocks(),
-		config.gapped_filter_evalue1,
-		config.gapped_filter_evalue
-	};
 
 	task_timer timer("Building query seed set");
 	if (query_chunk == 0)
@@ -214,6 +212,14 @@ void run_query_chunk(DatabaseFile &db_file,
 		query_seeds_hashed = new Hashed_seed_set(query_seqs::get());
 	}
 	timer.finish();
+
+	const Parameters params{
+	db_file.ref_header.sequences,
+	db_file.ref_header.letters,
+	db_file.total_blocks(),
+	config.gapped_filter_evalue1,
+	config.gapped_filter_evalue
+	};
 
 	char *query_buffer = nullptr;
 	const pair<size_t, size_t> query_len_bounds = query_seqs::data_->len_bounds(shapes[0].length_);

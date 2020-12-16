@@ -76,6 +76,7 @@ constexpr Letter SUPER_HARD_MASK = 25;
 constexpr Letter DELIMITER_LETTER = 31;
 constexpr Letter LETTER_MASK = 31;
 constexpr Letter SEED_MASK = -128;
+constexpr size_t TRUE_AA = 20;
 
 static inline bool is_amino_acid(Letter x) {
 	return x != MASK_LETTER && x != DELIMITER_LETTER && x != STOP_LETTER;

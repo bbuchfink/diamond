@@ -33,6 +33,7 @@ using std::unique_ptr;
 using std::mutex;
 using std::thread;
 using std::unordered_map;
+using std::endl;
 
 namespace Extension { namespace GlobalRanking {
 
@@ -76,10 +77,12 @@ void extend_query(const QueryList& query_list, const TargetMap& db2block_id, con
 	OutputSink::get().push(query_list.query_block_id, buf);
 }
 
-void align_worker(InputFile* query_list, const TargetMap* db2block_id, const Parameters* params, const Metadata* metadata) {
+void align_worker(InputFile* query_list, const TargetMap* db2block_id, const Parameters* params, const Metadata* metadata, uint32_t* next_query) {
 	QueryList input;
 	Statistics stats;
-	while (input = fetch_query_targets(*query_list), !input.targets.empty()) {
+	while (input = fetch_query_targets(*query_list, *next_query), !input.targets.empty()) {
+		for (uint32_t i = input.last_query_block_id; i < input.query_block_id; ++i)
+			OutputSink::get().push(i, nullptr);
 		extend_query(input, *db2block_id, *params, *metadata, stats);
 	}
 	statistics += stats;
@@ -107,9 +110,10 @@ void extend(DatabaseFile& db, TempFile& merged_query_list, BitVector& ranking_db
 
 	timer.go("Computing alignments");
 	OutputSink::instance.reset(new OutputSink(0, &master_out));
+	uint32_t next_query = 0;
 	vector<thread> threads;
 	for (size_t i = 0; i < config.threads_; ++i)
-		threads.emplace_back(align_worker, &query_list, &db2block_id, &params, &metadata);
+		threads.emplace_back(align_worker, &query_list, &db2block_id, &params, &metadata, &next_query);
 	for (auto& i : threads)
 		i.join();
 

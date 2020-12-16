@@ -2,6 +2,8 @@
 #include "output_format.h"
 #include "../util/escape_sequences.h"
 
+using std::endl;
+
 void XML_format::print_match(const Hsp_context& r, const Metadata& metadata, TextBuffer& out)
 {
 	if (r.hsp_num == 0) {

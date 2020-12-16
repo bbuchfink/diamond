@@ -101,7 +101,6 @@ struct Config
 	unsigned target_fetch_size;
 	bool mode_more_sensitive;
 	string matrix_file;
-	double lambda, K;
 	string_vector shape_mask;
 	unsigned query_gencode;
 	string unaligned;
@@ -158,7 +157,6 @@ struct Config
 	double freq_treshold;
 	bool use_lazy_dict;
 	string aligned_file;
-	int filter_locus;
 	bool use_dataset_field;
 	bool store_query_quality;
 	string invocation;
@@ -239,7 +237,6 @@ struct Config
 	double ranking_score_drop_factor;
 	double ranking_cutoff_bitscore;
 	int left_most_interval;
-	bool alp;
 	bool no_forward_fp;
 	bool no_ref_masking;
 	string roc_file;
@@ -248,6 +245,13 @@ struct Config
 	bool output_fp;
 	int family_cap;
 	int cbs_matrix_scale;
+	size_t query_count;
+	double cbs_angle;
+	int target_seg;
+	double cbs_err_tolerance;
+	int cbs_it_limit;
+	double query_match_distance_threshold;
+	double length_ratio_threshold;
 
 	Sensitivity sensitivity;
 	TracebackMode traceback_mode;

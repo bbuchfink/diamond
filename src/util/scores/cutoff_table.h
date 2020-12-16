@@ -19,7 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #pragma once
-#include "../../basic/score_matrix.h"
+#include "../../stats/score_matrix.h"
 #include "../intrin.h"
 
 namespace Util { namespace Scores {
@@ -27,7 +27,7 @@ namespace Util { namespace Scores {
 struct CutoffTable {
 	
 	CutoffTable(double evalue) {
-		for (int b = 1; b <= MAX_BITS; ++b) {
+		for (int b = 1; b <= MAX_BITS; ++b) {			
 			data_[b] = score_matrix.rawscore(score_matrix.bitscore_norm(evalue, 1 << (b - 1)));
 		}
 	}

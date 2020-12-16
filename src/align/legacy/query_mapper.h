@@ -23,6 +23,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <vector>
 #include <list>
 #include <set>
+#include <float.h>
 #include "../../search/trace_pt_buffer.h"
 #include "../../data/queries.h"
 #include "../../util/ptr_vector.h"
@@ -108,18 +109,24 @@ struct Seed_hit
 
 struct Target
 {
-	Target(int score):
-		filter_score(score)
+	Target(int filter_score, double filter_evalue):
+		filter_score(filter_score),
+		filter_evalue(filter_evalue)
 	{}
 	Target(size_t begin, unsigned subject_id, const std::set<unsigned> &taxon_rank_ids) :
 		subject_block_id(subject_id),
 		subject(ref_seqs::get()[subject_id]),
 		filter_score(0),
+		filter_evalue(DBL_MAX),
 		outranked(false),
 		begin(begin),
 		taxon_rank_ids(taxon_rank_ids)
 	{}
-	static bool compare(Target* lhs, Target *rhs)
+	static bool compare_evalue(Target* lhs, Target *rhs)
+	{
+		return lhs->filter_evalue < rhs->filter_evalue || (lhs->filter_evalue == rhs->filter_evalue && compare_score(lhs, rhs));
+	}
+	static bool compare_score(Target* lhs, Target* rhs)
 	{
 		return lhs->filter_score > rhs->filter_score || (lhs->filter_score == rhs->filter_score && lhs->subject_block_id < rhs->subject_block_id);
 	}
@@ -133,11 +140,12 @@ struct Target
 	bool envelopes(const Hsp_traits &t, double p) const;
 	bool is_enveloped(const Target &t, double p) const;
 	bool is_enveloped(PtrVector<Target>::const_iterator begin, PtrVector<Target>::const_iterator end, double p, int min_score) const;
-	void inner_culling(int cutoff);
+	void inner_culling();
 	void apply_filters(int dna_len, int subject_len, const char *query_title, const char *ref_title);
 	unsigned subject_block_id;
 	sequence subject;
 	int filter_score;
+	double filter_evalue;
 	float filter_time;
 	bool outranked;
 	size_t begin, end;
@@ -156,7 +164,6 @@ struct QueryMapper
 	bool generate_output(TextBuffer &buffer, Statistics &stat);
 	void rank_targets(double ratio, double factor);
 	void score_only_culling();
-	int raw_score_cutoff() const;
 	size_t n_targets() const
 	{
 		return targets.size();

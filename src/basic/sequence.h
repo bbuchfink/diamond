@@ -19,7 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #ifndef SEQUENCE_H_
 #define SEQUENCE_H_
 
-#include <iostream>
+#include <ostream>
 #include <vector>
 #include <string>
 #include <assert.h>

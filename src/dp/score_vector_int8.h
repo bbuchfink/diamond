@@ -51,6 +51,16 @@ struct score_vector<int8_t>
 		data_(_mm256_loadu_si256(reinterpret_cast<const __m256i*>(s)))
 	{ }
 
+	score_vector(int8_t a, int8_t b, uint32_t mask) {
+		alignas(32) int8_t s[32];
+		for (uint32_t i = 0; i < 32; ++i)
+			if (mask & (1 << i))
+				s[i] = b;
+			else
+				s[i] = a;
+		data_ = _mm256_load_si256(reinterpret_cast<const __m256i*>(s));
+	}
+
 	score_vector(unsigned a, __m256i seq)
 	{
 		const __m256i* row_lo = reinterpret_cast<const __m256i*>(&score_matrix.matrix8_low()[a << 5]);
@@ -233,6 +243,16 @@ struct score_vector<int8_t>
 		data_(_mm_loadu_si128(reinterpret_cast<const __m128i*>(s)))
 	{ }
 
+	score_vector(int8_t a, int8_t b, uint32_t mask) {
+		alignas(16) int8_t s[16];
+		for (uint32_t i = 0; i < 16; ++i)
+			if (mask & (1 << i))
+				s[i] = b;
+			else
+				s[i] = a;
+		data_ = _mm_load_si128(reinterpret_cast<const __m128i*>(s));
+	}
+
 	score_vector(unsigned a, __m128i seq)
 	{
 		const __m128i* row = reinterpret_cast<const __m128i*>(&score_matrix.matrix8()[a << 5]);
@@ -337,6 +357,8 @@ struct score_vector<int8_t>
 		return s;
 	}
 
+	void expand_from_8bit() {}
+
 	__m128i data_;
 
 };
@@ -393,6 +415,10 @@ static inline DISPATCH_ARCH::score_vector<int8_t> load_sv(const int8_t *x) {
 
 static inline DISPATCH_ARCH::score_vector<int8_t> load_sv(const uint8_t *x) {
 	return DISPATCH_ARCH::score_vector<int8_t>(x);
+}
+
+static inline DISPATCH_ARCH::score_vector<int8_t> load_sv(int8_t a, int8_t b, uint32_t mask) {
+	return DISPATCH_ARCH::score_vector<int8_t>(a, b, mask);
 }
 
 #endif

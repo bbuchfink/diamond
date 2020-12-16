@@ -1,4 +1,5 @@
 #include <array>
+#include <iostream>
 #include <unordered_map>
 #include "../basic/config.h"
 #include "../util/io/text_input_file.h"

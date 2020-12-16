@@ -21,7 +21,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #pragma once
-#include <iostream>
 #include "sequence_set.h"
 #include "../basic/translate.h"
 #include "../util/seq_file_format.h"

@@ -1,6 +1,10 @@
+#include <iostream>
 #include "chaining.h"
 #include "../output/output_format.h"
 #include "../dp/dp.h"
+
+using std::cout;
+using std::endl;
 
 void print_diag(int i0, int j0, int l, int score, const Diag_graph &diags, const sequence &query, const sequence &subject)
 {

@@ -30,9 +30,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/simd/vector.h"
 #include "../../util/system.h"
 #include "../../util/memory/alignment.h"
-#ifdef __AVX2__
-#include "../../util/simd/transpose32x32.h"
-#endif
+#include "../../util/simd/transpose.h"
 
 static inline uint8_t cmp_mask(int x, int y) {
 	return x == y;
@@ -125,7 +123,7 @@ namespace DP {
 
 template<typename _sv, typename _cbs>
 struct CBSBuffer {
-	CBSBuffer(const DP::NoCBS&, int) {}
+	CBSBuffer(const DP::NoCBS&, int, uint32_t) {}
 	void* operator()(int i) const {
 		return nullptr;
 	}
@@ -133,10 +131,11 @@ struct CBSBuffer {
 
 template<typename _sv>
 struct CBSBuffer<_sv, const int8_t*> {
-	CBSBuffer(const int8_t* v, int l) {
+	CBSBuffer(const int8_t* v, int l, uint32_t channel_mask) {
+		typedef typename ::DISPATCH_ARCH::ScoreTraits<_sv>::Score Score;
 		data.reserve(l);
 		for (int i = 0; i < l; ++i)
-			data.emplace_back(typename ::DISPATCH_ARCH::ScoreTraits<_sv>::Score(v[i]));
+			data.push_back(load_sv(Score(v[i]), (Score)0, channel_mask));
 	}
 	_sv operator()(int i) const {
 		return data[i];
@@ -282,10 +281,28 @@ struct SwipeProfile
 	void set(const int8_t** target_scores) {
 #if ARCH_ID == 2
 		transpose(target_scores, 32, (int8_t*)data_, __m256i());
-		for (size_t i = 0; i < AMINO_ACID_COUNT; ++i) {
+		for (size_t i = 0; i < AMINO_ACID_COUNT; ++i)
 			data_[i].expand_from_8bit();
-		}
+#elif defined(__SSE2__)
+		transpose(target_scores, 16, (int8_t*)data_, __m128i());
+		for (int i = 0; i < 16; ++i)
+			target_scores[i] += 16;
+		transpose(target_scores, 16, (int8_t*)(&data_[16]), __m128i());
+		for (size_t i = 0; i < AMINO_ACID_COUNT; ++i)
+			data_[i].expand_from_8bit();
+#else
+		for (int i = 0; i < AMINO_ACID_COUNT; ++i)
+			data_[i] = target_scores[0][i];
 #endif
+	}
+
+	void set(const int32_t** target_scores) {
+		typename ScoreTraits<_sv>::Score s[ScoreTraits<_sv>::CHANNELS];
+		for (size_t i = 0; i < AMINO_ACID_COUNT; ++i) {
+			for (size_t j = 0; j < ScoreTraits<_sv>::CHANNELS; ++j)
+				s[j] = target_scores[j][i];
+			data_[i] = load_sv(s);
+		}
 	}
 
 	//_sv data_[AMINO_ACID_COUNT];
@@ -320,6 +337,10 @@ struct SwipeProfile<int32_t>
 		std::copy(row, row + 32, this->row);
 	}
 	void set(const int8_t** target_scores) {
+		for (int i = 0; i < 32; ++i)
+			row[i] = target_scores[0][i];
+	}
+	void set(const int32_t * *target_scores) {
 		for (int i = 0; i < 32; ++i)
 			row[i] = target_scores[0][i];
 	}
