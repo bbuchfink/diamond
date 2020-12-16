@@ -25,17 +25,17 @@ struct FileSource : public StreamEntity
 {
 	FileSource(const string &file_name);
 	FileSource(const string &file_name, FILE *file);
-	virtual void rewind();
-	virtual void seek(size_t pos);
-	virtual void seek_forward(size_t n);
+	virtual void rewind() override;
+	virtual void seek(size_t pos) override;
+	virtual void seek_forward(size_t n) override;
 	virtual size_t tell() override;
-	virtual size_t read(char *ptr, size_t count);
-	virtual void close();
-	virtual const string& file_name() const
+	virtual size_t read(char *ptr, size_t count) override;
+	virtual void close() override;
+	virtual const string& file_name() const override
 	{
 		return file_name_;
 	}
-	virtual FILE* file()
+	virtual FILE* file() override
 	{
 		return f_;
 	}

@@ -53,7 +53,7 @@ struct VectorIterator : public DynamicIterator<_t> {
 			return _t();
 	}
 
-	virtual _t operator[](size_t i) {
+	virtual _t operator[](size_t i) override {
 		return begin_[i];
 	}
 	
@@ -81,7 +81,7 @@ struct ContainerIterator : public DynamicIterator<_t> {
 			return _t();
 	}
 
-	virtual _t operator[](size_t i) {
+	virtual _t operator[](size_t i) override {
 		return _t(container_[i], i);
 	}
 

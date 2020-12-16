@@ -8,7 +8,8 @@
   Altschul, The construction of amino acid substitution matrices for the comparison of
   proteins with non-standard compositions, *Bioinformatics*, Volume 21, Issue 7, 1 April
   2005, Pages 902–911. Three additional modes have been added that can be enabled by
-  setting `--comp-based-stats (2,3,4)` (*the feature is not enabled by default*).
+  setting `--comp-based-stats (2,3,4)` (*the feature is not enabled by default and does
+  not support translated searches at the moment*).
 - Fixed a bug that could cause incorrect alignment coordinates, gaps counts and sequence
   identities being reported by `diamond view`.
 - Targets are sorted by bit score instead of e-value in the alignment output when the

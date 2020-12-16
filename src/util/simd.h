@@ -24,21 +24,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <ostream>
 #include "system.h"
 
-#if defined(__GNUC__) && !defined(__clang__) && defined(__SSE__)
-#pragma GCC push_options
-#pragma GCC target("arch=x86-64")
-#elif defined(__clang__) && defined(__SSE__)
-#pragma clang attribute push (__attribute__((target("arch=x86-64"))), apply_to=function)
-#endif
-
-#include <functional>
-
-#if defined(__GNUC__) && !defined(__clang__) && defined(__SSE__)
-#pragma GCC pop_options
-#elif defined(__clang__) && defined(__SSE__)
-#pragma clang attribute pop
-#endif
-
 #if defined(_M_AMD64) && defined(_MSC_VER)
 #define __SSE__
 #define __SSE2__
@@ -146,6 +131,8 @@ inline void print_16(__m256i x, std::ostream& s) {
 #pragma clang attribute push (__attribute__((target("arch=x86-64"))), apply_to=function)
 #endif
 
+#include <functional>
+
 #define DECL_DISPATCH(ret, name, param) namespace ARCH_GENERIC { ret name param; }\
 namespace ARCH_SSE4_1 { ret name param; }\
 namespace ARCH_AVX2 { ret name param; }\
@@ -164,6 +151,8 @@ const std::function<decltype(ARCH_GENERIC::name)> name = dispatch_target_##name(
 #endif
 
 #else
+
+#include <functional>
 
 #define DECL_DISPATCH(ret, name, param) namespace ARCH_GENERIC { ret name param; }\
 inline std::function<decltype(ARCH_GENERIC::name)> dispatch_target_##name() {\
