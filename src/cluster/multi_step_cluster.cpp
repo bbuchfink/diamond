@@ -59,20 +59,38 @@ vector<int> MultiStep::cluster(DatabaseFile& db, const BitVector* filter) {
 
 	Workflow::Search::run(opt);
 
-	//message_stream << "Edges = " << nb.edges.size() << endl;
-
+	
 	unordered_map <uint32_t, NodEdgSet> components = find_connected_components(nb.smallest_index, nb.number_edges);
 	message_stream << "Number of connected components: " << components.size() << endl;
 	message_stream << "Average number of nodes per connected component: " << (double)nb.smallest_index.size() / components.size() << endl;
 
-	uint32_t large = max_element(components.begin(), components.end(), [](const pair<uint32_t, NodEdgSet>& left, const pair<uint32_t, NodEdgSet>& right) {return left.second.nodes < right.second.nodes; })-> second.nodes;
+	uint32_t large = max_element(components.begin(), components.end(), [](const pair<uint32_t, NodEdgSet>& left, const pair<uint32_t, NodEdgSet>& right) {return left.second.nodes < right.second.nodes; })->second.nodes;
 	message_stream << "Largest connected component has " << large << " nodes." << endl;
-	
-	mapping_comp_set(components);
+
+	vector<TempFile*> tmp_sets = mapping_comp_set(components);
 
 	uint32_t number_sets = max_element(components.begin(), components.end(), [](const pair<uint32_t, NodEdgSet>& left, const pair<uint32_t, NodEdgSet>& right) {return left.second.set < right.second.set; })->second.set;
-	message_stream << "Number of sets: " << number_sets << endl;
-	
+	message_stream << "Number of sets: " << number_sets + 1 << endl;
+
+	size_t count = 0;
+	uint32_t edge;
+	uint32_t result_set;
+	while (count < nb.tempfiles.size()) {
+		InputFile tmp_edges(*nb.tempfiles[count]);
+		while (true){
+			try {
+				tmp_edges.read(edge);
+				result_set = components[nb.smallest_index[edge]].set;
+				tmp_sets[result_set]->write(edge);
+			}
+			catch(EndOfStream &){
+				tmp_edges.close_and_delete();
+				break;
+			}
+		}
+		count++;
+	}
+
  	return Util::Algo::greedy_vortex_cover(nb);
 
 }
@@ -104,9 +122,11 @@ unordered_map<uint32_t, NodEdgSet> MultiStep::find_connected_components(vector<u
 	return ne;
 }
 
-void MultiStep::mapping_comp_set(unordered_map<uint32_t, NodEdgSet>& comp) {
+vector<TempFile*> MultiStep::mapping_comp_set(unordered_map<uint32_t, NodEdgSet>& comp) {
 	vector <vector<uint32_t>> set;
 	vector <size_t> size;
+	vector<TempFile*> temp_set;
+	
 	
 	bool TooBig;
 
@@ -125,8 +145,10 @@ void MultiStep::mapping_comp_set(unordered_map<uint32_t, NodEdgSet>& comp) {
 			set.push_back({ it.first });
 			size.push_back({ it.second.edges });
 			comp[it.first].set = set.size() - 1;
+			temp_set.push_back(new TempFile());
 		}
 	}
+	return temp_set;
 }
 
 
