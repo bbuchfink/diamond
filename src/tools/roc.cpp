@@ -340,6 +340,12 @@ static void worker() {
 void roc() {
 	get_roc = !config.roc_file.empty();
 
+	if (config.family_map.empty())
+		throw std::runtime_error("Missing option: --family-map");
+
+	if (config.family_map_query.empty())
+		throw std::runtime_error("Missing option: --family-map-query");
+
 	task_timer timer("Loading family mapping");
 	acc2fam = FamilyMapping(config.family_map);
 	timer.finish();
