@@ -274,6 +274,7 @@ struct Config
 	string	cluster_similarity;
 
 	size_t max_size_set;
+	bool external;
 	string_vector cluster_steps;
 	double cluster_mcl_inflation;
 	uint32_t cluster_mcl_expansion;
