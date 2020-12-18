@@ -53,7 +53,7 @@ class MultiStep : public ClusteringAlgorithm {
 private:
 	BitVector rep_bitset(const vector<int> &centroid, const BitVector *superset = nullptr);
 	vector<int> cluster(DatabaseFile& db, const BitVector* filter);
-	void save_edges_external(vector<TempFile*> &all_edges,vector<TempFile*> &sorted_edges, unordered_map <uint32_t, NodEdgSet> comp, vector<uint32_t> s_index);
+	void save_edges_external(vector<TempFile*> &all_edges,vector<TempFile*> &sorted_edges, const unordered_map <uint32_t, NodEdgSet>& comp, const vector<uint32_t>& s_index);
 	unordered_map<uint32_t, NodEdgSet> find_connected_components(vector<uint32_t>& sindex, const vector<size_t>& nedges);
 	vector<TempFile*> mapping_comp_set(unordered_map<uint32_t, NodEdgSet>& comp);
 	void steps(BitVector& current_reps, BitVector& previous_reps, vector<int>& current_centroids, vector<int>& previous_centroids, int count);

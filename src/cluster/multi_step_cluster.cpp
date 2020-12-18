@@ -80,7 +80,7 @@ vector<int> MultiStep::cluster(DatabaseFile& db, const BitVector* filter) {
 
 }
 
-void MultiStep::save_edges_external(vector<TempFile*>& all_edges, vector<TempFile*>& sorted_edges, unordered_map<uint32_t, NodEdgSet> comp, vector<uint32_t> s_index){
+void MultiStep::save_edges_external(vector<TempFile*>& all_edges, vector<TempFile*>& sorted_edges, const unordered_map<uint32_t, NodEdgSet>& comp, const vector<uint32_t>& s_index){
 
 	size_t count = 0;
 	uint32_t query;
@@ -92,7 +92,7 @@ void MultiStep::save_edges_external(vector<TempFile*>& all_edges, vector<TempFil
 			try {
 				tmp_edges.read(query);
 				tmp_edges.read(subject);
-				result_set = comp[s_index[query]].set;
+				result_set = comp.at(s_index[query]).set;
 				sorted_edges[result_set]->write(query);
 				sorted_edges[result_set]->write(subject);
 			}
