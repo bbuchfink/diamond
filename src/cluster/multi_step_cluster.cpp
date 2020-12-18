@@ -53,13 +53,13 @@ vector<int> MultiStep::cluster(DatabaseFile& db, const BitVector* filter) {
 	opt.db = &db;
 	opt.self = true;
 	Neighbors nb(db.ref_header.sequences);
+	vector<int> all_cluster(db.ref_header.sequences);
 
 	opt.consumer = &nb;
 	opt.db_filter = filter;
 
 	Workflow::Search::run(opt);
 
-	
 	unordered_map <uint32_t, NodEdgSet> components = find_connected_components(nb.smallest_index, nb.number_edges);
 	message_stream << "Number of connected components: " << components.size() << endl;
 	message_stream << "Average number of nodes per connected component: " << (double)nb.smallest_index.size() / components.size() << endl;
@@ -72,11 +72,15 @@ vector<int> MultiStep::cluster(DatabaseFile& db, const BitVector* filter) {
 	uint32_t number_sets = max_element(components.begin(), components.end(), [](const pair<uint32_t, NodEdgSet>& left, const pair<uint32_t, NodEdgSet>& right) {return left.second.set < right.second.set; })-> second.set;
 	message_stream << "Number of sets: " << number_sets + 1 << endl;
 
+
 	if (config.external) {
 		save_edges_external(nb.tempfiles, tmp_sets, components, nb.smallest_index);
+		return cluster_sets(all_cluster, tmp_sets);
 	}
 
- 	return Util::Algo::greedy_vortex_cover(nb);
+	else {
+		return Util::Algo::greedy_vortex_cover(nb);
+	}
 
 }
 
@@ -103,6 +107,51 @@ void MultiStep::save_edges_external(vector<TempFile*>& all_edges, vector<TempFil
 		}
 		count++;
 	}
+}
+
+vector<int> MultiStep::cluster_sets(vector<int> &cluster, vector<TempFile*> &sorted_edges){
+
+	vector<vector<int>> tmp_neighbors(cluster.size());
+	vector<int>curr;
+	bool initialize_finish = false;
+
+	size_t c = 0;
+	uint32_t query;
+	uint32_t subject;
+	while (c < sorted_edges.size()) {
+		InputFile tmp(*sorted_edges[c]);
+		while (true) {
+			try {
+				tmp.read(query);
+				tmp.read(subject);
+				tmp_neighbors[query].push_back(subject);
+			}
+			catch (EndOfStream&) {
+				tmp.close_and_delete();
+				break;
+			}
+		}
+		curr = Util::Algo::greedy_vortex_cover(tmp_neighbors);
+
+		for (size_t i = 0; i < curr.size(); i++) {
+			if (initialize_finish) {
+				if (curr[i] != i) {
+					cluster[i] = curr[i];
+				}
+			}
+			else {
+				cluster[i] = curr[i];
+			}
+		}
+
+		initialize_finish = true;
+
+		tmp_neighbors.clear();
+		tmp_neighbors.resize(cluster.size());
+
+		c++;
+	}
+	return cluster;
 }
 
 unordered_map<uint32_t, NodEdgSet> MultiStep::find_connected_components(vector<uint32_t>& sindex, const vector <size_t>& nedges){
@@ -155,7 +204,9 @@ vector<TempFile*> MultiStep::mapping_comp_set(unordered_map<uint32_t, NodEdgSet>
 			set.push_back({ it.first });
 			size.push_back({ it.second.edges });
 			comp[it.first].set = set.size() - 1;
-			temp_set.push_back(new TempFile());
+			if (config.external) {
+				temp_set.push_back(new TempFile());
+			}
 		}
 	}
 	return temp_set;
