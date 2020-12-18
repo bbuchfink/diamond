@@ -105,7 +105,7 @@ _t set_string_option(const string& s, const string& name, const vector<pair<stri
 }
 
 void Config::set_sens(Sensitivity sens) {
-	if (sensitivity != Sensitivity::FAST)
+	if (sensitivity != Sensitivity::DEFAULT)
 		throw std::runtime_error("Sensitivity switches are mutually exclusive.");
 	sensitivity = sens;
 }
@@ -459,7 +459,8 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("cbs-err-tolerance", 0, "", cbs_err_tolerance, 0.00000001)
 		("cbs-it-limit", 0, "", cbs_it_limit, 2000)
 		("query-match-distance-threshold", 0, "", query_match_distance_threshold, 0.0)
-		("length-ratio-threshold", 0, "", length_ratio_threshold, 0.0);
+		("length-ratio-threshold", 0, "", length_ratio_threshold, 0.0)
+		("fast", 0, "", mode_fast);
 	
 	parser.add(general).add(makedb).add(cluster).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options).add(deprecated_options);
 	parser.store(argc, argv, command);
@@ -689,7 +690,8 @@ Config::Config(int argc, const char **argv, bool check_io)
 #endif
 	}
 
-	sensitivity = Sensitivity::FAST;
+	sensitivity = Sensitivity::DEFAULT;
+	if (mode_fast) set_sens(Sensitivity::FAST);
 	if (mode_mid_sensitive) set_sens(Sensitivity::MID_SENSITIVE);
 	if (mode_sensitive) set_sens(Sensitivity::SENSITIVE);
 	if (mode_more_sensitive) set_sens(Sensitivity::MORE_SENSITIVE);

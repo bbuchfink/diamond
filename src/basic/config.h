@@ -26,7 +26,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <stdint.h>
 #include <map>
 
-enum class Sensitivity { FAST = 0, MID_SENSITIVE = 1, SENSITIVE = 2, MORE_SENSITIVE = 3, VERY_SENSITIVE = 4, ULTRA_SENSITIVE = 5 };
+enum class Sensitivity { FAST = 0, DEFAULT = 1, MID_SENSITIVE = 2, SENSITIVE = 3, MORE_SENSITIVE = 4, VERY_SENSITIVE = 5, ULTRA_SENSITIVE = 6 };
 enum class TracebackMode { NONE = 0, SCORE_ONLY = 1, STAT = 2, VECTOR = 3, SCORE_BUFFER = 4 };
 
 struct Config
@@ -252,6 +252,7 @@ struct Config
 	int cbs_it_limit;
 	double query_match_distance_threshold;
 	double length_ratio_threshold;
+	bool mode_fast;
 
 	Sensitivity sensitivity;
 	TracebackMode traceback_mode;
@@ -285,7 +286,8 @@ struct Config
 
 	
 	std::map<std::string, Sensitivity> sens_map{
-		{"fast", Sensitivity::FAST},
+		{"fast", Sensitivity::FAST },
+		{"default", Sensitivity::DEFAULT},
 		{"sensitive", Sensitivity::SENSITIVE},
 		{"mid-sensitive", Sensitivity::MID_SENSITIVE},
 		{"more-sensitive", Sensitivity::MORE_SENSITIVE},

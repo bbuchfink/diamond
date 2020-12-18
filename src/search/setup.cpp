@@ -121,9 +121,11 @@ void setup_search()
 		case Sensitivity::MID_SENSITIVE:
 			Config::set_option(config.index_mode, 15u);
 			break;
-		case Sensitivity::FAST:
+		case Sensitivity::DEFAULT:
 			Config::set_option(config.index_mode, 8u);
 			break;
+		case Sensitivity::FAST:
+			Config::set_option(config.index_mode, 16u);
 		}
 		Reduction::reduction = Reduction("A KR EDNQ C G H ILVM FYW P ST");
 		::shapes = shape_config(config.index_mode, config.shapes, config.shape_mask);
