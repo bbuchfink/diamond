@@ -7,7 +7,7 @@ DIAMOND is a sequence aligner for protein and translated DNA searches,
 designed for high performance analysis of big sequence data. The key
 features are:
 
--   Pairwise alignment of proteins and translated DNA at 100x-20,000x
+-   Pairwise alignment of proteins and translated DNA at 100x-10,000x
     speed of BLAST.
 -   Frameshift alignments for long read analysis.
 -   Low resource requirements and suitable for running on standard
@@ -19,6 +19,7 @@ Keep posted about new developments by following me on
 [Twitter](https://twitter.com/bbuchfink).
 
 [![Build Status](https://travis-ci.org/bbuchfink/diamond.svg?branch=master)](https://travis-ci.org/bbuchfink/diamond)
+[![image](https://img.shields.io/github/downloads/bbuchfink/diamond/total)](https://github.com/bbuchfink/diamond/releases)
 [![image](https://anaconda.org/bioconda/diamond/badges/version.svg)](https://anaconda.org/bioconda/diamond)
 [![image](https://anaconda.org/bioconda/diamond/badges/downloads.svg)](https://anaconda.org/bioconda/diamond)
 [![image](http://diamondsearch.org/cit.svg)](https://scholar.google.com/citations?user=kjPIF1cAAAAJ)
