@@ -32,7 +32,7 @@ const double SINGLE_INDEXED_SEED_SPACE_MAX_COVERAGE = 0.15;
 
 void setup_search_cont()
 {
-	if (config.sensitivity >= Sensitivity::VERY_SENSITIVE || config.sensitivity == Sensitivity::MID_SENSITIVE)
+	if (config.sensitivity >= Sensitivity::VERY_SENSITIVE || config.sensitivity == Sensitivity::MID_SENSITIVE || config.sensitivity == Sensitivity::FAST)
 		return;
 	unsigned index_mode;
 	Reduction::reduction = Reduction("A KR EDNQ C G H ILVM FYW P ST");

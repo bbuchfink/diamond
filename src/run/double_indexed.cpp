@@ -180,7 +180,7 @@ void run_query_chunk(DatabaseFile &db_file,
 	if (query_chunk == 0)
 		setup_search_cont();
 	if (config.algo == -1) {
-		if (config.sensitivity >= Sensitivity::VERY_SENSITIVE || config.sensitivity == Sensitivity::MID_SENSITIVE) {
+		if (config.sensitivity >= Sensitivity::VERY_SENSITIVE || config.sensitivity == Sensitivity::MID_SENSITIVE || config.sensitivity == Sensitivity::FAST) {
 			config.algo = Config::double_indexed;
 		}
 		else {
