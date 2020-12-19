@@ -419,7 +419,7 @@ void master_thread(DatabaseFile *db_file, task_timer &total_timer, Metadata &met
 			} else {
 				if (!load_seqs(*query_file, *format_n, &query_seqs::data_, query_ids::data_, &query_source_seqs::data_,
 					config.store_query_quality ? &query_qual : nullptr,
-					(size_t)(config.chunk_size * 1e9), config.qfilt, input_value_traits))
+					(size_t)(config.chunk_size * 1e9), config.qfilt, input_value_traits, output_format->needs_paired_end_info ? 2 : 1))
 					break;
 				deallocate_queries();
 			}

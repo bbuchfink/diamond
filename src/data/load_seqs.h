@@ -60,7 +60,8 @@ inline size_t load_seqs(TextInputFile &file,
 	String_set<char, '\0'>** quals,
 	size_t max_letters,
 	const string &filter,
-	const Value_traits &value_traits)
+	const Value_traits &value_traits,
+	size_t modulo = 1)
 {
 	*seqs = new Sequence_set();
 	ids = new String_set<char, '\0'>();
@@ -80,7 +81,7 @@ inline size_t load_seqs(TextInputFile &file,
 	else if (config.query_strands == "minus")
 		frame_mask = ((1 << 3) - 1) << 3;
 
-	while (letters < max_letters && format.get_seq(id, seq, file, value_traits, quals ? &qual : nullptr)) {
+	while ((letters < max_letters || (n % modulo != 0)) && format.get_seq(id, seq, file, value_traits, quals ? &qual : nullptr)) {
 		if (seq.size() > 0 && (filter.empty() || id2.assign(id.data(), id.data() + id.size()).find(filter, 0) != string::npos)) {
 			ids->push_back(id.begin(), id.end());
 			letters += push_seq(**seqs, source_seqs, seq, frame_mask, value_traits.seq_type);

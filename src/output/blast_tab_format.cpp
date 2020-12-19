@@ -94,7 +94,8 @@ const vector<OutputField> Blast_tab_format::field_def = {
 { "cigar", "CIGAR", true, false },		// 58
 { "skingdoms", "Subject kingdoms", false, false },	// 59
 { "sphylums", "Subject phylums", false, false },		// 60
-{ "ungapped_score", "Ungapped score", false, false }	// 61
+{ "ungapped_score", "Ungapped score", false, false },	// 61
+{ "full_qseq_mate", "Query sequence of the mate", false, false } // 62
 };
 
 Blast_tab_format::Blast_tab_format() :
@@ -134,6 +135,8 @@ Blast_tab_format::Blast_tab_format() :
 			config.use_lazy_dict = true;
 		if (j == 49 || j == 53)
 			config.store_query_quality = true;
+		if (j == 62)
+			needs_paired_end_info = true;
 		if (field_def[j].need_transcript)
 			needs_transcript = true;
 		if (field_def[j].need_stats)
@@ -377,6 +380,11 @@ void Blast_tab_format::print_match(const Hsp_context& r, const Metadata &metadat
 		case 61:
 			out << r.ungapped_score;
 			break;
+		case 62: {
+			unsigned mate = r.query_id % 2, mate_id = mate == 0 ? r.query_id + 1 : r.query_id - 1;
+			query_source_seqs::get()[mate_id].print(out, input_value_traits);
+			break;
+		}
 		default:
 			throw std::runtime_error(string("Invalid output field: ") + field_def[*i].key);
 		}
