@@ -95,7 +95,8 @@ const vector<OutputField> Blast_tab_format::field_def = {
 { "skingdoms", "Subject kingdoms", false, false },	// 59
 { "sphylums", "Subject phylums", false, false },		// 60
 { "ungapped_score", "Ungapped score", false, false },	// 61
-{ "full_qseq_mate", "Query sequence of the mate", false, false } // 62
+{ "full_qseq_mate", "Query sequence of the mate", false, false }, // 62
+{ "qseq_translated", "Aligned part of query sequence (translated)", true, false } // 63 needs transcript only in frameshift mode
 };
 
 Blast_tab_format::Blast_tab_format() :
@@ -137,6 +138,8 @@ Blast_tab_format::Blast_tab_format() :
 			config.store_query_quality = true;
 		if (j == 62)
 			needs_paired_end_info = true;
+		if ((j == 62 || j == 63) && !align_mode.query_translated)
+			throw std::runtime_error("Output field only supported for translated search.");
 		if (field_def[j].need_transcript)
 			needs_transcript = true;
 		if (field_def[j].need_stats)
@@ -385,6 +388,20 @@ void Blast_tab_format::print_match(const Hsp_context& r, const Metadata &metadat
 			query_source_seqs::get()[mate_id].print(out, input_value_traits);
 			break;
 		}
+		case 63: {
+			if (config.frame_shift) {
+				vector<Letter> seq;
+				seq.reserve(r.query_range().length());
+				for (Hsp_context::Iterator j = r.begin(); j.good(); ++j)
+					if (j.op() != op_deletion && j.op() != op_frameshift_forward && j.op() != op_frameshift_reverse)
+						seq.push_back(j.query());
+				out << sequence(seq);
+			}
+			else {
+				r.query.index(r.frame()).print(out, r.query_range().begin_, r.query_range().end_, amino_acid_traits);
+			}
+			break;
+		}
 		default:
 			throw std::runtime_error(string("Invalid output field: ") + field_def[*i].key);
 		}
@@ -421,6 +438,7 @@ void Blast_tab_format::print_query_intro(size_t query_num, const char *query_nam
 			case 57:
 			case 59:
 			case 60:
+			case 63:
 				out << '*';
 				break;
 			case 12:
