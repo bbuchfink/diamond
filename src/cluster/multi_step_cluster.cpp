@@ -108,7 +108,7 @@ void MultiStep::save_edges_external(vector<TempFile*>& all_edges, vector<TempFil
 	}
 }
 
-vector<int> MultiStep::cluster_sets(const size_t& nb_size, vector<TempFile*> &sorted_edges){
+vector<int> MultiStep::cluster_sets(const size_t nb_size, vector<TempFile*> &sorted_edges){
 	vector<int> cluster(nb_size);
 	vector<vector<int>> tmp_neighbors(nb_size);
 	vector<int>curr;
