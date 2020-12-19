@@ -53,7 +53,6 @@ vector<int> MultiStep::cluster(DatabaseFile& db, const BitVector* filter) {
 	opt.db = &db;
 	opt.self = true;
 	Neighbors nb(db.ref_header.sequences);
-	vector<int> all_cluster(db.ref_header.sequences);
 
 	opt.consumer = &nb;
 	opt.db_filter = filter;
@@ -75,7 +74,7 @@ vector<int> MultiStep::cluster(DatabaseFile& db, const BitVector* filter) {
 
 	if (config.external) {
 		save_edges_external(nb.tempfiles, tmp_sets, components, nb.smallest_index);
-		return cluster_sets(all_cluster, tmp_sets);
+		return cluster_sets(db.ref_header.sequences, tmp_sets);
 	}
 
 	else {
@@ -109,17 +108,18 @@ void MultiStep::save_edges_external(vector<TempFile*>& all_edges, vector<TempFil
 	}
 }
 
-vector<int> MultiStep::cluster_sets(vector<int> &cluster, vector<TempFile*> &sorted_edges){
-
-	vector<vector<int>> tmp_neighbors(cluster.size());
+vector<int> MultiStep::cluster_sets(const size_t& nb_size, vector<TempFile*> &sorted_edges){
+	vector<int> cluster(nb_size);
+	vector<vector<int>> tmp_neighbors(nb_size);
 	vector<int>curr;
-	bool initialize_finish = false;
-
-	size_t c = 0;
 	uint32_t query;
 	uint32_t subject;
-	while (c < sorted_edges.size()) {
-		InputFile tmp(*sorted_edges[c]);
+
+	iota(cluster.begin(), cluster.end(), 0);
+
+	for (size_t i = 0; i < sorted_edges.size(); i++) {
+		InputFile tmp(*sorted_edges[i]);
+		delete(sorted_edges[i]);
 		while (true) {
 			try {
 				tmp.read(query);
@@ -134,23 +134,15 @@ vector<int> MultiStep::cluster_sets(vector<int> &cluster, vector<TempFile*> &sor
 		curr = Util::Algo::greedy_vortex_cover(tmp_neighbors);
 
 		for (size_t i = 0; i < curr.size(); i++) {
-			if (initialize_finish) {
 				if (curr[i] != i) {
 					cluster[i] = curr[i];
 				}
-			}
-			else {
-				cluster[i] = curr[i];
-			}
 		}
 
-		initialize_finish = true;
-
 		tmp_neighbors.clear();
-		tmp_neighbors.resize(cluster.size());
-
-		c++;
+		tmp_neighbors.resize(nb_size);
 	}
+
 	return cluster;
 }
 
