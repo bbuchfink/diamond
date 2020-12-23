@@ -186,7 +186,7 @@ Score_matrix::Scores<_t>::Scores(const double (&freq_ratios)[Stats::NCBI_ALPH][S
 			if (i < TRUE_AA && j < TRUE_AA)
 				data[i * 32 + j] = std::round(std::log(freq_ratios[Stats::ALPH_TO_NCBI[i]][Stats::ALPH_TO_NCBI[j]]) / lambda * scale);
 			else if (i < n && j < n)
-				data[i * 32 + j] = std::max((int)scores[i * n + j] * scale, SCHAR_MIN);
+				data[i * 32 + j] = (int)scores[i * n + j] * scale;
 			else
 				data[i * 32 + j] = SCHAR_MIN;
 		}

@@ -24,8 +24,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 namespace Stats {
 
-std::vector<double> composition(const sequence& s) {
-    std::vector<double> r(20, 0.0);
+Composition composition(const sequence& s) {
+    Composition r;
+    r.fill(0.0);
     int n = 0;
     for (size_t i = 0; i < s.length(); ++i) {
         int l = s[i];
@@ -41,14 +42,14 @@ std::vector<double> composition(const sequence& s) {
     return r;
 }
 
-TargetMatrix::TargetMatrix(const double* query_comp, int query_len, const sequence& target)
+TargetMatrix::TargetMatrix(const Composition& query_comp, int query_len, const sequence& target)
 {
     if (!CBS::matrix_adjust(config.comp_based_stats))
         return;
 
     auto c = composition(target);
     if (CBS::conditioned(config.comp_based_stats)) {
-        auto r = s_TestToApplyREAdjustmentConditional(query_len, (int)target.length(), query_comp, c.data(), score_matrix.background_freqs());
+        auto r = s_TestToApplyREAdjustmentConditional(query_len, (int)target.length(), query_comp.data(), c.data(), score_matrix.background_freqs());
         if (r == eCompoScaleOldMatrix)
             return;
     }
@@ -57,7 +58,12 @@ TargetMatrix::TargetMatrix(const double* query_comp, int query_len, const sequen
     scores32.resize(32 * AMINO_ACID_COUNT);
     score_min = INT_MAX;
     score_max = INT_MIN;
-    vector<int> s = CompositionMatrixAdjust(query_len, (int)target.length(), query_comp, c.data(), config.cbs_matrix_scale, score_matrix.ungapped_lambda(), score_matrix.joint_probs(), score_matrix.background_freqs());
+    vector<int> s;
+    
+    if (config.comp_based_stats == CBS::COMP_BASED_STATS)
+        s = CompositionBasedStats(score_matrix.matrix32_scaled_pointers().data(), query_comp, c, score_matrix.ungapped_lambda(), score_matrix.freq_ratios());
+    else
+        s = CompositionMatrixAdjust(query_len, (int)target.length(), query_comp.data(), c.data(), config.cbs_matrix_scale, score_matrix.ungapped_lambda(), score_matrix.joint_probs(), score_matrix.background_freqs());
     
     for (size_t i = 0; i < AMINO_ACID_COUNT; ++i) {
         for (size_t j = 0; j < AMINO_ACID_COUNT; ++j)

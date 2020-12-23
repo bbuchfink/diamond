@@ -181,6 +181,10 @@ struct Score_matrix
 		return standard_matrix_->ungapped_constants().Lambda;
 	}
 
+	const Stats::FreqRatios& freq_ratios() const {
+		return standard_matrix_->freq_ratios;
+	}
+
 	double avg_id_score() const;
 	bool report_cutoff(int score, double evalue) const;
 

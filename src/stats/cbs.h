@@ -23,10 +23,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <array>
 #include <vector>
 #include "../basic/sequence.h"
+#include "standard_matrix.h"
 
 namespace Stats {
 
-std::vector<double> composition(const sequence& s);
+using Composition = std::array<double, TRUE_AA>;
+
+Composition composition(const sequence& s);
 
 struct TargetMatrix {
 
@@ -35,7 +38,7 @@ struct TargetMatrix {
 
     TargetMatrix(const int16_t* query_matrix, const int16_t* target_matrix);
 
-    TargetMatrix(const double* query_comp, int query_len, const sequence& target);
+    TargetMatrix(const Composition& query_comp, int query_len, const sequence& target);
 
     std::vector<int8_t> scores;
     std::vector<int32_t> scores32;
@@ -97,6 +100,7 @@ struct CBS {
         switch (code) {
         case 0:
         case 4:
+        case COMP_BASED_STATS:
             return false;
         case 1:
         case 2:
@@ -114,6 +118,7 @@ struct CBS {
         case HAUSER_AND_AVG_MATRIX_ADJUST:
         case HAUSER_AND_MATRIX_ADJUST:
         case MATRIX_ADJUST:
+        case COMP_BASED_STATS:
             return true;
         default:
             throw std::runtime_error("Unknown CBS code.");
@@ -159,6 +164,7 @@ struct CBS {
         case HAUSER_AND_AVG_MATRIX_ADJUST:
         case HAUSER_AND_MATRIX_ADJUST:
         case MATRIX_ADJUST:
+        case COMP_BASED_STATS:
             return 1;
         default:
             return 0;
@@ -170,12 +176,14 @@ struct CBS {
         HAUSER_AND_AVG_MATRIX_ADJUST = 2,
         HAUSER_AND_MATRIX_ADJUST = 3,
         MATRIX_ADJUST = 4,
+        COMP_BASED_STATS = 5,
         COUNT
     };
     static constexpr int AVG_MATRIX_SCALE = 32;
 };
 
 std::vector<int> CompositionMatrixAdjust(int query_len, int target_len, const double* query_comp, const double* target_comp, int scale, double ungapped_lambda, const double* joint_probs, const double* background_freqs);
+std::vector<int> CompositionBasedStats(const int* const* matrix_in, const Composition& queryProb, const Composition& resProb, double lambda, const FreqRatios& freq_ratios);
 
 inline int16_t* make_16bit_matrix(const std::vector<int>& matrix) {
     int16_t* out = new int16_t[TRUE_AA * TRUE_AA];

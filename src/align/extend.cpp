@@ -65,7 +65,7 @@ vector<Target> extend(const Parameters& params,
 	const sequence *query_seq,
 	int source_query_len,
 	const Bias_correction *query_cb,
-	const double* query_comp,
+	const Stats::Composition& query_comp,
 	FlatArray<SeedHit> &seed_hits,
 	vector<uint32_t> &target_block_ids,
 	const Metadata& metadata,
@@ -118,7 +118,7 @@ vector<Match> extend(
 			query_cb.emplace_back(query_seq[i]);
 		timer.finish();
 	}
-	vector<double> query_comp;
+	Stats::Composition query_comp;
 	if (Stats::CBS::matrix_adjust(config.comp_based_stats))
 		query_comp = Stats::composition(query_seq[0]);
 
@@ -163,7 +163,7 @@ vector<Match> extend(
 
 		//multiplier = std::max(multiplier, chunk_size_multiplier(seed_hits_chunk, (int)query_seq.front().length()));
 
-		vector<Target> v = extend(params, query_id, query_seq.data(), source_query_len, query_cb.data(), query_comp.data(), seed_hits_chunk, target_block_ids_chunk, metadata, stat, flags);
+		vector<Target> v = extend(params, query_id, query_seq.data(), source_query_len, query_cb.data(), query_comp, seed_hits_chunk, target_block_ids_chunk, metadata, stat, flags);
 		const size_t n = v.size();
 		stat.inc(Statistics::TARGET_HITS4, v.size());
 		bool new_hits = false;
