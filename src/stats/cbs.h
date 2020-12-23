@@ -101,6 +101,7 @@ struct CBS {
         case 0:
         case 4:
         case COMP_BASED_STATS:
+        case COMP_BASED_STATS_AND_MATRIX_ADJUST:
             return false;
         case 1:
         case 2:
@@ -119,6 +120,7 @@ struct CBS {
         case HAUSER_AND_MATRIX_ADJUST:
         case MATRIX_ADJUST:
         case COMP_BASED_STATS:
+        case COMP_BASED_STATS_AND_MATRIX_ADJUST:
             return true;
         default:
             throw std::runtime_error("Unknown CBS code.");
@@ -145,6 +147,7 @@ struct CBS {
         switch (code) {
         case HAUSER_AND_AVG_MATRIX_ADJUST:
         case HAUSER_AND_MATRIX_ADJUST:
+        case COMP_BASED_STATS_AND_MATRIX_ADJUST:
             return true;
         default:
             return false;
@@ -165,6 +168,7 @@ struct CBS {
         case HAUSER_AND_MATRIX_ADJUST:
         case MATRIX_ADJUST:
         case COMP_BASED_STATS:
+        case COMP_BASED_STATS_AND_MATRIX_ADJUST:
             return 1;
         default:
             return 0;
@@ -177,8 +181,13 @@ struct CBS {
         HAUSER_AND_MATRIX_ADJUST = 3,
         MATRIX_ADJUST = 4,
         COMP_BASED_STATS = 5,
+        COMP_BASED_STATS_AND_MATRIX_ADJUST = 6,
         COUNT
     };
+    CBS(unsigned code, double query_match_distance_threshold, double length_ratio_threshold, double angle);
+    double query_match_distance_threshold;
+    double length_ratio_threshold;
+    double angle;
     static constexpr int AVG_MATRIX_SCALE = 32;
 };
 
@@ -193,5 +202,6 @@ inline int16_t* make_16bit_matrix(const std::vector<int>& matrix) {
 }
 
 extern const int ALPH_TO_NCBI[];
+extern CBS comp_based_stats;
 
 }

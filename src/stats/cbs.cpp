@@ -24,6 +24,29 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 namespace Stats {
 
+CBS comp_based_stats(0, -1.0, -1.0, -1.0);
+
+CBS::CBS(unsigned code, double query_match_distance_threshold, double length_ratio_threshold, double angle):
+    query_match_distance_threshold(-1.0),
+    length_ratio_threshold(-1.0),
+    angle(50.0)
+{
+    switch (code) {
+    case COMP_BASED_STATS_AND_MATRIX_ADJUST:
+        this->angle = 70.0;
+        this->query_match_distance_threshold = 0.16;
+        this->length_ratio_threshold = 3.0;
+    default:
+        ;
+    }
+    if (angle != -1.0)
+        this->angle = angle;
+    if (query_match_distance_threshold != 1.0)
+        this->query_match_distance_threshold = query_match_distance_threshold;
+    if (length_ratio_threshold != -1.0)
+        this->length_ratio_threshold = length_ratio_threshold;
+}
+
 Composition composition(const sequence& s) {
     Composition r;
     r.fill(0.0);
@@ -48,9 +71,10 @@ TargetMatrix::TargetMatrix(const Composition& query_comp, int query_len, const s
         return;
 
     auto c = composition(target);
+    EMatrixAdjustRule rule = eUserSpecifiedRelEntropy;
     if (CBS::conditioned(config.comp_based_stats)) {
-        auto r = s_TestToApplyREAdjustmentConditional(query_len, (int)target.length(), query_comp.data(), c.data(), score_matrix.background_freqs());
-        if (r == eCompoScaleOldMatrix)
+        rule = s_TestToApplyREAdjustmentConditional(query_len, (int)target.length(), query_comp.data(), c.data(), score_matrix.background_freqs());
+        if (rule == eCompoScaleOldMatrix && config.comp_based_stats != CBS::COMP_BASED_STATS_AND_MATRIX_ADJUST)
             return;
     }
 
@@ -60,7 +84,7 @@ TargetMatrix::TargetMatrix(const Composition& query_comp, int query_len, const s
     score_max = INT_MIN;
     vector<int> s;
     
-    if (config.comp_based_stats == CBS::COMP_BASED_STATS)
+    if (config.comp_based_stats == CBS::COMP_BASED_STATS || rule == eCompoScaleOldMatrix)
         s = CompositionBasedStats(score_matrix.matrix32_scaled_pointers().data(), query_comp, c, score_matrix.ungapped_lambda(), score_matrix.freq_ratios());
     else
         s = CompositionMatrixAdjust(query_len, (int)target.length(), query_comp.data(), c.data(), config.cbs_matrix_scale, score_matrix.ungapped_lambda(), score_matrix.joint_probs(), score_matrix.background_freqs());

@@ -333,6 +333,10 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("lambda", 0, "lambda parameter for custom matrix", lambda)
 		("K", 0, "K parameter for custom matrix", K);
 
+	double query_match_distance_threshold;
+	double length_ratio_threshold;
+	double cbs_angle;
+
 #ifdef EXTRA
 	Options_group hidden_options("");
 #else
@@ -455,12 +459,12 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("family-cap", 0, "", family_cap)
 		("cbs-matrix-scale", 0, "", cbs_matrix_scale, 1)
 		("query-count", 0, "", query_count, (size_t)1)
-		("cbs-angle", 0, "", cbs_angle, 50.0)
+		("cbs-angle", 0, "", cbs_angle, -1.0)
 		("target-seg", 0, "", target_seg, -1)
 		("cbs-err-tolerance", 0, "", cbs_err_tolerance, 0.00000001)
 		("cbs-it-limit", 0, "", cbs_it_limit, 2000)
-		("query-match-distance-threshold", 0, "", query_match_distance_threshold, 0.0)
-		("length-ratio-threshold", 0, "", length_ratio_threshold, 0.0)
+		("query-match-distance-threshold", 0, "", query_match_distance_threshold, -1.0)
+		("length-ratio-threshold", 0, "", length_ratio_threshold, -1.0)
 		("fast", 0, "", mode_fast);
 	
 	parser.add(general).add(makedb).add(cluster).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options).add(deprecated_options);
@@ -506,6 +510,8 @@ Config::Config(int argc, const char **argv, bool check_io)
 
 	if (target_seg == -1)
 		target_seg = Stats::CBS::target_seg(comp_based_stats);
+
+	Stats::comp_based_stats = Stats::CBS(comp_based_stats, query_match_distance_threshold, length_ratio_threshold, cbs_angle);
 
 	if (command == blastx && !Stats::CBS::support_translated(comp_based_stats))
 		throw std::runtime_error("This mode of composition based stats is not supported for translated searches.");

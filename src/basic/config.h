@@ -246,12 +246,9 @@ struct Config
 	int family_cap;
 	int cbs_matrix_scale;
 	size_t query_count;
-	double cbs_angle;
 	int target_seg;
 	double cbs_err_tolerance;
 	int cbs_it_limit;
-	double query_match_distance_threshold;
-	double length_ratio_threshold;
 	bool mode_fast;
 
 	Sensitivity sensitivity;
