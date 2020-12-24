@@ -24,21 +24,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <ostream>
 #include "system.h"
 
-#ifdef __GNUC__
-#pragma GCC push_options
-#pragma GCC target("arch=x86-64")
-#elif defined(__clang__)
-#pragma clang attribute push (__attribute__((target("arch=x86-64"))), apply_to=function)
-#endif
-
-#include <functional>
-
-#ifdef __GNUC__
-#pragma GCC pop_options
-#elif defined(__clang__)
-#pragma clang attribute pop
-#endif
-
 #if defined(_M_AMD64) && defined(_MSC_VER)
 #define __SSE__
 #define __SSE2__
