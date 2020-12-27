@@ -342,6 +342,13 @@ Blast_FreqRatioToScore(double** matrix, int rows, int cols, double Lambda)
     }
 }
 
+/** Return the nearest integer to x. */
+static long Nint(double x)
+{
+    x += (x >= 0. ? 0.5 : -0.5);
+    return (long)x;
+}
+
 void
 s_RoundScoreMatrix(int** matrix, int rows, int cols,
     double** floatScoreMatrix)
@@ -354,7 +361,8 @@ s_RoundScoreMatrix(int** matrix, int rows, int cols,
                 matrix[p][c] = INT_MIN;
             }
             else {
-                matrix[p][c] = std::round(floatScoreMatrix[p][c]);
+                //matrix[p][c] = std::round(floatScoreMatrix[p][c]);
+                matrix[p][c] = Nint(floatScoreMatrix[p][c]);
             }
         }
     }

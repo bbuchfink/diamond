@@ -102,8 +102,11 @@ struct Score_matrix
 	char bias() const
 	{ return bias_; }
 
-	double bitscore(int raw_score) const
-	{ return ( lambda() * raw_score - ln_k()) / LN_2; }
+	double bitscore(double raw_score) const
+	{
+		const double s = std::round(raw_score / scale_);	// maintain compatibility with BLAST
+		return ( lambda() * s - ln_k()) / LN_2;
+	}
 
 	double rawscore(double bitscore, double) const
 	{ return (bitscore*LN_2 + ln_k()) / lambda(); }
@@ -115,11 +118,11 @@ struct Score_matrix
 
 	double evalue_norm(int raw_score, int query_len) const
 	{
-		return 1e9 * query_len * pow(2, -bitscore(raw_score));
+		return 1e9 * query_len * pow(2, -bitscore(raw_score * scale_));
 	}
 
-	double bitscore(double evalue, unsigned query_len) const
-	{ return -log(evalue/db_letters_/query_len)/log(2); }
+	/*double bitscore(double evalue, unsigned query_len) const
+	{ return -log(evalue/db_letters_/query_len)/log(2); }*/
 
 	double bitscore_norm(double evalue, unsigned query_len) const
 	{
@@ -221,8 +224,7 @@ private:
 	const Stats::StandardMatrix* standard_matrix_;
 	const int8_t* score_array_;
 	int gap_open_, gap_extend_, frame_shift_;
-	double db_letters_;
-	double ln_k_;
+	double db_letters_, ln_k_, scale_;
 	std::string name_;
 	Scores<int8_t> matrix8_;
 	Scores<int> matrix32_, matrix32_scaled_;

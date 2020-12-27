@@ -43,6 +43,7 @@ Score_matrix::Score_matrix(const string & matrix, int gap_open, int gap_extend, 
 	gap_extend_ (gap_extend == -1 ? standard_matrix_->default_gap_extend : gap_extend),
 	frame_shift_(frameshift),
 	db_letters_ ((double)db_letters),
+	scale_(scale),
 	name_(matrix),
 	matrix8_(standard_matrix_->scores.data(), stop_match_score),
 	matrix32_(standard_matrix_->scores.data(), stop_match_score),
@@ -204,7 +205,7 @@ template struct Score_matrix::Scores<int>;
 
 double Score_matrix::evalue(int raw_score, unsigned query_len, unsigned subject_len) const
 {
-	return evaluer.evalue(raw_score, query_len, subject_len) * (double)db_letters_ / (double)subject_len;
+	return evaluer.evalue((double)raw_score / scale_, query_len, subject_len) * (double)db_letters_ / (double)subject_len;
 }
 
 bool Score_matrix::report_cutoff(int score, double evalue) const {

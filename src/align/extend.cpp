@@ -123,14 +123,14 @@ vector<Match> extend(
 		query_comp = Stats::composition(query_seq[0]);
 
 	const int source_query_len = align_mode.query_translated ? (int)query_source_seqs::get()[query_id].length() : (int)query_seqs::get()[query_id].length();
-	const int relaxed_cutoff = score_matrix.rawscore(config.min_bit_score == 0.0
+	/*const int relaxed_cutoff = score_matrix.rawscore(config.min_bit_score == 0.0
 		? score_matrix.bitscore(config.max_evalue * config.relaxed_evalue_factor, (unsigned)query_seq[0].length())
-		: config.min_bit_score);
+		: config.min_bit_score);*/
 	const size_t target_count = target_block_ids.size();
 	const size_t chunk_size = ranking_chunk_size(target_count);
 	vector<TargetScore>::const_iterator i0 = target_scores.cbegin(), i1 = std::min(i0 + chunk_size, target_scores.cend());
-	if (config.toppercent == 100.0)
-		while (i1 < target_scores.cend() && i1->score >= relaxed_cutoff && size_t(i1 - i0) < config.max_alignments) ++i1;
+	/*if (config.toppercent == 100.0)
+		while (i1 < target_scores.cend() && i1->score >= relaxed_cutoff && size_t(i1 - i0) < config.max_alignments) ++i1;*/
 	const int low_score = config.query_memory ? memory->low_score(query_id) : 0;
 	const size_t previous_count = config.query_memory ? memory->count(query_id) : 0;
 	bool first_round_traceback = config.min_id > 0 || config.query_cover > 0 || config.subject_cover > 0;
