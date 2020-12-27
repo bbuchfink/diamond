@@ -67,11 +67,11 @@ struct WorkTarget {
 			if (r == Stats::eCompoScaleOldMatrix)
 				return;
 			if (*query_matrix == nullptr) {
-				*query_matrix = Stats::make_16bit_matrix(Stats::CompositionMatrixAdjust(query_len, query_len, query_comp.data(), query_comp.data(), Stats::CBS::AVG_MATRIX_SCALE, score_matrix.ungapped_lambda(), score_matrix.joint_probs(), score_matrix.background_freqs()));
+				*query_matrix = Stats::make_16bit_matrix(Stats::CompositionMatrixAdjust(query_len, query_len, query_comp.data(), query_comp.data(), Stats::CBS::AVG_MATRIX_SCALE, score_matrix.ideal_lambda(), score_matrix.joint_probs(), score_matrix.background_freqs()));
 				++target_matrix_count;
 			}
 			if (target_matrices[block_id] == nullptr) {
-				int16_t* target_matrix = Stats::make_16bit_matrix(Stats::CompositionMatrixAdjust(l, l, c.data(), c.data(), Stats::CBS::AVG_MATRIX_SCALE, score_matrix.ungapped_lambda(), score_matrix.joint_probs(), score_matrix.background_freqs()));
+				int16_t* target_matrix = Stats::make_16bit_matrix(Stats::CompositionMatrixAdjust(l, l, c.data(), c.data(), Stats::CBS::AVG_MATRIX_SCALE, score_matrix.ideal_lambda(), score_matrix.joint_probs(), score_matrix.background_freqs()));
 				bool del = false;
 				{
 					std::lock_guard<std::mutex> lock(target_matrices_lock);

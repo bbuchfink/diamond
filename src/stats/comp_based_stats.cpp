@@ -208,7 +208,7 @@ NlmKarlinLambdaNR(double* probs, int d, int low, int high, double lambda0,
     return -log(x) / d;
 }
 
-inline double
+double
 Blast_KarlinLambdaNR(Blast_ScoreFreq* sfp, double initialLambdaGuess)
 {
     int  low;        /* Lowest score (must be negative)  */
@@ -242,7 +242,7 @@ Blast_KarlinLambdaNR(Blast_ScoreFreq* sfp, double initialLambdaGuess)
     return returnValue;
 }
 
-static double
+double
 s_CalcLambda(double probs[], int min_score, int max_score, double lambda0)
 {
 
@@ -289,7 +289,7 @@ static void s_GetScoreRange(int* obs_min, int* obs_max,
     *obs_max = maxScore;
 }
 
-static int
+int
 s_GetMatrixScoreProbs(double** scoreProb, int* obs_min, int* obs_max,
     const int* const* matrix, int alphsize,
     const double* subjectProbArray,
@@ -455,6 +455,55 @@ vector<int> CompositionBasedStats(const int* const* matrix_in, const Composition
                 v[i * 20 + j] = score_matrix(i, j) * config.cbs_matrix_scale;
     }
     return v;
+}
+
+
+/* amino acid background frequencies from Robinson and Robinson */
+static std::pair<char, double> Robinson_prob[] = {
+      { 'A', 78.05 },
+      { 'C', 19.25 },
+      { 'D', 53.64 },
+      { 'E', 62.95 },
+      { 'F', 38.56 },
+      { 'G', 73.77 },
+      { 'H', 21.99 },
+      { 'I', 51.42 },
+      { 'K', 57.44 },
+      { 'L', 90.19 },
+      { 'M', 22.43 },
+      { 'N', 44.87 },
+      { 'P', 52.03 },
+      { 'Q', 42.64 },
+      { 'R', 51.29 },
+      { 'S', 71.20 },
+      { 'T', 58.41 },
+      { 'V', 64.41 },
+      { 'W', 13.30 },
+      { 'Y', 32.16 }
+}; /**< amino acid background frequencies from Robinson and Robinson */
+
+double ideal_lambda(const int** matrix) {
+    int obs_min, obs_max;
+    double* scoreArray;
+    double bg[20];
+    double s = 0.0;
+    for (int i = 0; i < 20; ++i) {
+        int j = value_traits.from_char(Robinson_prob[i].first);
+        bg[j] = Robinson_prob[i].second;
+        s += bg[j];
+    }
+    for (int i = 0; i < 20; ++i)
+        bg[i] /= s;
+
+    int out_of_memory = s_GetMatrixScoreProbs(&scoreArray, &obs_min, &obs_max, matrix, TRUE_AA, bg, bg);
+
+    if (out_of_memory)
+        throw std::runtime_error("Failed lambda calculation.");
+    double correctUngappedLambda = s_CalcLambda(scoreArray, obs_min, obs_max, 0.5);
+    if (correctUngappedLambda < 0.0)
+        throw std::runtime_error("Failed lambda calculation.");
+    free(scoreArray);
+    return correctUngappedLambda;
 }
 
 }

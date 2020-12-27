@@ -87,6 +87,12 @@ typedef struct Blast_MatrixInfo {
 
 void Blast_FreqRatioToScore(double** matrix, int rows, int cols, double Lambda);
 void s_RoundScoreMatrix(int** matrix, int rows, int cols, double** floatScoreMatrix);
+int s_GetMatrixScoreProbs(double** scoreProb, int* obs_min, int* obs_max,
+    const int* const* matrix, int alphsize,
+    const double* subjectProbArray,
+    const double* queryProbArray);
+double s_CalcLambda(double probs[], int min_score, int max_score, double lambda0);
+double ideal_lambda(const int** matrix);
 
 EMatrixAdjustRule
 s_TestToApplyREAdjustmentConditional(int Len_query,

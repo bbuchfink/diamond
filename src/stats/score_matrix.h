@@ -184,6 +184,10 @@ struct Score_matrix
 		return standard_matrix_->ungapped_constants().Lambda;
 	}
 
+	double ideal_lambda() const {
+		return ideal_lambda_;
+	}
+
 	const Stats::FreqRatios& freq_ratios() const {
 		return standard_matrix_->freq_ratios;
 	}
@@ -229,6 +233,7 @@ private:
 	Scores<int8_t> matrix8_;
 	Scores<int> matrix32_, matrix32_scaled_;
 	int8_t bias_;
+	double ideal_lambda_;
 	Scores<uint8_t> matrix8u_;
 	Scores<int8_t> matrix8_low_;
 	Scores<int8_t> matrix8_high_;
