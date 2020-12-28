@@ -400,7 +400,7 @@ s_SetXUOScores(double** M, int alphsize,
         M[i][MASK_LETTER] = std::min(avg_iX, kMaximumXscore);
         score_XX += avg_iX * row_probs[i];
 
-        M[MASK_LETTER][i] = s_CalcXScore(&M[0][i], alphsize, cols, row_probs);
+        M[MASK_LETTER][i] = s_CalcXScore(&M[0][i], alphsize, AMINO_ACID_COUNT, row_probs);
         //}
     }
     M[MASK_LETTER][MASK_LETTER] = std::min(score_XX, kMaximumXscore);
