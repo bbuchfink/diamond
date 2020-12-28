@@ -342,13 +342,6 @@ Blast_FreqRatioToScore(double** matrix, int rows, int cols, double Lambda)
     }
 }
 
-/** Return the nearest integer to x. */
-static long Nint(double x)
-{
-    x += (x >= 0. ? 0.5 : -0.5);
-    return (long)x;
-}
-
 void
 s_RoundScoreMatrix(int** matrix, int rows, int cols,
     double** floatScoreMatrix)
@@ -361,11 +354,80 @@ s_RoundScoreMatrix(int** matrix, int rows, int cols,
                 matrix[p][c] = INT_MIN;
             }
             else {
-                //matrix[p][c] = std::round(floatScoreMatrix[p][c]);
-                matrix[p][c] = Nint(floatScoreMatrix[p][c]);
+                matrix[p][c] = std::round(floatScoreMatrix[p][c]);
             }
         }
     }
+}
+
+
+static double
+s_CalcAvgScore(double* M, int alphsize, int incM, const double probs[])
+{
+    int j;                   /* iteration index */
+    double score_iX = 0.0;   /* score of character i substituted by X */
+
+    for (j = 0; j < alphsize; j++) {
+        //if (alphaConvert[j] >= 0) {
+            /* If the column corresponds to a true amino acid */
+        score_iX += M[j * incM] * probs[j];
+        //}
+    }
+    return score_iX;
+}
+
+static const double kMaximumXscore = -1.0;
+
+static double
+s_CalcXScore(double* M, int alphsize, int incM, const double probs[])
+{
+    return std::min(s_CalcAvgScore(M, alphsize, incM, probs), kMaximumXscore);
+}
+
+void
+s_SetXUOScores(double** M, int alphsize,
+    const double row_probs[], const double col_probs[])
+{
+    int i;                      /* iteration index */
+    double score_XX = 0.0;      /* score of matching an X to an X */
+    /* the matrix has alphsize colums (this variable exists just to
+       make things easier to read) */
+    const int cols = alphsize;
+
+    for (i = 0; i < alphsize; i++) {
+        //if (alphaConvert[i] >= 0) {
+        double avg_iX = s_CalcAvgScore(M[i], alphsize, 1, col_probs);
+        M[i][MASK_LETTER] = std::min(avg_iX, kMaximumXscore);
+        score_XX += avg_iX * row_probs[i];
+
+        M[MASK_LETTER][i] = s_CalcXScore(&M[0][i], alphsize, cols, row_probs);
+        //}
+    }
+    M[MASK_LETTER][MASK_LETTER] = std::min(score_XX, kMaximumXscore);
+
+    /* Set X scores for pairwise ambiguity characters */
+    //M[eBchar][eXchar] = s_CalcXScore(M[eBchar], alphsize, 1, col_probs);
+    //M[eXchar][eBchar] = s_CalcXScore(&M[0][eBchar], alphsize, cols, row_probs);
+
+    //M[eZchar][eXchar] = s_CalcXScore(M[eZchar], alphsize, 1, col_probs);
+    //M[eXchar][eZchar] = s_CalcXScore(&M[0][eZchar], alphsize, cols, row_probs);
+    //if (alphsize > eJchar) {
+    //    M[eJchar][eXchar] = s_CalcXScore(M[eJchar], alphsize, 1, col_probs);
+    //    M[eXchar][eJchar] =
+    //        s_CalcXScore(&M[0][eJchar], alphsize, cols, row_probs);
+    //}
+    ///* Copy C scores to U */
+    //memcpy(M[eSelenocysteine], M[eCchar], alphsize * sizeof(double));
+    //for (i = 0; i < alphsize; i++) {
+    //    M[i][eSelenocysteine] = M[i][eCchar];
+    //}
+    ///* Copy X scores to O */
+    //if (alphsize > eOchar) {
+    //    memcpy(M[eOchar], M[eXchar], alphsize * sizeof(double));
+    //    for (i = 0; i < alphsize; i++) {
+    //        M[i][eOchar] = M[i][eXchar];
+    //    }
+    //}
 }
 
 static int
@@ -379,13 +441,13 @@ s_ScaleSquareMatrix(int** matrix, int alphsize,
     scores = Nlm_DenseMatrixNew(alphsize, alphsize);
     if (scores == 0) return -1;
 
-    for (i = 0; i < alphsize; i++) {
-        for (int j = 0; j < alphsize; ++j)
+    for (i = 0; i < TRUE_AA; i++) {
+        for (int j = 0; j < TRUE_AA; ++j)
             scores[i][j] = freq_ratios[ALPH_TO_NCBI[i]][ALPH_TO_NCBI[j]];
         //memcpy(scores[i], freq_ratios[i], alphsize * sizeof(double));
     }
-    Blast_FreqRatioToScore(scores, alphsize, alphsize, Lambda);
-    //s_SetXUOScores(scores, alphsize, row_prob, col_prob);
+    Blast_FreqRatioToScore(scores, TRUE_AA, TRUE_AA, Lambda);
+    s_SetXUOScores(scores, TRUE_AA, row_prob, col_prob);
     s_RoundScoreMatrix(matrix, alphsize, alphsize, scores);
     /*for (i = 0; i < alphsize; i++) {
         matrix[i][(int)STOP_LETTER] = start_matrix[i][(int)STOP_LETTER];
@@ -407,7 +469,7 @@ Blast_CompositionBasedStats(int** matrix, double* LambdaRatio,
     double* scoreArray;           /* an array of score probabilities */
     int out_of_memory;            /* status flag to indicate out of memory */
 
-    out_of_memory = s_GetMatrixScoreProbs(&scoreArray, &obs_min, &obs_max, matrix_in, 20, resProb, queryProb);
+    out_of_memory = s_GetMatrixScoreProbs(&scoreArray, &obs_min, &obs_max, matrix_in, TRUE_AA, resProb, queryProb);
     const double ungappedLambda = lambda / config.cbs_matrix_scale;
 
     if (out_of_memory)
@@ -432,7 +494,7 @@ Blast_CompositionBasedStats(int** matrix, double* LambdaRatio,
     if (*LambdaRatio > 0) {
         double scaledLambda = ungappedLambda / (*LambdaRatio);
 
-        if (s_ScaleSquareMatrix(matrix, 20,
+        if (s_ScaleSquareMatrix(matrix, AMINO_ACID_COUNT,
             queryProb, resProb, scaledLambda, freq_ratios) < 0)
             return -1;
 
@@ -443,20 +505,19 @@ Blast_CompositionBasedStats(int** matrix, double* LambdaRatio,
 }
 
 vector<int> CompositionBasedStats(const int* const* matrix_in, const Composition& queryProb, const Composition& resProb, double lambda, const FreqRatios& freq_ratios) {
-    vector<int> v(TRUE_AA* TRUE_AA);
+    vector<int> v(AMINO_ACID_COUNT*AMINO_ACID_COUNT);
     vector<int*> p;
-    p.reserve(TRUE_AA);
-    for (size_t i = 0; i < TRUE_AA; ++i)
-        p.push_back(&v[i * TRUE_AA]);
+    p.reserve(AMINO_ACID_COUNT);
+    for (size_t i = 0; i < AMINO_ACID_COUNT; ++i)
+        p.push_back(&v[i * AMINO_ACID_COUNT]);
     double LambdaRatio;
     if (Blast_CompositionBasedStats(p.data(), &LambdaRatio, matrix_in, queryProb.data(), resProb.data(), lambda, freq_ratios) != 0) {
-        for (size_t i = 0; i < TRUE_AA; ++i)
-            for (size_t j = 0; j < TRUE_AA; ++j)
-                v[i * 20 + j] = score_matrix(i, j) * config.cbs_matrix_scale;
+        for (size_t i = 0; i < AMINO_ACID_COUNT; ++i)
+            for (size_t j = 0; j < AMINO_ACID_COUNT; ++j)
+                v[i * AMINO_ACID_COUNT + j] = score_matrix(i, j) * config.cbs_matrix_scale;
     }
     return v;
 }
-
 
 /* amino acid background frequencies from Robinson and Robinson */
 static std::pair<char, double> Robinson_prob[] = {
@@ -485,14 +546,14 @@ static std::pair<char, double> Robinson_prob[] = {
 double ideal_lambda(const int** matrix) {
     int obs_min, obs_max;
     double* scoreArray;
-    double bg[20];
+    double bg[TRUE_AA];
     double s = 0.0;
-    for (int i = 0; i < 20; ++i) {
+    for (int i = 0; i < TRUE_AA; ++i) {
         int j = value_traits.from_char(Robinson_prob[i].first);
         bg[j] = Robinson_prob[i].second;
         s += bg[j];
     }
-    for (int i = 0; i < 20; ++i)
+    for (int i = 0; i < TRUE_AA; ++i)
         bg[i] /= s;
 
     int out_of_memory = s_GetMatrixScoreProbs(&scoreArray, &obs_min, &obs_max, matrix, TRUE_AA, bg, bg);

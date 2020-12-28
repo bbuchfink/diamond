@@ -93,6 +93,7 @@ int s_GetMatrixScoreProbs(double** scoreProb, int* obs_min, int* obs_max,
     const double* queryProbArray);
 double s_CalcLambda(double probs[], int min_score, int max_score, double lambda0);
 double ideal_lambda(const int** matrix);
+void s_SetXUOScores(double** M, int alphsize, const double row_probs[], const double col_probs[]);
 
 EMatrixAdjustRule
 s_TestToApplyREAdjustmentConditional(int Len_query,
@@ -202,8 +203,9 @@ std::vector<int> CompositionBasedStats(const int* const* matrix_in, const Compos
 
 inline int16_t* make_16bit_matrix(const std::vector<int>& matrix) {
     int16_t* out = new int16_t[TRUE_AA * TRUE_AA];
-    for (size_t i = 0; i < TRUE_AA * TRUE_AA; ++i)
-        out[i] = matrix[i];
+    for (size_t i = 0; i < TRUE_AA; ++i)
+        for (size_t j = 0; j < TRUE_AA; ++j)
+            out[i * TRUE_AA + j] = matrix[i * AMINO_ACID_COUNT + j];
     return out;
 }
 

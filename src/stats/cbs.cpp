@@ -91,11 +91,11 @@ TargetMatrix::TargetMatrix(const Composition& query_comp, int query_len, const s
     
     for (size_t i = 0; i < AMINO_ACID_COUNT; ++i) {
         for (size_t j = 0; j < AMINO_ACID_COUNT; ++j)
-            if (i < 20 && j < 20) {
-                scores[i * 32 + j] = s[j * 20 + i];
-                scores32[i * 32 + j] = s[j * 20 + i];
-                score_min = std::min(score_min, s[j * 20 + i]);
-                score_max = std::max(score_max, s[j * 20 + i]);
+            if ((i < 20 || i == MASK_LETTER) && (j < 20 || j == MASK_LETTER)) {
+                scores[i * 32 + j] = s[j * AMINO_ACID_COUNT + i];
+                scores32[i * 32 + j] = s[j * AMINO_ACID_COUNT + i];
+                score_min = std::min(score_min, s[j * AMINO_ACID_COUNT + i]);
+                score_max = std::max(score_max, s[j * AMINO_ACID_COUNT + i]);
                 //std::cerr << s2[j * 20 + i] << ' ';
             }
             else {

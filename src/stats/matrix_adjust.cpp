@@ -898,31 +898,31 @@ Blast_TrueAaToStdTargetFreqs(double** StdFreq, int StdAlphsize,
     sum = 0.0;
     for (a = 0; a < small_alphsize; a++) {
         for (b = 0; b < small_alphsize; b++) {
-            sum += freq[a * 20  + b];
+            sum += freq[a * TRUE_AA  + b];
         }
     }
     for (A = 0; A < StdAlphsize; A++) {
         /* for all rows */
-        //if (alphaConvert[A] < 0) {
-        //    /* the row corresponds to a nonstandard reside */
-        //    for (B = 0; B < StdAlphsize; B++) {
-        //        StdFreq[A][B] = 0.0;
-        //    }
-        //}
-        //else {
+        if (A >= TRUE_AA) {
+            /* the row corresponds to a nonstandard reside */
+            for (B = 0; B < StdAlphsize; B++) {
+                StdFreq[A][B] = 0.0;
+            }
+        }
+        else {
             /* the row corresponds to a standard reside */
             a = A;
 
             for (B = 0; B < StdAlphsize; B++) {
                 /* for all columns */
-                if (B < 0) {
+                if (B >= TRUE_AA) {
                     /* the column corresponds to a nonstandard reside */
                     StdFreq[A][B] = 0.0;
                 }
                 else {
                     /* the column corresponds to a standard reside */
                     b = B;
-                    StdFreq[A][B] = freq[a * 20 + b] / sum;
+                    StdFreq[A][B] = freq[a * TRUE_AA + b] / sum;
                 }
             }
             /* Set values for two-character ambiguities */
@@ -931,7 +931,7 @@ Blast_TrueAaToStdTargetFreqs(double** StdFreq, int StdAlphsize,
             //if (StdAlphsize > eJchar) {
             //    StdFreq[A][eJchar] = StdFreq[A][eIchar] + StdFreq[A][eLchar];
             //}
-        //}
+        }
     }
     /* Add rows to set values for two-character ambiguities */
     //memcpy(StdFreq[eBchar], StdFreq[eDchar], StdAlphsize * sizeof(double));
@@ -962,8 +962,6 @@ Blast_CalcFreqRatios(double** ratios, int alphsize,
         }
     }
 }
-
-
 
 /**
  * Given a set of target frequencies and two sets of character
@@ -1008,9 +1006,9 @@ s_ScoresStdAlphabet(int** Matrix, int Alphsize,
     //s_SetPairAmbigProbsToSum(ColProb, Alphsize);
 
     Blast_TrueAaToStdTargetFreqs(Scores, Alphsize, target_freq);
-    Blast_CalcFreqRatios(Scores, Alphsize, row_prob, col_prob);
+    Blast_CalcFreqRatios(Scores, TRUE_AA, row_prob, col_prob);
     Blast_FreqRatioToScore(Scores, Alphsize, Alphsize, Lambda);
-    //s_SetXUOScores(Scores, Alphsize, RowProb, ColProb);
+    s_SetXUOScores(Scores, TRUE_AA, row_prob, col_prob);
 
     s_RoundScoreMatrix(Matrix, Alphsize, Alphsize, Scores);
     Nlm_DenseMatrixFree(&Scores);
@@ -1023,9 +1021,8 @@ s_ScoresStdAlphabet(int** Matrix, int Alphsize,
 }
 
 /* Documented in composition_adjustment.h. */
-int
+static int
 Blast_CompositionMatrixAdj(int** matrix,
-    int alphsize,
     EMatrixAdjustRule matrix_adjust_rule,
     int length1,
     int length2,
@@ -1076,7 +1073,7 @@ Blast_CompositionMatrixAdj(int** matrix,
     Blast_ApplyPseudocounts(col_probs, length2,
         background_freqs);
 
-    vector<double> mat_final(20 * 20);
+    vector<double> mat_final(TRUE_AA * TRUE_AA);
 
     status =
         Blast_OptimizeTargetFrequencies(mat_final.data(),
@@ -1093,7 +1090,7 @@ Blast_CompositionMatrixAdj(int** matrix,
         return status;
 
     return
-        s_ScoresStdAlphabet(matrix, alphsize, mat_final.data(),
+        s_ScoresStdAlphabet(matrix, AMINO_ACID_COUNT, mat_final.data(),
             row_probs, col_probs,
             lambda);
 }
@@ -1253,13 +1250,12 @@ s_TestToApplyREAdjustmentConditional(int Len_query,
 }
 
 vector<int> CompositionMatrixAdjust(int query_len, int target_len, const double* query_comp, const double* target_comp, int scale, double ungapped_lambda, const double* joint_probs, const double* background_freqs) {
-    vector<int> v(TRUE_AA * TRUE_AA);
+    vector<int> v(AMINO_ACID_COUNT * AMINO_ACID_COUNT);
     vector<int*> p;
-    p.reserve(TRUE_AA);
-    for (size_t i = 0; i < TRUE_AA; ++i)
-        p.push_back(&v[i * TRUE_AA]);
+    p.reserve(AMINO_ACID_COUNT);
+    for (size_t i = 0; i < AMINO_ACID_COUNT; ++i)
+        p.push_back(&v[i * AMINO_ACID_COUNT]);
     int r = Blast_CompositionMatrixAdj(p.data(),
-        TRUE_AA,
         eUserSpecifiedRelEntropy,
         query_len,
         target_len,
@@ -1269,9 +1265,9 @@ vector<int> CompositionMatrixAdjust(int query_len, int target_len, const double*
         joint_probs,
         background_freqs);
     if (r != 0) {
-        for (size_t i = 0; i < TRUE_AA; ++i)
-            for (size_t j = 0; j < TRUE_AA; ++j)
-                v[i * 20 + j] = score_matrix(i, j) * scale;
+        for (size_t i = 0; i < AMINO_ACID_COUNT; ++i)
+            for (size_t j = 0; j < AMINO_ACID_COUNT; ++j)
+                v[i * AMINO_ACID_COUNT + j] = score_matrix(i, j) * scale;
         //throw std::runtime_error("Error computing composition matrix adjust.");
     }
     return v;
