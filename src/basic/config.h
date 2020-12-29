@@ -252,6 +252,7 @@ struct Config
 	int cbs_it_limit;
 	double query_match_distance_threshold;
 	double length_ratio_threshold;
+	bool hash_join_swap;
 
 	Sensitivity sensitivity;
 	TracebackMode traceback_mode;

@@ -19,6 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <stdint.h>
 #include "seed_array.h"
 #include "seed_set.h"
+#include "enum_seeds.h"
 
 typedef vector<Array<SeedArray::Entry*, Const::seedp> > PtrSet;
 
@@ -108,7 +109,7 @@ SeedArray::SeedArray(const Sequence_set &seqs, size_t shape, const shape_histogr
 	PtrVector<BuildCallback> cb;
 	for (size_t i = 0; i < seq_partition.size() - 1; ++i)
 		cb.push_back(new BuildCallback(range, iterators[i].begin()));
-	seqs.enum_seeds(cb, seq_partition, shape, shape + 1, filter);
+	enum_seeds(&seqs, cb, seq_partition, shape, shape + 1, filter);
 }
 
 template SeedArray::SeedArray(const Sequence_set &, size_t, const shape_histogram &, const SeedPartitionRange &, const vector<size_t>&, char *buffer, const No_filter *);

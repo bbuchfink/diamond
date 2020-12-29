@@ -460,7 +460,8 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("cbs-err-tolerance", 0, "", cbs_err_tolerance, 0.00000001)
 		("cbs-it-limit", 0, "", cbs_it_limit, 2000)
 		("query-match-distance-threshold", 0, "", query_match_distance_threshold, 0.0)
-		("length-ratio-threshold", 0, "", length_ratio_threshold, 0.0);
+		("length-ratio-threshold", 0, "", length_ratio_threshold, 0.0)
+		("hash_join_swap", 0, "", hash_join_swap);
 	
 	parser.add(general).add(makedb).add(cluster).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options).add(deprecated_options);
 	parser.store(argc, argv, command);

@@ -16,9 +16,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#ifndef SEED_SET_H_
-#define SEED_SET_H_
-
+#pragma once
 #include <vector>
 #include "sequence_set.h"
 #include "../util/hash_table.h"
@@ -50,5 +48,3 @@ struct Hashed_seed_set
 private:
 	PtrVector<PHash_set<Modulo2, No_hash> > data_;
 };
-
-#endif

@@ -207,7 +207,7 @@ void hash_join(
 
 template<typename _t>
 std::pair<DoubleArray<typename _t::Value>, DoubleArray<typename _t::Value>> hash_join(Relation<_t> R, Relation<_t> S, unsigned total_bits = 32) {
-	const bool swap = R.n > S.n;
+	const bool swap = config.hash_join_swap && R.n > S.n;
 	if (swap)
 		std::swap(R, S);
 	_t *buf_r = (_t*)malloc(sizeof(_t) * R.n), *buf_s = (_t*)malloc(sizeof(_t) * S.n);

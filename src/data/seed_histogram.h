@@ -26,6 +26,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../basic/seed_iterator.h"
 #include "seed_set.h"
 #include "../util/data_structures/array.h"
+#include "enum_seeds.h"
 
 using std::vector;
 
@@ -98,9 +99,9 @@ struct Partitioned_histogram
 			cb.push_back(new Callback(i, data_));
 		if (serial)
 			for (unsigned s = 0; s < shapes.count(); ++s)
-				seqs.enum_seeds(cb, p_, s, s + 1, filter);
+				enum_seeds(&seqs, cb, p_, s, s + 1, filter);
 		else
-			seqs.enum_seeds(cb, p_, 0, shapes.count(), filter);
+			enum_seeds(&seqs, cb, p_, 0, shapes.count(), filter);
 	}
 
 	const shape_histogram& get(unsigned sid) const
