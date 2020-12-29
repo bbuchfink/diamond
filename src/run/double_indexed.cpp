@@ -89,6 +89,9 @@ void run_ref_chunk(DatabaseFile &db_file,
 {
 	log_rss();
 
+	if (config.comp_based_stats == Stats::CBS::COMP_BASED_STATS_AND_MATRIX_ADJUST)
+		ref_seqs_unmasked::data_ = new Sequence_set(*ref_seqs::data_);
+
 	task_timer timer;
 	if (config.masking == 1 && !config.no_ref_masking) {
 		timer.go("Masking reference");
@@ -156,6 +159,8 @@ void run_ref_chunk(DatabaseFile &db_file,
 	timer.go("Deallocating reference");
 	delete ref_seqs::data_;
 	delete ref_ids::data_;
+	if (config.comp_based_stats == Stats::CBS::COMP_BASED_STATS_AND_MATRIX_ADJUST)
+		delete ref_seqs_unmasked::data_;
 	timer.finish();
 }
 

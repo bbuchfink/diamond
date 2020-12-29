@@ -74,6 +74,16 @@ int count_true_aa(const sequence& s) {
     return n;
 }
 
+bool use_seg_masking(const sequence& a, const sequence& b) {
+    if (config.comp_based_stats != CBS::COMP_BASED_STATS_AND_MATRIX_ADJUST || a.length() != b.length())
+        return true;
+    size_t n = 0;
+    for (size_t i = 0; i < a.length(); ++i)
+        if (a[i] == b[i])
+            ++n;
+    return n != a.length();
+}
+
 TargetMatrix::TargetMatrix(const Composition& query_comp, int query_len, const sequence& target)
 {
     if (!CBS::matrix_adjust(config.comp_based_stats))
