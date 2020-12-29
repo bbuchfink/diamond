@@ -207,11 +207,16 @@ void hash_join(
 
 template<typename _t>
 std::pair<DoubleArray<typename _t::Value>, DoubleArray<typename _t::Value>> hash_join(Relation<_t> R, Relation<_t> S, unsigned total_bits = 32) {
+	const bool swap = R.n > S.n;
+	if (swap)
+		std::swap(R, S);
 	_t *buf_r = (_t*)malloc(sizeof(_t) * R.n), *buf_s = (_t*)malloc(sizeof(_t) * S.n);
 	DoubleArray<typename _t::Value> out_r((void*)R.data), out_s((void*)S.data);
 	hash_join(R, S, buf_r, buf_s, out_r, out_s, total_bits);
 	free(buf_r);
 	free(buf_s);
+	if (swap)
+		std::swap(out_r, out_s);
 	return { out_r, out_s };
 }
 
