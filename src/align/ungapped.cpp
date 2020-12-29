@@ -51,7 +51,7 @@ atomic<size_t> target_matrix_count(0);
 WorkTarget ungapped_stage(SeedHit *begin, SeedHit *end, const sequence *query_seq, const Bias_correction *query_cb, const Stats::Composition& query_comp, const int16_t** query_matrix, uint32_t block_id, Statistics& stat) {
 	array<vector<Diagonal_segment>, MAX_CONTEXT> diagonal_segments;
 	task_timer timer;
-	WorkTarget target(block_id, ref_seqs::get()[block_id], (int)query_seq[0].length(), query_comp, query_matrix);
+	WorkTarget target(block_id, ref_seqs::get()[block_id], Stats::count_true_aa(query_seq[0]), query_comp, query_matrix);
 	stat.inc(Statistics::TIME_MATRIX_ADJUST, timer.microseconds());
 	if (!Stats::CBS::avg_matrix(config.comp_based_stats) && target.adjusted_matrix())
 		stat.inc(Statistics::MATRIX_ADJUST_COUNT);

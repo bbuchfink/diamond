@@ -94,6 +94,7 @@ int s_GetMatrixScoreProbs(double** scoreProb, int* obs_min, int* obs_max,
 double s_CalcLambda(double probs[], int min_score, int max_score, double lambda0);
 double ideal_lambda(const int** matrix);
 void s_SetXUOScores(double** M, int alphsize, const double row_probs[], const double col_probs[]);
+int count_true_aa(const sequence& s);
 
 EMatrixAdjustRule
 s_TestToApplyREAdjustmentConditional(int Len_query,

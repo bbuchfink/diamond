@@ -1032,6 +1032,12 @@ Blast_CompositionMatrixAdj(int** matrix,
     const double* joint_probs,
     const double* background_freqs)
 {
+    /*for (int i = 0; i < 20; ++i)
+        printf("%.10f ", stdaa_row_probs[i]);
+    printf("\n");
+    for (int i = 0; i < 20; ++i)
+        printf("%.10f ", stdaa_col_probs[i]);
+    printf("\n");*/
     int iteration_count, status;
     double row_probs[COMPO_NUM_TRUE_AA], col_probs[COMPO_NUM_TRUE_AA];
     /* Target RE when optimizing the matrix; zero if the relative

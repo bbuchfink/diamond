@@ -678,7 +678,7 @@ Config::Config(int argc, const char **argv, bool check_io)
 			}
 		}
 		message_stream << "Scoring parameters: " << score_matrix << endl;
-		if (masking == 1 || target_seg)
+		//if (masking == 1 || target_seg)
 			Masking::instance = unique_ptr<Masking>(new Masking(score_matrix));
 	}
 

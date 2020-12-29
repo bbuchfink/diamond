@@ -21,6 +21,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "cbs.h"
 #include "../basic/config.h"
 #include "score_matrix.h"
+#include "../basic/masking.h"
 
 namespace Stats {
 
@@ -65,12 +66,24 @@ Composition composition(const sequence& s) {
     return r;
 }
 
+int count_true_aa(const sequence& s) {
+    int n = 0;
+    for (size_t i = 0; i < s.length(); ++i)
+        if ((size_t)s[i] < TRUE_AA)
+            ++n;
+    return n;
+}
+
 TargetMatrix::TargetMatrix(const Composition& query_comp, int query_len, const sequence& target)
 {
     if (!CBS::matrix_adjust(config.comp_based_stats))
         return;
+    
+    vector<Letter> target_seq = target.copy();
+    //Masking::get()(target_seq.data(), target_seq.size(), Masking::Algo::SEG);
 
-    auto c = composition(target);
+    //auto c = composition(target);
+    auto c = composition(sequence(target_seq.data(), target_seq.size()));
     EMatrixAdjustRule rule = eUserSpecifiedRelEntropy;
     if (CBS::conditioned(config.comp_based_stats)) {
         rule = s_TestToApplyREAdjustmentConditional(query_len, (int)target.length(), query_comp.data(), c.data(), score_matrix.background_freqs());
@@ -87,7 +100,7 @@ TargetMatrix::TargetMatrix(const Composition& query_comp, int query_len, const s
     if (config.comp_based_stats == CBS::COMP_BASED_STATS || rule == eCompoScaleOldMatrix)
         s = CompositionBasedStats(score_matrix.matrix32_scaled_pointers().data(), query_comp, c, score_matrix.ungapped_lambda(), score_matrix.freq_ratios());
     else
-        s = CompositionMatrixAdjust(query_len, (int)target.length(), query_comp.data(), c.data(), config.cbs_matrix_scale, score_matrix.ideal_lambda(), score_matrix.joint_probs(), score_matrix.background_freqs());
+        s = CompositionMatrixAdjust(query_len, count_true_aa(target), query_comp.data(), c.data(), config.cbs_matrix_scale, score_matrix.ideal_lambda(), score_matrix.joint_probs(), score_matrix.background_freqs());
     
     for (size_t i = 0; i < AMINO_ACID_COUNT; ++i) {
         for (size_t j = 0; j < AMINO_ACID_COUNT; ++j)
