@@ -253,6 +253,7 @@ struct Config
 	double query_match_distance_threshold;
 	double length_ratio_threshold;
 	bool hash_join_swap;
+	bool target_indexed;
 
 	Sensitivity sensitivity;
 	TracebackMode traceback_mode;

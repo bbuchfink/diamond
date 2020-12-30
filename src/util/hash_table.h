@@ -16,9 +16,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#ifndef HASH_TABLE_H_
-#define HASH_TABLE_H_
-
+#pragma once
 #include <exception>
 #include <stdint.h>
 #include <memory>
@@ -210,7 +208,7 @@ private:
 	bool get_entry(uint64_t key, fp*& p) const
 	{
 		const uint64_t hash = _hash()(key), f = finger_print(hash);
-		p = table.get() + modulo<_mod>(hash >> sizeof(fp) * 8, size_);
+		p = table.get() + modulo<_mod>(hash >> (sizeof(fp) * 8), size_);
 		bool wrapped = false;
 		while (true) {
 			if (*p == f)
@@ -231,5 +229,3 @@ private:
 	size_t size_;
 
 };
-
-#endif /* HASH_TABLE_H_ */

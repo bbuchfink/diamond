@@ -16,9 +16,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#ifndef SEED_ARRAY_H_
-#define SEED_ARRAY_H_
-
+#pragma once
 #include "seed_histogram.h"
 #include "../basic/packed_loc.h"
 
@@ -68,6 +66,10 @@ struct SeedArray
 		return begin_[i + 1] - begin_[i];
 	}
 
+	size_t size() const {
+		return begin_[Const::seedp];
+	}
+
 	static char *alloc_buffer(const Partitioned_histogram &hst);
 
 private:
@@ -78,5 +80,3 @@ private:
 };
 
 #pragma pack()
-
-#endif

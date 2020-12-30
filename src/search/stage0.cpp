@@ -71,7 +71,7 @@ void search_worker(atomic<unsigned> *seedp, const SeedPartitionRange *seedp_rang
 	statistics += stats;
 }
 
-void search_shape(unsigned sid, unsigned query_block, char *query_buffer, char *ref_buffer, const Parameters &params)
+void search_shape(unsigned sid, unsigned query_block, char *query_buffer, char *ref_buffer, const Parameters &params, const Hashed_seed_set* target_seeds)
 {
 	::partition<unsigned> p(Const::seedp, config.lowmem);
 	DoubleArray<SeedArray::_pos> query_seed_hits[Const::seedp], ref_seed_hits[Const::seedp];
@@ -97,7 +97,14 @@ void search_shape(unsigned sid, unsigned query_block, char *query_buffer, char *
 			ref_idx = new SeedArray(*ref_seqs::data_, sid, ref_hst.get(sid), range, ref_hst.partition(), ref_buffer, &no_filter);
 
 		timer.go("Building query seed array");
-		SeedArray *query_idx = new SeedArray(*query_seqs::data_, sid, query_hst.get(sid), range, query_hst.partition(), query_buffer, &no_filter);
+		SeedArray* query_idx;
+		if (target_seeds)
+			query_idx = new SeedArray(*query_seqs::data_, sid, query_hst.get(sid), range, query_hst.partition(), query_buffer, target_seeds);
+		else
+			query_idx = new SeedArray(*query_seqs::data_, sid, query_hst.get(sid), range, query_hst.partition(), query_buffer, &no_filter);
+		timer.finish();
+
+		log_stream << "Indexed query seeds = " << query_idx->size() << '/' << query_seqs::get().letters() << ", reference seeds = " << ref_idx->size() << '/' << ref_seqs::get().letters() << endl;
 
 		timer.go("Computing hash join");
 		atomic<unsigned> seedp(range.begin());

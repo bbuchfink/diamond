@@ -308,7 +308,8 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("roc-file", 0, "", roc_file)
 		("family-map", 0, "", family_map)
 		("family-map-query", 0, "", family_map_query)
-		("query-parallel-limit", 0, "", query_parallel_limit, 3000000u);
+		("query-parallel-limit", 0, "", query_parallel_limit, 3000000u)
+		("target-indexed", 0, "", target_indexed);
 
 	Options_group view_options("View options");
 	view_options.add()
