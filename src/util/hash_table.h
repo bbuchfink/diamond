@@ -23,6 +23,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <algorithm>
 #include <string.h>
 #include "hash_function.h"
+#include "simd.h"
 
 struct hash_table_overflow_exception : public std::exception
 {
