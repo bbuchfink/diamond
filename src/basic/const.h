@@ -26,7 +26,11 @@ struct Const
 
 	enum {
 		build_version = 144,
+#ifdef SINGLE_THREADED
+		seedp_bits = 0,
+#else
 		seedp_bits = 10,
+#endif
 		seedp = 1<<seedp_bits,
 		max_seed_weight = 32,
 		max_shapes = 64

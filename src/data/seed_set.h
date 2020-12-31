@@ -46,5 +46,5 @@ struct Hashed_seed_set
 		return data_[shape].contains(key);
 	}
 private:
-	PtrVector<PHash_set<void, No_hash>> data_;
+	PtrVector<PHash_set<Modulo2, No_hash>> data_;
 };

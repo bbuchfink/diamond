@@ -61,7 +61,7 @@ Seed_set::Seed_set(const Sequence_set &seqs, double max_coverage):
 
 struct Hashed_seed_set_callback
 {
-	Hashed_seed_set_callback(PtrVector<PHash_set<void, No_hash> > &dst):
+	Hashed_seed_set_callback(PtrVector<PHash_set<Modulo2, No_hash>> &dst):
 		dst(dst)
 	{}
 	bool operator()(uint64_t seed, uint64_t pos, uint64_t shape)
@@ -71,17 +71,28 @@ struct Hashed_seed_set_callback
 	}
 	void finish()
 	{}
-	PtrVector<PHash_set<void, No_hash> > &dst;
+	PtrVector<PHash_set<Modulo2, No_hash> > &dst;
 };
 
 Hashed_seed_set::Hashed_seed_set(const Sequence_set &seqs)
 {
 	for (size_t i = 0; i < shapes.count(); ++i)
-		//data_.push_back(new PHash_set<void, No_hash>(next_power_of_2(seqs.letters()*1.25)));
-		data_.push_back(new PHash_set<void, No_hash>(seqs.letters() * 1.25));
+		data_.push_back(new PHash_set<Modulo2, No_hash>(next_power_of_2(seqs.letters()*1.25)));
+		//data_.push_back(new PHash_set<void, Modulo2>(seqs.letters() * 1.25));
 	PtrVector<Hashed_seed_set_callback> v;
 	v.push_back(new Hashed_seed_set_callback(data_));
 	enum_seeds(&seqs, v, seqs.partition(1), 0, shapes.count(), &no_filter);
+
+	vector<size_t> sizes;
 	for (size_t i = 0; i < shapes.count(); ++i)
-		log_stream << "Shape=" << i << " Hash_table_size=" << data_[i].size() << " load=" << data_[i].load() << endl;
+		sizes.push_back(data_[i].load());
+	data_.clear();
+
+	for (size_t i = 0; i < shapes.count(); ++i)
+		data_.push_back(new PHash_set<Modulo2, No_hash>(next_power_of_2(sizes[i] * 1.25)));
+		//data_.push_back(new PHash_set<void, Modulo2>(seqs.letters() * 1.25));
+	enum_seeds(&seqs, v, seqs.partition(1), 0, shapes.count(), &no_filter);
+
+	for (size_t i = 0; i < shapes.count(); ++i)
+		log_stream << "Shape=" << i << " Hash_table_size=" << data_[i].size() << " load=" << (double)data_[i].load()/data_[i].size() << endl;
 }
