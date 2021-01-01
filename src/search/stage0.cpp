@@ -48,7 +48,8 @@ void seed_join_worker(
 	DoubleArray<SeedArray::_pos> *ref_seeds_hits)
 {
 	unsigned p;
-	const unsigned bits = (unsigned)ceil(shapes[0].weight_ * Reduction::reduction.bit_size_exact()) - Const::seedp_bits;
+	const unsigned bits = config.hashed_seeds ? sizeof(SeedArray::Entry::Key) * 8
+		: (unsigned)ceil(shapes[0].weight_ * Reduction::reduction.bit_size_exact()) - Const::seedp_bits;
 	while ((p = (*seedp)++) < seedp_range->end()) {
 		std::pair<DoubleArray<SeedArray::_pos>, DoubleArray<SeedArray::_pos>> join = hash_join(
 			Relation<SeedArray::Entry>(query_seeds->begin(p), query_seeds->size(p)),
@@ -99,7 +100,7 @@ void search_shape(unsigned sid, unsigned query_block, char *query_buffer, char *
 		timer.go("Building query seed array");
 		SeedArray* query_idx;
 		if (target_seeds)
-			query_idx = new SeedArray(*query_seqs::data_, sid, query_hst.get(sid), range, query_hst.partition(), query_buffer, target_seeds);
+			query_idx = new SeedArray(*query_seqs::data_, sid, range, target_seeds);
 		else
 			query_idx = new SeedArray(*query_seqs::data_, sid, query_hst.get(sid), range, query_hst.partition(), query_buffer, &no_filter);
 		timer.finish();

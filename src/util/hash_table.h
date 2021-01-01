@@ -195,7 +195,7 @@ public:
 			return true;
 
 		const fp f = finger_print(hash);
-		__m128i fr = _mm_set1_epi8(f);		
+		__m128i fr = _mm_set1_epi8(f);
 		const int fm = _mm_movemask_epi8(_mm_cmpeq_epi8(r, fr));
 		return fm != 0;
 #else

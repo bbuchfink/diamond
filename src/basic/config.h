@@ -254,6 +254,7 @@ struct Config
 	double length_ratio_threshold;
 	bool hash_join_swap;
 	bool target_indexed;
+	size_t deque_bucket_size;
 
 	Sensitivity sensitivity;
 	TracebackMode traceback_mode;

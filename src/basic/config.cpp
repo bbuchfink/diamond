@@ -462,7 +462,8 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("cbs-it-limit", 0, "", cbs_it_limit, 2000)
 		("query-match-distance-threshold", 0, "", query_match_distance_threshold, 0.0)
 		("length-ratio-threshold", 0, "", length_ratio_threshold, 0.0)
-		("hash_join_swap", 0, "", hash_join_swap);
+		("hash_join_swap", 0, "", hash_join_swap)
+		("deque_bucket_size", 0, "", deque_bucket_size, (size_t)524288);
 	
 	parser.add(general).add(makedb).add(cluster).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options).add(deprecated_options);
 	parser.store(argc, argv, command);
@@ -525,6 +526,9 @@ Config::Config(int argc, const char **argv, bool check_io)
 
 	if (masking < 0 || masking > 1)
 		throw std::runtime_error("Permitted values for --masking: 0, 1");
+
+	if (target_indexed)
+		hashed_seeds = true;
 
 	if (check_io) {
 		switch (command) {

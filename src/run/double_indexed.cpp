@@ -123,13 +123,6 @@ void run_ref_chunk(DatabaseFile &db_file,
 			timer.go("Building database seed set");
 			target_seeds = new Hashed_seed_set(*ref_seqs::data_);
 			timer.finish();
-
-			timer.go("Building query histograms");
-			query_hst = Partitioned_histogram(*query_seqs::data_, true, target_seeds);
-
-			timer.go("Allocating buffers");
-			query_buffer = SeedArray::alloc_buffer(query_hst);
-			timer.finish();
 		}
 
 		for (unsigned i = 0; i < shapes.count(); ++i)
@@ -138,8 +131,6 @@ void run_ref_chunk(DatabaseFile &db_file,
 		timer.go("Deallocating buffers");
 		delete[] ref_buffer;
 		delete target_seeds;
-		if (config.target_indexed)
-			delete[] query_buffer;
 
 		timer.go("Clearing query masking");
 		Frequent_seeds::clear_masking(*query_seqs::data_);
