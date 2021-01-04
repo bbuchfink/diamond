@@ -249,6 +249,11 @@ struct Config
 	int target_seg;
 	double cbs_err_tolerance;
 	int cbs_it_limit;
+	double query_match_distance_threshold;
+	double length_ratio_threshold;
+	bool hash_join_swap;
+	bool target_indexed;
+	size_t deque_bucket_size;
 	bool mode_fast;
 
 	Sensitivity sensitivity;

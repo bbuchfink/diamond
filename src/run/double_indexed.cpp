@@ -49,6 +49,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/parallel/parallelizer.h"
 #include "../util/system/system.h"
 #include "../align/target.h"
+#include "../data/enum_seeds.h"
 
 using std::unique_ptr;
 using std::endl;
@@ -120,11 +121,19 @@ void run_ref_chunk(DatabaseFile &db_file,
 		char *ref_buffer = SeedArray::alloc_buffer(ref_hst);
 		timer.finish();
 
+		Hashed_seed_set* target_seeds = nullptr;
+		if (config.target_indexed) {
+			timer.go("Building database seed set");
+			target_seeds = new Hashed_seed_set(*ref_seqs::data_);
+			timer.finish();
+		}
+
 		for (unsigned i = 0; i < shapes.count(); ++i)
-			search_shape(i, query_chunk, query_buffer, ref_buffer, params);
+			search_shape(i, query_chunk, query_buffer, ref_buffer, params, target_seeds);
 
 		timer.go("Deallocating buffers");
 		delete[] ref_buffer;
+		delete target_seeds;
 
 		timer.go("Clearing query masking");
 		Frequent_seeds::clear_masking(*query_seqs::data_);
@@ -229,7 +238,7 @@ void run_query_chunk(DatabaseFile &db_file,
 	char *query_buffer = nullptr;
 	const pair<size_t, size_t> query_len_bounds = query_seqs::data_->len_bounds(shapes[0].length_);
 
-	if (!config.swipe_all) {
+	if (!config.swipe_all && !config.target_indexed) {
 		timer.go("Building query histograms");
 		query_hst = Partitioned_histogram(*query_seqs::data_, false, &no_filter);
 

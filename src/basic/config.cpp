@@ -308,7 +308,8 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("roc-file", 0, "", roc_file)
 		("family-map", 0, "", family_map)
 		("family-map-query", 0, "", family_map_query)
-		("query-parallel-limit", 0, "", query_parallel_limit, 3000000u);
+		("query-parallel-limit", 0, "", query_parallel_limit, 3000000u)
+		("target-indexed", 0, "", target_indexed);
 
 	Options_group view_options("View options");
 	view_options.add()
@@ -463,6 +464,8 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("target-seg", 0, "", target_seg, -1)
 		("cbs-err-tolerance", 0, "", cbs_err_tolerance, 0.00000001)
 		("cbs-it-limit", 0, "", cbs_it_limit, 2000)
+		("hash_join_swap", 0, "", hash_join_swap)
+		("deque_bucket_size", 0, "", deque_bucket_size, (size_t)524288)
 		("query-match-distance-threshold", 0, "", query_match_distance_threshold, -1.0)
 		("length-ratio-threshold", 0, "", length_ratio_threshold, -1.0)
 		("fast", 0, "", mode_fast);
@@ -530,6 +533,9 @@ Config::Config(int argc, const char **argv, bool check_io)
 
 	if (masking < 0 || masking > 1)
 		throw std::runtime_error("Permitted values for --masking: 0, 1");
+
+	if (target_indexed)
+		hashed_seeds = true;
 
 	if (check_io) {
 		switch (command) {

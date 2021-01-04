@@ -16,53 +16,51 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#ifndef PTR_VECTOR_H_
-#define PTR_VECTOR_H_
-
+#pragma once
 #include <vector>
 
-using std::vector;
-
 template<typename _t>
-struct PtrVector : public vector<_t*>
+struct PtrVector : public std::vector<_t*>
 {
 
+	using vector = std::vector<_t*>;
+
 	PtrVector():
-		vector<_t*>()
+		vector()
 	{}
 	
-	PtrVector(typename vector<_t*>::size_type n):
-		vector<_t*>(n)
+	PtrVector(typename vector::size_type n):
+		vector(n)
 	{}
 
-	_t& operator[](typename vector<_t*>::size_type n)
-	{ return *vector<_t*>::operator[](n); }
+	_t& operator[](typename vector::size_type n)
+	{ return *vector::operator[](n); }
 
-	const _t& operator[](typename vector<_t*>::size_type n) const
-	{ return *vector<_t*>::operator[](n); }
+	const _t& operator[](typename vector::size_type n) const
+	{ return *vector::operator[](n); }
 
-	_t*& get(typename vector<_t*>::size_type n)
+	_t*& get(typename vector::size_type n)
 	{
-		return vector<_t*>::operator[](n);
+		return vector::operator[](n);
 	}
 
 	_t& back()
 	{
-		return *vector<_t*>::back();
+		return *vector::back();
 	}
 
-	typename vector<_t*>::iterator erase(typename vector<_t*>::iterator first, typename vector<_t*>::iterator last)
+	typename vector::iterator erase(typename vector::iterator first, typename vector::iterator last)
 	{
-		for (typename vector<_t*>::iterator i = first; i < last; ++i)
+		for (typename vector::iterator i = first; i < last; ++i)
 			delete *i;
-		return vector<_t*>::erase(first, last);
+		return vector::erase(first, last);
 	}
 
 	void clear()
 	{
-		for (typename vector<_t*>::iterator i = this->begin(); i != this->end(); ++i)
+		for (typename vector::iterator i = this->begin(); i != this->end(); ++i)
 			delete *i;
-		vector<_t*>::clear();
+		vector::clear();
 	}
 
 	~PtrVector()
@@ -72,4 +70,3 @@ struct PtrVector : public vector<_t*>
 
 };
 
-#endif /* PTR_VECTOR_H_ */

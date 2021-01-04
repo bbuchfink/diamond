@@ -16,15 +16,14 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#ifndef HASH_TABLE_H_
-#define HASH_TABLE_H_
-
+#pragma once
 #include <exception>
 #include <stdint.h>
 #include <memory>
 #include <algorithm>
 #include <string.h>
 #include "hash_function.h"
+#include "simd.h"
 
 struct hash_table_overflow_exception : public std::exception
 {
@@ -173,8 +172,36 @@ public:
 
 	bool contains(uint64_t key) const
 	{
+#ifdef USE_AVX
+		const uint64_t hash = _hash()(key);
+		fp* p = table.get() + modulo<_mod>(hash >> (sizeof(fp) * 8), size_);
+		__m256i r = _mm256_loadu_si256((const __m256i*)p);
+		__m256i z = _mm256_setzero_si256();
+		const int zm = _mm256_movemask_epi8(_mm256_cmpeq_epi8(r, z));
+		if (zm == 0)
+			return true;
+
+		const fp f = finger_print(hash);
+		__m256i fr = _mm256_set1_epi8(f);
+		const int fm = _mm256_movemask_epi8(_mm256_cmpeq_epi8(r, fr));
+		return fm != 0;
+#elif defined(__SSE2__)
+		const uint64_t hash = _hash()(key);
+		fp* p = table.get() + modulo<_mod>(hash >> (sizeof(fp) * 8), size_);
+		__m128i r = _mm_loadu_si128((const __m128i*)p);
+		__m128i z = _mm_setzero_si128();
+		const int zm = _mm_movemask_epi8(_mm_cmpeq_epi8(r, z));
+		if (zm == 0)
+			return true;
+
+		const fp f = finger_print(hash);
+		__m128i fr = _mm_set1_epi8(f);
+		const int fm = _mm_movemask_epi8(_mm_cmpeq_epi8(r, fr));
+		return fm != 0;
+#else
 		fp *p;
 		return get_entry(key, p);
+#endif
 	}
 
 	void insert(uint64_t key)
@@ -190,13 +217,13 @@ public:
 		return size_;
 	}
 
-	double load() const
+	size_t load() const
 	{
 		size_t n = 0;
 		for (size_t i = 0; i < size_; ++i)
 			if (*(table.get() + i) != 0)
 				++n;
-		return (double)n / size_;
+		return n;
 	}
 
 private:
@@ -209,8 +236,9 @@ private:
 
 	bool get_entry(uint64_t key, fp*& p) const
 	{
-		const uint64_t hash = _hash()(key), f = finger_print(hash);
-		p = table.get() + modulo<_mod>(hash >> sizeof(fp) * 8, size_);
+		const uint64_t hash = _hash()(key);
+		const fp f = finger_print(hash);
+		p = table.get() + modulo<_mod>(hash >> (sizeof(fp) * 8), size_);
 		bool wrapped = false;
 		while (true) {
 			if (*p == f)
@@ -231,5 +259,3 @@ private:
 	size_t size_;
 
 };
-
-#endif /* HASH_TABLE_H_ */

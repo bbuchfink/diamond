@@ -16,9 +16,9 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#ifndef SEED_ARRAY_H_
-#define SEED_ARRAY_H_
-
+#pragma once
+#include <array>
+#include <vector>
 #include "seed_histogram.h"
 #include "../basic/packed_loc.h"
 
@@ -53,19 +53,43 @@ struct SeedArray
 	template<typename _filter>
 	SeedArray(const Sequence_set &seqs, size_t shape, const shape_histogram &hst, const SeedPartitionRange &range, const vector<size_t> &seq_partition, char *buffer, const _filter *filter);
 
+	template<typename _filter>
+	SeedArray(const Sequence_set& seqs, size_t shape, const SeedPartitionRange& range, const _filter* filter);
+
 	Entry* begin(unsigned i)
 	{
-		return &data_[begin_[i]];
+		if (data_)
+			return &data_[begin_[i]];
+		else
+			return entries_[i].data();
 	}
 
 	const Entry* begin(unsigned i) const
 	{
-		return &data_[begin_[i]];
+		if (data_)
+			return &data_[begin_[i]];
+		else
+			return entries_[i].data();
 	}
 
 	size_t size(size_t i) const
 	{
-		return begin_[i + 1] - begin_[i];
+		if (data_)
+			return begin_[i + 1] - begin_[i];
+		else {
+			return entries_[i].size();
+		}
+	}
+
+	size_t size() const {
+		if(data_)
+			return begin_[Const::seedp];
+		else {
+			size_t n = 0;
+			for (const auto& v : entries_)
+				n += v.size();
+			return n;
+		}
 	}
 
 	static char *alloc_buffer(const Partitioned_histogram &hst);
@@ -74,9 +98,8 @@ private:
 
 	Entry *data_;
 	size_t begin_[Const::seedp + 1];
+	std::array<std::vector<Entry>, Const::seedp> entries_;
 
 };
 
 #pragma pack()
-
-#endif
