@@ -85,7 +85,7 @@ Hashed_seed_set::Hashed_seed_set(const Sequence_set &seqs)
 	bool save_to_file = false;
 	if (config.mmap_target_index) {
 		for (size_t i = 0; i < shapes.count(); ++i) {
-			auto f = mmap_file(("diamond_idx." + std::to_string(i)).c_str());
+			auto f = mmap_file((config.database + '.' + std::to_string(i)).c_str());
 			if (get<0>(f) == nullptr) {
 				save_to_file = true;
 				break;
@@ -122,7 +122,7 @@ Hashed_seed_set::Hashed_seed_set(const Sequence_set &seqs)
 		std::array<uint8_t, PADDING> padding;
 		padding.fill(0);
 		for (size_t i = 0; i < shapes.count(); ++i) {
-			OutputFile out("diamond_idx." + std::to_string(i));
+			OutputFile out(config.database + '.' + std::to_string(i));
 			out.write(data_[i].data(), data_[i].size());
 			out.write(padding.data(), PADDING);
 			out.close();
