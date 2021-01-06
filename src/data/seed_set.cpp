@@ -16,12 +16,15 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
+#include <array>
 #include "seed_set.h"
 #include "../util/ptr_vector.h"
 #include "../util/math/integer.h"
 #include "enum_seeds.h"
 #include "../util/system/system.h"
 #include "../util/io/output_file.h"
+
+static const size_t PADDING = 32;
 
 using std::endl;
 using std::get;
@@ -87,7 +90,7 @@ Hashed_seed_set::Hashed_seed_set(const Sequence_set &seqs)
 				save_to_file = true;
 				break;
 			}
-			data_.push_back(new PHash_set<Modulo2, No_hash>((uint8_t*)get<0>(f), get<1>(f)));
+			data_.push_back(new PHash_set<Modulo2, No_hash>((uint8_t*)get<0>(f), get<1>(f) - PADDING));
 			fd_.push_back(get<2>(f));
 			log_stream << "MMAPED Shape=" << i << " Hash_table_size=" << data_[i].size() << " load=" << (double)data_[i].load() / data_[i].size() << endl;
 		}
@@ -116,9 +119,12 @@ Hashed_seed_set::Hashed_seed_set(const Sequence_set &seqs)
 
 	if (save_to_file) {
 		log_stream << "Saving hashed seed sets to file." << endl;
+		std::array<uint8_t, PADDING> padding;
+		padding.fill(0);
 		for (size_t i = 0; i < shapes.count(); ++i) {
 			OutputFile out("diamond_idx." + std::to_string(i));
 			out.write(data_[i].data(), data_[i].size());
+			out.write(padding.data(), PADDING);
 			out.close();
 		}
 	}
