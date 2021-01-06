@@ -16,12 +16,18 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
+#include <array>
 #include "seed_set.h"
 #include "../util/ptr_vector.h"
 #include "../util/math/integer.h"
 #include "enum_seeds.h"
+#include "../util/system/system.h"
+#include "../util/io/output_file.h"
+
+static const size_t PADDING = 32;
 
 using std::endl;
+using std::get;
 
 No_filter no_filter;
 
@@ -76,6 +82,21 @@ struct Hashed_seed_set_callback
 
 Hashed_seed_set::Hashed_seed_set(const Sequence_set &seqs)
 {
+	bool save_to_file = false;
+	if (config.mmap_target_index) {
+		for (size_t i = 0; i < shapes.count(); ++i) {
+			auto f = mmap_file((config.database + '.' + std::to_string(i)).c_str());
+			if (get<0>(f) == nullptr) {
+				save_to_file = true;
+				break;
+			}
+			data_.push_back(new PHash_set<Modulo2, No_hash>((uint8_t*)get<0>(f), get<1>(f) - PADDING));
+			fd_.push_back(get<2>(f));
+			log_stream << "MMAPED Shape=" << i << " Hash_table_size=" << data_[i].size() << " load=" << (double)data_[i].load() / data_[i].size() << endl;
+		}
+		if (!save_to_file)
+			return;
+	}
 	for (size_t i = 0; i < shapes.count(); ++i)
 		data_.push_back(new PHash_set<Modulo2, No_hash>(next_power_of_2(seqs.letters()*1.25)));
 		//data_.push_back(new PHash_set<void, Modulo2>(seqs.letters() * 1.25));
@@ -95,4 +116,23 @@ Hashed_seed_set::Hashed_seed_set(const Sequence_set &seqs)
 
 	for (size_t i = 0; i < shapes.count(); ++i)
 		log_stream << "Shape=" << i << " Hash_table_size=" << data_[i].size() << " load=" << (double)data_[i].load()/data_[i].size() << endl;
+
+	if (save_to_file) {
+		log_stream << "Saving hashed seed sets to file." << endl;
+		for (size_t i = 0; i < shapes.count(); ++i) {
+			OutputFile out(config.database + '.' + std::to_string(i));
+			out.write(data_[i].data(), data_[i].size());
+			out.write(data_[i].data(), PADDING);
+			out.close();
+		}
+	}
+}
+
+Hashed_seed_set::~Hashed_seed_set() {
+	if (fd_.empty())
+		return;
+	for (size_t i = 0; i < shapes.count(); ++i) {
+		unmap_file((char*)data_[i].table, data_[i].size(), fd_[i]);
+		data_[i].table = nullptr;
+	}
 }

@@ -254,6 +254,7 @@ struct Config
 	bool hash_join_swap;
 	bool target_indexed;
 	size_t deque_bucket_size;
+	bool mmap_target_index;
 	bool mode_fast;
 
 	Sensitivity sensitivity;

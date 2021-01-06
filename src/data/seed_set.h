@@ -41,10 +41,12 @@ private:
 struct Hashed_seed_set
 {
 	Hashed_seed_set(const Sequence_set &seqs);
+	~Hashed_seed_set();
 	bool contains(uint64_t key, uint64_t shape) const
 	{
 		return data_[shape].contains(key);
 	}
 private:
 	PtrVector<PHash_set<Modulo2, No_hash>> data_;
+	std::vector<int> fd_;
 };
