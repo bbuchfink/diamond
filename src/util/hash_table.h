@@ -226,6 +226,10 @@ public:
 		return n;
 	}
 
+	const fp* data() const {
+		return table.get();
+	}
+
 private:
 
 	static fp finger_print(uint64_t hash)

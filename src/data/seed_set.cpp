@@ -20,8 +20,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/ptr_vector.h"
 #include "../util/math/integer.h"
 #include "enum_seeds.h"
+#include "../util/system/system.h"
+#include "../util/io/output_file.h"
 
 using std::endl;
+using std::get;
 
 No_filter no_filter;
 
@@ -76,6 +79,16 @@ struct Hashed_seed_set_callback
 
 Hashed_seed_set::Hashed_seed_set(const Sequence_set &seqs)
 {
+	bool save_to_file = false;
+	if (config.mmap_target_index) {
+		for (size_t i = 0; i < shapes.count(); ++i) {
+			auto f = mmap_file(("diamond_idx." + std::to_string(i)).c_str());
+			if (get<0>(f) == nullptr) {
+				save_to_file = true;
+				break;
+			}				
+		}
+	}
 	for (size_t i = 0; i < shapes.count(); ++i)
 		data_.push_back(new PHash_set<Modulo2, No_hash>(next_power_of_2(seqs.letters()*1.25)));
 		//data_.push_back(new PHash_set<void, Modulo2>(seqs.letters() * 1.25));
@@ -95,4 +108,13 @@ Hashed_seed_set::Hashed_seed_set(const Sequence_set &seqs)
 
 	for (size_t i = 0; i < shapes.count(); ++i)
 		log_stream << "Shape=" << i << " Hash_table_size=" << data_[i].size() << " load=" << (double)data_[i].load()/data_[i].size() << endl;
+
+	if (save_to_file) {
+		log_stream << "Saving hashed seed sets to file." << endl;
+		for (size_t i = 0; i < shapes.count(); ++i) {
+			OutputFile out("diamond_idx." + std::to_string(i));
+			out.write(data_[i].data(), data_[i].size());
+			out.close();
+		}
+	}
 }

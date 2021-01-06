@@ -1,3 +1,5 @@
+#include <stdio.h>
+#include <stdlib.h>
 #include <stdexcept>
 #include <string.h>
 #include <iostream>
@@ -10,6 +12,9 @@
 #else
   #include <unistd.h>
   #include <sys/stat.h>
+  #include <sys/mman.h>
+  #include <fcntl.h>
+  #include <unistd.h>
   #ifndef  __APPLE__
     #ifdef __FreeBSD__
       #include <sys/types.h>
@@ -149,5 +154,42 @@ double total_ram() {
 	if (sysinfo(&info) != 0)
 		return 0.0;
 	return (double)info.totalram / 1e9;
+#endif
+}
+
+#define handle_error(msg) \
+           do { perror(msg); exit(EXIT_FAILURE); } while (0)
+
+std::tuple<char*, size_t, int> mmap_file(const char* filename) {
+#ifdef WIN32
+	return { nullptr, 0, -1 };
+#else
+	char* addr;
+	int fd;
+	struct stat sb;
+	size_t length;
+
+	fd = open(filename, O_RDONLY);
+	if (fd == -1)
+		return { nullptr, 0, -1 };
+
+	if (fstat(fd, &sb) == -1)           /* To obtain file size */
+		handle_error("fstat");
+
+	length = sb.st_size;
+
+	addr = mmap(NULL, length, PROT_READ,
+		MAP_SHARED, fd, 0);
+	if (addr == MAP_FAILED)
+		handle_error("mmap");
+	return { addr, length, fd };
+#endif
+}
+
+void unmap_file(char* ptr, size_t size, int fd) {
+#ifdef WIN32
+#else
+	munmap(ptr, size);
+	close(fd);
 #endif
 }
