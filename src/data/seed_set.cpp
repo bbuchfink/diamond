@@ -119,12 +119,10 @@ Hashed_seed_set::Hashed_seed_set(const Sequence_set &seqs)
 
 	if (save_to_file) {
 		log_stream << "Saving hashed seed sets to file." << endl;
-		std::array<uint8_t, PADDING> padding;
-		padding.fill(0);
 		for (size_t i = 0; i < shapes.count(); ++i) {
 			OutputFile out(config.database + '.' + std::to_string(i));
 			out.write(data_[i].data(), data_[i].size());
-			out.write(padding.data(), PADDING);
+			out.write(data_[i].data(), PADDING);
 			out.close();
 		}
 	}
