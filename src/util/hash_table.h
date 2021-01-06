@@ -167,7 +167,16 @@ public:
 		table(new fp[size]),
 		size_(size)
 	{
-		memset(table.get(), 0, size_ * sizeof(fp));
+		memset(table, 0, size_ * sizeof(fp));
+	}
+
+	PHash_set(fp* data, size_t size) :
+		table(data),
+		size_(size)
+	{}
+
+	~PHash_set() {
+		delete[] table;
 	}
 
 	bool contains(uint64_t key) const
@@ -187,7 +196,7 @@ public:
 		return fm != 0;
 #elif defined(__SSE2__)
 		const uint64_t hash = _hash()(key);
-		fp* p = table.get() + modulo<_mod>(hash >> (sizeof(fp) * 8), size_);
+		fp* p = table + modulo<_mod>(hash >> (sizeof(fp) * 8), size_);
 		__m128i r = _mm_loadu_si128((const __m128i*)p);
 		__m128i z = _mm_setzero_si128();
 		const int zm = _mm_movemask_epi8(_mm_cmpeq_epi8(r, z));
@@ -221,13 +230,13 @@ public:
 	{
 		size_t n = 0;
 		for (size_t i = 0; i < size_; ++i)
-			if (*(table.get() + i) != 0)
+			if (*(table + i) != 0)
 				++n;
 		return n;
 	}
 
 	const fp* data() const {
-		return table.get();
+		return table;
 	}
 
 private:
@@ -242,7 +251,7 @@ private:
 	{
 		const uint64_t hash = _hash()(key);
 		const fp f = finger_print(hash);
-		p = table.get() + modulo<_mod>(hash >> (sizeof(fp) * 8), size_);
+		p = table + modulo<_mod>(hash >> (sizeof(fp) * 8), size_);
 		bool wrapped = false;
 		while (true) {
 			if (*p == f)
@@ -250,16 +259,16 @@ private:
 			if (*p == (fp)0)
 				return false;
 			++p;
-			if (p == table.get() + size_) {
+			if (p == table + size_) {
 				if (wrapped)
 					throw hash_table_overflow_exception();
-				p = table.get();
+				p = table;
 				wrapped = true;
 			}
 		}
 	}
 
-	std::unique_ptr<fp[]> table;
+	fp* table;
 	size_t size_;
 
 };

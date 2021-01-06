@@ -86,8 +86,12 @@ Hashed_seed_set::Hashed_seed_set(const Sequence_set &seqs)
 			if (get<0>(f) == nullptr) {
 				save_to_file = true;
 				break;
-			}				
+			}
+			data_.push_back(new PHash_set<Modulo2, No_hash>((uint8_t*)get<0>(f), get<1>(f)));
+			log_stream << "MMAPED Shape=" << i << " Hash_table_size=" << data_[i].size() << " load=" << (double)data_[i].load() / data_[i].size() << endl;
 		}
+		if (!save_to_file)
+			return;
 	}
 	for (size_t i = 0; i < shapes.count(); ++i)
 		data_.push_back(new PHash_set<Modulo2, No_hash>(next_power_of_2(seqs.letters()*1.25)));
