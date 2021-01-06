@@ -164,7 +164,7 @@ std::tuple<char*, size_t, int> mmap_file(const char* filename) {
 #ifdef WIN32
 	return { nullptr, 0, -1 };
 #else
-	char* addr;
+	void* addr;
 	int fd;
 	struct stat sb;
 	size_t length;
@@ -182,7 +182,7 @@ std::tuple<char*, size_t, int> mmap_file(const char* filename) {
 		MAP_SHARED, fd, 0);
 	if (addr == MAP_FAILED)
 		handle_error("mmap");
-	return { addr, length, fd };
+	return { (char*)addr, length, fd };
 #endif
 }
 
