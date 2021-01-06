@@ -189,7 +189,7 @@ std::tuple<char*, size_t, int> mmap_file(const char* filename) {
 void unmap_file(char* ptr, size_t size, int fd) {
 #ifdef WIN32
 #else
-	munmap(ptr, size);
+	munmap((void*)ptr, size);
 	close(fd);
 #endif
 }

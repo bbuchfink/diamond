@@ -88,6 +88,7 @@ Hashed_seed_set::Hashed_seed_set(const Sequence_set &seqs)
 				break;
 			}
 			data_.push_back(new PHash_set<Modulo2, No_hash>((uint8_t*)get<0>(f), get<1>(f)));
+			fd_.push_back(get<2>(f));
 			log_stream << "MMAPED Shape=" << i << " Hash_table_size=" << data_[i].size() << " load=" << (double)data_[i].load() / data_[i].size() << endl;
 		}
 		if (!save_to_file)
@@ -120,5 +121,14 @@ Hashed_seed_set::Hashed_seed_set(const Sequence_set &seqs)
 			out.write(data_[i].data(), data_[i].size());
 			out.close();
 		}
+	}
+}
+
+Hashed_seed_set::~Hashed_seed_set() {
+	if (fd_.empty())
+		return;
+	for (size_t i = 0; i < shapes.count(); ++i) {
+		unmap_file((char*)data_[i].table, data_[i].size(), fd_[i]);
+		data_[i].table = nullptr;
 	}
 }

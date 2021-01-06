@@ -239,6 +239,9 @@ public:
 		return table;
 	}
 
+	fp* table;
+	size_t size_;
+
 private:
 
 	static fp finger_print(uint64_t hash)
@@ -267,8 +270,5 @@ private:
 			}
 		}
 	}
-
-	fp* table;
-	size_t size_;
 
 };

@@ -31,16 +31,6 @@ struct Frequent_seeds
 {
 
 	void build(unsigned sid, const SeedPartitionRange &range, DoubleArray<SeedArray::_pos> *query_seed_hits, DoubleArray<SeedArray::_pos> *ref_seed_hits);
-
-	bool get(const Letter *pos, unsigned sid) const
-	{
-		Packed_seed seed;
-		const bool t = config.algo == Config::double_indexed ? shapes[sid].set_seed(seed, pos) : shapes[sid].set_seed_shifted(seed, pos);
-		if (!t)
-			return true;
-		return tables_[sid][seed_partition(seed)].contains(seed_partition_offset(seed));
-	}
-
 	static void clear_masking(Sequence_set& seqs);
 
 private:
@@ -59,8 +49,6 @@ private:
 		vector<unsigned> *counts);
 
 	static void compute_sd(std::atomic<unsigned> *seedp, DoubleArray<SeedArray::_pos> *query_seed_hits, DoubleArray<SeedArray::_pos> *ref_seed_hits, vector<Sd> *ref_out, vector<Sd> *query_out);
-
-	PHash_set<void,murmur_hash> tables_[Const::max_shapes][Const::seedp];
 
 };
 
