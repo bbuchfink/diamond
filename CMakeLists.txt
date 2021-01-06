@@ -255,6 +255,7 @@ set(OBJECTS
   src/stats/comp_based_stats.cpp
   src/stats/hauser_correction.cpp
   src/stats/matrix_adjust.cpp
+  src/stats/matrix_adjust_eigen.cpp
 )
 
 if(X86)

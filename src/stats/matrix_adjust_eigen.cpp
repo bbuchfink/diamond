@@ -1,6 +1,6 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2020 Max Planck Society for the Advancement of Science e.V.
+Copyright (C) 2020-2021 Max Planck Society for the Advancement of Science e.V.
 
 Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
 
@@ -19,34 +19,90 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #include "../lib/Eigen/Dense"
+#include "../basic/value.h"
 
 using namespace Eigen;
 
-//static void
-//ScaledSymmetricProductA(double** W, const Matrix<float, 20, 20>& diagonal, int alphsize)
-//{
-//    int rowW, colW;   /* iteration indices over the rows and columns of W */
-//    int i, j;         /* iteration indices over characters in the alphabet */
-//    int m;            /* The number of rows in A; also the size of W */
-//
-//    m = 2 * alphsize - 1;
-//
-//    for (rowW = 0; rowW < m; rowW++) {
-//        for (colW = 0; colW <= rowW; colW++) {
-//            W[rowW][colW] = 0.0;
-//        }
-//    }
-//    for (i = 0; i < alphsize; i++) {
-//        for (j = 0; j < alphsize; j++) {
-//            double dd;     /* an individual diagonal element */
-//
-//            dd = diagonal[i * alphsize + j];
-//
-//            W[j][j] += dd;
-//            if (i > 0) {
-//                W[i + alphsize - 1][j] += dd;
-//                W[i + alphsize - 1][i + alphsize - 1] += dd;
-//            }
-//        }
-//    }
-//}
+static const size_t N = TRUE_AA;
+typedef double Float;
+typedef Matrix<Float, N, N> MatrixN;
+typedef Matrix<Float, 2 * N - 1, 2 * N - 1> Matrix2N;
+typedef Matrix<Float, N, 1> VectorN;
+typedef Matrix<Float, 2 * N - 1, 1> Vector2N;
+
+static void ScaledSymmetricProductA(Matrix2N& W, const MatrixN& diagonal)
+{
+    int rowW, colW;   /* iteration indices over the rows and columns of W */
+    int i, j;         /* iteration indices over characters in the alphabet */
+    
+    W.fill(0.0);
+    
+    for (i = 0; i < N; i++) {
+        for (j = 0; j < N; j++) {
+            double dd;     /* an individual diagonal element */
+
+            dd = diagonal(i, j);
+
+            W(j, j) += dd;
+            if (i > 0) {
+                W(i + N - 1, j) += dd;
+                W(i + N - 1, i + N - 1) += dd;
+            }
+        }
+    }
+}
+
+static void MultiplyByA(Float beta, Vector2N& y, Float alpha, const MatrixN& x)
+{
+    int i, j;     /* iteration indices over characters in the alphabet */
+    
+    if (beta == 0.0)
+        y.fill(0.0);
+    else if (beta != 1.0) {
+        /* rescale y */
+        y *= beta;
+    }
+
+    VectorN sc = x.colwise().sum() * alpha, sr = x.rowwise().sum() * alpha;
+
+    for (size_t i = 0; i < N; ++i)
+        y(i) += sc(i);
+
+    for (size_t i = 1; i < N; ++i)
+        y(i + N - 1) += sr(i);
+}
+
+static void MultiplyByAtranspose(Float beta, MatrixN& y, Float alpha, const Vector2N& x)
+{
+    int i, j;     /* iteration indices over characters in the alphabet */
+    int k;        /* index of a row of A transpose (a column of A); also
+                      an index into y */
+
+    if (beta == 0.0) {
+        /* Initialize y to zero, without reading any elements from y */
+        y.fill(0.0);
+    }
+    else if (beta != 1.0) {
+        /* rescale y */
+        y *= beta;
+    }
+
+    VectorN v = x.head<N>();
+    v *= alpha;
+    y.rowwise() += v.transpose();
+
+    v = x.tail<N>();
+    v[0] = 0.0;
+    v *= alpha;
+    y.colwise() += v;
+}
+
+static void ResidualsLinearConstraints(Vector2N& rA, const MatrixN& x, const VectorN& row_sums, const VectorN& col_sums)
+{
+    int i;             /* iteration index */
+
+    rA.head<N>() = col_sums;
+    rA.tail<N - 1>() = row_sums.tail<N - 1>();
+
+    MultiplyByA(1.0, rA, -1.0, x);
+}
