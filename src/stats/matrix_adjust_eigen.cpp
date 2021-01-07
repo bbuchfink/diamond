@@ -29,6 +29,9 @@ typedef Matrix<Float, N, N> MatrixN;
 typedef Matrix<Float, 2 * N - 1, 2 * N - 1> Matrix2N;
 typedef Matrix<Float, N, 1> VectorN;
 typedef Matrix<Float, 2 * N - 1, 1> Vector2N;
+typedef Matrix<Float, 2 * N, 1> Vector2Nx;
+typedef Matrix<Float, 2, N * N> Vector2NN;
+using Values = double[2];
 
 static void ScaledSymmetricProductA(Matrix2N& W, const MatrixN& diagonal)
 {
@@ -105,4 +108,47 @@ static void ResidualsLinearConstraints(Vector2N& rA, const MatrixN& x, const Vec
     rA.tail<N - 1>() = row_sums.tail<N - 1>();
 
     MultiplyByA(1.0, rA, -1.0, x);
+}
+
+static void DualResiduals(MatrixN& resids_x, const Vector2NN& grads, const Vector2Nx& z)
+{        
+    double eta = z[2 * N - 1];     /* dual variable for the relative
+                                      entropy constraint */
+
+    Matrix<Float, 1, N* N> v = -grads.row(0) + eta * grads.row(1);
+    for (size_t i = 0; i < N; ++i)
+        resids_x.col(i) = v.segment<N>(i * N);
+    MultiplyByAtranspose(1.0, resids_x, 1.0, z.head<2*N-1>());
+}
+
+static void CalculateResiduals(double* rnorm,
+    MatrixN& resids_x,
+    const Vector2Nx& resids_z,
+    const Values& values,
+    double** grads,
+    const double row_sums[],
+    const double col_sums[],
+    const double x[],
+    const double z[],
+    int constrain_rel_entropy,
+    double relative_entropy)
+{
+    /* Euclidean norms of the primal and dual residuals */
+    double norm_resids_z, norm_resids_x;
+
+    DualResiduals(resids_x, alphsize, grads, z, constrain_rel_entropy);
+    norm_resids_x = Nlm_EuclideanNorm(resids_x, alphsize * alphsize);
+
+    ResidualsLinearConstraints(resids_z, alphsize, x, row_sums, col_sums);
+
+    if (constrain_rel_entropy) {
+        resids_z[2 * alphsize - 1] = relative_entropy - values[1];
+
+        norm_resids_z = Nlm_EuclideanNorm(resids_z, 2 * alphsize);
+    }
+    else {
+        norm_resids_z = Nlm_EuclideanNorm(resids_z, 2 * alphsize - 1);
+    }
+    *rnorm =
+        sqrt(norm_resids_x * norm_resids_x + norm_resids_z * norm_resids_z);
 }
