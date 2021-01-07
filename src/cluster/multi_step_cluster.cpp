@@ -59,6 +59,7 @@ vector<int> MultiStep::cluster(DatabaseFile& db, const BitVector* filter) {
 
 	Workflow::Search::run(opt);
 	
+	/*
 	auto lo = nb.dSet.getListOfSets();
 	for (auto& set : lo) {
 		cout << "set :";
@@ -67,6 +68,8 @@ vector<int> MultiStep::cluster(DatabaseFile& db, const BitVector* filter) {
 		}
 		cout << endl;
 	}
+	*/
+
 	vector<unordered_set<uint32_t>> connected = nb.dSet.getListOfSets();
 	vector<uint32_t> EdgSet(nb.number_edges.size());
 	unordered_map <uint32_t, NodEdgSet> components = find_connected_components(connected, EdgSet, nb.number_edges);
@@ -160,9 +163,9 @@ unordered_map<uint32_t, NodEdgSet> MultiStep::find_connected_components(const ve
 	
 	unordered_map<uint32_t, NodEdgSet> ne;
 	for (size_t i = 0; i < connected.size(); i++) {
-		for(size_t j = 0; j < connected[i].size(); j++){
+		for(uint32_t j : connected[i]){
 			EdgSet[j] = i;
-			++ne[i].nodes;
+			++ne[i].nodes; 
 			ne[i].edges += nedges[j];
 		}
 	}
