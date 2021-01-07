@@ -20,6 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "../lib/Eigen/Dense"
 #include "../basic/value.h"
+#include <type_traits>
 
 using namespace Eigen;
 
@@ -31,11 +32,11 @@ typedef Matrix<Float, N, 1> VectorN;
 typedef Matrix<Float, 2 * N - 1, 1> Vector2N;
 typedef Matrix<Float, 2 * N, 1> Vector2Nx;
 typedef Matrix<Float, 2, N * N> Vector2NN;
+typedef decltype(Vector2Nx().head<2 * N - 1>()) Block2N;
 using Values = double[2];
 
 static void ScaledSymmetricProductA(Matrix2N& W, const MatrixN& diagonal)
 {
-    int rowW, colW;   /* iteration indices over the rows and columns of W */
     int i, j;         /* iteration indices over characters in the alphabet */
     
     W.fill(0.0);
@@ -55,10 +56,8 @@ static void ScaledSymmetricProductA(Matrix2N& W, const MatrixN& diagonal)
     }
 }
 
-static void MultiplyByA(Float beta, Vector2N& y, Float alpha, const MatrixN& x)
-{
-    int i, j;     /* iteration indices over characters in the alphabet */
-    
+static void MultiplyByA(Float beta, Block2N& y, Float alpha, const MatrixN& x)
+{   
     if (beta == 0.0)
         y.fill(0.0);
     else if (beta != 1.0) {
@@ -77,10 +76,6 @@ static void MultiplyByA(Float beta, Vector2N& y, Float alpha, const MatrixN& x)
 
 static void MultiplyByAtranspose(Float beta, MatrixN& y, Float alpha, const Vector2N& x)
 {
-    int i, j;     /* iteration indices over characters in the alphabet */
-    int k;        /* index of a row of A transpose (a column of A); also
-                      an index into y */
-
     if (beta == 0.0) {
         /* Initialize y to zero, without reading any elements from y */
         y.fill(0.0);
@@ -100,13 +95,10 @@ static void MultiplyByAtranspose(Float beta, MatrixN& y, Float alpha, const Vect
     y.colwise() += v;
 }
 
-static void ResidualsLinearConstraints(Vector2N& rA, const MatrixN& x, const VectorN& row_sums, const VectorN& col_sums)
+static void ResidualsLinearConstraints(Block2N& rA, const MatrixN& x, const VectorN& row_sums, const VectorN& col_sums)
 {
-    int i;             /* iteration index */
-
     rA.head<N>() = col_sums;
     rA.tail<N - 1>() = row_sums.tail<N - 1>();
-
     MultiplyByA(1.0, rA, -1.0, x);
 }
 
@@ -122,33 +114,24 @@ static void DualResiduals(MatrixN& resids_x, const Vector2NN& grads, const Vecto
 }
 
 static void CalculateResiduals(double* rnorm,
-    MatrixN& resids_x,
-    const Vector2Nx& resids_z,
-    const Values& values,
-    double** grads,
-    const double row_sums[],
-    const double col_sums[],
-    const double x[],
-    const double z[],
-    int constrain_rel_entropy,
-    double relative_entropy)
+	MatrixN& resids_x,
+	Vector2Nx& resids_z,
+	const Values& values,
+	const Vector2NN& grads,
+	const VectorN& row_sums,
+	const VectorN& col_sums,
+	const MatrixN& x,
+	const Vector2Nx& z,
+	double relative_entropy)
 {
-    /* Euclidean norms of the primal and dual residuals */
-    double norm_resids_z, norm_resids_x;
+	/* Euclidean norms of the primal and dual residuals */
+	double norm_resids_z, norm_resids_x;
 
-    DualResiduals(resids_x, alphsize, grads, z, constrain_rel_entropy);
-    norm_resids_x = Nlm_EuclideanNorm(resids_x, alphsize * alphsize);
+	DualResiduals(resids_x, grads, z);
+	norm_resids_x = resids_x.norm();
 
-    ResidualsLinearConstraints(resids_z, alphsize, x, row_sums, col_sums);
-
-    if (constrain_rel_entropy) {
-        resids_z[2 * alphsize - 1] = relative_entropy - values[1];
-
-        norm_resids_z = Nlm_EuclideanNorm(resids_z, 2 * alphsize);
-    }
-    else {
-        norm_resids_z = Nlm_EuclideanNorm(resids_z, 2 * alphsize - 1);
-    }
-    *rnorm =
-        sqrt(norm_resids_x * norm_resids_x + norm_resids_z * norm_resids_z);
+	ResidualsLinearConstraints(resids_z.head<2 * N - 1>(), x, row_sums, col_sums);
+	resids_z[2 * N - 1] = relative_entropy - values[1];
+	norm_resids_z = resids_z.norm();
+	*rnorm = sqrt(norm_resids_x * norm_resids_x + norm_resids_z * norm_resids_z);
 }
