@@ -66,7 +66,7 @@ static void ScaledSymmetricProductA(Matrix2Nx& W, const MatrixN& diagonal)
     }
 }
 
-static void MultiplyByA(Float beta, Block2N& y, Float alpha, const MatrixN& x)
+static void MultiplyByA(Float beta, Block2N y, Float alpha, const MatrixN& x)
 {   
     if (beta == 0.0)
         y.fill(0.0);
@@ -105,7 +105,7 @@ static void MultiplyByAtranspose(Float beta, MatrixN& y, Float alpha, const Vect
     y.colwise() += v;
 }
 
-static void ResidualsLinearConstraints(Block2N& rA, const MatrixN& x, const VectorN& row_sums, const VectorN& col_sums)
+static void ResidualsLinearConstraints(Block2N rA, const MatrixN& x, const VectorN& row_sums, const VectorN& col_sums)
 {
     rA.head<N>() = col_sums;
     rA.tail<N - 1>() = row_sums.tail<N - 1>();
