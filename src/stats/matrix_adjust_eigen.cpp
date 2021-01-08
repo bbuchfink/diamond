@@ -27,25 +27,35 @@ using namespace Eigen;
 static const size_t N = TRUE_AA;
 typedef double Float;
 typedef Matrix<Float, N, N> MatrixN;
-typedef Matrix<Float, 2 * N - 1, 2 * N - 1> Matrix2N;
+typedef Matrix<Float, 2 * N, 2 * N> Matrix2Nx;
 typedef Matrix<Float, N, 1> VectorN;
 typedef Matrix<Float, 2 * N - 1, 1> Vector2N;
 typedef Matrix<Float, 2 * N, 1> Vector2Nx;
+typedef Matrix<Float, 1, N* N> VectorNN;
 typedef Matrix<Float, 2, N * N> Vector2NN;
 typedef decltype(Vector2Nx().head<2 * N - 1>()) Block2N;
 using Values = double[2];
 
-static void ScaledSymmetricProductA(Matrix2N& W, const MatrixN& diagonal)
-{
-    int i, j;         /* iteration indices over characters in the alphabet */
-    
-    W.fill(0.0);
-    
-    for (i = 0; i < N; i++) {
-        for (j = 0; j < N; j++) {
-            double dd;     /* an individual diagonal element */
+typedef struct ReNewtonSystem {
+    Matrix2Nx W;               /**< A lower-triangular matrix
+                                    representing a factorization of
+                                    the (2,2) block, -J D^{-1} J^T, of
+                                    the condensed linear system */
+    MatrixN Dinv;             /**< The diagonal elements of the
+                                    inverse of the necessarily
+                                    diagonal (1,1) block of the linear
+                                    system */
+    VectorNN grad_re;          /**< the gradient of the
+                                    relative-entropy constraint, if
+                                    this constraint is used. */
+} ReNewtonSystem;
 
-            dd = diagonal(i, j);
+static void ScaledSymmetricProductA(Matrix2Nx& W, const MatrixN& diagonal)
+{    
+    W.fill(0.0);    
+    for (size_t i = 0; i < N; i++) {
+        for (size_t j = 0; j < N; j++) {
+            const double dd = diagonal(i, j);
 
             W(j, j) += dd;
             if (i > 0) {
@@ -135,3 +145,135 @@ static void CalculateResiduals(double* rnorm,
 	norm_resids_z = resids_z.norm();
 	*rnorm = sqrt(norm_resids_x * norm_resids_x + norm_resids_z * norm_resids_z);
 }
+
+void Nlm_FactorLtriangPosDef(Matrix2Nx& A)
+{
+    int i, j, k;                /* iteration indices */
+    double temp;                /* temporary variable for intermediate
+                                   values in a computation */
+
+    for (i = 0; i < 2*N; i++) {
+        for (j = 0; j < i; j++) {
+            temp = A(i, j);
+            for (k = 0; k < j; k++) {
+                temp -= A(i, k) * A(j, k);
+            }
+            A(i, j) = temp / A(j, j);
+        }
+        temp = A(i, i);
+        for (k = 0; k < i; k++) {
+            temp -= A(i, k) * A(i, k);
+        }
+        A(i,i) = sqrt(temp);
+    }
+}
+
+static void FactorReNewtonSystem(ReNewtonSystem* newton_system,
+    const MatrixN& x,
+    const Vector2Nx& z,
+    const Vector2NN& grads,
+    MatrixN& workspace)
+{
+    int i;          /* iteration index */
+    int n;          /* the length of x */
+    int m;          /* the length of z */
+
+    /* Pointers to fields in newton_systems; the names of the local
+     * variables match the names of the fields. */
+    Matrix2Nx& W = newton_system->W;
+    MatrixN& Dinv = newton_system->Dinv;
+    VectorNN& grad_re = newton_system->grad_re;
+
+    n = N * N;
+    m = 2 * N;
+
+    /* The original system has the form
+     *
+     *     (D     J^T)
+     *     (J     0  ).
+     *
+     * We block reduce the system to
+     *
+     *     (D    J^T          )
+     *     (0    -J D^{-1} J^T).
+     *
+     * First we find the inverse of the diagonal matrix D. */
+
+    double eta;             /* dual variable for the relative
+                                   entropy constraint */
+    eta = z[m - 1];
+
+    Dinv = x;
+    Dinv /= 1 - eta;
+
+    /* Then we compute J D^{-1} J^T; First fill in the part that corresponds
+     * to the linear constraints */
+    ScaledSymmetricProductA(W, Dinv);
+
+    /* Save the gradient of the relative entropy constraint. */
+    grad_re = grads.row(1);
+
+    /* Fill in the part of J D^{-1} J^T that corresponds to the relative
+     * entropy constraint. */
+    W(m - 1, m - 1) = 0.0;
+    for (size_t i = 0; i < N; ++i) {
+        workspace.col(i) = Dinv.col(i).cwiseProduct(grad_re.segment<N>(i * N).transpose());
+        W(m - 1, m - 1) += workspace.col(i).dot(grad_re.segment<N>(i * N));
+    }
+
+    Vector2Nx r = W.row(m - 1);
+    MultiplyByA(0.0, r.head<2 * N - 1>(), 1.0, workspace);
+
+    /* Factor J D^{-1} J^T and save the result in W. */
+    Nlm_FactorLtriangPosDef(W);
+}
+//
+//static void SolveReNewtonSystem(const MatrixN& x, Vector2Nx& z,
+//    const ReNewtonSystem* newton_system, MatrixN& workspace)
+//{
+//    int i;                     /* iteration index */
+//    int n;                     /* the size of x */
+//    int mA;                    /* the number of linear constraints */
+//    int m;                     /* the size of z */
+//
+//    /* Local variables that represent fields of newton_system */
+//    const Matrix2Nx& W = newton_system->W;
+//    const MatrixN& Dinv = newton_system->Dinv;
+//    const VectorNN& grad_re = newton_system->grad_re;
+//    
+//    n = N * N;
+//    mA = 2 * N - 1;
+//    m = mA + 1;
+//
+//    /* Apply the same block reduction to the right-hand side as was
+//     * applied to the matrix:
+//     *
+//     *     rzhat = rz - J D^{-1} rx
+//     */
+//    workspace = x.cwiseProduct(Dinv);
+//    MultiplyByA(1.0, z.head<2 * N - 1>(), -1.0, workspace);
+//
+//
+//     for (i = 0; i < n; i++) {
+//            z[m - 1] -= grad_re[i] * workspace[i];
+//        }
+//   
+//
+//    /* Solve for step in z, using the inverse of J D^{-1} J^T */
+//    Nlm_SolveLtriangPosDef(z, m, W);
+//
+//    /* Backsolve for the step in x, using the newly-computed step in z.
+//     *
+//     *     x = D^{-1) (rx + J\T z)
+//     */
+//    if (constrain_rel_entropy) {
+//        for (i = 0; i < n; i++) {
+//            x[i] += grad_re[i] * z[m - 1];
+//        }
+//    }
+//    MultiplyByAtranspose(1.0, x, alphsize, 1.0, z);
+//
+//    for (i = 0; i < n; i++) {
+//        x[i] *= Dinv[i];
+//    }
+//}
