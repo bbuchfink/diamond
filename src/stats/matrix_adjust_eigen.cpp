@@ -18,9 +18,9 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
+#include <type_traits>
 #include "../lib/Eigen/Dense"
 #include "../basic/value.h"
-#include <type_traits>
 
 using namespace Eigen;
 
@@ -52,7 +52,7 @@ typedef struct ReNewtonSystem {
 
 static void ScaledSymmetricProductA(Matrix2Nx& W, const MatrixN& diagonal)
 {    
-    W.fill(0.0);    
+    W.fill(0.0);
     for (size_t i = 0; i < N; i++) {
         for (size_t j = 0; j < N; j++) {
             const double dd = diagonal(i, j);
@@ -174,7 +174,6 @@ static void FactorReNewtonSystem(ReNewtonSystem* newton_system,
     const Vector2NN& grads,
     MatrixN& workspace)
 {
-    int i;          /* iteration index */
     int n;          /* the length of x */
     int m;          /* the length of z */
 
@@ -227,53 +226,94 @@ static void FactorReNewtonSystem(ReNewtonSystem* newton_system,
     /* Factor J D^{-1} J^T and save the result in W. */
     Nlm_FactorLtriangPosDef(W);
 }
-//
-//static void SolveReNewtonSystem(const MatrixN& x, Vector2Nx& z,
-//    const ReNewtonSystem* newton_system, MatrixN& workspace)
-//{
-//    int i;                     /* iteration index */
-//    int n;                     /* the size of x */
-//    int mA;                    /* the number of linear constraints */
-//    int m;                     /* the size of z */
-//
-//    /* Local variables that represent fields of newton_system */
-//    const Matrix2Nx& W = newton_system->W;
-//    const MatrixN& Dinv = newton_system->Dinv;
-//    const VectorNN& grad_re = newton_system->grad_re;
-//    
-//    n = N * N;
-//    mA = 2 * N - 1;
-//    m = mA + 1;
-//
-//    /* Apply the same block reduction to the right-hand side as was
-//     * applied to the matrix:
-//     *
-//     *     rzhat = rz - J D^{-1} rx
-//     */
-//    workspace = x.cwiseProduct(Dinv);
-//    MultiplyByA(1.0, z.head<2 * N - 1>(), -1.0, workspace);
-//
-//
-//     for (i = 0; i < n; i++) {
-//            z[m - 1] -= grad_re[i] * workspace[i];
-//        }
-//   
-//
-//    /* Solve for step in z, using the inverse of J D^{-1} J^T */
-//    Nlm_SolveLtriangPosDef(z, m, W);
-//
-//    /* Backsolve for the step in x, using the newly-computed step in z.
-//     *
-//     *     x = D^{-1) (rx + J\T z)
-//     */
-//    if (constrain_rel_entropy) {
-//        for (i = 0; i < n; i++) {
-//            x[i] += grad_re[i] * z[m - 1];
-//        }
-//    }
-//    MultiplyByAtranspose(1.0, x, alphsize, 1.0, z);
-//
-//    for (i = 0; i < n; i++) {
-//        x[i] *= Dinv[i];
-//    }
-//}
+
+void Nlm_SolveLtriangPosDef(Vector2Nx& x, const Matrix2Nx& L)
+{
+    int i, j;                   /* iteration indices */
+    double temp;                /* temporary variable for intermediate
+                                   values in a computation */
+
+                                   /* At point x = b in the equation L L\T y = b */
+
+                                   /* Forward solve; L z = b */
+    for (i = 0; i < 2*N; i++) {
+        temp = x[i];
+        for (j = 0; j < i; j++) {
+            temp -= L(i, j) * x[j];
+        }
+        x[i] = temp / L(i, i);
+    }
+    /* Now x = z.  Back solve the system L\T y = z */
+    for (j = 2*N - 1; j >= 0; j--) {
+        x[j] /= L(j, j);
+        for (i = 0; i < j; i++) {
+            x[i] -= L(j, i) * x[j];
+        }
+    }
+    /* Now x = y, the solution to  L L\T y = b */
+}
+
+
+static void SolveReNewtonSystem(MatrixN& x, Vector2Nx& z,
+    const ReNewtonSystem* newton_system, MatrixN& workspace)
+{
+    int n;                     /* the size of x */
+    int mA;                    /* the number of linear constraints */
+    int m;                     /* the size of z */
+
+    /* Local variables that represent fields of newton_system */
+    const Matrix2Nx& W = newton_system->W;
+    const MatrixN& Dinv = newton_system->Dinv;
+    const VectorNN& grad_re = newton_system->grad_re;
+
+    n = N * N;
+    mA = 2 * N - 1;
+    m = mA + 1;
+
+    /* Apply the same block reduction to the right-hand side as was
+     * applied to the matrix:
+     *
+     *     rzhat = rz - J D^{-1} rx
+     */
+    workspace = x.cwiseProduct(Dinv);
+    MultiplyByA(1.0, z.head<2 * N - 1>(), -1.0, workspace);
+
+    for (size_t i = 0; i < N; ++i)
+        z[m - 1] -= grad_re.segment<N>(i * N).dot(workspace.col(i));
+
+    /* Solve for step in z, using the inverse of J D^{-1} J^T */
+    Nlm_SolveLtriangPosDef(z, W);
+
+    /* Backsolve for the step in x, using the newly-computed step in z.
+     *
+     *     x = D^{-1) (rx + J\T z)
+     */
+    for (size_t i = 0; i < N; ++i)
+        x.col(i) += grad_re.segment<N>(i * N) * z[m - 1];
+
+    MultiplyByAtranspose(1.0, x, 1.0, z.head<2 * N - 1>());
+    x.array() *= Dinv.array();
+}
+
+static void EvaluateReFunctions(Values& values, Vector2NN& grads, const MatrixN& x, const MatrixN& q, const MatrixN& scores)
+{
+    int k;         /* iteration index over elements of x, q and scores */
+    double temp;   /* holds intermediate values in a computation */
+
+    values[0] = 0.0; values[1] = 0.0;
+
+    MatrixN tmp = (x.array() / q.array()).log();
+    for (size_t i = 0; i < N; ++i) {
+        values[0] += x.col(i).dot(tmp.col(i));
+        grads.row(0).segment<N>(i * N) = tmp.col(i);
+        grads.row(0).segment<N>(i * N).array() += 1.0;
+    }
+    
+    tmp.array() += scores.array();
+    for (size_t i = 0; i < N; ++i) {
+        values[1] += x.col(i).dot(tmp.col(i));
+        grads.row(1).segment<N>(i * N) = tmp.col(i);
+        grads.row(1).segment<N>(i * N).array() += 1.0;
+    }
+}
+
