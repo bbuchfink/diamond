@@ -411,6 +411,8 @@ void master_thread(DatabaseFile *db_file, task_timer &total_timer, Metadata &met
 			query_file = new list<TextInputFile>;
 			for(const string& f : config.query_file)
 				query_file->emplace_back(f);
+			if (query_file->empty())
+				query_file->emplace_back("");
 			paired_mode = query_file->size() == 2;
 		}
 		format_n = guess_format(query_file->front());
