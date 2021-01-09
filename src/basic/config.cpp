@@ -310,7 +310,8 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("family-map-query", 0, "", family_map_query)
 		("query-parallel-limit", 0, "", query_parallel_limit, 3000000u)
 		("target-indexed", 0, "", target_indexed)
-		("mmap-target-index", 0, "", mmap_target_index);
+		("mmap-target-index", 0, "", mmap_target_index)
+		("save-target-index", 0, "", save_target_index);
 
 	Options_group view_options("View options");
 	view_options.add()
@@ -736,6 +737,12 @@ Config::Config(int argc, const char **argv, bool check_io)
 	}
 	else if (query_file.size() > 1)
 		throw std::runtime_error("--query/-q has more than one argument.");
+
+	if ((mmap_target_index || save_target_index) && !target_indexed)
+		throw std::runtime_error("Option requires --target-indexed.");
+
+	if (mmap_target_index && save_target_index)
+		throw std::runtime_error("Options are exclusive.");
 
 	/*log_stream << "sizeof(hit)=" << sizeof(hit) << " sizeof(packed_uint40_t)=" << sizeof(packed_uint40_t)
 		<< " sizeof(sorted_list::entry)=" << sizeof(sorted_list::entry) << endl;*/
