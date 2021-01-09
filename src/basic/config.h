@@ -38,7 +38,7 @@ struct Config
 	string_vector input_ref_file;
 	unsigned	threads_;
 	string	database;
-	string	query_file;
+	string_vector query_file;
 	unsigned	merge_seq_treshold;
 	unsigned	hit_cap;
 	unsigned shapes;

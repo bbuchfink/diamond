@@ -730,6 +730,13 @@ Config::Config(int argc, const char **argv, bool check_io)
 	if (!aligned_file.empty())
 		log_stream << "Aligned file format: " << alfmt << endl;
 
+	if (command == blastx) {
+		if (query_file.size() > 2)
+			throw std::runtime_error("A maximum of 2 query files is supported in blastx mode.");
+	}
+	else if (query_file.size() > 1)
+		throw std::runtime_error("--query/-q has more than one argument.");
+
 	/*log_stream << "sizeof(hit)=" << sizeof(hit) << " sizeof(packed_uint40_t)=" << sizeof(packed_uint40_t)
 		<< " sizeof(sorted_list::entry)=" << sizeof(sorted_list::entry) << endl;*/
 

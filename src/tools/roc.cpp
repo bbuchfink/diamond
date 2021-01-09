@@ -371,7 +371,7 @@ void roc() {
 		threads.emplace_back(worker);
 
 	timer.go("Processing alignments");
-	TextInputFile in(config.query_file);
+	TextInputFile in(config.query_file.front());
 	string query, acc;
 	size_t n = 0, queries = 0, buf_size = 0;
 	string* buf = new string;

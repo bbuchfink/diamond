@@ -399,13 +399,21 @@ void master_thread(DatabaseFile *db_file, task_timer &total_timer, Metadata &met
 	}
 
 	task_timer timer("Opening the input file", true);
-	TextInputFile *query_file = nullptr;
+	list<TextInputFile> *query_file = nullptr;
 	const Sequence_file_format *format_n = nullptr;
+	bool paired_mode = false;
 	if (!options.self) {
 		if (config.query_file.empty() && !options.query_file)
 			std::cerr << "Query file parameter (--query/-q) is missing. Input will be read from stdin." << endl;
-		query_file = options.query_file ? options.query_file : new TextInputFile(config.query_file);
-		format_n = guess_format(*query_file);
+		if (options.query_file)
+			query_file = options.query_file;
+		else {
+			query_file = new list<TextInputFile>;
+			for(const string& f : config.query_file)
+				query_file->emplace_back(f);
+			paired_mode = query_file->size() == 2;
+		}
+		format_n = guess_format(query_file->front());
 	}
 
 	current_query_chunk = 0;
@@ -426,9 +434,9 @@ void master_thread(DatabaseFile *db_file, task_timer &total_timer, Metadata &met
 				deallocate_queries();
 				query_file_offset = db_file->tell_seq();
 			} else {
-				if (!load_seqs(*query_file, *format_n, &query_seqs::data_, query_ids::data_, &query_source_seqs::data_,
+				if (!load_seqs(query_file->begin(), query_file->end(), *format_n, &query_seqs::data_, query_ids::data_, &query_source_seqs::data_,
 					config.store_query_quality ? &query_qual : nullptr,
-					(size_t)(config.chunk_size * 1e9), config.qfilt, input_value_traits, output_format->needs_paired_end_info ? 2 : 1))
+					(size_t)(config.chunk_size * 1e9), config.qfilt, input_value_traits, paired_mode ? 2 : 1))
 					break;
 				deallocate_queries();
 			}
@@ -437,7 +445,7 @@ void master_thread(DatabaseFile *db_file, task_timer &total_timer, Metadata &met
 			db_file->rewind();
 			query_file_offset = 0;
 		} else {
-			query_file->rewind();
+			query_file->front().rewind();
 		}
 
 		for (size_t i=0; i<current_query_chunk; ++i) {
@@ -480,9 +488,9 @@ void master_thread(DatabaseFile *db_file, task_timer &total_timer, Metadata &met
 			query_file_offset = db_file->tell_seq();
 		}
 		else
-			if (!load_seqs(*query_file, *format_n, &query_seqs::data_, query_ids::data_, &query_source_seqs::data_,
+			if (!load_seqs(query_file->begin(), query_file->end(), *format_n, &query_seqs::data_, query_ids::data_, &query_source_seqs::data_,
 				config.store_query_quality ? &query_qual : nullptr,
-				(size_t)(config.chunk_size * 1e9), config.qfilt, input_value_traits))
+				(size_t)(config.chunk_size * 1e9), config.qfilt, input_value_traits, paired_mode ? 2 : 1))
 				break;
 
 		timer.finish();
@@ -509,7 +517,7 @@ void master_thread(DatabaseFile *db_file, task_timer &total_timer, Metadata &met
 
 	if (query_file && !options.query_file) {
 		timer.go("Closing the input file");
-		query_file->close();
+		query_file->front().close();
 		delete query_file;
 	}
 

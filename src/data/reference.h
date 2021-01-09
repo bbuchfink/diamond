@@ -26,6 +26,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <string.h>
 #include <stdint.h>
 #include <limits.h>
+#include <list>
 #include "../util/io/serializer.h"
 #include "../util/io/input_file.h"
 #include "../util/io/text_input_file.h"
@@ -33,9 +34,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "sequence_set.h"
 #include "metadata.h"
 #include "../util/data_structures/bit_vector.h"
-
-using std::vector;
-using std::string;
 
 struct ReferenceHeader
 {
@@ -146,7 +144,7 @@ private:
 
 };
 
-void make_db(TempFile **tmp_out = nullptr, TextInputFile *input_file = nullptr);
+void make_db(TempFile **tmp_out = nullptr, std::list<TextInputFile>* input_file = nullptr);
 
 struct ref_seqs
 {

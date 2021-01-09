@@ -188,7 +188,7 @@ void push_seq(const sequence &seq, const char *id, size_t id_len, uint64_t &offs
 	offset += seq.length() + id_len + 3;
 }
 
-void make_db(TempFile **tmp_out, TextInputFile *input_file)
+void make_db(TempFile **tmp_out, list<TextInputFile> *input_file)
 {
 	if (config.input_ref_file.size() > 1)
 		throw std::runtime_error("Too many arguments provided for option --in.");
@@ -200,7 +200,13 @@ void make_db(TempFile **tmp_out, TextInputFile *input_file)
 
 	task_timer total;
 	task_timer timer("Opening the database file", true);
-	TextInputFile *db_file = input_file ? input_file : new TextInputFile(input_file_name);
+	list<TextInputFile>* db_file;
+	if (input_file)
+		db_file = input_file;
+	else {
+		db_file = new list<TextInputFile>;
+		db_file->emplace_back(input_file_name);
+	}
 
 	OutputFile *out = tmp_out ? new TempFile() : new OutputFile(config.database);
 	ReferenceHeader header;
@@ -219,7 +225,7 @@ void make_db(TempFile **tmp_out, TextInputFile *input_file)
 	FileBackedBuffer accessions;
 
 	try {
-		while ((timer.go("Loading sequences"), n = load_seqs(*db_file, format, &seqs, ids, 0, nullptr, (size_t)(1e9), string(), amino_acid_traits)) > 0) {
+		while ((timer.go("Loading sequences"), n = load_seqs(db_file->begin(), db_file->end(), format, &seqs, ids, 0, nullptr, (size_t)(1e9), string(), amino_acid_traits)) > 0) {
 			if (config.masking == 1) {
 				timer.go("Masking sequences");
 				mask_seqs(*seqs, Masking::get(), false);
@@ -228,7 +234,7 @@ void make_db(TempFile **tmp_out, TextInputFile *input_file)
 			for (size_t i = 0; i < n; ++i) {
 				sequence seq = (*seqs)[i];
 				if (seq.length() == 0)
-					throw std::runtime_error("File format error: sequence of length 0 at line " + to_string(db_file->line_count));
+					throw std::runtime_error("File format error: sequence of length 0 at line " + to_string(db_file->front().line_count));
 				push_seq(seq, (*ids)[i], ids->length(i), offset, pos_array, *out, letters, n_seqs);
 			}
 			if (!config.prot_accession2taxid.empty()) {
@@ -278,7 +284,7 @@ void make_db(TempFile **tmp_out, TextInputFile *input_file)
 
 	if (!input_file) {
 		timer.go("Closing the input file");
-		db_file->close();
+		db_file->front().close();
 		delete db_file;
 	}
 
@@ -449,7 +455,7 @@ void DatabaseFile::get_seq()
 {
 	std::map<string, string> seq_titles;
 	if (!config.query_file.empty()) {
-		TextInputFile list(config.query_file);
+		TextInputFile list(config.query_file.front());
 		while (list.getline(), !list.eof()) {
 			const vector<string> t(tokenize(list.line.c_str(), "\t"));
 			if (t.size() != 2)

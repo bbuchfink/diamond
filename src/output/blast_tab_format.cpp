@@ -384,9 +384,15 @@ void Blast_tab_format::print_match(const Hsp_context& r, const Metadata &metadat
 			out << r.ungapped_score;
 			break;
 		case 62: {
-			unsigned mate = r.query_id % 2, mate_id = mate == 0 ? r.query_id + 1 : r.query_id - 1;
-			query_source_seqs::get()[mate_id].print(out, input_value_traits);
-			break;
+			if (config.query_file.size() == 2) {
+				unsigned mate = r.query_id % 2, mate_id = mate == 0 ? r.query_id + 1 : r.query_id - 1;
+				query_source_seqs::get()[mate_id].print(out, input_value_traits);
+				break;
+			}
+			else {
+				out << '*';
+				break;
+			}
 		}
 		case 63: {
 			if (config.frame_shift) {
