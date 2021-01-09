@@ -744,6 +744,9 @@ Config::Config(int argc, const char **argv, bool check_io)
 	if (mmap_target_index && save_target_index)
 		throw std::runtime_error("Options are exclusive.");
 
+	if (target_indexed && lowmem != 1)
+		throw std::runtime_error("--target-indexed requires -c1.");
+
 	/*log_stream << "sizeof(hit)=" << sizeof(hit) << " sizeof(packed_uint40_t)=" << sizeof(packed_uint40_t)
 		<< " sizeof(sorted_list::entry)=" << sizeof(sorted_list::entry) << endl;*/
 
