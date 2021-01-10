@@ -84,8 +84,9 @@ inline size_t load_seqs(std::list<TextInputFile>::iterator file_begin,
 		frame_mask = ((1 << 3) - 1) << 3;
 
 	std::list<TextInputFile>::iterator file_it = file_begin;
+	bool read_success = true;
 
-	while ((letters < max_letters || (n % modulo != 0)) && format.get_seq(id, seq, *file_it, value_traits, quals ? &qual : nullptr)) {
+	while ((letters < max_letters || (n % modulo != 0)) && (read_success = format.get_seq(id, seq, *file_it, value_traits, quals ? &qual : nullptr))) {
 		if (seq.size() > 0 && (filter.empty() || id2.assign(id.data(), id.data() + id.size()).find(filter, 0) != string::npos)) {
 			ids->push_back(id.begin(), id.end());
 			letters += push_seq(**seqs, source_seqs, seq, frame_mask, value_traits.seq_type);
@@ -113,7 +114,7 @@ inline size_t load_seqs(std::list<TextInputFile>::iterator file_begin,
 		if (quals)
 			delete *quals;
 	}
-	if (file_it != file_begin || (++file_it != file_end && format.get_seq(id, seq, *file_it, value_traits, nullptr)))
+	if (file_it != file_begin || (!read_success && ++file_it != file_end && format.get_seq(id, seq, *file_it, value_traits, nullptr)))
 		throw std::runtime_error("Unequal number of sequences in paired read files.");
 	return n;
 }
