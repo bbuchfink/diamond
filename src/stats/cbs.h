@@ -202,6 +202,17 @@ struct CBS {
 
 std::vector<int> CompositionMatrixAdjust(int query_len, int target_len, const double* query_comp, const double* target_comp, int scale, double ungapped_lambda, const double* joint_probs, const double* background_freqs);
 std::vector<int> CompositionBasedStats(const int* const* matrix_in, const Composition& queryProb, const Composition& resProb, double lambda, const FreqRatios& freq_ratios);
+int Blast_OptimizeTargetFrequencies(double x[],
+    int alphsize,
+    int* iterations,
+    const double q[],
+    const double row_sums[],
+    const double col_sums[],
+    int constrain_rel_entropy,
+    double relative_entropy,
+    double tol,
+    int maxits);
+bool OptimizeTargetFrequencies(double* out, const double* joints_prob, const double* row_probs, const double* col_probs, double relative_entropy, double tol, int maxits);
 
 inline int16_t* make_16bit_matrix(const std::vector<int>& matrix) {
     int16_t* out = new int16_t[TRUE_AA * TRUE_AA];

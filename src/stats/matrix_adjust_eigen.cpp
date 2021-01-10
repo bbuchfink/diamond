@@ -18,23 +18,30 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
+#include <iostream>
 #include <type_traits>
 #include "../lib/Eigen/Dense"
 #include "../basic/value.h"
 
 using namespace Eigen;
+using std::cout;
+using std::endl;
+
+//#define DEBUG_OUT(x) cout << (x) << endl
+#define DEBUG_OUT(x)
 
 static const size_t N = TRUE_AA;
-typedef double Float;
-typedef Matrix<Float, N, N> MatrixN;
-typedef Matrix<Float, 2 * N, 2 * N> Matrix2Nx;
+typedef float Float;
+const auto StorageOrder = RowMajor;
+typedef Matrix<Float, N, N, StorageOrder> MatrixN;
+typedef Matrix<Float, 2 * N, 2 * N, StorageOrder> Matrix2Nx;
 typedef Matrix<Float, N, 1> VectorN;
 typedef Matrix<Float, 2 * N - 1, 1> Vector2N;
 typedef Matrix<Float, 2 * N, 1> Vector2Nx;
 typedef Matrix<Float, 1, N* N> VectorNN;
-typedef Matrix<Float, 2, N * N> Vector2NN;
+typedef Matrix<Float, 2, N * N, StorageOrder> Vector2NN;
 typedef decltype(Vector2Nx().head<2 * N - 1>()) Block2N;
-using Values = double[2];
+using Values = Float[2];
 
 typedef struct ReNewtonSystem {
     Matrix2Nx W;               /**< A lower-triangular matrix
@@ -55,7 +62,7 @@ static void ScaledSymmetricProductA(Matrix2Nx& W, const MatrixN& diagonal)
     W.fill(0.0);
     for (size_t i = 0; i < N; i++) {
         for (size_t j = 0; j < N; j++) {
-            const double dd = diagonal(i, j);
+            const Float dd = diagonal(i, j);
 
             W(j, j) += dd;
             if (i > 0) {
@@ -110,20 +117,24 @@ static void ResidualsLinearConstraints(Block2N rA, const MatrixN& x, const Vecto
     rA.head<N>() = col_sums;
     rA.tail<N - 1>() = row_sums.tail<N - 1>();
     MultiplyByA(1.0, rA, -1.0, x);
+    DEBUG_OUT("ResidualsLinearConstraints rA");
+    DEBUG_OUT(rA);
 }
 
 static void DualResiduals(MatrixN& resids_x, const Vector2NN& grads, const Vector2Nx& z)
 {        
-    double eta = z[2 * N - 1];     /* dual variable for the relative
+    Float eta = z[2 * N - 1];     /* dual variable for the relative
                                       entropy constraint */
 
     Matrix<Float, 1, N* N> v = -grads.row(0) + eta * grads.row(1);
     for (size_t i = 0; i < N; ++i)
-        resids_x.col(i) = v.segment<N>(i * N);
+        resids_x.row(i) = v.segment<N>(i * N);
     MultiplyByAtranspose(1.0, resids_x, 1.0, z.head<2*N-1>());
+    DEBUG_OUT("DualResiduals resids_x ");
+    DEBUG_OUT(resids_x);
 }
 
-static void CalculateResiduals(double* rnorm,
+static void CalculateResiduals(Float* rnorm,
 	MatrixN& resids_x,
 	Vector2Nx& resids_z,
 	const Values& values,
@@ -132,10 +143,10 @@ static void CalculateResiduals(double* rnorm,
 	const VectorN& col_sums,
 	const MatrixN& x,
 	const Vector2Nx& z,
-	double relative_entropy)
+	Float relative_entropy)
 {
 	/* Euclidean norms of the primal and dual residuals */
-	double norm_resids_z, norm_resids_x;
+	Float norm_resids_z, norm_resids_x;
 
 	DualResiduals(resids_x, grads, z);
 	norm_resids_x = resids_x.norm();
@@ -144,12 +155,14 @@ static void CalculateResiduals(double* rnorm,
 	resids_z[2 * N - 1] = relative_entropy - values[1];
 	norm_resids_z = resids_z.norm();
 	*rnorm = sqrt(norm_resids_x * norm_resids_x + norm_resids_z * norm_resids_z);
+    DEBUG_OUT("CalculateResiduals rnorm=");
+    DEBUG_OUT(*rnorm);
 }
 
-void Nlm_FactorLtriangPosDef(Matrix2Nx& A)
+static void Nlm_FactorLtriangPosDef(Matrix2Nx& A)
 {
     int i, j, k;                /* iteration indices */
-    double temp;                /* temporary variable for intermediate
+    Float temp;                /* temporary variable for intermediate
                                    values in a computation */
 
     for (i = 0; i < 2*N; i++) {
@@ -168,7 +181,7 @@ void Nlm_FactorLtriangPosDef(Matrix2Nx& A)
     }
 }
 
-static void FactorReNewtonSystem(ReNewtonSystem* newton_system,
+static void FactorReNewtonSystem(ReNewtonSystem& newton_system,
     const MatrixN& x,
     const Vector2Nx& z,
     const Vector2NN& grads,
@@ -179,9 +192,9 @@ static void FactorReNewtonSystem(ReNewtonSystem* newton_system,
 
     /* Pointers to fields in newton_systems; the names of the local
      * variables match the names of the fields. */
-    Matrix2Nx& W = newton_system->W;
-    MatrixN& Dinv = newton_system->Dinv;
-    VectorNN& grad_re = newton_system->grad_re;
+    Matrix2Nx& W = newton_system.W;
+    MatrixN& Dinv = newton_system.Dinv;
+    VectorNN& grad_re = newton_system.grad_re;
 
     n = N * N;
     m = 2 * N;
@@ -198,7 +211,7 @@ static void FactorReNewtonSystem(ReNewtonSystem* newton_system,
      *
      * First we find the inverse of the diagonal matrix D. */
 
-    double eta;             /* dual variable for the relative
+    Float eta;             /* dual variable for the relative
                                    entropy constraint */
     eta = z[m - 1];
 
@@ -208,6 +221,8 @@ static void FactorReNewtonSystem(ReNewtonSystem* newton_system,
     /* Then we compute J D^{-1} J^T; First fill in the part that corresponds
      * to the linear constraints */
     ScaledSymmetricProductA(W, Dinv);
+    DEBUG_OUT("FactorReNewtonSystem W=");
+    DEBUG_OUT(W);
 
     /* Save the gradient of the relative entropy constraint. */
     grad_re = grads.row(1);
@@ -216,21 +231,22 @@ static void FactorReNewtonSystem(ReNewtonSystem* newton_system,
      * entropy constraint. */
     W(m - 1, m - 1) = 0.0;
     for (size_t i = 0; i < N; ++i) {
-        workspace.col(i) = Dinv.col(i).cwiseProduct(grad_re.segment<N>(i * N).transpose());
-        W(m - 1, m - 1) += workspace.col(i).dot(grad_re.segment<N>(i * N));
+        workspace.row(i) = Dinv.row(i).cwiseProduct(grad_re.segment<N>(i * N));
+        W(m - 1, m - 1) += workspace.row(i).dot(grad_re.segment<N>(i * N));
     }
 
     Vector2Nx r = W.row(m - 1);
     MultiplyByA(0.0, r.head<2 * N - 1>(), 1.0, workspace);
+    W.row(m - 1) = r;
 
     /* Factor J D^{-1} J^T and save the result in W. */
     Nlm_FactorLtriangPosDef(W);
 }
 
-void Nlm_SolveLtriangPosDef(Vector2Nx& x, const Matrix2Nx& L)
+static void Nlm_SolveLtriangPosDef(Vector2Nx& x, const Matrix2Nx& L)
 {
     int i, j;                   /* iteration indices */
-    double temp;                /* temporary variable for intermediate
+    Float temp;                /* temporary variable for intermediate
                                    values in a computation */
 
                                    /* At point x = b in the equation L L\T y = b */
@@ -255,16 +271,16 @@ void Nlm_SolveLtriangPosDef(Vector2Nx& x, const Matrix2Nx& L)
 
 
 static void SolveReNewtonSystem(MatrixN& x, Vector2Nx& z,
-    const ReNewtonSystem* newton_system, MatrixN& workspace)
+    const ReNewtonSystem& newton_system, MatrixN& workspace)
 {
     int n;                     /* the size of x */
     int mA;                    /* the number of linear constraints */
     int m;                     /* the size of z */
 
     /* Local variables that represent fields of newton_system */
-    const Matrix2Nx& W = newton_system->W;
-    const MatrixN& Dinv = newton_system->Dinv;
-    const VectorNN& grad_re = newton_system->grad_re;
+    const Matrix2Nx& W = newton_system.W;
+    const MatrixN& Dinv = newton_system.Dinv;
+    const VectorNN& grad_re = newton_system.grad_re;
 
     n = N * N;
     mA = 2 * N - 1;
@@ -279,7 +295,7 @@ static void SolveReNewtonSystem(MatrixN& x, Vector2Nx& z,
     MultiplyByA(1.0, z.head<2 * N - 1>(), -1.0, workspace);
 
     for (size_t i = 0; i < N; ++i)
-        z[m - 1] -= grad_re.segment<N>(i * N).dot(workspace.col(i));
+        z[m - 1] -= grad_re.segment<N>(i * N).dot(workspace.row(i));
 
     /* Solve for step in z, using the inverse of J D^{-1} J^T */
     Nlm_SolveLtriangPosDef(z, W);
@@ -289,7 +305,7 @@ static void SolveReNewtonSystem(MatrixN& x, Vector2Nx& z,
      *     x = D^{-1) (rx + J\T z)
      */
     for (size_t i = 0; i < N; ++i)
-        x.col(i) += grad_re.segment<N>(i * N) * z[m - 1];
+        x.row(i) += grad_re.segment<N>(i * N) * z[m - 1];
 
     MultiplyByAtranspose(1.0, x, 1.0, z.head<2 * N - 1>());
     x.array() *= Dinv.array();
@@ -297,23 +313,135 @@ static void SolveReNewtonSystem(MatrixN& x, Vector2Nx& z,
 
 static void EvaluateReFunctions(Values& values, Vector2NN& grads, const MatrixN& x, const MatrixN& q, const MatrixN& scores)
 {
-    int k;         /* iteration index over elements of x, q and scores */
-    double temp;   /* holds intermediate values in a computation */
-
     values[0] = 0.0; values[1] = 0.0;
 
     MatrixN tmp = (x.array() / q.array()).log();
     for (size_t i = 0; i < N; ++i) {
-        values[0] += x.col(i).dot(tmp.col(i));
-        grads.row(0).segment<N>(i * N) = tmp.col(i);
+        values[0] += x.row(i).dot(tmp.row(i));
+        grads.row(0).segment<N>(i * N) = tmp.row(i);
         grads.row(0).segment<N>(i * N).array() += 1.0;
     }
     
     tmp.array() += scores.array();
     for (size_t i = 0; i < N; ++i) {
-        values[1] += x.col(i).dot(tmp.col(i));
-        grads.row(1).segment<N>(i * N) = tmp.col(i);
+        values[1] += x.row(i).dot(tmp.row(i));
+        grads.row(1).segment<N>(i * N) = tmp.row(i);
         grads.row(1).segment<N>(i * N).array() += 1.0;
     }
 }
 
+static void ComputeScoresFromProbs(MatrixN& scores,
+    const MatrixN& target_freqs,
+    const VectorN& row_freqs,
+    const VectorN& col_freqs)
+{
+    int i, j;     /* iteration indices over characters in the alphabet */
+    for (i = 0; i < N; i++) {
+        for (j = 0; j < N; j++) {
+            scores(i, j) = log(target_freqs(i, j) / (row_freqs[i] * col_freqs[j]));
+        }
+    }
+}
+
+static Float Nlm_StepBound(const MatrixN& x, const MatrixN& step_x, Float max)
+{
+    Float alpha = max;    /* current largest permitted step */
+
+    for (size_t i = 0; i < N; i++) {
+        for (size_t j = 0; j < N; ++j) {
+            Float alpha_i;    /* a step to the boundary for the current i */
+
+            alpha_i = -x(i, j) / step_x(i, j);
+            if (alpha_i >= 0 && alpha_i < alpha) {
+                alpha = alpha_i;
+            }
+        }
+    }
+    return alpha;
+}
+
+static bool Blast_OptimizeTargetFrequencies(MatrixN& x,
+    const MatrixN& q,
+    const VectorN& row_sums,
+    const VectorN& col_sums,
+    Float relative_entropy,
+    Float tol,
+    int maxits)
+{
+    DEBUG_OUT("========================================================================================================");
+    Values values;   /* values of the nonlinear functions at this iterate */
+    Vector2NN grads;     /* gradients of the nonlinear functions at this iterate */
+    ReNewtonSystem newton_system;   /* factored matrix of the linear system to be solved at this iteration */
+    Vector2Nx z;     /* dual variables (Lagrange multipliers) */
+    z.fill(0.0);
+    MatrixN resids_x;   /* dual residuals (gradient of Lagrangian) */
+    Vector2Nx resids_z;   /* primal (constraint) residuals */
+    Float rnorm;               /* norm of the residuals for the current iterate */
+    MatrixN old_scores; /* a scoring matrix, with lambda = 1, generated from q, row_sums and col_sums */
+    MatrixN workspace;  /* A vector for intermediate computations */
+
+    ComputeScoresFromProbs(old_scores, q, row_sums, col_sums);
+    DEBUG_OUT(old_scores);
+
+    /* Use q as the initial value for x */
+    x = q;
+    int its = 0;        /* Initialize the iteration count. Note that we may converge in zero iterations if the initial x is optimal. */
+    while (its <= maxits) {
+        /* Compute the residuals */
+        EvaluateReFunctions(values, grads, x, q, old_scores);
+        DEBUG_OUT("Values ");
+        DEBUG_OUT(values[0]);
+        DEBUG_OUT(values[1]);
+        DEBUG_OUT("Grads");
+        DEBUG_OUT(grads);
+
+        CalculateResiduals(&rnorm, resids_x, resids_z, values,
+            grads, row_sums, col_sums, x, z, relative_entropy);
+
+        /* and check convergence; the test correctly handles the case
+           in which rnorm is NaN (not a number). */
+        if (!(rnorm > tol)) {
+            /* We converged at the current iterate */
+            break;
+        }
+
+        if (++its <= maxits) {
+            /* We have not exceeded the maximum number of iterations;
+               take a Newton step. */
+            Float alpha;       /* a positive number used to scale the Newton step. */
+
+            FactorReNewtonSystem(newton_system, x, z, grads, workspace);
+            SolveReNewtonSystem(resids_x, resids_z, newton_system, workspace);
+
+            /* Calculate a value of alpha that ensure that x is positive */
+            alpha = Nlm_StepBound(x, resids_x, 1.0 / .95);
+            alpha *= 0.95;
+
+            x += alpha * resids_x;
+            z += alpha * resids_z;
+        }
+
+    }
+    DEBUG_OUT(x);
+    return its <= maxits && rnorm <= tol && z[2*N] < 1.0;
+}
+
+namespace Stats {
+
+bool OptimizeTargetFrequencies(double* out, const double* joints_prob, const double* row_probs, const double* col_probs, double relative_entropy, double tol, int maxits) {
+    MatrixN x, q;
+    VectorN row_sums, col_sums;
+    for (size_t i = 0; i < N; ++i) {
+        for (size_t j = 0; j < N; ++j)
+            q(i, j) = joints_prob[i * N + j];
+        row_sums[i] = row_probs[i];
+        col_sums[i] = col_probs[i];
+    }
+    bool r = Blast_OptimizeTargetFrequencies(x, q, row_sums, col_sums, relative_entropy, tol, maxits);
+    for (size_t i = 0; i < N; ++i)
+        for (size_t j = 0; j < N; ++j)
+            out[i * N + j] = x(i, j);
+    return r;
+}
+
+}
