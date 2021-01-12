@@ -263,6 +263,8 @@ else()
   add_executable(diamond $<TARGET_OBJECTS:arch_generic> ${OBJECTS})
 endif()
 
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}")
+
 target_include_directories(diamond PRIVATE
   "${ZLIB_INCLUDE_DIR}"
   "${CMAKE_SOURCE_DIR}/src/lib")

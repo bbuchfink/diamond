@@ -23,6 +23,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../lib/Eigen/Dense"
 #include "../basic/value.h"
 
+#define DYNAMIC
+
 using namespace Eigen;
 using std::cout;
 using std::endl;
@@ -33,6 +35,16 @@ using std::endl;
 static const size_t N = TRUE_AA;
 typedef float Float;
 const auto StorageOrder = RowMajor;
+#ifdef DYNAMIC
+typedef Matrix<Float, Dynamic, Dynamic, StorageOrder> MatrixN;
+typedef Matrix<Float, Dynamic, Dynamic, StorageOrder> Matrix2Nx;
+typedef Matrix<Float, Dynamic, 1> VectorN;
+typedef Matrix<Float, Dynamic, 1> Vector2N;
+typedef Matrix<Float, Dynamic, 1> Vector2Nx;
+typedef Matrix<Float, 1, Dynamic> VectorNN;
+typedef Matrix<Float, 2, Dynamic, StorageOrder> Vector2NN;
+typedef decltype(Vector2Nx().head(Index())) Block2N;
+#else
 typedef Matrix<Float, N, N, StorageOrder> MatrixN;
 typedef Matrix<Float, 2 * N, 2 * N, StorageOrder> Matrix2Nx;
 typedef Matrix<Float, N, 1> VectorN;
@@ -41,9 +53,17 @@ typedef Matrix<Float, 2 * N, 1> Vector2Nx;
 typedef Matrix<Float, 1, N* N> VectorNN;
 typedef Matrix<Float, 2, N * N, StorageOrder> Vector2NN;
 typedef decltype(Vector2Nx().head<2 * N - 1>()) Block2N;
+#endif
 using Values = Float[2];
 
 typedef struct ReNewtonSystem {
+#ifdef DYNAMIC
+    ReNewtonSystem():
+        W(2*N,2*N),
+        Dinv(N,N),
+        grad_re(N*N)
+    {}
+#endif
     Matrix2Nx W;               /**< A lower-triangular matrix
                                     representing a factorization of
                                     the (2,2) block, -J D^{-1} J^T, of
@@ -114,8 +134,13 @@ static void MultiplyByAtranspose(Float beta, MatrixN& y, Float alpha, const Vect
 
 static void ResidualsLinearConstraints(Block2N rA, const MatrixN& x, const VectorN& row_sums, const VectorN& col_sums)
 {
+#ifdef DYNAMIC
+    rA.head(N) = col_sums;
+    rA.tail(N-1) = row_sums.tail(N-1);
+#else
     rA.head<N>() = col_sums;
     rA.tail<N - 1>() = row_sums.tail<N - 1>();
+#endif
     MultiplyByA(1.0, rA, -1.0, x);
     DEBUG_OUT("ResidualsLinearConstraints rA");
     DEBUG_OUT(rA);
@@ -126,7 +151,7 @@ static void DualResiduals(MatrixN& resids_x, const Vector2NN& grads, const Vecto
     Float eta = z[2 * N - 1];     /* dual variable for the relative
                                       entropy constraint */
 
-    Matrix<Float, 1, N* N> v = -grads.row(0) + eta * grads.row(1);
+    VectorNN v = -grads.row(0) + eta * grads.row(1);
     for (size_t i = 0; i < N; ++i)
         resids_x.row(i) = v.segment<N>(i * N);
     MultiplyByAtranspose(1.0, resids_x, 1.0, z.head<2*N-1>());
@@ -151,7 +176,11 @@ static void CalculateResiduals(Float* rnorm,
 	DualResiduals(resids_x, grads, z);
 	norm_resids_x = resids_x.norm();
 
-	ResidualsLinearConstraints(resids_z.head<2 * N - 1>(), x, row_sums, col_sums);
+#ifdef DYNAMIC
+	ResidualsLinearConstraints(resids_z.head(2*N-1), x, row_sums, col_sums);
+#else
+    ResidualsLinearConstraints(resids_z.head<2 * N - 1>(), x, row_sums, col_sums);
+#endif
 	resids_z[2 * N - 1] = relative_entropy - values[1];
 	norm_resids_z = resids_z.norm();
 	*rnorm = sqrt(norm_resids_x * norm_resids_x + norm_resids_z * norm_resids_z);
@@ -209,12 +238,21 @@ static void FactorReNewtonSystem(ReNewtonSystem& newton_system,
      * entropy constraint. */
     W(m - 1, m - 1) = 0.0;
     for (size_t i = 0; i < N; ++i) {
+#ifdef DYNAMIC
+        workspace.row(i) = Dinv.row(i).cwiseProduct(grad_re.segment(i * N, N));
+        W(m - 1, m - 1) += workspace.row(i).dot(grad_re.segment(i * N, N));
+#else
         workspace.row(i) = Dinv.row(i).cwiseProduct(grad_re.segment<N>(i * N));
         W(m - 1, m - 1) += workspace.row(i).dot(grad_re.segment<N>(i * N));
+#endif
     }
 
     Vector2Nx r = W.row(m - 1);
+#ifdef DYNAMIC
+    MultiplyByA(0.0, r.head(2*N-1), 1.0, workspace);
+#else
     MultiplyByA(0.0, r.head<2 * N - 1>(), 1.0, workspace);
+#endif
     W.row(m - 1) = r;
 }
 
@@ -231,7 +269,11 @@ static void SolveReNewtonSystem(MatrixN& x, Vector2Nx& z, const ReNewtonSystem& 
      *     rzhat = rz - J D^{-1} rx
      */
     workspace = x.cwiseProduct(Dinv);
+#ifdef DYNAMIC
+    MultiplyByA(1.0, z.head(2*N-1), -1.0, workspace);
+#else
     MultiplyByA(1.0, z.head<2 * N - 1>(), -1.0, workspace);
+#endif
 
     for (size_t i = 0; i < N; ++i)
         z[m - 1] -= grad_re.segment<N>(i * N).dot(workspace.row(i));
@@ -308,6 +350,18 @@ static bool Blast_OptimizeTargetFrequencies(MatrixN& x,
     int maxits)
 {
     DEBUG_OUT("========================================================================================================");
+#ifdef DYNAMIC
+    Values values;   /* values of the nonlinear functions at this iterate */
+    Vector2NN grads(2,N*N);     /* gradients of the nonlinear functions at this iterate */
+    ReNewtonSystem newton_system;   /* factored matrix of the linear system to be solved at this iteration */
+    Vector2Nx z(2*N);     /* dual variables (Lagrange multipliers) */
+    z.fill(0.0);
+    MatrixN resids_x(N,N);   /* dual residuals (gradient of Lagrangian) */
+    Vector2Nx resids_z(2*N);   /* primal (constraint) residuals */
+    Float rnorm;               /* norm of the residuals for the current iterate */
+    MatrixN old_scores(N,N); /* a scoring matrix, with lambda = 1, generated from q, row_sums and col_sums */
+    MatrixN workspace(N,N);  /* A vector for intermediate computations */
+#else
     Values values;   /* values of the nonlinear functions at this iterate */
     Vector2NN grads;     /* gradients of the nonlinear functions at this iterate */
     ReNewtonSystem newton_system;   /* factored matrix of the linear system to be solved at this iteration */
@@ -318,6 +372,7 @@ static bool Blast_OptimizeTargetFrequencies(MatrixN& x,
     Float rnorm;               /* norm of the residuals for the current iterate */
     MatrixN old_scores; /* a scoring matrix, with lambda = 1, generated from q, row_sums and col_sums */
     MatrixN workspace;  /* A vector for intermediate computations */
+#endif
 
     ComputeScoresFromProbs(old_scores, q, row_sums, col_sums);
     DEBUG_OUT(old_scores);
@@ -363,8 +418,13 @@ static bool Blast_OptimizeTargetFrequencies(MatrixN& x,
 namespace Stats {
 
 bool OptimizeTargetFrequencies(double* out, const double* joints_prob, const double* row_probs, const double* col_probs, double relative_entropy, double tol, int maxits) {
+#ifdef DYNAMIC
+    MatrixN x(N,N) , q(N,N);
+    VectorN row_sums(N), col_sums(N);
+#else
     MatrixN x, q;
     VectorN row_sums, col_sums;
+#endif
     for (size_t i = 0; i < N; ++i) {
         for (size_t j = 0; j < N; ++j)
             q(i, j) = joints_prob[i * N + j];
