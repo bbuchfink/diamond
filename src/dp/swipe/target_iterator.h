@@ -23,7 +23,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <stdint.h>
 #include <algorithm>
 #include "../dp.h"
-#include "../basic/value.h"
+#include "../../basic/value.h"
 #include "../../util/simd/vector.h"
 #include "../../util/dynamic_iterator.h"
 #include "../../stats/hauser_correction.h"

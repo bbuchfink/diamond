@@ -27,7 +27,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../score_vector_int8.h"
 #include "../score_vector_int16.h"
 #include "../../basic/value.h"
-#include "../util/simd/vector.h"
+#include "../../util/simd/vector.h"
 #include "../../util/system.h"
 #include "../../util/memory/alignment.h"
 #include "../../util/simd/transpose.h"

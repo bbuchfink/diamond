@@ -159,28 +159,6 @@ static void CalculateResiduals(Float* rnorm,
     DEBUG_OUT(*rnorm);
 }
 
-static void Nlm_FactorLtriangPosDef(Matrix2Nx& A)
-{
-    int i, j, k;                /* iteration indices */
-    Float temp;                /* temporary variable for intermediate
-                                   values in a computation */
-
-    for (i = 0; i < 2*N; i++) {
-        for (j = 0; j < i; j++) {
-            temp = A(i, j);
-            for (k = 0; k < j; k++) {
-                temp -= A(i, k) * A(j, k);
-            }
-            A(i, j) = temp / A(j, j);
-        }
-        temp = A(i, i);
-        for (k = 0; k < i; k++) {
-            temp -= A(i, k) * A(i, k);
-        }
-        A(i,i) = sqrt(temp);
-    }
-}
-
 static void FactorReNewtonSystem(ReNewtonSystem& newton_system,
     const MatrixN& x,
     const Vector2Nx& z,
@@ -238,53 +216,14 @@ static void FactorReNewtonSystem(ReNewtonSystem& newton_system,
     Vector2Nx r = W.row(m - 1);
     MultiplyByA(0.0, r.head<2 * N - 1>(), 1.0, workspace);
     W.row(m - 1) = r;
-
-    /* Factor J D^{-1} J^T and save the result in W. */
-    Nlm_FactorLtriangPosDef(W);
 }
 
-static void Nlm_SolveLtriangPosDef(Vector2Nx& x, const Matrix2Nx& L)
-{
-    int i, j;                   /* iteration indices */
-    Float temp;                /* temporary variable for intermediate
-                                   values in a computation */
-
-                                   /* At point x = b in the equation L L\T y = b */
-
-                                   /* Forward solve; L z = b */
-    for (i = 0; i < 2*N; i++) {
-        temp = x[i];
-        for (j = 0; j < i; j++) {
-            temp -= L(i, j) * x[j];
-        }
-        x[i] = temp / L(i, i);
-    }
-    /* Now x = z.  Back solve the system L\T y = z */
-    for (j = 2*N - 1; j >= 0; j--) {
-        x[j] /= L(j, j);
-        for (i = 0; i < j; i++) {
-            x[i] -= L(j, i) * x[j];
-        }
-    }
-    /* Now x = y, the solution to  L L\T y = b */
-}
-
-
-static void SolveReNewtonSystem(MatrixN& x, Vector2Nx& z,
-    const ReNewtonSystem& newton_system, MatrixN& workspace)
-{
-    int n;                     /* the size of x */
-    int mA;                    /* the number of linear constraints */
-    int m;                     /* the size of z */
-
-    /* Local variables that represent fields of newton_system */
+static void SolveReNewtonSystem(MatrixN& x, Vector2Nx& z, const ReNewtonSystem& newton_system, MatrixN& workspace) {
     const Matrix2Nx& W = newton_system.W;
     const MatrixN& Dinv = newton_system.Dinv;
     const VectorNN& grad_re = newton_system.grad_re;
 
-    n = N * N;
-    mA = 2 * N - 1;
-    m = mA + 1;
+    const int m = 2 * N;
 
     /* Apply the same block reduction to the right-hand side as was
      * applied to the matrix:
@@ -298,7 +237,7 @@ static void SolveReNewtonSystem(MatrixN& x, Vector2Nx& z,
         z[m - 1] -= grad_re.segment<N>(i * N).dot(workspace.row(i));
 
     /* Solve for step in z, using the inverse of J D^{-1} J^T */
-    Nlm_SolveLtriangPosDef(z, W);
+    z = W.llt().solve(z);
 
     /* Backsolve for the step in x, using the newly-computed step in z.
      *
@@ -406,16 +345,11 @@ static bool Blast_OptimizeTargetFrequencies(MatrixN& x,
         }
 
         if (++its <= maxits) {
-            /* We have not exceeded the maximum number of iterations;
-               take a Newton step. */
-            Float alpha;       /* a positive number used to scale the Newton step. */
-
             FactorReNewtonSystem(newton_system, x, z, grads, workspace);
             SolveReNewtonSystem(resids_x, resids_z, newton_system, workspace);
 
             /* Calculate a value of alpha that ensure that x is positive */
-            alpha = Nlm_StepBound(x, resids_x, 1.0 / .95);
-            alpha *= 0.95;
+            const Float alpha = Nlm_StepBound(x, resids_x, 1.0 / .95) * 0.95;
 
             x += alpha * resids_x;
             z += alpha * resids_z;

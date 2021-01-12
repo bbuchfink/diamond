@@ -11,6 +11,7 @@ option(LEFTMOST_SEED_FILTER "LEFTMOST_SEED_FILTER" ON)
 option(SEQ_MASK "SEQ_MASK" ON)
 option(DP_STAT "DP_STAT" OFF)
 option(SINGLE_THREADED "SINGLE_THREADED" OFF)
+option(EIGEN_BLAS "EIGEN_BLAS" OFF)
 set(MAX_SHAPE_LEN 19)
 
 if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(arm.*|ARM.*)")
@@ -94,10 +95,6 @@ if (CMAKE_COMPILER_IS_GNUCC AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 5)
   message("Setting -fabi-version for GCC 4.x")
 endif()
 
-include_directories(
-  "${ZLIB_INCLUDE_DIR}"
-  "${CMAKE_SOURCE_DIR}/src/lib")
-
 set(DISPATCH_OBJECTS
 "src/dp/swipe/banded_3frame_swipe.cpp"
 "src/dp/swipe/swipe.cpp"
@@ -113,9 +110,12 @@ set(DISPATCH_OBJECTS
 
 add_library(arch_generic OBJECT ${DISPATCH_OBJECTS})
 target_compile_options(arch_generic PUBLIC -DDISPATCH_ARCH=ARCH_GENERIC -DARCH_ID=0 -DEigen=Eigen_GENERIC)
+target_include_directories(arch_generic PRIVATE "${CMAKE_SOURCE_DIR}/src/lib")
 if(X86)
 add_library(arch_sse4_1 OBJECT ${DISPATCH_OBJECTS})
+target_include_directories(arch_sse4_1 PRIVATE "${CMAKE_SOURCE_DIR}/src/lib")
 add_library(arch_avx2 OBJECT ${DISPATCH_OBJECTS})
+target_include_directories(arch_avx2 PRIVATE "${CMAKE_SOURCE_DIR}/src/lib")
 if (${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
 	target_compile_options(arch_sse4_1 PUBLIC -DDISPATCH_ARCH=ARCH_SSE4_1 -DARCH_ID=1 -D__SSSE3__ -D__SSE4_1__ -D__POPCNT__ -DEigen=Eigen_SSE4_1)
     target_compile_options(arch_avx2 PUBLIC -DDISPATCH_ARCH=ARCH_AVX2 -DARCH_ID=2 /arch:AVX2 -D__SSSE3__ -D__SSE4_1__ -D__POPCNT__ -DEigen=Eigen_AVX2)
@@ -261,6 +261,17 @@ if(X86)
   add_executable(diamond $<TARGET_OBJECTS:arch_generic> $<TARGET_OBJECTS:arch_sse4_1> $<TARGET_OBJECTS:arch_avx2> ${OBJECTS})
 else()
   add_executable(diamond $<TARGET_OBJECTS:arch_generic> ${OBJECTS})
+endif()
+
+target_include_directories(diamond PRIVATE
+  "${ZLIB_INCLUDE_DIR}"
+  "${CMAKE_SOURCE_DIR}/src/lib")
+
+if(EIGEN_BLAS)
+  add_definitions(-DEIGEN_USE_BLAS -DEIGEN_USE_LAPACKE)
+  find_package(LAPACKE)
+  target_include_directories(diamond PRIVATE "${LAPACKE_INCLUDE_DIR}")
+  target_link_libraries(diamond "${LAPACKE_LIBRARIES_DEP}")
 endif()
 
 target_link_libraries(diamond ${ZLIB_LIBRARY} ${CMAKE_THREAD_LIBS_INIT})

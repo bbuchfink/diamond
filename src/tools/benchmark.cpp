@@ -337,6 +337,7 @@ void benchmark() {
 	sequence ss2 = sequence(s2).subseq(33, s2.size());
 
 	matrix_adjust(s1, s2);
+	return;
 
 #ifdef __SSE4_1__
 	swipe(s3, s4);
