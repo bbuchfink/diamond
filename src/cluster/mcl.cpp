@@ -259,28 +259,36 @@ void MCL::markov_process(Eigen::MatrixXf* m, float inflation, float expansion, u
 	}
 }
 
-void MCL::print_stats(uint64_t nElements, uint32_t nComponents, uint32_t nComponentsLt1, vector<uint32_t>& sort_order, vector<vector<uint32_t>>& indices, vector<vector<Eigen::Triplet<float>>>& components){
+void MCL::print_stats(uint64_t nElements, uint32_t nComponents, uint32_t nComponentsLt1, vector<uint32_t>& sort_order, vector<vector<uint32_t>>& indices, SparseMatrixStream<float>* ms){
+	task_timer timer;
+	timer.go("Collecting stats");
 	const uint32_t chunk_size = config.cluster_mcl_chunk_size;
 	const uint32_t nThreads = min(config.threads_, nComponents / chunk_size);
 	const float inflation = (float) config.cluster_mcl_inflation;
 	const float expansion = (float) config.cluster_mcl_expansion;
 	vector<float> sparsities(nComponentsLt1);
 	uint64_t icomp = 0;
-	generate(sparsities.begin(), sparsities.end(), [&icomp, &sort_order, &indices, &components](){ 
+	vector<vector<uint32_t>*> loc_i;
+	ms->allocate_read_buffer(1);
+	for(uint32_t chunk_counter = 0; chunk_counter<nComponents; chunk_counter++){
+		loc_i.push_back(&indices[sort_order[chunk_counter]]);
+	}
+	vector<vector<Eigen::Triplet<float>>> loc_c = ms->collect_components(&loc_i, 0);
+	generate(sparsities.begin(), sparsities.end(), [&icomp, &sort_order, &indices, &loc_c](){ 
 				const uint32_t iComponent = sort_order[icomp++];
-				const uint32_t ssize = components[iComponent].size();
+				const uint32_t ssize = loc_c[icomp-1].size();
 				const uint64_t dsize = indices[iComponent].size() * indices[iComponent].size();
 				return 1.0-(1.0 * ssize) / dsize;
 			});
 	vector<float> neighbors(nComponentsLt1);
 	icomp = 0;
-	generate(neighbors.begin(), neighbors.end(), [&icomp, &sort_order, &indices, &components](){ 
-				const uint32_t iComponent = sort_order[icomp++];
+	generate(neighbors.begin(), neighbors.end(), [&icomp, &sort_order, &indices, &loc_c](){ 
 				uint32_t neighbors = 0;
-				for(auto t: components[iComponent]){
+				const uint32_t iComponent = sort_order[icomp++];
+				for(auto t: loc_c[icomp-1]){
 					if(t.row() != t.col()) neighbors++;
 				}
-				return neighbors / ((float) indices.size());
+				return neighbors / ((float) indices[iComponent].size());
 			});
 
 	// rough memory calc before sorting sparsities
@@ -328,6 +336,7 @@ void MCL::print_stats(uint64_t nElements, uint32_t nComponents, uint32_t nCompon
 	float median2 = nComponentsLt1 > 0 && nComponentsLt1 % 2 == 0 ? 
 		(indices[sort_order[nComponentsLt1/2]].size() + indices[sort_order[nComponentsLt1/2+1]].size()) / 2.0 : 
 		indices[sort_order[nComponentsLt1/2+1]].size();
+	timer.finish();
 
 	message_stream << "Number of DIAMOND hits:          " << nElements << endl;
 	message_stream << "Number of independet components: " << nComponentsLt1 <<" ("<<nComponents<< " incl. singletons)" << endl;
@@ -347,6 +356,7 @@ void MCL::print_stats(uint64_t nElements, uint32_t nComponents, uint32_t nCompon
 	string uints[] = {"", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"};
 	uint32_t idx = ((uint32_t)log(mem_req)/log(1024));
 	message_stream << setprecision(2) << mem_req/pow(1024,idx) << uints[idx] << endl;
+	ms->release_read_buffer();
 }
 
 SparseMatrixStream<float>* get_graph_handle(DatabaseFile& db){
@@ -520,7 +530,7 @@ void MCL::run(){
 	iota(sort_order.begin(), sort_order.end(), 0);
 	sort(sort_order.begin(), sort_order.end(), [&](uint32_t i, uint32_t j){return indices[i].size() > indices[j].size();});
 	timer.finish();
-	//print_stats(nElements, nComponents, nComponentsLt1, sort_order, indices, components);
+	print_stats(nElements, nComponents, nComponentsLt1, sort_order, indices, ms);
 
 	timer.go("Clustering components");
 	// Note, we will access the clustering_result from several threads below and a vector does not guarantee thread-safety in these situations.

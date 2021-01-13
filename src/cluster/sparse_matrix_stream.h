@@ -355,7 +355,7 @@ public:
 					}
 				}
 				else{
-					in.ignore(block_size);
+					in.seekg(block_size, ios::cur);
 				}
 			}
 			in.close();
