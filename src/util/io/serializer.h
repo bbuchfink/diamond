@@ -19,7 +19,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #ifndef SERIALIZER_H_
 #define SERIALIZER_H_
 
-#include <iostream>
 #include <string>
 #include <set>
 #include <vector>
@@ -27,9 +26,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "stream_entity.h"
 #include "consumer.h"
 #include "../system/endianness.h"
-
-using std::string;
-using std::vector;
 
 struct Serializer : public Consumer
 {
@@ -65,10 +61,10 @@ struct Serializer : public Consumer
 		return *this;
 	}
 
-	Serializer& operator<<(const vector<unsigned> &v)
+	Serializer& operator<<(const std::vector<unsigned> &v)
 	{
 		*this << (unsigned)v.size();
-		for (vector<unsigned>::const_iterator i = v.begin(); i < v.end(); ++i)
+		for (std::vector<unsigned>::const_iterator i = v.begin(); i < v.end(); ++i)
 			*this << *i;
 		return *this;
 	}
@@ -81,17 +77,17 @@ struct Serializer : public Consumer
 		return *this;
 	}
 
-	Serializer& operator<<(const string &s)
+	Serializer& operator<<(const std::string &s)
 	{
 		write(s.c_str(), s.length() + 1);
 		return *this;
 	}
 
-	Serializer& operator<<(const vector<string> &v)
+	Serializer& operator<<(const std::vector<std::string> &v)
 	{
 		varint_ = false;
 		*this << (uint32_t)v.size();
-		for (vector<string>::const_iterator i = v.begin(); i < v.end(); ++i)
+		for (std::vector<std::string>::const_iterator i = v.begin(); i < v.end(); ++i)
 			*this << *i;
 		return *this;
 	}
@@ -114,7 +110,7 @@ struct Serializer : public Consumer
 	}
 
 	template<class _t>
-	void write_raw(const vector<_t> &v)
+	void write_raw(const std::vector<_t> &v)
 	{
 		write(v.data(), v.size());
 	}
@@ -126,7 +122,7 @@ struct Serializer : public Consumer
 	void rewind();
 	size_t tell();
 	void close();
-	string file_name() const;
+	std::string file_name() const;
 	FILE* file();
 	virtual void consume(const char *ptr, size_t n) override;
 	virtual void finalize() override;

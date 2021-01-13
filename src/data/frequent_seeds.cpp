@@ -26,6 +26,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "queries.h"
 #include "../util/parallel/thread_pool.h"
 
+using std::endl;
 using std::atomic;
 
 const double Frequent_seeds::hash_table_factor = 1.3;
@@ -80,13 +81,6 @@ void Frequent_seeds::build_worker(
 			++it;
 	}
 
-	const size_t ht_size = std::max((size_t)(buf.size() * hash_table_factor), buf.size() + 1);
-	PHash_set<void, murmur_hash> hash_set(ht_size);
-
-	for (vector<uint32_t>::const_iterator i = buf.begin(); i != buf.end(); ++i)
-		hash_set.insert(*i);
-
-	frequent_seeds.tables_[sid][seedp] = std::move(hash_set);
 	(*counts)[seedp] = (unsigned)n;
 }
 

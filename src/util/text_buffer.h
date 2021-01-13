@@ -137,7 +137,7 @@ struct TextBuffer
 		return alloc_size_;
 	}
 
-	TextBuffer& operator<<(const string &s)
+	TextBuffer& operator<<(const std::string &s)
 	{
 		const size_t l = s.length();
 		reserve(l);
@@ -221,10 +221,10 @@ struct TextBuffer
 		return *this;
 	}
 
-	TextBuffer& print(const vector<unsigned> &v, char separator)
+	TextBuffer& print(const std::vector<unsigned> &v, char separator)
 	{
 		if (v.empty()) return *this;
-		vector<unsigned>::const_iterator i = v.begin();
+		std::vector<unsigned>::const_iterator i = v.begin();
 		*this << *(i++);
 		for (; i < v.end(); ++i)
 			*this << ';' << *i;
@@ -232,7 +232,7 @@ struct TextBuffer
 	}
 
 	template<typename _t>
-	TextBuffer& operator<<(const vector<_t> &v)
+	TextBuffer& operator<<(const std::vector<_t> &v)
 	{
 		const size_t l = v.size() * sizeof(_t);
 		reserve(l);

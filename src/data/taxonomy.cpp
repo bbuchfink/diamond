@@ -33,6 +33,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 using std::string;
 using std::map;
+using std::endl;
+using std::set;
 
 const char* Rank::names[] = {
 	"no rank", "superkingdom", "kingdom", "subkingdom", "superphylum", "phylum", "subphylum", "superclass", "class", "subclass", "infraclass", "cohort", "subcohort", "superorder",
@@ -76,25 +78,45 @@ string get_accession(const string &title)
 	return t;
 }
 
+int mapping_file_format(const string& header) {
+	string field1, field2;
+	Util::String::Tokenizer tok(header, "\t");
+	tok >> field1 >> field2;
+	if (field1 == "accession" && field2 == "accession.version") {
+		tok >> field1 >> field2;
+		if (field1 == "taxid" && field2 == "gi" && !tok.good())
+			return 0;
+	}
+	else if (field1 == "accession.version" && field2 == "taxid" && !tok.good())
+		return 1;
+	throw std::runtime_error("Accession mapping file header has to be in one of these formats:\naccession\taccession.version\ttaxid\tgi\naccession.version\ttaxid");
+}
+
 void Taxonomy::load()
 {
-	char acc[max_accesion_len + 2];
 	unsigned taxid;
 	TextInputFile f(config.prot_accession2taxid);
 	f.getline();
+	int format = mapping_file_format(f.line);
+	string accession;
 	
 	while (!f.eof() && (f.getline(), !f.line.empty())) {
-		if (sscanf(f.line.c_str(), "%*s%15s%u%*u", acc, &taxid) != 2) {
-			//std::cout << f.line << endl;
-			throw std::runtime_error("Invalid taxonomy mapping file format.");
-		}
-		if (strlen(acc) > max_accesion_len) {
-			//std::cout << f.line << endl;
-			throw std::runtime_error("Accession exceeds supported length.");
-		}
-		accession2taxid_.push_back(std::make_pair(Accession(acc), taxid));
-		/*if (f.line_count % 10000 == 0)
-			std::cout << f.line_count << endl;*/
+		if (format == 0)
+			Util::String::Tokenizer(f.line, "\t") >> Util::String::Skip() >> accession >> taxid;
+		else
+			Util::String::Tokenizer(f.line, "\t") >> accession >> taxid;
+
+		if (accession.empty())
+			throw std::runtime_error("Empty accession field in line " + std::to_string(f.line_count));
+
+		size_t i = accession.find(":PDB=");
+		if (i != string::npos)
+			accession.erase(i);
+		
+		if (accession.length() > max_accesion_len)
+			throw std::runtime_error("Accession exceeds supported length in line " + std::to_string(f.line_count));
+
+		accession2taxid_.push_back(std::make_pair(Accession(accession.c_str()), taxid));
 	}
 	f.close();
 	merge_sort(accession2taxid_.begin(), accession2taxid_.end(), config.threads_);

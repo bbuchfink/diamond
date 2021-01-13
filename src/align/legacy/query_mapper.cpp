@@ -72,11 +72,6 @@ bool Target::is_outranked(const vector<int32_t> &v, double treshold) {
 	return true;
 }
 
-int QueryMapper::raw_score_cutoff() const
-{
-	return score_matrix.rawscore(config.min_bit_score == 0 ? score_matrix.bitscore(config.max_evalue, (unsigned)query_seq(0).length()) : config.min_bit_score);
-}
-
 QueryMapper::QueryMapper(const Parameters &params, size_t query_id, hit* begin, hit* end, const Metadata &metadata, bool target_parallel) :
 	parameters(params),
 	source_hits(std::make_pair(begin, end)),
@@ -95,7 +90,7 @@ void QueryMapper::init()
 {
 	if(config.log_query)
 		cout << "Query = " << query_ids::get()[query_id] << '\t' << query_id << endl;
-	if (config.comp_based_stats == 1)
+	if (Stats::CBS::hauser(config.comp_based_stats))
 		for (unsigned i = 0; i < align_mode.query_contexts; ++i)
 			query_cb.emplace_back(query_seq(i));
 	targets.resize(count_targets());
@@ -159,7 +154,7 @@ void QueryMapper::rank_targets(double ratio, double factor)
 {
 	if (config.taxon_k && config.toppercent == 100.0)
 		return;
-	std::stable_sort(targets.begin(), targets.end(), Target::compare);
+	std::stable_sort(targets.begin(), targets.end(), Target::compare_score);
 
 	int score = 0;
 	if (config.toppercent < 100) {
@@ -181,13 +176,12 @@ void QueryMapper::rank_targets(double ratio, double factor)
 
 void QueryMapper::score_only_culling()
 {
-	std::stable_sort(targets.begin(), targets.end(), Target::compare);
+	std::stable_sort(targets.begin(), targets.end(), config.toppercent == 100.0 ? Target::compare_evalue : Target::compare_score);
 	unique_ptr<TargetCulling> target_culling(TargetCulling::get());
 	const unsigned query_len = (unsigned)query_seq(0).length();
 	PtrVector<Target>::iterator i;
 	for (i = targets.begin(); i<targets.end();) {
-		if ((config.min_bit_score == 0 && score_matrix.evalue((*i)->filter_score, query_len) > config.max_evalue)
-			|| score_matrix.bitscore((*i)->filter_score) < config.min_bit_score)
+		if (!score_matrix.report_cutoff((*i)->filter_score, (*i)->filter_evalue))
 			break;
 		const int c = target_culling->cull(**i);
 		if (c == TargetCulling::FINISHED)
@@ -205,7 +199,7 @@ void QueryMapper::score_only_culling()
 
 bool QueryMapper::generate_output(TextBuffer &buffer, Statistics &stat)
 {
-	std::stable_sort(targets.begin(), targets.end(), Target::compare);
+	std::stable_sort(targets.begin(), targets.end(), config.toppercent == 100.0 ? Target::compare_evalue : Target::compare_score);
 
 	unsigned n_hsp = 0, n_target_seq = 0, hit_hsps = 0;
 	unique_ptr<TargetCulling> target_culling(TargetCulling::get());
@@ -215,10 +209,6 @@ bool QueryMapper::generate_output(TextBuffer &buffer, Statistics &stat)
 	unique_ptr<Output_format> f(output_format->clone());
 
 	for (size_t i = 0; i < targets.size(); ++i) {
-
-		if ((config.min_bit_score == 0 && score_matrix.evalue(targets[i].filter_score, query_len) > config.max_evalue)
-			|| score_matrix.bitscore(targets[i].filter_score) < config.min_bit_score)
-			break;
 
 		const size_t subject_id = targets[i].subject_block_id;
 		const unsigned database_id = ReferenceDictionary::get().block_to_database_id(subject_id);
@@ -300,15 +290,19 @@ bool QueryMapper::generate_output(TextBuffer &buffer, Statistics &stat)
 	return n_hsp > 0;
 }
 
-void Target::inner_culling(int cutoff)
+void Target::inner_culling()
 {
 	hsps.sort();
-	if (hsps.size() > 0)
+	if (hsps.size() > 0) {
 		filter_score = hsps.front().score;
-	else
+		filter_evalue = hsps.front().evalue;
+	}
+	else {
 		filter_score = 0;
+		filter_evalue = DBL_MAX;
+	}
 	for (list<Hsp>::iterator i = hsps.begin(); i != hsps.end();) {
-		if (i->is_enveloped_by(hsps.begin(), i, 0.5) || (int)i->score < cutoff)
+		if (i->is_enveloped_by(hsps.begin(), i, 0.5))
 			i = hsps.erase(i);
 		else
 			++i;
@@ -320,13 +314,7 @@ void Target::apply_filters(int dna_len, int subject_len, const char *query_title
 	for (list<Hsp>::iterator i = hsps.begin(); i != hsps.end();) {
 		if (i->id_percent() < config.min_id
 			|| i->query_cover_percent(dna_len) < config.query_cover
-			|| i->subject_cover_percent(subject_len) < config.subject_cover
-			|| (config.no_self_hits
-				&& i->identities == i->length
-				&& i->query_source_range.length() == (int)dna_len
-				&& i->subject_range.length() == (int)subject_len
-				&& strcmp(query_title, ref_title) == 0)
-			|| (config.filter_locus && !i->subject_range.includes(config.filter_locus)))
+			|| i->subject_cover_percent(subject_len) < config.subject_cover)
 			i = hsps.erase(i);
 		else
 			++i;

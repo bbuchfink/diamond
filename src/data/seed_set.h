@@ -16,9 +16,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#ifndef SEED_SET_H_
-#define SEED_SET_H_
-
+#pragma once
 #include <vector>
 #include "sequence_set.h"
 #include "../util/hash_table.h"
@@ -43,12 +41,12 @@ private:
 struct Hashed_seed_set
 {
 	Hashed_seed_set(const Sequence_set &seqs);
+	~Hashed_seed_set();
 	bool contains(uint64_t key, uint64_t shape) const
 	{
 		return data_[shape].contains(key);
 	}
 private:
-	PtrVector<PHash_set<Modulo2, No_hash> > data_;
+	PtrVector<PHash_set<Modulo2, No_hash>> data_;
+	std::vector<int> fd_;
 };
-
-#endif

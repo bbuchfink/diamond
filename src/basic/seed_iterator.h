@@ -1,6 +1,9 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2017 Benjamin Buchfink <buchfink@gmail.com>
+Copyright (C) 2016-2020 Max Planck Society for the Advancement of Science e.V.
+                        Benjamin Buchfink
+						
+Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,9 +19,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#ifndef SEED_ITERATOR_H_
-#define SEED_ITERATOR_H_
-
+#pragma once
 #include "shape.h"
 #include "sequence.h"
 #include "../util/hash_function.h"
@@ -68,7 +69,7 @@ struct Hashed_seed_iterator
 #else
 		const Letter l = *(ptr_++);
 #endif
-		if (l == value_traits.mask_char)
+		if (!is_amino_acid(l))
 			return false;
 		last_ |= Reduction::reduction(l);
 		seed = murmur_hash()(last_ & mask);
@@ -121,5 +122,3 @@ private:
 	const Letter *ptr_, *end_;
 	uint64_t last_;
 };
-
-#endif

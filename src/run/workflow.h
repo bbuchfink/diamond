@@ -20,6 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #pragma once
+#include <list>
 #include "../basic/config.h"
 #include "../util/data_structures/bit_vector.h"
 
@@ -41,7 +42,7 @@ struct Options {
 	bool self;
 	DatabaseFile *db;
 	Consumer *consumer;
-	TextInputFile *query_file;
+	std::list<TextInputFile> *query_file;
 	const BitVector* db_filter;
 };
 

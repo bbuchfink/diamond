@@ -1,7 +1,6 @@
 #ifndef _FILESTACK_H_
 #define _FILESTACK_H_
 
-#include <iostream>
 #include <string>
 #ifndef WIN32
 #include <unistd.h>

@@ -19,6 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #include <string>
+#include <iostream>
 #include "test.h"
 #include "../util/util.h"
 #include "../basic/config.h"
@@ -92,7 +93,7 @@ vector<Letter> simulate_homolog(const sequence &seq, double id, std::minstd_rand
 }
 
 void mutate() {
-	TextInputFile in(config.query_file);
+	TextInputFile in(config.query_file.front());
 	string id;
 	vector<Letter> seq;
 	input_value_traits = value_traits = nucleotide_traits;

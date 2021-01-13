@@ -49,8 +49,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/parallel/parallelizer.h"
 #include "../util/system/system.h"
 #include "../align/target.h"
+#include "../data/enum_seeds.h"
 
 using std::unique_ptr;
+using std::endl;
 
 namespace Workflow { namespace Search {
 
@@ -116,11 +118,19 @@ void run_ref_chunk(DatabaseFile &db_file,
 		char *ref_buffer = SeedArray::alloc_buffer(ref_hst);
 		timer.finish();
 
+		Hashed_seed_set* target_seeds = nullptr;
+		if (config.target_indexed) {
+			timer.go("Building database seed set");
+			target_seeds = new Hashed_seed_set(*ref_seqs::data_);
+			timer.finish();
+		}
+
 		for (unsigned i = 0; i < shapes.count(); ++i)
-			search_shape(i, query_chunk, query_buffer, ref_buffer, params);
+			search_shape(i, query_chunk, query_buffer, ref_buffer, params, target_seeds);
 
 		timer.go("Deallocating buffers");
 		delete[] ref_buffer;
+		delete target_seeds;
 
 		timer.go("Clearing query masking");
 		Frequent_seeds::clear_masking(*query_seqs::data_);
@@ -139,6 +149,11 @@ void run_ref_chunk(DatabaseFile &db_file,
 	}
 	else
 		out = &master_out;
+
+	if (config.target_seg == 1) {
+		timer.go("SEG masking targets");
+		mask_seqs(*ref_seqs::data_, Masking::get(), true, Masking::Algo::SEG);
+	}
 
 	timer.go("Computing alignments");
 	align_queries(*Trace_pt_buffer::instance, out, params, metadata);
@@ -169,14 +184,6 @@ void run_query_chunk(DatabaseFile &db_file,
 	const Options &options)
 {
 	auto P = Parallelizer::get();
-
-	const Parameters params {
-		db_file.ref_header.sequences,
-		db_file.ref_header.letters,
-		db_file.total_blocks(),
-		config.gapped_filter_evalue1,
-		config.gapped_filter_evalue
-	};
 
 	task_timer timer("Building query seed set");
 	if (query_chunk == 0)
@@ -215,10 +222,18 @@ void run_query_chunk(DatabaseFile &db_file,
 	}
 	timer.finish();
 
+	const Parameters params{
+	db_file.ref_header.sequences,
+	db_file.ref_header.letters,
+	db_file.total_blocks(),
+	config.gapped_filter_evalue1,
+	config.gapped_filter_evalue
+	};
+
 	char *query_buffer = nullptr;
 	const pair<size_t, size_t> query_len_bounds = query_seqs::data_->len_bounds(shapes[0].length_);
 
-	if (!config.swipe_all) {
+	if (!config.swipe_all && !config.target_indexed) {
 		timer.go("Building query histograms");
 		query_hst = Partitioned_histogram(*query_seqs::data_, false, &no_filter);
 
@@ -384,13 +399,23 @@ void master_thread(DatabaseFile *db_file, task_timer &total_timer, Metadata &met
 	}
 
 	task_timer timer("Opening the input file", true);
-	TextInputFile *query_file = nullptr;
+	list<TextInputFile> *query_file = nullptr;
 	const Sequence_file_format *format_n = nullptr;
+	bool paired_mode = false;
 	if (!options.self) {
 		if (config.query_file.empty() && !options.query_file)
 			std::cerr << "Query file parameter (--query/-q) is missing. Input will be read from stdin." << endl;
-		query_file = options.query_file ? options.query_file : new TextInputFile(config.query_file);
-		format_n = guess_format(*query_file);
+		if (options.query_file)
+			query_file = options.query_file;
+		else {
+			query_file = new list<TextInputFile>;
+			for(const string& f : config.query_file)
+				query_file->emplace_back(f);
+			if (query_file->empty())
+				query_file->emplace_back("");
+			paired_mode = query_file->size() == 2;
+		}
+		format_n = guess_format(query_file->front());
 	}
 
 	current_query_chunk = 0;
@@ -411,9 +436,9 @@ void master_thread(DatabaseFile *db_file, task_timer &total_timer, Metadata &met
 				deallocate_queries();
 				query_file_offset = db_file->tell_seq();
 			} else {
-				if (!load_seqs(*query_file, *format_n, &query_seqs::data_, query_ids::data_, &query_source_seqs::data_,
+				if (!load_seqs(query_file->begin(), query_file->end(), *format_n, &query_seqs::data_, query_ids::data_, &query_source_seqs::data_,
 					config.store_query_quality ? &query_qual : nullptr,
-					(size_t)(config.chunk_size * 1e9), config.qfilt, input_value_traits))
+					(size_t)(config.chunk_size * 1e9), config.qfilt, input_value_traits, paired_mode ? 2 : 1))
 					break;
 				deallocate_queries();
 			}
@@ -422,7 +447,7 @@ void master_thread(DatabaseFile *db_file, task_timer &total_timer, Metadata &met
 			db_file->rewind();
 			query_file_offset = 0;
 		} else {
-			query_file->rewind();
+			query_file->front().rewind();
 		}
 
 		for (size_t i=0; i<current_query_chunk; ++i) {
@@ -465,9 +490,9 @@ void master_thread(DatabaseFile *db_file, task_timer &total_timer, Metadata &met
 			query_file_offset = db_file->tell_seq();
 		}
 		else
-			if (!load_seqs(*query_file, *format_n, &query_seqs::data_, query_ids::data_, &query_source_seqs::data_,
+			if (!load_seqs(query_file->begin(), query_file->end(), *format_n, &query_seqs::data_, query_ids::data_, &query_source_seqs::data_,
 				config.store_query_quality ? &query_qual : nullptr,
-				(size_t)(config.chunk_size * 1e9), config.qfilt, input_value_traits))
+				(size_t)(config.chunk_size * 1e9), config.qfilt, input_value_traits, paired_mode ? 2 : 1))
 				break;
 
 		timer.finish();
@@ -494,7 +519,7 @@ void master_thread(DatabaseFile *db_file, task_timer &total_timer, Metadata &met
 
 	if (query_file && !options.query_file) {
 		timer.go("Closing the input file");
-		query_file->close();
+		query_file->front().close();
 		delete query_file;
 	}
 

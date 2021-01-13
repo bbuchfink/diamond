@@ -29,6 +29,7 @@ using std::vector;
 using std::array;
 using std::list;
 using std::map;
+using std::endl;
 
 namespace Extension {
 
@@ -68,20 +69,24 @@ int band(int len) {
 Match::Match(size_t target_block_id, std::array<std::list<Hsp>, MAX_CONTEXT> &hsps, int ungapped_score):
 	target_block_id(target_block_id),
 	filter_score(0),
+	filter_evalue(DBL_MAX),
 	ungapped_score(ungapped_score)
 {
 	for (unsigned i = 0; i < align_mode.query_contexts; ++i)
 		hsp.splice(hsp.end(), hsps[i]);
 	hsp.sort();
-	if (!hsp.empty())
+	if (!hsp.empty()) {
+		filter_evalue = hsp.front().evalue;
 		filter_score = hsp.front().score;
+	}
 	if (config.max_hsps > 0)
 		max_hsp_culling();
 }
 
-void add_dp_targets(const WorkTarget &target, int target_idx, const sequence *query_seq, array<array<vector<DpTarget>, 2>, MAX_CONTEXT> &dp_targets, int flags, const double* query_comp) {
+void add_dp_targets(const WorkTarget &target, int target_idx, const sequence *query_seq, array<array<vector<DpTarget>, 2>, MAX_CONTEXT> &dp_targets, int flags) {
 	const int band = Extension::band((int)query_seq->length()),
 		slen = (int)target.seq.length();
+	const Stats::TargetMatrix* matrix = target.matrix.scores.empty() ? nullptr : &target.matrix;
 	for (unsigned frame = 0; frame < align_mode.query_contexts; ++frame) {
 
 		if (config.ext == "full") {
@@ -109,7 +114,7 @@ void add_dp_targets(const WorkTarget &target, int target_idx, const sequence *qu
 			}
 			else {
 				if (d0 != INT_MAX)
-					dp_targets[frame][bits].emplace_back(target.seq, d0, d1, j0, j1, target_idx, (int)query_seq->length(), query_comp);
+					dp_targets[frame][bits].emplace_back(target.seq, d0, d1, j0, j1, target_idx, (int)query_seq->length(), matrix);
 				d0 = b0;
 				d1 = b1;
 				j0 = hsp.subject_range.begin_;
@@ -118,27 +123,24 @@ void add_dp_targets(const WorkTarget &target, int target_idx, const sequence *qu
 			}
 		}
 
-		dp_targets[frame][bits].emplace_back(target.seq, d0, d1, j0, j1, target_idx, (int)query_seq->length(), query_comp);
-
+		dp_targets[frame][bits].emplace_back(target.seq, d0, d1, j0, j1, target_idx, (int)query_seq->length(), matrix);
 	}
 }
 
 vector<Target> align(const vector<WorkTarget> &targets, const sequence *query_seq, const Bias_correction *query_cb, int source_query_len, int flags, Statistics &stat) {
-	const int raw_score_cutoff = Extension::raw_score_cutoff(query_seq[0].length());
-
-	array<double, 20> query_comp;
-	if (config.comp_based_stats == 2)
-		query_comp = composition(query_seq[0]);
-
 	array<array<vector<DpTarget>, 2>, MAX_CONTEXT> dp_targets;
 	vector<Target> r;
 	if (targets.empty())
 		return r;
 	r.reserve(targets.size());
+	size_t cbs_targets = 0;
 	for (int i = 0; i < (int)targets.size(); ++i) {
-		add_dp_targets(targets[i], i, query_seq, dp_targets, flags, config.comp_based_stats == 2 ? query_comp.data() : nullptr);
-		r.emplace_back(targets[i].block_id, targets[i].seq, targets[i].ungapped_score);
+		add_dp_targets(targets[i], i, query_seq, dp_targets, flags);
+		if (targets[i].adjusted_matrix())
+			++cbs_targets;
+		r.emplace_back(targets[i].block_id, targets[i].seq, targets[i].ungapped_score, targets[i].matrix);
 	}
+	stat.inc(Statistics::TARGET_HITS3_CBS, cbs_targets);
 
 	if (config.ext == "full")
 		flags |= DP::FULL_MATRIX;
@@ -152,9 +154,8 @@ vector<Target> align(const vector<WorkTarget> &targets, const sequence *query_se
 			dp_targets[frame][1],
 			nullptr,
 			Frame(frame),
-			config.comp_based_stats == 1 ? &query_cb[frame] : nullptr,
+			Stats::CBS::hauser(config.comp_based_stats) ? &query_cb[frame] : nullptr,
 			flags,
-			raw_score_cutoff,
 			stat);
 		while (!hsp.empty())
 			r[hsp.front().swipe_target].add_hit(hsp, hsp.begin());
@@ -163,7 +164,7 @@ vector<Target> align(const vector<WorkTarget> &targets, const sequence *query_se
 	vector<Target> r2;
 	r2.reserve(r.size());
 	for (vector<Target>::iterator i = r.begin(); i != r.end(); ++i)
-		if (i->filter_score > 0) {
+		if (i->filter_evalue != DBL_MAX) {
 			if(flags & DP::TRACEBACK)
 				i->inner_culling(source_query_len);
 			r2.push_back(std::move(*i));
@@ -173,10 +174,10 @@ vector<Target> align(const vector<WorkTarget> &targets, const sequence *query_se
 }
 
 vector<Target> full_db_align(const sequence *query_seq, const Bias_correction *query_cb, int flags, Statistics &stat) {
-	const int raw_score_cutoff = Extension::raw_score_cutoff(query_seq[0].length());
 	ContainerIterator<DpTarget, Sequence_set> target_it(*ref_seqs::data_, ref_seqs::data_->get_length());
 	vector<DpTarget> v;
 	vector<Target> r;
+	Stats::TargetMatrix matrix;
 
 	list<Hsp> hsp = DP::BandedSwipe::swipe(
 		query_seq[0],
@@ -184,9 +185,8 @@ vector<Target> full_db_align(const sequence *query_seq, const Bias_correction *q
 		v,
 		&target_it,
 		Frame(0),
-		config.comp_based_stats == 1 ? &query_cb[0] : nullptr,
+		Stats::CBS::hauser(config.comp_based_stats) ? &query_cb[0] : nullptr,
 		flags | DP::FULL_MATRIX,
-		raw_score_cutoff,
 		stat);
 
 	map<unsigned, unsigned> subject_idx;
@@ -194,35 +194,29 @@ vector<Target> full_db_align(const sequence *query_seq, const Bias_correction *q
 		size_t block_id = hsp.begin()->swipe_target;
 		const auto it = subject_idx.emplace(block_id, (unsigned)r.size());
 		if (it.second)
-			r.emplace_back(block_id, ref_seqs::get()[block_id], 0);
+			r.emplace_back(block_id, ref_seqs::get()[block_id], 0, matrix);
 		unsigned i = it.first->second;
-		r[i].filter_score = hsp.begin()->score;
-		list<Hsp> &l = r[i].hsp[0];
-		l.splice(l.end(), hsp, hsp.begin());
+		r[i].add_hit(hsp, hsp.begin());
 	}
 
 	return r;
 }
 
-void add_dp_targets(const Target &target, int target_idx, const sequence *query_seq, array<array<vector<DpTarget>, 2>, MAX_CONTEXT> &dp_targets, const double* query_comp) {
+void add_dp_targets(const Target &target, int target_idx, const sequence *query_seq, array<array<vector<DpTarget>, 2>, MAX_CONTEXT> &dp_targets) {
 	const int band = Extension::band((int)query_seq->length()),
 		slen = (int)target.seq.length();
+	const Stats::TargetMatrix* matrix = target.adjusted_matrix() ? &target.matrix : nullptr;
 	for (unsigned frame = 0; frame < align_mode.query_contexts; ++frame) {
 		const int qlen = (int)query_seq[frame].length();
 		for (const Hsp &hsp : target.hsp[frame]) {
 			const bool byte_row_counter = config.ext == "full" ? qlen < 256 : (hsp.d_end - hsp.d_begin < 256);
 			vector<DpTarget>& v = (hsp.score < 255 && byte_row_counter) ? dp_targets[frame][0] : dp_targets[frame][1];
-			v.emplace_back(target.seq, hsp.d_begin, hsp.d_end, hsp.seed_hit_range.begin_, hsp.seed_hit_range.end_, target_idx, qlen, query_comp);
+			v.emplace_back(target.seq, hsp.d_begin, hsp.d_end, hsp.seed_hit_range.begin_, hsp.seed_hit_range.end_, target_idx, qlen, matrix);
 		}
 	}
 }
 
 vector<Match> align(vector<Target> &targets, const sequence *query_seq, const Bias_correction *query_cb, int source_query_len, int flags, Statistics &stat, bool first_round_traceback) {
-	const int raw_score_cutoff = Extension::raw_score_cutoff(query_seq[0].length());
-	array<double, 20> query_comp;
-	if (config.comp_based_stats == 2)
-		query_comp = composition(query_seq[0]);
-
 	array<array<vector<DpTarget>, 2>, MAX_CONTEXT> dp_targets;
 	vector<Match> r;
 	if (targets.empty())
@@ -238,7 +232,7 @@ vector<Match> align(vector<Target> &targets, const sequence *query_seq, const Bi
 	for (int i = 0; i < (int)targets.size(); ++i) {
 		if (config.log_subject)
 			std::cout << "Target=" << ref_ids::get()[targets[i].block_id] << " id=" << i << endl;
-		add_dp_targets(targets[i], i, query_seq, dp_targets, config.comp_based_stats == 2 ? query_comp.data() : nullptr);
+		add_dp_targets(targets[i], i, query_seq, dp_targets);
 		r.emplace_back(targets[i].block_id, targets[i].ungapped_score);
 	}
 
@@ -254,9 +248,8 @@ vector<Match> align(vector<Target> &targets, const sequence *query_seq, const Bi
 			dp_targets[frame][1],
 			nullptr,
 			Frame(frame),
-			config.comp_based_stats == 1 ? &query_cb[frame] : nullptr,
+			Stats::CBS::hauser(config.comp_based_stats) ? &query_cb[frame] : nullptr,
 			DP::TRACEBACK | flags,
-			raw_score_cutoff,
 			stat);
 		while (!hsp.empty())
 			r[hsp.front().swipe_target].add_hit(hsp, hsp.begin());

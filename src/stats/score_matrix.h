@@ -22,25 +22,24 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #pragma once
 #include <limits>
-#include <iostream>
+#include <ostream>
 #include <math.h>
 #include <stdint.h>
 #include "../util/log_stream.h"
-#include "value.h"
+#include "../basic/value.h"
 #include "../lib/alp/sls_alignment_evaluer.hpp"
-
-using std::string;
-using std::cout;
-using std::endl;
+#include "../stats/standard_matrix.h"
 
 const double LN_2 = 0.69314718055994530941723212145818;
 
 struct Score_matrix
 {
 
+	struct Custom {};
+
 	Score_matrix() :ln_k_(0.0) {}
-	Score_matrix(const string &matrix, int gap_open, int gap_extend, int frame_shift, int stop_match_score, uint64_t db_letters = 0, bool use_alp=false);
-	Score_matrix(const string &matrix_file, double lambda, double K, int gap_open, int gap_extend, uint64_t db_letters = 0);
+	Score_matrix(const std::string& matrix, int gap_open, int gap_extend, int frame_shift, int stop_match_score, uint64_t db_letters = 0, int scale = 1);
+	Score_matrix(const std::string &matrix_file, int gap_open, int gap_extend, int stop_match_score, const Custom&, uint64_t db_letters = 0);
 
 	friend std::ostream& operator<<(std::ostream& s, const Score_matrix &m);
 
@@ -78,9 +77,18 @@ struct Score_matrix
 		return matrix32_.data;
 	}
 
+	std::vector<const int*> matrix32_scaled_pointers() const {
+		return matrix32_scaled_.pointers();
+	}
+
 	int operator()(Letter a, Letter b) const
 	{
-		return matrix8_.data[(int(a) << 5) + int(b)];
+		return matrix32_.data[(int(a) << 5) + int(b)];
+	}
+
+	int operator()(size_t a, size_t b) const
+	{
+		return matrix32_.data[(a << 5) + b];
 	}
 
 	const int* row(Letter a) const
@@ -103,8 +111,7 @@ struct Score_matrix
 	int rawscore(double bitscore) const
 	{ return (int)ceil(rawscore(bitscore, double ())); }
 
-	double evalue(int raw_score, unsigned query_len) const
-	{ return db_letters_ * query_len * pow(2, -bitscore(raw_score)); }
+	double evalue(int raw_score, unsigned query_len, unsigned subject_len) const;
 
 	double evalue_norm(int raw_score, int query_len) const
 	{
@@ -121,12 +128,12 @@ struct Score_matrix
 
 	double lambda() const
 	{
-		return constants_[3];
+		return evaluer.parameters().lambda;
 	}
 
 	double k() const
 	{
-		return constants_[4];
+		return evaluer.parameters().K;
 	}
 
 	double ln_k() const
@@ -162,7 +169,20 @@ struct Score_matrix
 		db_letters_ = (double)n;
 	}
 
+	const double* joint_probs() const {
+		return (const double*)standard_matrix_->joint_probs;
+	}
+
+	const double* background_freqs() const {
+		return standard_matrix_->background_freqs.data();
+	}
+
+	double ungapped_lambda() const {
+		return standard_matrix_->ungapped_constants().Lambda;
+	}
+
 	double avg_id_score() const;
+	bool report_cutoff(int score, double evalue) const;
 
 private:
 
@@ -181,15 +201,27 @@ private:
 			if (stop_match_score != 1)
 				data[24 * 32 + 24] = stop_match_score;
 		}
+		Scores(const double (&freq_ratios)[Stats::NCBI_ALPH][Stats::NCBI_ALPH], double lambda, const int8_t* scores, int scale);
+		std::vector<const _t*> pointers() const;
+		friend std::ostream& operator<<(std::ostream& s, const Scores& scores) {
+			for (int i = 0; i < 20; ++i) {
+				for (int j = 0; j < 20; ++j)
+					s << scores.data[i * 32 + j] << '\t';
+				s << std::endl;
+			}
+			return s;
+		}
 		alignas(32) _t data[32 * 32];
 	};
 
+	const Stats::StandardMatrix* standard_matrix_;
+	const int8_t* score_array_;
 	int gap_open_, gap_extend_, frame_shift_;
 	double db_letters_;
-	const double* constants_;
 	double ln_k_;
-	string name_;
+	std::string name_;
 	Scores<int8_t> matrix8_;
+	Scores<int> matrix32_, matrix32_scaled_;
 	int8_t bias_;
 	Scores<uint8_t> matrix8u_;
 	Scores<int8_t> matrix8_low_;
@@ -197,7 +229,6 @@ private:
 	Scores<int8_t> matrix8u_low_;
 	Scores<int8_t> matrix8u_high_;
 	Scores<int16_t> matrix16_;
-	Scores<int> matrix32_;
 	Sls::AlignmentEvaluer evaluer;
 
 };

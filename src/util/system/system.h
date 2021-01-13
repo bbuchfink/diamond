@@ -1,8 +1,7 @@
-#ifndef UTIL_SYSTEM_SYSTEM_H_
-#define UTIL_SYSTEM_SYSTEM_H_
-
+#pragma once
 #include <stdio.h>
 #include <string>
+#include <tuple>
 
 enum class Color { RED, GREEN, YELLOW };
 
@@ -17,6 +16,8 @@ size_t getPeakRSS();
 void log_rss();
 size_t file_size(const char* name);
 double total_ram();
+std::tuple<char*, size_t, int> mmap_file(const char* filename);
+void unmap_file(char* ptr, size_t size, int fd);
 
 #ifdef _MSC_VER
 #define POPEN _popen
@@ -24,6 +25,4 @@ double total_ram();
 #else
 #define POPEN popen
 #define PCLOSE pclose
-#endif
-
 #endif

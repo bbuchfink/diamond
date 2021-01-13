@@ -24,7 +24,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <algorithm>
 #include <limits.h>
 #include "../util/simd.h"
-#include "../basic/score_matrix.h"
+#include "../stats/score_matrix.h"
 #include "../util/simd/vector.h"
 
 template<typename _score>
@@ -313,6 +313,10 @@ static inline void store_sv(int32_t sv, int32_t *dst)
 
 static inline int32_t load_sv(const int32_t *x) {
 	return *x;
+}
+
+static inline int32_t load_sv(int32_t a, int32_t b, uint32_t mask) {
+	return mask ? b : a;
 }
 
 #ifdef __SSE2__

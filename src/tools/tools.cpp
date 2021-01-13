@@ -1,3 +1,4 @@
+#include <iostream>
 #include <vector>
 #include "tsv_record.h"
 #include "../basic/config.h"
@@ -35,7 +36,7 @@ void mcl() {
 }
 
 void split() {
-	TextInputFile in(config.query_file);
+	TextInputFile in(config.query_file.front());
 	string id;
 	vector<Letter> seq;
 	size_t n = 0, f = 0, b = (size_t)(config.chunk_size * 1e9);

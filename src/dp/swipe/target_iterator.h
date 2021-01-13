@@ -26,7 +26,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../basic/value.h"
 #include "../../util/simd/vector.h"
 #include "../../util/dynamic_iterator.h"
-#include "../comp_based_stats.h"
+#include "../../stats/hauser_correction.h"
 
 namespace DISPATCH_ARCH {
 
@@ -44,6 +44,7 @@ struct TargetIterator
 		next(0),
 		n_targets(int(subject_end - subject_begin)),
 		cols(0),
+		custom_matrix_16bit(false),
 		subject_begin(subject_begin)
 	{
 		for (; next < std::min((int)CHANNELS, n_targets); ++next) {
@@ -55,8 +56,8 @@ struct TargetIterator
 			cols = std::max(cols, j1 - pos[next]);
 			target[next] = next;
 			active.push_back(next);
-			if(config.target_bias)
-				cbs_.emplace_back(t.seq);
+			if (t.adjusted_matrix() && (t.matrix->score_max > SCHAR_MAX || t.matrix->score_min < SCHAR_MIN))
+				custom_matrix_16bit = true;
 		}
 	}
 
@@ -78,18 +79,6 @@ struct TargetIterator
 			return SUPER_HARD_MASK;
 	}
 
-	template<typename _sv>
-	_sv cbs(const _sv&) const {
-		alignas(32) _t s[CHANNELS];
-		std::fill(s, s + CHANNELS, 0);
-		for (int i = 0; i < active.size(); ++i) {
-			const int channel = active[i];
-			if (pos[channel] < 0)
-				continue;
-			s[channel] = cbs_[channel].int8[pos[channel]];
-		}
-		return load_sv(s);
-	}
 
 #ifdef __SSSE3__
 	SeqVector get() const
@@ -119,8 +108,22 @@ struct TargetIterator
 		std::fill(target_scores, target_scores + 32, blank);
 		for (int i = 0; i < active.size(); ++i) {
 			const int channel = active[i];
-			const char l = (*this)[channel];
-			target_scores[channel] = &(subject_begin[target[channel]].matrix.scores[32 * (int)l]);
+			const int l = (int)(*this)[channel];
+			const DpTarget& dp_target = subject_begin[target[channel]];
+			target_scores[channel] = dp_target.adjusted_matrix() ? &dp_target.matrix->scores[32 * l] : &score_matrix.matrix8()[32 * l];
+		}
+		return target_scores;
+	}
+
+	std::vector<const int32_t*> get32() const {
+		static const int32_t blank[32] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+		std::vector<const int32_t*> target_scores(CHANNELS);
+		std::fill(target_scores.begin(), target_scores.end(), blank);
+		for (int i = 0; i < active.size(); ++i) {
+			const int channel = active[i];
+			const int l = (int)(*this)[channel];
+			const DpTarget& dp_target = subject_begin[target[channel]];
+			target_scores[channel] = dp_target.adjusted_matrix() ? &dp_target.matrix->scores32[32 * l] : &score_matrix.matrix32()[32 * l];
 		}
 		return target_scores;
 	}
@@ -130,8 +133,6 @@ struct TargetIterator
 		if (next < n_targets) {
 			pos[channel] = 0;
 			target[channel] = next++;
-			if (config.target_bias)
-				cbs_[channel] = Bias_correction(subject_begin[target[channel]].seq);
 			return true;
 		}
 		active.erase(i);
@@ -146,9 +147,17 @@ struct TargetIterator
 		return true;
 	}
 
+	uint32_t cbs_mask() const {
+		uint32_t r = 0;
+		for (uint32_t i = 0; i < (uint32_t)n_targets; ++i)
+			if (subject_begin[i].adjusted_matrix())
+				r |= 1 << i;
+		return r;
+	}
+
 	int pos[CHANNELS], target[CHANNELS], next, n_targets, cols;
+	bool custom_matrix_16bit;
 	Static_vector<int, CHANNELS> active;
-	std::vector<Bias_correction> cbs_;
 	const vector<DpTarget>::const_iterator subject_begin;
 };
 

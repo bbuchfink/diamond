@@ -17,7 +17,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #include "dp.h"
-#include "../basic/score_matrix.h"
+#include "../stats/score_matrix.h"
 
 /*int xdrop_ungapped(const Letter *query, const Letter *subject, unsigned seed_len, unsigned &delta, unsigned &len)
 {

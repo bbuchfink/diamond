@@ -24,11 +24,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <vector>
 #include "../basic/sequence.h"
 #include "../basic/match.h"
-#include "comp_based_stats.h"
+#include "../stats/hauser_correction.h"
 #include "../basic/statistics.h"
 #include "../basic/config.h"
 #include "../util/dynamic_iterator.h"
-#include "../basic/cbs.h"
+#include "../stats/cbs.h"
 
 int smith_waterman(const sequence &query, const sequence &subject, unsigned band, unsigned padding, int op, int ep);
 
@@ -82,18 +82,18 @@ struct Fixed_score_buffer
 		s << '\t';
 		for (int j = 0; j < int(buf.data_.size() / buf.col_size_); ++j)
 			s << j << '\t';
-		s << endl;
+		s << std::endl;
 		for (int i = 0; i < int(buf.col_size_); ++i) {
 			s << i << '\t';
 			for (int j = 0; j < int(buf.data_.size() / buf.col_size_); ++j)
 				s << buf(i, j) << '\t';
-			s << endl;
+			s << std::endl;
 		}
 		return s;
 	}
 
 private:
-	vector<_t> data_;
+	std::vector<_t> data_;
 	size_t col_size_;
 
 };
@@ -153,22 +153,22 @@ extern size_t cells;
 struct DpTarget
 {
 	DpTarget():
-		target_idx(-1)
+		target_idx(-1),
+		matrix(nullptr)
 	{}
-	DpTarget(const sequence &seq, int d_begin, int d_end, int j_begin, int j_end, int target_idx = 0, int qlen = 0, const double* query_comp = nullptr) :
+	DpTarget(const sequence &seq, int d_begin, int d_end, int j_begin, int j_end, int target_idx = 0, int qlen = 0, const Stats::TargetMatrix* matrix = nullptr) :
 		seq(seq),
 		d_begin(d_begin),
 		d_end(d_end),
 		j_begin(j_begin),
 		j_end(j_end),
-		target_idx(target_idx)
+		target_idx(target_idx),
+		matrix(matrix)
 	{
 		int pos = std::max(d_end - 1, 0) - (d_end - 1);
 		const int d0 = d_begin;
 		const int j1 = std::min(qlen - 1 - d0, (int)(seq.length() - 1)) + 1;
 		cols = j1 - pos;
-		if (query_comp)
-			matrix = TargetMatrix(query_comp, seq);
 	}
 	DpTarget(const sequence& seq, int target_idx):
 		seq(seq),
@@ -191,9 +191,15 @@ struct DpTarget
 	bool blank() const {
 		return target_idx == -1;
 	}
+	bool adjusted_matrix() const {
+		return matrix != nullptr;
+	}
+	int matrix_scale() const {
+		return adjusted_matrix() ? config.cbs_matrix_scale : 1;
+	}
 	sequence seq;
 	int d_begin, d_end, j_begin, j_end, target_idx, cols;
-	TargetMatrix matrix;
+	const Stats::TargetMatrix* matrix;
 };
 
 struct DpStat
@@ -242,7 +248,7 @@ namespace Swipe {
 
 namespace BandedSwipe {
 
-DECL_DISPATCH(std::list<Hsp>, swipe, (const sequence &query, std::vector<DpTarget> &targets8, std::vector<DpTarget> &targets16, DynamicIterator<DpTarget>* targets, Frame frame, const Bias_correction *composition_bias, int flags, int score_cutoff, Statistics &stat))
+DECL_DISPATCH(std::list<Hsp>, swipe, (const sequence &query, std::vector<DpTarget> &targets8, std::vector<DpTarget> &targets16, DynamicIterator<DpTarget>* targets, Frame frame, const Bias_correction *composition_bias, int flags, Statistics &stat))
 
 }
 

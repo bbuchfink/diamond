@@ -24,7 +24,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/hash_function.h"
 #include "config.h"
 #include "value.h"
-#include "score_matrix.h"
+#include "../stats/score_matrix.h"
 
 typedef uint64_t Packed_seed;
 

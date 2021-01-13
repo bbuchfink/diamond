@@ -119,9 +119,14 @@ struct JoinWriter
 struct Join_record
 {
 
-	bool operator<(const Join_record &rhs) const
+	static bool cmp_evalue(const Join_record& lhs, const Join_record &rhs)
 	{
-		return rhs.same_subject_ ||  (!rhs.same_subject_ && (info_.score < rhs.info_.score || (info_.score == rhs.info_.score && rhs.db_precedence(*this))));
+		return rhs.same_subject_ || (!rhs.same_subject_ && (lhs.info_.evalue > rhs.info_.evalue || (lhs.info_.evalue == rhs.info_.evalue && cmp_score(lhs, rhs))));
+	}
+
+	static bool cmp_score(const Join_record& lhs, const Join_record& rhs)
+	{
+		return rhs.same_subject_ || (!rhs.same_subject_ && (lhs.info_.score < rhs.info_.score || (lhs.info_.score == rhs.info_.score && rhs.db_precedence(lhs))));
 	}
 
 	bool db_precedence(const Join_record &rhs) const
@@ -160,7 +165,7 @@ struct BlockJoiner
 			it.push_back(buf[i].begin());
 			Join_record::push_next(i, std::numeric_limits<unsigned>::max(), it.back(), records);
 		}
-		std::make_heap(records.begin(), records.end());
+		std::make_heap(records.begin(), records.end(), (config.toppercent == 100.0 && config.global_ranking_targets == 0) ? Join_record::cmp_evalue : Join_record::cmp_score);
 	}
 	bool get(vector<IntermediateRecord> &target_hsp, unsigned & block_idx)
 	{
@@ -171,15 +176,16 @@ struct BlockJoiner
 		block_idx = block;
 		const unsigned subject = first.info_.subject_dict_id;
 		target_hsp.clear();
+		const auto pred = (config.toppercent == 100.0 && config.global_ranking_targets == 0) ? Join_record::cmp_evalue : Join_record::cmp_score;
 		do {
 			const Join_record &next = records.front();
 			if (next.block_ != block || next.info_.subject_dict_id != subject)
 				return true;
 			target_hsp.push_back(next.info_);
-			std::pop_heap(records.begin(), records.end());
+			std::pop_heap(records.begin(), records.end(), pred);
 			records.pop_back();
 			if (Join_record::push_next(block, subject, it[block], records))
-				std::push_heap(records.begin(), records.end());
+				std::push_heap(records.begin(), records.end(), pred);
 		} while (!records.empty());
 		return true;
 	}

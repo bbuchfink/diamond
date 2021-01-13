@@ -45,6 +45,6 @@ void PAF_format::print_match(const Hsp_context& r, const Metadata &metadata, Tex
 		<< "AS:i:" << (uint32_t)score_matrix.bitscore(r.score()) << '\t'
 		<< "ZR:i:" << r.score() << '\t'
 		<< "ZE:f:";
-	out.print_e(score_matrix.evalue(r.score(), (unsigned)r.query.index(r.frame()).length()));
+	out.print_e(r.evalue());
 	out << '\n';
 }

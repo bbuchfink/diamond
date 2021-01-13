@@ -24,7 +24,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/binary_buffer.h"
 #include "output_format.h"
 #include "../util/task_queue.h"
-#include "../basic/score_matrix.h"
+#include "../stats/score_matrix.h"
 #include "../data/taxonomy.h"
 #include "../basic/parameters.h"
 #include "../data/metadata.h"
@@ -128,7 +128,7 @@ void view()
 {
 	task_timer timer("Loading subject IDs");
 	DAA_file daa(config.daa_file);
-	score_matrix = Score_matrix("", daa.lambda(), daa.kappa(), daa.gap_open_penalty(), daa.gap_extension_penalty(), daa.db_letters());
+	score_matrix = Score_matrix(daa.score_matrix(), daa.gap_open_penalty(), daa.gap_extension_penalty(), 0, 1, daa.db_letters());
 	timer.finish();
 
 	message_stream << "Scoring parameters: " << score_matrix << endl;
