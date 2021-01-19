@@ -20,6 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <algorithm>
 #include <iterator>
+#include <ctype.h>
 #include "standard_matrix.h"
 
 using std::string;
@@ -31,7 +32,7 @@ const std::map<std::string, const StandardMatrix&> StandardMatrix::matrices = { 
 
 const StandardMatrix& StandardMatrix::get(const std::string& name) {
 	string n;
-	std::transform(name.begin(), name.end(), std::back_inserter(n), [](unsigned char c) { return std::tolower(c); });
+	std::transform(name.begin(), name.end(), std::back_inserter(n), [](unsigned char c) { return tolower(c); });
 	auto it = matrices.find(n);
 	if (it == matrices.end())
 		throw std::runtime_error("Unknown scoring matrix: " + name);

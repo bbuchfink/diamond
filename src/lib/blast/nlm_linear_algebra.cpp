@@ -71,7 +71,7 @@ Nlm_LtriangMatrixNew(int n)
 
     L    = (double**) calloc(n, sizeof(double *));
     if (L != NULL) {
-        L[0] = (double*) malloc(nelts * sizeof(double));
+        L[0] = (double*) calloc(nelts, sizeof(double)); // was malloc
         if (L[0] != NULL) {
             for (i = 1;  i < n;  i++) {
                 L[i] = L[i - 1] + i;

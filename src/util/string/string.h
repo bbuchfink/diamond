@@ -49,6 +49,8 @@ namespace Util { namespace String {
 
 // Workaround since sprintf is inconsistent in double rounding for different implementations.
 inline int format_double(double x, char *p) {
+	if (x >= 100.0)
+		return sprintf(p, "%lli", (long long)std::floor(x)); // for keeping output compatible with BLAST
 	long long i = std::llround(x*10.0);
 	return sprintf(p, "%lli.%lli", i / 10, i % 10);
 }

@@ -209,7 +209,10 @@ struct TextBuffer
 	TextBuffer& print_e(double x)
 	{
 		reserve(32);
-		ptr_ += sprintf(ptr_, "%.1e", x);
+		if (x == 0.0)
+			ptr_ += sprintf(ptr_, "0.0");
+		else
+			ptr_ += sprintf(ptr_, "%.2e", x);
 		return *this;
 	}
 

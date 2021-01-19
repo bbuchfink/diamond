@@ -65,7 +65,7 @@ vector<Target> extend(const Parameters& params,
 	const sequence *query_seq,
 	int source_query_len,
 	const Bias_correction *query_cb,
-	const double* query_comp,
+	const Stats::Composition& query_comp,
 	FlatArray<SeedHit> &seed_hits,
 	vector<uint32_t> &target_block_ids,
 	const Metadata& metadata,
@@ -118,19 +118,19 @@ vector<Match> extend(
 			query_cb.emplace_back(query_seq[i]);
 		timer.finish();
 	}
-	vector<double> query_comp;
+	Stats::Composition query_comp;
 	if (Stats::CBS::matrix_adjust(config.comp_based_stats))
 		query_comp = Stats::composition(query_seq[0]);
 
 	const int source_query_len = align_mode.query_translated ? (int)query_source_seqs::get()[query_id].length() : (int)query_seqs::get()[query_id].length();
-	const int relaxed_cutoff = score_matrix.rawscore(config.min_bit_score == 0.0
+	/*const int relaxed_cutoff = score_matrix.rawscore(config.min_bit_score == 0.0
 		? score_matrix.bitscore(config.max_evalue * config.relaxed_evalue_factor, (unsigned)query_seq[0].length())
-		: config.min_bit_score);
+		: config.min_bit_score);*/
 	const size_t target_count = target_block_ids.size();
 	const size_t chunk_size = ranking_chunk_size(target_count);
 	vector<TargetScore>::const_iterator i0 = target_scores.cbegin(), i1 = std::min(i0 + chunk_size, target_scores.cend());
-	if (config.toppercent == 100.0)
-		while (i1 < target_scores.cend() && i1->score >= relaxed_cutoff && size_t(i1 - i0) < config.max_alignments) ++i1;
+	/*if (config.toppercent == 100.0)
+		while (i1 < target_scores.cend() && i1->score >= relaxed_cutoff && size_t(i1 - i0) < config.max_alignments) ++i1;*/
 	const int low_score = config.query_memory ? memory->low_score(query_id) : 0;
 	const size_t previous_count = config.query_memory ? memory->count(query_id) : 0;
 	bool first_round_traceback = config.min_id > 0 || config.query_cover > 0 || config.subject_cover > 0;
@@ -163,7 +163,7 @@ vector<Match> extend(
 
 		//multiplier = std::max(multiplier, chunk_size_multiplier(seed_hits_chunk, (int)query_seq.front().length()));
 
-		vector<Target> v = extend(params, query_id, query_seq.data(), source_query_len, query_cb.data(), query_comp.data(), seed_hits_chunk, target_block_ids_chunk, metadata, stat, flags);
+		vector<Target> v = extend(params, query_id, query_seq.data(), source_query_len, query_cb.data(), query_comp, seed_hits_chunk, target_block_ids_chunk, metadata, stat, flags);
 		const size_t n = v.size();
 		stat.inc(Statistics::TARGET_HITS4, v.size());
 		bool new_hits = false;

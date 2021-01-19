@@ -335,7 +335,7 @@ Hsp traceback(sequence *query, Strand strand, int dna_len, const Banded3FrameSwi
 	
 	Hsp out;
 	out.swipe_target = target.target_idx;
-	out.score = ScoreTraits<_sv>::int_score(max_score);
+	out.score = ScoreTraits<_sv>::int_score(max_score) * config.cbs_matrix_scale;
 	out.evalue = evalue;
 	out.transcript.reserve(size_t(out.score * config.transcript_len_estimate));
 
@@ -376,7 +376,7 @@ Hsp traceback(sequence *query, Strand strand, int dna_len, const Banded3FrameSwi
 	Hsp out;
 	const int j0 = i1 - (target.d_end - 1);
 	out.swipe_target = target.target_idx;
-	out.score = ScoreTraits<_sv>::int_score(max_score);
+	out.score = ScoreTraits<_sv>::int_score(max_score) * config.cbs_matrix_scale;
 	out.evalue = evalue;
 	out.query_range.end_ = std::min(i0 + max_col + (int)dp.band() / 3 / 2, (int)query[0].length());
 	out.query_range.begin_ = std::max(out.query_range.end_ - (j0 + max_col), 0);
@@ -491,7 +491,7 @@ list<Hsp> banded_3frame_swipe(
 	list<Hsp> out;
 	for (int i = 0; i < targets.n_targets; ++i) {
 		if (best[i] < ScoreTraits<_sv>::max_score()) {
-			const int score = ScoreTraits<_sv>::int_score(best[i]);
+			const int score = ScoreTraits<_sv>::int_score(best[i]) * config.cbs_matrix_scale;
 			const double evalue = score_matrix.evalue(score, qlen, (unsigned)subject_begin[i].seq.length());
 			if (score_matrix.report_cutoff(score, evalue))
 				out.push_back(traceback<_sv>(q, strand, (int)query.source().length(), dp, subject_begin[i], d_begin[i], best[i], evalue, max_col[i], i, i0 - j, i1 - j));

@@ -32,7 +32,7 @@ const double SINGLE_INDEXED_SEED_SPACE_MAX_COVERAGE = 0.15;
 
 void setup_search_cont()
 {
-	if (config.sensitivity >= Sensitivity::VERY_SENSITIVE || config.sensitivity == Sensitivity::MID_SENSITIVE)
+	if (config.sensitivity >= Sensitivity::VERY_SENSITIVE || config.sensitivity == Sensitivity::MID_SENSITIVE || config.sensitivity == Sensitivity::FAST)
 		return;
 	unsigned index_mode;
 	Reduction::reduction = Reduction("A KR EDNQ C G H ILVM FYW P ST");
@@ -122,9 +122,11 @@ void setup_search()
 		case Sensitivity::MID_SENSITIVE:
 			Config::set_option(config.index_mode, 15u);
 			break;
-		case Sensitivity::FAST:
+		case Sensitivity::DEFAULT:
 			Config::set_option(config.index_mode, 8u);
 			break;
+		case Sensitivity::FAST:
+			Config::set_option(config.index_mode, 16u);
 		}
 		Reduction::reduction = Reduction("A KR EDNQ C G H ILVM FYW P ST");
 		::shapes = shape_config(config.index_mode, config.shapes, config.shape_mask);

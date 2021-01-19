@@ -105,7 +105,7 @@ _t set_string_option(const string& s, const string& name, const vector<pair<stri
 }
 
 void Config::set_sens(Sensitivity sens) {
-	if (sensitivity != Sensitivity::FAST)
+	if (sensitivity != Sensitivity::DEFAULT)
 		throw std::runtime_error("Sensitivity switches are mutually exclusive.");
 	sensitivity = sens;
 }
@@ -311,7 +311,8 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("query-parallel-limit", 0, "", query_parallel_limit, 3000000u)
 		("target-indexed", 0, "", target_indexed)
 		("mmap-target-index", 0, "", mmap_target_index)
-		("save-target-index", 0, "", save_target_index);
+		("save-target-index", 0, "", save_target_index)
+		("log-evalue-scale", 0, "", log_evalue_scale, 1.0/std::log(2.0));
 
 	Options_group view_options("View options");
 	view_options.add()
@@ -335,6 +336,10 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("rank-ratio", 0, "include subjects within this ratio of last hit", rank_ratio, -1.0)
 		("lambda", 0, "lambda parameter for custom matrix", lambda)
 		("K", 0, "K parameter for custom matrix", K);
+
+	double query_match_distance_threshold;
+	double length_ratio_threshold;
+	double cbs_angle;
 
 #ifdef EXTRA
 	Options_group hidden_options("");
@@ -458,14 +463,15 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("family-cap", 0, "", family_cap)
 		("cbs-matrix-scale", 0, "", cbs_matrix_scale, 1)
 		("query-count", 0, "", query_count, (size_t)1)
-		("cbs-angle", 0, "", cbs_angle, 50.0)
+		("cbs-angle", 0, "", cbs_angle, -1.0)
 		("target-seg", 0, "", target_seg, -1)
 		("cbs-err-tolerance", 0, "", cbs_err_tolerance, 0.00000001)
 		("cbs-it-limit", 0, "", cbs_it_limit, 2000)
-		("query-match-distance-threshold", 0, "", query_match_distance_threshold, 0.0)
-		("length-ratio-threshold", 0, "", length_ratio_threshold, 0.0)
 		("hash_join_swap", 0, "", hash_join_swap)
-		("deque_bucket_size", 0, "", deque_bucket_size, (size_t)524288);
+		("deque_bucket_size", 0, "", deque_bucket_size, (size_t)524288)
+		("query-match-distance-threshold", 0, "", query_match_distance_threshold, -1.0)
+		("length-ratio-threshold", 0, "", length_ratio_threshold, -1.0)
+		("fast", 0, "", mode_fast);
 	
 	parser.add(general).add(makedb).add(cluster).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options).add(deprecated_options);
 	parser.store(argc, argv, command);
@@ -510,6 +516,8 @@ Config::Config(int argc, const char **argv, bool check_io)
 
 	if (target_seg == -1)
 		target_seg = Stats::CBS::target_seg(comp_based_stats);
+
+	Stats::comp_based_stats = Stats::CBS(comp_based_stats, query_match_distance_threshold, length_ratio_threshold, cbs_angle);
 
 	if (command == blastx && !Stats::CBS::support_translated(comp_based_stats))
 		throw std::runtime_error("This mode of composition based stats is not supported for translated searches.");
@@ -679,7 +687,7 @@ Config::Config(int argc, const char **argv, bool check_io)
 			}
 		}
 		message_stream << "Scoring parameters: " << score_matrix << endl;
-		if (masking == 1 || target_seg)
+		//if (masking == 1 || target_seg)
 			Masking::instance = unique_ptr<Masking>(new Masking(score_matrix));
 	}
 
@@ -698,7 +706,8 @@ Config::Config(int argc, const char **argv, bool check_io)
 #endif
 	}
 
-	sensitivity = Sensitivity::FAST;
+	sensitivity = Sensitivity::DEFAULT;
+	if (mode_fast) set_sens(Sensitivity::FAST);
 	if (mode_mid_sensitive) set_sens(Sensitivity::MID_SENSITIVE);
 	if (mode_sensitive) set_sens(Sensitivity::SENSITIVE);
 	if (mode_more_sensitive) set_sens(Sensitivity::MORE_SENSITIVE);
