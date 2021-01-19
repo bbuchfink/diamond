@@ -310,7 +310,8 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("family-map-query", 0, "", family_map_query)
 		("query-parallel-limit", 0, "", query_parallel_limit, 3000000u)
 		("target-indexed", 0, "", target_indexed)
-		("mmap-target-index", 0, "", mmap_target_index);
+		("mmap-target-index", 0, "", mmap_target_index)
+		("log-evalue-scale", 0, "", log_evalue_scale, 1.0/std::log(2.0));
 
 	Options_group view_options("View options");
 	view_options.add()

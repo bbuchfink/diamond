@@ -22,8 +22,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <type_traits>
 #include "../lib/Eigen/Dense"
 #include "../basic/value.h"
+#include "../util/profiler.h"
 
-#define DYNAMIC
+// #define DYNAMIC
 
 using namespace Eigen;
 using std::cout;
@@ -78,7 +79,8 @@ typedef struct ReNewtonSystem {
 } ReNewtonSystem;
 
 static void ScaledSymmetricProductA(Matrix2Nx& W, const MatrixN& diagonal)
-{    
+{
+    Profiler prof("ScaledSymmetricProductA");
     W.fill(0.0);
     for (size_t i = 0; i < N; i++) {
         for (size_t j = 0; j < N; j++) {
@@ -95,6 +97,7 @@ static void ScaledSymmetricProductA(Matrix2Nx& W, const MatrixN& diagonal)
 
 static void MultiplyByA(Float beta, Block2N y, Float alpha, const MatrixN& x)
 {   
+    Profiler prof("MultiplyByA");
     if (beta == 0.0)
         y.fill(0.0);
     else if (beta != 1.0) {
@@ -113,6 +116,7 @@ static void MultiplyByA(Float beta, Block2N y, Float alpha, const MatrixN& x)
 
 static void MultiplyByAtranspose(Float beta, MatrixN& y, Float alpha, const Vector2N& x)
 {
+    Profiler prof("MultiplyByAtranspose");
     if (beta == 0.0) {
         /* Initialize y to zero, without reading any elements from y */
         y.fill(0.0);
@@ -194,6 +198,7 @@ static void FactorReNewtonSystem(ReNewtonSystem& newton_system,
     const Vector2NN& grads,
     MatrixN& workspace)
 {
+    Profiler prof("FactorReNewtonSystem");
     int n;          /* the length of x */
     int m;          /* the length of z */
 
@@ -257,6 +262,7 @@ static void FactorReNewtonSystem(ReNewtonSystem& newton_system,
 }
 
 static void SolveReNewtonSystem(MatrixN& x, Vector2Nx& z, const ReNewtonSystem& newton_system, MatrixN& workspace) {
+    Profiler prof("SolveReNewtonSystem");
     const Matrix2Nx& W = newton_system.W;
     const MatrixN& Dinv = newton_system.Dinv;
     const VectorNN& grad_re = newton_system.grad_re;
@@ -279,7 +285,9 @@ static void SolveReNewtonSystem(MatrixN& x, Vector2Nx& z, const ReNewtonSystem& 
         z[m - 1] -= grad_re.segment<N>(i * N).dot(workspace.row(i));
 
     /* Solve for step in z, using the inverse of J D^{-1} J^T */
+    Profiler prof2("LLT");
     z = W.llt().solve(z);
+    prof.finish();
 
     /* Backsolve for the step in x, using the newly-computed step in z.
      *
@@ -294,6 +302,7 @@ static void SolveReNewtonSystem(MatrixN& x, Vector2Nx& z, const ReNewtonSystem& 
 
 static void EvaluateReFunctions(Values& values, Vector2NN& grads, const MatrixN& x, const MatrixN& q, const MatrixN& scores)
 {
+    Profiler prof("EvaluateReFunctions");
     values[0] = 0.0; values[1] = 0.0;
 
     MatrixN tmp = (x.array() / q.array()).log();

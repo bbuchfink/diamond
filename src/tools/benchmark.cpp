@@ -38,6 +38,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/simd/transpose.h"
 #include "../dp/scan_diags.h"
 #include "../stats/cbs.h"
+#include "../util/profiler.h"
 
 void benchmark_io();
 
@@ -291,14 +292,15 @@ void evalue() {
 }
 
 void matrix_adjust(const sequence& s1, const sequence& s2) {
-	static const size_t n = 1000000llu;
+	static const size_t n = 10000llu;
 	high_resolution_clock::time_point t1 = high_resolution_clock::now();
 	vector<double> mat_final(TRUE_AA * TRUE_AA);
 	int iteration_count;
 	const double* joint_probs = (const double*)(Stats::blosum62.joint_probs);
 	auto row_probs = Stats::composition(s1), col_probs = Stats::composition(s2);
+	config.cbs_err_tolerance = 0.0001;
 
-	/*for (size_t i = 0; i < n; ++i) {
+	for (size_t i = 0; i < n; ++i) {
 		Stats::Blast_OptimizeTargetFrequencies(mat_final.data(),
 			TRUE_AA,
 			&iteration_count,
@@ -310,14 +312,16 @@ void matrix_adjust(const sequence& s1, const sequence& s2) {
 			config.cbs_it_limit);
 	}
 
-	cout << "Matrix adjust:\t\t\t" << (double)duration_cast<std::chrono::microseconds>(high_resolution_clock::now() - t1).count() / (n) << " ms" << endl;*/
+	cout << "Matrix adjust:\t\t\t" << (double)duration_cast<std::chrono::microseconds>(high_resolution_clock::now() - t1).count() / (n) << " ms" << endl;
 
 	t1 = high_resolution_clock::now();
 	for (size_t i = 0; i < n; ++i) {
 		Stats::OptimizeTargetFrequencies(mat_final.data(), joint_probs, row_probs.data(), col_probs.data(), 0.44, config.cbs_err_tolerance, config.cbs_it_limit);
 	}
 
-	cout << "Matrix adjust (vectorized):\t" << (double)duration_cast<std::chrono::microseconds>(high_resolution_clock::now() - t1).count() / (n) << " ms" << endl;
+	cout << "Matrix adjust (vectorized):\t" << (double)duration_cast<std::chrono::microseconds>(high_resolution_clock::now() - t1).count() / (n) << " µs" << endl;
+
+	//Profiler::print(n);
 }
 
 void benchmark() {
@@ -337,7 +341,6 @@ void benchmark() {
 	sequence ss2 = sequence(s2).subseq(33, s2.size());
 
 	matrix_adjust(s1, s2);
-	return;
 
 #ifdef __SSE4_1__
 	swipe(s3, s4);

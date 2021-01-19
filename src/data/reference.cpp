@@ -417,7 +417,7 @@ bool DatabaseFile::load_seqs(vector<uint32_t>* block2db_id, const size_t max_let
 		(*dst_seq)->print_stats();
 	}
 
-	if (config.multiprocessing)
+	if (config.multiprocessing || config.global_ranking_targets)
 		blocked_processing = true;
 	else
 		blocked_processing = seqs_processed < ref_header.sequences;

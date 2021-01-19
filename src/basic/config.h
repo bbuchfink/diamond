@@ -256,6 +256,7 @@ struct Config
 	size_t deque_bucket_size;
 	bool mmap_target_index;
 	bool mode_fast;
+	double log_evalue_scale;
 
 	Sensitivity sensitivity;
 	TracebackMode traceback_mode;
