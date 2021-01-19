@@ -38,7 +38,7 @@ struct Config
 	string_vector input_ref_file;
 	unsigned	threads_;
 	string	database;
-	string	query_file;
+	string_vector query_file;
 	unsigned	merge_seq_treshold;
 	unsigned	hit_cap;
 	unsigned shapes;
@@ -255,6 +255,7 @@ struct Config
 	bool target_indexed;
 	size_t deque_bucket_size;
 	bool mmap_target_index;
+	bool save_target_index;
 	bool mode_fast;
 	double log_evalue_scale;
 

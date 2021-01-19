@@ -21,6 +21,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #pragma once
+#include <list>
 #include "sequence_set.h"
 #include "../basic/translate.h"
 #include "../util/seq_file_format.h"
@@ -52,7 +53,8 @@ inline size_t push_seq(Sequence_set &ss, Sequence_set** source_seqs, const vecto
 	}
 }
 
-inline size_t load_seqs(TextInputFile &file,
+inline size_t load_seqs(std::list<TextInputFile>::iterator file_begin,
+	std::list<TextInputFile>::iterator file_end,
 	const Sequence_file_format &format,
 	Sequence_set** seqs,
 	String_set<char, '\0'>*& ids,
@@ -81,16 +83,22 @@ inline size_t load_seqs(TextInputFile &file,
 	else if (config.query_strands == "minus")
 		frame_mask = ((1 << 3) - 1) << 3;
 
-	while ((letters < max_letters || (n % modulo != 0)) && format.get_seq(id, seq, file, value_traits, quals ? &qual : nullptr)) {
+	std::list<TextInputFile>::iterator file_it = file_begin;
+	bool read_success = true;
+
+	while ((letters < max_letters || (n % modulo != 0)) && (read_success = format.get_seq(id, seq, *file_it, value_traits, quals ? &qual : nullptr))) {
 		if (seq.size() > 0 && (filter.empty() || id2.assign(id.data(), id.data() + id.size()).find(filter, 0) != string::npos)) {
 			ids->push_back(id.begin(), id.end());
 			letters += push_seq(**seqs, source_seqs, seq, frame_mask, value_traits.seq_type);
 			if (quals)
 				(*quals)->push_back(qual.begin(), qual.end());
 			++n;
-			if ((*seqs)->get_length() >(size_t)std::numeric_limits<int>::max())
+			if ((*seqs)->get_length() > (size_t)std::numeric_limits<int>::max())
 				throw std::runtime_error("Number of sequences in file exceeds supported maximum.");
 		}
+		++file_it;
+		if (file_it == file_end)
+			file_it = file_begin;
 	}
 	ids->finish_reserve();
 	if (quals)
@@ -106,5 +114,7 @@ inline size_t load_seqs(TextInputFile &file,
 		if (quals)
 			delete *quals;
 	}
+	if (file_it != file_begin || (!read_success && ++file_it != file_end && format.get_seq(id, seq, *file_it, value_traits, nullptr)))
+		throw std::runtime_error("Unequal number of sequences in paired read files.");
 	return n;
 }

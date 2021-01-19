@@ -25,6 +25,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <numeric>
 #include <algorithm>
 #include <iomanip>
+#include <list>
 #include "../util/io/temp_file.h"
 #include "../util/io/text_input_file.h"
 #include "test.h"
@@ -41,10 +42,11 @@ using std::endl;
 using std::string;
 using std::vector;
 using std::cout;
+using std::list;
 
 namespace Test {
 
-size_t run_testcase(size_t i, DatabaseFile &db, TextInputFile &query_file, size_t max_width, bool bootstrap, bool log, bool to_cout) {
+size_t run_testcase(size_t i, DatabaseFile &db, list<TextInputFile> &query_file, size_t max_width, bool bootstrap, bool log, bool to_cout) {
 	vector<string> args = tokenize(test_cases[i].command_line, " ");
 	args.emplace(args.begin(), "diamond");
 	if (log)
@@ -53,7 +55,7 @@ size_t run_testcase(size_t i, DatabaseFile &db, TextInputFile &query_file, size_
 	statistics.reset();
 	Workflow::Search::Options opt;
 	opt.db = &db;
-	query_file.rewind();
+	query_file.front().rewind();
 	opt.query_file = &query_file;
 
 	if (to_cout) {
@@ -94,7 +96,8 @@ int run() {
 	TempFile proteins;
 	for (size_t i = 0; i < seqs.size(); ++i)
 		Util::Sequence::format(sequence::from_string(seqs[i].second.c_str()), seqs[i].first.c_str(), nullptr, proteins, "fasta", amino_acid_traits);
-	TextInputFile query_file(proteins);
+	list<TextInputFile> query_file;
+	query_file.emplace_back(proteins);
 	timer.finish();
 
 	config.command = Config::makedb;
@@ -110,7 +113,7 @@ int run() {
 
 	cout << endl << "#Test cases passed: " << passed << '/' << n << endl; // << endl;
 	
-	query_file.close_and_delete();
+	query_file.front().close_and_delete();
 	db.close();
 	delete db_file;
 	return passed == n ? 0 : 1;

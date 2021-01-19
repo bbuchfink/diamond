@@ -82,20 +82,22 @@ struct Hashed_seed_set_callback
 
 Hashed_seed_set::Hashed_seed_set(const Sequence_set &seqs)
 {
-	bool save_to_file = false;
 	if (config.mmap_target_index) {
 		for (size_t i = 0; i < shapes.count(); ++i) {
 			auto f = mmap_file((config.database + '.' + std::to_string(i)).c_str());
 			if (get<0>(f) == nullptr) {
-				save_to_file = true;
-				break;
+				if (data_.empty()) {
+					message_stream << "WARNING: Target index file not found." << std::endl;
+					break;
+				}
+				else
+					throw std::runtime_error("Target index file not found.");
 			}
 			data_.push_back(new PHash_set<Modulo2, No_hash>((uint8_t*)get<0>(f), get<1>(f) - PADDING));
 			fd_.push_back(get<2>(f));
 			log_stream << "MMAPED Shape=" << i << " Hash_table_size=" << data_[i].size() << " load=" << (double)data_[i].load() / data_[i].size() << endl;
 		}
-		if (!save_to_file)
-			return;
+		if(!data_.empty()) return;
 	}
 	for (size_t i = 0; i < shapes.count(); ++i)
 		data_.push_back(new PHash_set<Modulo2, No_hash>(next_power_of_2(seqs.letters()*1.25)));
@@ -117,7 +119,7 @@ Hashed_seed_set::Hashed_seed_set(const Sequence_set &seqs)
 	for (size_t i = 0; i < shapes.count(); ++i)
 		log_stream << "Shape=" << i << " Hash_table_size=" << data_[i].size() << " load=" << (double)data_[i].load()/data_[i].size() << endl;
 
-	if (save_to_file) {
+	if (config.save_target_index) {
 		log_stream << "Saving hashed seed sets to file." << endl;
 		for (size_t i = 0; i < shapes.count(); ++i) {
 			OutputFile out(config.database + '.' + std::to_string(i));

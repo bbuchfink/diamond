@@ -311,6 +311,7 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("query-parallel-limit", 0, "", query_parallel_limit, 3000000u)
 		("target-indexed", 0, "", target_indexed)
 		("mmap-target-index", 0, "", mmap_target_index)
+		("save-target-index", 0, "", save_target_index)
 		("log-evalue-scale", 0, "", log_evalue_scale, 1.0/std::log(2.0));
 
 	Options_group view_options("View options");
@@ -738,6 +739,22 @@ Config::Config(int argc, const char **argv, bool check_io)
 		store_query_quality = true;
 	if (!aligned_file.empty())
 		log_stream << "Aligned file format: " << alfmt << endl;
+
+	if (command == blastx) {
+		if (query_file.size() > 2)
+			throw std::runtime_error("A maximum of 2 query files is supported in blastx mode.");
+	}
+	else if (query_file.size() > 1)
+		throw std::runtime_error("--query/-q has more than one argument.");
+
+	if ((mmap_target_index || save_target_index) && !target_indexed)
+		throw std::runtime_error("Option requires --target-indexed.");
+
+	if (mmap_target_index && save_target_index)
+		throw std::runtime_error("Options are exclusive.");
+
+	if (target_indexed && lowmem != 1)
+		throw std::runtime_error("--target-indexed requires -c1.");
 
 	/*log_stream << "sizeof(hit)=" << sizeof(hit) << " sizeof(packed_uint40_t)=" << sizeof(packed_uint40_t)
 		<< " sizeof(sorted_list::entry)=" << sizeof(sorted_list::entry) << endl;*/

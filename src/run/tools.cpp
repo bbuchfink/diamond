@@ -74,7 +74,7 @@ void random_seqs()
 
 void sort_file()
 {
-	TextInputFile f(config.query_file);
+	TextInputFile f(config.query_file.front());
 	vector<Pair<unsigned, string> > data;
 	while (f.getline(), !f.eof()) {
 		unsigned query;
@@ -113,7 +113,7 @@ void db_stat()
 
 void run_masker()
 {
-	TextInputFile f(config.query_file);
+	TextInputFile f(config.query_file.front());
 	vector<Letter> seq, seq2;
 	string id;
 	const FASTA_format format;
@@ -148,7 +148,7 @@ void run_masker()
 
 void fastq2fasta()
 {
-	unique_ptr<TextInputFile> f(new TextInputFile(config.query_file));
+	unique_ptr<TextInputFile> f(new TextInputFile(config.query_file.front()));
 	vector<Letter> seq;
 	string id;
 	const FASTQ_format format;
@@ -184,7 +184,7 @@ void read_sim()
 {
 	const double ID = 0.35;
 	srand((unsigned)time(0));
-	TextInputFile in(config.query_file);
+	TextInputFile in(config.query_file.front());
 	OutputFile out(config.output_file);
 	FASTA_format format;
 	string id;
@@ -269,7 +269,7 @@ void pairwise()
 	value_traits = nucleotide_traits;
 	score_matrix = Score_matrix("DNA", 5, 2, 0, 1);
 
-	TextInputFile in(config.query_file);
+	TextInputFile in(config.query_file.front());
 	std::mutex input_lock, output_lock;
 	vector<thread> threads;
 	for (unsigned i = 0; i < config.threads_; ++i)
@@ -288,7 +288,7 @@ void fasta_skip_to(string &id, vector<Letter> &seq, string &blast_id, TextInputF
 
 void translate() {
 	input_value_traits = nucleotide_traits;
-	TextInputFile in(config.query_file);
+	TextInputFile in(config.query_file.front());
 	string id;
 	vector<Letter> seq;
 	vector<Letter> proteins[6];
@@ -302,7 +302,7 @@ void translate() {
 
 void reverse() {
 	input_value_traits = amino_acid_traits;
-	TextInputFile in(config.query_file);
+	TextInputFile in(config.query_file.front());
 	string id;
 	vector<Letter> seq;
 	TextBuffer buf;
@@ -323,7 +323,7 @@ void reverse() {
 void show_cbs() {
 	score_matrix = Score_matrix("BLOSUM62", config.gap_open, config.gap_extend, config.frame_shift, 1);
 	init_cbs();
-	TextInputFile in(config.query_file);
+	TextInputFile in(config.query_file.front());
 	string id;
 	vector<Letter> seq;
 	while (FASTA_format().get_seq(id, seq, in, value_traits)) {
