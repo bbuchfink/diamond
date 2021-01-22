@@ -131,6 +131,7 @@ vector<Match> extend(
 	vector<TargetScore>::const_iterator i0 = target_scores.cbegin(), i1 = std::min(i0 + chunk_size, target_scores.cend());
 	/*if (config.toppercent == 100.0)
 		while (i1 < target_scores.cend() && i1->score >= relaxed_cutoff && size_t(i1 - i0) < config.max_alignments) ++i1;*/
+	while (i1 < target_scores.cend() && i1->evalue <= config.max_evalue && size_t(i1 - i0) < config.max_alignments) ++i1;
 	const int low_score = config.query_memory ? memory->low_score(query_id) : 0;
 	const size_t previous_count = config.query_memory ? memory->count(query_id) : 0;
 	bool first_round_traceback = config.min_id > 0 || config.query_cover > 0 || config.subject_cover > 0;
@@ -210,7 +211,7 @@ vector<Match> extend(const Parameters &params, size_t query_id, hit* begin, hit*
 	TLS_FIX_S390X FlatArray<SeedHit> seed_hits;
 	thread_local vector<uint32_t> target_block_ids;
 	thread_local vector<TargetScore> target_scores;
-	load_hits(begin, end, seed_hits, target_block_ids, target_scores);
+	load_hits(begin, end, seed_hits, target_block_ids, target_scores, (unsigned)query_seqs::get()[query_id * align_mode.query_contexts].length());
 	stat.inc(Statistics::TARGET_HITS0, target_block_ids.size());
 	stat.inc(Statistics::TIME_LOAD_HIT_TARGETS, timer.microseconds());
 	timer.finish();
