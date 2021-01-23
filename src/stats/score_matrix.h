@@ -115,6 +115,7 @@ struct Score_matrix
 	{ return (int)ceil(rawscore(bitscore, double ())); }
 
 	double evalue(int raw_score, unsigned query_len, unsigned subject_len) const;
+	double evalue_norm(int raw_score, unsigned query_len, unsigned subject_len) const;
 
 	double evalue_norm(int raw_score, int query_len) const
 	{

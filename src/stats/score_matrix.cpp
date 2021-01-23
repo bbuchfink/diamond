@@ -209,6 +209,11 @@ double Score_matrix::evalue(int raw_score, unsigned query_len, unsigned subject_
 	return evaluer.evalue((double)raw_score / scale_, query_len, subject_len) * (double)db_letters_ / (double)subject_len;
 }
 
+double Score_matrix::evalue_norm(int raw_score, unsigned query_len, unsigned subject_len) const
+{
+	return evaluer.evalue((double)raw_score / scale_, query_len, subject_len) * (double)1e9 / (double)subject_len;
+}
+
 bool Score_matrix::report_cutoff(int score, double evalue) const {
 	if (config.min_bit_score != 0)
 		return bitscore(score) >= config.min_bit_score;

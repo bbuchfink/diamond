@@ -27,4 +27,5 @@ struct Parameters
 {
 	const uint64_t db_seqs, db_letters, ref_blocks;
 	const Util::Scores::CutoffTable cutoff_gapped1, cutoff_gapped2;
+	const Util::Scores::CutoffTable2D cutoff_gapped1_new, cutoff_gapped2_new;
 };

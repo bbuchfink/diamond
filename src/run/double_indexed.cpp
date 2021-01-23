@@ -232,6 +232,8 @@ void run_query_chunk(DatabaseFile &db_file,
 	db_file.ref_header.letters,
 	db_file.total_blocks(),
 	config.gapped_filter_evalue1,
+	config.gapped_filter_evalue,
+	config.gapped_filter_evalue1,
 	config.gapped_filter_evalue
 	};
 
