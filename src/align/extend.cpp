@@ -131,7 +131,9 @@ vector<Match> extend(
 	vector<TargetScore>::const_iterator i0 = target_scores.cbegin(), i1 = std::min(i0 + chunk_size, target_scores.cend());
 	/*if (config.toppercent == 100.0)
 		while (i1 < target_scores.cend() && i1->score >= relaxed_cutoff && size_t(i1 - i0) < config.max_alignments) ++i1;*/
+#ifdef EVAL_TARGET
 	while (i1 < target_scores.cend() && i1->evalue <= config.max_evalue && size_t(i1 - i0) < config.max_alignments) ++i1;
+#endif
 	const int low_score = config.query_memory ? memory->low_score(query_id) : 0;
 	const size_t previous_count = config.query_memory ? memory->count(query_id) : 0;
 	bool first_round_traceback = config.min_id > 0 || config.query_cover > 0 || config.subject_cover > 0;

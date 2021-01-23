@@ -146,10 +146,15 @@ struct Target {
 struct TargetScore {
 	uint32_t target;
 	uint16_t score;
+#ifdef EVAL_TARGET
 	double evalue;
+#endif
 	bool operator<(const TargetScore& x) const {
-		//return score > x.score || (score == x.score && target < x.target);
+#ifdef EVAL_TARGET
 		return evalue < x.evalue || (evalue == x.evalue && target < x.target);
+#else
+		return score > x.score || (score == x.score && target < x.target);
+#endif
 	}
 };
 

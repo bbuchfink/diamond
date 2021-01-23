@@ -40,7 +40,11 @@ void load_hits(hit* begin, hit* end, FlatArray<SeedHit> &hits, vector<uint32_t> 
 			const uint32_t t = (uint32_t)l.first;
 			if (t != target) {
 				if (target != UINT32_MAX) {
+#ifdef EVAL_TARGET
 					target_scores.push_back({ uint32_t(target_block_ids.size() - 1), score, score_matrix.evalue(score, query_len, target_len) });
+#else
+					target_scores.push_back({ uint32_t(target_block_ids.size() - 1), score });
+#endif
 					score = 0;
 				}
 				hits.next();
@@ -60,7 +64,11 @@ void load_hits(hit* begin, hit* end, FlatArray<SeedHit> &hits, vector<uint32_t> 
 			uint32_t t = (uint32_t)(it - limit_begin) - 1;
 			if (t != target) {
 				if (target != UINT32_MAX) {
+#ifdef EVAL_TARGET
 					target_scores.push_back({ uint32_t(target_block_ids.size() - 1), score, score_matrix.evalue(score, query_len, target_len) });
+#else
+					target_scores.push_back({ uint32_t(target_block_ids.size() - 1), score });
+#endif
 					score = 0;
 				}
 				hits.next();
@@ -73,7 +81,11 @@ void load_hits(hit* begin, hit* end, FlatArray<SeedHit> &hits, vector<uint32_t> 
 		}
 	}
 	if (target != UINT32_MAX)
+#ifdef EVAL_TARGET
 		target_scores.push_back({ uint32_t(target_block_ids.size() - 1), score, score_matrix.evalue(score, query_len, target_len) });
+#else
+		target_scores.push_back({ uint32_t(target_block_ids.size() - 1), score });
+#endif
 }
 
 }
