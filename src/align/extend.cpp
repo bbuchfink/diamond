@@ -133,7 +133,7 @@ vector<Match> extend(
 	vector<TargetScore>::const_iterator i0 = target_scores.cbegin(), i1 = std::min(i0 + chunk_size, target_scores.cend());
 
 	if (config.toppercent == 100.0) {
-		while (i1 < target_scores.cend() && score_matrix.evalue(i1->score, query_len, UNIFIED_TARGET_LEN) <= config.max_evalue) ++i1;
+		while (i1 < target_scores.cend() && score_matrix.evalue(i1->score, query_len, UNIFIED_TARGET_LEN) <= config.max_evalue) i1 += 16;
 		//while (i1 < target_scores.cend() && i1->score >= relaxed_cutoff && size_t(i1 - i0) < config.max_alignments) ++i1;
 	}
 

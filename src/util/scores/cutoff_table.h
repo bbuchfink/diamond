@@ -45,4 +45,25 @@ private:
 
 };
 
+struct CutoffTable2D {
+
+	CutoffTable2D(double evalue) {
+
+	}
+
+private:
+
+	int calc_min_score(unsigned qlen, unsigned slen, double evalue) {
+		for (int i = 10; i < 1000; ++i)
+			if (score_matrix.evalue(i, qlen, slen) <= evalue)
+				return i;
+		return 1000;
+	}
+
+	enum { MAX_BITS = 31 };
+
+	int data_[MAX_BITS + 1][MAX_BITS + 1];
+
+};
+
 }}
