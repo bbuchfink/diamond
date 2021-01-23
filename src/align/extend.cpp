@@ -100,6 +100,7 @@ vector<Match> extend(
 	const vector<uint32_t>& target_block_ids,
 	const vector<TargetScore>& target_scores)
 {
+	const unsigned UNIFIED_TARGET_LEN = 50;
 	const unsigned contexts = align_mode.query_contexts;
 	vector<sequence> query_seq;
 	vector<Bias_correction> query_cb;
@@ -110,6 +111,7 @@ vector<Match> extend(
 
 	for (unsigned i = 0; i < contexts; ++i)
 		query_seq.push_back(query_seqs::get()[query_id*contexts + i]);
+	const unsigned query_len = (unsigned)query_seq.front().length();
 
 	task_timer timer(flags & DP::PARALLEL ? config.target_parallel_verbosity : UINT_MAX);
 	if (Stats::CBS::hauser(config.comp_based_stats)) {
@@ -129,8 +131,12 @@ vector<Match> extend(
 	const size_t target_count = target_block_ids.size();
 	const size_t chunk_size = ranking_chunk_size(target_count);
 	vector<TargetScore>::const_iterator i0 = target_scores.cbegin(), i1 = std::min(i0 + chunk_size, target_scores.cend());
-	/*if (config.toppercent == 100.0)
-		while (i1 < target_scores.cend() && i1->score >= relaxed_cutoff && size_t(i1 - i0) < config.max_alignments) ++i1;*/
+
+	if (config.toppercent == 100.0) {
+		while (i1 < target_scores.cend() && score_matrix.evalue(i1->score, query_len, UNIFIED_TARGET_LEN) <= config.max_evalue) ++i1;
+		//while (i1 < target_scores.cend() && i1->score >= relaxed_cutoff && size_t(i1 - i0) < config.max_alignments) ++i1;
+	}
+
 #ifdef EVAL_TARGET
 	while (i1 < target_scores.cend() && i1->evalue <= config.max_evalue && size_t(i1 - i0) < config.max_alignments) ++i1;
 #endif
