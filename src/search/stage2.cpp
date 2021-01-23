@@ -66,7 +66,11 @@ void search_query_offset(uint64_t q,
 	query_id = (unsigned)l.first;
 	seed_offset = (unsigned)l.second;
 	const int query_len = query_seqs::data_->length(query_id);
+#ifdef UNGAPPED_SPOUGE
+	const int score_cutoff = query_len > config.short_query_max_len ? context.cutoff_table(query_len, 50) : context.short_query_ungapped_cutoff;
+#else
 	const int score_cutoff = query_len > config.short_query_max_len ? context.cutoff_table(query_len) : context.short_query_ungapped_cutoff;
+#endif
 	size_t hit_count = 0;
 
 	const int interval_mod = config.left_most_interval > 0 ? seed_offset % config.left_most_interval : window_left, interval_overhang = std::max(window_left - interval_mod, 0);
@@ -80,6 +84,11 @@ void search_query_offset(uint64_t q,
 
 		for (size_t j = 0; j < n; ++j) {
 			if (scores[j] > score_cutoff) {
+#ifdef UNGAPPED_SPOUGE
+				std::pair<size_t, size_t> l = ref_seqs::data_->local_position(s[*(i + j)]);
+				if (scores[j] < context.cutoff_table(query_len, ref_seqs::data_->length(l.first)))
+					continue;
+#endif
 				stats.inc(Statistics::TENTATIVE_MATCHES2);
 				if (left_most_filter(query_clipped + interval_overhang, subjects[j] + interval_overhang, window_left - interval_overhang, shapes[sid].length_, context, sid == 0, sid, score_cutoff)) {
 					stats.inc(Statistics::TENTATIVE_MATCHES3);

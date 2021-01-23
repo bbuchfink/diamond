@@ -32,11 +32,17 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../basic/parameters.h"
 #include "../data/seed_set.h"
 
+// #define UNGAPPED_SPOUGE
+
 namespace Search {
 
 struct Context {
 	const PatternMatcher previous_matcher, current_matcher;
+#ifdef UNGAPPED_SPOUGE
+	const Util::Scores::CutoffTable2D cutoff_table;
+#else
 	const Util::Scores::CutoffTable cutoff_table;
+#endif
 	const int short_query_ungapped_cutoff;
 };
 
