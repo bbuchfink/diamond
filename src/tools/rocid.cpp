@@ -92,10 +92,10 @@ void roc_id() {
 		if (query != query_aln) {
 			print();
 			unmapped_query = 0;
+			query_aln = query;
 			while (!fetch_map(map_in, query)) {
 				print();
 			}
-			query_aln = query;
 			++queries;
 			if (queries % 1000 == 0)
 				message_stream << queries << ' ' << hits << ' ' << unmapped << endl;
