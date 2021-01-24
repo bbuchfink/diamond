@@ -112,7 +112,7 @@ void extend(DatabaseFile& db, TempFile& merged_query_list, BitVector& ranking_db
 	OutputSink::instance.reset(new OutputSink(0, &master_out));
 	uint32_t next_query = 0;
 	vector<thread> threads;
-	for (size_t i = 0; i < config.threads_; ++i)
+	for (size_t i = 0; i < std::min(config.threads_, config.threads_align); ++i)
 		threads.emplace_back(align_worker, &query_list, &db2block_id, &params, &metadata, &next_query);
 	for (auto& i : threads)
 		i.join();
