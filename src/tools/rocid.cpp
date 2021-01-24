@@ -71,7 +71,7 @@ static void print() {
 }
 
 void roc_id() {
-	TextInputFile in(config.query_file.front());
+	TextInputFile in(config.query_file.empty() ? "" : config.query_file.front());
 	string query, target;
 	size_t n = 0, queries = 0, unmapped = 0, hits = 0;
 
