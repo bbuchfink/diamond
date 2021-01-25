@@ -94,6 +94,7 @@ void extend(DatabaseFile& db, TempFile& merged_query_list, BitVector& ranking_db
 	vector<uint32_t> block2db_id;
 	db.rewind();
  	db.load_seqs(&block2db_id, SIZE_MAX, &ref_seqs::data_, &ref_ids::data_, true, &ranking_db_filter, true);
+	ReferenceDictionary::get().set_block2db(&block2db_id);
 	TargetMap db2block_id;
 	db2block_id.reserve(block2db_id.size());
 	for (size_t i = 0; i < block2db_id.size(); ++i)
@@ -112,7 +113,7 @@ void extend(DatabaseFile& db, TempFile& merged_query_list, BitVector& ranking_db
 	OutputSink::instance.reset(new OutputSink(0, &master_out));
 	uint32_t next_query = 0;
 	vector<thread> threads;
-	for (size_t i = 0; i < std::min(config.threads_, config.threads_align); ++i)
+	for (size_t i = 0; i < (config.threads_align ? config.threads_align : config.threads_); ++i)
 		threads.emplace_back(align_worker, &query_list, &db2block_id, &params, &metadata, &next_query);
 	for (auto& i : threads)
 		i.join();

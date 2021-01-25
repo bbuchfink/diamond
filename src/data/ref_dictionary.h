@@ -72,6 +72,10 @@ struct ReferenceDictionary
 		return (*block_to_database_id_)[block_id];
 	}
 
+	void set_block2db(const vector<unsigned>* block_to_database_id) {
+		block_to_database_id_ = block_to_database_id;
+	}
+
 	uint32_t check_id(uint32_t i) const
 	{
 		if (i >= next_)
