@@ -81,7 +81,7 @@ int gapped_filter(const SeedHit &hit, const LongScoreProfile *query_profile, con
 }
 
 bool gapped_filter(const SeedHit *begin, const SeedHit *end, const LongScoreProfile *query_profile, uint32_t target_block_id, Statistics &stat, const Parameters &params) {
-	constexpr int window1 = 100;
+	constexpr int window1 = 100, MIN_STAGE2_QLEN = 100;
 		
 	const int qlen = (int)query_profile->length();
 	const sequence target = ref_seqs::get()[target_block_id];
@@ -92,6 +92,8 @@ bool gapped_filter(const SeedHit *begin, const SeedHit *end, const LongScoreProf
 		//if(f1 > params.cutoff_gapped1(qlen)) {
 		if (f1 > params.cutoff_gapped1_new(qlen, slen)) {
 			stat.inc(Statistics::GAPPED_FILTER_HITS2);
+			if (qlen < MIN_STAGE2_QLEN && align_mode.query_translated)
+				return true;
 			const int f2 = gapped_filter(*hit, query_profile, target, 128, config.gapped_filter_window, DP::scan_diags128);
 			//if(f2 > params.cutoff_gapped2(qlen))
 			if (f2 > params.cutoff_gapped2_new(qlen, slen))
