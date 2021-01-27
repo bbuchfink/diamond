@@ -258,6 +258,7 @@ struct Config
 	bool save_target_index;
 	bool mode_fast;
 	double log_evalue_scale;
+	double ungapped_evalue_short;
 
 	Sensitivity sensitivity;
 	TracebackMode traceback_mode;

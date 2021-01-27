@@ -104,6 +104,7 @@ vector<WorkTarget> ungapped_stage(const sequence *query_seq, const Bias_correcti
 	vector<WorkTarget> targets;
 	if (target_block_ids.size() == 0)
 		return targets;
+	targets.reserve(target_block_ids.size());
 	const int16_t* query_matrix = nullptr;
 	if (flags & DP::PARALLEL) {
 		mutex mtx;

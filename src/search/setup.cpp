@@ -62,6 +62,7 @@ void setup_search()
 		Config::set_option(config.freq_sd, 20.0);
 		Config::set_option(config.min_identities, 9u);
 		Config::set_option(config.ungapped_evalue, 300000.0, -1.0);
+		Config::set_option(config.ungapped_evalue_short, 30000.0, -1.0);
 		Config::set_option(config.gapped_filter_evalue, 1.0, -1.0);
 		Config::set_option(config.lowmem, 1u);
 		Config::set_option(config.query_bins, 64u);
@@ -69,6 +70,7 @@ void setup_search()
 		Config::set_option(config.freq_sd, 15.0);
 		Config::set_option(config.min_identities, 9u);
 		Config::set_option(config.ungapped_evalue, 100000.0, -1.0);
+		Config::set_option(config.ungapped_evalue_short, 30000.0, -1.0);
 		Config::set_option(config.gapped_filter_evalue, 1.0, -1.0);
 		Config::set_option(config.lowmem, 1u);
 		Config::set_option(config.query_bins, 16u);
@@ -76,6 +78,7 @@ void setup_search()
 		Config::set_option(config.freq_sd, 200.0);
 		Config::set_option(config.min_identities, 11u);
 		Config::set_option(config.ungapped_evalue, 10000.0, -1.0);
+		Config::set_option(config.ungapped_evalue_short, 10000.0, -1.0);
 		Config::set_option(config.gapped_filter_evalue, 1.0, -1.0);
 		Config::set_option(config.lowmem, 4u);
 		Config::set_option(config.query_bins, 16u);
@@ -84,6 +87,7 @@ void setup_search()
 		Config::set_option(config.freq_sd, 20.0);
 		Config::set_option(config.min_identities, 11u);
 		Config::set_option(config.ungapped_evalue, 10000.0, -1.0);
+		Config::set_option(config.ungapped_evalue_short, 10000.0, -1.0);
 		Config::set_option(config.gapped_filter_evalue, 1.0, -1.0);
 		Config::set_option(config.lowmem, 4u);
 		Config::set_option(config.query_bins, 16u);
@@ -92,6 +96,7 @@ void setup_search()
 		Config::set_option(config.freq_sd, 20.0);
 		Config::set_option(config.min_identities, 11u);
 		Config::set_option(config.ungapped_evalue, 10000.0, -1.0);
+		Config::set_option(config.ungapped_evalue_short, 10000.0, -1.0);
 		Config::set_option(config.gapped_filter_evalue, 0.0, -1.0);
 		Config::set_option(config.lowmem, 4u);
 		Config::set_option(config.query_bins, 16u);
@@ -100,6 +105,7 @@ void setup_search()
 		Config::set_option(config.freq_sd, 50.0);
 		Config::set_option(config.min_identities, 11u);
 		Config::set_option(config.ungapped_evalue, 10000.0, -1.0);
+		Config::set_option(config.ungapped_evalue_short, 10000.0, -1.0);
 		Config::set_option(config.gapped_filter_evalue, 0.0, -1.0);
 		Config::set_option(config.lowmem, 4u);
 		Config::set_option(config.query_bins, 16u);

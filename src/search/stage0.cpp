@@ -123,6 +123,7 @@ void search_shape(unsigned sid, unsigned query_block, char *query_buffer, char *
 		context = new Search::Context{ {patterns.data(), patterns.data() + patterns.size() - 1 },
 			{patterns.data(), patterns.data() + patterns.size() },
 			config.ungapped_evalue,
+			config.ungapped_evalue_short,
 			score_matrix.rawscore(config.short_query_ungapped_bitscore)
 		};
 

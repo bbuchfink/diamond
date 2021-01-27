@@ -41,7 +41,7 @@ struct Context {
 #ifdef UNGAPPED_SPOUGE
 	const Util::Scores::CutoffTable2D cutoff_table;
 #else
-	const Util::Scores::CutoffTable cutoff_table;
+	const Util::Scores::CutoffTable cutoff_table, cutoff_table_short;
 #endif
 	const int short_query_ungapped_cutoff;
 };

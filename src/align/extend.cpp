@@ -72,9 +72,10 @@ vector<Target> extend(const Parameters& params,
 	Statistics& stat,
 	int flags)
 {
+	static const size_t GAPPED_FILTER_MIN_QLEN = 85;
 	stat.inc(Statistics::TARGET_HITS2, target_block_ids.size());
 	task_timer timer(flags & DP::PARALLEL ? config.target_parallel_verbosity : UINT_MAX);
-	if (config.gapped_filter_evalue > 0.0 && config.global_ranking_targets == 0) {
+	if (config.gapped_filter_evalue > 0.0 && config.global_ranking_targets == 0 && (!align_mode.query_translated || query_seq[0].length() >= GAPPED_FILTER_MIN_QLEN)) {
 		timer.go("Computing gapped filter");
 		gapped_filter(query_seq, query_cb, seed_hits, target_block_ids, stat, flags, params);
 		if ((flags & DP::PARALLEL) == 0)
