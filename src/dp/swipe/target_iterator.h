@@ -281,7 +281,7 @@ struct AsyncTargetBuffer
 			return dp_targets[channel].seq[pos[channel]];
 		}
 		else
-			return SUPER_HARD_MASK;;
+			return SUPER_HARD_MASK;
 	}
 
 #ifdef __SSSE3__

@@ -513,7 +513,11 @@ Config::Config(int argc, const char **argv, bool check_io)
 		ext = "full";
 	}
 
+#ifdef EXTRA
 	if (comp_based_stats >= Stats::CBS::COUNT)
+#else
+	if (comp_based_stats >= 5)
+#endif	
 		throw std::runtime_error("Invalid value for --comp-based-stats. Permitted values: 0, 1, 2, 3, 4.");
 
 	if (masking == -1)
@@ -722,12 +726,9 @@ Config::Config(int argc, const char **argv, bool check_io)
 	if (algo == Config::query_indexed && (sensitivity == Sensitivity::MID_SENSITIVE || sensitivity >= Sensitivity::VERY_SENSITIVE))
 		throw std::runtime_error("Query-indexed mode is not supported for this sensitivity setting.");
 
-	set<string> ext_modes = { "", "banded-fast", "banded-slow" };
-#ifdef EXTRA
-	ext_modes.insert("full");
-#endif
+	const set<string> ext_modes = { "", "banded-fast", "banded-slow", "full" };
 	if (ext_modes.find(ext) == ext_modes.end())
-		throw std::runtime_error("Possible values for --ext are: banded-fast, banded-slow");
+		throw std::runtime_error("Possible values for --ext are: banded-fast, banded-slow, full");
 
 	Translator::init(query_gencode);
 

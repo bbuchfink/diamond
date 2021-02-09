@@ -32,44 +32,6 @@ using std::mutex;
 
 namespace Extension {
 
-/*bool gapped_filter(const LongScoreProfile *query_profile, const WorkTarget& target, Statistics &stat) {
-	const int slen = (int)target.seq.length(), qlen = (int)query_profile[0].length();
-	int scores[128];
-	stat.inc(Statistics::GAPPED_FILTER_TARGETS);
-	for (unsigned frame = 0; frame < align_mode.query_contexts; ++frame)
-		for (const Hsp_traits& hsp : target.hsp[frame]) {
-			stat.inc(Statistics::GAPPED_FILTER_HITS1);
-			const int d = std::max((hsp.d_max + hsp.d_min) / 2 - 128 / 2, -(slen - 1)),
-				j0 = std::max(hsp.subject_range.begin_ - config.gapped_filter_window, 0),
-				j1 = std::min(hsp.subject_range.end_ + config.gapped_filter_window, slen);
-			DP::scan_diags128(query_profile[frame], target.seq, d, j0, j1, scores);
-			const int score = DP::diag_alignment(scores, 128);
-			if (score_cutoff(score, qlen))
-				return true;
-		}
-	return false;
-}
-
-vector<WorkTarget> gapped_filter(const sequence* query, const Bias_correction* query_cbs, std::vector<WorkTarget>& targets, Statistics &stat) {
-	vector<WorkTarget> out;
-	vector<LongScoreProfile> query_profile;
-	query_profile.reserve(align_mode.query_contexts);
-	for (unsigned i = 0; i < align_mode.query_contexts; ++i)
-		query_profile.emplace_back(query[i], query_cbs[i]);
-	const int qlen = (int)query[0].length();
-
-	for (WorkTarget& target : targets) {
-		if (score_cutoff(target.filter_score, qlen)) {
-			out.push_back(std::move(target));
-			continue;
-		}
-		if(gapped_filter(query_profile.data(), target, stat))
-			out.push_back(std::move(target));
-	}
-
-	return out;
-}*/
-
 int gapped_filter(const SeedHit &hit, const LongScoreProfile *query_profile, const sequence &target, int band, int window, std::function<decltype(DP::ARCH_GENERIC::scan_diags128)> f) {	
 	const int slen = (int)target.length();
 	const int d = std::max(hit.diag() - band / 2, -(slen - 1)),
@@ -89,13 +51,11 @@ bool gapped_filter(const SeedHit *begin, const SeedHit *end, const LongScoreProf
 	for (const SeedHit* hit = begin; hit < end; ++hit) {
 		stat.inc(Statistics::GAPPED_FILTER_HITS1);
 		const int f1 = gapped_filter(*hit, query_profile, target, 64, window1, DP::scan_diags64);
-		//if(f1 > params.cutoff_gapped1(qlen)) {
 		if (f1 > params.cutoff_gapped1_new(qlen, slen)) {
 			stat.inc(Statistics::GAPPED_FILTER_HITS2);
 			if (qlen < MIN_STAGE2_QLEN && align_mode.query_translated)
 				return true;
 			const int f2 = gapped_filter(*hit, query_profile, target, 128, config.gapped_filter_window, DP::scan_diags128);
-			//if(f2 > params.cutoff_gapped2(qlen))
 			if (f2 > params.cutoff_gapped2_new(qlen, slen))
 				return true;
 		}
