@@ -1,6 +1,8 @@
 [2.0.7]
 - Added support for the new `prot.accession2taxid.FULL.gz` taxonomy mapping file from
   NCBI.
+- Added the option `--gapped-filter-evalue` to set the e-value threshold for the gapped
+  filter heuristic.
 
 [2.0.6]
 - Changed the computation of expected values to use the method described in Park, Y.,
