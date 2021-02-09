@@ -110,6 +110,10 @@ void Config::set_sens(Sensitivity sens) {
 	sensitivity = sens;
 }
 
+std::string Config::single_query_file() const {
+	return query_file.empty() ? string() : query_file.front();
+}
+
 Config::Config(int argc, const char **argv, bool check_io)
 {
 	Command_line_parser parser;
@@ -309,9 +313,6 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("family-map", 0, "", family_map)
 		("family-map-query", 0, "", family_map_query)
 		("query-parallel-limit", 0, "", query_parallel_limit, 3000000u)
-		("target-indexed", 0, "", target_indexed)
-		("mmap-target-index", 0, "", mmap_target_index)
-		("save-target-index", 0, "", save_target_index)
 		("log-evalue-scale", 0, "", log_evalue_scale, 1.0/std::log(2.0));
 
 	Options_group view_options("View options");
@@ -472,7 +473,10 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("deque_bucket_size", 0, "", deque_bucket_size, (size_t)524288)
 		("query-match-distance-threshold", 0, "", query_match_distance_threshold, -1.0)
 		("length-ratio-threshold", 0, "", length_ratio_threshold, -1.0)
-		("fast", 0, "", mode_fast);
+		("fast", 0, "", mode_fast)
+		("target-indexed", 0, "", target_indexed)
+		("mmap-target-index", 0, "", mmap_target_index)
+		("save-target-index", 0, "", save_target_index);
 	
 	parser.add(general).add(makedb).add(cluster).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options).add(deprecated_options);
 	parser.store(argc, argv, command);

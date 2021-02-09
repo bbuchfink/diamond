@@ -331,6 +331,7 @@ struct Config
 	}
 
 	void set_sens(Sensitivity sens);
+	std::string single_query_file() const;
 
 	bool mem_buffered() const { return tmpdir == "/dev/shm"; }
 
