@@ -99,7 +99,7 @@ list<Hsp> swipe_targets(const sequence &query,
 	list<Hsp> out;
 	if (flags & DP::FULL_MATRIX) {
 		if (flags & TRACEBACK)
-			return full_swipe_dispatch_cbs<_sv, VectorTraceback>(query, frame, *targets, composition_bias, overflow, stat);
+			return full_swipe_dispatch_cbs<int32_t, VectorTraceback>(query, frame, *targets, composition_bias, overflow, stat);
 		else
 			return full_swipe_dispatch_cbs<_sv, ScoreOnly>(query, frame, *targets, composition_bias, overflow, stat);
 	}
