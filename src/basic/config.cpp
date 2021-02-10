@@ -476,7 +476,8 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("fast", 0, "", mode_fast)
 		("target-indexed", 0, "", target_indexed)
 		("mmap-target-index", 0, "", mmap_target_index)
-		("save-target-index", 0, "", save_target_index);
+		("save-target-index", 0, "", save_target_index)
+		("max-swipe-dp", 0, "", max_swipe_dp, (size_t)4000000);
 	
 	parser.add(general).add(makedb).add(cluster).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options).add(deprecated_options);
 	parser.store(argc, argv, command);

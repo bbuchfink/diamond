@@ -259,6 +259,7 @@ struct Config
 	bool mode_fast;
 	double log_evalue_scale;
 	double ungapped_evalue_short;
+	size_t max_swipe_dp;
 
 	Sensitivity sensitivity;
 	TracebackMode traceback_mode;

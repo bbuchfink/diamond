@@ -99,7 +99,7 @@ list<Hsp> swipe_targets(const sequence &query,
 	list<Hsp> out;
 	if (flags & DP::FULL_MATRIX) {
 		if (flags & TRACEBACK)
-			return full_swipe_dispatch_cbs<int32_t, VectorTraceback>(query, frame, *targets, composition_bias, overflow, stat);
+			return full_swipe_dispatch_cbs<_sv, VectorTraceback>(query, frame, *targets, composition_bias, overflow, stat);
 		else
 			return full_swipe_dispatch_cbs<_sv, ScoreOnly>(query, frame, *targets, composition_bias, overflow, stat);
 	}
@@ -197,7 +197,7 @@ list<Hsp> swipe_threads(const sequence &query,
 		return swipe_targets<_sv>(query, begin, end, targets ? targets : my_targets.get(), frame, composition_bias, flags, overflow, stat);
 }
 
-list<Hsp> swipe(const sequence &query, vector<DpTarget> &targets8, vector<DpTarget> &targets16, DynamicIterator<DpTarget>* targets, Frame frame, const Bias_correction *composition_bias, int flags, Statistics &stat)
+list<Hsp> swipe(const sequence &query, vector<DpTarget> &targets8, const vector<DpTarget> &targets16, const vector<DpTarget>& targets32, DynamicIterator<DpTarget>* targets, Frame frame, const Bias_correction *composition_bias, int flags, Statistics &stat)
 {
 	vector<DpTarget> overflow8, overflow16, overflow32;
 	list<Hsp> out;
@@ -218,7 +218,7 @@ list<Hsp> swipe(const sequence &query, vector<DpTarget> &targets8, vector<DpTarg
 	overflow8 = std::move(targets8);
 #endif
 #ifdef __SSE2__
-	if (!overflow8.empty() || !targets16.empty()) {
+	if (!overflow8.empty() || !targets16.empty() || !targets32.empty()) {
 		overflow8.insert(overflow8.end(), targets16.begin(), targets16.end());
 		stat.inc(Statistics::EXT16, overflow8.size());
 		task_timer timer;
@@ -227,7 +227,8 @@ list<Hsp> swipe(const sequence &query, vector<DpTarget> &targets8, vector<DpTarg
 		timer.go();
 		out.splice(out.end(), swipe_threads<::DISPATCH_ARCH::score_vector<int16_t>>(query, overflow8.begin(), overflow8.end(), nullptr, frame, composition_bias ? composition_bias->int8.data() : nullptr, flags, overflow16, stat));
 		if ((flags & PARALLEL) == 0) stat.inc(time_stat, timer.microseconds());
-		if (!overflow16.empty()) {
+		if (!overflow16.empty() || !targets32.empty()) {
+			overflow16.insert(overflow16.end(), targets32.begin(), targets32.end());
 			stat.inc(Statistics::EXT32, overflow16.size());
 			timer.go();
 			out.splice(out.end(), swipe_threads<int32_t>(query, overflow16.begin(), overflow16.end(), nullptr, frame, composition_bias ? composition_bias->int8.data() : nullptr, flags, overflow32, stat));
