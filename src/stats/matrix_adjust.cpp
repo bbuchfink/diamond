@@ -907,8 +907,8 @@ Blast_TrueAaToStdTargetFreqs(double** StdFreq, int StdAlphsize,
      */
      /* Shorter names for the sizes of the two alphabets */
     const int small_alphsize = COMPO_NUM_TRUE_AA;
-    int A, B;          /* characters in the std (big) alphabet */
-    int a, b;          /* characters in the small alphabet */
+    size_t A, B;          /* characters in the std (big) alphabet */
+    size_t a, b;          /* characters in the small alphabet */
     double sum;        /* sum of values in target_freq; used to normalize */
     sum = 0.0;
     for (a = 0; a < small_alphsize; a++) {

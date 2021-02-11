@@ -14,6 +14,7 @@
   in blastx mode.
 - Added the output field `full_qseq_mate` to print the sequence of the query's mate
   (enabled when using two query files in blastx mode).
+- Fixed a bug that could cause a crash in blastx mode for very long queries.
 
 [2.0.6]
 - Changed the computation of expected values to use the method described in Park, Y.,

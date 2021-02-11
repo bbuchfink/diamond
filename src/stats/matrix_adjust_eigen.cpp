@@ -325,9 +325,8 @@ static void ComputeScoresFromProbs(MatrixN& scores,
     const VectorN& row_freqs,
     const VectorN& col_freqs)
 {
-    int i, j;     /* iteration indices over characters in the alphabet */
-    for (i = 0; i < N; i++) {
-        for (j = 0; j < N; j++) {
+    for (size_t i = 0; i < N; i++) {
+        for (size_t j = 0; j < N; j++) {
             scores(i, j) = log(target_freqs(i, j) / (row_freqs[i] * col_freqs[j]));
         }
     }

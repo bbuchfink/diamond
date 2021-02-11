@@ -146,7 +146,7 @@ vector<int> MultiStep::cluster_sets(const size_t nb_size, vector<TempFile*> &sor
 		}
 		curr = Util::Algo::greedy_vortex_cover(tmp_neighbors);
 
-		for (size_t i = 0; i < curr.size(); i++) {
+		for (int i = 0; i < (int)curr.size(); i++) {
 				if (curr[i] != i) {
 					cluster[i] = curr[i];
 				}

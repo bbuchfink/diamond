@@ -436,13 +436,12 @@ s_ScaleSquareMatrix(int** matrix, int alphsize,
     double Lambda, const double(&freq_ratios)[NCBI_ALPH][NCBI_ALPH])
 {
     double** scores;     /* a double precision matrix of scores */
-    int i;                /* iteration index */
 
     scores = Nlm_DenseMatrixNew(alphsize, alphsize);
     if (scores == 0) return -1;
 
-    for (i = 0; i < TRUE_AA; i++) {
-        for (int j = 0; j < TRUE_AA; ++j)
+    for (size_t i = 0; i < TRUE_AA; i++) {
+        for (size_t j = 0; j < TRUE_AA; ++j)
             scores[i][j] = freq_ratios[ALPH_TO_NCBI[i]][ALPH_TO_NCBI[j]];
         //memcpy(scores[i], freq_ratios[i], alphsize * sizeof(double));
     }
@@ -548,12 +547,12 @@ double ideal_lambda(const int** matrix) {
     double* scoreArray;
     double bg[TRUE_AA];
     double s = 0.0;
-    for (int i = 0; i < TRUE_AA; ++i) {
+    for (size_t i = 0; i < TRUE_AA; ++i) {
         int j = value_traits.from_char(Robinson_prob[i].first);
         bg[j] = Robinson_prob[i].second;
         s += bg[j];
     }
-    for (int i = 0; i < TRUE_AA; ++i)
+    for (size_t i = 0; i < TRUE_AA; ++i)
         bg[i] /= s;
 
     int out_of_memory = s_GetMatrixScoreProbs(&scoreArray, &obs_min, &obs_max, matrix, TRUE_AA, bg, bg);
