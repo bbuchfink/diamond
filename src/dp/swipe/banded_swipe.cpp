@@ -394,7 +394,7 @@ struct TracebackVectorMatrix
 	}
 	inline ColumnIterator begin(int offset, int col)
 	{
-		return ColumnIterator(&hgap_[offset], &score_[offset], &trace_mask_[(col + 1)*band_ + offset]);
+		return ColumnIterator(&hgap_[offset], &score_[offset], &trace_mask_[size_t(col + 1)*(size_t)band_ + (size_t)offset]);
 	}
 	int band() const {
 		return band_;

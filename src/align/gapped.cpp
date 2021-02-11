@@ -83,9 +83,10 @@ Match::Match(size_t target_block_id, std::array<std::list<Hsp>, MAX_CONTEXT> &hs
 		max_hsp_culling();
 }
 
-void add_dp_targets(const WorkTarget &target, int target_idx, const sequence *query_seq, array<array<vector<DpTarget>, 3>, MAX_CONTEXT> &dp_targets, int flags) {
+void add_dp_targets(const WorkTarget& target, int target_idx, const sequence* query_seq, array<array<vector<DpTarget>, 3>, MAX_CONTEXT>& dp_targets, int flags) {
 	const int band = Extension::band((int)query_seq->length()),
 		slen = (int)target.seq.length();
+	const size_t qlen = query_seq[0].length();
 	const Stats::TargetMatrix* matrix = target.matrix.scores.empty() ? nullptr : &target.matrix;
 	for (unsigned frame = 0; frame < align_mode.query_contexts; ++frame) {
 
@@ -115,6 +116,8 @@ void add_dp_targets(const WorkTarget &target, int target_idx, const sequence *qu
 				j0 = std::min(j0, hsp.subject_range.begin_);
 				j1 = std::max(j1, hsp.subject_range.end_);
 				bits = std::max(bits, (hsp.score <= config.cutoff_score_8bit && (d1 - d0) < 256) ? 0 : 1);
+				if (flags & DP::TRACEBACK && size_t(d1 - d0) * qlen > config.max_swipe_dp)
+					bits = 2;
 			}
 			else {
 				if (d0 != INT_MAX)
@@ -124,6 +127,8 @@ void add_dp_targets(const WorkTarget &target, int target_idx, const sequence *qu
 				j0 = hsp.subject_range.begin_;
 				j1 = hsp.subject_range.end_;
 				bits = (hsp.score <= config.cutoff_score_8bit && (d1 - d0) < 256) ? 0 : 1;
+				if (flags & DP::TRACEBACK && size_t(d1 - d0) * qlen > config.max_swipe_dp)
+					bits = 2;
 			}
 		}
 
@@ -217,7 +222,8 @@ void add_dp_targets(const Target &target, int target_idx, const sequence *query_
 		for (const Hsp &hsp : target.hsp[frame]) {
 			const bool byte_row_counter = config.ext == "full" ? qlen < 256 : (hsp.d_end - hsp.d_begin < 256);
 			int b = (hsp.score < 255 && byte_row_counter) ? 0 : 1;
-			if (config.ext == "full" && query_seq[0].length() * target.seq.length() > config.max_swipe_dp)
+			const size_t dp_size = config.ext == "full" ? query_seq[0].length() * target.seq.length() : query_seq[0].length() * size_t(hsp.d_end - hsp.d_begin);
+			if (dp_size > config.max_swipe_dp)
 				b = 2;
 			dp_targets[frame][b].emplace_back(target.seq, hsp.d_begin, hsp.d_end, hsp.seed_hit_range.begin_, hsp.seed_hit_range.end_, target_idx, qlen, matrix);
 		}
