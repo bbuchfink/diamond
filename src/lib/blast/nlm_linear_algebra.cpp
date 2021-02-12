@@ -36,8 +36,8 @@
 
 /* Documented in nlm_linear_algebra.h. */
 double **
-Nlm_DenseMatrixNew(int nrows,
-                   int ncols)
+Nlm_DenseMatrixNew(size_t nrows,
+                   size_t ncols)
 {
     int i;             /* iteration index */
     double ** mat;     /* the new matrix */

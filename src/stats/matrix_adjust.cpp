@@ -897,7 +897,7 @@ Blast_ApplyPseudocounts(double* probs20,
 
 /* Documented in composition_adjustment.h. */
 void
-Blast_TrueAaToStdTargetFreqs(double** StdFreq, int StdAlphsize,
+Blast_TrueAaToStdTargetFreqs(double** StdFreq, size_t StdAlphsize,
     const double* freq)
 {
     /* Note I'm using a rough convention for this routine that uppercase
@@ -907,8 +907,8 @@ Blast_TrueAaToStdTargetFreqs(double** StdFreq, int StdAlphsize,
      */
      /* Shorter names for the sizes of the two alphabets */
     const int small_alphsize = COMPO_NUM_TRUE_AA;
-    int A, B;          /* characters in the std (big) alphabet */
-    int a, b;          /* characters in the small alphabet */
+    size_t A, B;          /* characters in the std (big) alphabet */
+    size_t a, b;          /* characters in the small alphabet */
     double sum;        /* sum of values in target_freq; used to normalize */
     sum = 0.0;
     for (a = 0; a < small_alphsize; a++) {
@@ -995,7 +995,7 @@ Blast_CalcFreqRatios(double** ratios, int alphsize,
  * @param Lambda        the desired scale of this matrix
  */
 static int
-s_ScoresStdAlphabet(int** Matrix, int Alphsize,
+s_ScoresStdAlphabet(int** Matrix, size_t Alphsize,
     const double* target_freq,
     const double row_prob[], const double col_prob[],
     double Lambda)
@@ -1005,7 +1005,6 @@ s_ScoresStdAlphabet(int** Matrix, int Alphsize,
      * and lowercase letters refer to the true amino acid (smaller)
      * alphabet.
      */
-    int i;
     /* row and column probabilities in the NCBIstdaa alphabet */
     //double RowProb[COMPO_LARGEST_ALPHABET];
     //double ColProb[COMPO_LARGEST_ALPHABET];
@@ -1057,7 +1056,7 @@ Blast_CompositionMatrixAdj(int** matrix,
     double row_probs[COMPO_NUM_TRUE_AA], col_probs[COMPO_NUM_TRUE_AA];
     /* Target RE when optimizing the matrix; zero if the relative
        entropy should not be constrained. */
-    double dummy, desired_re = 0.0;
+    double desired_re = 0.0;
     std::copy(stdaa_row_probs, stdaa_row_probs + 20, row_probs);
     std::copy(stdaa_col_probs, stdaa_col_probs + 20, col_probs);
 

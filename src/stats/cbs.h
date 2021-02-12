@@ -85,8 +85,8 @@ typedef struct Blast_MatrixInfo {
                                     in standard context */
 } Blast_MatrixInfo;
 
-void Blast_FreqRatioToScore(double** matrix, int rows, int cols, double Lambda);
-void s_RoundScoreMatrix(int** matrix, int rows, int cols, double** floatScoreMatrix);
+void Blast_FreqRatioToScore(double** matrix, size_t rows, size_t cols, double Lambda);
+void s_RoundScoreMatrix(int** matrix, size_t rows, size_t cols, double** floatScoreMatrix);
 int s_GetMatrixScoreProbs(double** scoreProb, int* obs_min, int* obs_max,
     const int* const* matrix, int alphsize,
     const double* subjectProbArray,

@@ -250,7 +250,7 @@ double load_edges(EdgeVec& all_edges, EdgeList &edges, vector<Node> &nodes, Queu
 void upgma() {
 	const double max_dist = (dist_type() == DistType::BITSCORE) ? 0.0 : 10.0;
 	message_stream << "Reading edges..." << endl;
-	EdgeVec all_edges(config.query_file.front().c_str());
+	EdgeVec all_edges(config.single_query_file().c_str());
 	message_stream << "Read " << all_edges.nodes() << " nodes, " << all_edges.size() << " edges." << endl;
 
 	EdgeList edges;

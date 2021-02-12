@@ -325,9 +325,8 @@ static void ComputeScoresFromProbs(MatrixN& scores,
     const VectorN& row_freqs,
     const VectorN& col_freqs)
 {
-    int i, j;     /* iteration indices over characters in the alphabet */
-    for (i = 0; i < N; i++) {
-        for (j = 0; j < N; j++) {
+    for (size_t i = 0; i < N; i++) {
+        for (size_t j = 0; j < N; j++) {
             scores(i, j) = log(target_freqs(i, j) / (row_freqs[i] * col_freqs[j]));
         }
     }
@@ -413,7 +412,7 @@ static bool Blast_OptimizeTargetFrequencies(MatrixN& x,
             SolveReNewtonSystem(resids_x, resids_z, newton_system, workspace);
 
             /* Calculate a value of alpha that ensure that x is positive */
-            const Float alpha = Nlm_StepBound(x, resids_x, 1.0 / .95) * 0.95;
+            const Float alpha = Nlm_StepBound(x, resids_x, Float(1.0 / .95)) * 0.95;
 
             x += alpha * resids_x;
             z += alpha * resids_z;
@@ -436,9 +435,9 @@ bool OptimizeTargetFrequencies(double* out, const double* joints_prob, const dou
 #endif
     for (size_t i = 0; i < N; ++i) {
         for (size_t j = 0; j < N; ++j)
-            q(i, j) = joints_prob[i * N + j];
-        row_sums[i] = row_probs[i];
-        col_sums[i] = col_probs[i];
+            q(i, j) = (Float)joints_prob[i * N + j];
+        row_sums[i] = (Float)row_probs[i];
+        col_sums[i] = (Float)col_probs[i];
     }
     bool r = Blast_OptimizeTargetFrequencies(x, q, row_sums, col_sums, relative_entropy, tol, maxits);
     for (size_t i = 0; i < N; ++i)

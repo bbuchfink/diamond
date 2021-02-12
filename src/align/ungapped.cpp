@@ -58,18 +58,18 @@ WorkTarget ungapped_stage(SeedHit *begin, SeedHit *end, const sequence *query_se
 		stat.inc(Statistics::MATRIX_ADJUST_COUNT);
 
 	if (config.ext == "full") {
-		for (const SeedHit *hit = begin; hit < end; ++hit)
-			target.ungapped_score = std::max(target.ungapped_score, hit->score);
+		for (const SeedHit* hit = begin; hit < end; ++hit)
+			target.ungapped_score[hit->frame] = std::max(target.ungapped_score[hit->frame], hit->score);
 		return target;
 	}
 	if (end - begin == 1 && align_mode.query_translated) {
-		target.ungapped_score = begin->score;
+		target.ungapped_score[begin->frame] = begin->score;
 		target.hsp[begin->frame].emplace_back(begin->diag(), begin->diag(), begin->score, begin->frame, interval(), interval());
 		return target;
 	}
 	std::sort(begin, end);
 	for (const SeedHit *hit = begin; hit < end; ++hit) {
-		target.ungapped_score = std::max(target.ungapped_score, hit->score);
+		target.ungapped_score[hit->frame] = std::max(target.ungapped_score[hit->frame], hit->score);
 		if (!diagonal_segments[hit->frame].empty() && diagonal_segments[hit->frame].back().diag() == hit->diag() && diagonal_segments[hit->frame].back().subject_end() >= hit->j)
 			continue;
 		const Diagonal_segment d = xdrop_ungapped(query_seq[hit->frame], target.seq, hit->i, hit->j);

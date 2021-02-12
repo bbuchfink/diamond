@@ -44,7 +44,7 @@ extern "C" {
  * @param nrows     the number of rows for the new matrix.
  * @param ncols     the number of columns for the new matrix.
  */
-double ** Nlm_DenseMatrixNew(int nrows, int ncols);
+double ** Nlm_DenseMatrixNew(size_t nrows, size_t ncols);
 
 
 /**

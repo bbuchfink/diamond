@@ -259,6 +259,7 @@ struct Config
 	bool mode_fast;
 	double log_evalue_scale;
 	double ungapped_evalue_short;
+	size_t max_swipe_dp;
 
 	Sensitivity sensitivity;
 	TracebackMode traceback_mode;
@@ -331,6 +332,7 @@ struct Config
 	}
 
 	void set_sens(Sensitivity sens);
+	std::string single_query_file() const;
 
 	bool mem_buffered() const { return tmpdir == "/dev/shm"; }
 

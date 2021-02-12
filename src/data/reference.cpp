@@ -456,7 +456,7 @@ void DatabaseFile::get_seq()
 {
 	std::map<string, string> seq_titles;
 	if (!config.query_file.empty()) {
-		TextInputFile list(config.query_file.front());
+		TextInputFile list(config.single_query_file());
 		while (list.getline(), !list.eof()) {
 			const vector<string> t(tokenize(list.line.c_str(), "\t"));
 			if (t.size() != 2)
