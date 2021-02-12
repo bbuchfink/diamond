@@ -420,7 +420,7 @@ static bool Blast_OptimizeTargetFrequencies(MatrixN& x,
 
     }
     DEBUG_OUT(x);
-    return its <= maxits && rnorm <= tol && z[2*N] < 1.0;
+    return its <= maxits && rnorm <= tol && z[2*N-1] < 1.0;
 }
 
 namespace Stats {

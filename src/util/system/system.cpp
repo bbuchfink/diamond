@@ -171,7 +171,7 @@ std::tuple<char*, size_t, int> mmap_file(const char* filename) {
 
 	fd = open(filename, O_RDONLY);
 	if (fd == -1)
-		return { nullptr, 0, -1 };
+		return std::tuple<char*, size_t, int>(nullptr, 0, -1);
 
 	if (fstat(fd, &sb) == -1)           /* To obtain file size */
 		handle_error("fstat");
@@ -182,7 +182,7 @@ std::tuple<char*, size_t, int> mmap_file(const char* filename) {
 		MAP_SHARED, fd, 0);
 	if (addr == MAP_FAILED)
 		handle_error("mmap");
-	return { (char*)addr, length, fd };
+	return std::tuple<char*, size_t, int>((char*)addr, length, fd);
 #endif
 }
 

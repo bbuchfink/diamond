@@ -21,7 +21,7 @@ struct Profiler {
 
 	static void print(size_t n) {
 		for (const auto& i : times)
-			message_stream << i.first << ": " << (double)i.second/n/1e3 << " µs" << std::endl;
+			message_stream << i.first << ": " << (double)i.second/n/1e3 << " micros" << std::endl;
 	}
 
 	task_timer timer;
