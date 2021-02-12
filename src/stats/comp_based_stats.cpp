@@ -328,10 +328,8 @@ s_GetMatrixScoreProbs(double** scoreProb, int* obs_min, int* obs_max,
 void
 Blast_FreqRatioToScore(double** matrix, size_t rows, size_t cols, double Lambda)
 {
-    int i;
-    for (i = 0; i < rows; i++) {
-        int j;
-        for (j = 0; j < cols; j++) {
+    for (size_t i = 0; i < rows; i++) {
+        for (size_t j = 0; j < cols; j++) {
             if (0.0 == matrix[i][j]) {
                 matrix[i][j] = COMPO_SCORE_MIN;
             }
@@ -346,10 +344,8 @@ void
 s_RoundScoreMatrix(int** matrix, size_t rows, size_t cols,
     double** floatScoreMatrix)
 {
-    int p, c; /*indices over positions and characters*/
-
-    for (p = 0; p < rows; p++) {
-        for (c = 0; c < cols; c++) {
+    for (size_t p = 0; p < rows; p++) {
+        for (size_t c = 0; c < cols; c++) {
             if (floatScoreMatrix[p][c] < INT_MIN) {
                 matrix[p][c] = INT_MIN;
             }

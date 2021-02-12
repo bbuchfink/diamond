@@ -39,7 +39,6 @@ double **
 Nlm_DenseMatrixNew(size_t nrows,
                    size_t ncols)
 {
-    int i;             /* iteration index */
     double ** mat;     /* the new matrix */
 
     mat = (double **) calloc(nrows, sizeof(double *));
@@ -47,7 +46,7 @@ Nlm_DenseMatrixNew(size_t nrows,
         mat[0] = (double *) malloc((size_t) nrows *
                                    (size_t) ncols * sizeof(double));
         if (mat[0] != NULL) {
-            for (i = 1;  i < nrows;  i++) {
+            for (size_t i = 1;  i < nrows;  i++) {
                 mat[i] = &mat[0][i * ncols];
             }
         } else {

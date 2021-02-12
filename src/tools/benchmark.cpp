@@ -319,7 +319,7 @@ void matrix_adjust(const sequence& s1, const sequence& s2) {
 		Stats::OptimizeTargetFrequencies(mat_final.data(), joint_probs, row_probs.data(), col_probs.data(), 0.44, config.cbs_err_tolerance, config.cbs_it_limit);
 	}
 
-	cout << "Matrix adjust (vectorized):\t" << (double)duration_cast<std::chrono::microseconds>(high_resolution_clock::now() - t1).count() / (n) << " µs" << endl;
+	cout << "Matrix adjust (vectorized):\t" << (double)duration_cast<std::chrono::microseconds>(high_resolution_clock::now() - t1).count() / (n) << " micros" << endl;
 
 	//Profiler::print(n);
 }
