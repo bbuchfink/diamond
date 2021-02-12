@@ -327,7 +327,7 @@ struct Banded3FrameSwipeMatrixRef<_sv, DP::ScoreOnly>
 };
 
 template<typename _sv>
-Hsp traceback(sequence *query, Strand strand, int dna_len, const Banded3FrameSwipeTracebackMatrix<_sv> &dp, const DpTarget &target, int d_begin, typename ScoreTraits<_sv>::Score max_score, double evalue, int max_col, int channel, int i0, int i1)
+Hsp traceback(Sequence *query, Strand strand, int dna_len, const Banded3FrameSwipeTracebackMatrix<_sv> &dp, const DpTarget &target, int d_begin, typename ScoreTraits<_sv>::Score max_score, double evalue, int max_col, int channel, int i0, int i1)
 {
 	typedef typename ScoreTraits<_sv>::Score Score;
 	const int j0 = i1 - (target.d_end - 1), d1 = target.d_end;
@@ -371,7 +371,7 @@ Hsp traceback(sequence *query, Strand strand, int dna_len, const Banded3FrameSwi
 }
 
 template<typename _sv>
-Hsp traceback(sequence *query, Strand strand, int dna_len, const Banded3FrameSwipeMatrix<_sv> &dp, const DpTarget &target, int d_begin, typename ScoreTraits<_sv>::Score max_score, double evalue, int max_col, int channel, int i0, int i1)
+Hsp traceback(Sequence *query, Strand strand, int dna_len, const Banded3FrameSwipeMatrix<_sv> &dp, const DpTarget &target, int d_begin, typename ScoreTraits<_sv>::Score max_score, double evalue, int max_col, int channel, int i0, int i1)
 {
 	Hsp out;
 	const int j0 = i1 - (target.d_end - 1);
@@ -398,7 +398,7 @@ list<Hsp> banded_3frame_swipe(
 	typedef typename ScoreTraits<_sv>::Score Score;
 
 	assert(subject_end - subject_begin <= ScoreTraits<_sv>::CHANNELS);
-	sequence q[3];
+	Sequence q[3];
 	query.get_strand(strand, q);
 	const int qlen = (int)q[0].length(), qlen2 = (int)q[1].length(), qlen3 = (int)q[2].length();
 

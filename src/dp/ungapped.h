@@ -27,5 +27,5 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 //int xdrop_ungapped(const Letter *query, const Letter *subject, unsigned &delta, unsigned &len);
 int xdrop_ungapped_right(const Letter *query, const Letter *subject, int &len);
 int ungapped_window(const Letter* query, const Letter* subject, int window);
-Diagonal_segment xdrop_ungapped(const sequence &query, const Bias_correction &query_bc, const sequence &subject, int qa, int sa);
-Diagonal_segment xdrop_ungapped(const sequence &query, const sequence &subject, int qa, int sa);
+Diagonal_segment xdrop_ungapped(const Sequence &query, const Bias_correction &query_bc, const Sequence &subject, int qa, int sa);
+Diagonal_segment xdrop_ungapped(const Sequence &query, const Sequence &subject, int qa, int sa);

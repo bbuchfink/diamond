@@ -40,7 +40,7 @@ void write_unaligned(OutputFile *file)
 	TextBuffer buf;
 	for (size_t i = 0; i < n; ++i) {
 		if (!query_aligned[i]) {
-			Util::Sequence::format(align_mode.query_translated ? query_source_seqs::get()[i] : query_seqs::get()[i],
+			Util::Seq::format(align_mode.query_translated ? query_source_seqs::get()[i] : query_seqs::get()[i],
 				query_ids::get()[i],
 				query_qual ? (*query_qual)[i] : nullptr,
 				*file,
@@ -56,7 +56,7 @@ void write_aligned(OutputFile *file)
 	TextBuffer buf;
 	for (size_t i = 0; i < n; ++i) {
 		if (query_aligned[i]) {
-			Util::Sequence::format(align_mode.query_translated ? query_source_seqs::get()[i] : query_seqs::get()[i],
+			Util::Seq::format(align_mode.query_translated ? query_source_seqs::get()[i] : query_seqs::get()[i],
 				query_ids::get()[i],
 				query_qual ? (*query_qual)[i] : nullptr,
 				*file,

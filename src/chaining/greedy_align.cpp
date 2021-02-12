@@ -82,13 +82,13 @@ void Diag_graph::load(vector<Diagonal_segment>::const_iterator begin, vector<Dia
 	}
 }
 
-void Diag_graph::print(sequence query, sequence subject) const
+void Diag_graph::print(Sequence query, Sequence subject) const
 {
 	for (int k = 0; k < (int)nodes.size(); ++k) {
 		const Diagonal_segment &d = nodes[k];
 		cout << "Diag n=" << k << " i=" << d.i << " j=" << d.j << " d=" << d.diag() << " score=" << d.score << " len=" << d.len << endl;
-		cout << sequence(query, d.i, d.query_last()) << endl;
-		cout << sequence(subject, d.j, d.subject_last()) << endl;
+		cout << Sequence(query, d.i, d.query_last()) << endl;
+		cout << Sequence(subject, d.j, d.subject_last()) << endl;
 	}
 }
 
@@ -159,7 +159,7 @@ struct Link
 	}
 };
 
-int score_range(sequence query, sequence subject, int i, int j, int j_end)
+int score_range(Sequence query, Sequence subject, int i, int j, int j_end)
 {
 	int score = 0;
 	while (j < j_end) {
@@ -170,7 +170,7 @@ int score_range(sequence query, sequence subject, int i, int j, int j_end)
 	return score;
 }
 
-int get_hgap_link(const Diagonal_segment &d1, const Diagonal_segment &d2, sequence query, sequence subject, Link &l, int padding)
+int get_hgap_link(const Diagonal_segment &d1, const Diagonal_segment &d2, Sequence query, Sequence subject, Link &l, int padding)
 {
 	const int d = d1.diag() - d2.diag(),
 		j2_end = std::min(std::max((int)d2.j, d1.subject_last() + d + 1 + padding), d2.subject_last());
@@ -221,14 +221,14 @@ int get_hgap_link(const Diagonal_segment &d1, const Diagonal_segment &d2, sequen
 	return max_score;
 }
 
-int get_vgap_link(const Diagonal_segment &d1, const Diagonal_segment &d2, sequence query, sequence subject, Link &l, int padding)
+int get_vgap_link(const Diagonal_segment &d1, const Diagonal_segment &d2, Sequence query, Sequence subject, Link &l, int padding)
 {
 	int s = get_hgap_link(d1.transpose(), d2.transpose(), subject, query, l, padding);
 	l.transpose();
 	return s;
 }
 
-int get_link(const Diagonal_segment &d1, const Diagonal_segment &d2, sequence query, sequence subject, Link &l, int padding)
+int get_link(const Diagonal_segment &d1, const Diagonal_segment &d2, Sequence query, Sequence subject, Link &l, int padding)
 {
 	if (d1.diag() < d2.diag())
 		return get_vgap_link(d1, d2, query, subject, l, padding);
@@ -596,7 +596,7 @@ struct Greedy_aligner2
 		return run(hsps, ts, 0.1, 19, band);
 	}
 
-	Greedy_aligner2(const sequence &query, const sequence &subject, bool log, unsigned frame) :
+	Greedy_aligner2(const Sequence &query, const Sequence &subject, bool log, unsigned frame) :
 		query(query),
 		subject(subject),
 		//query_bc(query_bc),
@@ -605,7 +605,7 @@ struct Greedy_aligner2
 	{
 	}
 
-	const sequence query, subject;
+	const Sequence query, subject;
 	//const Bias_correction &query_bc;
 	const bool log;
 	const unsigned frame;
@@ -617,7 +617,7 @@ struct Greedy_aligner2
 thread_local Diag_graph Greedy_aligner2::diags;
 thread_local map<int, unsigned> Greedy_aligner2::window;
 
-std::pair<int, list<Hsp_traits>> greedy_align(sequence query, sequence subject, vector<Diagonal_segment>::const_iterator begin, vector<Diagonal_segment>::const_iterator end, bool log, unsigned frame)
+std::pair<int, list<Hsp_traits>> greedy_align(Sequence query, Sequence subject, vector<Diagonal_segment>::const_iterator begin, vector<Diagonal_segment>::const_iterator end, bool log, unsigned frame)
 {
 	const int band = config.chaining_maxgap;
 	if (end - begin == 1)

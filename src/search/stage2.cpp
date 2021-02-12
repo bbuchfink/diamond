@@ -88,7 +88,7 @@ void search_query_offset(uint64_t q,
 	const int query_len = query_seqs::data_->length(query_id);
 	const int score_cutoff = ungapped_cutoff(query_len, context);
 	const int window = ungapped_window(query_len);
-	const sequence query_clipped = Util::Sequence::clip(query - window, window * 2, window);
+	const Sequence query_clipped = Util::Seq::clip(query - window, window * 2, window);
 	const int window_left = int(query - query_clipped.data()), window_clipped = (int)query_clipped.length();
 	size_t hit_count = 0;
 

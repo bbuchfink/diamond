@@ -1,6 +1,10 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2017 Benjamin Buchfink <buchfink@gmail.com>
+Copyright (C) 2013-2021 Max Planck Society for the Advancement of Science e.V.
+                        Benjamin Buchfink
+                        Eberhard Karls Universitaet Tuebingen
+						
+Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,9 +20,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#ifndef SEQUENCE_H_
-#define SEQUENCE_H_
-
+#pragma once
 #include <ostream>
 #include <vector>
 #include <string>
@@ -29,30 +31,28 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "translated_position.h"
 #include "../util/interval.h"
 
-using std::vector;
-
-struct sequence
+struct Sequence
 {
 	static constexpr Letter DELIMITER = DELIMITER_LETTER;
 	struct Reversed {};
 	struct Hardmasked {};
-	sequence():
+	Sequence():
 		len_ (0),
-		data_ (0)
+		data_ (nullptr)
 	{ }
-	sequence(const Letter *data, size_t len):
+	Sequence(const Letter *data, size_t len):
 		len_ (len),
 		data_ (data)
 	{ }
-	sequence(const Letter *begin, const Letter *end) :
+	Sequence(const Letter *begin, const Letter *end) :
 		len_(end - begin),
 		data_(begin)
 	{}
-	sequence(const vector<Letter> &data):
+	Sequence(const vector<Letter> &data):
 		len_(data.size()),
 		data_(data.data())
 	{}
-	sequence(const sequence &seq, int from, int to):
+	Sequence(const Sequence &seq, int from, int to):
 		len_(to-from+1),
 		data_(seq.data() + from)
 	{}
@@ -82,8 +82,8 @@ struct sequence
 	}
 	bool empty() const
 	{ return len_ == 0; }
-	sequence operator+(int d) const {
-		return sequence(data_ + d, len_ - (size_t)d);
+	Sequence operator+(int d) const {
+		return Sequence(data_ + d, len_ - (size_t)d);
 	}
 	size_t print(char *ptr, unsigned begin, unsigned len) const
 	{
@@ -144,32 +144,32 @@ struct sequence
 			os << v.alphabet[(long)(data_[i] & 127)];
 		return os;
 	}
-	sequence subseq(int begin, int end) const
+	Sequence subseq(int begin, int end) const
 	{
-		return sequence(*this, begin, end - 1);
+		return Sequence(*this, begin, end - 1);
 	}
-	friend TextBuffer& operator<<(TextBuffer &buf, const sequence &s)
-	{
-		return s.print(buf, value_traits);
-	}
-	friend std::ostream& operator<<(std::ostream &buf, const sequence &s)
+	friend TextBuffer& operator<<(TextBuffer &buf, const Sequence &s)
 	{
 		return s.print(buf, value_traits);
 	}
-	static sequence get_window(const Letter *s, int window)
+	friend std::ostream& operator<<(std::ostream &buf, const Sequence &s)
+	{
+		return s.print(buf, value_traits);
+	}
+	static Sequence get_window(const Letter *s, int window)
 	{
 		const Letter *p = s;
 		int n = 0;
-		while (*p != sequence::DELIMITER && n < window) {
+		while (*p != Sequence::DELIMITER && n < window) {
 			--p;
 			++n;
 		}
 		n = 0;
-		while (*s != sequence::DELIMITER && n < window) {
+		while (*s != Sequence::DELIMITER && n < window) {
 			++s;
 			++n;
 		}
-		return sequence(p + 1, s - p - 1);
+		return Sequence(p + 1, s - p - 1);
 	}
 	std::vector<Letter> copy() const {
 		std::vector<Letter> v;
@@ -182,7 +182,7 @@ struct sequence
 		for (int j = i.begin_; j < i.end_; ++j)
 			((Letter*)data_)[j] = value_traits.mask_char;
 	}
-	bool operator==(const sequence& s) const {
+	bool operator==(const Sequence& s) const {
 		if (len_ != s.len_)
 			return false;
 		for (size_t i = 0; i < len_; ++i)
@@ -190,18 +190,9 @@ struct sequence
 				return false;
 		return true;
 	}
-	/*friend std::ostream& operator<<(std::ostream &os, const sequence &s)
-	{
-		std::cout << "co = " << s.clipping_offset_ << std::endl;
-		for(unsigned i=s.clipping_offset_;i<s.len_;++i) {
-			if(s.data_[i] == 24)
-				break;
-			os << mask_critical(s.data_[i]);
-		}
-		return os;
-	}*/
 	static vector<Letter> from_string(const char* str, const Value_traits &vt = value_traits);
-	size_t			len_;
+
+	size_t len_;
 	const Letter *data_;
 };
 
@@ -211,13 +202,13 @@ struct TranslatedSequence
 	TranslatedSequence()
 	{}
 
-	explicit TranslatedSequence(const sequence &s1):
+	explicit TranslatedSequence(const Sequence &s1):
 		source_(s1)
 	{
 		translated_[0] = s1;
 	}
 
-	TranslatedSequence(const sequence &source, const sequence &s1, const sequence &s2, const sequence &s3, const sequence &s4, const sequence &s5, const sequence &s6):
+	TranslatedSequence(const Sequence&source, const Sequence&s1, const Sequence&s2, const Sequence&s3, const Sequence&s4, const Sequence&s5, const Sequence&s6):
 		source_(source)
 	{
 		translated_[0] = s1;
@@ -228,14 +219,14 @@ struct TranslatedSequence
 		translated_[5] = s6;
 	}
 
-	TranslatedSequence(const sequence &source, const vector<Letter> v[6]):
+	TranslatedSequence(const Sequence&source, const vector<Letter> v[6]):
 		source_(source)
 	{
 		for (int i = 0; i < 6; ++i)
-			translated_[i] = sequence(v[i]);
+			translated_[i] = Sequence(v[i]);
 	}
 
-	const sequence& operator[](Frame frame) const
+	const Sequence& operator[](Frame frame) const
 	{
 		return translated_[frame.index()];
 	}
@@ -251,12 +242,12 @@ struct TranslatedSequence
 		return translated_[in_strand % 3 + (strand == FORWARD ? 0 : 3)][in_strand / 3];
 	}
 
-	const sequence& index(unsigned frame) const
+	const Sequence& index(unsigned frame) const
 	{
 		return translated_[frame];
 	}
 
-	const sequence &source() const
+	const Sequence&source() const
 	{
 		return source_;
 	}
@@ -266,7 +257,7 @@ struct TranslatedSequence
 		return i >= 0 && i < int((*this)[i.frame].length());
 	}
 
-	void get_strand(Strand strand, sequence *dst) const
+	void get_strand(Strand strand, Sequence*dst) const
 	{
 		int i = strand == FORWARD ? 0 : 3;
 		dst[0] = translated_[i++];
@@ -276,10 +267,7 @@ struct TranslatedSequence
 
 private:
 	
-	sequence source_;
-	sequence translated_[6];
+	Sequence source_;
+	Sequence translated_[6];
 
 };
-
-
-#endif /* SEQUENCE_H_ */

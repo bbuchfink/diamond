@@ -58,7 +58,7 @@ static inline bool verify_hits(uint32_t mask, const Letter* q, const Letter* s, 
 	return false;
 }
 
-static inline bool left_most_filter(const sequence &query,
+static inline bool left_most_filter(const Sequence &query,
 	const Letter* subject,
 	const int seed_offset,
 	const int seed_len,
@@ -75,7 +75,7 @@ static inline bool left_most_filter(const sequence &query,
 	int window = (int)query.length() - d;
 	window = std::min(window, window_left + 1 + WINDOW_RIGHT);
 
-	const sequence subject_clipped = Util::Sequence::clip(s, window, window_left);
+	const Sequence subject_clipped = Util::Seq::clip(s, window, window_left);
 	window -= s + window - subject_clipped.end();
 
 	d = subject_clipped.data() - s;

@@ -6,7 +6,7 @@
 using std::cout;
 using std::endl;
 
-void print_diag(int i0, int j0, int l, int score, const Diag_graph &diags, const sequence &query, const sequence &subject)
+void print_diag(int i0, int j0, int l, int score, const Diag_graph &diags, const Sequence &query, const Sequence &subject)
 {
 	Diagonal_segment ds(i0, j0, l, 0);
 	unsigned n = 0;
@@ -31,7 +31,7 @@ void print_diag(int i0, int j0, int l, int score, const Diag_graph &diags, const
 		cout << "Diag n=x i=" << i0 << " j=" << j0 << " len=" << l << " prefix_score=" << score << endl;
 }
 
-void smith_waterman(sequence q, sequence s, const Diag_graph &diags)
+void smith_waterman(Sequence q, Sequence s, const Diag_graph &diags)
 {
 	Hsp hsp;
 	smith_waterman(q, s, hsp);

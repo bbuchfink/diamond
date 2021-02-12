@@ -28,7 +28,7 @@ using namespace DISPATCH_ARCH;
 
 namespace DP { namespace DISPATCH_ARCH {
 
-void scan_diags128(const LongScoreProfile& qp, sequence s, int d_begin, int j_begin, int j_end, int *out)
+void scan_diags128(const LongScoreProfile& qp, Sequence s, int d_begin, int j_begin, int j_end, int *out)
 {
 #ifdef __AVX2__
 	typedef score_vector<int8_t> Sv;
@@ -126,7 +126,7 @@ void scan_diags128(const LongScoreProfile& qp, sequence s, int d_begin, int j_be
 #endif
 }
 
-void scan_diags64(const LongScoreProfile& qp, sequence s, int d_begin, int j_begin, int j_end, int* out)
+void scan_diags64(const LongScoreProfile& qp, Sequence s, int d_begin, int j_begin, int j_end, int* out)
 {
 #ifdef __AVX2__
 	typedef score_vector<int8_t> Sv;
@@ -200,7 +200,7 @@ void scan_diags64(const LongScoreProfile& qp, sequence s, int d_begin, int j_beg
 #endif
 }
 
-void scan_diags(const LongScoreProfile& qp, sequence s, int d_begin, int d_end, int j_begin, int j_end, int* out)
+void scan_diags(const LongScoreProfile& qp, Sequence s, int d_begin, int d_end, int j_begin, int j_end, int* out)
 {
 #ifdef __AVX2__
 	typedef score_vector<int8_t> Sv;

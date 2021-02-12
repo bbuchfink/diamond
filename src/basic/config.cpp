@@ -179,7 +179,9 @@ Config::Config(int argc, const char **argv, bool check_io)
 \tsstart means Start of alignment in subject\n\
 \tsend means End of alignment in subject\n\
 \tqseq means Aligned part of query sequence\n\
+\tqseq_translated means Aligned part of query sequence (translated)\n\
 \tfull_qseq means Query sequence\n\
+\tfull_qseq_mate means Query sequence of the mate\n\
 \tsseq means Aligned part of subject sequence\n\
 \tfull_sseq means Subject sequence\n\
 \tevalue means Expect value\n\
@@ -505,7 +507,7 @@ Config::Config(int argc, const char **argv, bool check_io)
 			frame_shift = 15;
 	}
 
-	if (global_ranking_targets > 0 && (query_range_culling || taxon_k || multiprocessing || mp_init || (command == blastx) || comp_based_stats >= 2))
+	if (global_ranking_targets > 0 && (query_range_culling || taxon_k || multiprocessing || mp_init || (command == blastx) || comp_based_stats >= 2 || frame_shift > 0))
 		throw std::runtime_error("Global ranking is not supported in this mode.");
 
 	if (global_ranking_targets > 0) {
@@ -546,6 +548,9 @@ Config::Config(int argc, const char **argv, bool check_io)
 
 	if (masking < 0 || masking > 1)
 		throw std::runtime_error("Permitted values for --masking: 0, 1");
+
+	if (frame_shift > 0 && ext == "full")
+		throw std::runtime_error("Frameshift alignment does not support full matrix extension.");
 
 	if (target_indexed)
 		hashed_seeds = true;

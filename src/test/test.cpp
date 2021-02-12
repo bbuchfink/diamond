@@ -95,7 +95,7 @@ int run() {
 	task_timer timer("Generating test dataset");
 	TempFile proteins;
 	for (size_t i = 0; i < seqs.size(); ++i)
-		Util::Sequence::format(sequence::from_string(seqs[i].second.c_str()), seqs[i].first.c_str(), nullptr, proteins, "fasta", amino_acid_traits);
+		Util::Seq::format(Sequence::from_string(seqs[i].second.c_str()), seqs[i].first.c_str(), nullptr, proteins, "fasta", amino_acid_traits);
 	list<TextInputFile> query_file;
 	query_file.emplace_back(proteins);
 	timer.finish();

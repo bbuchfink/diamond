@@ -214,7 +214,7 @@ void Blast_tab_format::print_match(const Hsp_context& r, const Metadata &metadat
 			for (Hsp_context::Iterator j = r.begin(); j.good(); ++j)
 				if (!(j.op() == op_insertion))
 					seq.push_back(j.subject());
-			out << sequence(seq);
+			out << Sequence(seq);
 			break;
 		}
 		case 19:
@@ -401,7 +401,7 @@ void Blast_tab_format::print_match(const Hsp_context& r, const Metadata &metadat
 				for (Hsp_context::Iterator j = r.begin(); j.good(); ++j)
 					if (j.op() != op_deletion && j.op() != op_frameshift_forward && j.op() != op_frameshift_reverse)
 						seq.push_back(j.query());
-				out << sequence(seq);
+				out << Sequence(seq);
 			}
 			else {
 				r.query.index(r.frame()).print(out, r.query_range().begin_, r.query_range().end_, amino_acid_traits);

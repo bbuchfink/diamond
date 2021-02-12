@@ -57,7 +57,7 @@ struct Vector_scores
 	int scores[20];
 };
 
-Bias_correction::Bias_correction(const sequence &seq):
+Bias_correction::Bias_correction(const Sequence &seq):
 	vector<float>(seq.length())
 {
 	Vector_scores scores;

@@ -246,7 +246,7 @@ void join_query(
 					dict_ptr->length(i->subject_dict_id),
 					n_target_seq,
 					hsp_num,
-					config.use_lazy_dict ? dict_ptr->seq(i->subject_dict_id) : sequence()
+					config.use_lazy_dict ? dict_ptr->seq(i->subject_dict_id) : Sequence()
 					).parse(), metadata, out);
 			}
 		}
@@ -276,7 +276,7 @@ void join_worker(Task_queue<TextBuffer, JoinWriter> *queue, const Parameters *pa
 
 		const char * query_name = qids[qids.check_idx(fetcher.query_id)];
 
-		const sequence query_seq = align_mode.query_translated ? query_source_seqs::get()[fetcher.query_id] : query_seqs::get()[fetcher.query_id];
+		const Sequence query_seq = align_mode.query_translated ? query_source_seqs::get()[fetcher.query_id] : query_seqs::get()[fetcher.query_id];
 
 		if (*output_format != Output_format::daa && config.report_unaligned != 0) {
 			for (unsigned i = fetcher.unaligned_from; i < fetcher.query_id; ++i) {

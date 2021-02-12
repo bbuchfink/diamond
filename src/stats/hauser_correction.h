@@ -36,7 +36,7 @@ struct No_score_correction
 
 struct Bias_correction : public std::vector<float>
 {
-	Bias_correction(const sequence &seq);
+	Bias_correction(const Sequence &seq);
 	void operator()(float &score, int i, int query_anchor, int mult) const
 	{
 		score += (*this)[query_anchor + i * mult];

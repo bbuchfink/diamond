@@ -63,7 +63,7 @@ size_t chunk_size_multiplier(const FlatArray<SeedHit>& seed_hits, int query_len)
 
 vector<Target> extend(const Parameters& params,
 	size_t query_id,
-	const sequence *query_seq,
+	const Sequence *query_seq,
 	int source_query_len,
 	const Bias_correction *query_cb,
 	const Stats::Composition& query_comp,
@@ -104,7 +104,7 @@ vector<Match> extend(
 {
 	const unsigned UNIFIED_TARGET_LEN = 50;
 	const unsigned contexts = align_mode.query_contexts;
-	vector<sequence> query_seq;
+	vector<Sequence> query_seq;
 	vector<Bias_correction> query_cb;
 	const char* query_title = query_ids::get()[query_id];
 

@@ -55,7 +55,7 @@ struct SeedHit {
 };
 
 struct WorkTarget {
-	WorkTarget(size_t block_id, const sequence& seq, int query_len, const Stats::Composition& query_comp, const int16_t** query_matrix) :
+	WorkTarget(size_t block_id, const Sequence& seq, int query_len, const Stats::Composition& query_comp, const int16_t** query_matrix) :
 		block_id(block_id),
 		seq(seq)
 	{
@@ -92,17 +92,17 @@ struct WorkTarget {
 		return !matrix.scores.empty();
 	}
 	size_t block_id;
-	sequence seq;
+	Sequence seq;
 	std::array<int, MAX_CONTEXT> ungapped_score;
 	std::array<std::list<Hsp_traits>, MAX_CONTEXT> hsp;
 	Stats::TargetMatrix matrix;
 };
 
-std::vector<WorkTarget> ungapped_stage(const sequence* query_seq, const Bias_correction* query_cb, const Stats::Composition& query_comp, FlatArray<SeedHit>& seed_hits, const std::vector<uint32_t>& target_block_ids, int flags, Statistics& stat);
+std::vector<WorkTarget> ungapped_stage(const Sequence* query_seq, const Bias_correction* query_cb, const Stats::Composition& query_comp, FlatArray<SeedHit>& seed_hits, const std::vector<uint32_t>& target_block_ids, int flags, Statistics& stat);
 
 struct Target {
 
-	Target(size_t block_id, const sequence &seq, int ungapped_score, const Stats::TargetMatrix& matrix):
+	Target(size_t block_id, const Sequence &seq, int ungapped_score, const Stats::TargetMatrix& matrix):
 		block_id(block_id),
 		seq(seq),
 		filter_score(0),
@@ -130,12 +130,12 @@ struct Target {
 		return !matrix.scores.empty();
 	}
 
-	void apply_filters(int source_query_len, const char *query_title, const sequence& query_seq);
+	void apply_filters(int source_query_len, const char *query_title, const Sequence& query_seq);
 	void inner_culling(int source_query_len);
 	void max_hsp_culling();
 
 	size_t block_id;
-	sequence seq;
+	Sequence seq;
 	int filter_score;
 	double filter_evalue;
 	int ungapped_score;
@@ -159,13 +159,13 @@ struct TargetScore {
 };
 
 void load_hits(hit* begin, hit* end, FlatArray<SeedHit> &hits, std::vector<uint32_t> &target_block_ids, std::vector<TargetScore> &target_scores, unsigned query_len);
-void culling(std::vector<Target>& targets, int source_query_len, const char* query_title, const sequence& query_seq, size_t min_keep);
-bool append_hits(std::vector<Target>& targets, std::vector<Target>::const_iterator begin, std::vector<Target>::const_iterator end, size_t chunk_size, int source_query_len, const char* query_title, const sequence& query_seq);
-std::vector<WorkTarget> gapped_filter(const sequence *query, const Bias_correction* query_cbs, std::vector<WorkTarget>& targets, Statistics &stat);
-void gapped_filter(const sequence* query, const Bias_correction* query_cbs, FlatArray<SeedHit> &seed_hits, std::vector<uint32_t> &target_block_ids, Statistics& stat, int flags, const Parameters &params);
-std::vector<Target> align(const std::vector<WorkTarget> &targets, const sequence *query_seq, const Bias_correction *query_cb, int source_query_len, int flags, Statistics &stat);
-std::vector<Match> align(std::vector<Target> &targets, const sequence *query_seq, const Bias_correction *query_cb, int source_query_len, int flags, Statistics &stat, bool first_round_traceback);
-std::vector<Target> full_db_align(const sequence *query_seq, const Bias_correction *query_cb, int flags, Statistics &stat);
+void culling(std::vector<Target>& targets, int source_query_len, const char* query_title, const Sequence& query_seq, size_t min_keep);
+bool append_hits(std::vector<Target>& targets, std::vector<Target>::const_iterator begin, std::vector<Target>::const_iterator end, size_t chunk_size, int source_query_len, const char* query_title, const Sequence& query_seq);
+std::vector<WorkTarget> gapped_filter(const Sequence *query, const Bias_correction* query_cbs, std::vector<WorkTarget>& targets, Statistics &stat);
+void gapped_filter(const Sequence* query, const Bias_correction* query_cbs, FlatArray<SeedHit> &seed_hits, std::vector<uint32_t> &target_block_ids, Statistics& stat, int flags, const Parameters &params);
+std::vector<Target> align(const std::vector<WorkTarget> &targets, const Sequence *query_seq, const Bias_correction *query_cb, int source_query_len, int flags, Statistics &stat);
+std::vector<Match> align(std::vector<Target> &targets, const Sequence *query_seq, const Bias_correction *query_cb, int source_query_len, int flags, Statistics &stat, bool first_round_traceback);
+std::vector<Target> full_db_align(const Sequence *query_seq, const Bias_correction *query_cb, int flags, Statistics &stat);
 
 std::vector<Match> extend(
 	size_t query_id,

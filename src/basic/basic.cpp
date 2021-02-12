@@ -396,7 +396,7 @@ void Translator::init(unsigned id)
 		}
 }
 
-vector<Letter> sequence::from_string(const char* str, const Value_traits &vt)
+vector<Letter> Sequence::from_string(const char* str, const Value_traits &vt)
 {
 	vector<Letter> seq;
 	while (*str)

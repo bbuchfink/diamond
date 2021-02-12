@@ -8,7 +8,7 @@ void enum_seeds(const Sequence_set* seqs, _f* f, unsigned begin, unsigned end, s
 	vector<Letter> buf(seqs->max_len(begin, end));
 	uint64_t key;
 	for (unsigned i = begin; i < end; ++i) {
-		const sequence seq = (*seqs)[i];
+		const Sequence seq = (*seqs)[i];
 		Reduction::reduce_seq(seq, buf);
 		for (size_t shape_id = shape_range.first; shape_id < shape_range.second; ++shape_id) {
 			const Shape& sh = shapes[shape_id];
@@ -31,7 +31,7 @@ void enum_seeds_hashed(const Sequence_set* seqs, _f* f, unsigned begin, unsigned
 {
 	uint64_t key;
 	for (unsigned i = begin; i < end; ++i) {
-		const sequence seq = (*seqs)[i];
+		const Sequence seq = (*seqs)[i];
 		for (size_t shape_id = shape_range.first; shape_id < shape_range.second; ++shape_id) {
 			const Shape& sh = shapes[shape_id];
 			if (seq.length() < sh.length_) continue;
@@ -54,7 +54,7 @@ void enum_seeds_contiguous(const Sequence_set* seqs, _f* f, unsigned begin, unsi
 {
 	uint64_t key;
 	for (unsigned i = begin; i < end; ++i) {
-		const sequence seq = (*seqs)[i];
+		const Sequence seq = (*seqs)[i];
 		if (seq.length() < _it::length()) continue;
 		_it it(seq);
 		size_t j = 0;

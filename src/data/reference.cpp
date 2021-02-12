@@ -177,7 +177,7 @@ size_t DatabaseFile::total_blocks() const {
 	return (this->ref_header.letters + c - 1) / c;
 }
 
-void push_seq(const sequence &seq, const char *id, size_t id_len, uint64_t &offset, vector<Pos_record> &pos_array, OutputFile &out, size_t &letters, size_t &n_seqs)
+void push_seq(const Sequence &seq, const char *id, size_t id_len, uint64_t &offset, vector<Pos_record> &pos_array, OutputFile &out, size_t &letters, size_t &n_seqs)
 {
 	pos_array.emplace_back(offset, seq.length());
 	out.write("\xff", 1);
@@ -233,7 +233,7 @@ void make_db(TempFile **tmp_out, list<TextInputFile> *input_file)
 			}
 			timer.go("Writing sequences");
 			for (size_t i = 0; i < n; ++i) {
-				sequence seq = (*seqs)[i];
+				Sequence seq = (*seqs)[i];
 				if (seq.length() == 0)
 					throw std::runtime_error("File format error: sequence of length 0 at line " + to_string(db_file->front().line_count));
 				push_seq(seq, (*ids)[i], ids->length(i), offset, pos_array, *out, letters, n_seqs);
@@ -245,7 +245,7 @@ void make_db(TempFile **tmp_out, list<TextInputFile> *input_file)
 			}
 			timer.go("Hashing sequences");
 			for (size_t i = 0; i < n; ++i) {
-				sequence seq = (*seqs)[i];
+				Sequence seq = (*seqs)[i];
 				MurmurHash3_x64_128(seq.data(), (int)seq.length(), header2.hash, header2.hash);
 				MurmurHash3_x64_128((*ids)[i], ids->length(i), header2.hash, header2.hash);
 			}
@@ -411,8 +411,8 @@ bool DatabaseFile::load_seqs(vector<uint32_t>* block2db_id, const size_t max_let
 				continue;
 			}*/
 			read((*dst_seq)->ptr(i) - 1, (*dst_seq)->length(i) + 2);
-			*((*dst_seq)->ptr(i) - 1) = sequence::DELIMITER;
-			*((*dst_seq)->ptr(i) + (*dst_seq)->length(i)) = sequence::DELIMITER;
+			*((*dst_seq)->ptr(i) - 1) = Sequence::DELIMITER;
+			*((*dst_seq)->ptr(i) + (*dst_seq)->length(i)) = Sequence::DELIMITER;
 			if (load_ids)
 				read((*dst_id)->ptr(i), (*dst_id)->length(i) + 1);
 			else
@@ -483,15 +483,15 @@ void DatabaseFile::get_seq()
 		if (all || seqs.find(n) != seqs.end() || mapped_title != seq_titles.end()) {
 			buf << '>' << (mapped_title != seq_titles.end() ? mapped_title->second : id) << '\n';
 			if (config.reverse) {
-				sequence(seq).print(buf, value_traits, sequence::Reversed());
+				Sequence(seq).print(buf, value_traits, Sequence::Reversed());
 				buf << '\n';
 			}
 			else if (config.hardmasked) {
-				sequence(seq).print(buf, value_traits, sequence::Hardmasked());
+				Sequence(seq).print(buf, value_traits, Sequence::Hardmasked());
 				buf << '\n';
 			}
 			else
-				buf << sequence(seq) << '\n';
+				buf << Sequence(seq) << '\n';
 		}
 		out.write(buf.get_begin(), buf.size());
 		letters += seq.size();

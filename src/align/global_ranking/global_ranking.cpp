@@ -36,7 +36,7 @@ uint16_t recompute_overflow_scores(const SeedHit* begin, const SeedHit* end, siz
 	for (auto it = begin; it < end; ++it) {
 		if (it->score != UCHAR_MAX)
 			continue;
-		const sequence query_clipped = Util::Sequence::clip(query.data() + it->i - config.ungapped_window, config.ungapped_window * 2, config.ungapped_window);
+		const Sequence query_clipped = Util::Seq::clip(query.data() + it->i - config.ungapped_window, config.ungapped_window * 2, config.ungapped_window);
 		const ptrdiff_t window_left = query.data() + it->i - query_clipped.data();
 		const int s = ungapped_window(query_clipped.data(), target.data() + it->j - window_left, (int)query_clipped.length());
 		score = std::max(score, s);

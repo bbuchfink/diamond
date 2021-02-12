@@ -105,7 +105,7 @@ struct Shape
 #ifdef SEQ_MASK
 			l &= LETTER_MASK;
 #endif
-			if (l == value_traits.mask_char || l == sequence::DELIMITER || l == STOP_LETTER)
+			if (l == value_traits.mask_char || l == Sequence::DELIMITER || l == STOP_LETTER)
 				return false;
 			unsigned r = Reduction::reduction(l);
 			s <<= b;

@@ -146,8 +146,8 @@ int have_gap(const Banded_traceback_matrix &dp,
 	return -1;
 }
 
-void traceback(const sequence &query,
-	const sequence &subject,
+void traceback(const Sequence &query,
+	const Sequence &subject,
 	const vector<int> &scores,
 	int band,
 	int i0,
@@ -267,7 +267,7 @@ private:
 
 };
 
-void banded_sw(const sequence &query, const sequence &subject, int d_begin, int d_end, int j_begin, int j_end, Hsp &out)
+void banded_sw(const Sequence &query, const Sequence &subject, int d_begin, int d_end, int j_begin, int j_end, Hsp &out)
 {
 	using std::max;
 	assert(d_end > d_begin);

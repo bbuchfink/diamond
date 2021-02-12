@@ -30,7 +30,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/dynamic_iterator.h"
 #include "../stats/cbs.h"
 
-int smith_waterman(const sequence &query, const sequence &subject, unsigned band, unsigned padding, int op, int ep);
+int smith_waterman(const Sequence&query, const Sequence&subject, unsigned band, unsigned padding, int op, int ep);
 
 struct Local {};
 struct Global {};
@@ -99,7 +99,7 @@ private:
 };
 
 template<typename _score, typename _mode>
-const Fixed_score_buffer<_score>& needleman_wunsch(sequence query, sequence subject, int &max_score, const _mode&, const _score&);
+const Fixed_score_buffer<_score>& needleman_wunsch(Sequence query, Sequence subject, int &max_score, const _mode&, const _score&);
 
 struct Band
 {
@@ -156,7 +156,7 @@ struct DpTarget
 		target_idx(-1),
 		matrix(nullptr)
 	{}
-	DpTarget(const sequence &seq, int d_begin, int d_end, int j_begin, int j_end, int target_idx = 0, int qlen = 0, const Stats::TargetMatrix* matrix = nullptr) :
+	DpTarget(const Sequence &seq, int d_begin, int d_end, int j_begin, int j_end, int target_idx = 0, int qlen = 0, const Stats::TargetMatrix* matrix = nullptr) :
 		seq(seq),
 		d_begin(d_begin),
 		d_end(d_end),
@@ -170,7 +170,7 @@ struct DpTarget
 		const int j1 = std::min(qlen - 1 - d0, (int)(seq.length() - 1)) + 1;
 		cols = j1 - pos;
 	}
-	DpTarget(const sequence& seq, int target_idx):
+	DpTarget(const Sequence& seq, int target_idx):
 		seq(seq),
 		target_idx(target_idx)
 	{}
@@ -197,7 +197,7 @@ struct DpTarget
 	int matrix_scale() const {
 		return adjusted_matrix() ? config.cbs_matrix_scale : 1;
 	}
-	sequence seq;
+	Sequence seq;
 	int d_begin, d_end, j_begin, j_end, target_idx, cols;
 	const Stats::TargetMatrix* matrix;
 };
@@ -223,8 +223,8 @@ private:
 
 extern DpStat dp_stat;
 
-void smith_waterman(sequence q, sequence s, Hsp &out);
-int score_range(sequence query, sequence subject, int i, int j, int j_end);
+void smith_waterman(Sequence q, Sequence s, Hsp &out);
+int score_range(Sequence query, Sequence subject, int i, int j, int j_end);
 
 namespace DP {
 
@@ -248,15 +248,15 @@ namespace Swipe {
 
 namespace BandedSwipe {
 
-DECL_DISPATCH(std::list<Hsp>, swipe, (const sequence &query, std::vector<DpTarget> &targets8, const std::vector<DpTarget> &targets16, const std::vector<DpTarget>& targets32, DynamicIterator<DpTarget>* targets, Frame frame, const Bias_correction *composition_bias, int flags, Statistics &stat))
+DECL_DISPATCH(std::list<Hsp>, swipe, (const Sequence&query, std::vector<DpTarget> &targets8, const std::vector<DpTarget> &targets16, const std::vector<DpTarget>& targets32, DynamicIterator<DpTarget>* targets, Frame frame, const Bias_correction *composition_bias, int flags, Statistics &stat))
 
 }
 
 }
 
-void banded_sw(const sequence &query, const sequence &subject, int d_begin, int d_end, int j_begin, int j_end, Hsp &out);
+void banded_sw(const Sequence&query, const Sequence&subject, int d_begin, int d_end, int j_begin, int j_end, Hsp &out);
 
-void anchored_3frame_dp(const TranslatedSequence &query, sequence &subject, const DiagonalSegment &anchor, Hsp &out, int gap_open, int gap_extend, int frame_shift);
-int sw_3frame(const TranslatedSequence &query, Strand strand, const sequence &subject, int gap_open, int gap_extend, int frame_shift, Hsp &out);
+void anchored_3frame_dp(const TranslatedSequence &query, Sequence&subject, const DiagonalSegment &anchor, Hsp &out, int gap_open, int gap_extend, int frame_shift);
+int sw_3frame(const TranslatedSequence &query, Strand strand, const Sequence&subject, int gap_open, int gap_extend, int frame_shift, Hsp &out);
 
 DECL_DISPATCH(std::list<Hsp>, banded_3frame_swipe, (const TranslatedSequence &query, Strand strand, vector<DpTarget>::iterator target_begin, vector<DpTarget>::iterator target_end, DpStat &stat, bool score_only, bool parallel))

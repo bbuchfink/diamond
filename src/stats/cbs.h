@@ -29,7 +29,7 @@ namespace Stats {
 
 using Composition = std::array<double, TRUE_AA>;
 
-Composition composition(const sequence& s);
+Composition composition(const Sequence& s);
 
 struct TargetMatrix {
 
@@ -38,7 +38,7 @@ struct TargetMatrix {
 
     TargetMatrix(const int16_t* query_matrix, const int16_t* target_matrix);
 
-    TargetMatrix(const Composition& query_comp, int query_len, const sequence& target);
+    TargetMatrix(const Composition& query_comp, int query_len, const Sequence& target);
 
     std::vector<int8_t> scores;
     std::vector<int32_t> scores32;
@@ -94,8 +94,8 @@ int s_GetMatrixScoreProbs(double** scoreProb, int* obs_min, int* obs_max,
 double s_CalcLambda(double probs[], int min_score, int max_score, double lambda0);
 double ideal_lambda(const int** matrix);
 void s_SetXUOScores(double** M, int alphsize, const double row_probs[], const double col_probs[]);
-int count_true_aa(const sequence& s);
-bool use_seg_masking(const sequence& a, const sequence& b);
+int count_true_aa(const Sequence& s);
+bool use_seg_masking(const Sequence& a, const Sequence& b);
 
 EMatrixAdjustRule
 s_TestToApplyREAdjustmentConditional(int Len_query,

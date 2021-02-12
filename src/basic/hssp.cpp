@@ -93,9 +93,9 @@ Hsp_context& Hsp_context::parse()
 	return *this;
 }
 
-void Hsp::push_back(const DiagonalSegment &d, const TranslatedSequence &query, const sequence &subject, bool reversed)
+void Hsp::push_back(const DiagonalSegment &d, const TranslatedSequence &query, const Sequence &subject, bool reversed)
 {
-	const sequence &q = query[d.i.frame];
+	const Sequence &q = query[d.i.frame];
 	if (reversed) {
 		for (int i = d.query_last().translated, j = d.subject_last(); j >= d.j; --j, --i) {
 			const Letter ls = subject[j], lq = q[i];
@@ -132,7 +132,7 @@ void Hsp::push_back(const DiagonalSegment &d, const TranslatedSequence &query, c
 	}
 }
 
-void Hsp::splice(const DiagonalSegment &a, const DiagonalSegment &b, const TranslatedSequence &query, const sequence &subject, bool reversed)
+void Hsp::splice(const DiagonalSegment &a, const DiagonalSegment &b, const TranslatedSequence &query, const Sequence &subject, bool reversed)
 {
 	TranslatedPosition i0 = a.query_last();
 	int j0 = a.subject_last();

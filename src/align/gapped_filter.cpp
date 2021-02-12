@@ -32,7 +32,7 @@ using std::mutex;
 
 namespace Extension {
 
-int gapped_filter(const SeedHit &hit, const LongScoreProfile *query_profile, const sequence &target, int band, int window, std::function<decltype(DP::ARCH_GENERIC::scan_diags128)> f) {	
+int gapped_filter(const SeedHit &hit, const LongScoreProfile *query_profile, const Sequence &target, int band, int window, std::function<decltype(DP::ARCH_GENERIC::scan_diags128)> f) {	
 	const int slen = (int)target.length();
 	const int d = std::max(hit.diag() - band / 2, -(slen - 1)),
 		j0 = std::max(hit.j - window, 0),
@@ -46,7 +46,7 @@ bool gapped_filter(const SeedHit *begin, const SeedHit *end, const LongScoreProf
 	constexpr int window1 = 100, MIN_STAGE2_QLEN = 100;
 		
 	const int qlen = (int)query_profile->length();
-	const sequence target = ref_seqs::get()[target_block_id];
+	const Sequence target = ref_seqs::get()[target_block_id];
 	const int slen = (int)target.length();
 	for (const SeedHit* hit = begin; hit < end; ++hit) {
 		stat.inc(Statistics::GAPPED_FILTER_HITS1);
@@ -72,7 +72,7 @@ void gapped_filter_worker(size_t i, size_t thread_id, const LongScoreProfile *qu
 	}
 }
 
-void gapped_filter(const sequence* query, const Bias_correction* query_cbs, FlatArray<SeedHit>& seed_hits, std::vector<uint32_t>& target_block_ids, Statistics& stat, int flags, const Parameters &params) {
+void gapped_filter(const Sequence* query, const Bias_correction* query_cbs, FlatArray<SeedHit>& seed_hits, std::vector<uint32_t>& target_block_ids, Statistics& stat, int flags, const Parameters &params) {
 	if (seed_hits.size() == 0)
 		return;
 	vector<LongScoreProfile> query_profile;
