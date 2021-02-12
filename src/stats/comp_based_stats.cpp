@@ -326,7 +326,7 @@ s_GetMatrixScoreProbs(double** scoreProb, int* obs_min, int* obs_max,
 }
 
 void
-Blast_FreqRatioToScore(double** matrix, int rows, int cols, double Lambda)
+Blast_FreqRatioToScore(double** matrix, size_t rows, size_t cols, double Lambda)
 {
     int i;
     for (i = 0; i < rows; i++) {
@@ -343,7 +343,7 @@ Blast_FreqRatioToScore(double** matrix, int rows, int cols, double Lambda)
 }
 
 void
-s_RoundScoreMatrix(int** matrix, int rows, int cols,
+s_RoundScoreMatrix(int** matrix, size_t rows, size_t cols,
     double** floatScoreMatrix)
 {
     int p, c; /*indices over positions and characters*/
@@ -354,7 +354,7 @@ s_RoundScoreMatrix(int** matrix, int rows, int cols,
                 matrix[p][c] = INT_MIN;
             }
             else {
-                matrix[p][c] = std::round(floatScoreMatrix[p][c]);
+                matrix[p][c] = (int)std::round(floatScoreMatrix[p][c]);
             }
         }
     }

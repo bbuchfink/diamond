@@ -269,7 +269,6 @@ void MultiStep::run() {
 	string id;
 	db->seek_direct();
 	Hsp hsp;
-	size_t n;
 	out->precision(3);
 
 	for (int i = 0; i < (int)db->ref_header.sequences; ++i) {

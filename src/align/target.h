@@ -57,9 +57,9 @@ struct SeedHit {
 struct WorkTarget {
 	WorkTarget(size_t block_id, const sequence& seq, int query_len, const Stats::Composition& query_comp, const int16_t** query_matrix) :
 		block_id(block_id),
-		seq(seq),
-		ungapped_score(0)
+		seq(seq)
 	{
+		ungapped_score.fill(0);
 		if (config.comp_based_stats == Stats::CBS::HAUSER_AND_AVG_MATRIX_ADJUST) {
 			const int l = (int)seq.length();
 			const auto c = Stats::composition(seq);
@@ -93,7 +93,7 @@ struct WorkTarget {
 	}
 	size_t block_id;
 	sequence seq;
-	int ungapped_score;
+	std::array<int, MAX_CONTEXT> ungapped_score;
 	std::array<std::list<Hsp_traits>, MAX_CONTEXT> hsp;
 	Stats::TargetMatrix matrix;
 };

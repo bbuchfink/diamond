@@ -494,8 +494,8 @@ Config::Config(int argc, const char **argv, bool check_io)
 	if (command == blastx && no_self_hits)
 		throw std::runtime_error("--no-self-hits option is not supported in blastx mode.");
 
-	if (command == blastx && (ext == "full" || swipe_all))
-		throw std::runtime_error("Full matrix extension is not supported in blastx mode.");
+	if (command == blastx && swipe_all)
+		throw std::runtime_error("Full db alignment is not supported in blastx mode.");
 
 	if (long_reads) {
 		query_range_culling = true;

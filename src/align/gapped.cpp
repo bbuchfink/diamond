@@ -91,7 +91,9 @@ void add_dp_targets(const WorkTarget& target, int target_idx, const sequence* qu
 	for (unsigned frame = 0; frame < align_mode.query_contexts; ++frame) {
 
 		if (config.ext == "full") {
-			int b = target.ungapped_score <= config.cutoff_score_8bit ? 0 : 1;
+			if (target.ungapped_score[frame] == 0)
+				continue;
+			int b = target.ungapped_score[frame] <= config.cutoff_score_8bit ? 0 : 1;
 			if (flags & DP::TRACEBACK) {
 				if (query_seq[0].length() >= 256)
 					b = 1;
@@ -147,7 +149,7 @@ vector<Target> align(const vector<WorkTarget> &targets, const sequence *query_se
 		add_dp_targets(targets[i], i, query_seq, dp_targets, flags);
 		if (targets[i].adjusted_matrix())
 			++cbs_targets;
-		r.emplace_back(targets[i].block_id, targets[i].seq, targets[i].ungapped_score, targets[i].matrix);
+		r.emplace_back(targets[i].block_id, targets[i].seq, targets[i].ungapped_score.front(), targets[i].matrix);
 	}
 	stat.inc(Statistics::TARGET_HITS3_CBS, cbs_targets);
 
