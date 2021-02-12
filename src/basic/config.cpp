@@ -314,7 +314,8 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("family-map", 0, "", family_map)
 		("family-map-query", 0, "", family_map_query)
 		("query-parallel-limit", 0, "", query_parallel_limit, 3000000u)
-		("log-evalue-scale", 0, "", log_evalue_scale, 1.0/std::log(2.0));
+		("log-evalue-scale", 0, "", log_evalue_scale, 1.0 / std::log(2.0))
+		("bootstrap", 0, "", bootstrap);
 
 	Options_group view_options("View options");
 	view_options.add()
@@ -419,7 +420,6 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("chaining-range-cover", 0, "", chaining_range_cover, (size_t)8)
 		("index-mode", 0, "index mode (0=4x12, 1=16x9)", index_mode)
 		("no-swipe-realign", 0, "", no_swipe_realign)
-		("bootstrap", 0, "", bootstrap)
 		("chaining-maxnodes", 0, "", chaining_maxnodes)
 		("cutoff-score-8bit", 0, "", cutoff_score_8bit, 240)
 		("min-band-overlap", 0, "", min_band_overlap, 0.2)

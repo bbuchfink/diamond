@@ -1,6 +1,6 @@
 [2.0.7]
 - Added support for computing full-matrix instead of banded Smith Waterman extensions
-  (command line option `--ext full`). *Option not yet supported in blastx mode*
+  (command line option `--ext full`).
 - Added support for the new `prot.accession2taxid.FULL.gz` taxonomy mapping file from
   NCBI.
 - Added the option `--gapped-filter-evalue` to set the e-value threshold of the gapped
