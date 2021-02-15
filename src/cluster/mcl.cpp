@@ -208,8 +208,8 @@ void MCL::get_gamma(Eigen::MatrixXf* in, Eigen::MatrixXf* out, float r){
 		for (uint32_t irow=0; irow<in->rows(); ++irow){
 			out->coeffRef(irow, icol) =  pow(in->coeffRef(irow, icol) , r) / colSum;
 		}
-	}
-	dense_gamma_time += chrono::duration_cast<chrono::milliseconds>(chrono::high_resolution_clock::now() - t).count();
+		}
+		dense_gamma_time += chrono::duration_cast<chrono::milliseconds>(chrono::high_resolution_clock::now() - t).count();
 }
 
 void MCL::markov_process(Eigen::SparseMatrix<float>* m, float inflation, float expansion, uint32_t max_iter, function<uint32_t()> getThreads){
@@ -257,43 +257,62 @@ void MCL::print_stats(uint64_t nElements, uint32_t nComponents, uint32_t nCompon
 	const uint32_t nThreads = min(config.threads_, nComponents / chunk_size);
 	const float inflation = (float) config.cluster_mcl_inflation;
 	const float expansion = (float) config.cluster_mcl_expansion;
-	vector<float> sparsities(nComponentsLt1);
-	uint64_t icomp = 0;
-	vector<vector<uint32_t>*> loc_i;
-	ms->allocate_read_buffer(1);
-	for(uint32_t chunk_counter = 0; chunk_counter<nComponents; chunk_counter++){
-		loc_i.push_back(&indices[sort_order[chunk_counter]]);
-	}
-	vector<vector<Eigen::Triplet<float>>> loc_c = ms->collect_components(&loc_i, 0);
-	generate(sparsities.begin(), sparsities.end(), [&icomp, &sort_order, &indices, &loc_c](){ 
-				const uint32_t iComponent = sort_order[icomp++];
-				const uint32_t ssize = loc_c[icomp-1].size();
-				const uint64_t dsize = indices[iComponent].size() * indices[iComponent].size();
-				return 1.0-(1.0 * ssize) / dsize;
-			});
-	vector<float> neighbors(nComponentsLt1);
-	icomp = 0;
-	generate(neighbors.begin(), neighbors.end(), [&icomp, &sort_order, &indices, &loc_c](){ 
-				uint32_t neighbors = 0;
-				const uint32_t iComponent = sort_order[icomp++];
-				for(auto t: loc_c[icomp-1]){
-					if(t.row() != t.col()) neighbors++;
-				}
-				return neighbors / ((float) indices[iComponent].size());
-			});
 
-	// rough memory calc before sorting sparsities
+	vector<float> sparsities(nComponentsLt1);
+	vector<float> neighbors(nComponentsLt1);
 	vector<float> memories(nComponentsLt1);
-	icomp = 0;
-	generate(memories.begin(), memories.end(), [&](){ 
-				const uint32_t iComponent = sort_order[icomp++];
-				if(sparsities[icomp - 1] >= config.cluster_mcl_sparsity_switch){ 
-					return indices[iComponent].size() * (1+pow(neighbors[icomp], expansion)) * (2 * sizeof(uint32_t) + sizeof(float));
-				}
-				else{
-					return (float) sizeof(float) * indices[iComponent].size() * indices[iComponent].size();
-				}
-			});
+
+	uint32_t max_job_size = 0;
+	for(uint32_t i=0; i<chunk_size; i++) max_job_size+=indices[sort_order[i]].size();
+	uint32_t my_counter = 0;
+	uint32_t component_counter = 1;
+
+	uint32_t my_chunk_size = chunk_size;
+	// Memory conservative collection of info from file
+	ms->allocate_read_buffer(1);
+	while(my_counter < nComponentsLt1){
+		unordered_set<uint32_t> all;
+		uint32_t upper_limit =  min(my_counter+my_chunk_size, nComponentsLt1);
+		vector<vector<uint32_t>*> loc_i;
+		for(uint32_t chunk_counter = my_counter; chunk_counter<upper_limit; chunk_counter++){
+			loc_i.push_back(&indices[sort_order[chunk_counter]]);
+		}
+		vector<vector<Eigen::Triplet<float>>> loc_c = ms->collect_components(&loc_i, 0);
+		uint32_t ichunk = 0;
+		generate(sparsities.begin()+my_counter, sparsities.begin()+upper_limit, [my_counter, ichunk, &sort_order, &indices, &loc_c]() mutable { 
+					const uint32_t iComponent = sort_order[my_counter++];
+					printf("ichunk %u\n",ichunk);
+					const uint32_t ssize = loc_c[ichunk++].size();
+					const uint64_t dsize = indices[iComponent].size() * indices[iComponent].size();
+					return 1.0-(1.0 * ssize) / dsize;
+				});
+		generate(neighbors.begin()+my_counter, neighbors.begin()+upper_limit, [my_counter, ichunk, &sort_order, &indices, &loc_c]() mutable { 
+					uint32_t neighbors = 0;
+					const uint32_t iComponent = sort_order[my_counter++];
+					printf("Ichunk %u\n",ichunk);
+					for(auto t: loc_c[ichunk++]){
+						if(t.row() != t.col()) neighbors++;
+					}
+					return neighbors / ((float) indices[iComponent].size());
+				});
+
+		// rough memory calc before sorting sparsities
+		generate(memories.begin()+my_counter, memories.begin()+upper_limit, [my_counter, &sort_order, &indices, &neighbors, &sparsities, &expansion]() mutable { 
+					const uint32_t iComponent = sort_order[my_counter++];
+					if(sparsities[my_counter- 1] >= config.cluster_mcl_sparsity_switch){ 
+						return indices[iComponent].size() * (1+pow(neighbors[my_counter-1], expansion)) * (2 * sizeof(uint32_t) + sizeof(float));
+					}
+					else{
+						return (float) sizeof(float) * indices[iComponent].size() * indices[iComponent].size();
+					}
+				});
+		my_chunk_size = 0;
+		for(auto const i : loc_i) my_chunk_size += i->size();
+		my_chunk_size = loc_i.size() * (max_job_size / my_chunk_size);
+		my_counter = component_counter;
+		component_counter += my_chunk_size;
+	}
+
 	sort(memories.rbegin(), memories.rend());
 	float mem_req = nElements * (2 * sizeof(uint32_t) + sizeof(float));
 	for(uint32_t iThr = 0; iThr < nThreads; iThr++){
@@ -564,10 +583,8 @@ void MCL::run(){
 			unordered_set<uint32_t> all;
 			uint32_t upper_limit =  min(my_counter+my_chunk_size, max_counter);
 			vector<vector<uint32_t>*> loc_i;
-			my_chunk_size = 0;
 			for(uint32_t chunk_counter = my_counter; chunk_counter<upper_limit; chunk_counter++){
 				loc_i.push_back(&indices[sort_order[chunk_counter]]);
-				my_chunk_size += indices[sort_order[chunk_counter]].size();
 			}
 			vector<vector<Eigen::Triplet<float>>> loc_c = ms->collect_components(&loc_i, iThr);
 			uint32_t ichunk = 0;
