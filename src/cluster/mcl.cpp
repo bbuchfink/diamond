@@ -36,16 +36,7 @@ string MCL::get_description() {
 	return "Markov clustering according to doi:10.1137/040608635";
 }
 
-inline uint64_t get_idx(uint32_t i_idx, uint32_t n_cols, uint32_t j_idx){
-	return i_idx * n_cols + j_idx;
-}
-
-inline void get_indices (uint64_t combined, uint32_t* i, uint32_t n_cols, uint32_t* j){
-	*j = combined % n_cols;
-	*i = ( combined - *j) / n_cols;
-}
-
-vector<Eigen::Triplet<float>> multiply(Eigen::SparseMatrix<float>* a, Eigen::SparseMatrix<float>* b , uint32_t iThr, uint32_t nThr){
+vector<Eigen::Triplet<float>> MCL::sparse_matrix_multiply(Eigen::SparseMatrix<float>* a, Eigen::SparseMatrix<float>* b , uint32_t iThr, uint32_t nThr){
 	uint32_t n_cols = b->cols();
 	uint32_t n_rows = a->rows();
 	std::vector<float> result_col(n_rows, 0.0);
@@ -82,7 +73,7 @@ void MCL::get_exp(Eigen::SparseMatrix<float>* in, Eigen::SparseMatrix<float>* ou
 			vector<Eigen::Triplet<float>> data;
 			std::mutex m;
 			auto mult = [&](const uint32_t iThr){
-				vector<Eigen::Triplet<float>> t_data = multiply(in, out, iThr, nThr);
+				vector<Eigen::Triplet<float>> t_data = sparse_matrix_multiply(in, out, iThr, nThr);
 				m.lock();
 				data.insert(data.end(), t_data.begin(), t_data.end());
 				m.unlock();
@@ -138,7 +129,7 @@ void MCL::get_exp(Eigen::MatrixXf* in, Eigen::MatrixXf* out, float r){
 }
 
 
-vector<Eigen::Triplet<float>> gammaIze(Eigen::SparseMatrix<float>* in, float r, uint32_t iThr, uint32_t nThr){
+vector<Eigen::Triplet<float>> MCL::sparse_matrix_get_gamma(Eigen::SparseMatrix<float>* in, float r, uint32_t iThr, uint32_t nThr){
 	vector<Eigen::Triplet<float>> data;
 	for (uint32_t k=0; k<in->outerSize(); ++k){
 		if( k%nThr == iThr){
@@ -162,7 +153,7 @@ void MCL::get_gamma(Eigen::SparseMatrix<float>* in, Eigen::SparseMatrix<float>* 
 	vector<Eigen::Triplet<float>> data;
 	std::mutex m;
 	auto mult = [&](const uint32_t iThr){
-		vector<Eigen::Triplet<float>> t_data = gammaIze(in, r, iThr, nThr);
+		vector<Eigen::Triplet<float>> t_data = sparse_matrix_get_gamma(in, r, iThr, nThr);
 		m.lock();
 		data.insert(data.end(), t_data.begin(), t_data.end());
 		m.unlock();
@@ -182,7 +173,7 @@ void MCL::get_gamma(Eigen::SparseMatrix<float>* in, Eigen::SparseMatrix<float>* 
 	sparse_gamma_time += chrono::duration_cast<chrono::milliseconds>(chrono::high_resolution_clock::now() - t).count();
 }
 
-float get_norm(Eigen::SparseMatrix<float>* in, uint32_t nThr){
+float MCL::sparse_matrix_get_norm(Eigen::SparseMatrix<float>* in, uint32_t nThr){
 	vector<float> data(nThr);
 	fill(data.begin(), data.end(), 0.0);
 	auto norm = [&](const uint32_t iThr){
@@ -227,11 +218,11 @@ void MCL::markov_process(Eigen::SparseMatrix<float>* m, float inflation, float e
 	Eigen::SparseMatrix<float> msquared(m->rows(), m->cols());
 	Eigen::SparseMatrix<float> m_update(m->rows(), m->cols());
 	get_gamma(m, m, 1, getThreads()); // This is to get a matrix of random walks on the graph -> TODO: find out if something else is more suitable
-	while( iteration < max_iter && diff_norm > 1e-6*m->rows() ){
+	while( iteration < max_iter && diff_norm > numeric_limits<float>::epsilon()){
 		get_exp(m, &msquared, expansion, getThreads());
 		get_gamma(&msquared, &m_update, inflation, getThreads());
 		*m -= m_update;
-		diff_norm = get_norm(m, getThreads());
+		diff_norm = sparse_matrix_get_norm(m, getThreads());
 		*m = m_update;
 		iteration++;
 	}
@@ -246,7 +237,7 @@ void MCL::markov_process(Eigen::MatrixXf* m, float inflation, float expansion, u
 	Eigen::MatrixXf msquared(m->rows(), m->cols());
 	Eigen::MatrixXf m_update(m->rows(), m->cols());
 	get_gamma(m, m, 1); // This is to get a matrix of random walks on the graph -> TODO: find out if something else is more suitable
-	while( iteration < max_iter && diff_norm > numeric_limits<float>::epsilon()*m->rows() ){
+	while( iteration < max_iter && diff_norm > numeric_limits<float>::epsilon()){
 		get_exp(m, &msquared, expansion);
 		get_gamma(&msquared, &m_update, inflation);
 		*m -= m_update;

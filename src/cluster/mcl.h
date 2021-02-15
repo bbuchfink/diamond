@@ -45,6 +45,9 @@ using namespace std;
 namespace Workflow { namespace Cluster{
 class MCL: public ClusteringAlgorithm {
 private: 
+	vector<Eigen::Triplet<float>> sparse_matrix_multiply(Eigen::SparseMatrix<float>* a, Eigen::SparseMatrix<float>* b , uint32_t iThr, uint32_t nThr);
+	vector<Eigen::Triplet<float>> sparse_matrix_get_gamma(Eigen::SparseMatrix<float>* in, float r, uint32_t iThr, uint32_t nThr);
+	float sparse_matrix_get_norm(Eigen::SparseMatrix<float>* in, uint32_t nThr);
 	void print_stats(uint64_t nElements, uint32_t nComponents, uint32_t nComponentsLt1, vector<uint32_t>& sort_order, vector<vector<uint32_t>>& indices, SparseMatrixStream<float>* ms);
 	void get_exp(Eigen::SparseMatrix<float>* in, Eigen::SparseMatrix<float>* out, float r, uint32_t nThr);
 	void get_exp(Eigen::MatrixXf* in, Eigen::MatrixXf* out, float r);

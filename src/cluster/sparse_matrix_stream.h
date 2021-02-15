@@ -19,6 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #pragma once
 #include <Eigen/Sparse>
+#include <limits>
 #include <stdexcept>
 #include <string>
 #include <stdio.h>
@@ -29,7 +30,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/io/consumer.h"
 #include "cluster.h"
 
-using namespace std;
+	using namespace std;
 
 namespace Workflow { namespace Cluster{
 template <typename T>
@@ -43,7 +44,7 @@ class SparseMatrixStream : public Consumer {
 	uint32_t nThreads;
 	const static size_t unit_size = 2*sizeof(uint32_t)+sizeof(double);
 	const static unsigned long long read_buffer_size = 5ULL*1024*1024; // per thread 5MB buffer allowed 
-	bool in_memory, is_tmp_file;
+	bool in_memory, is_tmp_file, warned;
 	float max_size;
 	char* buffer;
 	set<Eigen::Triplet<T>, CoordinateCmp> data;
@@ -97,6 +98,7 @@ class SparseMatrixStream : public Consumer {
 			os->flush();
 		}
 	}
+
 	virtual void consume(const char *ptr, size_t n) override {
 		const char *end = ptr + n;
 		if (n >= unit_size) {
@@ -106,6 +108,12 @@ class SparseMatrixStream : public Consumer {
 				const uint32_t subject = *(uint32_t*) ptr;
 				ptr += sizeof(uint32_t);
 				const double value = *(double*) ptr;
+				if(!warned && (value > std::numeric_limits<T>::max() || value < std::numeric_limits<T>::min())){
+					printf("\n");
+					printf("WARNING: The clustering similarity measure cannot be stored in a float, results may become unreliable\n");
+					printf("         Please modify --clustering-similarity accordingly.\n\n");
+					warned=true;
+				}
 				ptr += sizeof(double);
 				Eigen::Triplet<T> t(query, subject, value);
 				auto it = data.find(t);
@@ -186,6 +194,7 @@ class SparseMatrixStream : public Consumer {
 		this->in_memory = false;
 		this->max_size = 2.0; // 2 GB default flush
 		this->is_tmp_file = false;
+		this->warned = false;
 		this->buffer = nullptr;
 		os = nullptr;
 		nThreads = 0;
@@ -197,6 +206,7 @@ class SparseMatrixStream : public Consumer {
 		this->max_size = 2.0; // 2 GB default flush
 		this->in_memory = true;
 		this->is_tmp_file = false;
+		this->warned = false;
 		this->buffer = nullptr;
 		os = nullptr;
 		nThreads = 0;
@@ -217,6 +227,7 @@ public:
 			this->is_tmp_file = false;
 			file_name = graph_file_name;
 		}
+		this->warned = false;
 		os = getStream(file_name);
 		nThreads = 0;
 	}
