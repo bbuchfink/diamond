@@ -47,6 +47,7 @@ String_set<char, '\0'>* ref_ids::data_ = nullptr;
 Partitioned_histogram ref_hst;
 unsigned current_ref_block;
 Sequence_set* ref_seqs::data_ = nullptr;
+Sequence_set* ref_seqs_unmasked::data_ = nullptr;
 bool blocked_processing;
 std::vector<uint32_t> block_to_database_id;
 
@@ -422,7 +423,7 @@ bool DatabaseFile::load_seqs(vector<uint32_t>* block2db_id, const size_t max_let
 		(*dst_seq)->print_stats();
 	}
 
-	if (config.multiprocessing)
+	if (config.multiprocessing || config.global_ranking_targets)
 		blocked_processing = true;
 	else
 		blocked_processing = seqs_processed < ref_header.sequences;
@@ -455,7 +456,7 @@ void DatabaseFile::get_seq()
 {
 	std::map<string, string> seq_titles;
 	if (!config.query_file.empty()) {
-		TextInputFile list(config.query_file.front());
+		TextInputFile list(config.single_query_file());
 		while (list.getline(), !list.eof()) {
 			const vector<string> t(tokenize(list.line.c_str(), "\t"));
 			if (t.size() != 2)

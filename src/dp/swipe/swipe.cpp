@@ -284,7 +284,7 @@ Hsp traceback(const sequence& query, Frame frame, _cbs bias_correction, const Ma
 {
 	Hsp out;
 	out.swipe_target = target.target_idx;
-	out.score = ScoreTraits<_sv>::int_score(max_score);
+	out.score = ScoreTraits<_sv>::int_score(max_score) * config.cbs_matrix_scale;
 	out.evalue = evalue;
 	out.frame = frame.index();
 	return out;
@@ -299,7 +299,7 @@ Hsp traceback(const sequence &query, Frame frame, _cbs bias_correction, const Tr
 	typename TracebackVectorMatrix<_sv>::TracebackIterator it(dp.traceback(max_col, max_i, max_j, channel));
 	Hsp out;
 	out.swipe_target = target.target_idx;
-	out.score = ScoreTraits<_sv>::int_score(max_score);
+	out.score = ScoreTraits<_sv>::int_score(max_score) * config.cbs_matrix_scale;
 	out.evalue = evalue;
 	out.transcript.reserve(size_t(out.score * config.transcript_len_estimate));
 
@@ -396,7 +396,7 @@ list<Hsp> swipe(const sequence& query, Frame frame, DynamicIterator<DpTarget>& t
 				overflow.push_back(targets.dp_targets[c]);
 				reinit = true;
 			} else if (!targets.inc(c)) {
-				const int s = ScoreTraits<_sv>::int_score(best[c]);
+				const int s = ScoreTraits<_sv>::int_score(best[c]) * config.cbs_matrix_scale;
 				const double evalue = score_matrix.evalue(s, qlen, (unsigned)targets.dp_targets[c].seq.length());
 				if (score_matrix.report_cutoff(s, evalue))
 					out.push_back(traceback<_sv>(query, frame, composition_bias, dp, targets.dp_targets[c], best[c], evalue, max_col[c], max_i[c], max_j[c], c));

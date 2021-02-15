@@ -31,6 +31,7 @@ namespace Stats {
 
 const double INT2_MAX = DBL_MAX;
 const size_t NCBI_ALPH = 28;
+using FreqRatios = double[NCBI_ALPH][NCBI_ALPH];
 
 struct StandardMatrix {
 
@@ -50,10 +51,10 @@ struct StandardMatrix {
 
 	int default_gap_exist, default_gap_extend;
 	std::vector<Parameters> parameters;
-	std::array<int8_t, AMINO_ACID_COUNT* AMINO_ACID_COUNT> scores;
+	std::array<int8_t, AMINO_ACID_COUNT * AMINO_ACID_COUNT> scores;
 	double joint_probs[TRUE_AA][TRUE_AA];
 	std::array<double, TRUE_AA> background_freqs;
-	double freq_ratios[NCBI_ALPH][NCBI_ALPH];
+	FreqRatios freq_ratios;
 
 	const Parameters& constants(int gap_exist, int gap_extend) const;
 	const Parameters& ungapped_constants() const;

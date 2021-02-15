@@ -24,6 +24,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "log_stream.h"
 #include "util.h"
 #include "escape_sequences.h"
+#include "profiler.h"
 
 using namespace std;
 
@@ -31,6 +32,7 @@ Message_stream message_stream;
 Message_stream verbose_stream (false);
 Message_stream log_stream (false);
 std::mutex Message_stream::mtx;
+std::map<std::string, uint64_t> Profiler::times;
 
 #ifndef _MSC_VER
 const char dir_separator = '/';

@@ -109,23 +109,27 @@ static double coverage(int count, int family) {
 
 struct Histogram {
 
-	Histogram() {
-		std::fill(false_positives.begin(), false_positives.end(), 0);
-		std::fill(coverage.begin(), coverage.end(), 0.0);
-	}
+	static constexpr double MAX_EV = 10000.0;
 
-	static int bin(double evalue) {
+	Histogram() :
+		bin_offset(-std::floor((double)DBL_MIN_EXP* log(2.0)* config.log_evalue_scale)),
+		bin_count(bin_offset + int(std::round(std::log(MAX_EV) * config.log_evalue_scale)) + 1),
+		false_positives(bin_count, 0),
+		coverage(bin_count, 0.0)
+	{}
+
+	int bin(double evalue) {
 		if (evalue == 0.0)
 			return 0;
-		int bin = int(std::round(std::log2(evalue) * MULT)) - (DBL_MIN_EXP*MULT);
+		int bin = int(std::round(std::log(evalue) * config.log_evalue_scale)) + bin_offset;
 		bin = std::max(bin, 0);
-		if (bin < 0 || bin >= BINS)
+		if (bin < 0 || bin >= bin_count)
 			throw std::runtime_error("Evalue exceeds binning range.");
 		return bin;
 	}
 
 	Histogram& operator+=(const Histogram& h) {
-		for (int i = 0; i < BINS; ++i) {
+		for (int i = 0; i < bin_count; ++i) {
 			false_positives[i] += h.false_positives[i];
 			coverage[i] += h.coverage[i];
 		}
@@ -133,15 +137,14 @@ struct Histogram {
 	}
 
 	friend std::ostream& operator<<(std::ostream& os, const Histogram& h) {
-		for (int i = 0; i < BINS; ++i)
+		for (int i = 0; i < h.bin_count; ++i)
 			os << (h.coverage[i] / config.query_count) << '\t' << ((double)h.false_positives[i] / config.query_count) << endl;
 		return os;
 	}
 
-	enum { MULT = 1, BINS = (-DBL_MIN_EXP + 15)*MULT };
-
-	array<size_t, BINS> false_positives;
-	array<double, BINS> coverage;
+	int bin_offset, bin_count;
+	vector<size_t> false_positives;
+	vector<double> coverage;
 
 };
 
@@ -169,13 +172,14 @@ struct QueryStats {
 			auto i = acc2fam.equal_range(query);
 			int n = 0;
 			for (auto j = i.first; j != i.second; ++j) {
-				family_idx[j->second] = family_idx.size();
+				const int next = (int)family_idx.size();
+				family_idx[j->second] = next;
 				++n;
 			}
-			false_positives.insert(false_positives.end(), Histogram::BINS, 0);
+			false_positives.insert(false_positives.end(), histogram.bin_count, 0);
 			true_positives.reserve(n);
 			for (int i = 0; i < n; ++i)
-				true_positives.emplace_back(Histogram::BINS, 0);
+				true_positives.emplace_back(histogram.bin_count, 0);
 		}
 	}
 
@@ -185,7 +189,7 @@ struct QueryStats {
 		auto it = family_idx.find(family);
 		if (it == family_idx.end())
 			return;
-		++true_positives[it->second][Histogram::bin(evalue)];
+		++true_positives[it->second][histogram.bin(evalue)];
 	}
 
 	enum { UNKNOWN = 0, TP = 1, FP = 2 };
@@ -204,7 +208,7 @@ struct QueryStats {
 		if (sseqid[0] == '\\') {
 			have_rev_hit = true;
 			if (get_roc)
-				++false_positives[Histogram::bin(evalue)];
+				++false_positives[histogram.bin(evalue)];
 			return FP;
 		}
 		else {
@@ -213,6 +217,7 @@ struct QueryStats {
 			if (i.first == i.second)
 				throw std::runtime_error("Accession not mapped.");
 			bool same_fold = false;
+
 			for (auto j = i.first; j != i.second; ++j) {
 				if (!have_rev_hit)
 					++count[j->second];
@@ -225,7 +230,7 @@ struct QueryStats {
 			if (!config.no_forward_fp && !same_fold) {
 				have_rev_hit = true;
 				if(get_roc)
-					++false_positives[Histogram::bin(evalue)];
+					++false_positives[histogram.bin(evalue)];
 				return FP;
 			}
 			return match_query ? TP : UNKNOWN;
@@ -250,13 +255,13 @@ struct QueryStats {
 
 	void update_hist(Histogram& hist, const vector<int>& fam_count) {
 		int t = 0;
-		for (int i = 0; i < Histogram::BINS; ++i) {
+		for (int i = 0; i < histogram.bin_count; ++i) {
 			t += false_positives[i];
 			hist.false_positives[i] += (size_t)t;
 		}
 		const int n = family_count();
 		vector<int> s(n, 0);
-		for (int i = 0; i < Histogram::BINS; ++i) {
+		for (int i = 0; i < histogram.bin_count; ++i) {
 			double cov = 0.0;
 			for(auto it = family_idx.begin(); it != family_idx.end(); ++it) {
 				s[it->second] += true_positives[it->second][i];
@@ -297,6 +302,7 @@ double query_roc(const string& buf, Histogram& hist) {
 		int c = stats.add(acc, evalue, acc2fam);
 		if ((c == QueryStats::TP && config.output_hits) || (c == QueryStats::FP && config.output_fp))
 			cout << line << endl;
+
 	}
 	const double a = stats.auc1(fam_count, acc2fam_query);
 	if (get_roc)
@@ -338,6 +344,7 @@ static void worker() {
 }
 
 void roc() {
+	histogram = Histogram();
 	get_roc = !config.roc_file.empty();
 
 	if (config.family_map.empty())
@@ -371,7 +378,7 @@ void roc() {
 		threads.emplace_back(worker);
 
 	timer.go("Processing alignments");
-	TextInputFile in(config.query_file.front());
+	TextInputFile in(config.single_query_file());
 	string query, acc;
 	size_t n = 0, queries = 0, buf_size = 0;
 	string* buf = new string;

@@ -27,7 +27,7 @@ namespace Util { namespace Scores {
 struct CutoffTable {
 	
 	CutoffTable(double evalue) {
-		for (int b = 1; b <= MAX_BITS; ++b) {			
+		for (int b = 1; b <= MAX_BITS; ++b) {
 			data_[b] = score_matrix.rawscore(score_matrix.bitscore_norm(evalue, 1 << (b - 1)));
 		}
 	}
@@ -42,6 +42,35 @@ private:
 	enum { MAX_BITS = 31 };
 
 	int data_[MAX_BITS + 1];
+
+};
+
+struct CutoffTable2D {
+
+	CutoffTable2D(double evalue) {
+		for (int b1 = 1; b1 <= MAX_BITS; ++b1)
+			for (int b2 = 1; b2 <= MAX_BITS; ++b2) {
+				data_[b1][b2] = calc_min_score(1 << (b1 - 1), 1 << (b2 - 1), evalue);
+			}
+	}
+
+	int operator()(int query_len, int target_len) const {
+		const int b1 = 32 - clz((uint32_t)query_len), b2 = 32 - clz((uint32_t)target_len);
+		return data_[b1][b2];
+	}
+
+private:
+
+	int calc_min_score(unsigned qlen, unsigned slen, double evalue) {
+		for (int i = 10; i < 1000; ++i)
+			if (score_matrix.evalue_norm(i, qlen, slen) <= evalue)
+				return i;
+		return 1000;
+	}
+
+	enum { MAX_BITS = 31 };
+
+	int data_[MAX_BITS + 1][MAX_BITS + 1];
 
 };
 

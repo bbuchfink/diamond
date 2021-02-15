@@ -43,11 +43,13 @@ Score_matrix::Score_matrix(const string & matrix, int gap_open, int gap_extend, 
 	gap_extend_ (gap_extend == -1 ? standard_matrix_->default_gap_extend : gap_extend),
 	frame_shift_(frameshift),
 	db_letters_ ((double)db_letters),
+	scale_(scale),
 	name_(matrix),
 	matrix8_(standard_matrix_->scores.data(), stop_match_score),
 	matrix32_(standard_matrix_->scores.data(), stop_match_score),
 	matrix32_scaled_(standard_matrix_->freq_ratios, standard_matrix_->ungapped_constants().Lambda, standard_matrix_->scores.data(), scale),
 	bias_((char)(-low_score())),
+	ideal_lambda_(Stats::ideal_lambda(matrix32_.pointers().data())),
 	matrix8u_(standard_matrix_->scores.data(), stop_match_score, bias_),
 	matrix8_low_(standard_matrix_->scores.data(), stop_match_score, 0, 16),
 	matrix8_high_(standard_matrix_->scores.data(), stop_match_score, 0, 16, 16),
@@ -186,7 +188,7 @@ Score_matrix::Scores<_t>::Scores(const double (&freq_ratios)[Stats::NCBI_ALPH][S
 			if (i < TRUE_AA && j < TRUE_AA)
 				data[i * 32 + j] = std::round(std::log(freq_ratios[Stats::ALPH_TO_NCBI[i]][Stats::ALPH_TO_NCBI[j]]) / lambda * scale);
 			else if (i < n && j < n)
-				data[i * 32 + j] = std::max((int)scores[i * n + j] * scale, SCHAR_MIN);
+				data[i * 32 + j] = (int)scores[i * n + j] * scale;
 			else
 				data[i * 32 + j] = SCHAR_MIN;
 		}
@@ -204,7 +206,12 @@ template struct Score_matrix::Scores<int>;
 
 double Score_matrix::evalue(int raw_score, unsigned query_len, unsigned subject_len) const
 {
-	return evaluer.evalue(raw_score, query_len, subject_len) * (double)db_letters_ / (double)subject_len;
+	return evaluer.evalue((double)raw_score / scale_, query_len, subject_len) * (double)db_letters_ / (double)subject_len;
+}
+
+double Score_matrix::evalue_norm(int raw_score, unsigned query_len, unsigned subject_len) const
+{
+	return evaluer.evalue((double)raw_score / scale_, query_len, subject_len) * (double)1e9 / (double)subject_len;
 }
 
 bool Score_matrix::report_cutoff(int score, double evalue) const {

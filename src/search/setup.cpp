@@ -32,7 +32,7 @@ const double SINGLE_INDEXED_SEED_SPACE_MAX_COVERAGE = 0.15;
 
 void setup_search_cont()
 {
-	if (config.sensitivity >= Sensitivity::VERY_SENSITIVE || config.sensitivity == Sensitivity::MID_SENSITIVE)
+	if (config.sensitivity >= Sensitivity::VERY_SENSITIVE || config.sensitivity == Sensitivity::MID_SENSITIVE || config.sensitivity == Sensitivity::FAST)
 		return;
 	unsigned index_mode;
 	Reduction::reduction = Reduction("A KR EDNQ C G H ILVM FYW P ST");
@@ -62,21 +62,24 @@ void setup_search()
 		Config::set_option(config.freq_sd, 20.0);
 		Config::set_option(config.min_identities, 9u);
 		Config::set_option(config.ungapped_evalue, 300000.0, -1.0);
-		Config::set_option(config.gapped_filter_evalue, 10.0, -1.0);
+		Config::set_option(config.ungapped_evalue_short, 30000.0, -1.0);
+		Config::set_option(config.gapped_filter_evalue, 1.0, -1.0);
 		Config::set_option(config.lowmem, 1u);
 		Config::set_option(config.query_bins, 64u);
 	} else if (config.sensitivity == Sensitivity::VERY_SENSITIVE) {
 		Config::set_option(config.freq_sd, 15.0);
 		Config::set_option(config.min_identities, 9u);
 		Config::set_option(config.ungapped_evalue, 100000.0, -1.0);
-		Config::set_option(config.gapped_filter_evalue, 10.0, -1.0);
+		Config::set_option(config.ungapped_evalue_short, 30000.0, -1.0);
+		Config::set_option(config.gapped_filter_evalue, 1.0, -1.0);
 		Config::set_option(config.lowmem, 1u);
 		Config::set_option(config.query_bins, 16u);
 	} else if (config.sensitivity == Sensitivity::MORE_SENSITIVE) {
 		Config::set_option(config.freq_sd, 200.0);
 		Config::set_option(config.min_identities, 11u);
 		Config::set_option(config.ungapped_evalue, 10000.0, -1.0);
-		Config::set_option(config.gapped_filter_evalue, 10.0, -1.0);
+		Config::set_option(config.ungapped_evalue_short, 10000.0, -1.0);
+		Config::set_option(config.gapped_filter_evalue, 1.0, -1.0);
 		Config::set_option(config.lowmem, 4u);
 		Config::set_option(config.query_bins, 16u);
 	}
@@ -84,7 +87,8 @@ void setup_search()
 		Config::set_option(config.freq_sd, 20.0);
 		Config::set_option(config.min_identities, 11u);
 		Config::set_option(config.ungapped_evalue, 10000.0, -1.0);
-		Config::set_option(config.gapped_filter_evalue, 10.0, -1.0);
+		Config::set_option(config.ungapped_evalue_short, 10000.0, -1.0);
+		Config::set_option(config.gapped_filter_evalue, 1.0, -1.0);
 		Config::set_option(config.lowmem, 4u);
 		Config::set_option(config.query_bins, 16u);
 	}
@@ -92,6 +96,7 @@ void setup_search()
 		Config::set_option(config.freq_sd, 20.0);
 		Config::set_option(config.min_identities, 11u);
 		Config::set_option(config.ungapped_evalue, 10000.0, -1.0);
+		Config::set_option(config.ungapped_evalue_short, 10000.0, -1.0);
 		Config::set_option(config.gapped_filter_evalue, 0.0, -1.0);
 		Config::set_option(config.lowmem, 4u);
 		Config::set_option(config.query_bins, 16u);
@@ -100,6 +105,7 @@ void setup_search()
 		Config::set_option(config.freq_sd, 50.0);
 		Config::set_option(config.min_identities, 11u);
 		Config::set_option(config.ungapped_evalue, 10000.0, -1.0);
+		Config::set_option(config.ungapped_evalue_short, 10000.0, -1.0);
 		Config::set_option(config.gapped_filter_evalue, 0.0, -1.0);
 		Config::set_option(config.lowmem, 4u);
 		Config::set_option(config.query_bins, 16u);
@@ -122,9 +128,11 @@ void setup_search()
 		case Sensitivity::MID_SENSITIVE:
 			Config::set_option(config.index_mode, 15u);
 			break;
-		case Sensitivity::FAST:
+		case Sensitivity::DEFAULT:
 			Config::set_option(config.index_mode, 8u);
 			break;
+		case Sensitivity::FAST:
+			Config::set_option(config.index_mode, 16u);
 		}
 		Reduction::reduction = Reduction("A KR EDNQ C G H ILVM FYW P ST");
 		::shapes = shape_config(config.index_mode, config.shapes, config.shape_mask);

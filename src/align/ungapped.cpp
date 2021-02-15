@@ -48,25 +48,31 @@ std::vector<int16_t*> target_matrices;
 std::mutex target_matrices_lock;
 atomic<size_t> target_matrix_count(0);
 
-WorkTarget ungapped_stage(SeedHit *begin, SeedHit *end, const sequence *query_seq, const Bias_correction *query_cb, const double* query_comp, const int16_t** query_matrix, uint32_t block_id, Statistics& stat) {
+WorkTarget ungapped_stage(SeedHit *begin, SeedHit *end, const sequence *query_seq, const Bias_correction *query_cb, const Stats::Composition& query_comp, const int16_t** query_matrix, uint32_t block_id, Statistics& stat) {
 	array<vector<Diagonal_segment>, MAX_CONTEXT> diagonal_segments;
 	task_timer timer;
-	WorkTarget target(block_id, ref_seqs::get()[block_id], (int)query_seq[0].length(), query_comp, query_matrix);
+	const bool masking = config.comp_based_stats == Stats::CBS::COMP_BASED_STATS_AND_MATRIX_ADJUST ? Stats::use_seg_masking(query_seq[0], ref_seqs_unmasked::get()[block_id]) : true;
+	WorkTarget target(block_id, masking ? ref_seqs::get()[block_id] : ref_seqs_unmasked::get()[block_id], Stats::count_true_aa(query_seq[0]), query_comp, query_matrix);
 	stat.inc(Statistics::TIME_MATRIX_ADJUST, timer.microseconds());
 	if (!Stats::CBS::avg_matrix(config.comp_based_stats) && target.adjusted_matrix())
 		stat.inc(Statistics::MATRIX_ADJUST_COUNT);
 
 	if (config.ext == "full") {
-		for (const SeedHit *hit = begin; hit < end; ++hit)
-			target.ungapped_score = std::max(target.ungapped_score, hit->score);
+		for (const SeedHit* hit = begin; hit < end; ++hit)
+			target.ungapped_score[hit->frame] = std::max(target.ungapped_score[hit->frame], hit->score);
+		return target;
+	}
+	if (end - begin == 1 && align_mode.query_translated) {
+		target.ungapped_score[begin->frame] = begin->score;
+		target.hsp[begin->frame].emplace_back(begin->diag(), begin->diag(), begin->score, begin->frame, interval(), interval());
 		return target;
 	}
 	std::sort(begin, end);
 	for (const SeedHit *hit = begin; hit < end; ++hit) {
-		target.ungapped_score = std::max(target.ungapped_score, hit->score);
+		target.ungapped_score[hit->frame] = std::max(target.ungapped_score[hit->frame], hit->score);
 		if (!diagonal_segments[hit->frame].empty() && diagonal_segments[hit->frame].back().diag() == hit->diag() && diagonal_segments[hit->frame].back().subject_end() >= hit->j)
 			continue;
-		const auto d = xdrop_ungapped(query_seq[hit->frame], target.seq, hit->i, hit->j);
+		const Diagonal_segment d = xdrop_ungapped(query_seq[hit->frame], target.seq, hit->i, hit->j);
 		if (d.score > 0) {
 			diagonal_segments[hit->frame].push_back(d);
 		}
@@ -82,10 +88,10 @@ WorkTarget ungapped_stage(SeedHit *begin, SeedHit *end, const sequence *query_se
 	return target;
 }
 
-void ungapped_stage_worker(size_t i, size_t thread_id, const sequence *query_seq, const Bias_correction *query_cb, const double* query_comp, FlatArray<SeedHit> *seed_hits, const uint32_t*target_block_ids, vector<WorkTarget> *out, mutex *mtx, Statistics* stat) {
+void ungapped_stage_worker(size_t i, size_t thread_id, const sequence *query_seq, const Bias_correction *query_cb, const Stats::Composition* query_comp, FlatArray<SeedHit> *seed_hits, const uint32_t*target_block_ids, vector<WorkTarget> *out, mutex *mtx, Statistics* stat) {
 	Statistics stats;
 	const int16_t* query_matrix = nullptr;
-	WorkTarget target = ungapped_stage(seed_hits->begin(i), seed_hits->end(i), query_seq, query_cb, query_comp, &query_matrix, target_block_ids[i], stats);
+	WorkTarget target = ungapped_stage(seed_hits->begin(i), seed_hits->end(i), query_seq, query_cb, *query_comp, &query_matrix, target_block_ids[i], stats);
 	{
 		std::lock_guard<mutex> guard(*mtx);
 		out->push_back(std::move(target));
@@ -94,14 +100,15 @@ void ungapped_stage_worker(size_t i, size_t thread_id, const sequence *query_seq
 	delete[] query_matrix;
 }
 
-vector<WorkTarget> ungapped_stage(const sequence *query_seq, const Bias_correction *query_cb, const double* query_comp, FlatArray<SeedHit> &seed_hits, const vector<uint32_t>& target_block_ids, int flags, Statistics& stat) {
+vector<WorkTarget> ungapped_stage(const sequence *query_seq, const Bias_correction *query_cb, const Stats::Composition& query_comp, FlatArray<SeedHit> &seed_hits, const vector<uint32_t>& target_block_ids, int flags, Statistics& stat) {
 	vector<WorkTarget> targets;
 	if (target_block_ids.size() == 0)
 		return targets;
+	targets.reserve(target_block_ids.size());
 	const int16_t* query_matrix = nullptr;
 	if (flags & DP::PARALLEL) {
 		mutex mtx;
-		Util::Parallel::scheduled_thread_pool_auto(config.threads_, seed_hits.size(), ungapped_stage_worker, query_seq, query_cb, query_comp, &seed_hits, target_block_ids.data(), &targets, &mtx, &stat);
+		Util::Parallel::scheduled_thread_pool_auto(config.threads_, seed_hits.size(), ungapped_stage_worker, query_seq, query_cb, &query_comp, &seed_hits, target_block_ids.data(), &targets, &mtx, &stat);
 	}
 	else {
 		for (size_t i = 0; i < target_block_ids.size(); ++i)

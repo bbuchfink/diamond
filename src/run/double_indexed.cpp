@@ -90,6 +90,9 @@ void run_ref_chunk(DatabaseFile &db_file,
 {
 	log_rss();
 
+	if (config.comp_based_stats == Stats::CBS::COMP_BASED_STATS_AND_MATRIX_ADJUST)
+		ref_seqs_unmasked::data_ = new Sequence_set(*ref_seqs::data_);
+
 	task_timer timer;
 	if (config.masking == 1 && !config.no_ref_masking) {
 		timer.go("Masking reference");
@@ -165,6 +168,8 @@ void run_ref_chunk(DatabaseFile &db_file,
 	timer.go("Deallocating reference");
 	delete ref_seqs::data_;
 	delete ref_ids::data_;
+	if (config.comp_based_stats == Stats::CBS::COMP_BASED_STATS_AND_MATRIX_ADJUST)
+		delete ref_seqs_unmasked::data_;
 	timer.finish();
 }
 
@@ -189,7 +194,7 @@ void run_query_chunk(DatabaseFile &db_file,
 	if (query_chunk == 0)
 		setup_search_cont();
 	if (config.algo == -1) {
-		if (config.sensitivity >= Sensitivity::VERY_SENSITIVE || config.sensitivity == Sensitivity::MID_SENSITIVE) {
+		if (config.sensitivity >= Sensitivity::VERY_SENSITIVE || config.sensitivity == Sensitivity::MID_SENSITIVE || config.sensitivity == Sensitivity::FAST) {
 			config.algo = Config::double_indexed;
 		}
 		else {
@@ -226,6 +231,8 @@ void run_query_chunk(DatabaseFile &db_file,
 	db_file.ref_header.sequences,
 	db_file.ref_header.letters,
 	db_file.total_blocks(),
+	config.gapped_filter_evalue1,
+	config.gapped_filter_evalue,
 	config.gapped_filter_evalue1,
 	config.gapped_filter_evalue
 	};

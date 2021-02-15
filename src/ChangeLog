@@ -1,3 +1,21 @@
+[2.0.7]
+- Added support for computing full-matrix instead of banded Smith Waterman extensions
+  (command line option `--ext full`).
+- Added support for the new `prot.accession2taxid.FULL.gz` taxonomy mapping file from
+  NCBI.
+- Added the option `--gapped-filter-evalue` to set the e-value threshold of the gapped
+  filter heuristic.
+- Added setting the scores of the mask letter according to BLAST rules when a
+  compositionally adjusted matrix is used.
+- Changed formatting of e-values to print two decimals instead of one.
+- Added the output field `qseq_translated` to print the translation of the aligned part
+  of the query sequence.
+- Added support for providing two input files to `--query/-q` when running alignment
+  in blastx mode.
+- Added the output field `full_qseq_mate` to print the sequence of the query's mate
+  (enabled when using two query files in blastx mode).
+- Fixed a bug that could cause a crash in blastx mode for very long queries.
+
 [2.0.6]
 - Changed the computation of expected values to use the method described in Park, Y.,
   Sheetlin, S., Ma, N. et al. New finite-size correction for local alignment score

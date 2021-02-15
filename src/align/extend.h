@@ -62,8 +62,8 @@ std::vector<Match> extend(const Parameters &params, size_t query_id, hit* begin,
 TextBuffer* generate_output(vector<Match> &targets, size_t query_block_id, Statistics &stat, const Metadata &metadata, const Parameters &parameters);
 TextBuffer* generate_intermediate_output(const vector<Match> &targets, size_t query_block_id);
 
-inline int raw_score_cutoff(size_t query_len) {
+/*inline int raw_score_cutoff(size_t query_len) {
 	return score_matrix.rawscore(config.min_bit_score == 0 ? score_matrix.bitscore(config.max_evalue, (unsigned)query_len) : config.min_bit_score);
-}
+}*/
 
 }

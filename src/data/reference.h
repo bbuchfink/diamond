@@ -155,6 +155,19 @@ struct ref_seqs
 	static Sequence_set *data_;
 };
 
+struct ref_seqs_unmasked
+{
+	static const Sequence_set& get()
+	{
+		return *data_;
+	}
+	static Sequence_set& get_nc()
+	{
+		return *data_;
+	}
+	static Sequence_set* data_;
+};
+
 struct ref_ids
 {
 	static const String_set<char, 0>& get()

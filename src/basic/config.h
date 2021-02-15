@@ -26,7 +26,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <stdint.h>
 #include <map>
 
-enum class Sensitivity { FAST = 0, MID_SENSITIVE = 1, SENSITIVE = 2, MORE_SENSITIVE = 3, VERY_SENSITIVE = 4, ULTRA_SENSITIVE = 5 };
+enum class Sensitivity { FAST = 0, DEFAULT = 1, MID_SENSITIVE = 2, SENSITIVE = 3, MORE_SENSITIVE = 4, VERY_SENSITIVE = 5, ULTRA_SENSITIVE = 6 };
 enum class TracebackMode { NONE = 0, SCORE_ONLY = 1, STAT = 2, VECTOR = 3, SCORE_BUFFER = 4 };
 
 struct Config
@@ -246,7 +246,6 @@ struct Config
 	int family_cap;
 	int cbs_matrix_scale;
 	size_t query_count;
-	double cbs_angle;
 	int target_seg;
 	double cbs_err_tolerance;
 	int cbs_it_limit;
@@ -257,6 +256,10 @@ struct Config
 	size_t deque_bucket_size;
 	bool mmap_target_index;
 	bool save_target_index;
+	bool mode_fast;
+	double log_evalue_scale;
+	double ungapped_evalue_short;
+	size_t max_swipe_dp;
 
 	Sensitivity sensitivity;
 	TracebackMode traceback_mode;
@@ -291,7 +294,8 @@ struct Config
 
 	
 	std::map<std::string, Sensitivity> sens_map{
-		{"fast", Sensitivity::FAST},
+		{"fast", Sensitivity::FAST },
+		{"default", Sensitivity::DEFAULT},
 		{"sensitive", Sensitivity::SENSITIVE},
 		{"mid-sensitive", Sensitivity::MID_SENSITIVE},
 		{"more-sensitive", Sensitivity::MORE_SENSITIVE},
@@ -328,6 +332,7 @@ struct Config
 	}
 
 	void set_sens(Sensitivity sens);
+	std::string single_query_file() const;
 
 	bool mem_buffered() const { return tmpdir == "/dev/shm"; }
 

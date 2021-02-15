@@ -394,7 +394,7 @@ struct TracebackVectorMatrix
 	}
 	inline ColumnIterator begin(int offset, int col)
 	{
-		return ColumnIterator(&hgap_[offset], &score_[offset], &trace_mask_[(col + 1)*band_ + offset]);
+		return ColumnIterator(&hgap_[offset], &score_[offset], &trace_mask_[size_t(col + 1)*(size_t)band_ + (size_t)offset]);
 	}
 	int band() const {
 		return band_;
@@ -579,8 +579,8 @@ Hsp traceback(const sequence &query, Frame frame, _cbs bias_correction, const Ma
 	Hsp out;
 	out.swipe_target = target.target_idx;
 	out.score = ScoreTraits<_sv>::int_score(max_score);
-	if (target.adjusted_matrix())
-		out.score = std::round((double)out.score / (double)config.cbs_matrix_scale);
+	if (!target.adjusted_matrix())
+		out.score *= config.cbs_matrix_scale;
 	out.evalue = evalue;
 	out.frame = frame.index();
 	out.d_begin = target.d_begin;
@@ -628,8 +628,8 @@ Hsp traceback(const sequence &query, Frame frame, _cbs bias_correction, const Tr
 	out.subject_range.end_ = it.j + 1;
 	const int end_score = out.score;
 	const bool adjusted_matrix = target.adjusted_matrix();
-	if (adjusted_matrix)
-		out.score = std::round((double)out.score / (double)config.cbs_matrix_scale);
+	if (!adjusted_matrix)
+		out.score *= config.cbs_matrix_scale;
 	int score = 0;
 	const int* matrix = adjusted_matrix ? target.matrix->scores32.data() : score_matrix.matrix32();
 
@@ -815,7 +815,9 @@ list<Hsp> swipe(
 	task_timer timer;
 	for (int i = 0; i < targets.n_targets; ++i) {
 		if (best[i] < ScoreTraits<_sv>::max_score()) {
-			const int score = std::round((double)ScoreTraits<_sv>::int_score(best[i]) / (double)subject_begin[i].matrix_scale());
+			int score = ScoreTraits<_sv>::int_score(best[i]);
+			if (!subject_begin[i].adjusted_matrix())
+				score *= config.cbs_matrix_scale;
 			const double evalue = score_matrix.evalue(score, qlen, (unsigned)subject_begin[i].seq.length());
 			if (score_matrix.report_cutoff(score, evalue)) {
 				out.push_back(traceback<_sv>(query, frame, composition_bias, dp, subject_begin[i], d_begin[i], best[i], evalue, max_col[i], i, i0 - j, i1 - j, max_band_row[i]));

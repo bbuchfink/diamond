@@ -16,28 +16,31 @@ struct Assoc {
 	uint8_t id, fam_idx;
 };
 
-static string query_aln;
+static string query_aln, query_mapped;
 static vector<array<int, 10>> totals, counts;
 static map<string, uint8_t> fam2idx;
 static unordered_multimap<string, Assoc> acc2id;
-static size_t unmapped_query = 0;
+static size_t unmapped_query = 0, total_unmapped = 0;
 
-static void fetch_map(TextInputFile& map_in, const string& query) {
-	string q, target, family;
+static bool fetch_map(TextInputFile& map_in, const string& query) {
+	string q, target, family, next_query;
 	float id;
 	acc2id.clear();
 	fam2idx.clear();
 	counts.clear();
 	totals.clear();
+	query_mapped.clear();
 	while (map_in.getline(), !map_in.eof()) {
 		Util::String::Tokenizer(map_in.line, "\t") >> q >> target >> id >> family;
-		if (q != query) {
-			if (q < query)
-				continue;
-			else {
-				map_in.putback_line();
-				return;
-			}
+		if (next_query.empty()) {
+			next_query = q;
+			query_mapped = q;
+			if (next_query > query)
+				return true;
+		}
+		if (q != next_query) {
+			map_in.putback_line();
+			return next_query == query;
 		}
 		auto it = fam2idx.emplace(family, (uint8_t)fam2idx.size());
 		if (it.second) {
@@ -51,12 +54,16 @@ static void fetch_map(TextInputFile& map_in, const string& query) {
 		acc2id.emplace(target, Assoc { (uint8_t)bin, fam_idx });
 		++totals[(size_t)fam_idx][bin];
 	}
+	return (next_query == query) || (next_query.empty() && map_in.eof());
 }
 
 static void print() {
-	if (unmapped_query)
+	if (unmapped_query || query_mapped > query_aln || query_mapped.empty()) {
+		message_stream << "Unmapped query: " << query_aln << endl;
+		++total_unmapped;
 		return;
-	cout << query_aln;
+	}
+	cout << query_mapped;
 	for (int i = 0; i < 10; ++i) {
 		double s = 0.0, n = 0.0;
 		for (size_t fam_idx = 0; fam_idx < fam2idx.size(); ++fam_idx) {
@@ -71,7 +78,7 @@ static void print() {
 }
 
 void roc_id() {
-	TextInputFile in(config.query_file.front());
+	TextInputFile in(config.single_query_file());
 	string query, target;
 	size_t n = 0, queries = 0, unmapped = 0, hits = 0;
 
@@ -84,10 +91,12 @@ void roc_id() {
 		++hits;
 		if (query != query_aln) {
 			print();
-			fetch_map(map_in, query);
-			query_aln = query;
-			++queries;
 			unmapped_query = 0;
+			query_aln = query;
+			while (!fetch_map(map_in, query)) {
+				print();
+			}
+			++queries;
 			if (queries % 1000 == 0)
 				message_stream << queries << ' ' << hits << ' ' << unmapped << endl;
 		}
@@ -106,5 +115,6 @@ void roc_id() {
 	in.close();
 	map_in.close();
 	message_stream << "Queries = " << queries << endl;
+	message_stream << "Unmapped = " << total_unmapped << endl;
 
 }

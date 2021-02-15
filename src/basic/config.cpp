@@ -105,9 +105,13 @@ _t set_string_option(const string& s, const string& name, const vector<pair<stri
 }
 
 void Config::set_sens(Sensitivity sens) {
-	if (sensitivity != Sensitivity::FAST)
+	if (sensitivity != Sensitivity::DEFAULT)
 		throw std::runtime_error("Sensitivity switches are mutually exclusive.");
 	sensitivity = sens;
+}
+
+std::string Config::single_query_file() const {
+	return query_file.empty() ? string() : query_file.front();
 }
 
 Config::Config(int argc, const char **argv, bool check_io)
@@ -284,6 +288,7 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("freq-sd", 0, "number of standard deviations for ignoring frequent seeds", freq_sd, 0.0)
 		("id2", 0, "minimum number of identities for stage 1 hit", min_identities)
 		("xdrop", 'x', "xdrop for ungapped alignment", ungapped_xdrop, 12.3)
+		("gapped-filter-evalue", 0, "E-value threshold for gapped filter (auto)", gapped_filter_evalue, -1.0)
 		("band", 0, "band for dynamic programming computation", padding)
 		("shapes", 's', "number of seed shapes (default=all available)", shapes)
 		("shape-mask", 0, "seed shapes", shape_mask)
@@ -309,9 +314,8 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("family-map", 0, "", family_map)
 		("family-map-query", 0, "", family_map_query)
 		("query-parallel-limit", 0, "", query_parallel_limit, 3000000u)
-		("target-indexed", 0, "", target_indexed)
-		("mmap-target-index", 0, "", mmap_target_index)
-		("save-target-index", 0, "", save_target_index);
+		("log-evalue-scale", 0, "", log_evalue_scale, 1.0 / std::log(2.0))
+		("bootstrap", 0, "", bootstrap);
 
 	Options_group view_options("View options");
 	view_options.add()
@@ -335,6 +339,10 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("rank-ratio", 0, "include subjects within this ratio of last hit", rank_ratio, -1.0)
 		("lambda", 0, "lambda parameter for custom matrix", lambda)
 		("K", 0, "K parameter for custom matrix", K);
+
+	double query_match_distance_threshold;
+	double length_ratio_threshold;
+	double cbs_angle;
 
 #ifdef EXTRA
 	Options_group hidden_options("");
@@ -412,17 +420,16 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("chaining-range-cover", 0, "", chaining_range_cover, (size_t)8)
 		("index-mode", 0, "index mode (0=4x12, 1=16x9)", index_mode)
 		("no-swipe-realign", 0, "", no_swipe_realign)
-		("bootstrap", 0, "", bootstrap)
 		("chaining-maxnodes", 0, "", chaining_maxnodes)
 		("cutoff-score-8bit", 0, "", cutoff_score_8bit, 240)
 		("min-band-overlap", 0, "", min_band_overlap, 0.2)
 		("min-realign-overhang", 0, "", min_realign_overhang, 30)
 		("ungapped-window", 0, "", ungapped_window, 48)
 		("gapped-filter-diag-score", 0, "", gapped_filter_diag_bit_score, 12.0)
-		("gapped-filter-evalue", 0, "", gapped_filter_evalue, -1.0)
 		("gapped-filter-window", 0, "", gapped_filter_window, 200)
 		("output-hits", 0, "", output_hits)
 		("ungapped-evalue", 0, "", ungapped_evalue, -1.0)
+		("ungapped-evalue-short", 0, "", ungapped_evalue_short, -1.0)
 		("no-logfile", 0, "", no_logfile)
 		("no-heartbeat", 0, "", no_heartbeat)
 		("band-bin", 0, "", band_bin, 24)
@@ -432,7 +439,7 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("tile-size", 0, "", tile_size, (uint32_t)1024)
 		("short-query-ungapped-bitscore", 0, "", short_query_ungapped_bitscore, 25.0)
 		("short-query-max-len", 0, "", short_query_max_len, 60)
-		("gapped-filter-evalue1", 0, "", gapped_filter_evalue1, 1.0e+04)
+		("gapped-filter-evalue1", 0, "", gapped_filter_evalue1, 2000.0)
 		("ext-yield", 0, "", ext_min_yield)
 		("full-sw-len", 0, "", full_sw_len)
 		("relaxed-evalue-factor", 0, "", relaxed_evalue_factor, 1.0)
@@ -458,14 +465,19 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("family-cap", 0, "", family_cap)
 		("cbs-matrix-scale", 0, "", cbs_matrix_scale, 1)
 		("query-count", 0, "", query_count, (size_t)1)
-		("cbs-angle", 0, "", cbs_angle, 50.0)
+		("cbs-angle", 0, "", cbs_angle, -1.0)
 		("target-seg", 0, "", target_seg, -1)
 		("cbs-err-tolerance", 0, "", cbs_err_tolerance, 0.00000001)
 		("cbs-it-limit", 0, "", cbs_it_limit, 2000)
-		("query-match-distance-threshold", 0, "", query_match_distance_threshold, 0.0)
-		("length-ratio-threshold", 0, "", length_ratio_threshold, 0.0)
 		("hash_join_swap", 0, "", hash_join_swap)
-		("deque_bucket_size", 0, "", deque_bucket_size, (size_t)524288);
+		("deque_bucket_size", 0, "", deque_bucket_size, (size_t)524288)
+		("query-match-distance-threshold", 0, "", query_match_distance_threshold, -1.0)
+		("length-ratio-threshold", 0, "", length_ratio_threshold, -1.0)
+		("fast", 0, "", mode_fast)
+		("target-indexed", 0, "", target_indexed)
+		("mmap-target-index", 0, "", mmap_target_index)
+		("save-target-index", 0, "", save_target_index)
+		("max-swipe-dp", 0, "", max_swipe_dp, (size_t)4000000);
 	
 	parser.add(general).add(makedb).add(cluster).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options).add(deprecated_options);
 	parser.store(argc, argv, command);
@@ -482,8 +494,8 @@ Config::Config(int argc, const char **argv, bool check_io)
 	if (command == blastx && no_self_hits)
 		throw std::runtime_error("--no-self-hits option is not supported in blastx mode.");
 
-	if (command == blastx && (ext == "full" || swipe_all))
-		throw std::runtime_error("Full matrix extension is not supported in blastx mode.");
+	if (command == blastx && swipe_all)
+		throw std::runtime_error("Full db alignment is not supported in blastx mode.");
 
 	if (long_reads) {
 		query_range_culling = true;
@@ -502,7 +514,11 @@ Config::Config(int argc, const char **argv, bool check_io)
 		ext = "full";
 	}
 
+#ifdef EXTRA
 	if (comp_based_stats >= Stats::CBS::COUNT)
+#else
+	if (comp_based_stats >= 5)
+#endif	
 		throw std::runtime_error("Invalid value for --comp-based-stats. Permitted values: 0, 1, 2, 3, 4.");
 
 	if (masking == -1)
@@ -510,6 +526,8 @@ Config::Config(int argc, const char **argv, bool check_io)
 
 	if (target_seg == -1)
 		target_seg = Stats::CBS::target_seg(comp_based_stats);
+
+	Stats::comp_based_stats = Stats::CBS(comp_based_stats, query_match_distance_threshold, length_ratio_threshold, cbs_angle);
 
 	if (command == blastx && !Stats::CBS::support_translated(comp_based_stats))
 		throw std::runtime_error("This mode of composition based stats is not supported for translated searches.");
@@ -679,7 +697,7 @@ Config::Config(int argc, const char **argv, bool check_io)
 			}
 		}
 		message_stream << "Scoring parameters: " << score_matrix << endl;
-		if (masking == 1 || target_seg)
+		//if (masking == 1 || target_seg)
 			Masking::instance = unique_ptr<Masking>(new Masking(score_matrix));
 	}
 
@@ -698,7 +716,8 @@ Config::Config(int argc, const char **argv, bool check_io)
 #endif
 	}
 
-	sensitivity = Sensitivity::FAST;
+	sensitivity = Sensitivity::DEFAULT;
+	if (mode_fast) set_sens(Sensitivity::FAST);
 	if (mode_mid_sensitive) set_sens(Sensitivity::MID_SENSITIVE);
 	if (mode_sensitive) set_sens(Sensitivity::SENSITIVE);
 	if (mode_more_sensitive) set_sens(Sensitivity::MORE_SENSITIVE);
@@ -708,12 +727,9 @@ Config::Config(int argc, const char **argv, bool check_io)
 	if (algo == Config::query_indexed && (sensitivity == Sensitivity::MID_SENSITIVE || sensitivity >= Sensitivity::VERY_SENSITIVE))
 		throw std::runtime_error("Query-indexed mode is not supported for this sensitivity setting.");
 
-	set<string> ext_modes = { "", "banded-fast", "banded-slow" };
-#ifdef EXTRA
-	ext_modes.insert("full");
-#endif
+	const set<string> ext_modes = { "", "banded-fast", "banded-slow", "full" };
 	if (ext_modes.find(ext) == ext_modes.end())
-		throw std::runtime_error("Possible values for --ext are: banded-fast, banded-slow");
+		throw std::runtime_error("Possible values for --ext are: banded-fast, banded-slow, full");
 
 	Translator::init(query_gencode);
 

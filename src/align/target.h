@@ -55,23 +55,23 @@ struct SeedHit {
 };
 
 struct WorkTarget {
-	WorkTarget(size_t block_id, const sequence& seq, int query_len, const double* query_comp, const int16_t** query_matrix) :
+	WorkTarget(size_t block_id, const sequence& seq, int query_len, const Stats::Composition& query_comp, const int16_t** query_matrix) :
 		block_id(block_id),
-		seq(seq),
-		ungapped_score(0)
+		seq(seq)
 	{
+		ungapped_score.fill(0);
 		if (config.comp_based_stats == Stats::CBS::HAUSER_AND_AVG_MATRIX_ADJUST) {
 			const int l = (int)seq.length();
 			const auto c = Stats::composition(seq);
-			auto r = Stats::s_TestToApplyREAdjustmentConditional(query_len, l, query_comp, c.data(), score_matrix.background_freqs());
+			auto r = Stats::s_TestToApplyREAdjustmentConditional(query_len, l, query_comp.data(), c.data(), score_matrix.background_freqs());
 			if (r == Stats::eCompoScaleOldMatrix)
 				return;
 			if (*query_matrix == nullptr) {
-				*query_matrix = Stats::make_16bit_matrix(Stats::CompositionMatrixAdjust(query_len, query_len, query_comp, query_comp, Stats::CBS::AVG_MATRIX_SCALE, score_matrix.ungapped_lambda(), score_matrix.joint_probs(), score_matrix.background_freqs()));
+				*query_matrix = Stats::make_16bit_matrix(Stats::CompositionMatrixAdjust(query_len, query_len, query_comp.data(), query_comp.data(), Stats::CBS::AVG_MATRIX_SCALE, score_matrix.ideal_lambda(), score_matrix.joint_probs(), score_matrix.background_freqs()));
 				++target_matrix_count;
 			}
 			if (target_matrices[block_id] == nullptr) {
-				int16_t* target_matrix = Stats::make_16bit_matrix(Stats::CompositionMatrixAdjust(l, l, c.data(), c.data(), Stats::CBS::AVG_MATRIX_SCALE, score_matrix.ungapped_lambda(), score_matrix.joint_probs(), score_matrix.background_freqs()));
+				int16_t* target_matrix = Stats::make_16bit_matrix(Stats::CompositionMatrixAdjust(l, l, c.data(), c.data(), Stats::CBS::AVG_MATRIX_SCALE, score_matrix.ideal_lambda(), score_matrix.joint_probs(), score_matrix.background_freqs()));
 				bool del = false;
 				{
 					std::lock_guard<std::mutex> lock(target_matrices_lock);
@@ -93,12 +93,12 @@ struct WorkTarget {
 	}
 	size_t block_id;
 	sequence seq;
-	int ungapped_score;
+	std::array<int, MAX_CONTEXT> ungapped_score;
 	std::array<std::list<Hsp_traits>, MAX_CONTEXT> hsp;
 	Stats::TargetMatrix matrix;
 };
 
-std::vector<WorkTarget> ungapped_stage(const sequence* query_seq, const Bias_correction* query_cb, const double* query_comp, FlatArray<SeedHit>& seed_hits, const std::vector<uint32_t>& target_block_ids, int flags, Statistics& stat);
+std::vector<WorkTarget> ungapped_stage(const sequence* query_seq, const Bias_correction* query_cb, const Stats::Composition& query_comp, FlatArray<SeedHit>& seed_hits, const std::vector<uint32_t>& target_block_ids, int flags, Statistics& stat);
 
 struct Target {
 
@@ -146,12 +146,19 @@ struct Target {
 struct TargetScore {
 	uint32_t target;
 	uint16_t score;
+#ifdef EVAL_TARGET
+	double evalue;
+#endif
 	bool operator<(const TargetScore& x) const {
+#ifdef EVAL_TARGET
+		return evalue < x.evalue || (evalue == x.evalue && target < x.target);
+#else
 		return score > x.score || (score == x.score && target < x.target);
+#endif
 	}
 };
 
-void load_hits(hit* begin, hit* end, FlatArray<SeedHit> &hits, std::vector<uint32_t> &target_block_ids, std::vector<TargetScore> &target_scores);
+void load_hits(hit* begin, hit* end, FlatArray<SeedHit> &hits, std::vector<uint32_t> &target_block_ids, std::vector<TargetScore> &target_scores, unsigned query_len);
 void culling(std::vector<Target>& targets, int source_query_len, const char* query_title, const sequence& query_seq, size_t min_keep);
 bool append_hits(std::vector<Target>& targets, std::vector<Target>::const_iterator begin, std::vector<Target>::const_iterator end, size_t chunk_size, int source_query_len, const char* query_title, const sequence& query_seq);
 std::vector<WorkTarget> gapped_filter(const sequence *query, const Bias_correction* query_cbs, std::vector<WorkTarget>& targets, Statistics &stat);

@@ -21,11 +21,36 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "cbs.h"
 #include "../basic/config.h"
 #include "score_matrix.h"
+#include "../basic/masking.h"
 
 namespace Stats {
 
-std::vector<double> composition(const sequence& s) {
-    std::vector<double> r(20, 0.0);
+CBS comp_based_stats(0, -1.0, -1.0, -1.0);
+
+CBS::CBS(unsigned code, double query_match_distance_threshold, double length_ratio_threshold, double angle):
+    query_match_distance_threshold(-1.0),
+    length_ratio_threshold(-1.0),
+    angle(50.0)
+{
+    switch (code) {
+    case COMP_BASED_STATS_AND_MATRIX_ADJUST:
+        this->angle = 70.0;
+        this->query_match_distance_threshold = 0.16;
+        this->length_ratio_threshold = 3.0;
+    default:
+        ;
+    }
+    if (angle != -1.0)
+        this->angle = angle;
+    if (query_match_distance_threshold != 1.0)
+        this->query_match_distance_threshold = query_match_distance_threshold;
+    if (length_ratio_threshold != -1.0)
+        this->length_ratio_threshold = length_ratio_threshold;
+}
+
+Composition composition(const sequence& s) {
+    Composition r;
+    r.fill(0.0);
     int n = 0;
     for (size_t i = 0; i < s.length(); ++i) {
         int l = s[i];
@@ -41,15 +66,38 @@ std::vector<double> composition(const sequence& s) {
     return r;
 }
 
-TargetMatrix::TargetMatrix(const double* query_comp, int query_len, const sequence& target)
+int count_true_aa(const sequence& s) {
+    int n = 0;
+    for (size_t i = 0; i < s.length(); ++i)
+        if ((size_t)s[i] < TRUE_AA)
+            ++n;
+    return n;
+}
+
+bool use_seg_masking(const sequence& a, const sequence& b) {
+    if (config.comp_based_stats != CBS::COMP_BASED_STATS_AND_MATRIX_ADJUST || a.length() != b.length())
+        return true;
+    size_t n = 0;
+    for (size_t i = 0; i < a.length(); ++i)
+        if (a[i] == b[i])
+            ++n;
+    return n != a.length();
+}
+
+TargetMatrix::TargetMatrix(const Composition& query_comp, int query_len, const sequence& target)
 {
     if (!CBS::matrix_adjust(config.comp_based_stats))
         return;
+    
+    vector<Letter> target_seq = target.copy();
+    //Masking::get()(target_seq.data(), target_seq.size(), Masking::Algo::SEG);
 
-    auto c = composition(target);
+    //auto c = composition(target);
+    auto c = composition(sequence(target_seq.data(), target_seq.size()));
+    EMatrixAdjustRule rule = eUserSpecifiedRelEntropy;
     if (CBS::conditioned(config.comp_based_stats)) {
-        auto r = s_TestToApplyREAdjustmentConditional(query_len, (int)target.length(), query_comp, c.data(), score_matrix.background_freqs());
-        if (r == eCompoScaleOldMatrix)
+        rule = s_TestToApplyREAdjustmentConditional(query_len, (int)target.length(), query_comp.data(), c.data(), score_matrix.background_freqs());
+        if (rule == eCompoScaleOldMatrix && config.comp_based_stats != CBS::COMP_BASED_STATS_AND_MATRIX_ADJUST)
             return;
     }
 
@@ -57,15 +105,20 @@ TargetMatrix::TargetMatrix(const double* query_comp, int query_len, const sequen
     scores32.resize(32 * AMINO_ACID_COUNT);
     score_min = INT_MAX;
     score_max = INT_MIN;
-    vector<int> s = CompositionMatrixAdjust(query_len, (int)target.length(), query_comp, c.data(), config.cbs_matrix_scale, score_matrix.ungapped_lambda(), score_matrix.joint_probs(), score_matrix.background_freqs());
+    vector<int> s;
+    
+    if (config.comp_based_stats == CBS::COMP_BASED_STATS || rule == eCompoScaleOldMatrix)
+        s = CompositionBasedStats(score_matrix.matrix32_scaled_pointers().data(), query_comp, c, score_matrix.ungapped_lambda(), score_matrix.freq_ratios());
+    else
+        s = CompositionMatrixAdjust(query_len, count_true_aa(target), query_comp.data(), c.data(), config.cbs_matrix_scale, score_matrix.ideal_lambda(), score_matrix.joint_probs(), score_matrix.background_freqs());
     
     for (size_t i = 0; i < AMINO_ACID_COUNT; ++i) {
         for (size_t j = 0; j < AMINO_ACID_COUNT; ++j)
-            if (i < 20 && j < 20) {
-                scores[i * 32 + j] = s[j * 20 + i];
-                scores32[i * 32 + j] = s[j * 20 + i];
-                score_min = std::min(score_min, s[j * 20 + i]);
-                score_max = std::max(score_max, s[j * 20 + i]);
+            if ((i < 20 || i == MASK_LETTER) && (j < 20 || j == MASK_LETTER)) {
+                scores[i * 32 + j] = s[j * AMINO_ACID_COUNT + i];
+                scores32[i * 32 + j] = s[j * AMINO_ACID_COUNT + i];
+                score_min = std::min(score_min, s[j * AMINO_ACID_COUNT + i]);
+                score_max = std::max(score_max, s[j * AMINO_ACID_COUNT + i]);
                 //std::cerr << s2[j * 20 + i] << ' ';
             }
             else {

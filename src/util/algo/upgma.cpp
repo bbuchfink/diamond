@@ -172,7 +172,7 @@ void upgma(EdgeList &edges, size_t node_count) {
 }
 
 void upgma() {
-	TextInputFile in(config.query_file.front());
+	TextInputFile in(config.single_query_file());
 	string query, target;
 	double evalue;
 	EdgeList edges;	

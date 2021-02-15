@@ -28,7 +28,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "sequence.h"
 #include "masking.h"
 
-const char* Const::version_string = "2.0.6";
+const char* Const::version_string = "2.0.7";
 const char* Const::program_name = "diamond";
 const char* Const::id_delimiters = " \a\b\f\n\r\t\v\1";
 
@@ -328,7 +328,8 @@ vector<vector<string>> shape_codes = {
 "11010001010010111",
 "111010100001001011",
 "1101001001000100111"
-} // 15 8x9
+}, // 15 8x9
+{ "111011001011010111" } // 16 1x12
 
 };
 
