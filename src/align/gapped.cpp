@@ -186,7 +186,7 @@ vector<Target> align(const vector<WorkTarget> &targets, const Sequence *query_se
 }
 
 vector<Target> full_db_align(const Sequence *query_seq, const Bias_correction *query_cb, int flags, Statistics &stat) {
-	ContainerIterator<DpTarget, Sequence_set> target_it(*ref_seqs::data_, ref_seqs::data_->get_length());
+	ContainerIterator<DpTarget, SequenceSet> target_it(*ref_seqs::data_, ref_seqs::data_->get_length());
 	vector<DpTarget> v;
 	vector<Target> r;
 	Stats::TargetMatrix matrix;

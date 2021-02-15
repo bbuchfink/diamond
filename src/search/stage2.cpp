@@ -169,7 +169,7 @@ struct Stage2 {
 
 typedef vector<Finger_print, Util::Memory::AlignmentAllocator<Finger_print, 16>> Container;
 
-static void load_fps(const Packed_loc* p, size_t n, Container& v, const Sequence_set& seqs)
+static void load_fps(const Packed_loc* p, size_t n, Container& v, const SequenceSet& seqs)
 {
 	v.clear();
 	v.reserve(n);

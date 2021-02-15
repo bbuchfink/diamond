@@ -29,6 +29,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../score_vector_int8.h"
 #include "../../util/log_stream.h"
 #include "../../util/dynamic_iterator.h"
+#include "../../data/sequence_set.h"
 
 using std::list;
 using std::atomic;
@@ -203,6 +204,7 @@ list<Hsp> swipe_threads(const Sequence& query,
 list<Hsp> recompute_reversed(const Sequence& query, Frame frame, const Bias_correction* composition_bias, int flags, Statistics& stat, list<Hsp>::const_iterator begin, list<Hsp>::const_iterator end) {
 	array<vector<DpTarget>, 3> dp_targets;
 	vector<DpTarget> overflow;
+	SequenceSet reversed_targets;
 	const int qlen = (int)query.length();
 #ifdef __SSE4_1__
 	const int min_b = qlen <= UCHAR_MAX ? 0 : 1;
@@ -216,11 +218,12 @@ list<Hsp> recompute_reversed(const Sequence& query, Frame frame, const Bias_corr
 	}
 
 	list<Hsp> out;
+	vector<Letter> reversed = query.reverse();
 #ifdef __SSE4_1__
-	out = swipe_threads<::DISPATCH_ARCH::score_vector<int8_t>>(query, dp_targets[0].begin(), dp_targets[0].end(), nullptr, frame, composition_bias ? composition_bias->int8.data() : nullptr, flags, overflow, stat);
+	out = swipe_threads<::DISPATCH_ARCH::score_vector<int8_t>>(Sequence(reversed), dp_targets[0].begin(), dp_targets[0].end(), nullptr, frame, composition_bias ? composition_bias->int8.data() : nullptr, flags, overflow, stat);
 #endif	
-	out.splice(out.end(), swipe_threads<::DISPATCH_ARCH::score_vector<int16_t>>(query, dp_targets[1].begin(), dp_targets[1].end(), nullptr, frame, composition_bias ? composition_bias->int8.data() : nullptr, flags, overflow, stat));
-	out.splice(out.end(), swipe_threads<int32_t>(query, dp_targets[2].begin(), dp_targets[2].end(), nullptr, frame, composition_bias ? composition_bias->int8.data() : nullptr, flags, overflow, stat));
+	out.splice(out.end(), swipe_threads<::DISPATCH_ARCH::score_vector<int16_t>>(Sequence(reversed), dp_targets[1].begin(), dp_targets[1].end(), nullptr, frame, composition_bias ? composition_bias->int8.data() : nullptr, flags, overflow, stat));
+	out.splice(out.end(), swipe_threads<int32_t>(Sequence(reversed), dp_targets[2].begin(), dp_targets[2].end(), nullptr, frame, composition_bias ? composition_bias->int8.data() : nullptr, flags, overflow, stat));
 	return out;
 }
 

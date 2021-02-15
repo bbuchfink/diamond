@@ -178,6 +178,7 @@ struct Sequence
 			v.push_back(data_[i]);
 		return v;
 	}
+	std::vector<Letter> reverse() const;
 	void mask(const interval &i) {
 		for (int j = i.begin_; j < i.end_; ++j)
 			((Letter*)data_)[j] = value_traits.mask_char;

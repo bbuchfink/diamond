@@ -426,3 +426,11 @@ void Seed::enum_neighborhood(int treshold, vector<Seed>& out)
 	out.clear();
 	enum_neighborhood(0, treshold, out, score(*this));
 }
+
+std::vector<Letter> Sequence::reverse() const {
+	std::vector<Letter> v;
+	v.reserve(len_);
+	for (size_t i = len_; i > 0; --i)
+		v.push_back(data_[i - 1]);
+	return v;
+}

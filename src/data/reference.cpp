@@ -46,8 +46,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 String_set<char, '\0'>* ref_ids::data_ = nullptr;
 Partitioned_histogram ref_hst;
 unsigned current_ref_block;
-Sequence_set* ref_seqs::data_ = nullptr;
-Sequence_set* ref_seqs_unmasked::data_ = nullptr;
+SequenceSet* ref_seqs::data_ = nullptr;
+SequenceSet* ref_seqs_unmasked::data_ = nullptr;
 bool blocked_processing;
 std::vector<uint32_t> block_to_database_id;
 
@@ -219,7 +219,7 @@ void make_db(TempFile **tmp_out, list<TextInputFile> *input_file)
 	size_t letters = 0, n = 0, n_seqs = 0;
 	uint64_t offset = out->tell();
 
-	Sequence_set *seqs;
+	SequenceSet *seqs;
 	String_set<char, 0> *ids;
 	const FASTA_format format;
 	vector<Pos_record> pos_array;
@@ -320,7 +320,7 @@ void DatabaseFile::seek_direct() {
 	seek(sizeof(ReferenceHeader) + sizeof(ReferenceHeader2) + 8);
 }
 
-bool DatabaseFile::load_seqs(vector<uint32_t>* block2db_id, const size_t max_letters, Sequence_set **dst_seq, String_set<char, 0> **dst_id, bool load_ids, const BitVector* filter, const bool fetch_seqs, const Chunk & chunk)
+bool DatabaseFile::load_seqs(vector<uint32_t>* block2db_id, const size_t max_letters, SequenceSet **dst_seq, String_set<char, 0> **dst_id, bool load_ids, const BitVector* filter, const bool fetch_seqs, const Chunk & chunk)
 {
 	task_timer timer("Loading reference sequences");
 
@@ -338,7 +338,7 @@ bool DatabaseFile::load_seqs(vector<uint32_t>* block2db_id, const size_t max_let
 	if (block2db_id) block2db_id->clear();
 
 	if (fetch_seqs) {
-		*dst_seq = new Sequence_set;
+		*dst_seq = new SequenceSet;
 		if(load_ids) *dst_id = new String_set<char, 0>;
 	}
 

@@ -23,8 +23,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 using namespace std;
 
 unsigned current_query_chunk;
-Sequence_set* query_source_seqs::data_ = 0;
-Sequence_set* query_seqs::data_ = 0;
+SequenceSet* query_source_seqs::data_ = 0;
+SequenceSet* query_seqs::data_ = 0;
 String_set<char, '\0'>* query_ids::data_ = 0;
 Partitioned_histogram query_hst;
 vector<bool> query_aligned;

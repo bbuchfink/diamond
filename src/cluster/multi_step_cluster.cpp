@@ -256,7 +256,7 @@ void MultiStep::run() {
 	}
 		
 	task_timer timer("Generating output");
-	Sequence_set* rep_seqs;
+	SequenceSet* rep_seqs;
 	String_set<char, 0>* rep_ids;
 	vector<unsigned> rep_database_id, rep_block_id(seq_count);
 	db->rewind();

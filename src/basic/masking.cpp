@@ -101,7 +101,7 @@ void Masking::remove_bit_mask(Letter *seq, size_t len) const
 			seq[i] &= ~bit_mask;
 }
 
-void mask_worker(atomic<size_t> *next, Sequence_set *seqs, const Masking *masking, bool hard_mask, Masking::Algo algo)
+void mask_worker(atomic<size_t> *next, SequenceSet *seqs, const Masking *masking, bool hard_mask, Masking::Algo algo)
 {
 	size_t i;
 	while ((i = (*next)++) < seqs->get_length())
@@ -111,7 +111,7 @@ void mask_worker(atomic<size_t> *next, Sequence_set *seqs, const Masking *maskin
 			masking->mask_bit(seqs->ptr(i), seqs->length(i));
 }
 
-size_t mask_seqs(Sequence_set &seqs, const Masking &masking, bool hard_mask, Masking::Algo algo)
+size_t mask_seqs(SequenceSet &seqs, const Masking &masking, bool hard_mask, Masking::Algo algo)
 {
 	vector<thread> threads;
 	atomic<size_t> next(0);

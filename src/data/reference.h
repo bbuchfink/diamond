@@ -107,7 +107,7 @@ struct DatabaseFile : public InputFile
 	void clear_partition();
 	size_t get_n_partition_chunks();
 
-	bool load_seqs(std::vector<uint32_t>* block2db_id, size_t max_letters, Sequence_set **dst_seq, String_set<char, 0> **dst_id, bool load_ids = true, const BitVector* filter = nullptr, const bool fetch_seqs = true, const Chunk & chunk = Chunk());
+	bool load_seqs(std::vector<uint32_t>* block2db_id, size_t max_letters, SequenceSet **dst_seq, String_set<char, 0> **dst_id, bool load_ids = true, const BitVector* filter = nullptr, const bool fetch_seqs = true, const Chunk & chunk = Chunk());
 
 	void get_seq();
 	void read_seq(string &id, vector<Letter> &seq);
@@ -148,24 +148,24 @@ void make_db(TempFile **tmp_out = nullptr, std::list<TextInputFile>* input_file 
 
 struct ref_seqs
 {
-	static const Sequence_set& get()
+	static const SequenceSet& get()
 	{ return *data_; }
-	static Sequence_set& get_nc()
+	static SequenceSet& get_nc()
 	{ return *data_; }
-	static Sequence_set *data_;
+	static SequenceSet *data_;
 };
 
 struct ref_seqs_unmasked
 {
-	static const Sequence_set& get()
+	static const SequenceSet& get()
 	{
 		return *data_;
 	}
-	static Sequence_set& get_nc()
+	static SequenceSet& get_nc()
 	{
 		return *data_;
 	}
-	static Sequence_set* data_;
+	static SequenceSet* data_;
 };
 
 struct ref_ids
