@@ -173,8 +173,8 @@ std::vector<Match> extend(
 	const Metadata &metadata,
 	Statistics &stat,
 	int flags,
-	const FlatArray<SeedHit>& seed_hits,
-	const std::vector<uint32_t>& target_block_ids,
+	FlatArray<SeedHit>& seed_hits,
+	std::vector<uint32_t>& target_block_ids,
 	const std::vector<TargetScore>& target_scores);
 
 struct Memory {

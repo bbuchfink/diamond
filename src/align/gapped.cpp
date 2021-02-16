@@ -24,6 +24,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../dp/dp.h"
 #include "../util/interval.h"
 #include "../data/reference.h"
+#include "../output/output_format.h"
 
 using std::vector;
 using std::array;
@@ -239,7 +240,7 @@ vector<Match> align(vector<Target> &targets, const Sequence *query_seq, const Bi
 		return r;
 	r.reserve(targets.size());
 
-	if (config.traceback_mode == TracebackMode::SCORE_ONLY || first_round_traceback) {
+	if ((output_format->hsp_values == Output::NONE && config.max_hsps == 1) || first_round_traceback) {
 		for (Target &t : targets)
 			r.emplace_back(t.block_id, t.hsp, t.ungapped_score);
 		return r;

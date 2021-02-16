@@ -430,7 +430,6 @@ void Seed::enum_neighborhood(int treshold, vector<Seed>& out)
 std::vector<Letter> Sequence::reverse() const {
 	std::vector<Letter> v;
 	v.reserve(len_);
-	for (size_t i = len_; i > 0; --i)
-		v.push_back(data_[i - 1]);
+	std::reverse_copy(data(), end(), std::back_inserter(v));
 	return v;
 }

@@ -234,7 +234,7 @@ void swipe(const Sequence&s1, const Sequence&s2) {
 
 void banded_swipe(const Sequence &s1, const Sequence &s2) {
 	vector<DpTarget> target8, target16;
-	config.traceback_mode = TracebackMode::SCORE_BUFFER;
+	//config.traceback_mode = TracebackMode::SCORE_BUFFER;
 	for (size_t i = 0; i < 8; ++i)
 		target16.emplace_back(s2, -32, 32, 0, 0);
 	static const size_t n = 10000llu;

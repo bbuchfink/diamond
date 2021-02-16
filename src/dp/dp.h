@@ -154,7 +154,9 @@ struct DpTarget
 {
 	DpTarget():
 		target_idx(-1),
-		matrix(nullptr)
+		matrix(nullptr),
+		previous_i1(0),
+		previous_j1(0)
 	{}
 	DpTarget(const Sequence &seq, int d_begin, int d_end, int j_begin, int j_end, int target_idx = 0, int qlen = 0, const Stats::TargetMatrix* matrix = nullptr) :
 		seq(seq),
@@ -163,6 +165,8 @@ struct DpTarget
 		j_begin(j_begin),
 		j_end(j_end),
 		target_idx(target_idx),
+		previous_i1(0),
+		previous_j1(0),
 		matrix(matrix)
 	{
 		int pos = std::max(d_end - 1, 0) - (d_end - 1);
@@ -170,9 +174,11 @@ struct DpTarget
 		const int j1 = std::min(qlen - 1 - d0, (int)(seq.length() - 1)) + 1;
 		cols = j1 - pos;
 	}
-	DpTarget(const Sequence& seq, int target_idx):
+	DpTarget(const Sequence& seq, int target_idx, int previous_i1 = 0, int previous_j1 = 0):
 		seq(seq),
-		target_idx(target_idx)
+		target_idx(target_idx),
+		previous_i1(previous_i1),
+		previous_j1(previous_j1)
 	{}
 	int left_i1() const
 	{
@@ -198,7 +204,7 @@ struct DpTarget
 		return adjusted_matrix() ? config.cbs_matrix_scale : 1;
 	}
 	Sequence seq;
-	int d_begin, d_end, j_begin, j_end, target_idx, cols;
+	int d_begin, d_end, j_begin, j_end, target_idx, cols, previous_i1, previous_j1;
 	const Stats::TargetMatrix* matrix;
 };
 

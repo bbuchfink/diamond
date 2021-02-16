@@ -98,8 +98,8 @@ vector<Match> extend(
 	const Metadata& metadata,
 	Statistics& stat,
 	int flags,
-	const FlatArray<SeedHit>& seed_hits,
-	const vector<uint32_t>& target_block_ids,
+	FlatArray<SeedHit>& seed_hits,
+	vector<uint32_t>& target_block_ids,
 	const vector<TargetScore>& target_scores)
 {
 	const unsigned UNIFIED_TARGET_LEN = 50;
@@ -157,20 +157,15 @@ vector<Match> extend(
 		if (config.query_memory && memory->ranking_failed_count(query_id) >= chunk_size && memory->ranking_low_score(query_id) >= i0->score)
 			break;
 
-		if (multi_chunk) {
+		if (multi_chunk)
 			for (vector<TargetScore>::const_iterator j = i0; j < i1; ++j) {
 				target_block_ids_chunk.push_back(target_block_ids[j->target]);
 				seed_hits_chunk.push_back(seed_hits.begin(j->target), seed_hits.end(j->target));
 			}
-		}
-		else {
-			target_block_ids_chunk = move(target_block_ids);
-			seed_hits_chunk = move(seed_hits);
-		}
 
 		//multiplier = std::max(multiplier, chunk_size_multiplier(seed_hits_chunk, (int)query_seq.front().length()));
 
-		vector<Target> v = extend(params, query_id, query_seq.data(), source_query_len, query_cb.data(), query_comp, seed_hits_chunk, target_block_ids_chunk, metadata, stat, flags);
+		vector<Target> v = extend(params, query_id, query_seq.data(), source_query_len, query_cb.data(), query_comp, multi_chunk ? seed_hits_chunk : seed_hits, multi_chunk ? target_block_ids_chunk : target_block_ids, metadata, stat, flags);
 		const size_t n = v.size();
 		stat.inc(Statistics::TARGET_HITS4, v.size());
 		bool new_hits = false;

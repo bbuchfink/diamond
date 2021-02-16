@@ -294,8 +294,16 @@ Hsp traceback(const Sequence& query, Frame frame, _cbs bias_correction, const Ma
 	out.score = ScoreTraits<_sv>::int_score(max_score) * config.cbs_matrix_scale;
 	out.evalue = evalue;
 	out.frame = frame.index();
-	out.query_range.end_ = max_i + 1;
-	out.subject_range.end_ = max_j + 1;
+	if (target.previous_i1 == 0) {
+		out.query_range.end_ = max_i + 1;
+		out.subject_range.end_ = max_j + 1;
+	}
+	else {
+		out.query_range.end_ = target.previous_i1;
+		out.subject_range.end_ = target.previous_j1;
+		out.query_range.begin_ = (int)query.length() - 1 - max_i;
+		out.subject_range.begin_ = (int)target.seq.length() - 1 - max_j;
+	}
 	out.target_seq = target.seq;
 	return out;
 }

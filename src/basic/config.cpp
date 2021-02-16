@@ -155,8 +155,6 @@ Config::Config(int argc, const char **argv, bool check_io)
 #endif
 		;
 
-	string traceback_mode_str;
-
 	Options_group general("General options");
 	general.add()
 		("threads", 'p', "number of CPU threads", threads_)
@@ -452,7 +450,6 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("fast-tsv", 0, "", fast_tsv)
 		("target-parallel-verbosity", 0, "", target_parallel_verbosity, UINT_MAX)
 		("ext-targets", 0, "", global_ranking_targets)
-		("traceback-mode", 0, "", traceback_mode_str)
 		("query-memory", 0, "", query_memory)
 		("memory-intervals", 0, "", memory_intervals, (size_t)2)
 		("seed-hit-density", 0, "", seedhit_density)
@@ -483,12 +480,6 @@ Config::Config(int argc, const char **argv, bool check_io)
 	
 	parser.add(general).add(makedb).add(cluster).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options).add(deprecated_options);
 	parser.store(argc, argv, command);
-
-	traceback_mode = set_string_option<TracebackMode>(traceback_mode_str, "--traceback-mode",
-		{ {"score", TracebackMode::SCORE_ONLY },
-		{"stat", TracebackMode::STAT},
-		{"vector", TracebackMode::VECTOR},
-		{"buffer", TracebackMode::SCORE_BUFFER} });
 
 	if (toppercent != 100.0 && max_alignments != 25)
 		throw std::runtime_error("--top and --max-target-seqs are mutually exclusive.");

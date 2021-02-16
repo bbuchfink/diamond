@@ -27,7 +27,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <map>
 
 enum class Sensitivity { FAST = 0, DEFAULT = 1, MID_SENSITIVE = 2, SENSITIVE = 3, MORE_SENSITIVE = 4, VERY_SENSITIVE = 5, ULTRA_SENSITIVE = 6 };
-enum class TracebackMode { NONE = 0, SCORE_ONLY = 1, STAT = 2, VECTOR = 3, SCORE_BUFFER = 4 };
 
 struct Config
 {
@@ -262,7 +261,6 @@ struct Config
 	size_t max_swipe_dp;
 
 	Sensitivity sensitivity;
-	TracebackMode traceback_mode;
 
 	bool multiprocessing;
 	bool mp_init;

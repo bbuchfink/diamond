@@ -109,12 +109,8 @@ list<Hsp> swipe_targets(const Sequence&query,
 	}
 	else {
 		for (vector<DpTarget>::const_iterator i = begin; i < end; i += CHANNELS) {
-			if (flags & TRACEBACK) {
-				if (config.traceback_mode == TracebackMode::VECTOR)
-					out.splice(out.end(), swipe_dispatch_cbs<_sv, VectorTraceback>(query, frame, i, i + std::min(CHANNELS, end - i), composition_bias, overflow, stat));
-				else
-					out.splice(out.end(), swipe_dispatch_cbs<_sv, Traceback>(query, frame, i, i + std::min(CHANNELS, end - i), composition_bias, overflow, stat));
-			}
+			if (flags & TRACEBACK)
+				out.splice(out.end(), swipe_dispatch_cbs<_sv, VectorTraceback>(query, frame, i, i + std::min(CHANNELS, end - i), composition_bias, overflow, stat));
 			else
 				out.splice(out.end(), swipe_dispatch_cbs<_sv, ScoreOnly>(query, frame, i, i + std::min(CHANNELS, end - i), composition_bias, overflow, stat));
 		}
@@ -211,10 +207,16 @@ list<Hsp> recompute_reversed(const Sequence& query, Frame frame, const Bias_corr
 #else
 	const int min_b = 1;
 #endif
-	for (auto i = begin; i != end; ++i) {
+	for (auto i = begin; i != end; ++i)
+		reversed_targets.reserve(i->target_seq.length());
+	reversed_targets.finish_reserve();
+
+	size_t j = 0;
+	for (auto i = begin; i != end; ++i, ++j) {
+		std::reverse_copy(i->target_seq.data(), i->target_seq.end(), reversed_targets.ptr(j));
 		int b = i->score <= UCHAR_MAX ? 0 : (i->score <= USHRT_MAX ? 1 : 2);
 		b = std::max(b, min_b);
-		dp_targets[b].emplace_back(i->target_seq, i->swipe_target);
+		dp_targets[b].emplace_back(reversed_targets[j], i->swipe_target, i->query_range.end_, i->subject_range.end_);
 	}
 
 	list<Hsp> out;
@@ -235,7 +237,8 @@ list<Hsp> swipe(const Sequence &query, vector<DpTarget> &targets8, const vector<
 #ifdef __SSE4_1__
 	if ((!targets8.empty() || targets) && config.cbs_matrix_scale < 16) {
 		task_timer timer;
-		std::sort(targets8.begin(), targets8.end());
+		if(!(flags & DP::FULL_MATRIX))
+			std::sort(targets8.begin(), targets8.end());
 		stat.inc(Statistics::TIME_TARGET_SORT, timer.microseconds());
 		stat.inc(Statistics::EXT8, targets8.size());
 		timer.go();
@@ -252,7 +255,8 @@ list<Hsp> swipe(const Sequence &query, vector<DpTarget> &targets8, const vector<
 		overflow8.insert(overflow8.end(), targets16.begin(), targets16.end());
 		stat.inc(Statistics::EXT16, overflow8.size());
 		task_timer timer;
-		std::sort(overflow8.begin(), overflow8.end());
+		if (!(flags & DP::FULL_MATRIX))
+			std::sort(overflow8.begin(), overflow8.end());
 		stat.inc(Statistics::TIME_TARGET_SORT, timer.microseconds());
 		timer.go();
 		out.splice(out.end(), swipe_threads<::DISPATCH_ARCH::score_vector<int16_t>>(query, overflow8.begin(), overflow8.end(), nullptr, frame, composition_bias ? composition_bias->int8.data() : nullptr, flags, overflow16, stat));
@@ -265,7 +269,7 @@ list<Hsp> swipe(const Sequence &query, vector<DpTarget> &targets8, const vector<
 			stat.inc(time_stat, timer.microseconds());
 		}
 	}
-	return out;
+	return (flags & DP::WITH_COORDINATES) ? recompute_reversed(query, frame, composition_bias, flags, stat, out.begin(), out.end()) : out;
 #else
 	overflow8.insert(overflow8.end(), targets16.begin(), targets16.end());
 	stat.inc(Statistics::EXT32, overflow8.size());
