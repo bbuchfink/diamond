@@ -281,7 +281,6 @@ void MCL::print_stats(uint64_t nElements, uint32_t nComponents, uint32_t nCompon
 		uint32_t ichunk = 0;
 		generate(sparsities.begin()+my_counter, sparsities.begin()+upper_limit, [my_counter, ichunk, &sort_order, &indices, &loc_c]() mutable { 
 					const uint32_t iComponent = sort_order[my_counter++];
-					printf("ichunk %u\n",ichunk);
 					const uint32_t ssize = loc_c[ichunk++].size();
 					const uint64_t dsize = indices[iComponent].size() * indices[iComponent].size();
 					return 1.0-(1.0 * ssize) / dsize;
@@ -289,14 +288,11 @@ void MCL::print_stats(uint64_t nElements, uint32_t nComponents, uint32_t nCompon
 		generate(neighbors.begin()+my_counter, neighbors.begin()+upper_limit, [my_counter, ichunk, &sort_order, &indices, &loc_c]() mutable { 
 					uint32_t neighbors = 0;
 					const uint32_t iComponent = sort_order[my_counter++];
-					printf("Ichunk %u\n",ichunk);
 					for(auto t: loc_c[ichunk++]){
 						if(t.row() != t.col()) neighbors++;
 					}
 					return neighbors / ((float) indices[iComponent].size());
 				});
-
-		// rough memory calc before sorting sparsities
 		generate(memories.begin()+my_counter, memories.begin()+upper_limit, [my_counter, &sort_order, &indices, &neighbors, &sparsities, &expansion]() mutable { 
 					const uint32_t iComponent = sort_order[my_counter++];
 					if(sparsities[my_counter- 1] >= config.cluster_mcl_sparsity_switch){ 
@@ -370,10 +366,10 @@ void MCL::print_stats(uint64_t nElements, uint32_t nComponents, uint32_t nCompon
 }
 
 SparseMatrixStream<float>* get_graph_handle(DatabaseFile& db){
-	if(config.cluster_mcl_restart){
+	if(config.cluster_restart){
 		task_timer timer;
 		timer.go("Reading cluster checkpoint file");
-		SparseMatrixStream<float>* ms = SparseMatrixStream<float>::fromFile(config.cluster_mcl_graph_file, config.chunk_size);
+		SparseMatrixStream<float>* ms = SparseMatrixStream<float>::fromFile(config.cluster_graph_file, config.chunk_size);
 		timer.finish();
 		ms->done();
 		return ms;
@@ -388,7 +384,7 @@ SparseMatrixStream<float>* get_graph_handle(DatabaseFile& db){
 	Workflow::Search::Options opt;
 	opt.db = &db;
 	opt.self = true;
-	SparseMatrixStream<float>* ms = new SparseMatrixStream<float>(db.ref_header.sequences, config.cluster_mcl_graph_file);
+	SparseMatrixStream<float>* ms = new SparseMatrixStream<float>(db.ref_header.sequences, config.cluster_graph_file);
 	if(config.chunk_size > 0){
 		ms->set_max_mem(config.chunk_size);
 	}
@@ -396,6 +392,26 @@ SparseMatrixStream<float>* get_graph_handle(DatabaseFile& db){
 	Workflow::Search::run(opt);
 	ms->done();
 	return ms;
+}
+Eigen::SparseMatrix<float> MCL::get_sparse_matrix(vector<uint32_t>* order, vector<Eigen::Triplet<float>>* m, bool symmetrize){
+	Eigen::SparseMatrix<float> m_sparse(order->size(), order->size());
+	m_sparse.setFromTriplets(m->begin(), m->end());
+	if(symmetrize){
+		Eigen::SparseMatrix<float> m_tmp = m_sparse.transpose();
+		return m_sparse + m_tmp;
+	}
+	return m_sparse;
+}
+Eigen::MatrixXf MCL::get_dense_matrix(vector<uint32_t>* order, vector<Eigen::Triplet<float>>* m, bool symmetrize){
+	Eigen::MatrixXf m_dense = Eigen::MatrixXf::Zero(order->size(), order->size());
+	for(Eigen::Triplet<float> const & t : *m){
+		m_dense(t.row(), t.col()) = t.value();
+	}
+	if(symmetrize){
+		Eigen::MatrixXf m_tmp = m_dense.transpose();
+		return m_dense + m_tmp;
+	}
+	return m_dense;
 }
 
 void MCL::run(){
@@ -540,7 +556,9 @@ void MCL::run(){
 	iota(sort_order.begin(), sort_order.end(), 0);
 	sort(sort_order.begin(), sort_order.end(), [&](uint32_t i, uint32_t j){return indices[i].size() > indices[j].size();});
 	timer.finish();
-	print_stats(nElements, nComponents, nComponentsLt1, sort_order, indices, ms);
+	if(config.cluster_mcl_stats){
+		print_stats(nElements, nComponents, nComponentsLt1, sort_order, indices, ms);
+	}
 
 	timer.go("Clustering components");
 	// Note, we will access the clustering_result from several threads below and a vector does not guarantee thread-safety in these situations.
@@ -559,6 +577,7 @@ void MCL::run(){
 	const uint32_t max_iter = config.cluster_mcl_max_iter;
 	uint32_t max_job_size = 0;
 	for(uint32_t i=0; i<chunk_size; i++) max_job_size+=indices[sort_order[i]].size();
+	const bool symmetrize = config.cluster_mcl_symmetrize;
 	
 	// Collect some stats on the way
 	uint32_t* jobs_per_thread = new uint32_t[nThreads];
@@ -603,8 +622,7 @@ void MCL::run(){
 					//TODO: a size limit for the dense matrix should control this as well
 					if(sparsity >= config.cluster_mcl_sparsity_switch && expansion - (int) expansion == 0){ 
 						n_sparse++;
-						Eigen::SparseMatrix<float> m_sparse(order->size(), order->size());
-						m_sparse.setFromTriplets(m->begin(), m->end());
+						Eigen::SparseMatrix<float> m_sparse = get_sparse_matrix(order, m , symmetrize);
 						sparse_create_time += chrono::duration_cast<chrono::milliseconds>(chrono::high_resolution_clock::now() - t).count();
 						auto getThreads = [&threads_done, &nThreads, &exessThreads, &iThr](){
 							uint32_t td=threads_done.load();
@@ -628,10 +646,7 @@ void MCL::run(){
 					}
 					else{
 						n_dense++;
-						Eigen::MatrixXf m_dense = Eigen::MatrixXf::Zero(order->size(), order->size());
-						for(Eigen::Triplet<float> const & t : *m){
-							m_dense(t.row(), t.col()) = t.value();
-						}
+						Eigen::MatrixXf m_dense = get_dense_matrix(order, m, symmetrize);
 						dense_create_time += chrono::duration_cast<chrono::milliseconds>(chrono::high_resolution_clock::now() - t).count();
 						markov_process(&m_dense, inflation, expansion, max_iter);
 						chrono::high_resolution_clock::time_point t = chrono::high_resolution_clock::now();
