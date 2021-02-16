@@ -54,14 +54,14 @@ enum HspValues : uint64_t {
 
 struct Output_format
 {
-	Output_format(unsigned code):
+	Output_format(unsigned code, uint64_t hsp_values = Output::TRANSCRIPT):
 		code(code),
 		needs_taxon_id_lists(false),
 		needs_taxon_nodes(false),
 		needs_taxon_scientific_names(false),
 		needs_taxon_ranks(false),
 		needs_paired_end_info(false),
-		hsp_values(Output::TRANSCRIPT)
+		hsp_values(hsp_values)
 	{}
 	virtual void print_query_intro(size_t query_num, const char *query_name, unsigned query_len, TextBuffer &out, bool unaligned) const
 	{}
@@ -258,7 +258,7 @@ struct Clustering_format : public Output_format
 struct Binary_format : public Output_format
 {
 	Binary_format() :
-		Output_format(bin1)
+		Output_format(bin1, Output::NONE)
 	{}
 	virtual void print_match(const Hsp_context& r, const Metadata& metadata, TextBuffer& out) override;
 	virtual ~Binary_format()
