@@ -36,16 +36,18 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 namespace Output {
 
 enum HspValues : uint64_t {
-	NONE            = 0,
-	TRANSCRIPT      = 1,
-	QUERY_START     = 1<<1,
-	QUERY_END       = 1<<2,
-	TARGET_START    = 1<<3,
-	TARGET_END      = 1<<4,
-	STATS           = 1<<5,
-	QUERY_COORDS    = QUERY_START | QUERY_END,
-	TARGET_COORDS   = TARGET_START | TARGET_END,
-	STATS_OR_COORDS = STATS | QUERY_COORDS | TARGET_COORDS
+	NONE                = 0,
+	TRANSCRIPT          = 1,
+	QUERY_START         = 1<<1,
+	QUERY_END           = 1<<2,
+	TARGET_START        = 1<<3,
+	TARGET_END          = 1<<4,
+	STATS               = 1<<5,
+	QUERY_COORDS        = QUERY_START | QUERY_END,
+	TARGET_COORDS       = TARGET_START | TARGET_END,
+	COORDS              = QUERY_COORDS | TARGET_COORDS,
+	STATS_OR_COORDS     = STATS | QUERY_COORDS | TARGET_COORDS,
+	STATS_OR_TRANSCRIPT = STATS | TRANSCRIPT
 };
 
 }

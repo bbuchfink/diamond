@@ -140,11 +140,18 @@ vector<Match> extend(
 
 	const int low_score = config.query_memory ? memory->low_score(query_id) : 0;
 	const size_t previous_count = config.query_memory ? memory->count(query_id) : 0;
-	bool first_round_traceback = config.min_id > 0 || config.query_cover > 0 || config.subject_cover > 0;
+
+	if (config.min_id > 0)
+		flags |= DP::TRACEBACK;
+	else if (config.query_cover > 0 || config.subject_cover > 0) {
+		if (config.ext == "full")
+			flags |= DP::WITH_COORDINATES;
+		else
+			flags |= DP::TRACEBACK;
+	}
+
 	//size_t multiplier = 1;
 	int tail_score = 0;
-	if (first_round_traceback)
-		flags |= DP::TRACEBACK;
 	thread_local FlatArray<SeedHit> seed_hits_chunk;
 	thread_local vector<uint32_t> target_block_ids_chunk;
 
@@ -201,7 +208,7 @@ vector<Match> extend(
 	stat.inc(Statistics::TARGET_HITS5, aligned_targets.size());
 	timer.finish();
 
-	vector<Match> matches = align(aligned_targets, query_seq.data(), query_cb.data(), source_query_len, flags, stat, first_round_traceback);
+	vector<Match> matches = align(aligned_targets, query_seq.data(), query_cb.data(), source_query_len, flags, stat);
 	std::sort(matches.begin(), matches.end(), config.toppercent == 100.0 ? Match::cmp_evalue : Match::cmp_score);
 	return matches;
 }

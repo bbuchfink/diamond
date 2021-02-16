@@ -95,12 +95,10 @@ void add_dp_targets(const WorkTarget& target, int target_idx, const Sequence* qu
 			if (target.ungapped_score[frame] == 0)
 				continue;
 			int b = target.ungapped_score[frame] <= config.cutoff_score_8bit ? 0 : 1;
-			if (flags & DP::TRACEBACK) {
-				if (query_seq[0].length() >= 256)
-					b = 1;
-				if (query_seq[0].length() * target.seq.length() > config.max_swipe_dp)
-					b = 2;
-			}
+			if (((flags & DP::TRACEBACK) || (flags & DP::WITH_COORDINATES)) && query_seq[0].length() >= 256)
+				b = 1;
+			if ((flags & DP::TRACEBACK) && query_seq[0].length() * target.seq.length() > config.max_swipe_dp)
+				b = 2;
 			dp_targets[frame][b].emplace_back(target.seq, 0, 0, 0, 0, target_idx, (int)query_seq->length());
 			continue;
 		}
@@ -178,7 +176,7 @@ vector<Target> align(const vector<WorkTarget> &targets, const Sequence *query_se
 	r2.reserve(r.size());
 	for (vector<Target>::iterator i = r.begin(); i != r.end(); ++i)
 		if (i->filter_evalue != DBL_MAX) {
-			if(flags & DP::TRACEBACK)
+			if((flags & DP::TRACEBACK) || (flags & DP::WITH_COORDINATES))
 				i->inner_culling(source_query_len);
 			r2.push_back(std::move(*i));
 		}
@@ -233,14 +231,14 @@ void add_dp_targets(const Target &target, int target_idx, const Sequence *query_
 	}
 }
 
-vector<Match> align(vector<Target> &targets, const Sequence *query_seq, const Bias_correction *query_cb, int source_query_len, int flags, Statistics &stat, bool first_round_traceback) {
+vector<Match> align(vector<Target> &targets, const Sequence *query_seq, const Bias_correction *query_cb, int source_query_len, int flags, Statistics &stat) {
 	array<array<vector<DpTarget>, 3>, MAX_CONTEXT> dp_targets;
 	vector<Match> r;
 	if (targets.empty())
 		return r;
 	r.reserve(targets.size());
 
-	if ((output_format->hsp_values == Output::NONE && config.max_hsps == 1) || first_round_traceback) {
+	if ((output_format->hsp_values == Output::NONE && config.max_hsps == 1) || (flags & DP::TRACEBACK) || ((flags & DP::WITH_COORDINATES) && !(output_format->hsp_values & Output::STATS_OR_TRANSCRIPT))) {
 		for (Target &t : targets)
 			r.emplace_back(t.block_id, t.hsp, t.ungapped_score);
 		return r;
