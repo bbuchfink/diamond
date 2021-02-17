@@ -22,9 +22,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 using namespace std;
 
-namespace Util { namespace Sequence {
+namespace Util { namespace Seq {
 
-void format(sequence seq, const char *id, const char *qual, OutputFile &out, const std::string &format, const Value_traits &value_traits) {
+void format(Sequence seq, const char *id, const char *qual, OutputFile &out, const std::string &format, const Value_traits &value_traits) {
 	static TextBuffer buf;
 	constexpr size_t WRAP = 160;
 	const size_t l = seq.length();

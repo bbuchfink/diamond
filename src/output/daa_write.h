@@ -38,7 +38,7 @@ inline void init_daa(OutputFile &f)
 	f.write(&h2_, 1);
 }
 
-inline size_t write_daa_query_record(TextBuffer &buf, const char *query_name, const sequence &query)
+inline size_t write_daa_query_record(TextBuffer &buf, const char *query_name, const Sequence &query)
 {
 	size_t seek_pos = buf.size();
 	buf.write((uint32_t)0);

@@ -26,7 +26,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 using std::vector;
 
-inline bool has_n(const sequence &seq)
+inline bool has_n(const Sequence &seq)
 {
 	for(unsigned i=0;i<seq.length();++i)
 		if(seq[i] == 4)
@@ -37,7 +37,7 @@ inline bool has_n(const sequence &seq)
 struct Packed_sequence
 {
 
-	Packed_sequence(const sequence &seq, Sequence_type type):
+	Packed_sequence(const Sequence &seq, Sequence_type type):
 		has_n_ (type == nucleotide ? ::has_n(seq) : false)
 	{
 		switch (type) {
@@ -85,7 +85,7 @@ struct Packed_sequence
 private:
 
 	template<unsigned _b>
-	void pack(const sequence &seq)
+	void pack(const Sequence &seq)
 	{
 		unsigned x = 0, n = 0;
 		for(unsigned i=0;i<seq.length();++i) {

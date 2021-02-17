@@ -31,7 +31,7 @@ struct Frequent_seeds
 {
 
 	void build(unsigned sid, const SeedPartitionRange &range, DoubleArray<SeedArray::_pos> *query_seed_hits, DoubleArray<SeedArray::_pos> *ref_seed_hits);
-	static void clear_masking(Sequence_set& seqs);
+	static void clear_masking(SequenceSet& seqs);
 
 private:
 

@@ -3,12 +3,12 @@
 #include "sequence_set.h"
 
 template<typename _f, typename _filter>
-void enum_seeds(const Sequence_set* seqs, _f* f, unsigned begin, unsigned end, std::pair<size_t, size_t> shape_range, const _filter* filter)
+void enum_seeds(const SequenceSet* seqs, _f* f, unsigned begin, unsigned end, std::pair<size_t, size_t> shape_range, const _filter* filter)
 {
 	vector<Letter> buf(seqs->max_len(begin, end));
 	uint64_t key;
 	for (unsigned i = begin; i < end; ++i) {
-		const sequence seq = (*seqs)[i];
+		const Sequence seq = (*seqs)[i];
 		Reduction::reduce_seq(seq, buf);
 		for (size_t shape_id = shape_range.first; shape_id < shape_range.second; ++shape_id) {
 			const Shape& sh = shapes[shape_id];
@@ -27,11 +27,11 @@ void enum_seeds(const Sequence_set* seqs, _f* f, unsigned begin, unsigned end, s
 }
 
 template<typename _f, uint64_t _b, typename _filter>
-void enum_seeds_hashed(const Sequence_set* seqs, _f* f, unsigned begin, unsigned end, std::pair<size_t, size_t> shape_range, const _filter* filter)
+void enum_seeds_hashed(const SequenceSet* seqs, _f* f, unsigned begin, unsigned end, std::pair<size_t, size_t> shape_range, const _filter* filter)
 {
 	uint64_t key;
 	for (unsigned i = begin; i < end; ++i) {
-		const sequence seq = (*seqs)[i];
+		const Sequence seq = (*seqs)[i];
 		for (size_t shape_id = shape_range.first; shape_id < shape_range.second; ++shape_id) {
 			const Shape& sh = shapes[shape_id];
 			if (seq.length() < sh.length_) continue;
@@ -50,11 +50,11 @@ void enum_seeds_hashed(const Sequence_set* seqs, _f* f, unsigned begin, unsigned
 }
 
 template<typename _f, typename _it, typename _filter>
-void enum_seeds_contiguous(const Sequence_set* seqs, _f* f, unsigned begin, unsigned end, const _filter* filter)
+void enum_seeds_contiguous(const SequenceSet* seqs, _f* f, unsigned begin, unsigned end, const _filter* filter)
 {
 	uint64_t key;
 	for (unsigned i = begin; i < end; ++i) {
-		const sequence seq = (*seqs)[i];
+		const Sequence seq = (*seqs)[i];
 		if (seq.length() < _it::length()) continue;
 		_it it(seq);
 		size_t j = 0;
@@ -70,7 +70,7 @@ void enum_seeds_contiguous(const Sequence_set* seqs, _f* f, unsigned begin, unsi
 }
 
 template<typename _f, typename _filter>
-static void enum_seeds_worker(_f* f, const Sequence_set* seqs, unsigned begin, unsigned end, std::pair<size_t, size_t> shape_range, const _filter* filter, bool contig)
+static void enum_seeds_worker(_f* f, const SequenceSet* seqs, unsigned begin, unsigned end, std::pair<size_t, size_t> shape_range, const _filter* filter, bool contig)
 {
 	static const char* errmsg = "Unsupported contiguous seed.";
 	if (shape_range.second - shape_range.first == 1 && shapes[shape_range.first].contiguous() && shapes.count() == 1 && (config.algo == Config::query_indexed || contig)) {
@@ -132,7 +132,7 @@ struct No_filter
 extern No_filter no_filter;
 
 template <typename _f, typename _filter>
-void enum_seeds(const Sequence_set* seqs, PtrVector<_f>& f, const std::vector<size_t>& p, size_t shape_begin, size_t shape_end, const _filter* filter, bool contig = false)
+void enum_seeds(const SequenceSet* seqs, PtrVector<_f>& f, const std::vector<size_t>& p, size_t shape_begin, size_t shape_end, const _filter* filter, bool contig = false)
 {
 	std::vector<std::thread> threads;
 	for (unsigned i = 0; i < f.size(); ++i)

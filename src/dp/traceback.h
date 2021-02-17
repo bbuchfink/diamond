@@ -65,8 +65,8 @@ template<typename _matrix>
 int have_diag(const _matrix &dp,
 	int i,
 	int j,
-	const sequence &query,
-	const sequence &subject,
+	const Sequence &query,
+	const Sequence &subject,
 	bool log)
 {
 	int l = 0;

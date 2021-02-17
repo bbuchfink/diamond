@@ -63,7 +63,7 @@ size_t chunk_size_multiplier(const FlatArray<SeedHit>& seed_hits, int query_len)
 
 vector<Target> extend(const Parameters& params,
 	size_t query_id,
-	const sequence *query_seq,
+	const Sequence *query_seq,
 	int source_query_len,
 	const Bias_correction *query_cb,
 	const Stats::Composition& query_comp,
@@ -98,13 +98,13 @@ vector<Match> extend(
 	const Metadata& metadata,
 	Statistics& stat,
 	int flags,
-	const FlatArray<SeedHit>& seed_hits,
-	const vector<uint32_t>& target_block_ids,
+	FlatArray<SeedHit>& seed_hits,
+	vector<uint32_t>& target_block_ids,
 	const vector<TargetScore>& target_scores)
 {
 	const unsigned UNIFIED_TARGET_LEN = 50;
 	const unsigned contexts = align_mode.query_contexts;
-	vector<sequence> query_seq;
+	vector<Sequence> query_seq;
 	vector<Bias_correction> query_cb;
 	const char* query_title = query_ids::get()[query_id];
 
@@ -140,11 +140,18 @@ vector<Match> extend(
 
 	const int low_score = config.query_memory ? memory->low_score(query_id) : 0;
 	const size_t previous_count = config.query_memory ? memory->count(query_id) : 0;
-	bool first_round_traceback = config.min_id > 0 || config.query_cover > 0 || config.subject_cover > 0;
+
+	if (config.min_id > 0)
+		flags |= DP::TRACEBACK;
+	else if (config.query_cover > 0 || config.subject_cover > 0) {
+		if (config.ext == "full")
+			flags |= DP::WITH_COORDINATES;
+		else
+			flags |= DP::TRACEBACK;
+	}
+
 	//size_t multiplier = 1;
 	int tail_score = 0;
-	if (first_round_traceback)
-		flags |= DP::TRACEBACK;
 	thread_local FlatArray<SeedHit> seed_hits_chunk;
 	thread_local vector<uint32_t> target_block_ids_chunk;
 
@@ -157,20 +164,15 @@ vector<Match> extend(
 		if (config.query_memory && memory->ranking_failed_count(query_id) >= chunk_size && memory->ranking_low_score(query_id) >= i0->score)
 			break;
 
-		if (multi_chunk) {
+		if (multi_chunk)
 			for (vector<TargetScore>::const_iterator j = i0; j < i1; ++j) {
 				target_block_ids_chunk.push_back(target_block_ids[j->target]);
 				seed_hits_chunk.push_back(seed_hits.begin(j->target), seed_hits.end(j->target));
 			}
-		}
-		else {
-			target_block_ids_chunk = move(target_block_ids);
-			seed_hits_chunk = move(seed_hits);
-		}
 
 		//multiplier = std::max(multiplier, chunk_size_multiplier(seed_hits_chunk, (int)query_seq.front().length()));
 
-		vector<Target> v = extend(params, query_id, query_seq.data(), source_query_len, query_cb.data(), query_comp, seed_hits_chunk, target_block_ids_chunk, metadata, stat, flags);
+		vector<Target> v = extend(params, query_id, query_seq.data(), source_query_len, query_cb.data(), query_comp, multi_chunk ? seed_hits_chunk : seed_hits, multi_chunk ? target_block_ids_chunk : target_block_ids, metadata, stat, flags);
 		const size_t n = v.size();
 		stat.inc(Statistics::TARGET_HITS4, v.size());
 		bool new_hits = false;
@@ -206,7 +208,7 @@ vector<Match> extend(
 	stat.inc(Statistics::TARGET_HITS5, aligned_targets.size());
 	timer.finish();
 
-	vector<Match> matches = align(aligned_targets, query_seq.data(), query_cb.data(), source_query_len, flags, stat, first_round_traceback);
+	vector<Match> matches = align(aligned_targets, query_seq.data(), query_cb.data(), source_query_len, flags, stat);
 	std::sort(matches.begin(), matches.end(), config.toppercent == 100.0 ? Match::cmp_evalue : Match::cmp_score);
 	return matches;
 }

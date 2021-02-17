@@ -183,7 +183,7 @@ set(OBJECTS
   src/data/seed_array.cpp
   src/output/paf_format.cpp
   src/util/system/system.cpp
-  src/util/algo/greedy_vortex_cover.cpp
+  src/util/algo/greedy_vertex_cover.cpp
   src/util/sequence/sequence.cpp
   src/tools/tsv_record.cpp
   src/tools/tools.cpp

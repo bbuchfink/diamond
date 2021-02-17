@@ -210,10 +210,10 @@ struct Hsp
 	bool is_enveloped_by(const Hsp &hsp, double p) const;
 	bool is_enveloped_by(std::list<Hsp>::const_iterator begin, std::list<Hsp>::const_iterator end, double p) const;
 	bool is_weakly_enveloped_by(std::list<Hsp>::const_iterator begin, std::list<Hsp>::const_iterator end, int cutoff) const;
-	void push_back(const DiagonalSegment &d, const TranslatedSequence &query, const sequence &subject, bool reversed);
+	void push_back(const DiagonalSegment &d, const TranslatedSequence &query, const Sequence& subject, bool reversed);
 	void push_match(Letter q, Letter s, bool positive);
 	void push_gap(Edit_operation op, int length, const Letter *subject);
-	void splice(const DiagonalSegment &d0, const DiagonalSegment &d1, const TranslatedSequence &query, const sequence &subject, bool reversed);
+	void splice(const DiagonalSegment &d0, const DiagonalSegment &d1, const TranslatedSequence &query, const Sequence& subject, bool reversed);
 	void set_begin(const DiagonalSegment &d, int dna_len);
 	void set_end(const DiagonalSegment &d, int dna_len);
 	void set_begin(int i, int j, Frame frame, int dna_len);
@@ -225,6 +225,7 @@ struct Hsp
 	int score, frame, length, identities, mismatches, positives, gap_openings, gaps, swipe_target, d_begin, d_end;
 	interval query_source_range, query_range, subject_range, seed_hit_range;
 	double evalue;
+	Sequence target_seq;
 	Packed_transcript transcript;
 };
 
@@ -241,7 +242,7 @@ struct Hsp_context
 		unsigned subject_len,
 		unsigned hit_num,
 		unsigned hsp_num,
-		const sequence &subject_seq,
+		const Sequence &subject_seq,
 		int ungapped_score = 0
 	) :
 		query(query),
@@ -369,7 +370,7 @@ struct Hsp_context
 	const char *query_name, *subject_name;
 	const unsigned query_id, subject_id, orig_subject_id, subject_len, hit_num, hsp_num;
 	int ungapped_score;
-	const sequence subject_seq;
+	const Sequence subject_seq;
 private:	
 	Hsp &hsp_;
 };

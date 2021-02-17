@@ -57,7 +57,7 @@ struct Vector_scores
 	int scores[20];
 };
 
-Bias_correction::Bias_correction(const sequence &seq):
+Bias_correction::Bias_correction(const Sequence &seq):
 	vector<float>(seq.length())
 {
 	Vector_scores scores;
@@ -135,4 +135,11 @@ int Bias_correction::operator()(const Diagonal_segment &d) const
 	for (int i = d.i; i < end; ++i)
 		s += (*this)[i];
 	return (int)s;
+}
+
+Bias_correction Bias_correction::reverse() const {
+	Bias_correction r;
+	r.int8.reserve(int8.size());
+	std::reverse_copy(int8.begin(), int8.end(), std::back_inserter(r.int8));
+	return r;
 }

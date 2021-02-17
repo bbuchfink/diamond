@@ -155,8 +155,6 @@ Config::Config(int argc, const char **argv, bool check_io)
 #endif
 		;
 
-	string traceback_mode_str;
-
 	Options_group general("General options");
 	general.add()
 		("threads", 'p', "number of CPU threads", threads_)
@@ -179,7 +177,9 @@ Config::Config(int argc, const char **argv, bool check_io)
 \tsstart means Start of alignment in subject\n\
 \tsend means End of alignment in subject\n\
 \tqseq means Aligned part of query sequence\n\
+\tqseq_translated means Aligned part of query sequence (translated)\n\
 \tfull_qseq means Query sequence\n\
+\tfull_qseq_mate means Query sequence of the mate\n\
 \tsseq means Aligned part of subject sequence\n\
 \tfull_sseq means Subject sequence\n\
 \tevalue means Expect value\n\
@@ -450,7 +450,6 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("fast-tsv", 0, "", fast_tsv)
 		("target-parallel-verbosity", 0, "", target_parallel_verbosity, UINT_MAX)
 		("ext-targets", 0, "", global_ranking_targets)
-		("traceback-mode", 0, "", traceback_mode_str)
 		("query-memory", 0, "", query_memory)
 		("memory-intervals", 0, "", memory_intervals, (size_t)2)
 		("seed-hit-density", 0, "", seedhit_density)
@@ -482,12 +481,6 @@ Config::Config(int argc, const char **argv, bool check_io)
 	parser.add(general).add(makedb).add(cluster).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options).add(deprecated_options);
 	parser.store(argc, argv, command);
 
-	traceback_mode = set_string_option<TracebackMode>(traceback_mode_str, "--traceback-mode",
-		{ {"score", TracebackMode::SCORE_ONLY },
-		{"stat", TracebackMode::STAT},
-		{"vector", TracebackMode::VECTOR},
-		{"buffer", TracebackMode::SCORE_BUFFER} });
-
 	if (toppercent != 100.0 && max_alignments != 25)
 		throw std::runtime_error("--top and --max-target-seqs are mutually exclusive.");
 
@@ -505,7 +498,7 @@ Config::Config(int argc, const char **argv, bool check_io)
 			frame_shift = 15;
 	}
 
-	if (global_ranking_targets > 0 && (query_range_culling || taxon_k || multiprocessing || mp_init || (command == blastx) || comp_based_stats >= 2))
+	if (global_ranking_targets > 0 && (query_range_culling || taxon_k || multiprocessing || mp_init || (command == blastx) || comp_based_stats >= 2 || frame_shift > 0))
 		throw std::runtime_error("Global ranking is not supported in this mode.");
 
 	if (global_ranking_targets > 0) {
@@ -546,6 +539,9 @@ Config::Config(int argc, const char **argv, bool check_io)
 
 	if (masking < 0 || masking > 1)
 		throw std::runtime_error("Permitted values for --masking: 0, 1");
+
+	if (frame_shift > 0 && ext == "full")
+		throw std::runtime_error("Frameshift alignment does not support full matrix extension.");
 
 	if (target_indexed)
 		hashed_seeds = true;

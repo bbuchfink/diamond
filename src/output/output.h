@@ -82,16 +82,16 @@ struct IntermediateRecord
 		f.read_packed(flag & 3, score);
 		f.read(evalue);
 
-		if (!output_format->needs_transcript && !output_format->needs_stats)
+		if (output_format->hsp_values == Output::NONE)
 			return;
 
 		f.read_packed((flag >> 2) & 3, query_begin);
 		f.read_varint(query_end);
 		f.read_packed((flag >> 4) & 3, subject_begin);
 
-		if (output_format->needs_transcript)
+		if (output_format->hsp_values & Output::TRANSCRIPT)
 			transcript.read(f);
-		else if (output_format->needs_stats) {
+		else {
 			f.read_varint(subject_end);
 			f.read_varint(identities);
 			f.read_varint(mismatches);
@@ -124,16 +124,16 @@ struct IntermediateRecord
 		buf.write(get_segment_flag(match));
 		buf.write_packed(match.score);
 		buf.write(match.evalue);
-		if (!output_format->needs_transcript && !output_format->needs_stats)
+		if (output_format->hsp_values == Output::NONE)
 			return;
 
 		buf.write_packed(oriented_range.begin_);
 		buf.write_varint(oriented_range.end_);
 		buf.write_packed(match.subject_range.begin_);
 
-		if(output_format->needs_transcript)
+		if(output_format->hsp_values & Output::TRANSCRIPT)
 			buf << match.transcript.data();
-		else if (output_format->needs_stats) {
+		else {
 			buf.write_varint(match.subject_range.end_);
 			buf.write_varint(match.identities);
 			buf.write_varint(match.mismatches);

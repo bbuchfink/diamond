@@ -82,8 +82,8 @@ int xdrop_ungapped(const Letter *query, const Letter *subject, unsigned &delta, 
 	
 	const Letter *q(query - 1), *s(subject - 1);
 	while (score - st < config.raw_ungapped_xdrop
-		&& *q != sequence::DELIMITER
-		&& *s != sequence::DELIMITER)
+		&& *q != Sequence::DELIMITER
+		&& *s != Sequence::DELIMITER)
 	{
 #ifdef SEQ_MASK
 		st += score_matrix(letter_mask(*q), letter_mask(*s));
@@ -105,8 +105,8 @@ int xdrop_ungapped(const Letter *query, const Letter *subject, unsigned &delta, 
 	n = 1;
 	len = 0;
 	while (score - st < config.raw_ungapped_xdrop
-		&& *q != sequence::DELIMITER
-		&& *s != sequence::DELIMITER)
+		&& *q != Sequence::DELIMITER
+		&& *s != Sequence::DELIMITER)
 	{
 #ifdef SEQ_MASK
 		st += score_matrix(letter_mask(*q), letter_mask(*s));
@@ -125,7 +125,7 @@ int xdrop_ungapped(const Letter *query, const Letter *subject, unsigned &delta, 
 	return score;
 }
 
-Diagonal_segment xdrop_ungapped(const sequence &query, const Bias_correction &query_bc, const sequence &subject, int qa, int sa)
+Diagonal_segment xdrop_ungapped(const Sequence &query, const Bias_correction &query_bc, const Sequence &subject, int qa, int sa)
 {
 	const float xdrop = (float)config.raw_ungapped_xdrop;
 	float score = 0, st = 0;
@@ -134,8 +134,8 @@ Diagonal_segment xdrop_ungapped(const sequence &query, const Bias_correction &qu
 	int q = qa - 1, s = sa - 1;
 	Letter ql, sl;
 	while (score - st < xdrop
-		&& (ql = query[q]) != sequence::DELIMITER
-		&& (sl = subject[s]) != sequence::DELIMITER)
+		&& (ql = query[q]) != Sequence::DELIMITER
+		&& (sl = subject[s]) != Sequence::DELIMITER)
 	{
 		st += score_matrix(ql, sl) + query_bc[q];
 		if (st > score) {
@@ -152,8 +152,8 @@ Diagonal_segment xdrop_ungapped(const sequence &query, const Bias_correction &qu
 	st = score;
 	n = 1;
 	while (score - st < xdrop
-		&& (ql = query[q]) != sequence::DELIMITER
-		&& (sl = subject[s]) != sequence::DELIMITER)
+		&& (ql = query[q]) != Sequence::DELIMITER
+		&& (sl = subject[s]) != Sequence::DELIMITER)
 	{
 		st += score_matrix(ql, sl) + query_bc[q];
 		if (st > score) {
@@ -167,7 +167,7 @@ Diagonal_segment xdrop_ungapped(const sequence &query, const Bias_correction &qu
 	return Diagonal_segment(qa - delta, sa - delta, len + delta, (int)score);
 }
 
-Diagonal_segment xdrop_ungapped(const sequence &query, const sequence &subject, int qa, int sa)
+Diagonal_segment xdrop_ungapped(const Sequence& query, const Sequence& subject, int qa, int sa)
 {
 	const int xdrop = config.raw_ungapped_xdrop;
 	int score = 0, st = 0;
@@ -176,8 +176,8 @@ Diagonal_segment xdrop_ungapped(const sequence &query, const sequence &subject, 
 	int q = qa - 1, s = sa - 1;
 	Letter ql, sl;
 	while (score - st < xdrop
-		&& (ql = query[q]) != sequence::DELIMITER
-		&& (sl = subject[s]) != sequence::DELIMITER)
+		&& (ql = query[q]) != Sequence::DELIMITER
+		&& (sl = subject[s]) != Sequence::DELIMITER)
 	{
 		st += score_matrix(ql, sl);
 		if (st > score) {
@@ -194,8 +194,8 @@ Diagonal_segment xdrop_ungapped(const sequence &query, const sequence &subject, 
 	st = score;
 	n = 1;
 	while (score - st < xdrop
-		&& (ql = query[q]) != sequence::DELIMITER
-		&& (sl = subject[s]) != sequence::DELIMITER)
+		&& (ql = query[q]) != Sequence::DELIMITER
+		&& (sl = subject[s]) != Sequence::DELIMITER)
 	{
 		st += score_matrix(ql, sl);
 		if (st > score) {
@@ -218,8 +218,8 @@ int xdrop_ungapped_right(const Letter *query, const Letter *subject, int &len)
 	const Letter *s = subject;
 	
 	while (score - st < config.raw_ungapped_xdrop
-		&& *q != sequence::DELIMITER
-		&& *s != sequence::DELIMITER)
+		&& *q != Sequence::DELIMITER
+		&& *s != Sequence::DELIMITER)
 	{
 #ifdef SEQ_MASK
 		st += score_matrix(letter_mask(*q), letter_mask(*s));

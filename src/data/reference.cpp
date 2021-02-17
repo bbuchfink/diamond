@@ -46,8 +46,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 String_set<char, '\0'>* ref_ids::data_ = nullptr;
 Partitioned_histogram ref_hst;
 unsigned current_ref_block;
-Sequence_set* ref_seqs::data_ = nullptr;
-Sequence_set* ref_seqs_unmasked::data_ = nullptr;
+SequenceSet* ref_seqs::data_ = nullptr;
+SequenceSet* ref_seqs_unmasked::data_ = nullptr;
 bool blocked_processing;
 std::vector<uint32_t> block_to_database_id;
 
@@ -177,7 +177,7 @@ size_t DatabaseFile::total_blocks() const {
 	return (this->ref_header.letters + c - 1) / c;
 }
 
-void push_seq(const sequence &seq, const char *id, size_t id_len, uint64_t &offset, vector<Pos_record> &pos_array, OutputFile &out, size_t &letters, size_t &n_seqs)
+void push_seq(const Sequence &seq, const char *id, size_t id_len, uint64_t &offset, vector<Pos_record> &pos_array, OutputFile &out, size_t &letters, size_t &n_seqs)
 {
 	pos_array.emplace_back(offset, seq.length());
 	out.write("\xff", 1);
@@ -219,7 +219,7 @@ void make_db(TempFile **tmp_out, list<TextInputFile> *input_file)
 	size_t letters = 0, n = 0, n_seqs = 0;
 	uint64_t offset = out->tell();
 
-	Sequence_set *seqs;
+	SequenceSet *seqs;
 	String_set<char, 0> *ids;
 	const FASTA_format format;
 	vector<Pos_record> pos_array;
@@ -233,7 +233,7 @@ void make_db(TempFile **tmp_out, list<TextInputFile> *input_file)
 			}
 			timer.go("Writing sequences");
 			for (size_t i = 0; i < n; ++i) {
-				sequence seq = (*seqs)[i];
+				Sequence seq = (*seqs)[i];
 				if (seq.length() == 0)
 					throw std::runtime_error("File format error: sequence of length 0 at line " + to_string(db_file->front().line_count));
 				push_seq(seq, (*ids)[i], ids->length(i), offset, pos_array, *out, letters, n_seqs);
@@ -245,7 +245,7 @@ void make_db(TempFile **tmp_out, list<TextInputFile> *input_file)
 			}
 			timer.go("Hashing sequences");
 			for (size_t i = 0; i < n; ++i) {
-				sequence seq = (*seqs)[i];
+				Sequence seq = (*seqs)[i];
 				MurmurHash3_x64_128(seq.data(), (int)seq.length(), header2.hash, header2.hash);
 				MurmurHash3_x64_128((*ids)[i], ids->length(i), header2.hash, header2.hash);
 			}
@@ -320,7 +320,7 @@ void DatabaseFile::seek_direct() {
 	seek(sizeof(ReferenceHeader) + sizeof(ReferenceHeader2) + 8);
 }
 
-bool DatabaseFile::load_seqs(vector<uint32_t>* block2db_id, const size_t max_letters, Sequence_set **dst_seq, String_set<char, 0> **dst_id, bool load_ids, const BitVector* filter, const bool fetch_seqs, const Chunk & chunk)
+bool DatabaseFile::load_seqs(vector<uint32_t>* block2db_id, const size_t max_letters, SequenceSet **dst_seq, String_set<char, 0> **dst_id, bool load_ids, const BitVector* filter, const bool fetch_seqs, const Chunk & chunk)
 {
 	task_timer timer("Loading reference sequences");
 
@@ -338,7 +338,7 @@ bool DatabaseFile::load_seqs(vector<uint32_t>* block2db_id, const size_t max_let
 	if (block2db_id) block2db_id->clear();
 
 	if (fetch_seqs) {
-		*dst_seq = new Sequence_set;
+		*dst_seq = new SequenceSet;
 		if(load_ids) *dst_id = new String_set<char, 0>;
 	}
 
@@ -411,8 +411,8 @@ bool DatabaseFile::load_seqs(vector<uint32_t>* block2db_id, const size_t max_let
 				continue;
 			}*/
 			read((*dst_seq)->ptr(i) - 1, (*dst_seq)->length(i) + 2);
-			*((*dst_seq)->ptr(i) - 1) = sequence::DELIMITER;
-			*((*dst_seq)->ptr(i) + (*dst_seq)->length(i)) = sequence::DELIMITER;
+			*((*dst_seq)->ptr(i) - 1) = Sequence::DELIMITER;
+			*((*dst_seq)->ptr(i) + (*dst_seq)->length(i)) = Sequence::DELIMITER;
 			if (load_ids)
 				read((*dst_id)->ptr(i), (*dst_id)->length(i) + 1);
 			else
@@ -483,15 +483,15 @@ void DatabaseFile::get_seq()
 		if (all || seqs.find(n) != seqs.end() || mapped_title != seq_titles.end()) {
 			buf << '>' << (mapped_title != seq_titles.end() ? mapped_title->second : id) << '\n';
 			if (config.reverse) {
-				sequence(seq).print(buf, value_traits, sequence::Reversed());
+				Sequence(seq).print(buf, value_traits, Sequence::Reversed());
 				buf << '\n';
 			}
 			else if (config.hardmasked) {
-				sequence(seq).print(buf, value_traits, sequence::Hardmasked());
+				Sequence(seq).print(buf, value_traits, Sequence::Hardmasked());
 				buf << '\n';
 			}
 			else
-				buf << sequence(seq) << '\n';
+				buf << Sequence(seq) << '\n';
 		}
 		out.write(buf.get_begin(), buf.size());
 		letters += seq.size();

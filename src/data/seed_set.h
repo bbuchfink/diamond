@@ -24,7 +24,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 struct Seed_set
 {
-	Seed_set(const Sequence_set &seqs, double max_coverage);
+	Seed_set(const SequenceSet &seqs, double max_coverage);
 	bool contains(uint64_t key, uint64_t shape) const
 	{
 		return data_[key];
@@ -40,7 +40,7 @@ private:
 
 struct Hashed_seed_set
 {
-	Hashed_seed_set(const Sequence_set &seqs);
+	Hashed_seed_set(const SequenceSet &seqs);
 	~Hashed_seed_set();
 	bool contains(uint64_t key, uint64_t shape) const
 	{

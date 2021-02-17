@@ -54,7 +54,7 @@ struct Seed_set_callback
 	vector<bool> *data;
 };
 
-Seed_set::Seed_set(const Sequence_set &seqs, double max_coverage):
+Seed_set::Seed_set(const SequenceSet &seqs, double max_coverage):
 	data_((size_t)pow(1llu<<Reduction::reduction.bit_size(), shapes[0].length_))
 {
 	if (!shapes[0].contiguous())
@@ -80,7 +80,7 @@ struct Hashed_seed_set_callback
 	PtrVector<PHash_set<Modulo2, No_hash> > &dst;
 };
 
-Hashed_seed_set::Hashed_seed_set(const Sequence_set &seqs)
+Hashed_seed_set::Hashed_seed_set(const SequenceSet &seqs)
 {
 	if (config.mmap_target_index) {
 		for (size_t i = 0; i < shapes.count(); ++i) {

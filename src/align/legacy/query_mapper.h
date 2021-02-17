@@ -143,7 +143,7 @@ struct Target
 	void inner_culling();
 	void apply_filters(int dna_len, int subject_len, const char *query_title, const char *ref_title);
 	unsigned subject_block_id;
-	sequence subject;
+	Sequence subject;
 	int filter_score;
 	double filter_evalue;
 	float filter_time;
@@ -172,7 +172,7 @@ struct QueryMapper
 	{
 		return targets_finished == targets.size();
 	}
-	sequence query_seq(unsigned frame) const
+	Sequence query_seq(unsigned frame) const
 	{
 		return query_seqs::get()[query_id*align_mode.query_contexts + frame];
 	}
@@ -199,7 +199,7 @@ private:
 
 	static pair<hit*, hit*> get_query_data();
 	unsigned count_targets();
-	sequence query_source_seq() const
+	Sequence query_source_seq() const
 	{
 		return align_mode.query_translated ? query_source_seqs::get()[query_id] : query_seqs::get()[query_id];
 	}

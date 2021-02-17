@@ -60,7 +60,7 @@ void Output_format::print_title(TextBuffer &buf, const char *id, bool full_title
 void print_hsp(Hsp &hsp, const TranslatedSequence &query)
 {
 	TextBuffer buf;
-	Pairwise_format().print_match(Hsp_context(hsp, 0, query, "", 0, 0, "", 0, 0, 0, sequence()), Metadata(), buf);
+	Pairwise_format().print_match(Hsp_context(hsp, 0, query, "", 0, 0, "", 0, 0, 0, Sequence()), Metadata(), buf);
 	buf << '\0';
 	cout << buf.get_begin() << endl;
 }
@@ -126,10 +126,7 @@ void init_output(bool have_taxon_id_lists, bool have_taxon_nodes, bool have_taxo
 	}
 	else
 		message_stream << "Percentage range of top alignment score to report hits: " << config.toppercent << endl;
-	if (config.traceback_mode == TracebackMode::NONE)
-		config.traceback_mode = TracebackMode::VECTOR;
-	log_stream << "Traceback mode: " << (int)config.traceback_mode << endl;
-	log_stream << "Format options: transcript=" << output_format->needs_transcript << " stats=" << output_format->needs_stats << endl;
+	log_stream << "Format options: transcript=" << bool(output_format->hsp_values & Output::TRANSCRIPT) << " stats=" << bool(output_format->hsp_values & Output::STATS_OR_COORDS) << endl;
 }
 
 void Bin1_format::print_query_intro(size_t query_num, const char *query_name, unsigned query_len, TextBuffer &out, bool unaligned) const {

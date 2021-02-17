@@ -71,11 +71,11 @@ void simulate_seqs() {
 	std::minstd_rand0 rand_engine;
 	for (size_t i = 0; i < n; ++i) {
 		cout << ">" << i << endl;
-		cout << sequence(generate_random_seq(l, rand_engine)) << endl;
+		cout << Sequence(generate_random_seq(l, rand_engine)) << endl;
 	}
 }
 
-vector<Letter> simulate_homolog(const sequence &seq, double id, std::minstd_rand0 &random_engine)
+vector<Letter> simulate_homolog(const Sequence &seq, double id, std::minstd_rand0 &random_engine)
 {
 	vector<Letter> out;
 	out.reserve(seq.length());
@@ -102,7 +102,7 @@ void mutate() {
 	std::uniform_real_distribution<double> id_dist(0.3, 1.0);
 	while (FASTA_format().get_seq(id, seq, in, value_traits)) {
 		const double i = id_dist(random_engine);
-		Util::Sequence::format(sequence(simulate_homolog(sequence(seq), i, random_engine)), std::to_string(int(i*100)).c_str(), nullptr, out, "fasta", nucleotide_traits);
+		Util::Seq::format(Sequence(simulate_homolog(Sequence(seq), i, random_engine)), std::to_string(int(i*100)).c_str(), nullptr, out, "fasta", nucleotide_traits);
 	}
 	out.close();
 	in.close();

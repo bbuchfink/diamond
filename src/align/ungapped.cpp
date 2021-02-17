@@ -48,7 +48,7 @@ std::vector<int16_t*> target_matrices;
 std::mutex target_matrices_lock;
 atomic<size_t> target_matrix_count(0);
 
-WorkTarget ungapped_stage(SeedHit *begin, SeedHit *end, const sequence *query_seq, const Bias_correction *query_cb, const Stats::Composition& query_comp, const int16_t** query_matrix, uint32_t block_id, Statistics& stat) {
+WorkTarget ungapped_stage(SeedHit *begin, SeedHit *end, const Sequence *query_seq, const Bias_correction *query_cb, const Stats::Composition& query_comp, const int16_t** query_matrix, uint32_t block_id, Statistics& stat) {
 	array<vector<Diagonal_segment>, MAX_CONTEXT> diagonal_segments;
 	task_timer timer;
 	const bool masking = config.comp_based_stats == Stats::CBS::COMP_BASED_STATS_AND_MATRIX_ADJUST ? Stats::use_seg_masking(query_seq[0], ref_seqs_unmasked::get()[block_id]) : true;
@@ -88,7 +88,7 @@ WorkTarget ungapped_stage(SeedHit *begin, SeedHit *end, const sequence *query_se
 	return target;
 }
 
-void ungapped_stage_worker(size_t i, size_t thread_id, const sequence *query_seq, const Bias_correction *query_cb, const Stats::Composition* query_comp, FlatArray<SeedHit> *seed_hits, const uint32_t*target_block_ids, vector<WorkTarget> *out, mutex *mtx, Statistics* stat) {
+void ungapped_stage_worker(size_t i, size_t thread_id, const Sequence *query_seq, const Bias_correction *query_cb, const Stats::Composition* query_comp, FlatArray<SeedHit> *seed_hits, const uint32_t*target_block_ids, vector<WorkTarget> *out, mutex *mtx, Statistics* stat) {
 	Statistics stats;
 	const int16_t* query_matrix = nullptr;
 	WorkTarget target = ungapped_stage(seed_hits->begin(i), seed_hits->end(i), query_seq, query_cb, *query_comp, &query_matrix, target_block_ids[i], stats);
@@ -100,7 +100,7 @@ void ungapped_stage_worker(size_t i, size_t thread_id, const sequence *query_seq
 	delete[] query_matrix;
 }
 
-vector<WorkTarget> ungapped_stage(const sequence *query_seq, const Bias_correction *query_cb, const Stats::Composition& query_comp, FlatArray<SeedHit> &seed_hits, const vector<uint32_t>& target_block_ids, int flags, Statistics& stat) {
+vector<WorkTarget> ungapped_stage(const Sequence *query_seq, const Bias_correction *query_cb, const Stats::Composition& query_comp, FlatArray<SeedHit> &seed_hits, const vector<uint32_t>& target_block_ids, int flags, Statistics& stat) {
 	vector<WorkTarget> targets;
 	if (target_block_ids.size() == 0)
 		return targets;

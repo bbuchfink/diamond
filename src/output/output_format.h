@@ -33,17 +33,35 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../data/metadata.h"
 #include "../util/io/consumer.h"
 
+namespace Output {
+
+enum HspValues : uint64_t {
+	NONE                = 0,
+	TRANSCRIPT          = 1,
+	QUERY_START         = 1<<1,
+	QUERY_END           = 1<<2,
+	TARGET_START        = 1<<3,
+	TARGET_END          = 1<<4,
+	STATS               = 1<<5,
+	QUERY_COORDS        = QUERY_START | QUERY_END,
+	TARGET_COORDS       = TARGET_START | TARGET_END,
+	COORDS              = QUERY_COORDS | TARGET_COORDS,
+	STATS_OR_COORDS     = STATS | QUERY_COORDS | TARGET_COORDS,
+	STATS_OR_TRANSCRIPT = STATS | TRANSCRIPT
+};
+
+}
+
 struct Output_format
 {
-	Output_format(unsigned code):
+	Output_format(unsigned code, uint64_t hsp_values = Output::TRANSCRIPT):
 		code(code),
 		needs_taxon_id_lists(false),
 		needs_taxon_nodes(false),
 		needs_taxon_scientific_names(false),
 		needs_taxon_ranks(false),
-		needs_transcript(true),
-		needs_stats(false),
-		needs_paired_end_info(false)
+		needs_paired_end_info(false),
+		hsp_values(hsp_values)
 	{}
 	virtual void print_query_intro(size_t query_num, const char *query_name, unsigned query_len, TextBuffer &out, bool unaligned) const
 	{}
@@ -64,7 +82,8 @@ struct Output_format
 		return code;
 	}
 	unsigned code;
-	bool needs_taxon_id_lists, needs_taxon_nodes, needs_taxon_scientific_names, needs_taxon_ranks, needs_transcript, needs_stats, needs_paired_end_info;
+	bool needs_taxon_id_lists, needs_taxon_nodes, needs_taxon_scientific_names, needs_taxon_ranks, needs_paired_end_info;
+	uint64_t hsp_values;
 	enum { daa, blast_tab, blast_xml, sam, blast_pairwise, null, taxon, paf, bin1 };
 };
 
@@ -94,7 +113,7 @@ struct DAA_format : public Output_format
 
 struct OutputField {
 	const std::string key, description;
-	const bool need_transcript, need_stats;
+	const uint64_t hsp_values;
 };
 
 struct Blast_tab_format : public Output_format
@@ -239,7 +258,7 @@ struct Clustering_format : public Output_format
 struct Binary_format : public Output_format
 {
 	Binary_format() :
-		Output_format(bin1)
+		Output_format(bin1, Output::NONE)
 	{}
 	virtual void print_match(const Hsp_context& r, const Metadata& metadata, TextBuffer& out) override;
 	virtual ~Binary_format()
@@ -254,4 +273,3 @@ Output_format* get_output_format();
 void init_output(bool have_taxon_id_lists, bool have_taxon_nodes, bool have_taxon_scientific_names);
 void print_hsp(Hsp &hsp, const TranslatedSequence &query);
 void print_cigar(const Hsp_context &r, TextBuffer &buf);
-

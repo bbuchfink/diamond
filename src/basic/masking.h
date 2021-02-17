@@ -47,4 +47,4 @@ private:
 	SegParameters* blast_seg_;
 };
 
-size_t mask_seqs(Sequence_set &seqs, const Masking &masking, bool hard_mask = true, Masking::Algo algo = Masking::Algo::TANTAN);
+size_t mask_seqs(SequenceSet &seqs, const Masking &masking, bool hard_mask = true, Masking::Algo algo = Masking::Algo::TANTAN);

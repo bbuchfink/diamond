@@ -91,7 +91,7 @@ vector<int> MultiStep::cluster(DatabaseFile& db, const BitVector* filter) {
 	}
 
 	else {
-		return Util::Algo::greedy_vortex_cover(nb);
+		return Util::Algo::greedy_vertex_cover(nb);
 	}
 
 }
@@ -144,7 +144,7 @@ vector<int> MultiStep::cluster_sets(const size_t nb_size, vector<TempFile*> &sor
 				break;
 			}
 		}
-		curr = Util::Algo::greedy_vortex_cover(tmp_neighbors);
+		curr = Util::Algo::greedy_vertex_cover(tmp_neighbors);
 
 		for (int i = 0; i < (int)curr.size(); i++) {
 				if (curr[i] != i) {
@@ -256,7 +256,7 @@ void MultiStep::run() {
 	}
 		
 	task_timer timer("Generating output");
-	Sequence_set* rep_seqs;
+	SequenceSet* rep_seqs;
 	String_set<char, 0>* rep_ids;
 	vector<unsigned> rep_database_id, rep_block_id(seq_count);
 	db->rewind();

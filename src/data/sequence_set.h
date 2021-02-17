@@ -1,6 +1,10 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2017 Benjamin Buchfink <buchfink@gmail.com>
+Copyright (C) 2013-2021 Max Planck Society for the Advancement of Science e.V.
+                        Benjamin Buchfink
+                        Eberhard Karls Universitaet Tuebingen
+						
+Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -28,10 +32,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/ptr_vector.h"
 #include "../basic/value.h"
 
-struct Sequence_set : public String_set<Letter, sequence::DELIMITER, 1>
+struct SequenceSet : public String_set<Letter, Sequence::DELIMITER, 1>
 {
 
-	Sequence_set()
+	SequenceSet()
 	{ }
 	
 	void print_stats() const
@@ -39,9 +43,9 @@ struct Sequence_set : public String_set<Letter, sequence::DELIMITER, 1>
 		verbose_stream << "Sequences = " << this->get_length() << ", letters = " << this->letters() << ", average length = " << this->avg_len() << std::endl;
 	}
 
-	sequence operator[](size_t i) const
+	Sequence operator[](size_t i) const
 	{
-		return sequence(ptr(i), length(i));
+		return Sequence(ptr(i), length(i));
 	}
 
 	std::pair<size_t, size_t> len_bounds(size_t min_len) const
@@ -91,7 +95,7 @@ struct Sequence_set : public String_set<Letter, sequence::DELIMITER, 1>
 			return l * 3;
 	}
 
-	TranslatedSequence translated_seq(const sequence &source, size_t i) const
+	TranslatedSequence translated_seq(const Sequence &source, size_t i) const
 	{
 		if (!align_mode.query_translated)
 			return TranslatedSequence((*this)[i]);
@@ -103,7 +107,7 @@ struct Sequence_set : public String_set<Letter, sequence::DELIMITER, 1>
 		return this->letters() / this->get_length();
 	}
 
-	virtual ~Sequence_set()
+	virtual ~SequenceSet()
 	{ }
 
 };

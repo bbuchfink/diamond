@@ -13,7 +13,7 @@ struct Edge {
 	}
 };
 
-std::vector<int> greedy_vortex_cover(const std::vector<std::vector<int>> &neighbors);
+std::vector<int> greedy_vertex_cover(std::vector<std::vector<int>> &neighbors);
 
 }}
 

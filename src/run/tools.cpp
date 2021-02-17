@@ -96,7 +96,7 @@ void db_stat()
 	size_t letters = 0;
 	vector<size_t> letter_freq(20);
 	for (size_t i = 0; i < ref_seqs::get().get_length(); ++i) {
-		const sequence seq = ref_seqs::get()[i];
+		const Sequence seq = ref_seqs::get()[i];
 		for (size_t j = 0; j < seq.length(); ++j) {
 			if (seq[j] < 20) {
 				++letters;
@@ -132,7 +132,7 @@ void run_masker()
 			cout << c;
 		}
 		cout << endl;*/
-		cout << sequence(seq2.data(), seq2.size()) << endl;
+		cout << Sequence(seq2.data(), seq2.size()) << endl;
 		size_t n = 0;
 		for (size_t i = 0; i < seq2.size(); ++i)
 			if (seq2[i] == value_traits.mask_char) {
@@ -156,7 +156,7 @@ void fastq2fasta()
 	size_t n = 0, max = atoi(config.seq_no[0].c_str());
 	while (n < max && format.get_seq(id, seq, *f, value_traits)) {
 		cout << '>' << id << endl;
-		cout << sequence(seq.data(), seq.size()) << endl;
+		cout << Sequence(seq.data(), seq.size()) << endl;
 		++n;
 	}
 }
@@ -246,8 +246,8 @@ void pairwise_worker(TextInputFile *in, std::mutex *input_lock, std::mutex *outp
 		input_lock->unlock();
 		const string ir = blast_id(id_r), iq = blast_id(id_q);
 		Hsp hsp;
-		smith_waterman(sequence(query), sequence(ref), hsp);
-		Hsp_context context(hsp, 0, TranslatedSequence(query), "", 0, 0, "", 0, 0, 0, sequence());
+		smith_waterman(Sequence(query), Sequence(ref), hsp);
+		Hsp_context context(hsp, 0, TranslatedSequence(query), "", 0, 0, "", 0, 0, 0, Sequence());
 		Hsp_context::Iterator it = context.begin();
 		std::stringstream ss;
 		while (it.good()) {
@@ -295,7 +295,7 @@ void translate() {
 	while (FASTA_format().get_seq(id, seq, in, input_value_traits)) {
 		Translator::translate(seq, proteins);
 		cout << ">" << id << endl;
-		cout << sequence(proteins[0]) << endl;
+		cout << Sequence(proteins[0]) << endl;
 	}
 	in.close();
 }
@@ -311,7 +311,7 @@ void reverse() {
 		buf << '\\';
 		buf.write_raw(id.data(), id.size());
 		buf << '\n';
-		sequence(seq).print(buf, amino_acid_traits, sequence::Reversed());
+		Sequence(seq).print(buf, amino_acid_traits, Sequence::Reversed());
 		buf << '\n';
 		buf << '\0';
 		cout << buf.get_begin();
@@ -327,7 +327,7 @@ void show_cbs() {
 	string id;
 	vector<Letter> seq;
 	while (FASTA_format().get_seq(id, seq, in, value_traits)) {
-		Bias_correction bc{ sequence(seq) };
+		Bias_correction bc{ Sequence(seq) };
 		for (size_t i = 0; i < seq.size(); ++i)
 			cout << value_traits.alphabet[(long)seq[i]] << '\t' << bc[i] << endl;
 	}

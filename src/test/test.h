@@ -33,7 +33,7 @@ struct TestCase {
 };
 
 std::vector<Letter> generate_random_seq(size_t length, std::minstd_rand0 &rand_engine);
-std::vector<Letter> simulate_homolog(const sequence &seq, double id, std::minstd_rand0 &random_engine);
+std::vector<Letter> simulate_homolog(const Sequence &seq, double id, std::minstd_rand0 &random_engine);
 
 extern const std::vector<std::pair<std::string, std::string>> seqs;
 extern const std::vector<TestCase> test_cases;
