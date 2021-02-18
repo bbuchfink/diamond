@@ -45,7 +45,7 @@ bool Hsp::is_weakly_enveloped(const Hsp &j) const
 
 Hsp_context& Hsp_context::parse()
 {
-	if (!output_format->needs_transcript && config.command != Config::view) {
+	if (!(output_format->hsp_values & Output::TRANSCRIPT) && config.command != Config::view) {
 		hsp_.query_source_range = TranslatedPosition::absolute_interval(
 			TranslatedPosition(hsp_.query_range.begin_, Frame(hsp_.frame)),
 			TranslatedPosition(hsp_.query_range.end_, Frame(hsp_.frame)),
@@ -93,9 +93,9 @@ Hsp_context& Hsp_context::parse()
 	return *this;
 }
 
-void Hsp::push_back(const DiagonalSegment &d, const TranslatedSequence &query, const sequence &subject, bool reversed)
+void Hsp::push_back(const DiagonalSegment &d, const TranslatedSequence &query, const Sequence &subject, bool reversed)
 {
-	const sequence &q = query[d.i.frame];
+	const Sequence &q = query[d.i.frame];
 	if (reversed) {
 		for (int i = d.query_last().translated, j = d.subject_last(); j >= d.j; --j, --i) {
 			const Letter ls = subject[j], lq = q[i];
@@ -132,7 +132,7 @@ void Hsp::push_back(const DiagonalSegment &d, const TranslatedSequence &query, c
 	}
 }
 
-void Hsp::splice(const DiagonalSegment &a, const DiagonalSegment &b, const TranslatedSequence &query, const sequence &subject, bool reversed)
+void Hsp::splice(const DiagonalSegment &a, const DiagonalSegment &b, const TranslatedSequence &query, const Sequence &subject, bool reversed)
 {
 	TranslatedPosition i0 = a.query_last();
 	int j0 = a.subject_last();
@@ -277,7 +277,7 @@ Hsp::Hsp(const IntermediateRecord &r, unsigned query_source_len) :
 		frame = 0;
 		query_range.begin_ = r.query_begin;
 	}
-	if (output_format->needs_stats && !output_format->needs_transcript) {
+	if ((output_format->hsp_values & Output::STATS_OR_COORDS) && !(output_format->hsp_values & Output::TRANSCRIPT)) {
 		identities = r.identities;
 		gaps = r.gaps;
 		gap_openings = r.gap_openings;

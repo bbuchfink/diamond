@@ -54,7 +54,7 @@ using namespace DISPATCH_ARCH;
 namespace Benchmark { namespace DISPATCH_ARCH {
 
 #ifdef __SSE4_1__
-void benchmark_hamming(const sequence &s1, const sequence &s2) {
+void benchmark_hamming(const Sequence& s1, const Sequence& s2) {
 	static const size_t n = 100000000llu;
 	high_resolution_clock::time_point t1 = high_resolution_clock::now();
 
@@ -67,7 +67,7 @@ void benchmark_hamming(const sequence &s1, const sequence &s2) {
 }
 #endif
 
-void benchmark_ungapped(const sequence &s1, const sequence &s2)
+void benchmark_ungapped(const Sequence& s1, const Sequence& s2)
 {
 	static const size_t n = 10000000llu;
 	high_resolution_clock::time_point t1 = high_resolution_clock::now();
@@ -87,7 +87,7 @@ void benchmark_ungapped(const sequence &s1, const sequence &s2)
 }
 
 #if defined(__SSSE3__) && defined(__SSE4_1__)
-void benchmark_ssse3_shuffle(const sequence &s1, const sequence &s2)
+void benchmark_ssse3_shuffle(const Sequence&s1, const Sequence&s2)
 {
 	static const size_t n = 100000000llu;
 	constexpr size_t CHANNELS = ScoreTraits<score_vector<int8_t>>::CHANNELS;
@@ -107,7 +107,7 @@ void benchmark_ssse3_shuffle(const sequence &s1, const sequence &s2)
 #endif
 
 #ifdef __SSE4_1__
-void benchmark_ungapped_sse(const sequence &s1, const sequence &s2) {
+void benchmark_ungapped_sse(const Sequence&s1, const Sequence&s2) {
 	static const size_t n = 1000000llu;
 	high_resolution_clock::time_point t1 = high_resolution_clock::now();
 
@@ -201,7 +201,7 @@ void swipe_cell_update() {
 #endif
 
 #ifdef __SSE4_1__
-void swipe(const sequence &s1, const sequence &s2) {
+void swipe(const Sequence&s1, const Sequence&s2) {
 	constexpr int CHANNELS = ::DISPATCH_ARCH::ScoreTraits<score_vector<int8_t>>::CHANNELS;
 	static const size_t n = 1000llu;
 	vector<DpTarget> target8, target16;
@@ -209,7 +209,7 @@ void swipe(const sequence &s1, const sequence &s2) {
 		target8.emplace_back(s2, 0, 0, 0, 0);
 	Bias_correction cbs(s1);
 	Statistics stat;
-	sequence query = s1;
+	Sequence query = s1;
 	query.len_ = std::min(query.len_, (size_t)255);
 
 	high_resolution_clock::time_point t1 = high_resolution_clock::now();
@@ -232,9 +232,9 @@ void swipe(const sequence &s1, const sequence &s2) {
 }
 #endif
 
-void banded_swipe(const sequence &s1, const sequence &s2) {
+void banded_swipe(const Sequence &s1, const Sequence &s2) {
 	vector<DpTarget> target8, target16;
-	config.traceback_mode = TracebackMode::SCORE_BUFFER;
+	//config.traceback_mode = TracebackMode::SCORE_BUFFER;
 	for (size_t i = 0; i < 8; ++i)
 		target16.emplace_back(s2, -32, 32, 0, 0);
 	static const size_t n = 10000llu;
@@ -261,7 +261,7 @@ void banded_swipe(const sequence &s1, const sequence &s2) {
 }
 
 #ifdef __SSE4_1__
-void diag_scores(const sequence& s1, const sequence& s2) {
+void diag_scores(const Sequence& s1, const Sequence& s2) {
 	static const size_t n = 100000llu;
 	high_resolution_clock::time_point t1 = high_resolution_clock::now();
 	Bias_correction cbs(s1);
@@ -291,7 +291,7 @@ void evalue() {
 	cout << "Evalue (ALP):\t\t\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n) << " ns" << endl;
 }
 
-void matrix_adjust(const sequence& s1, const sequence& s2) {
+void matrix_adjust(const Sequence& s1, const Sequence& s2) {
 	static const size_t n = 10000llu;
 	high_resolution_clock::time_point t1 = high_resolution_clock::now();
 	vector<double> mat_final(TRUE_AA * TRUE_AA);
@@ -332,13 +332,13 @@ void benchmark() {
 
 	vector<Letter> s1, s2, s3, s4;
 		
-	s1 = sequence::from_string("mpeeeysefkelilqkelhvvyalshvcgqdrtllasillriflhekleslllctlndreismedeattlfrattlastlmeqymkatatqfvhhalkdsilkimeskqscelspskleknedvntnlthllnilselvekifmaseilpptlryiygclqksvqhkwptnttmrtrvvsgfvflrlicpailnprmfniisdspspiaartlilvaksvqnlanlvefgakepymegvnpfiksnkhrmimfldelgnvpelpdttehsrtdlsrdlaalheicvahsdelrtlsnergaqqhvlkkllaitellqqkqnqyt"); // d1wera_
-	s2 = sequence::from_string("erlvelvtmmgdqgelpiamalanvvpcsqwdelarvlvtlfdsrhllyqllwnmfskeveladsmqtlfrgnslaskimtfcfkvygatylqklldpllrivitssdwqhvsfevdptrlepsesleenqrnllqmtekffhaiissssefppqlrsvchclyqvvsqrfpqnsigavgsamflrfinpaivspyeagildkkpppiierglklmskilqsianhvlftkeehmrpfndfvksnfdaarrffldiasdcptsdavnhslsfisdgnvlalhrllwnnqekigqylssnrdhkavgrrpfdkmatllaylgppe"); // d1nf1a_
-	s3 = sequence::from_string("ttfgrcavksnqagggtrshdwwpcqlrldvlrqfqpsqnplggdfdyaeafqsldyeavkkdiaalmtesqdwwpadfgnygglfvrmawhsagtyramdgrggggmgqqrfaplnswpdnqnldkarrliwpikqkygnkiswadlmlltgnvalenmgfktlgfgggradtwqsdeavywgaettfvpqgndvrynnsvdinaradklekplaathmgliyvnpegpngtpdpaasakdireafgrmgmndtetvaliagghafgkthgavkgsnigpapeaadlgmqglgwhnsvgdgngpnqmtsgleviwtktptkwsngyleslinnnwtlvespagahqweavngtvdypdpfdktkfrkatmltsdlalindpeylkisqrwlehpeeladafakawfkllhrdlgpttrylgpevp"); // d3ut2a1
-	s4 = sequence::from_string("lvhvasvekgrsyedfqkvynaialklreddeydnyigygpvlvrlawhisgtwdkhdntggsyggtyrfkkefndpsnaglqngfkflepihkefpwissgdlfslggvtavqemqgpkipwrcgrvdtpedttpdngrlpdadkdagyvrtffqrlnmndrevvalmgahalgkthlknsgyegpggaannvftnefylnllnedwklekndanneqwdsksgymmlptdysliqdpkylsivkeyandqdkffkdfskafekllengitfpkdapspfifktleeqgl"); // d2euta_
+	s1 = Sequence::from_string("mpeeeysefkelilqkelhvvyalshvcgqdrtllasillriflhekleslllctlndreismedeattlfrattlastlmeqymkatatqfvhhalkdsilkimeskqscelspskleknedvntnlthllnilselvekifmaseilpptlryiygclqksvqhkwptnttmrtrvvsgfvflrlicpailnprmfniisdspspiaartlilvaksvqnlanlvefgakepymegvnpfiksnkhrmimfldelgnvpelpdttehsrtdlsrdlaalheicvahsdelrtlsnergaqqhvlkkllaitellqqkqnqyt"); // d1wera_
+	s2 = Sequence::from_string("erlvelvtmmgdqgelpiamalanvvpcsqwdelarvlvtlfdsrhllyqllwnmfskeveladsmqtlfrgnslaskimtfcfkvygatylqklldpllrivitssdwqhvsfevdptrlepsesleenqrnllqmtekffhaiissssefppqlrsvchclyqvvsqrfpqnsigavgsamflrfinpaivspyeagildkkpppiierglklmskilqsianhvlftkeehmrpfndfvksnfdaarrffldiasdcptsdavnhslsfisdgnvlalhrllwnnqekigqylssnrdhkavgrrpfdkmatllaylgppe"); // d1nf1a_
+	s3 = Sequence::from_string("ttfgrcavksnqagggtrshdwwpcqlrldvlrqfqpsqnplggdfdyaeafqsldyeavkkdiaalmtesqdwwpadfgnygglfvrmawhsagtyramdgrggggmgqqrfaplnswpdnqnldkarrliwpikqkygnkiswadlmlltgnvalenmgfktlgfgggradtwqsdeavywgaettfvpqgndvrynnsvdinaradklekplaathmgliyvnpegpngtpdpaasakdireafgrmgmndtetvaliagghafgkthgavkgsnigpapeaadlgmqglgwhnsvgdgngpnqmtsgleviwtktptkwsngyleslinnnwtlvespagahqweavngtvdypdpfdktkfrkatmltsdlalindpeylkisqrwlehpeeladafakawfkllhrdlgpttrylgpevp"); // d3ut2a1
+	s4 = Sequence::from_string("lvhvasvekgrsyedfqkvynaialklreddeydnyigygpvlvrlawhisgtwdkhdntggsyggtyrfkkefndpsnaglqngfkflepihkefpwissgdlfslggvtavqemqgpkipwrcgrvdtpedttpdngrlpdadkdagyvrtffqrlnmndrevvalmgahalgkthlknsgyegpggaannvftnefylnllnedwklekndanneqwdsksgymmlptdysliqdpkylsivkeyandqdkffkdfskafekllengitfpkdapspfifktleeqgl"); // d2euta_
 
-	sequence ss1 = sequence(s1).subseq(34, s1.size());
-	sequence ss2 = sequence(s2).subseq(33, s2.size());
+	Sequence ss1 = Sequence(s1).subseq(34, s1.size());
+	Sequence ss2 = Sequence(s2).subseq(33, s2.size());
 
 	matrix_adjust(s1, s2);
 

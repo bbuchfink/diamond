@@ -32,19 +32,19 @@ extern unsigned current_query_chunk;
 
 struct query_source_seqs
 {
-	static const Sequence_set& get()
+	static const SequenceSet& get()
 	{ return *data_; }
-	static Sequence_set *data_;
+	static SequenceSet *data_;
 };
 
 struct query_seqs
 {
-	static const Sequence_set& get()
+	static const SequenceSet& get()
 	{ return *data_; }
-	static Sequence_set& get_nc() {
+	static SequenceSet& get_nc() {
 		return *data_;
 	}
-	static Sequence_set *data_;
+	static SequenceSet *data_;
 };
 
 struct query_ids

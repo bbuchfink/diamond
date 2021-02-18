@@ -24,7 +24,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../dp/hsp_traits.h"
 #include "../stats/hauser_correction.h"
 
-std::pair<int, std::list<Hsp_traits>> greedy_align(sequence query, sequence subject, std::vector<Diagonal_segment>::const_iterator begin, std::vector<Diagonal_segment>::const_iterator end, bool log, unsigned frame);
+std::pair<int, std::list<Hsp_traits>> greedy_align(Sequence query, Sequence subject, std::vector<Diagonal_segment>::const_iterator begin, std::vector<Diagonal_segment>::const_iterator end, bool log, unsigned frame);
 
 struct Diagonal_node : public Diagonal_segment
 {
@@ -184,13 +184,13 @@ struct Diag_graph
 		return nodes[k];
 	}
 
-	void print(sequence query, sequence subject) const;
+	void print(Sequence query, Sequence subject) const;
 	size_t top_node() const;
 
 	vector<Diagonal_node> nodes;
 	vector<Edge> edges;
 };
 
-void smith_waterman(sequence q, sequence s, const Diag_graph &diags);
+void smith_waterman(Sequence q, Sequence s, const Diag_graph &diags);
 
 #endif

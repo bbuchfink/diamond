@@ -58,7 +58,7 @@ struct ClusterDist : public Consumer {
 	map<int, int> counts;
 };
 
-size_t get_medoid(DatabaseFile *db, const BitVector &filter, size_t n, Sequence_set *seqs) {
+size_t get_medoid(DatabaseFile *db, const BitVector &filter, size_t n, SequenceSet *seqs) {
 	statistics.reset();
 	config.command = Config::blastp;
 	config.no_self_hits = true;
@@ -112,7 +112,7 @@ void get_medoids_from_tree() {
 	message_stream << "#Sequences: " << db->ref_header.sequences << endl;
 	size_t n = db->ref_header.sequences;
 
-	Sequence_set *seqs;
+	SequenceSet *seqs;
 	String_set<char, '\0'> *ids;
 	db->load_seqs(nullptr, SIZE_MAX, &seqs, &ids, true);
 
@@ -161,7 +161,7 @@ void get_medoids_from_tree() {
 			medoid = get_medoid(db, filter, i.second.size(), seqs);
 		}
 		const string id = string((*ids)[medoid]) + ' ' + std::to_string(i.second.size());
-		Util::Sequence::format((*seqs)[medoid], id.c_str(), nullptr, out, "fasta", amino_acid_traits);
+		Util::Seq::format((*seqs)[medoid], id.c_str(), nullptr, out, "fasta", amino_acid_traits);
 	}
 	out.close();
 

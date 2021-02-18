@@ -45,7 +45,7 @@ private:
 template<uint64_t _b>
 struct Hashed_seed_iterator
 {
-	Hashed_seed_iterator(const sequence &seq, const Shape &sh):
+	Hashed_seed_iterator(const Sequence &seq, const Shape &sh):
 		ptr_(seq.data()),
 		end_(ptr_ + seq.length()),
 		last_(0)
@@ -83,7 +83,7 @@ private:
 template<uint64_t _l, uint64_t _b>
 struct Contiguous_seed_iterator
 {
-	Contiguous_seed_iterator(const sequence &seq) :
+	Contiguous_seed_iterator(const Sequence &seq) :
 		ptr_(seq.data()),
 		end_(ptr_ + seq.length()),
 		last_(0)

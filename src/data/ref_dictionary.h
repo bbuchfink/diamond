@@ -55,7 +55,7 @@ struct ReferenceDictionary
 		return config.no_dict ? "" : name_[i].c_str();
 	}
 
-	sequence seq(size_t i) const
+	Sequence seq(size_t i) const
 	{
 		return ref_seqs::get()[dict_to_lazy_dict_id_[i]];
 	}

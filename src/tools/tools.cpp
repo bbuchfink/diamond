@@ -49,7 +49,7 @@ void split() {
 			n = 0;
 		}
 		string blast_id = ::blast_id(id);
-		Util::Sequence::format(sequence(seq), blast_id.c_str(), nullptr, *out, "fasta", amino_acid_traits);
+		Util::Seq::format(Sequence(seq), blast_id.c_str(), nullptr, *out, "fasta", amino_acid_traits);
 		n += seq.size();
 	}
 	out->close();

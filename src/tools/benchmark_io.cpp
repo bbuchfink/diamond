@@ -64,7 +64,7 @@ void benchmark_io() {
 	const size_t raw_size = file_size(file_name.c_str());
 	message_stream << "File size = " << raw_size << endl;
 	timer.go("Reading input file");
-	ref_seqs::data_ = new Sequence_set();
+	ref_seqs::data_ = new SequenceSet();
 	InputFile in(file_name, InputStreamBuffer::ASYNC);
 	if (config.raw) {
 		char* buf = new char[raw_size];

@@ -198,14 +198,14 @@ struct Packed_transcript
 		data_.clear();
 	}
 
-	void push_back(const sequence &s, const Reversed&)
+	void push_back(const Sequence &s, const Reversed&)
 	{
 		const int l = (int)s.length();
 		for (int i = l - 1; i >= 0; --i)
 			push_back(op_deletion, s[i]);
 	}
 
-	void push_back(const sequence &s)
+	void push_back(const Sequence &s)
 	{
 		const int l = (int)s.length();
 		for (int i = 0; i < l; ++i)

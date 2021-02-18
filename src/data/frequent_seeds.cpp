@@ -104,7 +104,7 @@ void Frequent_seeds::build(unsigned sid, const SeedPartitionRange &range, Double
 	log_stream << "Masked positions = " << std::accumulate(counts.begin(), counts.end(), 0) << std::endl;
 }
 
-void Frequent_seeds::clear_masking(Sequence_set& seqs) {
+void Frequent_seeds::clear_masking(SequenceSet& seqs) {
 	for (size_t i = 0; i < seqs.get_length(); ++i) {
 		const size_t len = seqs.length(i);
 		Letter* p = seqs.ptr(i), *end = p + len;

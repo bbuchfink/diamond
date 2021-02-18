@@ -50,7 +50,7 @@ struct Match {
 	Match(size_t target_block_id, std::array<std::list<Hsp>, MAX_CONTEXT> &hsp, int ungapped_score);
 	void inner_culling(int source_query_len);
 	void max_hsp_culling();
-	void apply_filters(int source_query_len, const char *query_title, const sequence& query_seq);
+	void apply_filters(int source_query_len, const char *query_title, const Sequence& query_seq);
 	size_t target_block_id;
 	int filter_score;
 	double filter_evalue;

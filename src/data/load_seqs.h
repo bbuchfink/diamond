@@ -26,7 +26,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../basic/translate.h"
 #include "../util/seq_file_format.h"
 
-inline size_t push_seq(Sequence_set &ss, Sequence_set** source_seqs, const vector<Letter> &seq, unsigned frame_mask, Sequence_type seq_type)
+inline size_t push_seq(SequenceSet &ss, SequenceSet** source_seqs, const vector<Letter> &seq, unsigned frame_mask, Sequence_type seq_type)
 {
 	if (seq_type == Sequence_type::amino_acid) {
 		ss.push_back(seq.cbegin(), seq.cend());
@@ -56,19 +56,19 @@ inline size_t push_seq(Sequence_set &ss, Sequence_set** source_seqs, const vecto
 inline size_t load_seqs(std::list<TextInputFile>::iterator file_begin,
 	std::list<TextInputFile>::iterator file_end,
 	const Sequence_file_format &format,
-	Sequence_set** seqs,
+	SequenceSet** seqs,
 	String_set<char, '\0'>*& ids,
-	Sequence_set** source_seqs,
+	SequenceSet** source_seqs,
 	String_set<char, '\0'>** quals,
 	size_t max_letters,
 	const string &filter,
 	const Value_traits &value_traits,
 	size_t modulo = 1)
 {
-	*seqs = new Sequence_set();
+	*seqs = new SequenceSet();
 	ids = new String_set<char, '\0'>();
 	if(source_seqs)
-		*source_seqs = new Sequence_set();
+		*source_seqs = new SequenceSet();
 	if (quals)
 		*quals = new String_set<char, '\0'>();
 	size_t letters = 0, n = 0;

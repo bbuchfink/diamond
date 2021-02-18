@@ -24,18 +24,18 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../../basic/sequence.h"
 #include "../io/output_file.h"
 
-namespace Util { namespace Sequence {
+namespace Util { namespace Seq {
 
-void format(sequence seq, const char *id, const char *qual, OutputFile &out, const std::string &format, const Value_traits &value_traits);
+void format(Sequence seq, const char *id, const char *qual, OutputFile &out, const std::string &format, const Value_traits &value_traits);
 
-static inline sequence clip(const Letter *seq, int len, int anchor) {
+static inline Sequence clip(const Letter *seq, int len, int anchor) {
 	const Letter *a = seq + anchor, *begin = seq, *end = seq + len, *p;
 	for(;;) {
-		p = (const Letter*)memchr(begin, (int)sequence::DELIMITER, end - begin);
+		p = (const Letter*)memchr(begin, (int)Sequence::DELIMITER, end - begin);
 		if (p == nullptr)
-			return sequence(begin, end);
+			return Sequence(begin, end);
 		if (p >= a)
-			return sequence(begin, p);
+			return Sequence(begin, p);
 		begin = p + 1;
 	}
 }

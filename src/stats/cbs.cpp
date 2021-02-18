@@ -48,7 +48,7 @@ CBS::CBS(unsigned code, double query_match_distance_threshold, double length_rat
         this->length_ratio_threshold = length_ratio_threshold;
 }
 
-Composition composition(const sequence& s) {
+Composition composition(const Sequence& s) {
     Composition r;
     r.fill(0.0);
     int n = 0;
@@ -66,7 +66,7 @@ Composition composition(const sequence& s) {
     return r;
 }
 
-int count_true_aa(const sequence& s) {
+int count_true_aa(const Sequence& s) {
     int n = 0;
     for (size_t i = 0; i < s.length(); ++i)
         if ((size_t)s[i] < TRUE_AA)
@@ -74,7 +74,7 @@ int count_true_aa(const sequence& s) {
     return n;
 }
 
-bool use_seg_masking(const sequence& a, const sequence& b) {
+bool use_seg_masking(const Sequence& a, const Sequence& b) {
     if (config.comp_based_stats != CBS::COMP_BASED_STATS_AND_MATRIX_ADJUST || a.length() != b.length())
         return true;
     size_t n = 0;
@@ -84,7 +84,7 @@ bool use_seg_masking(const sequence& a, const sequence& b) {
     return n != a.length();
 }
 
-TargetMatrix::TargetMatrix(const Composition& query_comp, int query_len, const sequence& target)
+TargetMatrix::TargetMatrix(const Composition& query_comp, int query_len, const Sequence& target)
 {
     if (!CBS::matrix_adjust(config.comp_based_stats))
         return;
@@ -93,7 +93,7 @@ TargetMatrix::TargetMatrix(const Composition& query_comp, int query_len, const s
     //Masking::get()(target_seq.data(), target_seq.size(), Masking::Algo::SEG);
 
     //auto c = composition(target);
-    auto c = composition(sequence(target_seq.data(), target_seq.size()));
+    auto c = composition(Sequence(target_seq.data(), target_seq.size()));
     EMatrixAdjustRule rule = eUserSpecifiedRelEntropy;
     if (CBS::conditioned(config.comp_based_stats)) {
         rule = s_TestToApplyREAdjustmentConditional(query_len, (int)target.length(), query_comp.data(), c.data(), score_matrix.background_freqs());

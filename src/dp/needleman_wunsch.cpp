@@ -141,7 +141,7 @@ template<typename _score, typename _mode> thread_local Fixed_score_buffer<_score
 template<typename _score, typename _mode> thread_local vector<_score> Dp_matrix<_score,_mode>::hgap_;
 
 template<typename _score, typename _mode>
-const Fixed_score_buffer<_score>& needleman_wunsch(sequence query, sequence subject, int &max_score, const _mode&, const _score&)
+const Fixed_score_buffer<_score>& needleman_wunsch(Sequence query, Sequence subject, int &max_score, const _mode&, const _score&)
 {
 	using std::max;
 	const int gap_open = score_matrix.gap_open() + score_matrix.gap_extend(), gap_extend = score_matrix.gap_extend();
@@ -167,9 +167,9 @@ const Fixed_score_buffer<_score>& needleman_wunsch(sequence query, sequence subj
 	return mtx.score_buffer();
 }
 
-template const Fixed_score_buffer<int>& needleman_wunsch<int, Local>(sequence query, sequence subject, int &max_score, const Local&, const int&);
+template const Fixed_score_buffer<int>& needleman_wunsch<int, Local>(Sequence query, Sequence subject, int &max_score, const Local&, const int&);
 
-void smith_waterman(sequence q, sequence s, Hsp &out)
+void smith_waterman(Sequence q, Sequence s, Hsp &out)
 {
 	int max_score;
 	const Fixed_score_buffer<int> &dp = needleman_wunsch(q, s, max_score, Local(), int());

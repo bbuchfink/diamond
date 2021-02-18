@@ -101,7 +101,7 @@ struct BuildCallback
 };
 
 template<typename _filter>
-SeedArray::SeedArray(const Sequence_set &seqs, size_t shape, const shape_histogram &hst, const SeedPartitionRange &range, const vector<size_t> &seq_partition, char *buffer, const _filter *filter) :
+SeedArray::SeedArray(const SequenceSet &seqs, size_t shape, const shape_histogram &hst, const SeedPartitionRange &range, const vector<size_t> &seq_partition, char *buffer, const _filter *filter) :
 	data_((Entry*)buffer)
 {
 	begin_[range.begin()] = 0;
@@ -115,9 +115,9 @@ SeedArray::SeedArray(const Sequence_set &seqs, size_t shape, const shape_histogr
 	enum_seeds(&seqs, cb, seq_partition, shape, shape + 1, filter);
 }
 
-template SeedArray::SeedArray(const Sequence_set &, size_t, const shape_histogram &, const SeedPartitionRange &, const vector<size_t>&, char *buffer, const No_filter *);
-template SeedArray::SeedArray(const Sequence_set &, size_t, const shape_histogram &, const SeedPartitionRange &, const vector<size_t>&, char *buffer, const Seed_set *);
-template SeedArray::SeedArray(const Sequence_set &, size_t, const shape_histogram &, const SeedPartitionRange &, const vector<size_t>&, char *buffer, const Hashed_seed_set *);
+template SeedArray::SeedArray(const SequenceSet &, size_t, const shape_histogram &, const SeedPartitionRange &, const vector<size_t>&, char *buffer, const No_filter *);
+template SeedArray::SeedArray(const SequenceSet &, size_t, const shape_histogram &, const SeedPartitionRange &, const vector<size_t>&, char *buffer, const Seed_set *);
+template SeedArray::SeedArray(const SequenceSet &, size_t, const shape_histogram &, const SeedPartitionRange &, const vector<size_t>&, char *buffer, const Hashed_seed_set *);
 
 struct BufferedWriter2
 {
@@ -176,7 +176,7 @@ struct BuildCallback2
 };
 
 template<typename _filter>
-SeedArray::SeedArray(const Sequence_set& seqs, size_t shape, const SeedPartitionRange& range, const _filter* filter) :
+SeedArray::SeedArray(const SequenceSet& seqs, size_t shape, const SeedPartitionRange& range, const _filter* filter) :
 	data_(nullptr)
 {
 	const auto seq_partition = seqs.partition(config.threads_);
@@ -198,4 +198,4 @@ SeedArray::SeedArray(const Sequence_set& seqs, size_t shape, const SeedPartition
 	}
 }
 
-template SeedArray::SeedArray(const Sequence_set&, size_t, const SeedPartitionRange&, const Hashed_seed_set*);
+template SeedArray::SeedArray(const SequenceSet&, size_t, const SeedPartitionRange&, const Hashed_seed_set*);

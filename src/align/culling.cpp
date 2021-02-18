@@ -76,7 +76,7 @@ void Match::max_hsp_culling() {
 	Extension::max_hsp_culling(hsp);
 }
 
-bool append_hits(vector<Target>& targets, vector<Target>::const_iterator begin, vector<Target>::const_iterator end, size_t chunk_size, int source_query_len, const char* query_title, const sequence& query_seq) {
+bool append_hits(vector<Target>& targets, vector<Target>::const_iterator begin, vector<Target>::const_iterator end, size_t chunk_size, int source_query_len, const char* query_title, const Sequence& query_seq) {
 	bool append = false;
 
 	if (config.toppercent != 100.0 || targets.size() >= config.max_alignments) {
@@ -111,7 +111,7 @@ bool append_hits(vector<Target>& targets, vector<Target>::const_iterator begin, 
 	return append;
 }
 
-bool filter_hsp(const Hsp& hsp, int source_query_len, const char *query_title, int subject_len, const char* subject_title, const sequence& query_seq, const sequence& subject_seq) {
+bool filter_hsp(const Hsp& hsp, int source_query_len, const char *query_title, int subject_len, const char* subject_title, const Sequence& query_seq, const Sequence& subject_seq) {
 	return 	hsp.id_percent() < config.min_id
 		|| hsp.query_cover_percent(source_query_len) < config.query_cover
 		|| hsp.subject_cover_percent(subject_len) < config.subject_cover
@@ -120,10 +120,10 @@ bool filter_hsp(const Hsp& hsp, int source_query_len, const char *query_title, i
 			&& strcmp(query_title, subject_title) == 0);
 }
 
-void Target::apply_filters(int source_query_len, const char *query_title, const sequence& query_seq)
+void Target::apply_filters(int source_query_len, const char *query_title, const Sequence& query_seq)
 {
 	const char *title = ref_ids::get()[block_id];
-	const sequence seq = ref_seqs::get()[block_id];
+	const Sequence seq = ref_seqs::get()[block_id];
 	const int len = seq.length();
 	filter_score = 0;
 	filter_evalue = DBL_MAX;
@@ -140,10 +140,10 @@ void Target::apply_filters(int source_query_len, const char *query_title, const 
 	}
 }
 
-void Match::apply_filters(int source_query_len, const char *query_title, const sequence& query_seq)
+void Match::apply_filters(int source_query_len, const char *query_title, const Sequence& query_seq)
 {
 	const char *title = ref_ids::get()[target_block_id];
-	const sequence seq = ref_seqs::get()[target_block_id];
+	const Sequence seq = ref_seqs::get()[target_block_id];
 	const int len = seq.length();
 	for (list<Hsp>::iterator i = hsp.begin(); i != hsp.end();) {
 		if (filter_hsp(*i, source_query_len, query_title, len, title, query_seq, seq))
@@ -155,7 +155,7 @@ void Match::apply_filters(int source_query_len, const char *query_title, const s
 	filter_score = hsp.empty() ? 0 : hsp.front().score;
 }
 
-void culling(std::vector<Target>& targets, int source_query_len, const char* query_title, const sequence& query_seq, size_t min_keep) {
+void culling(std::vector<Target>& targets, int source_query_len, const char* query_title, const Sequence& query_seq, size_t min_keep) {
 	if (config.min_id > 0 || config.query_cover > 0 || config.subject_cover > 0 || config.no_self_hits)
 		for (Target& match : targets)
 			match.apply_filters(source_query_len, query_title, query_seq);

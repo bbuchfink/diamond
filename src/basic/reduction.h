@@ -104,7 +104,7 @@ struct Reduction
 		return os;
 	}
 
-	static void reduce_seq(const sequence &seq, vector<Letter> &dst)
+	static void reduce_seq(const Sequence &seq, vector<Letter> &dst)
 	{
 		dst.clear();
 		dst.resize(seq.length());

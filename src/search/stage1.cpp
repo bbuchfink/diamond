@@ -148,7 +148,7 @@ void tiled_search(Ptr q,
 	}
 }
 
-static void load_fps(const Packed_loc *p, size_t n, Container &v, const Sequence_set &seqs)
+static void load_fps(const Packed_loc *p, size_t n, Container &v, const SequenceSet &seqs)
 {
 	v.clear();
 	v.reserve(n);
