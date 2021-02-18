@@ -109,9 +109,9 @@ class SparseMatrixStream : public Consumer {
 				ptr += sizeof(uint32_t);
 				const double value = *(double*) ptr;
 				if(!warned && (value > std::numeric_limits<T>::max() || value < std::numeric_limits<T>::min())){
-					printf("\n");
-					printf("WARNING: The clustering similarity measure cannot be stored in a float, results may become unreliable\n");
-					printf("         Please modify --clustering-similarity accordingly.\n\n");
+					fprintf(stderr, "\n");
+					fprintf(stderr, "WARNING: The clustering similarity measure cannot be stored in a float, results may become unreliable\n");
+					fprintf(stderr, "         Please modify --clustering-similarity accordingly.\n\n");
 					warned=true;
 				}
 				ptr += sizeof(double);
@@ -206,7 +206,7 @@ class SparseMatrixStream : public Consumer {
 		this->max_size = 2.0; // 2 GB default flush
 		this->in_memory = true;
 		this->is_tmp_file = false;
-		this->warned = false;
+		this->warned = true;
 		this->buffer = nullptr;
 		os = nullptr;
 		nThreads = 0;
