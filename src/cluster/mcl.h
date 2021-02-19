@@ -38,19 +38,25 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/log_stream.h"
 #include "../dp/dp.h"
 #include "cluster.h"
+#include "sparse_matrix_stream.h"
 
 using namespace std;
 
 namespace Workflow { namespace Cluster{
 class MCL: public ClusteringAlgorithm {
 private: 
-	void print_stats(uint64_t nElements, uint32_t nComponents, uint32_t nComponentsLt1, vector<uint32_t>& sort_order, vector<vector<uint32_t>>& indices, vector<vector<Eigen::Triplet<float>>>& components);
+	vector<Eigen::Triplet<float>> sparse_matrix_multiply(Eigen::SparseMatrix<float>* a, Eigen::SparseMatrix<float>* b , uint32_t iThr, uint32_t nThr);
+	vector<Eigen::Triplet<float>> sparse_matrix_get_gamma(Eigen::SparseMatrix<float>* in, float r, uint32_t iThr, uint32_t nThr);
+	float sparse_matrix_get_norm(Eigen::SparseMatrix<float>* in, uint32_t nThr);
+	void print_stats(uint64_t nElements, uint32_t nComponents, uint32_t nComponentsLt1, vector<uint32_t>& sort_order, vector<vector<uint32_t>>& indices, SparseMatrixStream<float>* ms);
 	void get_exp(Eigen::SparseMatrix<float>* in, Eigen::SparseMatrix<float>* out, float r, uint32_t nThr);
 	void get_exp(Eigen::MatrixXf* in, Eigen::MatrixXf* out, float r);
 	void get_gamma(Eigen::SparseMatrix<float>* in, Eigen::SparseMatrix<float>* out, float r, uint32_t nThr);
 	void get_gamma(Eigen::MatrixXf* in, Eigen::MatrixXf* out, float r);
 	void markov_process(Eigen::SparseMatrix<float>* m, float inflation, float expansion, uint32_t max_iter, function<uint32_t()> getThreads);
 	void markov_process(Eigen::MatrixXf* m, float inflation, float expansion, uint32_t max_iter);
+	Eigen::SparseMatrix<float> get_sparse_matrix(vector<uint32_t>* order, vector<Eigen::Triplet<float>>* m, bool symmetrize);
+	Eigen::MatrixXf get_dense_matrix(vector<uint32_t>* order, vector<Eigen::Triplet<float>>* m, bool symmetrize);
 	atomic_ullong failed_to_converge = {0};
 	atomic_ullong sparse_create_time = {0};
 	atomic_ullong dense_create_time = {0};

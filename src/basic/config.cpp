@@ -229,13 +229,15 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("max-size-set", 0, "Maximum size of a set", max_size_set, (size_t) 1000)
 		("external", 0, "save set of edges external", external, false)
 		("cluster-similarity", 0, "Clustering similarity measure", cluster_similarity)
+		("cluster-graph-file", 0, "Filename for dumping the graph or reading the graph if cluster-restart", cluster_graph_file)
+		("cluster-restart", 0, "Restart clustering from dumped graph", cluster_restart)
 		("mcl-expansion", 0, "MCL expansion coefficient (default=2)", cluster_mcl_expansion, (uint32_t) 2)
 		("mcl-inflation", 0, "MCL inflation coefficient (default=2.0)", cluster_mcl_inflation, 2.0)
 		("mcl-chunk-size", 0, "MCL chunk size per thread (default=100)", cluster_mcl_chunk_size, (uint32_t) 1)
 		("mcl-max-iterations", 0, "MCL maximum iterations (default=100)", cluster_mcl_max_iter, (uint32_t) 100)
 		("mcl-sparsity-switch", 0, "MCL switch to sparse matrix computation (default=0.8) ", cluster_mcl_sparsity_switch, 0.8)
-		("mcl-graph-file", 0, "Filename for dumping the graph or reading the graph if mcl-restart", cluster_mcl_graph_file)
-		("mcl-restart", 0, "Restart MCL from dumped graph", cluster_mcl_restart);
+		("mcl-symmetrize", 0, "Symmetrize the transistion matrix before clustering (A+A^T)", cluster_mcl_symmetrize)
+		("mcl-stats", 0, "Some stats about the connected components in MCL", cluster_mcl_stats);
 
 	Options_group aligner("Aligner options");
 	aligner.add()

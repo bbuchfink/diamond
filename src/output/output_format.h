@@ -21,6 +21,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #pragma once
+#include <algorithm>
 #include <exception>
 #include <memory>
 #include "../basic/match.h"
@@ -32,6 +33,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../basic/parameters.h"
 #include "../data/metadata.h"
 #include "../util/io/consumer.h"
+#include "../output/recursive_parser.h"
 
 namespace Output {
 
@@ -242,8 +244,9 @@ struct Bin1_format : public Output_format
 
 struct Clustering_format : public Output_format
 {
-	const string* const format;
-	Clustering_format(const string* const format): Output_format(bin1), format(format) {
+	string format;
+	Clustering_format(const string* const format): Output_format(bin1) {
+		this->format = RecursiveParser::clean_expression(format);
 	}
 	virtual void print_query_intro(size_t query_num, const char *query_name, unsigned query_len, TextBuffer &out, bool unaligned) const override;
 	virtual void print_match(const Hsp_context& r, const Metadata &metadata, TextBuffer &out) override;
