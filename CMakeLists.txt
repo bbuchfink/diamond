@@ -13,6 +13,8 @@ option(DP_STAT "DP_STAT" OFF)
 option(SINGLE_THREADED "SINGLE_THREADED" OFF)
 option(EIGEN_BLAS "EIGEN_BLAS" OFF)
 set(MAX_SHAPE_LEN 19)
+SET(BLAST_INCLUDE_DIR "" CACHE STRING "BLAST_INCLUDE_DIR")
+SET(BLAST_LIBRARY_DIR "" CACHE STRING "BLAST_LIBRARY_DIR")
 
 if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(arm.*|ARM.*)")
   set(X86 OFF)
@@ -80,7 +82,7 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
 endif()
 
 if (${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
-  add_definitions(-D_CRT_SECURE_NO_WARNINGS -D_ITERATOR_DEBUG_LEVEL=0)
+  add_definitions(-D_CRT_SECURE_NO_WARNINGS) # -D_ITERATOR_DEBUG_LEVEL=0)
 else()
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=gnu++11 -Wall -Wextra -Wno-implicit-fallthrough -Wreturn-type -Wno-unused -Wno-unused-parameter -Wno-unused-variable -Wno-uninitialized -Wno-deprecated-copy -Wno-unknown-warning-option")
   # -fsanitize=address -fno-omit-frame-pointer
@@ -268,6 +270,35 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}")
 target_include_directories(diamond PRIVATE
   "${ZLIB_INCLUDE_DIR}"
   "${CMAKE_SOURCE_DIR}/src/lib")
+
+if(BLAST_INCLUDE_DIR)
+  message("BLAST_INCLUDE_DIR: ${BLAST_INCLUDE_DIR}")
+  message("BLAST_LIBRARY_DIR: ${BLAST_LIBRARY_DIR}")
+  target_include_directories(diamond PRIVATE "${BLAST_INCLUDE_DIR}")
+  target_link_libraries(diamond
+  "${BLAST_LIBRARY_DIR}/seqdb.lib"
+  "${BLAST_LIBRARY_DIR}/biblio.lib"
+  "${BLAST_LIBRARY_DIR}/blastdb.lib"
+  "${BLAST_LIBRARY_DIR}/general.lib"
+  "${BLAST_LIBRARY_DIR}/genome_collection.lib"
+  "${BLAST_LIBRARY_DIR}/medline.lib"
+  "${BLAST_LIBRARY_DIR}/pub.lib"
+  #"${BLAST_LIBRARY_DIR}/scoremat.lib"
+  "${BLAST_LIBRARY_DIR}/seq.lib"
+  "${BLAST_LIBRARY_DIR}/seqcode.lib"
+  #"${BLAST_LIBRARY_DIR}/seqedit.lib"
+  "${BLAST_LIBRARY_DIR}/seqset.lib"
+  #"${BLAST_LIBRARY_DIR}/seqsplit.lib"
+  "${BLAST_LIBRARY_DIR}/sequtil.lib"
+  "${BLAST_LIBRARY_DIR}/submit.lib"
+  #"${BLAST_LIBRARY_DIR}/xnetblast.lib"
+  "${BLAST_LIBRARY_DIR}/xobjmgr.lib"
+  "${BLAST_LIBRARY_DIR}/xser.lib"
+  "${BLAST_LIBRARY_DIR}/xutil.lib"
+  "${BLAST_LIBRARY_DIR}/xncbi.lib"
+  "${BLAST_LIBRARY_DIR}/lmdb.lib"
+  "Dbghelp.lib")
+endif()
 
 if(EIGEN_BLAS)
   add_definitions(-DEIGEN_USE_BLAS -DEIGEN_USE_LAPACKE)
