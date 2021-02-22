@@ -257,6 +257,7 @@ set(OBJECTS
   src/stats/hauser_correction.cpp
   src/stats/matrix_adjust.cpp
   src/stats/matrix_adjust_eigen.cpp
+  src/data/index.cpp
 )
 
 if(X86)
@@ -294,10 +295,11 @@ if(BLAST_INCLUDE_DIR)
   #"${BLAST_LIBRARY_DIR}/xnetblast.lib"
   "${BLAST_LIBRARY_DIR}/xobjmgr.lib"
   "${BLAST_LIBRARY_DIR}/xser.lib"
-  "${BLAST_LIBRARY_DIR}/xutil.lib"
   "${BLAST_LIBRARY_DIR}/xncbi.lib"
+  "${BLAST_LIBRARY_DIR}/xutil.lib"
   "${BLAST_LIBRARY_DIR}/lmdb.lib"
   "Dbghelp.lib")
+  add_definitions(-DWITH_BLASTDB)
 endif()
 
 if(EIGEN_BLAS)

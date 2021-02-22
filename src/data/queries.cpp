@@ -30,7 +30,7 @@ Partitioned_histogram query_hst;
 vector<bool> query_aligned;
 std::mutex query_aligned_mtx;
 Seed_set *query_seeds = 0;
-Hashed_seed_set *query_seeds_hashed = 0;
+HashedSeedSet *query_seeds_hashed = 0;
 String_set<char, '\0'> *query_qual = nullptr;
 vector<unsigned> query_block_to_database_id;
 

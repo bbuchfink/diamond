@@ -126,6 +126,7 @@ Config::Config(int argc, const char **argv, bool check_io)
 		.add_command("getseq", "Retrieve sequences from a DIAMOND database file", getseq)
 		.add_command("dbinfo", "Print information about a DIAMOND database file", dbinfo)
 		.add_command("test", "Run regression tests", regression_test)
+		.add_command("makeidx", "Make database index", makeidx)
 		.add_command("roc", "", roc)
 		.add_command("benchmark", "", benchmark)
 #ifdef EXTRA
@@ -474,8 +475,6 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("length-ratio-threshold", 0, "", length_ratio_threshold, -1.0)
 		("fast", 0, "", mode_fast)
 		("target-indexed", 0, "", target_indexed)
-		("mmap-target-index", 0, "", mmap_target_index)
-		("save-target-index", 0, "", save_target_index)
 		("max-swipe-dp", 0, "", max_swipe_dp, (size_t)4000000);
 	
 	parser.add(general).add(makedb).add(cluster).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options).add(deprecated_options);
@@ -749,12 +748,6 @@ Config::Config(int argc, const char **argv, bool check_io)
 	}
 	else if (query_file.size() > 1)
 		throw std::runtime_error("--query/-q has more than one argument.");
-
-	if ((mmap_target_index || save_target_index) && !target_indexed)
-		throw std::runtime_error("Option requires --target-indexed.");
-
-	if (mmap_target_index && save_target_index)
-		throw std::runtime_error("Options are exclusive.");
 
 	if (target_indexed && lowmem != 1)
 		throw std::runtime_error("--target-indexed requires -c1.");

@@ -1,6 +1,9 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2017 Benjamin Buchfink <buchfink@gmail.com>
+Copyright (C) 2016-2021 Max Planck Society for the Advancement of Science e.V.
+                        Benjamin Buchfink
+						
+Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -22,6 +25,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/hash_table.h"
 #include "../util/ptr_vector.h"
 
+const uint64_t SEED_INDEX_MAGIC_NUMBER = 0x2d6ba306ecbf6aba;
+const uint32_t SEED_INDEX_VERSION = 0;
+const size_t SEED_INDEX_PADDING = 32;
+const size_t SEED_INDEX_HEADER_SIZE = 16;
+
 struct Seed_set
 {
 	Seed_set(const SequenceSet &seqs, double max_coverage);
@@ -38,15 +46,21 @@ private:
 	double coverage_;
 };
 
-struct Hashed_seed_set
+struct HashedSeedSet
 {
-	Hashed_seed_set(const SequenceSet &seqs);
-	~Hashed_seed_set();
+	HashedSeedSet(const SequenceSet &seqs);
+	HashedSeedSet(const string& index_file);
+	~HashedSeedSet();
 	bool contains(uint64_t key, uint64_t shape) const
 	{
 		return data_[shape].contains(key);
 	}
+	const PHash_set<Modulo2, No_hash>& table(size_t i) const {
+		return data_[i];
+	}
 private:
 	PtrVector<PHash_set<Modulo2, No_hash>> data_;
-	std::vector<int> fd_;
+	char* buffer_;
+	size_t mapped_size_;
+	int fd_;
 };

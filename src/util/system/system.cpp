@@ -157,12 +157,9 @@ double total_ram() {
 #endif
 }
 
-#define handle_error(msg) \
-           do { perror(msg); exit(EXIT_FAILURE); } while (0)
-
 std::tuple<char*, size_t, int> mmap_file(const char* filename) {
 #ifdef WIN32
-	return { nullptr, 0, -1 };
+	throw std::runtime_error("Memory mapping not supported on Windows.");
 #else
 	void* addr;
 	int fd;
@@ -171,17 +168,17 @@ std::tuple<char*, size_t, int> mmap_file(const char* filename) {
 
 	fd = open(filename, O_RDONLY);
 	if (fd == -1)
-		return std::tuple<char*, size_t, int>(nullptr, 0, -1);
+		throw std::runtime_error(string("Error opening file: ") + filename);
 
-	if (fstat(fd, &sb) == -1)           /* To obtain file size */
-		handle_error("fstat");
+	if (fstat(fd, &sb) == -1)
+		throw std::runtime_error(string("Error calling fstat on file: ") + filename);
 
 	length = sb.st_size;
 
-	addr = mmap(NULL, length, PROT_READ,
-		MAP_SHARED, fd, 0);
+	addr = mmap(NULL, length, PROT_READ, MAP_SHARED, fd, 0);
 	if (addr == MAP_FAILED)
-		handle_error("mmap");
+		throw std::runtime_error(string("Error calling mmap on file: ") + filename);
+
 	return std::tuple<char*, size_t, int>((char*)addr, length, fd);
 #endif
 }

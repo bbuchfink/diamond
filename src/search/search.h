@@ -68,7 +68,7 @@ struct Stage1_hit
 	unsigned q, s;
 };
 
-void search_shape(unsigned sid, unsigned query_block, char *query_buffer, char *ref_buffer, const Parameters &params, const Hashed_seed_set* target_seeds);
+void search_shape(unsigned sid, unsigned query_block, char *query_buffer, char *ref_buffer, const Parameters &params, const HashedSeedSet* target_seeds);
 bool use_single_indexed(double coverage, size_t query_letters, size_t ref_letters);
 void setup_search();
 void setup_search_cont();

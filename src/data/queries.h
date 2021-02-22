@@ -75,7 +75,7 @@ inline TranslatedSequence get_translated_query(size_t query_id)
 }
 
 extern Seed_set *query_seeds;
-extern Hashed_seed_set *query_seeds_hashed;
+extern HashedSeedSet *query_seeds_hashed;
 extern vector<unsigned> query_block_to_database_id;
 
 #endif /* QUERIES_H_ */

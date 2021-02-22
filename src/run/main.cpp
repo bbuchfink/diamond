@@ -51,6 +51,7 @@ void get_medoids_from_tree();
 void roc();
 void merge_tsv();
 void roc_id();
+void makeindex();
 
 void split();
 namespace Benchmark { DECL_DISPATCH(void, benchmark, ()) }
@@ -173,6 +174,9 @@ int main(int ac, const char* av[])
 			break;
 		case Config::rocid:
 			roc_id();
+			break;
+		case Config::makeidx:
+			makeindex();
 			break;
 		default:
 			return 1;

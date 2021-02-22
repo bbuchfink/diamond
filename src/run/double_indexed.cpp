@@ -121,10 +121,10 @@ void run_ref_chunk(DatabaseFile &db_file,
 		char *ref_buffer = SeedArray::alloc_buffer(ref_hst);
 		timer.finish();
 
-		Hashed_seed_set* target_seeds = nullptr;
+		HashedSeedSet* target_seeds = nullptr;
 		if (config.target_indexed) {
-			timer.go("Building database seed set");
-			target_seeds = new Hashed_seed_set(*ref_seqs::data_);
+			timer.go("Loading database seed index");
+			target_seeds = new HashedSeedSet(config.database + ".seed_idx");
 			timer.finish();
 		}
 
@@ -223,7 +223,7 @@ void run_query_chunk(DatabaseFile &db_file,
 		setup_search();
 	if (config.algo == Config::double_indexed && config.small_query) {
 		timer.go("Building query seed hash set");
-		query_seeds_hashed = new Hashed_seed_set(query_seqs::get());
+		query_seeds_hashed = new HashedSeedSet(query_seqs::get());
 	}
 	timer.finish();
 

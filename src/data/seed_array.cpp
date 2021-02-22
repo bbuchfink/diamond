@@ -117,7 +117,7 @@ SeedArray::SeedArray(const SequenceSet &seqs, size_t shape, const shape_histogra
 
 template SeedArray::SeedArray(const SequenceSet &, size_t, const shape_histogram &, const SeedPartitionRange &, const vector<size_t>&, char *buffer, const No_filter *);
 template SeedArray::SeedArray(const SequenceSet &, size_t, const shape_histogram &, const SeedPartitionRange &, const vector<size_t>&, char *buffer, const Seed_set *);
-template SeedArray::SeedArray(const SequenceSet &, size_t, const shape_histogram &, const SeedPartitionRange &, const vector<size_t>&, char *buffer, const Hashed_seed_set *);
+template SeedArray::SeedArray(const SequenceSet &, size_t, const shape_histogram &, const SeedPartitionRange &, const vector<size_t>&, char *buffer, const HashedSeedSet *);
 
 struct BufferedWriter2
 {
@@ -198,4 +198,4 @@ SeedArray::SeedArray(const SequenceSet& seqs, size_t shape, const SeedPartitionR
 	}
 }
 
-template SeedArray::SeedArray(const SequenceSet&, size_t, const SeedPartitionRange&, const Hashed_seed_set*);
+template SeedArray::SeedArray(const SequenceSet&, size_t, const SeedPartitionRange&, const HashedSeedSet*);

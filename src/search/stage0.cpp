@@ -72,7 +72,7 @@ void search_worker(atomic<unsigned> *seedp, const SeedPartitionRange *seedp_rang
 	statistics += stats;
 }
 
-void search_shape(unsigned sid, unsigned query_block, char *query_buffer, char *ref_buffer, const Parameters &params, const Hashed_seed_set* target_seeds)
+void search_shape(unsigned sid, unsigned query_block, char *query_buffer, char *ref_buffer, const Parameters &params, const HashedSeedSet* target_seeds)
 {
 	::partition<unsigned> p(Const::seedp, config.lowmem);
 	DoubleArray<SeedArray::_pos> query_seed_hits[Const::seedp], ref_seed_hits[Const::seedp];
