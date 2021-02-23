@@ -1,6 +1,10 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2017 Benjamin Buchfink <buchfink@gmail.com>
+Copyright (C) 2013-2021 Max Planck Society for the Advancement of Science e.V.
+                        Benjamin Buchfink
+                        Eberhard Karls Universitaet Tuebingen
+						
+Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,9 +20,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#ifndef SEED_HISTOGRAM_H_
-#define SEED_HISTOGRAM_H_
-
+#pragma once
 #include <limits>
 #include "../basic/seed.h"
 #include "sequence_set.h"
@@ -27,8 +29,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "seed_set.h"
 #include "../util/data_structures/array.h"
 #include "enum_seeds.h"
-
-using std::vector;
 
 typedef vector<Array<unsigned, Const::seedp>> shape_histogram;
 
@@ -138,5 +138,3 @@ private:
 	vector<size_t> p_;
 
 };
-
-#endif /* SEED_HISTOGRAM_H_ */

@@ -4,6 +4,7 @@
 #include "seed_set.h"
 #include "../search/search.h"
 #include "seed_set.h"
+#include "dmnd/dmnd.h"
 
 void makeindex() {
 	static const size_t MAX_LETTERS = 100000000;

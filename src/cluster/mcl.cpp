@@ -355,7 +355,7 @@ void MCL::print_stats(uint64_t nElements, uint32_t nComponents, uint32_t nCompon
 	message_stream << setprecision(2) << mem_req/pow(1024,idx) << uints[idx] << endl;
 }
 
-SparseMatrixStream<float>* get_graph_handle(DatabaseFile& db){
+SparseMatrixStream<float>* get_graph_handle(SequenceFile& db){
 	if(config.cluster_mcl_restart){
 		task_timer timer;
 		timer.go("Reading cluster checkpoint file");
@@ -374,7 +374,7 @@ SparseMatrixStream<float>* get_graph_handle(DatabaseFile& db){
 	Workflow::Search::Options opt;
 	opt.db = &db;
 	opt.self = true;
-	SparseMatrixStream<float>* ms = new SparseMatrixStream<float>(db.ref_header.sequences, config.cluster_mcl_graph_file);
+	SparseMatrixStream<float>* ms = new SparseMatrixStream<float>(db.sequence_count(), config.cluster_mcl_graph_file);
 	if(config.chunk_size > 0){
 		ms->set_max_mem(config.chunk_size);
 	}
@@ -510,7 +510,7 @@ void MCL::run(){
 	// return;
 
 	if (config.database == "") throw runtime_error("Missing parameter: database file (--db/-d)");
-	unique_ptr<DatabaseFile> db(DatabaseFile::auto_create_from_fasta());
+	unique_ptr<SequenceFile> db(SequenceFile::auto_create());
 	statistics.reset();
 	SparseMatrixStream<float>* ms = get_graph_handle(*db);
 	task_timer timer;
@@ -531,8 +531,8 @@ void MCL::run(){
 	timer.go("Clustering components");
 	// Note, we will access the clustering_result from several threads below and a vector does not guarantee thread-safety in these situations.
 	// Note also, that the use of the disjoint_set structure guarantees that each thread will access a different part of the clustering_result
-	uint64_t* clustering_result = new uint64_t[db->ref_header.sequences];
-	fill(clustering_result, clustering_result+db->ref_header.sequences, 0UL);
+	uint64_t* clustering_result = new uint64_t[db->sequence_count()];
+	fill(clustering_result, clustering_result+db->sequence_count(), 0UL);
 
 	// note that the disconnected components are sorted by size
 	const uint32_t chunk_size = config.cluster_mcl_chunk_size;
@@ -729,12 +729,12 @@ void MCL::run(){
 	ostream *out = config.output_file.empty() ? &cout : new ofstream(config.output_file.c_str());
 	vector<Letter> seq;
 	string id;
-	db->seek_direct();
+	db->init_seq_access();
 	Hsp hsp;
 	size_t n;
 	out->precision(3);
-	for (int i = 0; i < (int)db->ref_header.sequences; ++i) {
-		db->read_seq(id, seq);
+	for (int i = 0; i < (int)db->sequence_count(); ++i) {
+		db->read_seq(seq, id);
 		const uint64_t cid = (~MASK_INVERSE) & clustering_result[i];
 		const uint64_t lab = MASK_INVERSE & clustering_result[i];
 		(*out) << blast_id(id) << '\t' ;

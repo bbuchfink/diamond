@@ -79,7 +79,7 @@ string get_ref_block_tmpfile_name(size_t query, size_t block) {
 	return join_path(config.parallel_tmpdir, file_name);
 }
 
-void run_ref_chunk(DatabaseFile &db_file,
+void run_ref_chunk(SequenceFile &db_file,
 	unsigned query_chunk,
 	pair<size_t, size_t> query_len_bounds,
 	char *query_buffer,
@@ -180,7 +180,7 @@ void deallocate_queries() {
 	delete query_qual;
 }
 
-void run_query_chunk(DatabaseFile &db_file,
+void run_query_chunk(SequenceFile &db_file,
 	unsigned query_chunk,
 	Consumer &master_out,
 	OutputFile *unaligned_file,
@@ -201,7 +201,7 @@ void run_query_chunk(DatabaseFile &db_file,
 			query_seeds = new Seed_set(query_seqs::get(), SINGLE_INDEXED_SEED_SPACE_MAX_COVERAGE);
 			timer.finish();
 			log_stream << "Seed space coverage = " << query_seeds->coverage() << endl;
-			if (use_single_indexed(query_seeds->coverage(), query_seqs::get().letters(), db_file.ref_header.letters))
+			if (use_single_indexed(query_seeds->coverage(), query_seqs::get().letters(), db_file.letters()))
 				config.algo = Config::query_indexed;
 			else {
 				config.algo = Config::double_indexed;
@@ -228,8 +228,8 @@ void run_query_chunk(DatabaseFile &db_file,
 	timer.finish();
 
 	const Parameters params{
-	db_file.ref_header.sequences,
-	db_file.ref_header.letters,
+	db_file.sequence_count(),
+	db_file.letters(),
 	db_file.total_blocks(),
 	config.gapped_filter_evalue1,
 	config.gapped_filter_evalue,
@@ -256,7 +256,7 @@ void run_query_chunk(DatabaseFile &db_file,
 	query_aligned.insert(query_aligned.end(), query_ids::get().get_length(), false);
 	if(config.query_memory)
 		Extension::memory = new Extension::Memory(query_ids::get().get_length());
-	db_file.rewind();
+	db_file.set_seqinfo_ptr(0);
 	Chunk chunk;
 	bool mp_last_chunk = false;
 
@@ -397,7 +397,7 @@ void run_query_chunk(DatabaseFile &db_file,
 
 
 
-void master_thread(DatabaseFile *db_file, task_timer &total_timer, Metadata &metadata, const Options &options)
+void master_thread(SequenceFile *db_file, task_timer &total_timer, Metadata &metadata, const Options &options)
 {
 	auto P = Parallelizer::get();
 	if (config.multiprocessing) {
@@ -433,7 +433,7 @@ void master_thread(DatabaseFile *db_file, task_timer &total_timer, Metadata &met
 
 		for (;; ++current_query_chunk) {
 			if (options.self) {
-				db_file->seek_seq(query_file_offset);
+				db_file->set_seqinfo_ptr(query_file_offset);
 				if (!db_file->load_seqs(&query_block_to_database_id, (size_t)(config.chunk_size * 1e9),
 					&query_seqs::data_,
 					&query_ids::data_,
@@ -451,13 +451,13 @@ void master_thread(DatabaseFile *db_file, task_timer &total_timer, Metadata &met
 			}
 		}
 		if (options.self) {
-			db_file->rewind();
+			db_file->set_seqinfo_ptr(0);
 			query_file_offset = 0;
 		} else {
 			query_file->front().rewind();
 		}
 
-		for (size_t i=0; i<current_query_chunk; ++i) {
+		for (size_t i = 0; i < current_query_chunk; ++i) {
 			const string annotation = "# query_chunk=" + std::to_string(i);
 			db_file->save_partition(get_ref_part_file_name(stack_align_todo, i), annotation);
 
@@ -486,7 +486,7 @@ void master_thread(DatabaseFile *db_file, task_timer &total_timer, Metadata &met
 		task_timer timer("Loading query sequences", true);
 
 		if (options.self) {
-			db_file->seek_seq(query_file_offset);
+			db_file->set_seqinfo_ptr(query_file_offset);
 			if (!db_file->load_seqs(&query_block_to_database_id,
 				(size_t)(config.chunk_size * 1e9),
 				&query_seqs::data_,
@@ -572,34 +572,44 @@ void run(const Options &options)
 		Config::set_option(config.chunk_size, 2.0);
 
 	task_timer timer("Opening the database", 1);
-	DatabaseFile *db_file = options.db ? options.db : DatabaseFile::auto_create_from_fasta();
+	SequenceFile* db_file = options.db ? options.db : SequenceFile::auto_create();
 	timer.finish();
 
-	init_output(db_file->has_taxon_id_lists(), db_file->has_taxon_nodes(), db_file->has_taxon_scientific_names());
+	init_output();
 
 	message_stream << "Reference = " << config.database << endl;
-	message_stream << "Sequences = " << db_file->ref_header.sequences << endl;
-	message_stream << "Letters = " << db_file->ref_header.letters << endl;
+	message_stream << "Sequences = " << db_file->sequence_count() << endl;
+	message_stream << "Letters = " << db_file->letters() << endl;
 	message_stream << "Block size = " << (size_t)(config.chunk_size * 1e9) << endl;
-	Config::set_option(config.db_size, (uint64_t)db_file->ref_header.letters);
-	score_matrix.set_db_letters(db_file->ref_header.letters);
+	score_matrix.set_db_letters(config.db_size ? config.db_size : db_file->letters());
 
 	Metadata metadata;
 	const bool taxon_filter = !config.taxonlist.empty() || !config.taxon_exclude.empty();
 	const bool taxon_culling = config.taxon_k != 0;
+	const int db_flags = db_file->metadata();
+
+	int flags = 0;
+	if (output_format->needs_taxon_id_lists)
+		flags |= SequenceFile::TAXON_MAPPING;
+	if (output_format->needs_taxon_nodes)
+		flags |= SequenceFile::TAXON_NODES;
+	if (output_format->needs_taxon_scientific_names)
+		flags |= SequenceFile::TAXON_SCIENTIFIC_NAMES;
+	db_file->check_metadata(flags);
+
 	if (output_format->needs_taxon_id_lists || taxon_filter || taxon_culling) {
-		if (db_file->header2.taxon_array_offset == 0) {
+		if (!(db_flags & SequenceFile::TAXON_MAPPING)) {
 			if (taxon_filter)
 				throw std::runtime_error("--taxonlist/--taxon-exclude options require taxonomy mapping built into the database.");
 			if (taxon_culling)
 				throw std::runtime_error("--taxon-k option requires taxonomy mapping built into the database.");
 		}
 		timer.go("Loading taxonomy mapping");
-		metadata.taxon_list = new TaxonList(db_file->seek(db_file->header2.taxon_array_offset), db_file->ref_header.sequences, db_file->header2.taxon_array_size);
+		metadata.taxon_list = db_file->taxon_list();
 		timer.finish();
 	}
 	if (output_format->needs_taxon_nodes || taxon_filter || taxon_culling) {
-		if (db_file->header2.taxon_nodes_offset == 0) {
+		if (!(db_flags & SequenceFile::TAXON_NODES)) {
 			if (taxon_filter)
 				throw std::runtime_error("--taxonlist/--taxon-exclude options require taxonomy nodes built into the database.");
 			if (taxon_culling)
@@ -607,14 +617,14 @@ void run(const Options &options)
 			if(output_format->needs_taxon_nodes)
 				throw std::runtime_error("Output format requires taxonomy nodes built into the database.");
 		}
-		if (db_file->ref_header.build < 131) {
+		if (db_file->type() == SequenceFile::DMND && db_file->build_version() < 131) {
 			if (taxon_culling)
 				throw std::runtime_error("--taxon-k option requires a database built with diamond version >= 0.9.30");
 			if (output_format->needs_taxon_ranks)
 				throw std::runtime_error("Output fields sskingdoms, skingdoms and sphylums require a database built with diamond version >= 0.9.30");
 		}
 		timer.go("Loading taxonomy nodes");
-		metadata.taxon_nodes = new TaxonomyNodes(db_file->seek(db_file->header2.taxon_nodes_offset), db_file->ref_header.build);
+		metadata.taxon_nodes = db_file->taxon_nodes();
 		if (taxon_filter) {
 			timer.go("Building taxonomy filter");
 			metadata.taxon_filter = new TaxonomyFilter(config.taxonlist, config.taxon_exclude, *metadata.taxon_list, *metadata.taxon_nodes);
@@ -623,9 +633,7 @@ void run(const Options &options)
 	}
 	if (output_format->needs_taxon_scientific_names) {
 		timer.go("Loading taxonomy names");
-		metadata.taxonomy_scientific_names = new vector<string>;
-		db_file->seek(db_file->header2.taxon_names_offset);
-		*db_file >> *metadata.taxonomy_scientific_names;
+		metadata.taxonomy_scientific_names = db_file->taxon_scientific_names();
 		timer.finish();
 	}
 

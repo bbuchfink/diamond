@@ -24,6 +24,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../cluster/cluster_registry.h"
 #include "../output/recursive_parser.h"
 #include "../util/simd.h"
+#include "../data/dmnd/dmnd.h"
 
 using std::cout;
 using std::cerr;
@@ -74,7 +75,7 @@ int main(int ac, const char* av[])
 			cout << Const::program_name << " version " << Const::version_string << endl;
 			break;
 		case Config::makedb:
-			make_db();
+			DatabaseFile::make_db();
 			break;
 		case Config::blastp:
 		case Config::blastx:

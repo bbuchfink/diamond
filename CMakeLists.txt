@@ -258,6 +258,8 @@ set(OBJECTS
   src/stats/matrix_adjust.cpp
   src/stats/matrix_adjust_eigen.cpp
   src/data/index.cpp
+  src/data/dmnd/dmnd.cpp
+  src/data/sequence_file.cpp
 )
 
 if(X86)
