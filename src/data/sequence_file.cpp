@@ -86,6 +86,8 @@ bool SequenceFile::load_seqs(vector<uint32_t>* block2db_id, const size_t max_let
 		++seqs;
 	}
 
+	putback_seqinfo();
+
 	if (seqs == 0 || filtered_seq_count == 0) {
 		if (fetch_seqs) {
 			delete (*dst_seq);

@@ -58,6 +58,7 @@ struct SequenceFile {
 	virtual void seek_chunk(const Chunk& chunk) = 0;
 	virtual size_t tell_seq() const = 0;
 	virtual SeqInfo read_seqinfo() = 0;
+	virtual void putback_seqinfo() = 0;
 	virtual size_t id_len(const SeqInfo& seq_info, const SeqInfo& seq_info_next) = 0;
 	virtual void seek_offset(size_t p) = 0;
 	virtual void read_seq_data(Letter* dst, size_t len) = 0;
@@ -79,7 +80,15 @@ struct SequenceFile {
 	virtual void close() = 0;
 
 	int type() const { return type_; }
-	bool load_seqs(std::vector<uint32_t>* block2db_id, const size_t max_letters, SequenceSet** dst_seq, String_set<char, 0>** dst_id, bool load_ids = true, const BitVector* filter = nullptr, const bool fetch_seqs = true, const Chunk& chunk = Chunk());
+	bool load_seqs(
+		std::vector<uint32_t>* block2db_id,
+		const size_t max_letters,
+		SequenceSet** dst_seq,
+		String_set<char, 0>** dst_id,
+		bool load_ids = true,
+		const BitVector* filter = nullptr,
+		const bool fetch_seqs = true,
+		const Chunk& chunk = Chunk());
 	void get_seq();
 	size_t total_blocks() const;
 

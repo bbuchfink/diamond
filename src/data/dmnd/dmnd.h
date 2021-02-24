@@ -21,16 +21,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #pragma once
-#include <vector>
 #include <string>
-#include <string.h>
 #include <stdint.h>
 #include <limits.h>
 #include <list>
 #include "../util/io/serializer.h"
 #include "../util/io/input_file.h"
-#include "../data/seed_histogram.h"
-#include "../util/data_structures/bit_vector.h"
 #include "../sequence_file.h"
 
 struct ReferenceHeader
@@ -120,6 +116,7 @@ struct DatabaseFile : public SequenceFile, public InputFile
 	virtual void init_seqinfo_access() override;
 	virtual void seek_chunk(const Chunk& chunk) override;
 	virtual SeqInfo read_seqinfo() override;
+	virtual void putback_seqinfo() override;
 	virtual size_t id_len(const SeqInfo& seq_info, const SeqInfo& seq_info_next) override;
 	virtual void seek_offset(size_t p) override;
 	virtual void read_seq_data(Letter* dst, size_t len) override;

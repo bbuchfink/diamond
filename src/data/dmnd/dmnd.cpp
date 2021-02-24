@@ -21,18 +21,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #include <limits>
-#include <iostream>
-#include <set>
-#include <iterator>
-#include <map>
-#include <memory>
-#include <algorithm>
-#include <cmath>
 #include "../basic/config.h"
 #include "../util/seq_file_format.h"
 #include "../util/log_stream.h"
 #include "../basic/masking.h"
-#include "../util/io/text_input_file.h"
 #include "../taxonomy.h"
 #include "../util/io/file_backed_buffer.h"
 #include "../taxon_list.h"
@@ -97,6 +89,10 @@ SeqInfo DatabaseFile::read_seqinfo() {
 	(*this) >> r;
 	pos_array_offset += SeqInfo::SIZE;
 	return r;
+}
+
+void DatabaseFile::putback_seqinfo() {
+	pos_array_offset -= SeqInfo::SIZE;
 }
 
 void DatabaseFile::init()
