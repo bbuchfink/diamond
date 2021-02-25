@@ -27,7 +27,7 @@ The online documentation is located at the [GitHub Wiki](https://github.com/bbuc
 
 Support
 =======
-The [issue tracker](https://github.com/bbuchfink/diamond/issues) as well as the newly introduced [GitHub discussions](https://github.com/bbuchfink/diamond/discussions) are open for support requests of any kind.
+Diamond is actively supported and developed software. Please use the [issue tracker](https://github.com/bbuchfink/diamond/issues) for malfunctions and the [GitHub discussions](https://github.com/bbuchfink/diamond/discussions) for questions, comments, feature requests, etc.
 
 About
 =====
