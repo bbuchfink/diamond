@@ -72,7 +72,7 @@ struct Database_format_exception : public std::exception
 struct DatabaseFile : public SequenceFile, public InputFile
 {
 
-	DatabaseFile(const string &file_name);
+	DatabaseFile(const string &file_name, int flags = 0);
 	DatabaseFile(TempFile &tmp_file);
 	static void read_header(InputFile &stream, ReferenceHeader &header);
 	static bool is_diamond_db(const string &file_name);
@@ -126,6 +126,8 @@ struct DatabaseFile : public SequenceFile, public InputFile
 	virtual void read_seq(std::vector<Letter>& seq, std::string& id) override;
 	virtual void check_metadata(int flags) const override;
 	virtual size_t letters() const override;
+	virtual int db_version() const override;
+	virtual int program_build_version() const override;
 	virtual int metadata() const override;
 	virtual TaxonList* taxon_list() override;
 	virtual TaxonomyNodes* taxon_nodes() override;
@@ -133,6 +135,6 @@ struct DatabaseFile : public SequenceFile, public InputFile
 	virtual int build_version() override;
 
 private:
-	void init();
+	void init(int flags = 0);
 
 };

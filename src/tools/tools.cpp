@@ -8,16 +8,10 @@
 #include "../basic/sequence.h"
 #include "../util/seq_file_format.h"
 #include "../util/sequence/sequence.h"
-//#include <objtools/blast/seqdb_reader/seqdb.hpp>
 
 using std::cout;
 using std::endl;
 using std::vector;
-
-//void blast_test() {
-//	ncbi::CSeqDB seq_db("c:\\temp\\swissprot", ncbi::CSeqDB::eProtein);
-//	cout << seq_db.GetNumSeqs() << endl;
-//}
 
 void filter_blasttab() {
 	TextInputFile in("");

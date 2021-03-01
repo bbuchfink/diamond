@@ -20,10 +20,19 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
+#include <iostream>
 #include "sequence_file.h"
 #include "../basic/masking.h"
 #include "reference.h"
 #include "dmnd/dmnd.h"
+#include "../util/system/system.h"
+#include "blastdb/blastdb.h"
+
+using std::cout;
+using std::endl;
+using std::setw;
+
+const EMap<SequenceFile::Type> EnumTraits<SequenceFile::Type>::to_string = { {SequenceFile::Type::DMND, "Diamond database" }, {SequenceFile::Type::BLAST, "BLAST database"} };
 
 bool SequenceFile::load_seqs(vector<uint32_t>* block2db_id, const size_t max_letters, SequenceSet** dst_seq, String_set<char, 0>** dst_id, bool load_ids, const BitVector* filter, const bool fetch_seqs, const Chunk& chunk)
 {
@@ -177,9 +186,20 @@ void SequenceFile::get_seq()
 	out.close();
 }
 
-SequenceFile* SequenceFile::auto_create() {
-	if (!DatabaseFile::is_diamond_db(config.database)) {
-		message_stream << "Database file is not a DIAMOND database, treating as FASTA." << std::endl;
+SequenceFile* SequenceFile::auto_create(int flags) {
+	if (exists(config.database + ".pin") || exists(config.database + ".pal")) {
+#ifdef WITH_BLASTDB
+		return new BlastDB(config.database);
+#else
+		throw std::runtime_error("This executable was not compiled with support for BLAST databases.");
+#endif
+	}
+	auto_append_extension_if_exists(config.database, ".dmnd");
+	if (DatabaseFile::is_diamond_db(config.database)) {
+		return new DatabaseFile(config.database, flags);
+	}
+	else if (!(flags & NO_FASTA)) {
+		message_stream << "Database file is not a DIAMOND or BLAST database, treating as FASTA." << std::endl;
 		config.input_ref_file = { config.database };
 		TempFile* db;
 		DatabaseFile::make_db(&db);
@@ -187,8 +207,7 @@ SequenceFile* SequenceFile::auto_create() {
 		delete db;
 		return r;
 	}
-	else
-		return new DatabaseFile(config.database);
+	throw std::runtime_error("Database does not have a supported format.");
 }
 
 size_t SequenceFile::total_blocks() const {
@@ -196,6 +215,20 @@ size_t SequenceFile::total_blocks() const {
 	return (this->letters() + c - 1) / c;
 }
 
-SequenceFile::SequenceFile(int type):
+SequenceFile::SequenceFile(Type type):
 	type_(type)
 {}
+
+void db_info() {
+	if (config.database.empty())
+		throw std::runtime_error("Missing option for database file: --db/-d.");
+	SequenceFile* db = SequenceFile::auto_create(SequenceFile::NO_FASTA | SequenceFile::NO_COMPATIBILITY_CHECK);
+	cout << setw(25) << "Database type  " << to_string(db->type()) << endl;
+	cout << setw(25) << "Database format version  " << db->db_version() << endl;
+	if(db->type() == SequenceFile::Type::DMND)
+		cout << setw(25) << "Diamond build  " << db->program_build_version() << endl;
+	cout << setw(25) << "Sequences  " << db->sequence_count() << endl;
+	cout << setw(25) << "Letters  " << db->letters() << endl;
+	db->close();
+	delete db;
+}

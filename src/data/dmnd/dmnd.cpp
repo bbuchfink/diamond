@@ -95,9 +95,11 @@ void DatabaseFile::putback_seqinfo() {
 	pos_array_offset -= SeqInfo::SIZE;
 }
 
-void DatabaseFile::init()
+void DatabaseFile::init(int flags)
 {
 	read_header(*this, ref_header);
+	if (flags & NO_COMPATIBILITY_CHECK)
+		return;
 	if (ref_header.build < min_build_required || ref_header.db_version < MIN_DB_VERSION)
 		throw std::runtime_error("Database was built with an older version of Diamond and is incompatible.");
 	if (ref_header.db_version > ReferenceHeader::current_db_version)
@@ -108,16 +110,16 @@ void DatabaseFile::init()
 	pos_array_offset = ref_header.pos_array_offset;
 }
 
-DatabaseFile::DatabaseFile(const string &input_file):
-	SequenceFile(SequenceFile::DMND),
+DatabaseFile::DatabaseFile(const string &input_file, int flags):
+	SequenceFile(SequenceFile::Type::DMND),
 	InputFile(input_file, InputFile::BUFFERED),
 	temporary(false)
 {
-	init();
+	init(flags);
 }
 
 DatabaseFile::DatabaseFile(TempFile &tmp_file):
-	SequenceFile(SequenceFile::DMND),
+	SequenceFile(SequenceFile::Type::DMND),
 	InputFile(tmp_file, 0),
 	temporary(true)
 {
@@ -316,18 +318,6 @@ void DatabaseFile::skip_seq()
 		throw std::runtime_error("Unexpected end of file.");
 }
 
-void db_info()
-{
-	InputFile db_file(config.database);
-	ReferenceHeader header;
-	DatabaseFile::read_header(db_file, header);
-	cout << "Database format version = " << header.db_version << endl;
-	cout << "Diamond build = " << header.build << endl;
-	cout << "Sequences = " << header.sequences << endl;
-	cout << "Letters = " << header.letters << endl;
-	db_file.close();
-}
-
 bool DatabaseFile::is_diamond_db(const string &file_name) {
 	if (file_name == "-")
 		return false;
@@ -401,7 +391,7 @@ size_t DatabaseFile::get_n_partition_chunks() {
 void DatabaseFile::save_partition(const string & partition_file_name, const string & annotation) {
 	ofstream out(partition_file_name);
 	// cout << "WRITING " << partition_file_name << endl;
-	for (auto i : partition.chunks) {
+	for (const auto& i : partition.chunks) {
 		out << to_string(i);
 		if (annotation.size() > 0) {
 			out << " " << annotation;
@@ -473,6 +463,14 @@ size_t DatabaseFile::sequence_count() const {
 
 size_t DatabaseFile::letters() const {
 	return ref_header.letters;
+}
+
+int DatabaseFile::db_version() const {
+	return ref_header.db_version;
+}
+
+int DatabaseFile::program_build_version() const {
+	return ref_header.build;
 }
 
 void DatabaseFile::check_metadata(int flags) const {

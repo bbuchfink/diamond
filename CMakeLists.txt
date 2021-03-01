@@ -260,6 +260,7 @@ set(OBJECTS
   src/data/index.cpp
   src/data/dmnd/dmnd.cpp
   src/data/sequence_file.cpp
+  src/data/blastdb/blastdb.cpp
 )
 
 if(X86)
@@ -282,6 +283,7 @@ if(BLAST_INCLUDE_DIR)
   "${BLAST_LIBRARY_DIR}/seqdb.lib"
   "${BLAST_LIBRARY_DIR}/biblio.lib"
   "${BLAST_LIBRARY_DIR}/blastdb.lib"
+  "${BLAST_LIBRARY_DIR}/blastdb_format.lib"
   "${BLAST_LIBRARY_DIR}/general.lib"
   "${BLAST_LIBRARY_DIR}/genome_collection.lib"
   "${BLAST_LIBRARY_DIR}/medline.lib"
@@ -296,6 +298,7 @@ if(BLAST_INCLUDE_DIR)
   "${BLAST_LIBRARY_DIR}/submit.lib"
   #"${BLAST_LIBRARY_DIR}/xnetblast.lib"
   "${BLAST_LIBRARY_DIR}/xobjmgr.lib"
+  "${BLAST_LIBRARY_DIR}/xobjutil.lib"
   "${BLAST_LIBRARY_DIR}/xser.lib"
   "${BLAST_LIBRARY_DIR}/xncbi.lib"
   "${BLAST_LIBRARY_DIR}/xutil.lib"

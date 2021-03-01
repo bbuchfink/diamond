@@ -21,12 +21,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 OutputStreamBuffer::OutputStreamBuffer(StreamEntity* prev):
 	StreamEntity(prev),
-	buf_(new char[config.file_buffer_size])
+	buf_size_(prev->file_name().empty() ? STDOUT_BUF_SIZE : config.file_buffer_size),
+	buf_(new char[buf_size_])
 {}
 
 pair<char*, char*> OutputStreamBuffer::write_buffer()
 {
-	return std::make_pair(buf_.get(), buf_.get() + config.file_buffer_size);
+	return std::make_pair(buf_.get(), buf_.get() + buf_size_);
 }
 
 void OutputStreamBuffer::flush(size_t count)

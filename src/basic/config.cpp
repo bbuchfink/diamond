@@ -621,8 +621,6 @@ Config::Config(int argc, const char **argv, bool check_io)
 	if (!no_auto_append) {
 		if (command == Config::makedb)
 			auto_append_extension(database, ".dmnd");
-		else
-			auto_append_extension_if_exists(database, ".dmnd");
 		if (command == Config::view)
 			auto_append_extension(daa_file, ".daa");
 		if (compression == 1)

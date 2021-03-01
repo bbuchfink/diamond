@@ -365,7 +365,7 @@ void run_query_chunk(SequenceFile &db_file,
 				delete query_chunk_out;
 
 				ReferenceDictionary::get().clear_block_instances();
-				for (auto f : tmp_file_names) {
+				for (const auto& f : tmp_file_names) {
 					std::remove(f.c_str());
 				}
 
@@ -617,7 +617,7 @@ void run(const Options &options)
 			if(output_format->needs_taxon_nodes)
 				throw std::runtime_error("Output format requires taxonomy nodes built into the database.");
 		}
-		if (db_file->type() == SequenceFile::DMND && db_file->build_version() < 131) {
+		if (db_file->type() == SequenceFile::Type::DMND && db_file->build_version() < 131) {
 			if (taxon_culling)
 				throw std::runtime_error("--taxon-k option requires a database built with diamond version >= 0.9.30");
 			if (output_format->needs_taxon_ranks)
