@@ -1,8 +1,8 @@
 /****
 DIAMOND protein aligner
 Copyright (C) 2013-2020 Max Planck Society for the Advancement of Science e.V.
-                        Benjamin Buchfink
-                        Eberhard Karls Universitaet Tuebingen
+						Benjamin Buchfink
+						Eberhard Karls Universitaet Tuebingen
 
 Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
 
@@ -64,6 +64,7 @@ static const string stack_align_done = label_align + "_done";
 static const string label_join = "join";
 static const string stack_join_todo = label_join + "_todo";
 static const string stack_join_wip = label_join + "_wip";
+static const string stack_join_redo = label_join + "_redo";
 static const string stack_join_done = label_join + "_done";
 
 
@@ -257,20 +258,23 @@ void run_query_chunk(DatabaseFile &db_file,
 	if(config.query_memory)
 		Extension::memory = new Extension::Memory(query_ids::get().get_length());
 	db_file.rewind();
-	Chunk chunk;
 	bool mp_last_chunk = false;
 
 	log_rss();
 
 	if (config.multiprocessing) {
+		P->create_stack_from_file(stack_align_todo, get_ref_part_file_name(stack_align_todo, query_chunk));
 		auto work = P->get_stack(stack_align_todo);
 		P->create_stack_from_file(stack_align_wip, get_ref_part_file_name(stack_align_wip, query_chunk));
 		auto wip = P->get_stack(stack_align_wip);
 		P->create_stack_from_file(stack_align_done, get_ref_part_file_name(stack_align_done, query_chunk));
 		auto done = P->get_stack(stack_align_done);
+		P->create_stack_from_file(stack_join_todo, get_ref_part_file_name(stack_join_todo, query_chunk));
+		auto join_work = P->get_stack(stack_join_todo);
+
 		string buf;
 
-		while (work->pop(buf)) {
+		while ((! file_exists("stop")) && (work->pop(buf))) {
 			wip->push(buf);
 
 			Chunk chunk = to_chunk(buf);
@@ -280,19 +284,25 @@ void run_query_chunk(DatabaseFile &db_file,
 			db_file.load_seqs(&block_to_database_id, (size_t)(0), &ref_seqs::data_, &ref_ids::data_, true, options.db_filter ? options.db_filter : metadata.taxon_filter, true, chunk);
 			run_ref_chunk(db_file, query_chunk, query_len_bounds, query_buffer, master_out, tmp_file, params, metadata);
 
+			tmp_file.back().close();
 			ReferenceDictionary::get().save_block(query_chunk, chunk.i);
 			ReferenceDictionary::get().clear_block(chunk.i);
 
 			size_t size_after_push = 0;
 			done->push(buf, size_after_push);
 			if (size_after_push == db_file.get_n_partition_chunks()) {
-				mp_last_chunk = true;
+				join_work->push("TOKEN");
 			}
-			wip->pop(buf);
+			wip->remove(buf);
 
 			P->log("SEARCH END "+std::to_string(query_chunk)+" "+std::to_string(chunk.i));
 			log_rss();
 		}
+
+		tmp_file.clear();
+		P->delete_stack(stack_align_todo);
+		P->delete_stack(stack_align_wip);
+		P->delete_stack(stack_align_done);
 	} else {
 		for (current_ref_block = 0;
 			 db_file.load_seqs(&block_to_database_id, (size_t)(config.chunk_size*1e9), &ref_seqs::data_, &ref_ids::data_, true, options.db_filter ? options.db_filter : metadata.taxon_filter);
@@ -310,37 +320,29 @@ void run_query_chunk(DatabaseFile &db_file,
 
 	log_rss();
 
-	if (config.multiprocessing) {
-		for (auto f : tmp_file) {
-			f->close();
-		}
-		tmp_file.clear();
-	}
-
-	log_rss();
-
-	if (blocked_processing) {
+	if (blocked_processing || config.multiprocessing) {
 		timer.go("Joining output blocks");
 
 		if (config.multiprocessing) {
+			P->create_stack_from_file(stack_join_todo, get_ref_part_file_name(stack_join_todo, query_chunk));
+			auto work = P->get_stack(stack_join_todo);
 
-			if (mp_last_chunk) {
-				P->create_stack_from_file(stack_join_todo, get_ref_part_file_name(stack_join_todo, query_chunk));
-				auto work = P->get_stack(stack_join_todo);
+			string buf;
+
+			if ((! file_exists("stop")) && (work->pop(buf) > 0)) {
+				P->log("JOIN BEGIN "+std::to_string(query_chunk));
 
 				P->create_stack_from_file(stack_join_wip, get_ref_part_file_name(stack_join_wip, query_chunk));
 				auto wip = P->get_stack(stack_join_wip);
-
+				wip->clear();
 				P->create_stack_from_file(stack_join_done, get_ref_part_file_name(stack_join_done, query_chunk));
 				auto done = P->get_stack(stack_join_done);
-				string buf;
+				done->clear();
 
-				work->pop(buf);
 				wip->push(buf);
-				P->log("JOIN BEGIN "+std::to_string(query_chunk));
+				work->clear();
 
 				current_ref_block = db_file.get_n_partition_chunks();
-
 				ReferenceDictionary::get().restore_blocks(query_chunk, current_ref_block);
 
 				vector<string> tmp_file_names;
@@ -364,17 +366,21 @@ void run_query_chunk(DatabaseFile &db_file,
 				query_chunk_out->finalize();
 				delete query_chunk_out;
 
+				done->push(buf);
+				wip->pop(buf);
+
 				ReferenceDictionary::get().clear_block_instances();
+				ReferenceDictionary::get().remove_temporary_files(query_chunk, current_ref_block);
 				for (auto f : tmp_file_names) {
 					std::remove(f.c_str());
 				}
 
-				done->push(buf);
-				wip->pop(buf);
+				P->delete_stack(stack_join_wip);
+				P->delete_stack(stack_join_done);
+
 				P->log("JOIN END "+std::to_string(query_chunk));
 			}
-			P->delete_stack(stack_align_done);
-
+			P->delete_stack(stack_join_todo);
 		} else {
 			join_blocks(current_ref_block, master_out, tmp_file, params, metadata, db_file);
 		}
@@ -395,10 +401,49 @@ void run_query_chunk(DatabaseFile &db_file,
 		ReferenceDictionary::get().clear();
 }
 
-
-
 void master_thread(DatabaseFile *db_file, task_timer &total_timer, Metadata &metadata, const Options &options)
 {
+	if (config.multiprocessing && config.mp_recover) {
+		const size_t max_assumed_query_chunks = 65536;
+		for (size_t i=0; i<max_assumed_query_chunks; ++i) {
+			const string file_align_todo = get_ref_part_file_name(stack_align_todo, i);
+			if (! file_exists(file_align_todo)) {
+				break;
+			} else {
+				auto stack_todo = FileStack(file_align_todo);
+				const string file_align_wip = get_ref_part_file_name(stack_align_wip, i);
+				auto stack_wip = FileStack(file_align_wip);
+				string buf;
+				int j = 0;
+				while (stack_wip.pop_non_locked(buf)) {
+					stack_todo.push_non_locked(buf);
+					j++;
+				}
+				if (j > 0)
+					message_stream << "Restored " << j << " align chunks for query " << i << endl;
+			}
+			const string file_join_wip = get_ref_part_file_name(stack_join_wip, i);
+			auto stack_wip = FileStack(file_join_wip);
+			if (stack_wip.size() > 0) {
+				const string file_join_todo = get_ref_part_file_name(stack_join_todo, i);
+				auto stack_todo = FileStack(file_join_todo);
+				string buf;
+				int j = 0;
+				while (stack_wip.pop_non_locked(buf)) {
+					stack_todo.push_non_locked(buf);
+					j++;
+				}
+				if (j > 0)
+					message_stream << "Restored join of query " << i << endl;
+			}
+		}
+		if (file_exists("stop")) {
+			std::remove("stop");
+			message_stream << "Removed \'stop\' file" << endl;
+		}
+		return;
+	}
+
 	auto P = Parallelizer::get();
 	if (config.multiprocessing) {
 		P->init(config.parallel_tmpdir);
@@ -460,10 +505,6 @@ void master_thread(DatabaseFile *db_file, task_timer &total_timer, Metadata &met
 		for (size_t i=0; i<current_query_chunk; ++i) {
 			const string annotation = "# query_chunk=" + std::to_string(i);
 			db_file->save_partition(get_ref_part_file_name(stack_align_todo, i), annotation);
-
-			P->create_stack_from_file(stack_join_todo, get_ref_part_file_name(stack_join_todo, i));
-			P->get_stack(stack_join_todo)->push("TOKEN");
-			P->delete_stack(stack_join_todo);
 		}
 
 		return;
@@ -515,13 +556,12 @@ void master_thread(DatabaseFile *db_file, task_timer &total_timer, Metadata &met
 			timer.finish();
 		}
 
-		if (config.multiprocessing)
-			P->create_stack_from_file(stack_align_todo, get_ref_part_file_name(stack_align_todo, current_query_chunk));
-
 		run_query_chunk(*db_file, current_query_chunk, *master_out, unaligned_file.get(), aligned_file.get(), metadata, options);
 
-		if (config.multiprocessing)
-			P->delete_stack(stack_align_todo);
+		if (file_exists("stop")) {
+			message_stream << "Encountered \'stop\' file, shutting down run" << endl;
+			break;
+		}
 	}
 
 	if (query_file && !options.query_file) {

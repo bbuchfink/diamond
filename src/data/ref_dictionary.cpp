@@ -166,7 +166,7 @@ void ReferenceDictionary::load_block(size_t query, size_t block, ReferenceDictio
 		d.name_.push_back(buf);
 	}
 	is.close();
-	std::remove(i_file.c_str());
+	// std::remove(i_file.c_str());
 }
 
 void ReferenceDictionary::restore_blocks(size_t query, size_t n_blocks) {
@@ -182,4 +182,11 @@ void ReferenceDictionary::clear_block(size_t block) {
 	database_id_.clear();
 	data_[block].clear();
 	next_ = 0;
+}
+
+void ReferenceDictionary::remove_temporary_files(size_t query, size_t n_blocks) {
+	for (size_t i = 0; i < n_blocks; ++i) {
+		const string i_file = _get_file_name(query, i);
+		std::remove(i_file.c_str());
+	}
 }

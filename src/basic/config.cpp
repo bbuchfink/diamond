@@ -146,7 +146,7 @@ Config::Config(int argc, const char **argv, bool check_io)
 		.add_command("simulate-seqs", "", simulate_seqs)
 		.add_command("split", "", split)
 		.add_command("upgma", "", upgma)
-		.add_command("upgmamc", "", upgma_mc)		
+		.add_command("upgmamc", "", upgma_mc)
 		.add_command("reverse", "", reverse_seqs)
 		.add_command("compute-medoids", "", compute_medoids)
 		.add_command("mutate", "", mutate)
@@ -296,6 +296,7 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("shape-mask", 0, "seed shapes", shape_mask)
 		("multiprocessing", 0, "enable distributed-memory parallel processing", multiprocessing)
 		("mp-init", 0, "initialize multiprocessing run", mp_init)
+		("mp-recover", 0, "enable continuation of interrupted multiprocessing run", mp_recover)
 		("ext-chunk-size", 0, "chunk size for adaptive ranking (default=auto)", ext_chunk_size)
 		("no-ranking", 0, "disable ranking heuristic", no_ranking)
 		("ext", 0, "Extension mode (banded-fast/banded-slow/full)", ext)
@@ -479,7 +480,7 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("mmap-target-index", 0, "", mmap_target_index)
 		("save-target-index", 0, "", save_target_index)
 		("max-swipe-dp", 0, "", max_swipe_dp, (size_t)4000000);
-	
+
 	parser.add(general).add(makedb).add(cluster).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options).add(deprecated_options);
 	parser.store(argc, argv, command);
 
@@ -500,7 +501,7 @@ Config::Config(int argc, const char **argv, bool check_io)
 			frame_shift = 15;
 	}
 
-	if (global_ranking_targets > 0 && (query_range_culling || taxon_k || multiprocessing || mp_init || (command == blastx) || comp_based_stats >= 2 || frame_shift > 0))
+	if (global_ranking_targets > 0 && (query_range_culling || taxon_k || multiprocessing || mp_init || mp_recover || (command == blastx) || comp_based_stats >= 2 || frame_shift > 0))
 		throw std::runtime_error("Global ranking is not supported in this mode.");
 
 	if (global_ranking_targets > 0) {
@@ -513,7 +514,7 @@ Config::Config(int argc, const char **argv, bool check_io)
 	if (comp_based_stats >= Stats::CBS::COUNT)
 #else
 	if (comp_based_stats >= 5)
-#endif	
+#endif
 		throw std::runtime_error("Invalid value for --comp-based-stats. Permitted values: 0, 1, 2, 3, 4.");
 
 	if (masking == -1)

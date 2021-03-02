@@ -264,6 +264,7 @@ struct Config
 
 	bool multiprocessing;
 	bool mp_init;
+	bool mp_recover;
 
 	enum {
 		makedb = 0, blastp = 1, blastx = 2, view = 3, help = 4, version = 5, getseq = 6, benchmark = 7, random_seqs = 8, compare = 9, sort = 10, roc = 11, db_stat = 12, model_sim = 13,
@@ -292,7 +293,7 @@ struct Config
 	bool cluster_mcl_stats;
 	bool cluster_mcl_symmetrize;
 
-	
+
 	std::map<std::string, Sensitivity> sens_map{
 		{"fast", Sensitivity::FAST },
 		{"default", Sensitivity::DEFAULT},
