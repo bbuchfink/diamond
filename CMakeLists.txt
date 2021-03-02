@@ -279,32 +279,34 @@ if(BLAST_INCLUDE_DIR)
   message("BLAST_INCLUDE_DIR: ${BLAST_INCLUDE_DIR}")
   message("BLAST_LIBRARY_DIR: ${BLAST_LIBRARY_DIR}")
   target_include_directories(diamond PRIVATE "${BLAST_INCLUDE_DIR}")
-  target_link_libraries(diamond
-  "${BLAST_LIBRARY_DIR}/seqdb.lib"
-  "${BLAST_LIBRARY_DIR}/biblio.lib"
-  "${BLAST_LIBRARY_DIR}/blastdb.lib"
-  "${BLAST_LIBRARY_DIR}/blastdb_format.lib"
-  "${BLAST_LIBRARY_DIR}/general.lib"
-  "${BLAST_LIBRARY_DIR}/genome_collection.lib"
-  "${BLAST_LIBRARY_DIR}/medline.lib"
-  "${BLAST_LIBRARY_DIR}/pub.lib"
-  #"${BLAST_LIBRARY_DIR}/scoremat.lib"
-  "${BLAST_LIBRARY_DIR}/seq.lib"
-  "${BLAST_LIBRARY_DIR}/seqcode.lib"
-  #"${BLAST_LIBRARY_DIR}/seqedit.lib"
-  "${BLAST_LIBRARY_DIR}/seqset.lib"
-  #"${BLAST_LIBRARY_DIR}/seqsplit.lib"
-  "${BLAST_LIBRARY_DIR}/sequtil.lib"
-  "${BLAST_LIBRARY_DIR}/submit.lib"
-  #"${BLAST_LIBRARY_DIR}/xnetblast.lib"
-  "${BLAST_LIBRARY_DIR}/xobjmgr.lib"
-  "${BLAST_LIBRARY_DIR}/xobjutil.lib"
-  "${BLAST_LIBRARY_DIR}/xser.lib"
-  "${BLAST_LIBRARY_DIR}/xncbi.lib"
-  "${BLAST_LIBRARY_DIR}/xutil.lib"
-  "${BLAST_LIBRARY_DIR}/lmdb.lib"
-  "Dbghelp.lib")
+  find_library(SEQDB_LIBRARY seqdb ${BLAST_LIBRARY_DIR})
+  find_library(BIBLIO_LIBRARY biblio ${BLAST_LIBRARY_DIR})
+  find_library(BLASTDB_LIBRARY blastdb ${BLAST_LIBRARY_DIR})
+  find_library(BLASTDB_FORMAT_LIBRARY blastdb_format ${BLAST_LIBRARY_DIR})
+  find_library(GENERAL_LIBRARY general ${BLAST_LIBRARY_DIR})
+  find_library(GENOME_COLLECTION_LIBRARY genome_collection ${BLAST_LIBRARY_DIR})
+  find_library(MEDLINE_LIBRARY medline ${BLAST_LIBRARY_DIR})
+  find_library(PUB_LIBRARY pub ${BLAST_LIBRARY_DIR})
+  find_library(SEQ_LIBRARY seq ${BLAST_LIBRARY_DIR})
+  find_library(SEQCODE_LIBRARY seqcode ${BLAST_LIBRARY_DIR})
+  find_library(SEQSET_LIBRARY seqset ${BLAST_LIBRARY_DIR})
+  find_library(SEQUTIL_LIBRARY sequtil ${BLAST_LIBRARY_DIR})
+  find_library(SUBMIT_LIBRARY submit ${BLAST_LIBRARY_DIR})
+  find_library(XOBJMGR_LIBRARY xobjmgr ${BLAST_LIBRARY_DIR})
+  find_library(XOBJUTIL_LIBRARY xobjutil ${BLAST_LIBRARY_DIR})
+  find_library(XSER_LIBRARY xser ${BLAST_LIBRARY_DIR})
+  find_library(XNCBI_LIBRARY xncbi ${BLAST_LIBRARY_DIR})
+  find_library(XUTIL_LIBRARY xutil ${BLAST_LIBRARY_DIR})
+  find_library(LMDB_LIBRARY lmdb ${BLAST_LIBRARY_DIR})
+  target_link_libraries(diamond "${SEQDB_LIBRARY}" "${BIBLIO_LIBRARY}" "${BLASTDB_LIBRARY}" "${BLASTDB_FORMAT_LIBRARY}" "${GENERAL_LIBRARY}"
+    "${GENOME_COLLECTION_LIBRARY}" "${MEDLINE_LIBRARY}" "${PUB_LIBRARY}" "${SEQ_LIBRARY}" "${SEQCODE_LIBRARY}" "${SEQSET_LIBRARY}"
+    "${SEQUTIL_LIBRARY}" "${SUBMIT_LIBRARY}" "${XOBJMGR_LIBRARY}" "${XOBJUTIL_LIBRARY}" "${XSER_LIBRARY}" "${XNCBI_LIBRARY}" "${XUTIL_LIBRARY}"
+    "${LMDB_LIBRARY}")
   add_definitions(-DWITH_BLASTDB)
+  if (${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
+    find_library(DBGHELP_LIBRARY Dbghelp)
+    target_link_libraries(diamond "${DBGHELP_LIBRARY}")
+  endif()
 endif()
 
 if(EIGEN_BLAS)
