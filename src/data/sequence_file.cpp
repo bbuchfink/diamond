@@ -194,7 +194,7 @@ SequenceFile* SequenceFile::auto_create(int flags) {
 		throw std::runtime_error("This executable was not compiled with support for BLAST databases.");
 #endif
 	}
-	auto_append_extension_if_exists(config.database, ".dmnd");
+	config.database = auto_append_extension_if_exists(config.database, DatabaseFile::FILE_EXTENSION);
 	if (DatabaseFile::is_diamond_db(config.database)) {
 		return new DatabaseFile(config.database, flags);
 	}

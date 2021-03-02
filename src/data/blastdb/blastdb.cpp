@@ -13,7 +13,8 @@ using namespace ncbi;
 BlastDB::BlastDB(const std::string& file_name) :
 	SequenceFile(Type::BLAST),
 	db_(file_name, ncbi::CSeqDB::eProtein),
-	oid_(0)
+	oid_(0),
+	long_seqids_(false)
 {
 }
 
@@ -88,12 +89,21 @@ void BlastDB::read_seq(std::vector<Letter>& seq, std::string& id)
 {
 	id.clear();
 	CRef<CBioseq> bioseq = db_.GetBioseq(oid_);
-	CBlastDeflineUtil::ProcessFastaDeflines(*bioseq, id, false);
-	id.erase(0, 1);
-	id.pop_back();
-	
 	CScope scope(*CObjectManager::GetInstance());
 	CBioseq_Handle bioseq_handle = scope.AddBioseq(*bioseq);
+
+	if (long_seqids_) {
+		CConstRef<CSeq_id> best_id = FindBestChoice(bioseq->GetId(), CSeq_id::FastaAARank);
+		id = best_id->AsFastaString();
+		sequence::CDeflineGenerator gen;
+		id += gen.GenerateDefline(bioseq_handle, 0);
+	}
+	else {
+		CBlastDeflineUtil::ProcessFastaDeflines(*bioseq, id, false);
+		id.erase(0, 1);
+		id.pop_back();
+	}
+	
 	ncbi::objects::CSeqVector v = bioseq_handle.GetSeqVector(CBioseq_Handle::eCoding_Iupac);
 	if (v.GetCoding() != CSeq_data::e_Iupacaa)
 		throw std::runtime_error("Invalid sequence coding in BLAST database.");
@@ -110,11 +120,6 @@ void BlastDB::read_seq(std::vector<Letter>& seq, std::string& id)
 		seq.push_back(s);
 	}
 	++oid_;
-	/*CConstRef<CSeq_id> best_id = FindBestChoice(bioseq->GetId(), CSeq_id::FastaAARank);
-	id = best_id->AsFastaString();
-
-	sequence::CDeflineGenerator gen;
-	id += gen.GenerateDefline(bioseq_handle, 0);*/
 }
 
 void BlastDB::check_metadata(int flags) const

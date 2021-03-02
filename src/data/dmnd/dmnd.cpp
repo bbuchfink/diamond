@@ -36,8 +36,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../reference.h"
 #include "../load_seqs.h"
 #include "../taxonomy.h"
+#include "../util/system/system.h"
 
 using namespace std;
+
+const char* DatabaseFile::FILE_EXTENSION = ".dmnd";
 
 Serializer& operator<<(Serializer &s, const ReferenceHeader2 &h)
 {
@@ -112,7 +115,7 @@ void DatabaseFile::init(int flags)
 
 DatabaseFile::DatabaseFile(const string &input_file, int flags):
 	SequenceFile(SequenceFile::Type::DMND),
-	InputFile(input_file, InputFile::BUFFERED),
+	InputFile(auto_append_extension_if_exists(input_file, FILE_EXTENSION), InputFile::BUFFERED),
 	temporary(false)
 {
 	init(flags);

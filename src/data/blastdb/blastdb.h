@@ -38,5 +38,6 @@ private:
 
 	ncbi::CSeqDBExpert db_;
 	int oid_;
+	bool long_seqids_;
 
 };

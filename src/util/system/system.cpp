@@ -83,10 +83,10 @@ void auto_append_extension(string &str, const char *ext)
 		str += ext;
 }
 
-void auto_append_extension_if_exists(string &str, const char *ext) {
+string auto_append_extension_if_exists(const string &str, const char *ext) {
 	if (!ends_with(str, ext))
 		if (exists(str + ext))
-			str += ext;
+			return str + ext;
 }
 
 void log_rss() {
