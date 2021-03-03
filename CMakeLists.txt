@@ -260,16 +260,19 @@ set(OBJECTS
   src/data/index.cpp
   src/data/dmnd/dmnd.cpp
   src/data/sequence_file.cpp
-  src/data/blastdb/blastdb.cpp
 )
 
-if(X86)
-  add_executable(diamond $<TARGET_OBJECTS:arch_generic> $<TARGET_OBJECTS:arch_sse4_1> $<TARGET_OBJECTS:arch_avx2> ${OBJECTS})
-else()
-  add_executable(diamond $<TARGET_OBJECTS:arch_generic> ${OBJECTS})
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}")
+
+if(BLAST_INCLUDE_DIR)
+  set(BLAST_OBJ "src/data/blastdb/blastdb.cpp")
 endif()
 
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}")
+if(X86)
+  add_executable(diamond $<TARGET_OBJECTS:arch_generic> $<TARGET_OBJECTS:arch_sse4_1> $<TARGET_OBJECTS:arch_avx2> ${OBJECTS} ${BLAST_OBJ})
+else()
+  add_executable(diamond $<TARGET_OBJECTS:arch_generic> ${OBJECTS} ${BLAST_OBJ})
+endif()
 
 target_include_directories(diamond PRIVATE
   "${ZLIB_INCLUDE_DIR}"
@@ -277,7 +280,7 @@ target_include_directories(diamond PRIVATE
 
 if(BLAST_INCLUDE_DIR)
   function(find_blast_lib var library)
-    find_library(${var} ${library} ${BLAST_LIBRARY_DIR})
+    find_library(${var} ${library} PATHS ${BLAST_LIBRARY_DIR} "/usr/lib/ncbi-blast+")
     if(${${var}} STREQUAL "${var}-NOTFOUND")
       message(FATAL_ERROR "Unable to find BLAST library: ${library}")
     endif()
