@@ -55,6 +55,19 @@ struct SequenceFile {
 
 	enum class Type { DMND = 0, BLAST = 1 };
 
+	enum Metadata : int {
+		TAXON_MAPPING          = 1,
+		TAXON_NODES            = 1 << 1,
+		TAXON_SCIENTIFIC_NAMES = 1 << 2
+	};
+
+	enum class Flags : int {
+		NONE                   = 0,
+		NO_COMPATIBILITY_CHECK = 0x1,
+		NO_FASTA               = 0x2,
+		FULL_SEQIDS            = 0x4
+	};
+
 	SequenceFile(Type type);
 
 	virtual void init_seqinfo_access() = 0;
@@ -84,6 +97,7 @@ struct SequenceFile {
 	virtual size_t get_n_partition_chunks() = 0;
 	virtual void set_seqinfo_ptr(size_t i) = 0;
 	virtual void close() = 0;
+	virtual ~SequenceFile();
 
 	Type type() const { return type_; }
 	bool load_seqs(
@@ -98,18 +112,7 @@ struct SequenceFile {
 	void get_seq();
 	size_t total_blocks() const;
 
-	static SequenceFile* auto_create(int flags = 0);
-
-	enum Metadata : int {
-		TAXON_MAPPING          = 1,
-		TAXON_NODES            = 1 << 1,
-		TAXON_SCIENTIFIC_NAMES = 1 << 2
-	};
-
-	enum {
-		NO_COMPATIBILITY_CHECK = 0x1,
-		NO_FASTA               = 0x2
-	};
+	static SequenceFile* auto_create(Flags flags = Flags::NONE);
 
 private:
 
@@ -120,3 +123,5 @@ private:
 template<> struct EnumTraits<SequenceFile::Type> {
 	static const EMap<SequenceFile::Type> to_string;
 };
+
+DEF_ENUM_FLAG_OPERATORS(SequenceFile::Flags)

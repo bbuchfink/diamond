@@ -4,7 +4,7 @@
 
 struct BlastDB : public SequenceFile {
 
-	BlastDB(const std::string& file_name);
+	BlastDB(const std::string& file_name, Flags flags);
 
 	virtual void init_seqinfo_access() override;
 	virtual void init_seq_access() override;
@@ -33,11 +33,13 @@ struct BlastDB : public SequenceFile {
 	virtual size_t get_n_partition_chunks() override;
 	virtual void set_seqinfo_ptr(size_t i) override;
 	virtual void close() override;
+	virtual ~BlastDB();
 	
 private:
 
 	ncbi::CSeqDBExpert db_;
-	int oid_;
+	int oid_, oid_seqdata_;
 	bool long_seqids_;
+	Flags flags_;
 
 };

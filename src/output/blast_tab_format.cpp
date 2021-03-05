@@ -34,78 +34,77 @@ using namespace std;
 using namespace Output;
 
 const vector<OutputField> Blast_tab_format::field_def = {
-{ "qseqid", "Query ID", NONE },		// 0 means Query Seq - id
-{ "qgi", "qgi", NONE },			// 1 means Query GI
-{ "qacc", "qacc", NONE },			// 2 means Query accesion
-{ "qaccver", "qaccver", NONE },		// 3 means Query accesion.version
-{ "qlen", "Query length", NONE },			// 4 means Query sequence length
-{ "sseqid",	"Subject ID", NONE },	// 5 means Subject Seq - id
-{ "sallseqid", "Subject IDs", NONE },	// 6 means All subject Seq - id(s), separated by a ';'
-{ "sgi", "sgi", NONE },			// 7 means Subject GI
-{ "sallgi", "sallgi", NONE },		// 8 means All subject GIs
-{ "sacc", "sacc", NONE },			// 9 means Subject accession
-{ "saccver", "saccver", NONE },		// 10 means Subject accession.version
-{ "sallacc", "sallacc", NONE },		// 11 means All subject accessions
-{ "slen", "Subject length", NONE },			// 12 means Subject sequence length
-{ "qstart", "Start of alignment in query", QUERY_START },		// 13 means Start of alignment in query
-{ "qend", "End of alignment in query", QUERY_END },			// 14 means End of alignment in query
-{ "sstart", "Start of alignment in subject", TARGET_START },		// 15 means Start of alignment in subject
-{ "send", "End of alignment in subject", TARGET_END },			// 16 means End of alignment in subject
-{ "qseq", "Aligned part of query sequence", QUERY_COORDS },			// 17 means Aligned part of query sequence
-{ "sseq", "Aligned part of subject sequence", TRANSCRIPT },			// 18 means Aligned part of subject sequence
-{ "evalue", "Expected value", NONE },		// 19 means Expect value
-{ "bitscore", "Bit score", NONE },		// 20 means Bit score
-{ "score", "Raw score", NONE },		// 21 means Raw score
-{ "length", "Alignment length", STATS },		// 22 means Alignment length
-{ "pident", "Percentage of identical matches", STATS },		// 23 means Percentage of identical matches
-{ "nident", "Number of identical matches", STATS },		// 24 means Number of identical matches
-{ "mismatch", "Number of mismatches", STATS },		// 25 means Number of mismatches
-{ "positive", "Number of positive-scoring matches", STATS },		// 26 means Number of positive - scoring matches
-{ "gapopen", "Number of gap openings", STATS },		// 27 means Number of gap openings
-{ "gaps", "Total number of gaps", STATS },			// 28 means Total number of gaps
-{ "ppos", "Percentage of positive-scoring matches", STATS },			// 29 means Percentage of positive - scoring matches
-{ "frames", "frames", NONE },		// 30 means Query and subject frames separated by a '/'
-{ "qframe", "Query frame", NONE },		// 31 means Query frame
-{ "sframe", "sframe", NONE },		// 32 means Subject frame
-{ "btop", "Blast traceback operations", TRANSCRIPT },			// 33 means Blast traceback operations(BTOP)
-{ "staxids", "Subject Taxonomy IDs", NONE },		// 34 means unique Subject Taxonomy ID(s), separated by a ';'	(in numerical order)
-{ "sscinames", "Subject scientific names", NONE },	// 35 means unique Subject Scientific Name(s), separated by a ';'
-{ "scomnames", "scomnames", NONE },	// 36 means unique Subject Common Name(s), separated by a ';'
-{ "sblastnames", "sblastnames", NONE },	// 37 means unique Subject Blast Name(s), separated by a ';'	(in alphabetical order)
-{ "sskingdoms",	"Subject super kingdoms", NONE }, // 38 means unique Subject Super Kingdom(s), separated by a ';'	(in alphabetical order)
-{ "stitle", "Subject title", NONE },		// 39 means Subject Title
-{ "salltitles", "Subject titles", NONE },	// 40 means All Subject Title(s), separated by a '<>'
-{ "sstrand", "sstrand", NONE },		// 41 means Subject Strand
-{ "qcovs", "qcovs", NONE },		// 42 means Query Coverage Per Subject
-{ "qcovhsp", "Query coverage per HSP", QUERY_COORDS },		// 43 means Query Coverage Per HSP
-{ "qcovus", "qcovus", NONE },		// 44 means Query Coverage Per Unique Subject(blastn only)
-{ "qtitle", "Query title", NONE },		// 45 means Query title
-{ "swdiff", "swdiff", NONE },		// 46
-{ "time", "time", NONE }, 		// 47
-{ "full_sseq", "Subject sequence", NONE },	// 48
-{ "qqual", "Aligned part of query quality values", QUERY_COORDS },		// 49
-{ "qnum", "qnum", NONE },			// 50
-{ "snum", "snum", NONE },			// 51
-{ "scovhsp", "Subject coverage per HSP", TARGET_COORDS },		// 52
-{ "full_qqual", "Query quality values", NONE },	// 53
-{ "full_qseq", "Query sequence", NONE },	// 54
-{ "qseq_gapped", "Query sequence with gaps", TRANSCRIPT },  // 55
-{ "sseq_gapped", "Subject sequence with gaps", TRANSCRIPT },	// 56
-{ "qstrand", "Query strand", NONE },		// 57
-{ "cigar", "CIGAR", TRANSCRIPT },		// 58
-{ "skingdoms", "Subject kingdoms", NONE },	// 59
-{ "sphylums", "Subject phylums", NONE },		// 60
-{ "ungapped_score", "Ungapped score", NONE },	// 61
-{ "full_qseq_mate", "Query sequence of the mate", NONE }, // 62
-{ "qseq_translated", "Aligned part of query sequence (translated)", TRANSCRIPT } // 63 needs transcript only in frameshift mode
+{ "qseqid", "Query ID", NONE, Flags::NONE },		// 0 means Query Seq - id
+{ "qgi", "qgi", NONE, Flags::NONE },			// 1 means Query GI
+{ "qacc", "qacc", NONE, Flags::NONE },			// 2 means Query accesion
+{ "qaccver", "qaccver", NONE, Flags::NONE },		// 3 means Query accesion.version
+{ "qlen", "Query length", NONE, Flags::NONE },			// 4 means Query sequence length
+{ "sseqid",	"Subject ID", NONE, Flags::NONE },	// 5 means Subject Seq - id
+{ "sallseqid", "Subject IDs", NONE, Flags::FULL_SEQIDS },	// 6 means All subject Seq - id(s), separated by a ';'
+{ "sgi", "sgi", NONE, Flags::NONE },			// 7 means Subject GI
+{ "sallgi", "sallgi", NONE, Flags::FULL_SEQIDS },		// 8 means All subject GIs
+{ "sacc", "sacc", NONE, Flags::NONE },			// 9 means Subject accession
+{ "saccver", "saccver", NONE, Flags::NONE },		// 10 means Subject accession.version
+{ "sallacc", "sallacc", NONE, Flags::FULL_SEQIDS },		// 11 means All subject accessions
+{ "slen", "Subject length", NONE, Flags::NONE },			// 12 means Subject sequence length
+{ "qstart", "Start of alignment in query", QUERY_START, Flags::NONE },		// 13 means Start of alignment in query
+{ "qend", "End of alignment in query", QUERY_END, Flags::NONE },			// 14 means End of alignment in query
+{ "sstart", "Start of alignment in subject", TARGET_START, Flags::NONE },		// 15 means Start of alignment in subject
+{ "send", "End of alignment in subject", TARGET_END, Flags::NONE },			// 16 means End of alignment in subject
+{ "qseq", "Aligned part of query sequence", QUERY_COORDS, Flags::NONE },			// 17 means Aligned part of query sequence
+{ "sseq", "Aligned part of subject sequence", TRANSCRIPT, Flags::NONE },			// 18 means Aligned part of subject sequence
+{ "evalue", "Expected value", NONE, Flags::NONE },		// 19 means Expect value
+{ "bitscore", "Bit score", NONE, Flags::NONE },		// 20 means Bit score
+{ "score", "Raw score", NONE, Flags::NONE },		// 21 means Raw score
+{ "length", "Alignment length", STATS, Flags::NONE },		// 22 means Alignment length
+{ "pident", "Percentage of identical matches", STATS, Flags::NONE },		// 23 means Percentage of identical matches
+{ "nident", "Number of identical matches", STATS, Flags::NONE },		// 24 means Number of identical matches
+{ "mismatch", "Number of mismatches", STATS, Flags::NONE },		// 25 means Number of mismatches
+{ "positive", "Number of positive-scoring matches", STATS, Flags::NONE },		// 26 means Number of positive - scoring matches
+{ "gapopen", "Number of gap openings", STATS, Flags::NONE },		// 27 means Number of gap openings
+{ "gaps", "Total number of gaps", STATS, Flags::NONE },			// 28 means Total number of gaps
+{ "ppos", "Percentage of positive-scoring matches", STATS, Flags::NONE },			// 29 means Percentage of positive - scoring matches
+{ "frames", "frames", NONE, Flags::NONE },		// 30 means Query and subject frames separated by a '/'
+{ "qframe", "Query frame", NONE, Flags::NONE },		// 31 means Query frame
+{ "sframe", "sframe", NONE, Flags::NONE },		// 32 means Subject frame
+{ "btop", "Blast traceback operations", TRANSCRIPT, Flags::NONE },			// 33 means Blast traceback operations(BTOP)
+{ "staxids", "Subject Taxonomy IDs", NONE, Flags::NONE },		// 34 means unique Subject Taxonomy ID(s), separated by a ';'	(in numerical order)
+{ "sscinames", "Subject scientific names", NONE, Flags::NONE },	// 35 means unique Subject Scientific Name(s), separated by a ';'
+{ "scomnames", "scomnames", NONE, Flags::NONE },	// 36 means unique Subject Common Name(s), separated by a ';'
+{ "sblastnames", "sblastnames", NONE, Flags::NONE },	// 37 means unique Subject Blast Name(s), separated by a ';'	(in alphabetical order)
+{ "sskingdoms",	"Subject super kingdoms", NONE, Flags::NONE }, // 38 means unique Subject Super Kingdom(s), separated by a ';'	(in alphabetical order)
+{ "stitle", "Subject title", NONE, Flags::FULL_SEQIDS },		// 39 means Subject Title
+{ "salltitles", "Subject titles", NONE, Flags::FULL_SEQIDS },	// 40 means All Subject Title(s), separated by a '<>'
+{ "sstrand", "sstrand", NONE, Flags::NONE },		// 41 means Subject Strand
+{ "qcovs", "qcovs", NONE, Flags::NONE },		// 42 means Query Coverage Per Subject
+{ "qcovhsp", "Query coverage per HSP", QUERY_COORDS, Flags::NONE },		// 43 means Query Coverage Per HSP
+{ "qcovus", "qcovus", NONE, Flags::NONE },		// 44 means Query Coverage Per Unique Subject(blastn only)
+{ "qtitle", "Query title", NONE, Flags::NONE },		// 45 means Query title
+{ "swdiff", "swdiff", NONE, Flags::NONE },		// 46
+{ "time", "time", NONE, Flags::NONE }, 		// 47
+{ "full_sseq", "Subject sequence", NONE, Flags::NONE },	// 48
+{ "qqual", "Aligned part of query quality values", QUERY_COORDS, Flags::NONE },		// 49
+{ "qnum", "qnum", NONE, Flags::NONE },			// 50
+{ "snum", "snum", NONE, Flags::NONE },			// 51
+{ "scovhsp", "Subject coverage per HSP", TARGET_COORDS, Flags::NONE },		// 52
+{ "full_qqual", "Query quality values", NONE, Flags::NONE },	// 53
+{ "full_qseq", "Query sequence", NONE, Flags::NONE },	// 54
+{ "qseq_gapped", "Query sequence with gaps", TRANSCRIPT, Flags::NONE },  // 55
+{ "sseq_gapped", "Subject sequence with gaps", TRANSCRIPT, Flags::NONE },	// 56
+{ "qstrand", "Query strand", NONE, Flags::NONE },		// 57
+{ "cigar", "CIGAR", TRANSCRIPT, Flags::NONE },		// 58
+{ "skingdoms", "Subject kingdoms", NONE, Flags::NONE },	// 59
+{ "sphylums", "Subject phylums", NONE, Flags::NONE },		// 60
+{ "ungapped_score", "Ungapped score", NONE, Flags::NONE },	// 61
+{ "full_qseq_mate", "Query sequence of the mate", NONE, Flags::NONE }, // 62
+{ "qseq_translated", "Aligned part of query sequence (translated)", TRANSCRIPT, Flags::NONE } // 63 needs transcript only in frameshift mode
 };
 
 Blast_tab_format::Blast_tab_format() :
-	Output_format(blast_tab)
+	Output_format(blast_tab, NONE, Flags::NONE)
 {
 	static const unsigned stdf[] = { 0, 5, 23, 22, 25, 27, 13, 14, 15, 16, 19, 20 };
 	const vector<string> &f = config.output_format;
-	hsp_values = 0;
 	if (f.size() <= 1) {
 		fields = vector<unsigned>(stdf, stdf + 12);
 		if (config.frame_shift == 0)
@@ -141,6 +140,7 @@ Blast_tab_format::Blast_tab_format() :
 		if ((j == 62 || j == 63) && !align_mode.query_translated)
 			throw std::runtime_error("Output field only supported for translated search.");
 		hsp_values |= field_def[j].hsp_values;
+		flags |= field_def[j].flags;
 	}
 	if (config.frame_shift != 0 && ((hsp_values & STATS_OR_COORDS) || config.query_range_culling))
 		hsp_values = TRANSCRIPT;

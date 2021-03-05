@@ -571,11 +571,11 @@ void run(const Options &options)
 	else
 		Config::set_option(config.chunk_size, 2.0);
 
-	task_timer timer("Opening the database", 1);
-	SequenceFile* db_file = options.db ? options.db : SequenceFile::auto_create();
-	timer.finish();
-
 	init_output();
+
+	task_timer timer("Opening the database", 1);
+	SequenceFile* db_file = options.db ? options.db : SequenceFile::auto_create(flag_get(output_format->flags, Output::Flags::FULL_SEQIDS) ? SequenceFile::Flags::FULL_SEQIDS : SequenceFile::Flags::NONE);
+	timer.finish();
 
 	message_stream << "Reference = " << config.database << endl;
 	message_stream << "Sequences = " << db_file->sequence_count() << endl;
@@ -589,9 +589,9 @@ void run(const Options &options)
 	const int db_flags = db_file->metadata();
 
 	int flags = 0;
-	if (output_format->needs_taxon_id_lists)
+	if (output_format->needs_taxon_id_lists || taxon_filter || taxon_culling)
 		flags |= SequenceFile::TAXON_MAPPING;
-	if (output_format->needs_taxon_nodes)
+	if (output_format->needs_taxon_nodes || taxon_filter || taxon_culling)
 		flags |= SequenceFile::TAXON_NODES;
 	if (output_format->needs_taxon_scientific_names)
 		flags |= SequenceFile::TAXON_SCIENTIFIC_NAMES;

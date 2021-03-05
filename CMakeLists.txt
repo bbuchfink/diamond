@@ -82,7 +82,7 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
 endif()
 
 if (${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
-  add_definitions(-D_CRT_SECURE_NO_WARNINGS -D_ITERATOR_DEBUG_LEVEL=0)
+  add_definitions(-D_CRT_SECURE_NO_WARNINGS) # -D_ITERATOR_DEBUG_LEVEL=0)
 else()
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=gnu++11 -Wall -Wextra -Wno-implicit-fallthrough -Wreturn-type -Wno-unused -Wno-unused-parameter -Wno-unused-variable -Wno-uninitialized -Wno-deprecated-copy -Wno-unknown-warning-option")
   # -fsanitize=address -fno-omit-frame-pointer
@@ -308,15 +308,15 @@ if(BLAST_INCLUDE_DIR)
   find_blast_lib(XNCBI_LIBRARY xncbi)
   find_blast_lib(XUTIL_LIBRARY xutil)
   find_blast_lib(LMDB_LIBRARY lmdb)
-  target_link_libraries(diamond "${SEQDB_LIBRARY}" "${BLASTDB_LIBRARY}" "${BLASTDB_FORMAT_LIBRARY}" "${GENERAL_LIBRARY}"
-    "${XOBJUTIL_LIBRARY}" "${XOBJMGR_LIBRARY}" "${GENOME_COLLECTION_LIBRARY}" "${SEQ_LIBRARY}" "${SEQCODE_LIBRARY}"
-    "${SEQSET_LIBRARY}" "${SEQUTIL_LIBRARY}" "${PUB_LIBRARY}" "${MEDLINE_LIBRARY}" "${BIBLIO_LIBRARY}" "${SUBMIT_LIBRARY}"
-    "${XSER_LIBRARY}" "${XNCBI_LIBRARY}" "${XUTIL_LIBRARY}" "${LMDB_LIBRARY}")
+  target_link_libraries(diamond ${SEQDB_LIBRARY} ${BLASTDB_LIBRARY} ${BLASTDB_FORMAT_LIBRARY} ${GENERAL_LIBRARY}
+    ${XOBJUTIL_LIBRARY} ${XOBJMGR_LIBRARY} ${GENOME_COLLECTION_LIBRARY} ${SEQ_LIBRARY} ${SEQCODE_LIBRARY}
+    ${SEQSET_LIBRARY} ${SEQUTIL_LIBRARY} ${PUB_LIBRARY} ${MEDLINE_LIBRARY} ${BIBLIO_LIBRARY} ${SUBMIT_LIBRARY}
+    ${XSER_LIBRARY} ${XNCBI_LIBRARY} ${XUTIL_LIBRARY} ${LMDB_LIBRARY})
   add_definitions(-DWITH_BLASTDB)
   set_target_properties(diamond PROPERTIES INSTALL_RPATH_USE_LINK_PATH TRUE)
   if (${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
     find_library(DBGHELP_LIBRARY Dbghelp)
-    target_link_libraries(diamond "${DBGHELP_LIBRARY}")
+    target_link_libraries(diamond ${DBGHELP_LIBRARY})
   else()
     if(CMAKE_COMPILER_IS_GNUCC AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 4)
       set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=gnu++14")

@@ -188,10 +188,16 @@ void SequenceFile::get_seq()
 	out.close();
 }
 
-SequenceFile* SequenceFile::auto_create(int flags) {
+SequenceFile::~SequenceFile()
+{
+}
+
+SequenceFile* SequenceFile::auto_create(Flags flags) {
 	if (exists(config.database + ".pin") || exists(config.database + ".pal")) {
 #ifdef WITH_BLASTDB
-		return new BlastDB(config.database);
+		if (config.multiprocessing)
+			throw std::runtime_error("--multiprocessing is not compatible with BLAST databases.");
+		return new BlastDB(config.database, flags);
 #else
 		throw std::runtime_error("This executable was not compiled with support for BLAST databases.");
 #endif
@@ -200,7 +206,7 @@ SequenceFile* SequenceFile::auto_create(int flags) {
 	if (DatabaseFile::is_diamond_db(config.database)) {
 		return new DatabaseFile(config.database, flags);
 	}
-	else if (!(flags & NO_FASTA)) {
+	else if (!flag_get(flags, Flags::NO_FASTA)) {
 		message_stream << "Database file is not a DIAMOND or BLAST database, treating as FASTA." << std::endl;
 		config.input_ref_file = { config.database };
 		TempFile* db;
@@ -224,7 +230,7 @@ SequenceFile::SequenceFile(Type type):
 void db_info() {
 	if (config.database.empty())
 		throw std::runtime_error("Missing option for database file: --db/-d.");
-	SequenceFile* db = SequenceFile::auto_create(SequenceFile::NO_FASTA | SequenceFile::NO_COMPATIBILITY_CHECK);
+	SequenceFile* db = SequenceFile::auto_create(SequenceFile::Flags::NO_FASTA | SequenceFile::Flags::NO_COMPATIBILITY_CHECK);
 	cout << setw(25) << "Database type  " << to_string(db->type()) << endl;
 	cout << setw(25) << "Database format version  " << db->db_version() << endl;
 	if(db->type() == SequenceFile::Type::DMND)

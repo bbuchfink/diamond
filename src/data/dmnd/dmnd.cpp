@@ -98,10 +98,10 @@ void DatabaseFile::putback_seqinfo() {
 	pos_array_offset -= SeqInfo::SIZE;
 }
 
-void DatabaseFile::init(int flags)
+void DatabaseFile::init(Flags flags)
 {
 	read_header(*this, ref_header);
-	if (flags & NO_COMPATIBILITY_CHECK)
+	if (flag_get(flags, Flags::NO_COMPATIBILITY_CHECK))
 		return;
 	if (ref_header.build < min_build_required || ref_header.db_version < MIN_DB_VERSION)
 		throw std::runtime_error("Database was built with an older version of Diamond and is incompatible.");
@@ -113,7 +113,7 @@ void DatabaseFile::init(int flags)
 	pos_array_offset = ref_header.pos_array_offset;
 }
 
-DatabaseFile::DatabaseFile(const string &input_file, int flags):
+DatabaseFile::DatabaseFile(const string &input_file, Flags flags):
 	SequenceFile(SequenceFile::Type::DMND),
 	InputFile(auto_append_extension_if_exists(input_file, FILE_EXTENSION), InputFile::BUFFERED),
 	temporary(false)
@@ -506,6 +506,10 @@ TaxonomyNodes* DatabaseFile::taxon_nodes() {
 
 int DatabaseFile::build_version() {
 	return ref_header.build;
+}
+
+DatabaseFile::~DatabaseFile()
+{
 }
 
 std::vector<string>* DatabaseFile::taxon_scientific_names() {
