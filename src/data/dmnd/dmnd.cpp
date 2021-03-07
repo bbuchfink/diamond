@@ -512,6 +512,14 @@ DatabaseFile::~DatabaseFile()
 {
 }
 
+void DatabaseFile::close_weakly()
+{
+}
+
+void DatabaseFile::reopen()
+{
+}
+
 std::vector<string>* DatabaseFile::taxon_scientific_names() {
 	vector<string>* r = new vector<string>;
 	seek(header2.taxon_names_offset);

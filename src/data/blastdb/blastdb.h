@@ -1,5 +1,6 @@
 #pragma once
 #include <objtools/blast/seqdb_reader/seqdbexpert.hpp>
+#include <memory>
 #include "../sequence_file.h"
 
 struct BlastDB : public SequenceFile {
@@ -33,13 +34,16 @@ struct BlastDB : public SequenceFile {
 	virtual size_t get_n_partition_chunks() override;
 	virtual void set_seqinfo_ptr(size_t i) override;
 	virtual void close() override;
+	virtual void close_weakly() override;
+	virtual void reopen() override;
 	virtual ~BlastDB();
 	
 private:
 
-	ncbi::CSeqDBExpert db_;
+	const std::string file_name_;
+	std::unique_ptr<ncbi::CSeqDBExpert> db_;
 	int oid_, oid_seqdata_;
-	bool long_seqids_;
-	Flags flags_;
+	const bool long_seqids_;
+	const Flags flags_;
 
 };

@@ -134,6 +134,8 @@ struct DatabaseFile : public SequenceFile, public InputFile
 	virtual std::vector<string>* taxon_scientific_names() override;
 	virtual int build_version() override;
 	virtual ~DatabaseFile();
+	virtual void close_weakly() override;
+	virtual void reopen() override;
 
 	static const char* FILE_EXTENSION;
 

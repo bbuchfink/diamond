@@ -577,9 +577,10 @@ void run(const Options &options)
 	SequenceFile* db_file = options.db ? options.db : SequenceFile::auto_create(flag_get(output_format->flags, Output::Flags::FULL_SEQIDS) ? SequenceFile::Flags::FULL_SEQIDS : SequenceFile::Flags::NONE);
 	timer.finish();
 
-	message_stream << "Reference = " << config.database << endl;
-	message_stream << "Sequences = " << db_file->sequence_count() << endl;
-	message_stream << "Letters = " << db_file->letters() << endl;
+	message_stream << "Database: " << config.database << ' ';
+	message_stream << "(type: " << to_string(db_file->type()) << ", ";
+	message_stream << "sequences: " << db_file->sequence_count() << ", ";
+	message_stream << "letters: " << db_file->letters() << ')' << endl;
 	message_stream << "Block size = " << (size_t)(config.chunk_size * 1e9) << endl;
 	score_matrix.set_db_letters(config.db_size ? config.db_size : db_file->letters());
 

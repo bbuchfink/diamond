@@ -39,6 +39,7 @@ const EMap<SequenceFile::Type> EnumTraits<SequenceFile::Type>::to_string = { {Se
 bool SequenceFile::load_seqs(vector<uint32_t>* block2db_id, const size_t max_letters, SequenceSet** dst_seq, String_set<char, 0>** dst_id, bool load_ids, const BitVector* filter, const bool fetch_seqs, const Chunk& chunk)
 {
 	task_timer timer("Loading reference sequences");
+	reopen();
 
 	if (max_letters > 0)
 		init_seqinfo_access();
@@ -132,6 +133,7 @@ bool SequenceFile::load_seqs(vector<uint32_t>* block2db_id, const size_t max_let
 	else
 		blocked_processing = seqs_processed < sequence_count();
 
+	close_weakly();
 	return true;
 }
 

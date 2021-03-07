@@ -97,6 +97,8 @@ struct SequenceFile {
 	virtual size_t get_n_partition_chunks() = 0;
 	virtual void set_seqinfo_ptr(size_t i) = 0;
 	virtual void close() = 0;
+	virtual void close_weakly() = 0;
+	virtual void reopen() = 0;
 	virtual ~SequenceFile();
 
 	Type type() const { return type_; }

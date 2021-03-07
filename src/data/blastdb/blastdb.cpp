@@ -1,3 +1,23 @@
+/****
+DIAMOND protein aligner
+Copyright (C) 2021 Max Planck Society for the Advancement of Science e.V.
+
+Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+****/
+
 #include <objmgr/object_manager.hpp>
 #include <objmgr/scope.hpp>
 #include <objmgr/util/create_defline.hpp>
@@ -45,8 +65,9 @@ static void load_seq_data(CBioseq& bioseq, CBioseq_Handle bioseq_handle, _it it)
 }
 
 BlastDB::BlastDB(const std::string& file_name, Flags flags) :
+	file_name_(file_name),
 	SequenceFile(Type::BLAST),
-	db_(file_name, ncbi::CSeqDB::eProtein),
+	db_(new CSeqDBExpert(file_name, CSeqDB::eProtein)),
 	oid_(0),
 	oid_seqdata_(0),
 	long_seqids_(false),
@@ -73,13 +94,13 @@ size_t BlastDB::tell_seq() const
 
 SeqInfo BlastDB::read_seqinfo()
 {
-	if (oid_ >= db_.GetNumSeqs()) {
+	if (oid_ >= db_->GetNumSeqs()) {
 		++oid_;
 		return SeqInfo(0, 0);
 	}
 	const char* buf;
-	const int l = db_.GetSequence(oid_, &buf);
-	db_.RetSequence(&buf);
+	const int l = db_->GetSequence(oid_, &buf);
+	db_->RetSequence(&buf);
 	if (l == 0)
 		throw std::runtime_error("Database with sequence length 0 is not supported");
 	return SeqInfo(oid_++, l);
@@ -93,9 +114,9 @@ void BlastDB::putback_seqinfo()
 size_t BlastDB::id_len(const SeqInfo& seq_info, const SeqInfo& seq_info_next)
 {
 	if(flag_get(flags_, Flags::FULL_SEQIDS))
-		return full_id(*db_.GetBioseq(seq_info.pos), nullptr, long_seqids_).length();
+		return full_id(*db_->GetBioseq(seq_info.pos), nullptr, long_seqids_).length();
 	else {
-		list<CRef<CSeq_id>> ids = db_.GetSeqIDs(oid_seqdata_);
+		list<CRef<CSeq_id>> ids = db_->GetSeqIDs(oid_seqdata_);
 		return ids.front()->GetSeqIdString().length();
 	}
 }
@@ -110,14 +131,14 @@ void BlastDB::read_seq_data(Letter* dst, size_t len)
 	*(dst - 1) = Sequence::DELIMITER;
 	*(dst + len) = Sequence::DELIMITER;
 	const char* buf;
-	const int db_len = db_.GetSequence(oid_seqdata_, &buf);
+	const int db_len = db_->GetSequence(oid_seqdata_, &buf);
 	if (size_t(db_len) != len)
 		throw std::runtime_error("Incorrect length");
 	
 	for (int i = 0; i < db_len; ++i) {
 		const Letter l = (int)buf[i];
 		if (l >= sizeof(NCBI_TO_STD) || NCBI_TO_STD[l] == -1) {
-			list<CRef<CSeq_id>> ids = db_.GetSeqIDs(oid_seqdata_);
+			list<CRef<CSeq_id>> ids = db_->GetSeqIDs(oid_seqdata_);
 			throw std::runtime_error("Unrecognized sequence character in BLAST database ("
 				+ std::to_string(l)
 				+ ", id=" + ids.front()->GetSeqIdString()
@@ -125,17 +146,17 @@ void BlastDB::read_seq_data(Letter* dst, size_t len)
 		}
 		*(dst++) = NCBI_TO_STD[l];
 	}
-	db_.RetSequence(&buf);
+	db_->RetSequence(&buf);
 }
 
 void BlastDB::read_id_data(char* dst, size_t len)
 {
 	if (flag_get(flags_, Flags::FULL_SEQIDS)) {
-		const string id = full_id(*db_.GetBioseq(oid_seqdata_), nullptr, long_seqids_);
+		const string id = full_id(*db_->GetBioseq(oid_seqdata_), nullptr, long_seqids_);
 		std::copy(id.begin(), id.begin() + len, dst);
 	}
 	else {
-		list<CRef<CSeq_id>> ids = db_.GetSeqIDs(oid_seqdata_);
+		list<CRef<CSeq_id>> ids = db_->GetSeqIDs(oid_seqdata_);
 		const string id = ids.front()->GetSeqIdString();
 		ids.front()->FastaAAScore();
 		std::copy(id.begin(), id.end(), dst);
@@ -151,17 +172,17 @@ void BlastDB::skip_id_data()
 
 size_t BlastDB::sequence_count() const
 {
-	return db_.GetNumSeqs();
+	return db_->GetNumSeqs();
 }
 
 size_t BlastDB::letters() const
 {
-	return db_.GetTotalLength();
+	return db_->GetTotalLength();
 }
 
 int BlastDB::db_version() const
 {
-	return (int)db_.GetBlastDbVersion();
+	return (int)db_->GetBlastDbVersion();
 }
 
 int BlastDB::program_build_version() const
@@ -172,7 +193,7 @@ int BlastDB::program_build_version() const
 void BlastDB::read_seq(std::vector<Letter>& seq, std::string& id)
 {
 	id.clear();
-	CRef<CBioseq> bioseq = db_.GetBioseq(oid_);
+	CRef<CBioseq> bioseq = db_->GetBioseq(oid_);
 	CScope scope(*CObjectManager::GetInstance());
 	CBioseq_Handle bioseq_handle = scope.AddBioseq(*bioseq);
 
@@ -235,6 +256,17 @@ void BlastDB::set_seqinfo_ptr(size_t i)
 
 void BlastDB::close()
 {
+}
+
+void BlastDB::close_weakly()
+{
+	db_.reset();
+}
+
+void BlastDB::reopen()
+{
+	if(db_.get() == nullptr)
+		db_.reset(new CSeqDBExpert(file_name_, CSeqDB::eProtein));
 }
 
 BlastDB::~BlastDB()
