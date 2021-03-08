@@ -160,23 +160,28 @@ public:
 	typedef uint8_t fp;
 
 	PHash_set() :
-		size_(0)
+		size_(0),
+		table(nullptr),
+		destroy_(true)
 	{}
 
 	PHash_set(size_t size) :
 		table(new fp[size]),
-		size_(size)
+		size_(size),
+		destroy_(true)
 	{
 		memset(table, 0, size_ * sizeof(fp));
 	}
 
 	PHash_set(fp* data, size_t size) :
 		table(data),
-		size_(size)
+		size_(size),
+		destroy_(false)
 	{}
 
 	~PHash_set() {
-		delete[] table;
+		if(destroy_)
+			delete[] table;
 	}
 
 	bool contains(uint64_t key) const
@@ -243,6 +248,8 @@ public:
 	size_t size_;
 
 private:
+
+	bool destroy_;
 
 	static fp finger_print(uint64_t hash)
 	{
