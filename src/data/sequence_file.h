@@ -26,6 +26,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "taxon_list.h"
 #include "taxonomy_nodes.h"
 #include "../util/enum.h"
+#include "../util/data_structures/bit_vector.h"
 
 struct Chunk
 {
@@ -99,6 +100,8 @@ struct SequenceFile {
 	virtual void close() = 0;
 	virtual void close_weakly() = 0;
 	virtual void reopen() = 0;
+	virtual BitVector filter_by_accession(const std::string& file_name) = 0;
+	virtual BitVector filter_by_taxonomy(const std::string& include, const std::string& exclude, const TaxonList& list, TaxonomyNodes& nodes) = 0;
 	virtual ~SequenceFile();
 
 	Type type() const { return type_; }

@@ -277,7 +277,7 @@ void run_query_chunk(SequenceFile &db_file,
 
 			P->log("SEARCH BEGIN "+std::to_string(query_chunk)+" "+std::to_string(chunk.i));
 
-			db_file.load_seqs(&block_to_database_id, (size_t)(0), &ref_seqs::data_, &ref_ids::data_, true, options.db_filter ? options.db_filter : metadata.taxon_filter, true, chunk);
+			db_file.load_seqs(&block_to_database_id, (size_t)(0), &ref_seqs::data_, &ref_ids::data_, true, options.db_filter ? options.db_filter : &metadata.taxon_filter, true, chunk);
 			run_ref_chunk(db_file, query_chunk, query_len_bounds, query_buffer, master_out, tmp_file, params, metadata);
 
 			ReferenceDictionary::get().save_block(query_chunk, chunk.i);
@@ -295,7 +295,7 @@ void run_query_chunk(SequenceFile &db_file,
 		}
 	} else {
 		for (current_ref_block = 0;
-			 db_file.load_seqs(&block_to_database_id, (size_t)(config.chunk_size*1e9), &ref_seqs::data_, &ref_ids::data_, true, options.db_filter ? options.db_filter : metadata.taxon_filter);
+			 db_file.load_seqs(&block_to_database_id, (size_t)(config.chunk_size*1e9), &ref_seqs::data_, &ref_ids::data_, true, options.db_filter ? options.db_filter : &metadata.taxon_filter);
 			 ++current_ref_block) {
 			run_ref_chunk(db_file, query_chunk, query_len_bounds, query_buffer, master_out, tmp_file, params, metadata);
 		}
@@ -628,7 +628,7 @@ void run(const Options &options)
 		metadata.taxon_nodes = db_file->taxon_nodes();
 		if (taxon_filter) {
 			timer.go("Building taxonomy filter");
-			metadata.taxon_filter = new TaxonomyFilter(config.taxonlist, config.taxon_exclude, *metadata.taxon_list, *metadata.taxon_nodes);
+			metadata.taxon_filter = db_file->filter_by_taxonomy(config.taxonlist, config.taxon_exclude, *metadata.taxon_list, *metadata.taxon_nodes);
 		}
 		timer.finish();
 	}
@@ -636,6 +636,11 @@ void run(const Options &options)
 		timer.go("Loading taxonomy names");
 		metadata.taxonomy_scientific_names = db_file->taxon_scientific_names();
 		timer.finish();
+	}
+
+	if (!config.seqidlist.empty()) {
+		metadata.taxon_filter = db_file->filter_by_accession(config.seqidlist);
+		message_stream << "Filtering database by accession list: " << config.seqidlist << endl;
 	}
 
 	master_thread(db_file, total, metadata, options);

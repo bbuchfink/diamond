@@ -30,23 +30,20 @@ struct Metadata
 	Metadata():
 		taxon_list(nullptr),
 		taxon_nodes(nullptr),
-		taxon_filter(nullptr),
 		taxonomy_scientific_names(nullptr)
 	{}
 	void free()
 	{
 		delete taxon_list;
 		delete taxon_nodes;
-		delete taxon_filter;
 		delete taxonomy_scientific_names;
 		taxon_list = nullptr;
 		taxon_nodes = nullptr;
-		taxon_filter = nullptr;
 		taxonomy_scientific_names = nullptr;
 	}
 	TaxonList *taxon_list;
 	TaxonomyNodes *taxon_nodes;
-	TaxonomyFilter *taxon_filter;
+	BitVector taxon_filter;
 	std::vector<std::string> *taxonomy_scientific_names;
 };
 

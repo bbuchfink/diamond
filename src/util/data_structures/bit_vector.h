@@ -60,6 +60,10 @@ struct BitVector {
 		return n;
 	}
 
+	bool empty() const {
+		return data_.empty();
+	}
+
 private:
 
 	std::vector<uint64_t> data_;

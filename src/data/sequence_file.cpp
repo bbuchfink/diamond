@@ -49,7 +49,6 @@ bool SequenceFile::load_seqs(vector<uint32_t>* block2db_id, const size_t max_let
 	size_t database_id = tell_seq();
 	size_t letters = 0, seqs = 0, id_letters = 0, seqs_processed = 0, filtered_seq_count = 0;
 	vector<uint64_t> filtered_pos;
-	vector<bool> filtered_seqs;
 	if (block2db_id) block2db_id->clear();
 
 	if (fetch_seqs) {
@@ -60,6 +59,7 @@ bool SequenceFile::load_seqs(vector<uint32_t>* block2db_id, const size_t max_let
 	SeqInfo r = read_seqinfo();
 	uint64_t start_offset = r.pos;
 	bool last = false;
+	const bool use_filter = filter && !filter->empty();
 
 	auto goon = [&]() {
 		if (max_letters > 0)
@@ -70,7 +70,7 @@ bool SequenceFile::load_seqs(vector<uint32_t>* block2db_id, const size_t max_let
 
 	while (goon()) {
 		SeqInfo r_next = read_seqinfo();
-		if (!filter || filter->get(database_id)) {
+		if (!use_filter || filter->get(database_id)) {
 			letters += r.seq_len;
 			if (fetch_seqs) {
 				(*dst_seq)->reserve(r.seq_len);
@@ -81,16 +81,13 @@ bool SequenceFile::load_seqs(vector<uint32_t>* block2db_id, const size_t max_let
 				(*dst_id)->reserve(id_len);
 			++filtered_seq_count;
 			if (block2db_id) block2db_id->push_back((unsigned)database_id);
-			if (filter) {
+			if (use_filter) {
 				filtered_pos.push_back(last ? 0 : r.pos);
-				filtered_seqs.push_back(true);
 			}
 			last = true;
 		}
 		else {
 			last = false;
-			if (filter)
-				filtered_seqs.push_back(false);
 		}
 		++database_id;
 		++seqs_processed;
@@ -116,7 +113,7 @@ bool SequenceFile::load_seqs(vector<uint32_t>* block2db_id, const size_t max_let
 		seek_offset(start_offset);
 
 		for (size_t i = 0; i < filtered_seq_count; ++i) {
-			if (filter && filtered_pos[i]) seek_offset(filtered_pos[i]);
+			if (use_filter && filtered_pos[i]) seek_offset(filtered_pos[i]);
 			read_seq_data((*dst_seq)->ptr(i), (*dst_seq)->length(i));
 			if (load_ids)
 				read_id_data((*dst_id)->ptr(i), (*dst_id)->length(i));

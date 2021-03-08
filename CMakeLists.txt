@@ -192,7 +192,6 @@ set(OBJECTS
   src/util/system/getRSS.cpp
   src/util/math/sparse_matrix.cpp
   src/lib/tantan/LambdaCalculator.cc
-  src/data/taxonomy_filter.cpp
   src/util/algo/upgma.cpp
   src/util/algo/upgma_mc.cpp
   src/util/algo/edge_vec.cpp

@@ -125,8 +125,3 @@ struct Taxonomy
 };
 
 extern Taxonomy taxonomy;
-
-struct TaxonomyFilter : public BitVector
-{
-	TaxonomyFilter(const std::string &include, const std::string &exclude, const TaxonList &list, TaxonomyNodes &nodes);
-};

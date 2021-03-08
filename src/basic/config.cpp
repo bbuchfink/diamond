@@ -279,7 +279,8 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("sallseqid", 0, "include all subject ids in DAA file", sallseqid)
 		("no-self-hits", 0, "suppress reporting of identical self hits", no_self_hits)
 		("taxonlist", 0, "restrict search to list of taxon ids (comma-separated)", taxonlist)
-		("taxon-exclude", 0, "exclude list of taxon ids (comma-separated)", taxon_exclude);
+		("taxon-exclude", 0, "exclude list of taxon ids (comma-separated)", taxon_exclude)
+		("seqidlist", 0, "filter the database by list of accessions", seqidlist);
 
 	Options_group advanced("Advanced options");
 	advanced.add()

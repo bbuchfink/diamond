@@ -23,6 +23,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <objmgr/util/create_defline.hpp>
 #include <objtools/blast/blastdb_format/blastdb_dataextract.hpp>
 #include <corelib/ncbiutil.hpp>
+#include "../util/io/text_input_file.h"
 #include "blastdb.h"
 
 using std::cout;
@@ -30,7 +31,7 @@ using std::endl;
 using std::vector;
 using namespace ncbi;
 
-static string full_id(CBioseq& bioseq, CBioseq_Handle* bioseq_handle, bool long_ids) {
+static string full_id(CBioseq& bioseq, CBioseq_Handle* bioseq_handle, bool long_ids, bool ctrl_a) {
 	string id;
 	if (long_ids) {
 		CConstRef<CSeq_id> best_id = FindBestChoice(bioseq.GetId(), CSeq_id::FastaAARank);
@@ -39,7 +40,7 @@ static string full_id(CBioseq& bioseq, CBioseq_Handle* bioseq_handle, bool long_
 		id += gen.GenerateDefline(*bioseq_handle, 0);
 	}
 	else {
-		CBlastDeflineUtil::ProcessFastaDeflines(bioseq, id, false);
+		CBlastDeflineUtil::ProcessFastaDeflines(bioseq, id, ctrl_a);
 		id.erase(0, 1);
 		id.pop_back();
 	}
@@ -114,7 +115,7 @@ void BlastDB::putback_seqinfo()
 size_t BlastDB::id_len(const SeqInfo& seq_info, const SeqInfo& seq_info_next)
 {
 	if(flag_any(flags_, Flags::FULL_SEQIDS))
-		return full_id(*db_->GetBioseq(seq_info.pos), nullptr, long_seqids_).length();
+		return full_id(*db_->GetBioseq(seq_info.pos), nullptr, long_seqids_, true).length();
 	else {
 		list<CRef<CSeq_id>> ids = db_->GetSeqIDs(oid_seqdata_);
 		return ids.front()->GetSeqIdString().length();
@@ -152,7 +153,7 @@ void BlastDB::read_seq_data(Letter* dst, size_t len)
 void BlastDB::read_id_data(char* dst, size_t len)
 {
 	if (flag_any(flags_, Flags::FULL_SEQIDS)) {
-		const string id = full_id(*db_->GetBioseq(oid_seqdata_), nullptr, long_seqids_);
+		const string id = full_id(*db_->GetBioseq(oid_seqdata_), nullptr, long_seqids_, true);
 		std::copy(id.begin(), id.begin() + len, dst);
 	}
 	else {
@@ -197,7 +198,7 @@ void BlastDB::read_seq(std::vector<Letter>& seq, std::string& id)
 	CScope scope(*CObjectManager::GetInstance());
 	CBioseq_Handle bioseq_handle = scope.AddBioseq(*bioseq);
 
-	id = full_id(*bioseq, &bioseq_handle, long_seqids_);
+	id = full_id(*bioseq, &bioseq_handle, long_seqids_, false);
 
 	seq.clear();
 	load_seq_data(*bioseq, bioseq_handle, std::back_inserter(seq));
@@ -267,6 +268,38 @@ void BlastDB::reopen()
 {
 	if(db_.get() == nullptr)
 		db_.reset(new CSeqDBExpert(file_name_, CSeqDB::eProtein));
+}
+
+BitVector BlastDB::filter_by_accession(const std::string& file_name)
+{
+	BitVector v(sequence_count());
+	TextInputFile in(file_name);
+	vector<string> accs;
+	while (in.getline(), (!in.line.empty() || !in.eof())) {
+		accs.push_back(in.line);
+	}
+	in.close();
+
+	vector<CSeqDB::TOID> oids;
+	try {
+		db_->AccessionsToOids(accs, oids);
+	}
+	catch (CSeqDBException& e) {
+		throw std::runtime_error(e.GetMsg());
+	}
+
+	for (size_t i = 0; i < accs.size(); ++i) {
+		if (oids[i] < 0)
+			throw std::runtime_error("Accession not found in database: " + accs[i]);
+		v.set(oids[i]);
+	}
+
+	return v;
+}
+
+BitVector BlastDB::filter_by_taxonomy(const std::string& include, const std::string& exclude, const TaxonList& list, TaxonomyNodes& nodes)
+{
+	return BitVector();
 }
 
 BlastDB::~BlastDB()

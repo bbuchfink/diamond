@@ -1,4 +1,7 @@
 [2.0.8]
+- Added support for using BLAST database files.
+- Added the option `--seqidlist` to filter the database by sequence accession (only
+  supported for BLAST databases).
 - Fixed a bug that caused the `--dbsize` option not to function correctly.
 
 [2.0.7]

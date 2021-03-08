@@ -520,6 +520,29 @@ void DatabaseFile::reopen()
 {
 }
 
+BitVector DatabaseFile::filter_by_accession(const std::string& file_name)
+{
+	throw std::runtime_error("The .dmnd database format does not support filtering by accession.");
+	return BitVector();
+}
+
+BitVector DatabaseFile::filter_by_taxonomy(const std::string& include, const std::string& exclude, const TaxonList& list, TaxonomyNodes& nodes)
+{
+	BitVector v(list.size());
+	if (!include.empty() && !exclude.empty())
+		throw std::runtime_error("Options --taxonlist and --taxon-exclude are mutually exclusive.");
+	const bool e = !exclude.empty();
+	const std::set<unsigned> taxon_filter_list(parse_csv(e ? exclude : include));
+	if (taxon_filter_list.empty())
+		throw std::runtime_error("Option --taxonlist/--taxon-exclude used with empty list.");
+	if (taxon_filter_list.find(1) != taxon_filter_list.end() || taxon_filter_list.find(0) != taxon_filter_list.end())
+		throw std::runtime_error("Option --taxonlist/--taxon-exclude used with invalid argument (0 or 1).");
+	for (size_t i = 0; i < list.size(); ++i)
+		if (nodes.contained(list[i], taxon_filter_list) ^ e)
+			v.set(i);
+	return v;
+}
+
 std::vector<string>* DatabaseFile::taxon_scientific_names() {
 	vector<string>* r = new vector<string>;
 	seek(header2.taxon_names_offset);

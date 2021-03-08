@@ -136,6 +136,8 @@ struct DatabaseFile : public SequenceFile, public InputFile
 	virtual ~DatabaseFile();
 	virtual void close_weakly() override;
 	virtual void reopen() override;
+	virtual BitVector filter_by_accession(const std::string& file_name) override;
+	virtual BitVector filter_by_taxonomy(const std::string& include, const std::string& exclude, const TaxonList& list, TaxonomyNodes& nodes) override;
 
 	static const char* FILE_EXTENSION;
 
