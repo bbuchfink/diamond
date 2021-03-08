@@ -101,7 +101,7 @@ void DatabaseFile::putback_seqinfo() {
 void DatabaseFile::init(Flags flags)
 {
 	read_header(*this, ref_header);
-	if (flag_get(flags, Flags::NO_COMPATIBILITY_CHECK))
+	if (flag_any(flags, Flags::NO_COMPATIBILITY_CHECK))
 		return;
 	if (ref_header.build < min_build_required || ref_header.db_version < MIN_DB_VERSION)
 		throw std::runtime_error("Database was built with an older version of Diamond and is incompatible.");

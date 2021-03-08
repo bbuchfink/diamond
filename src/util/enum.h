@@ -44,8 +44,15 @@ inline T& operator&= (T& a, T b) { return reinterpret_cast<T&>(reinterpret_cast<
 inline T& operator^= (T& a, T b) { return reinterpret_cast<T&>(reinterpret_cast<std::underlying_type<T>::type&>(a) ^= static_cast<std::underlying_type<T>::type>(b)); }
 
 template<typename _t>
-bool flag_get(_t a, _t b) {
+bool flag_all(_t a, _t b) {
 	typedef typename std::underlying_type<_t>::type T;
 	T c = static_cast<T>(b);
-	return static_cast<T>(a) & c == c;
+	return (static_cast<T>(a) & c) == c;
+}
+
+template<typename _t>
+bool flag_any(_t a, _t b) {
+	typedef typename std::underlying_type<_t>::type T;
+	T c = static_cast<T>(b);
+	return (static_cast<T>(a) & c) != T(0);
 }

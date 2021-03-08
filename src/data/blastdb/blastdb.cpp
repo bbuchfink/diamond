@@ -113,7 +113,7 @@ void BlastDB::putback_seqinfo()
 
 size_t BlastDB::id_len(const SeqInfo& seq_info, const SeqInfo& seq_info_next)
 {
-	if(flag_get(flags_, Flags::FULL_SEQIDS))
+	if(flag_any(flags_, Flags::FULL_SEQIDS))
 		return full_id(*db_->GetBioseq(seq_info.pos), nullptr, long_seqids_).length();
 	else {
 		list<CRef<CSeq_id>> ids = db_->GetSeqIDs(oid_seqdata_);
@@ -151,7 +151,7 @@ void BlastDB::read_seq_data(Letter* dst, size_t len)
 
 void BlastDB::read_id_data(char* dst, size_t len)
 {
-	if (flag_get(flags_, Flags::FULL_SEQIDS)) {
+	if (flag_any(flags_, Flags::FULL_SEQIDS)) {
 		const string id = full_id(*db_->GetBioseq(oid_seqdata_), nullptr, long_seqids_);
 		std::copy(id.begin(), id.begin() + len, dst);
 	}

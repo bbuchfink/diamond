@@ -574,7 +574,7 @@ void run(const Options &options)
 	init_output();
 
 	task_timer timer("Opening the database", 1);
-	SequenceFile* db_file = options.db ? options.db : SequenceFile::auto_create(flag_get(output_format->flags, Output::Flags::FULL_SEQIDS) ? SequenceFile::Flags::FULL_SEQIDS : SequenceFile::Flags::NONE);
+	SequenceFile* db_file = options.db ? options.db : SequenceFile::auto_create(flag_any(output_format->flags, Output::Flags::FULL_SEQIDS) ? SequenceFile::Flags::FULL_SEQIDS : SequenceFile::Flags::NONE);
 	timer.finish();
 
 	message_stream << "Database: " << config.database << ' ';

@@ -208,7 +208,7 @@ SequenceFile* SequenceFile::auto_create(Flags flags) {
 	if (DatabaseFile::is_diamond_db(config.database)) {
 		return new DatabaseFile(config.database, flags);
 	}
-	else if (!flag_get(flags, Flags::NO_FASTA)) {
+	else if (!flag_any(flags, Flags::NO_FASTA)) {
 		message_stream << "Database file is not a DIAMOND or BLAST database, treating as FASTA." << std::endl;
 		config.input_ref_file = { config.database };
 		TempFile* db;
