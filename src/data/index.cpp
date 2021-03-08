@@ -26,7 +26,7 @@ void makeindex() {
 	HashedSeedSet index(*seqs);
 
 	timer.go("Writing to disk");
-	OutputFile out(config.database + '.' + "seed_idx");
+	OutputFile out(db.file_name() + ".seed_idx");
 	out.write(SEED_INDEX_MAGIC_NUMBER);
 	out.write(SEED_INDEX_VERSION);
 	out.write((uint32_t)shapes.count());

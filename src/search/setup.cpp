@@ -140,6 +140,9 @@ void setup_search()
 
 	print_warnings();
 
+	if (config.command != Config::blastp && config.command != Config::blastx)
+		return;
+
 	SeedComplexity::init(Reduction::reduction);
 	config.gapped_filter_diag_score = score_matrix.rawscore(config.gapped_filter_diag_bit_score);
 

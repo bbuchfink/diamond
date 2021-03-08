@@ -543,6 +543,11 @@ BitVector DatabaseFile::filter_by_taxonomy(const std::string& include, const std
 	return v;
 }
 
+std::string DatabaseFile::file_name()
+{
+	return InputFile::file_name;
+}
+
 std::vector<string>* DatabaseFile::taxon_scientific_names() {
 	vector<string>* r = new vector<string>;
 	seek(header2.taxon_names_offset);

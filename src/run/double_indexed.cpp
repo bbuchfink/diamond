@@ -124,7 +124,7 @@ void run_ref_chunk(SequenceFile &db_file,
 		HashedSeedSet* target_seeds = nullptr;
 		if (config.target_indexed) {
 			timer.go("Loading database seed index");
-			target_seeds = new HashedSeedSet(config.database + ".seed_idx");
+			target_seeds = new HashedSeedSet(db_file.file_name() + ".seed_idx");
 			timer.finish();
 		}
 

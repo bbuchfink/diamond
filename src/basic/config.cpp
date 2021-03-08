@@ -52,6 +52,8 @@ Config config;
 void print_warnings() {
 	if (config.sensitivity >= Sensitivity::VERY_SENSITIVE || config.verbosity == 0 || config.swipe_all)
 		return;
+	if (config.command != Config::blastp && config.command != Config::blastx)
+		return;
 	const double ram = total_ram();
 	unsigned b = 2, c = 4;
 	stringstream msg;

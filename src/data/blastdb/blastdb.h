@@ -38,6 +38,7 @@ struct BlastDB : public SequenceFile {
 	virtual void reopen() override;
 	virtual BitVector filter_by_accession(const std::string& file_name) override;
 	virtual BitVector filter_by_taxonomy(const std::string& include, const std::string& exclude, const TaxonList& list, TaxonomyNodes& nodes) override;
+	virtual std::string file_name() override;
 	virtual ~BlastDB();
 	
 private:

@@ -315,6 +315,11 @@ BitVector BlastDB::filter_by_taxonomy(const std::string& include, const std::str
 	return BitVector();
 }
 
+std::string BlastDB::file_name()
+{
+	return file_name_;
+}
+
 BlastDB::~BlastDB()
 {
 }
