@@ -65,6 +65,22 @@ static void load_seq_data(CBioseq& bioseq, CBioseq_Handle bioseq_handle, _it it)
 	}
 }
 
+string best_id(const list<CRef<CSeq_id>>& ids) {
+	if (ids.empty())
+		throw std::runtime_error("Unable to retrieve sequence id from BLAST database.");
+	auto min = ids.cbegin(), it = min;
+	int min_score = (*min)->TextScore(), s;
+	++it;
+	while (it != ids.cend()) {
+		if ((s = (*it)->TextScore()) < min_score) {
+			min_score = s;
+			min = it;
+		}
+		++it;
+	}
+	return (*min)->GetSeqIdString();
+}
+
 BlastDB::BlastDB(const std::string& file_name, Flags flags) :
 	file_name_(file_name),
 	SequenceFile(Type::BLAST),
@@ -117,8 +133,7 @@ size_t BlastDB::id_len(const SeqInfo& seq_info, const SeqInfo& seq_info_next)
 	if(flag_any(flags_, Flags::FULL_SEQIDS))
 		return full_id(*db_->GetBioseq(seq_info.pos), nullptr, long_seqids_, true).length();
 	else {
-		list<CRef<CSeq_id>> ids = db_->GetSeqIDs(oid_seqdata_);
-		return ids.front()->GetSeqIdString().length();
+		return best_id(db_->GetSeqIDs(oid_seqdata_)).length();
 	}
 }
 
@@ -157,9 +172,7 @@ void BlastDB::read_id_data(char* dst, size_t len)
 		std::copy(id.begin(), id.begin() + len, dst);
 	}
 	else {
-		list<CRef<CSeq_id>> ids = db_->GetSeqIDs(oid_seqdata_);
-		const string id = ids.front()->GetSeqIdString();
-		ids.front()->FastaAAScore();
+		const string id = best_id(db_->GetSeqIDs(oid_seqdata_));
 		std::copy(id.begin(), id.end(), dst);
 	}
 	dst[len] = '\0';

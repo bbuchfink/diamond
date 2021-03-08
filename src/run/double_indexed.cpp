@@ -639,8 +639,10 @@ void run(const Options &options)
 	}
 
 	if (!config.seqidlist.empty()) {
-		metadata.taxon_filter = db_file->filter_by_accession(config.seqidlist);
 		message_stream << "Filtering database by accession list: " << config.seqidlist << endl;
+		timer.go("Building database filter");
+		metadata.taxon_filter = db_file->filter_by_accession(config.seqidlist);
+		timer.finish();
 	}
 
 	master_thread(db_file, total, metadata, options);
