@@ -312,6 +312,7 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("file-buffer-size", 0, "file buffer size in bytes (default=67108864)", file_buffer_size, (size_t)67108864)
 		("memory-limit", 'M', "Memory limit for extension stage in GB", memory_limit)
 		("no-unlink", 0, "Do not unlink temporary files.", no_unlink)
+		("target-indexed", 0, "Enable target-indexed mode", target_indexed)
 		("cut-bar", 0, "", cut_bar)
 		("check-multi-target", 0, "", check_multi_target)
 		("roc-file", 0, "", roc_file)
@@ -477,7 +478,6 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("query-match-distance-threshold", 0, "", query_match_distance_threshold, -1.0)
 		("length-ratio-threshold", 0, "", length_ratio_threshold, -1.0)
 		("fast", 0, "", mode_fast)
-		("target-indexed", 0, "", target_indexed)
 		("max-swipe-dp", 0, "", max_swipe_dp, (size_t)4000000);
 	
 	parser.add(general).add(makedb).add(cluster).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options).add(deprecated_options);
