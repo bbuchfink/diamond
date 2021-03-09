@@ -14,10 +14,7 @@ features are:
     desktops or laptops.
 -   Various output formats, including BLAST pairwise, tabular and XML,
     as well as taxonomic classification.
-
-Keep posted about new developments by following me on
-[Twitter](https://twitter.com/bbuchfink).
-
+    
 [![Build Status](https://travis-ci.org/bbuchfink/diamond.svg?branch=master)](https://travis-ci.org/bbuchfink/diamond)
 [![image](https://img.shields.io/github/downloads/bbuchfink/diamond/total)](https://github.com/bbuchfink/diamond/releases)
 [![image](https://anaconda.org/bioconda/diamond/badges/version.svg)](https://anaconda.org/bioconda/diamond)
@@ -30,14 +27,14 @@ The online documentation is located at the [GitHub Wiki](https://github.com/bbuc
 
 Support
 =======
-The [issue tracker](https://github.com/bbuchfink/diamond/issues) as well as the newly introduced [GitHub discussions](https://github.com/bbuchfink/diamond/discussions) are open for support requests of any kind.
+Diamond is actively supported and developed software. Please use the [issue tracker](https://github.com/bbuchfink/diamond/issues) for malfunctions and the [GitHub discussions](https://github.com/bbuchfink/diamond/discussions) for questions, comments, feature requests, etc.
 
 About
 =====
 DIAMOND is developed by Benjamin Buchfink at the Drost lab, Max
 Planck Institute for Developmental Biology, Tübingen, Germany.
 
-\[[Email](mailto:buchfink@gmail.com)\]
+\[[:email:Email](mailto:buchfink@gmail.com)\]
 \[[Twitter](https://twitter.com/bbuchfink)\] \[[Google
 Scholar](https://scholar.google.de/citations?user=kjPIF1cAAAAJ)\]
 \[[Drost lab](https://drostlab.com/)\]

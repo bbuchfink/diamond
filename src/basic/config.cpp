@@ -149,7 +149,7 @@ Config::Config(int argc, const char **argv, bool check_io)
 		.add_command("simulate-seqs", "", simulate_seqs)
 		.add_command("split", "", split)
 		.add_command("upgma", "", upgma)
-		.add_command("upgmamc", "", upgma_mc)		
+		.add_command("upgmamc", "", upgma_mc)
 		.add_command("reverse", "", reverse_seqs)
 		.add_command("compute-medoids", "", compute_medoids)
 		.add_command("mutate", "", mutate)
@@ -232,13 +232,15 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("max-size-set", 0, "Maximum size of a set", max_size_set, (size_t) 1000)
 		("external", 0, "save set of edges external", external, false)
 		("cluster-similarity", 0, "Clustering similarity measure", cluster_similarity)
+		("cluster-graph-file", 0, "Filename for dumping the graph or reading the graph if cluster-restart", cluster_graph_file)
+		("cluster-restart", 0, "Restart clustering from dumped graph", cluster_restart)
 		("mcl-expansion", 0, "MCL expansion coefficient (default=2)", cluster_mcl_expansion, (uint32_t) 2)
 		("mcl-inflation", 0, "MCL inflation coefficient (default=2.0)", cluster_mcl_inflation, 2.0)
 		("mcl-chunk-size", 0, "MCL chunk size per thread (default=100)", cluster_mcl_chunk_size, (uint32_t) 1)
 		("mcl-max-iterations", 0, "MCL maximum iterations (default=100)", cluster_mcl_max_iter, (uint32_t) 100)
 		("mcl-sparsity-switch", 0, "MCL switch to sparse matrix computation (default=0.8) ", cluster_mcl_sparsity_switch, 0.8)
-		("mcl-graph-file", 0, "Filename for dumping the graph or reading the graph if mcl-restart", cluster_mcl_graph_file)
-		("mcl-restart", 0, "Restart MCL from dumped graph", cluster_mcl_restart);
+		("mcl-symmetrize", 0, "Symmetrize the transistion matrix before clustering (A+A^T)", cluster_mcl_symmetrize)
+		("mcl-stats", 0, "Some stats about the connected components in MCL", cluster_mcl_stats);
 
 	Options_group aligner("Aligner options");
 	aligner.add()
@@ -298,6 +300,7 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("shape-mask", 0, "seed shapes", shape_mask)
 		("multiprocessing", 0, "enable distributed-memory parallel processing", multiprocessing)
 		("mp-init", 0, "initialize multiprocessing run", mp_init)
+		("mp-recover", 0, "enable continuation of interrupted multiprocessing run", mp_recover)
 		("ext-chunk-size", 0, "chunk size for adaptive ranking (default=auto)", ext_chunk_size)
 		("no-ranking", 0, "disable ranking heuristic", no_ranking)
 		("ext", 0, "Extension mode (banded-fast/banded-slow/full)", ext)
@@ -479,7 +482,7 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("length-ratio-threshold", 0, "", length_ratio_threshold, -1.0)
 		("fast", 0, "", mode_fast)
 		("max-swipe-dp", 0, "", max_swipe_dp, (size_t)4000000);
-	
+
 	parser.add(general).add(makedb).add(cluster).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options).add(deprecated_options);
 	parser.store(argc, argv, command);
 
@@ -500,7 +503,7 @@ Config::Config(int argc, const char **argv, bool check_io)
 			frame_shift = 15;
 	}
 
-	if (global_ranking_targets > 0 && (query_range_culling || taxon_k || multiprocessing || mp_init || (command == blastx) || comp_based_stats >= 2 || frame_shift > 0))
+	if (global_ranking_targets > 0 && (query_range_culling || taxon_k || multiprocessing || mp_init || mp_recover || (command == blastx) || comp_based_stats >= 2 || frame_shift > 0))
 		throw std::runtime_error("Global ranking is not supported in this mode.");
 
 	if (global_ranking_targets > 0) {
@@ -513,7 +516,7 @@ Config::Config(int argc, const char **argv, bool check_io)
 	if (comp_based_stats >= Stats::CBS::COUNT)
 #else
 	if (comp_based_stats >= 5)
-#endif	
+#endif
 		throw std::runtime_error("Invalid value for --comp-based-stats. Permitted values: 0, 1, 2, 3, 4.");
 
 	if (masking == -1)

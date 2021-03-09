@@ -18,6 +18,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 #pragma once
 #include "clustering_variables.h"
+#include <cmath>
+#include <cstdlib>
+#include <functional>
+#include <stdexcept>
 
 class RecursiveParser{
 	const Hsp_context* r; 
@@ -38,6 +42,34 @@ class RecursiveParser{
 	void advance(uint32_t ahead)
 	{
 		expression_to_parse+=ahead;
+	}
+	std::function<bool(double a, double b)> relation(){
+		if(peek() == '>' && peek(1) == '='){
+			advance(2);
+			return [](double a, double b){return a>=b;};
+		}
+		else if(peek() == '<' && peek(1) == '='){
+			advance(2);
+			return [](double a, double b){return a<=b;};
+		}
+		else if(peek() == '=' && peek(1) == '='){
+			advance(2);
+			return [](double a, double b){return a==b;};
+		}
+		else if(peek() == '='){
+			advance(1);
+			return [](double a, double b){return a==b;};
+		}
+		else if(peek() == '>'){
+			advance(1);
+			return [](double a, double b){return a>b;};
+		}
+		else if(peek() == '<'){
+			advance(1);
+			return [](double a, double b){return a<b;};
+		}
+		std::runtime_error(std::string("Error while evaluating the expression ")+std::string(expression_to_parse)+std::string(" Unknown relation: ")+peek()+peek(1));
+		return [](double a, double b){ return false; };
 	}
 	std::string variable()
 	{
@@ -68,7 +100,6 @@ class RecursiveParser{
 		}
 		return result;
 	}
-
 	double factor()
 	{
 		if (peek() >= '0' && peek() <= '9') {
@@ -112,10 +143,18 @@ class RecursiveParser{
 			advance(1); // ')'
 			return std::log(result1);
 		}
+		else if (peek() == 'I' && peek(1)=='('){
+			advance(2); // 'I('
+			double result1 = expression();
+			std::function<bool(double, double)> rel = relation();
+			double result2 = expression();
+			advance(1); // ')'
+			return rel(result1, result2);
+		}
 		else {
 			auto v = VariableRegistry::get(variable());
 			if(check){
-				return 0.0;
+				return 4;
 			}
 			else {
 				return v->get(*r);
@@ -156,6 +195,12 @@ public:
 	RecursiveParser(const Hsp_context* r, const char * c, bool check): r(r), expression_to_parse(c), check(check){}
 	double evaluate(){
 		return expression();
+	}
+
+	const string static clean_expression(const string* const expression){
+		string cleanedExpression = std::string(*expression);
+		cleanedExpression.erase(std::remove_if(cleanedExpression.begin(), cleanedExpression.end(), [](unsigned char c){return c == ' ' || c == '\n' || c == '\r' || c == '\t' || c == '\v' || c == '\f';}), cleanedExpression.end());
+		return cleanedExpression;
 	}
 };
 

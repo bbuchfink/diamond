@@ -106,6 +106,7 @@ struct ReferenceDictionary
 	void save_block(size_t query, size_t block);
 	void load_block(size_t query, size_t block, ReferenceDictionary & d);
 	void restore_blocks(size_t query, size_t n_blocks);
+	void remove_temporary_files(size_t query, size_t n_blocks);
 
 private:
 

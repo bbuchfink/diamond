@@ -120,7 +120,8 @@ int main(int ac, const char* av[])
 		case Config::cluster:
 			// Why is cluster_similarity not set at the end of the Config constructor?
 			if(!config.cluster_similarity.empty()){
-				RecursiveParser rp(nullptr, config.cluster_similarity.c_str(), true);
+				string expression = RecursiveParser::clean_expression(&config.cluster_similarity);
+				RecursiveParser rp(nullptr, expression.c_str(), true);
 				try{
 					rp.evaluate();
 				}

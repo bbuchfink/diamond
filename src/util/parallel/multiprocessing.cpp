@@ -56,3 +56,8 @@ string join_path(const string & path_1, const string & path_2) {
 #endif
     return path_1 + sep + path_2;
 }
+
+bool file_exists(const string & file_name) {
+    ifstream fp(file_name.c_str());
+    return fp.good();
+}
