@@ -219,6 +219,7 @@ int FileStack::top(int & i) {
 
 int FileStack::remove(const string & line) {
     DBG("");
+#ifndef WIN32
     bool locked_internally = false;
     if (! locked) {
         lock();
@@ -248,6 +249,7 @@ int FileStack::remove(const string & line) {
     if (locked_internally) {
         unlock();
     }
+#endif
     return 0;
 }
 
