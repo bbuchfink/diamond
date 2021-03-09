@@ -365,7 +365,7 @@ void MCL::print_stats(uint64_t nElements, uint32_t nComponents, uint32_t nCompon
 	ms->release_read_buffer();
 }
 
-SparseMatrixStream<float>* get_graph_handle(DatabaseFile& db){
+SparseMatrixStream<float>* get_graph_handle(SequenceFile& db){
 	if(config.cluster_restart){
 		task_timer timer;
 		timer.go("Reading cluster checkpoint file");

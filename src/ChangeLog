@@ -6,6 +6,7 @@
 - Fixed a bug that caused the `--dbsize` option not to function correctly.
 - Added the command `makeidx` and the option `--target-indexed` that provide an
   optimisation specialized for small databases (<10 Mb).
+- Added the option `--mp-recover` to recover aborted runs in multiprocessing mode.
 
 [2.0.7]
 - Added support for computing full-matrix instead of banded Smith Waterman extensions
