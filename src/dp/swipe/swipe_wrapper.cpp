@@ -204,8 +204,10 @@ list<Hsp> recompute_reversed(const Sequence& query, Frame frame, const Bias_corr
 	const int qlen = (int)query.length();
 #ifdef __SSE4_1__
 	const int min_b = qlen <= UCHAR_MAX ? 0 : 1;
-#else
+#elif defined(__SSE2__)
 	const int min_b = 1;
+#else
+	const int min_b = 2;
 #endif
 	for (auto i = begin; i != end; ++i)
 		reversed_targets.reserve(i->target_seq.length());
@@ -224,8 +226,10 @@ list<Hsp> recompute_reversed(const Sequence& query, Frame frame, const Bias_corr
 	Bias_correction rev_cbs = composition_bias ? composition_bias->reverse() : Bias_correction();
 #ifdef __SSE4_1__
 	out = swipe_threads<::DISPATCH_ARCH::score_vector<int8_t>>(Sequence(reversed), dp_targets[0].begin(), dp_targets[0].end(), nullptr, frame, composition_bias ? rev_cbs.int8.data() : nullptr, flags, overflow, stat);
-#endif	
+#endif
+#ifdef __SSE2__
 	out.splice(out.end(), swipe_threads<::DISPATCH_ARCH::score_vector<int16_t>>(Sequence(reversed), dp_targets[1].begin(), dp_targets[1].end(), nullptr, frame, composition_bias ? rev_cbs.int8.data() : nullptr, flags, overflow, stat));
+#endif
 	out.splice(out.end(), swipe_threads<int32_t>(Sequence(reversed), dp_targets[2].begin(), dp_targets[2].end(), nullptr, frame, composition_bias ? rev_cbs.int8.data() : nullptr, flags, overflow, stat));
 	return out;
 }
