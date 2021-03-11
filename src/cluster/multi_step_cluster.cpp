@@ -44,8 +44,7 @@ vector<int> MultiStep::cluster(SequenceFile& db, const BitVector* filter) {
 	config.output_format = { "bin" };
 	config.query_cover = 80;
 	config.subject_cover = 80;
-	config.algo = 0;
-	config.index_mode = 0;
+	config.algo = Config::Algo::DOUBLE_INDEXED;
 	config.freq_sd = 0;
 	config.max_alignments = numeric_limits<size_t>::max();
 
@@ -246,11 +245,7 @@ void MultiStep::run() {
 	
 	for (size_t i = 0; i < config.cluster_steps.size(); i++) {
 		
-		if (config.sens_map.find(config.cluster_steps[i]) == config.sens_map.end()) {
-			throw std::runtime_error("Invalid value for parameter --cluster-steps");
-		}
-			
-		config.sensitivity = config.sens_map[config.cluster_steps[i]];
+		config.sensitivity = from_string<Sensitivity>(config.cluster_steps[i]);
 		current_centroids = cluster(*db, i==0 ? nullptr: &previous_reps);
 		steps(current_reps, previous_reps, current_centroids, previous_centroids, i);
 	}

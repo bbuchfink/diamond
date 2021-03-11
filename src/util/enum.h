@@ -35,6 +35,16 @@ template<typename _t> std::string to_string(_t v) {
 	return it->second;
 }
 
+template<typename _t>
+_t from_string(const std::string& s) {
+	if (s.empty())
+		return EnumTraits<_t>::blank;
+	for (auto it = EnumTraits<_t>::to_string.cbegin(); it != EnumTraits<_t>::to_string.cend(); ++it)
+		if (it->second == s)
+			return it->first;
+	throw std::runtime_error("Invalid value for string field: " + s);
+}
+
 #define DEF_ENUM_FLAG_OPERATORS(T) constexpr inline T operator~ (T a) { return static_cast<T>(~static_cast<std::underlying_type<T>::type>(a)); } \
 constexpr inline T operator| (T a, T b) { return static_cast<T>(static_cast<std::underlying_type<T>::type>(a) | static_cast<std::underlying_type<T>::type>(b)); } \
 constexpr inline T operator& (T a, T b) { return static_cast<T>(static_cast<std::underlying_type<T>::type>(a) & static_cast<std::underlying_type<T>::type>(b)); } \

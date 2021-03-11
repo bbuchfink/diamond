@@ -26,24 +26,123 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "search.h"
 
 using std::endl;
+using std::map;
 
 double SeedComplexity::prob_[AMINO_ACID_COUNT];
 const double SINGLE_INDEXED_SEED_SPACE_MAX_COVERAGE = 0.15;
 
-void setup_search_cont()
-{
-	if (config.sensitivity >= Sensitivity::VERY_SENSITIVE || config.sensitivity == Sensitivity::MID_SENSITIVE || config.sensitivity == Sensitivity::FAST)
-		return;
-	unsigned index_mode;
-	Reduction::reduction = Reduction("A KR EDNQ C G H ILVM FYW P ST");
-	if (config.sensitivity == Sensitivity::SENSITIVE || config.sensitivity == Sensitivity::MORE_SENSITIVE)
-		index_mode = 11;
-	else {
-		index_mode = 10;
-		Reduction::reduction = Reduction("KR EQ D N C G H F Y IV LM W P S T A");
-	}
-	::shapes = shape_config(index_mode, 1, vector<string>());
-}
+const std::map<Sensitivity, SensitivityTraits> sensitivity_traits {
+	//                               qidx   freqsd minid ug_ev   ug_ev_s gf_ev  idx_chunk qbins
+	{ Sensitivity::FAST,            {false, 50.0,  11,   10000,  10000,  0,     4,        16 }},
+	{ Sensitivity::DEFAULT,         {true,  50.0,  11,   10000,  10000,  0,     4,        16 }},
+	{ Sensitivity::MID_SENSITIVE,   {false, 20.0,  11,   10000,  10000,  0,     4,        16 }},
+	{ Sensitivity::SENSITIVE,       {true,  20.0,  11,   10000,  10000,  1,     4,        16 }},
+	{ Sensitivity::MORE_SENSITIVE,  {true,  200.0, 11,   10000,  10000,  1,     4,        16 }},
+	{ Sensitivity::VERY_SENSITIVE,  {false, 15.0,  9,    100000, 30000,  1,     1,        16 }},
+	{ Sensitivity::ULTRA_SENSITIVE, {false, 20.0,  9,    300000, 30000,  1,     1,        64 }}
+};
+
+
+static const map<Sensitivity, vector<string>> shape_codes = {
+
+	{Sensitivity::DEFAULT, { "111101110111","111011010010111" }},	// 2x10 iedera
+	{Sensitivity::SENSITIVE, { "1011110111","110100100010111","11001011111","101110001111","11011101100001","1111010010101","111001001001011","10101001101011","111101010011","1111000010000111","1100011011011","1101010000011011","1110001010101001","110011000110011","11011010001101","1101001100010011" }}, // 16x8 iedera
+	{Sensitivity::MORE_SENSITIVE, { "1011110111","110100100010111","11001011111","101110001111","11011101100001","1111010010101","111001001001011","10101001101011","111101010011","1111000010000111","1100011011011","1101010000011011","1110001010101001","110011000110011","11011010001101","1101001100010011" }}, // 16x8 iedera
+	{Sensitivity::VERY_SENSITIVE, {
+	"11110111",
+"110111011",
+"1110010111",
+"1101011011",
+"11011000111",
+"111000101011",
+"1101001000111",
+"11010100001101",
+"11100010010011",
+"110100000100111",
+"110010100001011",
+"1101000001010011",
+"11001001000100011",
+"10101000010001011"
+//"11010001000001011",
+//"11000100100000111"
+	}}, // 16x7 SpEED 0.35 35
+	{ Sensitivity::ULTRA_SENSITIVE, { "1111111",
+"111100111",
+"110110111",
+"111101011",
+"111011011",
+"110101111",
+"111011101",
+"1110010111",
+"1110100111",
+"11100011011",
+"11011000111",
+"11010101011",
+"11001101011",
+"111001000111",
+"110011001011",
+"110100101011",
+"110100100111",
+"110101001101",
+"110101001011",
+"111000110011",
+"110100010111",
+"1110010010011",
+"1110001010011",
+"1101010001011",
+"1100101010011",
+"11001001000111",
+"11010010000111",
+"11010000101011",
+"11010010010011",
+"11100010010101",
+"11100100001011",
+"110010001000111",
+"111000010001011",
+"101010100000111",
+"110101000100101",
+"110010001001011",
+"110100010100011",
+"110010100010011",
+"101100000101011",
+"110001001001011",
+"110101000010011",
+"1101000100001011",
+"1101001000100011",
+"1101000100010101",
+"11010000001010011",
+"11100001000010011",
+"11010000100001011",
+"10101000010010011",
+"11000101000001011",
+"11001000000100111",
+"101001000010001011",
+"111000010000001011",
+"110010000100010011",
+"1101000001000010011",
+"1101000100000100011",
+"1100010100000001011",
+"1100010001000010101",
+"1010100000010001011",
+"1101000000010000111",
+"1100100000100100101",
+"1011000010000010011",
+"1110000001000001011",
+"1100100000100001011",
+"1100100000001000111" // 64x7
+}},
+	{ Sensitivity::MID_SENSITIVE, { "11110111011",
+"1110110010111",
+"11110001101011",
+"110101001100111",
+"1110010100010111",
+"11010001010010111",
+"111010100001001011",
+"1101001001000100111"
+}}, // 8x9
+	{ Sensitivity::FAST, { "111011001011010111" } }
+
+};
 
 bool use_single_indexed(double coverage, size_t query_letters, size_t ref_letters)
 {
@@ -58,85 +157,23 @@ bool use_single_indexed(double coverage, size_t query_letters, size_t ref_letter
 
 void setup_search()
 {
-	if (config.sensitivity == Sensitivity::ULTRA_SENSITIVE) {
-		Config::set_option(config.freq_sd, 20.0);
-		Config::set_option(config.min_identities, 9u);
-		Config::set_option(config.ungapped_evalue, 300000.0, -1.0);
-		Config::set_option(config.ungapped_evalue_short, 30000.0, -1.0);
-		Config::set_option(config.gapped_filter_evalue, 1.0, -1.0);
-		Config::set_option(config.lowmem, 1u);
-		Config::set_option(config.query_bins, 64u);
-	} else if (config.sensitivity == Sensitivity::VERY_SENSITIVE) {
-		Config::set_option(config.freq_sd, 15.0);
-		Config::set_option(config.min_identities, 9u);
-		Config::set_option(config.ungapped_evalue, 100000.0, -1.0);
-		Config::set_option(config.ungapped_evalue_short, 30000.0, -1.0);
-		Config::set_option(config.gapped_filter_evalue, 1.0, -1.0);
-		Config::set_option(config.lowmem, 1u);
-		Config::set_option(config.query_bins, 16u);
-	} else if (config.sensitivity == Sensitivity::MORE_SENSITIVE) {
-		Config::set_option(config.freq_sd, 200.0);
-		Config::set_option(config.min_identities, 11u);
-		Config::set_option(config.ungapped_evalue, 10000.0, -1.0);
-		Config::set_option(config.ungapped_evalue_short, 10000.0, -1.0);
-		Config::set_option(config.gapped_filter_evalue, 1.0, -1.0);
-		Config::set_option(config.lowmem, 4u);
-		Config::set_option(config.query_bins, 16u);
-	}
-	else if (config.sensitivity == Sensitivity::SENSITIVE) {
-		Config::set_option(config.freq_sd, 20.0);
-		Config::set_option(config.min_identities, 11u);
-		Config::set_option(config.ungapped_evalue, 10000.0, -1.0);
-		Config::set_option(config.ungapped_evalue_short, 10000.0, -1.0);
-		Config::set_option(config.gapped_filter_evalue, 1.0, -1.0);
-		Config::set_option(config.lowmem, 4u);
-		Config::set_option(config.query_bins, 16u);
-	}
-	else if (config.sensitivity == Sensitivity::MID_SENSITIVE) {
-		Config::set_option(config.freq_sd, 20.0);
-		Config::set_option(config.min_identities, 11u);
-		Config::set_option(config.ungapped_evalue, 10000.0, -1.0);
-		Config::set_option(config.ungapped_evalue_short, 10000.0, -1.0);
-		Config::set_option(config.gapped_filter_evalue, 0.0, -1.0);
-		Config::set_option(config.lowmem, 4u);
-		Config::set_option(config.query_bins, 16u);
-	}
-	else {
-		Config::set_option(config.freq_sd, 50.0);
-		Config::set_option(config.min_identities, 11u);
-		Config::set_option(config.ungapped_evalue, 10000.0, -1.0);
-		Config::set_option(config.ungapped_evalue_short, 10000.0, -1.0);
-		Config::set_option(config.gapped_filter_evalue, 0.0, -1.0);
-		Config::set_option(config.lowmem, 4u);
-		Config::set_option(config.query_bins, 16u);
+	const Sensitivity sens = config.sensitivity;
+	const SensitivityTraits& traits = sensitivity_traits.at(sens);
+	Config::set_option(config.freq_sd, traits.freq_sd);
+	Config::set_option(config.min_identities, traits.min_identities);
+	Config::set_option(config.ungapped_evalue, traits.ungapped_evalue, -1.0);
+	Config::set_option(config.ungapped_evalue_short, traits.ungapped_evalue_short, -1.0);
+	Config::set_option(config.gapped_filter_evalue, traits.gapped_filter_evalue, -1.0);
+	Config::set_option(config.lowmem, traits.index_chunks);
+	Config::set_option(config.query_bins, traits.query_bins);
+	
+	if (config.algo == Config::Algo::QUERY_INDEXED) {
+		config.lowmem = 1;
+		if(!traits.support_query_indexed)
+			throw std::runtime_error("Query-indexed mode is not supported for this sensitivity setting.");
 	}
 	
-	if(config.algo==Config::query_indexed)
-		config.lowmem = 1;
-	else {
-		switch (config.sensitivity) {
-		case Sensitivity::ULTRA_SENSITIVE:
-			Config::set_option(config.index_mode, 13u);
-			break;
-		case Sensitivity::VERY_SENSITIVE:
-			Config::set_option(config.index_mode, 12u);
-			break;
-		case Sensitivity::MORE_SENSITIVE:
-		case Sensitivity::SENSITIVE:
-			Config::set_option(config.index_mode, 9u);
-			break;
-		case Sensitivity::MID_SENSITIVE:
-			Config::set_option(config.index_mode, 15u);
-			break;
-		case Sensitivity::DEFAULT:
-			Config::set_option(config.index_mode, 8u);
-			break;
-		case Sensitivity::FAST:
-			Config::set_option(config.index_mode, 16u);
-		}
-		Reduction::reduction = Reduction("A KR EDNQ C G H ILVM FYW P ST");
-		::shapes = shape_config(config.index_mode, config.shapes, config.shape_mask);
-	}
+	::shapes = ShapeConfig(config.shape_mask.empty() ? shape_codes.at(sens) : config.shape_mask, config.shapes);
 
 	print_warnings();
 
@@ -146,8 +183,7 @@ void setup_search()
 	SeedComplexity::init(Reduction::reduction);
 	config.gapped_filter_diag_score = score_matrix.rawscore(config.gapped_filter_diag_bit_score);
 
-	message_stream << "Algorithm: " << (config.algo == Config::double_indexed ? "Double-indexed" : "Query-indexed") << endl;
-	verbose_stream << "Reduction: " << Reduction::reduction << endl;
+	message_stream << "Algorithm: " << (config.algo == Config::Algo::DOUBLE_INDEXED ? "Double-indexed" : "Query-indexed") << endl;
 
 	verbose_stream << "Seed frequency SD: " << config.freq_sd << endl;
 	verbose_stream << "Shape configuration: " << ::shapes << endl;

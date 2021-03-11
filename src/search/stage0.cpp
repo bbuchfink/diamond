@@ -90,7 +90,7 @@ void search_shape(unsigned sid, unsigned query_block, char *query_buffer, char *
 
 		task_timer timer("Building reference seed array", true);
 		SeedArray *ref_idx;
-		if (config.algo == Config::query_indexed)
+		if (config.algo == Config::Algo::QUERY_INDEXED)
 			ref_idx = new SeedArray(*ref_seqs::data_, sid, ref_hst.get(sid), range, ref_hst.partition(), ref_buffer, query_seeds);
 		else if (query_seeds_hashed != 0)
 			ref_idx = new SeedArray(*ref_seqs::data_, sid, ref_hst.get(sid), range, ref_hst.partition(), ref_buffer, query_seeds_hashed);

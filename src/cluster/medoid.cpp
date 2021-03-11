@@ -67,7 +67,7 @@ size_t get_medoid(SequenceFile *db, const BitVector &filter, size_t n, SequenceS
 	config.max_evalue = 100.0;
 	config.freq_sd = 0;
 	config.max_alignments = SIZE_MAX;
-	config.algo = 0;
+	config.algo = Config::Algo::DOUBLE_INDEXED;
 	//config.ext = Config::swipe;
 	score_matrix.set_db_letters(1);
 

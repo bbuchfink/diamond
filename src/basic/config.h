@@ -25,8 +25,14 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <vector>
 #include <stdint.h>
 #include <map>
+#include "../util/enum.h"
 
 enum class Sensitivity { FAST = 0, DEFAULT = 1, MID_SENSITIVE = 2, SENSITIVE = 3, MORE_SENSITIVE = 4, VERY_SENSITIVE = 5, ULTRA_SENSITIVE = 6 };
+
+template<> struct EnumTraits<Sensitivity> {
+	static const EMap<Sensitivity> to_string;
+	static const Sensitivity blank = Sensitivity::DEFAULT;
+};
 
 struct Config
 {
@@ -41,7 +47,6 @@ struct Config
 	unsigned	merge_seq_treshold;
 	unsigned	hit_cap;
 	unsigned shapes;
-	unsigned	index_mode;
 	size_t	max_alignments;
 	string	match_file1;
 	string	match_file2;
@@ -273,8 +278,8 @@ struct Config
 	};
 	unsigned	command;
 
-	enum { double_indexed = 0, query_indexed = 1, subject_indexed = 2 };
-	int algo;
+	enum class Algo { AUTO = -1, DOUBLE_INDEXED = 0, QUERY_INDEXED = 1 };
+	Algo algo;
 
 	string cluster_algo;
 	string cluster_similarity;
@@ -291,17 +296,6 @@ struct Config
 	uint32_t cluster_mcl_max_iter;
 	bool cluster_mcl_stats;
 	bool cluster_mcl_symmetrize;
-
-
-	std::map<std::string, Sensitivity> sens_map{
-		{"fast", Sensitivity::FAST },
-		{"default", Sensitivity::DEFAULT},
-		{"sensitive", Sensitivity::SENSITIVE},
-		{"mid-sensitive", Sensitivity::MID_SENSITIVE},
-		{"more-sensitive", Sensitivity::MORE_SENSITIVE},
-		{"very-sensitive", Sensitivity::VERY_SENSITIVE},
-		{"ultra-sensitive", Sensitivity::ULTRA_SENSITIVE}
-	};
 
 	enum { query_parallel = 0, target_parallel = 1 };
 	unsigned load_balancing;
@@ -347,3 +341,8 @@ template<typename _t>
 _t top_cutoff_score(_t top_score) {
 	return _t((1.0 - config.toppercent / 100.0)*top_score);
 }
+
+template<> struct EnumTraits<Config::Algo> {
+	static const EMap<Config::Algo> to_string;
+	static const Config::Algo blank = Config::Algo::AUTO;
+};

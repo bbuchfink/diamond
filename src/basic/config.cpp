@@ -47,6 +47,18 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 using namespace std;
 
+const EMap<Sensitivity> EnumTraits<Sensitivity>::to_string = {
+	{ Sensitivity::FAST, "fast" },
+	{ Sensitivity::DEFAULT, "default" },
+	{ Sensitivity::SENSITIVE, "sensitive" },
+	{ Sensitivity::MID_SENSITIVE, "mid-sensitive" },
+	{ Sensitivity::MORE_SENSITIVE, "more-sensitive" },
+	{ Sensitivity::VERY_SENSITIVE, "very-sensitive" },
+	{ Sensitivity::ULTRA_SENSITIVE, "ultra-sensitive" }
+};
+
+const EMap<Config::Algo> EnumTraits<Config::Algo>::to_string = { { Config::Algo::DOUBLE_INDEXED, "0" }, { Config::Algo::QUERY_INDEXED, "1"} };
+
 Config config;
 
 void print_warnings() {
@@ -286,9 +298,11 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("taxon-exclude", 0, "exclude list of taxon ids (comma-separated)", taxon_exclude)
 		("seqidlist", 0, "filter the database by list of accessions", seqidlist);
 
+	string algo_str;
+
 	Options_group advanced("Advanced options");
 	advanced.add()
-		("algo", 0, "Seed search algorithm (0=double-indexed/1=query-indexed)", algo, -1)
+		("algo", 0, "Seed search algorithm (0=double-indexed/1=query-indexed)", algo_str)
 		("bin", 0, "number of query bins for seed search", query_bins)
 		("min-orf", 'l', "ignore translated sequences without an open reading frame of at least this length", run_len)
 		("freq-sd", 0, "number of standard deviations for ignoring frequent seeds", freq_sd, 0.0)
@@ -426,7 +440,6 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("tantan-maxRepeatOffset", 0, "maximum tandem repeat period to consider (50)", tantan_maxRepeatOffset, 15)
 		("tantan-ungapped", 0, "use tantan masking in ungapped mode", tantan_ungapped)
 		("chaining-range-cover", 0, "", chaining_range_cover, (size_t)8)
-		("index-mode", 0, "index mode (0=4x12, 1=16x9)", index_mode)
 		("no-swipe-realign", 0, "", no_swipe_realign)
 		("chaining-maxnodes", 0, "", chaining_maxnodes)
 		("cutoff-score-8bit", 0, "", cutoff_score_8bit, 240)
@@ -716,15 +729,16 @@ Config::Config(int argc, const char **argv, bool check_io)
 	}
 
 	sensitivity = Sensitivity::DEFAULT;
+#ifdef EXTRA
 	if (mode_fast) set_sens(Sensitivity::FAST);
+#endif
 	if (mode_mid_sensitive) set_sens(Sensitivity::MID_SENSITIVE);
 	if (mode_sensitive) set_sens(Sensitivity::SENSITIVE);
 	if (mode_more_sensitive) set_sens(Sensitivity::MORE_SENSITIVE);
 	if (mode_very_sensitive) set_sens(Sensitivity::VERY_SENSITIVE);
 	if (mode_ultra_sensitive) set_sens(Sensitivity::ULTRA_SENSITIVE);
 
-	if (algo == Config::query_indexed && (sensitivity == Sensitivity::MID_SENSITIVE || sensitivity >= Sensitivity::VERY_SENSITIVE))
-		throw std::runtime_error("Query-indexed mode is not supported for this sensitivity setting.");
+	algo = from_string<Algo>(algo_str);
 
 	const set<string> ext_modes = { "", "banded-fast", "banded-slow", "full" };
 	if (ext_modes.find(ext) == ext_modes.end())
@@ -760,7 +774,7 @@ Config::Config(int argc, const char **argv, bool check_io)
 		<< " sizeof(sorted_list::entry)=" << sizeof(sorted_list::entry) << endl;*/
 
 	if (swipe_all) {
-		algo = double_indexed;
+		algo = Algo::DOUBLE_INDEXED;
 	}
 
 	use_lazy_dict = false;

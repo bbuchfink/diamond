@@ -112,7 +112,7 @@ struct Reduction
 			dst[i] = reduction(seq[i]);
 	}
 
-	static Reduction reduction;
+	static const Reduction reduction;
 
 private:
 

@@ -73,7 +73,7 @@ template<typename _f, typename _filter>
 static void enum_seeds_worker(_f* f, const SequenceSet* seqs, unsigned begin, unsigned end, std::pair<size_t, size_t> shape_range, const _filter* filter, bool contig)
 {
 	static const char* errmsg = "Unsupported contiguous seed.";
-	if (shape_range.second - shape_range.first == 1 && shapes[shape_range.first].contiguous() && shapes.count() == 1 && (config.algo == Config::query_indexed || contig)) {
+	if (shape_range.second - shape_range.first == 1 && shapes[shape_range.first].contiguous() && shapes.count() == 1 && (config.algo == Config::Algo::QUERY_INDEXED || contig)) {
 		const uint64_t b = Reduction::reduction.bit_size(), l = shapes[shape_range.first].length_;
 		switch (l) {
 		case 7:

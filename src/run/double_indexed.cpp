@@ -111,7 +111,7 @@ void run_ref_chunk(SequenceFile &db_file,
 
 	if (!config.swipe_all) {
 		timer.go("Building reference histograms");
-		if (config.algo == Config::query_indexed)
+		if (config.algo == Config::Algo::QUERY_INDEXED)
 			ref_hst = Partitioned_histogram(*ref_seqs::data_, false, query_seeds);
 		else if (query_seeds_hashed != 0)
 			ref_hst = Partitioned_histogram(*ref_seqs::data_, true, query_seeds_hashed);
@@ -192,26 +192,24 @@ void run_query_chunk(SequenceFile &db_file,
 	auto P = Parallelizer::get();
 
 	task_timer timer("Building query seed set");
-	if (query_chunk == 0)
-		setup_search_cont();
-	if (config.algo == -1) {
-		if (config.sensitivity >= Sensitivity::VERY_SENSITIVE || config.sensitivity == Sensitivity::MID_SENSITIVE || config.sensitivity == Sensitivity::FAST) {
-			config.algo = Config::double_indexed;
+	if (config.algo == Config::Algo::AUTO) {
+		if (!sensitivity_traits.at(config.sensitivity).support_query_indexed) {
+			config.algo = Config::Algo::DOUBLE_INDEXED;
 		}
 		else {
 			query_seeds = new Seed_set(query_seqs::get(), SINGLE_INDEXED_SEED_SPACE_MAX_COVERAGE);
 			timer.finish();
 			log_stream << "Seed space coverage = " << query_seeds->coverage() << endl;
 			if (use_single_indexed(query_seeds->coverage(), query_seqs::get().letters(), db_file.letters()))
-				config.algo = Config::query_indexed;
+				config.algo = Config::Algo::QUERY_INDEXED;
 			else {
-				config.algo = Config::double_indexed;
+				config.algo = Config::Algo::DOUBLE_INDEXED;
 				delete query_seeds;
-				query_seeds = NULL;
+				query_seeds = nullptr;
 			}
 		}
 	}
-	else if (config.algo == Config::query_indexed) {
+	else if (config.algo == Config::Algo::QUERY_INDEXED) {
 		if (config.sensitivity >= Sensitivity::VERY_SENSITIVE)
 			throw std::runtime_error("Query-indexed algorithm not available for this sensitivity setting.");
 		query_seeds = new Seed_set(query_seqs::get(), 2);
@@ -220,9 +218,10 @@ void run_query_chunk(SequenceFile &db_file,
 	}
 	else
 		timer.finish();
+
 	if (query_chunk == 0)
 		setup_search();
-	if (config.algo == Config::double_indexed && config.small_query) {
+	if (config.algo == Config::Algo::DOUBLE_INDEXED && config.small_query) {
 		timer.go("Building query seed hash set");
 		query_seeds_hashed = new HashedSeedSet(query_seqs::get());
 	}

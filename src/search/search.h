@@ -34,6 +34,19 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 // #define UNGAPPED_SPOUGE
 
+struct SensitivityTraits {
+	bool     support_query_indexed;
+	double   freq_sd;
+	unsigned min_identities;
+	double   ungapped_evalue;
+	double   ungapped_evalue_short;
+	double   gapped_filter_evalue;
+	unsigned index_chunks;
+	unsigned query_bins;
+};
+
+extern const std::map<Sensitivity, SensitivityTraits> sensitivity_traits;
+
 namespace Search {
 
 struct Context {
@@ -71,7 +84,6 @@ struct Stage1_hit
 void search_shape(unsigned sid, unsigned query_block, char *query_buffer, char *ref_buffer, const Parameters &params, const HashedSeedSet* target_seeds);
 bool use_single_indexed(double coverage, size_t query_letters, size_t ref_letters);
 void setup_search();
-void setup_search_cont();
 
 namespace Search {
 

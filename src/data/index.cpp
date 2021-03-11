@@ -15,7 +15,7 @@ void makeindex() {
 		throw std::runtime_error("Indexing is only supported for databases of < 100000000 letters.");
 
 	setup_search();
-	config.algo = Config::double_indexed;
+	config.algo = Config::Algo::DOUBLE_INDEXED;
 	config.hashed_seeds = true;
 
 	vector<uint32_t> block2db_id;

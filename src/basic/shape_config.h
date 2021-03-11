@@ -1,6 +1,10 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2017 Benjamin Buchfink <buchfink@gmail.com>
+Copyright (C) 2013-2021 Max Planck Society for the Advancement of Science e.V.
+                        Benjamin Buchfink
+                        Eberhard Karls Universitaet Tuebingen
+						
+Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,40 +20,28 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#ifndef SHAPE_CONFIG_H_
-#define SHAPE_CONFIG_H_
-
+#pragma once
 #include <vector>
 #include <algorithm>
 #include <stdint.h>
 #include <string>
 #include "shape.h"
 
-extern std::vector<std::vector<std::string>> shape_codes;
-
-class shape_config
+class ShapeConfig
 {
 
 public:
 	
-	shape_config():
-		n_ (0),
-		mode_ (0)
+	ShapeConfig():
+		n_ (0)
 	{ }
 
-	shape_config(unsigned mode, unsigned count, const vector<string> &shape_mask):
-		n_ (0),
-		mode_ (mode)
+	ShapeConfig(const std::vector<std::string>& codes, unsigned count):
+		n_ (0)
 	{
-		if (shape_mask.size() == 0) {
-			unsigned maxShapes = count == 0 ? (unsigned)shape_codes[mode_].size() : count;
-			for (unsigned i = 0; i < maxShapes; ++i)
-				shapes_[n_++] = Shape(shape_codes[mode_][i].c_str(), i);
-		}
-		else {
-			for (unsigned i = 0; i < (count == 0 ? shape_mask.size() : std::min((unsigned)shape_mask.size(), count)); ++i)
-				shapes_[n_++] = Shape(shape_mask[i].c_str(), i);
-		}
+		unsigned maxShapes = count == 0 ? (unsigned)codes.size() : count;
+		for (unsigned i = 0; i < maxShapes; ++i)
+			shapes_[n_++] = Shape(codes[i].c_str(), i);
 	}
 
 	unsigned count() const
@@ -58,10 +50,7 @@ public:
 	const Shape& operator[](size_t i) const
 	{ return shapes_[i]; }
 
-	unsigned mode() const
-	{ return mode_; }
-
-	friend std::ostream& operator<<(std::ostream&s, const shape_config &cfg)
+	friend std::ostream& operator<<(std::ostream&s, const ShapeConfig& cfg)
 	{
 		for (unsigned i = 0; i < cfg.n_; ++i)
 			s << cfg.shapes_[i] << (i<cfg.n_-1?",":"");
@@ -78,11 +67,9 @@ public:
 private:
 
 	Shape shapes_[Const::max_shapes];
-	unsigned n_, mode_;
+	unsigned n_;
 
 };
 
-extern shape_config shapes;
+extern ShapeConfig shapes;
 extern unsigned shape_from, shape_to;
-
-#endif /* SHAPE_CONFIG_H_ */
