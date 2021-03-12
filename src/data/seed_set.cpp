@@ -29,6 +29,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/io/output_file.h"
 
 static const size_t PADDING = 32;
+static const double HASH_TABLE_FACTOR = 1.25;
 
 using std::endl;
 using std::get;
@@ -72,7 +73,7 @@ Seed_set::Seed_set(const SequenceSet &seqs, double max_coverage):
 
 struct Hashed_seed_set_callback
 {
-	Hashed_seed_set_callback(PtrVector<PHash_set<Modulo2, No_hash>> &dst):
+	Hashed_seed_set_callback(PtrVector<HashSet<Modulo2, Identity>> &dst):
 		dst(dst)
 	{}
 	bool operator()(uint64_t seed, uint64_t pos, uint64_t shape)
@@ -82,17 +83,17 @@ struct Hashed_seed_set_callback
 	}
 	void finish()
 	{}
-	PtrVector<PHash_set<Modulo2, No_hash> > &dst;
+	PtrVector<HashSet<Modulo2, Identity> > &dst;
 };
 
 HashedSeedSet::HashedSeedSet(const SequenceSet &seqs):
 	fd_(0)
 {
 	for (size_t i = 0; i < shapes.count(); ++i)
-		data_.push_back(new PHash_set<Modulo2, No_hash>(next_power_of_2(seqs.letters() * 1.25)));
+		data_.push_back(new HashSet<Modulo2, Identity>(next_power_of_2(seqs.letters() * HASH_TABLE_FACTOR)));
 	PtrVector<Hashed_seed_set_callback> v;
 	v.push_back(new Hashed_seed_set_callback(data_));
-	enum_seeds(&seqs, v, seqs.partition(1), 0, shapes.count(), &no_filter);
+	enum_seeds(&seqs, v, seqs.partition(1), 0, shapes.count(), &no_filter, true);
 
 	vector<size_t> sizes;
 	for (size_t i = 0; i < shapes.count(); ++i)
@@ -100,8 +101,8 @@ HashedSeedSet::HashedSeedSet(const SequenceSet &seqs):
 	data_.clear();
 
 	for (size_t i = 0; i < shapes.count(); ++i)
-		data_.push_back(new PHash_set<Modulo2, No_hash>(next_power_of_2(sizes[i] * 1.25)));
-	enum_seeds(&seqs, v, seqs.partition(1), 0, shapes.count(), &no_filter);
+		data_.push_back(new HashSet<Modulo2, Identity>(next_power_of_2(sizes[i] * HASH_TABLE_FACTOR)));
+	enum_seeds(&seqs, v, seqs.partition(1), 0, shapes.count(), &no_filter, true);
 
 	for (size_t i = 0; i < shapes.count(); ++i)
 		log_stream << "Shape=" << i << " Hash_table_size=" << data_[i].size() << " load=" << (double)data_[i].load()/data_[i].size() << endl;
@@ -129,7 +130,7 @@ HashedSeedSet::HashedSeedSet(const string& index_file):
 	uint8_t* data_ptr = (uint8_t*)(buffer_ + SEED_INDEX_HEADER_SIZE + sizeof(size_t) * shape_count);
 
 	for (unsigned i = 0; i < shapes.count(); ++i) {
-		data_.push_back(new PHash_set<Modulo2, No_hash>(data_ptr, *size_ptr));
+		data_.push_back(new HashSet<Modulo2, Identity>(data_ptr, *size_ptr));
 		log_stream << "MMAPED Shape=" << i << " Hash_table_size=" << data_[i].size() << " load=" << (double)data_[i].load() / data_[i].size() << endl;
 		data_ptr += *size_ptr + SEED_INDEX_PADDING;
 		++size_ptr;
@@ -139,4 +140,8 @@ HashedSeedSet::HashedSeedSet(const string& index_file):
 HashedSeedSet::~HashedSeedSet() {
 	if (fd_ > 0)
 		unmap_file(buffer_, mapped_size_, fd_);
+}
+
+size_t HashedSeedSet::max_table_size() const {
+	return (*std::max_element(data_.begin(), data_.end(), [](HashSet<Modulo2, Identity>* a, HashSet<Modulo2, Identity>* b) { return a->size() < b->size(); }))->size();
 }

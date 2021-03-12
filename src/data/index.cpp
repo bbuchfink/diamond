@@ -16,7 +16,6 @@ void makeindex() {
 
 	setup_search();
 	config.algo = Config::Algo::DOUBLE_INDEXED;
-	config.hashed_seeds = true;
 
 	vector<uint32_t> block2db_id;
 	SequenceSet* seqs;

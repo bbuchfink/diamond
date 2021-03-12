@@ -20,7 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/sequence/sequence.h"
 #include "../basic/config.h"
 
-using namespace std;
+using std::unique_ptr;
 
 unsigned current_query_chunk;
 SequenceSet* query_source_seqs::data_ = 0;
@@ -29,8 +29,7 @@ String_set<char, '\0'>* query_ids::data_ = 0;
 Partitioned_histogram query_hst;
 vector<bool> query_aligned;
 std::mutex query_aligned_mtx;
-Seed_set *query_seeds = 0;
-HashedSeedSet *query_seeds_hashed = 0;
+unique_ptr<HashedSeedSet> query_seeds_hashed;
 String_set<char, '\0'> *query_qual = nullptr;
 vector<unsigned> query_block_to_database_id;
 

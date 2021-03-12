@@ -51,10 +51,10 @@ struct SeedArray
 	} PACKED_ATTRIBUTE;
 
 	template<typename _filter>
-	SeedArray(const SequenceSet &seqs, size_t shape, const shape_histogram &hst, const SeedPartitionRange &range, const vector<size_t> &seq_partition, char *buffer, const _filter *filter);
+	SeedArray(const SequenceSet &seqs, size_t shape, const shape_histogram &hst, const SeedPartitionRange &range, const vector<size_t> &seq_partition, char *buffer, const _filter *filter, bool hashed_seeds);
 
 	template<typename _filter>
-	SeedArray(const SequenceSet& seqs, size_t shape, const SeedPartitionRange& range, const _filter* filter);
+	SeedArray(const SequenceSet& seqs, size_t shape, const SeedPartitionRange& range, const _filter* filter, bool hashed_seeds);
 
 	Entry* begin(unsigned i)
 	{
@@ -93,6 +93,8 @@ struct SeedArray
 	}
 
 	static char *alloc_buffer(const Partitioned_histogram &hst);
+
+	const size_t key_bits;
 
 private:
 

@@ -50,12 +50,13 @@ struct Hashed_seed_iterator
 		end_(ptr_ + seq.length()),
 		last_(0)
 	{
-		for (uint64_t i = 0; i < sh.length_ - 1; ++i)
+		for (uint64_t i = 0; (i < sh.length_ - 1) && ptr_ < end_; ++i) {
 #ifdef SEQ_MASK
 			last_ = (last_ << _b) | Reduction::reduction(letter_mask(*(ptr_++)));
 #else
 			last_ = (last_ << _b) | Reduction::reduction(*(ptr_++));
 #endif
+		}
 	}
 	bool good() const
 	{

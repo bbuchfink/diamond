@@ -48,8 +48,9 @@ void seed_join_worker(
 	DoubleArray<SeedArray::_pos> *ref_seeds_hits)
 {
 	unsigned p;
-	const unsigned bits = config.hashed_seeds ? sizeof(SeedArray::Entry::Key) * 8
-		: (unsigned)ceil(shapes[0].weight_ * Reduction::reduction.bit_size_exact()) - Const::seedp_bits;
+	const unsigned bits = query_seeds->key_bits;
+	if (bits != ref_seeds->key_bits)
+		throw std::runtime_error("Joining seed arrays with different key lengths.");
 	while ((p = (*seedp)++) < seedp_range->end()) {
 		std::pair<DoubleArray<SeedArray::_pos>, DoubleArray<SeedArray::_pos>> join = hash_join(
 			Relation<SeedArray::Entry>(query_seeds->begin(p), query_seeds->size(p)),
@@ -90,19 +91,17 @@ void search_shape(unsigned sid, unsigned query_block, char *query_buffer, char *
 
 		task_timer timer("Building reference seed array", true);
 		SeedArray *ref_idx;
-		if (config.algo == Config::Algo::QUERY_INDEXED)
-			ref_idx = new SeedArray(*ref_seqs::data_, sid, ref_hst.get(sid), range, ref_hst.partition(), ref_buffer, query_seeds);
-		else if (query_seeds_hashed != 0)
-			ref_idx = new SeedArray(*ref_seqs::data_, sid, ref_hst.get(sid), range, ref_hst.partition(), ref_buffer, query_seeds_hashed);
+		if (query_seeds_hashed.get())
+			ref_idx = new SeedArray(*ref_seqs::data_, sid, ref_hst.get(sid), range, ref_hst.partition(), ref_buffer, query_seeds_hashed.get(), true);
 		else
-			ref_idx = new SeedArray(*ref_seqs::data_, sid, ref_hst.get(sid), range, ref_hst.partition(), ref_buffer, &no_filter);
+			ref_idx = new SeedArray(*ref_seqs::data_, sid, ref_hst.get(sid), range, ref_hst.partition(), ref_buffer, &no_filter, target_seeds);
 
 		timer.go("Building query seed array");
 		SeedArray* query_idx;
 		if (target_seeds)
-			query_idx = new SeedArray(*query_seqs::data_, sid, range, target_seeds);
+			query_idx = new SeedArray(*query_seqs::data_, sid, range, target_seeds, true);
 		else
-			query_idx = new SeedArray(*query_seqs::data_, sid, query_hst.get(sid), range, query_hst.partition(), query_buffer, &no_filter);
+			query_idx = new SeedArray(*query_seqs::data_, sid, query_hst.get(sid), range, query_hst.partition(), query_buffer, &no_filter, query_seeds_hashed.get());
 		timer.finish();
 
 		log_stream << "Indexed query seeds = " << query_idx->size() << '/' << query_seqs::get().letters() << ", reference seeds = " << ref_idx->size() << '/' << ref_seqs::get().letters() << endl;

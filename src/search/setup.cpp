@@ -183,8 +183,6 @@ void setup_search()
 	SeedComplexity::init(Reduction::reduction);
 	config.gapped_filter_diag_score = score_matrix.rawscore(config.gapped_filter_diag_bit_score);
 
-	message_stream << "Algorithm: " << (config.algo == Config::Algo::DOUBLE_INDEXED ? "Double-indexed" : "Query-indexed") << endl;
-
 	verbose_stream << "Seed frequency SD: " << config.freq_sd << endl;
 	verbose_stream << "Shape configuration: " << ::shapes << endl;
 }

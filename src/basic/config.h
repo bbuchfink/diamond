@@ -139,8 +139,6 @@ struct Config
 	bool log_subject;
 	unsigned threads_align;
 	double score_ratio;
-	bool small_query;
-	bool hashed_seeds;
 	string nodesdmp;
 	bool sallseqid;
 	string query_strands;

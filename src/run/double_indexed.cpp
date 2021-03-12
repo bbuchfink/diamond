@@ -49,12 +49,14 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/parallel/parallelizer.h"
 #include "../util/system/system.h"
 #include "../align/target.h"
-#include "../data/enum_seeds.h"
 
 using std::unique_ptr;
 using std::endl;
 
 namespace Workflow { namespace Search {
+
+static const size_t MAX_INDEX_QUERY_SIZE = 0x2000000;
+static const size_t MAX_HASH_SET_SIZE    = 0x800000;
 
 static const string label_align = "align";
 static const string stack_align_todo = label_align + "_todo";
@@ -111,12 +113,10 @@ void run_ref_chunk(SequenceFile &db_file,
 
 	if (!config.swipe_all) {
 		timer.go("Building reference histograms");
-		if (config.algo == Config::Algo::QUERY_INDEXED)
-			ref_hst = Partitioned_histogram(*ref_seqs::data_, false, query_seeds);
-		else if (query_seeds_hashed != 0)
-			ref_hst = Partitioned_histogram(*ref_seqs::data_, true, query_seeds_hashed);
+		if (query_seeds_hashed.get())
+			ref_hst = Partitioned_histogram(*ref_seqs::data_, true, query_seeds_hashed.get(), true);
 		else
-			ref_hst = Partitioned_histogram(*ref_seqs::data_, false, &no_filter);
+			ref_hst = Partitioned_histogram(*ref_seqs::data_, false, &no_filter, false);
 
 		timer.go("Allocating buffers");
 		char *ref_buffer = SeedArray::alloc_buffer(ref_hst);
@@ -190,42 +190,23 @@ void run_query_chunk(SequenceFile &db_file,
 	const Options &options)
 {
 	auto P = Parallelizer::get();
+	task_timer timer;
 
-	task_timer timer("Building query seed set");
-	if (config.algo == Config::Algo::AUTO) {
-		if (!sensitivity_traits.at(config.sensitivity).support_query_indexed) {
+	if (config.algo == Config::Algo::AUTO && (!sensitivity_traits.at(config.sensitivity).support_query_indexed || query_seqs::get().letters() > MAX_INDEX_QUERY_SIZE))
+		config.algo = Config::Algo::DOUBLE_INDEXED;
+	if (config.algo == Config::Algo::AUTO || config.algo == Config::Algo::QUERY_INDEXED) {
+		timer.go("Building query seed set");
+		query_seeds_hashed.reset(new HashedSeedSet(query_seqs::get()));
+		if (config.algo == Config::Algo::AUTO && query_seeds_hashed->max_table_size() > MAX_HASH_SET_SIZE) {
 			config.algo = Config::Algo::DOUBLE_INDEXED;
+			query_seeds_hashed.reset();
 		}
-		else {
-			query_seeds = new Seed_set(query_seqs::get(), SINGLE_INDEXED_SEED_SPACE_MAX_COVERAGE);
-			timer.finish();
-			log_stream << "Seed space coverage = " << query_seeds->coverage() << endl;
-			if (use_single_indexed(query_seeds->coverage(), query_seqs::get().letters(), db_file.letters()))
-				config.algo = Config::Algo::QUERY_INDEXED;
-			else {
-				config.algo = Config::Algo::DOUBLE_INDEXED;
-				delete query_seeds;
-				query_seeds = nullptr;
-			}
-		}
-	}
-	else if (config.algo == Config::Algo::QUERY_INDEXED) {
-		if (config.sensitivity >= Sensitivity::VERY_SENSITIVE)
-			throw std::runtime_error("Query-indexed algorithm not available for this sensitivity setting.");
-		query_seeds = new Seed_set(query_seqs::get(), 2);
+		else
+			config.algo = Config::Algo::QUERY_INDEXED;
 		timer.finish();
-		log_stream << "Seed space coverage = " << query_seeds->coverage() << endl;
 	}
-	else
-		timer.finish();
-
-	if (query_chunk == 0)
-		setup_search();
-	if (config.algo == Config::Algo::DOUBLE_INDEXED && config.small_query) {
-		timer.go("Building query seed hash set");
-		query_seeds_hashed = new HashedSeedSet(query_seqs::get());
-	}
-	timer.finish();
+	if (current_query_chunk == 0)
+		message_stream << "Algorithm: " << (config.algo == Config::Algo::DOUBLE_INDEXED ? "Double-indexed" : "Query-indexed") << endl;
 
 	const Parameters params{
 	db_file.sequence_count(),
@@ -242,7 +223,7 @@ void run_query_chunk(SequenceFile &db_file,
 
 	if (!config.swipe_all && !config.target_indexed) {
 		timer.go("Building query histograms");
-		query_hst = Partitioned_histogram(*query_seqs::data_, false, &no_filter);
+		query_hst = Partitioned_histogram(*query_seqs::data_, false, &no_filter, query_seeds_hashed.get());
 
 		timer.go("Allocating buffers");
 		query_buffer = SeedArray::alloc_buffer(query_hst);
@@ -313,9 +294,8 @@ void run_query_chunk(SequenceFile &db_file,
 
 	timer.go("Deallocating buffers");
 	delete[] query_buffer;
-	delete query_seeds;
+	query_seeds_hashed.reset();
 	delete Extension::memory;
-	query_seeds = 0;
 
 	log_rss();
 
@@ -450,6 +430,8 @@ void master_thread(SequenceFile *db_file, task_timer &total_timer, Metadata &met
 		P->init(config.parallel_tmpdir);
 		db_file->create_partition_balanced((size_t)(config.chunk_size*1e9));
 	}
+
+	setup_search();
 
 	task_timer timer("Opening the input file", true);
 	list<TextInputFile> *query_file = nullptr;

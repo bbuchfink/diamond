@@ -24,6 +24,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <assert.h>
 #include "value.h"
 #include "../util/util.h"
+#include "reduction.h"
 
 const Letter Char_representation::invalid = '\xff';
 
@@ -59,6 +60,8 @@ const Value_traits amino_acid_traits(AMINO_ACID_ALPHABET, 23, "UO-", Sequence_ty
 const Value_traits nucleotide_traits("ACGTN", 4, "MRWSYKVHDBX", Sequence_type::nucleotide);
 Value_traits value_traits(amino_acid_traits);
 Value_traits input_value_traits(amino_acid_traits);
+
+const Reduction Reduction::reduction("A KR EDNQ C G H ILVM FYW P ST"); // murphy.10
 
 // 15 = O, 21 = U
 const Letter IUPACAA_TO_STD[32] = { -1, 0, 20, 4, 3, 6, 13, 7, 8, 9, 21, 11, 10, 12, 2, MASK_LETTER, 14, 5, 1, 15, 16, MASK_LETTER, 19, 17, 23, 18, 22, -1, -1, -1, -1, 24 };

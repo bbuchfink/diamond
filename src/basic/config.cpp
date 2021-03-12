@@ -411,8 +411,6 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("score-ratio", 0, "", score_ratio, 0.9)
 		("fetch-size", 0, "trace point fetch size", fetch_size, 4096u)
 		("target-fetch-size", 0, "number of target sequences to fetch for seed extension", target_fetch_size, 4u)
-		("small-query", 0, "", small_query)
-		("hashed-seeds", 0, "", hashed_seeds)
 		("rank-factor", 0, "", rank_factor, -1.0)
 		("transcript-len-estimate", 0, "", transcript_len_estimate, 1.0)
 		("family-counts", 0, "", family_counts_file)
@@ -560,9 +558,6 @@ Config::Config(int argc, const char **argv, bool check_io)
 
 	if (frame_shift > 0 && ext == "full")
 		throw std::runtime_error("Frameshift alignment does not support full matrix extension.");
-
-	if (target_indexed)
-		hashed_seeds = true;
 
 	if (check_io) {
 		switch (command) {
