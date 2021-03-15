@@ -25,6 +25,7 @@ template<typename _t>
 struct FlatArray {
 
 	typedef typename std::vector<_t>::iterator Iterator;
+	typedef typename std::vector<_t>::const_iterator ConstIterator;
 
 	FlatArray() {
 		limits_.push_back(0);
@@ -35,7 +36,7 @@ struct FlatArray {
 		++limits_.back();
 	}
 
-	void push_back(const _t* begin, const _t* end) {
+	void push_back(ConstIterator begin, ConstIterator end) {
 		data_.insert(data_.end(), begin, end);
 		limits_.push_back(limits_.back() + end - begin);
 	}
@@ -66,11 +67,11 @@ struct FlatArray {
 		return data_.size();
 	}
 
-	Iterator begin(size_t i) const {
+	ConstIterator begin(size_t i) const {
 		return data_.cbegin() + limits_[i];
 	}
 
-	Iterator end(size_t i) const {
+	ConstIterator end(size_t i) const {
 		return data_.cbegin() + limits_[i + 1];
 	}
 
