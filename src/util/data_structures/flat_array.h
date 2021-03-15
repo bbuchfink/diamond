@@ -24,6 +24,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 template<typename _t>
 struct FlatArray {
 
+	typedef typename std::vector<_t>::iterator Iterator;
+
 	FlatArray() {
 		limits_.push_back(0);
 	}
@@ -64,20 +66,20 @@ struct FlatArray {
 		return data_.size();
 	}
 
-	const _t* begin(size_t i) const {
-		return &data_[limits_[i]];
+	Iterator begin(size_t i) const {
+		return data_.cbegin() + limits_[i];
 	}
 
-	const _t* end(size_t i) const {
-		return &data_[limits_[i + 1]];
+	Iterator end(size_t i) const {
+		return data_.cbegin() + limits_[i + 1];
 	}
 
-	_t* begin(size_t i) {
-		return &data_[limits_[i]];
+	Iterator begin(size_t i) {
+		return data_.begin() + limits_[i];
 	}
 
-	_t* end(size_t i) {
-		return &data_[limits_[i + 1]];
+	Iterator end(size_t i) {
+		return data_.begin() + limits_[i + 1];
 	}
 
 	size_t count(size_t i) const {

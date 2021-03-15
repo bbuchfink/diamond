@@ -198,6 +198,8 @@ SequenceFile* SequenceFile::auto_create(Flags flags) {
 			throw std::runtime_error("--multiprocessing is not compatible with BLAST databases.");
 		if (config.target_indexed)
 			throw std::runtime_error("--target-indexed is not compatible with BLAST databases.");
+		if (config.global_ranking_targets)
+			throw std::runtime_error("");
 		return new BlastDB(config.database, flags);
 #else
 		throw std::runtime_error("This executable was not compiled with support for BLAST databases.");
@@ -232,12 +234,13 @@ void db_info() {
 	if (config.database.empty())
 		throw std::runtime_error("Missing option for database file: --db/-d.");
 	SequenceFile* db = SequenceFile::auto_create(SequenceFile::Flags::NO_FASTA | SequenceFile::Flags::NO_COMPATIBILITY_CHECK);
-	cout << setw(25) << "Database type  " << to_string(db->type()) << endl;
-	cout << setw(25) << "Database format version  " << db->db_version() << endl;
+	const std::streamsize w = 25;
+	cout << setw(w) << "Database type  " << to_string(db->type()) << endl;
+	cout << setw(w) << "Database format version  " << db->db_version() << endl;
 	if(db->type() == SequenceFile::Type::DMND)
-		cout << setw(25) << "Diamond build  " << db->program_build_version() << endl;
-	cout << setw(25) << "Sequences  " << db->sequence_count() << endl;
-	cout << setw(25) << "Letters  " << db->letters() << endl;
+		cout << setw(w) << "Diamond build  " << db->program_build_version() << endl;
+	cout << setw(w) << "Sequences  " << db->sequence_count() << endl;
+	cout << setw(w) << "Letters  " << db->letters() << endl;
 	db->close();
 	delete db;
 }

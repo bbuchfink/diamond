@@ -35,7 +35,8 @@ void enum_seeds_hashed(const SequenceSet* seqs, _f* f, unsigned begin, unsigned 
 		for (size_t shape_id = shape_range.first; shape_id < shape_range.second; ++shape_id) {
 			const Shape& sh = shapes[shape_id];
 			if (seq.length() < sh.length_) continue;
-			const uint64_t shape_mask = sh.long_mask();
+			//const uint64_t shape_mask = sh.long_mask();
+			const __m128i shape_mask = sh.long_mask_sse_;
 			Hashed_seed_iterator<_b> it(seq, sh);
 			size_t j = 0;
 			while (it.good()) {

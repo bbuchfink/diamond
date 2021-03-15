@@ -64,8 +64,8 @@ static int ungapped_window(int query_len) {
 
 void search_query_offset(uint64_t q,
 	const Packed_loc* s,
-	const uint32_t *hits,
-	const uint32_t *hits_end,
+	FlatArray<uint32_t>::Iterator hits,
+	FlatArray<uint32_t>::Iterator hits_end,
 	Statistics& stats,
 	Trace_pt_buffer::Iterator& out,
 	const unsigned sid,
@@ -94,7 +94,7 @@ void search_query_offset(uint64_t q,
 
 	const int interval_mod = config.left_most_interval > 0 ? seed_offset % config.left_most_interval : window_left, interval_overhang = std::max(window_left - interval_mod, 0);
 
-	for (const uint32_t *i = hits; i < hits_end; i += N) {
+	for (FlatArray<uint32_t>::Iterator i = hits; i < hits_end; i += N) {
 
 		const size_t n = std::min(N, hits_end - i);
 		for (size_t j = 0; j < n; ++j)
@@ -152,7 +152,7 @@ struct Stage2 {
 		const uint32_t query_count = (uint32_t)hits.size();
 		const Packed_loc* q_begin = q + query_begin, * s_begin = s + subject_begin;
 		for (uint32_t i = 0; i < query_count; ++i) {
-			const uint32_t* r1 = hits.begin(i), * r2 = hits.end(i);
+			FlatArray<uint32_t>::Iterator r1 = hits.begin(i), r2 = hits.end(i);
 			if (r2 == r1)
 				continue;
 			search_query_offset(q_begin[i], s_begin, r1, r2, stat, out, sid, context);

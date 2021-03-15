@@ -55,8 +55,9 @@ using std::endl;
 
 namespace Workflow { namespace Search {
 
-static const size_t MAX_INDEX_QUERY_SIZE = 0x2000000;
-static const size_t MAX_HASH_SET_SIZE    = 0x800000;
+static const size_t MAX_INDEX_QUERY_SIZE      = 0x2000000;
+static const size_t MAX_HASH_SET_SIZE         = 0x800000;
+static const size_t MIN_QUERY_INDEXED_DB_SIZE = 0x10000000;
 
 static const string label_align = "align";
 static const string stack_align_todo = label_align + "_todo";
@@ -192,7 +193,10 @@ void run_query_chunk(SequenceFile &db_file,
 	auto P = Parallelizer::get();
 	task_timer timer;
 
-	if (config.algo == Config::Algo::AUTO && (!sensitivity_traits.at(config.sensitivity).support_query_indexed || query_seqs::get().letters() > MAX_INDEX_QUERY_SIZE))
+	if (config.algo == Config::Algo::AUTO &&
+		(!sensitivity_traits.at(config.sensitivity).support_query_indexed
+			|| query_seqs::get().letters() > MAX_INDEX_QUERY_SIZE
+			|| db_file.letters() < MIN_QUERY_INDEXED_DB_SIZE))
 		config.algo = Config::Algo::DOUBLE_INDEXED;
 	if (config.algo == Config::Algo::AUTO || config.algo == Config::Algo::QUERY_INDEXED) {
 		timer.go("Building query seed set");

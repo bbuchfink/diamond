@@ -21,13 +21,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #pragma once
 #include <stddef.h>
+#include "../util/data_structures/flat_array.h"
 #include "../util/simd.h"
 #include "../dp/ungapped.h"
 #include "../basic/shape_config.h"
 #include "../basic/statistics.h"
 #include "trace_pt_buffer.h"
 #include "../util/algo/pattern_matcher.h"
-#include "../util/data_structures/flat_array.h"
 #include "../util/scores/cutoff_table.h"
 #include "../basic/parameters.h"
 #include "../data/seed_set.h"
