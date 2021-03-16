@@ -46,9 +46,9 @@
 namespace ips4o {
 namespace detail {
 
-#if UINTPTR_MAX != UINT32_MAX && !defined(__SIZEOF_INT128__)
+//#if UINTPTR_MAX != UINT32_MAX && !defined(__SIZEOF_INT128__)
 //#error "Unsupported architecture"
-#endif
+//#endif
 
 template <class Cfg>
 class Sorter<Cfg>::BucketPointers {

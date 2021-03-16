@@ -44,9 +44,9 @@ private:
 };
 
 template<uint64_t _b>
-struct Hashed_seed_iterator2
+struct Hashed_seed_iterator
 {
-	Hashed_seed_iterator2(const Sequence &seq, const Shape &sh):
+	Hashed_seed_iterator(const Sequence &seq, const Shape &sh):
 		ptr_(seq.data()),
 		end_(ptr_ + seq.length()),
 		last_(0)
@@ -82,7 +82,7 @@ private:
 	uint64_t last_;
 };
 
-static inline uint64_t hash(__m128i a) {
+/*static inline uint64_t hash(__m128i a) {
 	char in[16], seed[16], out[16];
 	_mm_storeu_si128((__m128i*)in, a);
 	std::fill(seed, seed + 16, 0);
@@ -137,7 +137,7 @@ struct Hashed_seed_iterator
 private:
 	const Letter* ptr_, * end_;
 	__m128i last_;
-};
+};*/
 
 template<uint64_t _l, uint64_t _b>
 struct Contiguous_seed_iterator
