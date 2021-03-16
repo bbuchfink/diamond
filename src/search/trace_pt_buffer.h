@@ -35,7 +35,7 @@ struct hit
 	typedef uint64_t Key;
 
 	uint32_t query_;
-	Packed_loc subject_;
+	PackedLoc subject_;
 	Seed_offset	seed_offset_;
 	uint16_t score_;
 	hit() :
@@ -43,7 +43,7 @@ struct hit
 		subject_(),
 		seed_offset_()
 	{ }
-	hit(unsigned query, Packed_loc subject, Seed_offset seed_offset, uint16_t score = 0) :
+	hit(unsigned query, PackedLoc subject, Seed_offset seed_offset, uint16_t score = 0) :
 		query_(query),
 		subject_(subject),
 		seed_offset_(seed_offset),
@@ -121,7 +121,7 @@ struct hit
 		uint32_t query_id, seed_offset;
 		s.varint = true;
 		s >> query_id >> seed_offset;
-		Packed_loc subject_loc;
+		PackedLoc subject_loc;
 		size_t count = 0;
 		uint32_t x;
 		s.varint = false;

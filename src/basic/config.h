@@ -212,7 +212,7 @@ struct Config
 	size_t file_buffer_size;
 	bool self;
 	size_t trace_pt_fetch_size;
-	uint32_t tile_size;
+	size_t tile_size;
 	double short_query_ungapped_bitscore;
 	int short_query_max_len;
 	double gapped_filter_evalue1;

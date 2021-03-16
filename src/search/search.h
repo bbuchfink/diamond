@@ -87,7 +87,7 @@ void setup_search();
 
 namespace Search {
 
-DECL_DISPATCH(void, stage1, (const Packed_loc* q, size_t nq, const Packed_loc* s, size_t ns, Statistics& stats, Trace_pt_buffer::Iterator& out, const unsigned sid, const Context& context))
+DECL_DISPATCH(void, stage1, (const PackedLoc* q, size_t nq, const PackedLoc* s, size_t ns, Statistics& stats, Trace_pt_buffer::Iterator& out, const unsigned sid, const Context& context))
 
 }
 

@@ -20,7 +20,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <limits.h>
 #include "search.h"
-#include "../util/map.h"
 #include "../data/queries.h"
 #include "../data/reference.h"
 #include "../dp/ungapped.h"
@@ -31,7 +30,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/simd/vector.h"
 #include "../dp/scan_diags.h"
 #include "finger_print.h"
-#include "../util/algo/all_vs_all.h"
 #include "../util/text_buffer.h"
 #include "../util/memory/alignment.h"
 
@@ -62,8 +60,8 @@ static int ungapped_window(int query_len) {
 		return config.ungapped_window;
 }
 
-void search_query_offset(uint64_t q,
-	const Packed_loc* s,
+static void search_query_offset(uint64_t q,
+	const PackedLoc* s,
 	FlatArray<uint32_t>::ConstIterator hits,
 	FlatArray<uint32_t>::ConstIterator hits_end,
 	Statistics& stats,
@@ -136,56 +134,66 @@ void search_query_offset(uint64_t q,
 	}
 }
 
-struct Stage2 {
-
-	Stage2(const Packed_loc* q, const Packed_loc* s, Statistics& stat, Trace_pt_buffer::Iterator& out, unsigned sid, const Context& context):
-		q(q),
-		s(s),
-		stat(stat),
-		out(out),
-		sid(sid),
-		context(context)
-	{}
-
-	void operator()(const FlatArray<uint32_t> &hits, uint32_t query_begin, uint32_t subject_begin) {
-		stat.inc(Statistics::TENTATIVE_MATCHES1, hits.data_size());
-		const uint32_t query_count = (uint32_t)hits.size();
-		const Packed_loc* q_begin = q + query_begin, * s_begin = s + subject_begin;
-		for (uint32_t i = 0; i < query_count; ++i) {
-			FlatArray<uint32_t>::ConstIterator r1 = hits.begin(i), r2 = hits.end(i);
-			if (r2 == r1)
-				continue;
-			search_query_offset(q_begin[i], s_begin, r1, r2, stat, out, sid, context);
-		}
+static void search_tile(
+	const FlatArray<uint32_t> &hits,
+	uint32_t query_begin,
+	uint32_t subject_begin,
+	const PackedLoc* q,
+	const PackedLoc* s,
+	Statistics& stat,
+	Trace_pt_buffer::Iterator& out,
+	unsigned sid,
+	const Context& context)
+{
+	stat.inc(Statistics::TENTATIVE_MATCHES1, hits.data_size());
+	const uint32_t query_count = (uint32_t)hits.size();
+	const PackedLoc* q_begin = q + query_begin, *s_begin = s + subject_begin;
+	for (uint32_t i = 0; i < query_count; ++i) {
+		FlatArray<uint32_t>::ConstIterator r1 = hits.begin(i), r2 = hits.end(i);
+		if (r2 == r1)
+			continue;
+		search_query_offset(q_begin[i], s_begin, r1, r2, stat, out, sid, context);
 	}
+}
 
-	const Packed_loc* q, * s;
-	Statistics& stat;
-	Trace_pt_buffer::Iterator& out;
-	const unsigned sid;
-	const Context& context;
+typedef vector<FingerPrint, Util::Memory::AlignmentAllocator<FingerPrint, 16>> Container;
 
-};
+static void all_vs_all(const FingerPrint* a, uint32_t na, const FingerPrint* b, uint32_t nb, FlatArray<uint32_t>& out) {
+	for (uint32_t i = 0; i < na; ++i) {
+		const FingerPrint e = a[i];
+		out.next();
+		for (uint32_t j = 0; j < nb; ++j)
+			if (e == b[j])
+				out.push_back(j);
+	}
+}
 
-typedef vector<Finger_print, Util::Memory::AlignmentAllocator<Finger_print, 16>> Container;
-
-static void load_fps(const Packed_loc* p, size_t n, Container& v, const SequenceSet& seqs)
+static void load_fps(const PackedLoc* p, size_t n, Container& v, const SequenceSet& seqs)
 {
 	v.clear();
 	v.reserve(n);
-	const Packed_loc* end = p + n;
+	const PackedLoc* end = p + n;
 	for (; p < end; ++p)
 		v.emplace_back(seqs.data(*p));
 }
 
-void stage1(const Packed_loc* q, size_t nq, const Packed_loc* s, size_t ns, Statistics& stats, Trace_pt_buffer::Iterator& out, const unsigned sid, const Context& context)
+void stage1(const PackedLoc* q, size_t nq, const PackedLoc* s, size_t ns, Statistics& stats, Trace_pt_buffer::Iterator& out, const unsigned sid, const Context& context)
 {
 	thread_local Container vq, vs;
+	thread_local FlatArray<uint32_t> hits;
 	stats.inc(Statistics::SEED_HITS, nq * ns);
 	load_fps(q, nq, vq, *query_seqs::data_);
 	load_fps(s, ns, vs, *ref_seqs::data_);
-	Stage2 callback(q, s, stats, out, sid, context);
-	all_vs_all(vq.data(), vq.size(), vs.data(), vs.size(), config.tile_size, callback);
+
+	const size_t tile_size = config.tile_size;
+	for (size_t i = 0; i < vq.size(); i += tile_size) {
+		for (size_t j = 0; j < vs.size(); j += tile_size) {
+			hits.clear();
+			all_vs_all(vq.data() + i, (uint32_t)std::min(tile_size, vq.size() - i), vs.data() + j, (uint32_t)std::min(tile_size, vs.size() - j), hits);
+			search_tile(hits, i, j, q, s, stats, out, sid, context);
+		}
+	}
+
 }
 
 }}

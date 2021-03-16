@@ -27,7 +27,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 struct SeedArray
 {
 
-	typedef Packed_loc _pos;
+	typedef PackedLoc _pos;
 
 	struct Entry
 	{
