@@ -65,10 +65,11 @@ void search_worker(atomic<unsigned> *seedp, const SeedPartitionRange *seedp_rang
 {
 	Trace_pt_buffer::Iterator* out = new Trace_pt_buffer::Iterator(*Trace_pt_buffer::instance, thread_id);
 	Statistics stats;
+	Search::WorkSet work_set;
 	unsigned p;
 	while ((p = (*seedp)++) < seedp_range->end())
 		for (auto it = JoinIterator<SeedArray::_pos>(query_seed_hits[p].begin(), ref_seed_hits[p].begin()); it; ++it)
-			Search::stage1(it.r->begin(), it.r->size(), it.s->begin(), it.s->size(), stats, *out, shape, *context);
+			Search::stage1(it.r->begin(), it.r->size(), it.s->begin(), it.s->size(), stats, *out, shape, *context, work_set);
 	delete out;
 	statistics += stats;
 }

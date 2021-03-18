@@ -21,6 +21,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #pragma once
 #include <stddef.h>
+#include <vector>
 #include "../util/data_structures/flat_array.h"
 #include "../util/simd.h"
 #include "../dp/ungapped.h"
@@ -31,6 +32,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/scores/cutoff_table.h"
 #include "../basic/parameters.h"
 #include "../data/seed_set.h"
+#include "finger_print.h"
+#include "../util/memory/alignment.h"
 
 // #define UNGAPPED_SPOUGE
 
@@ -87,7 +90,12 @@ void setup_search();
 
 namespace Search {
 
-DECL_DISPATCH(void, stage1, (const PackedLoc* q, size_t nq, const PackedLoc* s, size_t ns, Statistics& stats, Trace_pt_buffer::Iterator& out, const unsigned sid, const Context& context))
+struct WorkSet {
+	std::vector<FingerPrint, Util::Memory::AlignmentAllocator<FingerPrint, 16>> vq, vs;
+	FlatArray<uint32_t> hits;
+};
+
+DECL_DISPATCH(void, stage1, (const PackedLoc* q, size_t nq, const PackedLoc* s, size_t ns, Statistics& stats, Trace_pt_buffer::Iterator& out, const unsigned sid, const Context& context, WorkSet& work_set))
 
 }
 

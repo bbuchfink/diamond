@@ -165,7 +165,11 @@ void align_queries(Trace_pt_buffer &trace_pts, Consumer* output_file, const Para
 		trace_pts.load(max_size);
 
 		timer.go("Sorting trace points");
-		ips4o::parallel::sort(hit_buf->data(), hit_buf->data() + hit_buf->size());
+#if _MSC_FULL_VER == 191627042
+		radix_sort<hit, hit::Query>(hit_buf->data(), hit_buf->data() + hit_buf->size(), (uint32_t)query_range.second * align_mode.query_contexts, config.threads_);
+#else
+		ips4o::parallel::sort(hit_buf->data(), hit_buf->data() + hit_buf->size(), std::less<hit>(), config.threads_);
+#endif
 		statistics.inc(Statistics::TIME_SORT_SEED_HITS, timer.microseconds());
 
 		timer.go("Computing alignments");
