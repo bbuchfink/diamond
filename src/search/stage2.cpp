@@ -64,10 +64,7 @@ static void search_query_offset(uint64_t q,
 	const PackedLoc* s,
 	FlatArray<uint32_t>::ConstIterator hits,
 	FlatArray<uint32_t>::ConstIterator hits_end,
-	Statistics& stats,
-	Trace_pt_buffer::Iterator& out,
-	const unsigned sid,
-	const Context& context)
+	WorkSet& work_set)
 {
 	thread_local TextBuffer output_buf;
 
@@ -84,10 +81,11 @@ static void search_query_offset(uint64_t q,
 	query_id = (unsigned)l.first;
 	seed_offset = (unsigned)l.second;
 	const int query_len = query_seqs::data_->length(query_id);
-	const int score_cutoff = ungapped_cutoff(query_len, context);
+	const int score_cutoff = ungapped_cutoff(query_len, work_set.context);
 	const int window = ungapped_window(query_len);
 	const Sequence query_clipped = Util::Seq::clip(query - window, window * 2, window);
 	const int window_left = int(query - query_clipped.data()), window_clipped = (int)query_clipped.length();
+	const unsigned sid = work_set.shape_id;
 	size_t hit_count = 0, n = 0;
 
 	const int interval_mod = config.left_most_interval > 0 ? seed_offset % config.left_most_interval : window_left, interval_overhang = std::max(window_left - interval_mod, 0);
@@ -106,9 +104,9 @@ static void search_query_offset(uint64_t q,
 				if (scores[j] < context.cutoff_table(query_len, ref_seqs::data_->length(l.first)))
 					continue;
 #endif
-				stats.inc(Statistics::TENTATIVE_MATCHES2);
-				if (left_most_filter(query_clipped + interval_overhang, subjects[j] + interval_overhang, window_left - interval_overhang, shapes[sid].length_, context, sid == 0, sid, score_cutoff)) {
-					stats.inc(Statistics::TENTATIVE_MATCHES3);
+				work_set.stats.inc(Statistics::TENTATIVE_MATCHES2);
+				if (left_most_filter(query_clipped + interval_overhang, subjects[j] + interval_overhang, window_left - interval_overhang, shapes[sid].length_, work_set.context, sid == 0, sid, score_cutoff)) {
+					work_set.stats.inc(Statistics::TENTATIVE_MATCHES3);
 					if (hit_count == 0) {
 						output_buf.clear();
 						output_buf.write_varint(query_id);
@@ -130,7 +128,7 @@ static void search_query_offset(uint64_t q,
 			output_buf.write(packed_uint40_t(0));
 		else
 			output_buf.write((uint32_t)0);
-		out.push(query_id / align_mode.query_contexts, output_buf.get_begin(), output_buf.size(), hit_count);
+		work_set.out.push(query_id / align_mode.query_contexts, output_buf.get_begin(), output_buf.size(), hit_count);
 	}
 }
 
@@ -140,19 +138,16 @@ static void FLATTEN search_tile(
 	uint32_t subject_begin,
 	const PackedLoc* q,
 	const PackedLoc* s,
-	Statistics& stat,
-	Trace_pt_buffer::Iterator& out,
-	unsigned sid,
-	const Context& context)
+	WorkSet& work_set)
 {
-	stat.inc(Statistics::TENTATIVE_MATCHES1, hits.data_size());
+	work_set.stats.inc(Statistics::TENTATIVE_MATCHES1, hits.data_size());
 	const uint32_t query_count = (uint32_t)hits.size();
 	const PackedLoc* q_begin = q + query_begin, *s_begin = s + subject_begin;
 	for (uint32_t i = 0; i < query_count; ++i) {
 		FlatArray<uint32_t>::ConstIterator r1 = hits.begin(i), r2 = hits.end(i);
 		if (r2 == r1)
 			continue;
-		search_query_offset(q_begin[i], s_begin, r1, r2, stat, out, sid, context);
+		search_query_offset(q_begin[i], s_begin, r1, r2, work_set);
 	}
 }
 
@@ -177,11 +172,9 @@ static void load_fps(const PackedLoc* p, size_t n, Container& v, const SequenceS
 		v.emplace_back(seqs.data(*p));
 }
 
-void FLATTEN stage1(const PackedLoc* q, size_t nq, const PackedLoc* s, size_t ns, Statistics& stats, Trace_pt_buffer::Iterator& out, const unsigned sid, const Context& context, WorkSet& work_set)
+void FLATTEN stage1(const PackedLoc* q, size_t nq, const PackedLoc* s, size_t ns, WorkSet& work_set)
 {
-	//thread_local Container vq, vs;
-	//thread_local FlatArray<uint32_t> hits;
-	stats.inc(Statistics::SEED_HITS, nq * ns);
+	work_set.stats.inc(Statistics::SEED_HITS, nq * ns);
 	load_fps(q, nq, work_set.vq, *query_seqs::data_);
 	load_fps(s, ns, work_set.vs, *ref_seqs::data_);
 
@@ -190,7 +183,7 @@ void FLATTEN stage1(const PackedLoc* q, size_t nq, const PackedLoc* s, size_t ns
 		for (size_t j = 0; j < work_set.vs.size(); j += tile_size) {
 			work_set.hits.clear();
 			all_vs_all(work_set.vq.data() + i, (uint32_t)std::min(tile_size, work_set.vq.size() - i), work_set.vs.data() + j, (uint32_t)std::min(tile_size, work_set.vs.size() - j), work_set.hits);
-			search_tile(work_set.hits, i, j, q, s, stats, out, sid, context);
+			search_tile(work_set.hits, i, j, q, s, work_set);
 		}
 	}
 

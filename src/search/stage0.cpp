@@ -36,6 +36,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 using std::vector;
 using std::atomic;
 using std::endl;
+using std::unique_ptr;
 
 Trace_pt_buffer* Trace_pt_buffer::instance;
 
@@ -63,15 +64,12 @@ void seed_join_worker(
 
 void search_worker(atomic<unsigned> *seedp, const SeedPartitionRange *seedp_range, unsigned shape, size_t thread_id, DoubleArray<SeedArray::_pos> *query_seed_hits, DoubleArray<SeedArray::_pos> *ref_seed_hits, const Search::Context *context)
 {
-	Trace_pt_buffer::Iterator* out = new Trace_pt_buffer::Iterator(*Trace_pt_buffer::instance, thread_id);
-	Statistics stats;
-	Search::WorkSet work_set;
+	unique_ptr<Search::WorkSet> work_set(new Search::WorkSet{ *context, shape, {},  {*Trace_pt_buffer::instance, thread_id} });
 	unsigned p;
 	while ((p = (*seedp)++) < seedp_range->end())
 		for (auto it = JoinIterator<SeedArray::_pos>(query_seed_hits[p].begin(), ref_seed_hits[p].begin()); it; ++it)
-			Search::stage1(it.r->begin(), it.r->size(), it.s->begin(), it.s->size(), stats, *out, shape, *context, work_set);
-	delete out;
-	statistics += stats;
+			Search::stage1(it.r->begin(), it.r->size(), it.s->begin(), it.s->size(), *work_set);
+	statistics += work_set->stats;
 }
 
 void search_shape(unsigned sid, unsigned query_block, char *query_buffer, char *ref_buffer, const Parameters &params, const HashedSeedSet* target_seeds)
