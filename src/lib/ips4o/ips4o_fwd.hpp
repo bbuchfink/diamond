@@ -47,7 +47,8 @@ namespace detail {
 template <class It, class Comp>
 inline void baseCaseSort(It begin, It end, Comp&& comp);
 
-inline constexpr unsigned long log2(unsigned long n);
+inline constexpr uint64_t log2_const(uint64_t n);
+inline uint64_t log2(uint64_t n);
 
 template <class It, class RandomGen>
 inline void selectSample(It begin, It end,
