@@ -30,10 +30,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "extend.h"
 #include "../util/algo/radix_sort.h"
 #include "target.h"
+#define _REENTRANT
 #include "../lib/ips4o/ips4o.hpp"
-
-/*template <class Cfg>
-const ips4o::detail::Sorter<Cfg>::BucketPointers::atomic_type ips4o::detail::Sorter<Cfg>::BucketPointers::kMask = (static_cast<ips4o::detail::Sorter<Cfg>::BucketPointers::atomic_type>(1) << kShift) - 1;*/
 
 using std::get;
 using std::tuple;
@@ -167,11 +165,7 @@ void align_queries(Trace_pt_buffer &trace_pts, Consumer* output_file, const Para
 		trace_pts.load(max_size);
 
 		timer.go("Sorting trace points");
-		//if (config.beta)
-			radix_sort<hit, hit::Query>(hit_buf->data(), hit_buf->data() + hit_buf->size(), (uint32_t)query_range.second * align_mode.query_contexts, config.threads_);
-		//else
-			//merge_sort(hit_buf->begin(), hit_buf->end(), config.threads_);
-		//ips4o::sort(hit_buf->data(), hit_buf->data() + hit_buf->size());
+		ips4o::parallel::sort(hit_buf->data(), hit_buf->data() + hit_buf->size());
 		statistics.inc(Statistics::TIME_SORT_SEED_HITS, timer.microseconds());
 
 		timer.go("Computing alignments");

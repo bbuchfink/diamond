@@ -258,7 +258,6 @@ set(OBJECTS
   src/data/index.cpp
   src/data/dmnd/dmnd.cpp
   src/data/sequence_file.cpp
-  src/lib/uint128/uint128_t.cpp
 )
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}")

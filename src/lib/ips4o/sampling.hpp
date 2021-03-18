@@ -104,7 +104,7 @@ std::pair<int, bool> Sorter<Cfg>::buildClassifier(const iterator begin,
             && num_buckets - 1 - diff_splitters >= Cfg::kEqualBucketsThreshold;
 
     // Fill the array to the next power of two
-    log_buckets = log2(diff_splitters) + 1;
+    log_buckets = log2((uint64_t)diff_splitters) + 1;
     num_buckets = 1 << log_buckets;
     for (int i = diff_splitters + 1; i < num_buckets; ++i) {
         IPS4O_ASSUME_NOT(sorted_splitters + 1 == nullptr);

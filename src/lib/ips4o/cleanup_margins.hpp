@@ -93,8 +93,8 @@ void Sorter<Cfg>::writeMargins(const int first_bucket, const int last_bucket,
 
     for (int i = first_bucket; i < last_bucket; ++i) {
         // Get bucket information
-        const auto bstart = bucket_start_[i];
-        const auto bend = bucket_start_[i + 1];
+        const ptrdiff_t bstart = bucket_start_[i];
+        const ptrdiff_t bend = bucket_start_[i + 1];
         const auto bwrite = bucket_pointers_[i].getWrite();
         // Destination where elements can be written
         auto dst = begin_ + bstart;

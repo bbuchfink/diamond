@@ -33,10 +33,13 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *****************************************************************************/
 
+// Modified by B. Buchfink
+
 #pragma once
 
 #include <iterator>
 #include <utility>
+#include "../../util/system.h"
 
 namespace ips4o {
 namespace detail {
@@ -82,7 +85,8 @@ class Sorter {
     SharedData* shared_;
     Classifier* classifier_;
 
-    diff_t* bucket_start_;
+    //diff_t* bucket_start_;
+	std::atomic_ptrdiff_t* bucket_start_;
     BucketPointers* bucket_pointers_;
     Block* overflow_;
 
@@ -96,7 +100,7 @@ class Sorter {
 
     std::pair<int, bool> buildClassifier(iterator begin, iterator end, Classifier& classifier);
 
-    template <bool kEqualBuckets> //__attribute__((flatten))
+    template <bool kEqualBuckets> FLATTEN
     diff_t classifyLocally(iterator my_begin, iterator my_end);
 
     inline void parallelClassification(bool use_equal_buckets);
@@ -122,7 +126,7 @@ class Sorter {
                       int swap_bucket, diff_t in_swap_buffer);
 
     template <bool kIsParallel>
-    std::pair<int, bool> partition(iterator begin, iterator end, diff_t* bucket_start,
+    std::pair<int, bool> partition(iterator begin, iterator end, std::atomic_ptrdiff_t* bucket_start,
                                    SharedData* shared, int my_id, int num_threads);
 
     inline void processSmallTasks(iterator begin, SharedData& shared);
