@@ -160,8 +160,7 @@ struct Config {
      * The oversampling factor to be used for input of size n.
      */
     static constexpr double oversamplingFactor(std::ptrdiff_t n) {
-        const double f = OversampleF_ / 100.0 * detail::log2((uint64_t)n);
-        return f < 1.0 ? 1.0 : f;
+		return std::max(OversampleF_ / 100.0 * detail::log2_const((uint64_t)n), 1.0);
     }
 
     /**
@@ -186,8 +185,7 @@ struct Config {
     template <class It>
 #if defined(_REENTRANT) || defined(_OPENMP)
     static constexpr int numThreadsFor(const It& begin, const It& end, int max_threads) {
-        const std::ptrdiff_t blocks = (end - begin) * sizeof(decltype(*begin)) / kBlockSizeInBytes;
-        return (blocks < (kMinParallelBlocksPerThread * max_threads)) ? 1 : max_threads;
+        return (((end - begin) * sizeof(decltype(*begin)) / kBlockSizeInBytes) < (kMinParallelBlocksPerThread * max_threads)) ? 1 : max_threads;
 #else
     static constexpr int numThreadsFor(const It&, const It&, int) {
         return 1;

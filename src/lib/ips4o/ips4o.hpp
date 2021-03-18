@@ -91,7 +91,7 @@ namespace parallel {
  * Helper functions for creating a reusable parallel sorter.
  */
 template <class It, class Cfg = Config<>, class ThreadPool, class Comp = std::less<typename std::iterator_traits<It>::value_type>>
-typename std::enable_if<std::is_class<std::remove_reference_t<ThreadPool>>::value,
+typename std::enable_if<std::is_class<typename std::remove_reference<ThreadPool>::type>::value,
                  ParallelSorter<ExtendedConfig<It, Comp, Cfg, ThreadPool>>>::type
 make_sorter(ThreadPool&& thread_pool, Comp comp = Comp()) {
     return ParallelSorter<ExtendedConfig<It, Comp, Cfg, ThreadPool>>(
@@ -109,7 +109,7 @@ ParallelSorter<ExtendedConfig<It, Comp, Cfg>> make_sorter(
  * Configurable interface.
  */
 template <class Cfg = Config<>, class It, class Comp, class ThreadPool>
-typename std::enable_if<std::is_class<std::remove_reference_t<ThreadPool>>::value>::type
+typename std::enable_if<std::is_class<typename std::remove_reference<ThreadPool>::type>::value>::type
 sort(It begin, It end, Comp comp, ThreadPool&& thread_pool) {
     if (Cfg::numThreadsFor(begin, end, thread_pool.numThreads()) < 2)
         ips4o::sort<Cfg>(std::move(begin), std::move(end), std::move(comp));
