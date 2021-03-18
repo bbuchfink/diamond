@@ -64,7 +64,7 @@ void seed_join_worker(
 
 void search_worker(atomic<unsigned> *seedp, const SeedPartitionRange *seedp_range, unsigned shape, size_t thread_id, DoubleArray<SeedArray::_pos> *query_seed_hits, DoubleArray<SeedArray::_pos> *ref_seed_hits, const Search::Context *context)
 {
-	unique_ptr<Search::WorkSet> work_set(new Search::WorkSet{ *context, shape, {},  {*Trace_pt_buffer::instance, thread_id} });
+	unique_ptr<Search::WorkSet> work_set(new Search::WorkSet{ *context, shape, {},  {*Trace_pt_buffer::instance, thread_id}, {}, {}, {} });
 	unsigned p;
 	while ((p = (*seedp)++) < seedp_range->end())
 		for (auto it = JoinIterator<SeedArray::_pos>(query_seed_hits[p].begin(), ref_seed_hits[p].begin()); it; ++it)
