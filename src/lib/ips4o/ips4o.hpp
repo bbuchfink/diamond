@@ -51,7 +51,7 @@ namespace ips4o {
 /**
  * Helper function for creating a reusable sequential sorter.
  */
-template <class It, class Cfg = Config<>, class Comp = std::less<>>
+template <class It, class Cfg = Config<>, class Comp = std::less<typename std::iterator_traits<It>::value_type>>
 SequentialSorter<ExtendedConfig<It, Comp, Cfg>> make_sorter(Comp comp = Comp()) {
   return SequentialSorter<ExtendedConfig<It, Comp, Cfg>>{true, std::move(comp)};
 }
@@ -59,7 +59,7 @@ SequentialSorter<ExtendedConfig<It, Comp, Cfg>> make_sorter(Comp comp = Comp()) 
 /**
  * Configurable interface.
  */
-template <class Cfg, class It, class Comp = std::less<>>
+template <class Cfg, class It, class Comp = std::less<typename std::iterator_traits<It>::value_type>>
 void sort(It begin, It end, Comp comp = Comp()) {
   if (detail::sortedCaseSort(begin, end, comp)) return;
   
@@ -81,7 +81,7 @@ void sort(It begin, It end, Comp comp) {
 
 template <class It>
 void sort(It begin, It end) {
-    ips4o::sort<Config<>>(std::move(begin), std::move(end), std::less<>());
+    ips4o::sort<Config<>>(std::move(begin), std::move(end), std::less<typename std::iterator_traits<It>::value_type>());
 }
 
 #if defined(_REENTRANT) || defined(_OPENMP)
@@ -90,7 +90,7 @@ namespace parallel {
 /**
  * Helper functions for creating a reusable parallel sorter.
  */
-template <class It, class Cfg = Config<>, class ThreadPool, class Comp = std::less<>>
+template <class It, class Cfg = Config<>, class ThreadPool, class Comp = std::less<typename std::iterator_traits<It>::value_type>>
 std::enable_if_t<std::is_class<std::remove_reference_t<ThreadPool>>::value,
                  ParallelSorter<ExtendedConfig<It, Comp, Cfg, ThreadPool>>>
 make_sorter(ThreadPool&& thread_pool, Comp comp = Comp()) {
@@ -98,7 +98,7 @@ make_sorter(ThreadPool&& thread_pool, Comp comp = Comp()) {
             std::move(comp), std::forward<ThreadPool>(thread_pool));
 }
 
-template <class It, class Cfg = Config<>, class Comp = std::less<>>
+template <class It, class Cfg = Config<>, class Comp = std::less<typename std::iterator_traits<It>::value_type>>
 ParallelSorter<ExtendedConfig<It, Comp, Cfg>> make_sorter(
         int num_threads = DefaultThreadPool::maxNumThreads(), Comp comp = Comp()) {
     return ParallelSorter<ExtendedConfig<It, Comp, Cfg>>(
