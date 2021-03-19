@@ -129,7 +129,7 @@ vector<Match> extend(
 	const int source_query_len = align_mode.query_translated ? (int)query_source_seqs::get()[query_id].length() : (int)query_seqs::get()[query_id].length();
 	const size_t target_count = target_block_ids.size();
 	const size_t chunk_size = ranking_chunk_size(target_count);
-	vector<TargetScore>::const_iterator i0 = target_scores.cbegin(), i1 = std::min(i0 + chunk_size, target_scores.cend());
+	vector<TargetScore>::const_iterator i0 = target_scores.cbegin(), i1 = i0 + std::min((ptrdiff_t)chunk_size, target_scores.cend() - i0);
 
 	if (config.toppercent == 100.0 && config.min_bit_score == 0.0)
 #ifdef EVAL_TARGET

@@ -108,7 +108,7 @@ list<Hsp> swipe_targets(const Sequence&query,
 			return full_swipe_dispatch_cbs<_sv, ScoreOnly>(query, frame, *targets, composition_bias, overflow, stat);
 	}
 	else {
-		for (vector<DpTarget>::const_iterator i = begin; i < end; i += CHANNELS) {
+		for (vector<DpTarget>::const_iterator i = begin; i < end; i += std::min(CHANNELS, end - i)) {
 			if (flags & TRACEBACK)
 				out.splice(out.end(), swipe_dispatch_cbs<_sv, VectorTraceback>(query, frame, i, i + std::min(CHANNELS, end - i), composition_bias, overflow, stat));
 			else

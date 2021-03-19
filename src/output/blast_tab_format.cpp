@@ -410,10 +410,12 @@ void Blast_tab_format::print_match(const Hsp_context& r, const Metadata &metadat
 			string s;
 			size_t n = 0;
 			for (Hsp_context::Iterator j = r.begin(); j.good(); ++j) {
-				if ((j.op() == op_deletion || j.op() == op_insertion) && !s.empty()) {
-					if (n++ > 0) out << '\t';
-					out << s;
-					s.clear();
+				if (j.op() == op_deletion || j.op() == op_insertion) {
+					if (!s.empty()) {
+						if (n++ > 0) out << '\t';
+						out << s;
+						s.clear();
+					}
 				}
 				else
 					if (j.query() < 20 && j.subject() < 20) {
