@@ -303,8 +303,12 @@ BitVector BlastDB::filter_by_accession(const std::string& file_name)
 
 	for (size_t i = 0; i < accs.size(); ++i) {
 		if (oids[i] < 0)
-			throw std::runtime_error("Accession not found in database: " + accs[i]);
-		v.set(oids[i]);
+			if (config.skip_missing_seqids)
+				message_stream << "WARNING: Accession not found in database : " + accs[i] << endl;
+			else
+				throw std::runtime_error("Accession not found in database: " + accs[i]);
+		else
+			v.set(oids[i]);
 	}
 
 	return v;

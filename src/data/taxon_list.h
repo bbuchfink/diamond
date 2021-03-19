@@ -20,12 +20,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #pragma once
+#include <tuple>
 #include "../util/io/output_file.h"
-#include "../util/io/file_backed_buffer.h"
 #include "../util/data_structures/compact_array.h"
+#include "../util/algo/external_sort.h"
 
 struct TaxonList : public CompactArray<vector<unsigned>>
 {
 	TaxonList(Deserializer &in, size_t size, size_t data_size);
-	static void build(OutputFile &db, FileBackedBuffer &accessions, size_t seqs);
+	static void build(OutputFile &db, ExternalSorter<std::tuple<std::string, uint32_t>, 0>& accessions, size_t seqs);
 };
