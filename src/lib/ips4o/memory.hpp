@@ -33,6 +33,8 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *****************************************************************************/
 
+// Modified by B. Buchfink
+
 #pragma once
 
 #include <algorithm>
@@ -234,7 +236,7 @@ struct ParallelTask {
 template <class Cfg>
 struct Sorter<Cfg>::SharedData {
     // Bucket information
-    typename Cfg::difference_type bucket_start[Cfg::kMaxBuckets + 1];
+	std::atomic_ptrdiff_t bucket_start[Cfg::kMaxBuckets + 1];
     BucketPointers bucket_pointers[Cfg::kMaxBuckets];
     Block* overflow;
     int num_buckets;

@@ -33,6 +33,8 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *****************************************************************************/
 
+// Modified by B. Buchfink
+
 #pragma once
 #ifdef _REENTRANT
 
@@ -94,8 +96,12 @@ void Barrier::barrier() {
     std::unique_lock<std::mutex> lk(mutex_);
     if (--hit_count_ == 0) {
         notify_all(lk);
-    } else
-        cv_.wait(lk, [this, f = flag_] { return f != flag_; });
+	}
+	else {
+		//cv_.wait(lk, [this, f = flag_] { return f != flag_; });
+		const auto f = flag_;
+		while (f == flag_) cv_.wait(lk);
+	}
 }
 
 /**
@@ -112,8 +118,11 @@ void Barrier::single(F&& func) {
     }
     if (hit_count_ < 0)
         notify_all(lk);
-    else
-        cv_.wait(lk, [this, f = flag_] { return f != flag_; });
+	else {
+		//cv_.wait(lk, [this, f = flag_] { return f != flag_; });
+		const auto f = flag_;
+		while (f == flag_) cv_.wait(lk);
+	}
 }
 
 /**

@@ -160,8 +160,7 @@ struct Config {
      * The oversampling factor to be used for input of size n.
      */
     static constexpr double oversamplingFactor(std::ptrdiff_t n) {
-        const double f = OversampleF_ / 100.0 * detail::log2(n);
-        return f < 1.0 ? 1.0 : f;
+		return std::max(OversampleF_ / 100.0 * detail::log2_const((uint64_t)n), 1.0);
     }
 
     /**
@@ -170,10 +169,10 @@ struct Config {
     static int logBuckets(const std::ptrdiff_t n) {
         if (n <= kSingleLevelThreshold) {
             // Only one more level until we reach the base case, reduce the number of buckets
-            return std::max(1ul, detail::log2(n / kBaseCaseSize));
+            return std::max(1, (int)detail::log2(uint64_t(n / kBaseCaseSize)));
         } else if (n <= kTwoLevelThreshold) {
             // Only two more levels until we reach the base case, split the buckets evenly
-            return std::max(1ul, (detail::log2(n / kBaseCaseSize) + 1) / 2);
+            return std::max(1, (int)(detail::log2(uint64_t(n / kBaseCaseSize) + 1) / 2));
         } else {
             // Use the maximum number of buckets
             return kLogBuckets;
@@ -186,8 +185,7 @@ struct Config {
     template <class It>
 #if defined(_REENTRANT) || defined(_OPENMP)
     static constexpr int numThreadsFor(const It& begin, const It& end, int max_threads) {
-        const std::ptrdiff_t blocks = (end - begin) * sizeof(decltype(*begin)) / kBlockSizeInBytes;
-        return (blocks < (kMinParallelBlocksPerThread * max_threads)) ? 1 : max_threads;
+        return (((end - begin) * sizeof(decltype(*begin)) / kBlockSizeInBytes) < (kMinParallelBlocksPerThread * max_threads)) ? 1 : max_threads;
 #else
     static constexpr int numThreadsFor(const It&, const It&, int) {
         return 1;
@@ -249,7 +247,7 @@ struct ExtendedConfig : public Cfg {
      * Number of elements in one block.
      */
     static constexpr const difference_type kBlockSize =
-            1ul << (detail::log2(
+            1ul << (detail::log2_const(
                     Cfg::kBlockSizeInBytes < sizeof(value_type)
                             ? 1
                             : (Cfg::kBlockSizeInBytes / sizeof(value_type))));

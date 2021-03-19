@@ -33,15 +33,17 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *****************************************************************************/
 
+// Modified by B. Buchfink
+
 #pragma once
 
 #include <atomic>
 #include <climits>
 #include <cstdint>
 #include <utility>
+#include <mutex>
 
 #include "ips4o_fwd.hpp"
-#include "../uint128/uint128_t.h"
 
 namespace ips4o {
 namespace detail {
@@ -52,14 +54,14 @@ namespace detail {
 
 template <class Cfg>
 class Sorter<Cfg>::BucketPointers {
-#if UINTPTR_MAX == UINT32_MAX
-    using atomic_type = std::uint64_t;
-#else
-    //using atomic_type = unsigned __int128;
-	using atomic_type = uint128_t;
-#endif
-    static constexpr const int kShift = sizeof(atomic_type) * CHAR_BIT / 2;
-	static const atomic_type kMask; // = (static_cast<atomic_type>(1) << kShift) - 1;
+//#if UINTPTR_MAX == UINT32_MAX
+//    using atomic_type = std::uint64_t;
+//#else
+//    using atomic_type = unsigned __int128;
+//#endif
+//    static constexpr const int kShift = sizeof(atomic_type) * CHAR_BIT / 2;
+//    static constexpr const atomic_type kMask = (static_cast<atomic_type>(1) << kShift) - 1;
+
     using diff_t = typename Cfg::difference_type;
 
  public:
@@ -67,8 +69,8 @@ class Sorter<Cfg>::BucketPointers {
      * Sets write/read pointers.
      */
     void set(diff_t w, diff_t r) {
-        single_.w = w;
-        single_.r = r;
+        this->w = w;
+        this->r = r;
         num_reading_.store(0, std::memory_order_relaxed);
     }
 
@@ -76,7 +78,7 @@ class Sorter<Cfg>::BucketPointers {
      * Gets the write pointer.
      */
     diff_t getWrite() const {
-        return single_.w;
+        return this->w;
     }
 
     /**
@@ -84,16 +86,14 @@ class Sorter<Cfg>::BucketPointers {
      */
     template <bool kAtomic>
     std::pair<diff_t, diff_t> incWrite() {
-        if (kAtomic) {
-            const auto p = __atomic_fetch_add(&all_, Cfg::kBlockSize, __ATOMIC_RELAXED);
-            const diff_t w = p & kMask;
-            const diff_t r = (p >> kShift);
-            return {w, r};
-        } else {
-            const auto w = single_.w;
-            single_.w += Cfg::kBlockSize;
-            return {w, single_.r};
-        }
+		if (kAtomic)
+			mtx.lock();
+        const auto w = this->w;
+		const auto r = this->r;
+        this->w += Cfg::kBlockSize;
+		if (kAtomic)
+			mtx.unlock();
+        return {w, r};
     }
 
     /**
@@ -101,20 +101,18 @@ class Sorter<Cfg>::BucketPointers {
      */
     template <bool kAtomic>
     std::pair<diff_t, diff_t> decRead() {
-        if (kAtomic) {
-            // Must not be moved after the following fetch_sub, as that could lead to
-            // another thread writing to our block, because isReading() returns false.
-            num_reading_.fetch_add(1, std::memory_order_acquire);
-            const auto p = __atomic_fetch_sub(&all_,
-                    static_cast<atomic_type>(Cfg::kBlockSize) << kShift, __ATOMIC_RELAXED);
-            const diff_t w = p & kMask;
-            const diff_t r = (p >> kShift) & ~(Cfg::kBlockSize - 1);
-            return {w, r};
-        } else {
-            const auto r = single_.r;
-            single_.r -= Cfg::kBlockSize;
-            return {single_.w, r};
-        }
+		if (kAtomic) {
+			// Must not be moved after the following fetch_sub, as that could lead to
+			// another thread writing to our block, because isReading() returns false.
+			num_reading_.fetch_add(1, std::memory_order_acquire);
+			mtx.lock();
+		}
+        const auto r = this->r;
+		const auto w = this->w;
+        this->r -= Cfg::kBlockSize;
+		if (kAtomic)
+			mtx.unlock();
+		return { w, r };
     }
 
     /**
@@ -134,12 +132,9 @@ class Sorter<Cfg>::BucketPointers {
     }
 
  private:
-    struct Pointers { diff_t w, r; };
-    union {
-        atomic_type all_;
-        Pointers single_;
-    };
+	diff_t w, r;
     std::atomic_int num_reading_;
+	std::mutex mtx;
 };
 
 }  // namespace detail

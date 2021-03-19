@@ -33,6 +33,8 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *****************************************************************************/
 
+// Modified by B. Buchfink
+
 #pragma once
 
 #include <atomic>
@@ -57,7 +59,7 @@ namespace detail {
 template <class Cfg>
 template <bool kIsParallel>
 std::pair<int, bool> Sorter<Cfg>::partition(const iterator begin, const iterator end,
-                                            diff_t* const bucket_start,
+                                            std::atomic_ptrdiff_t* const bucket_start,
                                             SharedData* const shared, const int my_id,
                                             const int num_threads) {
     // Sampling

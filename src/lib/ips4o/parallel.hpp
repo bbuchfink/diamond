@@ -202,8 +202,8 @@ class ParallelSorter {
     typename Sorter::BufferStorage buffer_storage_;
     std::unique_ptr<detail::AlignedPtr<typename Sorter::LocalData>[]> local_ptrs_;
     SequentialSorter<ExtendedConfig<
-                std::vector<detail::ParallelTask>::iterator,
-                std::greater<>, typename Cfg::BaseConfig
+                typename std::vector<detail::ParallelTask>::iterator,
+                std::greater<detail::ParallelTask>, typename Cfg::BaseConfig
                        >> task_sorter_;
 };
 

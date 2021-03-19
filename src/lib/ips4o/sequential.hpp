@@ -33,6 +33,8 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *****************************************************************************/
 
+// Modified by B. Buchfink
+
 #pragma once
 
 #include <utility>
@@ -56,7 +58,7 @@ void Sorter<Cfg>::sequential(const iterator begin, const iterator end) {
         detail::baseCaseSort(begin, end, local_.classifier.getComparator());
         return;
     }
-    diff_t bucket_start[Cfg::kMaxBuckets + 1];
+	std::atomic_ptrdiff_t bucket_start[Cfg::kMaxBuckets + 1];
 
     // Do the partitioning
     const auto res = partition<false>(begin, end, bucket_start, nullptr, 0, 1);
@@ -70,14 +72,14 @@ void Sorter<Cfg>::sequential(const iterator begin, const iterator end) {
 
     // Recurse
     for (int i = 0; i < num_buckets; i += 1 + equal_buckets) {
-        const auto start = bucket_start[i];
-        const auto stop = bucket_start[i + 1];
+        const ptrdiff_t start = bucket_start[i];
+        const ptrdiff_t stop = bucket_start[i + 1];
         if (stop - start > 2 * Cfg::kBaseCaseSize)
             sequential(begin + start, begin + stop);
     }
     if (equal_buckets) {
-        const auto start = bucket_start[num_buckets - 1];
-        const auto stop = bucket_start[num_buckets];
+        const ptrdiff_t start = bucket_start[num_buckets - 1];
+        const ptrdiff_t stop = bucket_start[num_buckets];
         if (stop - start > 2 * Cfg::kBaseCaseSize)
             sequential(begin + start, begin + stop);
     }

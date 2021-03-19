@@ -33,10 +33,12 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *****************************************************************************/
 
+// Modified by B. Buchfink
+
 #pragma once
 
 //#define IPS4O_ASSUME_NOT(c) if (c) __builtin_unreachable()
-#define IPS4O_ASSUME_NOT(c)
+#define IPS4O_ASSUME_NOT(c) assert(!(c))
 
 #include <limits>
 
@@ -49,13 +51,13 @@ namespace detail {
 /**
  * Compute the logarithm to base 2, rounded down.
  */
-inline constexpr uint64_t log2_const(uint64_t n) {
-	return n == 1 ? 0 : 1 + log2(n >> 1);
+inline uint64_t log2(uint64_t n) {
+    return (std::numeric_limits<uint64_t>::digits - 1 - clz(n));
 }
 
-inline uint64_t log2(uint64_t n) {
-	return (std::numeric_limits<uint64_t>::digits - 1 - clz(n));
-
+inline constexpr uint64_t log2_const(uint64_t n) {
+	return n == 1 ? 0 : 1 + log2_const(n >> 1);
+}
 
 }  // namespace detail
 }  // namespace ips4o

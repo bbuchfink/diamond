@@ -133,7 +133,8 @@ void Sorter<Cfg>::parallelClassification(const bool use_equal_buckets) {
         diff_t sum = 0;
         for (int i = 0, end = num_buckets_; i < end; ++i) {
             sum += local_.bucket_size[i];
-            __atomic_fetch_add(&bucket_start_[i + 1], sum, __ATOMIC_RELAXED);
+            //__atomic_fetch_add(&bucket_start_[i + 1], sum, __ATOMIC_RELAXED);
+			bucket_start_[i + 1] += sum;
         }
 
         local_.first_empty_block = my_first_empty_block;
