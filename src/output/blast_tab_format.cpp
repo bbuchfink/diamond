@@ -425,6 +425,8 @@ void Blast_tab_format::print_match(const Hsp_context& r, const Metadata &metadat
 					else
 						s += '0';
 			}
+			if (n > 0) out << '\t';
+			out << s;
 			break;
 		}
 		default:
