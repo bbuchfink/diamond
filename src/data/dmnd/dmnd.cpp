@@ -21,12 +21,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #include <limits>
+#include <fstream>
 #include "../basic/config.h"
 #include "../util/seq_file_format.h"
 #include "../util/log_stream.h"
 #include "../basic/masking.h"
 #include "../taxonomy.h"
-#include "../util/io/file_backed_buffer.h"
 #include "../taxon_list.h"
 #include "../taxonomy_nodes.h"
 #include "../util/algo/MurmurHash3.h"
@@ -37,8 +37,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../load_seqs.h"
 #include "../taxonomy.h"
 #include "../util/system/system.h"
+#include "../util/algo/external_sort.h"
 
-using namespace std;
+using std::tuple;
+using std::string;
+using std::list;
+using std::cout;
+using std::endl;
 
 const char* DatabaseFile::FILE_EXTENSION = ".dmnd";
 
@@ -196,14 +201,14 @@ void DatabaseFile::make_db(TempFile **tmp_out, list<TextInputFile> *input_file)
 	*out << header;
 	*out << header2;
 
-	size_t letters = 0, n = 0, n_seqs = 0;
+	size_t letters = 0, n = 0, n_seqs = 0, total_seqs = 0;
 	uint64_t offset = out->tell();
 
 	SequenceSet *seqs;
 	String_set<char, 0> *ids;
 	const FASTA_format format;
 	vector<SeqInfo> pos_array;
-	FileBackedBuffer accessions;
+	ExternalSorter<tuple<string, uint32_t>, 0> accessions;
 
 	try {
 		while ((timer.go("Loading sequences"), n = ::load_seqs(db_file->begin(), db_file->end(), format, &seqs, ids, 0, nullptr, (size_t)(1e9), string(), amino_acid_traits)) > 0) {
@@ -215,13 +220,16 @@ void DatabaseFile::make_db(TempFile **tmp_out, list<TextInputFile> *input_file)
 			for (size_t i = 0; i < n; ++i) {
 				Sequence seq = (*seqs)[i];
 				if (seq.length() == 0)
-					throw std::runtime_error("File format error: sequence of length 0 at line " + to_string(db_file->front().line_count));
+					throw std::runtime_error("File format error: sequence of length 0 at line " + std::to_string(db_file->front().line_count));
 				push_seq(seq, (*ids)[i], ids->length(i), offset, pos_array, *out, letters, n_seqs);
 			}
 			if (!config.prot_accession2taxid.empty()) {
 				timer.go("Writing accessions");
-				for (size_t i = 0; i < n; ++i)
-					accessions << Taxonomy::Accession::from_title((*ids)[i]);
+				for (size_t i = 0; i < n; ++i) {
+					vector<string> acc = Taxonomy::Accession::from_title((*ids)[i]);
+					for (const string& s : acc)
+						accessions.push(std::make_tuple(s, total_seqs + i));
+				}
 			}
 			timer.go("Hashing sequences");
 			for (size_t i = 0; i < n; ++i) {
@@ -231,6 +239,7 @@ void DatabaseFile::make_db(TempFile **tmp_out, list<TextInputFile> *input_file)
 			}
 			delete seqs;
 			delete ids;
+			total_seqs += n;
 		}
 	}
 	catch (std::exception&) {
@@ -251,7 +260,7 @@ void DatabaseFile::make_db(TempFile **tmp_out, list<TextInputFile> *input_file)
 	taxonomy.init();
 	if (!config.prot_accession2taxid.empty()) {
 		header2.taxon_array_offset = out->tell();
-		TaxonList::build(*out, accessions.rewind(), n_seqs);
+		TaxonList::build(*out, accessions, n_seqs);
 		header2.taxon_array_size = out->tell() - header2.taxon_array_offset;
 	}
 	if (!config.nodesdmp.empty()) {
@@ -392,7 +401,7 @@ size_t DatabaseFile::get_n_partition_chunks() {
 }
 
 void DatabaseFile::save_partition(const string & partition_file_name, const string & annotation) {
-	ofstream out(partition_file_name);
+	std::ofstream out(partition_file_name);
 	// cout << "WRITING " << partition_file_name << endl;
 	for (const auto& i : partition.chunks) {
 		out << to_string(i);
@@ -409,13 +418,13 @@ Chunk to_chunk(const string & line) {
 }
 
 string to_string(const Chunk & c) {
-	const string buf = to_string(c.i) + " " + to_string(c.offset) + " " + to_string(c.n_seqs);
+	const string buf = std::to_string(c.i) + " " + std::to_string(c.offset) + " " + std::to_string(c.n_seqs);
 	return buf;
 }
 
 void DatabaseFile::load_partition(const string & partition_file_name) {
 	string line;
-	ifstream in(partition_file_name);
+	std::ifstream in(partition_file_name);
 	clear_partition();
 	while (getline(in, line)) {
 		auto chunk = to_chunk(line);

@@ -92,19 +92,8 @@ struct Taxonomy
 	};
 
 	void init();
-	void load();
 	void load_nodes();
 	size_t load_names();
-	void get_taxids(const char *s, std::set<unsigned> &taxons) const;
-
-	unsigned get(const Accession &accession) const
-	{
-		std::vector<std::pair<Accession, unsigned> >::const_iterator i = std::lower_bound(accession2taxid_.begin(), accession2taxid_.end(), std::make_pair(accession, 0u));
-		if (i < accession2taxid_.end() && i->first.match(accession))
-			return i->second;
-		else
-			return 0;
-	}
 
 	unsigned get_parent(unsigned taxid) const
 	{
@@ -115,7 +104,6 @@ struct Taxonomy
 
 	unsigned get_lca(unsigned t1, unsigned t2) const;
 	
-	std::vector<std::pair<Accession, unsigned> > accession2taxid_;
 	std::vector<unsigned> parent_;
 	std::vector<std::string> name_;
 	std::vector<Rank> rank_;

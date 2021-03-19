@@ -16,22 +16,95 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
+#include <tuple>
 #include <set>
 #include "taxon_list.h"
 #include "taxonomy.h"
 #include "../util/log_stream.h"
+#include "../util/io/text_input_file.h"
+#include "../basic/config.h"
+#include "../util/string/tokenizer.h"
 
 using std::set;
 using std::endl;
+using std::tuple;
+using std::get;
+using std::make_tuple;
+
+Serializer& operator<<(Serializer& s, const tuple<string, uint32_t>& x) {
+	return s;
+}
+
+Serializer& operator<<(Serializer& s, const tuple<uint32_t, uint32_t>& x) {
+	return s;
+}
+
+Deserializer& operator>>(Deserializer& s, tuple<string, uint32_t> x) {
+	return s;
+}
+
+#include "../util/algo/external_sort.h"
 
 TaxonList::TaxonList(Deserializer &in, size_t size, size_t data_size):
 	CompactArray<vector<uint32_t>>(in, size, data_size)
 {}
 
-void TaxonList::build(OutputFile &db, FileBackedBuffer &accessions, size_t seqs)
+static int mapping_file_format(const string& header) {
+	string field1, field2;
+	Util::String::Tokenizer tok(header, "\t");
+	tok >> field1 >> field2;
+	if (field1 == "accession" && field2 == "accession.version") {
+		tok >> field1 >> field2;
+		if (field1 == "taxid" && field2 == "gi" && !tok.good())
+			return 0;
+	}
+	else if (field1 == "accession.version" && field2 == "taxid" && !tok.good())
+		return 1;
+	throw std::runtime_error("Accession mapping file header has to be in one of these formats:\naccession\taccession.version\ttaxid\tgi\naccession.version\ttaxid");
+}
+
+static void load_mapping_file(ExternalSorter<tuple<string, uint32_t>, 0>& sorter)
 {
-	task_timer timer("Writing taxon id lists");
-	vector<string> a;
+	unsigned taxid;
+	TextInputFile f(config.prot_accession2taxid);
+	f.getline();
+	int format = mapping_file_format(f.line);
+	string accession;
+
+	while (!f.eof() && (f.getline(), !f.line.empty())) {
+		if (format == 0)
+			Util::String::Tokenizer(f.line, "\t") >> Util::String::Skip() >> accession >> taxid;
+		else
+			Util::String::Tokenizer(f.line, "\t") >> accession >> taxid;
+
+		if (accession.empty())
+			throw std::runtime_error("Empty accession field in line " + std::to_string(f.line_count));
+
+		size_t i = accession.find(":PDB=");
+		if (i != string::npos)
+			accession.erase(i);
+
+		sorter.push(make_tuple(accession, (uint32_t)taxid));
+	}
+	f.close();
+}
+
+void TaxonList::build(OutputFile &db, ExternalSorter<tuple<string, uint32_t>, 0>& acc2oid, size_t seqs)
+{
+	ExternalSorter<tuple<string, uint32_t>, 0> acc2taxid;
+	load_mapping_file(acc2taxid);
+
+	task_timer timer("Joining accession mapping");
+	TupleJoinIterator<tuple<string, uint32_t>, tuple<string, uint32_t>, 0, 0> it(acc2oid, acc2taxid);
+	ExternalSorter<tuple<uint32_t, uint32_t>, 0> oid2taxid;
+	while (it.good()) {
+		auto p = *it;
+		oid2taxid.push(make_tuple(get<1>(p.first), get<1>(p.second)));
+		++it;
+	}
+
+	
+	/*vector<string> a;
 	db.set(Serializer::VARINT);
 	set<unsigned> t;
 	size_t mapped = 0, mappings = 0, len_errors = 0;
@@ -55,5 +128,5 @@ void TaxonList::build(OutputFile &db, FileBackedBuffer &accessions, size_t seqs)
 	timer.finish();
 	message_stream << mapped << " sequences mapped to taxonomy, " << mappings << " total mappings." << endl;
 	if (len_errors)
-		message_stream << "Warning: " << len_errors << " sequences ignored due to accession length overflow." << endl;
+		message_stream << "Warning: " << len_errors << " sequences ignored due to accession length overflow." << endl;*/
 }

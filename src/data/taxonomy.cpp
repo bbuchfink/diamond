@@ -78,50 +78,6 @@ string get_accession(const string &title)
 	return t;
 }
 
-int mapping_file_format(const string& header) {
-	string field1, field2;
-	Util::String::Tokenizer tok(header, "\t");
-	tok >> field1 >> field2;
-	if (field1 == "accession" && field2 == "accession.version") {
-		tok >> field1 >> field2;
-		if (field1 == "taxid" && field2 == "gi" && !tok.good())
-			return 0;
-	}
-	else if (field1 == "accession.version" && field2 == "taxid" && !tok.good())
-		return 1;
-	throw std::runtime_error("Accession mapping file header has to be in one of these formats:\naccession\taccession.version\ttaxid\tgi\naccession.version\ttaxid");
-}
-
-void Taxonomy::load()
-{
-	unsigned taxid;
-	TextInputFile f(config.prot_accession2taxid);
-	f.getline();
-	int format = mapping_file_format(f.line);
-	string accession;
-	
-	while (!f.eof() && (f.getline(), !f.line.empty())) {
-		if (format == 0)
-			Util::String::Tokenizer(f.line, "\t") >> Util::String::Skip() >> accession >> taxid;
-		else
-			Util::String::Tokenizer(f.line, "\t") >> accession >> taxid;
-
-		if (accession.empty())
-			throw std::runtime_error("Empty accession field in line " + std::to_string(f.line_count));
-
-		size_t i = accession.find(":PDB=");
-		if (i != string::npos)
-			accession.erase(i);
-		
-		if (accession.length() > max_accesion_len)
-			throw std::runtime_error("Accession exceeds supported length in line " + std::to_string(f.line_count));
-
-		accession2taxid_.push_back(std::make_pair(Accession(accession.c_str()), taxid));
-	}
-	f.close();
-	merge_sort(accession2taxid_.begin(), accession2taxid_.end(), config.threads_);
-}
-
 void Taxonomy::load_nodes()
 {
 	TextInputFile f(config.nodesdmp);
@@ -160,12 +116,6 @@ size_t Taxonomy::load_names() {
 void Taxonomy::init()
 {
 	task_timer timer;
-	if (!config.prot_accession2taxid.empty()) {
-		timer.go("Loading taxonomy");
-		load();
-		timer.finish();
-		message_stream << "Accession mappings = " << accession2taxid_.size() << endl;
-	}
 	if (!config.nodesdmp.empty()) {
 		timer.go("Loading taxonomy nodes");
 		load_nodes();
@@ -185,16 +135,6 @@ vector<string> Taxonomy::Accession::from_title(const char *title)
 	for (vector<string>::iterator i = t.begin(); i < t.end(); ++i)
 		*i = get_accession(blast_id(*i));
 	return t;
-}
-
-void Taxonomy::get_taxids(const char *id, set<unsigned> &taxons) const
-{
-	const vector<string> t(seq_titles(id));
-	for (vector<string>::const_iterator i = t.begin(); i < t.end(); ++i) {
-		const unsigned id = get(Taxonomy::Accession(*i));
-		if(id != 0)
-			taxons.insert(id);
-	}
 }
 
 unsigned Taxonomy::get_lca(unsigned t1, unsigned t2) const
