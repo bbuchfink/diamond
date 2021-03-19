@@ -97,7 +97,8 @@ const vector<OutputField> Blast_tab_format::field_def = {
 { "sphylums", "Subject phylums", NONE, Flags::NONE },		// 60
 { "ungapped_score", "Ungapped score", NONE, Flags::NONE },	// 61
 { "full_qseq_mate", "Query sequence of the mate", NONE, Flags::NONE }, // 62
-{ "qseq_translated", "Aligned part of query sequence (translated)", TRANSCRIPT, Flags::NONE } // 63 needs transcript only in frameshift mode
+{ "qseq_translated", "Aligned part of query sequence (translated)", TRANSCRIPT, Flags::NONE }, // 63 needs transcript only in frameshift mode
+{ "reduced_match_bitstring", "", TRANSCRIPT, Flags::NONE} // 64
 };
 
 Blast_tab_format::Blast_tab_format() :
@@ -402,6 +403,27 @@ void Blast_tab_format::print_match(const Hsp_context& r, const Metadata &metadat
 			}
 			else {
 				r.query.index(r.frame()).print(out, r.query_range().begin_, r.query_range().end_, amino_acid_traits);
+			}
+			break;
+		}
+		case 64: {
+			string s;
+			size_t n = 0;
+			for (Hsp_context::Iterator j = r.begin(); j.good(); ++j) {
+				if ((j.op() == op_deletion || j.op() == op_insertion) && !s.empty()) {
+					if (n++ > 0) out << '\t';
+					out << s;
+					s.clear();
+				}
+				else
+					if (j.query() < 20 && j.subject() < 20) {
+						if (Reduction::reduction(j.query()) == Reduction::reduction(j.subject()))
+							s += '1';
+						else
+							s += '0';
+					}
+					else
+						s += '0';
 			}
 			break;
 		}
