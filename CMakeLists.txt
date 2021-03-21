@@ -258,6 +258,7 @@ set(OBJECTS
   src/data/index.cpp
   src/data/dmnd/dmnd.cpp
   src/data/sequence_file.cpp
+  src/tools/find_shapes.cpp
 )
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}")

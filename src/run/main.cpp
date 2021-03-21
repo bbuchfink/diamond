@@ -53,6 +53,7 @@ void roc();
 void merge_tsv();
 void roc_id();
 void makeindex();
+void find_shapes();
 
 void split();
 namespace Benchmark { DECL_DISPATCH(void, benchmark, ()) }
@@ -179,6 +180,9 @@ int main(int ac, const char* av[])
 			break;
 		case Config::makeidx:
 			makeindex();
+			break;
+		case Config::find_shapes:
+			find_shapes();
 			break;
 		default:
 			return 1;
