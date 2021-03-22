@@ -12,28 +12,70 @@ using std::vector;
 using std::string;
 using std::array;
 
-static const int W = 7, L = 16, N = 64;
+static const int W = 7, L = 16, N = 64, T = 5;
 
 static array<size_t, 1 << L> counts;
 static set<int> exclude;
 
-static int pattern(int p) {
-	while ((p & 1) == 0)
-		p >>= 1;
-	return p;
+static void process_window(int p, set<int>& patterns) {
+	int n = 0;
+	array<int, L> idx;
+	for (int i = 1; i < L; ++i)
+		if (p & (1 << i))
+			idx[n++] = i;
+
+	string bitmask(W - 1, 1);
+	bitmask.resize(n, 0);
+
+	do {
+		int q = 1;
+		for (int i = 0; i < n; ++i)
+			if (bitmask[i]) q |= 1 << idx[i];
+		patterns.insert(q);
+	} while (std::prev_permutation(bitmask.begin(), bitmask.end()));
 }
 
 static void process_pattern(const string& s, set<int>& patterns) {
 	int p = 0;
 	for (size_t i = 0; i < s.length(); ++i) {
 		p <<= 1;
-		if (s[i] == '1')
-			p |= 1;
 		p &= (1 << L) - 1;
-		if (popcount32((unsigned)p) == W) {
-			patterns.insert(pattern(p));
+		if (s[i] == '1') {
+			p |= 1;			
+			const int n = popcount32((unsigned)p);
+			if (n >= W && n <= W + T) {
+				process_window(p, patterns);
+			}
 		}
 	}
+}
+
+static bool is_excluded(vector<string>::const_iterator begin, vector<string>::const_iterator end) {
+	if (exclude.empty())
+		return false;
+	for (auto it = begin; it < end; ++it) {
+		int p = 0;
+		for (size_t i = 0; i < it->length(); ++i) {
+			p <<= 1;
+			if ((*it)[i] == '1')
+				p |= 1;
+			p &= (1 << L) - 1;
+			const int n = popcount32((unsigned)p);
+			if (n >= W)
+				for (int e : exclude)
+					if ((p & e) == e)
+						return true;
+		}
+	}
+	return false;
+}
+
+static bool is_id(const string& s) {
+	int n = 0;
+	for (char c : s)
+		if (c == '1')
+			++n;
+	return n == s.length();
 }
 
 static void process_aln(vector<string>::const_iterator begin, vector<string>::const_iterator end) {
@@ -49,29 +91,42 @@ static void process_aln(vector<string>::const_iterator begin, vector<string>::co
 }
 
 void find_shapes() {
-	int hit_total = 0;
 	for (int i = 0; i < N; ++i) {
 		counts.fill(0);
 		TextInputFile in(config.single_query_file());
-		size_t n = 0;
+		size_t n = 0, nt = 0;
 		while (in.getline(), !in.eof() || !in.line.empty()) {
 			auto v = tokenize(in.line.c_str(), "\t");
-			process_aln(v.begin(), v.end());
-			++n;
+			if ((v.size() > 1 || !is_id(v.front()))) {
+				if (!is_excluded(v.begin(), v.end())) {
+					process_aln(v.begin(), v.end());
+					++n;
+				}
+				++nt;
+			}
 		}
 		in.close();
 		int p_max = 0;
 		int c_max = 0;
 		for (int p = 0; p < (int)counts.size(); ++p)
-			if (counts[p] > p_max) {
+			if (counts[p] > c_max) {
 				p_max = p;
 				c_max = counts[p];
 			}
-		cout << "Alignments: " << n << endl;
+		cout << "Alignments: " << n << " / " << nt << endl;
 		cout << "Pattern: " << p_max << endl;
 		cout << "Hit: " << c_max << endl;
-		hit_total += c_max;
-		cout << "Total hit: " << hit_total << endl;
 		exclude.insert(p_max);
+	}
+	for (int p : exclude) {
+		string s;
+		for (int i = 0; i < L; ++i)
+			if (p & (1 << i))
+				s = '1' + s;
+			else
+				s = '0' + s;
+		while (s.front() == '0')
+			s.erase(s.begin());
+		cout << s << endl;
 	}
 }
