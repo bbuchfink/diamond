@@ -48,7 +48,7 @@ private:
 
 struct HashedSeedSet
 {
-	typedef HashSet<Modulo2, Identity> HashSet;
+	typedef HashSet<Modulo2, Identity> Table;
 	HashedSeedSet(const SequenceSet &seqs);
 	HashedSeedSet(const string& index_file);
 	~HashedSeedSet();
@@ -56,12 +56,12 @@ struct HashedSeedSet
 	{
 		return data_[shape].contains(key);
 	}
-	const HashSet& table(size_t i) const {
+	const Table& table(size_t i) const {
 		return data_[i];
 	}
 	size_t max_table_size() const;
 private:
-	PtrVector<HashSet> data_;
+	PtrVector<Table> data_;
 	char* buffer_;
 	size_t mapped_size_;
 	int fd_;
