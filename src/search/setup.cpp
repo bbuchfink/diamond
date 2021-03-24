@@ -42,7 +42,6 @@ const map<Sensitivity, SensitivityTraits> sensitivity_traits {
 	{ Sensitivity::ULTRA_SENSITIVE, {true,  20.0,  9,    300000, 30000,  1,     1,        64 }}
 };
 
-
 static const map<Sensitivity, vector<string>> shape_codes = {
 
 	{Sensitivity::DEFAULT, {

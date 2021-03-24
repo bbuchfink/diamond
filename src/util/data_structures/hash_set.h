@@ -59,11 +59,11 @@ public:
 	{}
 
 	HashSet(size_t size) :
-		table(new fp[size]),
+		table(new fp[size + PADDING]),
 		size_(size),
 		destroy_(true)
 	{
-		memset(table, 0, size_ * sizeof(fp));
+		memset(table, 0, (size_ + PADDING) * sizeof(fp));
 	}
 
 	HashSet(fp* data, size_t size) :
@@ -137,8 +137,14 @@ public:
 		return table;
 	}
 
+	void finish() {
+		std::copy(table, table + PADDING, table + size_);
+	}
+
 	fp* table;
 	size_t size_;
+
+	static const size_t PADDING = 16;
 
 private:
 

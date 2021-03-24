@@ -28,7 +28,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 const uint64_t SEED_INDEX_MAGIC_NUMBER = 0x2d6ba306ecbf6aba;
 const uint32_t SEED_INDEX_VERSION = 0;
-const size_t SEED_INDEX_PADDING = 32;
 const size_t SEED_INDEX_HEADER_SIZE = 16;
 
 struct Seed_set
@@ -49,6 +48,7 @@ private:
 
 struct HashedSeedSet
 {
+	typedef HashSet<Modulo2, Identity> HashSet;
 	HashedSeedSet(const SequenceSet &seqs);
 	HashedSeedSet(const string& index_file);
 	~HashedSeedSet();
@@ -56,12 +56,12 @@ struct HashedSeedSet
 	{
 		return data_[shape].contains(key);
 	}
-	const HashSet<Modulo2, Identity>& table(size_t i) const {
+	const HashSet& table(size_t i) const {
 		return data_[i];
 	}
 	size_t max_table_size() const;
 private:
-	PtrVector<HashSet<Modulo2, Identity>> data_;
+	PtrVector<HashSet> data_;
 	char* buffer_;
 	size_t mapped_size_;
 	int fd_;

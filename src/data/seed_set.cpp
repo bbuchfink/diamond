@@ -90,7 +90,7 @@ HashedSeedSet::HashedSeedSet(const SequenceSet &seqs):
 	fd_(0)
 {
 	for (size_t i = 0; i < shapes.count(); ++i)
-		data_.push_back(new HashSet<Modulo2, Identity>(next_power_of_2(seqs.letters() * HASH_TABLE_FACTOR)));
+		data_.push_back(new HashSet(next_power_of_2(seqs.letters() * HASH_TABLE_FACTOR)));
 	PtrVector<Hashed_seed_set_callback> v;
 	v.push_back(new Hashed_seed_set_callback(data_));
 	enum_seeds(&seqs, v, seqs.partition(1), 0, shapes.count(), &no_filter, true);
@@ -101,11 +101,13 @@ HashedSeedSet::HashedSeedSet(const SequenceSet &seqs):
 	data_.clear();
 
 	for (size_t i = 0; i < shapes.count(); ++i)
-		data_.push_back(new HashSet<Modulo2, Identity>(next_power_of_2(sizes[i] * HASH_TABLE_FACTOR)));
+		data_.push_back(new HashSet(next_power_of_2(sizes[i] * HASH_TABLE_FACTOR)));
 	enum_seeds(&seqs, v, seqs.partition(1), 0, shapes.count(), &no_filter, true);
 
-	for (size_t i = 0; i < shapes.count(); ++i)
-		log_stream << "Shape=" << i << " Hash_table_size=" << data_[i].size() << " load=" << (double)data_[i].load()/data_[i].size() << endl;
+	for (size_t i = 0; i < shapes.count(); ++i) {
+		data_[i].finish();
+		log_stream << "Shape=" << i << " Hash_table_size=" << data_[i].size() << " load=" << (double)data_[i].load() / data_[i].size() << endl;
+	}
 }
 
 HashedSeedSet::HashedSeedSet(const string& index_file):
@@ -130,9 +132,9 @@ HashedSeedSet::HashedSeedSet(const string& index_file):
 	uint8_t* data_ptr = (uint8_t*)(buffer_ + SEED_INDEX_HEADER_SIZE + sizeof(size_t) * shape_count);
 
 	for (unsigned i = 0; i < shapes.count(); ++i) {
-		data_.push_back(new HashSet<Modulo2, Identity>(data_ptr, *size_ptr));
+		data_.push_back(new HashSet(data_ptr, *size_ptr));
 		log_stream << "MMAPED Shape=" << i << " Hash_table_size=" << data_[i].size() << " load=" << (double)data_[i].load() / data_[i].size() << endl;
-		data_ptr += *size_ptr + SEED_INDEX_PADDING;
+		data_ptr += *size_ptr + HashSet::PADDING;
 		++size_ptr;
 	}
 }
@@ -143,5 +145,5 @@ HashedSeedSet::~HashedSeedSet() {
 }
 
 size_t HashedSeedSet::max_table_size() const {
-	return (*std::max_element(data_.begin(), data_.end(), [](HashSet<Modulo2, Identity>* a, HashSet<Modulo2, Identity>* b) { return a->size() < b->size(); }))->size();
+	return (*std::max_element(data_.begin(), data_.end(), [](HashSet* a, HashSet* b) { return a->size() < b->size(); }))->size();
 }

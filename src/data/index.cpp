@@ -33,9 +33,8 @@ void makeindex() {
 	for (unsigned i = 0; i < shapes.count(); ++i)
 		out.write(index.table(i).size());
 
-	for (unsigned i = 0; i < shapes.count(); ++i) {		
-		out.write(index.table(i).data(), index.table(i).size());
-		out.write(index.table(i).data(), SEED_INDEX_PADDING);
+	for (unsigned i = 0; i < shapes.count(); ++i) {
+		out.write(index.table(i).data(), index.table(i).size() + HashedSeedSet::HashSet::PADDING);
 	}
 
 	out.close();
