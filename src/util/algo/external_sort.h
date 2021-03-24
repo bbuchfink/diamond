@@ -97,10 +97,11 @@ private:
 
 	bool get_entry(size_t bucket, Entry& e) {
 		try {
-			files_[bucket] >> e.value;
+			(*files_[bucket]) >> e.value;
 		}
 		catch (EndOfStream&) {
-			files_[bucket].close_and_delete();
+			files_[bucket]->close_and_delete();
+			delete files_[bucket];
 			return false;
 		}
 		e.bucket = bucket;
@@ -114,14 +115,14 @@ private:
 		TempFile f;
 		for (uint32_t i : idx_)
 			f << buf_[i];
-		files_.emplace_back(f);
+		files_.push_back(new InputFile(f));
 		buf_.clear();
 	}
 
 	const Cmp cmp_;
 	const size_t bucket_size_;
 	size_t count_;
-	std::vector<InputFile> files_;
+	std::vector<InputFile*> files_;
 	std::vector<Type> buf_;
 	std::priority_queue<Entry> queue_;
 
