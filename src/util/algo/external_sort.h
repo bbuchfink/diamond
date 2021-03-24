@@ -74,6 +74,10 @@ struct ExternalSorter {
 			queue_.push(e);
 	}
 
+	size_t count() const {
+		return count_;
+	}
+
 private:
 
 	struct Entry {
@@ -120,46 +124,5 @@ private:
 	std::vector<InputFile> files_;
 	std::vector<Type> buf_;
 	std::priority_queue<Entry> queue_;
-
-};
-
-template<typename It1, typename It2, typename Cmp, typename Value>
-struct TupleJoinIterator {
-
-	TupleJoinIterator(It1& it1, It2& it2, Cmp cmp, Value value):
-		it1_(it1),
-		it2_(it2),
-		cmp_(cmp),
-		value_(value)
-	{
-	}
-	
-	bool good() {
-		return it1_.good() && it2_.good();
-	}
-
-	typename std::result_of<Value(const typename It1::Value&, const typename It2::Value&)>::type operator*() const {
-		return value_(*it1_, *it2_);
-	}
-
-	void operator++() {
-		++it1_;
-		++it2_;
-		while(good()) {
-			if (cmp_(*it1_, *it2_))
-				++it1_;
-			else if (cmp_(*it2_, *it1_))
-				++it2_;
-			else
-				return;
-		}
-	}
-
-private:
-
-	It1& it1_;
-	It2& it2_;
-	const Cmp cmp_;
-	const Value value_;
 
 };

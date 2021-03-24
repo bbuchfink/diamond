@@ -24,6 +24,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../basic/config.h"
 #include "../util/string/tokenizer.h"
 #include "../util/algo/external_sort.h"
+#include "../util/algo/sort_helper.h"
 
 using std::set;
 using std::endl;
@@ -87,13 +88,36 @@ void TaxonList::build(OutputFile &db, ExternalSorter<pair<string, uint32_t>>& ac
 	acc2oid.init_read();
 	auto cmp = [](const T& x, const T& y) { return x.first < y.first; };
 	auto value = [](const T& x, const T& y) { return make_pair(x.second, y.second); };
-	TupleJoinIterator<Sorter, Sorter, decltype(cmp), decltype(value)> it(acc2oid, acc2taxid, cmp, value);
+	SortedListJoiner<Sorter, Sorter, decltype(cmp), decltype(value)> it(acc2oid, acc2taxid, cmp, value);
 	ExternalSorter<pair<uint32_t, uint32_t>> oid2taxid;
+	size_t acc_matched = 0;
 	while (it.good()) {
 		oid2taxid.push(*it);
 		++it;
+		++acc_matched;
 	}
 
+	timer.go("Writing taxid list");
+	db.set(Serializer::VARINT);
+	oid2taxid.init_read();
+	const uint32_t n = (uint32_t)seqs;
+	KeyMerger<ExternalSorter<pair<uint32_t, uint32_t>>, First<uint32_t, uint32_t>, Second<uint32_t, uint32_t>> taxid_it(oid2taxid, 0);
+	size_t mapped_seqs = 0;
+	while (taxid_it.key() < n) {
+		set<uint32_t> tax_ids = *taxid_it;
+		tax_ids.erase(0);
+		db << tax_ids;
+		++taxid_it;
+		if (!tax_ids.empty())
+			++mapped_seqs;
+	}
+	timer.finish();
+
+	message_stream << "Database sequences  " << seqs << endl;
+	message_stream << "Accessions in database  " << acc2oid.count() << endl;
+	message_stream << "Entries in accession to taxid map  " << acc2taxid.count() << endl;
+	message_stream << "Database accessions mapped to taxid  " << acc_matched << endl;
+	message_stream << "Database sequences mapped to taxid  " << mapped_seqs << endl;
 	
 	/*vector<string> a;
 	db.set(Serializer::VARINT);
