@@ -36,6 +36,7 @@
 // Modified by B. Buchfink
 
 #pragma once
+#include <assert.h>
 
 //#define IPS4O_ASSUME_NOT(c) if (c) __builtin_unreachable()
 #define IPS4O_ASSUME_NOT(c) assert(!(c))

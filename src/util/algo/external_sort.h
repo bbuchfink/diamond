@@ -19,30 +19,30 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #pragma once
-#include <algorithm>
-#include <tuple>
 #include <vector>
 #include <numeric>
 #include <queue>
 #include "../io/temp_file.h"
 #include "../io/input_file.h"
+#define _REENTRANT
+#include "../lib/ips4o/ips4o.hpp"
+#include "../basic/config.h"
 
-Serializer& operator<<(Serializer& s, const std::tuple<std::string, uint32_t>& x);
-
-template<typename _t, size_t _key>
+template<typename Type, typename Cmp = std::less<Type>>
 struct ExternalSorter {
 
-	typedef typename std::tuple_element<_key, _t>::type Key;
+	typedef Type Value;
 
 	static const size_t BUCKET_SIZE = 0x80000000;
 
-	ExternalSorter() :
-		bucket_size_(std::max(BUCKET_SIZE/sizeof(_t), (size_t)1)),
+	ExternalSorter(Cmp cmp = Cmp()) :
+		cmp_(cmp),
+		bucket_size_(std::max(BUCKET_SIZE/sizeof(Type), (size_t)1)),
 		count_(0)
 	{
 	}
 
-	void push(const _t& x) {
+	void push(const Type& x) {
 		++count_;
 		buf_.push_back(x);
 		if (buf_.size() > bucket_size_)
@@ -62,7 +62,7 @@ struct ExternalSorter {
 		return !queue_.empty();
 	}
 
-	const _t& get() {
+	const Type& operator*() const {
 		return queue_.top().value;
 	}
 
@@ -74,29 +74,21 @@ struct ExternalSorter {
 			queue_.push(e);
 	}
 
-	static ExternalSorter end() {
-		return ExternalSorter{ 0,0 };
-	}
-
-	bool operator==(const ExternalSorter& s) {
-		return !good() && s.bucket_size_ == 0 ? true : false;
-	}
-
 private:
 
 	struct Entry {
 		size_t bucket;
-		_t value;
+		Type value;
 		bool operator<(const Entry& e) const {
-			return std::get<_key>(value) > std::get<_key>(e.value);
+			return Cmp()(e.value, value);
 		}
 	};
 
-	struct Cmp {
+	struct CmpIdx {
 		bool operator()(uint32_t x, uint32_t y) const {
-			return std::get<_key>(data_[x]) < std::get<_key>(data_[y]);
+			return Cmp()(data_[x], data_[y]);
 		}
-		typename std::vector<_t>::const_iterator data_;
+		typename std::vector<Type>::const_iterator data_;
 	};
 
 	bool get_entry(size_t bucket, Entry& e) {
@@ -114,7 +106,7 @@ private:
 	void flush() {
 		std::vector<uint32_t> idx_(buf_.size());
 		std::iota(idx_.begin(), idx_.end(), 0);
-		std::sort(idx_.begin(), idx_.end(), Cmp{ buf_.begin() });
+		ips4o::parallel::sort(idx_.begin(), idx_.end(), CmpIdx{ buf_.begin() }, config.threads_);
 		TempFile f;
 		for (uint32_t i : idx_)
 			f << buf_[i];
@@ -122,61 +114,52 @@ private:
 		buf_.clear();
 	}
 
+	const Cmp cmp_;
 	const size_t bucket_size_;
 	size_t count_;
 	std::vector<InputFile> files_;
-	std::vector<_t> buf_;
+	std::vector<Type> buf_;
 	std::priority_queue<Entry> queue_;
 
 };
 
-template<typename _t1, typename _t2, size_t _key1, size_t _key2>
+template<typename It1, typename It2, typename Cmp, typename Value>
 struct TupleJoinIterator {
 
-	typedef ExternalSorter<_t1, _key1> Sorter1;
-	typedef ExternalSorter<_t2, _key2> Sorter2;
-	typedef typename Sorter1::Key Key;
-
-	TupleJoinIterator(Sorter1& sorter1, Sorter2& sorter2):
-		sorter1_(sorter1),
-		sorter2_(sorter2)
+	TupleJoinIterator(It1& it1, It2& it2, Cmp cmp, Value value):
+		it1_(it1),
+		it2_(it2),
+		cmp_(cmp),
+		value_(value)
 	{
-		sorter1.init_read();
-		sorter2.init_read();
 	}
 	
 	bool good() {
-		return sorter1_.good() && sorter2_.good();
+		return it1_.good() && it2_.good();
 	}
 
-	std::pair<_t1, _t2> operator*() const {
-		return { sorter1_.get(), sorter2_.get() };
+	typename std::result_of<Value(const typename It1::Value&, const typename It2::Value&)>::type operator*() const {
+		return value_(*it1_, *it2_);
 	}
 
 	void operator++() {
-		++sorter1_;
-		++sorter2_;
-		if (!good())
-			return;
-		auto key1 = std::get<_key1>(sorter1_.get());
-		auto key2 = std::get<_key2>(sorter2_.get());
-		do {
-			if (key1 < key2) {
-				++sorter1_;
-				key1 = std::get<_key1>(sorter1_.get());
-			}
-			else if (key2 < key1) {
-				++sorter2_;
-				key2 = std::get<_key2>(sorter2_.get());
-			}
+		++it1_;
+		++it2_;
+		while(good()) {
+			if (cmp_(*it1_, *it2_))
+				++it1_;
+			else if (cmp_(*it2_, *it1_))
+				++it2_;
 			else
 				return;
-		} while (good());
+		}
 	}
 
 private:
 
-	Sorter1& sorter1_;
-	Sorter2& sorter2_;
+	It1& it1_;
+	It2& it2_;
+	const Cmp cmp_;
+	const Value value_;
 
 };

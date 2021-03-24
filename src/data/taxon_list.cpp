@@ -16,7 +16,6 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#include <tuple>
 #include <set>
 #include "taxon_list.h"
 #include "taxonomy.h"
@@ -24,26 +23,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/io/text_input_file.h"
 #include "../basic/config.h"
 #include "../util/string/tokenizer.h"
+#include "../util/algo/external_sort.h"
 
 using std::set;
 using std::endl;
-using std::tuple;
-using std::get;
-using std::make_tuple;
-
-Serializer& operator<<(Serializer& s, const tuple<string, uint32_t>& x) {
-	return s;
-}
-
-Serializer& operator<<(Serializer& s, const tuple<uint32_t, uint32_t>& x) {
-	return s;
-}
-
-Deserializer& operator>>(Deserializer& s, tuple<string, uint32_t> x) {
-	return s;
-}
-
-#include "../util/algo/external_sort.h"
+using std::make_pair;
 
 TaxonList::TaxonList(Deserializer &in, size_t size, size_t data_size):
 	CompactArray<vector<uint32_t>>(in, size, data_size)
@@ -63,7 +47,7 @@ static int mapping_file_format(const string& header) {
 	throw std::runtime_error("Accession mapping file header has to be in one of these formats:\naccession\taccession.version\ttaxid\tgi\naccession.version\ttaxid");
 }
 
-static void load_mapping_file(ExternalSorter<tuple<string, uint32_t>, 0>& sorter)
+static void load_mapping_file(ExternalSorter<pair<string, uint32_t>>& sorter)
 {
 	unsigned taxid;
 	TextInputFile f(config.prot_accession2taxid);
@@ -84,22 +68,29 @@ static void load_mapping_file(ExternalSorter<tuple<string, uint32_t>, 0>& sorter
 		if (i != string::npos)
 			accession.erase(i);
 
-		sorter.push(make_tuple(accession, (uint32_t)taxid));
+		sorter.push(make_pair(accession, (uint32_t)taxid));
 	}
 	f.close();
 }
 
-void TaxonList::build(OutputFile &db, ExternalSorter<tuple<string, uint32_t>, 0>& acc2oid, size_t seqs)
+void TaxonList::build(OutputFile &db, ExternalSorter<pair<string, uint32_t>>& acc2oid, size_t seqs)
 {
-	ExternalSorter<tuple<string, uint32_t>, 0> acc2taxid;
+	typedef pair<string, uint32_t> T;
+	typedef ExternalSorter<T> Sorter;
+
+	task_timer timer("Loading taxonomy mapping file");
+	Sorter acc2taxid;
 	load_mapping_file(acc2taxid);
 
-	task_timer timer("Joining accession mapping");
-	TupleJoinIterator<tuple<string, uint32_t>, tuple<string, uint32_t>, 0, 0> it(acc2oid, acc2taxid);
-	ExternalSorter<tuple<uint32_t, uint32_t>, 0> oid2taxid;
+	timer.go("Joining accession mapping");
+	acc2taxid.init_read();
+	acc2oid.init_read();
+	auto cmp = [](const T& x, const T& y) { return x.first < y.first; };
+	auto value = [](const T& x, const T& y) { return make_pair(x.second, y.second); };
+	TupleJoinIterator<Sorter, Sorter, decltype(cmp), decltype(value)> it(acc2oid, acc2taxid, cmp, value);
+	ExternalSorter<pair<uint32_t, uint32_t>> oid2taxid;
 	while (it.good()) {
-		auto p = *it;
-		oid2taxid.push(make_tuple(get<1>(p.first), get<1>(p.second)));
+		oid2taxid.push(*it);
 		++it;
 	}
 

@@ -208,7 +208,7 @@ void DatabaseFile::make_db(TempFile **tmp_out, list<TextInputFile> *input_file)
 	String_set<char, 0> *ids;
 	const FASTA_format format;
 	vector<SeqInfo> pos_array;
-	ExternalSorter<tuple<string, uint32_t>, 0> accessions;
+	ExternalSorter<pair<string, uint32_t>> accessions;
 
 	try {
 		while ((timer.go("Loading sequences"), n = ::load_seqs(db_file->begin(), db_file->end(), format, &seqs, ids, 0, nullptr, (size_t)(1e9), string(), amino_acid_traits)) > 0) {
@@ -228,7 +228,7 @@ void DatabaseFile::make_db(TempFile **tmp_out, list<TextInputFile> *input_file)
 				for (size_t i = 0; i < n; ++i) {
 					vector<string> acc = Taxonomy::Accession::from_title((*ids)[i]);
 					for (const string& s : acc)
-						accessions.push(std::make_tuple(s, total_seqs + i));
+						accessions.push(std::make_pair(s, total_seqs + i));
 				}
 			}
 			timer.go("Hashing sequences");
