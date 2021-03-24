@@ -12,7 +12,7 @@ using std::vector;
 using std::string;
 using std::array;
 
-static const int W = 7, L = 16, N = 64, T = 5;
+static const int W = 7, L = 16, N = 64, T = 3;
 
 static array<size_t, 1 << L> counts;
 static set<int> exclude;
@@ -90,6 +90,24 @@ static void process_aln(vector<string>::const_iterator begin, vector<string>::co
 			++counts[p];
 }
 
+static string as_string(int p) {
+	string s;
+	for (int i = 0; i < L; ++i)
+		if (p & (1 << i))
+			s = '1' + s;
+		else
+			s = '0' + s;
+	while (s.front() == '0')
+		s.erase(s.begin());
+	return s;
+}
+
+static void print_all() {
+	for (int p : exclude) {
+		cout << as_string(p) << endl;
+	}
+}
+
 void find_shapes() {
 	for (int i = 0; i < N; ++i) {
 		counts.fill(0);
@@ -104,6 +122,8 @@ void find_shapes() {
 				}
 				++nt;
 			}
+			if ((nt % 100000) == 0)
+				cout << "Processed = " << nt << endl;
 		}
 		in.close();
 		int p_max = 0;
@@ -114,19 +134,9 @@ void find_shapes() {
 				c_max = counts[p];
 			}
 		cout << "Alignments: " << n << " / " << nt << endl;
-		cout << "Pattern: " << p_max << endl;
+		cout << "Pattern: " << as_string(p_max) << endl;
 		cout << "Hit: " << c_max << endl;
 		exclude.insert(p_max);
-	}
-	for (int p : exclude) {
-		string s;
-		for (int i = 0; i < L; ++i)
-			if (p & (1 << i))
-				s = '1' + s;
-			else
-				s = '0' + s;
-		while (s.front() == '0')
-			s.erase(s.begin());
-		cout << s << endl;
-	}
+		print_all();
+	}	
 }

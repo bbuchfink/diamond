@@ -37,6 +37,7 @@
 
 #pragma once
 
+#include <atomic>
 #include <iterator>
 #include <utility>
 #include "../../util/system.h"
