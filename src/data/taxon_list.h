@@ -23,11 +23,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/io/output_file.h"
 #include "../util/data_structures/compact_array.h"
 
-template<typename Type, typename Cmp = std::less<Type>>
+template<typename Type, typename Cmp>
 struct ExternalSorter;
 
 struct TaxonList : public CompactArray<vector<unsigned>>
 {
 	TaxonList(Deserializer &in, size_t size, size_t data_size);
-	static void build(OutputFile &db, ExternalSorter<std::pair<std::string, uint32_t>>& accessions, size_t seqs);
+	static void build(OutputFile &db, ExternalSorter<std::pair<std::string, uint32_t>, std::less<std::pair<std::string, uint32_t>>>& accessions, size_t seqs);
 };
