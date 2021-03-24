@@ -226,7 +226,7 @@ void DatabaseFile::make_db(TempFile **tmp_out, list<TextInputFile> *input_file)
 			if (!config.prot_accession2taxid.empty()) {
 				timer.go("Writing accessions");
 				for (size_t i = 0; i < n; ++i) {
-					vector<string> acc = Taxonomy::Accession::from_title((*ids)[i]);
+					vector<string> acc = accession_from_title((*ids)[i]);
 					for (const string& s : acc)
 						accessions.push(std::make_pair(s, total_seqs + i));
 				}

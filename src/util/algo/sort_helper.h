@@ -46,8 +46,10 @@ struct SortedListJoiner {
 		++it1_;
 		++it2_;
 
-		if ((!cmp_(v1, *it2_) && !cmp_(*it2_, v1)) || (!cmp_(v2, *it1_) && !cmp_(*it1_, v2)))
-			throw std::runtime_error("Duplicate keys");
+		if (!cmp_(v1, *it2_) && !cmp_(*it2_, v1))
+			throw std::runtime_error("Duplicate keys: " + v1.first);
+		if (!cmp_(v2, *it1_) && !cmp_(*it1_, v2))
+			throw std::runtime_error("Duplicate keys: " + v2.first);
 
 		while (good()) {
 			if (cmp_(*it1_, *it2_))

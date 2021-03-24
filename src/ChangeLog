@@ -1,3 +1,8 @@
+[2.0.9]
+- Reduced the memory use of database building with taxonomy mapping.
+- Reduced the memory use of the seed hit sorting stage.
+- Improved the consitency of results when running in query-indexed mode (`--algo 1`).
+
 [2.0.8]
 - Added support for using BLAST database files instead of the Diamond-formatted
   `.dmnd` files.

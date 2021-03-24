@@ -54,7 +54,7 @@ static void load_mapping_file(ExternalSorter<pair<string, uint32_t>>& sorter)
 	TextInputFile f(config.prot_accession2taxid);
 	f.getline();
 	int format = mapping_file_format(f.line);
-	string accession;
+	string accession, last;
 
 	while (!f.eof() && (f.getline(), !f.line.empty())) {
 		if (format == 0)
@@ -69,7 +69,14 @@ static void load_mapping_file(ExternalSorter<pair<string, uint32_t>>& sorter)
 		if (i != string::npos)
 			accession.erase(i);
 
-		sorter.push(make_pair(accession, (uint32_t)taxid));
+		i = accession.find_last_of('.');
+		if (i != string::npos)
+			accession.erase(i);
+
+		if (accession != last)
+			sorter.push(make_pair(accession, (uint32_t)taxid));
+
+		last = accession;
 	}
 	f.close();
 }

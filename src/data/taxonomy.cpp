@@ -75,6 +75,9 @@ string get_accession(const string &title)
 		if (i != string::npos)
 			t.erase(i);
 	}
+	i = t.find_last_of('.');
+	if (i != string::npos)
+		t.erase(i);
 	return t;
 }
 
@@ -129,7 +132,7 @@ void Taxonomy::init()
 	}
 }
 
-vector<string> Taxonomy::Accession::from_title(const char *title)
+vector<string> accession_from_title(const char *title)
 {
 	vector<string> t(seq_titles(title));
 	for (vector<string>::iterator i = t.begin(); i < t.end(); ++i)
