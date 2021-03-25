@@ -1,6 +1,9 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2018 Benjamin Buchfink <buchfink@gmail.com>
+Copyright (C) 2016-2021 Max Planck Society for the Advancement of Science e.V.
+                        Benjamin Buchfink
+						
+Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -15,6 +18,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
+
 
 #include <set>
 #include "taxon_list.h"
@@ -93,9 +97,10 @@ void TaxonList::build(OutputFile &db, ExternalSorter<pair<string, uint32_t>>& ac
 	timer.go("Joining accession mapping");
 	acc2taxid.init_read();
 	acc2oid.init_read();
-	auto cmp = [](const T& x, const T& y) { return x.first < y.first; };
-	auto value = [](const T& x, const T& y) { return make_pair(x.second, y.second); };
-	SortedListJoiner<Sorter, Sorter, decltype(cmp), decltype(value)> it(acc2oid, acc2taxid, cmp, value);
+	const auto cmp = [](const T& x, const T& y) { return x.first < y.first; };
+	const auto value = [](const T& x, const T& y) { return make_pair(x.second, y.second); };
+	auto it = join_sorted_lists(acc2oid, acc2taxid, cmp, value);
+
 	ExternalSorter<pair<uint32_t, uint32_t>> oid2taxid;
 	size_t acc_matched = 0;
 	while (it.good()) {
@@ -122,33 +127,7 @@ void TaxonList::build(OutputFile &db, ExternalSorter<pair<string, uint32_t>>& ac
 
 	message_stream << "Database sequences  " << seqs << endl;
 	message_stream << "Accessions in database  " << acc2oid.count() << endl;
-	message_stream << "Entries in accession to taxid map  " << acc2taxid.count() << endl;
+	message_stream << "Entries in accession to taxid file  " << acc2taxid.count() << endl;
 	message_stream << "Database accessions mapped to taxid  " << acc_matched << endl;
 	message_stream << "Database sequences mapped to taxid  " << mapped_seqs << endl;
-	
-	/*vector<string> a;
-	db.set(Serializer::VARINT);
-	set<unsigned> t;
-	size_t mapped = 0, mappings = 0, len_errors = 0;
-	for (size_t i = 0; i < seqs; ++i) {
-		accessions >> a;
-		for (vector<string>::const_iterator j = a.begin(); j < a.end(); ++j) {
-			try {
-				t.insert(taxonomy.get(Taxonomy::Accession(j->c_str())));
-			}
-			catch (AccessionLengthError &) {
-				++len_errors;
-			}
-		}
-		t.erase(0);
-		db << t;
-		mappings += t.size();
-		if (!t.empty())
-			++mapped;
-		t.clear();
-	}
-	timer.finish();
-	message_stream << mapped << " sequences mapped to taxonomy, " << mappings << " total mappings." << endl;
-	if (len_errors)
-		message_stream << "Warning: " << len_errors << " sequences ignored due to accession length overflow." << endl;*/
 }

@@ -1,5 +1,6 @@
 [2.0.9]
 - Reduced the memory use of database building with taxonomy mapping.
+- Removed the limitation of sequence accession length.
 - Reduced the memory use of the seed hit sorting stage.
 - Improved the consitency of results when running in query-indexed mode (`--algo 1`).
 

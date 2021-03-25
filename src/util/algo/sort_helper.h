@@ -44,15 +44,18 @@ struct SortedListJoiner {
 		const auto v1 = *it1_;
 		const auto v2 = *it2_;
 		++it1_;
-		++it2_;
+		if (!it1_.good())
+			return;
 
-		if (!good())
+		if (!cmp_(v2, *it1_) && !cmp_(*it1_, v2))
+			return;
+
+		++it2_;
+		if (!it2_.good())
 			return;
 
 		if (!cmp_(v1, *it2_) && !cmp_(*it2_, v1))
-			throw std::runtime_error("Duplicate keys: " + v1.first);
-		if (!cmp_(v2, *it1_) && !cmp_(*it1_, v2))
-			throw std::runtime_error("Duplicate keys: " + v2.first);
+			throw std::runtime_error("Duplicate keys: " + v1.first);		
 
 		do {
 			if (cmp_(*it1_, *it2_))
@@ -72,6 +75,11 @@ private:
 	const Value value_;
 
 };
+
+template<typename It1, typename It2, typename Cmp, typename Value>
+SortedListJoiner<It1, It2, Cmp, Value> join_sorted_lists(It1& it1, It2& it2, Cmp cmp, Value value) {
+	return SortedListJoiner<It1, It2, Cmp, Value>(it1, it2, cmp, value);
+}
 
 template<typename It, typename Key, typename Value>
 struct KeyMerger

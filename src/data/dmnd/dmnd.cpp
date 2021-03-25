@@ -176,6 +176,7 @@ static void push_seq(const Sequence &seq, const char *id, size_t id_len, uint64_
 
 void DatabaseFile::make_db(TempFile **tmp_out, list<TextInputFile> *input_file)
 {
+	config.file_buffer_size = 4 * MEGABYTES;
 	if (config.input_ref_file.size() > 1)
 		throw std::runtime_error("Too many arguments provided for option --in.");
 	const string input_file_name = config.input_ref_file.empty() ? string() : config.input_ref_file.front();

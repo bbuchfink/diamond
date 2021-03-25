@@ -28,24 +28,34 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../lib/ips4o/ips4o.hpp"
 #include "../basic/config.h"
 
+template<typename _t>
+static inline size_t alloc_size(const _t& x) {
+	return sizeof(_t);
+}
+
+static inline size_t alloc_size(const std::pair<std::string, uint32_t>& x) {
+	return 4 + sizeof(std::string) + x.first.length();
+}
+
 template<typename Type, typename Cmp = std::less<Type>>
 struct ExternalSorter {
 
 	typedef Type Value;
 
-	static const size_t BUCKET_SIZE = 0x80000000;
+	static const size_t BUCKET_SIZE = 2 * GIGABYTES;
 
 	ExternalSorter(Cmp cmp = Cmp()) :
 		cmp_(cmp),
-		bucket_size_(std::max(BUCKET_SIZE/sizeof(Type), (size_t)1)),
-		count_(0)
+		count_(0),
+		size_(0)
 	{
 	}
 
 	void push(const Type& x) {
 		++count_;
+		size_ += alloc_size(x);
 		buf_.push_back(x);
-		if (buf_.size() > bucket_size_)
+		if (size_ > BUCKET_SIZE)
 			flush();
 	}
 
@@ -117,11 +127,12 @@ private:
 			f << buf_[i];
 		files_.push_back(new InputFile(f));
 		buf_.clear();
+		size_ = 0;
 	}
 
 	const Cmp cmp_;
-	const size_t bucket_size_;
 	size_t count_;
+	size_t size_;
 	std::vector<InputFile*> files_;
 	std::vector<Type> buf_;
 	std::priority_queue<Entry> queue_;
