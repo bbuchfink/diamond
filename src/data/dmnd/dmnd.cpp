@@ -256,6 +256,8 @@ void DatabaseFile::make_db(TempFile **tmp_out, list<TextInputFile> *input_file)
 	pos_array.emplace_back(offset, 0);
 	for (const SeqInfo& r : pos_array)
 		*out << r;
+	pos_array.clear();
+	pos_array.shrink_to_fit();
 	timer.finish();
 
 	taxonomy.init();
