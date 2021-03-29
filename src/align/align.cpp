@@ -136,6 +136,8 @@ void align_worker(size_t thread_id, const Parameters *params, const Metadata *me
 		if (hits.target_parallel)
 			stat.inc(Statistics::TIME_TARGET_PARALLEL, timer.microseconds());
 		hits.release();
+		if (config.swipe_all && !config.no_heartbeat && (hits.query % 100 == 0))
+			log_stream << "Queries = " << hits.query << std::endl;
 	}
 	statistics += stat;
 	::dp_stat += dp_stat;

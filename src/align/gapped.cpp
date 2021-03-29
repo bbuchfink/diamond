@@ -184,22 +184,26 @@ vector<Target> align(const vector<WorkTarget> &targets, const Sequence *query_se
 	return r2;
 }
 
-vector<Target> full_db_align(const Sequence *query_seq, const Bias_correction *query_cb, int flags, Statistics &stat) {
-	ContainerIterator<DpTarget, SequenceSet> target_it(*ref_seqs::data_, ref_seqs::data_->get_length());
+vector<Target> full_db_align(const Sequence *query_seq, const Bias_correction *query_cb, int flags, Statistics &stat) {	
 	vector<DpTarget> v;
 	vector<Target> r;
 	Stats::TargetMatrix matrix;
-
-	list<Hsp> hsp = DP::BandedSwipe::swipe(
-		query_seq[0],
-		v,
-		v,
-		v,
-		&target_it,
-		Frame(0),
-		Stats::CBS::hauser(config.comp_based_stats) ? &query_cb[0] : nullptr,
-		flags | DP::FULL_MATRIX,
-		stat);
+	list<Hsp> hsp;
+	
+	for (unsigned frame = 0; frame < align_mode.query_contexts; ++frame) {
+		ContainerIterator<DpTarget, SequenceSet> target_it(*ref_seqs::data_, ref_seqs::data_->get_length());
+		list<Hsp> frame_hsp = DP::BandedSwipe::swipe(
+			query_seq[frame],
+			v,
+			v,
+			v,
+			&target_it,
+			Frame(frame),
+			Stats::CBS::hauser(config.comp_based_stats) ? &query_cb[frame] : nullptr,
+			flags | DP::FULL_MATRIX,
+			stat);
+		hsp.splice(hsp.begin(), frame_hsp, frame_hsp.begin(), frame_hsp.end());
+	}
 
 	map<unsigned, unsigned> subject_idx;
 	while (!hsp.empty()) {

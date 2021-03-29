@@ -3,6 +3,8 @@
 - Removed the limitation of sequence accession length.
 - Reduced the memory use of the seed hit sorting stage.
 - Improved the consitency of results when running in query-indexed mode (`--algo 1`).
+- Added the option `--skip-missing-seqids` to ignore cases of missing sequences
+  in the database when using the `--seqidlist` option.
 
 [2.0.8]
 - Added support for using BLAST database files instead of the Diamond-formatted

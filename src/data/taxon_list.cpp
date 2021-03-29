@@ -88,10 +88,9 @@ static void load_mapping_file(ExternalSorter<pair<string, uint32_t>>& sorter)
 void TaxonList::build(OutputFile &db, ExternalSorter<pair<string, uint32_t>>& acc2oid, size_t seqs)
 {
 	typedef pair<string, uint32_t> T;
-	typedef ExternalSorter<T> Sorter;
 
 	task_timer timer("Loading taxonomy mapping file");
-	Sorter acc2taxid;
+	ExternalSorter<T> acc2taxid;
 	load_mapping_file(acc2taxid);
 
 	timer.go("Joining accession mapping");
@@ -109,11 +108,11 @@ void TaxonList::build(OutputFile &db, ExternalSorter<pair<string, uint32_t>>& ac
 		++acc_matched;
 	}
 
-	timer.go("Writing taxid list");
+	timer.go("Writing taxon id list");
 	db.set(Serializer::VARINT);
 	oid2taxid.init_read();
 	const uint32_t n = (uint32_t)seqs;
-	KeyMerger<ExternalSorter<pair<uint32_t, uint32_t>>, First<uint32_t, uint32_t>, Second<uint32_t, uint32_t>> taxid_it(oid2taxid, 0);
+	auto taxid_it = merge_keys(oid2taxid, First<uint32_t, uint32_t>(), Second<uint32_t, uint32_t>(), 0);
 	size_t mapped_seqs = 0;
 	while (taxid_it.key() < n) {
 		set<uint32_t> tax_ids = *taxid_it;

@@ -113,10 +113,15 @@ struct KeyMerger
 
 private:
 
-	It it_;
+	It& it_;
 	KeyType key_;
 
 };
+
+template<typename It, typename Key, typename Value>
+KeyMerger<It, Key, Value> merge_keys(It& it, Key key, Value value, typename std::result_of<Key(const typename It::Value&)>::type begin) {
+	return KeyMerger<It, Key, Value>(it, begin);
+}
 
 template<typename Type1, typename Type2>
 struct First {
