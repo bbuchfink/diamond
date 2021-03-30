@@ -301,7 +301,7 @@ void DatabaseFile::make_db(TempFile **tmp_out, list<TextInputFile> *input_file)
 	stats("Database hash", hex_print(header2.hash, 16));
 	stats("Total time", total.get(), "s");
 
-	message_stream << stats;
+	message_stream << endl << stats;
 }
 
 void DatabaseFile::set_seqinfo_ptr(size_t i) {
