@@ -25,43 +25,43 @@ template<typename It1, typename It2, typename Cmp, typename Value>
 struct SortedListJoiner {
 
 	SortedListJoiner(It1& it1, It2& it2, Cmp cmp, Value value) :
-		it1_(it1),
-		it2_(it2),
+		it1_(&it1),
+		it2_(&it2),
 		cmp_(cmp),
 		value_(value)
 	{
 	}
 
 	bool good() {
-		return it1_.good() && it2_.good();
+		return it1_->good() && it2_->good();
 	}
 
 	typename std::result_of<Value(const typename It1::Value&, const typename It2::Value&)>::type operator*() const {
-		return value_(*it1_, *it2_);
+		return value_(**it1_, **it2_);
 	}
 
 	void operator++() {
-		const auto v1 = *it1_;
-		const auto v2 = *it2_;
-		++it1_;
-		if (!it1_.good())
+		const auto v1 = **it1_;
+		const auto v2 = **it2_;
+		++(*it1_);
+		if (!it1_->good())
 			return;
 
-		if (!cmp_(v2, *it1_) && !cmp_(*it1_, v2))
+		if (!cmp_(v2, **it1_) && !cmp_(**it1_, v2))
 			return;
 
-		++it2_;
-		if (!it2_.good())
+		++(*it2_);
+		if (!it2_->good())
 			return;
 
-		if (!cmp_(v1, *it2_) && !cmp_(*it2_, v1))
-			throw std::runtime_error("Duplicate keys: " + v1.first);		
+		if (!cmp_(v1, **it2_) && !cmp_(**it2_, v1))
+			throw std::runtime_error("Duplicate keys: " + v1.first);
 
 		do {
-			if (cmp_(*it1_, *it2_))
-				++it1_;
-			else if (cmp_(*it2_, *it1_))
-				++it2_;
+			if (cmp_(**it1_, **it2_))
+				++(*it1_);
+			else if (cmp_(**it2_, **it1_))
+				++(*it2_);
 			else
 				return;
 		} while (good());
@@ -69,8 +69,8 @@ struct SortedListJoiner {
 
 private:
 
-	It1& it1_;
-	It2& it2_;
+	It1* it1_;
+	It2* it2_;
 	const Cmp cmp_;
 	const Value value_;
 
@@ -89,7 +89,7 @@ struct KeyMerger
 	typedef typename std::result_of<Value(const typename It::Value&)>::type ValueType;
 
 	KeyMerger(It& it, KeyType begin):
-		it_(it),
+		it_(&it),
 		key_(begin)
 	{}
 
@@ -100,9 +100,9 @@ struct KeyMerger
 
 	std::set<ValueType> operator*() {
 		std::set<ValueType> v;
-		while (it_.good() && Key()(*it_) == key_) {
-			v.insert(Value()(*it_));
-			++it_;
+		while (it_->good() && Key()(**it_) == key_) {
+			v.insert(Value()(**it_));
+			++(*it_);
 		}
 		return v;
 	}
@@ -113,7 +113,7 @@ struct KeyMerger
 
 private:
 
-	It& it_;
+	It* it_;
 	KeyType key_;
 
 };

@@ -260,10 +260,13 @@ void DatabaseFile::make_db(TempFile **tmp_out, list<TextInputFile> *input_file)
 	pos_array.shrink_to_fit();
 	timer.finish();
 
+	Table stats;
+	stats("Database sequences", n_seqs);
+	stats("Database letters", letters);
 	taxonomy.init();
 	if (!config.prot_accession2taxid.empty()) {
 		header2.taxon_array_offset = out->tell();
-		TaxonList::build(*out, accessions, n_seqs);
+		TaxonList::build(*out, accessions, n_seqs, stats);
 		header2.taxon_array_size = out->tell() - header2.taxon_array_offset;
 	}
 	if (!config.nodesdmp.empty()) {
@@ -295,9 +298,10 @@ void DatabaseFile::make_db(TempFile **tmp_out, list<TextInputFile> *input_file)
 	}
 
 	timer.finish();
-	message_stream << "Database hash = " << hex_print(header2.hash, 16) << endl;
-	message_stream << "Processed " << n_seqs << " sequences, " << letters << " letters." << endl;
-	message_stream << "Total time = " << total.get() << "s" << endl;
+	stats("Database hash", hex_print(header2.hash, 16));
+	stats("Total time", total.get(), "s");
+
+	message_stream << stats;
 }
 
 void DatabaseFile::set_seqinfo_ptr(size_t i) {

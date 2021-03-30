@@ -85,7 +85,7 @@ static void load_mapping_file(ExternalSorter<pair<string, uint32_t>>& sorter)
 	f.close();
 }
 
-void TaxonList::build(OutputFile &db, ExternalSorter<pair<string, uint32_t>>& acc2oid, size_t seqs)
+void TaxonList::build(OutputFile &db, ExternalSorter<pair<string, uint32_t>>& acc2oid, size_t seqs, Table& stats)
 {
 	typedef pair<string, uint32_t> T;
 
@@ -124,9 +124,8 @@ void TaxonList::build(OutputFile &db, ExternalSorter<pair<string, uint32_t>>& ac
 	}
 	timer.finish();
 
-	message_stream << "Database sequences  " << seqs << endl;
-	message_stream << "Accessions in database  " << acc2oid.count() << endl;
-	message_stream << "Entries in accession to taxid file  " << acc2taxid.count() << endl;
-	message_stream << "Database accessions mapped to taxid  " << acc_matched << endl;
-	message_stream << "Database sequences mapped to taxid  " << mapped_seqs << endl;
+	stats("Accessions in database", acc2oid.count());
+	stats("Entries in accession to taxid file", acc2taxid.count());
+	stats("Database accessions mapped to taxid" , acc_matched);
+	stats("Database sequences mapped to taxid", mapped_seqs);
 }

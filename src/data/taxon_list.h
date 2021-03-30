@@ -22,12 +22,14 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #pragma once
 #include "../util/io/output_file.h"
 #include "../util/data_structures/compact_array.h"
+#include "../util/table.h"
 
 template<typename Type, typename Cmp>
 struct ExternalSorter;
 
 struct TaxonList : public CompactArray<vector<unsigned>>
 {
+	typedef std::pair<std::string, uint32_t> T;
 	TaxonList(Deserializer &in, size_t size, size_t data_size);
-	static void build(OutputFile &db, ExternalSorter<std::pair<std::string, uint32_t>, std::less<std::pair<std::string, uint32_t>>>& accessions, size_t seqs);
+	static void build(OutputFile &db, ExternalSorter<T, std::less<T>>& accessions, size_t seqs, Table& stats);
 };
