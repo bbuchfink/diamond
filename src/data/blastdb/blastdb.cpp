@@ -186,12 +186,12 @@ void BlastDB::skip_id_data()
 
 size_t BlastDB::sequence_count() const
 {
-	return db_->GetNumSeqs();
+	return db_->GetNumOIDs();
 }
 
 size_t BlastDB::sparse_sequence_count() const
 {
-	return db_->GetNumOIDs();
+	return db_->GetNumSeqs();	
 }
 
 size_t BlastDB::letters() const
