@@ -335,7 +335,7 @@ const BitVector* BlastDB::builtin_filter() {
 	if (oid_filter_.empty()) {
 		oid_filter_ = BitVector(sequence_count());
 		int oid = 0;
-		while (CheckOrFindOID(oid)) {
+		while (db_->CheckOrFindOID(oid)) {
 			oid_filter_.set(oid);
 			++oid;
 		}
