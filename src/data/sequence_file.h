@@ -83,6 +83,7 @@ struct SequenceFile {
 	virtual void read_id_data(char* dst, size_t len) = 0;
 	virtual void skip_id_data() = 0;
 	virtual size_t sequence_count() const = 0;
+	virtual size_t sparse_sequence_count() const = 0;
 	virtual size_t letters() const = 0;
 	virtual int db_version() const = 0;
 	virtual int program_build_version() const = 0;
@@ -102,6 +103,7 @@ struct SequenceFile {
 	virtual void reopen() = 0;
 	virtual BitVector filter_by_accession(const std::string& file_name) = 0;
 	virtual BitVector filter_by_taxonomy(const std::string& include, const std::string& exclude, const TaxonList& list, TaxonomyNodes& nodes) = 0;
+	virtual const BitVector* builtin_filter() = 0;
 	virtual std::string file_name() = 0;
 	virtual ~SequenceFile();
 

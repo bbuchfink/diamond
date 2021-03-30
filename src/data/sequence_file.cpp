@@ -59,6 +59,8 @@ bool SequenceFile::load_seqs(vector<uint32_t>* block2db_id, const size_t max_let
 	SeqInfo r = read_seqinfo();
 	uint64_t start_offset = r.pos;
 	bool last = false;
+	if (type() == Type::BLAST && sequence_count() != sparse_sequence_count())
+		filter = builtin_filter();
 	const bool use_filter = filter && !filter->empty();
 
 	auto goon = [&]() {
@@ -240,6 +242,8 @@ void db_info() {
 	if(db->type() == SequenceFile::Type::DMND)
 		cout << setw(w) << "Diamond build  " << db->program_build_version() << endl;
 	cout << setw(w) << "Sequences  " << db->sequence_count() << endl;
+	if (db->type() == SequenceFile::Type::BLAST && db->sequence_count() != db->sparse_sequence_count())
+		cout << setw(w) << "Sequences (filtered) " << db->sparse_sequence_count() << endl;
 	cout << setw(w) << "Letters  " << db->letters() << endl;
 	db->close();
 	delete db;

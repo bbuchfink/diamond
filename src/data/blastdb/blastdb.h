@@ -19,6 +19,7 @@ struct BlastDB : public SequenceFile {
 	virtual void read_id_data(char* dst, size_t len) override;
 	virtual void skip_id_data() override;
 	virtual size_t sequence_count() const override;
+	virtual size_t sparse_sequence_count() const override;
 	virtual size_t letters() const override;
 	virtual int db_version() const override;
 	virtual int program_build_version() const override;
@@ -38,6 +39,7 @@ struct BlastDB : public SequenceFile {
 	virtual void reopen() override;
 	virtual BitVector filter_by_accession(const std::string& file_name) override;
 	virtual BitVector filter_by_taxonomy(const std::string& include, const std::string& exclude, const TaxonList& list, TaxonomyNodes& nodes) override;
+	virtual const BitVector* builtin_filter() override;
 	virtual std::string file_name() override;
 	virtual ~BlastDB();
 	
@@ -48,5 +50,6 @@ private:
 	int oid_, oid_seqdata_;
 	const bool long_seqids_;
 	const Flags flags_;
+	BitVector oid_filter_;
 
 };

@@ -189,6 +189,11 @@ size_t BlastDB::sequence_count() const
 	return db_->GetNumSeqs();
 }
 
+size_t BlastDB::sparse_sequence_count() const
+{
+	return db_->GetNumOIDs();
+}
+
 size_t BlastDB::letters() const
 {
 	return db_->GetTotalLength();
@@ -322,6 +327,20 @@ BitVector BlastDB::filter_by_taxonomy(const std::string& include, const std::str
 std::string BlastDB::file_name()
 {
 	return file_name_;
+}
+
+const BitVector* BlastDB::builtin_filter() {
+	if (sequence_count() == sparse_sequence_count())
+		return nullptr;
+	if (oid_filter_.empty()) {
+		oid_filter_ = BitVector(sequence_count());
+		int oid = 0;
+		while (CheckOrFindOID(oid)) {
+			oid_filter_.set(oid);
+			++oid;
+		}
+	}
+	return &oid_filter_;
 }
 
 BlastDB::~BlastDB()

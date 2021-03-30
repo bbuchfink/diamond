@@ -559,9 +559,19 @@ BitVector DatabaseFile::filter_by_taxonomy(const std::string& include, const std
 	return v;
 }
 
+const BitVector* DatabaseFile::builtin_filter()
+{
+	return nullptr;
+}
+
 std::string DatabaseFile::file_name()
 {
 	return InputFile::file_name;
+}
+
+size_t DatabaseFile::sparse_sequence_count() const
+{
+	return sequence_count();
 }
 
 std::vector<string>* DatabaseFile::taxon_scientific_names() {
