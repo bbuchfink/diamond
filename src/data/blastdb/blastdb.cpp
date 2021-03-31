@@ -311,7 +311,7 @@ BitVector BlastDB::filter_by_accession(const std::string& file_name)
 			if (config.skip_missing_seqids)
 				message_stream << "WARNING: Accession not found in database : " + accs[i] << endl;
 			else
-				throw std::runtime_error("Accession not found in database: " + accs[i]);
+				throw std::runtime_error("Accession not found in database: " + accs[i] + ". Use --skip-missing-seqids to ignore.");
 		else
 			v.set(oids[i]);
 	}

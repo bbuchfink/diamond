@@ -1,6 +1,8 @@
 [2.0.9]
 - Reduced the memory use of database building with taxonomy mapping.
 - Removed the limitation of sequence accession length.
+- Fixed a bug that could cause using a BLAST database not to function correctly.
+- Added support for using BLAST alias databases (created by `blastdb_aliastool`).
 - Reduced the memory use of the seed hit sorting stage.
 - Improved the consistency of results when running in query-indexed mode (`--algo 1`).
 - Added the option `--skip-missing-seqids` to ignore cases of missing sequences
