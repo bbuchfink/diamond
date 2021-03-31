@@ -111,7 +111,7 @@ size_t BlastDB::tell_seq() const
 
 SeqInfo BlastDB::read_seqinfo()
 {
-	if (oid_ >= db_->GetNumSeqs()) {
+	if (oid_ >= db_->GetNumOIDs()) {
 		++oid_;
 		return SeqInfo(0, 0);
 	}
@@ -133,7 +133,7 @@ size_t BlastDB::id_len(const SeqInfo& seq_info, const SeqInfo& seq_info_next)
 	if(flag_any(flags_, Flags::FULL_SEQIDS))
 		return full_id(*db_->GetBioseq(seq_info.pos), nullptr, long_seqids_, true).length();
 	else {
-		return best_id(db_->GetSeqIDs(oid_seqdata_)).length();
+		return best_id(db_->GetSeqIDs(seq_info.pos)).length();
 	}
 }
 
