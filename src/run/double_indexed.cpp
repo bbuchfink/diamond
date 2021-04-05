@@ -117,7 +117,7 @@ void run_ref_chunk(SequenceFile &db_file,
 		if (query_seeds_hashed.get())
 			ref_hst = Partitioned_histogram(*ref_seqs::data_, true, query_seeds_hashed.get(), true);
 		else
-			ref_hst = Partitioned_histogram(*ref_seqs::data_, false, &no_filter, false);
+			ref_hst = Partitioned_histogram(*ref_seqs::data_, false, &no_filter, config.target_indexed);
 
 		timer.go("Allocating buffers");
 		char *ref_buffer = SeedArray::alloc_buffer(ref_hst);
