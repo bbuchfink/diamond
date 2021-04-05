@@ -27,6 +27,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "enum_seeds.h"
 #include "../util/system/system.h"
 #include "../util/io/output_file.h"
+#include "../lib/mio/mmap.hpp"
 
 static const size_t PADDING = 32;
 static const double HASH_TABLE_FACTOR = 1.25;
@@ -86,8 +87,7 @@ struct Hashed_seed_set_callback
 	PtrVector<HashSet<Modulo2, Identity> > &dst;
 };
 
-HashedSeedSet::HashedSeedSet(const SequenceSet &seqs):
-	fd_(0)
+HashedSeedSet::HashedSeedSet(const SequenceSet &seqs)
 {
 	for (size_t i = 0; i < shapes.count(); ++i)
 		data_.push_back(new Table(next_power_of_2(seqs.letters() * HASH_TABLE_FACTOR)));
@@ -111,25 +111,21 @@ HashedSeedSet::HashedSeedSet(const SequenceSet &seqs):
 }
 
 HashedSeedSet::HashedSeedSet(const string& index_file):
-	fd_(0)
+	mmap_(new mio::mmap_source(index_file))
 {
-	auto f = mmap_file(index_file.c_str());
-	fd_ = get<2>(f);
-	buffer_ = get<0>(f);
-	mapped_size_ = get<1>(f);
-
-	if (mapped_size_ < SEED_INDEX_HEADER_SIZE)
+	if (mmap_->length() < SEED_INDEX_HEADER_SIZE)
 		throw runtime_error("Invalid seed index file.");
-	if (*(uint64_t*)buffer_ != SEED_INDEX_MAGIC_NUMBER)
+	const char* buf = mmap_->data();
+	if (*(uint64_t*)buf != SEED_INDEX_MAGIC_NUMBER)
 		throw runtime_error("Invalid seed index file.");
-	if (*(uint32_t*)(buffer_ + 8) != SEED_INDEX_VERSION)
+	if (*(uint32_t*)(buf + 8) != SEED_INDEX_VERSION)
 		throw runtime_error("Invalid seed index file version.");
-	uint32_t shape_count = *(uint32_t*)(buffer_ + 12);
+	uint32_t shape_count = *(uint32_t*)(buf + 12);
 	if (shape_count != shapes.count())
 		throw runtime_error("Index has a different number of shapes.");
 
-	const size_t* size_ptr = (const size_t*)(buffer_ + SEED_INDEX_HEADER_SIZE);
-	uint8_t* data_ptr = (uint8_t*)(buffer_ + SEED_INDEX_HEADER_SIZE + sizeof(size_t) * shape_count);
+	const size_t* size_ptr = (const size_t*)(buf + SEED_INDEX_HEADER_SIZE);
+	uint8_t* data_ptr = (uint8_t*)(buf + SEED_INDEX_HEADER_SIZE + sizeof(size_t) * shape_count);
 
 	for (unsigned i = 0; i < shapes.count(); ++i) {
 		data_.push_back(new Table(data_ptr, *size_ptr));
@@ -140,8 +136,6 @@ HashedSeedSet::HashedSeedSet(const string& index_file):
 }
 
 HashedSeedSet::~HashedSeedSet() {
-	if (fd_ > 0)
-		unmap_file(buffer_, mapped_size_, fd_);
 }
 
 size_t HashedSeedSet::max_table_size() const {
