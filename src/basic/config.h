@@ -305,7 +305,7 @@ struct Config
 	inline unsigned get_run_len(unsigned length)
 	{
 		if (run_len == 0) {
-			if (length < 30)
+			if (length < 30 || frame_shift != 0)
 				return 1;
 			else if (length < 100)
 				return 20;
