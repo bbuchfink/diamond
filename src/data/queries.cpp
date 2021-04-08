@@ -19,6 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "queries.h"
 #include "../util/sequence/sequence.h"
 #include "../basic/config.h"
+#include "seed_set.h"
 
 using std::unique_ptr;
 

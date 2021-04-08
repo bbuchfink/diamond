@@ -49,6 +49,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/parallel/parallelizer.h"
 #include "../util/system/system.h"
 #include "../align/target.h"
+#include "../data/seed_set.h"
 
 using std::unique_ptr;
 using std::endl;

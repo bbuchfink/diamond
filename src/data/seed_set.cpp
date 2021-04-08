@@ -27,7 +27,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "enum_seeds.h"
 #include "../util/system/system.h"
 #include "../util/io/output_file.h"
-#include "../lib/mio/mmap.hpp"
 
 static const size_t PADDING = 32;
 static const double HASH_TABLE_FACTOR = 1.25;
@@ -111,7 +110,7 @@ HashedSeedSet::HashedSeedSet(const SequenceSet &seqs)
 }
 
 HashedSeedSet::HashedSeedSet(const string& index_file):
-	mmap_(new mio::basic_mmap<mio::access_mode::read, char>(index_file))
+	mmap_(new mio::mmap_source(index_file))
 {
 	if (mmap_->length() < SEED_INDEX_HEADER_SIZE)
 		throw runtime_error("Invalid seed index file.");

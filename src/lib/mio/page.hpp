@@ -18,8 +18,6 @@
  * OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-// Modified by B. Buchfink
-
 #ifndef MIO_PAGE_HEADER
 #define MIO_PAGE_HEADER
 
@@ -35,11 +33,11 @@ namespace mio {
  * This is used by `basic_mmap` to determine whether to create a read-only or
  * a read-write memory mapping.
  */
-//enum class access_mode
-//{
-//    read,
-//    write
-//};
+enum class access_mode
+{
+    read,
+    write
+};
 
 /**
  * Determines the operating system's page allocation granularity.

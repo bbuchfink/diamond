@@ -31,7 +31,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/algo/pattern_matcher.h"
 #include "../util/scores/cutoff_table.h"
 #include "../basic/parameters.h"
-#include "../data/seed_set.h"
 #include "finger_print.h"
 #include "../util/memory/alignment.h"
 
@@ -83,6 +82,8 @@ struct Stage1_hit
 	};
 	unsigned q, s;
 };
+
+struct HashedSeedSet;
 
 void search_shape(unsigned sid, unsigned query_block, char *query_buffer, char *ref_buffer, const Parameters &params, const HashedSeedSet* target_seeds);
 bool use_single_indexed(double coverage, size_t query_letters, size_t ref_letters);

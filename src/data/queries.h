@@ -26,7 +26,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../basic/translate.h"
 #include "../basic/statistics.h"
 #include "sequence_set.h"
-#include "seed_set.h"
 #include "seed_histogram.h"
 #include "../util/io/output_file.h"
 
@@ -77,6 +76,7 @@ inline TranslatedSequence get_translated_query(size_t query_id)
 		return TranslatedSequence(query_seqs::get()[query_id]);
 }
 
+struct HashedSeedSet;
 extern std::unique_ptr<HashedSeedSet> query_seeds_hashed;
 extern vector<unsigned> query_block_to_database_id;
 

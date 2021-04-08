@@ -18,6 +18,8 @@
  * OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+// Modified by B. Buchfink
+
 #ifndef MIO_BASIC_MMAP_IMPL
 #define MIO_BASIC_MMAP_IMPL
 
@@ -52,7 +54,7 @@ inline DWORD int64_low(int64_t n) noexcept
     return n & 0xffffffff;
 }
 
-std::wstring s_2_ws(const std::string& s)
+inline std::wstring s_2_ws(const std::string& s)
 {
     if (s.empty())
         return{};

@@ -1,7 +1,6 @@
 #include <stdexcept>
 #include "../basic/config.h"
 #include "reference.h"
-#include "seed_set.h"
 #include "../search/search.h"
 #include "seed_set.h"
 #include "dmnd/dmnd.h"
