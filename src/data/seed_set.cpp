@@ -111,7 +111,7 @@ HashedSeedSet::HashedSeedSet(const SequenceSet &seqs)
 }
 
 HashedSeedSet::HashedSeedSet(const string& index_file):
-	mmap_(new mio::mmap_source(index_file))
+	mmap_(new mio::basic_mmap<mio::access_mode::read, char>(index_file))
 {
 	if (mmap_->length() < SEED_INDEX_HEADER_SIZE)
 		throw runtime_error("Invalid seed index file.");
