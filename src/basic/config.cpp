@@ -643,7 +643,8 @@ Config::Config(int argc, const char **argv, bool check_io)
 	if (verbosity >= 1 || command == regression_test) {
 		ostream &header_out = command == Config::help ? cout : cerr;
 		header_out << Const::program_name << " v" << Const::version_string << "." << (unsigned)Const::build_version << " (C) Max Planck Society for the Advancement of Science" << endl;
-		header_out << "Documentation, support and updates available at http://www.diamondsearch.org" << endl << endl;
+		header_out << "Documentation, support and updates available at http://www.diamondsearch.org" << endl;
+		header_out << "Please cite: http://dx.doi.org/10.1038/s41592-021-01101-x Nature Methods (2021)" << endl << endl;
 	}
 	log_stream << Const::program_name << " v" << Const::version_string << "." << (unsigned)Const::build_version << endl;
 #ifndef NDEBUG
