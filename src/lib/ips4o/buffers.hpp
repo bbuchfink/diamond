@@ -41,6 +41,12 @@
 #include <type_traits>
 #include <utility>
 
+#if __GNUG__ && __GNUC__ < 5
+#define IS_TRIVIALLY_DEFAULT_CONSTRUCTIBLE(T) __has_trivial_constructor(T)
+#else
+#define IS_TRIVIALLY_DEFAULT_CONSTRUCTIBLE(T) std::is_trivially_default_constructible<T>::value
+#endif
+
 #include "ips4o_fwd.hpp"
 
 namespace ips4o {
@@ -56,7 +62,7 @@ class Sorter<Cfg>::Block {
     using value_type = typename Cfg::value_type;
 
  public:
-    static constexpr const bool kInitializedStorage = std::is_trivially_default_constructible<value_type>::value;
+    static constexpr const bool kInitializedStorage = IS_TRIVIALLY_DEFAULT_CONSTRUCTIBLE(value_type);
     static constexpr const bool kDestruct = !kInitializedStorage && !std::is_trivially_destructible<value_type>::value;
 
     /**
@@ -222,7 +228,7 @@ class Sorter<Cfg>::Buffers {
     Block* storage_;
     // Blocks should have no extra elements or padding
     static_assert(sizeof(Block) == sizeof(typename Cfg::value_type) * Cfg::kBlockSize, "Block size mismatch.");
-    static_assert(std::is_trivially_default_constructible<Block>::value, "Block must be trivially default constructible.");
+    static_assert(IS_TRIVIALLY_DEFAULT_CONSTRUCTIBLE(Block), "Block must be trivially default constructible.");
     static_assert(std::is_trivially_destructible<Block>::value, "Block must be trivially destructible.");
 };
 
