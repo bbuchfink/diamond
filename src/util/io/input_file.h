@@ -26,6 +26,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <stdint.h>
 #include "output_file.h"
 #include "deserializer.h"
+#include "temp_file.h"
 
 using std::vector;
 using std::string;
@@ -33,8 +34,6 @@ using std::runtime_error;
 
 const size_t MEGABYTES = 1 << 20;
 const size_t GIGABYTES = 1 << 30;
-
-struct TempFile;
 
 struct InputFile : public Deserializer
 {

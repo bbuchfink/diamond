@@ -71,7 +71,7 @@ static bool is_excluded(vector<string>::const_iterator begin, vector<string>::co
 }
 
 static bool is_id(const string& s) {
-	int n = 0;
+	size_t n = 0;
 	for (char c : s)
 		if (c == '1')
 			++n;
@@ -126,9 +126,9 @@ void find_shapes() {
 				cout << "Processed = " << nt << endl;
 		}
 		in.close();
-		int p_max = 0;
-		int c_max = 0;
-		for (int p = 0; p < (int)counts.size(); ++p)
+		size_t p_max = 0;
+		size_t c_max = 0;
+		for (size_t p = 0; p < counts.size(); ++p)
 			if (counts[p] > c_max) {
 				p_max = p;
 				c_max = counts[p];

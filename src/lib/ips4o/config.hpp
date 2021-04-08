@@ -33,6 +33,8 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *****************************************************************************/
 
+// Modified by B. Buchfink
+
 #pragma once
 
 #include <algorithm>
@@ -185,7 +187,7 @@ struct Config {
     template <class It>
 #if defined(_REENTRANT) || defined(_OPENMP)
     static constexpr int numThreadsFor(const It& begin, const It& end, int max_threads) {
-        return (((end - begin) * sizeof(decltype(*begin)) / kBlockSizeInBytes) < (kMinParallelBlocksPerThread * max_threads)) ? 1 : max_threads;
+        return (((end - begin) * sizeof(decltype(*begin)) / kBlockSizeInBytes) < size_t(kMinParallelBlocksPerThread * max_threads)) ? 1 : max_threads;
 #else
     static constexpr int numThreadsFor(const It&, const It&, int) {
         return 1;
