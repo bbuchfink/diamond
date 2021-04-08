@@ -297,7 +297,8 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("no-self-hits", 0, "suppress reporting of identical self hits", no_self_hits)
 		("taxonlist", 0, "restrict search to list of taxon ids (comma-separated)", taxonlist)
 		("taxon-exclude", 0, "exclude list of taxon ids (comma-separated)", taxon_exclude)
-		("seqidlist", 0, "filter the database by list of accessions", seqidlist);
+		("seqidlist", 0, "filter the database by list of accessions", seqidlist)
+		("skip-missing-seqids", 0, "ignore accessions missing in the database", skip_missing_seqids);
 
 	string algo_str;
 
@@ -338,8 +339,7 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("family-map-query", 0, "", family_map_query)
 		("query-parallel-limit", 0, "", query_parallel_limit, 3000000u)
 		("log-evalue-scale", 0, "", log_evalue_scale, 1.0 / std::log(2.0))
-		("bootstrap", 0, "", bootstrap)
-		("skip-missing-seqids", 0, "", skip_missing_seqids);
+		("bootstrap", 0, "", bootstrap);
 
 	Options_group view_options("View options");
 	view_options.add()
