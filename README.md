@@ -40,7 +40,13 @@ Scholar](https://scholar.google.de/citations?user=kjPIF1cAAAAJ)\]
 \[[Drost lab](https://drostlab.com/)\]
 \[[MPI-EBIO](http://eb.tuebingen.mpg.de/)\]
 
-Publication:
+**When using the tool in published research, please cite:**
+
+-   Buchfink B, Reuter K, Drost HG, \"Sensitive protein alignments at tree-of-life
+    scale using DIAMOND\", *Nature Methods* **18**, 366–368 (2021).
+    [doi:10.1038/s41592-021-01101-x](https://doi.org/10.1038/s41592-021-01101-x)
+
+Further publications:
 
 -   Buchfink B, Xie C, Huson DH, \"Fast and sensitive protein alignment
     using DIAMOND\", *Nature Methods* **12**, 59-60 (2015).
