@@ -211,7 +211,7 @@ inline mmap_context memory_map(const file_handle_type file_handle, const int64_t
     if(mapping_start == MAP_FAILED)
     {
         error = detail::last_error();
-        return {};
+        return { nullptr, 0, 0 };
     }
 #endif
     mmap_context ctx;
