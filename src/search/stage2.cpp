@@ -174,15 +174,20 @@ static void load_fps(const PackedLoc* p, size_t n, Container& v, const SequenceS
 
 void FLATTEN stage1(const PackedLoc* q, size_t nq, const PackedLoc* s, size_t ns, WorkSet& work_set)
 {
+#ifdef __APPLE__
+	thread_local Container vq, vs;
+#else
+	Container& vq = work_set.vq, &vs = work_set.vs;
+#endif
 	work_set.stats.inc(Statistics::SEED_HITS, nq * ns);
-	load_fps(q, nq, work_set.vq, *query_seqs::data_);
-	load_fps(s, ns, work_set.vs, *ref_seqs::data_);
+	load_fps(q, nq, vq, *query_seqs::data_);
+	load_fps(s, ns, vs, *ref_seqs::data_);
 
 	const size_t tile_size = config.tile_size;
-	for (size_t i = 0; i < work_set.vq.size(); i += tile_size) {
-		for (size_t j = 0; j < work_set.vs.size(); j += tile_size) {
+	for (size_t i = 0; i < vq.size(); i += tile_size) {
+		for (size_t j = 0; j < vs.size(); j += tile_size) {
 			work_set.hits.clear();
-			all_vs_all(work_set.vq.data() + i, (uint32_t)std::min(tile_size, work_set.vq.size() - i), work_set.vs.data() + j, (uint32_t)std::min(tile_size, work_set.vs.size() - j), work_set.hits);
+			all_vs_all(vq.data() + i, (uint32_t)std::min(tile_size, vq.size() - i), vs.data() + j, (uint32_t)std::min(tile_size, vs.size() - j), work_set.hits);
 			search_tile(work_set.hits, i, j, q, s, work_set);
 		}
 	}

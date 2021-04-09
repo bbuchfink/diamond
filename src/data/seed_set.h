@@ -26,7 +26,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/ptr_vector.h"
 #include "../util/data_structures/hash_set.h"
 #define NOMINMAX
-#define __cpp_exceptions
 #include "../lib/mio/mmap.hpp"
 
 const uint64_t SEED_INDEX_MAGIC_NUMBER = 0x2d6ba306ecbf6aba;
