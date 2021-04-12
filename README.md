@@ -31,8 +31,13 @@ Diamond is actively supported and developed software. Please use the [issue trac
 
 About
 =====
-DIAMOND is developed by Benjamin Buchfink at the Drost lab, Max
-Planck Institute for Developmental Biology, Tübingen, Germany.
+DIAMOND is currently developed by Benjamin Buchfink at the Drost lab, Max
+Planck Institute for Developmental Biology, Tübingen, Germany (since 2019).
+Its development was supported for one year by the German Federal Ministry
+for Economic Affairs and Energy through an EXIST grant in 2018-2019. It was
+developed independently by Benjamin Buchfink from 2016-2018. Its initial
+version was developed in 2013-2015 by Benjamin Buchfink at the Huson lab, University
+of Tübingen, Germany.
 
 \[[:email:Email](mailto:buchfink@gmail.com)\]
 \[[Twitter](https://twitter.com/bbuchfink)\] \[[Google
