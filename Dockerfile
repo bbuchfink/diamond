@@ -12,10 +12,11 @@ WORKDIR c++
 RUN ./cmake-configure --without-debug --with-projects="objtools/blast/seqdb_reader;objtools/blast/blastdb_format"
 WORKDIR CMake-GCC930-Release/build
 RUN make -j4
+RUN cp /opt/diamond/c++/CMake-GCC930-Release/inc/ncbiconf_unix.h /opt/diamond/c++/include
 
-WORKDIR build
-RUN cmake -DCMAKE_BUILD_TYPE=Release ..
-RUN make && make install
+WORKDIR /opt/diamond/build
+RUN cmake -DCMAKE_BUILD_TYPE=Release -DBLAST_INCLUDE_DIR=/opt/diamond/c++/include -DBLAST_LIBRARY_DIR=/opt/diamond/c++/CMake-GCC930-Release/lib ..
+RUN make -j4 && make install
 
 FROM ubuntu:latest
 
