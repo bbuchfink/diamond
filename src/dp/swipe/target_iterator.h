@@ -256,7 +256,8 @@ struct AsyncTargetBuffer
 	enum { CHANNELS = SeqVector::CHANNELS };
 
 	AsyncTargetBuffer(DynamicIterator<DpTarget>& target_it):
-		target_it(target_it)
+		target_it(target_it),
+		custom_matrix_16bit(false)
 	{
 		for (int i = 0; i < CHANNELS; ++i) {
 			DpTarget t = target_it++;
@@ -265,6 +266,8 @@ struct AsyncTargetBuffer
 			pos[i] = 0;
 			dp_targets[i] = t;
 			active.push_back(i);
+			if (t.adjusted_matrix() && (t.matrix->score_max > SCHAR_MAX || t.matrix->score_min < SCHAR_MIN))
+				custom_matrix_16bit = true;
 		}
 	}
 
@@ -307,6 +310,31 @@ struct AsyncTargetBuffer
 	}
 #endif
 
+	const int8_t** get(const int8_t** target_scores) const {
+		static const int8_t blank[32] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+		std::fill(target_scores, target_scores + 32, blank);
+		for (int i = 0; i < active.size(); ++i) {
+			const int channel = active[i];
+			const int l = (int)(*this)[channel];
+			const DpTarget& dp_target = dp_targets[channel];
+			target_scores[channel] = dp_target.adjusted_matrix() ? &dp_target.matrix->scores[32 * l] : &score_matrix.matrix8()[32 * l];
+		}
+		return target_scores;
+	}
+
+	std::vector<const int32_t*> get32() const {
+		static const int32_t blank[32] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+		std::vector<const int32_t*> target_scores(CHANNELS);
+		std::fill(target_scores.begin(), target_scores.end(), blank);
+		for (int i = 0; i < active.size(); ++i) {
+			const int channel = active[i];
+			const int l = (int)(*this)[channel];
+			const DpTarget& dp_target = dp_targets[channel];
+			target_scores[channel] = dp_target.adjusted_matrix() ? &dp_target.matrix->scores32[32 * l] : &score_matrix.matrix32()[32 * l];
+		}
+		return target_scores;
+	}
+
 	bool init_target(int i, int channel)
 	{
 		DpTarget t = target_it++;
@@ -327,10 +355,21 @@ struct AsyncTargetBuffer
 		return true;
 	}
 
+	uint32_t cbs_mask() const {
+		uint32_t r = 0;
+		for (int i = 0; i < active.size(); ++i) {
+			const int channel = active[i];
+			if (dp_targets[channel].adjusted_matrix())
+				r |= 1 << channel;
+		}
+		return r;
+	}
+
 	int pos[CHANNELS];
 	Static_vector<int, CHANNELS> active;
 	DynamicIterator<DpTarget>& target_it;
 	DpTarget dp_targets[CHANNELS];
+	bool custom_matrix_16bit;
 
 };
 

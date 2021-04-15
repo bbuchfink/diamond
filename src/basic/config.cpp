@@ -546,9 +546,6 @@ Config::Config(int argc, const char **argv, bool check_io)
 	if (max_hsps > 1 && ext == "full")
 		throw std::runtime_error("--max-hsps > 1 is not supported for full matrix extension.");
 
-	if (ext == "full" && comp_based_stats >= 2)
-		throw std::runtime_error("This mode of composition based stats is not supported for full matrix extension.");
-
 	if (target_seg < 0 || target_seg > 1)
 		throw std::runtime_error("Permitted values for --target-seg: 0, 1");
 

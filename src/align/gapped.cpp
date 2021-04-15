@@ -99,7 +99,7 @@ void add_dp_targets(const WorkTarget& target, int target_idx, const Sequence* qu
 				b = 1;
 			if ((flags & DP::TRACEBACK) && query_seq[0].length() * target.seq.length() > config.max_swipe_dp)
 				b = 2;
-			dp_targets[frame][b].emplace_back(target.seq, 0, 0, 0, 0, target_idx, (int)query_seq->length());
+			dp_targets[frame][b].emplace_back(target.seq, 0, 0, 0, 0, target_idx, (int)query_seq->length(), matrix);
 			continue;
 		}
 		if (target.hsp[frame].empty())

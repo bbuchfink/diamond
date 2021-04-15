@@ -317,7 +317,7 @@ Hsp traceback(const Sequence &query, Frame frame, _cbs bias_correction, const Tr
 	typename TracebackVectorMatrix<_sv>::TracebackIterator it(dp.traceback(max_col, max_i, max_j, channel));
 	Hsp out;
 	out.swipe_target = target.target_idx;
-	out.score = ScoreTraits<_sv>::int_score(max_score) * config.cbs_matrix_scale;
+	out.score = ScoreTraits<_sv>::int_score(max_score);
 	out.evalue = evalue;
 	out.transcript.reserve(size_t(out.score * config.transcript_len_estimate));
 
@@ -326,12 +326,16 @@ Hsp traceback(const Sequence &query, Frame frame, _cbs bias_correction, const Tr
 	out.subject_range.end_ = it.j + 1;
 	const int end_score = out.score;
 	int score = 0;
+	const bool adjusted_matrix = target.adjusted_matrix();
+	if (!adjusted_matrix)
+		out.score *= config.cbs_matrix_scale;
+	const int* matrix = adjusted_matrix ? target.matrix->scores32.data() : score_matrix.matrix32();
 
 	while (it.i >= 0 && it.j >= 0 && score < end_score) {
 		if ((it.mask().gap & channel_mask) == 0) {
 			const Letter q = query[it.i], s = target.seq[it.j];
-			const int m = score_matrix(q, s);
-			const int m2 = add_cbs_scalar(m, bias_correction[it.i]);
+			const int m = matrix[int(s) * 32 + (int)q];
+			const int m2 = adjusted_matrix ? m : add_cbs_scalar(m, bias_correction[it.i]);
 			score += m2;
 			out.push_match(q, s, m > (Score)0);
 			it.walk_diagonal();
@@ -366,12 +370,16 @@ list<Hsp> swipe(const Sequence& query, Frame frame, DynamicIterator<DpTarget>& t
 	if (qlen > MatrixTraits<_sv, _traceback>::MyRowCounter::MAX_LEN)
 		throw std::runtime_error("Query length exceeds row counter maximum.");
 
+	if (config.cbs_matrix_scale != 1)
+		throw std::runtime_error("Matrix scale != 1.0 not supported.");
+
 	const _sv open_penalty(static_cast<Score>(score_matrix.gap_open() + score_matrix.gap_extend())),
 		extend_penalty(static_cast<Score>(score_matrix.gap_extend()));
 	//_sv best = _sv();
 	Score best[CHANNELS];
 	std::fill(best, best + CHANNELS, ScoreTraits<_sv>::zero_score());
 	SwipeProfile<_sv> profile;
+	std::array<const int8_t*, 32> target_scores;
 	AsyncTargetBuffer<Score> targets(target_it);
 	Matrix dp(qlen, targets.max_len());
 	CBSBuffer<_sv, _cbs> cbs_buf(composition_bias, qlen, 0);
@@ -383,7 +391,16 @@ list<Hsp> swipe(const Sequence& query, Frame frame, DynamicIterator<DpTarget>& t
 		typename MatrixTraits<_sv, _traceback>::MyRowCounter row_counter(0);
 		_sv vgap, hgap, last, col_best;
 		vgap = hgap = last = col_best = _sv();
-		profile.set(targets.seq_vector());
+
+		if (targets.cbs_mask() != 0) {
+			if (targets.custom_matrix_16bit)
+				profile.set(targets.get32().data());
+			else
+				profile.set(targets.get(target_scores.data()));
+		}
+		else
+			profile.set(targets.seq_vector());
+
 #ifdef DP_STAT
 		stats.inc(Statistics::GROSS_DP_CELLS, uint64_t(qlen) * CHANNELS);
 #endif

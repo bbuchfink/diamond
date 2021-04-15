@@ -247,7 +247,7 @@ list<Hsp> swipe(const Sequence &query, vector<DpTarget> &targets8, const vector<
 		stat.inc(Statistics::TIME_TARGET_SORT, timer.microseconds());
 		stat.inc(Statistics::EXT8, targets8.size());
 		timer.go();
-		out = swipe_threads<::DISPATCH_ARCH::score_vector<int8_t>>(query, targets8.begin(), targets8.end(), targets, frame, composition_bias ? composition_bias->int8.data() : nullptr, flags, overflow8, stat);
+		out = swipe_threads<::DISPATCH_ARCH::score_vector<int8_t>>(query, targets8.cbegin(), targets8.cend(), targets, frame, composition_bias ? composition_bias->int8.data() : nullptr, flags, overflow8, stat);
 		if ((flags & PARALLEL) == 0) stat.inc(time_stat, timer.microseconds());
 	}
 	else
