@@ -95,6 +95,12 @@ struct Sequence
 #endif
 		return len;
 	}
+	std::string to_string() const {
+		std::string s;
+		s.resize(len_);
+		print(&s[0], 0, len_);
+		return s;
+	}
 	TextBuffer& print(TextBuffer &buf, size_t begin, size_t end, const Value_traits& value_traits) const
 	{
 		for (size_t i = begin; i < end; ++i)

@@ -348,7 +348,7 @@ Hsp traceback(const Sequence &query, Frame frame, _cbs bias_correction, const Tr
 	}
 
 	if (score != end_score)
-		throw std::runtime_error("Traceback error.");
+		throw std::runtime_error("Traceback error. " + query.to_string());
 
 	out.query_range.begin_ = it.i + 1;
 	out.subject_range.begin_ = it.j + 1;
