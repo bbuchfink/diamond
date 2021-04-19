@@ -266,8 +266,6 @@ struct AsyncTargetBuffer
 			pos[i] = 0;
 			dp_targets[i] = t;
 			active.push_back(i);
-			if (t.adjusted_matrix() && (t.matrix->score_max > SCHAR_MAX || t.matrix->score_min < SCHAR_MIN))
-				custom_matrix_16bit = true;
 		}
 	}
 
@@ -355,12 +353,16 @@ struct AsyncTargetBuffer
 		return true;
 	}
 
-	uint32_t cbs_mask() const {
+	uint32_t cbs_mask() {
 		uint32_t r = 0;
+		custom_matrix_16bit = false;
 		for (int i = 0; i < active.size(); ++i) {
 			const int channel = active[i];
-			if (dp_targets[channel].adjusted_matrix())
+			if (dp_targets[channel].adjusted_matrix()) {
 				r |= 1 << channel;
+				if (dp_targets[channel].matrix->score_max > SCHAR_MAX || dp_targets[channel].matrix->score_min < SCHAR_MIN)
+					custom_matrix_16bit = true;
+			}
 		}
 		return r;
 	}

@@ -99,6 +99,7 @@ void add_dp_targets(const WorkTarget& target, int target_idx, const Sequence* qu
 				b = 1;
 			if ((flags & DP::TRACEBACK) && query_seq[0].length() * target.seq.length() > config.max_swipe_dp)
 				b = 2;
+			if (matrix) b = std::max(b, matrix->score_width());
 			dp_targets[frame][b].emplace_back(target.seq, 0, 0, 0, 0, target_idx, (int)query_seq->length(), matrix);
 			continue;
 		}
@@ -230,6 +231,7 @@ void add_dp_targets(const Target &target, int target_idx, const Sequence *query_
 			const size_t dp_size = config.ext == "full" ? query_seq[0].length() * target.seq.length() : query_seq[0].length() * size_t(hsp.d_end - hsp.d_begin);
 			if (dp_size > config.max_swipe_dp && (flags & DP::TRACEBACK))
 				b = 2;
+			if (matrix) b = std::max(b, matrix->score_width());
 			dp_targets[frame][b].emplace_back(target.seq, hsp.d_begin, hsp.d_end, hsp.seed_hit_range.begin_, hsp.seed_hit_range.end_, target_idx, qlen, matrix);
 		}
 	}
