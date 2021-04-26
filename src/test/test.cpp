@@ -37,6 +37,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/util.h"
 #include "../util/string/string.h"
 #include "../util/system/system.h"
+#include "../data/dmnd/dmnd.h"
 
 using std::endl;
 using std::string;
@@ -102,7 +103,7 @@ int run() {
 
 	config.command = Config::makedb;
 	TempFile *db_file;
-	make_db(&db_file, &query_file);
+	DatabaseFile::make_db(&db_file, &query_file);
 	DatabaseFile db(*db_file);
 
 	const size_t n = test_cases.size(),

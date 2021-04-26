@@ -92,6 +92,8 @@ FORCE_INLINE uint64_t fmix64 ( uint64_t k )
 
 //-----------------------------------------------------------------------------
 
+#ifndef WITH_BLASTDB
+
 void MurmurHash3_x86_32 ( const void * key, int len,
                           uint32_t seed, void * out )
 {
@@ -250,6 +252,8 @@ void MurmurHash3_x86_128 ( const void * key, const int len,
   ((uint32_t*)out)[2] = h3;
   ((uint32_t*)out)[3] = h4;
 }
+
+#endif
 
 //-----------------------------------------------------------------------------
 

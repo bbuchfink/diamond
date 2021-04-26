@@ -1,6 +1,9 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2017 Benjamin Buchfink <buchfink@gmail.com>
+Copyright (C) 2016-2021 Max Planck Society for the Advancement of Science e.V.
+                        Benjamin Buchfink
+						
+Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,6 +19,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
+
 #include <array>
 #include "seed_set.h"
 #include "../util/ptr_vector.h"
@@ -25,9 +29,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/io/output_file.h"
 
 static const size_t PADDING = 32;
+static const double HASH_TABLE_FACTOR = 1.25;
 
 using std::endl;
 using std::get;
+using std::runtime_error;
 
 No_filter no_filter;
 
@@ -67,7 +73,7 @@ Seed_set::Seed_set(const SequenceSet &seqs, double max_coverage):
 
 struct Hashed_seed_set_callback
 {
-	Hashed_seed_set_callback(PtrVector<PHash_set<Modulo2, No_hash>> &dst):
+	Hashed_seed_set_callback(PtrVector<HashSet<Modulo2, Identity>> &dst):
 		dst(dst)
 	{}
 	bool operator()(uint64_t seed, uint64_t pos, uint64_t shape)
@@ -77,34 +83,16 @@ struct Hashed_seed_set_callback
 	}
 	void finish()
 	{}
-	PtrVector<PHash_set<Modulo2, No_hash> > &dst;
+	PtrVector<HashSet<Modulo2, Identity> > &dst;
 };
 
-Hashed_seed_set::Hashed_seed_set(const SequenceSet &seqs)
+HashedSeedSet::HashedSeedSet(const SequenceSet &seqs)
 {
-	if (config.mmap_target_index) {
-		for (size_t i = 0; i < shapes.count(); ++i) {
-			auto f = mmap_file((config.database + '.' + std::to_string(i)).c_str());
-			if (get<0>(f) == nullptr) {
-				if (data_.empty()) {
-					message_stream << "WARNING: Target index file not found." << std::endl;
-					break;
-				}
-				else
-					throw std::runtime_error("Target index file not found.");
-			}
-			data_.push_back(new PHash_set<Modulo2, No_hash>((uint8_t*)get<0>(f), get<1>(f) - PADDING));
-			fd_.push_back(get<2>(f));
-			log_stream << "MMAPED Shape=" << i << " Hash_table_size=" << data_[i].size() << " load=" << (double)data_[i].load() / data_[i].size() << endl;
-		}
-		if(!data_.empty()) return;
-	}
 	for (size_t i = 0; i < shapes.count(); ++i)
-		data_.push_back(new PHash_set<Modulo2, No_hash>(next_power_of_2(seqs.letters()*1.25)));
-		//data_.push_back(new PHash_set<void, Modulo2>(seqs.letters() * 1.25));
+		data_.push_back(new Table(next_power_of_2(seqs.letters() * HASH_TABLE_FACTOR)));
 	PtrVector<Hashed_seed_set_callback> v;
 	v.push_back(new Hashed_seed_set_callback(data_));
-	enum_seeds(&seqs, v, seqs.partition(1), 0, shapes.count(), &no_filter);
+	enum_seeds(&seqs, v, seqs.partition(1), 0, shapes.count(), &no_filter, true);
 
 	vector<size_t> sizes;
 	for (size_t i = 0; i < shapes.count(); ++i)
@@ -112,29 +100,43 @@ Hashed_seed_set::Hashed_seed_set(const SequenceSet &seqs)
 	data_.clear();
 
 	for (size_t i = 0; i < shapes.count(); ++i)
-		data_.push_back(new PHash_set<Modulo2, No_hash>(next_power_of_2(sizes[i] * 1.25)));
-		//data_.push_back(new PHash_set<void, Modulo2>(seqs.letters() * 1.25));
-	enum_seeds(&seqs, v, seqs.partition(1), 0, shapes.count(), &no_filter);
+		data_.push_back(new Table(next_power_of_2(sizes[i] * HASH_TABLE_FACTOR)));
+	enum_seeds(&seqs, v, seqs.partition(1), 0, shapes.count(), &no_filter, true);
 
-	for (size_t i = 0; i < shapes.count(); ++i)
-		log_stream << "Shape=" << i << " Hash_table_size=" << data_[i].size() << " load=" << (double)data_[i].load()/data_[i].size() << endl;
-
-	if (config.save_target_index) {
-		log_stream << "Saving hashed seed sets to file." << endl;
-		for (size_t i = 0; i < shapes.count(); ++i) {
-			OutputFile out(config.database + '.' + std::to_string(i));
-			out.write(data_[i].data(), data_[i].size());
-			out.write(data_[i].data(), PADDING);
-			out.close();
-		}
+	for (size_t i = 0; i < shapes.count(); ++i) {
+		data_[i].finish();
+		log_stream << "Shape=" << i << " Hash_table_size=" << data_[i].size() << " load=" << (double)data_[i].load() / data_[i].size() << endl;
 	}
 }
 
-Hashed_seed_set::~Hashed_seed_set() {
-	if (fd_.empty())
-		return;
-	for (size_t i = 0; i < shapes.count(); ++i) {
-		unmap_file((char*)data_[i].table, data_[i].size(), fd_[i]);
-		data_[i].table = nullptr;
+HashedSeedSet::HashedSeedSet(const string& index_file):
+	mmap_(new mio::mmap_source(index_file))
+{
+	if (mmap_->length() < SEED_INDEX_HEADER_SIZE)
+		throw runtime_error("Invalid seed index file.");
+	const char* buf = mmap_->data();
+	if (*(uint64_t*)buf != SEED_INDEX_MAGIC_NUMBER)
+		throw runtime_error("Invalid seed index file.");
+	if (*(uint32_t*)(buf + 8) != SEED_INDEX_VERSION)
+		throw runtime_error("Invalid seed index file version.");
+	uint32_t shape_count = *(uint32_t*)(buf + 12);
+	if (shape_count != shapes.count())
+		throw runtime_error("Index has a different number of shapes.");
+
+	const size_t* size_ptr = (const size_t*)(buf + SEED_INDEX_HEADER_SIZE);
+	uint8_t* data_ptr = (uint8_t*)(buf + SEED_INDEX_HEADER_SIZE + sizeof(size_t) * shape_count);
+
+	for (unsigned i = 0; i < shapes.count(); ++i) {
+		data_.push_back(new Table(data_ptr, *size_ptr));
+		log_stream << "MMAPED Shape=" << i << " Hash_table_size=" << data_[i].size() << " load=" << (double)data_[i].load() / data_[i].size() << endl;
+		data_ptr += *size_ptr + Table::PADDING;
+		++size_ptr;
 	}
+}
+
+HashedSeedSet::~HashedSeedSet() {
+}
+
+size_t HashedSeedSet::max_table_size() const {
+	return (*std::max_element(data_.begin(), data_.end(), [](Table* a, Table* b) { return a->size() < b->size(); }))->size();
 }

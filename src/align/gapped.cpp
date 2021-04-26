@@ -99,7 +99,8 @@ void add_dp_targets(const WorkTarget& target, int target_idx, const Sequence* qu
 				b = 1;
 			if ((flags & DP::TRACEBACK) && query_seq[0].length() * target.seq.length() > config.max_swipe_dp)
 				b = 2;
-			dp_targets[frame][b].emplace_back(target.seq, 0, 0, 0, 0, target_idx, (int)query_seq->length());
+			if (matrix) b = std::max(b, matrix->score_width());
+			dp_targets[frame][b].emplace_back(target.seq, 0, 0, 0, 0, target_idx, (int)query_seq->length(), matrix);
 			continue;
 		}
 		if (target.hsp[frame].empty())
@@ -184,22 +185,26 @@ vector<Target> align(const vector<WorkTarget> &targets, const Sequence *query_se
 	return r2;
 }
 
-vector<Target> full_db_align(const Sequence *query_seq, const Bias_correction *query_cb, int flags, Statistics &stat) {
-	ContainerIterator<DpTarget, SequenceSet> target_it(*ref_seqs::data_, ref_seqs::data_->get_length());
+vector<Target> full_db_align(const Sequence *query_seq, const Bias_correction *query_cb, int flags, Statistics &stat) {	
 	vector<DpTarget> v;
 	vector<Target> r;
 	Stats::TargetMatrix matrix;
-
-	list<Hsp> hsp = DP::BandedSwipe::swipe(
-		query_seq[0],
-		v,
-		v,
-		v,
-		&target_it,
-		Frame(0),
-		Stats::CBS::hauser(config.comp_based_stats) ? &query_cb[0] : nullptr,
-		flags | DP::FULL_MATRIX,
-		stat);
+	list<Hsp> hsp;
+	
+	for (unsigned frame = 0; frame < align_mode.query_contexts; ++frame) {
+		ContainerIterator<DpTarget, SequenceSet> target_it(*ref_seqs::data_, ref_seqs::data_->get_length());
+		list<Hsp> frame_hsp = DP::BandedSwipe::swipe(
+			query_seq[frame],
+			v,
+			v,
+			v,
+			&target_it,
+			Frame(frame),
+			Stats::CBS::hauser(config.comp_based_stats) ? &query_cb[frame] : nullptr,
+			flags | DP::FULL_MATRIX,
+			stat);
+		hsp.splice(hsp.begin(), frame_hsp, frame_hsp.begin(), frame_hsp.end());
+	}
 
 	map<unsigned, unsigned> subject_idx;
 	while (!hsp.empty()) {
@@ -226,6 +231,7 @@ void add_dp_targets(const Target &target, int target_idx, const Sequence *query_
 			const size_t dp_size = config.ext == "full" ? query_seq[0].length() * target.seq.length() : query_seq[0].length() * size_t(hsp.d_end - hsp.d_begin);
 			if (dp_size > config.max_swipe_dp && (flags & DP::TRACEBACK))
 				b = 2;
+			if (matrix) b = std::max(b, matrix->score_width());
 			dp_targets[frame][b].emplace_back(target.seq, hsp.d_begin, hsp.d_end, hsp.seed_hit_range.begin_, hsp.seed_hit_range.end_, target_idx, qlen, matrix);
 		}
 	}

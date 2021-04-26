@@ -39,6 +39,7 @@ struct TargetMatrix {
     TargetMatrix(const int16_t* query_matrix, const int16_t* target_matrix);
 
     TargetMatrix(const Composition& query_comp, int query_len, const Sequence& target);
+    int score_width() const;
 
     std::vector<int8_t> scores;
     std::vector<int32_t> scores32;

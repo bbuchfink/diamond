@@ -1,6 +1,10 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2018 Benjamin Buchfink <buchfink@gmail.com>
+Copyright (C) 2013-2021 Max Planck Society for the Advancement of Science e.V.
+                        Benjamin Buchfink
+                        Eberhard Karls Universitaet Tuebingen
+						
+Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,9 +20,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#ifndef REF_DICTIONARY_H_
-#define REF_DICTIONARY_H_
-
+#pragma once
 #include <stdint.h>
 #include <stdexcept>
 #include <vector>
@@ -42,7 +44,7 @@ struct ReferenceDictionary
 	void init(unsigned ref_count, const vector<unsigned> &block_to_database_id);
 
 	uint32_t get(unsigned block, size_t i);
-	void build_lazy_dict(DatabaseFile &db_file);
+	void build_lazy_dict(SequenceFile &db_file);
 	void clear();
 
 	unsigned length(uint32_t i) const
@@ -93,8 +95,6 @@ struct ReferenceDictionary
 		return block_instances_[block];
 	}
 
-
-
 	uint32_t seqs() const
 	{
 		return next_;
@@ -106,6 +106,7 @@ struct ReferenceDictionary
 	void save_block(size_t query, size_t block);
 	void load_block(size_t query, size_t block, ReferenceDictionary & d);
 	void restore_blocks(size_t query, size_t n_blocks);
+	void remove_temporary_files(size_t query, size_t n_blocks);
 
 private:
 
@@ -124,8 +125,6 @@ private:
 	vector<uint32_t> dict_to_lazy_dict_id_;
 	const vector<unsigned> *block_to_database_id_;
 
-	friend void finish_daa(OutputFile&, const DatabaseFile&);
+	friend void finish_daa(OutputFile&, const SequenceFile&);
 
 };
-
-#endif

@@ -43,12 +43,13 @@ struct Shape
 		id_ (0)
 	{ memset(positions_, 0, sizeof(uint32_t)*Const::max_seed_weight); }
 
-	Shape(const char *code, unsigned id):
-		weight_ (0),
-		mask_ (0),
-		rev_mask_ (0),
-		id_ (id),
+	Shape(const char* code, unsigned id) :
+		weight_(0),
+		mask_(0),
+		rev_mask_(0),
+		id_(id),
 		long_mask_(0)
+		//long_mask_sse_(_mm_setzero_si128())
 	{
 		assert(strlen(code) <= 32);
 		memset(positions_, 0, sizeof(uint32_t)*Const::max_seed_weight);
@@ -57,6 +58,7 @@ struct Shape
 		for(;i<strlen(code);++i) {
 			rev_mask_ <<= 1;
 			long_mask_ <<= b;
+			//long_mask_sse_ = _mm_slli_si128(long_mask_sse_, 1);
 			if(code[i] == '1') {
 				assert(weight_ < Const::max_seed_weight);
 				positions_[weight_] = i;
@@ -64,6 +66,7 @@ struct Shape
 				mask_ |= 1 << i;
 				rev_mask_ |= 1;
 				long_mask_ |= (1 << b) - 1;
+				//long_mask_sse_ = _mm_insert_epi8(long_mask_sse_, 0xff, 0);
 			}
 		}
 		length_ = i;
@@ -163,5 +166,6 @@ struct Shape
 
 	uint32_t length_, weight_, positions_[Const::max_seed_weight], d_, mask_, rev_mask_, id_;
 	uint64_t long_mask_;
+	//__m128i long_mask_sse_;
 
 };

@@ -16,7 +16,7 @@
 #include <sys/stat.h>
 #endif
 
-// #include "multiprocessing.h"
+#include "multiprocessing.h"
 // #define DEBUG
 #undef DEBUG
 #include "filestack.h"
@@ -101,17 +101,10 @@ int FileStack::unlock() {
 #endif
 }
 
-
-
-int FileStack::pop(string & buf, const bool keep_flag, size_t & size_after_pop) {
+int FileStack::pop_non_locked(string & buf, const bool keep_flag, size_t & size_after_pop) {
 #ifndef WIN32
     DBG("");
     buf.clear();
-    bool locked_internally = false;
-    if (! locked) {
-        lock();
-        locked_internally = true;
-    }
     int stat = 0;
     const off_t size = lseek(fd, 0, SEEK_END);
     if (size > 0) {
@@ -148,15 +141,36 @@ int FileStack::pop(string & buf, const bool keep_flag, size_t & size_after_pop) 
     if (size_after_pop != numeric_limits<size_t>::max()) {
         size_after_pop = this->size();
     }
-    if (locked_internally) {
-        unlock();
-    }
     if (stat == -1) {
         return stat;
     } else {
         DBG(buf);
         return buf.size();
     }
+#else
+    return 0;
+#endif
+}
+
+int FileStack::pop_non_locked(string & buf) {
+    DBG("");
+    size_t size_after_pop = numeric_limits<size_t>::max();
+    return pop_non_locked(buf, false, size_after_pop);
+}
+
+int FileStack::pop(string & buf, const bool keep_flag, size_t & size_after_pop) {
+#ifndef WIN32
+    DBG("");
+    bool locked_internally = false;
+    if (! locked) {
+        lock();
+        locked_internally = true;
+    }
+    int val = pop_non_locked(buf, keep_flag, size_after_pop);
+    if (locked_internally) {
+        unlock();
+    }
+    return val;
 #else
     return 0;
 #endif
@@ -203,39 +217,41 @@ int FileStack::top(int & i) {
     }
 }
 
-// int FileStack::remove(const string & line) {
-//     DBG("");
-//     bool locked_internally = false;
-//     if (! locked) {
-//         lock();
-//         locked_internally = true;
-//     }
-//     const off_t size = lseek(fd, 0, SEEK_END);
-//     lseek(fd, 0, SEEK_SET);
+int FileStack::remove(const string & line) {
+    DBG("");
+#ifndef WIN32
+    bool locked_internally = false;
+    if (! locked) {
+        lock();
+        locked_internally = true;
+    }
+    const off_t size = lseek(fd, 0, SEEK_END);
+    lseek(fd, 0, SEEK_SET);
 
-//     char * raw = new char[size * sizeof(char)];
-//     const ssize_t n_read = read(fd, raw, size);
-//     string buf;
-//     buf.assign(raw, n_read);
-//     delete [] raw;
+    char * raw = new char[size * sizeof(char)];
+    const ssize_t n_read = read(fd, raw, size);
+    string buf;
+    buf.assign(raw, n_read);
+    delete [] raw;
 
-//     vector<string> tokens = split(buf, '\n');
-//     buf.clear();
+    vector<string> tokens = split(buf, '\n');
+    buf.clear();
 
-//     tokens.erase(std::remove(tokens.begin(), tokens.end(), line), tokens.end());
+    tokens.erase(std::remove(tokens.begin(), tokens.end(), line), tokens.end());
 
-//     lseek(fd, 0, SEEK_SET);
-//     int stat = ftruncate(fd, 0);
-//     for (auto it = tokens.begin(); it != tokens.end(); ++it) {
-//         buf = *it + '\n';
-//         write(fd, buf.c_str(), buf.size());
-//     }
+    lseek(fd, 0, SEEK_SET);
+    int stat = ftruncate(fd, 0);
+    for (auto it = tokens.begin(); it != tokens.end(); ++it) {
+        buf = *it + '\n';
+        size_t n = write(fd, buf.c_str(), buf.size());
+    }
 
-//     if (locked_internally) {
-//         unlock();
-//     }
-//     return 0;
-// }
+    if (locked_internally) {
+        unlock();
+    }
+#endif
+    return 0;
+}
 
 int FileStack::push_non_locked(const string & buf) {
     DBG("");

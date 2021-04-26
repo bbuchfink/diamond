@@ -60,7 +60,7 @@ struct packed_uint40_t
 	{ return (uint64_t)(x) - (uint64_t)(y); }
 } PACKED_ATTRIBUTE ;
 
-typedef packed_uint40_t Packed_loc;
+typedef packed_uint40_t PackedLoc;
 typedef size_t Loc;
 
 #pragma pack()

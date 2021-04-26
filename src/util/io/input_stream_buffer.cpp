@@ -30,8 +30,9 @@ using std::pair;
 
 InputStreamBuffer::InputStreamBuffer(StreamEntity* prev, int flags) :
 	StreamEntity(prev, prev->seekable()),
-	buf_(new char[config.file_buffer_size]),
-	load_buf_((flags& ASYNC) != 0 ? new char[config.file_buffer_size] : nullptr),
+	buf_size_(config.file_buffer_size),
+	buf_(new char[buf_size_]),
+	load_buf_((flags& ASYNC) != 0 ? new char[buf_size_] : nullptr),
 	putback_count_(0),
 	load_count_(0),
 	async_((flags & ASYNC) != 0),
@@ -73,7 +74,7 @@ pair<const char*, const char*> InputStreamBuffer::read()
 			n = load_count_;
 		}
 		else {
-			n = prev_->read(buf_.get(), config.file_buffer_size);
+			n = prev_->read(buf_.get(), buf_size_);
 			if (prev_->seekable())
 				file_offset_ = prev_->tell();
 		}
@@ -84,7 +85,7 @@ pair<const char*, const char*> InputStreamBuffer::read()
 }
 
 void InputStreamBuffer::load_worker(InputStreamBuffer* buf) {
-	buf->load_count_ = buf->prev_->read(buf->load_buf_.get(), config.file_buffer_size);
+	buf->load_count_ = buf->prev_->read(buf->load_buf_.get(), buf->buf_size_);
 }
 
 void InputStreamBuffer::putback(const char* p, size_t n) {

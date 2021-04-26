@@ -1,6 +1,10 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2017 Benjamin Buchfink <buchfink@gmail.com>
+Copyright (C) 2013-2021 Max Planck Society for the Advancement of Science e.V.
+                        Benjamin Buchfink
+                        Eberhard Karls Universitaet Tuebingen
+						
+Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,14 +20,12 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#ifndef QUERIES_H_
-#define QUERIES_H_
-
+#pragma once
 #include <mutex>
+#include <memory>
 #include "../basic/translate.h"
 #include "../basic/statistics.h"
 #include "sequence_set.h"
-#include "seed_set.h"
 #include "seed_histogram.h"
 #include "../util/io/output_file.h"
 
@@ -74,8 +76,8 @@ inline TranslatedSequence get_translated_query(size_t query_id)
 		return TranslatedSequence(query_seqs::get()[query_id]);
 }
 
-extern Seed_set *query_seeds;
-extern Hashed_seed_set *query_seeds_hashed;
+struct HashedSeedSet;
+extern std::unique_ptr<HashedSeedSet> query_seeds_hashed;
 extern vector<unsigned> query_block_to_database_id;
 
-#endif /* QUERIES_H_ */
+

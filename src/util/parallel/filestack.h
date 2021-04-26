@@ -27,11 +27,12 @@ class FileStack {
         int pop(int & i);
         int pop(std::string & buf);
         int pop(std::string & buf, size_t & size_after_pop);
+        int pop_non_locked(std::string & buf);
 
         int top(int & i);
         int top(std::string & buf);
 
-        // int remove(const std::string & line);
+        int remove(const std::string & line);
 
         int push(int i);
         int push(const std::string & buf);
@@ -59,6 +60,7 @@ class FileStack {
         off_t max_line_length;
 
         int pop(std::string &, const bool, size_t &);
+        int pop_non_locked(std::string &, const bool, size_t &);
 };
 
 #endif

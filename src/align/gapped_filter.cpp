@@ -42,13 +42,13 @@ int gapped_filter(const SeedHit &hit, const LongScoreProfile *query_profile, con
 	return DP::diag_alignment(scores, band);
 }
 
-bool gapped_filter(const SeedHit *begin, const SeedHit *end, const LongScoreProfile *query_profile, uint32_t target_block_id, Statistics &stat, const Parameters &params) {
+bool gapped_filter(FlatArray<SeedHit>::ConstIterator begin, FlatArray<SeedHit>::ConstIterator end, const LongScoreProfile *query_profile, uint32_t target_block_id, Statistics &stat, const Parameters &params) {
 	constexpr int window1 = 100, MIN_STAGE2_QLEN = 100;
 		
 	const int qlen = (int)query_profile->length();
 	const Sequence target = ref_seqs::get()[target_block_id];
 	const int slen = (int)target.length();
-	for (const SeedHit* hit = begin; hit < end; ++hit) {
+	for (FlatArray<SeedHit>::ConstIterator hit = begin; hit < end; ++hit) {
 		stat.inc(Statistics::GAPPED_FILTER_HITS1);
 		const int f1 = gapped_filter(*hit, query_profile, target, 64, window1, DP::scan_diags64);
 		if (f1 > params.cutoff_gapped1_new(qlen, slen)) {

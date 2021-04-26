@@ -66,7 +66,7 @@ public:
     template <typename T2>
     inline AlignmentAllocator(const AlignmentAllocator<T2, N>&) throw () { }
 
-    inline ~AlignmentAllocator() throw () { }
+    ~AlignmentAllocator() noexcept { }
 
     inline pointer adress(reference r) {
         return &r;

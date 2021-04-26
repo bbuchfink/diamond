@@ -34,6 +34,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../data/metadata.h"
 #include "../util/io/consumer.h"
 #include "../output/recursive_parser.h"
+#include "../util/enum.h"
 
 namespace Output {
 
@@ -52,18 +53,26 @@ enum HspValues : uint64_t {
 	STATS_OR_TRANSCRIPT = STATS | TRANSCRIPT
 };
 
+enum class Flags : int {
+	NONE        = 0,
+	FULL_SEQIDS = 1
+};
+
+DEF_ENUM_FLAG_OPERATORS(Flags)
+
 }
 
 struct Output_format
 {
-	Output_format(unsigned code, uint64_t hsp_values = Output::TRANSCRIPT):
+	Output_format(unsigned code, uint64_t hsp_values = Output::TRANSCRIPT, Output::Flags flags = Output::Flags::NONE):
 		code(code),
 		needs_taxon_id_lists(false),
 		needs_taxon_nodes(false),
 		needs_taxon_scientific_names(false),
 		needs_taxon_ranks(false),
 		needs_paired_end_info(false),
-		hsp_values(hsp_values)
+		hsp_values(hsp_values),
+		flags(flags)
 	{}
 	virtual void print_query_intro(size_t query_num, const char *query_name, unsigned query_len, TextBuffer &out, bool unaligned) const
 	{}
@@ -86,6 +95,7 @@ struct Output_format
 	unsigned code;
 	bool needs_taxon_id_lists, needs_taxon_nodes, needs_taxon_scientific_names, needs_taxon_ranks, needs_paired_end_info;
 	uint64_t hsp_values;
+	Output::Flags flags;
 	enum { daa, blast_tab, blast_xml, sam, blast_pairwise, null, taxon, paf, bin1 };
 };
 
@@ -104,9 +114,7 @@ struct Null_format : public Output_format
 
 struct DAA_format : public Output_format
 {
-	DAA_format():
-		Output_format(daa)
-	{}
+	DAA_format();
 	virtual Output_format* clone() const
 	{
 		return new DAA_format(*this);
@@ -116,6 +124,7 @@ struct DAA_format : public Output_format
 struct OutputField {
 	const std::string key, description;
 	const uint64_t hsp_values;
+	const Output::Flags flags;
 };
 
 struct Blast_tab_format : public Output_format
@@ -137,7 +146,7 @@ struct Blast_tab_format : public Output_format
 struct PAF_format : public Output_format
 {
 	PAF_format():
-		Output_format(paf)
+		Output_format(paf, Output::TRANSCRIPT, Output::Flags::NONE)
 	{}
 	virtual void print_query_intro(size_t query_num, const char *query_name, unsigned query_len, TextBuffer &out, bool unaligned) const;
 	virtual void print_match(const Hsp_context& r, const Metadata &metadata, TextBuffer &out);
@@ -152,7 +161,7 @@ struct PAF_format : public Output_format
 struct Sam_format : public Output_format
 {
 	Sam_format():
-		Output_format(sam)
+		Output_format(sam, Output::TRANSCRIPT, Output::Flags::NONE)
 	{ }
 	virtual void print_match(const Hsp_context& r, const Metadata &metadata, TextBuffer &out) override;
 	virtual void print_header(Consumer &f, int mode, const char *matrix, int gap_open, int gap_extend, double evalue, const char *first_query_name, unsigned first_query_len) const override;
@@ -168,7 +177,7 @@ struct Sam_format : public Output_format
 struct XML_format : public Output_format
 {
 	XML_format():
-		Output_format(blast_xml)
+		Output_format(blast_xml, Output::TRANSCRIPT, Output::Flags::FULL_SEQIDS)
 	{
 		config.salltitles = true;
 	}
@@ -188,7 +197,7 @@ struct XML_format : public Output_format
 struct Pairwise_format : public Output_format
 {
 	Pairwise_format() :
-		Output_format(blast_pairwise)
+		Output_format(blast_pairwise, Output::TRANSCRIPT, Output::Flags::FULL_SEQIDS)
 	{
 		config.salltitles = true;
 	}
@@ -208,7 +217,7 @@ struct Pairwise_format : public Output_format
 struct Taxon_format : public Output_format
 {
 	Taxon_format() :
-		Output_format(taxon),
+		Output_format(taxon, Output::NONE, Output::Flags::NONE),
 		taxid(0),
 		evalue(std::numeric_limits<double>::max())
 	{
@@ -273,6 +282,6 @@ struct Binary_format : public Output_format
 };
 
 Output_format* get_output_format();
-void init_output(bool have_taxon_id_lists, bool have_taxon_nodes, bool have_taxon_scientific_names);
+void init_output();
 void print_hsp(Hsp &hsp, const TranslatedSequence &query);
 void print_cigar(const Hsp_context &r, TextBuffer &buf);

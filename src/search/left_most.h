@@ -41,7 +41,7 @@ static inline bool verify_hit(const Letter* q, const Letter* s, int score_cutoff
 				return false;
 		}
 	}
-	Finger_print fq(q), fs(s);
+	FingerPrint fq(q), fs(s);
 	const unsigned id = fq.match(fs);
 	return id >= config.min_identities;
 }

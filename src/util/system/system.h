@@ -10,7 +10,7 @@ void reset_color(bool err = false);
 std::string executable_path();
 bool exists(const std::string &file_name);
 void auto_append_extension(std::string &str, const char *ext);
-void auto_append_extension_if_exists(std::string &str, const char *ext);
+std::string auto_append_extension_if_exists(const std::string &str, const char *ext);
 size_t getCurrentRSS();
 size_t getPeakRSS();
 void log_rss();

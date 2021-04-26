@@ -30,6 +30,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "extend.h"
 #include "../util/algo/radix_sort.h"
 #include "target.h"
+#define _REENTRANT
+#include "../lib/ips4o/ips4o.hpp"
 
 using std::get;
 using std::tuple;
@@ -116,6 +118,7 @@ void align_worker(size_t thread_id, const Parameters *params, const Metadata *me
 	Align_fetcher hits;
 	Statistics stat;
 	DpStat dp_stat;
+	const bool parallel = config.swipe_all && (ref_seqs::get().get_length() >= query_seqs::get().get_length());
 	while (hits.get()) {
 		if(config.frame_shift != 0) {
 			TextBuffer *buf = legacy_pipeline(hits, metadata, params, stat);
@@ -124,7 +127,7 @@ void align_worker(size_t thread_id, const Parameters *params, const Metadata *me
 			continue;
 		}
 		task_timer timer;
-		vector<Extension::Match> matches = Extension::extend(*params, hits.query, hits.begin, hits.end, *metadata, stat, hits.target_parallel || config.swipe_all ? DP::PARALLEL : 0);
+		vector<Extension::Match> matches = Extension::extend(*params, hits.query, hits.begin, hits.end, *metadata, stat, hits.target_parallel || parallel ? DP::PARALLEL : 0);
 		TextBuffer *buf = blocked_processing ? Extension::generate_intermediate_output(matches, hits.query) : Extension::generate_output(matches, hits.query, stat, *metadata, *params);
 		if (!matches.empty() && (!config.unaligned.empty() || !config.aligned_file.empty())) {
 			std::lock_guard<std::mutex> lock(query_aligned_mtx);
@@ -134,6 +137,8 @@ void align_worker(size_t thread_id, const Parameters *params, const Metadata *me
 		if (hits.target_parallel)
 			stat.inc(Statistics::TIME_TARGET_PARALLEL, timer.microseconds());
 		hits.release();
+		if (config.swipe_all && !config.no_heartbeat && (hits.query % 100 == 0))
+			log_stream << "Queries = " << hits.query << std::endl;
 	}
 	statistics += stat;
 	::dp_stat += dp_stat;
@@ -163,10 +168,11 @@ void align_queries(Trace_pt_buffer &trace_pts, Consumer* output_file, const Para
 		trace_pts.load(max_size);
 
 		timer.go("Sorting trace points");
-		//if (config.beta)
-			radix_sort<hit, hit::Query>(hit_buf->data(), hit_buf->data() + hit_buf->size(), (uint32_t)query_range.second * align_mode.query_contexts, config.threads_);
-		//else
-			//merge_sort(hit_buf->begin(), hit_buf->end(), config.threads_);
+#if _MSC_FULL_VER == 191627042
+		radix_sort<hit, hit::Query>(hit_buf->data(), hit_buf->data() + hit_buf->size(), (uint32_t)query_range.second * align_mode.query_contexts, config.threads_);
+#else
+		ips4o::parallel::sort(hit_buf->data(), hit_buf->data() + hit_buf->size(), std::less<hit>(), config.threads_);
+#endif
 		statistics.inc(Statistics::TIME_SORT_SEED_HITS, timer.microseconds());
 
 		timer.go("Computing alignments");
@@ -175,7 +181,9 @@ void align_queries(Trace_pt_buffer &trace_pts, Consumer* output_file, const Para
 		vector<std::thread> threads;
 		if (config.verbosity >= 3 && config.load_balancing == Config::query_parallel && !config.no_heartbeat && !config.swipe_all)
 			threads.emplace_back(heartbeat_worker, query_range.second);
-		size_t n_threads = (config.load_balancing == Config::query_parallel && !config.swipe_all) ? (config.threads_align == 0 ? config.threads_ : config.threads_align) : 1;
+		size_t n_threads = config.threads_align == 0 ? config.threads_ : config.threads_align;
+		if (config.load_balancing == Config::target_parallel || (config.swipe_all && (ref_seqs::get().get_length() >= query_seqs::get().get_length())))
+			n_threads = 1;
 		for (size_t i = 0; i < n_threads; ++i)
 			threads.emplace_back(align_worker, i, &params, &metadata);
 		for (auto &t : threads)
