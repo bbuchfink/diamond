@@ -387,7 +387,9 @@ SparseMatrixStream<float>* get_graph_handle(SequenceFile& db){
 	Workflow::Search::Options opt;
 	opt.db = &db;
 	opt.self = true;
+
 	SparseMatrixStream<float>* ms = new SparseMatrixStream<float>(symmetric, db.sequence_count(), config.cluster_graph_file);
+
 	if(config.chunk_size > 0){
 		ms->set_max_mem(config.chunk_size);
 	}
