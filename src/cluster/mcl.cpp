@@ -395,23 +395,15 @@ SparseMatrixStream<float>* get_graph_handle(SequenceFile& db){
 	ms->done();
 	return ms;
 }
-Eigen::SparseMatrix<float> MCL::get_sparse_matrix(vector<uint32_t>* order, vector<Eigen::Triplet<float>>* m, bool symmetrize){
+Eigen::SparseMatrix<float> MCL::get_sparse_matrix(vector<uint32_t>* order, vector<Eigen::Triplet<float>>* m){
 	Eigen::SparseMatrix<float> m_sparse(order->size(), order->size());
 	m_sparse.setFromTriplets(m->begin(), m->end());
-	if(symmetrize){
-		Eigen::SparseMatrix<float> m_tmp = m_sparse.transpose();
-		return m_sparse + m_tmp;
-	}
 	return m_sparse;
 }
-Eigen::MatrixXf MCL::get_dense_matrix(vector<uint32_t>* order, vector<Eigen::Triplet<float>>* m, bool symmetrize){
+Eigen::MatrixXf MCL::get_dense_matrix(vector<uint32_t>* order, vector<Eigen::Triplet<float>>* m){
 	Eigen::MatrixXf m_dense = Eigen::MatrixXf::Zero(order->size(), order->size());
 	for(Eigen::Triplet<float> const & t : *m){
 		m_dense(t.row(), t.col()) = t.value();
-	}
-	if(symmetrize){
-		Eigen::MatrixXf m_tmp = m_dense.transpose();
-		return m_dense + m_tmp;
 	}
 	return m_dense;
 }
