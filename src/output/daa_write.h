@@ -1,6 +1,10 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2017 Benjamin Buchfink <buchfink@gmail.com>
+Copyright (C) 2013-2021 Max Planck Society for the Advancement of Science e.V.
+                        Benjamin Buchfink
+                        Eberhard Karls Universitaet Tuebingen
+						
+Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,9 +20,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#ifndef DAA_WRITE_H_
-#define DAA_WRITE_H_
-
+#pragma once
 #include <limits>
 #include <stdint.h>
 #include "output.h"
@@ -29,6 +31,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../basic/packed_sequence.h"
 #include "../data/ref_dictionary.h"
 #include "../util/io/consumer.h"
+#include "../data/sequence_file.h"
 
 inline void init_daa(OutputFile &f)
 {
@@ -76,10 +79,10 @@ inline void write_daa_record(TextBuffer &buf, const Hsp &match, size_t subject_i
 	buf << match.transcript.data();
 }
 
-inline void finish_daa(OutputFile &f, const DatabaseFile &db)
+inline void finish_daa(OutputFile &f, const SequenceFile &db)
 {
-	DAA_header2 h2_(db.ref_header.sequences,
-		config.db_size,
+	DAA_header2 h2_(db.sequence_count(),
+		score_matrix.db_letters(),
 		score_matrix.gap_open(),
 		score_matrix.gap_extend(),
 		config.reward,
@@ -151,4 +154,3 @@ inline void finish_daa(OutputFile &f, DAA_file &daa_in) {
 	f.write(&h2_, 1);
 }
 
-#endif /* DAA_WRITE_H_ */

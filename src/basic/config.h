@@ -25,8 +25,14 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <vector>
 #include <stdint.h>
 #include <map>
+#include "../util/enum.h"
 
 enum class Sensitivity { FAST = 0, DEFAULT = 1, MID_SENSITIVE = 2, SENSITIVE = 3, MORE_SENSITIVE = 4, VERY_SENSITIVE = 5, ULTRA_SENSITIVE = 6 };
+
+template<> struct EnumTraits<Sensitivity> {
+	static const EMap<Sensitivity> to_string;
+	static const Sensitivity blank = Sensitivity::DEFAULT;
+};
 
 struct Config
 {
@@ -41,7 +47,6 @@ struct Config
 	unsigned	merge_seq_treshold;
 	unsigned	hit_cap;
 	unsigned shapes;
-	unsigned	index_mode;
 	size_t	max_alignments;
 	string	match_file1;
 	string	match_file2;
@@ -134,8 +139,6 @@ struct Config
 	bool log_subject;
 	unsigned threads_align;
 	double score_ratio;
-	bool small_query;
-	bool hashed_seeds;
 	string nodesdmp;
 	bool sallseqid;
 	string query_strands;
@@ -209,7 +212,7 @@ struct Config
 	size_t file_buffer_size;
 	bool self;
 	size_t trace_pt_fetch_size;
-	uint32_t tile_size;
+	size_t tile_size;
 	double short_query_ungapped_bitscore;
 	int short_query_max_len;
 	double gapped_filter_evalue1;
@@ -253,28 +256,29 @@ struct Config
 	bool hash_join_swap;
 	bool target_indexed;
 	size_t deque_bucket_size;
-	bool mmap_target_index;
-	bool save_target_index;
 	bool mode_fast;
 	double log_evalue_scale;
 	double ungapped_evalue_short;
 	size_t max_swipe_dp;
+	std::string seqidlist;
+	bool skip_missing_seqids;
 
 	Sensitivity sensitivity;
 
 	bool multiprocessing;
 	bool mp_init;
+	bool mp_recover;
 
 	enum {
 		makedb = 0, blastp = 1, blastx = 2, view = 3, help = 4, version = 5, getseq = 6, benchmark = 7, random_seqs = 8, compare = 9, sort = 10, roc = 11, db_stat = 12, model_sim = 13,
 		match_file_stat = 14, model_seqs = 15, opt = 16, mask = 17, fastq2fasta = 18, dbinfo = 19, test_extra = 20, test_io = 21, db_annot_stats = 22, read_sim = 23, info = 24, seed_stat = 25,
 		smith_waterman = 26, cluster = 27, translate = 28, filter_blasttab = 29, show_cbs = 30, simulate_seqs = 31, split = 32, upgma = 33, upgma_mc = 34, regression_test = 35,
-		reverse_seqs = 36, compute_medoids = 37, mutate = 38, merge_tsv = 39, rocid = 40
+		reverse_seqs = 36, compute_medoids = 37, mutate = 38, merge_tsv = 39, rocid = 40, makeidx = 41, find_shapes
 	};
 	unsigned	command;
 
-	enum { double_indexed = 0, query_indexed = 1, subject_indexed = 2 };
-	int algo;
+	enum class Algo { AUTO = -1, DOUBLE_INDEXED = 0, QUERY_INDEXED = 1 };
+	Algo algo;
 
 	string cluster_algo;
 	string cluster_similarity;
@@ -292,17 +296,6 @@ struct Config
 	bool cluster_mcl_stats;
 	bool cluster_mcl_symmetrize;
 
-	
-	std::map<std::string, Sensitivity> sens_map{
-		{"fast", Sensitivity::FAST },
-		{"default", Sensitivity::DEFAULT},
-		{"sensitive", Sensitivity::SENSITIVE},
-		{"mid-sensitive", Sensitivity::MID_SENSITIVE},
-		{"more-sensitive", Sensitivity::MORE_SENSITIVE},
-		{"very-sensitive", Sensitivity::VERY_SENSITIVE},
-		{"ultra-sensitive", Sensitivity::ULTRA_SENSITIVE}
-	};
-
 	enum { query_parallel = 0, target_parallel = 1 };
 	unsigned load_balancing;
 
@@ -312,7 +305,7 @@ struct Config
 	inline unsigned get_run_len(unsigned length)
 	{
 		if (run_len == 0) {
-			if (length < 30)
+			if (length < 30 || frame_shift != 0)
 				return 1;
 			else if (length < 100)
 				return 20;
@@ -347,3 +340,8 @@ template<typename _t>
 _t top_cutoff_score(_t top_score) {
 	return _t((1.0 - config.toppercent / 100.0)*top_score);
 }
+
+template<> struct EnumTraits<Config::Algo> {
+	static const EMap<Config::Algo> to_string;
+	static const Config::Algo blank = Config::Algo::AUTO;
+};

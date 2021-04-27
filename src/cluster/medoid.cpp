@@ -58,7 +58,7 @@ struct ClusterDist : public Consumer {
 	map<int, int> counts;
 };
 
-size_t get_medoid(DatabaseFile *db, const BitVector &filter, size_t n, SequenceSet *seqs) {
+size_t get_medoid(SequenceFile *db, const BitVector &filter, size_t n, SequenceSet *seqs) {
 	statistics.reset();
 	config.command = Config::blastp;
 	config.no_self_hits = true;
@@ -67,7 +67,7 @@ size_t get_medoid(DatabaseFile *db, const BitVector &filter, size_t n, SequenceS
 	config.max_evalue = 100.0;
 	config.freq_sd = 0;
 	config.max_alignments = SIZE_MAX;
-	config.algo = 0;
+	config.algo = Config::Algo::DOUBLE_INDEXED;
 	//config.ext = Config::swipe;
 	score_matrix.set_db_letters(1);
 
@@ -108,9 +108,9 @@ int get_acc2idx(const string& acc, const map<string, size_t>& acc2idx) {
 void get_medoids_from_tree() {
 	const size_t CLUSTER_COUNT = 1000;
 	config.masking = false;
-	DatabaseFile *db = DatabaseFile::auto_create_from_fasta();
-	message_stream << "#Sequences: " << db->ref_header.sequences << endl;
-	size_t n = db->ref_header.sequences;
+	SequenceFile* db = SequenceFile::auto_create();
+	message_stream << "#Sequences: " << db->sequence_count() << endl;
+	size_t n = db->sequence_count();
 
 	SequenceSet *seqs;
 	String_set<char, '\0'> *ids;
@@ -136,7 +136,7 @@ void get_medoids_from_tree() {
 		--n;
 	}
 
-	n = db->ref_header.sequences;
+	n = db->sequence_count();
 	map<int, vector<int>> clusters;
 	for (pair<int, int> i : parent) {
 		while (parent[parent[i.first]] != parent[i.first])
@@ -145,7 +145,7 @@ void get_medoids_from_tree() {
 			clusters[parent[i.first]].push_back(i.first);
 	}
 
-	BitVector filter(db->ref_header.sequences);
+	BitVector filter(db->sequence_count());
 	OutputFile out(config.output_file);
 	for (const pair<const int, vector<int>> &i : clusters) {
 		/*for (const string &acc : i.second)
@@ -165,7 +165,7 @@ void get_medoids_from_tree() {
 	}
 	out.close();
 
-	db->close_and_delete();
+	db->close();
 	delete db;
 	delete seqs;
 	delete ids;

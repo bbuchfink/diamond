@@ -33,6 +33,8 @@ struct OutputStreamBuffer : public StreamEntity
 	virtual size_t tell();
 private:
 
+	static const size_t STDOUT_BUF_SIZE = 4096;
+	const size_t buf_size_;
 	std::unique_ptr<char[]> buf_;
 };
 

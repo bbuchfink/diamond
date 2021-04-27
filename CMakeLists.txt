@@ -1,5 +1,6 @@
 cmake_minimum_required (VERSION 2.6)
 project (DIAMOND)
+include(CheckCXXCompilerFlag)
 
 option(BUILD_STATIC "BUILD_STATIC" OFF)
 option(EXTRA "EXTRA" OFF)
@@ -13,6 +14,8 @@ option(DP_STAT "DP_STAT" OFF)
 option(SINGLE_THREADED "SINGLE_THREADED" OFF)
 option(EIGEN_BLAS "EIGEN_BLAS" OFF)
 set(MAX_SHAPE_LEN 19)
+set(BLAST_INCLUDE_DIR "" CACHE STRING "BLAST_INCLUDE_DIR")
+set(BLAST_LIBRARY_DIR "" CACHE STRING "BLAST_LIBRARY_DIR")
 
 if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(arm.*|ARM.*)")
   set(X86 OFF)
@@ -66,7 +69,12 @@ if(BUILD_STATIC)
     set(CMAKE_EXE_LINKER_FLAGS "-static")
 endif()
 
-set(CMAKE_CXX_STANDARD 11)
+check_cxx_compiler_flag("-std=gnu++14" HAS_GNUPP14)
+if (HAS_GNUPP14)
+  set(CMAKE_CXX_STANDARD 14)
+else()
+  set(CMAKE_CXX_STANDARD 11)
+endif()
 
 if(CMAKE_BUILD_MARCH)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=${CMAKE_BUILD_MARCH}")
@@ -80,9 +88,9 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
 endif()
 
 if (${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
-  add_definitions(-D_CRT_SECURE_NO_WARNINGS -D_ITERATOR_DEBUG_LEVEL=0)
+  add_definitions(-D_CRT_SECURE_NO_WARNINGS)
 else()
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=gnu++11 -Wall -Wextra -Wno-implicit-fallthrough -Wreturn-type -Wno-unused -Wno-unused-parameter -Wno-unused-variable -Wno-uninitialized -Wno-deprecated-copy -Wno-unknown-warning-option")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wno-implicit-fallthrough -Wreturn-type -Wno-unused -Wno-unused-parameter -Wno-unused-variable -Wno-uninitialized -Wno-deprecated-copy -Wno-unknown-warning-option")
   # -fsanitize=address -fno-omit-frame-pointer
 endif()
 
@@ -99,7 +107,6 @@ set(DISPATCH_OBJECTS
 "src/dp/swipe/banded_3frame_swipe.cpp"
 "src/dp/swipe/swipe.cpp"
 "src/dp/swipe/banded_swipe.cpp"
-"src/search/stage1.cpp"
 "src/search/stage2.cpp"
 "src/tools/benchmark.cpp"
 "src/dp/swipe/swipe_wrapper.cpp"
@@ -190,7 +197,6 @@ set(OBJECTS
   src/util/system/getRSS.cpp
   src/util/math/sparse_matrix.cpp
   src/lib/tantan/LambdaCalculator.cc
-  src/data/taxonomy_filter.cpp
   src/util/algo/upgma.cpp
   src/util/algo/upgma_mc.cpp
   src/util/algo/edge_vec.cpp
@@ -255,19 +261,71 @@ set(OBJECTS
   src/stats/hauser_correction.cpp
   src/stats/matrix_adjust.cpp
   src/stats/matrix_adjust_eigen.cpp
+  src/data/index.cpp
+  src/data/dmnd/dmnd.cpp
+  src/data/sequence_file.cpp
+  src/tools/find_shapes.cpp
 )
 
-if(X86)
-  add_executable(diamond $<TARGET_OBJECTS:arch_generic> $<TARGET_OBJECTS:arch_sse4_1> $<TARGET_OBJECTS:arch_avx2> ${OBJECTS})
-else()
-  add_executable(diamond $<TARGET_OBJECTS:arch_generic> ${OBJECTS})
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}")
+
+if(BLAST_INCLUDE_DIR)
+  set(BLAST_OBJ "src/data/blastdb/blastdb.cpp")
 endif()
 
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}")
+if(X86)
+  add_executable(diamond $<TARGET_OBJECTS:arch_generic> $<TARGET_OBJECTS:arch_sse4_1> $<TARGET_OBJECTS:arch_avx2> ${OBJECTS} ${BLAST_OBJ})
+else()
+  add_executable(diamond $<TARGET_OBJECTS:arch_generic> ${OBJECTS} ${BLAST_OBJ})
+endif()
 
 target_include_directories(diamond PRIVATE
   "${ZLIB_INCLUDE_DIR}"
   "${CMAKE_SOURCE_DIR}/src/lib")
+
+if(BLAST_INCLUDE_DIR)
+  function(find_blast_lib var library)
+    find_library(${var} ${library} PATHS ${BLAST_LIBRARY_DIR} "/usr/lib/ncbi-blast+")
+    if(${${var}} STREQUAL "${var}-NOTFOUND")
+      message(FATAL_ERROR "Unable to find BLAST library: ${library}")
+    endif()
+    message("Found BLAST library: ${${var}}")
+  endfunction(find_blast_lib)
+  message("BLAST_INCLUDE_DIR: ${BLAST_INCLUDE_DIR}")
+  message("BLAST_LIBRARY_DIR: ${BLAST_LIBRARY_DIR}")
+  target_include_directories(diamond PRIVATE "${BLAST_INCLUDE_DIR}")
+  find_blast_lib(SEQDB_LIBRARY seqdb)
+  find_blast_lib(BIBLIO_LIBRARY biblio)
+  find_blast_lib(BLASTDB_LIBRARY blastdb)
+  find_blast_lib(BLASTDB_FORMAT_LIBRARY blastdb_format)
+  find_blast_lib(GENERAL_LIBRARY general)
+  find_blast_lib(GENOME_COLLECTION_LIBRARY genome_collection)
+  find_blast_lib(MEDLINE_LIBRARY medline)
+  find_blast_lib(PUB_LIBRARY pub)
+  find_blast_lib(SEQ_LIBRARY seq)
+  find_blast_lib(SEQCODE_LIBRARY seqcode)
+  find_blast_lib(SEQSET_LIBRARY seqset)
+  find_blast_lib(SEQUTIL_LIBRARY sequtil)
+  find_blast_lib(SUBMIT_LIBRARY submit)
+  find_blast_lib(XOBJMGR_LIBRARY xobjmgr)
+  find_blast_lib(XOBJUTIL_LIBRARY xobjutil)
+  find_blast_lib(XSER_LIBRARY xser)
+  find_blast_lib(XNCBI_LIBRARY xncbi)
+  find_blast_lib(XUTIL_LIBRARY xutil)
+  find_blast_lib(LMDB_LIBRARY lmdb)
+  target_link_libraries(diamond ${SEQDB_LIBRARY} ${BLASTDB_LIBRARY} ${BLASTDB_FORMAT_LIBRARY} ${GENERAL_LIBRARY}
+    ${XOBJUTIL_LIBRARY} ${XOBJMGR_LIBRARY} ${GENOME_COLLECTION_LIBRARY} ${SEQ_LIBRARY} ${SEQCODE_LIBRARY}
+    ${SEQSET_LIBRARY} ${SEQUTIL_LIBRARY} ${PUB_LIBRARY} ${MEDLINE_LIBRARY} ${BIBLIO_LIBRARY} ${SUBMIT_LIBRARY}
+    ${XSER_LIBRARY} ${XNCBI_LIBRARY} ${XUTIL_LIBRARY} ${LMDB_LIBRARY})
+  add_definitions(-DWITH_BLASTDB)
+  set_target_properties(diamond PROPERTIES INSTALL_RPATH_USE_LINK_PATH TRUE)
+  if (${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
+    find_library(DBGHELP_LIBRARY Dbghelp)
+    target_link_libraries(diamond ${DBGHELP_LIBRARY})
+  else()
+    target_link_libraries(diamond ${CMAKE_DL_LIBS})
+  endif()
+endif()
 
 if(EIGEN_BLAS)
   add_definitions(-DEIGEN_USE_BLAS -DEIGEN_USE_LAPACKE)

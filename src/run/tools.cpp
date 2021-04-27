@@ -30,10 +30,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/seq_file_format.h"
 #include "../data/queries.h"
 #include "../data/load_seqs.h"
-#include "../data/reference.h"
+#include "../data/sequence_file.h"
 #include "../basic/masking.h"
 #include "../dp/dp.h"
 #include "../basic/packed_transcript.h"
+#include "../data/reference.h"
+#include "../data/dmnd/dmnd.h"
 
 using namespace std;
 using std::chrono::high_resolution_clock;
@@ -41,8 +43,9 @@ using std::chrono::duration_cast;
 
 void get_seq()
 {
-	DatabaseFile db_file(config.database);
-	db_file.get_seq();
+	SequenceFile* db_file = SequenceFile::auto_create();
+	db_file->get_seq();
+	delete db_file;
 }
 
 void random_seqs()

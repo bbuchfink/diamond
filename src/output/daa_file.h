@@ -116,7 +116,6 @@ struct DAA_file
 		if(h2_.block_size[0] == 0)
 			throw std::runtime_error("Invalid DAA file. DIAMOND run has probably not completed successfully.");
 
-		Config::set_option(config.db_size, h2_.db_letters);
 		align_mode = Align_mode(h2_.mode);
 		//ref_header.sequences = h2_.db_seqs;
 

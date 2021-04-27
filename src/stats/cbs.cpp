@@ -84,6 +84,10 @@ bool use_seg_masking(const Sequence& a, const Sequence& b) {
     return n != a.length();
 }
 
+int TargetMatrix::score_width() const {
+    return (score_max > SCHAR_MAX || score_min < SCHAR_MIN) ? 1 : 0;
+}
+
 TargetMatrix::TargetMatrix(const Composition& query_comp, int query_len, const Sequence& target)
 {
     if (!CBS::matrix_adjust(config.comp_based_stats))
@@ -119,7 +123,7 @@ TargetMatrix::TargetMatrix(const Composition& query_comp, int query_len, const S
                 scores32[i * 32 + j] = s[j * AMINO_ACID_COUNT + i];
                 score_min = std::min(score_min, s[j * AMINO_ACID_COUNT + i]);
                 score_max = std::max(score_max, s[j * AMINO_ACID_COUNT + i]);
-                //std::cerr << s2[j * 20 + i] << ' ';
+                //std::cerr << s[j * AMINO_ACID_COUNT + i] << ' ';
             }
             else {
                 scores[i * 32 + j] = std::max(score_matrix(i, j) * config.cbs_matrix_scale, SCHAR_MIN);
@@ -127,7 +131,7 @@ TargetMatrix::TargetMatrix(const Composition& query_comp, int query_len, const S
                 score_min = std::min(score_min, scores32[i * 32 + j]);
                 score_max = std::max(score_max, scores32[i * 32 + j]);
             }
-        //std::cerr << endl;
+        //std::cerr << std::endl;
     }
 }
 

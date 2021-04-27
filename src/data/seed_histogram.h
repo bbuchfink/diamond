@@ -1,6 +1,10 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2017 Benjamin Buchfink <buchfink@gmail.com>
+Copyright (C) 2013-2021 Max Planck Society for the Advancement of Science e.V.
+                        Benjamin Buchfink
+                        Eberhard Karls Universitaet Tuebingen
+						
+Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,19 +20,14 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#ifndef SEED_HISTOGRAM_H_
-#define SEED_HISTOGRAM_H_
-
+#pragma once
 #include <limits>
 #include "../basic/seed.h"
 #include "sequence_set.h"
 #include "../basic/shape_config.h"
 #include "../basic/seed_iterator.h"
-#include "seed_set.h"
 #include "../util/data_structures/array.h"
 #include "enum_seeds.h"
-
-using std::vector;
 
 typedef vector<Array<unsigned, Const::seedp>> shape_histogram;
 
@@ -88,7 +87,7 @@ struct Partitioned_histogram
 	Partitioned_histogram();
 	
 	template<typename _filter>
-	Partitioned_histogram(const SequenceSet &seqs, bool serial, const _filter *filter) :
+	Partitioned_histogram(const SequenceSet &seqs, bool serial, const _filter *filter, bool hashed_seeds) :
 		data_(shapes.count()),
 		p_(seqs.partition(config.threads_))
 	{
@@ -99,9 +98,9 @@ struct Partitioned_histogram
 			cb.push_back(new Callback(i, data_));
 		if (serial)
 			for (unsigned s = 0; s < shapes.count(); ++s)
-				enum_seeds(&seqs, cb, p_, s, s + 1, filter);
+				enum_seeds(&seqs, cb, p_, s, s + 1, filter, hashed_seeds);
 		else
-			enum_seeds(&seqs, cb, p_, 0, shapes.count(), filter);
+			enum_seeds(&seqs, cb, p_, 0, shapes.count(), filter, hashed_seeds);
 	}
 
 	const shape_histogram& get(unsigned sid) const
@@ -138,5 +137,3 @@ private:
 	vector<size_t> p_;
 
 };
-
-#endif /* SEED_HISTOGRAM_H_ */

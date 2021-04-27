@@ -21,18 +21,33 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #pragma once
 #include <stddef.h>
+#include <vector>
+#include "../util/data_structures/flat_array.h"
 #include "../util/simd.h"
 #include "../dp/ungapped.h"
 #include "../basic/shape_config.h"
 #include "../basic/statistics.h"
 #include "trace_pt_buffer.h"
 #include "../util/algo/pattern_matcher.h"
-#include "../util/data_structures/flat_array.h"
 #include "../util/scores/cutoff_table.h"
 #include "../basic/parameters.h"
-#include "../data/seed_set.h"
+#include "finger_print.h"
+#include "../util/memory/alignment.h"
 
 // #define UNGAPPED_SPOUGE
+
+struct SensitivityTraits {
+	bool     support_query_indexed;
+	double   freq_sd;
+	unsigned min_identities;
+	double   ungapped_evalue;
+	double   ungapped_evalue_short;
+	double   gapped_filter_evalue;
+	unsigned index_chunks;
+	unsigned query_bins;
+};
+
+extern const std::map<Sensitivity, SensitivityTraits> sensitivity_traits;
 
 namespace Search {
 
@@ -68,14 +83,26 @@ struct Stage1_hit
 	unsigned q, s;
 };
 
-void search_shape(unsigned sid, unsigned query_block, char *query_buffer, char *ref_buffer, const Parameters &params, const Hashed_seed_set* target_seeds);
+struct HashedSeedSet;
+
+void search_shape(unsigned sid, unsigned query_block, char *query_buffer, char *ref_buffer, const Parameters &params, const HashedSeedSet* target_seeds);
 bool use_single_indexed(double coverage, size_t query_letters, size_t ref_letters);
 void setup_search();
-void setup_search_cont();
 
 namespace Search {
 
-DECL_DISPATCH(void, stage1, (const Packed_loc* q, size_t nq, const Packed_loc* s, size_t ns, Statistics& stats, Trace_pt_buffer::Iterator& out, const unsigned sid, const Context& context))
+struct WorkSet {
+	Context context;
+	unsigned shape_id;
+	Statistics stats;
+	Trace_pt_buffer::Iterator out;
+#ifndef __APPLE__
+	std::vector<FingerPrint, Util::Memory::AlignmentAllocator<FingerPrint, 16>> vq, vs;
+#endif
+	FlatArray<uint32_t> hits;
+};
+
+DECL_DISPATCH(void, stage1, (const PackedLoc* q, size_t nq, const PackedLoc* s, size_t ns, WorkSet& work_set))
 
 }
 

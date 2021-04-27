@@ -88,11 +88,11 @@ void align_worker(InputFile* query_list, const TargetMap* db2block_id, const Par
 	statistics += stats;
 }
 
-void extend(DatabaseFile& db, TempFile& merged_query_list, BitVector& ranking_db_filter, const Parameters& params, const Metadata& metadata, Consumer& master_out) {
+void extend(SequenceFile& db, TempFile& merged_query_list, BitVector& ranking_db_filter, const Parameters& params, const Metadata& metadata, Consumer& master_out) {
 	task_timer timer("Loading reference sequences");
 	InputFile query_list(merged_query_list);
 	vector<uint32_t> block2db_id;
-	db.rewind();
+	db.set_seqinfo_ptr(0);
  	db.load_seqs(&block2db_id, SIZE_MAX, &ref_seqs::data_, &ref_ids::data_, true, &ranking_db_filter, true);
 	ReferenceDictionary::get().set_block2db(&block2db_id);
 	TargetMap db2block_id;

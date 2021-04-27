@@ -47,10 +47,24 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 using namespace std;
 
+const EMap<Sensitivity> EnumTraits<Sensitivity>::to_string = {
+	{ Sensitivity::FAST, "fast" },
+	{ Sensitivity::DEFAULT, "default" },
+	{ Sensitivity::SENSITIVE, "sensitive" },
+	{ Sensitivity::MID_SENSITIVE, "mid-sensitive" },
+	{ Sensitivity::MORE_SENSITIVE, "more-sensitive" },
+	{ Sensitivity::VERY_SENSITIVE, "very-sensitive" },
+	{ Sensitivity::ULTRA_SENSITIVE, "ultra-sensitive" }
+};
+
+const EMap<Config::Algo> EnumTraits<Config::Algo>::to_string = { { Config::Algo::DOUBLE_INDEXED, "0" }, { Config::Algo::QUERY_INDEXED, "1"} };
+
 Config config;
 
 void print_warnings() {
 	if (config.sensitivity >= Sensitivity::VERY_SENSITIVE || config.verbosity == 0 || config.swipe_all)
+		return;
+	if (config.command != Config::blastp && config.command != Config::blastx)
 		return;
 	const double ram = total_ram();
 	unsigned b = 2, c = 4;
@@ -126,6 +140,7 @@ Config::Config(int argc, const char **argv, bool check_io)
 		.add_command("getseq", "Retrieve sequences from a DIAMOND database file", getseq)
 		.add_command("dbinfo", "Print information about a DIAMOND database file", dbinfo)
 		.add_command("test", "Run regression tests", regression_test)
+		.add_command("makeidx", "Make database index", makeidx)
 		.add_command("roc", "", roc)
 		.add_command("benchmark", "", benchmark)
 #ifdef EXTRA
@@ -146,12 +161,13 @@ Config::Config(int argc, const char **argv, bool check_io)
 		.add_command("simulate-seqs", "", simulate_seqs)
 		.add_command("split", "", split)
 		.add_command("upgma", "", upgma)
-		.add_command("upgmamc", "", upgma_mc)		
+		.add_command("upgmamc", "", upgma_mc)
 		.add_command("reverse", "", reverse_seqs)
 		.add_command("compute-medoids", "", compute_medoids)
 		.add_command("mutate", "", mutate)
 		.add_command("merge-tsv", "", merge_tsv)
 		.add_command("roc-id", "", rocid)
+		.add_command("find-shapes", "", find_shapes)
 #endif
 		;
 
@@ -280,11 +296,15 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("sallseqid", 0, "include all subject ids in DAA file", sallseqid)
 		("no-self-hits", 0, "suppress reporting of identical self hits", no_self_hits)
 		("taxonlist", 0, "restrict search to list of taxon ids (comma-separated)", taxonlist)
-		("taxon-exclude", 0, "exclude list of taxon ids (comma-separated)", taxon_exclude);
+		("taxon-exclude", 0, "exclude list of taxon ids (comma-separated)", taxon_exclude)
+		("seqidlist", 0, "filter the database by list of accessions", seqidlist)
+		("skip-missing-seqids", 0, "ignore accessions missing in the database", skip_missing_seqids);
+
+	string algo_str;
 
 	Options_group advanced("Advanced options");
 	advanced.add()
-		("algo", 0, "Seed search algorithm (0=double-indexed/1=query-indexed)", algo, -1)
+		("algo", 0, "Seed search algorithm (0=double-indexed/1=query-indexed)", algo_str)
 		("bin", 0, "number of query bins for seed search", query_bins)
 		("min-orf", 'l', "ignore translated sequences without an open reading frame of at least this length", run_len)
 		("freq-sd", 0, "number of standard deviations for ignoring frequent seeds", freq_sd, 0.0)
@@ -296,6 +316,7 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("shape-mask", 0, "seed shapes", shape_mask)
 		("multiprocessing", 0, "enable distributed-memory parallel processing", multiprocessing)
 		("mp-init", 0, "initialize multiprocessing run", mp_init)
+		("mp-recover", 0, "enable continuation of interrupted multiprocessing run", mp_recover)
 		("ext-chunk-size", 0, "chunk size for adaptive ranking (default=auto)", ext_chunk_size)
 		("no-ranking", 0, "disable ranking heuristic", no_ranking)
 		("ext", 0, "Extension mode (banded-fast/banded-slow/full)", ext)
@@ -310,6 +331,7 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("file-buffer-size", 0, "file buffer size in bytes (default=67108864)", file_buffer_size, (size_t)67108864)
 		("memory-limit", 'M', "Memory limit for extension stage in GB", memory_limit)
 		("no-unlink", 0, "Do not unlink temporary files.", no_unlink)
+		("target-indexed", 0, "Enable target-indexed mode", target_indexed)
 		("cut-bar", 0, "", cut_bar)
 		("check-multi-target", 0, "", check_multi_target)
 		("roc-file", 0, "", roc_file)
@@ -391,8 +413,6 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("score-ratio", 0, "", score_ratio, 0.9)
 		("fetch-size", 0, "trace point fetch size", fetch_size, 4096u)
 		("target-fetch-size", 0, "number of target sequences to fetch for seed extension", target_fetch_size, 4u)
-		("small-query", 0, "", small_query)
-		("hashed-seeds", 0, "", hashed_seeds)
 		("rank-factor", 0, "", rank_factor, -1.0)
 		("transcript-len-estimate", 0, "", transcript_len_estimate, 1.0)
 		("family-counts", 0, "", family_counts_file)
@@ -420,7 +440,6 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("tantan-maxRepeatOffset", 0, "maximum tandem repeat period to consider (50)", tantan_maxRepeatOffset, 15)
 		("tantan-ungapped", 0, "use tantan masking in ungapped mode", tantan_ungapped)
 		("chaining-range-cover", 0, "", chaining_range_cover, (size_t)8)
-		("index-mode", 0, "index mode (0=4x12, 1=16x9)", index_mode)
 		("no-swipe-realign", 0, "", no_swipe_realign)
 		("chaining-maxnodes", 0, "", chaining_maxnodes)
 		("cutoff-score-8bit", 0, "", cutoff_score_8bit, 240)
@@ -438,7 +457,7 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("col-bin", 0, "", col_bin, 400)
 		("self", 0, "", self)
 		("trace-pt-fetch-size", 0, "", trace_pt_fetch_size, (size_t)10e9)
-		("tile-size", 0, "", tile_size, (uint32_t)1024)
+		("tile-size", 0, "", tile_size, (size_t)1024)
 		("short-query-ungapped-bitscore", 0, "", short_query_ungapped_bitscore, 25.0)
 		("short-query-max-len", 0, "", short_query_max_len, 60)
 		("gapped-filter-evalue1", 0, "", gapped_filter_evalue1, 2000.0)
@@ -475,11 +494,8 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("query-match-distance-threshold", 0, "", query_match_distance_threshold, -1.0)
 		("length-ratio-threshold", 0, "", length_ratio_threshold, -1.0)
 		("fast", 0, "", mode_fast)
-		("target-indexed", 0, "", target_indexed)
-		("mmap-target-index", 0, "", mmap_target_index)
-		("save-target-index", 0, "", save_target_index)
 		("max-swipe-dp", 0, "", max_swipe_dp, (size_t)4000000);
-	
+
 	parser.add(general).add(makedb).add(cluster).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options).add(deprecated_options);
 	parser.store(argc, argv, command);
 
@@ -489,9 +505,6 @@ Config::Config(int argc, const char **argv, bool check_io)
 	if (command == blastx && no_self_hits)
 		throw std::runtime_error("--no-self-hits option is not supported in blastx mode.");
 
-	if (command == blastx && swipe_all)
-		throw std::runtime_error("Full db alignment is not supported in blastx mode.");
-
 	if (long_reads) {
 		query_range_culling = true;
 		if (toppercent == 100.0)
@@ -500,7 +513,7 @@ Config::Config(int argc, const char **argv, bool check_io)
 			frame_shift = 15;
 	}
 
-	if (global_ranking_targets > 0 && (query_range_culling || taxon_k || multiprocessing || mp_init || (command == blastx) || comp_based_stats >= 2 || frame_shift > 0))
+	if (global_ranking_targets > 0 && (query_range_culling || taxon_k || multiprocessing || mp_init || mp_recover || (command == blastx) || comp_based_stats >= 2 || frame_shift > 0))
 		throw std::runtime_error("Global ranking is not supported in this mode.");
 
 	if (global_ranking_targets > 0) {
@@ -513,7 +526,7 @@ Config::Config(int argc, const char **argv, bool check_io)
 	if (comp_based_stats >= Stats::CBS::COUNT)
 #else
 	if (comp_based_stats >= 5)
-#endif	
+#endif
 		throw std::runtime_error("Invalid value for --comp-based-stats. Permitted values: 0, 1, 2, 3, 4.");
 
 	if (masking == -1)
@@ -533,9 +546,6 @@ Config::Config(int argc, const char **argv, bool check_io)
 	if (max_hsps > 1 && ext == "full")
 		throw std::runtime_error("--max-hsps > 1 is not supported for full matrix extension.");
 
-	if (ext == "full" && comp_based_stats >= 2)
-		throw std::runtime_error("This mode of composition based stats is not supported for full matrix extension.");
-
 	if (target_seg < 0 || target_seg > 1)
 		throw std::runtime_error("Permitted values for --target-seg: 0, 1");
 
@@ -544,9 +554,6 @@ Config::Config(int argc, const char **argv, bool check_io)
 
 	if (frame_shift > 0 && ext == "full")
 		throw std::runtime_error("Frameshift alignment does not support full matrix extension.");
-
-	if (target_indexed)
-		hashed_seeds = true;
 
 	if (check_io) {
 		switch (command) {
@@ -624,8 +631,6 @@ Config::Config(int argc, const char **argv, bool check_io)
 	if (!no_auto_append) {
 		if (command == Config::makedb)
 			auto_append_extension(database, ".dmnd");
-		else
-			auto_append_extension_if_exists(database, ".dmnd");
 		if (command == Config::view)
 			auto_append_extension(daa_file, ".daa");
 		if (compression == 1)
@@ -635,7 +640,8 @@ Config::Config(int argc, const char **argv, bool check_io)
 	if (verbosity >= 1 || command == regression_test) {
 		ostream &header_out = command == Config::help ? cout : cerr;
 		header_out << Const::program_name << " v" << Const::version_string << "." << (unsigned)Const::build_version << " (C) Max Planck Society for the Advancement of Science" << endl;
-		header_out << "Documentation, support and updates available at http://www.diamondsearch.org" << endl << endl;
+		header_out << "Documentation, support and updates available at http://www.diamondsearch.org" << endl;
+		header_out << "Please cite: http://dx.doi.org/10.1038/s41592-021-01101-x Nature Methods (2021)" << endl << endl;
 	}
 	log_stream << Const::program_name << " v" << Const::version_string << "." << (unsigned)Const::build_version << endl;
 #ifndef NDEBUG
@@ -715,15 +721,16 @@ Config::Config(int argc, const char **argv, bool check_io)
 	}
 
 	sensitivity = Sensitivity::DEFAULT;
+#ifdef EXTRA
 	if (mode_fast) set_sens(Sensitivity::FAST);
+#endif
 	if (mode_mid_sensitive) set_sens(Sensitivity::MID_SENSITIVE);
 	if (mode_sensitive) set_sens(Sensitivity::SENSITIVE);
 	if (mode_more_sensitive) set_sens(Sensitivity::MORE_SENSITIVE);
 	if (mode_very_sensitive) set_sens(Sensitivity::VERY_SENSITIVE);
 	if (mode_ultra_sensitive) set_sens(Sensitivity::ULTRA_SENSITIVE);
 
-	if (algo == Config::query_indexed && (sensitivity == Sensitivity::MID_SENSITIVE || sensitivity >= Sensitivity::VERY_SENSITIVE))
-		throw std::runtime_error("Query-indexed mode is not supported for this sensitivity setting.");
+	algo = from_string<Algo>(algo_str);
 
 	const set<string> ext_modes = { "", "banded-fast", "banded-slow", "full" };
 	if (ext_modes.find(ext) == ext_modes.end())
@@ -752,12 +759,6 @@ Config::Config(int argc, const char **argv, bool check_io)
 	else if (query_file.size() > 1)
 		throw std::runtime_error("--query/-q has more than one argument.");
 
-	if ((mmap_target_index || save_target_index) && !target_indexed)
-		throw std::runtime_error("Option requires --target-indexed.");
-
-	if (mmap_target_index && save_target_index)
-		throw std::runtime_error("Options are exclusive.");
-
 	if (target_indexed && lowmem != 1)
 		throw std::runtime_error("--target-indexed requires -c1.");
 
@@ -765,7 +766,7 @@ Config::Config(int argc, const char **argv, bool check_io)
 		<< " sizeof(sorted_list::entry)=" << sizeof(sorted_list::entry) << endl;*/
 
 	if (swipe_all) {
-		algo = double_indexed;
+		algo = Algo::DOUBLE_INDEXED;
 	}
 
 	use_lazy_dict = false;

@@ -27,12 +27,17 @@ The online documentation is located at the [GitHub Wiki](https://github.com/bbuc
 
 Support
 =======
-The [issue tracker](https://github.com/bbuchfink/diamond/issues) as well as the newly introduced [GitHub discussions](https://github.com/bbuchfink/diamond/discussions) are open for support requests of any kind.
+Diamond is actively supported and developed software. Please use the [issue tracker](https://github.com/bbuchfink/diamond/issues) for malfunctions and the [GitHub discussions](https://github.com/bbuchfink/diamond/discussions) for questions, comments, feature requests, etc.
 
 About
 =====
-DIAMOND is developed by Benjamin Buchfink at the Drost lab, Max
-Planck Institute for Developmental Biology, Tübingen, Germany.
+DIAMOND is currently developed by Benjamin Buchfink at the Drost lab, Max
+Planck Institute for Developmental Biology, Tübingen, Germany (since 2019).
+Its development was supported for one year by the German Federal Ministry
+for Economic Affairs and Energy through an EXIST grant in 2018-2019. It was
+developed independently by Benjamin Buchfink from 2016-2018. Its initial
+version was developed in 2013-2015 by Benjamin Buchfink at the Huson lab, University
+of Tübingen, Germany.
 
 \[[:email:Email](mailto:buchfink@gmail.com)\]
 \[[Twitter](https://twitter.com/bbuchfink)\] \[[Google
@@ -40,7 +45,13 @@ Scholar](https://scholar.google.de/citations?user=kjPIF1cAAAAJ)\]
 \[[Drost lab](https://drostlab.com/)\]
 \[[MPI-EBIO](http://eb.tuebingen.mpg.de/)\]
 
-Publication:
+**When using the tool in published research, please cite:**
+
+-   Buchfink B, Reuter K, Drost HG, \"Sensitive protein alignments at tree-of-life
+    scale using DIAMOND\", *Nature Methods* **18**, 366–368 (2021).
+    [doi:10.1038/s41592-021-01101-x](https://doi.org/10.1038/s41592-021-01101-x)
+
+Further publications:
 
 -   Buchfink B, Xie C, Huson DH, \"Fast and sensitive protein alignment
     using DIAMOND\", *Nature Methods* **12**, 59-60 (2015).

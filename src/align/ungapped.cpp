@@ -48,7 +48,7 @@ std::vector<int16_t*> target_matrices;
 std::mutex target_matrices_lock;
 atomic<size_t> target_matrix_count(0);
 
-WorkTarget ungapped_stage(SeedHit *begin, SeedHit *end, const Sequence *query_seq, const Bias_correction *query_cb, const Stats::Composition& query_comp, const int16_t** query_matrix, uint32_t block_id, Statistics& stat) {
+WorkTarget ungapped_stage(FlatArray<SeedHit>::Iterator begin, FlatArray<SeedHit>::Iterator end, const Sequence *query_seq, const Bias_correction *query_cb, const Stats::Composition& query_comp, const int16_t** query_matrix, uint32_t block_id, Statistics& stat) {
 	array<vector<Diagonal_segment>, MAX_CONTEXT> diagonal_segments;
 	task_timer timer;
 	const bool masking = config.comp_based_stats == Stats::CBS::COMP_BASED_STATS_AND_MATRIX_ADJUST ? Stats::use_seg_masking(query_seq[0], ref_seqs_unmasked::get()[block_id]) : true;
@@ -58,7 +58,7 @@ WorkTarget ungapped_stage(SeedHit *begin, SeedHit *end, const Sequence *query_se
 		stat.inc(Statistics::MATRIX_ADJUST_COUNT);
 
 	if (config.ext == "full") {
-		for (const SeedHit* hit = begin; hit < end; ++hit)
+		for (FlatArray<SeedHit>::Iterator hit = begin; hit < end; ++hit)
 			target.ungapped_score[hit->frame] = std::max(target.ungapped_score[hit->frame], hit->score);
 		return target;
 	}
@@ -68,7 +68,7 @@ WorkTarget ungapped_stage(SeedHit *begin, SeedHit *end, const Sequence *query_se
 		return target;
 	}
 	std::sort(begin, end);
-	for (const SeedHit *hit = begin; hit < end; ++hit) {
+	for (FlatArray<SeedHit>::Iterator hit = begin; hit < end; ++hit) {
 		target.ungapped_score[hit->frame] = std::max(target.ungapped_score[hit->frame], hit->score);
 		if (!diagonal_segments[hit->frame].empty() && diagonal_segments[hit->frame].back().diag() == hit->diag() && diagonal_segments[hit->frame].back().subject_end() >= hit->j)
 			continue;

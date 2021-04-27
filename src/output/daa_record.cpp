@@ -16,8 +16,13 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
+#include "../basic/config.h"
 #include "daa_record.h"
 #include "output.h"
+
+DAA_format::DAA_format() :
+	Output_format(daa, Output::TRANSCRIPT, (config.sallseqid || config.salltitles) ? Output::Flags::FULL_SEQIDS : Output::Flags::NONE)
+{}
 
 BinaryBuffer::Iterator DAA_query_record::init(const BinaryBuffer &buf)
 {

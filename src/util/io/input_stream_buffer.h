@@ -40,6 +40,7 @@ private:
 
 	static void load_worker(InputStreamBuffer *buf);
 	
+	const size_t buf_size_;
 	std::unique_ptr<char[]> buf_, load_buf_;
 	size_t putback_count_, load_count_, file_offset_;
 	bool async_;

@@ -31,6 +31,7 @@ struct DynamicIterator {
 
 	virtual _t operator++(int) = 0;
 	virtual _t operator[](size_t i) = 0;
+	virtual ~DynamicIterator() {}
 
 	const size_t count;
 
@@ -56,11 +57,13 @@ struct VectorIterator : public DynamicIterator<_t> {
 	virtual _t operator[](size_t i) override {
 		return begin_[i];
 	}
+
+	virtual ~VectorIterator() {}
 	
 private:
 
 	std::atomic<size_t> i_;
-	typename std::vector<_t>::const_iterator begin_;
+	const typename std::vector<_t>::const_iterator begin_;
 
 };
 
@@ -84,6 +87,8 @@ struct ContainerIterator : public DynamicIterator<_t> {
 	virtual _t operator[](size_t i) override {
 		return _t(container_[i], i);
 	}
+
+	virtual ~ContainerIterator() {}
 
 private:
 

@@ -140,7 +140,7 @@ void view()
 	const Parameters params{ daa.db_seqs(), daa.db_letters(), 0, 0.0, 0.0, 0.0, 0.0 };
 	Metadata metadata;
 
-	init_output(false, false, false);
+	init_output();
 	taxonomy.init();
 
 	timer.go("Generating output");

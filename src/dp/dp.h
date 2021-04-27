@@ -154,9 +154,9 @@ struct DpTarget
 {
 	DpTarget():
 		target_idx(-1),
-		matrix(nullptr),
 		previous_i1(0),
-		previous_j1(0)
+		previous_j1(0),
+		matrix(nullptr)
 	{}
 	DpTarget(const Sequence &seq, int d_begin, int d_end, int j_begin, int j_end, int target_idx = 0, int qlen = 0, const Stats::TargetMatrix* matrix = nullptr) :
 		seq(seq),

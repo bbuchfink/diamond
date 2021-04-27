@@ -100,9 +100,9 @@ uint32_t ReferenceDictionary::get(unsigned block, size_t block_id)
 	return n;
 }
 
-void ReferenceDictionary::build_lazy_dict(DatabaseFile &db_file)
+void ReferenceDictionary::build_lazy_dict(SequenceFile &db_file)
 {
-	BitVector filter(db_file.ref_header.sequences);
+	BitVector filter(db_file.sequence_count());
 	vector<pair<unsigned, unsigned> > m;
 	const size_t dict_size = database_id_.size();
 	m.reserve(dict_size);
@@ -111,7 +111,7 @@ void ReferenceDictionary::build_lazy_dict(DatabaseFile &db_file)
 		filter.set(*i);
 		m.push_back(std::make_pair(*i, n++));
 	}
-	db_file.rewind();
+	db_file.set_seqinfo_ptr(0);
 	db_file.load_seqs(nullptr, std::numeric_limits<size_t>::max(), &ref_seqs::data_, &ref_ids::data_, false, &filter);
 	std::sort(m.begin(), m.end());
 	dict_to_lazy_dict_id_.clear();
@@ -166,7 +166,7 @@ void ReferenceDictionary::load_block(size_t query, size_t block, ReferenceDictio
 		d.name_.push_back(buf);
 	}
 	is.close();
-	std::remove(i_file.c_str());
+	// std::remove(i_file.c_str());
 }
 
 void ReferenceDictionary::restore_blocks(size_t query, size_t n_blocks) {
@@ -182,4 +182,11 @@ void ReferenceDictionary::clear_block(size_t block) {
 	database_id_.clear();
 	data_[block].clear();
 	next_ = 0;
+}
+
+void ReferenceDictionary::remove_temporary_files(size_t query, size_t n_blocks) {
+	for (size_t i = 0; i < n_blocks; ++i) {
+		const string i_file = _get_file_name(query, i);
+		std::remove(i_file.c_str());
+	}
 }

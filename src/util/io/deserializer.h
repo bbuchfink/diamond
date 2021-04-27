@@ -133,6 +133,13 @@ struct Deserializer
 		return *this;
 	}
 
+	template<typename Type1, typename Type2>
+	Deserializer& operator>>(std::pair<Type1, Type2>& p) {
+		*this >> p.first;
+		*this >> p.second;
+		return *this;
+	}
+
 	template<typename _t>
 	void read(_t &x)
 	{

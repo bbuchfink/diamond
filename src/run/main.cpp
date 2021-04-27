@@ -24,6 +24,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../cluster/cluster_registry.h"
 #include "../output/recursive_parser.h"
 #include "../util/simd.h"
+#include "../data/dmnd/dmnd.h"
 
 using std::cout;
 using std::cerr;
@@ -51,6 +52,8 @@ void get_medoids_from_tree();
 void roc();
 void merge_tsv();
 void roc_id();
+void makeindex();
+void find_shapes();
 
 void split();
 namespace Benchmark { DECL_DISPATCH(void, benchmark, ()) }
@@ -73,7 +76,7 @@ int main(int ac, const char* av[])
 			cout << Const::program_name << " version " << Const::version_string << endl;
 			break;
 		case Config::makedb:
-			make_db();
+			DatabaseFile::make_db();
 			break;
 		case Config::blastp:
 		case Config::blastx:
@@ -174,6 +177,12 @@ int main(int ac, const char* av[])
 			break;
 		case Config::rocid:
 			roc_id();
+			break;
+		case Config::makeidx:
+			makeindex();
+			break;
+		case Config::find_shapes:
+			find_shapes();
 			break;
 		default:
 			return 1;

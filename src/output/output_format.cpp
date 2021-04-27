@@ -100,17 +100,12 @@ Output_format* get_output_format()
 		throw std::runtime_error("Invalid output format: " + f[0] + "\nAllowed values: 0,5,xml,6,tab,100,daa,101,sam,102,103,paf");
 }
 
-void init_output(bool have_taxon_id_lists, bool have_taxon_nodes, bool have_taxon_scientific_names)
+void init_output()
 {
 	output_format = unique_ptr<Output_format>(get_output_format());
 	if(config.command == Config::view && (output_format->needs_taxon_id_lists || output_format->needs_taxon_nodes || output_format->needs_taxon_scientific_names))
 		throw runtime_error("Taxonomy features are not supported for the DAA format.");
-	if (output_format->needs_taxon_id_lists && !have_taxon_id_lists)
-		throw runtime_error("Output format requires taxonomy mapping information built into the database (use --taxonmap parameter for the makedb command).");
-	if (output_format->needs_taxon_nodes && !have_taxon_nodes)
-		throw runtime_error("Output format requires taxonomy nodes information built into the database (use --taxonnodes parameter for the makedb command).");
-	if (output_format->needs_taxon_scientific_names && !have_taxon_scientific_names)
-		throw runtime_error("Output format requires taxonomy names information built into the database (use --taxonnames parameter for the makedb command).");
+
 	if (*output_format == Output_format::daa && config.multiprocessing)
 		throw std::runtime_error("The DAA format is not supported in multiprocessing mode.");
 	if (*output_format == Output_format::taxon && config.toppercent == 100.0 && config.min_bit_score == 0.0)

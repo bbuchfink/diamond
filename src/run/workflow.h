@@ -40,7 +40,7 @@ struct Options {
 		db_filter(nullptr)
 	{}
 	bool self;
-	DatabaseFile *db;
+	SequenceFile *db;
 	Consumer *consumer;
 	std::list<TextInputFile> *query_file;
 	const BitVector* db_filter;

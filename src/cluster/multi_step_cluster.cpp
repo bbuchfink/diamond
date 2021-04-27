@@ -35,7 +35,7 @@ BitVector MultiStep::rep_bitset(const vector<int> &centroid, const BitVector *su
 	return r;
 }
 
-vector<int> MultiStep::cluster(DatabaseFile& db, const BitVector* filter) {
+vector<int> MultiStep::cluster(SequenceFile& db, const BitVector* filter) {
 	statistics.reset();
 	config.command = Config::blastp;
 	//config.no_self_hits = true;
@@ -44,15 +44,14 @@ vector<int> MultiStep::cluster(DatabaseFile& db, const BitVector* filter) {
 	config.output_format = { "bin" };
 	config.query_cover = 80;
 	config.subject_cover = 80;
-	config.algo = 0;
-	config.index_mode = 0;
+	config.algo = Config::Algo::DOUBLE_INDEXED;
 	config.freq_sd = 0;
 	config.max_alignments = numeric_limits<size_t>::max();
 
 	Workflow::Search::Options opt;
 	opt.db = &db;
 	opt.self = true;
-	Neighbors nb(db.ref_header.sequences);
+	Neighbors nb(db.sequence_count());
 
 	opt.consumer = &nb;
 	opt.db_filter = filter;
@@ -87,7 +86,7 @@ vector<int> MultiStep::cluster(DatabaseFile& db, const BitVector* filter) {
 
 	if (config.external) {
 		save_edges_external(nb.tempfiles, tmp_sets, components, EdgSet);
-		return cluster_sets(db.ref_header.sequences, tmp_sets);
+		return cluster_sets(db.sequence_count(), tmp_sets);
 	}
 
 	else {
@@ -235,8 +234,8 @@ void MultiStep::run() {
 	if (config.database == "")
 		throw runtime_error("Missing parameter: database file (--db/-d)");
 	config.command = Config::makedb;
-	unique_ptr<DatabaseFile> db(DatabaseFile::auto_create_from_fasta());
-	const size_t seq_count = db->ref_header.sequences;
+	unique_ptr<SequenceFile> db(SequenceFile::auto_create());
+	const size_t seq_count = db->sequence_count();
 
 	BitVector current_reps;
 	BitVector previous_reps;
@@ -246,11 +245,7 @@ void MultiStep::run() {
 	
 	for (size_t i = 0; i < config.cluster_steps.size(); i++) {
 		
-		if (config.sens_map.find(config.cluster_steps[i]) == config.sens_map.end()) {
-			throw std::runtime_error("Invalid value for parameter --cluster-steps");
-		}
-			
-		config.sensitivity = config.sens_map[config.cluster_steps[i]];
+		config.sensitivity = from_string<Sensitivity>(config.cluster_steps[i]);
 		current_centroids = cluster(*db, i==0 ? nullptr: &previous_reps);
 		steps(current_reps, previous_reps, current_centroids, previous_centroids, i);
 	}
@@ -259,7 +254,7 @@ void MultiStep::run() {
 	SequenceSet* rep_seqs;
 	String_set<char, 0>* rep_ids;
 	vector<unsigned> rep_database_id, rep_block_id(seq_count);
-	db->rewind();
+	db->set_seqinfo_ptr(0);
 	db->load_seqs(&rep_database_id, (size_t)1e11, &rep_seqs, &rep_ids, true, &previous_reps);
 	for (size_t i = 0; i < rep_database_id.size(); ++i)
 		rep_block_id[rep_database_id[i]] = (unsigned)i;
@@ -267,12 +262,12 @@ void MultiStep::run() {
 	ostream* out = config.output_file.empty() ? &cout : new ofstream(config.output_file.c_str());
 	vector<Letter> seq;
 	string id;
-	db->seek_direct();
+	db->init_seq_access();
 	Hsp hsp;
 	out->precision(3);
 
-	for (int i = 0; i < (int)db->ref_header.sequences; ++i) {
-		db->read_seq(id, seq);
+	for (int i = 0; i < (int)db->sequence_count(); ++i) {
+		db->read_seq(seq, id);
 		const unsigned r = rep_block_id[previous_centroids[i]];
 		(*out) << blast_id(id) << '\t'
 			<< blast_id((*rep_ids)[r]) << '\n';
