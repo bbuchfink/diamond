@@ -55,8 +55,8 @@ private:
 	void get_gamma(Eigen::MatrixXf* in, Eigen::MatrixXf* out, float r);
 	void markov_process(Eigen::SparseMatrix<float>* m, float inflation, float expansion, uint32_t max_iter, function<uint32_t()> getThreads);
 	void markov_process(Eigen::MatrixXf* m, float inflation, float expansion, uint32_t max_iter);
-	Eigen::SparseMatrix<float> get_sparse_matrix(vector<uint32_t>* order, vector<Eigen::Triplet<float>>* m);
-	Eigen::MatrixXf get_dense_matrix(vector<uint32_t>* order, vector<Eigen::Triplet<float>>* m);
+	Eigen::SparseMatrix<float> get_sparse_matrix_and_clear(vector<uint32_t>* order, vector<Eigen::Triplet<float>>* m, bool symmetric);
+	Eigen::MatrixXf get_dense_matrix_and_clear(vector<uint32_t>* order, vector<Eigen::Triplet<float>>* m, bool symmetric);
 	atomic_ullong failed_to_converge = {0};
 	atomic_ullong sparse_create_time = {0};
 	atomic_ullong dense_create_time = {0};
