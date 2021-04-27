@@ -17,6 +17,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
+#include <algorithm>
 #include <numeric>
 #include <iomanip>
 #include "mcl.h"
@@ -366,10 +367,11 @@ void MCL::print_stats(uint64_t nElements, uint32_t nComponents, uint32_t nCompon
 }
 
 SparseMatrixStream<float>* get_graph_handle(SequenceFile& db){
+	const bool symmetric = !config.cluster_mcl_nonsymmetric;
 	if(config.cluster_restart){
 		task_timer timer;
 		timer.go("Reading cluster checkpoint file");
-		SparseMatrixStream<float>* ms = SparseMatrixStream<float>::fromFile(config.cluster_graph_file, config.chunk_size);
+		SparseMatrixStream<float>* ms = SparseMatrixStream<float>::fromFile(symmetric, config.cluster_graph_file, config.chunk_size);
 		timer.finish();
 		ms->done();
 		return ms;
@@ -378,13 +380,13 @@ SparseMatrixStream<float>* get_graph_handle(SequenceFile& db){
 	config.no_self_hits = false;
 	string format = config.cluster_similarity;
 	if(format.empty()){
-		format = "qcovhsp*scovhsp*pident";
+		format = "qcovhsp/100*scovhsp/100*pident/100";
 	}
 	config.output_format = {"clus", format};
 	Workflow::Search::Options opt;
 	opt.db = &db;
 	opt.self = true;
-	SparseMatrixStream<float>* ms = new SparseMatrixStream<float>(db.sequence_count(), config.cluster_graph_file);
+	SparseMatrixStream<float>* ms = new SparseMatrixStream<float>(symmetric, db.sequence_count(), config.cluster_graph_file);
 	if(config.chunk_size > 0){
 		ms->set_max_mem(config.chunk_size);
 	}
@@ -577,7 +579,7 @@ void MCL::run(){
 	const uint32_t max_iter = config.cluster_mcl_max_iter;
 	uint32_t max_job_size = 0;
 	for(uint32_t i=0; i<chunk_size; i++) max_job_size+=indices[sort_order[i]].size();
-	const bool symmetrize = config.cluster_mcl_symmetrize;
+	const bool symmetrize = config.cluster_mcl_nonsymmetric;
 	
 	// Collect some stats on the way
 	uint32_t* jobs_per_thread = new uint32_t[nThreads];
@@ -610,6 +612,7 @@ void MCL::run(){
 			for(uint32_t chunk_counter = my_counter; chunk_counter<upper_limit; chunk_counter++){
 				n_jobs_done++;
 				vector<uint32_t>* order = loc_i[ichunk];
+
 				if(order->size() > 1){
 					vector<Eigen::Triplet<float>>* m = &loc_c[ichunk];
 					assert(m->size() <= order->size() * order->size());
@@ -653,7 +656,7 @@ void MCL::run(){
 						LazyDisjointIntegralSet<uint32_t> disjointSet(m_dense.cols());
 						for (uint32_t icol=0; icol<m_dense.cols(); ++icol){
 							for (uint32_t irow=0; irow<m_dense.rows(); ++irow){
-								if( abs(m_dense(irow, icol)) > numeric_limits<float>::epsilon()){
+								if(abs(m_dense(irow, icol)) > numeric_limits<float>::epsilon()){
 									disjointSet.merge(irow, icol);
 									if(irow == icol){
 										attractors.emplace(irow);

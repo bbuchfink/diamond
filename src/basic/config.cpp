@@ -252,7 +252,7 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("mcl-chunk-size", 0, "MCL chunk size per thread (default=100)", cluster_mcl_chunk_size, (uint32_t) 1)
 		("mcl-max-iterations", 0, "MCL maximum iterations (default=100)", cluster_mcl_max_iter, (uint32_t) 100)
 		("mcl-sparsity-switch", 0, "MCL switch to sparse matrix computation (default=0.8) ", cluster_mcl_sparsity_switch, 0.8)
-		("mcl-symmetrize", 0, "Symmetrize the transistion matrix before clustering (A+A^T)", cluster_mcl_symmetrize)
+		("mcl-nonsymmetric", 0, "Do not symmetrize the transistion matrix before clustering", cluster_mcl_nonsymmetric)
 		("mcl-stats", 0, "Some stats about the connected components in MCL", cluster_mcl_stats);
 
 	Options_group aligner("Aligner options");
