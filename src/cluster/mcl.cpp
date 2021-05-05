@@ -17,6 +17,8 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
+#include <algorithm>
+#include <memory>
 #include <numeric>
 #include <iomanip>
 #include "mcl.h"
@@ -366,10 +368,11 @@ void MCL::print_stats(uint64_t nElements, uint32_t nComponents, uint32_t nCompon
 }
 
 SparseMatrixStream<float>* get_graph_handle(SequenceFile& db){
+	const bool symmetric = !config.cluster_mcl_nonsymmetric;
 	if(config.cluster_restart){
 		task_timer timer;
 		timer.go("Reading cluster checkpoint file");
-		SparseMatrixStream<float>* ms = SparseMatrixStream<float>::fromFile(config.cluster_graph_file, config.chunk_size);
+		SparseMatrixStream<float>* ms = SparseMatrixStream<float>::fromFile(symmetric, config.cluster_graph_file, config.chunk_size);
 		timer.finish();
 		ms->done();
 		return ms;
@@ -378,13 +381,15 @@ SparseMatrixStream<float>* get_graph_handle(SequenceFile& db){
 	config.no_self_hits = false;
 	string format = config.cluster_similarity;
 	if(format.empty()){
-		format = "qcovhsp*scovhsp*pident";
+		format = "qcovhsp/100*scovhsp/100*pident/100";
 	}
 	config.output_format = {"clus", format};
 	Workflow::Search::Options opt;
 	opt.db = &db;
 	opt.self = true;
-	SparseMatrixStream<float>* ms = new SparseMatrixStream<float>(db.sequence_count(), config.cluster_graph_file);
+
+	SparseMatrixStream<float>* ms = new SparseMatrixStream<float>(symmetric, db.sequence_count(), config.cluster_graph_file);
+
 	if(config.chunk_size > 0){
 		ms->set_max_mem(config.chunk_size);
 	}
@@ -393,24 +398,28 @@ SparseMatrixStream<float>* get_graph_handle(SequenceFile& db){
 	ms->done();
 	return ms;
 }
-Eigen::SparseMatrix<float> MCL::get_sparse_matrix(vector<uint32_t>* order, vector<Eigen::Triplet<float>>* m, bool symmetrize){
+Eigen::SparseMatrix<float> MCL::get_sparse_matrix_and_clear(vector<uint32_t>* order, vector<Eigen::Triplet<float>>* m, bool symmetric){
 	Eigen::SparseMatrix<float> m_sparse(order->size(), order->size());
-	m_sparse.setFromTriplets(m->begin(), m->end());
-	if(symmetrize){
-		Eigen::SparseMatrix<float> m_tmp = m_sparse.transpose();
-		return m_sparse + m_tmp;
+	if(symmetric){
+		uint64_t oSize = m->size();
+		for(uint64_t i = 0; i<oSize; i++){
+			Eigen::Triplet<float>& t = m->at(i);
+			if(t.col() != t.row()){ 
+				m->emplace_back(t.col(), t.row(), t.value());
+			}
+		}
 	}
+	m_sparse.setFromTriplets(m->begin(), m->end());
+	m->clear();
 	return m_sparse;
 }
-Eigen::MatrixXf MCL::get_dense_matrix(vector<uint32_t>* order, vector<Eigen::Triplet<float>>* m, bool symmetrize){
+Eigen::MatrixXf MCL::get_dense_matrix_and_clear(vector<uint32_t>* order, vector<Eigen::Triplet<float>>* m, bool symmetric){
 	Eigen::MatrixXf m_dense = Eigen::MatrixXf::Zero(order->size(), order->size());
 	for(Eigen::Triplet<float> const & t : *m){
 		m_dense(t.row(), t.col()) = t.value();
+		if(symmetric && t.col() != t.row()) m_dense(t.col(), t.row()) = t.value();
 	}
-	if(symmetrize){
-		Eigen::MatrixXf m_tmp = m_dense.transpose();
-		return m_dense + m_tmp;
-	}
+	m->clear();
 	return m_dense;
 }
 
@@ -577,7 +586,7 @@ void MCL::run(){
 	const uint32_t max_iter = config.cluster_mcl_max_iter;
 	uint32_t max_job_size = 0;
 	for(uint32_t i=0; i<chunk_size; i++) max_job_size+=indices[sort_order[i]].size();
-	const bool symmetrize = config.cluster_mcl_symmetrize;
+	const bool symmetric = !config.cluster_mcl_nonsymmetric;
 	
 	// Collect some stats on the way
 	uint32_t* jobs_per_thread = new uint32_t[nThreads];
@@ -610,6 +619,7 @@ void MCL::run(){
 			for(uint32_t chunk_counter = my_counter; chunk_counter<upper_limit; chunk_counter++){
 				n_jobs_done++;
 				vector<uint32_t>* order = loc_i[ichunk];
+
 				if(order->size() > 1){
 					vector<Eigen::Triplet<float>>* m = &loc_c[ichunk];
 					assert(m->size() <= order->size() * order->size());
@@ -622,7 +632,7 @@ void MCL::run(){
 					//TODO: a size limit for the dense matrix should control this as well
 					if(sparsity >= config.cluster_mcl_sparsity_switch && expansion - (int) expansion == 0){ 
 						n_sparse++;
-						Eigen::SparseMatrix<float> m_sparse = get_sparse_matrix(order, m , symmetrize);
+						Eigen::SparseMatrix<float> m_sparse = get_sparse_matrix_and_clear(order, m, symmetric);
 						sparse_create_time += chrono::duration_cast<chrono::milliseconds>(chrono::high_resolution_clock::now() - t).count();
 						auto getThreads = [&threads_done, &nThreads, &exessThreads, &iThr](){
 							uint32_t td=threads_done.load();
@@ -646,14 +656,14 @@ void MCL::run(){
 					}
 					else{
 						n_dense++;
-						Eigen::MatrixXf m_dense = get_dense_matrix(order, m, symmetrize);
+						Eigen::MatrixXf m_dense = get_dense_matrix_and_clear(order, m, symmetric);
 						dense_create_time += chrono::duration_cast<chrono::milliseconds>(chrono::high_resolution_clock::now() - t).count();
 						markov_process(&m_dense, inflation, expansion, max_iter);
 						chrono::high_resolution_clock::time_point t = chrono::high_resolution_clock::now();
 						LazyDisjointIntegralSet<uint32_t> disjointSet(m_dense.cols());
 						for (uint32_t icol=0; icol<m_dense.cols(); ++icol){
 							for (uint32_t irow=0; irow<m_dense.rows(); ++irow){
-								if( abs(m_dense(irow, icol)) > numeric_limits<float>::epsilon()){
+								if(abs(m_dense(irow, icol)) > numeric_limits<float>::epsilon()){
 									disjointSet.merge(irow, icol);
 									if(irow == icol){
 										attractors.emplace(irow);

@@ -294,7 +294,7 @@ struct Config
 	uint32_t cluster_mcl_chunk_size;
 	uint32_t cluster_mcl_max_iter;
 	bool cluster_mcl_stats;
-	bool cluster_mcl_symmetrize;
+	bool cluster_mcl_nonsymmetric;
 
 	enum { query_parallel = 0, target_parallel = 1 };
 	unsigned load_balancing;

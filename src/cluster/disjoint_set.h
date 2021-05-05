@@ -184,6 +184,25 @@ public:
 		}
 		nodes.clear();
 	}
+
+	virtual vector<unordered_set<T>> getListOfSets() {
+		unordered_map<const T*, uint32_t> map;
+		uint32_t index = 0;
+		for(T i = 0; i < nodes.size(); i++){
+			const T* r = this->getRoot(get(i))->getValue();
+			if (map.find(r) == map.end()) {
+				map.emplace(r, index++);
+			}
+		}
+		vector<unordered_set<T>> listOfSets(map.size());
+		for (Node<T>* n : *(getNodes())) {
+			if (n == nullptr) {
+				throw new runtime_error("In an integral set, we expect all elements to be initialized, see loop beofre.\n");
+			}
+			listOfSets[map[this->getRoot(n)->getValue()]].insert(*(n->getValue()));
+		}
+		return listOfSets;
+	}
 };
 
 template<typename T> class LazyDisjointTypeSet : public LazyDisjointSet<T> {

@@ -35,19 +35,26 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 namespace Workflow { namespace Cluster{
 template <typename T>
 class SparseMatrixStream : public Consumer {
-	struct CoordinateCmp {
-		bool operator()(const Eigen::Triplet<T>& lhs, const Eigen::Triplet<T>& rhs) const { 
-			return lhs.row() == rhs.row() ? lhs.col() < rhs.col() : lhs.row() < rhs.row() ; 
-		}
-	};
 	size_t n;
 	uint32_t nThreads;
 	const static size_t unit_size = 2*sizeof(uint32_t)+sizeof(double);
 	const static unsigned long long read_buffer_size = 5ULL*1024*1024; // per thread 5MB buffer allowed 
+	const bool symmetric;
 	bool in_memory, is_tmp_file, warned;
 	float max_size;
 	char* buffer;
-	set<Eigen::Triplet<T>, CoordinateCmp> data;
+	static bool cmp(const Eigen::Triplet<T>& lhs, const Eigen::Triplet<T>& rhs) { 
+		return lhs.row() == rhs.row() ? lhs.col() < rhs.col() : lhs.row() < rhs.row() ; 
+	};
+	static bool symmcmp(const Eigen::Triplet<T>& lhs, const Eigen::Triplet<T>& rhs) { 
+		auto maxL = max(lhs.row(), lhs.col());
+		auto minL = min(lhs.row(), lhs.col());
+		auto maxR = max(rhs.row(), rhs.col());
+		auto minR = min(rhs.row(), rhs.col());
+		return maxL == maxR ? minL < minR : maxL < maxR ; 
+	};
+	set<Eigen::Triplet<T>, bool(*)(const Eigen::Triplet<T>& lhs,const Eigen::Triplet<T>& rhs)>* data;
+	//set<Eigen::Triplet<T>, decltype(cmp)> data;
 	LazyDisjointSet<uint32_t>* disjointSet;
 	string file_name;
 	ofstream* os;
@@ -62,7 +69,7 @@ class SparseMatrixStream : public Consumer {
 
 	vector<vector<Eigen::Triplet<T>>> split_data(map<uint32_t, uint32_t>& indexToSetId, size_t size){
 		vector<vector<Eigen::Triplet<T>>> split(size);
-		for(Eigen::Triplet<T> t : data){
+		for(Eigen::Triplet<T> t : *data){
 			uint32_t iset = indexToSetId[t.row()];
 			assert( iset == indexToSetId[t.col()]);
 			split[iset].emplace_back(t.row(), t.col(), t.value());
@@ -71,7 +78,7 @@ class SparseMatrixStream : public Consumer {
 	}
 
 	void dump(){
-		if(os && data.size() > 0){
+		if(os && data->size() > 0){
 			this->in_memory = false;
 			vector<vector<uint32_t>> indices = get_indices();
 			map<uint32_t, uint32_t> indexToSetId;
@@ -116,17 +123,17 @@ class SparseMatrixStream : public Consumer {
 				}
 				ptr += sizeof(double);
 				Eigen::Triplet<T> t(query, subject, value);
-				auto it = data.find(t);
-				if(it == data.end()){
-					data.emplace(move(t));
+				auto it = data->find(t);
+				if(it == data->end()){
+					data->emplace(move(t));
 					disjointSet->merge(query, subject);
 				}
 				else if (t.value() > it->value()){
-					data.emplace_hint(data.erase(it), move(t));
+					data->emplace_hint(data->erase(it), move(t));
 				}
-				if(os && (data.size()*unit_size*1.0)/(1024ULL*1024*1024) > max_size){
+				if(os && (data->size()*unit_size*1.0)/(1024ULL*1024*1024) > max_size){
 					dump();
-					data.clear();
+					data->clear();
 				}
 			}
 		}
@@ -188,37 +195,24 @@ class SparseMatrixStream : public Consumer {
 		return components;
 	}
 
-	SparseMatrixStream(size_t n){
-		this->n = n;
+	SparseMatrixStream(const bool symmetric, size_t n): n(n), nThreads(0), symmetric(symmetric), in_memory(false), is_tmp_file(false), warned(false), max_size(2.0), buffer(nullptr), os(nullptr){
+		bool(*function_pointer)(const Eigen::Triplet<T>& lhs, const Eigen::Triplet<T>& rhs) = symmetric ? symmcmp : cmp;
+		data = new std::set<Eigen::Triplet<T>, bool(*)(const Eigen::Triplet<T>& lhs,const Eigen::Triplet<T>& rhs)>(function_pointer);
 		disjointSet = new LazyDisjointIntegralSet<uint32_t>(n); 
-		this->in_memory = false;
-		this->max_size = 2.0; // 2 GB default flush
-		this->is_tmp_file = false;
-		this->warned = false;
-		this->buffer = nullptr;
-		os = nullptr;
-		nThreads = 0;
 	}
 
-	SparseMatrixStream(unordered_set<uint32_t>* set){
+	SparseMatrixStream(const bool symmetric, unordered_set<uint32_t>* set) :  nThreads(0), symmetric(symmetric), in_memory(true), is_tmp_file(false), warned(true), max_size(2.0), buffer(nullptr), os(nullptr){
+		bool(*function_pointer)(const Eigen::Triplet<T>& lhs, const Eigen::Triplet<T>& rhs) = symmetric ? symmcmp : cmp;
+		data = new std::set<Eigen::Triplet<T>, bool(*)(const Eigen::Triplet<T>& lhs,const Eigen::Triplet<T>& rhs)>(function_pointer);
 		this->n = set->size();
 		disjointSet = new LazyDisjointTypeSet<uint32_t>(set); 
-		this->max_size = 2.0; // 2 GB default flush
-		this->in_memory = true;
-		this->is_tmp_file = false;
-		this->warned = true;
-		this->buffer = nullptr;
-		os = nullptr;
-		nThreads = 0;
 	}
 
 public:
-	SparseMatrixStream(size_t n, string graph_file_name){
-		this->n = n;
+	SparseMatrixStream(const bool symmetric, size_t n, string graph_file_name) : n(n), nThreads(0), symmetric(symmetric), in_memory(false), warned(false), max_size(2.0), buffer(nullptr) {
+		bool(*function_pointer)(const Eigen::Triplet<T>& lhs, const Eigen::Triplet<T>& rhs) = symmetric ? symmcmp : cmp;
+		data = new std::set<Eigen::Triplet<T>, bool(*)(const Eigen::Triplet<T>& lhs,const Eigen::Triplet<T>& rhs)>(function_pointer);
 		disjointSet = new LazyDisjointIntegralSet<uint32_t>(n); 
-		this->max_size = 2.0; // 2 GB default flush
-		this->in_memory = false;
-		this->buffer = nullptr;
 		if(graph_file_name.empty()){
 			this->is_tmp_file = true;
 			file_name = "tmp.bin";
@@ -227,9 +221,7 @@ public:
 			this->is_tmp_file = false;
 			file_name = graph_file_name;
 		}
-		this->warned = false;
 		os = getStream(file_name);
-		nThreads = 0;
 	}
 
 	~SparseMatrixStream(){
@@ -246,7 +238,8 @@ public:
 	void done(){
 		if(!in_memory){
 			dump();
-			data.clear();
+			data->clear();
+			delete data;
 		}
 		if(os){
 			os->close();
@@ -278,7 +271,7 @@ public:
 		}
 	}
 
-	static SparseMatrixStream<T>* fromFile(string graph_file_name, float max_size){
+	static SparseMatrixStream<T>* fromFile(bool read_symmetric, string graph_file_name, float max_size){
 		ifstream in(graph_file_name, ios::in | ios::binary);
 		if(!in){
 			throw runtime_error("Cannot read the graph file");
@@ -290,7 +283,7 @@ public:
 		if(indexversion != 0){
 			throw runtime_error("This file cannot be read");
 		}
-		SparseMatrixStream* sms = new SparseMatrixStream<T>(n);
+		SparseMatrixStream* sms = new SparseMatrixStream<T>(read_symmetric, n);
 		if(max_size>0) sms->set_max_mem(max_size);
 		char* local_buffer = new char[read_buffer_size];
 		while(in.good()){
@@ -304,7 +297,7 @@ public:
 			for(uint32_t ichunk = 0; ichunk < ceil(block_size/(1.0 * read_buffer_size)); ichunk++){
 				const unsigned long long bytes = min(read_buffer_size - (read_buffer_size % unit_size), block_size - bytes_read);
 				in.read(local_buffer, bytes);
-				if((sms->data.size()*unit_size*1.0)/(1024ULL*1024*1024) < sms->max_size){
+				if((sms->data->size()*unit_size*1.0)/(1024ULL*1024*1024) < sms->max_size){
 					sms->consume(local_buffer, bytes);
 				}
 				else{
@@ -314,8 +307,8 @@ public:
 			}
 		}
 		in.close();
-		if((sms->data.size()*unit_size*1.0)/(1024ULL*1024*1024) >= sms->max_size){
-			sms->data.clear();
+		if((sms->data->size()*unit_size*1.0)/(1024ULL*1024*1024) >= sms->max_size){
+			sms->data->clear();
 			sms->in_memory = false;
 		}
 		delete[] local_buffer;
@@ -349,7 +342,7 @@ public:
 				set.insert(idxs->begin(), idxs->end());
 			}
 
-			SparseMatrixStream sms(&set);
+			SparseMatrixStream sms(this->symmetric, &set);
 			while(in.good()){
 				uint32_t first_component;
 				in.read((char*) &first_component, sizeof(uint32_t));
@@ -383,7 +376,7 @@ public:
 		return indices;
 	}
 	uint64_t getNumberOfElements(){
-		return data.size();
+		return data->size();
 	}
 };
 }}
