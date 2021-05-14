@@ -532,6 +532,10 @@ void master_thread(SequenceFile *db_file, task_timer &total_timer, Metadata &met
 				break;
 
 		timer.finish();
+
+		if ((config.mp_query_chunk >= 0) && (current_query_chunk != (unsigned)config.mp_query_chunk))
+			continue;
+
 		query_seqs::data_->print_stats();
 
 		if (current_query_chunk == 0 && *output_format != Output_format::daa)
