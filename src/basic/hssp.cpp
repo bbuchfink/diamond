@@ -1,6 +1,6 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2020 Max Planck Society for the Advancement of Science e.V.
+Copyright (C) 2013-2021 Max Planck Society for the Advancement of Science e.V.
                         Benjamin Buchfink
                         Eberhard Karls Universitaet Tuebingen
 						
@@ -24,6 +24,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../output/output.h"
 #include "../output/output_format.h"
 
+using std::list;
+
 std::pair<int, int> Hsp::diagonal_bounds() const
 {
 	int d0 = std::numeric_limits<int>::max(), d1 = std::numeric_limits<int>::min();
@@ -43,7 +45,7 @@ bool Hsp::is_weakly_enveloped(const Hsp &j) const
 		&& query_range.overlap_factor(j.query_range) >= overlap_factor;
 }
 
-Hsp_context& Hsp_context::parse()
+HspContext& HspContext::parse()
 {
 	if (!(output_format->hsp_values & Output::TRANSCRIPT) && config.command != Config::view) {
 		hsp_.query_source_range = TranslatedPosition::absolute_interval(

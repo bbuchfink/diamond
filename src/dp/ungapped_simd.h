@@ -16,9 +16,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#ifndef UNGAPPED_SIMD_H_
-#define UNGAPPED_SIMD_H_
-
+#pragma once
 #include "../util/simd.h"
 #include "../basic/value.h"
 
@@ -28,5 +26,3 @@ DECL_DISPATCH(void, window_ungapped, (const Letter* query, const Letter** subjec
 DECL_DISPATCH(void, window_ungapped_best, (const Letter* query, const Letter** subjects, int subject_count, int window, int* out))
 
 }
-
-#endif

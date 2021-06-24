@@ -17,14 +17,15 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #include "output_format.h"
+#include "../util/util.h"
 
-void Pairwise_format::print_match(const Hsp_context& r, const Metadata &metadata, TextBuffer &out)
+void Pairwise_format::print_match(const HspContext& r, const Search::Config& metadata, TextBuffer &out)
 {
 	static const unsigned width = 60;
 	const int dna_len = (int)r.query.source().length();
 	const Strand strand = r.frame() < 3 ? FORWARD : REVERSE;
 	out << '>';
-	Output_format::print_title(out, r.subject_name, true, true, " ");
+	Output_format::print_title(out, r.target_title, true, true, " ");
 	out << "\nLength=" << r.subject_len << "\n\n";
 	out << " Score = " << r.bit_score() << " bits (" << r.score() << "),  Expect = ";
 	out.print_e(r.evalue());
@@ -36,7 +37,7 @@ void Pairwise_format::print_match(const Hsp_context& r, const Metadata &metadata
 	out << '\n';
 	const unsigned digits = (unsigned)std::max(ceil(log10(r.subject_range().end_)), ceil(log10(r.query_source_range().end_)));
 
-	Hsp_context::Iterator qi = r.begin(), mi = r.begin(), si = r.begin();
+	HspContext::Iterator qi = r.begin(), mi = r.begin(), si = r.begin();
 	while (qi.good()) {
 		out << "Query  ";
 		out.print(qi.query_pos.absolute(dna_len) + 1, digits);
@@ -69,11 +70,11 @@ void Pairwise_format::print_footer(Consumer &out) const
 
 }
 
-void Pairwise_format::print_query_epilog(TextBuffer &out, const char *query_title, bool unaligned, const Parameters &params) const
+void Pairwise_format::print_query_epilog(TextBuffer &out, const char *query_title, bool unaligned, const Search::Config &params) const
 {
 }
 
-void Pairwise_format::print_query_intro(size_t query_num, const char *query_name, unsigned query_len, TextBuffer &out, bool unaligned) const
+void Pairwise_format::print_query_intro(size_t query_num, const char *query_name, unsigned query_len, TextBuffer &out, bool unaligned, const Search::Config& cfg) const
 {
 	out << "Query= " << query_name << "\n\nLength=" << query_len << "\n\n";
 	if (unaligned) {

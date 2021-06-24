@@ -1,7 +1,8 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2016-2020 Max Planck Society for the Advancement of Science e.V.
+Copyright (C) 2013-2021 Max Planck Society for the Advancement of Science e.V.
                         Benjamin Buchfink
+                        Eberhard Karls Universitaet Tuebingen
 						
 Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
 
@@ -20,12 +21,21 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #pragma once
-#include <stdint.h>
-#include "../util/scores/cutoff_table.h"
+#include "../output.h"
+#include "daa_file.h"
+#include "../data/sequence_file.h"
 
-struct Parameters
-{
-	const uint64_t db_seqs, db_letters, ref_blocks;
-	const Util::Scores::CutoffTable cutoff_gapped1, cutoff_gapped2;
-	const Util::Scores::CutoffTable2D cutoff_gapped1_new, cutoff_gapped2_new;
-};
+void init_daa(OutputFile& f);
+
+size_t write_daa_query_record(TextBuffer& buf, const char* query_name, const Sequence& query);
+
+void finish_daa_query_record(TextBuffer& buf, size_t seek_pos);
+
+void write_daa_record(TextBuffer& buf, const IntermediateRecord& r);
+
+void write_daa_record(TextBuffer& buf, const Hsp& match, uint32_t subject_id);
+
+void finish_daa(OutputFile& f, const SequenceFile& db);
+
+void finish_daa(OutputFile& f, DAA_file& daa_in);
+

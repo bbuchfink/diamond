@@ -28,24 +28,27 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <tuple>
 #include <iterator>
 #include <atomic>
-#include "../basic/config.h"
 #include "io/temp_file.h"
 #include "io/input_file.h"
 #include "log_stream.h"
 #include "../util/ptr_vector.h"
 #include "io/async_file.h"
 #include "io/input_stream_buffer.h"
+#include "text_buffer.h"
+#include "io/serialize.h"
+#include "data_structures/writer.h"
 
-template<typename _t>
-struct Async_buffer
+template<typename T>
+struct AsyncBuffer
 {
 
-	typedef std::vector<_t> Vector;
+	typedef std::vector<T> Vector;
 
-	Async_buffer(size_t input_count, const std::string &tmpdir, unsigned bins) :
+	AsyncBuffer(size_t input_count, const std::string &tmpdir, unsigned bins, const SerializerTraits<T>& traits) :
 		bins_(bins),
 		bin_size_((input_count + bins_ - 1) / bins_),
 		input_count_(input_count),
+		traits_(traits),
 		bins_processed_(0),
 		total_disk_size_(0)
 	{
@@ -57,7 +60,7 @@ struct Async_buffer
 		}
 	}
 
-	~Async_buffer() {
+	~AsyncBuffer() {
 		delete[] count_;
 	}
 
@@ -71,32 +74,38 @@ struct Async_buffer
 		return std::min((bin + 1)*bin_size_, input_count_);
 	}
 
-	struct Iterator
+	struct Iterator : public Writer<T>
 	{
-		Iterator(Async_buffer &parent, size_t thread_num) :
+		Iterator(AsyncBuffer &parent, size_t thread_num) :
 			buffer_(parent.bins()),
 			count_(parent.bins(), 0),
 			parent_(parent)
 		{
+			ser_.reserve(parent.bins_);
 			for (unsigned i = 0; i < parent.bins_; ++i) {
+				ser_.emplace_back(buffer_[i], parent.traits_);
 				out_.push_back(&parent.tmp_file_[i]);
 			}
 		}
-		void push(unsigned id, const char *data, size_t size, size_t count)
+		virtual Iterator& operator=(const T& x) override
 		{
-			const unsigned bin = id / parent_.bin_size_;
+			const unsigned bin = ser_.front().traits.key(x) / parent_.bin_size_;
+			if (SerializerTraits<T>::is_sentry(x)) {
+				if (buffer_[bin].size() >= buffer_size)
+					flush(bin);
+			}
+			else
+				++count_[bin];
 			assert(bin < parent_.bins());
-			buffer_[bin].insert(buffer_[bin].end(), data, data + size);
-			count_[bin] += count;
-			if (buffer_[bin].size() >= buffer_size)
-				flush(bin);
+			ser_[bin] << x;
+			return *this;
 		}
 		void flush(unsigned bin)
 		{
 			out_[bin]->write(buffer_[bin].data(), buffer_[bin].size());
 			buffer_[bin].clear();
 		}
-		~Iterator()
+		virtual ~Iterator()
 		{
 			for (unsigned bin = 0; bin < parent_.bins_; ++bin) {
 				flush(bin);
@@ -105,14 +114,15 @@ struct Async_buffer
 		}
 	private:
 		enum { buffer_size = 65536 };
-		std::vector<std::vector<char>> buffer_;
+		std::vector<TextBuffer> buffer_;
+		std::vector<TypeSerializer<T>> ser_;
 		std::vector<size_t> count_;
 		std::vector<AsyncFile*> out_;
-		Async_buffer &parent_;
+		AsyncBuffer &parent_;
 	};
 
 	void load(size_t max_size) {
-		auto worker = [&](size_t end) {
+		auto worker = [this](size_t end) {
 			for (; bins_processed_ < end; ++bins_processed_)
 				load_bin(*data_next_, bins_processed_);
 		};
@@ -121,26 +131,26 @@ struct Async_buffer
 			return;
 		}
 		size_t size = count_[bins_processed_], end = bins_processed_ + 1, current_size, disk_size = tmp_file_[bins_processed_].tell();
-		while (end < bins_ && (size + (current_size = count_[end])) * sizeof(_t) < max_size) {
+		while (end < bins_ && (size + (current_size = count_[end])) * sizeof(T) < max_size) {
 			size += current_size;
 			disk_size += tmp_file_[end].tell();
 			++end;
 		}
-		log_stream << "Async_buffer.load() " << size << "(" << (double)size * sizeof(_t) / (1 << 30) << " GB, " << (double)disk_size / (1 << 30) << " GB on disk)" << std::endl;
+		log_stream << "Async_buffer.load() " << size << "(" << (double)size * sizeof(T) / (1 << 30) << " GB, " << (double)disk_size / (1 << 30) << " GB on disk)" << std::endl;
 		total_disk_size_ += disk_size;
-		data_next_ = new std::vector<_t>;
+		data_next_ = new std::vector<T>;
 		data_next_->reserve(size);
 		input_range_next_.first = begin(bins_processed_);
 		input_range_next_.second = this->end(end - 1);
 		load_worker_ = new std::thread(worker, end);
 	}
 
-	std::tuple<std::vector<_t>*, size_t, size_t> retrieve() {
+	std::tuple<std::vector<T>*, size_t, size_t> retrieve() {
 		if (data_next_ != nullptr) {
 			load_worker_->join();
 			delete load_worker_;
 		}
-		return std::tuple<std::vector<_t>*, size_t, size_t> { data_next_, input_range_next_.first, input_range_next_.second };
+		return std::tuple<std::vector<T>*, size_t, size_t> { data_next_, input_range_next_.first, input_range_next_.second };
 	}
 
 	unsigned bins() const
@@ -154,26 +164,27 @@ struct Async_buffer
 
 private:
 
-	void load_bin(std::vector<_t> &out, size_t bin)
+	void load_bin(std::vector<T> &out, size_t bin)
 	{
 		InputFile f(tmp_file_[bin], InputStreamBuffer::ASYNC);
-		auto it = std::back_inserter(out);
-		size_t count = 0;
-		try {
-			while(true) count += _t::read(f, it);
-		} catch(EndOfStream&) {}
+		const size_t n = out.size();
+		if (count_[bin] > 0) {
+			auto it = std::back_inserter(out);
+			TypeDeserializer<T>(f, traits_) >> it;
+			if ((out.size() - n) != count_[bin])
+				throw std::runtime_error("Mismatching hit count / possibly corrupted temporary file: " + f.file_name);
+		}
 		f.close_and_delete();
-		if (count != count_[bin])
-			throw std::runtime_error("Mismatching hit count / possibly corrupted temporary file: " + f.file_name);
 	}
 
 	const unsigned bins_;
 	const size_t bin_size_, input_count_;
+	const SerializerTraits<T> traits_;
 	size_t bins_processed_, total_disk_size_;
 	PtrVector<AsyncFile> tmp_file_;
 	std::atomic_size_t *count_;
 	std::pair<size_t, size_t> input_range_next_;
-	std::vector<_t>* data_next_;
+	std::vector<T>* data_next_;
 	std::thread* load_worker_;
 
 };

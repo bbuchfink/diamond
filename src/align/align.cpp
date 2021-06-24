@@ -26,7 +26,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/queue.h"
 #include "../output/output.h"
 #include "legacy/query_mapper.h"
-#include "../util/merge_sort.h"
+#if _MSC_FULL_VER == 191627042
+#include "../util/algo/merge_sort.h"
+#endif
 #include "extend.h"
 #include "../util/algo/radix_sort.h"
 #include "target.h"
@@ -41,7 +43,7 @@ DpStat dp_stat;
 
 struct Align_fetcher
 {
-	static void init(size_t qbegin, size_t qend, hit* begin, hit* end)
+	static void init(size_t qbegin, size_t qend, Search::Hit* begin, Search::Hit* end)
 	{
 		it_ = begin;
 		end_ = end;
@@ -68,30 +70,30 @@ struct Align_fetcher
 			queue_->release();
 	}
 	size_t query;
-	hit* begin, *end;
+	Search::Hit* begin, *end;
 	bool target_parallel;
 private:	
-	static hit* it_, *end_;
+	static Search::Hit* it_, *end_;
 	static unique_ptr<Queue> queue_;
 };
 
 unique_ptr<Queue> Align_fetcher::queue_;
-hit* Align_fetcher::it_;
-hit* Align_fetcher::end_;
+Search::Hit* Align_fetcher::it_;
+Search::Hit* Align_fetcher::end_;
 
-TextBuffer* legacy_pipeline(Align_fetcher &hits, const Metadata *metadata, const Parameters *params, Statistics &stat) {
+TextBuffer* legacy_pipeline(Align_fetcher &hits, Search::Config& cfg, Statistics &stat) {
 	if (hits.end == hits.begin) {
 		TextBuffer *buf = nullptr;
 		if (!blocked_processing && *output_format != Output_format::daa && config.report_unaligned != 0) {
 			buf = new TextBuffer;
-			const char *query_title = query_ids::get()[hits.query];
-			output_format->print_query_intro(hits.query, query_title, get_source_query_len((unsigned)hits.query), *buf, true);
-			output_format->print_query_epilog(*buf, query_title, true, *params);
+			const char *query_title = cfg.query->ids()[hits.query];
+			output_format->print_query_intro(hits.query, query_title, cfg.query->source_len((unsigned)hits.query), *buf, true, cfg);
+			output_format->print_query_epilog(*buf, query_title, true, cfg);
 		}
 		return buf;
 	}
 
-	QueryMapper *mapper = new ExtensionPipeline::BandedSwipe::Pipeline(*params, hits.query, hits.begin, hits.end, dp_stat, *metadata, hits.target_parallel);
+	QueryMapper *mapper = new ExtensionPipeline::BandedSwipe::Pipeline(hits.query, hits.begin, hits.end, dp_stat, cfg, hits.target_parallel);
 
 	task_timer timer("Initializing mapper", hits.target_parallel ? 3 : UINT_MAX);
 	mapper->init();
@@ -103,9 +105,12 @@ TextBuffer* legacy_pipeline(Align_fetcher &hits, const Metadata *metadata, const
 	if (*output_format != Output_format::null) {
 		buf = new TextBuffer;
 		const bool aligned = mapper->generate_output(*buf, stat);
-		if (aligned && (!config.unaligned.empty() || !config.aligned_file.empty())) {
+		if (aligned && cfg.track_aligned_queries) {
 			query_aligned_mtx.lock();
-			query_aligned[hits.query] = true;
+			if (!query_aligned[hits.query]) {
+				query_aligned[hits.query] = true;
+				++cfg.iteration_query_aligned;
+			}
 			query_aligned_mtx.unlock();
 		}
 	}
@@ -113,65 +118,78 @@ TextBuffer* legacy_pipeline(Align_fetcher &hits, const Metadata *metadata, const
 	return buf;
 }
 
-void align_worker(size_t thread_id, const Parameters *params, const Metadata *metadata)
+void align_worker(size_t thread_id, Search::Config* cfg)
 {
-	Align_fetcher hits;
-	Statistics stat;
-	DpStat dp_stat;
-	const bool parallel = config.swipe_all && (ref_seqs::get().get_length() >= query_seqs::get().get_length());
-	while (hits.get()) {
-		if(config.frame_shift != 0) {
-			TextBuffer *buf = legacy_pipeline(hits, metadata, params, stat);
+	try {
+		Align_fetcher hits;
+		Statistics stat;
+		DpStat dp_stat;
+		const bool parallel = config.swipe_all && (cfg->target->seqs().size() >= cfg->query->seqs().size());
+		while (hits.get()) {
+			if (config.frame_shift != 0) {
+				TextBuffer* buf = legacy_pipeline(hits, *cfg, stat);
+				OutputSink::get().push(hits.query, buf);
+				hits.release();
+				continue;
+			}
+			task_timer timer;
+			vector<Extension::Match> matches = Extension::extend(hits.query, hits.begin, hits.end, *cfg, stat, hits.target_parallel || parallel ? DP::PARALLEL : 0);
+			TextBuffer* buf = blocked_processing ? Extension::generate_intermediate_output(matches, hits.query, *cfg) : Extension::generate_output(matches, hits.query, stat, *cfg);
+			if (!matches.empty() && cfg->track_aligned_queries) {
+				std::lock_guard<std::mutex> lock(query_aligned_mtx);
+				if (!query_aligned[hits.query]) {
+					query_aligned[hits.query] = true;
+					++cfg->iteration_query_aligned;
+				}
+			}
 			OutputSink::get().push(hits.query, buf);
+			if (hits.target_parallel)
+				stat.inc(Statistics::TIME_TARGET_PARALLEL, timer.microseconds());
 			hits.release();
-			continue;
+			if (config.swipe_all && !config.no_heartbeat && (hits.query % 100 == 0))
+				log_stream << "Queries = " << hits.query << std::endl;
 		}
-		task_timer timer;
-		vector<Extension::Match> matches = Extension::extend(*params, hits.query, hits.begin, hits.end, *metadata, stat, hits.target_parallel || parallel ? DP::PARALLEL : 0);
-		TextBuffer *buf = blocked_processing ? Extension::generate_intermediate_output(matches, hits.query) : Extension::generate_output(matches, hits.query, stat, *metadata, *params);
-		if (!matches.empty() && (!config.unaligned.empty() || !config.aligned_file.empty())) {
-			std::lock_guard<std::mutex> lock(query_aligned_mtx);
-			query_aligned[hits.query] = true;
-		}
-		OutputSink::get().push(hits.query, buf);
-		if (hits.target_parallel)
-			stat.inc(Statistics::TIME_TARGET_PARALLEL, timer.microseconds());
-		hits.release();
-		if (config.swipe_all && !config.no_heartbeat && (hits.query % 100 == 0))
-			log_stream << "Queries = " << hits.query << std::endl;
+		statistics += stat;
+		::dp_stat += dp_stat;
 	}
-	statistics += stat;
-	::dp_stat += dp_stat;
+	catch (std::exception& e) {
+		exit_with_error(e);
+	}
 }
 
-void align_queries(Trace_pt_buffer &trace_pts, Consumer* output_file, const Parameters &params, const Metadata &metadata)
+void align_queries(Consumer* output_file, Search::Config& cfg)
 {
-	size_t max_size = std::min(size_t(config.chunk_size*1e9 * 10 * 2) / config.lowmem / 3, config.trace_pt_fetch_size);
+	size_t max_size = std::min(size_t(config.chunk_size*1e9 * 10 * 2) / cfg.index_chunks / 3, config.trace_pt_fetch_size);
 	if (config.memory_limit != 0.0)
 		max_size = std::max(max_size, size_t(config.memory_limit * 1e9));
 	pair<size_t, size_t> query_range;
 	if (Stats::CBS::avg_matrix(config.comp_based_stats)) {
-		Extension::target_matrices.insert(Extension::target_matrices.end(), ref_seqs::get().get_length(), nullptr);
+		Extension::target_matrices.insert(Extension::target_matrices.end(), cfg.target->seqs().size(), nullptr);
 		Extension::target_matrix_count = 0;
 	}
+
+	task_timer timer(nullptr, 3);
+
+	if (!blocked_processing && !cfg.iterated())
+		cfg.db->init_random_access(current_query_chunk, 0, false);
 	
-	trace_pts.load(max_size);
+	cfg.seed_hit_buf->load(max_size);
 
 	while (true) {
-		task_timer timer("Loading trace points", 3);
-		tuple<vector<hit>*, size_t, size_t> input = trace_pts.retrieve();
+		timer.go("Loading trace points");				
+		tuple<vector<Search::Hit>*, size_t, size_t> input = cfg.seed_hit_buf->retrieve();
 		if (get<0>(input) == nullptr)
 			break;
 		statistics.inc(Statistics::TIME_LOAD_SEED_HITS, timer.microseconds());
-		vector<hit>* hit_buf = get<0>(input);
+		vector<Search::Hit>* hit_buf = get<0>(input);
 		query_range = { get<1>(input), get<2>(input) };
-		trace_pts.load(max_size);
+		cfg.seed_hit_buf->load(max_size);
 
 		timer.go("Sorting trace points");
 #if _MSC_FULL_VER == 191627042
-		radix_sort<hit, hit::Query>(hit_buf->data(), hit_buf->data() + hit_buf->size(), (uint32_t)query_range.second * align_mode.query_contexts, config.threads_);
+		radix_sort<Search::Hit, Search::Hit::Query>(hit_buf->data(), hit_buf->data() + hit_buf->size(), (uint32_t)query_range.second * align_mode.query_contexts, config.threads_);
 #else
-		ips4o::parallel::sort(hit_buf->data(), hit_buf->data() + hit_buf->size(), std::less<hit>(), config.threads_);
+		ips4o::parallel::sort(hit_buf->data(), hit_buf->data() + hit_buf->size(), std::less<Search::Hit>(), config.threads_);
 #endif
 		statistics.inc(Statistics::TIME_SORT_SEED_HITS, timer.microseconds());
 
@@ -180,12 +198,12 @@ void align_queries(Trace_pt_buffer &trace_pts, Consumer* output_file, const Para
 		OutputSink::instance = unique_ptr<OutputSink>(new OutputSink(query_range.first, output_file));
 		vector<std::thread> threads;
 		if (config.verbosity >= 3 && config.load_balancing == Config::query_parallel && !config.no_heartbeat && !config.swipe_all)
-			threads.emplace_back(heartbeat_worker, query_range.second);
+			threads.emplace_back(heartbeat_worker, query_range.second, &cfg);
 		size_t n_threads = config.threads_align == 0 ? config.threads_ : config.threads_align;
-		if (config.load_balancing == Config::target_parallel || (config.swipe_all && (ref_seqs::get().get_length() >= query_seqs::get().get_length())))
+		if (config.load_balancing == Config::target_parallel || (config.swipe_all && (cfg.target->seqs().size() >= cfg.query->seqs().size())))
 			n_threads = 1;
 		for (size_t i = 0; i < n_threads; ++i)
-			threads.emplace_back(align_worker, i, &params, &metadata);
+			threads.emplace_back(align_worker, i, &cfg);
 		for (auto &t : threads)
 			t.join();
 		statistics.inc(Statistics::TIME_EXT, timer.microseconds());
@@ -193,9 +211,12 @@ void align_queries(Trace_pt_buffer &trace_pts, Consumer* output_file, const Para
 		timer.go("Deallocating buffers");
 		delete hit_buf;
 	}
-	statistics.max(Statistics::SEARCH_TEMP_SPACE, trace_pts.total_disk_size());
+	statistics.max(Statistics::SEARCH_TEMP_SPACE, cfg.seed_hit_buf->total_disk_size());
 	for (auto i : Extension::target_matrices)
 		delete[] i;
 	Extension::target_matrices.clear();
 	statistics.inc(Statistics::MATRIX_ADJUST_COUNT, Extension::target_matrix_count);
+
+	if (!blocked_processing && !cfg.iterated())
+		cfg.db->end_random_access(false);
 }

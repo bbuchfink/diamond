@@ -25,7 +25,7 @@ struct Const
 {
 
 	enum {
-		build_version = 147,
+		build_version = 148,
 #ifdef SINGLE_THREADED
 		seedp_bits = 0,
 #else
@@ -38,7 +38,6 @@ struct Const
 
 	static const char* version_string;
 	static const char* program_name;
-	static const char* id_delimiters;
 
 };
 

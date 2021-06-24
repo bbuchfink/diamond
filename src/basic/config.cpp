@@ -50,8 +50,8 @@ using namespace std;
 const EMap<Sensitivity> EnumTraits<Sensitivity>::to_string = {
 	{ Sensitivity::FAST, "fast" },
 	{ Sensitivity::DEFAULT, "default" },
-	{ Sensitivity::SENSITIVE, "sensitive" },
 	{ Sensitivity::MID_SENSITIVE, "mid-sensitive" },
+	{ Sensitivity::SENSITIVE, "sensitive" },
 	{ Sensitivity::MORE_SENSITIVE, "more-sensitive" },
 	{ Sensitivity::VERY_SENSITIVE, "very-sensitive" },
 	{ Sensitivity::ULTRA_SENSITIVE, "ultra-sensitive" }
@@ -72,7 +72,7 @@ void print_warnings() {
 	if (config.sensitivity >= Sensitivity::SENSITIVE) {
 		if (ram >= 63) {
 			c = 1;
-			if(c < config.lowmem)
+			if(c < config.lowmem_)
 				msg << "use this parameter for better performance: -c1";
 		}
 	}
@@ -95,7 +95,7 @@ void print_warnings() {
 		else if (ram >= 31) {
 			b = 4;
 		}
-		if ((b > 2 && b > config.chunk_size) || c < config.lowmem) {
+		if ((b > 2 && b > config.chunk_size) || c < config.lowmem_) {
 			msg << "increase the block size for better performance using these parameters : -b" << b;
 			if (c != 4)
 				msg << " -c" << c;
@@ -128,6 +128,18 @@ std::string Config::single_query_file() const {
 	return query_file.empty() ? string() : query_file.front();
 }
 
+Compressor Config::compressor() const
+{
+	if (compression.empty() || compression == "0")
+		return Compressor::NONE;
+	else if (compression == "1")
+		return Compressor::ZLIB;
+	else if (compression == "zstd")
+		return Compressor::ZSTD;
+	else
+		throw std::runtime_error("Invalid compression algorithm: " + compression);
+}
+
 Config::Config(int argc, const char **argv, bool check_io)
 {
 	Command_line_parser parser;
@@ -143,13 +155,15 @@ Config::Config(int argc, const char **argv, bool check_io)
 		.add_command("makeidx", "Make database index", makeidx)
 		.add_command("roc", "", roc)
 		.add_command("benchmark", "", benchmark)
+#ifdef WITH_BLASTDB
+		.add_command("prepdb", "", prep_blast_db)
+#endif
 #ifdef EXTRA
 		.add_command("random-seqs", "", random_seqs)
 		.add_command("sort", "", sort)
 		.add_command("dbstat", "", db_stat)
 		.add_command("mask", "", mask)
 		.add_command("fastq2fasta", "", fastq2fasta)
-		.add_command("test-io", "", test_io)
 		.add_command("read-sim", "", read_sim)
 		.add_command("info", "", info)
 		.add_command("seed-stat", "", seed_stat)
@@ -168,6 +182,7 @@ Config::Config(int argc, const char **argv, bool check_io)
 		.add_command("merge-tsv", "", merge_tsv)
 		.add_command("roc-id", "", rocid)
 		.add_command("find-shapes", "", find_shapes)
+		.add_command("composition", "", composition)
 #endif
 		;
 
@@ -268,7 +283,7 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("top", 0, "report alignments within this percentage range of top alignment score (overrides --max-target-seqs)", toppercent, 100.0)
 		("max-hsps", 0, "maximum number of HSPs per target sequence to report for each query (default=1)", max_hsps, 1u)
 		("range-culling", 0, "restrict hit culling to overlapping query ranges", query_range_culling)
-		("compress", 0, "compression for output files (0=none, 1=gzip)", compression)
+		("compress", 0, "compression for output files (0=none, 1=gzip, zstd)", compression)
 		("evalue", 'e', "maximum e-value to report alignments (default=0.001)", max_evalue, 0.001)
 		("min-score", 0, "minimum bit score to report alignments (overrides e-value setting)", min_bit_score)
 		("id", 0, "minimum identity% to report an alignment", min_id)
@@ -279,8 +294,10 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("more-sensitive", 0, "enable more sensitive mode (default: fast)", mode_more_sensitive)
 		("very-sensitive", 0, "enable very sensitive mode (default: fast)", mode_very_sensitive)
 		("ultra-sensitive", 0, "enable ultra sensitive mode (default: fast)", mode_ultra_sensitive)
+		("iterate", 0, "iterated search with increasing sensitivity", iterate)
+		("global-ranking", 'g', "number of targets for global ranking", global_ranking_targets)
 		("block-size", 'b', "sequence block size in billions of letters (default=2.0)", chunk_size)
-		("index-chunks", 'c', "number of chunks for index processing (default=4)", lowmem)
+		("index-chunks", 'c', "number of chunks for index processing (default=4)", lowmem_)
 		("tmpdir", 't', "directory for temporary files", tmpdir)
 		("parallel-tmpdir", 0, "directory for temporary files used by multiprocessing", parallel_tmpdir)
 		("gapopen", 0, "gap open penalty", gap_open, -1)
@@ -305,12 +322,12 @@ Config::Config(int argc, const char **argv, bool check_io)
 	Options_group advanced("Advanced options");
 	advanced.add()
 		("algo", 0, "Seed search algorithm (0=double-indexed/1=query-indexed)", algo_str)
-		("bin", 0, "number of query bins for seed search", query_bins)
+		("bin", 0, "number of query bins for seed search", query_bins_)
 		("min-orf", 'l', "ignore translated sequences without an open reading frame of at least this length", run_len)
-		("freq-sd", 0, "number of standard deviations for ignoring frequent seeds", freq_sd, 0.0)
-		("id2", 0, "minimum number of identities for stage 1 hit", min_identities)
+		("freq-sd", 0, "number of standard deviations for ignoring frequent seeds", freq_sd_, 0.0)
+		("id2", 0, "minimum number of identities for stage 1 hit", min_identities_)
 		("xdrop", 'x', "xdrop for ungapped alignment", ungapped_xdrop, 12.3)
-		("gapped-filter-evalue", 0, "E-value threshold for gapped filter (auto)", gapped_filter_evalue, -1.0)
+		("gapped-filter-evalue", 0, "E-value threshold for gapped filter (auto)", gapped_filter_evalue_, -1.0)
 		("band", 0, "band for dynamic programming computation", padding)
 		("shapes", 's', "number of seed shapes (default=all available)", shapes)
 		("shape-mask", 0, "seed shapes", shape_mask)
@@ -333,6 +350,7 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("memory-limit", 'M', "Memory limit for extension stage in GB", memory_limit)
 		("no-unlink", 0, "Do not unlink temporary files.", no_unlink)
 		("target-indexed", 0, "Enable target-indexed mode", target_indexed)
+		("ignore-warnings", 0, "Ignore warnings", ignore_warnings)
 		("cut-bar", 0, "", cut_bar)
 		("check-multi-target", 0, "", check_multi_target)
 		("roc-file", 0, "", roc_file)
@@ -401,8 +419,6 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("d_new", 0, "", d_new, 1.0)
 		("score-estimate-factor", 0, "", score_estimate_factor, 0.0)
 		("diag-min-estimate", 0, "", diag_min_estimate, 17)
-		("qfilt", 0, "", qfilt)
-		("sfilt", 0, "", sfilt)
 		("path-cutoff", 0, "", path_cutoff, 0.92)
 		("sw", 0, "", use_smith_waterman)
 		("superblock", 0, "", superblock, 128)
@@ -450,8 +466,8 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("gapped-filter-diag-score", 0, "", gapped_filter_diag_bit_score, 12.0)
 		("gapped-filter-window", 0, "", gapped_filter_window, 200)
 		("output-hits", 0, "", output_hits)
-		("ungapped-evalue", 0, "", ungapped_evalue, -1.0)
-		("ungapped-evalue-short", 0, "", ungapped_evalue_short, -1.0)
+		("ungapped-evalue", 0, "", ungapped_evalue_, -1.0)
+		("ungapped-evalue-short", 0, "", ungapped_evalue_short_, -1.0)
 		("no-logfile", 0, "", no_logfile)
 		("no-heartbeat", 0, "", no_heartbeat)
 		("band-bin", 0, "", band_bin, 24)
@@ -471,7 +487,6 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("chaining-min-nodes", 0, "", chaining_min_nodes, (size_t)200)
 		("fast-tsv", 0, "", fast_tsv)
 		("target-parallel-verbosity", 0, "", target_parallel_verbosity, UINT_MAX)
-		("ext-targets", 0, "", global_ranking_targets)
 		("query-memory", 0, "", query_memory)
 		("memory-intervals", 0, "", memory_intervals, (size_t)2)
 		("seed-hit-density", 0, "", seedhit_density)
@@ -514,7 +529,7 @@ Config::Config(int argc, const char **argv, bool check_io)
 			frame_shift = 15;
 	}
 
-	if (global_ranking_targets > 0 && (query_range_culling || taxon_k || multiprocessing || mp_init || mp_recover || (command == blastx) || comp_based_stats >= 2 || frame_shift > 0))
+	if (global_ranking_targets > 0 && (query_range_culling || taxon_k || multiprocessing || mp_init || mp_recover || comp_based_stats >= 2 || frame_shift > 0))
 		throw std::runtime_error("Global ranking is not supported in this mode.");
 
 	if (global_ranking_targets > 0) {
@@ -576,7 +591,7 @@ Config::Config(int argc, const char **argv, bool check_io)
 				output_file = daa_file;
 			}
 			if (daa_file.length() > 0 || (output_format.size() > 0 && (output_format[0] == "daa" || output_format[0] == "100"))) {
-				if (compression != 0)
+				if (!compression.empty())
 					throw std::runtime_error("Compression is not supported for DAA format.");
 				if (!no_auto_append)
 					auto_append_extension(output_file, ".daa");
@@ -634,8 +649,10 @@ Config::Config(int argc, const char **argv, bool check_io)
 			auto_append_extension(database, ".dmnd");
 		if (command == Config::view)
 			auto_append_extension(daa_file, ".daa");
-		if (compression == 1)
+		if (compression == "1")
 			auto_append_extension(output_file, ".gz");
+		if (compression == "zstd")
+			auto_append_extension(output_file, ".zst");
 	}
 
 	if (verbosity >= 1 || command == regression_test) {
@@ -760,7 +777,7 @@ Config::Config(int argc, const char **argv, bool check_io)
 	else if (query_file.size() > 1)
 		throw std::runtime_error("--query/-q has more than one argument.");
 
-	if (target_indexed && lowmem != 1)
+	if (target_indexed && lowmem_ != 1)
 		throw std::runtime_error("--target-indexed requires -c1.");
 
 	/*log_stream << "sizeof(hit)=" << sizeof(hit) << " sizeof(packed_uint40_t)=" << sizeof(packed_uint40_t)
@@ -769,8 +786,6 @@ Config::Config(int argc, const char **argv, bool check_io)
 	if (swipe_all) {
 		algo = Algo::DOUBLE_INDEXED;
 	}
-
-	use_lazy_dict = false;
 
 	if (query_range_culling && taxon_k != 0)
 		throw std::runtime_error("--taxon-k is not supported for --range-culling mode.");

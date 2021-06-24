@@ -1,6 +1,9 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2017 Benjamin Buchfink <buchfink@gmail.com>
+Copyright (C) 2016-2021 Max Planck Society for the Advancement of Science e.V.
+                        Benjamin Buchfink
+						
+Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -15,33 +18,33 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
-
 #include <set>
 #include "output_format.h"
 #include "../data/taxonomy.h"
+#include "../util/sequence/sequence.h"
 
 using std::set;
 using std::endl;
 
-void Taxon_format::print_match(const Hsp_context &r, const Metadata &metadata, TextBuffer &out)
+void Taxon_format::print_match(const HspContext &r, const Search::Config& cfg, TextBuffer &out)
 {
-	const vector<unsigned> taxons((*metadata.taxon_list)[r.orig_subject_id]);
+	const vector<unsigned> taxons(cfg.db->taxids(r.subject_oid));
 	if (taxons.empty())
 		return;
 	evalue = std::min(evalue, r.evalue());
 	try {
 		for (vector<unsigned>::const_iterator i = taxons.begin(); i != taxons.end(); ++i)
-			taxid = metadata.taxon_nodes->get_lca(taxid, *i);
+			taxid = cfg.taxon_nodes->get_lca(taxid, *i);
 	}
 	catch (std::exception &) {
-		std::cerr << "Query=" << r.query_name << endl << "Subject=" << r.subject_name << endl;
+		std::cerr << "Query=" << r.query_title << endl << "Subject=" << r.target_title << endl;
 		throw;
 	}
 }
 
-void Taxon_format::print_query_epilog(TextBuffer &out, const char *query_title, bool unaligned, const Parameters &params) const
+void Taxon_format::print_query_epilog(TextBuffer &out, const char *query_title, bool unaligned, const Search::Config &params) const
 {
-	out.write_until(query_title, Const::id_delimiters);
+	out.write_until(query_title, Util::Seq::id_delimiters);
 	out << '\t' << taxid << '\t';
 	if (taxid != 0)
 		out.print_e(evalue);

@@ -48,11 +48,46 @@ std::vector<int16_t*> target_matrices;
 std::mutex target_matrices_lock;
 atomic<size_t> target_matrix_count(0);
 
-WorkTarget ungapped_stage(FlatArray<SeedHit>::Iterator begin, FlatArray<SeedHit>::Iterator end, const Sequence *query_seq, const Bias_correction *query_cb, const Stats::Composition& query_comp, const int16_t** query_matrix, uint32_t block_id, Statistics& stat) {
+WorkTarget::WorkTarget(size_t block_id, const Sequence& seq, int query_len, const Stats::Composition& query_comp, const int16_t** query_matrix) :
+	block_id(block_id),
+	seq(seq)
+{
+	ungapped_score.fill(0);
+	if (config.comp_based_stats == Stats::CBS::HAUSER_AND_AVG_MATRIX_ADJUST) {
+		const int l = (int)seq.length();
+		const auto c = Stats::composition(seq);
+		auto r = Stats::s_TestToApplyREAdjustmentConditional(query_len, l, query_comp.data(), c.data(), score_matrix.background_freqs());
+		if (r == Stats::eCompoScaleOldMatrix)
+			return;
+		if (*query_matrix == nullptr) {
+			*query_matrix = Stats::make_16bit_matrix(Stats::CompositionMatrixAdjust(query_len, query_len, query_comp.data(), query_comp.data(), Stats::CBS::AVG_MATRIX_SCALE, score_matrix.ideal_lambda(), score_matrix.joint_probs(), score_matrix.background_freqs()));
+			++target_matrix_count;
+		}
+		if (target_matrices[block_id] == nullptr) {
+			int16_t* target_matrix = Stats::make_16bit_matrix(Stats::CompositionMatrixAdjust(l, l, c.data(), c.data(), Stats::CBS::AVG_MATRIX_SCALE, score_matrix.ideal_lambda(), score_matrix.joint_probs(), score_matrix.background_freqs()));
+			bool del = false;
+			{
+				std::lock_guard<std::mutex> lock(target_matrices_lock);
+				if (target_matrices[block_id] == nullptr)
+					target_matrices[block_id] = target_matrix;
+				else del = true;
+			}
+			if (del)
+				delete[] target_matrix;
+			++target_matrix_count;
+		}
+		matrix = Stats::TargetMatrix(*query_matrix, target_matrices[block_id]);
+	}
+	else
+		matrix = Stats::TargetMatrix(query_comp, query_len, seq);
+}
+
+WorkTarget ungapped_stage(FlatArray<SeedHit>::Iterator begin, FlatArray<SeedHit>::Iterator end, const Sequence *query_seq, const Bias_correction *query_cb, const Stats::Composition& query_comp, const int16_t** query_matrix, uint32_t block_id, Statistics& stat, const Block& targets) {
 	array<vector<Diagonal_segment>, MAX_CONTEXT> diagonal_segments;
 	task_timer timer;
-	const bool masking = config.comp_based_stats == Stats::CBS::COMP_BASED_STATS_AND_MATRIX_ADJUST ? Stats::use_seg_masking(query_seq[0], ref_seqs_unmasked::get()[block_id]) : true;
-	WorkTarget target(block_id, masking ? ref_seqs::get()[block_id] : ref_seqs_unmasked::get()[block_id], Stats::count_true_aa(query_seq[0]), query_comp, query_matrix);
+	const SequenceSet& ref_seqs = targets.seqs(), &ref_seqs_unmasked = targets.unmasked_seqs();
+	const bool masking = config.comp_based_stats == Stats::CBS::COMP_BASED_STATS_AND_MATRIX_ADJUST ? Stats::use_seg_masking(query_seq[0], ref_seqs_unmasked[block_id]) : true;
+	WorkTarget target(block_id, masking ? ref_seqs[block_id] : ref_seqs_unmasked[block_id], Stats::count_true_aa(query_seq[0]), query_comp, query_matrix);
 	stat.inc(Statistics::TIME_MATRIX_ADJUST, timer.microseconds());
 	if (!Stats::CBS::avg_matrix(config.comp_based_stats) && target.adjusted_matrix())
 		stat.inc(Statistics::MATRIX_ADJUST_COUNT);
@@ -88,10 +123,10 @@ WorkTarget ungapped_stage(FlatArray<SeedHit>::Iterator begin, FlatArray<SeedHit>
 	return target;
 }
 
-void ungapped_stage_worker(size_t i, size_t thread_id, const Sequence *query_seq, const Bias_correction *query_cb, const Stats::Composition* query_comp, FlatArray<SeedHit> *seed_hits, const uint32_t*target_block_ids, vector<WorkTarget> *out, mutex *mtx, Statistics* stat) {
+void ungapped_stage_worker(size_t i, size_t thread_id, const Sequence *query_seq, const Bias_correction *query_cb, const Stats::Composition* query_comp, FlatArray<SeedHit> *seed_hits, const uint32_t* target_block_ids, vector<WorkTarget> *out, mutex *mtx, Statistics* stat, const Block* targets) {
 	Statistics stats;
 	const int16_t* query_matrix = nullptr;
-	WorkTarget target = ungapped_stage(seed_hits->begin(i), seed_hits->end(i), query_seq, query_cb, *query_comp, &query_matrix, target_block_ids[i], stats);
+	WorkTarget target = ungapped_stage(seed_hits->begin(i), seed_hits->end(i), query_seq, query_cb, *query_comp, &query_matrix, target_block_ids[i], stats, *targets);
 	{
 		std::lock_guard<mutex> guard(*mtx);
 		out->push_back(std::move(target));
@@ -100,7 +135,7 @@ void ungapped_stage_worker(size_t i, size_t thread_id, const Sequence *query_seq
 	delete[] query_matrix;
 }
 
-vector<WorkTarget> ungapped_stage(const Sequence *query_seq, const Bias_correction *query_cb, const Stats::Composition& query_comp, FlatArray<SeedHit> &seed_hits, const vector<uint32_t>& target_block_ids, int flags, Statistics& stat) {
+vector<WorkTarget> ungapped_stage(const Sequence *query_seq, const Bias_correction *query_cb, const Stats::Composition& query_comp, FlatArray<SeedHit> &seed_hits, const vector<uint32_t>& target_block_ids, int flags, Statistics& stat, const Block& target_block) {
 	vector<WorkTarget> targets;
 	if (target_block_ids.size() == 0)
 		return targets;
@@ -108,11 +143,11 @@ vector<WorkTarget> ungapped_stage(const Sequence *query_seq, const Bias_correcti
 	const int16_t* query_matrix = nullptr;
 	if (flags & DP::PARALLEL) {
 		mutex mtx;
-		Util::Parallel::scheduled_thread_pool_auto(config.threads_, seed_hits.size(), ungapped_stage_worker, query_seq, query_cb, &query_comp, &seed_hits, target_block_ids.data(), &targets, &mtx, &stat);
+		Util::Parallel::scheduled_thread_pool_auto(config.threads_, seed_hits.size(), ungapped_stage_worker, query_seq, query_cb, &query_comp, &seed_hits, target_block_ids.data(), &targets, &mtx, &stat, &target_block);
 	}
 	else {
 		for (size_t i = 0; i < target_block_ids.size(); ++i)
-			targets.push_back(ungapped_stage(seed_hits.begin(i), seed_hits.end(i), query_seq, query_cb, query_comp, &query_matrix, target_block_ids[i], stat));
+			targets.push_back(ungapped_stage(seed_hits.begin(i), seed_hits.end(i), query_seq, query_cb, query_comp, &query_matrix, target_block_ids[i], stat, target_block));
 	}
 
 	delete[] query_matrix;

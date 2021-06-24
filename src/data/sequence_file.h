@@ -27,6 +27,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "taxonomy_nodes.h"
 #include "../util/enum.h"
 #include "../util/data_structures/bit_vector.h"
+#include "block.h"
 
 struct Chunk
 {
@@ -56,20 +57,27 @@ struct SequenceFile {
 
 	enum class Type { DMND = 0, BLAST = 1 };
 
-	enum Metadata : int {
+	enum class Metadata : int {
 		TAXON_MAPPING          = 1,
 		TAXON_NODES            = 1 << 1,
-		TAXON_SCIENTIFIC_NAMES = 1 << 2
+		TAXON_SCIENTIFIC_NAMES = 1 << 2,
+		TAXON_RANKS            = 1 << 3
 	};
 
 	enum class Flags : int {
 		NONE                   = 0,
 		NO_COMPATIBILITY_CHECK = 0x1,
 		NO_FASTA               = 0x2,
-		FULL_SEQIDS            = 0x4
+		ALL_SEQIDS             = 0x4,
+		FULL_TITLES            = 0x8,
+		TARGET_SEQS            = 0x10
 	};
 
-	SequenceFile(Type type);
+	enum class LoadTitles {
+		SINGLE_PASS, LAZY
+	};
+
+	SequenceFile(Type type, Alphabet alphabet, Flags flags);
 
 	virtual void init_seqinfo_access() = 0;
 	virtual void init_seq_access() = 0;
@@ -79,18 +87,20 @@ struct SequenceFile {
 	virtual void putback_seqinfo() = 0;
 	virtual size_t id_len(const SeqInfo& seq_info, const SeqInfo& seq_info_next) = 0;
 	virtual void seek_offset(size_t p) = 0;
-	virtual void read_seq_data(Letter* dst, size_t len) = 0;
+	virtual void read_seq_data(Letter* dst, size_t len, size_t& pos, bool seek) = 0;
 	virtual void read_id_data(char* dst, size_t len) = 0;
 	virtual void skip_id_data() = 0;
+	virtual std::string seqid(size_t oid) const = 0;
+	virtual std::string dict_title(size_t dict_id, const size_t ref_block) const = 0;
+	virtual size_t dict_len(size_t dict_id, const size_t ref_block) const = 0;
+	virtual std::vector<Letter> dict_seq(size_t dict_id, const size_t ref_block) const = 0;
 	virtual size_t sequence_count() const = 0;
 	virtual size_t sparse_sequence_count() const = 0;
 	virtual size_t letters() const = 0;
 	virtual int db_version() const = 0;
 	virtual int program_build_version() const = 0;
 	virtual void read_seq(std::vector<Letter>& seq, std::string& id) = 0;
-	virtual void check_metadata(int flags) const = 0;
-	virtual int metadata() const = 0;
-	virtual TaxonList* taxon_list() = 0;
+	virtual Metadata metadata() const = 0;
 	virtual TaxonomyNodes* taxon_nodes() = 0;
 	virtual std::vector<string>* taxon_scientific_names() = 0;
 	virtual int build_version() = 0;
@@ -101,30 +111,66 @@ struct SequenceFile {
 	virtual void close() = 0;
 	virtual void close_weakly() = 0;
 	virtual void reopen() = 0;
-	virtual BitVector filter_by_accession(const std::string& file_name) = 0;
-	virtual BitVector filter_by_taxonomy(const std::string& include, const std::string& exclude, const TaxonList& list, TaxonomyNodes& nodes) = 0;
+	virtual BitVector* filter_by_accession(const std::string& file_name) = 0;
+	virtual BitVector* filter_by_taxonomy(const std::string& include, const std::string& exclude, TaxonomyNodes& nodes) = 0;
+	virtual std::vector<unsigned> taxids(size_t oid) const = 0;
 	virtual const BitVector* builtin_filter() = 0;
 	virtual std::string file_name() = 0;
+	virtual void seq_data(size_t oid, std::vector<Letter>& dst) const = 0;
+	virtual size_t seq_length(size_t oid) const = 0;
+	virtual void init_random_access(const size_t query_block, const size_t ref_blocks, bool dictionary = true) = 0;
+	virtual void end_random_access(bool dictionary = true) = 0;
+	virtual LoadTitles load_titles() = 0;
 	virtual ~SequenceFile();
 
 	Type type() const { return type_; }
-	bool load_seqs(
-		std::vector<uint32_t>* block2db_id,
+	Block* load_seqs(
 		const size_t max_letters,
-		SequenceSet** dst_seq,
-		String_set<char, 0>** dst_id,
 		bool load_ids = true,
 		const BitVector* filter = nullptr,
-		const bool fetch_seqs = true,
+		bool fetch_seqs = true,
+		bool lazy_masking = false,
 		const Chunk& chunk = Chunk());
 	void get_seq();
 	size_t total_blocks() const;
+	void init_dict(const size_t query_block, const size_t target_block);
+	void init_dict_block(size_t block, size_t seq_count, bool persist);
+	void close_dict_block(bool persist);
+	uint32_t dict_id(size_t block, size_t block_id, size_t oid, size_t len, const char* id, const Letter* seq);
+	size_t oid(uint32_t dict_id, const size_t ref_block) const;
+	size_t dict_size() const {
+		return next_dict_id_;
+	}
 
-	static SequenceFile* auto_create(Flags flags = Flags::NONE);
+	static SequenceFile* auto_create(Flags flags = Flags::NONE, Metadata metadata = Metadata());
+
+protected:
+
+	void load_dictionary(const size_t query_block, const size_t ref_blocks);
+	void free_dictionary();
+	static size_t dict_block(const size_t ref_block);
+
+	const Flags flags_;
+	std::unique_ptr<OutputFile> dict_file_;
+	uint32_t next_dict_id_;
+	size_t dict_alloc_size_;
+	std::vector<std::vector<uint32_t>> dict_oid_;
 
 private:
 
-	Type type_;
+	enum { DICT_EMPTY = UINT32_MAX };
+
+	virtual void write_dict_entry(size_t block, size_t oid, size_t len, const char* id, const Letter* seq) = 0;
+	virtual bool load_dict_entry(InputFile& f, const size_t ref_block) = 0;
+	virtual void reserve_dict(const size_t ref_blocks) = 0;
+	void load_block(size_t block_id_begin, size_t block_id_end, size_t pos, bool use_filter, const vector<uint64_t>* filtered_pos, bool load_ids, Block* block);
+	void load_dict_block(InputFile* f, const size_t ref_block);
+
+	const Type type_;
+	const Alphabet alphabet_;
+
+	std::map<size_t, std::vector<uint32_t>> block_to_dict_id_;
+	std::mutex dict_mtx_;
 
 };
 
@@ -133,3 +179,4 @@ template<> struct EnumTraits<SequenceFile::Type> {
 };
 
 DEF_ENUM_FLAG_OPERATORS(SequenceFile::Flags)
+DEF_ENUM_FLAG_OPERATORS(SequenceFile::Metadata)

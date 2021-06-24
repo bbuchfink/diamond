@@ -24,7 +24,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 class Variable{
 public:
-	virtual double get(const Hsp_context& r) = 0;
+	virtual double get(const HspContext& r) = 0;
 	virtual ~Variable(){};
 };
 
@@ -33,7 +33,7 @@ public:
 	static const std::string get_name(){
 		return "qlen";
 	}
-	double get(const Hsp_context& r){
+	double get(const HspContext& r){
 		return r.query.source().length();
 	}
 };
@@ -42,7 +42,7 @@ public:
 	static const std::string get_name(){
 		return "slen";
 	}
-	double get(const Hsp_context& r){
+	double get(const HspContext& r){
 		return r.subject_len;
 	}
 };
@@ -51,7 +51,7 @@ public:
 	static const std::string get_name(){
 		return "qstart";
 	}
-	double get(const Hsp_context& r){
+	double get(const HspContext& r){
 		return r.oriented_query_range().begin_ + 1;
 	}
 };
@@ -60,7 +60,7 @@ public:
 	static const std::string get_name(){
 		return "qend";
 	}
-	double get(const Hsp_context& r){
+	double get(const HspContext& r){
 		return r.oriented_query_range().end_ + 1;
 	}
 };
@@ -69,7 +69,7 @@ public:
 	static const std::string get_name(){
 		return "sstart";
 	}
-	double get(const Hsp_context& r){
+	double get(const HspContext& r){
 		return r.subject_range().begin_ + 1;
 	}
 };
@@ -78,7 +78,7 @@ public:
 	static const std::string get_name(){
 		return "send";
 	}
-	double get(const Hsp_context& r){
+	double get(const HspContext& r){
 		return r.subject_range().end_;
 	}
 };
@@ -87,7 +87,7 @@ public:
 	static const std::string get_name(){
 		return "evalue";
 	}
-	double get(const Hsp_context& r){
+	double get(const HspContext& r){
 		return r.evalue();
 	}
 };
@@ -96,7 +96,7 @@ public:
 	static const std::string get_name(){
 		return "bitscore";
 	}
-	double get(const Hsp_context& r){
+	double get(const HspContext& r){
 		return r.bit_score();
 	}
 };
@@ -105,7 +105,7 @@ public:
 	static const std::string get_name(){
 		return "score";
 	}
-	double get(const Hsp_context& r){
+	double get(const HspContext& r){
 		return r.score();
 	}
 };
@@ -114,7 +114,7 @@ public:
 	static const std::string get_name(){
 		return "length";
 	}
-	double get(const Hsp_context& r){
+	double get(const HspContext& r){
 		return r.length();
 	}
 };
@@ -123,7 +123,7 @@ public:
 	static const std::string get_name(){
 		return "pident";
 	}
-	double get(const Hsp_context& r){
+	double get(const HspContext& r){
 		return (double)r.identities() * 100 / r.length();
 	}
 };
@@ -132,7 +132,7 @@ public:
 	static const std::string get_name(){
 		return "nident";
 	}
-	double get(const Hsp_context& r){
+	double get(const HspContext& r){
 		return r.identities();
 	}
 };
@@ -141,7 +141,7 @@ public:
 	static const std::string get_name(){
 		return "mismatch";
 	}
-	double get(const Hsp_context& r){
+	double get(const HspContext& r){
 		return r.mismatches();
 	}
 };
@@ -150,7 +150,7 @@ public:
 	static const std::string get_name(){
 		return "positive";
 	}
-	double get(const Hsp_context& r){
+	double get(const HspContext& r){
 		return r.positives();
 	}
 };
@@ -159,7 +159,7 @@ public:
 	static const std::string get_name(){
 		return "gapopen";
 	}
-	double get(const Hsp_context& r){
+	double get(const HspContext& r){
 		return r.gap_openings();
 	}
 };
@@ -168,7 +168,7 @@ public:
 	static const std::string get_name(){
 		return "gaps";
 	}
-	double get(const Hsp_context& r){
+	double get(const HspContext& r){
 		return r.gaps();
 	}
 };
@@ -177,7 +177,7 @@ public:
 	static const std::string get_name(){
 		return "ppos";
 	}
-	double get(const Hsp_context& r){
+	double get(const HspContext& r){
 		return (double)r.positives() * 100.0 / r.length();
 	}
 };
@@ -186,7 +186,7 @@ public:
 	static const std::string get_name(){
 		return "qframe";
 	}
-	double get(const Hsp_context& r){
+	double get(const HspContext& r){
 		return r.blast_query_frame();
 	}
 };
@@ -195,7 +195,7 @@ public:
 	static const std::string get_name(){
 		return "qcovhsp";
 	}
-	double get(const Hsp_context& r){
+	double get(const HspContext& r){
 		return (double)r.query_source_range().length()*100.0 / r.query.source().length();
 	}
 };
@@ -204,7 +204,7 @@ public:
 	static const std::string get_name(){
 		return "scovhsp";
 	}
-	double get(const Hsp_context& r){
+	double get(const HspContext& r){
 		return (double)r.subject_range().length() * 100.0 / r.subject_len;
 	}
 };
@@ -213,7 +213,7 @@ public:
 	static const std::string get_name(){
 		return "ungapped_score";
 	}
-	double get(const Hsp_context& r){
+	double get(const HspContext& r){
 		return score_matrix.bitscore(r.ungapped_score);
 	}
 };

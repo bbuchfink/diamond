@@ -29,31 +29,31 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../data/seed_array.h"
 #include "../data/queries.h"
 #include "../data/frequent_seeds.h"
-#include "trace_pt_buffer.h"
 #include "../util/data_structures/double_array.h"
 #include "../util/system/system.h"
+#include "../util/data_structures/deque.h"
+#include "../util/util.h"
 
 using std::vector;
 using std::atomic;
 using std::endl;
 using std::unique_ptr;
-
-Trace_pt_buffer* Trace_pt_buffer::instance;
+using Search::Hit;
 
 void seed_join_worker(
 	SeedArray *query_seeds,
 	SeedArray *ref_seeds,
 	atomic<unsigned> *seedp,
 	const SeedPartitionRange *seedp_range,
-	DoubleArray<SeedArray::_pos> *query_seed_hits,
-	DoubleArray<SeedArray::_pos> *ref_seeds_hits)
+	DoubleArray<SeedArray::Entry::Value> *query_seed_hits,
+	DoubleArray<SeedArray::Entry::Value> *ref_seeds_hits)
 {
 	unsigned p;
 	const unsigned bits = query_seeds->key_bits;
 	if (bits != ref_seeds->key_bits)
 		throw std::runtime_error("Joining seed arrays with different key lengths.");
 	while ((p = (*seedp)++) < seedp_range->end()) {
-		std::pair<DoubleArray<SeedArray::_pos>, DoubleArray<SeedArray::_pos>> join = hash_join(
+		std::pair<DoubleArray<SeedArray::Entry::Value>, DoubleArray<SeedArray::Entry::Value>> join = hash_join(
 			Relation<SeedArray::Entry>(query_seeds->begin(p), query_seeds->size(p)),
 			Relation<SeedArray::Entry>(ref_seeds->begin(p), ref_seeds->size(p)),
 			bits);
@@ -62,52 +62,62 @@ void seed_join_worker(
 	}
 }
 
-void search_worker(atomic<unsigned> *seedp, const SeedPartitionRange *seedp_range, unsigned shape, size_t thread_id, DoubleArray<SeedArray::_pos> *query_seed_hits, DoubleArray<SeedArray::_pos> *ref_seed_hits, const Search::Context *context)
+void search_worker(atomic<unsigned> *seedp, const SeedPartitionRange *seedp_range, unsigned shape, size_t thread_id, DoubleArray<SeedArray::Entry::Value> *query_seed_hits, DoubleArray<SeedArray::Entry::Value> *ref_seed_hits, const Search::Context *context, const Search::Config* cfg)
 {
+	unique_ptr<Writer<Hit>> writer;
+	if (config.global_ranking_targets)
+		writer.reset(new AsyncWriter<Hit, Search::Config::RankingBuffer::EXPONENT>(*cfg->global_ranking_buffer));
+	else
+		writer.reset(new AsyncBuffer<Hit>::Iterator(*cfg->seed_hit_buf, thread_id));
 #ifdef __APPLE__
-	unique_ptr<Search::WorkSet> work_set(new Search::WorkSet{ *context, shape, {},  {*Trace_pt_buffer::instance, thread_id}, {} });
+	unique_ptr<Search::WorkSet> work_set(new Search::WorkSet{ *context, *cfg, shape, {}, writer.get(), {} });
 #else
-	unique_ptr<Search::WorkSet> work_set(new Search::WorkSet{ *context, shape, {},  {*Trace_pt_buffer::instance, thread_id}, {}, {}, {} });
+	unique_ptr<Search::WorkSet> work_set(new Search::WorkSet{ *context, *cfg, shape, {}, writer.get(), {}, {}, {} });
 #endif
 	unsigned p;
 	while ((p = (*seedp)++) < seedp_range->end())
-		for (auto it = JoinIterator<SeedArray::_pos>(query_seed_hits[p].begin(), ref_seed_hits[p].begin()); it; ++it)
+		for (auto it = JoinIterator<SeedArray::Entry::Value>(query_seed_hits[p].begin(), ref_seed_hits[p].begin()); it; ++it)
 			Search::stage1(it.r->begin(), it.r->size(), it.s->begin(), it.s->size(), *work_set);
 	statistics += work_set->stats;
 }
 
-void search_shape(unsigned sid, unsigned query_block, char *query_buffer, char *ref_buffer, const Parameters &params, const HashedSeedSet* target_seeds)
+void search_shape(unsigned sid, unsigned query_block, unsigned query_iteration, char *query_buffer, char *ref_buffer, Search::Config& cfg, const HashedSeedSet* target_seeds)
 {
-	::partition<unsigned> p(Const::seedp, config.lowmem);
-	DoubleArray<SeedArray::_pos> query_seed_hits[Const::seedp], ref_seed_hits[Const::seedp];
+	Partition<unsigned> p(Const::seedp, cfg.index_chunks);
+	DoubleArray<SeedArray::Entry::Value> query_seed_hits[Const::seedp], ref_seed_hits[Const::seedp];
 	log_rss();
+	SequenceSet& ref_seqs = cfg.target->seqs(), query_seqs = cfg.query->seqs();
+	const Partitioned_histogram& ref_hst = cfg.target->hst(), query_hst = cfg.query->hst();
 
 	for (unsigned chunk = 0; chunk < p.parts; ++chunk) {
-		message_stream << "Processing query block " << query_block + 1
-			<< ", reference block " << (current_ref_block + 1) << "/" << params.ref_blocks
+		message_stream << "Processing query block " << query_block + 1;
+		if (cfg.iterated())
+			message_stream << ", query iteration " << query_iteration + 1;
+		message_stream << ", reference block " << (current_ref_block + 1) << "/" << cfg.ref_blocks
 			<< ", shape " << (sid + 1) << "/" << shapes.count();
-		if (config.lowmem > 1)
-			message_stream << ", index chunk " << chunk + 1 << "/" << config.lowmem;
+		if (cfg.index_chunks > 1)
+			message_stream << ", index chunk " << chunk + 1 << "/" << cfg.index_chunks;
 		message_stream << '.' << endl;
-		const SeedPartitionRange range(p.getMin(chunk), p.getMax(chunk));
+		const SeedPartitionRange range(p.begin(chunk), p.end(chunk));
 		current_range = range;
 
 		task_timer timer("Building reference seed array", true);
 		SeedArray *ref_idx;
 		if (query_seeds_hashed.get())
-			ref_idx = new SeedArray(*ref_seqs::data_, sid, ref_hst.get(sid), range, ref_hst.partition(), ref_buffer, query_seeds_hashed.get(), true);
+			ref_idx = new SeedArray(ref_seqs, sid, ref_hst.get(sid), range, ref_hst.partition(), ref_buffer, query_seeds_hashed.get(), true, nullptr);
+			//ref_idx = new SeedArray(ref_seqs, sid, range, query_seeds_hashed.get(), true);
 		else
-			ref_idx = new SeedArray(*ref_seqs::data_, sid, ref_hst.get(sid), range, ref_hst.partition(), ref_buffer, &no_filter, target_seeds);
+			ref_idx = new SeedArray(ref_seqs, sid, ref_hst.get(sid), range, ref_hst.partition(), ref_buffer, &no_filter, target_seeds, nullptr);
 
 		timer.go("Building query seed array");
 		SeedArray* query_idx;
 		if (target_seeds)
-			query_idx = new SeedArray(*query_seqs::data_, sid, range, target_seeds, true);
+			query_idx = new SeedArray(query_seqs, sid, range, target_seeds, true, nullptr);
 		else
-			query_idx = new SeedArray(*query_seqs::data_, sid, query_hst.get(sid), range, query_hst.partition(), query_buffer, &no_filter, query_seeds_hashed.get());
+			query_idx = new SeedArray(query_seqs, sid, query_hst.get(sid), range, query_hst.partition(), query_buffer, &no_filter, query_seeds_hashed.get(), cfg.query_skip.get());
 		timer.finish();
 
-		log_stream << "Indexed query seeds = " << query_idx->size() << '/' << query_seqs::get().letters() << ", reference seeds = " << ref_idx->size() << '/' << ref_seqs::get().letters() << endl;
+		log_stream << "Indexed query seeds = " << query_idx->size() << '/' << query_seqs.letters() << ", reference seeds = " << ref_idx->size() << '/' << ref_seqs.letters() << endl;
 
 		timer.go("Computing hash join");
 		atomic<unsigned> seedp(range.begin());
@@ -118,14 +128,14 @@ void search_shape(unsigned sid, unsigned query_block, char *query_buffer, char *
 			t.join();
 
 		timer.go("Building seed filter");
-		frequent_seeds.build(sid, range, query_seed_hits, ref_seed_hits);
+		frequent_seeds.build(sid, range, query_seed_hits, ref_seed_hits, cfg);
 
 		Search::Context* context = nullptr;
 		const vector<uint32_t> patterns = shapes.patterns(0, sid + 1);
 		context = new Search::Context{ {patterns.data(), patterns.data() + patterns.size() - 1 },
 			{patterns.data(), patterns.data() + patterns.size() },
-			config.ungapped_evalue,
-			config.ungapped_evalue_short,
+			cfg.ungapped_evalue,
+			cfg.ungapped_evalue_short,
 			score_matrix.rawscore(config.short_query_ungapped_bitscore)
 		};
 
@@ -133,7 +143,7 @@ void search_shape(unsigned sid, unsigned query_block, char *query_buffer, char *
 		seedp = range.begin();
 		threads.clear();
 		for (size_t i = 0; i < config.threads_; ++i)
-			threads.emplace_back(search_worker, &seedp, &range, sid, i, query_seed_hits, ref_seed_hits, context);
+			threads.emplace_back(search_worker, &seedp, &range, sid, i, query_seed_hits, ref_seed_hits, context, &cfg);
 		for (auto &t : threads)
 			t.join();
 

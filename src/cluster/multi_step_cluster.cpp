@@ -16,8 +16,10 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#include "multi_step_cluster.h"
 #include <unordered_map>
+#include "multi_step_cluster.h"
+#include "../util/util.h"
+#include "../util/sequence/sequence.h"
 
 using namespace std;
 
@@ -35,7 +37,7 @@ BitVector MultiStep::rep_bitset(const vector<int> &centroid, const BitVector *su
 	return r;
 }
 
-vector<int> MultiStep::cluster(SequenceFile& db, const BitVector* filter) {
+vector<int> MultiStep::cluster(shared_ptr<SequenceFile>& db, const shared_ptr<BitVector>& filter) {
 	statistics.reset();
 	config.command = Config::blastp;
 	//config.no_self_hits = true;
@@ -45,18 +47,12 @@ vector<int> MultiStep::cluster(SequenceFile& db, const BitVector* filter) {
 	config.query_cover = 80;
 	config.subject_cover = 80;
 	config.algo = Config::Algo::DOUBLE_INDEXED;
-	config.freq_sd = 0;
+	//config.freq_sd = 0;
 	config.max_alignments = numeric_limits<size_t>::max();
 
-	Workflow::Search::Options opt;
-	opt.db = &db;
-	opt.self = true;
-	Neighbors nb(db.sequence_count());
+	shared_ptr<Neighbors> nb(new Neighbors(db->sequence_count()));
 
-	opt.consumer = &nb;
-	opt.db_filter = filter;
-
-	Workflow::Search::run(opt);
+	Search::run(db, nullptr, nb, filter);
 	
 	/*
 	auto lo = nb.dSet.getListOfSets();
@@ -69,11 +65,11 @@ vector<int> MultiStep::cluster(SequenceFile& db, const BitVector* filter) {
 	}
 	*/
 
-	vector<unordered_set<uint32_t>> connected = nb.dSet.getListOfSets();
-	vector<uint32_t> EdgSet(nb.number_edges.size());
-	unordered_map <uint32_t, NodEdgSet> components = find_connected_components(connected, EdgSet, nb.number_edges);
+	vector<unordered_set<uint32_t>> connected = nb->dSet.getListOfSets();
+	vector<uint32_t> EdgSet(nb->number_edges.size());
+	unordered_map <uint32_t, NodEdgSet> components = find_connected_components(connected, EdgSet, nb->number_edges);
 	message_stream << "Number of connected components: " << components.size() << endl;
-	message_stream << "Average number of nodes per connected component: " << (double)nb.number_edges.size() / components.size() << endl;
+	message_stream << "Average number of nodes per connected component: " << (double)nb->number_edges.size() / components.size() << endl;
 
 	uint32_t large = max_element(components.begin(), components.end(), [](const pair<uint32_t, NodEdgSet>& left, const pair<uint32_t, NodEdgSet>& right) {return left.second.nodes < right.second.nodes; })-> second.nodes;
 	message_stream << "Largest connected component has " << large << " nodes." << endl;
@@ -85,12 +81,12 @@ vector<int> MultiStep::cluster(SequenceFile& db, const BitVector* filter) {
 
 
 	if (config.external) {
-		save_edges_external(nb.tempfiles, tmp_sets, components, EdgSet);
-		return cluster_sets(db.sequence_count(), tmp_sets);
+		save_edges_external(nb->tempfiles, tmp_sets, components, EdgSet);
+		return cluster_sets(db->sequence_count(), tmp_sets);
 	}
 
 	else {
-		return Util::Algo::greedy_vertex_cover(nb);
+		return Util::Algo::greedy_vertex_cover(*nb);
 	}
 
 }
@@ -234,11 +230,10 @@ void MultiStep::run() {
 	if (config.database == "")
 		throw runtime_error("Missing parameter: database file (--db/-d)");
 	config.command = Config::makedb;
-	unique_ptr<SequenceFile> db(SequenceFile::auto_create());
+	shared_ptr<SequenceFile> db(SequenceFile::auto_create());
 	const size_t seq_count = db->sequence_count();
 
-	BitVector current_reps;
-	BitVector previous_reps;
+	shared_ptr<BitVector> current_reps, previous_reps;
 
 	vector<int> current_centroids;
 	vector<int> previous_centroids;
@@ -246,18 +241,16 @@ void MultiStep::run() {
 	for (size_t i = 0; i < config.cluster_steps.size(); i++) {
 		
 		config.sensitivity = from_string<Sensitivity>(config.cluster_steps[i]);
-		current_centroids = cluster(*db, i==0 ? nullptr: &previous_reps);
-		steps(current_reps, previous_reps, current_centroids, previous_centroids, i);
+		current_centroids = cluster(db, i == 0 ? nullptr : previous_reps);
+		steps(*current_reps, *previous_reps, current_centroids, previous_centroids, i);
 	}
 		
 	task_timer timer("Generating output");
-	SequenceSet* rep_seqs;
-	String_set<char, 0>* rep_ids;
-	vector<unsigned> rep_database_id, rep_block_id(seq_count);
+	vector<unsigned> rep_block_id(seq_count);
 	db->set_seqinfo_ptr(0);
-	db->load_seqs(&rep_database_id, (size_t)1e11, &rep_seqs, &rep_ids, true, &previous_reps);
-	for (size_t i = 0; i < rep_database_id.size(); ++i)
-		rep_block_id[rep_database_id[i]] = (unsigned)i;
+	Block* block = db->load_seqs((size_t)1e11, true, previous_reps.get());
+	for (size_t i = 0; i < block->seqs().size(); ++i)
+		rep_block_id[block->block_id2oid(i)] = (unsigned)i;
 
 	ostream* out = config.output_file.empty() ? &cout : new ofstream(config.output_file.c_str());
 	vector<Letter> seq;
@@ -269,8 +262,8 @@ void MultiStep::run() {
 	for (int i = 0; i < (int)db->sequence_count(); ++i) {
 		db->read_seq(seq, id);
 		const unsigned r = rep_block_id[previous_centroids[i]];
-		(*out) << blast_id(id) << '\t'
-			<< blast_id((*rep_ids)[r]) << '\n';
+		(*out) << Util::Seq::seqid(id.c_str()) << '\t'
+			<< Util::Seq::seqid(block->ids()[r]) << '\n';
 		/*if ((int)i == centroid2[i])
 			(*out) << "100\t100\t100\t0" << endl;
 		else {
@@ -283,8 +276,7 @@ void MultiStep::run() {
 		} */
 	}
 	if (out != &cout) delete out;
-	delete rep_seqs;
-	delete rep_ids;
+	delete block;
 	db->close();
 
 }

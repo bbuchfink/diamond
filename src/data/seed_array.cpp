@@ -1,6 +1,10 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2018 Benjamin Buchfink <buchfink@gmail.com>
+Copyright (C) 2013-2021 Max Planck Society for the Advancement of Science e.V.
+                        Benjamin Buchfink
+                        Eberhard Karls Universitaet Tuebingen
+						
+Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -24,11 +28,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 using std::array;
 
-typedef vector<Array<SeedArray::Entry*, Const::seedp>> PtrSet;
+typedef vector<array<SeedArray::Entry*, Const::seedp>> PtrSet;
 
-char* SeedArray::alloc_buffer(const Partitioned_histogram &hst)
+char* SeedArray::alloc_buffer(const Partitioned_histogram &hst, size_t index_chunks)
 {
-	return new char[sizeof(Entry) * hst.max_chunk_size()];
+	return new char[sizeof(Entry) * hst.max_chunk_size(index_chunks)];
 }
 
 struct BufferedWriter
@@ -39,12 +43,12 @@ struct BufferedWriter
 		memset(n, 0, sizeof(n));
 		memcpy(this->ptr, ptr, sizeof(this->ptr));
 	}
-	void push(Packed_seed key, Loc value, const SeedPartitionRange &range)
+	void push(Packed_seed key, Loc value, uint32_t block_id, const SeedPartitionRange &range)
 	{
 		const unsigned p = seed_partition(key);
 		if (range.contains(p)) {
 			assert(n[p] < BUFFER_SIZE);
-			buf[p][n[p]++] = SeedArray::Entry(seed_partition_offset(key), value);
+			buf[p][n[p]++] = SeedArray::Entry(seed_partition_offset(key), value, block_id);
 			if (n[p] == BUFFER_SIZE)
 				flush(p);
 		}
@@ -83,9 +87,9 @@ struct BuildCallback
 		range(range),
 		it(new BufferedWriter(ptr))
 	{ }
-	bool operator()(uint64_t seed, uint64_t pos, size_t shape)
+	bool operator()(uint64_t seed, uint64_t pos, uint32_t block_id, size_t shape)
 	{
-		it->push(seed, pos, range);
+		it->push(seed, pos, block_id, range);
 		return true;
 	}
 	void finish()
@@ -101,7 +105,7 @@ struct BuildCallback
 };
 
 template<typename _filter>
-SeedArray::SeedArray(const SequenceSet &seqs, size_t shape, const shape_histogram &hst, const SeedPartitionRange &range, const vector<size_t> &seq_partition, char *buffer, const _filter *filter, bool hashed_seeds) :
+SeedArray::SeedArray(SequenceSet &seqs, size_t shape, const shape_histogram &hst, const SeedPartitionRange &range, const vector<size_t> &seq_partition, char *buffer, const _filter *filter, bool hashed_seeds, const std::vector<bool>* skip) :
 	key_bits(hashed_seeds ? sizeof(Entry::Key) * 8 : ceil(shapes[0].weight_ * Reduction::reduction.bit_size_exact()) - Const::seedp_bits),
 	data_((Entry*)buffer)
 {
@@ -112,18 +116,19 @@ SeedArray::SeedArray(const SequenceSet &seqs, size_t shape, const shape_histogra
 	PtrSet iterators(build_iterators(*this, hst));
 	PtrVector<BuildCallback> cb;
 	for (size_t i = 0; i < seq_partition.size() - 1; ++i)
-		cb.push_back(new BuildCallback(range, iterators[i].begin()));
-	enum_seeds(&seqs, cb, seq_partition, shape, shape + 1, filter, hashed_seeds);
+		cb.push_back(new BuildCallback(range, iterators[i].data()));
+	enum_seeds(&seqs, cb, seq_partition, shape, shape + 1, filter, hashed_seeds, skip);
 }
 
-template SeedArray::SeedArray(const SequenceSet &, size_t, const shape_histogram &, const SeedPartitionRange &, const vector<size_t>&, char *buffer, const No_filter *, bool);
-template SeedArray::SeedArray(const SequenceSet &, size_t, const shape_histogram &, const SeedPartitionRange &, const vector<size_t>&, char *buffer, const Seed_set *, bool);
-template SeedArray::SeedArray(const SequenceSet &, size_t, const shape_histogram &, const SeedPartitionRange &, const vector<size_t>&, char *buffer, const HashedSeedSet *, bool);
+template SeedArray::SeedArray(SequenceSet &, size_t, const shape_histogram &, const SeedPartitionRange &, const vector<size_t>&, char *buffer, const No_filter *, bool, const std::vector<bool>*);
+template SeedArray::SeedArray(SequenceSet &, size_t, const shape_histogram &, const SeedPartitionRange &, const vector<size_t>&, char *buffer, const Seed_set *, bool, const std::vector<bool>*);
+template SeedArray::SeedArray(SequenceSet &, size_t, const shape_histogram &, const SeedPartitionRange &, const vector<size_t>&, char *buffer, const HashedSeedSet *, bool, const std::vector<bool>*);
 
 struct BufferedWriter2
 {
 	static const unsigned BUFFER_SIZE = 16;
-	BufferedWriter2()
+	BufferedWriter2():
+		out(Const::seedp)
 	{
 		memset(n, 0, sizeof(n));
 	}
@@ -148,7 +153,7 @@ struct BufferedWriter2
 			if (n[p] > 0)
 				flush(p);
 	}
-	Deque<SeedArray::Entry> out[Const::seedp];
+	vector<Deque<SeedArray::Entry, 15>> out;
 	SeedArray::Entry buf[Const::seedp][BUFFER_SIZE];
 	uint8_t n[Const::seedp];
 };
@@ -159,7 +164,7 @@ struct BuildCallback2
 		range(range),
 		it(new BufferedWriter2())
 	{ }
-	bool operator()(uint64_t seed, uint64_t pos, size_t shape)
+	bool operator()(uint64_t seed, uint64_t pos, uint32_t block_id, size_t shape)
 	{
 		it->push(seed, pos, range);
 		return true;
@@ -177,7 +182,7 @@ struct BuildCallback2
 };
 
 template<typename _filter>
-SeedArray::SeedArray(const SequenceSet& seqs, size_t shape, const SeedPartitionRange& range, const _filter* filter, bool hashed_seeds) :
+SeedArray::SeedArray(SequenceSet& seqs, size_t shape, const SeedPartitionRange& range, const _filter* filter, bool hashed_seeds, const std::vector<bool>* skip) :
 	key_bits(hashed_seeds ? sizeof(Entry::Key) * 8 : ceil(shapes[0].weight_ * Reduction::reduction.bit_size_exact()) - Const::seedp_bits),
 	data_(nullptr)
 {
@@ -185,7 +190,7 @@ SeedArray::SeedArray(const SequenceSet& seqs, size_t shape, const SeedPartitionR
 	PtrVector<BuildCallback2> cb;
 	for (size_t i = 0; i < seq_partition.size() - 1; ++i)
 		cb.push_back(new BuildCallback2(range));
-	enum_seeds(&seqs, cb, seq_partition, shape, shape + 1, filter, hashed_seeds);
+	enum_seeds(&seqs, cb, seq_partition, shape, shape + 1, filter, hashed_seeds, skip);
 
 	array<size_t, Const::seedp> counts;
 	counts.fill(0);
@@ -200,4 +205,4 @@ SeedArray::SeedArray(const SequenceSet& seqs, size_t shape, const SeedPartitionR
 	}
 }
 
-template SeedArray::SeedArray(const SequenceSet&, size_t, const SeedPartitionRange&, const HashedSeedSet*, bool);
+template SeedArray::SeedArray(SequenceSet&, size_t, const SeedPartitionRange&, const HashedSeedSet*, bool, const std::vector<bool>*);

@@ -27,12 +27,14 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../dp/ungapped.h"
 #include "../basic/shape_config.h"
 #include "../basic/statistics.h"
-#include "trace_pt_buffer.h"
 #include "../util/algo/pattern_matcher.h"
 #include "../util/scores/cutoff_table.h"
-#include "../basic/parameters.h"
 #include "finger_print.h"
 #include "../util/memory/alignment.h"
+#include "../run/config.h"
+#include "hit.h"
+#include "../util/data_structures/writer.h"
+#include "../data/seed_array.h"
 
 // #define UNGAPPED_SPOUGE
 
@@ -48,6 +50,8 @@ struct SensitivityTraits {
 };
 
 extern const std::map<Sensitivity, SensitivityTraits> sensitivity_traits;
+extern const std::map<Sensitivity, std::vector<std::string>> shape_codes;
+extern const std::map<Sensitivity, std::vector<Sensitivity>> iterated_sens;
 
 namespace Search {
 
@@ -85,24 +89,25 @@ struct Stage1_hit
 
 struct HashedSeedSet;
 
-void search_shape(unsigned sid, unsigned query_block, char *query_buffer, char *ref_buffer, const Parameters &params, const HashedSeedSet* target_seeds);
+void search_shape(unsigned sid, unsigned query_block, unsigned query_iteration, char *query_buffer, char *ref_buffer, Search::Config& cfg, const HashedSeedSet* target_seeds);
 bool use_single_indexed(double coverage, size_t query_letters, size_t ref_letters);
-void setup_search();
+void setup_search(Sensitivity sens, Search::Config& cfg);
 
 namespace Search {
 
 struct WorkSet {
 	Context context;
+	const Search::Config& cfg;
 	unsigned shape_id;
 	Statistics stats;
-	Trace_pt_buffer::Iterator out;
+	Writer<Hit>* out;
 #ifndef __APPLE__
 	std::vector<FingerPrint, Util::Memory::AlignmentAllocator<FingerPrint, 16>> vq, vs;
 #endif
 	FlatArray<uint32_t> hits;
 };
 
-DECL_DISPATCH(void, stage1, (const PackedLoc* q, size_t nq, const PackedLoc* s, size_t ns, WorkSet& work_set))
+DECL_DISPATCH(void, stage1, (const SeedArray::Entry::Value* q, size_t nq, const SeedArray::Entry::Value* s, size_t ns, WorkSet& work_set))
 
 }
 

@@ -27,10 +27,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <map>
 #include <ostream>
 #include "../basic/const.h"
-#include "../util/util.h"
 #include "taxon_list.h"
 #include "taxonomy_nodes.h"
-#include "../util/util.h"
 #include "../util/data_structures/bit_vector.h"
 
 std::string get_accession(const string &t);

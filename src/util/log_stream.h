@@ -130,3 +130,5 @@ private:
 	const char *msg_;
 	std::chrono::high_resolution_clock::time_point t;
 };
+
+void exit_with_error(const std::exception& e);

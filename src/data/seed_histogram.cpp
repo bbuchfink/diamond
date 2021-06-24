@@ -17,18 +17,20 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #include "seed_histogram.h"
+#include "../util/util.h"
+#include "../util/algo/partition.h"
 
 SeedPartitionRange current_range;
 
 Partitioned_histogram::Partitioned_histogram()
 { }
 
-size_t Partitioned_histogram::max_chunk_size() const
+size_t Partitioned_histogram::max_chunk_size(size_t index_chunks) const
 {
 	size_t max = 0;
-	::partition<unsigned> p(Const::seedp, config.lowmem);
+	::Partition<unsigned> p(Const::seedp, index_chunks);
 	for (unsigned shape = 0; shape < shapes.count(); ++shape)
 		for (unsigned chunk = 0; chunk < p.parts; ++chunk)
-			max = std::max(max, hst_size(data_[shape], SeedPartitionRange(p.getMin(chunk), p.getMax(chunk))));
+			max = std::max(max, hst_size(data_[shape], SeedPartitionRange(p.begin(chunk), p.end(chunk))));
 	return max;
 }

@@ -25,13 +25,31 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "file_sink.h"
 #include "output_stream_buffer.h"
 #include "compressed_stream.h"
+#ifdef WITH_ZSTD
+#include "zstd_stream.h"
+#endif
 
-OutputFile::OutputFile(const string &file_name, bool compressed, const char *mode) :
+static StreamEntity* make_compressor(const Compressor c, StreamEntity* buffer) {
+	switch (c) {
+	case Compressor::ZLIB:
+		return new ZlibSink(buffer);
+	case Compressor::ZSTD:
+#ifdef WITH_ZSTD
+		return new ZstdSink(buffer);
+#else
+		throw std::runtime_error("Executable was not compiled with ZStd support.");
+#endif
+	default:
+		throw std::runtime_error("");
+	}
+}
+
+OutputFile::OutputFile(const string &file_name, Compressor compressor, const char *mode) :
 	Serializer(new OutputStreamBuffer(new FileSink(file_name, mode))),
 	file_name_(file_name)
 {
-	if (compressed) {
-		buffer_ = new OutputStreamBuffer(new ZlibSink(buffer_));
+	if (compressor != Compressor::NONE) {
+		buffer_ = new OutputStreamBuffer(make_compressor(compressor, buffer_));
 		reset_buffer();
 	}
 }

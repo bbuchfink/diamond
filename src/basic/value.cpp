@@ -23,8 +23,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <string.h>
 #include <assert.h>
 #include "value.h"
-#include "../util/util.h"
 #include "reduction.h"
+#include "../util/util.h"
 
 const Letter Char_representation::invalid = '\xff';
 

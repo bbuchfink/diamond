@@ -1,10 +1,13 @@
 #include <sstream>
 #include "output_format.h"
 #include "../util/escape_sequences.h"
+#include "../data/taxonomy.h"
+#include "../util/util.h"
+#include "../util/sequence/sequence.h"
 
 using std::endl;
 
-void XML_format::print_match(const Hsp_context& r, const Metadata& metadata, TextBuffer& out)
+void XML_format::print_match(const HspContext& r, const Search::Config& metadata, TextBuffer& out)
 {
 	if (r.hsp_num == 0) {
 		if (r.hit_num > 0)
@@ -13,11 +16,12 @@ void XML_format::print_match(const Hsp_context& r, const Metadata& metadata, Tex
 		out << "<Hit>" << '\n'
 			<< "  <Hit_num>" << r.hit_num + 1 << "</Hit_num>" << '\n';
 		string id, def;
-		get_title_def(r.subject_name, id, def);
+		const string target_seqid = r.target_title;
+		Util::Seq::get_title_def(target_seqid, id, def);
 		if (config.xml_blord_format) {
-			out << "  <Hit_id>gnl|BL_ORD_ID|" << r.subject_id << "</Hit_id>" << '\n'
+			out << "  <Hit_id>gnl|BL_ORD_ID|" << r.subject_oid << "</Hit_id>" << '\n'
 				<< "  <Hit_def>";
-			Output_format::print_title(out, r.subject_name, true, true, " &gt;", &EscapeSequences::XML);
+			Output_format::print_title(out, target_seqid.c_str(), true, true, " &gt;", &EscapeSequences::XML);
 			out << "</Hit_def>" << '\n';
 		}
 		else {
@@ -54,19 +58,19 @@ void XML_format::print_match(const Hsp_context& r, const Metadata& metadata, Tex
 		<< "      <Hsp_align-len>" << r.length() << "</Hsp_align-len>" << '\n'
 		<< "         <Hsp_qseq>";
 
-	for (Hsp_context::Iterator i = r.begin(); i.good(); ++i)
+	for (HspContext::Iterator i = r.begin(); i.good(); ++i)
 		out << i.query_char();
 
 	out << "</Hsp_qseq>" << '\n'
 		<< "         <Hsp_hseq>";
 
-	for (Hsp_context::Iterator i = r.begin(); i.good(); ++i)
+	for (HspContext::Iterator i = r.begin(); i.good(); ++i)
 		out << i.subject_char();
 
 	out << "</Hsp_hseq>" << '\n'
 		<< "      <Hsp_midline>";
 
-	for (Hsp_context::Iterator i = r.begin(); i.good(); ++i)
+	for (HspContext::Iterator i = r.begin(); i.good(); ++i)
 		out << i.midline_char();
 
 	out << "</Hsp_midline>" << '\n'
@@ -103,7 +107,7 @@ void XML_format::print_header(Consumer& f, int mode, const char* matrix, int gap
 	f.consume(ss.str().c_str(), ss.str().length());
 }
 
-void XML_format::print_query_intro(size_t query_num, const char* query_name, unsigned query_len, TextBuffer& out, bool unaligned) const
+void XML_format::print_query_intro(size_t query_num, const char* query_name, unsigned query_len, TextBuffer& out, bool unaligned, const Search::Config& cfg) const
 {
 	out << "<Iteration>" << '\n'
 		<< "  <Iteration_iter-num>" << query_num + 1 << "</Iteration_iter-num>" << '\n'
@@ -115,7 +119,7 @@ void XML_format::print_query_intro(size_t query_num, const char* query_name, uns
 		<< "<Iteration_hits>" << '\n';
 }
 
-void XML_format::print_query_epilog(TextBuffer& out, const char* query_title, bool unaligned, const Parameters& parameters) const
+void XML_format::print_query_epilog(TextBuffer& out, const char* query_title, bool unaligned, const Search::Config& parameters) const
 {
 	if (!unaligned) {
 		out << "  </Hit_hsps>" << '\n'

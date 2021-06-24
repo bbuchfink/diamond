@@ -5,7 +5,7 @@
 #include "edge_vec.h"
 #include "../../util/io/text_input_file.h"
 #include "../../util/string/tokenizer.h"
-#include "../merge_sort.h"
+#include "../algo/merge_sort.h"
 #include "../../basic/config.h"
 #include "../io/temp_file.h"
 

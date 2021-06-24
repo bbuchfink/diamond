@@ -24,11 +24,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <memory>
 #include <vector>
 #include <map>
-#include "../search/trace_pt_buffer.h"
 #include "../util/task_queue.h"
 #include "../basic/statistics.h"
 #include "legacy/query_mapper.h"
-#include "../data/metadata.h"
+#include "../run/workflow.h"
+#include "../search/hit.h"
 
 struct Output_writer
 {
@@ -37,21 +37,21 @@ struct Output_writer
 	{ }
 	void operator()(TextBuffer &buf)
 	{
-		f_->write(buf.get_begin(), buf.size());
+		f_->write(buf.data(), buf.size());
 		buf.clear();
 	}
 private:
 	OutputFile* const f_;
 };
 
-void align_queries(Trace_pt_buffer &trace_pts, Consumer* output_file, const Parameters &params, const Metadata &metadata);
+void align_queries(Consumer* output_file, Search::Config &cfg);
 
 namespace ExtensionPipeline {
 	namespace Swipe {
 		struct Pipeline : public QueryMapper
 		{
-			Pipeline(const Parameters &params, size_t query_id, hit* begin, hit* end, const Metadata &metadata) :
-				QueryMapper(params, query_id, begin, end, metadata)
+			Pipeline(size_t query_id, Search::Hit* begin, Search::Hit* end, const Search::Config &cfg) :
+				QueryMapper(query_id, begin, end, cfg)
 			{}
 			virtual void run(Statistics &stat) override;
 			virtual ~Pipeline() {}
@@ -61,8 +61,8 @@ namespace ExtensionPipeline {
 		struct Target;
 		struct Pipeline : public QueryMapper
 		{
-			Pipeline(const Parameters &params, size_t query_id, hit* begin, hit* end, DpStat &dp_stat, const Metadata &metadata, bool target_parallel) :
-				QueryMapper(params, query_id, begin, end, metadata, target_parallel),
+			Pipeline(size_t query_id, Search::Hit* begin, Search::Hit* end, DpStat &dp_stat, const Search::Config &cfg, bool target_parallel) :
+				QueryMapper(query_id, begin, end, cfg, target_parallel),
 				dp_stat(dp_stat)
 			{}
 			Target& target(size_t i);

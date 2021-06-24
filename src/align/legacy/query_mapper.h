@@ -1,6 +1,9 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2019 Benjamin Buchfink <buchfink@gmail.com>
+Copyright (C) 2016-2021 Max Planck Society for the Advancement of Science e.V.
+                        Benjamin Buchfink
+						
+Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,27 +19,20 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#ifndef QUERY_MAPPER_H_
-#define QUERY_MAPPER_H_
-
+#pragma once
 #include <queue>
 #include <vector>
 #include <list>
 #include <set>
 #include <float.h>
-#include "../../search/trace_pt_buffer.h"
 #include "../../data/queries.h"
 #include "../../util/ptr_vector.h"
 #include "../../dp/dp.h"
 #include "../../data/reference.h"
-#include "../../basic/parameters.h"
-#include "../../data/metadata.h"
 #include "../../dp/hsp_traits.h"
 #include "../../basic/match.h"
-
-using std::vector;
-using std::pair;
-using std::list;
+#include "../../run/config.h"
+#include "../search/hit.h"
 
 struct Seed_hit
 {
@@ -113,9 +109,9 @@ struct Target
 		filter_score(filter_score),
 		filter_evalue(filter_evalue)
 	{}
-	Target(size_t begin, unsigned subject_id, const std::set<unsigned> &taxon_rank_ids) :
+	Target(size_t begin, unsigned subject_id, const Sequence& subject, const std::set<unsigned> &taxon_rank_ids) :
 		subject_block_id(subject_id),
-		subject(ref_seqs::get()[subject_id]),
+		subject(subject),
 		filter_score(0),
 		filter_evalue(DBL_MAX),
 		outranked(false),
@@ -132,7 +128,7 @@ struct Target
 	}
 	void fill_source_ranges(size_t query_len)
 	{
-		for (list<Hsp_traits>::iterator i = ts.begin(); i != ts.end(); ++i)
+		for (std::list<Hsp_traits>::iterator i = ts.begin(); i != ts.end(); ++i)
 			i->query_source_range = TranslatedPosition::absolute_interval(TranslatedPosition(i->query_range.begin_, Frame(i->frame)), TranslatedPosition(i->query_range.end_, Frame(i->frame)), (int)query_len);
 	}
 	void add_ranges(vector<int32_t> &v);
@@ -141,7 +137,7 @@ struct Target
 	bool is_enveloped(const Target &t, double p) const;
 	bool is_enveloped(PtrVector<Target>::const_iterator begin, PtrVector<Target>::const_iterator end, double p, int min_score) const;
 	void inner_culling();
-	void apply_filters(int dna_len, int subject_len, const char *query_title, const char *ref_title);
+	void apply_filters(int dna_len, int subject_len, const char *query_title);
 	unsigned subject_block_id;
 	Sequence subject;
 	int filter_score;
@@ -149,8 +145,8 @@ struct Target
 	float filter_time;
 	bool outranked;
 	size_t begin, end;
-	list<Hsp> hsps;
-	list<Hsp_traits> ts;
+	std::list<Hsp> hsps;
+	std::list<Hsp_traits> ts;
 	Seed_hit top_hit;
 	std::set<unsigned> taxon_rank_ids;
 
@@ -159,7 +155,7 @@ struct Target
 
 struct QueryMapper
 {
-	QueryMapper(const Parameters &params, size_t query_id, hit* begin, hit* end, const Metadata &metadata, bool target_parallel = false);
+	QueryMapper(size_t query_id, Search::Hit* begin, Search::Hit* end, const Search::Config &metadata, bool target_parallel = false);
 	void init();
 	bool generate_output(TextBuffer &buffer, Statistics &stat);
 	void rank_targets(double ratio, double factor);
@@ -174,7 +170,7 @@ struct QueryMapper
 	}
 	Sequence query_seq(unsigned frame) const
 	{
-		return query_seqs::get()[query_id*align_mode.query_contexts + frame];
+		return metadata.query->seqs()[(size_t)query_id*(size_t)align_mode.query_contexts + frame];
 	}
 	void fill_source_ranges()
 	{
@@ -184,8 +180,7 @@ struct QueryMapper
 	virtual void run(Statistics &stat) = 0;
 	virtual ~QueryMapper() {}
 
-	const Parameters &parameters;
-	pair<hit*, hit*> source_hits;
+	pair<Search::Hit*, Search::Hit*> source_hits;
 	unsigned query_id, targets_finished, next_target;
 	unsigned source_query_len, unaligned_from;
 	PtrVector<Target> targets;
@@ -193,18 +188,16 @@ struct QueryMapper
 	vector<Bias_correction> query_cb;
 	TranslatedSequence translated_query;
 	bool target_parallel;
-	const Metadata &metadata;
+	const Search::Config &metadata;
 
 private:
 
-	static pair<hit*, hit*> get_query_data();
+	static pair<Search::Hit*, Search::Hit*> get_query_data();
 	unsigned count_targets();
 	Sequence query_source_seq() const
 	{
-		return align_mode.query_translated ? query_source_seqs::get()[query_id] : query_seqs::get()[query_id];
+		return align_mode.query_translated ? metadata.query->source_seqs()[query_id] : metadata.query->seqs()[query_id];
 	}
 	void load_targets();
 	
 };
-
-#endif

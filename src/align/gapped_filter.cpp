@@ -42,11 +42,11 @@ int gapped_filter(const SeedHit &hit, const LongScoreProfile *query_profile, con
 	return DP::diag_alignment(scores, band);
 }
 
-bool gapped_filter(FlatArray<SeedHit>::ConstIterator begin, FlatArray<SeedHit>::ConstIterator end, const LongScoreProfile *query_profile, uint32_t target_block_id, Statistics &stat, const Parameters &params) {
+bool gapped_filter(FlatArray<SeedHit>::ConstIterator begin, FlatArray<SeedHit>::ConstIterator end, const LongScoreProfile *query_profile, uint32_t target_block_id, Statistics &stat, const Search::Config &params) {
 	constexpr int window1 = 100, MIN_STAGE2_QLEN = 100;
 		
 	const int qlen = (int)query_profile->length();
-	const Sequence target = ref_seqs::get()[target_block_id];
+	const Sequence target = params.target->seqs()[target_block_id];
 	const int slen = (int)target.length();
 	for (FlatArray<SeedHit>::ConstIterator hit = begin; hit < end; ++hit) {
 		stat.inc(Statistics::GAPPED_FILTER_HITS1);
@@ -63,7 +63,7 @@ bool gapped_filter(FlatArray<SeedHit>::ConstIterator begin, FlatArray<SeedHit>::
 	return false;
 }
 
-void gapped_filter_worker(size_t i, size_t thread_id, const LongScoreProfile *query_profile, const FlatArray<SeedHit>* seed_hits, const uint32_t* target_block_ids, FlatArray<SeedHit>* out, vector<uint32_t> *target_ids_out, mutex* mtx, const Parameters *params) {
+void gapped_filter_worker(size_t i, size_t thread_id, const LongScoreProfile *query_profile, const FlatArray<SeedHit>* seed_hits, const uint32_t* target_block_ids, FlatArray<SeedHit>* out, vector<uint32_t> *target_ids_out, mutex* mtx, const Search::Config *params) {
 	thread_local Statistics stat;
 	if (gapped_filter(seed_hits->begin(i), seed_hits->end(i), query_profile, target_block_ids[i], stat, *params)) {
 		std::lock_guard<mutex> guard(*mtx);
@@ -72,7 +72,7 @@ void gapped_filter_worker(size_t i, size_t thread_id, const LongScoreProfile *qu
 	}
 }
 
-void gapped_filter(const Sequence* query, const Bias_correction* query_cbs, FlatArray<SeedHit>& seed_hits, std::vector<uint32_t>& target_block_ids, Statistics& stat, int flags, const Parameters &params) {
+void gapped_filter(const Sequence* query, const Bias_correction* query_cbs, FlatArray<SeedHit>& seed_hits, std::vector<uint32_t>& target_block_ids, Statistics& stat, int flags, const Search::Config &params) {
 	if (seed_hits.size() == 0)
 		return;
 	vector<LongScoreProfile> query_profile;

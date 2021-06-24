@@ -44,7 +44,7 @@ struct Seed_set_callback
 		max_coverage(max_coverage),
 		data(&data)
 	{}
-	bool operator()(uint64_t seed, uint64_t pos, uint64_t shape)
+	bool operator()(uint64_t seed, uint64_t pos, uint32_t block_id, uint64_t shape)
 	{
 		if ((*data)[seed] == false) {
 			(*data)[seed] = true;
@@ -60,14 +60,14 @@ struct Seed_set_callback
 	vector<bool> *data;
 };
 
-Seed_set::Seed_set(const SequenceSet &seqs, double max_coverage):
+Seed_set::Seed_set(SequenceSet &seqs, double max_coverage, const std::vector<bool>* skip):
 	data_((size_t)pow(1llu<<Reduction::reduction.bit_size(), shapes[0].length_))
 {
 	if (!shapes[0].contiguous())
 		throw std::runtime_error("Contiguous seed required.");
 	PtrVector<Seed_set_callback> v;
 	v.push_back(new Seed_set_callback(data_, size_t(max_coverage*pow(Reduction::reduction.size(), shapes[0].length_))));
-	enum_seeds(&seqs, v, seqs.partition(1), 0, 1, &no_filter, true);
+	enum_seeds(&seqs, v, seqs.partition(1), 0, 1, &no_filter, true, skip);
 	coverage_ = (double)v.back().coverage / pow(Reduction::reduction.size(), shapes[0].length_);
 }
 
@@ -76,7 +76,7 @@ struct Hashed_seed_set_callback
 	Hashed_seed_set_callback(PtrVector<HashSet<Modulo2, Identity>> &dst):
 		dst(dst)
 	{}
-	bool operator()(uint64_t seed, uint64_t pos, uint64_t shape)
+	bool operator()(uint64_t seed, uint64_t pos, uint32_t block_id, uint64_t shape)
 	{
 		dst[shape].insert(seed);
 		return true;
@@ -86,13 +86,13 @@ struct Hashed_seed_set_callback
 	PtrVector<HashSet<Modulo2, Identity> > &dst;
 };
 
-HashedSeedSet::HashedSeedSet(const SequenceSet &seqs)
+HashedSeedSet::HashedSeedSet(SequenceSet &seqs, const std::vector<bool>* skip)
 {
 	for (size_t i = 0; i < shapes.count(); ++i)
 		data_.push_back(new Table(next_power_of_2(seqs.letters() * HASH_TABLE_FACTOR)));
 	PtrVector<Hashed_seed_set_callback> v;
 	v.push_back(new Hashed_seed_set_callback(data_));
-	enum_seeds(&seqs, v, seqs.partition(1), 0, shapes.count(), &no_filter, true);
+	enum_seeds(&seqs, v, seqs.partition(1), 0, shapes.count(), &no_filter, true, skip);
 
 	vector<size_t> sizes;
 	for (size_t i = 0; i < shapes.count(); ++i)
@@ -101,7 +101,7 @@ HashedSeedSet::HashedSeedSet(const SequenceSet &seqs)
 
 	for (size_t i = 0; i < shapes.count(); ++i)
 		data_.push_back(new Table(next_power_of_2(sizes[i] * HASH_TABLE_FACTOR)));
-	enum_seeds(&seqs, v, seqs.partition(1), 0, shapes.count(), &no_filter, true);
+	enum_seeds(&seqs, v, seqs.partition(1), 0, shapes.count(), &no_filter, true, skip);
 
 	for (size_t i = 0; i < shapes.count(); ++i) {
 		data_[i].finish();

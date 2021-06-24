@@ -1,3 +1,25 @@
+[2.0.10]
+- Using BLAST databases now requires a preprocessing step using the command `prepdb`.
+- Improved performance of searching small query files.
+- Added "iterative" search mode (option `--iterate`) to search the query dataset with
+  increasing sensitivity, only searching queries at the target sensitivity that fail
+  to align at a lower sensitivity search.
+- Added the "global ranking" mode (option `-g`) to set a limit on the number of
+  Smith Waterman extensions per target, ranked by their ungapped extension scores.
+- Reduced the time for loading target sequences from BLAST databases.
+- Added support for using `--comp-based-stats (3,4)` in combination with `--ext full`.
+- Fixed a bug that could cause a `Traceback error` when using `--comp-based-stats (3,4)`
+  in rare cases.
+- Changed the `full_sseq` output field to always contain unmasked sequences.
+- Fixed an issue that could cause target output order to be nondeterministic in case
+  of identically scoring hits.
+- Added support for reading zstd-compressed input files (auto-detected) and writing
+  zstd-compressed output files (option `--compress zstd`) (requires compilation
+  using `cmake -DWITH_ZSTD=ON`).
+- Compilation with BLAST database support requires the zstd library.
+- Added error message when reading protein sequences from FASTA files that only
+  contain DNA letters (can be disabled using `--ignore-warnings`).
+
 [2.0.9]
 - Reduced the memory use of database building with taxonomy mapping.
 - Removed the limitation of sequence accession length.

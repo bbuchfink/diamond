@@ -22,12 +22,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <list>
 #include <algorithm>
 #include <float.h>
-#include "../basic/parameters.h"
-#include "../search/trace_pt_buffer.h"
-#include "../data/metadata.h"
 #include "../basic/match.h"
 #include "../basic/statistics.h"
 #include "../util/text_buffer.h"
+#include "../run/config.h"
 
 namespace Extension {
 
@@ -50,7 +48,7 @@ struct Match {
 	Match(size_t target_block_id, std::array<std::list<Hsp>, MAX_CONTEXT> &hsp, int ungapped_score);
 	void inner_culling(int source_query_len);
 	void max_hsp_culling();
-	void apply_filters(int source_query_len, const char *query_title, const Sequence& query_seq);
+	void apply_filters(int source_query_len, const char *query_title, const Sequence& query_seq, const Block& targets);
 	size_t target_block_id;
 	int filter_score;
 	double filter_evalue;
@@ -58,9 +56,9 @@ struct Match {
 	std::list<Hsp> hsp;
 };
 
-std::vector<Match> extend(const Parameters &params, size_t query_id, hit* begin, hit* end, const Metadata &metadata, Statistics &stat, int flags);
-TextBuffer* generate_output(vector<Match> &targets, size_t query_block_id, Statistics &stat, const Metadata &metadata, const Parameters &parameters);
-TextBuffer* generate_intermediate_output(const vector<Match> &targets, size_t query_block_id);
+std::vector<Match> extend(size_t query_id, Search::Hit* begin, Search::Hit* end, const Search::Config &cfg, Statistics &stat, int flags);
+TextBuffer* generate_output(vector<Match> &targets, size_t query_block_id, Statistics &stat, const Search::Config& cfg);
+TextBuffer* generate_intermediate_output(const vector<Match> &targets, size_t query_block_id, const Search::Config& cfg);
 
 /*inline int raw_score_cutoff(size_t query_len) {
 	return score_matrix.rawscore(config.min_bit_score == 0 ? score_matrix.bitscore(config.max_evalue, (unsigned)query_len) : config.min_bit_score);

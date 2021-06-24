@@ -1,6 +1,6 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2020 Max Planck Society for the Advancement of Science e.V.
+Copyright (C) 2013-2021 Max Planck Society for the Advancement of Science e.V.
                         Benjamin Buchfink
                         Eberhard Karls Universitaet Tuebingen
 						
@@ -25,7 +25,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <limits>
 #include <list>
 #include "sequence.h"
-#include "../util/util.h"
 #include "../util/async_buffer.h"
 #include "packed_loc.h"
 #include "../util/system.h"
@@ -229,29 +228,27 @@ struct Hsp
 	Packed_transcript transcript;
 };
 
-struct Hsp_context
+struct HspContext
 {
-	Hsp_context(
+	HspContext(
 		Hsp& hsp,
 		unsigned query_id,
 		const TranslatedSequence &query,
-		const char *query_name,
-		unsigned subject_id,
-		unsigned orig_subject_id,
-		const char *subject_name,
+		const char *query_title,
+		unsigned subject_oid,
 		unsigned subject_len,
+		const char* subject_title,
 		unsigned hit_num,
 		unsigned hsp_num,
 		const Sequence &subject_seq,
 		int ungapped_score = 0
 	) :
 		query(query),
-		query_name(query_name),
-		subject_name(subject_name),
+		query_title(query_title),
+		target_title(subject_title),
 		query_id(query_id),
-		subject_id(subject_id),
-		orig_subject_id(orig_subject_id),
-		subject_len(subject_len),
+		subject_oid(subject_oid),
+		subject_len(subject_len),		
 		hit_num(hit_num),
 		hsp_num(hsp_num),
 		ungapped_score(ungapped_score),
@@ -260,7 +257,7 @@ struct Hsp_context
 	{}
 	struct Iterator : public Hsp::Iterator
 	{
-		Iterator(const Hsp_context &parent) :
+		Iterator(const HspContext &parent) :
 			Hsp::Iterator(parent.hsp_),
 			parent_(parent)
 		{ }
@@ -318,7 +315,7 @@ struct Hsp_context
 			return score_matrix(query(), subject());
 		}
 	private:
-		const Hsp_context &parent_;
+		const HspContext &parent_;
 	};
 	Iterator begin() const
 	{
@@ -364,11 +361,11 @@ struct Hsp_context
 	{ return hsp_.blast_query_frame(); }
 	Packed_transcript transcript() const
 	{ return hsp_.transcript; }
-	Hsp_context& parse();
+	HspContext& parse();
 
 	const TranslatedSequence query;
-	const char *query_name, *subject_name;
-	const unsigned query_id, subject_id, orig_subject_id, subject_len, hit_num, hsp_num;
+	const char* query_title, *target_title;
+	const unsigned query_id, subject_oid, subject_len, hit_num, hsp_num;
 	int ungapped_score;
 	const Sequence subject_seq;
 private:	

@@ -54,16 +54,15 @@ struct DAA_query_record
 			parent_(query_record)
 		{ }
 
-		Hsp_context context()
+		HspContext context()
 		{
-			return Hsp_context(*this,
+			return HspContext(*this,
 				(unsigned)parent_.query_num,
 				parent_.query_seq,
 				parent_.query_name.c_str(),
 				subject_id,
-				subject_id,
-				subject_name.c_str(),
 				subject_len,
+				subject_name.c_str(),
 				hit_num,
 				hsp_num,
 				Sequence());

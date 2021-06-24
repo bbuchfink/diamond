@@ -23,6 +23,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <iomanip>
 #include "mcl.h"
 #include "sparse_matrix_stream.h"
+#include "../util/util.h"
+#include "../util/sequence/sequence.h"
 
 #define MASK_INVERSE        0xC000000000000000
 #define MASK_NORMAL_NODE    0x4000000000000000
@@ -367,12 +369,12 @@ void MCL::print_stats(uint64_t nElements, uint32_t nComponents, uint32_t nCompon
 	ms->release_read_buffer();
 }
 
-SparseMatrixStream<float>* get_graph_handle(SequenceFile& db){
+shared_ptr<SparseMatrixStream<float>> get_graph_handle(shared_ptr<SequenceFile>& db){
 	const bool symmetric = !config.cluster_mcl_nonsymmetric;
 	if(config.cluster_restart){
 		task_timer timer;
 		timer.go("Reading cluster checkpoint file");
-		SparseMatrixStream<float>* ms = SparseMatrixStream<float>::fromFile(symmetric, config.cluster_graph_file, config.chunk_size);
+		shared_ptr<SparseMatrixStream<float>> ms(SparseMatrixStream<float>::fromFile(symmetric, config.cluster_graph_file, config.chunk_size));
 		timer.finish();
 		ms->done();
 		return ms;
@@ -384,17 +386,11 @@ SparseMatrixStream<float>* get_graph_handle(SequenceFile& db){
 		format = "qcovhsp/100*scovhsp/100*pident/100";
 	}
 	config.output_format = {"clus", format};
-	Workflow::Search::Options opt;
-	opt.db = &db;
-	opt.self = true;
-
-	SparseMatrixStream<float>* ms = new SparseMatrixStream<float>(symmetric, db.sequence_count(), config.cluster_graph_file);
-
+	shared_ptr<SparseMatrixStream<float>> ms(new SparseMatrixStream<float>(symmetric, db->sequence_count(), config.cluster_graph_file));
 	if(config.chunk_size > 0){
 		ms->set_max_mem(config.chunk_size);
 	}
-	opt.consumer = ms;
-	Workflow::Search::run(opt);
+	Search::run(db, nullptr, ms);
 	ms->done();
 	return ms;
 }
@@ -549,9 +545,9 @@ void MCL::run(){
 	// return;
 
 	if (config.database == "") throw runtime_error("Missing parameter: database file (--db/-d)");
-	unique_ptr<SequenceFile> db(SequenceFile::auto_create());
+	shared_ptr<SequenceFile> db(SequenceFile::auto_create());
 	statistics.reset();
-	SparseMatrixStream<float>* ms = get_graph_handle(*db);
+	shared_ptr<SparseMatrixStream<float>> ms(get_graph_handle(db));
 	task_timer timer;
 	timer.go("Computing independent components");
 	vector<vector<uint32_t>> indices = ms->get_indices();
@@ -566,7 +562,7 @@ void MCL::run(){
 	sort(sort_order.begin(), sort_order.end(), [&](uint32_t i, uint32_t j){return indices[i].size() > indices[j].size();});
 	timer.finish();
 	if(config.cluster_mcl_stats){
-		print_stats(nElements, nComponents, nComponentsLt1, sort_order, indices, ms);
+		print_stats(nElements, nComponents, nComponentsLt1, sort_order, indices, ms.get());
 	}
 
 	timer.go("Clustering components");
@@ -715,7 +711,6 @@ void MCL::run(){
 		threads[iThread].join();
 	}
 	ms->release_read_buffer();
-	delete ms;
 	timer.finish();
 
 	// Output stats
@@ -775,7 +770,7 @@ void MCL::run(){
 		db->read_seq(seq, id);
 		const uint64_t cid = (~MASK_INVERSE) & clustering_result[i];
 		const uint64_t lab = MASK_INVERSE & clustering_result[i];
-		(*out) << blast_id(id) << '\t' ;
+		(*out) << Util::Seq::seqid(id.c_str()) << '\t' ;
 		switch(lab){
 			case MASK_SINGLE_NODE:
 				(*out) << cid << '\t'<< 's';

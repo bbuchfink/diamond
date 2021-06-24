@@ -24,7 +24,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <stdexcept>
 
 class RecursiveParser{
-	const Hsp_context* r; 
+	const HspContext* r; 
 	const char * expression_to_parse;
 	const bool check;
 	char peek()
@@ -192,7 +192,7 @@ class RecursiveParser{
 
 public:
 	static const vector<std::string> variables;
-	RecursiveParser(const Hsp_context* r, const char * c, bool check): r(r), expression_to_parse(c), check(check){}
+	RecursiveParser(const HspContext* r, const char * c, bool check): r(r), expression_to_parse(c), check(check){}
 	double evaluate(){
 		return expression();
 	}

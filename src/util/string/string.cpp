@@ -19,3 +19,17 @@ string convert_size(size_t size) {
 	ss << std::fixed << std::setprecision(1) << (double)size + (double)rem / 1024.0 << ' ' << SIZES[div];
 	return ss.str();
 }
+
+namespace Util { namespace String {
+
+string replace(const std::string& s, char a, char b) {
+	string r = s;
+	size_t i = r.find_first_of(a);
+	while (i != string::npos) {
+		r[i++] = b;
+		i = r.find_first_of(a, i);
+	}
+	return r;
+}
+
+}}

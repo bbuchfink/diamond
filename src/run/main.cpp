@@ -38,7 +38,6 @@ void view();
 void db_info();
 void test_main();
 void benchmark_sw();
-void test_io();
 void db_annot_stats();
 void read_sim();
 void info();
@@ -54,6 +53,10 @@ void merge_tsv();
 void roc_id();
 void makeindex();
 void find_shapes();
+void composition();
+#ifdef WITH_BLASTDB
+void prep_blast_db();
+#endif
 
 void split();
 namespace Benchmark { DECL_DISPATCH(void, benchmark, ()) }
@@ -80,7 +83,7 @@ int main(int ac, const char* av[])
 			break;
 		case Config::blastp:
 		case Config::blastx:
-			Workflow::Search::run(Workflow::Search::Options());
+			Search::run();
 			break;
 		case Config::view:
 			view();
@@ -105,9 +108,6 @@ int main(int ac, const char* av[])
 			break;
 		case Config::dbinfo:
 			db_info();
-			break;
-		case Config::test_io:
-			test_io();
 			break;
 		case Config::read_sim:
 			read_sim();
@@ -183,6 +183,14 @@ int main(int ac, const char* av[])
 			break;
 		case Config::find_shapes:
 			find_shapes();
+			break;
+#ifdef WITH_BLASTDB
+		case Config::prep_blast_db:
+			prep_blast_db();
+			break;
+#endif
+		case Config::composition:
+			composition();
 			break;
 		default:
 			return 1;

@@ -1,6 +1,6 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2020 Max Planck Society for the Advancement of Science e.V.
+Copyright (C) 2013-2021 Max Planck Society for the Advancement of Science e.V.
                         Benjamin Buchfink
                         Eberhard Karls Universitaet Tuebingen
 						
@@ -32,53 +32,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <stdint.h>
 #include <set>
 #include <random>
+#include <mutex>
 #include "simd.h"
 #include "../basic/const.h"
-
-template<typename _t=size_t>
-struct partition
-{
-	_t items, parts, size, remainder;
-	partition() : items(0), parts(0), size(0), remainder(0)
-	{ }
-	partition(_t items, _t parts) : items(items), parts(std::min(parts, items))
-	{
-		if(this->parts > 0) {
-			size = items / this->parts;
-			remainder = items % this->parts;
-		} else {
-			size = 0;
-			remainder = 0;
-		}
-	}
-	_t getMin(_t i) const
-	{ _t b = std::min(i, remainder); return b*(size+1) + (i-b)*size; }
-	_t getMax(_t i) const
-	{ return getMin(i) + getCount(i); }
-	_t getCount(_t i) const
-	{ return i < remainder ? (size + 1) : size; }
-};
-
-template<typename _it, typename _key>
-inline std::vector<size_t> map_partition(_it begin, _it end, const _key& key, size_t min_size, size_t max_segments, size_t min_segments)
-{
-	const size_t n = end - begin;
-	const ::partition<size_t> p (n, std::max(min_segments, std::min(max_segments, n/min_size)));
-	std::vector<size_t> v (p.parts+1);
-	v[0] = p.getMin(0);
-	v[p.parts] = p.getMax(p.parts-1);
-	for(unsigned i=0;i<p.parts-1;++i) {
-		size_t e = p.getMax(i);
-		if(v[i] >= e) {
-			v[i+1] = v[i];
-			continue;
-		}
-		while(e < n && key(*(begin+e)) == key(*(begin+e-1)))
-			++e;
-		v[i+1] = e;
-	}
-	return v;
-}
+#include "text_buffer.h"
+#include "algo/partition.h"
 
 template<typename _t>
 inline _t div_up(_t x, _t m)
@@ -125,29 +83,6 @@ struct Pair
 	_t2 second;
 };
 
-inline size_t find_first_of(const char *s, const char *delimiters)
-{
-	const char *t = s;
-	while(*t && strchr(delimiters, *t) == 0)
-		++t;
-	return t-s;
-}
-
-inline std::string blast_id(const std::string &title)
-{
-	return title.substr(0, find_first_of(title.c_str(), Const::id_delimiters));
-}
-
-inline void get_title_def(const std::string &s, std::string &title, std::string &def)
-{
-	const size_t i = find_first_of(s.c_str(), Const::id_delimiters);
-	title = s.substr(0, i);
-	if (i >= s.length())
-		def.clear();
-	else
-		def = s.substr(i + 1);
-}
-
 inline size_t print_str(char* buf, const char *s, size_t n)
 {
 	memcpy(buf, s, n);
@@ -157,11 +92,6 @@ inline size_t print_str(char* buf, const char *s, size_t n)
 
 inline size_t print_str(char *buf, const char *s, const char *delimiters)
 { return print_str(buf, s, find_first_of(s, delimiters)); }
-
-inline std::string* get_str(const char *s, const char *delimiters)
-{
-	return new std::string (s, find_first_of(s, delimiters));
-}
 
 template<typename _t, unsigned d1, unsigned d2>
 struct Static_matrix
@@ -186,37 +116,6 @@ inline int abs_diff(unsigned x, unsigned y)
 {
 	return abs((int)x - int(y));
 }
-
-template<typename _t, int _n>
-struct Static_vector
-{
-	Static_vector():
-		n(0)
-	{}
-	_t& operator[](int i)
-	{
-		return data[i];
-	}
-	const _t& operator[](int i) const
-	{
-		return data[i];
-	}
-	int size() const
-	{
-		return n;
-	}
-	void push_back(const _t &x)
-	{
-		data[n++] = x;
-	}
-	void erase(int i)
-	{
-		memmove(&data[i], &data[i + 1], (--n - i)*sizeof(_t));
-	}
-private:
-	_t data[_n];
-	int n;
-};
 
 template<typename _t>
 inline void assign_ptr(_t& dst, _t *src)
@@ -483,4 +382,78 @@ std::vector<std::pair<_t1, _t2>> combine(const std::vector<_t1> &v1, const std::
 	for (size_t i = 0; i < v1.size(); ++i)
 		r.emplace_back(v1[i], v2[i]);
 	return r;
+}
+
+template<typename It, typename Key>
+struct AsyncKeyMerger {
+	AsyncKeyMerger(It begin, It end, const Key& key) :
+		it_(begin),
+		end_(end),
+		key_(key)
+	{}
+	std::pair<It, It> operator++() {
+		std::lock_guard<std::mutex> lock(mtx_);
+		if (it_ == end_)
+			return { end_, end_ };
+		It begin = it_++;
+		auto key = key_(*begin);
+		while (it_ != end_ && key_(*it_) == key) ++it_;
+		return { begin, it_ };
+	}
+private:
+	It it_;
+	const It end_;
+	const Key key_;
+	std::mutex mtx_;
+};
+
+template<typename It, typename Key>
+struct KeyMergeIterator {
+	typedef typename std::result_of<Key(const typename It::value_type&)>::type KeyType;
+	KeyMergeIterator(const It& begin, const It& end, const Key& key) :
+		end_(end),
+		begin_(begin),
+		key_end_(begin),
+		get_key_(key)
+	{
+		if (begin == end)
+			return;
+		next_key_ = key(*begin);
+		assert(begin != end);
+		this->operator++();
+	}
+	void operator++()
+	{
+		begin_ = key_end_;
+		if (begin_ == end_)
+			return;
+		key_ = next_key_;
+		++key_end_;
+		while (key_end_ != end_ && (next_key_ = get_key_(*key_end_)) == key_) ++key_end_;
+	}
+	bool good() const
+	{
+		return begin_ != end_;
+	}
+	It& begin()
+	{
+		return begin_;
+	}
+	It& end()
+	{
+		return key_end_;
+	}
+	KeyType key() const {
+		return key_;
+	}
+private:
+	const It end_;
+	It begin_, key_end_;
+	const Key get_key_;
+	KeyType key_, next_key_;
+};
+
+template<typename It, typename Key>
+KeyMergeIterator<It, Key> inline merge_keys(const It& begin, const It& end, const Key& key) {
+	return KeyMergeIterator<It, Key>(begin, end, key);
 }

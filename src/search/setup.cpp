@@ -24,6 +24,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../basic/config.h"
 #include "seed_complexity.h"
 #include "search.h"
+#include "hit.h"
 
 using std::endl;
 using std::map;
@@ -42,7 +43,17 @@ const map<Sensitivity, SensitivityTraits> sensitivity_traits {
 	{ Sensitivity::ULTRA_SENSITIVE, {true,  20.0,  9,    300000, 30000,  1,     1,        64 }}
 };
 
-static const map<Sensitivity, vector<string>> shape_codes = {
+const map<Sensitivity, vector<Sensitivity>> iterated_sens{
+	{ Sensitivity::FAST,            { }},
+	{ Sensitivity::DEFAULT,         { }},
+	{ Sensitivity::MID_SENSITIVE,   {Sensitivity::DEFAULT}},
+	{ Sensitivity::SENSITIVE,       {Sensitivity::DEFAULT}},
+	{ Sensitivity::MORE_SENSITIVE,  {Sensitivity::DEFAULT}},
+	{ Sensitivity::VERY_SENSITIVE,  {Sensitivity::DEFAULT, Sensitivity::MORE_SENSITIVE}},
+	{ Sensitivity::ULTRA_SENSITIVE, {Sensitivity::DEFAULT, Sensitivity::MORE_SENSITIVE}}
+};
+
+const map<Sensitivity, vector<string>> shape_codes = {
 
 	{Sensitivity::DEFAULT, {
 		"111101110111",
@@ -189,34 +200,24 @@ bool use_single_indexed(double coverage, size_t query_letters, size_t ref_letter
 		return query_letters < 3000000llu && query_letters * 2000llu < ref_letters;
 }
 
-void setup_search()
+void setup_search(Sensitivity sens, Search::Config& cfg)
 {
-	const Sensitivity sens = config.sensitivity;
 	const SensitivityTraits& traits = sensitivity_traits.at(sens);
-	Config::set_option(config.freq_sd, traits.freq_sd);
-	Config::set_option(config.min_identities, traits.min_identities);
-	Config::set_option(config.ungapped_evalue, traits.ungapped_evalue, -1.0);
-	Config::set_option(config.ungapped_evalue_short, traits.ungapped_evalue_short, -1.0);
-	Config::set_option(config.gapped_filter_evalue, traits.gapped_filter_evalue, -1.0);
-	Config::set_option(config.lowmem, traits.index_chunks);
-	Config::set_option(config.query_bins, traits.query_bins);
+	config.sensitivity = sens;
+	Config::set_option(cfg.freq_sd, config.freq_sd_, 0.0, traits.freq_sd);
+	Config::set_option(cfg.hamming_filter_id, config.min_identities_, 0u, traits.min_identities);
+	Config::set_option(cfg.ungapped_evalue, config.ungapped_evalue_, -1.0, traits.ungapped_evalue);
+	Config::set_option(cfg.ungapped_evalue_short, config.ungapped_evalue_short_, -1.0, traits.ungapped_evalue_short);
+	Config::set_option(cfg.gapped_filter_evalue, config.gapped_filter_evalue_, -1.0, traits.gapped_filter_evalue);
+	Config::set_option(cfg.index_chunks, config.lowmem_, 0u, traits.index_chunks);
+	Config::set_option(cfg.query_bins, config.query_bins_, 0u, traits.query_bins);
 	
 	if (config.algo == Config::Algo::QUERY_INDEXED) {
-		config.lowmem = 1;
+		cfg.index_chunks = 1;
 		if(!traits.support_query_indexed)
 			throw std::runtime_error("Query-indexed mode is not supported for this sensitivity setting.");
 	}
 	
 	::shapes = ShapeConfig(config.shape_mask.empty() ? shape_codes.at(sens) : config.shape_mask, config.shapes);
-
-	print_warnings();
-
-	if (config.command != Config::blastp && config.command != Config::blastx)
-		return;
-
-	SeedComplexity::init(Reduction::reduction);
 	config.gapped_filter_diag_score = score_matrix.rawscore(config.gapped_filter_diag_bit_score);
-
-	verbose_stream << "Seed frequency SD: " << config.freq_sd << endl;
-	verbose_stream << "Shape configuration: " << ::shapes << endl;
 }

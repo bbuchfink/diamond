@@ -1,6 +1,10 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2017 Benjamin Buchfink <buchfink@gmail.com>
+Copyright (C) 2013-2021 Max Planck Society for the Advancement of Science e.V.
+                        Benjamin Buchfink
+                        Eberhard Karls Universitaet Tuebingen
+						
+Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,9 +20,8 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#ifndef TASK_QUEUE_H_
-#define TASK_QUEUE_H_
-
+#pragma once
+#include <vector>
 #include <mutex>
 #include <condition_variable>
 
@@ -136,8 +139,8 @@ private:
 	_t& slot(size_t n)
 	{ return queue_[idx(n)]; }
 
-	vector<_t> queue_;
-	vector<bool> state_;
+	std::vector<_t> queue_;
+	std::vector<bool> state_;
 	std::mutex mtx_;
 	std::condition_variable cond_;
 	volatile size_t head_, tail_, limit_, head_idx_, queued_, queued_size_;
@@ -145,5 +148,3 @@ private:
 	_callback &callback_;
 
 };
-
-#endif

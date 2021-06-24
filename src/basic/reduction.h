@@ -25,38 +25,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <string>
 #include <string.h>
 #include "value.h"
-#include "../util/util.h"
 #include "sequence.h"
 #include "translate.h"
 
 struct Reduction
 {
 
-	Reduction(const char *definition_string)
-	{
-		memset(map_, 0, sizeof(map_));
-		memset(map8_, 0, sizeof(map8_));
-		memset(map8b_, 0, sizeof(map8b_));
-		map_[(long)MASK_LETTER] = MASK_LETTER;
-		map_[(long)STOP_LETTER] = MASK_LETTER;
-		const vector<string> tokens(tokenize(definition_string, " "));
-		size_ = (unsigned)tokens.size();
-		bit_size_exact_ = log(size_) / log(2);
-		bit_size_ = (uint64_t)ceil(bit_size_exact_);
-		for (unsigned i = 0; i<size_; ++i)
-			for (unsigned j = 0; j<tokens[i].length(); ++j) {
-				const char ch = tokens[i][j];
-				map_[(long)value_traits.from_char(ch)] = i;
-				map8_[(long)value_traits.from_char(ch)] = i;
-				map8b_[(long)value_traits.from_char(ch)] = i;
-			}
-		map8_[(long)MASK_LETTER] = (Letter)size_;
-		map8_[(long)STOP_LETTER] = (Letter)size_;
-		map8_[(long)DELIMITER_LETTER] = (Letter)size_;
-		map8b_[(long)MASK_LETTER] = (Letter)(size_ + 1);
-		map8b_[(long)STOP_LETTER] = (Letter)(size_ + 1);
-		map8b_[(long)DELIMITER_LETTER] = (Letter)(size_ + 1);
-	}
+	Reduction(const char* definition_string);
 
 	unsigned size() const
 	{

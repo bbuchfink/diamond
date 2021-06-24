@@ -27,9 +27,16 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <stdint.h>
 #include <limits>
 #include <vector>
-#include "util.h"
 #include "algo/varint.h"
 #include "string/string.h"
+
+inline size_t find_first_of(const char* s, const char* delimiters)
+{
+	const char* t = s;
+	while (*t && strchr(delimiters, *t) == 0)
+		++t;
+	return t - s;
+}
 
 struct TextBuffer
 {
@@ -65,7 +72,7 @@ struct TextBuffer
 	operator char*() const
 	{ return ptr_; }
 
-	char* get_begin() const
+	char* data() const
 	{ return data_; }
 
 	void clear()

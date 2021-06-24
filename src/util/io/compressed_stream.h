@@ -16,15 +16,10 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#ifndef COMPRESSED_STREAM_H_
-#define COMPRESSED_STREAM_H_
-
+#pragma once
 #include <string>
 #include <zlib.h>
 #include "stream_entity.h"
-#include "../util.h"
-
-using std::string;
 
 struct ZlibSource : public StreamEntity
 {
@@ -49,5 +44,3 @@ private:
 	static const size_t chunk_size = 1llu << 20;
 	z_stream strm;
 };
-
-#endif

@@ -25,6 +25,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 namespace Util { namespace Scores {
 
 struct CutoffTable {
+
+	CutoffTable() {}
 	
 	CutoffTable(double evalue) {
 		for (int b = 1; b <= MAX_BITS; ++b) {
@@ -46,6 +48,8 @@ private:
 };
 
 struct CutoffTable2D {
+
+	CutoffTable2D() {}
 
 	CutoffTable2D(double evalue) {
 		for (int b1 = 1; b1 <= MAX_BITS; ++b1)

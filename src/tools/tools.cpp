@@ -2,12 +2,12 @@
 #include <vector>
 #include "tsv_record.h"
 #include "../basic/config.h"
-#include "../util/math/sparse_matrix.h"
 #include "../basic/value.h"
 #include "../util/util.h"
 #include "../basic/sequence.h"
 #include "../util/seq_file_format.h"
 #include "../util/sequence/sequence.h"
+#include "../stats/cbs.h"
 
 using std::cout;
 using std::endl;
@@ -30,28 +30,35 @@ void filter_blasttab() {
 	}
 }
 
-void mcl() {
-	SparseMatrix graph(std::cin);
-	graph.print_stats();
-}
-
 void split() {
 	TextInputFile in(config.single_query_file());
 	string id;
 	vector<Letter> seq;
 	size_t n = 0, f = 0, b = (size_t)(config.chunk_size * 1e9);
-	OutputFile *out = new OutputFile(std::to_string(f) + ".faa.gz", true);
+	OutputFile *out = new OutputFile(std::to_string(f) + ".faa.gz", Compressor::ZLIB);
 	while (FASTA_format().get_seq(id, seq, in, value_traits)) {
 		if (n >= b) {
 			out->close();
 			delete out;
-			out = new OutputFile(std::to_string(++f) + ".faa.gz", true);
+			out = new OutputFile(std::to_string(++f) + ".faa.gz", Compressor::ZLIB);
 			n = 0;
 		}
-		string blast_id = ::blast_id(id);
+		string blast_id = Util::Seq::seqid(id.c_str());
 		Util::Seq::format(Sequence(seq), blast_id.c_str(), nullptr, *out, "fasta", amino_acid_traits);
 		n += seq.size();
 	}
 	out->close();
 	delete out;
+}
+
+void composition() {
+	TextInputFile in(config.single_query_file());
+	string id;
+	vector<Letter> seq;
+	while (FASTA_format().get_seq(id, seq, in, value_traits)) {
+		auto c = Stats::composition(seq);
+		for (double x : c)
+			std::cout << x << '\t';
+		std::cout << endl;
+	}
 }

@@ -24,7 +24,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <thread>
 #include <algorithm>
 #include "../../basic/config.h"
-#include "../util/util.h"
+#include "partition.h"
 
 template<typename _t>
 struct Relation
@@ -134,7 +134,7 @@ void parallel_radix_cluster(const Relation<_t>& in, uint32_t shift, _t* out, siz
 	const Key clusters = (Key)1 << config.radix_bits;
 	std::vector<size_t> hst(clusters, 0);
 		
-	::partition<size_t> p(in.n, thread_count);
+	::Partition<size_t> p(in.n, thread_count);
 	const size_t nt = p.parts;
 	
 	std::vector<std::vector<size_t>> thread_hst;
@@ -143,7 +143,7 @@ void parallel_radix_cluster(const Relation<_t>& in, uint32_t shift, _t* out, siz
 		thread_hst.emplace_back(clusters, 0);
 	std::vector<std::thread> threads;
 	for (unsigned i = 0; i < nt; ++i) {
-		threads.emplace_back(parallel_radix_cluster_build_hst<_t, _get_key>, in.part(p.getMin(i), p.getCount(i)), shift, thread_hst[i].data());
+		threads.emplace_back(parallel_radix_cluster_build_hst<_t, _get_key>, in.part(p.begin(i), p.size(i)), shift, thread_hst[i].data());
 	}
 	for (unsigned i = 0; i < nt; ++i) {
 		threads[i].join();
@@ -167,7 +167,7 @@ void parallel_radix_cluster(const Relation<_t>& in, uint32_t shift, _t* out, siz
 
 	threads.clear();
 	for (unsigned i = 0; i < nt; ++i)
-		threads.emplace_back(parallel_radix_cluster_scatter<_t, _get_key>, in.part(p.getMin(i), p.getCount(i)), shift, thread_hst[i].data(), out);
+		threads.emplace_back(parallel_radix_cluster_scatter<_t, _get_key>, in.part(p.begin(i), p.size(i)), shift, thread_hst[i].data(), out);
 	for (unsigned i = 0; i < nt; ++i)
 		threads[i].join();
 }

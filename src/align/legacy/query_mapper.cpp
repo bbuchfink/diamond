@@ -1,6 +1,9 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2017 Benjamin Buchfink <buchfink@gmail.com>
+Copyright (C) 2016-2021 Max Planck Society for the Advancement of Science e.V.
+                        Benjamin Buchfink
+						
+Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -23,7 +26,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../../dp/ungapped.h"
 #include "../../output/output.h"
 #include "../../output/output_format.h"
-#include "../../output/daa_write.h"
+#include "../../output/daa/daa_write.h"
 #include "../../output/target_culling.h"
 
 using namespace std;
@@ -72,14 +75,13 @@ bool Target::is_outranked(const vector<int32_t> &v, double treshold) {
 	return true;
 }
 
-QueryMapper::QueryMapper(const Parameters &params, size_t query_id, hit* begin, hit* end, const Metadata &metadata, bool target_parallel) :
-	parameters(params),
+QueryMapper::QueryMapper(size_t query_id, Search::Hit* begin, Search::Hit* end, const Search::Config &metadata, bool target_parallel) :
 	source_hits(std::make_pair(begin, end)),
 	query_id((unsigned)query_id),
 	targets_finished(0),
 	next_target(0),
-	source_query_len(get_source_query_len((unsigned)query_id)),
-	translated_query(get_translated_query(query_id)),
+	source_query_len(metadata.query->source_len((unsigned)query_id)),
+	translated_query(metadata.query->translated(query_id)),
 	target_parallel(target_parallel),
 	metadata(metadata)
 {
@@ -89,7 +91,7 @@ QueryMapper::QueryMapper(const Parameters &params, size_t query_id, hit* begin, 
 void QueryMapper::init()
 {
 	if(config.log_query)
-		cout << "Query = " << query_ids::get()[query_id] << '\t' << query_id << endl;
+		cout << "Query = " << metadata.query->ids()[query_id] << '\t' << query_id << endl;
 	if (Stats::CBS::hauser(config.comp_based_stats))
 		for (unsigned i = 0; i < align_mode.query_contexts; ++i)
 			query_cb.emplace_back(query_seq(i));
@@ -101,13 +103,13 @@ void QueryMapper::init()
 
 unsigned QueryMapper::count_targets()
 {
-	std::sort(source_hits.first, source_hits.second, hit::CmpSubject());
+	std::sort(source_hits.first, source_hits.second, Search::Hit::CmpSubject());
 	const size_t n = source_hits.second - source_hits.first;
-	const hit* hits = source_hits.first;
+	const Search::Hit* hits = source_hits.first;
 	size_t subject_id = std::numeric_limits<size_t>::max();
 	unsigned n_subject = 0;
 	for (size_t i = 0; i < n; ++i) {
-		std::pair<size_t, size_t> l = ref_seqs::data_->local_position((uint64_t)hits[i].subject_);
+		std::pair<size_t, size_t> l = metadata.target->seqs().local_position((uint64_t)hits[i].subject_);
 		const unsigned frame = hits[i].query_ % align_mode.query_contexts;
 		/*const Diagonal_segment d = config.comp_based_stats ? xdrop_ungapped(query_seq(frame), query_cb[frame], ref_seqs::get()[l.first], hits[i].seed_offset_, (int)l.second)
 			: xdrop_ungapped(query_seq(frame), ref_seqs::get()[l.first], hits[i].seed_offset_, (int)l.second);*/
@@ -119,7 +121,7 @@ unsigned QueryMapper::count_targets()
 			}
 		}
 		else {
-			const Diagonal_segment d = xdrop_ungapped(query_seq(frame), ref_seqs::get()[l.first], hits[i].seed_offset_, (int)l.second);
+			const Diagonal_segment d = xdrop_ungapped(query_seq(frame), metadata.target->seqs()[l.first], hits[i].seed_offset_, (int)l.second);
 			if (d.score > 0) {
 				if (l.first != subject_id) {
 					subject_id = l.first;
@@ -140,9 +142,11 @@ void QueryMapper::load_targets()
 			if (n > 0) {
 				targets[n - 1].end = i;
 			}
+			const size_t oid = metadata.target->block_id2oid(seed_hits[i].subject_);
 			targets.get(n) = new Target(i,
 				seed_hits[i].subject_,
-				config.taxon_k ? metadata.taxon_nodes->rank_taxid((*metadata.taxon_list)[ReferenceDictionary::get().block_to_database_id(seed_hits[i].subject_)], Rank::species) : set<unsigned>());
+				metadata.target->seqs()[seed_hits[i].subject_],
+				config.taxon_k ? metadata.taxon_nodes->rank_taxid(metadata.db->taxids(oid), Rank::species) : set<unsigned>());
 			++n;
 			subject_id = seed_hits[i].subject_;
 		}
@@ -205,16 +209,21 @@ bool QueryMapper::generate_output(TextBuffer &buffer, Statistics &stat)
 	unique_ptr<TargetCulling> target_culling(TargetCulling::get());
 	const unsigned query_len = (unsigned)query_seq(0).length();
 	size_t seek_pos = 0;
-	const char *query_title = query_ids::get()[query_id];
+	const char *query_title = metadata.query->ids()[query_id];
 	unique_ptr<Output_format> f(output_format->clone());
 
 	for (size_t i = 0; i < targets.size(); ++i) {
 
 		const size_t subject_id = targets[i].subject_block_id;
-		const unsigned database_id = ReferenceDictionary::get().block_to_database_id(subject_id);
-		const unsigned subject_len = (unsigned)ref_seqs::get()[subject_id].length();
-		const char *ref_title = ref_ids::get()[subject_id];
-		targets[i].apply_filters(source_query_len, subject_len, query_title, ref_title);
+		const unsigned database_id = metadata.target->block_id2oid(subject_id);
+		string target_title;
+		size_t dict_id;
+		if (!blocked_processing)
+			target_title = metadata.target->has_ids() ? metadata.target->ids()[subject_id] : metadata.db->seqid(database_id);
+		else
+			dict_id = metadata.target->dict_id(current_ref_block, subject_id, *metadata.db);
+		const unsigned subject_len = (unsigned)metadata.target->seqs()[subject_id].length();
+		targets[i].apply_filters(source_query_len, subject_len, query_title);
 		if (targets[i].hsps.size() == 0)
 			continue;
 
@@ -234,29 +243,28 @@ bool QueryMapper::generate_output(TextBuffer &buffer, Statistics &stat)
 			if (blocked_processing) {
 				if (n_hsp == 0)
 					seek_pos = IntermediateRecord::write_query_intro(buffer, query_id);
-				IntermediateRecord::write(buffer, *j, query_id, subject_id);
+				IntermediateRecord::write(buffer, *j, query_id, dict_id, database_id);
 			}
 			else {
 				if (n_hsp == 0) {
 					if (*f == Output_format::daa)
-						seek_pos = write_daa_query_record(buffer, query_title, align_mode.query_translated ? query_source_seqs::get()[query_id] : query_seqs::get()[query_id]);
+						seek_pos = write_daa_query_record(buffer, query_title, align_mode.query_translated ? metadata.query->source_seqs()[query_id] : metadata.query->seqs()[query_id]);
 					else
-						f->print_query_intro(query_id, query_title, source_query_len, buffer, false);
+						f->print_query_intro(query_id, query_title, source_query_len, buffer, false, metadata);
 				}
 				if (*f == Output_format::daa)
-					write_daa_record(buffer, *j, subject_id);
+					write_daa_record(buffer, *j, metadata.target->dict_id(current_ref_block, subject_id, *metadata.db));
 				else
-					f->print_match(Hsp_context(*j,
+					f->print_match(HspContext(*j,
 						query_id,
 						translated_query,
 						query_title,
-						subject_id,
 						database_id,
-						ref_title,
 						subject_len,
+						target_title.c_str(),
 						n_target_seq,
 						hit_hsps,
-						ref_seqs::get()[subject_id]), metadata, buffer);
+						metadata.target->seqs()[subject_id]), metadata, buffer);
 			}
 
 			++n_hsp;
@@ -270,14 +278,14 @@ bool QueryMapper::generate_output(TextBuffer &buffer, Statistics &stat)
 			if (*f == Output_format::daa)
 				finish_daa_query_record(buffer, seek_pos);
 			else
-				f->print_query_epilog(buffer, query_title, false, parameters);
+				f->print_query_epilog(buffer, query_title, false, metadata);
 		}
 		else
 			IntermediateRecord::finish_query(buffer, seek_pos);
 	}
 	else if (!blocked_processing && *f != Output_format::daa && config.report_unaligned != 0) {
-		f->print_query_intro(query_id, query_title, source_query_len, buffer, true);
-		f->print_query_epilog(buffer, query_title, true, parameters);
+		f->print_query_intro(query_id, query_title, source_query_len, buffer, true, metadata);
+		f->print_query_epilog(buffer, query_title, true, metadata);
 	}
 
 	if (!blocked_processing) {
@@ -309,7 +317,7 @@ void Target::inner_culling()
 	}
 }
 
-void Target::apply_filters(int dna_len, int subject_len, const char *query_title, const char *ref_title)
+void Target::apply_filters(int dna_len, int subject_len, const char *query_title)
 {
 	for (list<Hsp>::iterator i = hsps.begin(); i != hsps.end();) {
 		if (i->id_percent() < config.min_id

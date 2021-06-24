@@ -24,7 +24,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <utility>
 #include <algorithm>
 #include "../../basic/config.h"
-#include "../util.h"
 #include "radix_cluster.h"
 #include "../data_structures/hash_table.h"
 #include "../data_structures/double_array.h"

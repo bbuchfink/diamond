@@ -21,7 +21,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <limits.h>
 #include "text_buffer.h"
-#include "util.h"
 
 struct EscapeSequence
 {

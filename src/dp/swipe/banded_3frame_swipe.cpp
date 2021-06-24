@@ -513,11 +513,11 @@ list<Hsp> banded_3frame_swipe_targets(vector<DpTarget>::const_iterator begin,
 	vector<DpTarget> &overflow)
 {
 	list<Hsp> out;
-	for (vector<DpTarget>::const_iterator i = begin; i < end; i += ScoreTraits<_sv>::CHANNELS) {
+	for (vector<DpTarget>::const_iterator i = begin; i < end; i += std::min((ptrdiff_t)ScoreTraits<_sv>::CHANNELS, end - i)) {
 		if (score_only)
-			out.splice(out.end(), banded_3frame_swipe<_sv, DP::ScoreOnly>(query, strand, i, i + std::min(vector<DpTarget>::const_iterator::difference_type(ScoreTraits<_sv>::CHANNELS), end - i), stat, parallel, overflow));
+			out.splice(out.end(), banded_3frame_swipe<_sv, DP::ScoreOnly>(query, strand, i, i + std::min(ptrdiff_t(ScoreTraits<_sv>::CHANNELS), end - i), stat, parallel, overflow));
 		else
-			out.splice(out.end(), banded_3frame_swipe<_sv, DP::Traceback>(query, strand, i, i + std::min(vector<DpTarget>::const_iterator::difference_type(ScoreTraits<_sv>::CHANNELS), end - i), stat, parallel, overflow));
+			out.splice(out.end(), banded_3frame_swipe<_sv, DP::Traceback>(query, strand, i, i + std::min(ptrdiff_t(ScoreTraits<_sv>::CHANNELS), end - i), stat, parallel, overflow));
 	}
 	return out;
 }

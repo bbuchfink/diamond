@@ -92,9 +92,6 @@ struct Byte_finger_print_48
 	{
 		return popcount64(match_block(r3, rhs.r3) << 32 | match_block(r1, rhs.r1) << 16 | match_block(r2, rhs.r2));
 	}
-	bool operator==(const Byte_finger_print_48& rhs) const {
-		return match(rhs) >= config.min_identities;
-	}
 	alignas(16) __m128i r1, r2, r3;
 };
 

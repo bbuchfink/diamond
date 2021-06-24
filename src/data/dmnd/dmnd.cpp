@@ -1,6 +1,6 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2020 Max Planck Society for the Advancement of Science e.V.
+Copyright (C) 2013-2021 Max Planck Society for the Advancement of Science e.V.
                         Benjamin Buchfink
                         Eberhard Karls Universitaet Tuebingen
 
@@ -38,6 +38,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../taxonomy.h"
 #include "../util/system/system.h"
 #include "../util/algo/external_sort.h"
+#include "../../util/util.h"
 
 using std::tuple;
 using std::string;
@@ -103,6 +104,60 @@ void DatabaseFile::putback_seqinfo() {
 	pos_array_offset -= SeqInfo::SIZE;
 }
 
+void DatabaseFile::write_dict_entry(size_t block, size_t oid, size_t len, const char* id, const Letter* seq)
+{
+	OutputFile& f = *dict_file_;
+	f << (uint32_t)oid;
+	f << (uint32_t)len;
+	f << id;
+	if (flag_any(flags_, Flags::TARGET_SEQS))
+		f.write(seq, len);
+	dict_alloc_size_ += strlen(id);
+}
+
+bool DatabaseFile::load_dict_entry(InputFile& f, size_t ref_block)
+{
+	uint32_t oid, len;
+	string title;
+	try {
+		f >> oid;
+	}
+	catch (EndOfStream&) {
+		return false;
+	}
+	f >> len >> title;
+	const size_t b = dict_block(ref_block);
+	dict_oid_[b].push_back(oid);
+	dict_len_[b].push_back(len);
+	dict_title_[b].push_back(title.begin(), title.end());
+	if (flag_any(flags_, Flags::TARGET_SEQS)) {
+		vector<Letter> v(len);
+		f.read(v.data(), len);
+		dict_seq_[b].push_back(v.begin(), v.end());
+	}
+	return true;
+}
+
+void DatabaseFile::reserve_dict(const size_t ref_blocks)
+{
+	if (config.multiprocessing) {
+		dict_len_ = std::vector<std::vector<uint32_t>>(ref_blocks);
+		dict_title_ = std::vector<StringSet>(ref_blocks);
+		if (flag_any(flags_, Flags::TARGET_SEQS))
+			dict_seq_ = std::vector<SequenceSet>(ref_blocks);
+	}
+	else {
+		dict_len_ = { {} };
+		dict_len_[0].reserve(next_dict_id_);
+		dict_title_ = { {} };
+		dict_title_[0].reserve(next_dict_id_, dict_alloc_size_);
+		if (flag_any(flags_, Flags::TARGET_SEQS)) {
+			dict_seq_ = { {} };
+			dict_seq_[0].reserve(next_dict_id_, 0);
+		}
+	}
+}
+
 void DatabaseFile::init(Flags flags)
 {
 	read_header(*this, ref_header);
@@ -118,16 +173,32 @@ void DatabaseFile::init(Flags flags)
 	pos_array_offset = ref_header.pos_array_offset;
 }
 
-DatabaseFile::DatabaseFile(const string &input_file, Flags flags):
-	SequenceFile(SequenceFile::Type::DMND),
+DatabaseFile::DatabaseFile(const string &input_file, Metadata metadata, Flags flags):
+	SequenceFile(SequenceFile::Type::DMND, Alphabet::STD, flags),
 	InputFile(auto_append_extension_if_exists(input_file, FILE_EXTENSION), InputFile::BUFFERED),
 	temporary(false)
 {
 	init(flags);
+
+	vector<string> e;
+	if (flag_any(metadata, Metadata::TAXON_MAPPING) && !has_taxon_id_lists())
+		e.push_back("taxonomy mapping information (--taxonmap option)");
+	if (flag_any(metadata, Metadata::TAXON_NODES) && !has_taxon_nodes())
+		e.push_back("taxonomy nodes information (--taxonnodes option)");
+	if (flag_any(metadata, Metadata::TAXON_SCIENTIFIC_NAMES) && !has_taxon_scientific_names())
+		e.push_back("taxonomy names information (--taxonnames option)");
+	if (flag_any(metadata, Metadata::TAXON_RANKS) && build_version() < 131)
+		e.push_back("taxonomy ranks information (database needs to be built with diamond version >= 0.9.30");
+
+	if (!e.empty())
+		throw std::runtime_error("Options require taxonomy information included in the database. Please use the respective options to build this information into the database when running diamond makedb: " + join(", ", e));
+
+	if (flag_any(metadata, Metadata::TAXON_MAPPING))
+		taxon_list_.reset(new TaxonList(seek(header2.taxon_array_offset), ref_header.sequences, header2.taxon_array_size));
 }
 
 DatabaseFile::DatabaseFile(TempFile &tmp_file):
-	SequenceFile(SequenceFile::Type::DMND),
+	SequenceFile(SequenceFile::Type::DMND, Alphabet::STD, Flags::NONE),
 	InputFile(tmp_file, 0),
 	temporary(true)
 {
@@ -205,41 +276,46 @@ void DatabaseFile::make_db(TempFile **tmp_out, list<TextInputFile> *input_file)
 	size_t letters = 0, n = 0, n_seqs = 0, total_seqs = 0;
 	uint64_t offset = out->tell();
 
-	SequenceSet *seqs;
-	String_set<char, 0> *ids;
+	Block* block;
 	const FASTA_format format;
 	vector<SeqInfo> pos_array;
 	ExternalSorter<pair<string, uint32_t>> accessions;
 
 	try {
-		while ((timer.go("Loading sequences"), n = ::load_seqs(db_file->begin(), db_file->end(), format, &seqs, ids, 0, nullptr, (size_t)(1e9), string(), amino_acid_traits)) > 0) {
+		while (true) {
+			timer.go("Loading sequences");
+			block = new Block(db_file->begin(), db_file->end(), format, (size_t)(1e9), amino_acid_traits, false);
+			if (block->empty()) {
+				delete block;
+				break;
+			}
+			n = block->seqs().size();
 			if (config.masking == 1) {
 				timer.go("Masking sequences");
-				mask_seqs(*seqs, Masking::get(), false);
+				mask_seqs(block->seqs(), Masking::get(), false);
 			}
 			timer.go("Writing sequences");
 			for (size_t i = 0; i < n; ++i) {
-				Sequence seq = (*seqs)[i];
+				Sequence seq = block->seqs()[i];
 				if (seq.length() == 0)
 					throw std::runtime_error("File format error: sequence of length 0 at line " + std::to_string(db_file->front().line_count));
-				push_seq(seq, (*ids)[i], ids->length(i), offset, pos_array, *out, letters, n_seqs);
+				push_seq(seq, block->ids()[i], block->ids().length(i), offset, pos_array, *out, letters, n_seqs);
 			}
 			if (!config.prot_accession2taxid.empty()) {
 				timer.go("Writing accessions");
 				for (size_t i = 0; i < n; ++i) {
-					vector<string> acc = accession_from_title((*ids)[i]);
+					vector<string> acc = accession_from_title(block->ids()[i]);
 					for (const string& s : acc)
 						accessions.push(std::make_pair(s, total_seqs + i));
 				}
 			}
 			timer.go("Hashing sequences");
 			for (size_t i = 0; i < n; ++i) {
-				Sequence seq = (*seqs)[i];
+				Sequence seq = block->seqs()[i];
 				MurmurHash3_x64_128(seq.data(), (int)seq.length(), header2.hash, header2.hash);
-				MurmurHash3_x64_128((*ids)[i], ids->length(i), header2.hash, header2.hash);
+				MurmurHash3_x64_128(block->ids()[i], block->ids().length(i), header2.hash, header2.hash);
 			}
-			delete seqs;
-			delete ids;
+			delete block;
 			total_seqs += n;
 		}
 	}
@@ -358,10 +434,10 @@ void DatabaseFile::create_partition_fixednumber(size_t n) {
 }
 
 void DatabaseFile::create_partition_balanced(size_t max_letters) {
-	double n = std::ceil(static_cast<double>(ref_header.letters) / static_cast<double>(max_letters));
-	size_t max_letters_balanced = static_cast<size_t>(std::ceil(static_cast<double>(ref_header.letters)/n));
-	cout << "Balanced partitioning using " << max_letters_balanced << " (" << max_letters << ")" << endl;
-	this->create_partition(max_letters_balanced);
+	//double n = std::ceil(static_cast<double>(ref_header.letters) / static_cast<double>(max_letters));
+	//size_t max_letters_balanced = static_cast<size_t>(std::ceil(static_cast<double>(ref_header.letters)/n));
+	//cout << "Balanced partitioning using " << max_letters_balanced << " (" << max_letters << ")" << endl;
+	this->create_partition(max_letters);
 }
 
 void DatabaseFile::create_partition(size_t max_letters) {
@@ -369,32 +445,31 @@ void DatabaseFile::create_partition(size_t max_letters) {
 	size_t letters = 0, seqs = 0, total_seqs = 0;
 	size_t i_chunk = 0;
 
-	rewind();
-	seek(pos_array_offset);
+	size_t oid = 0, oid_begin;
+	set_seqinfo_ptr(oid);
+	init_seqinfo_access();
 
-	SeqInfo r, r_next;
-	size_t pos;
+	SeqInfo r = read_seqinfo();
 	bool first = true;
 
-	read(&r, 1);
 	while (r.seq_len) {
+		SeqInfo r_next = read_seqinfo();
 		if (first) {
-			pos = pos_array_offset;
+			oid_begin = oid;
 			first = false;
 		}
 		letters += r.seq_len;
 		++seqs;
 		++total_seqs;
-		read(&r_next, 1);
 		if ((letters > max_letters) || (r_next.seq_len == 0)) {
-			partition.chunks.push_back(Chunk(i_chunk, pos, seqs));
+			partition.chunks.push_back(Chunk(i_chunk, oid_begin, seqs));
 			first = true;
 			seqs = 0;
 			letters = 0;
 			++i_chunk;
 		}
-		pos_array_offset += SeqInfo::SIZE;
 		r = r_next;
+		++oid;
 	}
 
 	reverse(partition.chunks.begin(), partition.chunks.end());
@@ -451,7 +526,35 @@ void DatabaseFile::init_seqinfo_access() {
 
 void DatabaseFile::seek_chunk(const Chunk& chunk) {
 	current_ref_block = chunk.i;
-	seek(chunk.offset);
+	set_seqinfo_ptr(chunk.offset);
+}
+
+std::string DatabaseFile::seqid(size_t oid) const
+{
+	throw std::runtime_error("Operation not supported (seqid).");
+}
+std::string DatabaseFile::dict_title(size_t dict_id, const size_t ref_block) const
+{
+	const size_t b = dict_block(ref_block);
+	if (b >= dict_title_.size() || dict_id >= dict_title_[b].size())
+		throw std::runtime_error("Dictionary not loaded.");
+	return dict_title_[b][dict_id];
+}
+size_t DatabaseFile::dict_len(size_t dict_id, const size_t ref_block) const
+{
+	const size_t b = dict_block(ref_block);
+	if (b >= dict_len_.size() || dict_id >= dict_len_[b].size())
+		throw std::runtime_error("Dictionary not loaded.");
+	return dict_len_[b][dict_id];
+}
+
+std::vector<Letter> DatabaseFile::dict_seq(size_t dict_id, const size_t ref_block) const
+{
+	const size_t b = dict_block(ref_block);
+	if (b >= dict_seq_.size() || dict_id >= dict_seq_[b].size())
+		throw std::runtime_error("Dictionary not loaded.");
+	Sequence s = dict_seq_[b][dict_id];
+	return vector<Letter>(s.data(), s.end());
 }
 
 size_t DatabaseFile::id_len(const SeqInfo& seq_info, const SeqInfo& seq_info_next) {
@@ -462,7 +565,9 @@ void DatabaseFile::seek_offset(size_t p) {
 	seek(p);
 }
 
-void DatabaseFile::read_seq_data(Letter* dst, size_t len) {
+void DatabaseFile::read_seq_data(Letter* dst, size_t len, size_t& pos, bool seek) {
+	if (seek)
+		this->seek(pos);
 	read(dst - 1, len + 2);
 	*(dst - 1) = Sequence::DELIMITER;
 	*(dst + len) = Sequence::DELIMITER;
@@ -492,28 +597,15 @@ int DatabaseFile::program_build_version() const {
 	return ref_header.build;
 }
 
-void DatabaseFile::check_metadata(int flags) const {
-	if ((flags & TAXON_MAPPING) && !has_taxon_id_lists())
-		throw runtime_error("Output format requires taxonomy mapping information built into the database (use --taxonmap parameter for the makedb command).");
-	if ((flags & TAXON_NODES) && !has_taxon_nodes())
-		throw runtime_error("Output format requires taxonomy nodes information built into the database (use --taxonnodes parameter for the makedb command).");
-	if ((flags & TAXON_SCIENTIFIC_NAMES) && !has_taxon_scientific_names())
-		throw runtime_error("Output format requires taxonomy names information built into the database (use --taxonnames parameter for the makedb command).");
-}
-
-int DatabaseFile::metadata() const {
-	int flags = 0;
+SequenceFile::Metadata DatabaseFile::metadata() const {
+	Metadata flags = Metadata();
 	if (has_taxon_id_lists())
-		flags |= TAXON_MAPPING;
+		flags |= Metadata::TAXON_MAPPING;
 	if (has_taxon_nodes())
-		flags |= TAXON_NODES;
+		flags |= Metadata::TAXON_NODES;
 	if (has_taxon_scientific_names())
-		flags |= TAXON_SCIENTIFIC_NAMES;
+		flags |= Metadata::TAXON_SCIENTIFIC_NAMES;
 	return flags;
-}
-
-TaxonList* DatabaseFile::taxon_list() {
-	return new TaxonList(seek(header2.taxon_array_offset), ref_header.sequences, header2.taxon_array_size);
 }
 
 TaxonomyNodes* DatabaseFile::taxon_nodes() {
@@ -536,15 +628,17 @@ void DatabaseFile::reopen()
 {
 }
 
-BitVector DatabaseFile::filter_by_accession(const std::string& file_name)
+BitVector* DatabaseFile::filter_by_accession(const std::string& file_name)
 {
 	throw std::runtime_error("The .dmnd database format does not support filtering by accession.");
-	return BitVector();
+	return nullptr;
 }
 
-BitVector DatabaseFile::filter_by_taxonomy(const std::string& include, const std::string& exclude, const TaxonList& list, TaxonomyNodes& nodes)
+BitVector* DatabaseFile::filter_by_taxonomy(const std::string& include, const std::string& exclude, TaxonomyNodes& nodes)
 {
-	BitVector v(list.size());
+	if (!taxon_list_.get())
+		throw std::runtime_error("Database does not contain taxonomy mapping.");
+	BitVector* v = new BitVector(taxon_list_->size());
 	if (!include.empty() && !exclude.empty())
 		throw std::runtime_error("Options --taxonlist and --taxon-exclude are mutually exclusive.");
 	const bool e = !exclude.empty();
@@ -553,9 +647,9 @@ BitVector DatabaseFile::filter_by_taxonomy(const std::string& include, const std
 		throw std::runtime_error("Option --taxonlist/--taxon-exclude used with empty list.");
 	if (taxon_filter_list.find(1) != taxon_filter_list.end() || taxon_filter_list.find(0) != taxon_filter_list.end())
 		throw std::runtime_error("Option --taxonlist/--taxon-exclude used with invalid argument (0 or 1).");
-	for (size_t i = 0; i < list.size(); ++i)
-		if (nodes.contained(list[i], taxon_filter_list) ^ e)
-			v.set(i);
+	for (size_t i = 0; i < taxon_list_->size(); ++i)
+		if (nodes.contained((*taxon_list_)[i], taxon_filter_list) ^ e)
+			v->set(i);
 	return v;
 }
 
@@ -572,6 +666,45 @@ std::string DatabaseFile::file_name()
 size_t DatabaseFile::sparse_sequence_count() const
 {
 	return sequence_count();
+}
+
+std::vector<unsigned> DatabaseFile::taxids(size_t oid) const
+{
+	return (*taxon_list_)[oid];
+}
+
+void DatabaseFile::seq_data(size_t oid, std::vector<Letter>& dst) const
+{
+	throw std::runtime_error("Operation not supported.");
+}
+
+size_t DatabaseFile::seq_length(size_t oid) const
+{
+	throw std::runtime_error("Operation not supported.");
+}
+
+void DatabaseFile::init_random_access(const size_t query_block, const size_t ref_blocks, bool dictionary)
+{
+	if(dictionary)
+		load_dictionary(query_block, ref_blocks);
+}
+
+void DatabaseFile::end_random_access(bool dictionary)
+{
+	if (!dictionary)
+		return;
+	free_dictionary();
+	dict_len_.clear();
+	dict_len_.shrink_to_fit();
+	dict_title_.clear();
+	dict_title_.shrink_to_fit();
+	dict_seq_.clear();
+	dict_seq_.shrink_to_fit();
+}
+
+SequenceFile::LoadTitles DatabaseFile::load_titles()
+{
+	return LoadTitles::SINGLE_PASS;
 }
 
 std::vector<string>* DatabaseFile::taxon_scientific_names() {

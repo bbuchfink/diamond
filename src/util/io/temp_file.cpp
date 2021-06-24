@@ -80,7 +80,7 @@ pair<string, int> TempFile::init(bool unlink)
 
 TempFile::TempFile(bool unlink):
 #ifdef _MSC_VER
-	OutputFile(init(unlink), false, "w+b")
+	OutputFile(init(unlink), Compressor::NONE, "w+b")
 #else
 	OutputFile(init(unlink), "w+b")
 #endif

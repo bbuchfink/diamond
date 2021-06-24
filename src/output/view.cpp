@@ -1,6 +1,10 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2017 Benjamin Buchfink <buchfink@gmail.com>
+Copyright (C) 2013-2021 Max Planck Society for the Advancement of Science e.V.
+                        Benjamin Buchfink
+                        Eberhard Karls Universitaet Tuebingen
+						
+Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -20,15 +24,14 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../basic/config.h"
 #include "../util/io/output_file.h"
 #include "../util/text_buffer.h"
-#include "daa_file.h"
+#include "daa/daa_file.h"
 #include "../util/binary_buffer.h"
 #include "output_format.h"
 #include "../util/task_queue.h"
 #include "../stats/score_matrix.h"
 #include "../data/taxonomy.h"
-#include "../basic/parameters.h"
-#include "../data/metadata.h"
-#include "daa_write.h"
+#include "daa/daa_write.h"
+#include "../run/config.h"
 
 using namespace std;
 
@@ -37,11 +40,11 @@ const unsigned view_buf_size = 32;
 struct View_writer
 {
 	View_writer() :
-		f_(new OutputFile(config.output_file, config.compression == 1))
+		f_(new OutputFile(config.output_file, config.compressor()))
 	{ }
 	void operator()(TextBuffer &buf)
 	{
-		f_->write(buf.get_begin(), buf.size());
+		f_->write(buf.data(), buf.size());
 		buf.clear();
 	}
 	~View_writer()
@@ -75,14 +78,14 @@ struct View_fetcher
 	DAA_file &daa;
 };
 
-void view_query(DAA_query_record &r, TextBuffer &out, Output_format &format, const Parameters &params, const Metadata &metadata)
+void view_query(DAA_query_record &r, TextBuffer &out, Output_format &format, const Search::Config& cfg)
 {
 	unique_ptr<Output_format> f(format.clone());
 	size_t seek_pos;
 	if (format == Output_format::daa)
 		seek_pos = write_daa_query_record(out, r.query_name.c_str(), r.query_seq.source());
 	else
-		f->print_query_intro(r.query_num, r.query_name.c_str(), (unsigned)r.query_len(), out, false);
+		f->print_query_intro(r.query_num, r.query_name.c_str(), (unsigned)r.query_len(), out, false, cfg);
 	
 	DAA_query_record::Match_iterator i = r.begin();
 	const unsigned top_score = i.good() ? i->score : 0;
@@ -94,16 +97,16 @@ void view_query(DAA_query_record &r, TextBuffer &out, Output_format &format, con
 		if (format == Output_format::daa)
 			write_daa_record(out, *i, i->subject_id);
 		else
-			f->print_match(i->context(), metadata, out);
+			f->print_match(i->context(), cfg, out);
 	}
 	if (format == Output_format::daa)
 		finish_daa_query_record(out, seek_pos);
 	else
-		f->print_query_epilog(out, r.query_name.c_str(), false, params);
+		f->print_query_epilog(out, r.query_name.c_str(), false, cfg);
 	
 }
 
-void view_worker(DAA_file *daa, View_writer *writer, Task_queue<TextBuffer, View_writer> *queue, Output_format *format, const Parameters *params, const Metadata *metadata)
+void view_worker(DAA_file *daa, View_writer *writer, Task_queue<TextBuffer, View_writer> *queue, Output_format *format, Search::Config* cfg)
 {
 	
 	try {
@@ -113,7 +116,7 @@ void view_worker(DAA_file *daa, View_writer *writer, Task_queue<TextBuffer, View
 		while (queue->get(n, buffer, query_buf)) {
 			for (unsigned j = 0; j < query_buf.n; ++j) {
 				DAA_query_record r(*daa, query_buf.buf[j], query_buf.query_num + j);
-				view_query(r, *buffer, *format, *params, *metadata);
+				view_query(r, *buffer, *format, *cfg);
 			}
 			queue->push(n);
 		}
@@ -137,8 +140,9 @@ void view()
 	message_stream << "DB sequences used = " << daa.db_seqs_used() << endl;
 	message_stream << "DB letters = " << daa.db_letters() << endl;
 
-	const Parameters params{ daa.db_seqs(), daa.db_letters(), 0, 0.0, 0.0, 0.0, 0.0 };
-	Metadata metadata;
+	Search::Config cfg;
+	cfg.db_seqs = daa.db_seqs();
+	cfg.db_letters = daa.db_letters();
 
 	init_output();
 	taxonomy.init();
@@ -153,7 +157,7 @@ void view()
 	if (daa.read_query_buffer(buf, query_num)) {
 		DAA_query_record r(daa, buf, query_num);
 		TextBuffer out;
-		view_query(r, out, *output_format, params, metadata);
+		view_query(r, out, *output_format, cfg);
 
 		output_format->print_header(*writer.f_, daa.mode(), daa.score_matrix(), daa.gap_open_penalty(), daa.gap_extension_penalty(), daa.evalue(), r.query_name.c_str(), (unsigned)r.query_len());
 		writer(out);
@@ -161,7 +165,7 @@ void view()
 		vector<thread> threads;
 		Task_queue<TextBuffer, View_writer> queue(3 * config.threads_, writer);
 		for (size_t i = 0; i < config.threads_; ++i)
-			threads.emplace_back(view_worker, &daa, &writer, &queue, output_format.get(), &params, &metadata);
+			threads.emplace_back(view_worker, &daa, &writer, &queue, output_format.get(), &cfg);
 		for (auto &t : threads)
 			t.join();
 	}

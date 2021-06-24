@@ -1,6 +1,6 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2020 Max Planck Society for the Advancement of Science e.V.
+Copyright (C) 2013-2021 Max Planck Society for the Advancement of Science e.V.
                         Benjamin Buchfink
                         Eberhard Karls Universitaet Tuebingen
 
@@ -36,6 +36,7 @@ using std::endl;
 using std::map;
 using std::pair;
 using std::vector;
+using std::shared_ptr;
 
 struct ClusterDist : public Consumer {
 	virtual void consume(const char *ptr, size_t n) override {
@@ -58,31 +59,26 @@ struct ClusterDist : public Consumer {
 	map<int, int> counts;
 };
 
-size_t get_medoid(SequenceFile *db, const BitVector &filter, size_t n, SequenceSet *seqs) {
+size_t get_medoid(shared_ptr<SequenceFile>& db, const shared_ptr<BitVector> &filter, size_t n, SequenceSet *seqs) {
 	statistics.reset();
 	config.command = Config::blastp;
 	config.no_self_hits = true;
 	config.output_format = { "6", "qnum", "snum", "score" };
 	config.swipe_all = true;
 	config.max_evalue = 100.0;
-	config.freq_sd = 0;
+	//config.freq_sd = 0;
 	config.max_alignments = SIZE_MAX;
 	config.algo = Config::Algo::DOUBLE_INDEXED;
 	//config.ext = Config::swipe;
 	score_matrix.set_db_letters(1);
 
-	Workflow::Search::Options opt;
-	opt.db = db;
-	opt.self = true;
-	ClusterDist d;
-	opt.consumer = &d;
-	opt.db_filter = &filter;
-
-	Workflow::Search::run(opt);
+	shared_ptr<ClusterDist> d(new ClusterDist);
+	
+	Search::run(db, nullptr, d, filter);
 	
 	int max_i = -1;
 	uint64_t max_s = 0;
-	for (pair<int, uint64_t> i : d.sum) {
+	for (pair<int, uint64_t> i : d->sum) {
 		//std::cout << i.first << '\t' << i.second  << '\t' << (*seqs)[i.first].length() << endl;
 		//const double sum = i.second + (n - 1 - d.counts[i.first])*100.0;
 		if (i.second > max_s) {
@@ -108,13 +104,13 @@ int get_acc2idx(const string& acc, const map<string, size_t>& acc2idx) {
 void get_medoids_from_tree() {
 	const size_t CLUSTER_COUNT = 1000;
 	config.masking = false;
-	SequenceFile* db = SequenceFile::auto_create();
+	shared_ptr<SequenceFile> db(SequenceFile::auto_create());
 	message_stream << "#Sequences: " << db->sequence_count() << endl;
 	size_t n = db->sequence_count();
 
 	SequenceSet *seqs;
-	String_set<char, '\0'> *ids;
-	db->load_seqs(nullptr, SIZE_MAX, &seqs, &ids, true);
+	StringSet *ids;
+	db->load_seqs(SIZE_MAX, true);
 
 	map<int, int> parent;
 	map<string, int> acc2idx;
@@ -145,7 +141,7 @@ void get_medoids_from_tree() {
 			clusters[parent[i.first]].push_back(i.first);
 	}
 
-	BitVector filter(db->sequence_count());
+	shared_ptr<BitVector> filter(new BitVector(db->sequence_count()));
 	OutputFile out(config.output_file);
 	for (const pair<const int, vector<int>> &i : clusters) {
 		/*for (const string &acc : i.second)
@@ -157,7 +153,7 @@ void get_medoids_from_tree() {
 		else {
 			filter.reset();
 			for (const int& acc : i.second)
-				filter.set(acc);
+				filter->set(acc);
 			medoid = get_medoid(db, filter, i.second.size(), seqs);
 		}
 		const string id = string((*ids)[medoid]) + ' ' + std::to_string(i.second.size());
@@ -166,7 +162,6 @@ void get_medoids_from_tree() {
 	out.close();
 
 	db->close();
-	delete db;
 	delete seqs;
 	delete ids;
 }

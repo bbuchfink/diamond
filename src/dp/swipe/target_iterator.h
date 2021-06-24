@@ -28,6 +28,37 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../../util/dynamic_iterator.h"
 #include "../../stats/hauser_correction.h"
 
+template<typename T, int N>
+struct SmallVector
+{
+	SmallVector() :
+		n(0)
+	{}
+	T& operator[](int i)
+	{
+		return data[i];
+	}
+	const T& operator[](int i) const
+	{
+		return data[i];
+	}
+	int size() const
+	{
+		return n;
+	}
+	void push_back(const T& x)
+	{
+		data[n++] = x;
+	}
+	void erase(int i)
+	{
+		memmove(&data[i], &data[i + 1], (--n - i) * sizeof(T));
+	}
+private:
+	T data[N];
+	int n;
+};
+
 namespace DISPATCH_ARCH {
 
 template<typename _t>
@@ -157,7 +188,7 @@ struct TargetIterator
 
 	int pos[CHANNELS], target[CHANNELS], next, n_targets, cols;
 	bool custom_matrix_16bit;
-	Static_vector<int, CHANNELS> active;
+	SmallVector<int, CHANNELS> active;
 	const vector<DpTarget>::const_iterator subject_begin;
 };
 
@@ -243,7 +274,7 @@ struct TargetBuffer
 	}
 
 	int pos[CHANNELS], target[CHANNELS], next, n_targets, cols;
-	Static_vector<int, CHANNELS> active;
+	SmallVector<int, CHANNELS> active;
 	const vector<DpTarget>::const_iterator subject_begin;
 
 };
@@ -368,7 +399,7 @@ struct AsyncTargetBuffer
 	}
 
 	int pos[CHANNELS];
-	Static_vector<int, CHANNELS> active;
+	SmallVector<int, CHANNELS> active;
 	DynamicIterator<DpTarget>& target_it;
 	DpTarget dp_targets[CHANNELS];
 	bool custom_matrix_16bit;

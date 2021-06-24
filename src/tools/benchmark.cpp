@@ -325,7 +325,7 @@ void matrix_adjust(const Sequence& s1, const Sequence& s2) {
 }
 
 void benchmark() {
-	if (config.type == "io") {
+	if (!config.type.empty()) {
 		benchmark_io();
 		return;
 	}

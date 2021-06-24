@@ -17,24 +17,25 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #include "output_format.h"
+#include "../util/sequence/sequence.h"
 
-void PAF_format::print_query_intro(size_t query_num, const char *query_name, unsigned query_len, TextBuffer &out, bool unaligned) const
+void PAF_format::print_query_intro(size_t query_num, const char *query_name, unsigned query_len, TextBuffer &out, bool unaligned, const Search::Config& cfg) const
 {
 	if (unaligned) {
-		out.write_until(query_name, Const::id_delimiters);
+		out.write_until(query_name, Util::Seq::id_delimiters);
 		out << "\t4\t*\t0\t255\t*\t*\t0\t0\t*\t*\n";
 	}
 }
 
-void PAF_format::print_match(const Hsp_context& r, const Metadata &metadata, TextBuffer &out)
+void PAF_format::print_match(const HspContext& r, const Search::Config& cfg, TextBuffer &out)
 {
-	out.write_until(r.query_name, Const::id_delimiters);
+	out.write_until(r.query_title, Util::Seq::id_delimiters);
 	out << '\t' << r.query.source().length() << '\t'
 		<< r.query_source_range().begin_ << '\t'
 		<< r.query_source_range().end_ - 1 << '\t'
 		<< (Frame(r.frame()).strand == FORWARD ? '+' : '-') << '\t';
 
-	print_title(out, r.subject_name, false, false, "<>");
+	print_title(out, r.target_title, false, false, "<>");
 
 	out << '\t' << r.subject_len << '\t'
 		<< r.subject_range().begin_ << '\t'

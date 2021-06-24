@@ -23,6 +23,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../basic/packed_loc.h"
 
 #pragma pack(1)
+// #define KEEP_TARGET_ID
 
 struct SeedArray
 {
@@ -31,6 +32,26 @@ struct SeedArray
 
 	struct Entry
 	{
+
+#ifdef KEEP_TARGET_ID
+		struct Value {
+			Value() {}
+			Value(_pos pos) :
+				pos(pos) {}
+			Value(_pos pos, uint32_t block_id) :
+				pos(pos),
+				block_id(block_id)
+			{}
+			operator uint64_t() const {
+				return (uint64_t)pos;
+			}
+			_pos pos;
+			uint32_t block_id;
+		};
+#else
+		typedef _pos Value;
+#endif
+
 		Entry() :
 			key(),
 			value()
@@ -39,22 +60,31 @@ struct SeedArray
 			key(key),
 			value(value)
 		{ }
+		Entry(unsigned key, _pos pos, uint32_t block_id):
+			key(key),
+#ifdef KEEP_TARGET_ID
+			value(pos, block_id)
+#else
+			value(pos)
+#endif
+		{}
 		uint32_t key;
-		_pos value;
+		
 		struct GetKey {
 			uint32_t operator()(const Entry& e) const {
 				return e.key;
 			}
 		};
-		typedef _pos Value;
+
 		typedef uint32_t Key;
+		Value value;
 	} PACKED_ATTRIBUTE;
 
 	template<typename _filter>
-	SeedArray(const SequenceSet &seqs, size_t shape, const shape_histogram &hst, const SeedPartitionRange &range, const vector<size_t> &seq_partition, char *buffer, const _filter *filter, bool hashed_seeds);
+	SeedArray(SequenceSet &seqs, size_t shape, const shape_histogram &hst, const SeedPartitionRange &range, const vector<size_t> &seq_partition, char *buffer, const _filter *filter, bool hashed_seeds, const std::vector<bool>* skip);
 
 	template<typename _filter>
-	SeedArray(const SequenceSet& seqs, size_t shape, const SeedPartitionRange& range, const _filter* filter, bool hashed_seeds);
+	SeedArray(SequenceSet& seqs, size_t shape, const SeedPartitionRange& range, const _filter* filter, bool hashed_seeds, const std::vector<bool>* skip);
 
 	Entry* begin(unsigned i)
 	{
@@ -92,7 +122,7 @@ struct SeedArray
 		}
 	}
 
-	static char *alloc_buffer(const Partitioned_histogram &hst);
+	static char *alloc_buffer(const Partitioned_histogram &hst, size_t index_chunks);
 
 	const size_t key_bits;
 

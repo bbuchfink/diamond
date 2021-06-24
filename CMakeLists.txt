@@ -13,6 +13,7 @@ option(SEQ_MASK "SEQ_MASK" ON)
 option(DP_STAT "DP_STAT" OFF)
 option(SINGLE_THREADED "SINGLE_THREADED" OFF)
 option(EIGEN_BLAS "EIGEN_BLAS" OFF)
+option(WITH_ZSTD "WITH_ZSTD" OFF)
 set(MAX_SHAPE_LEN 19)
 set(BLAST_INCLUDE_DIR "" CACHE STRING "BLAST_INCLUDE_DIR")
 set(BLAST_LIBRARY_DIR "" CACHE STRING "BLAST_LIBRARY_DIR")
@@ -139,7 +140,7 @@ set(OBJECTS
   src/data/queries.cpp
   src/data/reference.cpp
   src/data/seed_histogram.cpp
-  src/output/daa_record.cpp
+  src/output/daa/daa_record.cpp
   src/util/command_line_parser.cpp
   src/util/seq_file_format.cpp
   src/util/util.cpp
@@ -171,7 +172,6 @@ set(OBJECTS
   src/output/output_sink.cpp
   src/output/target_culling.cpp
   src/align/legacy/banded_swipe_pipeline.cpp
-  src/data/ref_dictionary.cpp
   src/util/io/compressed_stream.cpp
   src/util/io/deserializer.cpp
   src/util/io/file_sink.cpp
@@ -195,7 +195,6 @@ set(OBJECTS
   src/tools/tsv_record.cpp
   src/tools/tools.cpp
   src/util/system/getRSS.cpp
-  src/util/math/sparse_matrix.cpp
   src/lib/tantan/LambdaCalculator.cc
   src/util/algo/upgma.cpp
   src/util/algo/upgma_mc.cpp
@@ -242,7 +241,6 @@ set(OBJECTS
   src/lib/alp/sls_pvalues.cpp
   src/align/global_ranking/global_ranking.cpp
   src/align/global_ranking/extend.cpp
-  src/align/load_hits.cpp
   src/tools/rocid.cpp
   src/lib/blast/blast_seg.cpp
   src/lib/blast/blast_filter.cpp
@@ -265,6 +263,12 @@ set(OBJECTS
   src/data/dmnd/dmnd.cpp
   src/data/sequence_file.cpp
   src/tools/find_shapes.cpp
+  src/data/block.cpp
+  src/run/config.cpp
+  src/data/sequence_set.cpp
+  src/align/global_ranking/table.cpp
+  src/output/daa/daa_write.cpp
+  src/util/io/zstd_stream.cpp
 )
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}")
@@ -332,6 +336,14 @@ if(EIGEN_BLAS)
   find_package(LAPACKE)
   target_include_directories(diamond PRIVATE "${LAPACKE_INCLUDE_DIR}")
   target_link_libraries(diamond "${LAPACKE_LIBRARIES_DEP}")
+endif()
+
+if(WITH_ZSTD OR BLAST_INCLUDE_DIR)
+  find_path(${ZSTD_INCLUDE_DIR} NAMES zstd.h PATHS ${ZSTD_INCLUDE_DIR})
+  find_library(ZSTD_LIBRARY NAMES libzstd.a libzstd_static)
+  target_include_directories(diamond PRIVATE "${ZSTD_INCLUDE_DIR}")
+  target_link_libraries(diamond ${ZSTD_LIBRARY})
+  add_definitions(-DWITH_ZSTD)
 endif()
 
 target_link_libraries(diamond ${ZLIB_LIBRARY} ${CMAKE_THREAD_LIBS_INIT})

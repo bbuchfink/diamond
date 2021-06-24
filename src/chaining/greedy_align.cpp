@@ -31,6 +31,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../output/output_format.h"
 #include "../dp/hsp_traits.h"
 #include "chaining.h"
+#include "../util/util.h"
 
 using std::endl;
 using std::cout;

@@ -32,13 +32,34 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "input_stream_buffer.h"
 #include "../../basic/config.h"
 #include "temp_file.h"
+#ifdef WITH_ZSTD
+#include "zstd_stream.h"
+#endif
 
-bool is_gzip_stream(const unsigned char *b)
-{
-	return (b[0] == 0x1F && b[1] == 0x8B)         // gzip header
-		|| (b[0] == 0x78 && (b[1] == 0x01      // zlib header
-			|| b[1] == 0x9C
-			|| b[1] == 0xDA));
+static Compressor detect_compressor(const char* b) {
+	if ((b[0] == '\x1F' && b[1] == '\x8B')         // gzip header
+		|| (b[0] == '\x78' && (b[1] == '\x01'      // zlib header
+			|| b[1] == '\x9C'
+			|| b[1] == '\xDA')))
+		return Compressor::ZLIB;
+	if (b[0] == '\x28' && b[1] == '\xb5' && b[2] == '\x2f' && b[3] == '\xfd')
+		return Compressor::ZSTD;
+	return Compressor::NONE;
+}
+
+static StreamEntity* make_decompressor(const Compressor c, StreamEntity* buffer) {
+	switch (c) {
+	case Compressor::ZLIB:
+		return new ZlibSource(buffer);
+	case Compressor::ZSTD:
+#ifdef WITH_ZSTD
+		return new ZstdSource(buffer);
+#else
+		throw std::runtime_error("Executable was not compiled with ZStd support.");
+#endif
+	default:
+		throw std::runtime_error("");
+	}
 }
 
 InputFile::InputFile(const string &file_name, int flags) :
@@ -60,15 +81,18 @@ InputFile::InputFile(const string &file_name, int flags) :
 	if (flags & NO_AUTODETECT)
 		return;
 	FileSource *source = dynamic_cast<FileSource*>(buffer_->root());
-	char b[2];
-	size_t n = source->read(b, 2);
+	char b[4];
+	size_t n = source->read(b, 4);
 	/*if (n == 2)
 		source->putback(b[1]);
 	if (n >= 1)
 		source->putback(b[0]);*/
 	buffer_->putback(b, n);
-	if (n == 2 && is_gzip_stream((const unsigned char*)b))
-		buffer_ = new InputStreamBuffer(new ZlibSource(buffer_));
+	if (n < 4)
+		return;
+	const auto c = detect_compressor(b);
+	if(c != Compressor::NONE)
+		buffer_ = new InputStreamBuffer(make_decompressor(c, buffer_));
 }
 
 InputFile::InputFile(TempFile &tmp_file, int flags) :

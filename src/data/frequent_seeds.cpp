@@ -25,6 +25,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "frequent_seeds.h"
 #include "queries.h"
 #include "../util/parallel/thread_pool.h"
+#include "../util/util.h"
 
 using std::endl;
 using std::atomic;
@@ -32,12 +33,12 @@ using std::atomic;
 const double Frequent_seeds::hash_table_factor = 1.3;
 Frequent_seeds frequent_seeds;
 
-void Frequent_seeds::compute_sd(atomic<unsigned> *seedp, DoubleArray<SeedArray::_pos> *query_seed_hits, DoubleArray<SeedArray::_pos> *ref_seed_hits, vector<Sd> *ref_out, vector<Sd> *query_out)
+static void compute_sd(atomic<unsigned> *seedp, DoubleArray<SeedArray::Entry::Value> *query_seed_hits, DoubleArray<SeedArray::Entry::Value> *ref_seed_hits, vector<Sd> *ref_out, vector<Sd> *query_out)
 {
 	unsigned p;
 	while ((p = (*seedp)++) < current_range.end()) {
 		Sd ref_sd, query_sd;
-		for (auto it = JoinIterator<SeedArray::_pos>(query_seed_hits[p].begin(), ref_seed_hits[p].begin()); it; ++it) {
+		for (auto it = JoinIterator<SeedArray::Entry::Value>(query_seed_hits[p].begin(), ref_seed_hits[p].begin()); it; ++it) {
 			query_sd.add((double)it.r->size());
 			ref_sd.add((double)it.s->size());
 		}
@@ -49,28 +50,30 @@ void Frequent_seeds::compute_sd(atomic<unsigned> *seedp, DoubleArray<SeedArray::
 void Frequent_seeds::build_worker(
 	size_t seedp,
 	size_t thread_id,
-	DoubleArray<SeedArray::_pos> *query_seed_hits,
-	DoubleArray<SeedArray::_pos> *ref_seed_hits,
+	DoubleArray<SeedArray::Entry::Value> *query_seed_hits,
+	DoubleArray<SeedArray::Entry::Value> *ref_seed_hits,
 	const SeedPartitionRange *range,
 	unsigned sid,
 	unsigned ref_max_n,
 	unsigned query_max_n,
-	vector<unsigned> *counts) {
+	vector<unsigned> *counts,
+	Search::Config* cfg) {
+	SequenceSet& query_seqs = cfg->query->seqs();
 	if (!range->contains((unsigned)seedp))
 		return;
 
 	vector<uint32_t> buf;
 	size_t n = 0;
-	for (auto it = JoinIterator<SeedArray::_pos>(query_seed_hits[seedp].begin(), ref_seed_hits[seedp].begin()); it;) {
+	for (auto it = JoinIterator<SeedArray::Entry::Value>(query_seed_hits[seedp].begin(), ref_seed_hits[seedp].begin()); it;) {
 		if (it.s->size() > ref_max_n || it.r->size() > query_max_n) {
 			n += (unsigned)it.s->size();
 			//Packed_seed s;
 			//shapes[sid].set_seed(s, query_seqs::get().data(*it.r->begin()));
 			//buf.push_back(seed_partition_offset(s));
 
-			Range<SeedArray::_pos*> query_hits = *it.r;
-			for (SeedArray::_pos* i = query_hits.begin(); i < query_hits.end(); ++i) {
-				Letter* p = query_seqs::get_nc().data(*i);
+			Range<SeedArray::Entry::Value*> query_hits = *it.r;
+			for (SeedArray::Entry::Value* i = query_hits.begin(); i < query_hits.end(); ++i) {
+				Letter* p = query_seqs.data(*i);
 				*p |= SEED_MASK;
 			}
 			
@@ -84,7 +87,7 @@ void Frequent_seeds::build_worker(
 	(*counts)[seedp] = (unsigned)n;
 }
 
-void Frequent_seeds::build(unsigned sid, const SeedPartitionRange &range, DoubleArray<SeedArray::_pos> *query_seed_hits, DoubleArray<SeedArray::_pos> *ref_seed_hits)
+void Frequent_seeds::build(unsigned sid, const SeedPartitionRange &range, DoubleArray<SeedArray::Entry::Value> *query_seed_hits, DoubleArray<SeedArray::Entry::Value> *ref_seed_hits, Search::Config& cfg)
 {
 	vector<Sd> ref_sds(range.size()), query_sds(range.size());
 	atomic<unsigned> seedp(range.begin());
@@ -95,17 +98,17 @@ void Frequent_seeds::build(unsigned sid, const SeedPartitionRange &range, Double
 		t.join();
 
 	Sd ref_sd(ref_sds), query_sd(query_sds);
-	const unsigned ref_max_n = (unsigned)(ref_sd.mean() + config.freq_sd*ref_sd.sd()), query_max_n = (unsigned)(query_sd.mean() + config.freq_sd*query_sd.sd());
+	const unsigned ref_max_n = (unsigned)(ref_sd.mean() + cfg.freq_sd*ref_sd.sd()), query_max_n = (unsigned)(query_sd.mean() + cfg.freq_sd*query_sd.sd());
 	log_stream << "Seed frequency mean (reference) = " << ref_sd.mean() << ", SD = " << ref_sd.sd() << endl;
 	log_stream << "Seed frequency mean (query) = " << query_sd.mean() << ", SD = " << query_sd.sd() << endl;
 	log_stream << "Seed frequency cap query: " << query_max_n << ", reference: " << ref_max_n << endl;
 	vector<unsigned> counts(Const::seedp);
-	Util::Parallel::scheduled_thread_pool_auto(config.threads_, Const::seedp, build_worker, query_seed_hits, ref_seed_hits, &range, sid, ref_max_n, query_max_n, &counts);
+	Util::Parallel::scheduled_thread_pool_auto(config.threads_, Const::seedp, build_worker, query_seed_hits, ref_seed_hits, &range, sid, ref_max_n, query_max_n, &counts, &cfg);
 	log_stream << "Masked positions = " << std::accumulate(counts.begin(), counts.end(), 0) << std::endl;
 }
 
 void Frequent_seeds::clear_masking(SequenceSet& seqs) {
-	for (size_t i = 0; i < seqs.get_length(); ++i) {
+	for (size_t i = 0; i < seqs.size(); ++i) {
 		const size_t len = seqs.length(i);
 		Letter* p = seqs.ptr(i), *end = p + len;
 		for (; p < end; ++p)

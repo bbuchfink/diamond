@@ -133,3 +133,5 @@ extern Align_mode align_mode;
 extern const double background_freq[20];
 extern const Letter IUPACAA_TO_STD[32];
 extern const Letter NCBI_TO_STD[28];
+
+enum class Alphabet { STD, NCBI };

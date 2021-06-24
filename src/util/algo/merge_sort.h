@@ -16,33 +16,30 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#ifndef MERGE_SORT_H_
-#define MERGE_SORT_H_
-
+#pragma once
 #include <algorithm>
 #include <stddef.h>
 #include <thread>
+#include <iterator>
 
-template<typename _it>
-void merge_sort(_it begin, _it end, unsigned n_threads, unsigned level = 0)
+template<typename It, typename Cmp = std::less<typename std::iterator_traits<It>::value_type>>
+void merge_sort(It begin, It end, unsigned n_threads, const Cmp& cmp = std::less<typename std::iterator_traits<It>::value_type>(), unsigned level = 0)
 {
 	ptrdiff_t diff = end - begin;
 	if(diff <= 1)
 		return;
 
 	if(1u << level >= n_threads) {
-		std::sort(begin, end);
+		std::sort(begin, end, cmp);
 		return;
 	}
 
-	_it mid = begin + diff/2;
-	std::thread *left = new std::thread(merge_sort<_it>, begin, mid, n_threads, level+1);
-	std::thread *right = new std::thread(merge_sort<_it>, mid, end, n_threads, level+1);
+	It mid = begin + diff/2;
+	std::thread *left = new std::thread(merge_sort<It, Cmp>, begin, mid, n_threads, cmp, level+1);
+	std::thread *right = new std::thread(merge_sort<It, Cmp>, mid, end, n_threads, cmp, level+1);
 	left->join();
 	right->join();
 	delete left;
 	delete right;
-	std::inplace_merge(begin, mid, end);
+	std::inplace_merge(begin, mid, end, cmp);
 }
-
-#endif /* MERGE_SORT_H_ */

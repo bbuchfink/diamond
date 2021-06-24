@@ -19,6 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <chrono>
 #include "output.h"
 #include "../data/queries.h"
+#include "../util/util.h"
 
 using std::chrono::high_resolution_clock;
 using std::chrono::seconds;
@@ -58,7 +59,7 @@ void OutputSink::flush(TextBuffer *buf)
 		size_t size = 0;
 		for (vector<TextBuffer*>::iterator j = out.begin(); j < out.end(); ++j) {
 			if (*j) {
-				f_->consume((*j)->get_begin(), (*j)->size());
+				f_->consume((*j)->data(), (*j)->size());
 				if (*j != buf)
 					size += (*j)->alloc_size();
 				delete *j;
@@ -72,7 +73,7 @@ void OutputSink::flush(TextBuffer *buf)
 	mtx_.unlock();
 }
 
-void heartbeat_worker(size_t qend)
+void heartbeat_worker(size_t qend, const Search::Config* cfg)
 {
 	static const int interval = 100;
 	static thread_local high_resolution_clock::time_point t0 = high_resolution_clock::now();
@@ -80,7 +81,7 @@ void heartbeat_worker(size_t qend)
 	size_t next;
 	while ((next = OutputSink::get().next()) < qend) {
 		if (n == interval) {
-			const string title(query_ids::get()[next]);
+			const string title(cfg->query->ids()[next]);
 			verbose_stream << "Queries=" << next
 				<< " size=" << megabytes(OutputSink::get().size())
 				<< " max_size=" << megabytes(OutputSink::get().max_size())

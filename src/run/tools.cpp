@@ -36,6 +36,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../basic/packed_transcript.h"
 #include "../data/reference.h"
 #include "../data/dmnd/dmnd.h"
+#include "../util/util.h"
+#include "../util/sequence/sequence.h"
 
 using namespace std;
 using std::chrono::high_resolution_clock;
@@ -51,12 +53,13 @@ void get_seq()
 void random_seqs()
 {
 	DatabaseFile db_file(config.database);
-	db_file.load_seqs(nullptr, std::numeric_limits<size_t>::max(), &ref_seqs::data_, &ref_ids::data_);
-	cout << "Sequences = " << ref_seqs::get().get_length() << endl;
+	Block* ref_seqs = db_file.load_seqs(std::numeric_limits<size_t>::max());
+	const auto& r = ref_seqs->seqs();
+	cout << "Sequences = " << r.size() << endl;
 	std::set<unsigned> n;
 	const size_t count = atoi(config.seq_no[0].c_str());
 	while (n.size() < count)
-		n.insert((rand()*RAND_MAX + rand()) % ref_seqs::get().get_length());
+		n.insert((rand()*RAND_MAX + rand()) % r.size());
 	OutputFile out(config.output_file);
 	unsigned j = 0;
 	
@@ -67,12 +70,13 @@ void random_seqs()
 		if (config.reverse)
 			; // ref_seqs::get()[*i].print(ss, value_traits, sequence::Reversed());
 		else
-			ss << ref_seqs::get()[*i];
+			ss << r[*i];
 		ss << endl;
 		s = ss.str();
 		out.write(s.data(), s.length());
 	}
 	out.close();
+	delete ref_seqs;
 }
 
 void sort_file()
@@ -93,13 +97,14 @@ void sort_file()
 void db_stat()
 {
 	DatabaseFile db_file(config.database);
-	db_file.load_seqs(nullptr, std::numeric_limits<size_t>::max(), &ref_seqs::data_, &ref_ids::data_);
-	cout << "Sequences = " << ref_seqs::get().get_length() << endl;
+	Block* ref_seqs = db_file.load_seqs(std::numeric_limits<size_t>::max());
+	const auto& r = ref_seqs->seqs();
+	cout << "Sequences = " << r.size() << endl;
 
 	size_t letters = 0;
 	vector<size_t> letter_freq(20);
-	for (size_t i = 0; i < ref_seqs::get().get_length(); ++i) {
-		const Sequence seq = ref_seqs::get()[i];
+	for (size_t i = 0; i < r.size(); ++i) {
+		const Sequence seq = r[i];
 		for (size_t j = 0; j < seq.length(); ++j) {
 			if (seq[j] < 20) {
 				++letters;
@@ -164,25 +169,6 @@ void fastq2fasta()
 	}
 }
 
-void test_io()
-{
-	const size_t buf_size = 1;
-	//Timer t;
-	//t.start();
-	/*InputFile f(config.query_file, InputFile::BUFFERED);
-	char buf[buf_size];	
-	size_t total = 0;
-	while (f.read(buf, buf_size) == buf_size)
-		total += buf_size;*/
-
-	DatabaseFile db(config.database);
-	db.load_seqs(nullptr, std::numeric_limits<size_t>::max(), &ref_seqs::data_, &ref_ids::data_);
-
-	size_t total = ref_seqs::get().raw_len() + ref_ids::get().raw_len();
-	//cout << "MBytes/sec = " << total / 1e6 / t.getElapsedTime() << endl;
-	//cout << "Time = " << t.getElapsedTime() << "s" << endl;
-}
-
 void read_sim()
 {
 	const double ID = 0.35;
@@ -203,7 +189,7 @@ void read_sim()
 				buf << nucleotide_traits.alphabet[rand() % 4];
 		}
 		buf << '\n';
-		out.write(buf.get_begin(), buf.size());
+		out.write(buf.data(), buf.size());
 		buf.clear();
 	}
 	out.close();
@@ -247,11 +233,11 @@ void pairwise_worker(TextInputFile *in, std::mutex *input_lock, std::mutex *outp
 			return;
 		}
 		input_lock->unlock();
-		const string ir = blast_id(id_r), iq = blast_id(id_q);
+		const string ir = Util::Seq::seqid(id_r.c_str()), iq = Util::Seq::seqid(id_q.c_str());
 		Hsp hsp;
 		smith_waterman(Sequence(query), Sequence(ref), hsp);
-		Hsp_context context(hsp, 0, TranslatedSequence(query), "", 0, 0, "", 0, 0, 0, Sequence());
-		Hsp_context::Iterator it = context.begin();
+		HspContext context(hsp, 0, TranslatedSequence(query), "", 0, 0, nullptr, 0, 0, Sequence());
+		HspContext::Iterator it = context.begin();
 		std::stringstream ss;
 		while (it.good()) {
 			if (it.op() == op_substitution)
@@ -283,7 +269,7 @@ void pairwise()
 
 void fasta_skip_to(string &id, vector<Letter> &seq, string &blast_id, TextInputFile &f)
 {
-	while (::blast_id(id) != blast_id) {
+	while (Util::Seq::seqid(id.c_str()) != blast_id) {
 		if (!FASTA_format().get_seq(id, seq, f, value_traits))
 			throw runtime_error("Sequence not found in FASTA file.");
 	}
@@ -317,7 +303,7 @@ void reverse() {
 		Sequence(seq).print(buf, amino_acid_traits, Sequence::Reversed());
 		buf << '\n';
 		buf << '\0';
-		cout << buf.get_begin();
+		cout << buf.data();
 		buf.clear();
 	}
 	in.close();

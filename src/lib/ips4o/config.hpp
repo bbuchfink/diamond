@@ -249,7 +249,7 @@ struct ExtendedConfig : public Cfg {
      * Number of elements in one block.
      */
     static constexpr const difference_type kBlockSize =
-            1ul << (detail::log2_const(
+            1llu << (detail::log2_const(
                     Cfg::kBlockSizeInBytes < sizeof(value_type)
                             ? 1
                             : (Cfg::kBlockSizeInBytes / sizeof(value_type))));

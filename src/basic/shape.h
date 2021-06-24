@@ -27,7 +27,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "seed.h"
 #include "../stats/score_matrix.h"
 #include "reduction.h"
-#include "../util/util.h"
 #include "config.h"
 #include "translate.h"
 

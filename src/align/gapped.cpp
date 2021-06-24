@@ -1,6 +1,6 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2020 Max Planck Society for the Advancement of Science e.V.
+Copyright (C) 2013-2021 Max Planck Society for the Advancement of Science e.V.
                         Benjamin Buchfink
                         Eberhard Karls Universitaet Tuebingen
 
@@ -118,6 +118,7 @@ void add_dp_targets(const WorkTarget& target, int target_idx, const Sequence* qu
 				j0 = std::min(j0, hsp.subject_range.begin_);
 				j1 = std::max(j1, hsp.subject_range.end_);
 				bits = std::max(bits, (hsp.score <= config.cutoff_score_8bit && (d1 - d0) < 256) ? 0 : 1);
+				if (matrix) bits = std::max(bits, matrix->score_width());
 				if (flags & DP::TRACEBACK && size_t(d1 - d0) * qlen > config.max_swipe_dp)
 					bits = 2;
 			}
@@ -131,6 +132,7 @@ void add_dp_targets(const WorkTarget& target, int target_idx, const Sequence* qu
 				bits = (hsp.score <= config.cutoff_score_8bit && (d1 - d0) < 256) ? 0 : 1;
 				if (flags & DP::TRACEBACK && size_t(d1 - d0) * qlen > config.max_swipe_dp)
 					bits = 2;
+				if (matrix) bits = std::max(bits, matrix->score_width());
 			}
 		}
 
@@ -185,14 +187,15 @@ vector<Target> align(const vector<WorkTarget> &targets, const Sequence *query_se
 	return r2;
 }
 
-vector<Target> full_db_align(const Sequence *query_seq, const Bias_correction *query_cb, int flags, Statistics &stat) {	
+vector<Target> full_db_align(const Sequence *query_seq, const Bias_correction *query_cb, int flags, Statistics &stat, const Block& target_block) {	
 	vector<DpTarget> v;
 	vector<Target> r;
 	Stats::TargetMatrix matrix;
 	list<Hsp> hsp;
+	const SequenceSet& ref_seqs = target_block.seqs();
 	
 	for (unsigned frame = 0; frame < align_mode.query_contexts; ++frame) {
-		ContainerIterator<DpTarget, SequenceSet> target_it(*ref_seqs::data_, ref_seqs::data_->get_length());
+		ContainerIterator<DpTarget, SequenceSet> target_it(ref_seqs, ref_seqs.size());
 		list<Hsp> frame_hsp = DP::BandedSwipe::swipe(
 			query_seq[frame],
 			v,
@@ -211,7 +214,7 @@ vector<Target> full_db_align(const Sequence *query_seq, const Bias_correction *q
 		size_t block_id = hsp.begin()->swipe_target;
 		const auto it = subject_idx.emplace(block_id, (unsigned)r.size());
 		if (it.second)
-			r.emplace_back(block_id, ref_seqs::get()[block_id], 0, matrix);
+			r.emplace_back(block_id, ref_seqs[block_id], 0, matrix);
 		unsigned i = it.first->second;
 		r[i].add_hit(hsp, hsp.begin());
 	}
@@ -261,8 +264,8 @@ vector<Match> align(vector<Target> &targets, const Sequence *query_seq, const Bi
 		flags |= DP::TRACEBACK;
 
 	for (int i = 0; i < (int)targets.size(); ++i) {
-		if (config.log_subject)
-			std::cout << "Target=" << ref_ids::get()[targets[i].block_id] << " id=" << i << endl;
+		/*if (config.log_subject)
+			std::cout << "Target=" << ref_ids::get()[targets[i].block_id] << " id=" << i << endl;*/
 		add_dp_targets(targets[i], i, query_seq, dp_targets, flags);
 		r.emplace_back(targets[i].block_id, targets[i].ungapped_score);
 	}

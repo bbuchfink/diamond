@@ -4,6 +4,7 @@
 #include "../util/io/text_input_file.h"
 #include "../basic/config.h"
 #include "../util/intrin.h"
+#include "../util/util.h"
 
 using std::set;
 using std::cout;

@@ -34,7 +34,7 @@ const size_t SEED_INDEX_HEADER_SIZE = 16;
 
 struct Seed_set
 {
-	Seed_set(const SequenceSet &seqs, double max_coverage);
+	Seed_set(SequenceSet &seqs, double max_coverage, const std::vector<bool>* skip);
 	bool contains(uint64_t key, uint64_t shape) const
 	{
 		return data_[key];
@@ -51,7 +51,7 @@ private:
 struct HashedSeedSet
 {
 	typedef HashSet<Modulo2, Identity> Table;
-	HashedSeedSet(const SequenceSet &seqs);
+	HashedSeedSet(SequenceSet &seqs, const std::vector<bool>* skip);
 	HashedSeedSet(const string& index_file);
 	~HashedSeedSet();
 	bool contains(uint64_t key, uint64_t shape) const

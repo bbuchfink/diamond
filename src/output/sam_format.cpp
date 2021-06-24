@@ -18,10 +18,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <sstream>
 #include "output_format.h"
+#include "../util/sequence/sequence.h"
 
 using namespace std;
 
-void print_md(const Hsp_context &r, TextBuffer &buf)
+void print_md(const HspContext &r, TextBuffer &buf)
 {
 	unsigned matches = 0, del = 0;
 	for (Packed_transcript::Const_iterator i = r.begin_old(); i.good(); ++i) {
@@ -58,7 +59,7 @@ void print_md(const Hsp_context &r, TextBuffer &buf)
 		buf << matches;
 }
 
-void print_cigar(const Hsp_context &r, TextBuffer &buf)
+void print_cigar(const HspContext &r, TextBuffer &buf)
 {
 	static const unsigned map[] = { 0, 1, 2, 0, 3, 4 };
 	static const char letter[] = { 'M', 'I', 'D', '\\', '/' };
@@ -77,21 +78,21 @@ void print_cigar(const Hsp_context &r, TextBuffer &buf)
 		buf << n << letter[op];
 }
 
-void Sam_format::print_query_intro(size_t query_num, const char *query_name, unsigned query_len, TextBuffer &out, bool unaligned) const
+void Sam_format::print_query_intro(size_t query_num, const char *query_name, unsigned query_len, TextBuffer &out, bool unaligned, const Search::Config& cfg) const
 {
 	if (unaligned) {
-		out.write_until(query_name, Const::id_delimiters);
+		out.write_until(query_name, Util::Seq::id_delimiters);
 		out << "\t4\t*\t0\t255\t*\t*\t0\t0\t*\t*\n";
 	}
 }
 
-void Sam_format::print_match(const Hsp_context& r, const Metadata &metadata, TextBuffer &out)
+void Sam_format::print_match(const HspContext& r, const Search::Config&metadata, TextBuffer &out)
 {
-	out.write_until(r.query_name, Const::id_delimiters);
+	out.write_until(r.query_title, Util::Seq::id_delimiters);
 	out << '\t' << '0' << '\t';
 
 	const bool lt = (config.salltitles || (config.command == Config::view)) ? true : false;
-	print_title(out, r.subject_name, lt, lt, "<>");
+	print_title(out, r.target_title, lt, lt, "<>");
 
 	out << '\t'
 		<< r.subject_range().begin_ + 1 << '\t'

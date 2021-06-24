@@ -29,8 +29,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 namespace Search {
 
-static inline bool verify_hit(const Letter* q, const Letter* s, int score_cutoff, bool left, uint32_t match_mask, unsigned sid) {
-	if (config.lowmem > 1) {
+static inline bool verify_hit(const Letter* q, const Letter* s, int score_cutoff, bool left, uint32_t match_mask, unsigned sid, bool chunked, unsigned hamming_filter_id) {
+	if (chunked) {
 		if ((shapes[sid].mask_ & match_mask) == shapes[sid].mask_) {
 			Packed_seed seed;
 			if (!shapes[sid].set_seed(seed, s))
@@ -43,14 +43,14 @@ static inline bool verify_hit(const Letter* q, const Letter* s, int score_cutoff
 	}
 	FingerPrint fq(q), fs(s);
 	const unsigned id = fq.match(fs);
-	return id >= config.min_identities;
+	return id >= hamming_filter_id;
 }
 
-static inline bool verify_hits(uint32_t mask, const Letter* q, const Letter* s, int score_cutoff, bool left, uint32_t match_mask, unsigned sid) {
+static inline bool verify_hits(uint32_t mask, const Letter* q, const Letter* s, int score_cutoff, bool left, uint32_t match_mask, unsigned sid, bool chunked, unsigned hamming_filter_id) {
 	int shift = 0;
 	while (mask != 0) {
 		int i = ctz(mask);
-		if (verify_hit(q + i + shift, s + i + shift, score_cutoff, left, match_mask >> (i + shift), sid))
+		if (verify_hit(q + i + shift, s + i + shift, score_cutoff, left, match_mask >> (i + shift), sid, chunked, hamming_filter_id))
 			return true;
 		mask >>= i + 1;
 		shift += i + 1;
@@ -65,10 +65,11 @@ static inline bool left_most_filter(const Sequence &query,
 	const Context &context,
 	bool first_shape,
 	size_t shape_id,
-	int score_cutoff)
+	int score_cutoff,
+	bool chunked,
+	unsigned hamming_filter_id)
 {
 	constexpr int WINDOW_LEFT = 16, WINDOW_RIGHT = 32;
-	const bool chunked = config.lowmem > 1;
 
 	int d = std::max(seed_offset - WINDOW_LEFT, 0), window_left = std::min(WINDOW_LEFT, seed_offset);
 	const Letter *q = query.data() + d, *s = subject + d;
@@ -94,7 +95,7 @@ static inline bool left_most_filter(const Sequence &query,
 	const uint32_t left_hit = context.current_matcher.hit(match_mask_left, len_left) & query_mask_left;
 
 	if (first_shape && !chunked)
-		return left_hit == 0 || !verify_hits(left_hit, q, s, score_cutoff, true, match_mask_left, shape_id);
+		return left_hit == 0 || !verify_hits(left_hit, q, s, score_cutoff, true, match_mask_left, shape_id, chunked, hamming_filter_id);
 
 	const uint32_t len_right = window - window_left - 1,
 		match_mask_right = match_mask >> (window_left + 1),
@@ -103,8 +104,8 @@ static inline bool left_most_filter(const Sequence &query,
 	const PatternMatcher& right_matcher = chunked ? context.current_matcher : context.previous_matcher;
 	const uint32_t right_hit = right_matcher.hit(match_mask_right, len_right) & query_mask_right;
 
-	return (left_hit == 0 || !verify_hits(left_hit, q, s, score_cutoff, true, match_mask_left, shape_id))
-		&& (right_hit == 0 || !verify_hits(right_hit, q + window_left + 1, s + window_left + 1, score_cutoff, false, match_mask_right, shape_id));
+	return (left_hit == 0 || !verify_hits(left_hit, q, s, score_cutoff, true, match_mask_left, shape_id, chunked, hamming_filter_id))
+		&& (right_hit == 0 || !verify_hits(right_hit, q + window_left + 1, s + window_left + 1, score_cutoff, false, match_mask_right, shape_id, chunked, hamming_filter_id));
 }
 
 }

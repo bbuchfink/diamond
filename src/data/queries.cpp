@@ -24,25 +24,19 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 using std::unique_ptr;
 
 unsigned current_query_chunk;
-SequenceSet* query_source_seqs::data_ = 0;
-SequenceSet* query_seqs::data_ = 0;
-String_set<char, '\0'>* query_ids::data_ = 0;
-Partitioned_histogram query_hst;
 vector<bool> query_aligned;
 std::mutex query_aligned_mtx;
 unique_ptr<HashedSeedSet> query_seeds_hashed;
-String_set<char, '\0'> *query_qual = nullptr;
-vector<unsigned> query_block_to_database_id;
 
-void write_unaligned(OutputFile *file)
+void write_unaligned(const Block& query, OutputFile *file)
 {
-	const size_t n = query_ids::get().get_length();
+	const size_t n = query.ids().size();
 	TextBuffer buf;
 	for (size_t i = 0; i < n; ++i) {
 		if (!query_aligned[i]) {
-			Util::Seq::format(align_mode.query_translated ? query_source_seqs::get()[i] : query_seqs::get()[i],
-				query_ids::get()[i],
-				query_qual ? (*query_qual)[i] : nullptr,
+			Util::Seq::format(align_mode.query_translated ? query.source_seqs()[i] : query.seqs()[i],
+				query.ids()[i],
+				query.qual().empty() ? nullptr : query.qual()[i],
 				*file,
 				config.unfmt,
 				input_value_traits);
@@ -50,15 +44,15 @@ void write_unaligned(OutputFile *file)
 	}
 }
 
-void write_aligned(OutputFile *file)
+void write_aligned(const Block& query, OutputFile *file)
 {
-	const size_t n = query_ids::get().get_length();
+	const size_t n = query.ids().size();
 	TextBuffer buf;
 	for (size_t i = 0; i < n; ++i) {
 		if (query_aligned[i]) {
-			Util::Seq::format(align_mode.query_translated ? query_source_seqs::get()[i] : query_seqs::get()[i],
-				query_ids::get()[i],
-				query_qual ? (*query_qual)[i] : nullptr,
+			Util::Seq::format(align_mode.query_translated ? query.source_seqs()[i] : query.seqs()[i],
+				query.ids()[i],
+				query.qual().empty() ? nullptr : query.qual()[i],
 				*file,
 				config.alfmt,
 				input_value_traits);

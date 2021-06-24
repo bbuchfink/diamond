@@ -240,7 +240,7 @@ list<Hsp> swipe(const Sequence &query, vector<DpTarget> &targets8, const vector<
 	list<Hsp> out;
 	auto time_stat = (flags & TRACEBACK) ? Statistics::TIME_TRACEBACK_SW : Statistics::TIME_SW;
 #ifdef __SSE4_1__
-	if ((!targets8.empty() || targets) && config.cbs_matrix_scale < 16) {
+	if (!targets8.empty() || targets) {
 		task_timer timer;
 		if(!(flags & DP::FULL_MATRIX))
 			std::sort(targets8.begin(), targets8.end());

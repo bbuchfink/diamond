@@ -110,3 +110,9 @@ void print_binary(uint64_t x)
 		x >>= 1;
 	}
 }
+
+void exit_with_error(const std::exception& e) {
+	std::cerr << "Error: " << e.what() << endl;
+	log_stream << "Error: " << e.what() << endl;
+	exit(EXIT_FAILURE);
+}

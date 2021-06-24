@@ -157,13 +157,19 @@ struct Diag_graph
 		if (edges.empty())
 			return edges.end();
 		int max_score = d.score;
-		vector<Edge>::const_iterator max_edge = edges.end();
-		for (vector<Edge>::const_iterator i = edges.begin() + d.link_idx - 1; i >= edges.begin() && i->node_in == node; --i)
+		ptrdiff_t max_i = -1;
+		for (ptrdiff_t i = d.link_idx - 1; i >= 0 && edges[i].node_in == node; --i)
+			if (edges[i].j < j && edges[i].prefix_score > max_score) {
+				max_i = i;
+				max_score = edges[i].prefix_score;
+			}
+
+		/*for (vector<Edge>::const_iterator i = edges.begin() + d.link_idx - 1; i >= edges.begin() && i->node_in == node; --i)
 			if (i->j < j && i->prefix_score > max_score) {
 				max_edge = i;
 				max_score = i->prefix_score;
-			}
-		return max_edge;
+			}*/
+		return max_i >= 0 ? edges.begin() + max_i : edges.end();
 	}
 
 	int prefix_score(size_t node, int j, int &path_max, int &path_min) const

@@ -104,11 +104,13 @@ void Masking::remove_bit_mask(Letter *seq, size_t len) const
 void mask_worker(atomic<size_t> *next, SequenceSet *seqs, const Masking *masking, bool hard_mask, Masking::Algo algo)
 {
 	size_t i;
-	while ((i = (*next)++) < seqs->get_length())
+	while ((i = (*next)++) < seqs->size()) {
+		seqs->convert_to_std_alph(i);
 		if (hard_mask)
 			masking->operator()(seqs->ptr(i), seqs->length(i), algo);
 		else
 			masking->mask_bit(seqs->ptr(i), seqs->length(i));
+	}
 }
 
 size_t mask_seqs(SequenceSet &seqs, const Masking &masking, bool hard_mask, Masking::Algo algo)
@@ -120,7 +122,8 @@ size_t mask_seqs(SequenceSet &seqs, const Masking &masking, bool hard_mask, Mask
 	for (auto &t : threads)
 		t.join();
 	size_t n = 0;
-	for (size_t i = 0; i < seqs.get_length(); ++i)
+	for (size_t i = 0; i < seqs.size(); ++i)
 		n += std::count(seqs[i].data(), seqs[i].end(), value_traits.mask_char);
+	seqs.alphabet() = Alphabet::STD;
 	return n;
 }

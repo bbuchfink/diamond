@@ -28,6 +28,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/enum.h"
 
 enum class Sensitivity { FAST = 0, DEFAULT = 1, MID_SENSITIVE = 2, SENSITIVE = 3, MORE_SENSITIVE = 4, VERY_SENSITIVE = 5, ULTRA_SENSITIVE = 6 };
+enum class Compressor;
 
 template<> struct EnumTraits<Sensitivity> {
 	static const EMap<Sensitivity> to_string;
@@ -52,10 +53,10 @@ struct Config
 	string	match_file2;
 	int		padding;
 	unsigned	output_threads;
-	unsigned compression;
-	unsigned		lowmem;
+	string compression;
+	unsigned		lowmem_;
 	double	chunk_size;
-	unsigned min_identities;
+	unsigned min_identities_;
 	unsigned min_identities2;
 	double ungapped_xdrop;
 	int		raw_ungapped_xdrop;
@@ -101,7 +102,7 @@ struct Config
 	double rank_ratio;
 	bool ht_mode;
 	bool old_freq;
-	double freq_sd;
+	double freq_sd_;
 	unsigned target_fetch_size;
 	bool mode_more_sensitive;
 	string matrix_file;
@@ -121,14 +122,13 @@ struct Config
 	bool no_self_hits;
 	unsigned id_left, id_right, id_n;
 	int bmatch, bmismatch, bcutoff;
-	unsigned query_bins;
+	unsigned query_bins_;
 	uint64_t n_ants;
 	double rho;
 	double p_best;
 	double d_exp, d_new;
 	double score_estimate_factor;
 	int diag_min_estimate;
-	string qfilt, sfilt;
 	double path_cutoff;
 	bool use_smith_waterman;
 	string prot_accession2taxid;
@@ -157,7 +157,6 @@ struct Config
 	bool sort_join;
 	bool simple_freq;
 	double freq_treshold;
-	bool use_lazy_dict;
 	string aligned_file;
 	bool use_dataset_field;
 	bool store_query_quality;
@@ -201,10 +200,10 @@ struct Config
 	int ungapped_window;
 	int gapped_filter_diag_score;
 	double gapped_filter_diag_bit_score;
-	double gapped_filter_evalue;
+	double gapped_filter_evalue_;
 	int gapped_filter_window;
 	bool output_hits;
-	double ungapped_evalue;
+	double ungapped_evalue_;
 	bool no_logfile;
 	bool no_heartbeat;
 	int band_bin;
@@ -258,10 +257,12 @@ struct Config
 	size_t deque_bucket_size;
 	bool mode_fast;
 	double log_evalue_scale;
-	double ungapped_evalue_short;
+	double ungapped_evalue_short_;
 	size_t max_swipe_dp;
 	std::string seqidlist;
 	bool skip_missing_seqids;
+	bool iterate;
+	bool ignore_warnings;
 
 	Sensitivity sensitivity;
 
@@ -274,7 +275,7 @@ struct Config
 		makedb = 0, blastp = 1, blastx = 2, view = 3, help = 4, version = 5, getseq = 6, benchmark = 7, random_seqs = 8, compare = 9, sort = 10, roc = 11, db_stat = 12, model_sim = 13,
 		match_file_stat = 14, model_seqs = 15, opt = 16, mask = 17, fastq2fasta = 18, dbinfo = 19, test_extra = 20, test_io = 21, db_annot_stats = 22, read_sim = 23, info = 24, seed_stat = 25,
 		smith_waterman = 26, cluster = 27, translate = 28, filter_blasttab = 29, show_cbs = 30, simulate_seqs = 31, split = 32, upgma = 33, upgma_mc = 34, regression_test = 35,
-		reverse_seqs = 36, compute_medoids = 37, mutate = 38, merge_tsv = 39, rocid = 40, makeidx = 41, find_shapes
+		reverse_seqs = 36, compute_medoids = 37, mutate = 38, merge_tsv = 39, rocid = 40, makeidx = 41, find_shapes, prep_blast_db, composition
 	};
 	unsigned	command;
 
@@ -329,9 +330,12 @@ struct Config
 	std::string single_query_file() const;
 
 	bool mem_buffered() const { return tmpdir == "/dev/shm"; }
+	Compressor compressor() const;
 
   	template<typename _t>
 	static void set_option(_t& option, _t value, _t def = 0) { if (option == def) option = value; }
+	template<typename _t>
+	static void set_option(_t& option, _t value, _t def, _t alt) { if (value != def) option = value; else option = alt; }
 };
 
 void print_warnings();

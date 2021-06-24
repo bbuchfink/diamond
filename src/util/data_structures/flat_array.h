@@ -38,7 +38,7 @@ struct FlatArray {
 
 	void push_back(ConstIterator begin, ConstIterator end) {
 		data_.insert(data_.end(), begin, end);
-		limits_.push_back(limits_.back() + end - begin);
+		limits_.push_back(limits_.back() + (end - begin));
 	}
 
 	void next() {
@@ -72,6 +72,14 @@ struct FlatArray {
 	}
 
 	ConstIterator end(size_t i) const {
+		return data_.cbegin() + limits_[i + 1];
+	}
+
+	ConstIterator cbegin(size_t i) const {
+		return data_.cbegin() + limits_[i];
+	}
+
+	ConstIterator cend(size_t i) const {
 		return data_.cbegin() + limits_[i + 1];
 	}
 

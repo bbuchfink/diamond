@@ -23,61 +23,18 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #pragma once
 #include <mutex>
 #include <memory>
-#include "../basic/translate.h"
-#include "../basic/statistics.h"
-#include "sequence_set.h"
-#include "seed_histogram.h"
 #include "../util/io/output_file.h"
+#include "block.h"
 
-extern Partitioned_histogram query_hst;
+using std::vector;
+
 extern unsigned current_query_chunk;
-
-struct query_source_seqs
-{
-	static const SequenceSet& get()
-	{ return *data_; }
-	static SequenceSet *data_;
-};
-
-struct query_seqs
-{
-	static const SequenceSet& get()
-	{ return *data_; }
-	static SequenceSet& get_nc() {
-		return *data_;
-	}
-	static SequenceSet *data_;
-};
-
-struct query_ids
-{
-	static const String_set<char, 0>& get()
-	{ return *data_; }
-	static String_set<char, 0> *data_;
-};
 
 extern std::mutex query_aligned_mtx;
 extern vector<bool> query_aligned;
-extern String_set<char, 0> *query_qual;
 
-void write_unaligned(OutputFile *file);
-void write_aligned(OutputFile *file);
-
-inline unsigned get_source_query_len(unsigned query_id)
-{
-	return align_mode.query_translated ? (unsigned)query_seqs::get().reverse_translated_len(query_id*align_mode.query_contexts) : (unsigned)query_seqs::get().length(query_id);
-}
-
-inline TranslatedSequence get_translated_query(size_t query_id)
-{
-	if (align_mode.query_translated)
-		return query_seqs::get().translated_seq(query_source_seqs::get()[query_id], query_id*align_mode.query_contexts);
-	else
-		return TranslatedSequence(query_seqs::get()[query_id]);
-}
+void write_unaligned(const Block& query, OutputFile *file);
+void write_aligned(const Block& query, OutputFile *file);
 
 struct HashedSeedSet;
 extern std::unique_ptr<HashedSeedSet> query_seeds_hashed;
-extern vector<unsigned> query_block_to_database_id;
-
-

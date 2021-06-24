@@ -55,6 +55,7 @@ inline int format_double(double x, char *p) {
 	return sprintf(p, "%lli.%lli", i / 10, i % 10);
 }
 
+std::string replace(const std::string& s, char a, char b);
 
 }}
 
