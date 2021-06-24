@@ -770,7 +770,7 @@ void MCL::run(){
 		db->read_seq(seq, id);
 		const uint64_t cid = (~MASK_INVERSE) & clustering_result[i];
 		const uint64_t lab = MASK_INVERSE & clustering_result[i];
-		(*out) << Util::Seq::seqid(id.c_str()) << '\t' ;
+		(*out) << Util::Seq::seqid(id.c_str(), false) << '\t' ;
 		switch(lab){
 			case MASK_SINGLE_NODE:
 				(*out) << cid << '\t'<< 's';

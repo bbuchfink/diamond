@@ -199,7 +199,7 @@ void SequenceFile::get_seq()
 	OutputFile out(config.output_file);
 	for (size_t n = 0; n < sequence_count(); ++n) {
 		read_seq(seq, id);
-		std::map<string, string>::const_iterator mapped_title = seq_titles.find(Util::Seq::seqid(id.c_str()));
+		std::map<string, string>::const_iterator mapped_title = seq_titles.find(Util::Seq::seqid(id.c_str(), false));
 		if (all || seqs.find(n) != seqs.end() || mapped_title != seq_titles.end()) {
 			buf << '>' << (mapped_title != seq_titles.end() ? mapped_title->second : id) << '\n';
 			if (config.reverse) {

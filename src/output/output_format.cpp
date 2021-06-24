@@ -132,7 +132,10 @@ void IntermediateRecord::finish_file(Consumer& f)
 void Output_format::print_title(TextBuffer &buf, const char *id, bool full_titles, bool all_titles, const char *separator, const EscapeSequences *esc)
 {
 	if (!all_titles) {
-		print_escaped_until(buf, id, full_titles ? "\1" : Util::Seq::id_delimiters, esc);
+		if (config.short_seqids)
+			buf << Util::Seq::seqid(id, true);
+		else
+			print_escaped_until(buf, id, full_titles ? "\1" : Util::Seq::id_delimiters, esc);
 		return;
 	}
 	if (strchr(id, '\1') == 0) {

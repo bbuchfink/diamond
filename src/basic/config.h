@@ -263,6 +263,7 @@ struct Config
 	bool skip_missing_seqids;
 	bool iterate;
 	bool ignore_warnings;
+	bool short_seqids;
 
 	Sensitivity sensitivity;
 

@@ -233,7 +233,7 @@ void pairwise_worker(TextInputFile *in, std::mutex *input_lock, std::mutex *outp
 			return;
 		}
 		input_lock->unlock();
-		const string ir = Util::Seq::seqid(id_r.c_str()), iq = Util::Seq::seqid(id_q.c_str());
+		const string ir = Util::Seq::seqid(id_r.c_str(), false), iq = Util::Seq::seqid(id_q.c_str(), false);
 		Hsp hsp;
 		smith_waterman(Sequence(query), Sequence(ref), hsp);
 		HspContext context(hsp, 0, TranslatedSequence(query), "", 0, 0, nullptr, 0, 0, Sequence());
@@ -269,7 +269,7 @@ void pairwise()
 
 void fasta_skip_to(string &id, vector<Letter> &seq, string &blast_id, TextInputFile &f)
 {
-	while (Util::Seq::seqid(id.c_str()) != blast_id) {
+	while (Util::Seq::seqid(id.c_str(), false) != blast_id) {
 		if (!FASTA_format().get_seq(id, seq, f, value_traits))
 			throw runtime_error("Sequence not found in FASTA file.");
 	}

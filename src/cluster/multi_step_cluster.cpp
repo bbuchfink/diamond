@@ -262,8 +262,8 @@ void MultiStep::run() {
 	for (int i = 0; i < (int)db->sequence_count(); ++i) {
 		db->read_seq(seq, id);
 		const unsigned r = rep_block_id[previous_centroids[i]];
-		(*out) << Util::Seq::seqid(id.c_str()) << '\t'
-			<< Util::Seq::seqid(block->ids()[r]) << '\n';
+		(*out) << Util::Seq::seqid(id.c_str(), false) << '\t'
+			<< Util::Seq::seqid(block->ids()[r], false) << '\n';
 		/*if ((int)i == centroid2[i])
 			(*out) << "100\t100\t100\t0" << endl;
 		else {

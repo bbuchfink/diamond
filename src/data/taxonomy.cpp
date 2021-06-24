@@ -137,7 +137,7 @@ vector<string> accession_from_title(const char *title)
 {
 	vector<string> t(seq_titles(title));
 	for (vector<string>::iterator i = t.begin(); i < t.end(); ++i)
-		*i = get_accession(Util::Seq::seqid(i->c_str()));
+		*i = get_accession(Util::Seq::seqid(i->c_str(), false));
 	return t;
 }
 

@@ -43,7 +43,7 @@ void split() {
 			out = new OutputFile(std::to_string(++f) + ".faa.gz", Compressor::ZLIB);
 			n = 0;
 		}
-		string blast_id = Util::Seq::seqid(id.c_str());
+		string blast_id = Util::Seq::seqid(id.c_str(), false);
 		Util::Seq::format(Sequence(seq), blast_id.c_str(), nullptr, *out, "fasta", amino_acid_traits);
 		n += seq.size();
 	}

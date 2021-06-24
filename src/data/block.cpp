@@ -189,7 +189,7 @@ uint32_t Block::dict_id(size_t block, size_t block_id, SequenceFile& db) const
 		else if (config.sallseqid)
 			t = Util::Seq::all_seqids(title);
 		else
-			t = Util::Seq::seqid(title);
+			t = Util::Seq::seqid(title, config.short_seqids);
 	}
 	const Letter* seq = unmasked_seqs().empty() ? nullptr : unmasked_seqs()[block_id].data();
 	return db.dict_id(block, block_id, block_id2oid(block_id), seqs().length(block_id), t.c_str(), seq);

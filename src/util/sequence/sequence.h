@@ -44,7 +44,7 @@ static inline Sequence clip(const Letter *seq, int len, int anchor) {
 extern const char* id_delimiters;
 
 std::string all_seqids(const char* s);
-std::string seqid(const char* title);
+std::string seqid(const char* title, bool short_seqids);
 void get_title_def(const std::string& s, std::string& title, std::string& def);
 
 }}

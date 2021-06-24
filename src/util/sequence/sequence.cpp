@@ -63,9 +63,22 @@ std::string all_seqids(const char* s)
 	return r;
 }
 
-std::string seqid(const char* title)
+std::string seqid(const char* title, bool short_seqids)
 {
-	return string(title, title + find_first_of(title, id_delimiters));
+	string s(title, title + find_first_of(title, id_delimiters));
+	if (!short_seqids)
+		return s;
+
+	size_t i = s.find_first_of('|', 0);
+	if (i != string::npos) {
+		s.erase(0, i + 1);
+		i = s.find_first_of('|', 0);
+		if (i != string::npos)
+			s.erase(i);
+		return s;
+	}
+	else
+		return s;
 }
 
 void get_title_def(const std::string& s, std::string& title, std::string& def)
