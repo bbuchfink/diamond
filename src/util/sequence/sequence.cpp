@@ -73,8 +73,12 @@ std::string seqid(const char* title, bool short_seqids)
 	if (i != string::npos) {
 		s.erase(0, i + 1);
 		i = s.find_first_of('|', 0);
-		if (i != string::npos)
-			s.erase(i);
+		if (i != string::npos) {
+			if (i == 0)
+				s.erase(0, 1);
+			else
+				s.erase(i);
+		}
 		return s;
 	}
 	else
