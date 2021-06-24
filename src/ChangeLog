@@ -6,6 +6,8 @@
   to align at a lower sensitivity search.
 - Added the "global ranking" mode (option `-g`) to set a limit on the number of
   Smith Waterman extensions per target, ranked by their ungapped extension scores.
+- Added the `--fast` sensitivity mode that is faster and less sensitive than the
+  default mode.
 - Reduced the time for loading target sequences from BLAST databases.
 - Added support for using `--comp-based-stats (3,4)` in combination with `--ext full`.
 - Fixed a bug that could cause a `Traceback error` when using `--comp-based-stats (3,4)`

@@ -289,11 +289,12 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("id", 0, "minimum identity% to report an alignment", min_id)
 		("query-cover", 0, "minimum query cover% to report an alignment", query_cover)
 		("subject-cover", 0, "minimum subject cover% to report an alignment", subject_cover)
-		("mid-sensitive", 0, "enable mid-sensitive mode (default: fast)", mode_mid_sensitive)
-		("sensitive", 0, "enable sensitive mode (default: fast)", mode_sensitive)
-		("more-sensitive", 0, "enable more sensitive mode (default: fast)", mode_more_sensitive)
-		("very-sensitive", 0, "enable very sensitive mode (default: fast)", mode_very_sensitive)
-		("ultra-sensitive", 0, "enable ultra sensitive mode (default: fast)", mode_ultra_sensitive)
+		("fast", 0, "enable fast mode", mode_fast)
+		("mid-sensitive", 0, "enable mid-sensitive mode", mode_mid_sensitive)
+		("sensitive", 0, "enable sensitive mode)", mode_sensitive)
+		("more-sensitive", 0, "enable more sensitive mode", mode_more_sensitive)
+		("very-sensitive", 0, "enable very sensitive mode", mode_very_sensitive)
+		("ultra-sensitive", 0, "enable ultra sensitive mode", mode_ultra_sensitive)
 		("iterate", 0, "iterated search with increasing sensitivity", iterate)
 		("global-ranking", 'g', "number of targets for global ranking", global_ranking_targets)
 		("block-size", 'b', "sequence block size in billions of letters (default=2.0)", chunk_size)
@@ -509,7 +510,6 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("deque_bucket_size", 0, "", deque_bucket_size, (size_t)524288)
 		("query-match-distance-threshold", 0, "", query_match_distance_threshold, -1.0)
 		("length-ratio-threshold", 0, "", length_ratio_threshold, -1.0)
-		("fast", 0, "", mode_fast)
 		("max-swipe-dp", 0, "", max_swipe_dp, (size_t)4000000);
 
 	parser.add(general).add(makedb).add(cluster).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options).add(deprecated_options);
@@ -739,9 +739,7 @@ Config::Config(int argc, const char **argv, bool check_io)
 	}
 
 	sensitivity = Sensitivity::DEFAULT;
-#ifdef EXTRA
 	if (mode_fast) set_sens(Sensitivity::FAST);
-#endif
 	if (mode_mid_sensitive) set_sens(Sensitivity::MID_SENSITIVE);
 	if (mode_sensitive) set_sens(Sensitivity::SENSITIVE);
 	if (mode_more_sensitive) set_sens(Sensitivity::MORE_SENSITIVE);
