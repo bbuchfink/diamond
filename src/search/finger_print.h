@@ -118,9 +118,6 @@ struct Byte_finger_print_48
 				++n;
 		return n;
 	}
-	bool operator==(const Byte_finger_print_48& rhs) const {
-		return match(rhs) >= config.min_identities;
-	}
 	Letter r[48];
 	//char r[32];
 };

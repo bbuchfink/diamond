@@ -80,7 +80,7 @@ static void search_query_offset(const SeedArray::Entry::Value& q,
 	query_id = q.block_id;
 	seed_offset = (size_t)q.pos - query_seqs.position(query_id, 0);
 #else
-	std::pair<size_t, size_t> l = query_seqs.local_position(q); // lazy eval?
+	std::pair<size_t, size_t> l = query_seqs.local_position((uint64_t)q); // lazy eval?
 	query_id = (unsigned)l.first;
 	seed_offset = (unsigned)l.second;
 #endif

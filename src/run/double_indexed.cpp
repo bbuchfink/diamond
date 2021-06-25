@@ -220,7 +220,7 @@ void run_query_iteration(const unsigned query_chunk,
 	auto& query_ids = options.query->ids();
 	auto& db_file = *options.db;
 	if (query_iteration > 0)
-		options.query_skip = std::make_unique<vector<bool>>(query_aligned);
+		options.query_skip.reset(new vector<bool> (query_aligned));
 
 	if (config.algo == ::Config::Algo::AUTO &&
 		(!sensitivity_traits.at(config.sensitivity).support_query_indexed
