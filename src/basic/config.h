@@ -264,6 +264,7 @@ struct Config
 	bool iterate;
 	bool ignore_warnings;
 	bool short_seqids;
+	bool no_reextend;
 
 	Sensitivity sensitivity;
 

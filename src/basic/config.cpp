@@ -511,7 +511,8 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("query-match-distance-threshold", 0, "", query_match_distance_threshold, -1.0)
 		("length-ratio-threshold", 0, "", length_ratio_threshold, -1.0)
 		("max-swipe-dp", 0, "", max_swipe_dp, (size_t)4000000)
-		("short-seqids", 0, "", short_seqids);
+		("short-seqids", 0, "", short_seqids)
+		("no-reextend", 0, "", no_reextend);
 
 	parser.add(general).add(makedb).add(cluster).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options).add(deprecated_options);
 	parser.store(argc, argv, command);

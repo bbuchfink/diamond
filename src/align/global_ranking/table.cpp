@@ -84,6 +84,17 @@ static void get_query_hits(SeedHits::Iterator begin, SeedHits::Iterator end, vec
 }
 
 static pair<int, unsigned> target_score(const FlatArray<Extension::SeedHit>::Iterator begin, const FlatArray<Extension::SeedHit>::Iterator end, const Sequence* query_seq, const Sequence& target_seq) {
+	if (config.no_reextend) {
+		int score = begin->score;
+		unsigned context = begin->frame;
+		for (auto i = begin + 1; i != end; ++i) {
+			if (i->score > score) {
+				score = i->score;
+				context = i->frame;
+			}
+		}
+		return { score,context };
+	}
 	std::sort(begin, end);
 	Diagonal_segment d = xdrop_ungapped(query_seq[begin->frame], target_seq, begin->i, begin->j);
 	int score = d.score;
