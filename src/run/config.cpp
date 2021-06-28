@@ -17,6 +17,7 @@ namespace Search {
 Config::Config() :
 	self(config.self),
 	seed_encoding(config.target_indexed ? SeedEncoding::HASHED : SeedEncoding::SPACED_FACTOR),
+	lazy_masking(false),
 	track_aligned_queries(false),
 	db(nullptr),
 	query_file(nullptr),

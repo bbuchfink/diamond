@@ -65,8 +65,6 @@ size_t chunk_size_multiplier(const FlatArray<SeedHit>& seed_hits, int query_len)
 }
 
 static size_t lazy_masking(const vector<uint32_t>& target_block_ids, Block& targets) {
-	if (config.algo != Config::Algo::QUERY_INDEXED || (config.target_seg == 0 && config.masking == 0) || config.global_ranking_targets > 0)
-		return 0;
 	vector<Letter> seq;
 	const Masking& masking = Masking::get();
 	const Masking::Algo algo = config.target_seg == 1 ? Masking::Algo::SEG : Masking::Algo::TANTAN;
@@ -95,7 +93,8 @@ vector<Target> extend(size_t query_id,
 	stat.inc(Statistics::TARGET_HITS2, target_block_ids.size());
 	task_timer timer(flags & DP::PARALLEL ? config.target_parallel_verbosity : UINT_MAX);
 
-	stat.inc(Statistics::MASKED_LAZY, lazy_masking(target_block_ids, *cfg.target));
+	if (cfg.lazy_masking)
+		stat.inc(Statistics::MASKED_LAZY, lazy_masking(target_block_ids, *cfg.target));
 
 	if (cfg.gapped_filter_evalue > 0.0 && config.global_ranking_targets == 0 && (!align_mode.query_translated || query_seq[0].length() >= GAPPED_FILTER_MIN_QLEN)) {
 		timer.go("Computing gapped filter");

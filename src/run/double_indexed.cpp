@@ -98,7 +98,6 @@ void run_ref_chunk(SequenceFile &db_file,
 	Config& cfg)
 {
 	log_rss();
-	const bool lazy_masking = config.algo == ::Config::Algo::QUERY_INDEXED;
 	auto& ref_seqs = cfg.target->seqs();
 	auto& query_seqs = cfg.query->seqs();
 
@@ -106,7 +105,7 @@ void run_ref_chunk(SequenceFile &db_file,
 		cfg.target->unmasked_seqs() = ref_seqs;
 
 	task_timer timer;
-	if (config.masking == 1 && !config.no_ref_masking && !lazy_masking) {
+	if (config.masking == 1 && !config.no_ref_masking && !cfg.lazy_masking) {
 		timer.go("Masking reference");
 		size_t n = mask_seqs(ref_seqs, Masking::get());
 		timer.finish();
@@ -183,7 +182,7 @@ void run_ref_chunk(SequenceFile &db_file,
 	else
 		out = &master_out;
 
-	if (config.target_seg == 1 && !lazy_masking) {
+	if (config.target_seg == 1 && !cfg.lazy_masking) {
 		timer.go("SEG masking targets");
 		mask_seqs(ref_seqs, Masking::get(), true, Masking::Algo::SEG);
 	}
@@ -251,6 +250,7 @@ void run_query_iteration(const unsigned query_chunk,
 	}
 
 	::Config::set_option(options.index_chunks, config.lowmem_, 0u, config.algo == ::Config::Algo::DOUBLE_INDEXED ? sensitivity_traits.at(options.sensitivity[query_iteration]).index_chunks : 1u);
+	options.lazy_masking = config.algo != ::Config::Algo::DOUBLE_INDEXED && (config.masking == 1 || config.target_seg == 1) && (config.global_ranking_targets == 0);
 
 	options.cutoff_gapped1 = { config.gapped_filter_evalue1 };
 	options.cutoff_gapped2 = { options.gapped_filter_evalue };
@@ -281,7 +281,6 @@ void run_query_iteration(const unsigned query_chunk,
 	log_rss();
 	db_file.set_seqinfo_ptr(0);
 	bool mp_last_chunk = false;
-	const bool lazy_masking = config.algo == ::Config::Algo::QUERY_INDEXED && (config.masking == 1 || config.target_seg == 1) && (config.global_ranking_targets == 0);
 
 	if (config.multiprocessing) {
 		P->create_stack_from_file(stack_align_todo, get_ref_part_file_name(stack_align_todo, query_chunk));
@@ -302,7 +301,7 @@ void run_query_iteration(const unsigned query_chunk,
 
 			P->log("SEARCH BEGIN " + std::to_string(query_chunk) + " " + std::to_string(chunk.i));
 
-			options.target.reset(db_file.load_seqs((size_t)(0), db_file.load_titles() == SequenceFile::LoadTitles::SINGLE_PASS, options.db_filter.get(), true, lazy_masking, chunk));
+			options.target.reset(db_file.load_seqs((size_t)(0), db_file.load_titles() == SequenceFile::LoadTitles::SINGLE_PASS, options.db_filter.get(), true, options.lazy_masking, chunk));
 			run_ref_chunk(db_file, query_chunk, query_iteration, query_buffer, master_out, tmp_file, options);
 
 			tmp_file.back().close();
@@ -325,7 +324,7 @@ void run_query_iteration(const unsigned query_chunk,
 	}
 	else {
 		for (current_ref_block = 0; ; ++current_ref_block) {
-			options.target.reset(db_file.load_seqs((size_t)(config.chunk_size * 1e9), db_file.load_titles() == SequenceFile::LoadTitles::SINGLE_PASS, options.db_filter.get(), true, lazy_masking));
+			options.target.reset(db_file.load_seqs((size_t)(config.chunk_size * 1e9), db_file.load_titles() == SequenceFile::LoadTitles::SINGLE_PASS, options.db_filter.get(), true, options.lazy_masking));
 			if (options.target->empty()) break;
 			run_ref_chunk(db_file, query_chunk, query_iteration, query_buffer, master_out, tmp_file, options);
 		}

@@ -57,6 +57,7 @@ struct Config {
 	bool                                       self;
 	std::vector<Sensitivity>                   sensitivity;
 	SeedEncoding                               seed_encoding;
+	bool                                       lazy_masking;
 	bool                                       track_aligned_queries;
 	double                                     freq_sd;
 	unsigned                                   hamming_filter_id;
