@@ -32,9 +32,9 @@ const uint64_t SEED_INDEX_MAGIC_NUMBER = 0x2d6ba306ecbf6aba;
 const uint32_t SEED_INDEX_VERSION = 0;
 const size_t SEED_INDEX_HEADER_SIZE = 16;
 
-struct Seed_set
+struct SeedSet
 {
-	Seed_set(SequenceSet &seqs, double max_coverage, const std::vector<bool>* skip);
+	SeedSet(SequenceSet &seqs, double max_coverage, const std::vector<bool>* skip);
 	bool contains(uint64_t key, uint64_t shape) const
 	{
 		return data_[key];

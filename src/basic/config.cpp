@@ -57,7 +57,18 @@ const EMap<Sensitivity> EnumTraits<Sensitivity>::to_string = {
 	{ Sensitivity::ULTRA_SENSITIVE, "ultra-sensitive" }
 };
 
-const EMap<Config::Algo> EnumTraits<Config::Algo>::to_string = { { Config::Algo::DOUBLE_INDEXED, "0" }, { Config::Algo::QUERY_INDEXED, "1"} };
+const SEMap<Sensitivity> EnumTraits<Sensitivity>::from_string = {
+	{ "fast", Sensitivity::FAST },
+	{ "default", Sensitivity::DEFAULT },
+	{ "mid-sensitive", Sensitivity::MID_SENSITIVE },
+	{ "sensitive", Sensitivity::SENSITIVE },
+	{ "more-sensitive", Sensitivity::MORE_SENSITIVE },
+	{ "very-sensitive", Sensitivity::VERY_SENSITIVE },
+	{ "ultra-sensitive", Sensitivity::ULTRA_SENSITIVE }
+};
+
+const EMap<Config::Algo> EnumTraits<Config::Algo>::to_string = { { Config::Algo::DOUBLE_INDEXED, "Double-indexed" }, { Config::Algo::QUERY_INDEXED, "Query-indexed"}, {Config::Algo::CTG_SEED, "Query-indexed with contiguous seed"} };
+const SEMap<Config::Algo> EnumTraits<Config::Algo>::from_string = { {"", Config::Algo::AUTO}, { "0", Config::Algo::DOUBLE_INDEXED}, {"1", Config::Algo::QUERY_INDEXED}, {"ctg", Config::Algo::CTG_SEED} };
 
 Config config;
 
@@ -322,7 +333,7 @@ Config::Config(int argc, const char **argv, bool check_io)
 
 	Options_group advanced("Advanced options");
 	advanced.add()
-		("algo", 0, "Seed search algorithm (0=double-indexed/1=query-indexed)", algo_str)
+		("algo", 0, "Seed search algorithm (0=double-indexed/1=query-indexed/ctg=contiguous-seed)", algo_str)
 		("bin", 0, "number of query bins for seed search", query_bins_)
 		("min-orf", 'l', "ignore translated sequences without an open reading frame of at least this length", run_len)
 		("freq-sd", 0, "number of standard deviations for ignoring frequent seeds", freq_sd_, 0.0)

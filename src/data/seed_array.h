@@ -81,10 +81,10 @@ struct SeedArray
 	} PACKED_ATTRIBUTE;
 
 	template<typename _filter>
-	SeedArray(SequenceSet &seqs, size_t shape, const shape_histogram &hst, const SeedPartitionRange &range, const vector<size_t> &seq_partition, char *buffer, const _filter *filter, bool hashed_seeds, const std::vector<bool>* skip);
+	SeedArray(SequenceSet &seqs, size_t shape, const shape_histogram &hst, const SeedPartitionRange &range, const vector<size_t> &seq_partition, char *buffer, const _filter *filter, const SeedEncoding code, const std::vector<bool>* skip);
 
 	template<typename _filter>
-	SeedArray(SequenceSet& seqs, size_t shape, const SeedPartitionRange& range, const _filter* filter, bool hashed_seeds, const std::vector<bool>* skip);
+	SeedArray(SequenceSet& seqs, size_t shape, const SeedPartitionRange& range, const _filter* filter, const SeedEncoding code, const std::vector<bool>* skip);
 
 	Entry* begin(unsigned i)
 	{

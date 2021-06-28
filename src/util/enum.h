@@ -25,6 +25,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 template<typename _t>
 using EMap = std::map<_t, std::string>;
+template<typename _t>
+using SEMap = std::map<std::string, _t>;
 
 template<typename _t> struct EnumTraits {};
 
@@ -37,12 +39,10 @@ template<typename _t> std::string to_string(_t v) {
 
 template<typename _t>
 _t from_string(const std::string& s) {
-	if (s.empty())
-		return EnumTraits<_t>::blank;
-	for (auto it = EnumTraits<_t>::to_string.cbegin(); it != EnumTraits<_t>::to_string.cend(); ++it)
-		if (it->second == s)
-			return it->first;
-	throw std::runtime_error("Invalid value for string field: " + s);
+	auto it = EnumTraits<_t>::from_string.find(s);
+	if (it == EnumTraits<_t>::from_string.end())
+		throw std::runtime_error("Invalid value for string field: " + s);
+	return it->second;
 }
 
 #define DEF_ENUM_FLAG_OPERATORS(T) constexpr inline T operator~ (T a) { return static_cast<T>(~static_cast<std::underlying_type<T>::type>(a)); } \

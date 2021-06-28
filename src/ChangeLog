@@ -9,6 +9,8 @@
 - Added the `--fast` sensitivity mode that is faster and less sensitive than the
   default mode.
 - Reduced the time for loading target sequences from BLAST databases.
+- Added the contiguous-seed mode (option `--algo ctg`) to improve performance for
+  small query files.
 - Added support for using `--comp-based-stats (3,4)` in combination with `--ext full`.
 - Fixed a bug that could cause a `Traceback error` when using `--comp-based-stats (3,4)`
   in rare cases.

@@ -16,6 +16,7 @@ namespace Search {
 
 Config::Config() :
 	self(config.self),
+	seed_encoding(config.target_indexed ? SeedEncoding::HASHED : SeedEncoding::SPACED_FACTOR),
 	track_aligned_queries(false),
 	db(nullptr),
 	query_file(nullptr),
@@ -54,6 +55,9 @@ Config::Config() :
 		if(config.multiprocessing)
 			throw std::runtime_error("Global ranking mode is not compatible with --multiprocessing.");
 	}
+
+	if (config.target_indexed && config.algo != ::Config::Algo::AUTO && config.algo != ::Config::Algo::DOUBLE_INDEXED)
+		throw std::runtime_error("--target-indexed requires --algo 0");
 }
 
 Config::~Config() {

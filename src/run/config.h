@@ -31,6 +31,7 @@ struct TextInputFile;
 struct Block;
 struct TaxonomyNodes;
 enum class Sensitivity;
+enum class SeedEncoding;
 template<typename T> struct AsyncBuffer;
 
 struct Async;
@@ -55,6 +56,7 @@ struct Config {
 
 	bool                                       self;
 	std::vector<Sensitivity>                   sensitivity;
+	SeedEncoding                               seed_encoding;
 	bool                                       track_aligned_queries;
 	double                                     freq_sd;
 	unsigned                                   hamming_filter_id;

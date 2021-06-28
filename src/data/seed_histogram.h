@@ -87,7 +87,7 @@ struct Partitioned_histogram
 	Partitioned_histogram();
 	
 	template<typename _filter>
-	Partitioned_histogram(SequenceSet &seqs, bool serial, const _filter *filter, bool hashed_seeds, const std::vector<bool>* skip) :
+	Partitioned_histogram(SequenceSet &seqs, bool serial, const _filter *filter, SeedEncoding code, const std::vector<bool>* skip) :
 		data_(shapes.count()),
 		p_(seqs.partition(config.threads_))
 	{
@@ -101,9 +101,9 @@ struct Partitioned_histogram
 			cb.push_back(new Callback(i, data_));
 		if (serial)
 			for (unsigned s = 0; s < shapes.count(); ++s)
-				enum_seeds(&seqs, cb, p_, s, s + 1, filter, hashed_seeds, skip);
+				enum_seeds(&seqs, cb, p_, s, s + 1, filter, code, skip);
 		else
-			enum_seeds(&seqs, cb, p_, 0, shapes.count(), filter, hashed_seeds, skip);
+			enum_seeds(&seqs, cb, p_, 0, shapes.count(), filter, code, skip);
 	}
 
 	const shape_histogram& get(unsigned sid) const

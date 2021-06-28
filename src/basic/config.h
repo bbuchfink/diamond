@@ -32,7 +32,7 @@ enum class Compressor;
 
 template<> struct EnumTraits<Sensitivity> {
 	static const EMap<Sensitivity> to_string;
-	static const Sensitivity blank = Sensitivity::DEFAULT;
+	static const SEMap<Sensitivity> from_string;
 };
 
 struct Config
@@ -281,7 +281,7 @@ struct Config
 	};
 	unsigned	command;
 
-	enum class Algo { AUTO = -1, DOUBLE_INDEXED = 0, QUERY_INDEXED = 1 };
+	enum class Algo { AUTO = -1, DOUBLE_INDEXED = 0, QUERY_INDEXED = 1, CTG_SEED };
 	Algo algo;
 
 	string cluster_algo;
@@ -350,5 +350,5 @@ _t top_cutoff_score(_t top_score) {
 
 template<> struct EnumTraits<Config::Algo> {
 	static const EMap<Config::Algo> to_string;
-	static const Config::Algo blank = Config::Algo::AUTO;
+	static const SEMap<Config::Algo> from_string;
 };

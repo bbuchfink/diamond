@@ -40,8 +40,12 @@ public:
 		n_ (0)
 	{
 		unsigned maxShapes = count == 0 ? (unsigned)codes.size() : count;
-		for (unsigned i = 0; i < maxShapes; ++i)
-			shapes_[n_++] = Shape(codes[i].c_str(), i);
+		for (unsigned i = 0; i < maxShapes; ++i) {
+			shapes_[n_] = Shape(codes[i].c_str(), i);
+			if (shapes_[n_].weight_ != shapes_[0].weight_)
+				throw std::runtime_error("Seed shape weight has to be uniform.");
+			n_++;
+		}
 	}
 
 	unsigned count() const

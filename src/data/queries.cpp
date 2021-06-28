@@ -27,6 +27,7 @@ unsigned current_query_chunk;
 vector<bool> query_aligned;
 std::mutex query_aligned_mtx;
 unique_ptr<HashedSeedSet> query_seeds_hashed;
+unique_ptr<SeedSet> query_seeds_bitset;
 
 void write_unaligned(const Block& query, OutputFile *file)
 {

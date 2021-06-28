@@ -33,14 +33,14 @@ double SeedComplexity::prob_[AMINO_ACID_COUNT];
 const double SINGLE_INDEXED_SEED_SPACE_MAX_COVERAGE = 0.15;
 
 const map<Sensitivity, SensitivityTraits> sensitivity_traits {
-	//                               qidx   freqsd minid ug_ev   ug_ev_s gf_ev  idx_chunk qbins
-	{ Sensitivity::FAST,            {true,  50.0,  11,   10000,  10000,  0,     4,        16 }},
-	{ Sensitivity::DEFAULT,         {true,  50.0,  11,   10000,  10000,  0,     4,        16 }},
-	{ Sensitivity::MID_SENSITIVE,   {true,  20.0,  11,   10000,  10000,  0,     4,        16 }},
-	{ Sensitivity::SENSITIVE,       {true,  20.0,  11,   10000,  10000,  1,     4,        16 }},
-	{ Sensitivity::MORE_SENSITIVE,  {true,  200.0, 11,   10000,  10000,  1,     4,        16 }},
-	{ Sensitivity::VERY_SENSITIVE,  {true,  15.0,  9,    100000, 30000,  1,     1,        16 }},
-	{ Sensitivity::ULTRA_SENSITIVE, {true,  20.0,  9,    300000, 30000,  1,     1,        64 }}
+	//                               qidx   freqsd minid ug_ev   ug_ev_s gf_ev  idx_chunk qbins ctg_seed
+	{ Sensitivity::FAST,            {true,  50.0,  11,   10000,  10000,  0,     4,        16,   nullptr }},
+	{ Sensitivity::DEFAULT,         {true,  50.0,  11,   10000,  10000,  0,     4,        16,   "111111" }},
+	{ Sensitivity::MID_SENSITIVE,   {true,  20.0,  11,   10000,  10000,  0,     4,        16,   nullptr }},
+	{ Sensitivity::SENSITIVE,       {true,  20.0,  11,   10000,  10000,  1,     4,        16,   "11111" }},
+	{ Sensitivity::MORE_SENSITIVE,  {true,  200.0, 11,   10000,  10000,  1,     4,        16,   "11111" }},
+	{ Sensitivity::VERY_SENSITIVE,  {true,  15.0,  9,    100000, 30000,  1,     1,        16,   nullptr }},
+	{ Sensitivity::ULTRA_SENSITIVE, {true,  20.0,  9,    300000, 30000,  1,     1,        64,   nullptr }}
 };
 
 const map<Sensitivity, vector<Sensitivity>> iterated_sens{
@@ -209,15 +209,17 @@ void setup_search(Sensitivity sens, Search::Config& cfg)
 	Config::set_option(cfg.ungapped_evalue, config.ungapped_evalue_, -1.0, traits.ungapped_evalue);
 	Config::set_option(cfg.ungapped_evalue_short, config.ungapped_evalue_short_, -1.0, traits.ungapped_evalue_short);
 	Config::set_option(cfg.gapped_filter_evalue, config.gapped_filter_evalue_, -1.0, traits.gapped_filter_evalue);
-	Config::set_option(cfg.index_chunks, config.lowmem_, 0u, traits.index_chunks);
 	Config::set_option(cfg.query_bins, config.query_bins_, 0u, traits.query_bins);
-	
-	if (config.algo == Config::Algo::QUERY_INDEXED) {
-		cfg.index_chunks = 1;
-		if(!traits.support_query_indexed)
-			throw std::runtime_error("Query-indexed mode is not supported for this sensitivity setting.");
+
+	if (config.algo == Config::Algo::CTG_SEED) {
+		if (!traits.contiguous_seed)
+			throw std::runtime_error("Contiguous seed mode is not supported for this sensitivity setting.");
+		if (sens == Sensitivity::DEFAULT)
+			Reduction::reduction = Reduction("KR EQ D N C G H F Y IV LM W P S T A");
+		::shapes = ShapeConfig({ traits.contiguous_seed }, 0);
 	}
-	
-	::shapes = ShapeConfig(config.shape_mask.empty() ? shape_codes.at(sens) : config.shape_mask, config.shapes);
+	else
+		::shapes = ShapeConfig(config.shape_mask.empty() ? shape_codes.at(sens) : config.shape_mask, config.shapes);
+
 	config.gapped_filter_diag_score = score_matrix.rawscore(config.gapped_filter_diag_bit_score);
 }

@@ -37,4 +37,6 @@ void write_unaligned(const Block& query, OutputFile *file);
 void write_aligned(const Block& query, OutputFile *file);
 
 struct HashedSeedSet;
+struct SeedSet;
 extern std::unique_ptr<HashedSeedSet> query_seeds_hashed;
+extern std::unique_ptr<SeedSet> query_seeds_bitset;

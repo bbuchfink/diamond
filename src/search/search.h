@@ -39,14 +39,15 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 // #define UNGAPPED_SPOUGE
 
 struct SensitivityTraits {
-	bool     support_query_indexed;
-	double   freq_sd;
-	unsigned min_identities;
-	double   ungapped_evalue;
-	double   ungapped_evalue_short;
-	double   gapped_filter_evalue;
-	unsigned index_chunks;
-	unsigned query_bins;
+	const bool     support_query_indexed;
+	const double   freq_sd;
+	const unsigned min_identities;
+	const double   ungapped_evalue;
+	const double   ungapped_evalue_short;
+	const double   gapped_filter_evalue;
+	const unsigned index_chunks;
+	const unsigned query_bins;
+	const char*    contiguous_seed;
 };
 
 extern const std::map<Sensitivity, SensitivityTraits> sensitivity_traits;

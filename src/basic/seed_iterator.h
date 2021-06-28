@@ -167,7 +167,7 @@ struct Contiguous_seed_iterator
 #else
 		const Letter l = *(ptr_++);
 #endif
-		if (l == value_traits.mask_char)
+		if (!is_amino_acid(l))
 			return false;
 		last_ |= Reduction::reduction(l);
 		seed = last_;
