@@ -135,7 +135,7 @@ void run_ref_chunk(SequenceFile &db_file,
 		timer.go("Building reference histograms");
 		if(query_seeds_bitset.get())
 			cfg.target->hst() = Partitioned_histogram(ref_seqs, true, query_seeds_bitset.get(), cfg.seed_encoding, nullptr);
-		if (query_seeds_hashed.get())
+		else if (query_seeds_hashed.get())
 			cfg.target->hst() = Partitioned_histogram(ref_seqs, true, query_seeds_hashed.get(), cfg.seed_encoding, nullptr);
 		else
 			cfg.target->hst() = Partitioned_histogram(ref_seqs, false, &no_filter, cfg.seed_encoding, nullptr);
