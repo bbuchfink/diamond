@@ -16,11 +16,10 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#ifndef CHAINING_H_
-#define CHAINING_H_
-
+#pragma once
 #include <utility>
 #include <list>
+#include <stddef.h>
 #include "../dp/hsp_traits.h"
 #include "../stats/hauser_correction.h"
 
@@ -198,5 +197,3 @@ struct Diag_graph
 };
 
 void smith_waterman(Sequence q, Sequence s, const Diag_graph &diags);
-
-#endif
