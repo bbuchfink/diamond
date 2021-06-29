@@ -1,6 +1,7 @@
 #pragma once
 #include <stdint.h>
 #include <vector>
+#include <stddef.h>
 #include "partition.h"
 
 namespace Util { namespace Algo {
