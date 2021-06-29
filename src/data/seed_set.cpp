@@ -67,7 +67,7 @@ SeedSet::SeedSet(SequenceSet &seqs, double max_coverage, const std::vector<bool>
 		throw std::runtime_error("Contiguous seed required.");
 	PtrVector<Seed_set_callback> v;
 	v.push_back(new Seed_set_callback(data_, size_t(max_coverage*pow(Reduction::reduction.size(), shapes[0].length_))));
-	enum_seeds(&seqs, v, seqs.partition(1), 0, 1, &no_filter, SeedEncoding::CONTIGUOUS, skip);
+	enum_seeds(&seqs, v, seqs.partition(1), 0, 1, &no_filter, SeedEncoding::CONTIGUOUS, skip, true);
 	coverage_ = (double)v.back().coverage / pow(Reduction::reduction.size(), shapes[0].length_);
 }
 
@@ -92,7 +92,7 @@ HashedSeedSet::HashedSeedSet(SequenceSet &seqs, const std::vector<bool>* skip)
 		data_.push_back(new Table(next_power_of_2(seqs.letters() * HASH_TABLE_FACTOR)));
 	PtrVector<Hashed_seed_set_callback> v;
 	v.push_back(new Hashed_seed_set_callback(data_));
-	enum_seeds(&seqs, v, seqs.partition(1), 0, shapes.count(), &no_filter, SeedEncoding::HASHED, skip);
+	enum_seeds(&seqs, v, seqs.partition(1), 0, shapes.count(), &no_filter, SeedEncoding::HASHED, skip, false);
 
 	vector<size_t> sizes;
 	for (size_t i = 0; i < shapes.count(); ++i)
@@ -101,7 +101,7 @@ HashedSeedSet::HashedSeedSet(SequenceSet &seqs, const std::vector<bool>* skip)
 
 	for (size_t i = 0; i < shapes.count(); ++i)
 		data_.push_back(new Table(next_power_of_2(sizes[i] * HASH_TABLE_FACTOR)));
-	enum_seeds(&seqs, v, seqs.partition(1), 0, shapes.count(), &no_filter, SeedEncoding::HASHED, skip);
+	enum_seeds(&seqs, v, seqs.partition(1), 0, shapes.count(), &no_filter, SeedEncoding::HASHED, skip, false);
 
 	for (size_t i = 0; i < shapes.count(); ++i) {
 		data_[i].finish();

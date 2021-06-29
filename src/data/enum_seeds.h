@@ -82,7 +82,7 @@ void enum_seeds_contiguous(SequenceSet* seqs, _f* f, unsigned begin, unsigned en
 	f->finish();
 }
 
-template<typename _f, typename _filter>
+template<typename _f, typename _filter, typename IteratorFilter>
 static void enum_seeds_worker(_f* f, SequenceSet* seqs, unsigned begin, unsigned end, std::pair<size_t, size_t> shape_range, const _filter* filter, SeedEncoding code, const std::vector<bool>* skip)
 {
 	static const char* errmsg = "Unsupported contiguous seed.";
@@ -92,7 +92,7 @@ static void enum_seeds_worker(_f* f, SequenceSet* seqs, unsigned begin, unsigned
 		case 7:
 			switch (b) {
 			case 4:
-				enum_seeds_contiguous<_f, Contiguous_seed_iterator<7, 4>, _filter>(seqs, f, begin, end, filter, skip);
+				enum_seeds_contiguous<_f, Contiguous_seed_iterator<7, 4, IteratorFilter>, _filter>(seqs, f, begin, end, filter, skip);
 				break;
 			default:
 				throw std::runtime_error(errmsg);
@@ -101,7 +101,7 @@ static void enum_seeds_worker(_f* f, SequenceSet* seqs, unsigned begin, unsigned
 		case 6:
 			switch (b) {
 			case 4:
-				enum_seeds_contiguous<_f, Contiguous_seed_iterator<6, 4>, _filter>(seqs, f, begin, end, filter, skip);
+				enum_seeds_contiguous<_f, Contiguous_seed_iterator<6, 4, IteratorFilter>, _filter>(seqs, f, begin, end, filter, skip);
 				break;
 			default:
 				throw std::runtime_error(errmsg);
@@ -110,7 +110,7 @@ static void enum_seeds_worker(_f* f, SequenceSet* seqs, unsigned begin, unsigned
 		case 5:
 			switch (b) {
 			case 4:
-				enum_seeds_contiguous<_f, Contiguous_seed_iterator<5, 4>, _filter>(seqs, f, begin, end, filter, skip);
+				enum_seeds_contiguous<_f, Contiguous_seed_iterator<5, 4, IteratorFilter>, _filter>(seqs, f, begin, end, filter, skip);
 				break;
 			default:
 				throw std::runtime_error(errmsg);
@@ -145,11 +145,14 @@ struct No_filter
 extern No_filter no_filter;
 
 template <typename _f, typename _filter>
-void enum_seeds(SequenceSet* seqs, PtrVector<_f>& f, const std::vector<size_t>& p, size_t shape_begin, size_t shape_end, const _filter* filter, SeedEncoding code, const std::vector<bool>* skip)
+void enum_seeds(SequenceSet* seqs, PtrVector<_f>& f, const std::vector<size_t>& p, size_t shape_begin, size_t shape_end, const _filter* filter, SeedEncoding code, const std::vector<bool>* skip, bool filter_masked_seeds)
 {
 	std::vector<std::thread> threads;
 	for (unsigned i = 0; i < f.size(); ++i)
-		threads.emplace_back(enum_seeds_worker<_f, _filter>, &f[i], seqs, (unsigned)p[i], (unsigned)p[i + 1], std::make_pair(shape_begin, shape_end), filter, code, skip);
+		if (filter_masked_seeds)
+			threads.emplace_back(enum_seeds_worker<_f, _filter, FilterMaskedSeeds>, &f[i], seqs, (unsigned)p[i], (unsigned)p[i + 1], std::make_pair(shape_begin, shape_end), filter, code, skip);
+		else
+			threads.emplace_back(enum_seeds_worker<_f, _filter, void>, &f[i], seqs, (unsigned)p[i], (unsigned)p[i + 1], std::make_pair(shape_begin, shape_end), filter, code, skip);
 	for (auto& t : threads)
 		t.join();
 	seqs->alphabet() = Alphabet::STD;

@@ -101,9 +101,9 @@ struct Partitioned_histogram
 			cb.push_back(new Callback(i, data_));
 		if (serial)
 			for (unsigned s = 0; s < shapes.count(); ++s)
-				enum_seeds(&seqs, cb, p_, s, s + 1, filter, code, skip);
+				enum_seeds(&seqs, cb, p_, s, s + 1, filter, code, skip, false);
 		else
-			enum_seeds(&seqs, cb, p_, 0, shapes.count(), filter, code, skip);
+			enum_seeds(&seqs, cb, p_, 0, shapes.count(), filter, code, skip, false);
 	}
 
 	const shape_histogram& get(unsigned sid) const

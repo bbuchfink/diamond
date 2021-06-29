@@ -268,7 +268,6 @@ set(OBJECTS
   src/data/sequence_set.cpp
   src/align/global_ranking/table.cpp
   src/output/daa/daa_write.cpp
-  src/util/io/zstd_stream.cpp
 )
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}")
@@ -277,10 +276,14 @@ if(BLAST_INCLUDE_DIR)
   set(BLAST_OBJ "src/data/blastdb/blastdb.cpp")
 endif()
 
+if(WITH_ZSTD OR BLAST_INCLUDE_DIR)
+  set(ZSTD_OBJ "src/util/io/zstd_stream.cpp")
+endif()
+
 if(X86)
-  add_executable(diamond $<TARGET_OBJECTS:arch_generic> $<TARGET_OBJECTS:arch_sse4_1> $<TARGET_OBJECTS:arch_avx2> ${OBJECTS} ${BLAST_OBJ})
+  add_executable(diamond $<TARGET_OBJECTS:arch_generic> $<TARGET_OBJECTS:arch_sse4_1> $<TARGET_OBJECTS:arch_avx2> ${OBJECTS} ${BLAST_OBJ} ${ZSTD_OBJ})
 else()
-  add_executable(diamond $<TARGET_OBJECTS:arch_generic> ${OBJECTS} ${BLAST_OBJ})
+  add_executable(diamond $<TARGET_OBJECTS:arch_generic> ${OBJECTS} ${BLAST_OBJ} ${ZSTD_OBJ})
 endif()
 
 target_include_directories(diamond PRIVATE

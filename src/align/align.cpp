@@ -186,7 +186,7 @@ void align_queries(Consumer* output_file, Search::Config& cfg)
 		cfg.seed_hit_buf->load(max_size);
 
 		timer.go("Sorting trace points");
-#if _MSC_FULL_VER == 191627042
+#if _MSC_FULL_VER == 191627045
 		radix_sort<Search::Hit, Search::Hit::Query>(hit_buf->data(), hit_buf->data() + hit_buf->size(), (uint32_t)query_range.second * align_mode.query_contexts, config.threads_);
 #else
 		ips4o::parallel::sort(hit_buf->data(), hit_buf->data() + hit_buf->size(), std::less<Search::Hit>(), config.threads_);

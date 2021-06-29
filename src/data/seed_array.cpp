@@ -35,7 +35,7 @@ char* SeedArray::alloc_buffer(const Partitioned_histogram &hst, size_t index_chu
 	return new char[sizeof(Entry) * hst.max_chunk_size(index_chunks)];
 }
 
-static const size_t seed_bits(const SeedEncoding code) {
+static size_t seed_bits(const SeedEncoding code) {
 	switch (code) {
 	case SeedEncoding::HASHED:
 		return sizeof(SeedArray::Entry::Key) * 8;
@@ -43,7 +43,10 @@ static const size_t seed_bits(const SeedEncoding code) {
 		return ceil(shapes[0].weight_ * Reduction::reduction.bit_size_exact()) - Const::seedp_bits;
 	case SeedEncoding::CONTIGUOUS:
 		return shapes[0].length_ * Reduction::reduction.bit_size() - Const::seedp_bits;
+	default:
+		break;
 	}
+	throw std::runtime_error("Unknown seed encoding.");
 }
 
 struct BufferedWriter
@@ -128,7 +131,7 @@ SeedArray::SeedArray(SequenceSet &seqs, size_t shape, const shape_histogram &hst
 	PtrVector<BuildCallback> cb;
 	for (size_t i = 0; i < seq_partition.size() - 1; ++i)
 		cb.push_back(new BuildCallback(range, iterators[i].data()));
-	enum_seeds(&seqs, cb, seq_partition, shape, shape + 1, filter, code, skip);
+	enum_seeds(&seqs, cb, seq_partition, shape, shape + 1, filter, code, skip, false);
 }
 
 template SeedArray::SeedArray(SequenceSet &, size_t, const shape_histogram &, const SeedPartitionRange &, const vector<size_t>&, char *buffer, const No_filter *, const SeedEncoding, const std::vector<bool>*);
@@ -201,7 +204,7 @@ SeedArray::SeedArray(SequenceSet& seqs, size_t shape, const SeedPartitionRange& 
 	PtrVector<BuildCallback2> cb;
 	for (size_t i = 0; i < seq_partition.size() - 1; ++i)
 		cb.push_back(new BuildCallback2(range));
-	enum_seeds(&seqs, cb, seq_partition, shape, shape + 1, filter, code, skip);
+	enum_seeds(&seqs, cb, seq_partition, shape, shape + 1, filter, code, skip, false);
 
 	array<size_t, Const::seedp> counts;
 	counts.fill(0);

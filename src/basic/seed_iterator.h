@@ -139,7 +139,9 @@ private:
 	__m128i last_;
 };*/
 
-template<uint64_t _l, uint64_t _b>
+struct FilterMaskedSeeds { };
+
+template<uint64_t _l, uint64_t _b, typename Filter>
 struct Contiguous_seed_iterator
 {
 	Contiguous_seed_iterator(const Sequence &seq) :
@@ -160,18 +162,18 @@ struct Contiguous_seed_iterator
 	}
 	bool get(uint64_t &seed)
 	{
-		last_ <<= _b;
-		last_ &= (1 << (_b*_l)) - 1;
+		for (;;) {
+			last_ <<= _b;
+			last_ &= (1 << (_b*_l)) - 1;
 #ifdef SEQ_MASK
-		const Letter l = *(ptr_++) & LETTER_MASK;
+			const Letter l = *(ptr_++) & LETTER_MASK;
 #else
-		const Letter l = *(ptr_++);
+			const Letter l = *(ptr_++);
 #endif
-		if (!is_amino_acid(l))
-			return false;
-		last_ |= Reduction::reduction(l);
-		seed = last_;
-		return true;
+			last_ |= Reduction::reduction(l);
+			seed = last_;
+			return true;
+		}
 	}
 	static uint64_t length()
 	{
@@ -180,4 +182,54 @@ struct Contiguous_seed_iterator
 private:
 	const Letter *ptr_, *end_;
 	uint64_t last_;
+	unsigned mask_;
 };
+
+
+template<uint64_t _l, uint64_t _b>
+struct Contiguous_seed_iterator<_l, _b, FilterMaskedSeeds>
+{
+	Contiguous_seed_iterator(const Sequence &seq) :
+		ptr_(seq.data()),
+		end_(ptr_ + seq.length()),
+		last_(0),
+		mask_(0)
+	{
+		for (uint64_t i = 0; i < _l - 1; ++i) {
+			const Letter l = letter_mask(*(ptr_++));
+			last_ = (last_ << _b) | Reduction::reduction(l);
+			if (!is_amino_acid(l))
+				mask_ |= 1;
+			mask_ <<= 1;
+		}
+	}
+	bool good() const
+	{
+		return ptr_ < end_;
+	}
+	bool get(uint64_t &seed)
+	{
+		for (;;) {
+			last_ <<= _b;
+			last_ &= (uint64_t(1) << (_b*_l)) - 1;
+			mask_ <<= 1;
+			mask_ &= (1 << _l) - 1;
+			const Letter l = letter_mask(*(ptr_++));
+			const unsigned r = Reduction::reduction(l);
+			last_ |= r;
+			seed = last_;
+			if (!is_amino_acid(l))
+				mask_ |= 1;
+			return mask_ == 0;
+		}
+	}
+	static uint64_t length()
+	{
+		return _l;
+	}
+private:
+	const Letter *ptr_, *end_;
+	uint64_t last_;
+	unsigned mask_;
+};
+
