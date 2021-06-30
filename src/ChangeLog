@@ -5,7 +5,8 @@
   increasing sensitivity, only searching queries at the target sensitivity that fail
   to align at a lower sensitivity search.
 - Added the "global ranking" mode (option `-g`) to set a limit on the number of
-  Smith Waterman extensions per target, ranked by their ungapped extension scores.
+  Smith Waterman extensions per query, with the target sequences ranked by their
+  ungapped extension scores.
 - Added the `--fast` sensitivity mode that is faster and less sensitive than the
   default mode.
 - Reduced the time for loading target sequences from BLAST databases.
