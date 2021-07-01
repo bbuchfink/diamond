@@ -93,7 +93,7 @@ vector<Target> extend(size_t query_id,
 	stat.inc(Statistics::TARGET_HITS2, target_block_ids.size());
 	task_timer timer(flags & DP::PARALLEL ? config.target_parallel_verbosity : UINT_MAX);
 
-	if (cfg.lazy_masking)
+	if (cfg.lazy_masking && !config.global_ranking_targets)
 		stat.inc(Statistics::MASKED_LAZY, lazy_masking(target_block_ids, *cfg.target));
 
 	if (cfg.gapped_filter_evalue > 0.0 && config.global_ranking_targets == 0 && (!align_mode.query_translated || query_seq[0].length() >= GAPPED_FILTER_MIN_QLEN)) {

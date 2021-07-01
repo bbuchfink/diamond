@@ -67,6 +67,7 @@ struct SequenceSet : public StringSetBase<Letter, Sequence::DELIMITER, 1>
 	}
 
 	void convert_to_std_alph(size_t id);
+	void convert_all_to_std_alph(size_t threads);
 
 private:
 

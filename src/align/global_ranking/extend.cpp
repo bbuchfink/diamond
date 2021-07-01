@@ -111,6 +111,10 @@ void extend(SequenceFile& db, TempFile& merged_query_list, BitVector& ranking_db
 		timer.finish();
 		log_stream << "Masked letters: " << n << endl;
 	}
+	else {
+		timer.go("Converting alphabet");
+		cfg.target->seqs().convert_all_to_std_alph(config.threads_);
+	}
 
 	timer.go("Computing alignments");
 	OutputSink::instance.reset(new OutputSink(0, &master_out));
@@ -205,6 +209,11 @@ void extend(Search::Config& cfg, Consumer& out) {
 			n = mask_seqs(cfg.target->seqs(), Masking::get());
 		timer.finish();
 		log_stream << "Masked letters: " << n << endl;
+	}
+	else {
+		timer.go("Converting alphabet");
+		cfg.target->seqs().convert_all_to_std_alph(config.threads_);
+		timer.finish();
 	}
 
 	if (cfg.iterated()) {

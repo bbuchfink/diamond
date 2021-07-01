@@ -113,6 +113,25 @@ void SequenceSet::convert_to_std_alph(size_t id)
 	}
 }
 
+void SequenceSet::convert_all_to_std_alph(size_t threads)
+{
+	if (alphabet_ == Alphabet::STD)
+		return;
+	std::atomic_size_t next(0);
+	auto worker = [this, &next] {
+		const size_t n = this->size();
+		size_t i;
+		while ((i = next++) < n)
+			this->convert_to_std_alph(i);
+	};
+	vector<std::thread> t;
+	for (size_t i = 0; i < threads; ++i)
+		t.emplace_back(worker);
+	for (auto& i : t)
+		i.join();
+	alphabet_ = Alphabet::STD;
+}
+
 size_t max_id_len(const StringSet& ids)
 {
 	size_t max(0);

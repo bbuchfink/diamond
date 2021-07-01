@@ -250,7 +250,7 @@ void run_query_iteration(const unsigned query_chunk,
 	}
 
 	::Config::set_option(options.index_chunks, config.lowmem_, 0u, config.algo == ::Config::Algo::DOUBLE_INDEXED ? sensitivity_traits.at(options.sensitivity[query_iteration]).index_chunks : 1u);
-	options.lazy_masking = config.algo != ::Config::Algo::DOUBLE_INDEXED && (config.masking == 1 || config.target_seg == 1) && (config.global_ranking_targets == 0);
+	options.lazy_masking = config.algo != ::Config::Algo::DOUBLE_INDEXED && (config.masking == 1 || config.target_seg == 1);
 
 	options.cutoff_gapped1 = { config.gapped_filter_evalue1 };
 	options.cutoff_gapped2 = { options.gapped_filter_evalue };
