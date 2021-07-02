@@ -76,6 +76,9 @@ static const string stack_join_wip = label_join + "_wip";
 static const string stack_join_redo = label_join + "_redo";
 static const string stack_join_done = label_join + "_done";
 
+static bool use_query_index(const size_t table_size) {
+	return table_size <= std::max(MAX_HASH_SET_SIZE, l3_cache_size());
+}
 
 string get_ref_part_file_name(const string & prefix, size_t query, string suffix="") {
 	if (suffix.size() > 0)
@@ -232,7 +235,7 @@ void run_query_iteration(const unsigned query_chunk,
 	if (config.algo == ::Config::Algo::AUTO || config.algo == ::Config::Algo::QUERY_INDEXED) {
 		timer.go("Building query seed set");
 		query_seeds_hashed.reset(new HashedSeedSet(query_seqs, options.query_skip.get()));
-		if (config.algo == ::Config::Algo::AUTO && query_seeds_hashed->max_table_size() > MAX_HASH_SET_SIZE) {
+		if (config.algo == ::Config::Algo::AUTO && !use_query_index(query_seeds_hashed->max_table_size())) {
 			config.algo = ::Config::Algo::DOUBLE_INDEXED;
 			query_seeds_hashed.reset();
 		}

@@ -749,6 +749,7 @@ Config::Config(int argc, const char **argv, bool check_io)
 #else
 		verbose_stream << "Runtime dispatch: disabled" << endl;
 #endif
+		log_stream << "L3 cache size: " << l3_cache_size() << endl;
 	}
 
 	sensitivity = Sensitivity::DEFAULT;

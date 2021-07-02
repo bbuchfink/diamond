@@ -18,6 +18,7 @@ size_t file_size(const char* name);
 double total_ram();
 std::tuple<char*, size_t, int> mmap_file(const char* filename);
 void unmap_file(char* ptr, size_t size, int fd);
+size_t l3_cache_size();
 
 #ifdef _MSC_VER
 #define POPEN _popen
