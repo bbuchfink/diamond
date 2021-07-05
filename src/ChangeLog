@@ -1,8 +1,9 @@
 [2.0.11]
-- Improved performance of the global ranking mode running combined with the
-  query-indexed and contiguous seed modes.
 - Fixed a bug that could cause invalid output when using `--masking 0` combined with
   the global ranking mode.
+- Enabled lazy repeat masking in the query-indexed and contiguous seed modes when
+  using global ranking.
+- Added detection of cache size to auto-enable query-indexed mode.
 
 [2.0.10]
 - Using BLAST databases now requires a preprocessing step using the command `prepdb`.

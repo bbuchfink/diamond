@@ -28,7 +28,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "masking.h"
 #include "../util/util.h"
 
-const char* Const::version_string = "2.0.10";
+const char* Const::version_string = "2.0.11";
 const char* Const::program_name = "diamond";
 
 Align_mode::Align_mode(unsigned mode) :
