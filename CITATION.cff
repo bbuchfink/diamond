@@ -1,0 +1,18 @@
+# YAML 1.2
+---
+abstract: "Sensitive protein alignments at tree-of-life scale using DIAMOND"
+authors: 
+  -
+    family-names: Buchfink
+    given-names: Benjamin
+  -
+    family-names: Reuter
+    given-names: Klaus
+  -
+    family-names: Drost
+    given-names: "Hajk-Georg"
+cff-version: "1.1.0"
+date-released: 2021-04-07
+doi: "10.1038/s41592-021-01101-x"
+message: "If you use this software, please cite it using these metadata."
+...
