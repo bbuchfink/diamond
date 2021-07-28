@@ -136,9 +136,9 @@ vector<Letter> Sequence::from_string(const char* str, const Value_traits &vt)
 
 void Seed::enum_neighborhood(unsigned pos, int treshold, vector<Seed>& out, int score)
 {
-	Letter l = data_[pos];
+	const size_t l = data_[pos];
 	score -= score_matrix(l, l);
-	for (unsigned i = 0; i < 20; ++i) {
+	for (size_t i = 0; i < 20; ++i) {
 		int new_score = score + score_matrix(l, i);
 		data_[pos] = i;
 		if (new_score >= treshold) {
