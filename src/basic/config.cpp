@@ -60,11 +60,11 @@ const EMap<Sensitivity> EnumTraits<Sensitivity>::to_string = {
 const SEMap<Sensitivity> EnumTraits<Sensitivity>::from_string = {
 	{ "fast", Sensitivity::FAST },
 	{ "default", Sensitivity::DEFAULT },
-	{ "mid-sensitive", Sensitivity::MID_SENSITIVE },
-	{ "sensitive", Sensitivity::SENSITIVE },
-	{ "more-sensitive", Sensitivity::MORE_SENSITIVE },
-	{ "very-sensitive", Sensitivity::VERY_SENSITIVE },
-	{ "ultra-sensitive", Sensitivity::ULTRA_SENSITIVE }
+	{ "msens", Sensitivity::MID_SENSITIVE },
+	{ "sens", Sensitivity::SENSITIVE },
+	{ "moresens", Sensitivity::MORE_SENSITIVE },
+	{ "vsens", Sensitivity::VERY_SENSITIVE },
+	{ "usens", Sensitivity::ULTRA_SENSITIVE }
 };
 
 const EMap<Config::Algo> EnumTraits<Config::Algo>::to_string = { { Config::Algo::DOUBLE_INDEXED, "Double-indexed" }, { Config::Algo::QUERY_INDEXED, "Query-indexed"}, {Config::Algo::CTG_SEED, "Query-indexed with contiguous seed"} };

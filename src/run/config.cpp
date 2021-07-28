@@ -26,12 +26,14 @@ Config::Config() :
 	taxonomy_scientific_names(nullptr),
 	iteration_query_aligned(0)
 {
-	if (config.iterate) {
+	if (!config.iterate.empty()) {
 		if (config.multiprocessing)
 			throw std::runtime_error("Iterated search is not compatible with --multiprocessing.");
 		if (config.target_indexed)
 			throw std::runtime_error("Iterated search is not compatible with --target-indexed.");
-		sensitivity = iterated_sens.find(config.sensitivity)->second;
+		//sensitivity = iterated_sens.find(config.sensitivity)->second;
+		for (const string& s : config.iterate)
+			sensitivity.push_back(from_string<Sensitivity>(s));
 	}
 	
 	sensitivity.push_back(config.sensitivity);

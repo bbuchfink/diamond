@@ -261,7 +261,7 @@ struct Config
 	size_t max_swipe_dp;
 	std::string seqidlist;
 	bool skip_missing_seqids;
-	bool iterate;
+	string_vector iterate;
 	bool ignore_warnings;
 	bool short_seqids;
 	bool no_reextend;
