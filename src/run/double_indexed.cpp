@@ -396,7 +396,7 @@ void run_query_chunk(const unsigned query_chunk,
 
 	log_rss();
 
-	if (blocked_processing || config.multiprocessing || options.iterated()) {
+	if (!config.single_chunk && (blocked_processing || config.multiprocessing || options.iterated())) {
 		if(!config.global_ranking_targets) timer.go("Joining output blocks");
 
 		if (config.multiprocessing) {
@@ -418,7 +418,7 @@ void run_query_chunk(const unsigned query_chunk,
 				wip->push(buf);
 				work->clear();
 
-				current_ref_block = db_file.get_n_partition_chunks();
+				current_ref_block = config.join_chunks > 0 ? config.join_chunks : db_file.get_n_partition_chunks();
 
 				vector<string> tmp_file_names;
 				for (size_t i=0; i<current_ref_block; ++i) {
@@ -520,7 +520,9 @@ void master_thread(task_timer &total_timer, Config &options)
 	auto P = Parallelizer::get();
 	if (config.multiprocessing) {
 		P->init(config.parallel_tmpdir);
-		db_file->create_partition_balanced((size_t)(config.chunk_size*1e9));
+	        if (config.join_chunks == 0) {
+                    db_file->create_partition_balanced((size_t)(config.chunk_size*1e9));
+                }
 	}
 
 	task_timer timer("Opening the input file", true);
