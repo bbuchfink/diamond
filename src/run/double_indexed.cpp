@@ -520,9 +520,9 @@ void master_thread(task_timer &total_timer, Config &options)
 	auto P = Parallelizer::get();
 	if (config.multiprocessing) {
 		P->init(config.parallel_tmpdir);
-	        if (config.join_chunks == 0) {
-                    db_file->create_partition_balanced((size_t)(config.chunk_size*1e9));
-                }
+		if (config.join_chunks == 0) {
+			db_file->create_partition_balanced((size_t)(config.chunk_size*1e9));
+		}
 	}
 
 	task_timer timer("Opening the input file", true);

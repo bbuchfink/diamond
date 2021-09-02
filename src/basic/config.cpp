@@ -371,8 +371,8 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("query-parallel-limit", 0, "", query_parallel_limit, 3000000u)
 		("log-evalue-scale", 0, "", log_evalue_scale, 1.0 / std::log(2.0))
 		("bootstrap", 0, "", bootstrap)
-                ("single-chunk", false, "", single_chunk)
-                ("join-chunks", 0, "", join_chunks);
+		("single-chunk", false, "", single_chunk)
+		("join-chunks", 0, "", join_chunks);
 
 	Options_group view_options("View options");
 	view_options.add()

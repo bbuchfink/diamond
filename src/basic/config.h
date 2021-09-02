@@ -192,8 +192,8 @@ struct Config
 	bool no_swipe_realign;
 	bool cut_bar;
 	bool bootstrap;
-        bool single_chunk;
-        size_t join_chunks;
+	bool single_chunk;
+	size_t join_chunks;
 	size_t chaining_maxnodes;
 	int cutoff_score_8bit;
 	double inner_culling_overlap;
