@@ -1,6 +1,6 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2020 Max Planck Society for the Advancement of Science e.V.
+Copyright (C) 2013-2021 Max Planck Society for the Advancement of Science e.V.
                         Benjamin Buchfink
                         Eberhard Karls Universitaet Tuebingen
 						
@@ -29,18 +29,19 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 using std::endl;
 using std::map;
 
-double SeedComplexity::prob_[AMINO_ACID_COUNT];
+namespace Search {
+
 const double SINGLE_INDEXED_SEED_SPACE_MAX_COVERAGE = 0.15;
 
 const map<Sensitivity, SensitivityTraits> sensitivity_traits {
-	//                               qidx   freqsd minid ug_ev   ug_ev_s gf_ev  idx_chunk qbins ctg_seed
-	{ Sensitivity::FAST,            {true,  50.0,  11,   10000,  10000,  0,     4,        16,   nullptr }},
-	{ Sensitivity::DEFAULT,         {true,  50.0,  11,   10000,  10000,  0,     4,        16,   "111111" }},
-	{ Sensitivity::MID_SENSITIVE,   {true,  20.0,  11,   10000,  10000,  0,     4,        16,   nullptr }},
-	{ Sensitivity::SENSITIVE,       {true,  20.0,  11,   10000,  10000,  1,     4,        16,   "11111" }},
-	{ Sensitivity::MORE_SENSITIVE,  {true,  200.0, 11,   10000,  10000,  1,     4,        16,   "11111" }},
-	{ Sensitivity::VERY_SENSITIVE,  {true,  15.0,  9,    100000, 30000,  1,     1,        16,   nullptr }},
-	{ Sensitivity::ULTRA_SENSITIVE, {true,  20.0,  9,    300000, 30000,  1,     1,        64,   nullptr }}
+	//                               qidx   motifm freqsd minid ug_ev   ug_ev_s gf_ev  idx_chunk qbins ctg_seed  seed_cut
+	{ Sensitivity::FAST,            {true,  true,  50.0,  11,   10000,  10000,  0,     4,        16,   nullptr,  0.9 }},
+	{ Sensitivity::DEFAULT,         {true,  true,  50.0,  11,   10000,  10000,  0,     4,        16,   "111111", 0.8 }},
+	{ Sensitivity::MID_SENSITIVE,   {true,  true,  20.0,  11,   10000,  10000,  0,     4,        16,   nullptr,  1.0 }},
+	{ Sensitivity::SENSITIVE,       {true,  true,  20.0,  11,   10000,  10000,  1,     4,        16,   "11111",  1.0 }},
+	{ Sensitivity::MORE_SENSITIVE,  {true,  false, 200.0, 11,   10000,  10000,  1,     4,        16,   "11111",  1.0 }},
+	{ Sensitivity::VERY_SENSITIVE,  {true,  false, 15.0,  9,    100000, 30000,  1,     1,        16,   nullptr,  1.0 }},
+	{ Sensitivity::ULTRA_SENSITIVE, {true,  false, 20.0,  9,    300000, 30000,  1,     1,        64,   nullptr,  1.0 }}
 };
 
 const map<Sensitivity, vector<Sensitivity>> iterated_sens{
@@ -200,18 +201,34 @@ bool use_single_indexed(double coverage, size_t query_letters, size_t ref_letter
 		return query_letters < 3000000llu && query_letters * 2000llu < ref_letters;
 }
 
+MaskingAlgo soft_masking_algo(const SensitivityTraits& traits) {
+	if (config.motif_masking.empty())
+		return (!config.swipe_all && !config.freq_masking && traits.motif_masking) ? MaskingAlgo::MOTIF : MaskingAlgo::NONE;
+	else {
+		if (config.motif_masking == "0")
+			return MaskingAlgo::NONE;
+		else if (config.motif_masking == "1") {
+			if (config.swipe_all)
+				throw std::runtime_error("Soft masking is not supported for --swipe.");
+			return MaskingAlgo::MOTIF;
+		}
+		else
+			throw std::runtime_error("Permitted values for --motif-masking: 0, 1");
+	}
+}
+
 void setup_search(Sensitivity sens, Search::Config& cfg)
 {
 	const SensitivityTraits& traits = sensitivity_traits.at(sens);
 	config.sensitivity = sens;
-	Config::set_option(cfg.freq_sd, config.freq_sd_, 0.0, traits.freq_sd);
-	Config::set_option(cfg.hamming_filter_id, config.min_identities_, 0u, traits.min_identities);
-	Config::set_option(cfg.ungapped_evalue, config.ungapped_evalue_, -1.0, traits.ungapped_evalue);
-	Config::set_option(cfg.ungapped_evalue_short, config.ungapped_evalue_short_, -1.0, traits.ungapped_evalue_short);
-	Config::set_option(cfg.gapped_filter_evalue, config.gapped_filter_evalue_, -1.0, traits.gapped_filter_evalue);
-	Config::set_option(cfg.query_bins, config.query_bins_, 0u, traits.query_bins);
+	::Config::set_option(cfg.freq_sd, config.freq_sd_, 0.0, traits.freq_sd);
+	::Config::set_option(cfg.hamming_filter_id, config.min_identities_, 0u, traits.min_identities);
+	::Config::set_option(cfg.ungapped_evalue, config.ungapped_evalue_, -1.0, traits.ungapped_evalue);
+	::Config::set_option(cfg.ungapped_evalue_short, config.ungapped_evalue_short_, -1.0, traits.ungapped_evalue_short);
+	::Config::set_option(cfg.gapped_filter_evalue, config.gapped_filter_evalue_, -1.0, traits.gapped_filter_evalue);
+	::Config::set_option(cfg.query_bins, config.query_bins_, 0u, traits.query_bins);
 
-	if (config.algo == Config::Algo::CTG_SEED) {
+	if (config.algo == ::Config::Algo::CTG_SEED) {
 		if (!traits.contiguous_seed)
 			throw std::runtime_error("Contiguous seed mode is not supported for this sensitivity setting.");
 		if (sens == Sensitivity::DEFAULT)
@@ -222,4 +239,9 @@ void setup_search(Sensitivity sens, Search::Config& cfg)
 		::shapes = ShapeConfig(config.shape_mask.empty() ? shape_codes.at(sens) : config.shape_mask, config.shapes);
 
 	config.gapped_filter_diag_score = score_matrix.rawscore(config.gapped_filter_diag_bit_score);
+	const double seed_cut = config.seed_cut_ == 0.0 ? traits.seed_cut : config.seed_cut_;
+	cfg.seed_complexity_cut = seed_cut * std::log(2.0) * ::shapes[0].weight_;
+	cfg.soft_masking = soft_masking_algo(traits);
+}
+
 }

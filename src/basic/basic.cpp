@@ -25,10 +25,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "translate.h"
 #include "statistics.h"
 #include "sequence.h"
-#include "masking.h"
+#include "../masking/masking.h"
 #include "../util/util.h"
+#include "../stats/standard_matrix.h"
 
-const char* Const::version_string = "2.0.11";
+const char* Const::version_string = "2.0.12";
 const char* Const::program_name = "diamond";
 
 Align_mode::Align_mode(unsigned mode) :
@@ -126,7 +127,7 @@ void Translator::init(unsigned id)
 		}
 }
 
-vector<Letter> Sequence::from_string(const char* str, const Value_traits &vt)
+vector<Letter> Sequence::from_string(const char* str, const ValueTraits&vt)
 {
 	vector<Letter> seq;
 	while (*str)
@@ -238,17 +239,32 @@ Reduction::Reduction(const char* definition_string)
 	size_ = (unsigned)tokens.size();
 	bit_size_exact_ = log(size_) / log(2);
 	bit_size_ = (uint64_t)ceil(bit_size_exact_);
+	freq_.fill(0.0);
 	for (unsigned i = 0; i < size_; ++i)
 		for (unsigned j = 0; j < tokens[i].length(); ++j) {
 			const char ch = tokens[i][j];
-			map_[(long)value_traits.from_char(ch)] = i;
-			map8_[(long)value_traits.from_char(ch)] = i;
-			map8b_[(long)value_traits.from_char(ch)] = i;
+			const long letter = (long)value_traits.from_char(ch);
+			map_[letter] = i;
+			map8_[letter] = i;
+			map8b_[letter] = i;
+			freq_[i] += Stats::blosum62.background_freqs[letter];
 		}
+	for (double& f : freq_)
+		f = std::log(f);
 	map8_[(long)MASK_LETTER] = (Letter)size_;
 	map8_[(long)STOP_LETTER] = (Letter)size_;
 	map8_[(long)DELIMITER_LETTER] = (Letter)size_;
 	map8b_[(long)MASK_LETTER] = (Letter)(size_ + 1);
 	map8b_[(long)STOP_LETTER] = (Letter)(size_ + 1);
 	map8b_[(long)DELIMITER_LETTER] = (Letter)(size_ + 1);
+}
+
+std::string Reduction::decode_seed(const uint64_t seed, const size_t len) const {
+	string s(len, '-');
+	uint64_t c = seed;
+	for (size_t i = 0; i < len; ++i) {
+		s[len - i - 1] = amino_acid_traits.alphabet[c % size_];
+		c /= size_;
+	}
+	return s;
 }

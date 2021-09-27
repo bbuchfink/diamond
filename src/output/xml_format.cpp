@@ -71,7 +71,7 @@ void XML_format::print_match(const HspContext& r, const Search::Config& metadata
 		<< "      <Hsp_midline>";
 
 	for (HspContext::Iterator i = r.begin(); i.good(); ++i)
-		out << i.midline_char();
+		out << i.midline_char(score_matrix(i.query(), i.subject()));
 
 	out << "</Hsp_midline>" << '\n'
 		<< "    </Hsp>" << '\n';

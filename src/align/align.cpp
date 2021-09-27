@@ -26,6 +26,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/queue.h"
 #include "../output/output.h"
 #include "legacy/query_mapper.h"
+#include "../util/async_buffer.h"
 #if _MSC_FULL_VER == 191627042
 #include "../util/algo/merge_sort.h"
 #endif
@@ -133,7 +134,7 @@ void align_worker(size_t thread_id, Search::Config* cfg)
 				continue;
 			}
 			task_timer timer;
-			vector<Extension::Match> matches = Extension::extend(hits.query, hits.begin, hits.end, *cfg, stat, hits.target_parallel || parallel ? DP::PARALLEL : 0);
+			vector<Extension::Match> matches = Extension::extend(hits.query, hits.begin, hits.end, *cfg, stat, hits.target_parallel || parallel ? DP::Flags::PARALLEL : DP::Flags::NONE);
 			TextBuffer* buf = blocked_processing ? Extension::generate_intermediate_output(matches, hits.query, *cfg) : Extension::generate_output(matches, hits.query, stat, *cfg);
 			if (!matches.empty() && cfg->track_aligned_queries) {
 				std::lock_guard<std::mutex> lock(query_aligned_mtx);
@@ -159,6 +160,7 @@ void align_worker(size_t thread_id, Search::Config* cfg)
 
 void align_queries(Consumer* output_file, Search::Config& cfg)
 {
+		
 	size_t max_size = std::min(size_t(config.chunk_size*1e9 * 10 * 2) / cfg.index_chunks / 3, config.trace_pt_fetch_size);
 	if (config.memory_limit != 0.0)
 		max_size = std::max(max_size, size_t(config.memory_limit * 1e9));

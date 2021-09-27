@@ -2,7 +2,7 @@ FROM ubuntu:latest as build-diamond
 
 ARG DEBIAN_FRONTEND=noninteractive
 ENV TZ=Europe/Moscow
-RUN apt-get update && apt-get install -y g++ automake cmake zlib1g-dev subversion
+RUN apt-get update && apt-get install -y g++ automake cmake zlib1g-dev subversion libzstd-dev
 
 WORKDIR /opt/diamond
 ADD . .

@@ -47,7 +47,7 @@ bool Hsp::is_weakly_enveloped(const Hsp &j) const
 
 HspContext& HspContext::parse()
 {
-	if (!(output_format->hsp_values & Output::TRANSCRIPT) && config.command != Config::view) {
+	if (!flag_any(output_format->hsp_values, HspValues::TRANSCRIPT) && config.command != Config::view) {
 		hsp_.query_source_range = TranslatedPosition::absolute_interval(
 			TranslatedPosition(hsp_.query_range.begin_, Frame(hsp_.frame)),
 			TranslatedPosition(hsp_.query_range.end_, Frame(hsp_.frame)),
@@ -72,7 +72,7 @@ HspContext& HspContext::parse()
 			break;
 		case op_substitution:
 			++hsp_.mismatches;
-			if (i.score() > 0)
+			if (score_matrix(i.query(), i.subject()) > 0)
 				++hsp_.positives;
 			d = 0;
 			break;
@@ -266,8 +266,10 @@ void Hsp::push_gap(Edit_operation op, int length, const Letter *subject)
 }
 
 Hsp::Hsp(const IntermediateRecord &r, unsigned query_source_len) :
+	backtraced(!IntermediateRecord::stats_mode(output_format->hsp_values) && output_format->hsp_values != HspValues::NONE),
 	score(r.score),
 	evalue(r.evalue),
+	bit_score(score_matrix.bitscore(r.score)),
 	transcript(r.transcript)
 {
 	subject_range.begin_ = r.subject_begin;
@@ -279,13 +281,13 @@ Hsp::Hsp(const IntermediateRecord &r, unsigned query_source_len) :
 		frame = 0;
 		query_range.begin_ = r.query_begin;
 	}
-	if ((output_format->hsp_values & Output::STATS_OR_COORDS) && !(output_format->hsp_values & Output::TRANSCRIPT)) {
+	if (IntermediateRecord::stats_mode(output_format->hsp_values)) {
 		identities = r.identities;
 		gaps = r.gaps;
 		gap_openings = r.gap_openings;
 		mismatches = r.mismatches;
 		positives = r.positives;
-		length = identities + mismatches + gaps;
+		length = r.length;
 		if (align_mode.mode == Align_mode::blastx)
 			set_translated_query_end(r.query_end, query_source_len);
 		else

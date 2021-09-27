@@ -17,13 +17,18 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #include <algorithm>
+#include <thread>
 #include <atomic>
 #include "../align.h"
 #include "../../dp/dp.h"
 #include "../../util/interval_partition.h"
 #include "../../util/simd.h"
 
-using namespace std;
+using std::thread;
+using std::list;
+using std::max;
+using std::atomic;
+using std::endl;
 
 namespace ExtensionPipeline { namespace BandedSwipe {
 
@@ -60,12 +65,12 @@ struct Target : public ::Target
 				d1 = std::min(i->diagonal() + band, d_max);
 			}
 			else {
-				v.emplace_back(subject, d0, d1, 0, 0, target_idx);
+				v.emplace_back(subject, subject.length(), d0, d1, target_idx, 0); // set cols here?
 				d0 = std::max(i->diagonal() - band, d_min);
 				d1 = std::min(i->diagonal() + band, d_max);
 			}
 		}
-		v.emplace_back(subject, d0, d1, 0, 0, target_idx);
+		v.emplace_back(subject, subject.length(), d0, d1, target_idx, 0);
 	}
 
 	void add(QueryMapper &mapper, vector<DpTarget> &vf, vector<DpTarget> &vr, int target_idx)

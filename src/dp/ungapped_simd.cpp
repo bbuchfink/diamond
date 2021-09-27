@@ -30,7 +30,7 @@ namespace DP { namespace DISPATCH_ARCH {
 
 void window_ungapped(const Letter *query, const Letter **subjects, int subject_count, int window, int *out) {
 #ifdef __SSE4_1__
-	typedef score_vector<int8_t> Sv;
+	using Sv = ScoreVector<int8_t, SCHAR_MIN>;
 	typedef ::DISPATCH_ARCH::SIMD::Vector<int8_t> SeqV;
 	constexpr int CHANNELS = ::DISPATCH_ARCH::ScoreTraits<Sv>::CHANNELS;
 	assert(subject_count <= CHANNELS);

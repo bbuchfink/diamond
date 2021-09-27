@@ -22,12 +22,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <mutex>
 #include <memory>
 #include <thread>
+#include <atomic>
 #include "global_ranking.h"
 #include "../output/output.h"
 #include "../target.h"
 #include "../dp/dp.h"
 #include "../data/queries.h"
-#include "../basic/masking.h"
+#include "../masking/masking.h"
 
 using std::unique_ptr;
 using std::mutex;
@@ -57,7 +58,7 @@ void extend_query(const QueryList& query_list, const TargetMap& db2block_id, con
 		seed_hits.push_back({ 0,0,query_list.targets[i].score,0 });
 	}
 	
-	int flags = DP::FULL_MATRIX;
+	DP::Flags flags = DP::Flags::FULL_MATRIX;
 	
 	vector<Match> matches = Extension::extend(
 		query_list.query_block_id,
@@ -105,9 +106,9 @@ void extend(SequenceFile& db, TempFile& merged_query_list, BitVector& ranking_db
 	timer.finish();
 	verbose_stream << "#Ranked database sequences: " << cfg.target->seqs().size() << endl;
 
-	if (config.masking == 1) {
+	if (cfg.target_masking != MaskingAlgo::NONE) {
 		timer.go("Masking reference");
-		size_t n = mask_seqs(cfg.target->seqs(), Masking::get());
+		size_t n = mask_seqs(cfg.target->seqs(), Masking::get(), true, cfg.target_masking);
 		timer.finish();
 		log_stream << "Masked letters: " << n << endl;
 	}
@@ -153,7 +154,7 @@ void extend_query(size_t source_query_block_id, const TargetMap& db2block_id, Se
 			seed_hits.push_back({ 0,0,table_begin[i].score, table_begin[i].context });
 		}
 
-		int flags = DP::FULL_MATRIX;
+		DP::Flags flags = DP::Flags::FULL_MATRIX;
 
 		vector<Match> matches = Extension::extend(
 			source_query_block_id,
@@ -200,13 +201,10 @@ void extend(Search::Config& cfg, Consumer& out) {
 	timer.finish();
 	verbose_stream << "#Ranked database sequences: " << db_count << endl;
 
-	if (config.masking == 1 || config.target_seg == 1) {
+	if (cfg.target_masking != MaskingAlgo::NONE) {
 		timer.go("Masking reference");
 		size_t n;
-		if (config.target_seg == 1)
-			n = mask_seqs(cfg.target->seqs(), Masking::get(), true, Masking::Algo::SEG);
-		else
-			n = mask_seqs(cfg.target->seqs(), Masking::get());
+		n = mask_seqs(cfg.target->seqs(), Masking::get(), true, cfg.target_masking);
 		timer.finish();
 		log_stream << "Masked letters: " << n << endl;
 	}

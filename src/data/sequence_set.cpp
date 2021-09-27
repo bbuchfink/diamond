@@ -21,9 +21,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #include <atomic>
+#include <thread>
 #include "sequence_set.h"
 #include "../util/util.h"
 #include "../util/sequence/sequence.h"
+#include "../util/log_stream.h"
 
 SequenceSet::SequenceSet(Alphabet alphabet) :
 	alphabet_(alphabet)
@@ -102,16 +104,7 @@ void SequenceSet::convert_to_std_alph(size_t id)
 		return;
 	Letter* ptr = this->ptr(id);
 	const size_t len = length(id);
-	for (size_t i = 0; i < len; ++i) {
-		const char l = ptr[i];
-		if ((size_t)l >= sizeof(NCBI_TO_STD) || NCBI_TO_STD[(int)l] < 0) {
-			throw std::runtime_error("Unrecognized sequence character in BLAST database ("
-				+ std::to_string((int)l)
-				+ ", id=" + std::to_string(id)
-				+ ", pos=" + std::to_string(i) + ')');
-		}
-		ptr[i] = NCBI_TO_STD[(int)l];
-	}
+	alph_ncbi_to_std(ptr, ptr + len);
 }
 
 void SequenceSet::convert_all_to_std_alph(size_t threads)

@@ -1,6 +1,4 @@
-#ifndef UTIL_STRING_STRING_H_
-#define UTIL_STRING_STRING_H_
-
+#pragma once
 #include <string>
 #include <string.h>
 #include <algorithm>
@@ -56,7 +54,6 @@ inline int format_double(double x, char *p) {
 }
 
 std::string replace(const std::string& s, char a, char b);
+std::string ratio_percentage(const double x, const double y);
 
 }}
-
-#endif

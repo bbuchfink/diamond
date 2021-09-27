@@ -40,6 +40,9 @@ struct TargetMatrix {
 
     TargetMatrix(const Composition& query_comp, int query_len, const Sequence& target);
     int score_width() const;
+    bool blank() const {
+        return scores.empty();
+    }
 
     std::vector<int8_t> scores;
     std::vector<int32_t> scores32;
@@ -112,6 +115,7 @@ struct CBS {
         case 4:
         case COMP_BASED_STATS:
         case COMP_BASED_STATS_AND_MATRIX_ADJUST:
+        case HAUSER_GLOBAL:
             return false;
         case 1:
         case 2:
@@ -131,6 +135,7 @@ struct CBS {
         case MATRIX_ADJUST:
         case COMP_BASED_STATS:
         case COMP_BASED_STATS_AND_MATRIX_ADJUST:
+        case HAUSER_GLOBAL:
             return true;
         default:
             throw std::runtime_error("Unknown CBS code.");
@@ -179,6 +184,7 @@ struct CBS {
         case MATRIX_ADJUST:
         case COMP_BASED_STATS:
         case COMP_BASED_STATS_AND_MATRIX_ADJUST:
+        case HAUSER_GLOBAL:
             return 1;
         default:
             return 0;
@@ -192,6 +198,7 @@ struct CBS {
         MATRIX_ADJUST = 4,
         COMP_BASED_STATS = 5,
         COMP_BASED_STATS_AND_MATRIX_ADJUST = 6,
+        HAUSER_GLOBAL = 7,
         COUNT
     };
     CBS(unsigned code, double query_match_distance_threshold, double length_ratio_threshold, double angle);
@@ -203,6 +210,7 @@ struct CBS {
 
 std::vector<int> CompositionMatrixAdjust(int query_len, int target_len, const double* query_comp, const double* target_comp, int scale, double ungapped_lambda, const double* joint_probs, const double* background_freqs);
 std::vector<int> CompositionBasedStats(const int* const* matrix_in, const Composition& queryProb, const Composition& resProb, double lambda, const FreqRatios& freq_ratios);
+std::vector<int> hauser_global(const Composition& query_comp, const Composition& target_comp);
 int Blast_OptimizeTargetFrequencies(double x[],
     int alphsize,
     int* iterations,

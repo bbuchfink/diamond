@@ -48,20 +48,21 @@ void IntermediateRecord::read(BinaryBuffer::Iterator& f)
 	f.read_packed(flag & 3, score);
 	f.read(evalue);
 
-	if (output_format->hsp_values == Output::NONE)
+	if (output_format->hsp_values == HspValues::NONE)
 		return;
 
 	f.read_packed((flag >> 2) & 3, query_begin);
 	f.read_varint(query_end);
 	f.read_packed((flag >> 4) & 3, subject_begin);
 
-	if (output_format->hsp_values & Output::TRANSCRIPT)
+	if (flag_any(output_format->hsp_values, HspValues::TRANSCRIPT))
 		transcript.read(f);
 	else {
 		f.read_varint(subject_end);
 		f.read_varint(identities);
 		f.read_varint(mismatches);
 		f.read_varint(positives);
+		f.read_varint(length);
 		f.read_varint(gap_openings);
 		f.read_varint(gaps);
 	}
@@ -96,20 +97,21 @@ void IntermediateRecord::write(TextBuffer& buf, const Hsp& match, unsigned query
 	buf.write(get_segment_flag(match));
 	buf.write_packed(match.score);
 	buf.write(match.evalue);
-	if (output_format->hsp_values == Output::NONE)
+	if (output_format->hsp_values == HspValues::NONE)
 		return;
 
 	buf.write_packed(oriented_range.begin_);
 	buf.write_varint(oriented_range.end_);
 	buf.write_packed(match.subject_range.begin_);
 
-	if (output_format->hsp_values & Output::TRANSCRIPT)
+	if (flag_any(output_format->hsp_values, HspValues::TRANSCRIPT))
 		buf << match.transcript.data();
 	else {
 		buf.write_varint(match.subject_range.end_);
 		buf.write_varint(match.identities);
 		buf.write_varint(match.mismatches);
 		buf.write_varint(match.positives);
+		buf.write_varint(match.length);
 		buf.write_varint(match.gap_openings);
 		buf.write_varint(match.gaps);
 	}
@@ -226,7 +228,9 @@ void init_output()
 	}
 	else
 		message_stream << "Percentage range of top alignment score to report hits: " << config.toppercent << endl;
-	log_stream << "Format options: transcript=" << bool(output_format->hsp_values & Output::TRANSCRIPT) << " stats=" << bool(output_format->hsp_values & Output::STATS_OR_COORDS) << endl;
+	if (config.frame_shift != 0 && (output_format->hsp_values != HspValues::NONE || config.query_range_culling))
+		output_format->hsp_values = HspValues::TRANSCRIPT;
+	log_stream << "DP fields: " << (unsigned)output_format->hsp_values << endl;
 }
 
 void Bin1_format::print_query_intro(size_t query_num, const char *query_name, unsigned query_len, TextBuffer &out, bool unaligned, const Search::Config& cfg) const {

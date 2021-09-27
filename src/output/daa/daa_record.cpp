@@ -21,7 +21,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../output.h"
 
 DAA_format::DAA_format() :
-	Output_format(daa, Output::TRANSCRIPT, config.salltitles ? Output::Flags::FULL_TITLES : (config.sallseqid ? Output::Flags::ALL_SEQIDS : Output::Flags::NONE))
+	Output_format(daa, HspValues::TRANSCRIPT, config.salltitles ? Output::Flags::FULL_TITLES : (config.sallseqid ? Output::Flags::ALL_SEQIDS : Output::Flags::NONE))
 {}
 
 BinaryBuffer::Iterator DAA_query_record::init(const BinaryBuffer &buf)

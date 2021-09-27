@@ -46,6 +46,14 @@ struct Tokenizer {
 		len(strlen(delimiter))
 	{}
 
+	const char* ptr() const {
+		return p;
+	}
+
+	void set(const char* ptr) {
+		p = ptr;
+	}
+
 	Tokenizer& operator>>(const Skip&) {
 		if (p == nullptr)
 			throw TokenizerException();

@@ -24,6 +24,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <sstream>
 #include <memory>
 #include <chrono>
+#include <thread>
 #include "tools.h"
 #include "../basic/config.h"
 #include "../data/sequence_set.h"
@@ -31,21 +32,26 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../data/queries.h"
 #include "../data/load_seqs.h"
 #include "../data/sequence_file.h"
-#include "../basic/masking.h"
+#include "../masking/masking.h"
 #include "../dp/dp.h"
 #include "../basic/packed_transcript.h"
 #include "../data/reference.h"
 #include "../data/dmnd/dmnd.h"
 #include "../util/util.h"
 #include "../util/sequence/sequence.h"
+#include "../basic/translate.h"
 
-using namespace std;
+using std::thread;
 using std::chrono::high_resolution_clock;
 using std::chrono::duration_cast;
+using std::cout;
+using std::endl;
+using std::cerr;
+using std::unique_ptr;
 
 void get_seq()
 {
-	SequenceFile* db_file = SequenceFile::auto_create();
+	SequenceFile* db_file = SequenceFile::auto_create(config.database);
 	db_file->get_seq();
 	delete db_file;
 }
@@ -105,7 +111,7 @@ void db_stat()
 	vector<size_t> letter_freq(20);
 	for (size_t i = 0; i < r.size(); ++i) {
 		const Sequence seq = r[i];
-		for (size_t j = 0; j < seq.length(); ++j) {
+		for (Loc j = 0; j < seq.length(); ++j) {
 			if (seq[j] < 20) {
 				++letters;
 				++letter_freq[(int)seq[j]];
@@ -132,7 +138,7 @@ void run_masker()
 	while (format.get_seq(id, seq, f, value_traits)) {
 		cout << '>' << id << endl;
 		seq2 = seq;
-		Masking::get()(seq2.data(), seq2.size());
+		Masking::get()(seq2.data(), seq2.size(), MaskingAlgo::TANTAN, 0);
 		/*for (size_t i = 0; i < seq.size(); ++i) {
 			char c = value_traits.alphabet[(long)seq[i]];
 			if (seq2[i] == value_traits.mask_char)
@@ -234,8 +240,8 @@ void pairwise_worker(TextInputFile *in, std::mutex *input_lock, std::mutex *outp
 		}
 		input_lock->unlock();
 		const string ir = Util::Seq::seqid(id_r.c_str(), false), iq = Util::Seq::seqid(id_q.c_str(), false);
-		Hsp hsp;
-		smith_waterman(Sequence(query), Sequence(ref), hsp);
+		Hsp hsp(true);
+		//smith_waterman(Sequence(query), Sequence(ref), hsp);
 		HspContext context(hsp, 0, TranslatedSequence(query), "", 0, 0, nullptr, 0, 0, Sequence());
 		HspContext::Iterator it = context.begin();
 		std::stringstream ss;
@@ -256,7 +262,7 @@ void pairwise()
 {
 	input_value_traits = nucleotide_traits;
 	value_traits = nucleotide_traits;
-	score_matrix = Score_matrix("DNA", 5, 2, 0, 1);
+	score_matrix = ScoreMatrix("DNA", 5, 2, 0, 1);
 
 	TextInputFile in(config.single_query_file());
 	std::mutex input_lock, output_lock;
@@ -310,8 +316,7 @@ void reverse() {
 }
 
 void show_cbs() {
-	score_matrix = Score_matrix("BLOSUM62", config.gap_open, config.gap_extend, config.frame_shift, 1);
-	init_cbs();
+	score_matrix = ScoreMatrix("BLOSUM62", config.gap_open, config.gap_extend, config.frame_shift, 1);
 	TextInputFile in(config.single_query_file());
 	string id;
 	vector<Letter> seq;

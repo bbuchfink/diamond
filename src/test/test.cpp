@@ -38,6 +38,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/string/string.h"
 #include "../util/system/system.h"
 #include "../data/dmnd/dmnd.h"
+#include "../basic/config.h"
 
 using std::endl;
 using std::string;

@@ -23,26 +23,46 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <string>
 #include <stdexcept>
 
-template<typename _t>
-using EMap = std::map<_t, std::string>;
-template<typename _t>
-using SEMap = std::map<std::string, _t>;
+template<typename T>
+struct FieldValue{
+	FieldValue(const T v, const bool primary = true):
+		v(v),
+		primary(primary)
+	{}
+	const T v;
+	const bool primary;
+};
 
-template<typename _t> struct EnumTraits {};
+template<typename T>
+using EMap = std::map<T, std::string>;
+template<typename T>
+using SEMap = std::map<std::string, FieldValue<T>>;
 
-template<typename _t> std::string to_string(_t v) {
-	auto it = EnumTraits<_t>::to_string.find(v);
-	if (it == EnumTraits<_t>::to_string.end())
+template<typename T> struct EnumTraits {};
+
+template<typename T> std::string to_string(T v) {
+	auto it = EnumTraits<T>::to_string.find(v);
+	if (it == EnumTraits<T>::to_string.end())
 		throw std::runtime_error("Invalid conversion from enum to string.");
 	return it->second;
 }
 
-template<typename _t>
-_t from_string(const std::string& s) {
-	auto it = EnumTraits<_t>::from_string.find(s);
-	if (it == EnumTraits<_t>::from_string.end())
-		throw std::runtime_error("Invalid value for string field: " + s);
-	return it->second;
+template<typename T>
+T from_string(const std::string& s) {
+	auto it = EnumTraits<T>::from_string.find(s);
+	if (it == EnumTraits<T>::from_string.end()) {
+		std::string p;
+		size_t n = 0;
+		for (const auto& i : EnumTraits<T>::from_string) {
+			if (!i.second.primary)
+				continue;
+			if (n++)
+				p += ", ";
+			p += i.first;
+		}
+		throw std::runtime_error("Invalid value for string field: " + s + ". Permitted values: " + p);
+	}
+	return it->second.v;
 }
 
 #define DEF_ENUM_FLAG_OPERATORS(T) constexpr inline T operator~ (T a) { return static_cast<T>(~static_cast<std::underlying_type<T>::type>(a)); } \
@@ -65,4 +85,11 @@ bool flag_any(_t a, _t b) {
 	typedef typename std::underlying_type<_t>::type T;
 	T c = static_cast<T>(b);
 	return (static_cast<T>(a) & c) != T(0);
+}
+
+template<typename _t>
+bool flag_only(_t a, _t b) {
+	typedef typename std::underlying_type<_t>::type T;
+	T c = static_cast<T>(b);
+	return (static_cast<T>(a) & ~c) == T(0);
 }

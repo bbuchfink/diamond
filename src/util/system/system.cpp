@@ -79,7 +79,7 @@ size_t file_size(const char* name)
 
 void auto_append_extension(string &str, const char *ext)
 {
-	if (!ends_with(str, ext))
+	if (!str.empty() && !ends_with(str, ext))
 		str += ext;
 }
 

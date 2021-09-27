@@ -21,6 +21,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #include <memory>
+#include <thread>
 #include "output.h"
 #include "../util/io/temp_file.h"
 #include "../data/queries.h"
@@ -32,7 +33,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../align/global_ranking/global_ranking.h"
 #include "../util/task_queue.h"
 
-using namespace std;
+using std::thread;
+using std::unique_ptr;
+using std::set;
 
 struct JoinFetcher
 {

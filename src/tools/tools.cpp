@@ -1,3 +1,4 @@
+#include <array>
 #include <iostream>
 #include <vector>
 #include "tsv_record.h"
@@ -8,10 +9,22 @@
 #include "../util/seq_file_format.h"
 #include "../util/sequence/sequence.h"
 #include "../stats/cbs.h"
+#include "../util/algo/MurmurHash3.h"
+#include "../util/sequence/sequence.h"
+#include "../data/sequence_file.h"
+#include "../search/search.h"
+#include "../data/enum_seeds.h"
+#define _REENTRANT
+#include "../lib/ips4o/ips4o.hpp"
+#include "../masking/masking.h"
+#include "../util/ptr_vector.h"
 
+using std::array;
 using std::cout;
 using std::endl;
 using std::vector;
+using std::unique_ptr;
+using std::pair;
 
 void filter_blasttab() {
 	TextInputFile in("");
@@ -60,5 +73,66 @@ void composition() {
 		for (double x : c)
 			std::cout << x << '\t';
 		std::cout << endl;
+	}
+}
+
+void hash_seqs() {
+	TextInputFile f(config.query_file.front());
+	FASTA_format fmt;
+	string id;
+	vector<Letter> seq;
+	while (fmt.get_seq(id, seq, f, amino_acid_traits)) {
+		array<char, 16> hash;
+		hash.fill('\0');
+		MurmurHash3_x64_128(seq.data(), seq.size(), hash.data(), hash.data());
+		cout << Util::Seq::seqid(id.c_str(), false) << '\t' << hex_print(hash.data(), 16) << endl;
+	}
+	f.close();
+}
+
+static double freq(const string& s, const Reduction& r) {
+	double f = 0.0;
+	for (char c : s) {
+		f += r.freq(r(amino_acid_traits.from_char(c)));
+	}
+	return f / s.length();
+}
+
+void list_seeds() {
+	struct Callback {
+		bool operator()(uint64_t seed, size_t, unsigned, size_t) {
+			seeds.push_back(seed);
+			return true;
+		};
+		void finish() {}
+		vector<uint64_t>& seeds;
+	};
+	unique_ptr<SequenceFile> db(SequenceFile::auto_create(config.database));
+	unique_ptr<Block> block(db->load_seqs(SIZE_MAX));
+	mask_seqs(block->seqs(), Masking::get(), true, MaskingAlgo::TANTAN);
+	vector<uint64_t> seeds;
+	seeds.reserve(block->seqs().letters());
+	PtrVector<Callback> cb;
+	cb.push_back(new Callback{ seeds });
+	auto parts = block->seqs().partition(1);
+	::shapes = ShapeConfig(config.shape_mask.empty() ? Search::shape_codes.at(Sensitivity::DEFAULT) : config.shape_mask, config.shapes);
+	Reduction::reduction = Reduction("A R N D C Q E G H I L K M F P S T W Y V");
+	EnumCfg cfg{ &parts, 0, 1, SeedEncoding::SPACED_FACTOR, nullptr, false, false, config.seed_cut_, MaskingAlgo::NONE };
+	enum_seeds(*block, cb, &no_filter, cfg);
+	ips4o::parallel::sort(seeds.begin(), seeds.end());
+
+	auto it = merge_keys(seeds.begin(), seeds.end(), [](uint64_t seed) {return seed; });
+	vector<pair<uint64_t, uint64_t>> counts;
+	while (it.good()) {
+		counts.push_back({ it.count(), it.key() });
+		++it;
+	}
+	ips4o::parallel::sort(counts.begin(), counts.end());
+
+	auto end = std::min(counts.rbegin() + config.query_count, counts.rend());
+	string s;
+	for (auto i = counts.rbegin(); i != end; ++i) {
+		s = Reduction::reduction.decode_seed(i->second, shapes[0].weight_);
+		cout << i->first << '\t' << s << endl;
 	}
 }

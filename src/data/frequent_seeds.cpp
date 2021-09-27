@@ -26,6 +26,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "queries.h"
 #include "../util/parallel/thread_pool.h"
 #include "../util/util.h"
+#include "../basic/config.h"
 
 using std::endl;
 using std::atomic;
@@ -33,12 +34,12 @@ using std::atomic;
 const double Frequent_seeds::hash_table_factor = 1.3;
 Frequent_seeds frequent_seeds;
 
-static void compute_sd(atomic<unsigned> *seedp, DoubleArray<SeedArray::Entry::Value> *query_seed_hits, DoubleArray<SeedArray::Entry::Value> *ref_seed_hits, vector<Sd> *ref_out, vector<Sd> *query_out)
+static void compute_sd(atomic<unsigned> *seedp, DoubleArray<SeedLoc> *query_seed_hits, DoubleArray<SeedLoc> *ref_seed_hits, vector<Sd> *ref_out, vector<Sd> *query_out)
 {
 	unsigned p;
 	while ((p = (*seedp)++) < current_range.end()) {
 		Sd ref_sd, query_sd;
-		for (auto it = JoinIterator<SeedArray::Entry::Value>(query_seed_hits[p].begin(), ref_seed_hits[p].begin()); it; ++it) {
+		for (auto it = JoinIterator<SeedLoc>(query_seed_hits[p].begin(), ref_seed_hits[p].begin()); it; ++it) {
 			query_sd.add((double)it.r->size());
 			ref_sd.add((double)it.s->size());
 		}
@@ -50,8 +51,8 @@ static void compute_sd(atomic<unsigned> *seedp, DoubleArray<SeedArray::Entry::Va
 void Frequent_seeds::build_worker(
 	size_t seedp,
 	size_t thread_id,
-	DoubleArray<SeedArray::Entry::Value> *query_seed_hits,
-	DoubleArray<SeedArray::Entry::Value> *ref_seed_hits,
+	DoubleArray<SeedLoc> *query_seed_hits,
+	DoubleArray<SeedLoc> *ref_seed_hits,
 	const SeedPartitionRange *range,
 	unsigned sid,
 	unsigned ref_max_n,
@@ -64,15 +65,15 @@ void Frequent_seeds::build_worker(
 
 	vector<uint32_t> buf;
 	size_t n = 0;
-	for (auto it = JoinIterator<SeedArray::Entry::Value>(query_seed_hits[seedp].begin(), ref_seed_hits[seedp].begin()); it;) {
+	for (auto it = JoinIterator<SeedLoc>(query_seed_hits[seedp].begin(), ref_seed_hits[seedp].begin()); it;) {
 		if (it.s->size() > ref_max_n || it.r->size() > query_max_n) {
 			n += (unsigned)it.s->size();
 			//Packed_seed s;
 			//shapes[sid].set_seed(s, query_seqs::get().data(*it.r->begin()));
 			//buf.push_back(seed_partition_offset(s));
 
-			Range<SeedArray::Entry::Value*> query_hits = *it.r;
-			for (SeedArray::Entry::Value* i = query_hits.begin(); i < query_hits.end(); ++i) {
+			Range<SeedLoc*> query_hits = *it.r;
+			for (SeedLoc* i = query_hits.begin(); i < query_hits.end(); ++i) {
 				Letter* p = query_seqs.data(*i);
 				*p |= SEED_MASK;
 			}
@@ -87,7 +88,7 @@ void Frequent_seeds::build_worker(
 	(*counts)[seedp] = (unsigned)n;
 }
 
-void Frequent_seeds::build(unsigned sid, const SeedPartitionRange &range, DoubleArray<SeedArray::Entry::Value> *query_seed_hits, DoubleArray<SeedArray::Entry::Value> *ref_seed_hits, Search::Config& cfg)
+void Frequent_seeds::build(unsigned sid, const SeedPartitionRange &range, DoubleArray<SeedLoc> *query_seed_hits, DoubleArray<SeedLoc> *ref_seed_hits, Search::Config& cfg)
 {
 	vector<Sd> ref_sds(range.size()), query_sds(range.size());
 	atomic<unsigned> seedp(range.begin());

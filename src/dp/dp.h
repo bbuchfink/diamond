@@ -1,6 +1,6 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2016-2020 Max Planck Society for the Advancement of Science e.V.
+Copyright (C) 2016-2021 Max Planck Society for the Advancement of Science e.V.
                         Benjamin Buchfink
 						
 Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
@@ -27,159 +27,66 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../stats/hauser_correction.h"
 #include "../basic/statistics.h"
 #include "../basic/config.h"
-#include "../util/dynamic_iterator.h"
+#include "../data/sequence_set.h"
 #include "../stats/cbs.h"
-
-int smith_waterman(const Sequence&query, const Sequence&subject, unsigned band, unsigned padding, int op, int ep);
-
-struct Local {};
-struct Global {};
-
-template<typename _t>
-struct Fixed_score_buffer
-{
-
-	inline void init(size_t col_size, size_t cols, _t init)
-	{
-		col_size_ = col_size;
-		data_.clear();
-		data_.reserve(col_size * cols);
-		data_.resize(col_size);
-		for (size_t i = 0; i<col_size; ++i)
-			data_[i] = init;
-	}
-	
-	std::pair<int, int> find(_t s) const
-	{
-		const int i = int(std::find(data_.begin(), data_.end(), s) - data_.begin());
-		return std::pair<int, int>(int(i%col_size_), int(i / col_size_));
-	}
-
-	inline std::pair<_t*, _t*> get()
-	{
-		data_.resize(data_.size() + col_size_);
-		_t* ptr = last();
-		return std::pair<_t*, _t*>(ptr - col_size_, ptr);
-	}
-
-	inline _t* last()
-	{
-		return &*(data_.end() - col_size_);
-	}
-
-	const _t* column(int col) const
-	{
-		return &data_[col_size_*col];
-	}
-
-	_t operator()(int i, int j) const
-	{
-		return data_[j*col_size_ + i];
-	}
-
-	friend std::ostream& operator<<(std::ostream &s, const Fixed_score_buffer &buf)
-	{
-		s << '\t';
-		for (int j = 0; j < int(buf.data_.size() / buf.col_size_); ++j)
-			s << j << '\t';
-		s << std::endl;
-		for (int i = 0; i < int(buf.col_size_); ++i) {
-			s << i << '\t';
-			for (int j = 0; j < int(buf.data_.size() / buf.col_size_); ++j)
-				s << buf(i, j) << '\t';
-			s << std::endl;
-		}
-		return s;
-	}
-
-private:
-	std::vector<_t> data_;
-	size_t col_size_;
-
-};
-
-template<typename _score, typename _mode>
-const Fixed_score_buffer<_score>& needleman_wunsch(Sequence query, Sequence subject, int &max_score, const _mode&, const _score&);
-
-struct Band
-{
-	void init(int diags, int cols)
-	{
-		diags_ = diags;
-		cols_ = cols;
-		data_.clear();
-		data_.resize((size_t)diags*cols);
-	}
-	struct Iterator {
-		Iterator(uint8_t *p, int diags) :
-			diags_(diags),
-			p_(p)			
-		{}
-		uint8_t& operator[](int i)
-		{
-			return p_[i*diags_];
-		}
-	private:
-		const int diags_;
-		uint8_t *p_;
-	};
-	Iterator diag(int o)
-	{
-		return Iterator(&data_[o], diags_);
-	}
-	int cols() const
-	{
-		return cols_;
-	}
-	int diags() const
-	{
-		return diags_;
-	}
-	uint8_t* data()
-	{
-		return data_.data();
-	}
-	bool check(uint8_t *ptr) const
-	{
-		return ptr >= data_.data() && ptr <= data_.data() + data_.size();
-	}
-private:
-	int diags_, cols_;
-	vector<uint8_t> data_;
-};
-
-extern size_t cells;
+#include "flags.h"
 
 struct DpTarget
 {
-	DpTarget():
-		target_idx(-1),
-		previous_i1(0),
-		previous_j1(0),
-		matrix(nullptr)
-	{}
-	DpTarget(const Sequence &seq, int d_begin, int d_end, int j_begin, int j_end, int target_idx = 0, int qlen = 0, const Stats::TargetMatrix* matrix = nullptr) :
-		seq(seq),
-		d_begin(d_begin),
-		d_end(d_end),
-		j_begin(j_begin),
-		j_end(j_end),
-		target_idx(target_idx),
-		previous_i1(0),
-		previous_j1(0),
-		matrix(matrix)
-	{
+	struct CarryOver {
+		CarryOver() :
+			i1(0), j1(0), ident(0), len(0)
+		{}
+		CarryOver(int i1, int j1, int ident, int len) :
+			i1(i1), j1(j1), ident(ident), len(len)
+		{}
+		int i1, j1, ident, len;
+	};
+	enum { BLANK = -1 };
+	int get_cols(int qlen) const {
 		int pos = std::max(d_end - 1, 0) - (d_end - 1);
 		const int d0 = d_begin;
 		const int j1 = std::min(qlen - 1 - d0, (int)(seq.length() - 1)) + 1;
-		cols = j1 - pos;
+		return j1 - pos;
 	}
-	DpTarget(const Sequence& seq, int target_idx, int previous_i1 = 0, int previous_j1 = 0):
-		seq(seq),
-		target_idx(target_idx),
-		previous_i1(previous_i1),
-		previous_j1(previous_j1)
+	DpTarget():
+		d_begin(),
+		d_end(),
+		cols(),
+		target_idx(BLANK),
+		matrix(nullptr)
 	{}
+	DpTarget(const Sequence &seq, int true_target_len, int d_begin, int d_end, int target_idx, int qlen, const Stats::TargetMatrix* matrix = nullptr, const CarryOver& carry_over = CarryOver()) :
+		seq(seq),
+		d_begin(d_begin),
+		d_end(d_end),
+		cols(get_cols(qlen)),
+		true_target_len(true_target_len),
+		target_idx(target_idx),
+		carry_over(carry_over),
+		matrix(matrix)
+	{
+	}
+	DpTarget(const Sequence& seq, int true_target_len, int target_idx, const Stats::TargetMatrix* matrix = nullptr, const CarryOver& carry_over = CarryOver()):
+		seq(seq),
+		d_begin(),
+		d_end(),
+		cols(),
+		true_target_len(true_target_len),
+		target_idx(target_idx),
+		carry_over(carry_over),
+		matrix(matrix)
+	{}
+	DpTarget(const std::pair<const Letter*, size_t> seq) :
+		seq(seq.first, seq.second),
+		d_begin(),
+		d_end(),
+		cols(),
+		true_target_len((Loc)seq.second),		
+		target_idx(BLANK),		
+		matrix(nullptr)
+	{
+	}
 	int left_i1() const
 	{
 		return std::max(d_end - 1, 0);
@@ -195,7 +102,7 @@ struct DpTarget
 		//return i < j || (i == j && (target_idx < x.target_idx || (target_idx == x.target_idx && d_begin < x.d_begin)));
 	}
 	bool blank() const {
-		return target_idx == -1;
+		return target_idx == BLANK;
 	}
 	bool adjusted_matrix() const {
 		return matrix != nullptr;
@@ -204,7 +111,9 @@ struct DpTarget
 		return adjusted_matrix() ? config.cbs_matrix_scale : 1;
 	}
 	Sequence seq;
-	int d_begin, d_end, j_begin, j_end, target_idx, cols, previous_i1, previous_j1;
+	Loc d_begin, d_end, cols, true_target_len;
+	int target_idx;
+	CarryOver carry_over;
 	const Stats::TargetMatrix* matrix;
 };
 
@@ -229,18 +138,24 @@ private:
 
 extern DpStat dp_stat;
 
-void smith_waterman(Sequence q, Sequence s, Hsp &out);
-int score_range(Sequence query, Sequence subject, int i, int j, int j_end);
-
 namespace DP {
 
-struct Traceback {};
-struct StatTraceback {};
-struct VectorTraceback {};
-struct ScoreOnly {};
-struct ScoreWithCoords {};
+struct Params {
+	const Sequence query;
+	const Frame frame;
+	const int query_source_len;
+	const int8_t* const composition_bias;
+	const Flags flags;
+	const HspValues v;
+	Statistics& stat;
+};
 
-enum { TRACEBACK = 1, PARALLEL = 2, FULL_MATRIX = 4, WITH_COORDINATES = 8 };
+enum { BINS = 3};
+
+struct Traceback {};
+struct ScoreOnly {};
+
+using Targets = std::array<std::vector<DpTarget>, BINS>;
 
 struct NoCBS {
 	constexpr void* operator[](int i) const { return nullptr; }
@@ -254,15 +169,12 @@ namespace Swipe {
 
 namespace BandedSwipe {
 
-DECL_DISPATCH(std::list<Hsp>, swipe, (const Sequence&query, std::vector<DpTarget> &targets8, const std::vector<DpTarget> &targets16, const std::vector<DpTarget>& targets32, DynamicIterator<DpTarget>* targets, Frame frame, const Bias_correction *composition_bias, int flags, Statistics &stat))
+DECL_DISPATCH(std::list<Hsp>, swipe, (const Targets& targets, Params& params))
+DECL_DISPATCH(std::list<Hsp>, swipe_set, (const SequenceSet::ConstIterator begin, const SequenceSet::ConstIterator end, Params& params))
+DECL_DISPATCH(unsigned, bin, (HspValues v, int query_len, int score, int ungapped_score, size_t dp_size, unsigned score_width, const Loc mismatch_est))
 
 }
 
 }
-
-void banded_sw(const Sequence&query, const Sequence&subject, int d_begin, int d_end, int j_begin, int j_end, Hsp &out);
-
-void anchored_3frame_dp(const TranslatedSequence &query, Sequence&subject, const DiagonalSegment &anchor, Hsp &out, int gap_open, int gap_extend, int frame_shift);
-int sw_3frame(const TranslatedSequence &query, Strand strand, const Sequence&subject, int gap_open, int gap_extend, int frame_shift, Hsp &out);
 
 DECL_DISPATCH(std::list<Hsp>, banded_3frame_swipe, (const TranslatedSequence &query, Strand strand, vector<DpTarget>::iterator target_begin, vector<DpTarget>::iterator target_end, DpStat &stat, bool score_only, bool parallel))

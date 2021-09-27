@@ -93,7 +93,7 @@ void QueryMapper::init()
 	if(config.log_query)
 		cout << "Query = " << metadata.query->ids()[query_id] << '\t' << query_id << endl;
 	if (Stats::CBS::hauser(config.comp_based_stats))
-		for (unsigned i = 0; i < align_mode.query_contexts; ++i)
+		for (int i = 0; i < align_mode.query_contexts; ++i)
 			query_cb.emplace_back(query_seq(i));
 	targets.resize(count_targets());
 	if (targets.empty())

@@ -61,8 +61,8 @@ static int ungapped_window(int query_len) {
 		return config.ungapped_window;
 }
 
-static void search_query_offset(const SeedArray::Entry::Value& q,
-	const SeedArray::Entry::Value* s,
+static void search_query_offset(const SeedLoc& q,
+	const SeedLoc* s,
 	FlatArray<uint32_t>::ConstIterator hits,
 	FlatArray<uint32_t>::ConstIterator hits_end,
 	WorkSet& work_set)
@@ -142,13 +142,13 @@ static void FLATTEN search_tile(
 	const FlatArray<uint32_t> &hits,
 	uint32_t query_begin,
 	uint32_t subject_begin,
-	const SeedArray::Entry::Value* q,
-	const SeedArray::Entry::Value* s,
+	const SeedLoc* q,
+	const SeedLoc* s,
 	WorkSet& work_set)
 {
 	work_set.stats.inc(Statistics::TENTATIVE_MATCHES1, hits.data_size());
 	const uint32_t query_count = (uint32_t)hits.size();
-	const SeedArray::Entry::Value* q_begin = q + query_begin, *s_begin = s + subject_begin;
+	const SeedLoc* q_begin = q + query_begin, *s_begin = s + subject_begin;
 	for (uint32_t i = 0; i < query_count; ++i) {
 		FlatArray<uint32_t>::ConstIterator r1 = hits.begin(i), r2 = hits.end(i);
 		if (r2 == r1)
@@ -169,16 +169,16 @@ static void all_vs_all(const FingerPrint* a, uint32_t na, const FingerPrint* b, 
 	}
 }
 
-static void load_fps(const SeedArray::Entry::Value* p, size_t n, Container& v, const SequenceSet& seqs)
+static void load_fps(const SeedLoc* p, size_t n, Container& v, const SequenceSet& seqs)
 {
 	v.clear();
 	v.reserve(n);
-	const SeedArray::Entry::Value* end = p + n;
+	const SeedLoc* end = p + n;
 	for (; p < end; ++p)
 		v.emplace_back(seqs.data(*p));
 }
 
-void FLATTEN stage1(const SeedArray::Entry::Value* q, size_t nq, const SeedArray::Entry::Value* s, size_t ns, WorkSet& work_set)
+void FLATTEN stage1(const SeedLoc* q, size_t nq, const SeedLoc* s, size_t ns, WorkSet& work_set)
 {
 #ifdef __APPLE__
 	thread_local Container vq, vs;

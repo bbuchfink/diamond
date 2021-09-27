@@ -18,6 +18,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "dp.h"
 #include "../stats/score_matrix.h"
+#include "../stats/hauser_correction.h"
 
 /*int xdrop_ungapped(const Letter *query, const Letter *subject, unsigned seed_len, unsigned &delta, unsigned &len)
 {
@@ -254,4 +255,15 @@ int ungapped_window(const Letter* query, const Letter* subject, int window) {
 		++n;
 	}
 	return score;
+}
+
+int self_score(const Sequence& seq)
+{
+	Bias_correction cbs(seq);
+	int s = 0;
+	for (Loc i = 0; i < seq.length(); ++i) {
+		const Letter l = seq[i];
+		s += score_matrix(l, l) + cbs.int8[i];
+	}
+	return s;
 }

@@ -22,11 +22,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "mcl.h"
 #include "multi_step_cluster.h"
 
-using namespace std;
-
 namespace Workflow { namespace Cluster{
 class ClusterRegistryStatic{
-	map<string, ClusteringAlgorithm*> regMap;
+	std::map<std::string, ClusteringAlgorithm*> regMap;
 public:
 	ClusterRegistryStatic(){
 		// To include new clustering algorithms add them into regMap

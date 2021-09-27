@@ -25,6 +25,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "sequence_set.h"
 #include "seed_histogram.h"
 #include "../util/seq_file_format.h"
+#include "../masking/masking.h"
 
 struct SequenceFile;
 
@@ -35,7 +36,7 @@ struct Block {
 		std::list<TextInputFile>::iterator file_end,
 		const Sequence_file_format& format,
 		size_t max_letters,
-		const Value_traits& value_traits,
+		const ValueTraits& value_traits,
 		bool with_quals,
 		bool lazy_masking = false,
 		size_t modulo = 1);
@@ -67,7 +68,7 @@ struct Block {
 	const StringSet& qual() const {
 		return qual_;
 	}
-	Partitioned_histogram& hst() {
+	SeedHistogram& hst() {
 		return hst_;
 	}
 	size_t block_id2oid(size_t i) const {
@@ -82,16 +83,22 @@ struct Block {
 	bool fetch_seq_if_unmasked(size_t block_id, std::vector<Letter>& seq);
 	void write_masked_seq(size_t block_id, const std::vector<Letter>& seq);
 	uint32_t dict_id(size_t block, size_t block_id, SequenceFile& db) const;
+	void soft_mask(const MaskingAlgo algo);
+	void remove_soft_masking(const int template_len, const bool add_bit_mask);
+	bool soft_masked() const;
+	size_t soft_masked_letters() const;
 
 private:
 
 	SequenceSet seqs_, source_seqs_, unmasked_seqs_;
 	StringSet ids_;
 	StringSet qual_;
-	Partitioned_histogram hst_;
+	SeedHistogram hst_;
 	std::vector<uint32_t> block2oid_;
 	std::vector<bool> masked_;
 	std::mutex mask_lock_;
+	MaskingTable soft_masking_table_;
+	bool soft_masked_;
 
 	friend struct SequenceFile;
 

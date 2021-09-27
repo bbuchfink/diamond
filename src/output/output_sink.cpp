@@ -17,6 +17,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #include <chrono>
+#include <thread>
 #include "output.h"
 #include "../data/queries.h"
 #include "../util/util.h"

@@ -22,14 +22,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #pragma once
 #include <string>
-#include <algorithm>
-#include <queue>
-#include <thread>
 #include "../basic/sequence.h"
 #include "string_set.h"
-#include "../basic/shape_config.h"
-#include "../basic/seed_iterator.h"
-#include "../util/ptr_vector.h"
 #include "../basic/value.h"
 
 struct SequenceSet : public StringSetBase<Letter, Sequence::DELIMITER, 1>
@@ -68,7 +62,7 @@ struct SequenceSet : public StringSetBase<Letter, Sequence::DELIMITER, 1>
 
 	void convert_to_std_alph(size_t id);
 	void convert_all_to_std_alph(size_t threads);
-
+	
 private:
 
 	Alphabet alphabet_;

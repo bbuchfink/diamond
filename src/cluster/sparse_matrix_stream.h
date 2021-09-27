@@ -30,11 +30,20 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/io/consumer.h"
 #include "cluster.h"
 
-	using namespace std;
+using std::vector;
+using std::map;
+using std::ofstream;
+using std::unordered_set;
+using std::ios;
+using std::ifstream;
+using std::min;
+using std::move;
+using std::max;
 
 namespace Workflow { namespace Cluster{
 template <typename T>
 class SparseMatrixStream : public Consumer {
+
 	size_t n;
 	uint32_t nThreads;
 	const static size_t unit_size = 2*sizeof(uint32_t)+sizeof(double);
@@ -53,11 +62,11 @@ class SparseMatrixStream : public Consumer {
 		auto minR = min(rhs.row(), rhs.col());
 		return maxL == maxR ? minL < minR : maxL < maxR ; 
 	};
-	set<Eigen::Triplet<T>, bool(*)(const Eigen::Triplet<T>& lhs,const Eigen::Triplet<T>& rhs)>* data;
+	std::set<Eigen::Triplet<T>, bool(*)(const Eigen::Triplet<T>& lhs,const Eigen::Triplet<T>& rhs)>* data;
 	//set<Eigen::Triplet<T>, decltype(cmp)> data;
 	LazyDisjointSet<uint32_t>* disjointSet;
 	string file_name;
-	ofstream* os;
+	std::ofstream* os;
 	inline void write_triplet(const uint32_t* const query, const uint32_t* const subject, const T* const value){
 		if(os){
 			os->write((char*) query, sizeof(uint32_t));

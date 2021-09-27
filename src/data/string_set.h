@@ -27,7 +27,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../basic/sequence.h"
 #include "../util/algo/binary_search.h"
 
-template<typename _t, char _pchar, size_t _padding = 1lu>
+template<typename T, char _pchar, size_t _padding = 1lu>
 struct StringSetBase
 {
 
@@ -75,18 +75,27 @@ struct StringSetBase
 		data_.insert(data_.end(), _padding, _pchar);
 	}
 
-	void fill(size_t n, _t v)
+	template<typename It>
+	void assign(const size_t i, const It begin, const It end) {
+		std::copy(begin, end, ptr(i));
+	}
+
+	void fill(size_t n, T v)
 	{
 		limits_.push_back(raw_len() + n + _padding);
 		data_.insert(data_.end(), n, v);
 		data_.insert(data_.end(), _padding, _pchar);
 	}
 
-	_t* ptr(size_t i)
+	T* ptr(size_t i)
 	{ return &data_[limits_[i]]; }
 
-	const _t* ptr(size_t i) const
+	const T* ptr(size_t i) const
 	{ return &data_[limits_[i]]; }
+
+	const T* end(size_t i) const {
+		return &data_[limits_[i + 1] - _padding];
+	}
 
 	size_t check_idx(size_t i) const
 	{
@@ -111,13 +120,13 @@ struct StringSetBase
 	size_t letters() const
 	{ return raw_len() - size() - PERIMETER_PADDING; }
 
-	_t* data(uint64_t p = 0)
+	T* data(uint64_t p = 0)
 	{ return &data_[p]; }
 
-	const _t* data(uint64_t p = 0) const
+	const T* data(uint64_t p = 0) const
 	{ return &data_[p]; }
 
-	size_t position(const _t* p) const
+	size_t position(const T* p) const
 	{ return p - data(); }
 
 	size_t position(size_t i, size_t j) const
@@ -134,9 +143,13 @@ struct StringSetBase
 		batch_binary_search(begin, end, limits_.begin(), limits_.end(), out, cmp);
 	}
 
-	const _t* operator[](size_t i) const
+	const T* operator[](size_t i) const
 	{
 		return ptr(i);
+	}
+
+	const T* back() const {
+		return ptr(limits_.size() - 2);
 	}
 
 	typename std::vector<size_t>::const_iterator limits_begin() const {
@@ -147,9 +160,63 @@ struct StringSetBase
 		return limits_.end();
 	}
 
+	struct ConstIterator {
+
+		ConstIterator(const T* data, const size_t* limits):
+			data_(data),
+			limits_(limits)
+		{}
+
+		using iterator_category = std::random_access_iterator_tag;
+		using difference_type = ptrdiff_t;
+		using value_type = T;
+		using pointer = T*;
+		using reference = T&;
+
+		ptrdiff_t operator-(const ConstIterator& it) const {
+			return limits_ - it.limits_;
+		}
+
+		bool operator==(const ConstIterator& it) const {
+			return limits_ == it.limits_;
+		}
+
+		ConstIterator operator+(ptrdiff_t d) const {
+			return { data_ + *(limits_ + d) - *limits_, limits_ + d };
+		}
+
+		bool operator<(const ConstIterator& it) const {
+			return limits_ < it.limits_;
+		}
+
+		ConstIterator& operator+=(ptrdiff_t d) {
+			data_ += *(limits_ + d) - *limits_;
+			limits_ += d;
+			return *this;
+		}
+
+		std::pair<const T*, size_t> operator[](const ptrdiff_t i) const {
+			return { data_ + limits_[i] - limits_[0], limits_[i + 1] - limits_[i] - _padding };
+		}
+
+	private:
+
+		const T* data_;
+		const size_t* limits_;
+
+	};
+
+	ConstIterator cbegin() const {
+		return ConstIterator(ptr(0), limits_.data());
+	}
+
+	ConstIterator cend() const {
+		return ConstIterator(nullptr, &limits_[size()]);
+	}
+
 private:
 
-	std::vector<_t> data_;
+	std::vector<T> data_;
 	std::vector<size_t> limits_;
 
 };

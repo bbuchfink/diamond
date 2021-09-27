@@ -1,3 +1,28 @@
+[2.0.12]
+- Fixed an error when using HSP filter settings together with a BLAST database.
+- Optimized the performance of alignment traceback.
+- A non-default setting of `--max-hsps` will now recompute a full-matrix Smith Waterman
+  alignment with the ranges of the known HSPs masked in the target.
+- A non-default setting for `--max-hsps` can now be used together with `--ext full`.
+- The sensitivity levels used for iterated searches can now be manually set by
+  using a space-separated list after the `--iterate` option.
+- Seeds are masked based on complexity instead of frequency by default.
+- Added the option `--seed-cut` to set a complexity cutoff for indexed seeds.
+- Added the option `--freq-masking` to enable masking seeds based on frequency.
+- The fast, default, mid-sensitive and sensitive modes will by default softmask
+  a fixed set of highly abundant sequence motifs.
+- Added the option `--motif-masking (0,1)` to enable or disable motif masking.
+- Added the option `--masking seg` to enable SEG masking of target sequences (BLAST
+  default) instead of tantan masking.
+- Fixed a bug that caused the `full_sseq` output field to contain invalid information
+  or to produce an error when using a BLAST database.
+- Changed composition based statistics to use BLOSUM62 background frequencies.
+- Fixed the zstd dependency in the Dockerfile.
+- Added support for gap letters in BLAST databases.
+- Fixed a bug that caused the `--custom-matrix` option not to function correctly.
+- Changed the overlap for merging adjoining bands to >0.0.
+- Use more moderate filtering of HPSs in the chaining stage.
+
 [2.0.11]
 - Fixed a bug that could cause invalid output when using `--masking 0` combined with
   the global ranking mode.

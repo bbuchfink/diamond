@@ -32,7 +32,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../basic/statistics.h"
 #include "../util/log_stream.h"
 #include "../dp/dp.h"
-#include "../basic/masking.h"
+#include "../masking/masking.h"
 #include "cluster.h"
 #include <unordered_map>
 #include <numeric>
@@ -51,10 +51,10 @@ class MultiStep : public ClusteringAlgorithm {
 private:
 	BitVector rep_bitset(const vector<int> &centroid, const BitVector *superset = nullptr);
 	vector<int> cluster(std::shared_ptr<SequenceFile>& db, const std::shared_ptr<BitVector>& filter);
-	void save_edges_external(vector<TempFile*> &all_edges,vector<TempFile*> &sorted_edges, const unordered_map <uint32_t, NodEdgSet>& comp, const vector<uint32_t>& s_index);
+	void save_edges_external(std::vector<TempFile*> &all_edges,std::vector<TempFile*> &sorted_edges, const std::unordered_map <uint32_t, NodEdgSet>& comp, const vector<uint32_t>& s_index);
 	vector<int> cluster_sets(const size_t nb_size, vector<TempFile*> &sorted_edges);
-	unordered_map<uint32_t, NodEdgSet> find_connected_components(const vector<unordered_set<uint32_t>> &connected, vector<uint32_t>& EdgSet, const vector<size_t>& nedges);
-	vector<TempFile*> mapping_comp_set(unordered_map<uint32_t, NodEdgSet>& comp);
+	std::unordered_map<uint32_t, NodEdgSet> find_connected_components(const std::vector<std::unordered_set<uint32_t>> &connected, vector<uint32_t>& EdgSet, const vector<size_t>& nedges);
+	vector<TempFile*> mapping_comp_set(std::unordered_map<uint32_t, NodEdgSet>& comp);
 	void steps(BitVector& current_reps, BitVector& previous_reps, vector<int>& current_centroids, vector<int>& previous_centroids, int count);
 
 public:

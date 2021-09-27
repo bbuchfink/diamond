@@ -26,6 +26,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <list>
 #include <mutex>
 #include <float.h>
+#include <atomic>
 #include "../basic/diagonal_segment.h"
 #include "../basic/const.h"
 #include "../dp/hsp_traits.h"
@@ -33,6 +34,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "extend.h"
 #include "../util/data_structures/flat_array.h"
 #include "../stats/cbs.h"
+#include "../dp/flags.h"
+#include "../data/block.h"
 
 struct SequenceSet;
 
@@ -72,7 +75,7 @@ struct WorkTarget {
 	Stats::TargetMatrix matrix;
 };
 
-std::vector<WorkTarget> ungapped_stage(const Sequence* query_seq, const Bias_correction* query_cb, const Stats::Composition& query_comp, FlatArray<SeedHit>& seed_hits, const std::vector<uint32_t>& target_block_ids, int flags, Statistics& stat, const Block& target_block);
+std::vector<WorkTarget> ungapped_stage(const Sequence* query_seq, const Bias_correction* query_cb, const Stats::Composition& query_comp, FlatArray<SeedHit>& seed_hits, const std::vector<uint32_t>& target_block_ids, DP::Flags flags, Statistics& stat, const Block& target_block, const Mode mode);
 
 struct Target {
 
@@ -81,6 +84,7 @@ struct Target {
 		seq(seq),
 		filter_score(0),
 		filter_evalue(DBL_MAX),
+		best_context(0),
 		ungapped_score(ungapped_score),
 		matrix(matrix)
 	{}
@@ -88,8 +92,11 @@ struct Target {
 	void add_hit(std::list<Hsp> &list, std::list<Hsp>::iterator it) {
 		std::list<Hsp> &l = hsp[it->frame];
 		l.splice(l.end(), list, it);
-		filter_evalue = std::min(filter_evalue, l.back().evalue);
-		filter_score = std::max(filter_score, l.back().score);
+		if (l.back().score > filter_score) {
+			filter_evalue = l.back().evalue;
+			filter_score = l.back().score;
+			best_context = l.back().frame;
+		}
 	}
 
 	static bool comp_evalue(const Target &t, const Target& u) {
@@ -105,13 +112,14 @@ struct Target {
 	}
 
 	void apply_filters(int source_query_len, const char *query_title, const Sequence& query_seq, const Block& targets);
-	void inner_culling(int source_query_len);
+	void inner_culling();
 	void max_hsp_culling();
 
 	size_t block_id;
 	Sequence seq;
 	int filter_score;
 	double filter_evalue;
+	int best_context;
 	int ungapped_score;
 	std::array<std::list<Hsp>, MAX_CONTEXT> hsp;
 	Stats::TargetMatrix matrix;
@@ -135,16 +143,17 @@ struct TargetScore {
 void culling(std::vector<Target>& targets, int source_query_len, const char* query_title, const Sequence& query_seq, size_t min_keep, const Block& target_block);
 bool append_hits(std::vector<Target>& targets, std::vector<Target>::const_iterator begin, std::vector<Target>::const_iterator end, size_t chunk_size, int source_query_len, const char* query_title, const Sequence& query_seq, const Block& target_block);
 std::vector<WorkTarget> gapped_filter(const Sequence *query, const Bias_correction* query_cbs, std::vector<WorkTarget>& targets, Statistics &stat);
-void gapped_filter(const Sequence* query, const Bias_correction* query_cbs, FlatArray<SeedHit> &seed_hits, std::vector<uint32_t> &target_block_ids, Statistics& stat, int flags, const Search::Config &params);
-std::vector<Target> align(const std::vector<WorkTarget> &targets, const Sequence *query_seq, const Bias_correction *query_cb, int source_query_len, int flags, Statistics &stat);
-std::vector<Match> align(std::vector<Target> &targets, const Sequence *query_seq, const Bias_correction *query_cb, int source_query_len, int flags, Statistics &stat);
-std::vector<Target> full_db_align(const Sequence *query_seq, const Bias_correction *query_cb, int flags, Statistics &stat, const Block& target_block);
+void gapped_filter(const Sequence* query, const Bias_correction* query_cbs, FlatArray<SeedHit> &seed_hits, std::vector<uint32_t> &target_block_ids, Statistics& stat, DP::Flags flags, const Search::Config &params);
+std::vector<Target> align(const std::vector<WorkTarget> &targets, const Sequence *query_seq, const Bias_correction *query_cb, int source_query_len, DP::Flags flags, const HspValues hsp_values, const Mode mode, Statistics &stat);
+std::vector<Match> align(std::vector<Target> &targets, const Sequence *query_seq, const Bias_correction *query_cb, int source_query_len, DP::Flags flags, const HspValues first_round, const Mode mode, Statistics &stat);
+std::vector<Target> full_db_align(const Sequence *query_seq, const Bias_correction *query_cb, DP::Flags flags, const HspValues hsp_values, Statistics &stat, const Block& target_block);
+void recompute_alt_hsps(vector<Match>& matches, const Sequence* query, const int query_source_len, const Bias_correction* query_cb, const HspValues v, Statistics& stats);
 
 std::vector<Match> extend(
 	size_t query_id,
 	const Search::Config& cfg,
 	Statistics &stat,
-	int flags,
+	DP::Flags flags,
 	FlatArray<SeedHit>& seed_hits,
 	std::vector<uint32_t>& target_block_ids,
 	const std::vector<TargetScore>& target_scores);

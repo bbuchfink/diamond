@@ -1,6 +1,6 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2020 Max Planck Society for the Advancement of Science e.V.
+Copyright (C) 2013-2021 Max Planck Society for the Advancement of Science e.V.
 						Benjamin Buchfink
 						Eberhard Karls Universitaet Tuebingen
 
@@ -31,7 +31,7 @@ namespace DP { namespace DISPATCH_ARCH {
 void scan_diags128(const LongScoreProfile& qp, Sequence s, int d_begin, int j_begin, int j_end, int *out)
 {
 #ifdef __AVX2__
-	typedef score_vector<int8_t> Sv;
+	using Sv = ScoreVector<int8_t, SCHAR_MIN>;
 	const int qlen = (int)qp.length();
 
 	const int j0 = std::max(j_begin, -(d_begin + 128 - 1)),
@@ -40,16 +40,16 @@ void scan_diags128(const LongScoreProfile& qp, Sequence s, int d_begin, int j_be
 	Sv v1, max1, v2, max2, v3, max3, v4, max4;
 	for (int i = i0, j = j0; j < j1; ++j, ++i) {
 		const int8_t* q = qp.get(s[j], i);
-		v1 += score_vector<int8_t>(q);
+		v1 += Sv(q);
 		max1.max(v1);
 		q += 32;
-		v2 += score_vector<int8_t>(q);
+		v2 += Sv(q);
 		max2.max(v2);
 		q += 32;
-		v3 += score_vector<int8_t>(q);
+		v3 += Sv(q);
 		max3.max(v3);
 		q += 32;
-		v4 += score_vector<int8_t>(q);
+		v4 += Sv(q);
 		max4.max(v4);
 	}
 	int8_t scores[128];
@@ -60,7 +60,7 @@ void scan_diags128(const LongScoreProfile& qp, Sequence s, int d_begin, int j_be
 	for (int i = 0; i < 128; ++i)
 		out[i] = ScoreTraits<Sv>::int_score(scores[i]);
 #elif defined(__SSE4_1__)
-	typedef score_vector<int8_t> Sv;
+	using Sv = ScoreVector<int8_t, SCHAR_MIN>;
 	const int qlen = (int)qp.length();
 
 	const int j0 = std::max(j_begin, -(d_begin + 128 - 1)),
@@ -69,28 +69,28 @@ void scan_diags128(const LongScoreProfile& qp, Sequence s, int d_begin, int j_be
 	Sv v1, max1, v2, max2, v3, max3, v4, max4, v5, max5, v6, max6, v7, max7, v8, max8;
 	for (int i = i0, j = j0; j < j1; ++j, ++i) {
 		const int8_t* q = qp.get(s[j], i);
-		v1 += score_vector<int8_t>(q);
+		v1 += Sv(q);
 		max1.max(v1);
 		q += 16;
-		v2 += score_vector<int8_t>(q);
+		v2 += Sv(q);
 		max2.max(v2);
 		q += 16;
-		v3 += score_vector<int8_t>(q);
+		v3 += Sv(q);
 		max3.max(v3);
 		q += 16;
-		v4 += score_vector<int8_t>(q);
+		v4 += Sv(q);
 		max4.max(v4);
 		q += 16;
-		v5 += score_vector<int8_t>(q);
+		v5 += Sv(q);
 		max5.max(v5);
 		q += 16;
-		v6 += score_vector<int8_t>(q);
+		v6 += Sv(q);
 		max6.max(v6);
 		q += 16;
-		v7 += score_vector<int8_t>(q);
+		v7 += Sv(q);
 		max7.max(v7);
 		q += 16;
-		v8 += score_vector<int8_t>(q);
+		v8 += Sv(q);
 		max8.max(v8);
 	}
 	int8_t scores[128];
@@ -129,7 +129,7 @@ void scan_diags128(const LongScoreProfile& qp, Sequence s, int d_begin, int j_be
 void scan_diags64(const LongScoreProfile& qp, Sequence s, int d_begin, int j_begin, int j_end, int* out)
 {
 #ifdef __AVX2__
-	typedef score_vector<int8_t> Sv;
+	using Sv = ScoreVector<int8_t, SCHAR_MIN>;
 	const int qlen = (int)qp.length();
 
 	const int j0 = std::max(j_begin, -(d_begin + 64 - 1)),
@@ -138,10 +138,10 @@ void scan_diags64(const LongScoreProfile& qp, Sequence s, int d_begin, int j_beg
 	Sv v1, max1, v2, max2;
 	for (int i = i0, j = j0; j < j1; ++j, ++i) {
 		const int8_t* q = qp.get(s[j], i);
-		v1 += score_vector<int8_t>(q);
+		v1 += Sv(q);
 		max1.max(v1);
 		q += 32;
-		v2 += score_vector<int8_t>(q);
+		v2 += Sv(q);
 		max2.max(v2);
 	}
 	int8_t scores[64];
@@ -150,7 +150,7 @@ void scan_diags64(const LongScoreProfile& qp, Sequence s, int d_begin, int j_beg
 	for (int i = 0; i < 64; ++i)
 		out[i] = ScoreTraits<Sv>::int_score(scores[i]);
 #elif defined(__SSE4_1__)
-	typedef score_vector<int8_t> Sv;
+	using Sv = ScoreVector<int8_t, SCHAR_MIN>;
 	const int qlen = (int)qp.length();
 
 	const int j0 = std::max(j_begin, -(d_begin + 64 - 1)),
@@ -159,16 +159,16 @@ void scan_diags64(const LongScoreProfile& qp, Sequence s, int d_begin, int j_beg
 	Sv v1, max1, v2, max2, v3, max3, v4, max4;
 	for (int i = i0, j = j0; j < j1; ++j, ++i) {
 		const int8_t* q = qp.get(s[j], i);
-		v1 += score_vector<int8_t>(q);
+		v1 += Sv(q);
 		max1.max(v1);
 		q += 16;
-		v2 += score_vector<int8_t>(q);
+		v2 += Sv(q);
 		max2.max(v2);
 		q += 16;
-		v3 += score_vector<int8_t>(q);
+		v3 += Sv(q);
 		max3.max(v3);
 		q += 16;
-		v4 += score_vector<int8_t>(q);
+		v4 += Sv(q);
 		max4.max(v4);
 	}
 	int8_t scores[64];
@@ -203,7 +203,7 @@ void scan_diags64(const LongScoreProfile& qp, Sequence s, int d_begin, int j_beg
 void scan_diags(const LongScoreProfile& qp, Sequence s, int d_begin, int d_end, int j_begin, int j_end, int* out)
 {
 #ifdef __AVX2__
-	typedef score_vector<int8_t> Sv;
+	using Sv = ScoreVector<int8_t, SCHAR_MIN>;
 	const int qlen = (int)qp.length(), band = d_end - d_begin;
 	assert(band % 32 == 0);
 
@@ -213,10 +213,10 @@ void scan_diags(const LongScoreProfile& qp, Sequence s, int d_begin, int d_end, 
 	Sv v1, max1, v2, max2;
 	for (int i = i0, j = j0; j < j1; ++j, ++i) {
 		const int8_t* q = qp.get(s[j], i);
-		v1 += score_vector<int8_t>(q);
+		v1 += Sv(q);
 		max1.max(v1);
 		q += 32;
-		v2 += score_vector<int8_t>(q);
+		v2 += Sv(q);
 		max2.max(v2);
 	}
 	int8_t scores[64];
@@ -225,7 +225,7 @@ void scan_diags(const LongScoreProfile& qp, Sequence s, int d_begin, int d_end, 
 	for (int i = 0; i < 64; ++i)
 		out[i] = ScoreTraits<Sv>::int_score(scores[i]);
 #elif defined(__SSE4_1__)
-	typedef score_vector<int8_t> Sv;
+	using Sv = ScoreVector<int8_t, SCHAR_MIN>;
 	const int qlen = (int)qp.length();
 
 	const int j0 = std::max(j_begin, -(d_begin + 64 - 1)),
@@ -234,16 +234,16 @@ void scan_diags(const LongScoreProfile& qp, Sequence s, int d_begin, int d_end, 
 	Sv v1, max1, v2, max2, v3, max3, v4, max4;
 	for (int i = i0, j = j0; j < j1; ++j, ++i) {
 		const int8_t* q = qp.get(s[j], i);
-		v1 += score_vector<int8_t>(q);
+		v1 += Sv(q);
 		max1.max(v1);
 		q += 16;
-		v2 += score_vector<int8_t>(q);
+		v2 += Sv(q);
 		max2.max(v2);
 		q += 16;
-		v3 += score_vector<int8_t>(q);
+		v3 += Sv(q);
 		max3.max(v3);
 		q += 16;
-		v4 += score_vector<int8_t>(q);
+		v4 += Sv(q);
 		max4.max(v4);
 	}
 	int8_t scores[64];

@@ -27,8 +27,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #pragma once
 
-using namespace std;
-
 template<typename T> class Node {
 	Node<T>* parent = this;
 	uint32_t r = 0;
@@ -122,8 +120,8 @@ public:
 		merge(get(x), get(y)); 
 	}
 
-	virtual vector<unordered_set<T>> getListOfSets() {
-		unordered_map<const T*, uint32_t> map;
+	virtual std::vector<std::unordered_set<T>> getListOfSets() {
+		std::unordered_map<const T*, uint32_t> map;
 		uint32_t index = 0;
 		for (Node<T>* n : *(getNodes())) {
 			if (n == nullptr) {
@@ -134,7 +132,7 @@ public:
 				map.emplace(r, index++);
 			}
 		}
-		vector<unordered_set<T>> listOfSets(map.size());
+		std::vector<std::unordered_set<T>> listOfSets(map.size());
 		for (Node<T>* n : *(getNodes())) {
 			if (n == nullptr) {
 				continue;
@@ -147,7 +145,7 @@ public:
 
 template<typename T> class LazyDisjointIntegralSet : public LazyDisjointSet<T> {
 private:
-	vector<Node<T>*> nodes;
+	std::vector<Node<T>*> nodes;
 
 	virtual Node<T>* get(T i){
 		assert(i >= 0 && nodes.size() > i);
@@ -185,8 +183,8 @@ public:
 		nodes.clear();
 	}
 
-	virtual vector<unordered_set<T>> getListOfSets() {
-		unordered_map<const T*, uint32_t> map;
+	virtual std::vector<std::unordered_set<T>> getListOfSets() {
+		std::unordered_map<const T*, uint32_t> map;
 		uint32_t index = 0;
 		for(T i = 0; i < nodes.size(); i++){
 			const T* r = this->getRoot(get(i))->getValue();
@@ -194,7 +192,7 @@ public:
 				map.emplace(r, index++);
 			}
 		}
-		vector<unordered_set<T>> listOfSets(map.size());
+		std::vector<std::unordered_set<T>> listOfSets(map.size());
 		for (Node<T>* n : *(getNodes())) {
 			if (n == nullptr) {
 				throw new runtime_error("In an integral set, we expect all elements to be initialized, see loop beofre.\n");
@@ -207,9 +205,9 @@ public:
 
 template<typename T> class LazyDisjointTypeSet : public LazyDisjointSet<T> {
 private:
-	unordered_set<T>* elements;
-	vector<Node<T>*> nodes;
-	unordered_map<const T*, uint64_t> mapping;
+	std::unordered_set<T>* elements;
+	std::vector<Node<T>*> nodes;
+	std::unordered_map<const T*, uint64_t> mapping;
 	bool isIntegralAndConsecutive;
 
 	virtual Node<T>* get(const T* i) {
@@ -232,12 +230,12 @@ private:
 	}
 
 public:
-	LazyDisjointTypeSet<T>(unordered_set<T>* s) {
+	LazyDisjointTypeSet<T>(std::unordered_set<T>* s) {
 		// note that the structure is backed by the set, so it should not be modified
 		isIntegralAndConsecutive = false;
 		elements = s;
-		nodes = vector<Node<T>*>(elements->size());
-		mapping = unordered_map<const T*, uint64_t>(elements->size());
+		nodes = std::vector<Node<T>*>(elements->size());
+		mapping = std::unordered_map<const T*, uint64_t>(elements->size());
 		for(auto e = elements->begin(); e != elements->end(); e++){
 			mapping[&(*e)] = nodes.size();
 			Node<T>* n = new TypeNode<T>(&(*e));

@@ -22,9 +22,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #pragma once
 #include <stdint.h>
-#include "../util/io/deserializer.h"
 #include "../basic/packed_loc.h"
 #include "../basic/value.h"
+#include "../util/io/input_file.h"
 #include "../util/io/serialize.h"
 
 // #define HIT_KEEP_TARGET_ID
@@ -105,10 +105,10 @@ struct Hit
 		}
 	};
 	struct SourceQuery {
-		unsigned operator()(const Hit& h) const {
+		int32_t operator()(const Hit& h) const {
 			return h.query_ / contexts;
 		}
-		const uint32_t contexts;
+		const int32_t contexts;
 	};
 	struct Subject {
 		uint64_t operator()(const Hit& h) const {
@@ -152,16 +152,16 @@ struct Hit
 }
 
 template<> struct SerializerTraits<Search::Hit> {
-	SerializerTraits(bool long_subject_offsets, uint32_t query_contexts):
+	SerializerTraits(bool long_subject_offsets, int32_t query_contexts):
 		long_subject_offsets(long_subject_offsets),
 		key{ query_contexts }
 	{}
 	const bool long_subject_offsets;
 	const struct Key {
-		uint32_t operator()(const Search::Hit& hit) const {
+		int32_t operator()(const Search::Hit& hit) const {
 			return hit.query_ / query_contexts;
 		}
-		const uint32_t query_contexts;
+		const int32_t query_contexts;
 	} key;
 	static Search::Hit make_sentry(uint32_t query, uint32_t seed_offset) {
 		return { query, 0, seed_offset,0 };

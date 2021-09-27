@@ -21,15 +21,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #pragma once
-#include <limits>
 #include <array>
-#include "../basic/seed.h"
-#include "sequence_set.h"
-#include "../basic/shape_config.h"
-#include "../basic/seed_iterator.h"
-#include "enum_seeds.h"
+#include <vector>
+#include "flags.h"
+#include "../basic/const.h"
+#include "../masking/masking.h"
 
-typedef std::vector<std::array<unsigned, Const::seedp>> shape_histogram;
+typedef std::vector<std::array<unsigned, Const::seedp>> ShapeHistogram;
 
 struct SeedPartitionRange
 {
@@ -65,7 +63,7 @@ private:
 
 extern SeedPartitionRange current_range;
 
-inline size_t partition_size(const shape_histogram &hst, size_t p)
+inline size_t partition_size(const ShapeHistogram &hst, size_t p)
 {
 	size_t s = 0;
 	for (unsigned i = 0; i < hst.size(); ++i)
@@ -73,7 +71,7 @@ inline size_t partition_size(const shape_histogram &hst, size_t p)
 	return s;
 }
 
-inline size_t hst_size(const shape_histogram &hst, const SeedPartitionRange &range)
+inline size_t hst_size(const ShapeHistogram &hst, const SeedPartitionRange &range)
 {
 	size_t s = 0;
 	for(unsigned i=range.begin();i<range.end();++i)
@@ -81,62 +79,29 @@ inline size_t hst_size(const shape_histogram &hst, const SeedPartitionRange &ran
 	return s;
 }
 
-struct Partitioned_histogram
+struct Block;
+
+struct SeedHistogram
 {
 
-	Partitioned_histogram();
+	SeedHistogram();
 	
-	template<typename _filter>
-	Partitioned_histogram(SequenceSet &seqs, bool serial, const _filter *filter, SeedEncoding code, const std::vector<bool>* skip) :
-		data_(shapes.count()),
-		p_(seqs.partition(config.threads_))
-	{
-		for (unsigned s = 0; s < shapes.count(); ++s) {
-			data_[s].resize(p_.size() - 1);
-			for (std::array<unsigned, Const::seedp>& h : data_[s])
-				h.fill(0);
-		}
-		PtrVector<Callback> cb;
-		for (size_t i = 0; i < p_.size() - 1; ++i)
-			cb.push_back(new Callback(i, data_));
-		if (serial)
-			for (unsigned s = 0; s < shapes.count(); ++s)
-				enum_seeds(&seqs, cb, p_, s, s + 1, filter, code, skip, false);
-		else
-			enum_seeds(&seqs, cb, p_, 0, shapes.count(), filter, code, skip, false);
-	}
+	template<typename Filter>
+	SeedHistogram(Block& seqs, bool serial, const Filter* filter, SeedEncoding code, const std::vector<bool>* skip, const bool mask_seeds, const double seed_cut, const MaskingAlgo soft_masking);
 
-	const shape_histogram& get(unsigned sid) const
+	const ShapeHistogram& get(unsigned sid) const
 	{ return data_[sid]; }
 
 	size_t max_chunk_size(size_t index_chunks) const;
 
-	const vector<size_t>& partition() const
+	const std::vector<size_t>& partition() const
 	{
 		return p_;
 	}
 
 private:
 
-	struct Callback
-	{
-		Callback(size_t seqp, vector<shape_histogram> &data)
-		{
-			for (unsigned s = 0; s < shapes.count(); ++s)
-				ptr.push_back(data[s][seqp].data());
-		}
-		bool operator()(uint64_t seed, uint64_t pos, uint32_t block_id, size_t shape)
-		{
-			++ptr[shape][seed_partition(seed)];
-			return true;
-		}
-		void finish() const
-		{
-		}
-		vector<unsigned*> ptr;
-	};
-
-	vector<shape_histogram> data_;
-	vector<size_t> p_;
+	std::vector<ShapeHistogram> data_;
+	std::vector<size_t> p_;
 
 };

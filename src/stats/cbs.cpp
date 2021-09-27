@@ -21,7 +21,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "cbs.h"
 #include "../basic/config.h"
 #include "score_matrix.h"
-#include "../basic/masking.h"
+#include "../masking/masking.h"
 
 namespace Stats {
 
@@ -52,7 +52,7 @@ Composition composition(const Sequence& s) {
     Composition r;
     r.fill(0.0);
     int n = 0;
-    for (size_t i = 0; i < s.length(); ++i) {
+    for (Loc i = 0; i < s.length(); ++i) {
         int l = s[i];
         if (l < 20) {
             ++r[l];
@@ -68,7 +68,7 @@ Composition composition(const Sequence& s) {
 
 int count_true_aa(const Sequence& s) {
     int n = 0;
-    for (size_t i = 0; i < s.length(); ++i)
+    for (Loc i = 0; i < s.length(); ++i)
         if ((size_t)s[i] < TRUE_AA)
             ++n;
     return n;
@@ -77,8 +77,8 @@ int count_true_aa(const Sequence& s) {
 bool use_seg_masking(const Sequence& a, const Sequence& b) {
     if (config.comp_based_stats != CBS::COMP_BASED_STATS_AND_MATRIX_ADJUST || a.length() != b.length())
         return true;
-    size_t n = 0;
-    for (size_t i = 0; i < a.length(); ++i)
+    Loc n = 0;
+    for (Loc i = 0; i < a.length(); ++i)
         if (a[i] == b[i])
             ++n;
     return n != a.length();
@@ -90,7 +90,7 @@ int TargetMatrix::score_width() const {
 
 TargetMatrix::TargetMatrix(const Composition& query_comp, int query_len, const Sequence& target)
 {
-    if (!CBS::matrix_adjust(config.comp_based_stats))
+    if (!CBS::matrix_adjust(config.comp_based_stats) || target.length() == 0 || query_len == 0)
         return;
     
     vector<Letter> target_seq = target.copy();
@@ -113,6 +113,8 @@ TargetMatrix::TargetMatrix(const Composition& query_comp, int query_len, const S
     
     if (config.comp_based_stats == CBS::COMP_BASED_STATS || rule == eCompoScaleOldMatrix)
         s = CompositionBasedStats(score_matrix.matrix32_scaled_pointers().data(), query_comp, c, score_matrix.ungapped_lambda(), score_matrix.freq_ratios());
+    else if (config.comp_based_stats == CBS::HAUSER_GLOBAL)
+        s = hauser_global(query_comp, c);
     else
         s = CompositionMatrixAdjust(query_len, count_true_aa(target), query_comp.data(), c.data(), config.cbs_matrix_scale, score_matrix.ideal_lambda(), score_matrix.joint_probs(), score_matrix.background_freqs());
     

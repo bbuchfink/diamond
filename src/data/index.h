@@ -16,9 +16,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#ifndef INDEX_H_
-#define INDEX_H_
-
+#pragma once
 #include <vector>
 #include <memory>
 #include "sequence_set.h"
@@ -73,4 +71,3 @@ vector<Array<unsigned, Hashed_seed::p> > count_exact(const Sequence_set &seqs);
 vector<size_t> count_approximate(const Sequence_set &seqs);
 void build_index(const Sequence_set &seqs);
 
-#endif

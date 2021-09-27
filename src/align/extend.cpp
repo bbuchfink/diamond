@@ -33,7 +33,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/system.h"
 #include "../util/util.h"
 #include "global_ranking/global_ranking.h"
-#include "../basic/masking.h"
+#include "../masking/masking.h"
 #include "../search/hit.h"
 #include "load_hits.h"
 
@@ -44,7 +44,24 @@ using std::pair;
 using std::endl;
 using std::move;
 
+const SEMap<Extension::Mode> EnumTraits<Extension::Mode>::from_string = {
+	{ "banded-fast", Extension::Mode::BANDED_FAST},
+	{ "banded-slow", Extension::Mode::BANDED_SLOW},
+	{ "full", Extension::Mode::FULL},
+	{ "global", Extension::Mode::GLOBAL}
+};
+
 namespace Extension {
+
+const std::map<Sensitivity, Mode> default_ext_mode = {
+	{ Sensitivity::FAST, Mode::BANDED_FAST},
+	{ Sensitivity::DEFAULT, Mode::BANDED_FAST},
+	{ Sensitivity::MID_SENSITIVE, Mode::BANDED_FAST},
+	{ Sensitivity::SENSITIVE, Mode::BANDED_FAST},
+	{ Sensitivity::MORE_SENSITIVE, Mode::BANDED_SLOW},
+	{ Sensitivity::VERY_SENSITIVE, Mode::BANDED_SLOW},
+	{ Sensitivity::ULTRA_SENSITIVE, Mode::BANDED_SLOW}
+};
 
 constexpr size_t MAX_CHUNK_SIZE = 400, MIN_CHUNK_SIZE = 128;
 
@@ -64,18 +81,30 @@ size_t chunk_size_multiplier(const FlatArray<SeedHit>& seed_hits, int query_len)
 	return seed_hits.size() * query_len / seed_hits.data_size() < config.seedhit_density ? config.chunk_size_multiplier : 1;
 }
 
-static size_t lazy_masking(const vector<uint32_t>& target_block_ids, Block& targets) {
+static size_t lazy_masking(const vector<uint32_t>& target_block_ids, Block& targets, const MaskingAlgo algo) {
+	if (algo == MaskingAlgo::NONE)
+		return 0;
 	vector<Letter> seq;
 	const Masking& masking = Masking::get();
-	const Masking::Algo algo = config.target_seg == 1 ? Masking::Algo::SEG : Masking::Algo::TANTAN;
 	size_t n = 0;
 	for (uint32_t t : target_block_ids)
 		if (targets.fetch_seq_if_unmasked(t, seq)) {
-			masking(seq.data(), seq.size(), algo);
+			masking(seq.data(), seq.size(), algo, t);
 			targets.write_masked_seq(t, seq);
 			++n;
 		}
 	return n;
+}
+
+static HspValues first_round_hspv() {
+	HspValues first_round = HspValues::NONE;
+	if (config.min_id > 0)
+		first_round |= HspValues::IDENT | HspValues::LENGTH;
+	if (config.query_cover > 0)
+		first_round |= HspValues::QUERY_COORDS;
+	if (config.subject_cover > 0)
+		first_round |= HspValues::TARGET_COORDS;
+	return first_round;
 }
 
 vector<Target> extend(size_t query_id,
@@ -87,36 +116,37 @@ vector<Target> extend(size_t query_id,
 	vector<uint32_t> &target_block_ids,
 	const Search::Config& cfg,
 	Statistics& stat,
-	int flags)
+	DP::Flags flags,
+	const HspValues hsp_values)
 {
-	static const size_t GAPPED_FILTER_MIN_QLEN = 85;
+	static const Loc GAPPED_FILTER_MIN_QLEN = 85;
 	stat.inc(Statistics::TARGET_HITS2, target_block_ids.size());
-	task_timer timer(flags & DP::PARALLEL ? config.target_parallel_verbosity : UINT_MAX);
+	task_timer timer(flag_any(flags, DP::Flags::PARALLEL) ? config.target_parallel_verbosity : UINT_MAX);
 
 	if (cfg.lazy_masking && !config.global_ranking_targets)
-		stat.inc(Statistics::MASKED_LAZY, lazy_masking(target_block_ids, *cfg.target));
+		stat.inc(Statistics::MASKED_LAZY, lazy_masking(target_block_ids, *cfg.target, cfg.target_masking));
 
 	if (cfg.gapped_filter_evalue > 0.0 && config.global_ranking_targets == 0 && (!align_mode.query_translated || query_seq[0].length() >= GAPPED_FILTER_MIN_QLEN)) {
 		timer.go("Computing gapped filter");
 		gapped_filter(query_seq, query_cb, seed_hits, target_block_ids, stat, flags, cfg);
-		if ((flags & DP::PARALLEL) == 0)
+		if (!flag_any(flags, DP::Flags::PARALLEL))
 			stat.inc(Statistics::TIME_GAPPED_FILTER, timer.microseconds());
 	}
 	stat.inc(Statistics::TARGET_HITS3, target_block_ids.size());
 
 	timer.go("Computing chaining");
-	vector<WorkTarget> targets = ungapped_stage(query_seq, query_cb, query_comp, seed_hits, target_block_ids, flags, stat, *cfg.target);
-	if ((flags & DP::PARALLEL) == 0)
+	vector<WorkTarget> targets = ungapped_stage(query_seq, query_cb, query_comp, seed_hits, target_block_ids, flags, stat, *cfg.target, cfg.extension_mode);
+	if (!flag_any(flags, DP::Flags::PARALLEL))
 		stat.inc(Statistics::TIME_CHAINING, timer.microseconds());
 
-	return align(targets, query_seq, query_cb, source_query_len, flags, stat);
+	return align(targets, query_seq, query_cb, source_query_len, flags, hsp_values, cfg.extension_mode, stat);
 }
 
 vector<Match> extend(
 	size_t query_id,
 	const Search::Config& cfg,
 	Statistics& stat,
-	int flags,
+	DP::Flags flags,
 	FlatArray<SeedHit>& seed_hits,
 	vector<uint32_t>& target_block_ids,
 	const vector<TargetScore>& target_scores)
@@ -127,14 +157,14 @@ vector<Match> extend(
 	vector<Bias_correction> query_cb;
 	const char* query_title = cfg.query->ids()[query_id];
 
-	if (config.log_query || ((flags & DP::PARALLEL) && !config.swipe_all))
+	if (config.log_query || (flag_any(flags, DP::Flags::PARALLEL) && !config.swipe_all))
 		log_stream << "Query=" << query_title << " Hits=" << seed_hits.data_size() << endl;
 
 	for (unsigned i = 0; i < contexts; ++i)
 		query_seq.push_back(cfg.query->seqs()[query_id * contexts + i]);
 	const unsigned query_len = (unsigned)query_seq.front().length();
 
-	task_timer timer(flags & DP::PARALLEL ? config.target_parallel_verbosity : UINT_MAX);
+	task_timer timer(flag_any(flags, DP::Flags::PARALLEL) ? config.target_parallel_verbosity : UINT_MAX);
 	if (Stats::CBS::hauser(config.comp_based_stats)) {
 		timer.go("Computing CBS");
 		for (unsigned i = 0; i < contexts; ++i)
@@ -160,14 +190,8 @@ vector<Match> extend(
 	const int low_score = config.query_memory ? memory->low_score(query_id) : 0;
 	const size_t previous_count = config.query_memory ? memory->count(query_id) : 0;
 
-	if (config.min_id > 0)
-		flags |= DP::TRACEBACK;
-	else if (config.query_cover > 0 || config.subject_cover > 0) {
-		if (config.ext == "full")
-			flags |= DP::WITH_COORDINATES;
-		else
-			flags |= DP::TRACEBACK;
-	}
+
+	const HspValues first_round = first_round_hspv();
 
 	//size_t multiplier = 1;
 	int tail_score = 0;
@@ -191,7 +215,7 @@ vector<Match> extend(
 
 		//multiplier = std::max(multiplier, chunk_size_multiplier(seed_hits_chunk, (int)query_seq.front().length()));
 
-		vector<Target> v = extend(query_id, query_seq.data(), source_query_len, query_cb.data(), query_comp, multi_chunk ? seed_hits_chunk : seed_hits, multi_chunk ? target_block_ids_chunk : target_block_ids, cfg, stat, flags);
+		vector<Target> v = extend(query_id, query_seq.data(), source_query_len, query_cb.data(), query_comp, multi_chunk ? seed_hits_chunk : seed_hits, multi_chunk ? target_block_ids_chunk : target_block_ids, cfg, stat, flags, first_round);
 		const size_t n = v.size();
 		stat.inc(Statistics::TARGET_HITS4, v.size());
 		bool new_hits = false;
@@ -215,7 +239,7 @@ vector<Match> extend(
 	}
 
 	if (config.swipe_all)
-		aligned_targets = full_db_align(query_seq.data(), query_cb.data(), flags, stat, *cfg.target);
+		aligned_targets = full_db_align(query_seq.data(), query_cb.data(), flags, first_round, stat, *cfg.target);
 
 	/*if (multiplier > 1)
 		stat.inc(Statistics::HARD_QUERIES);*/
@@ -227,13 +251,13 @@ vector<Match> extend(
 	stat.inc(Statistics::TARGET_HITS5, aligned_targets.size());
 	timer.finish();
 
-	vector<Match> matches = align(aligned_targets, query_seq.data(), query_cb.data(), source_query_len, flags, stat);
+	vector<Match> matches = align(aligned_targets, query_seq.data(), query_cb.data(), source_query_len, flags, first_round, cfg.extension_mode, stat);
 	std::sort(matches.begin(), matches.end(), config.toppercent == 100.0 ? Match::cmp_evalue : Match::cmp_score);
 	return matches;
 }
 
-vector<Match> extend(size_t query_id, Search::Hit* begin, Search::Hit* end, const Search::Config &cfg, Statistics &stat, int flags) {
-	task_timer timer(flags & DP::PARALLEL ? config.target_parallel_verbosity : UINT_MAX);
+vector<Match> extend(size_t query_id, Search::Hit* begin, Search::Hit* end, const Search::Config &cfg, Statistics &stat, DP::Flags flags) {
+	task_timer timer(flag_any(flags, DP::Flags::PARALLEL) ? config.target_parallel_verbosity : UINT_MAX);
 	timer.go("Loading seed hits");
 	thread_local FlatArray<SeedHit> seed_hits;
 	thread_local vector<uint32_t> target_block_ids;

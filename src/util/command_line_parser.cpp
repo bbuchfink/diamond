@@ -93,7 +93,7 @@ void Command_line_parser::store(int count, const char ** str, unsigned &command)
 
 	vector<string> v;
 	for (int i = 2; i < count; ++i) {
-		if (str[i][0] == '-' && strlen(str[i]) > 1) {
+		if (str[i][0] == '-' && strlen(str[i]) > 1 && !isdigit(str[i][1])) {
 			store_option(v);
 			v.clear();
 		}

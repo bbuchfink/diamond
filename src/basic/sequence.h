@@ -40,7 +40,7 @@ struct Sequence
 		len_ (0),
 		data_ (nullptr)
 	{ }
-	Sequence(const Letter *data, size_t len):
+	Sequence(const Letter *data, Loc len):
 		len_ (len),
 		data_ (data)
 	{ }
@@ -56,7 +56,7 @@ struct Sequence
 		len_(to-from+1),
 		data_(seq.data() + from)
 	{}
-	size_t length() const
+	Loc length() const
 	{
 		return len_;
 	}
@@ -101,7 +101,7 @@ struct Sequence
 		print(&s[0], 0, len_);
 		return s;
 	}
-	TextBuffer& print(TextBuffer &buf, size_t begin, size_t end, const Value_traits& value_traits) const
+	TextBuffer& print(TextBuffer &buf, size_t begin, size_t end, const ValueTraits& value_traits) const
 	{
 		for (size_t i = begin; i < end; ++i)
 #ifdef SEQ_MASK
@@ -111,9 +111,9 @@ struct Sequence
 #endif
 		return buf;
 	}
-	std::ostream& print(std::ostream &os, const Value_traits &v) const
+	std::ostream& print(std::ostream &os, const ValueTraits&v) const
 	{
-		for (unsigned i = 0; i < len_; ++i) {
+		for (Loc i = 0; i < len_; ++i) {
 			long l = (long)data_[i];
 			if ((l & 128) == 0)
 				os << v.alphabet[l];
@@ -122,9 +122,9 @@ struct Sequence
 		}
 		return os;
 	}
-	TextBuffer& print(TextBuffer &os, const Value_traits &v) const
+	TextBuffer& print(TextBuffer &os, const ValueTraits&v) const
 	{
-		for (unsigned i = 0; i < len_; ++i) {
+		for (Loc i = 0; i < len_; ++i) {
 			long l = (long)data_[i];
 			if ((l & 128) == 0)
 				os << v.alphabet[l];
@@ -133,9 +133,9 @@ struct Sequence
 		}
 		return os;
 	}
-	TextBuffer& print(TextBuffer &os, const Value_traits &v, Hardmasked) const
+	TextBuffer& print(TextBuffer &os, const ValueTraits&v, Hardmasked) const
 	{
-		for (unsigned i = 0; i < len_; ++i) {
+		for (Loc i = 0; i < len_; ++i) {
 			long l = (long)data_[i];
 			if ((l & 128) == 0)
 				os << v.alphabet[l];
@@ -144,7 +144,7 @@ struct Sequence
 		}
 		return os;
 	}
-	TextBuffer& print(TextBuffer &os, const Value_traits &v, Reversed) const
+	TextBuffer& print(TextBuffer &os, const ValueTraits&v, Reversed) const
 	{
 		for (int i = (int)len_ - 1; i >= 0; --i)
 			os << v.alphabet[(long)(data_[i] & 127)];
@@ -178,11 +178,7 @@ struct Sequence
 		return Sequence(p + 1, s - p - 1);
 	}
 	std::vector<Letter> copy() const {
-		std::vector<Letter> v;
-		v.reserve(len_);
-		for (size_t i = 0; i < len_; ++i)
-			v.push_back(data_[i]);
-		return v;
+		return std::vector<Letter>(data_, data_ + len_);
 	}
 	std::vector<Letter> reverse() const;
 	void mask(const interval &i) {
@@ -192,14 +188,14 @@ struct Sequence
 	bool operator==(const Sequence& s) const {
 		if (len_ != s.len_)
 			return false;
-		for (size_t i = 0; i < len_; ++i)
+		for (Loc i = 0; i < len_; ++i)
 			if (letter_mask(data_[i]) != letter_mask(s.data_[i]))
 				return false;
 		return true;
 	}
-	static vector<Letter> from_string(const char* str, const Value_traits &vt = value_traits);
+	static vector<Letter> from_string(const char* str, const ValueTraits&vt = value_traits);
 
-	size_t len_;
+	Loc len_;
 	const Letter *data_;
 };
 

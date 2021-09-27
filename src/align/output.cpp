@@ -53,6 +53,9 @@ TextBuffer* generate_output(vector<Match> &targets, size_t query_block_id, Stati
 			
 	for (size_t i = 0; i < targets.size(); ++i) {
 
+		if (targets[i].hsp.empty())
+			throw std::runtime_error("generate_output: target with no hsps.");
+
 		const size_t subject_id = targets[i].target_block_id;
 		const unsigned database_id = cfg.target->block_id2oid(subject_id);
 		const unsigned subject_len = (unsigned)ref_seqs[subject_id].length();

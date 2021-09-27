@@ -34,6 +34,7 @@ using std::runtime_error;
 
 const size_t MEGABYTES = 1 << 20;
 const size_t GIGABYTES = 1 << 30;
+const size_t KILOBYTES = 1 << 10;
 
 struct InputFile : public Deserializer
 {

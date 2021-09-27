@@ -1,6 +1,6 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2016-2020 Max Planck Society for the Advancement of Science e.V.
+Copyright (C) 2016-2021 Max Planck Society for the Advancement of Science e.V.
                         Benjamin Buchfink
 						
 Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
@@ -32,91 +32,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../../util/memory/alignment.h"
 #include "../../util/simd/transpose.h"
 
-static inline uint8_t cmp_mask(int x, int y) {
-	return x == y;
-}
-
-static inline int blend(int v, int w, int mask) {
-	return mask ? w : v;
-}
-
-template<typename _sv>
-struct TraceStat {
-	_sv length;
-	_sv gapopen;
-	_sv qstart;
-	_sv sstart;
-	_sv ident;
-	_sv mismatch;
-};
-
-struct DummyRowCounter {
-	DummyRowCounter() {}
-	DummyRowCounter(int) {}
-	void store(void*) {}
-	template<typename _sv>
-	FORCE_INLINE void inc(const _sv&, const _sv&) {}
-	enum { MAX_LEN = INT_MAX };
-};
-
-template<typename _sv>
-struct RowCounter {
-	typedef typename ::DISPATCH_ARCH::ScoreTraits<_sv>::Score Score;
-	RowCounter(int i):
-		i(::DISPATCH_ARCH::ScoreTraits<_sv>::zero_score() + Score(i)),
-		i_max()
-	{
-	}
-	FORCE_INLINE void inc(const _sv& best, const _sv& current_cell) {
-		i_max = blend(i_max, i, best == current_cell);
-		i += _sv(Score(1));
-	}
-	void store(Score *ptr) {
-		store_sv(i_max, ptr);
-	}
-	static constexpr int MAX_LEN = ::DISPATCH_ARCH::ScoreTraits<_sv>::max_int_score();
-	_sv i;
-	_sv i_max;
-};
-
-template<typename _sv>
-MSC_INLINE _sv add_cbs(const _sv &v, void*) {
-	return v;
-}
-
-template<typename _sv>
-MSC_INLINE _sv add_cbs(const _sv& v, const _sv& query_bias) {
-	return v + query_bias;
-}
-
-template<typename _score>
-_score add_cbs_scalar(_score x, int8_t b) {
-	return x + _score(b);
-}
-
-template<typename _score>
-_score add_cbs_scalar(_score x, void *b) {
-	return x;
-}
-
-template<typename _sv>
-MSC_INLINE void make_gap_mask(typename ::DISPATCH_ARCH::ScoreTraits<_sv>::TraceMask *trace_mask, const _sv& current_cell, const _sv& vertical_gap, const _sv& horizontal_gap) {
-	trace_mask->gap = ::DISPATCH_ARCH::ScoreTraits<_sv>::TraceMask::make(cmp_mask(current_cell, vertical_gap), cmp_mask(current_cell, horizontal_gap));
-}
-
-template<typename _sv>
-MSC_INLINE void make_gap_mask(std::nullptr_t, const _sv&, const _sv&, const _sv&) {
-}
-
-template<typename _sv>
-MSC_INLINE void make_open_mask(typename ::DISPATCH_ARCH::ScoreTraits<_sv>::TraceMask *trace_mask, const _sv& open, const _sv& vertical_gap, const _sv& horizontal_gap) {
-	trace_mask->open = ::DISPATCH_ARCH::ScoreTraits<_sv>::TraceMask::make(cmp_mask(vertical_gap, open), cmp_mask(horizontal_gap, open));
-}
-
-template<typename _sv>
-MSC_INLINE void make_open_mask(std::nullptr_t, const _sv&, const _sv&, const _sv&) {
-}
-
 namespace DP {
 	struct NoCBS;
 }
@@ -135,93 +50,13 @@ struct CBSBuffer<_sv, const int8_t*> {
 		typedef typename ::DISPATCH_ARCH::ScoreTraits<_sv>::Score Score;
 		data.reserve(l);
 		for (int i = 0; i < l; ++i)
-			data.push_back(load_sv(Score(v[i]), (Score)0, channel_mask));
+			data.push_back(blend_sv<_sv>(Score(v[i]), (Score)0, channel_mask));
 	}
 	_sv operator()(int i) const {
 		return data[i];
 	}
 	std::vector<_sv, Util::Memory::AlignmentAllocator<_sv, 32>> data;
 };
-
-
-template<typename _sv, typename _cbs, typename _trace_mask, typename _row_counter>
-MSC_INLINE _sv swipe_cell_update(const _sv &diagonal_cell,
-	const _sv &scores,
-	_cbs query_bias,
-	const _sv &gap_extension,
-	const _sv &gap_open,
-	_sv &horizontal_gap,
-	_sv &vertical_gap,
-	_sv &best,
-	void*,
-	void*,
-	void*,
-	_trace_mask trace_mask,
-	_row_counter& row_counter)
-{
-	using std::max;
-
-	_sv current_cell = diagonal_cell + add_cbs(scores, query_bias);
-	current_cell = max(max(current_cell, vertical_gap), horizontal_gap);
-	::DISPATCH_ARCH::ScoreTraits<_sv>::saturate(current_cell);
-
-	make_gap_mask(trace_mask, current_cell, vertical_gap, horizontal_gap);
-
-	best = max(best, current_cell);
-
-	row_counter.inc(best, current_cell);
-
-	vertical_gap -= gap_extension;
-	horizontal_gap -= gap_extension;
-	const _sv open = current_cell - gap_open;
-	vertical_gap = max(vertical_gap, open);
-	horizontal_gap = max(horizontal_gap, open);
-
-	make_open_mask(trace_mask, open, vertical_gap, horizontal_gap);
-
-	return current_cell;
-}
-
-/*template<typename _sv>
-static inline _sv swipe_cell_update(const _sv& diagonal_cell,
-	const _sv& scores,
-	const _sv& query_bias,
-	const _sv& gap_extension,
-	const _sv& gap_open,
-	_sv& horizontal_gap,
-	_sv& vertical_gap,
-	_sv& best,
-	TraceStat<_sv> &trace_stat_diag,
-	TraceStat<_sv> &trace_stat_vertical,
-	TraceStat<_sv> &trace_stat_horizontal,
-	void*,
-	const RowCounter<_sv>&)
-{
-	typedef typename ::DISPATCH_ARCH::ScoreTraits<_sv>::Score Score;
-	using std::max;
-	_sv current_cell = diagonal_cell + (scores + query_bias);
-	current_cell = max(max(current_cell, vertical_gap), horizontal_gap);
-	::DISPATCH_ARCH::ScoreTraits<_sv>::saturate(current_cell);
-
-	const _sv one = _sv(Score(1)), zero = _sv(), zero2 = _sv(Score(0));
-	const _sv vgap_mask = current_cell == vertical_gap, hgap_mask = current_cell == horizontal_gap, zero_mask = current_cell == zero;
-
-	best = max(best, current_cell);
-	vertical_gap -= gap_extension;
-	horizontal_gap -= gap_extension;
-	const _sv open = current_cell - gap_open;
-	vertical_gap = max(vertical_gap, open);
-	horizontal_gap = max(horizontal_gap, open);
-
-	trace_stat_vertical.length += one;
-	trace_stat_horizontal.length += one;
-	trace_stat_diag.length += one;
-	trace_stat_diag.length = blend(trace_stat_diag.length, trace_stat_vertical.length, vgap_mask);
-	trace_stat_diag.length = blend(trace_stat_diag.length, trace_stat_horizontal.length, hgap_mask);
-	trace_stat_diag.length = blend(trace_stat_diag.length, zero2, zero_mask);
-	
-	return current_cell;
-}*/
 
 template<typename _sv>
 static inline _sv cell_update(const _sv &diagonal_cell,
@@ -241,7 +76,7 @@ static inline _sv cell_update(const _sv &diagonal_cell,
 	current_cell = max(current_cell, shift_cell0 + f);
 	current_cell = max(current_cell, shift_cell1 + f);
 	current_cell = max(max(current_cell, vertical_gap), horizontal_gap);
-	::DISPATCH_ARCH::ScoreTraits<_sv>::saturate(current_cell);
+	saturate(current_cell);
 	best = max(best, current_cell);
 	vertical_gap -= gap_extension;
 	horizontal_gap -= gap_extension;
@@ -253,27 +88,18 @@ static inline _sv cell_update(const _sv &diagonal_cell,
 
 namespace DISPATCH_ARCH {
 
-template<typename _sv>
+template<typename Sv>
 struct SwipeProfile
 {
 
-#ifdef __SSSE3__
-	inline void set(typename ScoreTraits<_sv>::Vector seq)
+	inline void set(typename ScoreTraits<Sv>::Vector seq)
 	{
-		assert(sizeof(data_) / sizeof(_sv) >= value_traits.alphabet_size);
+		assert(sizeof(data_) / sizeof(Sv) >= value_traits.alphabet_size);
 		for (unsigned j = 0; j < AMINO_ACID_COUNT; ++j)
-			data_[j] = _sv(j, seq);
+			data_[j] = Sv(j, seq);
 	}
-#else
-	inline void set(uint64_t seq)
-	{
-		assert(sizeof(data_) / sizeof(_sv) >= value_traits.alphabet_size);
-		for (unsigned j = 0; j < AMINO_ACID_COUNT; ++j)
-			data_[j] = _sv(j, seq);
-	}
-#endif
 
-	inline const _sv& get(Letter i) const
+	inline const Sv& get(Letter i) const
 	{
 		return data_[(int)i];
 	}
@@ -297,16 +123,16 @@ struct SwipeProfile
 	}
 
 	void set(const int32_t** target_scores) {
-		typename ScoreTraits<_sv>::Score s[ScoreTraits<_sv>::CHANNELS];
+		typename ScoreTraits<Sv>::Score s[ScoreTraits<Sv>::CHANNELS];
 		for (size_t i = 0; i < AMINO_ACID_COUNT; ++i) {
-			for (size_t j = 0; j < ScoreTraits<_sv>::CHANNELS; ++j)
+			for (size_t j = 0; j < ScoreTraits<Sv>::CHANNELS; ++j)
 				s[j] = target_scores[j][i];
-			data_[i] = load_sv(s);
+			data_[i] = load_sv<Sv>(s);
 		}
 	}
 
 	//_sv data_[AMINO_ACID_COUNT];
-	_sv data_[32];
+	Sv data_[32];
 
 };
 

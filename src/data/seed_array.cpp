@@ -25,12 +25,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "seed_set.h"
 #include "enum_seeds.h"
 #include "../util/data_structures/deque.h"
+#include "../search/seed_complexity.h"
 
 using std::array;
 
 typedef vector<array<SeedArray::Entry*, Const::seedp>> PtrSet;
 
-char* SeedArray::alloc_buffer(const Partitioned_histogram &hst, size_t index_chunks)
+char* SeedArray::alloc_buffer(const SeedHistogram &hst, size_t index_chunks)
 {
 	return new char[sizeof(Entry) * hst.max_chunk_size(index_chunks)];
 }
@@ -57,7 +58,7 @@ struct BufferedWriter
 		memset(n, 0, sizeof(n));
 		memcpy(this->ptr, ptr, sizeof(this->ptr));
 	}
-	void push(Packed_seed key, Loc value, uint32_t block_id, const SeedPartitionRange &range)
+	void push(Packed_seed key, int64_t value, uint32_t block_id, const SeedPartitionRange &range)
 	{
 		const unsigned p = seed_partition(key);
 		if (range.contains(p)) {
@@ -83,7 +84,7 @@ struct BufferedWriter
 	uint8_t n[Const::seedp];
 };
 
-PtrSet build_iterators(SeedArray &sa, const shape_histogram &hst)
+PtrSet build_iterators(SeedArray &sa, const ShapeHistogram &hst)
 {
 	PtrSet iterators(hst.size());
 	for (unsigned i = 0; i < Const::seedp; ++i)
@@ -119,24 +120,26 @@ struct BuildCallback
 };
 
 template<typename _filter>
-SeedArray::SeedArray(SequenceSet &seqs, size_t shape, const shape_histogram &hst, const SeedPartitionRange &range, const vector<size_t> &seq_partition, char *buffer, const _filter *filter, const SeedEncoding code, const std::vector<bool>* skip) :
-	key_bits(seed_bits(code)),
+SeedArray::SeedArray(Block &seqs, const ShapeHistogram &hst, const SeedPartitionRange &range, char *buffer, const _filter *filter, const EnumCfg& enum_cfg) :
+	key_bits(seed_bits(enum_cfg.code)),
 	data_((Entry*)buffer)
 {
+	if (enum_cfg.shape_end - enum_cfg.shape_begin > 1)
+		throw std::runtime_error("SeedArray construction for >1 shape.");
 	begin_[range.begin()] = 0;
 	for (size_t i = range.begin(); i < range.end(); ++i)
 		begin_[i + 1] = begin_[i] + partition_size(hst, i);
 
 	PtrSet iterators(build_iterators(*this, hst));
 	PtrVector<BuildCallback> cb;
-	for (size_t i = 0; i < seq_partition.size() - 1; ++i)
+	for (size_t i = 0; i < enum_cfg.partition->size() - 1; ++i)
 		cb.push_back(new BuildCallback(range, iterators[i].data()));
-	enum_seeds(&seqs, cb, seq_partition, shape, shape + 1, filter, code, skip, false);
+	stats_ = enum_seeds(seqs, cb, filter, enum_cfg);
 }
 
-template SeedArray::SeedArray(SequenceSet &, size_t, const shape_histogram &, const SeedPartitionRange &, const vector<size_t>&, char *buffer, const No_filter *, const SeedEncoding, const std::vector<bool>*);
-template SeedArray::SeedArray(SequenceSet &, size_t, const shape_histogram &, const SeedPartitionRange &, const vector<size_t>&, char *buffer, const SeedSet *, const SeedEncoding, const std::vector<bool>*);
-template SeedArray::SeedArray(SequenceSet &, size_t, const shape_histogram &, const SeedPartitionRange &, const vector<size_t>&, char *buffer, const HashedSeedSet *, const SeedEncoding, const std::vector<bool>*);
+template SeedArray::SeedArray(Block&, const ShapeHistogram&, const SeedPartitionRange &, char *buffer, const NoFilter *, const EnumCfg&);
+template SeedArray::SeedArray(Block&, const ShapeHistogram&, const SeedPartitionRange &, char *buffer, const SeedSet *, const EnumCfg&);
+template SeedArray::SeedArray(Block&, const ShapeHistogram&, const SeedPartitionRange &, char *buffer, const HashedSeedSet *, const EnumCfg&);
 
 struct BufferedWriter2
 {
@@ -146,7 +149,7 @@ struct BufferedWriter2
 	{
 		memset(n, 0, sizeof(n));
 	}
-	void push(Packed_seed key, Loc value, const SeedPartitionRange& range)
+	void push(Packed_seed key, int64_t value, const SeedPartitionRange& range)
 	{
 		const unsigned p = seed_partition(key);
 		if (range.contains(p)) {
@@ -196,15 +199,18 @@ struct BuildCallback2
 };
 
 template<typename _filter>
-SeedArray::SeedArray(SequenceSet& seqs, size_t shape, const SeedPartitionRange& range, const _filter* filter, const SeedEncoding code, const std::vector<bool>* skip) :
-	key_bits(seed_bits(code)),
+SeedArray::SeedArray(Block& seqs, const SeedPartitionRange& range, const _filter* filter, EnumCfg& enum_cfg) :
+	key_bits(seed_bits(enum_cfg.code)),
 	data_(nullptr)
 {
-	const auto seq_partition = seqs.partition(config.threads_);
+	if (enum_cfg.shape_end - enum_cfg.shape_begin > 1)
+		throw std::runtime_error("SeedArray construction for >1 shape.");
+	const auto seq_partition = seqs.seqs().partition(config.threads_);
 	PtrVector<BuildCallback2> cb;
 	for (size_t i = 0; i < seq_partition.size() - 1; ++i)
 		cb.push_back(new BuildCallback2(range));
-	enum_seeds(&seqs, cb, seq_partition, shape, shape + 1, filter, code, skip, false);
+	enum_cfg.partition = &seq_partition;
+	stats_ = enum_seeds(seqs, cb, filter, enum_cfg);
 
 	array<size_t, Const::seedp> counts;
 	counts.fill(0);
@@ -219,4 +225,4 @@ SeedArray::SeedArray(SequenceSet& seqs, size_t shape, const SeedPartitionRange& 
 	}
 }
 
-template SeedArray::SeedArray(SequenceSet&, size_t, const SeedPartitionRange&, const HashedSeedSet*, const SeedEncoding, const std::vector<bool>*);
+template SeedArray::SeedArray(Block&, const SeedPartitionRange&, const HashedSeedSet*, EnumCfg&);

@@ -29,18 +29,18 @@ using std::list;
 namespace Extension {
 
 static void max_hsp_culling(list<Hsp>& hsps) {
-	if (config.max_hsps > 0 && hsps.size() > config.max_hsps) {
-		list<Hsp>::iterator i = hsps.begin();
-		for (unsigned n = 0; n < config.max_hsps; ++n)
-			++i;
-		hsps.erase(i, hsps.end());
-	}
+	if (config.max_hsps > 0 && hsps.size() > config.max_hsps)
+		hsps.resize(config.max_hsps);
 }
 
-static void inner_culling(list<Hsp>& hsps, int source_query_len) {
-	for (Hsp& h : hsps)
-		h.query_source_range = TranslatedPosition::absolute_interval(TranslatedPosition(h.query_range.begin_, Frame(h.frame)), TranslatedPosition(h.query_range.end_, Frame(h.frame)), source_query_len);
+static void inner_culling(list<Hsp>& hsps) {
+	if (hsps.size() <= 1)
+		return;
 	hsps.sort();
+	if (config.max_hsps == 1) {
+		hsps.resize(1);
+		return;
+	}
 	const double overlap = config.inner_culling_overlap / 100.0;
 	for (list<Hsp>::iterator i = hsps.begin(); i != hsps.end();) {
 		if (i->is_enveloped_by(hsps.begin(), i, overlap))
@@ -52,20 +52,30 @@ static void inner_culling(list<Hsp>& hsps, int source_query_len) {
 		max_hsp_culling(hsps);
 }
 
-void Target::inner_culling(int source_query_len) {
+void Target::inner_culling() {
+	if (config.max_hsps == 1) {
+		for (int i = 0; i < MAX_CONTEXT; ++i)
+			if (i == best_context) {
+				hsp[i].sort();
+				hsp[i].resize(1);
+			}
+			else
+				hsp[i].clear();			
+		return;
+	}
 	list<Hsp> hsps;
-	for (unsigned frame = 0; frame < align_mode.query_contexts; ++frame)
+	for (int frame = 0; frame < align_mode.query_contexts; ++frame)
 		hsps.splice(hsps.end(), hsp[frame]);
-	Extension::inner_culling(hsps, source_query_len);
+	Extension::inner_culling(hsps);
 	while (!hsps.empty()) {
 		auto& l = hsp[hsps.front().frame];
 		l.splice(l.end(), hsps, hsps.begin());
 	}
 }
 
-void Match::inner_culling(int source_query_len)
+void Match::inner_culling()
 {
-	Extension::inner_culling(hsp, source_query_len);
+	Extension::inner_culling(hsp);
 	if (!hsp.empty()) {
 		filter_evalue = hsp.front().evalue;
 		filter_score = hsp.front().score;
@@ -122,12 +132,12 @@ bool filter_hsp(const Hsp& hsp, int source_query_len, const char *query_title, i
 
 void Target::apply_filters(int source_query_len, const char *query_title, const Sequence& query_seq, const Block& targets)
 {
-	const char *title = targets.ids()[block_id];
+	const char* title = config.no_self_hits ? targets.ids()[block_id] : nullptr;
 	const Sequence seq = targets.seqs()[block_id];
 	const int len = seq.length();
 	filter_score = 0;
 	filter_evalue = DBL_MAX;
-	for (unsigned frame = 0; frame < align_mode.query_contexts; ++frame) {
+	for (int frame = 0; frame < align_mode.query_contexts; ++frame) {
 		for (list<Hsp>::iterator i = hsp[frame].begin(); i != hsp[frame].end();) {
 			if (filter_hsp(*i, source_query_len, query_title, len, title, query_seq, seq))
 				i = hsp[frame].erase(i);
@@ -142,7 +152,7 @@ void Target::apply_filters(int source_query_len, const char *query_title, const 
 
 void Match::apply_filters(int source_query_len, const char *query_title, const Sequence& query_seq, const Block& targets)
 {
-	const char *title = targets.ids()[target_block_id];
+	const char* title = config.no_self_hits ? targets.ids()[target_block_id] : nullptr;
 	const Sequence seq = targets.seqs()[target_block_id];
 	const int len = seq.length();
 	for (list<Hsp>::iterator i = hsp.begin(); i != hsp.end();) {

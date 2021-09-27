@@ -32,16 +32,16 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 const double LN_2 = 0.69314718055994530941723212145818;
 
-struct Score_matrix
+struct ScoreMatrix
 {
 
 	struct Custom {};
 
-	Score_matrix() :ln_k_(0.0) {}
-	Score_matrix(const std::string& matrix, int gap_open, int gap_extend, int frame_shift, int stop_match_score, uint64_t db_letters = 0, int scale = 1);
-	Score_matrix(const std::string &matrix_file, int gap_open, int gap_extend, int stop_match_score, const Custom&, uint64_t db_letters = 0);
+	ScoreMatrix() :ln_k_(0.0) {}
+	ScoreMatrix(const std::string& matrix, int gap_open, int gap_extend, int frame_shift, int stop_match_score, uint64_t db_letters = 0, int scale = 1);
+	ScoreMatrix(const std::string &matrix_file, int gap_open, int gap_extend, int stop_match_score, const Custom&, uint64_t db_letters = 0);
 
-	friend std::ostream& operator<<(std::ostream& s, const Score_matrix &m);
+	friend std::ostream& operator<<(std::ostream& s, const ScoreMatrix&m);
 
 	const int8_t* matrix8() const
 	{ return matrix8_.data; }
@@ -193,6 +193,10 @@ struct Score_matrix
 		return standard_matrix_->freq_ratios;
 	}
 
+	const std::array<double, TRUE_AA>& background_scores() const {
+		return background_scores_;
+	}
+
 	double avg_id_score() const;
 	bool report_cutoff(int score, double evalue) const;
 
@@ -226,6 +230,8 @@ private:
 		alignas(32) _t data[32 * 32];
 	};
 
+	void init_background_scores();
+
 	const Stats::StandardMatrix* standard_matrix_;
 	const int8_t* score_array_;
 	int gap_open_, gap_extend_, frame_shift_;
@@ -241,10 +247,9 @@ private:
 	Scores<int8_t> matrix8u_low_;
 	Scores<int8_t> matrix8u_high_;
 	Scores<int16_t> matrix16_;
+	std::array<double, TRUE_AA> background_scores_;
 	Sls::AlignmentEvaluer evaluer;
 
 };
 
-extern Score_matrix score_matrix;
-typedef int8_t MatrixTable[AMINO_ACID_COUNT*AMINO_ACID_COUNT];
-extern const MatrixTable s_Blosum45PSM, s_Blosum50PSM, s_Blosum62PSM, s_Blosum80PSM, s_Blosum90PSM, s_Pam250PSM, s_Pam30PSM, s_Pam70PSM;
+extern ScoreMatrix score_matrix;

@@ -1,6 +1,6 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2020 Max Planck Society for the Advancement of Science e.V.
+Copyright (C) 2013-2021 Max Planck Society for the Advancement of Science e.V.
 						Benjamin Buchfink
 						Eberhard Karls Universitaet Tuebingen
 
@@ -29,3 +29,5 @@ int xdrop_ungapped_right(const Letter *query, const Letter *subject, int &len);
 int ungapped_window(const Letter* query, const Letter* subject, int window);
 Diagonal_segment xdrop_ungapped(const Sequence &query, const Bias_correction &query_bc, const Sequence &subject, int qa, int sa);
 Diagonal_segment xdrop_ungapped(const Sequence &query, const Sequence &subject, int qa, int sa);
+int score_range(Sequence query, Sequence subject, int i, int j, int j_end);
+int self_score(const Sequence& seq);

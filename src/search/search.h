@@ -1,6 +1,6 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2016-2020 Max Planck Society for the Advancement of Science e.V.
+Copyright (C) 2016-2021 Max Planck Society for the Advancement of Science e.V.
                         Benjamin Buchfink
 
 Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
@@ -34,12 +34,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../run/config.h"
 #include "hit.h"
 #include "../util/data_structures/writer.h"
-#include "../data/seed_array.h"
+#include "../data/flags.h"
 
 // #define UNGAPPED_SPOUGE
 
 struct SensitivityTraits {
 	const bool     support_query_indexed;
+	const bool     motif_masking;
 	const double   freq_sd;
 	const unsigned min_identities;
 	const double   ungapped_evalue;
@@ -48,11 +49,10 @@ struct SensitivityTraits {
 	const unsigned index_chunks;
 	const unsigned query_bins;
 	const char*    contiguous_seed;
+	const double   seed_cut;
 };
 
-extern const std::map<Sensitivity, SensitivityTraits> sensitivity_traits;
-extern const std::map<Sensitivity, std::vector<std::string>> shape_codes;
-extern const std::map<Sensitivity, std::vector<Sensitivity>> iterated_sens;
+struct HashedSeedSet;
 
 namespace Search {
 
@@ -65,6 +65,15 @@ struct Context {
 #endif
 	const int short_query_ungapped_cutoff;
 };
+
+extern const std::map<Sensitivity, SensitivityTraits> sensitivity_traits;
+extern const std::map<Sensitivity, std::vector<std::string>> shape_codes;
+extern const std::map<Sensitivity, std::vector<Sensitivity>> iterated_sens;
+
+void search_shape(unsigned sid, unsigned query_block, unsigned query_iteration, char* query_buffer, char* ref_buffer, Config& cfg, const HashedSeedSet* target_seeds);
+bool use_single_indexed(double coverage, size_t query_letters, size_t ref_letters);
+void setup_search(Sensitivity sens, Search::Config& cfg);
+MaskingAlgo soft_masking_algo(const SensitivityTraits& traits);
 
 }
 
@@ -88,12 +97,6 @@ struct Stage1_hit
 	unsigned q, s;
 };
 
-struct HashedSeedSet;
-
-void search_shape(unsigned sid, unsigned query_block, unsigned query_iteration, char *query_buffer, char *ref_buffer, Search::Config& cfg, const HashedSeedSet* target_seeds);
-bool use_single_indexed(double coverage, size_t query_letters, size_t ref_letters);
-void setup_search(Sensitivity sens, Search::Config& cfg);
-
 namespace Search {
 
 struct WorkSet {
@@ -108,7 +111,7 @@ struct WorkSet {
 	FlatArray<uint32_t> hits;
 };
 
-DECL_DISPATCH(void, stage1, (const SeedArray::Entry::Value* q, size_t nq, const SeedArray::Entry::Value* s, size_t ns, WorkSet& work_set))
+DECL_DISPATCH(void, stage1, (const SeedLoc* q, size_t nq, const SeedLoc* s, size_t ns, WorkSet& work_set))
 
 }
 

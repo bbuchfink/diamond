@@ -28,6 +28,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <stdexcept>
 #include <stdint.h>
 #include "ptr_vector.h"
+#include "options/option.h"
 
 template<typename _t>
 inline void read_option(_t &dst, const std::vector<std::string> &v)
@@ -78,7 +79,13 @@ inline void read_option<std::string>(std::string &dst, const std::vector<std::st
 { dst = v[0]; }
 
 template<>
-inline void read_option<std::vector<std::string> >(std::vector<std::string> &dst, const std::vector<std::string> &v)
+inline void read_option<std::vector<std::string>>(std::vector<std::string> &dst, const std::vector<std::string> &v)
+{
+	dst = v;
+}
+
+template<>
+inline void read_option<Option<std::vector<std::string>>>(Option<std::vector<std::string>>& dst, const std::vector<std::string>& v)
 {
 	dst = v;
 }
@@ -88,22 +95,29 @@ inline void read_option<bool>(bool &dst, const std::vector<std::string> &v)
 { dst = true; }
 
 template<typename _t>
-inline bool check_pcount(const std::vector<std::string> &v)
+inline bool check_pcount(const std::vector<std::string> &v, const int min_count)
 {
 	return v.size() == 1;
 }
 
 template<>
-inline bool check_pcount<bool>(const std::vector<std::string> &v)
+inline bool check_pcount<bool>(const std::vector<std::string> &v, const int min_count)
 {
 	return v.size() == 0;
 }
 
 template<>
-inline bool check_pcount<std::vector<std::string> >(const std::vector<std::string> &v)
+inline bool check_pcount<std::vector<std::string>>(const std::vector<std::string> &v, const int min_count)
 {
-	return v.size() > 0;
+	return v.size() >= (size_t)min_count;
 }
+
+template<>
+inline bool check_pcount<Option<std::vector<std::string>>>(const std::vector<std::string>& v, const int min_count)
+{
+	return v.size() >= (size_t)min_count;
+}
+
 
 struct Option_base
 {
@@ -123,16 +137,17 @@ struct Option_base
 };
 
 template<typename _t>
-struct Option : public Option_base
+struct OptionDesc : public Option_base
 {
-	Option(const char *id, char short_id, const char *desc, bool disabled, _t &store, _t def) :
+	OptionDesc(const char *id, char short_id, const char *desc, bool disabled, _t &store, _t def, const int min_count) :
 		Option_base(id, short_id, desc, disabled),
 		default_(def),
+		min_count(min_count),
 		store_(store)
 	{ }
 	virtual void read(const std::vector<std::string> &v)
 	{
-		if (!check_pcount<_t>(v))
+		if (!check_pcount<_t>(v, min_count))
 			throw std::runtime_error("Invalid parameter count for option '--" + id + "'");
 		read_option(store_, v);
 	}
@@ -140,10 +155,11 @@ struct Option : public Option_base
 	{
 		store_ = default_;
 	}
-	virtual ~Option()
+	virtual ~OptionDesc()
 	{}
 private:
 	const _t default_;
+	const int min_count;
 	_t &store_;
 };
 
@@ -155,9 +171,9 @@ struct Options_group
 			parent_(parent)
 		{}
 		template<typename _t>
-		Add_f& operator()(const char *id, char short_id, const char *desc, _t &store, _t def = _t())
+		Add_f& operator()(const char *id, char short_id, const char *desc, _t &store, _t def = _t(), const int min_count = 1)
 		{
-			parent_.options.push_back(new Option<_t>(id, short_id, desc, parent_.disabled, store, def));
+			parent_.options.push_back(new OptionDesc<_t>(id, short_id, desc, parent_.disabled, store, def, min_count));
 			return *this;
 		}
 	private:

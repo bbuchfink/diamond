@@ -29,25 +29,25 @@ struct Raw_text {};
 struct Sequence_data {};
 
 template<typename _t>
-inline char convert_char(char a, const Value_traits& value_traits)
+inline char convert_char(char a, const ValueTraits& value_traits)
 {
 	return a;
 }
 
 template<>
-inline char convert_char<Sequence_data>(char a, const Value_traits& value_traits)
+inline char convert_char<Sequence_data>(char a, const ValueTraits& value_traits)
 {
 	return value_traits.from_char(a);
 }
 
 template<typename _t, typename _what>
-void copy_line(const string & s, vector<_t>& v, size_t d, const Value_traits& value_traits, _what)
+void copy_line(const string & s, vector<_t>& v, size_t d, const ValueTraits& value_traits, _what)
 {
 	for (string::const_iterator i = s.begin() + d; i != s.end(); ++i)
 		v.push_back(convert_char<_what>(*i, value_traits));
 }
 
-bool FASTA_format::get_seq(string& id, vector<Letter>& seq, TextInputFile & s, const Value_traits& value_traits, vector<char> *qual) const
+bool FASTA_format::get_seq(string& id, vector<Letter>& seq, TextInputFile & s, const ValueTraits& value_traits, vector<char> *qual) const
 {
 	// !!!
 	while (s.getline(), s.line.empty() && !s.eof());
@@ -79,7 +79,7 @@ bool FASTA_format::get_seq(string& id, vector<Letter>& seq, TextInputFile & s, c
 	return true;
 }
 
-bool FASTQ_format::get_seq(string& id, vector<Letter>& seq, TextInputFile & s, const Value_traits& value_traits, vector<char> *qual) const
+bool FASTQ_format::get_seq(string& id, vector<Letter>& seq, TextInputFile & s, const ValueTraits& value_traits, vector<char> *qual) const
 {
 	while (s.getline(), s.line.empty() && !s.eof());
 	if (s.line.empty() && s.eof())

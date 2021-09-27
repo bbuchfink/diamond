@@ -1,6 +1,6 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2020 Max Planck Society for the Advancement of Science e.V.
+Copyright (C) 2013-2021 Max Planck Society for the Advancement of Science e.V.
                         Benjamin Buchfink
                         Eberhard Karls Universitaet Tuebingen
 
@@ -26,6 +26,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <exception>
 #include <iomanip>
 #include <numeric>
+#include <thread>
 #include "../util/command_line_parser.h"
 #include "config.h"
 #include "../util/util.h"
@@ -40,12 +41,18 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../cluster/cluster_registry.h"
 #include "../basic/translate.h"
 #include "../dp/dp.h"
-#include "masking.h"
+#include "../masking/masking.h"
 #include "../util/system/system.h"
 #include "../util/simd.h"
 #include "../util/parallel/multiprocessing.h"
 
-using namespace std;
+using std::thread;
+using std::stringstream;
+using std::endl;
+using std::cerr;
+using std::ostream;
+using std::cout;
+using std::unique_ptr;
 
 const EMap<Sensitivity> EnumTraits<Sensitivity>::to_string = {
 	{ Sensitivity::FAST, "fast" },
@@ -60,11 +67,11 @@ const EMap<Sensitivity> EnumTraits<Sensitivity>::to_string = {
 const SEMap<Sensitivity> EnumTraits<Sensitivity>::from_string = {
 	{ "fast", Sensitivity::FAST },
 	{ "default", Sensitivity::DEFAULT },
-	{ "msens", Sensitivity::MID_SENSITIVE },
-	{ "sens", Sensitivity::SENSITIVE },
-	{ "moresens", Sensitivity::MORE_SENSITIVE },
-	{ "vsens", Sensitivity::VERY_SENSITIVE },
-	{ "usens", Sensitivity::ULTRA_SENSITIVE }
+	{ "mid-sensitive", Sensitivity::MID_SENSITIVE },
+	{ "sensitive", Sensitivity::SENSITIVE },
+	{ "more-sensitive", Sensitivity::MORE_SENSITIVE },
+	{ "very-sensitive", Sensitivity::VERY_SENSITIVE },
+	{ "ultra-sensitive", Sensitivity::ULTRA_SENSITIVE }
 };
 
 const EMap<Config::Algo> EnumTraits<Config::Algo>::to_string = { { Config::Algo::DOUBLE_INDEXED, "Double-indexed" }, { Config::Algo::QUERY_INDEXED, "Query-indexed"}, {Config::Algo::CTG_SEED, "Query-indexed with contiguous seed"} };
@@ -155,6 +162,9 @@ Config::Config(int argc, const char **argv, bool check_io)
 {
 	Command_line_parser parser;
 	parser.add_command("makedb", "Build DIAMOND database from a FASTA file", makedb)
+#ifdef WITH_BLASTDB
+		.add_command("prepdb", "Prepare BLAST database for use with Diamond", prep_blast_db)
+#endif
 		.add_command("blastp", "Align amino acid query sequences against a protein reference database", blastp)
 		.add_command("blastx", "Align DNA query sequences against a protein reference database", blastx)
 		.add_command("view", "View DIAMOND alignment archive (DAA) formatted file", view)
@@ -166,9 +176,6 @@ Config::Config(int argc, const char **argv, bool check_io)
 		.add_command("makeidx", "Make database index", makeidx)
 		.add_command("roc", "", roc)
 		.add_command("benchmark", "", benchmark)
-#ifdef WITH_BLASTDB
-		.add_command("prepdb", "", prep_blast_db)
-#endif
 #ifdef EXTRA
 		.add_command("random-seqs", "", random_seqs)
 		.add_command("sort", "", sort)
@@ -194,6 +201,9 @@ Config::Config(int argc, const char **argv, bool check_io)
 		.add_command("roc-id", "", rocid)
 		.add_command("find-shapes", "", find_shapes)
 		.add_command("composition", "", composition)
+		.add_command("join", "", JOIN)
+		.add_command("hashseqs", "", HASH_SEQS)
+		.add_command("listseeds", "", LIST_SEEDS)
 #endif
 		;
 
@@ -306,7 +316,7 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("more-sensitive", 0, "enable more sensitive mode", mode_more_sensitive)
 		("very-sensitive", 0, "enable very sensitive mode", mode_very_sensitive)
 		("ultra-sensitive", 0, "enable ultra sensitive mode", mode_ultra_sensitive)
-		("iterate", 0, "iterated search with increasing sensitivity", iterate)
+		("iterate", 0, "iterated search with increasing sensitivity", iterate, Option<vector<string>>(), 0)
 		("global-ranking", 'g', "number of targets for global ranking", global_ranking_targets)
 		("block-size", 'b', "sequence block size in billions of letters (default=2.0)", chunk_size)
 		("index-chunks", 'c', "number of chunks for index processing (default=4)", lowmem_)
@@ -319,7 +329,7 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("matrix", 0, "score matrix for protein alignment (default=BLOSUM62)", matrix, string("blosum62"))
 		("custom-matrix", 0, "file containing custom scoring matrix", matrix_file)
 		("comp-based-stats", 0, "composition based statistics mode (0-4)", comp_based_stats, 1u)
-		("masking", 0, "enable tantan masking of repeat regions (0/1=default)", masking, -1)
+		("masking", 0, "masking algorithm (none, seg, tantan=default)", masking, string("tantan"))
 		("query-gencode", 0, "genetic code to use to translate query (see user manual)", query_gencode, 1u)
 		("salltitles", 0, "include full subject titles in DAA file", salltitles)
 		("sallseqid", 0, "include all subject ids in DAA file", sallseqid)
@@ -336,7 +346,10 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("algo", 0, "Seed search algorithm (0=double-indexed/1=query-indexed/ctg=contiguous-seed)", algo_str)
 		("bin", 0, "number of query bins for seed search", query_bins_)
 		("min-orf", 'l', "ignore translated sequences without an open reading frame of at least this length", run_len)
+		("seed-cut", 0, "cutoff for seed complexity", seed_cut_)
+		("freq-masking", 0, "mask seeds based on frequency", freq_masking)
 		("freq-sd", 0, "number of standard deviations for ignoring frequent seeds", freq_sd_, 0.0)
+		("motif-masking", 0, "softmask abundant motifs (0/1)", motif_masking)
 		("id2", 0, "minimum number of identities for stage 1 hit", min_identities_)
 		("xdrop", 'x', "xdrop for ungapped alignment", ungapped_xdrop, 12.3)
 		("gapped-filter-evalue", 0, "E-value threshold for gapped filter (auto)", gapped_filter_evalue_, -1.0)
@@ -349,7 +362,7 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("mp-query-chunk", 0, "process only a single query chunk as specified", mp_query_chunk, -1)
 		("ext-chunk-size", 0, "chunk size for adaptive ranking (default=auto)", ext_chunk_size)
 		("no-ranking", 0, "disable ranking heuristic", no_ranking)
-		("ext", 0, "Extension mode (banded-fast/banded-slow/full)", ext)
+		("ext", 0, "Extension mode (banded-fast/banded-slow/full)", ext_)
 		("culling-overlap", 0, "minimum range overlap with higher scoring hit to delete a hit (default=50%)", inner_culling_overlap, 50.0)
 		("taxon-k", 0, "maximum number of targets to report per species", taxon_k, (uint64_t)0)
 		("range-cover", 0, "percentage of query range to be covered for range culling (default=50%)", query_range_cover, 50.0)
@@ -379,7 +392,7 @@ Config::Config(int argc, const char **argv, bool check_io)
 
 	Options_group getseq_options("Getseq options");
 	getseq_options.add()
-		("seq", 0, "Sequence numbers to display.", seq_no);
+		("seq", 0, "Space-separated list of sequence numbers to display.", seq_no);
 
 	double rank_ratio2, lambda, K;
 	unsigned window, min_ungapped_score, hit_band, min_hit_score;
@@ -405,14 +418,8 @@ Config::Config(int argc, const char **argv, bool check_io)
 	Options_group hidden_options("", true);
 #endif
 	hidden_options.add()
-		("extend-all", 0, "extend all seed hits", extend_all)
-		("local-align", 0, "Local alignment algorithm", local_align_mode, 0u)
-		("slow-search", 0, "", slow_search)
-		("ht", 0, "", ht_mode)
-		("old-freq", 0, "", old_freq)
 		("match1", 0, "", match_file1)
 		("match2", 0, "", match_file2)
-		("max-hits", 'C', "maximum number of hits to consider for one seed", hit_cap)
 		("seed-freq", 0, "maximum seed frequency", max_seed_freq, -15.0)
 		("space-penalty", 0, "", space_penalty, 0.5)
 		("reverse", 0, "", reverse)
@@ -472,7 +479,7 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("no-swipe-realign", 0, "", no_swipe_realign)
 		("chaining-maxnodes", 0, "", chaining_maxnodes)
 		("cutoff-score-8bit", 0, "", cutoff_score_8bit, 240)
-		("min-band-overlap", 0, "", min_band_overlap, 0.2)
+		("min-band-overlap", 0, "", min_band_overlap, 0.0)
 		("min-realign-overhang", 0, "", min_realign_overhang, 30)
 		("ungapped-window", 0, "", ungapped_window, 48)
 		("gapped-filter-diag-score", 0, "", gapped_filter_diag_bit_score, 12.0)
@@ -514,7 +521,6 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("cbs-matrix-scale", 0, "", cbs_matrix_scale, 1)
 		("query-count", 0, "", query_count, (size_t)1)
 		("cbs-angle", 0, "", cbs_angle, -1.0)
-		("target-seg", 0, "", target_seg, -1)
 		("cbs-err-tolerance", 0, "", cbs_err_tolerance, 0.00000001)
 		("cbs-it-limit", 0, "", cbs_it_limit, 2000)
 		("hash_join_swap", 0, "", hash_join_swap)
@@ -523,7 +529,15 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("length-ratio-threshold", 0, "", length_ratio_threshold, -1.0)
 		("max-swipe-dp", 0, "", max_swipe_dp, (size_t)4000000)
 		("short-seqids", 0, "", short_seqids)
-		("no-reextend", 0, "", no_reextend);
+		("no-reextend", 0, "", no_reextend)
+		("max-traceback-matrix-size", 0, "", max_traceback_matrix_size, 512 * KILOBYTES)
+		("no-reorder", 0, "", no_reorder)
+		("file1", 0, "", file1)
+		("file2", 0, "", file2)
+		("key2", 0, "", key2)
+		("motif-mask-file", 0, "", motif_mask_file)
+		("max-motif-len", 0, "", max_motif_len, 30)
+		("chaining-stacked-hsp-ratio", 0, "", chaining_stacked_hsp_ratio, 0.5);
 
 	parser.add(general).add(makedb).add(cluster).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options).add(deprecated_options);
 	parser.store(argc, argv, command);
@@ -545,12 +559,6 @@ Config::Config(int argc, const char **argv, bool check_io)
 	if (global_ranking_targets > 0 && (query_range_culling || taxon_k || multiprocessing || mp_init || mp_recover || comp_based_stats >= 2 || frame_shift > 0))
 		throw std::runtime_error("Global ranking is not supported in this mode.");
 
-	if (global_ranking_targets > 0) {
-		if (ext != "" && ext != "full")
-			throw std::runtime_error("Global ranking only supports full matrix extension.");
-		ext = "full";
-	}
-
 #ifdef EXTRA
 	if (comp_based_stats >= Stats::CBS::COUNT)
 #else
@@ -558,31 +566,10 @@ Config::Config(int argc, const char **argv, bool check_io)
 #endif
 		throw std::runtime_error("Invalid value for --comp-based-stats. Permitted values: 0, 1, 2, 3, 4.");
 
-	if (masking == -1)
-		masking = Stats::CBS::tantan(comp_based_stats);
-
-	if (target_seg == -1)
-		target_seg = Stats::CBS::target_seg(comp_based_stats);
-
 	Stats::comp_based_stats = Stats::CBS(comp_based_stats, query_match_distance_threshold, length_ratio_threshold, cbs_angle);
 
 	if (command == blastx && !Stats::CBS::support_translated(comp_based_stats))
 		throw std::runtime_error("This mode of composition based stats is not supported for translated searches.");
-
-	if (swipe_all)
-		ext = "full";
-
-	if (max_hsps > 1 && ext == "full")
-		throw std::runtime_error("--max-hsps > 1 is not supported for full matrix extension.");
-
-	if (target_seg < 0 || target_seg > 1)
-		throw std::runtime_error("Permitted values for --target-seg: 0, 1");
-
-	if (masking < 0 || masking > 1)
-		throw std::runtime_error("Permitted values for --masking: 0, 1");
-
-	if (frame_shift > 0 && ext == "full")
-		throw std::runtime_error("Frameshift alignment does not support full matrix extension.");
 
 	if (check_io) {
 		switch (command) {
@@ -610,9 +597,6 @@ Config::Config(int argc, const char **argv, bool check_io)
 					auto_append_extension(output_file, ".daa");
 			}
 			break;
-		case Config::view:
-			if (daa_file == "")
-				throw std::runtime_error("Missing parameter: DAA file (--daa/-a)");
 		default:
 			;
 		}
@@ -623,9 +607,6 @@ Config::Config(int argc, const char **argv, bool check_io)
 				throw std::runtime_error("Missing parameter: database file (--db/-d)");
 		}
 	}
-
-	if (hit_cap != 0)
-		throw std::runtime_error("Deprecated parameter: --max-hits/-C.");
 
 	if (debug_log)
 		verbosity = 3;
@@ -704,12 +685,13 @@ Config::Config(int argc, const char **argv, bool check_io)
 	case Config::cluster:
 	case Config::regression_test:
 	case Config::compute_medoids:
+	case Config::LIST_SEEDS:
 		if (frame_shift != 0 && command == Config::blastp)
 			throw std::runtime_error("Frameshift alignments are only supported for translated searches.");
 		if (query_range_culling && frame_shift == 0)
 			throw std::runtime_error("Query range culling is only supported in frameshift alignment mode (option -F).");
 		if (matrix_file == "") {
-			score_matrix = Score_matrix(to_upper_case(matrix), gap_open, gap_extend, frame_shift, stop_match_score, 0, cbs_matrix_scale);
+			score_matrix = ScoreMatrix(to_upper_case(matrix), gap_open, gap_extend, frame_shift, stop_match_score, 0, cbs_matrix_scale);
 		}
 		else {
 			if (gap_open == -1 || gap_extend == -1)
@@ -718,7 +700,7 @@ Config::Config(int argc, const char **argv, bool check_io)
 				throw std::runtime_error("Custom scoring matrices are not supported for the DAA format.");
 			if (comp_based_stats > 1)
 				throw std::runtime_error("This value for --comp-based-stats is not supported when using a custom scoring matrix.");
-			score_matrix = Score_matrix(matrix_file, gap_open, gap_extend, stop_match_score, Score_matrix::Custom());
+			score_matrix = ScoreMatrix(matrix_file, gap_open, gap_extend, stop_match_score, ScoreMatrix::Custom());
 		}
 		if(command == Config::cluster){
 			if(!Workflow::Cluster::ClusterRegistry::has(cluster_algo)){
@@ -732,8 +714,7 @@ Config::Config(int argc, const char **argv, bool check_io)
 			}
 		}
 		message_stream << "Scoring parameters: " << score_matrix << endl;
-		//if (masking == 1 || target_seg)
-			Masking::instance = unique_ptr<Masking>(new Masking(score_matrix));
+		Masking::instance = unique_ptr<Masking>(new Masking(score_matrix));
 	}
 
 	if (command == Config::blastp || command == Config::blastx || command == Config::benchmark || command == Config::model_sim || command == Config::opt
@@ -741,7 +722,6 @@ Config::Config(int argc, const char **argv, bool check_io)
 		if (tmpdir == "")
 			tmpdir = extract_dir(output_file);
 
-		init_cbs();
 		raw_ungapped_xdrop = score_matrix.rawscore(ungapped_xdrop);
 		verbose_stream << "CPU features detected: " << SIMD::features() << endl;
 #if defined(RUNTIME_DISPATCH) && defined(__SSE__)
@@ -761,10 +741,6 @@ Config::Config(int argc, const char **argv, bool check_io)
 	if (mode_ultra_sensitive) set_sens(Sensitivity::ULTRA_SENSITIVE);
 
 	algo = from_string<Algo>(algo_str);
-
-	const set<string> ext_modes = { "", "banded-fast", "banded-slow", "full" };
-	if (ext_modes.find(ext) == ext_modes.end())
-		throw std::runtime_error("Possible values for --ext are: banded-fast, banded-slow, full");
 
 	Translator::init(query_gencode);
 

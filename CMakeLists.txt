@@ -106,10 +106,9 @@ endif()
 
 set(DISPATCH_OBJECTS
 "src/dp/swipe/banded_3frame_swipe.cpp"
-"src/dp/swipe/swipe.cpp"
-"src/dp/swipe/banded_swipe.cpp"
 "src/search/stage2.cpp"
 "src/tools/benchmark.cpp"
+"src/tools/benchmark_swipe.cpp"
 "src/dp/swipe/swipe_wrapper.cpp"
 "src/util/tantan.cpp"
 "src/dp/scan_diags.cpp"
@@ -156,19 +155,17 @@ set(OBJECTS
   src/data/frequent_seeds.cpp
   src/align/legacy/query_mapper.cpp
   src/output/blast_tab_format.cpp
-  src/dp/needleman_wunsch.cpp
   src/output/blast_pairwise_format.cpp
   src/run/double_indexed.cpp
   src/output/sam_format.cpp
   src/align/align.cpp
   src/search/setup.cpp
   src/data/taxonomy.cpp
-  src/basic/masking.cpp
-  src/dp/banded_sw.cpp
+  src/masking/masking.cpp
   src/data/seed_set.cpp
   src/util/simd.cpp
   src/output/taxon_format.cpp
-  src/output/view.cpp
+  src/output/daa/view.cpp
   src/output/output_sink.cpp
   src/output/target_culling.cpp
   src/align/legacy/banded_swipe_pipeline.cpp
@@ -204,7 +201,9 @@ set(OBJECTS
   src/test/simulate.cpp
   src/test/test.cpp
   src/align/ungapped.cpp
-  src/align/gapped.cpp
+  src/align/gapped_score.cpp
+  src/align/gapped_final.cpp
+  src/align/full_db.cpp
   src/align/culling.cpp
   src/cluster/medoid.cpp
   src/cluster/cluster_registry.cpp
@@ -215,7 +214,6 @@ set(OBJECTS
   src/test/data.cpp
   src/test/test_cases.cpp
   src/chaining/smith_waterman.cpp
-  src/basic/value.cpp
   src/tools/merge_tsv.cpp
   src/output/xml_format.cpp
   src/align/gapped_filter.cpp
@@ -268,6 +266,13 @@ set(OBJECTS
   src/data/sequence_set.cpp
   src/align/global_ranking/table.cpp
   src/output/daa/daa_write.cpp
+  src/search/seed_complexity.cpp
+  src/tools/view.cpp
+  src/util/string/tsv.cpp
+  src/tools/join.cpp
+  src/basic/value.cpp
+  src/masking/motifs.cpp
+  src/align/alt_hsp.cpp
 )
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}")

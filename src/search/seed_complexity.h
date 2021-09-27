@@ -1,6 +1,9 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2018 Benjamin Buchfink <buchfink@gmail.com>
+Copyright (C) 2016-2021 Max Planck Society for the Advancement of Science e.V.
+                        Benjamin Buchfink
+						
+Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,44 +19,26 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#ifndef SEED_COMPLEXITY_H_
-#define SEED_COMPLEXITY_H_
-
-#include <math.h>
-#include <stddef.h>
+#pragma once
 #include "../basic/value.h"
 #include "../basic/shape.h"
-#include "../basic/reduction.h"
-#include "../basic/config.h"
+#include "../util/data_structures/double_array.h"
+#include "../data/flags.h"
+#include "../run/config.h"
+#include "../data/seed_histogram.h"
 
-struct SeedComplexity
-{
+namespace Search {
 
-	static void init(const Reduction &r)
-	{
-		double p[20];
-		for (size_t i = 0; i < 20; ++i)
-			p[i] = 0;
-		for (size_t i = 0; i < 20; ++i)
-			p[r(i)] += background_freq[i];
-		for (size_t i = 0; i < 20; ++i)
-			prob_[i] = log(p[r(i)]);
-		for (size_t i = 20; i < AMINO_ACID_COUNT; ++i)
-			prob_[i] = 1000;
-	}
-
-	static bool complex(const Letter *seq, Shape shape)
-	{
-		double p = 0;
-		for (unsigned i = 0; i < shape.weight_; ++i)
-			p += prob_[(size_t)seq[shape.positions_[i]]];
-		return p <= -config.freq_treshold;
-	}
-
-private:
-
-	static double prob_[AMINO_ACID_COUNT];
-
+struct SeedStats {
+	SeedStats():
+		good_seed_positions(0),
+		low_complexity_seeds(0)
+	{}
+	size_t good_seed_positions, low_complexity_seeds;
 };
 
-#endif
+bool seed_is_complex(const Letter* seq, const Shape& shape, const double cut);
+bool seed_is_complex_unreduced(Letter* seq, const Shape& shape, const double cut, const bool mask_seeds, SeedStats& stats);
+void mask_seeds(const Shape& shape, const SeedPartitionRange& range, DoubleArray<SeedLoc>* query_seed_hits, DoubleArray<SeedLoc>* ref_seed_hits, Search::Config& cfg);
+
+}

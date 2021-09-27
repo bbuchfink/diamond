@@ -35,9 +35,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 using std::string;
 using std::vector;
 
-Score_matrix score_matrix;
+ScoreMatrix score_matrix;
 
-Score_matrix::Score_matrix(const string & matrix, int gap_open, int gap_extend, int frameshift, int stop_match_score, uint64_t db_letters, int scale):
+ScoreMatrix::ScoreMatrix(const string & matrix, int gap_open, int gap_extend, int frameshift, int stop_match_score, uint64_t db_letters, int scale):
 	standard_matrix_(&Stats::StandardMatrix::get(matrix)),
 	gap_open_ (gap_open == -1 ? standard_matrix_->default_gap_exist : gap_open),
 	gap_extend_ (gap_extend == -1 ? standard_matrix_->default_gap_extend : gap_extend),
@@ -62,9 +62,10 @@ Score_matrix::Score_matrix(const string & matrix, int gap_open, int gap_extend, 
 	Sls::AlignmentEvaluerParameters params{ p.Lambda, p.K, p.alpha, b, p.alpha, b, p.alpha_v, beta, p.alpha_v, beta, p.sigma, 2.0 * G * (u.alpha_v - p.sigma) };
 	evaluer.initParameters(params);
 	ln_k_ = std::log(evaluer.parameters().K);
+	init_background_scores();
 }
 
-int8_t Score_matrix::low_score() const
+int8_t ScoreMatrix::low_score() const
 {
 	int8_t low = std::numeric_limits<int8_t>::max();
 	for (Letter i = 0; i < (Letter)value_traits.alphabet_size; ++i)
@@ -73,7 +74,7 @@ int8_t Score_matrix::low_score() const
 	return low;
 }
 
-int8_t Score_matrix::high_score() const
+int8_t ScoreMatrix::high_score() const
 {
 	int8_t high = std::numeric_limits<int8_t>::min();
 	for (Letter i = 0; i < (Letter)value_traits.alphabet_size; ++i)
@@ -82,7 +83,7 @@ int8_t Score_matrix::high_score() const
 	return high;
 }
 
-double Score_matrix::avg_id_score() const
+double ScoreMatrix::avg_id_score() const
 {
 	double s = 0;
 	for (size_t i = 0; i < 20; ++i)
@@ -90,7 +91,7 @@ double Score_matrix::avg_id_score() const
 	return s / 20;
 }
 
-std::ostream& operator<<(std::ostream& s, const Score_matrix &m)
+std::ostream& operator<<(std::ostream& s, const ScoreMatrix&m)
 {
 	s << "(Matrix=" << m.name_
 		<< " Lambda=" << m.lambda()
@@ -146,11 +147,12 @@ const signed char* custom_scores(const string &matrix_file, int mask_score)
 	return scores;
 }
 
-Score_matrix::Score_matrix(const string& matrix_file, int gap_open, int gap_extend, int stop_match_score, const Custom&, uint64_t db_letters) :
+ScoreMatrix::ScoreMatrix(const string& matrix_file, int gap_open, int gap_extend, int stop_match_score, const Custom&, uint64_t db_letters) :
 	score_array_(custom_scores(matrix_file, -gap_extend)),
 	gap_open_(gap_open),
 	gap_extend_(gap_extend),
 	db_letters_((double)db_letters),
+	scale_(1),
 	name_("custom"),
 	matrix8_(score_array_, stop_match_score),
 	matrix32_(score_array_, stop_match_score),
@@ -178,10 +180,11 @@ Score_matrix::Score_matrix(const string& matrix_file, int gap_open, int gap_exte
 		throw std::runtime_error("The ALP library failed to compute the statistical parameters for this matrix. It may help to adjust the gap penalty settings.");
 	}
 	ln_k_ = std::log(evaluer.parameters().K);
+	init_background_scores();
 }
 
 template<typename _t>
-Score_matrix::Scores<_t>::Scores(const double (&freq_ratios)[Stats::NCBI_ALPH][Stats::NCBI_ALPH], double lambda, const int8_t* scores, int scale) {
+ScoreMatrix::Scores<_t>::Scores(const double (&freq_ratios)[Stats::NCBI_ALPH][Stats::NCBI_ALPH], double lambda, const int8_t* scores, int scale) {
 	const size_t n = value_traits.alphabet_size;
 	for (size_t i = 0; i < 32; ++i)
 		for (size_t j = 0; j < 32; ++j) {
@@ -195,28 +198,37 @@ Score_matrix::Scores<_t>::Scores(const double (&freq_ratios)[Stats::NCBI_ALPH][S
 }
 
 template<typename _t>
-std::vector<const _t*> Score_matrix::Scores<_t>::pointers() const {
+std::vector<const _t*> ScoreMatrix::Scores<_t>::pointers() const {
 	vector<const _t*> r(32);
 	for (int i = 0; i < 32; ++i)
 		r[i] = &data[i * 32];
 	return r;
 }
 
-template struct Score_matrix::Scores<int>;
+template struct ScoreMatrix::Scores<int>;
 
-double Score_matrix::evalue(int raw_score, unsigned query_len, unsigned subject_len) const
+double ScoreMatrix::evalue(int raw_score, unsigned query_len, unsigned subject_len) const
 {
 	return evaluer.evalue((double)raw_score / scale_, query_len, subject_len) * (double)db_letters_ / (double)subject_len;
 }
 
-double Score_matrix::evalue_norm(int raw_score, unsigned query_len, unsigned subject_len) const
+double ScoreMatrix::evalue_norm(int raw_score, unsigned query_len, unsigned subject_len) const
 {
 	return evaluer.evalue((double)raw_score / scale_, query_len, subject_len) * (double)1e9 / (double)subject_len;
 }
 
-bool Score_matrix::report_cutoff(int score, double evalue) const {
+bool ScoreMatrix::report_cutoff(int score, double evalue) const {
 	if (config.min_bit_score != 0)
 		return bitscore(score) >= config.min_bit_score;
 	else
 		return evalue <= config.max_evalue;
+}
+
+void ScoreMatrix::init_background_scores()
+{
+	for (size_t i = 0; i < 20; ++i) {
+		background_scores_[i] = 0;
+		for (size_t j = 0; j < 20; ++j)
+			background_scores_[i] += Stats::blosum62.background_freqs[j] * (*this)(i, j);
+	}
 }

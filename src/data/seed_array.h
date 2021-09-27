@@ -20,47 +20,30 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <array>
 #include <vector>
 #include "seed_histogram.h"
-#include "../basic/packed_loc.h"
+#include "../search/seed_complexity.h"
+#include "flags.h"
 
 #pragma pack(1)
 // #define KEEP_TARGET_ID
 
+struct Block;
+
 struct SeedArray
 {
 
-	typedef PackedLoc _pos;
+	using Loc = PackedLoc;
 
 	struct Entry
 	{
-
-#ifdef KEEP_TARGET_ID
-		struct Value {
-			Value() {}
-			Value(_pos pos) :
-				pos(pos) {}
-			Value(_pos pos, uint32_t block_id) :
-				pos(pos),
-				block_id(block_id)
-			{}
-			operator uint64_t() const {
-				return (uint64_t)pos;
-			}
-			_pos pos;
-			uint32_t block_id;
-		};
-#else
-		typedef _pos Value;
-#endif
-
 		Entry() :
 			key(),
 			value()
 		{ }
-		Entry(unsigned key, _pos value) :
+		Entry(unsigned key, Loc value) :
 			key(key),
 			value(value)
 		{ }
-		Entry(unsigned key, _pos pos, uint32_t block_id):
+		Entry(unsigned key, Loc pos, uint32_t block_id):
 			key(key),
 #ifdef KEEP_TARGET_ID
 			value(pos, block_id)
@@ -76,15 +59,16 @@ struct SeedArray
 			}
 		};
 
-		typedef uint32_t Key;
-		Value value;
+		using Key = uint32_t;
+		using Value = SeedLoc;
+		SeedLoc value;
 	} PACKED_ATTRIBUTE;
 
 	template<typename _filter>
-	SeedArray(SequenceSet &seqs, size_t shape, const shape_histogram &hst, const SeedPartitionRange &range, const vector<size_t> &seq_partition, char *buffer, const _filter *filter, const SeedEncoding code, const std::vector<bool>* skip);
+	SeedArray(Block &seqs, const ShapeHistogram &hst, const SeedPartitionRange &range, char *buffer, const _filter *filter, const EnumCfg& enum_cfg);
 
 	template<typename _filter>
-	SeedArray(SequenceSet& seqs, size_t shape, const SeedPartitionRange& range, const _filter* filter, const SeedEncoding code, const std::vector<bool>* skip);
+	SeedArray(Block& seqs, const SeedPartitionRange& range, const _filter* filter, EnumCfg& cfg);
 
 	Entry* begin(unsigned i)
 	{
@@ -122,7 +106,11 @@ struct SeedArray
 		}
 	}
 
-	static char *alloc_buffer(const Partitioned_histogram &hst, size_t index_chunks);
+	const Search::SeedStats& stats() const {
+		return stats_;
+	}
+
+	static char *alloc_buffer(const SeedHistogram &hst, size_t index_chunks);
 
 	const size_t key_bits;
 
@@ -131,6 +119,7 @@ private:
 	Entry *data_;
 	size_t begin_[Const::seedp + 1];
 	std::array<std::vector<Entry>, Const::seedp> entries_;
+	Search::SeedStats stats_;
 
 };
 

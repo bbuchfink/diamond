@@ -26,6 +26,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <stdint.h>
 #include <map>
 #include "../util/enum.h"
+#include "../util/options/option.h"
+#include "value.h"
 
 enum class Sensitivity { FAST = 0, DEFAULT = 1, MID_SENSITIVE = 2, SENSITIVE = 3, MORE_SENSITIVE = 4, VERY_SENSITIVE = 5, ULTRA_SENSITIVE = 6 };
 enum class Compressor;
@@ -46,7 +48,6 @@ struct Config
 	string	database;
 	string_vector query_file;
 	unsigned	merge_seq_treshold;
-	unsigned	hit_cap;
 	unsigned shapes;
 	size_t	max_alignments;
 	string	match_file1;
@@ -90,18 +91,12 @@ struct Config
 	unsigned fetch_size;
 	uint64_t	db_size;
 	double	query_cover;
-
 	bool		mode_sensitive;
 	unsigned	verbosity;
 	bool no_auto_append;
-	unsigned local_align_mode;
-	bool extend_all;
-	bool slow_search;
 	string_vector seq_no;
 	double rank_factor;
 	double rank_ratio;
-	bool ht_mode;
-	bool old_freq;
 	double freq_sd_;
 	unsigned target_fetch_size;
 	bool mode_more_sensitive;
@@ -134,7 +129,7 @@ struct Config
 	string prot_accession2taxid;
 	int superblock;
 	unsigned max_cells;
-	int masking;
+	string masking;
 	bool log_query;
 	bool log_subject;
 	unsigned threads_align;
@@ -217,7 +212,7 @@ struct Config
 	double gapped_filter_evalue1;
 	size_t ext_chunk_size;
 	double ext_min_yield;
-	string ext;
+	string ext_;
 	int full_sw_len;
 	double relaxed_evalue_factor;
 	string type;
@@ -247,7 +242,6 @@ struct Config
 	int family_cap;
 	int cbs_matrix_scale;
 	size_t query_count;
-	int target_seg;
 	double cbs_err_tolerance;
 	int cbs_it_limit;
 	double query_match_distance_threshold;
@@ -261,10 +255,21 @@ struct Config
 	size_t max_swipe_dp;
 	std::string seqidlist;
 	bool skip_missing_seqids;
-	string_vector iterate;
+	Option<string_vector> iterate;
 	bool ignore_warnings;
 	bool short_seqids;
 	bool no_reextend;
+	size_t max_traceback_matrix_size;
+	double seed_cut_;
+	bool no_reorder;
+	string file1;
+	string file2;
+	size_t key2;
+	string motif_mask_file;
+	string motif_masking;
+	bool freq_masking;
+	Loc max_motif_len;
+	double chaining_stacked_hsp_ratio;
 
 	Sensitivity sensitivity;
 
@@ -277,7 +282,7 @@ struct Config
 		makedb = 0, blastp = 1, blastx = 2, view = 3, help = 4, version = 5, getseq = 6, benchmark = 7, random_seqs = 8, compare = 9, sort = 10, roc = 11, db_stat = 12, model_sim = 13,
 		match_file_stat = 14, model_seqs = 15, opt = 16, mask = 17, fastq2fasta = 18, dbinfo = 19, test_extra = 20, test_io = 21, db_annot_stats = 22, read_sim = 23, info = 24, seed_stat = 25,
 		smith_waterman = 26, cluster = 27, translate = 28, filter_blasttab = 29, show_cbs = 30, simulate_seqs = 31, split = 32, upgma = 33, upgma_mc = 34, regression_test = 35,
-		reverse_seqs = 36, compute_medoids = 37, mutate = 38, merge_tsv = 39, rocid = 40, makeidx = 41, find_shapes, prep_blast_db, composition
+		reverse_seqs = 36, compute_medoids = 37, mutate = 38, merge_tsv = 39, rocid = 40, makeidx = 41, find_shapes, prep_blast_db, composition, JOIN, HASH_SEQS, LIST_SEEDS
 	};
 	unsigned	command;
 

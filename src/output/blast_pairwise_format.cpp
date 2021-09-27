@@ -51,7 +51,7 @@ void Pairwise_format::print_match(const HspContext& r, const Search::Config& met
 		for (unsigned i = 0; i < digits + 9; ++i)
 			out << ' ';
 		for (unsigned i = 0; i < width && mi.good(); ++i, ++mi)
-			out << mi.midline_char();
+			out << mi.midline_char(score_matrix(mi.query(), mi.subject()));
 		out << '\n';
 
 		out << "Sbjct  ";

@@ -61,7 +61,6 @@ struct packed_uint40_t
 } PACKED_ATTRIBUTE ;
 
 typedef packed_uint40_t PackedLoc;
-typedef size_t Loc;
 
 #pragma pack()
 

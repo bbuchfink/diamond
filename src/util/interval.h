@@ -16,9 +16,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#ifndef INTERVAL_H_
-#define INTERVAL_H_
-
+#pragma once
 #include <ostream>
 #include <algorithm>
 
@@ -73,5 +71,3 @@ inline interval intersect(const interval &lhs, const interval &rhs)
 {
 	return interval(std::max(lhs.begin_, rhs.begin_), std::min(lhs.end_, rhs.end_));
 }
-
-#endif

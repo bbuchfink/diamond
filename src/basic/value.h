@@ -27,7 +27,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/simd.h"
 
 typedef signed char Letter;
-typedef enum { amino_acid=0, nucleotide=1 } Sequence_type;
+typedef enum { amino_acid=0, nucleotide=1 } SequenceType;
 struct Amino_acid {};
 struct Nucleotide {};
 
@@ -57,14 +57,14 @@ private:
 	Letter data_[256];
 };
 
-struct Value_traits
+struct ValueTraits
 {
-	Value_traits(const char *alphabet, Letter mask_char, const char *ignore, Sequence_type seq_type);
+	ValueTraits(const char *alphabet, Letter mask_char, const char *ignore, SequenceType seq_type);
 	const char *alphabet;
 	unsigned alphabet_size;
 	Letter mask_char;
 	Char_representation from_char;
-	Sequence_type seq_type;
+	SequenceType seq_type;
 };
 
 #define AMINO_ACID_ALPHABET "ARNDCQEGHILKMFPSTWYVBJZX*_"
@@ -76,7 +76,7 @@ constexpr Letter SUPER_HARD_MASK = 25;
 constexpr Letter DELIMITER_LETTER = 31;
 constexpr Letter LETTER_MASK = 31;
 constexpr Letter SEED_MASK = -128;
-constexpr size_t TRUE_AA = 20;
+constexpr int32_t TRUE_AA = 20;
 
 static inline bool is_amino_acid(Letter x) {
 	return x != MASK_LETTER && x != DELIMITER_LETTER && x != STOP_LETTER;
@@ -102,10 +102,10 @@ static inline __m256i letter_mask(__m256i x) {
 }
 #endif
 
-extern const Value_traits amino_acid_traits;
-extern const Value_traits nucleotide_traits;
-extern Value_traits value_traits;
-extern Value_traits input_value_traits;
+extern const ValueTraits amino_acid_traits;
+extern const ValueTraits nucleotide_traits;
+extern ValueTraits value_traits;
+extern ValueTraits input_value_traits;
 
 static inline char to_char(Letter a)
 {
@@ -116,22 +116,32 @@ struct Align_mode
 {
 	Align_mode(unsigned mode);
 	static unsigned from_command(unsigned command);
-	unsigned check_context(unsigned i) const
+	int check_context(int i) const
 	{
 		if (i >= query_contexts)
 			throw std::runtime_error("Sequence context is out of bounds.");
 		return i;
 	}
 	enum { blastp = 2, blastx = 3, blastn = 4 };
-	Sequence_type sequence_type, input_sequence_type;
-	unsigned mode, query_contexts;
-	int query_len_factor;
+	SequenceType sequence_type, input_sequence_type;
+	int mode, query_contexts, query_len_factor;
 	bool query_translated;
 };
 
 extern Align_mode align_mode;
-extern const double background_freq[20];
 extern const Letter IUPACAA_TO_STD[32];
 extern const Letter NCBI_TO_STD[28];
 
 enum class Alphabet { STD, NCBI };
+
+template<typename It>
+void alph_ncbi_to_std(const It begin, const It end) {
+	for (It i = begin; i != end; ++i) {
+		const size_t l = *i;
+		if (l >= sizeof(NCBI_TO_STD))
+			throw std::runtime_error("Unrecognized sequence character in BLAST database");
+		*i = NCBI_TO_STD[l];
+	}
+}
+
+using Loc = int32_t;

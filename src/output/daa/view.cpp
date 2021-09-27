@@ -21,19 +21,22 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #include <memory>
+#include <thread>
 #include "../basic/config.h"
 #include "../util/io/output_file.h"
 #include "../util/text_buffer.h"
-#include "daa/daa_file.h"
+#include "daa_file.h"
 #include "../util/binary_buffer.h"
-#include "output_format.h"
+#include "../output_format.h"
 #include "../util/task_queue.h"
 #include "../stats/score_matrix.h"
 #include "../data/taxonomy.h"
-#include "daa/daa_write.h"
+#include "daa_write.h"
 #include "../run/config.h"
 
-using namespace std;
+using std::thread;
+using std::unique_ptr;
+using std::endl;
 
 const unsigned view_buf_size = 32;
 
@@ -127,11 +130,11 @@ void view_worker(DAA_file *daa, View_writer *writer, Task_queue<TextBuffer, View
 	}
 }
 
-void view()
+void view_daa()
 {
 	task_timer timer("Loading subject IDs");
 	DAA_file daa(config.daa_file);
-	score_matrix = Score_matrix(daa.score_matrix(), daa.gap_open_penalty(), daa.gap_extension_penalty(), 0, 1, daa.db_letters());
+	score_matrix = ScoreMatrix(daa.score_matrix(), daa.gap_open_penalty(), daa.gap_extension_penalty(), 0, 1, daa.db_letters());
 	timer.finish();
 
 	message_stream << "Scoring parameters: " << score_matrix << endl;

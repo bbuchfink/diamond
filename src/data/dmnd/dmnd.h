@@ -121,7 +121,7 @@ struct DatabaseFile : public SequenceFile, public InputFile
 	virtual size_t id_len(const SeqInfo& seq_info, const SeqInfo& seq_info_next) override;
 	virtual void seek_offset(size_t p) override;
 	virtual void read_seq_data(Letter* dst, size_t len, size_t& pos, bool seek) override;
-	virtual void read_id_data(char* dst, size_t len) override;
+	virtual void read_id_data(const int64_t oid, char* dst, size_t len) override;
 	virtual void skip_id_data() override;
 	virtual std::string seqid(size_t oid) const override;
 	virtual std::string dict_title(size_t dict_id, const size_t ref_block) const override;
@@ -149,6 +149,7 @@ struct DatabaseFile : public SequenceFile, public InputFile
 	virtual size_t seq_length(size_t oid) const override;
 	virtual void init_random_access(const size_t query_block, const size_t ref_blocks, bool dictionary = true) override;
 	virtual void end_random_access(bool dictionary = true) override;
+	virtual std::vector<int> accession_to_oid(const std::string& acc) const override;
 	virtual LoadTitles load_titles() override;
 
 	static const char* FILE_EXTENSION;

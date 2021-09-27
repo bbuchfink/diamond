@@ -230,7 +230,7 @@ void MultiStep::run() {
 	if (config.database == "")
 		throw runtime_error("Missing parameter: database file (--db/-d)");
 	config.command = Config::makedb;
-	shared_ptr<SequenceFile> db(SequenceFile::auto_create());
+	shared_ptr<SequenceFile> db(SequenceFile::auto_create(config.database));
 	const size_t seq_count = db->sequence_count();
 
 	shared_ptr<BitVector> current_reps, previous_reps;
@@ -256,7 +256,7 @@ void MultiStep::run() {
 	vector<Letter> seq;
 	string id;
 	db->init_seq_access();
-	Hsp hsp;
+	//Hsp hsp;
 	out->precision(3);
 
 	for (int i = 0; i < (int)db->sequence_count(); ++i) {

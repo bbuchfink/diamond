@@ -26,6 +26,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/log_stream.h"
 #include "../data/reference.h"
 #include "../util/io/input_stream_buffer.h"
+#include "../basic/config.h"
 #ifdef WITH_BLASTDB
 #include "../data/blastdb/blastdb.h"
 #endif
@@ -97,7 +98,7 @@ static void load_seqs() {
 		config.chunk_size = 2.0;
 	task_timer timer;
 	timer.go("Opening the database");
-	SequenceFile* db = SequenceFile::auto_create(SequenceFile::Flags::NONE);
+	SequenceFile* db = SequenceFile::auto_create(config.database, SequenceFile::Flags::NONE);
 	timer.finish();
 	message_stream << "Type: " << to_string(db->type()) << endl;
 	Block* ref;
@@ -135,7 +136,7 @@ static void load_raw() {
 static void load_mmap() {
 	static const size_t BUF = 2 * GIGABYTES;
 	task_timer timer("Opening the database");
-	SequenceFile* db = SequenceFile::auto_create(SequenceFile::Flags::NONE);
+	SequenceFile* db = SequenceFile::auto_create(config.database, SequenceFile::Flags::NONE);
 	timer.finish();
 	message_stream << "Type: " << to_string(db->type()) << endl;
 	size_t n = db->sequence_count(), l = 0;
@@ -155,7 +156,7 @@ static void load_mmap() {
 
 static void load_mmap_mt() {
 	task_timer timer("Opening the database");
-	SequenceFile* db = SequenceFile::auto_create(SequenceFile::Flags::NONE);
+	SequenceFile* db = SequenceFile::auto_create(config.database, SequenceFile::Flags::NONE);
 	timer.finish();
 	message_stream << "Type: " << to_string(db->type()) << endl;
 	size_t n = db->sequence_count();
@@ -180,7 +181,7 @@ static void load_mmap_mt() {
 void load_blast_seqid() {
 	const size_t N = 100000;
 	task_timer timer("Opening the database");
-	SequenceFile* db = SequenceFile::auto_create(SequenceFile::Flags::NONE);
+	SequenceFile* db = SequenceFile::auto_create(config.database, SequenceFile::Flags::NONE);
 	timer.finish();
 	message_stream << "Type: " << to_string(db->type()) << endl;
 	std::mt19937 g;
@@ -199,7 +200,7 @@ void load_blast_seqid() {
 
 void load_blast_seqid_lin() {
 	task_timer timer("Opening the database");
-	SequenceFile* db = SequenceFile::auto_create(SequenceFile::Flags::NONE);
+	SequenceFile* db = SequenceFile::auto_create(config.database, SequenceFile::Flags::NONE);
 	timer.finish();
 	message_stream << "Type: " << to_string(db->type()) << endl;
 	size_t n = 0;

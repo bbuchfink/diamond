@@ -30,6 +30,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 using std::list;
 using std::thread;
 using std::atomic;
+using std::pair;
 
 namespace DISPATCH_ARCH {
 
@@ -333,7 +334,7 @@ Hsp traceback(Sequence *query, Strand strand, int dna_len, const Banded3FrameSwi
 	const int j0 = i1 - (target.d_end - 1), d1 = target.d_end;
 	typename Banded3FrameSwipeTracebackMatrix<_sv>::TracebackIterator it(dp.traceback(max_col + 1, i0 + max_col, j0 + max_col, dna_len, channel, max_score));
 	
-	Hsp out;
+	Hsp out(true);
 	out.swipe_target = target.target_idx;
 	out.score = ScoreTraits<_sv>::int_score(max_score) * config.cbs_matrix_scale;
 	out.evalue = evalue;
@@ -373,7 +374,7 @@ Hsp traceback(Sequence *query, Strand strand, int dna_len, const Banded3FrameSwi
 template<typename _sv>
 Hsp traceback(Sequence *query, Strand strand, int dna_len, const Banded3FrameSwipeMatrix<_sv> &dp, const DpTarget &target, int d_begin, typename ScoreTraits<_sv>::Score max_score, double evalue, int max_col, int channel, int i0, int i1)
 {
-	Hsp out;
+	Hsp out(false);
 	const int j0 = i1 - (target.d_end - 1);
 	out.swipe_target = target.target_idx;
 	out.score = ScoreTraits<_sv>::int_score(max_score) * config.cbs_matrix_scale;
@@ -537,7 +538,7 @@ void banded_3frame_swipe_worker(vector<DpTarget>::const_iterator begin,
 	while (begin + (pos = next->fetch_add(config.swipe_chunk_size)) < end)
 #ifdef __SSE2__
 		if(score_only)
-			out->splice(out->end(), banded_3frame_swipe_targets<score_vector<int16_t>>(begin + pos, min(begin + pos + config.swipe_chunk_size, end), score_only, *query, strand, stat, true, of));
+			out->splice(out->end(), banded_3frame_swipe_targets<ScoreVector<int16_t, SHRT_MIN>>(begin + pos, min(begin + pos + config.swipe_chunk_size, end), score_only, *query, strand, stat, true, of));
 		else
 			out->splice(out->end(), banded_3frame_swipe_targets<int32_t>(begin + pos, min(begin + pos + config.swipe_chunk_size, end), score_only, *query, strand, stat, true, of));
 #else
@@ -584,7 +585,7 @@ list<Hsp> banded_3frame_swipe(const TranslatedSequence &query, Strand strand, ve
 	}
 	else {
 		if(score_only)
-			out = banded_3frame_swipe_targets<score_vector<int16_t>>(target_begin, target_end, score_only, query, strand, stat, false, overflow16);
+			out = banded_3frame_swipe_targets<ScoreVector<int16_t, SHRT_MIN>>(target_begin, target_end, score_only, query, strand, stat, false, overflow16);
 		else
 			out = banded_3frame_swipe_targets<int32_t>(target_begin, target_end, score_only, query, strand, stat, false, overflow16);
 	}

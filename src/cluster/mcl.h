@@ -39,8 +39,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "cluster.h"
 #include "sparse_matrix_stream.h"
 
-using namespace std;
-
 namespace Workflow { namespace Cluster{
 class MCL: public ClusteringAlgorithm {
 private: 
@@ -52,20 +50,20 @@ private:
 	void get_exp(Eigen::MatrixXf* in, Eigen::MatrixXf* out, float r);
 	void get_gamma(Eigen::SparseMatrix<float>* in, Eigen::SparseMatrix<float>* out, float r, uint32_t nThr);
 	void get_gamma(Eigen::MatrixXf* in, Eigen::MatrixXf* out, float r);
-	void markov_process(Eigen::SparseMatrix<float>* m, float inflation, float expansion, uint32_t max_iter, function<uint32_t()> getThreads);
+	void markov_process(Eigen::SparseMatrix<float>* m, float inflation, float expansion, uint32_t max_iter, std::function<uint32_t()> getThreads);
 	void markov_process(Eigen::MatrixXf* m, float inflation, float expansion, uint32_t max_iter);
 	Eigen::SparseMatrix<float> get_sparse_matrix_and_clear(vector<uint32_t>* order, vector<Eigen::Triplet<float>>* m, bool symmetric);
 	Eigen::MatrixXf get_dense_matrix_and_clear(vector<uint32_t>* order, vector<Eigen::Triplet<float>>* m, bool symmetric);
-	atomic_ullong failed_to_converge = {0};
-	atomic_ullong sparse_create_time = {0};
-	atomic_ullong dense_create_time = {0};
-	atomic_ullong sparse_exp_time = {0};
-	atomic_ullong dense_int_exp_time = {0};
-	atomic_ullong dense_gen_exp_time = {0};
-	atomic_ullong sparse_gamma_time = {0};
-	atomic_ullong dense_gamma_time = {0};
-	atomic_ullong sparse_list_time = {0};
-	atomic_ullong dense_list_time = {0};
+	std::atomic_ullong failed_to_converge = {0};
+	std::atomic_ullong sparse_create_time = {0};
+	std::atomic_ullong dense_create_time = {0};
+	std::atomic_ullong sparse_exp_time = {0};
+	std::atomic_ullong dense_int_exp_time = {0};
+	std::atomic_ullong dense_gen_exp_time = {0};
+	std::atomic_ullong sparse_gamma_time = {0};
+	std::atomic_ullong dense_gamma_time = {0};
+	std::atomic_ullong sparse_list_time = {0};
+	std::atomic_ullong dense_list_time = {0};
 public:
 	~MCL(){};
 	void run();

@@ -33,6 +33,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <set>
 #include <random>
 #include <mutex>
+#include <assert.h>
 #include "simd.h"
 #include "../basic/const.h"
 #include "text_buffer.h"
@@ -445,6 +446,9 @@ struct KeyMergeIterator {
 	}
 	KeyType key() const {
 		return key_;
+	}
+	size_t count() const {
+		return size_t(key_end_ - begin_);
 	}
 private:
 	const It end_;

@@ -25,7 +25,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../basic/config.h"
 #include "../util/seq_file_format.h"
 #include "../util/log_stream.h"
-#include "../basic/masking.h"
+#include "../masking/masking.h"
 #include "../taxonomy.h"
 #include "../taxon_list.h"
 #include "../taxonomy_nodes.h"
@@ -290,10 +290,10 @@ void DatabaseFile::make_db(TempFile **tmp_out, list<TextInputFile> *input_file)
 				break;
 			}
 			n = block->seqs().size();
-			if (config.masking == 1) {
-				timer.go("Masking sequences");
-				mask_seqs(block->seqs(), Masking::get(), false);
-			}
+
+			timer.go("Masking sequences");
+			mask_seqs(block->seqs(), Masking::get(), false, MaskingAlgo::SEG);
+
 			timer.go("Writing sequences");
 			for (size_t i = 0; i < n; ++i) {
 				Sequence seq = block->seqs()[i];
@@ -573,7 +573,7 @@ void DatabaseFile::read_seq_data(Letter* dst, size_t len, size_t& pos, bool seek
 	*(dst + len) = Sequence::DELIMITER;
 }
 
-void DatabaseFile::read_id_data(char* dst, size_t len) {
+void DatabaseFile::read_id_data(const int64_t oid, char* dst, size_t len) {
 	read(dst, len + 1);
 }
 
@@ -700,6 +700,11 @@ void DatabaseFile::end_random_access(bool dictionary)
 	dict_title_.shrink_to_fit();
 	dict_seq_.clear();
 	dict_seq_.shrink_to_fit();
+}
+
+std::vector<int> DatabaseFile::accession_to_oid(const std::string& acc) const
+{
+	throw std::runtime_error("Operation not supported.");
 }
 
 SequenceFile::LoadTitles DatabaseFile::load_titles()

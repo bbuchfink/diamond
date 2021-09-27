@@ -1,6 +1,6 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2016-2020 Max Planck Society for the Advancement of Science e.V.
+Copyright (C) 2016-2021 Max Planck Society for the Advancement of Science e.V.
                         Benjamin Buchfink
 						
 Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
@@ -27,49 +27,39 @@ namespace DISPATCH_ARCH {
 
 #if ARCH_ID == 2
 
-template<>
-struct score_vector<int16_t>
+template<int DELTA>
+struct ScoreVector<int16_t, DELTA>
 {
 
 	typedef __m256i Register;
 
-	score_vector() :
-		data_(::SIMD::_mm256_set1_epi16(SHRT_MIN))
+	ScoreVector() :
+		data_(::SIMD::_mm256_set1_epi16(DELTA))
 	{}
 
-	explicit score_vector(int x)
+	explicit ScoreVector(int x)
 	{
 		data_ = ::SIMD::_mm256_set1_epi16(x);
 	}
 
-	explicit score_vector(int16_t x)
+	explicit ScoreVector(int16_t x)
 	{
 		data_ = ::SIMD::_mm256_set1_epi16(x);
 	}
 
-	explicit score_vector(__m256i data) :
+	explicit ScoreVector(__m256i data) :
 		data_(data)
 	{ }
 
-	explicit score_vector(const int16_t* x) :
+	explicit ScoreVector(const int16_t* x) :
 		data_(_mm256_loadu_si256((const __m256i*)x))
 	{}
 
-	explicit score_vector(const uint16_t* x) :
+	explicit ScoreVector(const uint16_t* x) :
 		data_(_mm256_loadu_si256((const __m256i*)x))
 	{}
 
-	score_vector(int16_t a, int16_t b, uint32_t mask) {
-		alignas(32) int16_t s[16];
-		for (uint32_t i = 0; i < 16; ++i)
-			if (mask & (1 << i))
-				s[i] = b;
-			else
-				s[i] = a;
-		data_ = _mm256_load_si256(reinterpret_cast<const __m256i*>(s));
-	}
-
-	score_vector(unsigned a, Register seq)
+	ScoreVector(unsigned a, Register seq)
 	{
 		const __m256i* row_lo = reinterpret_cast<const __m256i*>(&score_matrix.matrix8u_low()[a << 5]);
 		const __m256i* row_hi = reinterpret_cast<const __m256i*>(&score_matrix.matrix8u_high()[a << 5]);
@@ -87,58 +77,58 @@ struct score_vector<int16_t>
 		data_ = _mm256_subs_epi16(data_, ::SIMD::_mm256_set1_epi16(score_matrix.bias()));
 	}
 
-	score_vector operator+(const score_vector& rhs) const
+	ScoreVector operator+(const ScoreVector& rhs) const
 	{
-		return score_vector(_mm256_adds_epi16(data_, rhs.data_));
+		return ScoreVector(_mm256_adds_epi16(data_, rhs.data_));
 	}
 
-	score_vector operator-(const score_vector& rhs) const
+	ScoreVector operator-(const ScoreVector& rhs) const
 	{
-		return score_vector(_mm256_subs_epi16(data_, rhs.data_));
+		return ScoreVector(_mm256_subs_epi16(data_, rhs.data_));
 	}
 
-	score_vector& operator+=(const score_vector& rhs) {
+	ScoreVector& operator+=(const ScoreVector& rhs) {
 		data_ = _mm256_adds_epi16(data_, rhs.data_);
 		return *this;
 	}
 
-	score_vector& operator-=(const score_vector& rhs)
+	ScoreVector& operator-=(const ScoreVector& rhs)
 	{
 		data_ = _mm256_subs_epi16(data_, rhs.data_);
 		return *this;
 	}
 
-	score_vector& operator &=(const score_vector& rhs) {
+	ScoreVector& operator &=(const ScoreVector& rhs) {
 		data_ = _mm256_and_si256(data_, rhs.data_);
 		return *this;
 	}
 
-	score_vector& operator++() {
+	ScoreVector& operator++() {
 		data_ = _mm256_adds_epi16(data_, ::SIMD::_mm256_set1_epi16(1));
 		return *this;
 	}
 
-	score_vector& max(const score_vector& rhs)
+	ScoreVector& max(const ScoreVector& rhs)
 	{
 		data_ = _mm256_max_epi16(data_, rhs.data_);
 		return *this;
 	}
 
-	friend score_vector blend(const score_vector &v, const score_vector &w, const score_vector &mask) {
-		return score_vector(_mm256_blendv_epi8(v.data_, w.data_, mask.data_));
+	friend ScoreVector blend(const ScoreVector&v, const ScoreVector&w, const ScoreVector&mask) {
+		return ScoreVector(_mm256_blendv_epi8(v.data_, w.data_, mask.data_));
 	}
 	
-	score_vector operator==(const score_vector &v) const {
-		return score_vector(_mm256_cmpeq_epi16(data_, v.data_));
+	ScoreVector operator==(const ScoreVector&v) const {
+		return ScoreVector(_mm256_cmpeq_epi16(data_, v.data_));
 	}
 
-	friend FORCE_INLINE uint32_t cmp_mask(const score_vector &v, const score_vector &w) {
+	friend FORCE_INLINE uint32_t cmp_mask(const ScoreVector&v, const ScoreVector&w) {
 		return _mm256_movemask_epi8(_mm256_cmpeq_epi16(v.data_, w.data_));
 	}
 
-	friend score_vector max(const score_vector& lhs, const score_vector& rhs)
+	friend ScoreVector max(const ScoreVector& lhs, const ScoreVector& rhs)
 	{
-		return score_vector(_mm256_max_epi16(lhs.data_, rhs.data_));
+		return ScoreVector(_mm256_max_epi16(lhs.data_, rhs.data_));
 	}
 
 	void store(int16_t* ptr) const
@@ -152,11 +142,12 @@ struct score_vector<int16_t>
 		return d[i];
 	}
 
-	void set(int i, int16_t x) {
+	ScoreVector& set(int i, int16_t x) {
 		alignas(32) int16_t d[16];
 		store(d);
 		d[i] = x;
 		data_ = _mm256_load_si256((__m256i*)d);
+		return *this;
 	}
 
 	void expand_from_8bit() {
@@ -168,7 +159,7 @@ struct score_vector<int16_t>
 		data_ = _mm256_set_m128i(hi, low);
 	}
 
-	friend std::ostream& operator<<(std::ostream& s, score_vector v)
+	friend std::ostream& operator<<(std::ostream& s, ScoreVector v)
 	{
 		int16_t x[16];
 		v.store(x);
@@ -183,49 +174,39 @@ struct score_vector<int16_t>
 
 #elif defined(__SSE2__)
 
-template<>
-struct score_vector<int16_t>
+template<int DELTA>
+struct ScoreVector<int16_t, DELTA>
 {
 
 	typedef __m128i Register;
 
-	inline score_vector() :
-		data_(::SIMD::_mm_set1_epi16(SHRT_MIN))
+	inline ScoreVector() :
+		data_(::SIMD::_mm_set1_epi16(DELTA))
 	{}
 
-	explicit score_vector(int x)
+	explicit ScoreVector(int x)
 	{
 		data_ = ::SIMD::_mm_set1_epi16(x);
 	}
 
-	explicit score_vector(int16_t x)
+	explicit ScoreVector(int16_t x)
 	{
 		data_ = ::SIMD::_mm_set1_epi16(x);
 	}
 
-	explicit score_vector(__m128i data) :
+	explicit ScoreVector(__m128i data) :
 		data_(data)
 	{ }
 	
-	explicit score_vector(const int16_t *x):
+	explicit ScoreVector(const int16_t *x):
 		data_(_mm_loadu_si128((const __m128i*)x))
 	{}
 
-	explicit score_vector(const uint16_t *x) :
+	explicit ScoreVector(const uint16_t *x) :
 		data_(_mm_loadu_si128((const __m128i*)x))
 	{}
 
-	score_vector(int16_t a, int16_t b, uint32_t mask) {
-		alignas(32) int16_t s[8];
-		for (uint32_t i = 0; i < 8; ++i)
-			if (mask & (1 << i))
-				s[i] = b;
-			else
-				s[i] = a;
-		data_ = _mm_load_si128(reinterpret_cast<const __m128i*>(s));
-	}
-
-	score_vector(unsigned a, uint64_t seq)
+	ScoreVector(unsigned a, uint64_t seq)
 	{
 		const uint16_t* row((uint16_t*)&score_matrix.matrix16()[a << 5]);
 		uint64_t b = uint64_t(row[seq & 0xff]);
@@ -246,7 +227,7 @@ struct score_vector<int16_t>
 		data_ = _mm_set_epi64x(c, b);
 	}
 
-	score_vector(unsigned a, Register seq)
+	ScoreVector(unsigned a, Register seq)
 	{
 #ifdef __SSSE3__
 		const __m128i *row = reinterpret_cast<const __m128i*>(&score_matrix.matrix8u()[a << 5]);
@@ -264,63 +245,63 @@ struct score_vector<int16_t>
 #endif
 	}
 
-	score_vector operator+(const score_vector &rhs) const
+	ScoreVector operator+(const ScoreVector&rhs) const
 	{
-		return score_vector(_mm_adds_epi16(data_, rhs.data_));
+		return ScoreVector(_mm_adds_epi16(data_, rhs.data_));
 	}
 
-	score_vector operator-(const score_vector &rhs) const
+	ScoreVector operator-(const ScoreVector&rhs) const
 	{
-		return score_vector(_mm_subs_epi16(data_, rhs.data_));
+		return ScoreVector(_mm_subs_epi16(data_, rhs.data_));
 	}
 
-	score_vector& operator+=(const score_vector& rhs) {
+	ScoreVector& operator+=(const ScoreVector& rhs) {
 		data_ = _mm_adds_epi16(data_, rhs.data_);
 		return *this;
 	}
 
-	score_vector& operator-=(const score_vector &rhs)
+	ScoreVector& operator-=(const ScoreVector&rhs)
 	{
 		data_ = _mm_subs_epi16(data_, rhs.data_);
 		return *this;
 	}
 
-	score_vector& operator &=(const score_vector& rhs) {
+	ScoreVector& operator &=(const ScoreVector& rhs) {
 		data_ = _mm_and_si128(data_, rhs.data_);
 		return *this;
 	}
 
-	score_vector& operator++() {
+	ScoreVector& operator++() {
 		data_ = _mm_adds_epi16(data_, ::SIMD::_mm_set1_epi16(1));
 		return *this;
 	}
 
-	score_vector operator==(const score_vector &v) const {
-		return score_vector(_mm_cmpeq_epi16(data_, v.data_));
+	ScoreVector operator==(const ScoreVector&v) const {
+		return ScoreVector(_mm_cmpeq_epi16(data_, v.data_));
 	}
 
-	friend FORCE_INLINE uint32_t cmp_mask(const score_vector &v, const score_vector &w) {
+	friend FORCE_INLINE uint32_t cmp_mask(const ScoreVector&v, const ScoreVector&w) {
 		return (uint32_t)_mm_movemask_epi8(_mm_cmpeq_epi16(v.data_, w.data_));
 	}
 
-	score_vector& max(const score_vector &rhs)
+	ScoreVector& max(const ScoreVector&rhs)
 	{
 		data_ = _mm_max_epi16(data_, rhs.data_);
 		return *this;
 	}
 
-	friend score_vector max(const score_vector& lhs, const score_vector &rhs)
+	friend ScoreVector max(const ScoreVector& lhs, const ScoreVector&rhs)
 	{
-		return score_vector(_mm_max_epi16(lhs.data_, rhs.data_));
+		return ScoreVector(_mm_max_epi16(lhs.data_, rhs.data_));
 	}
 
-	friend score_vector blend(const score_vector &v, const score_vector &w, const score_vector &mask) {
+	friend ScoreVector blend(const ScoreVector&v, const ScoreVector&w, const ScoreVector&mask) {
 #ifdef __SSE4_1__
-		return score_vector(_mm_blendv_epi8(v.data_, w.data_, mask.data_));
+		return ScoreVector(_mm_blendv_epi8(v.data_, w.data_, mask.data_));
 #else
 		__m128i a = _mm_andnot_si128(mask.data_, v.data_);
 		__m128i b = _mm_and_si128(mask.data_, w.data_);
-		return score_vector(_mm_or_si128(a, b));
+		return ScoreVector(_mm_or_si128(a, b));
 #endif
 	}
 
@@ -335,11 +316,12 @@ struct score_vector<int16_t>
 		return d[i];
 	}
 
-	void set(int i, int16_t x) {
+	ScoreVector& set(int i, int16_t x) {
 		int16_t d[8];
 		store(d);
 		d[i] = x;
 		data_ = _mm_loadu_si128((__m128i*)d);
+		return *this;
 	}
 
 	void expand_from_8bit() {
@@ -348,7 +330,7 @@ struct score_vector<int16_t>
 		data_ = _mm_unpacklo_epi8(data_, sign);
 	}
 
-	friend std::ostream& operator<<(std::ostream& s, score_vector v)
+	friend std::ostream& operator<<(std::ostream& s, ScoreVector v)
 	{
 		int16_t x[8];
 		v.store(x);
@@ -365,8 +347,8 @@ struct score_vector<int16_t>
 
 #ifdef __SSE2__
 
-template<>
-struct ScoreTraits<score_vector<int16_t>>
+template<int DELTA>
+struct ScoreTraits<ScoreVector<int16_t, DELTA>>
 {
 	typedef ::DISPATCH_ARCH::SIMD::Vector<int16_t> Vector;
 #if ARCH_ID == 2
@@ -406,27 +388,27 @@ struct ScoreTraits<score_vector<int16_t>>
 #endif
 	typedef int16_t Score;
 	typedef uint16_t Unsigned;
-	static score_vector<int16_t> zero()
+	static ScoreVector<int16_t, DELTA> zero()
 	{
-		return score_vector<int16_t>();
+		return ScoreVector<int16_t, DELTA>();
 	}
-	static void saturate(score_vector<int16_t> &v)
+	static void saturate(ScoreVector<int16_t, DELTA> &v)
 	{
 	}
 	static constexpr int16_t zero_score()
 	{
-		return SHRT_MIN;
+		return DELTA;
 	}
 	static int int_score(Score s)
 	{
-		return (uint16_t)s ^ 0x8000;
+		return (int)s - DELTA;
 	}
 	static constexpr int16_t max_score()
 	{
 		return SHRT_MAX;
 	}
 	static constexpr int max_int_score() {
-		return SHRT_MAX - SHRT_MIN;
+		return SHRT_MAX - DELTA;
 	}
 };
 
@@ -436,16 +418,14 @@ struct ScoreTraits<score_vector<int16_t>>
 
 #ifdef __SSE2__
 
-static inline DISPATCH_ARCH::score_vector<int16_t> load_sv(const int16_t *x) {
-	return DISPATCH_ARCH::score_vector<int16_t>(x);
+template<int DELTA>
+static inline int16_t extract_channel(const DISPATCH_ARCH::ScoreVector<int16_t, DELTA>& v, int i) {
+	return v[i];
 }
 
-static inline DISPATCH_ARCH::score_vector<int16_t> load_sv(const uint16_t *x) {
-	return DISPATCH_ARCH::score_vector<int16_t>(x);
-}
-
-static inline DISPATCH_ARCH::score_vector<int16_t> load_sv(int16_t a, int16_t b, uint32_t mask) {
-	return DISPATCH_ARCH::score_vector<int16_t>(a, b, mask);
+template<int DELTA>
+static inline DISPATCH_ARCH::ScoreVector<int16_t, DELTA> set_channel(const DISPATCH_ARCH::ScoreVector<int16_t, DELTA>& v, const int i, const int16_t x) {
+	return DISPATCH_ARCH::ScoreVector<int16_t, DELTA>(v).set(i, x);
 }
 
 #endif

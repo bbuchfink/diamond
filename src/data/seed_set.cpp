@@ -27,6 +27,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "enum_seeds.h"
 #include "../util/system/system.h"
 #include "../util/io/output_file.h"
+#include "../basic/shape_config.h"
 
 static const size_t PADDING = 32;
 static const double HASH_TABLE_FACTOR = 1.25;
@@ -35,7 +36,7 @@ using std::endl;
 using std::get;
 using std::runtime_error;
 
-No_filter no_filter;
+NoFilter no_filter;
 
 struct Seed_set_callback
 {
@@ -60,14 +61,16 @@ struct Seed_set_callback
 	vector<bool> *data;
 };
 
-SeedSet::SeedSet(SequenceSet &seqs, double max_coverage, const std::vector<bool>* skip):
+SeedSet::SeedSet(Block &seqs, double max_coverage, const std::vector<bool>* skip, const double seed_cut, const MaskingAlgo soft_masking):
 	data_((size_t)pow(1llu<<Reduction::reduction.bit_size(), shapes[0].length_))
 {
 	if (!shapes[0].contiguous())
 		throw std::runtime_error("Contiguous seed required.");
 	PtrVector<Seed_set_callback> v;
 	v.push_back(new Seed_set_callback(data_, size_t(max_coverage*pow(Reduction::reduction.size(), shapes[0].length_))));
-	enum_seeds(&seqs, v, seqs.partition(1), 0, 1, &no_filter, SeedEncoding::CONTIGUOUS, skip, true);
+	const auto p = seqs.seqs().partition(1);
+	const EnumCfg cfg{ &p, 0, 1, SeedEncoding::CONTIGUOUS, skip, true, false, seed_cut, soft_masking };
+	enum_seeds(seqs, v, &no_filter, cfg);
 	coverage_ = (double)v.back().coverage / pow(Reduction::reduction.size(), shapes[0].length_);
 }
 
@@ -86,13 +89,15 @@ struct Hashed_seed_set_callback
 	PtrVector<HashSet<Modulo2, Identity> > &dst;
 };
 
-HashedSeedSet::HashedSeedSet(SequenceSet &seqs, const std::vector<bool>* skip)
+HashedSeedSet::HashedSeedSet(Block &seqs, const std::vector<bool>* skip, const double seed_cut, const MaskingAlgo soft_masking)
 {
 	for (size_t i = 0; i < shapes.count(); ++i)
-		data_.push_back(new Table(next_power_of_2(seqs.letters() * HASH_TABLE_FACTOR)));
+		data_.push_back(new Table(next_power_of_2(seqs.seqs().letters() * HASH_TABLE_FACTOR)));
 	PtrVector<Hashed_seed_set_callback> v;
 	v.push_back(new Hashed_seed_set_callback(data_));
-	enum_seeds(&seqs, v, seqs.partition(1), 0, shapes.count(), &no_filter, SeedEncoding::HASHED, skip, false);
+	const auto p = seqs.seqs().partition(1);
+	const EnumCfg cfg{ &p, 0, shapes.count(), SeedEncoding::HASHED, skip, false, false, seed_cut, soft_masking };
+	enum_seeds(seqs, v, &no_filter, cfg);
 
 	vector<size_t> sizes;
 	for (size_t i = 0; i < shapes.count(); ++i)
@@ -101,7 +106,7 @@ HashedSeedSet::HashedSeedSet(SequenceSet &seqs, const std::vector<bool>* skip)
 
 	for (size_t i = 0; i < shapes.count(); ++i)
 		data_.push_back(new Table(next_power_of_2(sizes[i] * HASH_TABLE_FACTOR)));
-	enum_seeds(&seqs, v, seqs.partition(1), 0, shapes.count(), &no_filter, SeedEncoding::HASHED, skip, false);
+	enum_seeds(seqs, v, &no_filter, cfg);
 
 	for (size_t i = 0; i < shapes.count(); ++i) {
 		data_[i].finish();

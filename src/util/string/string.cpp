@@ -3,6 +3,10 @@
 #include "string.h"
 
 using std::string;
+using std::to_string;
+using std::stringstream;
+using std::setprecision;
+using std::fixed;
 
 string convert_size(size_t size) {
 	static const char *SIZES[] = { "B", "KB", "MB", "GB" };
@@ -30,6 +34,12 @@ string replace(const std::string& s, char a, char b) {
 		i = r.find_first_of(a, i);
 	}
 	return r;
+}
+
+std::string ratio_percentage(const double x, const double y) {
+	stringstream ss;
+	ss << fixed << setprecision(0) << x << '/' << y << " (" << setprecision(2) << x / y * 100.0 << "%)";
+	return ss.str();
 }
 
 }}

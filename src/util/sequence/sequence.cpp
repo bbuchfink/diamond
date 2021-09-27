@@ -28,13 +28,13 @@ namespace Util { namespace Seq {
 
 const char* id_delimiters = " \a\b\f\n\r\t\v\1";
 
-void format(Sequence seq, const char *id, const char *qual, OutputFile &out, const std::string &format, const Value_traits &value_traits) {
+void format(Sequence seq, const char *id, const char *qual, OutputFile &out, const std::string &format, const ValueTraits& value_traits) {
 	static TextBuffer buf;
-	constexpr size_t WRAP = 160;
+	constexpr Loc WRAP = 160;
 	const size_t l = seq.length();
 	if(format == "fasta") {
 		buf << '>' << id << '\n';
-		for (size_t i = 0; i < seq.length(); i += WRAP) {
+		for (Loc i = 0; i < seq.length(); i += WRAP) {
 			seq.print(buf, i, std::min(i + WRAP, seq.length()), value_traits);
 			buf << '\n';
 		}
@@ -93,6 +93,10 @@ void get_title_def(const std::string& s, std::string& title, std::string& def)
 		def.clear();
 	else
 		def = s.substr(i + 1);
+}
+
+bool is_fully_masked(const Sequence& seq) {
+	return std::count(seq.data(), seq.end(), MASK_LETTER) == seq.length();
 }
 
 }}

@@ -36,7 +36,7 @@ struct LongScoreProfile
 			const int8_t* scores = &score_matrix.matrix8()[l << 5];
 			data[l].reserve(seq.length() + 2 * padding);
 			data[l].insert(data[l].end(), padding, 0);
-			for (unsigned i = 0; i < seq.length(); ++i)
+			for (Loc i = 0; i < seq.length(); ++i)
 				data[l].push_back(scores[(int)seq[i]] + cbs.int8[i]);
 			data[l].insert(data[l].end(), padding, 0);
 		}
@@ -51,7 +51,7 @@ struct LongScoreProfile
 			data[l].clear();
 			data[l].reserve(seq.length() + 2 * padding);
 			data[l].insert(data[l].end(), padding, 0);
-			for (unsigned i = 0; i < seq.length(); ++i)
+			for (Loc i = 0; i < seq.length(); ++i)
 				data[l].push_back(scores[(int)seq[i]]);
 			data[l].insert(data[l].end(), padding, 0);
 		}

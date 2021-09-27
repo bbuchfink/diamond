@@ -27,6 +27,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "blastdb.h"
 #include "../../util/string/tokenizer.h"
 #include "../../util/system/system.h"
+#include "../basic/config.h"
 
 using std::cout;
 using std::endl;
@@ -97,7 +98,7 @@ BlastDB::BlastDB(const std::string& file_name, Metadata metadata, Flags flags) :
 	CSeqDB::FindVolumePaths(file_name, CSeqDB::eProtein, paths);
 	for (const string& db : paths)
 		if(!exists(db + ".acc"))
-			throw std::runtime_error("Accession file not found. BLAST databases require preprocessing using this command line: diamond prepdp -d DATABASE_PATH");
+			throw std::runtime_error("Accession file not found. BLAST databases require preprocessing using this command line: diamond prepdb -d DATABASE_PATH");
 	if (config.multiprocessing)
 		throw std::runtime_error("Multiprocessing mode is not compatible with BLAST databases.");
 }
@@ -160,18 +161,17 @@ void BlastDB::read_seq_data(Letter* dst, size_t len, size_t& pos, bool seek)
 	db_->RetSequence(&buf);
 }
 
-void BlastDB::read_id_data(char* dst, size_t len)
+void BlastDB::read_id_data(const int64_t oid, char* dst, size_t len)
 {
-	/*if (flag_any(flags_, Flags::FULL_SEQIDS)) {
-		const string id = full_id(*db_->GetBioseq(oid_seqdata_), nullptr, long_seqids_, true);
+	if (flag_any(flags_, Flags::FULL_TITLES)) {
+		const string id = full_id(*db_->GetBioseq(oid), nullptr, long_seqids_, true);
 		std::copy(id.begin(), id.begin() + len, dst);
 	}
 	else {
-		const string id = best_id(db_->GetSeqIDs(oid_seqdata_));
+		const string id = (*best_id(db_->GetSeqIDs(oid)))->GetSeqIdString(true);
 		std::copy(id.begin(), id.end(), dst);
 	}
 	dst[len] = '\0';
-	++oid_seqdata_;*/
 }
 
 void BlastDB::skip_id_data()
@@ -207,12 +207,12 @@ size_t BlastDB::dict_len(size_t dict_id, const size_t ref_block) const
 
 std::vector<Letter> BlastDB::dict_seq(size_t dict_id, const size_t ref_block) const
 {
-	if (dict_id >= dict_oid_.size())
+	const size_t b = dict_block(ref_block);
+	if (dict_id >= dict_oid_[b].size())
 		throw std::runtime_error("Dictionary not loaded.");
 	vector<Letter> v;
-	seq_data(dict_oid_[dict_block(ref_block)][dict_id], v);
-	for (Letter& l : v)
-		l = NCBI_TO_STD[(int)l];
+	seq_data(dict_oid_[b][dict_id], v);
+	alph_ncbi_to_std(v.begin(), v.end());
 	return v;
 }
 
@@ -409,6 +409,13 @@ void BlastDB::end_random_access(bool dictionary)
 	acc_.shrink_to_fit();
 	if(dictionary)
 		free_dictionary();
+}
+
+std::vector<int> BlastDB::accession_to_oid(const std::string& acc) const
+{
+	vector<int> out;
+	db_->AccessionToOids(acc, out);
+	return out;
 }
 
 SequenceFile::LoadTitles BlastDB::load_titles()

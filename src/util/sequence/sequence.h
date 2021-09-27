@@ -27,7 +27,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 namespace Util { namespace Seq {
 
-void format(Sequence seq, const char *id, const char *qual, OutputFile &out, const std::string &format, const Value_traits &value_traits);
+void format(Sequence seq, const char *id, const char *qual, OutputFile &out, const std::string &format, const ValueTraits& value_traits);
 
 static inline Sequence clip(const Letter *seq, int len, int anchor) {
 	const Letter *a = seq + anchor, *begin = seq, *end = seq + len, *p;
@@ -46,5 +46,6 @@ extern const char* id_delimiters;
 std::string all_seqids(const char* s);
 std::string seqid(const char* title, bool short_seqids);
 void get_title_def(const std::string& s, std::string& title, std::string& def);
+bool is_fully_masked(const Sequence& seq);
 
 }}

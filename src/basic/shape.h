@@ -38,15 +38,13 @@ struct Shape
 		weight_ (0),
 		d_ (0),
 		mask_ (0),
-		rev_mask_ (0),
-		id_ (0)
+		rev_mask_ (0)
 	{ memset(positions_, 0, sizeof(uint32_t)*Const::max_seed_weight); }
 
 	Shape(const char* code, unsigned id) :
 		weight_(0),
 		mask_(0),
 		rev_mask_(0),
-		id_(id),
 		long_mask_(0)
 		//long_mask_sse_(_mm_setzero_si128())
 	{
@@ -78,7 +76,7 @@ struct Shape
 #ifdef FREQUENCY_MASKING
 		double f = 0;
 #endif
-		for (unsigned i = 0; i < weight_; ++i) {
+		for (int i = 0; i < weight_; ++i) {
 			Letter l = seq[positions_[i]];
 #ifdef SEQ_MASK
 			l &= LETTER_MASK;
@@ -102,7 +100,7 @@ struct Shape
 	{
 		s = 0;
 		const uint64_t b = Reduction::reduction.bit_size();
-		for (unsigned i = 0; i < weight_; ++i) {
+		for (int i = 0; i < weight_; ++i) {
 			Letter l = seq[positions_[i]];
 #ifdef SEQ_MASK
 			l &= LETTER_MASK;
@@ -119,12 +117,12 @@ struct Shape
 	inline bool set_seed_reduced(Packed_seed &s, const Letter *seq) const
 	{
 		s = 0;
-		for (unsigned i = 0; i < weight_; ++i) {
+		for (int i = 0; i < weight_; ++i) {
 			Letter l = seq[positions_[i]];
 #ifdef SEQ_MASK
 			l &= LETTER_MASK;
 #endif
-			if (l == value_traits.mask_char)
+			if (l == MASK_LETTER)
 				return false;
 			s *= Reduction::reduction.size();
 			s += uint64_t(l);
@@ -134,7 +132,7 @@ struct Shape
 
 	inline bool set_seed(Seed &s, const Letter *seq) const
 	{
-		for (unsigned i = 0; i < weight_; ++i) {
+		for (int i = 0; i < weight_; ++i) {
 			Letter l = seq[positions_[i]];
 #ifdef SEQ_MASK
 			l &= LETTER_MASK;
@@ -148,7 +146,7 @@ struct Shape
 	
 	friend std::ostream& operator<<(std::ostream&s, const Shape &sh)
 	{
-		for (unsigned i = 0; i < sh.length_; ++i)
+		for (int i = 0; i < sh.length_; ++i)
 			s << ((sh.mask_ & (1 << i)) ? '1' : '0');
 		return s;
 	}
@@ -163,7 +161,8 @@ struct Shape
 		return long_mask_;
 	}
 
-	uint32_t length_, weight_, positions_[Const::max_seed_weight], d_, mask_, rev_mask_, id_;
+	int32_t length_, weight_, positions_[Const::max_seed_weight];
+	uint32_t d_, mask_, rev_mask_;
 	uint64_t long_mask_;
 	//__m128i long_mask_sse_;
 

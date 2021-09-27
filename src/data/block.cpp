@@ -27,15 +27,16 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "block.h"
 #include "../util/sequence/sequence.h"
 #include "sequence_file.h"
+#include "../basic/config.h"
 
 using std::mutex;
 using std::lock_guard;
 using std::array;
 
 static bool looks_like_dna(const Sequence& seq) {
-	array<size_t, AMINO_ACID_COUNT> count;
+	array<Loc, AMINO_ACID_COUNT> count;
 	count.fill(0);
-	for (size_t i = 0; i < seq.length(); ++i)
+	for (Loc i = 0; i < seq.length(); ++i)
 		++count[(int)seq[i]];
 	return count[(int)value_traits.from_char('A')]
 		+ count[(int)value_traits.from_char('C')]
@@ -47,7 +48,8 @@ static bool looks_like_dna(const Sequence& seq) {
 Block::Block(Alphabet alphabet):
 	seqs_(alphabet),
 	source_seqs_(Alphabet::STD),
-	unmasked_seqs_(alphabet)
+	unmasked_seqs_(alphabet),
+	soft_masked_(false)
 {
 }
 
@@ -77,9 +79,9 @@ bool Block::long_offsets() const {
 	return seqs_.raw_len() > (size_t)std::numeric_limits<uint32_t>::max();
 }
 
-static size_t push_seq(SequenceSet& ss, SequenceSet& source_seqs, const vector<Letter>& seq, unsigned frame_mask, Sequence_type seq_type)
+static size_t push_seq(SequenceSet& ss, SequenceSet& source_seqs, const vector<Letter>& seq, unsigned frame_mask, SequenceType seq_type)
 {
-	if (seq_type == Sequence_type::amino_acid) {
+	if (seq_type == SequenceType::amino_acid) {
 		ss.push_back(seq.cbegin(), seq.cend());
 		return seq.size();
 	}
@@ -108,13 +110,14 @@ Block::Block(std::list<TextInputFile>::iterator file_begin,
 	std::list<TextInputFile>::iterator file_end,
 	const Sequence_file_format& format,
 	size_t max_letters,
-	const Value_traits& value_traits,
+	const ValueTraits& value_traits,
 	bool with_quals,
 	bool lazy_masking,
 	size_t modulo):
 	seqs_(Alphabet::STD),
 	source_seqs_(Alphabet::STD),
-	unmasked_seqs_(Alphabet::STD)
+	unmasked_seqs_(Alphabet::STD),
+	soft_masked_(false)
 {
 	static constexpr size_t CHECK_FOR_DNA_COUNT = 10;
 	size_t letters = 0, n = 0;
@@ -193,4 +196,29 @@ uint32_t Block::dict_id(size_t block, size_t block_id, SequenceFile& db) const
 	}
 	const Letter* seq = unmasked_seqs().empty() ? nullptr : unmasked_seqs()[block_id].data();
 	return db.dict_id(block, block_id, block_id2oid(block_id), seqs().length(block_id), t.c_str(), seq);
+}
+
+void Block::soft_mask(const MaskingAlgo algo) {
+	if (soft_masked_)
+		return;
+	if (soft_masking_table_.blank())
+		mask_seqs(seqs_, Masking::get(), true, algo, &soft_masking_table_);
+	else
+		soft_masking_table_.apply(seqs_);
+	soft_masked_ = true;
+}
+
+void Block::remove_soft_masking(const int template_len, const bool add_bit_mask) {
+	if (!soft_masked_)
+		return;
+	soft_masking_table_.remove(seqs_, template_len, add_bit_mask);
+	soft_masked_ = false;
+}
+
+bool Block::soft_masked() const {
+	return soft_masked_;
+}
+
+size_t Block::soft_masked_letters() const {
+	return soft_masking_table_.masked_letters();
 }

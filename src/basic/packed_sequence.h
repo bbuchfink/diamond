@@ -28,7 +28,7 @@ using std::vector;
 
 inline bool has_n(const Sequence &seq)
 {
-	for(unsigned i=0;i<seq.length();++i)
+	for(Loc i=0;i<seq.length();++i)
 		if(seq[i] == 4)
 			return true;
 	return false;
@@ -37,7 +37,7 @@ inline bool has_n(const Sequence &seq)
 struct Packed_sequence
 {
 
-	Packed_sequence(const Sequence &seq, Sequence_type type):
+	Packed_sequence(const Sequence &seq, SequenceType type):
 		has_n_ (type == nucleotide ? ::has_n(seq) : false)
 	{
 		switch (type) {
@@ -88,7 +88,7 @@ private:
 	void pack(const Sequence &seq)
 	{
 		unsigned x = 0, n = 0;
-		for(unsigned i=0;i<seq.length();++i) {
+		for(Loc i=0;i<seq.length();++i) {
 			x |= (unsigned)seq[i] << n;
 			n += _b;
 			if(n >= 8) {

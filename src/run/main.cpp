@@ -34,7 +34,8 @@ void model_seqs();
 void opt();
 void run_masker();
 void fastq2fasta();
-void view();
+void view_daa();
+void view_tsv();
 void db_info();
 void test_main();
 void benchmark_sw();
@@ -54,6 +55,9 @@ void roc_id();
 void makeindex();
 void find_shapes();
 void composition();
+void join();
+void hash_seqs();
+void list_seeds();
 #ifdef WITH_BLASTDB
 void prep_blast_db();
 #endif
@@ -86,7 +90,12 @@ int main(int ac, const char* av[])
 			Search::run();
 			break;
 		case Config::view:
-			view();
+			if (!config.daa_file.empty())
+				view_daa();
+			else if (!config.input_ref_file.empty())
+				view_tsv();
+			else
+				throw std::runtime_error("The view command requires either a text (option --in) or DAA (option -a) input file.");
 			break;
 		case Config::getseq:
 			get_seq();
@@ -184,6 +193,9 @@ int main(int ac, const char* av[])
 		case Config::find_shapes:
 			find_shapes();
 			break;
+		case Config::HASH_SEQS:
+			hash_seqs();
+			break;
 #ifdef WITH_BLASTDB
 		case Config::prep_blast_db:
 			prep_blast_db();
@@ -191,6 +203,12 @@ int main(int ac, const char* av[])
 #endif
 		case Config::composition:
 			composition();
+			break;
+		case Config::JOIN:
+			join();
+			break;
+		case Config::LIST_SEEDS:
+			list_seeds();
 			break;
 		default:
 			return 1;

@@ -26,8 +26,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../basic/diagonal_segment.h"
 #include "../basic/match.h"
 
-void init_cbs();
-
 struct No_score_correction
 {
 	void operator()(int &score, int i, int query_anchor, int mult) const
@@ -44,6 +42,6 @@ struct Bias_correction : public std::vector<float>
 	}
 	int operator()(const Hsp &hsp) const;
 	int operator()(const Diagonal_segment &d) const;
-	Bias_correction reverse() const;
+	static std::vector<int8_t> reverse(const int8_t* p, const size_t len);
 	std::vector<int8_t> int8;
 };

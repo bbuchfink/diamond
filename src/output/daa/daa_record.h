@@ -49,6 +49,7 @@ struct DAA_query_record
 	{
 
 		Match(const DAA_query_record &query_record) :
+			Hsp(true),
 			hit_num(std::numeric_limits<uint32_t>::max()),
 			subject_id(std::numeric_limits<uint32_t>::max()),
 			parent_(query_record)

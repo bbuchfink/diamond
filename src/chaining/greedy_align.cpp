@@ -38,24 +38,40 @@ using std::cout;
 using std::map;
 using std::list;
 using std::set;
+using std::max;
+using std::min;
 
 bool disjoint(list<Hsp_traits>::const_iterator begin, list<Hsp_traits>::const_iterator end, const Hsp_traits &t, int cutoff)
 {
-	for (; begin != end; ++begin)
-		if (begin->partial_score(t) < cutoff || !begin->collinear(t))
+	for (; begin != end; ++begin) {
+		const double ot = t.subject_range.overlap_factor(begin->subject_range),
+			oq = t.query_range.overlap_factor(begin->query_range);
+		if ((1.0 - min(ot, oq)) * t.score / begin->score >= config.chaining_stacked_hsp_ratio)
+			continue;
+		if ((1.0 - max(ot, oq)) * t.score < cutoff)
+			return false;
+		//if (begin->partial_score(t) < cutoff || !begin->collinear(t))
 		//if (!begin->disjoint(t) || !begin->collinear(t))
 		//if (!begin->rel_disjoint(t))
-			return false;
+		//	return false;
+	}
 	return true;
 }
 
 bool disjoint(list<Hsp_traits>::const_iterator begin, list<Hsp_traits>::const_iterator end, const Diagonal_segment &d, int cutoff)
 {
-	for (; begin != end; ++begin)
-		if (begin->partial_score(d) < cutoff || !begin->collinear(d))
+	for (; begin != end; ++begin) {
+		const double ot = d.subject_range().overlap_factor(begin->subject_range),
+			oq = d.query_range().overlap_factor(begin->query_range);
+		if ((1.0 - min(ot, oq)) * d.score / begin->score >= config.chaining_stacked_hsp_ratio)
+			continue;
+		if ((1.0 - max(ot, oq)) * d.score < cutoff)
+			return false;
+		//if (begin->partial_score(d) < cutoff || !begin->collinear(d))
 		//if (!begin->disjoint(d) || !begin->collinear(d))
 		//if (!begin->rel_disjoint(d))
-			return false;
+		//return false;
+	}
 	return true;
 }
 
@@ -496,7 +512,7 @@ struct Greedy_aligner2
 		unsigned next;
 		int max_score = 0, max_j = (int)subject.length();
 		do {
-			Hsp *hsp = log ? new Hsp : 0;
+			Hsp *hsp = log ? new Hsp(true) : 0;
 			Hsp_traits t(frame);
 			next = std::numeric_limits<unsigned>::max();
 			backtrace(top_node, hsp, t, max_shift, next, max_j);
