@@ -42,7 +42,7 @@ struct VectorRowCounter {
 		i_max()
 	{
 	}
-	FORCE_INLINE void inc(const _sv& best, const _sv& current_cell) {
+	void inc(const _sv& best, const _sv& current_cell) {
 		i_max = blend(i_max, i, best == current_cell);
 		i += _sv(Score(1));
 	}
@@ -55,54 +55,54 @@ struct VectorRowCounter {
 };
 
 template<typename _sv>
-MSC_INLINE static _sv add_cbs(const _sv& v, void*) {
+FORCE_INLINE _sv add_cbs(const _sv& v, void*) {
 	return v;
 }
 
 template<typename _sv>
-MSC_INLINE static _sv add_cbs(const _sv& v, const _sv& query_bias) {
+FORCE_INLINE _sv add_cbs(const _sv& v, const _sv& query_bias) {
 	return v + query_bias;
 }
 
 template<typename _score>
-MSC_INLINE static _score add_cbs_scalar(_score x, int8_t b) {
+FORCE_INLINE _score add_cbs_scalar(_score x, int8_t b) {
 	return x + _score(b);
 }
 
 template<typename _score>
-MSC_INLINE static _score add_cbs_scalar(_score x, void* b) {
+FORCE_INLINE _score add_cbs_scalar(_score x, void* b) {
 	return x;
 }
 
 template<typename _sv>
-MSC_INLINE static void make_gap_mask(typename ::DISPATCH_ARCH::ScoreTraits<_sv>::TraceMask* trace_mask, const _sv& current_cell, const _sv& vertical_gap, const _sv& horizontal_gap) {
+FORCE_INLINE void make_gap_mask(typename ::DISPATCH_ARCH::ScoreTraits<_sv>::TraceMask* trace_mask, const _sv& current_cell, const _sv& vertical_gap, const _sv& horizontal_gap) {
 	trace_mask->gap = ::DISPATCH_ARCH::ScoreTraits<_sv>::TraceMask::make(cmp_mask(current_cell, vertical_gap), cmp_mask(current_cell, horizontal_gap));
 }
 
 template<typename _sv>
-MSC_INLINE static void make_gap_mask(std::nullptr_t, const _sv&, const _sv&, const _sv&) {
+FORCE_INLINE void make_gap_mask(std::nullptr_t, const _sv&, const _sv&, const _sv&) {
 }
 
 template<typename _sv>
-MSC_INLINE static void make_open_mask(typename ::DISPATCH_ARCH::ScoreTraits<_sv>::TraceMask* trace_mask, const _sv& open, const _sv& vertical_gap, const _sv& horizontal_gap) {
+FORCE_INLINE void make_open_mask(typename ::DISPATCH_ARCH::ScoreTraits<_sv>::TraceMask* trace_mask, const _sv& open, const _sv& vertical_gap, const _sv& horizontal_gap) {
 	trace_mask->open = ::DISPATCH_ARCH::ScoreTraits<_sv>::TraceMask::make(cmp_mask(vertical_gap, open), cmp_mask(horizontal_gap, open));
 }
 
 template<typename _sv>
-MSC_INLINE static void make_open_mask(std::nullptr_t, const _sv&, const _sv&, const _sv&) {
+FORCE_INLINE void make_open_mask(std::nullptr_t, const _sv&, const _sv&, const _sv&) {
 }
 
 template<typename Sv>
-MSC_INLINE static void set_max(Sv& v, const Sv& x) {
+FORCE_INLINE void set_max(Sv& v, const Sv& x) {
 	v.max(x);
 }
 
-MSC_INLINE static void set_max(int32_t& v, const int32_t x) {
+FORCE_INLINE void set_max(int32_t& v, const int32_t x) {
 	v = std::max(v, x);
 }
 
 template<typename Sv, typename Cell, typename Cbs, typename TraceMask, typename RowCounter, typename IdMask>
-MSC_INLINE static Cell swipe_cell_update(const Cell& diagonal_cell,
+FORCE_INLINE Cell swipe_cell_update(const Cell& diagonal_cell,
 	const Sv& scores,
 	Cbs query_bias,
 	const Sv& gap_extension,

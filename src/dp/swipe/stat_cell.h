@@ -22,11 +22,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <ostream>
 #include "../../basic/match.h"
 
-static inline uint8_t cmp_mask(int x, int y) {
+FORCE_INLINE uint8_t cmp_mask(int x, int y) {
 	return x == y;
 }
 
-static inline int blend(int v, int w, int mask) {
+FORCE_INLINE int blend(int v, int w, int mask) {
 	return mask ? w : v;
 }
 
@@ -96,7 +96,7 @@ struct ForwardCell<int32_t> {
 };
 
 template<typename Sv>
-static inline ForwardCell<Sv> set_channel(const ForwardCell<Sv>& v, const int i, const typename ::DISPATCH_ARCH::ScoreTraits<Sv>::Score x) {
+FORCE_INLINE ForwardCell<Sv> set_channel(const ForwardCell<Sv>& v, const int i, const typename ::DISPATCH_ARCH::ScoreTraits<Sv>::Score x) {
 	ForwardCell<Sv> c = set_channel(static_cast<Sv>(v), i, x);
 	c.ident = set_channel(v.ident, i, x);
 	c.len = set_channel(v.len, i, x);
@@ -155,7 +155,7 @@ struct BackwardCell<int32_t> {
 };
 
 template<typename Sv>
-static inline BackwardCell<Sv> set_channel(const BackwardCell<Sv>& v, const int i, const typename ::DISPATCH_ARCH::ScoreTraits<Sv>::Score x) {
+FORCE_INLINE BackwardCell<Sv> set_channel(const BackwardCell<Sv>& v, const int i, const typename ::DISPATCH_ARCH::ScoreTraits<Sv>::Score x) {
 	BackwardCell<Sv> c = set_channel(static_cast<Sv>(v), i, x);
 	c.mismatch = set_channel(v.mismatch, i, x);
 	c.gapopen = set_channel(v.gapopen, i, x);
@@ -169,58 +169,58 @@ struct Void {
 };
 
 template<typename Sv>
-static inline Void extract_stats(const Sv&, int) {
+FORCE_INLINE Void extract_stats(const Sv&, int) {
 	return Void();
 }
 
 template<typename Sv>
-static inline ForwardCell<int32_t>::Stats extract_stats(const ForwardCell<Sv>& v, int channel) {
+FORCE_INLINE ForwardCell<int32_t>::Stats extract_stats(const ForwardCell<Sv>& v, int channel) {
 	const auto s = ::DISPATCH_ARCH::ScoreTraits<Sv>::int_score;
 	return { s(extract_channel(v.ident, channel)), s(extract_channel(v.len, channel)) };
 }
 
 template<typename Sv>
-static inline BackwardCell<int32_t>::Stats extract_stats(const BackwardCell<Sv>& v, int channel) {
+FORCE_INLINE BackwardCell<int32_t>::Stats extract_stats(const BackwardCell<Sv>& v, int channel) {
 	const auto s = ::DISPATCH_ARCH::ScoreTraits<Sv>::int_score;
 	return { s(extract_channel(v.mismatch, channel)), s(extract_channel(v.gapopen, channel)) };
 }
 
 template<typename Sv>
-static inline bool overflow_stats(Void) {
+FORCE_INLINE bool overflow_stats(Void) {
 	return false;
 }
 
 template<typename Sv>
-static inline bool overflow_stats(const ForwardCell<int32_t>::Stats& stats) {
+FORCE_INLINE bool overflow_stats(const ForwardCell<int32_t>::Stats& stats) {
 	constexpr auto m = DISPATCH_ARCH::ScoreTraits<Sv>::max_int_score();
 	return stats.ident == m || stats.len == m;
 }
 
 template<typename Sv>
-static inline bool overflow_stats(const BackwardCell<int32_t>::Stats& stats) {
+FORCE_INLINE bool overflow_stats(const BackwardCell<int32_t>::Stats& stats) {
 	constexpr auto m = DISPATCH_ARCH::ScoreTraits<Sv>::max_int_score();
 	return stats.gap_open == m || stats.mismatch == m;
 }
 
-static inline void assign_stats(Hsp& hsp, Void) {}
+FORCE_INLINE void assign_stats(Hsp& hsp, Void) {}
 
-static inline void assign_stats(Hsp& hsp, const ForwardCell<int32_t>::Stats& v) {
+FORCE_INLINE void assign_stats(Hsp& hsp, const ForwardCell<int32_t>::Stats& v) {
 	hsp.identities = v.ident;
 	hsp.length = v.len;
 }
 
-static inline void assign_stats(Hsp& hsp, const BackwardCell<int32_t>::Stats& v) {
+FORCE_INLINE void assign_stats(Hsp& hsp, const BackwardCell<int32_t>::Stats& v) {
 	hsp.gap_openings = v.gap_open;
 	hsp.mismatches = v.mismatch;
 	hsp.gaps = hsp.length - hsp.identities - hsp.mismatches;
 }
 
 template<typename Sv>
-MSC_INLINE static void update_stats(const Sv&, const Sv&, const Sv&, const DummyIdMask<Sv>&) {
+FORCE_INLINE void update_stats(const Sv&, const Sv&, const Sv&, const DummyIdMask<Sv>&) {
 }
 
 template<typename Sv>
-MSC_INLINE static void update_stats(ForwardCell<Sv>& current_cell, ForwardCell<Sv>& horizontal_gap, ForwardCell<Sv>& vertical_gap, const VectorIdMask<Sv>& id_mask) {
+FORCE_INLINE void update_stats(ForwardCell<Sv>& current_cell, ForwardCell<Sv>& horizontal_gap, ForwardCell<Sv>& vertical_gap, const VectorIdMask<Sv>& id_mask) {
 	const Sv one = Sv(1);
 	current_cell.ident += id_mask.mask;
 	current_cell.len += one;
@@ -229,23 +229,23 @@ MSC_INLINE static void update_stats(ForwardCell<Sv>& current_cell, ForwardCell<S
 }
 
 template<typename Sv>
-MSC_INLINE static void update_stats(BackwardCell<Sv>& current_cell, BackwardCell<Sv>& horizontal_gap, BackwardCell<Sv>& vertical_gap, const VectorIdMask<Sv>& id_mask) {
+FORCE_INLINE void update_stats(BackwardCell<Sv>& current_cell, BackwardCell<Sv>& horizontal_gap, BackwardCell<Sv>& vertical_gap, const VectorIdMask<Sv>& id_mask) {
 	current_cell.mismatch += Sv(1) - id_mask.mask;
 }
 
 template<typename Sv>
-MSC_INLINE static void update_open(const Sv&, const Sv&) {
+FORCE_INLINE void update_open(const Sv&, const Sv&) {
 }
 
 template<typename Sv>
-MSC_INLINE static void update_open(ForwardCell<Sv>& open, ForwardCell<Sv>& current) {
+FORCE_INLINE void update_open(ForwardCell<Sv>& open, ForwardCell<Sv>& current) {
 	const Sv zero = Sv(), zero_mask = current == zero;
 	current.ident = blend(current.ident, zero, zero_mask);
 	current.len = blend(current.len, zero, zero_mask);
 }
 
 template<typename Sv>
-MSC_INLINE static void update_open(BackwardCell<Sv>& open, BackwardCell<Sv>& current) {
+FORCE_INLINE void update_open(BackwardCell<Sv>& open, BackwardCell<Sv>& current) {
 	open.gapopen += Sv(1);
 	const Sv zero = Sv(), zero_mask = current == zero;
 	current.mismatch = blend(current.mismatch, zero, zero_mask);
@@ -253,7 +253,7 @@ MSC_INLINE static void update_open(BackwardCell<Sv>& open, BackwardCell<Sv>& cur
 }
 
 template<typename Sv>
-MSC_INLINE static void set_max(ForwardCell<Sv>& v, const ForwardCell<Sv>& x) {
+FORCE_INLINE void set_max(ForwardCell<Sv>& v, const ForwardCell<Sv>& x) {
 	v.max(x);
 	const Sv mask = v == x;
 	v.ident = blend(v.ident, x.ident, mask);
@@ -261,17 +261,17 @@ MSC_INLINE static void set_max(ForwardCell<Sv>& v, const ForwardCell<Sv>& x) {
 }
 
 template<typename Sv>
-MSC_INLINE static void set_max(BackwardCell<Sv>& v, const BackwardCell<Sv>& x) {
+FORCE_INLINE void set_max(BackwardCell<Sv>& v, const BackwardCell<Sv>& x) {
 	v.max(x);
 	const Sv mask = v == x;
 	v.mismatch = blend(v.mismatch, x.mismatch, mask);
 	v.gapopen = blend(v.gapopen, x.gapopen, mask);
 }
 
-static inline void saturate(ForwardCell<int32_t>& c) {
+FORCE_INLINE void saturate(ForwardCell<int32_t>& c) {
 	c.v = std::max(c.v, 0);
 }
 
-static inline void saturate(BackwardCell<int32_t>& c) {
+FORCE_INLINE void saturate(BackwardCell<int32_t>& c) {
 	c.v = std::max(c.v, 0);
 }

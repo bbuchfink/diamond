@@ -357,7 +357,7 @@ struct ScoreTraits<ScoreVector<int16_t, DELTA>>
 	struct TraceMask {
 		uint32_t gap;
 		uint32_t open;
-		static FORCE_INLINE uint32_t make(uint32_t vmask, uint32_t hmask) {
+		static uint32_t make(uint32_t vmask, uint32_t hmask) {
 			return (vmask & VMASK) | (hmask & HMASK);
 		}
 		static uint32_t vmask(int channel) {
@@ -372,7 +372,7 @@ struct ScoreTraits<ScoreVector<int16_t, DELTA>>
 	enum { CHANNELS = 8 };
 	typedef uint8_t Mask;
 	struct TraceMask {
-		static FORCE_INLINE uint16_t make(uint16_t vmask, uint16_t hmask) {
+		static uint16_t make(uint16_t vmask, uint16_t hmask) {
 			return (vmask & VMASK) | (hmask & HMASK);
 		}
 		static uint16_t vmask(int channel) {

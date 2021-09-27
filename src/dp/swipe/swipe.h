@@ -59,7 +59,7 @@ struct CBSBuffer<_sv, const int8_t*> {
 };
 
 template<typename _sv>
-static inline _sv cell_update(const _sv &diagonal_cell,
+FORCE_INLINE _sv cell_update(const _sv &diagonal_cell,
 	const _sv &shift_cell0,
 	const _sv &shift_cell1,
 	const _sv &scores,

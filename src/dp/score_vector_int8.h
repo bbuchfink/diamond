@@ -177,7 +177,7 @@ struct ScoreTraits<ScoreVector<int8_t, DELTA>>
 	typedef uint8_t Unsigned;
 	typedef uint32_t Mask;
 	struct TraceMask {
-		static FORCE_INLINE uint64_t make(uint32_t vmask, uint32_t hmask) {
+		static uint64_t make(uint32_t vmask, uint32_t hmask) {
 			return (uint64_t)vmask << 32 | (uint64_t)hmask;
 		}
 		static uint64_t vmask(int channel) {
@@ -358,7 +358,7 @@ struct ScoreTraits<ScoreVector<int8_t, DELTA>>
 	typedef uint8_t Unsigned;
 	typedef uint16_t Mask;
 	struct TraceMask {
-		static FORCE_INLINE uint32_t make(uint32_t vmask, uint32_t hmask) {
+		static uint32_t make(uint32_t vmask, uint32_t hmask) {
 			return vmask << 16 | hmask;
 		}
 		static uint32_t vmask(int channel) {
