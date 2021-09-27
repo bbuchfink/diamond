@@ -56,6 +56,7 @@ Hsp traceback(_cbs bias_correction, const TracebackMatrix<_sv> &dp, const DpTarg
 	out.evalue = evalue;
 	out.bit_score = score_matrix.bitscore(out.score);
 	out.transcript.reserve(size_t(out.score * config.transcript_len_estimate));
+	out.matrix = target.matrix;
 
 	out.frame = p.frame.index();
 	out.d_begin = target.d_begin;
@@ -95,6 +96,7 @@ Hsp traceback(_cbs bias_correction, const Matrix<Cell> &dp, const DpTarget &targ
 	out.evalue = evalue;
 	out.bit_score = score_matrix.bitscore(out.score);
 	out.frame = p.frame.index();
+	out.matrix = target.matrix;
 	out.d_begin = target.d_begin;
 	out.d_end = target.d_end;
 	const int j0 = i1 - (target.d_end - 1), i1_ = i0 + max_col + max_band_i + 1, j1_ = j0 + max_col + 1;
@@ -131,6 +133,7 @@ Hsp traceback(_cbs bias_correction, const TracebackVectorMatrix<_sv> &dp, const 
 	out.evalue = evalue;
 	out.bit_score = score_matrix.bitscore(out.score);
 	out.transcript.reserve(size_t(out.score * config.transcript_len_estimate));
+	out.matrix = target.matrix;
 
 	out.frame = p.frame.index();
 	out.d_begin = target.d_begin;
