@@ -122,7 +122,7 @@ struct ScoreVector<int16_t, DELTA>
 		return ScoreVector(_mm256_cmpeq_epi16(data_, v.data_));
 	}
 
-	friend FORCE_INLINE uint32_t cmp_mask(const ScoreVector&v, const ScoreVector&w) {
+	friend uint32_t cmp_mask(const ScoreVector&v, const ScoreVector&w) {
 		return _mm256_movemask_epi8(_mm256_cmpeq_epi16(v.data_, w.data_));
 	}
 
@@ -280,7 +280,7 @@ struct ScoreVector<int16_t, DELTA>
 		return ScoreVector(_mm_cmpeq_epi16(data_, v.data_));
 	}
 
-	friend FORCE_INLINE uint32_t cmp_mask(const ScoreVector&v, const ScoreVector&w) {
+	friend uint32_t cmp_mask(const ScoreVector&v, const ScoreVector&w) {
 		return (uint32_t)_mm_movemask_epi8(_mm_cmpeq_epi16(v.data_, w.data_));
 	}
 
