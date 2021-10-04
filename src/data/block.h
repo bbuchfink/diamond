@@ -87,6 +87,11 @@ struct Block {
 	void remove_soft_masking(const int template_len, const bool add_bit_mask);
 	bool soft_masked() const;
 	size_t soft_masked_letters() const;
+	void compute_self_aln();
+	double self_aln_score(const int64_t block_id) const;
+	bool has_self_aln() const {
+		return self_aln_score_.size() == seqs_.size();
+	}
 
 private:
 
@@ -96,6 +101,7 @@ private:
 	SeedHistogram hst_;
 	std::vector<uint32_t> block2oid_;
 	std::vector<bool> masked_;
+	std::vector<double> self_aln_score_;
 	std::mutex mask_lock_;
 	MaskingTable soft_masking_table_;
 	bool soft_masked_;

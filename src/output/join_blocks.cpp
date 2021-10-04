@@ -215,6 +215,7 @@ void join_query(
 	const Search::Config &cfg)
 {
 	TranslatedSequence query_seq(cfg.query->translated(query));
+	const double query_self_aln_score = flag_any(output_format->flags, Output::Flags::SELF_ALN_SCORES) ? cfg.query->self_aln_score(query) : 0.0;
 	BlockJoiner joiner(buf, *cfg.db);
 	vector<IntermediateRecord> target_hsp;
 	unique_ptr<TargetCulling> culling(TargetCulling::get());
@@ -227,6 +228,7 @@ void join_query(
 		const size_t dict_id = target_hsp.front().target_dict_id;
 		const set<unsigned> rank_taxon_ids = config.taxon_k ? cfg.taxon_nodes->rank_taxid(cfg.db->taxids(target_oid), Rank::species) : set<unsigned>();
 		const int c = culling->cull(target_hsp, rank_taxon_ids);
+		const double target_self_aln_score = flag_any(output_format->flags, Output::Flags::SELF_ALN_SCORES) ? cfg.db->dict_self_aln_score(dict_id, block_idx) : 0.0;
 		if (c == TargetCulling::FINISHED)
 			break;
 		else if (c == TargetCulling::NEXT)
@@ -249,8 +251,10 @@ void join_query(
 					cfg.db->dict_title(dict_id, block_idx).c_str(),
 					n_target_seq,
 					hsp_num,
-					flag_any(f.flags, Output::Flags::TARGET_SEQS) ? Sequence(cfg.db->dict_seq(dict_id, block_idx)) : Sequence()
-					).parse(), cfg, out);
+					flag_any(f.flags, Output::Flags::TARGET_SEQS) ? Sequence(cfg.db->dict_seq(dict_id, block_idx)) : Sequence(),
+					0,
+					query_self_aln_score,
+					target_self_aln_score).parse(), cfg, out);
 			}
 		}
 

@@ -171,6 +171,11 @@ list<Hsp> swipe(const It target_begin, const It target_end, std::atomic_size_t* 
 		for (int i = 0; i < qlen; ++i) {
 			hgap = it.hgap();
 			const Cell next = swipe_cell_update(it.diag(), profile.get(p.query[i]), cbs_buf(i), extend_penalty, open_penalty, hgap, vgap, col_best, it.trace_mask(), row_counter, IdMask(p.query[i], target_seq));
+
+			/*/std::cout << "j=" << targets.pos[0] << " i=" << i << " score=" << ScoreTraits<_sv>::int_score(extract_channel(next, 0)) <<
+				" q=" << value_traits.alphabet[p.query[i]] << " t=" << value_traits.alphabet[extract_channel(target_seq, 0)]
+				<< extract_stats(next, 0) << " j'=" << targets.dp_targets[0].seq.length() - targets.pos[0] << " i'=" << p.query.length() - i << std::endl;*/
+
 			it.set_hgap(hgap);
 			it.set_score(last);
 			last = next;
@@ -190,6 +195,7 @@ list<Hsp> swipe(const It target_begin, const It target_end, std::atomic_size_t* 
 				max_i[c] = ScoreTraits<_sv>::int_score(i_max[c]);
 				max_j[c] = targets.pos[c];
 				hsp_stats[c] = extract_stats(dp[max_i[c]], c);
+				//std::cout << "stats[" << c << "]=" << hsp_stats[c] << " j=" << targets.pos[0] << " j'=" << targets.dp_targets[0].seq.length() - targets.pos[0] << " score=" << ScoreTraits<_sv>::int_score(best[c]) << std::endl;
 			}
 			bool reinit = false;
 			if (col_best_[c] == ScoreTraits<_sv>::max_score()) {

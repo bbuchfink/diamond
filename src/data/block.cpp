@@ -21,6 +21,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #include <list>
+#include <atomic>
+#include <thread>
 #include "sequence_set.h"
 #include "../basic/translate.h"
 #include "../util/seq_file_format.h"
@@ -28,6 +30,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/sequence/sequence.h"
 #include "sequence_file.h"
 #include "../basic/config.h"
+#include "../dp/ungapped.h"
 
 using std::mutex;
 using std::lock_guard;
@@ -195,7 +198,13 @@ uint32_t Block::dict_id(size_t block, size_t block_id, SequenceFile& db) const
 			t = Util::Seq::seqid(title, config.short_seqids);
 	}
 	const Letter* seq = unmasked_seqs().empty() ? nullptr : unmasked_seqs()[block_id].data();
-	return db.dict_id(block, block_id, block_id2oid(block_id), seqs().length(block_id), t.c_str(), seq);
+	double self_aln_score = 0.0;
+	if (flag_any(db.flags(), SequenceFile::Flags::SELF_ALN_SCORES)) {
+		if (!has_self_aln())
+			throw std::runtime_error("Missing self alignment scores in Block.");
+		self_aln_score = this->self_aln_score(block_id);
+	}
+	return db.dict_id(block, block_id, block_id2oid(block_id), seqs().length(block_id), t.c_str(), seq, self_aln_score);
 }
 
 void Block::soft_mask(const MaskingAlgo algo) {
@@ -221,4 +230,27 @@ bool Block::soft_masked() const {
 
 size_t Block::soft_masked_letters() const {
 	return soft_masking_table_.masked_letters();
+}
+
+void Block::compute_self_aln() {
+	self_aln_score_.resize(seqs_.size());
+	std::atomic_size_t next(0);
+	auto worker = [this, &next] {
+		const size_t n = this->seqs_.size();
+		size_t i;
+		while ((i = next++) < n) {
+			this->seqs().convert_to_std_alph(i);
+			this->self_aln_score_[i] = score_matrix.bitscore(self_score(this->seqs_[i]));
+		}
+	};
+	vector<std::thread> t;
+	for (size_t i = 0; i < config.threads_; ++i)
+		t.emplace_back(worker);
+	for (auto& i : t)
+		i.join();
+	this->seqs().alphabet() = Alphabet::STD;
+}
+
+double Block::self_aln_score(const int64_t block_id) const {
+	return self_aln_score_[block_id];
 }

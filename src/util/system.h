@@ -26,7 +26,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #ifdef _MSC_VER
 
 #define PACKED_ATTRIBUTE
-#define FORCE_INLINE __forceinline static inline
+#define FORCE_INLINE __forceinline static
 #define FLATTEN
 
 #else

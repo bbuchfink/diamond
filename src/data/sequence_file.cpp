@@ -285,6 +285,8 @@ void SequenceFile::load_dictionary(const size_t query_block, const size_t ref_bl
 	task_timer timer("Loading dictionary", 3);
 	if (config.multiprocessing) {
 		dict_oid_ = vector<vector<uint32_t>>(ref_blocks);
+		if (flag_any(flags_, Flags::SELF_ALN_SCORES))
+			dict_self_aln_score_ = vector<vector<double>>(ref_blocks);
 		reserve_dict(ref_blocks);
 		for (size_t i = 0; i < ref_blocks; ++i) {
 			InputFile f(dict_file_name(query_block, i));
@@ -298,6 +300,10 @@ void SequenceFile::load_dictionary(const size_t query_block, const size_t ref_bl
 			throw std::runtime_error("Failed to load dictionary file.");
 		dict_oid_ = { {} };
 		dict_oid_.front().reserve(next_dict_id_);
+		if (flag_any(flags_, Flags::SELF_ALN_SCORES)) {
+			dict_self_aln_score_ = { {} };
+			dict_self_aln_score_.front().reserve(next_dict_id_);
+		}
 		reserve_dict(0);
 		InputFile f(*t);
 		load_dict_block(&f, 0);
@@ -385,7 +391,7 @@ void SequenceFile::close_dict_block(bool persist)
 		block_to_dict_id_.clear();
 }
 
-uint32_t SequenceFile::dict_id(size_t block, size_t block_id, size_t oid, size_t len, const char* id, const Letter* seq)
+uint32_t SequenceFile::dict_id(size_t block, size_t block_id, size_t oid, size_t len, const char* id, const Letter* seq, const double self_aln_score)
 {
 	auto it = block_to_dict_id_.find(block);
 	if (it == block_to_dict_id_.end() || block_id >= it->second.size())
@@ -401,7 +407,7 @@ uint32_t SequenceFile::dict_id(size_t block, size_t block_id, size_t oid, size_t
 			return n;
 		n = next_dict_id_++;
 		v[block_id] = n;
-		write_dict_entry(block, oid, len, id, seq);
+		write_dict_entry(block, oid, len, id, seq, self_aln_score);
 		return n;
 	}
 }
@@ -412,6 +418,14 @@ size_t SequenceFile::oid(uint32_t dict_id, const size_t ref_block) const
 	if (b >= dict_oid_.size() || dict_id >= dict_oid_[b].size())
 		throw std::runtime_error("Dictionary not loaded.");
 	return dict_oid_[b][dict_id];
+}
+
+double SequenceFile::dict_self_aln_score(const size_t dict_id, const size_t ref_block) const
+{
+	const size_t b = dict_block(ref_block);
+	if (b >= dict_self_aln_score_.size() || dict_id >= dict_self_aln_score_[b].size())
+		throw std::runtime_error("Dictionary not loaded.");
+	return dict_self_aln_score_[b][dict_id];
 }
 
 SequenceFile::SequenceFile(Type type, Alphabet alphabet, Flags flags):

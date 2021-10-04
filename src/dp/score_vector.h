@@ -113,6 +113,8 @@ int32_t blend_sv<int32_t>(const int32_t a, const int32_t b, const uint32_t mask)
 	return mask ? b : a;
 }
 
+#ifdef __SSE2__
+
 template<typename _t, typename _p, int DELTA>
 static inline void store_sv(const DISPATCH_ARCH::ScoreVector<_t, DELTA> &sv, _p *dst)
 {
@@ -122,6 +124,8 @@ static inline void store_sv(const DISPATCH_ARCH::ScoreVector<_t, DELTA> &sv, _p 
 	_mm_storeu_si128((__m128i*)dst, sv.data_);
 #endif
 }
+
+#endif
 
 static inline int extract_channel(const int32_t v, const int i) {
 	return v;

@@ -141,7 +141,7 @@ void Seed::enum_neighborhood(unsigned pos, int treshold, vector<Seed>& out, int 
 	score -= score_matrix(l, l);
 	for (size_t i = 0; i < 20; ++i) {
 		int new_score = score + score_matrix(l, i);
-		data_[pos] = i;
+		data_[pos] = (Letter)i;
 		if (new_score >= treshold) {
 			if (pos < config.seed_weight - 1)
 				enum_neighborhood(pos + 1, treshold, out, new_score);
@@ -149,7 +149,7 @@ void Seed::enum_neighborhood(unsigned pos, int treshold, vector<Seed>& out, int 
 				out.push_back(*this);
 		}
 	}
-	data_[pos] = l;
+	data_[pos] = (Letter)l;
 }
 
 void Seed::enum_neighborhood(int treshold, vector<Seed>& out)

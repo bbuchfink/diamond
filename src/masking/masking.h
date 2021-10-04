@@ -112,14 +112,12 @@ struct Kmer {
 	operator uint64_t() const {
 		return code;
 	}
+	struct Hash {
+		size_t operator()(const Kmer<K> k) const {
+			return std::hash<uint64_t>()(k.code);
+		}
+	};
 	uint64_t code;
-};
-
-template<size_t K>
-struct std::hash<Kmer<K>> {
-	size_t operator()(const Kmer<K> k) const {
-		return std::hash<uint64_t>()(k.code);
-	}
 };
 
 template<size_t K>
@@ -165,4 +163,4 @@ private:
 };
 
 const size_t MOTIF_LEN = 8;
-extern const std::unordered_set<Kmer<MOTIF_LEN>> motif_table;
+extern const std::unordered_set<Kmer<MOTIF_LEN>, Kmer<MOTIF_LEN>::Hash> motif_table;

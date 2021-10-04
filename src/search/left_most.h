@@ -98,8 +98,8 @@ static inline bool left_most_filter(const Sequence &query,
 		return left_hit == 0 || !verify_hits(left_hit, q, s, score_cutoff, true, match_mask_left, shape_id, chunked, hamming_filter_id);
 
 	const uint32_t len_right = window - window_left - 1,
-		match_mask_right = match_mask >> (window_left + 1),
-		query_mask_right = query_seed_mask >> (window_left + 1);
+		match_mask_right = uint32_t(match_mask >> (window_left + 1)),
+		query_mask_right = uint32_t(query_seed_mask >> (window_left + 1));
 	
 	const PatternMatcher& right_matcher = chunked ? context.current_matcher : context.previous_matcher;
 	const uint32_t right_hit = right_matcher.hit(match_mask_right, len_right) & query_mask_right;

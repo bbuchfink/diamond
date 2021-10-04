@@ -4,6 +4,8 @@
 #include "../sequence_file.h"
 #include "../string_set.h"
 
+using BlastOid = int;
+
 struct BlastDB : public SequenceFile {
 
 	BlastDB(const std::string& file_name, Metadata metadata, Flags flags);
@@ -57,7 +59,7 @@ struct BlastDB : public SequenceFile {
 	
 private:
 
-	virtual void write_dict_entry(size_t block, size_t oid, size_t len, const char* id, const Letter* seq) override;
+	virtual void write_dict_entry(size_t block, size_t oid, size_t len, const char* id, const Letter* seq, const double self_aln_score) override;
 	virtual bool load_dict_entry(InputFile& f, const size_t ref_block) override;
 	virtual void reserve_dict(const size_t ref_blocks) override;
 

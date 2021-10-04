@@ -40,6 +40,7 @@ TextBuffer* generate_output(vector<Match> &targets, size_t query_block_id, Stati
 	TranslatedSequence query = query_seqs.translated_seq(align_mode.query_translated ? cfg.query->source_seqs()[query_block_id] : query_seqs[query_block_id], query_block_id * align_mode.query_contexts);
 	const unsigned query_len = (unsigned)query.index(0).length();
 	const char *query_title = cfg.query->ids()[query_block_id];
+	const double query_self_aln_score = cfg.query->has_self_aln() ? cfg.query->self_aln_score(query_block_id) : 0.0;
 	const bool aligned = !targets.empty();
 
 	if (cfg.iterated()) {
@@ -59,6 +60,7 @@ TextBuffer* generate_output(vector<Match> &targets, size_t query_block_id, Stati
 		const size_t subject_id = targets[i].target_block_id;
 		const unsigned database_id = cfg.target->block_id2oid(subject_id);
 		const unsigned subject_len = (unsigned)ref_seqs[subject_id].length();
+		const double target_self_aln_score = cfg.target->has_self_aln() ? cfg.target->self_aln_score(subject_id) : 0.0;
 
 		hit_hsps = 0;
 		for (Hsp &hsp : targets[i].hsp) {
@@ -77,7 +79,9 @@ TextBuffer* generate_output(vector<Match> &targets, size_t query_block_id, Stati
 					i,
 					hit_hsps,
 					cfg.target->unmasked_seqs().empty() ? Sequence() : cfg.target->unmasked_seqs()[subject_id],
-					targets[i].ungapped_score), cfg, *out);
+					targets[i].ungapped_score,
+					query_self_aln_score,
+					target_self_aln_score), cfg, *out);
 			
 			++n_hsp;
 			++hit_hsps;

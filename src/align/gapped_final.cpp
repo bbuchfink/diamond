@@ -10,12 +10,15 @@ namespace Extension {
 
 static void add_dp_targets(const Target& target, int target_idx, const Sequence* query_seq, array<DP::Targets, MAX_CONTEXT>& dp_targets, DP::Flags flags, const HspValues hsp_values, const Mode mode) {
 	const Stats::TargetMatrix* matrix = target.adjusted_matrix() ? &target.matrix : nullptr;
+	const Loc tlen = target.seq.length();
 	for (int frame = 0; frame < align_mode.query_contexts; ++frame) {
-		const int qlen = (int)query_seq[frame].length();
+		const Loc qlen = query_seq[frame].length();
 		for (const Hsp& hsp : target.hsp[frame]) {
-			const size_t dp_size = flag_any(flags, DP::Flags::FULL_MATRIX) ? query_seq[0].length() * target.seq.length() : target.seq.length() * size_t(hsp.d_end - hsp.d_begin);
+			const int64_t dp_size = flag_any(flags, DP::Flags::FULL_MATRIX)
+				? (int64_t)qlen * (int64_t)tlen
+				: (int64_t)DpTarget::banded_cols(qlen, tlen, hsp.d_begin, hsp.d_end) * int64_t(hsp.d_end - hsp.d_begin);
 			const int b = DP::BandedSwipe::bin(hsp_values, flag_any(flags, DP::Flags::FULL_MATRIX) ? qlen : hsp.d_end - hsp.d_begin, hsp.score, 0, dp_size, matrix ? matrix->score_width() : 0, 0);
-			dp_targets[frame][b].emplace_back(target.seq, target.seq.length(), hsp.d_begin, hsp.d_end, target_idx, qlen, matrix);
+			dp_targets[frame][b].emplace_back(target.seq, tlen, hsp.d_begin, hsp.d_end, target_idx, qlen, matrix);
 		}
 	}
 }

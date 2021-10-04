@@ -63,25 +63,31 @@ static unsigned bin(int x) {
 	return x < UCHAR_MAX ? 0 : (x < USHRT_MAX ? 1 : 2);
 }
 
-unsigned bin(HspValues v, int query_len, int score, int ungapped_score, size_t dp_size, unsigned score_width, const Loc mismatch_est) {
-#if !defined(__SSE4_1__) && !defined(__SSE2__)
-	return 2;
-#endif
+static const HspValues NO_TRACEBACK = HspValues::COORDS | HspValues::IDENT | HspValues::LENGTH | HspValues::MISMATCHES | HspValues::GAP_OPENINGS;
+
+unsigned bin(HspValues v, int query_len, int score, int ungapped_score, const int64_t dp_size, unsigned score_width, const Loc mismatch_est) {
 	unsigned b = 0;
-	if (v != HspValues::NONE)
-		b = std::max(b, bin(query_len));
-	if (flag_any(v, HspValues::TRANSCRIPT) && dp_size > config.max_swipe_dp)
-		b = 2;
 	b = std::max(b, bin(score));
 	if (ungapped_score > config.cutoff_score_8bit)
 		b = std::max(b, 1u);
 	b = std::max(b, score_width);
 	b = std::max(b, bin(mismatch_est));
-#ifdef __SSE4_1__
-	return b;
-#else
-	return std::max(b, 1u);
+#ifndef __SSE4_1__
+	b = std::max(b, 1u);
 #endif
+#ifndef __SSE2__
+	b = 2;
+#endif
+	if (v != HspValues::NONE) {
+		b = std::max(b, bin(query_len));
+		if (dp_size > config.max_swipe_dp) {
+			if (flag_only(v, NO_TRACEBACK))
+				b += SCORE_BINS;
+			else
+				b = 2;
+		}
+	}
+	return b;
 }
 
 template<typename Sv>
@@ -99,8 +105,6 @@ template<typename Sv>
 static size_t matrix_size(const int query_len, const SequenceSet::ConstIterator begin, const SequenceSet::ConstIterator end, const Flags flags) {
 	return 0;
 }
-
-static const HspValues NO_TRACEBACK = HspValues::COORDS | HspValues::IDENT | HspValues::LENGTH | HspValues::MISMATCHES | HspValues::GAP_OPENINGS;
 
 static bool reversed(const HspValues v) {
 	return flag_only(v, NO_TRACEBACK)
@@ -143,18 +147,17 @@ static list<Hsp> dispatch_swipe(const It begin, const It end, atomic_size_t* con
 }
 
 template<typename Sv, typename It>
-static list<Hsp> dispatch_swipe(const It begin, const It end, atomic_size_t* const next, vector<DpTarget> &overflow, const int round, Params& p)
+static list<Hsp> dispatch_swipe(const It begin, const It end, atomic_size_t* const next, vector<DpTarget> &overflow, const int round, const int bin, Params& p)
 {
 	if (p.v == HspValues::NONE) {
 		using Cfg = SwipeConfig<false, DummyRowCounter<Sv>, Sv, DummyIdMask<Sv>>;
 		return dispatch_swipe<Sv, It, Cfg>(begin, end, next, overflow, p);
 	}
-	const size_t s = round == 0 ? matrix_size<Sv>((int)p.query.length(), begin, end, p.flags) : SIZE_MAX;
-	if (!flag_only(p.v, NO_TRACEBACK) || s <= config.max_traceback_matrix_size) {
+	if (bin < SCORE_BINS) {
 		using Cfg = SwipeConfig<true, VectorRowCounter<Sv>, Sv, DummyIdMask<Sv>>;
 		return dispatch_swipe<Sv, It, Cfg>(begin, end, next, overflow, p);
 	}
-	else if (round == 0) {
+	if (round == 0) {
 		if (!flag_any(p.v, HspValues::IDENT | HspValues::LENGTH)) {
 			using Cfg = SwipeConfig<false, VectorRowCounter<Sv>, Sv, DummyIdMask<Sv>>;
 			return dispatch_swipe<Sv, It, Cfg>(begin, end, next, overflow, p);
@@ -178,7 +181,7 @@ static list<Hsp> dispatch_swipe(const It begin, const It end, atomic_size_t* con
 }
 
 template<typename _sv, typename It>
-static void swipe_worker(const It begin, const It end, atomic_size_t* const next, list<Hsp> *out, vector<DpTarget> *overflow, const int round, Params* p)
+static void swipe_worker(const It begin, const It end, atomic_size_t* const next, list<Hsp> *out, vector<DpTarget> *overflow, const int round, const int bin, Params* p)
 {
 	const ptrdiff_t CHANNELS = ::DISPATCH_ARCH::ScoreTraits<_sv>::CHANNELS;
 	Statistics stat2;
@@ -194,11 +197,11 @@ static void swipe_worker(const It begin, const It end, atomic_size_t* const next
 		stat2
 	};
 	if (flag_any(p->flags, Flags::FULL_MATRIX))
-		*out = dispatch_swipe<_sv, It>(begin, end, next, of, round, params);
+		*out = dispatch_swipe<_sv, It>(begin, end, next, of, round, bin, params);
 	else
 		while (begin + (pos = next->fetch_add(CHANNELS)) < end) {
 			const auto start = begin + pos;
-			out->splice(out->end(), dispatch_swipe<_sv, It>(start, start + std::min(CHANNELS, end - start), next, of, round, params));
+			out->splice(out->end(), dispatch_swipe<_sv, It>(start, start + std::min(CHANNELS, end - start), next, of, round, bin, params));
 		}
 		
 	*overflow = std::move(of);
@@ -206,7 +209,7 @@ static void swipe_worker(const It begin, const It end, atomic_size_t* const next
 }
 
 template<typename _sv, typename It>
-static list<Hsp> swipe_threads(const It begin, const It end, vector<DpTarget> &overflow, const int round, Params& p) {
+static list<Hsp> swipe_threads(const It begin, const It end, vector<DpTarget> &overflow, const int round, const int bin, Params& p) {
 	if (begin == end)
 		return {};
 
@@ -218,7 +221,7 @@ static list<Hsp> swipe_threads(const It begin, const It end, vector<DpTarget> &o
 		vector<list<Hsp>> thread_out(n);
 		vector<vector<DpTarget>> thread_overflow(n);
 		for (size_t i = 0; i < n; ++i)
-			threads.emplace_back(swipe_worker<_sv, It>, begin, end, &next, &thread_out[i], &thread_overflow[i], round, &p);
+			threads.emplace_back(swipe_worker<_sv, It>, begin, end, &next, &thread_out[i], &thread_overflow[i], round, bin, &p);
 		for (auto &t : threads)
 			t.join();
 		timer.go("Banded swipe (merge)");
@@ -231,7 +234,7 @@ static list<Hsp> swipe_threads(const It begin, const It end, vector<DpTarget> &o
 		return out;
 	}
 	else
-		return dispatch_swipe<_sv, It>(begin, end, &next, overflow, round, p);
+		return dispatch_swipe<_sv, It>(begin, end, &next, overflow, round, bin, p);
 }
 
 template<typename It>
@@ -248,22 +251,25 @@ static pair<list<Hsp>, vector<DpTarget>> swipe_bin(const unsigned bin, const It 
 	switch (bin) {
 #ifdef __SSE4_1__
 	case 0:
+	case 3:
 		if (flag_any(p.flags, Flags::SEMI_GLOBAL))
-			out = swipe_threads<::DISPATCH_ARCH::ScoreVector<int8_t, 0>, It>(begin, end, overflow, round, p);
+			out = swipe_threads<::DISPATCH_ARCH::ScoreVector<int8_t, 0>, It>(begin, end, overflow, round, bin, p);
 		else
-			out = swipe_threads<::DISPATCH_ARCH::ScoreVector<int8_t, SCHAR_MIN>, It>(begin, end, overflow, round, p);
+			out = swipe_threads<::DISPATCH_ARCH::ScoreVector<int8_t, SCHAR_MIN>, It>(begin, end, overflow, round, bin, p);
 		break;
 #endif
 #ifdef __SSE2__
 	case 1:
+	case 4:
 		if (flag_any(p.flags, Flags::SEMI_GLOBAL))
-			out = swipe_threads<::DISPATCH_ARCH::ScoreVector<int16_t, 0>, It>(begin, end, overflow, round, p);
+			out = swipe_threads<::DISPATCH_ARCH::ScoreVector<int16_t, 0>, It>(begin, end, overflow, round, bin, p);
 		else
-			out = swipe_threads<::DISPATCH_ARCH::ScoreVector<int16_t, SHRT_MIN>, It>(begin, end, overflow, round, p);
+			out = swipe_threads<::DISPATCH_ARCH::ScoreVector<int16_t, SHRT_MIN>, It>(begin, end, overflow, round, bin, p);
 		break;
 #endif
 	case 2:
-		out = swipe_threads<int32_t, It>(begin, end, overflow, round, p);
+	case 5:
+		out = swipe_threads<int32_t, It>(begin, end, overflow, round, bin, p);
 		break;
 	default:
 		throw std::runtime_error("Invalid SWIPE bin.");
@@ -283,25 +289,20 @@ static list<Hsp> recompute_reversed(list<Hsp> &hsps, Params& p) {
 	Targets dp_targets;
 	vector<DpTarget> overflow;
 	SequenceSet reversed_targets;
-	const int qlen = (int)p.query.length();
+	const Loc qlen = p.query.length();
 
 	for (const auto& h : hsps)
-		if (!h.backtraced)
-			reversed_targets.reserve(h.subject_range.end_);
+		reversed_targets.reserve(h.subject_range.end_);
 	reversed_targets.finish_reserve();
 
 	size_t j = 0;
 	list<Hsp> out;
 	for (auto i = hsps.begin(); i != hsps.end(); ) {
-		if (i->backtraced) {
-			auto k = i++;
-			out.splice(out.end(), hsps, k);
-			continue;
-		}
 		std::reverse_copy(i->target_seq.data(), i->target_seq.data() + i->subject_range.end_, reversed_targets.ptr(j));
-		const int band = flag_any(p.flags, Flags::FULL_MATRIX) ? qlen : i->d_end - i->d_begin,
+		const Loc band = flag_any(p.flags, Flags::FULL_MATRIX) ? qlen : i->d_end - i->d_begin,
 			tlen = i->subject_range.end_,
-			b = bin(p.v, band, i->score, 0, 0, 0, mismatch_est(i->query_range.end_, tlen, i->length, p.v));
+			b = bin(p.v, band, i->score, 0, INT64_MAX, 0, mismatch_est(i->query_range.end_, tlen, i->length, p.v));
+		assert(b >= SCORE_BINS);
 		const DpTarget::CarryOver carry_over{ i->query_range.end_, i->subject_range.end_, i->identities, i->length };
 		dp_targets[b].emplace_back(reversed_targets[j], i->target_seq.length(), -i->d_end + qlen - tlen + 1, -i->d_begin + qlen - tlen + 1, i->swipe_target, qlen, i->matrix, carry_over);
 		++i;
@@ -320,7 +321,7 @@ static list<Hsp> recompute_reversed(list<Hsp> &hsps, Params& p) {
 		p.v,
 		p.stat
 	};
-	for (unsigned bin = 0; bin < BINS; ++bin) {
+	for (unsigned bin = SCORE_BINS; bin < BINS; ++bin) {
 		auto r = swipe_bin(bin, dp_targets[bin].begin(), dp_targets[bin].end(), 1, params);
 		if (!r.second.empty())
 			throw std::runtime_error("Non-empty overflow list in reversed DP.");
@@ -329,20 +330,28 @@ static list<Hsp> recompute_reversed(list<Hsp> &hsps, Params& p) {
 	return out;
 }
 
-list<Hsp> swipe(const array<vector<DpTarget>, BINS> &targets, Params& p)
+list<Hsp> swipe(const Targets &targets, Params& p)
 {
 	pair<list<Hsp>, vector<DpTarget>> result;
-	list<Hsp> out;
-	for (unsigned bin = 0; bin < BINS; ++bin) {
-		vector<DpTarget> round_targets;
-		round_targets.reserve(targets[bin].size() + result.second.size());
-		round_targets.insert(round_targets.end(), targets[bin].begin(), targets[bin].end());
-		round_targets.insert(round_targets.end(), result.second.begin(), result.second.end());
-		result = swipe_bin(bin, round_targets.begin(), round_targets.end(), 0, p);
-		out.splice(out.end(), result.first);
+	list<Hsp> out, out_tmp;
+	for (int algo_bin = 0; algo_bin < ALGO_BINS; ++algo_bin) {
+		for (int score_bin = 0; score_bin < SCORE_BINS; ++score_bin) {
+			const int bin = algo_bin * SCORE_BINS + score_bin;
+			vector<DpTarget> round_targets;
+			round_targets.reserve(targets[bin].size() + result.second.size());
+			round_targets.insert(round_targets.end(), targets[bin].begin(), targets[bin].end());
+			round_targets.insert(round_targets.end(), result.second.begin(), result.second.end());
+			result = swipe_bin(bin, round_targets.begin(), round_targets.end(), 0, p);
+			if(algo_bin == 0)
+				out.splice(out.end(), result.first);
+			else
+				out_tmp.splice(out_tmp.end(), result.first);;
+		}
+		assert(result.second.empty());
 	}
-	assert(result.second.empty());
-	return reversed(p.v) ? recompute_reversed(out, p) : out;
+	if (!out_tmp.empty())
+		out.splice(out.end(), recompute_reversed(out_tmp, p));
+	return out;
 }
 
 list<Hsp> swipe_set(const SequenceSet::ConstIterator begin, const SequenceSet::ConstIterator end, Params& p) {

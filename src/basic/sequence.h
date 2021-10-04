@@ -44,12 +44,20 @@ struct Sequence
 		len_ (len),
 		data_ (data)
 	{ }
+	Sequence(const Letter* data, int64_t len) :
+		len_((Loc)len),
+		data_(data)
+	{ }
+	Sequence(const Letter* data, size_t len) :
+		len_((Loc)len),
+		data_(data)
+	{ }
 	Sequence(const Letter *begin, const Letter *end) :
-		len_(end - begin),
+		len_(Loc(end - begin)),
 		data_(begin)
 	{}
 	Sequence(const vector<Letter> &data):
-		len_(data.size()),
+		len_((Loc)data.size()),
 		data_(data.data())
 	{}
 	Sequence(const Sequence &seq, int from, int to):
@@ -83,7 +91,7 @@ struct Sequence
 	bool empty() const
 	{ return len_ == 0; }
 	Sequence operator+(int d) const {
-		return Sequence(data_ + d, len_ - (size_t)d);
+		return Sequence(data_ + d, len_ - d);
 	}
 	size_t print(char *ptr, unsigned begin, unsigned len) const
 	{
@@ -175,7 +183,7 @@ struct Sequence
 			++s;
 			++n;
 		}
-		return Sequence(p + 1, s - p - 1);
+		return Sequence(p + 1, Loc(s - p - 1));
 	}
 	std::vector<Letter> copy() const {
 		return std::vector<Letter>(data_, data_ + len_);

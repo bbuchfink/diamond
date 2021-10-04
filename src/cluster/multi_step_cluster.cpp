@@ -65,9 +65,9 @@ vector<int> MultiStep::cluster(shared_ptr<SequenceFile>& db, const shared_ptr<Bi
 	}
 	*/
 
-	vector<unordered_set<uint32_t>> connected = nb->dSet.getListOfSets();
+	vector<unordered_set<int64_t>> connected = nb->dSet.getListOfSets();
 	vector<uint32_t> EdgSet(nb->number_edges.size());
-	unordered_map <uint32_t, NodEdgSet> components = find_connected_components(connected, EdgSet, nb->number_edges);
+	unordered_map <int64_t, NodEdgSet> components = find_connected_components(connected, EdgSet, nb->number_edges);
 	message_stream << "Number of connected components: " << components.size() << endl;
 	message_stream << "Average number of nodes per connected component: " << (double)nb->number_edges.size() / components.size() << endl;
 
@@ -91,7 +91,7 @@ vector<int> MultiStep::cluster(shared_ptr<SequenceFile>& db, const shared_ptr<Bi
 
 }
 
-void MultiStep::save_edges_external(vector<TempFile*>& all_edges, vector<TempFile*>& sorted_edges, const unordered_map<uint32_t, NodEdgSet>& comp, const vector<uint32_t>& s_index){
+void MultiStep::save_edges_external(vector<TempFile*>& all_edges, vector<TempFile*>& sorted_edges, const unordered_map<int64_t, NodEdgSet>& comp, const vector<uint32_t>& s_index){
 
 	size_t count = 0;
 	uint32_t query;
@@ -154,9 +154,9 @@ vector<int> MultiStep::cluster_sets(const size_t nb_size, vector<TempFile*> &sor
 	return cluster;
 }
 
-unordered_map<uint32_t, NodEdgSet> MultiStep::find_connected_components(const vector<unordered_set<uint32_t>> &connected, vector<uint32_t> &EdgSet, const vector <size_t>& nedges){
+unordered_map<int64_t, NodEdgSet> MultiStep::find_connected_components(const vector<unordered_set<int64_t>> &connected, vector<uint32_t> &EdgSet, const vector <size_t>& nedges){
 	
-	unordered_map<uint32_t, NodEdgSet> ne;
+	unordered_map<int64_t, NodEdgSet> ne;
 	for (size_t i = 0; i < connected.size(); i++) {
 		for(uint32_t j : connected[i]){
 			EdgSet[j] = i;
@@ -168,8 +168,8 @@ unordered_map<uint32_t, NodEdgSet> MultiStep::find_connected_components(const ve
 	return ne;
 }
 
-vector<TempFile*> MultiStep::mapping_comp_set(unordered_map<uint32_t, NodEdgSet>& comp) {
-	vector <vector<uint32_t>> set;
+vector<TempFile*> MultiStep::mapping_comp_set(unordered_map<int64_t, NodEdgSet>& comp) {
+	vector <vector<int64_t>> set;
 	vector <size_t> size;
 	vector<TempFile*> temp_set;
 	

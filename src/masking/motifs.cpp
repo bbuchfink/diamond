@@ -1,6 +1,6 @@
 #include "masking.h"
 
-const std::unordered_set<Kmer<MOTIF_LEN>> motif_table = {
+const std::unordered_set<Kmer<MOTIF_LEN>, Kmer<MOTIF_LEN>::Hash> motif_table = {
 "FRKYTAFT",
 "KYTAFTIP",
 "RKYTAFTI",

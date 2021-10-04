@@ -88,23 +88,24 @@ Match::Match(size_t target_block_id, const Sequence& seq, const Stats::TargetMat
 }
 
 static void add_dp_targets(const WorkTarget& target, int target_idx, const Sequence* query_seq, array<DP::Targets, MAX_CONTEXT>& dp_targets, DP::Flags flags, const HspValues hsp_values, const Mode mode) {
-	const int band = Extension::band((int)query_seq->length(), mode),
-		slen = (int)target.seq.length();
-	const size_t qlen = query_seq[0].length();
+	const Loc band = Extension::band(query_seq->length(), mode),
+		slen = target.seq.length();
 	const Stats::TargetMatrix* matrix = target.matrix.scores.empty() ? nullptr : &target.matrix;
 	const unsigned score_width = matrix ? matrix->score_width() : 0;
 	for (int frame = 0; frame < align_mode.query_contexts; ++frame) {
 
+		const Loc qlen = query_seq[frame].length();
+
 		if (mode == Mode::FULL) {
 			if (target.ungapped_score[frame] == 0)
 				continue;
-			const unsigned b = DP::BandedSwipe::bin(hsp_values, query_seq[0].length(), 0, target.ungapped_score[frame], query_seq[0].length() * target.seq.length(), score_width, 0);
-			dp_targets[frame][b].emplace_back(target.seq, target.seq.length(), 0, 0, target_idx, (int)query_seq->length(), matrix);
+			const unsigned b = DP::BandedSwipe::bin(hsp_values, qlen, 0, target.ungapped_score[frame], (int64_t)qlen * (int64_t)slen, score_width, 0);
+			dp_targets[frame][b].emplace_back(target.seq, slen, 0, 0, target_idx, qlen, matrix);
 			continue;
 		}
 		if (target.hsp[frame].empty())
 			continue;
-		const int qlen = (int)query_seq[frame].length();
+		
 		int d0 = INT_MAX, d1 = INT_MIN, j0 = INT_MAX, j1 = INT_MIN, bits = 0;
 
 		for (const Hsp_traits &hsp : target.hsp[frame]) {
@@ -116,20 +117,22 @@ static void add_dp_targets(const WorkTarget& target, int target_idx, const Seque
 				d1 = std::max(d1, b1);
 				j0 = std::min(j0, hsp.subject_range.begin_);
 				j1 = std::max(j1, hsp.subject_range.end_);
-				bits = std::max(bits, (int)DP::BandedSwipe::bin(hsp_values, d1 - d0, 0, hsp.score, size_t(d1 - d0) * target.seq.length(), score_width, 0));
+				const int64_t dp_size = (int64_t)DpTarget::banded_cols(qlen, slen, d0, d1) * int64_t(d1 - d0);
+				bits = std::max(bits, (int)DP::BandedSwipe::bin(hsp_values, d1 - d0, 0, hsp.score, dp_size, score_width, 0));
 			}
 			else {
 				if (d0 != INT_MAX)
-					dp_targets[frame][bits].emplace_back(target.seq, target.seq.length(), d0, d1, target_idx, (int)query_seq->length(), matrix);
+					dp_targets[frame][bits].emplace_back(target.seq, slen, d0, d1, target_idx, qlen, matrix);
 				d0 = b0;
 				d1 = b1;
 				j0 = hsp.subject_range.begin_;
 				j1 = hsp.subject_range.end_;
-				bits = (int)DP::BandedSwipe::bin(hsp_values, d1 - d0, 0, hsp.score, size_t(d1 - d0) * target.seq.length(), score_width, 0);
+				const int64_t dp_size = (int64_t)DpTarget::banded_cols(qlen, slen, d0, d1) * int64_t(d1 - d0);
+				bits = (int)DP::BandedSwipe::bin(hsp_values, d1 - d0, 0, hsp.score, dp_size, score_width, 0);
 			}
 		}
 
-		dp_targets[frame][bits].emplace_back(target.seq, target.seq.length(), d0, d1, target_idx, (int)query_seq->length(), matrix);
+		dp_targets[frame][bits].emplace_back(target.seq, slen, d0, d1, target_idx, qlen, matrix);
 	}
 }
 

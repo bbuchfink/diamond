@@ -69,6 +69,10 @@ struct Vector<int32_t> {
 		v(*p)
 	{}
 
+	operator int32_t() const {
+		return v;
+	}
+
 	int32_t v;
 
 };

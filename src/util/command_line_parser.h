@@ -47,13 +47,13 @@ inline void read_option<unsigned>(unsigned &dst, const std::vector<std::string> 
 template<>
 inline void read_option<long>(long& dst, const std::vector<std::string>& v)
 {
-	dst = atoll(v[0].c_str());
+	dst = (long)atoll(v[0].c_str());
 }
 
 template<>
 inline void read_option<unsigned long>(unsigned long& dst, const std::vector<std::string>& v)
 {
-	dst = atoll(v[0].c_str());
+	dst = (unsigned long)atoll(v[0].c_str());
 }
 
 template<>

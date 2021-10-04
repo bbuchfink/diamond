@@ -43,10 +43,10 @@ struct DpTarget
 		int i1, j1, ident, len;
 	};
 	enum { BLANK = -1 };
-	int get_cols(int qlen) const {
-		int pos = std::max(d_end - 1, 0) - (d_end - 1);
-		const int d0 = d_begin;
-		const int j1 = std::min(qlen - 1 - d0, (int)(seq.length() - 1)) + 1;
+	static Loc banded_cols(const Loc qlen, const Loc tlen, const Loc d_begin, const Loc d_end) {
+		const Loc pos = std::max(d_end - 1, 0) - (d_end - 1);
+		const Loc d0 = d_begin;
+		const Loc j1 = std::min(qlen - 1 - d0, tlen - 1) + 1;
 		return j1 - pos;
 	}
 	DpTarget():
@@ -60,7 +60,7 @@ struct DpTarget
 		seq(seq),
 		d_begin(d_begin),
 		d_end(d_end),
-		cols(get_cols(qlen)),
+		cols(banded_cols(qlen, seq.length(), d_begin, d_end)),
 		true_target_len(true_target_len),
 		target_idx(target_idx),
 		carry_over(carry_over),
@@ -77,13 +77,13 @@ struct DpTarget
 		carry_over(carry_over),
 		matrix(matrix)
 	{}
-	DpTarget(const std::pair<const Letter*, size_t> seq) :
+	DpTarget(const std::pair<const Letter*, int64_t> seq) :
 		seq(seq.first, seq.second),
 		d_begin(),
 		d_end(),
 		cols(),
-		true_target_len((Loc)seq.second),		
-		target_idx(BLANK),		
+		true_target_len((Loc)seq.second),
+		target_idx(BLANK),
 		matrix(nullptr)
 	{
 	}
@@ -150,7 +150,7 @@ struct Params {
 	Statistics& stat;
 };
 
-enum { BINS = 3};
+enum { BINS = 6, SCORE_BINS = 3, ALGO_BINS = 2 };
 
 struct Traceback {};
 struct ScoreOnly {};
@@ -171,7 +171,7 @@ namespace BandedSwipe {
 
 DECL_DISPATCH(std::list<Hsp>, swipe, (const Targets& targets, Params& params))
 DECL_DISPATCH(std::list<Hsp>, swipe_set, (const SequenceSet::ConstIterator begin, const SequenceSet::ConstIterator end, Params& params))
-DECL_DISPATCH(unsigned, bin, (HspValues v, int query_len, int score, int ungapped_score, size_t dp_size, unsigned score_width, const Loc mismatch_est))
+DECL_DISPATCH(unsigned, bin, (HspValues v, int query_len, int score, int ungapped_score, const int64_t dp_size, unsigned score_width, const Loc mismatch_est))
 
 }
 

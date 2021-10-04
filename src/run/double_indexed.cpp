@@ -119,6 +119,11 @@ static void run_ref_chunk(SequenceFile &db_file,
 		log_stream << "Masked letters: " << n << endl;
 	}
 
+	if (flag_any(output_format->flags, Output::Flags::SELF_ALN_SCORES)) {
+		timer.go("Computing self alignment scores");
+		cfg.target->compute_self_aln();
+	}
+
 	const bool daa = *output_format == Output_format::daa;
 	const bool persist_dict = daa || cfg.iterated();
 	if(((blocked_processing || daa) && !config.global_ranking_targets) || cfg.iterated()) {
@@ -228,7 +233,7 @@ static void run_query_iteration(const unsigned query_chunk,
 	if (config.algo == ::Config::Algo::AUTO &&
 		(!sensitivity_traits.at(config.sensitivity).support_query_indexed
 			|| query_seqs.letters() > MAX_INDEX_QUERY_SIZE
-			|| options.db->letters() < MIN_QUERY_INDEXED_DB_SIZE
+			|| options.db_letters < MIN_QUERY_INDEXED_DB_SIZE
 			|| config.target_indexed
 			|| config.swipe_all))
 		config.algo = ::Config::Algo::DOUBLE_INDEXED;
@@ -370,10 +375,6 @@ static void run_query_chunk(const unsigned query_chunk,
 	auto& db_file = *options.db;
 	auto& query_seqs = options.query->seqs();
 	auto& query_ids = options.query->ids();
-	
-	options.db_seqs = db_file.sequence_count();
-	options.db_letters = db_file.letters();
-	options.ref_blocks = db_file.total_blocks();
 
 	PtrVector<TempFile> tmp_file;
 	if (options.track_aligned_queries) {
@@ -382,6 +383,10 @@ static void run_query_chunk(const unsigned query_chunk,
 	}
 	if(config.query_memory)
 		Extension::memory = new Extension::Memory(query_ids.size());
+	if (flag_any(output_format->flags, Output::Flags::SELF_ALN_SCORES)) {
+		timer.go("Computing self alignment scores");
+		options.query->compute_self_aln();
+	}
 
 	log_rss();
 
@@ -424,7 +429,7 @@ static void run_query_chunk(const unsigned query_chunk,
 				current_ref_block = db_file.get_n_partition_chunks();
 
 				vector<string> tmp_file_names;
-				for (size_t i=0; i<current_ref_block; ++i) {
+				for (int64_t i=0; i<current_ref_block; ++i) {
 					tmp_file_names.push_back(get_ref_block_tmpfile_name(query_chunk, i));
 				}
 
@@ -691,6 +696,8 @@ void run(const shared_ptr<SequenceFile>& db, const shared_ptr<std::list<TextInpu
 		flags |= SequenceFile::Flags::FULL_TITLES;
 	if (flag_any(output_format->flags, Output::Flags::TARGET_SEQS))
 		flags |= SequenceFile::Flags::TARGET_SEQS;
+	if (flag_any(output_format->flags, Output::Flags::SELF_ALN_SCORES))
+		flags |= SequenceFile::Flags::SELF_ALN_SCORES;
 	if (db) {
 		cfg.db = db;
 		if (!query)
@@ -698,6 +705,9 @@ void run(const shared_ptr<SequenceFile>& db, const shared_ptr<std::list<TextInpu
 	}
 	else
 		cfg.db.reset(SequenceFile::auto_create(config.database, flags, metadata_flags));
+	cfg.db_seqs = cfg.db->sequence_count();
+	cfg.db_letters = cfg.db->letters();
+	cfg.ref_blocks = cfg.db->total_blocks();
 	cfg.query_file = query;
 	cfg.db_filter = db_filter;
 	cfg.out = out;

@@ -26,7 +26,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "sequence_file.h"
 #include "seed_histogram.h"
 
-extern unsigned current_ref_block;
+extern int64_t current_ref_block;
 extern bool blocked_processing;
 
 Chunk to_chunk(const string& line);

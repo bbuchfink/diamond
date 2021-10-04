@@ -156,7 +156,7 @@ struct DatabaseFile : public SequenceFile, public InputFile
 
 private:
 
-	virtual void write_dict_entry(size_t block, size_t oid, size_t len, const char* id, const Letter* seq) override;
+	virtual void write_dict_entry(size_t block, size_t oid, size_t len, const char* id, const Letter* seq, const double self_aln_score) override;
 	virtual bool load_dict_entry(InputFile& f, const size_t ref_block) override;
 	virtual void reserve_dict(const size_t ref_blocks) override;
 

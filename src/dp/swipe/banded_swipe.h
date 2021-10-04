@@ -243,7 +243,8 @@ list<Hsp> swipe(const vector<DpTarget>::const_iterator subject_begin, const vect
 		if (band_offset > 0)
 			it.set_zero();
 
-		_sv target_seq;
+		const auto target_seqv = targets.get();
+		const _sv target_seq = _sv(target_seqv);
 		if (cbs_mask != 0) {
 			if (targets.custom_matrix_16bit)
 				profile.set(targets.get32().data());
@@ -251,9 +252,7 @@ list<Hsp> swipe(const vector<DpTarget>::const_iterator subject_begin, const vect
 				profile.set(targets.get(target_scores.data()));
 		}
 		else {
-			const auto t = targets.get();
-			target_seq = _sv(t);
-			profile.set(t);
+			profile.set(target_seqv);
 		}
 #ifdef DP_STAT
 		const uint64_t live = targets.live();

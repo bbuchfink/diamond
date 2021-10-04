@@ -195,7 +195,7 @@ struct StringSetBase
 			return *this;
 		}
 
-		std::pair<const T*, size_t> operator[](const ptrdiff_t i) const {
+		std::pair<const T*, int64_t> operator[](const ptrdiff_t i) const {
 			return { data_ + limits_[i] - limits_[0], limits_[i + 1] - limits_[i] - _padding };
 		}
 

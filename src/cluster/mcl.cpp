@@ -64,7 +64,7 @@ vector<Eigen::Triplet<float>> MCL::sparse_matrix_multiply(Eigen::SparseMatrix<fl
 	vector<Eigen::Triplet<float>> data;
 	for (uint32_t j=0; j<n_cols; ++j) {
 		if(j%nThr == iThr){
-			fill(result_col.begin(), result_col.end(), 0.0);
+			fill(result_col.begin(), result_col.end(), 0.0f);
 			for (Eigen::SparseMatrix<float>::InnerIterator  rhsIt(*b, j); rhsIt; ++rhsIt) {
 				const float y = rhsIt.value();
 				const uint32_t k = rhsIt.row();
@@ -561,7 +561,7 @@ void MCL::run(){
 	// }
 	// return;
 
-	if (config.database == "") throw runtime_error("Missing parameter: database file (--db/-d)");
+	if (config.database.empty()) throw runtime_error("Missing parameter: database file (--db/-d)");
 	shared_ptr<SequenceFile> db(SequenceFile::auto_create(config.database));
 	statistics.reset();
 	shared_ptr<SparseMatrixStream<float>> ms(get_graph_handle(db));

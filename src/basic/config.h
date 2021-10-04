@@ -252,14 +252,13 @@ struct Config
 	bool mode_fast;
 	double log_evalue_scale;
 	double ungapped_evalue_short_;
-	size_t max_swipe_dp;
+	int64_t max_swipe_dp;
 	std::string seqidlist;
 	bool skip_missing_seqids;
 	Option<string_vector> iterate;
 	bool ignore_warnings;
 	bool short_seqids;
 	bool no_reextend;
-	size_t max_traceback_matrix_size;
 	double seed_cut_;
 	bool no_reorder;
 	string file1;

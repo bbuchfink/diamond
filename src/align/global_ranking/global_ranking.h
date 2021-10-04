@@ -58,7 +58,7 @@ struct Hit {
 		context((uint8_t)context)
 	{}
 	Hit(ptrdiff_t target_id):
-		oid(target_id),
+		oid((uint32_t)target_id),
 		score()
 	{}
 	uint32_t oid;

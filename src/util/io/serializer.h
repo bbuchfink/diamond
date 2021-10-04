@@ -61,6 +61,11 @@ struct Serializer : public Consumer
 		return *this;
 	}
 
+	Serializer& operator<<(const double x) {
+		write(x);
+		return *this;
+	}
+
 	Serializer& operator<<(const std::vector<unsigned> &v)
 	{
 		*this << (unsigned)v.size();

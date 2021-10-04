@@ -64,10 +64,11 @@ using TargetVec = vector<ActiveTarget>;
 
 static TargetVec recompute_alt_hsps(const Sequence* query_seq, const int query_source_len, const Bias_correction* query_cb, TargetVec& targets, const HspValues v, Statistics& stats) {
 	array<DP::Targets, MAX_CONTEXT> dp_targets;
+	const Loc qlen = query_seq[0].length();
 	for (auto it = targets.begin(); it != targets.end(); ++it) {
-		const int64_t dp_size = query_seq[0].length() * it->match->seq.length();
+		const int64_t dp_size = (int64_t)qlen * (int64_t)it->match->seq.length();
 		const Stats::TargetMatrix* matrix = it->match->matrix.blank() ? nullptr : &it->match->matrix;
-		const int bin = DP::BandedSwipe::bin(v, query_seq[0].length(), 0, 0, dp_size, matrix ? matrix->score_width() : 0, 0);
+		const int bin = DP::BandedSwipe::bin(v, qlen, 0, 0, dp_size, matrix ? matrix->score_width() : 0, 0);
 		for (int32_t context = 0; context < align_mode.query_contexts; ++context) {
 			if (it->masked_seq[context]) {
 				const Sequence target = it->masked(context);

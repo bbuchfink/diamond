@@ -252,8 +252,9 @@ struct HspContext
 		unsigned hit_num,
 		unsigned hsp_num,
 		const Sequence &subject_seq,
-		int ungapped_score = 0
-	) :
+		int ungapped_score = 0,
+		const double query_self_aln_score = 0.0,
+		const double target_self_aln_score = 0.0) :
 		query(query),
 		query_title(query_title),
 		target_title(subject_title),
@@ -263,6 +264,8 @@ struct HspContext
 		hit_num(hit_num),
 		hsp_num(hsp_num),
 		ungapped_score(ungapped_score),
+		query_self_aln_score(query_self_aln_score),
+		target_self_aln_score(target_self_aln_score),
 		subject_seq(subject_seq),
 		hsp_(hsp)		
 	{}
@@ -371,8 +374,11 @@ struct HspContext
 
 	const TranslatedSequence query;
 	const char* query_title, *target_title;
-	const unsigned query_id, subject_oid, subject_len, hit_num, hsp_num;
+	const unsigned query_id, subject_oid;
+	const Loc subject_len;
+	const unsigned hit_num, hsp_num;
 	int ungapped_score;
+	const double query_self_aln_score, target_self_aln_score;
 	const Sequence subject_seq;
 private:	
 	Hsp &hsp_;

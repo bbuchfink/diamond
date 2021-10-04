@@ -35,7 +35,7 @@ struct SequenceSet : public StringSetBase<Letter, Sequence::DELIMITER, 1>
 
 	Sequence operator[](size_t i) const
 	{
-		return Sequence(ptr(i), length(i));
+		return Sequence(ptr(i), (Loc)length(i));
 	}
 
 	std::pair<size_t, size_t> len_bounds(size_t min_len) const;

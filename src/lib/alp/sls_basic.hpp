@@ -36,10 +36,7 @@ Contents: Some basic functions and types
 
 ******************************************************************************/
 
-#ifndef _MSC_VER //UNIX program
-#else
-#define _CRT_SECURE_NO_WARNINGS
-#endif
+// Modified by B. Buchfink
 
 #ifndef _MSC_VER //UNIX program
 #include <sys/time.h>

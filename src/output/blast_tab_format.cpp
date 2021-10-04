@@ -1,6 +1,6 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2020 Max Planck Society for the Advancement of Science e.V.
+Copyright (C) 2013-2021 Max Planck Society for the Advancement of Science e.V.
                         Benjamin Buchfink
                         Eberhard Karls Universitaet Tuebingen
 						
@@ -106,7 +106,9 @@ const vector<OutputField> Blast_tab_format::field_def = {
 { "qseq_translated", "Aligned part of query sequence (translated)", HspValues::TRANSCRIPT, Flags::NONE }, // 63 needs transcript only in frameshift mode
 { "reduced_match_bitstring", "", HspValues::TRANSCRIPT, Flags::NONE}, // 64
 { "normalized_bitscore_semiglobal", "", HspValues::NONE, Flags::NONE},  // 65
-{ "hspnum", "", HspValues::NONE, Flags::NONE} // 66
+{ "hspnum", "", HspValues::NONE, Flags::NONE}, // 66
+{ "normalized_bitscore_global", "", HspValues::NONE, Flags::SELF_ALN_SCORES}, // 67
+{ "pident_global", "", HspValues::IDENT, Flags::NONE }, // 68
 };
 
 Blast_tab_format::Blast_tab_format() :
@@ -115,7 +117,7 @@ Blast_tab_format::Blast_tab_format() :
 	static const unsigned stdf[] = { 0, 5, 23, 22, 25, 27, 13, 14, 15, 16, 19, 20 };
 	const vector<string> &f = config.output_format;
 	if (f.size() <= 1) {
-		fields = vector<unsigned>(stdf, stdf + 12);
+		fields = vector<int64_t>(stdf, stdf + 12);
 		if (config.frame_shift == 0)
 			hsp_values = HspValues::QUERY_COORDS | HspValues::TARGET_COORDS | HspValues::LENGTH | HspValues::IDENT | HspValues::MISMATCHES | HspValues::GAP_OPENINGS;
 		else
@@ -180,7 +182,7 @@ void print_taxon_names(_it begin, _it end, const Search::Config& cfg, TextBuffer
 void Blast_tab_format::print_match(const HspContext& r, const Search::Config& cfg, TextBuffer &out)
 {
 	const StringSet& query_qual = cfg.query->qual();
-	for (vector<unsigned>::const_iterator i = fields.begin(); i != fields.end(); ++i) {
+	for (auto i = fields.cbegin(); i != fields.cend(); ++i) {
 		switch (*i) {
 		case 0:
 			out.write_until(r.query_title, Util::Seq::id_delimiters);
@@ -445,6 +447,12 @@ void Blast_tab_format::print_match(const HspContext& r, const Search::Config& cf
 		case 66:
 			out << r.hsp_num;
 			break;
+		case 67:
+			out << r.bit_score() / std::max(r.query_self_aln_score, r.target_self_aln_score) * 100;
+			break;
+		case 68:
+			out << (double)r.identities() / std::max(r.query.index(r.frame()).length(), r.subject_len) * 100;
+			break;
 #endif
 		default:
 			throw std::runtime_error(string("Invalid output field: ") + field_def[*i].key);
@@ -459,7 +467,7 @@ void Blast_tab_format::print_query_intro(size_t query_num, const char *query_nam
 {
 	const StringSet& qual = cfg.query->qual();
 	if (unaligned && config.report_unaligned == 1) {
-		for (vector<unsigned>::const_iterator i = fields.begin(); i != fields.end(); ++i) {
+		for (auto i = fields.cbegin(); i != fields.cend(); ++i) {
 			switch (*i) {
 			case 0:
 				out.write_until(query_name, Util::Seq::id_delimiters);
@@ -536,7 +544,7 @@ void Blast_tab_format::print_header(Consumer &f, int mode, const char *matrix, i
 	std::stringstream ss;
 	ss << "# DIAMOND v" << Const::version_string << ". http://github.com/bbuchfink/diamond" << endl;
 	ss << "# Invocation: " << config.invocation << endl;
-	ss << "# Fields: " << join(", ", apply(fields, [](unsigned i) -> string { return string(field_def[i].description); })) << endl;
+	ss << "# Fields: " << join(", ", apply(fields, [](int64_t i) -> string { return string(field_def[i].description); })) << endl;
 	const string s(ss.str());
 	f.consume(s.data(), s.length());
 }

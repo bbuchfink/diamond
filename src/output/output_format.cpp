@@ -241,7 +241,7 @@ void Bin1_format::print_query_intro(size_t query_num, const char *query_name, un
 void Bin1_format::print_match(const HspContext& r, const Search::Config &metadata, TextBuffer &out) {
 	if (r.query_id < r.subject_oid) {
 		out.write((uint32_t)r.subject_oid);
-		out.write(r.bit_score() / std::max((unsigned)r.query.source().length(), r.subject_len));
+		out.write(r.bit_score() / std::max(r.query.source().length(), r.subject_len));
 	}
 }
 

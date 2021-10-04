@@ -259,11 +259,19 @@ int ungapped_window(const Letter* query, const Letter* subject, int window) {
 
 int self_score(const Sequence& seq)
 {
-	Bias_correction cbs(seq);
 	int s = 0;
-	for (Loc i = 0; i < seq.length(); ++i) {
-		const Letter l = seq[i];
-		s += score_matrix(l, l) + cbs.int8[i];
+	if (Stats::CBS::hauser(config.comp_based_stats)) {
+		Bias_correction cbs(seq);
+		for (Loc i = 0; i < seq.length(); ++i) {
+			const Letter l = seq[i];
+			s += score_matrix(l, l) + cbs.int8[i];
+		}
+	}
+	else {
+		for (Loc i = 0; i < seq.length(); ++i) {
+			const Letter l = seq[i];
+			s += score_matrix(l, l);
+		}
 	}
 	return s;
 }

@@ -69,11 +69,12 @@ struct SequenceFile {
 
 	enum class Flags : int {
 		NONE                   = 0,
-		NO_COMPATIBILITY_CHECK = 0x1,
-		NO_FASTA               = 0x2,
-		ALL_SEQIDS             = 0x4,
-		FULL_TITLES            = 0x8,
-		TARGET_SEQS            = 0x10
+		NO_COMPATIBILITY_CHECK = 1,
+		NO_FASTA               = 1 << 1,
+		ALL_SEQIDS             = 1 << 2,
+		FULL_TITLES            = 1 << 3,
+		TARGET_SEQS            = 1 << 4,
+		SELF_ALN_SCORES        = 1 << 5
 	};
 
 	enum class LoadTitles {
@@ -143,10 +144,14 @@ struct SequenceFile {
 	void init_dict(const size_t query_block, const size_t target_block);
 	void init_dict_block(size_t block, size_t seq_count, bool persist);
 	void close_dict_block(bool persist);
-	uint32_t dict_id(size_t block, size_t block_id, size_t oid, size_t len, const char* id, const Letter* seq);
+	uint32_t dict_id(size_t block, size_t block_id, size_t oid, size_t len, const char* id, const Letter* seq, const double self_aln_score);
 	size_t oid(uint32_t dict_id, const size_t ref_block) const;
+	double dict_self_aln_score(const size_t dict_size, const size_t ref_block) const;
 	size_t dict_size() const {
 		return next_dict_id_;
+	}
+	Flags flags() const {
+		return flags_;
 	}
 
 	static SequenceFile* auto_create(string& path, Flags flags = Flags::NONE, Metadata metadata = Metadata());
@@ -162,12 +167,13 @@ protected:
 	uint32_t next_dict_id_;
 	size_t dict_alloc_size_;
 	std::vector<std::vector<uint32_t>> dict_oid_;
+	std::vector<std::vector<double>> dict_self_aln_score_;
 
 private:
 
 	enum { DICT_EMPTY = UINT32_MAX };
 
-	virtual void write_dict_entry(size_t block, size_t oid, size_t len, const char* id, const Letter* seq) = 0;
+	virtual void write_dict_entry(size_t block, size_t oid, size_t len, const char* id, const Letter* seq, const double self_aln_score) = 0;
 	virtual bool load_dict_entry(InputFile& f, const size_t ref_block) = 0;
 	virtual void reserve_dict(const size_t ref_blocks) = 0;
 	void load_block(size_t block_id_begin, size_t block_id_end, size_t pos, bool use_filter, const vector<uint64_t>* filtered_pos, bool load_ids, Block* block);

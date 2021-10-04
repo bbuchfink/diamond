@@ -39,10 +39,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 namespace Output {
 
 enum class Flags : int {
-	NONE        = 0,
-	FULL_TITLES = 1,
-	ALL_SEQIDS  = 1 << 1,
-	TARGET_SEQS = 1 << 2
+	NONE            = 0,
+	FULL_TITLES     = 1,
+	ALL_SEQIDS      = 1 << 1,
+	TARGET_SEQS     = 1 << 2,
+	SELF_ALN_SCORES = 1 << 3
 };
 
 DEF_ENUM_FLAG_OPERATORS(Flags)
@@ -127,7 +128,7 @@ struct Blast_tab_format : public Output_format
 	{
 		return new Blast_tab_format(*this);
 	}
-	vector<unsigned> fields;
+	vector<int64_t> fields;
 };
 
 struct PAF_format : public Output_format

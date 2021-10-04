@@ -104,7 +104,7 @@ void DatabaseFile::putback_seqinfo() {
 	pos_array_offset -= SeqInfo::SIZE;
 }
 
-void DatabaseFile::write_dict_entry(size_t block, size_t oid, size_t len, const char* id, const Letter* seq)
+void DatabaseFile::write_dict_entry(size_t block, size_t oid, size_t len, const char* id, const Letter* seq, const double self_aln_score)
 {
 	OutputFile& f = *dict_file_;
 	f << (uint32_t)oid;
@@ -112,6 +112,8 @@ void DatabaseFile::write_dict_entry(size_t block, size_t oid, size_t len, const 
 	f << id;
 	if (flag_any(flags_, Flags::TARGET_SEQS))
 		f.write(seq, len);
+	if (flag_any(flags_, Flags::SELF_ALN_SCORES))
+		f << self_aln_score;
 	dict_alloc_size_ += strlen(id);
 }
 
@@ -134,6 +136,11 @@ bool DatabaseFile::load_dict_entry(InputFile& f, size_t ref_block)
 		vector<Letter> v(len);
 		f.read(v.data(), len);
 		dict_seq_[b].push_back(v.begin(), v.end());
+	}
+	if (flag_any(flags_, Flags::SELF_ALN_SCORES)) {
+		double self_aln_score;
+		f >> self_aln_score;
+		dict_self_aln_score_[b].push_back(self_aln_score);
 	}
 	return true;
 }

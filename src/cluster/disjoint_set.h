@@ -186,7 +186,7 @@ public:
 	virtual std::vector<std::unordered_set<T>> getListOfSets() {
 		std::unordered_map<const T*, uint32_t> map;
 		uint32_t index = 0;
-		for(T i = 0; i < nodes.size(); i++){
+		for(T i = 0; i < (T)nodes.size(); i++){
 			const T* r = this->getRoot(get(i))->getValue();
 			if (map.find(r) == map.end()) {
 				map.emplace(r, index++);

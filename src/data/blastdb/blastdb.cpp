@@ -109,6 +109,7 @@ void BlastDB::init_seqinfo_access()
 
 void BlastDB::init_seq_access()
 {
+	oid_ = 0;
 }
 
 void BlastDB::seek_chunk(const Chunk& chunk)
@@ -140,7 +141,7 @@ void BlastDB::putback_seqinfo()
 size_t BlastDB::id_len(const SeqInfo& seq_info, const SeqInfo& seq_info_next)
 {
 	if(flag_any(flags_, Flags::FULL_TITLES))
-		return full_id(*db_->GetBioseq(seq_info.pos), nullptr, long_seqids_, true).length();
+		return full_id(*db_->GetBioseq((BlastOid)seq_info.pos), nullptr, long_seqids_, true).length();
 	else {
 		return (*best_id(db_->GetSeqIDs(seq_info.pos)))->GetSeqIdString(true).length();
 	}
@@ -441,9 +442,11 @@ BlastDB::~BlastDB()
 {
 }
 
-void BlastDB::write_dict_entry(size_t block, size_t oid, size_t len, const char* id, const Letter* seq)
+void BlastDB::write_dict_entry(size_t block, size_t oid, size_t len, const char* id, const Letter* seq, const double self_aln_score)
 {
 	*dict_file_ << (uint32_t)oid;
+	if (flag_any(flags_, Flags::SELF_ALN_SCORES))
+		*dict_file_ << self_aln_score;
 }
 
 bool BlastDB::load_dict_entry(InputFile& f, const size_t ref_block)
@@ -455,7 +458,13 @@ bool BlastDB::load_dict_entry(InputFile& f, const size_t ref_block)
 	catch (EndOfStream&) {
 		return false;
 	}
-	dict_oid_[dict_block(ref_block)].push_back(oid);
+	const int64_t b = dict_block(ref_block);
+	dict_oid_[b].push_back(oid);
+	if (flag_any(flags_, Flags::SELF_ALN_SCORES)) {
+		double self_aln_score;
+		f >> self_aln_score;
+		dict_self_aln_score_[b].push_back(self_aln_score);
+	}
 	return true;
 }
 
