@@ -314,7 +314,7 @@ void MCL::print_stats(uint64_t nElements, uint32_t nComponents, uint32_t nCompon
 					}
 					return neighbors / ((float) indices[iComponent].size());
 				});
-		generate(memories.begin()+my_counter, memories.begin()+upper_limit, [my_counter, &sort_order, &indices, &neighbors, &sparsities, &expansion]() mutable { 
+		generate(memories.begin()+my_counter, memories.begin()+upper_limit, [my_counter, &sort_order, &indices, &neighbors, &sparsities, &expansion]() mutable -> float { 
 					const uint32_t iComponent = sort_order[my_counter++];
 					if(sparsities[my_counter- 1] >= config.cluster_mcl_sparsity_switch){ 
 						return (float)indices[iComponent].size() * (1+pow(neighbors[my_counter-1], expansion)) * (2 * sizeof(uint32_t) + sizeof(float));

@@ -42,4 +42,8 @@ std::string ratio_percentage(const double x, const double y) {
 	return ss.str();
 }
 
+std::string ratio_percentage(const size_t x, const size_t y) {
+	return ratio_percentage((double)x, (double)y);
+}
+
 }}

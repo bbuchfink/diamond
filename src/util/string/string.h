@@ -55,5 +55,6 @@ inline int format_double(double x, char *p) {
 
 std::string replace(const std::string& s, char a, char b);
 std::string ratio_percentage(const double x, const double y);
+std::string ratio_percentage(const size_t x, const size_t y);
 
 }}

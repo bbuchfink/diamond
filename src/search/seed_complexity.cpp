@@ -77,12 +77,12 @@ void Search::mask_seeds(const Shape& shape, const SeedPartitionRange& range, Dou
 
 	task_timer timer("Masking low complexity seeds");
 	SequenceSet& query_seqs = cfg.query->seqs();
-	std::atomic_uint32_t seedp(range.begin());
+	std::atomic_int seedp(range.begin());
 	std::atomic_size_t seed_count(0), masked_seed_count(0), query_count(0), target_count(0);
 	const double cut = cfg.seed_complexity_cut;
 
 	auto worker = [&] {
-		unsigned p;
+		int p;
 		size_t sc(0), msc(0), qc(0), tc(0);
 		while ((p = seedp++) < range.end()) {
 			for (auto it = JoinIterator<SeedLoc>(query_seed_hits[p].begin(), ref_seed_hits[p].begin()); it;) {
