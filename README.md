@@ -14,7 +14,8 @@ features are:
     desktops or laptops.
 -   Various output formats, including BLAST pairwise, tabular and XML,
     as well as taxonomic classification.
-    
+
+[![Build](https://github.com/bbuchfink/diamond/actions/workflows/cmake.yml/badge.svg)](https://github.com/bbuchfink/diamond/actions/workflows/cmake.yml)
 [![Build Status](https://api.travis-ci.com/bbuchfink/diamond.svg?branch=master&status=passed)](https://travis-ci.com/github/bbuchfink/diamond)
 [![image](https://img.shields.io/github/downloads/bbuchfink/diamond/total)](https://github.com/bbuchfink/diamond/releases)
 [![image](https://anaconda.org/bioconda/diamond/badges/version.svg)](https://anaconda.org/bioconda/diamond)
