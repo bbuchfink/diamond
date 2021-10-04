@@ -35,21 +35,21 @@ struct SeedPartitionRange
 		begin_ (0),
 		end_ (0)
 	{ }
-	SeedPartitionRange(unsigned begin, unsigned end):
+	SeedPartitionRange(int begin, int end):
 		begin_ (begin),
 		end_ (end)
 	{ }
-	bool contains(unsigned i) const
+	bool contains(int i) const
 	{ return i >= begin_ && i < end_; }
-	unsigned begin() const
+	int begin() const
 	{ return begin_; }
-	unsigned end() const
+	int end() const
 	{ return end_; }
-	bool lower(unsigned i) const
+	bool lower(int i) const
 	{ return i < begin_; }
-	bool lower_or_equal(unsigned i) const
+	bool lower_or_equal(int i) const
 	{ return i < end_; }
-	unsigned size() const
+	int size() const
 	{
 		return end_ - begin_;
 	}
@@ -58,7 +58,7 @@ struct SeedPartitionRange
 		return SeedPartitionRange(0, Const::seedp);
 	}
 private:
-	unsigned begin_, end_;
+	int begin_, end_;
 };
 
 extern SeedPartitionRange current_range;
@@ -74,7 +74,7 @@ inline size_t partition_size(const ShapeHistogram &hst, size_t p)
 inline size_t hst_size(const ShapeHistogram &hst, const SeedPartitionRange &range)
 {
 	size_t s = 0;
-	for(unsigned i=range.begin();i<range.end();++i)
+	for(int i=range.begin();i<range.end();++i)
 		s += partition_size(hst, i);
 	return s;
 }

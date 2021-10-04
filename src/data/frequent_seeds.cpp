@@ -36,7 +36,7 @@ Frequent_seeds frequent_seeds;
 
 static void compute_sd(atomic<unsigned> *seedp, DoubleArray<SeedLoc> *query_seed_hits, DoubleArray<SeedLoc> *ref_seed_hits, vector<Sd> *ref_out, vector<Sd> *query_out)
 {
-	unsigned p;
+	int p;
 	while ((p = (*seedp)++) < current_range.end()) {
 		Sd ref_sd, query_sd;
 		for (auto it = JoinIterator<SeedLoc>(query_seed_hits[p].begin(), ref_seed_hits[p].begin()); it; ++it) {

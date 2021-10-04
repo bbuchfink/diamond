@@ -52,7 +52,7 @@ static void seed_join_worker(
 	DoubleArray<SeedLoc> *query_seed_hits,
 	DoubleArray<SeedLoc> *ref_seeds_hits)
 {
-	unsigned p;
+	int p;
 	const unsigned bits = query_seeds->key_bits;
 	if (bits != ref_seeds->key_bits)
 		throw std::runtime_error("Joining seed arrays with different key lengths.");
@@ -78,7 +78,7 @@ static void search_worker(atomic<unsigned> *seedp, const SeedPartitionRange *see
 #else
 	unique_ptr<Search::WorkSet> work_set(new Search::WorkSet{ *context, *cfg, shape, {}, writer.get(), {}, {}, {} });
 #endif
-	unsigned p;
+	int p;
 	while ((p = (*seedp)++) < seedp_range->end())
 		for (auto it = JoinIterator<SeedLoc>(query_seed_hits[p].begin(), ref_seed_hits[p].begin()); it; ++it)
 			Search::stage1(it.r->begin(), it.r->size(), it.s->begin(), it.s->size(), *work_set);
