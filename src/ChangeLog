@@ -1,3 +1,6 @@
+[2.0.13]
+- Fixed a bug that caused invalid bit scores in frameshift alignment mode.
+
 [2.0.12]
 - Fixed an error when using HSP filter settings together with a BLAST database.
 - Optimized the performance of alignment traceback.

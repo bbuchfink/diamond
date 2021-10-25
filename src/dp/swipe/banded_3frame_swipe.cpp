@@ -337,6 +337,7 @@ Hsp traceback(Sequence *query, Strand strand, int dna_len, const Banded3FrameSwi
 	Hsp out(true);
 	out.swipe_target = target.target_idx;
 	out.score = ScoreTraits<_sv>::int_score(max_score) * config.cbs_matrix_scale;
+	out.bit_score = score_matrix.bitscore(out.score);
 	out.evalue = evalue;
 	out.transcript.reserve(size_t(out.score * config.transcript_len_estimate));
 
@@ -378,6 +379,7 @@ Hsp traceback(Sequence *query, Strand strand, int dna_len, const Banded3FrameSwi
 	const int j0 = i1 - (target.d_end - 1);
 	out.swipe_target = target.target_idx;
 	out.score = ScoreTraits<_sv>::int_score(max_score) * config.cbs_matrix_scale;
+	out.bit_score = score_matrix.bitscore(out.score);
 	out.evalue = evalue;
 	out.query_range.end_ = std::min(i0 + max_col + (int)dp.band() / 3 / 2, (int)query[0].length());
 	out.query_range.begin_ = std::max(out.query_range.end_ - (j0 + max_col), 0);
