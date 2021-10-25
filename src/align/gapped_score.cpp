@@ -106,7 +106,7 @@ static void add_dp_targets(const WorkTarget& target, int target_idx, const Seque
 		if (target.hsp[frame].empty())
 			continue;
 		
-		int d0 = INT_MAX, d1 = INT_MIN, j0 = INT_MAX, j1 = INT_MIN, bits = 0;
+		int d0 = INT_MAX, d1 = INT_MIN, score = 0;
 
 		for (const Hsp_traits &hsp : target.hsp[frame]) {
 			const int b0 = std::max(hsp.d_min - band, -(slen - 1)),
@@ -115,24 +115,23 @@ static void add_dp_targets(const WorkTarget& target, int target_idx, const Seque
 			if (overlap / (d1 - d0) > config.min_band_overlap || overlap / (b1 - b0) > config.min_band_overlap) {
 				d0 = std::min(d0, b0);
 				d1 = std::max(d1, b1);
-				j0 = std::min(j0, hsp.subject_range.begin_);
-				j1 = std::max(j1, hsp.subject_range.end_);
-				const int64_t dp_size = (int64_t)DpTarget::banded_cols(qlen, slen, d0, d1) * int64_t(d1 - d0);
-				bits = std::max(bits, (int)DP::BandedSwipe::bin(hsp_values, d1 - d0, 0, hsp.score, dp_size, score_width, 0));
+				score = std::max(score, hsp.score);
 			}
 			else {
-				if (d0 != INT_MAX)
-					dp_targets[frame][bits].emplace_back(target.seq, slen, d0, d1, target_idx, qlen, matrix);
+				if (d0 != INT_MAX) {
+					const int64_t dp_size = (int64_t)DpTarget::banded_cols(qlen, slen, d0, d1) * int64_t(d1 - d0);
+					const auto bin = DP::BandedSwipe::bin(hsp_values, d1 - d0, 0, score, dp_size, score_width, 0);
+					dp_targets[frame][bin].emplace_back(target.seq, slen, d0, d1, target_idx, qlen, matrix);
+				}
 				d0 = b0;
 				d1 = b1;
-				j0 = hsp.subject_range.begin_;
-				j1 = hsp.subject_range.end_;
-				const int64_t dp_size = (int64_t)DpTarget::banded_cols(qlen, slen, d0, d1) * int64_t(d1 - d0);
-				bits = (int)DP::BandedSwipe::bin(hsp_values, d1 - d0, 0, hsp.score, dp_size, score_width, 0);
+				score = hsp.score;
 			}
 		}
 
-		dp_targets[frame][bits].emplace_back(target.seq, slen, d0, d1, target_idx, qlen, matrix);
+		const int64_t dp_size = (int64_t)DpTarget::banded_cols(qlen, slen, d0, d1) * int64_t(d1 - d0);
+		const auto bin = DP::BandedSwipe::bin(hsp_values, d1 - d0, 0, score, dp_size, score_width, 0);
+		dp_targets[frame][bin].emplace_back(target.seq, slen, d0, d1, target_idx, qlen, matrix);
 	}
 }
 
