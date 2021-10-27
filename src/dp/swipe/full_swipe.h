@@ -162,7 +162,11 @@ list<Hsp> swipe(const It target_begin, const It target_end, std::atomic_size_t* 
 				profile.set(targets.get(target_scores.data()));
 		}
 		else {
+#ifdef __SSSE3__
 			profile.set(target_seq_vector);
+#else
+			profile.set(targets.get(target_scores.data()));
+#endif
 		}
 
 #ifdef DP_STAT

@@ -92,12 +92,14 @@ template<typename Sv>
 struct SwipeProfile
 {
 
+#ifdef __SSSE3__
 	inline void set(typename ScoreTraits<Sv>::Vector seq)
 	{
 		assert(sizeof(data_) / sizeof(Sv) >= value_traits.alphabet_size);
 		for (unsigned j = 0; j < AMINO_ACID_COUNT; ++j)
 			data_[j] = Sv(j, seq);
 	}
+#endif
 
 	inline const Sv& get(Letter i) const
 	{
@@ -166,7 +168,7 @@ struct SwipeProfile<int32_t>
 		for (int i = 0; i < 32; ++i)
 			row[i] = target_scores[0][i];
 	}
-	void set(const int32_t * *target_scores) {
+	void set(const int32_t** target_scores) {
 		for (int i = 0; i < 32; ++i)
 			row[i] = target_scores[0][i];
 	}
