@@ -252,7 +252,11 @@ list<Hsp> swipe(const vector<DpTarget>::const_iterator subject_begin, const vect
 				profile.set(targets.get(target_scores.data()));
 		}
 		else {
+#ifdef __SSSE3__
 			profile.set(target_seqv);
+#else
+			profile.set(targets.get(target_scores.data()));
+#endif
 		}
 #ifdef DP_STAT
 		const uint64_t live = targets.live();

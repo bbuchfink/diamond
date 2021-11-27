@@ -206,30 +206,9 @@ struct ScoreVector<int16_t, DELTA>
 		data_(_mm_loadu_si128((const __m128i*)x))
 	{}
 
-	ScoreVector(unsigned a, uint64_t seq)
-	{
-		const uint16_t* row((uint16_t*)&score_matrix.matrix16()[a << 5]);
-		uint64_t b = uint64_t(row[seq & 0xff]);
-		seq >>= 8;
-		b |= uint64_t(row[seq & 0xff]) << 16;
-		seq >>= 8;
-		b |= uint64_t(row[seq & 0xff]) << 16 * 2;
-		seq >>= 8;
-		b |= uint64_t(row[seq & 0xff]) << 16 * 3;
-		seq >>= 8;
-		uint64_t c = uint64_t(row[seq & 0xff]);
-		seq >>= 8;
-		c |= uint64_t(row[seq & 0xff]) << 16;
-		seq >>= 8;
-		c |= uint64_t(row[seq & 0xff]) << 16 * 2;
-		seq >>= 8;
-		c |= uint64_t(row[seq & 0xff]) << 16 * 3;
-		data_ = _mm_set_epi64x(c, b);
-	}
-
+#ifdef __SSSE3__
 	ScoreVector(unsigned a, Register seq)
 	{
-#ifdef __SSSE3__
 		const __m128i *row = reinterpret_cast<const __m128i*>(&score_matrix.matrix8u()[a << 5]);
 
 		__m128i high_mask = _mm_slli_epi16(_mm_and_si128(seq, ::SIMD::_mm_set1_epi8('\x10')), 3);
@@ -242,8 +221,8 @@ struct ScoreVector<int16_t, DELTA>
 		__m128i s2 = _mm_shuffle_epi8(r2, seq_high);
 		data_ = _mm_and_si128(_mm_or_si128(s1, s2), ::SIMD::_mm_set1_epi16(255));
 		data_ = _mm_subs_epi16(data_, ::SIMD::_mm_set1_epi16(score_matrix.bias()));
-#endif
 	}
+#endif
 
 	ScoreVector operator+(const ScoreVector&rhs) const
 	{

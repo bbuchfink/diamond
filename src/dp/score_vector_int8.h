@@ -238,6 +238,7 @@ struct ScoreVector<int8_t, DELTA>
 		data_(_mm_loadu_si128(reinterpret_cast<const __m128i*>(s)))
 	{ }
 
+#ifdef __SSSE3__
 	ScoreVector(unsigned a, __m128i seq)
 	{
 		const __m128i* row = reinterpret_cast<const __m128i*>(&score_matrix.matrix8()[a << 5]);
@@ -252,6 +253,7 @@ struct ScoreVector<int8_t, DELTA>
 		__m128i s2 = _mm_shuffle_epi8(r2, seq_high);
 		data_ = _mm_or_si128(s1, s2);
 	}
+#endif
 
 	ScoreVector operator+(const ScoreVector&rhs) const
 	{

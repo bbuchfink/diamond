@@ -20,12 +20,10 @@ static const size_t N = 256;
 using Sv = ScoreVector<int8_t, SCHAR_MIN>;
 using Cell = ForwardCell<Sv>;
 //using Cell = Sv;
-static Cell diagonal_cell[N], horizontal_gap[N];
 static char query[N];
-static Sv profile[32];
 static const size_t C = ScoreTraits<Sv>::CHANNELS;
 
-static void update_row() {
+static void update_row(Cell* diagonal_cell, Cell* horizontal_gap, Sv* profile) {
 	//auto id_mask = DummyIdMask<Sv>(0, Sv());
 	auto id_mask = VectorIdMask<Sv>(0, Sv());
 	//auto row_counter = DummyRowCounter(0);
@@ -41,6 +39,8 @@ static void update_row() {
 void swipe_cell_update() {
 
 	static const size_t n = 1000000llu;
+	Cell diagonal_cell[N], horizontal_gap[N];
+	Sv profile[32];
 	for (size_t i = 0; i < N; ++i) {
 		query[i] = rand() % 32;
 	}
@@ -53,7 +53,7 @@ void swipe_cell_update() {
 	high_resolution_clock::time_point t1 = high_resolution_clock::now();
 
 	for (size_t i = 0; i < n; ++i) {
-		update_row();
+		update_row(diagonal_cell, horizontal_gap, profile);
 	}
 	volatile auto x = diagonal_cell[0].data_;
 	volatile auto y = diagonal_cell[0].ident;

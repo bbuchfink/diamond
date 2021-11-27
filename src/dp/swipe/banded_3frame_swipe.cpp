@@ -425,6 +425,7 @@ list<Hsp> banded_3frame_swipe(
 		frameshift_penalty(score_matrix.frame_shift());
 	
 	SwipeProfile<_sv> profile;
+	std::array<const int8_t*, 32> target_scores;
 	Score best[ScoreTraits<_sv>::CHANNELS];
 	int max_col[ScoreTraits<_sv>::CHANNELS];
 	for (int i = 0; i < ScoreTraits<_sv>::CHANNELS; ++i) {
@@ -443,7 +444,11 @@ list<Hsp> banded_3frame_swipe(
 		_sv vgap0, vgap1, vgap2, hgap, col_best;
 		vgap0 = vgap1 = vgap2 = col_best = ScoreTraits<_sv>::zero();
 
+#ifdef __SSSE3__
 		profile.set(targets.get());
+#else
+		profile.set(targets.get(target_scores.data()));
+#endif
 		for (int i = i0_; i <= i1_; ++i) {
 			hgap = it.hgap();
 			_sv next = cell_update<_sv>(it.sm3, it.sm4, it.sm2, profile.get(q[0][i]), extend_penalty, open_penalty, frameshift_penalty, hgap, vgap0, col_best);
