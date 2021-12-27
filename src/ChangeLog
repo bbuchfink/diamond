@@ -1,6 +1,7 @@
 [2.0.14]
 - Fixed a compiler error on Linux systems that do not define `_SC_LEVEL3_CACHE_SIZE`.
 - Fixed an error when using `--unal 1` with the `cigar` output field.
+- Fixed an `illegal instruction` error on systems that did not support AVX2.
 
 [2.0.13]
 - Fixed a bug that caused invalid bit scores in frameshift alignment mode.

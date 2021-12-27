@@ -55,7 +55,7 @@ using namespace DISPATCH_ARCH;
 
 namespace Benchmark { namespace DISPATCH_ARCH {
 
-#ifdef __SSE4_1__
+#if defined(__SSE4_1__) && defined(EXTRA)
 void swipe_cell_update();
 #endif
 
@@ -327,7 +327,7 @@ void matrix_adjust(const Sequence& s1, const Sequence& s2) {
 
 void benchmark() {
 	if (config.type == "swipe") {
-#ifdef __SSE4_1__
+#if defined(__SSE4_1__) && defined(EXTRA)
 		swipe_cell_update();
 #endif
 		return;

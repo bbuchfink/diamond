@@ -116,12 +116,15 @@ set(DISPATCH_OBJECTS
 "src/dp/swipe/banded_3frame_swipe.cpp"
 "src/search/stage2.cpp"
 "src/tools/benchmark.cpp"
-"src/tools/benchmark_swipe.cpp"
 "src/dp/swipe/swipe_wrapper.cpp"
 "src/util/tantan.cpp"
 "src/dp/scan_diags.cpp"
 "src/dp/ungapped_simd.cpp"
 )
+
+if(EXTRA)
+  LIST(APPEND DISPATCH_OBJECTS "src/tools/benchmark_swipe.cpp")
+endif()
 
 add_library(arch_generic OBJECT ${DISPATCH_OBJECTS})
 target_compile_options(arch_generic PUBLIC -DDISPATCH_ARCH=ARCH_GENERIC -DARCH_ID=0 -DEigen=Eigen_GENERIC)
