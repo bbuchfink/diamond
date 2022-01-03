@@ -97,14 +97,16 @@ Hsp traceback(_cbs bias_correction, const Matrix<Cell> &dp, const DpTarget &targ
 	out.bit_score = score_matrix.bitscore(out.score);
 	out.frame = p.frame.index();
 	out.matrix = target.matrix;
-	out.d_begin = target.d_begin;
-	out.d_end = target.d_end;
 	const int j0 = i1 - (target.d_end - 1), i1_ = i0 + max_col + max_band_i + 1, j1_ = j0 + max_col + 1;
 	if (target.carry_over.i1 == 0) {
+		out.d_begin = target.d_begin;
+		out.d_end = target.d_end;
 		out.query_range.end_ = i1_;
 		out.subject_range.end_ = j1_;
 	}
 	else {
+		out.d_begin = -target.d_end + (int)p.query.length() - (int)target.seq.length() + 1;
+		out.d_end = -target.d_begin + (int)p.query.length() - (int)target.seq.length() + 1;
 		out.query_range.end_ = target.carry_over.i1;
 		out.subject_range.end_ = target.carry_over.j1;
 		out.identities = target.carry_over.ident;
