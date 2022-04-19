@@ -54,7 +54,6 @@ namespace ExtensionPipeline {
 				QueryMapper(query_id, begin, end, cfg)
 			{}
 			virtual void run(Statistics &stat) override;
-			virtual ~Pipeline() {}
 		};
 	}
 	namespace BandedSwipe {
