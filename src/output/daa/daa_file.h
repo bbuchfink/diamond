@@ -16,9 +16,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#ifndef DAA_FILE_H_
-#define DAA_FILE_H_
-
+#pragma once
 #include <string>
 #include <exception>
 #include "../util/ptr_vector.h"
@@ -28,8 +26,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/io/input_file.h"
 #include "../basic/value.h"
 #include "../data/reference.h"
-
-using std::string;
 
 struct DAA_header1
 {
@@ -222,5 +218,3 @@ private:
 	vector<uint32_t> ref_len_;
 
 };
-
-#endif /* DAA_FILE_H_ */

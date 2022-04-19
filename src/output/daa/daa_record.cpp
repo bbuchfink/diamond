@@ -77,5 +77,6 @@ BinaryBuffer::Iterator& operator>>(BinaryBuffer::Iterator &it, DAA_query_record:
 	}
 	r.context().parse();
 	r.evalue = score_matrix.evalue(r.score, r.parent_.context[0].size(), r.subject_len);
+	r.bit_score = score_matrix.bitscore(r.score);
 	return it;
 }
