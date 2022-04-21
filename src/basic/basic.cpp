@@ -29,7 +29,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/util.h"
 #include "../stats/standard_matrix.h"
 
-const char* Const::version_string = "2.0.14";
+const char* Const::version_string = "2.0.15";
 const char* Const::program_name = "diamond";
 
 Align_mode::Align_mode(unsigned mode) :

@@ -1,3 +1,7 @@
+[2.0.15]
+- Fixed a bug (present since v2.0.12) that caused the `diamond view` workflow to
+  report a zero bit score for all alignments.
+
 [2.0.14]
 - Fixed a compiler error on Linux systems that do not define `_SC_LEVEL3_CACHE_SIZE`.
 - Fixed an error when using `--unal 1` with the `cigar` output field.
