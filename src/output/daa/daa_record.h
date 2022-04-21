@@ -16,9 +16,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#ifndef DAA_RECORD_H_
-#define DAA_RECORD_H_
-
+#pragma once
 #include <limits>
 #include "daa_file.h"
 #include "../basic/packed_sequence.h"
@@ -28,16 +26,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../stats/score_matrix.h"
 #include "../basic/match.h"
 
-using std::string;
-using std::vector;
-
-/*void translate_query(const vector<Letter>& query, vector<Letter> *context)
-{
-	context[0] = query;
-	context[1] = Translator::reverse(query);
-}*/
-
-inline void translate_query(const vector<Letter>& query, vector<Letter> *context)
+inline void translate_query(const std::vector<Letter>& query, std::vector<Letter> *context)
 {
 	Translator::translate(query, context);
 }
@@ -126,10 +115,10 @@ struct DAA_query_record
 		return align_mode.query_translated ? source_seq.size() : context[0].size();
 	}
 
-	string query_name;
+	std::string query_name;
 	size_t query_num;
-	vector<Letter> source_seq;
-	vector<Letter> context[6];
+	std::vector<Letter> source_seq;
+	std::vector<Letter> context[6];
 	TranslatedSequence query_seq;
 
 private:
@@ -144,5 +133,3 @@ private:
 };
 
 BinaryBuffer::Iterator& operator>>(BinaryBuffer::Iterator &it, DAA_query_record::Match &r);
-
-#endif /* DAA_RECORD_H_ */

@@ -33,7 +33,7 @@ Diamond is actively supported and developed software. Please use the [issue trac
 About
 =====
 DIAMOND is currently developed by Benjamin Buchfink at the Drost lab, Max
-Planck Institute for Developmental Biology, Tübingen, Germany (since 2019).
+Planck Institute for Biology, Tübingen, Germany (since 2019).
 Its development was supported for one year by the German Federal Ministry
 for Economic Affairs and Energy through an EXIST grant in 2018-2019. It was
 developed independently by Benjamin Buchfink from 2016-2018. Its initial
@@ -44,7 +44,7 @@ of Tübingen, Germany.
 \[[Twitter](https://twitter.com/bbuchfink)\] \[[Google
 Scholar](https://scholar.google.de/citations?user=kjPIF1cAAAAJ)\]
 \[[Drost lab](https://drostlab.com/)\]
-\[[MPI-EBIO](http://eb.tuebingen.mpg.de/)\]
+\[[MPI-BIO](http://eb.tuebingen.mpg.de/)\]
 
 **When using the tool in published research, please cite:**
 
