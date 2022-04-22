@@ -176,6 +176,7 @@ Config::Config(int argc, const char **argv, bool check_io)
 		.add_command("makeidx", "Make database index", makeidx)
 		.add_command("roc", "", roc)
 		.add_command("benchmark", "", benchmark)
+		.add_command("merge-daa", "", MERGE_DAA)
 #ifdef EXTRA
 		.add_command("random-seqs", "", random_seqs)
 		.add_command("sort", "", sort)

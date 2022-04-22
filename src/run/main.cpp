@@ -58,6 +58,7 @@ void composition();
 void join();
 void hash_seqs();
 void list_seeds();
+void merge_daa();
 #ifdef WITH_BLASTDB
 void prep_blast_db();
 #endif
@@ -209,6 +210,9 @@ int main(int ac, const char* av[])
 			break;
 		case Config::LIST_SEEDS:
 			list_seeds();
+			break;
+		case Config::MERGE_DAA:
+			merge_daa();
 			break;
 		default:
 			return 1;

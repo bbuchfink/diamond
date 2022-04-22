@@ -284,6 +284,7 @@ set(OBJECTS
   src/basic/value.cpp
   src/masking/motifs.cpp
   src/align/alt_hsp.cpp
+  src/output/daa/merge.cpp
 )
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}")
