@@ -217,4 +217,6 @@ private:
 	PtrVector<string> ref_name_;
 	vector<uint32_t> ref_len_;
 
+	friend void write_file(DAA_file&, OutputFile&);
+
 };
