@@ -90,8 +90,8 @@ void finish_daa(OutputFile& f, const SequenceFile& db)
 	f.write(&h2_, 1);
 }
 
-void finish_daa(OutputFile& f, DAA_file& daa_in) {
-	DAA_header2 h2_(daa_in.db_seqs(),
+DAA_header2::DAA_header2(const DAA_file& daa_in) :
+	DAA_header2(daa_in.db_seqs(),
 		daa_in.db_letters(),
 		daa_in.gap_open_penalty(),
 		daa_in.gap_extension_penalty(),
@@ -101,15 +101,29 @@ void finish_daa(OutputFile& f, DAA_file& daa_in) {
 		daa_in.lambda(),
 		daa_in.evalue(),
 		daa_in.score_matrix(),
-		daa_in.mode());
+		daa_in.mode())
+{
+	block_type[0] = DAA_header2::alignments;
+	block_type[1] = DAA_header2::ref_names;
+	block_type[2] = DAA_header2::ref_lengths;
+}
 
-	h2_.block_type[0] = DAA_header2::alignments;
-	h2_.block_type[1] = DAA_header2::ref_names;
-	h2_.block_type[2] = DAA_header2::ref_lengths;
-
+static void terminate_aln_block(OutputFile& f, DAA_header2& h2) {
 	uint32_t size = 0;
 	f.write(&size, 1);
-	h2_.block_size[0] = f.tell() - sizeof(DAA_header1) - sizeof(DAA_header2);
+	h2.block_size[0] = f.tell() - sizeof(DAA_header1) - sizeof(DAA_header2);
+}
+
+static void write_header2(OutputFile& f, const DAA_header2& h2) {
+	f.seek(sizeof(DAA_header1));
+	f.write(&h2, 1);
+}
+
+void finish_daa(OutputFile& f, DAA_file& daa_in) {
+	DAA_header2 h2_(daa_in);
+
+	terminate_aln_block(f, h2_);
+	
 	h2_.db_seqs_used = daa_in.db_seqs_used();
 	h2_.query_records = daa_in.query_records();
 
@@ -120,6 +134,21 @@ void finish_daa(OutputFile& f, DAA_file& daa_in) {
 	f.write(daa_in.ref_len().data(), daa_in.ref_len().size());
 	h2_.block_size[2] = daa_in.block_size(2);
 
-	f.seek(sizeof(DAA_header1));
-	f.write(&h2_, 1);
+	write_header2(f, h2_);
+}
+
+void finish_daa(OutputFile& f, DAA_file& daa_in, const StringSet& seq_ids, const vector<uint32_t>& seq_lens, int64_t query_count) {
+	DAA_header2 h2_(daa_in);
+	terminate_aln_block(f, h2_);
+	h2_.db_seqs_used = seq_ids.size();
+	h2_.query_records = (uint64_t)query_count;
+	int64_t s = 0;
+	for (int64_t i = 0; i < seq_ids.size(); ++i) {
+		f << seq_ids[i];
+		s += seq_ids.length(i) + 1;
+	}
+	h2_.block_size[1] = (uint64_t)s;
+	f.write(seq_lens.data(), seq_lens.size());
+	h2_.block_size[2] = seq_lens.size() * sizeof(uint32_t);
+	write_header2(f, h2_);
 }

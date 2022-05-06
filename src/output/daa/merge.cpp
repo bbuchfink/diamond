@@ -26,16 +26,20 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 using std::unordered_map;
 using std::string;
 
-unordered_map<int64_t, int64_t> build_mapping(unordered_map<string, int64_t>& acc2oid, DAA_file& f) {
-	unordered_map<int64_t, int64_t> r;
-	for (int64_t i = 0; i < f.db_seqs_used(); ++i) {
+unordered_map<uint32_t, uint32_t> build_mapping(unordered_map<string, uint32_t>& acc2oid, StringSet& seq_ids, vector<uint32_t>& seq_lens, DAA_file& f) {
+	unordered_map<uint32_t, uint32_t> r;
+	for (uint32_t i = 0; i < f.db_seqs_used(); ++i) {
 		auto it = acc2oid.emplace(f.ref_name(i), acc2oid.size());
 		r.emplace(i, it.first->second);
+		if (it.second) {
+			seq_ids.push_back(f.ref_name(i).begin(), f.ref_name(i).end());
+			seq_lens.push_back(f.ref_len(i));
+		}
 	}
 	return r;
 }
 
-static void write_file(DAA_file& f, OutputFile& out) {
+static int64_t write_file(DAA_file& f, OutputFile& out, const unordered_map<uint32_t, uint32_t>& subject_map) {
 	uint32_t size = 0;
 	BinaryBuffer buf;
 	TextBuffer out_buf;
@@ -43,29 +47,34 @@ static void write_file(DAA_file& f, OutputFile& out) {
 	while (f.read_query_buffer(buf, query_num)) {
 		DAA_query_record r(f, buf, query_num);
 		size_t seek_pos = write_daa_query_record(out_buf, r.query_name.c_str(), r.query_seq.source());
-		DAA_query_record::Match_iterator i = r.begin();
-		for (; i.good(); ++i) {
-			write_daa_record(out_buf, *i, i->subject_id);
+		auto it = r.raw_begin();
+		while(it.good()) {
+			copy_match_record_raw(it, out_buf, subject_map);
 		}
 		finish_daa_query_record(out_buf, seek_pos);
 		out.write(out_buf.data(), out_buf.size());
 		out_buf.clear();
 	}
+	return int64_t(query_num + 1);
 }
 
 void merge_daa() {
 	vector<DAA_file*> files;
 	const int n = config.input_ref_file.size();
-	unordered_map<string, int64_t> acc2oid;
-	vector<unordered_map<int64_t, int64_t>> oid_maps;
+	unordered_map<string, uint32_t> acc2oid;
+	vector<unordered_map<uint32_t, uint32_t>> oid_maps;
+	StringSet seq_ids;
+	vector<uint32_t> seq_lens;
 	oid_maps.reserve(n);
 	for (int i = 0; i < n; ++i) {
 		files.push_back(new DAA_file(config.input_ref_file[i]));
-		oid_maps.push_back(build_mapping(acc2oid, *files.back()));
+		oid_maps.push_back(build_mapping(acc2oid, seq_ids, seq_lens, *files.back()));
 	}
 	OutputFile out(config.output_file);
 	init_daa(out);
-	for (DAA_file* f : files)
-		write_file(*f, out);
+	int64_t query_count = 0;
+	for (vector<DAA_file*>::iterator i = files.begin(); i < files.end(); ++i)
+		query_count += write_file(**i, out, oid_maps[i - files.begin()]);
+	finish_daa(out, *files.front(), seq_ids, seq_lens, query_count);
 	out.close();
 }

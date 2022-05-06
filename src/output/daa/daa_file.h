@@ -27,6 +27,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../basic/value.h"
 #include "../data/reference.h"
 
+struct DAA_file;
+
 struct DAA_header1
 {
 	enum { VERSION = 1, COMPATIBILITY_VERSION = 0 };
@@ -86,6 +88,7 @@ struct DAA_header2
 		memset(this->score_matrix, 0, sizeof(this->score_matrix));
 		strcpy(this->score_matrix, score_matrix.c_str());
 	}
+	DAA_header2(const DAA_file& f);
 	typedef enum { empty = 0, alignments = 1, ref_names = 2, ref_lengths = 3 } Block_type;
 	uint64_t diamond_build, db_seqs, db_seqs_used, db_letters, flags, query_records;
 	int32_t mode, gap_open, gap_extend, reward, penalty, reserved1, reserved2, reserved3;

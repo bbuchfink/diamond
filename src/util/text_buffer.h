@@ -162,7 +162,14 @@ struct TextBuffer
 		return *this;
 	}
 
-	TextBuffer& operator<<(char c)
+	TextBuffer& operator<<(int8_t c)
+	{
+		reserve(1);
+		*(ptr_++) = c;
+		return *this;
+	}
+
+	TextBuffer& operator<<(uint8_t c)
 	{
 		reserve(1);
 		*(ptr_++) = c;

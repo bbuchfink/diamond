@@ -80,3 +80,25 @@ BinaryBuffer::Iterator& operator>>(BinaryBuffer::Iterator &it, DAA_query_record:
 	r.bit_score = score_matrix.bitscore(r.score);
 	return it;
 }
+
+void copy_match_record_raw(BinaryBuffer::Iterator& it, TextBuffer& buf, const std::unordered_map<uint32_t, uint32_t>& subject_map) {
+	uint32_t subject_id, query_begin, subject_begin;
+	int score;
+	it >> subject_id;
+	uint8_t flag;
+	it >> flag;
+	it.read_packed(flag & 3, score);
+	it.read_packed((flag >> 2) & 3, query_begin);
+	it.read_packed((flag >> 4) & 3, subject_begin);
+	buf.write(subject_map.at(subject_id));
+	buf.write(flag);
+	buf.write_packed(score);
+	buf.write_packed(query_begin);
+	buf.write_packed(subject_begin);
+	const uint8_t t = Packed_operation::terminator();
+	uint8_t c;
+	do {
+		it >> c;
+		buf << c;
+	} while (c != t);
+}

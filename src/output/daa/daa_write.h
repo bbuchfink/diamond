@@ -39,3 +39,5 @@ void finish_daa(OutputFile& f, const SequenceFile& db);
 
 void finish_daa(OutputFile& f, DAA_file& daa_in);
 
+void finish_daa(OutputFile& f, DAA_file& daa_in, const StringSet& seq_ids, const std::vector<uint32_t>& seq_lens, int64_t query_count);
+

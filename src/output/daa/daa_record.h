@@ -17,6 +17,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #pragma once
+#include <unordered_map>
 #include <limits>
 #include "daa_file.h"
 #include "../basic/packed_sequence.h"
@@ -110,6 +111,10 @@ struct DAA_query_record
 		return Match_iterator(*this, it_);
 	}
 
+	BinaryBuffer::Iterator raw_begin() const {
+		return it_;
+	}
+
 	size_t query_len() const
 	{
 		return align_mode.query_translated ? source_seq.size() : context[0].size();
@@ -133,3 +138,4 @@ private:
 };
 
 BinaryBuffer::Iterator& operator>>(BinaryBuffer::Iterator &it, DAA_query_record::Match &r);
+void copy_match_record_raw(BinaryBuffer::Iterator& it, TextBuffer& buf, const std::unordered_map<uint32_t, uint32_t>& subject_map);
