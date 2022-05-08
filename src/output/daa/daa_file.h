@@ -211,6 +211,10 @@ struct DAA_file
 		return true;
 	}
 
+	InputFile& file() {
+		return f_;
+	}
+
 private:
 
 	InputFile f_;

@@ -25,8 +25,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 using std::unordered_map;
 using std::string;
+using std::endl;
 
 unordered_map<uint32_t, uint32_t> build_mapping(unordered_map<string, uint32_t>& acc2oid, StringSet& seq_ids, vector<uint32_t>& seq_lens, DAA_file& f) {
+	task_timer timer(("Reading targets for file " + f.file().file_name).c_str());
 	unordered_map<uint32_t, uint32_t> r;
 	for (uint32_t i = 0; i < f.db_seqs_used(); ++i) {
 		auto it = acc2oid.emplace(f.ref_name(i), acc2oid.size());
@@ -36,6 +38,8 @@ unordered_map<uint32_t, uint32_t> build_mapping(unordered_map<string, uint32_t>&
 			seq_lens.push_back(f.ref_len(i));
 		}
 	}
+	timer.finish();
+	message_stream << "#Targets: " << f.db_seqs_used() << endl;
 	return r;
 }
 
@@ -59,6 +63,7 @@ static int64_t write_file(DAA_file& f, OutputFile& out, const unordered_map<uint
 }
 
 void merge_daa() {
+	task_timer timer("Initializing");
 	vector<DAA_file*> files;
 	const int n = config.input_ref_file.size();
 	unordered_map<string, uint32_t> acc2oid;
@@ -67,14 +72,23 @@ void merge_daa() {
 	vector<uint32_t> seq_lens;
 	oid_maps.reserve(n);
 	for (int i = 0; i < n; ++i) {
+		timer.go("Opening input file");
 		files.push_back(new DAA_file(config.input_ref_file[i]));
+		timer.finish();
 		oid_maps.push_back(build_mapping(acc2oid, seq_ids, seq_lens, *files.back()));
 	}
+	message_stream << "Total number of targets: " << acc2oid.size() << endl;
+	timer.go("Initializing output");
 	OutputFile out(config.output_file);
 	init_daa(out);
 	int64_t query_count = 0;
-	for (vector<DAA_file*>::iterator i = files.begin(); i < files.end(); ++i)
+	for (vector<DAA_file*>::iterator i = files.begin(); i < files.end(); ++i) {
+		timer.go(("Writing output for file " + (**i).file().file_name).c_str());
 		query_count += write_file(**i, out, oid_maps[i - files.begin()]);
+	}
+	timer.go("Writing trailer");
 	finish_daa(out, *files.front(), seq_ids, seq_lens, query_count);
 	out.close();
+	timer.finish();
+	message_stream << "Total number of queries: " << query_count << endl;
 }
