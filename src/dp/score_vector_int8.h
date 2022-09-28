@@ -5,6 +5,7 @@ Copyright (C) 2013-2021 Max Planck Society for the Advancement of Science e.V.
                         Eberhard Karls Universitaet Tuebingen
 						
 Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
+Arm NEON port contributed by Martin Larralde <martin.larralde@embl.de>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -188,6 +189,190 @@ struct ScoreTraits<ScoreVector<int8_t, DELTA>>
 		}
 		uint64_t gap;
 		uint64_t open;
+	};
+	static ScoreVector<int8_t, DELTA> zero() {
+		return ScoreVector<int8_t, DELTA>();
+	}
+	static constexpr int8_t max_score() {
+		return SCHAR_MAX;
+	}
+	static int int_score(int8_t s)
+	{
+		return (int)s - DELTA;
+	}
+	static constexpr int max_int_score() {
+		return SCHAR_MAX - DELTA;
+	}
+	static constexpr int8_t zero_score() {
+		return DELTA;
+	}
+	static void saturate(ScoreVector<int8_t, DELTA>& v) {}
+};
+
+#elif defined(__ARM_NEON)
+
+template<int DELTA>
+struct ScoreVector<int8_t, DELTA>
+{
+
+	ScoreVector():
+		data_(vdupq_n_s8(DELTA))
+	{}
+
+	explicit ScoreVector(int8x16_t data):
+		data_(data)
+	{}
+
+	explicit ScoreVector(int8_t x):
+		data_(vdupq_n_s8(x))
+	{}
+
+	explicit ScoreVector(int x):
+		data_(vdupq_n_s8(x))
+	{}
+
+	explicit ScoreVector(const int8_t* s) :
+		data_(vld1q_s8(s))
+	{ }
+
+	explicit ScoreVector(const uint8_t* s) :
+		data_(vreinterpretq_s8_u8(vld1q_u8(s)))
+	{ }
+
+	ScoreVector(unsigned a, int8x16_t seq)
+	{
+		const int8x16_t* row = reinterpret_cast<const int8x16_t*>(&score_matrix.matrix8()[a << 5]);
+
+		int8x16_t high_mask = vreinterpretq_s8_s16(vshlq_n_s16(vreinterpretq_s16_s8(vandq_s8(seq, vdupq_n_s8('\x10'))), 3));
+		int8x16_t seq_low   = vorrq_s8(seq, high_mask);
+		int8x16_t seq_high  = vorrq_s8(seq, veorq_s8(high_mask, vdupq_n_s8('\x80')));
+
+		int8x16_t r1 = vld1q_s8(reinterpret_cast<const int8_t*>(row));
+		int8x16_t r2 = vld1q_s8(reinterpret_cast<const int8_t*>(row + 1));
+
+		int8x16_t s1 = vqtbl1q_s8(r1, vandq_u8(vreinterpretq_u8_s8(seq_low),  vdupq_n_u8(0x8F)));
+		int8x16_t s2 = vqtbl1q_s8(r2, vandq_u8(vreinterpretq_u8_s8(seq_high), vdupq_n_u8(0x8F)));
+		data_ = vorrq_s8(s1, s2);
+	}
+
+	ScoreVector operator+(const ScoreVector&rhs) const
+	{
+		return ScoreVector(vqaddq_s8(data_, rhs.data_));
+	}
+
+	ScoreVector operator-(const ScoreVector&rhs) const
+	{
+		return ScoreVector(vqsubq_s8(data_, rhs.data_));
+	}
+
+	ScoreVector& operator+=(const ScoreVector& rhs) {
+		data_ = vqaddq_s8(data_, rhs.data_);
+		return *this;
+	}
+
+	ScoreVector& operator-=(const ScoreVector& rhs)
+	{
+		data_ = vqsubq_s8(data_, rhs.data_);
+		return *this;
+	}
+
+	ScoreVector& operator &=(const ScoreVector& rhs) {
+		data_ = vandq_s8(data_, rhs.data_);
+		return *this;
+	}
+
+	ScoreVector& operator++() {
+		data_ = vqaddq_s8(data_, vdupq_n_s8(1));
+		return *this;
+	}
+
+	friend ScoreVector blend(const ScoreVector&v, const ScoreVector&w, const ScoreVector&mask) {
+		/* Use a signed shift right to create a mask with the sign bit */
+		uint8x16_t mask_ = vreinterpretq_u8_s8(vshrq_n_s8(mask.data_, 7));
+		return ScoreVector(vbslq_s8(mask_, w.data_, v.data_));
+	}
+
+	ScoreVector operator==(const ScoreVector&v) const {
+		return ScoreVector(vceqq_s8(data_, v.data_));
+	}
+
+	// friend uint32_t cmp_mask(const ScoreVector&v, const ScoreVector&w) {
+	// 	return _mm_movemask_epi8(_mm_cmpeq_epi8(v.data_, w.data_));
+	// }
+
+	int operator [](unsigned i) const
+	{
+		return vgetq_lane_s8(data_, i);
+	}
+
+	ScoreVector& set(unsigned i, uint8_t v) const
+	{
+		vsetq_lane_s8(v, data_, i);
+		return *this;
+	}
+
+	ScoreVector& max(const ScoreVector&rhs)
+	{
+		data_ = vmaxq_s8(data_, rhs.data_);
+		return *this;
+	}
+
+	ScoreVector& min(const ScoreVector&rhs)
+	{
+		data_ = vminq_s8(data_, rhs.data_);
+		return *this;
+	}
+
+	friend ScoreVector max(const ScoreVector& lhs, const ScoreVector&rhs)
+	{
+		return ScoreVector(vmaxq_s8(lhs.data_, rhs.data_));
+	}
+
+	friend ScoreVector min(const ScoreVector& lhs, const ScoreVector&rhs)
+	{
+		return ScoreVector(vminq_s8(lhs.data_, rhs.data_));
+	}
+
+	void store(int8_t *ptr) const
+	{
+			vst1q_s8(ptr, data_);
+	}
+
+	friend std::ostream& operator<<(std::ostream &s, ScoreVector v)
+	{
+		int8_t x[16];
+		v.store(x);
+		for (unsigned i = 0; i < 16; ++i)
+			printf("%3i ", (int)x[i]);
+		return s;
+	}
+
+	void expand_from_8bit() {}
+
+	int8x16_t data_;
+
+};
+
+template<int DELTA>
+struct ScoreTraits<ScoreVector<int8_t, DELTA>>
+{
+	enum { CHANNELS = 16 };
+	typedef ::DISPATCH_ARCH::SIMD::Vector<int8_t> Vector;
+	typedef int8_t Score;
+	typedef uint8_t Unsigned;
+	typedef uint16_t Mask;
+	struct TraceMask {
+		static uint32_t make(uint32_t vmask, uint32_t hmask) {
+			return vmask << 16 | hmask;
+		}
+		static uint32_t vmask(int channel) {
+			return 1 << (channel + 16);
+		}
+		static uint32_t hmask(int channel) {
+			return 1 << channel;
+		}
+		uint32_t gap;
+		uint32_t open;
 	};
 	static ScoreVector<int8_t, DELTA> zero() {
 		return ScoreVector<int8_t, DELTA>();
