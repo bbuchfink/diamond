@@ -42,6 +42,9 @@ namespace SIMD {
 int flags = 0;
 
 Arch init_arch() {
+#ifdef __ARM_NEON
+	return Arch::NEON;
+#else
 #ifdef __SSE2__
 	int info[4];
 	cpuid(info, 0);
@@ -88,6 +91,7 @@ Arch init_arch() {
 		return Arch::SSE4_1;
 	else
 		return Arch::Generic;
+#endif
 }
 
 Arch arch() {

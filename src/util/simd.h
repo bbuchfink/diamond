@@ -44,11 +44,14 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #ifdef _MSC_VER
 #include <intrin.h>
 #endif
+#ifdef __ARM_NEON
+#include <arm_neon.h>
+#endif
 
 namespace SIMD {
 
-enum class Arch { None, Generic, SSE4_1, AVX2 };
-enum Flags { SSSE3 = 1, POPCNT = 2, SSE4_1 = 4, AVX2 = 8 };
+enum class Arch { None, Generic, SSE4_1, AVX2, NEON };
+enum Flags { SSSE3 = 1, POPCNT = 2, SSE4_1 = 4, AVX2 = 8, NEON = 16 };
 Arch arch();
 
 std::string features();
@@ -124,7 +127,7 @@ inline void print_16(__m256i x, std::ostream& s) {
 
 }
 
-#ifdef __SSE__
+#if defined(__SSE__)
 
 #if defined(__GNUC__) && !defined(__clang__) && defined(__SSE__)
 #pragma GCC push_options
@@ -151,6 +154,19 @@ const std::function<decltype(ARCH_GENERIC::name)> name = dispatch_target_##name(
 #elif defined(__clang__) && defined(__SSE__)
 #pragma clang attribute pop
 #endif
+
+#elif defined(__ARM_NEON__)
+
+#include <functional>
+
+#define DECL_DISPATCH(ret, name, param) namespace ARCH_GENERIC { ret name param; }\
+namespace ARCH_NEON { ret name param; }\
+static inline std::function<decltype(ARCH_GENERIC::name)> dispatch_target_##name() {\
+switch(::SIMD::arch()) {\
+case ::SIMD::Arch::NEON: return ARCH_NEON::name;\
+default: return ARCH_GENERIC::name;\
+}}\
+const std::function<decltype(ARCH_GENERIC::name)> name = dispatch_target_##name()
 
 #else
 
