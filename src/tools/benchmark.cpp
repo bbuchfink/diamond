@@ -145,7 +145,7 @@ void benchmark_ungapped_sse(const Sequence&s1, const Sequence&s2) {
 }
 #endif
 
-#ifdef __SSE2__
+#if defined(__SSE2__) | ARCH_ID == 3
 void benchmark_transpose() {
 	static const size_t n = 10000000llu;
 	static signed char in[256], out[256];
@@ -155,7 +155,11 @@ void benchmark_transpose() {
 
 	high_resolution_clock::time_point t1 = high_resolution_clock::now();
 	for (size_t i = 0; i < n; ++i) {
+#if defined(__SSE2__)
 		transpose((const signed char**)v, 16, out, __m128i());
+#elif ARCH_ID == 3
+		transpose((const signed char**)v, 16, out, int8x16_t());
+#endif
 		in[0] = out[0];
 	}
 	cout << "Matrix transpose 16x16 bytes:\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * 256) * 1000 << " ps/Letter" << endl;
@@ -261,7 +265,7 @@ void banded_swipe(const Sequence &s1, const Sequence &s2) {
 	cout << "Banded SWIPE (int16_t, CBS, TB):" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * s1.length() * 65 * 16) * 1000 << " ps/Cell" << endl;
 }
 
-#ifdef __SSE4_1__
+#if defined(__SSE4_1__) | ARCH_ID == 3
 void diag_scores(const Sequence& s1, const Sequence& s2) {
 	static const size_t n = 100000llu;
 	high_resolution_clock::time_point t1 = high_resolution_clock::now();
@@ -337,7 +341,7 @@ void benchmark() {
 	}
 
 	vector<Letter> s1, s2, s3, s4;
-		
+
 	s1 = Sequence::from_string("mpeeeysefkelilqkelhvvyalshvcgqdrtllasillriflhekleslllctlndreismedeattlfrattlastlmeqymkatatqfvhhalkdsilkimeskqscelspskleknedvntnlthllnilselvekifmaseilpptlryiygclqksvqhkwptnttmrtrvvsgfvflrlicpailnprmfniisdspspiaartlilvaksvqnlanlvefgakepymegvnpfiksnkhrmimfldelgnvpelpdttehsrtdlsrdlaalheicvahsdelrtlsnergaqqhvlkkllaitellqqkqnqyt"); // d1wera_
 	s2 = Sequence::from_string("erlvelvtmmgdqgelpiamalanvvpcsqwdelarvlvtlfdsrhllyqllwnmfskeveladsmqtlfrgnslaskimtfcfkvygatylqklldpllrivitssdwqhvsfevdptrlepsesleenqrnllqmtekffhaiissssefppqlrsvchclyqvvsqrfpqnsigavgsamflrfinpaivspyeagildkkpppiierglklmskilqsianhvlftkeehmrpfndfvksnfdaarrffldiasdcptsdavnhslsfisdgnvlalhrllwnnqekigqylssnrdhkavgrrpfdkmatllaylgppe"); // d1nf1a_
 	s3 = Sequence::from_string("ttfgrcavksnqagggtrshdwwpcqlrldvlrqfqpsqnplggdfdyaeafqsldyeavkkdiaalmtesqdwwpadfgnygglfvrmawhsagtyramdgrggggmgqqrfaplnswpdnqnldkarrliwpikqkygnkiswadlmlltgnvalenmgfktlgfgggradtwqsdeavywgaettfvpqgndvrynnsvdinaradklekplaathmgliyvnpegpngtpdpaasakdireafgrmgmndtetvaliagghafgkthgavkgsnigpapeaadlgmqglgwhnsvgdgngpnqmtsgleviwtktptkwsngyleslinnnwtlvespagahqweavngtvdypdpfdktkfrkatmltsdlalindpeylkisqrwlehpeeladafakawfkllhrdlgpttrylgpevp"); // d3ut2a1
@@ -365,7 +369,7 @@ void benchmark() {
 #ifdef __SSE4_1__
 	benchmark_ungapped_sse(ss1, ss2);
 #endif
-#ifdef __SSE2__
+#if defined(__SSE2__) | ARCH_ID == 3
 	benchmark_transpose();
 #endif
 }
