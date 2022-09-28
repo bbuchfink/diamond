@@ -155,7 +155,7 @@ const std::function<decltype(ARCH_GENERIC::name)> name = dispatch_target_##name(
 #pragma clang attribute pop
 #endif
 
-#elif defined(__ARM_NEON__)
+#elif defined(__ARM_NEON)
 
 #include <functional>
 
@@ -166,7 +166,7 @@ switch(::SIMD::arch()) {\
 case ::SIMD::Arch::NEON: return ARCH_NEON::name;\
 default: return ARCH_GENERIC::name;\
 }}\
-const std::function<decltype(ARCH_GENERIC::name)> name = dispatch_target_##name()
+const std::function<decltype(ARCH_GENERIC::name)> name = dispatch_target_##name();
 
 #else
 
