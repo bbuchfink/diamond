@@ -105,6 +105,19 @@ public:
 		__m128i fr = _mm_set1_epi8(f);
 		const int fm = _mm_movemask_epi8(_mm_cmpeq_epi8(r, fr));
 		return fm != 0;
+#elif defined(__ARM_NEON)
+		const uint64_t hash = _hash()(key);
+		fp* p = table + modulo<_mod>(hash >> (sizeof(fp) * 8), size_);
+		uint8x16_t r = vld1q_u8(p);
+		uint8x16_t z = vdupq_n_u8(0);
+                uint64x2_t zm = vreinterpretq_u64_u8(vceqq_u8(r, z));
+		if ((vgetq_lane_u64(zm, 0) | vgetq_lane_u64(zm, 1)) == 0)
+			return true;
+
+		const fp f = finger_print(hash);
+		uint8x16_t fr = vdupq_n_u8(f);
+                uint64x2_t fm = vreinterpretq_u64_u8(vceqq_u8(r, fr));
+		return (vgetq_lane_u64(fm, 0) | vgetq_lane_u64(fm, 1)) != 0;
 #else
 		fp* p;
 		return get_entry(key, p);

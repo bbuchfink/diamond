@@ -95,6 +95,36 @@ struct Byte_finger_print_48
 	alignas(16) __m128i r1, r2, r3;
 };
 
+#elif ARCH_ID == 3
+
+struct Byte_finger_print_48
+{
+	Byte_finger_print_48(const Letter *q) :
+#ifdef SEQ_MASK
+		r1(letter_mask(vld1q_s8(q - 16))),
+		r2(letter_mask(vld1q_s8(q))),
+		r3(letter_mask(vld1q_s8(q + 16)))
+#else
+		r1(vld1q_s8(q - 16)),
+		r2(vld1q_s8(q)),
+		r3(vld1q_s8(q + 16)),
+#endif
+	{}
+	unsigned match(const Byte_finger_print_48 &rhs) const
+	{
+		const uint8x16_t ONES = vdupq_n_u8(1);
+		uint8x16_t s1 = vandq_u8(vceqq_s8(r1, rhs.r1), ONES);
+		uint8x16_t s2 = vandq_u8(vceqq_s8(r2, rhs.r2), ONES);
+		uint8x16_t s3 = vandq_u8(vceqq_s8(r3, rhs.r3), ONES);
+		uint16x8_t acc = vdupq_n_u16(0);
+		acc = vpadalq_u8(acc, s1);
+		acc = vpadalq_u8(acc, s2);
+		acc = vpadalq_u8(acc, s3);
+		return ::SIMD::vhsumq_u16(acc);
+	}
+	alignas(16) int8x16_t r1, r2, r3;
+};
+
 #else
 
 struct Byte_finger_print_48

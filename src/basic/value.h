@@ -102,6 +102,12 @@ static inline __m256i letter_mask(__m256i x) {
 }
 #endif
 
+#ifdef __ARM_NEON
+static inline int8x16_t letter_mask(int8x16_t x) {
+	return vandq_s8(x, vdupq_n_s8(LETTER_MASK));
+}
+#endif
+
 extern const ValueTraits amino_acid_traits;
 extern const ValueTraits nucleotide_traits;
 extern ValueTraits value_traits;

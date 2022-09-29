@@ -59,17 +59,26 @@ namespace Benchmark { namespace DISPATCH_ARCH {
 void swipe_cell_update();
 #endif
 
-#ifdef __SSE4_1__
+#if defined(__SSE4_1__) | ARCH_ID == 3
 void benchmark_hamming(const Sequence& s1, const Sequence& s2) {
 	static const size_t n = 100000000llu;
 	high_resolution_clock::time_point t1 = high_resolution_clock::now();
 
 	Byte_finger_print_48 f1(s1.data()), f2 (s2.data());
 	for (size_t i = 0; i < n; ++i) {
+#ifdef __ARM_NEON
+		f1.r1 = veorq_s8(f1.r1, f1.r2);
+#else
 		f1.r1 = _mm_xor_si128(f1.r1, f1.r2);
+#endif
 		volatile unsigned y = f1.match(f2);
 	}
-	cout << "SSE hamming distance:\t\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * 48) * 1000 << " ps/Cell" << endl;
+#ifdef __ARM_NEON
+	cout << "NEON hamming distance:\t\t"
+#else
+	cout << "SSE hamming distance:\t\t"
+#endif
+		<< (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * 48) * 1000 << " ps/Cell" << endl;
 }
 #endif
 
@@ -361,7 +370,7 @@ void benchmark() {
 #endif
 	evalue();
 	matrix_adjust(s1, s2);
-#ifdef __SSE4_1__
+#if defined(__SSE4_1__) | ARCH_ID == 3
 	benchmark_hamming(s1, s2);
 #endif
 	benchmark_ungapped(ss1, ss2);
