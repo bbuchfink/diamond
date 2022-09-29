@@ -182,7 +182,7 @@ void benchmark_transpose() {
 }
 #endif
 
-#ifdef __SSE4_1__
+#if defined(__SSE4_1__) | ARCH_ID == 3
 void swipe(const Sequence&s1, const Sequence&s2) {
 	constexpr int CHANNELS = ::DISPATCH_ARCH::ScoreTraits<ScoreVector<int8_t, SCHAR_MIN>>::CHANNELS;
 	static const size_t n = 1000llu;
@@ -350,7 +350,7 @@ void benchmark() {
 	Sequence ss1 = Sequence(s1).subseq(34, s1.size());
 	Sequence ss2 = Sequence(s2).subseq(33, s2.size());
 
-#ifdef __SSE4_1__
+#if defined(__SSE4_1__) | ARCH_ID == 3
 	swipe(s3, s4);
 	diag_scores(s1, s2);
 #endif
