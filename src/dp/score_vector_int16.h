@@ -257,22 +257,26 @@ struct ScoreVector<int16_t, DELTA>
 		return ScoreVector(vreinterpretq_s16_u16(vceqq_s16(data_, v.data_)));
 	}
 
-#ifdef __AARCH64__
 	friend uint32_t cmp_mask(const ScoreVector&v, const ScoreVector&w) {
 		/* https://github.com/simd-everywhere/simde/blob/master/simde/x86/sse2.h#L3755 */
-		static const uint8_t md[16] = {
-			1 << 0, 1 << 1, 1 << 2, 1 << 3,
-			1 << 4, 1 << 5, 1 << 6, 1 << 7,
-			1 << 0, 1 << 1, 1 << 2, 1 << 3,
-			1 << 4, 1 << 5, 1 << 6, 1 << 7,
+		const uint8x16_t MASK = {
+			1 << 0, 1 << 1, 1 << 2, 1 << 3, 1 << 4, 1 << 5, 1 << 6, 1 << 7,
+			1 << 0, 1 << 1, 1 << 2, 1 << 3, 1 << 4, 1 << 5, 1 << 6, 1 << 7,
 		};
 		uint8x16_t extended = vreinterpretq_u8_u16(vceqq_s16(v.data_, w.data_));
-		uint8x16_t masked = vandq_u8(vld1q_u8(md), extended);
+		uint8x16_t masked = vandq_u8(MASK, extended);
+#ifdef __AARCH64__
 		uint8x8x2_t tmp = vzip_u8(vget_low_u8(masked), vget_high_u8(masked));
 		uint16x8_t x = vreinterpretq_u16_u8(vcombine_u8(tmp.val[0], tmp.val[1]));
 		return vaddvq_u16(x);
-	}
+#else
+		uint16x8_t spliced    = vpadalq_u8( vdupq_n_u16(0), masked);
+		uint16x4_t spliced_lo = vget_low_u16(spliced);
+		uint16x4_t spliced_hi = vget_high_u16(spliced);
+		uint16x8_t zipped = vcombine_u16(spliced_lo, vshl_n_u16(spliced_hi, 8));
+		return ::SIMD::vhsumq_u16(zipped);
 #endif
+	}
 
 	ScoreVector& max(const ScoreVector&rhs)
 	{
