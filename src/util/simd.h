@@ -103,6 +103,7 @@ static inline __m256i _mm256_set1_epi16(short v) {
 #else
 	return ::_mm256_set1_epi16(v);
 #endif
+
 }
 
 #if defined(__GNUC__) && __GNUC__ < 8
@@ -121,6 +122,29 @@ inline void print_16(__m256i x, std::ostream& s) {
 	_mm256_store_si256((__m256i*)v, x);
 	for (unsigned i = 0; i < 16; ++i)
 		s << (int)v[i] << ' ';
+}
+
+#endif
+
+#ifdef __ARM_NEON
+
+inline uint64_t vhsumq_u64(uint64x2_t x) {
+	return vgetq_lane_u64(x, 0) + vgetq_lane_u64(x, 1);
+}
+
+inline uint64_t vhsumq_u32(uint32x4_t x) {
+	uint64x2_t y = vpadalq_u32(vdupq_n_u64(0), x);
+	return vhsumq_u64(y);
+}
+
+inline uint64_t vhsumq_u16(uint16x8_t x) {
+	uint32x4_t y = vpadalq_u16(vdupq_n_u32(0), x);
+	return vhsumq_u32(y);
+}
+
+inline uint64_t vhsumq_u8(uint8x16_t x) {
+	uint16x8_t y = vpadalq_u8(vdupq_n_u16(0), x);
+	return vhsumq_u16(y);
 }
 
 #endif
