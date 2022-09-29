@@ -293,21 +293,38 @@ struct ScoreVector<int8_t, DELTA>
 	}
 
 	ScoreVector operator==(const ScoreVector&v) const {
-		return ScoreVector(vceqq_s8(data_, v.data_));
+		return ScoreVector(vreinterpretq_s8_u8(vceqq_s8(data_, v.data_)));
 	}
 
-	// friend uint32_t cmp_mask(const ScoreVector&v, const ScoreVector&w) {
-	// 	return _mm_movemask_epi8(_mm_cmpeq_epi8(v.data_, w.data_));
-	// }
+	 friend uint32_t cmp_mask(const ScoreVector&v, const ScoreVector&w) {
+                /* https://github.com/simd-everywhere/simde/blob/master/simde/x86/sse2.h#L3755 */
+                static const uint8_t md[16] = {
+			1 << 0, 1 << 1, 1 << 2, 1 << 3,
+			1 << 4, 1 << 5, 1 << 6, 1 << 7,
+			1 << 0, 1 << 1, 1 << 2, 1 << 3,
+			1 << 4, 1 << 5, 1 << 6, 1 << 7,
+		};
+		uint8x16_t extended = vceqq_s8(v.data_, w.data_);
+		uint8x16_t masked = vandq_u8(vld1q_u8(md), extended);
+		uint8x8x2_t tmp = vzip_u8(vget_low_u8(masked), vget_high_u8(masked));
+		uint16x8_t x = vreinterpretq_u16_u8(vcombine_u8(tmp.val[0], tmp.val[1]));
+                return vaddvq_u16(x);
+	}
 
 	int operator [](unsigned i) const
 	{
-		return vgetq_lane_s8(data_, i);
+		//return vgetq_lane_s8(data_, i);
+		int8_t x[16];
+                store(x);
+		return x[i];
 	}
 
-	ScoreVector& set(unsigned i, uint8_t v) const
+	ScoreVector& set(const unsigned i, uint8_t v)
 	{
-		vsetq_lane_s8(v, data_, i);
+		int8_t x[16];
+                store(x);
+		x[i] = v;
+		data_ = vld1q_s8(x);
 		return *this;
 	}
 
@@ -580,7 +597,7 @@ struct ScoreTraits<ScoreVector<int8_t, DELTA>>
 
 }
 
-#ifdef __SSE4_1__
+#if defined(__SSE4_1__) | defined(__ARM_NEON)
 
 template<int DELTA>
 static inline int8_t extract_channel(const DISPATCH_ARCH::ScoreVector<int8_t, DELTA>& v, int i) {

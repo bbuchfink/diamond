@@ -254,12 +254,23 @@ struct ScoreVector<int16_t, DELTA>
 	}
 
 	ScoreVector operator==(const ScoreVector&v) const {
-		return ScoreVector(vceqq_s16(data_, v.data_));
+		return ScoreVector(vreinterpretq_s16_u16(vceqq_s16(data_, v.data_)));
 	}
 
-	// friend uint32_t cmp_mask(const ScoreVector&v, const ScoreVector&w) {
-	// 	return (uint32_t)_mm_movemask_epi8(_mm_cmpeq_epi16(v.data_, w.data_));
-	// }
+	friend uint32_t cmp_mask(const ScoreVector&v, const ScoreVector&w) {
+		/* https://github.com/simd-everywhere/simde/blob/master/simde/x86/sse2.h#L3755 */
+		static const uint8_t md[16] = {
+			1 << 0, 1 << 1, 1 << 2, 1 << 3,
+			1 << 4, 1 << 5, 1 << 6, 1 << 7,
+			1 << 0, 1 << 1, 1 << 2, 1 << 3,
+			1 << 4, 1 << 5, 1 << 6, 1 << 7,
+		};
+		uint8x16_t extended = vreinterpretq_u8_u16(vceqq_s16(v.data_, w.data_));
+		uint8x16_t masked = vandq_u8(vld1q_u8(md), extended);
+		uint8x8x2_t tmp = vzip_u8(vget_low_u8(masked), vget_high_u8(masked));
+		uint16x8_t x = vreinterpretq_u16_u8(vcombine_u8(tmp.val[0], tmp.val[1]));
+		return vaddvq_u16(x);
+	}
 
 	ScoreVector& max(const ScoreVector&rhs)
 	{
@@ -284,18 +295,25 @@ struct ScoreVector<int16_t, DELTA>
 	}
 
 	int16_t operator[](int i) const {
-		return vgetq_lane_s16(data_, i);
+		// return vgetq_lane_s16(data_, i);
+		int16_t tmp[8];
+		vst1q_s16(tmp, data_);
+		return tmp[i];
 	}
 
 	ScoreVector& set(int i, int16_t x) {
-		vsetq_lane_s16(x, data_, i);
+		// vsetq_lane_s16(x, data_, i);
+		int16_t tmp[8];
+		vst1q_s16(tmp, data_);
+		tmp[i] = x;
+		data_ = vld1q_s16(tmp);
 		return *this;
 	}
 
 	void expand_from_8bit() {
 		int8x16_t mask = vdupq_n_s8(0x80);
-		int8x16_t sign = vceqq_s8(vandq_s8(vreinterpretq_s8_s16(data_), mask), mask);
-		data_ = vzip1q_s8(vreinterpretq_s8_s16(data_), sign);
+		int8x16_t sign = vreinterpretq_s8_u8(vceqq_s8(vandq_s8(vreinterpretq_s8_s16(data_), mask), mask));
+		data_ = vreinterpretq_s16_s8(vzip1q_s8(vreinterpretq_s8_s16(data_), sign));
 	}
 
 	friend std::ostream& operator<<(std::ostream& s, ScoreVector v)
