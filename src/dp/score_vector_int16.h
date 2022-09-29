@@ -257,6 +257,7 @@ struct ScoreVector<int16_t, DELTA>
 		return ScoreVector(vreinterpretq_s16_u16(vceqq_s16(data_, v.data_)));
 	}
 
+#ifdef __AARCH64__
 	friend uint32_t cmp_mask(const ScoreVector&v, const ScoreVector&w) {
 		/* https://github.com/simd-everywhere/simde/blob/master/simde/x86/sse2.h#L3755 */
 		static const uint8_t md[16] = {
@@ -271,6 +272,7 @@ struct ScoreVector<int16_t, DELTA>
 		uint16x8_t x = vreinterpretq_u16_u8(vcombine_u8(tmp.val[0], tmp.val[1]));
 		return vaddvq_u16(x);
 	}
+#endif
 
 	ScoreVector& max(const ScoreVector&rhs)
 	{
@@ -310,11 +312,13 @@ struct ScoreVector<int16_t, DELTA>
 		return *this;
 	}
 
+#ifdef __AARCH64__
 	void expand_from_8bit() {
 		int8x16_t mask = vdupq_n_s8(0x80);
 		int8x16_t sign = vreinterpretq_s8_u8(vceqq_s8(vandq_s8(vreinterpretq_s8_s16(data_), mask), mask));
 		data_ = vreinterpretq_s16_s8(vzip1q_s8(vreinterpretq_s8_s16(data_), sign));
 	}
+#endif
 
 	friend std::ostream& operator<<(std::ostream& s, ScoreVector v)
 	{

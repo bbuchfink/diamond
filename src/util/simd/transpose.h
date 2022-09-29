@@ -21,7 +21,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #pragma once
 #include "../simd.h"
 
-#if defined(__SSE2__) | ARCH_ID == 3
+#if defined(__SSE2__) | defined(__AARCH64__)
 #include "transpose16x16.h"
 #endif
 

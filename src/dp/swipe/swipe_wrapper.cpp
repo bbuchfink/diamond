@@ -249,7 +249,7 @@ static pair<list<Hsp>, vector<DpTarget>> swipe_bin(const unsigned bin, const It 
 	p.stat.inc(Statistics::value(Statistics::EXT8 + bin), end - begin);
 	task_timer timer;
 	switch (bin) {
-#if defined(__SSE4_1__) | ARCH_ID == 3
+#if defined(__SSE4_1__) | defined(__AARCH64__)
 	case 0:
 	case 3:
 		if (flag_any(p.flags, Flags::SEMI_GLOBAL))
@@ -258,7 +258,7 @@ static pair<list<Hsp>, vector<DpTarget>> swipe_bin(const unsigned bin, const It 
 			out = swipe_threads<::DISPATCH_ARCH::ScoreVector<int8_t, SCHAR_MIN>, It>(begin, end, overflow, round, bin, p);
 		break;
 #endif
-#if defined(__SSE2__) | ARCH_ID == 3
+#if defined(__SSE2__) | defined(__AARCH64__)
 	case 1:
 	case 4:
 		if (flag_any(p.flags, Flags::SEMI_GLOBAL))

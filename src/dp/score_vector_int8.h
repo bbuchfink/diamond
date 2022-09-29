@@ -239,6 +239,7 @@ struct ScoreVector<int8_t, DELTA>
 		data_(vreinterpretq_s8_u8(vld1q_u8(s)))
 	{ }
 
+#ifdef __AARCH64__
 	ScoreVector(unsigned a, int8x16_t seq)
 	{
 		const int8x16_t* row = reinterpret_cast<const int8x16_t*>(&score_matrix.matrix8()[a << 5]);
@@ -254,6 +255,7 @@ struct ScoreVector<int8_t, DELTA>
 		int8x16_t s2 = vqtbl1q_s8(r2, vandq_u8(vreinterpretq_u8_s8(seq_high), vdupq_n_u8(0x8F)));
 		data_ = vorrq_s8(s1, s2);
 	}
+#endif
 
 	ScoreVector operator+(const ScoreVector&rhs) const
 	{
@@ -296,9 +298,10 @@ struct ScoreVector<int8_t, DELTA>
 		return ScoreVector(vreinterpretq_s8_u8(vceqq_s8(data_, v.data_)));
 	}
 
-	 friend uint32_t cmp_mask(const ScoreVector&v, const ScoreVector&w) {
-                /* https://github.com/simd-everywhere/simde/blob/master/simde/x86/sse2.h#L3755 */
-                static const uint8_t md[16] = {
+#ifdef __AARCH64__
+	friend uint32_t cmp_mask(const ScoreVector&v, const ScoreVector&w) {
+		/* https://github.com/simd-everywhere/simde/blob/master/simde/x86/sse2.h#L3755 */
+		static const uint8_t md[16] = {
 			1 << 0, 1 << 1, 1 << 2, 1 << 3,
 			1 << 4, 1 << 5, 1 << 6, 1 << 7,
 			1 << 0, 1 << 1, 1 << 2, 1 << 3,
@@ -308,14 +311,14 @@ struct ScoreVector<int8_t, DELTA>
 		uint8x16_t masked = vandq_u8(vld1q_u8(md), extended);
 		uint8x8x2_t tmp = vzip_u8(vget_low_u8(masked), vget_high_u8(masked));
 		uint16x8_t x = vreinterpretq_u16_u8(vcombine_u8(tmp.val[0], tmp.val[1]));
-                return vaddvq_u16(x);
+		return vaddvq_u16(x);
 	}
+#endif
 
 	int operator [](unsigned i) const
 	{
-		//return vgetq_lane_s8(data_, i);
 		int8_t x[16];
-                store(x);
+		store(x);
 		return x[i];
 	}
 

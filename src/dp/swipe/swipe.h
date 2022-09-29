@@ -111,7 +111,7 @@ struct SwipeProfile
 		transpose(target_scores, 32, (int8_t*)data_, __m256i());
 		for (size_t i = 0; i < AMINO_ACID_COUNT; ++i)
 			data_[i].expand_from_8bit();
-#elif ARCH_ID == 3
+#elif defined(__AARCH64__)
 		transpose(target_scores, 16, (int8_t*)data_, int8x16_t());
 		for (int i = 0; i < 16; ++i)
 			target_scores[i] += 16;
