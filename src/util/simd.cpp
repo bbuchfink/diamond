@@ -43,8 +43,17 @@ int flags = 0;
 
 Arch init_arch() {
 #ifdef __ARM_NEON
+
+#ifdef __AARCH64__
+	// NEON is mandatory on Aarch64
 	return Arch::NEON;
 #else
+	// TODO: runtime NEON detection on Armv7
+	return Arch::Generic;
+#endif
+
+#else
+
 #ifdef __SSE2__
 	int info[4];
 	cpuid(info, 0);
@@ -101,6 +110,11 @@ Arch arch() {
 
 std::string features() {
 	std::vector<std::string> r;
+#ifdef __ARM_NEON
+#ifdef __AARCH64__
+	r.push_back("neon");
+#endif
+#else
 	if (flags & SSSE3)
 		r.push_back("ssse3");
 	if (flags & POPCNT)
@@ -109,6 +123,7 @@ std::string features() {
 		r.push_back("sse4.1");
 	if (flags & AVX2)
 		r.push_back("avx2");
+#endif
 	return r.empty() ? "None" : join(" ", r);
 }
 
