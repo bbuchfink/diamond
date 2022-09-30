@@ -44,7 +44,7 @@ int flags = 0;
 Arch init_arch() {
 #ifdef __ARM_NEON
 
-#ifdef __AARCH64__
+#ifdef __aarch64__
 	// NEON is mandatory on Aarch64
 	return Arch::NEON;
 #else
@@ -111,7 +111,7 @@ Arch arch() {
 std::string features() {
 	std::vector<std::string> r;
 #ifdef __ARM_NEON
-#ifdef __AARCH64__
+#ifdef __aarch64__
 	r.push_back("neon");
 #endif
 #else

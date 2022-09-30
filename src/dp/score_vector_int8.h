@@ -239,7 +239,7 @@ struct ScoreVector<int8_t, DELTA>
 		data_(vreinterpretq_s8_u8(vld1q_u8(s)))
 	{ }
 
-#ifdef __AARCH64__
+#ifdef __aarch64__
 	ScoreVector(unsigned a, int8x16_t seq)
 	{
 		const int8x16_t* row = reinterpret_cast<const int8x16_t*>(&score_matrix.matrix8()[a << 5]);
@@ -306,7 +306,7 @@ struct ScoreVector<int8_t, DELTA>
 		};
 		uint8x16_t extended = vceqq_s8(v.data_, w.data_);
 		uint8x16_t masked = vandq_u8(MASK, extended);
-#ifdef __AARCH64__
+#ifdef __aarch64__
 		uint8x8x2_t tmp = vzip_u8(vget_low_u8(masked), vget_high_u8(masked));
 		uint16x8_t x = vreinterpretq_u16_u8(vcombine_u8(tmp.val[0], tmp.val[1]));
 		return vaddvq_u16(x);

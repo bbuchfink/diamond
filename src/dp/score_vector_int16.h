@@ -265,7 +265,7 @@ struct ScoreVector<int16_t, DELTA>
 		};
 		uint8x16_t extended = vreinterpretq_u8_u16(vceqq_s16(v.data_, w.data_));
 		uint8x16_t masked = vandq_u8(MASK, extended);
-#ifdef __AARCH64__
+#ifdef __aarch64__
 		uint8x8x2_t tmp = vzip_u8(vget_low_u8(masked), vget_high_u8(masked));
 		uint16x8_t x = vreinterpretq_u16_u8(vcombine_u8(tmp.val[0], tmp.val[1]));
 		return vaddvq_u16(x);
@@ -316,7 +316,7 @@ struct ScoreVector<int16_t, DELTA>
 		return *this;
 	}
 
-#ifdef __AARCH64__
+#ifdef __aarch64__
 	void expand_from_8bit() {
 		int8x16_t mask = vdupq_n_s8(0x80);
 		int8x16_t sign = vreinterpretq_s8_u8(vceqq_s8(vandq_s8(vreinterpretq_s8_s16(data_), mask), mask));

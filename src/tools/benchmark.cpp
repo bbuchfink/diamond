@@ -168,7 +168,7 @@ void benchmark_ungapped_sse(const Sequence&s1, const Sequence&s2) {
 }
 #endif
 
-#if defined(__SSE2__) | defined(__AARCH64__)
+#if defined(__SSE2__) | ARCH_ID == 3
 void benchmark_transpose() {
 	static const size_t n = 10000000llu;
 	static signed char in[256], out[256];
@@ -180,7 +180,7 @@ void benchmark_transpose() {
 	for (size_t i = 0; i < n; ++i) {
 #if defined(__SSE2__)
 		transpose((const signed char**)v, 16, out, __m128i());
-#elif defined(__AARCH64__)
+#elif defined(__ARM_NEON)
 		transpose((const signed char**)v, 16, out, int8x16_t());
 #endif
 		in[0] = out[0];
@@ -205,7 +205,7 @@ void benchmark_transpose() {
 }
 #endif
 
-#if defined(__SSE4_1__) | defined(__AARCH64__)
+#if defined(__SSE4_1__) | ARCH_ID == 3
 void swipe(const Sequence&s1, const Sequence&s2) {
 	constexpr int CHANNELS = ::DISPATCH_ARCH::ScoreTraits<ScoreVector<int8_t, SCHAR_MIN>>::CHANNELS;
 	static const size_t n = 1000llu;
@@ -373,13 +373,13 @@ void benchmark() {
 	Sequence ss1 = Sequence(s1).subseq(34, s1.size());
 	Sequence ss2 = Sequence(s2).subseq(33, s2.size());
 
-#if defined(__SSE4_1__) | defined(__AARCH64__)
+#if defined(__SSE4_1__) | ARCH_ID == 3
 	swipe(s3, s4);
 #endif
-#if defined(__SSE4_1__) | defined(__ARM_NEON)
+#if defined(__SSE4_1__) | ARCH_ID == 3
 	diag_scores(s1, s2);
 #endif
-#if defined(__SSE2__) | defined(__ARM_NEON)
+#if defined(__SSE2__) | ARCH_ID == 3
 	banded_swipe(s1, s2);
 #endif
 	evalue();
@@ -394,7 +394,7 @@ void benchmark() {
 #ifdef __SSE4_1__
 	benchmark_ungapped_sse(ss1, ss2);
 #endif
-#if defined(__SSE2__) | defined(__AARCH64__)
+#if defined(__SSE2__) | ARCH_ID == 3
 	benchmark_transpose();
 #endif
 }

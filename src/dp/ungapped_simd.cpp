@@ -29,7 +29,7 @@ using namespace DISPATCH_ARCH;
 namespace DP { namespace DISPATCH_ARCH {
 
 void window_ungapped(const Letter *query, const Letter **subjects, int subject_count, int window, int *out) {
-#if defined(__SSE4_1__) | defined(__AARCH64__)
+#if defined(__SSE4_1__) | ARCH_ID == 3
 	using Sv = ScoreVector<int8_t, SCHAR_MIN>;
 	typedef ::DISPATCH_ARCH::SIMD::Vector<int8_t> SeqV;
 	constexpr int CHANNELS = ::DISPATCH_ARCH::ScoreTraits<Sv>::CHANNELS;
@@ -66,12 +66,12 @@ void window_ungapped(const Letter *query, const Letter **subjects, int subject_c
 }
 
 void window_ungapped_best(const Letter* query, const Letter** subjects, int subject_count, int window, int* out) {
-#if defined(__SSE4_1__) | defined(__AARCH64__)
+#if defined(__SSE4_1__) | ARCH_ID == 3
 	if (subject_count < 4) {
 #endif
 		for (int i = 0; i < subject_count; ++i)
 			out[i] = ungapped_window(query, subjects[i], window);
-#if defined(__SSE4_1__) | defined(__AARCH64__)
+#if defined(__SSE4_1__) | ARCH_ID == 3
 	}
 #endif
 #if ARCH_ID == 2
@@ -79,7 +79,7 @@ void window_ungapped_best(const Letter* query, const Letter** subjects, int subj
 		::DP::ARCH_SSE4_1::window_ungapped(query, subjects, subject_count, window, out);
 	else
 		::DP::ARCH_AVX2::window_ungapped(query, subjects, subject_count, window, out);
-#elif defined(__SSE4_1__) | defined(__AARCH64__)
+#elif defined(__SSE4_1__) | ARCH_ID == 3
 	window_ungapped(query, subjects, subject_count, window, out);
 #endif
 }
