@@ -95,7 +95,7 @@ struct Byte_finger_print_48
 	alignas(16) __m128i r1, r2, r3;
 };
 
-#elif ARCH_ID == 3
+#elif defined(__ARM_NEON)
 
 struct Byte_finger_print_48
 {

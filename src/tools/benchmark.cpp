@@ -59,7 +59,7 @@ namespace Benchmark { namespace DISPATCH_ARCH {
 void swipe_cell_update();
 #endif
 
-#if defined(__SSE4_1__) | ARCH_ID == 3
+#if defined(__SSE4_1__) | defined(__ARM_NEON)
 void benchmark_hamming(const Sequence& s1, const Sequence& s2) {
 	static const size_t n = 100000000llu;
 	high_resolution_clock::time_point t1 = high_resolution_clock::now();
@@ -101,7 +101,7 @@ void benchmark_ungapped(const Sequence& s1, const Sequence& s2)
 	cout << "Scalar ungapped extension:\t" << (double)time_span.count() / (n*64) * 1000 << " ps/Cell" << endl;
 }
 
-#if defined(__SSSE3__) && defined(__SSE4_1__)
+#if (defined(__SSSE3__) && defined(__SSE4_1__)) | ARCH_ID == 3
 void benchmark_ssse3_shuffle(const Sequence&s1, const Sequence&s2)
 {
 	static const size_t n = 100000000llu;
@@ -117,11 +117,16 @@ void benchmark_ssse3_shuffle(const Sequence&s1, const Sequence&s2)
 		sv  = ScoreVector<int8_t, SCHAR_MIN>(i & 15, seq);
 		volatile auto x = sv.data_;
 	}
-	cout << "SSSE3 score shuffle:\t\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * CHANNELS) * 1000 << " ps/Letter" << endl;
+#ifdef __ARM_NEON
+	cout << "NEON score shuffle:\t\t"
+#else
+	cout << "SSSE3 score shuffle:\t\t"
+#endif
+		<< (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * CHANNELS) * 1000 << " ps/Letter" << endl;
 }
 #endif
 
-#ifdef __SSE4_1__
+#if defined(__SSE4_1__) | ARCH_ID == 3
 void benchmark_ungapped_sse(const Sequence&s1, const Sequence&s2) {
 	static const size_t n = 1000000llu;
 	high_resolution_clock::time_point t1 = high_resolution_clock::now();
@@ -132,9 +137,18 @@ void benchmark_ungapped_sse(const Sequence&s1, const Sequence&s2) {
 		targets[i] = s2.data();
 
 	for (size_t i = 0; i < n; ++i) {
+#ifdef __ARM_NEON
+		::DP::ARCH_NEON::window_ungapped(s1.data(), targets, 16, 64, out);
+#else
 		::DP::ARCH_SSE4_1::window_ungapped(s1.data(), targets, 16, 64, out);
+#endif
 	}
-	cout << "SSE ungapped extend:\t\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * 16 * 64) * 1000 << " ps/Cell" << endl;
+#ifdef __ARM_NEON
+	cout << "NEON ungapped extend:\t\t"
+#else
+	cout << "SSE ungapped extend:\t\t"
+#endif
+		<< (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * 16 * 64) * 1000 << " ps/Cell" << endl;
 
 #ifdef __AVX2__
 	{
@@ -365,7 +379,7 @@ void benchmark() {
 #if defined(__SSE4_1__) | defined(__ARM_NEON)
 	diag_scores(s1, s2);
 #endif
-#ifdef __SSE2__
+#if defined(__SSE2__) | defined(__ARM_NEON)
 	banded_swipe(s1, s2);
 #endif
 	evalue();
@@ -374,7 +388,7 @@ void benchmark() {
 	benchmark_hamming(s1, s2);
 #endif
 	benchmark_ungapped(ss1, ss2);
-#if defined(__SSSE3__) && defined(__SSE4_1__)
+#if (defined(__SSSE3__) && defined(__SSE4_1__)) | ARCH_ID == 3
 	benchmark_ssse3_shuffle(s1, s2);
 #endif
 #ifdef __SSE4_1__
