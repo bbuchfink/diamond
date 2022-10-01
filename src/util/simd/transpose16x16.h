@@ -133,12 +133,10 @@ static inline void transpose(const signed char **data, size_t n, signed char *ou
 #define UNPACK128_LO_HI_EPI32(a, b) t_s32 = vtrnq_s32(vreinterpretq_s32_s8(r##a), vreinterpretq_s32_s8(r##b)); \
         r##a = vreinterpretq_s8_s32(t_s32.val[0]); \
         r##b = vreinterpretq_s8_s32(t_s32.val[1]);
-#define UNPACK128_LO_HI_EPI64(a, b) t0 = vget_high_s8(r##a); \
-        t1 = vget_low_s8(r##a); \
-        t2 = vget_high_s8(r##b); \
-        t3 = vget_low_s8(r##b); \
-        r##a = vcombine_s8(t1, t3); \
-        r##b = vcombine_s8(t0, t2);
+#define STORE_LOW(dst, a, b) vst1q_s8(dst, vcombine_s8(vget_low_s8(r##a), vget_low_s8(r##b)));
+#define STORE_HIGH(dst, a, b) vst1q_s8(dst, vcombine_s8(vget_high_s8(r##a), vget_high_s8(r##b)));
+
+
 
 static inline void transpose(const signed char **data, size_t n, signed char *out, const int8x16_t&) {
 	int8x16_t r0, r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11, r12, r13, r14, r15;
@@ -195,30 +193,23 @@ static inline void transpose(const signed char **data, size_t n, signed char *ou
 	UNPACK128_LO_HI_EPI32(3, 7)
 	UNPACK128_LO_HI_EPI32(11, 15)
 
+	STORE_LOW(&out[0x00], 0, 8);
+	STORE_LOW(&out[0x10], 1, 9);
+	STORE_LOW(&out[0x20], 2, 10);
+	STORE_LOW(&out[0x30], 3, 11);
+	STORE_LOW(&out[0x40], 4, 12);
+	STORE_LOW(&out[0x50], 5, 13);
+	STORE_LOW(&out[0x60], 6, 14);
+	STORE_LOW(&out[0x70], 7, 15);
 
-	b0.val[0] = vcombine_s8(vget_low_s8(r0), vget_low_s8(r8));
-	b0.val[1] = vcombine_s8(vget_low_s8(r1), vget_low_s8(r9));
-	b0.val[2] = vcombine_s8(vget_low_s8(r2), vget_low_s8(r10));
-	b0.val[3] = vcombine_s8(vget_low_s8(r3), vget_low_s8(r11));
-	vst1q_s8_x4(&out[0x00], b0);
-
-	b1.val[0] = vcombine_s8(vget_low_s8(r4), vget_low_s8(r12));
-	b1.val[1] = vcombine_s8(vget_low_s8(r5), vget_low_s8(r13));
-	b1.val[2] = vcombine_s8(vget_low_s8(r6), vget_low_s8(r14));
-	b1.val[3] = vcombine_s8(vget_low_s8(r7), vget_low_s8(r15));
-	vst1q_s8_x4(&out[0x40], b1);
-
-	b2.val[0] = vcombine_s8(vget_high_s8(r0), vget_high_s8(r8));
-	b2.val[1] = vcombine_s8(vget_high_s8(r1), vget_high_s8(r9));
-	b2.val[2] = vcombine_s8(vget_high_s8(r2), vget_high_s8(r10));
-	b2.val[3] = vcombine_s8(vget_high_s8(r3), vget_high_s8(r11));
-        vst1q_s8_x4(&out[0x80], b2);
-
-	b3.val[0] = vcombine_s8(vget_high_s8(r4), vget_high_s8(r12));
-	b3.val[1] = vcombine_s8(vget_high_s8(r5), vget_high_s8(r13));
-	b3.val[2] = vcombine_s8(vget_high_s8(r6), vget_high_s8(r14));
-	b3.val[3] = vcombine_s8(vget_high_s8(r7), vget_high_s8(r15));
-	vst1q_s8_x4(&out[0xc0], b3);
+	STORE_HIGH(&out[0x80], 0, 8);
+	STORE_HIGH(&out[0x90], 1, 9);
+	STORE_HIGH(&out[0xa0], 2, 10);
+	STORE_HIGH(&out[0xb0], 3, 11);
+	STORE_HIGH(&out[0xc0], 4, 12);
+	STORE_HIGH(&out[0xd0], 5, 13);
+	STORE_HIGH(&out[0xe0], 6, 14);
+	STORE_HIGH(&out[0xf0], 7, 15);
 }
 
 #endif
