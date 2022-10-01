@@ -312,13 +312,16 @@ struct ScoreVector<int16_t, DELTA>
 		return *this;
 	}
 
-#ifdef __aarch64__
 	void expand_from_8bit() {
 		int8x16_t mask = vdupq_n_s8(0x80);
 		int8x16_t sign = vreinterpretq_s8_u8(vceqq_s8(vandq_s8(vreinterpretq_s8_s16(data_), mask), mask));
+#ifdef __aarch64__
 		data_ = vreinterpretq_s16_s8(vzip1q_s8(vreinterpretq_s8_s16(data_), sign));
-	}
+#else
+		int8x16x2_t tmp = vzipq_s8(vreinterpretq_s8_s16(data_), sign);
+		data_ = vreinterpretq_s16_s8(tmp.val[0]);
 #endif
+	}
 
 	friend std::ostream& operator<<(std::ostream& s, ScoreVector v)
 	{
