@@ -178,6 +178,15 @@ void benchmark_transpose() {
 
 	high_resolution_clock::time_point t1 = high_resolution_clock::now();
 	for (size_t i = 0; i < n; ++i) {
+		for (size_t x = 0; x < 16; ++x)
+			for (size_t y = 0; y < 16; ++y)
+				out[y*16+x] = in[x*16+y];
+		in[0] = out[0];
+	}
+	cout << "Matrix transpose 16x16 bytes:\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * 256) * 1000 << " ps/Letter" << endl;
+
+	high_resolution_clock::time_point t2 = high_resolution_clock::now();
+	for (size_t i = 0; i < n; ++i) {
 #if defined(__SSE2__)
 		transpose((const signed char**)v, 16, out, __m128i());
 #elif defined(__ARM_NEON)
@@ -185,7 +194,10 @@ void benchmark_transpose() {
 #endif
 		in[0] = out[0];
 	}
-	cout << "Matrix transpose 16x16 bytes:\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * 256) * 1000 << " ps/Letter" << endl;
+	cout << "Matrix transpose 16x16 bytes (vectorized):\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t2).count() / (n * 256) * 1000 << " ps/Letter" << endl;
+
+
+
 
 #if ARCH_ID == 2
 	{
