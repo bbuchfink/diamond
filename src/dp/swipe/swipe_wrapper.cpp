@@ -72,11 +72,13 @@ unsigned bin(HspValues v, int query_len, int score, int ungapped_score, const in
 		b = std::max(b, 1u);
 	b = std::max(b, score_width);
 	b = std::max(b, bin(mismatch_est));
+#ifndef __ARM_NEON
 #ifndef __SSE4_1__
 	b = std::max(b, 1u);
 #endif
 #ifndef __SSE2__
 	b = 2;
+#endif
 #endif
 	if (v != HspValues::NONE) {
 		b = std::max(b, bin(query_len));

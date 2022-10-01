@@ -724,7 +724,7 @@ Config::Config(int argc, const char **argv, bool check_io)
 
 		raw_ungapped_xdrop = score_matrix.rawscore(ungapped_xdrop);
 		verbose_stream << "CPU features detected: " << SIMD::features() << endl;
-#if defined(RUNTIME_DISPATCH) && defined(__SSE__)
+#if defined(RUNTIME_DISPATCH) && (defined(__SSE__) | defined(__ARM_NEON))
 		verbose_stream << "Runtime dispatch: enabled" << endl;
 #else
 		verbose_stream << "Runtime dispatch: disabled" << endl;
