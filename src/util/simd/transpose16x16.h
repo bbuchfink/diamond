@@ -122,23 +122,31 @@ static inline void transpose(const signed char **data, size_t n, signed char *ou
 	_mm_store_si128(ptr, r15);
 }
 
-#elif defined(__aarch64__)
+#elif defined(__ARM_NEON)
 
-#define UNPACK128_LO_HI_EPI8(a, b) t = r##a; \
-	r##a = vzip1q_s8(t, r##b); \
-	r##b = vzip2q_s8(t, r##b);
-#define UNPACK128_LO_HI_EPI16(a, b) t = r##a; \
-	r##a = vreinterpretq_s8_s16(vzip1q_s16(vreinterpretq_s16_s8(t), vreinterpretq_s16_s8(r##b))); \
-	r##b = vreinterpretq_s8_s16(vzip2q_s16(vreinterpretq_s16_s8(t), vreinterpretq_s16_s8(r##b)));
-#define UNPACK128_LO_HI_EPI32(a, b) t = r##a; \
-	r##a = vreinterpretq_s8_s32(vzip1q_s32(vreinterpretq_s32_s8(t), vreinterpretq_s32_s8(r##b))); \
-	r##b = vreinterpretq_s8_s32(vzip2q_s32(vreinterpretq_s32_s8(t), vreinterpretq_s32_s8(r##b)));
-#define UNPACK128_LO_HI_EPI64(a, b) t = r##a; \
-	r##a = vreinterpretq_s8_s64(vzip1q_s64(vreinterpretq_s64_s8(t), vreinterpretq_s64_s8(r##b))); \
-	r##b = vreinterpretq_s8_s64(vzip2q_s64(vreinterpretq_s64_s8(t), vreinterpretq_s64_s8(r##b)));
+#define UNPACK128_LO_HI_EPI8(a, b) t_s8 = vtrnq_s8(r##a, r##b); \
+        r##a = t_s8.val[0]; \
+        r##b = t_s8.val[1];
+#define UNPACK128_LO_HI_EPI16(a, b) t_s16 = vtrnq_s16(vreinterpretq_s16_s8(r##a), vreinterpretq_s16_s8(r##b)); \
+        r##a = vreinterpretq_s8_s16(t_s16.val[0]); \
+        r##b = vreinterpretq_s8_s16(t_s16.val[1]);
+#define UNPACK128_LO_HI_EPI32(a, b) t_s32 = vtrnq_s32(vreinterpretq_s32_s8(r##a), vreinterpretq_s32_s8(r##b)); \
+        r##a = vreinterpretq_s8_s32(t_s32.val[0]); \
+        r##b = vreinterpretq_s8_s32(t_s32.val[1]);
+#define UNPACK128_LO_HI_EPI64(a, b) t0 = vget_high_s8(r##a); \
+        t1 = vget_low_s8(r##a); \
+        t2 = vget_high_s8(r##b); \
+        t3 = vget_low_s8(r##b); \
+        r##a = vcombine_s8(t1, t3); \
+        r##b = vcombine_s8(t0, t2);
 
 static inline void transpose(const signed char **data, size_t n, signed char *out, const int8x16_t&) {
-	int8x16_t r0, r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11, r12, r13, r14, r15, t;
+	int8x16_t r0, r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11, r12, r13, r14, r15;
+        int8x16x4_t b0, b1, b2, b3;
+        int8x16x2_t t_s8;
+        int16x8x2_t t_s16;
+        int32x4x2_t t_s32;
+
 	r0 = r1 = r2 = r3 = r4 = r5 = r6 = r7 = r8 = r9 = r10 = r11 = r12 = r13 = r14 = r15 = vdupq_n_s8(0);
 	
 	switch (n) {
@@ -187,32 +195,30 @@ static inline void transpose(const signed char **data, size_t n, signed char *ou
 	UNPACK128_LO_HI_EPI32(3, 7)
 	UNPACK128_LO_HI_EPI32(11, 15)
 
-	UNPACK128_LO_HI_EPI64(0, 8)
-	UNPACK128_LO_HI_EPI64(4, 12)
-	UNPACK128_LO_HI_EPI64(2, 10)
-	UNPACK128_LO_HI_EPI64(6, 14)
-	UNPACK128_LO_HI_EPI64(1, 9)
-	UNPACK128_LO_HI_EPI64(5, 13)
-	UNPACK128_LO_HI_EPI64(3, 11)
-	UNPACK128_LO_HI_EPI64(7, 15)
 
-	int8x16_t* ptr = (int8x16_t*)out;
-	vst1q_s8((int8_t*) (ptr++), r0 );
-	vst1q_s8((int8_t*) (ptr++), r8 );
-	vst1q_s8((int8_t*) (ptr++), r4 );
-	vst1q_s8((int8_t*) (ptr++), r12);
-	vst1q_s8((int8_t*) (ptr++), r2 );
-	vst1q_s8((int8_t*) (ptr++), r10);
-	vst1q_s8((int8_t*) (ptr++), r6 );
-	vst1q_s8((int8_t*) (ptr++), r14);
-	vst1q_s8((int8_t*) (ptr++), r1 );
-	vst1q_s8((int8_t*) (ptr++), r9 );
-	vst1q_s8((int8_t*) (ptr++), r5 );
-	vst1q_s8((int8_t*) (ptr++), r13);
-	vst1q_s8((int8_t*) (ptr++), r3 );
-	vst1q_s8((int8_t*) (ptr++), r11);
-	vst1q_s8((int8_t*) (ptr++), r7 );
-	vst1q_s8((int8_t*) (ptr),   r15);
+	b0.val[0] = vcombine_s8(vget_low_s8(r0), vget_low_s8(r8));
+	b0.val[1] = vcombine_s8(vget_low_s8(r1), vget_low_s8(r9));
+	b0.val[2] = vcombine_s8(vget_low_s8(r2), vget_low_s8(r10));
+	b0.val[3] = vcombine_s8(vget_low_s8(r3), vget_low_s8(r11));
+	vst1q_s8_x4(&out[0x00], b0);
+
+	b1.val[0] = vcombine_s8(vget_low_s8(r4), vget_low_s8(r12));
+	b1.val[1] = vcombine_s8(vget_low_s8(r5), vget_low_s8(r13));
+	b1.val[2] = vcombine_s8(vget_low_s8(r6), vget_low_s8(r14));
+	b1.val[3] = vcombine_s8(vget_low_s8(r7), vget_low_s8(r15));
+	vst1q_s8_x4(&out[0x40], b1);
+
+	b2.val[0] = vcombine_s8(vget_high_s8(r0), vget_high_s8(r8));
+	b2.val[1] = vcombine_s8(vget_high_s8(r1), vget_high_s8(r9));
+	b2.val[2] = vcombine_s8(vget_high_s8(r2), vget_high_s8(r10));
+	b2.val[3] = vcombine_s8(vget_high_s8(r3), vget_high_s8(r11));
+        vst1q_s8_x4(&out[0x80], b2);
+
+	b3.val[0] = vcombine_s8(vget_high_s8(r4), vget_high_s8(r12));
+	b3.val[1] = vcombine_s8(vget_high_s8(r5), vget_high_s8(r13));
+	b3.val[2] = vcombine_s8(vget_high_s8(r6), vget_high_s8(r14));
+	b3.val[3] = vcombine_s8(vget_high_s8(r7), vget_high_s8(r15));
+	vst1q_s8_x4(&out[0xc0], b3);
 }
 
 #endif
