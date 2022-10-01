@@ -122,7 +122,7 @@ static inline void transpose(const signed char **data, size_t n, signed char *ou
 	_mm_store_si128(ptr, r15);
 }
 
-#elif defined(__ARM_NEON)
+#elif defined(__aarch64__)
 
 #define UNPACK128_LO_HI_EPI8(a, b) t = r##a; \
 	r##a = vzip1q_s8(t, r##b); \
