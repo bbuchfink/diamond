@@ -101,7 +101,7 @@ void benchmark_ungapped(const Sequence& s1, const Sequence& s2)
 	cout << "Scalar ungapped extension:\t" << (double)time_span.count() / (n*64) * 1000 << " ps/Cell" << endl;
 }
 
-#if (defined(__SSSE3__) && defined(__SSE4_1__)) | ARCH_ID == 3
+#if (defined(__SSSE3__) && defined(__SSE4_1__)) | defined(__ARM_NEON)
 void benchmark_ssse3_shuffle(const Sequence&s1, const Sequence&s2)
 {
 	static const size_t n = 100000000llu;
@@ -126,7 +126,7 @@ void benchmark_ssse3_shuffle(const Sequence&s1, const Sequence&s2)
 }
 #endif
 
-#if defined(__SSE4_1__) | ARCH_ID == 3
+#if defined(__SSE4_1__) | defined(__ARM_NEON)
 void benchmark_ungapped_sse(const Sequence&s1, const Sequence&s2) {
 	static const size_t n = 1000000llu;
 	high_resolution_clock::time_point t1 = high_resolution_clock::now();
@@ -168,7 +168,7 @@ void benchmark_ungapped_sse(const Sequence&s1, const Sequence&s2) {
 }
 #endif
 
-#if defined(__SSE2__) | ARCH_ID == 3
+#if defined(__SSE2__) | defined(__ARM_NEON)
 void benchmark_transpose() {
 	static const size_t n = 10000000llu;
 	static signed char in[256], out[256];
@@ -205,7 +205,7 @@ void benchmark_transpose() {
 }
 #endif
 
-#if defined(__SSE4_1__) | ARCH_ID == 3
+#if defined(__SSE4_1__) | defined(__ARM_NEON)
 void swipe(const Sequence&s1, const Sequence&s2) {
 	constexpr int CHANNELS = ::DISPATCH_ARCH::ScoreTraits<ScoreVector<int8_t, SCHAR_MIN>>::CHANNELS;
 	static const size_t n = 1000llu;
@@ -373,28 +373,28 @@ void benchmark() {
 	Sequence ss1 = Sequence(s1).subseq(34, s1.size());
 	Sequence ss2 = Sequence(s2).subseq(33, s2.size());
 
-#if defined(__SSE4_1__) | ARCH_ID == 3
+#if defined(__SSE4_1__) | defined(__ARM_NEON)
 	swipe(s3, s4);
 #endif
-#if defined(__SSE4_1__) | ARCH_ID == 3
+#if defined(__SSE4_1__) | defined(__ARM_NEON)
 	diag_scores(s1, s2);
 #endif
-#if defined(__SSE2__) | ARCH_ID == 3
+#if defined(__SSE2__) | defined(__ARM_NEON)
 	banded_swipe(s1, s2);
 #endif
 	evalue();
 	matrix_adjust(s1, s2);
-#if defined(__SSE4_1__) | ARCH_ID == 3
+#if defined(__SSE4_1__) | defined(__ARM_NEON)
 	benchmark_hamming(s1, s2);
 #endif
 	benchmark_ungapped(ss1, ss2);
-#if (defined(__SSSE3__) && defined(__SSE4_1__)) | ARCH_ID == 3
+#if (defined(__SSSE3__) && defined(__SSE4_1__)) | defined(__ARM_NEON)
 	benchmark_ssse3_shuffle(s1, s2);
 #endif
 #ifdef __SSE4_1__
 	benchmark_ungapped_sse(ss1, ss2);
 #endif
-#if defined(__SSE2__) | ARCH_ID == 3
+#if defined(__SSE2__) | defined(__ARM_NEON)
 	benchmark_transpose();
 #endif
 }
