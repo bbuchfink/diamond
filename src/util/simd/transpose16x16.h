@@ -137,8 +137,6 @@ static inline void transpose(const signed char **data, size_t n, signed char *ou
 #define STORE_LOW(dst, a, b) vst1q_s8(dst, vcombine_s8(vget_low_s8(r##a), vget_low_s8(r##b)));
 #define STORE_HIGH(dst, a, b) vst1q_s8(dst, vcombine_s8(vget_high_s8(r##a), vget_high_s8(r##b)));
 
-
-
 static inline void transpose(const signed char **data, size_t n, signed char *out, const int8x16_t&) {
 	int8x16_t r0, r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11, r12, r13, r14, r15;
         int8x16x4_t b0, b1, b2, b3;

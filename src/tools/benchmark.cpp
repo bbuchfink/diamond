@@ -53,6 +53,17 @@ using std::endl;
 using std::array;
 using namespace DISPATCH_ARCH;
 
+template <size_t WIDTH>
+static inline void transpose_scalar(const signed char **data, size_t n, signed char *out) {
+	size_t x, y;
+	for (x = 0; x < WIDTH - n; ++x)
+		for (y = 0; y < WIDTH; ++y)
+			out[y*WIDTH+x] = 0;
+	for (; x < WIDTH; ++x)
+		for (y = 0; y < WIDTH; ++y)
+			out[y*WIDTH+x] = data[x + n - WIDTH][y];
+}
+
 namespace Benchmark { namespace DISPATCH_ARCH {
 
 #if defined(__SSE4_1__) && defined(EXTRA)
@@ -178,12 +189,10 @@ void benchmark_transpose() {
 
 	high_resolution_clock::time_point t1 = high_resolution_clock::now();
 	for (size_t i = 0; i < n; ++i) {
-		for (size_t x = 0; x < 16; ++x)
-			for (size_t y = 0; y < 16; ++y)
-				out[y*16+x] = in[x*16+y];
+		transpose_scalar<16>((const signed char**)v, 16, out);
 		in[0] = out[0];
 	}
-	cout << "Matrix transpose 16x16 bytes:\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * 256) * 1000 << " ps/Letter" << endl;
+	cout << "Transpose (16x16):\t\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * 256) * 1000 << " ps/Letter" << endl;
 
 	high_resolution_clock::time_point t2 = high_resolution_clock::now();
 	for (size_t i = 0; i < n; ++i) {
@@ -194,9 +203,7 @@ void benchmark_transpose() {
 #endif
 		in[0] = out[0];
 	}
-	cout << "Matrix transpose 16x16 bytes (vectorized):\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t2).count() / (n * 256) * 1000 << " ps/Letter" << endl;
-
-
+	cout << "Transpose (16x16, vectorized):\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t2).count() / (n * 256) * 1000 << " ps/Letter" << endl;
 
 
 #if ARCH_ID == 2
@@ -208,10 +215,17 @@ void benchmark_transpose() {
 
 		high_resolution_clock::time_point t1 = high_resolution_clock::now();
 		for (size_t i = 0; i < n; ++i) {
+			transpose_scalar<32>((const signed char**)v, 32, out);
+			in[0] = out[0];
+		}
+		cout << "Transpose (32x32):\t\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * 32 * 32) * 1000 << " ps/Letter" << endl;
+
+		high_resolution_clock::time_point t2 = high_resolution_clock::now();
+		for (size_t i = 0; i < n; ++i) {
 			transpose((const signed char**)v, 32, out, __m256i());
 			in[0] = out[0];
 		}
-		cout << "Matrix transpose 32x32 bytes:\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * 32 * 32) * 1000 << " ps/Letter" << endl;
+		cout << "Transpose (32x32, vectorized):\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t2).count() / (n * 32 * 32) * 1000 << " ps/Letter" << endl;
 	}
 #endif
 }
