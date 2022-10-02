@@ -4,6 +4,7 @@ Copyright (C) 2016-2021 Max Planck Society for the Advancement of Science e.V.
                         Benjamin Buchfink
 						
 Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
+Arm NEON port contributed by Martin Larralde <martin.larralde@embl.de>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by

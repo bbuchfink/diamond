@@ -176,10 +176,10 @@ struct Deque {
 		bool operator>(const Iterator& it) const {
 			return i_ > it.i_;
 		}
-		
-		Iterator operator-(int i) const {
-			return Iterator(i_ - i, data_);
-		}
+
+		// Iterator operator-(int i) const {
+		// 	return Iterator(i_ - i, data_);
+		// }
 
 		Iterator& operator+=(ptrdiff_t i) {
 			i_ += i;
