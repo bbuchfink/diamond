@@ -5,6 +5,7 @@ Copyright (C) 2013-2020 Max Planck Society for the Advancement of Science e.V.
                         Eberhard Karls Universitaet Tuebingen
 						
 Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
+Arm NEON port contributed by Martin Larralde <martin.larralde@embl.de>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -46,7 +47,8 @@ static inline __m128i reduce_seq_ssse3(const Letter *seq, const Letter* map)
 }
 #endif
 
-#ifdef __SSE2__
+#if defined(__SSE2__)
+
 static inline __m128i reduce_seq_generic(const Letter *seq, const Letter *map)
 {
 	alignas(16) uint8_t d[16];
@@ -63,14 +65,57 @@ static inline __m128i reduce_seq(const Letter *seq, const Letter *map)
 	return reduce_seq_generic(seq, map);
 #endif
 }
+
+#elif defined(__ARM_NEON)
+
+#ifdef __aarch64__
+static inline __m128i reduce_seq_aarch64(const Letter *seq, const Letter* map)
+{
+	int8x16_t s = vld1q_s8(seq);
+#ifdef SEQ_MASK
+	s = letter_mask(s);
+#endif
+	int8x16_t high_mask = vshlq_n_s16(vandq_s8(s, vdupq_n_s8('\x10')), 3);
+	int8x16_t seq_low   = vorrq_s8(s, high_mask);
+	int8x16_t seq_high  = vorrq_s8(s, veorq_s8(high_mask, vdupq_n_s8('\x80')));
+
+	int8x16_t r1 = vld1q_s8(row);
+	int8x16_t s1 = vqtbl1q_s8(r1, vandq_u8(seq_low, vdupq_n_u8(0x8F)));
+	int8x16_t r2 = vld1q_s8(row+16);
+	int8x16_t s2 = vqtbl1q_s8(r2, vandq_u8(seq_high, vdupq_n_u8(0x8F)));
+	return vorrq_s8(s1, s2);
+}
+#endif
+
+static inline int8x16_t reduce_seq_generic(const Letter *seq, const Letter *map)
+{
+	alignas(16) uint8_t d[16];
+	for (unsigned i = 0; i < 16; ++i)
+		d[i] = map[(long)letter_mask(*(seq++))];
+	return vreinterpretq_s8_u8(vld1q_u8(d));
+}
+
+static inline int8x16_t reduce_seq(const Letter *seq, const Letter *map)
+{
+#ifdef __aarch64__
+	return reduce_seq_aarch64(seq, map);
+#else
+	return reduce_seq_generic(seq, map);
+#endif
+}
+
 #endif
 
 static inline unsigned match_block_reduced(const Letter *x, const Letter *y)
 {
-#ifdef __SSE2__
+#if defined(__SSE2__)
 	const __m128i r1 = reduce_seq(x, Reduction::reduction.map8());
 	const __m128i r2 = reduce_seq(y, Reduction::reduction.map8b());
 	return _mm_movemask_epi8(_mm_cmpeq_epi8(r1, r2));
+#elif defined(__ARM_NEON)
+	const int8x16_t r1 = reduce_seq(x, Reduction::reduction.map8());
+	const int8x16_t r2 = reduce_seq(y, Reduction::reduction.map8b());
+	return ::SIMD::vmaskq_s8(vreinterpretq_s8_u8(vceqq_s8(r1, r2)));
 #else
 	unsigned r = 0;
 	for (int i = 15; i >= 0; --i) {
@@ -114,13 +159,25 @@ static inline uint64_t reduced_match(const Letter* q, const Letter* s, int len) 
 }
 
 static inline uint64_t seed_mask(const Letter* s, int len) {
-#ifdef __SSE2__
+#if defined(__SSE2__)
 	assert(len <= 64);
 	uint64_t mask = 0;
 	const __m128i m = ::SIMD::_mm_set1_epi8(SEED_MASK);
 	for (int i = 0; i < len; i += 16) {
 		const __m128i mask_bits = _mm_and_si128(_mm_loadu_si128((const __m128i*)s), m);
 		mask |= (uint64_t)_mm_movemask_epi8(mask_bits) << i;
+		s += 16;
+	}
+	if (len < 64)
+		mask &= (1llu << len) - 1;
+	return mask;
+#elif defined(__ARM_NEON)
+	assert(len <= 64);
+	uint64_t mask = 0;
+	const int8x16_t m = vreinterpretq_s8_u8(vdupq_n_u8(SEED_MASK));
+	for (int i = 0; i < len; i += 16) {
+		const int8x16_t mask_bits = vandq_s8(vld1q_s8(s), m);
+		mask |= (uint64_t) ::SIMD::vmaskq_s8(mask_bits) << i;
 		s += 16;
 	}
 	if (len < 64)
