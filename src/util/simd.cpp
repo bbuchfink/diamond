@@ -20,6 +20,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "simd.h"
 #include "util.h"
 
+#ifdef HAVE_GETAUXVAL
+#include <sys/auxv.h>
+#endif
+
 #ifdef _WIN32
 #define cpuid(info,x)    __cpuidex(info,x,0)
 #else
@@ -42,15 +46,18 @@ namespace SIMD {
 int flags = 0;
 
 Arch init_arch() {
-#ifdef __ARM_NEON
+#if defined(__aarch64__) | defined(__arm__)
 
-#ifdef __aarch64__
-	// NEON is mandatory on Aarch64
-	return Arch::NEON;
-#else
-	// TODO: runtime NEON detection on Armv7
-	return Arch::Generic;
+#if defined(__aarch64__)
+	flags |= NEON;
+#elif defined(HAVE_MFPU_NEON) & defined(HAVE_GETAUXVAL)
+	unsigned long hwcaps = getauxval(AT_HWCAP);
+	if ((hwcaps & HWCAP_ARM_NEON) != 0)
+		flags |= NEON;
 #endif
+
+	if ((flags & NEON) != 0)
+		return Arch::NEON;
 
 #else
 
@@ -98,9 +105,8 @@ Arch init_arch() {
 		return Arch::AVX2;
 	if ((flags & SSSE3) && (flags & POPCNT) && (flags & SSE4_1))
 		return Arch::SSE4_1;
-	else
-		return Arch::Generic;
 #endif
+	return Arch::Generic;
 }
 
 Arch arch() {
@@ -110,11 +116,8 @@ Arch arch() {
 
 std::string features() {
 	std::vector<std::string> r;
-#ifdef __ARM_NEON
-#ifdef __aarch64__
-	r.push_back("neon");
-#endif
-#else
+	if (flags & NEON)
+		r.push_back("neon");
 	if (flags & SSSE3)
 		r.push_back("ssse3");
 	if (flags & POPCNT)
@@ -123,7 +126,6 @@ std::string features() {
 		r.push_back("sse4.1");
 	if (flags & AVX2)
 		r.push_back("avx2");
-#endif
 	return r.empty() ? "None" : join(" ", r);
 }
 
