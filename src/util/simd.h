@@ -159,6 +159,23 @@ inline uint64_t vhsumq_u8(uint8x16_t x) {
 #endif
 }
 
+inline uint16_t vmaskq_s8(int8x16_t x) {
+	/* https://github.com/simd-everywhere/simde/blob/master/simde/x86/sse2.h#L3755 */
+	const uint8x16_t MASK = {
+		1 << 0, 1 << 1, 1 << 2, 1 << 3, 1 << 4, 1 << 5, 1 << 6, 1 << 7,
+		1 << 0, 1 << 1, 1 << 2, 1 << 3, 1 << 4, 1 << 5, 1 << 6, 1 << 7,
+	};
+	uint8x16_t  extended = vreinterpretq_u8_s8(vshrq_n_s8(x, 7));
+	uint8x16_t  masked   = vandq_u8(MASK, extended);
+	uint8x8x2_t zipped   = vzip_u8(vget_low_u8(masked), vget_high_u8(masked));
+	uint16x8_t  spliced  = vreinterpretq_u16_u8(vcombine_u8(zipped.val[0], zipped.val[1]));
+#ifdef __aarch64__
+	return vaddvq_u16(spliced);
+#else
+	return ::SIMD::vhsumq_u64(vreinterpretq_u64_u16(spliced));
+#endif
+}
+
 #endif
 
 }

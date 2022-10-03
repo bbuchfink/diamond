@@ -299,20 +299,7 @@ struct ScoreVector<int8_t, DELTA>
 	}
 
 	friend uint32_t cmp_mask(const ScoreVector&v, const ScoreVector&w) {
-		/* https://github.com/simd-everywhere/simde/blob/master/simde/x86/sse2.h#L3755 */
-		const uint8x16_t MASK = {
-			1 << 0, 1 << 1, 1 << 2, 1 << 3, 1 << 4, 1 << 5, 1 << 6, 1 << 7,
-			1 << 0, 1 << 1, 1 << 2, 1 << 3, 1 << 4, 1 << 5, 1 << 6, 1 << 7,
-		};
-		uint8x16_t extended = vceqq_s8(v.data_, w.data_);
-		uint8x16_t masked = vandq_u8(MASK, extended);
-		uint8x8x2_t tmp = vzip_u8(vget_low_u8(masked), vget_high_u8(masked));
-		uint16x8_t x = vreinterpretq_u16_u8(vcombine_u8(tmp.val[0], tmp.val[1]));
-#ifdef __aarch64__
-		return vaddvq_u16(x);
-#else
-		return ::SIMD::vhsumq_u16(x);
-#endif
+		return ::SIMD::vmaskq_s8(vreinterpretq_s8_u8(vceqq_s8(v.data_, w.data_)));
 	}
 
 	int operator [](unsigned i) const
