@@ -207,21 +207,26 @@ struct ScoreVector<int16_t, DELTA>
 		data_(vreinterpretq_s16_u16(vld1q_u16(x)))
 	{}
 
-	// ScoreVector(unsigned a, Register seq)
-	// {
-	// 	const __m128i *row = reinterpret_cast<const __m128i*>(&score_matrix.matrix8u()[a << 5]);
-	// 
-	// 	__m128i high_mask = _mm_slli_epi16(_mm_and_si128(seq, ::SIMD::_mm_set1_epi8('\x10')), 3);
-	// 	__m128i seq_low = _mm_or_si128(seq, high_mask);
-	// 	__m128i seq_high = _mm_or_si128(seq, _mm_xor_si128(high_mask, ::SIMD::_mm_set1_epi8('\x80')));
-	// 
-	// 	__m128i r1 = _mm_load_si128(row);
-	// 	__m128i r2 = _mm_load_si128(row + 1);
-	// 	__m128i s1 = _mm_shuffle_epi8(r1, seq_low);
-	// 	__m128i s2 = _mm_shuffle_epi8(r2, seq_high);
-	// 	data_ = _mm_and_si128(_mm_or_si128(s1, s2), ::SIMD::_mm_set1_epi16(255));
-	// 	data_ = _mm_subs_epi16(data_, ::SIMD::_mm_set1_epi16(score_matrix.bias()));
-	// }
+#ifdef __aarch64__
+	ScoreVector(unsigned a, Register seq)
+	{
+		const int8x16_t* row = reinterpret_cast<const int8x16_t*>(&score_matrix.matrix8()[a << 5]);
+
+		int8x16_t high_mask = vreinterpretq_s8_s16(vshlq_n_s16(vreinterpretq_s16_s8(vandq_s8(vreinterpretq_s8_s16(seq), vdupq_n_s8('\x10'))), 3));
+		int8x16_t seq_low   = vorrq_s8(vreinterpretq_s8_s16(seq), high_mask);
+		int8x16_t seq_high  = vorrq_s8(vreinterpretq_s8_s16(seq), veorq_s8(high_mask, vdupq_n_s8('\x80')));
+
+		int8x16_t r1 = vld1q_s8(reinterpret_cast<const int8_t*>(row));
+		int8x16_t r2 = vld1q_s8(reinterpret_cast<const int8_t*>(row + 1));
+
+		int8x16_t s1 = vqtbl1q_s8(r1, vandq_u8(vreinterpretq_u8_s8(seq_low),  vdupq_n_u8(0x8F)));
+		int8x16_t s2 = vqtbl1q_s8(r2, vandq_u8(vreinterpretq_u8_s8(seq_high), vdupq_n_u8(0x8F)));
+
+		data_ = vorrq_s16(vreinterpretq_s16_s8(s1), vreinterpretq_s16_s8(s2));
+		data_ = vandq_s16(data_, vdupq_n_s16(255));
+		data_ = vqsubq_s16(data_, vdupq_n_s16(score_matrix.bias()));
+	}
+#endif
 
 	ScoreVector operator+(const ScoreVector&rhs) const
 	{
