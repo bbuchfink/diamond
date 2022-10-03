@@ -66,7 +66,10 @@ struct BitVector {
 			const uint8x16_t block = vreinterpretq_u8_u64(vld1q_u64(&data[i]));
 			const uint8x16_t count = vcntq_u8(block);
 			acc = vpadalq_u8(acc, count);
-			if ((i % std::numeric_limits<uint16_t>::max()) == std::numeric_limits<uint16_t>::max()) {
+			/* Each loop increments each lane by up to 8, so the accumulator (which has 16-bit lanes) 
+			 * may overflow after 2^16 / 8 = 2^13 iterations.
+			 */
+			if ((i % (1 << 13)) == 0) {
 				n += ::SIMD::vhsumq_u16(acc);
 				acc = veorq_u16(acc, acc);
 			}
