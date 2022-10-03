@@ -69,19 +69,19 @@ static inline __m128i reduce_seq(const Letter *seq, const Letter *map)
 #elif defined(__ARM_NEON)
 
 #ifdef __aarch64__
-static inline __m128i reduce_seq_aarch64(const Letter *seq, const Letter* map)
+static inline int8x16_t reduce_seq_aarch64(const Letter *seq, const Letter* map)
 {
 	int8x16_t s = vld1q_s8(seq);
 #ifdef SEQ_MASK
 	s = letter_mask(s);
 #endif
-	int8x16_t high_mask = vshlq_n_s16(vandq_s8(s, vdupq_n_s8('\x10')), 3);
-	int8x16_t seq_low   = vorrq_s8(s, high_mask);
-	int8x16_t seq_high  = vorrq_s8(s, veorq_s8(high_mask, vdupq_n_s8('\x80')));
+	int8x16_t high_mask = vreinterpretq_s8_s16(vshlq_n_s16(vreinterpretq_s16_s8(vandq_s8(s, vdupq_n_s8('\x10'))), 3));
+	uint8x16_t seq_low  = vreinterpretq_u8_s8(vorrq_s8(s, high_mask));
+	uint8x16_t seq_high = vreinterpretq_u8_s8(vorrq_s8(s, veorq_s8(high_mask, vdupq_n_s8('\x80'))));
 
-	int8x16_t r1 = vld1q_s8(row);
+	int8x16_t r1 = vld1q_s8(map);
 	int8x16_t s1 = vqtbl1q_s8(r1, vandq_u8(seq_low, vdupq_n_u8(0x8F)));
-	int8x16_t r2 = vld1q_s8(row+16);
+	int8x16_t r2 = vld1q_s8(map+16);
 	int8x16_t s2 = vqtbl1q_s8(r2, vandq_u8(seq_high, vdupq_n_u8(0x8F)));
 	return vorrq_s8(s1, s2);
 }
