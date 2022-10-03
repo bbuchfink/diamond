@@ -208,7 +208,7 @@ const std::function<decltype(ARCH_GENERIC::name)> name = dispatch_target_##name(
 #pragma clang attribute pop
 #endif
 
-#elif defined(__ARM_NEON)
+#elif defined(__aarch64__) | (defined(__arm__) & defined(HAVE_MFPU_NEON))
 
 #include <functional>
 
