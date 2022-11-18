@@ -38,7 +38,7 @@ struct ActiveTarget {
 				masked_seq[h.frame] = dst.ptr(i++);
 			}
 			Letter* seq = masked_seq[h.frame];
-			std::fill(seq + h.subject_range.begin_, seq + h.subject_range.end_, MASK_LETTER);
+			std::fill(seq + h.subject_range.begin_, seq + h.subject_range.end_, SUPER_HARD_MASK);
 		}
 	}
 	Sequence masked(int32_t context) const {
@@ -85,7 +85,7 @@ static TargetVec recompute_alt_hsps(const Sequence* query_seq, const int query_s
 			ActiveTarget& t = targets[hsp.front().swipe_target];
 			list<Hsp>& l = t.match->hsp;
 			l.splice(l.end(), hsp, hsp.begin());
-			std::fill(t.masked_seq[context] + l.back().subject_range.begin_, t.masked_seq[context] + l.back().subject_range.end_, MASK_LETTER);
+			std::fill(t.masked_seq[context] + l.back().subject_range.begin_, t.masked_seq[context] + l.back().subject_range.end_, SUPER_HARD_MASK);
 			t.active |= 1 << context;
 		}
 	}
