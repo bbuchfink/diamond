@@ -233,6 +233,20 @@ bool Hsp::is_enveloped_by(std::list<Hsp>::const_iterator begin, std::list<Hsp>::
 	return false;
 }
 
+bool Hsp::query_range_enveloped_by(const Hsp& hsp, double p) const
+{
+	return query_source_range.overlap_factor(hsp.query_source_range) >= p;
+}
+
+bool Hsp::query_range_enveloped_by(std::list<Hsp>::const_iterator begin, std::list<Hsp>::const_iterator end, double p) const
+{
+	for (list<Hsp>::const_iterator i = begin; i != end; ++i)
+		if (query_range_enveloped_by(*i, p))
+			return true;
+	return false;
+}
+
+
 void Hsp::push_match(Letter q, Letter s, bool positive)
 {
 	if (q == s) {

@@ -217,6 +217,8 @@ struct Hsp
 
 	bool is_enveloped_by(const Hsp &hsp, double p) const;
 	bool is_enveloped_by(std::list<Hsp>::const_iterator begin, std::list<Hsp>::const_iterator end, double p) const;
+	bool query_range_enveloped_by(const Hsp& hsp, double p) const;
+	bool query_range_enveloped_by(std::list<Hsp>::const_iterator begin, std::list<Hsp>::const_iterator end, double p) const;
 	bool is_weakly_enveloped_by(std::list<Hsp>::const_iterator begin, std::list<Hsp>::const_iterator end, int cutoff) const;
 	void push_back(const DiagonalSegment &d, const TranslatedSequence &query, const Sequence& subject, bool reversed);
 	void push_match(Letter q, Letter s, bool positive);

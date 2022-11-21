@@ -310,7 +310,7 @@ void Target::inner_culling()
 		filter_evalue = DBL_MAX;
 	}
 	for (list<Hsp>::iterator i = hsps.begin(); i != hsps.end();) {
-		if (i->is_enveloped_by(hsps.begin(), i, 0.5))
+		if (i->query_range_enveloped_by(hsps.begin(), i, 0.5))
 			i = hsps.erase(i);
 		else
 			++i;
