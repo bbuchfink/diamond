@@ -69,6 +69,8 @@ namespace SIMD {
 static inline __m128i _mm_set1_epi8(char v) {
 #ifdef __APPLE__
 	return _mm_set_epi8(v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v);
+#elif __ICC
+	return _mm_set1_epi8(v);
 #else
 	return ::_mm_set1_epi8(v);
 #endif
@@ -77,6 +79,8 @@ static inline __m128i _mm_set1_epi8(char v) {
 static inline __m128i _mm_set1_epi16(short v) {
 #ifdef __APPLE__
 	return _mm_set_epi16(v, v, v, v, v, v, v, v);
+#elif __ICC
+	return _mm_set1_epi16(v);
 #else
 	return ::_mm_set1_epi16(v);
 #endif
@@ -89,6 +93,8 @@ static inline __m128i _mm_set1_epi16(short v) {
 static inline __m256i _mm256_set1_epi8(char v) {
 #ifdef __APPLE__
 	return _mm256_set_epi8(v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v);
+#elif __ICC
+	return _mm256_set1_epi8(v);
 #else
 	return ::_mm256_set1_epi8(v);
 #endif
@@ -97,6 +103,8 @@ static inline __m256i _mm256_set1_epi8(char v) {
 static inline __m256i _mm256_set1_epi16(short v) {
 #ifdef __APPLE__
 	return _mm256_set_epi16(v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v);
+#elif __ICC
+	return _mm256_set1_epi16(v);
 #else
 	return ::_mm256_set1_epi16(v);
 #endif
@@ -126,7 +134,7 @@ inline void print_16(__m256i x, std::ostream& s) {
 
 #ifdef __SSE__
 
-#if defined(__GNUC__) && !defined(__clang__) && defined(__SSE__)
+#if defined(__GNUC__) && !defined(__ICC) && !defined(__clang__) && defined(__SSE__)
 #pragma GCC push_options
 #pragma GCC target("arch=x86-64")
 #elif defined(__clang__) && defined(__SSE__)
