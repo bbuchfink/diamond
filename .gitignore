@@ -56,3 +56,6 @@ src/extra/
 .vs/
 CMakeSettings.json
 .unison
+
+*.so
+__pycache__

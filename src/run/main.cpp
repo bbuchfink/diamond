@@ -17,14 +17,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #include <iostream>
-#include "../basic/config.h"
-#include "tools.h"
-#include "../data/reference.h"
-#include "workflow.h"
-#include "../cluster/cluster_registry.h"
-#include "../output/recursive_parser.h"
-#include "../util/simd.h"
-#include "../data/dmnd/dmnd.h"
+#include "main.h"
 
 using std::cout;
 using std::cerr;
@@ -72,7 +65,7 @@ void simulate_seqs();
 void mutate();
 }
 
-int main(int ac, const char* av[])
+int diamond(int ac, const char* av[])
 {
 	try {
 		config = Config(ac, av);
@@ -234,3 +227,9 @@ int main(int ac, const char* av[])
 
     return 0;
 }
+
+int main(int argc, char const *argv[])
+{
+	return diamond(argc, argv);
+}
+
