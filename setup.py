@@ -1,6 +1,5 @@
 from skbuild import setup
 
 setup(
-    name="diamondpy",
-    cmake_languages="CXX"
+    packages=["diamondpy"]
 )

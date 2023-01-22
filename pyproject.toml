@@ -1,2 +1,28 @@
 [build-system]
-requires = ["setuptools", "wheel", "scikit-build", "cmake", "ninja"]
+requires = [
+    "setuptools>=42",
+    "scikit-build>=0.13",
+    "cmake>=3.18",
+    "ninja",
+]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "diamondpy"
+version = "0.0.1rc1"
+authors = [
+  { name="Zhang.H.N", email="zhang.h.n@foxmail.com" },
+]
+description = "Diamond Python Bindings"
+readme = "README.md"
+requires-python = ">=3.7"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+license = {file = "LICENSE"}
+
+[project.urls]
+"Homepage" = "https://github.com/GCS-ZHN/diamondpy"
+"Bug Tracker" = "https://github.com/GCS-ZHN/diamondpy/issues"
