@@ -1,70 +1,43 @@
 #include <Python.h>
 #include "../run/main.h"
 
-static PyObject* method_run(PyObject* self, PyObject* args)
+/**
+ * Run diamond by cmd options
+*/
+static PyObject* method_main(PyObject* self, PyObject* args)
 {
-    const char* db, *query, *out, *command;
-    // int status = diamond(c_argc, c_args);
-    if (!PyArg_ParseTuple(args, "ssss", &db, &query, &out, &command)) {
-        return NULL;
-    }
     try {
-        // std::cout << command << std::endl;
-        const char * argv[] = {"diamond", command, "-d", db, "-q", query, "-o", out};
-        config = Config(8, argv);
-        switch (config.command) {
-        case config.blastp:
-        case config.blastx:
-            Search::run();
-            // printf("Diamond finished!\n");
-            std::cout << "Finished!" << std::endl;
-            break;
-        default:
-            PyErr_SetString(PyExc_NotImplementedError, "Command not supported yet.");
-            return NULL;
+        int size = PyTuple_Size(args);
+        int argc = size + 1;
+        const char* argv[argc];
+        argv[0] = "diamond";
+        for (int i = 0; i < size; i++) {
+            PyObject* item = PyTuple_GetItem(args, i);
+            if (!PyArg_Parse(item, "s", &(argv[i + 1]))) {
+                return NULL;
+            }
         }
-    }
-    catch(const std::bad_alloc &e) {
-        PyErr_SetString(PyExc_MemoryError, "Failed to allocate sufficient memory. Please refer to the manual for instructions on memory usage.");
+        int status = diamond(argc, argv);
+        return Py_BuildValue("i", status);
+	}
+	catch(const std::bad_alloc &e) {
+        PyErr_SetString(PyExc_MemoryError, e.what());
         return NULL;
-    }
-    catch(const std::exception& e) {
-        string err = e.what();
-        if (err.find("Invalid command", 0) == 0) {
-            PyErr_SetString(PyExc_NotImplementedError, "Unsupported command.");
-        }
-        else if (err.find("Error calling stat on file ", 0) == 0) {
-            string file = err.substr(27);
-            PyErr_SetString(PyExc_FileNotFoundError, file.c_str());
-        }
-        else {
-            PyErr_SetString(PyExc_RuntimeError, e.what());
-            std::cout << 1 << std::endl;
-        }
-        return NULL;
-    }
-    catch (const std::string& e) {
-        PyErr_SetString(PyExc_RuntimeError, e.c_str());
-        std::cout << 2 << std::endl;
-        return NULL;
-    }
-    catch (const int& e) {
-        PyErr_SetString(PyExc_RuntimeError, "Error code returned.");
+	} catch(const std::exception& e) {
+        PyErr_SetString(PyExc_RuntimeError, e.what());
         return NULL;
     }
     catch(...) {
-        std::cout << "Hello World" << std::endl;
-        std::exception_ptr e = std::current_exception();
-        std::clog << (e ? e.__cxa_exception_type()->name() : "null") << std::endl;
-        PyErr_SetString(PyExc_RuntimeError, "Exception of unknown type!");
-        // std::cerr << 
+        PyErr_SetString(PyExc_RuntimeError, "Unknown exception occurred from Cpp");
         return NULL;
     }
 }
 
+/**
+ * Return diamond's version
+*/
 static PyObject* method_version(PyObject *self, PyObject*args)
-{   
-    // 无参数
+{
     if (!PyArg_ParseTuple(args, "")) {
         return NULL;
     }
@@ -72,17 +45,30 @@ static PyObject* method_version(PyObject *self, PyObject*args)
     return Py_BuildValue("s", version);
 }
 
-
 static PyMethodDef libdiamond_methods[] = {
-    {"run", method_run, METH_VARARGS, "Run blastp or blastx."},
-    {"version", method_version, METH_VARARGS, "Return internal version of diamond"},
-    {NULL, NULL, 0, NULL}
+    {
+        "main", 
+        method_main, 
+        METH_VARARGS, 
+        "Run diamond by its command options. For option details, just pass a 'help' argument"},
+    {
+        "version", 
+        method_version, 
+        METH_VARARGS, 
+        "Return the version of diamond."
+    },
+    // the last one used just to tell Python the end of method list.
+    {
+        NULL, 
+        NULL, 
+        0, 
+        NULL}
 };
 
 static struct PyModuleDef libdiamond_module {
     PyModuleDef_HEAD_INIT,
     "diamondpy",
-    "Diamond module",
+    "Diamond's python wrapper module",
     -1,
     libdiamond_methods
 };
