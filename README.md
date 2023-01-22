@@ -2,10 +2,14 @@
 This is python binding for diamond--a sequence alignment BLAST software implements in C++.
 
 ## install
+
 - from source code
 ```bash
 git clone https://github.com/GCS-ZHN/diamondpy.git
 cd diamondpy
+conda create -n diamondpy python=3.8
+# zlib is required by diamond.
+conda install -c anaconda zlib
 pip install -v .
 ```
 
