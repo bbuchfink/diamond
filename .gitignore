@@ -63,3 +63,5 @@ __pycache__
 _skbuild
 *.egg-info
 dist
+*.dmnd
+*output
