@@ -1,4 +1,4 @@
-from diamondpy import Diamond
+from diamond4py import Diamond
 
 diamond = Diamond(
     database="test/cafa4.dmnd",

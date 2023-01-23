@@ -1,5 +1,5 @@
 from skbuild import setup
 
 setup(
-    packages=["diamondpy"]
+    packages=["diamond4py"]
 )
