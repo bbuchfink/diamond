@@ -23,6 +23,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <stdexcept>
 #include "sequence.h"
 #include "../util.h"
+#include "../../stats/score_matrix.h"
+#include "translate.h"
+
+using std::vector;
+using std::array;
+using std::string;
+using std::min;
 
 namespace Util { namespace Seq {
 
@@ -101,6 +108,64 @@ bool is_fully_masked(const Sequence& seq) {
 		if (*p >= TRUE_AA)
 			++n;
 	return n == seq.length();
+}
+
+array<vector<Letter>, 6> translate(const Sequence& seq) {
+	array<vector<Letter>, 6> out;
+	if (seq.length() < 3)
+		return out;
+	Translator::translate(seq, out.data());
+	return out;
+}
+
+Loc find_orfs(vector<Letter>& seq, const Loc min_len) {
+	vector<Letter>::iterator it, begin = seq.begin();
+	Loc n = 0;
+	while ((it = std::find(begin, seq.end(), STOP_LETTER)) != seq.end()) {
+		const Loc l = Loc(it - begin);
+		if (l < min_len)
+			std::fill(begin, it, MASK_LETTER);
+		else
+			n += l;
+		begin = it + 1;
+	}
+	const Loc l = Loc(seq.end() - begin);
+	if (l < min_len)
+		std::fill(begin, seq.end(), MASK_LETTER);
+	else
+		n += l;
+	return n;
+}
+
+bool looks_like_dna(const Sequence& seq) {
+	array<Loc, AMINO_ACID_COUNT> count;
+	count.fill(0);
+	for (Loc i = 0; i < seq.length(); ++i)
+		++count[(int)seq[i]];
+	return count[(int)value_traits.from_char('A')]
+		+ count[(int)value_traits.from_char('C')]
+		+ count[(int)value_traits.from_char('G')]
+		+ count[(int)value_traits.from_char('T')]
+		+ count[(int)value_traits.from_char('N')] == seq.length();
+}
+
+std::vector<Score> window_scores(Sequence seq1, Sequence seq2, Loc window) {
+	assert(seq1.length() == seq2.length());
+	vector<Score> v;
+	v.reserve(seq1.length());
+	Score s = 0;
+	const Loc l = min(seq1.length(), window);
+	for (Loc i = 0; i < l; ++i) {
+		s += score_matrix(seq1[i], seq2[i]);
+		v.push_back(s);
+	}
+	Loc j = 0;
+	for (Loc i = window; i < seq1.length(); ++i, ++j) {
+		s += score_matrix(seq1[i], seq2[i]);
+		s -= score_matrix(seq1[j], seq2[j]);
+		v.push_back(s);
+	}
+	return v;
 }
 
 }}

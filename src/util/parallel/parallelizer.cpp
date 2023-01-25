@@ -5,6 +5,7 @@
 #include <thread>
 #include <stdexcept>
 #include <memory>
+#include "../system.h"
 #ifndef WIN32
 #include <unistd.h>
 #include <sys/stat.h>
@@ -221,7 +222,7 @@ void Parallelizer::sleep(const double sleep_s) {
 bool Parallelizer::clean(vector<string> & file_list) {
     for (auto s : file_list) {
         errno = 0;
-        unlink(s.c_str());
+        UNLINK(s.c_str());
     }
     file_list.clear();
     return true;

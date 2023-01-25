@@ -24,28 +24,30 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/util.h"
 #include "../util/algo/partition.h"
 #include "../basic/shape_config.h"
-#include "block.h"
+#include "block/block.h"
 #include "../util/ptr_vector.h"
 #include "enum_seeds.h"
 #include "seed_set.h"
+
+using std::vector;
 
 SeedPartitionRange current_range;
 
 SeedHistogram::SeedHistogram()
 { }
 
-size_t SeedHistogram::max_chunk_size(size_t index_chunks) const
+size_t SeedHistogram::max_chunk_size(const int index_chunks) const
 {
 	size_t max = 0;
-	::Partition<unsigned> p(Const::seedp, index_chunks);
+	::Partition<int> p(Const::seedp, index_chunks);
 	for (unsigned shape = 0; shape < shapes.count(); ++shape)
-		for (unsigned chunk = 0; chunk < p.parts; ++chunk)
+		for (int chunk = 0; chunk < p.parts; ++chunk)
 			max = std::max(max, hst_size(data_[shape], SeedPartitionRange(p.begin(chunk), p.end(chunk))));
 	return max;
 }
 
 template<typename Filter>
-SeedHistogram::SeedHistogram(Block& seqs, bool serial, const Filter* filter, SeedEncoding code, const std::vector<bool>* skip, const bool mask_seeds, const double seed_cut, const MaskingAlgo soft_masking) :
+SeedHistogram::SeedHistogram(Block& seqs, bool serial, const Filter* filter, SeedEncoding code, const std::vector<bool>* skip, const bool mask_seeds, const double seed_cut, const MaskingAlgo soft_masking, Loc minimizer_window) :
 	data_(shapes.count()),
 	p_(seqs.seqs().partition(config.threads_))
 {
@@ -76,15 +78,15 @@ SeedHistogram::SeedHistogram(Block& seqs, bool serial, const Filter* filter, See
 		cb.push_back(new Callback(i, data_));
 	if (serial)
 		for (unsigned s = 0; s < shapes.count(); ++s) {
-			const EnumCfg cfg{ &p_,s,s + 1, code, skip, false, mask_seeds, seed_cut, soft_masking };
+			const EnumCfg cfg{ &p_,s,s + 1, code, skip, false, mask_seeds, seed_cut, soft_masking, minimizer_window };
 			enum_seeds(seqs, cb, filter, cfg);
 		}
 	else {
-		const EnumCfg cfg{ &p_, 0, shapes.count(), code, skip, false, mask_seeds, seed_cut, soft_masking };
+		const EnumCfg cfg{ &p_, 0, shapes.count(), code, skip, false, mask_seeds, seed_cut, soft_masking, minimizer_window };
 		enum_seeds(seqs, cb, filter, cfg);
 	}
 }
 
-template SeedHistogram::SeedHistogram(Block&, bool, const NoFilter*, SeedEncoding, const std::vector<bool>*, const bool, const double, const MaskingAlgo);
-template SeedHistogram::SeedHistogram(Block&, bool, const SeedSet*, SeedEncoding, const std::vector<bool>*, const bool, const double, const MaskingAlgo);
-template SeedHistogram::SeedHistogram(Block&, bool, const HashedSeedSet*, SeedEncoding, const std::vector<bool>*, const bool, const double, const MaskingAlgo);
+template SeedHistogram::SeedHistogram(Block&, bool, const NoFilter*, SeedEncoding, const std::vector<bool>*, const bool, const double, const MaskingAlgo, Loc);
+template SeedHistogram::SeedHistogram(Block&, bool, const SeedSet*, SeedEncoding, const std::vector<bool>*, const bool, const double, const MaskingAlgo, Loc);
+template SeedHistogram::SeedHistogram(Block&, bool, const HashedSeedSet*, SeedEncoding, const std::vector<bool>*, const bool, const double, const MaskingAlgo, Loc);

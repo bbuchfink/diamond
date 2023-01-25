@@ -24,7 +24,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <algorithm>
 #include "../range.h"
 
-template<typename _t>
+template<typename T>
 struct DoubleArray {
 
 	DoubleArray()
@@ -53,11 +53,11 @@ struct DoubleArray {
 			return *(uint32_t*)ptr_;
 		}
 
-		Range<_t*> operator*() {
-			return { (_t*)(ptr_ + 4), (_t*)(ptr_ + 4) + count() };
+		Range<T*> operator*() {
+			return { (T*)(ptr_ + 4), (T*)(ptr_ + 4) + count() };
 		}
 
-		Range<_t*>* operator->() {
+		Range<T*>* operator->() {
 			range_ = this->operator*();
 			return &range_;
 		}
@@ -69,7 +69,7 @@ struct DoubleArray {
 		}
 
 		void next() {
-			ptr_ += count() * sizeof(_t) + 4;
+			ptr_ += count() * sizeof(T) + 4;
 		}
 
 		operator bool() const {
@@ -80,7 +80,7 @@ struct DoubleArray {
 			uint32_t n = count();
 			*(uint32_t*)(ptr_ + 4) = n;
 			count() = 0;
-			ptr_ += n * sizeof(_t) + 4;
+			ptr_ += n * sizeof(T) + 4;
 		}
 
 		ptrdiff_t operator-(const Iterator &x) const {
@@ -95,10 +95,10 @@ struct DoubleArray {
 
 		void skip_del() {
 			while (ptr_ < end_ && count() == 0)
-				ptr_ += (*(uint32_t*)(ptr_ + 4)) * sizeof(_t) + 4;
+				ptr_ += (*(uint32_t*)(ptr_ + 4)) * sizeof(T) + 4;
 		}
 
-		Range<_t*> range_;
+		Range<T*> range_;
 		char *ptr_, *end_;
 
 		friend struct DoubleArray;
@@ -126,8 +126,8 @@ struct DoubleArray {
 		return uint32_t(it.ptr_ - data_);
 	}
 
-	_t& operator[](uint32_t i) {
-		return *(_t*)(data_ + i);
+	T& operator[](uint32_t i) {
+		return *(T*)(data_ + i);
 	}
 
 private:

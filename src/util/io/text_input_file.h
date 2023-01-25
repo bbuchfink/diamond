@@ -16,22 +16,17 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#ifndef TEXT_INPUT_FILE_H_
-#define TEXT_INPUT_FILE_H_
-
+#pragma once
 #include <vector>
 #include <string>
 #include <stdexcept>
 #include "input_file.h"
 
-using std::vector;
-using std::string;
-using std::runtime_error;
-
 struct TextInputFile : public InputFile
 {
-	TextInputFile(const string &file_name);
+	TextInputFile(const std::string &file_name);
 	TextInputFile(TempFile &tmp_file);
+	TextInputFile(OutputFile& out_file);
 	void rewind();
 	bool eof() const;
 	void putback(char c);
@@ -41,7 +36,7 @@ struct TextInputFile : public InputFile
 		return !eof();
 	}
 
-	string line;
+	std::string line;
 	size_t line_count;
 
 protected:
@@ -53,5 +48,3 @@ protected:
 	bool putback_line_, eof_;
 
 };
-
-#endif

@@ -22,7 +22,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "daa_file.h"
 #include "../basic/packed_sequence.h"
 #include "../basic/value.h"
-#include "../basic/translate.h"
+#include "../util/sequence/translate.h"
 #include "../basic/packed_transcript.h"
 #include "../stats/score_matrix.h"
 #include "../basic/match.h"
@@ -49,6 +49,7 @@ struct DAA_query_record
 		{
 			return HspContext(*this,
 				(unsigned)parent_.query_num,
+				0,
 				parent_.query_seq,
 				parent_.query_name.c_str(),
 				subject_id,
@@ -59,13 +60,14 @@ struct DAA_query_record
 				Sequence());
 		}
 
+		void read(BinaryBuffer::Iterator &it);
+
 		uint32_t hsp_num, hit_num, subject_id, subject_len;
-		string subject_name;
+		std::string subject_name;
 
 	private:
 
 		const DAA_query_record &parent_;
-		friend BinaryBuffer::Iterator& operator>>(BinaryBuffer::Iterator &it, Match &r);
 
 	};
 
@@ -92,7 +94,7 @@ struct DAA_query_record
 		}
 		Match_iterator& operator++()
 		{
-			if (it_.good()) it_ >> r_; else good_ = false; return *this;
+			if (it_.good()) r_.read(it_); else good_ = false; return *this;
 		}
 	private:
 		Match r_;
@@ -133,9 +135,7 @@ private:
 	const DAA_file& file_;
 	const BinaryBuffer::Iterator it_;
 	
-	friend BinaryBuffer::Iterator& operator>>(BinaryBuffer::Iterator &it, Match &r);
-
 };
 
-BinaryBuffer::Iterator& operator>>(BinaryBuffer::Iterator &it, DAA_query_record::Match &r);
+
 void copy_match_record_raw(BinaryBuffer::Iterator& it, TextBuffer& buf, const std::unordered_map<uint32_t, uint32_t>& subject_map);

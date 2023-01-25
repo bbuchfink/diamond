@@ -23,13 +23,14 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/io/output_file.h"
 #include "../util/data_structures/compact_array.h"
 #include "../util/table.h"
+#include "../basic/value.h"
 
 template<typename Type, typename Cmp>
 struct ExternalSorter;
 
-struct TaxonList : public CompactArray<vector<unsigned>>
+struct TaxonList : public CompactArray<std::vector<TaxId>>
 {
-	typedef std::pair<std::string, uint32_t> T;
+	typedef std::pair<std::string, OId> T;
 	TaxonList(Deserializer &in, size_t size, size_t data_size);
-	static void build(OutputFile &db, ExternalSorter<T, std::less<T>>& accessions, size_t seqs, Table& stats);
+	static void build(OutputFile &db, ExternalSorter<T, std::less<T>>& accessions, OId seqs, Util::Table& stats);
 };

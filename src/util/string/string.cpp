@@ -1,12 +1,15 @@
 #include <sstream>
 #include <iomanip>
 #include "string.h"
+#include "fixed_string.h"
 
 using std::string;
 using std::to_string;
 using std::stringstream;
 using std::setprecision;
 using std::fixed;
+
+std::array<char, 16> fixed_string_seed;
 
 string convert_size(size_t size) {
 	static const char *SIZES[] = { "B", "KB", "MB", "GB" };
@@ -44,6 +47,22 @@ std::string ratio_percentage(const double x, const double y) {
 
 std::string ratio_percentage(const size_t x, const size_t y) {
 	return ratio_percentage((double)x, (double)y);
+}
+
+int64_t interpret_number(const std::string& s) {
+	stringstream ss(s);
+	double n;
+	ss >> n;
+	char c = 0;
+	ss >> c;
+	if (ss.eof())
+		throw std::runtime_error("Missing size specifier in number: " + s + ". Permitted values: 'G'");
+	if (c != 'G')
+		throw std::runtime_error(string("Invalid size specifier (") + c + ") in number: " + s + ". Permitted values: 'G'");
+	ss >> c;
+	if (!ss.eof())
+		throw std::runtime_error("Invalid number format: " + s);	
+	return int64_t(n * 1e9);
 }
 
 }}

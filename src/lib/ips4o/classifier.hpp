@@ -33,6 +33,8 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *****************************************************************************/
 
+// Modified by B. Buchfink
+
 #pragma once
 
 #include <type_traits>
@@ -85,7 +87,7 @@ class Sorter<Cfg>::Classifier {
      */
     void build(int log_buckets) {
         log_buckets_ = log_buckets;
-        num_buckets_ = 1 << log_buckets;
+        num_buckets_ = (bucket_type)1 << log_buckets;
         const auto num_splitters = (1 << log_buckets) - 1;
         IPS4O_ASSUME_NOT(getSortedSplitters() + num_splitters == nullptr);
         new (getSortedSplitters() + num_splitters) value_type(getSortedSplitters()[num_splitters - 1]);
@@ -198,7 +200,7 @@ class Sorter<Cfg>::Classifier {
     void cleanup() {
         auto p = data() + 1;
         auto q = getSortedSplitters();
-        for (int i = num_buckets_ - 1; i; --i) {
+        for (bucket_type i = num_buckets_ - 1; i; --i) {
             p++->~value_type();
             q++->~value_type();
         }

@@ -3,6 +3,9 @@
 #include "../util/sequence/sequence.h"
 #include "../../basic/statistics.h"
 
+using std::string;
+using std::vector;
+
 void init_daa(OutputFile& f)
 {
 	DAA_header1 h1;

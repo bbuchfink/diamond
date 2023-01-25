@@ -33,6 +33,8 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *****************************************************************************/
 
+// Modified by B. Buchfink
+
 #pragma once
 
 #include <tuple>
@@ -49,8 +51,8 @@ namespace detail {
  * i.e., the last bucket that has more than one full block.
  */
 template <class Cfg>
-int Sorter<Cfg>::computeOverflowBucket() {
-    int bucket = num_buckets_ - 1;
+typename Cfg::bucket_type Sorter<Cfg>::computeOverflowBucket() {
+    typename Cfg::bucket_type bucket = num_buckets_ - 1;
     while (bucket >= 0
            && (bucket_start_[bucket + 1] - bucket_start_[bucket]) <= Cfg::kBlockSize)
         --bucket;
@@ -62,7 +64,7 @@ int Sorter<Cfg>::computeOverflowBucket() {
  */
 template <class Cfg>
 template <bool kEqualBuckets, bool kIsParallel>
-int Sorter<Cfg>::classifyAndReadBlock(const int read_bucket) {
+typename Cfg::bucket_type Sorter<Cfg>::classifyAndReadBlock(const typename Cfg::bucket_type read_bucket) {
     auto& bp = bucket_pointers_[read_bucket];
 
     diff_t write, read;
@@ -86,10 +88,10 @@ int Sorter<Cfg>::classifyAndReadBlock(const int read_bucket) {
  */
 template <class Cfg>
 template <bool kEqualBuckets, bool kIsParallel>
-int Sorter<Cfg>::swapBlock(const diff_t max_off, const int dest_bucket,
+typename Cfg::bucket_type Sorter<Cfg>::swapBlock(const diff_t max_off, const typename Cfg::bucket_type dest_bucket,
                            const bool current_swap) {
     diff_t write, read;
-    int new_dest_bucket;
+    typename Cfg::bucket_type new_dest_bucket;
     auto& bp = bucket_pointers_[dest_bucket];
     do {
         std::tie(write, read) = bp.template incWrite<kIsParallel>();
@@ -126,13 +128,13 @@ template <bool kEqualBuckets, bool kIsParallel>
 void Sorter<Cfg>::permuteBlocks() {
     const auto num_buckets = num_buckets_;
     // Distribute starting points of threads
-    int read_bucket = (my_id_ * num_buckets / num_threads_) % num_buckets;
+    typename Cfg::bucket_type read_bucket = (my_id_ * num_buckets / num_threads_) % num_buckets;
     // Not allowed to write to this offset, to avoid overflow
     const diff_t max_off = Cfg::alignToNextBlock(end_ - begin_ + 1) - Cfg::kBlockSize;
 
     // Go through all buckets
-    for (int count = num_buckets; count; --count) {
-        int dest_bucket;
+    for (typename Cfg::bucket_type count = num_buckets; count; --count) {
+        typename Cfg::bucket_type dest_bucket;
         // Try to read a block ...
         while ((dest_bucket = classifyAndReadBlock<kEqualBuckets, kIsParallel>(read_bucket)) != -1) {
             bool current_swap = 0;

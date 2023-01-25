@@ -31,6 +31,7 @@ using std::list;
 using std::thread;
 using std::atomic;
 using std::pair;
+using std::vector;
 
 namespace DISPATCH_ARCH {
 
@@ -391,11 +392,11 @@ Hsp traceback(Sequence *query, Strand strand, int dna_len, const Banded3FrameSwi
 template<typename _sv, typename _traceback>
 list<Hsp> banded_3frame_swipe(
 	const TranslatedSequence &query,
-	Strand strand, vector<DpTarget>::const_iterator subject_begin,
-	vector<DpTarget>::const_iterator subject_end,
+	Strand strand, std::vector<DpTarget>::const_iterator subject_begin,
+	std::vector<DpTarget>::const_iterator subject_end,
 	DpStat &stat,
 	bool parallel,
-	vector<DpTarget> &overflow)
+	std::vector<DpTarget> &overflow)
 {
 	typedef typename Banded3FrameSwipeMatrixRef<_sv, _traceback>::type Matrix;
 	typedef typename ScoreTraits<_sv>::Score Score;
@@ -425,7 +426,9 @@ list<Hsp> banded_3frame_swipe(
 		frameshift_penalty(score_matrix.frame_shift());
 	
 	SwipeProfile<_sv> profile;
+#ifndef __SSSE3__
 	std::array<const int8_t*, 32> target_scores;
+#endif
 	Score best[ScoreTraits<_sv>::CHANNELS];
 	int max_col[ScoreTraits<_sv>::CHANNELS];
 	for (int i = 0; i < ScoreTraits<_sv>::CHANNELS; ++i) {
@@ -511,14 +514,14 @@ list<Hsp> banded_3frame_swipe(
 }
 
 template<typename _sv>
-list<Hsp> banded_3frame_swipe_targets(vector<DpTarget>::const_iterator begin,
+list<Hsp> banded_3frame_swipe_targets(std::vector<DpTarget>::const_iterator begin,
 	vector<DpTarget>::const_iterator end,
 	bool score_only,
 	const TranslatedSequence &query,
 	Strand strand,
 	DpStat &stat,
 	bool parallel,
-	vector<DpTarget> &overflow)
+	std::vector<DpTarget> &overflow)
 {
 	list<Hsp> out;
 	for (vector<DpTarget>::const_iterator i = begin; i < end; i += std::min((ptrdiff_t)ScoreTraits<_sv>::CHANNELS, end - i)) {
@@ -530,8 +533,8 @@ list<Hsp> banded_3frame_swipe_targets(vector<DpTarget>::const_iterator begin,
 	return out;
 }
 
-void banded_3frame_swipe_worker(vector<DpTarget>::const_iterator begin,
-	vector<DpTarget>::const_iterator end,
+void banded_3frame_swipe_worker(std::vector<DpTarget>::const_iterator begin,
+	std::vector<DpTarget>::const_iterator end,
 	atomic<size_t> *next,
 	bool score_only,
 	const TranslatedSequence *query,
@@ -567,7 +570,7 @@ list<Hsp> banded_3frame_swipe(const TranslatedSequence &query, Strand strand, ve
 		vector<list<Hsp>*> thread_out;
 		vector<vector<DpTarget>> thread_overflow(config.threads_);
 		atomic<size_t> next(0);
-		for (size_t i = 0; i < config.threads_; ++i) {
+		for (int i = 0; i < config.threads_; ++i) {
 			thread_out.push_back(new list<Hsp>);
 			threads.emplace_back(banded_3frame_swipe_worker,
 				target_begin,

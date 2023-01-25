@@ -208,7 +208,7 @@ void* BlastMemDup (const void *orig, size_t size);
 
 /** A generic linked list node structure */
 typedef struct ListNode {
-	Uint1 choice;   /**< to pick a choice */
+	int choice;   /**< to pick a choice */
 	void *ptr;              /**< attached data */
 	struct ListNode *next;  /**< next in linked list */
 } ListNode;
@@ -236,7 +236,7 @@ ListNode* ListNodeAdd (ListNode** head);
  * @return New node
  */
 NCBI_XBLAST_EXPORT
-ListNode* ListNodeAddPointer (ListNode** head, Uint1 choice, void *value);
+ListNode* ListNodeAddPointer (ListNode** head, int choice, void *value);
 
 /** Free all list's nodes, does not attempt to free data. 
  * @param vnp objects to be freed [in]
@@ -252,6 +252,8 @@ ListNode* ListNodeFree (ListNode* vnp);
 NCBI_XBLAST_EXPORT
 ListNode* ListNodeFreeData (ListNode* vnp);
 
+ListNode* ListNodeCopyStr (ListNode** head, int choice, const char* str);
+
 /** Add a node to the list with a provided choice, and attached data 
  * pointing to a provided string.
  * @param head Pointer to the start of the list, if *head is NULL will
@@ -261,7 +263,6 @@ ListNode* ListNodeFreeData (ListNode* vnp);
  * @return newly allocated node 
  */
 NCBI_XBLAST_EXPORT
-ListNode* ListNodeCopyStr (ListNode** head, Uint1 choice, const char* str);
 
 #ifdef __cplusplus
 }

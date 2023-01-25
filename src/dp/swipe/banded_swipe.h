@@ -55,6 +55,7 @@ Hsp traceback(_cbs bias_correction, const TracebackMatrix<_sv> &dp, const DpTarg
 	out.score = ScoreTraits<_sv>::int_score(max_score);
 	out.evalue = evalue;
 	out.bit_score = score_matrix.bitscore(out.score);
+	out.corrected_bit_score = score_matrix.bitscore_corrected(out.score, p.query.length(), target.true_target_len);
 	out.transcript.reserve(size_t(out.score * config.transcript_len_estimate));
 	out.matrix = target.matrix;
 
@@ -81,7 +82,9 @@ Hsp traceback(_cbs bias_correction, const TracebackMatrix<_sv> &dp, const DpTarg
 	out.subject_range.begin_ = it.j + 1;
 	out.transcript.reverse();
 	out.transcript.push_terminator();
+	out.target_seq = target.seq;
 	out.query_source_range = TranslatedPosition::absolute_interval(TranslatedPosition(out.query_range.begin_, p.frame), TranslatedPosition(out.query_range.end_, p.frame), p.query_source_len);
+	out.approx_id = out.approx_id_percent(p.query, target.seq);
 	return out;
 }
 
@@ -95,6 +98,7 @@ Hsp traceback(_cbs bias_correction, const Matrix<Cell> &dp, const DpTarget &targ
 		out.score *= config.cbs_matrix_scale;
 	out.evalue = evalue;
 	out.bit_score = score_matrix.bitscore(out.score);
+	out.corrected_bit_score = score_matrix.bitscore_corrected(out.score, p.query.length(), target.true_target_len);
 	out.frame = p.frame.index();
 	out.matrix = target.matrix;
 	const int j0 = i1 - (target.d_end - 1), i1_ = i0 + max_col + max_band_i + 1, j1_ = j0 + max_col + 1;
@@ -103,6 +107,7 @@ Hsp traceback(_cbs bias_correction, const Matrix<Cell> &dp, const DpTarget &targ
 		out.d_end = target.d_end;
 		out.query_range.end_ = i1_;
 		out.subject_range.end_ = j1_;
+		out.target_seq = target.seq;
 	}
 	else {
 		out.d_begin = -target.d_end + (int)p.query.length() - (int)target.seq.length() + 1;
@@ -113,8 +118,8 @@ Hsp traceback(_cbs bias_correction, const Matrix<Cell> &dp, const DpTarget &targ
 		out.length = target.carry_over.len;
 		out.query_range.begin_ = (int)p.query.length() - i1_;
 		out.subject_range.begin_ = (int)target.seq.length() - j1_;
+		out.approx_id = out.approx_id_percent(Sequence(p.query.reverse()), Sequence(target.seq.reverse()));
 	}
-	out.target_seq = target.seq;
 	assign_stats(out, stats);
 	out.query_source_range = TranslatedPosition::absolute_interval(TranslatedPosition(out.query_range.begin_, p.frame), TranslatedPosition(out.query_range.end_, p.frame), p.query_source_len);
 	return out;
@@ -134,6 +139,7 @@ Hsp traceback(_cbs bias_correction, const TracebackVectorMatrix<_sv> &dp, const 
 	out.score = ScoreTraits<_sv>::int_score(max_score);
 	out.evalue = evalue;
 	out.bit_score = score_matrix.bitscore(out.score);
+	out.corrected_bit_score = score_matrix.bitscore_corrected(out.score, p.query.length(), target.true_target_len);
 	out.transcript.reserve(size_t(out.score * config.transcript_len_estimate));
 	out.matrix = target.matrix;
 
@@ -173,6 +179,7 @@ Hsp traceback(_cbs bias_correction, const TracebackVectorMatrix<_sv> &dp, const 
 	out.transcript.reverse();
 	out.transcript.push_terminator();
 	out.query_source_range = TranslatedPosition::absolute_interval(TranslatedPosition(out.query_range.begin_, p.frame), TranslatedPosition(out.query_range.end_, p.frame), p.query_source_len);
+	out.approx_id = out.approx_id_percent(p.query, target.seq);
 	return out;
 }
 template<typename _sv, typename _cbs, typename Cfg>
@@ -269,9 +276,10 @@ list<Hsp> swipe(const vector<DpTarget>::const_iterator subject_begin, const vect
 			const int i_begin = std::max(i0 + band_parts.begin(part), i0_);
 			const int i_end = std::min(i0 + band_parts.end(part), i1_);
 			const _sv target_mask = load_sv<_sv>(band_parts.mask(part));
+			vgap += target_mask;
 #ifdef DP_STAT
-			stat.inc(Statistics::GROSS_DP_CELLS, uint64_t(i_end - i_begin) * CHANNELS);
-			stat.inc(Statistics::NET_DP_CELLS, uint64_t(i_end - i_begin) * popcount64(live & band_parts.bit_mask(part)));
+			p.stat.inc(Statistics::GROSS_DP_CELLS, uint64_t(i_end - i_begin) * CHANNELS);
+			p.stat.inc(Statistics::NET_DP_CELLS, uint64_t(i_end - i_begin) * popcount64(live & band_parts.bit_mask(part)));
 #endif
 			for (int i = i_begin; i < i_end; ++i) {
 #else
@@ -281,6 +289,7 @@ list<Hsp> swipe(const vector<DpTarget>::const_iterator subject_begin, const vect
 				auto stat_h = it.hstat();
 				_sv match_scores = profile.get(p.query[i]);
 #ifdef STRICT_BAND
+				hgap += target_mask;
 				match_scores += target_mask;
 #endif
 				const Cell next = swipe_cell_update(it.diag(), match_scores, cbs_buf(i), extend_penalty, open_penalty, hgap, vgap, col_best, it.trace_mask(), row_counter, IdMask(p.query[i], target_seq));
@@ -327,8 +336,9 @@ list<Hsp> swipe(const vector<DpTarget>::const_iterator subject_begin, const vect
 			if (!subject_begin[i].adjusted_matrix())
 				score *= config.cbs_matrix_scale;
 			const double evalue = score_matrix.evalue(score, qlen, subject_begin[i].true_target_len);
-			if (score_matrix.report_cutoff(score, evalue))
+			if (score > 0 && score_matrix.report_cutoff(score, evalue)) {
 				out.push_back(traceback<_sv>(composition_bias, dp, subject_begin[i], d_begin[i], best[i], evalue, max_col[i], i, i0 - j, i1 - j, max_band_row[i], stats[i], p));
+			}
 		}
 		else
 			overflow.push_back(subject_begin[i]);

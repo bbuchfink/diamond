@@ -49,7 +49,7 @@ void Deserializer::rewind()
 	begin_ = end_ = nullptr;
 }
 
-Deserializer& Deserializer::seek(size_t pos)
+Deserializer& Deserializer::seek(int64_t pos)
 {
 	if (buffer_->seekable() && buffer_->tell()) {
 		const size_t d = buffer_->tell() - pos;
@@ -58,7 +58,7 @@ Deserializer& Deserializer::seek(size_t pos)
 			return *this;
 		}
 	}
-	buffer_->seek(pos);
+	buffer_->seek(pos, SEEK_SET);
 	begin_ = end_ = nullptr;
 	return *this;
 }

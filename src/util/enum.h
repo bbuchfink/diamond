@@ -65,31 +65,33 @@ T from_string(const std::string& s) {
 	return it->second.v;
 }
 
-#define DEF_ENUM_FLAG_OPERATORS(T) constexpr inline T operator~ (T a) { return static_cast<T>(~static_cast<std::underlying_type<T>::type>(a)); } \
+#ifndef DEFINE_ENUM_FLAG_OPERATORS
+#define DEFINE_ENUM_FLAG_OPERATORS(T) constexpr inline T operator~ (T a) { return static_cast<T>(~static_cast<std::underlying_type<T>::type>(a)); } \
 constexpr inline T operator| (T a, T b) { return static_cast<T>(static_cast<std::underlying_type<T>::type>(a) | static_cast<std::underlying_type<T>::type>(b)); } \
 constexpr inline T operator& (T a, T b) { return static_cast<T>(static_cast<std::underlying_type<T>::type>(a) & static_cast<std::underlying_type<T>::type>(b)); } \
 constexpr inline T operator^ (T a, T b) { return static_cast<T>(static_cast<std::underlying_type<T>::type>(a) ^ static_cast<std::underlying_type<T>::type>(b)); } \
 inline T& operator|= (T& a, T b) { return reinterpret_cast<T&>(reinterpret_cast<std::underlying_type<T>::type&>(a) |= static_cast<std::underlying_type<T>::type>(b)); } \
 inline T& operator&= (T& a, T b) { return reinterpret_cast<T&>(reinterpret_cast<std::underlying_type<T>::type&>(a) &= static_cast<std::underlying_type<T>::type>(b)); } \
 inline T& operator^= (T& a, T b) { return reinterpret_cast<T&>(reinterpret_cast<std::underlying_type<T>::type&>(a) ^= static_cast<std::underlying_type<T>::type>(b)); }
+#endif
 
-template<typename _t>
-bool flag_all(_t a, _t b) {
-	typedef typename std::underlying_type<_t>::type T;
-	T c = static_cast<T>(b);
-	return (static_cast<T>(a) & c) == c;
+template<typename T>
+bool flag_all(T a, T b) {
+	typedef typename std::underlying_type<T>::type U;
+	U c = static_cast<U>(b);
+	return (static_cast<U>(a) & c) == c;
 }
 
-template<typename _t>
-bool flag_any(_t a, _t b) {
-	typedef typename std::underlying_type<_t>::type T;
-	T c = static_cast<T>(b);
-	return (static_cast<T>(a) & c) != T(0);
+template<typename T>
+bool flag_any(T a, T b) {
+	typedef typename std::underlying_type<T>::type U;
+	U c = static_cast<U>(b);
+	return (static_cast<U>(a) & c) != U(0);
 }
 
-template<typename _t>
-bool flag_only(_t a, _t b) {
-	typedef typename std::underlying_type<_t>::type T;
-	T c = static_cast<T>(b);
-	return (static_cast<T>(a) & ~c) == T(0);
+template<typename T>
+bool flag_only(T a, T b) {
+	typedef typename std::underlying_type<T>::type U;
+	U c = static_cast<U>(b);
+	return (static_cast<U>(a) & ~c) == U(0);
 }

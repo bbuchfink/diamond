@@ -28,10 +28,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 using namespace std;
 
-Message_stream message_stream;
-Message_stream verbose_stream (false);
-Message_stream log_stream (false);
-std::mutex Message_stream::mtx;
+MessageStream message_stream;
+MessageStream verbose_stream (false);
+MessageStream log_stream (false);
+std::mutex MessageStream::mtx;
 std::map<std::string, uint64_t> Profiler::times;
 
 #ifndef _MSC_VER
@@ -83,7 +83,7 @@ string join(const char *c, const vector<string> &v) {
 	return s;
 }
 
-Message_stream& Message_stream::operator<<(std::ostream& (*_Pfn)(std::ostream&))
+MessageStream& MessageStream::operator<<(std::ostream& (*_Pfn)(std::ostream&))
 {
 	if (to_cout_)
 		((*_Pfn)(std::cerr));
@@ -97,7 +97,7 @@ Message_stream& Message_stream::operator<<(std::ostream& (*_Pfn)(std::ostream&))
 	return *this;
 }
 
-Message_stream::Message_stream(bool to_cout, bool to_file) :
+MessageStream::MessageStream(bool to_cout, bool to_file) :
 	out_stream_(&std::cerr),
 	to_cout_(to_cout),
 	to_file_(to_file)	
@@ -115,4 +115,67 @@ void exit_with_error(const std::exception& e) {
 	std::cerr << "Error: " << e.what() << endl;
 	log_stream << "Error: " << e.what() << endl;
 	exit(EXIT_FAILURE);
+}
+
+std::vector<std::string> tokenize(const char* str, const char* delimiters)
+{
+	std::vector<std::string> out;
+	std::string token;
+	while (*str != 0) {
+		while (*str != 0 && strchr(delimiters, *str))
+			++str;
+		token.clear();
+		while (*str != 0 && strchr(delimiters, *str) == nullptr)
+			token += *(str++);
+		if (token.length() > 0)
+			out.push_back(token);
+	}
+	if (out.size() == 0)
+		out.push_back(std::string());
+	return out;
+}
+
+std::set<int32_t> parse_csv(const std::string& s)
+{
+	std::set<int32_t> r;
+	std::vector<std::string> t(tokenize(s.c_str(), ","));
+	for (std::vector<std::string>::const_iterator i = t.begin(); i != t.end(); ++i)
+		if (!i->empty()) r.insert(atoi(i->c_str()));
+	return r;
+}
+
+std::string to_upper_case(const std::string& s)
+{
+	std::string r;
+	for (std::string::const_iterator i = s.begin(); i != s.end(); ++i)
+		r.push_back(toupper(*i));
+	return r;
+}
+
+std::string to_lower_case(const std::string& s)
+{
+	std::string r;
+	for (std::string::const_iterator i = s.begin(); i != s.end(); ++i)
+		r.push_back(tolower(*i));
+	return r;
+}
+
+std::string print_char(char c)
+{
+	char buf[16];
+	if (c < 32)
+		sprintf(buf, "ASCII %u", (unsigned)c);
+	else
+		sprintf(buf, "%c", c);
+	return std::string(buf);
+}
+
+std::string hex_print(const char* x, int len) {
+	std::string out;
+	char d[3];
+	for (int i = 0; i < len; i++) {
+		sprintf(d, "%02x", (unsigned char)x[i]);
+		out += d;
+	}
+	return out;
 }

@@ -62,7 +62,7 @@ struct DAA_header2
 			double k,
 			double lambda,
 			double evalue,
-			const string &score_matrix,
+			const std::string &score_matrix,
 			unsigned mode):
 		diamond_build (Const::build_version),
 		db_seqs (db_seqs),
@@ -101,7 +101,7 @@ struct DAA_header2
 struct DAA_file
 {
 
-	DAA_file(const string& file_name):
+	DAA_file(const std::string& file_name):
 		f_ (file_name),
 		query_count_ (0)
 	{
@@ -115,15 +115,15 @@ struct DAA_file
 		if(h2_.block_size[0] == 0)
 			throw std::runtime_error("Invalid DAA file. DIAMOND run has probably not completed successfully.");
 
-		align_mode = Align_mode(h2_.mode);
+		align_mode = AlignMode(h2_.mode);
 		//ref_header.sequences = h2_.db_seqs;
 
 		f_.seek(sizeof(DAA_header1) + sizeof(DAA_header2) + (size_t)h2_.block_size[0]);
-		string s;
+		std::string s;
 		ref_name_.reserve((size_t)h2_.db_seqs_used);
 		for(uint64_t i=0;i<h2_.db_seqs_used;++i) {
 			f_ >> s;
-			ref_name_.push_back(new string(s));
+			ref_name_.push_back(new std::string(s));
 		}
 		ref_len_.resize((size_t)h2_.db_seqs_used);
 		f_.read(ref_len_.data(), (size_t)h2_.db_seqs_used);
@@ -169,7 +169,7 @@ struct DAA_file
 	unsigned mode() const
 	{ return (unsigned)h2_.mode; }
 
-	const string& ref_name(size_t i) const
+	const std::string& ref_name(size_t i) const
 	{ return ref_name_[i]; }
 
 	uint32_t ref_len(size_t i) const
@@ -194,7 +194,7 @@ struct DAA_file
 		return h2_.block_size[i];
 	}
 
-	const vector<uint32_t>& ref_len() const {
+	const std::vector<uint32_t>& ref_len() const {
 		return ref_len_;
 	}
 
@@ -221,8 +221,8 @@ private:
 	size_t query_count_;
 	DAA_header1 h1_;
 	DAA_header2 h2_;
-	PtrVector<string> ref_name_;
-	vector<uint32_t> ref_len_;
+	PtrVector<std::string> ref_name_;
+	std::vector<uint32_t> ref_len_;
 
 	friend void write_file(DAA_file&, OutputFile&);
 

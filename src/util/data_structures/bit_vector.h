@@ -28,10 +28,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 struct BitVector {
 
-	BitVector() {}
+	BitVector() :
+		size_(0)
+	{}
 
 	BitVector(size_t n) :
-		data_((n + 63) / 64, 0)
+		data_((n + 63) / 64, 0),
+		size_(n)
 	{
 	}
 
@@ -64,8 +67,21 @@ struct BitVector {
 		return data_.empty();
 	}
 
+	int64_t size() const {
+		return size_;
+	}
+
+	std::vector<int64_t> negative_list() const {
+		std::vector<int64_t> v;
+		for (int64_t i = 0; i < size_; ++i)
+			if (!get(i))
+				v.push_back(i);
+		return v;
+	}
+
 private:
 
 	std::vector<uint64_t> data_;
+	int64_t size_;
 
 };

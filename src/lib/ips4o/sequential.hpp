@@ -62,7 +62,7 @@ void Sorter<Cfg>::sequential(const iterator begin, const iterator end) {
 
     // Do the partitioning
     const auto res = partition<false>(begin, end, bucket_start, nullptr, 0, 1);
-    const int num_buckets = std::get<0>(res);
+    const typename Cfg::bucket_type num_buckets = std::get<0>(res);
     const bool equal_buckets = std::get<1>(res);
 
     // Final base case is executed in cleanup step, so we're done here
@@ -71,7 +71,7 @@ void Sorter<Cfg>::sequential(const iterator begin, const iterator end) {
     }
 
     // Recurse
-    for (int i = 0; i < num_buckets; i += 1 + equal_buckets) {
+    for (typename Cfg::bucket_type i = 0; i < num_buckets; i += 1 + equal_buckets) {
         const ptrdiff_t start = bucket_start[i];
         const ptrdiff_t stop = bucket_start[i + 1];
         if (stop - start > 2 * Cfg::kBaseCaseSize)

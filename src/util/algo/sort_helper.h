@@ -21,15 +21,15 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #pragma once
 #include <set>
 
-template<typename It1, typename It2, typename Cmp, typename Value>
+template<typename It1, typename It2, typename Key1, typename Key2, typename Value>
 struct SortedListJoiner {
 
-	SortedListJoiner(It1& it1, It2& it2, Cmp cmp, Value value) :
+	SortedListJoiner(It1& it1, It2& it2, Value value) :
 		it1_(&it1),
 		it2_(&it2),
-		cmp_(cmp),
 		value_(value)
 	{
+		next();
 	}
 
 	bool good() {
@@ -47,38 +47,41 @@ struct SortedListJoiner {
 		if (!it1_->good())
 			return;
 
-		if (!cmp_(v2, **it1_) && !cmp_(**it1_, v2))
+		if (Key2()(v2) == Key1()(**it1_))
 			return;
 
 		++(*it2_);
 		if (!it2_->good())
 			return;
 
-		if (!cmp_(v1, **it2_) && !cmp_(**it2_, v1))
-			throw std::runtime_error("Duplicate keys: " + v1.first);
+		if (Key1()(v1) == Key2()(**it2_))
+			throw std::runtime_error("Duplicate keys: " + Key1()(v1));
 
+		next();
+	}
+
+private:
+	
+	void next() {
 		do {
-			if (cmp_(**it1_, **it2_))
+			if (Key1()(**it1_) < Key2()(**it2_))
 				++(*it1_);
-			else if (cmp_(**it2_, **it1_))
+			else if (Key2()(**it2_) < Key1()(**it1_))
 				++(*it2_);
 			else
 				return;
 		} while (good());
 	}
 
-private:
-
 	It1* it1_;
 	It2* it2_;
-	const Cmp cmp_;
 	const Value value_;
 
 };
 
-template<typename It1, typename It2, typename Cmp, typename Value>
-SortedListJoiner<It1, It2, Cmp, Value> join_sorted_lists(It1& it1, It2& it2, Cmp cmp, Value value) {
-	return SortedListJoiner<It1, It2, Cmp, Value>(it1, it2, cmp, value);
+template<typename It1, typename It2, typename Key1, typename Key2, typename Value>
+SortedListJoiner<It1, It2, Key1, Key2, Value> join_sorted_lists(It1& it1, It2& it2, Key1, Key2, Value value) {
+	return SortedListJoiner<It1, It2, Key1, Key2, Value>(it1, it2, value);
 }
 
 template<typename It, typename Key, typename Value>

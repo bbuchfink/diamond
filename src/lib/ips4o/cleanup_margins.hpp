@@ -33,6 +33,8 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *****************************************************************************/
 
+// Modified by B. Buchfink
+
 #pragma once
 
 #include <limits>
@@ -50,7 +52,7 @@ namespace detail {
  * Saves margins at thread boundaries.
  */
 template <class Cfg>
-std::pair<int, typename Cfg::difference_type> Sorter<Cfg>::saveMargins(int last_bucket) {
+std::pair<typename Cfg::bucket_type, typename Cfg::difference_type> Sorter<Cfg>::saveMargins(typename Cfg::bucket_type last_bucket) {
     // Find last bucket boundary in this thread's area
     diff_t tail = bucket_start_[last_bucket];
     const diff_t end = Cfg::alignToNextBlock(tail);
@@ -85,13 +87,13 @@ std::pair<int, typename Cfg::difference_type> Sorter<Cfg>::saveMargins(int last_
  * Fills margins from buffers.
  */
 template <class Cfg>
-void Sorter<Cfg>::writeMargins(const int first_bucket, const int last_bucket,
-                               const int overflow_bucket, const int swap_bucket,
+void Sorter<Cfg>::writeMargins(const typename Cfg::bucket_type first_bucket, const typename Cfg::bucket_type last_bucket,
+                               const typename Cfg::bucket_type overflow_bucket, const typename Cfg::bucket_type swap_bucket,
                                const diff_t in_swap_buffer) {
     const bool is_last_level = end_ - begin_ <= Cfg::kSingleLevelThreshold;
     const auto comp = classifier_->getComparator();
 
-    for (int i = first_bucket; i < last_bucket; ++i) {
+    for (typename Cfg::bucket_type i = first_bucket; i < last_bucket; ++i) {
         // Get bucket information
         const ptrdiff_t bstart = bucket_start_[i];
         const ptrdiff_t bend = bucket_start_[i + 1];

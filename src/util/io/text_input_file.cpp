@@ -18,6 +18,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "text_input_file.h"
 
+using std::string;
+
 TextInputFile::TextInputFile(const string &file_name) :
 	InputFile(file_name),
 	line_count(0),
@@ -30,6 +32,15 @@ TextInputFile::TextInputFile(const string &file_name) :
 
 TextInputFile::TextInputFile(TempFile &tmp_file) :
 	InputFile(tmp_file),
+	line_count(0),
+	line_buf_used_(0),
+	line_buf_end_(0),
+	putback_line_(false),
+	eof_(false)
+{}
+
+TextInputFile::TextInputFile(OutputFile& out_file) :
+	InputFile(out_file),
 	line_count(0),
 	line_buf_used_(0),
 	line_buf_end_(0),

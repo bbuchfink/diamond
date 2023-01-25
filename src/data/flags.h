@@ -18,10 +18,10 @@ extern NoFilter no_filter;
 
 #ifdef KEEP_TARGET_ID
 struct SeedLoc {
-	Value() {}
-	Value(PackedLoc pos) :
+	SeedLoc() {}
+	SeedLoc(PackedLoc pos) :
 		pos(pos) {}
-	Value(PackedLoc pos, uint32_t block_id) :
+	SeedLoc(PackedLoc pos, uint32_t block_id) :
 		pos(pos),
 		block_id(block_id)
 	{}
@@ -43,4 +43,5 @@ struct EnumCfg {
 	const bool filter_masked_seeds, mask_seeds;
 	const double seed_cut;
 	const MaskingAlgo soft_masking;
+	const Loc minimizer_window;
 };

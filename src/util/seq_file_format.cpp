@@ -20,15 +20,17 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
+#include <memory>
 #include "seq_file_format.h"
 
+using std::unique_ptr;
 using std::string;
 using std::vector;
 
 struct Raw_text {};
 struct Sequence_data {};
 
-template<typename _t>
+template<typename T>
 inline char convert_char(char a, const ValueTraits& value_traits)
 {
 	return a;
@@ -40,11 +42,11 @@ inline char convert_char<Sequence_data>(char a, const ValueTraits& value_traits)
 	return value_traits.from_char(a);
 }
 
-template<typename _t, typename _what>
-void copy_line(const string & s, vector<_t>& v, size_t d, const ValueTraits& value_traits, _what)
+template<typename T, typename What>
+void copy_line(const string & s, vector<T>& v, size_t d, const ValueTraits& value_traits, What)
 {
 	for (string::const_iterator i = s.begin() + d; i != s.end(); ++i)
-		v.push_back(convert_char<_what>(*i, value_traits));
+		v.push_back(convert_char<What>(*i, value_traits));
 }
 
 bool FASTA_format::get_seq(string& id, vector<Letter>& seq, TextInputFile & s, const ValueTraits& value_traits, vector<char> *qual) const
@@ -106,18 +108,15 @@ bool FASTQ_format::get_seq(string& id, vector<Letter>& seq, TextInputFile & s, c
 	return true;
 }
 
-const Sequence_file_format * guess_format(TextInputFile &file)
+unique_ptr<const Sequence_file_format> guess_format(TextInputFile &file)
 {
-	static const FASTA_format fasta;
-	static const FASTQ_format fastq;
-
 	file.getline();
 	file.putback_line();
 	if (file.line.empty())
 		throw std::runtime_error("Error detecting input file format. First line seems to be blank.");
 	switch (file.line[0]) {
-	case '>': return &fasta;
-	case '@': return &fastq;
+	case '>': return unique_ptr<const Sequence_file_format> { new FASTA_format() };
+	case '@': return unique_ptr<const Sequence_file_format> { new FASTQ_format() };
 	default: throw std::runtime_error("Error detecting input file format. First line must begin with '>' (FASTA) or '@' (FASTQ).");
 	}
 	return 0;

@@ -16,9 +16,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#ifndef JOIN_RESULT_H_
-#define JOIN_RESULT_H_
-
+#pragma once
 #include <algorithm>
 #include "../range.h"
 #include "../data_structures/double_array.h"
@@ -134,4 +132,3 @@ struct JoinResult : public vector<pair<DoubleArray<typename _t::Value>*, DoubleA
 
 };
 */
-#endif

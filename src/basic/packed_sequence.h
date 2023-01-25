@@ -16,15 +16,11 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#ifndef PACKED_SEQUENCE_H_
-#define PACKED_SEQUENCE_H_
-
+#pragma once
 #include <vector>
 #include "value.h"
 #include "../util/binary_buffer.h"
 #include "sequence.h"
-
-using std::vector;
 
 inline bool has_n(const Sequence &seq)
 {
@@ -38,16 +34,16 @@ struct Packed_sequence
 {
 
 	Packed_sequence(const Sequence &seq, SequenceType type):
-		has_n_ (type == nucleotide ? ::has_n(seq) : false)
+		has_n_ (type == SequenceType::nucleotide ? ::has_n(seq) : false)
 	{
 		switch (type) {
-		case nucleotide:
+		case SequenceType::nucleotide:
 			if (has_n_)
 				pack<3>(seq);
 			else
 				pack<2>(seq);
 			break;
-		case amino_acid:
+		case SequenceType::amino_acid:
 			pack<5>(seq);
 		}
 	}
@@ -59,7 +55,7 @@ struct Packed_sequence
 		it.read(data_, l);
 	}
 
-	void unpack(vector<Letter> &dst, unsigned b, unsigned len)
+	void unpack(std::vector<Letter> &dst, unsigned b, unsigned len)
 	{
 		dst.clear();
 		unsigned x = 0, n = 0, l = 0;
@@ -76,7 +72,7 @@ struct Packed_sequence
 		}
 	}
 
-	const vector<uint8_t>& data() const
+	const std::vector<uint8_t>& data() const
 	{ return data_; }
 
 	bool has_n() const
@@ -102,8 +98,6 @@ private:
 	}
 
 	bool has_n_;
-	vector<uint8_t> data_;
+	std::vector<uint8_t> data_;
 
 };
-
-#endif /* PACKED_SEQUENCE_H_ */

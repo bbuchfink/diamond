@@ -161,28 +161,28 @@ class Sorter<Cfg>::Buffers {
     /**
      * Checks if buffer is full.
      */
-    bool isFull(const int i) const {
+    bool isFull(const int64_t i) const {
         return buffer_[i].ptr == buffer_[i].end;
     }
 
     /**
      * Pointer to buffer data.
      */
-    value_type* data(const int i) {
+    value_type* data(const int64_t i) {
         return static_cast<value_type*>(static_cast<void*>(storage_)) + i * Cfg::kBlockSize;
     }
 
     /**
      * Number of elements in buffer.
      */
-    diff_t size(const int i) const {
+    diff_t size(const int64_t i) const {
         return Cfg::kBlockSize - (buffer_[i].end - buffer_[i].ptr);
     }
 
     /**
      * Resets buffer.
      */
-    void reset(const int i) {
+    void reset(const int64_t i) {
         if (Block::kDestruct)
             for (auto p = data(i), end = p + size(i); p < end; ++p)
                 p->~value_type();
@@ -192,7 +192,7 @@ class Sorter<Cfg>::Buffers {
     /**
      * Pushes new element to buffer.
      */
-    void push(const int i, value_type&& value) {
+    void push(const int64_t i, value_type&& value) {
         if (Block::kInitializedStorage) {
             *buffer_[i].ptr++ = std::move(value);
         } else {
@@ -204,7 +204,7 @@ class Sorter<Cfg>::Buffers {
     /**
      * Flushes buffer to input.
      */
-    void writeTo(const int i, typename Cfg::iterator dest) {
+    void writeTo(const int64_t i, typename Cfg::iterator dest) {
         resetBuffer(i);
         auto ptr = buffer_[i].ptr;
         std::move(ptr, ptr + Cfg::kBlockSize, std::move(dest));
@@ -220,7 +220,7 @@ class Sorter<Cfg>::Buffers {
         const value_type* end;
     };
 
-    void resetBuffer(const int i) {
+    void resetBuffer(const typename Cfg::difference_type i) {
         buffer_[i].ptr = static_cast<value_type*>(static_cast<void*>(storage_)) + i * Cfg::kBlockSize;
     }
 

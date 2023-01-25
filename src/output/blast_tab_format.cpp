@@ -34,85 +34,121 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/sequence/sequence.h"
 #include "../dp/ungapped.h"
 #include "../basic/reduction.h"
+#include "../dp/needleman_wunsch.h"
 
 using namespace Output;
 using std::endl;
 using std::set;
+using std::string;
+using std::transform;
+using std::back_inserter;
+using std::vector;
+using std::runtime_error;
 
 const vector<OutputField> Blast_tab_format::field_def = {
-{ "qseqid", "Query ID", HspValues::NONE, Flags::NONE },		// 0 means Query Seq - id
-{ "qgi", "qgi", HspValues::NONE, Flags::NONE },			// 1 means Query GI
-{ "qacc", "qacc", HspValues::NONE, Flags::NONE },			// 2 means Query accesion
-{ "qaccver", "qaccver", HspValues::NONE, Flags::NONE },		// 3 means Query accesion.version
-{ "qlen", "Query length", HspValues::NONE, Flags::NONE },			// 4 means Query sequence length
-{ "sseqid",	"Subject ID", HspValues::NONE, Flags::NONE },	// 5 means Subject Seq - id
-{ "sallseqid", "Subject IDs", HspValues::NONE, Flags::ALL_SEQIDS },	// 6 means All subject Seq - id(s), separated by a ';'
-{ "sgi", "sgi", HspValues::NONE, Flags::NONE },			// 7 means Subject GI
-{ "sallgi", "sallgi", HspValues::NONE, Flags::ALL_SEQIDS },		// 8 means All subject GIs
-{ "sacc", "sacc", HspValues::NONE, Flags::NONE },			// 9 means Subject accession
-{ "saccver", "saccver", HspValues::NONE, Flags::NONE },		// 10 means Subject accession.version
-{ "sallacc", "sallacc", HspValues::NONE, Flags::ALL_SEQIDS },		// 11 means All subject accessions
-{ "slen", "Subject length", HspValues::NONE, Flags::NONE },			// 12 means Subject sequence length
-{ "qstart", "Start of alignment in query", HspValues::QUERY_START, Flags::NONE },		// 13 means Start of alignment in query
-{ "qend", "End of alignment in query", HspValues::QUERY_END, Flags::NONE },			// 14 means End of alignment in query
-{ "sstart", "Start of alignment in subject", HspValues::TARGET_START, Flags::NONE },		// 15 means Start of alignment in subject
-{ "send", "End of alignment in subject", HspValues::TARGET_END, Flags::NONE },			// 16 means End of alignment in subject
-{ "qseq", "Aligned part of query sequence", HspValues::QUERY_COORDS, Flags::NONE },			// 17 means Aligned part of query sequence
-{ "sseq", "Aligned part of subject sequence", HspValues::TRANSCRIPT, Flags::NONE },			// 18 means Aligned part of subject sequence
-{ "evalue", "Expected value", HspValues::NONE, Flags::NONE },		// 19 means Expect value
-{ "bitscore", "Bit score", HspValues::NONE, Flags::NONE },		// 20 means Bit score
-{ "score", "Raw score", HspValues::NONE, Flags::NONE },		// 21 means Raw score
-{ "length", "Alignment length", HspValues::LENGTH, Flags::NONE },		// 22 means Alignment length
-{ "pident", "Percentage of identical matches", HspValues::IDENT | HspValues::LENGTH, Flags::NONE },		// 23 means Percentage of identical matches
-{ "nident", "Number of identical matches", HspValues::IDENT, Flags::NONE },		// 24 means Number of identical matches
-{ "mismatch", "Number of mismatches", HspValues::MISMATCHES, Flags::NONE },		// 25 means Number of mismatches
-{ "positive", "Number of positive-scoring matches", HspValues::TRANSCRIPT, Flags::NONE },		// 26 means Number of positive - scoring matches
-{ "gapopen", "Number of gap openings", HspValues::GAP_OPENINGS, Flags::NONE },		// 27 means Number of gap openings
-{ "gaps", "Total number of gaps", HspValues::GAPS, Flags::NONE },			// 28 means Total number of gaps
-{ "ppos", "Percentage of positive-scoring matches", HspValues::TRANSCRIPT, Flags::NONE },			// 29 means Percentage of positive - scoring matches
-{ "frames", "frames", HspValues::NONE, Flags::NONE },		// 30 means Query and subject frames separated by a '/'
-{ "qframe", "Query frame", HspValues::NONE, Flags::NONE },		// 31 means Query frame
-{ "sframe", "sframe", HspValues::NONE, Flags::NONE },		// 32 means Subject frame
-{ "btop", "Blast traceback operations", HspValues::TRANSCRIPT, Flags::NONE },			// 33 means Blast traceback operations(BTOP)
-{ "staxids", "Subject Taxonomy IDs", HspValues::NONE, Flags::NONE },		// 34 means unique Subject Taxonomy ID(s), separated by a ';'	(in numerical order)
-{ "sscinames", "Subject scientific names", HspValues::NONE, Flags::NONE },	// 35 means unique Subject Scientific Name(s), separated by a ';'
-{ "scomnames", "scomnames", HspValues::NONE, Flags::NONE },	// 36 means unique Subject Common Name(s), separated by a ';'
-{ "sblastnames", "sblastnames", HspValues::NONE, Flags::NONE },	// 37 means unique Subject Blast Name(s), separated by a ';'	(in alphabetical order)
-{ "sskingdoms",	"Subject super kingdoms", HspValues::NONE, Flags::NONE }, // 38 means unique Subject Super Kingdom(s), separated by a ';'	(in alphabetical order)
-{ "stitle", "Subject title", HspValues::NONE, Flags::FULL_TITLES },		// 39 means Subject Title
-{ "salltitles", "Subject titles", HspValues::NONE, Flags::FULL_TITLES },	// 40 means All Subject Title(s), separated by a '<>'
-{ "sstrand", "sstrand", HspValues::NONE, Flags::NONE },		// 41 means Subject Strand
-{ "qcovs", "qcovs", HspValues::NONE, Flags::NONE },		// 42 means Query Coverage Per Subject
-{ "qcovhsp", "Query coverage per HSP", HspValues::QUERY_COORDS, Flags::NONE },		// 43 means Query Coverage Per HSP
-{ "qcovus", "qcovus", HspValues::NONE, Flags::NONE },		// 44 means Query Coverage Per Unique Subject(blastn only)
-{ "qtitle", "Query title", HspValues::NONE, Flags::NONE },		// 45 means Query title
-{ "swdiff", "swdiff", HspValues::NONE, Flags::NONE },		// 46
-{ "time", "time", HspValues::NONE, Flags::NONE }, 		// 47
-{ "full_sseq", "Subject sequence", HspValues::NONE, Flags::NONE },	// 48
-{ "qqual", "Aligned part of query quality values", HspValues::QUERY_COORDS, Flags::NONE },		// 49
-{ "qnum", "qnum", HspValues::NONE, Flags::NONE },			// 50
-{ "snum", "snum", HspValues::NONE, Flags::NONE },			// 51
-{ "scovhsp", "Subject coverage per HSP", HspValues::TARGET_COORDS, Flags::NONE },		// 52
-{ "full_qqual", "Query quality values", HspValues::NONE, Flags::NONE },	// 53
-{ "full_qseq", "Query sequence", HspValues::NONE, Flags::NONE },	// 54
-{ "qseq_gapped", "Query sequence with gaps", HspValues::TRANSCRIPT, Flags::NONE },  // 55
-{ "sseq_gapped", "Subject sequence with gaps", HspValues::TRANSCRIPT, Flags::NONE },	// 56
-{ "qstrand", "Query strand", HspValues::NONE, Flags::NONE },		// 57
-{ "cigar", "CIGAR", HspValues::TRANSCRIPT, Flags::NONE },		// 58
-{ "skingdoms", "Subject kingdoms", HspValues::NONE, Flags::NONE },	// 59
-{ "sphylums", "Subject phylums", HspValues::NONE, Flags::NONE },		// 60
-{ "ungapped_score", "Ungapped score", HspValues::NONE, Flags::NONE },	// 61
-{ "full_qseq_mate", "Query sequence of the mate", HspValues::NONE, Flags::NONE }, // 62
-{ "qseq_translated", "Aligned part of query sequence (translated)", HspValues::TRANSCRIPT, Flags::NONE }, // 63 needs transcript only in frameshift mode
-{ "reduced_match_bitstring", "", HspValues::TRANSCRIPT, Flags::NONE}, // 64
-{ "normalized_bitscore_semiglobal", "", HspValues::NONE, Flags::NONE},  // 65
-{ "hspnum", "", HspValues::NONE, Flags::NONE}, // 66
-{ "normalized_bitscore_global", "", HspValues::NONE, Flags::SELF_ALN_SCORES}, // 67
-{ "pident_global", "", HspValues::IDENT, Flags::NONE }, // 68
+{ "qseqid", "cseqid", "Query ID", HspValues::NONE, Flags::NONE },		// 0 means Query Seq - id
+{ "qgi", "", "qgi", HspValues::NONE, Flags::NONE },			// 1 means Query GI
+{ "qacc", "", "qacc", HspValues::NONE, Flags::NONE },			// 2 means Query accesion
+{ "qaccver", "", "qaccver", HspValues::NONE, Flags::NONE },		// 3 means Query accesion.version
+{ "qlen", "clen", "Query length", HspValues::NONE, Flags::NONE },			// 4 means Query sequence length
+{ "sseqid",	"mseqid", "Subject ID", HspValues::NONE, Flags::NONE },	// 5 means Subject Seq - id
+{ "sallseqid", "", "Subject IDs", HspValues::NONE, Flags::ALL_SEQIDS },	// 6 means All subject Seq - id(s), separated by a ';'
+{ "sgi", "", "sgi", HspValues::NONE, Flags::NONE },			// 7 means Subject GI
+{ "sallgi", "", "sallgi", HspValues::NONE, Flags::ALL_SEQIDS },		// 8 means All subject GIs
+{ "sacc", "", "sacc", HspValues::NONE, Flags::NONE },			// 9 means Subject accession
+{ "saccver", "", "saccver", HspValues::NONE, Flags::NONE },		// 10 means Subject accession.version
+{ "sallacc", "", "sallacc", HspValues::NONE, Flags::ALL_SEQIDS },		// 11 means All subject accessions
+{ "slen", "mlen", "Subject length", HspValues::NONE, Flags::NONE },			// 12 means Subject sequence length
+{ "qstart", "cstart", "Start of alignment in query", HspValues::QUERY_START, Flags::NONE },		// 13 means Start of alignment in query
+{ "qend", "cend", "End of alignment in query", HspValues::QUERY_END, Flags::NONE },			// 14 means End of alignment in query
+{ "sstart", "mstart", "Start of alignment in subject", HspValues::TARGET_START, Flags::NONE },		// 15 means Start of alignment in subject
+{ "send", "mend", "End of alignment in subject", HspValues::TARGET_END, Flags::NONE },			// 16 means End of alignment in subject
+{ "qseq", "", "Aligned part of query sequence", HspValues::QUERY_COORDS, Flags::NONE },			// 17 means Aligned part of query sequence
+{ "sseq", "", "Aligned part of subject sequence", HspValues::TRANSCRIPT, Flags::NONE },			// 18 means Aligned part of subject sequence
+{ "evalue", "evalue", "Expected value", HspValues::NONE, Flags::NONE },		// 19 means Expect value
+{ "bitscore", "bitscore", "Bit score", HspValues::NONE, Flags::NONE },		// 20 means Bit score
+{ "score", "score", "Raw score", HspValues::NONE, Flags::NONE },		// 21 means Raw score
+{ "length", "length", "Alignment length", HspValues::LENGTH, Flags::NONE },		// 22 means Alignment length
+{ "pident", "pident" ,"Percentage of identical matches", HspValues::IDENT | HspValues::LENGTH, Flags::NONE },		// 23 means Percentage of identical matches
+{ "nident", "nident", "Number of identical matches", HspValues::IDENT, Flags::NONE },		// 24 means Number of identical matches
+{ "mismatch", "mismatch", "Number of mismatches", HspValues::MISMATCHES, Flags::NONE },		// 25 means Number of mismatches
+{ "positive", "positive", "Number of positive-scoring matches", HspValues::TRANSCRIPT, Flags::NONE },		// 26 means Number of positive - scoring matches
+{ "gapopen", "gapopen", "Number of gap openings", HspValues::GAP_OPENINGS, Flags::NONE },		// 27 means Number of gap openings
+{ "gaps", "gaps", "Total number of gaps", HspValues::GAPS, Flags::NONE },			// 28 means Total number of gaps
+{ "ppos", "ppos", "Percentage of positive-scoring matches", HspValues::TRANSCRIPT, Flags::NONE },			// 29 means Percentage of positive - scoring matches
+{ "frames", "", "frames", HspValues::NONE, Flags::NONE },		// 30 means Query and subject frames separated by a '/'
+{ "qframe", "", "Query frame", HspValues::NONE, Flags::NONE },		// 31 means Query frame
+{ "sframe", "", "sframe", HspValues::NONE, Flags::NONE },		// 32 means Subject frame
+{ "btop", "", "Blast traceback operations", HspValues::TRANSCRIPT, Flags::NONE },			// 33 means Blast traceback operations(BTOP)
+{ "staxids", "", "Subject Taxonomy IDs", HspValues::NONE, Flags::NONE },		// 34 means unique Subject Taxonomy ID(s), separated by a ';'	(in numerical order)
+{ "sscinames", "", "Subject scientific names", HspValues::NONE, Flags::NONE },	// 35 means unique Subject Scientific Name(s), separated by a ';'
+{ "scomnames", "", "scomnames", HspValues::NONE, Flags::NONE },	// 36 means unique Subject Common Name(s), separated by a ';'
+{ "sblastnames", "", "sblastnames", HspValues::NONE, Flags::NONE },	// 37 means unique Subject Blast Name(s), separated by a ';'	(in alphabetical order)
+{ "sskingdoms",	"", "Subject super kingdoms", HspValues::NONE, Flags::NONE }, // 38 means unique Subject Super Kingdom(s), separated by a ';'	(in alphabetical order)
+{ "stitle", "", "Subject title", HspValues::NONE, Flags::FULL_TITLES },		// 39 means Subject Title
+{ "salltitles", "", "Subject titles", HspValues::NONE, Flags::FULL_TITLES },	// 40 means All Subject Title(s), separated by a '<>'
+{ "sstrand", "", "sstrand", HspValues::NONE, Flags::NONE },		// 41 means Subject Strand
+{ "qcovs", "", "qcovs", HspValues::NONE, Flags::NONE },		// 42 means Query Coverage Per Subject
+{ "qcovhsp", "ccovhsp", "Query coverage per HSP", HspValues::QUERY_COORDS, Flags::NONE },		// 43 means Query Coverage Per HSP
+{ "qcovus", "", "qcovus", HspValues::NONE, Flags::NONE },		// 44 means Query Coverage Per Unique Subject(blastn only)
+{ "qtitle", "", "Query title", HspValues::NONE, Flags::NONE },		// 45 means Query title
+{ "swdiff", "", "swdiff", HspValues::NONE, Flags::NONE },		// 46
+{ "time", "", "time", HspValues::NONE, Flags::NONE }, 		// 47
+{ "full_sseq", "", "Subject sequence", HspValues::NONE, Flags::NONE },	// 48
+{ "qqual", "", "Aligned part of query quality values", HspValues::QUERY_COORDS, Flags::NONE },		// 49
+{ "qnum", "", "qnum", HspValues::NONE, Flags::NONE },			// 50
+{ "snum", "", "snum", HspValues::NONE, Flags::NONE },			// 51
+{ "scovhsp", "mcovhsp", "Subject coverage per HSP", HspValues::TARGET_COORDS, Flags::NONE },		// 52
+{ "full_qqual", "", "Query quality values", HspValues::NONE, Flags::NONE },	// 53
+{ "full_qseq", "", "Query sequence", HspValues::NONE, Flags::NONE },	// 54
+{ "qseq_gapped", "", "Query sequence with gaps", HspValues::TRANSCRIPT, Flags::NONE },  // 55
+{ "sseq_gapped", "", "Subject sequence with gaps", HspValues::TRANSCRIPT, Flags::NONE },	// 56
+{ "qstrand", "", "Query strand", HspValues::NONE, Flags::NONE },		// 57
+{ "cigar", "", "CIGAR", HspValues::TRANSCRIPT, Flags::NONE },		// 58
+{ "skingdoms", "", "Subject kingdoms", HspValues::NONE, Flags::NONE },	// 59
+{ "sphylums", "", "Subject phylums", HspValues::NONE, Flags::NONE },		// 60
+{ "ungapped_score", "", "Ungapped score", HspValues::NONE, Flags::NONE },	// 61
+{ "full_qseq_mate", "", "Query sequence of the mate", HspValues::NONE, Flags::NONE }, // 62
+{ "qseq_translated", "", "Aligned part of query sequence (translated)", HspValues::TRANSCRIPT, Flags::NONE }, // 63 needs transcript only in frameshift mode
+{ "reduced_match_bitstring", "", "", HspValues::TRANSCRIPT, Flags::NONE}, // 64
+{ "normalized_bitscore_semiglobal", "", "", HspValues::NONE, Flags::NONE},  // 65
+{ "hspnum", "", "", HspValues::NONE, Flags::NONE}, // 66
+{ "normalized_bitscore_global", "", "", HspValues::NONE, Flags::SELF_ALN_SCORES}, // 67
+{ "pident_global", "", "", HspValues::IDENT, Flags::NONE }, // 68
+{ "ext_count", "", "", HspValues::NONE, Flags::NONE }, // 69
+{ "nw_semiglobal", "", "", HspValues::NONE, Flags::NONE }, // 70
+{ "approx_pident", "approx_pident", "", HspValues::COORDS, Flags::NONE },  // 71
+{ "corrected_bitscore", "corrected_bitscore", "", HspValues::NONE, Flags::NONE }, // 72
+{ "neg_evalue", "neg_evalue", "", HspValues::NONE, Flags::NONE }, // 73
+{ "reserved1", "reserved1", "", HspValues::NONE, Flags::NONE}, // 74
+{ "reserved2", "reserved2", "", HspValues::NONE, Flags::NONE} // 75
 };
 
+template<>
+struct EnumTraits<Header> {
+	static const SEMap<Header> from_string;
+};
+
+const SEMap<Header> EnumTraits<Header>::from_string = { {"0", Header::NONE}, {"simple", Header::SIMPLE}, {"verbose", Header::VERBOSE} };
+
+Header Blast_tab_format::header_format(unsigned workflow) {
+	const bool cluster = workflow == Config::cluster || workflow == Config::DEEPCLUST;
+	if (workflow != Config::blastp && !cluster)
+		throw runtime_error("header_format");
+	if (!config.output_header.present())
+		return Header::NONE;
+	if (config.output_header.empty())
+		return cluster ? Header::SIMPLE : Header::VERBOSE;
+	if (config.output_header.size() > 1)
+		throw runtime_error("Invalid header format: " + join(" ", config.output_header));
+	const Header h = from_string<Header>(config.output_header.front());
+	if (h == Header::VERBOSE && cluster)
+		throw runtime_error("Verbose header format is not supported for cluster workflow.");
+	return h;
+}
+
 Blast_tab_format::Blast_tab_format() :
-	Output_format(blast_tab, HspValues::NONE, Flags::NONE)
+	OutputFormat(blast_tab, HspValues::NONE, Flags::NONE)
 {
 	static const unsigned stdf[] = { 0, 5, 23, 22, 25, 27, 13, 14, 15, 16, 19, 20 };
 	const vector<string> &f = config.output_format;
@@ -142,12 +178,14 @@ Blast_tab_format::Blast_tab_format() :
 		fields.push_back(j);
 		if (j == 6 || j == 39 || j == 40 || j == 34)
 			config.salltitles = true;
-		if (j == 48 || j == 65)
+		if (j == 48 || j == 65 || j == 71)
 			flags |= Flags::TARGET_SEQS;
 		if (j == 49 || j == 53)
 			config.store_query_quality = true;
 		if (j == 62)
 			needs_paired_end_info = true;
+		if (j == 71 && score_matrix.name() != "BLOSUM62")
+			throw std::runtime_error("Approximate identity is only supported for the BLOSUM62 scoring matrix.");
 		if ((j == 62 || j == 63) && !align_mode.query_translated)
 			throw std::runtime_error("Output field only supported for translated search.");
 		hsp_values |= field_def[j].hsp_values;
@@ -157,44 +195,40 @@ Blast_tab_format::Blast_tab_format() :
 		//config.traceback_mode = TracebackMode::SCORE_ONLY;
 }
 
-void print_staxids(TextBuffer &out, unsigned subject_global_id, const Search::Config& cfg)
+void print_staxids(TextBuffer &out, int64_t subject_global_id, const SequenceFile& db)
 {
-	out.print(cfg.db->taxids(subject_global_id), ';');
+	out.print(db.taxids(subject_global_id), ';');
 }
 
 template<typename _it>
-void print_taxon_names(_it begin, _it end, const Search::Config& cfg, TextBuffer &out) {
+void print_taxon_names(_it begin, _it end, const SequenceFile& db, TextBuffer &out) {
 	if (begin == end) {
 		out << "N/A";
 		return;
 	}
-	const vector<string> &names = *cfg.taxonomy_scientific_names;
 	for (_it i = begin; i != end; ++i) {
 		if (i != begin)
 			out << ';';
-		if (*i < names.size() && !names[*i].empty())
-			out << names[*i];
-		else
-			out << *i;
+		out << db.taxon_scientific_name(*i);
 	}
 }
 
-void Blast_tab_format::print_match(const HspContext& r, const Search::Config& cfg, TextBuffer &out)
+void Blast_tab_format::print_match(const HspContext& r, Output::Info& info)
 {
-	const StringSet& query_qual = cfg.query->qual();
+	TextBuffer& out = info.out;
 	for (auto i = fields.cbegin(); i != fields.cend(); ++i) {
 		switch (*i) {
 		case 0:
-			out.write_until(r.query_title, Util::Seq::id_delimiters);
+			out.write_until(r.query_title.c_str(), Util::Seq::id_delimiters);
 			break;
 		case 4:
 			out << r.query.source().length();
 			break;
 		case 5:
-			print_title(out, r.target_title, false, false, "<>");
+			print_title(out, r.target_title.c_str(), false, false, "<>");
 			break;
 		case 6:
-			print_title(out, r.target_title, false, true, "<>");
+			print_title(out, r.target_title.c_str(), false, true, "<>");
 			break;
 		case 12:
 			out << r.subject_len;
@@ -237,7 +271,7 @@ void Blast_tab_format::print_match(const HspContext& r, const Search::Config& cf
 			out << r.length();
 			break;
 		case 23:
-			out << (double)r.identities() * 100 / r.length();
+			out << r.id_percent();
 			break;
 		case 24:
 			out << r.identities();
@@ -296,28 +330,28 @@ void Blast_tab_format::print_match(const HspContext& r, const Search::Config& cf
 			if (n_matches > 0)
 				out << n_matches;
 		}
-			break;
+		break;
 		case 34:
-			print_staxids(out, r.subject_oid, cfg);
+			print_staxids(out, r.subject_oid, *info.db);
 			break;
 		case 35: {
-			const vector<unsigned> tax_id = cfg.db->taxids(r.subject_oid);
-			print_taxon_names(tax_id.begin(), tax_id.end(), cfg, out);
+			const vector<TaxId> tax_id = info.db->taxids(r.subject_oid);
+			print_taxon_names(tax_id.begin(), tax_id.end(), *info.db, out);
 			break;
 		}
 		case 38: {
-			const set<unsigned> tax_id = cfg.taxon_nodes->rank_taxid(cfg.db->taxids(r.subject_oid), Rank::superkingdom);
-			print_taxon_names(tax_id.begin(), tax_id.end(), cfg, out);
+			const set<TaxId> tax_id = info.db->taxon_nodes().rank_taxid(info.db->taxids(r.subject_oid), Rank::superkingdom);
+			print_taxon_names(tax_id.begin(), tax_id.end(), *info.db, out);
 			break;
 		}
 		case 39:
-			print_title(out, r.target_title, true, false, "<>");
+			print_title(out, r.target_title.c_str(), true, false, "<>");
 			break;
 		case 40:
-			print_title(out, r.target_title, true, true, "<>");
+			print_title(out, r.target_title.c_str(), true, true, "<>");
 			break;
 		case 43:
-			out << (double)r.query_source_range().length()*100.0 / r.query.source().length();
+			out << r.qcovhsp();
 			break;
 		case 45:
 			out << r.query_title;
@@ -332,30 +366,24 @@ void Blast_tab_format::print_match(const HspContext& r, const Search::Config& cf
 			out << r.subject_seq;
 			break;
 		case 49: {
-			if (cfg.query->qual().empty()) {
+			if (strlen(info.query.qual) == 0) {
 				out << '*';
 				break;
 			}
-			const char *q = cfg.query->qual()[r.query_id];
-			if (strlen(q) == 0) {
-				out << '*';
-				break;
-			}
-			out << string(q + r.query_source_range().begin_, q + r.query_source_range().end_).c_str();
+			out << string(info.query.qual + r.query_source_range().begin_, info.query.qual + r.query_source_range().end_).c_str();
 			break;
 		}
 		case 50:
-			out << cfg.query->block_id2oid(r.query_id);
-			//out << r.query_id;
+			out << r.query_oid;
 			break;
 		case 51:
 			out << r.subject_oid;
 			break;
 		case 52:
-			out << (double)r.subject_range().length() * 100.0 / r.subject_len;
+			out << r.scovhsp();
 			break;
 		case 53:
-			out << (!query_qual.empty() && strlen(query_qual[r.query_id]) ? query_qual[r.query_id] : "*");
+			out << strlen(info.query.qual) ? info.query.qual : "*";
 			break;
 		case 54:
 			r.query.source().print(out, input_value_traits);
@@ -378,13 +406,13 @@ void Blast_tab_format::print_match(const HspContext& r, const Search::Config& cf
 			print_cigar(r, out);
 			break;
 		case 59: {
-			const set<unsigned> tax_id = cfg.taxon_nodes->rank_taxid(cfg.db->taxids(r.subject_oid), Rank::kingdom);
-			print_taxon_names(tax_id.begin(), tax_id.end(), cfg, out);
+			const set<TaxId> tax_id = info.db->taxon_nodes().rank_taxid(info.db->taxids(r.subject_oid), Rank::kingdom);
+			print_taxon_names(tax_id.begin(), tax_id.end(), *info.db, out);
 			break;
 		}
 		case 60: {
-			const set<unsigned> tax_id = cfg.taxon_nodes->rank_taxid(cfg.db->taxids(r.subject_oid), Rank::phylum);
-			print_taxon_names(tax_id.begin(), tax_id.end(), cfg, out);
+			const set<TaxId> tax_id = info.db->taxon_nodes().rank_taxid(info.db->taxids(r.subject_oid), Rank::phylum);
+			print_taxon_names(tax_id.begin(), tax_id.end(), *info.db, out);
 			break;
 		}
 		case 61:
@@ -392,8 +420,7 @@ void Blast_tab_format::print_match(const HspContext& r, const Search::Config& cf
 			break;
 		case 62: {
 			if (config.query_file.size() == 2) {
-				unsigned mate = r.query_id % 2, mate_id = mate == 0 ? r.query_id + 1 : r.query_id - 1;
-				cfg.query->source_seqs()[mate_id].print(out, input_value_traits);
+				info.query.mate_seq.print(out, input_value_traits);
 				break;
 			}
 			else {
@@ -440,6 +467,12 @@ void Blast_tab_format::print_match(const HspContext& r, const Search::Config& cf
 			out << s;
 			break;
 		}
+		case 71:
+			out << r.approx_id();
+			break;
+		case 72:
+			out << r.corrected_bit_score();
+			break;
 #ifdef EXTRA
 		case 65:
 			out.print_d(r.bit_score() / score_matrix.bitscore(self_score(r.subject_seq)));
@@ -453,6 +486,23 @@ void Blast_tab_format::print_match(const HspContext& r, const Search::Config& cf
 		case 68:
 			out << (double)r.identities() / std::max(r.query.index(r.frame()).length(), r.subject_len) * 100;
 			break;
+		case 69:
+			out << info.stats.extension_count;
+			break;
+		case 70:
+			out.print_e(score_matrix.bitscore(r.query[Frame(0)].length() < r.subject_len ?
+				nw_semiglobal(r.query[Frame(0)], r.subject_seq)
+				: nw_semiglobal(r.subject_seq, r.query[Frame(0)])));
+			break;
+		case 73:
+			out.print_e(r.evalue() == 0 ? r.bit_score() : -r.evalue());
+			break;
+		case 74:
+			out << r.reserved1();
+			break;
+		case 75:
+			out << r.reserved2();
+			break;
 #endif
 		default:
 			throw std::runtime_error(string("Invalid output field: ") + field_def[*i].key);
@@ -463,17 +513,17 @@ void Blast_tab_format::print_match(const HspContext& r, const Search::Config& cf
 	out << '\n';
 }
 
-void Blast_tab_format::print_query_intro(size_t query_num, const char *query_name, unsigned query_len, TextBuffer &out, bool unaligned, const Search::Config& cfg) const
+void Blast_tab_format::print_query_intro(Output::Info& info) const
 {
-	const StringSet& qual = cfg.query->qual();
-	if (unaligned && config.report_unaligned == 1) {
+	TextBuffer& out = info.out;
+	if (info.unaligned && config.report_unaligned == 1) {
 		for (auto i = fields.cbegin(); i != fields.cend(); ++i) {
 			switch (*i) {
 			case 0:
-				out.write_until(query_name, Util::Seq::id_delimiters);
+				out.write_until(info.query.title, Util::Seq::id_delimiters);
 				break;
 			case 4:
-				out << query_len;
+				out << info.query.len;
 				break;
 			case 5:
 			case 6:
@@ -514,6 +564,7 @@ void Blast_tab_format::print_query_intro(size_t query_num, const char *query_nam
 			case 43:
 			case 52:
 			case 61:
+			case 71:
 				out << "-1";
 				break;			
 			case 31:
@@ -521,13 +572,13 @@ void Blast_tab_format::print_query_intro(size_t query_num, const char *query_nam
 				out << '0';
 				break;
 			case 45:
-				out << query_name;
+				out << info.query.title;
 				break;
 			case 53:
-				out << (!qual.empty() && strlen(qual[query_num]) ? qual[query_num] : "*");
+				out << strlen(info.query.qual) ? info.query.qual : "*";
 				break;
 			case 54:
-				(align_mode.query_translated ? cfg.query->source_seqs()[query_num] : cfg.query->seqs()[query_num]).print(out, input_value_traits);
+				info.query.source_seq.print(out, input_value_traits);
 				break;
 			default:
 				throw std::runtime_error(string("Invalid output field: ") + field_def[*i].key);
@@ -539,13 +590,30 @@ void Blast_tab_format::print_query_intro(size_t query_num, const char *query_nam
 	}
 }
 
-void Blast_tab_format::print_header(Consumer &f, int mode, const char *matrix, int gap_open, int gap_extend, double evalue, const char *first_query_name, unsigned first_query_len) const {
-	if (!config.output_header)
-		return;
-	std::stringstream ss;
-	ss << "# DIAMOND v" << Const::version_string << ". http://github.com/bbuchfink/diamond" << endl;
-	ss << "# Invocation: " << config.invocation << endl;
-	ss << "# Fields: " << join(", ", apply(fields, [](int64_t i) -> string { return string(field_def[i].description); })) << endl;
-	const string s(ss.str());
+void Blast_tab_format::output_header(Consumer& f, bool cluster) const {
+	vector<string> headers;
+	transform(fields.begin(), fields.end(), back_inserter(headers), [cluster](int64_t i) {
+		const string& key = cluster ? Blast_tab_format::field_def[i].clust_key : Blast_tab_format::field_def[i].key;
+		if (cluster && key.empty())
+			throw runtime_error("Output field not supported for clustering: " + Blast_tab_format::field_def[i].key);
+		return key;
+		});
+	const string s = join("\t", headers) + '\n';
 	f.consume(s.data(), s.length());
+	return;
+}
+
+void Blast_tab_format::print_header(Consumer &f, int mode, const char *matrix, int gap_open, int gap_extend, double evalue, const char *first_query_name, unsigned first_query_len) const {
+	const Header h = header_format(Config::blastp);
+	if (h == Header::VERBOSE) {
+		std::stringstream ss;
+		ss << "# DIAMOND v" << Const::version_string << ". http://github.com/bbuchfink/diamond" << endl;
+		ss << "# Invocation: " << config.invocation << endl;
+		ss << "# Fields: " << join(", ", apply(fields, [](int64_t i) -> string { return string(field_def[i].description); })) << endl;
+		const string s(ss.str());
+		f.consume(s.data(), s.length());
+	}
+	else if (h == Header::SIMPLE) {
+		output_header(f, false);
+	}
 }

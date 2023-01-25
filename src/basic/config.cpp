@@ -1,6 +1,6 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2021 Max Planck Society for the Advancement of Science e.V.
+Copyright (C) 2013-2022 Max Planck Society for the Advancement of Science e.V.
                         Benjamin Buchfink
                         Eberhard Karls Universitaet Tuebingen
 
@@ -39,12 +39,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/io/temp_file.h"
 #include "../basic/match.h"
 #include "../cluster/cluster_registry.h"
-#include "../basic/translate.h"
+#include "../util/sequence/translate.h"
 #include "../dp/dp.h"
 #include "../masking/masking.h"
 #include "../util/system/system.h"
 #include "../util/simd.h"
 #include "../util/parallel/multiprocessing.h"
+#include "../search/search.h"
 
 using std::thread;
 using std::stringstream;
@@ -53,8 +54,11 @@ using std::cerr;
 using std::ostream;
 using std::cout;
 using std::unique_ptr;
+using std::string;
+using std::pair;
 
 const EMap<Sensitivity> EnumTraits<Sensitivity>::to_string = {
+	{ Sensitivity::FASTER, "faster" },
 	{ Sensitivity::FAST, "fast" },
 	{ Sensitivity::DEFAULT, "default" },
 	{ Sensitivity::MID_SENSITIVE, "mid-sensitive" },
@@ -65,6 +69,7 @@ const EMap<Sensitivity> EnumTraits<Sensitivity>::to_string = {
 };
 
 const SEMap<Sensitivity> EnumTraits<Sensitivity>::from_string = {
+	{ "faster", Sensitivity::FASTER },
 	{ "fast", Sensitivity::FAST },
 	{ "default", Sensitivity::DEFAULT },
 	{ "mid-sensitive", Sensitivity::MID_SENSITIVE },
@@ -74,15 +79,45 @@ const SEMap<Sensitivity> EnumTraits<Sensitivity>::from_string = {
 	{ "ultra-sensitive", Sensitivity::ULTRA_SENSITIVE }
 };
 
+const SEMap<GraphAlgo> EnumTraits<GraphAlgo>::from_string = {
+	{ "gvc", GraphAlgo::GREEDY_VERTEX_COVER },
+	{ "len", GraphAlgo::LEN_SORTED }
+};
+
 const EMap<Config::Algo> EnumTraits<Config::Algo>::to_string = { { Config::Algo::DOUBLE_INDEXED, "Double-indexed" }, { Config::Algo::QUERY_INDEXED, "Query-indexed"}, {Config::Algo::CTG_SEED, "Query-indexed with contiguous seed"} };
 const SEMap<Config::Algo> EnumTraits<Config::Algo>::from_string = { {"", Config::Algo::AUTO}, { "0", Config::Algo::DOUBLE_INDEXED}, {"1", Config::Algo::QUERY_INDEXED}, {"ctg", Config::Algo::CTG_SEED} };
 
+const EMap<SequenceType> EnumTraits<SequenceType>::to_string = { {SequenceType::amino_acid,"prot"}, { SequenceType::nucleotide,"nucl"} };
+const SEMap<SequenceType> EnumTraits<SequenceType>::from_string = { {"prot",SequenceType::amino_acid}, {"nucl",SequenceType::nucleotide} };
+
 Config config;
+
+pair<double, int> block_size(int64_t memory_limit, Sensitivity s, bool lin) {
+	const double m = (double)memory_limit / 1e9;
+	const int min = std::max(Search::sensitivity_traits[(int)align_mode.sequence_type].at(s).minimizer_window, 1),
+		c = m < 40.0 && s <= Sensitivity::MORE_SENSITIVE && min == 1 ? 4 : 1;
+	const double max = s <= Sensitivity::DEFAULT ? 12.0 :
+		(s <= Sensitivity::MORE_SENSITIVE ? 4.0 : 0.4);
+	double b = m / (18.0 / c / min + 2.0);
+	if (b > 4)
+		b = floor(b);
+	else if (b > 0.4)
+		b = floor(b * 10) / 10;
+	else
+		b = floor(b * 1000) / 1000;
+	if (!config.no_block_size_limit && !lin)
+		b = std::min(b, max);
+	if (s >= Sensitivity::VERY_SENSITIVE)
+		b = std::min(b, 2.1);
+	//if (s >= Sensitivity::ULTRA_SENSITIVE)
+		//b = std::min(b, 0.6);
+	return { std::max(b, 0.001), c };
+}
 
 void print_warnings() {
 	if (config.sensitivity >= Sensitivity::VERY_SENSITIVE || config.verbosity == 0 || config.swipe_all)
 		return;
-	if (config.command != Config::blastp && config.command != Config::blastx)
+	if (config.command != Config::blastp && config.command != Config::blastx && config.command != Config::blastn)
 		return;
 	const double ram = total_ram();
 	unsigned b = 2, c = 4;
@@ -158,15 +193,16 @@ Compressor Config::compressor() const
 		throw std::runtime_error("Invalid compression algorithm: " + compression);
 }
 
-Config::Config(int argc, const char **argv, bool check_io)
+Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& parser)
 {
-	Command_line_parser parser;
 	parser.add_command("makedb", "Build DIAMOND database from a FASTA file", makedb)
-#ifdef WITH_BLASTDB
-		.add_command("prepdb", "Prepare BLAST database for use with Diamond", prep_blast_db)
-#endif
+		.add_command("prepdb", "Prepare BLAST or FASTA database for use with Diamond", prep_db)
 		.add_command("blastp", "Align amino acid query sequences against a protein reference database", blastp)
 		.add_command("blastx", "Align DNA query sequences against a protein reference database", blastx)
+		.add_command("cluster", "Cluster protein sequences", cluster)
+		.add_command("realign", "Realign clustered sequences against their centroids", CLUSTER_REALIGN)
+		.add_command("recluster", "Recompute clustering to fix errors", RECLUSTER)
+		.add_command("reassign", "Reassign clustered sequences to the closest centroid", CLUSTER_REASSIGN)
 		.add_command("view", "View DIAMOND alignment archive (DAA) formatted file", view)
 		.add_command("help", "Produce help message", help)
 		.add_command("version", "Display version information", version)
@@ -174,9 +210,10 @@ Config::Config(int argc, const char **argv, bool check_io)
 		.add_command("dbinfo", "Print information about a DIAMOND database file", dbinfo)
 		.add_command("test", "Run regression tests", regression_test)
 		.add_command("makeidx", "Make database index", makeidx)
+		.add_command("greedy-vertex-cover", "Compute greedy vertex cover", GREEDY_VERTEX_COVER)
 		.add_command("roc", "", roc)
 		.add_command("benchmark", "", benchmark)
-		.add_command("merge-daa", "", MERGE_DAA)
+		.add_command("deepclust", "", DEEPCLUST)
 #ifdef EXTRA
 		.add_command("random-seqs", "", random_seqs)
 		.add_command("sort", "", sort)
@@ -187,7 +224,6 @@ Config::Config(int argc, const char **argv, bool check_io)
 		.add_command("info", "", info)
 		.add_command("seed-stat", "", seed_stat)
 		.add_command("smith-waterman", "", smith_waterman)
-		.add_command("cluster", "", cluster)
 		.add_command("translate", "", translate)
 		.add_command("filter-blasttab", "", filter_blasttab)
 		.add_command("show-cbs", "", show_cbs)
@@ -198,21 +234,100 @@ Config::Config(int argc, const char **argv, bool check_io)
 		.add_command("reverse", "", reverse_seqs)
 		.add_command("compute-medoids", "", compute_medoids)
 		.add_command("mutate", "", mutate)
-		.add_command("merge-tsv", "", merge_tsv)
 		.add_command("roc-id", "", rocid)
 		.add_command("find-shapes", "", find_shapes)
 		.add_command("composition", "", composition)
 		.add_command("join", "", JOIN)
 		.add_command("hashseqs", "", HASH_SEQS)
 		.add_command("listseeds", "", LIST_SEEDS)
+		.add_command("index-fasta", "", INDEX_FASTA)
+		.add_command("fetch-seq", "", FETCH_SEQ)
+        .add_command("blastn", "Align DNA query sequences against a DNA reference database", blastn)
+		.add_command("length-sort", "", LENGTH_SORT)
+		.add_command("merge-daa", "", MERGE_DAA)
 #endif
 		;
 
-	Options_group general("General options");
+	auto& general = parser.add_group("General options", { makedb, blastp, blastx, cluster, view, prep_db, getseq, dbinfo, makeidx, CLUSTER_REALIGN, GREEDY_VERTEX_COVER, DEEPCLUST });
 	general.add()
 		("threads", 'p', "number of CPU threads", threads_)
 		("db", 'd', "database file", database)
 		("out", 'o', "output file", output_file)
+		("verbose", 'v', "verbose console output", verbose)
+		("log", 0, "enable debug log", debug_log)
+		("quiet", 0, "disable console output", quiet)
+		("header", 0, "Use header lines in tabular output format (0/simple/verbose).", output_header, Option<vector<string>>(), 0);
+	
+    string dbstring;
+	auto& makedb_opt = parser.add_group("Makedb options", { makedb });
+	makedb_opt.add()
+		("in", 0, "input reference file in FASTA format", input_ref_file)
+		("taxonmap", 0, "protein accession to taxid mapping file", prot_accession2taxid)
+		("taxonnodes", 0, "taxonomy nodes.dmp from NCBI", nodesdmp)
+		("taxonnames", 0, "taxonomy names.dmp from NCBI", namesdmp);
+
+	auto& align_clust = parser.add_group("Aligner/Clustering options", { blastp, blastx, cluster, RECLUSTER, CLUSTER_REASSIGN, DEEPCLUST, CLUSTER_REALIGN });
+	align_clust.add()
+		("evalue", 'e', "maximum e-value to report alignments (default=0.001)", max_evalue, 0.001)
+		("tmpdir", 't', "directory for temporary files", tmpdir)
+		("comp-based-stats", 0, "composition based statistics mode (0-4)", comp_based_stats, 1u)
+		("masking", 0, "masking algorithm (none, seg, tantan=default)", masking_)
+		("soft-masking", 0, "soft masking", soft_masking)
+		("motif-masking", 0, "softmask abundant motifs (0/1)", motif_masking)
+		("approx-id", 0, "minimum approx. identity% to report an alignment/to cluster sequences", approx_min_id)
+		("ext", 0, "Extension mode (banded-fast/banded-slow/full)", ext_)
+		("memory-limit", 'M', "Memory limit in GB (default = 16G)", memory_limit)
+		("mmseqs-compat", 0, "", mmseqs_compat)
+		("no-block-size-limit", 0, "", no_block_size_limit);
+
+	auto& aligner = parser.add_group("Aligner options", { blastp, blastx, makeidx, CLUSTER_REASSIGN });
+	aligner.add()
+		("query", 'q', "input query file", query_file)
+		("strand", 0, "query strands to search (both/minus/plus)", query_strands, string("both"))
+		("un", 0, "file for unaligned queries", unaligned)
+		("al", 0, "file or aligned queries", aligned_file)
+		("unfmt", 0, "format of unaligned query file (fasta/fastq)", unfmt, string("fasta"))
+		("alfmt", 0, "format of aligned query file (fasta/fastq)", alfmt, string("fasta"))
+		("unal", 0, "report unaligned queries (0=no, 1=yes)", report_unaligned, -1)
+		("max-target-seqs", 'k', "maximum number of target sequences to report alignments for (default=25)", max_target_seqs_)
+		("top", 0, "report alignments within this percentage range of top alignment score (overrides --max-target-seqs)", toppercent, 100.0)
+		("max-hsps", 0, "maximum number of HSPs per target sequence to report for each query (default=1)", max_hsps, 1u)
+		("range-culling", 0, "restrict hit culling to overlapping query ranges", query_range_culling)
+		("compress", 0, "compression for output files (0=none, 1=gzip, zstd)", compression)
+		("min-score", 0, "minimum bit score to report alignments (overrides e-value setting)", min_bit_score)
+		("id", 0, "minimum identity% to report an alignment", min_id)
+		("query-cover", 0, "minimum query cover% to report an alignment", query_cover)
+		("subject-cover", 0, "minimum subject cover% to report an alignment", subject_cover)
+		("faster", 0, "enable faster mode", mode_faster)
+		("fast", 0, "enable fast mode", mode_fast)
+		("mid-sensitive", 0, "enable mid-sensitive mode", mode_mid_sensitive)
+		("sensitive", 0, "enable sensitive mode)", mode_sensitive)
+		("more-sensitive", 0, "enable more sensitive mode", mode_more_sensitive)
+		("very-sensitive", 0, "enable very sensitive mode", mode_very_sensitive)
+		("ultra-sensitive", 0, "enable ultra sensitive mode", mode_ultra_sensitive)
+		("swipe", 0, "exhaustive alignment against all database sequences", swipe_all)
+		("iterate", 0, "iterated search with increasing sensitivity", iterate, Option<vector<string>>(), 0)
+		("global-ranking", 'g', "number of targets for global ranking", global_ranking_targets)
+		("block-size", 'b', "sequence block size in billions of letters (default=2.0)", chunk_size)
+		("index-chunks", 'c', "number of chunks for index processing (default=4)", lowmem_)
+		("parallel-tmpdir", 0, "directory for temporary files used by multiprocessing", parallel_tmpdir)
+		("gapopen", 0, "gap open penalty", gap_open, -1)
+		("gapextend", 0, "gap extension penalty", gap_extend, -1)
+		("matrix", 0, "score matrix for protein alignment (default=BLOSUM62)", matrix, string("blosum62"))
+		("custom-matrix", 0, "file containing custom scoring matrix", matrix_file)
+		("frameshift", 'F', "frame shift penalty (default=disabled)", frame_shift)
+		("long-reads", 0, "short for --range-culling --top 10 -F 15", long_reads)
+		("query-gencode", 0, "genetic code to use to translate query (see user manual)", query_gencode, 1u)
+		("salltitles", 0, "include full subject titles in DAA file", salltitles)
+		("sallseqid", 0, "include all subject ids in DAA file", sallseqid)
+		("no-self-hits", 0, "suppress reporting of identical self hits", no_self_hits)
+		("taxonlist", 0, "restrict search to list of taxon ids (comma-separated)", taxonlist)
+		("taxon-exclude", 0, "exclude list of taxon ids (comma-separated)", taxon_exclude)
+		("seqidlist", 0, "filter the database by list of accessions", seqidlist)
+		("skip-missing-seqids", 0, "ignore accessions missing in the database", skip_missing_seqids);
+
+	auto& format = parser.add_group("Output format options", { blastp, blastx, view, CLUSTER_REALIGN });
+	format.add()
 		("outfmt", 'f', "output format\n\
 \t0   = BLAST pairwise\n\
 \t5   = BLAST XML\n\
@@ -237,9 +352,11 @@ Config::Config(int argc, const char **argv, bool check_io)
 \tfull_sseq means Subject sequence\n\
 \tevalue means Expect value\n\
 \tbitscore means Bit score\n\
+\tcorrected_bitscore means Bit score corrected for edge effects\n\
 \tscore means Raw score\n\
 \tlength means Alignment length\n\
 \tpident means Percentage of identical matches\n\
+\tapprox_pident means Approximate percentage of identical matches\n\
 \tnident means Number of identical matches\n\
 \tmismatch means Number of mismatches\n\
 \tpositive means Number of positive - scoring matches\n\
@@ -262,87 +379,28 @@ Config::Config(int argc, const char **argv, bool check_io)
 \tqqual means Query quality values for the aligned part of the query\n\
 \tfull_qqual means Query quality values\n\
 \tqstrand means Query strand\n\
-\n\tDefault: qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore", output_format)
-("verbose", 'v', "verbose console output", verbose)
-("log", 0, "enable debug log", debug_log)
-("quiet", 0, "disable console output", quiet)
-("header", 0, "Write header lines to blast tabular format.", output_header);
+\n\tDefault: qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore", output_format);
 
-	Options_group makedb("Makedb options");
-	makedb.add()
-		("in", 0, "input reference file in FASTA format", input_ref_file)
-		("taxonmap", 0, "protein accession to taxid mapping file", prot_accession2taxid)
-		("taxonnodes", 0, "taxonomy nodes.dmp from NCBI", nodesdmp)
-		("taxonnames", 0, "taxonomy names.dmp from NCBI", namesdmp);
+	auto& cluster_opt = parser.add_group("Clustering options", { cluster, RECLUSTER, CLUSTER_REASSIGN, GREEDY_VERTEX_COVER, DEEPCLUST });
+	kmer_ranking = false;
+	cluster_opt.add()
+		("member-cover", 0, "Minimum coverage% of the cluster member sequence (default=80.0)", member_cover, 80.0)
+		("cluster-steps", 0, "Clustering steps", cluster_steps)
+		("centroid-out", 0, "Output file for centroids (greedy vertex cover workflow)", centroid_out)
+#ifdef KEEP_TARGET_ID
+		("kmer-ranking", 0, "Rank sequences based on kmer frequency in linear stage", kmer_ranking)
+#endif
+		;
 
-	Options_group cluster("");
-	cluster.add()
-		("cluster-algo", 0, "Clustering algorithm (\"multi-step\", \"mcl\")", cluster_algo)
-		("cluster-steps", 0, "Clustering steps (\"fast\",\"mid-sensitive\",\"sensitive\", \"more-sensitive\", \"very-sensitive\", \"ultra-sensitive\")", cluster_steps, { "sensitive" })
-		("max-size-set", 0, "Maximum size of a set", max_size_set, (size_t) 1000)
-		("external", 0, "save set of edges external", external, false)
-		("cluster-similarity", 0, "Clustering similarity measure", cluster_similarity)
-		("cluster-graph-file", 0, "Filename for dumping the graph or reading the graph if cluster-restart", cluster_graph_file)
-		("cluster-restart", 0, "Restart clustering from dumped graph", cluster_restart)
-		("mcl-expansion", 0, "MCL expansion coefficient (default=2)", cluster_mcl_expansion, (uint32_t) 2)
-		("mcl-inflation", 0, "MCL inflation coefficient (default=2.0)", cluster_mcl_inflation, 2.0)
-		("mcl-chunk-size", 0, "MCL chunk size per thread (default=100)", cluster_mcl_chunk_size, (uint32_t) 1)
-		("mcl-max-iterations", 0, "MCL maximum iterations (default=100)", cluster_mcl_max_iter, (uint32_t) 100)
-		("mcl-sparsity-switch", 0, "MCL switch to sparse matrix computation (default=0.8) ", cluster_mcl_sparsity_switch, 0.8)
-		("mcl-nonsymmetric", 0, "Do not symmetrize the transistion matrix before clustering", cluster_mcl_nonsymmetric)
-		("mcl-stats", 0, "Some stats about the connected components in MCL", cluster_mcl_stats);
-
-	Options_group aligner("Aligner options");
-	aligner.add()
-		("query", 'q', "input query file", query_file)
-		("strand", 0, "query strands to search (both/minus/plus)", query_strands, string("both"))
-		("un", 0, "file for unaligned queries", unaligned)
-		("al", 0, "file or aligned queries", aligned_file)
-		("unfmt", 0, "format of unaligned query file (fasta/fastq)", unfmt, string("fasta"))
-		("alfmt", 0, "format of aligned query file (fasta/fastq)", alfmt, string("fasta"))
-		("unal", 0, "report unaligned queries (0=no, 1=yes)", report_unaligned, -1)
-		("max-target-seqs", 'k', "maximum number of target sequences to report alignments for (default=25)", max_alignments, size_t(25))
-		("top", 0, "report alignments within this percentage range of top alignment score (overrides --max-target-seqs)", toppercent, 100.0)
-		("max-hsps", 0, "maximum number of HSPs per target sequence to report for each query (default=1)", max_hsps, 1u)
-		("range-culling", 0, "restrict hit culling to overlapping query ranges", query_range_culling)
-		("compress", 0, "compression for output files (0=none, 1=gzip, zstd)", compression)
-		("evalue", 'e', "maximum e-value to report alignments (default=0.001)", max_evalue, 0.001)
-		("min-score", 0, "minimum bit score to report alignments (overrides e-value setting)", min_bit_score)
-		("id", 0, "minimum identity% to report an alignment", min_id)
-		("query-cover", 0, "minimum query cover% to report an alignment", query_cover)
-		("subject-cover", 0, "minimum subject cover% to report an alignment", subject_cover)
-		("fast", 0, "enable fast mode", mode_fast)
-		("mid-sensitive", 0, "enable mid-sensitive mode", mode_mid_sensitive)
-		("sensitive", 0, "enable sensitive mode)", mode_sensitive)
-		("more-sensitive", 0, "enable more sensitive mode", mode_more_sensitive)
-		("very-sensitive", 0, "enable very sensitive mode", mode_very_sensitive)
-		("ultra-sensitive", 0, "enable ultra sensitive mode", mode_ultra_sensitive)
-		("iterate", 0, "iterated search with increasing sensitivity", iterate, Option<vector<string>>(), 0)
-		("global-ranking", 'g', "number of targets for global ranking", global_ranking_targets)
-		("block-size", 'b', "sequence block size in billions of letters (default=2.0)", chunk_size)
-		("index-chunks", 'c', "number of chunks for index processing (default=4)", lowmem_)
-		("tmpdir", 't', "directory for temporary files", tmpdir)
-		("parallel-tmpdir", 0, "directory for temporary files used by multiprocessing", parallel_tmpdir)
-		("gapopen", 0, "gap open penalty", gap_open, -1)
-		("gapextend", 0, "gap extension penalty", gap_extend, -1)
-		("frameshift", 'F', "frame shift penalty (default=disabled)", frame_shift)
-		("long-reads", 0, "short for --range-culling --top 10 -F 15", long_reads)
-		("matrix", 0, "score matrix for protein alignment (default=BLOSUM62)", matrix, string("blosum62"))
-		("custom-matrix", 0, "file containing custom scoring matrix", matrix_file)
-		("comp-based-stats", 0, "composition based statistics mode (0-4)", comp_based_stats, 1u)
-		("masking", 0, "masking algorithm (none, seg, tantan=default)", masking, string("tantan"))
-		("query-gencode", 0, "genetic code to use to translate query (see user manual)", query_gencode, 1u)
-		("salltitles", 0, "include full subject titles in DAA file", salltitles)
-		("sallseqid", 0, "include all subject ids in DAA file", sallseqid)
-		("no-self-hits", 0, "suppress reporting of identical self hits", no_self_hits)
-		("taxonlist", 0, "restrict search to list of taxon ids (comma-separated)", taxonlist)
-		("taxon-exclude", 0, "exclude list of taxon ids (comma-separated)", taxon_exclude)
-		("seqidlist", 0, "filter the database by list of accessions", seqidlist)
-		("skip-missing-seqids", 0, "ignore accessions missing in the database", skip_missing_seqids);
+	auto& realign_opt = parser.add_group("Cluster input options", { CLUSTER_REALIGN, RECLUSTER, CLUSTER_REASSIGN, GREEDY_VERTEX_COVER });
+	realign_opt.add()
+		("clusters", 0, "Clustering input file mapping sequences to centroids", clustering)
+		("edges", 0, "Input file for greedy vertex cover", edges)
+		("edge-format", 0, "Edge format for greedy vertex cover (default/triplet)", edge_format);
 
 	string algo_str;
 
-	Options_group advanced("Advanced options");
+	auto& advanced = parser.add_group("Advanced options", { blastp, blastx, makeidx, CLUSTER_REASSIGN, regression_test });
 	advanced.add()
 		("algo", 0, "Seed search algorithm (0=double-indexed/1=query-indexed/ctg=contiguous-seed)", algo_str)
 		("bin", 0, "number of query bins for seed search", query_bins_)
@@ -350,7 +408,6 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("seed-cut", 0, "cutoff for seed complexity", seed_cut_)
 		("freq-masking", 0, "mask seeds based on frequency", freq_masking)
 		("freq-sd", 0, "number of standard deviations for ignoring frequent seeds", freq_sd_, 0.0)
-		("motif-masking", 0, "softmask abundant motifs (0/1)", motif_masking)
 		("id2", 0, "minimum number of identities for stage 1 hit", min_identities_)
 		("xdrop", 'x', "xdrop for ungapped alignment", ungapped_xdrop, 12.3)
 		("gapped-filter-evalue", 0, "E-value threshold for gapped filter (auto)", gapped_filter_evalue_, -1.0)
@@ -363,7 +420,6 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("mp-query-chunk", 0, "process only a single query chunk as specified", mp_query_chunk, -1)
 		("ext-chunk-size", 0, "chunk size for adaptive ranking (default=auto)", ext_chunk_size)
 		("no-ranking", 0, "disable ranking heuristic", no_ranking)
-		("ext", 0, "Extension mode (banded-fast/banded-slow/full)", ext_)
 		("culling-overlap", 0, "minimum range overlap with higher scoring hit to delete a hit (default=50%)", inner_culling_overlap, 50.0)
 		("taxon-k", 0, "maximum number of targets to report per species", taxon_k, (uint64_t)0)
 		("range-cover", 0, "percentage of query range to be covered for range culling (default=50%)", query_range_cover, 50.0)
@@ -373,10 +429,10 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("stop-match-score", 0, "Set the match score of stop codons against each other.", stop_match_score, 1)
 		("tantan-minMaskProb", 0, "minimum repeat probability for masking (default=0.9)", tantan_minMaskProb, 0.9)
 		("file-buffer-size", 0, "file buffer size in bytes (default=67108864)", file_buffer_size, (size_t)67108864)
-		("memory-limit", 'M', "Memory limit for extension stage in GB", memory_limit)
 		("no-unlink", 0, "Do not unlink temporary files.", no_unlink)
 		("target-indexed", 0, "Enable target-indexed mode", target_indexed)
 		("ignore-warnings", 0, "Ignore warnings", ignore_warnings)
+		("unaligned-targets", 0, "", unaligned_targets)
 		("cut-bar", 0, "", cut_bar)
 		("check-multi-target", 0, "", check_multi_target)
 		("roc-file", 0, "", roc_file)
@@ -384,26 +440,28 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("family-map-query", 0, "", family_map_query)
 		("query-parallel-limit", 0, "", query_parallel_limit, 3000000u)
 		("log-evalue-scale", 0, "", log_evalue_scale, 1.0 / std::log(2.0))
-		("bootstrap", 0, "", bootstrap);
+		("bootstrap", 0, "", bootstrap)
+		("mp-self", 0, "", mp_self)
+		("query-or-subject-cover", 0, "", query_or_target_cover);
 
-	Options_group view_options("View options");
+	auto& view_options = parser.add_group("View options", { view, blastp, blastx });
 	view_options.add()
 		("daa", 'a', "DIAMOND alignment archive (DAA) file", daa_file)
 		("forwardonly", 0, "only show alignments of forward strand", forwardonly);
 
-	Options_group getseq_options("Getseq options");
+	auto& getseq_options = parser.add_group("Getseq options", { getseq });
 	getseq_options.add()
 		("seq", 0, "Space-separated list of sequence numbers to display.", seq_no);
 
 	double rank_ratio2, lambda, K;
 	unsigned window, min_ungapped_score, hit_band, min_hit_score;
-	Options_group deprecated_options("");
+	auto& deprecated_options = parser.add_group("", { blastp, blastx });
 	deprecated_options.add()
 		("window", 'w', "window size for local hit search", window)
 		("ungapped-score", 0, "minimum alignment score to continue local extension", min_ungapped_score)
 		("hit-band", 0, "band for hit verification", hit_band)
 		("hit-score", 0, "minimum score to keep a tentative alignment", min_hit_score)
-		("gapped-xdrop", 'X', "xdrop for gapped alignment in bits", gapped_xdrop, 20)
+		("gapped-xdrop", 'X', "xdrop for gapped alignment in bits", gapped_xdrop, 20.0)
 		("rank-ratio2", 0, "include subjects within this ratio of last hit (stage 2)", rank_ratio2, -1.0)
 		("rank-ratio", 0, "include subjects within this ratio of last hit", rank_ratio, -1.0)
 		("lambda", 0, "lambda parameter for custom matrix", lambda)
@@ -414,9 +472,9 @@ Config::Config(int argc, const char **argv, bool check_io)
 	double cbs_angle;
 
 #ifdef EXTRA
-	Options_group hidden_options("");
+	auto& hidden_options = parser.add_group("", {});
 #else
-	Options_group hidden_options("", true);
+	auto& hidden_options = parser.add_group("", {}, true);
 #endif
 	hidden_options.add()
 		("match1", 0, "", match_file1)
@@ -467,7 +525,6 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("hard-masked", 0, "", hardmasked)
 		("cbs-window", 0, "", cbs_window, 40)
 		("no-dict", 0, "", no_dict)
-		("swipe", 0, "", swipe_all)
 		("upgma-edge-limit", 0, "", upgma_edge_limit, (uint64_t)10000000)
 		("tree", 0, "", tree_file)
 		("upgma-dist", 0, "", upgma_dist)
@@ -493,8 +550,8 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("band-bin", 0, "", band_bin, 24)
 		("col-bin", 0, "", col_bin, 400)
 		("self", 0, "", self)
-		("trace-pt-fetch-size", 0, "", trace_pt_fetch_size, (size_t)10e9)
-		("tile-size", 0, "", tile_size, (size_t)1024)
+		("trace-pt-fetch-size", 0, "", trace_pt_fetch_size, (int64_t)10e9)
+		("tile-size", 0, "", tile_size, (uint32_t)1024)
 		("short-query-ungapped-bitscore", 0, "", short_query_ungapped_bitscore, 25.0)
 		("short-query-max-len", 0, "", short_query_max_len, 60)
 		("gapped-filter-evalue1", 0, "", gapped_filter_evalue1, 2000.0)
@@ -537,12 +594,67 @@ Config::Config(int argc, const char **argv, bool check_io)
 		("key2", 0, "", key2)
 		("motif-mask-file", 0, "", motif_mask_file)
 		("max-motif-len", 0, "", max_motif_len, 30)
-		("chaining-stacked-hsp-ratio", 0, "", chaining_stacked_hsp_ratio, 0.5);
+		("chaining-stacked-hsp-ratio", 0, "", chaining_stacked_hsp_ratio, 0.5)
+		("swipe-task-size", 0, "", swipe_task_size, (int64_t)100000000)
+		("minimizer-window", 0, "", minimizer_window_)
+		("lin-stage1", 0, "", lin_stage1)
+		("min_task_trace_pts", 0, "", min_task_trace_pts, (int64_t)1024)
+		("sketch-size", 0, "", sketch_size)
+		("oid-list", 0, "", oid_list)
+		("bootstrap-block", 0, "", bootstrap_block, (int64_t)1000000)
+		("centroid-factor", 0, "", centroid_factor, (int64_t)3)
+		("timeout", 0, "", timeout)
+		("resume", 0, "", resume)
+		("target_hard_cap", 0, "", target_hard_cap)
+		("mapany", 0, "", mapany)
+		("neighbors", 0, "", neighbors)
+		("reassign-overlap", 0, "", reassign_overlap, 0.3)
+		("reassign-ratio", 0, "", reassign_ratio, 0.5)
+		("reassign-max", 0, "", reassign_max)
+		("add-self-aln", 0, "", add_self_aln)
+		("weighted-gvc", 0, "", weighted_gvc)
+		("filter-kmer-len", 0, "", filter_kmer_len)
+		("filter-kmer-cutoff", 0, "", filter_kmer_cutoff)
+		("hamming-ext", 0, "", hamming_ext)
+		("diag-filter-id", 0, "", diag_filter_id)
+		("diag-filter-cov", 0, "", diag_filter_cov)
+		("strict-gvc", 0, "", strict_gvc)
+		("dbtype", 0, "type of sequences in database file (nucl/prot)", dbstring, string("prot"))
+		("penalty", 0, "blastn mismatch penalty", mismatch_penalty, -3)
+		("reward", 0, "blastn match reward", match_reward, 2)
+		("cluster-similarity", 0, "Clustering similarity measure (default=\"normalized_bitscore_global\")", cluster_similarity)
+		("cluster-threshold", 0, "Threshold for the similarity measure (default=50%)", cluster_threshold)
+		("cluster-graph-file", 0, "Filename for dumping the graph or reading the graph if cluster-restart", cluster_graph_file)
+		("cluster-restart", 0, "Restart clustering from dumped graph", cluster_restart)
+		("mcl-expansion", 0, "MCL expansion coefficient (default=2)", cluster_mcl_expansion, (uint32_t)2)
+		("mcl-inflation", 0, "MCL inflation coefficient (default=2.0)", cluster_mcl_inflation, 2.0)
+		("mcl-chunk-size", 0, "MCL chunk size per thread (default=100)", cluster_mcl_chunk_size, (uint32_t)1)
+		("mcl-max-iterations", 0, "MCL maximum iterations (default=100)", cluster_mcl_max_iter, (uint32_t)100)
+		("mcl-sparsity-switch", 0, "MCL switch to sparse matrix computation (default=0.8) ", cluster_mcl_sparsity_switch, 0.8)
+		("mcl-nonsymmetric", 0, "Do not symmetrize the transistion matrix before clustering", cluster_mcl_nonsymmetric)
+		("mcl-stats", 0, "Some stats about the connected components in MCL", cluster_mcl_stats)
+		("cluster-algo", 0, "Clustering algorithm (\"mcl\")", cluster_algo)
+		("approx-backtrace", 0, "", approx_backtrace)
+		("prefix-scan", 0, "", prefix_scan)
+		("narrow-band-cov", 0, "", narrow_band_cov)
+		("narrow-band-factor", 0, "", narrow_band_factor)
+		("anchor-window", 0, "", anchor_window, 12)
+		("anchor-score", 0, "", anchor_score, 1.0)
+		("classic-band", 0, "", classic_band)
+		("no_8bit_extension", 0, "", no_8bit_extension)
+		("anchored-swipe", 0, "", anchored_swipe)
+		("no_chaining_merge_hsps", 0, "", no_chaining_merge_hsps)
+		("no_recluster_bd", 0, "", no_recluster_bd)
+		("pipeline-short", 0, "", pipeline_short)
+		("graph-algo", 0, "", graph_algo, string("gvc"))
+#ifndef KEEP_TARGET_ID
+		("kmer-ranking", 0, "Rank sequences based on kmer frequency in linear stage", kmer_ranking)
+#endif
+		;
 
-	parser.add(general).add(makedb).add(cluster).add(aligner).add(advanced).add(view_options).add(getseq_options).add(hidden_options).add(deprecated_options);
 	parser.store(argc, argv, command);
 
-	if (toppercent != 100.0 && max_alignments != 25)
+	if (toppercent != 100.0 && max_target_seqs_.present())
 		throw std::runtime_error("--top and --max-target-seqs are mutually exclusive.");
 
 	if (command == blastx && no_self_hits)
@@ -581,6 +693,7 @@ Config::Config(int argc, const char **argv, bool check_io)
 			break;
 		case Config::blastp:
 		case Config::blastx:
+        case Config::blastn:
 			if (database == "")
 				throw std::runtime_error("Missing parameter: database file (--db/-d)");
 			if (daa_file.length() > 0) {
@@ -614,7 +727,7 @@ Config::Config(int argc, const char **argv, bool check_io)
 		verbosity = 0;
 	else if (verbose)
 		verbosity = 2;
-	else if (((command == Config::view || command == blastx || command == blastp) && output_file == "")
+	else if (((command == Config::view || command == blastx || command == blastp || command == blastn) && output_file == "")
 		|| command == Config::version || command == getseq || command == fastq2fasta || command == regression_test)
 		verbosity = 0;
 	else
@@ -622,15 +735,15 @@ Config::Config(int argc, const char **argv, bool check_io)
 
 	switch (verbosity) {
 	case 0:
-		message_stream = Message_stream(false);
+		message_stream = MessageStream(false);
 		break;
 	case 3:
-		log_stream = Message_stream(true, !config.no_logfile);
-		verbose_stream = Message_stream(true, !config.no_logfile);
-		message_stream = Message_stream(true, !config.no_logfile);
+		log_stream = MessageStream(true, !config.no_logfile);
+		verbose_stream = MessageStream(true, !config.no_logfile);
+		message_stream = MessageStream(true, !config.no_logfile);
 		break;
 	case 2:
-		verbose_stream = Message_stream();
+		verbose_stream = MessageStream();
 	default:
 		;
 	}
@@ -659,16 +772,21 @@ Config::Config(int argc, const char **argv, bool check_io)
 #ifndef NDEBUG
 	verbose_stream << "Assertions enabled." << endl;
 #endif
-	set_option(threads_, std::thread::hardware_concurrency());
+	set_option(threads_, (int)std::thread::hardware_concurrency());
 
 	switch (command) {
 	case Config::makedb:
 	case Config::blastp:
 	case Config::blastx:
+    case Config::blastn:
 	case Config::view:
 	case Config::cluster:
+	case Config::DEEPCLUST:
 	case Config::regression_test:
 	case Config::compute_medoids:
+	case Config::CLUSTER_REASSIGN:
+	case Config::GREEDY_VERTEX_COVER:
+	case Config::RECLUSTER:
 		message_stream << "#CPU threads: " << threads_ << endl;
 	default:
 		;
@@ -676,22 +794,26 @@ Config::Config(int argc, const char **argv, bool check_io)
 
 	switch (command) {
 	case Config::blastp:
-	case Config::blastx:
+    case Config::blastx:
 	case Config::benchmark:
 	case Config::model_sim:
 	case Config::opt:
 	case Config::mask:
 	case Config::makedb:
 	case Config::cluster:
+	case Config::DEEPCLUST:
 	case Config::regression_test:
 	case Config::compute_medoids:
 	case Config::LIST_SEEDS:
+	case Config::CLUSTER_REASSIGN:
+	case Config::CLUSTER_REALIGN:
+	case Config::RECLUSTER:
 		if (frame_shift != 0 && command == Config::blastp)
 			throw std::runtime_error("Frameshift alignments are only supported for translated searches.");
 		if (query_range_culling && frame_shift == 0)
 			throw std::runtime_error("Query range culling is only supported in frameshift alignment mode (option -F).");
 		if (matrix_file == "") {
-			score_matrix = ScoreMatrix(to_upper_case(matrix), gap_open, gap_extend, frame_shift, stop_match_score, 0, cbs_matrix_scale);
+			score_matrix = ScoreMatrix(to_upper_case(matrix), gap_open, gap_extend, frame_shift, stop_match_score, 0, cbs_matrix_scale, mmseqs_compat);
 		}
 		else {
 			if (gap_open == -1 || gap_extend == -1)
@@ -702,23 +824,13 @@ Config::Config(int argc, const char **argv, bool check_io)
 				throw std::runtime_error("This value for --comp-based-stats is not supported when using a custom scoring matrix.");
 			score_matrix = ScoreMatrix(matrix_file, gap_open, gap_extend, stop_match_score, ScoreMatrix::Custom());
 		}
-		if(command == Config::cluster){
-			if(!Workflow::Cluster::ClusterRegistry::has(cluster_algo)){
-				ostream &header_out = command == Config::help ? cout : cerr;
-				header_out << "Unkown clustering algorithm: " << cluster_algo << endl;
-				header_out << "Available options are: " << endl;
-				for(string c_algo : Workflow::Cluster::ClusterRegistry::getKeys()){
-					header_out << "\t" << c_algo << "\t"<< Workflow::Cluster::ClusterRegistry::get(c_algo)->get_description() << endl;
-				}
-				throw std::runtime_error("Clustering algorithm not found.");
-			}
-		}
 		message_stream << "Scoring parameters: " << score_matrix << endl;
 		Masking::instance = unique_ptr<Masking>(new Masking(score_matrix));
 	}
 
-	if (command == Config::blastp || command == Config::blastx || command == Config::benchmark || command == Config::model_sim || command == Config::opt
-		|| command == Config::mask || command == Config::cluster || command == Config::compute_medoids || command == Config::regression_test) {
+	if (command == Config::blastp || command == Config::blastx || command == Config::blastn || command == Config::benchmark || command == Config::model_sim || command == Config::opt
+		|| command == Config::mask || command == Config::cluster || command == Config::compute_medoids || command == Config::regression_test || command == Config::CLUSTER_REASSIGN
+		|| command == Config::RECLUSTER || command == Config::DEEPCLUST) {
 		if (tmpdir == "")
 			tmpdir = extract_dir(output_file);
 
@@ -733,6 +845,7 @@ Config::Config(int argc, const char **argv, bool check_io)
 	}
 
 	sensitivity = Sensitivity::DEFAULT;
+	if (mode_faster) set_sens(Sensitivity::FASTER);
 	if (mode_fast) set_sens(Sensitivity::FAST);
 	if (mode_mid_sensitive) set_sens(Sensitivity::MID_SENSITIVE);
 	if (mode_sensitive) set_sens(Sensitivity::SENSITIVE);
@@ -741,11 +854,12 @@ Config::Config(int argc, const char **argv, bool check_io)
 	if (mode_ultra_sensitive) set_sens(Sensitivity::ULTRA_SENSITIVE);
 
 	algo = from_string<Algo>(algo_str);
-
+    dbtype = from_string<SequenceType>(dbstring);
 	Translator::init(query_gencode);
 
-	if (command == blastx)
+	if (command == blastx || command == blastn)
 		input_value_traits = nucleotide_traits;
+
 
 	if (command == help)
 		parser.print_help();
@@ -806,6 +920,9 @@ Config::Config(int argc, const char **argv, bool check_io)
 #endif
 #ifdef STRICT_BAND
 	log_stream << " STRICT_BAND";
+#endif
+#ifdef KEEP_TARGET_ID
+	log_stream << " KEEP_TARGET_ID";
 #endif
 	log_stream << endl;
 }

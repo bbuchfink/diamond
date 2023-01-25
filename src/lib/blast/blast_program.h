@@ -35,6 +35,8 @@
 #define ALGO_BLAST_CORE___BLAST_PROGRAM__H
 
 #include "ncbi_std.h"
+#include <stdbool.h>
+
 
 #define NCBI_XBLAST_EXPORT
 

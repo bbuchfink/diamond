@@ -26,6 +26,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <string>
 #include "../util/io/serializer.h"
 #include "../util/io/deserializer.h"
+#include "../basic/value.h"
 
 struct Rank {
 	Rank() :
@@ -58,8 +59,9 @@ private:
 struct TaxonomyNodes
 {
 
+	TaxonomyNodes(const std::string& file_name, const bool init_cache = false);
 	TaxonomyNodes(Deserializer &in, uint32_t db_build);
-	static void build(Serializer &out);
+	void save(Serializer &out);
 	unsigned get_parent(unsigned taxid) const
 	{
 		if (taxid >= parent_.size())
@@ -67,10 +69,10 @@ struct TaxonomyNodes
 		return parent_[taxid];
 	}
 	unsigned rank_taxid(unsigned taxid, Rank rank) const;
-	std::set<unsigned> rank_taxid(const std::vector<unsigned> &taxid, Rank rank) const;
+	std::set<TaxId> rank_taxid(const std::vector<TaxId> &taxid, Rank rank) const;
 	unsigned get_lca(unsigned t1, unsigned t2) const;
-	bool contained(unsigned query, const std::set<unsigned> &filter);
-	bool contained(const std::vector<unsigned> query, const std::set<unsigned> &filter);
+	bool contained(TaxId query, const std::set<TaxId> &filter);
+	bool contained(const std::vector<TaxId>& query, const std::set<TaxId> &filter);
 
 private:
 
@@ -79,8 +81,9 @@ private:
 		cached_[taxon_id] = true;
 		contained_[taxon_id] = contained;
 	}
+	void init_cache();
 
-	std::vector<uint32_t> parent_;
+	std::vector<TaxId> parent_;
 	std::vector<Rank> rank_;
 	std::vector<bool> cached_, contained_;
 

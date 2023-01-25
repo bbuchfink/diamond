@@ -37,7 +37,7 @@ static inline int32_t saturated_add(int32_t x, int32_t y) {
 }
 
 static inline size_t bit_length(size_t x) {
-	return ceil(log(x) / log(2)) + 1;
+	return (size_t)ceil(log(x) / log(2)) + 1;
 }
 
 static inline uint64_t next_power_of_2(double x)
@@ -59,4 +59,17 @@ bool next_combination(_it begin, _it end) {
 		}
 	}
 	return false;
+}
+
+template<typename I>
+I power(I x, I p)
+{
+	if (p == 0) return 1;
+	if (p == 1) return x;
+
+	const I t = power(x, p / 2);
+	if (p % 2 == 0)
+		return t * t;
+	else
+		return x * t * t;
 }

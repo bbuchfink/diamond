@@ -33,6 +33,8 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *****************************************************************************/
 
+// Modified by B. Buchfink
+
 #pragma once
 
 #include <algorithm>
@@ -51,11 +53,11 @@ template <class Cfg>
 void Sorter<Cfg>::moveEmptyBlocks(const diff_t my_begin, const diff_t my_end,
                                   const diff_t my_first_empty_block) {
     // Find range of buckets that start in this stripe
-    const int bucket_range_start = [&](int i) {
+    const typename Cfg::bucket_type bucket_range_start = [&](typename Cfg::bucket_type i) {
         while (Cfg::alignToNextBlock(bucket_start_[i]) < my_begin) ++i;
         return i;
     }(0);
-    const int bucket_range_end = [&](int i) {
+    const typename Cfg::bucket_type bucket_range_end = [&](typename Cfg::bucket_type i) {
         const auto num_buckets = num_buckets_;
         if (my_id_ == num_threads_ - 1) return num_buckets;
         while (i < num_buckets && Cfg::alignToNextBlock(bucket_start_[i]) < my_end) ++i;
@@ -87,7 +89,7 @@ void Sorter<Cfg>::moveEmptyBlocks(const diff_t my_begin, const diff_t my_end,
     const bool last_bucket_is_overlapping = bucket_end > my_end;
 
     // Case 1)
-    for (int b = bucket_range_start; b < bucket_range_end - last_bucket_is_overlapping; ++b) {
+    for (typename Cfg::bucket_type b = bucket_range_start; b < bucket_range_end - last_bucket_is_overlapping; ++b) {
         const auto start = Cfg::alignToNextBlock(bucket_start_[b]);
         const auto stop = Cfg::alignToNextBlock(bucket_start_[b + 1]);
         auto read = stop;
@@ -103,7 +105,7 @@ void Sorter<Cfg>::moveEmptyBlocks(const diff_t my_begin, const diff_t my_end,
 
     // Cases 2) and 3)
     if (last_bucket_is_overlapping) {
-        const int overlapping_bucket = bucket_range_end - 1;
+        const typename Cfg::bucket_type overlapping_bucket = bucket_range_end - 1;
         const auto bucket_start = Cfg::alignToNextBlock(bucket_start_[overlapping_bucket]);
 
         // If it is a very large bucket, other threads will also move blocks around in it (case 3)

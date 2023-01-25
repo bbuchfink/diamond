@@ -25,16 +25,17 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 using std::set;
 using std::endl;
+using std::vector;
 
-void Taxon_format::print_match(const HspContext &r, const Search::Config& cfg, TextBuffer &out)
+void Taxon_format::print_match(const HspContext &r, Output::Info &info)
 {
-	const vector<unsigned> taxons(cfg.db->taxids(r.subject_oid));
+	const vector<TaxId> taxons(info.db->taxids(r.subject_oid));
 	if (taxons.empty())
 		return;
 	evalue = std::min(evalue, r.evalue());
 	try {
-		for (vector<unsigned>::const_iterator i = taxons.begin(); i != taxons.end(); ++i)
-			taxid = cfg.taxon_nodes->get_lca(taxid, *i);
+		for (vector<TaxId>::const_iterator i = taxons.begin(); i != taxons.end(); ++i)
+			taxid = info.db->taxon_nodes().get_lca(taxid, *i);
 	}
 	catch (std::exception &) {
 		std::cerr << "Query=" << r.query_title << endl << "Subject=" << r.target_title << endl;
@@ -42,13 +43,13 @@ void Taxon_format::print_match(const HspContext &r, const Search::Config& cfg, T
 	}
 }
 
-void Taxon_format::print_query_epilog(TextBuffer &out, const char *query_title, bool unaligned, const Search::Config &params) const
+void Taxon_format::print_query_epilog(Output::Info &info) const
 {
-	out.write_until(query_title, Util::Seq::id_delimiters);
-	out << '\t' << taxid << '\t';
+	info.out.write_until(info.query.title, Util::Seq::id_delimiters);
+	info.out << '\t' << taxid << '\t';
 	if (taxid != 0)
-		out.print_e(evalue);
+		info.out.print_e(evalue);
 	else
-		out << '0';
-	out << '\n';
+		info.out << '0';
+	info.out << '\n';
 }

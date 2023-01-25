@@ -66,19 +66,19 @@ typedef enum {
 
 /** Translates between ncbi4na and blastna. The first four elements
  *	of this array match ncbi2na. */
-NCBI_XBLAST_EXPORT extern const Uint1 NCBI4NA_TO_BLASTNA[];
+NCBI_XBLAST_EXPORT extern const int NCBI4NA_TO_BLASTNA[];
 
 /** Translates between blastna and ncbi4na. */
-NCBI_XBLAST_EXPORT extern const Uint1 BLASTNA_TO_NCBI4NA[];
+NCBI_XBLAST_EXPORT extern const int BLASTNA_TO_NCBI4NA[];
 
 /** Translates between iupacna and blastna. */
-NCBI_XBLAST_EXPORT extern const Uint1 IUPACNA_TO_BLASTNA[];
+NCBI_XBLAST_EXPORT extern const int IUPACNA_TO_BLASTNA[];
 
 /** Translates between iupacna and ncbi4na. */
-NCBI_XBLAST_EXPORT extern const Uint1 IUPACNA_TO_NCBI4NA[];
+NCBI_XBLAST_EXPORT extern const int IUPACNA_TO_NCBI4NA[];
 
 /** Translates between ncbieaa and ncbistdaa. */
-NCBI_XBLAST_EXPORT extern const Uint1 AMINOACID_TO_NCBISTDAA[];
+NCBI_XBLAST_EXPORT extern const int AMINOACID_TO_NCBISTDAA[];
 
 /** Translates between ncbieaa and ncbistdaa. */
 NCBI_XBLAST_EXPORT extern const char NCBISTDAA_TO_AMINOACID[];
@@ -100,9 +100,9 @@ NCBI_XBLAST_EXPORT extern const char NCBI4NA_TO_IUPACNA[];
 #define NCBI4NA_SEQ_CODE 4  /**< == Seq_code_ncbi4na */	
 
 /** Sentinel byte for protein sequences */
-NCBI_XBLAST_EXPORT extern const Uint1 kProtSentinel;
+NCBI_XBLAST_EXPORT extern const int kProtSentinel;
 /** Sentinel nibble for nucleotide sequences */
-NCBI_XBLAST_EXPORT extern const Uint1 kNuclSentinel;
+NCBI_XBLAST_EXPORT extern const int kNuclSentinel;
 
 #ifdef __cplusplus
 }

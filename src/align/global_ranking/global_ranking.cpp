@@ -30,7 +30,7 @@ using std::vector;
 
 namespace Extension { namespace GlobalRanking {
 
-uint16_t recompute_overflow_scores(FlatArray<SeedHit>::ConstIterator begin, FlatArray<SeedHit>::ConstIterator end, size_t query_id, uint32_t target_id, const Search::Config& cfg) {
+uint16_t recompute_overflow_scores(FlatArray<SeedHit>::DataConstIterator begin, FlatArray<SeedHit>::DataConstIterator end, size_t query_id, uint32_t target_id, const Search::Config& cfg) {
 	const auto query = cfg.query->seqs()[query_id];
 	const auto target = cfg.target->seqs()[target_id];
 	int score = 0;
@@ -55,11 +55,11 @@ std::vector<Extension::Match> ranking_list(size_t query_id, std::vector<TargetSc
 	if (overflows > 0)
 		std::sort(begin, end); // should also sort by target block id
 
-	size_t n = 0;
+	int64_t n = 0;
 	vector<Match> r;
-	r.reserve(std::min(size_t(end - begin), config.global_ranking_targets));
+	r.reserve(std::min(end - begin, config.global_ranking_targets));
 	for (auto i = begin; i < end && n < config.global_ranking_targets; ++i, ++n) {
-		r.emplace_back(target_block_ids[i->target], Sequence(), Stats::TargetMatrix(), i->score);
+		r.emplace_back(target_block_ids[i->target], Sequence(), ::Stats::TargetMatrix(), i->score);
 	}
 	return r;
 }

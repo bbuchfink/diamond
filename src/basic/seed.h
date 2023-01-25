@@ -16,9 +16,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#ifndef SEED_H_
-#define SEED_H_
-
+#pragma once
 #include <stdint.h>
 #include "const.h"
 #include "../util/hash_function.h"
@@ -26,16 +24,21 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "value.h"
 #include "../stats/score_matrix.h"
 
-typedef uint64_t Packed_seed;
+using PackedSeed = uint64_t;
+#ifdef LONG_SEEDS
+using SeedOffset = uint64_t;
+#else
+using SeedOffset = uint32_t;
+#endif
 
-inline unsigned seed_partition(Packed_seed s)
+inline unsigned seed_partition(PackedSeed s)
 {
 	return (unsigned)(s & (Const::seedp-1));
 }
 
-inline unsigned seed_partition_offset(Packed_seed s)
+inline SeedOffset seed_partition_offset(PackedSeed s)
 {
-	return (unsigned)(s >> Const::seedp_bits);
+	return (SeedOffset)(s >> Const::seedp_bits);
 }
 
 struct Hashed_seed
@@ -43,7 +46,7 @@ struct Hashed_seed
 	Hashed_seed()
 	{}
 	explicit Hashed_seed(uint64_t seed):
-		hash(murmur_hash()(seed))
+		hash(MurmurHash()(seed))
 	{}
 	unsigned partition() const
 	{
@@ -97,4 +100,3 @@ private:
 	Letter data_[Const::max_seed_weight];
 };
 
-#endif /* SEED_H_ */

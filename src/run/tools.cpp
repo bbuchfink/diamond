@@ -30,7 +30,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../data/sequence_set.h"
 #include "../util/seq_file_format.h"
 #include "../data/queries.h"
-#include "../data/load_seqs.h"
 #include "../data/sequence_file.h"
 #include "../masking/masking.h"
 #include "../dp/dp.h"
@@ -39,7 +38,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../data/dmnd/dmnd.h"
 #include "../util/util.h"
 #include "../util/sequence/sequence.h"
-#include "../basic/translate.h"
+#include "../util/sequence/translate.h"
 
 using std::thread;
 using std::chrono::high_resolution_clock;
@@ -48,10 +47,13 @@ using std::cout;
 using std::endl;
 using std::cerr;
 using std::unique_ptr;
+using std::runtime_error;
+using std::vector;
+using std::string;
 
 void get_seq()
 {
-	SequenceFile* db_file = SequenceFile::auto_create(config.database);
+	SequenceFile* db_file = SequenceFile::auto_create({ config.database });
 	db_file->get_seq();
 	delete db_file;
 }
@@ -83,46 +85,6 @@ void random_seqs()
 	}
 	out.close();
 	delete ref_seqs;
-}
-
-void sort_file()
-{
-	TextInputFile f(config.single_query_file());
-	vector<Pair<unsigned, string> > data;
-	while (f.getline(), !f.eof()) {
-		unsigned query;
-		sscanf(f.line.c_str(), "%u", &query);
-		data.push_back(Pair<unsigned, string>(query, f.line));
-	}
-	std::stable_sort(data.begin(), data.end());
-	for (vector<Pair<unsigned, string> >::const_iterator i = data.begin(); i != data.end(); ++i)
-		cout << i->second << endl;
-	f.close();
-}
-
-void db_stat()
-{
-	DatabaseFile db_file(config.database);
-	Block* ref_seqs = db_file.load_seqs(std::numeric_limits<size_t>::max());
-	const auto& r = ref_seqs->seqs();
-	cout << "Sequences = " << r.size() << endl;
-
-	size_t letters = 0;
-	vector<size_t> letter_freq(20);
-	for (size_t i = 0; i < r.size(); ++i) {
-		const Sequence seq = r[i];
-		for (Loc j = 0; j < seq.length(); ++j) {
-			if (seq[j] < 20) {
-				++letters;
-				++letter_freq[(int)seq[j]];
-			}
-		}
-	}
-	cout << "Frequencies = ";
-	for (vector<size_t>::const_iterator i = letter_freq.begin(); i != letter_freq.end(); ++i)
-		cout << (double)*i / letters << ',';
-	cout << endl;
-
 }
 
 void run_masker()
@@ -203,7 +165,7 @@ void read_sim()
 
 void info()
 {
-	vector<string> arch_flags;
+	vector<std::string> arch_flags;
 #ifdef __SSE2__
 	arch_flags.push_back("sse2");
 #endif
@@ -218,14 +180,14 @@ void info()
 #endif
 
 	cout << "Architecture flags: ";
-	for (vector<string>::const_iterator i = arch_flags.begin(); i != arch_flags.end(); ++i)
+	for (vector<std::string>::const_iterator i = arch_flags.begin(); i != arch_flags.end(); ++i)
 		cout << *i << ' ';
 	cout << endl;
 }
 
 void pairwise_worker(TextInputFile *in, std::mutex *input_lock, std::mutex *output_lock) {
 	FASTA_format format;
-	string id_r, id_q;
+	std::string id_r, id_q;
 	vector<Letter> ref, query;
 
 	while(true) {
@@ -239,10 +201,10 @@ void pairwise_worker(TextInputFile *in, std::mutex *input_lock, std::mutex *outp
 			return;
 		}
 		input_lock->unlock();
-		const string ir = Util::Seq::seqid(id_r.c_str(), false), iq = Util::Seq::seqid(id_q.c_str(), false);
+		const std::string ir = Util::Seq::seqid(id_r.c_str(), false), iq = Util::Seq::seqid(id_q.c_str(), false);
 		Hsp hsp(true);
 		//smith_waterman(Sequence(query), Sequence(ref), hsp);
-		HspContext context(hsp, 0, TranslatedSequence(query), "", 0, 0, nullptr, 0, 0, Sequence());
+		HspContext context(hsp, 0, 0, TranslatedSequence(query), "", 0, 0, nullptr, 0, 0, Sequence());
 		HspContext::Iterator it = context.begin();
 		std::stringstream ss;
 		while (it.good()) {
@@ -267,7 +229,7 @@ void pairwise()
 	TextInputFile in(config.single_query_file());
 	std::mutex input_lock, output_lock;
 	vector<thread> threads;
-	for (unsigned i = 0; i < config.threads_; ++i)
+	for (int i = 0; i < config.threads_; ++i)
 		threads.emplace_back(pairwise_worker, &in, &input_lock, &output_lock);
 	for (auto &t : threads)
 		t.join();

@@ -20,6 +20,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <string>
 #include <random>
+#ifdef WITH_BLASTDB
+#include "../data/blastdb/blastdb.h"
+#endif
 #include "../util/system/system.h"
 #include "../util/io/output_file.h"
 #include "../util/io/input_file.h"
@@ -27,9 +30,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../data/reference.h"
 #include "../util/io/input_stream_buffer.h"
 #include "../basic/config.h"
-#ifdef WITH_BLASTDB
-#include "../data/blastdb/blastdb.h"
-#endif
 #include "../util/data_structures/deque.h"
 #define _REENTRANT
 #include "../lib/ips4o/ips4o.hpp"
@@ -98,14 +98,14 @@ static void load_seqs() {
 		config.chunk_size = 2.0;
 	task_timer timer;
 	timer.go("Opening the database");
-	SequenceFile* db = SequenceFile::auto_create(config.database, SequenceFile::Flags::NONE);
+	SequenceFile* db = SequenceFile::auto_create({ config.database }, SequenceFile::Flags::NONE);
 	timer.finish();
 	message_stream << "Type: " << to_string(db->type()) << endl;
 	Block* ref;
 
 	while (true) {
 		timer.go("Loading sequences");
-		if ((ref = db->load_seqs((size_t)(config.chunk_size * 1e9), true, nullptr))->empty())
+		if ((ref = db->load_seqs((size_t)(config.chunk_size * 1e9)))->empty())
 			return;
 		size_t n = ref->seqs().letters() + ref->ids().letters();
 		message_stream << "Throughput: " << (double)n / (1 << 20) / timer.milliseconds() * 1000 << " MB/s" << endl;
@@ -136,7 +136,7 @@ static void load_raw() {
 static void load_mmap() {
 	static const size_t BUF = 2 * GIGABYTES;
 	task_timer timer("Opening the database");
-	SequenceFile* db = SequenceFile::auto_create(config.database, SequenceFile::Flags::NONE);
+	SequenceFile* db = SequenceFile::auto_create({ config.database }, SequenceFile::Flags::NONE);
 	timer.finish();
 	message_stream << "Type: " << to_string(db->type()) << endl;
 	size_t n = db->sequence_count(), l = 0;
@@ -156,13 +156,13 @@ static void load_mmap() {
 
 static void load_mmap_mt() {
 	task_timer timer("Opening the database");
-	SequenceFile* db = SequenceFile::auto_create(config.database, SequenceFile::Flags::NONE);
+	SequenceFile* db = SequenceFile::auto_create({ config.database }, SequenceFile::Flags::NONE);
 	timer.finish();
 	message_stream << "Type: " << to_string(db->type()) << endl;
 	size_t n = db->sequence_count();
 	std::atomic_size_t i(0);
 	vector<std::thread> threads;
-	for (size_t j = 0; j < config.threads_; ++j)
+	for (int j = 0; j < config.threads_; ++j)
 		threads.emplace_back([&i, n, db] {
 		size_t k, l = 0;
 		vector<Letter> v;
@@ -181,11 +181,11 @@ static void load_mmap_mt() {
 void load_blast_seqid() {
 	const size_t N = 100000;
 	task_timer timer("Opening the database");
-	SequenceFile* db = SequenceFile::auto_create(config.database, SequenceFile::Flags::NONE);
+	SequenceFile* db = SequenceFile::auto_create({ config.database }, SequenceFile::Flags::NONE);
 	timer.finish();
 	message_stream << "Type: " << to_string(db->type()) << endl;
 	std::mt19937 g;
-	std::uniform_int_distribution<int> dist(0, db->sequence_count() - 1);
+	std::uniform_int_distribution<int> dist(0, (int)db->sequence_count() - 1);
 	size_t n = 0;
 	timer.go("Loading seqids");
 	for (size_t i = 0; i < N; ++i) {
@@ -200,13 +200,13 @@ void load_blast_seqid() {
 
 void load_blast_seqid_lin() {
 	task_timer timer("Opening the database");
-	SequenceFile* db = SequenceFile::auto_create(config.database, SequenceFile::Flags::NONE);
+	SequenceFile* db = SequenceFile::auto_create({ config.database }, SequenceFile::Flags::NONE);
 	timer.finish();
 	message_stream << "Type: " << to_string(db->type()) << endl;
 	size_t n = 0;
-	const size_t count = db->sequence_count();
+	const int count = (int)db->sequence_count();
 	timer.go("Loading seqids");
-	for (size_t i = 0; i < count; ++i) {
+	for (int i = 0; i < count; ++i) {
 		auto l = ((BlastDB*)db)->db_->GetSeqIDs(i);
 		n += l.size();
 		/*if (i % 1000 == 0)

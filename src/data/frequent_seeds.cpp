@@ -30,6 +30,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 using std::endl;
 using std::atomic;
+using std::vector;
 
 const double Frequent_seeds::hash_table_factor = 1.3;
 Frequent_seeds frequent_seeds;
@@ -93,7 +94,7 @@ void Frequent_seeds::build(unsigned sid, const SeedPartitionRange &range, Double
 	vector<Sd> ref_sds(range.size()), query_sds(range.size());
 	atomic<unsigned> seedp(range.begin());
 	vector<std::thread> threads;
-	for (unsigned i = 0; i < config.threads_; ++i)
+	for (int i = 0; i < config.threads_; ++i)
 		threads.emplace_back(compute_sd, &seedp, query_seed_hits, ref_seed_hits, &ref_sds, &query_sds);
 	for (auto &t : threads)
 		t.join();
@@ -109,7 +110,7 @@ void Frequent_seeds::build(unsigned sid, const SeedPartitionRange &range, Double
 }
 
 void Frequent_seeds::clear_masking(SequenceSet& seqs) {
-	for (size_t i = 0; i < seqs.size(); ++i) {
+	for (BlockId i = 0; i < seqs.size(); ++i) {
 		const size_t len = seqs.length(i);
 		Letter* p = seqs.ptr(i), *end = p + len;
 		for (; p < end; ++p)

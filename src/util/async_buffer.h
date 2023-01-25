@@ -1,6 +1,6 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2020 Max Planck Society for the Advancement of Science e.V.
+Copyright (C) 2013-2021 Max Planck Society for the Advancement of Science e.V.
                         Benjamin Buchfink
                         Eberhard Karls Universitaet Tuebingen
 
@@ -43,8 +43,10 @@ struct AsyncBuffer
 {
 
 	typedef std::vector<T> Vector;
+	using Key = typename SerializerTraits<T>::Key;
+	static const int64_t ENTRY_SIZE = (int64_t)sizeof(T);
 
-	AsyncBuffer(size_t input_count, const std::string &tmpdir, unsigned bins, const SerializerTraits<T>& traits) :
+	AsyncBuffer(Key input_count, const std::string &tmpdir, int bins, const SerializerTraits<T>& traits) :
 		bins_(bins),
 		bin_size_((input_count + bins_ - 1) / bins_),
 		input_count_(input_count),
@@ -54,7 +56,7 @@ struct AsyncBuffer
 	{
 		log_stream << "Async_buffer() " << input_count << ',' << bin_size_ << std::endl;
 		count_ = new std::atomic_size_t[bins];
-		for (unsigned i = 0; i < bins; ++i) {
+		for (int i = 0; i < bins; ++i) {
 			tmp_file_.push_back(new AsyncFile());
 			count_[i] = (size_t)0;
 		}
@@ -64,14 +66,14 @@ struct AsyncBuffer
 		delete[] count_;
 	}
 
-	size_t begin(size_t bin) const
+	Key begin(int bin) const
 	{
-		return bin*bin_size_;
+		return (Key)bin*bin_size_;
 	}
 
-	size_t end(size_t bin) const
+	Key end(int bin) const
 	{
-		return std::min((bin + 1)*bin_size_, input_count_);
+		return std::min(Key(bin + 1)*bin_size_, input_count_);
 	}
 
 	struct Iterator : public Writer<T>
@@ -82,14 +84,14 @@ struct AsyncBuffer
 			parent_(parent)
 		{
 			ser_.reserve(parent.bins_);
-			for (unsigned i = 0; i < parent.bins_; ++i) {
+			for (int i = 0; i < parent.bins_; ++i) {
 				ser_.emplace_back(buffer_[i], parent.traits_);
 				out_.push_back(&parent.tmp_file_[i]);
 			}
 		}
 		virtual Iterator& operator=(const T& x) override
 		{
-			const unsigned bin = ser_.front().traits.key(x) / parent_.bin_size_;
+			const int bin = int(ser_.front().traits.key(x) / parent_.bin_size_);
 			if (SerializerTraits<T>::is_sentry(x)) {
 				if (buffer_[bin].size() >= buffer_size)
 					flush(bin);
@@ -100,14 +102,14 @@ struct AsyncBuffer
 			ser_[bin] << x;
 			return *this;
 		}
-		void flush(unsigned bin)
+		void flush(int bin)
 		{
 			out_[bin]->write(buffer_[bin].data(), buffer_[bin].size());
 			buffer_[bin].clear();
 		}
 		virtual ~Iterator()
 		{
-			for (unsigned bin = 0; bin < parent_.bins_; ++bin) {
+			for (int bin = 0; bin < parent_.bins_; ++bin) {
 				flush(bin);
 				parent_.count_[bin] += count_[bin];
 			}
@@ -121,8 +123,9 @@ struct AsyncBuffer
 		AsyncBuffer &parent_;
 	};
 
-	void load(size_t max_size) {
-		auto worker = [this](size_t end) {
+	void load(int64_t max_size) {
+		max_size = std::max(max_size, (int64_t)1);
+		auto worker = [this](int end) {
 			for (; bins_processed_ < end; ++bins_processed_)
 				load_bin(*data_next_, bins_processed_);
 		};
@@ -130,8 +133,9 @@ struct AsyncBuffer
 			data_next_ = nullptr;
 			return;
 		}
-		size_t size = count_[bins_processed_], end = bins_processed_ + 1, current_size, disk_size = tmp_file_[bins_processed_].tell();
-		while (end < bins_ && (size + (current_size = count_[end])) * sizeof(T) < max_size) {
+		int64_t size = count_[bins_processed_], current_size, disk_size = tmp_file_[bins_processed_].tell();
+		int end = bins_processed_ + 1;
+		while (end < bins_ && (size + (current_size = count_[end])) * ENTRY_SIZE < max_size) {
 			size += current_size;
 			disk_size += tmp_file_[end].tell();
 			++end;
@@ -145,21 +149,25 @@ struct AsyncBuffer
 		load_worker_ = new std::thread(worker, end);
 	}
 
-	std::tuple<std::vector<T>*, size_t, size_t> retrieve() {
+	std::tuple<std::vector<T>*, Key, Key> retrieve() {
 		if (data_next_ != nullptr) {
 			load_worker_->join();
 			delete load_worker_;
 		}
-		return std::tuple<std::vector<T>*, size_t, size_t> { data_next_, input_range_next_.first, input_range_next_.second };
+		return std::tuple<std::vector<T>*, Key, Key> { data_next_, input_range_next_.first, input_range_next_.second };
 	}
 
-	unsigned bins() const
+	int bins() const
 	{
 		return bins_;
 	}
 
 	size_t total_disk_size() {
 		return total_disk_size_;
+	}
+
+	int64_t bin_size(int i) const {
+		return count_[i];
 	}
 
 private:
@@ -177,13 +185,14 @@ private:
 		f.close_and_delete();
 	}
 
-	const unsigned bins_;
-	const size_t bin_size_, input_count_;
+	const int bins_;
+	const Key bin_size_, input_count_;
 	const SerializerTraits<T> traits_;
-	size_t bins_processed_, total_disk_size_;
+	int bins_processed_;
+	int64_t total_disk_size_;
 	PtrVector<AsyncFile> tmp_file_;
 	std::atomic_size_t *count_;
-	std::pair<size_t, size_t> input_range_next_;
+	std::pair<Key, Key> input_range_next_;
 	std::vector<T>* data_next_;
 	std::thread* load_worker_;
 

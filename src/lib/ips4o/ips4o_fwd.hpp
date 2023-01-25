@@ -94,13 +94,13 @@ class Sorter {
 
     iterator begin_;
     iterator end_;
-    int num_buckets_;
+	typename Cfg::bucket_type num_buckets_;
     int my_id_;
     int num_threads_;
 
     static inline int computeLogBuckets(diff_t n);
 
-    std::pair<int, bool> buildClassifier(iterator begin, iterator end, Classifier& classifier);
+    std::pair<typename Cfg::bucket_type, bool> buildClassifier(iterator begin, iterator end, Classifier& classifier);
 
     template <bool kEqualBuckets> FLATTEN
     diff_t classifyLocally(iterator my_begin, iterator my_end);
@@ -111,24 +111,24 @@ class Sorter {
 
     void moveEmptyBlocks(diff_t my_begin, diff_t my_end, diff_t my_first_empty_block);
 
-    inline int computeOverflowBucket();
+    inline typename Cfg::bucket_type computeOverflowBucket();
 
     template <bool kEqualBuckets, bool kIsParallel>
-    inline int classifyAndReadBlock(int read_bucket);
+    inline typename Cfg::bucket_type classifyAndReadBlock(typename Cfg::bucket_type read_bucket);
 
     template <bool kEqualBuckets, bool kIsParallel>
-    inline int swapBlock(diff_t max_off, int dest_bucket, bool current_swap);
+    inline typename Cfg::bucket_type swapBlock(diff_t max_off, typename Cfg::bucket_type dest_bucket, bool current_swap);
 
     template <bool kEqualBuckets, bool kIsParallel>
     void permuteBlocks();
 
-    inline std::pair<int, diff_t> saveMargins(int last_bucket);
+    inline std::pair<typename Cfg::bucket_type, diff_t> saveMargins(typename Cfg::bucket_type last_bucket);
 
-    void writeMargins(int first_bucket, int last_bucket, int overflow_bucket,
-                      int swap_bucket, diff_t in_swap_buffer);
+    void writeMargins(typename Cfg::bucket_type first_bucket, typename Cfg::bucket_type last_bucket, typename Cfg::bucket_type overflow_bucket,
+        typename Cfg::bucket_type swap_bucket, diff_t in_swap_buffer);
 
     template <bool kIsParallel>
-    std::pair<int, bool> partition(iterator begin, iterator end, std::atomic_ptrdiff_t* bucket_start,
+    std::pair<typename Cfg::bucket_type, bool> partition(iterator begin, iterator end, std::atomic_ptrdiff_t* bucket_start,
                                    SharedData* shared, int my_id, int num_threads);
 
     inline void processSmallTasks(iterator begin, SharedData& shared);

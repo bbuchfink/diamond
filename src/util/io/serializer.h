@@ -16,9 +16,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#ifndef SERIALIZER_H_
-#define SERIALIZER_H_
-
+#pragma once
 #include <string>
 #include <set>
 #include <vector>
@@ -34,9 +32,24 @@ struct Serializer : public Consumer
 
 	Serializer(StreamEntity *buffer, int flags = 0);
 
-	Serializer& operator<<(int x)
+	Serializer& operator<<(int32_t x)
 	{
-		write(x);
+		if (varint_)
+			write_varint((uint32_t)x, *this);
+		else
+			write(big_endian_byteswap(x));
+		return *this;
+	}
+
+	Serializer& operator<<(long long x)
+	{
+		write(big_endian_byteswap(x));
+		return *this;
+	}
+
+	Serializer& operator<<(long x)
+	{
+		write(big_endian_byteswap(x));
 		return *this;
 	}
 
@@ -74,10 +87,26 @@ struct Serializer : public Consumer
 		return *this;
 	}
 
+	Serializer& operator<<(const std::vector<int32_t> &v)
+	{
+		*this << (unsigned)v.size();
+		for (std::vector<int32_t>::const_iterator i = v.begin(); i < v.end(); ++i)
+			*this << *i;
+		return *this;
+	}
+
 	Serializer& operator<<(const std::set<unsigned> &v)
 	{
 		*this << (unsigned)v.size();
 		for (std::set<unsigned>::const_iterator i = v.begin(); i != v.end(); ++i)
+			*this << *i;
+		return *this;
+	}
+
+	Serializer& operator<<(const std::set<int32_t>& v)
+	{
+		*this << (unsigned)v.size();
+		for (std::set<int32_t>::const_iterator i = v.begin(); i != v.end(); ++i)
 			*this << *i;
 		return *this;
 	}
@@ -130,7 +159,7 @@ struct Serializer : public Consumer
 	void set(int flag);
 	void unset(int flag);
 	void write_raw(const char *ptr, size_t count);
-	void seek(size_t pos);
+	void seek(int64_t p, int origin = SEEK_SET);
 	void rewind();
 	size_t tell();
 	void close();
@@ -155,5 +184,3 @@ protected:
 	bool varint_;
 
 };
-
-#endif

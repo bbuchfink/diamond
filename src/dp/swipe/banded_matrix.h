@@ -27,12 +27,14 @@ using std::pair;
 namespace DP { namespace BandedSwipe {
 namespace DISPATCH_ARCH {
 
-template<typename _sv>
+template<typename Sv>
 struct Matrix
 {
+	using Score = typename ::DISPATCH_ARCH::ScoreTraits<Sv>::Score;
+	static constexpr int CHANNELS = ::DISPATCH_ARCH::ScoreTraits<Sv>::CHANNELS;
 	struct ColumnIterator
 	{
-		ColumnIterator(_sv* hgap_front, _sv* score_front) :
+		ColumnIterator(Sv* hgap_front, Sv* score_front) :
 			hgap_ptr_(hgap_front),
 			score_ptr_(score_front)
 		{ }
@@ -40,19 +42,19 @@ struct Matrix
 		{
 			++hgap_ptr_; ++score_ptr_;
 		}
-		inline _sv hgap() const
+		inline Sv hgap() const
 		{
 			return *(hgap_ptr_ + 1);
 		}
-		inline _sv diag() const
+		inline Sv diag() const
 		{
 			return *score_ptr_;
 		}
-		inline void set_hgap(const _sv& x)
+		inline void set_hgap(const Sv& x)
 		{
 			*hgap_ptr_ = x;
 		}
-		inline void set_score(const _sv& x)
+		inline void set_score(const Sv& x)
 		{
 			*score_ptr_ = x;
 		}
@@ -67,16 +69,55 @@ struct Matrix
 		}
 		void set_hstat(std::nullptr_t) {}
 		inline void set_zero() {}
-		_sv *hgap_ptr_, *score_ptr_;
+		Sv *hgap_ptr_, *score_ptr_;
 	};
-	Matrix(int band, size_t cols):
+	Matrix(int band, size_t cols, Sv init = Sv()) :
 		band_(band)
 	{
 		hgap_.resize(band + 1);
 		score_.resize(band);
-		std::fill(hgap_.begin(), hgap_.end(), _sv());
-		std::fill(score_.begin(), score_.end(), _sv());
-		
+		std::fill(hgap_.begin(), hgap_.end(), init);
+		std::fill(score_.begin(), score_.end(), init);
+
+	}
+	void init_channel_diag(int channel, int offset) {
+		Score* ptr = (Score*)score_.begin();
+		ptr[offset * CHANNELS + channel] = 0;
+	}
+	void init_channel_nw(int channel, int offset, ::Score gap_open, ::Score gap_extend) {
+		Score* ptr = (Score*)score_.begin();
+		ptr[offset * CHANNELS + channel] = 0;
+		//Score s = -gap_open;
+		for (int i = offset - 1; i >= 0; --i) {
+			//s -= gap_extend;
+			//ptr[i * CHANNELS + channel] = s;
+			ptr[i * CHANNELS + channel] = std::numeric_limits<Score>::min();
+		}
+		//s = -gap_open;
+		for (int i = offset + 1; i < (int)score_.size(); ++i) {
+			//s -= gap_extend;
+			//ptr[i * CHANNELS + channel] = s;
+			ptr[i * CHANNELS + channel] = std::numeric_limits<Score>::min();
+		}
+		ptr = (Score*)hgap_.begin();
+		for (size_t i = 0; i < hgap_.size(); ++i)
+			ptr[i * CHANNELS + channel] = std::numeric_limits<Score>::min();
+	}
+	void init_channels_nw(int offset, ::Score gap_open, ::Score gap_extend) {
+		Score* ptr = (Score*)score_.begin();
+		std::fill(&ptr[offset * CHANNELS], &ptr[(offset+1) * CHANNELS], 0);
+		Score s = -gap_open;
+		for (int i = offset - 1; i >= 0; --i) {
+			s -= gap_extend;
+			std::fill(&ptr[i * CHANNELS], &ptr[(i + 1) * CHANNELS], s);
+		}
+		s = -gap_open;
+		for (int i = offset + 1; i < (int)score_.size(); ++i) {
+			s -= gap_extend;
+			std::fill(&ptr[i * CHANNELS], &ptr[(i + 1) * CHANNELS], s);
+		}
+		ptr = (Score*)hgap_.begin();
+		std::fill(ptr, ptr + hgap_.size() * CHANNELS, std::numeric_limits<Score>::min());
 	}
 	inline ColumnIterator begin(int offset, int col)
 	{
@@ -85,13 +126,13 @@ struct Matrix
 	int band() const {
 		return band_;
 	}
-	_sv operator[](int i) const {
+	Sv operator[](int i) const {
 		return score_[i];
 	}
 #ifdef __APPLE__
-	MemBuffer<_sv> hgap_, score_;
+	MemBuffer<Sv> hgap_, score_;
 #else
-	static thread_local MemBuffer<_sv> hgap_, score_;
+	static thread_local MemBuffer<Sv> hgap_, score_;
 #endif
 private:
 	int band_;	
@@ -319,7 +360,7 @@ struct TracebackVectorMatrix
 
 	struct TracebackIterator
 	{
-		TracebackIterator(const TraceMask *mask, size_t band, int i, int j, size_t channel) :
+		TracebackIterator(const TraceMask *mask, size_t band, int i, int j, const int channel) :
 			band_(band),
 			mask_(mask),
 			channel_mask_vgap(TraceMask::vmask(channel)),
@@ -366,7 +407,7 @@ struct TracebackVectorMatrix
 		int i, j;
 	};
 
-	TracebackIterator traceback(size_t col, int i0, int band_i, int j, int query_len, size_t channel) const
+	TracebackIterator traceback(size_t col, int i0, int band_i, int j, int query_len, const int channel) const
 	{
 		return TracebackIterator(&trace_mask_[col*band_ + band_i], band_, i0 + band_i, j, channel);
 	}
@@ -405,10 +446,10 @@ private:
 };
 
 #ifndef __APPLE__
-template<typename _sv> thread_local MemBuffer<_sv> Matrix<_sv>::hgap_;
-template<typename _sv> thread_local MemBuffer<_sv> Matrix<_sv>::score_;
-template<typename _sv> thread_local MemBuffer<_sv> TracebackVectorMatrix<_sv>::hgap_;
-template<typename _sv> thread_local MemBuffer<_sv> TracebackVectorMatrix<_sv>::score_;
+template<typename Sv> thread_local MemBuffer<Sv> Matrix<Sv>::hgap_;
+template<typename Sv> thread_local MemBuffer<Sv> Matrix<Sv>::score_;
+template<typename Sv> thread_local MemBuffer<Sv> TracebackVectorMatrix<Sv>::hgap_;
+template<typename Sv> thread_local MemBuffer<Sv> TracebackVectorMatrix<Sv>::score_;
 #endif
 
 template<typename Sv, bool Traceback>

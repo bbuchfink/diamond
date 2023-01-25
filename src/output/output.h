@@ -33,6 +33,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/io/consumer.h"
 #include "output_format.h"
 #include "../run/config.h"
+#include "../util/data_structures/reorder_queue.h"
 
 inline unsigned get_length_flag(unsigned x)
 {
@@ -68,62 +69,37 @@ inline uint8_t get_segment_flag(const HspContext &match)
 
 struct IntermediateRecord
 {
-	void read(BinaryBuffer::Iterator& f);
-	interval absolute_query_range() const;
+	void read(BinaryBuffer::Iterator& f, const OutputFormat* output_format);
+	unsigned frame(Loc query_source_len, int align_mode) const;
+	Interval absolute_query_range() const;
 	static size_t write_query_intro(TextBuffer& buf, unsigned query_id);
 	static void finish_query(TextBuffer& buf, size_t seek_pos);
-	static void write(TextBuffer& buf, const Hsp& match, unsigned query_id, size_t target_dict_id, size_t target_oid);
+	static void write(TextBuffer& buf, const Hsp& match, unsigned query_id, DictId target, size_t target_oid, const OutputFormat* output_format);
 	static void write(TextBuffer& buf, uint32_t target_block_id, int score, const Search::Config& cfg);
 	static void finish_file(Consumer& f);
 	static bool stats_mode(const HspValues v) {
 		return !flag_any(v, HspValues::TRANSCRIPT) && v != HspValues::NONE;
 	}
-	static const uint32_t FINISHED = UINT32_MAX;
-	uint32_t score, query_id, target_dict_id, target_oid, query_begin, subject_begin, query_end, subject_end, identities, mismatches, positives, length, gap_openings, gaps;
+	static const uint32_t FINISHED;
+	BlockId query_id;
+	DictId target_dict_id;
+	OId target_oid;
+	uint32_t score, query_begin, subject_begin, query_end, subject_end, identities, mismatches, positives, length, gap_openings, gaps;
 	double evalue;
 	uint8_t flag;
 	Packed_transcript transcript;
 };
 
-void join_blocks(unsigned ref_blocks, Consumer &master_out, const PtrVector<TempFile> &tmp_file, Search::Config& cfg, SequenceFile &db_file,
-					const vector<string> tmp_file_names = vector<string>());
+void join_blocks(int64_t ref_blocks, Consumer &master_out, const PtrVector<TempFile> &tmp_file, Search::Config& cfg, SequenceFile &db_file,
+					const std::vector<std::string> tmp_file_names = std::vector<std::string>());
 
-struct OutputSink
-{
-	OutputSink(size_t begin, Consumer *f) :
-		f_(f),
-		begin_(begin),
-		next_(begin),
-		size_(0),
-		max_size_(0)
-	{}
-	void push(size_t n, TextBuffer *buf);
-	size_t size() const
-	{
-		return size_;
+struct OutputWriter {
+	void operator()(TextBuffer* buf) {
+		file_->consume(buf->data(), buf->size());
 	}
-	size_t max_size() const
-	{
-		return max_size_;
-	}
-	static OutputSink& get()
-	{
-		return *instance;
-	}
-	size_t next() const
-	{
-		return next_;
-	}
-	size_t begin() const {
-		return begin_;
-	}
-	static std::unique_ptr<OutputSink> instance;
-private:
-	void flush(TextBuffer *buf);
-	std::mutex mtx_;
-	Consumer* const f_;
-	std::map<size_t, TextBuffer*> backlog_;
-	size_t begin_, next_, size_, max_size_;
+	Consumer* file_;
 };
+
+extern std::unique_ptr<ReorderQueue<TextBuffer*, OutputWriter>> output_sink;
 
 void heartbeat_worker(size_t qend, const Search::Config* cfg);

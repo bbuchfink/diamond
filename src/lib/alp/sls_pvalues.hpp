@@ -209,6 +209,12 @@ namespace Sls {
 		bool &area_is_1_flag_,
 		bool compute_only_area_=false);
 
+		double log_area(const ALP_set_of_parameters& par_,
+			bool blast_,
+			double y_,
+			double m_,
+			double n_);
+
 		static void get_P_error_using_splitting_method(
 		const ALP_set_of_parameters &par_,
 		bool blast_,

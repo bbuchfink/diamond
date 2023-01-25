@@ -40,6 +40,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../stats/cbs.h"
 #include "../util/profiler.h"
 #include "../dp/swipe/cell_update.h"
+#include "../dp/pfscan/pfscan.h"
+#include "../dp/pfscan/simd.h"
+#include "../dp/swipe/anchored.h"
+#include "../dp/swipe/config.h"
 
 void benchmark_io();
 
@@ -179,12 +183,45 @@ void benchmark_transpose() {
 #endif
 
 #ifdef __SSE4_1__
+
+void mt_swipe(const Sequence& s1, const Sequence& s2) {
+	//constexpr int CHANNELS = 16;
+	constexpr int CHANNELS = ::DISPATCH_ARCH::ScoreTraits<ScoreVector<int8_t, SCHAR_MIN>>::CHANNELS;
+	static const size_t n = 100000llu;
+	DP::Targets targets;
+	for (size_t i = 0; i < CHANNELS; ++i)
+		targets[0].emplace_back(s2, s2.length(), 0, 0, Interval(), 0, 0, 0);
+	Bias_correction cbs(s1);
+	Statistics stat;
+	Sequence query = s1;
+	query.len_ = std::min(query.len_, (Loc)255);
+	auto dp_size = (n * query.length() * s2.length() * CHANNELS);
+	DP::Params params{
+		query, "", Frame(0), query.length(), cbs.int8.data(), DP::Flags::FULL_MATRIX, HspValues(), stat, nullptr
+	};
+
+	auto f = [&]() {
+		for (size_t i = 0; i < n; ++i) {
+			//volatile list<Hsp> v = ::DP::BandedSwipe::ARCH_SSE4_1::swipe(targets, params);
+			volatile list<Hsp> v = ::DP::BandedSwipe::swipe(targets, params);
+		}
+	};
+	using std::thread;
+	vector<thread> th;
+	high_resolution_clock::time_point t1 = high_resolution_clock::now();
+	for (int i = 0; i < config.threads_; ++i)
+		th.emplace_back(f);
+	for (auto& t : th)
+		t.join();
+	cout << "MT_SWIPE (int8_t):\t\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / dp_size * 1000 << " ps/Cell" << endl;
+}
+
 void swipe(const Sequence&s1, const Sequence&s2) {
 	constexpr int CHANNELS = ::DISPATCH_ARCH::ScoreTraits<ScoreVector<int8_t, SCHAR_MIN>>::CHANNELS;
 	static const size_t n = 1000llu;
 	DP::Targets targets;
 	for (size_t i = 0; i < 32; ++i)
-		targets[0].emplace_back(s2, s2.length(), 0, 0, 0, 0);
+		targets[0].emplace_back(s2, s2.length(), 0, 0, Interval(), 0, 0, 0);
 	Bias_correction cbs(s1);
 	Statistics stat;
 	Sequence query = s1;
@@ -193,7 +230,7 @@ void swipe(const Sequence&s1, const Sequence&s2) {
 	config.comp_based_stats = 4;
 	Stats::TargetMatrix matrix(Stats::composition(s1), s1.length(), s2);
 	DP::Params params{
-		query, Frame(0), query.length(), cbs.int8.data(), DP::Flags::FULL_MATRIX, HspValues(), stat
+		query, "", Frame(0), query.length(), cbs.int8.data(), DP::Flags::FULL_MATRIX, HspValues(), stat, nullptr
 	};
 
 	high_resolution_clock::time_point t1 = high_resolution_clock::now();
@@ -201,6 +238,14 @@ void swipe(const Sequence&s1, const Sequence&s2) {
 		volatile list<Hsp> v = ::DP::BandedSwipe::swipe(targets, params);
 	}
 	cout << "SWIPE (int8_t):\t\t\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / dp_size * 1000 << " ps/Cell" << endl;
+
+	t1 = high_resolution_clock::now();
+	targets[1] = targets[0];
+	targets[0].clear();
+	for (size_t i = 0; i < n; ++i) {
+		volatile list<Hsp> v = ::DP::BandedSwipe::swipe(targets, params);
+	}
+	cout << "SWIPE (int16_t):\t\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / dp_size * 1000 << " ps/Cell" << endl;
 
 	t1 = high_resolution_clock::now();
 	for (size_t i = 0; i < n; ++i) {
@@ -234,13 +279,13 @@ void banded_swipe(const Sequence &s1, const Sequence &s2) {
 	DP::Targets targets;
 	//config.traceback_mode = TracebackMode::SCORE_BUFFER;
 	for (size_t i = 0; i < 8; ++i)
-		targets[1].emplace_back(s2, s2.length(), -32, 32, 0, 0);
+		targets[1].emplace_back(s2, s2.length(), -32, 32, Interval(), 0, 0, 0);
 	static const size_t n = 10000llu;
 	//static const size_t n = 1llu;
 	Statistics stat;
 	Bias_correction cbs(s1);
 	DP::Params params{
-		s1, Frame(0), s1.length(), cbs.int8.data(), DP::Flags::NONE, HspValues(), stat
+		s1, "", Frame(0), s1.length(), cbs.int8.data(), DP::Flags::NONE, HspValues(), stat, nullptr
 	};
 	high_resolution_clock::time_point t1 = high_resolution_clock::now();
 	for (size_t i = 0; i < n; ++i) {
@@ -254,6 +299,7 @@ void banded_swipe(const Sequence &s1, const Sequence &s2) {
 	}
 	cout << "Banded SWIPE (int16_t):\t\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * s1.length() * 65 * 16) * 1000 << " ps/Cell" << endl;
 
+	params.v = HspValues::TRANSCRIPT;
 	t1 = high_resolution_clock::now();
 	for (size_t i = 0; i < n; ++i) {
 		volatile auto out = ::DP::BandedSwipe::swipe(targets, params);
@@ -261,12 +307,103 @@ void banded_swipe(const Sequence &s1, const Sequence &s2) {
 	cout << "Banded SWIPE (int16_t, CBS, TB):" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * s1.length() * 65 * 16) * 1000 << " ps/Cell" << endl;
 }
 
+#if ARCH_ID == 2
+
+void anchored_swipe(const Sequence& s1, const Sequence& s2) {
+	static const size_t n = 10000llu;
+	const auto s1_ = s1.subseq(0, 128);
+	const auto s2_ = s2.subseq(0, 128);
+	LongScoreProfile<int16_t> prof = DP::make_profile16(s1_, nullptr, 0);
+	LongScoreProfile<int8_t> prof8 = DP::make_profile8(s1_, nullptr, 0);
+	auto v = prof.pointers(0);
+	auto v8 = prof8.pointers(0);
+	vector<DP::AnchoredSwipe::Target<int8_t>> targets;
+	vector<LongScoreProfile<int8_t>> profiles(32, prof8);
+	vector<vector<const int8_t*>> pointers;
+	Statistics stats;
+	DP::AnchoredSwipe::Options options{ v.data(), v.data() };
+	for (int i = 0; i < 32; ++i) {
+		pointers.push_back(profiles[i].pointers(0));
+		//targets.push_back(DP::AnchoredSwipe::Target<int8_t> {s2_, -32, 32, { pointers.back().data(), nullptr}, s1_.length() });
+		//targets.push_back(DP::AnchoredSwipe::Target<int8_t>(s2_, -32, 32, pointers[0].data(), s1_.length(), 0, false));
+		targets.push_back(DP::AnchoredSwipe::Target<int8_t>(s2_, -32, 32, 0, s1_.length(), 0, false));
+	}
+	const int cols = round_up(s2_.length(), DP::AnchoredSwipe::ARCH_AVX2::L);
+
+	high_resolution_clock::time_point t1 = high_resolution_clock::now();
+	for (size_t i = 0; i < n; ++i) {
+		DP::AnchoredSwipe::ARCH_AVX2::smith_waterman<ScoreVector<int8_t, 0>>(targets.data(), 32, options);
+		volatile auto x = targets[0].score;
+	}
+	cout << "Anchored Swipe (int8_t):\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * cols * 64 * 32) * 1000 << " ps/Cell" << endl;
+
+	vector<DP::AnchoredSwipe::Target<int16_t>> targets16;
+	for (int i = 0; i < 16; ++i) {
+		//targets16.push_back(DP::AnchoredSwipe::Target<int16_t>(s2_, -32, 32, v.data(), s1_.length(), 0, false));
+		targets16.push_back(DP::AnchoredSwipe::Target<int16_t>(s2_, -32, 32, 0, s1_.length(), 0, false));
+	}
+	t1 = high_resolution_clock::now();
+	for (size_t i = 0; i < n; ++i) {
+		DP::AnchoredSwipe::ARCH_AVX2::smith_waterman<ScoreVector<int16_t, 0>>(targets16.data(), 16, options);
+		volatile auto x = targets[0].score;
+	}
+	cout << "Anchored Swipe (int16_t):\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * cols * 64 * 16) * 1000 << " ps/Cell" << endl;
+
+	DP::Targets dp_targets;
+	Anchor a(DiagonalSegment(0, 0, 0, 0), 0, 0, 0, 0, 0);
+	for (int i = 0; i < 16; ++i)
+		dp_targets[0].emplace_back(s2_, s2_.length(), -32, 32, Interval(), 0, 0, s1_.length(), nullptr, DpTarget::CarryOver(), a);
+	DP::AnchoredSwipe::Config cfg{ s1_, nullptr, 0, stats };
+
+	t1 = high_resolution_clock::now();
+	for (size_t i = 0; i < n; ++i) {
+		DP::BandedSwipe::anchored_swipe(dp_targets, cfg);
+		volatile auto x = targets[0].score;
+	}
+	cout << "Anchored Swipe2 (int16_t):\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * 128 * 64 * 16) * 1000 << " ps/Cell" << endl;
+}
+
+//#endif
+#endif
+
+void prefix_scan(const Sequence& s1, const Sequence& s2) {
+	static const size_t n = 100000llu;
+	const auto s1_ = s1.subseq(0, 150);
+	const auto s2_ = s2.subseq(0, 150);
+	Statistics stat;
+	Bias_correction cbs(s1_);
+	LongScoreProfile<int16_t> prof = DP::make_profile16(s1_, nullptr, 0);
+	LongScoreProfile<int8_t> prof8 = DP::make_profile8(s1_, nullptr, 0);
+	auto v = prof.pointers(0);
+	auto v8 = prof8.pointers(0);
+	DP::PrefixScan::Config cfg{ s1_,s2_, "", "", -32, 32, Interval(), v.data(), nullptr, v8.data(), nullptr, stat, 1000, 60, 0 };
+	
+	high_resolution_clock::time_point t1 = high_resolution_clock::now();
+	for (size_t i = 0; i < n; ++i) {
+		volatile auto out = DP::PrefixScan::align16(cfg);
+	}
+	cout << "Prefix Scan (int16_t):\t\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (s2_.length() * 64 * n) * 1000 << " ps/Cell" << endl;
+	//statistics += stat;
+	//statistics.print();
+	//statistics.reset();
+
+	cfg.score_bias = 0;
+	stat.reset();
+	t1 = high_resolution_clock::now();
+	for (size_t i = 0; i < n; ++i) {
+		volatile auto out = DP::PrefixScan::align8(cfg);
+	}
+	cout << "Prefix Scan (int8_t):\t\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (s2_.length() * 64 * n) * 1000 << " ps/Cell" << endl;
+	statistics += stat;
+	//statistics.print();
+}
+
 #ifdef __SSE4_1__
 void diag_scores(const Sequence& s1, const Sequence& s2) {
 	static const size_t n = 100000llu;
 	high_resolution_clock::time_point t1 = high_resolution_clock::now();
 	Bias_correction cbs(s1);
-	LongScoreProfile p(s1, cbs);
+	LongScoreProfile<int8_t> p = DP::make_profile8(s1, cbs.int8.data(), 0);
 	int scores[128];
 	for (size_t i = 0; i < n; ++i) {
 		DP::scan_diags128(p, s2, -32, 0, (int)s2.length(), scores);
@@ -343,9 +480,19 @@ void benchmark() {
 	s3 = Sequence::from_string("ttfgrcavksnqagggtrshdwwpcqlrldvlrqfqpsqnplggdfdyaeafqsldyeavkkdiaalmtesqdwwpadfgnygglfvrmawhsagtyramdgrggggmgqqrfaplnswpdnqnldkarrliwpikqkygnkiswadlmlltgnvalenmgfktlgfgggradtwqsdeavywgaettfvpqgndvrynnsvdinaradklekplaathmgliyvnpegpngtpdpaasakdireafgrmgmndtetvaliagghafgkthgavkgsnigpapeaadlgmqglgwhnsvgdgngpnqmtsgleviwtktptkwsngyleslinnnwtlvespagahqweavngtvdypdpfdktkfrkatmltsdlalindpeylkisqrwlehpeeladafakawfkllhrdlgpttrylgpevp"); // d3ut2a1
 	s4 = Sequence::from_string("lvhvasvekgrsyedfqkvynaialklreddeydnyigygpvlvrlawhisgtwdkhdntggsyggtyrfkkefndpsnaglqngfkflepihkefpwissgdlfslggvtavqemqgpkipwrcgrvdtpedttpdngrlpdadkdagyvrtffqrlnmndrevvalmgahalgkthlknsgyegpggaannvftnefylnllnedwklekndanneqwdsksgymmlptdysliqdpkylsivkeyandqdkffkdfskafekllengitfpkdapspfifktleeqgl"); // d2euta_
 
-	Sequence ss1 = Sequence(s1).subseq(34, s1.size());
-	Sequence ss2 = Sequence(s2).subseq(33, s2.size());
+	Sequence ss1 = Sequence(s1).subseq(34, (Loc)s1.size());
+	Sequence ss2 = Sequence(s2).subseq(33, (Loc)s2.size());
 
+#ifdef __SSE4_1__
+	//mt_swipe(s3, s4);
+#endif
+#if ARCH_ID == 2
+//#ifdef __SSE4_1__
+	anchored_swipe(s1, s2);
+	//minimal_sw(s1, s2);
+//#endif
+#endif
+	prefix_scan(s1, s2);
 #ifdef __SSE4_1__
 	swipe(s3, s4);
 	diag_scores(s1, s2);

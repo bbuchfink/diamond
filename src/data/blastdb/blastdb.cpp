@@ -22,12 +22,14 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <objmgr/scope.hpp>
 #include <objmgr/util/create_defline.hpp>
 #include <objtools/blast/blastdb_format/blastdb_dataextract.hpp>
+#include <objtools/blast/seqdb_reader/impl/seqdbtax.hpp>
 #include <corelib/ncbiutil.hpp>
 #include "../util/io/text_input_file.h"
 #include "blastdb.h"
 #include "../../util/string/tokenizer.h"
 #include "../../util/system/system.h"
 #include "../basic/config.h"
+#include "../../util/util.h"
 
 using std::cout;
 using std::endl;
@@ -56,7 +58,7 @@ static void load_seq_data(CBioseq& bioseq, CBioseq_Handle bioseq_handle, _it it)
 	if (v.GetCoding() != CSeq_data::e_Iupacaa)
 		throw std::runtime_error("Invalid sequence coding in BLAST database.");
 	
-	for (size_t i = 0; i < v.size(); ++i) {
+	for (ncbi::TSeqPos i = 0; i < v.size(); ++i) {
 		const auto l = v[i] & 31;
 		const Letter s = IUPACAA_TO_STD[l];
 		if (s == -1)
@@ -84,8 +86,8 @@ list<CRef<CSeq_id>>::const_iterator best_id(const list<CRef<CSeq_id>>& ids) {
 	return min;
 }
 
-BlastDB::BlastDB(const std::string& file_name, Metadata metadata, Flags flags) :
-	SequenceFile(Type::BLAST, Alphabet::NCBI, flags),
+BlastDB::BlastDB(const std::string& file_name, Metadata metadata, Flags flags, const ValueTraits& value_traits) :
+	SequenceFile(Type::BLAST, Alphabet::NCBI, flags, FormatFlags::TITLES_LAZY | FormatFlags::SEEKABLE | FormatFlags::LENGTH_LOOKUP, value_traits),
 	file_name_(file_name),	
 	db_(new CSeqDBExpert(file_name, CSeqDB::eProtein)),
 	oid_(0),
@@ -101,6 +103,22 @@ BlastDB::BlastDB(const std::string& file_name, Metadata metadata, Flags flags) :
 			throw std::runtime_error("Accession file not found. BLAST databases require preprocessing using this command line: diamond prepdb -d DATABASE_PATH");
 	if (config.multiprocessing)
 		throw std::runtime_error("Multiprocessing mode is not compatible with BLAST databases.");
+
+	if (flag_any(metadata, Metadata::TAXON_NODES)) {
+		const string path = extract_dir(SeqDB_ResolveDbPathNoExtension(db_->GetDBNameList(), 'p'));
+		if (path.empty())
+			throw std::runtime_error("Could not find BLAST database path.");
+		try {
+			taxon_nodes_.reset(new TaxonomyNodes(path + dir_separator + "nodes.dmp", true));
+		}
+		catch (FileOpenException&) {
+			throw std::runtime_error("Taxonomy nodes file (nodes.dmp) was not found in the BLAST database directory.");
+		}
+	}
+}
+
+int64_t BlastDB::file_count() const {
+	return 1;
 }
 
 void BlastDB::init_seqinfo_access()
@@ -114,14 +132,19 @@ void BlastDB::init_seq_access()
 
 void BlastDB::seek_chunk(const Chunk& chunk)
 {
+	throw OperationNotSupported();
 }
 
-size_t BlastDB::tell_seq() const
+OId BlastDB::tell_seq() const
 {
 	return oid_;
 }
 
-SeqInfo BlastDB::read_seqinfo()
+bool BlastDB::eof() const {
+	return oid_ == sequence_count();
+}
+
+SequenceFile::SeqInfo BlastDB::read_seqinfo()
 {
 	if (oid_ >= db_->GetNumOIDs()) {
 		++oid_;
@@ -143,7 +166,7 @@ size_t BlastDB::id_len(const SeqInfo& seq_info, const SeqInfo& seq_info_next)
 	if(flag_any(flags_, Flags::FULL_TITLES))
 		return full_id(*db_->GetBioseq((BlastOid)seq_info.pos), nullptr, long_seqids_, true).length();
 	else {
-		return (*best_id(db_->GetSeqIDs(seq_info.pos)))->GetSeqIdString(true).length();
+		return (*best_id(db_->GetSeqIDs((BlastOid)seq_info.pos)))->GetSeqIdString(true).length();
 	}
 }
 
@@ -165,11 +188,11 @@ void BlastDB::read_seq_data(Letter* dst, size_t len, size_t& pos, bool seek)
 void BlastDB::read_id_data(const int64_t oid, char* dst, size_t len)
 {
 	if (flag_any(flags_, Flags::FULL_TITLES)) {
-		const string id = full_id(*db_->GetBioseq(oid), nullptr, long_seqids_, true);
+		const string id = full_id(*db_->GetBioseq((BlastOid)oid), nullptr, long_seqids_, true);
 		std::copy(id.begin(), id.begin() + len, dst);
 	}
 	else {
-		const string id = (*best_id(db_->GetSeqIDs(oid)))->GetSeqIdString(true);
+		const string id = (*best_id(db_->GetSeqIDs((BlastOid)oid)))->GetSeqIdString(true);
 		std::copy(id.begin(), id.end(), dst);
 	}
 	dst[len] = '\0';
@@ -180,10 +203,10 @@ void BlastDB::skip_id_data()
 	//++oid_seqdata_;
 }
 
-std::string BlastDB::seqid(size_t oid) const
+std::string BlastDB::seqid(OId oid) const
 {
 	if (flag_any(flags_, Flags::FULL_TITLES)) {
-		return full_id(*db_->GetBioseq(oid), nullptr, long_seqids_, true);
+		return full_id(*db_->GetBioseq((int)oid), nullptr, long_seqids_, true);
 	}
 	else {
 		if (oid >= acc_.size())
@@ -192,24 +215,24 @@ std::string BlastDB::seqid(size_t oid) const
 	}
 }
 
-std::string BlastDB::dict_title(size_t dict_id, const size_t ref_block) const
+std::string BlastDB::dict_title(DictId dict_id, const size_t ref_block) const
 {
-	if (dict_id >= dict_oid_[dict_block(ref_block)].size())
+	if (dict_id >= (DictId)dict_oid_[dict_block(ref_block)].size())
 		throw std::runtime_error("Dictionary not loaded.");
 	return seqid(dict_oid_[dict_block(ref_block)][dict_id]);
 }
 
-size_t BlastDB::dict_len(size_t dict_id, const size_t ref_block) const
+Loc BlastDB::dict_len(DictId dict_id, const size_t ref_block) const
 {
-	if (dict_id >= dict_oid_[dict_block(ref_block)].size())
+	if (dict_id >= (int64_t)dict_oid_[dict_block(ref_block)].size())
 		throw std::runtime_error("Dictionary not loaded.");
-	return db_->GetSeqLength(dict_oid_[dict_block(ref_block)][dict_id]);
+	return db_->GetSeqLength((int)dict_oid_[dict_block(ref_block)][dict_id]);
 }
 
-std::vector<Letter> BlastDB::dict_seq(size_t dict_id, const size_t ref_block) const
+std::vector<Letter> BlastDB::dict_seq(DictId dict_id, const size_t ref_block) const
 {
 	const size_t b = dict_block(ref_block);
-	if (dict_id >= dict_oid_[b].size())
+	if (dict_id >= (DictId)dict_oid_[b].size())
 		throw std::runtime_error("Dictionary not loaded.");
 	vector<Letter> v;
 	seq_data(dict_oid_[b][dict_id], v);
@@ -217,12 +240,12 @@ std::vector<Letter> BlastDB::dict_seq(size_t dict_id, const size_t ref_block) co
 	return v;
 }
 
-size_t BlastDB::sequence_count() const
+int64_t BlastDB::sequence_count() const
 {
 	return db_->GetNumOIDs();
 }
 
-size_t BlastDB::sparse_sequence_count() const
+int64_t BlastDB::sparse_sequence_count() const
 {
 	return db_->GetNumSeqs();	
 }
@@ -242,7 +265,7 @@ int BlastDB::program_build_version() const
 	return 0;
 }
 
-void BlastDB::read_seq(std::vector<Letter>& seq, std::string& id)
+bool BlastDB::read_seq(std::vector<Letter>& seq, std::string& id, std::vector<char>* quals)
 {
 	id.clear();
 	CRef<CBioseq> bioseq = db_->GetBioseq(oid_);
@@ -255,21 +278,12 @@ void BlastDB::read_seq(std::vector<Letter>& seq, std::string& id)
 	load_seq_data(*bioseq, bioseq_handle, std::back_inserter(seq));
 	
 	++oid_;
+	return true;
 }
 
 SequenceFile::Metadata BlastDB::metadata() const
 {
 	return Metadata();
-}
-
-TaxonomyNodes* BlastDB::taxon_nodes()
-{
-	return nullptr;
-}
-
-std::vector<string>* BlastDB::taxon_scientific_names()
-{
-	return nullptr;
 }
 
 int BlastDB::build_version()
@@ -279,18 +293,20 @@ int BlastDB::build_version()
 
 void BlastDB::create_partition_balanced(size_t max_letters)
 {
+	throw OperationNotSupported();
 }
 
 void BlastDB::save_partition(const std::string& partition_file_name, const std::string& annotation)
 {
+	throw OperationNotSupported();
 }
 
-size_t BlastDB::get_n_partition_chunks()
+int BlastDB::get_n_partition_chunks()
 {
-	return size_t();
+	throw OperationNotSupported();
 }
 
-void BlastDB::set_seqinfo_ptr(size_t i)
+void BlastDB::set_seqinfo_ptr(int64_t i)
 {
 	oid_ = (int)i;
 }
@@ -341,25 +357,30 @@ BitVector* BlastDB::filter_by_accession(const std::string& file_name)
 	return v;
 }
 
-BitVector* BlastDB::filter_by_taxonomy(const std::string& include, const std::string& exclude, TaxonomyNodes& nodes)
-{
-	return nullptr;
-}
-
 std::string BlastDB::file_name()
 {
 	return file_name_;
 }
 
-std::vector<unsigned> BlastDB::taxids(size_t oid) const
+std::vector<TaxId> BlastDB::taxids(size_t oid) const
 {
-	return std::vector<unsigned>();
+	vector<TaxId> v;
+	db_->GetTaxIDs((BlastOid)oid, v);
+	return v;
+}
+
+string BlastDB::taxon_scientific_name(TaxId taxid) const {
+	SSeqDBTaxInfo info;
+	if(CSeqDBTaxInfo::GetTaxNames(taxid, info))
+		return info.scientific_name;
+	else
+		return std::to_string(taxid);
 }
 
 void BlastDB::seq_data(size_t oid, std::vector<Letter>& dst) const
 {
 	const char* buf;
-	const int db_len = db_->GetSequence(oid, &buf);
+	const int db_len = db_->GetSequence((int)oid, &buf);
 	dst.clear();
 	dst.resize(db_len);
 	std::copy(buf, buf + db_len, dst.data());
@@ -368,7 +389,7 @@ void BlastDB::seq_data(size_t oid, std::vector<Letter>& dst) const
 
 size_t BlastDB::seq_length(size_t oid) const
 {
-	return db_->GetSeqLength(oid);
+	return db_->GetSeqLength((int)oid);
 }
 
 const char* BlastDB::ACCESSION_FIELD = "#accession*";
@@ -412,16 +433,13 @@ void BlastDB::end_random_access(bool dictionary)
 		free_dictionary();
 }
 
-std::vector<int> BlastDB::accession_to_oid(const std::string& acc) const
+std::vector<OId> BlastDB::accession_to_oid(const std::string& acc) const
 {
-	vector<int> out;
-	db_->AccessionToOids(acc, out);
-	return out;
-}
-
-SequenceFile::LoadTitles BlastDB::load_titles()
-{
-	return LoadTitles::LAZY;
+	vector<int> r;
+	db_->AccessionToOids(acc, r);
+	if(r.empty())
+		throw runtime_error("Accession not found in database: " + acc);
+	return vector<OId>(r.begin(), r.end());
 }
 
 const BitVector* BlastDB::builtin_filter() {
@@ -440,41 +458,12 @@ const BitVector* BlastDB::builtin_filter() {
 
 BlastDB::~BlastDB()
 {
+	close();
 }
 
-void BlastDB::write_dict_entry(size_t block, size_t oid, size_t len, const char* id, const Letter* seq, const double self_aln_score)
-{
-	*dict_file_ << (uint32_t)oid;
-	if (flag_any(flags_, Flags::SELF_ALN_SCORES))
-		*dict_file_ << self_aln_score;
-}
-
-bool BlastDB::load_dict_entry(InputFile& f, const size_t ref_block)
-{
-	uint32_t oid;
-	try {
-		f >> oid;
-	}
-	catch (EndOfStream&) {
-		return false;
-	}
-	const int64_t b = dict_block(ref_block);
-	dict_oid_[b].push_back(oid);
-	if (flag_any(flags_, Flags::SELF_ALN_SCORES)) {
-		double self_aln_score;
-		f >> self_aln_score;
-		dict_self_aln_score_[b].push_back(self_aln_score);
-	}
-	return true;
-}
-
-void BlastDB::reserve_dict(const size_t ref_blocks)
-{
-}
-
-void prep_blast_db() {
+void BlastDB::prep_blast_db(const string& path) {
 	vector<string> paths;
-	CSeqDB::FindVolumePaths(config.database, CSeqDB::eProtein, paths);
+	CSeqDB::FindVolumePaths(path, CSeqDB::eProtein, paths);
 	for (const string& db : paths) {
 		message_stream << "Processing volume: " << db << endl;
 		CSeqDB volume(db, CSeqDB::eProtein);
@@ -503,4 +492,12 @@ void prep_blast_db() {
 		message_stream << "Number of accessions: " << id_count << endl;
 		out.close();
 	}
+}
+
+void BlastDB::init_write() {
+	throw OperationNotSupported();
+}
+
+void BlastDB::write_seq(const Sequence& seq, const std::string& id) {
+	throw OperationNotSupported();
 }

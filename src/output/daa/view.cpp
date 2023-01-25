@@ -28,7 +28,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "daa_file.h"
 #include "../util/binary_buffer.h"
 #include "../output_format.h"
-#include "../util/task_queue.h"
+#include "../legacy/util/task_queue.h"
 #include "../stats/score_matrix.h"
 #include "../data/taxonomy.h"
 #include "daa_write.h"
@@ -37,6 +37,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 using std::thread;
 using std::unique_ptr;
 using std::endl;
+using std::vector;
 
 const unsigned view_buf_size = 32;
 
@@ -81,35 +82,36 @@ struct View_fetcher
 	DAA_file &daa;
 };
 
-void view_query(DAA_query_record &r, TextBuffer &out, Output_format &format, const Search::Config& cfg)
+void view_query(DAA_query_record &r, TextBuffer &out, OutputFormat &format, const Search::Config& cfg)
 {
-	unique_ptr<Output_format> f(format.clone());
+	unique_ptr<OutputFormat> f(format.clone());
 	size_t seek_pos;
-	if (format == Output_format::daa)
+	Output::Info info{ SeqInfo { (BlockId)r.query_num, (OId)r.query_num, r.query_name.c_str(), "", (Loc)r.query_len(), r.query_seq.source(), Sequence()}, false, nullptr, out, {} };
+	if (format == OutputFormat::daa)
 		seek_pos = write_daa_query_record(out, r.query_name.c_str(), r.query_seq.source());
 	else
-		f->print_query_intro(r.query_num, r.query_name.c_str(), (unsigned)r.query_len(), out, false, cfg);
+		f->print_query_intro(info);
 	
 	DAA_query_record::Match_iterator i = r.begin();
 	const unsigned top_score = i.good() ? i->score : 0;
 	for (; i.good(); ++i) {
 		if (i->frame > 2 && config.forwardonly)
 			continue;
-		if (!config.output_range(i->hit_num, i->score, top_score))
+		if (!config.output_range(i->hit_num, i->score, top_score, cfg.max_target_seqs))
 			break;
-		if (format == Output_format::daa)
+		if (format == OutputFormat::daa)
 			write_daa_record(out, *i, i->subject_id);
 		else
-			f->print_match(i->context(), cfg, out);
+			f->print_match(i->context(), info);
 	}
-	if (format == Output_format::daa)
+	if (format == OutputFormat::daa)
 		finish_daa_query_record(out, seek_pos);
 	else
-		f->print_query_epilog(out, r.query_name.c_str(), false, cfg);
+		f->print_query_epilog(info);
 	
 }
 
-void view_worker(DAA_file *daa, View_writer *writer, Task_queue<TextBuffer, View_writer> *queue, Output_format *format, Search::Config* cfg)
+void view_worker(DAA_file *daa, View_writer *writer, TaskQueue<TextBuffer, View_writer> *queue, OutputFormat *format, Search::Config* cfg)
 {
 	
 	try {
@@ -147,12 +149,12 @@ void view_daa()
 	cfg.db_seqs = daa.db_seqs();
 	cfg.db_letters = daa.db_letters();
 
-	init_output();
+	init_output(cfg.max_target_seqs);
 	taxonomy.init();
 
 	timer.go("Generating output");
 	View_writer writer;
-	if (*output_format == Output_format::daa)
+	if (*cfg.output_format == OutputFormat::daa)
 		init_daa(*writer.f_);
 
 	BinaryBuffer buf;
@@ -160,26 +162,26 @@ void view_daa()
 	if (daa.read_query_buffer(buf, query_num)) {
 		DAA_query_record r(daa, buf, query_num);
 		TextBuffer out;
-		view_query(r, out, *output_format, cfg);
+		view_query(r, out, *cfg.output_format, cfg);
 
-		output_format->print_header(*writer.f_, daa.mode(), daa.score_matrix(), daa.gap_open_penalty(), daa.gap_extension_penalty(), daa.evalue(), r.query_name.c_str(), (unsigned)r.query_len());
+		cfg.output_format->print_header(*writer.f_, daa.mode(), daa.score_matrix(), daa.gap_open_penalty(), daa.gap_extension_penalty(), daa.evalue(), r.query_name.c_str(), (unsigned)r.query_len());
 		writer(out);
 
 		vector<thread> threads;
-		Task_queue<TextBuffer, View_writer> queue(3 * config.threads_, writer);
-		for (size_t i = 0; i < config.threads_; ++i)
-			threads.emplace_back(view_worker, &daa, &writer, &queue, output_format.get(), &cfg);
+		TaskQueue<TextBuffer, View_writer> queue(3 * config.threads_, writer);
+		for (int i = 0; i < config.threads_; ++i)
+			threads.emplace_back(view_worker, &daa, &writer, &queue, cfg.output_format.get(), &cfg);
 		for (auto &t : threads)
 			t.join();
 	}
 	else {
 		TextBuffer out;
-		output_format->print_header(*writer.f_, daa.mode(), daa.score_matrix(), daa.gap_open_penalty(), daa.gap_extension_penalty(), daa.evalue(), "", 0);
+		cfg.output_format->print_header(*writer.f_, daa.mode(), daa.score_matrix(), daa.gap_open_penalty(), daa.gap_extension_penalty(), daa.evalue(), "", 0);
 		writer(out);
 	}
 
-	if (*output_format == Output_format::daa)
+	if (*cfg.output_format == OutputFormat::daa)
 		finish_daa(*writer.f_, daa);
 	else
-		output_format->print_footer(*writer.f_);
+		cfg.output_format->print_footer(*writer.f_);
 }

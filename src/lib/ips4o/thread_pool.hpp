@@ -33,6 +33,8 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *****************************************************************************/
 
+// Modified by B. Buchfink
+
 #pragma once
 #ifdef _OPENMP
 #include <omp.h>
@@ -133,9 +135,9 @@ class StdThreadPool {
 
     Sync& sync() { return impl_.get()->sync_; }
 
-    int numThreads() const { return impl_.get()->threads_.size() + 1; }
+    int numThreads() const { return (int)impl_.get()->threads_.size() + 1; }
 
-    static int maxNumThreads() { return std::thread::hardware_concurrency(); }
+    static int maxNumThreads() { return (int)std::thread::hardware_concurrency(); }
 
  private:
     struct Impl {

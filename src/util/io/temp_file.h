@@ -16,9 +16,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#ifndef TEMP_FILE_H_
-#define TEMP_FILE_H_
-
+#pragma once
 #include <utility>
 #include "output_file.h"
 
@@ -42,5 +40,3 @@ private:
 #endif
 
 };
-
-#endif /* TEMP_FILE_H_ */

@@ -1,6 +1,6 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2021 Max Planck Society for the Advancement of Science e.V.
+Copyright (C) 2013-2022 Max Planck Society for the Advancement of Science e.V.
                         Benjamin Buchfink
                         Eberhard Karls Universitaet Tuebingen
 						
@@ -21,109 +21,30 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #pragma once
+#include <assert.h>
 #include <vector>
 #include <algorithm>
-#include <string.h>
-#include <math.h>
-#include <ctype.h>
 #include <string>
 #include <limits>
-#include <stdexcept>
-#include <stdint.h>
 #include <set>
-#include <random>
 #include <mutex>
-#include <assert.h>
-#include "simd.h"
-#include "../basic/const.h"
-#include "text_buffer.h"
-#include "algo/partition.h"
+#include <math.h>
 
-template<typename _t>
-inline _t div_up(_t x, _t m)
-{ return (x + (m-1)) / m; }
-
-template<typename _t>
-inline _t round_up(_t x, _t m)
-{ return div_up(x, m) * m; }
-
-inline std::vector<std::string> tokenize(const char *str, const char *delimiters)
+template<typename T>
+inline T div_up(T x, T m)
 {
-	std::vector<std::string> out;
-	std::string token;
-	while(*str != 0) {
-		while(*str != 0 && strchr(delimiters, *str))
-			++str;
-		token.clear();
-		while(*str != 0 && strchr(delimiters, *str) == nullptr)
-			token += *(str++);
-		if(token.length() > 0)
-			out.push_back(token);
-	}
-	if(out.size() == 0)
-		out.push_back(std::string ());
-	return out;
+	return (x + (m - 1)) / m;
 }
 
-template<typename _t1, typename _t2>
-struct Pair
+template<typename T>
+inline T round_up(T x, T m)
 {
-	Pair():
-		first (),
-		second ()
-	{ }
-	Pair(const _t1 &first, const _t2 &second):
-		first (first),
-		second (second)
-	{ }
-	bool operator<(const Pair &rhs) const
-	{
-		return first < rhs.first;
-	}
-	_t1 first;
-	_t2 second;
-};
-
-inline size_t print_str(char* buf, const char *s, size_t n)
-{
-	memcpy(buf, s, n);
-	*(buf+n) = 0;
-	return n;
+	return div_up(x, m) * m;
 }
 
-inline size_t print_str(char *buf, const char *s, const char *delimiters)
-{ return print_str(buf, s, find_first_of(s, delimiters)); }
-
-template<typename _t, unsigned d1, unsigned d2>
-struct Static_matrix
-{
-	_t* operator[](size_t i)
-	{ return data_[i]; }
-private:
-	_t data_[d1][d2];
-};
-
+std::vector<std::string> tokenize(const char* str, const char* delimiters);
 extern const char dir_separator;
 std::string extract_dir(const std::string &s);
-
-inline std::ostream& indent(std::ostream &str, unsigned n)
-{
-	for (unsigned i = 0; i < n; ++i)
-		str << ' ';
-	return str;
-}
-
-inline int abs_diff(unsigned x, unsigned y)
-{
-	return abs((int)x - int(y));
-}
-
-template<typename _t>
-inline void assign_ptr(_t& dst, _t *src)
-{
-	dst = *src;
-	delete src;
-}
 
 struct Sd
 {
@@ -152,177 +73,78 @@ private:
 	double A, Q, k;	
 };
 
-inline std::string to_upper_case(const std::string &s)
-{
-	std::string r;
-	for (std::string::const_iterator i = s.begin(); i != s.end(); ++i)
-		r.push_back(toupper(*i));
-	return r;
-}
+std::string to_upper_case(const std::string& s);
+std::string to_lower_case(const std::string& s);
 
-inline std::string to_lower_case(const std::string &s)
-{
-	std::string r;
-	for (std::string::const_iterator i = s.begin(); i != s.end(); ++i)
-		r.push_back(tolower(*i));
-	return r;
-}
-
-template<typename _t>
+template<typename T>
 struct Matrix
 {
-	void init(int rows, int cols, bool reset = false)
+	Matrix(int64_t rows, int64_t cols) :
+		cols_(cols),
+		data_(rows* cols, 0)
+	{}
+	T* operator[](int64_t i)
 	{
-		cols_ = cols;
-		if (!reset) {
-			data_.clear();
-			data_.resize(rows*cols);
-		}
-		else {
-			data_.clear();
-			data_.insert(data_.begin(), rows*cols, _t());
-		}
-	}
-	_t* operator[](int i)
-	{
-		return &data_[i*cols_];
+		return &data_[i * cols_];
 	}
 private:
-	int cols_;
-	std::vector<_t> data_;
+	int64_t cols_;
+	std::vector<T> data_;
 };
 
 template<int n>
 inline int round_down(int x)
 {
-	return (x / n)*n;
+	return (x / n) * n;
 }
 
 template<int n>
 inline int round_up(int x)
 {
-	return ((x + n - 1) / n)*n;
+	return ((x + n - 1) / n) * n;
 }
 
-template<typename _t>
-bool equal(const _t *ptr, unsigned n)
-{
-	const _t v = *ptr;
-	const _t* end = (ptr++) + n;
-	for (; ptr < end; ++ptr)
-		if (*ptr != v)
-			return false;
-	return true;
-}
+std::string print_char(char c);
 
-inline std::string print_char(char c)
+template<typename T1, typename T2>
+T1 percentage(T2 x, T2 y)
 {
-	char buf[16];
-	if (c < 32)
-		sprintf(buf, "ASCII %u", (unsigned)c);
-	else
-		sprintf(buf, "%c", c);
-	return std::string(buf);
-}
-
-template<typename _t, int n>
-struct Top_list
-{
-	_t& add(const _t &x)
-	{
-		for (int i = 0; i < n; ++i)
-			if ((int)x >(int)data_[i]) {
-				if (i < n - 1)
-					memmove(&data_[i + 1], &data_[i], sizeof(data_)/n*(n - 1 - i));
-				data_[i] = x;
-				return data_[i];
-			}
-	}
-	const _t& operator[](unsigned i) const
-	{
-		return data_[i];
-	}
-	_t& operator[](unsigned i)
-	{
-		return data_[i];
-	}
-	void sort()
-	{
-		std::sort(&data_[0], &data_[n]);
-	}
-private:
-	_t data_[n];
-};
-
-template<typename _t1, typename _t2>
-_t1 percentage(_t2 x, _t2 y)
-{
-	return x * (_t1)100 / y;
-}
-
-template<typename _t>
-struct Numeric_vector : public std::vector<_t>
-{
-	Numeric_vector(size_t n):
-		std::vector<_t>(n)
-	{}
-	Numeric_vector& operator+=(Numeric_vector &x)
-	{
-		for (size_t i = 0; i < this->size(); ++i)
-			this->operator[](i) += x[i];
-		return *this;
-	}
-	Numeric_vector& operator/=(double x)
-	{
-		for (size_t i = 0; i < this->size(); ++i)
-			this->operator[](i) /= x;
-		return *this;
-	}
-	friend std::ostream& operator<<(std::ostream &s, const Numeric_vector &x)
-	{
-		for (size_t i = 0; i < x.size(); ++i)
-			s << x[i] << std::endl;
-		return s;
-	}
-};
-
-template<unsigned n>
-inline unsigned get_distribution(const double *p, std::minstd_rand0 &random_engine)
-{
-	const double x = std::uniform_real_distribution<double>(0.0, 1.0)(random_engine);
-	double s = 0;
-	for (unsigned i = 0; i < n; ++i) {
-		s += p[i];
-		if (x < s)
-			return i;
-	}
-	return n - 1;
+	return x * (T1)100 / y;
 }
 
 void print_binary(uint64_t x);
 
-template<typename _t>
-inline _t safe_cast(size_t x)
+template<typename T1, typename T2>
+inline typename std::enable_if<std::is_signed<T2>::value, T1>::type safe_cast(T2 x)
 {
-	if (x > (size_t)std::numeric_limits<_t>::max())
+	if (x > (T2)std::numeric_limits<T1>::max() || x < (T2)std::numeric_limits<T1>::min())
 		throw std::runtime_error("Integer value out of bounds.");
-	return (_t)x;
+	return (T1)x;
 }
 
-struct Index_iterator
+template<typename T1, typename T2>
+inline typename std::enable_if<std::is_unsigned<T2>::value, T1>::type safe_cast(T2 x)
 {
-	Index_iterator(size_t i) :
+	if (x > (T2)std::numeric_limits<T1>::max())
+		throw std::runtime_error("Integer value out of bounds.");
+	return (T1)x;
+}
+
+
+struct IndexIterator
+{
+	IndexIterator(size_t i) :
 		i(i)
 	{}
 	size_t operator*() const
 	{
 		return i;
 	}
-	bool operator!=(const Index_iterator &rhs) const
+	bool operator!=(const IndexIterator &rhs) const
 	{
 		return i != rhs.i;
 	}
-	Index_iterator& operator++()
+	IndexIterator& operator++()
 	{
 		++i;
 		return *this;
@@ -335,50 +157,33 @@ inline double megabytes(size_t x)
 	return (double)x / (1 << 20);
 }
 
-template<typename _t>
-inline _t make_multiple(_t x, _t m)
+template<typename T>
+inline T make_multiple(T x, T m)
 {
 	if (x % m == 0)
 		return x;
-	_t d = m - x % m;
-	if (std::numeric_limits<_t>::max() - d < x)
+	T d = m - x % m;
+	if (std::numeric_limits<T>::max() - d < x)
 		return x;
 	return x + d;
 }
 
-inline std::string hex_print(const char *x, int len) {
-	std::string out;
-	char d[3];
-	for (int i = 0; i < len; i++) {
-		sprintf(d, "%02x", (unsigned char)x[i]);
-		out += d;
-	}
-	return out;
-}
-
-inline std::set<unsigned> parse_csv(const std::string &s)
-{
-	std::set<unsigned> r;
-	std::vector<std::string> t(tokenize(s.c_str(), ","));
-	for (std::vector<std::string>::const_iterator i = t.begin(); i != t.end(); ++i)
-		if(!i->empty()) r.insert(atoi(i->c_str()));
-	return r;
-}
-
+std::string hex_print(const char* x, int len);
+std::set<int32_t> parse_csv(const std::string& s);
 std::string join(const char *c, const std::vector<std::string> &v);
 
-template<typename _t, typename _f>
-auto apply(const std::vector<_t> &v, _f f) -> std::vector<typename std::result_of<_f(_t)>::type> {
-	std::vector<typename std::result_of<_f(_t)>::type> r;
+template<typename T, typename F>
+auto apply(const std::vector<T> &v, F f) -> std::vector<typename std::result_of<F(T)>::type> {
+	std::vector<typename std::result_of<F(T)>::type> r;
 	r.reserve(v.size());
 	for (const auto &i : v)
 		r.push_back(f(i));
 	return r;
 }
 
-template<typename _t1, typename _t2>
-std::vector<std::pair<_t1, _t2>> combine(const std::vector<_t1> &v1, const std::vector<_t2> &v2) {
-	std::vector<std::pair<_t1, _t2>> r;
+template<typename T1, typename T2>
+std::vector<std::pair<T1, T2>> combine(const std::vector<T1> &v1, const std::vector<T2> &v2) {
+	std::vector<std::pair<T1, T2>> r;
 	r.reserve(v1.size());
 	for (size_t i = 0; i < v1.size(); ++i)
 		r.emplace_back(v1[i], v2[i]);
@@ -410,7 +215,8 @@ private:
 
 template<typename It, typename Key>
 struct KeyMergeIterator {
-	typedef typename std::result_of<Key(const typename It::value_type&)>::type KeyType;
+	using value_type = typename std::iterator_traits<It>::value_type;
+	typedef typename std::result_of<Key(value_type&)>::type KeyType;
 	KeyMergeIterator(const It& begin, const It& end, const Key& key) :
 		end_(end),
 		begin_(begin),

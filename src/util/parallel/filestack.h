@@ -34,10 +34,10 @@ class FileStack {
 
         int remove(const std::string & line);
 
-        int push(int i);
-        int push(const std::string & buf);
-        int push(const std::string & buf, size_t & size_after_push);
-        int push_non_locked(const std::string & buf);
+        int64_t push(int i);
+        int64_t push(const std::string & buf);
+        int64_t push(const std::string & buf, size_t & size_after_push);
+        int64_t push_non_locked(const std::string & buf);
 
         int get_max_line_length();
         int set_max_line_length(int n);

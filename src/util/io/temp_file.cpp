@@ -36,6 +36,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 using std::vector;
 using std::string;
+using std::pair;
 
 unsigned TempFile::n = 0;
 uint64_t TempFile::hash_key;

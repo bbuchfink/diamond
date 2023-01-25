@@ -32,4 +32,22 @@ inline uint16_t big_endian_byteswap<uint16_t>(uint16_t x)
 	return psnip_endian_le16(x);
 }
 
+template<>
+inline int64_t big_endian_byteswap<int64_t>(int64_t x)
+{
+	return psnip_endian_le64(x);
+}
+
+template<>
+inline int32_t big_endian_byteswap<int32_t>(int32_t x)
+{
+	return psnip_endian_le32(x);
+}
+
+template<>
+inline int16_t big_endian_byteswap<int16_t>(int16_t x)
+{
+	return psnip_endian_le16(x);
+}
+
 #endif

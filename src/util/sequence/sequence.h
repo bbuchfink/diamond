@@ -21,6 +21,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #pragma once
 #include <string>
+#include <array>
+#include <vector>
 #include <string.h>
 #include "../../basic/sequence.h"
 #include "../io/output_file.h"
@@ -47,5 +49,43 @@ std::string all_seqids(const char* s);
 std::string seqid(const char* title, bool short_seqids);
 void get_title_def(const std::string& s, std::string& title, std::string& def);
 bool is_fully_masked(const Sequence& seq);
+std::array<std::vector<Letter>, 6> translate(const Sequence& seq);
+Loc find_orfs(std::vector<Letter>& seq, const Loc min_len);
+bool looks_like_dna(const Sequence& seq);
+std::vector<Score> window_scores(Sequence seq1, Sequence seq2, Loc window);
+
+struct FastaIterator {
+	FastaIterator(const char* ptr, const char* end) :
+		ptr_(ptr),
+		end_(end)
+	{}
+	bool good() const {
+		return ptr_ < end_;
+	}
+	std::string operator*() const {
+		if (*ptr_ == '>') {
+			return seqid(ptr_ + 1, false);
+		}
+		else {
+			std::string r;
+			const char* p = ptr_;
+			do {
+				const char* n = std::find(p, end_, '\n');
+				r.append(p, n);
+				p = n + 1;
+			} while (p < end_);
+			return r;
+		}
+	}
+	FastaIterator& operator++() {
+		if (*ptr_ == '>')
+			ptr_ = std::find(ptr_, end_, '\n') + 1;
+		else
+			ptr_ = end_;
+		return *this;
+	}
+private:
+	const char* ptr_, *end_;
+};
 
 }}

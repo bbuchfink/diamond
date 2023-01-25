@@ -27,8 +27,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/io/input_file.h"
 #include "../util/io/serialize.h"
 
-// #define HIT_KEEP_TARGET_ID
-
 namespace Search {
 
 #pragma pack(1)
@@ -36,7 +34,7 @@ namespace Search {
 struct Hit
 {
 	using Key = uint32_t;
-	using SeedOffset = uint32_t;
+	using SeedOffset = Loc;
 
 	uint32_t query_;
 	PackedLoc subject_;
@@ -152,18 +150,19 @@ struct Hit
 }
 
 template<> struct SerializerTraits<Search::Hit> {
+	using Key = BlockId;
 	SerializerTraits(bool long_subject_offsets, int32_t query_contexts):
 		long_subject_offsets(long_subject_offsets),
 		key{ query_contexts }
 	{}
 	const bool long_subject_offsets;
-	const struct Key {
-		int32_t operator()(const Search::Hit& hit) const {
+	const struct {
+		Key operator()(const Search::Hit& hit) const {
 			return hit.query_ / query_contexts;
 		}
 		const int32_t query_contexts;
 	} key;
-	static Search::Hit make_sentry(uint32_t query, uint32_t seed_offset) {
+	static Search::Hit make_sentry(uint32_t query, Loc seed_offset) {
 		return { query, 0, seed_offset,0 };
 	}
 	static bool is_sentry(const Search::Hit& hit) {
@@ -243,9 +242,9 @@ template<> struct TypeDeserializer<Search::Hit> {
 #ifdef HIT_KEEP_TARGET_ID
 				uint32_t target_block_id;
 				f_->read(target_block_id);
-				*it = { query_id, subject_loc, seed_offset, score, target_block_id };
+				*it = { query_id, subject_loc, (Loc)seed_offset, score, target_block_id };
 #else
-				*it = { query_id, subject_loc, seed_offset, score };
+				*it = { query_id, subject_loc, (Loc)seed_offset, score };
 #endif
 			}
 		}

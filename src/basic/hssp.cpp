@@ -23,8 +23,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../align/align.h"
 #include "../output/output.h"
 #include "../output/output_format.h"
+#include "../stats/stats.h"
 
 using std::list;
+using std::equal;
+using std::runtime_error;
 
 std::pair<int, int> Hsp::diagonal_bounds() const
 {
@@ -45,13 +48,15 @@ bool Hsp::is_weakly_enveloped(const Hsp &j) const
 		&& query_range.overlap_factor(j.query_range) >= overlap_factor;
 }
 
-HspContext& HspContext::parse()
+HspContext& HspContext::parse(const OutputFormat* output_format)
 {
-	if (!flag_any(output_format->hsp_values, HspValues::TRANSCRIPT) && config.command != Config::view) {
+	if (output_format && !flag_any(output_format->hsp_values, HspValues::TRANSCRIPT) && config.command != Config::view) {
 		hsp_.query_source_range = TranslatedPosition::absolute_interval(
 			TranslatedPosition(hsp_.query_range.begin_, Frame(hsp_.frame)),
 			TranslatedPosition(hsp_.query_range.end_, Frame(hsp_.frame)),
 			(int)query.source().length());
+		if (subject_seq.length() > 0)
+			hsp_.approx_id = hsp_.approx_id_percent(this->query.index(hsp_.frame), subject_seq);
 		return *this;
 	}
 
@@ -91,11 +96,13 @@ HspContext& HspContext::parse()
 	hsp_.query_range.end_ = i.query_pos.translated;
 	hsp_.subject_range.end_ = i.subject_pos;
 	hsp_.query_source_range = TranslatedPosition::absolute_interval(begin().query_pos, i.query_pos, (int)query.source().length());
+	if (subject_seq.length() > 0)
+		hsp_.approx_id = hsp_.approx_id_percent(this->query.index(hsp_.frame), subject_seq);
 
 	return *this;
 }
 
-void Hsp::push_back(const DiagonalSegment &d, const TranslatedSequence &query, const Sequence &subject, bool reversed)
+void Hsp::push_back(const DiagonalSegmentT &d, const TranslatedSequence &query, const Sequence &subject, bool reversed)
 {
 	const Sequence &q = query[d.i.frame];
 	if (reversed) {
@@ -134,7 +141,7 @@ void Hsp::push_back(const DiagonalSegment &d, const TranslatedSequence &query, c
 	}
 }
 
-void Hsp::splice(const DiagonalSegment &a, const DiagonalSegment &b, const TranslatedSequence &query, const Sequence &subject, bool reversed)
+void Hsp::splice(const DiagonalSegmentT &a, const DiagonalSegmentT &b, const TranslatedSequence &query, const Sequence &subject, bool reversed)
 {
 	TranslatedPosition i0 = a.query_last();
 	int j0 = a.subject_last();
@@ -164,7 +171,7 @@ void Hsp::splice(const DiagonalSegment &a, const DiagonalSegment &b, const Trans
 	}
 }
 
-void Hsp::set_begin(const DiagonalSegment &d, int dna_len)
+void Hsp::set_begin(const DiagonalSegmentT &d, int dna_len)
 {
 	subject_range.begin_ = d.j;
 	query_range.begin_ = d.i;
@@ -175,7 +182,7 @@ void Hsp::set_begin(const DiagonalSegment &d, int dna_len)
 		query_source_range.end_ = d.i.absolute(dna_len) + 1;
 }
 
-void Hsp::set_end(const DiagonalSegment &d, int dna_len)
+void Hsp::set_end(const DiagonalSegmentT &d, int dna_len)
 {
 	subject_range.end_ = d.subject_end();
 	query_range.end_ = d.query_end();
@@ -279,16 +286,17 @@ void Hsp::push_gap(Edit_operation op, int length, const Letter *subject)
 #endif
 }
 
-Hsp::Hsp(const IntermediateRecord &r, unsigned query_source_len) :
+Hsp::Hsp(const IntermediateRecord &r, unsigned query_source_len, Loc qlen, Loc tlen, const OutputFormat* output_format) :
 	backtraced(!IntermediateRecord::stats_mode(output_format->hsp_values) && output_format->hsp_values != HspValues::NONE),
 	score(r.score),
 	evalue(r.evalue),
 	bit_score(score_matrix.bitscore(r.score)),
+	corrected_bit_score(score_matrix.bitscore_corrected(r.score, qlen, tlen)),
 	transcript(r.transcript)
 {
 	subject_range.begin_ = r.subject_begin;
-	if (align_mode.mode == Align_mode::blastx) {
-		frame = (r.flag&(1 << 6)) == 0 ? r.query_begin % 3 : 3 + (query_source_len - 1 - r.query_begin) % 3;
+	if (align_mode.mode == AlignMode::blastx) {
+		frame = r.frame(query_source_len, align_mode.mode);
 		set_translated_query_begin(r.query_begin, query_source_len);
 	}
 	else {
@@ -302,10 +310,57 @@ Hsp::Hsp(const IntermediateRecord &r, unsigned query_source_len) :
 		mismatches = r.mismatches;
 		positives = r.positives;
 		length = r.length;
-		if (align_mode.mode == Align_mode::blastx)
+		if (align_mode.mode == AlignMode::blastx)
 			set_translated_query_end(r.query_end, query_source_len);
 		else
 			query_range.end_ = r.query_end + 1;
 		subject_range.end_ = r.subject_end;
 	}
+}
+
+Hsp::Hsp(const ApproxHsp& h, Loc qlen, Loc tlen) :
+	backtraced(true),
+	score(h.score),
+	frame(0),
+	length(h.query_range.length()),
+	identities(length),
+	mismatches(0),
+	positives(length),
+	gap_openings(0),
+	gaps(0),
+	swipe_target(0),
+	d_begin(0),
+	d_end(0),
+	query_source_range(h.query_range),
+	query_range(h.query_range),
+	subject_range(h.subject_range),
+	evalue(h.evalue),
+	bit_score(score_matrix.bitscore(h.score)),
+	corrected_bit_score(score_matrix.bitscore_corrected(h.score, qlen, tlen)),
+	approx_id(100.0)
+{
+}
+
+bool Hsp::is_identity(const Sequence& query, const Sequence& target) const {
+	query_range.check(query.length());
+	subject_range.check(target.length());
+	return query_range.length() == subject_range.length()
+		&& std::equal(query.data() + query_range.begin_, query.data() + query_range.end_, target.data() + subject_range.begin_,
+			[](Letter x, Letter y) {return letter_mask(x) == letter_mask(y); });
+}
+
+double Hsp::approx_id_percent(const Sequence& query, const Sequence& target) const {
+	return is_identity(query, target) ? 100.0 : Stats::approx_id(score, query_range.length(), subject_range.length());
+}
+
+double HspContext::qcovhsp() const {
+	return (double)query_source_range().length() * 100.0 / query_len;
+}
+
+double HspContext::scovhsp() const {
+	return (double)subject_range().length() * 100.0 / subject_len;
+}
+
+double HspContext::id_percent() const {
+	return (double)identities() * 100 / length();
 }

@@ -53,24 +53,25 @@ void hash_table_join(
 	DoubleArray<typename _t::Value> &dst_r,
 	DoubleArray<typename _t::Value> &dst_s)
 {
-	typedef HashTable<unsigned, RelPtr, ExtractBits<uint32_t>> Table;
+	using Key = typename _t::Key;
+	typedef HashTable<Key, RelPtr, ExtractBits<Key>, NoModulo> Table;
 	
-	uint32_t N = (uint32_t)next_power_of_2(R.n * config.join_ht_factor);
-	Table table(N, ExtractBits<uint32_t>(N, shift));
+	Key N = (Key)next_power_of_2(R.n * config.join_ht_factor);
+	Table table(N, ExtractBits<Key>(N, shift));
 	typename Table::Entry *p;
 
 	for (_t *i = R.data; i < R.end(); ++i) {
 		p = table.insert(i->key);
-		++p->r;
-		i->key = unsigned(p - table.data());
+		++p->value.r;
+		i->key = Key(p - table.data());
 	}
 
 	_t *hit_s = S.data;
 	for (_t *i = S.data; i < S.end(); ++i) {
 		if ((p = table.find_entry(i->key))) {
-			++p->s;
+			++p->value.s;
 			hit_s->value = i->value;
-			hit_s->key = unsigned(p - table.data());
+			hit_s->key = Key(p - table.data());
 			++hit_s;
 		}
 	}
@@ -79,12 +80,12 @@ void hash_table_join(
 	
 	for (unsigned i = 0; i < table.size(); ++i) {
 		p = &table.data()[i];
-		if (p->s) {
-			unsigned r = p->r, s = p->s;
+		if (p->value.s) {
+			unsigned r = p->value.r, s = p->value.s;
 			it_r.count() = r;
 			it_s.count() = s;
-			p->r = dst_r.offset(it_r) + 4;
-			p->s = dst_s.offset(it_s) + 4;
+			p->value.r = dst_r.offset(it_r) + 4;
+			p->value.s = dst_s.offset(it_s) + 4;
 			it_r.next();
 			it_s.next();
 		}
@@ -94,16 +95,16 @@ void hash_table_join(
 
 	for (const _t *i = R.data; i < R.end(); ++i) {
 		p = &table.data()[i->key];
-		if (p->s) {
-			dst_r[p->r] = i->value;
-			p->r += sizeof(typename _t::Value);
+		if (p->value.s) {
+			dst_r[p->value.r] = i->value;
+			p->value.r += sizeof(typename _t::Value);
 		}
 	}
 
 	for (const _t *i = S.data; i < hit_s; ++i) {
 		p = &table.data()[i->key];
-		dst_s[p->s] = i->value;
-		p->s += sizeof(typename _t::Value);
+		dst_s[p->value.s] = i->value;
+		p->value.s += sizeof(typename _t::Value);
 	}
 }
 
@@ -116,8 +117,9 @@ void table_join(
 	DoubleArray<typename _t::Value> &dst_r,
 	DoubleArray<typename _t::Value> &dst_s)
 {
-	const unsigned keys = 1 << (total_bits - shift);
-	ExtractBits<uint32_t> key(keys, shift);
+	using Key = typename _t::Key;
+	const Key keys = (Key)1 << (total_bits - shift);
+	ExtractBits<Key> key(keys, shift);
 	RelPtr *table = (RelPtr*)calloc(keys, sizeof(RelPtr));
 	RelPtr *p;
 
@@ -134,7 +136,7 @@ void table_join(
 
 	typename DoubleArray<typename _t::Value>::Iterator it_r = dst_r.begin(), it_s = dst_s.begin();
 
-	for (unsigned i = 0; i < keys; ++i) {
+	for (Key i = 0; i < keys; ++i) {
 		p = &table[i];
 		if (p->s) {
 			unsigned r = p->r, s = p->s;

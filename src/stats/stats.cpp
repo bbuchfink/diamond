@@ -24,6 +24,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "standard_matrix.h"
 
 using std::string;
+using std::max;
+using std::min;
 
 namespace Stats {
 
@@ -49,6 +51,10 @@ const StandardMatrix::Parameters& StandardMatrix::constants(int gap_exist, int g
 
 const StandardMatrix::Parameters& StandardMatrix::ungapped_constants() const {
 	return parameters.front();
+}
+
+double approx_id(Score raw_score, Loc range1, Loc range2) {
+	return min(max((double)raw_score / max(range1, range2) * 16.56 + 11.41, 0.0), 100.0);
 }
 
 }

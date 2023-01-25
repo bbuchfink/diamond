@@ -1,6 +1,6 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2020 Max Planck Society for the Advancement of Science e.V.
+Copyright (C) 2020-2021 Max Planck Society for the Advancement of Science e.V.
 
 Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
 
@@ -35,46 +35,41 @@ using std::mutex;
 using std::thread;
 using std::unordered_map;
 using std::endl;
+using std::pair;
+using std::vector;
 
 namespace Extension { namespace GlobalRanking {
 
-typedef unordered_map<uint32_t, uint32_t> TargetMap;
+typedef unordered_map<OId, BlockId> TargetMap;
 
 void extend_query(const QueryList& query_list, const TargetMap& db2block_id, const Search::Config& cfg, Statistics& stats) {
-	thread_local vector<uint32_t> target_block_ids;
-	thread_local vector<TargetScore> target_scores;
-	thread_local FlatArray<SeedHit> seed_hits;
+	SeedHitList l;
 	const size_t n = query_list.targets.size();
-	target_block_ids.clear();
-	target_block_ids.reserve(n);
-	target_scores.clear();
-	target_scores.reserve(n);
-	seed_hits.clear();
-	seed_hits.reserve(n);
+	l.target_block_ids.reserve(n);
+	l.target_scores.reserve(n);
+	l.seed_hits.reserve(n, 0);
 	for (size_t i = 0; i < n; ++i) {
-		target_block_ids.push_back(db2block_id.at(query_list.targets[i].database_id));
-		target_scores.push_back({ (uint32_t)i, query_list.targets[i].score });
-		seed_hits.next();
-		seed_hits.push_back({ 0,0,query_list.targets[i].score,0 });
+		l.target_block_ids.push_back(db2block_id.at(query_list.targets[i].database_id));
+		l.target_scores.push_back({ (uint32_t)i, query_list.targets[i].score });
+		l.seed_hits.next();
+		l.seed_hits.push_back({ 0,0,query_list.targets[i].score,0 });
 	}
 	
 	DP::Flags flags = DP::Flags::FULL_MATRIX;
 	
-	vector<Match> matches = Extension::extend(
+	pair<vector<Match>, Stats> matches = Extension::extend(
 		query_list.query_block_id,
 		cfg,
 		stats,
 		flags,
-		seed_hits,
-		target_block_ids,
-		target_scores);
+		l);
 
-	TextBuffer* buf = Extension::generate_output(matches, query_list.query_block_id, stats, cfg);
-	if (!matches.empty() && (!config.unaligned.empty() || !config.aligned_file.empty())) {
+	TextBuffer* buf = Extension::generate_output(matches.first, matches.second, query_list.query_block_id, stats, cfg);
+	if (!matches.first.empty() && (!config.unaligned.empty() || !config.aligned_file.empty())) {
 		std::lock_guard<std::mutex> lock(query_aligned_mtx);
 		query_aligned[query_list.query_block_id] = true;
 	}
-	OutputSink::get().push(query_list.query_block_id, buf);
+	output_sink->push(query_list.query_block_id, buf);
 }
 
 void align_worker(InputFile* query_list, const TargetMap* db2block_id, const Search::Config* cfg, uint32_t* next_query) {
@@ -83,7 +78,7 @@ void align_worker(InputFile* query_list, const TargetMap* db2block_id, const Sea
 		Statistics stats;
 		while (input = fetch_query_targets(*query_list, *next_query), !input.targets.empty()) {
 			for (uint32_t i = input.last_query_block_id; i < input.query_block_id; ++i)
-				OutputSink::get().push(i, nullptr);
+				output_sink->push(i, nullptr);
 			extend_query(input, *db2block_id, *cfg, stats);
 		}
 		statistics += stats;
@@ -97,11 +92,11 @@ void extend(SequenceFile& db, TempFile& merged_query_list, BitVector& ranking_db
 	task_timer timer("Loading reference sequences");
 	InputFile query_list(merged_query_list);
 	db.set_seqinfo_ptr(0);
-	cfg.target.reset(db.load_seqs(SIZE_MAX, false, &ranking_db_filter, true));
+	cfg.target.reset(db.load_seqs(INT64_MAX, &ranking_db_filter, SequenceFile::LoadFlags::SEQS));
 	TargetMap db2block_id;
-	const size_t db_count = cfg.target->seqs().size();
+	const BlockId db_count = cfg.target->seqs().size();
 	db2block_id.reserve(db_count);
-	for (size_t i = 0; i < db_count; ++i)
+	for (BlockId i = 0; i < db_count; ++i)
 		db2block_id[cfg.target->block_id2oid(i)] = i;
 	timer.finish();
 	verbose_stream << "#Ranked database sequences: " << cfg.target->seqs().size() << endl;
@@ -118,7 +113,8 @@ void extend(SequenceFile& db, TempFile& merged_query_list, BitVector& ranking_db
 	}
 
 	timer.go("Computing alignments");
-	OutputSink::instance.reset(new OutputSink(0, &master_out));
+	OutputWriter writer{ &master_out };
+	output_sink.reset(new ReorderQueue<TextBuffer*, OutputWriter>(0, writer));
 	uint32_t next_query = 0;
 	vector<thread> threads;
 	for (size_t i = 0; i < (config.threads_align ? config.threads_align : config.threads_); ++i)
@@ -128,46 +124,40 @@ void extend(SequenceFile& db, TempFile& merged_query_list, BitVector& ranking_db
 
 	timer.go("Cleaning up");
 	query_list.close_and_delete();
+	output_sink.reset();
 	cfg.target.reset();
 }
 
-void extend_query(size_t source_query_block_id, const TargetMap& db2block_id, Search::Config& cfg, Statistics& stats) {
+void extend_query(BlockId source_query_block_id, const TargetMap& db2block_id, Search::Config& cfg, Statistics& stats) {
 	const size_t N = config.global_ranking_targets;
-	thread_local vector<uint32_t> target_block_ids;
-	thread_local vector<TargetScore> target_scores;
-	thread_local FlatArray<SeedHit> seed_hits;
+	SeedHitList l;
 	vector<Hit>::const_iterator table_begin = cfg.ranking_table->cbegin() + source_query_block_id * N, table_end = table_begin + N;
 	while (table_end > table_begin && (table_end - 1)->score == 0) --table_end;
 	const size_t n = table_end - table_begin;
 	TextBuffer* buf = nullptr;
 	if (n) {
-		target_block_ids.clear();
-		target_block_ids.reserve(n);
-		target_scores.clear();
-		target_scores.reserve(n);
-		seed_hits.clear();
-		seed_hits.reserve(n);
+		l.target_block_ids.reserve(n);
+		l.target_scores.reserve(n);
+		l.seed_hits.reserve(n, 0);
 		for (size_t i = 0; i < n; ++i) {
-			target_block_ids.push_back(db2block_id.at(table_begin[i].oid));
-			target_scores.push_back({ (uint32_t)i, table_begin[i].score });
-			seed_hits.next();
-			seed_hits.push_back({ 0,0,table_begin[i].score, table_begin[i].context });
+			l.target_block_ids.push_back(db2block_id.at(table_begin[i].oid));
+			l.target_scores.push_back({ (uint32_t)i, table_begin[i].score });
+			l.seed_hits.next();
+			l.seed_hits.push_back({ 0,0,table_begin[i].score, table_begin[i].context });
 		}
 
 		DP::Flags flags = DP::Flags::FULL_MATRIX;
 
-		vector<Match> matches = Extension::extend(
+		pair<vector<Match>, Stats> matches = Extension::extend(
 			source_query_block_id,
 			cfg,
 			stats,
 			flags,
-			seed_hits,
-			target_block_ids,
-			target_scores);
+			l);
 
-		buf = cfg.iterated() ? Extension::generate_intermediate_output(matches, source_query_block_id, cfg) : Extension::generate_output(matches, source_query_block_id, stats, cfg);
+		buf = cfg.iterated() ? Extension::generate_intermediate_output(matches.first, source_query_block_id, cfg) : Extension::generate_output(matches.first, matches.second, source_query_block_id, stats, cfg);
 
-		if (!matches.empty() && cfg.track_aligned_queries) {
+		if (!matches.first.empty() && cfg.track_aligned_queries) {
 			std::lock_guard<std::mutex> lock(query_aligned_mtx);
 			if (!query_aligned[source_query_block_id]) {
 				query_aligned[source_query_block_id] = true;
@@ -175,7 +165,7 @@ void extend_query(size_t source_query_block_id, const TargetMap& db2block_id, Se
 			}
 		}
 	}
-	OutputSink::get().push(source_query_block_id, buf);
+	output_sink->push(source_query_block_id, buf);
 }
 
 
@@ -192,11 +182,14 @@ void extend(Search::Config& cfg, Consumer& out) {
 	const BitVector filter = db_filter(*cfg.ranking_table, cfg.db->sequence_count());
 	timer.go("Loading target sequences");
 	cfg.db->set_seqinfo_ptr(0);
-	cfg.target.reset(cfg.db->load_seqs(SIZE_MAX, cfg.db->load_titles() == SequenceFile::LoadTitles::SINGLE_PASS, &filter, true));
+	auto flags = SequenceFile::LoadFlags::SEQS;
+	if (!flag_any(cfg.db->format_flags(), SequenceFile::FormatFlags::TITLES_LAZY))
+		flags |= SequenceFile::LoadFlags::TITLES;
+	cfg.target.reset(cfg.db->load_seqs(INT64_MAX, &filter, flags));
 	TargetMap db2block_id;
-	const size_t db_count = cfg.target->seqs().size();
+	const BlockId db_count = cfg.target->seqs().size();
 	db2block_id.reserve(db_count);
-	for (size_t i = 0; i < db_count; ++i)
+	for (BlockId i = 0; i < db_count; ++i)
 		db2block_id[cfg.target->block_id2oid(i)] = i;
 	timer.finish();
 	verbose_stream << "#Ranked database sequences: " << db_count << endl;
@@ -215,20 +208,22 @@ void extend(Search::Config& cfg, Consumer& out) {
 	}
 
 	if (cfg.iterated()) {
-		current_ref_block = 0;
+		cfg.current_ref_block = 0;
 		cfg.db->init_dict_block(0, db_count, true);
 	}
 	else
-		cfg.db->init_random_access(current_query_chunk, 0);
+		cfg.db->init_random_access(cfg.current_query_block, 0);
 
 	timer.go("Computing alignments");
-	OutputSink::instance.reset(new OutputSink(0, &out));
-	std::atomic_size_t next_query(0);
-	const size_t query_count = cfg.query->seqs().size() / align_mode.query_contexts;
+	OutputWriter writer{ &out };
+	output_sink.reset(new ReorderQueue<TextBuffer*, OutputWriter>(0, writer));
+
+	std::atomic<BlockId> next_query(0);
+	const BlockId query_count = cfg.query->seqs().size() / align_mode.query_contexts;
 	auto worker = [&next_query, &db2block_id, &cfg, query_count] {
 		try {
 			Statistics stats;
-			size_t q;
+			BlockId q;
 			while ((q = next_query++) < query_count) extend_query(q, db2block_id, cfg, stats);
 			statistics += stats;
 		}
@@ -245,6 +240,7 @@ void extend(Search::Config& cfg, Consumer& out) {
 
 	timer.go("Deallocating memory");
 	cfg.target.reset();
+	output_sink.reset();
 	if (!cfg.iterated())
 		cfg.db->end_random_access();
 	else {

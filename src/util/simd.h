@@ -47,8 +47,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 namespace SIMD {
 
-enum class Arch { None, Generic, SSE4_1, AVX2 };
-enum Flags { SSSE3 = 1, POPCNT = 2, SSE4_1 = 4, AVX2 = 8 };
+enum class Arch { None, Generic, SSE4_1, AVX2, AVX512 };
+enum Flags { SSSE3 = 1, POPCNT = 2, SSE4_1 = 4, AVX2 = 8, AVX512 = 16 };
 Arch arch();
 
 std::string features();
@@ -62,49 +62,22 @@ struct Vector {};
 
 }}
 
-namespace SIMD {
-
+#ifdef __APPLE__
 #ifdef __SSE2__
-
-static inline __m128i _mm_set1_epi8(char v) {
-#ifdef __APPLE__
-	return _mm_set_epi8(v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v);
-#else
-	return ::_mm_set1_epi8(v);
+#define _mm_set1_epi8(v) _mm_set_epi8(v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v)
+#define _mm_set1_epi16(v) _mm_set_epi16(v, v, v, v, v, v, v, v)
 #endif
-}
-
-static inline __m128i _mm_set1_epi16(short v) {
-#ifdef __APPLE__
-	return _mm_set_epi16(v, v, v, v, v, v, v, v);
-#else
-	return ::_mm_set1_epi16(v);
-#endif
-}
-
-#endif
-
 #ifdef __AVX2__
-
-static inline __m256i _mm256_set1_epi8(char v) {
-#ifdef __APPLE__
-	return _mm256_set_epi8(v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v);
-#else
-	return ::_mm256_set1_epi8(v);
+#define _mm256_set1_epi8(v) _mm256_set_epi8(v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v)
+#define _mm256_set1_epi16(v) _mm256_set_epi16(v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v)
 #endif
-}
-
-static inline __m256i _mm256_set1_epi16(short v) {
-#ifdef __APPLE__
-	return _mm256_set_epi16(v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v);
-#else
-	return ::_mm256_set1_epi16(v);
 #endif
-}
 
 #if defined(__GNUC__) && __GNUC__ < 8
 #define _mm256_set_m128i(v0, v1) _mm256_insertf128_si256(_mm256_castsi128_si256(v1), (v0), 1)
 #endif
+
+#ifdef __AVX2__
 
 inline void print_8(__m256i x, std::ostream& s) {
 	alignas(32) int8_t v[32];
@@ -122,8 +95,6 @@ inline void print_16(__m256i x, std::ostream& s) {
 
 #endif
 
-}
-
 #ifdef __SSE__
 
 #if defined(__GNUC__) && !defined(__clang__) && defined(__SSE__)
@@ -135,6 +106,23 @@ inline void print_16(__m256i x, std::ostream& s) {
 
 #include <functional>
 
+#ifdef WITH_AVX512
+
+#define DECL_DISPATCH(ret, name, param) namespace ARCH_GENERIC { ret name param; }\
+namespace ARCH_SSE4_1 { ret name param; }\
+namespace ARCH_AVX2 { ret name param; }\
+namespace ARCH_AVX512 { ret name param; }\
+static inline std::function<decltype(ARCH_GENERIC::name)> dispatch_target_##name() {\
+switch(::SIMD::arch()) {\
+case ::SIMD::Arch::SSE4_1: return ARCH_SSE4_1::name;\
+case ::SIMD::Arch::AVX2: return ARCH_AVX2::name;\
+case ::SIMD::Arch::AVX512: return ARCH_AVX512::name;\
+default: return ARCH_GENERIC::name;\
+}}\
+const std::function<decltype(ARCH_GENERIC::name)> name = dispatch_target_##name();
+
+#else
+
 #define DECL_DISPATCH(ret, name, param) namespace ARCH_GENERIC { ret name param; }\
 namespace ARCH_SSE4_1 { ret name param; }\
 namespace ARCH_AVX2 { ret name param; }\
@@ -145,6 +133,8 @@ case ::SIMD::Arch::AVX2: return ARCH_AVX2::name;\
 default: return ARCH_GENERIC::name;\
 }}\
 const std::function<decltype(ARCH_GENERIC::name)> name = dispatch_target_##name();
+
+#endif
 
 #if defined(__GNUC__) && !defined(__clang__) && defined(__SSE__)
 #pragma GCC pop_options

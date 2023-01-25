@@ -29,10 +29,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 namespace Search {
 
-static inline bool verify_hit(const Letter* q, const Letter* s, int score_cutoff, bool left, uint32_t match_mask, unsigned sid, bool chunked, unsigned hamming_filter_id) {
+static inline bool verify_hit(const Letter* q, const Letter* s, int score_cutoff, bool left, uint32_t match_mask, int sid, bool chunked, unsigned hamming_filter_id) {
 	if (chunked) {
 		if ((shapes[sid].mask_ & match_mask) == shapes[sid].mask_) {
-			Packed_seed seed;
+			PackedSeed seed;
 			if (!shapes[sid].set_seed(seed, s))
 				return false;
 			if (left && !current_range.lower_or_equal(seed_partition(seed)))
@@ -46,7 +46,7 @@ static inline bool verify_hit(const Letter* q, const Letter* s, int score_cutoff
 	return id >= hamming_filter_id;
 }
 
-static inline bool verify_hits(uint32_t mask, const Letter* q, const Letter* s, int score_cutoff, bool left, uint32_t match_mask, unsigned sid, bool chunked, unsigned hamming_filter_id) {
+static inline bool verify_hits(uint32_t mask, const Letter* q, const Letter* s, int score_cutoff, bool left, uint32_t match_mask, int sid, bool chunked, unsigned hamming_filter_id) {
 	int shift = 0;
 	while (mask != 0) {
 		int i = ctz(mask);
@@ -64,22 +64,22 @@ static inline bool left_most_filter(const Sequence &query,
 	const int seed_len,
 	const Context &context,
 	bool first_shape,
-	size_t shape_id,
+	const int shape_id,
 	int score_cutoff,
 	bool chunked,
 	unsigned hamming_filter_id)
 {
 	constexpr int WINDOW_LEFT = 16, WINDOW_RIGHT = 32;
 
-	int d = std::max(seed_offset - WINDOW_LEFT, 0), window_left = std::min(WINDOW_LEFT, seed_offset);
+	Loc d = std::max(seed_offset - WINDOW_LEFT, 0), window_left = std::min(WINDOW_LEFT, seed_offset);
 	const Letter *q = query.data() + d, *s = subject + d;
-	int window = (int)query.length() - d;
+	Loc window = query.length() - d;
 	window = std::min(window, window_left + 1 + WINDOW_RIGHT);
 
 	const Sequence subject_clipped = Util::Seq::clip(s, window, window_left);
-	window -= s + window - subject_clipped.end();
+	window -= Loc(s + window - subject_clipped.end());
 
-	d = subject_clipped.data() - s;
+	d = Loc(subject_clipped.data() - s);
 	q += d;
 	s += d;
 	window_left -= d;

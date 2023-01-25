@@ -26,37 +26,71 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "search.h"
 #include "hit.h"
 
+using std::vector;
 using std::endl;
 using std::map;
+using std::string;
+using std::prev;
+using std::max;
 
 namespace Search {
 
 const double SINGLE_INDEXED_SEED_SPACE_MAX_COVERAGE = 0.15;
 
-const map<Sensitivity, SensitivityTraits> sensitivity_traits {
-	//                               qidx   motifm freqsd minid ug_ev   ug_ev_s gf_ev  idx_chunk qbins ctg_seed  seed_cut
-	{ Sensitivity::FAST,            {true,  true,  50.0,  11,   10000,  10000,  0,     4,        16,   nullptr,  0.9 }},
-	{ Sensitivity::DEFAULT,         {true,  true,  50.0,  11,   10000,  10000,  0,     4,        16,   "111111", 0.8 }},
-	{ Sensitivity::MID_SENSITIVE,   {true,  true,  20.0,  11,   10000,  10000,  0,     4,        16,   nullptr,  1.0 }},
-	{ Sensitivity::SENSITIVE,       {true,  true,  20.0,  11,   10000,  10000,  1,     4,        16,   "11111",  1.0 }},
-	{ Sensitivity::MORE_SENSITIVE,  {true,  false, 200.0, 11,   10000,  10000,  1,     4,        16,   "11111",  1.0 }},
-	{ Sensitivity::VERY_SENSITIVE,  {true,  false, 15.0,  9,    100000, 30000,  1,     1,        16,   nullptr,  1.0 }},
-	{ Sensitivity::ULTRA_SENSITIVE, {true,  false, 20.0,  9,    300000, 30000,  1,     1,        64,   nullptr,  1.0 }}
-};
+Reduction murphy10("A KR EDNQ C G H ILVM FYW P ST");
+Reduction steinegger12("AST C DN EQ FY G H IV KR LM P W");
+Reduction dna("A C G T");
+
+const map<Sensitivity, SensitivityTraits> sensitivity_traits[2] = {
+	//                               qidx   motifm freqsd minid ug_ev   ug_ev_s gf_ev  idx_chunk qbins ctg_seed  seed_cut block_size reduction min_window
+    {{ Sensitivity::FASTER,          {true,  true,  50.0,  11,   0,      0,      0,     4,        16,   nullptr,  0.9,     2.0,       murphy10, 12 }},
+	{ Sensitivity::FAST,            {true,  true,  50.0,  11,   0,      0,      0,     4,        16,   nullptr,  0.9,     2.0,       murphy10, 0 }},
+	{ Sensitivity::DEFAULT,         {true,  true,  50.0,  11,   10000,  10000,  0,     4,        16,   "111111", 0.8,     2.0,       murphy10, 0 }},
+	{ Sensitivity::MID_SENSITIVE,   {true,  true,  20.0,  11,   10000,  10000,  0,     4,        16,   nullptr,  1.0,     2.0,       murphy10, 0 }},
+	{ Sensitivity::SENSITIVE,       {true,  true,  20.0,  11,   10000,  10000,  1,     4,        16,   "11111",  1.0,     2.0,       murphy10, 0 }},
+	{ Sensitivity::MORE_SENSITIVE,  {true,  false, 200.0, 11,   10000,  10000,  1,     4,        16,   "11111",  1.0,     2.0,       murphy10, 0 }},
+	{ Sensitivity::VERY_SENSITIVE,  {true,  false, 15.0,  9,    100000, 30000,  1,     1,        16,   nullptr,  1.0,     0.4,       murphy10, 0 }},
+	{ Sensitivity::ULTRA_SENSITIVE, {true,  false, 20.0,  9,    300000, 30000,  1,     1,        64,   nullptr,  1.0,     0.4,       murphy10, 0 }},
+},
+{{Sensitivity::DEFAULT, {true,  false, 20.0,  9,    0,      0,      0,     4,        16,   nullptr,  1.0,     2.0,       dna,      12 }}
+}};
+
 
 const map<Sensitivity, vector<Sensitivity>> iterated_sens{
+	{ Sensitivity::FASTER,            { }},
 	{ Sensitivity::FAST,            { }},
-	{ Sensitivity::DEFAULT,         { }},
-	{ Sensitivity::MID_SENSITIVE,   {Sensitivity::DEFAULT}},
-	{ Sensitivity::SENSITIVE,       {Sensitivity::DEFAULT}},
-	{ Sensitivity::MORE_SENSITIVE,  {Sensitivity::DEFAULT}},
-	{ Sensitivity::VERY_SENSITIVE,  {Sensitivity::DEFAULT, Sensitivity::MORE_SENSITIVE}},
-	{ Sensitivity::ULTRA_SENSITIVE, {Sensitivity::DEFAULT, Sensitivity::MORE_SENSITIVE}}
+	{ Sensitivity::DEFAULT,         {Sensitivity::FAST }},
+	{ Sensitivity::MID_SENSITIVE,   {Sensitivity::FAST, Sensitivity::DEFAULT}},
+	{ Sensitivity::SENSITIVE,       {Sensitivity::FAST, Sensitivity::DEFAULT}},
+	{ Sensitivity::MORE_SENSITIVE,  {Sensitivity::FAST, Sensitivity::DEFAULT}},
+	{ Sensitivity::VERY_SENSITIVE,  {Sensitivity::FAST, Sensitivity::DEFAULT, Sensitivity::MORE_SENSITIVE}},
+	{ Sensitivity::ULTRA_SENSITIVE, {Sensitivity::FAST, Sensitivity::DEFAULT, Sensitivity::MORE_SENSITIVE}}
 };
 
-const map<Sensitivity, vector<string>> shape_codes = {
+const map<Sensitivity, vector<Sensitivity>> cluster_sens{
+	{ Sensitivity::FASTER,          { }},
+	{ Sensitivity::FAST,            { }},
+	{ Sensitivity::DEFAULT,         {Sensitivity::FAST }},
+	{ Sensitivity::MID_SENSITIVE,   {Sensitivity::FAST }},
+	{ Sensitivity::SENSITIVE,       {Sensitivity::FAST, Sensitivity::DEFAULT }},
+	{ Sensitivity::MORE_SENSITIVE,  {Sensitivity::FAST, Sensitivity::DEFAULT }},
+	{ Sensitivity::VERY_SENSITIVE,  {Sensitivity::FAST, Sensitivity::DEFAULT, Sensitivity::MORE_SENSITIVE}},
+	{ Sensitivity::ULTRA_SENSITIVE, {Sensitivity::FAST, Sensitivity::DEFAULT, Sensitivity::MORE_SENSITIVE}}
+};
 
-	{Sensitivity::DEFAULT, {
+const map<double, unsigned> approx_id_to_hamming_id {
+	{ 50.0, 20 },
+	{ 90.0, 30 }
+};
+
+static unsigned hamming_id_cutoff(double approx_id) {
+	const auto it = approx_id_to_hamming_id.upper_bound(approx_id);
+	return it == approx_id_to_hamming_id.begin() ? 0 : prev(it)->second;
+}
+
+const map<Sensitivity, vector<string>> shape_codes[2] ={
+
+	{{Sensitivity::DEFAULT, {
 		"111101110111",
 		"111011010010111" }},	// 2x10 iedera
 	{Sensitivity::SENSITIVE, {
@@ -186,9 +220,15 @@ const map<Sensitivity, vector<string>> shape_codes = {
 		"1110011000011011"
 }}, // 8x9
 	{ Sensitivity::FAST, 
-		{ "1101110101101111" } }
+		{ "1101110101101111" } },
+	{ Sensitivity::FASTER,
+		{ "1101110101101111" } }},
+    {
+    { Sensitivity::DEFAULT,
+      { "1111111111111111" } }}
 
 };
+
 
 bool use_single_indexed(double coverage, size_t query_letters, size_t ref_letters)
 {
@@ -219,14 +259,15 @@ MaskingAlgo soft_masking_algo(const SensitivityTraits& traits) {
 
 void setup_search(Sensitivity sens, Search::Config& cfg)
 {
-	const SensitivityTraits& traits = sensitivity_traits.at(sens);
+	const SensitivityTraits& traits = sensitivity_traits[(int)align_mode.sequence_type].at(sens);
 	config.sensitivity = sens;
 	::Config::set_option(cfg.freq_sd, config.freq_sd_, 0.0, traits.freq_sd);
-	::Config::set_option(cfg.hamming_filter_id, config.min_identities_, 0u, traits.min_identities);
+	::Config::set_option(cfg.hamming_filter_id, config.min_identities_, 0u, max(traits.min_identities, hamming_id_cutoff(config.approx_min_id.get(0.0))));
 	::Config::set_option(cfg.ungapped_evalue, config.ungapped_evalue_, -1.0, traits.ungapped_evalue);
 	::Config::set_option(cfg.ungapped_evalue_short, config.ungapped_evalue_short_, -1.0, traits.ungapped_evalue_short);
 	::Config::set_option(cfg.gapped_filter_evalue, config.gapped_filter_evalue_, -1.0, traits.gapped_filter_evalue);
 	::Config::set_option(cfg.query_bins, config.query_bins_, 0u, traits.query_bins);
+	::Config::set_option(cfg.minimizer_window, config.minimizer_window_, 0, traits.minimizer_window);
 
 	if (config.algo == ::Config::Algo::CTG_SEED) {
 		if (!traits.contiguous_seed)
@@ -236,12 +277,16 @@ void setup_search(Sensitivity sens, Search::Config& cfg)
 		::shapes = ShapeConfig({ traits.contiguous_seed }, 0);
 	}
 	else
-		::shapes = ShapeConfig(config.shape_mask.empty() ? shape_codes.at(sens) : config.shape_mask, config.shapes);
+		::shapes = ShapeConfig(config.shape_mask.empty() ? shape_codes[(int)align_mode.sequence_type].at(sens) : config.shape_mask, config.shapes);
 
 	config.gapped_filter_diag_score = score_matrix.rawscore(config.gapped_filter_diag_bit_score);
 	const double seed_cut = config.seed_cut_ == 0.0 ? traits.seed_cut : config.seed_cut_;
 	cfg.seed_complexity_cut = seed_cut * std::log(2.0) * ::shapes[0].weight_;
 	cfg.soft_masking = soft_masking_algo(traits);
+	if (!config.soft_masking.empty())
+		cfg.soft_masking |= from_string<MaskingAlgo>(config.soft_masking);
+	cfg.cutoff_table = { cfg.ungapped_evalue };
+	cfg.cutoff_table_short = { cfg.ungapped_evalue_short };
 }
 
 }

@@ -25,15 +25,20 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #ifdef _MSC_VER
 
+typedef __int64 ssize_t;
+#define STDIN_FILENO _fileno(stdin)
+#define STDOUT_FILENO _fileno(stdout)
 #define PACKED_ATTRIBUTE
 #define FORCE_INLINE __forceinline static
 #define FLATTEN
+#define UNLINK _unlink
 
 #else
 
 #define PACKED_ATTRIBUTE __attribute__((packed))
 #define FORCE_INLINE __attribute__((always_inline)) static inline
 #define FLATTEN __attribute__((flatten))
+#define UNLINK unlink
 
 #endif
 

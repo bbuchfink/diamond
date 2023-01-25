@@ -151,6 +151,10 @@ namespace Sls {
 			double seqlen1_,//length of sequence #1
 			double seqlen2_) const;//length of sequence #2
 
+	double log_area(double score_,//pairwise alignment score
+		double seqlen1_,//length of sequence #1
+		double seqlen2_) const; //length of sequence #2
+
 	double evaluePerArea(double score_) const
 	{
 	  return d_params.K*exp(-d_params.lambda*score_);

@@ -16,12 +16,9 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#ifndef PACKED_TRANSCRIPT_H_
-#define PACKED_TRANSCRIPT_H_
-
+#pragma once
 #include "../util/binary_buffer.h"
 #include "../basic/value.h"
-#include "diagonal_segment.h"
 #include "sequence.h"
 
 typedef enum { op_match = 0, op_insertion = 1, op_deletion = 2, op_substitution = 3, op_frameshift_forward = 4, op_frameshift_reverse = 5 } Edit_operation;
@@ -144,7 +141,7 @@ struct Packed_transcript
 	Const_iterator begin() const
 	{ return Const_iterator (data_.data()); }
 
-	const vector<Packed_operation>& data() const
+	const std::vector<Packed_operation>& data() const
 	{ return data_; }
 
 	const Packed_operation* ptr() const
@@ -219,10 +216,8 @@ struct Packed_transcript
 
 private:
 
-	vector<Packed_operation> data_;
+	std::vector<Packed_operation> data_;
 
 	friend struct Hsp;
 
 };
-
-#endif /* PACKED_TRANSCRIPT_H_ */

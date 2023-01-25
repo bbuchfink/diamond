@@ -1,6 +1,6 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2020 Max Planck Society for the Advancement of Science e.V.
+Copyright (C) 2013-2021 Max Planck Society for the Advancement of Science e.V.
                         Benjamin Buchfink
                         Eberhard Karls Universitaet Tuebingen
 						
@@ -31,28 +31,26 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../stats/score_matrix.h"
 #include "../util/escape_sequences.h"
 #include "../util/io/consumer.h"
-#include "../output/recursive_parser.h"
 #include "../util/enum.h"
 #include "../run/config.h"
 #include "../dp/flags.h"
+#include "def.h"
 
 namespace Output {
 
-enum class Flags : int {
-	NONE            = 0,
-	FULL_TITLES     = 1,
-	ALL_SEQIDS      = 1 << 1,
-	TARGET_SEQS     = 1 << 2,
-	SELF_ALN_SCORES = 1 << 3
+struct Info {	
+	SeqInfo query;
+	bool unaligned;
+	SequenceFile* db;
+	TextBuffer& out;
+	Extension::Stats stats;
 };
-
-DEF_ENUM_FLAG_OPERATORS(Flags)
 
 }
 
-struct Output_format
+struct OutputFormat
 {
-	Output_format(unsigned code, HspValues hsp_values = HspValues::TRANSCRIPT, Output::Flags flags = Output::Flags::NONE):
+	OutputFormat(unsigned code, HspValues hsp_values = HspValues::TRANSCRIPT, Output::Flags flags = Output::Flags::NONE):
 		code(code),
 		needs_taxon_id_lists(false),
 		needs_taxon_nodes(false),
@@ -62,18 +60,18 @@ struct Output_format
 		hsp_values(hsp_values),
 		flags(flags)
 	{}
-	virtual void print_query_intro(size_t query_num, const char *query_name, unsigned query_len, TextBuffer &out, bool unaligned, const Search::Config& cfg) const
+	virtual void print_query_intro(Output::Info& info) const
 	{}
-	virtual void print_query_epilog(TextBuffer &out, const char *query_title, bool unaligned, const Search::Config &parameters) const
+	virtual void print_query_epilog(Output::Info& info) const
 	{}
-	virtual void print_match(const HspContext& r, const Search::Config &metadata, TextBuffer &out)
+	virtual void print_match(const HspContext& r, Output::Info& info)
 	{}
 	virtual void print_header(Consumer &f, int mode, const char *matrix, int gap_open, int gap_extend, double evalue, const char *first_query_name, unsigned first_query_len) const
 	{ }
 	virtual void print_footer(Consumer &f) const
 	{ }
-	virtual Output_format* clone() const = 0;
-	virtual ~Output_format()
+	virtual OutputFormat* clone() const = 0;
+	virtual ~OutputFormat()
 	{ }
 	static void print_title(TextBuffer &buf, const char *id, bool full_titles, bool all_titles, const char *separator, const EscapeSequences *esc = 0);
 	operator unsigned() const
@@ -84,139 +82,141 @@ struct Output_format
 	bool needs_taxon_id_lists, needs_taxon_nodes, needs_taxon_scientific_names, needs_taxon_ranks, needs_paired_end_info;
 	HspValues hsp_values;
 	Output::Flags flags;
-	enum { daa, blast_tab, blast_xml, sam, blast_pairwise, null, taxon, paf, bin1 };
+	enum { daa, blast_tab, blast_xml, sam, blast_pairwise, null, taxon, paf, bin1, EDGE };
 };
 
-extern std::unique_ptr<Output_format> output_format;
-
-struct Null_format : public Output_format
+struct Null_format : public OutputFormat
 {
 	Null_format() :
-		Output_format(null)
+		OutputFormat(null)
 	{}
-	virtual Output_format* clone() const
+	virtual OutputFormat* clone() const
 	{
 		return new Null_format(*this);
 	}
 };
 
-struct DAA_format : public Output_format
+struct DAA_format : public OutputFormat
 {
 	DAA_format();
-	virtual Output_format* clone() const
+	virtual OutputFormat* clone() const
 	{
 		return new DAA_format(*this);
 	}
 };
 
 struct OutputField {
-	const std::string key, description;
+	const std::string key, clust_key, description;
 	const HspValues hsp_values;
 	const Output::Flags flags;
 };
 
-struct Blast_tab_format : public Output_format
+enum class Header { NONE, SIMPLE, VERBOSE };
+
+struct Blast_tab_format : public OutputFormat
 {
 	static const std::vector<OutputField> field_def;
 	Blast_tab_format();
 	virtual void print_header(Consumer &f, int mode, const char *matrix, int gap_open, int gap_extend, double evalue, const char *first_query_name, unsigned first_query_len) const override;
-	virtual void print_query_intro(size_t query_num, const char *query_name, unsigned query_len, TextBuffer &out, bool unaligned, const Search::Config& cfg) const override;
-	virtual void print_match(const HspContext& r, const Search::Config& metadata, TextBuffer &out) override;
+	virtual void print_query_intro(Output::Info& info) const override;
+	virtual void print_match(const HspContext& r, Output::Info& info) override;
 	virtual ~Blast_tab_format()
 	{ }
-	virtual Output_format* clone() const override
+	virtual OutputFormat* clone() const override
 	{
 		return new Blast_tab_format(*this);
 	}
-	vector<int64_t> fields;
+	static Header header_format(unsigned workflow);
+	void output_header(Consumer& f, bool cluster) const;
+	std::vector<int64_t> fields;
 };
 
-struct PAF_format : public Output_format
+struct PAF_format : public OutputFormat
 {
 	PAF_format():
-		Output_format(paf, HspValues::TRANSCRIPT, Output::Flags::NONE)
+		OutputFormat(paf, HspValues::TRANSCRIPT, Output::Flags::NONE)
 	{}
-	virtual void print_query_intro(size_t query_num, const char *query_name, unsigned query_len, TextBuffer &out, bool unaligned, const Search::Config& cfg) const;
+	virtual void print_query_intro(Output::Info& info) const;
 	virtual void print_match(const HspContext& r, const Search::Config& metadata, TextBuffer &out);
 	virtual ~PAF_format()
 	{ }
-	virtual Output_format* clone() const
+	virtual OutputFormat* clone() const
 	{
 		return new PAF_format(*this);
 	}
 };
 
-struct Sam_format : public Output_format
+struct Sam_format : public OutputFormat
 {
 	Sam_format():
-		Output_format(sam, HspValues::TRANSCRIPT, Output::Flags::NONE)
+		OutputFormat(sam, HspValues::TRANSCRIPT, Output::Flags::NONE)
 	{ }
-	virtual void print_match(const HspContext& r, const Search::Config &metadata, TextBuffer &out) override;
+	virtual void print_match(const HspContext& r, Output::Info& info) override;
 	virtual void print_header(Consumer &f, int mode, const char *matrix, int gap_open, int gap_extend, double evalue, const char *first_query_name, unsigned first_query_len) const override;
-	virtual void print_query_intro(size_t query_num, const char *query_name, unsigned query_len, TextBuffer &out, bool unaligned, const Search::Config& cfg) const override;
+	virtual void print_query_intro(Output::Info& info) const override;
 	virtual ~Sam_format()
 	{ }
-	virtual Output_format* clone() const override
+	virtual OutputFormat* clone() const override
 	{
 		return new Sam_format(*this);
 	}
 };
 
-struct XML_format : public Output_format
+struct XML_format : public OutputFormat
 {
 	XML_format():
-		Output_format(blast_xml, HspValues::TRANSCRIPT, Output::Flags::FULL_TITLES)
+		OutputFormat(blast_xml, HspValues::TRANSCRIPT, Output::Flags::FULL_TITLES)
 	{
 		config.salltitles = true;
 	} 
-	virtual void print_match(const HspContext& r, const Search::Config &metadata, TextBuffer &out) override;
+	virtual void print_match(const HspContext& r, Output::Info& info) override;
 	virtual void print_header(Consumer &f, int mode, const char *matrix, int gap_open, int gap_extend, double evalue, const char *first_query_name, unsigned first_query_len) const override;
-	virtual void print_query_intro(size_t query_num, const char *query_name, unsigned query_len, TextBuffer &out, bool unaligned, const Search::Config& cfg) const override;
-	virtual void print_query_epilog(TextBuffer &out, const char *query_title, bool unaligned, const Search::Config &parameters) const override;
+	virtual void print_query_intro(Output::Info& info) const override;
+	virtual void print_query_epilog(Output::Info& info) const override;
 	virtual void print_footer(Consumer &f) const override;
 	virtual ~XML_format()
 	{ }
-	virtual Output_format* clone() const override
+	virtual OutputFormat* clone() const override
 	{
 		return new XML_format(*this);
 	}
 };
 
-struct Pairwise_format : public Output_format
+struct Pairwise_format : public OutputFormat
 {
 	Pairwise_format() :
-		Output_format(blast_pairwise, HspValues::TRANSCRIPT, Output::Flags::FULL_TITLES)
+		OutputFormat(blast_pairwise, HspValues::TRANSCRIPT, Output::Flags::FULL_TITLES)
 	{
 		config.salltitles = true;
 	}
-	virtual void print_match(const HspContext& r, const Search::Config &metadata, TextBuffer &out) override;
+	virtual void print_match(const HspContext& r, Output::Info& info) override;
 	virtual void print_header(Consumer &f, int mode, const char *matrix, int gap_open, int gap_extend, double evalue, const char *first_query_name, unsigned first_query_len) const override;
-	virtual void print_query_intro(size_t query_num, const char *query_name, unsigned query_len, TextBuffer &out, bool unaligned, const Search::Config& cfg) const override;
-	virtual void print_query_epilog(TextBuffer &out, const char *query_title, bool unaligned, const Search::Config &parameters) const override;
+	virtual void print_query_intro(Output::Info& info) const override;
+	virtual void print_query_epilog(Output::Info& infos) const override;
 	virtual void print_footer(Consumer &f) const override;
 	virtual ~Pairwise_format()
 	{ }
-	virtual Output_format* clone() const override
+	virtual OutputFormat* clone() const override
 	{
 		return new Pairwise_format(*this);
 	}
 };
 
-struct Taxon_format : public Output_format
+struct Taxon_format : public OutputFormat
 {
 	Taxon_format() :
-		Output_format(taxon, HspValues::NONE, Output::Flags::NONE),
+		OutputFormat(taxon, HspValues::NONE, Output::Flags::NONE),
 		taxid(0),
 		evalue(std::numeric_limits<double>::max())
 	{
 		needs_taxon_id_lists = true;
 		needs_taxon_nodes = true;
 	}
-	virtual void print_match(const HspContext& r, const Search::Config &metadata, TextBuffer &out) override;
-	virtual void print_query_epilog(TextBuffer &out, const char *query_title, bool unaligned, const Search::Config &parameters) const override;
+	virtual void print_match(const HspContext& r, Output::Info& info) override;
+	virtual void print_query_epilog(Output::Info& info) const override;
 	virtual ~Taxon_format()
 	{ }
-	virtual Output_format* clone() const override
+	virtual OutputFormat* clone() const override
 	{
 		return new Taxon_format(*this);
 	}
@@ -224,52 +224,58 @@ struct Taxon_format : public Output_format
 	double evalue;
 };
 
-struct Bin1_format : public Output_format
+struct Bin1_format : public OutputFormat
 {
 	Bin1_format():
-		Output_format(bin1)
+		OutputFormat(bin1)
 	{}
-	virtual void print_query_intro(size_t query_num, const char *query_name, unsigned query_len, TextBuffer &out, bool unaligned, const Search::Config& cfg) const override;
-	virtual void print_match(const HspContext& r, const Search::Config &metadata, TextBuffer &out) override;
+	virtual void print_query_intro(Output::Info& info) const override;
+	virtual void print_match(const HspContext& r, Output::Info& info) override;
 	virtual ~Bin1_format()
 	{ }
-	virtual Output_format* clone() const override
+	virtual OutputFormat* clone() const override
 	{
 		return new Bin1_format(*this);
 	}
 };
 
-struct Clustering_format : public Output_format
+struct Clustering_format : public OutputFormat
 {
-	string format;
-	Clustering_format(const string* const format): Output_format(bin1) {
-		this->format = RecursiveParser::clean_expression(format);
-	}
-	virtual void print_query_intro(size_t query_num, const char *query_name, unsigned query_len, TextBuffer &out, bool unaligned, const Search::Config& cfg) const override;
-	virtual void print_match(const HspContext& r, const Search::Config &metadata, TextBuffer &out) override;
+	std::string format;
+	Clustering_format(const std::string* const format);
+	virtual void print_match(const HspContext& r, Output::Info& info) override;
 	virtual ~Clustering_format()
 	{ }
-	virtual Output_format* clone() const override
+	virtual OutputFormat* clone() const override
 	{
 		return new Clustering_format(*this);
 	}
 };
 
-struct Binary_format : public Output_format
+namespace Output { namespace Format {
+
+struct Edge : public OutputFormat
 {
-	Binary_format() :
-		Output_format(bin1, HspValues::NONE)
+	struct Data {
+		OId query, target;
+		float qcovhsp, scovhsp;
+		double evalue;
+	};
+	Edge() :
+		OutputFormat(EDGE, HspValues::COORDS)
 	{}
-	virtual void print_match(const HspContext& r, const Search::Config & metadata, TextBuffer& out) override;
-	virtual ~Binary_format()
+	virtual void print_match(const HspContext& r, Output::Info& info) override;
+	virtual ~Edge()
 	{ }
-	virtual Output_format* clone() const override
+	virtual OutputFormat* clone() const override
 	{
-		return new Binary_format(*this);
+		return new Edge(*this);
 	}
 };
 
-Output_format* get_output_format();
-void init_output();
+}}
+
+OutputFormat* get_output_format();
+OutputFormat* init_output(const int64_t max_target_seqs);
 void print_hsp(Hsp &hsp, const TranslatedSequence &query);
 void print_cigar(const HspContext &r, TextBuffer &buf);

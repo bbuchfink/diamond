@@ -31,6 +31,10 @@ template<typename T, char _pchar, size_t _padding = 1lu>
 struct StringSetBase
 {
 
+	using Length = Loc;
+	using Id = BlockId;
+	using Pos = int64_t;
+
 	enum { PERIMETER_PADDING = 256 };
 	static const char DELIMITER = _pchar;
 
@@ -75,9 +79,16 @@ struct StringSetBase
 		data_.insert(data_.end(), _padding, _pchar);
 	}
 
+	void append(const StringSetBase& s) {
+		reserve(size() + s.size(), letters() + s.letters());
+		for (Id i = 0; i < s.size(); ++i)
+			push_back(s.ptr(i), s.end(i));
+	}
+
 	template<typename It>
 	void assign(const size_t i, const It begin, const It end) {
 		std::copy(begin, end, ptr(i));
+		std::fill(ptr(i) + (end - begin), ptr(i) + (end - begin) + _padding, _pchar);
 	}
 
 	void fill(size_t n, T v)
@@ -104,20 +115,26 @@ struct StringSetBase
 		return i;
 	}
 
-	size_t length(size_t i) const
-	{ return limits_[i+1] - limits_[i] - _padding; }
+	Length length(size_t i) const
+	{
+		return Length(limits_[i + 1] - limits_[i] - _padding);
+	}
 
-	size_t size() const
-	{ return limits_.size() - 1; }
+	Id size() const
+	{ return Id(limits_.size() - 1); }
 
 	bool empty() const {
 		return limits_.size() <= 1;
 	}
 
-	size_t raw_len() const
+	int64_t raw_len() const
 	{ return limits_.back(); }
 
-	size_t letters() const
+	int64_t mem_size() const {
+		return data_.size() * sizeof(T) + limits_.size() * sizeof(int64_t);
+	}
+
+	int64_t letters() const
 	{ return raw_len() - size() - PERIMETER_PADDING; }
 
 	T* data(uint64_t p = 0)
@@ -129,13 +146,13 @@ struct StringSetBase
 	size_t position(const T* p) const
 	{ return p - data(); }
 
-	size_t position(size_t i, size_t j) const
+	Pos position(Id i, Length j) const
 	{ return limits_[i] + j; }
 
-	std::pair<size_t, size_t> local_position(size_t p) const
+	std::pair<Id, Length> local_position(int64_t p) const
 	{
-		size_t i = std::upper_bound(limits_.begin(), limits_.end(), p) - limits_.begin() - 1;
-		return std::pair<size_t, size_t>(i, p - limits_[i]);
+		auto i = std::upper_bound(limits_.begin(), limits_.end(), p) - limits_.begin() - 1;
+		return std::pair<Id, Length>(Id(i), Length(p - limits_[i]));
 	}
 
 	template<typename It, typename Out, typename Cmp>
@@ -152,17 +169,17 @@ struct StringSetBase
 		return ptr(limits_.size() - 2);
 	}
 
-	typename std::vector<size_t>::const_iterator limits_begin() const {
+	typename std::vector<int64_t>::const_iterator limits_begin() const {
 		return limits_.begin();
 	}
 
-	typename std::vector<size_t>::const_iterator limits_end() const {
+	typename std::vector<int64_t>::const_iterator limits_end() const {
 		return limits_.end();
 	}
 
 	struct ConstIterator {
 
-		ConstIterator(const T* data, const size_t* limits):
+		ConstIterator(const T* data, const int64_t* limits):
 			data_(data),
 			limits_(limits)
 		{}
@@ -181,6 +198,10 @@ struct StringSetBase
 			return limits_ == it.limits_;
 		}
 
+		bool operator!=(const ConstIterator& it) const {
+			return limits_ != it.limits_;
+		}
+
 		ConstIterator operator+(ptrdiff_t d) const {
 			return { data_ + *(limits_ + d) - *limits_, limits_ + d };
 		}
@@ -195,14 +216,23 @@ struct StringSetBase
 			return *this;
 		}
 
+		ConstIterator& operator++() {
+			this->operator+=(1);
+			return *this;
+		}
+
 		std::pair<const T*, int64_t> operator[](const ptrdiff_t i) const {
 			return { data_ + limits_[i] - limits_[0], limits_[i + 1] - limits_[i] - _padding };
+		}
+
+		std::pair<const T*, int64_t> operator*() const {
+			return this->operator[](0);
 		}
 
 	private:
 
 		const T* data_;
-		const size_t* limits_;
+		const int64_t* limits_;
 
 	};
 
@@ -214,10 +244,24 @@ struct StringSetBase
 		return ConstIterator(nullptr, &limits_[size()]);
 	}
 
+	template<typename It>
+	StringSetBase subset(It begin, It end) const {
+		StringSetBase r;
+		r.limits_.reserve(end - begin);
+		for (It i = begin; i != end; ++i)
+			r.reserve(length(*i));
+		r.finish_reserve();
+		Id n = 0;
+		for (It i = begin; i != end; ++i, ++n) {
+			r.assign(n, ptr(*i), this->end(*i));
+		}
+		return r;
+	}
+
 private:
 
 	std::vector<T> data_;
-	std::vector<size_t> limits_;
+	std::vector<Pos> limits_;
 
 };
 

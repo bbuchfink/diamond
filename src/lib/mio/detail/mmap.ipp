@@ -27,6 +27,7 @@
 #include "mio/page.hpp"
 #include "mio/detail/string_util.hpp"
 
+#include <vector>
 #include <algorithm>
 
 #ifndef _WIN32

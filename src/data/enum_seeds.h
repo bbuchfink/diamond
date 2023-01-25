@@ -1,6 +1,6 @@
 #pragma once
 #include <thread>
-#include "block.h"
+#include "block/block.h"
 #include "../search/seed_complexity.h"
 #include "../util/ptr_vector.h"
 #include "../basic/seed_iterator.h"
@@ -11,10 +11,9 @@
 template<typename F, typename Filter>
 Search::SeedStats enum_seeds(SequenceSet* seqs, F* f, unsigned begin, unsigned end, const Filter* filter, const EnumCfg& cfg)
 {
-	vector<Letter> buf(seqs->max_len(begin, end));
+	std::vector<Letter> buf(seqs->max_len(begin, end));
 	uint64_t key;
 	Search::SeedStats stats;
-	const bool freq = config.freq_masking;
 	for (unsigned i = begin; i < end; ++i) {
 		if (cfg.skip && (*cfg.skip)[i / align_mode.query_contexts])
 			continue;
@@ -26,17 +25,39 @@ Search::SeedStats enum_seeds(SequenceSet* seqs, F* f, unsigned begin, unsigned e
 			if (seq.length() < sh.length_) continue;
 			SeedIterator it(buf, sh);
 			Letter* ptr = seqs->ptr(i);
-			size_t j = 0;
+			Loc j = 0;
 			while (it.good()) {
-				//if (freq || Search::seed_is_complex_unreduced(ptr++, sh, cfg.seed_cut, cfg.mask_seeds, stats)) {
-					if (it.get(key, sh))
-						if (filter->contains(key, shape_id))
-							(*f)(key, seqs->position(i, j), i, shape_id);
-				//}
-				//else {
-					//++it;
-				//}
+				if (it.get(key, sh))
+					if (filter->contains(key, shape_id))
+						(*f)(key, seqs->position(i, j), i, shape_id);
 				++j;
+			}
+		}
+	}
+	f->finish();
+	return stats;
+}
+
+template<typename F, typename Filter, typename It>
+Search::SeedStats enum_seeds_minimizer(SequenceSet* seqs, F* f, unsigned begin, unsigned end, const Filter* filter, const EnumCfg& cfg, Loc it_param)
+{
+	std::vector<Letter> buf(seqs->max_len(begin, end));
+	Search::SeedStats stats;
+	for (unsigned i = begin; i < end; ++i) {
+		if (cfg.skip && (*cfg.skip)[i / align_mode.query_contexts])
+			continue;
+		seqs->convert_to_std_alph(i);
+		const Sequence seq = (*seqs)[i];
+		Reduction::reduce_seq(seq, buf);
+		for (size_t shape_id = cfg.shape_begin; shape_id < cfg.shape_end; ++shape_id) {
+			const Shape& sh = shapes[shape_id];
+			if (seq.length() < sh.length_) continue;
+			It it(buf, sh, it_param);
+			while (it.good()) {
+				const uint64_t key = *it;
+				if (filter->contains(key, shape_id))
+					(*f)(key, seqs->position(i, it.pos()), i, shape_id);
+				++it;
 			}
 		}
 	}
@@ -57,9 +78,8 @@ void enum_seeds_hashed(SequenceSet* seqs, F* f, unsigned begin, unsigned end, co
 			const Shape& sh = shapes[shape_id];
 			if (seq.length() < sh.length_) continue;
 			const uint64_t shape_mask = sh.long_mask();
-			//const __m128i shape_mask = sh.long_mask_sse_;
 			HashedSeedIterator<BITS> it(seq, sh);
-			size_t j = 0;
+			Loc j = 0;
 			while (it.good()) {
 				if (it.get(key, shape_mask)) {
 					if (filter->contains(key, shape_id))
@@ -83,7 +103,7 @@ void enum_seeds_contiguous(SequenceSet* seqs, F* f, unsigned begin, unsigned end
 		const Sequence seq = (*seqs)[i];
 		if (seq.length() < It::length()) continue;
 		It it(seq);
-		size_t j = 0;
+		Loc j = 0;
 		while (it.good()) {
 			if (it.get(key))
 				if (filter->contains(key, 0))
@@ -143,6 +163,10 @@ static void enum_seeds_worker(F* f, SequenceSet* seqs, const unsigned begin, con
 			throw std::runtime_error("Unsupported reduction.");
 		}
 	}
+	else if(cfg->minimizer_window > 0)
+		*stats = enum_seeds_minimizer<F, Filter, MinimizerIterator>(seqs, f, begin, end, filter, *cfg, cfg->minimizer_window);
+	else if(config.sketch_size > 0)
+		*stats = enum_seeds_minimizer<F, Filter, SketchIterator>(seqs, f, begin, end, filter, *cfg, config.sketch_size);
 	else
 		*stats = enum_seeds<F, Filter>(seqs, f, begin, end, filter, *cfg);
 }

@@ -1,6 +1,6 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2020 Max Planck Society for the Advancement of Science e.V.
+Copyright (C) 2013-2022 Max Planck Society for the Advancement of Science e.V.
                         Benjamin Buchfink
                         Eberhard Karls Universitaet Tuebingen
 						
@@ -38,7 +38,7 @@ struct ScoreMatrix
 	struct Custom {};
 
 	ScoreMatrix() :ln_k_(0.0) {}
-	ScoreMatrix(const std::string& matrix, int gap_open, int gap_extend, int frame_shift, int stop_match_score, uint64_t db_letters = 0, int scale = 1);
+	ScoreMatrix(const std::string& matrix, int gap_open, int gap_extend, int frame_shift, int stop_match_score, uint64_t db_letters = 0, int scale = 1, bool mmseqs_compat = false);
 	ScoreMatrix(const std::string &matrix_file, int gap_open, int gap_extend, int stop_match_score, const Custom&, uint64_t db_letters = 0);
 
 	friend std::ostream& operator<<(std::ostream& s, const ScoreMatrix&m);
@@ -102,11 +102,7 @@ struct ScoreMatrix
 	char bias() const
 	{ return bias_; }
 
-	double bitscore(double raw_score) const
-	{
-		const double s = std::round(raw_score / scale_);	// maintain compatibility with BLAST
-		return ( lambda() * s - ln_k()) / LN_2;
-	}
+	double bitscore(double raw_score) const;
 
 	double rawscore(double bitscore, double) const
 	{ return (bitscore*LN_2 + ln_k()) / lambda(); }
@@ -116,6 +112,7 @@ struct ScoreMatrix
 
 	double evalue(int raw_score, unsigned query_len, unsigned subject_len) const;
 	double evalue_norm(int raw_score, unsigned query_len, unsigned subject_len) const;
+	double bitscore_corrected(int raw_score, unsigned query_len, unsigned subject_len) const;
 
 	double evalue_norm(int raw_score, int query_len) const
 	{
@@ -195,6 +192,10 @@ struct ScoreMatrix
 
 	const std::array<double, TRUE_AA>& background_scores() const {
 		return background_scores_;
+	}
+
+	std::string name() const {
+		return name_;
 	}
 
 	double avg_id_score() const;

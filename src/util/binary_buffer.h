@@ -16,9 +16,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#ifndef BINARY_BUFFER_H_
-#define BINARY_BUFFER_H_
-
+#pragma once
 #include <vector>
 #include <stdexcept>
 #include <stdint.h>
@@ -26,15 +24,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "intrin.h"
 #include "algo/varint.h"
 
-using std::vector;
-using std::string;
-
-struct BinaryBuffer : public vector<char>
+struct BinaryBuffer : public std::vector<char>
 {
 
 	struct Iterator
 	{
-		Iterator(vector<char>::const_iterator begin, vector<char>::const_iterator end):
+		Iterator(std::vector<char>::const_iterator begin, std::vector<char>::const_iterator end):
 			ptr_ (begin),
 			end_ (end)
 		{ }
@@ -42,17 +37,17 @@ struct BinaryBuffer : public vector<char>
 		{ read(x); return *this; }
 		Iterator& operator>>(uint8_t &x)
 		{ read(x); return *this; }
-		template<typename _t>
-		void read(_t &x)
+		template<typename T>
+		void read(T &x)
 		{
-			check(sizeof(_t));
-			x = *(_t*)(&*ptr_);
-			ptr_ += sizeof(_t);
+			check(sizeof(T));
+			x = *(T*)(&*ptr_);
+			ptr_ += sizeof(T);
 		}
-		template<typename _t>
-		void read(vector<_t> &v, size_t count)
+		template<typename T>
+		void read(std::vector<T> &v, size_t count)
 		{
-			const size_t l = sizeof(_t) * count;
+			const size_t l = sizeof(T) * count;
 			check(l);
 			v.resize(count);
 			memcpy(v.data(), &*ptr_, l);
@@ -78,7 +73,7 @@ struct BinaryBuffer : public vector<char>
 		{
 			::read_varint(*this, dst);
 		}
-		Iterator& operator>>(string &dst)
+		Iterator& operator>>(std::string &dst)
 		{
 			dst.clear();
 			char c;
@@ -91,12 +86,10 @@ struct BinaryBuffer : public vector<char>
 	private:
 		void check(size_t size) const
 		{ if(ptr_+size > end_) throw std::runtime_error("Unexpected end of file."); }
-		vector<char>::const_iterator ptr_, end_;
+		std::vector<char>::const_iterator ptr_, end_;
 	};
 
 	Iterator begin() const
-	{ return Iterator (vector<char>::begin(), vector<char>::end()); }
+	{ return Iterator (std::vector<char>::begin(), std::vector<char>::end()); }
 
 };
-
-#endif /* BINARY_BUFFER_H_ */

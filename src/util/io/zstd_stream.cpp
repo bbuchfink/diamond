@@ -1,5 +1,7 @@
 #include "zstd_stream.h"
 
+using std::pair;
+
 ZstdSink::ZstdSink(StreamEntity* prev) :
 	StreamEntity(prev),
 	stream(ZSTD_createCStream())
@@ -28,6 +30,8 @@ void ZstdSink::write(const char* ptr, size_t count)
 
 void ZstdSink::close()
 {
+	if (!stream)
+		return;
 	ZSTD_outBuffer out_buf;
 	size_t n;
 	do {
@@ -40,6 +44,7 @@ void ZstdSink::close()
 		prev_->flush(out_buf.pos);
 	} while (n > 0);
 	ZSTD_freeCStream(stream);
+	stream = nullptr;
 	prev_->close();
 }
 
@@ -84,7 +89,10 @@ size_t ZstdSource::read(char* ptr, size_t count)
 
 void ZstdSource::close()
 {
+	if (!stream)
+		return;
 	ZSTD_freeDStream(stream);
+	stream = nullptr;
 	prev_->close();
 }
 

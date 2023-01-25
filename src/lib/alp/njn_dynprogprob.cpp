@@ -225,7 +225,7 @@ void DynProgProb::update () // updates dynamic prog probs
 	    value = getValueFct () (i, j);
 	    while (value < getValueBegin () || getValueEnd () <= value) {
 	    valueBegin = getValueBegin ();
-	    if (value < getValueBegin ()) valueBegin -= (ARRAY_FAC - 1) * getArrayCapacity ();
+	    if (value < getValueBegin ()) valueBegin -= (ARRAY_FAC - 1) * (long)getArrayCapacity ();
 	    reserve (ARRAY_FAC * getArrayCapacity ());
 	    setValueBegin (valueBegin);
 	    oldArray = d_array_p [d_step % 2];

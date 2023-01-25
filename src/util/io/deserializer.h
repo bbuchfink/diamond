@@ -38,7 +38,7 @@ struct Deserializer
 
 	Deserializer(StreamEntity* buffer);
 	void rewind();
-	Deserializer& seek(size_t pos);
+	Deserializer& seek(int64_t pos);
 	void seek_forward(size_t n);
 	bool seek_forward(char delimiter);
 	void close();
@@ -61,19 +61,36 @@ struct Deserializer
 		return *this;
 	}
 
-	Deserializer& operator>>(int &x)
+	Deserializer& operator>>(int32_t &x)
+	{
+		if (varint) {
+			uint32_t i;
+			read_varint(*this, i);
+			x = (int32_t)i;
+		}
+		else {
+			read(x);
+			x = big_endian_byteswap(x);
+		}
+		return *this;
+	}
+
+	Deserializer& operator>>(int64_t& x)
 	{
 		read(x);
+		x = big_endian_byteswap(x);
 		return *this;
 	}
 
 	Deserializer& operator>>(short& x) {
 		read(x);
+		x = big_endian_byteswap(x);
 		return *this;
 	}
 
 	Deserializer& operator>>(unsigned short& x) {
 		read(x);
+		x = big_endian_byteswap(x);
 		return *this;
 	}
 
@@ -120,13 +137,13 @@ struct Deserializer
 		return *this;
 	}
 
-	Deserializer& operator>>(std::vector<uint32_t> &v)
+	Deserializer& operator>>(std::vector<int32_t> &v)
 	{
-		uint32_t n, x;
+		int32_t n, x;
 		*this >> n;
 		v.clear();
 		v.reserve(n);
-		for (unsigned i = 0; i < n; ++i) {
+		for (int32_t i = 0; i < n; ++i) {
 			*this >> x;
 			v.push_back(x);
 		}

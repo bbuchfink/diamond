@@ -28,12 +28,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../../output/output_format.h"
 #include "../../output/daa/daa_write.h"
 #include "../../output/target_culling.h"
+#include "../../util/util.h"
 
 using namespace std;
 
-bool Target::envelopes(const Hsp_traits &t, double p) const
+bool Target::envelopes(const ApproxHsp &t, double p) const
 {
-	for (list<Hsp_traits>::const_iterator i = ts.begin(); i != ts.end(); ++i)
+	for (list<ApproxHsp>::const_iterator i = ts.begin(); i != ts.end(); ++i)
 		if (t.query_source_range.overlap_factor(i->query_source_range) >= p)
 			return true;
 	return false;
@@ -41,7 +42,7 @@ bool Target::envelopes(const Hsp_traits &t, double p) const
 
 bool Target::is_enveloped(const Target &t, double p) const
 {
-	for (list<Hsp_traits>::const_iterator i = ts.begin(); i != ts.end(); ++i)
+	for (list<ApproxHsp>::const_iterator i = ts.begin(); i != ts.end(); ++i)
 		if (!t.envelopes(*i, p))
 			return false;
 	return true;
@@ -75,15 +76,15 @@ bool Target::is_outranked(const vector<int32_t> &v, double treshold) {
 	return true;
 }
 
-QueryMapper::QueryMapper(size_t query_id, Search::Hit* begin, Search::Hit* end, const Search::Config &metadata, bool target_parallel) :
+QueryMapper::QueryMapper(size_t query_id, Search::Hit* begin, Search::Hit* end, const Search::Config &metadata) :
 	source_hits(std::make_pair(begin, end)),
 	query_id((unsigned)query_id),
 	targets_finished(0),
 	next_target(0),
 	source_query_len(metadata.query->source_len((unsigned)query_id)),
 	translated_query(metadata.query->translated(query_id)),
-	target_parallel(target_parallel),
-	metadata(metadata)
+	metadata(metadata),
+	target_parallel(false)
 {
 	seed_hits.reserve(source_hits.second - source_hits.first);
 }
@@ -114,14 +115,14 @@ unsigned QueryMapper::count_targets()
 		/*const Diagonal_segment d = config.comp_based_stats ? xdrop_ungapped(query_seq(frame), query_cb[frame], ref_seqs::get()[l.first], hits[i].seed_offset_, (int)l.second)
 			: xdrop_ungapped(query_seq(frame), ref_seqs::get()[l.first], hits[i].seed_offset_, (int)l.second);*/
 		if (target_parallel) {
-			seed_hits.emplace_back(frame, (unsigned)l.first, (unsigned)l.second, (unsigned)hits[i].seed_offset_, Diagonal_segment());
+			seed_hits.emplace_back(frame, (unsigned)l.first, (unsigned)l.second, (unsigned)hits[i].seed_offset_, DiagonalSegment());
 			if (l.first != subject_id) {
 				subject_id = l.first;
 				++n_subject;
 			}
 		}
 		else {
-			const Diagonal_segment d = xdrop_ungapped(query_seq(frame), metadata.target->seqs()[l.first], hits[i].seed_offset_, (int)l.second);
+			const DiagonalSegment d = xdrop_ungapped(query_seq(frame), nullptr, metadata.target->seqs()[l.first], hits[i].seed_offset_, (int)l.second, false);
 			if (d.score > 0) {
 				if (l.first != subject_id) {
 					subject_id = l.first;
@@ -146,7 +147,7 @@ void QueryMapper::load_targets()
 			targets.get(n) = new Target(i,
 				seed_hits[i].subject_,
 				metadata.target->seqs()[seed_hits[i].subject_],
-				config.taxon_k ? metadata.taxon_nodes->rank_taxid(metadata.db->taxids(oid), Rank::species) : set<unsigned>());
+				config.taxon_k ? metadata.db->taxon_nodes().rank_taxid(metadata.db->taxids(oid), Rank::species) : set<TaxId>());
 			++n;
 			subject_id = seed_hits[i].subject_;
 		}
@@ -154,7 +155,7 @@ void QueryMapper::load_targets()
 	targets[n - 1].end = seed_hits.size();
 }
 
-void QueryMapper::rank_targets(double ratio, double factor)
+void QueryMapper::rank_targets(double ratio, double factor, const int64_t max_target_seqs)
 {
 	if (config.taxon_k && config.toppercent == 100.0)
 		return;
@@ -165,23 +166,23 @@ void QueryMapper::rank_targets(double ratio, double factor)
 		score = int((double)targets[0].filter_score * (1.0 - config.toppercent / 100.0) * ratio);
 	}
 	else {
-		size_t min_idx = std::min(targets.size(), config.max_alignments);
+		int64_t min_idx = std::min((int64_t)targets.size(), max_target_seqs);
 		score = int((double)targets[min_idx - 1].filter_score * ratio);
 	}
 
-	const size_t cap = (config.toppercent < 100 || config.max_alignments == std::numeric_limits<size_t>::max()) ? std::numeric_limits<size_t>::max() : size_t(config.max_alignments*factor);
-	size_t i = 0;
-	for (; i < targets.size(); ++i)
+	const int64_t cap = (config.toppercent < 100 || max_target_seqs == INT64_MAX) ? INT64_MAX : int64_t(max_target_seqs * factor);
+	int64_t i = 0;
+	for (; i < (int64_t)targets.size(); ++i)
 		if (targets[i].filter_score < score || i >= cap)
 			break;
 
 	targets.erase(targets.begin() + i, targets.end());
 }
 
-void QueryMapper::score_only_culling()
+void QueryMapper::score_only_culling(const int64_t max_target_seqs)
 {
 	std::stable_sort(targets.begin(), targets.end(), config.toppercent == 100.0 ? Target::compare_evalue : Target::compare_score);
-	unique_ptr<TargetCulling> target_culling(TargetCulling::get());
+	unique_ptr<TargetCulling> target_culling(TargetCulling::get(max_target_seqs));
 	const unsigned query_len = (unsigned)query_seq(0).length();
 	PtrVector<Target>::iterator i;
 	for (i = targets.begin(); i<targets.end();) {
@@ -201,27 +202,28 @@ void QueryMapper::score_only_culling()
 	targets.erase(i, targets.end());
 }
 
-bool QueryMapper::generate_output(TextBuffer &buffer, Statistics &stat)
+bool QueryMapper::generate_output(TextBuffer &buffer, Statistics &stat, const Search::Config& cfg)
 {
 	std::stable_sort(targets.begin(), targets.end(), config.toppercent == 100.0 ? Target::compare_evalue : Target::compare_score);
 
 	unsigned n_hsp = 0, n_target_seq = 0, hit_hsps = 0;
-	unique_ptr<TargetCulling> target_culling(TargetCulling::get());
+	unique_ptr<TargetCulling> target_culling(TargetCulling::get(cfg.max_target_seqs));
 	const unsigned query_len = (unsigned)query_seq(0).length();
 	size_t seek_pos = 0;
 	const char *query_title = metadata.query->ids()[query_id];
-	unique_ptr<Output_format> f(output_format->clone());
+	unique_ptr<OutputFormat> f(cfg.output_format->clone());
+	Output::Info info{ cfg.query->seq_info(query_id), true, cfg.db.get(), buffer, {} };
 
 	for (size_t i = 0; i < targets.size(); ++i) {
 
-		const size_t subject_id = targets[i].subject_block_id;
-		const unsigned database_id = metadata.target->block_id2oid(subject_id);
+		const BlockId subject_id = targets[i].subject_block_id;
+		const OId database_id = metadata.target->block_id2oid(subject_id);
 		string target_title;
 		size_t dict_id;
-		if (!blocked_processing)
+		if (!cfg.blocked_processing)
 			target_title = metadata.target->has_ids() ? metadata.target->ids()[subject_id] : metadata.db->seqid(database_id);
 		else
-			dict_id = metadata.target->dict_id(current_ref_block, subject_id, *metadata.db);
+			dict_id = metadata.target->dict_id(cfg.current_ref_block, subject_id, *metadata.db);
 		const unsigned subject_len = (unsigned)metadata.target->seqs()[subject_id].length();
 		targets[i].apply_filters(source_query_len, subject_len, query_title);
 		if (targets[i].hsps.size() == 0)
@@ -237,26 +239,28 @@ bool QueryMapper::generate_output(TextBuffer &buffer, Statistics &stat)
 		
 		hit_hsps = 0;
 		for (list<Hsp>::iterator j = targets[i].hsps.begin(); j != targets[i].hsps.end(); ++j) {
+			info.unaligned = false;
 			if (config.max_hsps > 0 && hit_hsps >= config.max_hsps)
 				break;
 
-			if (blocked_processing) {
+			if (cfg.blocked_processing) {
 				if (n_hsp == 0)
 					seek_pos = IntermediateRecord::write_query_intro(buffer, query_id);
-				IntermediateRecord::write(buffer, *j, query_id, dict_id, database_id);
+				IntermediateRecord::write(buffer, *j, query_id, dict_id, database_id, cfg.output_format.get());
 			}
 			else {
 				if (n_hsp == 0) {
-					if (*f == Output_format::daa)
+					if (*f == OutputFormat::daa)
 						seek_pos = write_daa_query_record(buffer, query_title, align_mode.query_translated ? metadata.query->source_seqs()[query_id] : metadata.query->seqs()[query_id]);
 					else
-						f->print_query_intro(query_id, query_title, source_query_len, buffer, false, metadata);
+						f->print_query_intro(info);
 				}
-				if (*f == Output_format::daa)
-					write_daa_record(buffer, *j, metadata.target->dict_id(current_ref_block, subject_id, *metadata.db));
+				if (*f == OutputFormat::daa)
+					write_daa_record(buffer, *j, safe_cast<uint32_t>(metadata.target->dict_id(cfg.current_ref_block, subject_id, *metadata.db)));
 				else
 					f->print_match(HspContext(*j,
 						query_id,
+						cfg.query->block_id2oid(query_id),
 						translated_query,
 						query_title,
 						database_id,
@@ -264,7 +268,7 @@ bool QueryMapper::generate_output(TextBuffer &buffer, Statistics &stat)
 						target_title.c_str(),
 						n_target_seq,
 						hit_hsps,
-						metadata.target->seqs()[subject_id]), metadata, buffer);
+						metadata.target->seqs()[subject_id]), info);
 			}
 
 			++n_hsp;
@@ -274,21 +278,21 @@ bool QueryMapper::generate_output(TextBuffer &buffer, Statistics &stat)
 	}
 
 	if (n_hsp > 0) {
-		if (!blocked_processing) {
-			if (*f == Output_format::daa)
+		if (!cfg.blocked_processing) {
+			if (*f == OutputFormat::daa)
 				finish_daa_query_record(buffer, seek_pos);
 			else
-				f->print_query_epilog(buffer, query_title, false, metadata);
+				f->print_query_epilog(info);
 		}
 		else
 			IntermediateRecord::finish_query(buffer, seek_pos);
 	}
-	else if (!blocked_processing && *f != Output_format::daa && config.report_unaligned != 0) {
-		f->print_query_intro(query_id, query_title, source_query_len, buffer, true, metadata);
-		f->print_query_epilog(buffer, query_title, true, metadata);
+	else if (!cfg.blocked_processing && *f != OutputFormat::daa && config.report_unaligned != 0) {
+		f->print_query_intro(info);
+		f->print_query_epilog(info);
 	}
 
-	if (!blocked_processing) {
+	if (!cfg.blocked_processing) {
 		stat.inc(Statistics::MATCHES, n_hsp);
 		stat.inc(Statistics::PAIRWISE, n_target_seq);
 		if (n_hsp > 0)

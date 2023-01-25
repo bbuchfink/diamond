@@ -41,6 +41,7 @@ FileSource::FileSource(const string &file_name) :
 	StreamEntity(true),
 	file_name_(file_name)
 {
+	static const char* msg = "\nError opening file ";
 	const bool is_stdin = file_name.empty() || file_name == "-";
 #ifdef _MSC_VER
 	f_ = is_stdin ? stdin : fopen(file_name.c_str(), "rb");
@@ -48,22 +49,22 @@ FileSource::FileSource(const string &file_name) :
 
 	struct stat buf;
 	if (!is_stdin && stat(file_name.c_str(), &buf) < 0) {
-		perror(0);
-		throw std::runtime_error(string("Error calling stat on file ") + file_name);
+		perror((msg + file_name).c_str());
+		throw FileOpenException(file_name);
 	}
 	if (is_stdin || !S_ISREG(buf.st_mode))
 		seekable_ = false;
 
 	int fd_ = is_stdin ? 0 : POSIX_OPEN2(file_name.c_str(), O_RDONLY);
 	if (fd_ < 0) {
-		perror(0);
-		throw std::runtime_error(string("Error opening file ") + file_name);
+		perror((msg + file_name).c_str());
+		throw FileOpenException(file_name);
 	}
 	f_ = fdopen(fd_, "rb");
 #endif
 	if (f_ == 0) {
-		perror(0);
-		throw File_open_exception(file_name);
+		perror((msg + file_name).c_str());
+		throw FileOpenException(file_name);
 	}
 }
 
@@ -79,10 +80,10 @@ void FileSource::rewind()
 	::rewind(f_);
 }
 
-void FileSource::seek(size_t pos)
+void FileSource::seek(int64_t pos, int origin)
 {
 #ifdef _MSC_VER
-	if (_fseeki64(f_, (int64_t)pos, SEEK_SET) != 0) {
+	if (_fseeki64(f_, pos, SEEK_SET) != 0) {
 		perror(0);
 		throw std::runtime_error("Error executing seek on file " + file_name_);
 	}
@@ -142,7 +143,7 @@ void FileSource::close()
 	}
 }
 
-size_t FileSource::tell()
+int64_t FileSource::tell()
 {
 #ifdef _MSC_VER
 	int64_t x;

@@ -78,21 +78,22 @@ void print_cigar(const HspContext &r, TextBuffer &buf)
 		buf << n << letter[op];
 }
 
-void Sam_format::print_query_intro(size_t query_num, const char *query_name, unsigned query_len, TextBuffer &out, bool unaligned, const Search::Config& cfg) const
+void Sam_format::print_query_intro(Output::Info &info) const
 {
-	if (unaligned) {
-		out.write_until(query_name, Util::Seq::id_delimiters);
-		out << "\t4\t*\t0\t255\t*\t*\t0\t0\t*\t*\n";
+	if (info.unaligned) {
+		info.out.write_until(info.query.title, Util::Seq::id_delimiters);
+		info.out << "\t4\t*\t0\t255\t*\t*\t0\t0\t*\t*\n";
 	}
 }
 
-void Sam_format::print_match(const HspContext& r, const Search::Config&metadata, TextBuffer &out)
+void Sam_format::print_match(const HspContext& r, Output::Info &info)
 {
-	out.write_until(r.query_title, Util::Seq::id_delimiters);
+	TextBuffer& out = info.out;
+	out.write_until(r.query_title.c_str(), Util::Seq::id_delimiters);
 	out << '\t' << '0' << '\t';
 
 	const bool lt = (config.salltitles || (config.command == Config::view)) ? true : false;
-	print_title(out, r.target_title, lt, lt, "<>");
+	print_title(out, r.target_title.c_str(), lt, lt, "<>");
 
 	out << '\t'
 		<< r.subject_range().begin_ + 1 << '\t'

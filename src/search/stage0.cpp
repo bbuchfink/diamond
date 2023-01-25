@@ -53,7 +53,7 @@ static void seed_join_worker(
 	DoubleArray<SeedLoc> *ref_seeds_hits)
 {
 	int p;
-	const unsigned bits = query_seeds->key_bits;
+	const int bits = query_seeds->key_bits;
 	if (bits != ref_seeds->key_bits)
 		throw std::runtime_error("Joining seed arrays with different key lengths.");
 	while ((p = (*seedp)++) < seedp_range->end()) {
@@ -74,18 +74,25 @@ static void search_worker(atomic<unsigned> *seedp, const SeedPartitionRange *see
 	else
 		writer.reset(new AsyncBuffer<Hit>::Iterator(*cfg->seed_hit_buf, thread_id));
 #ifdef __APPLE__
-	unique_ptr<Search::WorkSet> work_set(new Search::WorkSet{ *context, *cfg, shape, {}, writer.get(), {} });
+	unique_ptr<Search::WorkSet> work_set(new Search::WorkSet{ *context, *cfg, shape, {}, writer.get(), {}, context->kmer_ranking });
 #else
-	unique_ptr<Search::WorkSet> work_set(new Search::WorkSet{ *context, *cfg, shape, {}, writer.get(), {}, {}, {} });
+	unique_ptr<Search::WorkSet> work_set(new Search::WorkSet{ *context, *cfg, shape, {}, writer.get(), {}, {}, {}, context->kmer_ranking });
 #endif
 	int p;
+#ifdef KEEP_TARGET_ID
+	auto f = config.lin_stage1 ? Search::stage1_lin_ranked
+		: (config.self && cfg->current_ref_block == 0 ? Search::stage1_self : Search::stage1);
+#else
+	auto f = config.lin_stage1 ? Search::stage1_lin
+		: (config.self && cfg->current_ref_block == 0 ? Search::stage1_self : Search::stage1);
+#endif
 	while ((p = (*seedp)++) < seedp_range->end())
 		for (auto it = JoinIterator<SeedLoc>(query_seed_hits[p].begin(), ref_seed_hits[p].begin()); it; ++it)
-			Search::stage1(it.r->begin(), it.r->size(), it.s->begin(), it.s->size(), *work_set);
+			f(it.r->begin(), (int32_t)it.r->size(), it.s->begin(), (int32_t)it.s->size(), *work_set);
 	statistics += work_set->stats;
 }
 
-void search_shape(unsigned sid, unsigned query_block, unsigned query_iteration, char *query_buffer, char *ref_buffer, Search::Config& cfg, const HashedSeedSet* target_seeds)
+void search_shape(unsigned sid, int query_block, unsigned query_iteration, char *query_buffer, char *ref_buffer, Search::Config& cfg, const HashedSeedSet* target_seeds)
 {
 	Partition<unsigned> p(Const::seedp, cfg.index_chunks);
 	DoubleArray<SeedLoc> query_seed_hits[Const::seedp], ref_seed_hits[Const::seedp];
@@ -97,7 +104,7 @@ void search_shape(unsigned sid, unsigned query_block, unsigned query_iteration, 
 		message_stream << "Processing query block " << query_block + 1;
 		if (cfg.iterated())
 			message_stream << ", query iteration " << query_iteration + 1;
-		message_stream << ", reference block " << (current_ref_block + 1) << "/" << cfg.ref_blocks
+		message_stream << ", reference block " << (cfg.current_ref_block + 1) << "/" << cfg.ref_blocks
 			<< ", shape " << (sid + 1) << "/" << shapes.count();
 		if (cfg.index_chunks > 1)
 			message_stream << ", index chunk " << chunk + 1 << "/" << cfg.index_chunks;
@@ -108,7 +115,8 @@ void search_shape(unsigned sid, unsigned query_block, unsigned query_iteration, 
 		task_timer timer("Building reference seed array", true);
 		SeedArray *ref_idx;
 		const EnumCfg enum_ref{ &ref_hst.partition(), sid, sid + 1, cfg.seed_encoding, nullptr, false, false, cfg.seed_complexity_cut,
-			query_seeds_bitset.get() || query_seeds_hashed.get() ? MaskingAlgo::NONE : cfg.soft_masking };
+			query_seeds_bitset.get() || query_seeds_hashed.get() ? MaskingAlgo::NONE : cfg.soft_masking,
+			cfg.minimizer_window };
 		if (query_seeds_bitset.get())
 			ref_idx = new SeedArray(*cfg.target, ref_hst.get(sid), range, ref_buffer, query_seeds_bitset.get(), enum_ref);
 		else if (query_seeds_hashed.get())
@@ -119,7 +127,7 @@ void search_shape(unsigned sid, unsigned query_block, unsigned query_iteration, 
 
 		timer.go("Building query seed array");
 		SeedArray* query_idx;
-		EnumCfg enum_query{ target_seeds ? nullptr : &query_hst.partition(), sid, sid + 1, cfg.seed_encoding, cfg.query_skip.get(), false, true, cfg.seed_complexity_cut, cfg.soft_masking };
+		EnumCfg enum_query{ target_seeds ? nullptr : &query_hst.partition(), sid, sid + 1, cfg.seed_encoding, cfg.query_skip.get(), false, true, cfg.seed_complexity_cut, cfg.soft_masking, cfg.minimizer_window };
 		if (target_seeds)
 			query_idx = new SeedArray(*cfg.query, range, target_seeds, enum_query);
 		else
@@ -136,39 +144,49 @@ void search_shape(unsigned sid, unsigned query_block, unsigned query_iteration, 
 		timer.go("Computing hash join");
 		atomic<unsigned> seedp(range.begin());
 		vector<std::thread> threads;
-		for (size_t i = 0; i < config.threads_; ++i)
+		for (int i = 0; i < config.threads_; ++i)
 			threads.emplace_back(seed_join_worker, query_idx, ref_idx, &seedp, &range, query_seed_hits, ref_seed_hits);
 		for (auto &t : threads)
 			t.join();
 		timer.finish();
 
-		if(config.freq_masking) {
+		if(config.freq_masking && !config.lin_stage1) {
 			timer.go("Building seed filter");
 			frequent_seeds.build(sid, range, query_seed_hits, ref_seed_hits, cfg);
 		}
 		else
 			Search::mask_seeds(shapes[sid], range, query_seed_hits, ref_seed_hits, cfg);
 
+		unique_ptr<KmerRanking> kmer_ranking;
+#ifdef KEEP_TARGET_ID
+		if (config.lin_stage1) {
+			timer.go("Building kmer ranking");
+			kmer_ranking.reset(config.kmer_ranking ? new KmerRanking(cfg.query->seqs(), query_seed_hits, ref_seed_hits)
+				: new KmerRanking(cfg.query->seqs()));
+		}
+#endif
+
 		Search::Context* context = nullptr;
 		const vector<uint32_t> patterns = shapes.patterns(0, sid + 1);
 		context = new Search::Context{ {patterns.data(), patterns.data() + patterns.size() - 1 },
 			{patterns.data(), patterns.data() + patterns.size() },
-			cfg.ungapped_evalue,
-			cfg.ungapped_evalue_short,
-			score_matrix.rawscore(config.short_query_ungapped_bitscore)
+			score_matrix.rawscore(config.short_query_ungapped_bitscore),
+			kmer_ranking.get()
 		};
 
 		timer.go("Searching alignments");
 		seedp = range.begin();
 		threads.clear();
-		for (size_t i = 0; i < config.threads_; ++i)
+		for (int i = 0; i < config.threads_; ++i)
 			threads.emplace_back(search_worker, &seedp, &range, sid, i, query_seed_hits, ref_seed_hits, context, &cfg);
 		for (auto &t : threads)
 			t.join();
 
+		timer.go("Deallocating memory");
 		delete ref_idx;
 		delete query_idx;
 		delete context;
+		kmer_ranking.reset();
 	}
 }
 

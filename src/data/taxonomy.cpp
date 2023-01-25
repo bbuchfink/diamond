@@ -36,6 +36,7 @@ using std::string;
 using std::map;
 using std::endl;
 using std::set;
+using std::vector;
 
 const char* Rank::names[] = {
 	"no rank", "superkingdom", "kingdom", "subkingdom", "superphylum", "phylum", "subphylum", "superclass", "class", "subclass", "infraclass", "cohort", "subcohort", "superorder",
@@ -82,25 +83,10 @@ string get_accession(const string &title)
 	return t;
 }
 
-void Taxonomy::load_nodes()
-{
-	TextInputFile f(config.nodesdmp);
-	unsigned taxid, parent;
-	string rank;
-	while (!f.eof() && (f.getline(), !f.line.empty())) {
-		Util::String::Tokenizer(f.line, "\t|\t") >> taxid >> parent >> rank;
-		parent_.resize(taxid + 1);
-		parent_[taxid] = parent;
-		rank_.resize(taxid + 1);
-		rank_[taxid] = Rank(rank.c_str());
-	}
-	f.close();
-}
-
 size_t Taxonomy::load_names() {
 	TextInputFile in(config.namesdmp);
 	string name, type;
-	long id;
+	int64_t id;
 	size_t n = 0;
 	while (in.getline(), !in.eof()) {
 		if (in.line.empty())
@@ -120,11 +106,6 @@ size_t Taxonomy::load_names() {
 void Taxonomy::init()
 {
 	task_timer timer;
-	if (!config.nodesdmp.empty()) {
-		timer.go("Loading taxonomy nodes");
-		load_nodes();
-		timer.finish();
-	}
 	if (!config.namesdmp.empty()) {
 		timer.go("Loading taxonomy names");
 		size_t n = load_names();
@@ -139,36 +120,4 @@ vector<string> accession_from_title(const char *title)
 	for (vector<string>::iterator i = t.begin(); i < t.end(); ++i)
 		*i = get_accession(Util::Seq::seqid(i->c_str(), false));
 	return t;
-}
-
-unsigned Taxonomy::get_lca(unsigned t1, unsigned t2) const
-{
-	static const int max = 64;
-	if (t1 == t2 || t2 == 0)
-		return t1;
-	if (t1 == 0)
-		return t2;
-	unsigned p = t2;
-	set<unsigned> l;
-	int n = 0;
-	do {
-		p = get_parent(p);
-		if (p == 0)
-			return t1;
-		l.insert(p);
-		if (++n > max)
-			throw std::runtime_error("Path in taxonomy too long (1).");
-	} while (p != t1 && p != 1);
-	if (p == t1)
-		return p;
-	p = t1;
-	n = 0;
-	while (l.find(p) == l.end()) {
-		p = get_parent(p);
-		if (p == 0)
-			return t2;
-		if (++n > max)
-			throw std::runtime_error("Path in taxonomy too long (2).");
-	}
-	return p;
 }

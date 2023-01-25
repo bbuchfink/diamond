@@ -36,6 +36,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "zstd_stream.h"
 #endif
 
+using std::string;
+
 static Compressor detect_compressor(const char* b) {
 	if ((b[0] == '\x1F' && b[1] == '\x8B')         // gzip header
 		|| (b[0] == '\x78' && (b[1] == '\x01'      // zlib header
@@ -65,7 +67,8 @@ static StreamEntity* make_decompressor(const Compressor c, StreamEntity* buffer)
 InputFile::InputFile(const string &file_name, int flags) :
 	Deserializer(new InputStreamBuffer(new FileSource(file_name), flags)),
 	file_name(file_name),
-	unlinked(false)
+	unlinked(false),
+	temp_file(false)
 {
 	if (file_name.empty() || file_name == "-")
 		return;
@@ -98,7 +101,17 @@ InputFile::InputFile(const string &file_name, int flags) :
 InputFile::InputFile(TempFile &tmp_file, int flags) :
 	Deserializer(new InputStreamBuffer(new FileSource(tmp_file.file_name(), tmp_file.file()), flags)),
 	file_name(tmp_file.file_name()),
-	unlinked(tmp_file.unlinked)
+	unlinked(tmp_file.unlinked),
+	temp_file(true)
+{
+	tmp_file.rewind();
+}
+
+InputFile::InputFile(OutputFile& tmp_file, int flags) :
+	Deserializer(new InputStreamBuffer(new FileSource(tmp_file.file_name(), tmp_file.file()), flags)),
+	file_name(tmp_file.file_name()),
+	unlinked(false),
+	temp_file(true)
 {
 	tmp_file.rewind();
 }
@@ -117,7 +130,7 @@ uint64_t InputFile::hash() {
 	char h[16];
 	std::fill(h, h + 16, '\0');
 	while ((n = read_raw(buf, SIZE)) > 0)
-		MurmurHash3_x64_128(buf, n, h, h);
+		MurmurHash3_x64_128(buf, (int)n, h, h);
 	uint64_t r;
 	memcpy(&r, h, 8);
 	return r;

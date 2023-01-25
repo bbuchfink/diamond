@@ -24,6 +24,7 @@
 #define MIO_MMAP_HEADER
 
 #include "mio/page.hpp"
+#include "forward.h"
 
 #include <iterator>
 #include <string>

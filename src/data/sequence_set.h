@@ -30,6 +30,10 @@ struct SequenceSet : public StringSetBase<Letter, Sequence::DELIMITER, 1>
 {
 
 	SequenceSet(Alphabet alphabet = Alphabet::STD);
+	SequenceSet(StringSetBase&& string_set):
+		StringSetBase(string_set),
+		alphabet_(Alphabet::STD)
+	{}
 	
 	void print_stats() const;
 
@@ -38,9 +42,9 @@ struct SequenceSet : public StringSetBase<Letter, Sequence::DELIMITER, 1>
 		return Sequence(ptr(i), (Loc)length(i));
 	}
 
-	std::pair<size_t, size_t> len_bounds(size_t min_len) const;
+	std::pair<Length, Length> len_bounds(Length min_len) const;
 
-	size_t max_len(size_t begin, size_t end) const;
+	Length max_len(size_t begin, size_t end) const;
 
 	std::vector<size_t> partition(unsigned n_part) const;
 
@@ -62,6 +66,7 @@ struct SequenceSet : public StringSetBase<Letter, Sequence::DELIMITER, 1>
 
 	void convert_to_std_alph(size_t id);
 	void convert_all_to_std_alph(size_t threads);
+	std::vector<std::pair<Loc, BlockId>> lengths() const;
 	
 private:
 

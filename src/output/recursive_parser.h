@@ -23,10 +23,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <functional>
 #include <stdexcept>
 
-class RecursiveParser{
+class RecursiveParser {
 	const HspContext* r; 
 	const char * expression_to_parse;
-	const bool check;
+	std::vector<Variable*> vars_;
 	char peek()
 	{
 		return *expression_to_parse;
@@ -73,7 +73,7 @@ class RecursiveParser{
 	}
 	std::string variable()
 	{
-		vector<char> v;
+		std::vector<char> v;
 		while ( (peek() >= 'a' && peek() <= 'z') ||  (peek() >= 'A' && peek() <= 'Z') || peek() == '_')
 		{
 			v.push_back(get());
@@ -153,7 +153,8 @@ class RecursiveParser{
 		}
 		else {
 			auto v = VariableRegistry::get(variable());
-			if(check){
+			if(!r) {
+				vars_.push_back(v);
 				return 4;
 			}
 			else {
@@ -191,14 +192,16 @@ class RecursiveParser{
 	}
 
 public:
-	static const vector<std::string> variables;
-	RecursiveParser(const HspContext* r, const char * c, bool check): r(r), expression_to_parse(c), check(check){}
-	double evaluate(){
+	RecursiveParser(const HspContext* r, const char * c): r(r), expression_to_parse(c)
+	{}
+	double evaluate() {
 		return expression();
 	}
-
-	const string static clean_expression(const string* const expression){
-		string cleanedExpression = std::string(*expression);
+	std::vector<Variable*> variables() const {
+		return vars_;
+	}
+	const std::string static clean_expression(const std::string* const expression){
+		std::string cleanedExpression = std::string(*expression);
 		cleanedExpression.erase(std::remove_if(cleanedExpression.begin(), cleanedExpression.end(), [](unsigned char c){return c == ' ' || c == '\n' || c == '\r' || c == '\t' || c == '\v' || c == '\f';}), cleanedExpression.end());
 		return cleanedExpression;
 	}

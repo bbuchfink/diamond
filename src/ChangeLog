@@ -1,3 +1,63 @@
+[2.1.0]
+- Added the `cluster` workflow to cluster protein sequences.
+- Added the `realign` workflow to generate clustering output.
+- Added the `recluster` workflow to correct errors in clusterings.
+- Added the `reassign` workflow to reassign cluster members to their closest centroid.
+- Added the option `-M/--memory-limit` to set a memory limit for clustering workflows.
+- Added the `approx-id` option to filter alignments by approximate sequence identity
+  and to set an approximate sequence identity threshold for clustering.
+- Added the `--member-cover` option to set the coverage threshold of the cluster
+  member sequence.
+- Added the `cluster-steps` option to set steps for cascaded clustering.
+- Added the `clusters` option to specify clustering input file.
+- The `blastx` mode will now mask any open reading frame below the minimum required
+  length as specified by `--min-orf`.
+- The `blastx` mode will only count unmasked letters towards the block size.
+- Fixed a bug that caused an error when using the global ranking mode.
+- Added the fast mode as the first round in iterative searches.
+- Fixed a bug that caused the program not to function on systems without support
+  for SSE4.1.
+- Improved multi-threaded load balancing of gapped extension computations.
+- Improved performance of seed extension stage when HSP filter settings are used.
+- Added the option `--soft-masking` with possible values `0` and `tantan` to permit
+  soft-masking using the tantan algorithm.
+- Fixed a bug that could cause an `inflate error` in multiprocessing mode.
+- Added the option `--swipe` to compute full Smith Waterman alignments of all
+  queries against all targets.
+- Added the sensitivity mode `--faster`.
+- Added the option `-M` to set memory limit for the `cluster`, `realign`,
+  `recluster` and `reassign` workflows.
+- Added the output fields `approx_pident` and `corrected_bitscore` to the tabular
+  format.
+- Added the `--lin-stage1` option to linearize comparisons in the seeding stage
+  by only considering hits against the longest query sequence for identical seeds.
+- Added the `--kmer-ranking` option to rank sequences when `--lin-stage1` is used
+  (only supported when compiled with `-DKEEP_TARGET_ID=ON`).
+- Added the option `--no-block-size-limit` to deactivate upper limits for the block
+  size when the `--memory-limit` option is used.
+- Added the `greedy-vertex-cover` workflow to compute clustering based on
+  alignments.
+- Added the `--edge-format` option to set edge format for greedy vertex cover.
+- Added the `--edges` option to set input file for greedy vertex cover.
+- Added the `--centroid-out` option to output centroid sequences for greedy
+  vertex cover.
+- Added the `--unaligned-targets` option to generate an output file of unaligned
+  targets.
+- Fixed an issue that failed compilation using the Intel Compiler.
+- Fixed an issue that could cause a segmentation fault in rare cases.
+- The `--header` option can now be used with the parameter `simple` to enable
+  simple headers for the tabular format, or without a parameter to enable
+  headers for the clustering format.
+- Added the option `--mp-self` to optimize self-alignment in multiprocessing
+  mode.
+- Added the option `--query-or-subject-cover` to report alignments if the query
+  or the subject cover (or both) are above the given threshold.
+- Removed support for the `--comp-based-stats 2` option (now equivalent to
+  `--comp-based-stats 3`).
+- Removed hit culling in case of overlapping target ranges in frameshift
+  alignment mode.
+- Added the option `--anchored-swipe` to activate anchored SWIPE extension.
+
 [2.0.15]
 - Fixed a bug (present since v2.0.12) that caused the `diamond view` workflow to
   report a zero bit score for all alignments.

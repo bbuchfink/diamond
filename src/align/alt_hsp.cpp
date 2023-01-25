@@ -4,6 +4,7 @@
 
 using std::list;
 using std::array;
+using std::vector;
 
 namespace Extension {
 
@@ -67,19 +68,19 @@ static TargetVec recompute_alt_hsps(const Sequence* query_seq, const int query_s
 	const Loc qlen = query_seq[0].length();
 	for (auto it = targets.begin(); it != targets.end(); ++it) {
 		const int64_t dp_size = (int64_t)qlen * (int64_t)it->match->seq.length();
-		const Stats::TargetMatrix* matrix = it->match->matrix.blank() ? nullptr : &it->match->matrix;
+		const ::Stats::TargetMatrix* matrix = it->match->matrix.blank() ? nullptr : &it->match->matrix;
 		const int bin = DP::BandedSwipe::bin(v, qlen, 0, 0, dp_size, matrix ? matrix->score_width() : 0, 0);
 		for (int32_t context = 0; context < align_mode.query_contexts; ++context) {
 			if (it->masked_seq[context]) {
 				const Sequence target = it->masked(context);
-				dp_targets[context][bin].emplace_back(target, target.length(), it - targets.begin(), matrix);
+				dp_targets[context][bin].emplace_back(target, target.length(), BlockId(it - targets.begin()), matrix);
 			}
 		}
 	}
 
 	for (int32_t context = 0; context < align_mode.query_contexts; ++context) {
-		const int8_t* cbs = Stats::CBS::hauser(config.comp_based_stats) ? query_cb[context].int8.data() : nullptr;
-		DP::Params params{ query_seq[context], Frame(context), query_source_len, cbs, DP::Flags::FULL_MATRIX, v, stats };
+		const int8_t* cbs = ::Stats::CBS::hauser(config.comp_based_stats) ? query_cb[context].int8.data() : nullptr;
+		DP::Params params{ query_seq[context], "", Frame(context), query_source_len, cbs, DP::Flags::FULL_MATRIX, v, stats, nullptr };
 		list<Hsp> hsp = DP::BandedSwipe::swipe(dp_targets[context], params);
 		while (!hsp.empty()) {
 			ActiveTarget& t = targets[hsp.front().swipe_target];
@@ -101,13 +102,13 @@ static TargetVec recompute_alt_hsps(const Sequence* query_seq, const int query_s
 	return out;
 }
 
-void recompute_alt_hsps(vector<Match>& matches, const Sequence* query, const int query_source_len, const Bias_correction* query_cb, const HspValues v, Statistics& stats) {
+void recompute_alt_hsps(vector<Match>::iterator begin, vector<Match>::iterator end, const Sequence* query, const int query_source_len, const Bias_correction* query_cb, const HspValues v, Statistics& stats) {
 	if (config.max_hsps == 1)
 		return;
 	TargetVec targets;
-	targets.reserve(matches.size());
+	targets.reserve(end - begin);
 	SequenceSet target_seqs;
-	for (auto i = matches.begin(); i != matches.end(); ++i)
+	for (auto i = begin; i != end; ++i)
 		targets.emplace_back(i, target_seqs);
 	target_seqs.finish_reserve();
 	int64_t i = 0;

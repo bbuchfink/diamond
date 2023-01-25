@@ -16,11 +16,9 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#ifndef TRANSLATED_POSITION_H_
-#define TRANSLATED_POSITION_H_
-
+#pragma once
 #include <algorithm>
-#include "../util/interval.h"
+#include "../util/geo/interval.h"
 #include "value.h"
 
 enum Strand { FORWARD = 0, REVERSE = 1 };
@@ -127,12 +125,12 @@ struct TranslatedPosition
 		return oriented_position(in_strand(), frame.strand, dna_len);
 	}
 
-	static interval absolute_interval(const TranslatedPosition &begin, const TranslatedPosition &end, int dna_len)
+	static Interval absolute_interval(const TranslatedPosition &begin, const TranslatedPosition &end, int dna_len)
 	{
 		if (begin.frame.strand == FORWARD)
-			return interval(begin.in_strand(), end.in_strand());
+			return Interval(begin.in_strand(), end.in_strand());
 		else
-			return interval(oriented_position(end.in_strand() - 1, REVERSE, dna_len), oriented_position(begin.in_strand() - 1, REVERSE, dna_len));
+			return Interval(oriented_position(end.in_strand() - 1, REVERSE, dna_len), oriented_position(begin.in_strand() - 1, REVERSE, dna_len));
 	}
 
 	static int in_strand_to_translated(int in_strand)
@@ -183,5 +181,3 @@ struct TranslatedPosition
 	int translated;
 
 };
-
-#endif

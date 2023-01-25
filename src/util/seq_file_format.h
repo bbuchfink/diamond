@@ -23,6 +23,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #pragma once
 #include <vector>
 #include <string>
+#include <memory>
 #include "../basic/value.h"
 #include "io/text_input_file.h"
 
@@ -69,4 +70,4 @@ struct FASTQ_format : public Sequence_file_format
 
 };
 
-const Sequence_file_format* guess_format(TextInputFile &file);
+std::unique_ptr<const Sequence_file_format> guess_format(TextInputFile &file);

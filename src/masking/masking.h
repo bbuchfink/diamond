@@ -30,6 +30,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../data/string_set.h"
 #include "../util/enum.h"
 #include "def.h"
+#include "../util/kmer/kmer.h"
 
 struct MaskingTable;
 struct SequenceSet;
@@ -68,6 +69,7 @@ enum class MaskingMode { NONE, TANTAN, BLAST_SEG };
 template<>
 struct EnumTraits<MaskingMode> {
 	static const SEMap<MaskingMode> from_string;
+    static const EMap<MaskingMode> to_string;
 };
 
 struct MaskingTable {
@@ -80,6 +82,9 @@ struct MaskingTable {
 	void apply(SequenceSet& seqs) const;
 	bool blank() const;
 	size_t masked_letters() const;
+	int64_t mem_size() const {
+		return entry_.size() * sizeof(Entry) + seqs_.mem_size();
+	}
 
 private:
 
@@ -95,71 +100,6 @@ private:
 	StringSetBase<Letter, Sequence::DELIMITER, 1> seqs_;
 	std::mutex mtx_;
 
-};
-
-template<size_t K>
-struct Kmer {
-	Kmer():
-		code(0)
-	{ }
-	Kmer(const char* s) :
-		code(0)
-	{
-		assert(strlen(s) == K);
-		for (size_t i = 0; i < K; ++i)
-			code = (code << 5) | (uint64_t)amino_acid_traits.from_char(*s++);
-	}
-	operator uint64_t() const {
-		return code;
-	}
-	struct Hash {
-		size_t operator()(const Kmer<K> k) const {
-			return std::hash<uint64_t>()(k.code);
-		}
-	};
-	uint64_t code;
-};
-
-template<size_t K>
-struct KmerIterator {
-	KmerIterator(const Sequence& seq) :
-		ptr_(seq.data() - 1),
-		end_(seq.end())
-	{
-		inc(0);
-	}
-	Kmer<K> operator*() const {
-		return kmer_;
-	}
-	bool good() const {
-		return ptr_ < end_;
-	}
-	KmerIterator& operator++() {
-		inc(K - 1);
-		return *this;
-	}
-	ptrdiff_t operator-(const Letter* ptr) {
-		return ptr_ + 1 - K - ptr;
-	}
-private:
-	static const uint64_t BITS = 5;
-	void inc(size_t n) {
-		do {
-			++ptr_;
-			if (ptr_ == end_)
-				return;
-			const uint64_t l = letter_mask(*ptr_);
-			if (l < TRUE_AA) {
-				kmer_.code = (kmer_.code << BITS) | l;
-				++n;
-			}
-			else
-				n = 0;
-		} while (n < K);
-		kmer_.code &= (uint64_t(1) << (BITS * K)) - 1;
-	}
-	const Letter* ptr_, *const end_;
-	Kmer<K> kmer_;
 };
 
 const size_t MOTIF_LEN = 8;

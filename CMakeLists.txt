@@ -14,6 +14,13 @@ option(DP_STAT "DP_STAT" OFF)
 option(SINGLE_THREADED "SINGLE_THREADED" OFF)
 option(EIGEN_BLAS "EIGEN_BLAS" OFF)
 option(WITH_ZSTD "WITH_ZSTD" OFF)
+option(KEEP_TARGET_ID "KEEP_TARGET_ID" OFF)
+option(HIT_KEEP_TARGET_ID "HIT_KEEP_TARGET_ID" OFF)
+option(LONG_SEEDS "LONG_SEEDS" OFF)
+option(WITH_AVX512 "WITH_AVX512" OFF)
+option(WITH_DNA "WITH_DNA" OFF)
+option(WITH_MCL "WITH_MCL" OFF)
+option(WITH_MIMALLOC "WITH_MIMALLOC" OFF)
 set(MAX_SHAPE_LEN 19)
 set(BLAST_INCLUDE_DIR "" CACHE STRING "BLAST_INCLUDE_DIR")
 set(BLAST_LIBRARY_DIR "" CACHE STRING "BLAST_LIBRARY_DIR")
@@ -58,6 +65,30 @@ if(EXTRA)
   add_definitions(-DEXTRA)
 endif()
 
+if(KEEP_TARGET_ID)
+  add_definitions(-DKEEP_TARGET_ID)
+endif()
+
+if(HIT_KEEP_TARGET_ID)
+  add_definitions(-DHIT_KEEP_TARGET_ID)
+endif()
+
+if(LONG_SEEDS)
+  add_definitions(-DLONG_SEEDS)
+endif()
+
+if(WITH_AVX512)
+  add_definitions(-DWITH_AVX512)
+endif()
+
+if(WITH_DNA)
+  add_definitions(-DWITH_DNA)
+endif()
+
+if(WITH_MCL)
+  add_definitions(-DWITH_MCL)
+endif()
+
 add_definitions(-DMAX_SHAPE_LEN=${MAX_SHAPE_LEN})
 
 IF(STATIC_LIBGCC)
@@ -65,9 +96,9 @@ IF(STATIC_LIBGCC)
 endif()
 
 if(BUILD_STATIC)
-    set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
-    set(BUILD_SHARED_LIBRARIES OFF)
-    set(CMAKE_EXE_LINKER_FLAGS "-static")
+  set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
+  set(BUILD_SHARED_LIBRARIES OFF)
+  set(CMAKE_EXE_LINKER_FLAGS "-static")
 endif()
 
 check_cxx_compiler_flag("-std=gnu++14" HAS_GNUPP14)
@@ -113,14 +144,17 @@ if (CMAKE_COMPILER_IS_GNUCC AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 5)
 endif()
 
 set(DISPATCH_OBJECTS
-"src/dp/swipe/banded_3frame_swipe.cpp"
-"src/search/stage2.cpp"
-"src/tools/benchmark.cpp"
-"src/dp/swipe/swipe_wrapper.cpp"
-"src/util/tantan.cpp"
-"src/dp/scan_diags.cpp"
-"src/dp/ungapped_simd.cpp"
-)
+        "src/dp/swipe/banded_3frame_swipe.cpp"
+        "src/search/stage2.cpp"
+        "src/tools/benchmark.cpp"
+        "src/dp/swipe/swipe_wrapper.cpp"
+        "src/masking/tantan.cpp"
+        "src/dp/scan_diags.cpp"
+        "src/dp/ungapped_simd.cpp"
+        "src/dp/pfscan/pfscan.cpp"
+        "src/dp/swipe/anchored_wrapper.cpp"
+        "src/dp/score_profile.cpp"
+        )
 
 if(EXTRA)
   LIST(APPEND DISPATCH_OBJECTS "src/tools/benchmark_swipe.cpp")
@@ -130,17 +164,27 @@ add_library(arch_generic OBJECT ${DISPATCH_OBJECTS})
 target_compile_options(arch_generic PUBLIC -DDISPATCH_ARCH=ARCH_GENERIC -DARCH_ID=0 -DEigen=Eigen_GENERIC)
 target_include_directories(arch_generic PRIVATE "${CMAKE_SOURCE_DIR}/src/lib")
 if(X86)
-add_library(arch_sse4_1 OBJECT ${DISPATCH_OBJECTS})
-target_include_directories(arch_sse4_1 PRIVATE "${CMAKE_SOURCE_DIR}/src/lib")
-add_library(arch_avx2 OBJECT ${DISPATCH_OBJECTS})
-target_include_directories(arch_avx2 PRIVATE "${CMAKE_SOURCE_DIR}/src/lib")
-if (${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
-	target_compile_options(arch_sse4_1 PUBLIC -DDISPATCH_ARCH=ARCH_SSE4_1 -DARCH_ID=1 -D__SSSE3__ -D__SSE4_1__ -D__POPCNT__ -DEigen=Eigen_SSE4_1)
+  add_library(arch_sse4_1 OBJECT ${DISPATCH_OBJECTS})
+  target_include_directories(arch_sse4_1 PRIVATE "${CMAKE_SOURCE_DIR}/src/lib")
+  add_library(arch_avx2 OBJECT ${DISPATCH_OBJECTS})
+  target_include_directories(arch_avx2 PRIVATE "${CMAKE_SOURCE_DIR}/src/lib")
+  if(WITH_AVX512)
+    add_library(arch_avx512 OBJECT ${DISPATCH_OBJECTS})
+    target_include_directories(arch_avx512 PRIVATE "${CMAKE_SOURCE_DIR}/src/lib")
+  endif()
+  if (${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
+    target_compile_options(arch_sse4_1 PUBLIC -DDISPATCH_ARCH=ARCH_SSE4_1 -DARCH_ID=1 -D__SSSE3__ -D__SSE4_1__ -D__POPCNT__ -DEigen=Eigen_SSE4_1)
     target_compile_options(arch_avx2 PUBLIC -DDISPATCH_ARCH=ARCH_AVX2 -DARCH_ID=2 /arch:AVX2 -D__SSSE3__ -D__SSE4_1__ -D__POPCNT__ -DEigen=Eigen_AVX2)
-else()
-	target_compile_options(arch_sse4_1 PUBLIC -DDISPATCH_ARCH=ARCH_SSE4_1 -DARCH_ID=1 -mssse3 -mpopcnt -msse4.1 -DEigen=Eigen_SSE4_1)
+    if(WITH_AVX512)
+      target_compile_options(arch_avx512 PUBLIC -DDISPATCH_ARCH=ARCH_AVX512 -DARCH_ID=3 /arch:AVX512 -D__SSSE3__ -D__SSE4_1__ -D__POPCNT__ -DEigen=Eigen_AVX512)
+    endif()
+  else()
+    target_compile_options(arch_sse4_1 PUBLIC -DDISPATCH_ARCH=ARCH_SSE4_1 -DARCH_ID=1 -mssse3 -mpopcnt -msse4.1 -DEigen=Eigen_SSE4_1)
     target_compile_options(arch_avx2 PUBLIC -DDISPATCH_ARCH=ARCH_AVX2 -DARCH_ID=2 -mssse3 -mpopcnt -msse4.1 -msse4.2 -mavx -mavx2 -DEigen=Eigen_AVX2)
-endif()
+    if(WITH_AVX512)
+      target_compile_options(arch_avx512 PUBLIC -DDISPATCH_ARCH=ARCH_AVX512 -DARCH_ID=3 -mssse3 -mpopcnt -msse4.1 -msse4.2 -mavx -mavx2 -mavx512f -mavx512bw -DEigen=Eigen_AVX512)
+    endif()
+  endif()
 endif(X86)
 
 set(OBJECTS
@@ -148,7 +192,6 @@ set(OBJECTS
   src/basic/config.cpp
   src/stats/score_matrix.cpp
   src/data/queries.cpp
-  src/data/reference.cpp
   src/data/seed_histogram.cpp
   src/output/daa/daa_record.cpp
   src/util/command_line_parser.cpp
@@ -204,35 +247,28 @@ set(OBJECTS
   src/tools/tools.cpp
   src/util/system/getRSS.cpp
   src/lib/tantan/LambdaCalculator.cc
-  src/util/algo/upgma.cpp
-  src/util/algo/upgma_mc.cpp
   src/util/algo/edge_vec.cpp
   src/util/string/string.cpp
   src/align/extend.cpp
-  src/test/simulate.cpp
   src/test/test.cpp
   src/align/ungapped.cpp
   src/align/gapped_score.cpp
   src/align/gapped_final.cpp
   src/align/full_db.cpp
   src/align/culling.cpp
-  src/cluster/medoid.cpp
   src/cluster/cluster_registry.cpp
-  src/cluster/multi_step_cluster.cpp
-  src/cluster/mcl.cpp
+  src/cluster/cascaded/cascaded.cpp
   src/align/output.cpp
   src/tools/roc.cpp
   src/test/data.cpp
   src/test/test_cases.cpp
   src/chaining/smith_waterman.cpp
-  src/tools/merge_tsv.cpp
   src/output/xml_format.cpp
   src/align/gapped_filter.cpp
   src/util/parallel/filestack.cpp
   src/util/parallel/parallelizer.cpp
   src/util/parallel/multiprocessing.cpp
   src/tools/benchmark_io.cpp
-  src/align/memory.cpp
   src/lib/alp/njn_dynprogprob.cpp
   src/lib/alp/njn_dynprogproblim.cpp
   src/lib/alp/njn_dynprogprobproto.cpp
@@ -272,20 +308,103 @@ set(OBJECTS
   src/data/dmnd/dmnd.cpp
   src/data/sequence_file.cpp
   src/tools/find_shapes.cpp
-  src/data/block.cpp
+  src/data/block/block.cpp
+  src/data/block/block_wrapper.cpp
   src/run/config.cpp
   src/data/sequence_set.cpp
   src/align/global_ranking/table.cpp
   src/output/daa/daa_write.cpp
   src/search/seed_complexity.cpp
   src/tools/view.cpp
-  src/util/string/tsv.cpp
+  src/util/tsv/tsv.cpp
   src/tools/join.cpp
   src/basic/value.cpp
   src/masking/motifs.cpp
   src/align/alt_hsp.cpp
+  src/data/fasta/fasta_file.cpp
+  # src/cluster/incremental/run.cpp
+  src/cluster/output.cpp
+  # src/cluster/incremental/config.cpp
+  src/cluster/realign.cpp
+  src/cluster/reassign.cpp
+  src/util/tsv/read_tsv.cpp
+  src/tools/greedy_vertex_cover.cpp
+  src/cluster/cascaded/recluster.cpp
+  src/cluster/helpers.cpp
+  src/util/kmer/filter.cpp
+  src/align/kmer_filter.cpp
+  src/search/kmer_ranking.cpp
+  src/chaining/hamming_ext.cpp
+  src/dna/smith_watermann.cpp
+  src/stats/dna_scoring/build_score.cpp
+  src/lib/blast/blast_message.cpp
+  src/lib/blast/blast_stat.cpp
+  src/lib/blast/blastn_score.cpp
+  src/lib/blast/ncbi_std.cpp
+  src/util/tsv/table.cpp
+  src/util/tsv/file.cpp
+  src/util/tsv/record.cpp
+  src/cluster/cascaded/helpers.cpp
+  src/cluster/cascaded/wrapper.cpp
   src/output/daa/merge.cpp
+  src/chaining/backtrace.cpp
+  src/util/tsv/merge.cpp
+  src/util/tsv/join.cpp
+  src/dp/scalar/smith_waterman.cpp
+  src/cluster/incremental/config.cpp
+  src/cluster/incremental/run.cpp
+  src/align/short.cpp
 )
+
+if(WITH_DNA)
+  list(APPEND OBJECTS src/lib/wfa2/alignment/affine2p_penalties.c
+          src/lib/wfa2/alignment/affine_penalties.c
+          src/lib/wfa2/alignment/cigar.c
+          src/lib/wfa2/alignment/score_matrix.c
+          src/lib/wfa2/bindings/cpp/WFAligner.cpp
+          src/lib/wfa2/system/mm_allocator.c
+          src/lib/wfa2/system/mm_stack.c
+          src/lib/wfa2/system/profiler_counter.c
+          src/lib/wfa2/system/profiler_timer.c
+          src/lib/wfa2/utils/bitmap.c
+          src/lib/wfa2/utils/commons.c
+          src/lib/wfa2/utils/dna_text.c
+          src/lib/wfa2/utils/heatmap.c
+          src/lib/wfa2/utils/sequence_buffer.c
+          src/lib/wfa2/utils/string_padded.c
+          src/lib/wfa2/utils/vector.c
+          src/lib/wfa2/wavefront/wavefront.c
+          src/lib/wfa2/wavefront/wavefront_align.c
+          src/lib/wfa2/wavefront/wavefront_aligner.c
+          src/lib/wfa2/wavefront/wavefront_attributes.c
+          src/lib/wfa2/wavefront/wavefront_backtrace.c
+          src/lib/wfa2/wavefront/wavefront_backtrace_buffer.c
+          src/lib/wfa2/wavefront/wavefront_backtrace_offload.c
+          src/lib/wfa2/wavefront/wavefront_components.c
+          src/lib/wfa2/wavefront/wavefront_compute.c
+          src/lib/wfa2/wavefront/wavefront_compute_affine.c
+          src/lib/wfa2/wavefront/wavefront_compute_linear.c
+          src/lib/wfa2/wavefront/wavefront_compute_affine2p.c
+          src/lib/wfa2/wavefront/wavefront_compute_edit.c
+          src/lib/wfa2/wavefront/wavefront_debug.c
+          src/lib/wfa2/wavefront/wavefront_display.c
+          src/lib/wfa2/wavefront/wavefront_extend.c
+          src/lib/wfa2/wavefront/wavefront_heuristic.c
+          src/lib/wfa2/wavefront/wavefront_pcigar.c
+          src/lib/wfa2/wavefront/wavefront_penalties.c
+          src/lib/wfa2/wavefront/wavefront_plot.c
+          src/lib/wfa2/wavefront/wavefront_slab.c
+          src/dna/smith_watermann.cpp
+          src/dna/wfa2_test.cpp
+          src/dna/TEMP_minimap_seeding.cpp
+          src/lib/wfa2/wavefront/wavefront_unialign.c
+          src/lib/wfa2/wavefront/wavefront_bialigner.c
+          src/lib/wfa2/wavefront/wavefront_bialign.c)
+endif()
+
+if(WITH_MCL)
+  list(APPEND OBJECTS src/contrib/mcl/mcl.cpp)
+endif()
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}")
 
@@ -298,14 +417,18 @@ if(WITH_ZSTD OR BLAST_INCLUDE_DIR)
 endif()
 
 if(X86)
-  add_executable(diamond $<TARGET_OBJECTS:arch_generic> $<TARGET_OBJECTS:arch_sse4_1> $<TARGET_OBJECTS:arch_avx2> ${OBJECTS} ${BLAST_OBJ} ${ZSTD_OBJ})
+  if(WITH_AVX512)
+    add_executable(diamond $<TARGET_OBJECTS:arch_generic> $<TARGET_OBJECTS:arch_sse4_1> $<TARGET_OBJECTS:arch_avx2> $<TARGET_OBJECTS:arch_avx512> ${OBJECTS} ${BLAST_OBJ} ${ZSTD_OBJ})
+  else()
+    add_executable(diamond $<TARGET_OBJECTS:arch_generic> $<TARGET_OBJECTS:arch_sse4_1> $<TARGET_OBJECTS:arch_avx2> ${OBJECTS} ${BLAST_OBJ} ${ZSTD_OBJ})
+  endif()
 else()
   add_executable(diamond $<TARGET_OBJECTS:arch_generic> ${OBJECTS} ${BLAST_OBJ} ${ZSTD_OBJ})
 endif()
 
 target_include_directories(diamond PRIVATE
-  "${ZLIB_INCLUDE_DIR}"
-  "${CMAKE_SOURCE_DIR}/src/lib")
+        "${ZLIB_INCLUDE_DIR}"
+        "${CMAKE_SOURCE_DIR}/src/lib")
 
 if(BLAST_INCLUDE_DIR)
   function(find_blast_lib var library)
@@ -338,9 +461,9 @@ if(BLAST_INCLUDE_DIR)
   find_blast_lib(XUTIL_LIBRARY xutil)
   find_blast_lib(LMDB_LIBRARY lmdb)
   target_link_libraries(diamond ${SEQDB_LIBRARY} ${BLASTDB_LIBRARY} ${BLASTDB_FORMAT_LIBRARY} ${GENERAL_LIBRARY}
-    ${XOBJUTIL_LIBRARY} ${XOBJMGR_LIBRARY} ${GENOME_COLLECTION_LIBRARY} ${SEQ_LIBRARY} ${SEQCODE_LIBRARY}
-    ${SEQSET_LIBRARY} ${SEQUTIL_LIBRARY} ${PUB_LIBRARY} ${MEDLINE_LIBRARY} ${BIBLIO_LIBRARY} ${SUBMIT_LIBRARY}
-    ${XSER_LIBRARY} ${XNCBI_LIBRARY} ${XUTIL_LIBRARY} ${LMDB_LIBRARY})
+          ${XOBJUTIL_LIBRARY} ${XOBJMGR_LIBRARY} ${GENOME_COLLECTION_LIBRARY} ${SEQ_LIBRARY} ${SEQCODE_LIBRARY}
+          ${SEQSET_LIBRARY} ${SEQUTIL_LIBRARY} ${PUB_LIBRARY} ${MEDLINE_LIBRARY} ${BIBLIO_LIBRARY} ${SUBMIT_LIBRARY}
+          ${XSER_LIBRARY} ${XNCBI_LIBRARY} ${XUTIL_LIBRARY} ${LMDB_LIBRARY})
   add_definitions(-DWITH_BLASTDB)
   set_target_properties(diamond PROPERTIES INSTALL_RPATH_USE_LINK_PATH TRUE)
   if (${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
@@ -364,6 +487,13 @@ if(WITH_ZSTD OR BLAST_INCLUDE_DIR)
   target_include_directories(diamond PRIVATE "${ZSTD_INCLUDE_DIR}")
   target_link_libraries(diamond ${ZSTD_LIBRARY})
   add_definitions(-DWITH_ZSTD)
+endif()
+
+if(WITH_MIMALLOC)
+  find_package(mimalloc 2.0 REQUIRED)
+  add_definitions(-DWITH_MIMALLOC)
+  target_link_libraries(diamond mimalloc)
+  target_include_directories(diamond PRIVATE ${MIMALLOC_INCLUDE_DIR})
 endif()
 
 target_link_libraries(diamond ${ZLIB_LIBRARY} ${CMAKE_THREAD_LIBS_INIT})

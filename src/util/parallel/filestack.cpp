@@ -253,7 +253,7 @@ int FileStack::remove(const string & line) {
     return 0;
 }
 
-int FileStack::push_non_locked(const string & buf) {
+int64_t FileStack::push_non_locked(const string & buf) {
     DBG("");
     static const string nl("\n");
 #ifndef WIN32
@@ -268,14 +268,14 @@ int FileStack::push_non_locked(const string & buf) {
 #endif
 }
 
-int FileStack::push(const string & buf, size_t & size_after_push) {
+int64_t FileStack::push(const string & buf, size_t & size_after_push) {
     DBG("");
     bool locked_internally = false;
     if (! locked) {
         lock();
         locked_internally = true;
     }
-    size_t n = push_non_locked(buf);
+    int64_t n = push_non_locked(buf);
     if (size_after_push != numeric_limits<size_t>::max()) {
         size_after_push = size();
     }
@@ -285,13 +285,13 @@ int FileStack::push(const string & buf, size_t & size_after_push) {
     return n;
 }
 
-int FileStack::push(const string & buf) {
+int64_t FileStack::push(const string & buf) {
     DBG("");
     size_t size_after_push = numeric_limits<size_t>::max();
     return push(buf, size_after_push);
 }
 
-int FileStack::push(int i) {
+int64_t FileStack::push(int i) {
     DBG("");
     string buf = to_string(i);
     return push(buf);
@@ -301,7 +301,7 @@ int FileStack::push(int i) {
 
 size_t FileStack::size() {
     DBG("");
-    size_t n_bytes, i, c = 0;
+    size_t c = 0;
     const size_t chunk_size = default_max_line_length;
     char * raw = new char[chunk_size * sizeof(char)];
 
@@ -312,6 +312,7 @@ size_t FileStack::size() {
     }
 
 #ifndef WIN32
+    size_t n_bytes, i;
     lseek(fd, 0, SEEK_SET);
     while ((n_bytes = read(fd, raw, chunk_size)) > 0) {
         for (i=0; i<n_bytes; i++) {

@@ -20,6 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #pragma once
+#include <deque>
 #include "shape.h"
 #include "sequence.h"
 #include "../util/hash_function.h"
@@ -27,7 +28,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 struct SeedIterator
 {
-	SeedIterator(vector<Letter> &seq, const Shape &sh):
+	SeedIterator(std::vector<Letter> &seq, const Shape &sh):
 		ptr_ (seq.data()),
 		end_ (ptr_ + seq.size() - sh.length_ + 1)
 	{}
@@ -45,6 +46,114 @@ struct SeedIterator
 	}
 private:
 	const Letter *ptr_, *end_;
+};
+
+struct MinimizerIterator
+{
+	MinimizerIterator(std::vector<Letter>& seq, const Shape& sh, Loc window) :
+		ptr_(seq.data()),
+		begin_(seq.data()),
+		end_(ptr_ + seq.size() - sh.length_ + 1),
+		window_(window),
+		sh_(sh)
+	{
+		next();
+		if (good())
+			min_idx_ = get();
+	}
+	bool good() const
+	{
+		return (Loc)seeds_.size() == window_;
+	}
+	uint64_t operator*() const {
+		return seeds_[min_idx_];
+	}
+	MinimizerIterator& operator++() {
+		int m = 0;
+		const uint64_t current = **this;
+		do {
+			seeds_.pop_front();
+			hashes_.pop_front();
+			pos_.pop_front();
+			next();
+		} while (good() && seeds_[m = get()] == current);
+		min_idx_ = m;
+		return *this;
+	}
+	Loc pos() const {
+		return pos_[min_idx_];
+	}
+private:
+	void next() {
+		while ((Loc)seeds_.size() < window_ && ptr_ < end_) {
+			uint64_t s;
+			if (sh_.set_seed_reduced(s, ptr_)) {
+				seeds_.push_back(s);
+				hashes_.push_back(MurmurHash()(s));
+				pos_.push_back(Loc(ptr_ - begin_));
+			}
+			++ptr_;
+		}
+	}
+	int get() const {
+		std::deque<uint64_t>::const_iterator i = hashes_.begin(), j = i;
+		uint64_t s = *i++;
+		while (i < hashes_.end()) {
+			if (*i < s) {
+				s = *i;
+				j = i;
+			}
+			++i;
+		}
+		return int(j - hashes_.begin());
+	}
+	const Letter* ptr_, *begin_, *end_;
+	std::deque<uint64_t> seeds_, hashes_;
+	std::deque<Loc> pos_;
+	const Loc window_;
+	const Shape& sh_;
+	int min_idx_;
+};
+
+struct SketchIterator
+{
+	SketchIterator(std::vector<Letter>& seq, const Shape& sh, Loc n)
+	{
+		std::vector<Kmer> v;
+		v.reserve(seq.size() - sh.length_ + 1);
+		const Letter* end = seq.data() + seq.size() - sh.length_ + 1;
+		uint64_t s;
+		for (const Letter* p = seq.data(); p < end; ++p)
+			if (sh.set_seed_reduced(s, p))
+				v.emplace_back(s, MurmurHash()(s), Loc(p - seq.data()));
+		std::sort(v.begin(), v.end());
+		data_.insert(data_.end(), v.begin(), v.begin() + std::min(n, (Loc)v.size()));
+		it_ = data_.begin();
+	}
+	bool good() const {
+		return it_ < data_.end();
+	}
+	uint64_t operator*() const {
+		return it_->seed;
+	}
+	Loc pos() const {
+		return it_->pos;
+	}
+	SketchIterator& operator++() {
+		++it_;
+		return *this;
+	}
+private:
+	struct Kmer {
+		Kmer(uint64_t seed, uint64_t hash, Loc pos) : seed(seed), hash(hash), pos(pos) {}
+		uint64_t seed, hash;
+		Loc pos;
+		bool operator<(const Kmer& k) const {
+			return hash < k.hash;
+		}
+	};
+	std::vector<Kmer> data_;
+	std::vector<Kmer>::const_iterator it_;
 };
 
 template<uint64_t B>
@@ -70,7 +179,7 @@ struct HashedSeedIterator
 		if (!is_amino_acid(l))
 			return false;
 		last_ |= Reduction::reduction(l);
-		seed = murmur_hash()(last_ & mask);
+		seed = MurmurHash()(last_ & mask);
 		return true;
 	}
 private:

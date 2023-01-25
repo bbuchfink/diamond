@@ -19,16 +19,28 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "output_format.h"
 #include "../data/queries.h"
+#include "recursive_parser.h"
 
-void Clustering_format::print_query_intro(size_t query_num, const char *query_name, unsigned query_len, TextBuffer &out, bool unaligned, const Search::Config& cfg) const
+using std::string;
+
+void Clustering_format::print_match(const HspContext& r, Output::Info& info)
 {
+	info.out.write((uint32_t) r.query_oid);
+	info.out.write((uint32_t) r.subject_oid);
+	RecursiveParser rp(&r, format.c_str());
+	const double res = rp.evaluate();
+	info.out.write(res);
 }
 
-void Clustering_format::print_match(const HspContext& r, const Search::Config &metadata, TextBuffer &out) 
-{
-	out.write((uint32_t) metadata.query->block_id2oid(r.query_id));
-	out.write((uint32_t) r.subject_oid);
-	RecursiveParser rp(&r, format.c_str(), false);
-	const double res = rp.evaluate();
-	out.write(res);
+Clustering_format::Clustering_format(const string* const format):
+	OutputFormat(bin1, HspValues::NONE),
+	format(RecursiveParser::clean_expression(format))
+{	
+	RecursiveParser rp(nullptr, format->c_str());
+	rp.evaluate();
+	const auto vars = rp.variables();
+	for (const Variable* v : vars) {
+		this->hsp_values |= v->hsp_values;
+		this->flags |= v->flags;
+	}
 }

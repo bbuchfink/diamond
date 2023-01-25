@@ -24,7 +24,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "flags.h"
 
 #pragma pack(1)
-// #define KEEP_TARGET_ID
 
 struct Block;
 
@@ -39,11 +38,11 @@ struct SeedArray
 			key(),
 			value()
 		{ }
-		Entry(unsigned key, Loc value) :
+		Entry(SeedOffset key, Loc value) :
 			key(key),
 			value(value)
 		{ }
-		Entry(unsigned key, Loc pos, uint32_t block_id):
+		Entry(SeedOffset key, Loc pos, uint32_t block_id):
 			key(key),
 #ifdef KEEP_TARGET_ID
 			value(pos, block_id)
@@ -51,7 +50,7 @@ struct SeedArray
 			value(pos)
 #endif
 		{}
-		uint32_t key;
+		SeedOffset key;
 		
 		struct GetKey {
 			uint32_t operator()(const Entry& e) const {
@@ -59,9 +58,9 @@ struct SeedArray
 			}
 		};
 
-		using Key = uint32_t;
-		using Value = SeedLoc;
 		SeedLoc value;
+		using Key = decltype(key);
+		using Value = decltype(value);
 	} PACKED_ATTRIBUTE;
 
 	template<typename _filter>
@@ -110,9 +109,9 @@ struct SeedArray
 		return stats_;
 	}
 
-	static char *alloc_buffer(const SeedHistogram &hst, size_t index_chunks);
+	static char *alloc_buffer(const SeedHistogram &hst, int index_chunks);
 
-	const size_t key_bits;
+	const int key_bits;
 
 private:
 

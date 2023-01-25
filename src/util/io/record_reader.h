@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <string.h>
+#include <../basic/value.h>
 #include "deserializer.h"
 
 struct Finish {};
@@ -51,14 +52,26 @@ struct DynamicRecordReader {
 		return *this;
 	}
 
-	void operator>>(const Finish&) {
-		if (size_ == 0)
-			return;
-		char *buf = new char[size_];
-		d_.read(buf, size_);
-		delete[] buf;
-		size_ = 0;
+	DynamicRecordReader& operator>>(int& x)
+    {
+        if (size_ >= sizeof(int)) {
+            d_ >> x;
+            size_ -= sizeof(int);
+        }
+        else
+            x = 0;
+
+		return *this;
 	}
+
+    void operator>>(const Finish&) {
+        if (size_ == 0)
+            return;
+        char *buf = new char[size_];
+        d_.read(buf, size_);
+        delete[] buf;
+        size_ = 0;
+    }
 
 private:
 	Deserializer &d_;

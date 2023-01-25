@@ -22,48 +22,44 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #pragma once
 #include <vector>
 #include "../basic/sequence.h"
-#include "score_vector.h"
 #include "../basic/value.h"
 #include "../stats/hauser_correction.h"
 
+template<typename Score = int8_t>
 struct LongScoreProfile
 {
-	LongScoreProfile()
+	enum { DEFAULT_PADDING = 128 };
+	LongScoreProfile(int64_t padding = DEFAULT_PADDING):
+		padding(std::max(padding, (int64_t)DEFAULT_PADDING))
 	{}
-	LongScoreProfile(Sequence seq, const Bias_correction &cbs)
-	{
-		for (unsigned l = 0; l < AMINO_ACID_COUNT; ++l) {
-			const int8_t* scores = &score_matrix.matrix8()[l << 5];
-			data[l].reserve(seq.length() + 2 * padding);
-			data[l].insert(data[l].end(), padding, 0);
-			for (Loc i = 0; i < seq.length(); ++i)
-				data[l].push_back(scores[(int)seq[i]] + cbs.int8[i]);
-			data[l].insert(data[l].end(), padding, 0);
-		}
-	}
-	LongScoreProfile(Sequence seq)
-	{
-		set(seq);
-	}
-	void set(Sequence seq) {
-		for (unsigned l = 0; l < AMINO_ACID_COUNT; ++l) {
-			const int8_t* scores = &score_matrix.matrix8()[l << 5];
-			data[l].clear();
-			data[l].reserve(seq.length() + 2 * padding);
-			data[l].insert(data[l].end(), padding, 0);
-			for (Loc i = 0; i < seq.length(); ++i)
-				data[l].push_back(scores[(int)seq[i]]);
-			data[l].insert(data[l].end(), padding, 0);
-		}
-	}
 	size_t length() const
 	{
 		return data[0].size() - 2 * padding;
 	}
-	const int8_t* get(Letter l, int i) const
+	const Score* get(Letter l, int i) const
 	{
 		return &data[(int)l][i + padding];
 	}
-	std::vector<int8_t> data[AMINO_ACID_COUNT];
-	enum { padding = 128 };
+	std::vector<const Score*> pointers(int offset) const {
+		std::vector<const Score*> v;
+		v.reserve(AMINO_ACID_COUNT);
+		for (size_t i = 0; i < AMINO_ACID_COUNT; ++i)
+			v.push_back(get(Letter(i), offset));
+		return v;
+	}
+	LongScoreProfile reverse() const {
+		LongScoreProfile r(*this);
+		for (size_t i = 0; i < AMINO_ACID_COUNT; ++i)
+			std::reverse(r.data[i].begin(), r.data[i].end());
+		return r;
+	}
+	std::vector<Score> data[AMINO_ACID_COUNT];
+	int64_t padding;
 };
+
+namespace DP {
+
+DECL_DISPATCH(LongScoreProfile<int8_t>, make_profile8, (Sequence seq, const int8_t* cbs, int64_t padding))
+DECL_DISPATCH(LongScoreProfile<int16_t>, make_profile16, (Sequence seq, const int8_t* cbs, int64_t padding))
+
+}

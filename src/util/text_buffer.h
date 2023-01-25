@@ -206,6 +206,20 @@ struct TextBuffer
 		return *this;
 	}
 
+	TextBuffer& operator<<(long x)
+	{
+		reserve(32);
+		ptr_ += sprintf(ptr_, "%li", x);
+		return *this;
+	}
+
+	TextBuffer& operator<<(long long x)
+	{
+		reserve(32);
+		ptr_ += sprintf(ptr_, "%lli", x);
+		return *this;
+	}
+
 	TextBuffer& operator<<(double x)
 	{
 		reserve(32);
@@ -238,20 +252,21 @@ struct TextBuffer
 		return *this;
 	}
 
-	TextBuffer& print(const std::vector<unsigned> &v, char separator)
+	template<typename T>
+	TextBuffer& print(const std::vector<T> &v, char separator)
 	{
 		if (v.empty()) return *this;
-		std::vector<unsigned>::const_iterator i = v.begin();
+		typename std::vector<T>::const_iterator i = v.begin();
 		*this << *(i++);
 		for (; i < v.end(); ++i)
 			*this << ';' << *i;
 		return *this;
 	}
 
-	template<typename _t>
-	TextBuffer& operator<<(const std::vector<_t> &v)
+	template<typename T>
+	TextBuffer& operator<<(const std::vector<T> &v)
 	{
-		const size_t l = v.size() * sizeof(_t);
+		const size_t l = v.size() * sizeof(T);
 		reserve(l);
 		memcpy(ptr_, v.data(), l);
 		ptr_ += l;

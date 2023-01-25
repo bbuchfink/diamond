@@ -34,9 +34,9 @@ static inline __m128i reduce_seq_ssse3(const Letter *seq, const Letter* map)
 #ifdef SEQ_MASK
 	s = letter_mask(s);
 #endif
-	__m128i high_mask = _mm_slli_epi16(_mm_and_si128(s, ::SIMD::_mm_set1_epi8('\x10')), 3);
+	__m128i high_mask = _mm_slli_epi16(_mm_and_si128(s, _mm_set1_epi8('\x10')), 3);
 	__m128i seq_low = _mm_or_si128(s, high_mask);
-	__m128i seq_high = _mm_or_si128(s, _mm_xor_si128(high_mask, ::SIMD::_mm_set1_epi8('\x80')));
+	__m128i seq_high = _mm_or_si128(s, _mm_xor_si128(high_mask, _mm_set1_epi8('\x80')));
 
 	__m128i r1 = _mm_loadu_si128(row);
 	__m128i r2 = _mm_loadu_si128(row+1);
@@ -117,7 +117,7 @@ static inline uint64_t seed_mask(const Letter* s, int len) {
 #ifdef __SSE2__
 	assert(len <= 64);
 	uint64_t mask = 0;
-	const __m128i m = ::SIMD::_mm_set1_epi8(SEED_MASK);
+	const __m128i m = _mm_set1_epi8(SEED_MASK);
 	for (int i = 0; i < len; i += 16) {
 		const __m128i mask_bits = _mm_and_si128(_mm_loadu_si128((const __m128i*)s), m);
 		mask |= (uint64_t)_mm_movemask_epi8(mask_bits) << i;

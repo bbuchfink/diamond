@@ -28,11 +28,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <chrono>
 #include <stdint.h>
 
-struct Message_stream
+struct MessageStream
 {
-	Message_stream(bool to_cout = true, bool to_file = false);
-	template<typename _t>
-	Message_stream& operator<<(const _t& x)
+	MessageStream(bool to_cout = true, bool to_file = false);
+	template<typename T>
+	MessageStream& operator<<(const T& x)
 	{
 		if(to_cout_)
 			(*out_stream_) << x;
@@ -44,34 +44,43 @@ struct Message_stream
 		return *this;
 	}
 	//Message_stream& operator<<(std::ostream & (__cdecl *_Pfn)(std::ostream&))
-	Message_stream& operator<<(std::ostream& (*_Pfn)(std::ostream&));
+	MessageStream& operator<<(std::ostream& (*_Pfn)(std::ostream&));
 	static std::mutex mtx;
 private:
 	std::ostream* out_stream_;
 	bool to_cout_, to_file_;
 };
 
-extern Message_stream message_stream;
-extern Message_stream verbose_stream;
-extern Message_stream log_stream;
+extern MessageStream message_stream;
+extern MessageStream verbose_stream;
+extern MessageStream log_stream;
 
 struct task_timer
 {
-	task_timer(unsigned level = 1) :
+	task_timer(MessageStream& stream, unsigned level = 1) :
 		level_(level),
-		msg_(nullptr)
+		msg_(nullptr),
+		stream_(stream)
 	{
 		start(nullptr);
 	}
-	task_timer(const char *msg, unsigned level=1) :
+	task_timer(unsigned level = 1) :
+		task_timer(get_stream(), level)
+	{}
+	task_timer(const char* msg, MessageStream& stream, unsigned level = 1) :
 		level_(level),
-		msg_(msg)
+		msg_(msg),
+		stream_(stream)
 	{
 		start(msg);
 	}
+	task_timer(const char* msg, unsigned level = 1):
+		task_timer(msg, get_stream(), level)
+	{}
 	~task_timer()
 	{
-		finish();
+		if (!std::uncaught_exception())
+			finish();
 	}
 	void go(const char* msg = nullptr)
 	{
@@ -79,11 +88,14 @@ struct task_timer
 		start(msg);
 		msg_ = msg;
 	}
+	void go(const std::string& s) {
+		go(s.c_str());
+	}
 	void finish()
 	{
 		if (!msg_ || level_ == UINT_MAX)
 			return;
-		get_stream() << " [" << get() << "s]" << std::endl;
+		stream_ << " [" << get() << "s]" << std::endl;
 		msg_ = 0;
 	}
 	double get()
@@ -102,7 +114,18 @@ struct task_timer
 	uint64_t nanoseconds() const {
 		return (uint64_t)std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::high_resolution_clock::now() - t).count();
 	}
-	Message_stream& get_stream() const
+private:
+	void start(const char *msg)
+	{
+		t = std::chrono::high_resolution_clock::now();
+		if (level_ == UINT_MAX)
+			return;
+		if (!msg)
+			return;
+		stream_ << msg << "... " << std::flush;
+
+	}
+	MessageStream& get_stream() const
 	{
 		switch (level_) {
 		case 1:
@@ -115,19 +138,9 @@ struct task_timer
 			return message_stream;
 		}
 	}
-private:
-	void start(const char *msg)
-	{
-		t = std::chrono::high_resolution_clock::now();
-		if (level_ == UINT_MAX)
-			return;
-		if (!msg)
-			return;
-		get_stream() << msg << "... " << std::flush;
-
-	}
 	unsigned level_;
 	const char *msg_;
+	MessageStream& stream_;
 	std::chrono::high_resolution_clock::time_point t;
 };
 

@@ -73,10 +73,10 @@ struct Matrix
 		const int l = (int)hgap_.size();
 		const auto z = extract_channel(_sv(), 0);
 		for (int i = 0; i < l; ++i) {
-			hgap_[i] = set_channel(hgap_[i], c, z);
-			score_[i] = set_channel(score_[i], c, z);
+			set_channel(hgap_[i], c, z);
+			set_channel(score_[i], c, z);
 		}
-		score_[l] = set_channel(score_[l], c, z);
+		set_channel(score_[l], c, z);
 	}
 	constexpr int cols() const {
 		return 1;
@@ -146,7 +146,7 @@ struct TracebackVectorMatrix
 
 	struct TracebackIterator
 	{
-		TracebackIterator(const TraceMask *mask, const TraceMask* mask_begin, const TraceMask* mask_end, int rows, int i, int j, size_t channel) :
+		TracebackIterator(const TraceMask *mask, const TraceMask* mask_begin, const TraceMask* mask_end, int rows, int i, int j, int channel) :
 			rows_(rows),
 			mask_(mask),
 			mask_begin_(mask_begin),
@@ -201,7 +201,7 @@ struct TracebackVectorMatrix
 		int i, j;
 	};
 
-	TracebackIterator traceback(int col, int i, int j, size_t channel) const
+	TracebackIterator traceback(int col, int i, int j, int channel) const
 	{
 		return TracebackIterator(&trace_mask_[col*rows_ + i], trace_mask_.begin(), trace_mask_.end(), rows_, i, j, channel);
 	}
@@ -226,10 +226,10 @@ struct TracebackVectorMatrix
 	{
 		const int l = (int)hgap_.size();
 		for (int i = 0; i < l; ++i) {
-			hgap_[i] = set_channel(hgap_[i], c, ::DISPATCH_ARCH::ScoreTraits<_sv>::zero_score());
-			score_[i] = set_channel(score_[i], c, ::DISPATCH_ARCH::ScoreTraits<_sv>::zero_score());
+			set_channel(hgap_[i], c, ::DISPATCH_ARCH::ScoreTraits<_sv>::zero_score());
+			set_channel(score_[i], c, ::DISPATCH_ARCH::ScoreTraits<_sv>::zero_score());
 		}
-		score_[l] = set_channel(score_[l], c, ::DISPATCH_ARCH::ScoreTraits<_sv>::zero_score());
+		set_channel(score_[l], c, ::DISPATCH_ARCH::ScoreTraits<_sv>::zero_score());
 	}
 
 	int cols() const {

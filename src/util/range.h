@@ -1,21 +1,20 @@
-#ifndef RANGE_H_
-#define RANGE_H_
+#pragma once
 
-template<typename _it>
+template<typename It>
 struct Range {
 
 	Range() {}
 
-	Range(const _it &begin, const _it &end):
+	Range(const It& begin, const It& end):
 		begin_(begin),
 		end_(end)
 	{}
 
-	_it begin() const {
+	It begin() const {
 		return begin_;
 	}
 
-	_it end() const {
+	It end() const {
 		return end_;
 	}
 
@@ -25,8 +24,6 @@ struct Range {
 
 private:
 
-	_it begin_, end_;
+	It begin_, end_;
 
 };
-
-#endif

@@ -34,6 +34,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 using std::endl;
 using std::thread;
+using std::pair;
+using std::vector;
 using SeedHits = Search::Config::RankingBuffer;
 
 // #define BATCH_BINSEARCH
@@ -44,13 +46,13 @@ static void get_query_hits(SeedHits::Iterator begin, SeedHits::Iterator end, vec
 	hits.clear();
 	const SequenceSet& target_seqs = cfg.target->seqs();
 #ifdef KEEP_TARGET_ID
-	auto get_target = [](const Search::Hit& hit) { return (uint64_t)hit.subject_; };
+	auto get_target = [](const Search::Hit& hit) { return (BlockId)hit.subject_; };
 	auto it = merge_keys(begin, end, get_target);
 	while (it.good()) {
 		uint16_t score = 0;
 		for (SeedHits::Iterator i = it.begin(); i != it.end(); ++i)
 			score = std::max(score, i->score_);
-		hits.emplace_back((uint32_t)cfg.target->block_id2oid(it.key()), score);
+		hits.emplace_back((uint32_t)cfg.target->block_id2oid(it.key()), score, 0);
 		++it;
 	}
 #else
@@ -83,7 +85,7 @@ static void get_query_hits(SeedHits::Iterator begin, SeedHits::Iterator end, vec
 #endif
 }
 
-static pair<int, unsigned> target_score(const FlatArray<Extension::SeedHit>::Iterator begin, const FlatArray<Extension::SeedHit>::Iterator end, const Sequence* query_seq, const Sequence& target_seq) {
+static pair<int, unsigned> target_score(const FlatArray<Extension::SeedHit>::DataIterator begin, const FlatArray<Extension::SeedHit>::DataIterator end, const Sequence* query_seq, const Sequence& target_seq) {
 	if (config.no_reextend) {
 		int score = begin->score;
 		unsigned context = begin->frame;
@@ -96,13 +98,13 @@ static pair<int, unsigned> target_score(const FlatArray<Extension::SeedHit>::Ite
 		return { score,context };
 	}
 	std::sort(begin, end);
-	Diagonal_segment d = xdrop_ungapped(query_seq[begin->frame], target_seq, begin->i, begin->j);
+	DiagonalSegment d = xdrop_ungapped(query_seq[begin->frame], nullptr, target_seq, begin->i, begin->j, false);
 	int score = d.score;
 	unsigned context = begin->frame;
 	for (auto i = begin + 1; i != end; ++i) {
 		if (d.diag() == i->diag() && d.subject_end() >= i->j)
 			continue;
-		d = xdrop_ungapped(query_seq[i->frame], target_seq, i->i, i->j);
+		d = xdrop_ungapped(query_seq[i->frame], nullptr, target_seq, i->i, i->j, false);
 		if (d.score > score) {
 			score = d.score;
 			context = i->frame;
@@ -119,13 +121,10 @@ static void get_query_hits_reextend(size_t source_query_block_id, SeedHits::Iter
 	const SequenceSet& target_seqs = cfg.target->seqs();
 
 	hits.clear();
-	FlatArray<Extension::SeedHit> seed_hits;
-	vector<uint32_t> target_block_ids;
-	vector<Extension::TargetScore> scores;
-	Extension::load_hits(begin, end, seed_hits, target_block_ids, scores, cfg.target->seqs());
-	for (size_t i = 0; i < target_block_ids.size(); ++i) {
-		const auto score = target_score(seed_hits.begin(i), seed_hits.end(i), query_seq.data(), target_seqs[target_block_ids[i]]);
-		hits.emplace_back((uint32_t)cfg.target->block_id2oid(target_block_ids[i]), score.first, score.second);
+	Extension::SeedHitList l = Extension::load_hits(begin, end, cfg.target->seqs());
+	for (size_t i = 0; i < l.target_block_ids.size(); ++i) {
+		const auto score = target_score(l.seed_hits.begin(i), l.seed_hits.end(i), query_seq.data(), target_seqs[l.target_block_ids[i]]);
+		hits.emplace_back((uint32_t)cfg.target->block_id2oid(l.target_block_ids[i]), score.first, score.second);
 	}
 }
 
@@ -134,12 +133,15 @@ static void merge_hits(const size_t query, vector<Hit>& hits, vector<Hit>& merge
 	//std::sort(hits.begin(), hits.end());
 	vector<Hit>::iterator table_begin = cfg.ranking_table->begin() + query * N, table_end = table_begin + N;
 	while (table_end > table_begin && (table_end - 1)->score == 0) --table_end;
+	const auto count = table_end - table_begin;
 	hits.insert(hits.end(), table_begin, table_end);
 	std::sort(hits.begin(), hits.end(), Hit::CmpOidScore());
 	merged.clear();
 	std::unique_copy(hits.begin(), hits.end(), std::back_inserter(merged), Hit::CmpOid());
 	std::sort(merged.begin(), merged.end());
-	std::copy(merged.begin(), merged.begin() + std::min(N, merged.size()), table_begin);
+	const auto n = std::min(N, merged.size());
+	std::copy(merged.begin(), merged.begin() + n, table_begin);
+	merged_count += n - count;
 	//merged.clear();
 	//merged_count += Util::Algo::merge_capped(table_begin, table_end, hits.begin(), hits.end(), N, std::back_inserter(merged));
 	//std::copy(merged.begin(), merged.end(), table_begin);
@@ -156,24 +158,31 @@ void update_table(Search::Config& cfg) {
 #else
 	ips4o::parallel::sort(hits.begin(), hits.end(), Search::Hit::CmpQueryTarget(), config.threads_);
 #endif
+	timer.go("Creating partition");
+	auto p = Util::Algo::partition_table(hits.begin(), hits.end(), config.threads_ * 8, ::Search::Hit::SourceQuery{ align_mode.query_contexts });
 	timer.go("Processing seed hits");
-	std::atomic_size_t merged_count(0);
-	auto worker = [&cfg, &merged_count](SeedHits::Iterator begin, SeedHits::Iterator end) {
-		auto it = merge_keys(begin, end, ::Search::Hit::SourceQuery{ align_mode.query_contexts });
-		size_t n = 0;
-		while (it.good()) {
-			const size_t query = it.begin()->query_ / align_mode.query_contexts;
-			vector<Hit> hits, merged;
-			get_query_hits_reextend(query, it.begin(), it.end(), hits, cfg);
-			merge_hits(query, hits, merged, cfg, n);
-			++it;
+	std::atomic_size_t merged_count(0), next(0);
+	auto worker = [&cfg, &merged_count, &next, &p]() {
+		vector<Hit> hits, merged;
+		while (true) {
+			auto i = next++;
+			if (i + 1 >= p.size())
+				break;
+			auto begin = p[i], end = p[i + 1];
+			auto it = merge_keys(begin, end, ::Search::Hit::SourceQuery{ align_mode.query_contexts });
+			size_t n = 0;
+			while (it.good()) {
+				const size_t query = it.begin()->query_ / align_mode.query_contexts;
+				get_query_hits_reextend(query, it.begin(), it.end(), hits, cfg);
+				merge_hits(query, hits, merged, cfg, n);
+				++it;
+			}
+			merged_count += n;
 		}
-		merged_count += n;
 	};
 	vector<thread> threads;
-	auto p = Util::Algo::partition_table(hits.begin(), hits.end(), config.threads_, ::Search::Hit::SourceQuery{ align_mode.query_contexts });
-	for (size_t i = 0; i < p.size() - 1; ++i)
-		threads.emplace_back(worker, p[i], p[i + 1]);
+	for (size_t i = 0; i < config.threads_; ++i)
+		threads.emplace_back(worker);
 	for (thread& t : threads)
 		t.join();
 	timer.go("Deallocating seed hit list");

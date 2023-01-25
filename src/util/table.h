@@ -6,6 +6,8 @@
 #include <algorithm>
 #include <iomanip>
 
+namespace Util {
+
 struct Table {
 
 	Table():
@@ -18,8 +20,14 @@ struct Table {
 		return *this;
 	}
 
-	Table& operator()(const std::string& s, size_t n) {
-		data_.emplace_back(s, std::to_string(n));
+	Table& operator()(const std::string& s, int64_t n, const char* unit = "") {
+		data_.emplace_back(s, std::to_string(n) + unit);
+		max_len_ = std::max(max_len_, s.length());
+		return *this;
+	}
+
+	Table& operator()(const std::string& s, uint64_t n, const char* unit = "") {
+		data_.emplace_back(s, std::to_string(n) + unit);
 		max_len_ = std::max(max_len_, s.length());
 		return *this;
 	}
@@ -42,3 +50,5 @@ private:
 	size_t max_len_;
 
 };
+
+}
