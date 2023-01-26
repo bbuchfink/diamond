@@ -25,8 +25,6 @@
 - Added the option `--swipe` to compute full Smith Waterman alignments of all
   queries against all targets.
 - Added the sensitivity mode `--faster`.
-- Added the option `-M` to set memory limit for the `cluster`, `realign`,
-  `recluster` and `reassign` workflows.
 - Added the output fields `approx_pident` and `corrected_bitscore` to the tabular
   format.
 - Added the `--lin-stage1` option to linearize comparisons in the seeding stage
