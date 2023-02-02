@@ -9,6 +9,7 @@ features are:
 
 -   Pairwise alignment of proteins and translated DNA at 100x-10,000x
     speed of BLAST.
+-   [Protein clustering of up to tens of billions of proteins](https://github.com/bbuchfink/diamond/wiki/Clustering)
 -   Frameshift alignments for long read analysis.
 -   Low resource requirements and suitable for running on standard
     desktops or laptops.
