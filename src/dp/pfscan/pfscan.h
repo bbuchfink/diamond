@@ -26,8 +26,10 @@ struct Config {
 	}
 };
 
+#ifdef __SSE2__
 DECL_DISPATCH(Hsp, align16, (const Config& cfg))
 DECL_DISPATCH(Hsp, align8, (const Config& cfg))
+#endif
 DECL_DISPATCH(Hsp, align_anchored, (const Anchor& anchor, const Config& cfg))
 
 }}

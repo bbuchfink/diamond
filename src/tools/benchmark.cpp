@@ -366,6 +366,8 @@ void anchored_swipe(const Sequence& s1, const Sequence& s2) {
 //#endif
 #endif
 
+#ifdef __SSE2__
+
 void prefix_scan(const Sequence& s1, const Sequence& s2) {
 	static const size_t n = 100000llu;
 	const auto s1_ = s1.subseq(0, 150);
@@ -397,6 +399,8 @@ void prefix_scan(const Sequence& s1, const Sequence& s2) {
 	statistics += stat;
 	//statistics.print();
 }
+
+#endif
 
 #ifdef __SSE4_1__
 void diag_scores(const Sequence& s1, const Sequence& s2) {
@@ -492,7 +496,9 @@ void benchmark() {
 	//minimal_sw(s1, s2);
 //#endif
 #endif
+#ifdef __SSE2__
 	prefix_scan(s1, s2);
+#endif
 #ifdef __SSE4_1__
 	swipe(s3, s4);
 	diag_scores(s1, s2);

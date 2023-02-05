@@ -7,6 +7,8 @@ using std::min;
 
 namespace DP { namespace PrefixScan { namespace DISPATCH_ARCH {
 
+#ifdef __SSE2__
+
 Hsp align16(const Config& cfg) {
 	using SC = StaticConfig<::DISPATCH_ARCH::ScoreVector<int16_t, 0>, Local>;
 	Hsp hsp = banded_smith_waterman<SC>(cfg);
@@ -45,6 +47,8 @@ static Hsp align_dispatch_score_16(const Config& cfg) {
 	return h;
 }
 
+#endif
+
 static Hsp align_dispatch_score(const Config& cfg) {
 	if (cfg.query.length() >= SHRT_MAX || cfg.target.length() >= SHRT_MAX) {
 		task_timer timer;
@@ -55,6 +59,7 @@ static Hsp align_dispatch_score(const Config& cfg) {
 		return h;
 	}
 	else {
+#ifdef __SSE2__
 #ifdef __SSE4_1__
 		if (config.no_8bit_extension || cfg.band() / 32 > SCHAR_MAX || cfg.band() <= 16 || cfg.score_hint >= 95 || cfg.band() > 128
 			|| score_matrix.gap_open() + score_matrix.gap_extend() * max(-cfg.d_begin, cfg.d_end) > SCHAR_MAX) {
@@ -74,6 +79,7 @@ static Hsp align_dispatch_score(const Config& cfg) {
 			}
 			return h;
 		}
+#endif
 #endif
 	}
 }

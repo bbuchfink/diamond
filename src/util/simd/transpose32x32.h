@@ -344,6 +344,3 @@ static inline void transpose_offset(const signed char** data, size_t n, ptrdiff_
 	_mm256_store_si256(ptr++, r23);
 	_mm256_store_si256(ptr++, r31);
 }
-
-static inline void transpose_offset2(const signed char** data, size_t n, ptrdiff_t offset, signed char* out, __m256i) {
-}
