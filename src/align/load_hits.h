@@ -81,7 +81,7 @@ static SeedHitList load_hits(It begin, It end, const SequenceSet& ref_seqs) {
 				target_len = (unsigned)ref_seqs[target].length();
 				list.target_block_ids.push_back(target);
 			}
-			list.seed_hits.push_back({ (int)i->seed_offset_, (int)l.second, i->score_, i->query_ % align_mode.query_contexts });
+			list.seed_hits.push_back({ (int)i->seed_offset_, (int)l.second, i->score_, (unsigned)i->query_ % align_mode.query_contexts });
 			score = std::max(score, i->score_);
 		}
 	}
@@ -105,7 +105,7 @@ static SeedHitList load_hits(It begin, It end, const SequenceSet& ref_seqs) {
 				target = t;
 				target_len = (unsigned)ref_seqs[target].length();
 			}
-			list.seed_hits.push_back({ (int)i->seed_offset_, (int)(subject_offset - *(it - 1)), i->score_, i->query_ % align_mode.query_contexts });
+			list.seed_hits.push_back({ (int)i->seed_offset_, (int)(subject_offset - *(it - 1)), i->score_, (unsigned)i->query_ % align_mode.query_contexts });
 			score = std::max(score, i->score_);
 		}
 	}

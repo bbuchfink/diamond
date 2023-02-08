@@ -209,10 +209,10 @@ vector<BlockId> len_sorted_clust(const FlatArray<Util::Algo::Edge<SuperBlockId>>
 	for (int64_t i = 0; i < edges.size(); ++i) {
 		if (v[i] != -1)
 			continue;
-		v[i] = i;
+		v[i] = (BlockId)i;
 		for (auto it = edges.cbegin(i); it != edges.cend(i); ++it)
 			if (v[it->node2] == -1)
-				v[it->node2] = i;
+				v[it->node2] = (BlockId)i;
 	}
 	return v;
 }

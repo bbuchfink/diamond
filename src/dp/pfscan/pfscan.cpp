@@ -80,6 +80,8 @@ static Hsp align_dispatch_score(const Config& cfg) {
 			return h;
 		}
 #endif
+#else
+		return Hsp();
 #endif
 	}
 }

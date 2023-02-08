@@ -2,8 +2,7 @@
 #include <array>
 #include "../../basic/sequence.h"
 #include "../score_vector.h"
-#include "../../util/simd/transpose32x32.h"
-#include "../../util/simd/transpose16x16.h"
+#include "../../util/simd/transpose.h"
 #include "banded_matrix.h"
 #include "cell_update.h"
 #include "config.h"

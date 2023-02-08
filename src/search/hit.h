@@ -36,7 +36,7 @@ struct Hit
 	using Key = uint32_t;
 	using SeedOffset = Loc;
 
-	uint32_t query_;
+	BlockId query_;
 	PackedLoc subject_;
 	SeedOffset seed_offset_;
 	uint16_t score_;

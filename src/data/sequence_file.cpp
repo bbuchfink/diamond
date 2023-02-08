@@ -829,12 +829,13 @@ void db_info() {
 
 void prep_db() {
 	config.database.require();
-	if (is_blast_db(config.database))
+	if (is_blast_db(config.database)) {
 #ifdef WITH_BLASTDB
 		BlastDB::prep_blast_db(config.database);
 #else
 		;
 #endif
+	}
 #ifdef EXTRA
 	else if (DatabaseFile::is_diamond_db(auto_append_extension_if_exists(config.database, DatabaseFile::FILE_EXTENSION)))
 		DatabaseFile::prep_db();

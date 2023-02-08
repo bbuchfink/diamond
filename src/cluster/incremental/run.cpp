@@ -134,7 +134,7 @@ static void search_vs_centroids(Block& block, const int round, Config& cfg) {
 	if (cfg.verbosity >= 2)
 		cfg.message_stream << "CLUSTER " << clustered << " assigned to clusters, " << unaligned.seqs().size() << " unaligned." << endl;
 	
-	if (round + 1 < cfg.sens.size())
+	if (round + 1 < (int)cfg.sens.size())
 		cfg.cache[round]->append(unaligned);
 	else
 		self_align(unaligned, cfg);
@@ -172,7 +172,7 @@ void Algo::run() {
 
 		search_vs_centroids(*block, 0, cfg);
 
-		for (int i = 0; i < cfg.cache.size(); ++i)
+		for (int i = 0; i < (int)cfg.cache.size(); ++i)
 			if (cfg.cache[i]->seqs().letters() >= std::min(cache_limit, (int64_t)cfg.centroids->letters())) {
 				cfg.cache[i]->seqs().finish_reserve();
 				search_vs_centroids(*cfg.cache[i], i + 1, cfg);
@@ -190,7 +190,7 @@ void Algo::run() {
 		}
 	}
 
-	for (int i = 0; i < cfg.cache.size(); ++i)
+	for (int i = 0; i < (int)cfg.cache.size(); ++i)
 		if (cfg.cache[i]->seqs().letters() > 0) {
 			cfg.cache[i]->seqs().finish_reserve();
 			search_vs_centroids(*cfg.cache[i], i + 1, cfg);
@@ -204,7 +204,7 @@ void Algo::run() {
 		//cfg.output_file->write(buf.data(), buf.size());
 		//buf.clear();
 	//}
-	for (int64_t i = 0; i < cfg.oid2centroid.size(); ++i)
+	for (int64_t i = 0; i < (int64_t)cfg.oid2centroid.size(); ++i)
 		cfg.oid2centroid[i] = cfg.centroid2oid[cfg.oid2centroid[i]];
 	output_mem<CentroidId>(*cfg.output_file, *cfg.db, cfg.oid2centroid);
 
@@ -220,7 +220,7 @@ void Algo::run() {
 	table("Input sequences", cfg.db->sequence_count());
 	table("Number of clusters", cfg.centroids->sequence_count());
 
-	for (int i = 0; i < cfg.sens.size(); ++i) {
+	for (int i = 0; i < (int)cfg.sens.size(); ++i) {
 		table("Time (" + to_string(cfg.sens[i]) + ")", cfg.time_search[i], "s");
 		table("Problem size (" + to_string(cfg.sens[i]) + ")", cfg.problem_size[i]);
 	}

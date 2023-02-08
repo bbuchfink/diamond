@@ -149,7 +149,7 @@ void view_daa()
 	cfg.db_seqs = daa.db_seqs();
 	cfg.db_letters = daa.db_letters();
 
-	init_output(cfg.max_target_seqs);
+	cfg.output_format.reset(init_output(cfg.max_target_seqs));
 	taxonomy.init();
 
 	timer.go("Generating output");

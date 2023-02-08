@@ -1,5 +1,12 @@
 [2.1.1]
-- Fixed compilation errors on non-x86 systems.
+- Fixed compilation errors on non-x86 systems and for the clang compiler.
+- Fixed an error message when running the `recluster` workflow.
+- Fixed a bug that could cause an `invalid varint encoding` error when using the
+  DAA format.
+- Fixed a bug that could cause corrupted DAA output.
+- Fixed a bug that caused an error in the `view` workflow.
+- Adjusted the hit culling heuristic of the frameshift alignment mode to be less
+  aggressive.
 
 [2.1.0]
 - Added the `cluster` workflow to cluster protein sequences.

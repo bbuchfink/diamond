@@ -73,7 +73,7 @@ struct Vector {};
 #endif
 #endif
 
-#if defined(__GNUC__) && __GNUC__ < 8
+#if defined(__GNUC__) && __GNUC__ < 8 && !defined(__clang__)
 #define _mm256_set_m128i(v0, v1) _mm256_insertf128_si256(_mm256_castsi128_si256(v1), (v0), 1)
 #endif
 

@@ -322,17 +322,13 @@ set(OBJECTS
   src/masking/motifs.cpp
   src/align/alt_hsp.cpp
   src/data/fasta/fasta_file.cpp
-  # src/cluster/incremental/run.cpp
   src/cluster/output.cpp
-  # src/cluster/incremental/config.cpp
   src/cluster/realign.cpp
   src/cluster/reassign.cpp
   src/util/tsv/read_tsv.cpp
   src/tools/greedy_vertex_cover.cpp
   src/cluster/cascaded/recluster.cpp
   src/cluster/helpers.cpp
-  src/util/kmer/filter.cpp
-  src/align/kmer_filter.cpp
   src/search/kmer_ranking.cpp
   src/chaining/hamming_ext.cpp
   src/dna/smith_watermann.cpp

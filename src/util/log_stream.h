@@ -102,17 +102,17 @@ struct task_timer
 	{
 		return (double)std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - t).count() / 1000.0;
 	}
-	uint64_t seconds() const {
-		return (uint64_t)std::chrono::duration_cast<std::chrono::seconds>(std::chrono::high_resolution_clock::now() - t).count();
+	int64_t seconds() const {
+		return (int64_t)std::chrono::duration_cast<std::chrono::seconds>(std::chrono::high_resolution_clock::now() - t).count();
 	}
-	uint64_t milliseconds() const {
-		return (uint64_t)std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - t).count();
+	int64_t milliseconds() const {
+		return (int64_t)std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - t).count();
 	}
-	uint64_t microseconds() const {
-		return (uint64_t)std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - t).count();
+	int64_t microseconds() const {
+		return (int64_t)std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - t).count();
 	}
-	uint64_t nanoseconds() const {
-		return (uint64_t)std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::high_resolution_clock::now() - t).count();
+	int64_t nanoseconds() const {
+		return (int64_t)std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::high_resolution_clock::now() - t).count();
 	}
 private:
 	void start(const char *msg)

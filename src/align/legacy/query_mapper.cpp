@@ -30,7 +30,14 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../../output/target_culling.h"
 #include "../../util/util.h"
 
-using namespace std;
+using std::tie;
+using std::list;
+using std::vector;
+using std::unique_ptr;
+using std::min;
+using std::max;
+using std::set;
+using std::string;
 
 bool Target::envelopes(const ApproxHsp &t, double p) const
 {
@@ -92,7 +99,7 @@ QueryMapper::QueryMapper(size_t query_id, Search::Hit* begin, Search::Hit* end, 
 void QueryMapper::init()
 {
 	if(config.log_query)
-		cout << "Query = " << metadata.query->ids()[query_id] << '\t' << query_id << endl;
+		std::cout << "Query = " << metadata.query->ids()[query_id] << '\t' << query_id << std::endl;
 	if (Stats::CBS::hauser(config.comp_based_stats))
 		for (int i = 0; i < align_mode.query_contexts; ++i)
 			query_cb.emplace_back(query_seq(i));
@@ -181,6 +188,7 @@ void QueryMapper::rank_targets(double ratio, double factor, const int64_t max_ta
 
 void QueryMapper::score_only_culling(const int64_t max_target_seqs)
 {
+	static const double COV_INCLUDE_CUTOFF = 0.1;
 	std::stable_sort(targets.begin(), targets.end(), config.toppercent == 100.0 ? Target::compare_evalue : Target::compare_score);
 	unique_ptr<TargetCulling> target_culling(TargetCulling::get(max_target_seqs));
 	const unsigned query_len = (unsigned)query_seq(0).length();
@@ -188,14 +196,17 @@ void QueryMapper::score_only_culling(const int64_t max_target_seqs)
 	for (i = targets.begin(); i<targets.end();) {
 		if (!score_matrix.report_cutoff((*i)->filter_score, (*i)->filter_evalue))
 			break;
-		const int c = target_culling->cull(**i);
-		if (c == TargetCulling::FINISHED)
+		int code;
+		double cov;
+		tie(code, cov) = target_culling->cull(**i);
+		if (code == TargetCulling::FINISHED)
 			break;
-		else if (c == TargetCulling::NEXT) {
+		else if (code == TargetCulling::NEXT) {
 			i = targets.erase(i, i + 1);
 		}
 		else {
-			target_culling->add(**i);
+			if (cov < COV_INCLUDE_CUTOFF)
+				target_culling->add(**i);
 			++i;
 		}
 	}
@@ -229,7 +240,7 @@ bool QueryMapper::generate_output(TextBuffer &buffer, Statistics &stat, const Se
 		if (targets[i].hsps.size() == 0)
 			continue;
 
-		const int c = target_culling->cull(targets[i]);
+		const int c = target_culling->cull(targets[i]).first;
 		if (c == TargetCulling::NEXT)
 			continue;
 		else if (c == TargetCulling::FINISHED)

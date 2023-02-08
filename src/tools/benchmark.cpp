@@ -353,7 +353,7 @@ void anchored_swipe(const Sequence& s1, const Sequence& s2) {
 	Anchor a(DiagonalSegment(0, 0, 0, 0), 0, 0, 0, 0, 0);
 	for (int i = 0; i < 16; ++i)
 		dp_targets[0].emplace_back(s2_, s2_.length(), -32, 32, Interval(), 0, 0, s1_.length(), nullptr, DpTarget::CarryOver(), a);
-	DP::AnchoredSwipe::Config cfg{ s1_, nullptr, 0, stats };
+	DP::AnchoredSwipe::Config cfg{ s1_, nullptr, 0, stats, nullptr };
 
 	t1 = high_resolution_clock::now();
 	for (size_t i = 0; i < n; ++i) {

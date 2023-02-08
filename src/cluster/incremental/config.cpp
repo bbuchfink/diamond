@@ -26,7 +26,7 @@ Config::Config() :
 	problem_size_self(0)
 {
 	sens.push_back(config.sensitivity);
-	for (int i = 0; i < sens.size() - 1; ++i)
+	for (int i = 0; i < (int)sens.size() - 1; ++i)
 		cache.emplace_back(new Block);
 }
 

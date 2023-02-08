@@ -186,7 +186,6 @@ std::vector<Match> align(std::vector<Target> &targets, const int64_t previous_ma
 std::vector<Target> full_db_align(const Sequence *query_seq, const Bias_correction *query_cb, DP::Flags flags, const HspValues hsp_values, Statistics &stat, const Block& target_block);
 void recompute_alt_hsps(std::vector<Match>::iterator begin, std::vector<Match>::iterator end, const Sequence* query, const int query_source_len, const Bias_correction* query_cb, const HspValues v, Statistics& stats);
 void apply_filters(std::vector<Match>::iterator begin, std::vector<Match>::iterator end, int source_query_len, const char* query_title, const double query_self_aln_score, const Sequence& query_seq, const Search::Config& cfg);
-std::pair<SeedHitList, std::vector<Match>> kmer_filter(Sequence query, const int8_t* query_cbs, const Block& targets, const SeedHitList& l);
 
 std::pair<std::vector<Match>, Stats> extend(
 	BlockId query_id,

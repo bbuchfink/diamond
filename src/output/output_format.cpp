@@ -102,12 +102,12 @@ void IntermediateRecord::finish_query(TextBuffer& buf, size_t seek_pos)
 	*(uint32_t*)(&buf[seek_pos + sizeof(uint32_t)]) = safe_cast<uint32_t>(buf.size() - seek_pos - sizeof(uint32_t) * 2);
 }
 
-void IntermediateRecord::write(TextBuffer& buf, const Hsp& match, unsigned query_id, DictId target, size_t target_oid, const OutputFormat* output_format)
+void IntermediateRecord::write(TextBuffer& buf, const Hsp& match, unsigned query_id, DictId target, OId target_oid, const OutputFormat* output_format)
 {
 	const Interval oriented_range(match.oriented_range());
 	buf.write(target);
 	if (*output_format == OutputFormat::daa)
-		buf.write((uint32_t)target_oid);
+		buf.write(target_oid);
 	buf.write(get_segment_flag(match));
 	buf.write_packed(match.score);
 	buf.write(match.evalue);

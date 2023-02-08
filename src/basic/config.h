@@ -312,8 +312,6 @@ struct Config
 	bool mode_faster;
 	double member_cover;
 	bool weighted_gvc;
-	int filter_kmer_len;
-	double filter_kmer_cutoff;
 	bool kmer_ranking;
 	bool hamming_ext;
 	double diag_filter_id;
@@ -334,7 +332,7 @@ struct Config
 	bool no_8bit_extension;
 	bool anchored_swipe;
 	bool no_chaining_merge_hsps;
-	bool no_recluster_bd;
+	bool recluster_bd;
 	bool pipeline_short;
 	string graph_algo;
 

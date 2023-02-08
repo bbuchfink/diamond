@@ -68,7 +68,9 @@ Serializer& operator<<(Serializer &s, const ReferenceHeader2 &h)
 
 Deserializer& operator>>(Deserializer &d, ReferenceHeader2 &h)
 {
+#ifdef EXTRA
 	int32_t db_type;
+#endif
 	d.read_record().read(h.hash, sizeof(h.hash))
 		>> h.taxon_array_offset
 		>> h.taxon_array_size

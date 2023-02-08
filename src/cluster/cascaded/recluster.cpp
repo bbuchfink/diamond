@@ -80,9 +80,9 @@ static vector<OId> recluster(shared_ptr<SequenceFile>& db, const vector<OId>& cl
 	config.iterate = vector<string>();
 	config.output_format = { "edge" };
 	config.self = false;
-	config.query_cover = config.no_recluster_bd ? config.member_cover : 0;
+	config.query_cover = config.recluster_bd ? 0 : config.member_cover;
 	config.subject_cover = 0;
-	config.query_or_target_cover = config.no_recluster_bd ? 0 : config.member_cover;
+	config.query_or_target_cover = config.recluster_bd ? config.member_cover : 0;
 	config.sensitivity = from_string<Sensitivity>(cluster_steps(config.approx_min_id).back());
 	//tie(config.chunk_size, config.lowmem_) = block_size(Util::String::interpret_number(config.memory_limit.get(DEFAULT_MEMORY_LIMIT)), Search::iterated_sens.at(config.sensitivity).front(), false);
 	config.lowmem_ = 1;
@@ -104,7 +104,7 @@ static vector<OId> recluster(shared_ptr<SequenceFile>& db, const vector<OId>& cl
 		return out;
 
 	shared_ptr<SequenceFile> unmapped;
-	if (config.no_recluster_bd) {
+	if (!config.recluster_bd) {
 		timer.go("Creating database of unmapped sequences");
 		unmapped.reset(unaligned->sub_db(unmapped_members.cbegin(), unmapped_members.cend()));
 	}
@@ -134,7 +134,7 @@ static vector<OId> recluster(shared_ptr<SequenceFile>& db, const vector<OId>& cl
 		timer.finish();
 		message_stream << "#Centroid sequences covered: " << n << endl;
 		timer.go("Making sequence list for reclustering");
-		for (int64_t i = 0; i < unmapped_members.size(); ++i)
+		for (int64_t i = 0; i < (int64_t)unmapped_members.size(); ++i)
 			unmapped_members[i] = unal_members[unmapped_members[i]];
 		const vector<OId> members = cluster_members(centroid_list.begin(), end, clusters);
 		unmapped_members.reserve(unmapped_members.size() + members.size());

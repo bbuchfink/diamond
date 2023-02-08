@@ -514,10 +514,6 @@ struct ScoreVector<int8_t, DELTA>
 		return *this;
 	}
 
-	ScoreVector shift_left(int bytes) {
-		return _mm_slli_si128(data_, bytes);
-	}
-
 	friend ScoreVector blend(const ScoreVector&v, const ScoreVector&w, const ScoreVector&mask) {
 		return ScoreVector(_mm_blendv_epi8(v.data_, w.data_, mask.data_));
 	}

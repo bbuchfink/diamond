@@ -248,7 +248,7 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 #endif
 		;
 
-	auto& general = parser.add_group("General options", { makedb, blastp, blastx, cluster, view, prep_db, getseq, dbinfo, makeidx, CLUSTER_REALIGN, GREEDY_VERTEX_COVER, DEEPCLUST });
+	auto& general = parser.add_group("General options", { makedb, blastp, blastx, cluster, view, prep_db, getseq, dbinfo, makeidx, CLUSTER_REALIGN, GREEDY_VERTEX_COVER, DEEPCLUST, RECLUSTER });
 	general.add()
 		("threads", 'p', "number of CPU threads", threads_)
 		("db", 'd', "database file", database)
@@ -613,8 +613,6 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 		("reassign-max", 0, "", reassign_max)
 		("add-self-aln", 0, "", add_self_aln)
 		("weighted-gvc", 0, "", weighted_gvc)
-		("filter-kmer-len", 0, "", filter_kmer_len)
-		("filter-kmer-cutoff", 0, "", filter_kmer_cutoff)
 		("hamming-ext", 0, "", hamming_ext)
 		("diag-filter-id", 0, "", diag_filter_id)
 		("diag-filter-cov", 0, "", diag_filter_cov)
@@ -644,7 +642,7 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 		("no_8bit_extension", 0, "", no_8bit_extension)
 		("anchored-swipe", 0, "", anchored_swipe)
 		("no_chaining_merge_hsps", 0, "", no_chaining_merge_hsps)
-		("no_recluster_bd", 0, "", no_recluster_bd)
+		("recluster_bd", 0, "", recluster_bd)
 		("pipeline-short", 0, "", pipeline_short)
 		("graph-algo", 0, "", graph_algo, string("gvc"))
 #ifndef KEEP_TARGET_ID

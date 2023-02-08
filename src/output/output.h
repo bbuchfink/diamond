@@ -74,7 +74,7 @@ struct IntermediateRecord
 	Interval absolute_query_range() const;
 	static size_t write_query_intro(TextBuffer& buf, unsigned query_id);
 	static void finish_query(TextBuffer& buf, size_t seek_pos);
-	static void write(TextBuffer& buf, const Hsp& match, unsigned query_id, DictId target, size_t target_oid, const OutputFormat* output_format);
+	static void write(TextBuffer& buf, const Hsp& match, unsigned query_id, DictId target, OId target_oid, const OutputFormat* output_format);
 	static void write(TextBuffer& buf, uint32_t target_block_id, int score, const Search::Config& cfg);
 	static void finish_file(Consumer& f);
 	static bool stats_mode(const HspValues v) {

@@ -259,18 +259,11 @@ pair<vector<Match>, Stats> extend(BlockId query_id, Search::Hit* begin, Search::
 	stat.inc(Statistics::TIME_LOAD_HIT_TARGETS, timer.microseconds());
 	timer.finish();
 
-	vector<Match> trivial_matches;
-	if (config.filter_kmer_len) {
-		tie(l, trivial_matches) = kmer_filter(cfg.query->seqs()[query_id], Bias_correction(cfg.query->seqs()[query_id]).int8.data(), *cfg.target, l);
-		stat.inc(Statistics::TRIVIAL_ALN, trivial_matches.size());
-	}
-
 	const int64_t target_count = (int64_t)l.target_block_ids.size();
 	if (target_count == 0 && !config.swipe_all) {
 		if (add_self_aln(cfg))
 			return { {Match::self_match(query_id, cfg.query->seqs()[query_id])}, Stats() };
-		culling(trivial_matches, cfg);
-		return { trivial_matches, Stats() };
+		return { {}, Stats() };
 	}
 	const int64_t chunk_size = ranking_chunk_size(target_count, cfg.target->seqs().letters(), cfg.max_target_seqs);
 
@@ -284,10 +277,6 @@ pair<vector<Match>, Stats> extend(BlockId query_id, Search::Hit* begin, Search::
 	}
 
 	pair<vector<Match>, Stats> r = extend(query_id, cfg, stat, flags, l);
-	if (!trivial_matches.empty()) {
-		r.first.insert(r.first.end(), make_move_iterator(trivial_matches.begin()), make_move_iterator(trivial_matches.end()));
-		culling(r.first, cfg);
-	}
 	return r;
 }
 

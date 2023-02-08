@@ -181,7 +181,7 @@ void update_table(Search::Config& cfg) {
 		}
 	};
 	vector<thread> threads;
-	for (size_t i = 0; i < config.threads_; ++i)
+	for (int i = 0; i < config.threads_; ++i)
 		threads.emplace_back(worker);
 	for (thread& t : threads)
 		t.join();
