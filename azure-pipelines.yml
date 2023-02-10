@@ -11,5 +11,9 @@ pool:
 
 steps:
 - script: |
-    make
+    mkdir bin
+    cd bin
+    cmake ..
+    make -j $(nproc --all)
+
   displayName: 'make'
