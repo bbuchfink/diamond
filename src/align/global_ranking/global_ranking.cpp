@@ -57,7 +57,7 @@ std::vector<Extension::Match> ranking_list(size_t query_id, std::vector<TargetSc
 
 	int64_t n = 0;
 	vector<Match> r;
-	r.reserve(std::min(end - begin, config.global_ranking_targets));
+	r.reserve(std::min(end - begin, (ptrdiff_t)config.global_ranking_targets));
 	for (auto i = begin; i < end && n < config.global_ranking_targets; ++i, ++n) {
 		r.emplace_back(target_block_ids[i->target], Sequence(), ::Stats::TargetMatrix(), i->score);
 	}
