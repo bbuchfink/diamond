@@ -86,7 +86,7 @@ vector<Match> align(vector<Target>& targets, const int64_t previous_matches, con
 	do {
 		array<DP::Targets, MAX_CONTEXT> dp_targets;
 		const int64_t step_size = !first_round_culling && config.toppercent == 100.0
-			? std::min(make_multiple(std::max(cfg.max_target_seqs - (int64_t)r.size(), MIN_STEP), MIN_STEP), targets.end() - it)
+			? std::min(make_multiple(std::max(cfg.max_target_seqs - (int64_t)r.size(), MIN_STEP), MIN_STEP), int64_t(targets.end() - it))
 			: targets.size();
 		
 		r.reserve(r.size() + step_size);
