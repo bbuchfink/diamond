@@ -20,13 +20,13 @@ struct Table {
 		return *this;
 	}
 
-	Table& operator()(const std::string& s, int64_t n, const char* unit = "") {
+	Table& operator()(const std::string& s, long long n, const char* unit = "") {
 		data_.emplace_back(s, std::to_string(n) + unit);
 		max_len_ = std::max(max_len_, s.length());
 		return *this;
 	}
 
-	Table& operator()(const std::string& s, uint64_t n, const char* unit = "") {
+	Table& operator()(const std::string& s, unsigned long long n, const char* unit = "") {
 		data_.emplace_back(s, std::to_string(n) + unit);
 		max_len_ = std::max(max_len_, s.length());
 		return *this;
