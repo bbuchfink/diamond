@@ -65,7 +65,7 @@ struct KmerIterator {
 		reduction_(reduction),
 		ptr_(seq.data() - 1),
 		end_(seq.end()),
-		mod_(power((uint64_t)reduction_.size(), K - 1))
+		mod_(power((size_t)reduction_.size(), K - 1))
 	{
 		inc(0, 1);
 	}

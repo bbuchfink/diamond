@@ -1,3 +1,15 @@
+[2.1.2]
+- Fixed a bug that caused invalid alignment traceback output for the DAA `view`
+  workflow.
+- Added the `merge-daa` workflow to merge DAA files.
+- Fixed an error when using the `--max-target-seqs/-k` option for the DAA `view`
+  workflow.
+- Removed AVX2 support from the Windows release binary to ensure compatibility
+  with older systems.
+- Permitted the `--ignore-warnings` option for the `cluster` and `deepclust`
+  workflows.
+- Use unlinked temporary files for database blocks in clustering workflows.
+
 [2.1.1]
 - Fixed compilation errors on non-x86 systems and for the clang compiler.
 - Fixed an error message when running the `recluster` workflow.

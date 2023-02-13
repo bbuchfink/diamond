@@ -16,7 +16,7 @@ static double roundToFewDigits(double x)
   // match/mismatch matrix it's likely to make all the probabilities
   // exactly 0.25, as they should be.
   char buffer[32];
-  sprintf(buffer, "%g", x);
+  snprintf(buffer, 32, "%g", x);
   return atof(buffer);
 }
 

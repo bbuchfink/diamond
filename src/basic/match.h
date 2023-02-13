@@ -415,6 +415,9 @@ struct HspContext
 	int reserved2() const {
 		return hsp_.reserved2;
 	}
+	Hsp hsp() const {
+		return hsp_;
+	}
 	HspContext& parse(const OutputFormat* output_format);
 
 	TranslatedSequence query;
@@ -426,7 +429,7 @@ struct HspContext
 	int ungapped_score;
 	double query_self_aln_score, target_self_aln_score;
 	Sequence subject_seq;
-private:	
+private:
 	Hsp hsp_;
 	template<typename T> friend struct TypeDeserializer;
 };

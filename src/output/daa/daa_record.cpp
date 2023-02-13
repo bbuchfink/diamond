@@ -76,7 +76,7 @@ void DAA_query_record::Match::read(BinaryBuffer::Iterator &it)
 		query_range.begin_ = query_begin;
 	}
 	
-	context().parse(nullptr);
+	*(Hsp*)this = context().parse(nullptr).hsp();
 	evalue = score_matrix.evalue(score, (Loc)parent_.context[0].size(), subject_len);
 	bit_score = score_matrix.bitscore(score);
 }

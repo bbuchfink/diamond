@@ -67,6 +67,10 @@ void merge_daa() {
 	task_timer timer("Initializing");
 	vector<DAA_file*> files;
 	const int n = (int)config.input_ref_file.size();
+	if (n == 0)
+		throw std::runtime_error("Missing parameter: input files (--in)");
+	if (config.output_file.empty())
+		throw std::runtime_error("Missing parameter: output file (--out)");
 	unordered_map<string, uint32_t> acc2oid;
 	vector<unordered_map<uint32_t, uint32_t>> oid_maps;
 	StringSet seq_ids;

@@ -180,7 +180,7 @@ struct TextBuffer
 	{
 		//write(x);
 		reserve(16);
-		ptr_ += sprintf(ptr_, "%u", x);
+		ptr_ += snprintf(ptr_, 16, "%u", x);
 		return *this;
 	}
 
@@ -188,49 +188,49 @@ struct TextBuffer
 	{
 		//write(x);
 		reserve(16);
-		ptr_ += sprintf(ptr_, "%i", x);
+		ptr_ += snprintf(ptr_, 16, "%i", x);
 		return *this;
 	}
 
 	TextBuffer& operator<<(unsigned long x)
 	{
 		reserve(32);
-		ptr_ += sprintf(ptr_, "%lu", x);
+		ptr_ += snprintf(ptr_, 32, "%lu", x);
 		return *this;
 	}
 	
 	TextBuffer& operator<<(unsigned long long x)
 	{
 		reserve(32);
-		ptr_ += sprintf(ptr_, "%llu", x);
+		ptr_ += snprintf(ptr_, 32, "%llu", x);
 		return *this;
 	}
 
 	TextBuffer& operator<<(long x)
 	{
 		reserve(32);
-		ptr_ += sprintf(ptr_, "%li", x);
+		ptr_ += snprintf(ptr_, 32, "%li", x);
 		return *this;
 	}
 
 	TextBuffer& operator<<(long long x)
 	{
 		reserve(32);
-		ptr_ += sprintf(ptr_, "%lli", x);
+		ptr_ += snprintf(ptr_, 32, "%lli", x);
 		return *this;
 	}
 
 	TextBuffer& operator<<(double x)
 	{
 		reserve(32);
-		ptr_ += Util::String::format_double(x, ptr_);
+		ptr_ += Util::String::format_double(x, ptr_, 32);
 		return *this;
 	}
 
 	TextBuffer& print_d(double x)
 	{
 		reserve(32);
-		ptr_ += sprintf(ptr_, "%lf", x);
+		ptr_ += snprintf(ptr_, 32, "%lf", x);
 		return *this;
 	}
 
@@ -238,16 +238,16 @@ struct TextBuffer
 	{
 		reserve(32);
 		if (x == 0.0)
-			ptr_ += sprintf(ptr_, "0.0");
+			ptr_ += snprintf(ptr_, 32, "0.0");
 		else
-			ptr_ += sprintf(ptr_, "%.2e", x);
+			ptr_ += snprintf(ptr_, 32, "%.2e", x);
 		return *this;
 	}
 
 	TextBuffer& print(unsigned i, unsigned width)
 	{
 		reserve(16);
-		sprintf(ptr_, "%*u", width, i);
+		snprintf(ptr_, 16, "%*u", width, i);
 		ptr_ += width;
 		return *this;
 	}

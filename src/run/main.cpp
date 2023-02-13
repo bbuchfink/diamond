@@ -68,6 +68,7 @@ void hash_seqs();
 void list_seeds();
 void prep_db();
 void greedy_vertex_cover();
+void merge_daa();
 #ifdef EXTRA
 void index_fasta();
 void fetch_seq();
@@ -215,6 +216,9 @@ int main(int ac, const char* av[])
 			break;
 		case Config::RECLUSTER:
 			Cluster::recluster();
+			break;
+		case Config::MERGE_DAA:
+			merge_daa();
 			break;
 #ifdef EXTRA
 		case Config::INDEX_FASTA:

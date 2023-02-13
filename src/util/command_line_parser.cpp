@@ -107,8 +107,12 @@ void CommandLineParser::print_help()
 	cout << "Syntax: diamond COMMAND [OPTIONS]" << endl << endl;
 	cout << "Commands:" << endl;
 	for (vector<pair<string, string> >::const_iterator i = commands_.begin(); i != commands_.end(); ++i)
-		if (i->second != "")
-			cout << i->first << '\t' << i->second << endl;
+		if (i->second != "") {
+			cout << i->first;
+			for (size_t j = 0; j < col1_width - i->first.length(); ++j)
+				cout << ' ';
+			cout << i->second << endl;
+		}
 	cout << endl;
 	for (const auto& g : groups_) {
 		if (g.title == "")

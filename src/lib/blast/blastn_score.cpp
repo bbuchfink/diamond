@@ -1780,7 +1780,7 @@ s_GetNuclValuesArray(Int4 reward, Int4 penalty, Int4* array_size,
         status = -1;
         if (error_return) {
             char buffer[256];
-            sprintf(buffer, "Substitution scores %d and %d are not supported",
+            snprintf(buffer, 256, "Substitution scores %d and %d are not supported",
                     reward, penalty);
             Blast_MessageWrite(error_return, eBlastSevError, kBlastMessageNoContext, buffer);
         }
@@ -1900,20 +1900,20 @@ Blast_KarlinBlkNuclGappedCalc(Blast_KarlinBlk* kbp, Int4 gap_open,
                 int i=0;
                 int len=0;
                 /* Unsupported gap costs combination. */
-                sprintf(buffer, "Gap existence and extension values %ld and %ld "
+                snprintf(buffer, sizeof(buffer), "Gap existence and extension values %ld and %ld "
                                 "are not supported for substitution scores %ld and %ld\n",
                         (long) gap_open, (long) gap_extend, (long) reward, (long) penalty);
                 for (i = 0; i < num_combinations; ++i)
                 {
                     len = (int)strlen(buffer);
-                    sprintf(buffer+len, "%ld and %ld are supported existence and extension values\n",
+                    snprintf(buffer+len, sizeof(buffer)-len, "%ld and %ld are supported existence and extension values\n",
                             (long) normal[i][kGapOpenIndex],  (long) normal[i][kGapExtIndex]);
                 }
                 len = (int)strlen(buffer);
-                sprintf(buffer+len, "%ld and %ld are supported existence and extension values\n",
+                snprintf(buffer+len, sizeof(buffer)-len, "%ld and %ld are supported existence and extension values\n",
                         (long) gap_open_max, (long) gap_extend_max);
                 len = (int)strlen(buffer);
-                sprintf(buffer+len, "Any values more stringent than %ld and %ld are supported\n",
+                snprintf(buffer+len, sizeof(buffer)-len, "Any values more stringent than %ld and %ld are supported\n",
                         (long) gap_open_max, (long) gap_extend_max);
                 Blast_MessageWrite(error_return, eBlastSevError, kBlastMessageNoContext, buffer);
                 sfree(normal);
@@ -2004,7 +2004,7 @@ Blast_ScoreBlkMatrixInit(EBlastProgramType program_number,
         } else {
             char buffer[50];
             sbp->read_in_matrix = FALSE;
-            sprintf(buffer, "blastn matrix:%ld %ld",
+            snprintf(buffer, sizeof(buffer), "blastn matrix:%ld %ld",
                     (long) sbp->reward, (long) sbp->penalty);
             sbp->name = strdup(buffer);
         }

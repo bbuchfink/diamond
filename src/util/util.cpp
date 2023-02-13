@@ -164,9 +164,9 @@ std::string print_char(char c)
 {
 	char buf[16];
 	if (c < 32)
-		sprintf(buf, "ASCII %u", (unsigned)c);
+		snprintf(buf, sizeof(buf), "ASCII %u", (unsigned)c);
 	else
-		sprintf(buf, "%c", c);
+		snprintf(buf, sizeof(buf), "%c", c);
 	return std::string(buf);
 }
 
@@ -174,7 +174,7 @@ std::string hex_print(const char* x, int len) {
 	std::string out;
 	char d[3];
 	for (int i = 0; i < len; i++) {
-		sprintf(d, "%02x", (unsigned char)x[i]);
+		snprintf(d, sizeof(d), "%02x", (unsigned char)x[i]);
 		out += d;
 	}
 	return out;

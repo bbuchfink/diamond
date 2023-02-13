@@ -891,7 +891,7 @@ vector<tuple<FastaFile*, vector<OId>, File*>> SequenceFile::length_sort(int64_t 
 	files.reserve(block);
 	for (int i = 0; i < block; ++i) {
 		//files.emplace_back(new FastaFile("", true, FastaFile::WriteAccess()), vector<OId>(),
-		files.emplace_back(new FastaFile("block_" + std::to_string(i), true, FastaFile::WriteAccess()), vector<OId>(),
+		files.emplace_back(new FastaFile("", true, FastaFile::WriteAccess()), vector<OId>(),
 			new File(Schema{ ::Type::INT64 }, "", ::Flags::TEMP));
 		get<0>(files.back())->init_write();
 	}

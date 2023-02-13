@@ -59,9 +59,11 @@ Arch init_arch() {
 	if ((info[2] & (1 << 19)) != 0)
 		flags |= SSE4_1;
 	if (nids >= 7) {
+#ifdef WITH_AVX2
 		cpuid(info, 7);
 		if ((info[1] & (1 << 5)) != 0)
 			flags |= AVX2;
+#endif
 #ifdef WITH_AVX512
 		if ((info[1] & (1 << 16)) != 0 && (info[1] & (1 << 30)) != 0)
 			flags |= AVX512;

@@ -204,6 +204,7 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 		.add_command("recluster", "Recompute clustering to fix errors", RECLUSTER)
 		.add_command("reassign", "Reassign clustered sequences to the closest centroid", CLUSTER_REASSIGN)
 		.add_command("view", "View DIAMOND alignment archive (DAA) formatted file", view)
+		.add_command("merge-daa", "Merge DAA files", MERGE_DAA)
 		.add_command("help", "Produce help message", help)
 		.add_command("version", "Display version information", version)
 		.add_command("getseq", "Retrieve sequences from a DIAMOND database file", getseq)
@@ -244,11 +245,10 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 		.add_command("fetch-seq", "", FETCH_SEQ)
         .add_command("blastn", "Align DNA query sequences against a DNA reference database", blastn)
 		.add_command("length-sort", "", LENGTH_SORT)
-		.add_command("merge-daa", "", MERGE_DAA)
 #endif
 		;
 
-	auto& general = parser.add_group("General options", { makedb, blastp, blastx, cluster, view, prep_db, getseq, dbinfo, makeidx, CLUSTER_REALIGN, GREEDY_VERTEX_COVER, DEEPCLUST, RECLUSTER });
+	auto& general = parser.add_group("General options", { makedb, blastp, blastx, cluster, view, prep_db, getseq, dbinfo, makeidx, CLUSTER_REALIGN, GREEDY_VERTEX_COVER, DEEPCLUST, RECLUSTER, MERGE_DAA });
 	general.add()
 		("threads", 'p', "number of CPU threads", threads_)
 		("db", 'd', "database file", database)
@@ -259,7 +259,7 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 		("header", 0, "Use header lines in tabular output format (0/simple/verbose).", output_header, Option<vector<string>>(), 0);
 	
     string dbstring;
-	auto& makedb_opt = parser.add_group("Makedb options", { makedb });
+	auto& makedb_opt = parser.add_group("Makedb options", { makedb, MERGE_DAA });
 	makedb_opt.add()
 		("in", 0, "input reference file in FASTA format", input_ref_file)
 		("taxonmap", 0, "protein accession to taxid mapping file", prot_accession2taxid)
@@ -280,7 +280,7 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 		("mmseqs-compat", 0, "", mmseqs_compat)
 		("no-block-size-limit", 0, "", no_block_size_limit);
 
-	auto& aligner = parser.add_group("Aligner options", { blastp, blastx, makeidx, CLUSTER_REASSIGN });
+	auto& aligner = parser.add_group("Aligner options", { blastp, blastx, makeidx, CLUSTER_REASSIGN, view });
 	aligner.add()
 		("query", 'q', "input query file", query_file)
 		("strand", 0, "query strands to search (both/minus/plus)", query_strands, string("both"))
@@ -400,7 +400,7 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 
 	string algo_str;
 
-	auto& advanced = parser.add_group("Advanced options", { blastp, blastx, makeidx, CLUSTER_REASSIGN, regression_test });
+	auto& advanced = parser.add_group("Advanced options", { blastp, blastx, makeidx, CLUSTER_REASSIGN, regression_test, cluster, DEEPCLUST });
 	advanced.add()
 		("algo", 0, "Seed search algorithm (0=double-indexed/1=query-indexed/ctg=contiguous-seed)", algo_str)
 		("bin", 0, "number of query bins for seed search", query_bins_)

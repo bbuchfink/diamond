@@ -47,11 +47,11 @@ std::string convert_size(size_t size);
 namespace Util { namespace String {
 
 // Workaround since sprintf is inconsistent in double rounding for different implementations.
-inline int format_double(double x, char *p) {
+inline int format_double(double x, char *p, int64_t buf_size) {
 	if (x >= 100.0)
-		return sprintf(p, "%lli", (long long)std::floor(x)); // for keeping output compatible with BLAST
+		return snprintf(p, buf_size, "%lli", (long long)std::floor(x)); // for keeping output compatible with BLAST
 	long long i = std::llround(x*10.0);
-	return sprintf(p, "%lli.%lli", i / 10, i % 10);
+	return snprintf(p, buf_size, "%lli.%lli", i / 10, i % 10);
 }
 
 std::string replace(const std::string& s, char a, char b);
