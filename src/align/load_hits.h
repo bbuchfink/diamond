@@ -42,7 +42,8 @@ static int64_t count_targets(It begin, It end) {
 template<typename It>
 static SeedHitList load_hits(It begin, It end, const SequenceSet& ref_seqs) {
 	std::sort(begin, end, Search::Hit::CmpSubject());	
-	const auto targets = count_targets(begin, end), hits = end - begin;
+	const auto targets = count_targets(begin, end);
+	const auto hits = end - begin;
 	SeedHitList list;
 	list.seed_hits.reserve(targets, hits);
 	list.target_block_ids.reserve(targets);
