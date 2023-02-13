@@ -106,7 +106,7 @@ static It output_range(const It begin, const It end, const Search::Config& cfg) 
 			++i;
 	}
 	else {
-		i += std::min(cfg.max_target_seqs, end - begin);
+		i += std::min((ptrdiff_t)cfg.max_target_seqs, end - begin);
 		while (--i > begin && i->filter_evalue == DBL_MAX);
 		++i;
 	}
