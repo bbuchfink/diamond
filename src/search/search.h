@@ -114,8 +114,9 @@ struct WorkSet {
 };
 
 DECL_DISPATCH(void, stage1, (const SeedLoc* q, int32_t nq, const SeedLoc* s, int32_t ns, WorkSet& work_set))
-DECL_DISPATCH(void, stage1_lin, (const SeedLoc* q, int32_t nq, const SeedLoc* s, int32_t ns, WorkSet& work_set))
-DECL_DISPATCH(void, stage1_lin_ranked, (const SeedLoc* q, int32_t nq, const SeedLoc* s, int32_t ns, WorkSet& work_set))
+DECL_DISPATCH(void, stage1_query_lin, (const SeedLoc* q, int32_t nq, const SeedLoc* s, int32_t ns, WorkSet& work_set))
+DECL_DISPATCH(void, stage1_query_lin_ranked, (const SeedLoc* q, int32_t nq, const SeedLoc* s, int32_t ns, WorkSet& work_set))
+DECL_DISPATCH(void, stage1_target_lin, (const SeedLoc* q, int32_t nq, const SeedLoc* s, int32_t ns, WorkSet& work_set))
 DECL_DISPATCH(void, stage1_self, (const SeedLoc* q, int32_t nq, const SeedLoc* s, int32_t ns, WorkSet& work_set))
 
 }

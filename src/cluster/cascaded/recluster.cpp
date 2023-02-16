@@ -1,8 +1,8 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2022 Max Planck Society for the Advancement of Science e.V.
+Copyright (C) 2022-2023 Max Planck Society for the Advancement of Science e.V.
 
-Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
+Code developed by Benjamin Buchfink <buchfink@gmail.com>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -83,10 +83,12 @@ static vector<OId> recluster(shared_ptr<SequenceFile>& db, const vector<OId>& cl
 	config.query_cover = config.recluster_bd ? 0 : config.member_cover;
 	config.subject_cover = 0;
 	config.query_or_target_cover = config.recluster_bd ? config.member_cover : 0;
-	config.sensitivity = from_string<Sensitivity>(cluster_steps(config.approx_min_id).back());
+	config.sensitivity = from_string<Sensitivity>(cluster_steps(config.approx_min_id, false).back());
 	//tie(config.chunk_size, config.lowmem_) = block_size(Util::String::interpret_number(config.memory_limit.get(DEFAULT_MEMORY_LIMIT)), Search::iterated_sens.at(config.sensitivity).front(), false);
 	config.lowmem_ = 1;
 	config.chunk_size = 4.0;
+	config.lin_stage1 = false;
+	config.linsearch = false;
 	shared_ptr<Mapback> mapback = make_shared<Mapback>(unal_members.size());
 	Search::run(centroid_db, unaligned, mapback);
 
@@ -157,7 +159,7 @@ static vector<OId> recluster(shared_ptr<SequenceFile>& db, const vector<OId>& cl
 	unaligned.reset();
 	timer.finish();
 
-	const vector<OId> reclust = recluster(unmapped, convert_mapping(cascaded(unmapped), OId()), iteration + 1);
+	const vector<OId> reclust = recluster(unmapped, convert_mapping(cascaded(unmapped, false), OId()), iteration + 1);
 
 	timer.go("Deallocating memory");
 	unmapped.reset();	

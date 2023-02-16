@@ -280,7 +280,7 @@ FlatArray<T> make_flat_array_dense(std::vector<T>&& data, const typename T::Key 
 	std::vector<int64_t> limits;
 	limits.push_back(0);
 #if _MSC_FULL_VER == 191627045 || !defined(NDEBUG)
-	std:sort(data.begin(), data.end());
+	std::sort(data.begin(), data.end());
 #else
 	ips4o::parallel::sort(data.begin(), data.end(), std::less<T>(), num_threads);
 #endif

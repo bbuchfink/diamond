@@ -200,6 +200,7 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 		.add_command("blastp", "Align amino acid query sequences against a protein reference database", blastp)
 		.add_command("blastx", "Align DNA query sequences against a protein reference database", blastx)
 		.add_command("cluster", "Cluster protein sequences", cluster)
+		.add_command("linclust", "Cluster protein sequences in linear time", LINCLUST)
 		.add_command("realign", "Realign clustered sequences against their centroids", CLUSTER_REALIGN)
 		.add_command("recluster", "Recompute clustering to fix errors", RECLUSTER)
 		.add_command("reassign", "Reassign clustered sequences to the closest centroid", CLUSTER_REASSIGN)
@@ -248,7 +249,7 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 #endif
 		;
 
-	auto& general = parser.add_group("General options", { makedb, blastp, blastx, cluster, view, prep_db, getseq, dbinfo, makeidx, CLUSTER_REALIGN, GREEDY_VERTEX_COVER, DEEPCLUST, RECLUSTER, MERGE_DAA });
+	auto& general = parser.add_group("General options", { makedb, blastp, blastx, cluster, view, prep_db, getseq, dbinfo, makeidx, CLUSTER_REALIGN, GREEDY_VERTEX_COVER, DEEPCLUST, RECLUSTER, MERGE_DAA, LINCLUST });
 	general.add()
 		("threads", 'p', "number of CPU threads", threads_)
 		("db", 'd', "database file", database)
@@ -266,7 +267,7 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 		("taxonnodes", 0, "taxonomy nodes.dmp from NCBI", nodesdmp)
 		("taxonnames", 0, "taxonomy names.dmp from NCBI", namesdmp);
 
-	auto& align_clust = parser.add_group("Aligner/Clustering options", { blastp, blastx, cluster, RECLUSTER, CLUSTER_REASSIGN, DEEPCLUST, CLUSTER_REALIGN });
+	auto& align_clust = parser.add_group("Aligner/Clustering options", { blastp, blastx, cluster, RECLUSTER, CLUSTER_REASSIGN, DEEPCLUST, CLUSTER_REALIGN, LINCLUST });
 	align_clust.add()
 		("evalue", 'e', "maximum e-value to report alignments (default=0.001)", max_evalue, 0.001)
 		("tmpdir", 't', "directory for temporary files", tmpdir)
@@ -381,7 +382,7 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 \tqstrand means Query strand\n\
 \n\tDefault: qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore", output_format);
 
-	auto& cluster_opt = parser.add_group("Clustering options", { cluster, RECLUSTER, CLUSTER_REASSIGN, GREEDY_VERTEX_COVER, DEEPCLUST });
+	auto& cluster_opt = parser.add_group("Clustering options", { cluster, RECLUSTER, CLUSTER_REASSIGN, GREEDY_VERTEX_COVER, DEEPCLUST, LINCLUST });
 	kmer_ranking = false;
 	cluster_opt.add()
 		("member-cover", 0, "Minimum coverage% of the cluster member sequence (default=80.0)", member_cover, 80.0)
@@ -400,7 +401,7 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 
 	string algo_str;
 
-	auto& advanced = parser.add_group("Advanced options", { blastp, blastx, makeidx, CLUSTER_REASSIGN, regression_test, cluster, DEEPCLUST });
+	auto& advanced = parser.add_group("Advanced options", { blastp, blastx, makeidx, CLUSTER_REASSIGN, regression_test, cluster, DEEPCLUST, LINCLUST });
 	advanced.add()
 		("algo", 0, "Seed search algorithm (0=double-indexed/1=query-indexed/ctg=contiguous-seed)", algo_str)
 		("bin", 0, "number of query bins for seed search", query_bins_)
@@ -409,6 +410,8 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 		("freq-masking", 0, "mask seeds based on frequency", freq_masking)
 		("freq-sd", 0, "number of standard deviations for ignoring frequent seeds", freq_sd_, 0.0)
 		("id2", 0, "minimum number of identities for stage 1 hit", min_identities_)
+		("linsearch", 0, "only consider seed hits against longest target for identical seeds", linsearch)
+		("lin-stage1", 0, "only consider seed hits against longest query for identical seeds", lin_stage1)
 		("xdrop", 'x', "xdrop for ungapped alignment", ungapped_xdrop, 12.3)
 		("gapped-filter-evalue", 0, "E-value threshold for gapped filter (auto)", gapped_filter_evalue_, -1.0)
 		("band", 0, "band for dynamic programming computation", padding)
@@ -597,7 +600,6 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 		("chaining-stacked-hsp-ratio", 0, "", chaining_stacked_hsp_ratio, 0.5)
 		("swipe-task-size", 0, "", swipe_task_size, (int64_t)100000000)
 		("minimizer-window", 0, "", minimizer_window_)
-		("lin-stage1", 0, "", lin_stage1)
 		("min_task_trace_pts", 0, "", min_task_trace_pts, (int64_t)1024)
 		("sketch-size", 0, "", sketch_size)
 		("oid-list", 0, "", oid_list)
@@ -780,6 +782,7 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 	case Config::view:
 	case Config::cluster:
 	case Config::DEEPCLUST:
+	case Config::LINCLUST:
 	case Config::regression_test:
 	case Config::compute_medoids:
 	case Config::CLUSTER_REASSIGN:
@@ -800,6 +803,7 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 	case Config::makedb:
 	case Config::cluster:
 	case Config::DEEPCLUST:
+	case Config::LINCLUST:
 	case Config::regression_test:
 	case Config::compute_medoids:
 	case Config::LIST_SEEDS:
@@ -828,7 +832,7 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 
 	if (command == Config::blastp || command == Config::blastx || command == Config::blastn || command == Config::benchmark || command == Config::model_sim || command == Config::opt
 		|| command == Config::mask || command == Config::cluster || command == Config::compute_medoids || command == Config::regression_test || command == Config::CLUSTER_REASSIGN
-		|| command == Config::RECLUSTER || command == Config::DEEPCLUST) {
+		|| command == Config::RECLUSTER || command == Config::DEEPCLUST || command == Config::LINCLUST) {
 		if (tmpdir == "")
 			tmpdir = extract_dir(output_file);
 

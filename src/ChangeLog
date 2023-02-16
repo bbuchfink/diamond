@@ -1,4 +1,9 @@
 [2.1.2]
+- The iterated search mode (option `--iterate`) now uses a linear-time feature as
+  the first search round.
+- Added the `linclust` command to cluster using only a single linear-time search
+  round.
+- Fixed compiler errors on macOS.
 - Fixed a bug that caused invalid alignment traceback output for the DAA `view`
   workflow.
 - Added the `merge-daa` workflow to merge DAA files.
@@ -9,6 +14,15 @@
 - Permitted the `--ignore-warnings` option for the `cluster` and `deepclust`
   workflows.
 - Use unlinked temporary files for database blocks in clustering workflows.
+- Fixed a bug that could cause invalid results when using a clustering step with
+  linearization as the final round in combination with database processing in
+  multiple super blocks.
+- The `--lin-stage1` option can now be used without compilation using the
+  `-DEXTRA=ON` cmake option.
+- Added the option to specify the `_lin` suffix for sensitivity keywords for the
+  `--iterate` option to activate linear-time feature.
+- Added the option `--linsearch` to activate linear-time feature for the search
+  workflows.
 
 [2.1.1]
 - Fixed compilation errors on non-x86 systems and for the clang compiler.
@@ -50,7 +64,8 @@
 - Added the output fields `approx_pident` and `corrected_bitscore` to the tabular
   format.
 - Added the `--lin-stage1` option to linearize comparisons in the seeding stage
-  by only considering hits against the longest query sequence for identical seeds.
+  by only considering hits against the longest query sequence for identical seeds
+  (only supported when compiled with `-DEXTRA=ON`).
 - Added the `--kmer-ranking` option to rank sequences when `--lin-stage1` is used
   (only supported when compiled with `-DKEEP_TARGET_ID=ON`).
 - Added the option `--no-block-size-limit` to deactivate upper limits for the block

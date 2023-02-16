@@ -80,11 +80,13 @@ static void search_worker(atomic<unsigned> *seedp, const SeedPartitionRange *see
 #endif
 	int p;
 #ifdef KEEP_TARGET_ID
-	auto f = config.lin_stage1 ? Search::stage1_lin_ranked
-		: (config.self && cfg->current_ref_block == 0 ? Search::stage1_self : Search::stage1);
+	auto f = config.lin_stage1 ? Search::stage1_query_lin_ranked
+		: (cfg->lin_stage1_target ? Search::stage1_target_lin
+			: (config.self && cfg->current_ref_block == 0 ? Search::stage1_self : Search::stage1));
 #else
-	auto f = config.lin_stage1 ? Search::stage1_lin
-		: (config.self && cfg->current_ref_block == 0 ? Search::stage1_self : Search::stage1);
+	auto f = config.lin_stage1 ? Search::stage1_query_lin
+		: (cfg->lin_stage1_target ? Search::stage1_target_lin
+			: (config.self && cfg->current_ref_block == 0 ? Search::stage1_self : Search::stage1));
 #endif
 	while ((p = (*seedp)++) < seedp_range->end())
 		for (auto it = JoinIterator<SeedLoc>(query_seed_hits[p].begin(), ref_seed_hits[p].begin()); it; ++it)

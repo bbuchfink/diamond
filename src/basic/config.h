@@ -335,6 +335,7 @@ struct Config
 	bool recluster_bd;
 	bool pipeline_short;
 	string graph_algo;
+	bool linsearch;
 
     SequenceType dbtype;
 
@@ -350,7 +351,7 @@ struct Config
 		match_file_stat = 14, model_seqs = 15, opt = 16, mask = 17, fastq2fasta = 18, dbinfo = 19, test_extra = 20, test_io = 21, db_annot_stats = 22, read_sim = 23, info = 24, seed_stat = 25,
 		smith_waterman = 26, cluster = 27, translate = 28, filter_blasttab = 29, show_cbs = 30, simulate_seqs = 31, split = 32, upgma = 33, upgma_mc = 34, regression_test = 35,
 		reverse_seqs = 36, compute_medoids = 37, mutate = 38, rocid = 40, makeidx = 41, find_shapes, prep_db, composition, JOIN, HASH_SEQS, LIST_SEEDS, CLUSTER_REALIGN,
-		GREEDY_VERTEX_COVER, INDEX_FASTA, FETCH_SEQ, CLUSTER_REASSIGN, blastn, RECLUSTER, LENGTH_SORT, MERGE_DAA, DEEPCLUST
+		GREEDY_VERTEX_COVER, INDEX_FASTA, FETCH_SEQ, CLUSTER_REASSIGN, blastn, RECLUSTER, LENGTH_SORT, MERGE_DAA, DEEPCLUST, LINCLUST
 	};
 	unsigned	command;
 

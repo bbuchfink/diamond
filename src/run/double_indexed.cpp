@@ -1,6 +1,6 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2022 Max Planck Society for the Advancement of Science e.V.
+Copyright (C) 2013-2023 Max Planck Society for the Advancement of Science e.V.
                         Benjamin Buchfink
                         Eberhard Karls Universitaet Tuebingen
 
@@ -107,12 +107,10 @@ static void run_ref_chunk(SequenceFile &db_file,
 	log_rss();
 	auto& query_seqs = cfg.query->seqs();
 
-#ifndef KEEP_TARGET_ID
-	if (config.lin_stage1 && !config.kmer_ranking && cfg.target.unique()) {
+	if (cfg.lin_stage1_target && !config.kmer_ranking && cfg.target.unique()) {
 		timer.go("Length sorting reference");
 		cfg.target.reset(cfg.target->length_sorted(config.threads_));
 	}
-#endif
 
 	if (config.comp_based_stats == Stats::CBS::COMP_BASED_STATS_AND_MATRIX_ADJUST || flag_any(cfg.output_format->flags, Output::Flags::TARGET_SEQS)) {
 		cfg.target->unmasked_seqs() = cfg.target->seqs();
@@ -271,14 +269,15 @@ static void run_query_iteration(const unsigned query_iteration,
 		timer.finish();
 	}
 
-	::Config::set_option(options.index_chunks, config.lowmem_, 0u, config.algo == ::Config::Algo::DOUBLE_INDEXED ? sensitivity_traits[(int)align_mode.sequence_type].at(options.sensitivity[query_iteration]).index_chunks : 1u);
+	const Sensitivity sens = options.sensitivity[query_iteration].sensitivity;
+	::Config::set_option(options.index_chunks, config.lowmem_, 0u, config.algo == ::Config::Algo::DOUBLE_INDEXED ? sensitivity_traits[(int)align_mode.sequence_type].at(sens).index_chunks : 1u);
 	options.lazy_masking = config.algo != ::Config::Algo::DOUBLE_INDEXED && options.target_masking != MaskingAlgo::NONE && config.frame_shift == 0;
-    if (config.command != ::Config::blastn){
-                options.cutoff_gapped1 = { config.gapped_filter_evalue1 };
-                options.cutoff_gapped2 = { options.gapped_filter_evalue };
-                options.cutoff_gapped1_new = { config.gapped_filter_evalue1 };
-                options.cutoff_gapped2_new = { options.gapped_filter_evalue };
-    }
+	if (config.command != ::Config::blastn && options.gapped_filter_evalue != 0.0) {
+		options.cutoff_gapped1 = { config.gapped_filter_evalue1 };
+		options.cutoff_gapped2 = { options.gapped_filter_evalue };
+		options.cutoff_gapped1_new = { config.gapped_filter_evalue1 };
+		options.cutoff_gapped2_new = { options.gapped_filter_evalue };
+	}
 
 
 	if (options.current_query_block == 0 && query_iteration == 0) {
@@ -431,7 +430,8 @@ static void run_query_chunk(Consumer &master_out,
 
 	BlockId aligned = 0;
 	for (unsigned query_iteration = 0; query_iteration < options.sensitivity.size() && aligned < options.query->source_seq_count(); ++query_iteration) {
-		setup_search(options.sensitivity[query_iteration], options);
+		setup_search(options.sensitivity[query_iteration].sensitivity, options);
+		options.lin_stage1_target = config.linsearch || options.sensitivity[query_iteration].linearize;
 		run_query_iteration(query_iteration, master_out, unaligned_file, aligned_file, tmp_file, options);
 		if (options.iterated()) {
 			aligned += options.iteration_query_aligned;
@@ -628,7 +628,7 @@ static void master_thread(task_timer &total_timer, Config &options)
 
 	for (;query_file_offset < db_file->sequence_count(); ++options.current_query_block) {
 		log_rss();
-		task_timer timer("Loading query sequences", true);
+		timer.go("Loading query sequences");
 
 		if (options.self) {
 			db_file->set_seqinfo_ptr(query_file_offset);

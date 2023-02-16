@@ -27,6 +27,7 @@ Config::Config() :
 	target_masking(MaskingAlgo::NONE),
 	soft_masking(MaskingAlgo::NONE),
 	lazy_masking(false),
+	lin_stage1_target(false),
 	track_aligned_queries(false),
 	max_target_seqs(config.max_target_seqs_.get(25)),
 	db(nullptr),
@@ -36,16 +37,29 @@ Config::Config() :
 {
 	if (config.iterate.present()) {
 		if (config.multiprocessing)
-			throw std::runtime_error("Iterated search is not compatible with --multiprocessing.");
+			throw runtime_error("Iterated search is not compatible with --multiprocessing.");
 		if (config.target_indexed)
-			throw std::runtime_error("Iterated search is not compatible with --target-indexed.");
-		if (config.iterate.empty())
-			sensitivity = iterated_sens.at(config.sensitivity);
+			throw runtime_error("Iterated search is not compatible with --target-indexed.");
+		if (config.self)
+			throw runtime_error("Iterated search is not compatible with --self.");
+		if (config.lin_stage1)
+			throw runtime_error("Iterated search is not compatible with --lin-stage1.");
+		if (config.linsearch)
+			throw runtime_error("Iterated search is not compatible with --linsearch.");
+		if (config.iterate.empty()) {
+			sensitivity = { {Sensitivity::FASTER, true} };
+			const auto rounds = iterated_sens.at(config.sensitivity);
+			for (Sensitivity s : rounds)
+				sensitivity.push_back(s);
+		}
 		else
 			for (const string& s : config.iterate) {
-				sensitivity.push_back(from_string<Sensitivity>(s));
-				if (sensitivity.back() >= config.sensitivity)
-					throw std::runtime_error("Sensitivity levels set for --iterate must be below target sensitivity.");
+				if (ends_with(s, "_lin"))
+					sensitivity.push_back({ from_string<Sensitivity>(rstrip(s, "_lin")),true });
+				else
+					sensitivity.push_back(from_string<Sensitivity>(s));
+				if (sensitivity.back().sensitivity >= config.sensitivity)
+					throw runtime_error("Sensitivity levels set for --iterate must be below target sensitivity.");
 			}
 	}
 	
@@ -56,8 +70,8 @@ Config::Config() :
 
 	if (sensitivity.size() > 1) {
 		message_stream << "Running iterated search mode with sensitivity steps:";
-		for (Sensitivity s : sensitivity)
-			message_stream << ' ' << to_string(s);
+		for (Round r : sensitivity)
+			message_stream << ' ' << to_string(r.sensitivity);
 		message_stream << endl;
 		track_aligned_queries = true;
 	}
@@ -102,7 +116,7 @@ Config::Config() :
 		if (config.global_ranking_targets || config.swipe_all)
 			extension_mode = Extension::Mode::FULL;
 		else
-			extension_mode = Extension::default_ext_mode.at(sensitivity.back());
+			extension_mode = Extension::default_ext_mode.at(sensitivity.back().sensitivity);
 	}
 	else {
 		extension_mode = from_string<Extension::Mode>(config.ext_);

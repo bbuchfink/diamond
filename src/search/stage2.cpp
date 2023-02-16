@@ -219,7 +219,7 @@ void FLATTEN stage1(const SeedLoc* q, int32_t nq, const SeedLoc* s, int32_t ns, 
 	}
 }
 
-void FLATTEN stage1_lin(const SeedLoc* q, int32_t nq, const SeedLoc* s, int32_t ns, WorkSet& work_set)
+void FLATTEN stage1_query_lin(const SeedLoc* q, int32_t nq, const SeedLoc* s, int32_t ns, WorkSet& work_set)
 {
 #ifdef __APPLE__
 	thread_local Container vq, vs;
@@ -240,7 +240,7 @@ void FLATTEN stage1_lin(const SeedLoc* q, int32_t nq, const SeedLoc* s, int32_t 
 	}
 }
 
-void FLATTEN stage1_lin_ranked(const SeedLoc* q, int32_t nq, const SeedLoc* s, int32_t ns, WorkSet& work_set)
+void FLATTEN stage1_query_lin_ranked(const SeedLoc* q, int32_t nq, const SeedLoc* s, int32_t ns, WorkSet& work_set)
 {
 #ifdef __APPLE__
 	thread_local Container vq, vs;
@@ -259,6 +259,27 @@ void FLATTEN stage1_lin_ranked(const SeedLoc* q, int32_t nq, const SeedLoc* s, i
 		work_set.hits.clear();
 		all_vs_all(vq.data(), 1, vs.data() + j, std::min(tile_size, ss - j), work_set.hits, work_set.cfg.hamming_filter_id);
 		search_tile(work_set.hits, ranking, j, q, s, work_set);
+	}
+}
+
+void FLATTEN stage1_target_lin(const SeedLoc* q, int32_t nq, const SeedLoc* s, int32_t ns, WorkSet& work_set)
+{
+#ifdef __APPLE__
+	thread_local Container vq, vs;
+#else
+	Container& vq = work_set.vq, & vs = work_set.vs;
+#endif
+
+	const int32_t tile_size = config.tile_size;
+	load_fps(q, nq, vq, work_set.cfg.query->seqs());
+	load_fps(s, 1, vs, work_set.cfg.target->seqs());
+	work_set.stats.inc(Statistics::SEED_HITS, nq);
+
+	const int32_t qs = (int32_t)vq.size();
+	for (int32_t j = 0; j < qs; j += tile_size) {
+		work_set.hits.clear();
+		all_vs_all(vq.data() + j, std::min(tile_size, qs - j), vs.data(), 1, work_set.hits, work_set.cfg.hamming_filter_id);
+		search_tile(work_set.hits, j, 0, q, s, work_set);
 	}
 }
 

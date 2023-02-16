@@ -509,4 +509,8 @@ target_link_libraries(diamond ${ZLIB_LIBRARY} ${CMAKE_THREAD_LIBS_INIT})
 
 install(TARGETS diamond DESTINATION bin)
 
-add_test(NAME diamond COMMAND "diamond test")
+enable_testing()
+add_test(
+  NAME diamond
+  COMMAND diamond test
+)

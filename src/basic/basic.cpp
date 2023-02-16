@@ -29,7 +29,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/util.h"
 #include "../stats/standard_matrix.h"
 
-const char* Const::version_string = "2.1.1";
+const char* Const::version_string = "2.1.2";
 using std::string;
 using std::vector;
 using std::count;

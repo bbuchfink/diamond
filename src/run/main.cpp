@@ -143,6 +143,7 @@ int main(int ac, const char* av[])
 			break;
 		case Config::cluster:
 		case Config::DEEPCLUST:
+		case Config::LINCLUST:
 			// Why is cluster_similarity not set at the end of the Config constructor?
 			if(!config.cluster_similarity.empty()){
 				string expression = RecursiveParser::clean_expression(&config.cluster_similarity);

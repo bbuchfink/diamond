@@ -1,3 +1,23 @@
+/****
+DIAMOND protein aligner
+Copyright (C) 2019-2023 Max Planck Society for the Advancement of Science e.V.
+
+Code developed by Benjamin Buchfink <buchfink@gmail.com>
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+****/
+
 #include <numeric>
 #include "cascaded.h"
 #include "../data/fasta/fasta_file.h"
@@ -26,9 +46,10 @@ namespace Cluster {
 		
 struct Config {
 	Config(shared_ptr<SequenceFile>& db) :
+		linclust(config.command == ::Config::LINCLUST),
 		message_stream(true),
 		verbosity(1),
-		sens(from_string<Sensitivity>(rstrip(cluster_steps(config.approx_min_id).back(), "_lin"))),
+		sens(from_string<Sensitivity>(rstrip(cluster_steps(config.approx_min_id, linclust).back(), "_lin"))),
 		output_format(init_output(-1)),
 		centroids(new FastaFile("", true, FastaFile::WriteAccess())),
 		seqs_processed(0),
@@ -36,6 +57,7 @@ struct Config {
 		oid_to_centroid_oid(new File(Schema{ Type::INT64, Type::INT64 }, "", Flags::TEMP))
 	{
 	}
+	bool                                linclust;
 	MessageStream                       message_stream;
 	int                                 verbosity;
 	Sensitivity                         sens;
@@ -78,7 +100,15 @@ static vector<SuperBlockId> search_vs_centroids(shared_ptr<FastaFile>& super_blo
 	config.query_cover = config.member_cover;
 	config.subject_cover = 0;
 	config.query_or_target_cover = 0;
-	config.iterate = vector<string>();
+	if (cfg.linclust) {
+		config.iterate.unset();
+		config.linsearch = true;
+	}
+	else {
+		config.iterate = vector<string>();
+		config.linsearch = false;
+	}
+	config.lin_stage1 = false;
 	tie(config.chunk_size, config.lowmem_) = block_size(Util::String::interpret_number(config.memory_limit.get(DEFAULT_MEMORY_LIMIT)), cfg.sens, false);
 	cfg.centroids->set_seqinfo_ptr(0);
 	shared_ptr<BestCentroid> best_centroid(new BestCentroid(super_block->sequence_count()));
@@ -119,7 +149,7 @@ void Cascaded::run() {
 	unique_ptr<Util::Tsv::File> out(open_out_tsv());
 
 	if (block_size >= (double)db->letters() && db->sequence_count() < numeric_limits<SuperBlockId>::max()) {
-		const auto centroids = cascaded(db);
+		const auto centroids = cascaded(db, config.command == ::Config::LINCLUST);
 		timer.go("Generating output");
 		output_mem<SuperBlockId>(*out, *db, centroids);
 	}
@@ -159,7 +189,7 @@ void Cascaded::run() {
 				seqs.reset();
 				timer.finish();
 			}
-			const vector<SuperBlockId> clustering = cascaded(unaligned_db);
+			const vector<SuperBlockId> clustering = cascaded(unaligned_db, cfg.linclust);
 			timer.go("Updating clustering");
 			vector<SuperBlockId> centroids;
 			for (SuperBlockId i = 0; i < (SuperBlockId)unaligned.size(); ++i) {

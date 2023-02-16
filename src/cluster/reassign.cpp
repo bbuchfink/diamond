@@ -1,8 +1,8 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2022 Max Planck Society for the Advancement of Science e.V.
+Copyright (C) 2022-2023 Max Planck Society for the Advancement of Science e.V.
 
-Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
+Code developed by Benjamin Buchfink <buchfink@gmail.com>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -71,7 +71,7 @@ void reassign() {
 	config.output_format = { "edge" };
 	config.self = false;
 	config.query_cover = config.member_cover;
-	config.sensitivity = from_string<Sensitivity>(cluster_steps(config.approx_min_id).back());
+	config.sensitivity = from_string<Sensitivity>(cluster_steps(config.approx_min_id, false).back());
 	shared_ptr<Mapback> mapback = make_shared<Mapback>(members.size());
 	Search::run(centroid_db, member_db, mapback);
 

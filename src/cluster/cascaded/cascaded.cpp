@@ -1,6 +1,9 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2018 Benjamin Buchfink <buchfink@gmail.com>
+Copyright (C) 2016-2023 Max Planck Society for the Advancement of Science e.V.
+						Benjamin Buchfink
+
+Code developed by Benjamin Buchfink <buchfink@gmail.com>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -66,6 +69,7 @@ vector<SuperBlockId> cluster(shared_ptr<SequenceFile>& db, const shared_ptr<BitV
 	config.self = true;
 	config.iterate.unset();
 	config.mapany = false;
+	config.linsearch = false;
 	tie(config.chunk_size, config.lowmem_) = block_size(Util::String::interpret_number(config.memory_limit.get(DEFAULT_MEMORY_LIMIT)), config.sensitivity, config.lin_stage1);
 
 	shared_ptr<Callback> callback(new Callback);
@@ -99,10 +103,10 @@ static pair<vector<SuperBlockId>, BitVector> update_clustering(const BitVector& 
 	return { current_centroids, oid_filter };
 }
 
-vector<SuperBlockId> cascaded(shared_ptr<SequenceFile>& db) {
+vector<SuperBlockId> cascaded(shared_ptr<SequenceFile>& db, bool linear) {
 	if (db->sequence_count() > (int64_t)numeric_limits<SuperBlockId>::max())
 		throw runtime_error("Workflow supports a maximum of " + to_string(numeric_limits<SuperBlockId>::max()) + " input sequences.");
-	const auto steps = cluster_steps(config.approx_min_id);
+	const auto steps = cluster_steps(config.approx_min_id, linear);
 	shared_ptr<BitVector> oid_filter(new BitVector);
 	int64_t cluster_count = db->sequence_count();
 	vector<SuperBlockId> centroids(cluster_count);

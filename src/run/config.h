@@ -52,6 +52,21 @@ namespace Dna{
 }
 namespace Search {
 
+struct Round {
+	Round(Sensitivity sens, bool lin = false):
+		sensitivity(sens),
+		linearize(lin)
+	{}
+	bool operator<(Round r) const {
+		return sensitivity < r.sensitivity || (sensitivity == r.sensitivity && linearize && !r.linearize);
+	}
+	bool operator==(Round r) const {
+		return sensitivity == r.sensitivity && linearize == r.linearize;
+	}
+	Sensitivity sensitivity;
+	bool linearize;
+};
+
 struct Hit;
 
 struct Config {
@@ -64,7 +79,7 @@ struct Config {
 	~Config();
 
 	bool                                       self;
-	std::vector<Sensitivity>                   sensitivity;
+	std::vector<Round>                         sensitivity;
 	SeedEncoding                               seed_encoding;
 	MaskingAlgo                                query_masking;
 	MaskingAlgo                                target_masking;
@@ -75,6 +90,7 @@ struct Config {
 	bool                                       track_aligned_queries;
 	double                                     freq_sd;
 	Loc                                        minimizer_window;
+	bool                                       lin_stage1_target;
 	unsigned                                   hamming_filter_id;
 	double                                     ungapped_evalue;
 	double                                     ungapped_evalue_short;

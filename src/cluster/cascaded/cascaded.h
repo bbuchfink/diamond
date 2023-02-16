@@ -1,6 +1,9 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2018 Benjamin Buchfink <buchfink@gmail.com>
+Copyright (C) 2016-2023 Max Planck Society for the Advancement of Science e.V.
+						Benjamin Buchfink
+
+Code developed by Benjamin Buchfink <buchfink@gmail.com>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -30,8 +33,8 @@ struct Cascaded : public ClusteringAlgorithm {
 	}
 };
 
-std::vector<SuperBlockId> cascaded(std::shared_ptr<SequenceFile>& db);
-std::vector<std::string> cluster_steps(double approx_id);
+std::vector<SuperBlockId> cascaded(std::shared_ptr<SequenceFile>& db, bool linear);
+std::vector<std::string> cluster_steps(double approx_id, bool linear);
 
 struct Callback : public Consumer {
 	using Edge = Util::Algo::Edge<SuperBlockId>;

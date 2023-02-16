@@ -1,8 +1,8 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2021-2022 Max Planck Society for the Advancement of Science e.V.
+Copyright (C) 2021-2023 Max Planck Society for the Advancement of Science e.V.
 
-Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
+Code developed by Benjamin Buchfink <buchfink@gmail.com>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
