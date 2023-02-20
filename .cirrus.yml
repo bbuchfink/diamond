@@ -10,4 +10,4 @@ task:
     mkdir bin && cd bin
     cmake ..
     make
-  test_script: ./diamond test
+  test_script: bin/diamond test
