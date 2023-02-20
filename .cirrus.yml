@@ -1,0 +1,9 @@
+task:
+  name: build
+  arm_container:
+    image: gcc:latest
+  compile_script: |
+    mkdir bin && cd bin
+    cmake ..
+    make -j $(nproc --all)
+  test_script: ./diamond test
