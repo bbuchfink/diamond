@@ -2,10 +2,12 @@ task:
   name: build
   arm_container:
     image: gcc:latest
+    cpu: 1
+    memory: 12G
   install_script: |
     apt-get update && apt-get install cmake zlib1g-dev --yes --force-yes --no-install-suggests --no-install-recommends
   compile_script: |
     mkdir bin && cd bin
     cmake ..
-    make -j $(nproc --all)
+    make
   test_script: ./diamond test
