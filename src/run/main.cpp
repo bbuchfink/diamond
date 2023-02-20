@@ -90,6 +90,7 @@ namespace Incremental {
 int main(int ac, const char* av[])
 {
 	try {
+		init_motif_table();
 		CommandLineParser parser;
 		config = Config(ac, av, true, parser);
 

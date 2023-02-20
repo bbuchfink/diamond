@@ -451,6 +451,7 @@ struct TypeSerializer<HspContext> {
 		buf_->write(h.subject_len);
 		buf_->write(h.identities());
 		buf_->write(h.mismatches());
+		buf_->write(h.positives());
 		buf_->write(h.gaps());
 		buf_->write(h.length());
 		buf_->write(h.gap_openings());
@@ -488,6 +489,7 @@ struct TypeDeserializer<HspContext> {
 		file_->read(h.subject_len);
 		file_->read(h.hsp_.identities);
 		file_->read(h.hsp_.mismatches);
+		file_->read(h.hsp_.positives);
 		file_->read(h.hsp_.gaps);
 		file_->read(h.hsp_.length);
 		file_->read(h.hsp_.gap_openings);

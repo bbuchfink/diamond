@@ -103,4 +103,5 @@ private:
 };
 
 const size_t MOTIF_LEN = 8;
-extern const std::unordered_set<Kmer<MOTIF_LEN>, Kmer<MOTIF_LEN>::Hash> motif_table;
+extern std::unordered_set<Kmer<MOTIF_LEN>, Kmer<MOTIF_LEN>::Hash> motif_table;
+void init_motif_table();

@@ -1,6 +1,8 @@
 #include "masking.h"
 
-const std::unordered_set<Kmer<MOTIF_LEN>, Kmer<MOTIF_LEN>::Hash> motif_table = {
+std::unordered_set<Kmer<MOTIF_LEN>, Kmer<MOTIF_LEN>::Hash> motif_table;
+
+static const char motif_strings[][9] = {
 "FRKYTAFT",
 "KYTAFTIP",
 "RKYTAFTI",
@@ -8002,3 +8004,10 @@ const std::unordered_set<Kmer<MOTIF_LEN>, Kmer<MOTIF_LEN>::Hash> motif_table = {
 "YRLYLDAY",
 "QFHQKLLK",*/
 };
+
+void init_motif_table() {
+	const auto n = sizeof(motif_strings) / sizeof(motif_strings[0]);
+	motif_table.reserve(n);
+	for (size_t i = 0; i < n; ++i)
+		motif_table.insert(motif_strings[i]);
+}

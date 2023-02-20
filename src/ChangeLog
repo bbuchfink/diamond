@@ -23,6 +23,10 @@
   `--iterate` option to activate linear-time feature.
 - Added the option `--linsearch` to activate linear-time feature for the search
   workflows.
+- Fixed a bug that caused the `ppos` and `positive` output fields not to work
+  for the `realign` workflow.
+- Fixed an issue that caused motif masking not to work when compiled with link
+  time optimization.
 
 [2.1.1]
 - Fixed compilation errors on non-x86 systems and for the clang compiler.
