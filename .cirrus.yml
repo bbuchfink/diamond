@@ -5,9 +5,11 @@ task:
     cpu: 1
     memory: 4G
   install_script: |
-    apt-get update && apt-get install cmake zlib1g-dev --yes --force-yes --no-install-suggests --no-install-recommends
+    apt-get update && apt-get install cmake zlib1g-dev gdb --yes --force-yes --no-install-suggests --no-install-recommends
   compile_script: |
     mkdir bin && cd bin
-    cmake ..
+    cmake -DCMAKE_BUILD_TYPE=Debug ..
     make
-  test_script: bin/diamond test
+  test_script: |
+    # bin/diamond test
+    gdb --ex=r -return-child-result -batch -ex bt --args bin/diamond test

@@ -795,8 +795,8 @@ void run(const shared_ptr<SequenceFile>& db, const shared_ptr<SequenceFile>& que
 		timer.finish();
 	}
 
-    if(align_mode.sequence_type == SequenceType::nucleotide)
-        cfg.score_builder = std::make_unique<Stats::Blastn_Score>(config.match_reward, config.mismatch_penalty, config.gap_open, config.gap_extend,cfg.db_letters,cfg.db->sequence_count());
+	if (align_mode.sequence_type == SequenceType::nucleotide)
+		cfg.score_builder.reset(new Stats::Blastn_Score(config.match_reward, config.mismatch_penalty, config.gap_open, config.gap_extend, cfg.db_letters, cfg.db->sequence_count()));
 
 
     master_thread(total, cfg);

@@ -38,7 +38,6 @@ using std::list;
 using std::map;
 using std::endl;
 using std::unique_ptr;
-using std::make_unique;
 using std::pair;
 using std::numeric_limits;
 
