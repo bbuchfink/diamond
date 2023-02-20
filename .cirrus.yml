@@ -3,7 +3,7 @@ task:
   arm_container:
     image: gcc:latest
     cpu: 1
-    memory: 12G
+    memory: 4G
   install_script: |
     apt-get update && apt-get install cmake zlib1g-dev --yes --force-yes --no-install-suggests --no-install-recommends
   compile_script: |
