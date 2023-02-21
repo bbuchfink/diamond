@@ -24,7 +24,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../data/reference.h"
 #include "../output/output_format.h"
 #include "../output/output.h"
-#include "legacy/query_mapper.h"
+#include "legacy/pipeline.h"
 #include "../util/async_buffer.h"
 #include "../util/parallel/thread_pool.h"
 #if _MSC_FULL_VER == 191627042

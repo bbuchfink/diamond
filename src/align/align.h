@@ -44,31 +44,3 @@ private:
 };
 
 void align_queries(Consumer* output_file, Search::Config &cfg);
-
-namespace ExtensionPipeline {
-	namespace Swipe {
-		struct Pipeline : public QueryMapper
-		{
-			Pipeline(size_t query_id, Search::Hit* begin, Search::Hit* end, const Search::Config &cfg) :
-				QueryMapper(query_id, begin, end, cfg)
-			{}
-			virtual void run(Statistics &stat, const Search::Config& cfg) override;
-			virtual ~Pipeline() {}
-		};
-	}
-	namespace BandedSwipe {
-		struct Target;
-		struct Pipeline : public QueryMapper
-		{
-			Pipeline(size_t query_id, Search::Hit* begin, Search::Hit* end, DpStat &dp_stat, const Search::Config &cfg) :
-				QueryMapper(query_id, begin, end, cfg),
-				dp_stat(dp_stat)
-			{}
-			Target& target(size_t i);
-			virtual void run(Statistics &stat, const Search::Config& cfg) override;
-			void run_swipe(bool score_only);
-			void range_ranking(const int64_t max_target_seqs);
-			DpStat &dp_stat;
-		};
-	}
-}

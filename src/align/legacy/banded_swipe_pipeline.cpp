@@ -19,7 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <algorithm>
 #include <thread>
 #include <atomic>
-#include "../align.h"
+#include "pipeline.h"
 #include "../../dp/dp.h"
 #include "../../util/geo/interval_partition.h"
 #include "../../util/simd.h"
