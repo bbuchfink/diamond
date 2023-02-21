@@ -8,7 +8,7 @@ task:
     apt-get update && apt-get install cmake zlib1g-dev gdb --yes --force-yes --no-install-suggests --no-install-recommends
   compile_script: |
     mkdir bin && cd bin
-    cmake -DCMAKE_BUILD_TYPE=Debug ..
+    cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo ..
     make
   test_script: |
     # bin/diamond test
