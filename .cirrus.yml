@@ -1,7 +1,7 @@
 task:
   name: build
   arm_container:
-    image: gcc:latest
+    image: gcc:11.3
     cpu: 1
     memory: 4G
   install_script: |
