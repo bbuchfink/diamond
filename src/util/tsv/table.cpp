@@ -132,7 +132,7 @@ Table Table::sorted(int col, int threads) {
 	v.reserve(size());
 	for (int64_t i = 0; i < size(); ++i)
 		v.emplace_back(this->operator[](i).get<int64_t>(col), i);
-	ips4o::parallel::sort(v.begin(), v.end(), less<>(), threads);
+	ips4o::parallel::sort(v.begin(), v.end(), less<pair<int64_t, int64_t>>(), threads);
 	return shuffle(transform(v.begin(), Second<int64_t, int64_t>()), transform(v.end(), Second<int64_t, int64_t>()));
 }
 

@@ -3,6 +3,7 @@
 #include <atomic>
 #include <mutex>
 #include <unordered_map>
+#include <memory>
 #include "../util/tsv/tsv.h"
 #include "../util/tsv/file.h"
 #include "../basic/config.h"
@@ -12,6 +13,7 @@
 #include "../util/algo/algo.h"
 #include "../util/system/system.h"
 
+using std::unique_ptr;
 using std::ofstream;
 using std::mutex;
 using std::lock_guard;
@@ -132,23 +134,23 @@ void greedy_vertex_cover() {
 
 	timer.go("Generating output");
 	int64_t c = 0;
-	ofstream centroid_out;
+	unique_ptr<ofstream> centroid_out;
 	if (!config.centroid_out.empty())
-		centroid_out = ofstream(config.centroid_out);
-	ofstream out;
+		centroid_out.reset(new ofstream(config.centroid_out));
+	unique_ptr<ofstream> out;
 	if (!config.output_file.empty())
-		out = ofstream(config.output_file);
+		out.reset(new ofstream(config.output_file));
 	for (int64_t i = 0; i < (int64_t)r.size(); ++i) {
 		if (r[i] == i) {
 			++c;
 			if (!config.centroid_out.empty())
-				centroid_out << acc[i] << endl;
+				*centroid_out << acc[i] << endl;
 		}
 		if (!config.output_file.empty())
-			out << acc[r[i]] << '\t' << acc[i] << endl;
+			*out << acc[r[i]] << '\t' << acc[i] << endl;
 	}
-	centroid_out.close();
-	out.close();
+	centroid_out->close();
+	out->close();
 	timer.finish();
 	message_stream << "#Centroids: " << c << endl;
 }
