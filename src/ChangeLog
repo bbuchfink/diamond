@@ -1,6 +1,8 @@
 [2.1.3]
 - Fixed a compiler error for GCC 4.8.
-- Fixed a compiler error on arm64 systems.
+- Fixed a GCC compiler error.
+- Fixed a `segfault` issue occuring when compiled using GCC 12 on ARM64 systems.
+- Fixed an issue that caused missing support for AVX2.
 
 [2.1.2]
 - The iterated search mode (option `--iterate`) now uses a linear-time feature as
