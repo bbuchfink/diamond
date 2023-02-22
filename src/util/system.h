@@ -32,6 +32,7 @@ typedef __int64 ssize_t;
 #define FORCE_INLINE __forceinline static
 #define FLATTEN
 #define UNLINK _unlink
+#define NO_INLINE
 
 #else
 
@@ -39,6 +40,7 @@ typedef __int64 ssize_t;
 #define FORCE_INLINE __attribute__((always_inline)) static inline
 #define FLATTEN __attribute__((flatten))
 #define UNLINK unlink
+#define NO_INLINE __attribute__ ((noinline))
 
 #endif
 

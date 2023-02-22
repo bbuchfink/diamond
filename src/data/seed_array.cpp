@@ -69,7 +69,7 @@ struct BufferedWriter
 				flush(p);
 		}
 	}
-	void flush(unsigned p)
+	NO_INLINE void flush(unsigned p)
 	{
 		memcpy(ptr[p], buf[p], n[p] * sizeof(SeedArray::Entry));
 		ptr[p] += n[p];
