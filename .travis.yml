@@ -16,9 +16,9 @@ language: c++
 
 arch:
   - amd64
-  - arm64
+# - arm64
   - ppc64le
-  - s390x
+#  - s390x
 
 compiler:
   - g++
