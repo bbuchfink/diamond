@@ -30,7 +30,7 @@ script:
   - mkdir build
   - cd build
   - cmake -DCMAKE_BUILD_TYPE=Release ..
-  - make
+  - make -i
 #  - gdb --ex=r -return-child-result -batch -ex bt --args ./diamond test
 #  - lldb --batch --one-line r --one-line-on-crash bt -- ./diamond test
   - ./diamond test
