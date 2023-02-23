@@ -60,9 +60,8 @@ FastaFile::FastaFile(const std::vector<std::string>& file_name, Metadata metadat
 	}
 	else {*/
 #endif
-		task_timer timer("Reading fasta file", 3);
-		tie(seqs_, letters_) = init_read();
-		set_seqinfo_ptr(0);
+	tie(seqs_, letters_) = init_read();
+	set_seqinfo_ptr(0);
 #ifdef EXTRA
 	//}
 #endif

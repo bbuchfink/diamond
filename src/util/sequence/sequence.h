@@ -53,6 +53,7 @@ std::array<std::vector<Letter>, 6> translate(const Sequence& seq);
 Loc find_orfs(std::vector<Letter>& seq, const Loc min_len);
 bool looks_like_dna(const Sequence& seq);
 std::vector<Score> window_scores(Sequence seq1, Sequence seq2, Loc window);
+const char* fix_title(std::string& s);
 
 struct FastaIterator {
 	FastaIterator(const char* ptr, const char* end) :

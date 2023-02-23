@@ -92,6 +92,31 @@ std::string seqid(const char* title, bool short_seqids)
 		return s;
 }
 
+static const char* TAB_ERR = "Tabulator character in sequence title";
+static const char* SPACES_ERR = "Leading spaces in sequence title";
+static const char* BLANK_ERR = "Blank sequence title";
+
+const char* fix_title(string& s) {
+	size_t i = 0;
+	const char* r = nullptr;
+	while (i < s.length() && s[i] < 33) ++i;
+	if (i > 0) {
+		s.erase(0, i);
+		r = SPACES_ERR;
+	}
+	if (s.empty()) {
+		s = "BLANK";
+		return BLANK_ERR;
+	}
+	for (size_t i = 0; i < s.length(); ++i) {
+		if (s[i] == '\t') {
+			s.replace(i, 1, "\\t");
+			r = TAB_ERR;
+		}
+	}
+	return r;
+}
+
 void get_title_def(const std::string& s, std::string& title, std::string& def)
 {
 	const size_t i = find_first_of(s.c_str(), id_delimiters);

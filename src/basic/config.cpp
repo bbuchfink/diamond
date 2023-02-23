@@ -549,7 +549,6 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 		("ungapped-evalue", 0, "", ungapped_evalue_, -1.0)
 		("ungapped-evalue-short", 0, "", ungapped_evalue_short_, -1.0)
 		("no-logfile", 0, "", no_logfile)
-		("no-heartbeat", 0, "", no_heartbeat)
 		("band-bin", 0, "", band_bin, 24)
 		("col-bin", 0, "", col_bin, 400)
 		("self", 0, "", self)
@@ -838,11 +837,6 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 
 		raw_ungapped_xdrop = score_matrix.rawscore(ungapped_xdrop);
 		verbose_stream << "CPU features detected: " << SIMD::features() << endl;
-#if defined(RUNTIME_DISPATCH) && defined(__SSE__)
-		verbose_stream << "Runtime dispatch: enabled" << endl;
-#else
-		verbose_stream << "Runtime dispatch: disabled" << endl;
-#endif
 		log_stream << "L3 cache size: " << l3_cache_size() << endl;
 	}
 

@@ -21,7 +21,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #include <memory>
+#include "log_stream.h"
 #include "seq_file_format.h"
+#include "sequence/sequence.h"
 
 using std::unique_ptr;
 using std::string;
@@ -59,6 +61,9 @@ bool FASTA_format::get_seq(string& id, vector<Letter>& seq, TextInputFile & s, c
 		throw StreamReadException(s.line_count, "FASTA format error: Missing '>' at record start.");
 	seq.clear();
 	id = s.line.substr(1);
+	const char* msg = Util::Seq::fix_title(id);
+	if (msg)
+		message_stream << "Warning in line " << s.line_count << ": " << msg << std::endl;
 	while (true) {
 		s.getline();
 		if (s.line.empty()) {

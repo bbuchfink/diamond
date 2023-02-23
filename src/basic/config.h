@@ -217,7 +217,6 @@ struct Config
 	bool output_hits;
 	double ungapped_evalue_;
 	bool no_logfile;
-	bool no_heartbeat;
 	int band_bin;
 	int col_bin;
 	size_t file_buffer_size;

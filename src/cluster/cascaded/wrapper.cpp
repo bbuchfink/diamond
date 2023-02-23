@@ -109,7 +109,7 @@ static vector<SuperBlockId> search_vs_centroids(shared_ptr<FastaFile>& super_blo
 		config.linsearch = false;
 	}
 	config.lin_stage1 = false;
-	tie(config.chunk_size, config.lowmem_) = block_size(Util::String::interpret_number(config.memory_limit.get(DEFAULT_MEMORY_LIMIT)), cfg.sens, false);
+	tie(config.chunk_size, config.lowmem_) = block_size(Util::String::interpret_number(config.memory_limit.get(DEFAULT_MEMORY_LIMIT)), cfg.sens, cfg.linclust);
 	cfg.centroids->set_seqinfo_ptr(0);
 	shared_ptr<BestCentroid> best_centroid(new BestCentroid(super_block->sequence_count()));
 	log_rss();

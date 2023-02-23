@@ -666,6 +666,9 @@ void DatabaseFile::read_seqid_list() {
 	init_seq_access();
 	for (int64_t n = 0; n < sequence_count(); ++n) {
 		read_seq(seq, id);
+		const char* msg = Util::Seq::fix_title(id);
+		if (msg)
+			message_stream << "Warning: " << msg << std::endl;
 		add_seqid_mapping(id, oid++);
 	}
 	/*if ((flag_any(flags_, Flags::ACC_TO_OID_MAPPING) && (int64_t)acc2oid_.size() != sequence_count())
