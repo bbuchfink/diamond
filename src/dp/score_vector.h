@@ -184,8 +184,8 @@ static inline int extract_channel(const int32_t v, const int i) {
 	return v;
 }
 
-static inline int32_t set_channel(const int32_t v, const int i, const int32_t x) {
-	return x;
+static inline void set_channel(int32_t& v, const int i, const int32_t x) {
+	v = x;
 }
 
 template<typename Sv>

@@ -105,7 +105,7 @@ const char* fix_title(string& s) {
 		r = SPACES_ERR;
 	}
 	if (s.empty()) {
-		s = "BLANK";
+		s = "N/A";
 		return BLANK_ERR;
 	}
 	for (size_t i = 0; i < s.length(); ++i) {

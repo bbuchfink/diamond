@@ -42,16 +42,22 @@ void realign() {
 	config.database.require();
 	config.clustering.require();
 
-	OutputFile out(config.output_file);
 	if (config.output_format.empty())
 		config.output_format = DEFAULT_FORMAT;
 	unique_ptr<OutputFormat> output_format(get_output_format());
 	if (output_format->code != OutputFormat::blast_tab)
 		throw runtime_error("The realign workflow only supports tabular output format.");
+	for (int64_t i : dynamic_cast<Blast_tab_format*>(output_format.get())->fields) {
+		if (i == 6 || i == 17 || i == 18 || (i >= 30 && i <= 38) || i == 48 || i == 54 || i == 55 || i == 56 || i == 58 || i == 59 || i == 60)
+			throw std::runtime_error("Unsupported output field for the realign workflow: " + Blast_tab_format::field_def.at(i).key);
+	}
+
+	task_timer timer("Opening the output file");
+	OutputFile out(config.output_file);
 	if (Blast_tab_format::header_format(Config::cluster) == Header::SIMPLE)
 		dynamic_cast<Blast_tab_format*>(output_format.get())->output_header(out, true);
 
-	task_timer timer("Opening the database");
+	timer.go("Opening the database");
 	unique_ptr<SequenceFile> db(SequenceFile::auto_create({ config.database }, SequenceFile::Flags::NEED_LETTER_COUNT | SequenceFile::Flags::ACC_TO_OID_MAPPING, SequenceFile::Metadata()));
 	score_matrix.set_db_letters(config.db_size ? config.db_size : db->letters());
 	config.max_evalue = DBL_MAX;

@@ -222,7 +222,7 @@ void Blast_tab_format::print_match(const HspContext& r, Output::Info& info)
 			out.write_until(r.query_title.c_str(), Util::Seq::id_delimiters);
 			break;
 		case 4:
-			out << r.query.source().length();
+			out << r.query_len;
 			break;
 		case 5:
 			print_title(out, r.target_title.c_str(), false, false, "<>");

@@ -1,10 +1,10 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2021 Max Planck Society for the Advancement of Science e.V.
+Copyright (C) 2013-2023 Max Planck Society for the Advancement of Science e.V.
                         Benjamin Buchfink
                         Eberhard Karls Universitaet Tuebingen
 						
-Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
+Code developed by Benjamin Buchfink <buchfink@gmail.com>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -461,6 +461,7 @@ struct TypeSerializer<HspContext> {
 		buf_->write(h.subject_range().end_);
 		buf_->write(h.bit_score());
 		buf_->write(h.evalue());
+		buf_->write(h.score());
 		buf_->write(h.approx_id());
 		return *this;
 	}
@@ -499,6 +500,7 @@ struct TypeDeserializer<HspContext> {
 		file_->read(h.hsp_.subject_range.end_);
 		file_->read(h.hsp_.bit_score);
 		file_->read(h.hsp_.evalue);
+		file_->read(h.hsp_.score);
 		file_->read(h.hsp_.approx_id);
 		h.hsp_.query_source_range = h.hsp_.query_range;
 		return h;

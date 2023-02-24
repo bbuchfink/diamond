@@ -1,10 +1,16 @@
 [2.1.4]
 - Leading spaces are now trimmed and tabulator characters escaped as `\t`
   in sequence titles, and a warning message is produced.
-- Blank sequence titles are now replaced by `BLANK`, and a warning message is
+- Blank sequence titles are now replaced by `N/A`, and a warning message is
   produced.
+- Fixed a bug that could cause a `Traceback error` in certain cases.
+- Fixed a bug that caused the `qlen` and `score` output fields not to be reported
+  correctly for the `realign` workflow.
+- Added an error message when using unsupported output fields for the `realign`
+  workflow.
 - Fixed an issue that could cause a `Missing fields in input line` error when
   clustering.
+- Optimized the performance of the `linclust` workflow.
 
 [2.1.3]
 - Fixed compiler errors for GCC 4.8.
@@ -58,12 +64,12 @@
 - Added the `recluster` workflow to correct errors in clusterings.
 - Added the `reassign` workflow to reassign cluster members to their closest centroid.
 - Added the option `-M/--memory-limit` to set a memory limit for clustering workflows.
-- Added the `approx-id` option to filter alignments by approximate sequence identity
+- Added the `--approx-id` option to filter alignments by approximate sequence identity
   and to set an approximate sequence identity threshold for clustering.
 - Added the `--member-cover` option to set the coverage threshold of the cluster
   member sequence.
-- Added the `cluster-steps` option to set steps for cascaded clustering.
-- Added the `clusters` option to specify clustering input file.
+- Added the `--cluster-steps` option to set steps for cascaded clustering.
+- Added the `--clusters` option to specify clustering input file.
 - The `blastx` mode will now mask any open reading frame below the minimum required
   length as specified by `--min-orf`.
 - The `blastx` mode will only count unmasked letters towards the block size.
