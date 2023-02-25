@@ -897,10 +897,11 @@ vector<tuple<FastaFile*, vector<OId>, File*>> SequenceFile::length_sort(int64_t 
 	}
 	init_seq_access();
 	//Util::Tsv::File map_file(Util::Tsv::Schema{ Util::Tsv::Type::INT64 }, "", Util::Tsv::Flags::WRITE_ACCESS);
+	const string placeholer("X");
 	for (OId i = 0; i < sequence_count(); ++i) {
 		read_seq(seq, id);
 		auto& f = files[lengths[i].first];
-		get<0>(f)->write_seq(seq, id);
+		get<0>(f)->write_seq(seq, placeholer);
 		get<2>(f)->write_record(i);
 		
 	}

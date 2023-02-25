@@ -11,6 +11,7 @@
 - Fixed an issue that could cause a `Missing fields in input line` error when
   clustering.
 - Optimized the performance of the `linclust` workflow.
+- Reduced the memory use of the clustering workflow.
 
 [2.1.3]
 - Fixed compiler errors for GCC 4.8.
