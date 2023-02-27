@@ -573,8 +573,10 @@ static void master_thread(task_timer &total_timer, Config &options)
 
 	task_timer timer("Opening the input file", true);
 	if (!options.self) {
-		if (config.query_file.empty() && !options.query_file)
+		if (config.query_file.empty() && !options.query_file) {
 			std::cerr << "Query file parameter (--query/-q) is missing. Input will be read from stdin." << endl;
+			config.query_file.push_back("");
+		}
 		if (!options.query_file)
 			options.query_file.reset(SequenceFile::auto_create(config.query_file, SequenceFile::Flags(), SequenceFile::Metadata(), input_value_traits));
 	}
