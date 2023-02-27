@@ -54,6 +54,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/async_buffer.h"
 #include "config.h"
 #include "../data/seed_array.h"
+#include "../data/fasta/fasta_file.h"
 #ifdef WITH_DNA
 #include "../dna/dna_index.h"
 #endif
@@ -578,7 +579,7 @@ static void master_thread(task_timer &total_timer, Config &options)
 			config.query_file.push_back("");
 		}
 		if (!options.query_file)
-			options.query_file.reset(SequenceFile::auto_create(config.query_file, SequenceFile::Flags(), SequenceFile::Metadata(), input_value_traits));
+			options.query_file.reset(new FastaFile(config.query_file, SequenceFile::Metadata(), SequenceFile::Flags(), input_value_traits));
 	}
 
 	options.current_query_block = 0;
