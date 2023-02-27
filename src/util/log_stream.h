@@ -79,7 +79,11 @@ struct task_timer
 	{}
 	~task_timer()
 	{
+#if __cplusplus >= 201703L
 		if (!std::uncaught_exceptions())
+#else
+		if (!std::uncaught_exception())
+#endif
 			finish();
 	}
 	void go(const char* msg = nullptr)
