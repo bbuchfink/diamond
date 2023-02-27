@@ -79,7 +79,7 @@ struct task_timer
 	{}
 	~task_timer()
 	{
-		if (!std::uncaught_exception())
+		if (!std::uncaught_exceptions())
 			finish();
 	}
 	void go(const char* msg = nullptr)
