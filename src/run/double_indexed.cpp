@@ -180,17 +180,22 @@ static void run_ref_chunk(SequenceFile &db_file,
         }
 #ifdef WITH_DNA
         else
-            cfg.dna_ref_index = std::make_unique<Dna::Index>(cfg,ref_buffer);
+            cfg.dna_ref_index = std::make_unique<Dna::Index>(cfg, ref_buffer);
 #endif
-      
 
-		timer.go("Deallocating buffers");
+        log_rss();
+        timer.go("Deallocating buffers");
+#ifdef WITH_DNA
+        if(config.command != ::Config::blastn)
+#endif
 		delete[] ref_buffer;
 		delete[] query_buffer;
 		delete target_seeds;
 
 		timer.go("Clearing query masking");
 		Frequent_seeds::clear_masking(query_seqs);
+		timer.finish();
+		log_rss();
 	}
 
     Consumer* out;
@@ -364,12 +369,17 @@ static void run_query_iteration(const unsigned query_iteration,
 			db_file.set_seqinfo_ptr(options.query->oid_end());
 		else if (!config.self || options.current_query_block != 0 || !db_file.eof())
 			db_file.set_seqinfo_ptr(0);*/
+		timer.go("Seeking in database");
 		db_file.set_seqinfo_ptr((config.self && !config.lin_stage1) ? options.query->oid_end() : 0);
+		timer.finish();
 		for (options.current_ref_block = 0; ; ++options.current_ref_block) {
 			if (config.self && ((config.lin_stage1 && options.current_ref_block == options.current_query_block) || (!config.lin_stage1 && options.current_ref_block == 0))) {
 				options.target = options.query;
-				if (config.lin_stage1)
+				if (config.lin_stage1) {
+					timer.go("Seeking in database");
 					db_file.set_seqinfo_ptr(options.query->oid_end());
+					timer.finish();
+				}
 			}
 			else {
 				timer.go("Loading reference sequences");
@@ -631,19 +641,23 @@ static void master_thread(task_timer &total_timer, Config &options)
 
 	for (;query_file_offset < db_file->sequence_count(); ++options.current_query_block) {
 		log_rss();
-		timer.go("Loading query sequences");
 
 		if (options.self) {
+			timer.go("Seeking in database");
 			db_file->set_seqinfo_ptr(query_file_offset);
+			timer.finish();
+			timer.go("Loading query sequences");
 			options.query.reset(db_file->load_seqs(config.block_size(), options.db_filter.get(), SequenceFile::LoadFlags::ALL));
 			query_file_offset = db_file->tell_seq();
 		}
-		else
+		else {
+			timer.go("Loading query sequences");
 			options.query.reset(options.query_file->load_seqs(config.block_size(), nullptr, load_flags));
+		}
+		timer.finish();
 
 		if (options.query->empty())
 			break;
-		timer.finish();
 		options.query->seqs().print_stats();
 		if ((config.mp_query_chunk >= 0) && (options.current_query_block != config.mp_query_chunk))
 			continue;

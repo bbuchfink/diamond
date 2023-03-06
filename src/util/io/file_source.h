@@ -25,10 +25,10 @@ struct FileSource : public StreamEntity
 	FileSource(const std::string &file_name, FILE *file);
 	virtual void rewind() override;
 	virtual void seek(int64_t p, int origin) override;
-	virtual void seek_forward(size_t n) override;
 	virtual int64_t tell() override;
 	virtual size_t read(char *ptr, size_t count) override;
 	virtual void close() override;
+	virtual int64_t file_size() override;
 	virtual const std::string& file_name() const override
 	{
 		return file_name_;

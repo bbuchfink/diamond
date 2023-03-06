@@ -48,6 +48,7 @@ struct OutputFormat;
 
 namespace Stats {
 struct TargetMatrix;
+struct Blastn_Score;
 }
 
 struct Hsp
@@ -93,7 +94,7 @@ struct Hsp
 		matrix(nullptr)
 	{}
 
-	Hsp(const IntermediateRecord &r, unsigned query_source_len, Loc qlen, Loc tlen, const OutputFormat* output_format);
+    Hsp(const IntermediateRecord &r, unsigned query_source_len, Loc qlen, Loc tlen, const OutputFormat* output_format, const Stats::Blastn_Score *dna_score_builder = nullptr);
 	Hsp(const ApproxHsp& h, Loc qlen, Loc tlen);
 
 	struct Iterator

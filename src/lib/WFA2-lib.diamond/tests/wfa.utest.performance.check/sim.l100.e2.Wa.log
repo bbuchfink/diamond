@@ -1,0 +1,28 @@
+...processed 100000 reads (alignment = 680111.312 seq/s)
+[Benchmark]
+=> Total.reads            100000
+=> Time.Benchmark       147.06 ms (    1   call, 147.06 ms/call {min147.06ms,Max147.06ms})
+  => Time.Alignment      78.05 ms ( 53.07 %) (  100 Kcalls,    780 ns/call {min139ns,Max22.19us})
+	Command being timed: "./bin/align_benchmark -a gap-affine-wfa -i ../data/sim.l100.n100K.e2.seq -o ./tests/sim.l100.e2.Wa.alg --wfa-heuristic=wfa-adaptive --wfa-heuristic-parameters 10,50,1"
+	User time (seconds): 0.13
+	System time (seconds): 0.00
+	Percent of CPU this job got: 99%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:00.14
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 2756
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 135
+	Voluntary context switches: 1
+	Involuntary context switches: 0
+	Swaps: 0
+	File system inputs: 0
+	File system outputs: 3176
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0

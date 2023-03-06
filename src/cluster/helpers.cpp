@@ -218,7 +218,7 @@ void init_thresholds() {
 }
 
 File* open_out_tsv() {
-	File* file = new File(Schema{ Type::STRING, Type::STRING }, config.output_file, Flags::WRITE | Flags::OVERWRITE);
+	File* file = new File(Schema{ Type::STRING, Type::STRING }, config.output_file, Flags::WRITE);
 	if (Blast_tab_format::header_format(::Config::cluster) == Header::SIMPLE)
 		file->write_record("centroid", "member");
 	return file;

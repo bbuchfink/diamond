@@ -71,6 +71,9 @@ struct ValueTraits
 #define AMINO_ACID_ALPHABET "ARNDCQEGHILKMFPSTWYVBJZX*_"
 #define AMINO_ACID_COUNT (int(sizeof(AMINO_ACID_ALPHABET) - 1))
 
+#define NUCLEOTIDE_ALPHABET "ACGTN"
+#define NUCLEOTIDE_COUNT (sizeof(NUCLEOTIDE_ALPHABET) -1)
+
 constexpr Letter MASK_LETTER = 23;
 constexpr Letter STOP_LETTER = 24;
 constexpr Letter SUPER_HARD_MASK = 25;

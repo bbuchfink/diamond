@@ -83,29 +83,14 @@ void FileSource::rewind()
 void FileSource::seek(int64_t pos, int origin)
 {
 #ifdef _MSC_VER
-	if (_fseeki64(f_, pos, SEEK_SET) != 0) {
+	if (_fseeki64(f_, pos, origin) != 0) {
 		perror(0);
 		throw std::runtime_error("Error executing seek on file " + file_name_);
 	}
 #else
-	if (fseek(f_, pos, SEEK_SET) < 0) {
-		perror(0);
-		throw std::runtime_error("Error calling fseek.");
-	}
-#endif
-}
-
-void FileSource::seek_forward(size_t n)
-{
-#ifdef _MSC_VER
-	if (_fseeki64(f_, (int64_t)n, SEEK_CUR) != 0) {
+	if (fseek(f_, pos, origin) < 0) {
 		perror(0);
 		throw std::runtime_error("Error executing seek on file " + file_name_);
-	}
-#else
-	if (fseek(f_, n, SEEK_CUR) < 0) {
-		perror(0);
-		throw std::runtime_error("Error calling fseek.");
 	}
 #endif
 }
@@ -154,8 +139,16 @@ int64_t FileSource::tell()
 	const long n = ftell(f_);
 	if (n < 0) {
 		perror(0);
-		throw std::runtime_error("Error calling ftell.");
+		throw std::runtime_error("Error executing ftell on stream " + file_name_);
 	}
 	return n;
 #endif
+}
+
+int64_t FileSource::file_size() {
+	const int64_t pos = tell();
+	seek(0l, SEEK_END);
+	const int64_t s = tell();
+	seek(pos, SEEK_SET);
+	return s;
 }

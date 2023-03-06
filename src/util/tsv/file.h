@@ -34,12 +34,15 @@ struct File {
 	File(const Schema& schema, const char* file_name, Flags flags = Flags(), const Config& config = Config());
 	File(const Schema& schema, const std::string& file_name, Flags flags = Flags(), const Config& config = Config());
 	void rewind();
+	bool eof();
+	int64_t size();
 	~File();
 
-	void read(int threads, std::function<void(int64_t chunk, const char*, const char*)>& callback);
+	void read(int64_t max_size, int threads, std::function<void(int64_t chunk, const char*, const char*)>& callback);
 	void read(int threads, std::function<void(int64_t chunk, const Table&)>& callback);
+	Table read(int64_t max_size, int threads);
 	Table read(int threads);
-	Table read(int64_t max_records, int threads);
+	Table read_record();
 
 	template<typename... Targs, typename Out>
 	void read(Out out) {
@@ -78,6 +81,7 @@ struct File {
 
 	void write(const Record& record);
 	void write(const Table& table);
+	void write(const TextBuffer* buf);
 
 	template<typename... Targs>
 	void write_record(Targs... FArgs) {

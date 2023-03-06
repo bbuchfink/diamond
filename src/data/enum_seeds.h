@@ -48,7 +48,10 @@ Search::SeedStats enum_seeds_minimizer(SequenceSet* seqs, F* f, unsigned begin, 
 			continue;
 		seqs->convert_to_std_alph(i);
 		const Sequence seq = (*seqs)[i];
-		Reduction::reduce_seq(seq, buf);
+        if (align_mode.mode != AlignMode::blastn)
+            Reduction::reduce_seq(seq, buf);
+        else
+            buf = seq.copy();
 		for (size_t shape_id = cfg.shape_begin; shape_id < cfg.shape_end; ++shape_id) {
 			const Shape& sh = shapes[shape_id];
 			if (seq.length() < sh.length_) continue;
@@ -78,6 +81,7 @@ void enum_seeds_hashed(SequenceSet* seqs, F* f, unsigned begin, unsigned end, co
 			const Shape& sh = shapes[shape_id];
 			if (seq.length() < sh.length_) continue;
 			const uint64_t shape_mask = sh.long_mask();
+			//const __m128i shape_mask = sh.long_mask_sse_;
 			HashedSeedIterator<BITS> it(seq, sh);
 			Loc j = 0;
 			while (it.good()) {
@@ -103,7 +107,7 @@ void enum_seeds_contiguous(SequenceSet* seqs, F* f, unsigned begin, unsigned end
 		const Sequence seq = (*seqs)[i];
 		if (seq.length() < It::length()) continue;
 		It it(seq);
-		Loc j = 0;
+		size_t j = 0;
 		while (it.good()) {
 			if (it.get(key))
 				if (filter->contains(key, 0))

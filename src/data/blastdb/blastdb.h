@@ -67,6 +67,7 @@ private:
 	int oid_;
 	const bool long_seqids_;
 	const Flags flags_;
+	int64_t sequence_count_, sparse_sequence_count_;
 	BitVector oid_filter_;
 
 	friend void load_blast_seqid();

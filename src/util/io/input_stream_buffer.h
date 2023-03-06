@@ -31,7 +31,6 @@ struct InputStreamBuffer : public StreamEntity
 	InputStreamBuffer(StreamEntity* prev, int flags = 0);
 	virtual void rewind() override;
 	virtual void seek(int64_t p, int origin) override;
-	virtual void seek_forward(size_t n) override;
 	virtual std::pair<const char*, const char*> read() override;
 	virtual void putback(const char* p, size_t n) override;
 	virtual void close() override;

@@ -25,6 +25,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <utility>
 #include <iterator>
 #include <string.h>
+#include <assert.h>
 #include "stream_entity.h"
 #include "../algo/varint.h"
 #include "../system/endianness.h"
@@ -179,8 +180,8 @@ struct Deserializer
 		return begin_;
 	}
 
-	template<typename _it>
-	bool read_to(_it dst, char delimiter)
+	template<typename It>
+	bool read_to(It dst, char delimiter)
 	{
 		int d = delimiter;
 		do {
@@ -198,8 +199,27 @@ struct Deserializer
 		return false;
 	}
 
+	template<typename It>
+	void read_raw(size_t count, It out)
+	{
+		if (count <= avail()) {
+			pop(count, out);
+			return;
+		}
+		do {
+			const size_t n = std::min(count, avail());
+			pop(n, out);
+			count -= n;
+			if (avail() == 0)
+				fetch();
+		} while (count > 0 && avail() > 0);
+	}
+
 	size_t read_raw(char *ptr, size_t count);
 	DynamicRecordReader read_record();
+	int64_t file_size() {
+		return buffer_->file_size();
+	}
 	~Deserializer();
 
 	bool varint;
@@ -207,6 +227,15 @@ struct Deserializer
 protected:
 	
 	void pop(char *dst, size_t n);
+
+	template<typename It>
+	void pop(size_t n, It out)
+	{
+		assert(n <= avail());
+		std::copy(begin_, begin_ + n, out);
+		begin_ += n;
+	}
+
 	bool fetch();
 
 	size_t avail() const

@@ -74,6 +74,8 @@ void index_fasta();
 void fetch_seq();
 void length_sort();
 void sort();
+void word_count();
+void cut();
 #endif
 
 void split();
@@ -237,6 +239,12 @@ int main(int ac, const char* av[])
 			break;
 		case Config::sort:
 			sort();
+			break;
+		case Config::WORD_COUNT:
+			word_count();
+			break;
+		case Config::CUT:
+			cut();
 			break;
 #endif
 		default:

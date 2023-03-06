@@ -842,6 +842,7 @@ void prep_db() {
 	else
 		FastaFile::prep_db(config.database);
 #else
+	else
 		throw runtime_error("Database file is not a BLAST database");
 #endif
 }

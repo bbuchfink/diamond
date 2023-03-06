@@ -101,19 +101,22 @@ if(BUILD_STATIC)
   set(CMAKE_EXE_LINKER_FLAGS "-static")
 endif()
 
+function(set_cxx_standard std flag)
+  if(${CMAKE_VERSION} VERSION_LESS "3.1.0")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${flag}" PARENT_SCOPE)
+  else()
+    set(CMAKE_CXX_STANDARD ${std} PARENT_SCOPE)
+  endif()
+endfunction(set_cxx_standard)
+
 check_cxx_compiler_flag("-std=gnu++14" HAS_GNUPP14)
-if (HAS_GNUPP14)
-  if(${CMAKE_VERSION} VERSION_LESS "3.1.0")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=gnu++14")
-  else()
-    set(CMAKE_CXX_STANDARD 14)
-  endif()
+check_cxx_compiler_flag("-std=gnu++17" HAS_GNUPP17)
+if(HAS_GNUPP17)
+  set_cxx_standard(17 "-std=gnu++17")
+elseif (HAS_GNUPP14)
+  set_cxx_standard(14 "-std=gnu++14")
 else()
-  if(${CMAKE_VERSION} VERSION_LESS "3.1.0")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=gnu++11")
-  else()
-    set(CMAKE_CXX_STANDARD 11)
-  endif()
+  set_cxx_standard(11 "-std=gnu++11")
 endif()
 
 if(CMAKE_BUILD_MARCH)
@@ -188,214 +191,180 @@ if(X86)
 endif(X86)
 
 set(OBJECTS
-  src/run/main.cpp
-  src/basic/config.cpp
-  src/stats/score_matrix.cpp
-  src/data/queries.cpp
-  src/data/seed_histogram.cpp
-  src/output/daa/daa_record.cpp
-  src/util/command_line_parser.cpp
-  src/util/seq_file_format.cpp
-  src/util/util.cpp
-  src/basic/basic.cpp
-  src/basic/hssp.cpp
-  src/dp/ungapped_align.cpp
-  src/run/tools.cpp
-  src/chaining/greedy_align.cpp
-  src/output/output_format.cpp
-  src/output/clustering_variables.cpp
-  src/output/clustering_format.cpp
-  src/output/join_blocks.cpp
-  src/data/frequent_seeds.cpp
-  src/align/legacy/query_mapper.cpp
-  src/output/blast_tab_format.cpp
-  src/output/blast_pairwise_format.cpp
-  src/run/double_indexed.cpp
-  src/output/sam_format.cpp
-  src/align/align.cpp
-  src/search/setup.cpp
-  src/data/taxonomy.cpp
-  src/masking/masking.cpp
-  src/data/seed_set.cpp
-  src/util/simd.cpp
-  src/output/taxon_format.cpp
-  src/output/daa/view.cpp
-  src/output/output_sink.cpp
-  src/output/target_culling.cpp
-  src/align/legacy/banded_swipe_pipeline.cpp
-  src/util/io/compressed_stream.cpp
-  src/util/io/deserializer.cpp
-  src/util/io/file_sink.cpp
-  src/util/io/file_source.cpp
-  src/util/io/input_file.cpp
-  src/util/io/input_stream_buffer.cpp
-  src/util/io/output_file.cpp
-  src/util/io/output_stream_buffer.cpp
-  src/util/io/serializer.cpp
-  src/util/io/temp_file.cpp
-  src/util/io/text_input_file.cpp
-  src/data/taxon_list.cpp
-  src/data/taxonomy_nodes.cpp
-  src/util/algo/MurmurHash3.cpp
-  src/search/stage0.cpp
-  src/data/seed_array.cpp
-  src/output/paf_format.cpp
-  src/util/system/system.cpp
-  src/util/algo/greedy_vertex_cover.cpp
-  src/util/sequence/sequence.cpp
-  src/tools/tsv_record.cpp
-  src/tools/tools.cpp
-  src/util/system/getRSS.cpp
-  src/lib/tantan/LambdaCalculator.cc
-  src/util/algo/edge_vec.cpp
-  src/util/string/string.cpp
-  src/align/extend.cpp
-  src/test/test.cpp
-  src/align/ungapped.cpp
-  src/align/gapped_score.cpp
-  src/align/gapped_final.cpp
-  src/align/full_db.cpp
-  src/align/culling.cpp
-  src/cluster/cluster_registry.cpp
-  src/cluster/cascaded/cascaded.cpp
-  src/align/output.cpp
-  src/tools/roc.cpp
-  src/test/data.cpp
-  src/test/test_cases.cpp
-  src/chaining/smith_waterman.cpp
-  src/output/xml_format.cpp
-  src/align/gapped_filter.cpp
-  src/util/parallel/filestack.cpp
-  src/util/parallel/parallelizer.cpp
-  src/util/parallel/multiprocessing.cpp
-  src/tools/benchmark_io.cpp
-  src/lib/alp/njn_dynprogprob.cpp
-  src/lib/alp/njn_dynprogproblim.cpp
-  src/lib/alp/njn_dynprogprobproto.cpp
-  src/lib/alp/njn_ioutil.cpp
-  src/lib/alp/njn_localmaxstat.cpp
-  src/lib/alp/njn_localmaxstatmatrix.cpp
-  src/lib/alp/njn_localmaxstatutil.cpp
-  src/lib/alp/njn_random.cpp
-  src/lib/alp/sls_alignment_evaluer.cpp
-  src/lib/alp/sls_alp.cpp
-  src/lib/alp/sls_alp_data.cpp
-  src/lib/alp/sls_alp_regression.cpp
-  src/lib/alp/sls_alp_sim.cpp
-  src/lib/alp/sls_basic.cpp
-  src/lib/alp/sls_pvalues.cpp
-  src/align/global_ranking/global_ranking.cpp
-  src/align/global_ranking/extend.cpp
-  src/tools/rocid.cpp
-  src/lib/blast/blast_seg.cpp
-  src/lib/blast/blast_filter.cpp
-  src/lib/blast/nlm_linear_algebra.cpp
-  src/stats/matrices/blosum45.cpp
-  src/stats/matrices/blosum50.cpp
-  src/stats/matrices/blosum62.cpp
-  src/stats/matrices/blosum80.cpp
-  src/stats/matrices/blosum90.cpp
-  src/stats/matrices/pam250.cpp
-  src/stats/matrices/pam30.cpp
-  src/stats/matrices/pam70.cpp
-  src/stats/stats.cpp
-  src/stats/cbs.cpp
-  src/stats/comp_based_stats.cpp
-  src/stats/hauser_correction.cpp
-  src/stats/matrix_adjust.cpp
-  src/stats/matrix_adjust_eigen.cpp
-  src/data/index.cpp
-  src/data/dmnd/dmnd.cpp
-  src/data/sequence_file.cpp
-  src/tools/find_shapes.cpp
-  src/data/block/block.cpp
-  src/data/block/block_wrapper.cpp
-  src/run/config.cpp
-  src/data/sequence_set.cpp
-  src/align/global_ranking/table.cpp
-  src/output/daa/daa_write.cpp
-  src/search/seed_complexity.cpp
-  src/tools/view.cpp
-  src/util/tsv/tsv.cpp
-  src/tools/join.cpp
-  src/basic/value.cpp
-  src/masking/motifs.cpp
-  src/align/alt_hsp.cpp
-  src/data/fasta/fasta_file.cpp
-  src/cluster/output.cpp
-  src/cluster/realign.cpp
-  src/cluster/reassign.cpp
-  src/util/tsv/read_tsv.cpp
-  src/tools/greedy_vertex_cover.cpp
-  src/cluster/cascaded/recluster.cpp
-  src/cluster/helpers.cpp
-  src/search/kmer_ranking.cpp
-  src/chaining/hamming_ext.cpp
-  src/dna/smith_watermann.cpp
-  src/stats/dna_scoring/build_score.cpp
-  src/lib/blast/blast_message.cpp
-  src/lib/blast/blast_stat.cpp
-  src/lib/blast/blastn_score.cpp
-  src/lib/blast/ncbi_std.cpp
-  src/util/tsv/table.cpp
-  src/util/tsv/file.cpp
-  src/util/tsv/record.cpp
-  src/cluster/cascaded/helpers.cpp
-  src/cluster/cascaded/wrapper.cpp
-  src/output/daa/merge.cpp
-  src/chaining/backtrace.cpp
-  src/util/tsv/merge.cpp
-  src/util/tsv/join.cpp
-  src/dp/scalar/smith_waterman.cpp
-  src/cluster/incremental/config.cpp
-  src/cluster/incremental/run.cpp
-  src/align/short.cpp
-)
+        src/run/main.cpp
+        src/basic/config.cpp
+        src/stats/score_matrix.cpp
+        src/data/queries.cpp
+        src/data/seed_histogram.cpp
+        src/output/daa/daa_record.cpp
+        src/util/command_line_parser.cpp
+        src/util/seq_file_format.cpp
+        src/util/util.cpp
+        src/basic/basic.cpp
+        src/basic/hssp.cpp
+        src/dp/ungapped_align.cpp
+        src/run/tools.cpp
+        src/chaining/greedy_align.cpp
+        src/output/output_format.cpp
+        src/output/clustering_variables.cpp
+        src/output/clustering_format.cpp
+        src/output/join_blocks.cpp
+        src/data/frequent_seeds.cpp
+        src/align/legacy/query_mapper.cpp
+        src/output/blast_tab_format.cpp
+        src/output/blast_pairwise_format.cpp
+        src/run/double_indexed.cpp
+        src/output/sam_format.cpp
+        src/align/align.cpp
+        src/search/setup.cpp
+        src/data/taxonomy.cpp
+        src/masking/masking.cpp
+        src/data/seed_set.cpp
+        src/util/simd.cpp
+        src/output/taxon_format.cpp
+        src/output/daa/view.cpp
+        src/output/output_sink.cpp
+        src/output/target_culling.cpp
+        src/align/legacy/banded_swipe_pipeline.cpp
+        src/util/io/compressed_stream.cpp
+        src/util/io/deserializer.cpp
+        src/util/io/file_sink.cpp
+        src/util/io/file_source.cpp
+        src/util/io/input_file.cpp
+        src/util/io/input_stream_buffer.cpp
+        src/util/io/output_file.cpp
+        src/util/io/output_stream_buffer.cpp
+        src/util/io/serializer.cpp
+        src/util/io/temp_file.cpp
+        src/util/io/text_input_file.cpp
+        src/data/taxon_list.cpp
+        src/data/taxonomy_nodes.cpp
+        src/util/algo/MurmurHash3.cpp
+        src/search/stage0.cpp
+        src/data/seed_array.cpp
+        src/output/paf_format.cpp
+        src/util/system/system.cpp
+        src/util/algo/greedy_vertex_cover.cpp
+        src/util/sequence/sequence.cpp
+        src/tools/tsv_record.cpp
+        src/tools/tools.cpp
+        src/util/system/getRSS.cpp
+        src/lib/tantan/LambdaCalculator.cc
+        src/util/algo/edge_vec.cpp
+        src/util/string/string.cpp
+        src/align/extend.cpp
+        src/test/test.cpp
+        src/align/ungapped.cpp
+        src/align/gapped_score.cpp
+        src/align/gapped_final.cpp
+        src/align/full_db.cpp
+        src/align/culling.cpp
+        src/cluster/cluster_registry.cpp
+        src/cluster/cascaded/cascaded.cpp
+        src/align/output.cpp
+        src/tools/roc.cpp
+        src/test/data.cpp
+        src/test/test_cases.cpp
+        src/chaining/smith_waterman.cpp
+        src/output/xml_format.cpp
+        src/align/gapped_filter.cpp
+        src/util/parallel/filestack.cpp
+        src/util/parallel/parallelizer.cpp
+        src/util/parallel/multiprocessing.cpp
+        src/tools/benchmark_io.cpp
+        src/lib/alp/njn_dynprogprob.cpp
+        src/lib/alp/njn_dynprogproblim.cpp
+        src/lib/alp/njn_dynprogprobproto.cpp
+        src/lib/alp/njn_ioutil.cpp
+        src/lib/alp/njn_localmaxstat.cpp
+        src/lib/alp/njn_localmaxstatmatrix.cpp
+        src/lib/alp/njn_localmaxstatutil.cpp
+        src/lib/alp/njn_random.cpp
+        src/lib/alp/sls_alignment_evaluer.cpp
+        src/lib/alp/sls_alp.cpp
+        src/lib/alp/sls_alp_data.cpp
+        src/lib/alp/sls_alp_regression.cpp
+        src/lib/alp/sls_alp_sim.cpp
+        src/lib/alp/sls_basic.cpp
+        src/lib/alp/sls_pvalues.cpp
+        src/align/global_ranking/global_ranking.cpp
+        src/align/global_ranking/extend.cpp
+        src/tools/rocid.cpp
+        src/lib/blast/blast_seg.cpp
+        src/lib/blast/blast_filter.cpp
+        src/lib/blast/nlm_linear_algebra.cpp
+        src/stats/matrices/blosum45.cpp
+        src/stats/matrices/blosum50.cpp
+        src/stats/matrices/blosum62.cpp
+        src/stats/matrices/blosum80.cpp
+        src/stats/matrices/blosum90.cpp
+        src/stats/matrices/pam250.cpp
+        src/stats/matrices/pam30.cpp
+        src/stats/matrices/pam70.cpp
+        src/stats/stats.cpp
+        src/stats/cbs.cpp
+        src/stats/comp_based_stats.cpp
+        src/stats/hauser_correction.cpp
+        src/stats/matrix_adjust.cpp
+        src/stats/matrix_adjust_eigen.cpp
+        src/data/index.cpp
+        src/data/dmnd/dmnd.cpp
+        src/data/sequence_file.cpp
+        src/tools/find_shapes.cpp
+        src/data/block/block.cpp
+        src/data/block/block_wrapper.cpp
+        src/run/config.cpp
+        src/data/sequence_set.cpp
+        src/align/global_ranking/table.cpp
+        src/output/daa/daa_write.cpp
+        src/search/seed_complexity.cpp
+        src/tools/view.cpp
+        src/util/tsv/tsv.cpp
+        src/tools/join.cpp
+        src/basic/value.cpp
+        src/masking/motifs.cpp
+        src/align/alt_hsp.cpp
+        src/data/fasta/fasta_file.cpp
+        src/cluster/output.cpp
+        src/cluster/realign.cpp
+        src/cluster/reassign.cpp
+        src/util/tsv/read_tsv.cpp
+        src/tools/greedy_vertex_cover.cpp
+        src/cluster/cascaded/recluster.cpp
+        src/cluster/helpers.cpp
+        src/search/kmer_ranking.cpp
+        src/chaining/hamming_ext.cpp
+        src/dna/smith_watermann.cpp
+        src/stats/dna_scoring/build_score.cpp
+        src/lib/blast/blast_message.cpp
+        src/lib/blast/blast_stat.cpp
+        src/lib/blast/blastn_score.cpp
+        src/lib/blast/ncbi_std.cpp
+        src/util/tsv/table.cpp
+        src/util/tsv/file.cpp
+        src/util/tsv/record.cpp
+        src/cluster/cascaded/helpers.cpp
+        src/cluster/cascaded/wrapper.cpp
+        src/output/daa/merge.cpp
+        src/chaining/backtrace.cpp
+        src/util/tsv/merge.cpp
+        src/util/tsv/join.cpp
+        src/dp/scalar/smith_waterman.cpp
+        src/cluster/incremental/config.cpp
+        src/cluster/incremental/run.cpp
+        src/align/short.cpp
+        src/tools/tsv.cpp
+        )
 
 if(WITH_DNA)
-  list(APPEND OBJECTS src/lib/wfa2/alignment/affine2p_penalties.c
-          src/lib/wfa2/alignment/affine_penalties.c
-          src/lib/wfa2/alignment/cigar.c
-          src/lib/wfa2/alignment/score_matrix.c
-          src/lib/wfa2/bindings/cpp/WFAligner.cpp
-          src/lib/wfa2/system/mm_allocator.c
-          src/lib/wfa2/system/mm_stack.c
-          src/lib/wfa2/system/profiler_counter.c
-          src/lib/wfa2/system/profiler_timer.c
-          src/lib/wfa2/utils/bitmap.c
-          src/lib/wfa2/utils/commons.c
-          src/lib/wfa2/utils/dna_text.c
-          src/lib/wfa2/utils/heatmap.c
-          src/lib/wfa2/utils/sequence_buffer.c
-          src/lib/wfa2/utils/string_padded.c
-          src/lib/wfa2/utils/vector.c
-          src/lib/wfa2/wavefront/wavefront.c
-          src/lib/wfa2/wavefront/wavefront_align.c
-          src/lib/wfa2/wavefront/wavefront_aligner.c
-          src/lib/wfa2/wavefront/wavefront_attributes.c
-          src/lib/wfa2/wavefront/wavefront_backtrace.c
-          src/lib/wfa2/wavefront/wavefront_backtrace_buffer.c
-          src/lib/wfa2/wavefront/wavefront_backtrace_offload.c
-          src/lib/wfa2/wavefront/wavefront_components.c
-          src/lib/wfa2/wavefront/wavefront_compute.c
-          src/lib/wfa2/wavefront/wavefront_compute_affine.c
-          src/lib/wfa2/wavefront/wavefront_compute_linear.c
-          src/lib/wfa2/wavefront/wavefront_compute_affine2p.c
-          src/lib/wfa2/wavefront/wavefront_compute_edit.c
-          src/lib/wfa2/wavefront/wavefront_debug.c
-          src/lib/wfa2/wavefront/wavefront_display.c
-          src/lib/wfa2/wavefront/wavefront_extend.c
-          src/lib/wfa2/wavefront/wavefront_heuristic.c
-          src/lib/wfa2/wavefront/wavefront_pcigar.c
-          src/lib/wfa2/wavefront/wavefront_penalties.c
-          src/lib/wfa2/wavefront/wavefront_plot.c
-          src/lib/wfa2/wavefront/wavefront_slab.c
+  list(APPEND OBJECTS
           src/dna/smith_watermann.cpp
-          src/dna/wfa2_test.cpp
-          src/dna/TEMP_minimap_seeding.cpp
-          src/lib/wfa2/wavefront/wavefront_unialign.c
-          src/lib/wfa2/wavefront/wavefront_bialigner.c
-          src/lib/wfa2/wavefront/wavefront_bialign.c)
+          src/dna/dna_index.cpp
+          src/dna/seed_set_dna.cpp
+          src/lib/ksw2/ksw2_extz2_sse.c
+          src/dna/ksw2_extension.cpp
+          src/lib/WFA2-lib.diamond/bindings/cpp/WFAligner.cpp
+          )
 endif()
 
 if(WITH_MCL)
@@ -470,6 +439,18 @@ if(BLAST_INCLUDE_DIR)
   endif()
 endif()
 
+
+
+if(WITH_DNA)
+  include_directories(src/lib/WFA2-lib.diamond)
+  add_subdirectory(src/lib/WFA2-lib.diamond)
+
+  target_link_libraries(diamond  wfa2)
+
+  target_compile_options(wfa2 PRIVATE -DCMAKE_BUILD_TYPE=Release -DEXTRA_FLAGS="-ftree-vectorize -msse2 -mfpmath=sse -ftree-vectorizer-verbose=5")
+  
+  endif()
+
 if(EIGEN_BLAS)
   add_definitions(-DEIGEN_USE_BLAS -DEIGEN_USE_LAPACKE)
   find_package(LAPACKE)
@@ -498,6 +479,6 @@ install(TARGETS diamond DESTINATION bin)
 
 enable_testing()
 add_test(
-  NAME diamond
-  COMMAND diamond test
+        NAME diamond
+        COMMAND diamond test
 )

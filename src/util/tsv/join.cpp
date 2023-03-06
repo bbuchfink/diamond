@@ -21,20 +21,20 @@ void join(File& file1, File& file2, int column1, int column2, const std::vector<
 	array<int, 2> cols{ column1, column2 };
 	array<Table, 2> tables{ file1.schema(), file2.schema() };
 	for (int i = 0; i < 2; ++i)
-		tables[i] = files[i]->read(1, 1);
+		tables[i] = files[i]->read_record();
 	while (!tables[0].empty() && !tables[1].empty()) {
 		array<int64_t, 2> keys = { tables[0].front().get<int64_t>(column1), tables[1].front().get<int64_t>(column2) };
 		if (keys[0] < keys[1])
-			tables[0] = files[0]->read(1, 1);
+			tables[0] = files[0]->read_record();
 		else if (keys[1] < keys[0])
-			tables[1] = files[1]->read(1, 1);
+			tables[1] = files[1]->read_record();
 		else {
 			*out.out_file_ << tables[output_fields.front().file].front().get(output_fields.front().column);
 			for (auto it = output_fields.begin() + 1; it < output_fields.end(); ++it)
 				*out.out_file_ << '\t' << tables[it->file].front().get(it->column);
 			*out.out_file_ << '\n';
 			for (int i = 0; i < 2; ++i)
-				tables[i] = files[i]->read(1, 1);
+				tables[i] = files[i]->read_record();
 		}
 	}
 }

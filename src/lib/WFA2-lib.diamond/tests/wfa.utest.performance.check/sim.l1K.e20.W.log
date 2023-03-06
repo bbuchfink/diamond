@@ -1,0 +1,27 @@
+[Benchmark]
+=> Total.reads            10000
+=> Time.Benchmark         4.70 s  (    1   call,   4.70  s/call {min4.70s,Max4.70s})
+  => Time.Alignment       4.51 s  ( 96.08 %) (   10 Kcalls, 451.31 us/call {min321.95us,Max1.85ms})
+	Command being timed: "./bin/align_benchmark -a gap-affine-wfa -i ../data/sim.l1K.n10K.e20.seq -o ./tests/sim.l1K.e20.W.alg"
+	User time (seconds): 4.67
+	System time (seconds): 0.01
+	Percent of CPU this job got: 99%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:04.69
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 9608
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 1913
+	Voluntary context switches: 2
+	Involuntary context switches: 36
+	Swaps: 0
+	File system inputs: 39144
+	File system outputs: 10976
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0

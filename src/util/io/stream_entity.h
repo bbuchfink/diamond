@@ -39,10 +39,6 @@ struct StreamEntity
 	{
 		throw UnsupportedOperation();
 	}
-	virtual void seek_forward(size_t n)
-	{
-		throw UnsupportedOperation();
-	}
 	virtual int64_t tell()
 	{
 		throw UnsupportedOperation();
@@ -77,6 +73,11 @@ struct StreamEntity
 	}
 	virtual void putback(const char *p, size_t count)
 	{
+		throw UnsupportedOperation();
+	}
+	virtual int64_t file_size() {
+		if (prev_)
+			return prev_->file_size();
 		throw UnsupportedOperation();
 	}
 	virtual FILE* file()

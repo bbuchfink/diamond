@@ -53,12 +53,6 @@ void InputStreamBuffer::seek(int64_t pos, int origin)
 	file_offset_ = 0;
 }
 
-void InputStreamBuffer::seek_forward(size_t n)
-{
-	prev_->seek_forward(n);
-	file_offset_ = 0;
-}
-
 pair<const char*, const char*> InputStreamBuffer::read()
 {
 	size_t n;

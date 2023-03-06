@@ -1,5 +1,4 @@
 #include "../run/config.h"
-#include "TEMP_minimap_structures.h"
 #include "../basic/match.h"
 #include "../align/extend.h"
 

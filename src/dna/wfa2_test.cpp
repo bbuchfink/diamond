@@ -1,8 +1,6 @@
 #include <string>
 #include "../lib/wfa2/bindings/cpp/WFAligner.hpp"
 #include "wfa2_test.h"
-#include "TEMP_minimap_seeding.h"
-#include "TEMP_minimap_structures.h"
 #include "../basic/config.h"
 
 
@@ -14,7 +12,7 @@ Hsp cigar_to_hsp(const Stats::Blastn_Score &score_builder, const std::string& ci
     int pattern_pos = 0, text_pos = 0, deletion_count = 0, insertion_count = 0, score = 0;
     bool insertion=false, deletion = false;
     out.query_range.begin_ = 0  ;
-    out.subject_range.begin_ = 0  ;
+    out.subject_range.begin_ = 0 ;
     for (auto a: cigar) {
         switch (a) {
             case 'M':

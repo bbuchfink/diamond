@@ -49,18 +49,25 @@ struct SeedArray
 #else
 			value(pos)
 #endif
-		{}
-		SeedOffset key;
-		
-		struct GetKey {
-			uint32_t operator()(const Entry& e) const {
-				return e.key;
-			}
-		};
+        {}
+        bool operator<(const Entry& entry)const{
+            return  this->key < entry.key;
+        }
+        bool operator==(const Entry& entry)const{
+            return this->key == entry.key && this->value == entry.value;
+        }
+        SeedOffset key;
+
+        struct GetKey {
+            uint32_t operator()(const Entry& e) const {
+                return e.key;
+            }
+        };
 
 		SeedLoc value;
 		using Key = decltype(key);
 		using Value = decltype(value);
+        using value_type =  Entry;
 	} PACKED_ATTRIBUTE;
 
 	template<typename _filter>

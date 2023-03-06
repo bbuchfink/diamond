@@ -286,7 +286,7 @@ void Hsp::push_gap(Edit_operation op, int length, const Letter *subject)
 #endif
 }
 
-Hsp::Hsp(const IntermediateRecord &r, unsigned query_source_len, Loc qlen, Loc tlen, const OutputFormat* output_format) :
+Hsp::Hsp(const IntermediateRecord &r, unsigned query_source_len, Loc qlen, Loc tlen, const OutputFormat* output_format, const Stats::Blastn_Score *dna_score_builder):
 	backtraced(!IntermediateRecord::stats_mode(output_format->hsp_values) && output_format->hsp_values != HspValues::NONE),
 	score(r.score),
 	evalue(r.evalue),
@@ -294,7 +294,14 @@ Hsp::Hsp(const IntermediateRecord &r, unsigned query_source_len, Loc qlen, Loc t
 	corrected_bit_score(score_matrix.bitscore_corrected(r.score, qlen, tlen)),
 	transcript(r.transcript)
 {
-	subject_range.begin_ = r.subject_begin;
+    if(dna_score_builder == nullptr){
+        bit_score = score_matrix.bitscore(r.score);
+        corrected_bit_score = score_matrix.bitscore_corrected(r.score, qlen, tlen);
+    }
+    else
+        bit_score = dna_score_builder->blast_bit_Score(r.score);
+
+    subject_range.begin_ = r.subject_begin;
 	if (align_mode.mode == AlignMode::blastx) {
 		frame = r.frame(query_source_len, align_mode.mode);
 		set_translated_query_begin(r.query_begin, query_source_len);

@@ -65,7 +65,7 @@ Deserializer& Deserializer::seek(int64_t pos)
 
 void Deserializer::seek_forward(size_t n)
 {
-	buffer_->seek_forward(n);
+	buffer_->seek(n, SEEK_CUR);
 	begin_ = end_ = nullptr;
 }
 

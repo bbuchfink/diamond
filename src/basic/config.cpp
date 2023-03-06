@@ -246,6 +246,8 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 		.add_command("fetch-seq", "", FETCH_SEQ)
         .add_command("blastn", "Align DNA query sequences against a DNA reference database", blastn)
 		.add_command("length-sort", "", LENGTH_SORT)
+		.add_command("wc", "", WORD_COUNT)
+		.add_command("cut", "", CUT)
 #endif
 		;
 
@@ -334,7 +336,9 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 \t5   = BLAST XML\n\
 \t6   = BLAST tabular\n\
 \t100 = DIAMOND alignment archive (DAA)\n\
-\t101 = SAM\n\n\
+\t101 = SAM\n\
+\t102 = Taxonomic classification\n\
+\t103 = PAF\n\n\
 \tValue 6 may be followed by a space-separated list of these keywords:\n\n\
 \tqseqid means Query Seq - id\n\
 \tqlen means Query sequence length\n\
@@ -401,7 +405,7 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 
 	string algo_str;
 
-	auto& advanced = parser.add_group("Advanced options", { blastp, blastx, makeidx, CLUSTER_REASSIGN, regression_test, cluster, DEEPCLUST, LINCLUST });
+	auto& advanced = parser.add_group("Advanced options", { blastp, blastx, blastn, makeidx, CLUSTER_REASSIGN, regression_test, cluster, DEEPCLUST, LINCLUST });
 	advanced.add()
 		("algo", 0, "Seed search algorithm (0=double-indexed/1=query-indexed/ctg=contiguous-seed)", algo_str)
 		("bin", 0, "number of query bins for seed search", query_bins_)
@@ -445,6 +449,9 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 		("log-evalue-scale", 0, "", log_evalue_scale, 1.0 / std::log(2.0))
 		("bootstrap", 0, "", bootstrap)
 		("mp-self", 0, "", mp_self)
+#ifdef EXTRA
+            ("zdrop", 'z', "zdrop for gapped dna alignment", zdrop, 40)
+#endif
 		("query-or-subject-cover", 0, "", query_or_target_cover);
 
 	auto& view_options = parser.add_group("View options", { view, blastp, blastx });
@@ -646,6 +653,7 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 		("recluster_bd", 0, "", recluster_bd)
 		("pipeline-short", 0, "", pipeline_short)
 		("graph-algo", 0, "", graph_algo, string("gvc"))
+		("tsv-read-size", 0, "", tsv_read_size, int64_t(GIGABYTES))
 #ifndef KEEP_TARGET_ID
 		("kmer-ranking", 0, "Rank sequences based on kmer frequency in linear stage", kmer_ranking)
 #endif

@@ -88,11 +88,13 @@ list<CRef<CSeq_id>>::const_iterator best_id(const list<CRef<CSeq_id>>& ids) {
 
 BlastDB::BlastDB(const std::string& file_name, Metadata metadata, Flags flags, const ValueTraits& value_traits) :
 	SequenceFile(Type::BLAST, Alphabet::NCBI, flags, FormatFlags::TITLES_LAZY | FormatFlags::SEEKABLE | FormatFlags::LENGTH_LOOKUP, value_traits),
-	file_name_(file_name),	
+	file_name_(file_name),
 	db_(new CSeqDBExpert(file_name, CSeqDB::eProtein)),
 	oid_(0),
 	long_seqids_(false),
-	flags_(flags)
+	flags_(flags),
+	sequence_count_(db_->GetNumOIDs()),
+	sparse_sequence_count_(db_->GetNumSeqs())
 {
 	if (flag_any(metadata, Metadata::TAXON_NODES | Metadata::TAXON_MAPPING | Metadata::TAXON_SCIENTIFIC_NAMES | Metadata::TAXON_RANKS))
 		throw std::runtime_error("Taxonomy features are not supported for the BLAST database format.");
@@ -242,12 +244,12 @@ std::vector<Letter> BlastDB::dict_seq(DictId dict_id, const size_t ref_block) co
 
 int64_t BlastDB::sequence_count() const
 {
-	return db_->GetNumOIDs();
+	return sequence_count_;
 }
 
 int64_t BlastDB::sparse_sequence_count() const
 {
-	return db_->GetNumSeqs();	
+	return sparse_sequence_count_;
 }
 
 size_t BlastDB::letters() const

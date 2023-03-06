@@ -52,7 +52,7 @@ const map<Sensitivity, SensitivityTraits> sensitivity_traits[2] = {
 	{ Sensitivity::VERY_SENSITIVE,  {true,  false, 15.0,  9,    100000, 30000,  1,     1,        16,   nullptr,  1.0,     0.4,       murphy10, 0 }},
 	{ Sensitivity::ULTRA_SENSITIVE, {true,  false, 20.0,  9,    300000, 30000,  1,     1,        64,   nullptr,  1.0,     0.4,       murphy10, 0 }},
 },
-{{Sensitivity::DEFAULT, {true,  false, 20.0,  9,    0,      0,      0,     4,        16,   nullptr,  1.0,     2.0,       dna,      12 }}
+{{Sensitivity::DEFAULT, {true,  false, 20.0,  9,    0,      0,      0,     1,        16,   nullptr,  1.0,     2.0,       dna,      12 }}
 }};
 
 
@@ -268,7 +268,6 @@ void setup_search(Sensitivity sens, Search::Config& cfg)
 	::Config::set_option(cfg.gapped_filter_evalue, config.gapped_filter_evalue_, -1.0, traits.gapped_filter_evalue);
 	::Config::set_option(cfg.query_bins, config.query_bins_, 0u, traits.query_bins);
 	::Config::set_option(cfg.minimizer_window, config.minimizer_window_, 0, traits.minimizer_window);
-
 	if (config.algo == ::Config::Algo::CTG_SEED) {
 		if (!traits.contiguous_seed)
 			throw std::runtime_error("Contiguous seed mode is not supported for this sensitivity setting.");
@@ -287,6 +286,10 @@ void setup_search(Sensitivity sens, Search::Config& cfg)
 		cfg.soft_masking |= from_string<MaskingAlgo>(config.soft_masking);
 	cfg.cutoff_table = { cfg.ungapped_evalue };
 	cfg.cutoff_table_short = { cfg.ungapped_evalue_short };
+#ifdef WITH_DNA
+    if(align_mode.mode == AlignMode::blastn)
+       Reduction::reduction = dna;
+    #endif
 }
 
 }

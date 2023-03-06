@@ -1,3 +1,11 @@
+[2.1.5]
+- Disabled the use of frequency based seed masking when using the linear-time
+  search feature with respect to the targets.
+- Fixed a bug that caused a `Database file is not a BLAST database` error message
+  for the `prepdb` workflow.
+- Fixed a bug that caused a segmentation fault when using BLAST databases.
+- Added line numbers for error messages when reading taxonomy mapping files.
+
 [2.1.4]
 - Leading spaces are now trimmed and tabulator characters escaped as `\t`
   in sequence titles, and a warning message is produced.

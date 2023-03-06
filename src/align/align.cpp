@@ -33,6 +33,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "extend.h"
 #ifdef WITH_DNA
 #include "../dna/wfa2_test.h"
+#include "../dna/ksw2_extension.h"
 #endif
 #include "../util/algo/radix_sort.h"
 #include "target.h"
@@ -58,7 +59,7 @@ TextBuffer* pipeline_short(BlockId query, Search::Hit* begin, Search::Hit* end, 
 
 }
 
-#ifndef EXTRA
+#if !defined(EXTRA) || defined(WITH_DNA)
 #define OLD
 #endif
 
@@ -253,7 +254,7 @@ bool align_worker(HitIterator* hit_it, ThreadPool::TaskSet* task_set, Search::Co
 
 			pair<vector<Extension::Match>, Extension::Stats> matches =
 #ifdef WITH_DNA
-				align_mode.mode == Align_mode::blastn ? WaveExtension::extend(*cfg, h->query) :
+           align_mode.mode == AlignMode::blastn ? Dna::extend(*cfg, cfg->query->seqs()[h->query]) :
 #endif
 				Extension::extend(h->query, h->begin, h->end, *cfg, stat, parallel ? DP::Flags::PARALLEL : DP::Flags::NONE);
 			TextBuffer* buf = cfg->blocked_processing ? Extension::generate_intermediate_output(matches.first, h->query, *cfg) : Extension::generate_output(matches.first, matches.second, h->query, stat, *cfg);
@@ -312,7 +313,7 @@ void align_queries(Consumer* output_file, Search::Config& cfg)
 		cfg.seed_hit_buf->load(std::min(mem_limit - res_size, config.trace_pt_fetch_size));
 
 		if (res_size + last_size > mem_limit)
-			message_stream << "Warning: resident size (" << (res_size + last_size) << ") exceeds memory limit." << std::endl;
+			log_stream << "Warning: resident size (" << (res_size + last_size) << ") exceeds memory limit." << std::endl;
 
 		timer.go("Sorting trace points");
 		ips4o::parallel::sort(hit_buf->begin(), hit_buf->end(), std::less<Search::Hit>(), config.threads_);
@@ -338,7 +339,7 @@ void align_queries(Consumer* output_file, Search::Config& cfg)
 		};
 #ifndef OLD
 		cfg.thread_pool.reset(new ThreadPool(task));
-		cfg.thread_pool->run(n_threads, !config.no_heartbeat);
+		cfg.thread_pool->run(n_threads, false);
 		cfg.thread_pool->join();
 #else
 		cfg.thread_pool.reset(new ThreadPool ());

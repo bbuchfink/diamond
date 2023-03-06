@@ -18,12 +18,13 @@ using std::copy;
 using std::unique_lock;
 using std::move;
 using std::thread;
+using std::back_inserter;
 
 namespace Util { namespace Tsv {
 
-static const int64_t READ_SIZE = 64 * (1 << 20);
+static const int64_t READ_SIZE = 1 * (1 << 20);
 
-void File::read(int threads, function<void(int64_t chunk, const char*, const char*)>& callback) {
+void File::read(int64_t max_size, int threads, function<void(int64_t chunk, const char*, const char*)>& callback) {
 	queue<vector<char>> buffers;
 	int64_t next_chunk = 0;
 	bool stop = false;
@@ -33,31 +34,29 @@ void File::read(int threads, function<void(int64_t chunk, const char*, const cha
 
 	auto reader = [&]() {
 		vector<char> buf(READ_SIZE);
-		int64_t carry_over = 0, total = 0;
+		int64_t total = 0;
 		for (;;) {
-			const int64_t n = file_->read(buf.data() + carry_over, READ_SIZE - carry_over);
+			int64_t n = file_->read_raw(buf.data(), READ_SIZE);
+			if (n == READ_SIZE) {
+				file_->read_to(back_inserter(buf), '\n');
+				n = buf.size();
+			}
 			total += n;
-			const int64_t d = (n == READ_SIZE - carry_over)
-				? search(buf.rbegin(), buf.rend(), config_.line_delimiter.cbegin(), config_.line_delimiter.cend()) - buf.rbegin()
-				: READ_SIZE - n - carry_over;
-			if (d == READ_SIZE && n > 0)
-				throw runtime_error("Buffer size exceeded.");
-			if (READ_SIZE - d > 0) {
-				vector<char> new_buf(buf.begin(), buf.begin() + READ_SIZE - d);
+			if (n > 0) {
+				vector<char> new_buf(buf.begin(), buf.begin() + n);
 				{
 					unique_lock<mutex> lock(mtx);
 					read_cv.wait(lock, [&buffers, consumers] { return buffers.size() < consumers; });
 					buffers.push(move(new_buf));
 				}
 			}
-			if (n < READ_SIZE - carry_over) {
+			if (n < READ_SIZE || total + READ_SIZE > max_size) {
 				stop = true;
 				consume_cv.notify_all();
 				break;
 			} else
 				consume_cv.notify_one();
-			copy(buf.end() - d, buf.end(), buf.begin());
-			carry_over = d;
+			buf.resize(READ_SIZE);
 		}
 	};
 

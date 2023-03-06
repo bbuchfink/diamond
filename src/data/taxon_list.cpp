@@ -64,10 +64,15 @@ static void load_mapping_file(ExternalSorter<pair<string, TaxId>>& sorter)
 	string accession, last;
 
 	while (!f.eof() && (f.getline(), !f.line.empty())) {
-		if (format == 0)
-			Util::String::Tokenizer(f.line, "\t") >> Util::String::Skip() >> accession >> taxid;
-		else
-			Util::String::Tokenizer(f.line, "\t") >> accession >> taxid;
+		try {
+			if (format == 0)
+				Util::String::Tokenizer(f.line, "\t") >> Util::String::Skip() >> accession >> taxid;
+			else
+				Util::String::Tokenizer(f.line, "\t") >> accession >> taxid;
+		}
+		catch (Util::String::TokenizerException&) {
+			throw std::runtime_error("Malformed input in line " + std::to_string(f.line_count));
+		}
 
 		if (accession.empty())
 			throw std::runtime_error("Empty accession field in line " + std::to_string(f.line_count));

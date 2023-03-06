@@ -15,7 +15,7 @@ File* merge(std::vector<File*>::iterator begin, std::vector<File*>::iterator end
 	vector<Table> tables;
 	tables.reserve(end - begin);
 	for (auto it = begin; it != end; ++it) {
-		tables.push_back((*it)->read(1, 1));
+		tables.push_back((*it)->read_record());
 		if (tables.back().empty())
 			continue;
 		queue.emplace(tables.back().front().get<int64_t>(column), it - begin);
@@ -24,7 +24,7 @@ File* merge(std::vector<File*>::iterator begin, std::vector<File*>::iterator end
 		const int64_t f = queue.top().second;
 		out->write(tables[f].front());
 		queue.pop();
-		tables[f] = begin[f]->read(1, 1);
+		tables[f] = begin[f]->read_record();
 		if (!tables[f].empty())
 			queue.emplace(tables[f].front().get<int64_t>(column), f);
 	}

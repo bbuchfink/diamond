@@ -4,6 +4,9 @@
 #include "../sequence/sequence.h"
 #include "../algo/sort_helper.h"
 #include "../algo/transform_iterator.h"
+#include "file.h"
+#include "../data_structures/reorder_queue.h"
+#include "../util.h"
 
 using std::numeric_limits;
 using std::runtime_error;
@@ -12,6 +15,9 @@ using std::vector;
 using std::pair;
 using std::less;
 using std::move;
+using std::bind;
+using std::atomic;
+using std::thread;
 
 namespace Util { namespace Tsv {
 
@@ -27,11 +33,22 @@ Table::Table(Table&& table) noexcept:
 	limits_(move(table.limits_))
 {}
 
+Table::Table(const Schema& schema, std::vector<char>&& data, std::vector<int64_t>&& limits):
+	schema_(schema),
+	data_(move(data)),
+	limits_(move(limits))
+{
+}
+
 template<typename It, typename Tok>
 Table::Table(const Schema& schema, It begin, It end):
 	Table(schema)
 {
 	append(begin, end);
+}
+
+int64_t Table::alloc_size() const {
+	return data_.size() + limits_.size() * sizeof(decltype(limits_)::value_type);
 }
 
 void Table::append(const Table& table) {
@@ -77,15 +94,15 @@ void Table::push_back(It begin, It end, RecordId record_id) {
 	limits_.push_back(limits_.back());
 	if (record_id >= 0) {
 		++i;
-		push_int64(record_id);
+		push(record_id);
 	}
 	while (tok.good() && i < schema_.cend()) {
 		switch (*i) {
 		case Type::STRING:
-			push_string(*tok);
+			push(*tok);
 			break;
 		case Type::INT64:
-			push_int64(*tok);
+			push(convert_string<int64_t>(*tok));
 			break;
 		default:
 			throw runtime_error("Invalid type in schema");
@@ -100,29 +117,30 @@ void Table::push_back(It begin, It end, RecordId record_id) {
 template void Table::push_back<string::const_iterator, TokenIterator<string::const_iterator, '\t'>>(string::const_iterator, string::const_iterator, RecordId);
 template void Table::push_back<const char*, LineIterator>(const char*, const char*, RecordId);
 
-void Table::push_string(const std::string& s) {
-	push_int32((int32_t)s.length());
+void Table::push(const std::string& s) {
+	push((int32_t)s.length());
 	data_.insert(data_.end(), s.cbegin(), s.cend());
 	limits_.back() += s.length();
 }
 
-void Table::push_int32(int32_t x) {
+void Table::push(int32_t x) {
 	data_.insert(data_.end(), reinterpret_cast<const char*>(&x), reinterpret_cast<const char*>(&x) + 4);
 	limits_.back() += 4;
 }
 
-void Table::push_int64(int64_t x) {
+void Table::push(int64_t x) {
 	data_.insert(data_.end(), reinterpret_cast<const char*>(&x), reinterpret_cast<const char*>(&x) + 8);
 	limits_.back() += 8;
-}
-
-void Table::push_int64(const std::string& s) {
-	push_int64(convert_string<int64_t>(s));
 }
 
 void Table::write(TextBuffer& buf) const {
 	for (int64_t i = 0; i < size(); ++i)
 		(*this)[i].write(buf);
+}
+
+void Table::write_record(int i) {
+	if (i != 0)
+		throw std::runtime_error("Mismatching field count for Table::write_record");
 }
 
 Table Table::sorted(int col, int threads) {
@@ -138,6 +156,29 @@ Table Table::sorted(int col, int threads) {
 
 void Table::sort(int col, int threads) {
 	*this = sorted(col, threads);
+}
+
+void Table::map(int threads, std::function<Table(const Record&)>& f, File& out) const {
+	static const RecordId BATCH_SIZE = 1024;
+	auto callback = bind(static_cast<void (File::*)(const TextBuffer*)>(&File::write), &out, std::placeholders::_1);
+	ReorderQueue<TextBuffer*, decltype(callback)> queue(0, callback);
+	atomic<int64_t> next(0);
+	auto worker = [&]() {
+		for (;;) {
+			const int64_t p = next++;
+			if (p * BATCH_SIZE >= size())
+				break;
+			TextBuffer* buf = new TextBuffer;
+			for (RecordId i = p * BATCH_SIZE; i < std::min((p + 1) * BATCH_SIZE, size()); ++i)
+				f((*this)[i]).write(*buf);
+			queue.push(p, buf);
+		}
+	};
+	vector<thread> t;
+	for (int i = 0; i < std::min((int64_t)threads, div_up(size(), BATCH_SIZE)); ++i)
+		t.emplace_back(worker);
+	for (auto& i : t)
+		i.join();
 }
 
 }}

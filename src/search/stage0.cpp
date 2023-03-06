@@ -126,6 +126,8 @@ void search_shape(unsigned sid, int query_block, unsigned query_iteration, char 
 			//ref_idx = new SeedArray(ref_seqs, sid, range, query_seeds_hashed.get(), true);
 		else
 			ref_idx = new SeedArray(*cfg.target, ref_hst.get(sid), range, ref_buffer, &no_filter, enum_ref);
+		timer.finish();
+		log_rss();
 
 		timer.go("Building query seed array");
 		SeedArray* query_idx;
@@ -135,6 +137,7 @@ void search_shape(unsigned sid, int query_block, unsigned query_iteration, char 
 		else
 			query_idx = new SeedArray(*cfg.query, query_hst.get(sid), range, query_buffer, &no_filter, enum_query);
 		timer.finish();
+		log_rss();
 
 		log_stream << "Indexed query seeds = " << Util::String::ratio_percentage(query_idx->size(), query_seqs.letters())
 			<< ", reference seeds = " << Util::String::ratio_percentage(ref_idx->size(), ref_seqs.letters()) << endl;
@@ -151,14 +154,16 @@ void search_shape(unsigned sid, int query_block, unsigned query_iteration, char 
 		for (auto &t : threads)
 			t.join();
 		timer.finish();
+		log_rss();
 
-		if(config.freq_masking && !config.lin_stage1) {
+		if(config.freq_masking && !config.lin_stage1 && !cfg.lin_stage1_target) {
 			timer.go("Building seed filter");
 			frequent_seeds.build(sid, range, query_seed_hits, ref_seed_hits, cfg);
 		}
 		else
 			Search::mask_seeds(shapes[sid], range, query_seed_hits, ref_seed_hits, cfg);
 
+		log_rss();
 		unique_ptr<KmerRanking> kmer_ranking;
 #ifdef KEEP_TARGET_ID
 		if (config.lin_stage1) {
@@ -183,12 +188,16 @@ void search_shape(unsigned sid, int query_block, unsigned query_iteration, char 
 			threads.emplace_back(search_worker, &seedp, &range, sid, i, query_seed_hits, ref_seed_hits, context, &cfg);
 		for (auto &t : threads)
 			t.join();
+		timer.finish();
+		log_rss();
 
 		timer.go("Deallocating memory");
 		delete ref_idx;
 		delete query_idx;
 		delete context;
 		kmer_ranking.reset();
+		timer.finish();
+		log_rss();
 	}
 }
 
