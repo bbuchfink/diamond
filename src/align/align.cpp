@@ -329,8 +329,8 @@ void align_queries(Consumer* output_file, Search::Config& cfg)
 		OutputWriter writer{ output_file };
 		output_sink.reset(new ReorderQueue<TextBuffer*, OutputWriter>(query_range.first, writer));
 		unique_ptr<thread> heartbeat;
-		//if (config.verbosity >= 3 && config.load_balancing == Config::query_parallel && !config.swipe_all)
-			//heartbeat.reset(new thread(heartbeat_worker, query_range.second, &cfg));
+		if (config.verbosity >= 3 && config.load_balancing == Config::query_parallel && !config.swipe_all && config.heartbeat)
+			heartbeat.reset(new thread(heartbeat_worker, query_range.second, &cfg));
 		size_t n_threads = config.threads_align == 0 ? config.threads_ : config.threads_align;
 		if (config.load_balancing == Config::target_parallel || (config.swipe_all && (cfg.target->seqs().size() >= cfg.query->seqs().size())))
 			n_threads = 1;

@@ -171,7 +171,7 @@ struct SequenceFile {
 	FastaFile* sub_db(It begin, It end, const std::string& file_name = std::string());
 	template<typename It>
 	void sub_db(It begin, It end, FastaFile* out);
-	std::vector<std::tuple<FastaFile*, std::vector<OId>, Util::Tsv::File*>> length_sort(int64_t block_size);
+	std::vector<std::tuple<FastaFile*, std::vector<OId>, Util::Tsv::File*>> length_sort(int64_t block_size, std::function<int64_t(Loc)>& seq_size);
 	Util::Tsv::File& seqid_file();
 
 	void init_dict(const size_t query_block, const size_t target_block);

@@ -325,7 +325,7 @@ BlastScoreBlkProteinMatrixRead(BlastScoreBlk* sbp, FILE *fp)
     char    a1chars[BLASTAA_SIZE], a2chars[BLASTAA_SIZE];
     long lineno = 0;
     double  xscore;
-    register int  index1, index2;
+    int  index1, index2;
     int x_index, u_index, o_index, c_index;
     const char kCommentChar = '#';
     const char* kTokenStr = " \t\n\r";
@@ -500,7 +500,7 @@ BlastScoreBlkNucleotideMatrixRead(BlastScoreBlk* sbp, FILE *fp)
     Int4 numFreqs = 0;
     Int4 alphaSize = 0;
     double fval;
-    register int  index1, index2;
+    int  index1, index2;
     char fbuf[512+3];
     char alphabet[24];
     char *cp,*ncp,*lp;
@@ -1374,7 +1374,7 @@ BlastKarlinLHtoK(Blast_ScoreFreq* sfp, double lambda, double H)
     /*highest and lowest possible alignment scores for current length*/
     Int4            lowAlignmentScore, highAlignmentScore;
     Int4            first, last; /*loop indices for dynamic program*/
-    register double innerSum;
+    double innerSum;
     double          oldsum, oldsum2;  /* values of innerSum on previous
                                          iterations*/
     double          outerSum;        /* holds sum over j of (innerSum

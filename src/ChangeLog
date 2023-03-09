@@ -5,6 +5,13 @@
   for the `prepdb` workflow.
 - Fixed a bug that caused a segmentation fault when using BLAST databases.
 - Added line numbers for error messages when reading taxonomy mapping files.
+- Fixed a bug that could cause a crash when using the `greedy-vertex-cover`
+  workflow without the `--out` and `--centroid-out` options.
+- Fixed a bug that caused the `greedy-vertex-cover` workflow to only produce a
+  trivial clustering.
+- Fixed a bug that caused the last codon of the -2 reading frame to be translated
+  incorrectly.
+- Reduced the memory use of the clustering workflow.
 
 [2.1.4]
 - Leading spaces are now trimmed and tabulator characters escaped as `\t`

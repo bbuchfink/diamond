@@ -337,6 +337,7 @@ struct Config
 	bool linsearch;
 	int64_t tsv_read_size;
     int zdrop;
+	bool heartbeat;
 
     SequenceType dbtype;
 

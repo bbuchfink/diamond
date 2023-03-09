@@ -89,7 +89,7 @@ void File::read(int threads, std::function<void(int64_t chunk, const Table&)>& c
 		table.append(begin, end);
 		callback(chunk, table);
 		});
-	read(threads, f);
+	read(INT64_MAX, threads, f);
 }
 
 Table File::read(int64_t max_size, int threads) {

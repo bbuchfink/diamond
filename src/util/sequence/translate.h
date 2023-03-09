@@ -80,7 +80,7 @@ public:
 		}
 		if(r) {
 			proteins[1][i] = getAminoAcid(dnaSequence, pos);
-			proteins[4][i] = getAminoAcidReverse(dnaSequence, r);
+			proteins[4][i] = getAminoAcidReverse(dnaSequence, r - 1);
 		}
 		return n;
 	}

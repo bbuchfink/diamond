@@ -96,15 +96,16 @@ pair<double, int> block_size(int64_t memory_limit, Sensitivity s, bool lin) {
 	const double m = (double)memory_limit / 1e9;
 	const int min = std::max(Search::sensitivity_traits[(int)align_mode.sequence_type].at(s).minimizer_window, 1),
 		c = m < 40.0 && s <= Sensitivity::MORE_SENSITIVE && min == 1 ? 4 : 1;
+	const double min_factor = std::min(1 / (double)min * 2, 1.0);
 	const double max = s <= Sensitivity::DEFAULT ? 12.0 :
 		(s <= Sensitivity::MORE_SENSITIVE ? 4.0 : 0.4);
-	double b = m / (18.0 / c / min + 2.0);
-	if (b > 4)
+	double b = m / (18.0 * min_factor / c + 2.0);
+	/*if (b > 4)
 		b = floor(b);
 	else if (b > 0.4)
 		b = floor(b * 10) / 10;
 	else
-		b = floor(b * 1000) / 1000;
+		b = floor(b * 1000) / 1000;*/
 	if (!config.no_block_size_limit && !lin)
 		b = std::min(b, max);
 	if (s >= Sensitivity::VERY_SENSITIVE)
@@ -448,6 +449,7 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 		("query-parallel-limit", 0, "", query_parallel_limit, 3000000u)
 		("log-evalue-scale", 0, "", log_evalue_scale, 1.0 / std::log(2.0))
 		("bootstrap", 0, "", bootstrap)
+		("heartbeat", 0, "", heartbeat)
 		("mp-self", 0, "", mp_self)
 #ifdef EXTRA
             ("zdrop", 'z', "zdrop for gapped dna alignment", zdrop, 40)

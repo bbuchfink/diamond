@@ -71,7 +71,7 @@ void greedy_vertex_cover() {
 		}
 		lines += n;
 		});
-	Util::Tsv::File(Util::Tsv::Schema(), config.edges).read(config.threads_, fn);
+	Util::Tsv::File(Util::Tsv::Schema(), config.edges).read(INT64_MAX, config.threads_, fn);
 	timer.finish();
 	message_stream << "#Lines: " << lines << endl;
 
@@ -115,7 +115,7 @@ void greedy_vertex_cover() {
 			edges.insert(edges.end(), e.cbegin(), e.cend());
 		}
 		});
-	Util::Tsv::File(Util::Tsv::Schema(), config.edges).read(config.threads_, fn2);
+	Util::Tsv::File(Util::Tsv::Schema(), config.edges).read(INT64_MAX, config.threads_, fn2);
 	timer.finish();
 	log_rss();
 
@@ -149,8 +149,10 @@ void greedy_vertex_cover() {
 		if (!config.output_file.empty())
 			*out << acc[r[i]] << '\t' << acc[i] << endl;
 	}
-	centroid_out->close();
-	out->close();
+	if(centroid_out)
+		centroid_out->close();
+	if (out)
+		out->close();
 	timer.finish();
 	message_stream << "#Centroids: " << c << endl;
 }

@@ -58,7 +58,7 @@ struct File {
 	}
 
 	template<typename F, typename Out>
-	void read(F& f, Out& out) {
+	void read(int threads, F& f, Out& out) {
 		/*using T = typename std::result_of<F(const Record&)>::type;
 		auto f2 = [](std::vector<T>* v) {
 			for (std::vector<T>::const_iterator i = v->cbegin(); i != v->cend(); ++i)

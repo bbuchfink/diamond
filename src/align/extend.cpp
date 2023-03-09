@@ -227,7 +227,7 @@ pair<vector<Match>, Stats> extend(
 				aligned_targets = move(v.first);
 
 			i0 = i1;
-			i1 += std::min((ptrdiff_t)std::min(chunk_size, MAX_CHUNK_SIZE), l.target_scores.cend() - i1);
+			i1 += std::min((ptrdiff_t)chunk_size, l.target_scores.cend() - i1);
 			previous_tail_score = tail_score;
 			if (new_hits)
 				tail_score = (i1 - 1)->score;

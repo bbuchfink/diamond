@@ -213,7 +213,7 @@ void init_thresholds() {
 	}
 	else {
 		config.diag_filter_id = 85.0;
-		config.diag_filter_cov = config.member_cover > 50.0 ? config.member_cover - 5.0 : 0.0;
+		config.diag_filter_cov = config.member_cover > 50.0 ? config.member_cover - 10.0 : 0.0;
 	}
 }
 

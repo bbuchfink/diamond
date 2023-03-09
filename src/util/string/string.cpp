@@ -61,7 +61,7 @@ int64_t interpret_number(const std::string& s) {
 		throw std::runtime_error(string("Invalid size specifier (") + c + ") in number: " + s + ". Permitted values: 'G'");
 	ss >> c;
 	if (!ss.eof())
-		throw std::runtime_error("Invalid number format: " + s);	
+		throw std::runtime_error("Invalid number format: " + s);
 	return int64_t(n * 1e9);
 }
 

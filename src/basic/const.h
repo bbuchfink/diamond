@@ -25,7 +25,7 @@ struct Const
 {
 
 	enum {
-		build_version = 158,
+		build_version = 159,
 #ifdef SINGLE_THREADED
 		seedp_bits = 0,
 #else

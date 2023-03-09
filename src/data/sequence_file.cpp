@@ -55,6 +55,7 @@ using std::numeric_limits;
 using std::tuple;
 using std::get;
 using std::unique_ptr;
+using std::function;
 using namespace Util::Tsv;
 
 static constexpr int64_t CHECK_FOR_DNA_COUNT = 10;
@@ -861,7 +862,8 @@ void SequenceFile::add_seqid_mapping(const std::string& id, OId oid) {
 	}
 }
 
-vector<tuple<FastaFile*, vector<OId>, File*>> SequenceFile::length_sort(int64_t block_size) {
+vector<tuple<FastaFile*, vector<OId>, File*>> SequenceFile::length_sort(int64_t block_size, function<int64_t(Loc)>& seq_size) {
+	static const int64_t MIN_BLOCK_SIZE = 1;
 	vector<tuple<FastaFile*, vector<OId>, File*>> files;
 	init_seq_access();
 	vector<Letter> seq;
@@ -874,19 +876,25 @@ vector<tuple<FastaFile*, vector<OId>, File*>> SequenceFile::length_sort(int64_t 
 	}
 	ips4o::parallel::sort(lengths.begin(), lengths.end(), greater<pair<Loc, OId>>(), config.threads_);
 
-	int64_t letters = 0, seqs = 0;
+	int64_t size = 0, seqs = 0, letters = 0;
 	int block = 0;
 	for (auto i = lengths.begin(); i != lengths.end(); ++i) {
+		size += seq_size(i->first);
 		letters += i->first;
 		++seqs;
 		i->first = block;
-		if (letters >= block_size || seqs >= numeric_limits<SuperBlockId>::max()) {
+		if ((size >= block_size && letters >= MIN_BLOCK_SIZE) || seqs >= numeric_limits<SuperBlockId>::max()) {
+			log_stream << "Super block " << block << " seqs=" << seqs << " letters=" << letters << endl;
 			++block;
-			letters = 0;
+			size = 0;
 			seqs = 0;
+			letters = 0;
 		}
 	}
-	if (letters > 0) ++block;
+	if (size > 0) {
+		log_stream << "Super block " << block << " seqs=" << seqs << " letters=" << letters << endl;
+		++block;
+	}
 	ips4o::parallel::sort(lengths.begin(), lengths.end(), [](const pair<Loc, OId>& p1, const pair<Loc, OId>& p2) { return p1.second < p2.second; }, config.threads_);
 
 	files.reserve(block);

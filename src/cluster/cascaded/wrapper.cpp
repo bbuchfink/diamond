@@ -23,6 +23,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../data/fasta/fasta_file.h"
 #include "../run/workflow.h"
 #include "../util/system/system.h"
+#include "../../search/search.h"
 
 using std::shared_ptr;
 using std::endl;
@@ -40,6 +41,8 @@ using std::get;
 using std::ignore;
 using std::back_inserter;
 using std::unique_ptr;
+using std::bind;
+using std::function;
 using namespace Util::Tsv;
 
 namespace Cluster {
@@ -67,10 +70,27 @@ struct Config {
 	task_timer                          total_time;
 	int64_t                             seqs_processed;
 	int64_t                             letters_processed;
-	std::vector<OId>                    oid2centroid;
 	std::vector<OId>                    centroid2oid;
 	std::unique_ptr<File>               oid_to_centroid_oid;
 };
+
+int64_t seq_mem_use(Loc len, Loc id_len, int c, int min) {
+	assert(min > 1);
+	int extend_stage = (len / (min / 2)) * (15  // trace point buffer
+		+ 16)        // SeedHitList
+		+ 12         // SeedHitList
+		+ 2 * len;   // SequenceSet
+	extend_stage /= 2;
+	assert(min > 1);
+	return std::max(
+		len + 8  // SequenceSet
+		+ id_len + 8 // Seqtitle
+		+ len * 9 / c / (min / 2) // SeedArray
+		+ 8 // super_block_id_to_oid
+		+ 8 // BestCentroid / clustering
+		+ 4 // unaligned 
+		, extend_stage);
+}
 
 struct BestCentroid : public Consumer, public vector<OId> {
 	BestCentroid(OId block_size) :
@@ -145,7 +165,8 @@ void Cascaded::run() {
 		throw std::runtime_error("Clustering is not supported for BLAST databases.");
 	timer.finish();
 	message_stream << "Input database: " << db->file_name() << " (" << db->sequence_count() << " sequences, " << db->letters() << " letters)" << endl;
-	const int64_t block_size = (int64_t)(::block_size(Util::String::interpret_number(config.memory_limit.get(DEFAULT_MEMORY_LIMIT)), Sensitivity::FASTER, true).first * 1e9);
+	const int64_t mem_limit = Util::String::interpret_number(config.memory_limit.get(DEFAULT_MEMORY_LIMIT));
+	const int64_t block_size = (int64_t)(::block_size(mem_limit, Sensitivity::FASTER, true).first * 1e9);
 	unique_ptr<Util::Tsv::File> out(open_out_tsv());
 
 	if (block_size >= (double)db->letters() && db->sequence_count() < numeric_limits<SuperBlockId>::max()) {
@@ -157,7 +178,9 @@ void Cascaded::run() {
 		timer.go("Length sorting the input file");
 		Config cfg(db);
 		config.db_size = db->letters();
-		vector<tuple<FastaFile*, vector<OId>, Util::Tsv::File*>> super_blocks = db->length_sort(block_size);
+		const int minimizer_window = std::max(Search::sensitivity_traits[(int)align_mode.sequence_type].at(Sensitivity::FASTER).minimizer_window, 1);
+		auto seq_size = function<int64_t(Loc)>(bind(seq_mem_use, std::placeholders::_1, 0, 1, minimizer_window));
+		vector<tuple<FastaFile*, vector<OId>, Util::Tsv::File*>> super_blocks = db->length_sort(mem_limit / 2, seq_size);
 		timer.finish();
 		config.freq_masking = true;
 		int i = 0;
