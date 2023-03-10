@@ -79,7 +79,7 @@ struct task_timer
 	{}
 	~task_timer()
 	{
-#if __cplusplus >= 201703L
+#if __cplusplus >= 201703L || defined(_MSC_VER)
 		if (!std::uncaught_exceptions())
 #else
 		if (!std::uncaught_exception())

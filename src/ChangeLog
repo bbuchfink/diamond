@@ -12,6 +12,7 @@
 - Fixed a bug that caused the last codon of the -2 reading frame to be translated
   incorrectly.
 - Reduced the memory use of the clustering workflow.
+- Updated the bundled NCBI toolkit to the latest version.
 
 [2.1.4]
 - Leading spaces are now trimmed and tabulator characters escaped as `\t`

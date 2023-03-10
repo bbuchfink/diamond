@@ -111,7 +111,7 @@ endfunction(set_cxx_standard)
 
 check_cxx_compiler_flag("-std=gnu++14" HAS_GNUPP14)
 check_cxx_compiler_flag("-std=gnu++17" HAS_GNUPP17)
-if(HAS_GNUPP17)
+if(HAS_GNUPP17 OR ${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
   set_cxx_standard(17 "-std=gnu++17")
 elseif (HAS_GNUPP14)
   set_cxx_standard(14 "-std=gnu++14")
