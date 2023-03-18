@@ -55,31 +55,31 @@ extern MessageStream message_stream;
 extern MessageStream verbose_stream;
 extern MessageStream log_stream;
 
-struct task_timer
+struct TaskTimer
 {
-	task_timer(MessageStream& stream, unsigned level = 1) :
+	TaskTimer(MessageStream& stream, unsigned level = 1) :
 		level_(level),
 		msg_(nullptr),
 		stream_(stream)
 	{
 		start(nullptr);
 	}
-	task_timer(unsigned level = 1) :
-		task_timer(get_stream(), level)
+	TaskTimer(unsigned level = 1) :
+		TaskTimer(get_stream(), level)
 	{}
-	task_timer(const char* msg, MessageStream& stream, unsigned level = 1) :
+	TaskTimer(const char* msg, MessageStream& stream, unsigned level = 1) :
 		level_(level),
 		msg_(msg),
 		stream_(stream)
 	{
 		start(msg);
 	}
-	task_timer(const char* msg, unsigned level = 1):
-		task_timer(msg, get_stream(), level)
+	TaskTimer(const char* msg, unsigned level = 1):
+		TaskTimer(msg, get_stream(), level)
 	{}
-	~task_timer()
+	~TaskTimer()
 	{
-#if __cplusplus >= 201703L || defined(_MSC_VER)
+#if (__cplusplus >= 201703L && !defined(__APPLE__)) || defined(_MSC_VER)
 		if (!std::uncaught_exceptions())
 #else
 		if (!std::uncaught_exception())

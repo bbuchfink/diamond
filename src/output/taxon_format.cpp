@@ -24,7 +24,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/sequence/sequence.h"
 
 using std::set;
-using std::endl;
 using std::vector;
 
 void Taxon_format::print_match(const HspContext &r, Output::Info &info)
@@ -38,7 +37,7 @@ void Taxon_format::print_match(const HspContext &r, Output::Info &info)
 			taxid = info.db->taxon_nodes().get_lca(taxid, *i);
 	}
 	catch (std::exception &) {
-		std::cerr << "Query=" << r.query_title << endl << "Subject=" << r.target_title << endl;
+		fprintf(stderr, "Query=%s Subject=%s\n", r.query_title.c_str(), r.target_title.c_str());
 		throw;
 	}
 }

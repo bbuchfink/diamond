@@ -26,6 +26,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "target_iterator.h"
 #include "../../util/data_structures/mem_buffer.h"
 #include "../score_vector_int16.h"
+#include "../util/simd/dispatch.h"
 
 using std::list;
 using std::thread;
@@ -35,17 +36,17 @@ using std::vector;
 
 namespace DISPATCH_ARCH {
 
-template<typename _sv>
+template<typename Sv>
 struct Banded3FrameSwipeMatrix
 {
 
 	struct ColumnIterator
 	{
-		ColumnIterator(_sv* hgap_front, _sv* score_front) :
+		ColumnIterator(Sv* hgap_front, Sv* score_front) :
 			hgap_ptr_(hgap_front),
 			score_ptr_(score_front)
 		{
-			sm4 = ScoreTraits<_sv>::zero();
+			sm4 = ScoreTraits<Sv>::zero();
 			sm3 = *score_ptr_;
 			sm2 = *(score_ptr_ + 1);
 		}
@@ -56,26 +57,26 @@ struct Banded3FrameSwipeMatrix
 			sm3 = sm2;
 			sm2 = *(score_ptr_ + 1);
 		}
-		inline _sv hgap() const
+		inline Sv hgap() const
 		{
 			return *(hgap_ptr_ + 3);
 		}
-		inline void set_hgap(const _sv& x)
+		inline void set_hgap(const Sv& x)
 		{
 			*hgap_ptr_ = x;
 		}
-		inline void set_score(const _sv& x)
+		inline void set_score(const Sv& x)
 		{
 			*score_ptr_ = x;
 		}
 		void set_zero()
 		{
-			*(score_ptr_ - 1) = ScoreTraits<_sv>::zero();
-			*(score_ptr_ - 2) = ScoreTraits<_sv>::zero();
-			*(score_ptr_ - 3) = ScoreTraits<_sv>::zero();
+			*(score_ptr_ - 1) = ScoreTraits<Sv>::zero();
+			*(score_ptr_ - 2) = ScoreTraits<Sv>::zero();
+			*(score_ptr_ - 3) = ScoreTraits<Sv>::zero();
 		}
-		_sv *hgap_ptr_, *score_ptr_;
-		_sv sm4, sm3, sm2;
+		Sv *hgap_ptr_, *score_ptr_;
+		Sv sm4, sm3, sm2;
 	};
 
 	Banded3FrameSwipeMatrix(size_t band, size_t cols) :
@@ -83,8 +84,8 @@ struct Banded3FrameSwipeMatrix
 	{
 		hgap_.resize(band + 3);
 		score_.resize(band + 1);
-		std::fill(hgap_.begin(), hgap_.end(), _sv());
-		std::fill(score_.begin(), score_.end(), _sv());
+		std::fill(hgap_.begin(), hgap_.end(), Sv());
+		std::fill(score_.begin(), score_.end(), Sv());
 	}
 
 	inline ColumnIterator begin(size_t offset, size_t col)
@@ -99,24 +100,28 @@ struct Banded3FrameSwipeMatrix
 
 private:
 	const size_t band_;
-	static thread_local MemBuffer<_sv> hgap_, score_;
+#ifdef USE_TLS
+	static thread_local MemBuffer<Sv> hgap_, score_;
+#else
+	MemBuffer<Sv> hgap_, score_;
+#endif
 
 };
 
-template<typename _sv>
+template<typename Sv>
 struct Banded3FrameSwipeTracebackMatrix
 {
 
-	typedef typename ScoreTraits<_sv>::Score Score;
+	typedef typename ScoreTraits<Sv>::Score Score;
 
 	struct ColumnIterator
 	{
-		ColumnIterator(_sv* hgap_front, _sv* score_front, _sv* score_front1) :
+		ColumnIterator(Sv* hgap_front, Sv* score_front, Sv* score_front1) :
 			hgap_ptr_(hgap_front),
 			score_ptr_(score_front),
 			score_ptr1_(score_front1)
 		{
-			sm4 = ScoreTraits<_sv>::zero();
+			sm4 = ScoreTraits<Sv>::zero();
 			sm3 = *(score_ptr_++);
 			sm2 = *(score_ptr_);
 		}
@@ -127,26 +132,26 @@ struct Banded3FrameSwipeTracebackMatrix
 			sm3 = sm2;
 			sm2 = *score_ptr_;
 		}
-		inline _sv hgap() const
+		inline Sv hgap() const
 		{
 			return *(hgap_ptr_ + 3);
 		}
-		inline void set_hgap(const _sv& x)
+		inline void set_hgap(const Sv& x)
 		{
 			*hgap_ptr_ = x;
 		}
-		inline void set_score(const _sv& x)
+		inline void set_score(const Sv& x)
 		{
 			*score_ptr1_ = x;
 		}
 		void set_zero()
 		{
-			*(score_ptr1_ - 1) = ScoreTraits<_sv>::zero();
-			*(score_ptr1_ - 2) = ScoreTraits<_sv>::zero();
-			*(score_ptr1_ - 3) = ScoreTraits<_sv>::zero();
+			*(score_ptr1_ - 1) = ScoreTraits<Sv>::zero();
+			*(score_ptr1_ - 2) = ScoreTraits<Sv>::zero();
+			*(score_ptr1_ - 3) = ScoreTraits<Sv>::zero();
 		}
-		_sv *hgap_ptr_, *score_ptr_, *score_ptr1_;
-		_sv sm4, sm3, sm2;
+		Sv* hgap_ptr_, *score_ptr_, *score_ptr1_;
+		Sv sm4, sm3, sm2;
 	};
 
 	struct TracebackIterator
@@ -166,26 +171,26 @@ struct Banded3FrameSwipeTracebackMatrix
 		}
 		Score sm3() const
 		{
-			return *(score_ - (band_ + 1) * ScoreTraits<_sv>::CHANNELS);
+			return *(score_ - (band_ + 1) * ScoreTraits<Sv>::CHANNELS);
 		}
 		Score sm4() const
 		{
-			return *(score_ - (band_ + 2) * ScoreTraits<_sv>::CHANNELS);
+			return *(score_ - (band_ + 2) * ScoreTraits<Sv>::CHANNELS);
 		}
 		Score sm2() const
 		{
-			return *(score_ - band_ * ScoreTraits<_sv>::CHANNELS);
+			return *(score_ - band_ * ScoreTraits<Sv>::CHANNELS);
 		}
 		void walk_diagonal()
 		{
-			score_ -= (band_ + 1) * ScoreTraits<_sv>::CHANNELS;
+			score_ -= (band_ + 1) * ScoreTraits<Sv>::CHANNELS;
 			--i;
 			--j;
 			assert(i >= -1 && j >= -1);
 		}
 		void walk_forward_shift()
 		{
-			score_ -= (band_ + 2) * ScoreTraits<_sv>::CHANNELS;
+			score_ -= (band_ + 2) * ScoreTraits<Sv>::CHANNELS;
 			--i;
 			--j;
 			--frame;
@@ -197,7 +202,7 @@ struct Banded3FrameSwipeTracebackMatrix
 		}
 		void walk_reverse_shift()
 		{
-			score_ -= band_ * ScoreTraits<_sv>::CHANNELS;
+			score_ -= band_ * ScoreTraits<Sv>::CHANNELS;
 			--i;
 			--j;
 			++frame;
@@ -210,8 +215,8 @@ struct Banded3FrameSwipeTracebackMatrix
 		pair<Edit_operation, int> walk_gap(int d0, int d1)
 		{
 			const int i0 = std::max(d0 + j, 0), j0 = std::max(i - d1, -1);
-			const Score *h = score_ - (band_ - 2) * ScoreTraits<_sv>::CHANNELS, *h0 = score_ - (j - j0) * (band_ - 2) * ScoreTraits<_sv>::CHANNELS;
-			const Score *v = score_ - 3 * ScoreTraits<_sv>::CHANNELS, *v0 = score_ - (i - i0 + 1) * 3 * ScoreTraits<_sv>::CHANNELS;
+			const Score *h = score_ - (band_ - 2) * ScoreTraits<Sv>::CHANNELS, *h0 = score_ - (j - j0) * (band_ - 2) * ScoreTraits<Sv>::CHANNELS;
+			const Score *v = score_ - 3 * ScoreTraits<Sv>::CHANNELS, *v0 = score_ - (i - i0 + 1) * 3 * ScoreTraits<Sv>::CHANNELS;
 			const Score score = this->score();
 			const Score e = score_matrix.gap_extend();
 			Score g = score_matrix.gap_open() + e;
@@ -225,8 +230,8 @@ struct Banded3FrameSwipeTracebackMatrix
 					walk_vgap(v, l);
 					return std::make_pair(op_insertion, l);
 				}
-				h -= (band_ - 2) * ScoreTraits<_sv>::CHANNELS;
-				v -= 3 * ScoreTraits<_sv>::CHANNELS;
+				h -= (band_ - 2) * ScoreTraits<Sv>::CHANNELS;
+				v -= 3 * ScoreTraits<Sv>::CHANNELS;
 				++l;
 				g += e;
 			}
@@ -235,7 +240,7 @@ struct Banded3FrameSwipeTracebackMatrix
 					walk_vgap(v, l);
 					return std::make_pair(op_insertion, l);
 				}
-				v -= 3 * ScoreTraits<_sv>::CHANNELS;
+				v -= 3 * ScoreTraits<Sv>::CHANNELS;
 				++l;
 				g += e;
 			}
@@ -244,7 +249,7 @@ struct Banded3FrameSwipeTracebackMatrix
 					walk_hgap(h, l);
 					return std::make_pair(op_deletion, l);
 				}
-				h -= (band_ - 2) * ScoreTraits<_sv>::CHANNELS;
+				h -= (band_ - 2) * ScoreTraits<Sv>::CHANNELS;
 				++l;
 				g += e;
 			}
@@ -272,7 +277,7 @@ struct Banded3FrameSwipeTracebackMatrix
 		const int i_ = std::max(-i0, 0) * 3,
 			i1 = (int)std::min(band_, size_t(dna_len - 2 - i0 * 3));
 		const Score *s = (Score*)(&score_[col*(band_ + 1) + i_]) + channel;
-		for (int i = i_; i < i1; ++i, s += ScoreTraits<_sv>::CHANNELS)
+		for (int i = i_; i < i1; ++i, s += ScoreTraits<Sv>::CHANNELS)
 			if (*s == score)
 				return TracebackIterator(s, band_, i % 3, i0 + i / 3, j);
 		throw std::runtime_error("Trackback error.");
@@ -283,7 +288,7 @@ struct Banded3FrameSwipeTracebackMatrix
 	{
 		hgap_.resize(band + 3);
 		score_.resize((band + 1) * (cols + 1));
-		const _sv z = _sv();
+		const Sv z = Sv();
 		std::fill(hgap_.begin(), hgap_.end(), z);
 		std::fill(score_.begin(), score_.begin() + band + 1, z);
 		for (size_t i = 0; i < cols; ++i)
@@ -302,14 +307,20 @@ struct Banded3FrameSwipeTracebackMatrix
 
 private:
 	const size_t band_;
-	static thread_local MemBuffer<_sv> hgap_;
-	MemBuffer<_sv> score_;
+#ifdef USE_TLS
+	static thread_local MemBuffer<Sv> hgap_;
+#else
+	MemBuffer<Sv> hgap_;
+#endif
+	MemBuffer<Sv> score_;
 
 };
 
-template<typename _sv> thread_local MemBuffer<_sv> Banded3FrameSwipeMatrix<_sv>::hgap_;
-template<typename _sv> thread_local MemBuffer<_sv> Banded3FrameSwipeMatrix<_sv>::score_;
-template<typename _sv> thread_local MemBuffer<_sv> Banded3FrameSwipeTracebackMatrix<_sv>::hgap_;
+#ifdef USE_TLS
+template<typename Sv> thread_local MemBuffer<Sv> Banded3FrameSwipeMatrix<Sv>::hgap_;
+template<typename Sv> thread_local MemBuffer<Sv> Banded3FrameSwipeMatrix<Sv>::score_;
+template<typename Sv> thread_local MemBuffer<Sv> Banded3FrameSwipeTracebackMatrix<Sv>::hgap_;
+#endif
 
 template<typename _sv, typename _traceback>
 struct Banded3FrameSwipeMatrixRef
@@ -561,7 +572,7 @@ list<Hsp> banded_3frame_swipe(const TranslatedSequence &query, Strand strand, ve
 {
 	vector<DpTarget> overflow16, overflow32;
 #ifdef __SSE2__
-	task_timer timer("Banded 3frame swipe (sort)", parallel ? 3 : UINT_MAX);
+	TaskTimer timer("Banded 3frame swipe (sort)", parallel ? 3 : UINT_MAX);
 	std::stable_sort(target_begin, target_end);
 	list<Hsp> out;
 	if (parallel) {
@@ -608,3 +619,5 @@ list<Hsp> banded_3frame_swipe(const TranslatedSequence &query, Strand strand, ve
 }
 
 }
+
+DISPATCH_7(std::list<Hsp>, banded_3frame_swipe, const TranslatedSequence&, query, Strand, strand, std::vector<DpTarget>::iterator, target_begin, std::vector<DpTarget>::iterator, target_end, DpStat&, stat, bool, score_only, bool, parallel)

@@ -85,14 +85,14 @@ struct Matrix
 		return score_[i + 1];
 	}
 private:
-#ifdef __APPLE__
+#if defined(__APPLE__) || !defined(USE_TLS)
 	MemBuffer<Sv> hgap_, score_;
 #else
 	static thread_local MemBuffer<Sv> hgap_, score_;
 #endif
 };
 
-#ifndef __APPLE__
+#if !defined(__APPLE__) && defined(USE_TLS)
 template<typename Sv> thread_local MemBuffer<Sv> Matrix<Sv>::hgap_;
 template<typename Sv> thread_local MemBuffer<Sv> Matrix<Sv>::score_;
 #endif
@@ -240,7 +240,7 @@ struct TracebackVectorMatrix
 		return Sv();
 	}
 
-#ifdef __APPLE__
+#if defined(__APPLE__) || !defined(USE_TLS)
 	MemBuffer<Sv> hgap_, score_;
 #else
 	static thread_local MemBuffer<Sv> hgap_, score_;
@@ -250,7 +250,7 @@ private:
 	int rows_, cols_;
 };
 
-#ifndef __APPLE__
+#if !defined(__APPLE__) && defined(USE_TLS)
 template<typename Sv> thread_local MemBuffer<Sv> TracebackVectorMatrix<Sv>::hgap_;
 template<typename Sv> thread_local MemBuffer<Sv> TracebackVectorMatrix<Sv>::score_;
 #endif

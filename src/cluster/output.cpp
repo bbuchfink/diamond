@@ -130,7 +130,7 @@ void realign(const FlatArray<OId>& clusters, const vector<OId>& centroids, Seque
 	score_matrix.set_db_letters(config.db_size ? config.db_size : db.letters());
 	OId centroid_offset = 0;
 	int n1 = 0;
-	task_timer timer;
+	TaskTimer timer;
 	Cfg cfg{ hsp_values, flag_any(db.format_flags(), SequenceFile::FormatFlags::TITLES_LAZY), clusters, centroids, db };
 
 	SequenceFile::LoadFlags flags = SequenceFile::LoadFlags::SEQS | SequenceFile::LoadFlags::CONVERT_ALPHABET | SequenceFile::LoadFlags::NO_CLOSE_WEAKLY;
@@ -179,7 +179,7 @@ void realign(const FlatArray<OId>& clusters, const vector<OId>& centroids, Seque
 }
 
 void realign(const vector<OId>& clustering, SequenceFile& db, function<void(const HspContext&)>& callback, HspValues hsp_values) {
-	task_timer timer("Finding clusters");
+	TaskTimer timer("Finding clusters");
 	FlatArray<OId> clusters;
 	vector<OId> centroids;
 	tie(clusters, centroids) = cluster_sorted(clustering);

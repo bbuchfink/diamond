@@ -16,7 +16,6 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#include <iostream>
 #include <stdio.h>
 #ifdef _MSC_VER
 #define NOMINMAX
@@ -33,7 +32,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "file_source.h"
 #include "../system.h"
 
-using std::endl;
 using std::string;
 using std::runtime_error;
 

@@ -46,7 +46,7 @@ TaxonomyNodes::TaxonomyNodes(const string& file_name, const bool init_cache)
 
 void TaxonomyNodes::save(Serializer &out)
 {
-	task_timer timer("Building taxonomy nodes");
+	TaskTimer timer("Building taxonomy nodes");
 	out.unset(Serializer::VARINT);
 	out << parent_;
 	out.write_raw(rank_);

@@ -198,7 +198,7 @@ TextBuffer* legacy_pipeline(const HitIterator::Hits& hits, Search::Config& cfg, 
 
 	QueryMapper *mapper = new ExtensionPipeline::BandedSwipe::Pipeline(hits.query, hits.begin, hits.end, dp_stat, cfg);
 
-	task_timer timer("Initializing mapper", UINT_MAX);
+	TaskTimer timer("Initializing mapper", UINT_MAX);
 	mapper->init();
 	timer.finish();
 	mapper->run(stat, cfg);
@@ -293,7 +293,7 @@ void align_queries(Consumer* output_file, Search::Config& cfg)
 	const int64_t mem_limit = Util::String::interpret_number(config.memory_limit.get("16G"));
 
 	pair<BlockId, BlockId> query_range;
-	task_timer timer(nullptr, 3);
+	TaskTimer timer(nullptr, 3);
 
 	if (!cfg.blocked_processing && !cfg.iterated())
 		cfg.db->init_random_access(cfg.current_query_block, 0, false);

@@ -43,7 +43,7 @@ struct BestCentroid : public Consumer, public vector<OId> {
 
 static void self_align(Block& block, Config& cfg) {
 	using Edge = Util::Algo::Edge<SuperBlockId>;
-	task_timer timer(("CLUSTER Searching " + std::to_string(block.seqs().size()) + " unaligned sequences").c_str(), cfg.message_stream);
+	TaskTimer timer(("CLUSTER Searching " + std::to_string(block.seqs().size()) + " unaligned sequences").c_str(), cfg.message_stream);
 	shared_ptr<Callback> neighbors(new Callback());
 	shared_ptr<BlockWrapper> unaligned_wrapper(new BlockWrapper(block));
 	config.self = true;
@@ -101,7 +101,7 @@ static void search_vs_centroids(Block& block, const int round, Config& cfg) {
 		cfg.message_stream << "CLUSTER searching vs. centroids sensitivity = " << to_string(cfg.sens[round])
 		<< " #sequences = " << block.seqs().size() << " , #centroids = " << cfg.centroids->sequence_count() << endl;
 	cfg.status_msg();
-	task_timer timer(("Searching " + std::to_string(block.seqs().size()) + " against centroid sequences (" + to_string(cfg.sens[round]) + ")").c_str(), cfg.message_stream);
+	TaskTimer timer(("Searching " + std::to_string(block.seqs().size()) + " against centroid sequences (" + to_string(cfg.sens[round]) + ")").c_str(), cfg.message_stream);
 	shared_ptr<BlockWrapper> block_wrapper(new BlockWrapper(block));
 	shared_ptr<BestCentroid> best_centroid(new BestCentroid(block.seqs().size()));
 	config.self = false;
@@ -147,7 +147,7 @@ void Algo::run() {
 	if (!config.resume.empty())
 		cfg.load_state();
 	
-	task_timer timer("CLUSTER Opening the input file", cfg.message_stream);
+	TaskTimer timer("CLUSTER Opening the input file", cfg.message_stream);
 	const int64_t block_size = (int64_t)(cfg.block_size * 1e9), cache_limit = 0; // block_size;
 	config.output_format = { "edge" };
 	unique_ptr<Block> block;

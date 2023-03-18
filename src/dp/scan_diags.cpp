@@ -23,6 +23,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/simd.h"
 #include "dp.h"
 #include "score_vector_int8.h"
+#include "../util/simd/dispatch.h"
 
 using namespace DISPATCH_ARCH;
 
@@ -297,4 +298,11 @@ int diag_alignment(const int* s, int count) {
 	return best;
 }
 
-}}
+}
+
+DISPATCH_6V(scan_diags128, const LongScoreProfile<int8_t>&, qp, Sequence, s, int, d_begin, int, j_begin, int, j_end, int*, out)
+DISPATCH_6V(scan_diags64, const LongScoreProfile<int8_t>&, qp, Sequence, s, int, d_begin, int, j_begin, int, j_end, int*, out)
+DISPATCH_7V(scan_diags, const LongScoreProfile<int8_t>&, qp, Sequence, s, int, d_begin, int, d_end, int, j_begin, int, j_end, int*, out)
+DISPATCH_2(int, diag_alignment, const int*, s, int, count)
+
+}

@@ -89,7 +89,7 @@ void align_worker(InputFile* query_list, const TargetMap* db2block_id, const Sea
 }
 
 void extend(SequenceFile& db, TempFile& merged_query_list, BitVector& ranking_db_filter, Search::Config& cfg, Consumer& master_out) {
-	task_timer timer("Loading reference sequences");
+	TaskTimer timer("Loading reference sequences");
 	InputFile query_list(merged_query_list);
 	db.set_seqinfo_ptr(0);
 	cfg.target.reset(db.load_seqs(INT64_MAX, &ranking_db_filter, SequenceFile::LoadFlags::SEQS));
@@ -178,7 +178,7 @@ static BitVector db_filter(const Search::Config::RankingTable& table, size_t db_
 }
 
 void extend(Search::Config& cfg, Consumer& out) {
-	task_timer timer("Listing target sequences");
+	TaskTimer timer("Listing target sequences");
 	const BitVector filter = db_filter(*cfg.ranking_table, cfg.db->sequence_count());
 	timer.go("Loading target sequences");
 	cfg.db->set_seqinfo_ptr(0);

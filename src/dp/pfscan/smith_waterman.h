@@ -101,7 +101,7 @@ Hsp FLATTEN banded_smith_waterman(const Config& cfg) {
 	constexpr Loc SCORE_MIN = (Loc)numeric_limits<Score>::min(), SCORE_MAX = (Loc)numeric_limits<Score>::max();
 	const Loc channels = ::DISPATCH_ARCH::ScoreTraits<Sv>::CHANNELS;
 
-	task_timer timer;
+	TaskTimer timer;
 
 	const Loc band = cfg.d_end - cfg.d_begin,
 		qlen = cfg.query.length(),

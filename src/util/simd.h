@@ -57,7 +57,7 @@ std::string features();
 
 namespace DISPATCH_ARCH { namespace SIMD {
 
-template<typename _t>
+template<typename T>
 struct Vector {};
 
 }}
@@ -92,64 +92,5 @@ inline void print_16(__m256i x, std::ostream& s) {
 	for (unsigned i = 0; i < 16; ++i)
 		s << (int)v[i] << ' ';
 }
-
-#endif
-
-#ifdef __SSE__
-
-#if defined(__GNUC__) && !defined(__clang__) && defined(__SSE__)
-#pragma GCC push_options
-#pragma GCC target("arch=x86-64")
-#elif defined(__clang__) && defined(__SSE__)
-#pragma clang attribute push (__attribute__((target("arch=x86-64"))), apply_to=function)
-#endif
-
-#include <functional>
-
-#ifdef WITH_AVX512
-
-#define DECL_DISPATCH(ret, name, param) namespace ARCH_GENERIC { ret name param; }\
-namespace ARCH_SSE4_1 { ret name param; }\
-namespace ARCH_AVX2 { ret name param; }\
-namespace ARCH_AVX512 { ret name param; }\
-static inline std::function<decltype(ARCH_GENERIC::name)> dispatch_target_##name() {\
-switch(::SIMD::arch()) {\
-case ::SIMD::Arch::SSE4_1: return ARCH_SSE4_1::name;\
-case ::SIMD::Arch::AVX2: return ARCH_AVX2::name;\
-case ::SIMD::Arch::AVX512: return ARCH_AVX512::name;\
-default: return ARCH_GENERIC::name;\
-}}\
-const std::function<decltype(ARCH_GENERIC::name)> name = dispatch_target_##name();
-
-#else
-
-#define DECL_DISPATCH(ret, name, param) namespace ARCH_GENERIC { ret name param; }\
-namespace ARCH_SSE4_1 { ret name param; }\
-namespace ARCH_AVX2 { ret name param; }\
-static inline std::function<decltype(ARCH_GENERIC::name)> dispatch_target_##name() {\
-switch(::SIMD::arch()) {\
-case ::SIMD::Arch::SSE4_1: return ARCH_SSE4_1::name;\
-case ::SIMD::Arch::AVX2: return ARCH_AVX2::name;\
-default: return ARCH_GENERIC::name;\
-}}\
-const std::function<decltype(ARCH_GENERIC::name)> name = dispatch_target_##name();
-
-#endif
-
-#if defined(__GNUC__) && !defined(__clang__) && defined(__SSE__)
-#pragma GCC pop_options
-#elif defined(__clang__) && defined(__SSE__)
-#pragma clang attribute pop
-#endif
-
-#else
-
-#include <functional>
-
-#define DECL_DISPATCH(ret, name, param) namespace ARCH_GENERIC { ret name param; }\
-inline std::function<decltype(ARCH_GENERIC::name)> dispatch_target_##name() {\
-return ARCH_GENERIC::name;\
-}\
-const std::function<decltype(ARCH_GENERIC::name)> name = dispatch_target_##name();
 
 #endif

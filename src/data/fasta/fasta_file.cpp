@@ -47,7 +47,7 @@ FastaFile::FastaFile(const std::vector<std::string>& file_name, Metadata metadat
 		return;
 #if EXTRA
 	/*if (exists(file_name.front() + ".fai")) {
-		task_timer timer("Reading faidx file", 3);
+		TaskTimer timer("Reading faidx file", 3);
 		int64_t seqs = 0, letters = 0;
 		string acc;
 		for (const auto& f : file_name) {
@@ -292,7 +292,7 @@ void FastaFile::write_seq(const Sequence& seq, const std::string& id) {
 }
 
 void FastaFile::prep_db(const string& path) {
-	task_timer timer("Indexing FASTA file");
+	TaskTimer timer("Indexing FASTA file");
 	TextInputFile f(path);
 	FASTA_format fmt;
 	vector<Letter> seq;

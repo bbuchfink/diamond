@@ -79,18 +79,10 @@ static void search_worker(atomic<unsigned> *seedp, const SeedPartitionRange *see
 	unique_ptr<Search::WorkSet> work_set(new Search::WorkSet{ *context, *cfg, shape, {}, writer.get(), {}, {}, {}, context->kmer_ranking });
 #endif
 	int p;
-#ifdef KEEP_TARGET_ID
-	auto f = config.lin_stage1 ? Search::stage1_query_lin_ranked
-		: (cfg->lin_stage1_target ? Search::stage1_target_lin
-			: (config.self && cfg->current_ref_block == 0 ? Search::stage1_self : Search::stage1));
-#else
-	auto f = config.lin_stage1 ? Search::stage1_query_lin
-		: (cfg->lin_stage1_target ? Search::stage1_target_lin
-			: (config.self && cfg->current_ref_block == 0 ? Search::stage1_self : Search::stage1));
-#endif
-	while ((p = (*seedp)++) < seedp_range->end())
-		for (auto it = JoinIterator<SeedLoc>(query_seed_hits[p].begin(), ref_seed_hits[p].begin()); it; ++it)
-			f(it.r->begin(), (int32_t)it.r->size(), it.s->begin(), (int32_t)it.s->size(), *work_set);
+	while ((p = (*seedp)++) < seedp_range->end()) {
+		auto it = JoinIterator<SeedLoc>(query_seed_hits[p].begin(), ref_seed_hits[p].begin());
+		run_stage1(it, work_set.get(), cfg);
+	}
 	statistics += work_set->stats;
 }
 
@@ -114,7 +106,7 @@ void search_shape(unsigned sid, int query_block, unsigned query_iteration, char 
 		const SeedPartitionRange range(p.begin(chunk), p.end(chunk));
 		current_range = range;
 
-		task_timer timer("Building reference seed array", true);
+		TaskTimer timer("Building reference seed array", true);
 		SeedArray *ref_idx;
 		const EnumCfg enum_ref{ &ref_hst.partition(), sid, sid + 1, cfg.seed_encoding, nullptr, false, false, cfg.seed_complexity_cut,
 			query_seeds_bitset.get() || query_seeds_hashed.get() ? MaskingAlgo::NONE : cfg.soft_masking,

@@ -33,7 +33,6 @@ using std::pair;
 using std::endl;
 using std::vector;
 using std::ofstream;
-using std::cout;
 using std::ostream;
 using std::runtime_error;
 using std::string;

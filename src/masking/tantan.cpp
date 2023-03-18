@@ -28,6 +28,7 @@ A new repeat-masking method enables specific detection of homologous sequences, 
 #include <Eigen/Core>
 #include "../basic/value.h"
 #include "def.h"
+#include "../util/simd/dispatch.h"
 
 using Eigen::Array;
 using Eigen::Dynamic;
@@ -47,9 +48,15 @@ Mask::Ranges mask(Letter *seq,
 	if (len == 0)
 		return {};
 
+#ifdef USE_TLS
 	thread_local std::array<Array<float, Dynamic, 1>, AMINO_ACID_COUNT> e;
 	thread_local Array<float, Dynamic, 1> pb;
 	thread_local Array<float, Dynamic, 1> scale;
+#else
+	std::array<Array<float, Dynamic, 1>, AMINO_ACID_COUNT> e;
+	Array<float, Dynamic, 1> pb;
+	Array<float, Dynamic, 1> scale;
+#endif
 	Array<float, WINDOW, 1> f(0.0), d, t;
 	const float b2b = 1.0f - p_repeat, f2f = 1.0f - p_repeat_end, b2f0 = p_repeat * (1.0f - repeat_growth) / (1.0f - pow(repeat_growth, (float)WINDOW));
 	float b = 1.0;
@@ -121,4 +128,8 @@ Mask::Ranges mask(Letter *seq,
 	return ranges;
 }
 
-}}}
+}
+
+DISPATCH_8(Mask::Ranges, mask, Letter*, seq, int, len, const float**, likelihood_ratio_matrix, float, p_repeat, float, p_repeat_end, float, repeat_decay, float, p_mask, const Letter*, maskTable)
+
+}}

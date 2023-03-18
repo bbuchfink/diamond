@@ -99,7 +99,7 @@ QueryMapper::QueryMapper(size_t query_id, Search::Hit* begin, Search::Hit* end, 
 void QueryMapper::init()
 {
 	if(config.log_query)
-		std::cout << "Query = " << metadata.query->ids()[query_id] << '\t' << query_id << std::endl;
+		message_stream << "Query = " << metadata.query->ids()[query_id] << '\t' << query_id << std::endl;
 	if (Stats::CBS::hauser(config.comp_based_stats))
 		for (int i = 0; i < align_mode.query_contexts; ++i)
 			query_cb.emplace_back(query_seq(i));

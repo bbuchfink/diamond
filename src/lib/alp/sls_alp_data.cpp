@@ -33,6 +33,7 @@ Contents: Input data for the ascending ladder points simulation
 
 ******************************************************************************/
 
+#include <iostream>
 #include "sls_alp_data.hpp"
 
 using namespace Sls;

@@ -212,7 +212,7 @@ pair<vector<Target>, Stats> align(const vector<WorkTarget> &targets, const Seque
 			LongScoreProfile<int16_t> p;
 			LongScoreProfile<int8_t> p8;
 			const bool hauser_cbs = ::Stats::CBS::hauser(config.comp_based_stats);
-			task_timer timer;
+			TaskTimer timer;
 			p = DP::make_profile16(query_seq[frame], hauser_cbs ? query_cb[frame].int8.data() : nullptr, 0);
 			p8 = DP::make_profile8(query_seq[frame], hauser_cbs ? query_cb[frame].int8.data() : nullptr, 0);
 			LongScoreProfile<int16_t> p_rev(p.reverse());

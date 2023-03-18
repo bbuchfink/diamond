@@ -18,15 +18,17 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <algorithm>
 #include <numeric>
-#include <mutex>
 #include <iostream>
+#include <mutex>
 #include "../basic/config.h"
 #include "log_stream.h"
 #include "util.h"
 #include "escape_sequences.h"
 #include "profiler.h"
 
-using namespace std;
+using std::string;
+using std::vector;
+using std::endl;
 
 MessageStream message_stream;
 MessageStream verbose_stream (false);

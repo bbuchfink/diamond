@@ -207,13 +207,13 @@ namespace Swipe {
 
 namespace BandedSwipe {
 
-DECL_DISPATCH(std::list<Hsp>, swipe, (const Targets& targets, Params& params))
-DECL_DISPATCH(std::list<Hsp>, swipe_set, (const SequenceSet::ConstIterator begin, const SequenceSet::ConstIterator end, Params& params))
-DECL_DISPATCH(unsigned, bin, (HspValues v, int query_len, int score, int ungapped_score, const int64_t dp_size, unsigned score_width, const Loc mismatch_est))
-DECL_DISPATCH(std::list<Hsp>, anchored_swipe, (Targets& targets, const DP::AnchoredSwipe::Config& cfg))
+std::list<Hsp> swipe(const Targets& targets, Params& params);
+std::list<Hsp> swipe_set(const SequenceSet::ConstIterator begin, const SequenceSet::ConstIterator end, Params& params);
+unsigned bin(HspValues v, int query_len, int score, int ungapped_score, const int64_t dp_size, unsigned score_width, const Loc mismatch_est);
+std::list<Hsp> anchored_swipe(Targets& targets, const DP::AnchoredSwipe::Config& cfg);
 
 }
 
 }
 
-DECL_DISPATCH(std::list<Hsp>, banded_3frame_swipe, (const TranslatedSequence &query, Strand strand, std::vector<DpTarget>::iterator target_begin, std::vector<DpTarget>::iterator target_end, DpStat &stat, bool score_only, bool parallel))
+std::list<Hsp> banded_3frame_swipe(const TranslatedSequence& query, Strand strand, std::vector<DpTarget>::iterator target_begin, std::vector<DpTarget>::iterator target_end, DpStat& stat, bool score_only, bool parallel);

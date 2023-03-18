@@ -1,8 +1,8 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2020 Max Planck Society for the Advancement of Science e.V.
-                        Benjamin Buchfink
-                        Eberhard Karls Universitaet Tuebingen
+Copyright (C) 2019-2023 Max Planck Society for the Advancement of Science e.V.
+
+Code developed by Benjamin Buchfink <buchfink@gmail.com>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -18,12 +18,11 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#pragma once
-#include "../util/simd.h"
-#include "../basic/value.h"
+#include "stage1.h"
+#include "../util/simd/dispatch.h"
 
-namespace Util { namespace tantan {
+namespace Search {
+	
+DISPATCH_3V(run_stage1, JoinIterator<SeedLoc>&, it, Search::WorkSet*, work_set, const Search::Config*, cfg)
 
-Mask::Ranges mask(Letter* seq, int len, const float** likelihood_ratio_matrix, float p_repeat, float p_repeat_end, float repeat_decay, float p_mask, const Letter* maskTable);
-
-}}
+}

@@ -1,4 +1,3 @@
-#include <iostream>
 #include <fstream>
 #include <atomic>
 #include <mutex>
@@ -22,7 +21,6 @@ using std::string;
 using std::atomic;
 using std::vector;
 using std::unordered_map;
-using std::cout;
 using std::numeric_limits;
 using std::runtime_error;
 //using Acc = FixedString<32>;
@@ -34,7 +32,7 @@ void greedy_vertex_cover() {
 	const double cov = std::max(config.query_or_target_cover, config.member_cover);
 	const bool triplets = config.edge_format == "triplet";
 	message_stream << "Coverage cutoff: " << cov << '%' << endl;
-	task_timer timer("Reading mapping file");
+	TaskTimer timer("Reading mapping file");
 	//unordered_map<Acc, OId, Acc::Hash> acc2oid;
 	unordered_map<Acc, OId> acc2oid;
 	acc2oid.reserve(Util::Tsv::count_lines(config.database));

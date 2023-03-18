@@ -95,7 +95,7 @@ static void load_mapping_file(ExternalSorter<pair<string, TaxId>>& sorter)
 
 void TaxonList::build(OutputFile &db, ExternalSorter<pair<string, OId>>& acc2oid, OId seqs, Util::Table& stats)
 {
-	task_timer timer("Loading taxonomy mapping file");
+	TaskTimer timer("Loading taxonomy mapping file");
 	ExternalSorter<pair<string, TaxId>> acc2taxid;
 	load_mapping_file(acc2taxid);
 

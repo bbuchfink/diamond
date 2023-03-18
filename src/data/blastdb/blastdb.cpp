@@ -403,7 +403,7 @@ void BlastDB::init_random_access(const size_t query_block, const size_t ref_bloc
 		load_dictionary(query_block, ref_block);
 	if (flag_any(flags_, Flags::FULL_TITLES))
 		return;
-	task_timer timer("Loading accessions");
+	TaskTimer timer("Loading accessions");
 	vector<string> paths;
 	if(db_.get())
 		db_->FindVolumePaths(paths);

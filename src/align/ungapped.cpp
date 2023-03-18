@@ -62,7 +62,7 @@ WorkTarget::WorkTarget(BlockId block_id, const Sequence& seq, int query_len, con
 
 WorkTarget ungapped_stage(FlatArray<SeedHit>::DataIterator begin, FlatArray<SeedHit>::DataIterator end, const Sequence *query_seq, const Bias_correction *query_cb, const ::Stats::Composition& query_comp, const int16_t** query_matrix, uint32_t block_id, Statistics& stat, const Block& targets, const Mode mode) {
 	array<vector<DiagonalSegment>, MAX_CONTEXT> diagonal_segments;
-	task_timer timer;
+	TaskTimer timer;
 	const SequenceSet& ref_seqs = targets.seqs(), &ref_seqs_unmasked = targets.unmasked_seqs();
 	const bool masking = config.comp_based_stats == ::Stats::CBS::COMP_BASED_STATS_AND_MATRIX_ADJUST ? ::Stats::use_seg_masking(query_seq[0], ref_seqs_unmasked[block_id]) : true;
 	WorkTarget target(block_id, masking ? ref_seqs[block_id] : ref_seqs_unmasked[block_id], ::Stats::count_true_aa(query_seq[0]), query_comp, query_matrix);

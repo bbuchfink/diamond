@@ -3,6 +3,7 @@
 #include "score_vector_int8.h"
 #include "score_vector_int16.h"
 #include "../util/util.h"
+#include "../util/simd/dispatch.h"
 
 using std::array;
 
@@ -51,4 +52,9 @@ LongScoreProfile<int16_t> make_profile16(Sequence seq, const int8_t* cbs, int64_
 	return make_profile<int16_t>(seq, cbs, padding);
 }
 
-}}
+}
+
+DISPATCH_3(LongScoreProfile<int8_t>, make_profile8, Sequence, seq, const int8_t*, cbs, int64_t, padding);
+DISPATCH_3(LongScoreProfile<int16_t>, make_profile16, Sequence, seq, const int8_t*, cbs, int64_t, padding);
+
+}

@@ -21,6 +21,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #include <memory>
+#include <iostream>
 #include <cstdlib>
 #include <sys/stat.h>
 #include <exception>
@@ -50,12 +51,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 using std::thread;
 using std::stringstream;
 using std::endl;
-using std::cerr;
 using std::ostream;
-using std::cout;
 using std::unique_ptr;
 using std::string;
 using std::pair;
+using std::cout;
+using std::cerr;
 
 const EMap<Sensitivity> EnumTraits<Sensitivity>::to_string = {
 	{ Sensitivity::FASTER, "faster" },
@@ -115,61 +116,14 @@ pair<double, int> block_size(int64_t memory_limit, Sensitivity s, bool lin) {
 	return { std::max(b, 0.001), c };
 }
 
-void print_warnings() {
-	if (config.sensitivity >= Sensitivity::VERY_SENSITIVE || config.verbosity == 0 || config.swipe_all)
-		return;
-	if (config.command != Config::blastp && config.command != Config::blastx && config.command != Config::blastn)
-		return;
-	const double ram = total_ram();
-	unsigned b = 2, c = 4;
-	stringstream msg;
-	if (config.sensitivity >= Sensitivity::SENSITIVE) {
-		if (ram >= 63) {
-			c = 1;
-			if(c < config.lowmem_)
-				msg << "use this parameter for better performance: -c1";
-		}
-	}
-	else {
-		if (ram >= 511) {
-			b = 12;
-			c = 1;
-		}
-		else if (ram >= 255) {
-			b = 8;
-			c = 1;
-		}
-		else if (ram >= 127) {
-			b = 5;
-			c = 1;
-		}
-		else if (ram >= 63) {
-			b = 6;
-		}
-		else if (ram >= 31) {
-			b = 4;
-		}
-		if ((b > 2 && b > config.chunk_size) || c < config.lowmem_) {
-			msg << "increase the block size for better performance using these parameters : -b" << b;
-			if (c != 4)
-				msg << " -c" << c;
-		}
-	}
-	if (!msg.str().empty()) {
-		set_color(Color::YELLOW, true);
-		cerr << "The host system is detected to have " << (size_t)ram << " GB of RAM. It is recommended to " << msg.str() << endl;
-		reset_color(true);
-	}
-}
-
-template<typename _t>
-_t set_string_option(const string& s, const string& name, const vector<pair<string, _t>>& values) {
+template<typename T>
+T set_string_option(const string& s, const string& name, const vector<pair<string, T>>& values) {
 	if (s.empty())
-		return (_t)0;
+		return (T)0;
 	for (auto& i : values)
 		if (s == i.first)
 			return i.second;
-	throw std::runtime_error("Invalid argument for option " + name + ". Allowed values are:" + std::accumulate(values.begin(), values.end(), string(), [](const string& s, const pair<string, _t>& v) { return s + ' ' + v.first; }));
+	throw std::runtime_error("Invalid argument for option " + name + ". Allowed values are:" + std::accumulate(values.begin(), values.end(), string(), [](const string& s, const pair<string, T>& v) { return s + ' ' + v.first; }));
 }
 
 void Config::set_sens(Sensitivity sens) {

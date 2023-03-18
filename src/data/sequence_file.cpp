@@ -408,7 +408,7 @@ void SequenceFile::load_dictionary(const size_t query_block, const size_t ref_bl
 {
 	if (!dict_file_ && !config.multiprocessing)
 		return;
-	task_timer timer("Loading dictionary", 3);
+	TaskTimer timer("Loading dictionary", 3);
 	if (config.multiprocessing) {
 		dict_oid_ = vector<vector<OId>>(ref_blocks);
 		if (flag_any(flags_, Flags::SELF_ALN_SCORES))

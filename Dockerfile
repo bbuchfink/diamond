@@ -9,7 +9,7 @@ ADD . .
 
 RUN git clone https://github.com/ncbi/ncbi-cxx-toolkit-public.git
 WORKDIR ncbi-cxx-toolkit-public
-RUN ./cmake-configure --without-debug --with-projects="objtools/blast/seqdb_reader;objtools/blast/blastdb_format" --with-build-root=build
+RUN ./cmake-configure --without-debug --with-projects="objtools/blast/seqdb_reader;objtools/blast/blastdb_format" --with-build-root=build --with-features="-SSE"
 WORKDIR build/build
 RUN make -j4
 RUN cp /opt/diamond/ncbi-cxx-toolkit-public/build/inc/ncbiconf_unix.h /opt/diamond/ncbi-cxx-toolkit-public/include

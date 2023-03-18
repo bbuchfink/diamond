@@ -5,6 +5,7 @@
 #include "../score_vector_int8.h"
 #include "../score_vector_int16.h"
 #include "../dp/ungapped.h"
+#include "../util/simd/dispatch.h"
 
 using std::list;
 using std::vector;
@@ -125,7 +126,7 @@ static void swipe_threads(DP::AnchoredSwipe::Target<int16_t>* targets, int64_t c
 }
 
 list<Hsp> anchored_swipe(Targets& targets, const DP::AnchoredSwipe::Config& cfg) {
-	task_timer total;
+	TaskTimer total;
 
 	TargetVector target_vec;
 	int64_t target_count = 0, target_len = 0;
@@ -137,7 +138,7 @@ list<Hsp> anchored_swipe(Targets& targets, const DP::AnchoredSwipe::Config& cfg)
 			max_target_len = std::max(max_target_len, t.seq.length());
 		}
 
-	task_timer timer;
+	TaskTimer timer;
 	//target_vec.int8.reserve(target_count * 2);
 	target_vec.int16.reserve(target_count * 2);
 	cfg.stats.inc(Statistics::TIME_ANCHORED_SWIPE_ALLOC, timer.microseconds());
@@ -233,4 +234,8 @@ list<Hsp> anchored_swipe(Targets& targets, const DP::AnchoredSwipe::Config& cfg)
 	return out;
 }
 
-}}}
+}
+
+DISPATCH_2(std::list<Hsp>, anchored_swipe, Targets&, targets, const DP::AnchoredSwipe::Config&, cfg)
+
+}}

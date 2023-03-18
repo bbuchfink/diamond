@@ -174,7 +174,12 @@ std::string join(const char *c, const std::vector<std::string> &v);
 
 template<typename T, typename F>
 auto apply(const std::vector<T> &v, F f) -> std::vector<typename std::result_of<F(T)>::type> {
-	std::vector<typename std::result_of<F(T)>::type> r;
+#ifdef _MSC_VER
+	using R = typename std::invoke_result<F, T>::type;
+#else
+	using R = typename std::result_of<F(T)>::type;
+#endif
+	std::vector<R> r;
 	r.reserve(v.size());
 	for (const auto &i : v)
 		r.push_back(f(i));

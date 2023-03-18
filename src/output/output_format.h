@@ -136,8 +136,8 @@ struct PAF_format : public OutputFormat
 	PAF_format():
 		OutputFormat(paf, HspValues::TRANSCRIPT, Output::Flags::NONE)
 	{}
-	virtual void print_query_intro(Output::Info& info) const;
-	virtual void print_match(const HspContext& r, const Search::Config& metadata, TextBuffer &out);
+	virtual void print_query_intro(Output::Info& info) const override;
+	virtual void print_match(const HspContext& r, Output::Info& info) override;
 	virtual ~PAF_format()
 	{ }
 	virtual OutputFormat* clone() const

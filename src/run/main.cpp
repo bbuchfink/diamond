@@ -79,7 +79,7 @@ void cut();
 #endif
 
 void split();
-namespace Benchmark { DECL_DISPATCH(void, benchmark, ()) }
+namespace Benchmark { void benchmark(); }
 namespace Test { int run();
 }
 namespace Cluster {

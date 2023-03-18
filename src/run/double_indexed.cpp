@@ -104,7 +104,7 @@ static void run_ref_chunk(SequenceFile &db_file,
 	PtrVector<TempFile> &tmp_file,
 	Config& cfg)
 {
-	task_timer timer;
+	TaskTimer timer;
 	log_rss();
 	auto& query_seqs = cfg.query->seqs();
 
@@ -240,7 +240,7 @@ static void run_query_iteration(const unsigned query_iteration,
 	PtrVector<TempFile>& tmp_file,
 	Config& options)
 {
-	task_timer timer;
+	TaskTimer timer;
 	auto P = Parallelizer::get();
 	auto& query_seqs = options.query->seqs();
 	auto& db_file = *options.db;
@@ -423,7 +423,7 @@ static void run_query_chunk(Consumer &master_out,
 	Config &options)
 {
 	auto P = Parallelizer::get();
-	task_timer timer;
+	TaskTimer timer;
 	auto& db_file = *options.db;
 	auto& query_seqs = options.query->seqs();
 
@@ -531,7 +531,7 @@ static void run_query_chunk(Consumer &master_out,
 	options.query.reset();
 }
 
-static void master_thread(task_timer &total_timer, Config &options)
+static void master_thread(TaskTimer &total_timer, Config &options)
 {
 	log_rss();
 	SequenceFile* db_file = options.db.get();
@@ -582,7 +582,7 @@ static void master_thread(task_timer &total_timer, Config &options)
 		db_file->create_partition_balanced((size_t)(config.chunk_size*1e9));
 	}
 
-	task_timer timer("Opening the input file", true);
+	TaskTimer timer("Opening the input file", true);
 	if (!options.self) {
 		if (config.query_file.empty() && !options.query_file) {
 			std::cerr << "Query file parameter (--query/-q) is missing. Input will be read from stdin." << endl;
@@ -600,7 +600,7 @@ static void master_thread(task_timer &total_timer, Config &options)
 	if (config.command == ::Config::blastn)
 		load_flags |= SequenceFile::LoadFlags::DNA_PRESERVATION;
 	if (config.multiprocessing && config.mp_init) {
-		task_timer timer("Counting query blocks", true);
+		TaskTimer timer("Counting query blocks", true);
 
 		size_t block_count = 0;
 		do {
@@ -727,7 +727,7 @@ static void master_thread(task_timer &total_timer, Config &options)
 
 void run(const shared_ptr<SequenceFile>& db, const shared_ptr<SequenceFile>& query, const shared_ptr<Consumer>& out, const shared_ptr<BitVector>& db_filter)
 {
-	task_timer total;
+	TaskTimer total;
 
 	align_mode = AlignMode(AlignMode::from_command(config.command));
     (align_mode.sequence_type == SequenceType::amino_acid) ? value_traits = amino_acid_traits : value_traits = nucleotide_traits;
@@ -755,7 +755,7 @@ void run(const shared_ptr<SequenceFile>& db, const shared_ptr<SequenceFile>& que
 	if (cfg.output_format->needs_taxon_ranks || taxon_culling)
 		metadata_flags |= SequenceFile::Metadata::TAXON_RANKS;
 
-	task_timer timer;
+	TaskTimer timer;
 	SequenceFile::Flags flags(SequenceFile::Flags::NEED_LETTER_COUNT);
 	if (flag_any(cfg.output_format->flags, Output::Flags::ALL_SEQIDS))
 		flags |= SequenceFile::Flags::ALL_SEQIDS;

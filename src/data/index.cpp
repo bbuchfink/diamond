@@ -18,7 +18,7 @@ void makeindex() {
 
 	Block* block = db.load_seqs(MAX_LETTERS, nullptr, SequenceFile::LoadFlags::SEQS);
 
-	task_timer timer("Building index");
+	TaskTimer timer("Building index");
 	HashedSeedSet index(*block, nullptr, 0.0, Search::soft_masking_algo(Search::sensitivity_traits[(int)align_mode.sequence_type].at(config.sensitivity)));
 
 	timer.go("Writing to disk");

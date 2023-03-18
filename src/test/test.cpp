@@ -100,7 +100,7 @@ static void load_seqs(SequenceFile& file) {
 
 int run() {
 	const bool bootstrap = config.bootstrap, log = config.debug_log, to_cout = config.output_file == "stdout";
-	task_timer timer("Generating test dataset");
+	TaskTimer timer("Generating test dataset");
 	FastaFile proteins("test1", true, FastaFile::WriteAccess());
 	
 	shared_ptr<SequenceFile> query_file(new FastaFile("test2", true, FastaFile::WriteAccess())), db(new FastaFile("test3", true, FastaFile::WriteAccess()));

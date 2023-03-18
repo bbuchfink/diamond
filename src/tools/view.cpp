@@ -127,7 +127,7 @@ void view_tsv() {
 	if (config.query_file.size() > 1)
 		throw std::runtime_error("Too many arguments for query file (--query/-q)");
 
-	task_timer timer("Opening the database file");
+	TaskTimer timer("Opening the database file");
 	unique_ptr<SequenceFile> db(SequenceFile::auto_create({ config.database }, SequenceFile::Flags::NO_FASTA));
 	score_matrix = ScoreMatrix("blosum62", -1, -1, 1, 0);
 	score_matrix.set_db_letters(config.db_size ? config.db_size : db->letters());
@@ -181,7 +181,7 @@ void view_tsv() {
 					q = query_idx++;
 				}
 				if (q % 1000 == 0)
-					std::cout << "#Query = " << q << " time = " << timer.seconds() << endl;
+					message_stream << "#Query = " << q << " time = " << timer.seconds() << endl;
 				if (query.empty())
 					return;
 				TextBuffer* out = view_query(query, buf, *db, *db, cfg, stats);

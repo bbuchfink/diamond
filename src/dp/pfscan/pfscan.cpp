@@ -2,6 +2,7 @@
 #include "smith_waterman.h"
 #include "../../util/sequence/sequence.h"
 #include "../ungapped.h"
+#include "../../util/simd/dispatch.h"
 
 using std::min;
 
@@ -37,7 +38,7 @@ static Hsp align_dispatch_score_16(const Config& cfg) {
 	if (h.score < SCHAR_MAX)
 		cfg.stats.inc(Statistics::EXT_WASTED_16);
 	if (h.score == (Score)SHRT_MAX - cfg16.score_bias) {
-		task_timer timer;
+		TaskTimer timer;
 		using SC = StaticConfig<int, Anchored>;
 		const Hsp h = banded_smith_waterman<SC>(cfg);
 		cfg.stats.inc(Statistics::TIME_EXT_32, timer.microseconds());
@@ -51,7 +52,7 @@ static Hsp align_dispatch_score_16(const Config& cfg) {
 
 static Hsp align_dispatch_score(const Config& cfg) {
 	if (cfg.query.length() >= SHRT_MAX || cfg.target.length() >= SHRT_MAX) {
-		task_timer timer;
+		TaskTimer timer;
 		using SC = StaticConfig<int, Anchored>;
 		const Hsp h = banded_smith_waterman<SC>(cfg);
 		cfg.stats.inc(Statistics::TIME_EXT_32, timer.microseconds());
@@ -185,4 +186,8 @@ Hsp align_anchored(const Anchor& anchor, const Config& cfg) {
 	return h;
 }
 
-}}}
+}
+
+DISPATCH_2(Hsp, align_anchored, const Anchor&, anchor, const Config&, cfg)
+
+}}

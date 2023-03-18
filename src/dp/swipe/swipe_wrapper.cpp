@@ -37,6 +37,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "full_swipe.h"
 #include "banded_swipe.h"
 #include "../../util/geo/geo.h"
+#include "../../util/simd/dispatch.h"
 
 using std::list;
 using std::atomic;
@@ -251,7 +252,7 @@ static list<Hsp> swipe_threads(const It begin, const It end, vector<DpTarget> &o
 
 	atomic<BlockId> next(0);
 	if (flag_any(p.flags, Flags::PARALLEL)) {
-		task_timer timer("Banded swipe (run)", config.target_parallel_verbosity);
+		TaskTimer timer("Banded swipe (run)", config.target_parallel_verbosity);
 		const size_t n = config.threads_align ? config.threads_align : config.threads_;
 		vector<thread> threads;
 		vector<list<Hsp>> thread_out(n);
@@ -313,7 +314,7 @@ static pair<list<Hsp>, vector<DpTarget>> swipe_bin(const unsigned bin, const It 
 	if (!flag_any(p.flags, Flags::FULL_MATRIX))
 		sort(begin, end);
 	p.stat.inc(Statistics::value(Statistics::EXT8 + bin), end - begin);
-	task_timer timer;
+	TaskTimer timer;
 	switch (bin) {
 #ifdef __SSE4_1__
 	case 0:
@@ -439,4 +440,10 @@ list<Hsp> swipe_set(const SequenceSet::ConstIterator begin, const SequenceSet::C
 	return result.first;
 }
 
-}}}
+}
+
+DISPATCH_2(std::list<Hsp>, swipe, const Targets&, targets, Params&, params)
+DISPATCH_3(std::list<Hsp>, swipe_set, const SequenceSet::ConstIterator, begin, const SequenceSet::ConstIterator, end, Params&, params)
+DISPATCH_7(unsigned, bin, HspValues, v, int, query_len, int, score, int, ungapped_score, const int64_t, dp_size, unsigned, score_width, const Loc, mismatch_est)
+
+}}

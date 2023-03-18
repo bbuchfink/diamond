@@ -24,6 +24,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <map>
 #include <list>
 #include <set>
+#include <iostream>
 #include "../basic/sequence.h"
 #include "../basic/match.h"
 #include "../stats/score_matrix.h"

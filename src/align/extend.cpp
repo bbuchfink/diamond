@@ -252,7 +252,7 @@ pair<vector<Match>, Stats> extend(
 }
 
 pair<vector<Match>, Stats> extend(BlockId query_id, Search::Hit* begin, Search::Hit* end, const Search::Config &cfg, Statistics &stat, DP::Flags flags) {
-	task_timer timer(flag_any(flags, DP::Flags::PARALLEL) ? config.target_parallel_verbosity : UINT_MAX);
+	TaskTimer timer(flag_any(flags, DP::Flags::PARALLEL) ? config.target_parallel_verbosity : UINT_MAX);
 	timer.go("Loading seed hits");
 	SeedHitList l = load_hits(begin, end, cfg.target->seqs());
 	stat.inc(Statistics::TARGET_HITS0, l.target_block_ids.size());

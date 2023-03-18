@@ -329,7 +329,7 @@ list<Hsp> swipe(const vector<DpTarget>::const_iterator subject_begin, const vect
 	}
 
 	list<Hsp> out;
-	task_timer timer;
+	TaskTimer timer;
 	for (int i = 0; i < targets.n_targets; ++i) {
 		if (best[i] < ScoreTraits<_sv>::max_score() && !overflow_stats<_sv>(stats[i])) {
 			int score = ScoreTraits<_sv>::int_score(best[i]);

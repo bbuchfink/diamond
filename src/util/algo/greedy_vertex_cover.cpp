@@ -84,7 +84,7 @@ static void fix_assignment(vector<Int>& centroids) {
 
 template<typename Int>
 vector<Int> greedy_vertex_cover(FlatArray<Edge<Int>>& neighbors, const SuperBlockId* member_counts, bool merge_recursive) {
-	task_timer timer("Computing edge counts");
+	TaskTimer timer("Computing edge counts");
 	priority_queue<pair<Int, Int>> q;
 	vector<Int> centroids(neighbors.size(), -1);
 	for (Int i = 0; i < neighbors.size(); ++i)

@@ -41,7 +41,7 @@ using std::pair;
 namespace Cluster {
 
 static vector<OId> recluster(shared_ptr<SequenceFile>& db, const vector<OId>& clustering, int iteration) {
-	task_timer timer(("*** Initializing recluster iteration " + to_string(iteration + 1)).c_str());
+	TaskTimer timer(("*** Initializing recluster iteration " + to_string(iteration + 1)).c_str());
 
 	FlatArray<OId> clusters;
 	vector<OId> centroids;
@@ -178,7 +178,7 @@ void recluster() {
 	//config.strict_gvc = true;
 	message_stream << "Coverage cutoff: " << config.member_cover << '%' << endl;
 
-	task_timer timer("Opening the database");
+	TaskTimer timer("Opening the database");
 	shared_ptr<SequenceFile> db(SequenceFile::auto_create({ config.database }, SequenceFile::Flags::NEED_LETTER_COUNT | SequenceFile::Flags::ACC_TO_OID_MAPPING | SequenceFile::Flags::OID_TO_ACC_MAPPING, SequenceFile::Metadata()));
 	config.db_size = db->letters();
 	timer.finish();

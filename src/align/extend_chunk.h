@@ -29,7 +29,7 @@ pair<vector<Target>, Stats> extend(BlockId query_id,
 	static const Loc GAPPED_FILTER_MIN_QLEN = 85;
 	const int64_t n = seed_hits_end - seed_hits;
 	stat.inc(Statistics::TARGET_HITS2, n);
-	task_timer timer(flag_any(flags, DP::Flags::PARALLEL) ? config.target_parallel_verbosity : UINT_MAX);
+	TaskTimer timer(flag_any(flags, DP::Flags::PARALLEL) ? config.target_parallel_verbosity : UINT_MAX);
 
 	if (cfg.lazy_masking && !config.global_ranking_targets)
 		stat.inc(Statistics::MASKED_LAZY, lazy_masking(target_block_ids, target_block_ids + n, *cfg.target, cfg.target_masking));

@@ -105,7 +105,7 @@ size_t Taxonomy::load_names() {
 
 void Taxonomy::init()
 {
-	task_timer timer;
+	TaskTimer timer;
 	if (!config.namesdmp.empty()) {
 		timer.go("Loading taxonomy names");
 		size_t n = load_names();

@@ -59,7 +59,7 @@ struct LongScoreProfile
 
 namespace DP {
 
-DECL_DISPATCH(LongScoreProfile<int8_t>, make_profile8, (Sequence seq, const int8_t* cbs, int64_t padding))
-DECL_DISPATCH(LongScoreProfile<int16_t>, make_profile16, (Sequence seq, const int8_t* cbs, int64_t padding))
+LongScoreProfile<int8_t> make_profile8(Sequence seq, const int8_t* cbs, int64_t padding);
+LongScoreProfile<int16_t> make_profile16(Sequence seq, const int8_t* cbs, int64_t padding);
 
 }

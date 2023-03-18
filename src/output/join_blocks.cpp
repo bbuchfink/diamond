@@ -338,7 +338,7 @@ void join_blocks(int64_t ref_blocks, Consumer &master_out, const PtrVector<TempF
 {
 	if (*cfg.output_format != OutputFormat::daa)
 		cfg.db->init_random_access(cfg.current_query_block, config.multiprocessing ? tmp_file_names.size() : tmp_file.size());
-	task_timer timer("Joining output blocks");
+	TaskTimer timer("Joining output blocks");
 
 	if (tmp_file_names.size() > 0) {
 		JoinFetcher::init(tmp_file_names);

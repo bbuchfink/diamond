@@ -17,12 +17,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #pragma once
-#include "../util/simd.h"
 #include "../basic/value.h"
 
 namespace DP {
 
-DECL_DISPATCH(void, window_ungapped, (const Letter* query, const Letter** subjects, int subject_count, int window, int* out))
-DECL_DISPATCH(void, window_ungapped_best, (const Letter* query, const Letter** subjects, int subject_count, int window, int* out))
+void window_ungapped(const Letter* query, const Letter** subjects, int subject_count, int window, int* out);
+void window_ungapped_best(const Letter* query, const Letter** subjects, int subject_count, int window, int* out);
 
 }

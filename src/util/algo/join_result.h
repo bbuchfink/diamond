@@ -21,19 +21,19 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../range.h"
 #include "../data_structures/double_array.h"
 
-template<typename _t>
+template<typename T>
 struct JoinArrayIterator {
 
-	JoinArrayIterator(_t *ptr, _t *end):
+	JoinArrayIterator(T *ptr, T *end):
 		ptr_(ptr),
 		end_(end)
 	{}
 
-	Range<_t*> operator*() {
+	Range<T*> operator*() {
 		return { ptr_ + 1, ptr_ + 1 + *ptr_ };
 	}
 
-	Range<_t*>* operator->() {
+	Range<T*>* operator->() {
 		range_ = this->operator*();
 		return &range_;
 	}
@@ -57,17 +57,17 @@ struct JoinArrayIterator {
 
 private:
 
-	Range<_t*> range_;
-	_t *ptr_, *end_;
+	Range<T*> range_;
+	T *ptr_, *end_;
 
 };
 
-template<typename _t>
+template<typename T>
 struct JoinIterator {
 
-	typename DoubleArray<_t>::Iterator r, s;
+	typename DoubleArray<T>::Iterator r, s;
 
-	JoinIterator(typename DoubleArray<_t>::Iterator r, typename DoubleArray<_t>::Iterator s):
+	JoinIterator(typename DoubleArray<T>::Iterator r, typename DoubleArray<T>::Iterator s):
 		r(r),
 		s(s)
 	{}

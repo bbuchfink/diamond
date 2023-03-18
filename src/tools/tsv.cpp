@@ -1,4 +1,3 @@
-#include <iostream>
 #include "../util/tsv/file.h"
 #include "../basic/config.h"
 #include "../util/log_stream.h"
@@ -32,7 +31,7 @@ void cut() {
 		return t;
 		});
 	File out(Schema{ Type::STRING }, "", Flags::WRITE);
-	task_timer timer("", 3);
+	TaskTimer timer("", 3);
 	for (;;) {
 		timer.go("Loading data");
 		const Table t = f.read(READ_SIZE, config.threads_);

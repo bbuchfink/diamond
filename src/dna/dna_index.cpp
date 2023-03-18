@@ -41,7 +41,7 @@ ref_buffer_(ref_buffer)
 
     SequenceSet &ref_seqs = cfg.target->seqs();
     const SeedHistogram &ref_hst = cfg.target->hst();
-    task_timer timer("Building reference seed array", true);
+    TaskTimer timer("Building reference seed array", true);
 
 
     const EnumCfg enum_ref{&ref_hst.partition(), 0, 1, cfg.seed_encoding, nullptr, false, false,

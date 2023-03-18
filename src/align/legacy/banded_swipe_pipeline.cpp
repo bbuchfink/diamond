@@ -181,7 +181,7 @@ void build_ranking_worker(PtrVector<::Target>::iterator begin, PtrVector<::Targe
 
 void Pipeline::run(Statistics &stat, const Search::Config& cfg)
 {
-	task_timer timer("Init banded swipe pipeline", target_parallel ? 3 : UINT_MAX);
+	TaskTimer timer("Init banded swipe pipeline", target_parallel ? 3 : UINT_MAX);
 	Config::set_option(config.padding, 32);
 	if (n_targets() == 0)
 		return;

@@ -26,7 +26,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <queue>
 #include <condition_variable>
 #include <numeric>
-#include <iostream>
+#include <functional>
 #include "../log_stream.h"
 
 namespace Util { namespace Parallel {

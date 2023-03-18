@@ -66,8 +66,7 @@ ScoreMatrix::ScoreMatrix(const string & matrix, int gap_open, int gap_extend, in
 	matrix8u_low_(standard_matrix_->scores.data(), stop_match_score, bias_, 16),
 	matrix8u_high_(standard_matrix_->scores.data(), stop_match_score, bias_, 16, 16),
 	matrix16_(standard_matrix_->scores.data(), stop_match_score)
-{
-	
+{	
 	evaluer.initParameters(alp_params(standard_matrix_, gap_open_, gap_extend_, mmseqs_compat));
 	ln_k_ = std::log(evaluer.parameters().K);
 	init_background_scores();

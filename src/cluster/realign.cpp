@@ -52,7 +52,7 @@ void realign() {
 			throw std::runtime_error("Unsupported output field for the realign workflow: " + Blast_tab_format::field_def.at(i).key);
 	}
 
-	task_timer timer("Opening the output file");
+	TaskTimer timer("Opening the output file");
 	OutputFile out(config.output_file);
 	if (Blast_tab_format::header_format(Config::cluster) == Header::SIMPLE)
 		dynamic_cast<Blast_tab_format*>(output_format.get())->output_header(out, true);

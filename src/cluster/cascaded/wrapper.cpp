@@ -34,7 +34,6 @@ using std::string;
 using std::vector;
 using std::ostream;
 using std::ofstream;
-using std::cout;
 using std::numeric_limits;
 using std::tuple;
 using std::get;
@@ -67,7 +66,7 @@ struct Config {
 	double                              block_size;
 	std::unique_ptr<OutputFormat>       output_format;
 	std::shared_ptr<FastaFile>          centroids;
-	task_timer                          total_time;
+	TaskTimer                          total_time;
 	int64_t                             seqs_processed;
 	int64_t                             letters_processed;
 	std::vector<OId>                    centroid2oid;
@@ -158,8 +157,8 @@ void Cascaded::run() {
 	config.database.require();
 	init_thresholds();
 	config.hamming_ext = config.approx_min_id >= 50.0;
-	task_timer total_time;
-	task_timer timer("Opening the input file");
+	TaskTimer total_time;
+	TaskTimer timer("Opening the input file");
 	shared_ptr<SequenceFile> db(SequenceFile::auto_create({ config.database }, SequenceFile::Flags::NEED_LETTER_COUNT | SequenceFile::Flags::OID_TO_ACC_MAPPING));
 	if (db->type() == SequenceFile::Type::BLAST)
 		throw std::runtime_error("Clustering is not supported for BLAST databases.");

@@ -36,6 +36,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/data_structures/writer.h"
 #include "../data/flags.h"
 #include "kmer_ranking.h"
+#include "../util/algo/join_result.h"
 
 // #define UNGAPPED_SPOUGE
 
@@ -113,11 +114,7 @@ struct WorkSet {
 	KmerRanking* kmer_ranking;
 };
 
-DECL_DISPATCH(void, stage1, (const SeedLoc* q, int32_t nq, const SeedLoc* s, int32_t ns, WorkSet& work_set))
-DECL_DISPATCH(void, stage1_query_lin, (const SeedLoc* q, int32_t nq, const SeedLoc* s, int32_t ns, WorkSet& work_set))
-DECL_DISPATCH(void, stage1_query_lin_ranked, (const SeedLoc* q, int32_t nq, const SeedLoc* s, int32_t ns, WorkSet& work_set))
-DECL_DISPATCH(void, stage1_target_lin, (const SeedLoc* q, int32_t nq, const SeedLoc* s, int32_t ns, WorkSet& work_set))
-DECL_DISPATCH(void, stage1_self, (const SeedLoc* q, int32_t nq, const SeedLoc* s, int32_t ns, WorkSet& work_set))
+void run_stage1(JoinIterator<SeedLoc>& it, Search::WorkSet* work_set, const Search::Config* cfg);
 
 }
 

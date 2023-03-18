@@ -152,7 +152,7 @@ void update_table(Search::Config& cfg) {
 	log_stream << "Seed hits = " << hits.size() << endl;
 	if (hits.size() == 0)
 		return;
-	task_timer timer("Sorting seed hits");
+	TaskTimer timer("Sorting seed hits");
 #if _MSC_FULL_VER == 191627042
 	merge_sort(hits.begin(), hits.end(), config.threads_, Search::Hit::CmpQueryTarget());
 #else

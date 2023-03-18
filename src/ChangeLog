@@ -1,3 +1,11 @@
+[2.1.6]
+- Fixed compatibility issues on older systems without support for AVX2.
+- Fixed linker errors when compiled with `-DX86=OFF`.
+- Fixed a compiler error on macOS systems.
+- Fixed a bug that could cause missing tags in the XML output format and
+  unaligned queries not to be reported correctly.
+- Fixed a bug that caused the PAF output format not to work correctly.
+
 [2.1.5]
 - Disabled the use of frequency based seed masking when using the linear-time
   search feature with respect to the targets.

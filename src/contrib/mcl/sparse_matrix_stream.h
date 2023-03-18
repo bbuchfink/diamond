@@ -25,7 +25,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <stdio.h>
 #include <memory>
 #include <fstream>
-#include <iostream>
+// #include <iostream>
 #include "../../util/data_structures/lazy_disjoint_set.h"
 #include "../util/io/consumer.h"
 #include "../../cluster/cluster.h"

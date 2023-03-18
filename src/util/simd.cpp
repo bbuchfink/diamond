@@ -102,6 +102,7 @@ Arch arch() {
 }
 
 std::string features() {
+	init_arch();
 	std::vector<std::string> r;
 	if (flags & SSSE3)
 		r.push_back("ssse3");

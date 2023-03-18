@@ -17,7 +17,7 @@ struct Config {
 	std::unique_ptr<SequenceFile>       db;
 	std::shared_ptr<FastaFile>          centroids;
 	std::unique_ptr<Util::Tsv::File>    output_file;
-	task_timer                          total_time;
+	TaskTimer                          total_time;
 	int64_t                             seqs_processed;
 	int64_t                             letters_processed;
 	std::vector<CentroidId>             oid2centroid;

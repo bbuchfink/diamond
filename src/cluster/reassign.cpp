@@ -41,7 +41,7 @@ void reassign() {
 	config.clustering.require();
 	message_stream << "Coverage cutoff: " << config.member_cover << '%' << endl;
 
-	task_timer timer("Opening the database");
+	TaskTimer timer("Opening the database");
 	shared_ptr<SequenceFile> db(SequenceFile::auto_create({ config.database }, SequenceFile::Flags::NEED_LETTER_COUNT | SequenceFile::Flags::ACC_TO_OID_MAPPING | SequenceFile::Flags::OID_TO_ACC_MAPPING, SequenceFile::Metadata()));
 	config.db_size = db->letters();
 	timer.finish();

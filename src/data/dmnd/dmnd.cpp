@@ -44,7 +44,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 using std::tuple;
 using std::string;
 using std::list;
-using std::cout;
 using std::endl;
 using std::unique_ptr;
 using std::pair;
@@ -235,8 +234,8 @@ void DatabaseFile::make_db()
 	else
 		message_stream << "Database input file: " << input_file_name << endl;
 
-	task_timer total;
-	task_timer timer("Opening the database file", true);
+	TaskTimer total;
+	TaskTimer timer("Opening the database file", true);
 
 	value_traits = (config.dbtype == SequenceType::amino_acid) ? amino_acid_traits : nucleotide_traits;
     FastaFile db_file({ input_file_name }, Metadata (), Flags::NONE, value_traits);
@@ -413,7 +412,7 @@ bool DatabaseFile::is_diamond_db(const string &file_name) {
 
 void DatabaseFile::create_partition_fixednumber(size_t n) {
 	size_t max_letters_balanced = static_cast<size_t>(std::ceil(static_cast<double>(ref_header.letters)/static_cast<double>(n)));
-	cout << "Fixed number partitioning using " << max_letters_balanced << " (" << n << ")" << endl;
+	message_stream << "Fixed number partitioning using " << max_letters_balanced << " (" << n << ")" << endl;
 	this->create_partition(max_letters_balanced);
 }
 
@@ -425,7 +424,7 @@ void DatabaseFile::create_partition_balanced(size_t max_letters) {
 }
 
 void DatabaseFile::create_partition(size_t max_letters) {
-	task_timer timer("Create partition of DatabaseFile");
+	TaskTimer timer("Create partition of DatabaseFile");
 	size_t letters = 0, seqs = 0, total_seqs = 0;
 	int i_chunk = 0;
 
@@ -647,7 +646,7 @@ const char* const SEQID_EXTENSION = ".seqid";
 
 void DatabaseFile::prep_db() {
 	config.database.require();
-	task_timer timer("Opening the database");
+	TaskTimer timer("Opening the database");
 	DatabaseFile db(config.database);
 	timer.go("Writing seqid list");
 	db.make_seqid_list(); // db.file_name() + SEQID_EXTENSION);

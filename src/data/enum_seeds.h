@@ -107,7 +107,7 @@ void enum_seeds_contiguous(SequenceSet* seqs, F* f, unsigned begin, unsigned end
 		const Sequence seq = (*seqs)[i];
 		if (seq.length() < It::length()) continue;
 		It it(seq);
-		size_t j = 0;
+		Loc j = 0;
 		while (it.good()) {
 			if (it.get(key))
 				if (filter->contains(key, 0))

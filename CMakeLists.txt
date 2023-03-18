@@ -21,6 +21,7 @@ option(WITH_AVX512 "WITH_AVX512" OFF)
 option(WITH_DNA "WITH_DNA" OFF)
 option(WITH_MCL "WITH_MCL" OFF)
 option(WITH_MIMALLOC "WITH_MIMALLOC" OFF)
+option(USE_TLS "USE_TLS" OFF)
 set(MAX_SHAPE_LEN 19)
 set(BLAST_INCLUDE_DIR "" CACHE STRING "BLAST_INCLUDE_DIR")
 set(BLAST_LIBRARY_DIR "" CACHE STRING "BLAST_LIBRARY_DIR")
@@ -43,6 +44,10 @@ endif()
 
 if(STRICT_BAND)
   add_definitions(-DSTRICT_BAND)
+endif()
+
+if(USE_TLS)
+  add_definitions(-DUSE_TLS)
 endif()
 
 if(SINGLE_THREADED)
@@ -148,7 +153,7 @@ endif()
 
 set(DISPATCH_OBJECTS
         "src/dp/swipe/banded_3frame_swipe.cpp"
-        "src/search/stage2.cpp"
+        "src/search/stage1_2.cpp"
         "src/tools/benchmark.cpp"
         "src/dp/swipe/swipe_wrapper.cpp"
         "src/masking/tantan.cpp"
@@ -175,6 +180,8 @@ if(X86)
     add_library(arch_avx512 OBJECT ${DISPATCH_OBJECTS})
     target_include_directories(arch_avx512 PRIVATE "${CMAKE_SOURCE_DIR}/src/lib")
   endif()
+  add_definitions(-DWITH_AVX2)
+  add_definitions(-DWITH_SSE4_1)
   if (${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
     target_compile_options(arch_sse4_1 PUBLIC -DDISPATCH_ARCH=ARCH_SSE4_1 -DARCH_ID=1 -D__SSSE3__ -D__SSE4_1__ -D__POPCNT__ -DEigen=Eigen_SSE4_1)
     target_compile_options(arch_avx2 PUBLIC -DDISPATCH_ARCH=ARCH_AVX2 -DARCH_ID=2 /arch:AVX2 -D__SSSE3__ -D__SSE4_1__ -D__POPCNT__ -DEigen=Eigen_AVX2)

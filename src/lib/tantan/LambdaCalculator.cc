@@ -7,7 +7,6 @@
 #include <cstdlib>
 #include <cfloat>
 #include <cmath>
-//#include <iostream>
 using namespace std;
 
 static double roundToFewDigits(double x)

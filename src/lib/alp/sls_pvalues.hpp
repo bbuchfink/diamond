@@ -44,7 +44,7 @@ Contents: P-values calculation routines
 #include <cstdlib>
 
 #include <cmath>
-#include <iostream>
+// #include <iostream>
 
 namespace Sls {
 

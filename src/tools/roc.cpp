@@ -353,7 +353,7 @@ void roc() {
 	if (config.family_map_query.empty())
 		throw std::runtime_error("Missing option: --family-map-query");
 
-	task_timer timer("Loading family mapping");
+	TaskTimer timer("Loading family mapping");
 	acc2fam = FamilyMapping(config.family_map);
 	timer.finish();
 	message_stream << "#Mappings: " << acc2fam.size() << endl;

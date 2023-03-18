@@ -76,7 +76,7 @@ void Search::mask_seeds(const Shape& shape, const SeedPartitionRange& range, Dou
 	if (cfg.seed_encoding != SeedEncoding::SPACED_FACTOR)
 		return;
 
-	task_timer timer("Masking low complexity seeds");
+	TaskTimer timer("Masking low complexity seeds");
 	SequenceSet& query_seqs = cfg.query->seqs();
 	std::atomic_int seedp(range.begin());
 	std::atomic_size_t seed_count(0), masked_seed_count(0), query_count(0), target_count(0);

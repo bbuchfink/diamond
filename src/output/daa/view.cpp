@@ -36,8 +36,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 using std::thread;
 using std::unique_ptr;
-using std::endl;
 using std::vector;
+using std::endl;
 
 const unsigned view_buf_size = 32;
 
@@ -127,14 +127,14 @@ void view_worker(DAA_file *daa, View_writer *writer, TaskQueue<TextBuffer, View_
 		}
 	}
 	catch (std::exception &e) {
-		std::cout << e.what() << std::endl;
+		printf("%s\n", e.what());
 		std::terminate();
 	}
 }
 
 void view_daa()
 {
-	task_timer timer("Loading subject IDs");
+	TaskTimer timer("Loading subject IDs");
 	DAA_file daa(config.daa_file);
 	score_matrix = ScoreMatrix(daa.score_matrix(), daa.gap_open_penalty(), daa.gap_extension_penalty(), 0, 1, daa.db_letters());
 	timer.finish();

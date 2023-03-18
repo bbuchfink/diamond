@@ -23,6 +23,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "ungapped_simd.h"
 #include "../util/simd/transpose.h"
 #include "ungapped.h"
+#include "../util/simd/dispatch.h"
 
 using namespace DISPATCH_ARCH;
 
@@ -75,13 +76,18 @@ void window_ungapped_best(const Letter* query, const Letter** subjects, int subj
 	}
 #endif
 #if ARCH_ID == 2
-	else if (subject_count <= 16)
-		::DP::ARCH_SSE4_1::window_ungapped(query, subjects, subject_count, window, out);
+	//else if (subject_count <= 16)
+		//::DP::ARCH_SSE4_1::window_ungapped(query, subjects, subject_count, window, out);
 	else
-		::DP::ARCH_AVX2::window_ungapped(query, subjects, subject_count, window, out);
+		window_ungapped(query, subjects, subject_count, window, out);
 #elif defined(__SSE4_1__)
 	window_ungapped(query, subjects, subject_count, window, out);
 #endif
 }
 
-}}
+}
+
+DISPATCH_5(void, window_ungapped, const Letter*, query, const Letter**, subjects, int, subject_count, int, window, int*, out);
+DISPATCH_5(void, window_ungapped_best, const Letter*, query, const Letter**, subjects, int, subject_count, int, window, int*, out);
+
+}

@@ -18,7 +18,6 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#include <iostream>
 #include <type_traits>
 #include "../lib/Eigen/Dense"
 #include "../basic/value.h"
@@ -27,7 +26,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 // #define DYNAMIC
 
 using namespace Eigen;
-using std::cout;
 using std::endl;
 
 //#define DEBUG_OUT(x) cout << (x) << endl

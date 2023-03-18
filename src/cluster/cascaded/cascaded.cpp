@@ -77,7 +77,7 @@ vector<SuperBlockId> cluster(shared_ptr<SequenceFile>& db, const shared_ptr<BitV
 	Search::run(db, nullptr, callback, filter);
 
 	message_stream << "Finished search. #Edges: " << callback->count << endl;
-	task_timer timer("Allocating buffers");
+	TaskTimer timer("Allocating buffers");
 	vector<Edge> edges(callback->count);
 	timer.go("Loading edges");
 	InputFile f(callback->edge_file);
@@ -113,7 +113,7 @@ vector<SuperBlockId> cascaded(shared_ptr<SequenceFile>& db, bool linear) {
 	iota(centroids.begin(), centroids.end(), 0);
 
 	for (int i = 0; i < (int)steps.size(); i++) {
-		task_timer timer;
+		TaskTimer timer;
 		config.lin_stage1 = ends_with(steps[i], "_lin");
 		config.sensitivity = from_string<Sensitivity>(rstrip(steps[i], "_lin"));
 		tie(centroids, *oid_filter) = update_clustering(*oid_filter,
