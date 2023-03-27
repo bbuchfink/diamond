@@ -92,7 +92,7 @@ size_t Taxonomy::load_names() {
 		if (in.line.empty())
 			continue;
 		Util::String::Tokenizer(in.line, "\t|\t") >> id >> name >> Util::String::Skip() >> type;
-		rstrip(type, "\t|");
+		type = rstrip(type, "\t|");
 		if (type == "scientific name") {
 			name_.resize(id + 1);
 			name_[id] = name;
