@@ -33,13 +33,12 @@ Diamond is actively supported and developed software. Please use the [issue trac
 
 About
 =====
-DIAMOND is currently developed by Benjamin Buchfink at the Drost lab, Max
-Planck Institute for Biology, Tübingen, Germany (since 2019).
-Its development was supported for one year by the German Federal Ministry
-for Economic Affairs and Energy through an EXIST grant in 2018-2019. It was
-developed independently by Benjamin Buchfink from 2016-2018. Its initial
-version was developed in 2013-2015 by Benjamin Buchfink at the Huson lab, University
-of Tübingen, Germany.
+Since 2019, DIAMOND is developed by Benjamin Buchfink at the Drost lab, Max Planck
+Institute for Biology Tübingen. From 2018-2019, its development was supported by the
+German Federal Ministry for Economic Affairs and Energy through an EXIST grant.
+From 2016-2018, it was developed by Benjamin Buchfink as an independent researcher.
+From 2013-2015, the initial version was developed by Benjamin Buchfink at the Huson lab,
+University of Tübingen, Germany.
 
 \[[:email:Email](mailto:buchfink@gmail.com)\]
 \[[Twitter](https://twitter.com/bbuchfink)\] \[[Google
@@ -59,7 +58,7 @@ For sequence clustering:
     of protein sequences at tree-of-life scale using DIAMOND DeepClust\", *bioRxiv*
     2023.01.24.525373; doi: https://doi.org/10.1101/2023.01.24.525373 
 
-Further publications:
+Original publication to cite DIAMOND until v0.7.9:
 
 -   Buchfink B, Xie C, Huson DH, \"Fast and sensitive protein alignment
     using DIAMOND\", *Nature Methods* **12**, 59-60 (2015).
