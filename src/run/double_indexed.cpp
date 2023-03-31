@@ -160,7 +160,7 @@ static void run_ref_chunk(SequenceFile &db_file,
 
 		timer.go("Allocating buffers");
 		char* ref_buffer = SeedArray::alloc_buffer(cfg.target->hst(), cfg.index_chunks),
-			* query_buffer = SeedArray::alloc_buffer(cfg.query->hst(), cfg.index_chunks);
+			* query_buffer = config.target_indexed ? nullptr : SeedArray::alloc_buffer(cfg.query->hst(), cfg.index_chunks);
 		timer.finish();
 
 		::HashedSeedSet* target_seeds = nullptr;

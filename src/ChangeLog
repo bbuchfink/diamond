@@ -1,6 +1,7 @@
 [2.1.7]
 - Fixed a bug that caused taxonomy names not to be loaded correctly for the
   `makedb` workflow.
+- Fixed a bug that caused a crash when using the `--target-indexed` option.
 
 [2.1.6]
 - Fixed compatibility issues on older systems without support for AVX2.
