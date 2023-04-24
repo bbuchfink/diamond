@@ -360,7 +360,7 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 
 	string algo_str;
 
-	auto& advanced = parser.add_group("Advanced options", { blastp, blastx, blastn, makeidx, CLUSTER_REASSIGN, regression_test, cluster, DEEPCLUST, LINCLUST });
+	auto& advanced = parser.add_group("Advanced options", { blastp, blastx, blastn, makeidx, CLUSTER_REASSIGN, regression_test, cluster, DEEPCLUST, LINCLUST, makedb });
 	advanced.add()
 		("algo", 0, "Seed search algorithm (0=double-indexed/1=query-indexed/ctg=contiguous-seed)", algo_str)
 		("bin", 0, "number of query bins for seed search", query_bins_)
@@ -394,6 +394,7 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 		("no-unlink", 0, "Do not unlink temporary files.", no_unlink)
 		("target-indexed", 0, "Enable target-indexed mode", target_indexed)
 		("ignore-warnings", 0, "Ignore warnings", ignore_warnings)
+		("no-parse-seqids", 0, "Print raw seqids without parsing", no_parse_seqids)
 		("unaligned-targets", 0, "", unaligned_targets)
 		("cut-bar", 0, "", cut_bar)
 		("check-multi-target", 0, "", check_multi_target)

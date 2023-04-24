@@ -63,6 +63,8 @@ Taxonomy taxonomy;
 
 string get_accession(const string &title)
 {
+	if (config.no_parse_seqids)
+		return title;
 	size_t i;
 	string t(title);
 	if (t.compare(0, 6, "UniRef") == 0)

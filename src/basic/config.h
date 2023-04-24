@@ -338,6 +338,7 @@ struct Config
 	int64_t tsv_read_size;
     int zdrop;
 	bool heartbeat;
+	bool no_parse_seqids;
 
     SequenceType dbtype;
 
