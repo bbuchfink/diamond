@@ -77,13 +77,15 @@ static void load_mapping_file(ExternalSorter<pair<string, TaxId>>& sorter)
 		if (accession.empty())
 			throw std::runtime_error("Empty accession field in line " + std::to_string(f.line_count));
 
-		size_t i = accession.find(":PDB=");
-		if (i != string::npos)
-			accession.erase(i);
+		if (!config.no_parse_seqids) {
+			size_t i = accession.find(":PDB=");
+			if (i != string::npos)
+				accession.erase(i);
 
-		i = accession.find_last_of('.');
-		if (i != string::npos)
-			accession.erase(i);
+			i = accession.find_last_of('.');
+			if (i != string::npos)
+				accession.erase(i);
+		}
 
 		if (accession != last)
 			sorter.push(make_pair(accession, taxid));
