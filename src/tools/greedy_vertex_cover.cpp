@@ -27,6 +27,7 @@ using std::runtime_error;
 using Acc = string;
 
 void greedy_vertex_cover() {
+	config.database.require();
 	using Int = int64_t;
 	using Edge = Util::Algo::Edge<Int>;
 	const double cov = std::max(config.query_or_target_cover, config.member_cover);

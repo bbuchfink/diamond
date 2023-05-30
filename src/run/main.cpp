@@ -40,7 +40,6 @@ using std::endl;
 using std::runtime_error;
 using std::string;
 
-void model_seqs();
 void opt();
 void run_masker();
 void fastq2fasta();
@@ -76,6 +75,7 @@ void length_sort();
 void sort();
 void word_count();
 void cut();
+void model_seqs();
 #endif
 
 void split();
@@ -245,6 +245,9 @@ int main(int ac, const char* av[])
 			break;
 		case Config::CUT:
 			cut();
+			break;
+		case Config::MODEL_SEQS:
+			model_seqs();
 			break;
 #endif
 		default:

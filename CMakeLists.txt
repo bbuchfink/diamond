@@ -455,8 +455,7 @@ if(WITH_DNA)
   target_link_libraries(diamond  wfa2)
 
   target_compile_options(wfa2 PRIVATE -DCMAKE_BUILD_TYPE=Release -DEXTRA_FLAGS="-ftree-vectorize -msse2 -mfpmath=sse -ftree-vectorizer-verbose=5")
-  
-  endif()
+endif()
 
 if(EIGEN_BLAS)
   add_definitions(-DEIGEN_USE_BLAS -DEIGEN_USE_LAPACKE)
@@ -485,7 +484,9 @@ target_link_libraries(diamond ${ZLIB_LIBRARY} ${CMAKE_THREAD_LIBS_INIT})
 install(TARGETS diamond DESTINATION bin)
 
 enable_testing()
-add_test(
-        NAME diamond
-        COMMAND diamond test
-)
+SET(TD ${CMAKE_SOURCE_DIR}/src/test)
+SET(SP -DTEST_DIR=${CMAKE_SOURCE_DIR}/src/test -P ${CMAKE_SOURCE_DIR}/src/test/test.cmake)
+add_test(NAME blastp COMMAND ${CMAKE_COMMAND} -DNAME=blastp "-DARGS=blastp -q ${TD}/1.faa -d ${TD}/2.faa" ${SP})
+add_test(NAME blastp-mid-sens COMMAND ${CMAKE_COMMAND} -DNAME=blastp-mid-sens "-DARGS=blastp -q ${TD}/3.faa -d ${TD}/4.faa --mid-sensitive" ${SP})
+add_test(NAME blastp-f0 COMMAND ${CMAKE_COMMAND} -DNAME=blastp-f0 "-DARGS=blastp -q ${TD}/1.faa -d ${TD}/2.faa -f 0" ${SP})
+add_test(NAME diamond COMMAND diamond test)

@@ -113,15 +113,15 @@ bool FASTQ_format::get_seq(string& id, vector<Letter>& seq, TextInputFile & s, c
 	return true;
 }
 
-unique_ptr<const Sequence_file_format> guess_format(TextInputFile &file)
+unique_ptr<const SequenceFileFormat> guess_format(TextInputFile &file)
 {
 	file.getline();
 	file.putback_line();
 	if (file.line.empty())
 		throw std::runtime_error("Error detecting input file format. First line seems to be blank.");
 	switch (file.line[0]) {
-	case '>': return unique_ptr<const Sequence_file_format> { new FASTA_format() };
-	case '@': return unique_ptr<const Sequence_file_format> { new FASTQ_format() };
+	case '>': return unique_ptr<const SequenceFileFormat> { new FASTA_format() };
+	case '@': return unique_ptr<const SequenceFileFormat> { new FASTQ_format() };
 	default: throw std::runtime_error("Error detecting input file format. First line must begin with '>' (FASTA) or '@' (FASTQ).");
 	}
 	return 0;

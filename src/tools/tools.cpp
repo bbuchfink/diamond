@@ -196,4 +196,35 @@ void sort() {
 	//delete f;
 }
 
+template<unsigned n>
+inline unsigned get_distribution(const double* p, std::minstd_rand0& random_engine)
+{
+	const double x = std::uniform_real_distribution<double>(0.0, 1.0)(random_engine);
+	double s = 0;
+	for (unsigned i = 0; i < n; ++i) {
+		s += p[i];
+		if (x < s)
+			return i;
+	}
+	return n - 1;
+}
+
+vector<Letter> generate_random_seq(size_t length, std::minstd_rand0& random_engine)
+{
+	vector<Letter> seq;
+	seq.reserve(length);
+	for (size_t i = 0; i < length; ++i)
+		seq.push_back(get_distribution<20>(score_matrix.background_freqs(), random_engine));
+	return seq;
+}
+
+void model_seqs() {
+	const size_t l = 300, n = atoi(config.seq_no[0].c_str());
+	std::minstd_rand0 rand_engine;
+	for (size_t i = 0; i < n; ++i) {
+		cout << ">" << i << endl;
+		cout << Sequence(generate_random_seq(l, rand_engine)) << endl;
+	}
+}
+
 #endif

@@ -35,7 +35,7 @@ void XML_format::print_match(const HspContext& r, Output::Info& info)
 			out << "</Hit_def>" << '\n';
 		}
 		out << "  <Hit_accession>";
-		print_escaped(out, get_accession(id), &EscapeSequences::XML);
+		print_escaped(out, get_accession(id, info.acc_stats), &EscapeSequences::XML);
 		out << "</Hit_accession>" << '\n'
 			<< "  <Hit_len>" << r.subject_len << "</Hit_len>" << '\n'
 			<< "  <Hit_hsps>" << '\n';

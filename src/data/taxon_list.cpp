@@ -55,13 +55,14 @@ static int mapping_file_format(const string& header) {
 	throw std::runtime_error("Accession mapping file header has to be in one of these formats:\naccession\taccession.version\ttaxid\tgi\naccession.version\ttaxid");
 }
 
-static void load_mapping_file(ExternalSorter<pair<string, TaxId>>& sorter)
+static AccessionParsing load_mapping_file(ExternalSorter<pair<string, TaxId>>& sorter)
 {
 	TaxId taxid;
 	TextInputFile f(config.prot_accession2taxid);
 	f.getline();
 	int format = mapping_file_format(f.line);
 	string accession, last;
+	AccessionParsing stats;
 
 	while (!f.eof() && (f.getline(), !f.line.empty())) {
 		try {
@@ -79,12 +80,16 @@ static void load_mapping_file(ExternalSorter<pair<string, TaxId>>& sorter)
 
 		if (!config.no_parse_seqids) {
 			size_t i = accession.find(":PDB=");
-			if (i != string::npos)
+			if (i != string::npos) {
 				accession.erase(i);
+				++stats.pdb_suffix;
+			}
 
 			i = accession.find_last_of('.');
-			if (i != string::npos)
+			if (i != string::npos) {
 				accession.erase(i);
+				++stats.suffix_after_dot;
+			}
 		}
 
 		if (accession != last)
@@ -93,13 +98,14 @@ static void load_mapping_file(ExternalSorter<pair<string, TaxId>>& sorter)
 		last = accession;
 	}
 	f.close();
+	return stats;
 }
 
 void TaxonList::build(OutputFile &db, ExternalSorter<pair<string, OId>>& acc2oid, OId seqs, Util::Table& stats)
 {
 	TaskTimer timer("Loading taxonomy mapping file");
 	ExternalSorter<pair<string, TaxId>> acc2taxid;
-	load_mapping_file(acc2taxid);
+	const AccessionParsing acc_stats = load_mapping_file(acc2taxid);
 
 	timer.go("Joining accession mapping");
 	acc2taxid.init_read();
@@ -135,4 +141,7 @@ void TaxonList::build(OutputFile &db, ExternalSorter<pair<string, OId>>& acc2oid
 	stats("Entries in accession to taxid file", acc2taxid.count());
 	stats("Database accessions mapped to taxid" , acc_matched);
 	stats("Database sequences mapped to taxid", mapped_seqs);
+
+	if (!config.no_parse_seqids)
+		message_stream << endl << "Accession parsing rules triggered for mapping file seqids (use --no-parse-seqids to disable):" << endl << acc_stats << endl;
 }

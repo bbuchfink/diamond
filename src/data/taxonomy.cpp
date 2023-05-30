@@ -61,27 +61,35 @@ Rank::Rank(const char *s) {
 
 Taxonomy taxonomy;
 
-string get_accession(const string &title)
+string get_accession(const string &title, AccessionParsing& stat)
 {
 	if (config.no_parse_seqids)
 		return title;
 	size_t i;
 	string t(title);
-	if (t.compare(0, 6, "UniRef") == 0)
+	if (t.compare(0, 6, "UniRef") == 0) {
 		t.erase(0, t.find('_', 0) + 1);
+		++stat.uniref_prefix;
+	}
 	else if ((i = t.find_first_of('|', 0)) != string::npos) {
 		if (t.compare(0, 3, "gi|") == 0) {
 			t.erase(0, t.find_first_of('|', i + 1) + 1);
 			i = t.find_first_of('|', 0);
+			++stat.gi_prefix;
 		}
 		t.erase(0, i + 1);
+		++stat.prefix_before_pipe;
 		i = t.find_first_of('|', 0);
-		if (i != string::npos)
+		if (i != string::npos) {
 			t.erase(i);
+			++stat.suffix_after_pipe;
+		}
 	}
 	i = t.find_last_of('.');
-	if (i != string::npos)
+	if (i != string::npos) {
 		t.erase(i);
+		++stat.suffix_after_dot;
+	}
 	return t;
 }
 
@@ -116,10 +124,22 @@ void Taxonomy::init()
 	}
 }
 
-vector<string> accession_from_title(const char *title)
+vector<string> accession_from_title(const char *title, AccessionParsing& stat)
 {
 	vector<string> t(seq_titles(title));
 	for (vector<string>::iterator i = t.begin(); i < t.end(); ++i)
-		*i = get_accession(Util::Seq::seqid(i->c_str(), false));
+		*i = get_accession(Util::Seq::seqid(i->c_str(), false), stat);
 	return t;
+}
+
+std::ostream& operator<<(std::ostream& s, const AccessionParsing& stat) {
+	Util::Table t;
+	t("UniRef prefix", stat.uniref_prefix);
+	t("gi|xxx| prefix", stat.gi_prefix);
+	t("xxx| prefix", stat.prefix_before_pipe);
+	t("|xxx suffix", stat.suffix_after_pipe);
+	t(".xxx suffix", stat.suffix_after_dot);
+	t(":PDB= suffix", stat.pdb_suffix);
+	s << t;
+	return s;
 }

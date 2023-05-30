@@ -96,8 +96,10 @@ BlastDB::BlastDB(const std::string& file_name, Metadata metadata, Flags flags, c
 	sequence_count_(db_->GetNumOIDs()),
 	sparse_sequence_count_(db_->GetNumSeqs())
 {
+#ifndef EXTRA
 	if (flag_any(metadata, Metadata::TAXON_NODES | Metadata::TAXON_MAPPING | Metadata::TAXON_SCIENTIFIC_NAMES | Metadata::TAXON_RANKS))
 		throw std::runtime_error("Taxonomy features are not supported for the BLAST database format.");
+#endif
 	vector<string> paths;
 	CSeqDB::FindVolumePaths(file_name, CSeqDB::eProtein, paths);
 	for (const string& db : paths)

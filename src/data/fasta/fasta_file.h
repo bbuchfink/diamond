@@ -62,7 +62,7 @@ private:
 	std::list<TextInputFile> file_;
 	std::list<TextInputFile>::iterator file_ptr_;
 	std::unique_ptr<OutputFile> out_file_;
-	std::unique_ptr<const Sequence_file_format> format_;
+	std::unique_ptr<const SequenceFileFormat> format_;
 	OId oid_;
 	int64_t seqs_, letters_;
 	

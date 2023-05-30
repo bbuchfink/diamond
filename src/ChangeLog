@@ -2,6 +2,14 @@
 - Fixed a bug that caused taxonomy names not to be loaded correctly for the
   `makedb` workflow.
 - Fixed a bug that caused a crash when using the `--target-indexed` option.
+- Fixed an error when using the `--tmpdir` option for the makedb workflow.
+- Added a warning message when sequence accessions are shortened due to parsing
+  rules for the `makedb` workflow.
+- Added the option `--no-parse-seqids` to disable parsing of sequence
+  accessions.
+- Changed the command line help to print options separated by command.
+- Fixed an issue that the `--ignore-warnings` option could not be used for
+  the `makedb` workflow.
 
 [2.1.6]
 - Fixed compatibility issues on older systems without support for AVX2.

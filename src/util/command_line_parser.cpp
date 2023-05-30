@@ -113,24 +113,31 @@ void CommandLineParser::print_help()
 				cout << ' ';
 			cout << i->second << endl;
 		}
+    cout << endl;
+    cout << "Possible [OPTIONS] for COMMAND can be seen with syntax: diamond COMMAND" <<endl;
 	cout << endl;
-	for (const auto& g : groups_) {
-		if (g.title == "")
-			continue;
-		cout << g.title << ":" << endl;
-		for (const auto& option : g.options) {
-			if(option->desc.empty())
-				continue;
-			string col1 = "--" + option->id;
-			if (option->short_id)
-				col1 += string(" (-") + option->short_id + ")";
-			col1.append(max(col1_width, col1.length()) - col1.length(), ' ');
-			cout << col1 << option->desc << endl;
-		}
-		cout << endl;
-	}
 	cout << "Online documentation at http://www.diamondsearch.org" << endl;
 }
+void CommandLineParser::print_documentation(int command)
+{
+    static const size_t col1_width = 25;
+	cout << "Options:" << endl;
+    for(auto const& opt : groups_){
+        for( int i = 0; i < opt.commands.size();i++) {
+            if(opt.commands[i] == command){
+				for (auto const& i : opt.options) {
+					if (i->desc.empty())
+						continue;
+					string col1 = "--" + (*i).id;
+					col1.append(max(col1_width, col1.length()) - col1.length(), ' ');
+					cout << col1 << (*i).desc << endl;
+				}
+            }
+        }
+    }
+	cout << endl;
+}
+
 
 void CommandLineParser::require(const char* option) {
 	auto it = map_.find(option);

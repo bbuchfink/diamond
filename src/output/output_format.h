@@ -34,6 +34,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/enum.h"
 #include "../run/config.h"
 #include "../dp/flags.h"
+#include "../data/taxonomy.h"
 #include "def.h"
 
 namespace Output {
@@ -44,6 +45,7 @@ struct Info {
 	SequenceFile* db;
 	TextBuffer& out;
 	Extension::Stats stats;
+	AccessionParsing acc_stats;
 };
 
 }

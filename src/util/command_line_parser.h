@@ -246,6 +246,7 @@ struct CommandLineParser : CommandLineParserBase
 	void store(int count, const char **str, unsigned &command);
 	void require(const char* option);
 	void print_help();
+    void print_documentation(int command);
 	OptionsGroup& add_group(const char *title, const std::vector<unsigned>& commands, bool disabled = false);
 
 private:

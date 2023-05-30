@@ -260,6 +260,7 @@ void DatabaseFile::make_db()
 	const FASTA_format format;
 	vector<SeqInfo> pos_array;
 	ExternalSorter<pair<string, OId>> accessions;
+	AccessionParsing acc_stats;
 	try {
 		while (true) {
 			timer.go("Loading sequences");
@@ -285,7 +286,7 @@ void DatabaseFile::make_db()
 			if (!config.prot_accession2taxid.empty()) {
 				timer.go("Writing accessions");
 				for (size_t i = 0; i < n; ++i) {
-					vector<string> acc = accession_from_title(block->ids()[i]);
+					vector<string> acc = accession_from_title(block->ids()[i], acc_stats);
 					for (const string& s : acc)
 						accessions.push(std::make_pair(s, total_seqs + i));
 				}
@@ -317,9 +318,13 @@ void DatabaseFile::make_db()
 	pos_array.shrink_to_fit();
 	timer.finish();
 
+	if (!config.prot_accession2taxid.empty() && !config.no_parse_seqids)
+		message_stream << endl << "Accession parsing rules triggered for database seqids (use --no-parse-seqids to disable):" << endl << acc_stats << endl;
+
 	Util::Table stats;
 	stats("Database sequences", n_seqs);
 	stats("Database letters", letters);
+
 	taxonomy.init();
 	if (!config.prot_accession2taxid.empty()) {
 		header2.taxon_array_offset = out->tell();
@@ -397,7 +402,7 @@ void DatabaseFile::skip_seq()
 }
 
 bool DatabaseFile::is_diamond_db(const string &file_name) {
-	if (file_name == "-")
+	if (file_name == "-" || file_name.empty())
 		return false;
 	InputFile db_file(file_name);
 	uint64_t magic_number = 0;
