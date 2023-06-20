@@ -306,7 +306,7 @@ static void run_query_iteration(const unsigned query_iteration,
 	if (!config.swipe_all && !config.target_indexed) {
 		timer.go("Building query histograms");
 		EnumCfg enum_cfg{ nullptr, 0, 0, options.seed_encoding, options.query_skip.get(), false, false, options.seed_complexity_cut,
-			options.soft_masking, options.minimizer_window, query_seeds_hashed.get(), false };
+			options.soft_masking, options.minimizer_window, (bool)query_seeds_hashed, false };
 		options.query->hst() = SeedHistogram(*options.query, false, &no_filter, enum_cfg);
 		timer.finish();
 	}

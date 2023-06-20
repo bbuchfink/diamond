@@ -39,6 +39,8 @@ bool Search::seed_is_complex(const Letter* seq, const Shape& shape, const double
 	count.fill(0);
 	for (int i = 0; i < shape.weight_; ++i) {
 		const Letter l = letter_mask(seq[shape.positions_[i]]);
+		if (l >= TRUE_AA)
+			return false;
 		++count[Reduction::reduction(l)];
 	}
 	double entropy = lnfact[shape.weight_];

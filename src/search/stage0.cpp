@@ -109,7 +109,7 @@ void search_shape(unsigned sid, int query_block, unsigned query_iteration, char 
 		TaskTimer timer("Building reference seed array", true);
 		SeedArray *ref_idx;
 		const EnumCfg enum_ref{ &ref_hst.partition(), sid, sid + 1, cfg.seed_encoding, nullptr, false, false, cfg.seed_complexity_cut,
-			query_seeds_bitset.get() || query_seeds_hashed.get() ? MaskingAlgo::NONE : cfg.soft_masking,
+			query_seeds_bitset.get() || (bool)query_seeds_hashed ? MaskingAlgo::NONE : cfg.soft_masking,
 			cfg.minimizer_window, false, false };
 		if (query_seeds_bitset.get())
 			ref_idx = new SeedArray(*cfg.target, ref_hst.get(sid), range, ref_buffer, query_seeds_bitset.get(), enum_ref);
@@ -124,7 +124,7 @@ void search_shape(unsigned sid, int query_block, unsigned query_iteration, char 
 		timer.go("Building query seed array");
 		SeedArray* query_idx;
 		EnumCfg enum_query{ target_seeds ? nullptr : &query_hst.partition(), sid, sid + 1, cfg.seed_encoding, cfg.query_skip.get(),
-			false, true, cfg.seed_complexity_cut, cfg.soft_masking, cfg.minimizer_window, query_seeds_hashed.get(), query_seeds_hashed.get() };
+			false, true, cfg.seed_complexity_cut, cfg.soft_masking, cfg.minimizer_window, (bool)query_seeds_hashed, (bool)query_seeds_hashed };
 		if (target_seeds)
 			query_idx = new SeedArray(*cfg.query, range, target_seeds, enum_query);
 		else

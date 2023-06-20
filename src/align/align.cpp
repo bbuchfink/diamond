@@ -316,7 +316,11 @@ void align_queries(Consumer* output_file, Search::Config& cfg)
 			log_stream << "Warning: resident size (" << (res_size + last_size) << ") exceeds memory limit." << std::endl;
 
 		timer.go("Sorting trace points");
+#ifdef NDEBUG
 		ips4o::parallel::sort(hit_buf->begin(), hit_buf->end(), std::less<Search::Hit>(), config.threads_);
+#else
+		std::sort(hit_buf->begin(), hit_buf->end());
+#endif
 		statistics.inc(Statistics::TIME_SORT_SEED_HITS, timer.microseconds());
 
 #ifndef OLD
