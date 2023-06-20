@@ -145,35 +145,49 @@ void IntermediateRecord::finish_file(Consumer& f)
 	f.consume(reinterpret_cast<const char*>(&i), 4);
 }
 
-void OutputFormat::print_title(TextBuffer &buf, const char *id, bool full_titles, bool all_titles, const char *separator, const EscapeSequences *esc)
+void OutputFormat::print_title(TextBuffer &buf, const char *id, bool full_titles, bool all_titles, const char *separator, const EscapeSequences *esc, bool json_array)
 {
 	if (!all_titles) {
 		if (config.short_seqids)
 			buf << Util::Seq::seqid(id, true);
 		else
 			print_escaped_until(buf, id, full_titles ? "\1" : Util::Seq::id_delimiters, esc);
-		return;
+        return;
 	}
 	if (strchr(id, '\1') == 0) {
+        if(json_array)
+            buf << "\"";
 		print_escaped_until(buf, id, full_titles ? "\1" : Util::Seq::id_delimiters, esc);
-		return;
+        if(json_array)
+            buf << "\"";
+        return;
 	}
 	const vector<string> t(tokenize(id, "\1"));
 	vector<string>::const_iterator i = t.begin();
 	for (; i < t.end() - 1; ++i) {
+        if(json_array)
+            buf << "\"";
 		if (full_titles) {
 			print_escaped(buf, *i, esc);
+            if(json_array)
+                buf << "\"";
 			buf << separator;
+            if(json_array)
+                buf << "\"";
 		}
 		else {
 			print_escaped_until(buf, i->c_str(), Util::Seq::id_delimiters, esc);
-			buf << ";";
+            buf << (json_array ? "\",\"" : ";");
 		}
 	}
-	if (full_titles)
-		print_escaped(buf, *i, esc);
-	else
-		print_escaped_until(buf, i->c_str(), Util::Seq::id_delimiters, esc);
+	if (full_titles) {
+        print_escaped(buf, *i, esc);
+    }
+	else {
+        print_escaped_until(buf, i->c_str(), Util::Seq::id_delimiters, esc);
+    }
+    if(json_array)
+        buf << "\"";
 }
 
 void print_hsp(Hsp &hsp, const TranslatedSequence &query)
@@ -189,12 +203,12 @@ OutputFormat* get_output_format()
 	const vector<string> &f = config.output_format;
 	if (f.size() == 0) {
 		if (config.daa_file == "" || config.command == Config::view)
-			return new Blast_tab_format;
+			return new Blast_tab_format();
 		else if ((config.command == Config::blastp || config.command == Config::blastx) && config.daa_file.length() > 0)
 			return new DAA_format();
 	}
 	if (f[0] == "tab" || f[0] == "6")
-		return new Blast_tab_format;
+		return new Blast_tab_format();
 	else if (f[0] == "sam" || f[0] == "101")
 		return new Sam_format;
 	else if (f[0] == "xml" || f[0] == "5")
@@ -215,6 +229,8 @@ OutputFormat* get_output_format()
 		return new Clustering_format(&f[1]);
 	else if (f[0] == "edge")
 		return new Output::Format::Edge;
+    else if(f[0] == "json-flat" || f[0] == "104")
+        return new Blast_tab_format(true);
 	else
 		throw std::runtime_error("Invalid output format: " + f[0] + "\nAllowed values: 0,5,xml,6,tab,100,daa,101,sam,102,103,paf");
 }

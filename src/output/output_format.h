@@ -75,7 +75,7 @@ struct OutputFormat
 	virtual OutputFormat* clone() const = 0;
 	virtual ~OutputFormat()
 	{ }
-	static void print_title(TextBuffer &buf, const char *id, bool full_titles, bool all_titles, const char *separator, const EscapeSequences *esc = 0);
+	static void print_title(TextBuffer &buf, const char *id, bool full_titles, bool all_titles, const char *separator, const EscapeSequences *esc = 0,  bool json_array = false);
 	operator unsigned() const
 	{
 		return code;
@@ -84,7 +84,7 @@ struct OutputFormat
 	bool needs_taxon_id_lists, needs_taxon_nodes, needs_taxon_scientific_names, needs_taxon_ranks, needs_paired_end_info;
 	HspValues hsp_values;
 	Output::Flags flags;
-	enum { daa, blast_tab, blast_xml, sam, blast_pairwise, null, taxon, paf, bin1, EDGE };
+	enum { daa, blast_tab, blast_xml, sam, blast_pairwise, null, taxon, paf, bin1, EDGE ,json};
 };
 
 struct Null_format : public OutputFormat
@@ -117,21 +117,24 @@ enum class Header { NONE, SIMPLE, VERBOSE };
 
 struct Blast_tab_format : public OutputFormat
 {
-	static const std::vector<OutputField> field_def;
-	Blast_tab_format();
-	virtual void print_header(Consumer &f, int mode, const char *matrix, int gap_open, int gap_extend, double evalue, const char *first_query_name, unsigned first_query_len) const override;
-	virtual void print_query_intro(Output::Info& info) const override;
-	virtual void print_match(const HspContext& r, Output::Info& info) override;
-	virtual ~Blast_tab_format()
-	{ }
-	virtual OutputFormat* clone() const override
-	{
-		return new Blast_tab_format(*this);
-	}
-	static Header header_format(unsigned workflow);
-	void output_header(Consumer& f, bool cluster) const;
-	std::vector<int64_t> fields;
+    Blast_tab_format(bool json = false);
+    static const std::vector<OutputField> field_def;
+    virtual void print_header(Consumer &f, int mode, const char *matrix, int gap_open, int gap_extend, double evalue, const char *first_query_name, unsigned first_query_len) const override;
+    virtual void print_footer(Consumer &f) const override;
+    virtual void print_query_intro(Output::Info& info) const override;
+    virtual void print_match(const HspContext& r, Output::Info& info) override;
+    virtual ~Blast_tab_format()
+    { }
+    virtual OutputFormat* clone() const override
+    {
+        return new Blast_tab_format(*this);
+    }
+    static Header header_format(unsigned workflow);
+    void output_header(Consumer& f, bool cluster) const;
+    std::vector<int64_t> fields;
+    bool is_json;
 };
+
 
 struct PAF_format : public OutputFormat
 {

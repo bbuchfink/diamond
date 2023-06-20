@@ -224,7 +224,7 @@ std::pair<FlatArray<typename It::value_type::second_type>, std::vector<typename 
 	using Key = typename It::value_type::first_type;
 	using Value = typename It::value_type::second_type;
 #if _MSC_FULL_VER == 191627045 || !defined(NDEBUG)
-	std:sort(begin, end);
+	std::sort(begin, end);
 #else
 	ips4o::parallel::sort(begin, end, std::less<std::pair<Key, Value>>(), num_threads);
 #endif

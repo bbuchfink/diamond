@@ -159,31 +159,39 @@ private:
 template<uint64_t B>
 struct HashedSeedIterator
 {
-	HashedSeedIterator(const Sequence &seq, const Shape &sh):
-		ptr_(seq.data()),
-		end_(ptr_ + seq.length()),
+	HashedSeedIterator(Letter* seq, Loc len, const Shape &sh):
+		long_mask(sh.long_mask()),
+		ptr_(seq),
+		end_(ptr_ + len),
 		last_(0)
 	{
-		for (int i = 0; (i < sh.length_ - 1) && ptr_ < end_; ++i) {
+		for (int i = 0; i < sh.length_ && ptr_ < end_; ++i)
 			last_ = (last_ << B) | Reduction::reduction(letter_mask(*(ptr_++)));
-		}
 	}
 	bool good() const
 	{
-		return ptr_ < end_;
+		return ptr_ <= end_;
 	}
-	bool get(uint64_t &seed, uint64_t mask)
-	{
-		last_ <<= B;
-		const Letter l = letter_mask(*(ptr_++));
-		if (!is_amino_acid(l))
-			return false;
-		last_ |= Reduction::reduction(l);
-		seed = MurmurHash()(last_ & mask);
-		return true;
+	uint64_t operator*() const {
+		return MurmurHash()(last_ & long_mask);
+	}
+	HashedSeedIterator& operator++() {
+		while (ptr_ < end_) {
+			last_ <<= B;
+			const Letter l = letter_mask(*(ptr_++));
+			if (!is_amino_acid(l))
+				continue;
+			last_ |= Reduction::reduction(l);
+			return *this;
+		}
+		++ptr_;
+	}
+	Letter* seq_ptr(const Shape& sh) const {
+		return ptr_ - sh.length_;
 	}
 private:
-	const Letter *ptr_, *end_;
+	const uint64_t long_mask;
+	Letter *ptr_, *end_;
 	uint64_t last_;
 };
 

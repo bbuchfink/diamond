@@ -42,7 +42,9 @@ enum class Flags : int {
 	FULL_TITLES = 1,
 	ALL_SEQIDS = 1 << 1,
 	TARGET_SEQS = 1 << 2,
-	SELF_ALN_SCORES = 1 << 3
+	SELF_ALN_SCORES = 1 << 3,
+    IS_STRING = 1 << 4,
+    IS_ARRAY = 1 << 5
 };
 
 DEFINE_ENUM_FLAG_OPERATORS(Flags)

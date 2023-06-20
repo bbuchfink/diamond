@@ -1,3 +1,9 @@
+[2.1.8]
+- Fixed an issue that could cause reduced performance when running in
+  query-indexed mode.
+- Added support for the JSON output format (option `-f json-flat`).
+- Added the option `--sam-query-len` to output query length in SAM format.
+
 [2.1.7]
 - Fixed a bug that caused taxonomy names not to be loaded correctly for the
   `makedb` workflow.

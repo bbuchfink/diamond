@@ -326,7 +326,7 @@ void align_queries(Consumer* output_file, Search::Config& cfg)
 
 		timer.go("Computing alignments");
 		HitIterator hit_it(query_range.first, query_range.second, hit_buf->data(), hit_buf->data() + hit_buf->size());
-		OutputWriter writer{ output_file };
+        OutputWriter writer{output_file, (*cfg.output_format == OutputFormat::json) ? ',' : char(0)};
 		output_sink.reset(new ReorderQueue<TextBuffer*, OutputWriter>(query_range.first, writer));
 		unique_ptr<thread> heartbeat;
 		if (config.verbosity >= 3 && config.load_balancing == Config::query_parallel && !config.swipe_all && config.heartbeat)

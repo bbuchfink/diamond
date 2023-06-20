@@ -120,6 +120,10 @@ void Sam_format::print_match(const HspContext& r, Output::Info &info)
 		<< "MD:Z:";
 
 	print_md(r, out);
+
+	if (config.sam_qlen_field)
+		out << '\t' << "ZQ:" << r.query.source().length();
+
 	out << '\n';
 }
 

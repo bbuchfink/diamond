@@ -47,7 +47,7 @@ size_t SeedHistogram::max_chunk_size(const int index_chunks) const
 }
 
 template<typename Filter>
-SeedHistogram::SeedHistogram(Block& seqs, bool serial, const Filter* filter, SeedEncoding code, const std::vector<bool>* skip, const bool mask_seeds, const double seed_cut, const MaskingAlgo soft_masking, Loc minimizer_window) :
+SeedHistogram::SeedHistogram(Block& seqs, bool serial, const Filter* filter, EnumCfg& enum_cfg) :
 	data_(shapes.count()),
 	p_(seqs.seqs().partition(config.threads_))
 {
@@ -76,17 +76,20 @@ SeedHistogram::SeedHistogram(Block& seqs, bool serial, const Filter* filter, See
 	PtrVector<Callback> cb;
 	for (size_t i = 0; i < p_.size() - 1; ++i)
 		cb.push_back(new Callback(i, data_));
+	enum_cfg.partition = &p_;
 	if (serial)
 		for (unsigned s = 0; s < shapes.count(); ++s) {
-			const EnumCfg cfg{ &p_,s,s + 1, code, skip, false, mask_seeds, seed_cut, soft_masking, minimizer_window };
-			enum_seeds(seqs, cb, filter, cfg);
+			enum_cfg.shape_begin = s;
+			enum_cfg.shape_end = s + 1;
+			enum_seeds(seqs, cb, filter, enum_cfg);
 		}
 	else {
-		const EnumCfg cfg{ &p_, 0, shapes.count(), code, skip, false, mask_seeds, seed_cut, soft_masking, minimizer_window };
-		enum_seeds(seqs, cb, filter, cfg);
+		enum_cfg.shape_begin = 0;
+		enum_cfg.shape_end = shapes.count();
+		enum_seeds(seqs, cb, filter, enum_cfg);
 	}
 }
 
-template SeedHistogram::SeedHistogram(Block&, bool, const NoFilter*, SeedEncoding, const std::vector<bool>*, const bool, const double, const MaskingAlgo, Loc);
-template SeedHistogram::SeedHistogram(Block&, bool, const SeedSet*, SeedEncoding, const std::vector<bool>*, const bool, const double, const MaskingAlgo, Loc);
-template SeedHistogram::SeedHistogram(Block&, bool, const HashedSeedSet*, SeedEncoding, const std::vector<bool>*, const bool, const double, const MaskingAlgo, Loc);
+template SeedHistogram::SeedHistogram(Block&, bool, const NoFilter*, EnumCfg&);
+template SeedHistogram::SeedHistogram(Block&, bool, const SeedSet*, EnumCfg&);
+template SeedHistogram::SeedHistogram(Block&, bool, const HashedSeedSet*, EnumCfg&);

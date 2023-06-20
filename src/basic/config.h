@@ -339,6 +339,7 @@ struct Config
     int zdrop;
 	bool heartbeat;
 	bool no_parse_seqids;
+	bool sam_qlen_field;
 
     SequenceType dbtype;
 

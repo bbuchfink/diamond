@@ -46,25 +46,25 @@ using std::vector;
 using std::runtime_error;
 
 const vector<OutputField> Blast_tab_format::field_def = {
-{ "qseqid", "cseqid", "Query ID", HspValues::NONE, Flags::NONE },		// 0 means Query Seq - id
+{ "qseqid", "cseqid", "Query ID", HspValues::NONE, Flags::IS_STRING },		// 0 means Query Seq - id
 { "qgi", "", "qgi", HspValues::NONE, Flags::NONE },			// 1 means Query GI
-{ "qacc", "", "qacc", HspValues::NONE, Flags::NONE },			// 2 means Query accesion
-{ "qaccver", "", "qaccver", HspValues::NONE, Flags::NONE },		// 3 means Query accesion.version
+{ "qacc", "", "qacc", HspValues::NONE, Flags::IS_STRING },			// 2 means Query accesion
+{ "qaccver", "", "qaccver", HspValues::NONE, Flags::IS_STRING },		// 3 means Query accesion.version
 { "qlen", "clen", "Query length", HspValues::NONE, Flags::NONE },			// 4 means Query sequence length
-{ "sseqid",	"mseqid", "Subject ID", HspValues::NONE, Flags::NONE },	// 5 means Subject Seq - id
-{ "sallseqid", "", "Subject IDs", HspValues::NONE, Flags::ALL_SEQIDS },	// 6 means All subject Seq - id(s), separated by a ';'
+{ "sseqid",	"mseqid", "Subject ID", HspValues::NONE, Flags::IS_STRING },	// 5 means Subject Seq - id
+{ "sallseqid", "", "Subject IDs", HspValues::NONE, Flags::ALL_SEQIDS |Flags::IS_ARRAY },	// 6 means All subject Seq - id(s), separated by a ';'
 { "sgi", "", "sgi", HspValues::NONE, Flags::NONE },			// 7 means Subject GI
-{ "sallgi", "", "sallgi", HspValues::NONE, Flags::ALL_SEQIDS },		// 8 means All subject GIs
-{ "sacc", "", "sacc", HspValues::NONE, Flags::NONE },			// 9 means Subject accession
-{ "saccver", "", "saccver", HspValues::NONE, Flags::NONE },		// 10 means Subject accession.version
-{ "sallacc", "", "sallacc", HspValues::NONE, Flags::ALL_SEQIDS },		// 11 means All subject accessions
+{ "sallgi", "", "sallgi", HspValues::NONE, Flags::ALL_SEQIDS | Flags::IS_ARRAY },		// 8 means All subject GIs
+{ "sacc", "", "sacc", HspValues::NONE, Flags::IS_STRING },			// 9 means Subject accession
+{ "saccver", "", "saccver", HspValues::NONE, Flags::IS_STRING },		// 10 means Subject accession.version
+{ "sallacc", "", "sallacc", HspValues::NONE, Flags::ALL_SEQIDS | Flags::IS_STRING },		// 11 means All subject accessions
 { "slen", "mlen", "Subject length", HspValues::NONE, Flags::NONE },			// 12 means Subject sequence length
 { "qstart", "cstart", "Start of alignment in query", HspValues::QUERY_START, Flags::NONE },		// 13 means Start of alignment in query
 { "qend", "cend", "End of alignment in query", HspValues::QUERY_END, Flags::NONE },			// 14 means End of alignment in query
 { "sstart", "mstart", "Start of alignment in subject", HspValues::TARGET_START, Flags::NONE },		// 15 means Start of alignment in subject
 { "send", "mend", "End of alignment in subject", HspValues::TARGET_END, Flags::NONE },			// 16 means End of alignment in subject
-{ "qseq", "", "Aligned part of query sequence", HspValues::QUERY_COORDS, Flags::NONE },			// 17 means Aligned part of query sequence
-{ "sseq", "", "Aligned part of subject sequence", HspValues::TRANSCRIPT, Flags::NONE },			// 18 means Aligned part of subject sequence
+{ "qseq", "", "Aligned part of query sequence", HspValues::QUERY_COORDS, Flags::IS_STRING },			// 17 means Aligned part of query sequence
+{ "sseq", "", "Aligned part of subject sequence", HspValues::TRANSCRIPT, Flags::IS_STRING },			// 18 means Aligned part of subject sequence
 { "evalue", "evalue", "Expected value", HspValues::NONE, Flags::NONE },		// 19 means Expect value
 { "bitscore", "bitscore", "Bit score", HspValues::NONE, Flags::NONE },		// 20 means Bit score
 { "score", "score", "Raw score", HspValues::NONE, Flags::NONE },		// 21 means Raw score
@@ -76,41 +76,41 @@ const vector<OutputField> Blast_tab_format::field_def = {
 { "gapopen", "gapopen", "Number of gap openings", HspValues::GAP_OPENINGS, Flags::NONE },		// 27 means Number of gap openings
 { "gaps", "gaps", "Total number of gaps", HspValues::GAPS, Flags::NONE },			// 28 means Total number of gaps
 { "ppos", "ppos", "Percentage of positive-scoring matches", HspValues::TRANSCRIPT, Flags::NONE },			// 29 means Percentage of positive - scoring matches
-{ "frames", "", "frames", HspValues::NONE, Flags::NONE },		// 30 means Query and subject frames separated by a '/'
+{ "frames", "", "frames", HspValues::NONE, Flags::IS_STRING },		// 30 means Query and subject frames separated by a '/'
 { "qframe", "", "Query frame", HspValues::NONE, Flags::NONE },		// 31 means Query frame
 { "sframe", "", "sframe", HspValues::NONE, Flags::NONE },		// 32 means Subject frame
-{ "btop", "", "Blast traceback operations", HspValues::TRANSCRIPT, Flags::NONE },			// 33 means Blast traceback operations(BTOP)
-{ "staxids", "", "Subject Taxonomy IDs", HspValues::NONE, Flags::NONE },		// 34 means unique Subject Taxonomy ID(s), separated by a ';'	(in numerical order)
-{ "sscinames", "", "Subject scientific names", HspValues::NONE, Flags::NONE },	// 35 means unique Subject Scientific Name(s), separated by a ';'
-{ "scomnames", "", "scomnames", HspValues::NONE, Flags::NONE },	// 36 means unique Subject Common Name(s), separated by a ';'
+{ "btop", "", "Blast traceback operations", HspValues::TRANSCRIPT, Flags::IS_STRING },			// 33 means Blast traceback operations(BTOP)
+{ "staxids", "", "Subject Taxonomy IDs", HspValues::NONE, Flags::IS_ARRAY },		// 34 means unique Subject Taxonomy ID(s), separated by a ';'	(in numerical order)
+{ "sscinames", "", "Subject scientific names", HspValues::NONE, Flags::IS_ARRAY },	// 35 means unique Subject Scientific Name(s), separated by a ';'
+{ "scomnames", "", "scomnames", HspValues::NONE, Flags::IS_ARRAY },	// 36 means unique Subject Common Name(s), separated by a ';'
 { "sblastnames", "", "sblastnames", HspValues::NONE, Flags::NONE },	// 37 means unique Subject Blast Name(s), separated by a ';'	(in alphabetical order)
-{ "sskingdoms",	"", "Subject super kingdoms", HspValues::NONE, Flags::NONE }, // 38 means unique Subject Super Kingdom(s), separated by a ';'	(in alphabetical order)
-{ "stitle", "", "Subject title", HspValues::NONE, Flags::FULL_TITLES },		// 39 means Subject Title
-{ "salltitles", "", "Subject titles", HspValues::NONE, Flags::FULL_TITLES },	// 40 means All Subject Title(s), separated by a '<>'
-{ "sstrand", "", "sstrand", HspValues::NONE, Flags::NONE },		// 41 means Subject Strand
+{ "sskingdoms",	"", "Subject super kingdoms", HspValues::NONE, Flags::IS_ARRAY }, // 38 means unique Subject Super Kingdom(s), separated by a ';'	(in alphabetical order)
+{ "stitle", "", "Subject title", HspValues::NONE, Flags::FULL_TITLES | Flags::IS_STRING },		// 39 means Subject Title
+{ "salltitles", "", "Subject titles", HspValues::NONE, Flags::FULL_TITLES | Flags::IS_ARRAY},	// 40 means All Subject Title(s), separated by a '<>'
+{ "sstrand", "", "sstrand", HspValues::NONE, Flags::IS_STRING },		// 41 means Subject Strand
 { "qcovs", "", "qcovs", HspValues::NONE, Flags::NONE },		// 42 means Query Coverage Per Subject
 { "qcovhsp", "ccovhsp", "Query coverage per HSP", HspValues::QUERY_COORDS, Flags::NONE },		// 43 means Query Coverage Per HSP
 { "qcovus", "", "qcovus", HspValues::NONE, Flags::NONE },		// 44 means Query Coverage Per Unique Subject(blastn only)
-{ "qtitle", "", "Query title", HspValues::NONE, Flags::NONE },		// 45 means Query title
-{ "swdiff", "", "swdiff", HspValues::NONE, Flags::NONE },		// 46
+{ "qtitle", "", "Query title", HspValues::NONE, Flags::IS_STRING },		// 45 means Query title
+{ "swdiff", "", "swdiff", HspValues::NONE, Flags::NONE},		// 46
 { "time", "", "time", HspValues::NONE, Flags::NONE }, 		// 47
-{ "full_sseq", "", "Subject sequence", HspValues::NONE, Flags::NONE },	// 48
-{ "qqual", "", "Aligned part of query quality values", HspValues::QUERY_COORDS, Flags::NONE },		// 49
+{ "full_sseq", "", "Subject sequence", HspValues::NONE, Flags::IS_STRING },	// 48
+{ "qqual", "", "Aligned part of query quality values", HspValues::QUERY_COORDS, Flags::IS_STRING},		// 49
 { "qnum", "", "qnum", HspValues::NONE, Flags::NONE },			// 50
 { "snum", "", "snum", HspValues::NONE, Flags::NONE },			// 51
 { "scovhsp", "mcovhsp", "Subject coverage per HSP", HspValues::TARGET_COORDS, Flags::NONE },		// 52
 { "full_qqual", "", "Query quality values", HspValues::NONE, Flags::NONE },	// 53
-{ "full_qseq", "", "Query sequence", HspValues::NONE, Flags::NONE },	// 54
-{ "qseq_gapped", "", "Query sequence with gaps", HspValues::TRANSCRIPT, Flags::NONE },  // 55
-{ "sseq_gapped", "", "Subject sequence with gaps", HspValues::TRANSCRIPT, Flags::NONE },	// 56
-{ "qstrand", "", "Query strand", HspValues::NONE, Flags::NONE },		// 57
-{ "cigar", "", "CIGAR", HspValues::TRANSCRIPT, Flags::NONE },		// 58
-{ "skingdoms", "", "Subject kingdoms", HspValues::NONE, Flags::NONE },	// 59
-{ "sphylums", "", "Subject phylums", HspValues::NONE, Flags::NONE },		// 60
+{ "full_qseq", "", "Query sequence", HspValues::NONE, Flags::IS_STRING },	// 54
+{ "qseq_gapped", "", "Query sequence with gaps", HspValues::TRANSCRIPT, Flags::IS_STRING },  // 55
+{ "sseq_gapped", "", "Subject sequence with gaps", HspValues::TRANSCRIPT, Flags::IS_STRING },	// 56
+{ "qstrand", "", "Query strand", HspValues::NONE, Flags::IS_STRING },		// 57
+{ "cigar", "", "CIGAR", HspValues::TRANSCRIPT, Flags::IS_STRING },		// 58
+{ "skingdoms", "", "Subject kingdoms", HspValues::NONE, Flags::IS_ARRAY },	// 59
+{ "sphylums", "", "Subject phylums", HspValues::NONE, Flags::IS_ARRAY },		// 60
 { "ungapped_score", "", "Ungapped score", HspValues::NONE, Flags::NONE },	// 61
-{ "full_qseq_mate", "", "Query sequence of the mate", HspValues::NONE, Flags::NONE }, // 62
-{ "qseq_translated", "", "Aligned part of query sequence (translated)", HspValues::TRANSCRIPT, Flags::NONE }, // 63 needs transcript only in frameshift mode
-{ "reduced_match_bitstring", "", "", HspValues::TRANSCRIPT, Flags::NONE}, // 64
+{ "full_qseq_mate", "", "Query sequence of the mate", HspValues::NONE, Flags::IS_STRING }, // 62
+{ "qseq_translated", "", "Aligned part of query sequence (translated)", HspValues::TRANSCRIPT, Flags::IS_STRING }, // 63 needs transcript only in frameshift mode
+{ "reduced_match_bitstring", "", "", HspValues::TRANSCRIPT, Flags::IS_STRING}, // 64
 { "normalized_bitscore_semiglobal", "", "", HspValues::NONE, Flags::NONE},  // 65
 { "hspnum", "", "", HspValues::NONE, Flags::NONE}, // 66
 { "normalized_bitscore_global", "", "", HspValues::NONE, Flags::SELF_ALN_SCORES}, // 67
@@ -147,8 +147,9 @@ Header Blast_tab_format::header_format(unsigned workflow) {
 	return h;
 }
 
-Blast_tab_format::Blast_tab_format() :
-	OutputFormat(blast_tab, HspValues::NONE, Flags::NONE)
+Blast_tab_format::Blast_tab_format(bool json) :
+	OutputFormat((json ? OutputFormat::json : OutputFormat::blast_tab), HspValues::NONE, Flags::NONE),
+    is_json(json)
 {
 	static const unsigned stdf[] = { 0, 5, 23, 22, 25, 27, 13, 14, 15, 16, 19, 20 };
 	const vector<string> &f = config.output_format;
@@ -195,28 +196,45 @@ Blast_tab_format::Blast_tab_format() :
 		//config.traceback_mode = TracebackMode::SCORE_ONLY;
 }
 
-void print_staxids(TextBuffer &out, int64_t subject_global_id, const SequenceFile& db)
+void print_staxids(TextBuffer &out, int64_t subject_global_id, const SequenceFile& db,bool json = false)
 {
-	out.print(db.taxids(subject_global_id), ';');
+	out.print(db.taxids(subject_global_id), json ? ',':';');
 }
 
 template<typename _it>
-void print_taxon_names(_it begin, _it end, const SequenceFile& db, TextBuffer &out) {
+void print_taxon_names(_it begin, _it end, const SequenceFile& db, TextBuffer &out, bool json = false) {
 	if (begin == end) {
 		out << "N/A";
 		return;
 	}
 	for (_it i = begin; i != end; ++i) {
+        if(json)
+            out << "\"";
 		if (i != begin)
-			out << ';';
+			out << json ? ',': ';';
 		out << db.taxon_scientific_name(*i);
+        if(json)
+            out << "\"";
 	}
 }
 
 void Blast_tab_format::print_match(const HspContext& r, Output::Info& info)
 {
 	TextBuffer& out = info.out;
+    const char* prepos = "\t";
+    if(is_json) {
+        if(r.hit_num !=0)
+            out << ",";
+        out << "\n\t{\n";
+    }
 	for (auto i = fields.cbegin(); i != fields.cend(); ++i) {
+        if(is_json){
+            out << prepos << "\"" << field_def[*i].key << "\":";
+            if(flag_any(field_def[*i].flags , Flags::IS_STRING))
+                out << "\"";
+            if(flag_any(field_def[*i].flags , Flags::IS_ARRAY))
+                out << "[";
+        }
 		switch (*i) {
 		case 0:
 			out.write_until(r.query_title.c_str(), Util::Seq::id_delimiters);
@@ -228,8 +246,8 @@ void Blast_tab_format::print_match(const HspContext& r, Output::Info& info)
 			print_title(out, r.target_title.c_str(), false, false, "<>");
 			break;
 		case 6:
-			print_title(out, r.target_title.c_str(), false, true, "<>");
-			break;
+            print_title(out, r.target_title.c_str(), false, true, is_json ? "," : "<>", 0,is_json);
+            break;
 		case 12:
 			out << r.subject_len;
 			break;
@@ -332,29 +350,29 @@ void Blast_tab_format::print_match(const HspContext& r, Output::Info& info)
 		}
 		break;
 		case 34:
-			print_staxids(out, r.subject_oid, *info.db);
+			print_staxids(out, r.subject_oid, *info.db, is_json);
 			break;
 		case 35: {
 			const vector<TaxId> tax_id = info.db->taxids(r.subject_oid);
-			print_taxon_names(tax_id.begin(), tax_id.end(), *info.db, out);
+			print_taxon_names(tax_id.begin(), tax_id.end(), *info.db, out, is_json);
 			break;
 		}
 		case 38: {
 			const set<TaxId> tax_id = info.db->taxon_nodes().rank_taxid(info.db->taxids(r.subject_oid), Rank::superkingdom);
-			print_taxon_names(tax_id.begin(), tax_id.end(), *info.db, out);
+			print_taxon_names(tax_id.begin(), tax_id.end(), *info.db, out, is_json);
 			break;
 		}
 		case 39:
-			print_title(out, r.target_title.c_str(), true, false, "<>");
-			break;
+            print_title(out, r.target_title.c_str(), true, false, is_json ? "," : "<>",0,is_json);
+            break;
 		case 40:
-			print_title(out, r.target_title.c_str(), true, true, "<>");
-			break;
+            print_title(out, r.target_title.c_str(), true, true, is_json ? ",":"<>", 0 ,is_json);
+            break;
 		case 43:
 			out << r.qcovhsp();
 			break;
 		case 45:
-			out << r.query_title;
+                out << r.query_title;
 			break;
 		case 46:
 			out << 0;
@@ -507,10 +525,20 @@ void Blast_tab_format::print_match(const HspContext& r, Output::Info& info)
 		default:
 			throw std::runtime_error(string("Invalid output field: ") + field_def[*i].key);
 		}
-		if (i < fields.end() - 1)
-			out << '\t';
+        if(is_json) {
+            if(flag_any(field_def[*i].flags , Flags::IS_STRING))
+                out << "\"";
+            if(flag_any(field_def[*i].flags , Flags::IS_ARRAY))
+                out << "]";
+            if ( i < fields.end() - 1)
+                out << ",\n";
+            else
+                out << "\n";
+        }
+        else if (i < fields.end() - 1)
+            out << '\t';
 	}
-	out << '\n';
+    out << (is_json ? "\t}" : "\n");
 }
 
 void Blast_tab_format::print_query_intro(Output::Info& info) const
@@ -616,4 +644,14 @@ void Blast_tab_format::print_header(Consumer &f, int mode, const char *matrix, i
 	else if (h == Header::SIMPLE) {
 		output_header(f, false);
 	}
+    if(is_json) {
+		const char* hdr = "[";
+		f.consume(hdr, strlen(hdr));
+    }
+}
+void Blast_tab_format::print_footer(Consumer &f) const {
+    if(is_json) {
+        const char* s = "\n]";
+		f.consume(s, strlen(s));
+    }
 }

@@ -315,8 +315,9 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 \t100 = DIAMOND alignment archive (DAA)\n\
 \t101 = SAM\n\
 \t102 = Taxonomic classification\n\
-\t103 = PAF\n\n\
-\tValue 6 may be followed by a space-separated list of these keywords:\n\n\
+\t103 = PAF\n\
+\t104 = JSON (flat)\n\n\
+\tValues 6 and 104 may be followed by a space-separated list of these keywords:\n\n\
 \tqseqid means Query Seq - id\n\
 \tqlen means Query sequence length\n\
 \tsseqid means Subject Seq - id\n\
@@ -422,11 +423,12 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 		("multiprocessing", 0, "enable distributed-memory parallel processing", multiprocessing)
 		("mp-init", 0, "initialize multiprocessing run", mp_init)
 		("mp-recover", 0, "enable continuation of interrupted multiprocessing run", mp_recover)
-		("mp-query-chunk", 0, "process only a single query chunk as specified", mp_query_chunk, -1)		
+		("mp-query-chunk", 0, "process only a single query chunk as specified", mp_query_chunk, -1)
 		("culling-overlap", 0, "minimum range overlap with higher scoring hit to delete a hit (default=50%)", inner_culling_overlap, 50.0)
 		("taxon-k", 0, "maximum number of targets to report per species", taxon_k, (uint64_t)0)
-		("range-cover", 0, "percentage of query range to be covered for range culling (default=50%)", query_range_cover, 50.0)		
+		("range-cover", 0, "percentage of query range to be covered for range culling (default=50%)", query_range_cover, 50.0)
 		("xml-blord-format", 0, "Use gnl|BL_ORD_ID| style format in XML output", xml_blord_format)
+		("sam-query-len", 0, "add the query length to the SAM format (tag ZQ)", sam_qlen_field)
 		("stop-match-score", 0, "Set the match score of stop codons against each other.", stop_match_score, 1)		
 		("target-indexed", 0, "Enable target-indexed mode", target_indexed)
 		("unaligned-targets", 0, "", unaligned_targets)
@@ -669,7 +671,7 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 
 	if (verbosity >= 1 || command == regression_test) {
 		ostream& header_out = command == Config::help ? cout : cerr;
-		header_out << Const::program_name << " v" << Const::version_string << "." << (unsigned)Const::build_version << " (C) Max Planck Society for the Advancement of Science" << endl;
+		header_out << Const::program_name << " v" << Const::version_string << "." << (unsigned)Const::build_version << " (C) Max Planck Society for the Advancement of Science, Benjamin Buchfink, University of Tuebingen" << endl;
 		header_out << "Documentation, support and updates available at http://www.diamondsearch.org" << endl;
 		header_out << "Please cite: http://dx.doi.org/10.1038/s41592-021-01101-x Nature Methods (2021)" << endl << endl;
 	}

@@ -26,6 +26,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../output/daa/daa_write.h"
 #include "../util/sequence/sequence.h"
 
+
 using std::vector;
 
 namespace Extension {
@@ -51,7 +52,7 @@ TextBuffer* generate_output(vector<Match> &targets, const Extension::Stats& stat
 	}
 	else if (aligned || config.report_unaligned)
 		f->print_query_intro(info);
-			
+
 	for (int i = 0; i < (int)targets.size(); ++i) {
 
 		if (targets[i].hsp.empty())

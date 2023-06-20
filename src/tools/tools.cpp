@@ -136,7 +136,7 @@ void list_seeds() {
 	auto parts = block->seqs().partition(1);
 	::shapes = ShapeConfig(config.shape_mask.empty() ? Search::shape_codes[(int)align_mode.sequence_type].at(Sensitivity::DEFAULT) : config.shape_mask, config.shapes);
 	Reduction::reduction = Reduction("A R N D C Q E G H I L K M F P S T W Y V");
-	EnumCfg cfg{ &parts, 0, 1, SeedEncoding::SPACED_FACTOR, nullptr, false, false, config.seed_cut_, MaskingAlgo::NONE, 0 };
+	EnumCfg cfg{ &parts, 0, 1, SeedEncoding::SPACED_FACTOR, nullptr, false, false, config.seed_cut_, MaskingAlgo::NONE, 0, false, false };
 	enum_seeds(*block, cb, &no_filter, cfg);
 	ips4o::parallel::sort(seeds.begin(), seeds.end());
 

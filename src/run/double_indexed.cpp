@@ -151,12 +151,18 @@ static void run_ref_chunk(SequenceFile &db_file,
 
 	if (!config.swipe_all) {
 		timer.go("Building reference histograms");
-		if(query_seeds_bitset.get())
-			cfg.target->hst() = SeedHistogram(*cfg.target, true, query_seeds_bitset.get(), cfg.seed_encoding, nullptr, false, cfg.seed_complexity_cut, MaskingAlgo::NONE, cfg.minimizer_window);
-		else if (query_seeds_hashed.get())
-			cfg.target->hst() = SeedHistogram(*cfg.target, true, query_seeds_hashed.get(), cfg.seed_encoding, nullptr, false, cfg.seed_complexity_cut, MaskingAlgo::NONE, cfg.minimizer_window);
-		else
-			cfg.target->hst() = SeedHistogram(*cfg.target, false, &no_filter, cfg.seed_encoding, nullptr, false, cfg.seed_complexity_cut, cfg.soft_masking, cfg.minimizer_window);
+		if (query_seeds_bitset.get()) {
+			EnumCfg enum_cfg{ nullptr, 0, 0, cfg.seed_encoding, nullptr, false, false, cfg.seed_complexity_cut, MaskingAlgo::NONE, cfg.minimizer_window, false, false };
+			cfg.target->hst() = SeedHistogram(*cfg.target, true, query_seeds_bitset.get(), enum_cfg);
+		}
+		else if (query_seeds_hashed.get()) {
+			EnumCfg enum_cfg{ nullptr, 0, 0, cfg.seed_encoding, nullptr, false, false, cfg.seed_complexity_cut, MaskingAlgo::NONE, cfg.minimizer_window, false, false };
+			cfg.target->hst() = SeedHistogram(*cfg.target, true, query_seeds_hashed.get(), enum_cfg);
+		}
+		else {
+			EnumCfg enum_cfg{ nullptr, 0, 0, cfg.seed_encoding, nullptr, false, false, cfg.seed_complexity_cut, cfg.soft_masking, cfg.minimizer_window, false, false };
+			cfg.target->hst() = SeedHistogram(*cfg.target, false, &no_filter, enum_cfg);
+		}
 
 		timer.go("Allocating buffers");
 		char* ref_buffer = SeedArray::alloc_buffer(cfg.target->hst(), cfg.index_chunks),
@@ -285,7 +291,6 @@ static void run_query_iteration(const unsigned query_iteration,
 		options.cutoff_gapped2_new = { options.gapped_filter_evalue };
 	}
 
-
 	if (options.current_query_block == 0 && query_iteration == 0) {
 		message_stream << "Algorithm: " << to_string(config.algo) << endl;
 		if (config.freq_masking && !config.lin_stage1)
@@ -300,7 +305,9 @@ static void run_query_iteration(const unsigned query_iteration,
 
 	if (!config.swipe_all && !config.target_indexed) {
 		timer.go("Building query histograms");
-		options.query->hst() = SeedHistogram(*options.query, false, &no_filter, options.seed_encoding, options.query_skip.get(), false, options.seed_complexity_cut, options.soft_masking, options.minimizer_window);
+		EnumCfg enum_cfg{ nullptr, 0, 0, options.seed_encoding, options.query_skip.get(), false, false, options.seed_complexity_cut,
+			options.soft_masking, options.minimizer_window, query_seeds_hashed.get(), false };
+		options.query->hst() = SeedHistogram(*options.query, false, &no_filter, enum_cfg);
 		timer.finish();
 	}
 

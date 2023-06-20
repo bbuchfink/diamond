@@ -94,10 +94,22 @@ void join_blocks(int64_t ref_blocks, Consumer &master_out, const PtrVector<TempF
 					const std::vector<std::string> tmp_file_names = std::vector<std::string>());
 
 struct OutputWriter {
+    OutputWriter(Consumer* file_, char sep = char(0), bool first = true):
+    file_(file_),
+    sep(sep),
+    first(first)
+    {};
 	void operator()(TextBuffer* buf) {
+        if(!first && sep != char(0))
+        {
+            file_ ->consume(&sep, 1);
+        }
 		file_->consume(buf->data(), buf->size());
+        first = false;
 	}
 	Consumer* file_;
+    bool first;
+    char sep;
 };
 
 extern std::unique_ptr<ReorderQueue<TextBuffer*, OutputWriter>> output_sink;

@@ -87,7 +87,7 @@ struct SeedHistogram
 	SeedHistogram();
 	
 	template<typename Filter>
-	SeedHistogram(Block& seqs, bool serial, const Filter* filter, SeedEncoding code, const std::vector<bool>* skip, const bool mask_seeds, const double seed_cut, const MaskingAlgo soft_masking, Loc minimizer_window);
+	SeedHistogram(Block& seqs, bool serial, const Filter* filter, EnumCfg& enum_cfg);
 
 	const ShapeHistogram& get(unsigned sid) const
 	{ return data_[sid]; }

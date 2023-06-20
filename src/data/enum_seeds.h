@@ -71,7 +71,6 @@ Search::SeedStats enum_seeds_minimizer(SequenceSet* seqs, F* f, unsigned begin, 
 template<typename F, uint64_t BITS, typename Filter>
 void enum_seeds_hashed(SequenceSet* seqs, F* f, unsigned begin, unsigned end, const Filter* filter, const EnumCfg& cfg)
 {
-	uint64_t key;
 	for (unsigned i = begin; i < end; ++i) {
 		if (cfg.skip && (*cfg.skip)[i / align_mode.query_contexts])
 			continue;
@@ -80,16 +79,16 @@ void enum_seeds_hashed(SequenceSet* seqs, F* f, unsigned begin, unsigned end, co
 		for (size_t shape_id = cfg.shape_begin; shape_id < cfg.shape_end; ++shape_id) {
 			const Shape& sh = shapes[shape_id];
 			if (seq.length() < sh.length_) continue;
-			const uint64_t shape_mask = sh.long_mask();
 			//const __m128i shape_mask = sh.long_mask_sse_;
-			HashedSeedIterator<BITS> it(seq, sh);
-			Loc j = 0;
+			HashedSeedIterator<BITS> it(seqs->ptr(i), seqs->length(i), sh);
 			while (it.good()) {
-				if (it.get(key, shape_mask)) {
-					if (filter->contains(key, shape_id))
-						(*f)(key, seqs->position(i, j), i, shape_id);
-				}
-				++j;
+				const uint64_t key = *it;
+				if (filter->contains(key, shape_id))
+					if (!cfg.filter_low_complexity_seeds || Search::seed_is_complex(it.seq_ptr(sh), sh, cfg.seed_cut))
+						(*f)(key, seqs->position(i, it.seq_ptr(sh) - seq.data()), i, shape_id);
+					else if (cfg.mask_low_complexity_seeds)
+						*it.seq_ptr(sh) |= SEED_MASK;
+				++it;
 			}
 		}
 	}

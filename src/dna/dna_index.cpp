@@ -46,7 +46,7 @@ ref_buffer_(ref_buffer)
 
     const EnumCfg enum_ref{&ref_hst.partition(), 0, 1, cfg.seed_encoding, nullptr, false, false,
                            cfg.seed_complexity_cut,
-                           MaskingAlgo::NONE, cfg.minimizer_window};
+                           MaskingAlgo::NONE, cfg.minimizer_window, false, false };
 
 
     seed_arr_.reset(new SeedArray(*cfg.target, ref_hst.get(0), range, ref_buffer, &no_filter, enum_ref));

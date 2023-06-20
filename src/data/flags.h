@@ -37,11 +37,12 @@ using SeedLoc = PackedLoc;
 
 struct EnumCfg {
 	const std::vector<size_t>* partition;
-	const size_t shape_begin, shape_end;
+	size_t shape_begin, shape_end;
 	const SeedEncoding code;
 	const std::vector<bool>* const skip;
 	const bool filter_masked_seeds, mask_seeds;
 	const double seed_cut;
 	const MaskingAlgo soft_masking;
 	const Loc minimizer_window;
+	const bool filter_low_complexity_seeds, mask_low_complexity_seeds;
 };
