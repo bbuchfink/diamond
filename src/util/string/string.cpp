@@ -56,13 +56,33 @@ int64_t interpret_number(const std::string& s) {
 	char c = 0;
 	ss >> c;
 	if (ss.eof())
-		throw std::runtime_error("Missing size specifier in number: " + s + ". Permitted values: 'G'");
-	if (c != 'G')
-		throw std::runtime_error(string("Invalid size specifier (") + c + ") in number: " + s + ". Permitted values: 'G'");
+		throw std::runtime_error("Missing size specifier in number: " + s + ". Permitted values: T, G, M, K");
+	double mult = 1;
+	switch(c) {
+		case 'T':
+		case 't':
+			mult = 1e12;
+			break;
+		case 'G':
+		case 'g':
+			mult = 1e9;
+			break;
+		case 'M':
+		case 'm':
+			mult = 1e6;
+			break;
+		case 'K':
+		case 'k':
+			mult = 1e3;
+			break;
+		default:
+			throw std::runtime_error(string("Invalid size specifier (") + c + ") in number: " + s + ". Permitted suffixes: T, G, M, K");
+			break;
+	}
 	ss >> c;
 	if (!ss.eof())
 		throw std::runtime_error("Invalid number format: " + s);
-	return int64_t(n * 1e9);
+	return int64_t(n * mult);
 }
 
 }}
