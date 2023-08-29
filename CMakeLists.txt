@@ -2,6 +2,7 @@ cmake_minimum_required (VERSION 2.6)
 project (DIAMOND)
 include(CheckCXXCompilerFlag)
 include(CheckSymbolExists)
+include(CheckTypeSize)
 
 option(BUILD_STATIC "BUILD_STATIC" OFF)
 option(EXTRA "EXTRA" OFF)
@@ -118,6 +119,9 @@ function(set_cxx_standard std flag)
     set(CMAKE_CXX_STANDARD ${std} PARENT_SCOPE)
   endif()
 endfunction(set_cxx_standard)
+
+check_type_size(ptrdiff_t SIZEOF_PTRDIFF_T)
+check_type_size(int SIZEOF_INT_T)
 
 check_cxx_compiler_flag("-std=gnu++14" HAS_GNUPP14)
 check_cxx_compiler_flag("-std=gnu++17" HAS_GNUPP17)

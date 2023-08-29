@@ -177,9 +177,11 @@ struct Deque {
 			return i_ > it.i_;
 		}
 
+#if SIZEOF_INT != SIZEOF_PTRDIFF_T
 		Iterator operator-(int i) const {
 			return Iterator(i_ - i, data_);
 		}
+#endif
 
 		Iterator& operator+=(ptrdiff_t i) {
 			i_ += i;
