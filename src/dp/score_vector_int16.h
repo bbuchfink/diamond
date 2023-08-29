@@ -288,7 +288,7 @@ struct ScoreVector<int16_t, DELTA>
 	}
 
 	friend uint32_t cmp_mask(const ScoreVector&v, const ScoreVector&w) {
-		return ::SIMD::vmaskq_s8(vreinterpretq_s8_u16(vceqq_s16(v.data_, w.data_)));
+		return vmaskq_s8(vreinterpretq_s8_u16(vceqq_s16(v.data_, w.data_)));
 	}
 
 	ScoreVector& max(const ScoreVector&rhs)

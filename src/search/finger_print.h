@@ -121,7 +121,7 @@ struct Byte_finger_print_48
 		acc = vpadalq_u8(acc, s1);
 		acc = vpadalq_u8(acc, s2);
 		acc = vpadalq_u8(acc, s3);
-		return ::SIMD::vhsumq_u16(acc);
+		return vhsumq_u16(acc);
 	}
 	alignas(16) int8x16_t r1, r2, r3;
 };

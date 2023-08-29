@@ -525,7 +525,7 @@ struct ScoreVector<int8_t, DELTA>
 	}
 
 	friend uint32_t cmp_mask(const ScoreVector&v, const ScoreVector&w) {
-		return ::SIMD::vmaskq_s8(vreinterpretq_s8_u8(vceqq_s8(v.data_, w.data_)));
+		return vmaskq_s8(vreinterpretq_s8_u8(vceqq_s8(v.data_, w.data_)));
 	}
 
 	int operator [](unsigned i) const

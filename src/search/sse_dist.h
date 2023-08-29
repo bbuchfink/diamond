@@ -115,7 +115,7 @@ static inline unsigned match_block_reduced(const Letter *x, const Letter *y)
 #elif defined(__ARM_NEON)
 	const int8x16_t r1 = reduce_seq(x, Reduction::reduction.map8());
 	const int8x16_t r2 = reduce_seq(y, Reduction::reduction.map8b());
-	return ::SIMD::vmaskq_s8(vreinterpretq_s8_u8(vceqq_s8(r1, r2)));
+	return vmaskq_s8(vreinterpretq_s8_u8(vceqq_s8(r1, r2)));
 #else
 	unsigned r = 0;
 	for (int i = 15; i >= 0; --i) {
@@ -177,7 +177,7 @@ static inline uint64_t seed_mask(const Letter* s, int len) {
 	const int8x16_t m = vreinterpretq_s8_u8(vdupq_n_u8(SEED_MASK));
 	for (int i = 0; i < len; i += 16) {
 		const int8x16_t mask_bits = vandq_s8(vld1q_s8(s), m);
-		mask |= (uint64_t) ::SIMD::vmaskq_s8(mask_bits) << i;
+		mask |= (uint64_t) vmaskq_s8(mask_bits) << i;
 		s += 16;
 	}
 	if (len < 64)

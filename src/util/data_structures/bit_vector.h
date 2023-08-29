@@ -73,11 +73,11 @@ struct BitVector {
 			 * may overflow after 2^16 / 8 = 2^13 iterations.
 			 */
 			if ((i % (1 << 13)) == 0) {
-				n += ::SIMD::vhsumq_u16(acc);
+				n += vhsumq_u16(acc);
 				acc = veorq_u16(acc, acc);
 			}
 		}
-		n += ::SIMD::vhsumq_u16(acc);
+		n += vhsumq_u16(acc);
 #endif
 		for (; i < data_.size(); ++i)
 			n += popcount64(data[i]);
