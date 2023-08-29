@@ -144,7 +144,7 @@ inline uint16_t vmaskq_s8(int8x16_t x) {
 #ifdef __aarch64__
 	return vaddvq_u16(spliced);
 #else
-	return ::SIMD::vhsumq_u64(vreinterpretq_u64_u16(spliced));
+	return vhsumq_u64(vreinterpretq_u64_u16(spliced));
 #endif
 }
 
