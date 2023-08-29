@@ -37,13 +37,13 @@ struct Vector_scores
 	}
 	Vector_scores& operator+=(Letter l)
 	{
-		for (unsigned i = 0; i < 20; ++i)
+		for (Letter i = 0; i < 20; ++i)
 			scores[i] += score_matrix(l, i);
 		return *this;
 	}
 	Vector_scores& operator-=(Letter l)
 	{
-		for (unsigned i = 0; i < 20; ++i)
+		for (Letter i = 0; i < 20; ++i)
 			scores[i] -= score_matrix(l, i);
 		return *this;
 	}
