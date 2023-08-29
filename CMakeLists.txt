@@ -204,6 +204,7 @@ endif(X86)
 
 # NEON is mandatory on Aarch64
 if(AARCH64)
+  add_definitions(-DWITH_NEON)
   add_library(arch_neon OBJECT ${DISPATCH_OBJECTS})
   target_include_directories(arch_neon PRIVATE "${CMAKE_SOURCE_DIR}/src/lib")
   target_compile_options(arch_neon PUBLIC -DDISPATCH_ARCH=ARCH_NEON -DARCH_ID=3 -D__ARM_NEON -D__aarch64__ -DEigen=Eigen_NEON)
@@ -212,9 +213,10 @@ endif(AARCH64)
 # NEON is optional on Armv7, so we need to check for compiler support,
 # and for the <sys/auxv.h> header used for runtime detection.
 if(ARM)
-  check_symbol_exists(getauxval "sys/auxv.h" HAVE_GETAUXVAL)
-  check_cxx_compiler_flag("-mfpu=neon" HAVE_MFPU_NEON)
-  if(HAVE_MFPU_NEON)
+check_symbol_exists(getauxval "sys/auxv.h" HAVE_GETAUXVAL)
+check_cxx_compiler_flag("-mfpu=neon" HAVE_MFPU_NEON)
+if(HAVE_MFPU_NEON)
+    add_definitions(-DWITH_NEON)
     add_definitions(-DHAVE_MFPU_NEON)
     add_library(arch_neon OBJECT ${DISPATCH_OBJECTS})
     target_include_directories(arch_neon PRIVATE "${CMAKE_SOURCE_DIR}/src/lib")
