@@ -116,7 +116,11 @@ static inline __m256i letter_mask(__m256i x) {
 
 #ifdef __ARM_NEON
 static inline int8x16_t letter_mask(int8x16_t x) {
+#ifdef SEQ_MASK
 	return vandq_s8(x, vdupq_n_s8(LETTER_MASK));
+#else
+	return x;
+#endif
 }
 #endif
 
