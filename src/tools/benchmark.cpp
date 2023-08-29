@@ -193,7 +193,19 @@ void benchmark_transpose() {
 		transpose_scalar<16>((const signed char**)v, 16, out);
 		in[0] = out[0];
 	}
-	message_stream << "Matrix transpose 16x16 bytes:\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * 256) * 1000 << " ps/Letter" << endl;
+	message_stream << "Transpose (16x16, scalar):\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * 16 * 16) * 1000 << " ps/Letter" << endl;
+
+        high_resolution_clock::time_point t2 = high_resolution_clock::now();
+        for (size_t i = 0; i < n; ++i) {
+#if defined(__SSE2__)
+            transpose((const signed char**)v, 16, out, __m128i());
+#elif defined(__ARM_NEON)
+            transpose((const signed char**)v, 16, out, int8x16_t());
+#endif
+            in[0] = out[0];
+        }
+        message_stream << "Transpose (16x16, vectorized):\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t2).count() / (n * 16 * 16) * 1000 << " ps/Letter" << endl;
+
 
 #if ARCH_ID == 2
 	{
@@ -207,14 +219,14 @@ void benchmark_transpose() {
 			transpose_scalar<32>((const signed char**)v, 32, out);
 			in[0] = out[0];
 		}
-		message_stream << "Transpose (32x32):\t\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * 32 * 32) * 1000 << " ps/Letter" << endl;
+		message_stream << "Transpose (32x32, scalar):\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * 32 * 32) * 1000 << " ps/Letter" << endl;
 
 		high_resolution_clock::time_point t2 = high_resolution_clock::now();
 		for (size_t i = 0; i < n; ++i) {
 			transpose((const signed char**)v, 32, out, __m256i());
 			in[0] = out[0];
 		}
-		message_stream << "Matrix transpose 32x32 bytes:\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * 32 * 32) * 1000 << " ps/Letter" << endl;
+		message_stream << "Transpose(32x32, vectorized):\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t2).count() / (n * 32 * 32) * 1000 << " ps/Letter" << endl;
 	}
 #endif
 }
@@ -537,10 +549,8 @@ void benchmark() {
 #ifdef __SSE2__
 	prefix_scan(s1, s2);
 #endif
-#ifdef __SSE4_1__
-	swipe(s3, s4);
-#endif
 #if defined(__SSE4_1__) | defined(__ARM_NEON)
+	swipe(s3, s4);
 	diag_scores(s1, s2);
 #endif
 #if defined(__SSE2__) | defined(__ARM_NEON)
@@ -555,7 +565,7 @@ void benchmark() {
 #if (defined(__SSSE3__) && defined(__SSE4_1__)) | defined(__aarch64__)
 	benchmark_ssse3_shuffle(s1, s2);
 #endif
-#ifdef __SSE4_1__
+#if defined(__SSE4_1__) | defined(__ARM_NEON)
 	benchmark_ungapped_sse(ss1, ss2);
 #endif
 #if defined(__SSE2__) | defined(__ARM_NEON)
