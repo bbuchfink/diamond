@@ -16,15 +16,10 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#ifndef STREAM_ENTITY_H_
-#define STREAM_ENTITY_H_
-
+#pragma once
 #include <string>
 #include <utility>
 #include "exceptions.h"
-
-using std::string;
-using std::pair;
 
 struct StreamEntity
 {
@@ -40,15 +35,11 @@ struct StreamEntity
 	{
 		throw UnsupportedOperation();
 	}
-	virtual void seek(size_t pos)
+	virtual void seek(int64_t p, int origin)
 	{
 		throw UnsupportedOperation();
 	}
-	virtual void seek_forward(size_t n)
-	{
-		throw UnsupportedOperation();
-	}
-	virtual size_t tell()
+	virtual int64_t tell()
 	{
 		throw UnsupportedOperation();
 	}
@@ -56,7 +47,7 @@ struct StreamEntity
 	{
 		throw UnsupportedOperation();
 	}
-	virtual pair<const char*, const char*> read()
+	virtual std::pair<const char*, const char*> read()
 	{
 		throw UnsupportedOperation();
 	}
@@ -64,7 +55,7 @@ struct StreamEntity
 	{
 		prev_->close();
 	}
-	virtual const string& file_name() const
+	virtual const std::string& file_name() const
 	{
 		return prev_->file_name();
 	}
@@ -72,7 +63,7 @@ struct StreamEntity
 	{
 		throw UnsupportedOperation();
 	}
-	virtual pair<char*, char*> write_buffer()
+	virtual std::pair<char*, char*> write_buffer()
 	{
 		throw UnsupportedOperation();
 	}
@@ -82,6 +73,11 @@ struct StreamEntity
 	}
 	virtual void putback(const char *p, size_t count)
 	{
+		throw UnsupportedOperation();
+	}
+	virtual int64_t file_size() {
+		if (prev_)
+			return prev_->file_size();
 		throw UnsupportedOperation();
 	}
 	virtual FILE* file()
@@ -103,5 +99,3 @@ protected:
 	StreamEntity *prev_;
 	bool seekable_;
 };
-
-#endif

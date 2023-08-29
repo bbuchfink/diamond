@@ -34,19 +34,24 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/parallel/multiprocessing.h"
 #include "dmnd.h"
 #include "../reference.h"
-#include "../load_seqs.h"
 #include "../taxonomy.h"
 #include "../util/system/system.h"
 #include "../util/algo/external_sort.h"
 #include "../../util/util.h"
+#include "../fasta/fasta_file.h"
+#include "../../util/sequence/sequence.h"
 
 using std::tuple;
 using std::string;
 using std::list;
-using std::cout;
 using std::endl;
+using std::unique_ptr;
+using std::pair;
+using std::runtime_error;
 
 const char* DatabaseFile::FILE_EXTENSION = ".dmnd";
+const uint32_t ReferenceHeader::current_db_version_prot = 3;
+const uint32_t ReferenceHeader::current_db_version_nucl = 4;
 
 Serializer& operator<<(Serializer &s, const ReferenceHeader2 &h)
 {
@@ -54,17 +59,29 @@ Serializer& operator<<(Serializer &s, const ReferenceHeader2 &h)
 	s << sizeof(ReferenceHeader2);
 	s.write(h.hash, sizeof(h.hash));
 	s << h.taxon_array_offset << h.taxon_array_size << h.taxon_nodes_offset << h.taxon_names_offset;
+#ifdef EXTRA
+	s << (int32_t)h.db_type;
+#endif
 	return s;
 }
 
 Deserializer& operator>>(Deserializer &d, ReferenceHeader2 &h)
 {
+#ifdef EXTRA
+	int32_t db_type;
+#endif
 	d.read_record().read(h.hash, sizeof(h.hash))
 		>> h.taxon_array_offset
 		>> h.taxon_array_size
 		>> h.taxon_nodes_offset
 		>> h.taxon_names_offset
+#ifdef EXTRA
+		>> db_type
+#endif
 		>> Finish();
+#ifdef EXTRA
+	h.db_type = (SequenceType)db_type;
+#endif
 	return d;
 }
 
@@ -82,18 +99,18 @@ Serializer& operator<<(Serializer& file, const ReferenceHeader& h)
 	return file;
 }
 
-InputFile& operator>>(InputFile& file, SeqInfo& r) {
+InputFile& operator>>(InputFile& file, SequenceFile::SeqInfo& r) {
 	uint32_t p;
 	file >> r.pos >> r.seq_len >> p;
 	return file;
 }
 
-Serializer& operator<<(Serializer& file, const SeqInfo& r) {
+Serializer& operator<<(Serializer& file, const SequenceFile::SeqInfo& r) {
 	file << r.pos << r.seq_len << (uint32_t)0;
 	return file;
 }
 
-SeqInfo DatabaseFile::read_seqinfo() {
+SequenceFile::SeqInfo DatabaseFile::read_seqinfo() {
 	SeqInfo r;
 	(*this) >> r;
 	pos_array_offset += SeqInfo::SIZE;
@@ -104,67 +121,6 @@ void DatabaseFile::putback_seqinfo() {
 	pos_array_offset -= SeqInfo::SIZE;
 }
 
-void DatabaseFile::write_dict_entry(size_t block, size_t oid, size_t len, const char* id, const Letter* seq, const double self_aln_score)
-{
-	OutputFile& f = *dict_file_;
-	f << (uint32_t)oid;
-	f << (uint32_t)len;
-	f << id;
-	if (flag_any(flags_, Flags::TARGET_SEQS))
-		f.write(seq, len);
-	if (flag_any(flags_, Flags::SELF_ALN_SCORES))
-		f << self_aln_score;
-	dict_alloc_size_ += strlen(id);
-}
-
-bool DatabaseFile::load_dict_entry(InputFile& f, size_t ref_block)
-{
-	uint32_t oid, len;
-	string title;
-	try {
-		f >> oid;
-	}
-	catch (EndOfStream&) {
-		return false;
-	}
-	f >> len >> title;
-	const size_t b = dict_block(ref_block);
-	dict_oid_[b].push_back(oid);
-	dict_len_[b].push_back(len);
-	dict_title_[b].push_back(title.begin(), title.end());
-	if (flag_any(flags_, Flags::TARGET_SEQS)) {
-		vector<Letter> v(len);
-		f.read(v.data(), len);
-		dict_seq_[b].push_back(v.begin(), v.end());
-	}
-	if (flag_any(flags_, Flags::SELF_ALN_SCORES)) {
-		double self_aln_score;
-		f >> self_aln_score;
-		dict_self_aln_score_[b].push_back(self_aln_score);
-	}
-	return true;
-}
-
-void DatabaseFile::reserve_dict(const size_t ref_blocks)
-{
-	if (config.multiprocessing) {
-		dict_len_ = std::vector<std::vector<uint32_t>>(ref_blocks);
-		dict_title_ = std::vector<StringSet>(ref_blocks);
-		if (flag_any(flags_, Flags::TARGET_SEQS))
-			dict_seq_ = std::vector<SequenceSet>(ref_blocks);
-	}
-	else {
-		dict_len_ = { {} };
-		dict_len_[0].reserve(next_dict_id_);
-		dict_title_ = { {} };
-		dict_title_[0].reserve(next_dict_id_, dict_alloc_size_);
-		if (flag_any(flags_, Flags::TARGET_SEQS)) {
-			dict_seq_ = { {} };
-			dict_seq_[0].reserve(next_dict_id_, 0);
-		}
-	}
-}
-
 void DatabaseFile::init(Flags flags)
 {
 	read_header(*this, ref_header);
@@ -172,7 +128,7 @@ void DatabaseFile::init(Flags flags)
 		return;
 	if (ref_header.build < min_build_required || ref_header.db_version < MIN_DB_VERSION)
 		throw std::runtime_error("Database was built with an older version of Diamond and is incompatible.");
-	if (ref_header.db_version > ReferenceHeader::current_db_version)
+	if (ref_header.db_version > std::max(ReferenceHeader::current_db_version_prot , ReferenceHeader::current_db_version_nucl))
 		throw std::runtime_error("Database was built with a newer version of Diamond and is incompatible.");
 	if (ref_header.sequences == 0)
 		throw std::runtime_error("Incomplete database file. Database building did not complete successfully.");
@@ -180,8 +136,8 @@ void DatabaseFile::init(Flags flags)
 	pos_array_offset = ref_header.pos_array_offset;
 }
 
-DatabaseFile::DatabaseFile(const string &input_file, Metadata metadata, Flags flags):
-	SequenceFile(SequenceFile::Type::DMND, Alphabet::STD, flags),
+DatabaseFile::DatabaseFile(const string &input_file, Metadata metadata, Flags flags, const ValueTraits& value_traits):
+	SequenceFile(SequenceFile::Type::DMND, Alphabet::STD, flags, FormatFlags::DICT_LENGTHS | FormatFlags::DICT_SEQIDS | FormatFlags::SEEKABLE | FormatFlags::LENGTH_LOOKUP, value_traits),
 	InputFile(auto_append_extension_if_exists(input_file, FILE_EXTENSION), InputFile::BUFFERED),
 	temporary(false)
 {
@@ -202,14 +158,29 @@ DatabaseFile::DatabaseFile(const string &input_file, Metadata metadata, Flags fl
 
 	if (flag_any(metadata, Metadata::TAXON_MAPPING))
 		taxon_list_.reset(new TaxonList(seek(header2.taxon_array_offset), ref_header.sequences, header2.taxon_array_size));
+
+	if (flag_any(metadata, Metadata::TAXON_SCIENTIFIC_NAMES)) {
+		seek(header2.taxon_names_offset);
+		(*this) >> taxon_scientific_names_;
+	}
+
+	if (flag_any(metadata, Metadata::TAXON_NODES))
+		taxon_nodes_.reset(new TaxonomyNodes(seek(header2.taxon_nodes_offset), ref_header.build));
+
+	if (flag_any(flags, Flags::ACC_TO_OID_MAPPING | Flags::OID_TO_ACC_MAPPING))
+		read_seqid_list();
 }
 
-DatabaseFile::DatabaseFile(TempFile &tmp_file):
-	SequenceFile(SequenceFile::Type::DMND, Alphabet::STD, Flags::NONE),
+DatabaseFile::DatabaseFile(TempFile &tmp_file, const ValueTraits& value_traits):
+	SequenceFile(SequenceFile::Type::DMND, Alphabet::STD, Flags::NONE, FormatFlags::DICT_LENGTHS | FormatFlags::DICT_SEQIDS | FormatFlags::SEEKABLE | FormatFlags::LENGTH_LOOKUP, value_traits),
 	InputFile(tmp_file, 0),
 	temporary(true)
 {
 	init();
+}
+
+int64_t DatabaseFile::file_count() const {
+	return 1;
 }
 
 void DatabaseFile::close() {
@@ -240,7 +211,7 @@ bool DatabaseFile::has_taxon_scientific_names() const {
 	return header2.taxon_names_offset != 0;
 }
 
-static void push_seq(const Sequence &seq, const char *id, size_t id_len, uint64_t &offset, vector<SeqInfo> &pos_array, OutputFile &out, size_t &letters, size_t &n_seqs)
+static void push_seq(const Sequence &seq, const char *id, size_t id_len, uint64_t &offset, vector<SequenceFile::SeqInfo> &pos_array, OutputFile &out, size_t &letters, size_t &n_seqs)
 {
 	pos_array.emplace_back(offset, seq.length());
 	out.write("\xff", 1);
@@ -252,66 +223,70 @@ static void push_seq(const Sequence &seq, const char *id, size_t id_len, uint64_
 	offset += seq.length() + id_len + 3;
 }
 
-void DatabaseFile::make_db(TempFile **tmp_out, list<TextInputFile> *input_file)
+void DatabaseFile::make_db()
 {
 	config.file_buffer_size = 4 * MEGABYTES;
 	if (config.input_ref_file.size() > 1)
 		throw std::runtime_error("Too many arguments provided for option --in.");
 	const string input_file_name = config.input_ref_file.empty() ? string() : config.input_ref_file.front();
-	if (input_file_name.empty() && !input_file)
-		std::cerr << "Input file parameter (--in) is missing. Input will be read from stdin." << endl;
-	if(!input_file && !input_file_name.empty())
+	if (input_file_name.empty())
+		message_stream << "Input file parameter (--in) is missing. Input will be read from stdin." << endl;
+	else
 		message_stream << "Database input file: " << input_file_name << endl;
 
-	task_timer total;
-	task_timer timer("Opening the database file", true);
-	list<TextInputFile>* db_file;
-	if (input_file)
-		db_file = input_file;
-	else {
-		db_file = new list<TextInputFile>;
-		db_file->emplace_back(input_file_name);
-	}
+	TaskTimer total;
+	TaskTimer timer("Opening the database file", true);
 
-	OutputFile *out = tmp_out ? new TempFile() : new OutputFile(config.database);
+	value_traits = (config.dbtype == SequenceType::amino_acid) ? amino_acid_traits : nucleotide_traits;
+    FastaFile db_file({ input_file_name }, Metadata (), Flags::NONE, value_traits);
+
+    unique_ptr<OutputFile> out(new OutputFile(config.database));
 	ReferenceHeader header;
-	ReferenceHeader2 header2;
+    ReferenceHeader2 header2;
 
-	*out << header;
+    *out << header;
 	*out << header2;
 
 	size_t letters = 0, n = 0, n_seqs = 0, total_seqs = 0;
 	uint64_t offset = out->tell();
 
-	Block* block;
+    LoadFlags flags = SequenceFile::LoadFlags::ALL;
+    if (config.dbtype == SequenceType::nucleotide){
+        header.db_version = ReferenceHeader::current_db_version_nucl;
+        flags |= SequenceFile::LoadFlags::DNA_PRESERVATION;
+    }
+
+    Block* block;
 	const FASTA_format format;
 	vector<SeqInfo> pos_array;
-	ExternalSorter<pair<string, uint32_t>> accessions;
-
+	ExternalSorter<pair<string, OId>> accessions;
+	AccessionParsing acc_stats;
 	try {
 		while (true) {
 			timer.go("Loading sequences");
-			block = new Block(db_file->begin(), db_file->end(), format, (size_t)(1e9), amino_acid_traits, false);
+			block = db_file.load_seqs((int64_t)1e9, nullptr, flags);
 			if (block->empty()) {
 				delete block;
 				break;
 			}
 			n = block->seqs().size();
 
-			timer.go("Masking sequences");
-			mask_seqs(block->seqs(), Masking::get(), false, MaskingAlgo::SEG);
+			if (config.dbtype == SequenceType::amino_acid && config.masking_ != "0") {
+				timer.go("Masking sequences");
+				mask_seqs(block->seqs(), Masking::get(), false, MaskingAlgo::SEG);
+			}
 
-			timer.go("Writing sequences");
+            timer.go("Writing sequences");
 			for (size_t i = 0; i < n; ++i) {
 				Sequence seq = block->seqs()[i];
 				if (seq.length() == 0)
-					throw std::runtime_error("File format error: sequence of length 0 at line " + std::to_string(db_file->front().line_count));
+					throw std::runtime_error("File format error: sequence of length 0 at line " + std::to_string(db_file.line_count()));
 				push_seq(seq, block->ids()[i], block->ids().length(i), offset, pos_array, *out, letters, n_seqs);
 			}
 			if (!config.prot_accession2taxid.empty()) {
 				timer.go("Writing accessions");
 				for (size_t i = 0; i < n; ++i) {
-					vector<string> acc = accession_from_title(block->ids()[i]);
+					vector<string> acc = accession_from_title(block->ids()[i], acc_stats);
 					for (const string& s : acc)
 						accessions.push(std::make_pair(s, total_seqs + i));
 				}
@@ -343,9 +318,13 @@ void DatabaseFile::make_db(TempFile **tmp_out, list<TextInputFile> *input_file)
 	pos_array.shrink_to_fit();
 	timer.finish();
 
-	Table stats;
+	if (!config.prot_accession2taxid.empty() && !config.no_parse_seqids)
+		message_stream << endl << "Accession parsing rules triggered for database seqids (use --no-parse-seqids to disable):" << endl << acc_stats << endl;
+
+	Util::Table stats;
 	stats("Database sequences", n_seqs);
 	stats("Database letters", letters);
+
 	taxonomy.init();
 	if (!config.prot_accession2taxid.empty()) {
 		header2.taxon_array_offset = out->tell();
@@ -353,19 +332,21 @@ void DatabaseFile::make_db(TempFile **tmp_out, list<TextInputFile> *input_file)
 		header2.taxon_array_size = out->tell() - header2.taxon_array_offset;
 	}
 	if (!config.nodesdmp.empty()) {
+		TaxonomyNodes nodes(config.nodesdmp);
 		header2.taxon_nodes_offset = out->tell();
-		TaxonomyNodes::build(*out);
+		nodes.save(*out);
 	}
 	if (!config.namesdmp.empty()) {
 		header2.taxon_names_offset = out->tell();
 		*out << taxonomy.name_;
 	}
 
-	if (!input_file) {
-		timer.go("Closing the input file");
-		db_file->front().close();
-		delete db_file;
-	}
+#ifdef EXTRA
+    header2.db_type = config.dbtype;
+#endif
+
+    timer.go("Closing the input file");
+	db_file.close();
 
 	timer.go("Closing the database file");
 	header.letters = letters;
@@ -373,12 +354,7 @@ void DatabaseFile::make_db(TempFile **tmp_out, list<TextInputFile> *input_file)
 	out->seek(0);
 	*out << header;
 	*out << header2;
-	if (tmp_out) {
-		*tmp_out = static_cast<TempFile*>(out);
-	} else {
-		out->close();
-		delete out;
-	}
+	out->close();
 
 	timer.finish();
 	stats("Database hash", hex_print(header2.hash, 16));
@@ -387,19 +363,23 @@ void DatabaseFile::make_db(TempFile **tmp_out, list<TextInputFile> *input_file)
 	message_stream << endl << stats;
 }
 
-void DatabaseFile::set_seqinfo_ptr(size_t i) {
+void DatabaseFile::set_seqinfo_ptr(OId i) {
 	pos_array_offset = ref_header.pos_array_offset + SeqInfo::SIZE * i;
 }
 
-size_t DatabaseFile::tell_seq() const {
+OId DatabaseFile::tell_seq() const {
 	return (pos_array_offset - ref_header.pos_array_offset) / SeqInfo::SIZE;
+}
+
+bool DatabaseFile::eof() const {
+	return tell_seq() == sequence_count();
 }
 
 void DatabaseFile::init_seq_access() {
 	seek(sizeof(ReferenceHeader) + sizeof(ReferenceHeader2) + 8);
 }
 
-void DatabaseFile::read_seq(vector<Letter>& seq, string &id)
+bool DatabaseFile::read_seq(vector<Letter>& seq, string &id, std::vector<char>* quals)
 {
 	char c;
 	read(&c, 1);
@@ -407,6 +387,7 @@ void DatabaseFile::read_seq(vector<Letter>& seq, string &id)
 	id.clear();
 	read_to(std::back_inserter(seq), '\xff');
 	read_to(std::back_inserter(id), '\0');
+	return false;
 }
 
 void DatabaseFile::skip_seq()
@@ -421,7 +402,7 @@ void DatabaseFile::skip_seq()
 }
 
 bool DatabaseFile::is_diamond_db(const string &file_name) {
-	if (file_name == "-")
+	if (file_name == "-" || file_name.empty())
 		return false;
 	InputFile db_file(file_name);
 	uint64_t magic_number = 0;
@@ -436,7 +417,7 @@ bool DatabaseFile::is_diamond_db(const string &file_name) {
 
 void DatabaseFile::create_partition_fixednumber(size_t n) {
 	size_t max_letters_balanced = static_cast<size_t>(std::ceil(static_cast<double>(ref_header.letters)/static_cast<double>(n)));
-	cout << "Fixed number partitioning using " << max_letters_balanced << " (" << n << ")" << endl;
+	message_stream << "Fixed number partitioning using " << max_letters_balanced << " (" << n << ")" << endl;
 	this->create_partition(max_letters_balanced);
 }
 
@@ -448,9 +429,9 @@ void DatabaseFile::create_partition_balanced(size_t max_letters) {
 }
 
 void DatabaseFile::create_partition(size_t max_letters) {
-	task_timer timer("Create partition of DatabaseFile");
+	TaskTimer timer("Create partition of DatabaseFile");
 	size_t letters = 0, seqs = 0, total_seqs = 0;
-	size_t i_chunk = 0;
+	int i_chunk = 0;
 
 	size_t oid = 0, oid_begin;
 	set_seqinfo_ptr(oid);
@@ -485,8 +466,8 @@ void DatabaseFile::create_partition(size_t max_letters) {
 	partition.n_seqs_total = total_seqs;
 }
 
-size_t DatabaseFile::get_n_partition_chunks() {
-	return partition.chunks.size();
+int DatabaseFile::get_n_partition_chunks() {
+	return (int)partition.chunks.size();
 }
 
 void DatabaseFile::save_partition(const string & partition_file_name, const string & annotation) {
@@ -503,7 +484,7 @@ void DatabaseFile::save_partition(const string & partition_file_name, const stri
 
 Chunk to_chunk(const string & line) {
 	vector<string> tokens = split(line, ' ');
-	return Chunk(stoull(tokens[0]), stoull(tokens[1]), stoull(tokens[2]));
+	return Chunk((int)stoull(tokens[0]), stoull(tokens[1]), stoull(tokens[2]));
 }
 
 string to_string(const Chunk & c) {
@@ -532,36 +513,7 @@ void DatabaseFile::init_seqinfo_access() {
 }
 
 void DatabaseFile::seek_chunk(const Chunk& chunk) {
-	current_ref_block = chunk.i;
 	set_seqinfo_ptr(chunk.offset);
-}
-
-std::string DatabaseFile::seqid(size_t oid) const
-{
-	throw std::runtime_error("Operation not supported (seqid).");
-}
-std::string DatabaseFile::dict_title(size_t dict_id, const size_t ref_block) const
-{
-	const size_t b = dict_block(ref_block);
-	if (b >= dict_title_.size() || dict_id >= dict_title_[b].size())
-		throw std::runtime_error("Dictionary not loaded.");
-	return dict_title_[b][dict_id];
-}
-size_t DatabaseFile::dict_len(size_t dict_id, const size_t ref_block) const
-{
-	const size_t b = dict_block(ref_block);
-	if (b >= dict_len_.size() || dict_id >= dict_len_[b].size())
-		throw std::runtime_error("Dictionary not loaded.");
-	return dict_len_[b][dict_id];
-}
-
-std::vector<Letter> DatabaseFile::dict_seq(size_t dict_id, const size_t ref_block) const
-{
-	const size_t b = dict_block(ref_block);
-	if (b >= dict_seq_.size() || dict_id >= dict_seq_[b].size())
-		throw std::runtime_error("Dictionary not loaded.");
-	Sequence s = dict_seq_[b][dict_id];
-	return vector<Letter>(s.data(), s.end());
 }
 
 size_t DatabaseFile::id_len(const SeqInfo& seq_info, const SeqInfo& seq_info_next) {
@@ -588,7 +540,7 @@ void DatabaseFile::skip_id_data() {
 	if (!seek_forward('\0')) throw std::runtime_error("Unexpected end of file.");
 }
 
-size_t DatabaseFile::sequence_count() const {
+int64_t DatabaseFile::sequence_count() const {
 	return ref_header.sequences;
 }
 
@@ -615,16 +567,13 @@ SequenceFile::Metadata DatabaseFile::metadata() const {
 	return flags;
 }
 
-TaxonomyNodes* DatabaseFile::taxon_nodes() {
-	return new TaxonomyNodes(seek(header2.taxon_nodes_offset), ref_header.build);
-}
-
 int DatabaseFile::build_version() {
 	return ref_header.build;
 }
 
 DatabaseFile::~DatabaseFile()
 {
+	close();
 }
 
 void DatabaseFile::close_weakly()
@@ -641,25 +590,6 @@ BitVector* DatabaseFile::filter_by_accession(const std::string& file_name)
 	return nullptr;
 }
 
-BitVector* DatabaseFile::filter_by_taxonomy(const std::string& include, const std::string& exclude, TaxonomyNodes& nodes)
-{
-	if (!taxon_list_.get())
-		throw std::runtime_error("Database does not contain taxonomy mapping.");
-	BitVector* v = new BitVector(taxon_list_->size());
-	if (!include.empty() && !exclude.empty())
-		throw std::runtime_error("Options --taxonlist and --taxon-exclude are mutually exclusive.");
-	const bool e = !exclude.empty();
-	const std::set<unsigned> taxon_filter_list(parse_csv(e ? exclude : include));
-	if (taxon_filter_list.empty())
-		throw std::runtime_error("Option --taxonlist/--taxon-exclude used with empty list.");
-	if (taxon_filter_list.find(1) != taxon_filter_list.end() || taxon_filter_list.find(0) != taxon_filter_list.end())
-		throw std::runtime_error("Option --taxonlist/--taxon-exclude used with invalid argument (0 or 1).");
-	for (size_t i = 0; i < taxon_list_->size(); ++i)
-		if (nodes.contained((*taxon_list_)[i], taxon_filter_list) ^ e)
-			v->set(i);
-	return v;
-}
-
 const BitVector* DatabaseFile::builtin_filter()
 {
 	return nullptr;
@@ -670,24 +600,24 @@ std::string DatabaseFile::file_name()
 	return InputFile::file_name;
 }
 
-size_t DatabaseFile::sparse_sequence_count() const
+int64_t DatabaseFile::sparse_sequence_count() const
 {
 	return sequence_count();
 }
 
-std::vector<unsigned> DatabaseFile::taxids(size_t oid) const
+std::vector<TaxId> DatabaseFile::taxids(size_t oid) const
 {
 	return (*taxon_list_)[oid];
 }
 
 void DatabaseFile::seq_data(size_t oid, std::vector<Letter>& dst) const
 {
-	throw std::runtime_error("Operation not supported.");
+	throw OperationNotSupported();
 }
 
 size_t DatabaseFile::seq_length(size_t oid) const
 {
-	throw std::runtime_error("Operation not supported.");
+	throw OperationNotSupported();
 }
 
 void DatabaseFile::init_random_access(const size_t query_block, const size_t ref_blocks, bool dictionary)
@@ -701,27 +631,51 @@ void DatabaseFile::end_random_access(bool dictionary)
 	if (!dictionary)
 		return;
 	free_dictionary();
-	dict_len_.clear();
-	dict_len_.shrink_to_fit();
-	dict_title_.clear();
-	dict_title_.shrink_to_fit();
-	dict_seq_.clear();
-	dict_seq_.shrink_to_fit();
 }
 
-std::vector<int> DatabaseFile::accession_to_oid(const std::string& acc) const
-{
-	throw std::runtime_error("Operation not supported.");
+void DatabaseFile::init_write() {
+	throw OperationNotSupported();
 }
 
-SequenceFile::LoadTitles DatabaseFile::load_titles()
-{
-	return LoadTitles::SINGLE_PASS;
+void DatabaseFile::write_seq(const Sequence& seq, const std::string& id) {
+	throw OperationNotSupported();
 }
 
-std::vector<string>* DatabaseFile::taxon_scientific_names() {
-	vector<string>* r = new vector<string>;
-	seek(header2.taxon_names_offset);
-	(*this) >> (*r);
-	return r;
+std::string DatabaseFile::taxon_scientific_name(TaxId taxid) const {
+	return taxid < (TaxId)taxon_scientific_names_.size() && !taxon_scientific_names_[taxid].empty() ? taxon_scientific_names_[taxid] : std::to_string(taxid);
+}
+
+#ifdef EXTRA
+
+const char* const SEQID_EXTENSION = ".seqid";
+
+void DatabaseFile::prep_db() {
+	config.database.require();
+	TaskTimer timer("Opening the database");
+	DatabaseFile db(config.database);
+	timer.go("Writing seqid list");
+	db.make_seqid_list(); // db.file_name() + SEQID_EXTENSION);
+	timer.go("Closing the database");
+	db.close();
+}
+
+#endif
+
+void DatabaseFile::read_seqid_list() {
+	if (flag_any(flags_, Flags::ACC_TO_OID_MAPPING))
+		acc2oid_.reserve(sequence_count());
+	OId oid = 0;
+	vector<Letter> seq;
+	string id;
+	init_seq_access();
+	for (int64_t n = 0; n < sequence_count(); ++n) {
+		read_seq(seq, id);
+		const char* msg = Util::Seq::fix_title(id);
+		if (msg)
+			message_stream << "Warning: " << msg << std::endl;
+		add_seqid_mapping(id, oid++);
+	}
+	/*if ((flag_any(flags_, Flags::ACC_TO_OID_MAPPING) && (int64_t)acc2oid_.size() != sequence_count())
+		|| (flag_any(flags_, Flags::OID_TO_ACC_MAPPING) && (int64_t)acc_.size() != sequence_count()))
+		throw runtime_error("Inconsistent size of database and seqid file.");*/
 }

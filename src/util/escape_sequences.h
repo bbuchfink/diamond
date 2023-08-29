@@ -16,9 +16,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#ifndef ESCAPE_SEQUENCES_H_
-#define ESCAPE_SEQUENCES_H_
-
+#pragma once
 #include <limits.h>
 #include "text_buffer.h"
 
@@ -75,13 +73,13 @@ private:
 
 inline void print_escaped_until(TextBuffer& buf, const char* s, const char* delimiters, const EscapeSequences* esc)
 {
-	if (esc == 0)
-		buf.write_until(s, delimiters);
-	else {
-		std::string tmp;
-		esc->escape(s, find_first_of(s, delimiters), tmp);
-		buf << tmp;
-	}
+    if (esc == 0)
+        buf.write_until(s, delimiters);
+    else {
+        std::string tmp;
+        esc->escape(s, find_first_of(s, delimiters), tmp);
+        buf << tmp;
+    }
 }
 
 inline void print_escaped(TextBuffer& buf, const std::string& s, const EscapeSequences* esc)
@@ -94,5 +92,3 @@ inline void print_escaped(TextBuffer& buf, const std::string& s, const EscapeSeq
 		buf << tmp;
 	}
 }
-
-#endif

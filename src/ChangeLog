@@ -1,3 +1,167 @@
+[2.1.8]
+- Fixed an issue that could cause reduced performance when running in
+  query-indexed mode.
+- Added support for the JSON output format (option `-f json-flat`).
+- Added the option `--sam-query-len` to output query length in SAM format.
+
+[2.1.7]
+- Fixed a bug that caused taxonomy names not to be loaded correctly for the
+  `makedb` workflow.
+- Fixed a bug that caused a crash when using the `--target-indexed` option.
+- Fixed an error when using the `--tmpdir` option for the makedb workflow.
+- Added a warning message when sequence accessions are shortened due to parsing
+  rules for the `makedb` workflow.
+- Added the option `--no-parse-seqids` to disable parsing of sequence
+  accessions.
+- Changed the command line help to print options separated by command.
+- Fixed an issue that the `--ignore-warnings` option could not be used for
+  the `makedb` workflow.
+
+[2.1.6]
+- Fixed compatibility issues on older systems without support for AVX2.
+- Fixed linker errors when compiled with `-DX86=OFF`.
+- Fixed a compiler error on macOS systems.
+- Fixed a bug that could cause missing tags in the XML output format and
+  unaligned queries not to be reported correctly.
+- Fixed a bug that caused the PAF output format not to work correctly.
+
+[2.1.5]
+- Disabled the use of frequency based seed masking when using the linear-time
+  search feature with respect to the targets.
+- Fixed a bug that caused a `Database file is not a BLAST database` error message
+  for the `prepdb` workflow.
+- Fixed a bug that caused a segmentation fault when using BLAST databases.
+- Added line numbers for error messages when reading taxonomy mapping files.
+- Fixed a bug that could cause a crash when using the `greedy-vertex-cover`
+  workflow without the `--out` and `--centroid-out` options.
+- Fixed a bug that caused the `greedy-vertex-cover` workflow to only produce a
+  trivial clustering.
+- Fixed a bug that caused the last codon of the -2 reading frame to be translated
+  incorrectly.
+- Reduced the memory use of the clustering workflow.
+- Updated the bundled NCBI toolkit to the latest version.
+
+[2.1.4]
+- Leading spaces are now trimmed and tabulator characters escaped as `\t`
+  in sequence titles, and a warning message is produced.
+- Blank sequence titles are now replaced by `N/A`, and a warning message is
+  produced.
+- Fixed a bug that could cause a `Traceback error` in certain cases.
+- Fixed a bug that caused the `qlen` and `score` output fields not to be reported
+  correctly for the `realign` workflow.
+- Added an error message when using unsupported output fields for the `realign`
+  workflow.
+- Fixed an issue that could cause a `Missing fields in input line` error when
+  clustering.
+- Optimized the performance of the `linclust` workflow.
+- Reduced the memory use of the clustering workflow.
+- Fixed a bug that caused using standard input as the query not to work.
+
+[2.1.3]
+- Fixed compiler errors for GCC 4.8.
+- Fixed a GCC compiler error.
+- Fixed a segfault issue occuring when compiled using GCC 12 on ARM64 systems.
+- Fixed an issue that caused missing support for AVX2.
+
+[2.1.2]
+- The iterated search mode (option `--iterate`) now uses a linear-time feature as
+  the first search round.
+- Added the `linclust` command to cluster using only a single linear-time search
+  round.
+- Fixed compiler errors on macOS.
+- Fixed a bug that caused invalid alignment traceback output for the DAA `view`
+  workflow.
+- Added the `merge-daa` workflow to merge DAA files.
+- Fixed an error when using the `--max-target-seqs/-k` option for the DAA `view`
+  workflow.
+- Removed AVX2 support from the Windows release binary to ensure compatibility
+  with older systems.
+- Permitted the `--ignore-warnings` option for the `cluster` and `deepclust`
+  workflows.
+- Use unlinked temporary files for database blocks in clustering workflows.
+- Fixed a bug that could cause invalid results when using a clustering step with
+  linearization as the final round in combination with database processing in
+  multiple super blocks.
+- The `--lin-stage1` option can now be used without compilation using the
+  `-DEXTRA=ON` cmake option.
+- Added the option to specify the `_lin` suffix for sensitivity keywords for the
+  `--iterate` option to activate linear-time feature.
+- Added the option `--linsearch` to activate linear-time feature for the search
+  workflows.
+- Fixed a bug that caused the `ppos` and `positive` output fields not to work
+  for the `realign` workflow.
+- Fixed an issue that caused motif masking not to work when compiled with link
+  time optimization.
+
+[2.1.1]
+- Fixed compilation errors on non-x86 systems and for the clang compiler.
+- Fixed an error message when running the `recluster` workflow.
+- Fixed a bug that could cause an `invalid varint encoding` error when using the
+  DAA format.
+- Fixed a bug that could cause corrupted DAA output.
+- Fixed a bug that caused an error in the `view` workflow.
+- Adjusted the hit culling heuristic of the frameshift alignment mode to be less
+  aggressive.
+
+[2.1.0]
+- Added the `cluster` workflow to cluster protein sequences.
+- Added the `realign` workflow to generate clustering output.
+- Added the `recluster` workflow to correct errors in clusterings.
+- Added the `reassign` workflow to reassign cluster members to their closest centroid.
+- Added the option `-M/--memory-limit` to set a memory limit for clustering workflows.
+- Added the `--approx-id` option to filter alignments by approximate sequence identity
+  and to set an approximate sequence identity threshold for clustering.
+- Added the `--member-cover` option to set the coverage threshold of the cluster
+  member sequence.
+- Added the `--cluster-steps` option to set steps for cascaded clustering.
+- Added the `--clusters` option to specify clustering input file.
+- The `blastx` mode will now mask any open reading frame below the minimum required
+  length as specified by `--min-orf`.
+- The `blastx` mode will only count unmasked letters towards the block size.
+- Fixed a bug that caused an error when using the global ranking mode.
+- Added the fast mode as the first round in iterative searches.
+- Fixed a bug that caused the program not to function on systems without support
+  for SSE4.1.
+- Improved multi-threaded load balancing of gapped extension computations.
+- Improved performance of seed extension stage when HSP filter settings are used.
+- Added the option `--soft-masking` with possible values `0` and `tantan` to permit
+  soft-masking using the tantan algorithm.
+- Fixed a bug that could cause an `inflate error` in multiprocessing mode.
+- Added the option `--swipe` to compute full Smith Waterman alignments of all
+  queries against all targets.
+- Added the sensitivity mode `--faster`.
+- Added the output fields `approx_pident` and `corrected_bitscore` to the tabular
+  format.
+- Added the `--lin-stage1` option to linearize comparisons in the seeding stage
+  by only considering hits against the longest query sequence for identical seeds
+  (only supported when compiled with `-DEXTRA=ON`).
+- Added the `--kmer-ranking` option to rank sequences when `--lin-stage1` is used
+  (only supported when compiled with `-DKEEP_TARGET_ID=ON`).
+- Added the option `--no-block-size-limit` to deactivate upper limits for the block
+  size when the `--memory-limit` option is used.
+- Added the `greedy-vertex-cover` workflow to compute clustering based on
+  alignments.
+- Added the `--edge-format` option to set edge format for greedy vertex cover.
+- Added the `--edges` option to set input file for greedy vertex cover.
+- Added the `--centroid-out` option to output centroid sequences for greedy
+  vertex cover.
+- Added the `--unaligned-targets` option to generate an output file of unaligned
+  targets.
+- Fixed an issue that failed compilation using the Intel Compiler.
+- Fixed an issue that could cause a segmentation fault in rare cases.
+- The `--header` option can now be used with the parameter `simple` to enable
+  simple headers for the tabular format, or without a parameter to enable
+  headers for the clustering format.
+- Added the option `--mp-self` to optimize self-alignment in multiprocessing
+  mode.
+- Added the option `--query-or-subject-cover` to report alignments if the query
+  or the subject cover (or both) are above the given threshold.
+- Removed support for the `--comp-based-stats 2` option (now equivalent to
+  `--comp-based-stats 3`).
+- Removed hit culling in case of overlapping target ranges in frameshift
+  alignment mode.
+- Added the option `--anchored-swipe` to activate anchored SWIPE extension.
+
 [2.0.15]
 - Fixed a bug (present since v2.0.12) that caused the `diamond view` workflow to
   report a zero bit score for all alignments.

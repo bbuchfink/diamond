@@ -22,11 +22,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <thread>
 #include <atomic>
 #include "seed_complexity.h"
-#include "../data/block.h"
+#include "../data/block/block.h"
 #include "../util/algo/join_result.h"
 #include "../util/string/string.h"
 
 using std::array;
+using std::vector;
 using std::endl;
 
 extern double lnfact[];
@@ -38,6 +39,8 @@ bool Search::seed_is_complex(const Letter* seq, const Shape& shape, const double
 	count.fill(0);
 	for (int i = 0; i < shape.weight_; ++i) {
 		const Letter l = letter_mask(seq[shape.positions_[i]]);
+		if (l >= TRUE_AA)
+			return false;
 		++count[Reduction::reduction(l)];
 	}
 	double entropy = lnfact[shape.weight_];
@@ -67,7 +70,7 @@ bool Search::seed_is_complex_unreduced(Letter* seq, const Shape& shape, const do
 		++stats.low_complexity_seeds;
 		return false;
 	}
-	return true;	
+	return true;
 }
 
 void Search::mask_seeds(const Shape& shape, const SeedPartitionRange& range, DoubleArray<SeedLoc>* query_seed_hits, DoubleArray<SeedLoc>* ref_seed_hits, Search::Config& cfg)
@@ -75,7 +78,7 @@ void Search::mask_seeds(const Shape& shape, const SeedPartitionRange& range, Dou
 	if (cfg.seed_encoding != SeedEncoding::SPACED_FACTOR)
 		return;
 
-	task_timer timer("Masking low complexity seeds");
+	TaskTimer timer("Masking low complexity seeds");
 	SequenceSet& query_seqs = cfg.query->seqs();
 	std::atomic_int seedp(range.begin());
 	std::atomic_size_t seed_count(0), masked_seed_count(0), query_count(0), target_count(0);
@@ -110,7 +113,7 @@ void Search::mask_seeds(const Shape& shape, const SeedPartitionRange& range, Dou
 	};
 
 	vector<std::thread> threads;
-	for (size_t i = 0; i < config.threads_; ++i)
+	for (int i = 0; i < config.threads_; ++i)
 		threads.emplace_back(worker);
 	for (auto& i : threads)
 		i.join();

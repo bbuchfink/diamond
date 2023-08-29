@@ -21,12 +21,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #pragma once
 #include "../memory/alignment.h"
 
-template<typename _t>
+template<typename T>
 struct MemBuffer {
 
 	enum { ALIGN = 32 };
 
-	typedef _t value_type;
+	typedef T value_type;
 
 	MemBuffer():
 		data_(nullptr),
@@ -35,7 +35,7 @@ struct MemBuffer {
 	{}
 
 	MemBuffer(size_t n):
-		data_((_t*)Util::Memory::aligned_malloc(n * sizeof(_t), ALIGN)),
+		data_((T*)Util::Memory::aligned_malloc(n * sizeof(T), ALIGN)),
 		size_(n),
 		alloc_size_(n)
 	{
@@ -48,7 +48,7 @@ struct MemBuffer {
 	void resize(size_t n) {
 		if (alloc_size_ < n) {
 			Util::Memory::aligned_free(data_);
-			data_ = (_t*)Util::Memory::aligned_malloc(n * sizeof(_t), ALIGN);
+			data_ = (T*)Util::Memory::aligned_malloc(n * sizeof(T), ALIGN);
 			alloc_size_ = n;
 		}
 		size_ = n;
@@ -58,33 +58,33 @@ struct MemBuffer {
 		return size_;
 	}
 
-	_t* begin() {
+	T* begin() {
 		return data_;
 	}
 
-	_t* end() {
+	T* end() {
 		return data_ + size_;
 	}
 
-	const _t* begin() const {
+	const T* begin() const {
 		return data_;
 	}
 
-	const _t* end() const {
+	const T* end() const {
 		return data_ + size_;
 	}
 
-	_t& operator[](size_t i) {
+	T& operator[](size_t i) {
 		return data_[i];
 	}
 
-	const _t& operator[](size_t i) const {
+	const T& operator[](size_t i) const {
 		return data_[i];
 	}
 
 private:
 
-	_t *data_;
+	T *data_;
 	size_t size_, alloc_size_;
 
 };

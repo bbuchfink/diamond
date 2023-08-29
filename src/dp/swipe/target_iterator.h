@@ -25,7 +25,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../dp.h"
 #include "../../basic/value.h"
 #include "../../util/simd/vector.h"
-#include "../../util/dynamic_iterator.h"
 #include "../../stats/hauser_correction.h"
 
 template<typename T, int N>
@@ -70,7 +69,7 @@ struct TargetIterator
 		CHANNELS = SeqVector::CHANNELS
 	};
 
-	TargetIterator(vector<DpTarget>::const_iterator subject_begin, vector<DpTarget>::const_iterator subject_end, int i1, int qlen, int *d_begin) :
+	TargetIterator(std::vector<DpTarget>::const_iterator subject_begin, std::vector<DpTarget>::const_iterator subject_end, int i1, int qlen, int *d_begin) :
 		next(0),
 		n_targets(int(subject_end - subject_begin)),
 		cols(0),
@@ -176,7 +175,7 @@ struct TargetIterator
 	int pos[CHANNELS], target[CHANNELS], next, n_targets, cols;
 	bool custom_matrix_16bit;
 	SmallVector<int, CHANNELS> active;
-	const vector<DpTarget>::const_iterator subject_begin;
+	const std::vector<DpTarget>::const_iterator subject_begin;
 };
 
 template<typename T, typename It>
@@ -186,13 +185,14 @@ struct AsyncTargetBuffer
 	typedef ::DISPATCH_ARCH::SIMD::Vector<T> SeqVector;
 	enum { CHANNELS = SeqVector::CHANNELS };
 
-	AsyncTargetBuffer(const It begin, const It end, std::atomic_size_t* const next):
+	AsyncTargetBuffer(const It begin, const It end, std::atomic<BlockId>* const next):
 		begin(begin),
-		target_count(end - begin),
+		target_count(BlockId(end - begin)),
 		next(next),
 		custom_matrix_16bit(false)
 	{
-		size_t n, i = 0;
+		BlockId n;
+		int i = 0;
 		while (i < CHANNELS && (n = (*next)++) < target_count) {
 			DpTarget t = begin[n];
 			if (t.blank())
@@ -206,7 +206,7 @@ struct AsyncTargetBuffer
 
 	int max_len() const {
 		int l = 0;
-		for (size_t i = 0; i < target_count; ++i)
+		for (BlockId i = 0; i < target_count; ++i)
 			l = std::max(l, (int)DpTarget(begin[i]).seq.length());
 		return l;
 	}
@@ -258,7 +258,7 @@ struct AsyncTargetBuffer
 
 	bool init_target(int i, int channel)
 	{
-		const size_t n = (*next)++;
+		const BlockId n = (*next)++;
 		if (n >= target_count) {
 			active.erase(i);
 			return false;
@@ -296,8 +296,8 @@ struct AsyncTargetBuffer
 	int pos[CHANNELS];
 	SmallVector<int, CHANNELS> active;
 	const It begin;
-	const size_t target_count;
-	std::atomic_size_t* const next;
+	const BlockId target_count;
+	std::atomic<BlockId>* const next;
 	DpTarget dp_targets[CHANNELS];
 	bool custom_matrix_16bit;
 

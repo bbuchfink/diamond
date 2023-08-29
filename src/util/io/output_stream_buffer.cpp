@@ -19,6 +19,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../../basic/config.h"
 #include "output_stream_buffer.h"
 
+using std::pair;
+
 OutputStreamBuffer::OutputStreamBuffer(StreamEntity* prev):
 	StreamEntity(prev),
 	buf_size_(prev->file_name().empty() ? STDOUT_BUF_SIZE : config.file_buffer_size),
@@ -35,9 +37,9 @@ void OutputStreamBuffer::flush(size_t count)
 	prev_->write(buf_.get(), count);
 }
 
-void OutputStreamBuffer::seek(size_t pos)
+void OutputStreamBuffer::seek(int64_t p, int origin)
 {
-	prev_->seek(pos);
+	prev_->seek(p, origin);
 }
 
 void OutputStreamBuffer::rewind()
@@ -45,7 +47,7 @@ void OutputStreamBuffer::rewind()
 	prev_->rewind();
 }
 
-size_t OutputStreamBuffer::tell()
+int64_t OutputStreamBuffer::tell()
 {
 	return prev_->tell();
 }

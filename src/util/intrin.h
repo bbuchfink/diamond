@@ -16,9 +16,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#ifndef INTRIN_H_
-#define INTRIN_H_
-
+#pragma once
 #include <stdint.h>
 #ifdef _MSC_VER
 #include <intrin.h>
@@ -85,6 +83,3 @@ static inline int clz(uint32_t x) {
 	return __builtin_clz(x);
 #endif
 }
-
-
-#endif

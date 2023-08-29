@@ -16,9 +16,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#ifndef EXCEPTIONS_H_
-#define EXCEPTIONS_H_
-
+#pragma once
 #include <stdexcept>
 #include <string>
 
@@ -29,9 +27,9 @@ struct UnsupportedOperation : public std::runtime_error
 	{ }
 };
 
-struct File_open_exception : public std::runtime_error
+struct FileOpenException : public std::runtime_error
 {
-	File_open_exception(const std::string &file_name) :
+	FileOpenException(const std::string &file_name) :
 		std::runtime_error(std::string("Error opening file " + file_name))
 	{ }
 };
@@ -63,5 +61,3 @@ struct StreamReadException : public std::runtime_error
 		runtime_error(std::string("Error reading input stream at line ") + std::to_string(line_count) + ": " + msg)
 	{}
 };
-
-#endif

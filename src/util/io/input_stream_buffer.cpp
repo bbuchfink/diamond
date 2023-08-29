@@ -44,17 +44,12 @@ void InputStreamBuffer::rewind()
 {
 	prev_->rewind();
 	file_offset_ = 0;
+	putback_count_ = 0;
 }
 
-void InputStreamBuffer::seek(size_t pos)
+void InputStreamBuffer::seek(int64_t pos, int origin)
 {
-	prev_->seek(pos);
-	file_offset_ = 0;
-}
-
-void InputStreamBuffer::seek_forward(size_t n)
-{
-	prev_->seek_forward(n);
+	prev_->seek(pos, origin);
 	file_offset_ = 0;
 }
 
@@ -102,7 +97,7 @@ void InputStreamBuffer::close() {
 	prev_->close();
 }
 
-size_t InputStreamBuffer::tell() {
+int64_t InputStreamBuffer::tell() {
 	if (!seekable())
 		throw std::runtime_error("Calling tell on non seekable stream.");
 	return file_offset_;

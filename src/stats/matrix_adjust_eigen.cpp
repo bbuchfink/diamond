@@ -18,7 +18,6 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#include <iostream>
 #include <type_traits>
 #include "../lib/Eigen/Dense"
 #include "../basic/value.h"
@@ -27,7 +26,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 // #define DYNAMIC
 
 using namespace Eigen;
-using std::cout;
 using std::endl;
 
 //#define DEBUG_OUT(x) cout << (x) << endl
@@ -412,7 +410,7 @@ static bool Blast_OptimizeTargetFrequencies(MatrixN& x,
             SolveReNewtonSystem(resids_x, resids_z, newton_system, workspace);
 
             /* Calculate a value of alpha that ensure that x is positive */
-            const Float alpha = Nlm_StepBound(x, resids_x, Float(1.0 / .95)) * 0.95;
+            const Float alpha = Nlm_StepBound(x, resids_x, Float(1.0 / .95)) * Float(0.95);
 
             x += alpha * resids_x;
             z += alpha * resids_z;
@@ -439,7 +437,7 @@ bool OptimizeTargetFrequencies(double* out, const double* joints_prob, const dou
         row_sums[i] = (Float)row_probs[i];
         col_sums[i] = (Float)col_probs[i];
     }
-    bool r = Blast_OptimizeTargetFrequencies(x, q, row_sums, col_sums, relative_entropy, tol, maxits);
+    bool r = Blast_OptimizeTargetFrequencies(x, q, row_sums, col_sums, (Float)relative_entropy, (Float)tol, maxits);
     for (size_t i = 0; i < N; ++i)
         for (size_t j = 0; j < N; ++j)
             out[i * N + j] = x(i, j);

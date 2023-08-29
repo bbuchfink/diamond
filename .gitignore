@@ -54,5 +54,5 @@ Makefile
 diamond
 src/extra/
 .vs/
-CMakeSettings.json
 .unison
+/CMakeSettings.json

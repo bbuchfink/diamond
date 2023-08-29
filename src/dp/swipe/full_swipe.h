@@ -41,6 +41,7 @@ Hsp traceback(_cbs bias_correction, const Matrix<Cell>& dp, const DpTarget& targ
 	out.score = ScoreTraits<_sv>::int_score(max_score) * config.cbs_matrix_scale;
 	out.evalue = evalue;
 	out.bit_score = score_matrix.bitscore(out.score);
+	out.corrected_bit_score = score_matrix.bitscore_corrected(out.score, p.query.length(), target.true_target_len);
 	out.frame = p.frame.index();
 	if (target.carry_over.i1 == 0) {
 		out.query_range.end_ = max_i + 1;
@@ -53,6 +54,12 @@ Hsp traceback(_cbs bias_correction, const Matrix<Cell>& dp, const DpTarget& targ
 		out.length = target.carry_over.len;
 		out.query_range.begin_ = (int)p.query.length() - 1 - max_i;
 		out.subject_range.begin_ = (int)target.seq.length() - 1 - max_j;
+		try {
+			out.approx_id = out.approx_id_percent(Sequence(p.query.reverse()), Sequence(target.seq.reverse()));
+		}
+		catch (std::out_of_range&) {
+			throw std::runtime_error(std::string("Out_of_range query=") + std::string(p.query_id) + " target=" + target.seq.to_string());
+		}
 	}
 	out.target_seq = target.seq;
 	out.matrix = target.matrix;
@@ -73,6 +80,7 @@ Hsp traceback(_cbs bias_correction, const TracebackVectorMatrix<_sv> &dp, const 
 	out.score = ScoreTraits<_sv>::int_score(max_score);
 	out.evalue = evalue;
 	out.bit_score = score_matrix.bitscore(out.score);
+	out.corrected_bit_score = score_matrix.bitscore_corrected(out.score, p.query.length(), target.true_target_len);
 	out.transcript.reserve(size_t(out.score * config.transcript_len_estimate));
 
 	out.frame = p.frame.index();
@@ -109,11 +117,12 @@ Hsp traceback(_cbs bias_correction, const TracebackVectorMatrix<_sv> &dp, const 
 	out.transcript.reverse();
 	out.transcript.push_terminator();
 	out.query_source_range = TranslatedPosition::absolute_interval(TranslatedPosition(out.query_range.begin_, p.frame), TranslatedPosition(out.query_range.end_, p.frame), p.query_source_len);
+	out.approx_id = out.approx_id_percent(p.query, target.seq);
 	return out;
 }
 
 template<typename _sv, typename _cbs, typename It, typename Cfg>
-list<Hsp> swipe(const It target_begin, const It target_end, std::atomic_size_t* const next, _cbs composition_bias, vector<DpTarget>& overflow, Params& p)
+list<Hsp> swipe(const It target_begin, const It target_end, std::atomic<BlockId>* const next, _cbs composition_bias, vector<DpTarget>& overflow, Params& p)
 {
 	typedef typename ScoreTraits<_sv>::Score Score;
 	using Cell = typename Cfg::Cell;
@@ -170,7 +179,7 @@ list<Hsp> swipe(const It target_begin, const It target_end, std::atomic_size_t* 
 		}
 
 #ifdef DP_STAT
-		stats.inc(Statistics::GROSS_DP_CELLS, uint64_t(qlen) * CHANNELS);
+		p.stat.inc(Statistics::GROSS_DP_CELLS, uint64_t(qlen) * CHANNELS);
 #endif
 		for (int i = 0; i < qlen; ++i) {
 			hgap = it.hgap();
@@ -211,7 +220,7 @@ list<Hsp> swipe(const It target_begin, const It target_end, std::atomic_size_t* 
 				else {
 					const int s = ScoreTraits<_sv>::int_score(best[c]) * config.cbs_matrix_scale;
 					const double evalue = score_matrix.evalue(s, qlen, (unsigned)targets.dp_targets[c].true_target_len);
-					if (score_matrix.report_cutoff(s, evalue))
+					if (s > 0 && score_matrix.report_cutoff(s, evalue))
 						out.push_back(traceback<_sv>(composition_bias, dp, targets.dp_targets[c], best[c], evalue, max_col[c], max_i[c], max_j[c], c, hsp_stats[c], p));
 				}
 				reinit = true;

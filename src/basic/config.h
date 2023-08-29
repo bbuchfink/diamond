@@ -29,13 +29,28 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/options/option.h"
 #include "value.h"
 
-enum class Sensitivity { FAST = 0, DEFAULT = 1, MID_SENSITIVE = 2, SENSITIVE = 3, MORE_SENSITIVE = 4, VERY_SENSITIVE = 5, ULTRA_SENSITIVE = 6 };
+enum class Sensitivity { FASTER = -1, FAST = 0, DEFAULT = 1, MID_SENSITIVE = 2, SENSITIVE = 3, MORE_SENSITIVE = 4, VERY_SENSITIVE = 5, ULTRA_SENSITIVE = 6};
 enum class Compressor;
 
 template<> struct EnumTraits<Sensitivity> {
 	static const EMap<Sensitivity> to_string;
 	static const SEMap<Sensitivity> from_string;
 };
+
+template<> struct EnumTraits<SequenceType> {
+    static const EMap<SequenceType> to_string;
+    static const SEMap<SequenceType> from_string;
+};
+
+enum class GraphAlgo { GREEDY_VERTEX_COVER, LEN_SORTED };
+
+template<> struct EnumTraits<GraphAlgo> {
+	static const SEMap<GraphAlgo> from_string;
+};
+
+struct CommandLineParser;
+
+constexpr int64_t DEFAULT_MAX_TARGET_SEQS = 25;
 
 struct Config
 {
@@ -44,12 +59,12 @@ struct Config
 	using string_vector = std::vector<std::string>;
 
 	string_vector input_ref_file;
-	unsigned	threads_;
-	string	database;
+	int	threads_;
+	Option<string> database;
 	string_vector query_file;
 	unsigned	merge_seq_treshold;
 	unsigned shapes;
-	size_t	max_alignments;
+	Option<int64_t> max_target_seqs_;
 	string	match_file1;
 	string	match_file2;
 	int		padding;
@@ -70,17 +85,18 @@ struct Config
 	string	tmpdir;
 	string	parallel_tmpdir;
 	bool		long_mode;
-	int		gapped_xdrop;
+	double gapped_xdrop;
 	double	max_evalue;
 	string	kegg_file;
 	int		gap_open;
 	int		gap_extend;
+    int mismatch_penalty;
+    int match_reward;
 	string	matrix;
 	bool debug_log, verbose, quiet;
 	bool		salltitles;
 	int		reward;
 	int		penalty;
-	string	db_type;
 	double	min_id;
 	unsigned	compress_temp;
 	double	toppercent;
@@ -91,6 +107,7 @@ struct Config
 	unsigned fetch_size;
 	uint64_t	db_size;
 	double	query_cover;
+	double query_or_target_cover;
 	bool		mode_sensitive;
 	unsigned	verbosity;
 	bool no_auto_append;
@@ -129,7 +146,7 @@ struct Config
 	string prot_accession2taxid;
 	int superblock;
 	unsigned max_cells;
-	string masking;
+	Option<string> masking_;
 	bool log_query;
 	bool log_subject;
 	unsigned threads_align;
@@ -159,7 +176,7 @@ struct Config
 	unsigned swipe_chunk_size;
 	unsigned query_parallel_limit;
 	bool long_reads;
-	bool output_header;
+	Option<string_vector> output_header;
 	string alfmt;
 	string unfmt;
 	string namesdmp;
@@ -200,13 +217,12 @@ struct Config
 	bool output_hits;
 	double ungapped_evalue_;
 	bool no_logfile;
-	bool no_heartbeat;
 	int band_bin;
 	int col_bin;
 	size_t file_buffer_size;
 	bool self;
-	size_t trace_pt_fetch_size;
-	size_t tile_size;
+	int64_t trace_pt_fetch_size;
+	uint32_t tile_size;
 	double short_query_ungapped_bitscore;
 	int short_query_max_len;
 	double gapped_filter_evalue1;
@@ -222,8 +238,7 @@ struct Config
 	size_t chaining_min_nodes;
 	bool fast_tsv;
 	unsigned target_parallel_verbosity;
-	double memory_limit;
-	size_t global_ranking_targets;
+	int64_t global_ranking_targets;
 	bool mode_mid_sensitive;
 	bool no_ranking;
 	bool query_memory;
@@ -269,6 +284,64 @@ struct Config
 	bool freq_masking;
 	Loc max_motif_len;
 	double chaining_stacked_hsp_ratio;
+	Option<double> cluster_threshold;
+	Option<string> memory_limit;
+	int64_t swipe_task_size;
+	Loc minimizer_window_;
+	bool lin_stage1;
+	int64_t min_task_trace_pts;
+	Loc sketch_size;
+	string soft_masking;
+	string oid_list;
+	int64_t bootstrap_block;
+	int64_t centroid_factor;
+	int timeout;
+	string resume;
+	int64_t target_hard_cap;
+	bool mapany;
+	Option<string> clustering;
+	Option<string> neighbors;
+	double reassign_overlap;
+	double reassign_ratio;
+	int64_t reassign_max;
+	bool add_self_aln;
+	string centroid_out;
+	string unaligned_targets;
+	Option<double> approx_min_id;
+	bool mode_faster;
+	double member_cover;
+	bool weighted_gvc;
+	bool kmer_ranking;
+	bool hamming_ext;
+	double diag_filter_id;
+	double diag_filter_cov;
+	bool strict_gvc;
+	bool mmseqs_compat;
+	string edge_format;
+	bool no_block_size_limit;
+	string edges;
+	bool mp_self;
+	bool approx_backtrace;
+	bool prefix_scan;
+	double narrow_band_cov;
+	double narrow_band_factor;
+	Loc anchor_window;
+	double anchor_score;
+	bool classic_band;
+	bool no_8bit_extension;
+	bool anchored_swipe;
+	bool no_chaining_merge_hsps;
+	bool recluster_bd;
+	bool pipeline_short;
+	string graph_algo;
+	bool linsearch;
+	int64_t tsv_read_size;
+    int zdrop;
+	bool heartbeat;
+	bool no_parse_seqids;
+	bool sam_qlen_field;
+
+    SequenceType dbtype;
 
 	Sensitivity sensitivity;
 
@@ -281,15 +354,18 @@ struct Config
 		makedb = 0, blastp = 1, blastx = 2, view = 3, help = 4, version = 5, getseq = 6, benchmark = 7, random_seqs = 8, compare = 9, sort = 10, roc = 11, db_stat = 12, model_sim = 13,
 		match_file_stat = 14, model_seqs = 15, opt = 16, mask = 17, fastq2fasta = 18, dbinfo = 19, test_extra = 20, test_io = 21, db_annot_stats = 22, read_sim = 23, info = 24, seed_stat = 25,
 		smith_waterman = 26, cluster = 27, translate = 28, filter_blasttab = 29, show_cbs = 30, simulate_seqs = 31, split = 32, upgma = 33, upgma_mc = 34, regression_test = 35,
-		reverse_seqs = 36, compute_medoids = 37, mutate = 38, merge_tsv = 39, rocid = 40, makeidx = 41, find_shapes, prep_blast_db, composition, JOIN, HASH_SEQS, LIST_SEEDS, MERGE_DAA
+		reverse_seqs = 36, compute_medoids = 37, mutate = 38, rocid = 40, makeidx = 41, find_shapes, prep_db, composition, JOIN, HASH_SEQS, LIST_SEEDS, CLUSTER_REALIGN,
+		GREEDY_VERTEX_COVER, INDEX_FASTA, FETCH_SEQ, CLUSTER_REASSIGN, blastn, RECLUSTER, LENGTH_SORT, MERGE_DAA, DEEPCLUST, LINCLUST, WORD_COUNT, CUT, MODEL_SEQS
 	};
+
+
 	unsigned	command;
 
 	enum class Algo { AUTO = -1, DOUBLE_INDEXED = 0, QUERY_INDEXED = 1, CTG_SEED };
 	Algo algo;
 
-	string cluster_algo;
-	string cluster_similarity;
+	Option<string> cluster_algo;
+	Option<string> cluster_similarity;
 	string cluster_graph_file;
 	bool cluster_restart;
 
@@ -308,10 +384,9 @@ struct Config
 	unsigned load_balancing;
 
 	Config() {}
-	Config(int argc, const char **argv, bool check_io = true);
+	Config(int argc, const char **argv, bool check_io, CommandLineParser& parser);
 
-	inline unsigned get_run_len(unsigned length)
-	{
+	Loc min_orf_len(Loc length) const {
 		if (run_len == 0) {
 			if (length < 30 || frame_shift != 0)
 				return 1;
@@ -324,12 +399,16 @@ struct Config
 			return run_len;
 	}
 
-	inline bool output_range(unsigned n_target_seq, int score, int top_score)
+	inline bool output_range(unsigned n_target_seq, int score, int top_score, const int64_t max_target_seqs)
 	{
 		if (toppercent < 100)
 			return (1.0 - (double)score / top_score) * 100 <= toppercent;
 		else
-			return n_target_seq < max_alignments;
+			return n_target_seq < max_target_seqs;
+	}
+
+	int64_t block_size() const {
+		return (int64_t)(chunk_size * 1e9);
 	}
 
 	void set_sens(Sensitivity sens);
@@ -356,3 +435,7 @@ template<> struct EnumTraits<Config::Algo> {
 	static const EMap<Config::Algo> to_string;
 	static const SEMap<Config::Algo> from_string;
 };
+
+extern const char* const DEFAULT_MEMORY_LIMIT;
+
+std::pair<double, int> block_size(int64_t memory_limit, Sensitivity s, bool lin);

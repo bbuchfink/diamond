@@ -36,6 +36,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 using std::vector;
 using std::string;
+using std::pair;
 
 unsigned TempFile::n = 0;
 uint64_t TempFile::hash_key;
@@ -56,9 +57,9 @@ pair<string, int> TempFile::init(bool unlink)
 		QueryPerformanceCounter(&count);
 		hash_key = (uint64_t)(count.HighPart + count.LowPart + count.QuadPart + GetCurrentProcessId());
 	}
-	sprintf(s, "%sdiamond-%llx-%u.tmp", prefix.c_str(), hash_key, n++);
+	snprintf(s, buf.size() - 1, "%sdiamond-%llx-%u.tmp", prefix.c_str(), hash_key, n++);
 #else
-	sprintf(s, "%sdiamond-tmp-XXXXXX", prefix.c_str());
+	snprintf(s, buf.size() - 1, "%sdiamond-tmp-XXXXXX", prefix.c_str());
 #endif
 
 #ifdef _MSC_VER

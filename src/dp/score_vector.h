@@ -87,13 +87,47 @@ static inline void store_sv(int32_t sv, int32_t *dst)
 }
 
 template<typename Sv>
-static Sv load_sv(const typename DISPATCH_ARCH::ScoreTraits<Sv>::Score* ptr) {
+static inline void store_aligned(Sv sv, typename DISPATCH_ARCH::ScoreTraits<Sv>::Score* ptr) {
+	sv.store_aligned(ptr);
+}
+
+template<>
+inline void store_aligned(int32_t sv, int32_t* ptr) {
+	*ptr = sv;
+}
+
+template<typename Sv>
+static inline Sv load_sv(const typename DISPATCH_ARCH::ScoreTraits<Sv>::Score* ptr) {
 	return Sv(ptr);
 }
 
 template<>
-int32_t load_sv<int32_t>(const int32_t* x) {
+inline int32_t load_sv<int32_t>(const int32_t* x) {
 	return *x;
+}
+
+template<typename Sv>
+static inline Sv load_sv_aligned(const typename DISPATCH_ARCH::ScoreTraits<Sv>::Score* ptr) {
+	return Sv::load_aligned(ptr);
+}
+
+template<>
+inline int32_t load_sv_aligned(const int32_t* ptr) {
+	return *ptr;
+}
+
+template<int i>
+static inline int32_t extract(int32_t x) {
+	return x;
+}
+
+static inline int32_t extract(int32_t x, int i) {
+	return x;
+}
+
+template<typename Sv>
+static inline typename DISPATCH_ARCH::ScoreTraits<Sv>::Score extract(Sv sv, int i) {
+	return sv[i];
 }
 
 template<typename Sv>
@@ -113,12 +147,31 @@ int32_t blend_sv<int32_t>(const int32_t a, const int32_t b, const uint32_t mask)
 	return mask ? b : a;
 }
 
+static inline int32_t blend(const int32_t a, const int32_t b, const uint32_t mask) {
+	return mask ? b : a;
+}
+
+static inline std::pair<int32_t, int> max_entry(int32_t x) {
+	return { x,0 };
+}
+
+template<typename Sv>
+static inline std::pair<typename DISPATCH_ARCH::ScoreTraits<Sv>::Score, int> max_entry(Sv sv) {
+	std::array<typename DISPATCH_ARCH::ScoreTraits<Sv>::Score, DISPATCH_ARCH::ScoreTraits<Sv>::CHANNELS> s;
+	sv.store(s.data());
+	const auto i = std::max_element(s.begin(), s.end());
+	return { *i, int(i - s.begin()) };
+}
+
 #ifdef __SSE2__
 
 template<typename _t, typename _p, int DELTA>
 static inline void store_sv(const DISPATCH_ARCH::ScoreVector<_t, DELTA> &sv, _p *dst)
 {
-#if ARCH_ID == 2
+#if ARCH_ID == 3
+	//_mm512_storeu_si512((__m512i*)dst, sv.data_);
+	sv.store(dst);
+#elif ARCH_ID == 2
 	_mm256_storeu_si256((__m256i*)dst, sv.data_);
 #else
 	_mm_storeu_si128((__m128i*)dst, sv.data_);
@@ -145,8 +198,8 @@ static inline int extract_channel(const int32_t v, const int i) {
 	return v;
 }
 
-static inline int32_t set_channel(const int32_t v, const int i, const int32_t x) {
-	return x;
+static inline void set_channel(int32_t& v, const int i, const int32_t x) {
+	v = x;
 }
 
 template<typename Sv>

@@ -22,12 +22,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 namespace DP { namespace Swipe {
 namespace DISPATCH_ARCH {
 
-template<typename _sv>
+template<typename Sv>
 struct Matrix
 {
 	struct ColumnIterator
 	{
-		ColumnIterator(_sv* hgap_front, _sv* score_front) :
+		ColumnIterator(Sv* hgap_front, Sv* score_front) :
 			hgap_ptr_(hgap_front),
 			score_ptr_(score_front)
 		{ }
@@ -35,32 +35,32 @@ struct Matrix
 		{
 			++hgap_ptr_; ++score_ptr_;
 		}
-		inline _sv hgap() const
+		inline Sv hgap() const
 		{
 			return *hgap_ptr_;
 		}
-		inline _sv diag() const
+		inline Sv diag() const
 		{
 			return *score_ptr_;
 		}
-		inline void set_hgap(const _sv& x)
+		inline void set_hgap(const Sv& x)
 		{
 			*hgap_ptr_ = x;
 		}
-		inline void set_score(const _sv& x)
+		inline void set_score(const Sv& x)
 		{
 			*score_ptr_ = x;
 		}
 		std::nullptr_t trace_mask() {
 			return nullptr;
 		}
-		_sv *hgap_ptr_, *score_ptr_;
+		Sv *hgap_ptr_, *score_ptr_;
 	};
 	Matrix(int rows, int)
 	{
 		hgap_.resize(rows);
 		score_.resize(rows + 1);
-		const auto z = _sv();
+		const auto z = Sv();
 		std::fill(hgap_.begin(), hgap_.end(), z);
 		std::fill(score_.begin(), score_.end(), z);
 	}
@@ -71,40 +71,40 @@ struct Matrix
 	void set_zero(int c)
 	{
 		const int l = (int)hgap_.size();
-		const auto z = extract_channel(_sv(), 0);
+		const auto z = extract_channel(Sv(), 0);
 		for (int i = 0; i < l; ++i) {
-			hgap_[i] = set_channel(hgap_[i], c, z);
-			score_[i] = set_channel(score_[i], c, z);
+			set_channel(hgap_[i], c, z);
+			set_channel(score_[i], c, z);
 		}
-		score_[l] = set_channel(score_[l], c, z);
+		set_channel(score_[l], c, z);
 	}
 	constexpr int cols() const {
 		return 1;
 	}
-	_sv operator[](int i) const {
+	Sv operator[](int i) const {
 		return score_[i + 1];
 	}
 private:
-#ifdef __APPLE__
-	MemBuffer<_sv> hgap_, score_;
+#if defined(__APPLE__) || !defined(USE_TLS)
+	MemBuffer<Sv> hgap_, score_;
 #else
-	static thread_local MemBuffer<_sv> hgap_, score_;
+	static thread_local MemBuffer<Sv> hgap_, score_;
 #endif
 };
 
-#ifndef __APPLE__
-template<typename _sv> thread_local MemBuffer<_sv> Matrix<_sv>::hgap_;
-template<typename _sv> thread_local MemBuffer<_sv> Matrix<_sv>::score_;
+#if !defined(__APPLE__) && defined(USE_TLS)
+template<typename Sv> thread_local MemBuffer<Sv> Matrix<Sv>::hgap_;
+template<typename Sv> thread_local MemBuffer<Sv> Matrix<Sv>::score_;
 #endif
 
-template<typename _sv>
+template<typename Sv>
 struct TracebackVectorMatrix
 {
-	typedef typename ::DISPATCH_ARCH::ScoreTraits<_sv>::TraceMask TraceMask;
+	typedef typename ::DISPATCH_ARCH::ScoreTraits<Sv>::TraceMask TraceMask;
 	typedef void* Stat;
 	struct ColumnIterator
 	{
-		ColumnIterator(_sv* hgap_front, _sv* score_front, TraceMask* trace_mask_front) :
+		ColumnIterator(Sv* hgap_front, Sv* score_front, TraceMask* trace_mask_front) :
 			hgap_ptr_(hgap_front),
 			score_ptr_(score_front),
 			trace_mask_ptr_(trace_mask_front)
@@ -113,22 +113,22 @@ struct TracebackVectorMatrix
 		{
 			++hgap_ptr_; ++score_ptr_; ++trace_mask_ptr_;
 		}
-		inline _sv hgap() const
+		inline Sv hgap() const
 		{
 			return *hgap_ptr_;
 		}
-		inline _sv diag() const
+		inline Sv diag() const
 		{
 			return *score_ptr_;
 		}
 		inline TraceMask* trace_mask() {
 			return trace_mask_ptr_;
 		}
-		inline void set_hgap(const _sv& x)
+		inline void set_hgap(const Sv& x)
 		{
 			*hgap_ptr_ = x;
 		}
-		inline void set_score(const _sv& x)
+		inline void set_score(const Sv& x)
 		{
 			*score_ptr_ = x;
 		}
@@ -140,13 +140,13 @@ struct TracebackVectorMatrix
 		}
 		void set_hstat(std::nullptr_t) {}
 		inline void set_zero() {}
-		_sv *hgap_ptr_, *score_ptr_;
+		Sv* hgap_ptr_, *score_ptr_;
 		TraceMask* trace_mask_ptr_;
 	};
 
 	struct TracebackIterator
 	{
-		TracebackIterator(const TraceMask *mask, const TraceMask* mask_begin, const TraceMask* mask_end, int rows, int i, int j, size_t channel) :
+		TracebackIterator(const TraceMask *mask, const TraceMask* mask_begin, const TraceMask* mask_end, int rows, int i, int j, int channel) :
 			rows_(rows),
 			mask_(mask),
 			mask_begin_(mask_begin),
@@ -201,7 +201,7 @@ struct TracebackVectorMatrix
 		int i, j;
 	};
 
-	TracebackIterator traceback(int col, int i, int j, size_t channel) const
+	TracebackIterator traceback(int col, int i, int j, int channel) const
 	{
 		return TracebackIterator(&trace_mask_[col*rows_ + i], trace_mask_.begin(), trace_mask_.end(), rows_, i, j, channel);
 	}
@@ -213,8 +213,8 @@ struct TracebackVectorMatrix
 		hgap_.resize(rows);
 		score_.resize(rows + 1);
 		trace_mask_.resize(cols * rows);
-		std::fill(hgap_.begin(), hgap_.end(), _sv());
-		std::fill(score_.begin(), score_.end(), _sv());
+		std::fill(hgap_.begin(), hgap_.end(), Sv());
+		std::fill(score_.begin(), score_.end(), Sv());
 	}
 
 	inline ColumnIterator begin(int col)
@@ -226,33 +226,33 @@ struct TracebackVectorMatrix
 	{
 		const int l = (int)hgap_.size();
 		for (int i = 0; i < l; ++i) {
-			hgap_[i] = set_channel(hgap_[i], c, ::DISPATCH_ARCH::ScoreTraits<_sv>::zero_score());
-			score_[i] = set_channel(score_[i], c, ::DISPATCH_ARCH::ScoreTraits<_sv>::zero_score());
+			set_channel(hgap_[i], c, ::DISPATCH_ARCH::ScoreTraits<Sv>::zero_score());
+			set_channel(score_[i], c, ::DISPATCH_ARCH::ScoreTraits<Sv>::zero_score());
 		}
-		score_[l] = set_channel(score_[l], c, ::DISPATCH_ARCH::ScoreTraits<_sv>::zero_score());
+		set_channel(score_[l], c, ::DISPATCH_ARCH::ScoreTraits<Sv>::zero_score());
 	}
 
 	int cols() const {
 		return cols_;
 	}
 
-	_sv operator[](int i) const {
-		return _sv();
+	Sv operator[](int i) const {
+		return Sv();
 	}
 
-#ifdef __APPLE__
-	MemBuffer<_sv> hgap_, score_;
+#if defined(__APPLE__) || !defined(USE_TLS)
+	MemBuffer<Sv> hgap_, score_;
 #else
-	static thread_local MemBuffer<_sv> hgap_, score_;
+	static thread_local MemBuffer<Sv> hgap_, score_;
 #endif
 	MemBuffer<TraceMask> trace_mask_;
 private:
 	int rows_, cols_;
 };
 
-#ifndef __APPLE__
-template<typename _sv> thread_local MemBuffer<_sv> TracebackVectorMatrix<_sv>::hgap_;
-template<typename _sv> thread_local MemBuffer<_sv> TracebackVectorMatrix<_sv>::score_;
+#if !defined(__APPLE__) && defined(USE_TLS)
+template<typename Sv> thread_local MemBuffer<Sv> TracebackVectorMatrix<Sv>::hgap_;
+template<typename Sv> thread_local MemBuffer<Sv> TracebackVectorMatrix<Sv>::score_;
 #endif
 
 template<typename Sv, bool Traceback>

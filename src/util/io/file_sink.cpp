@@ -19,7 +19,6 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#include <iostream>
 #include <stdio.h>
 #ifdef _MSC_VER
 #define NOMINMAX
@@ -30,14 +29,28 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <fcntl.h>
 #include <unistd.h>
 #include <errno.h>
+#include <string.h>
 #endif
 
 #include "file_sink.h"
 #include "../system.h"
 
-using std::endl;
 using std::string;
 using std::runtime_error;
+
+static const char* msg = "\nError opening file ";
+
+#ifndef _MSC_VER
+static int posix_flags(const char* mode) {
+	if (strcmp(mode, "wb") == 0)
+		return O_WRONLY | O_CREAT | O_TRUNC;
+	else if (strcmp(mode, "r+b") == 0)
+		return O_RDWR;
+	else if (strcmp(mode, "w+b") == 0)
+		return O_RDWR | O_CREAT | O_TRUNC;
+	throw std::runtime_error("Invalid fopen mode.");
+}
+#endif
 
 FileSink::FileSink(const string &file_name, const char *mode, bool async, size_t buffer_size):
 	file_name_(file_name),
@@ -46,16 +59,16 @@ FileSink::FileSink(const string &file_name, const char *mode, bool async, size_t
 #ifdef _MSC_VER
 	f_ = file_name.length() == 0 ? stdout : fopen(file_name.c_str(), mode);
 #else
-	int fd_ = file_name.length() == 0 ? 1 : POSIX_OPEN(file_name.c_str(), O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
+	int fd_ = file_name.length() == 0 ? 1 : POSIX_OPEN(file_name.c_str(), posix_flags(mode), S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
 	if (fd_ < 0) {
-		perror(0);
-		throw File_open_exception(file_name_);
+		perror((msg + file_name).c_str());
+		throw FileOpenException(file_name_);
 	}
 	f_ = fdopen(fd_, mode);
 #endif	
 	if (f_ == 0) {
-		perror(0);
-		throw File_open_exception(file_name);
+		perror((msg + file_name).c_str());
+		throw FileOpenException(file_name);
 	}
 	if (buffer_size != 0)
 		if (setvbuf(f_, nullptr, _IOFBF, buffer_size) != 0)
@@ -69,8 +82,8 @@ FileSink::FileSink(const string &file_name, int fd, const char *mode, bool async
 	async_(async)
 {
 	if (f_ == 0) {
-		perror(0);
-		throw File_open_exception(file_name);
+		perror((msg + file_name).c_str());
+		throw FileOpenException(file_name);
 	}
 	if (buffer_size != 0)
 		if (setvbuf(f_, nullptr, _IOFBF, buffer_size) != 0)
@@ -101,22 +114,22 @@ void FileSink::write(const char *ptr, size_t count)
 	if (async_) mtx_.unlock();
 }
 
-void FileSink::seek(size_t p)
+void FileSink::seek(int64_t p, int origin)
 {
 #ifdef _MSC_VER
-	if (_fseeki64(f_, (int64_t)p, SEEK_SET) != 0) {
+	if (_fseeki64(f_, p, origin) != 0) {
 		perror(0);
 		throw std::runtime_error("Error calling fseek.");
 	}
 #else
-	if (fseek(f_, p, SEEK_SET) != 0) {
+	if (fseek(f_, p, origin) != 0) {
 		perror(0);
 		throw std::runtime_error("Error calling fseek.");
 	}
 #endif
 }
 
-size_t FileSink::tell()
+int64_t FileSink::tell()
 {
 #ifdef _MSC_VER
 	int64_t x;

@@ -29,7 +29,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/binary_buffer.h"
 #include "../util/text_buffer.h"
 #include "translated_position.h"
-#include "../util/interval.h"
+#include "../util/geo/interval.h"
 
 struct Sequence
 {
@@ -56,7 +56,7 @@ struct Sequence
 		len_(Loc(end - begin)),
 		data_(begin)
 	{}
-	Sequence(const vector<Letter> &data):
+	Sequence(const std::vector<Letter> &data):
 		len_((Loc)data.size()),
 		data_(data.data())
 	{}
@@ -162,6 +162,12 @@ struct Sequence
 	{
 		return Sequence(*this, begin, end - 1);
 	}
+	Sequence subseq(int begin) const {
+		return Sequence(data_ + begin, len_ - begin);
+	}
+	Sequence subseq_clipped(int begin, int end) const {
+		return Sequence(*this, std::max(begin, 0), std::min(end, len_));
+	}
 	friend TextBuffer& operator<<(TextBuffer &buf, const Sequence &s)
 	{
 		return s.print(buf, value_traits);
@@ -189,7 +195,7 @@ struct Sequence
 		return std::vector<Letter>(data_, data_ + len_);
 	}
 	std::vector<Letter> reverse() const;
-	void mask(const interval &i) {
+	void mask(const Interval &i) {
 		for (int j = i.begin_; j < i.end_; ++j)
 			((Letter*)data_)[j] = value_traits.mask_char;
 	}
@@ -201,7 +207,17 @@ struct Sequence
 				return false;
 		return true;
 	}
-	static vector<Letter> from_string(const char* str, const ValueTraits&vt = value_traits);
+	Loc masked_letters() const {
+		Loc n = 0;
+		for (Loc i = 0; i < len_; ++i)
+			if (letter_mask(data_[i]) == MASK_LETTER)
+				++n;
+		return n;
+	}
+	double masked_letter_ratio() const {
+		return (double)masked_letters() / len_;
+	}
+	static std::vector<Letter> from_string(const char* str, const ValueTraits&vt = value_traits);
 
 	Loc len_;
 	const Letter *data_;
@@ -230,7 +246,7 @@ struct TranslatedSequence
 		translated_[5] = s6;
 	}
 
-	TranslatedSequence(const Sequence&source, const vector<Letter> v[6]):
+	TranslatedSequence(const Sequence&source, const std::vector<Letter> v[6]):
 		source_(source)
 	{
 		for (int i = 0; i < 6; ++i)

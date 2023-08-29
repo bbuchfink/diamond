@@ -23,8 +23,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 using std::unique_ptr;
 
-unsigned current_query_chunk;
-vector<bool> query_aligned;
+std::vector<bool> query_aligned;
 std::mutex query_aligned_mtx;
 unique_ptr<HashedSeedSet> query_seeds_hashed;
 unique_ptr<SeedSet> query_seeds_bitset;
@@ -32,7 +31,6 @@ unique_ptr<SeedSet> query_seeds_bitset;
 void write_unaligned(const Block& query, OutputFile *file)
 {
 	const size_t n = query.ids().size();
-	TextBuffer buf;
 	for (size_t i = 0; i < n; ++i) {
 		if (!query_aligned[i]) {
 			Util::Seq::format(align_mode.query_translated ? query.source_seqs()[i] : query.seqs()[i],
@@ -48,7 +46,6 @@ void write_unaligned(const Block& query, OutputFile *file)
 void write_aligned(const Block& query, OutputFile *file)
 {
 	const size_t n = query.ids().size();
-	TextBuffer buf;
 	for (size_t i = 0; i < n; ++i) {
 		if (query_aligned[i]) {
 			Util::Seq::format(align_mode.query_translated ? query.source_seqs()[i] : query.seqs()[i],

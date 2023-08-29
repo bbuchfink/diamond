@@ -21,12 +21,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #pragma once
 #include <vector>
-#include "../util/hash_table.h"
 #include "../util/ptr_vector.h"
 #include "../util/data_structures/hash_set.h"
 #include "../masking/masking.h"
-#define NOMINMAX
-#include "../lib/mio/mmap.hpp"
+#include "../lib/mio/forward.h"
 
 const uint64_t SEED_INDEX_MAGIC_NUMBER = 0x2d6ba306ecbf6aba;
 const uint32_t SEED_INDEX_VERSION = 0;

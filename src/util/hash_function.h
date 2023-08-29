@@ -16,10 +16,8 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#ifndef HASH_FUNCTION_H_
-#define HASH_FUNCTION_H_
-
-struct murmur_hash {
+#pragma once
+struct MurmurHash {
 	uint64_t operator()(uint64_t h) const
 	{
 		h ^= h >> 33;
@@ -31,4 +29,3 @@ struct murmur_hash {
 	}
 };
 
-#endif /* HASH_FUNCTION_H_ */

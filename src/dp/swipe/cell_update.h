@@ -19,6 +19,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
+#pragma once
 #include "stat_cell.h"
 
 template<typename Sv>
@@ -116,10 +117,12 @@ FORCE_INLINE Cell swipe_cell_update(const Cell& diagonal_cell,
 {
 	Cell current_cell = diagonal_cell;
 	current_cell += add_cbs(scores, query_bias);
+	//Sv open_v = current_cell;
 	update_stats(current_cell, horizontal_gap, vertical_gap, id_mask);
 	set_max(current_cell, horizontal_gap);
 	set_max(current_cell, vertical_gap);
 	saturate(current_cell);
+	//open_v = blend(Sv(), current_cell, open_v == current_cell);
 
 	make_gap_mask(trace_mask, current_cell, vertical_gap, horizontal_gap);
 

@@ -19,6 +19,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <stdexcept>
 #include "compressed_stream.h"
 
+using std::pair;
+
 void ZlibSource::init()
 {
 	eos_ = false;
@@ -75,6 +77,7 @@ void ZlibSource::close()
 void ZlibSource::rewind()
 {
 	prev_->rewind();
+	inflateEnd(&strm);
 	init();
 }
 

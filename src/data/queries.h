@@ -23,15 +23,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #pragma once
 #include <mutex>
 #include <memory>
+#include <vector>
 #include "../util/io/output_file.h"
-#include "block.h"
-
-using std::vector;
-
-extern unsigned current_query_chunk;
+#include "block/block.h"
 
 extern std::mutex query_aligned_mtx;
-extern vector<bool> query_aligned;
+extern std::vector<bool> query_aligned;
 
 void write_unaligned(const Block& query, OutputFile *file);
 void write_aligned(const Block& query, OutputFile *file);

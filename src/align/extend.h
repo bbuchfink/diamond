@@ -28,17 +28,14 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../run/config.h"
 #include "../dp/flags.h"
 #include "../stats/cbs.h"
+#include "../output/def.h"
 
 namespace Extension {
-
-enum class Mode {
-	BANDED_FAST, BANDED_SLOW, FULL, GLOBAL
-};
 
 extern const std::map<Sensitivity, Mode> default_ext_mode;
 
 struct Match {
-	Match(size_t target_block_id, const Sequence& seq, const Stats::TargetMatrix& matrix, int ungapped_score, int filter_score = 0, double filter_evalue = DBL_MAX):
+	Match(const BlockId target_block_id, const Sequence& seq, const ::Stats::TargetMatrix& matrix, Score ungapped_score, Score filter_score = 0, double filter_evalue = DBL_MAX):
 		target_block_id(target_block_id),
 		seq(seq),
 		matrix(matrix),
@@ -55,30 +52,22 @@ struct Match {
 	static bool cmp_score(const Match& m, const Match& n) {
 		return m.filter_score > n.filter_score || (m.filter_score == n.filter_score && m.target_block_id < n.target_block_id);
 	}
-	Match(size_t target_block_id, const Sequence& seq, const Stats::TargetMatrix& matrix, std::array<std::list<Hsp>, MAX_CONTEXT> &hsp, int ungapped_score);
+	Match(BlockId target_block_id, const Sequence& seq, const ::Stats::TargetMatrix& matrix, std::array<std::list<Hsp>, MAX_CONTEXT> &hsp, int ungapped_score);
+	static Match self_match(BlockId query_id, Sequence query_seq);
 	void inner_culling();
 	void max_hsp_culling();
-	void apply_filters(int source_query_len, const char *query_title, const Sequence& query_seq, const Block& targets);
-	size_t target_block_id;
+	void apply_filters(int source_query_len, const char *query_title, const Sequence& query_seq, const double query_self_aln_score, const Block& targets, const OutputFormat* output_format);
+	BlockId target_block_id;
 	Sequence seq;
-	Stats::TargetMatrix matrix;
+	::Stats::TargetMatrix matrix;
 	int filter_score;
 	double filter_evalue;
 	int ungapped_score;
 	std::list<Hsp> hsp;
 };
 
-std::vector<Match> extend(size_t query_id, Search::Hit* begin, Search::Hit* end, const Search::Config &cfg, Statistics &stat, DP::Flags flags);
-TextBuffer* generate_output(vector<Match> &targets, size_t query_block_id, Statistics &stat, const Search::Config& cfg);
-TextBuffer* generate_intermediate_output(const vector<Match> &targets, size_t query_block_id, const Search::Config& cfg);
-
-/*inline int raw_score_cutoff(size_t query_len) {
-	return score_matrix.rawscore(config.min_bit_score == 0 ? score_matrix.bitscore(config.max_evalue, (unsigned)query_len) : config.min_bit_score);
-}*/
+std::pair<std::vector<Match>, Stats> extend(BlockId query_id, Search::Hit* begin, Search::Hit* end, const Search::Config &cfg, Statistics &stat, DP::Flags flags);
+TextBuffer* generate_output(std::vector<Match> &targets, const Extension::Stats& stats, BlockId query_block_id, Statistics &stat, const Search::Config& cfg);
+TextBuffer* generate_intermediate_output(const std::vector<Match> &targets, BlockId query_block_id, const Search::Config& cfg);
 
 }
-
-template<>
-struct EnumTraits<Extension::Mode> {
-	static const SEMap<Extension::Mode> from_string;
-};

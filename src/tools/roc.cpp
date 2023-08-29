@@ -112,7 +112,7 @@ struct Histogram {
 	static constexpr double MAX_EV = 10000.0;
 
 	Histogram() :
-		bin_offset(-std::floor((double)DBL_MIN_EXP* log(2.0)* config.log_evalue_scale)),
+		bin_offset(int(-std::floor((double)DBL_MIN_EXP* log(2.0)* config.log_evalue_scale))),
 		bin_count(bin_offset + int(std::round(std::log(MAX_EV) * config.log_evalue_scale)) + 1),
 		false_positives(bin_count, 0),
 		coverage(bin_count, 0.0)
@@ -353,7 +353,7 @@ void roc() {
 	if (config.family_map_query.empty())
 		throw std::runtime_error("Missing option: --family-map-query");
 
-	task_timer timer("Loading family mapping");
+	TaskTimer timer("Loading family mapping");
 	acc2fam = FamilyMapping(config.family_map);
 	timer.finish();
 	message_stream << "#Mappings: " << acc2fam.size() << endl;
@@ -374,7 +374,7 @@ void roc() {
 			fam_count[i->second] = config.family_cap;
 
 	vector<thread> threads;
-	for (unsigned i = 0; i < std::min(config.threads_, 6u); ++i)
+	for (int i = 0; i < std::min(config.threads_, 6); ++i)
 		threads.emplace_back(worker);
 
 	timer.go("Processing alignments");

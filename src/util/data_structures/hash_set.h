@@ -20,6 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #pragma once
+#include <string.h>
 #include "../simd.h"
 
 struct Modulo2 {};
@@ -183,7 +184,7 @@ private:
 			++p;
 			if (p == table + size_) {
 				if (wrapped)
-					throw hash_table_overflow_exception();
+					throw std::runtime_error("Hash table overflow");
 				p = table;
 				wrapped = true;
 			}

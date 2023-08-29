@@ -3,12 +3,13 @@
 #include <unordered_set>
 #include "../util/io/text_input_file.h"
 #include "../basic/config.h"
-#include "../util/string/tsv.h"
+#include "../util/tsv/tsv.h"
 #include "../util/string/tokenizer.h"
 #include "../util/log_stream.h"
 
 using std::cout;
 using std::endl;
+using std::string;
 using namespace Util::Tsv;
 
 void join() {

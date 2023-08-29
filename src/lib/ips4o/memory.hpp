@@ -239,7 +239,7 @@ struct Sorter<Cfg>::SharedData {
 	std::atomic_ptrdiff_t bucket_start[Cfg::kMaxBuckets + 1];
     BucketPointers bucket_pointers[Cfg::kMaxBuckets];
     Block* overflow;
-    int num_buckets;
+    typename Cfg::bucket_type num_buckets;
     bool use_equal_buckets;
 
     // Classifier for parallel partitioning

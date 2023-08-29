@@ -33,6 +33,8 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *****************************************************************************/
 
+// Modified by B. Buchfink
+
 #pragma once
 
 #include "ips4o_fwd.hpp"
@@ -66,7 +68,7 @@ typename Cfg::difference_type Sorter<Cfg>::classifyLocally(const iterator my_beg
             });
 
     // Update bucket sizes to account for partially filled buckets
-    for (int i = 0, end = num_buckets_; i < end; ++i)
+    for (typename Cfg::bucket_type i = 0, end = num_buckets_; i < end; ++i)
         local_.bucket_size[i] += local_.buffers.size(i);
 
     return write - begin_;
@@ -84,14 +86,14 @@ void Sorter<Cfg>::sequentialClassification(const bool use_equal_buckets) {
     // Find bucket boundaries
     diff_t sum = 0;
     bucket_start_[0] = 0;
-    for (int i = 0, end = num_buckets_; i < end; ++i) {
+    for (typename Cfg::bucket_type i = 0, end = num_buckets_; i < end; ++i) {
         sum += local_.bucket_size[i];
         bucket_start_[i + 1] = sum;
     }
     IPS4O_ASSUME_NOT(bucket_start_[num_buckets_] != end_ - begin_);
 
     // Set write/read pointers for all buckets
-    for (int bucket = 0, end = num_buckets_; bucket < end; ++bucket) {
+    for (typename Cfg::bucket_type bucket = 0, end = num_buckets_; bucket < end; ++bucket) {
         const auto start = Cfg::alignToNextBlock(bucket_start_[bucket]);
         const auto stop = Cfg::alignToNextBlock(bucket_start_[bucket + 1]);
         bucket_pointers_[bucket].set(
@@ -110,10 +112,10 @@ template <class Cfg>
 void Sorter<Cfg>::parallelClassification(const bool use_equal_buckets) {
     // Compute stripe for each thread
     const auto elements_per_thread = static_cast<double>(end_ - begin_) / num_threads_;
-    const auto my_begin = begin_ + Cfg::alignToNextBlock(my_id_ * elements_per_thread + 0.5);
+    const auto my_begin = begin_ + Cfg::alignToNextBlock(int64_t(my_id_ * elements_per_thread + 0.5));
     const auto my_end = [&] {
-        auto e = begin_ + Cfg::alignToNextBlock((my_id_ + 1) * elements_per_thread + 0.5);
-        e = end_ < e ? end_ : e;
+        auto e = begin_ + std::min(Cfg::alignToNextBlock(int64_t((my_id_ + 1) * elements_per_thread + 0.5)), end_ - begin_);
+        //e = end_ < e ? end_ : e;
         return e;
     }();
 
@@ -131,7 +133,7 @@ void Sorter<Cfg>::parallelClassification(const bool use_equal_buckets) {
 
         // Find bucket boundaries
         diff_t sum = 0;
-        for (int i = 0, end = num_buckets_; i < end; ++i) {
+        for (typename Cfg::bucket_type i = 0, end = num_buckets_; i < end; ++i) {
             sum += local_.bucket_size[i];
             //__atomic_fetch_add(&bucket_start_[i + 1], sum, __ATOMIC_RELAXED);
 			bucket_start_[i + 1] += sum;

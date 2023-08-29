@@ -37,7 +37,17 @@ using std::vector;
 
 ScoreMatrix score_matrix;
 
-ScoreMatrix::ScoreMatrix(const string & matrix, int gap_open, int gap_extend, int frameshift, int stop_match_score, uint64_t db_letters, int scale):
+static Sls::AlignmentEvaluerParameters alp_params(const Stats::StandardMatrix* standard_matrix, int gap_open, int gap_extend, bool mmseqs_compat) {
+	if (mmseqs_compat)
+		return { 0.27359865037097330642, 0.044620920658722244834, 1.5938724404943873658, -19.959867650284412122,
+		1.5938724404943873658, -19.959867650284412122, 30.455610143099914211, -622.28684628915891608,
+		30.455610143099914211, -622.28684628915891608, 29.602444874818868215, -601.81087985041381216 };
+	const Stats::StandardMatrix::Parameters& p = standard_matrix->constants(gap_open, gap_extend), & u = standard_matrix->ungapped_constants();
+	const double G = gap_open + gap_extend, b = 2.0 * G * (u.alpha - p.alpha), beta = 2.0 * G * (u.alpha_v - p.alpha_v);
+	return Sls::AlignmentEvaluerParameters { p.Lambda, p.K, p.alpha, b, p.alpha, b, p.alpha_v, beta, p.alpha_v, beta, p.sigma, 2.0 * G * (u.alpha_v - p.sigma) };
+}
+
+ScoreMatrix::ScoreMatrix(const string & matrix, int gap_open, int gap_extend, int frameshift, int stop_match_score, uint64_t db_letters, int scale, bool mmseqs_compat):
 	standard_matrix_(&Stats::StandardMatrix::get(matrix)),
 	gap_open_ (gap_open == -1 ? standard_matrix_->default_gap_exist : gap_open),
 	gap_extend_ (gap_extend == -1 ? standard_matrix_->default_gap_extend : gap_extend),
@@ -56,11 +66,8 @@ ScoreMatrix::ScoreMatrix(const string & matrix, int gap_open, int gap_extend, in
 	matrix8u_low_(standard_matrix_->scores.data(), stop_match_score, bias_, 16),
 	matrix8u_high_(standard_matrix_->scores.data(), stop_match_score, bias_, 16, 16),
 	matrix16_(standard_matrix_->scores.data(), stop_match_score)
-{
-	const Stats::StandardMatrix::Parameters& p = standard_matrix_->constants(gap_open_, gap_extend_), & u = standard_matrix_->ungapped_constants();
-	const double G = gap_open_ + gap_extend_, b = 2.0 * G * (u.alpha - p.alpha), beta = 2.0 * G * (u.alpha_v - p.alpha_v);
-	Sls::AlignmentEvaluerParameters params{ p.Lambda, p.K, p.alpha, b, p.alpha, b, p.alpha_v, beta, p.alpha_v, beta, p.sigma, 2.0 * G * (u.alpha_v - p.sigma) };
-	evaluer.initParameters(params);
+{	
+	evaluer.initParameters(alp_params(standard_matrix_, gap_open_, gap_extend_, mmseqs_compat));
 	ln_k_ = std::log(evaluer.parameters().K);
 	init_background_scores();
 }
@@ -189,7 +196,7 @@ ScoreMatrix::Scores<_t>::Scores(const double (&freq_ratios)[Stats::NCBI_ALPH][St
 	for (size_t i = 0; i < 32; ++i)
 		for (size_t j = 0; j < 32; ++j) {
 			if (i < TRUE_AA && j < TRUE_AA)
-				data[i * 32 + j] = std::round(std::log(freq_ratios[Stats::ALPH_TO_NCBI[i]][Stats::ALPH_TO_NCBI[j]]) / lambda * scale);
+				data[i * 32 + j] = (_t)std::round(std::log(freq_ratios[Stats::ALPH_TO_NCBI[i]][Stats::ALPH_TO_NCBI[j]]) / lambda * scale);
 			else if (i < n && j < n)
 				data[i * 32 + j] = (int)scores[i * n + j] * scale;
 			else
@@ -209,12 +216,25 @@ template struct ScoreMatrix::Scores<int>;
 
 double ScoreMatrix::evalue(int raw_score, unsigned query_len, unsigned subject_len) const
 {
-	return evaluer.evalue((double)raw_score / scale_, query_len, subject_len) * (double)db_letters_ / (double)subject_len;
+	if (config.mmseqs_compat) {
+		const double epa = evaluer.evaluePerArea(raw_score);
+		const double a = evaluer.area(raw_score, query_len, db_letters_);
+		return epa * a;
+	}
+	else
+		return evaluer.evalue((double)raw_score / scale_, query_len, subject_len) * (double)db_letters_ / (double)subject_len;
 }
 
 double ScoreMatrix::evalue_norm(int raw_score, unsigned query_len, unsigned subject_len) const
 {
 	return evaluer.evalue((double)raw_score / scale_, query_len, subject_len) * (double)1e9 / (double)subject_len;
+}
+
+double ScoreMatrix::bitscore_corrected(int raw_score, unsigned query_len, unsigned subject_len) const
+{
+	//const double area = evaluer.area(raw_score, query_len, subject_len);
+	const double log_area = evaluer.log_area(raw_score, query_len, subject_len);
+	return (evaluer.parameters().lambda * raw_score - log(evaluer.parameters().K) - log_area) / log(2.0);
 }
 
 bool ScoreMatrix::report_cutoff(int score, double evalue) const {
@@ -231,4 +251,10 @@ void ScoreMatrix::init_background_scores()
 		for (size_t j = 0; j < 20; ++j)
 			background_scores_[i] += Stats::blosum62.background_freqs[j] * (*this)(i, j);
 	}
+}
+
+double ScoreMatrix::bitscore(double raw_score) const
+{
+	const double s = std::round(raw_score / scale_);	// maintain compatibility with BLAST
+	return (lambda() * s - ln_k()) / LN_2;
 }

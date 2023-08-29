@@ -4,12 +4,13 @@
 #include "../basic/config.h"
 #include "../data/sequence_file.h"
 #include "../util/string/tokenizer.h"
-#include "../util/string/tsv.h"
+#include "../util/tsv/tsv.h"
 #include "../dp/dp.h"
 #include "../output/output_format.h"
 #include "../output/output.h"
 #include "../masking/masking.h"
 #include "../util/sequence/sequence.h"
+#include "../util/string/fixed_string.h"
 
 using std::unique_ptr;
 using std::endl;
@@ -19,25 +20,8 @@ using std::thread;
 using std::list;
 using std::array;
 using std::thread;
-
-template<size_t L>
-struct FixedString {
-	FixedString(const string& s) {
-		if (s.length() >= L)
-			throw std::runtime_error("FixedString");
-		std::copy(s.begin(), s.end(), chars.begin());
-		chars[s.length()] = '\0';
-	}
-	bool operator==(const FixedString& s) const {
-		return strcmp(chars.data(), s.chars.data()) == 0;
-	}
-	array<char, L> chars;
-	struct Hash {
-		size_t operator()(const FixedString& s) const {
-			return std::hash<string>()(string(s.chars.data()));
-		}
-	};
-};
+using std::string;
+using std::vector;
 
 using Acc = FixedString<30>;
 
@@ -71,7 +55,7 @@ static SequenceSet get_seqs(const vector<string>& accs) {
 }
 
 static TextBuffer* view_query(const string& query_acc, const string& buf, SequenceFile& query_file, SequenceFile& target_file, Search::Config& cfg, Statistics& stats) {
-	static const size_t BATCH_SIZE = 1024;
+	static const BlockId BATCH_SIZE = 1024;
 	const vector<string> target_acc = Util::Tsv::extract_column(buf, 1);
 	//SequenceSet targets = target_file.seqs_by_accession(target_acc.begin(), target_acc.end());
 	//vector<Letter> query = query_file.seq_by_accession(query_acc);
@@ -86,27 +70,27 @@ static TextBuffer* view_query(const string& query_acc, const string& buf, Sequen
 	if (cfg.query_masking != MaskingAlgo::NONE)
 		Masking::get()(query.data(), query.size(), cfg.query_masking, 0);
 	if (cfg.target_masking != MaskingAlgo::NONE)
-		for (size_t i = 0; i < targets.size(); ++i)
+		for (BlockId i = 0; i < targets.size(); ++i)
 			Masking::get()(targets.ptr(i), targets.length(i), cfg.target_masking, 0);
 
 	const auto query_comp = Stats::composition(Sequence(query));
 	const int query_len = Stats::count_true_aa(Sequence(query));
 	list<Hsp> hsp;
 
-	for (size_t t = 0; t < target_acc.size(); t += BATCH_SIZE) {
-		const size_t t1 = std::min(t + BATCH_SIZE, target_acc.size());
+	for (BlockId t = 0; t < (BlockId)target_acc.size(); t += BATCH_SIZE) {
+		const BlockId t1 = std::min(t + BATCH_SIZE, (BlockId)target_acc.size());
 
 		vector<Stats::TargetMatrix> matrices;
-		for (size_t i = t; i < t1; ++i)
+		for (BlockId i = t; i < t1; ++i)
 			matrices.emplace_back(query_comp, query_len, targets[i]);
 
 		const HspValues v = HspValues::COORDS | HspValues::IDENT | HspValues::LENGTH;
 		DP::Targets dp_targets;
-		for (size_t i = t; i < t1; ++i)
+		for (BlockId i = t; i < t1; ++i)
 			if (targets.length(i) > 0)
-				dp_targets[DP::BandedSwipe::bin(v, query.size(), 0, 0, 0, 0, 0)].emplace_back(targets[i], targets[i].length(), i, &matrices[i - t]);
+				dp_targets[DP::BandedSwipe::bin(v, (Loc)query.size(), 0, 0, 0, 0, 0)].emplace_back(targets[i], targets[i].length(), i, &matrices[i - t]);
 
-		DP::Params params{ Sequence(query), Frame(0), (Loc)query.size(), nullptr, DP::Flags::FULL_MATRIX, v, stats };
+		DP::Params params{ Sequence(query), "", Frame(0), (Loc)query.size(), nullptr, DP::Flags::FULL_MATRIX, v, stats, nullptr };
 		hsp.splice(hsp.end(), DP::BandedSwipe::swipe(dp_targets, params));
 	}
 
@@ -114,9 +98,11 @@ static TextBuffer* view_query(const string& query_acc, const string& buf, Sequen
 	Blast_tab_format fmt;
 	TranslatedSequence query_seq;
 	TextBuffer* out = new TextBuffer();
+	Output::Info info{ SeqInfo { 0, 0, query_acc.c_str(), "", query_seq.source().length(), query_seq.source(), Sequence()}, false, nullptr, *out, {} };
 	for (Hsp& h : hsp) {
 		h.query_source_range = h.query_range;
 		fmt.print_match(HspContext(h,
+			0,
 			0,
 			query_seq,
 			query_acc.c_str(),
@@ -125,7 +111,7 @@ static TextBuffer* view_query(const string& query_acc, const string& buf, Sequen
 			target_acc[h.swipe_target].c_str(),
 			0,
 			0,
-			Sequence()), cfg, *out);
+			Sequence()), info);
 	}
 
 	return out;
@@ -141,14 +127,14 @@ void view_tsv() {
 	if (config.query_file.size() > 1)
 		throw std::runtime_error("Too many arguments for query file (--query/-q)");
 
-	task_timer timer("Opening the database file");
-	unique_ptr<SequenceFile> db(SequenceFile::auto_create(config.database, SequenceFile::Flags::NO_FASTA));
+	TaskTimer timer("Opening the database file");
+	unique_ptr<SequenceFile> db(SequenceFile::auto_create({ config.database }, SequenceFile::Flags::NO_FASTA));
 	score_matrix = ScoreMatrix("blosum62", -1, -1, 1, 0);
 	score_matrix.set_db_letters(config.db_size ? config.db_size : db->letters());
 	Masking::instance = unique_ptr<Masking>(new Masking(score_matrix));
 
 	timer.go("Opening the query file");
-	unique_ptr<SequenceFile> query_file(SequenceFile::auto_create(config.query_file.front(), SequenceFile::Flags::NO_FASTA));
+	unique_ptr<SequenceFile> query_file(SequenceFile::auto_create(config.query_file, SequenceFile::Flags::NO_FASTA));
 
 	/*if (db->type() != SequenceFile::Type::BLAST) // || query_file->type() != SequenceFile::Type::BLAST)
 		throw std::runtime_error("BLAST database required.");*/
@@ -158,13 +144,14 @@ void view_tsv() {
 
 	timer.go("Opening the output file");
 	OutputFile output_file(config.output_file);
-	OutputSink::instance = unique_ptr<OutputSink>(new OutputSink(0, &output_file));
+	OutputWriter writer{ &output_file };
+	output_sink.reset(new ReorderQueue<TextBuffer*, OutputWriter>(0, writer));
 
 	timer.go("Loading database");
-	db_block = db->load_seqs(SIZE_MAX, true, nullptr, true, false);
+	db_block = db->load_seqs(SIZE_MAX, nullptr, SequenceFile::LoadFlags::ALL);
 
 	timer.go("Loading queries");
-	query_block = query_file->load_seqs(SIZE_MAX, true, nullptr, true, false);
+	query_block = query_file->load_seqs(SIZE_MAX, nullptr, SequenceFile::LoadFlags::ALL);
 
 	timer.go("Building accession mapping");
 	unsigned n = db_block->ids().size();
@@ -194,7 +181,7 @@ void view_tsv() {
 					q = query_idx++;
 				}
 				if (q % 1000 == 0)
-					std::cout << "#Query = " << q << " time = " << timer.seconds() << endl;
+					message_stream << "#Query = " << q << " time = " << timer.seconds() << endl;
 				if (query.empty())
 					return;
 				TextBuffer* out = view_query(query, buf, *db, *db, cfg, stats);
@@ -206,7 +193,7 @@ void view_tsv() {
 					delete out;
 				}
 				else
-					OutputSink::instance->push(q, out);
+					output_sink->push(q, out);
 			}
 		}
 		catch (std::exception& e) {
@@ -215,13 +202,14 @@ void view_tsv() {
 	};
 
 	vector<thread> threads;
-	for (size_t i = 0; i < config.threads_; ++i)
+	for (int i = 0; i < config.threads_; ++i)
 		threads.emplace_back(worker);
 	for (auto& t : threads)
 		t.join();
 
 	timer.go("Closing the output file");
 	output_file.close();
+	output_sink.reset();
 	delete db_block;
 	delete query_block;
 }

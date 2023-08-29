@@ -16,9 +16,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#ifndef OUTPUT_STREAM_BUFFER_H_
-#define OUTPUT_STREAM_BUFFER_H_
-
+#pragma once
 #include <utility>
 #include <memory>
 #include "stream_entity.h"
@@ -26,16 +24,14 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 struct OutputStreamBuffer : public StreamEntity
 {
 	OutputStreamBuffer(StreamEntity* prev);
-	virtual pair<char*, char*> write_buffer();
-	virtual void flush(size_t count);
-	virtual void seek(size_t pos);
-	virtual void rewind();
-	virtual size_t tell();
+	virtual std::pair<char*, char*> write_buffer() override;
+	virtual void flush(size_t count) override;
+	virtual void seek(int64_t p, int origin) override;
+	virtual void rewind() override;
+	virtual int64_t tell() override;
 private:
 
 	static const size_t STDOUT_BUF_SIZE = 4096;
 	const size_t buf_size_;
 	std::unique_ptr<char[]> buf_;
 };
-
-#endif

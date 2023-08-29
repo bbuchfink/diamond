@@ -19,13 +19,14 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "output_format.h"
 #include "../util/util.h"
 
-void Pairwise_format::print_match(const HspContext& r, const Search::Config& metadata, TextBuffer &out)
+void Pairwise_format::print_match(const HspContext& r, Output::Info &info)
 {
 	static const unsigned width = 60;
+	TextBuffer& out = info.out;
 	const int dna_len = (int)r.query.source().length();
 	const Strand strand = r.frame() < 3 ? FORWARD : REVERSE;
 	out << '>';
-	Output_format::print_title(out, r.target_title, true, true, " ");
+	OutputFormat::print_title(out, r.target_title.c_str(), true, true, " ");
 	out << "\nLength=" << r.subject_len << "\n\n";
 	out << " Score = " << r.bit_score() << " bits (" << r.score() << "),  Expect = ";
 	out.print_e(r.evalue());
@@ -70,15 +71,15 @@ void Pairwise_format::print_footer(Consumer &out) const
 
 }
 
-void Pairwise_format::print_query_epilog(TextBuffer &out, const char *query_title, bool unaligned, const Search::Config &params) const
+void Pairwise_format::print_query_epilog(Output::Info &info) const
 {
 }
 
-void Pairwise_format::print_query_intro(size_t query_num, const char *query_name, unsigned query_len, TextBuffer &out, bool unaligned, const Search::Config& cfg) const
+void Pairwise_format::print_query_intro(Output::Info &info) const
 {
-	out << "Query= " << query_name << "\n\nLength=" << query_len << "\n\n";
-	if (unaligned) {
-		out << "\n***** No hits found *****\n\n\n";
+	info.out << "Query= " << info.query.title << "\n\nLength=" << info.query.len << "\n\n";
+	if (info.unaligned) {
+		info.out << "\n***** No hits found *****\n\n\n";
 	}
 }
 

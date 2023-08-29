@@ -62,12 +62,12 @@ typedef char* (*GET_MATRIX_PATH) (const char*, bool);
   Structure to hold the Karlin-Altschul parameters.
 */
 typedef struct Blast_KarlinBlk {
-      double   Lambda; /**< Lambda value used in statistics */
-      double   K; /**< K value used in statistics */
-      double   logK; /**< natural log of K value used in statistics */
-      double   H; /**< H value used in statistics */
-      double   paramC;  /**< for use in seed. */
-   } Blast_KarlinBlk;
+    double   Lambda; /**< Lambda value used in statistics */
+    double   K; /**< K value used in statistics */
+    double   logK; /**< natural log of K value used in statistics */
+    double   H; /**< H value used in statistics */
+    double   paramC;  /**< for use in seed. */
+} Blast_KarlinBlk;
 
 
 /**
@@ -78,42 +78,40 @@ typedef struct Blast_KarlinBlk {
   The erfc(x) is tabulated in p with step h, starting from a to b
 */
 typedef struct erfc_table {
-      double eps;
-      double a;  
-      double b;
-      Int4   N;
-      double h;
-      double *p;
-   } erfc_table;
+    double eps;
+    double a;
+    double b;
+    Int4   N;
+    double h;
+    double *p;
+} erfc_table;
 
 /**
   Structure to hold the Gumbel parameters (for FSC).
 */
 typedef struct Blast_GumbelBlk {
-      double  Lambda;    /**< the unscaled Lambda value */
-      double  C;
-      double  G;         /**< G is the total penalty for extension */
-      double  a;         /**< avg(L) = a     y + b    */
-      double  Alpha;     /**< var(L) = alpha y + beta */
-      double  Sigma;     /**< cov(L) = sigma y + tau  */
-      double  a_un;      /**< Ungapped a */
-      double  Alpha_un;  /**< Ungapped alpha */
+    double  Lambda;    /**< the unscaled Lambda value */
+    double  C;
+    double  G;         /**< G is the total penalty for extension */
+    double  a;         /**< avg(L) = a     y + b    */
+    double  Alpha;     /**< var(L) = alpha y + beta */
+    double  Sigma;     /**< cov(L) = sigma y + tau  */
+    double  a_un;      /**< Ungapped a */
+    double  Alpha_un;  /**< Ungapped alpha */
 
-      double  b;         /**< 2*G*(a_un - a) */
-      double  Beta;      /**< 2*G*(alpha_un - alpha) */
-      double  Tau;       /**< 2*G*(alpha_un - Sigma) */
+    double  b;         /**< 2*G*(a_un - a) */
+    double  Beta;      /**< 2*G*(alpha_un - alpha) */
+    double  Tau;       /**< 2*G*(alpha_un - Sigma) */
 
-      Int8 db_length;    /**< total length of database */
+    Int8 db_length;    /**< total length of database */
 
-      bool filled;    /**< flag indicate the values of gbp are prepared */
-      
-   } Blast_GumbelBlk;
+    bool filled;    /**< flag indicate the values of gbp are prepared */
+
+} Blast_GumbelBlk;
 
 
 /********************************************************************
-
    Structures relating to scoring or the BlastScoreBlk
-
 ********************************************************************/
 
 #define BLAST_SCORE_MIN INT2_MIN   /**< minimum allowed score (for one letter comparison). */
@@ -173,50 +171,50 @@ SPsiBlastScoreMatrixFree(SPsiBlastScoreMatrix* matrix);
 /** Structure used for scoring calculations.
 */
 typedef struct BlastScoreBlk {
-   bool     protein_alphabet; /**< TRUE if alphabet_code is for a 
+    bool     protein_alphabet; /**< TRUE if alphabet_code is for a
 protein alphabet (e.g., ncbistdaa etc.), FALSE for nt. alphabets. */
-   Uint1    alphabet_code; /**< NCBI alphabet code. */
-   Int2     alphabet_size;  /**< size of alphabet. */
-   Int2     alphabet_start;  /**< numerical value of 1st letter. */
-   char*    name;           /**< name of scoring matrix. */
-   ListNode*   comments;    /**< Comments about scoring matrix. */
-   SBlastScoreMatrix* matrix;   /**< scoring matrix data */
-   SPsiBlastScoreMatrix* psi_matrix;    /**< PSSM and associated data. If this
+    Uint1    alphabet_code; /**< NCBI alphabet code. */
+    Int2     alphabet_size;  /**< size of alphabet. */
+    Int2     alphabet_start;  /**< numerical value of 1st letter. */
+    char*    name;           /**< name of scoring matrix. */
+    ListNode*   comments;    /**< Comments about scoring matrix. */
+    SBlastScoreMatrix* matrix;   /**< scoring matrix data */
+    SPsiBlastScoreMatrix* psi_matrix;    /**< PSSM and associated data. If this
                                          is not NULL, then the BLAST search is
                                          position specific (i.e.: PSI-BLAST) */
-   bool  matrix_only_scoring;  /**< Score ungapped/gapped alignment only
+    bool  matrix_only_scoring;  /**< Score ungapped/gapped alignment only
                                        using the matrix parameters and
-                                       with raw scores. Ignore 
-                                       penalty/reward and do not report 
+                                       with raw scores. Ignore
+                                       penalty/reward and do not report
                                        Karlin-Altschul stats.  This is used
                                        by the rmblastn program. -RMH- */
-   bool complexity_adjusted_scoring; /**< Use cross_match-like complexity
+    bool complexity_adjusted_scoring; /**< Use cross_match-like complexity
                                            adjustment on raw scores. -RMH- */
-   Int4  loscore;   /**< Min.  substitution scores */
-   Int4  hiscore;   /**< Max. substitution scores */
-   Int4  penalty;   /**< penalty for mismatch in blastn. */
-   Int4  reward;    /**< reward for match in blastn. */
-        double  scale_factor; /**< multiplier for all cutoff and dropoff scores */
-   bool     read_in_matrix; /**< If TRUE, matrix is read in, otherwise
+    Int4  loscore;   /**< Min.  substitution scores */
+    Int4  hiscore;   /**< Max. substitution scores */
+    Int4  penalty;   /**< penalty for mismatch in blastn. */
+    Int4  reward;    /**< reward for match in blastn. */
+    double  scale_factor; /**< multiplier for all cutoff and dropoff scores */
+    bool     read_in_matrix; /**< If TRUE, matrix is read in, otherwise
                produce one from penalty and reward above. @todo should this be
                 an allowed way of specifying the matrix to use? */
-   Blast_ScoreFreq** sfp;  /**< score frequencies for scoring matrix. */
-   /* kbp & kbp_gap are ptrs that should be set to kbp_std, kbp_psi, etc. */
-   Blast_KarlinBlk** kbp;  /**< Karlin-Altschul parameters. Actually just a placeholder. */
-   Blast_KarlinBlk** kbp_gap; /**< K-A parameters for gapped alignments.  Actually just a placeholder. */
-   Blast_GumbelBlk* gbp;  /**< Gumbel parameters for FSC. */
-   /* Below are the Karlin-Altschul parameters for non-position based ('std')
-   and position based ('psi') searches. */
-   Blast_KarlinBlk **kbp_std,  /**< K-A parameters for ungapped alignments */
-                    **kbp_psi,       /**< K-A parameters for position-based alignments. */
-                    **kbp_gap_std,  /**< K-A parameters for std (not position-based) alignments */
-                    **kbp_gap_psi;  /**< K-A parameters for psi alignments. */
-   Blast_KarlinBlk*  kbp_ideal;  /**< Ideal values (for query with average database composition). */
-   Int4 number_of_contexts;   /**< Used by sfp and kbp, how large are these*/
-   Uint1*   ambiguous_res; /**< Array of ambiguous res. (e.g, 'X', 'N')*/
-   Int2     ambig_size, /**< size of array above. FIXME: not needed here? */
-         ambig_occupy;  /**< How many occupied? */
-   bool  round_down; /**< Score must be rounded down to nearest even score if odd. */
+    Blast_ScoreFreq** sfp;  /**< score frequencies for scoring matrix. */
+    /* kbp & kbp_gap are ptrs that should be set to kbp_std, kbp_psi, etc. */
+    Blast_KarlinBlk** kbp;  /**< Karlin-Altschul parameters. Actually just a placeholder. */
+    Blast_KarlinBlk** kbp_gap; /**< K-A parameters for gapped alignments.  Actually just a placeholder. */
+    Blast_GumbelBlk* gbp;  /**< Gumbel parameters for FSC. */
+    /* Below are the Karlin-Altschul parameters for non-position based ('std')
+    and position based ('psi') searches. */
+    Blast_KarlinBlk **kbp_std,  /**< K-A parameters for ungapped alignments */
+    **kbp_psi,       /**< K-A parameters for position-based alignments. */
+    **kbp_gap_std,  /**< K-A parameters for std (not position-based) alignments */
+    **kbp_gap_psi;  /**< K-A parameters for psi alignments. */
+    Blast_KarlinBlk*  kbp_ideal;  /**< Ideal values (for query with average database composition). */
+    Int4 number_of_contexts;   /**< Used by sfp and kbp, how large are these*/
+    Uint1*   ambiguous_res; /**< Array of ambiguous res. (e.g, 'X', 'N')*/
+    Int2     ambig_size, /**< size of array above. FIXME: not needed here? */
+    ambig_occupy;  /**< How many occupied? */
+    bool  round_down; /**< Score must be rounded down to nearest even score if odd. */
 } BlastScoreBlk;
 
 /** Scoring matrix data used for compressed protein alphabets */
@@ -236,7 +234,7 @@ typedef struct SCompressedAlphabet {
 NCBI_XBLAST_EXPORT
 SCompressedAlphabet*
 SCompressedAlphabetNew(BlastScoreBlk *sbp,
-                       Int4 compressed_alphabet_size, 
+                       Int4 compressed_alphabet_size,
                        double scale_factor);
 
 /** Free a compressed alphabet and score matrix
@@ -247,7 +245,7 @@ NCBI_XBLAST_EXPORT
 SCompressedAlphabet*
 SCompressedAlphabetFree(SCompressedAlphabet *alphabet);
 
-/** 
+/**
 Stores the letter frequency of a sequence or database.
 */
 typedef struct Blast_ResFreq {
@@ -256,7 +254,7 @@ typedef struct Blast_ResFreq {
     double* prob0;            /**< probs, zero offset. */
 } Blast_ResFreq;
 
-/** 
+/**
  * Check that score blk is valid, returns zero if it is.
  * @param sbp ScoreBlk to check [in]
  * @return zero if valid
@@ -299,12 +297,12 @@ Int2 BLAST_ScoreSetAmbigRes (BlastScoreBlk* sbp, char ambiguous_res);
  * @param query Buffer containing (concatenated) query sequence [in]
  * @param query_info Information about offsets of concatenated queries [in]
  * @param blast_message returns queries that could not be processed [out]
- * @return 0 if ungapped Karlin-Altschul parameters could be calculated for 
- *        all of the query sequence's contexts; 1 if any of the contexts 
+ * @return 0 if ungapped Karlin-Altschul parameters could be calculated for
+ *        all of the query sequence's contexts; 1 if any of the contexts
  *        failed (but all others will be populated).
  */
 
-/** This function fills in the BlastScoreBlk structure.  
+/** This function fills in the BlastScoreBlk structure.
  * Tasks are:
  * -read in the matrix
  * -set maxscore
@@ -314,7 +312,7 @@ Int2 BLAST_ScoreSetAmbigRes (BlastScoreBlk* sbp, char ambiguous_res);
 */
 NCBI_XBLAST_EXPORT
 Int2 Blast_ScoreBlkMatrixFill (BlastScoreBlk* sbp, GET_MATRIX_PATH get_path);
- 
+
 /** Callocs a Blast_KarlinBlk
  * @return pointer to the Blast_KarlinBlk
 */
@@ -326,7 +324,7 @@ Blast_KarlinBlk* Blast_KarlinBlkNew (void);
  * @param kbp_to Karlin block to copy values to [in] [out]
  * @param kbp_from Karlin block to copy values from [in]
  * @return 0 on success; -1 if either argument is NULL on input.
- */ 
+ */
 NCBI_XBLAST_EXPORT
 Int2 Blast_KarlinBlkCopy(Blast_KarlinBlk* kbp_to, Blast_KarlinBlk* kbp_from);
 
@@ -338,7 +336,7 @@ Int2 Blast_KarlinBlkCopy(Blast_KarlinBlk* kbp_to, Blast_KarlinBlk* kbp_from);
 NCBI_XBLAST_EXPORT
 Blast_KarlinBlk* Blast_KarlinBlkFree(Blast_KarlinBlk* kbp);
 
-/** Fills in lambda, H, and K values, as calculated by Stephen Altschul 
+/** Fills in lambda, H, and K values, as calculated by Stephen Altschul
  *  in Methods in Enzy. (vol 266, page 474).
  * @param kbp object to be filled in [in|out]
  * @param gap_open cost of gap existence [in]
@@ -348,13 +346,13 @@ Blast_KarlinBlk* Blast_KarlinBlkFree(Blast_KarlinBlk* kbp);
  * @return zero on success
  */
 NCBI_XBLAST_EXPORT
-Int2 Blast_KarlinBlkGappedCalc (Blast_KarlinBlk* kbp, Int4 gap_open, 
-     Int4 gap_extend, const char* matrix_name, Blast_Message** error_return);
+Int2 Blast_KarlinBlkGappedCalc (Blast_KarlinBlk* kbp, Int4 gap_open,
+                                Int4 gap_extend, const char* matrix_name, Blast_Message** error_return);
 
 /** Retrieves Karlin-Altschul parameters from precomputed tables, given the
- * substitution and gap scores. Gap cost values greater than any of those 
+ * substitution and gap scores. Gap cost values greater than any of those
  * listed in the tables ("greater" meaning that both values are greater than or
- * equal, and at least one is strictly greater), are treated as infinite, and 
+ * equal, and at least one is strictly greater), are treated as infinite, and
  * parameters values are copied from the ungapped Karlin block.
  * @param kbp Allocated Karlin block to fill [in] [out]
  * @param gap_open Gap openening (existence) cost [in]
@@ -368,7 +366,7 @@ Int2 Blast_KarlinBlkGappedCalc (Blast_KarlinBlk* kbp, Int4 gap_open,
  */
 NCBI_XBLAST_EXPORT
 Int2
-Blast_KarlinBlkNuclGappedCalc(Blast_KarlinBlk* kbp, Int4 gap_open, 
+Blast_KarlinBlkNuclGappedCalc(Blast_KarlinBlk* kbp, Int4 gap_open,
                               Int4 gap_extend, Int4 reward, Int4 penalty,
                               Blast_KarlinBlk* kbp_ungap,
                               bool* round_down,
@@ -378,7 +376,7 @@ Blast_KarlinBlkNuclGappedCalc(Blast_KarlinBlk* kbp, Int4 gap_open,
 /** Calculates the Karlin-Altschul parameters assuming standard residue
  * compositions for the query and subject sequences. It populates the kbp_ideal
  * field of its sbp argument. This is used if the query is translated and the
- * calculated (real) Karlin parameters are bad, as they're calculated for 
+ * calculated (real) Karlin parameters are bad, as they're calculated for
  * non-coding regions.
  * @param sbp ScoreBlk used to calculate "ideal" values. [in|out]
  * @return 0 on success, 1 on failure
@@ -408,8 +406,8 @@ Int2 Blast_KarlinBlkGappedLoadFromTables(Blast_KarlinBlk* kbp, Int4 gap_open, In
  * @return zero on success
  */
 NCBI_XBLAST_EXPORT
-Int2 Blast_GumbelBlkCalc (Blast_GumbelBlk* gbp, Int4 gap_open, 
-     Int4 gap_extend, const char* matrix_name, Blast_Message** error_return);
+Int2 Blast_GumbelBlkCalc (Blast_GumbelBlk* gbp, Int4 gap_open,
+                          Int4 gap_extend, const char* matrix_name, Blast_Message** error_return);
 
 /** Attempts to fill GumbelBlk for given gap opening, extensions etc.
  *
@@ -422,18 +420,18 @@ Int2 Blast_GumbelBlkCalc (Blast_GumbelBlk* gbp, Int4 gap_open,
  *           2 if matrix found, but open, extend etc. values not supported.
 */
 NCBI_XBLAST_EXPORT
-Int2 Blast_GumbelBlkLoadFromTables(Blast_GumbelBlk* gbp, Int4 gap_open, 
-     Int4 gap_extend, const char* matrix_name);
+Int2 Blast_GumbelBlkLoadFromTables(Blast_GumbelBlk* gbp, Int4 gap_open,
+                                   Int4 gap_extend, const char* matrix_name);
 
-/** Prints a messages about the allowed matrices, BlastKarlinBlkGappedFill should return 1 before this is called. 
+/** Prints a messages about the allowed matrices, BlastKarlinBlkGappedFill should return 1 before this is called.
  * @param matrix the matrix to print a message about [in]
  * @return the message
  */
 NCBI_XBLAST_EXPORT
 char* BLAST_PrintMatrixMessage(const char *matrix);
 
-/** Prints a messages about the allowed open etc values for the given matrix, 
- * BlastKarlinBlkGappedFill should return 2 before this is called. 
+/** Prints a messages about the allowed open etc values for the given matrix,
+ * BlastKarlinBlkGappedFill should return 2 before this is called.
  * @param matrix name of the matrix [in]
  * @param gap_open gap existence cost [in]
  * @param gap_extend cost to extend a gap by one [in]
@@ -447,7 +445,7 @@ NCBI_XBLAST_EXPORT
 double
 Blast_KarlinLambdaNR(Blast_ScoreFreq* sfp, double initialLambdaGuess);
 
-/** Calculates the Expect value based upon the search space and some Karlin-Altschul 
+/** Calculates the Expect value based upon the search space and some Karlin-Altschul
  * parameters.  It is "simple" as it does not use sum-statistics.
  * @param S the score of the alignment. [in]
  * @param kbp the Karlin-Altschul parameters. [in]
@@ -484,20 +482,20 @@ Int4 BLAST_SpougeEtoS (double E, Blast_KarlinBlk* kbp, Blast_GumbelBlk* gbp, Int
  * If given a database P-value, this routine will return a database
  * E-value; if given a pairwise P-value, it will return a pairwise
  * E-value.
- *  
+ *
  * In the context of a database search, the available P-value is often
  * a pairwise P-value, whereas the desired E-value is a database
  * E-value.  When this it the case, the value returned by this routine
  * should be multiplied by the effective length of the database and
  * divided by the effective length of the subject.
- * 
+ *
  * @param p the P-value to be converted [in] @return the corresponding
  * expect value.
  */
 NCBI_XBLAST_EXPORT double BLAST_KarlinPtoE(double p);
 
 /** Convert an E-value to a P-value.
- * 
+ *
  * E-values and P-values may either represent statistics of a database
  * search or represent statistics on the two sequences being compared.
  * If given a database E-value, this routine will return a database
@@ -545,7 +543,7 @@ double BLAST_GapDecayDivisor(double decayrate, unsigned nsegs );
  * @param gap_decay_rate Gap decay rate to use, if dodecay is set [in]
  */
 NCBI_XBLAST_EXPORT
-Int2 BLAST_Cutoffs (Int4 *S, double* E, Blast_KarlinBlk* kbp, 
+Int2 BLAST_Cutoffs (Int4 *S, double* E, Blast_KarlinBlk* kbp,
                     Int8 searchsp, bool dodecay, double gap_decay_rate);
 
 /** Calculates the e-value for alignments with "small" gaps (typically
@@ -559,9 +557,9 @@ Int2 BLAST_Cutoffs (Int4 *S, double* E, Blast_KarlinBlk* kbp,
  * @param subject_length effective len of the subject seq [in]
  * @param searchsp_eff effective size of the search space [in]
  * @param weight_divisor a divisor used to weight the e-value
- *    when multiple collections of alignments are being considered by 
+ *    when multiple collections of alignments are being considered by
  *    the calling routine [in]
- * @return the expect value 
+ * @return the expect value
  */
 NCBI_XBLAST_EXPORT
 double BLAST_SmallGapSumE (Int4 start_points, Int2 num,  double xsum,
@@ -616,16 +614,16 @@ double BLAST_LargeGapSumE (Int2 num,  double xsum,
                            Int8 searchsp_eff, double weight_divisor );
 
 /** Extract the recommended gap existence and extension values.
- * Only to be used with protein matrices. 
+ * Only to be used with protein matrices.
  * @param  matrixName name of the matrix [in]
  * @param gap_existence returns recommended existence cost [in|out]
  * @param gap_extension returns recommended extension cost [in|out]
- * @return zero on success 
+ * @return zero on success
  */
 NCBI_XBLAST_EXPORT
 Int2 BLAST_GetProteinGapExistenceExtendParams(const char* matrixName,
-                                       Int4* gap_existence,
-                                       Int4* gap_extension);
+                                              Int4* gap_existence,
+                                              Int4* gap_extension);
 
 /** Extract the recommended gap existence and extension values.
  * Only to be used with blastn searches.
@@ -633,19 +631,19 @@ Int2 BLAST_GetProteinGapExistenceExtendParams(const char* matrixName,
  * @param penalty mismatch score [in]
  * @param gap_existence returns recommended existence cost [in|out]
  * @param gap_extension returns recommended extension cost [in|out]
- * @return zero on success 
+ * @return zero on success
  */
 NCBI_XBLAST_EXPORT
 Int2 BLAST_GetNucleotideGapExistenceExtendParams(Int4 reward,
-                                       Int4 penalty,
-                                       Int4* gap_existence,
-                                       Int4* gap_extension);
+                                                 Int4 penalty,
+                                                 Int4* gap_existence,
+                                                 Int4* gap_extension);
 
 /** Check the validity of the reward and penalty scores.
  * Only to be used with blastn searches.
  * @param reward match score [in]
  * @param penalty mismatch score [in]
- * @return TRUE on success 
+ * @return TRUE on success
  */
 NCBI_XBLAST_EXPORT
 bool BLAST_CheckRewardPenaltyScores(Int4 reward, Int4 penalty);
@@ -662,10 +660,10 @@ bool BLAST_CheckRewardPenaltyScores(Int4 reward, Int4 penalty);
 */
 NCBI_XBLAST_EXPORT
 void BLAST_GetAlphaBeta (const char* matrixName, double *alpha,
-                         double *beta, bool gapped, Int4 gap_open, 
+                         double *beta, bool gapped, Int4 gap_open,
                          Int4 gap_extend, const Blast_KarlinBlk* kbp_ungapped);
 
-/** Extract the alpha and beta settings for these substitution and gap scores. 
+/** Extract the alpha and beta settings for these substitution and gap scores.
  * If substitution or gap costs are not found in the tables, assume an ungapped
  * search. Then alpha is computed using the formula Alpha = Lambda/H, and beta
  * is equal to 0 except for some special cases.
@@ -673,25 +671,25 @@ void BLAST_GetAlphaBeta (const char* matrixName, double *alpha,
  * @param penalty Mismatch penalty score [in]
  * @param gap_open Gap opening (existence) cost [in]
  * @param gap_extend Gap extension cost [in]
- * @param kbp Karlin block containing already computed Lambda, K and H 
+ * @param kbp Karlin block containing already computed Lambda, K and H
  *            parameters.
  * @param gapped_calculation Is this a gapped search? [in]
  * @param alpha Alpha parameter for this scoring system [out]
  * @param beta Beta parameter for this scoring system [out]
  */
 NCBI_XBLAST_EXPORT
-Int2 Blast_GetNuclAlphaBeta(Int4 reward, Int4 penalty, Int4 gap_open, 
+Int2 Blast_GetNuclAlphaBeta(Int4 reward, Int4 penalty, Int4 gap_open,
                             Int4 gap_extend, Blast_KarlinBlk* kbp,
                             bool gapped_calculation,
                             double *alpha, double *beta);
 
 /** Rescale the PSSM, using composition-based statistics, for use
  *  with RPS BLAST. This function produces a PSSM for a single RPS DB
- *  sequence (of size db_seq_length) and incorporates information from 
+ *  sequence (of size db_seq_length) and incorporates information from
  *  the RPS blast query. Each individual database sequence must call this
  *  function to retrieve its own PSSM. The matrix is returned (and must
- *  be freed elsewhere). posMatrix is the portion of the complete 
- *  concatenated PSSM that is specific to this DB sequence 
+ *  be freed elsewhere). posMatrix is the portion of the complete
+ *  concatenated PSSM that is specific to this DB sequence
  * @todo revise to use existing code
  * @param scalingFactor used to rescale Lambda [in]
  * @param rps_query_length length of query sequence [in]
@@ -699,41 +697,41 @@ Int2 Blast_GetNuclAlphaBeta(Int4 reward, Int4 penalty, Int4 gap_open,
  * @param db_seq_length Length of the database sequence [in]
  * @param posMatrix matrix (actual) values to be used [in]
  * @param sbp Structure with score matrix parameters [in][out]
- * @return rescaled pssm 
+ * @return rescaled pssm
  */
 NCBI_XBLAST_EXPORT
-Int4 ** RPSRescalePssm(double scalingFactor, Int4 rps_query_length, 
-                   const Uint1 * rps_query_seq, Int4 db_seq_length, 
-                   Int4 **posMatrix, BlastScoreBlk *sbp);
+Int4 ** RPSRescalePssm(double scalingFactor, Int4 rps_query_length,
+                       const Uint1 * rps_query_seq, Int4 db_seq_length,
+                       Int4 **posMatrix, BlastScoreBlk *sbp);
 
 
-/** 
+/**
  * Computes the adjustment to the lengths of the query and database sequences
- * that is used to compensate for edge effects when computing evalues. 
+ * that is used to compensate for edge effects when computing evalues.
  *
  * The length adjustment is an integer-valued approximation to the fixed
  * point of the function
  *
- *    f(ell) = beta + 
+ *    f(ell) = beta +
  *               (alpha/lambda) * (log K + log((m - ell)*(n - N ell)))
  *
  * where m is the query length n is the length of the database and N is the
  * number of sequences in the database. The values beta, alpha, lambda and
  * K are statistical, Karlin-Altschul parameters.
- * 
- * The value of the length adjustment computed by this routine, A, 
+ *
+ * The value of the length adjustment computed by this routine, A,
  * will always be an integer smaller than the fixed point of
  * f(ell). Usually, it will be the largest such integer.  However, the
- * computed length adjustment, A, will also be so small that 
+ * computed length adjustment, A, will also be so small that
  *
  *    K * (m - A) * (n - N * A) > MAX(m,n).
  *
  * Moreover, an iterative method is used to compute A, and under
- * unusual circumstances the iterative method may not converge. 
+ * unusual circumstances the iterative method may not converge.
  *
  * @param K      the statistical parameter K [in]
  * @param logK   the natural logarithm of K [in]
- * @param alpha_d_lambda    the ratio of the statistical parameters 
+ * @param alpha_d_lambda    the ratio of the statistical parameters
  *                          alpha and lambda (for ungapped alignments, the
  *                          value 1/H should be used) [in]
  * @param beta              the statistical parameter beta (for ungapped
@@ -790,7 +788,7 @@ NCBI_XBLAST_EXPORT
 Blast_ScoreFreq*
 Blast_ScoreFreqNew(Int4 score_min, Int4 score_max);
 
-/** Deallocates the score frequencies structure 
+/** Deallocates the score frequencies structure
  * @param sfp the structure to deallocate [in]
  * @return NULL
  */
@@ -798,7 +796,7 @@ NCBI_XBLAST_EXPORT
 Blast_ScoreFreq*
 Blast_ScoreFreqFree(Blast_ScoreFreq* sfp);
 
-/** Fills a buffer with the 'standard' alphabet 
+/** Fills a buffer with the 'standard' alphabet
  * (given by STD_AMINO_ACID_FREQS[index].ch).
  *
  * @param alphabet_code specifies alphabet [in]
@@ -808,7 +806,7 @@ Blast_ScoreFreqFree(Blast_ScoreFreq* sfp);
  */
 NCBI_XBLAST_EXPORT
 Int2
-Blast_GetStdAlphabet(Uint1 alphabet_code, Uint1* residues, 
+Blast_GetStdAlphabet(Uint1 alphabet_code, Uint1* residues,
                      Uint4 residue_size);
 
 /** Computes the parameters lambda, H K for use in calculating the
@@ -846,16 +844,17 @@ Blast_FillResidueProbability(const Uint1* sequence, Int4 length, double * resPro
 NCBI_XBLAST_EXPORT
 Int2 BlastScoreBlkNuclMatrixCreate(BlastScoreBlk* sbp);
 
-/** Returns a pointer to the static compiled in version of the 
+/** Returns a pointer to the static compiled in version of the
  * matrix.  If name is NULL or the matrix is not compiled in
  * NULL is returned.
  * @param name matrix name [in]
  * @return pointer to matrix or NULL if not supported.
  */
-NCBI_XBLAST_EXPORT 
+NCBI_XBLAST_EXPORT
 SNCBIPackedScoreMatrix* BlastScoreBlkGetCompiledInMatrix(const char* name);
 
 #ifdef __cplusplus
 }
 #endif
 #endif /* !ALGO_BLAST_CORE__BLAST_STAT__H */
+

@@ -3,16 +3,19 @@
 #include "../output/output_format.h"
 #include "../dp/dp.h"
 #include "../dp/ungapped.h"
+#include "diag_graph.h"
+#include "../dp/scalar/scalar.h"
 
 using std::cout;
 using std::endl;
+using std::vector;
 
-void print_diag(int i0, int j0, int l, int score, const Diag_graph &diags, const Sequence &query, const Sequence &subject)
+void print_diag(int i0, int j0, int l, int score, const DiagGraph &diags, const Sequence &query, const Sequence &subject)
 {
-	Diagonal_segment ds(i0, j0, l, 0);
+	DiagonalSegment ds(i0, j0, l, 0);
 	unsigned n = 0;
 	int path_max, path_min;
-	for (vector<Diagonal_node>::const_iterator d = diags.nodes.begin(); d != diags.nodes.end(); ++d) {
+	for (vector<DiagonalNode>::const_iterator d = diags.nodes.begin(); d != diags.nodes.end(); ++d) {
 		if (d->intersect(ds).len > 0) {
 			if (d->score == 0)
 				continue;
@@ -32,10 +35,10 @@ void print_diag(int i0, int j0, int l, int score, const Diag_graph &diags, const
 		cout << "Diag n=x i=" << i0 << " j=" << j0 << " len=" << l << " prefix_score=" << score << endl;
 }
 
-void smith_waterman(Sequence q, Sequence s, const Diag_graph &diags)
+void smith_waterman(Sequence q, Sequence s, const DiagGraph &diags)
 {
 	Hsp hsp(true);
-	//smith_waterman(q, s, hsp);
+	smith_waterman(q, s, hsp);
 	Hsp::Iterator i = hsp.begin();
 	int i0 = -1, j0 = -1, l = 0, score = 0;
 	for (; i.good(); ++i) {

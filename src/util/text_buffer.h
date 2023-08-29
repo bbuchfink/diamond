@@ -180,7 +180,7 @@ struct TextBuffer
 	{
 		//write(x);
 		reserve(16);
-		ptr_ += sprintf(ptr_, "%u", x);
+		ptr_ += snprintf(ptr_, 16, "%u", x);
 		return *this;
 	}
 
@@ -188,35 +188,49 @@ struct TextBuffer
 	{
 		//write(x);
 		reserve(16);
-		ptr_ += sprintf(ptr_, "%i", x);
+		ptr_ += snprintf(ptr_, 16, "%i", x);
 		return *this;
 	}
 
 	TextBuffer& operator<<(unsigned long x)
 	{
 		reserve(32);
-		ptr_ += sprintf(ptr_, "%lu", x);
+		ptr_ += snprintf(ptr_, 32, "%lu", x);
 		return *this;
 	}
 	
 	TextBuffer& operator<<(unsigned long long x)
 	{
 		reserve(32);
-		ptr_ += sprintf(ptr_, "%llu", x);
+		ptr_ += snprintf(ptr_, 32, "%llu", x);
+		return *this;
+	}
+
+	TextBuffer& operator<<(long x)
+	{
+		reserve(32);
+		ptr_ += snprintf(ptr_, 32, "%li", x);
+		return *this;
+	}
+
+	TextBuffer& operator<<(long long x)
+	{
+		reserve(32);
+		ptr_ += snprintf(ptr_, 32, "%lli", x);
 		return *this;
 	}
 
 	TextBuffer& operator<<(double x)
 	{
 		reserve(32);
-		ptr_ += Util::String::format_double(x, ptr_);
+		ptr_ += Util::String::format_double(x, ptr_, 32);
 		return *this;
 	}
 
 	TextBuffer& print_d(double x)
 	{
 		reserve(32);
-		ptr_ += sprintf(ptr_, "%lf", x);
+		ptr_ += snprintf(ptr_, 32, "%lf", x);
 		return *this;
 	}
 
@@ -224,34 +238,35 @@ struct TextBuffer
 	{
 		reserve(32);
 		if (x == 0.0)
-			ptr_ += sprintf(ptr_, "0.0");
+			ptr_ += snprintf(ptr_, 32, "0.0");
 		else
-			ptr_ += sprintf(ptr_, "%.2e", x);
+			ptr_ += snprintf(ptr_, 32, "%.2e", x);
 		return *this;
 	}
 
 	TextBuffer& print(unsigned i, unsigned width)
 	{
 		reserve(16);
-		sprintf(ptr_, "%*u", width, i);
+		snprintf(ptr_, 16, "%*u", width, i);
 		ptr_ += width;
 		return *this;
 	}
 
-	TextBuffer& print(const std::vector<unsigned> &v, char separator)
+	template<typename T>
+	TextBuffer& print(const std::vector<T> &v, char separator)
 	{
 		if (v.empty()) return *this;
-		std::vector<unsigned>::const_iterator i = v.begin();
+		typename std::vector<T>::const_iterator i = v.begin();
 		*this << *(i++);
 		for (; i < v.end(); ++i)
 			*this << ';' << *i;
 		return *this;
 	}
 
-	template<typename _t>
-	TextBuffer& operator<<(const std::vector<_t> &v)
+	template<typename T>
+	TextBuffer& operator<<(const std::vector<T> &v)
 	{
-		const size_t l = v.size() * sizeof(_t);
+		const size_t l = v.size() * sizeof(T);
 		reserve(l);
 		memcpy(ptr_, v.data(), l);
 		ptr_ += l;

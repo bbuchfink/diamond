@@ -27,7 +27,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <thread>
 #include "masking.h"
 #include "../lib/tantan/LambdaCalculator.hh"
-#include "../util/tantan.h"
+#include "tantan.h"
 #include "../lib/blast/blast_filter.h"
 #include "../data/sequence_set.h"
 #include "../basic/config.h"
@@ -41,7 +41,8 @@ using std::atomic_size_t;
 
 const EMap<MaskingAlgo> EnumTraits<MaskingAlgo>::to_string{ {MaskingAlgo::NONE, "None"}, {MaskingAlgo::SEG, "SEG"}, {MaskingAlgo::TANTAN, "tantan"} };
 const SEMap<MaskingAlgo> EnumTraits<MaskingAlgo>::from_string{
-	{"0", MaskingAlgo::NONE}
+	{ "0", MaskingAlgo::NONE },
+	{ "tantan", MaskingAlgo::TANTAN }
 };
 const SEMap<MaskingMode> EnumTraits<MaskingMode>::from_string{
 	{"0", {MaskingMode::NONE, false}},
@@ -82,7 +83,7 @@ size_t MaskingTable::masked_letters() const {
 	return masked_letters_;
 }
 
-void MaskingTable::add(const size_t block_id, const int begin, const int end, Letter* seq) {
+void MaskingTable::add(const size_t block_id, const Loc begin, const Loc end, Letter* seq) {
 	{
 		std::lock_guard<std::mutex> lock(mtx_);
 		entry_.emplace_back(block_id, begin);
@@ -115,16 +116,11 @@ void MaskingTable::apply(SequenceSet& seqs) const {
 static size_t mask_motifs(Letter* seq, const size_t len, const size_t block_id, MaskingTable& table) {
 	if (len < MOTIF_LEN)
 		return 0;
-	vector<pair<ptrdiff_t, ptrdiff_t>> pos;
+	Mask::Ranges pos;
 	KmerIterator<MOTIF_LEN> it(Sequence(seq, len));
 	while (it.good()) {
-		if (motif_table.find(*it) != motif_table.end()) {
-			const ptrdiff_t p = it - seq;
-			if (!pos.empty() && p <= pos.back().second)
-				pos.back().second = p + MOTIF_LEN;
-			else
-				pos.emplace_back(p, p + MOTIF_LEN);
-		}
+		if (motif_table.find(*it) != motif_table.end())
+			pos.push_back(it - seq, it - seq + MOTIF_LEN);
 		++it;
 	}
 	const ptrdiff_t n = std::accumulate(pos.cbegin(), pos.cend(), (ptrdiff_t)0, [](const ptrdiff_t s, const pair<ptrdiff_t, ptrdiff_t>& r) { return s + r.second - r.first; });
@@ -134,7 +130,7 @@ static size_t mask_motifs(Letter* seq, const size_t len, const size_t block_id, 
 
 	for (auto i = pos.cbegin(); i != pos.cend(); ++i)
 		if (i->second - i->first <= config.max_motif_len)
-			table.add(block_id, (int)i->first, (int)i->second, seq);
+			table.add(block_id, i->first, i->second, seq);
 
 	return n;
 }
@@ -171,11 +167,17 @@ Masking::~Masking() {
 size_t Masking::operator()(Letter *seq, size_t len, MaskingAlgo algo, const size_t block_id, MaskingTable* table) const
 {
 	size_t n = 0;
-	if(flag_any(algo, MaskingAlgo::TANTAN))
-		Util::tantan::mask(seq, (int)len, (const float**)probMatrixPointersf_, 0.005f, 0.05f, 1.0f / 0.9f, (float)config.tantan_minMaskProb, mask_table_x_);
+	if (flag_any(algo, MaskingAlgo::TANTAN)) {
+		Mask::Ranges r = Util::tantan::mask(seq, (int)len, (const float**)probMatrixPointersf_, 0.005f, 0.05f, 1.0f / 0.9f, (float)config.tantan_minMaskProb, table ? nullptr : mask_table_x_);
+		if (table)
+			for (auto i : r) {
+				table->add(block_id, i.first, i.second, seq);
+				n += i.second - i.first;
+			}
+	}
 	if (flag_any(algo, MaskingAlgo::SEG)) {
 		BlastSeqLoc* seg_locs;
-		SeqBufferSeg((uint8_t*)seq, len, 0u, blast_seg_, &seg_locs);
+		SeqBufferSeg((uint8_t*)seq, (uint32_t)len, 0u, blast_seg_, &seg_locs);
 		unsigned nMasked = 0;
 
 		if (seg_locs) {
@@ -215,9 +217,10 @@ void Masking::remove_bit_mask(Letter *seq, size_t len) const
 			seq[i] &= ~bit_mask;
 }
 
-void mask_worker(atomic_size_t *next, SequenceSet *seqs, const Masking *masking, bool hard_mask, const MaskingAlgo algo, MaskingTable* table, atomic_size_t* count)
+void mask_worker(atomic<BlockId> *next, SequenceSet *seqs, const Masking *masking, bool hard_mask, const MaskingAlgo algo, MaskingTable* table, atomic_size_t* count)
 {
-	size_t i, n = 0;
+	BlockId i;
+	size_t n = 0;
 	while ((i = (*next)++) < seqs->size()) {
 		seqs->convert_to_std_alph(i);
 		if (hard_mask)
@@ -235,8 +238,9 @@ size_t mask_seqs(SequenceSet &seqs, const Masking &masking, bool hard_mask, cons
 	if (flag_any(algo, MaskingAlgo::MOTIF) && !table)
 		throw std::runtime_error("Motif masking requires masking table.");
 	vector<thread> threads;
-	atomic_size_t next(0), count(0);
-	for (size_t i = 0; i < config.threads_; ++i)
+	atomic<BlockId> next(0);
+	atomic_size_t count(0);
+	for (int i = 0; i < config.threads_; ++i)
 		threads.emplace_back(mask_worker, &next, &seqs, &masking, hard_mask, algo, table, &count);
 	for (auto &t : threads)
 		t.join();

@@ -82,11 +82,12 @@ struct Tokenizer {
 		return *this;
 	}
 
-	Tokenizer& operator>>(long int &x) {
+	Tokenizer& operator>>(int64_t &x) {
 		if (!good())
 			throw TokenizerException();
 		char *end;
-		x = strtol(p, &end, 10);
+		const long long n = strtoll(p, &end, 10);
+		x = (int64_t)n;
 		if (end == p)
 			throw TokenizerException();
 		if (strncmp(end, delimiter, len) == 0)
@@ -100,14 +101,14 @@ struct Tokenizer {
 	}
 
 	Tokenizer& operator>>(int &x) {
-		long y;
+		int64_t y;
 		*this >> y;
 		x = (int)y;
 		return *this;
 	}
 
 	Tokenizer& operator>>(unsigned& x) {
-		long y;
+		int64_t y;
 		*this >> y;
 		x = (unsigned)y;
 		return *this;

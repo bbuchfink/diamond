@@ -18,10 +18,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "target_culling.h"
 
-TargetCulling* TargetCulling::get()
+TargetCulling* TargetCulling::get(const int64_t max_target_seqs)
 {
 	if (config.query_range_culling)
-		return new RangeCulling;
+		return new RangeCulling(max_target_seqs);
 	else
-		return new GlobalCulling();
+		return new GlobalCulling(max_target_seqs);
 }

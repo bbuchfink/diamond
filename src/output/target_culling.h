@@ -24,30 +24,31 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <set>
 #include <map>
 #include "../align/legacy/query_mapper.h"
-#include "../util/interval_partition.h"
+#include "../util/geo/interval_partition.h"
 #include "output.h"
 
 struct TargetCulling
 {
-	virtual int cull(const Target &t) const = 0;
-	virtual int cull(const vector<IntermediateRecord> &target_hsp, const std::set<unsigned> &taxon_ids) const = 0;
+	virtual std::pair<int, double> cull(const Target &t) const = 0;
+	virtual int cull(const std::vector<IntermediateRecord> &target_hsp, const std::set<TaxId> &taxon_ids) const = 0;
 	virtual void add(const Target &t) = 0;
-	virtual void add(const vector<IntermediateRecord> &target_hsp, const std::set<unsigned> &taxon_ids) = 0;
+	virtual void add(const std::vector<IntermediateRecord> &target_hsp, const std::set<TaxId> &taxon_ids) = 0;
 	virtual ~TargetCulling() = default;
 	enum { FINISHED = 0, NEXT = 1, INCLUDE = 2};
-	static TargetCulling* get();
+	static TargetCulling* get(const int64_t max_target_seqs);
 };
 
 struct GlobalCulling : public TargetCulling
 {
-	GlobalCulling() :
+	GlobalCulling(const int64_t max_target_seqs) :
+		max_target_seqs_(max_target_seqs),
 		n_(0),
 		top_score_(0)
 	{}
-	virtual int cull(const Target &t) const
+	virtual std::pair<int, double> cull(const Target &t) const
 	{
 		if (top_score_ == 0)
-			return INCLUDE;
+			return { INCLUDE, 0 };
 		if (config.taxon_k) {
 			unsigned taxons_exceeded = 0;
 			for (unsigned i : t.taxon_rank_ids) {
@@ -56,14 +57,14 @@ struct GlobalCulling : public TargetCulling
 					++taxons_exceeded;
 			}
 			if (taxons_exceeded == t.taxon_rank_ids.size())
-				return NEXT;
+				return { NEXT,0 };
 		}
 		if (config.toppercent < 100.0)
-			return (1.0 - score_matrix.bitscore(t.filter_score) / top_score_) * 100.0 <= config.toppercent ? INCLUDE : FINISHED;
+			return { (1.0 - score_matrix.bitscore(t.filter_score) / top_score_) * 100.0 <= config.toppercent ? INCLUDE : FINISHED, 0 };
 		else
-			return n_ < config.max_alignments ? INCLUDE : FINISHED;
+			return { n_ < max_target_seqs_ ? INCLUDE : FINISHED,0 };
 	}
-	virtual int cull(const vector<IntermediateRecord> &target_hsp, const std::set<unsigned> &taxon_ids) const
+	virtual int cull(const std::vector<IntermediateRecord> &target_hsp, const std::set<TaxId> &taxon_ids) const
 	{
 		if (top_score_ == 0.0)
 			return INCLUDE;
@@ -82,7 +83,7 @@ struct GlobalCulling : public TargetCulling
 		else if (config.toppercent < 100.0)
 			return (1.0 - score_matrix.bitscore(target_hsp[0].score) / top_score_) * 100.0 <= config.toppercent ? INCLUDE : FINISHED;
 		else
-			return n_ < config.max_alignments ? INCLUDE : FINISHED;
+			return n_ < max_target_seqs_ ? INCLUDE : FINISHED;
 	}
 	virtual void add(const Target &t)
 	{
@@ -93,7 +94,7 @@ struct GlobalCulling : public TargetCulling
 			for (unsigned i : t.taxon_rank_ids)
 				++taxon_count_[i];
 	}
-	virtual void add(const vector<IntermediateRecord> &target_hsp, const std::set<unsigned> &taxon_ids)
+	virtual void add(const std::vector<IntermediateRecord> &target_hsp, const std::set<TaxId> &taxon_ids)
 	{
 		if (top_score_ == 0)
 			top_score_ = score_matrix.bitscore(target_hsp[0].score);
@@ -104,17 +105,18 @@ struct GlobalCulling : public TargetCulling
 	}
 	virtual ~GlobalCulling() = default;
 private:
-	size_t n_;
+	const int64_t max_target_seqs_;
+	int64_t n_;
 	double top_score_;
 	std::map<unsigned, unsigned> taxon_count_;
 };
 
 struct RangeCulling : public TargetCulling
 {
-	RangeCulling() :
-		p_((int)std::min(config.max_alignments, (size_t)INT_MAX))
+	RangeCulling(const int64_t max_target_seqs) :
+		p_(max_target_seqs)
 	{}
-	virtual int cull(const Target &t) const
+	virtual std::pair<int, double> cull(const Target &t) const
 	{
 		int c = 0, l = 0;
 		for (std::list<Hsp>::const_iterator i = t.hsps.begin(); i != t.hsps.end(); ++i) {
@@ -127,9 +129,10 @@ struct RangeCulling : public TargetCulling
 			}
 			l += i->query_source_range.length();
 		}
-		return (double)c / l * 100.0 < config.query_range_cover ? INCLUDE : NEXT;
+		const double cov = (double)c / l;
+		return std::make_pair(cov * 100.0 < config.query_range_cover ? INCLUDE : NEXT, cov);
 	}
-	virtual int cull(const std::vector<IntermediateRecord> &target_hsp, const std::set<unsigned> &taxon_ids) const
+	virtual int cull(const std::vector<IntermediateRecord> &target_hsp, const std::set<TaxId> &taxon_ids) const
 	{
 		int c = 0, l = 0;
 		for (std::vector<IntermediateRecord>::const_iterator i = target_hsp.begin(); i != target_hsp.end(); ++i) {
@@ -148,7 +151,7 @@ struct RangeCulling : public TargetCulling
 		for (std::list<Hsp>::const_iterator i = t.hsps.begin(); i != t.hsps.end(); ++i)
 			p_.insert(i->query_source_range, i->score);
 	}
-	virtual void add(const vector<IntermediateRecord> &target_hsp, const std::set<unsigned> &taxon_ids)
+	virtual void add(const std::vector<IntermediateRecord> &target_hsp, const std::set<TaxId> &taxon_ids)
 	{
 		for (std::vector<IntermediateRecord>::const_iterator i = target_hsp.begin(); i != target_hsp.end(); ++i)
 			p_.insert(i->absolute_query_range(), i->score);

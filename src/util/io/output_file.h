@@ -24,16 +24,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "serializer.h"
 #include "../text_buffer.h"
 
-using std::string;
-using std::pair;
-
 enum class Compressor { NONE, ZLIB, ZSTD };
 
 struct OutputFile : public Serializer
 {
-	OutputFile(const string &file_name, Compressor compressor = Compressor::NONE, const char *mode = "wb");
+	OutputFile(const std::string &file_name, Compressor compressor = Compressor::NONE, const char *mode = "wb");
 #ifndef _MSC_VER
-	OutputFile(pair<string, int> fd, const char *mode);
+	OutputFile(std::pair<std::string, int> fd, const char *mode);
 #endif
 
 	void remove();
@@ -49,13 +46,13 @@ struct OutputFile : public Serializer
 		}
 	}
 
-	string file_name() const
+	std::string file_name() const
 	{
 		return file_name_;
 	}
 
 protected:
 
-	string file_name_;
+	std::string file_name_;
 
 };

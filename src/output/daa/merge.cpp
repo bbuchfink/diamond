@@ -26,12 +26,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 using std::unordered_map;
 using std::string;
 using std::endl;
+using std::vector;
 
 unordered_map<uint32_t, uint32_t> build_mapping(unordered_map<string, uint32_t>& acc2oid, StringSet& seq_ids, vector<uint32_t>& seq_lens, DAA_file& f) {
-	task_timer timer(("Reading targets for file " + f.file().file_name).c_str());
+	TaskTimer timer(("Reading targets for file " + f.file().file_name).c_str());
 	unordered_map<uint32_t, uint32_t> r;
 	for (uint32_t i = 0; i < f.db_seqs_used(); ++i) {
-		auto it = acc2oid.emplace(f.ref_name(i), acc2oid.size());
+		auto it = acc2oid.emplace(f.ref_name(i), (uint32_t)acc2oid.size());
 		r.emplace(i, it.first->second);
 		if (it.second) {
 			seq_ids.push_back(f.ref_name(i).begin(), f.ref_name(i).end());
@@ -63,9 +64,13 @@ static int64_t write_file(DAA_file& f, OutputFile& out, const unordered_map<uint
 }
 
 void merge_daa() {
-	task_timer timer("Initializing");
+	TaskTimer timer("Initializing");
 	vector<DAA_file*> files;
-	const int n = config.input_ref_file.size();
+	const int n = (int)config.input_ref_file.size();
+	if (n == 0)
+		throw std::runtime_error("Missing parameter: input files (--in)");
+	if (config.output_file.empty())
+		throw std::runtime_error("Missing parameter: output file (--out)");
 	unordered_map<string, uint32_t> acc2oid;
 	vector<unordered_map<uint32_t, uint32_t>> oid_maps;
 	StringSet seq_ids;

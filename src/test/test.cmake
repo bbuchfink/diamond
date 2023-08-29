@@ -1,0 +1,8 @@
+SET(CMD "./diamond ${ARGS} -o ${NAME}.out")
+#separate_arguments (SEP NATIVE_COMMAND PROGRAM SEPARATE_ARGS ${CMD})
+separate_arguments (SEP NATIVE_COMMAND ${CMD})
+execute_process(COMMAND ${SEP} RESULT_VARIABLE CMD_RESULT)
+execute_process(COMMAND diff ${TEST_DIR}/${NAME}.out ${NAME}.out RESULT_VARIABLE DIFF_RESULT)
+if(NOT ${DIFF_RESULT} EQUAL 0)
+  message(FATAL_ERROR "${NAME} failed.")
+endif()

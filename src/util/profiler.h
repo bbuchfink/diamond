@@ -24,7 +24,7 @@ struct Profiler {
 			message_stream << i.first << ": " << (double)i.second/n/1e3 << " micros" << std::endl;
 	}
 
-	task_timer timer;
+	TaskTimer timer;
 	const char* key;
 	static std::map<std::string, uint64_t> times;
 

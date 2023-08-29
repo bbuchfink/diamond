@@ -16,35 +16,55 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#ifndef HASH_TABLE2_H_
-#define HASH_TABLE2_H_
-
+#pragma once
 #include <stdexcept>
 #include <stdlib.h>
 
-template<typename _K, typename _V, typename _HashFunction>
+struct Modulo {
+	size_t operator()(size_t offset, size_t size) const {
+		return offset % size;
+	}
+};
+
+struct NoModulo {
+	size_t operator()(size_t offset, size_t size) const {
+		return offset;
+	}
+};
+
+template<typename _K, typename _V, typename _HashFunction, typename ModuloOp>
 struct HashTable : private _HashFunction
 {
 
-	struct Entry : public _V
+	struct Entry
 	{
 		_K key;
+		_V value;
 		bool blank() const
 		{
-			return _V::operator unsigned() == 0;
+			return value == (_V)0;
 		}
 	};
 
 	HashTable(size_t size, const _HashFunction &hash) :
 		_HashFunction(hash),
 		table((Entry*)calloc(size, sizeof(Entry))),
-		size_(size)
+		size_(size),
+		destroy_(true)
+	{
+	}
+
+	HashTable(char* table, size_t size):
+		table((Entry*)table),
+		size_(size / sizeof(Entry)),
+		destroy_(false)
 	{
 	}
 
 	~HashTable()
 	{
-		free(table);
+		if (destroy_)
+			free(table);
 	}
 
 	_V& operator[](_K key)
@@ -93,8 +113,7 @@ private:
 
 	Entry* get_entry(_K key, bool stat=false)
 	{
-		//Entry *p = &table[_H()(key) % size_];
-		Entry *p = &table[_HashFunction::operator()(key)];
+		Entry *p = &table[ModuloOp()(_HashFunction::operator()(key), size_)];
 		bool wrapped = false;
 		//if(stat) ++probe_n;
 		while (p->key != key && !p->blank()) {
@@ -112,7 +131,7 @@ private:
 
 	Entry* get_present_entry(_K key, bool stat = false)
 	{
-		Entry *p = &table[_HashFunction::operator()(key)];
+		Entry *p = &table[ModuloOp()(_HashFunction::operator()(key), size_)];
 		bool wrapped = false;
 		//if(stat) ++probe_n;
 		while(true) {
@@ -134,7 +153,7 @@ private:
 
 	Entry* get_or_insert_entry(_K key, bool stat = false)
 	{
-		Entry *p = &table[_HashFunction::operator()(key)];
+		Entry *p = &table[ModuloOp()(_HashFunction::operator()(key), size_)];
 		bool wrapped = false;
 		//if(stat) ++probe_n;
 		while (true) {
@@ -158,7 +177,6 @@ private:
 
 	Entry *table;
 	size_t size_;
+	bool destroy_;
 
 };
-
-#endif

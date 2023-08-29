@@ -30,12 +30,11 @@ struct InputStreamBuffer : public StreamEntity
 	enum { ASYNC = 4 };
 	InputStreamBuffer(StreamEntity* prev, int flags = 0);
 	virtual void rewind() override;
-	virtual void seek(size_t pos) override;
-	virtual void seek_forward(size_t n) override;
-	virtual pair<const char*, const char*> read() override;
+	virtual void seek(int64_t p, int origin) override;
+	virtual std::pair<const char*, const char*> read() override;
 	virtual void putback(const char* p, size_t n) override;
 	virtual void close() override;
-	virtual size_t tell() override;
+	virtual int64_t tell() override;
 private:
 
 	static void load_worker(InputStreamBuffer *buf);

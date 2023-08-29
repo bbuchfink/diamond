@@ -13,12 +13,14 @@ using std::vector;
 using std::string;
 using std::array;
 
+using Pattern = uint32_t;
+
 static const int W = 7, L = 16, N = 64, T = 3;
 
 static array<size_t, 1 << L> counts;
-static set<int> exclude;
+static set<Pattern> exclude;
 
-static void process_window(int p, set<int>& patterns) {
+static void process_window(int p, set<Pattern>& patterns) {
 	int n = 0;
 	array<int, L> idx;
 	for (int i = 1; i < L; ++i)
@@ -36,7 +38,7 @@ static void process_window(int p, set<int>& patterns) {
 	} while (std::prev_permutation(bitmask.begin(), bitmask.end()));
 }
 
-static void process_pattern(const string& s, set<int>& patterns) {
+static void process_pattern(const string& s, set<Pattern>& patterns) {
 	int p = 0;
 	for (size_t i = 0; i < s.length(); ++i) {
 		p <<= 1;
@@ -80,7 +82,7 @@ static bool is_id(const string& s) {
 }
 
 static void process_aln(vector<string>::const_iterator begin, vector<string>::const_iterator end) {
-	set<int> patterns;
+	set<Pattern> patterns;
 	for (auto i = begin; i < end; ++i)
 		process_pattern(*i, patterns);
 
@@ -91,10 +93,10 @@ static void process_aln(vector<string>::const_iterator begin, vector<string>::co
 			++counts[p];
 }
 
-static string as_string(int p) {
+static string as_string(Pattern p) {
 	string s;
 	for (int i = 0; i < L; ++i)
-		if (p & (1 << i))
+		if (p & (Pattern(1) << i))
 			s = '1' + s;
 		else
 			s = '0' + s;
@@ -127,9 +129,9 @@ void find_shapes() {
 				cout << "Processed = " << nt << endl;
 		}
 		in.close();
-		size_t p_max = 0;
+		Pattern p_max = 0;
 		size_t c_max = 0;
-		for (size_t p = 0; p < counts.size(); ++p)
+		for (Pattern p = 0; p < (Pattern)counts.size(); ++p)
 			if (counts[p] > c_max) {
 				p_max = p;
 				c_max = counts[p];

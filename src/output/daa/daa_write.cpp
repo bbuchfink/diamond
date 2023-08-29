@@ -3,6 +3,9 @@
 #include "../util/sequence/sequence.h"
 #include "../../basic/statistics.h"
 
+using std::string;
+using std::vector;
+
 void init_daa(OutputFile& f)
 {
 	DAA_header1 h1;
@@ -32,7 +35,7 @@ void finish_daa_query_record(TextBuffer& buf, size_t seek_pos)
 
 void write_daa_record(TextBuffer& buf, const IntermediateRecord& r)
 {
-	buf.write(r.target_dict_id).write(r.flag);
+	buf.write((uint32_t)r.target_dict_id).write(r.flag);
 	buf.write_packed(r.score);
 	buf.write_packed(r.query_begin);
 	buf.write_packed(r.subject_begin);

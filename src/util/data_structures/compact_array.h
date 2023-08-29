@@ -16,16 +16,12 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#ifndef COMPACT_ARRAY_H_
-#define COMPACT_ARRAY_H_
-
+#pragma once
 #include <vector>
 #include <limits.h>
 #include "../io/deserializer.h"
 
-using std::vector;
-
-template <typename _t>
+template <typename T>
 struct CompactArray
 {
 
@@ -36,7 +32,7 @@ struct CompactArray
 		limits_.reserve(size + 1);
 		limits_.push_back(0);
 		Deserializer d(data_.data(), data_.data() + data_.size(), Deserializer::VARINT);
-		_t x;
+		T x;
 		for (size_t i = 0; i < size; ++i) {
 			d >> x;
 			size_t offset = d.data() - data_.data();
@@ -48,9 +44,9 @@ struct CompactArray
 			throw std::runtime_error("Error loading CompactArray.");
 	}
 
-	_t operator[](size_t i) const
+	T operator[](size_t i) const
 	{
-		_t r;
+		T r;
 		Deserializer(&data_[limits_[i]], &data_[limits_[i + 1]], Deserializer::VARINT) >> r;
 		return r;
 	}
@@ -62,9 +58,7 @@ struct CompactArray
 
 private:
 
-	vector<char> data_;
-	vector<unsigned> limits_;
+	std::vector<char> data_;
+	std::vector<unsigned> limits_;
 
 };
-
-#endif

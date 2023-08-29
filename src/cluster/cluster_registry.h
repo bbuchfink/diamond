@@ -19,8 +19,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #pragma once
 #include "cluster.h"
-#include "mcl.h"
-#include "multi_step_cluster.h"
+#ifdef WITH_MCL
+#include "../contrib/mcl/mcl.h"
+#endif
+#include "cascaded/cascaded.h"
+#include "incremental/incremental.h"
 
 namespace Workflow { namespace Cluster{
 class ClusterRegistryStatic{
@@ -28,8 +31,11 @@ class ClusterRegistryStatic{
 public:
 	ClusterRegistryStatic(){
 		// To include new clustering algorithms add them into regMap
-		regMap[MultiStep::get_key()] = new MultiStep();
+#ifdef WITH_MCL
 		regMap[MCL::get_key()] = new MCL();
+#endif
+		regMap[::Cluster::Cascaded::get_key()] = new ::Cluster::Cascaded();		
+		regMap[::Cluster::Incremental::Algo::get_key()] = new ::Cluster::Incremental::Algo();
 	}
 	~ClusterRegistryStatic(){
 		for(auto it = regMap.begin(); it != regMap.end(); it++){
@@ -37,18 +43,18 @@ public:
 			it->second = nullptr;
 		}
 	}
-	ClusteringAlgorithm* get(string key) const{
+	ClusteringAlgorithm* get(std::string key) const{
 		auto ca = regMap.find(key);
 		if(ca == regMap.end()){
 			throw std::runtime_error("Clustering algorithm not found.");
 		}
 		return ca->second;
 	}
-	bool has(string key) const{
+	bool has(std::string key) const{
 		return regMap.find(key) != regMap.end();
 	}
-	vector<string> getKeys() const{
-		vector<string> keys;
+	std::vector<std::string> getKeys() const{
+		std::vector<std::string> keys;
 		for(auto it = regMap.begin(); it != regMap.end(); it++){
 			keys.push_back(it->first);
 		}
@@ -61,13 +67,13 @@ class ClusterRegistry{
 private:
 	static const ClusterRegistryStatic reg;
 public:
-	static ClusteringAlgorithm* get(string key){
+	static ClusteringAlgorithm* get(std::string key){
 		return reg.get(key);
 	}
-	static bool has(string key){
+	static bool has(std::string key){
 		return reg.has(key);
 	}
-	static vector<string> getKeys(){
+	static std::vector<std::string> getKeys(){
 		return reg.getKeys();
 	}
 };

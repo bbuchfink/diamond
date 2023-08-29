@@ -35,6 +35,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "hit.h"
 #include "../util/data_structures/writer.h"
 #include "../data/flags.h"
+#include "kmer_ranking.h"
+#include "../util/algo/join_result.h"
 
 // #define UNGAPPED_SPOUGE
 
@@ -50,6 +52,9 @@ struct SensitivityTraits {
 	const unsigned query_bins;
 	const char*    contiguous_seed;
 	const double   seed_cut;
+	const double   default_block_size;
+	const Reduction& reduction;
+	const int      minimizer_window;
 };
 
 struct HashedSeedSet;
@@ -58,19 +63,16 @@ namespace Search {
 
 struct Context {
 	const PatternMatcher previous_matcher, current_matcher;
-#ifdef UNGAPPED_SPOUGE
-	const Util::Scores::CutoffTable2D cutoff_table;
-#else
-	const Util::Scores::CutoffTable cutoff_table, cutoff_table_short;
-#endif
 	const int short_query_ungapped_cutoff;
+	KmerRanking* kmer_ranking;
 };
 
-extern const std::map<Sensitivity, SensitivityTraits> sensitivity_traits;
-extern const std::map<Sensitivity, std::vector<std::string>> shape_codes;
+extern const std::map<Sensitivity, SensitivityTraits> sensitivity_traits[2];
+extern const std::map<Sensitivity, std::vector<std::string>> shape_codes[2];
 extern const std::map<Sensitivity, std::vector<Sensitivity>> iterated_sens;
+extern const std::map<Sensitivity, std::vector<Sensitivity>> cluster_sens;
 
-void search_shape(unsigned sid, unsigned query_block, unsigned query_iteration, char* query_buffer, char* ref_buffer, Config& cfg, const HashedSeedSet* target_seeds);
+void search_shape(unsigned sid, int query_block, unsigned query_iteration, char* query_buffer, char* ref_buffer, Config& cfg, const HashedSeedSet* target_seeds);
 bool use_single_indexed(double coverage, size_t query_letters, size_t ref_letters);
 void setup_search(Sensitivity sens, Search::Config& cfg);
 MaskingAlgo soft_masking_algo(const SensitivityTraits& traits);
@@ -109,9 +111,10 @@ struct WorkSet {
 	std::vector<FingerPrint, Util::Memory::AlignmentAllocator<FingerPrint, 16>> vq, vs;
 #endif
 	FlatArray<uint32_t> hits;
+	KmerRanking* kmer_ranking;
 };
 
-DECL_DISPATCH(void, stage1, (const SeedLoc* q, size_t nq, const SeedLoc* s, size_t ns, WorkSet& work_set))
+void run_stage1(JoinIterator<SeedLoc>& it, Search::WorkSet* work_set, const Search::Config* cfg);
 
 }
 

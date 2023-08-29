@@ -87,12 +87,12 @@ struct SeedHistogram
 	SeedHistogram();
 	
 	template<typename Filter>
-	SeedHistogram(Block& seqs, bool serial, const Filter* filter, SeedEncoding code, const std::vector<bool>* skip, const bool mask_seeds, const double seed_cut, const MaskingAlgo soft_masking);
+	SeedHistogram(Block& seqs, bool serial, const Filter* filter, EnumCfg& enum_cfg);
 
 	const ShapeHistogram& get(unsigned sid) const
 	{ return data_[sid]; }
 
-	size_t max_chunk_size(size_t index_chunks) const;
+	size_t max_chunk_size(const int index_chunks) const;
 
 	const std::vector<size_t>& partition() const
 	{

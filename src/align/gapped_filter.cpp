@@ -1,6 +1,6 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2020 Max Planck Society for the Advancement of Science e.V.
+Copyright (C) 2020-2021 Max Planck Society for the Advancement of Science e.V.
 
 Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
 
@@ -29,10 +29,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../dp/scan_diags.h"
 
 using std::mutex;
+using std::vector;
+using std::pair;
 
 namespace Extension {
 
-int gapped_filter(const SeedHit &hit, const LongScoreProfile *query_profile, const Sequence &target, int band, int window, std::function<decltype(DP::ARCH_GENERIC::scan_diags128)> f) {	
+int gapped_filter(const SeedHit &hit, const LongScoreProfile<int8_t> *query_profile, const Sequence &target, int band, int window, std::function<decltype(DP::scan_diags128)> f) {	
 	const int slen = (int)target.length();
 	const int d = std::max(hit.diag() - band / 2, -(slen - 1)),
 		j0 = std::max(hit.j - window, 0),
@@ -42,13 +44,13 @@ int gapped_filter(const SeedHit &hit, const LongScoreProfile *query_profile, con
 	return DP::diag_alignment(scores, band);
 }
 
-bool gapped_filter(FlatArray<SeedHit>::ConstIterator begin, FlatArray<SeedHit>::ConstIterator end, const LongScoreProfile *query_profile, uint32_t target_block_id, Statistics &stat, const Search::Config &params) {
+bool gapped_filter(FlatArray<SeedHit>::DataConstIterator begin, FlatArray<SeedHit>::DataConstIterator end, const LongScoreProfile<int8_t>*query_profile, uint32_t target_block_id, Statistics &stat, const Search::Config &params) {
 	constexpr int window1 = 100, MIN_STAGE2_QLEN = 100;
 		
 	const int qlen = (int)query_profile->length();
 	const Sequence target = params.target->seqs()[target_block_id];
 	const int slen = (int)target.length();
-	for (FlatArray<SeedHit>::ConstIterator hit = begin; hit < end; ++hit) {
+	for (FlatArray<SeedHit>::DataConstIterator hit = begin; hit < end; ++hit) {
 		stat.inc(Statistics::GAPPED_FILTER_HITS1);
 		const int f1 = gapped_filter(*hit, query_profile, target, 64, window1, DP::scan_diags64);
 		if (f1 > params.cutoff_gapped1_new(qlen, slen)) {
@@ -63,36 +65,34 @@ bool gapped_filter(FlatArray<SeedHit>::ConstIterator begin, FlatArray<SeedHit>::
 	return false;
 }
 
-void gapped_filter_worker(size_t i, size_t thread_id, const LongScoreProfile *query_profile, const FlatArray<SeedHit>* seed_hits, const uint32_t* target_block_ids, FlatArray<SeedHit>* out, vector<uint32_t> *target_ids_out, mutex* mtx, const Search::Config *params) {
+void gapped_filter_worker(size_t i, size_t thread_id, const LongScoreProfile<int8_t>*query_profile, FlatArray<SeedHit>::Iterator seed_hits, vector<uint32_t>::const_iterator target_block_ids, FlatArray<SeedHit>* out, vector<uint32_t> *target_ids_out, mutex* mtx, const Search::Config *params) {
 	thread_local Statistics stat;
-	if (gapped_filter(seed_hits->begin(i), seed_hits->end(i), query_profile, target_block_ids[i], stat, *params)) {
+	if (gapped_filter(seed_hits.begin(i), seed_hits.end(i), query_profile, target_block_ids[i], stat, *params)) {
 		std::lock_guard<mutex> guard(*mtx);
 		target_ids_out->push_back(target_block_ids[i]);
-		out->push_back(seed_hits->begin(i), seed_hits->end(i));
+		out->push_back(seed_hits.begin(i), seed_hits.end(i));
 	}
 }
 
-void gapped_filter(const Sequence* query, const Bias_correction* query_cbs, FlatArray<SeedHit>& seed_hits, std::vector<uint32_t>& target_block_ids, Statistics& stat, DP::Flags flags, const Search::Config &params) {
-	if (seed_hits.size() == 0)
-		return;
-	vector<LongScoreProfile> query_profile;
-	query_profile.reserve(align_mode.query_contexts);
-	for (int i = 0; i < align_mode.query_contexts; ++i)
-		if(Stats::CBS::hauser(config.comp_based_stats))
-			query_profile.emplace_back(query[i], query_cbs[i]);
-		else
-			query_profile.emplace_back(query[i]);
-	
+pair<FlatArray<SeedHit>, vector<uint32_t>> gapped_filter(const Sequence* query, const Bias_correction* query_cbs, FlatArray<SeedHit>::Iterator seed_hits, FlatArray<SeedHit>::Iterator seed_hits_end, vector<uint32_t>::const_iterator target_block_ids, Statistics& stat, DP::Flags flags, const Search::Config &params) {
+	const int64_t n = seed_hits_end - seed_hits;
 	FlatArray<SeedHit> hits_out;
 	vector<uint32_t> target_ids_out;
+	if (n == 0)
+		return make_pair(hits_out, target_ids_out);
+
+	vector<LongScoreProfile<int8_t>> query_profile;
+	query_profile.reserve(align_mode.query_contexts);
+	for (int i = 0; i < align_mode.query_contexts; ++i)
+		query_profile.push_back(DP::make_profile8(query[i], ::Stats::CBS::hauser(config.comp_based_stats) ? query_cbs[i].int8.data() : nullptr, 0));
 	
 	if(flag_any(flags, DP::Flags::PARALLEL)) {
 		mutex mtx;
-		Util::Parallel::scheduled_thread_pool_auto(config.threads_, seed_hits.size(), gapped_filter_worker, query_profile.data(), &seed_hits, target_block_ids.data(), &hits_out, &target_ids_out, &mtx, &params);
+		Util::Parallel::scheduled_thread_pool_auto(config.threads_, n, gapped_filter_worker, query_profile.data(), seed_hits, target_block_ids, &hits_out, &target_ids_out, &mtx, &params);
 	}
 	else {
 
-		for (size_t i = 0; i < seed_hits.size(); ++i) {
+		for (int64_t i = 0; i < n; ++i) {
 			if (gapped_filter(seed_hits.begin(i), seed_hits.end(i), query_profile.data(), target_block_ids[i], stat, params)) {
 				target_ids_out.push_back(target_block_ids[i]);
 				hits_out.push_back(seed_hits.begin(i), seed_hits.end(i));
@@ -101,8 +101,7 @@ void gapped_filter(const Sequence* query, const Bias_correction* query_cbs, Flat
 
 	}
 
-	seed_hits = std::move(hits_out);
-	target_block_ids = std::move(target_ids_out);
+	return make_pair(hits_out, target_ids_out);
 }
 
 }

@@ -89,7 +89,7 @@ Blast_Message* Blast_MessageFree(Blast_Message* blast_msg);
 */
 
 NCBI_XBLAST_EXPORT
-Int2 Blast_MessageWrite(Blast_Message* *blast_msg, EBlastSeverity severity, 
+int Blast_MessageWrite(Blast_Message* *blast_msg, EBlastSeverity severity,
                         int context, const char *message);
 
 
@@ -98,7 +98,7 @@ Int2 Blast_MessageWrite(Blast_Message* *blast_msg, EBlastSeverity severity,
 */
 
 NCBI_XBLAST_EXPORT
-Int2 Blast_MessagePost(Blast_Message* blast_msg);
+int Blast_MessagePost(Blast_Message* blast_msg);
 
 /* FIXME: should the code below and its implementation be moved to another
  * file, say blast_error.[hc]? */
@@ -110,7 +110,7 @@ Int2 Blast_MessagePost(Blast_Message* blast_msg);
  * @return Blast_Message structure containing error description
  */
 NCBI_XBLAST_EXPORT
-void Blast_Perror(Blast_Message* *msg, Int2 error_code, int context);
+void Blast_Perror(Blast_Message* *msg, int error_code, int context);
 
 /** Convenient define to call the function Blast_PerrorEx. */
 #define Blast_PerrorWithLocation(msg, error_code, context) \
@@ -127,7 +127,7 @@ Blast_PerrorEx(msg, error_code, __FILE__, __LINE__, context)
  */
 NCBI_XBLAST_EXPORT
 void Blast_PerrorEx(Blast_Message* *msg,
-                              Int2 error_code, 
+                              int error_code,
                               const char* file_name, 
                               int lineno,
                               int context);

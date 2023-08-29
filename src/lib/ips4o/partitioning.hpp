@@ -58,7 +58,7 @@ namespace detail {
  */
 template <class Cfg>
 template <bool kIsParallel>
-std::pair<int, bool> Sorter<Cfg>::partition(const iterator begin, const iterator end,
+std::pair<typename Cfg::bucket_type, bool> Sorter<Cfg>::partition(const iterator begin, const iterator end,
                                             std::atomic_ptrdiff_t* const bucket_start,
                                             SharedData* const shared, const int my_id,
                                             const int num_threads) {
@@ -97,7 +97,7 @@ std::pair<int, bool> Sorter<Cfg>::partition(const iterator begin, const iterator
         sequentialClassification(use_equal_buckets);
 
     // Compute which bucket can cause overflow
-    const int overflow_bucket = computeOverflowBucket();
+    const typename Cfg::bucket_type overflow_bucket = computeOverflowBucket();
 
     // Block Permutation
     if (use_equal_buckets)
@@ -115,16 +115,16 @@ std::pair<int, bool> Sorter<Cfg>::partition(const iterator begin, const iterator
         if (kIsParallel) overflow_ = shared_->overflow;
 
         // Distribute buckets among threads
-        const int num_buckets = num_buckets_;
-        const int buckets_per_thread = (num_buckets + num_threads_ - 1) / num_threads_;
-        int my_first_bucket = my_id_ * buckets_per_thread;
-        int my_last_bucket = (my_id_ + 1) * buckets_per_thread;
+        const typename Cfg::bucket_type num_buckets = num_buckets_;
+        const typename Cfg::bucket_type buckets_per_thread = (num_buckets + num_threads_ - 1) / num_threads_;
+        typename Cfg::bucket_type my_first_bucket = my_id_ * buckets_per_thread;
+        typename Cfg::bucket_type my_last_bucket = (my_id_ + 1) * buckets_per_thread;
         my_first_bucket = num_buckets < my_first_bucket ? num_buckets : my_first_bucket;
         my_last_bucket = num_buckets < my_last_bucket ? num_buckets : my_last_bucket;
 
         // Save excess elements at right end of stripe
         const auto in_swap_buffer = !kIsParallel
-                                            ? std::pair<int, diff_t>(-1, 0)
+                                            ? std::pair<typename Cfg::bucket_type, diff_t>(-1, 0)
                                             : saveMargins(my_last_bucket);
         if (kIsParallel) shared_->sync.barrier();
 

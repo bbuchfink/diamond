@@ -33,9 +33,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 using std::set;
 using std::endl;
 using std::make_pair;
+using std::vector;
+using std::pair;
+using std::string;
 
 TaxonList::TaxonList(Deserializer &in, size_t size, size_t data_size):
-	CompactArray<vector<uint32_t>>(in, size, data_size)
+	CompactArray<vector<TaxId>>(in, size, data_size)
 {}
 
 static int mapping_file_format(const string& header) {
@@ -52,55 +55,66 @@ static int mapping_file_format(const string& header) {
 	throw std::runtime_error("Accession mapping file header has to be in one of these formats:\naccession\taccession.version\ttaxid\tgi\naccession.version\ttaxid");
 }
 
-static void load_mapping_file(ExternalSorter<pair<string, uint32_t>>& sorter)
+static AccessionParsing load_mapping_file(ExternalSorter<pair<string, TaxId>>& sorter)
 {
-	unsigned taxid;
+	TaxId taxid;
 	TextInputFile f(config.prot_accession2taxid);
 	f.getline();
 	int format = mapping_file_format(f.line);
 	string accession, last;
+	AccessionParsing stats;
 
 	while (!f.eof() && (f.getline(), !f.line.empty())) {
-		if (format == 0)
-			Util::String::Tokenizer(f.line, "\t") >> Util::String::Skip() >> accession >> taxid;
-		else
-			Util::String::Tokenizer(f.line, "\t") >> accession >> taxid;
+		try {
+			if (format == 0)
+				Util::String::Tokenizer(f.line, "\t") >> Util::String::Skip() >> accession >> taxid;
+			else
+				Util::String::Tokenizer(f.line, "\t") >> accession >> taxid;
+		}
+		catch (Util::String::TokenizerException&) {
+			throw std::runtime_error("Malformed input in line " + std::to_string(f.line_count));
+		}
 
 		if (accession.empty())
 			throw std::runtime_error("Empty accession field in line " + std::to_string(f.line_count));
 
-		size_t i = accession.find(":PDB=");
-		if (i != string::npos)
-			accession.erase(i);
+		if (!config.no_parse_seqids) {
+			size_t i = accession.find(":PDB=");
+			if (i != string::npos) {
+				accession.erase(i);
+				++stats.pdb_suffix;
+			}
 
-		i = accession.find_last_of('.');
-		if (i != string::npos)
-			accession.erase(i);
+			i = accession.find_last_of('.');
+			if (i != string::npos) {
+				accession.erase(i);
+				++stats.suffix_after_dot;
+			}
+		}
 
 		if (accession != last)
-			sorter.push(make_pair(accession, (uint32_t)taxid));
+			sorter.push(make_pair(accession, taxid));
 
 		last = accession;
 	}
 	f.close();
+	return stats;
 }
 
-void TaxonList::build(OutputFile &db, ExternalSorter<pair<string, uint32_t>>& acc2oid, size_t seqs, Table& stats)
+void TaxonList::build(OutputFile &db, ExternalSorter<pair<string, OId>>& acc2oid, OId seqs, Util::Table& stats)
 {
-	typedef pair<string, uint32_t> T;
-
-	task_timer timer("Loading taxonomy mapping file");
-	ExternalSorter<T> acc2taxid;
-	load_mapping_file(acc2taxid);
+	TaskTimer timer("Loading taxonomy mapping file");
+	ExternalSorter<pair<string, TaxId>> acc2taxid;
+	const AccessionParsing acc_stats = load_mapping_file(acc2taxid);
 
 	timer.go("Joining accession mapping");
 	acc2taxid.init_read();
 	acc2oid.init_read();
-	const auto cmp = [](const T& x, const T& y) { return x.first < y.first; };
-	const auto value = [](const T& x, const T& y) { return make_pair(x.second, y.second); };
-	auto it = join_sorted_lists(acc2oid, acc2taxid, cmp, value);
+	const auto cmp = [](const pair<string, OId>& x, const pair<string, TaxId>& y) { return x.first < y.first; };
+	const auto value = [](const pair<string, OId>& x, const pair<string, TaxId>& y) { return make_pair(x.second, y.second); };
+	auto it = join_sorted_lists(acc2oid, acc2taxid, First<string, OId>(), First<string, TaxId>(), value);
 
-	ExternalSorter<pair<uint32_t, uint32_t>> oid2taxid;
+	ExternalSorter<pair<OId, TaxId>> oid2taxid;
 	size_t acc_matched = 0;
 	while (it.good()) {
 		oid2taxid.push(*it);
@@ -111,11 +125,10 @@ void TaxonList::build(OutputFile &db, ExternalSorter<pair<string, uint32_t>>& ac
 	timer.go("Writing taxon id list");
 	db.set(Serializer::VARINT);
 	oid2taxid.init_read();
-	const uint32_t n = (uint32_t)seqs;
-	auto taxid_it = merge_keys(oid2taxid, First<uint32_t, uint32_t>(), Second<uint32_t, uint32_t>(), 0);
+	auto taxid_it = merge_keys(oid2taxid, First<OId, TaxId>(), Second<OId, TaxId>(), 0);
 	size_t mapped_seqs = 0;
-	while (taxid_it.key() < n) {
-		set<uint32_t> tax_ids = *taxid_it;
+	while (taxid_it.key() < seqs) {
+		set<TaxId> tax_ids = *taxid_it;
 		tax_ids.erase(0);
 		db << tax_ids;
 		++taxid_it;
@@ -128,4 +141,7 @@ void TaxonList::build(OutputFile &db, ExternalSorter<pair<string, uint32_t>>& ac
 	stats("Entries in accession to taxid file", acc2taxid.count());
 	stats("Database accessions mapped to taxid" , acc_matched);
 	stats("Database sequences mapped to taxid", mapped_seqs);
+
+	if (!config.no_parse_seqids)
+		message_stream << endl << "Accession parsing rules triggered for mapping file seqids (use --no-parse-seqids to disable):" << endl << acc_stats << endl;
 }

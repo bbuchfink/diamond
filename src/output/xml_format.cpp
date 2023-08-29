@@ -6,9 +6,11 @@
 #include "../util/sequence/sequence.h"
 
 using std::endl;
+using std::string;
 
-void XML_format::print_match(const HspContext& r, const Search::Config& metadata, TextBuffer& out)
+void XML_format::print_match(const HspContext& r, Output::Info& info)
 {
+	auto& out = info.out;
 	if (r.hsp_num == 0) {
 		if (r.hit_num > 0)
 			out << "  </Hit_hsps>" << '\n' << "</Hit>" << '\n';
@@ -21,7 +23,7 @@ void XML_format::print_match(const HspContext& r, const Search::Config& metadata
 		if (config.xml_blord_format) {
 			out << "  <Hit_id>gnl|BL_ORD_ID|" << r.subject_oid << "</Hit_id>" << '\n'
 				<< "  <Hit_def>";
-			Output_format::print_title(out, target_seqid.c_str(), true, true, " &gt;", &EscapeSequences::XML);
+			OutputFormat::print_title(out, target_seqid.c_str(), true, true, " &gt;", &EscapeSequences::XML);
 			out << "</Hit_def>" << '\n';
 		}
 		else {
@@ -29,11 +31,11 @@ void XML_format::print_match(const HspContext& r, const Search::Config& metadata
 			print_escaped(out, id, &EscapeSequences::XML);
 			out << "</Hit_id>" << '\n'
 				<< "  <Hit_def>";
-			Output_format::print_title(out, def.c_str(), true, true, " &gt;", &EscapeSequences::XML);
+			OutputFormat::print_title(out, def.c_str(), true, true, " &gt;", &EscapeSequences::XML);
 			out << "</Hit_def>" << '\n';
 		}
 		out << "  <Hit_accession>";
-		print_escaped(out, get_accession(id), &EscapeSequences::XML);
+		print_escaped(out, get_accession(id, info.acc_stats), &EscapeSequences::XML);
 		out << "</Hit_accession>" << '\n'
 			<< "  <Hit_len>" << r.subject_len << "</Hit_len>" << '\n'
 			<< "  <Hit_hsps>" << '\n';
@@ -107,29 +109,29 @@ void XML_format::print_header(Consumer& f, int mode, const char* matrix, int gap
 	f.consume(ss.str().c_str(), ss.str().length());
 }
 
-void XML_format::print_query_intro(size_t query_num, const char* query_name, unsigned query_len, TextBuffer& out, bool unaligned, const Search::Config& cfg) const
+void XML_format::print_query_intro(Output::Info& info) const
 {
-	out << "<Iteration>" << '\n'
-		<< "  <Iteration_iter-num>" << query_num + 1 << "</Iteration_iter-num>" << '\n'
-		<< "  <Iteration_query-ID>Query_" << query_num + 1 << "</Iteration_query-ID>" << '\n'
+	info.out << "<Iteration>" << '\n'
+		<< "  <Iteration_iter-num>" << info.query.oid + 1 << "</Iteration_iter-num>" << '\n'
+		<< "  <Iteration_query-ID>Query_" << info.query.oid + 1 << "</Iteration_query-ID>" << '\n'
 		<< "  <Iteration_query-def>";
-	print_title(out, query_name, true, false, "", &EscapeSequences::XML);
-	out << "</Iteration_query-def>" << '\n'
-		<< "  <Iteration_query-len>" << query_len << "</Iteration_query-len>" << '\n'
+	print_title(info.out, info.query.title, true, false, "", &EscapeSequences::XML);
+	info.out << "</Iteration_query-def>" << '\n'
+		<< "  <Iteration_query-len>" << info.query.len << "</Iteration_query-len>" << '\n'
 		<< "<Iteration_hits>" << '\n';
 }
 
-void XML_format::print_query_epilog(TextBuffer& out, const char* query_title, bool unaligned, const Search::Config& parameters) const
+void XML_format::print_query_epilog(Output::Info& info) const
 {
-	if (!unaligned) {
-		out << "  </Hit_hsps>" << '\n'
+	if (!info.unaligned) {
+		info.out << "  </Hit_hsps>" << '\n'
 			<< "</Hit>" << '\n';
 	}
-	((out << "</Iteration_hits>" << '\n'
+	((info.out << "</Iteration_hits>" << '\n'
 		<< "  <Iteration_stat>" << '\n'
 		<< "    <Statistics>" << '\n'
-		<< "      <Statistics_db-num>" << parameters.db_seqs << "</Statistics_db-num>" << '\n'
-		<< "      <Statistics_db-len>" << parameters.db_letters << "</Statistics_db-len>" << '\n'
+		<< "      <Statistics_db-num>" << info.db->sequence_count() << "</Statistics_db-num>" << '\n'
+		<< "      <Statistics_db-len>" << info.db->letters() << "</Statistics_db-len>" << '\n'
 		<< "      <Statistics_hsp-len>0</Statistics_hsp-len>" << '\n'
 		<< "      <Statistics_eff-space>0</Statistics_eff-space>" << '\n'
 		<< "      <Statistics_kappa>").print_d(score_matrix.k()) << "</Statistics_kappa>" << '\n'

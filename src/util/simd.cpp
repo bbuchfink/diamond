@@ -81,6 +81,10 @@ Arch init_arch() {
 		cpuid(info, 7);
 		if ((info[1] & (1 << 5)) != 0)
 			flags |= AVX2;
+#ifdef WITH_AVX512
+		if ((info[1] & (1 << 16)) != 0 && (info[1] & (1 << 30)) != 0)
+			flags |= AVX512;
+#endif
 	}
 #endif
 
@@ -101,6 +105,8 @@ Arch init_arch() {
 		throw std::runtime_error("CPU does not support AVX2. Please compile the software from source.");
 #endif
 
+	if (flags & AVX512)
+		return Arch::AVX512;
 	if ((flags & SSSE3) && (flags & POPCNT) && (flags & SSE4_1) && (flags & AVX2))
 		return Arch::AVX2;
 	if ((flags & SSSE3) && (flags & POPCNT) && (flags & SSE4_1))
@@ -115,6 +121,7 @@ Arch arch() {
 }
 
 std::string features() {
+	init_arch();
 	std::vector<std::string> r;
 	if (flags & NEON)
 		r.push_back("neon");

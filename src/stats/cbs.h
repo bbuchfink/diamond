@@ -130,7 +130,7 @@ struct CBS {
         case DISABLED:
         case HAUSER:
             return false;
-        case HAUSER_AND_AVG_MATRIX_ADJUST:
+        case DEPRECATED1:
         case HAUSER_AND_MATRIX_ADJUST:
         case MATRIX_ADJUST:
         case COMP_BASED_STATS:
@@ -150,17 +150,9 @@ struct CBS {
             return false;
         }
     }
-    static bool avg_matrix(unsigned code) {
-        switch (code) {
-        case HAUSER_AND_AVG_MATRIX_ADJUST:
-            return true;
-        default:
-            return false;
-        }
-    }
     static bool conditioned(unsigned code) {
         switch (code) {
-        case HAUSER_AND_AVG_MATRIX_ADJUST:
+        case DEPRECATED1:
         case HAUSER_AND_MATRIX_ADJUST:
         case COMP_BASED_STATS_AND_MATRIX_ADJUST:
             return true;
@@ -179,7 +171,7 @@ struct CBS {
     }
     static int target_seg(unsigned code) {
         switch (code) {
-        case HAUSER_AND_AVG_MATRIX_ADJUST:
+        case DEPRECATED1:
         case HAUSER_AND_MATRIX_ADJUST:
         case MATRIX_ADJUST:
         case COMP_BASED_STATS:
@@ -193,7 +185,7 @@ struct CBS {
     enum {
         DISABLED = 0,
         HAUSER = 1,
-        HAUSER_AND_AVG_MATRIX_ADJUST = 2,
+        DEPRECATED1 = 2,
         HAUSER_AND_MATRIX_ADJUST = 3,
         MATRIX_ADJUST = 4,
         COMP_BASED_STATS = 5,

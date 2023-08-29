@@ -25,6 +25,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "score_matrix.h"
 
 using std::array;
+using std::vector;
+
+static const int PADDING = 32;
 
 struct Vector_scores
 {
@@ -99,9 +102,10 @@ Bias_correction::Bias_correction(const Sequence &seq):
 		++m;
 	}
 
-	int8.reserve(seq.length());
+	int8.reserve(seq.length() + PADDING);
 	for (float f : *this)
 		int8.push_back(int8_t(f < 0.0f ? f - 0.5f : f + 0.5f));
+	int8.insert(int8.end(), PADDING, 0);
 }
 
 int Bias_correction::operator()(const Hsp &hsp) const
@@ -119,7 +123,7 @@ int Bias_correction::operator()(const Hsp &hsp) const
 	return (int)s;
 }
 
-int Bias_correction::operator()(const Diagonal_segment &d) const
+int Bias_correction::operator()(const DiagonalSegment &d) const
 {
 	float s = 0;
 	const int end = d.query_end();
@@ -159,7 +163,7 @@ vector<int> hauser_global(const Composition& query_comp, const Composition& targ
 	for (size_t i = 0; i < AMINO_ACID_COUNT; ++i)
 		for (size_t j = 0; j < AMINO_ACID_COUNT; ++j) {
 			double s = (double)score_matrix(i, j), q = i < TRUE_AA ? qscores[i] : 0.0, t = j < TRUE_AA ? tscores[j] : 0.0;
-			m[i * AMINO_ACID_COUNT + j] = std::round(s + std::min(q, t));
+			m[i * AMINO_ACID_COUNT + j] = (int)std::round(s + std::min(q, t));
 		}
 	return m;
 }

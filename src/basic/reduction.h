@@ -27,7 +27,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <string.h>
 #include "value.h"
 #include "sequence.h"
-#include "translate.h"
 
 struct Reduction
 {
@@ -39,7 +38,7 @@ struct Reduction
 		return size_;
 	}
 
-	uint64_t bit_size() const
+	int bit_size() const
 	{
 		return bit_size_;
 	}
@@ -73,14 +72,14 @@ struct Reduction
 		for (unsigned i = 0; i < r.size_; ++i) {
 			os << '[';
 			for (unsigned j = 0; j < 20; ++j)
-				if (r. map_[j] == i)
+				if (r.map_[j] == i)
 					os << value_traits.alphabet[j];
 			os << ']';
 		}
 		return os;
 	}
 
-	static void reduce_seq(const Sequence &seq, vector<Letter> &dst)
+	static void reduce_seq(const Sequence &seq, std::vector<Letter> &dst)
 	{
 		dst.clear();
 		dst.resize(seq.length());
@@ -101,7 +100,7 @@ private:
 	unsigned map_[256];
 	alignas(16) Letter map8_[256], map8b_[256];
 	unsigned size_;
-	uint64_t bit_size_;
+	int bit_size_;
 	double bit_size_exact_;
 	std::array<double, 20> freq_;
 

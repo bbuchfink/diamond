@@ -19,9 +19,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <algorithm>
 #include <thread>
 #include <atomic>
-#include "../align.h"
+#include "pipeline.h"
 #include "../../dp/dp.h"
-#include "../../util/interval_partition.h"
+#include "../../util/geo/interval_partition.h"
 #include "../../util/simd.h"
 
 using std::thread;
@@ -29,6 +29,7 @@ using std::list;
 using std::max;
 using std::atomic;
 using std::endl;
+using std::vector;
 
 namespace ExtensionPipeline { namespace BandedSwipe {
 
@@ -45,7 +46,7 @@ struct Target : public ::Target
 		filter_score = top_hit.ungapped.score;
 	}
 
-	interval ungapped_query_range(int query_dna_len) const
+	Interval ungapped_query_range(int query_dna_len) const
 	{
 		const Frame f = Frame(top_hit.frame_);
 		const int i0 = std::max((int)top_hit.query_pos_ - (int)top_hit.subject_pos_, 0),
@@ -65,12 +66,12 @@ struct Target : public ::Target
 				d1 = std::min(i->diagonal() + band, d_max);
 			}
 			else {
-				v.emplace_back(subject, subject.length(), d0, d1, target_idx, 0); // set cols here?
+				v.emplace_back(subject, subject.length(), d0, d1, Interval(), 0, target_idx, 0); // set cols here?
 				d0 = std::max(i->diagonal() - band, d_min);
 				d1 = std::min(i->diagonal() + band, d_max);
 			}
 		}
-		v.emplace_back(subject, subject.length(), d0, d1, target_idx, 0);
+		v.emplace_back(subject, subject.length(), d0, d1, Interval(), 0, target_idx, 0);
 	}
 
 	void add(QueryMapper &mapper, vector<DpTarget> &vf, vector<DpTarget> &vr, int target_idx)
@@ -118,7 +119,7 @@ struct Target : public ::Target
 
 	bool is_outranked(const IntervalPartition &ip, int source_query_len, double rr) const
 	{
-		const interval r = ungapped_query_range(source_query_len);
+		const Interval r = ungapped_query_range(source_query_len);
 		if (config.toppercent == 100.0) {
 			const int min_score = int((double)filter_score / rr);
 			return (double)ip.covered(r, min_score, IntervalPartition::MinScore()) / r.length() * 100.0 >= config.query_range_cover;
@@ -131,11 +132,11 @@ struct Target : public ::Target
 
 };
 
-void Pipeline::range_ranking()
+void Pipeline::range_ranking(const int64_t max_target_seqs)
 {
 	const double rr = config.rank_ratio == -1 ? 0.4 : config.rank_ratio;
 	std::stable_sort(targets.begin(), targets.end(), Target::compare_score);
-	IntervalPartition ip((int)std::min(config.max_alignments, (size_t)INT_MAX));
+	IntervalPartition ip(max_target_seqs);
 	for (PtrVector< ::Target>::iterator i = targets.begin(); i < targets.end();) {
 		Target* t = ((Target*)*i);
 		if (t->is_outranked(ip, source_query_len, rr)) {
@@ -156,7 +157,7 @@ Target& Pipeline::target(size_t i)
 void Pipeline::run_swipe(bool score_only)
 {
 	vector<DpTarget> vf, vr;
-	for (size_t i = 0; i < n_targets(); ++i)
+	for (int64_t i = 0; i < n_targets(); ++i)
 		target(i).add(*this, vf, vr, (int)i);
 	list<Hsp> hsp;
 	hsp = banded_3frame_swipe(translated_query, FORWARD, vf.begin(), vf.end(), this->dp_stat, score_only, target_parallel);
@@ -178,9 +179,9 @@ void build_ranking_worker(PtrVector<::Target>::iterator begin, PtrVector<::Targe
 	}
 }
 
-void Pipeline::run(Statistics &stat)
+void Pipeline::run(Statistics &stat, const Search::Config& cfg)
 {
-	task_timer timer("Init banded swipe pipeline", target_parallel ? 3 : UINT_MAX);
+	TaskTimer timer("Init banded swipe pipeline", target_parallel ? 3 : UINT_MAX);
 	Config::set_option(config.padding, 32);
 	if (n_targets() == 0)
 		return;
@@ -188,20 +189,20 @@ void Pipeline::run(Statistics &stat)
 
 	if (!target_parallel) {
 		timer.go("Ungapped stage");
-		for (size_t i = 0; i < n_targets(); ++i)
+		for (int64_t i = 0; i < n_targets(); ++i)
 			target(i).ungapped_stage(*this);
 		timer.go("Ranking");
 		if (!config.query_range_culling)
-			rank_targets(config.rank_ratio == -1 ? 0.4 : config.rank_ratio, config.rank_factor == -1.0 ? 1e3 : config.rank_factor);
+			rank_targets(config.rank_ratio == -1 ? 0.4 : config.rank_ratio, config.rank_factor == -1.0 ? 1e3 : config.rank_factor, cfg.max_target_seqs);
 		else
-			range_ranking();
+			range_ranking(cfg.max_target_seqs);
 	}
 	else {
 		timer.finish();
 		log_stream << "Query: " << query_id << "; Seed hits: " << seed_hits.size() << "; Targets: " << n_targets() << endl;
 	}
 
-	if (n_targets() > config.max_alignments || config.toppercent < 100.0) {
+	if (n_targets() > cfg.max_target_seqs || config.toppercent < 100.0) {
 		stat.inc(Statistics::TARGET_HITS1, n_targets());
 		timer.go("Swipe (score only)");
 		run_swipe(true);
@@ -214,7 +215,7 @@ void Pipeline::run(Statistics &stat)
 				v.resize(interval_count);
 			vector<thread> threads;
 			atomic<size_t> next(0);
-			for (unsigned i = 0; i < config.threads_; ++i)
+			for (int i = 0; i < config.threads_; ++i)
 				threads.emplace_back(build_ranking_worker, targets.begin(), targets.end(), &next, &intervals[i]);
 			for (auto &t : threads)
 				t.join();
@@ -242,20 +243,20 @@ void Pipeline::run(Statistics &stat)
 		}
 		else {
 			timer.go("Score only culling");
-			for (size_t i = 0; i < n_targets(); ++i)
+			for (int64_t i = 0; i < n_targets(); ++i)
 				target(i).set_filter_score();
-			score_only_culling();
+			score_only_culling(cfg.max_target_seqs);
 		}
 	}
 
 	timer.go("Swipe (traceback)");
 	stat.inc(Statistics::TARGET_HITS2, n_targets());
-	for (size_t i = 0; i < n_targets(); ++i)
+	for (int64_t i = 0; i < n_targets(); ++i)
 		target(i).reset();
 	run_swipe(false);
 
 	timer.go("Inner culling");
-	for (size_t i = 0; i < n_targets(); ++i)
+	for (int64_t i = 0; i < n_targets(); ++i)
 		target(i).finish(*this);
 }
 

@@ -22,20 +22,39 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "taxonomy.h"
 #include "../util/log_stream.h"
 #include "../util/string/string.h"
+#include "../util/io/text_input_file.h"
+#include "../util/string/tokenizer.h"
 
 using namespace std;
 
-void TaxonomyNodes::build(Serializer &out)
+TaxonomyNodes::TaxonomyNodes(const string& file_name, const bool init_cache)
 {
-	task_timer timer("Building taxonomy nodes");
+	TextInputFile f(file_name);
+	TaxId taxid, parent;
+	string rank;
+	while (!f.eof() && (f.getline(), !f.line.empty())) {
+		Util::String::Tokenizer(f.line, "\t|\t") >> taxid >> parent >> rank;
+		parent_.resize(taxid + 1, 0);
+		parent_[taxid] = parent;
+		rank_.resize(taxid + 1, Rank::none);
+		rank_[taxid] = Rank(rank.c_str());
+	}
+	f.close();
+	if (init_cache)
+		this->init_cache();
+}
+
+void TaxonomyNodes::save(Serializer &out)
+{
+	TaskTimer timer("Building taxonomy nodes");
 	out.unset(Serializer::VARINT);
-	out << taxonomy.parent_;
-	out.write_raw(taxonomy.rank_);
+	out << parent_;
+	out.write_raw(rank_);
 	timer.finish();
-	message_stream << taxonomy.parent_.size() << " taxonomy nodes processed." << endl;
+	message_stream << parent_.size() << " taxonomy nodes processed." << endl;
 	size_t rank_count[Rank::count];
 	std::fill(rank_count, rank_count + Rank::count, 0);
-	for (const Rank r : taxonomy.rank_) {
+	for (const Rank r : rank_) {
 		++rank_count[r];
 	}
 	
@@ -54,6 +73,10 @@ TaxonomyNodes::TaxonomyNodes(Deserializer &in, uint32_t db_build)
 		rank_.resize(parent_.size());
 		in.read(rank_.data(), rank_.size());
 	}
+	init_cache();
+}
+
+void TaxonomyNodes::init_cache() {
 	cached_.insert(cached_.end(), parent_.size(), false);
 	contained_.insert(contained_.end(), parent_.size(), false);
 }
@@ -91,10 +114,10 @@ unsigned TaxonomyNodes::get_lca(unsigned t1, unsigned t2) const
 	return p;
 }
 
-bool TaxonomyNodes::contained(unsigned query, const set<unsigned> &filter)
+bool TaxonomyNodes::contained(TaxId query, const set<TaxId> &filter)
 {
 	static const int max = 64;
-	if (query >= parent_.size())
+	if (query >= (TaxId)parent_.size())
 		throw runtime_error(string("No taxonomy node found for taxon id ") + to_string(query));
 	if (cached_[query])
 		return contained_[query];
@@ -114,12 +137,12 @@ bool TaxonomyNodes::contained(unsigned query, const set<unsigned> &filter)
 	return contained;
 }
 
-bool TaxonomyNodes::contained(const vector<unsigned> query, const set<unsigned> &filter)
+bool TaxonomyNodes::contained(const vector<TaxId>& query, const set<TaxId> &filter)
 {
 	static const int max = 64;
 	if (filter.find(1) != filter.end())
 		return true;
-	for (vector<unsigned>::const_iterator i = query.begin(); i != query.end(); ++i)
+	for (vector<TaxId>::const_iterator i = query.begin(); i != query.end(); ++i)
 		if (contained(*i, filter))
 			return true;
 	return false;
@@ -142,8 +165,8 @@ unsigned TaxonomyNodes::rank_taxid(unsigned taxid, Rank rank) const {
 	return 0;
 }
 
-std::set<unsigned> TaxonomyNodes::rank_taxid(const std::vector<unsigned> &taxid, Rank rank) const {
-	set<unsigned> r;
+std::set<TaxId> TaxonomyNodes::rank_taxid(const std::vector<TaxId> &taxid, Rank rank) const {
+	set<TaxId> r;
 	for (unsigned i : taxid)
 		r.insert(rank_taxid(i, rank));
 	return r;

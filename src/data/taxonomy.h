@@ -31,27 +31,28 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "taxonomy_nodes.h"
 #include "../util/data_structures/bit_vector.h"
 
-std::string get_accession(const string &t);
-std::vector<std::string> accession_from_title(const char *title);
+struct AccessionParsing {
+	AccessionParsing():
+		uniref_prefix(0),
+		gi_prefix(0),
+		prefix_before_pipe(0),
+		suffix_after_pipe(0),
+		suffix_after_dot(0),
+		pdb_suffix(0)
+	{}
+	friend std::ostream& operator<<(std::ostream& s, const AccessionParsing& stat);
+	int64_t uniref_prefix, gi_prefix, prefix_before_pipe, suffix_after_pipe, suffix_after_dot, pdb_suffix;
+};
+
+std::string get_accession(const std::string &t, AccessionParsing& stat);
+std::vector<std::string> accession_from_title(const char *title, AccessionParsing& stat);
 
 struct Taxonomy
 {
 	void init();
-	void load_nodes();
 	size_t load_names();
-
-	unsigned get_parent(unsigned taxid) const
-	{
-		if (taxid >= parent_.size())
-			throw std::runtime_error(std::string("No taxonomy node found for taxon id ") + std::to_string(taxid));
-		return parent_[taxid];
-	}
-
-	unsigned get_lca(unsigned t1, unsigned t2) const;
 	
-	std::vector<unsigned> parent_;
 	std::vector<std::string> name_;
-	std::vector<Rank> rank_;
 
 	friend struct TaxonomyNodes;
 

@@ -1028,6 +1028,31 @@ double seqlen2_) const//length of sequence #2
 
 }
 
+double AlignmentEvaluer::log_area(double score_,//pairwise alignment score
+	double seqlen1_,//length of sequence #1
+	double seqlen2_) const//length of sequence #2
+{
+	if (seqlen1_ <= 0 || seqlen2_ <= 0)
+	{
+		throw error("Error - seqlen1_<=0 or seq2en1_<=0 in \"double AlignmentEvaluer::area\"\n", 2);
+	};
+
+	if (!isGood())
+	{
+		throw error("Unexpected error - the Gumbel parameters are not defined properly in \"double AlignmentEvaluer::area\"\n", 1);
+	};
+
+	static Sls::pvalues pvalues_obj;
+
+
+	return pvalues_obj.log_area(
+		d_params,
+		pvalues_obj.blast,
+		score_,
+		seqlen2_,
+		seqlen1_);
+}
+
 void AlignmentEvaluer::calc(double score_,//pairwise alignment score
 double seqlen1_,//length of sequence #1
 double seqlen2_,//length of sequence #2

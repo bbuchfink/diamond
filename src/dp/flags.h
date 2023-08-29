@@ -5,7 +5,7 @@ namespace DP {
 
 	enum class Flags { NONE = 0, PARALLEL = 1, FULL_MATRIX = 2, SEMI_GLOBAL = 4 };
 
-	DEF_ENUM_FLAG_OPERATORS(Flags)
+	DEFINE_ENUM_FLAG_OPERATORS(Flags)
 
 }
 
@@ -26,7 +26,7 @@ enum class HspValues : unsigned {
 	COORDS = QUERY_COORDS | TARGET_COORDS
 };
 
-DEF_ENUM_FLAG_OPERATORS(HspValues)
+DEFINE_ENUM_FLAG_OPERATORS(HspValues)
 
 static inline bool have_coords(const HspValues v) {
 	return flag_any(v, HspValues::TRANSCRIPT) || flag_all(v, HspValues::QUERY_COORDS | HspValues::TARGET_COORDS);

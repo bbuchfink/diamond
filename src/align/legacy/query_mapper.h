@@ -29,7 +29,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../../util/ptr_vector.h"
 #include "../../dp/dp.h"
 #include "../../data/reference.h"
-#include "../../dp/hsp_traits.h"
+#include "../../util/hsp/approx_hsp.h"
 #include "../../basic/match.h"
 #include "../../run/config.h"
 #include "../search/hit.h"
@@ -38,7 +38,7 @@ struct Seed_hit
 {
 	Seed_hit()
 	{}
-	Seed_hit(unsigned frame, unsigned subject, unsigned subject_pos, unsigned query_pos, const Diagonal_segment &ungapped) :
+	Seed_hit(unsigned frame, unsigned subject, unsigned subject_pos, unsigned query_pos, const DiagonalSegment &ungapped) :
 		frame_(frame),
 		subject_(subject),
 		subject_pos_(subject_pos),
@@ -56,17 +56,17 @@ struct Seed_hit
 	}
 	bool is_enveloped(std::list<Hsp>::const_iterator begin, std::list<Hsp>::const_iterator end, int dna_len) const
 	{
-		const DiagonalSegment d(ungapped, ::Frame(frame_));
+		const DiagonalSegmentT d(ungapped, ::Frame(frame_));
 		for (std::list<Hsp>::const_iterator i = begin; i != end; ++i)
 			if (i->envelopes(d, dna_len))
 				return true;
 		return false;
 	}
-	DiagonalSegment diagonal_segment() const
+	DiagonalSegmentT diagonal_segment() const
 	{
-		return DiagonalSegment(ungapped, ::Frame(frame_));
+		return DiagonalSegmentT(ungapped, ::Frame(frame_));
 	}
-	interval query_source_range(int dna_len) const
+	Interval query_source_range(int dna_len) const
 	{
 		return diagonal_segment().query_absolute_range(dna_len);
 	}
@@ -76,7 +76,7 @@ struct Seed_hit
 	}
 	static bool compare_pos(const Seed_hit &x, const Seed_hit &y)
 	{
-		return Diagonal_segment::cmp_subject_end(x.ungapped, y.ungapped);
+		return DiagonalSegment::cmp_subject_end(x.ungapped, y.ungapped);
 	}
 	static bool compare_diag(const Seed_hit &x, const Seed_hit &y)
 	{
@@ -99,7 +99,7 @@ struct Seed_hit
 	};
 
 	unsigned frame_, subject_, subject_pos_, query_pos_;
-	Diagonal_segment ungapped;
+	DiagonalSegment ungapped;
 	unsigned prefix_score;
 };
 
@@ -109,7 +109,7 @@ struct Target
 		filter_score(filter_score),
 		filter_evalue(filter_evalue)
 	{}
-	Target(size_t begin, unsigned subject_id, const Sequence& subject, const std::set<unsigned> &taxon_rank_ids) :
+	Target(size_t begin, unsigned subject_id, const Sequence& subject, const std::set<TaxId> &taxon_rank_ids) :
 		subject_block_id(subject_id),
 		subject(subject),
 		filter_score(0),
@@ -128,12 +128,12 @@ struct Target
 	}
 	void fill_source_ranges(size_t query_len)
 	{
-		for (std::list<Hsp_traits>::iterator i = ts.begin(); i != ts.end(); ++i)
+		for (std::list<ApproxHsp>::iterator i = ts.begin(); i != ts.end(); ++i)
 			i->query_source_range = TranslatedPosition::absolute_interval(TranslatedPosition(i->query_range.begin_, Frame(i->frame)), TranslatedPosition(i->query_range.end_, Frame(i->frame)), (int)query_len);
 	}
-	void add_ranges(vector<int32_t> &v);
-	bool is_outranked(const vector<int32_t> &v, double treshold);
-	bool envelopes(const Hsp_traits &t, double p) const;
+	void add_ranges(std::vector<int32_t> &v);
+	bool is_outranked(const std::vector<int32_t> &v, double treshold);
+	bool envelopes(const ApproxHsp &t, double p) const;
 	bool is_enveloped(const Target &t, double p) const;
 	bool is_enveloped(PtrVector<Target>::const_iterator begin, PtrVector<Target>::const_iterator end, double p, int min_score) const;
 	void inner_culling();
@@ -146,23 +146,23 @@ struct Target
 	bool outranked;
 	size_t begin, end;
 	std::list<Hsp> hsps;
-	std::list<Hsp_traits> ts;
+	std::list<ApproxHsp> ts;
 	Seed_hit top_hit;
-	std::set<unsigned> taxon_rank_ids;
+	std::set<TaxId> taxon_rank_ids;
 
 	enum { INTERVAL = 64 };
 };
 
 struct QueryMapper
 {
-	QueryMapper(size_t query_id, Search::Hit* begin, Search::Hit* end, const Search::Config &metadata, bool target_parallel = false);
+	QueryMapper(size_t query_id, Search::Hit* begin, Search::Hit* end, const Search::Config &metadata);
 	void init();
-	bool generate_output(TextBuffer &buffer, Statistics &stat);
-	void rank_targets(double ratio, double factor);
-	void score_only_culling();
-	size_t n_targets() const
+	bool generate_output(TextBuffer &buffer, Statistics &stat, const Search::Config& cfg);
+	void rank_targets(double ratio, double factor, const int64_t max_target_seqs);
+	void score_only_culling(const int64_t max_target_seqs);
+	int64_t n_targets() const
 	{
-		return targets.size();
+		return (int64_t)targets.size();
 	}
 	bool finished() const
 	{
@@ -177,22 +177,22 @@ struct QueryMapper
 		for (size_t i = 0; i < targets.size(); ++i)
 			targets[i].fill_source_ranges(source_query_len);
 	}
-	virtual void run(Statistics &stat) = 0;
+	virtual void run(Statistics &stat, const Search::Config& cfg) = 0;
 	virtual ~QueryMapper() {}
 
-	pair<Search::Hit*, Search::Hit*> source_hits;
+	std::pair<Search::Hit*, Search::Hit*> source_hits;
 	unsigned query_id, targets_finished, next_target;
 	unsigned source_query_len, unaligned_from;
 	PtrVector<Target> targets;
-	vector<Seed_hit> seed_hits;
-	vector<Bias_correction> query_cb;
+	std::vector<Seed_hit> seed_hits;
+	std::vector<Bias_correction> query_cb;
 	TranslatedSequence translated_query;
-	bool target_parallel;
 	const Search::Config &metadata;
+	bool target_parallel;
 
 private:
 
-	static pair<Search::Hit*, Search::Hit*> get_query_data();
+	static std::pair<Search::Hit*, Search::Hit*> get_query_data();
 	unsigned count_targets();
 	Sequence query_source_seq() const
 	{

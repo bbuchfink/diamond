@@ -28,10 +28,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "deserializer.h"
 #include "temp_file.h"
 
-using std::vector;
-using std::string;
-using std::runtime_error;
-
 const size_t MEGABYTES = 1 << 20;
 const size_t GIGABYTES = 1 << 30;
 const size_t KILOBYTES = 1 << 10;
@@ -41,12 +37,13 @@ struct InputFile : public Deserializer
 
 	enum { BUFFERED = 1, NO_AUTODETECT = 2 };
 
-	InputFile(const string &file_name, int flags = 0);
+	InputFile(const std::string &file_name, int flags = 0);
 	InputFile(TempFile &tmp_file, int flags = 0);
+	InputFile(OutputFile& tmp_file, int flags = 0);
 	void close_and_delete();
 	uint64_t hash();
 	
-	string file_name;
-	bool unlinked;
+	std::string file_name;
+	bool unlinked, temp_file;
 	
 };

@@ -1,6 +1,6 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2020 Max Planck Society for the Advancement of Science e.V.
+Copyright (C) 2013-2021 Max Planck Society for the Advancement of Science e.V.
                         Benjamin Buchfink
                         Eberhard Karls Universitaet Tuebingen
 
@@ -27,7 +27,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <iomanip>
 #include <list>
 #include "../util/io/temp_file.h"
-#include "../util/io/text_input_file.h"
 #include "test.h"
 #include "../util/sequence/sequence.h"
 #include "../util/log_stream.h"
@@ -39,6 +38,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/system/system.h"
 #include "../data/dmnd/dmnd.h"
 #include "../basic/config.h"
+#include "../data/fasta/fasta_file.h"
+#include "../util/command_line_parser.h"
 
 using std::endl;
 using std::string;
@@ -49,14 +50,16 @@ using std::shared_ptr;
 
 namespace Test {
 
-size_t run_testcase(size_t i, shared_ptr<DatabaseFile> &db, shared_ptr<list<TextInputFile>>& query_file, size_t max_width, bool bootstrap, bool log, bool to_cout) {
+static size_t run_testcase(size_t i, shared_ptr<SequenceFile> &db, shared_ptr<SequenceFile>& query_file, size_t max_width, bool bootstrap, bool log, bool to_cout) {
 	vector<string> args = tokenize(test_cases[i].command_line, " ");
 	args.emplace(args.begin(), "diamond");
 	if (log)
 		args.push_back("--log");
-	config = Config((int)args.size(), charp_array(args.begin(), args.end()).data(), false);
+	CommandLineParser parser;
+	config = Config((int)args.size(), charp_array(args.begin(), args.end()).data(), false, parser);
 	statistics.reset();
-	query_file->front().rewind();
+	query_file->set_seqinfo_ptr(0);
+	db->set_seqinfo_ptr(0);
 
 	if (to_cout) {
 		Search::run(db, query_file);
@@ -89,20 +92,21 @@ size_t run_testcase(size_t i, shared_ptr<DatabaseFile> &db, shared_ptr<list<Text
 	return 0;
 }
 
+static void load_seqs(SequenceFile& file) {
+	file.init_write();
+	for (size_t i = 0; i < seqs.size(); ++i)
+		file.write_seq(Sequence::from_string(seqs[i].second.c_str()), seqs[i].first.c_str());
+}
+
 int run() {
 	const bool bootstrap = config.bootstrap, log = config.debug_log, to_cout = config.output_file == "stdout";
-	task_timer timer("Generating test dataset");
-	TempFile proteins;
-	for (size_t i = 0; i < seqs.size(); ++i)
-		Util::Seq::format(Sequence::from_string(seqs[i].second.c_str()), seqs[i].first.c_str(), nullptr, proteins, "fasta", amino_acid_traits);
-	shared_ptr<list<TextInputFile>> query_file(new list<TextInputFile>);
-	query_file->emplace_back(proteins);
+	TaskTimer timer("Generating test dataset");
+	FastaFile proteins("test1", true, FastaFile::WriteAccess());
+	
+	shared_ptr<SequenceFile> query_file(new FastaFile("test2", true, FastaFile::WriteAccess())), db(new FastaFile("test3", true, FastaFile::WriteAccess()));
+	load_seqs(*query_file);
+	load_seqs(*db);
 	timer.finish();
-
-	config.command = Config::makedb;
-	TempFile *db_file;
-	DatabaseFile::make_db(&db_file, query_file.get());
-	shared_ptr<DatabaseFile> db(new DatabaseFile(*db_file));
 
 	const size_t n = test_cases.size(),
 		max_width = std::accumulate(test_cases.begin(), test_cases.end(), (size_t)0, [](size_t l, const TestCase& t) { return std::max(l, strlen(t.desc)); });
@@ -112,9 +116,8 @@ int run() {
 
 	cout << endl << "#Test cases passed: " << passed << '/' << n << endl; // << endl;
 	
-	query_file->front().close_and_delete();
+	query_file->close();
 	db->close();
-	delete db_file;
 	return passed == n ? 0 : 1;
 }
 

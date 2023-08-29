@@ -22,46 +22,60 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "value.h"
 #include "shape_config.h"
-#include "translate.h"
+#include "../util/sequence/translate.h"
 #include "statistics.h"
 #include "sequence.h"
 #include "../masking/masking.h"
 #include "../util/util.h"
 #include "../stats/standard_matrix.h"
 
-const char* Const::version_string = "2.0.15";
+const char* Const::version_string = "2.1.8";
+using std::string;
+using std::vector;
+using std::count;
+
+
 const char* Const::program_name = "diamond";
 
-Align_mode::Align_mode(unsigned mode) :
+AlignMode::AlignMode(unsigned mode) :
 	mode(mode)
 {
-	sequence_type = amino_acid;
+	sequence_type = SequenceType::amino_acid;
 	switch (mode) {
 	case blastx:
-		input_sequence_type = nucleotide;
+		input_sequence_type = SequenceType::nucleotide;
 		query_contexts = 6;
 		query_translated = true;
 		query_len_factor = 3;
 		break;
+    case blastn:
+        input_sequence_type = SequenceType::nucleotide;
+        query_translated = false;
+        query_contexts = 2;
+        query_len_factor = 1;
+        sequence_type = SequenceType::nucleotide;
+        break;
 	default:
-		input_sequence_type = amino_acid;
+		input_sequence_type = SequenceType::amino_acid;
 		query_contexts = 1;
 		query_translated = false;
 		query_len_factor = 1;
 	}
 }
 
-unsigned Align_mode::from_command(unsigned command)
+unsigned AlignMode::from_command(unsigned command)
 {
 	switch (command) {
 	case Config::blastx:
 		return blastx;
+    case Config::blastn:
+        return blastn;
 	default:
 		return blastp;
 	}
 }
 
-Align_mode align_mode (Align_mode::blastp);
+AlignMode align_mode(AlignMode::blastp);
 
 Statistics statistics;
 ShapeConfig shapes;
@@ -120,9 +134,9 @@ void Translator::init(unsigned id)
 				}
 	for (unsigned i = 0; i < 4; ++i)
 		for (unsigned j = 0; j < 4; ++j) {
-			if (equal(lookup[i][j], 4))
+			if (count(lookup[i][j], lookup[i][j] + 4, lookup[i][j][0]) == 4)
 				lookup[i][j][4] = lookup[i][j][0];
-			if (equal(lookupReverse[i][j], 4))
+			if (count(lookupReverse[i][j], lookupReverse[i][j] + 4, lookupReverse[i][j][0]) == 4)
 				lookupReverse[i][j][4] = lookupReverse[i][j][0];
 		}
 }
@@ -182,6 +196,7 @@ void Statistics::print() const
 	log_stream << "Target hits (stage 3) = " << data_[TARGET_HITS3] << " (" << data_[TARGET_HITS3_CBS] << " (" << (double)data_[TARGET_HITS3_CBS] * 100.0 / data_[TARGET_HITS3] << "%) with CBS)" << endl;
 	log_stream << "Target hits (stage 4) = " << data_[TARGET_HITS4] << endl;
 	log_stream << "Target hits (stage 5) = " << data_[TARGET_HITS5] << endl;
+	log_stream << "Target hits (stage 6) = " << data_[TARGET_HITS6] << endl;
 	log_stream << "Swipe realignments    = " << data_[SWIPE_REALIGN] << endl;
 	if (data_[MASKED_LAZY])
 		log_stream << "Lazy maskings         = " << data_[MASKED_LAZY] << endl;
@@ -189,6 +204,15 @@ void Statistics::print() const
 	log_stream << "Extensions (8 bit)    = " << data_[EXT8] << endl;
 	log_stream << "Extensions (16 bit)   = " << data_[EXT16] << endl;
 	log_stream << "Extensions (32 bit)   = " << data_[EXT32] << endl;
+	log_stream << "Overflows (8 bit)     = " << data_[EXT_OVERFLOW_8] << endl;
+	log_stream << "Wasted (16 bit)       = " << data_[EXT_WASTED_16] << endl;
+	log_stream << "Effort (Extension)    = " << 2 * data_[EXT16] + data_[EXT8] << endl;
+	log_stream << "Effort (Cells)        = " << 2 * data_[DP_CELLS_16] + data_[DP_CELLS_8] << endl;
+	log_stream << "Cells (8 bit)         = " << data_[DP_CELLS_8] << endl;
+	log_stream << "Cells (16 bit)        = " << data_[DP_CELLS_16] << endl;
+	log_stream << "SWIPE tasks           = " << data_[SWIPE_TASKS_TOTAL] << endl;
+	log_stream << "SWIPE tasks (async)   = " << data_[SWIPE_TASKS_ASYNC] << endl;
+	log_stream << "Trivial aln           = " << data_[TRIVIAL_ALN] << endl;
 	log_stream << "Hard queries          = " << data_[HARD_QUERIES] << endl;
 #ifdef DP_STAT
 	log_stream << "Gross DP Cells        = " << data_[GROSS_DP_CELLS] << endl;
@@ -203,8 +227,15 @@ void Statistics::print() const
 	log_stream << "Time (Matrix adjust)         = " << (double)data_[TIME_MATRIX_ADJUST] / 1e6 << "s (CPU)" << endl;
 	log_stream << "Time (Chaining)              = " << (double)data_[TIME_CHAINING] / 1e6 << "s (CPU)" << endl;
 	log_stream << "Time (DP target sorting)     = " << (double)data_[TIME_TARGET_SORT] / 1e6 << "s (CPU)" << endl;
+	log_stream << "Time (Query profiles)        = " << (double)data_[TIME_PROFILE] / 1e6 << "s (CPU)" << endl;
 	log_stream << "Time (Smith Waterman)        = " << (double)data_[TIME_SW] / 1e6 << "s (CPU)" << endl;
+	log_stream << "Time (Anchored SWIPE Alloc)  = " << (double)data_[TIME_ANCHORED_SWIPE_ALLOC] / 1e6 << "s (CPU)" << endl;
+	log_stream << "Time (Anchored SWIPE Sort)   = " << (double)data_[TIME_ANCHORED_SWIPE_SORT] / 1e6 << "s (CPU)" << endl;
+	log_stream << "Time (Anchored SWIPE Add)    = " << (double)data_[TIME_ANCHORED_SWIPE_ADD] / 1e6 << "s (CPU)" << endl;
+	log_stream << "Time (Anchored SWIPE Output) = " << (double)data_[TIME_ANCHORED_SWIPE_OUTPUT] / 1e6 << "s (CPU)" << endl;
+	log_stream << "Time (Anchored SWIPE)        = " << (double)data_[TIME_ANCHORED_SWIPE] / 1e6 << "s (CPU)" << endl;
 	log_stream << "Time (Smith Waterman TB)     = " << (double)data_[TIME_TRACEBACK_SW] / 1e6 << "s (CPU)" << endl;
+	log_stream << "Time (Smith Waterman-32)     = " << (double)data_[TIME_EXT_32] / 1e6 << "s (CPU)" << endl;
 	log_stream << "Time (Traceback)             = " << (double)data_[TIME_TRACEBACK] / 1e6 << "s (CPU)" << endl;
 	log_stream << "Time (Target parallel)       = " << (double)data_[TIME_TARGET_PARALLEL] / 1e6 << "s (wall)" << endl;
 	log_stream << "Time (Load seed hits)        = " << (double)data_[TIME_LOAD_SEED_HITS] / 1e6 << "s (wall)" << endl;
@@ -238,7 +269,7 @@ Reduction::Reduction(const char* definition_string)
 	const vector<string> tokens(tokenize(definition_string, " "));
 	size_ = (unsigned)tokens.size();
 	bit_size_exact_ = log(size_) / log(2);
-	bit_size_ = (uint64_t)ceil(bit_size_exact_);
+	bit_size_ = (int)ceil(bit_size_exact_);
 	freq_.fill(0.0);
 	for (unsigned i = 0; i < size_; ++i)
 		for (unsigned j = 0; j < tokens[i].length(); ++j) {

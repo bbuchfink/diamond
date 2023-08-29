@@ -96,11 +96,10 @@ struct ForwardCell<int32_t> {
 };
 
 template<typename Sv>
-FORCE_INLINE ForwardCell<Sv> set_channel(const ForwardCell<Sv>& v, const int i, const typename ::DISPATCH_ARCH::ScoreTraits<Sv>::Score x) {
-	ForwardCell<Sv> c = set_channel(static_cast<Sv>(v), i, x);
-	c.ident = set_channel(v.ident, i, x);
-	c.len = set_channel(v.len, i, x);
-	return c;
+FORCE_INLINE void set_channel(ForwardCell<Sv>& v, const int i, const typename ::DISPATCH_ARCH::ScoreTraits<Sv>::Score x) {
+	set_channel((Sv&)v, i, x);
+	set_channel(v.ident, i, x);
+	set_channel(v.len, i, x);
 }
 
 template<typename Sv>
@@ -155,11 +154,10 @@ struct BackwardCell<int32_t> {
 };
 
 template<typename Sv>
-FORCE_INLINE BackwardCell<Sv> set_channel(const BackwardCell<Sv>& v, const int i, const typename ::DISPATCH_ARCH::ScoreTraits<Sv>::Score x) {
-	BackwardCell<Sv> c = set_channel(static_cast<Sv>(v), i, x);
-	c.mismatch = set_channel(v.mismatch, i, x);
-	c.gapopen = set_channel(v.gapopen, i, x);
-	return c;
+FORCE_INLINE void set_channel(BackwardCell<Sv>& v, const int i, const typename ::DISPATCH_ARCH::ScoreTraits<Sv>::Score x) {
+	set_channel((Sv&)v, i, x);
+	set_channel(v.mismatch, i, x);
+	set_channel(v.gapopen, i, x);
 }
 
 struct Void {

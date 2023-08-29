@@ -38,7 +38,7 @@ void radix_sort(_t* begin, _t* end, uint32_t max_key, size_t threads) {
 		if(threads > 1)
 			parallel_radix_cluster<_t, _get_key>(Relation<_t>(in, n), i * config.radix_bits, out, threads);
 		else {
-			unsigned *hst = new unsigned[1 << config.radix_bits];
+			unsigned *hst = new unsigned[(size_t)1 << config.radix_bits];
 			radix_cluster< _t, _get_key>(Relation<_t>(in, n), i * config.radix_bits, out, hst);
 			delete[] hst;
 		}

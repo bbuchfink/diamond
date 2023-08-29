@@ -23,6 +23,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "score_matrix.h"
 #include "../masking/masking.h"
 
+using std::vector;
+
 namespace Stats {
 
 CBS comp_based_stats(0, -1.0, -1.0, -1.0);
@@ -147,7 +149,7 @@ TargetMatrix::TargetMatrix(const int16_t* query_matrix, const int16_t* target_ma
     for (size_t i = 0; i < AMINO_ACID_COUNT; ++i) {
         for (size_t j = 0; j < AMINO_ACID_COUNT; ++j)
             if (i < 20 && j < 20) {
-                const int score = std::round(((double)query_matrix[i * 20 + j] + (double)target_matrix[i * 20 + j]) * f / 2.0);
+                const int score = (int)std::round(((double)query_matrix[i * 20 + j] + (double)target_matrix[i * 20 + j]) * f / 2.0);
                 scores[i * 32 + j] = score;
                 scores32[i * 32 + j] = score;
                 score_min = std::min(score_min, score);

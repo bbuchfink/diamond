@@ -26,30 +26,28 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "stream_entity.h"
 #include "exceptions.h"
 
-using std::string;
-
 struct FileSink : public StreamEntity
 {
-	FileSink(const string &file_name, const char *mode = "wb", bool async = false, size_t buffer_size = 0);
+	FileSink(const std::string &file_name, const char *mode = "wb", bool async = false, size_t buffer_size = 0);
 #ifndef _MSC_VER
-	FileSink(const string &file_name, int fd, const char *mode, bool async = false, size_t buffer_size = 0);
+	FileSink(const std::string &file_name, int fd, const char *mode, bool async = false, size_t buffer_size = 0);
 #endif
-	virtual void close();
-	virtual void write(const char *ptr, size_t count);
-	virtual void seek(size_t p);
-	virtual void rewind();
-	virtual size_t tell();
-	virtual const string& file_name() const
+	virtual void close() override;
+	virtual void write(const char *ptr, size_t count) override;
+	virtual void seek(int64_t p, int origin = SEEK_SET) override;
+	virtual void rewind() override;
+	virtual int64_t tell() override;
+	virtual const std::string& file_name() const override
 	{
 		return file_name_;
 	}
-	virtual FILE* file()
+	virtual FILE* file() override
 	{
 		return f_;
 	}
 protected:
 	FILE *f_;
-	const string file_name_;
+	const std::string file_name_;
 	std::mutex mtx_;
 	const bool async_;
 	friend struct FileSource;

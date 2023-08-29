@@ -33,6 +33,8 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *****************************************************************************/
 
+// Modified by B. Buchfink
+
 #pragma once
 
 #include <iterator>
@@ -68,13 +70,13 @@ void selectSample(It begin, const It end,
  * Builds the classifer.
  */
 template <class Cfg>
-std::pair<int, bool> Sorter<Cfg>::buildClassifier(const iterator begin,
+std::pair<typename Cfg::bucket_type, bool> Sorter<Cfg>::buildClassifier(const iterator begin,
                                                   const iterator end,
                                                   Classifier& classifier) {
     const auto n = end - begin;
     int log_buckets = Cfg::logBuckets(n);
-    int num_buckets = 1 << log_buckets;
-    const auto step = std::max<diff_t>(1, Cfg::oversamplingFactor(n));
+	typename Cfg::bucket_type num_buckets = (typename Cfg::bucket_type)1 << log_buckets;
+    const auto step = std::max<diff_t>(1, (diff_t)Cfg::oversamplingFactor(n));
     const auto num_samples = step * num_buckets - 1;
 
     // Select the sample
@@ -104,9 +106,9 @@ std::pair<int, bool> Sorter<Cfg>::buildClassifier(const iterator begin,
             && num_buckets - 1 - diff_splitters >= Cfg::kEqualBucketsThreshold;
 
     // Fill the array to the next power of two
-    log_buckets = log2((uint64_t)diff_splitters) + 1;
-    num_buckets = 1 << log_buckets;
-    for (int i = diff_splitters + 1; i < num_buckets; ++i) {
+    log_buckets = (int)log2((uint64_t)diff_splitters) + 1;
+    num_buckets = (typename Cfg::bucket_type)1 << log_buckets;
+    for (auto i = diff_splitters + 1; i < num_buckets; ++i) {
         IPS4O_ASSUME_NOT(sorted_splitters + 1 == nullptr);
         new (++sorted_splitters) typename Cfg::value_type(*splitter);
     }
@@ -115,7 +117,7 @@ std::pair<int, bool> Sorter<Cfg>::buildClassifier(const iterator begin,
     classifier.build(log_buckets);
     this->classifier_ = &classifier;
 
-    const int used_buckets = num_buckets * (1 + use_equal_buckets);
+    const typename Cfg::bucket_type used_buckets = num_buckets * (1 + use_equal_buckets);
     return {used_buckets, use_equal_buckets};
 }
 

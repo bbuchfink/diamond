@@ -38,6 +38,7 @@ Contents: Calculation of P-values using precalculated Gumbel parameters
 #include <iomanip>      // std::setprecision
 
 #include "sls_normal_distr_array.hpp"
+#include "../gsl/gsl.h"
 
 
 using namespace Sls;
@@ -544,6 +545,164 @@ bool compute_only_area_)
 
 }
 
+static double log_sum(double a, double b) {
+	if (a < b)
+		std::swap(a, b);
+	return a + log(1 + exp(b - a));
+}
+
+static double log_diff(double a, double b) {
+	if (a < b)
+		throw std::runtime_error("Taking log of negative number.");
+	return a + log(1 - exp(b - a));
+}
+
+double pvalues::log_area(
+	const ALP_set_of_parameters &par_,
+	bool blast_,
+	double y_,
+	double m_,
+	double n_)
+{
+
+	//to optimize performance
+	blast_ = false;
+
+	double lambda_ = par_.lambda;
+	double k_ = par_.K;
+
+	double ai_hat_ = par_.a_I;
+	double bi_hat_;
+	double alphai_hat_ = par_.alpha_I;
+	double betai_hat_;
+
+	double aj_hat_ = par_.a_J;
+	double bj_hat_;
+	double alphaj_hat_ = par_.alpha_J;
+	double betaj_hat_;
+
+	double sigma_hat_ = par_.sigma;
+	double tau_hat_;
+
+	{
+		bi_hat_ = par_.b_I;
+		betai_hat_ = par_.beta_I;
+
+		bj_hat_ = par_.b_J;
+		betaj_hat_ = par_.beta_J;
+
+		tau_hat_ = par_.tau;
+	};
+
+	if (blast_)
+	{
+		alphai_hat_ = 0;
+		betai_hat_ = 0;
+
+		alphaj_hat_ = 0;
+		betaj_hat_ = 0;
+
+		sigma_hat_ = 0;
+		tau_hat_ = 0;
+	};
+
+	double m_li_y = 0;
+
+	double tmp = ai_hat_ * y_ + bi_hat_;
+
+	m_li_y = m_ - tmp;
+
+	double vi_y = 0;
+
+	vi_y = alp_data::Tmax(par_.vi_y_thr, alphai_hat_*y_ + betai_hat_);
+
+	double sqrt_vi_y = sqrt(vi_y);
+
+
+	double m_F;
+
+	if (sqrt_vi_y == 0.0 || blast_)
+	{
+		m_F = 1e100;
+	}
+	else
+	{
+		m_F = m_li_y / sqrt_vi_y;
+	};
+
+
+	double log_P_m_F = log(0.5) + gsl_sf_log_erfc(-sqrt(0.5) * m_F);
+
+	double log_minus_E_m_F = log(const_val) + (-0.5*m_F*m_F);
+	double log_minus_sqrt_vi_y_E_m_F = log(sqrt_vi_y) + log_minus_E_m_F;
+
+	double log_p1;
+	if (m_li_y < 0) {
+		double log_minus_m_li_y_P_m_F = log(-m_li_y) + log_P_m_F;		
+		log_p1 = log_diff(log_minus_sqrt_vi_y_E_m_F, log_minus_m_li_y_P_m_F);
+	}
+	else {
+		double log_m_li_y_P_m_F = log(m_li_y) + log_P_m_F;
+		log_p1 = log_sum(log_minus_sqrt_vi_y_E_m_F, log_m_li_y_P_m_F);
+	}
+
+	double n_lj_y = 0;
+
+	tmp = aj_hat_ * y_ + bj_hat_;
+
+	n_lj_y = n_ - tmp;
+
+	double vj_y = 0;
+
+	vj_y = alp_data::Tmax(par_.vj_y_thr, alphaj_hat_*y_ + betaj_hat_);
+
+	double sqrt_vj_y = sqrt(vj_y);
+
+	double n_F;
+
+	if (sqrt_vj_y == 0.0 || blast_)
+	{
+		n_F = 1e100;
+	}
+	else
+	{
+		n_F = n_lj_y / sqrt_vj_y;
+	};
+
+	double log_P_n_F = log(0.5) + gsl_sf_log_erfc(-sqrt(0.5) * n_F);
+
+	double log_minus_E_n_F = log(const_val) + (-0.5*n_F*n_F);
+	double log_minus_sqrt_vj_y_E_n_F = log(sqrt_vj_y) + log_minus_E_n_F;
+	double log_p2;
+
+	if (n_lj_y < 0) {
+		double log_minus_n_lj_y_P_n_F = log(-n_lj_y) + log_P_n_F;		
+		log_p2 = log_diff(log_minus_sqrt_vj_y_E_n_F, log_minus_n_lj_y_P_n_F);
+	}
+	else {
+		double log_n_lj_y_P_n_F = log(n_lj_y) + log_P_n_F;
+		log_p2 = log_sum(log_minus_sqrt_vj_y_E_n_F, log_n_lj_y_P_n_F);
+	}
+
+	double log_c_y = 0;
+
+	log_c_y = log(alp_data::Tmax(par_.c_y_thr, sigma_hat_*y_ + tau_hat_));
+
+	double log_P_m_F_P_n_F = log_P_m_F + log_P_n_F;
+
+	double log_c_y_P_m_F_P_n_F = log_c_y + log_P_m_F_P_n_F;
+
+	double log_p1_p2 = log_p1 + log_p2;
+
+	double log_area = log_sum(log_p1_p2, log_c_y_P_m_F_P_n_F);
+
+	if (!isfinite(log_area))
+		throw std::runtime_error("Numerical error in area computation.");
+
+	return log_area;
+}
+
+
 void pvalues::get_P_error_using_splitting_method(
 const ALP_set_of_parameters &par_,
 bool blast_,
@@ -559,7 +718,7 @@ double &E_error_,
 
 bool &area_is_1_flag_)
 {
-	long int dim=par_.m_LambdaSbs.size();
+	long int dim=(long)par_.m_LambdaSbs.size();
 	if(dim==0)
 	{
 		throw error("Unexpected error in get_P_error_using_splitting_method\n",1);
@@ -578,7 +737,6 @@ bool &area_is_1_flag_)
 	vector<double> P_values(dim);
 	vector<double> E_values(dim);
 	vector<double> exp_E_values(dim);
-
 
 	long int i;
 	for(i=0;i<dim;i++)

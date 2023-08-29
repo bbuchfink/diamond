@@ -28,20 +28,21 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../search/seed_complexity.h"
 
 using std::array;
+using std::vector;
 
 typedef vector<array<SeedArray::Entry*, Const::seedp>> PtrSet;
 
-char* SeedArray::alloc_buffer(const SeedHistogram &hst, size_t index_chunks)
+char* SeedArray::alloc_buffer(const SeedHistogram &hst, int index_chunks)
 {
 	return new char[sizeof(Entry) * hst.max_chunk_size(index_chunks)];
 }
 
-static size_t seed_bits(const SeedEncoding code) {
+static int seed_bits(const SeedEncoding code) {
 	switch (code) {
 	case SeedEncoding::HASHED:
-		return sizeof(SeedArray::Entry::Key) * 8;
+		return int(sizeof(SeedOffset) * 8);
 	case SeedEncoding::SPACED_FACTOR:
-		return ceil(shapes[0].weight_ * Reduction::reduction.bit_size_exact()) - Const::seedp_bits;
+		return int(ceil(shapes[0].weight_ * Reduction::reduction.bit_size_exact()) - Const::seedp_bits);
 	case SeedEncoding::CONTIGUOUS:
 		return shapes[0].length_ * Reduction::reduction.bit_size() - Const::seedp_bits;
 	default:
@@ -58,7 +59,7 @@ struct BufferedWriter
 		memset(n, 0, sizeof(n));
 		memcpy(this->ptr, ptr, sizeof(this->ptr));
 	}
-	void push(Packed_seed key, int64_t value, uint32_t block_id, const SeedPartitionRange &range)
+	void push(PackedSeed key, int64_t value, uint32_t block_id, const SeedPartitionRange &range)
 	{
 		const unsigned p = seed_partition(key);
 		if (range.contains(p)) {
@@ -68,9 +69,9 @@ struct BufferedWriter
 				flush(p);
 		}
 	}
-	void flush(unsigned p)
+	NO_INLINE void flush(unsigned p)
 	{
-		memcpy(ptr[p], buf[p], n[p] * sizeof(SeedArray::Entry));
+		memcpy(ptr[p], buf[p], (size_t)n[p] * sizeof(SeedArray::Entry));
 		ptr[p] += n[p];
 		n[p] = 0;
 	}
@@ -127,7 +128,7 @@ SeedArray::SeedArray(Block &seqs, const ShapeHistogram &hst, const SeedPartition
 	if (enum_cfg.shape_end - enum_cfg.shape_begin > 1)
 		throw std::runtime_error("SeedArray construction for >1 shape.");
 	begin_[range.begin()] = 0;
-	for (size_t i = range.begin(); i < range.end(); ++i)
+	for (int i = range.begin(); i < range.end(); ++i)
 		begin_[i + 1] = begin_[i] + partition_size(hst, i);
 
 	PtrSet iterators(build_iterators(*this, hst));
@@ -149,7 +150,7 @@ struct BufferedWriter2
 	{
 		memset(n, 0, sizeof(n));
 	}
-	void push(Packed_seed key, int64_t value, const SeedPartitionRange& range)
+	void push(PackedSeed key, int64_t value, const SeedPartitionRange& range)
 	{
 		const unsigned p = seed_partition(key);
 		if (range.contains(p)) {
@@ -159,7 +160,7 @@ struct BufferedWriter2
 				flush(p);
 		}
 	}
-	void flush(unsigned p)
+	NO_INLINE void flush(unsigned p)
 	{
 		out[p].push_back(buf[p], n[p]);
 		n[p] = 0;

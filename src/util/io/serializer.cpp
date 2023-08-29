@@ -20,6 +20,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <string.h>
 #include "serializer.h"
 
+using std::string;
+using std::pair;
+
 Serializer::Serializer(StreamEntity *buffer, int flags) :
 	buffer_(buffer),
 	varint_(flags & VARINT)
@@ -38,10 +41,10 @@ void Serializer::close()
 	buffer_->close();
 }
 
-void Serializer::seek(size_t pos)
+void Serializer::seek(int64_t p, int origin)
 {
 	flush();
-	buffer_->seek(pos);
+	buffer_->seek(p, origin);
 	reset_buffer();
 }
 

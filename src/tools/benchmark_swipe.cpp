@@ -8,7 +8,6 @@ using std::vector;
 using std::chrono::high_resolution_clock;
 using std::chrono::nanoseconds;
 using std::chrono::duration_cast;
-using std::cout;
 using std::endl;
 using std::array;
 
@@ -59,7 +58,7 @@ void swipe_cell_update() {
 	volatile auto y = diagonal_cell[0].ident;
 	volatile auto z = diagonal_cell[0].len;
 
-	cout << "SWIPE cell update (int8_t):\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * N * 32) * 1000 << " ps/Cell" << endl;
+	//cout << "SWIPE cell update (int8_t):\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * N * 32) * 1000 << " ps/Cell" << endl;
 }
 
 #endif

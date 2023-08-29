@@ -113,6 +113,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../lib/blast/nlm_linear_algebra.h"
 #include "cbs.h"
 
+using std::vector;
+
 namespace Stats {
 
 static constexpr int COMPO_NUM_TRUE_AA = 20;

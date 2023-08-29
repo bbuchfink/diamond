@@ -27,15 +27,16 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <mutex>
 #include <float.h>
 #include <atomic>
-#include "../basic/diagonal_segment.h"
+#include "../util/geo/diagonal_segment.h"
 #include "../basic/const.h"
-#include "../dp/hsp_traits.h"
+#include "../util/hsp/approx_hsp.h"
 #include "../stats/hauser_correction.h"
 #include "extend.h"
 #include "../util/data_structures/flat_array.h"
 #include "../stats/cbs.h"
 #include "../dp/flags.h"
-#include "../data/block.h"
+#include "../data/block/block.h"
+#include "../util/parallel/thread_pool.h"
 
 struct SequenceSet;
 
@@ -59,44 +60,73 @@ struct SeedHit {
 		const int d1 = diag(), d2 = x.diag();
 		return d1 < d2 || (d1 == d2 && j < x.j);
 	}
+	Interval query_range() const {
+		return { i,i + 1 };
+	}
+	Interval target_range() const {
+		return { j,j + 1 };
+	}
+	DiagonalSegment diag_segment() const {
+		return DiagonalSegment(i, j, 1, score);
+	}
 	int i, j, score;
 	unsigned frame;
 };
 
 struct WorkTarget {
-	WorkTarget(size_t block_id, const Sequence& seq, int query_len, const Stats::Composition& query_comp, const int16_t** query_matrix);
+	WorkTarget(BlockId block_id, const Sequence& seq, int query_len, const ::Stats::Composition& query_comp, const int16_t** query_matrix);
 	bool adjusted_matrix() const {
 		return !matrix.scores.empty();
 	}
-	size_t block_id;
+	BlockId block_id;
 	Sequence seq;
 	std::array<int, MAX_CONTEXT> ungapped_score;
-	std::array<std::list<Hsp_traits>, MAX_CONTEXT> hsp;
-	Stats::TargetMatrix matrix;
+	std::array<std::list<ApproxHsp>, MAX_CONTEXT> hsp;
+	::Stats::TargetMatrix matrix;
+	bool done;
 };
 
-std::vector<WorkTarget> ungapped_stage(const Sequence* query_seq, const Bias_correction* query_cb, const Stats::Composition& query_comp, FlatArray<SeedHit>& seed_hits, const std::vector<uint32_t>& target_block_ids, DP::Flags flags, Statistics& stat, const Block& target_block, const Mode mode);
+std::vector<WorkTarget> ungapped_stage(const Sequence *query_seq, const Bias_correction *query_cb, const ::Stats::Composition& query_comp, FlatArray<SeedHit>::Iterator seed_hits, FlatArray<SeedHit>::Iterator seed_hits_end, std::vector<uint32_t>::const_iterator target_block_ids, DP::Flags flags, Statistics& stat, const Block& target_block, const Mode mode);
 
 struct Target {
 
-	Target(size_t block_id, const Sequence &seq, int ungapped_score, const Stats::TargetMatrix& matrix):
+	Target(const BlockId block_id, const Sequence &seq, int ungapped_score, const ::Stats::TargetMatrix& matrix):
 		block_id(block_id),
 		seq(seq),
 		filter_score(0),
 		filter_evalue(DBL_MAX),
 		best_context(0),
 		ungapped_score(ungapped_score),
-		matrix(matrix)
+		matrix(matrix),
+		done(false)
 	{}
+
+	void add_hit(Hsp&& hsp) {
+		if(hsp.evalue < filter_evalue) {
+			filter_evalue = hsp.evalue;
+			filter_score = hsp.score;
+			best_context = hsp.frame;
+		}
+		this->hsp[hsp.frame].push_back(std::move(hsp));
+	}
 
 	void add_hit(std::list<Hsp> &list, std::list<Hsp>::iterator it) {
 		std::list<Hsp> &l = hsp[it->frame];
 		l.splice(l.end(), list, it);
-		if (l.back().score > filter_score) {
+		if (l.back().score > filter_score) { // should be evalue
 			filter_evalue = l.back().evalue;
 			filter_score = l.back().score;
 			best_context = l.back().frame;
 		}
+	}
+
+	void add_hit(const ApproxHsp& h, Loc qlen) {
+		hsp[h.frame].emplace_back(h, qlen, seq.length());
+		if (h.evalue < filter_evalue) {
+			filter_evalue = h.evalue;
+			filter_score = h.score;
+		}
+		done = true;
 	}
 
 	static bool comp_evalue(const Target &t, const Target& u) {
@@ -111,18 +141,18 @@ struct Target {
 		return !matrix.scores.empty();
 	}
 
-	void apply_filters(int source_query_len, const char *query_title, const Sequence& query_seq, const Block& targets);
 	void inner_culling();
 	void max_hsp_culling();
 
-	size_t block_id;
+	BlockId block_id;
 	Sequence seq;
 	int filter_score;
 	double filter_evalue;
 	int best_context;
 	int ungapped_score;
 	std::array<std::list<Hsp>, MAX_CONTEXT> hsp;
-	Stats::TargetMatrix matrix;
+	::Stats::TargetMatrix matrix;
+	bool done;
 };
 
 struct TargetScore {
@@ -140,43 +170,28 @@ struct TargetScore {
 	}
 };
 
-void culling(std::vector<Target>& targets, int source_query_len, const char* query_title, const Sequence& query_seq, size_t min_keep, const Block& target_block);
-bool append_hits(std::vector<Target>& targets, std::vector<Target>::const_iterator begin, std::vector<Target>::const_iterator end, size_t chunk_size, int source_query_len, const char* query_title, const Sequence& query_seq, const Block& target_block);
-std::vector<WorkTarget> gapped_filter(const Sequence *query, const Bias_correction* query_cbs, std::vector<WorkTarget>& targets, Statistics &stat);
-void gapped_filter(const Sequence* query, const Bias_correction* query_cbs, FlatArray<SeedHit> &seed_hits, std::vector<uint32_t> &target_block_ids, Statistics& stat, DP::Flags flags, const Search::Config &params);
-std::vector<Target> align(const std::vector<WorkTarget> &targets, const Sequence *query_seq, const Bias_correction *query_cb, int source_query_len, DP::Flags flags, const HspValues hsp_values, const Mode mode, Statistics &stat);
-std::vector<Match> align(std::vector<Target> &targets, const Sequence *query_seq, const Bias_correction *query_cb, int source_query_len, DP::Flags flags, const HspValues first_round, const Mode mode, Statistics &stat);
-std::vector<Target> full_db_align(const Sequence *query_seq, const Bias_correction *query_cb, DP::Flags flags, const HspValues hsp_values, Statistics &stat, const Block& target_block);
-void recompute_alt_hsps(vector<Match>& matches, const Sequence* query, const int query_source_len, const Bias_correction* query_cb, const HspValues v, Statistics& stats);
+struct SeedHitList {
+	FlatArray<SeedHit> seed_hits;
+	std::vector<uint32_t> target_block_ids;
+	std::vector<TargetScore> target_scores;
+};
 
-std::vector<Match> extend(
-	size_t query_id,
+void culling(std::vector<Target>& targets, bool sort_only, const Search::Config& cfg);
+void culling(std::vector<Match>& targets, const Search::Config& cfg);
+bool append_hits(std::vector<Target>& targets, std::vector<Target>::iterator begin, std::vector<Target>::iterator end, const bool with_culling, const Search::Config& cfg);
+std::vector<WorkTarget> gapped_filter(const Sequence *query, const Bias_correction* query_cbs, std::vector<WorkTarget>& targets, Statistics &stat);
+std::pair<FlatArray<SeedHit>, std::vector<uint32_t>> gapped_filter(const Sequence* query, const Bias_correction* query_cbs, FlatArray<SeedHit>::Iterator seed_hits, FlatArray<SeedHit>::Iterator seed_hits_end, std::vector<uint32_t>::const_iterator target_block_ids, Statistics& stat, DP::Flags flags, const Search::Config &params);
+std::pair<std::vector<Target>, Stats> align(const std::vector<WorkTarget> &targets, const Sequence *query_seq, const char* query_id, const Bias_correction *query_cb, int source_query_len, DP::Flags flags, const HspValues hsp_values, const Mode mode, ThreadPool& tp, const Search::Config& cfg, Statistics &stat);
+std::vector<Match> align(std::vector<Target> &targets, const int64_t previous_matches, const Sequence *query_seq, const char* query_id, const Bias_correction *query_cb, int source_query_len, double query_self_aln_score, DP::Flags flags, const HspValues first_round, const bool first_round_culling, Statistics &stat, const Search::Config& cfg);
+std::vector<Target> full_db_align(const Sequence *query_seq, const Bias_correction *query_cb, DP::Flags flags, const HspValues hsp_values, Statistics &stat, const Block& target_block);
+void recompute_alt_hsps(std::vector<Match>::iterator begin, std::vector<Match>::iterator end, const Sequence* query, const int query_source_len, const Bias_correction* query_cb, const HspValues v, Statistics& stats);
+void apply_filters(std::vector<Match>::iterator begin, std::vector<Match>::iterator end, int source_query_len, const char* query_title, const double query_self_aln_score, const Sequence& query_seq, const Search::Config& cfg);
+
+std::pair<std::vector<Match>, Stats> extend(
+	BlockId query_id,
 	const Search::Config& cfg,
 	Statistics &stat,
 	DP::Flags flags,
-	FlatArray<SeedHit>& seed_hits,
-	std::vector<uint32_t>& target_block_ids,
-	const std::vector<TargetScore>& target_scores);
-
-struct Memory {
-	Memory(size_t query_count);
-	int& low_score(size_t query_id);
-	int& mid_score(size_t query_id);
-	int& min_score(size_t query_id, size_t i);
-	size_t count(size_t query_id) const;
-	void update(size_t query_id, std::vector<Target>::const_iterator begin, std::vector<Target>::const_iterator end);
-	void update_failed_count(size_t query_id, size_t failed_count, int ranking_low_score);
-	int ranking_low_score(size_t query_id) const {
-		return ranking_low_score_[query_id];
-	}
-	size_t ranking_failed_count(size_t query_id) const {
-		return ranking_failed_count_[query_id];
-	}
-private:
-	const size_t N;
-	std::vector<int> scores_, count_, ranking_low_score_, ranking_failed_count_;
-};
-
-extern Memory* memory;
+	SeedHitList &l);
 
 }

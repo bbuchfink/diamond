@@ -1,6 +1,6 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2021 Max Planck Society for the Advancement of Science e.V.
+Copyright (C) 2013-2022 Max Planck Society for the Advancement of Science e.V.
 						Benjamin Buchfink
 						Eberhard Karls Universitaet Tuebingen
 
@@ -20,14 +20,20 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #pragma once
 #include "../basic/value.h"
-#include "../basic/diagonal_segment.h"
+#include "../util/geo/diagonal_segment.h"
 #include "../stats/hauser_correction.h"
 
 //int xdrop_ungapped(const Letter *query, const Letter *subject, unsigned seed_len, unsigned &delta, unsigned &len);
 //int xdrop_ungapped(const Letter *query, const Letter *subject, unsigned &delta, unsigned &len);
 int xdrop_ungapped_right(const Letter *query, const Letter *subject, int &len);
 int ungapped_window(const Letter* query, const Letter* subject, int window);
-Diagonal_segment xdrop_ungapped(const Sequence &query, const Bias_correction &query_bc, const Sequence &subject, int qa, int sa);
-Diagonal_segment xdrop_ungapped(const Sequence &query, const Sequence &subject, int qa, int sa);
+DiagonalSegment xdrop_ungapped(const Sequence &query, const Bias_correction &query_bc, const Sequence &subject, int qa, int sa);
+DiagonalSegment xdrop_ungapped(const Sequence& query, const int8_t* query_cbs, const Sequence& subject, int qa, int sa, bool count_identities);
+DiagonalSegment xdrop_ungapped(const Sequence& query, const Sequence& subject, const DiagonalSegment& anchor);
 int score_range(Sequence query, Sequence subject, int i, int j, int j_end);
-int self_score(const Sequence& seq);
+template<typename Cbs>
+DiagonalSegment score_range_s(Sequence query, Cbs query_cbs, Sequence subject, int i, int j, int j_end);
+Score self_score(const Sequence& seq);
+Hsp trivial(Sequence query, Sequence target, const int8_t* query_cbs);
+Anchor make_clipped_anchor(const Anchor& anchor, Sequence query, const int8_t* query_cbs, Sequence target);
+Anchor make_null_anchor(const Anchor& anchor);

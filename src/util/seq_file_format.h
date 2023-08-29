@@ -23,6 +23,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #pragma once
 #include <vector>
 #include <string>
+#include <memory>
 #include "../basic/value.h"
 #include "io/text_input_file.h"
 
@@ -34,16 +35,16 @@ struct file_format_exception : public std::exception
 	}
 };
 
-struct Sequence_file_format
+struct SequenceFileFormat
 {
 
 	virtual bool get_seq(std::string &id, std::vector<Letter> &seq, TextInputFile &s, const ValueTraits& value_traits, std::vector<char> *qual = nullptr) const = 0;
-	virtual ~Sequence_file_format()
+	virtual ~SequenceFileFormat()
 	{ }
 	
 };
 
-struct FASTA_format : public Sequence_file_format
+struct FASTA_format : public SequenceFileFormat
 {
 
 	FASTA_format()
@@ -56,7 +57,7 @@ struct FASTA_format : public Sequence_file_format
 
 };
 
-struct FASTQ_format : public Sequence_file_format
+struct FASTQ_format : public SequenceFileFormat
 {
 
 	FASTQ_format()
@@ -69,4 +70,4 @@ struct FASTQ_format : public Sequence_file_format
 
 };
 
-const Sequence_file_format* guess_format(TextInputFile &file);
+std::unique_ptr<const SequenceFileFormat> guess_format(TextInputFile &file);

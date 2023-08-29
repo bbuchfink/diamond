@@ -33,6 +33,8 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *****************************************************************************/
 
+// Modified by B. Buchfink
+
 #pragma once
 #if defined(_REENTRANT) || defined(_OPENMP)
 
@@ -98,7 +100,7 @@ void Sorter<Cfg>::parallelPrimary(const iterator begin, const iterator end,
     shared.small_tasks.clear();
     shared.small_task_index.store(0, std::memory_order_relaxed);
     // Queues a subtask either as a big task, a small task, or not at all, depending on the size
-    const auto queueTask = [&shared, max_sequential_size](int i, std::ptrdiff_t offset, int level) {
+    const auto queueTask = [&shared, max_sequential_size](int64_t i, std::ptrdiff_t offset, int level) {
         const auto start = offset + shared.bucket_start[i];
         const auto stop = offset + shared.bucket_start[i + 1];
         if (stop - start > max_sequential_size) {
@@ -113,7 +115,7 @@ void Sorter<Cfg>::parallelPrimary(const iterator begin, const iterator end,
         const auto task = shared.big_tasks.back();
         const auto res = partition<true>(begin + task.begin, begin + task.end,
                                          shared.bucket_start, &shared, 0, num_threads);
-        const int num_buckets = std::get<0>(res);
+        const typename Cfg::bucket_type num_buckets = std::get<0>(res);
         const bool equal_buckets = std::get<1>(res);
         shared.big_tasks.pop_back();
 

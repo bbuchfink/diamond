@@ -28,7 +28,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../stats/score_matrix.h"
 #include "reduction.h"
 #include "config.h"
-#include "translate.h"
 
 struct Shape
 {
@@ -70,7 +69,7 @@ struct Shape
 		d_ = positions_[weight_/2-1];
 	}
 
-	inline bool set_seed(Packed_seed &s, const Letter *seq) const
+	inline bool set_seed(PackedSeed &s, const Letter *seq) const
 	{
 		s = 0;
 #ifdef FREQUENCY_MASKING
@@ -96,7 +95,7 @@ struct Shape
 		return true;
 	}
 
-	inline bool set_seed_shifted(Packed_seed &s, const Letter *seq) const
+	inline bool set_seed_shifted(PackedSeed &s, const Letter *seq) const
 	{
 		s = 0;
 		const uint64_t b = Reduction::reduction.bit_size();
@@ -114,7 +113,7 @@ struct Shape
 		return true;
 	}
 
-	inline bool set_seed_reduced(Packed_seed &s, const Letter *seq) const
+	inline bool set_seed_reduced(PackedSeed &s, const Letter *seq) const
 	{
 		s = 0;
 		for (int i = 0; i < weight_; ++i) {

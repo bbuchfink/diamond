@@ -25,6 +25,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <utility>
 #include <iterator>
 #include <string.h>
+#include <assert.h>
 #include "stream_entity.h"
 #include "../algo/varint.h"
 #include "../system/endianness.h"
@@ -38,7 +39,7 @@ struct Deserializer
 
 	Deserializer(StreamEntity* buffer);
 	void rewind();
-	Deserializer& seek(size_t pos);
+	Deserializer& seek(int64_t pos);
 	void seek_forward(size_t n);
 	bool seek_forward(char delimiter);
 	void close();
@@ -61,19 +62,36 @@ struct Deserializer
 		return *this;
 	}
 
-	Deserializer& operator>>(int &x)
+	Deserializer& operator>>(int32_t &x)
+	{
+		if (varint) {
+			uint32_t i;
+			read_varint(*this, i);
+			x = (int32_t)i;
+		}
+		else {
+			read(x);
+			x = big_endian_byteswap(x);
+		}
+		return *this;
+	}
+
+	Deserializer& operator>>(int64_t& x)
 	{
 		read(x);
+		x = big_endian_byteswap(x);
 		return *this;
 	}
 
 	Deserializer& operator>>(short& x) {
 		read(x);
+		x = big_endian_byteswap(x);
 		return *this;
 	}
 
 	Deserializer& operator>>(unsigned short& x) {
 		read(x);
+		x = big_endian_byteswap(x);
 		return *this;
 	}
 
@@ -120,13 +138,13 @@ struct Deserializer
 		return *this;
 	}
 
-	Deserializer& operator>>(std::vector<uint32_t> &v)
+	Deserializer& operator>>(std::vector<int32_t> &v)
 	{
-		uint32_t n, x;
+		int32_t n, x;
 		*this >> n;
 		v.clear();
 		v.reserve(n);
-		for (unsigned i = 0; i < n; ++i) {
+		for (int32_t i = 0; i < n; ++i) {
 			*this >> x;
 			v.push_back(x);
 		}
@@ -162,8 +180,8 @@ struct Deserializer
 		return begin_;
 	}
 
-	template<typename _it>
-	bool read_to(_it dst, char delimiter)
+	template<typename It>
+	bool read_to(It dst, char delimiter)
 	{
 		int d = delimiter;
 		do {
@@ -181,8 +199,27 @@ struct Deserializer
 		return false;
 	}
 
+	template<typename It>
+	void read_raw(size_t count, It out)
+	{
+		if (count <= avail()) {
+			pop(count, out);
+			return;
+		}
+		do {
+			const size_t n = std::min(count, avail());
+			pop(n, out);
+			count -= n;
+			if (avail() == 0)
+				fetch();
+		} while (count > 0 && avail() > 0);
+	}
+
 	size_t read_raw(char *ptr, size_t count);
 	DynamicRecordReader read_record();
+	int64_t file_size() {
+		return buffer_->file_size();
+	}
 	~Deserializer();
 
 	bool varint;
@@ -190,6 +227,15 @@ struct Deserializer
 protected:
 	
 	void pop(char *dst, size_t n);
+
+	template<typename It>
+	void pop(size_t n, It out)
+	{
+		assert(n <= avail());
+		std::copy(begin_, begin_ + n, out);
+		begin_ += n;
+	}
+
 	bool fetch();
 
 	size_t avail() const

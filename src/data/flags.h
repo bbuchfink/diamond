@@ -18,10 +18,10 @@ extern NoFilter no_filter;
 
 #ifdef KEEP_TARGET_ID
 struct SeedLoc {
-	Value() {}
-	Value(PackedLoc pos) :
+	SeedLoc() {}
+	SeedLoc(PackedLoc pos) :
 		pos(pos) {}
-	Value(PackedLoc pos, uint32_t block_id) :
+	SeedLoc(PackedLoc pos, uint32_t block_id) :
 		pos(pos),
 		block_id(block_id)
 	{}
@@ -37,10 +37,12 @@ using SeedLoc = PackedLoc;
 
 struct EnumCfg {
 	const std::vector<size_t>* partition;
-	const size_t shape_begin, shape_end;
+	size_t shape_begin, shape_end;
 	const SeedEncoding code;
 	const std::vector<bool>* const skip;
 	const bool filter_masked_seeds, mask_seeds;
 	const double seed_cut;
 	const MaskingAlgo soft_masking;
+	const Loc minimizer_window;
+	const bool filter_low_complexity_seeds, mask_low_complexity_seeds;
 };

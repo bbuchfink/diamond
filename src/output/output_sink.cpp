@@ -21,58 +21,17 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "output.h"
 #include "../data/queries.h"
 #include "../util/util.h"
+#include "../util/parallel/thread_pool.h"
 
 using std::chrono::high_resolution_clock;
 using std::chrono::seconds;
 using std::chrono::milliseconds;
 using std::chrono::duration_cast;
 using std::endl;
+using std::string;
+using std::vector;
 
-std::unique_ptr<OutputSink> OutputSink::instance;
-
-void OutputSink::push(size_t n, TextBuffer *buf)
-{
-	mtx_.lock();
-	//cout << "n=" << n << " next=" << next_ << endl;
-	if (n != next_) {
-		backlog_[n] = buf;
-		size_ += buf ? buf->alloc_size() : 0;
-		max_size_ = std::max(max_size_, size_);
-		mtx_.unlock();
-	}
-	else
-		flush(buf);
-}
-
-void OutputSink::flush(TextBuffer *buf)
-{
-	size_t n = next_ + 1;
-	vector<TextBuffer*> out;
-	out.push_back(buf);
-	std::map<size_t, TextBuffer*>::iterator i;
-	do {
-		while ((i = backlog_.begin()) != backlog_.end() && i->first == n) {
-			out.push_back(i->second);
-			backlog_.erase(i);
-			++n;
-		}
-		mtx_.unlock();
-		size_t size = 0;
-		for (vector<TextBuffer*>::iterator j = out.begin(); j < out.end(); ++j) {
-			if (*j) {
-				f_->consume((*j)->data(), (*j)->size());
-				if (*j != buf)
-					size += (*j)->alloc_size();
-				delete *j;
-			}
-		}
-		out.clear();
-		mtx_.lock();
-		size_ -= size;
-	} while ((i = backlog_.begin()) != backlog_.end() && i->first == n);
-	next_ = n;
-	mtx_.unlock();
-}
+std::unique_ptr<ReorderQueue<TextBuffer*, OutputWriter>> output_sink;
 
 void heartbeat_worker(size_t qend, const Search::Config* cfg)
 {
@@ -80,14 +39,15 @@ void heartbeat_worker(size_t qend, const Search::Config* cfg)
 	static thread_local high_resolution_clock::time_point t0 = high_resolution_clock::now();
 	int n = 0;
 	size_t next;
-	while ((next = OutputSink::get().next()) < qend) {
+	while ((next = output_sink->next()) < qend) {
 		if (n == interval) {
 			const string title(cfg->query->ids()[next]);
 			verbose_stream << "Queries=" << next
-				<< " size=" << megabytes(OutputSink::get().size())
-				<< " max_size=" << megabytes(OutputSink::get().max_size())
+				<< " size=" << megabytes(output_sink->size())
+				<< " max_size=" << megabytes(output_sink->max_size())
 				<< " next=" << title.substr(0, title.find(' '))
-				<< " ETA=" << (double)duration_cast<seconds>(high_resolution_clock::now() - t0).count() / (next - OutputSink::get().begin()) * (qend - next) << "s"
+				<< " queue=" << cfg->thread_pool->queue_len(0) << "/" << cfg->thread_pool->queue_len(1)
+				//<< " ETA=" << (double)duration_cast<seconds>(high_resolution_clock::now() - t0).count() / (next - OutputSink::get().begin()) * (qend - next) << "s"
 				<< endl;
 			n = 0;
 		}

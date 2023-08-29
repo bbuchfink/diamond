@@ -1,10 +1,10 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2021 Max Planck Society for the Advancement of Science e.V.
+Copyright (C) 2013-2023 Max Planck Society for the Advancement of Science e.V.
                         Benjamin Buchfink
                         Eberhard Karls Universitaet Tuebingen
 						
-Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
+Code developed by Benjamin Buchfink <buchfink@gmail.com>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -24,24 +24,31 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #pragma once
 #include <limits>
 #include <list>
+#include <float.h>
 #include "sequence.h"
 #include "packed_loc.h"
 #include "value.h"
 #include "packed_transcript.h"
 #include "translated_position.h"
-#include "diagonal_segment.h"
+#include "../util/geo/diagonal_segment.h"
+#include "value.h"
+#include "../util/io/serialize.h"
+#include "../util/io/input_file.h"
+#include "../util/hsp/approx_hsp.h"
 
-inline interval normalized_range(unsigned pos, int len, Strand strand)
+inline Interval normalized_range(unsigned pos, int len, Strand strand)
 {
 	return strand == FORWARD
-			? interval (pos, pos + len)
-			: interval (pos + 1 + len, pos + 1);
+			? Interval(pos, pos + len)
+			: Interval(pos + 1 + len, pos + 1);
 }
 
 struct IntermediateRecord;
+struct OutputFormat;
 
 namespace Stats {
 struct TargetMatrix;
+struct Blastn_Score;
 }
 
 struct Hsp
@@ -60,6 +67,10 @@ struct Hsp
 		swipe_target(0),
 		d_begin(0),
 		d_end(0),
+		evalue(DBL_MAX),
+		bit_score(0.0),
+		corrected_bit_score(0.0),
+		approx_id(0.0),
 		matrix(nullptr)
 	{}
 
@@ -76,10 +87,15 @@ struct Hsp
 		swipe_target(swipe_target),
 		d_begin(0),
 		d_end(0),
+		evalue(DBL_MAX),
+		bit_score(0.0),
+		corrected_bit_score(0.0),
+		approx_id(0.0),
 		matrix(nullptr)
 	{}
 
-	Hsp(const IntermediateRecord &r, unsigned query_source_len);
+    Hsp(const IntermediateRecord &r, unsigned query_source_len, Loc qlen, Loc tlen, const OutputFormat* output_format, const Stats::Blastn_Score *dna_score_builder = nullptr);
+	Hsp(const ApproxHsp& h, Loc qlen, Loc tlen);
 
 	struct Iterator
 	{
@@ -144,12 +160,12 @@ struct Hsp
 		return Iterator(*this);
 	}
 
-	interval oriented_range() const
+	Interval oriented_range() const
 	{
 		if (frame < 3)
-			return interval(query_source_range.begin_, query_source_range.end_ - 1);
+			return Interval(query_source_range.begin_, query_source_range.end_ - 1);
 		else
-			return interval(query_source_range.end_ - 1, query_source_range.begin_);
+			return Interval(query_source_range.end_ - 1, query_source_range.begin_);
 	}
 
 	void set_translated_query_begin(unsigned oriented_query_begin, unsigned dna_len)
@@ -210,30 +226,34 @@ struct Hsp
 		return int((1 - overlap)*score);
 	}
 
-	bool envelopes(const DiagonalSegment &d, int dna_len) const
+	bool envelopes(const DiagonalSegmentT &d, int dna_len) const
 	{
 		return query_source_range.contains(d.query_absolute_range(dna_len)) || subject_range.contains(d.subject_range());
 	}
 
 	bool is_enveloped_by(const Hsp &hsp, double p) const;
 	bool is_enveloped_by(std::list<Hsp>::const_iterator begin, std::list<Hsp>::const_iterator end, double p) const;
+	bool query_range_enveloped_by(const Hsp& hsp, double p) const;
+	bool query_range_enveloped_by(std::list<Hsp>::const_iterator begin, std::list<Hsp>::const_iterator end, double p) const;
 	bool is_weakly_enveloped_by(std::list<Hsp>::const_iterator begin, std::list<Hsp>::const_iterator end, int cutoff) const;
-	void push_back(const DiagonalSegment &d, const TranslatedSequence &query, const Sequence& subject, bool reversed);
+	void push_back(const DiagonalSegmentT &d, const TranslatedSequence &query, const Sequence& subject, bool reversed);
 	void push_match(Letter q, Letter s, bool positive);
 	void push_gap(Edit_operation op, int length, const Letter *subject);
-	void splice(const DiagonalSegment &d0, const DiagonalSegment &d1, const TranslatedSequence &query, const Sequence& subject, bool reversed);
-	void set_begin(const DiagonalSegment &d, int dna_len);
-	void set_end(const DiagonalSegment &d, int dna_len);
+	void splice(const DiagonalSegmentT &d0, const DiagonalSegmentT &d1, const TranslatedSequence &query, const Sequence& subject, bool reversed);
+	void set_begin(const DiagonalSegmentT &d, int dna_len);
+	void set_end(const DiagonalSegmentT &d, int dna_len);
 	void set_begin(int i, int j, Frame frame, int dna_len);
 	void set_end(int i, int j, Frame frame, int dna_len);
 	void clear();
+	double approx_id_percent(const Sequence& query, const Sequence& target) const;
+	bool is_identity(const Sequence& query, const Sequence& target) const;
 
 	bool is_weakly_enveloped(const Hsp &j) const;
 	std::pair<int, int> diagonal_bounds() const;
 	bool backtraced;
-	int score, frame, length, identities, mismatches, positives, gap_openings, gaps, swipe_target, d_begin, d_end;
-	interval query_source_range, query_range, subject_range;
-	double evalue, bit_score;
+	int score, frame, length, identities, mismatches, positives, gap_openings, gaps, swipe_target, d_begin, d_end, reserved1, reserved2;
+	Interval query_source_range, query_range, subject_range;
+	double evalue, bit_score, corrected_bit_score, approx_id;
 	Sequence target_seq;
 	const Stats::TargetMatrix* matrix;
 	Packed_transcript transcript;
@@ -241,16 +261,19 @@ struct Hsp
 
 struct HspContext
 {
+	HspContext()
+	{}
 	HspContext(
-		Hsp& hsp,
-		unsigned query_id,
+		const Hsp& hsp,
+		BlockId query_id,
+		OId query_oid,
 		const TranslatedSequence &query,
 		const char *query_title,
-		unsigned subject_oid,
+		OId subject_oid,
 		unsigned subject_len,
 		const char* subject_title,
-		unsigned hit_num,
-		unsigned hsp_num,
+		int hit_num,
+		int hsp_num,
 		const Sequence &subject_seq,
 		int ungapped_score = 0,
 		const double query_self_aln_score = 0.0,
@@ -259,7 +282,9 @@ struct HspContext
 		query_title(query_title),
 		target_title(subject_title),
 		query_id(query_id),
+		query_oid(query_oid),
 		subject_oid(subject_oid),
+		query_len(query.source().length()),
 		subject_len(subject_len),		
 		hit_num(hit_num),
 		hsp_num(hsp_num),
@@ -344,6 +369,12 @@ struct HspContext
 	double bit_score() const {
 		return hsp_.bit_score;
 	}
+	double corrected_bit_score() const {
+		return hsp_.corrected_bit_score;
+	}
+	double approx_id() const {
+		return hsp_.approx_id;
+	}
 	unsigned frame() const
 	{ return hsp_.frame; }
 	unsigned length() const
@@ -358,28 +389,126 @@ struct HspContext
 	{ return hsp_.gap_openings; }
 	unsigned gaps() const
 	{ return hsp_.gaps; }
-	const interval& query_source_range() const
+	double approx_id_percent() const {
+		return hsp_.approx_id_percent(query.index(hsp_.frame), subject_seq);
+	}
+	double qcovhsp() const;
+	double scovhsp() const;
+	double id_percent() const;
+	const Interval& query_source_range() const
 	{ return hsp_.query_source_range; }
-	const interval& query_range() const
+	const Interval& query_range() const
 	{ return hsp_.query_range; }
-	const interval& subject_range() const
+	const Interval& subject_range() const
 	{ return hsp_.subject_range; }
-	interval oriented_query_range() const
+	Interval oriented_query_range() const
 	{ return hsp_.oriented_range(); }
 	int blast_query_frame() const
 	{ return hsp_.blast_query_frame(); }
 	Packed_transcript transcript() const
 	{ return hsp_.transcript; }
-	HspContext& parse();
+	bool operator<(const HspContext& h) const {
+		return query_oid < h.query_oid;
+	}
+	int reserved1() const {
+		return hsp_.reserved1;
+	}
+	int reserved2() const {
+		return hsp_.reserved2;
+	}
+	Hsp hsp() const {
+		return hsp_;
+	}
+	HspContext& parse(const OutputFormat* output_format);
 
-	const TranslatedSequence query;
-	const char* query_title, *target_title;
-	const unsigned query_id, subject_oid;
-	const Loc subject_len;
-	const unsigned hit_num, hsp_num;
+	TranslatedSequence query;
+	std::string query_title, target_title;
+	BlockId query_id;
+	OId query_oid, subject_oid;
+	Loc query_len, subject_len;
+	unsigned hit_num, hsp_num;
 	int ungapped_score;
-	const double query_self_aln_score, target_self_aln_score;
-	const Sequence subject_seq;
-private:	
-	Hsp &hsp_;
+	double query_self_aln_score, target_self_aln_score;
+	Sequence subject_seq;
+private:
+	Hsp hsp_;
+	template<typename T> friend struct TypeDeserializer;
+};
+
+template<>
+struct TypeSerializer<HspContext> {
+
+	TypeSerializer(TextBuffer& buf) :
+		buf_(&buf)
+	{}
+
+	TypeSerializer& operator<<(const HspContext& h) {
+		buf_->write(h.query_id);
+		buf_->write(h.query_oid);
+		buf_->write(h.subject_oid);
+		buf_->write_c_str(h.query_title.c_str());
+		buf_->write_c_str(h.target_title.c_str());
+		buf_->write(h.query_len);
+		buf_->write(h.subject_len);
+		buf_->write(h.identities());
+		buf_->write(h.mismatches());
+		buf_->write(h.positives());
+		buf_->write(h.gaps());
+		buf_->write(h.length());
+		buf_->write(h.gap_openings());
+		buf_->write(h.query_range().begin_);
+		buf_->write(h.query_range().end_);
+		buf_->write(h.subject_range().begin_);
+		buf_->write(h.subject_range().end_);
+		buf_->write(h.bit_score());
+		buf_->write(h.evalue());
+		buf_->write(h.score());
+		buf_->write(h.approx_id());
+		return *this;
+	}
+
+private:
+
+	TextBuffer* buf_;
+
+};
+
+template<>
+struct TypeDeserializer<HspContext> {
+
+	TypeDeserializer(InputFile* f) :
+		file_(f)
+	{}
+
+	HspContext get() {
+		HspContext h;
+		file_->read(h.query_id);
+		file_->read(h.query_oid);
+		file_->read(h.subject_oid);
+		*file_ >> h.query_title;
+		*file_ >> h.target_title;
+		file_->read(h.query_len);
+		file_->read(h.subject_len);
+		file_->read(h.hsp_.identities);
+		file_->read(h.hsp_.mismatches);
+		file_->read(h.hsp_.positives);
+		file_->read(h.hsp_.gaps);
+		file_->read(h.hsp_.length);
+		file_->read(h.hsp_.gap_openings);
+		file_->read(h.hsp_.query_range.begin_);
+		file_->read(h.hsp_.query_range.end_);
+		file_->read(h.hsp_.subject_range.begin_);
+		file_->read(h.hsp_.subject_range.end_);
+		file_->read(h.hsp_.bit_score);
+		file_->read(h.hsp_.evalue);
+		file_->read(h.hsp_.score);
+		file_->read(h.hsp_.approx_id);
+		h.hsp_.query_source_range = h.hsp_.query_range;
+		return h;
+	}
+
+private:
+
+	InputFile* file_;
+
 };

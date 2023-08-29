@@ -29,6 +29,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "zstd_stream.h"
 #endif
 
+using std::string;
+
 static StreamEntity* make_compressor(const Compressor c, StreamEntity* buffer) {
 	switch (c) {
 	case Compressor::ZLIB:
@@ -55,7 +57,7 @@ OutputFile::OutputFile(const string &file_name, Compressor compressor, const cha
 }
 
 #ifndef _MSC_VER
-OutputFile::OutputFile(pair<string, int> fd, const char *mode):
+OutputFile::OutputFile(std::pair<std::string, int> fd, const char *mode):
 	Serializer(new OutputStreamBuffer(new FileSink(fd.first, fd.second, mode))),
 	file_name_(fd.first)
 {

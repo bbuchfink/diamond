@@ -9,16 +9,17 @@
 #include <stdio.h>
 
 inline bool ends_with(const std::string &s, const char *t) {
-	const size_t l = strlen(t);
-	return s.length() >= l && strncmp(&s[s.length() - l], t, l) == 0;
+	if (s.length() < strlen(t))
+		return false;
+	return s.compare(s.length() - strlen(t), std::string::npos, t) == 0;
 }
 
-inline std::string& rstrip(std::string &s, const char *t) {
+inline std::string rstrip(const std::string &s, const char *t) {
 	const size_t l = strlen(t);
 	if (s.length() < l)
 		return s;
 	if (s.compare(s.length() - l, std::string::npos, t) == 0)
-		return s.erase(s.length() - l, std::string::npos);
+		return std::string(s.begin(), s.end() - l);
 	else
 		return s;
 }
@@ -46,15 +47,16 @@ std::string convert_size(size_t size);
 namespace Util { namespace String {
 
 // Workaround since sprintf is inconsistent in double rounding for different implementations.
-inline int format_double(double x, char *p) {
+inline int format_double(double x, char *p, int64_t buf_size) {
 	if (x >= 100.0)
-		return sprintf(p, "%lli", (long long)std::floor(x)); // for keeping output compatible with BLAST
+		return snprintf(p, buf_size, "%lli", (long long)std::floor(x)); // for keeping output compatible with BLAST
 	long long i = std::llround(x*10.0);
-	return sprintf(p, "%lli.%lli", i / 10, i % 10);
+	return snprintf(p, buf_size, "%lli.%lli", i / 10, i % 10);
 }
 
 std::string replace(const std::string& s, char a, char b);
 std::string ratio_percentage(const double x, const double y);
 std::string ratio_percentage(const size_t x, const size_t y);
+int64_t interpret_number(const std::string& s);
 
 }}

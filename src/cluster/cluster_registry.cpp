@@ -19,8 +19,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "cluster_registry.h"
 
-using namespace std;
-
 namespace Workflow { namespace Cluster{
 	const ClusterRegistryStatic ClusterRegistry::reg;
 }}

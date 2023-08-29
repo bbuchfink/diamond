@@ -1,0 +1,15 @@
+task:
+  name: build
+  arm_container:
+    image: gcc:latest
+    cpu: 1
+    memory: 4G
+  install_script: |
+    apt-get update && apt-get install cmake zlib1g-dev --yes --force-yes --no-install-suggests --no-install-recommends
+  compile_script: |
+    mkdir bin && cd bin
+    cmake -DCMAKE_BUILD_TYPE=Release ..
+    make
+  test_script: |
+    bin/diamond test
+    # gdb --ex=r -return-child-result -batch -ex bt --args bin/diamond test

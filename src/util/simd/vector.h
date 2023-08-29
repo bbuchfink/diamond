@@ -23,7 +23,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "../simd.h"
 
-#if ARCH_ID == 2
+#if ARCH_ID == 3
+#include "vector8_avx512.h"
+#elif ARCH_ID == 2
 #include "vector8_avx2.h"
 #elif defined(__ARM_NEON)
 #include "vector8_neon.h"

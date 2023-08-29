@@ -23,6 +23,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <stdexcept>
 #include "sequence.h"
 #include "../util.h"
+#include "../../stats/score_matrix.h"
+#include "translate.h"
+
+using std::vector;
+using std::array;
+using std::string;
+using std::min;
 
 namespace Util { namespace Seq {
 
@@ -85,6 +92,31 @@ std::string seqid(const char* title, bool short_seqids)
 		return s;
 }
 
+static const char* TAB_ERR = "Tabulator character in sequence title";
+static const char* SPACES_ERR = "Leading spaces in sequence title";
+static const char* BLANK_ERR = "Blank sequence title";
+
+const char* fix_title(string& s) {
+	size_t i = 0;
+	const char* r = nullptr;
+	while (i < s.length() && s[i] < 33) ++i;
+	if (i > 0) {
+		s.erase(0, i);
+		r = SPACES_ERR;
+	}
+	if (s.empty()) {
+		s = "N/A";
+		return BLANK_ERR;
+	}
+	for (size_t i = 0; i < s.length(); ++i) {
+		if (s[i] == '\t') {
+			s.replace(i, 1, "\\t");
+			r = TAB_ERR;
+		}
+	}
+	return r;
+}
+
 void get_title_def(const std::string& s, std::string& title, std::string& def)
 {
 	const size_t i = find_first_of(s.c_str(), id_delimiters);
@@ -96,7 +128,69 @@ void get_title_def(const std::string& s, std::string& title, std::string& def)
 }
 
 bool is_fully_masked(const Sequence& seq) {
-	return std::count(seq.data(), seq.end(), MASK_LETTER) == seq.length();
+	Loc n = 0;
+	for (const Letter* p = seq.data(); p < seq.end(); ++p)
+		if (*p >= TRUE_AA)
+			++n;
+	return n == seq.length();
+}
+
+array<vector<Letter>, 6> translate(const Sequence& seq) {
+	array<vector<Letter>, 6> out;
+	if (seq.length() < 3)
+		return out;
+	Translator::translate(seq, out.data());
+	return out;
+}
+
+Loc find_orfs(vector<Letter>& seq, const Loc min_len) {
+	vector<Letter>::iterator it, begin = seq.begin();
+	Loc n = 0;
+	while ((it = std::find(begin, seq.end(), STOP_LETTER)) != seq.end()) {
+		const Loc l = Loc(it - begin);
+		if (l < min_len)
+			std::fill(begin, it, MASK_LETTER);
+		else
+			n += l;
+		begin = it + 1;
+	}
+	const Loc l = Loc(seq.end() - begin);
+	if (l < min_len)
+		std::fill(begin, seq.end(), MASK_LETTER);
+	else
+		n += l;
+	return n;
+}
+
+bool looks_like_dna(const Sequence& seq) {
+	array<Loc, AMINO_ACID_COUNT> count;
+	count.fill(0);
+	for (Loc i = 0; i < seq.length(); ++i)
+		++count[(int)seq[i]];
+	return count[(int)value_traits.from_char('A')]
+		+ count[(int)value_traits.from_char('C')]
+		+ count[(int)value_traits.from_char('G')]
+		+ count[(int)value_traits.from_char('T')]
+		+ count[(int)value_traits.from_char('N')] == seq.length();
+}
+
+std::vector<Score> window_scores(Sequence seq1, Sequence seq2, Loc window) {
+	assert(seq1.length() == seq2.length());
+	vector<Score> v;
+	v.reserve(seq1.length());
+	Score s = 0;
+	const Loc l = min(seq1.length(), window);
+	for (Loc i = 0; i < l; ++i) {
+		s += score_matrix(seq1[i], seq2[i]);
+		v.push_back(s);
+	}
+	Loc j = 0;
+	for (Loc i = window; i < seq1.length(); ++i, ++j) {
+		s += score_matrix(seq1[i], seq2[i]);
+		s -= score_matrix(seq1[j], seq2[j]);
+		v.push_back(s);
+	}
+	return v;
 }
 
 }}

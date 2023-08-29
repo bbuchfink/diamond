@@ -11,6 +11,8 @@ using std::endl;
 using std::array;
 using std::unordered_multimap;
 using std::map;
+using std::vector;
+using std::string;
 
 struct Assoc {
 	uint8_t id, fam_idx;

@@ -27,9 +27,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/simd.h"
 
 typedef signed char Letter;
-typedef enum { amino_acid=0, nucleotide=1 } SequenceType;
+enum class SequenceType : int32_t { amino_acid=0, nucleotide=1 };
 struct Amino_acid {};
 struct Nucleotide {};
+
 
 struct invalid_sequence_char_exception : public std::exception
 {
@@ -68,7 +69,10 @@ struct ValueTraits
 };
 
 #define AMINO_ACID_ALPHABET "ARNDCQEGHILKMFPSTWYVBJZX*_"
-#define AMINO_ACID_COUNT (sizeof(AMINO_ACID_ALPHABET) - 1)
+#define AMINO_ACID_COUNT (int(sizeof(AMINO_ACID_ALPHABET) - 1))
+
+#define NUCLEOTIDE_ALPHABET "ACGTN"
+#define NUCLEOTIDE_COUNT (sizeof(NUCLEOTIDE_ALPHABET) -1)
 
 constexpr Letter MASK_LETTER = 23;
 constexpr Letter STOP_LETTER = 24;
@@ -92,13 +96,21 @@ static inline Letter letter_mask(Letter x) {
 
 #ifdef __SSE2__
 static inline __m128i letter_mask(__m128i x) {
-	return _mm_and_si128(x, SIMD::_mm_set1_epi8(LETTER_MASK));
+#ifdef SEQ_MASK
+	return _mm_and_si128(x, _mm_set1_epi8(LETTER_MASK));
+#else
+	return x;
+#endif
 }
 #endif
 
 #ifdef __AVX2__
 static inline __m256i letter_mask(__m256i x) {
-	return _mm256_and_si256(x, ::SIMD::_mm256_set1_epi8(LETTER_MASK));
+#ifdef SEQ_MASK
+	return _mm256_and_si256(x, _mm256_set1_epi8(LETTER_MASK));
+#else
+	return x;
+#endif
 }
 #endif
 
@@ -118,9 +130,9 @@ static inline char to_char(Letter a)
 	return value_traits.alphabet[(long)a];
 }
 
-struct Align_mode
+struct AlignMode
 {
-	Align_mode(unsigned mode);
+	AlignMode(unsigned mode);
 	static unsigned from_command(unsigned command);
 	int check_context(int i) const
 	{
@@ -134,7 +146,7 @@ struct Align_mode
 	bool query_translated;
 };
 
-extern Align_mode align_mode;
+extern AlignMode align_mode;
 extern const Letter IUPACAA_TO_STD[32];
 extern const Letter NCBI_TO_STD[28];
 
@@ -151,3 +163,10 @@ void alph_ncbi_to_std(const It begin, const It end) {
 }
 
 using Loc = int32_t;
+using BlockId = int32_t;
+using OId = int64_t;
+using DictId = int64_t;
+using Score = int32_t;
+using TaxId = int32_t;
+using CentroidId = OId;
+using SuperBlockId = int32_t;

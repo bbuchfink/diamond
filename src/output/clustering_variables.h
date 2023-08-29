@@ -21,11 +21,20 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <string>
 #include "../stats/score_matrix.h"
 #include "../basic/match.h"
+#include "def.h"
+#include "../dp/flags.h"
+#include "def.h"
 
 class Variable{
 public:
-	virtual double get(const HspContext& r) = 0;
+	Variable(const HspValues hsp_values = HspValues::NONE, const Output::Flags flags = Output::Flags::NONE):
+		hsp_values(hsp_values),
+		flags(flags)
+	{}
+	virtual double get(const HspContext& r) const = 0;
 	virtual ~Variable(){};
+	const HspValues hsp_values;
+	const Output::Flags flags;
 };
 
 class QueryLength: public Variable{
@@ -33,7 +42,7 @@ public:
 	static const std::string get_name(){
 		return "qlen";
 	}
-	double get(const HspContext& r){
+	virtual double get(const HspContext& r) const override {
 		return r.query.source().length();
 	}
 };
@@ -42,43 +51,55 @@ public:
 	static const std::string get_name(){
 		return "slen";
 	}
-	double get(const HspContext& r){
+	virtual double get(const HspContext& r) const override {
 		return r.subject_len;
 	}
 };
 class QueryStart: public Variable{
 public:
+	QueryStart():
+		Variable(HspValues::QUERY_START)
+	{}
 	static const std::string get_name(){
 		return "qstart";
 	}
-	double get(const HspContext& r){
+	virtual double get(const HspContext& r) const override {
 		return r.oriented_query_range().begin_ + 1;
 	}
 };
 class QueryEnd: public Variable{
 public:
+	QueryEnd() :
+		Variable(HspValues::QUERY_END)
+	{}
 	static const std::string get_name(){
 		return "qend";
 	}
-	double get(const HspContext& r){
+	virtual double get(const HspContext& r) const override {
 		return r.oriented_query_range().end_ + 1;
 	}
 };
 class SubjectStart: public Variable{
 public:
+	SubjectStart() :
+		Variable(HspValues::TARGET_START)
+	{}
 	static const std::string get_name(){
 		return "sstart";
 	}
-	double get(const HspContext& r){
+	virtual double get(const HspContext& r) const override {
 		return r.subject_range().begin_ + 1;
 	}
 };
 class SubjectEnd: public Variable{
 public:
+	SubjectEnd() :
+		Variable(HspValues::TARGET_END)
+	{}
 	static const std::string get_name(){
 		return "send";
 	}
-	double get(const HspContext& r){
+	virtual double get(const HspContext& r) const override {
 		return r.subject_range().end_;
 	}
 };
@@ -87,7 +108,7 @@ public:
 	static const std::string get_name(){
 		return "evalue";
 	}
-	double get(const HspContext& r){
+	virtual double get(const HspContext& r) const override {
 		return r.evalue();
 	}
 };
@@ -96,88 +117,112 @@ public:
 	static const std::string get_name(){
 		return "bitscore";
 	}
-	double get(const HspContext& r){
+	virtual double get(const HspContext& r) const override {
 		return r.bit_score();
 	}
 };
-class Score: public Variable{
+class RawScore: public Variable{
 public:
 	static const std::string get_name(){
 		return "score";
 	}
-	double get(const HspContext& r){
+	virtual double get(const HspContext& r) const override {
 		return r.score();
 	}
 };
 class Length: public Variable{
 public:
+	Length():
+		Variable(HspValues::LENGTH)
+	{}
 	static const std::string get_name(){
 		return "length";
 	}
-	double get(const HspContext& r){
+	virtual double get(const HspContext& r) const override {
 		return r.length();
 	}
 };
 class PercentIdenticalMatches: public Variable{
 public:
+	PercentIdenticalMatches():
+		Variable(HspValues::LENGTH | HspValues::IDENT)
+	{}
 	static const std::string get_name(){
 		return "pident";
 	}
-	double get(const HspContext& r){
+	virtual double get(const HspContext& r) const override {
 		return (double)r.identities() * 100 / r.length();
 	}
 };
 class NumberIdenticalMatches: public Variable{
 public:
+	NumberIdenticalMatches() :
+		Variable(HspValues::IDENT)
+	{}
 	static const std::string get_name(){
 		return "nident";
 	}
-	double get(const HspContext& r){
+	virtual double get(const HspContext& r) const override {
 		return r.identities();
 	}
 };
 class NumberMismatches: public Variable{
 public:
+	NumberMismatches() :
+		Variable(HspValues::MISMATCHES)
+	{}
 	static const std::string get_name(){
 		return "mismatch";
 	}
-	double get(const HspContext& r){
+	virtual double get(const HspContext& r) const override {
 		return r.mismatches();
 	}
 };
 class NumberPositiveMatches: public Variable{
 public:
+	NumberPositiveMatches() :
+		Variable(HspValues::TRANSCRIPT)
+	{}
 	static const std::string get_name(){
 		return "positive";
 	}
-	double get(const HspContext& r){
+	virtual double get(const HspContext& r) const override {
 		return r.positives();
 	}
 };
 class NumberGapOpenings: public Variable{
 public:
+	NumberGapOpenings() :
+		Variable(HspValues::GAP_OPENINGS)
+	{}
 	static const std::string get_name(){
 		return "gapopen";
 	}
-	double get(const HspContext& r){
+	virtual double get(const HspContext& r) const override {
 		return r.gap_openings();
 	}
 };
 class NumberGaps: public Variable{
 public:
+	NumberGaps() :
+		Variable(HspValues::GAPS)
+	{}
 	static const std::string get_name(){
 		return "gaps";
 	}
-	double get(const HspContext& r){
+	virtual double get(const HspContext& r) const override {
 		return r.gaps();
 	}
 };
 class PercentagePositiveMatches: public Variable{
 public:
+	PercentagePositiveMatches() :
+		Variable(HspValues::TRANSCRIPT)
+	{}
 	static const std::string get_name(){
 		return "ppos";
 	}
-	double get(const HspContext& r){
+	virtual double get(const HspContext& r) const override {
 		return (double)r.positives() * 100.0 / r.length();
 	}
 };
@@ -186,35 +231,44 @@ public:
 	static const std::string get_name(){
 		return "qframe";
 	}
-	double get(const HspContext& r){
+	virtual double get(const HspContext& r) const override {
 		return r.blast_query_frame();
 	}
 };
 class QueryCoveragePerHsp: public Variable{
 public:
+	QueryCoveragePerHsp() :
+		Variable(HspValues::QUERY_COORDS)
+	{}
 	static const std::string get_name(){
 		return "qcovhsp";
 	}
-	double get(const HspContext& r){
+	virtual double get(const HspContext& r) const override {
 		return (double)r.query_source_range().length()*100.0 / r.query.source().length();
 	}
 };
 class SubjectCoveragePerHsp: public Variable{
 public:
+	SubjectCoveragePerHsp() :
+		Variable(HspValues::TARGET_COORDS)
+	{}
 	static const std::string get_name(){
 		return "scovhsp";
 	}
-	double get(const HspContext& r){
+	virtual double get(const HspContext& r) const override {
 		return (double)r.subject_range().length() * 100.0 / r.subject_len;
 	}
 };
-class UngappedScore: public Variable{
-public:
-	static const std::string get_name(){
-		return "ungapped_score";
+
+struct NormalizedBitScoreGlobal : public Variable {
+	NormalizedBitScoreGlobal():
+		Variable(HspValues::NONE, Output::Flags::SELF_ALN_SCORES)
+	{}
+	static const std::string get_name() {
+		return "normalized_bitscore_global";
 	}
-	double get(const HspContext& r){
-		return score_matrix.bitscore(r.ungapped_score);
+	virtual double get(const HspContext& r) const override {
+		return r.bit_score() / std::max(r.query_self_aln_score, r.target_self_aln_score) * 100;
 	}
 };
 
@@ -231,7 +285,7 @@ public:
 		regMap[SubjectEnd::get_name()] = new SubjectEnd();
 		regMap[EValue::get_name()] = new EValue();
 		regMap[BitScore::get_name()] = new BitScore();
-		regMap[Score::get_name()] = new Score();
+		regMap[RawScore::get_name()] = new RawScore();
 		regMap[Length::get_name()] = new Length();
 		regMap[PercentIdenticalMatches::get_name()] = new PercentIdenticalMatches();
 		regMap[NumberIdenticalMatches::get_name()] = new NumberIdenticalMatches();
@@ -243,7 +297,7 @@ public:
 		regMap[QueryFrame::get_name()] = new QueryFrame();
 		regMap[QueryCoveragePerHsp::get_name()] = new QueryCoveragePerHsp();
 		regMap[SubjectCoveragePerHsp::get_name()] = new SubjectCoveragePerHsp();
-		regMap[UngappedScore::get_name()] = new UngappedScore();
+		regMap[NormalizedBitScoreGlobal::get_name()] = new NormalizedBitScoreGlobal();
 	}
 	~StaticVariableRegistry(){
 		for(auto it = regMap.begin(); it != regMap.end(); it++){
@@ -261,9 +315,9 @@ public:
 	bool has(std::string key) const {
 		return regMap.find(key) != regMap.end();
 	}
-	vector<std::string> getKeys() const {
+	std::vector<std::string> getKeys() const {
 		auto it = regMap.begin();
-		vector<std::string> keys;
+		std::vector<std::string> keys;
 		while(it != regMap.end()){
 			keys.push_back(it->first);
 			it++;
@@ -281,7 +335,7 @@ public:
 	static bool has(std::string key){
 		return vr.has(key);
 	}
-	static vector<std::string> getKeys(){
+	static std::vector<std::string> getKeys(){
 		return vr.getKeys();
 	}
 };

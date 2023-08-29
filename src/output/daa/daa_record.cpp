@@ -21,7 +21,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../output.h"
 
 DAA_format::DAA_format() :
-	Output_format(daa, HspValues::TRANSCRIPT, config.salltitles ? Output::Flags::FULL_TITLES : (config.sallseqid ? Output::Flags::ALL_SEQIDS : Output::Flags::NONE))
+	OutputFormat(daa, HspValues::TRANSCRIPT, config.salltitles ? Output::Flags::FULL_TITLES : (config.sallseqid ? Output::Flags::ALL_SEQIDS : Output::Flags::NONE))
 {}
 
 BinaryBuffer::Iterator DAA_query_record::init(const BinaryBuffer &buf)
@@ -32,7 +32,7 @@ BinaryBuffer::Iterator DAA_query_record::init(const BinaryBuffer &buf)
 	it >> query_name;
 	uint8_t flags;
 	it >> flags;
-	if (file_.mode() == Align_mode::blastp) {
+	if (file_.mode() == AlignMode::blastp) {
 		Packed_sequence seq(it, query_len, false, 5);
 		seq.unpack(context[0], 5, query_len);
 		query_seq = TranslatedSequence(Sequence(context[0]));
@@ -47,38 +47,38 @@ BinaryBuffer::Iterator DAA_query_record::init(const BinaryBuffer &buf)
 	return it;
 }
 
-BinaryBuffer::Iterator& operator>>(BinaryBuffer::Iterator &it, DAA_query_record::Match &r)
+void DAA_query_record::Match::read(BinaryBuffer::Iterator &it)
 {
-	const uint32_t old_subject = r.subject_id;
-	it >> r.subject_id;
-	if (r.subject_id == old_subject)
-		++r.hsp_num;
+	const uint32_t old_subject = subject_id;
+	it >> subject_id;
+	if (subject_id == old_subject)
+		++hsp_num;
 	else {
-		r.hsp_num = 0;
-		++r.hit_num;
+		hsp_num = 0;
+		++hit_num;
 	}
 	uint8_t flag;
 	it >> flag;
-	it.read_packed(flag & 3, r.score);
+	it.read_packed(flag & 3, score);
 	uint32_t query_begin, subject_begin;
 	it.read_packed((flag >> 2) & 3, query_begin);
 	it.read_packed((flag >> 4) & 3, subject_begin);
-	r.subject_range.begin_ = (int)subject_begin;
-	r.transcript.read(it);
-	r.subject_name = r.parent_.file_.ref_name(r.subject_id);
-	r.subject_len = r.parent_.file_.ref_len(r.subject_id);
-	if (r.parent_.file_.mode() == Align_mode::blastx) {
-		r.frame = (flag&(1 << 6)) == 0 ? query_begin % 3 : 3 + (r.parent_.source_seq.size() - 1 - query_begin) % 3;
-		r.set_translated_query_begin(query_begin, (unsigned)r.parent_.source_seq.size());
+	subject_range.begin_ = (int)subject_begin;
+	transcript.read(it);
+	subject_name = parent_.file_.ref_name(subject_id);
+	subject_len = parent_.file_.ref_len(subject_id);
+	if (parent_.file_.mode() == AlignMode::blastx) {
+		frame = (flag&(1 << 6)) == 0 ? query_begin % 3 : 3 + (parent_.source_seq.size() - 1 - query_begin) % 3;
+		set_translated_query_begin(query_begin, (unsigned)parent_.source_seq.size());
 	}
-	else if (r.parent_.file_.mode() == Align_mode::blastp) {
-		r.frame = 0;
-		r.query_range.begin_ = query_begin;
+	else if (parent_.file_.mode() == AlignMode::blastp) {
+		frame = 0;
+		query_range.begin_ = query_begin;
 	}
-	r.context().parse();
-	r.evalue = score_matrix.evalue(r.score, r.parent_.context[0].size(), r.subject_len);
-	r.bit_score = score_matrix.bitscore(r.score);
-	return it;
+	
+	*(Hsp*)this = context().parse(nullptr).hsp();
+	evalue = score_matrix.evalue(score, (Loc)parent_.context[0].size(), subject_len);
+	bit_score = score_matrix.bitscore(score);
 }
 
 void copy_match_record_raw(BinaryBuffer::Iterator& it, TextBuffer& buf, const std::unordered_map<uint32_t, uint32_t>& subject_map) {

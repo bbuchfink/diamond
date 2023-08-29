@@ -23,7 +23,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <vector>
 #include <stdint.h>
 #include "../basic/sequence.h"
-#include "../basic/diagonal_segment.h"
+#include "../util/geo/diagonal_segment.h"
 #include "../basic/match.h"
 
 struct No_score_correction
@@ -41,7 +41,7 @@ struct Bias_correction : public std::vector<float>
 		score += (*this)[query_anchor + i * mult];
 	}
 	int operator()(const Hsp &hsp) const;
-	int operator()(const Diagonal_segment &d) const;
+	int operator()(const DiagonalSegment &d) const;
 	static std::vector<int8_t> reverse(const int8_t* p, const size_t len);
 	std::vector<int8_t> int8;
 };
