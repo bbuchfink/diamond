@@ -121,7 +121,7 @@ function(set_cxx_standard std flag)
 endfunction(set_cxx_standard)
 
 check_type_size(ptrdiff_t SIZEOF_PTRDIFF_T)
-check_type_size(int SIZEOF_INT_T)
+check_type_size(int SIZEOF_INT)
 
 check_cxx_compiler_flag("-std=gnu++14" HAS_GNUPP14)
 check_cxx_compiler_flag("-std=gnu++17" HAS_GNUPP17)
