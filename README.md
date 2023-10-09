@@ -58,7 +58,7 @@ For sequence clustering:
     of protein sequences at tree-of-life scale using DIAMOND DeepClust\", *bioRxiv*
     2023.01.24.525373; doi: https://doi.org/10.1101/2023.01.24.525373 
 
-Original publication:
+Original publication to cite DIAMOND until v0.9.25:
 
 -   Buchfink B, Xie C, Huson DH, \"Fast and sensitive protein alignment
     using DIAMOND\", *Nature Methods* **12**, 59-60 (2015).
