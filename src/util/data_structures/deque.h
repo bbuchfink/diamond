@@ -186,6 +186,11 @@ struct Deque {
 			return *this;
 		}
 
+		Iterator& operator-=(ptrdiff_t i) {
+			i_ -= i;
+			return *this;
+		}
+
 	private:
 
 		ptrdiff_t i_;
