@@ -3,6 +3,7 @@ DIAMOND protein aligner
 Copyright (C) 2020 Max Planck Society for the Advancement of Science e.V.
 
 Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
+Arm NEON port contributed by Martin Larralde <martin.larralde@embl.de>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -25,6 +26,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <stdint.h>
 #include <algorithm>
 #include "../intrin.h"
+#include "../simd.h"
 
 struct BitVector {
 
@@ -57,9 +59,28 @@ struct BitVector {
 	}
 
 	size_t one_count() const {
+		size_t i = 0;
 		size_t n = 0;
-		for (uint64_t x : data_)
-			n += popcount64(x);
+		const uint64_t* data = data_.data();
+
+#ifdef __ARM_NEON
+		uint16x8_t acc;
+		for (; i + 2 < data_.size(); ++i) {
+			const uint8x16_t block = vreinterpretq_u8_u64(vld1q_u64(&data[i]));
+			const uint8x16_t count = vcntq_u8(block);
+			acc = vpadalq_u8(acc, count);
+			/* Each loop increments each lane by up to 8, so the accumulator (which has 16-bit lanes) 
+			 * may overflow after 2^16 / 8 = 2^13 iterations.
+			 */
+			if ((i % (1 << 13)) == 0) {
+				n += vhsumq_u16(acc);
+				acc = veorq_u16(acc, acc);
+			}
+		}
+		n += vhsumq_u16(acc);
+#endif
+		for (; i < data_.size(); ++i)
+			n += popcount64(data[i]);
 		return n;
 	}
 

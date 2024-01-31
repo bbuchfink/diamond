@@ -180,6 +180,20 @@ static inline void store_sv(const DISPATCH_ARCH::ScoreVector<_t, DELTA> &sv, _p 
 
 #endif
 
+#ifdef __ARM_NEON
+template<int DELTA>
+static inline void store_sv(const DISPATCH_ARCH::ScoreVector<int8_t, DELTA> &sv, int8_t *dst)
+{
+	vst1q_s8(dst, sv.data_);
+}
+
+template<int DELTA>
+static inline void store_sv(const DISPATCH_ARCH::ScoreVector<int16_t, DELTA> &sv, int16_t *dst)
+{
+	vst1q_s16(dst, sv.data_);
+}
+#endif
+
 static inline int extract_channel(const int32_t v, const int i) {
 	return v;
 }

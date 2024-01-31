@@ -557,7 +557,7 @@ void banded_3frame_swipe_worker(std::vector<DpTarget>::const_iterator begin,
 	size_t pos;
 	vector<DpTarget> of;
 	while (begin + (pos = next->fetch_add(config.swipe_chunk_size)) < end)
-#ifdef __SSE2__
+#if defined(__SSE2__) | defined(__ARM_NEON)
 		if(score_only)
 			out->splice(out->end(), banded_3frame_swipe_targets<ScoreVector<int16_t, SHRT_MIN>>(begin + pos, min(begin + pos + config.swipe_chunk_size, end), score_only, *query, strand, stat, true, of));
 		else
@@ -571,7 +571,7 @@ void banded_3frame_swipe_worker(std::vector<DpTarget>::const_iterator begin,
 list<Hsp> banded_3frame_swipe(const TranslatedSequence &query, Strand strand, vector<DpTarget>::iterator target_begin, vector<DpTarget>::iterator target_end, DpStat &stat, bool score_only, bool parallel)
 {
 	vector<DpTarget> overflow16, overflow32;
-#ifdef __SSE2__
+#if defined (__SSE2__) | defined(__ARM_NEON)
 	TaskTimer timer("Banded 3frame swipe (sort)", parallel ? 3 : UINT_MAX);
 	std::stable_sort(target_begin, target_end);
 	list<Hsp> out;

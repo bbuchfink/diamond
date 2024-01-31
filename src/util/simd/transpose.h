@@ -21,7 +21,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #pragma once
 #include "../simd.h"
 
-#ifdef __SSE2__
+#if defined(__SSE2__) | defined(__ARM_NEON)
 #include "transpose16x16.h"
 #endif
 

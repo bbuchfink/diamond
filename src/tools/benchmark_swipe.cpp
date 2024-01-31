@@ -13,7 +13,7 @@ using std::array;
 
 namespace Benchmark { namespace DISPATCH_ARCH {
 
-#ifdef __SSE4_1__
+#if defined(__SSE4_1__) | defined(__ARM_NEON)
 
 static const size_t N = 256;
 using Sv = ScoreVector<int8_t, SCHAR_MIN>;

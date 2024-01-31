@@ -179,6 +179,9 @@ void info()
 #ifdef __POPCNT__
 	arch_flags.push_back("popcnt");
 #endif
+#ifdef __ARM_NEON
+	arch_flags.push_back("neon");
+#endif
 
 	cout << "Architecture flags: ";
 	for (vector<std::string>::const_iterator i = arch_flags.begin(); i != arch_flags.end(); ++i)

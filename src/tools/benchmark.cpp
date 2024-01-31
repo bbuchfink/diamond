@@ -57,23 +57,44 @@ using std::list;
 using std::array;
 using namespace DISPATCH_ARCH;
 
+template <size_t WIDTH>
+static inline void transpose_scalar(const signed char **data, size_t n, signed char *out) {
+	size_t x, y;
+	for (x = 0; x < WIDTH - n; ++x)
+		for (y = 0; y < WIDTH; ++y)
+			out[y*WIDTH+x] = 0;
+	for (; x < WIDTH; ++x)
+		for (y = 0; y < WIDTH; ++y)
+			out[y*WIDTH+x] = data[x + n - WIDTH][y];
+}
+
 namespace Benchmark { namespace DISPATCH_ARCH {
 
 #if defined(__SSE4_1__) && defined(EXTRA)
 void swipe_cell_update();
 #endif
 
-#ifdef __SSE4_1__
+#if defined(__SSE4_1__) | defined(__ARM_NEON)
 void benchmark_hamming(const Sequence& s1, const Sequence& s2) {
 	static const size_t n = 100000000llu;
 	high_resolution_clock::time_point t1 = high_resolution_clock::now();
 
 	Byte_finger_print_48 f1(s1.data()), f2 (s2.data());
 	for (size_t i = 0; i < n; ++i) {
+#ifdef __ARM_NEON
+		f1.r1 = veorq_s8(f1.r1, f1.r2);
+#else
 		f1.r1 = _mm_xor_si128(f1.r1, f1.r2);
+#endif
 		volatile unsigned y = f1.match(f2);
 	}
-	message_stream << "SSE hamming distance:\t\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * 48) * 1000 << " ps/Cell" << endl;
+ 
+#ifdef __ARM_NEON
+	message_stream << "NEON hamming distance:\t\t"
+#else
+	message_stream << "SSE hamming distance:\t\t"
+#endif
+		<< (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * 48) * 1000 << " ps/Cell" << endl;
 }
 #endif
 
@@ -96,7 +117,7 @@ void benchmark_ungapped(const Sequence& s1, const Sequence& s2)
 	message_stream << "Scalar ungapped extension:\t" << (double)time_span.count() / (n*64) * 1000 << " ps/Cell" << endl;
 }
 
-#if defined(__SSSE3__) && defined(__SSE4_1__)
+#if (defined(__SSSE3__) && defined(__SSE4_1__)) | defined(__aarch64__)
 void benchmark_ssse3_shuffle(const Sequence&s1, const Sequence&s2)
 {
 	static const size_t n = 100000000llu;
@@ -112,11 +133,16 @@ void benchmark_ssse3_shuffle(const Sequence&s1, const Sequence&s2)
 		sv  = ScoreVector<int8_t, SCHAR_MIN>(i & 15, seq);
 		volatile auto x = sv.data_;
 	}
-	message_stream << "SSSE3 score shuffle:\t\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * CHANNELS) * 1000 << " ps/Letter" << endl;
+#ifdef __ARM_NEON
+	message_stream << "NEON score shuffle:\t\t"
+#else
+	message_stream << "SSSE3 score shuffle:\t\t"
+#endif
+		<< (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * CHANNELS) * 1000 << " ps/Letter" << endl;
 }
 #endif
 
-#ifdef __SSE4_1__
+#if defined(__SSE4_1__) | defined(__ARM_NEON)
 void benchmark_ungapped_sse(const Sequence&s1, const Sequence&s2) {
 	static const size_t n = 1000000llu;
 	high_resolution_clock::time_point t1 = high_resolution_clock::now();
@@ -129,7 +155,12 @@ void benchmark_ungapped_sse(const Sequence&s1, const Sequence&s2) {
 	for (size_t i = 0; i < n; ++i) {
 		//::DP::ARCH_SSE4_1::window_ungapped(s1.data(), targets, 16, 64, out);
 	}
-	message_stream << "SSE ungapped extend:\t\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * 16 * 64) * 1000 << " ps/Cell" << endl;
+#ifdef __ARM_NEON
+	message_stream << "NEON ungapped extend:\t\t"
+#else
+	message_stream << "SSE ungapped extend:\t\t"
+#endif
+		<< (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * 16 * 64) * 1000 << " ps/Cell" << endl;
 
 #ifdef __AVX2__
 	{
@@ -149,7 +180,7 @@ void benchmark_ungapped_sse(const Sequence&s1, const Sequence&s2) {
 }
 #endif
 
-#ifdef __SSE2__
+#if defined(__SSE2__) | defined(__ARM_NEON)
 void benchmark_transpose() {
 	static const size_t n = 10000000llu;
 	static signed char in[256], out[256];
@@ -159,10 +190,22 @@ void benchmark_transpose() {
 
 	high_resolution_clock::time_point t1 = high_resolution_clock::now();
 	for (size_t i = 0; i < n; ++i) {
-		transpose((const signed char**)v, 16, out, __m128i());
+		transpose_scalar<16>((const signed char**)v, 16, out);
 		in[0] = out[0];
 	}
-	message_stream << "Matrix transpose 16x16 bytes:\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * 256) * 1000 << " ps/Letter" << endl;
+	message_stream << "Transpose (16x16, scalar):\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * 16 * 16) * 1000 << " ps/Letter" << endl;
+
+        high_resolution_clock::time_point t2 = high_resolution_clock::now();
+        for (size_t i = 0; i < n; ++i) {
+#if defined(__SSE2__)
+            transpose((const signed char**)v, 16, out, __m128i());
+#elif defined(__ARM_NEON)
+            transpose((const signed char**)v, 16, out, int8x16_t());
+#endif
+            in[0] = out[0];
+        }
+        message_stream << "Transpose (16x16, vectorized):\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t2).count() / (n * 16 * 16) * 1000 << " ps/Letter" << endl;
+
 
 #if ARCH_ID == 2
 	{
@@ -173,16 +216,23 @@ void benchmark_transpose() {
 
 		high_resolution_clock::time_point t1 = high_resolution_clock::now();
 		for (size_t i = 0; i < n; ++i) {
+			transpose_scalar<32>((const signed char**)v, 32, out);
+			in[0] = out[0];
+		}
+		message_stream << "Transpose (32x32, scalar):\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * 32 * 32) * 1000 << " ps/Letter" << endl;
+
+		high_resolution_clock::time_point t2 = high_resolution_clock::now();
+		for (size_t i = 0; i < n; ++i) {
 			transpose((const signed char**)v, 32, out, __m256i());
 			in[0] = out[0];
 		}
-		message_stream << "Matrix transpose 32x32 bytes:\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * 32 * 32) * 1000 << " ps/Letter" << endl;
+		message_stream << "Transpose(32x32, vectorized):\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t2).count() / (n * 32 * 32) * 1000 << " ps/Letter" << endl;
 	}
 #endif
 }
 #endif
 
-#ifdef __SSE4_1__
+#if defined(__SSE4_1__) | defined(__ARM_NEON)
 
 void mt_swipe(const Sequence& s1, const Sequence& s2) {
 	//constexpr int CHANNELS = 16;
@@ -402,7 +452,7 @@ void prefix_scan(const Sequence& s1, const Sequence& s2) {
 
 #endif
 
-#ifdef __SSE4_1__
+#if defined(__SSE4_1__) | defined(__ARM_NEON)
 void diag_scores(const Sequence& s1, const Sequence& s2) {
 	static const size_t n = 100000llu;
 	high_resolution_clock::time_point t1 = high_resolution_clock::now();
@@ -478,7 +528,7 @@ void benchmark() {
 	}
 
 	vector<Letter> s1, s2, s3, s4;
-		
+
 	s1 = Sequence::from_string("mpeeeysefkelilqkelhvvyalshvcgqdrtllasillriflhekleslllctlndreismedeattlfrattlastlmeqymkatatqfvhhalkdsilkimeskqscelspskleknedvntnlthllnilselvekifmaseilpptlryiygclqksvqhkwptnttmrtrvvsgfvflrlicpailnprmfniisdspspiaartlilvaksvqnlanlvefgakepymegvnpfiksnkhrmimfldelgnvpelpdttehsrtdlsrdlaalheicvahsdelrtlsnergaqqhvlkkllaitellqqkqnqyt"); // d1wera_
 	s2 = Sequence::from_string("erlvelvtmmgdqgelpiamalanvvpcsqwdelarvlvtlfdsrhllyqllwnmfskeveladsmqtlfrgnslaskimtfcfkvygatylqklldpllrivitssdwqhvsfevdptrlepsesleenqrnllqmtekffhaiissssefppqlrsvchclyqvvsqrfpqnsigavgsamflrfinpaivspyeagildkkpppiierglklmskilqsianhvlftkeehmrpfndfvksnfdaarrffldiasdcptsdavnhslsfisdgnvlalhrllwnnqekigqylssnrdhkavgrrpfdkmatllaylgppe"); // d1nf1a_
 	s3 = Sequence::from_string("ttfgrcavksnqagggtrshdwwpcqlrldvlrqfqpsqnplggdfdyaeafqsldyeavkkdiaalmtesqdwwpadfgnygglfvrmawhsagtyramdgrggggmgqqrfaplnswpdnqnldkarrliwpikqkygnkiswadlmlltgnvalenmgfktlgfgggradtwqsdeavywgaettfvpqgndvrynnsvdinaradklekplaathmgliyvnpegpngtpdpaasakdireafgrmgmndtetvaliagghafgkthgavkgsnigpapeaadlgmqglgwhnsvgdgngpnqmtsgleviwtktptkwsngyleslinnnwtlvespagahqweavngtvdypdpfdktkfrkatmltsdlalindpeylkisqrwlehpeeladafakawfkllhrdlgpttrylgpevp"); // d3ut2a1
@@ -487,7 +537,7 @@ void benchmark() {
 	Sequence ss1 = Sequence(s1).subseq(34, (Loc)s1.size());
 	Sequence ss2 = Sequence(s2).subseq(33, (Loc)s2.size());
 
-#ifdef __SSE4_1__
+#if defined(__SSE4_1__) | defined(__ARM_NEON)
 	//mt_swipe(s3, s4);
 #endif
 #if ARCH_ID == 2
@@ -499,26 +549,26 @@ void benchmark() {
 #ifdef __SSE2__
 	prefix_scan(s1, s2);
 #endif
-#ifdef __SSE4_1__
+#if defined(__SSE4_1__) | defined(__ARM_NEON)
 	swipe(s3, s4);
 	diag_scores(s1, s2);
 #endif
-#ifdef __SSE2__
+#if defined(__SSE2__) | defined(__ARM_NEON)
 	banded_swipe(s1, s2);
 #endif
 	evalue();
 	matrix_adjust(s1, s2);
-#ifdef __SSE4_1__
+#if defined(__SSE4_1__) | defined(__ARM_NEON)
 	benchmark_hamming(s1, s2);
 #endif
 	benchmark_ungapped(ss1, ss2);
-#if defined(__SSSE3__) && defined(__SSE4_1__)
+#if (defined(__SSSE3__) && defined(__SSE4_1__)) | defined(__aarch64__)
 	benchmark_ssse3_shuffle(s1, s2);
 #endif
-#ifdef __SSE4_1__
+#if defined(__SSE4_1__) | defined(__ARM_NEON)
 	benchmark_ungapped_sse(ss1, ss2);
 #endif
-#ifdef __SSE2__
+#if defined(__SSE2__) | defined(__ARM_NEON)
 	benchmark_transpose();
 #endif
 }

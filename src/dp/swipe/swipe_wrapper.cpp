@@ -78,11 +78,13 @@ unsigned bin(HspValues v, int query_len, int score, int ungapped_score, const in
 		b = std::max(b, 1u);
 	b = std::max(b, score_width);
 	b = std::max(b, bin(mismatch_est));
+#ifndef __ARM_NEON
 #ifndef __SSE4_1__
 	b = std::max(b, 1u);
 #endif
 #ifndef __SSE2__
 	b = 2;
+#endif
 #endif
 	if (v != HspValues::NONE) {
 		b = std::max(b, bin(query_len));
@@ -316,7 +318,7 @@ static pair<list<Hsp>, vector<DpTarget>> swipe_bin(const unsigned bin, const It 
 	p.stat.inc(Statistics::value(Statistics::EXT8 + bin), end - begin);
 	TaskTimer timer;
 	switch (bin) {
-#ifdef __SSE4_1__
+#if defined(__SSE4_1__) | defined(__ARM_NEON)
 	case 0:
 	case 3:
 		if (flag_any(p.flags, Flags::SEMI_GLOBAL))
@@ -325,7 +327,7 @@ static pair<list<Hsp>, vector<DpTarget>> swipe_bin(const unsigned bin, const It 
 			out = swipe_threads<::DISPATCH_ARCH::ScoreVector<int8_t, SCHAR_MIN>, It>(begin, end, overflow, round, bin, p);
 		break;
 #endif
-#ifdef __SSE2__
+#if defined(__SSE2__) | defined(__ARM_NEON)
 	case 1:
 	case 4:
 		if (flag_any(p.flags, Flags::SEMI_GLOBAL))

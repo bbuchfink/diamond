@@ -60,7 +60,7 @@ void scan_diags128(const LongScoreProfile<int8_t>& qp, Sequence s, int d_begin, 
 	max4.store(scores + 96);
 	for (int i = 0; i < 128; ++i)
 		out[i] = ScoreTraits<Sv>::int_score(scores[i]);
-#elif defined(__SSE4_1__)
+#elif defined(__SSE4_1__) | defined(__ARM_NEON)
 	using Sv = ScoreVector<int8_t, SCHAR_MIN>;
 	const int qlen = (int)qp.length();
 
@@ -150,7 +150,7 @@ void scan_diags64(const LongScoreProfile<int8_t>& qp, Sequence s, int d_begin, i
 	max2.store(scores + 32);
 	for (int i = 0; i < 64; ++i)
 		out[i] = ScoreTraits<Sv>::int_score(scores[i]);
-#elif defined(__SSE4_1__)
+#elif defined(__SSE4_1__) | defined(__ARM_NEON)
 	using Sv = ScoreVector<int8_t, SCHAR_MIN>;
 	const int qlen = (int)qp.length();
 
@@ -225,7 +225,7 @@ void scan_diags(const LongScoreProfile<int8_t>& qp, Sequence s, int d_begin, int
 	max2.store(scores + 32);
 	for (int i = 0; i < 64; ++i)
 		out[i] = ScoreTraits<Sv>::int_score(scores[i]);
-#elif defined(__SSE4_1__)
+#elif defined(__SSE4_1__) | defined(__ARM_NEON)
 	using Sv = ScoreVector<int8_t, SCHAR_MIN>;
 	const int qlen = (int)qp.length();
 

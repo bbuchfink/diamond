@@ -3,6 +3,7 @@ DIAMOND protein aligner
 Copyright (C) 2020 Max Planck Society for the Advancement of Science e.V.
 
 Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
+Arm NEON port contributed by Martin Larralde <martin.larralde@embl.de>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -18,21 +19,71 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#ifndef SIMD_VECTOR_H_
-#define SIMD_VECTOR_H_
-
+#pragma once
+#include <stdint.h>
 #include "../simd.h"
 
-#if ARCH_ID == 3
-#include "vector8_avx512.h"
-#elif ARCH_ID == 2
-#include "vector8_avx2.h"
-#elif defined(__ARM_NEON)
-#include "vector8_neon.h"
-#elif defined(__SSE2__)
-#include "vector8_sse.h"
-#else
-#include "vector_generic.h"
-#endif
+namespace DISPATCH_ARCH { namespace SIMD {
 
-#endif
+template<>
+struct Vector<int8_t> {
+
+	static constexpr size_t CHANNELS = 16;
+
+	Vector()
+	{}
+
+	Vector(const signed char *p):
+		v(vld1q_s8(p))
+	{}
+
+	operator int8x16_t() const {
+		return v;
+	}
+
+	int8x16_t v;
+
+};
+
+template<>
+struct Vector<int16_t> {
+
+	static constexpr size_t CHANNELS = 8;
+
+	Vector()
+	{}
+
+	Vector(const int16_t* p) :
+		v(vld1q_s16(p))
+	{}
+
+	operator int16x8_t() const {
+		return v;
+	}
+
+	int16x8_t v;
+
+};
+
+template<>
+struct Vector<int32_t> {
+
+	static constexpr size_t CHANNELS = 1;
+
+	Vector()
+	{}
+
+	Vector(const int32_t* p) :
+		v(*p)
+	{}
+
+	operator int32_t() const {
+		return v;
+	}
+
+	int32_t v;
+
+};
+
+
+}}

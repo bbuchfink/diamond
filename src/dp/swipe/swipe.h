@@ -111,6 +111,13 @@ struct SwipeProfile
 		transpose(target_scores, 32, (int8_t*)data_, __m256i());
 		for (size_t i = 0; i < AMINO_ACID_COUNT; ++i)
 			data_[i].expand_from_8bit();
+#elif defined(__ARM_NEON)
+		transpose(target_scores, 16, (int8_t*)data_, int8x16_t());
+		for (int i = 0; i < 16; ++i)
+			target_scores[i] += 16;
+		transpose(target_scores, 16, (int8_t*)(&data_[16]), int8x16_t());
+		for (size_t i = 0; i < AMINO_ACID_COUNT; ++i)
+			data_[i].expand_from_8bit();
 #elif defined(__SSE2__)
 		transpose(target_scores, 16, (int8_t*)data_, __m128i());
 		for (int i = 0; i < 16; ++i)
@@ -155,6 +162,15 @@ struct SwipeProfile<int32_t>
 	{
 		int16_t s[8];
 		_mm_storeu_si128((__m128i*)s, seq);
+		const int* row = score_matrix.row((char)s[0]);
+		std::copy(row, row + 32, this->row);
+	}
+#endif
+#ifdef __ARM_NEON
+	void set(const int16x8_t& seq)
+	{
+		int16_t s[8];
+		vst1q_s16(s, seq);
 		const int* row = score_matrix.row((char)s[0]);
 		std::copy(row, row + 32, this->row);
 	}
