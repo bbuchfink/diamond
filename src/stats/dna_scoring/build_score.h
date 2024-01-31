@@ -38,8 +38,8 @@ private:
     int reward_,penalty_,gap_open_,gap_extend_;
     uint64_t target_length_;
     int64_t db_size_;
-    uint64_t calculate_length_adjustment(uint64_t length,int query_length, uint64_t target_length, int64_t db_size) const;
-    uint64_t calculate_length_adjustment(uint64_t length,int query_length, uint64_t target_length) const;
+    double calculate_length_adjustment(uint64_t length,int query_length, uint64_t target_length, int64_t db_size) const;
+    double calculate_length_adjustment(uint64_t length,int query_length, uint64_t target_length) const;
     double expected_hsp_value(int query_length, uint64_t target_length) const;
 };
 }

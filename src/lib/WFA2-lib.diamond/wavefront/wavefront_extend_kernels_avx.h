@@ -29,9 +29,19 @@
  * DESCRIPTION: WaveFront-Alignment module for the "extension" of exact matches
  */
 
-#ifndef WAVEFRONT_EXTEND_H_
-#define WAVEFRONT_EXTEND_H_
+#ifndef WAVEFRONT_EXTEND_AVX_H_
+#define WAVEFRONT_EXTEND_AVX_H_
+
+#if __AVX2__
 
 #include "wavefront_aligner.h"
 
-#endif /* WAVEFRONT_EXTEND_H_ */
+void wavefront_extend_matches_packed_end2end_avx2(
+    wavefront_aligner_t* const wf_aligner,
+    wavefront_t* const mwavefront,
+    const int lo,
+    const int hi);
+
+#endif // AVX2
+
+#endif /* WAVEFRONT_EXTEND_AVX_H_ */

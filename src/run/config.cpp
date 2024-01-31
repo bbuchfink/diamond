@@ -13,6 +13,11 @@
 #include "../align/def.h"
 #include "../dna/dna_index.h"
 
+#ifdef WITH_DNA
+#include "../dna/extension.h"
+#include "../dna/timer.h"
+#endif
+
 
 using std::endl;
 using std::runtime_error;
@@ -110,6 +115,10 @@ Config::Config() :
                 config.gap_open = 5;
             if (config.gap_extend == -1)
                 config.gap_extend = 2;
+#ifdef WITH_DNA
+            timer.reset(new Dna::TotalTime());
+#endif
+
     }
 
 	if (config.ext_.empty()) {
@@ -143,6 +152,12 @@ Config::Config() :
 
 	if (config.minimizer_window_ && config.algo == ::Config::Algo::CTG_SEED)
 		throw runtime_error("Minimizer setting is not compatible with contiguous seed mode.");
+
+	if (config.query_cover == config.subject_cover && config.min_length_ratio == 0.0) {
+		min_length_ratio = config.lin_stage1 ? std::min(config.query_cover / 100 + 0.05, 1.0) : std::max(config.query_cover / 100 - 0.05, 0.0);
+	}
+	else
+		min_length_ratio = config.min_length_ratio;
 }
 
 Config::~Config() {

@@ -73,6 +73,7 @@ struct TaxonomyNodes
 	unsigned get_lca(unsigned t1, unsigned t2) const;
 	bool contained(TaxId query, const std::set<TaxId> &filter);
 	bool contained(const std::vector<TaxId>& query, const std::set<TaxId> &filter);
+	std::vector<TaxId> lineage(TaxId taxid) const;
 
 private:
 

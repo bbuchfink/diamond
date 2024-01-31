@@ -16,12 +16,12 @@ struct NoFilter
 
 extern NoFilter no_filter;
 
-#ifdef KEEP_TARGET_ID
-struct SeedLoc {
-	SeedLoc() {}
-	SeedLoc(PackedLoc pos) :
+#pragma pack(1)
+struct PackedLocId {
+	PackedLocId() {}
+	PackedLocId(PackedLoc pos) :
 		pos(pos) {}
-	SeedLoc(PackedLoc pos, uint32_t block_id) :
+	PackedLocId(PackedLoc pos, uint32_t block_id) :
 		pos(pos),
 		block_id(block_id)
 	{}
@@ -30,10 +30,16 @@ struct SeedLoc {
 	}
 	PackedLoc pos;
 	uint32_t block_id;
-};
-#else
-using SeedLoc = PackedLoc;
-#endif
+} PACKED_ATTRIBUTE;
+#pragma pack()
+
+static inline uint32_t block_id(PackedLocId i) {
+	return i.block_id;
+}
+
+static inline uint32_t block_id(PackedLoc i) {
+	throw std::runtime_error("Unsupported");
+}
 
 struct EnumCfg {
 	const std::vector<size_t>* partition;

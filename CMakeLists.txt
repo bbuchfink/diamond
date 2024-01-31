@@ -18,7 +18,6 @@ option(DP_STAT "DP_STAT" OFF)
 option(SINGLE_THREADED "SINGLE_THREADED" OFF)
 option(EIGEN_BLAS "EIGEN_BLAS" OFF)
 option(WITH_ZSTD "WITH_ZSTD" OFF)
-option(KEEP_TARGET_ID "KEEP_TARGET_ID" OFF)
 option(HIT_KEEP_TARGET_ID "HIT_KEEP_TARGET_ID" OFF)
 option(LONG_SEEDS "LONG_SEEDS" OFF)
 option(WITH_AVX512 "WITH_AVX512" OFF)
@@ -76,10 +75,6 @@ if(EXTRA)
   add_definitions(-DEXTRA)
 endif()
 
-if(KEEP_TARGET_ID)
-  add_definitions(-DKEEP_TARGET_ID)
-endif()
-
 if(HIT_KEEP_TARGET_ID)
   add_definitions(-DHIT_KEEP_TARGET_ID)
 endif()
@@ -100,7 +95,12 @@ if(WITH_MCL)
   add_definitions(-DWITH_MCL)
 endif()
 
+if(WITH_FAMSA)
+  add_definitions(-DWITH_FAMSA)
+endif()
+
 add_definitions(-DMAX_SHAPE_LEN=${MAX_SHAPE_LEN})
+add_definitions(-D_ITERATOR_DEBUG_LEVEL=0)
 
 IF(STATIC_LIBGCC)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -static-libgcc")
@@ -146,13 +146,13 @@ endif()
 
 if (${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
   add_definitions(-D_CRT_SECURE_NO_WARNINGS)
+  add_definitions(-D_HAS_STD_BYTE=0)
 else()
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wno-implicit-fallthrough -Wreturn-type -Wno-unused -Wno-unused-parameter -Wno-unused-variable -Wno-uninitialized -Wno-deprecated-copy -Wno-unknown-warning-option")
-  # -fsanitize=address -fno-omit-frame-pointer
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wno-implicit-fallthrough -Wreturn-type -Wno-unused -Wno-unused-parameter -Wno-unused-variable -Wno-uninitialized -Wno-deprecated-copy -Wno-unknown-warning-option ")#-g -fsanitize=address -fno-omit-frame-pointer ")
 endif()
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-pragma-clang-attribute -Wno-overloaded-virtual -Wno-missing-braces")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-pragma-clang-attribute -Wno-overloaded-virtual -Wno-missing-braces") #-g -fsanitize=thread -fno-omit-frame-pointer" )
 endif()
 
 if (CMAKE_COMPILER_IS_GNUCC AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 5)
@@ -391,8 +391,6 @@ set(OBJECTS
         src/util/tsv/merge.cpp
         src/util/tsv/join.cpp
         src/dp/scalar/smith_waterman.cpp
-        src/cluster/incremental/config.cpp
-        src/cluster/incremental/run.cpp
         src/align/short.cpp
         src/tools/tsv.cpp
         )
@@ -402,10 +400,14 @@ if(WITH_DNA)
           src/dna/smith_watermann.cpp
           src/dna/dna_index.cpp
           src/dna/seed_set_dna.cpp
+          src/dna/extension.cpp
+          src/dna/chain.cpp
+          src/dna/extension_chain.cpp
+          #src/dna/align.cpp
           src/lib/ksw2/ksw2_extz2_sse.c
-          src/dna/ksw2_extension.cpp
+          src/lib/ksw2/ksw2_extz.c
           src/lib/WFA2-lib.diamond/bindings/cpp/WFAligner.cpp
-          )
+  )
 endif()
 
 if(WITH_MCL)
@@ -482,15 +484,10 @@ if(BLAST_INCLUDE_DIR)
   endif()
 endif()
 
-
-
 if(WITH_DNA)
   include_directories(src/lib/WFA2-lib.diamond)
   add_subdirectory(src/lib/WFA2-lib.diamond)
-
   target_link_libraries(diamond  wfa2)
-
-  target_compile_options(wfa2 PRIVATE -DCMAKE_BUILD_TYPE=Release -DEXTRA_FLAGS="-ftree-vectorize -msse2 -mfpmath=sse -ftree-vectorizer-verbose=5")
 endif()
 
 if(EIGEN_BLAS)

@@ -41,11 +41,12 @@ public:
 	static Letter getAminoAcidReverse(const Sequence&  dnaSequence, size_t pos)
 	{ return lookupReverse[(int) dnaSequence[pos + 2]][(int)dnaSequence[pos + 1]][(int)dnaSequence[pos]]; }
 
-	static std::vector<Letter> reverse(const std::vector<Letter> &seq)
+	static std::vector<Letter> reverse(const Sequence &seq)
 	{
 		std::vector<Letter> r;
-		for(std::vector<Letter>::const_reverse_iterator i=seq.rbegin(); i!=seq.rend(); ++i)
-			r.push_back(getReverseComplement(*i));
+        r.reserve(seq.len_+1);
+		for(const Letter* end = seq.data_ + seq.len_ -1 ; end >= seq.data_; --end)
+			r.push_back(getReverseComplement(*end));
 		return r;
 	}
 

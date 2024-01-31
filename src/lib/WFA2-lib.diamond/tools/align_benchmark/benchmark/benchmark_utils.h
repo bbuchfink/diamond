@@ -69,7 +69,6 @@ typedef struct {
   affine_penalties_t affine_penalties;
   affine2p_penalties_t affine2p_penalties;
   // Alignment form
-  bool ends_free;
   int pattern_begin_free;
   int text_begin_free;
   int pattern_end_free;

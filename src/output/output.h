@@ -96,8 +96,8 @@ void join_blocks(int64_t ref_blocks, Consumer &master_out, const PtrVector<TempF
 struct OutputWriter {
     OutputWriter(Consumer* file_, char sep = char(0), bool first = true):
     file_(file_),
-    sep(sep),
-    first(first)
+	first(first),
+    sep(sep)
     {};
 	void operator()(TextBuffer* buf) {
         if(!first && sep != char(0))

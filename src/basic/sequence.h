@@ -217,6 +217,9 @@ struct Sequence
 	double masked_letter_ratio() const {
 		return (double)masked_letters() / len_;
 	}
+	double length_ratio(const Sequence& seq) const {
+		return len_ < seq.len_ ? (double)len_ / seq.len_ : (double)seq.len_ / len_;
+	}
 	static std::vector<Letter> from_string(const char* str, const ValueTraits&vt = value_traits);
 
 	Loc len_;

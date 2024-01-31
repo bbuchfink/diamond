@@ -14,8 +14,11 @@ using std::runtime_error;
 
 namespace Search {
 
-KmerRanking::KmerRanking(const SequenceSet& queries, DoubleArray<SeedLoc> *query_seed_hits, DoubleArray<SeedLoc> *ref_seed_hits) {
-#ifdef KEEP_TARGET_ID
+KmerRanking::KmerRanking(const SequenceSet& queries, DoubleArray<PackedLoc>* query_seed_hits, DoubleArray<PackedLoc>* ref_seed_hits) {
+	throw runtime_error("Unsupported");
+}
+
+KmerRanking::KmerRanking(const SequenceSet& queries, DoubleArray<PackedLocId> *query_seed_hits, DoubleArray<PackedLocId> *ref_seed_hits) {
 	atomic_int seedp(0);
 	const auto query_count = queries.size();
 	atomic<float>* counts = new atomic<float>[query_count];
@@ -23,9 +26,9 @@ KmerRanking::KmerRanking(const SequenceSet& queries, DoubleArray<SeedLoc> *query
 	auto worker = [&] {
 		int p;
 		while ((p = seedp++) < Const::seedp) {
-			for (auto it = JoinIterator<SeedLoc>(query_seed_hits[p].begin(), ref_seed_hits[p].begin()); it;) {
-				const Range<SeedLoc*> query_hits = *it.r;
-				for (SeedLoc s : query_hits) {
+			for (auto it = JoinIterator<PackedLocId>(query_seed_hits[p].begin(), ref_seed_hits[p].begin()); it;) {
+				const Range<PackedLocId*> query_hits = *it.r;
+				for (PackedLocId s : query_hits) {
 					float value = counts[s.block_id].load();
 					while (!counts[s.block_id].compare_exchange_weak(value, value + (float)sqrt(it.s->size())));
 					//counts[s.block_id] += it.s->size();
@@ -37,7 +40,7 @@ KmerRanking::KmerRanking(const SequenceSet& queries, DoubleArray<SeedLoc> *query
 	};
 
 	vector<thread> threads;
-	for (size_t i = 0; i < config.threads_; ++i)
+	for (int i = 0; i < config.threads_; ++i)
 		threads.emplace_back(worker);
 	for (auto& i : threads)
 		i.join();
@@ -46,9 +49,6 @@ KmerRanking::KmerRanking(const SequenceSet& queries, DoubleArray<SeedLoc> *query
 	for (BlockId i = 0; i < query_count; ++i)
 		rank_.push_back(counts[i]);
 	delete[] counts;
-#else
-	throw runtime_error("Option only available when compiled with KEEP_TARGET_ID=ON");
-#endif
 }
 
 KmerRanking::KmerRanking(const SequenceSet& queries) {

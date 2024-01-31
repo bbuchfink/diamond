@@ -76,6 +76,7 @@ void search_shape(unsigned sid, int query_block, unsigned query_iteration, char*
 bool use_single_indexed(double coverage, size_t query_letters, size_t ref_letters);
 void setup_search(Sensitivity sens, Search::Config& cfg);
 MaskingAlgo soft_masking_algo(const SensitivityTraits& traits);
+bool keep_target_id(const Search::Config& cfg);
 
 }
 
@@ -114,7 +115,8 @@ struct WorkSet {
 	KmerRanking* kmer_ranking;
 };
 
-void run_stage1(JoinIterator<SeedLoc>& it, Search::WorkSet* work_set, const Search::Config* cfg);
+void run_stage1(JoinIterator<PackedLoc>& it, Search::WorkSet* work_set, const Search::Config* cfg);
+void run_stage1(JoinIterator<PackedLocId>& it, Search::WorkSet* work_set, const Search::Config* cfg);
 
 }
 

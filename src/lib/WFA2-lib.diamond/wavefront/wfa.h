@@ -42,16 +42,18 @@
 /*
  * Error codes & messages
  */
-// Success
-#define WF_STATUS_SUCCESSFUL               0
-// Errors
-#define WF_STATUS_UNFEASIBLE              -1
-#define WF_STATUS_MAX_SCORE_REACHED       -2
-#define WF_STATUS_OOM                     -3
-// Internal
-#define WF_STATUS_END_REACHED              1
+// [OK]
+#define WF_STATUS_ALG_COMPLETED            0  // Success (Complete alignment found)
+#define WF_STATUS_ALG_PARTIAL              1  // Success (Partial alignment found)
+// [FAIL]
+#define WF_STATUS_MAX_STEPS_REACHED     -100  // Maximum number of WFA-steps reached
+#define WF_STATUS_OOM                   -200  // Maximum memory limit reached
+#define WF_STATUS_UNATTAINABLE          -300  // Alignment unattainable under configured heuristics
+// [INTERNAL]
+#define WF_STATUS_OK                      -1  // Computing alignment (in progress)
+#define WF_STATUS_END_REACHED             -2  // Alignment end reached
+#define WF_STATUS_END_UNREACHABLE         -3  // Alignment end unreachable under current configuration (eg Z-drop)
 // Error messages
-extern char* wf_error_msg[5];
 char* wavefront_align_strerror(const int error_code);
 char* wavefront_align_strerror_short(const int error_code);
 
@@ -63,6 +65,7 @@ typedef struct {
   // Status
   int status;                                                     // Status code
   int score;                                                      // Current WF-alignment score
+  bool dropped;                                                   // Heuristically dropped
   int num_null_steps;                                             // Total contiguous null-steps performed
   uint64_t memory_used;                                           // Total memory used
   // Wavefront alignment functions
@@ -176,9 +179,9 @@ void wavefront_aligner_set_heuristic_banded_adaptive(
 /*
  * System configuration
  */
-void wavefront_aligner_set_max_alignment_score(
+void wavefront_aligner_set_max_alignment_steps(
     wavefront_aligner_t* const wf_aligner,
-    const int max_alignment_score);
+    const int max_alignment_steps);
 void wavefront_aligner_set_max_memory(
     wavefront_aligner_t* const wf_aligner,
     const uint64_t max_memory_resident,

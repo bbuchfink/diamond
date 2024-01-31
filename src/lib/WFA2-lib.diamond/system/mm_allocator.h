@@ -35,6 +35,7 @@
 #ifndef MM_ALLOCATOR_H_
 #define MM_ALLOCATOR_H_
 
+#include <stdbool.h>
 #include "utils/vector.h"
 
 /*

@@ -25,19 +25,36 @@ namespace Dna{
 
 struct SeedMatch{
     SeedMatch(Loc i, BlockId id, Loc j);
-    void ungapped_score(int score){ungapped_score_ = score;}
-    int ungapped_score()const{return ungapped_score_;}
+    int ungapped_score()const{return score_;}
+    void l_ungapped(int l){this->l_ungapped_ = l;}
+    void score(int r){this->score_ = r;}
+    int l_ungapped()const{return l_ungapped_;}
     Loc i()const{return i_;}
     Loc j()const{return j_;}
     BlockId id()const{return target_id_;}
+    int i_end() const {
+        return i_ + score_ - 1;
+    }
+    int j_end() const {
+        return j_ + score_ - 1;
+    }
+    void set_i(Loc new_i) {
+        i_ = new_i;
+    }
+    void set_j(Loc new_j) {
+        j_ = new_j;
+    }
+
     bool operator>(const SeedMatch& hit)const
     {return this->id() < hit.id() || ((this->id() == hit.id()) && this->ungapped_score() > hit.ungapped_score());}
 
+
 private:
     Loc i_;
-    BlockId target_id_;
     Loc j_;
-    int ungapped_score_;
+    BlockId target_id_;
+    int l_ungapped_;
+    int score_;
 };
 std::vector<SeedMatch> seed_lookup(const Sequence &query, SequenceSet& target_seqs, const Index *filter, Loc it_param);
 };

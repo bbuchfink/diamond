@@ -59,8 +59,8 @@ if (${CMAKE_BUILD_TYPE} MATCHES Release)
 endif()
 
 if ((${CMAKE_BUILD_TYPE} MATCHES Release) OR (${CMAKE_BUILD_TYPE} MATCHES RelWithDebInfo))
-  SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS} ${OPTIMIZE_FLAGS}")
-  SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS} ${OPTIMIZE_FLAGS}")
+  SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OPTIMIZE_FLAGS}")
+  SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OPTIMIZE_FLAGS}")
 endif ()
 
 if (${CMAKE_BUILD_TYPE} MATCHES "Debug")
@@ -124,6 +124,7 @@ set(wfa2lib_SOURCE
   wavefront/wavefront_slab.c
   wavefront/wavefront_unialign.c
   wavefront/wavefront_termination.c
+  wavefront/wavefront_extend_kernels_avx.c
   wavefront/wavefront_extend_kernels.c
   system/mm_stack.c
   system/mm_allocator.c
@@ -152,6 +153,11 @@ target_include_directories(wfa2_static PUBLIC . wavefront utils)
 add_library(wfa2::wfa2 ALIAS wfa2)
 add_library(wfa2::wfa2_static ALIAS wfa2_static)
 
+if(OPENMP)
+  target_link_libraries(wfa2_static PRIVATE OpenMP::OpenMP_C)
+  target_link_libraries(wfa2 PRIVATE OpenMP::OpenMP_C)
+endif(OPENMP)
+
 # ---- C++ binding library
 
 set(wfa2cpp_SOURCE
@@ -165,13 +171,18 @@ add_library(wfa2cpp SHARED ${wfa2cpp_SOURCE})
 set_target_properties(wfa2cpp PROPERTIES SOVERSION 0)
 set_target_properties(wfa2cpp_static PROPERTIES OUTPUT_NAME wfa2cpp)
 target_link_libraries(wfa2cpp PUBLIC wfa2)
-target_link_libraries(wfa2cpp_static PUBLIC wfa2)
+target_link_libraries(wfa2cpp_static PUBLIC wfa2_static)
 add_library(wfa2::wfa2cpp ALIAS wfa2cpp)
 add_library(wfa2::wfa2cpp_static ALIAS wfa2cpp_static)
 
+if(OPENMP)
+  target_link_libraries(wfa2cpp_static PRIVATE OpenMP::OpenMP_CXX)
+  target_link_libraries(wfa2cpp PRIVATE OpenMP::OpenMP_CXX)
+endif(OPENMP)
+
 # ---- Get version
 
-file (STRINGS "VERSION" BUILD_NUMBER)
+file (STRINGS "VERSION.txt" BUILD_NUMBER)
 add_definitions(-DWFA2LIB_VERSION="${BUILD_NUMBER}")
 add_definitions(-DVERSION="${BUILD_NUMBER}")
 

@@ -55,6 +55,7 @@ HspContext& HspContext::parse(const OutputFormat* output_format)
 			TranslatedPosition(hsp_.query_range.begin_, Frame(hsp_.frame)),
 			TranslatedPosition(hsp_.query_range.end_, Frame(hsp_.frame)),
 			(int)query.source().length());
+		hsp_.subject_source_range = hsp_.subject_range;
 		if (subject_seq.length() > 0)
 			hsp_.approx_id = hsp_.approx_id_percent(this->query.index(hsp_.frame), subject_seq);
 		return *this;
@@ -95,6 +96,7 @@ HspContext& HspContext::parse(const OutputFormat* output_format)
 
 	hsp_.query_range.end_ = i.query_pos.translated;
 	hsp_.subject_range.end_ = i.subject_pos;
+	hsp_.subject_source_range = hsp_.subject_range;
 	hsp_.query_source_range = TranslatedPosition::absolute_interval(begin().query_pos, i.query_pos, (int)query.source().length());
 	if (subject_seq.length() > 0)
 		hsp_.approx_id = hsp_.approx_id_percent(this->query.index(hsp_.frame), subject_seq);
@@ -290,8 +292,6 @@ Hsp::Hsp(const IntermediateRecord &r, unsigned query_source_len, Loc qlen, Loc t
 	backtraced(!IntermediateRecord::stats_mode(output_format->hsp_values) && output_format->hsp_values != HspValues::NONE),
 	score(r.score),
 	evalue(r.evalue),
-	bit_score(score_matrix.bitscore(r.score)),
-	corrected_bit_score(score_matrix.bitscore_corrected(r.score, qlen, tlen)),
 	transcript(r.transcript)
 {
     if(dna_score_builder == nullptr){

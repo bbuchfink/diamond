@@ -81,8 +81,10 @@ typedef struct {
   linear_penalties_t linear_penalties;
   affine_penalties_t affine_penalties;
   affine2p_penalties_t affine2p_penalties;
-  // Alignment form
-  bool endsfree;
+  // Alignment span
+  bool align_span_global;
+  bool align_span_extension;
+  bool align_span_endsfree;
   double pattern_begin_free;
   double text_begin_free;
   double pattern_end_free;
@@ -95,7 +97,7 @@ typedef struct {
   int wfa_heuristic_p3;
   wavefront_memory_t wfa_memory_mode;
   uint64_t wfa_max_memory;
-  int wfa_max_score;
+  int wfa_max_steps;
   int wfa_max_threads;
   bool wfa_lambda;
   // Other algorithms parameters

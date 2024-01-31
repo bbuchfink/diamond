@@ -27,10 +27,17 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 struct Block;
 
+template<typename SeedLoc>
 struct SeedArray
 {
 
-	using Loc = PackedLoc;
+	static PackedLoc make_seed_loc(PackedLoc pos, uint32_t block_id, PackedLoc) {
+		return pos;
+	}
+
+	static PackedLocId make_seed_loc(PackedLoc pos, uint32_t block_id, PackedLocId) {
+		return PackedLocId(pos, block_id);
+	}
 
 	struct Entry
 	{
@@ -38,43 +45,40 @@ struct SeedArray
 			key(),
 			value()
 		{ }
-		Entry(SeedOffset key, Loc value) :
+		Entry(SeedOffset key, PackedLoc value) :
 			key(key),
 			value(value)
 		{ }
-		Entry(SeedOffset key, Loc pos, uint32_t block_id):
+		Entry(SeedOffset key, PackedLoc pos, uint32_t block_id) :
 			key(key),
-#ifdef KEEP_TARGET_ID
-			value(pos, block_id)
-#else
-			value(pos)
-#endif
-        {}
-        bool operator<(const Entry& entry)const{
-            return  this->key < entry.key;
-        }
-        bool operator==(const Entry& entry)const{
-            return this->key == entry.key && this->value == entry.value;
-        }
-        SeedOffset key;
+			value(make_seed_loc(pos, block_id, SeedLoc()))
+		{}
+		bool operator<(const Entry& entry)const {
+			return  this->key < entry.key;
+		}
+		bool operator==(const Entry& entry)const {
+			return this->key == entry.key && this->value == entry.value;
+		}
+		SeedOffset key;
 
-        struct GetKey {
-            uint32_t operator()(const Entry& e) const {
-                return e.key;
-            }
-        };
+		struct GetKey {
+			uint32_t operator()(const Entry& e) const {
+				return e.key;
+			}
+		};
 
 		SeedLoc value;
 		using Key = decltype(key);
 		using Value = decltype(value);
-        using value_type =  Entry;
+		using value_type = Entry;
 	} PACKED_ATTRIBUTE;
 
-	template<typename _filter>
-	SeedArray(Block &seqs, const ShapeHistogram &hst, const SeedPartitionRange &range, char *buffer, const _filter *filter, const EnumCfg& enum_cfg);
 
-	template<typename _filter>
-	SeedArray(Block& seqs, const SeedPartitionRange& range, const _filter* filter, EnumCfg& cfg);
+	template<typename Filter>
+	SeedArray(Block &seqs, const ShapeHistogram &hst, const SeedPartitionRange &range, char *buffer, const Filter* filter, const EnumCfg& enum_cfg);
+
+	template<typename Filter>
+	SeedArray(Block& seqs, const SeedPartitionRange& range, const Filter* filter, EnumCfg& cfg);
 
 	Entry* begin(unsigned i)
 	{

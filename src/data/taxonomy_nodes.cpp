@@ -25,7 +25,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/io/text_input_file.h"
 #include "../util/string/tokenizer.h"
 
-using namespace std;
+using std::string;
+using std::reverse;
+using std::vector;
+using std::set;
+using std::endl;
+using std::to_string;
+using std::runtime_error;
 
 TaxonomyNodes::TaxonomyNodes(const string& file_name, const bool init_cache)
 {
@@ -170,4 +176,20 @@ std::set<TaxId> TaxonomyNodes::rank_taxid(const std::vector<TaxId> &taxid, Rank 
 	for (unsigned i : taxid)
 		r.insert(rank_taxid(i, rank));
 	return r;
+}
+
+vector<TaxId> TaxonomyNodes::lineage(TaxId taxid) const {
+	static const int MAX = 64;
+	vector<TaxId> out;
+	int n = 0;
+	while (true) {
+		if (taxid == 0 || taxid == 1)
+			break;
+		if (++n > MAX)
+			throw std::runtime_error("Path in taxonomy too long (TaxonomyNodes::lineage).");
+		out.push_back(taxid);
+		taxid = get_parent(taxid);
+	}
+	reverse(out.begin(), out.end());
+	return out;
 }

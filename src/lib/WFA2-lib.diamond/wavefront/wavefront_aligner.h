@@ -39,10 +39,11 @@
 #include "wfa.h"
 
 /*
- * Initialize wf-alignment conditions
+ * Initialize Aligner (to perform a new alignment)
  */
-void wavefront_aligner_init_wf(
-    wavefront_aligner_t* const wf_aligner);
+void wavefront_aligner_init(
+    wavefront_aligner_t* const wf_aligner,
+    const int align_level);
 
 /*
  * Utils
@@ -50,7 +51,7 @@ void wavefront_aligner_init_wf(
 uint64_t wavefront_aligner_get_size(
     wavefront_aligner_t* const wf_aligner);
 
-void wavefront_aligner_maxtrim_cigar(
+bool wavefront_aligner_maxtrim_cigar(
     wavefront_aligner_t* const wf_aligner);
 
 /*

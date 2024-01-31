@@ -207,23 +207,16 @@ struct Pairwise_format : public OutputFormat
 	}
 };
 
-struct Taxon_format : public OutputFormat
+struct TaxonFormat : public OutputFormat
 {
-	Taxon_format() :
-		OutputFormat(taxon, HspValues::NONE, Output::Flags::NONE),
-		taxid(0),
-		evalue(std::numeric_limits<double>::max())
-	{
-		needs_taxon_id_lists = true;
-		needs_taxon_nodes = true;
-	}
+	TaxonFormat();
 	virtual void print_match(const HspContext& r, Output::Info& info) override;
 	virtual void print_query_epilog(Output::Info& info) const override;
-	virtual ~Taxon_format()
+	virtual ~TaxonFormat()
 	{ }
 	virtual OutputFormat* clone() const override
 	{
-		return new Taxon_format(*this);
+		return new TaxonFormat(*this);
 	}
 	unsigned taxid;
 	double evalue;

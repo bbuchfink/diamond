@@ -67,8 +67,8 @@ FastaFile::FastaFile(const std::vector<std::string>& file_name, Metadata metadat
 #endif
 }
 
-FastaFile::FastaFile(const string& file_name, bool overwrite, const WriteAccess&):
-	SequenceFile(SequenceFile::Type::FASTA, Alphabet::STD, Flags::NONE, FormatFlags::DICT_LENGTHS | FormatFlags::DICT_SEQIDS, amino_acid_traits),
+FastaFile::FastaFile(const string& file_name, bool overwrite, const WriteAccess&, Flags flags, const ValueTraits& value_traits):
+	SequenceFile(SequenceFile::Type::FASTA, Alphabet::STD, flags, FormatFlags::DICT_LENGTHS | FormatFlags::DICT_SEQIDS, value_traits),
 	out_file_(file_name.empty() ? new TempFile : new OutputFile(file_name, Compressor::NONE, overwrite ? "w+b" : "r+b")),
 	format_(new FASTA_format()),
 	oid_(0),
@@ -157,7 +157,7 @@ bool FastaFile::read_seq(vector<Letter>& seq, string &id, std::vector<char>* qua
 	return r;
 }
 
-void FastaFile::create_partition_balanced(size_t max_letters) {
+void FastaFile::create_partition_balanced(int64_t max_letters) {
 	throw OperationNotSupported();
 }
 
@@ -265,6 +265,8 @@ void FastaFile::seq_data(size_t oid, std::vector<Letter>& dst) const
 
 size_t FastaFile::seq_length(size_t oid) const
 {
+	if (oid < seq_length_.size())
+		return seq_length_[oid];
 	throw OperationNotSupported();
 }
 
@@ -289,6 +291,8 @@ void FastaFile::write_seq(const Sequence& seq, const std::string& id) {
 	Util::Seq::format(seq, id.c_str(), nullptr,  *out_file_, "fasta", value_traits_);
 	++seqs_;
 	letters_ += seq.length();
+	if (flag_any(flags_, Flags::NEED_LENGTH_LOOKUP))
+		seq_length_.push_back(seq.length());
 }
 
 void FastaFile::prep_db(const string& path) {
@@ -321,6 +325,8 @@ std::pair<int64_t, int64_t> FastaFile::init_read() {
 	while (read_seq(seq, id)) {
 		if (flag_any(flags_, Flags::ACC_TO_OID_MAPPING | Flags::OID_TO_ACC_MAPPING))
 			add_seqid_mapping(id, seqs);
+		if (flag_any(flags_, Flags::NEED_LENGTH_LOOKUP))
+			seq_length_.push_back(seq.size());
 		++seqs;
 		letters += seq.size();
 	}

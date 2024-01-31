@@ -19,6 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #include <fstream>
+#include <sstream>
 #include "cluster.h"
 #include "../util/tsv/tsv.h"
 #include "../util/string/tokenizer.h"
@@ -41,6 +42,7 @@ using std::floor;
 using std::unique_ptr;
 using std::back_inserter;
 using std::less;
+using std::stringstream;
 using namespace Util::Tsv;
 
 namespace Cluster {
@@ -113,6 +115,7 @@ vector<Int> member2centroid_mapping(const FlatArray<Int>& clusters, const vector
 	}
 	return v;
 }
+template vector<int64_t> member2centroid_mapping(const FlatArray<int64_t>&, const vector<int64_t>&);
 
 template<typename Int>
 pair<FlatArray<Int>, vector<Int>> cluster_sorted(const vector<Int>& mapping) {
@@ -198,13 +201,17 @@ vector<SuperBlockId> member_counts(const vector<SuperBlockId>& mapping) {
 }
 
 void init_thresholds() {
+	if (config.member_cover.present() && config.mutual_cover.present())
+		throw std::runtime_error("--member-cover and --mutual-cover are mutually exclusive.");
+	if (!config.mutual_cover.present())
+		config.member_cover.set_if_blank(DEFAULT_MEMBER_COVER);
 	if (!config.approx_min_id.present())
 		config.approx_min_id = config.command == ::Config::DEEPCLUST ? 0.0 : (config.command == ::Config::LINCLUST ? 90.0 : 50.0);
 	if (config.soft_masking.empty())
 		config.soft_masking = "tantan";
 	if (!config.masking_.present())
 		config.masking_ = "0";
-	if (config.approx_min_id < 90.0)
+	if (config.approx_min_id < 90.0 || config.mutual_cover.present())
 		return;
 	if(config.command == ::Config::CLUSTER_REASSIGN) {
 		config.diag_filter_id = 80.0;
@@ -234,6 +241,34 @@ vector<BlockId> len_sorted_clust(const FlatArray<Util::Algo::Edge<SuperBlockId>>
 				v[it->node2] = (BlockId)i;
 	}
 	return v;
+}
+
+void output_edges(const string& file, SequenceFile& db, const vector<Util::Algo::Edge<SuperBlockId>>& edges) {
+	File out(Schema{ Type::STRING, Type::STRING }, file, Flags::WRITE);
+	const Util::Tsv::Table acc_mapping = db.seqid_file().read(config.threads_);
+	for (const auto& e : edges) {
+		out.write_record(acc_mapping[e.node1].get<string>(0), acc_mapping[e.node2].get<string>(0));
+	}
+}
+
+double round_value(const vector<string>& par, const string& name, int round, int round_count) {
+	if (par.empty())
+		return 0.0;
+	if (round >= round_count - 1)
+		return 0.0;
+	if ((int64_t)par.size() >= round_count)
+		throw std::runtime_error("Too many values provided for " + name);
+	vector<double> v;
+	for(const string& s : par) {
+		stringstream ss(s);
+		double i;
+		ss >> i;
+		if (ss.fail() || !ss.eof())
+			throw std::runtime_error("Invalid value provided for " + name + ": " + s);
+		v.push_back(i);
+	}
+	v.insert(v.begin(), round_count - 1 - v.size(), v.front());
+	return v[round];
 }
 
 }

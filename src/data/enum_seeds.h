@@ -83,11 +83,12 @@ void enum_seeds_hashed(SequenceSet* seqs, F* f, unsigned begin, unsigned end, co
 			HashedSeedIterator<BITS> it(seqs->ptr(i), seqs->length(i), sh);
 			while (it.good()) {
 				const uint64_t key = *it;
-				if (filter->contains(key, shape_id))
+				if (filter->contains(key, shape_id)) {
 					if (!cfg.filter_low_complexity_seeds || Search::seed_is_complex(it.seq_ptr(sh), sh, cfg.seed_cut))
 						(*f)(key, seqs->position(i, it.seq_ptr(sh) - seq.data()), i, shape_id);
 					else if (cfg.mask_low_complexity_seeds)
 						*it.seq_ptr(sh) |= SEED_MASK;
+				}
 				++it;
 			}
 		}

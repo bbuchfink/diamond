@@ -24,7 +24,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../lib/blast/blast_setup.h"
 #include "build_score.h"
 
-
 namespace Stats {
 
 Blastn_Score::Blastn_Score(const int reward, const int penalty, const int gapopen, const int gapextend,uint64_t db_letters,int64_t sequence_count) :
@@ -63,9 +62,8 @@ Blastn_Score::Blastn_Score(const int reward, const int penalty, const int gapope
     if (status)
         throw std::runtime_error("Failed to initialize scoring matrix");
 
-    m_ScoreBlk->kbp_gap_std[0] = Blast_KarlinBlkNew();
 
-    Blast_ScoreBlkKbpIdealCalc(m_ScoreBlk);
+    //Blast_ScoreBlkKbpIdealCalc(m_ScoreBlk);
     status = Blast_KarlinBlkNuclGappedCalc(m_ScoreBlk->kbp_gap_std[0],
                                                gap_open_, gap_extend_,
                                                m_ScoreBlk->reward,
@@ -90,19 +88,20 @@ double Blastn_Score::blast_bit_Score(int raw_score) const {
 
 
 double Blastn_Score::blast_eValue(int raw_score,int query_length) const {
-    uint64_t searchspace = calculate_length_adjustment(query_length,query_length,this->target_length_) *calculate_length_adjustment(this->target_length_, query_length,this->target_length_,this->db_size_);
-    return BLAST_KarlinStoE_simple(raw_score, kbp,(long)searchspace);
+    double searchspace = calculate_length_adjustment(query_length,query_length,this->target_length_) * calculate_length_adjustment(this->target_length_, query_length,this->target_length_,this->db_size_);
+    return BLAST_KarlinStoE_simple(raw_score, kbp,static_cast<long>(searchspace));
+
     }
 
-uint64_t Blastn_Score::calculate_length_adjustment(uint64_t length, int query_length, uint64_t target_length, int64_t db_size) const {
-    return length - (uint64_t)(expected_hsp_value(query_length,target_length) * (double)db_size);
+double Blastn_Score::calculate_length_adjustment(uint64_t length, int query_length, uint64_t target_length, int64_t db_size) const {
+    return static_cast<double>(length) - (expected_hsp_value(query_length,target_length) * (double)db_size);
 }
 
-uint64_t Blastn_Score::calculate_length_adjustment(uint64_t length, int query_length, uint64_t target_length) const {
+double Blastn_Score::calculate_length_adjustment(uint64_t length, int query_length, uint64_t target_length) const {
     if(expected_hsp_value(query_length,target_length) < (1 / kbp->K))
-        return (int64_t) (1/kbp->K);
+        return(1/kbp->K);
     else
-        return  length - (int64_t) expected_hsp_value(query_length,target_length);
+        return  static_cast<double>(length) -  expected_hsp_value(query_length,target_length);
 }
 
 double Blastn_Score::expected_hsp_value(int query_length, uint64_t target_length) const {

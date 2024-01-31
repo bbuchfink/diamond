@@ -185,6 +185,7 @@ struct HashedSeedIterator
 			return *this;
 		}
 		++ptr_;
+		return *this;
 	}
 	Letter* seq_ptr(const Shape& sh) const {
 		return ptr_ - sh.length_;

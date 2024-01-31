@@ -44,9 +44,10 @@ using Search::Hit;
 
 namespace Search {
 
+template<typename SeedLoc>
 static void seed_join_worker(
-	SeedArray *query_seeds,
-	SeedArray *ref_seeds,
+	SeedArray<SeedLoc> *query_seeds,
+	SeedArray<SeedLoc> *ref_seeds,
 	atomic<unsigned> *seedp,
 	const SeedPartitionRange *seedp_range,
 	DoubleArray<SeedLoc> *query_seed_hits,
@@ -58,14 +59,15 @@ static void seed_join_worker(
 		throw std::runtime_error("Joining seed arrays with different key lengths.");
 	while ((p = (*seedp)++) < seedp_range->end()) {
 		std::pair<DoubleArray<SeedLoc>, DoubleArray<SeedLoc>> join = hash_join(
-			Relation<SeedArray::Entry>(query_seeds->begin(p), query_seeds->size(p)),
-			Relation<SeedArray::Entry>(ref_seeds->begin(p), ref_seeds->size(p)),
+			Relation<typename SeedArray<SeedLoc>::Entry>(query_seeds->begin(p), query_seeds->size(p)),
+			Relation<typename SeedArray<SeedLoc>::Entry>(ref_seeds->begin(p), ref_seeds->size(p)),
 			bits);
 		query_seed_hits[p] = join.first;
 		ref_seeds_hits[p] = join.second;
 	}
 }
 
+template<typename SeedLoc>
 static void search_worker(atomic<unsigned> *seedp, const SeedPartitionRange *seedp_range, unsigned shape, size_t thread_id, DoubleArray<SeedLoc> *query_seed_hits, DoubleArray<SeedLoc> *ref_seed_hits, const Search::Context *context, const Search::Config* cfg)
 {
 	unique_ptr<Writer<Hit>> writer;
@@ -86,8 +88,10 @@ static void search_worker(atomic<unsigned> *seedp, const SeedPartitionRange *see
 	statistics += work_set->stats;
 }
 
+template<typename SeedLoc>
 void search_shape(unsigned sid, int query_block, unsigned query_iteration, char *query_buffer, char *ref_buffer, Search::Config& cfg, const HashedSeedSet* target_seeds)
 {
+	using SA = SeedArray<SeedLoc>;
 	Partition<unsigned> p(Const::seedp, cfg.index_chunks);
 	DoubleArray<SeedLoc> query_seed_hits[Const::seedp], ref_seed_hits[Const::seedp];
 	log_rss();
@@ -107,28 +111,28 @@ void search_shape(unsigned sid, int query_block, unsigned query_iteration, char 
 		current_range = range;
 
 		TaskTimer timer("Building reference seed array", true);
-		SeedArray *ref_idx;
+		SA *ref_idx;
 		const EnumCfg enum_ref{ &ref_hst.partition(), sid, sid + 1, cfg.seed_encoding, nullptr, false, false, cfg.seed_complexity_cut,
 			query_seeds_bitset.get() || (bool)query_seeds_hashed ? MaskingAlgo::NONE : cfg.soft_masking,
 			cfg.minimizer_window, false, false };
 		if (query_seeds_bitset.get())
-			ref_idx = new SeedArray(*cfg.target, ref_hst.get(sid), range, ref_buffer, query_seeds_bitset.get(), enum_ref);
+			ref_idx = new SA(*cfg.target, ref_hst.get(sid), range, ref_buffer, query_seeds_bitset.get(), enum_ref);
 		else if (query_seeds_hashed.get())
-			ref_idx = new SeedArray(*cfg.target, ref_hst.get(sid), range, ref_buffer, query_seeds_hashed.get(), enum_ref);
+			ref_idx = new SA(*cfg.target, ref_hst.get(sid), range, ref_buffer, query_seeds_hashed.get(), enum_ref);
 			//ref_idx = new SeedArray(ref_seqs, sid, range, query_seeds_hashed.get(), true);
 		else
-			ref_idx = new SeedArray(*cfg.target, ref_hst.get(sid), range, ref_buffer, &no_filter, enum_ref);
+			ref_idx = new SA(*cfg.target, ref_hst.get(sid), range, ref_buffer, &no_filter, enum_ref);
 		timer.finish();
 		log_rss();
 
 		timer.go("Building query seed array");
-		SeedArray* query_idx;
+		SA* query_idx;
 		EnumCfg enum_query{ target_seeds ? nullptr : &query_hst.partition(), sid, sid + 1, cfg.seed_encoding, cfg.query_skip.get(),
-			false, true, cfg.seed_complexity_cut, cfg.soft_masking, cfg.minimizer_window, (bool)query_seeds_hashed, (bool)query_seeds_hashed };
+			false, true, cfg.seed_complexity_cut, cfg.soft_masking, cfg.minimizer_window, static_cast<bool>(query_seeds_hashed.get()), static_cast<bool>(query_seeds_hashed.get()) };
 		if (target_seeds)
-			query_idx = new SeedArray(*cfg.query, range, target_seeds, enum_query);
+			query_idx = new SA(*cfg.query, range, target_seeds, enum_query);
 		else
-			query_idx = new SeedArray(*cfg.query, query_hst.get(sid), range, query_buffer, &no_filter, enum_query);
+			query_idx = new SA(*cfg.query, query_hst.get(sid), range, query_buffer, &no_filter, enum_query);
 		timer.finish();
 		log_rss();
 
@@ -143,7 +147,7 @@ void search_shape(unsigned sid, int query_block, unsigned query_iteration, char 
 		atomic<unsigned> seedp(range.begin());
 		vector<std::thread> threads;
 		for (int i = 0; i < config.threads_; ++i)
-			threads.emplace_back(seed_join_worker, query_idx, ref_idx, &seedp, &range, query_seed_hits, ref_seed_hits);
+			threads.emplace_back(seed_join_worker<SeedLoc>, query_idx, ref_idx, &seedp, &range, query_seed_hits, ref_seed_hits);
 		for (auto &t : threads)
 			t.join();
 		timer.finish();
@@ -158,13 +162,11 @@ void search_shape(unsigned sid, int query_block, unsigned query_iteration, char 
 
 		log_rss();
 		unique_ptr<KmerRanking> kmer_ranking;
-#ifdef KEEP_TARGET_ID
-		if (config.lin_stage1) {
+		if (keep_target_id(cfg) && config.lin_stage1) {
 			timer.go("Building kmer ranking");
 			kmer_ranking.reset(config.kmer_ranking ? new KmerRanking(cfg.query->seqs(), query_seed_hits, ref_seed_hits)
 				: new KmerRanking(cfg.query->seqs()));
 		}
-#endif
 
 		Search::Context* context = nullptr;
 		const vector<uint32_t> patterns = shapes.patterns(0, sid + 1);
@@ -178,7 +180,7 @@ void search_shape(unsigned sid, int query_block, unsigned query_iteration, char 
 		seedp = range.begin();
 		threads.clear();
 		for (int i = 0; i < config.threads_; ++i)
-			threads.emplace_back(search_worker, &seedp, &range, sid, i, query_seed_hits, ref_seed_hits, context, &cfg);
+			threads.emplace_back(search_worker<SeedLoc>, &seedp, &range, sid, i, query_seed_hits, ref_seed_hits, context, &cfg);
 		for (auto &t : threads)
 			t.join();
 		timer.finish();
@@ -192,6 +194,13 @@ void search_shape(unsigned sid, int query_block, unsigned query_iteration, char 
 		timer.finish();
 		log_rss();
 	}
+}
+
+void search_shape(unsigned sid, int query_block, unsigned query_iteration, char* query_buffer, char* ref_buffer, Search::Config& cfg, const HashedSeedSet* target_seeds) {
+	if (keep_target_id(cfg))
+		search_shape<PackedLocId>(sid, query_block, query_iteration, query_buffer, ref_buffer, cfg, target_seeds);
+	else
+		search_shape<PackedLoc>(sid, query_block, query_iteration, query_buffer, ref_buffer, cfg, target_seeds);
 }
 
 }

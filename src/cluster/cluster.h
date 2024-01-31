@@ -37,6 +37,8 @@ public:
 
 namespace Cluster {
 
+const double DEFAULT_MEMBER_COVER = 80.0;
+
 struct CentroidSorted {};
 
 void realign(const FlatArray<OId>& clusters, const std::vector<OId>& centroids, SequenceFile& db, std::function<void(const HspContext&)>& callback, HspValues hsp_values);
@@ -60,6 +62,8 @@ std::vector<SuperBlockId> member_counts(const std::vector<SuperBlockId>& mapping
 Util::Tsv::File* open_out_tsv();
 void init_thresholds();
 std::vector<BlockId> len_sorted_clust(const FlatArray<Util::Algo::Edge<SuperBlockId>>& edges);
+void output_edges(const std::string& file, SequenceFile& db, const std::vector<Util::Algo::Edge<SuperBlockId>>& edges);
+double round_value(const std::vector<std::string>& par, const std::string& name, int round, int round_count);
 
 template<typename Int, typename Int2>
 std::vector<Int2> convert_mapping(const std::vector<Int>& mapping, Int2) {
@@ -71,28 +75,19 @@ std::vector<Int2> convert_mapping(const std::vector<Int>& mapping, Int2) {
 
 struct Mapback : public Consumer {
 	Mapback(int64_t count) :
-		centroid_id(count, -1),
-		count(0)
+		centroid_id(count, -1)
 	{}
 	virtual void consume(const char* ptr, size_t n) {
 		const char* end = ptr + n;
+		const bool mutual_cov = config.mutual_cover.present();
+		const double cutoff = mutual_cov ? config.mutual_cover.get_present() : config.member_cover;
 		OId query = -1;
 		for(const char* p = ptr; p < end; p += sizeof(Output::Format::Edge::Data)) {
 			const auto edge = *(Output::Format::Edge::Data*)p;
 			assert(query == -1 || query == edge.query);
 			query = edge.query;
-			if (edge.qcovhsp >= config.member_cover)
+			if (edge.qcovhsp >= cutoff && ((mutual_cov && edge.scovhsp >= cutoff) || !mutual_cov))
 				centroid_id[edge.query] = edge.target;
-		}
-		if (query >= 0 && centroid_id[query] == -1) {
-			for (const char* p = ptr; p < end; p += sizeof(Output::Format::Edge::Data)) {
-				const auto edge = *(Output::Format::Edge::Data*)p;
-				if (edge.scovhsp >= config.member_cover) {
-					covered_centroids.write((OId)query);
-					covered_centroids.write((OId)edge.target);
-					++count;
-				}
-			}
 		}
 	}
 	std::vector<OId> unmapped() const {
@@ -102,17 +97,7 @@ struct Mapback : public Consumer {
 				v.push_back(i);
 		return v;
 	}
-	std::vector<std::pair<OId, OId>> targets_covered() {
-		std::vector<std::pair<OId, OId>> v;
-		v.resize(count);
-		InputFile f(covered_centroids);
-		f.read(v.data(), count);
-		f.close_and_delete();
-		return v;
-	}
 	std::vector<OId> centroid_id;
-	TempFile covered_centroids;
-	int64_t count;
 };
 
 template<typename It, typename It2>

@@ -32,8 +32,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #endif
 #include "extend.h"
 #ifdef WITH_DNA
-#include "../dna/wfa2_test.h"
-#include "../dna/ksw2_extension.h"
+#include "../dna/extension.h"
 #endif
 #include "../util/algo/radix_sort.h"
 #include "target.h"
@@ -103,7 +102,7 @@ struct HitIterator {
 				r.push_back(Hits{ (BlockId)i,nullptr,nullptr });
 			return r;
 		}
-		if (i >= partition.size() - 1)
+		if (i >= int64_t(partition.size()) - 1)
 			return r;
 		const BlockId c = align_mode.query_contexts;
 		Search::Hit* begin = data + partition[i], * end = data + partition[i + 1];
@@ -120,7 +119,7 @@ struct HitIterator {
 			++it;
 			++last_query;
 		}
-		if (i == partition.size() - 2) {
+		if (i == (int64_t)partition.size() - 2) {
 			r.reserve(r.size() + query_end - (r.back().query + 1));
 			for (BlockId j = r.back().query + 1; j < query_end; ++j)
 				r.push_back(Hits{ j, nullptr,nullptr });
@@ -189,7 +188,7 @@ TextBuffer* legacy_pipeline(const HitIterator::Hits& hits, Search::Config& cfg, 
 		TextBuffer *buf = nullptr;
 		if (!cfg.blocked_processing && *cfg.output_format != OutputFormat::daa && config.report_unaligned != 0) {
 			buf = new TextBuffer;
-			Output::Info info{ cfg.query->seq_info(hits.query), true, cfg.db.get(), *buf, {} };
+			Output::Info info{ cfg.query->seq_info(hits.query), true, cfg.db.get(), *buf, {}, AccessionParsing() };
 			cfg.output_format->print_query_intro(info);
 			cfg.output_format->print_query_epilog(info);
 		}

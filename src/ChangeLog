@@ -1,3 +1,33 @@
+[2.1.9]
+- Corrected the prefix of the query length field for the SAM format.
+- Added the size modifiers 'T', 'M' and 'K' for the `--memory-limit`/`-M`
+  option.
+- Added the option `--mutual-cover` to cluster sequences by mutual coverage
+  percentage of the cluster representative and member sequence.
+- Added the option `--symmetric` for computing greedy vertex cover with
+  symmetric edges.
+- Fixed an issue that caused the `--approx-id` option and the `approx_pident`
+  output field not to work correctly when using the `--anchored-swipe`
+  option.
+- Added the option `--no-reassign` to prevent reassignment to closest
+  representative for the greedy vertex cover workflow.
+- Added the option `--connected-component-depth` to activate clustering
+  of connected components at a given maximum depth for the greedy vertex
+  cover and the clustering workflows.
+- Fixed a compiler error for Clang v17.
+- Improved search performance when searching with mutual coverage threshold
+  by filtering for sequence length ratio.
+- Added the sensitivity mode `--shapes-30x10` with sensitivity approximately
+  equivalent to `--mid-sensitive`.
+- Added the options `--round-coverage` and `--round-approx-id` to set per
+  round cutoffs for cascaded clustering.
+- The CMake switch `-DKEEP_TARGET_ID` is now obsolete and the corresponding
+  function is always available.
+- Added the option `--include-lineage` to the taxonomic classification format
+  to include taxonomic lineage in the output.
+- Added native support for the ARM NEON instruction set (contributed by
+  Martin Larralde).
+
 [2.1.8]
 - Fixed an issue that could cause reduced performance when running in
   query-indexed mode.

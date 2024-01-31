@@ -76,6 +76,11 @@ void sort();
 void word_count();
 void cut();
 void model_seqs();
+namespace Cluster {
+#ifdef WITH_FAMSA
+	void profile_recluster();
+#endif
+}
 #endif
 
 void split();
@@ -249,6 +254,11 @@ int main(int ac, const char* av[])
 		case Config::MODEL_SEQS:
 			model_seqs();
 			break;
+#ifdef WITH_FAMSA
+		case Config::PROFILE_RECLUSTER:
+			Cluster::profile_recluster();
+			break;
+#endif
 #endif
 		default:
 			return 1;

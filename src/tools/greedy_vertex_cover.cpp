@@ -1,3 +1,23 @@
+/****
+DIAMOND protein aligner
+Copyright (C) 2021-2024 Max Planck Society for the Advancement of Science e.V.
+
+Code developed by Benjamin Buchfink <buchfink@gmail.com>
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+****/
+
 #include <fstream>
 #include <atomic>
 #include <mutex>
@@ -11,6 +31,7 @@
 #include "../util/string/tokenizer.h"
 #include "../util/algo/algo.h"
 #include "../util/system/system.h"
+#include "../cluster/cluster.h"
 
 using std::unique_ptr;
 using std::ofstream;
@@ -30,8 +51,10 @@ void greedy_vertex_cover() {
 	config.database.require();
 	using Int = int64_t;
 	using Edge = Util::Algo::Edge<Int>;
-	const double cov = std::max(config.query_or_target_cover, config.member_cover);
-	const bool triplets = config.edge_format == "triplet";
+	const double cov = std::max(config.query_or_target_cover, config.member_cover.get(Cluster::DEFAULT_MEMBER_COVER));
+	const bool triplets = config.edge_format == "triplet", symmetric = config.symmetric;
+	if (!triplets && symmetric)
+		throw std::runtime_error("--symmetric requires triplet edge format");
 	message_stream << "Coverage cutoff: " << cov << '%' << endl;
 	TaskTimer timer("Reading mapping file");
 	//unordered_map<Acc, OId, Acc::Hash> acc2oid;
@@ -58,7 +81,10 @@ void greedy_vertex_cover() {
 		while (it.good()) {
 			string line = *it;
 			if (triplets)
-				++n;
+				if (symmetric)
+					n += 2;
+				else
+					++n;
 			else {
 				Util::String::Tokenizer(line, "\t") >> Util::String::Skip() >> Util::String::Skip() >> qcov >> tcov;
 				if (qcov >= cov)
@@ -98,8 +124,11 @@ void greedy_vertex_cover() {
 					++it;
 					continue;
 				}
-				if(triplets)
+				if (triplets) {
 					e.emplace_back(t, q, evalue);
+					if (symmetric)
+						e.emplace_back(q, t, evalue);
+				}
 				else {
 					if (tcov >= cov)
 						e.emplace_back(q, t, evalue);
@@ -123,7 +152,7 @@ void greedy_vertex_cover() {
 	timer.finish();
 	log_rss();
 
-	auto r = Util::Algo::greedy_vertex_cover(edge_array, nullptr, !config.strict_gvc);
+	auto r = Util::Algo::greedy_vertex_cover(edge_array, nullptr, !config.strict_gvc, !config.no_gvc_reassign, (Int)atoi(config.connected_component_depth.front().c_str()));
 
 	timer.go("Building reverse mapping");
 	vector<string> acc(acc2oid.size());

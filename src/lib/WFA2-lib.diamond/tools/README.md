@@ -22,23 +22,22 @@ $> ./bin/generate_dataset -n 5000000 -l 100 -e 0.05 -o sample.dataset.seq
           Filename/Path to the output dataset.
           
         --num-patterns|n <Integer>
-          Total number of pairs pattern-text to generate.
+          Total number of sequence-pairs generated (i.e., pattern+text).
           
         --length|l <Integer>
           Length of the generated pattern (ie., query or sequence) and text (i.e., target or reference)
           
-        --pattern-length|P <Integer>
-          Length of the generated pattern (ie., query or sequence)
-        
-        --text-length|T <Integer>
-          Length of the generated text (i.e., target or reference)
+        --length|l <Integer>
+          Length of the pattern (pattern.length).
+          
+        --length-diff <Float>
+          Length of the text as percentage of the pattern.length (default=1.0).
           
         --error|e <Float>
-          Total error-rate between the pattern and the text (allowing single-base mismatches, 
-          insertions and deletions). This parameter may modify the final length of the text.
+          Simulated errors (mismatch/insertion/deletion) as a percentage of the pattern.length (default=0.04). This parameter may modify the final length of the text.
           
-        --debug|g
-          Output debug information.
+        --indels <Integer1>,<Integer2>  
+          Insert up to additional <Integer1> indels of <Integer2> (default=0,0)  
           
         --help|h
           Outputs a succinct manual for the tool.

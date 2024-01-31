@@ -32,9 +32,10 @@ using std::endl;
 using std::atomic;
 using std::vector;
 
-const double Frequent_seeds::hash_table_factor = 1.3;
-Frequent_seeds frequent_seeds;
+const double FrequentSeeds::hash_table_factor = 1.3;
+FrequentSeeds frequent_seeds;
 
+template<typename SeedLoc>
 static void compute_sd(atomic<unsigned> *seedp, DoubleArray<SeedLoc> *query_seed_hits, DoubleArray<SeedLoc> *ref_seed_hits, vector<Sd> *ref_out, vector<Sd> *query_out)
 {
 	int p;
@@ -49,7 +50,8 @@ static void compute_sd(atomic<unsigned> *seedp, DoubleArray<SeedLoc> *query_seed
 	}
 }
 
-void Frequent_seeds::build_worker(
+template<typename SeedLoc>
+void FrequentSeeds::build_worker(
 	size_t seedp,
 	size_t thread_id,
 	DoubleArray<SeedLoc> *query_seed_hits,
@@ -89,13 +91,14 @@ void Frequent_seeds::build_worker(
 	(*counts)[seedp] = (unsigned)n;
 }
 
-void Frequent_seeds::build(unsigned sid, const SeedPartitionRange &range, DoubleArray<SeedLoc> *query_seed_hits, DoubleArray<SeedLoc> *ref_seed_hits, Search::Config& cfg)
+template<typename SeedLoc>
+void FrequentSeeds::build(unsigned sid, const SeedPartitionRange &range, DoubleArray<SeedLoc> *query_seed_hits, DoubleArray<SeedLoc> *ref_seed_hits, Search::Config& cfg)
 {
 	vector<Sd> ref_sds(range.size()), query_sds(range.size());
 	atomic<unsigned> seedp(range.begin());
 	vector<std::thread> threads;
 	for (int i = 0; i < config.threads_; ++i)
-		threads.emplace_back(compute_sd, &seedp, query_seed_hits, ref_seed_hits, &ref_sds, &query_sds);
+		threads.emplace_back(compute_sd<SeedLoc>, &seedp, query_seed_hits, ref_seed_hits, &ref_sds, &query_sds);
 	for (auto &t : threads)
 		t.join();
 
@@ -105,11 +108,14 @@ void Frequent_seeds::build(unsigned sid, const SeedPartitionRange &range, Double
 	log_stream << "Seed frequency mean (query) = " << query_sd.mean() << ", SD = " << query_sd.sd() << endl;
 	log_stream << "Seed frequency cap query: " << query_max_n << ", reference: " << ref_max_n << endl;
 	vector<unsigned> counts(Const::seedp);
-	Util::Parallel::scheduled_thread_pool_auto(config.threads_, Const::seedp, build_worker, query_seed_hits, ref_seed_hits, &range, sid, ref_max_n, query_max_n, &counts, &cfg);
+	Util::Parallel::scheduled_thread_pool_auto(config.threads_, Const::seedp, build_worker<SeedLoc>, query_seed_hits, ref_seed_hits, &range, sid, ref_max_n, query_max_n, &counts, &cfg);
 	log_stream << "Masked positions = " << std::accumulate(counts.begin(), counts.end(), 0) << std::endl;
 }
 
-void Frequent_seeds::clear_masking(SequenceSet& seqs) {
+template void FrequentSeeds::build(unsigned, const SeedPartitionRange&, DoubleArray<PackedLoc>*, DoubleArray<PackedLoc>*, Search::Config&);
+template void FrequentSeeds::build(unsigned, const SeedPartitionRange&, DoubleArray<PackedLocId>*, DoubleArray<PackedLocId>*, Search::Config&);
+
+void FrequentSeeds::clear_masking(SequenceSet& seqs) {
 	for (BlockId i = 0; i < seqs.size(); ++i) {
 		const size_t len = seqs.length(i);
 		Letter* p = seqs.ptr(i), *end = p + len;

@@ -35,12 +35,21 @@ struct Cascaded : public ClusteringAlgorithm {
 
 std::vector<SuperBlockId> cascaded(std::shared_ptr<SequenceFile>& db, bool linear);
 std::vector<std::string> cluster_steps(double approx_id, bool linear);
+std::vector<std::string> default_round_approx_id(int steps);
+std::vector<std::string> default_round_cov(int steps);
+int round_ccd(int round, int round_count);
 
 struct Callback : public Consumer {
 	using Edge = Util::Algo::Edge<SuperBlockId>;
 	Callback() :
 		count(0)
 	{}
+	virtual void consume(const char* ptr, size_t n) override = 0;
+	TempFile edge_file;
+	int64_t count;
+};
+
+struct CallbackUnidirectional : public Callback {
 	virtual void consume(const char* ptr, size_t n) override {
 		const char* end = ptr + n;
 		while (ptr < end) {
@@ -56,8 +65,22 @@ struct Callback : public Consumer {
 			}
 		}
 	}
-	TempFile edge_file;
-	int64_t count;
+};
+
+struct CallbackBidirectional : public Callback {
+	virtual void consume(const char* ptr, size_t n) override {
+		const char* end = ptr + n;
+		while (ptr < end) {
+			const auto edge = *(Output::Format::Edge::Data*)ptr;
+			ptr += sizeof(Output::Format::Edge::Data);
+			if (edge.query != edge.target) {
+				edge_file.write(Edge((SuperBlockId)edge.target, (SuperBlockId)edge.query, edge.evalue));
+				edge_file.write(Edge((SuperBlockId)edge.query, (SuperBlockId)edge.target, edge.evalue));
+				count += 2;
+			}
+		}
+	}
 };
 
 }
+ 

@@ -31,6 +31,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #endif
 #include "../load_hits.h"
 #include "../dp/ungapped.h"
+#include "../search/search.h"
 
 using std::endl;
 using std::thread;
@@ -45,44 +46,45 @@ namespace Extension { namespace GlobalRanking {
 static void get_query_hits(SeedHits::Iterator begin, SeedHits::Iterator end, vector<Hit>& hits, Search::Config& cfg) {
 	hits.clear();
 	const SequenceSet& target_seqs = cfg.target->seqs();
-#ifdef KEEP_TARGET_ID
-	auto get_target = [](const Search::Hit& hit) { return (BlockId)hit.subject_; };
-	auto it = merge_keys(begin, end, get_target);
-	while (it.good()) {
-		uint16_t score = 0;
-		for (SeedHits::Iterator i = it.begin(); i != it.end(); ++i)
-			score = std::max(score, i->score_);
-		hits.emplace_back((uint32_t)cfg.target->block_id2oid(it.key()), score, 0);
-		++it;
+	if (Search::keep_target_id(cfg)) {
+		auto get_target = [](const Search::Hit& hit) { return (BlockId)hit.subject_; };
+		auto it = merge_keys(begin, end, get_target);
+		while (it.good()) {
+			uint16_t score = 0;
+			for (SeedHits::Iterator i = it.begin(); i != it.end(); ++i)
+				score = std::max(score, i->score_);
+			hits.emplace_back((uint32_t)cfg.target->block_id2oid(it.key()), score, 0);
+			++it;
+		}
 	}
-#else
+	else {
 #ifdef BATCH_BINSEARCH
-	vector<Hit> hit1;
-	hit1.reserve(end - begin);
-	target_seqs.local_position_batch(begin, end, std::back_inserter(hit1), Search::Hit::CmpTargetOffset());
-	for (size_t i = 0; i < hit1.size(); ++i) {
-		hit1[i].score = begin[i].score_;
-	}
-	auto it = merge_keys(hit1.begin(), hit1.end(), Hit::Target());
-	while (it.good()) {
-		uint16_t score = 0;
-		for (auto i = it.begin(); i != it.end(); ++i)
-			score = std::max(score, i->score);
-		hits.emplace_back((uint32_t)cfg.target->block_id2oid(it.key()), score);
-		++it;
-	}
+		vector<Hit> hit1;
+		hit1.reserve(end - begin);
+		target_seqs.local_position_batch(begin, end, std::back_inserter(hit1), Search::Hit::CmpTargetOffset());
+		for (size_t i = 0; i < hit1.size(); ++i) {
+			hit1[i].score = begin[i].score_;
+		}
+		auto it = merge_keys(hit1.begin(), hit1.end(), Hit::Target());
+		while (it.good()) {
+			uint16_t score = 0;
+			for (auto i = it.begin(); i != it.end(); ++i)
+				score = std::max(score, i->score);
+			hits.emplace_back((uint32_t)cfg.target->block_id2oid(it.key()), score);
+			++it;
+		}
 #else
-	auto get_target = [&target_seqs](const Search::Hit& hit) { return target_seqs.local_position((uint64_t)hit.subject_).first; };
-	auto it = merge_keys(begin, end, get_target);
-	while (it.good()) {
-		uint16_t score = 0;
-		for (SeedHits::Iterator i = it.begin(); i != it.end(); ++i)
-			score = std::max(score, i->score_);
-		hits.emplace_back((uint32_t)cfg.target->block_id2oid(it.key()), score, 0);
-		++it;
+		auto get_target = [&target_seqs](const Search::Hit& hit) { return target_seqs.local_position((uint64_t)hit.subject_).first; };
+		auto it = merge_keys(begin, end, get_target);
+		while (it.good()) {
+			uint16_t score = 0;
+			for (SeedHits::Iterator i = it.begin(); i != it.end(); ++i)
+				score = std::max(score, i->score_);
+			hits.emplace_back((uint32_t)cfg.target->block_id2oid(it.key()), score, 0);
+			++it;
+		}
+#endif
 	}
-#endif
-#endif
 }
 
 static pair<int, unsigned> target_score(const FlatArray<Extension::SeedHit>::DataIterator begin, const FlatArray<Extension::SeedHit>::DataIterator end, const Sequence* query_seq, const Sequence& target_seq) {

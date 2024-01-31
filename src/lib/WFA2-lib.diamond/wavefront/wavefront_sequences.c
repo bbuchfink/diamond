@@ -73,7 +73,7 @@ void wavefront_sequences_init_allocate(
     if (wf_sequences->seq_buffer != NULL) free(wf_sequences->seq_buffer);
     // Allocate
     const int proposed_size = buffer_size + buffer_size/2;
-    wf_sequences->seq_buffer = malloc(proposed_size);
+    wf_sequences->seq_buffer = calloc(proposed_size,1);
     wf_sequences->seq_buffer_allocated = proposed_size;
   }
   // Assign memory

@@ -7,19 +7,18 @@ namespace Search {
 
 struct KmerRanking {
 
-	KmerRanking(const SequenceSet& queries, DoubleArray<SeedLoc> *query_seed_hits, DoubleArray<SeedLoc> *ref_seed_hits);
+	KmerRanking(const SequenceSet& queries, DoubleArray<PackedLocId> *query_seed_hits, DoubleArray<PackedLocId> *ref_seed_hits);
+	KmerRanking(const SequenceSet& queries, DoubleArray<PackedLoc>* query_seed_hits, DoubleArray<PackedLoc>* ref_seed_hits);
 	KmerRanking(const SequenceSet& queries);
 
-	int highest_ranking(const SeedLoc* begin, const SeedLoc* end) {
+	int highest_ranking(const PackedLocId* begin, const PackedLocId* end) {
 		ptrdiff_t r = 0;
-#ifdef KEEP_TARGET_ID
 		float rank = rank_[begin->block_id];
-		for (const SeedLoc* i = begin + 1; i < end; ++i)
+		for (const PackedLocId* i = begin + 1; i < end; ++i)
 			if (rank_[i->block_id] > rank) {
 				rank = rank_[i->block_id];
 				r = i - begin;
 			}
-#endif
 		return (int)r;
 	}
 

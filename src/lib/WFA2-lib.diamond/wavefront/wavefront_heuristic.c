@@ -304,7 +304,7 @@ void wf_heuristic_compute_sw_scores(
     wf_offset_t* const max_offset) {
   // Parameters
   const int wf_match = wf_aligner->penalties.match;
-  const int swg_match = (wf_match==0) ? 1 : -(wf_aligner->penalties.match);
+  const int swg_match = (wf_match!=0) ? -(wf_aligner->penalties.match) : -1;
   // Compute min-distance
   const wf_offset_t* const offsets = wavefront->offsets;
   int k, cmax_sw_score = INT_MIN, cmax_k = 0, cmax_offset = 0;
@@ -314,9 +314,7 @@ void wf_heuristic_compute_sw_scores(
     if (offset < 0) continue;
     const int v = WAVEFRONT_V(k,offset);
     const int h = WAVEFRONT_H(k,offset);
-    const int sw_score = (wf_match==0) ?
-        (swg_match*(v+h) - wf_score) :
-        WF_SCORE_TO_SW_SCORE(swg_match,v,h,wf_score);
+    const int sw_score = WF_SCORE_TO_SW_SCORE(swg_match,v,h,wf_score);
     sw_scores[k] = sw_score;
     if (cmax_sw_score < sw_score) {
       cmax_sw_score = sw_score;
@@ -390,8 +388,7 @@ int wf_zdrop_gap_score(
     const wf_offset_t offset_2,
     const int k_2) {
   // Parameters
-  // wavefront_penalties_t* const penalties = &wf_aligner->penalties;
-  const int gap_e = 1; // (penalties->gap_extension1 > 0) ? penalties->gap_extension1 : 1;
+  const int gap_e = wf_aligner->penalties.internal_gap_e;
   // Compute
   int diff_h = WAVEFRONT_H(k_2,offset_2) - WAVEFRONT_H(k_1,offset_1);
   if (diff_h < 0) diff_h = -diff_h;
@@ -432,13 +429,7 @@ bool wavefront_heuristic_zdrop(
       wf_heuristic->max_sw_score_offset = cmax_offset;
     } else {
       // Test Z-drop
-      const int gap_score = wf_zdrop_gap_score(wf_aligner,max_offset,max_k,cmax_offset,cmax_k);
-//      fprintf(stderr,"[Z-DROP] (max=%d at (%d,%d),current=%d at (%d,%d)) diff=%d leeway=%d\n",
-//          max_sw_score,WAVEFRONT_V(max_k,max_offset),WAVEFRONT_H(max_k,max_offset),
-//          cmax_sw_score,WAVEFRONT_V(cmax_k,cmax_offset),WAVEFRONT_H(cmax_k,cmax_offset),
-//          max_sw_score - cmax_sw_score,
-//          zdrop + gap_score);
-      if (max_sw_score - (int)cmax_sw_score > zdrop + gap_score) {
+      if (max_sw_score - (int)cmax_sw_score > zdrop) {
         wf_aligner->alignment_end_pos.score = wf_heuristic->max_wf_score;
         wf_aligner->alignment_end_pos.k = max_k;
         wf_aligner->alignment_end_pos.offset = max_offset;
@@ -528,6 +519,9 @@ bool wavefront_heuristic_cufoff(
   if (mwavefront == NULL || mwavefront->lo > mwavefront->hi) return false; // Not Dropped
   // Decrease wait steps
   --(wf_heuristic->steps_wait);
+  // Save lo/hi base
+  const int hi_base = mwavefront->hi;
+  const int lo_base = mwavefront->lo;
   // Select heuristic (WF-Adaptive)
   if (wf_heuristic->strategy & wf_heuristic_wfadaptive) {
     wavefront_heuristic_wfadaptive(wf_aligner,mwavefront,false);
@@ -547,6 +541,7 @@ bool wavefront_heuristic_cufoff(
     wavefront_heuristic_banded_adaptive(wf_aligner,mwavefront);
   }
   // Check wavefront length
+  if (lo_base == mwavefront->lo && hi_base == mwavefront->hi) return false; // No wavefronts pruned
   if (mwavefront->lo > mwavefront->hi) mwavefront->null = true;
   // DEBUG
   // const int wf_length_base = hi_base-lo_base+1;
@@ -557,13 +552,13 @@ bool wavefront_heuristic_cufoff(
   mwavefront->wf_elements_init_min = mwavefront->lo;
   mwavefront->wf_elements_init_max = mwavefront->hi;
   // Equate other wavefronts
-  if (distance_metric <= gap_linear)  return false; // Not Dropped
+  if (distance_metric <= gap_linear) return false; // Not Dropped
   // Cut-off the other wavefronts (same dimensions as M)
   wavefront_t* const i1wavefront = wf_components->i1wavefronts[score_mod];
   wavefront_t* const d1wavefront = wf_components->d1wavefronts[score_mod];
   wf_heuristic_equate(i1wavefront,mwavefront);
   wf_heuristic_equate(d1wavefront,mwavefront);
-  if (distance_metric == gap_affine)  return false; // Not Dropped
+  if (distance_metric == gap_affine) return false; // Not Dropped
   wavefront_t* const i2wavefront = wf_components->i2wavefronts[score_mod];
   wavefront_t* const d2wavefront = wf_components->d2wavefronts[score_mod];
   wf_heuristic_equate(i2wavefront,mwavefront);

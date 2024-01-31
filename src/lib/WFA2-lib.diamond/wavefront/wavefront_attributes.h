@@ -73,7 +73,7 @@ typedef struct {
  */
 typedef struct {
   // Limits
-  int max_alignment_score;       // Maximum score allowed before quit
+  int max_alignment_steps;       // Maximum WFA-steps allowed before quit
   // Probing intervals
   int probe_interval_global;     // Score-ticks interval to check any limits
   int probe_interval_compact;    // Score-ticks interval to check BT-buffer compacting

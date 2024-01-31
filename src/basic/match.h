@@ -71,6 +71,10 @@ struct Hsp
 		bit_score(0.0),
 		corrected_bit_score(0.0),
 		approx_id(0.0),
+#ifdef WITH_DNA
+        mapping_quality(0),
+        n_anchors(0),
+#endif
 		matrix(nullptr)
 	{}
 
@@ -91,6 +95,10 @@ struct Hsp
 		bit_score(0.0),
 		corrected_bit_score(0.0),
 		approx_id(0.0),
+#ifdef WITH_DNA
+        mapping_quality(0),
+        n_anchors(0),
+#endif
 		matrix(nullptr)
 	{}
 
@@ -252,7 +260,10 @@ struct Hsp
 	std::pair<int, int> diagonal_bounds() const;
 	bool backtraced;
 	int score, frame, length, identities, mismatches, positives, gap_openings, gaps, swipe_target, d_begin, d_end, reserved1, reserved2;
-	Interval query_source_range, query_range, subject_range;
+#if WITH_DNA
+    int mapping_quality, n_anchors;
+#endif
+	Interval query_source_range, query_range, subject_source_range,subject_range;
 	double evalue, bit_score, corrected_bit_score, approx_id;
 	Sequence target_seq;
 	const Stats::TargetMatrix* matrix;
@@ -392,11 +403,19 @@ struct HspContext
 	double approx_id_percent() const {
 		return hsp_.approx_id_percent(query.index(hsp_.frame), subject_seq);
 	}
+#if WITH_DNA
+    unsigned mapping_quality() const
+    { return hsp_.mapping_quality; }
+    unsigned n_anchors() const
+    { return hsp_.n_anchors; }
+#endif
 	double qcovhsp() const;
 	double scovhsp() const;
 	double id_percent() const;
 	const Interval& query_source_range() const
 	{ return hsp_.query_source_range; }
+    const Interval& subject_source_range() const
+    { return hsp_.subject_source_range; }
 	const Interval& query_range() const
 	{ return hsp_.query_range; }
 	const Interval& subject_range() const
@@ -464,6 +483,10 @@ struct TypeSerializer<HspContext> {
 		buf_->write(h.evalue());
 		buf_->write(h.score());
 		buf_->write(h.approx_id());
+#if WITH_DNA
+        buf_->write(h.mapping_quality());
+        buf_->write(h.n_anchors());
+#endif
 		return *this;
 	}
 
@@ -503,6 +526,10 @@ struct TypeDeserializer<HspContext> {
 		file_->read(h.hsp_.evalue);
 		file_->read(h.hsp_.score);
 		file_->read(h.hsp_.approx_id);
+#ifdef WITH_DNA
+        file_->read(h.hsp_.mapping_quality);
+        file_->read(h.hsp_.n_anchors);
+#endif
 		h.hsp_.query_source_range = h.hsp_.query_range;
 		return h;
 	}

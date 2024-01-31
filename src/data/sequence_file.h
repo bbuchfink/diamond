@@ -72,7 +72,8 @@ struct SequenceFile {
 		SELF_ALN_SCORES = 1 << 5,
 		NEED_LETTER_COUNT = 1 << 6,
 		ACC_TO_OID_MAPPING = 1 << 7,
-		OID_TO_ACC_MAPPING = 1 << 8
+		OID_TO_ACC_MAPPING = 1 << 8,
+		NEED_LENGTH_LOOKUP = 1 << 9
 	};
 
 	enum class FormatFlags {
@@ -130,13 +131,14 @@ struct SequenceFile {
 	virtual int64_t sequence_count() const = 0;
 	virtual int64_t sparse_sequence_count() const = 0;
 	virtual size_t letters() const = 0;
+	virtual size_t letters_filtered(const BitVector& v) const;
 	virtual int db_version() const = 0;
 	virtual int program_build_version() const = 0;
 	virtual bool read_seq(std::vector<Letter>& seq, std::string& id, std::vector<char>* quals = nullptr) = 0;
 	virtual Metadata metadata() const = 0;
 	virtual std::string taxon_scientific_name(TaxId taxid) const;
 	virtual int build_version() = 0;
-	virtual void create_partition_balanced(size_t max_letters) = 0;
+	virtual void create_partition_balanced(int64_t max_letters) = 0;
 	virtual void save_partition(const std::string& partition_file_name, const std::string& annotation = "") = 0;
 	virtual int get_n_partition_chunks() = 0;
 	virtual void set_seqinfo_ptr(OId i) = 0;
@@ -157,7 +159,7 @@ struct SequenceFile {
 	virtual ~SequenceFile();
 
 	Type type() const { return type_; }
-	Block* load_seqs(const size_t max_letters, const BitVector* filter = nullptr, LoadFlags flags = LoadFlags(3), const Chunk& chunk = Chunk());
+	Block* load_seqs(const int64_t max_letters, const BitVector* filter = nullptr, LoadFlags flags = LoadFlags(3), const Chunk& chunk = Chunk());
 	void get_seq();
 	Util::Tsv::File* make_seqid_list();
 	size_t total_blocks() const;
@@ -237,6 +239,7 @@ protected:
 	std::unique_ptr<TaxonomyNodes> taxon_nodes_;
 	std::unordered_map<std::string, OId> acc2oid_;
 	std::unique_ptr<Util::Tsv::File> seqid_file_;
+	std::vector<Loc> seq_length_;
 	StringSet acc_;
 
 private:

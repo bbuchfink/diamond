@@ -12,40 +12,43 @@ The wavefront alignment (WFA) algorithm is an **exact** gap-affine algorithm tha
 
 ### 1.2 What is WFA2-lib?
 
-The WFA2 library implements the WFA algorithm for different distance metrics and alignment modes. It supports various [distance functions](#wfa2.distances): indel, edit, gap-lineal, gap-affine, and dual-gap gap-affine distances. The library allows computing only the score or the complete alignment (i.e., CIGAR) (see [Alignment Scope](#wfa2.scope)). Also, the WFA2 library supports computing end-to-end alignments (a.k.a. global-alignment) and ends-free alignments (including semi-global, glocal, and extension alignment) (see [Alignment Span](#wfa2.span)). In the case of long and noisy alignments, the library provides different [low-memory modes](#wfa2.mem) that significantly reduce the memory usage of the naive WFA algorithm implementation. Beyond the exact-alignment modes, the WFA2 library implements [heuristic modes](#wfa2.heuristics) that dramatically accelerate the alignment computation. Additionally, the library provides many other support functions to display and verify alignment results, control the overall memory usage, and more.
+The WFA2 library implements the WFA algorithm for different distance metrics and alignment modes. It supports various [distance functions](#wfa2.distances): indel, edit, gap-linear, gap-affine, and dual-gap gap-affine distances. The library allows computing only the score or the complete alignment (i.e., CIGAR) (see [Alignment Scope](#wfa2.scope)). Also, the WFA2 library supports computing end-to-end alignments (a.k.a. global-alignment) and ends-free alignments (including semi-global, glocal, and extension alignment) (see [Alignment Span](#wfa2.span)). In the case of long and noisy alignments, the library provides different [low-memory modes](#wfa2.mem) that significantly reduce the memory usage of the naive WFA algorithm implementation. Beyond the exact-alignment modes, the WFA2 library implements [heuristic modes](#wfa2.heuristics) that dramatically accelerate the alignment computation. Additionally, the library provides many other support functions to display and verify alignment results, control the overall memory usage, and more.
 
 ### 1.3 Getting started
 
-Git clone and compile the library, tools, and examples. By default use cmake:
+Git clone and compile the library, tools, and examples (by default, use cmake).
 
 ```
 git clone https://github.com/smarco/WFA2-lib
 cd WFA2-lib
-mkdir build
+mkdir build && cd build
 cmake .. -DCMAKE_BUILD_TYPE=Release
 cmake --build . --verbose
 ctest . --verbose
 ```
 
-There are some flags that can be used:
+There are some flags that can be used. For instance:
 
 ```
 cmake .. -DOPENMP=TRUE
+cmake .. -DCMAKE_BUILD_TYPE=Release -DEXTRA_FLAGS="-ftree-vectorizer-verbose=5"
 ```
 
-To add vector optimization try
-
-```
-cmake .. -DCMAKE_BUILD_TYPE=Release -DEXTRA_FLAGS="-ftree-vectorize -msse2 -mfpmath=sse -ftree-vectorizer-verbose=5"
-```
-
-To build a shared library (static is the default)
+To build a shared library (static is the default).
 
 ```
 cmake -DBUILD_SHARED_LIBS=ON
 ```
 
-It is possible to build WFA2-lib in a GNU Guix container, for more information see [guix.scm](./guix.scm).
+Alternatively, the Makefile build system can be used.
+
+```
+$> git clone https://github.com/smarco/WFA2-lib
+$> cd WFA2-lib
+$> make clean all
+```
+
+Also, it is possible to build WFA2-lib in a GNU Guix container, for more information see [guix.scm](./guix.scm).
 
 ### 1.4 Contents (where to go from here)
 
@@ -173,7 +176,7 @@ An example of how to use them is [here](./bindings/rust/example.rs).
 ## <a name="wfa2.features"></a> 3. WFA2-LIB FEATURES
 
 * **Exact alignment** method that computes the optimal **alignment score** and/or **alignment CIGAR**.
-* Supports **multiple distance metrics** (i.e., indel, edit, gap-lineal, gap-affine, and dual-gap gap-affine).
+* Supports **multiple distance metrics** (i.e., indel, edit, gap-linear, gap-affine, and dual-gap gap-affine).
 * Allows performing **end-to-end** (a.k.a. global) and **ends-free** (e.g., semi-global, extension, overlap) alignment.
 * Implements **low-memory modes** to reduce and control memory consumption (down to `O(s)` using the `ultralow` mode).
 * Supports various **heuristic strategies** to use on top of the core WFA algorithm.
@@ -417,7 +420,7 @@ The WFA2 library implements various memory modes: `wavefront_memory_high`, `wave
 
 ```C
   wavefront_aligner_attr_t attributes = wavefront_aligner_attr_default;
-  attributes.memory_mode = wavefront_memory_med;
+  attributes.memory_mode = wavefront_memory_ultralow;
 ```
 
 ### <a name="wfa2.heuristics"></a> 3.5 Heuristic modes
@@ -555,11 +558,16 @@ WFA2's heuristics are classified into the following categories: ['wf-adaptive'](
 
 ### <a name="wfa2.other.notes"></a> 3.6 Some technical notes
 
-- Thanks to Eizenga's formulation, WFA2-lib can operate with any match score. Although, in practice, M=0 is still the most efficient choice.
+- Thanks to Eizenga's formulation, WFA2-lib can operate with any match score. In practice, M=0 is often the most efficient choice.
 
-- Note that edit and LCS are distance metrics and, thus, the score computed is always positive. However, weighted distances, like gap-linear and gap-affine, have the sign of the computed alignment evaluated under the selected penalties. If WFA2-lib is executed using $M=0$, the final score is expected to be negative.
 
-- All WFA2-lib algorithms/variants are stable. That is, for alignments having the same score, the library always resolves ties (between M, X, I,and D) using the same criteria: M (highest prio) > X > D > I (lowest prio). Nevertheless, the memory mode `ultralow` (BiWFA) is optimal (always reports the best alignment) but not stable.
+- Note that edit and LCS are distance metrics and, thus, the score computed is always positive. However, using weighted distances (e.g., gap-linear and gap-affine) the alignment score is computed using the selected penalties (i.e., the alignment score can be positive or negative). For instance, if WFA2-lib is executed using $M=0$, the final score is expected to be negative.
+
+
+- All WFA2-lib algorithms/variants are stable. That is, for alignments having the same score, the all alignment modes always resolve ties (between M, X, I,and D) using the same criteria: M (highest prio) > X > D > I (lowest prio). Only the memory mode `ultralow` (BiWFA) resolves ties differently (although the results are still optimal).
+
+
+- WFA2lib follows the convention that describes how to transform the (1) Pattern/Query into the (2) Text/Database/Reference used in classic pattern matching papers. However, the SAM CIGAR specification describes the transformation from (2) Reference to (1) Query. If you want CIGAR-compliant alignments, swap the pattern and text sequences argument when calling the WFA2lib's align functions (to convert all the Ds into Is and vice-versa).
 
 ## <a name="wfa2.complains"></a> 4. REPORTING BUGS AND FEATURE REQUEST
 

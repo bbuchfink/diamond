@@ -167,7 +167,7 @@ DatabaseFile::DatabaseFile(const string &input_file, Metadata metadata, Flags fl
 	if (flag_any(metadata, Metadata::TAXON_NODES))
 		taxon_nodes_.reset(new TaxonomyNodes(seek(header2.taxon_nodes_offset), ref_header.build));
 
-	if (flag_any(flags, Flags::ACC_TO_OID_MAPPING | Flags::OID_TO_ACC_MAPPING))
+	if (flag_any(flags, Flags::ACC_TO_OID_MAPPING | Flags::OID_TO_ACC_MAPPING | Flags::NEED_LENGTH_LOOKUP))
 		read_seqid_list();
 }
 
@@ -421,7 +421,7 @@ void DatabaseFile::create_partition_fixednumber(size_t n) {
 	this->create_partition(max_letters_balanced);
 }
 
-void DatabaseFile::create_partition_balanced(size_t max_letters) {
+void DatabaseFile::create_partition_balanced(int64_t max_letters) {
 	//double n = std::ceil(static_cast<double>(ref_header.letters) / static_cast<double>(max_letters));
 	//size_t max_letters_balanced = static_cast<size_t>(std::ceil(static_cast<double>(ref_header.letters)/n));
 	//cout << "Balanced partitioning using " << max_letters_balanced << " (" << max_letters << ")" << endl;
@@ -617,7 +617,9 @@ void DatabaseFile::seq_data(size_t oid, std::vector<Letter>& dst) const
 
 size_t DatabaseFile::seq_length(size_t oid) const
 {
-	throw OperationNotSupported();
+	if (oid < seq_length_.size())
+		return seq_length_[oid];
+	throw std::out_of_range("DatabaseFile::seq_length");
 }
 
 void DatabaseFile::init_random_access(const size_t query_block, const size_t ref_blocks, bool dictionary)
@@ -664,6 +666,8 @@ void DatabaseFile::prep_db() {
 void DatabaseFile::read_seqid_list() {
 	if (flag_any(flags_, Flags::ACC_TO_OID_MAPPING))
 		acc2oid_.reserve(sequence_count());
+	if (flag_any(flags_, Flags::NEED_LENGTH_LOOKUP))
+		seq_length_.reserve(sequence_count());
 	OId oid = 0;
 	vector<Letter> seq;
 	string id;
@@ -674,6 +678,8 @@ void DatabaseFile::read_seqid_list() {
 		if (msg)
 			message_stream << "Warning: " << msg << std::endl;
 		add_seqid_mapping(id, oid++);
+		if (flag_any(flags_, Flags::NEED_LENGTH_LOOKUP))
+			seq_length_.push_back(seq.size());
 	}
 	/*if ((flag_any(flags_, Flags::ACC_TO_OID_MAPPING) && (int64_t)acc2oid_.size() != sequence_count())
 		|| (flag_any(flags_, Flags::OID_TO_ACC_MAPPING) && (int64_t)acc_.size() != sequence_count()))

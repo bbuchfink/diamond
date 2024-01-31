@@ -224,9 +224,11 @@ list<Hsp> anchored_swipe(Targets& targets, const DP::AnchoredSwipe::Config& cfg)
 				out.back().swipe_target = t.target_idx;
 				out.back().query_range = { i0,i1 };
 				out.back().query_source_range = out.back().query_range;
-				out.back().subject_range = { j0,j1 };
+                out.back().subject_range = { j0,j1 };
+                out.back().subject_source_range = out.back().subject_range;
 				out.back().reserved1 = (int)gross_cells; // stats.gross_cells;
 				out.back().reserved2 = (int)net_cells; // stats.net_cells;
+				out.back().approx_id = out.back().approx_id_percent(cfg.query, t.seq);
 			}
 		}
 	cfg.stats.inc(Statistics::TIME_ANCHORED_SWIPE_OUTPUT, timer.microseconds());

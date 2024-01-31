@@ -29,7 +29,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/options/option.h"
 #include "value.h"
 
-enum class Sensitivity { FASTER = -1, FAST = 0, DEFAULT = 1, MID_SENSITIVE = 2, SENSITIVE = 3, MORE_SENSITIVE = 4, VERY_SENSITIVE = 5, ULTRA_SENSITIVE = 6};
+enum class Sensitivity { FASTER = -1, FAST = 0, DEFAULT = 1, MID_SENSITIVE = 2, SHAPES30x10 = 3, SENSITIVE = 4, MORE_SENSITIVE = 5, VERY_SENSITIVE = 6, ULTRA_SENSITIVE = 7};
 enum class Compressor;
 
 template<> struct EnumTraits<Sensitivity> {
@@ -40,6 +40,12 @@ template<> struct EnumTraits<Sensitivity> {
 template<> struct EnumTraits<SequenceType> {
     static const EMap<SequenceType> to_string;
     static const SEMap<SequenceType> from_string;
+};
+
+enum class DNAExtensionAlgo{KSW,WFA};
+template<> struct EnumTraits<DNAExtensionAlgo>{
+    static const EMap<DNAExtensionAlgo> to_string;
+    static const SEMap<DNAExtensionAlgo> from_string;
 };
 
 enum class GraphAlgo { GREEDY_VERTEX_COVER, LEN_SORTED };
@@ -309,7 +315,7 @@ struct Config
 	string unaligned_targets;
 	Option<double> approx_min_id;
 	bool mode_faster;
-	double member_cover;
+	Option<double> member_cover;
 	bool weighted_gvc;
 	bool kmer_ranking;
 	bool hamming_ext;
@@ -331,15 +337,33 @@ struct Config
 	bool no_8bit_extension;
 	bool anchored_swipe;
 	bool no_chaining_merge_hsps;
-	bool recluster_bd;
 	bool pipeline_short;
 	string graph_algo;
 	bool linsearch;
 	int64_t tsv_read_size;
     int zdrop;
 	bool heartbeat;
-	bool no_parse_seqids;
-	bool sam_qlen_field;
+    bool no_parse_seqids;
+    bool sam_qlen_field;
+#ifdef WITH_DNA
+  DNAExtensionAlgo dna_extension;
+  double repetitive_cutoff;
+  bool chaining_out;
+  bool align_long_reads;
+  double chain_pen_gap_scale;
+  double chain_pen_skip_scale;
+#endif
+    double min_length_ratio;
+	Option<double> mutual_cover;
+	bool symmetric;
+	bool no_gvc_reassign;
+	string_vector connected_component_depth;
+	std::vector<string> round_coverage;
+	string_vector round_approx_id;
+	int max_indirection;
+	bool mode_shapes30x10;
+	string aln_out;
+	bool include_lineage;
 
     SequenceType dbtype;
 

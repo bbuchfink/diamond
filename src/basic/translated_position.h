@@ -120,7 +120,9 @@ struct TranslatedPosition
 
 	int absolute(int dna_len) const
 	{
-		if (!align_mode.query_translated)
+        if(!frame.offset &&  align_mode.mode == AlignMode::blastn)
+           return dna_len - 1 - translated;
+		if (!align_mode.query_translated && frame.strand == FORWARD)
 			return translated;
 		return oriented_position(in_strand(), frame.strand, dna_len);
 	}

@@ -174,7 +174,7 @@ std::string join(const char *c, const std::vector<std::string> &v);
 
 template<typename T, typename F>
 auto apply(const std::vector<T> &v, F f) -> std::vector<typename std::result_of<F(T)>::type> {
-#ifdef _MSC_VER
+#if __cplusplus >= 201703L
 	using R = typename std::invoke_result<F, T>::type;
 #else
 	using R = typename std::result_of<F(T)>::type;

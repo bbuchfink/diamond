@@ -98,7 +98,7 @@ static TextBuffer* view_query(const string& query_acc, const string& buf, Sequen
 	Blast_tab_format fmt;
 	TranslatedSequence query_seq;
 	TextBuffer* out = new TextBuffer();
-	Output::Info info{ SeqInfo { 0, 0, query_acc.c_str(), "", query_seq.source().length(), query_seq.source(), Sequence()}, false, nullptr, *out, {} };
+	Output::Info info{ SeqInfo { 0, 0, query_acc.c_str(), "", query_seq.source().length(), query_seq.source(), Sequence()}, false, nullptr, *out, {}, AccessionParsing() };
 	for (Hsp& h : hsp) {
 		h.query_source_range = h.query_range;
 		fmt.print_match(HspContext(h,
@@ -148,10 +148,10 @@ void view_tsv() {
 	output_sink.reset(new ReorderQueue<TextBuffer*, OutputWriter>(0, writer));
 
 	timer.go("Loading database");
-	db_block = db->load_seqs(SIZE_MAX, nullptr, SequenceFile::LoadFlags::ALL);
+	db_block = db->load_seqs(INT64_MAX, nullptr, SequenceFile::LoadFlags::ALL);
 
 	timer.go("Loading queries");
-	query_block = query_file->load_seqs(SIZE_MAX, nullptr, SequenceFile::LoadFlags::ALL);
+	query_block = query_file->load_seqs(INT64_MAX, nullptr, SequenceFile::LoadFlags::ALL);
 
 	timer.go("Building accession mapping");
 	unsigned n = db_block->ids().size();

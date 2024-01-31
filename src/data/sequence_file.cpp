@@ -247,7 +247,7 @@ size_t SequenceFile::dict_block(const size_t ref_block)
 	return config.multiprocessing ? ref_block : 0;
 }
 
-Block* SequenceFile::load_seqs(const size_t max_letters, const BitVector* filter, LoadFlags flags, const Chunk& chunk)
+Block* SequenceFile::load_seqs(const int64_t max_letters, const BitVector* filter, LoadFlags flags, const Chunk& chunk)
 {
 	reopen();
 
@@ -786,7 +786,7 @@ template void SequenceFile::sub_db<vector<SuperBlockId>::const_iterator>(vector<
 
 template<typename It>
 FastaFile* SequenceFile::sub_db(It begin, It end, const string& file_name) {
-	FastaFile* f = new FastaFile(file_name, true, FastaFile::WriteAccess());
+	FastaFile* f = new FastaFile(file_name, true, FastaFile::WriteAccess(), Flags::NEED_LENGTH_LOOKUP);
 	sub_db(begin, end, f);
 	return f;
 }
@@ -900,7 +900,7 @@ vector<tuple<FastaFile*, vector<OId>, File*>> SequenceFile::length_sort(int64_t 
 	files.reserve(block);
 	for (int i = 0; i < block; ++i) {
 		//files.emplace_back(new FastaFile("", true, FastaFile::WriteAccess()), vector<OId>(),
-		files.emplace_back(new FastaFile("", true, FastaFile::WriteAccess()), vector<OId>(),
+		files.emplace_back(new FastaFile("", true, FastaFile::WriteAccess(), Flags::NEED_LENGTH_LOOKUP), vector<OId>(),
 			new File(Schema{ ::Type::INT64 }, "", ::Flags::TEMP));
 		get<0>(files.back())->init_write();
 	}
@@ -922,4 +922,12 @@ vector<tuple<FastaFile*, vector<OId>, File*>> SequenceFile::length_sort(int64_t 
 Util::Tsv::File& SequenceFile::seqid_file() {
 	seqid_file_->rewind();
 	return *seqid_file_;
+}
+
+size_t SequenceFile::letters_filtered(const BitVector& v) const {
+	size_t n = 0;
+	for (OId i = 0; i < v.size(); ++i)
+		if (v.get(i))
+			n += seq_length(i);
+	return n;
 }

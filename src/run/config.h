@@ -49,7 +49,9 @@ namespace Extension {
 }}
 namespace Dna{
     class Index;
+    struct TotalTime;
 }
+
 namespace Search {
 
 struct Round {
@@ -92,6 +94,7 @@ struct Config {
 	Loc                                        minimizer_window;
 	bool                                       lin_stage1_target;
 	unsigned                                   hamming_filter_id;
+	double                                     min_length_ratio;
 	double                                     ungapped_evalue;
 	double                                     ungapped_evalue_short;
 	double                                     gapped_filter_evalue;
@@ -112,7 +115,10 @@ struct Config {
 	std::unique_ptr<RankingTable>              ranking_table;
     std::unique_ptr<Stats::Blastn_Score>       score_builder;
 #ifdef WITH_DNA
-    std::unique_ptr<Dna::Index>                dna_ref_index;
+    std::unique_ptr<Dna::Index>               dna_ref_index;
+    std::unique_ptr<Dna::TotalTime>           timer;
+    double                                       chain_pen_gap;
+    double                                       chain_pen_skip;
 #endif
 
     int                                        current_query_block;

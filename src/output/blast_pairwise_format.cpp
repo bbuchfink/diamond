@@ -24,8 +24,8 @@ void Pairwise_format::print_match(const HspContext& r, Output::Info &info)
 	static const unsigned width = 60;
 	TextBuffer& out = info.out;
 	const int dna_len = (int)r.query.source().length();
-	const Strand strand = r.frame() < 3 ? FORWARD : REVERSE;
 	out << '>';
+    const Strand strand = (config.command == ::Config::blastn) ? (r.frame() ? FORWARD : REVERSE) : (r.frame() < 3 ? FORWARD : REVERSE);
 	OutputFormat::print_title(out, r.target_title.c_str(), true, true, " ");
 	out << "\nLength=" << r.subject_len << "\n\n";
 	out << " Score = " << r.bit_score() << " bits (" << r.score() << "),  Expect = ";
@@ -35,13 +35,22 @@ void Pairwise_format::print_match(const HspContext& r, Output::Info &info)
 		<< "%), Gaps = " << r.gaps() << '/' << r.length() << " (" << percentage<unsigned, unsigned>(r.gaps(), r.length()) << "%)\n";
 	if (align_mode.query_translated)
 		out << " Frame = " << r.blast_query_frame() << '\n';
-	out << '\n';
+
+#ifdef WITH_DNA
+    if(config.command == ::Config::blastn) {
+        out << " Strand = " ;
+        if(r.frame()) out << "Plus/"; else out<< "Minus/";
+        out << "Plus" << '\n';
+    }
+
+#endif
+    out << '\n';
 	const unsigned digits = (unsigned)std::max(ceil(log10(r.subject_range().end_)), ceil(log10(r.query_source_range().end_)));
 
 	HspContext::Iterator qi = r.begin(), mi = r.begin(), si = r.begin();
 	while (qi.good()) {
 		out << "Query  ";
-		out.print(qi.query_pos.absolute(dna_len) + 1, digits);
+        out.print(qi.query_pos.absolute(dna_len) + 1, digits);
 		out << "  ";
 		for (unsigned i = 0; i < width && qi.good(); ++i, ++qi)
 			out << qi.query_char();

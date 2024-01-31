@@ -34,12 +34,6 @@
 #include "wavefront_aligner.h"
 
 /*
- * Resize
- */
-void wavefront_unialign_resize(
-    wavefront_aligner_t* const wf_aligner);
-
-/*
  * Initialize alignment
  */
 void wavefront_unialign_init(

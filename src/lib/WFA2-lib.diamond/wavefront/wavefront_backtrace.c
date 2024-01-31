@@ -419,7 +419,7 @@ void wavefront_backtrace_affine(
     }
     // Check source score
     if (max_all < 0) break; // No source
-    // Traceback Matches
+    // Traceback matches
     if (matrix_type == affine2p_matrix_M) {
       const int max_offset = BACKTRACE_PIGGYBACK_GET_OFFSET(max_all);
       const int num_matches = offset - max_offset;
@@ -430,7 +430,7 @@ void wavefront_backtrace_affine(
       h = WAVEFRONT_H(k,offset);
       if (v <= 0 || h <= 0) break;
     }
-    // Traceback Operation
+    // Traceback operation
     const backtrace_type backtrace_type = BACKTRACE_PIGGYBACK_GET_TYPE(max_all);
     switch (backtrace_type) {
       case backtrace_M:

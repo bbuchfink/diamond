@@ -84,6 +84,7 @@ Hsp traceback(_cbs bias_correction, const TracebackMatrix<_sv> &dp, const DpTarg
 	out.transcript.push_terminator();
 	out.target_seq = target.seq;
 	out.query_source_range = TranslatedPosition::absolute_interval(TranslatedPosition(out.query_range.begin_, p.frame), TranslatedPosition(out.query_range.end_, p.frame), p.query_source_len);
+    out.subject_source_range = out.subject_range;
 	out.approx_id = out.approx_id_percent(p.query, target.seq);
 	return out;
 }
@@ -122,7 +123,9 @@ Hsp traceback(_cbs bias_correction, const Matrix<Cell> &dp, const DpTarget &targ
 	}
 	assign_stats(out, stats);
 	out.query_source_range = TranslatedPosition::absolute_interval(TranslatedPosition(out.query_range.begin_, p.frame), TranslatedPosition(out.query_range.end_, p.frame), p.query_source_len);
-	return out;
+    out.subject_source_range = out.subject_range;
+
+    return out;
 }
 
 template<typename _sv, typename _cbs>
@@ -179,7 +182,8 @@ Hsp traceback(_cbs bias_correction, const TracebackVectorMatrix<_sv> &dp, const 
 	out.transcript.reverse();
 	out.transcript.push_terminator();
 	out.query_source_range = TranslatedPosition::absolute_interval(TranslatedPosition(out.query_range.begin_, p.frame), TranslatedPosition(out.query_range.end_, p.frame), p.query_source_len);
-	out.approx_id = out.approx_id_percent(p.query, target.seq);
+    out.subject_source_range = out.subject_range;
+    out.approx_id = out.approx_id_percent(p.query, target.seq);
 	return out;
 }
 template<typename _sv, typename _cbs, typename Cfg>

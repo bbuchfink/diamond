@@ -43,8 +43,9 @@ Reduction dna("A C G T");
 
 const map<Sensitivity, SensitivityTraits> sensitivity_traits[2] = {
 	//                               qidx   motifm freqsd minid ug_ev   ug_ev_s gf_ev  idx_chunk qbins ctg_seed  seed_cut block_size reduction min_window
-    {{ Sensitivity::FASTER,          {true,  true,  50.0,  11,   0,      0,      0,     4,        16,   nullptr,  0.9,     2.0,       murphy10, 12 }},
+    {{ Sensitivity::FASTER,         {true,  true,  50.0,  11,   0,      0,      0,     4,        16,   nullptr,  0.9,     2.0,       murphy10, 12 }},
 	{ Sensitivity::FAST,            {true,  true,  50.0,  11,   0,      0,      0,     4,        16,   nullptr,  0.9,     2.0,       murphy10, 0 }},
+	{ Sensitivity::SHAPES30x10,      {true,  true,  50.0,  11,   0,      0,      0,     4,        16,   nullptr,  0.9,     2.0,       murphy10, 0 }},
 	{ Sensitivity::DEFAULT,         {true,  true,  50.0,  11,   10000,  10000,  0,     4,        16,   "111111", 0.8,     2.0,       murphy10, 0 }},
 	{ Sensitivity::MID_SENSITIVE,   {true,  true,  20.0,  11,   10000,  10000,  0,     4,        16,   nullptr,  1.0,     2.0,       murphy10, 0 }},
 	{ Sensitivity::SENSITIVE,       {true,  true,  20.0,  11,   10000,  10000,  1,     4,        16,   "11111",  1.0,     2.0,       murphy10, 0 }},
@@ -52,7 +53,12 @@ const map<Sensitivity, SensitivityTraits> sensitivity_traits[2] = {
 	{ Sensitivity::VERY_SENSITIVE,  {true,  false, 15.0,  9,    100000, 30000,  1,     1,        16,   nullptr,  1.0,     0.4,       murphy10, 0 }},
 	{ Sensitivity::ULTRA_SENSITIVE, {true,  false, 20.0,  9,    300000, 30000,  1,     1,        64,   nullptr,  1.0,     0.4,       murphy10, 0 }},
 },
-{{Sensitivity::DEFAULT, {true,  false, 20.0,  9,    0,      0,      0,     1,        16,   nullptr,  1.0,     2.0,       dna,      12 }}
+{{Sensitivity::FASTER, {true,  false, 20.0,  9,    0,      0,      0,     1,        16,   nullptr,  1.0,     2.0,       dna,      12 }},
+{Sensitivity::FAST, {true,  false, 20.0,  9,    0,      0,      0,     1,        16,   nullptr,  1.0,     2.0,       dna,      12 }},
+{Sensitivity::DEFAULT, {true,  false, 20.0,  9,    0,      0,      0,     1,        16,   nullptr,  1.0,     2.0,       dna,      10 }},
+{Sensitivity::SENSITIVE, {true,  false, 20.0,  9,    0,      0,      0,     1,        16,   nullptr,  1.0,     2.0,       dna,      12 }},
+{Sensitivity::VERY_SENSITIVE, {true,  false, 20.0,  9,    0,      0,      0,     1,        16,   nullptr,  1.0,     2.0,       dna,      12}},
+{Sensitivity::ULTRA_SENSITIVE, {true,  false, 20.0,  9,    0,      0,      0,     1,        16,   nullptr,  1.0,     2.0,       dna,      4}}
 }};
 
 
@@ -222,10 +228,53 @@ const map<Sensitivity, vector<string>> shape_codes[2] ={
 	{ Sensitivity::FAST, 
 		{ "1101110101101111" } },
 	{ Sensitivity::FASTER,
-		{ "1101110101101111" } }},
+		{ "1101110101101111" } },
+	{ Sensitivity::SHAPES30x10, {
+		"10111111111",
+		"111110110111",
+		"1101110111011",
+		"111111101011",
+		"1111011110011",
+		"111111100100011",
+		"110111010011011",
+"1111100110010011",
+"11101100111101",
+"111011011010101",
+"11011010101111",
+"11111110000010011",
+"11011001100110011",
+"101011100011111",
+"111011111101",
+"111110101100101",
+"1111010101001011",
+"11100111011001001",
+"1110110001111001",
+"110111011000010011",
+"11001100101100111",
+"11111000000111101",
+"11011110011010001",
+"110101101010011001",
+"111010111000010101",
+"1111101000100010011",
+"11010100100111011",
+"101001111100111",
+"101110010001010111",
+"11001101001011011"
+	} }
+},
     {
+    { Sensitivity::ULTRA_SENSITIVE,
+      {"1111111111111111"} },
+      { Sensitivity::VERY_SENSITIVE,
+       { "1111111111111111"} },
+    { Sensitivity::SENSITIVE,
+     { "1111111111111111" } },
     { Sensitivity::DEFAULT,
-      { "1111111111111111" } }}
+      { "111111111111111"} },
+    { Sensitivity::FAST,
+      { "1111111111111111" } },
+   { Sensitivity::FASTER,
+      { "1111111111111111" } },}
 
 };
 
@@ -239,6 +288,14 @@ bool use_single_indexed(double coverage, size_t query_letters, size_t ref_letter
 	}
 	else
 		return query_letters < 3000000llu && query_letters * 2000llu < ref_letters;
+}
+
+bool keep_target_id(const Search::Config& cfg) {
+#ifdef HIT_KEEP_TARGET_ID
+	return true;
+#else
+	return cfg.min_length_ratio != 0.0;
+#endif
 }
 
 MaskingAlgo soft_masking_algo(const SensitivityTraits& traits) {
@@ -289,7 +346,9 @@ void setup_search(Sensitivity sens, Search::Config& cfg)
 #ifdef WITH_DNA
     if(align_mode.mode == AlignMode::blastn)
        Reduction::reduction = dna;
-    #endif
+    cfg.chain_pen_gap = config.chain_pen_gap_scale * 0.01 * (double)shapes[0].length_;
+    cfg.chain_pen_skip = config.chain_pen_skip_scale * 0.01 * (double)shapes[0].length_;
+#endif
 }
 
 }

@@ -39,6 +39,7 @@ struct SeedStats {
 
 bool seed_is_complex(const Letter* seq, const Shape& shape, const double cut);
 bool seed_is_complex_unreduced(Letter* seq, const Shape& shape, const double cut, const bool mask_seeds, SeedStats& stats);
+template<typename SeedLoc>
 void mask_seeds(const Shape& shape, const SeedPartitionRange& range, DoubleArray<SeedLoc>* query_seed_hits, DoubleArray<SeedLoc>* ref_seed_hits, Search::Config& cfg);
 
 }

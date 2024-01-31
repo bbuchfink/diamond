@@ -50,12 +50,16 @@ static vector<OId> recluster(shared_ptr<SequenceFile>& db, const vector<OId>& cl
 	BitVector centroid_aligned(db->sequence_count());
 	for_each(centroids.begin(), centroids.end(), [&centroid_aligned](OId c) { centroid_aligned.set(c); });
 	function<void(const HspContext&)> callback([&centroid_aligned](const HspContext& h) {
-		if (h.scovhsp() >= config.member_cover && (h.approx_id() >= config.approx_min_id || h.id_percent() >= config.approx_min_id))
+		if (((config.mutual_cover.present() && h.qcovhsp() >= config.mutual_cover.get_present() && h.scovhsp() >= config.mutual_cover.get_present())
+			|| (!config.mutual_cover.present() && h.scovhsp() >= config.member_cover))
+			&& (h.approx_id() >= config.approx_min_id || h.id_percent() >= config.approx_min_id))
 			centroid_aligned.set(h.subject_oid);
 	});
 	timer.finish();
 
 	HspValues hsp_values = HspValues::TARGET_COORDS;
+	if (config.mutual_cover.present())
+		hsp_values |= HspValues::QUERY_COORDS;
 	if (config.approx_min_id > 0)
 		hsp_values |= HspValues::QUERY_COORDS | HspValues::IDENT | HspValues::LENGTH;
 	realign(clusters, centroids, *db, callback, hsp_values);
@@ -80,9 +84,14 @@ static vector<OId> recluster(shared_ptr<SequenceFile>& db, const vector<OId>& cl
 	config.iterate = vector<string>();
 	config.output_format = { "edge" };
 	config.self = false;
-	config.query_cover = config.recluster_bd ? 0 : config.member_cover;
-	config.subject_cover = 0;
-	config.query_or_target_cover = config.recluster_bd ? config.member_cover : 0;
+	if (config.mutual_cover.present()) {
+		config.query_cover = config.subject_cover = config.mutual_cover.get_present();
+	}
+	else {
+		config.query_cover = config.member_cover;
+		config.subject_cover = 0;
+	}	
+	config.query_or_target_cover = 0;
 	config.sensitivity = from_string<Sensitivity>(cluster_steps(config.approx_min_id, false).back());
 	//tie(config.chunk_size, config.lowmem_) = block_size(Util::String::interpret_number(config.memory_limit.get(DEFAULT_MEMORY_LIMIT)), Search::iterated_sens.at(config.sensitivity).front(), false);
 	config.lowmem_ = 1;
@@ -106,50 +115,8 @@ static vector<OId> recluster(shared_ptr<SequenceFile>& db, const vector<OId>& cl
 		return out;
 
 	shared_ptr<SequenceFile> unmapped;
-	if (!config.recluster_bd) {
-		timer.go("Creating database of unmapped sequences");
-		unmapped.reset(unaligned->sub_db(unmapped_members.cbegin(), unmapped_members.cend()));
-	}
-	else {
-		timer.go("Loading covered centroids list");
-		vector<pair<OId, OId>> covered_centroids = mapback->targets_covered();
-		timer.finish();
-		message_stream << "#Centroid sequences tentatively covered: " << covered_centroids.size() << endl;
-		timer.go("Filtering list");
-		ips4o::parallel::sort(covered_centroids.begin(), covered_centroids.end());
-		vector<OId> centroid_list;
-		auto it = covered_centroids.begin();
-		auto it2 = unmapped_members.begin();
-		while (it < covered_centroids.end() && it2 < unmapped_members.end()) {
-			if (it->first < *it2)
-				++it;
-			else if (*it2 < it->first)
-				++it2;
-			else {
-				centroid_list.push_back(it->second);
-				++it;
-			}
-		}
-		ips4o::parallel::sort(centroid_list.begin(), centroid_list.end());
-		auto end = std::unique(centroid_list.begin(), centroid_list.end());
-		const int64_t n = end - centroid_list.begin();
-		timer.finish();
-		message_stream << "#Centroid sequences covered: " << n << endl;
-		timer.go("Making sequence list for reclustering");
-		for (int64_t i = 0; i < (int64_t)unmapped_members.size(); ++i)
-			unmapped_members[i] = unal_members[unmapped_members[i]];
-		const vector<OId> members = cluster_members(centroid_list.begin(), end, clusters);
-		unmapped_members.reserve(unmapped_members.size() + members.size());
-		unmapped_members.insert(unmapped_members.end(), members.begin(), members.end());
-		//unmapped_members.reserve(unmapped_members.size() + n);
-		//for (auto i = centroid_list.begin(); i < end; ++i)
-			//unmapped_members.push_back(centroids[*i]);
-		ips4o::parallel::sort(unmapped_members.begin(), unmapped_members.end());
-		timer.finish();
-		message_stream << "#Sequences from covered clustes: " << members.size() << endl;
-		timer.go("Creating database for reclustering");
-		unmapped.reset(db->sub_db(unmapped_members.cbegin(), unmapped_members.cend()));
-	}
+	timer.go("Creating database of unmapped sequences");
+	unmapped.reset(unaligned->sub_db(unmapped_members.cbegin(), unmapped_members.cend()));
 	mapback.reset();
 	timer.finish();
 
@@ -176,7 +143,7 @@ void recluster() {
 	config.clustering.require();
 	init_thresholds();
 	//config.strict_gvc = true;
-	message_stream << "Coverage cutoff: " << config.member_cover << '%' << endl;
+	message_stream << "Coverage cutoff: " << (config.mutual_cover.present() ? config.mutual_cover.get_present() : config.member_cover) << '%' << endl;
 
 	TaskTimer timer("Opening the database");
 	shared_ptr<SequenceFile> db(SequenceFile::auto_create({ config.database }, SequenceFile::Flags::NEED_LETTER_COUNT | SequenceFile::Flags::ACC_TO_OID_MAPPING | SequenceFile::Flags::OID_TO_ACC_MAPPING, SequenceFile::Metadata()));

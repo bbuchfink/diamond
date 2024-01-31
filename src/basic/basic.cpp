@@ -29,7 +29,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../util/util.h"
 #include "../stats/standard_matrix.h"
 
-const char* Const::version_string = "2.1.8";
+const char* Const::version_string = "2.1.9";
 using std::string;
 using std::vector;
 using std::count;
@@ -51,7 +51,7 @@ AlignMode::AlignMode(unsigned mode) :
     case blastn:
         input_sequence_type = SequenceType::nucleotide;
         query_translated = false;
-        query_contexts = 2;
+        query_contexts = 1;
         query_len_factor = 1;
         sequence_type = SequenceType::nucleotide;
         break;

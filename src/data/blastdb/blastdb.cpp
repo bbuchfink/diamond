@@ -295,7 +295,7 @@ int BlastDB::build_version()
 	return 0;
 }
 
-void BlastDB::create_partition_balanced(size_t max_letters)
+void BlastDB::create_partition_balanced(int64_t max_letters)
 {
 	throw OperationNotSupported();
 }

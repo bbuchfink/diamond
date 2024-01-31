@@ -87,6 +87,11 @@ struct Option<double> {
 	double get(const double default_value) const {
 		return present_ ? value_ : default_value;
 	}
+	double get_present() const {
+		if (!present_)
+			throw std::runtime_error("Option::get_present");
+		return value_;
+	}
 private:
 	double value_;
 	bool present_;

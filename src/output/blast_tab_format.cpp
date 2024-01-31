@@ -25,6 +25,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <numeric>
 #include <string.h>
 #include <algorithm>
+#include <iostream>
 #include "../basic/match.h"
 #include "output_format.h"
 #include "../data/taxonomy.h"
@@ -99,7 +100,7 @@ const vector<OutputField> Blast_tab_format::field_def = {
 { "qnum", "", "qnum", HspValues::NONE, Flags::NONE },			// 50
 { "snum", "", "snum", HspValues::NONE, Flags::NONE },			// 51
 { "scovhsp", "mcovhsp", "Subject coverage per HSP", HspValues::TARGET_COORDS, Flags::NONE },		// 52
-{ "full_qqual", "", "Query quality values", HspValues::NONE, Flags::NONE },	// 53
+{ "full_qqual", "", "Query quality values", HspValues::NONE, Flags::IS_STRING },	// 53
 { "full_qseq", "", "Query sequence", HspValues::NONE, Flags::IS_STRING },	// 54
 { "qseq_gapped", "", "Query sequence with gaps", HspValues::TRANSCRIPT, Flags::IS_STRING },  // 55
 { "sseq_gapped", "", "Subject sequence with gaps", HspValues::TRANSCRIPT, Flags::IS_STRING },	// 56
@@ -121,7 +122,8 @@ const vector<OutputField> Blast_tab_format::field_def = {
 { "corrected_bitscore", "corrected_bitscore", "", HspValues::NONE, Flags::NONE }, // 72
 { "neg_evalue", "neg_evalue", "", HspValues::NONE, Flags::NONE }, // 73
 { "reserved1", "reserved1", "", HspValues::NONE, Flags::NONE}, // 74
-{ "reserved2", "reserved2", "", HspValues::NONE, Flags::NONE} // 75
+{ "reserved2", "reserved2", "", HspValues::NONE, Flags::NONE}, // 75
+{ "slineages", "", "Subject lineages", HspValues::NONE, Flags::IS_STRING} // 76
 };
 
 template<>
@@ -168,11 +170,11 @@ Blast_tab_format::Blast_tab_format(bool json) :
 		const auto j = it - field_def.begin();
 		if (j == 34)
 			needs_taxon_id_lists = true;
-		if (j == 35 || j == 38 || j == 59 || j == 60) {
+		if (j == 35 || j == 38 || j == 59 || j == 60 || j == 76) {
 			needs_taxon_scientific_names = true;
 			needs_taxon_id_lists = true;
 		}
-		if (j == 38 || j == 59 || j == 60) {
+		if (j == 38 || j == 59 || j == 60 || j == 76) {
 			needs_taxon_nodes = true;
 			needs_taxon_ranks = true;
 		}
@@ -218,6 +220,17 @@ void print_taxon_names(_it begin, _it end, const SequenceFile& db, TextBuffer &o
 	}
 }
 
+void print_lineage(int64_t target_oid, const SequenceFile& db, TextBuffer& out, bool json = false) {
+	const vector<TaxId> taxids = db.taxids(target_oid);
+	if (taxids.empty())
+		return;
+	TaxId i = taxids.front();
+	while (i > 1) {
+		out << db.taxon_scientific_name(i) << ';';
+		i = db.taxon_nodes().get_parent(i);
+	}
+}
+
 void Blast_tab_format::print_match(const HspContext& r, Output::Info& info)
 {
 	TextBuffer& out = info.out;
@@ -258,10 +271,10 @@ void Blast_tab_format::print_match(const HspContext& r, Output::Info& info)
 			out << r.oriented_query_range().end_ + 1;
 			break;
 		case 15:
-			out << r.subject_range().begin_ + 1;
-			break;
+            out << r.subject_source_range().begin_ + 1;
+            break;
 		case 16:
-			out << r.subject_range().end_;
+            out << r.subject_source_range().end_;
 			break;
 		case 17:
 			r.query.source().print(out, r.query_source_range().begin_, r.query_source_range().end_, input_value_traits);
@@ -490,6 +503,9 @@ void Blast_tab_format::print_match(const HspContext& r, Output::Info& info)
 			break;
 		case 72:
 			out << r.corrected_bit_score();
+			break;
+		case 76:
+			print_lineage(r.subject_oid, *info.db, out);
 			break;
 #ifdef EXTRA
 		case 65:

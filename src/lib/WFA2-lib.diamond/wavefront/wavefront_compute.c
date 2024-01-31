@@ -133,6 +133,11 @@ bool wavefront_compute_endsfree_required(
   if (alg_form->text_begin_free == 0 &&
       alg_form->pattern_begin_free == 0) return false;
   if (score % (-penalties->match) != 0) return false;
+  // TODO: Missing condition (not added for efficiency)
+  //  const int endsfree_k = score/(-penalties->match); // (h/v)-coordinate for boundary conditions
+  //  const bool text_begin_free = (alg_form->text_begin_free >= endsfree_k);
+  //  const bool pattern_begin_free = (alg_form->pattern_begin_free >= endsfree_k);
+  //  if (!text_begin_free && !pattern_begin_free) return false;
   // Ok
   return true;
 }
@@ -238,7 +243,7 @@ wavefront_t* wavefront_compute_endsfree_allocate_null(
   wavefront_t* const wavefront = wavefront_slab_allocate(wavefront_slab,effective_lo,effective_hi);
   wf_offset_t* const offsets = wavefront->offsets;
   int k;
-  for (k=lo+1;k<hi;k++) {
+  for (k=lo;k<=hi;k++) {
     offsets[k] = WAVEFRONT_OFFSET_NULL;
   }
   if (text_begin_free) {

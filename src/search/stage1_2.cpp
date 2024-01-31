@@ -23,6 +23,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 namespace Search {
 	
-DISPATCH_3V(run_stage1, JoinIterator<SeedLoc>&, it, Search::WorkSet*, work_set, const Search::Config*, cfg)
+DISPATCH_3V(run_stage1, JoinIterator<PackedLoc>&, it, Search::WorkSet*, work_set, const Search::Config*, cfg)
+DISPATCH_3V(run_stage1, JoinIterator<PackedLocId>&, it, Search::WorkSet*, work_set, const Search::Config*, cfg)
 
 }

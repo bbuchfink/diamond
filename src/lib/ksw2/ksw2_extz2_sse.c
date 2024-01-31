@@ -2,6 +2,11 @@
 #include <assert.h>
 #include "ksw2.h"
 
+#ifdef _MSC_VER
+#define __SSE2__
+#define __SSE4_1__
+#endif
+
 #ifdef __SSE2__
 #include <emmintrin.h>
 

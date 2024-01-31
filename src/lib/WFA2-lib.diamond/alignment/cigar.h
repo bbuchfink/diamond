@@ -32,6 +32,7 @@
 #ifndef CIGAR_H_
 #define CIGAR_H_
 
+#include <stdbool.h>
 #include "system/mm_allocator.h"
 #include "alignment/linear_penalties.h"
 #include "alignment/affine_penalties.h"
@@ -46,11 +47,13 @@ typedef struct {
   int max_operations;      // Maximum buffer size
   int begin_offset;        // Begin offset
   int end_offset;          // End offset
-  // Score
+  // Score and end position (useful for partial alignments like Z-dropped)
   int score;               // Computed scored
+  int end_v;               // Alignment-end vertical coordinate (pattern characters aligned)
+  int end_h;               // Alignment-end horizontal coordinate (text characters aligned)
   // CIGAR (SAM compliant)
   bool has_misms;          // Show 'X' and '=', instead of  just 'M'
-  uint32_t* cigar_buffer;  // CIGAR-operations
+  uint32_t* cigar_buffer;  // CIGAR-operations (max_operations length)
   int cigar_length;        // Total CIGAR-operations
 } cigar_t;
 
@@ -76,9 +79,13 @@ bool cigar_is_null(
 int cigar_count_matches(
     cigar_t* const cigar);
 
-void cigar_append(
+void cigar_append_forward(
     cigar_t* const cigar_dst,
     cigar_t* const cigar_src);
+void cigar_append_reverse(
+    cigar_t* const cigar_dst,
+    cigar_t* const cigar_src);
+
 void cigar_append_deletion(
     cigar_t* const cigar,
     const int length);
@@ -121,19 +128,19 @@ void cigar_copy(
     cigar_t* const cigar_src);
 
 void cigar_discover_mismatches(
-    char* const pattern,
+    const char* const pattern,
     const int pattern_length,
-    char* const text,
+    const char* const text,
     const int text_length,
     cigar_t* const cigar);
 
-void cigar_maxtrim_gap_linear(
+bool cigar_maxtrim_gap_linear(
     cigar_t* const cigar,
     linear_penalties_t* const penalties);
-void cigar_maxtrim_gap_affine(
+bool cigar_maxtrim_gap_affine(
     cigar_t* const cigar,
     affine_penalties_t* const penalties);
-void cigar_maxtrim_gap_affine2p(
+bool cigar_maxtrim_gap_affine2p(
     cigar_t* const cigar,
     affine2p_penalties_t* const penalties);
 
@@ -172,13 +179,6 @@ int cigar_sprint_SAM_CIGAR(
 
 void cigar_print_pretty(
     FILE* const stream,
-    cigar_t* const cigar,
-    const char* const pattern,
-    const int pattern_length,
-    const char* const text,
-    const int text_length);
-int cigar_sprint_pretty(
-    char* const buffer,
     cigar_t* const cigar,
     const char* const pattern,
     const int pattern_length,

@@ -1,8 +1,8 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2022 Max Planck Society for the Advancement of Science e.V.
+Copyright (C) 2021-2024 Max Planck Society for the Advancement of Science e.V.
 
-Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
+Code developed by Benjamin Buchfink <buchfink@gmail.com>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -29,6 +29,7 @@ using std::priority_queue;
 using std::pair;
 using std::numeric_limits;
 using std::swap;
+using std::queue;
 
 namespace Util { namespace Algo {
 
@@ -83,7 +84,42 @@ static void fix_assignment(vector<Int>& centroids) {
 }
 
 template<typename Int>
-vector<Int> greedy_vertex_cover(FlatArray<Edge<Int>>& neighbors, const SuperBlockId* member_counts, bool merge_recursive) {
+void make_cluster_gvc(Int rep, FlatArray<Edge<Int>>& neighbors, vector<Int>& centroids, bool merge_recursive) {
+	centroids[rep] = rep;
+	for (auto i = neighbors.cbegin(rep); i != neighbors.cend(rep); ++i)
+		if (centroids[i->node2] == -1 || (merge_recursive && centroids[i->node2] == i->node2))
+			centroids[i->node2] = rep;
+}
+
+template<typename Int>
+void make_cluster_cc(Int rep, FlatArray<Edge<Int>>& neighbors, vector<Int>& centroids, Int depth) {
+	struct Entry {
+		Entry(Int node, Int depth):
+			node(node),
+			depth(depth)
+		{}
+		Int node;
+		Int depth;
+	};
+	centroids[rep] = rep;
+	queue<Entry> q;
+	for (auto i = neighbors.cbegin(rep); i != neighbors.cend(rep); ++i)
+		if (centroids[i->node2] == -1)
+			q.emplace(i->node2, 1);
+	while (!q.empty()) {
+		const Entry node = q.front();
+		q.pop();
+		if (centroids[node.node] != -1 || node.depth > depth)
+			continue;
+		for (auto i = neighbors.cbegin(node.node); i != neighbors.cend(node.node); ++i)
+			if (centroids[i->node2] == -1)
+				q.emplace(i->node2, node.depth + 1);
+		centroids[node.node] = rep;
+	}
+}
+
+template<typename Int>
+vector<Int> greedy_vertex_cover(FlatArray<Edge<Int>>& neighbors, const SuperBlockId* member_counts, bool merge_recursive, bool reassign, Int connected_component_depth) {
 	TaskTimer timer("Computing edge counts");
 	priority_queue<pair<Int, Int>> q;
 	vector<Int> centroids(neighbors.size(), -1);
@@ -102,22 +138,24 @@ vector<Int> greedy_vertex_cover(FlatArray<Edge<Int>>& neighbors, const SuperBloc
 		if (!q.empty() && count < q.top().first)
 			q.emplace(count, node);
 		else {
-			centroids[node] = node;
-			for (auto i = neighbors.cbegin(node); i != neighbors.cend(node); ++i)
-				if (centroids[i->node2] == -1 || (merge_recursive && centroids[i->node2] == i->node2))
-					centroids[i->node2] = node;
+			if (connected_component_depth > 0)
+				make_cluster_cc(node, neighbors, centroids, connected_component_depth);
+			else
+				make_cluster_gvc(node, neighbors, centroids, merge_recursive);
 		}
 	}
 
-	timer.go("Computing reassignment");
-	vector<double> weights(neighbors.size(), numeric_limits<double>::lowest());
-	for (Int node = 0; node < neighbors.size(); ++node)
-		if (centroids[node] == node)
-			for (auto i = neighbors.cbegin(node); i != neighbors.cend(node); ++i)
-				if (centroids[i->node2] != i->node2 && i->weight > weights[i->node2]) {
-					weights[i->node2] = i->weight;
-					centroids[i->node2] = node;
-				}
+	if (reassign) {
+		timer.go("Computing reassignment");
+		vector<double> weights(neighbors.size(), numeric_limits<double>::lowest());
+		for (Int node = 0; node < neighbors.size(); ++node)
+			if (centroids[node] == node)
+				for (auto i = neighbors.cbegin(node); i != neighbors.cend(node); ++i)
+					if (centroids[i->node2] != i->node2 && i->weight > weights[i->node2]) {
+						weights[i->node2] = i->weight;
+						centroids[i->node2] = node;
+					}
+	}
 
 	if (merge_recursive) {
 		timer.go("Computing merges");
@@ -127,7 +165,7 @@ vector<Int> greedy_vertex_cover(FlatArray<Edge<Int>>& neighbors, const SuperBloc
 	return centroids;
 }
 
-template vector<int32_t> greedy_vertex_cover<int32_t>(FlatArray<Edge<int32_t>>& neighbors, const SuperBlockId* member_counts, bool merge_recursive);
-template vector<int64_t> greedy_vertex_cover<int64_t>(FlatArray<Edge<int64_t>>& neighbors, const SuperBlockId* member_counts, bool merge_recursive);
+template vector<int32_t> greedy_vertex_cover<int32_t>(FlatArray<Edge<int32_t>>&, const SuperBlockId*, bool, bool, int32_t);
+template vector<int64_t> greedy_vertex_cover<int64_t>(FlatArray<Edge<int64_t>>&, const SuperBlockId*, bool, bool, int64_t);
 
 }}

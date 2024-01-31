@@ -62,9 +62,6 @@ typedef struct {
   heatmap_t* i2_heatmap;
   heatmap_t* d2_heatmap;
   heatmap_t* behavior_heatmap;
-  // Offsets
-  int offset_h;
-  int offset_v;
 } wavefront_plot_t;
 
 /*
@@ -83,7 +80,7 @@ void wavefront_plot_delete(
     wavefront_plot_t* const wf_plot);
 
 /*
- * Accessors
+ * Plot record state
  */
 void wavefront_plot(
     wavefront_aligner_t* const wf_aligner,
@@ -91,7 +88,7 @@ void wavefront_plot(
     const int align_level);
 
 /*
- * Display
+ * Display/Dump
  */
 void wavefront_plot_print(
     FILE* const stream,

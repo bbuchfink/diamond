@@ -220,7 +220,7 @@ OutputFormat* get_output_format()
 	else if (f[0] == "null")
 		return new Null_format;
 	else if (f[0] == "102")
-		return new Taxon_format;
+		return new TaxonFormat;
 	else if (f[0] == "paf" || f[0] == "103")
 		return new PAF_format;
 	else if (f[0] == "bin1")

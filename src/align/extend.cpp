@@ -66,6 +66,7 @@ namespace Extension {
 const std::map<Sensitivity, Mode> default_ext_mode = {
 	{ Sensitivity::FASTER, Mode::BANDED_FAST},
 	{ Sensitivity::FAST, Mode::BANDED_FAST},
+	{ Sensitivity::SHAPES30x10, Mode::BANDED_FAST},
 	{ Sensitivity::DEFAULT, Mode::BANDED_FAST},
 	{ Sensitivity::MID_SENSITIVE, Mode::BANDED_FAST},
 	{ Sensitivity::SENSITIVE, Mode::BANDED_FAST},

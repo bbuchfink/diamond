@@ -12,7 +12,7 @@ using std::fixed;
 std::array<char, 16> fixed_string_seed;
 
 string convert_size(size_t size) {
-	static const char *SIZES[] = { "B", "KB", "MB", "GB" };
+	static const char *SIZES[] = { "B", "KB", "MB", "GB", "TB", "PB" };
 	size_t div = 0;
 	size_t rem = 0;
 

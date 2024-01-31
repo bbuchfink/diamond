@@ -86,7 +86,7 @@ struct DatabaseFile : public SequenceFile, public InputFile
 	static bool is_diamond_db(const std::string &file_name);
 
 	void create_partition(size_t max_letters);
-	virtual void create_partition_balanced(size_t max_letters) override;
+	virtual void create_partition_balanced(int64_t max_letters) override;
 	void create_partition_fixednumber(size_t n);
 
 	virtual void save_partition(const std::string& partition_file_name, const std::string& annotation = "") override;

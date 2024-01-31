@@ -64,6 +64,7 @@ typedef struct {
   linear_penalties_t linear_penalties;     // Original gap-linear penalties
   affine_penalties_t affine_penalties;     // Original gap-affine penalties
   affine2p_penalties_t affine2p_penalties; // Original gap-affine2p penalties
+  int internal_gap_e;                      // Original gap-extension value (used for z-drop)
 } wavefront_penalties_t;
 
 /*
@@ -87,25 +88,6 @@ void wavefront_penalties_set_affine(
 void wavefront_penalties_set_affine2p(
     wavefront_penalties_t* const wf_penalties,
     affine2p_penalties_t* const affine2p_penalties);
-
-/*
- * Score conversion
- */
-int wavefront_penalties_get_score_indel(
-    wavefront_penalties_t* const wf_penalties,
-    const int score);
-int wavefront_penalties_get_score_edit(
-    wavefront_penalties_t* const wf_penalties,
-    const int score);
-int wavefront_penalties_get_score_linear(
-    wavefront_penalties_t* const wf_penalties,
-    const int score);
-int wavefront_penalties_get_score_affine(
-    wavefront_penalties_t* const wf_penalties,
-    const int score);
-int wavefront_penalties_get_score_affine2p(
-    wavefront_penalties_t* const wf_penalties,
-    const int score);
 
 /*
  * Display

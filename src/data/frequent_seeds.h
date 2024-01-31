@@ -29,9 +29,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 struct SequenceSet;
 
-struct Frequent_seeds
+struct FrequentSeeds
 {
 
+	template<typename SeedLoc>
 	void build(unsigned sid, const SeedPartitionRange &range, DoubleArray<SeedLoc> *query_seed_hits, DoubleArray<SeedLoc> *ref_seed_hits, Search::Config& cfg);
 	static void clear_masking(SequenceSet& seqs);
 
@@ -39,6 +40,7 @@ private:
 
 	static const double hash_table_factor;   
 
+	template<typename SeedLoc>
 	static void build_worker(
 		size_t seedp,
 		size_t thread_id,
@@ -53,4 +55,4 @@ private:
 
 };
 
-extern Frequent_seeds frequent_seeds;
+extern FrequentSeeds frequent_seeds;

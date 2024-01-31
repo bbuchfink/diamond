@@ -25,8 +25,27 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 using std::set;
 using std::vector;
+using std::string;
 
-void Taxon_format::print_match(const HspContext &r, Output::Info &info)
+static string taxon_lineage(TaxId taxid, SequenceFile& db) {
+	const vector<TaxId> lin = db.taxon_nodes().lineage(taxid);
+	string out(db.taxon_scientific_name(lin.front()));
+	for (vector<TaxId>::const_iterator i = lin.begin() + 1; i != lin.end(); ++i)
+		out += "; " + db.taxon_scientific_name(*i);
+	return out;
+}
+
+TaxonFormat::TaxonFormat() :
+	OutputFormat(taxon, HspValues::NONE, Output::Flags::NONE),
+	taxid(0),
+	evalue(std::numeric_limits<double>::max())
+{
+	needs_taxon_id_lists = true;
+	needs_taxon_nodes = true;
+	needs_taxon_scientific_names = config.include_lineage;
+}
+
+void TaxonFormat::print_match(const HspContext &r, Output::Info &info)
 {
 	const vector<TaxId> taxons(info.db->taxids(r.subject_oid));
 	if (taxons.empty())
@@ -42,7 +61,7 @@ void Taxon_format::print_match(const HspContext &r, Output::Info &info)
 	}
 }
 
-void Taxon_format::print_query_epilog(Output::Info &info) const
+void TaxonFormat::print_query_epilog(Output::Info &info) const
 {
 	info.out.write_until(info.query.title, Util::Seq::id_delimiters);
 	info.out << '\t' << taxid << '\t';
@@ -50,5 +69,7 @@ void Taxon_format::print_query_epilog(Output::Info &info) const
 		info.out.print_e(evalue);
 	else
 		info.out << '0';
+	if (config.include_lineage)
+		info.out << '\t' << taxon_lineage(taxid, *info.db) << '\t';
 	info.out << '\n';
 }

@@ -36,7 +36,7 @@ struct BlastDB : public SequenceFile {
 	virtual Metadata metadata() const override;
 	virtual std::string taxon_scientific_name(TaxId taxid) const override;
 	virtual int build_version() override;
-	virtual void create_partition_balanced(size_t max_letters) override;
+	virtual void create_partition_balanced(int64_t max_letters) override;
 	virtual void save_partition(const std::string& partition_file_name, const std::string& annotation = "") override;
 	virtual int get_n_partition_chunks() override;
 	virtual void set_seqinfo_ptr(OId i) override;

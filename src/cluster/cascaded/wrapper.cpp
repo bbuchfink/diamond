@@ -1,6 +1,6 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2019-2023 Max Planck Society for the Advancement of Science e.V.
+Copyright (C) 2019-2024 Max Planck Society for the Advancement of Science e.V.
 
 Code developed by Benjamin Buchfink <buchfink@gmail.com>
 
@@ -66,7 +66,7 @@ struct Config {
 	double                              block_size;
 	std::unique_ptr<OutputFormat>       output_format;
 	std::shared_ptr<FastaFile>          centroids;
-	TaskTimer                          total_time;
+	TaskTimer                           total_time;
 	int64_t                             seqs_processed;
 	int64_t                             letters_processed;
 	std::vector<OId>                    centroid2oid;
@@ -116,8 +116,13 @@ static vector<SuperBlockId> search_vs_centroids(shared_ptr<FastaFile>& super_blo
 	config.max_target_seqs_ = 1;
 	config.toppercent = 100;
 	config.sensitivity = cfg.sens;
-	config.query_cover = config.member_cover;
-	config.subject_cover = 0;
+	if (config.mutual_cover.present()) {
+		config.query_cover = config.subject_cover = config.mutual_cover.get_present();
+	}
+	else {
+		config.query_cover = config.member_cover;
+		config.subject_cover = 0;
+	}	
 	config.query_or_target_cover = 0;
 	if (cfg.linclust) {
 		config.iterate.unset();
@@ -159,7 +164,7 @@ void Cascaded::run() {
 	config.hamming_ext = config.approx_min_id >= 50.0;
 	TaskTimer total_time;
 	TaskTimer timer("Opening the input file");
-	shared_ptr<SequenceFile> db(SequenceFile::auto_create({ config.database }, SequenceFile::Flags::NEED_LETTER_COUNT | SequenceFile::Flags::OID_TO_ACC_MAPPING));
+	shared_ptr<SequenceFile> db(SequenceFile::auto_create({ config.database }, SequenceFile::Flags::NEED_LETTER_COUNT | SequenceFile::Flags::OID_TO_ACC_MAPPING | SequenceFile::Flags::NEED_LENGTH_LOOKUP));
 	if (db->type() == SequenceFile::Type::BLAST)
 		throw std::runtime_error("Clustering is not supported for BLAST databases.");
 	timer.finish();

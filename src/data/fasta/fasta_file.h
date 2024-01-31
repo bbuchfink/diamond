@@ -8,10 +8,10 @@ struct FastaFile : public SequenceFile
 	struct WriteAccess {};
 
 	FastaFile(const std::vector<std::string> &file_name, Metadata metadata = Metadata(), Flags flags = Flags::NONE, const ValueTraits& value_traits = amino_acid_traits);
-	FastaFile(const std::string& file_name, bool overwrite, const WriteAccess&);
+	FastaFile(const std::string& file_name, bool overwrite, const WriteAccess&, Flags flags = Flags::NONE, const ValueTraits& value_traits = amino_acid_traits);
 
 	virtual int64_t file_count() const override;
-	virtual void create_partition_balanced(size_t max_letters) override;
+	virtual void create_partition_balanced(int64_t max_letters) override;
 	virtual void save_partition(const std::string& partition_file_name, const std::string& annotation = "") override;
 	virtual int get_n_partition_chunks() override;
 	virtual void close() override;

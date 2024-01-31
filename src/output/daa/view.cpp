@@ -86,7 +86,8 @@ void view_query(DAA_query_record &r, TextBuffer &out, OutputFormat &format, cons
 {
 	unique_ptr<OutputFormat> f(format.clone());
 	size_t seek_pos;
-	Output::Info info{ SeqInfo { (BlockId)r.query_num, (OId)r.query_num, r.query_name.c_str(), "", (Loc)r.query_len(), r.query_seq.source(), Sequence()}, false, nullptr, out, {} };
+	Output::Info info{ SeqInfo { (BlockId)r.query_num, (OId)r.query_num, r.query_name.c_str(), "", (Loc)r.query_len(), r.query_seq.source(), Sequence()},
+		false, nullptr, out, {}, AccessionParsing() };
 	if (format == OutputFormat::daa)
 		seek_pos = write_daa_query_record(out, r.query_name.c_str(), r.query_seq.source());
 	else

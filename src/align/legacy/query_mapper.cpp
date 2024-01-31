@@ -223,7 +223,7 @@ bool QueryMapper::generate_output(TextBuffer &buffer, Statistics &stat, const Se
 	size_t seek_pos = 0;
 	const char *query_title = metadata.query->ids()[query_id];
 	unique_ptr<OutputFormat> f(cfg.output_format->clone());
-	Output::Info info{ cfg.query->seq_info(query_id), true, cfg.db.get(), buffer, {} };
+	Output::Info info{ cfg.query->seq_info(query_id), true, cfg.db.get(), buffer, {}, AccessionParsing() };
 
 	for (size_t i = 0; i < targets.size(); ++i) {
 

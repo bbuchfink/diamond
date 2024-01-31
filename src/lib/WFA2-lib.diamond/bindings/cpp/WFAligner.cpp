@@ -77,8 +77,8 @@ WFAligner::AlignmentStatus WFAligner::alignEnd2End(
       wfAligner,pattern,patternLength,text,textLength);
 }
 WFAligner::AlignmentStatus WFAligner::alignEnd2End(
-    std::string& pattern,
-    std::string& text) {
+    const std::string& pattern,
+    const std::string& text) {
   // Delegate
   return alignEnd2End(pattern.c_str(),pattern.length(),text.c_str(),text.length());
 }
@@ -125,10 +125,10 @@ WFAligner::AlignmentStatus WFAligner::alignEndsFree(
       wfAligner,pattern,patternLength,text,textLength);
 }
 WFAligner::AlignmentStatus WFAligner::alignEndsFree(
-    std::string& pattern,
+    const std::string& pattern,
     const int patternBeginFree,
     const int patternEndFree,
-    std::string& text,
+    const std::string& text,
     const int textBeginFree,
     const int textEndFree) {
   // Delegate
@@ -262,10 +262,9 @@ void WFAligner::setHeuristicZDrop(
 /*
  * Limits
  */
-void WFAligner::setMaxAlignmentScore(
-    const int maxAlignmentScore) {
-  wavefront_aligner_set_max_alignment_score(
-      wfAligner,maxAlignmentScore);
+void WFAligner::setMaxAlignmentSteps(
+    const int maxAlignmentSteps) {
+  wavefront_aligner_set_max_alignment_steps(wfAligner,maxAlignmentSteps);
 }
 void WFAligner::setMaxMemory(
     const uint64_t maxMemoryResident,
@@ -280,11 +279,17 @@ void WFAligner::setMaxNumThreads(
 /*
  * Accessors
  */
+int WFAligner::getAlignmentStatus() {
+  return wfAligner->align_status.status;
+}
 int WFAligner::getAlignmentScore() {
   return wfAligner->cigar->score;
 }
-int WFAligner::getAlignmentStatus() {
-  return wfAligner->align_status.status;
+void WFAligner::getAlignment(
+    char** const cigarOperations,
+    int* cigarLength) {
+ *cigarOperations = wfAligner->cigar->operations + wfAligner->cigar->begin_offset;
+ *cigarLength = wfAligner->cigar->end_offset - wfAligner->cigar->begin_offset;
 }
 std::string WFAligner::getAlignment() {
   // Fetch Alignment
@@ -294,39 +299,50 @@ std::string WFAligner::getAlignment() {
   return std::string(buffer,length);
 }
 void WFAligner::getCIGAR(
-    const bool show_mismatches,
-    uint32_t** const cigar_buffer,
-    int* const cigar_length) {
-  cigar_get_CIGAR(wfAligner->cigar,show_mismatches,cigar_buffer,cigar_length);
+    const bool showMismatches,
+    uint32_t** const cigarOperations,
+    int* const numCigarOperations) {
+  cigar_get_CIGAR(wfAligner->cigar,showMismatches,cigarOperations,numCigarOperations);
 }
-std::string WFAligner::getCIGARString(
-    const bool show_mismatches) {
+std::string WFAligner::getCIGAR(
+    const bool showMismatches) {
   // Check length
-  const int alignment_length = wfAligner->cigar->end_offset - wfAligner->cigar->begin_offset;
-  if (alignment_length <= 0) return std::string();
+  const int alignmentLength = wfAligner->cigar->end_offset - wfAligner->cigar->begin_offset;
+  if (alignmentLength <= 0) return std::string();
   // Allocate
-  char* const buffer = new char[alignment_length];
-  const int buffer_length = cigar_sprint_SAM_CIGAR(buffer,wfAligner->cigar,show_mismatches);
+  char* const buffer = new char[2*alignmentLength];
+  const int bufferLength = cigar_sprint_SAM_CIGAR(buffer,wfAligner->cigar,showMismatches);
   // Create string
-  std::string cigarString = std::string(buffer,buffer_length);
+  std::string cigarString = std::string(buffer,bufferLength);
   // Free & return
   delete[] buffer;
   return cigarString;
 }
 /*
+ * Display
+ */
+void WFAligner::printPretty(
+    FILE* const stream,
+    const char* const pattern,
+    const int patternLength,
+    const char* const text,
+    const int textLength) {
+  cigar_print_pretty(stream,wfAligner->cigar,pattern,patternLength,text,textLength);
+}
+/*
  * Misc
  */
-char* WFAligner::strError(
-    const int wfErrorCode) {
-  return wavefront_align_strerror(wfErrorCode);
+char* WFAligner::strStatus(
+    const WFAligner::AlignmentStatus status) {
+  return wavefront_align_strerror((int)status);
 }
-void WFAligner::debugAddTag(
+void WFAligner::debugTag(
     char* const debugTag) {
   wfAligner->align_mode_tag = debugTag;
   if (wfAligner->bialigner != NULL) {
-    wfAligner->bialigner->alg_forward->align_mode_tag = debugTag;
-    wfAligner->bialigner->alg_reverse->align_mode_tag = debugTag;
-    wfAligner->bialigner->alg_subsidiary->align_mode_tag = debugTag;
+    wfAligner->bialigner->wf_forward->align_mode_tag = debugTag;
+    wfAligner->bialigner->wf_reverse->align_mode_tag = debugTag;
+    wfAligner->bialigner->wf_base->align_mode_tag = debugTag;
   }
 }
 /*

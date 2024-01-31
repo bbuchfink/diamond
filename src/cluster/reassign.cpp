@@ -39,7 +39,8 @@ namespace Cluster {
 void reassign() {
 	config.database.require();
 	config.clustering.require();
-	message_stream << "Coverage cutoff: " << config.member_cover << '%' << endl;
+	init_thresholds();
+	message_stream << "Coverage cutoff: " << (config.mutual_cover.present() ? config.mutual_cover.get_present() : config.member_cover) << '%' << endl;
 
 	TaskTimer timer("Opening the database");
 	shared_ptr<SequenceFile> db(SequenceFile::auto_create({ config.database }, SequenceFile::Flags::NEED_LETTER_COUNT | SequenceFile::Flags::ACC_TO_OID_MAPPING | SequenceFile::Flags::OID_TO_ACC_MAPPING, SequenceFile::Metadata()));
@@ -65,12 +66,16 @@ void reassign() {
 	timer.finish();
 
 	statistics.reset();
-	init_thresholds();
 	config.command = Config::blastp;
 	config.max_target_seqs_ = 1;
 	config.output_format = { "edge" };
 	config.self = false;
-	config.query_cover = config.member_cover;
+	if (config.mutual_cover.present())
+		config.query_cover = config.subject_cover = config.mutual_cover.get_present();
+	else {
+		config.query_cover = config.member_cover;
+		config.subject_cover = 0;
+	}
 	config.sensitivity = from_string<Sensitivity>(cluster_steps(config.approx_min_id, false).back());
 	shared_ptr<Mapback> mapback = make_shared<Mapback>(members.size());
 	Search::run(centroid_db, member_db, mapback);

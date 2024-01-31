@@ -29,13 +29,43 @@
  * DESCRIPTION: WFA module for the "extension" of exact matches
  */
 
+#if defined(__APPLE__) || defined(__FreeBSD__)
+#include <machine/endian.h>  // __BYTE_ORDER
+#else
+#include <endian.h>  // __BYTE_ORDER
+#endif
+
 #include "wavefront_extend_kernels.h"
 #include "wavefront_termination.h"
 
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+#define wavefront_extend_matches_kernel wavefront_extend_matches_kernel_blockwise
+#else
+#define wavefront_extend_matches_kernel wavefront_extend_matches_kernel_charwise
+#endif
+
 /*
- * Inner-most extend kernel (blockwise comparisons)
+ * Inner-most extend kernel
  */
-FORCE_INLINE wf_offset_t wavefront_extend_matches_packed_kernel(
+FORCE_INLINE wf_offset_t wavefront_extend_matches_kernel_charwise(
+    wavefront_aligner_t* const wf_aligner,
+    const int k,
+    wf_offset_t offset) {
+  // Fetch pattern/text
+  char* pattern_ptr = wf_aligner->sequences.pattern + WAVEFRONT_V(k,offset);
+  char* text_ptr = wf_aligner->sequences.text + WAVEFRONT_H(k,offset);
+  // Compare 64-bits blocks
+  while (*pattern_ptr == *text_ptr) {
+    // Increment offset
+    offset++;
+    // Next chars
+    ++pattern_ptr;
+    ++text_ptr;
+  }
+  // Return extended offset
+  return offset;
+}
+FORCE_INLINE wf_offset_t wavefront_extend_matches_kernel_blockwise(
     wavefront_aligner_t* const wf_aligner,
     const int k,
     wf_offset_t offset) {
@@ -79,7 +109,7 @@ FORCE_NO_INLINE void wavefront_extend_matches_packed_end2end(
     const wf_offset_t offset = offsets[k];
     if (offset == WAVEFRONT_OFFSET_NULL) continue;
     // Extend offset
-    offsets[k] = wavefront_extend_matches_packed_kernel(wf_aligner,k,offset);
+    offsets[k] = wavefront_extend_matches_kernel(wf_aligner,k,offset);
   }
 }
 FORCE_NO_INLINE wf_offset_t wavefront_extend_matches_packed_end2end_max(
@@ -95,7 +125,7 @@ FORCE_NO_INLINE wf_offset_t wavefront_extend_matches_packed_end2end_max(
     const wf_offset_t offset = offsets[k];
     if (offset == WAVEFRONT_OFFSET_NULL) continue;
     // Extend offset
-    offsets[k] = wavefront_extend_matches_packed_kernel(wf_aligner,k,offset);
+    offsets[k] = wavefront_extend_matches_kernel(wf_aligner,k,offset);
     // Compute max
     const wf_offset_t antidiag = WAVEFRONT_ANTIDIAGONAL(k,offsets[k]);
     if (max_antidiag < antidiag) max_antidiag = antidiag;
@@ -116,7 +146,7 @@ FORCE_NO_INLINE bool wavefront_extend_matches_packed_endsfree(
     wf_offset_t offset = offsets[k];
     if (offset == WAVEFRONT_OFFSET_NULL) continue;
     // Extend offset
-    offset = wavefront_extend_matches_packed_kernel(wf_aligner,k,offset);
+    offset = wavefront_extend_matches_kernel(wf_aligner,k,offset);
     offsets[k] = offset;
     // Check ends-free reaching boundaries
     if (wavefront_termination_endsfree(wf_aligner,mwavefront,score,k,offset)) {

@@ -23,7 +23,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../contrib/mcl/mcl.h"
 #endif
 #include "cascaded/cascaded.h"
-#include "incremental/incremental.h"
+//#include "incremental/incremental.h"
 
 namespace Workflow { namespace Cluster{
 class ClusterRegistryStatic{
@@ -35,7 +35,7 @@ public:
 		regMap[MCL::get_key()] = new MCL();
 #endif
 		regMap[::Cluster::Cascaded::get_key()] = new ::Cluster::Cascaded();		
-		regMap[::Cluster::Incremental::Algo::get_key()] = new ::Cluster::Incremental::Algo();
+		//regMap[::Cluster::Incremental::Algo::get_key()] = new ::Cluster::Incremental::Algo();
 	}
 	~ClusterRegistryStatic(){
 		for(auto it = regMap.begin(); it != regMap.end(); it++){

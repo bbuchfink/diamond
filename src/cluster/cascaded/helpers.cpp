@@ -18,8 +18,10 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
+#include <sstream>
 #include "cascaded.h"
 
+using std::stringstream;
 using std::string;
 using std::vector;
 
@@ -37,6 +39,47 @@ vector<string> cluster_steps(double approx_id, bool linear) {
 	if (approx_id < 50)
 		v.push_back("more-sensitive");
 	return v;
+}
+
+vector<string> default_round_approx_id(int steps) {
+	switch (steps) {
+	case 1:
+		return {};
+	case 2:
+		return { "27.0" };
+	default:
+		return { "27.0", "0.0" };
+	}
+}
+
+vector<string> default_round_cov(int steps) {
+	switch (steps) {
+	case 1:
+		return {};
+	case 2:
+		return { "85.0" };
+	default:
+		return { "87.0", "85.0" };
+	}
+}
+
+static int round_ccd(int round) {
+	stringstream ss(config.connected_component_depth[round]);
+	int i;
+	ss >> i;
+	if (ss.fail() || !ss.eof())
+		throw std::runtime_error("Invalid number format for --connected-component-depth");
+	return i;
+}
+
+int round_ccd(int round, int round_count) {
+	if (config.connected_component_depth.size() > 1 && config.connected_component_depth.size() != (size_t)round_count)
+		throw std::runtime_error("Parameter count for --connected-component-depth has to be 1 or the number of cascaded clustering rounds.");
+	if (config.connected_component_depth.size() == 0)
+		return 0;
+	if (config.connected_component_depth.size() == 1)
+		return round_ccd(0);
+	return round_ccd(round);
 }
 
 }

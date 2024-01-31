@@ -26,7 +26,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 using namespace std;
 
-OptionsGroup& CommandLineParser::add_group(const char *title, const std::vector<unsigned>& commands, bool disabled) {
+OptionsGroup& CommandLineParser::add_group(const char *title, const std::vector<int>& commands, bool disabled) {
 	groups_.emplace_back(title, commands, disabled, this);
 	return groups_.back();
 }
@@ -123,8 +123,8 @@ void CommandLineParser::print_documentation(int command)
     static const size_t col1_width = 25;
 	cout << "Options:" << endl;
     for(auto const& opt : groups_){
-        for( int i = 0; i < opt.commands.size();i++) {
-            if(opt.commands[i] == command){
+		for (size_t i = 0; i < opt.commands.size(); i++) {
+			if (opt.commands[i] == command) {
 				for (auto const& i : opt.options) {
 					if (i->desc.empty())
 						continue;
@@ -132,8 +132,8 @@ void CommandLineParser::print_documentation(int command)
 					col1.append(max(col1_width, col1.length()) - col1.length(), ' ');
 					cout << col1 << (*i).desc << endl;
 				}
-            }
-        }
+			}
+		}
     }
 	cout << endl;
 }

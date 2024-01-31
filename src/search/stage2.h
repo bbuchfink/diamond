@@ -35,6 +35,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../run/config.h"
 
 using std::vector;
+using std::pair;
+using std::tie;
 using std::numeric_limits;
 
 namespace Search {
@@ -64,6 +66,15 @@ static int ungapped_window(int query_len) {
 		return config.ungapped_window;
 }
 
+static pair<unsigned, Loc> query_data(const PackedLoc q, const SequenceSet& query_seqs) {
+	pair<size_t, size_t> l = query_seqs.local_position((uint64_t)q); // lazy eval?
+	return { (unsigned)l.first, (unsigned)l.second };
+}
+static pair<unsigned, Loc> query_data(const PackedLocId q, const SequenceSet& query_seqs) {
+	return { q.block_id, Loc((int64_t)q.pos - query_seqs.position(q.block_id, 0)) };
+}
+
+template<typename SeedLoc>
 static void search_query_offset(const SeedLoc& q,
 	const SeedLoc* s,
 	FlatArray<uint32_t>::DataConstIterator hits,
@@ -80,14 +91,7 @@ static void search_query_offset(const SeedLoc& q,
 
 	unsigned query_id = UINT_MAX;
 	Loc seed_offset = numeric_limits<Loc>::max();
-#ifdef KEEP_TARGET_ID
-	query_id = q.block_id;
-	seed_offset = Loc((int64_t)q.pos - query_seqs.position(query_id, 0));
-#else
-	std::pair<size_t, size_t> l = query_seqs.local_position((uint64_t)q); // lazy eval?
-	query_id = (unsigned)l.first;
-	seed_offset = (unsigned)l.second;
-#endif
+	tie(query_id, seed_offset) = query_data(q, query_seqs);
 	const int query_len = query_seqs.length(query_id);
 	const int score_cutoff = ungapped_cutoff(query_len, work_set);
 	const int window = ungapped_window(query_len);
@@ -127,18 +131,13 @@ static void search_query_offset(const SeedLoc& q,
 					work_set.stats.inc(Statistics::TENTATIVE_MATCHES3);
 					if (hit_count++ == 0)
 						*work_set.out = SerializerTraits<Hit>::make_sentry(query_id, seed_offset);
-#ifdef KEEP_TARGET_ID
 					if(config.global_ranking_targets)
-						//*work_set.out = { query_id, (uint64_t)s[*(i + j)].block_id, seed_offset, (uint16_t)scores[j] };
-						*work_set.out = { query_id, (uint64_t)s[*(i + j)].pos, seed_offset, (uint16_t)scores[j], s[*(i + j)].block_id };
+						*work_set.out = { query_id, (uint64_t)s[*(i + j)], seed_offset, (uint16_t)scores[j], block_id(s[*(i + j)]) };
 					else
 #ifdef HIT_KEEP_TARGET_ID
-						*work_set.out = { query_id, (uint64_t)s[*(i + j)].pos, seed_offset, (uint16_t)scores[j], s[*(i + j)].block_id };
+						*work_set.out = { query_id, (uint64_t)s[*(i + j)], seed_offset, (uint16_t)scores[j], block_id(s[*(i + j)]) };
 #else
-						*work_set.out = { query_id, (uint64_t)s[*(i + j)].pos, seed_offset, (uint16_t)scores[j] };
-#endif
-#else
-					*work_set.out = { query_id, (uint64_t)s[*(i + j)], seed_offset, (uint16_t)scores[j] };
+						*work_set.out = { query_id, (uint64_t)s[*(i + j)], seed_offset, (uint16_t)scores[j] };
 #endif
 				}
 			}
@@ -146,6 +145,7 @@ static void search_query_offset(const SeedLoc& q,
 	}
 }
 
+template<typename SeedLoc>
 static void FLATTEN search_tile(
 	const FlatArray<uint32_t> &hits,
 	int32_t query_begin,

@@ -226,7 +226,7 @@ struct OptionsGroup
 	{
 		return Add_f(*this);
 	}
-	OptionsGroup(const char* title, const std::vector<unsigned>& commands, bool disabled, CommandLineParserBase* parent) :
+	OptionsGroup(const char* title, const std::vector<int>& commands, bool disabled, CommandLineParserBase* parent) :
 		title(title),
 		commands(commands),
 		disabled(disabled),
@@ -234,7 +234,7 @@ struct OptionsGroup
 	{}
 	std::list<std::unique_ptr<OptionBase>> options;
 	std::string title;
-	const std::vector<unsigned> commands;
+	const std::vector<int> commands;
 	bool disabled;
 private:
 	CommandLineParserBase* parent_;
@@ -247,7 +247,7 @@ struct CommandLineParser : CommandLineParserBase
 	void require(const char* option);
 	void print_help();
     void print_documentation(int command);
-	OptionsGroup& add_group(const char *title, const std::vector<unsigned>& commands, bool disabled = false);
+	OptionsGroup& add_group(const char *title, const std::vector<int>& commands, bool disabled = false);
 
 private:
 	void store_option(const std::vector<std::string> &v, unsigned command);

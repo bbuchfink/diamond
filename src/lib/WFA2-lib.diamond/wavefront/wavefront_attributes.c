@@ -86,7 +86,7 @@ wavefront_aligner_attr_t wavefront_aligner_attr_default = {
     },
     // System
     .system = {
-        .max_alignment_score = INT_MAX, // Unlimited
+        .max_alignment_steps = INT_MAX, // Unlimited
         .probe_interval_global = 3000,
         .probe_interval_compact = 6000,
         .max_memory_compact = -1,  // Automatically set based on memory-mode

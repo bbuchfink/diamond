@@ -81,7 +81,7 @@ WorkTarget ungapped_stage(FlatArray<SeedHit>::DataIterator begin, FlatArray<Seed
 		return target;
 	}
 	std::sort(begin, end);
-	const bool with_diag_filter = config.hamming_ext || config.diag_filter_cov > 0 || config.diag_filter_id > 0;
+	const bool with_diag_filter = (config.hamming_ext || config.diag_filter_cov > 0 || config.diag_filter_id > 0) && !config.mutual_cover.present();
 	for (FlatArray<SeedHit>::DataIterator hit = begin; hit < end; ++hit) {
 		const auto f = hit->frame;
 		target.ungapped_score[f] = std::max(target.ungapped_score[f], hit->score);
@@ -139,6 +139,9 @@ vector<WorkTarget> ungapped_stage(const Sequence *query_seq, const Bias_correcti
 	}
 	else {
 		for (int64_t i = 0; i < n; ++i) {
+			/*const double len_ratio = query_seq->length_ratio(target_block.seqs()[target_block_ids[i]]);
+			if (len_ratio < config.min_length_ratio)
+				continue;*/
 			targets.push_back(ungapped_stage(seed_hits.begin(i), seed_hits.end(i), query_seq, query_cb, query_comp, &query_matrix, target_block_ids[i], stat, target_block, mode));
 			for (const ApproxHsp& hsp : targets.back().hsp[0]) {
 				Geo::assert_diag_bounds(hsp.d_max, query_seq[0].length(), targets.back().seq.length());

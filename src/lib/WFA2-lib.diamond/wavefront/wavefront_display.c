@@ -127,7 +127,7 @@ void wavefront_display_print_element(
         PRINT_CHAR_REP(stream,' ',bt_length-effective_pcigar_length);
       }
     } else {
-      fprintf(stream,"[  ]");
+      fprintf(stream,"[ *]");
       PRINT_CHAR_REP(stream,' ',bt_length);
     }
   } else {

@@ -73,6 +73,7 @@ bool Search::seed_is_complex_unreduced(Letter* seq, const Shape& shape, const do
 	return true;
 }
 
+template<typename SeedLoc>
 void Search::mask_seeds(const Shape& shape, const SeedPartitionRange& range, DoubleArray<SeedLoc>* query_seed_hits, DoubleArray<SeedLoc>* ref_seed_hits, Search::Config& cfg)
 {
 	if (cfg.seed_encoding != SeedEncoding::SPACED_FACTOR)
@@ -122,3 +123,6 @@ void Search::mask_seeds(const Shape& shape, const SeedPartitionRange& range, Dou
 	verbose_stream << "Masked positions (query): " << Util::String::ratio_percentage(query_count, query_seqs.letters()) << endl;
 	verbose_stream << "Masked positions (target): " << Util::String::ratio_percentage(target_count, cfg.target->seqs().letters()) << endl;
 }
+
+template void Search::mask_seeds(const Shape&, const SeedPartitionRange&, DoubleArray<PackedLoc>*, DoubleArray<PackedLoc>*, Search::Config&);
+template void Search::mask_seeds(const Shape&, const SeedPartitionRange&, DoubleArray<PackedLocId>*, DoubleArray<PackedLocId>*, Search::Config&);

@@ -33,6 +33,7 @@
 #define BINDINGS_CPP_WFALIGNER_HPP_
 
 #include <string>
+#include <cstdint>
 
 #include "../../wavefront/wfa.hpp"
 
@@ -58,9 +59,11 @@ public:
     Alignment,
   };
   enum AlignmentStatus {
-    StatusSuccessful = WF_STATUS_SUCCESSFUL,
-    StatusUnfeasible = WF_STATUS_UNFEASIBLE,
-    StatusMaxScoreReached = WF_STATUS_MAX_SCORE_REACHED,
+    // OK Status (>=0)
+    StatusAlgCompleted = WF_STATUS_ALG_COMPLETED,
+    StatusAlgPartial = WF_STATUS_ALG_PARTIAL,
+    // FAILED Status (<0)
+    StatusMaxStepsReached = WF_STATUS_MAX_STEPS_REACHED,
     StatusOOM = WF_STATUS_OOM,
   };
   // Align End-to-end
@@ -70,8 +73,8 @@ public:
       const char* const text,
       const int textLength);
   AlignmentStatus alignEnd2End( // String ASCII Sequences
-      std::string& pattern,
-      std::string& text);
+      const std::string& pattern,
+      const std::string& text);
   AlignmentStatus alignEnd2End( // 2bits-Packed Sequences
       const uint8_t* const pattern,
       const int patternLength,
@@ -93,10 +96,10 @@ public:
       const int textBeginFree,
       const int textEndFree);
   AlignmentStatus alignEndsFree( // String ASCII Sequences
-      std::string& pattern,
+      const std::string& pattern,
       const int patternBeginFree,
       const int patternEndFree,
-      std::string& text,
+      const std::string& text,
       const int textBeginFree,
       const int textEndFree);
   AlignmentStatus alignEndsFree( // 2bits-Packed Sequences
@@ -160,8 +163,8 @@ public:
       const int zdrop,
       const int steps_between_cutoffs = 1);
   // Limits
-  void setMaxAlignmentScore(
-      const int maxAlignmentScore);
+  void setMaxAlignmentSteps(
+      const int maxAlignmentSteps);
   void setMaxMemory(
       const uint64_t maxMemoryResident,
       const uint64_t maxMemoryAbort);
@@ -169,19 +172,29 @@ public:
   void setMaxNumThreads(
       const int maxNumThreads);
   // Accessors
-  int getAlignmentScore();
   int getAlignmentStatus();
+  int getAlignmentScore();
+  void getAlignment(
+      char** const cigarOperations,
+      int* cigarLength);
   std::string getAlignment();
   void getCIGAR(
-      const bool show_mismatches,
-      uint32_t** const cigar_ops,
-      int* const num_cigar_ops);
-  std::string getCIGARString(
-      const bool show_mismatches);
+      const bool showMismatches,
+      uint32_t** const cigarOperations,
+      int* const numCigarOperations);
+  std::string getCIGAR(
+      const bool showMismatches);
+  // Display
+  void printPretty(
+      FILE* const stream,
+      const char* const pattern,
+      const int patternLength,
+      const char* const text,
+      const int textLength);
   // Misc
-  char* strError(
-      const int wfErrorCode);
-  void debugAddTag(
+  char* strStatus(
+      const AlignmentStatus status);
+  void debugTag(
       char* const debugTag);
 protected:
   wavefront_aligner_attr_t attributes;

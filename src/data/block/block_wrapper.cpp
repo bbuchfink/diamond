@@ -77,7 +77,7 @@ bool BlockWrapper::read_seq(vector<Letter>& seq, string& id, std::vector<char>* 
 	throw OperationNotSupported();
 }
 
-void BlockWrapper::create_partition_balanced(size_t max_letters) {
+void BlockWrapper::create_partition_balanced(int64_t max_letters) {
 	throw OperationNotSupported();
 }
 

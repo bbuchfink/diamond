@@ -46,7 +46,7 @@ const StandardMatrix::Parameters& StandardMatrix::constants(int gap_exist, int g
 	for (const auto& i : parameters)
 		if (i.gap_exist == g && i.gap_extend == e)
 			return i;
-	throw std::runtime_error("Gap penalty settings are not supported for this scoring matrix.");
+	throw std::runtime_error("Gap penalty settings are outside the supported range for this scoring matrix.");
 }
 
 const StandardMatrix::Parameters& StandardMatrix::ungapped_constants() const {

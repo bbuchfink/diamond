@@ -33,7 +33,7 @@ struct Edge {
 };
 
 template<typename Int>
-std::vector<Int> greedy_vertex_cover(FlatArray<Edge<Int>>& neighbors, const SuperBlockId* member_counts = nullptr, bool merge_recursive = false);
+std::vector<Int> greedy_vertex_cover(FlatArray<Edge<Int>>& neighbors, const SuperBlockId* member_counts = nullptr, bool merge_recursive = false, bool reassign = true, Int connected_component_depth = 0);
 
 template<typename It, typename Out>
 size_t merge_capped(It i0, const It i1, It j0, const It j1, const size_t cap, Out out) {

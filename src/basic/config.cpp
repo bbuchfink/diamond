@@ -63,6 +63,7 @@ const EMap<Sensitivity> EnumTraits<Sensitivity>::to_string = {
 	{ Sensitivity::FAST, "fast" },
 	{ Sensitivity::DEFAULT, "default" },
 	{ Sensitivity::MID_SENSITIVE, "mid-sensitive" },
+	{ Sensitivity::SHAPES30x10, "shapes-30x10" },
 	{ Sensitivity::SENSITIVE, "sensitive" },
 	{ Sensitivity::MORE_SENSITIVE, "more-sensitive" },
 	{ Sensitivity::VERY_SENSITIVE, "very-sensitive" },
@@ -74,6 +75,7 @@ const SEMap<Sensitivity> EnumTraits<Sensitivity>::from_string = {
 	{ "fast", Sensitivity::FAST },
 	{ "default", Sensitivity::DEFAULT },
 	{ "mid-sensitive", Sensitivity::MID_SENSITIVE },
+	{ "shapes-30x10", Sensitivity::SHAPES30x10 },
 	{ "sensitive", Sensitivity::SENSITIVE },
 	{ "more-sensitive", Sensitivity::MORE_SENSITIVE },
 	{ "very-sensitive", Sensitivity::VERY_SENSITIVE },
@@ -91,6 +93,7 @@ const SEMap<Config::Algo> EnumTraits<Config::Algo>::from_string = { {"", Config:
 const EMap<SequenceType> EnumTraits<SequenceType>::to_string = { {SequenceType::amino_acid,"prot"}, { SequenceType::nucleotide,"nucl"} };
 const SEMap<SequenceType> EnumTraits<SequenceType>::from_string = { {"prot",SequenceType::amino_acid}, {"nucl",SequenceType::nucleotide} };
 
+
 Config config;
 
 pair<double, int> block_size(int64_t memory_limit, Sensitivity s, bool lin) {
@@ -99,7 +102,7 @@ pair<double, int> block_size(int64_t memory_limit, Sensitivity s, bool lin) {
 		c = m < 40.0 && s <= Sensitivity::MORE_SENSITIVE && min == 1 ? 4 : 1;
 	const double min_factor = std::min(1 / (double)min * 2, 1.0);
 	const double max = s <= Sensitivity::DEFAULT ? 12.0 :
-		(s <= Sensitivity::MORE_SENSITIVE ? 4.0 : 0.4);
+		(s <= Sensitivity::MORE_SENSITIVE ? 6.0 : 2.0);
 	double b = m / (18.0 * min_factor / c + 2.0);
 	/*if (b > 4)
 		b = floor(b);
@@ -109,8 +112,6 @@ pair<double, int> block_size(int64_t memory_limit, Sensitivity s, bool lin) {
 		b = floor(b * 1000) / 1000;*/
 	if (!config.no_block_size_limit && !lin)
 		b = std::min(b, max);
-	if (s >= Sensitivity::VERY_SENSITIVE)
-		b = std::min(b, 2.1);
 	//if (s >= Sensitivity::ULTRA_SENSITIVE)
 		//b = std::min(b, 0.6);
 	return { std::max(b, 0.001), c };
@@ -263,6 +264,7 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 		("faster", 0, "enable faster mode", mode_faster)
 		("fast", 0, "enable fast mode", mode_fast)
 		("mid-sensitive", 0, "enable mid-sensitive mode", mode_mid_sensitive)
+		("shapes-30x10", 0, "enable mode using 30 seed shapes of weight 10", mode_shapes30x10)
 		("sensitive", 0, "enable sensitive mode)", mode_sensitive)
 		("more-sensitive", 0, "enable more sensitive mode", mode_more_sensitive)
 		("very-sensitive", 0, "enable very sensitive mode", mode_very_sensitive)
@@ -328,10 +330,12 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 \tsstart means Start of alignment in subject\n\
 \tsend means End of alignment in subject\n\
 \tqseq means Aligned part of query sequence\n\
+\tqseq_gapped means Aligned part of query sequence (with gaps)\n\
 \tqseq_translated means Aligned part of query sequence (translated)\n\
 \tfull_qseq means Query sequence\n\
 \tfull_qseq_mate means Query sequence of the mate\n\
 \tsseq means Aligned part of subject sequence\n\
+\tsseq_gapped means Aligned part of subject sequence (with gaps)\n\
 \tfull_sseq means Subject sequence\n\
 \tevalue means Expect value\n\
 \tbitscore means Bit score\n\
@@ -362,33 +366,41 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 \tqqual means Query quality values for the aligned part of the query\n\
 \tfull_qqual means Query quality values\n\
 \tqstrand means Query strand\n\
-\n\tDefault: qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore", output_format);
+\n\tDefault: qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore", output_format)
+("include-lineage", 0, "Include lineage in the taxonomic classification format", include_lineage)
+;
 
 	auto& cluster_opt = parser.add_group("Clustering options", { cluster, RECLUSTER, DEEPCLUST, LINCLUST });
 	kmer_ranking = false;
 	cluster_opt.add()
 		("cluster-steps", 0, "Clustering steps", cluster_steps)
-#ifdef KEEP_TARGET_ID
 		("kmer-ranking", 0, "Rank sequences based on kmer frequency in linear stage", kmer_ranking)
-#endif
-		;
+		("round-coverage", 0, "Per-round coverage cutoffs for cascaded clustering", round_coverage)
+		("round-approx-id", 0, "Per-round approx-id cutoffs for cascaded clustering", round_approx_id);
 
 	auto& cluster_reassign_opt = parser.add_group("Clustering/reassign options", { cluster, RECLUSTER, CLUSTER_REASSIGN, GREEDY_VERTEX_COVER, DEEPCLUST, LINCLUST });
 	cluster_reassign_opt.add()
 		("memory-limit", 'M', "Memory limit in GB (default = 16G)", memory_limit)
-		("member-cover", 0, "Minimum coverage% of the cluster member sequence (default=80.0)", member_cover, 80.0);
+		("member-cover", 0, "Minimum coverage% of the cluster member sequence (default=80.0)", member_cover)
+		("mutual-cover", 0, "Minimum mutual coverage% of the cluster member and representative sequence", mutual_cover);
 
 	auto& gvc_opt = parser.add_group("GVC options", { GREEDY_VERTEX_COVER });
 	gvc_opt.add()
 		("centroid-out", 0, "Output file for centroids", centroid_out)
 		("edges", 0, "Input file for greedy vertex cover", edges)
-		("edge-format", 0, "Edge format for greedy vertex cover (default/triplet)", edge_format);
+		("edge-format", 0, "Edge format for greedy vertex cover (default/triplet)", edge_format)
+		("symmetric", 0, "Edges are symmetric", symmetric)
+		("no-reassign", 0, "Do not reassign to closest representative", no_gvc_reassign)
+		("connected-component-depth", 0, "Depth to cluster connected components", connected_component_depth);
 
 	auto& realign_opt = parser.add_group("Cluster input options", { CLUSTER_REALIGN, RECLUSTER, CLUSTER_REASSIGN });
 	realign_opt.add()
 		("clusters", 0, "Clustering input file mapping sequences to representatives", clustering);
 
 	string algo_str;
+#ifdef WITH_DNA
+    string dna_extension_string;
+#endif
 
 	auto& advanced_gen = parser.add_group("Advanced/general", { blastp, blastx, blastn, CLUSTER_REASSIGN, regression_test, cluster, DEEPCLUST, LINCLUST, makedb });
 	advanced_gen.add()
@@ -443,8 +455,19 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 		("heartbeat", 0, "", heartbeat)
 		("mp-self", 0, "", mp_self)
 #ifdef EXTRA
-            ("zdrop", 'z', "zdrop for gapped dna alignment", zdrop, 40)
+        ("zdrop", 'z', "zdrop for gapped dna alignment", zdrop, 40)
 #endif
+#ifdef WITH_DNA
+        ("repetition-cutoff", 0 ,"filter out top FLOAT fraction of repetitive minimizers ",repetitive_cutoff,0.0002)
+        ("extension", 0, "extension algorithm (wfa, ksw=default)", dna_extension_string, string("ksw"))
+        ("chaining-out", 0, "use chaining without extension", chaining_out)
+        ("align-long-reads", 0, "use chaining with extension", align_long_reads)
+        ("chain-pen-gap-scale", 0, "scaling factor for the chaining gap penalty", chain_pen_gap_scale, 0.8)
+        ("chain-pen-skip-scalee", 0, "scaling factor for the chaining skip penalty", chain_pen_skip_scale, 0.0)
+        ("penalty", 0, "blastn mismatch penalty", mismatch_penalty, -3)
+        ("reward", 0, "blastn match reward", match_reward, 2)
+#endif
+
 		("query-or-subject-cover", 0, "", query_or_target_cover);
 
 	auto& view_align_options = parser.add_group("View/Align options", { view, blastp, blastx });
@@ -622,8 +645,6 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 		("diag-filter-cov", 0, "", diag_filter_cov)
 		("strict-gvc", 0, "", strict_gvc)
 		("dbtype", 0, "type of sequences in database file (nucl/prot)", dbstring, string("prot"))
-		("penalty", 0, "blastn mismatch penalty", mismatch_penalty, -3)
-		("reward", 0, "blastn match reward", match_reward, 2)
 		("cluster-similarity", 0, "Clustering similarity measure (default=\"normalized_bitscore_global\")", cluster_similarity)
 		("cluster-threshold", 0, "Threshold for the similarity measure (default=50%)", cluster_threshold)
 		("cluster-graph-file", 0, "Filename for dumping the graph or reading the graph if cluster-restart", cluster_graph_file)
@@ -646,14 +667,12 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 		("no_8bit_extension", 0, "", no_8bit_extension)
 		("anchored-swipe", 0, "", anchored_swipe)
 		("no_chaining_merge_hsps", 0, "", no_chaining_merge_hsps)
-		("recluster_bd", 0, "", recluster_bd)
 		("pipeline-short", 0, "", pipeline_short)
 		("graph-algo", 0, "", graph_algo, string("gvc"))
 		("tsv-read-size", 0, "", tsv_read_size, int64_t(GIGABYTES))
-#ifndef KEEP_TARGET_ID
-		("kmer-ranking", 0, "Rank sequences based on kmer frequency in linear stage", kmer_ranking)
-#endif
-		;
+		("min-len-ratio", 0, "", min_length_ratio)
+		("max-indirection", 0, "", max_indirection)
+		("aln-out", 0, "", aln_out);
 
 	parser.store(argc, argv, command);
 
@@ -870,9 +889,13 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 	if (mode_more_sensitive) set_sens(Sensitivity::MORE_SENSITIVE);
 	if (mode_very_sensitive) set_sens(Sensitivity::VERY_SENSITIVE);
 	if (mode_ultra_sensitive) set_sens(Sensitivity::ULTRA_SENSITIVE);
+	if (mode_shapes30x10) set_sens(Sensitivity::SHAPES30x10);
 
 	algo = from_string<Algo>(algo_str);
     dbtype = from_string<SequenceType>(dbstring);
+#ifdef WITH_DNA
+    dna_extension = from_string<DNAExtensionAlgo>(dna_extension_string);
+#endif
 	Translator::init(query_gencode);
 
 	if (command == blastx || command == blastn)
@@ -934,9 +957,6 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 #endif
 #ifdef STRICT_BAND
 	log_stream << " STRICT_BAND";
-#endif
-#ifdef KEEP_TARGET_ID
-	log_stream << " KEEP_TARGET_ID";
 #endif
 	log_stream << endl;
 }

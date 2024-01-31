@@ -33,6 +33,9 @@
 #ifndef VECTOR_H_
 #define VECTOR_H_
 
+#include <stdint.h>
+#include <stdbool.h>
+
 /*
  * Checkers
  */
