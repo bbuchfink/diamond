@@ -1,3 +1,7 @@
+[2.1.10]
+- Fixed a bug that could cause a crash when using a bi-directional coverage
+  cutoff in query-indexed mode.
+
 [2.1.9]
 - Corrected the prefix of the query length field for the SAM format.
 - Added the size modifiers 'T', 'M' and 'K' for the `--memory-limit`/`-M`

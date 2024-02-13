@@ -249,6 +249,8 @@ Block* Block::length_sorted(int threads) const {
 		b->ids_.assign(i, ids_.ptr(j), ids_.end(j));
 		b->block2oid_.push_back(block2oid_.at(j));
 	}
+	if (masked_.size() > 0)
+		b->masked_.resize(masked_.size(), false);
 	return b;
 }
 
