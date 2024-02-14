@@ -70,6 +70,6 @@ void TaxonFormat::print_query_epilog(Output::Info &info) const
 	else
 		info.out << '0';
 	if (config.include_lineage)
-		info.out << '\t' << taxon_lineage(taxid, *info.db) << '\t';
+		info.out << '\t' << (taxid != 0 ? taxon_lineage(taxid, *info.db) : "N/A");
 	info.out << '\n';
 }
