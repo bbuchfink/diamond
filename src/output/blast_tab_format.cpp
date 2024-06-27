@@ -240,6 +240,7 @@ void Blast_tab_format::print_match(const HspContext& r, Output::Info& info)
             out << ",";
         out << "\n\t{\n";
     }
+    HspContext::Iterator qi = r.begin(), si = r.begin();
 	for (auto i = fields.cbegin(); i != fields.cend(); ++i) {
         if(is_json){
             out << prepos << "\"" << field_def[*i].key << "\":";
@@ -277,17 +278,19 @@ void Blast_tab_format::print_match(const HspContext& r, Output::Info& info)
             out << r.subject_source_range().end_;
 			break;
 		case 17:
-			r.query.source().print(out, r.query_source_range().begin_, r.query_source_range().end_, input_value_traits);
-			break;
+			//r.query.source().print(out, r.query_source_range().begin_, r.query_source_range().end_, input_value_traits);
+            while (qi.good()) { out << qi.query_char(); ++qi; }
+			break; // qseq
 		case 18:
 		{
-			vector<Letter> seq;
-			seq.reserve(r.subject_range().length());
-			for (HspContext::Iterator j = r.begin(); j.good(); ++j)
-				if (!(j.op() == op_insertion))
-					seq.push_back(j.subject());
-			out << Sequence(seq);
-			break;
+			//vector<Letter> seq;
+			//seq.reserve(r.subject_range().length());
+			//for (HspContext::Iterator j = r.begin(); j.good(); ++j)
+				//if (!(j.op() == op_insertion))
+					//seq.push_back(j.subject());
+			//out << Sequence(seq);
+            while (si.good()) { out << si.subject_char(); ++si; }
+			break; // sseq
 		}
 		case 19:
 			out.print_e(r.evalue());
