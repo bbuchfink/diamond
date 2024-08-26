@@ -65,7 +65,7 @@ struct TaskTimer
 		start(nullptr);
 	}
 	TaskTimer(unsigned level = 1) :
-		TaskTimer(get_stream(), level)
+		TaskTimer(get_stream(level), level)
 	{}
 	TaskTimer(const char* msg, MessageStream& stream, unsigned level = 1) :
 		level_(level),
@@ -75,7 +75,7 @@ struct TaskTimer
 		start(msg);
 	}
 	TaskTimer(const char* msg, unsigned level = 1):
-		TaskTimer(msg, get_stream(), level)
+		TaskTimer(msg, get_stream(level), level)
 	{}
 	~TaskTimer()
 	{
@@ -129,9 +129,9 @@ private:
 		stream_ << msg << "... " << std::flush;
 
 	}
-	MessageStream& get_stream() const
+	MessageStream& get_stream(unsigned level) const
 	{
-		switch (level_) {
+		switch (level) {
 		case 1:
 			return message_stream;
 		case 2:
