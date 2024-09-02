@@ -52,6 +52,7 @@ Contents: Some basic functions and types
 namespace Sls { 
 
 	const double pi=3.1415926535897932384626433832795;
+	const double invsqrttwo=0.707106769084930419921875;
 	const double const_val=1/sqrt(2.0*pi);
 	const long int quick_tests_trials_number=100;
 
@@ -189,7 +190,7 @@ namespace Sls {
 
 		static double normal_probability(double x_)
 		{
-			return 0.5*erfc(-sqrt(0.5)*x_);
+			return 0.5*erfc(-invsqrttwo*x_);
 		}
 
 		static double normal_probability(

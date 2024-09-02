@@ -98,12 +98,13 @@ Mask::Ranges mask(Letter *seq,
 	}
 
 	const float z = b * b2b + f.sum() * p_repeat_end;
+	const float zinv = 1.0/z;
 	b = b2b;
 	f = p_repeat_end;
 	Mask::Ranges ranges;
 
 	for (int i = len - 1; i >= 0; --i) {
-		const float pf = 1 - (pb[i] * b / z);
+		const float pf = 1 - (pb[i] * b * zinv);
 
 		if ((i & 15) == 15) {
 			const float s = scale[i / 16];
