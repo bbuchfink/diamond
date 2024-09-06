@@ -52,7 +52,7 @@ Contents: Some basic functions and types
 namespace Sls { 
 
 	const double pi=3.1415926535897932384626433832795;
-	const double invsqrttwo=0.707106769084930419921875;
+	const double invsqrttwo=sqrt(0.5);
 	const double const_val=1/sqrt(2.0*pi);
 	const long int quick_tests_trials_number=100;
 
