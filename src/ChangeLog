@@ -1,6 +1,8 @@
 [2.1.10]
 - Fixed a bug that could cause a crash when using a bi-directional coverage
   cutoff in query-indexed mode.
+- Fixed a bug that caused the `--include-lineage` option to malfunction for
+  targets with no taxonomic assignment available.
 
 [2.1.9]
 - Corrected the prefix of the query length field for the SAM format.
