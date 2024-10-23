@@ -17,11 +17,12 @@ features are:
     as well as taxonomic classification.
 
 [![Build](https://github.com/bbuchfink/diamond/actions/workflows/cmake.yml/badge.svg)](https://github.com/bbuchfink/diamond/actions/workflows/cmake.yml)
-[![Build Status](https://api.travis-ci.com/bbuchfink/diamond.svg?branch=master&status=passed)](https://travis-ci.com/github/bbuchfink/diamond)
+[![image](https://img.shields.io/cirrus/github/bbuchfink/diamond)](https://cirrus-ci.com/github/bbuchfink/diamond/master)
 [![image](https://img.shields.io/github/downloads/bbuchfink/diamond/total)](https://github.com/bbuchfink/diamond/releases)
 [![image](https://anaconda.org/bioconda/diamond/badges/version.svg)](https://anaconda.org/bioconda/diamond)
 [![image](https://anaconda.org/bioconda/diamond/badges/downloads.svg)](https://anaconda.org/bioconda/diamond)
-[![image](http://diamondsearch.org/cit.svg)](https://scholar.google.com/citations?user=kjPIF1cAAAAJ)
+[![image](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2Fbbuchfink%2Fdiamond-data%2Frefs%2Fheads%2Fmain%2Fcitations.json&query=%24.citations&style=flat&label=Citations&color=%23a020f0
+)](https://scholar.google.com/citations?user=kjPIF1cAAAAJ)
     
 Documentation
 =============
@@ -33,18 +34,19 @@ Diamond is actively supported and developed software. Please use the [issue trac
 
 About
 =====
-Since 2019, DIAMOND is developed by Benjamin Buchfink at the Drost lab, Max Planck
-Institute for Biology Tübingen. From 2018-2019, its development was supported by the
-German Federal Ministry for Economic Affairs and Energy through an EXIST grant.
+DIAMOND is developed by Benjamin Buchfink. From 2019-2024, it was developed by Benjamin Buchfink
+at the Drost lab, Max Planck Institute for Biology Tübingen. From 2018-2019, its development was
+supported by the German Federal Ministry for Economic Affairs and Energy through an EXIST grant.
 From 2016-2018, it was developed by Benjamin Buchfink as an independent researcher.
 From 2013-2015, the initial version was developed by Benjamin Buchfink at the Huson lab,
 University of Tübingen, Germany.
 
 \[[:email:Email](mailto:buchfink@gmail.com)\]
-\[[Twitter](https://twitter.com/bbuchfink)\] \[[Google
-Scholar](https://scholar.google.de/citations?user=kjPIF1cAAAAJ)\]
+\[[X](https://x.com/bbuchfink)\]
+\[[LinkedIn](https://www.linkedin.com/in/benjamin-buchfink-875692105/)\]
+\[[Google Scholar](https://scholar.google.de/citations?user=kjPIF1cAAAAJ)\]
 \[[Drost lab](https://drostlab.com/)\]
-\[[MPI-BIO](http://eb.tuebingen.mpg.de/)\]
+\[[MPI-BIO](https://www.bio.mpg.de/)\]
 
 **When using the tool in published research, please cite:**
 
