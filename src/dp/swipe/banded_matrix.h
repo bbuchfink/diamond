@@ -20,7 +20,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #include <utility>
-#include "../../util/data_structures/mem_buffer.h"
+#include "util/data_structures/mem_buffer.h"
+#include "stats/score_matrix.h"
 
 using std::pair;
 
@@ -215,7 +216,7 @@ struct TracebackMatrix
 			--j;
 			assert(i >= -1 && j >= -1);
 		}
-		pair<Edit_operation, int> walk_gap(int d0, int d1)
+		pair<EditOperation, int> walk_gap(int d0, int d1)
 		{
 			const int i0 = std::max(d0 + j, 0), j0 = std::max(i - d1, -1);
 			const Score *h = score_ - (band_ - 1) * CHANNELS, *h0 = score_ - (j - j0) * (band_ - 1) * CHANNELS;
@@ -311,14 +312,14 @@ private:
 
 };
 
-template<typename _sv>
+template<typename Sv>
 struct TracebackVectorMatrix
 {
-	typedef typename ::DISPATCH_ARCH::ScoreTraits<_sv>::TraceMask TraceMask;
+	typedef typename ::DISPATCH_ARCH::ScoreTraits<Sv>::TraceMask TraceMask;
 	typedef void* Stat;
 	struct ColumnIterator
 	{
-		ColumnIterator(_sv* hgap_front, _sv* score_front, TraceMask* trace_mask_front) :
+		ColumnIterator(Sv* hgap_front, Sv* score_front, TraceMask* trace_mask_front) :
 			hgap_ptr_(hgap_front),
 			score_ptr_(score_front),
 			trace_mask_ptr_(trace_mask_front)
@@ -327,22 +328,22 @@ struct TracebackVectorMatrix
 		{
 			++hgap_ptr_; ++score_ptr_; ++trace_mask_ptr_;
 		}
-		inline _sv hgap() const
+		inline Sv hgap() const
 		{
 			return *(hgap_ptr_ + 1);
 		}
-		inline _sv diag() const
+		inline Sv diag() const
 		{
 			return *score_ptr_;
 		}
 		inline TraceMask* trace_mask() {
 			return trace_mask_ptr_;
 		}
-		inline void set_hgap(const _sv& x)
+		inline void set_hgap(const Sv& x)
 		{
 			*hgap_ptr_ = x;
 		}
-		inline void set_score(const _sv& x)
+		inline void set_score(const Sv& x)
 		{
 			*score_ptr_ = x;
 		}
@@ -354,7 +355,7 @@ struct TracebackVectorMatrix
 		}
 		void set_hstat(std::nullptr_t) {}
 		inline void set_zero() {}
-		_sv *hgap_ptr_, *score_ptr_;
+		Sv *hgap_ptr_, *score_ptr_;
 		TraceMask* trace_mask_ptr_;
 	};
 
@@ -380,7 +381,7 @@ struct TracebackVectorMatrix
 			--j;
 			assert(i >= -1 && j >= -1);
 		}
-		pair<Edit_operation, int> walk_gap()
+		pair<EditOperation, int> walk_gap()
 		{
 			if (mask_->gap & channel_mask_vgap) {
 				int l = 0;
@@ -418,8 +419,8 @@ struct TracebackVectorMatrix
 		hgap_.resize(band + 1);
 		score_.resize(band);
 		trace_mask_.resize((cols + 1) * band);
-		std::fill(hgap_.begin(), hgap_.end(), _sv());
-		std::fill(score_.begin(), score_.end(), _sv());
+		std::fill(hgap_.begin(), hgap_.end(), Sv());
+		std::fill(score_.begin(), score_.end(), Sv());
 	}
 	
 	inline ColumnIterator begin(int offset, int col)
@@ -431,12 +432,12 @@ struct TracebackVectorMatrix
 		return band_;
 	}
 
-	_sv operator[](int i) const {
-		return _sv();
+	Sv operator[](int i) const {
+		return Sv();
 	}
 
 #if defined(__APPLE__) || !defined(USE_TLS)
-	MemBuffer<_sv> hgap_, score_;
+	MemBuffer<Sv> hgap_, score_;
 #else
 	static thread_local MemBuffer<_sv> hgap_, score_;
 #endif

@@ -1,6 +1,6 @@
-#include "../util/tsv/file.h"
-#include "../basic/config.h"
-#include "../util/log_stream.h"
+#include "util/tsv/tsv.h"
+#include "basic/config.h"
+#include "util/log_stream.h"
 
 using namespace Util::Tsv;
 using std::endl;

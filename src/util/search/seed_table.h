@@ -20,9 +20,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #pragma once
 #include <vector>
-#include "../../basic/sequence.h"
-#include "../../basic/reduction.h"
-#include "../../basic/shape_config.h"
+#include "basic/sequence.h"
+#include "basic/reduction.h"
+#include "basic/shape_config.h"
 
 struct SeedTable {
 

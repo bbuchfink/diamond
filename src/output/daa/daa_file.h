@@ -18,16 +18,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #pragma once
 #include <string>
-#include <exception>
-#include "../util/ptr_vector.h"
-#include "../basic/config.h"
-#include "../basic/const.h"
-#include "../util/binary_buffer.h"
-#include "../util/io/input_file.h"
-#include "../basic/value.h"
-#include "../data/reference.h"
+#include "util/ptr_vector.h"
+#include "basic/const.h"
+#include "util/binary_buffer.h"
+#include "util/io/input_file.h"
+#include "basic/value.h"
 
-struct DAA_file;
+struct DAAFile;
 
 struct DAA_header1
 {
@@ -38,12 +35,6 @@ struct DAA_header1
 	{ }
 	uint64_t magic_number, version;
 };
-
-inline const char* mode_str(int mode)
-{
-	static const char* mode_str[] = { 0, 0, "blastp", "blastx", "blastn" };
-	return mode_str[mode];
-}
 
 struct DAA_header2
 {
@@ -88,7 +79,7 @@ struct DAA_header2
 		memset(this->score_matrix, 0, sizeof(this->score_matrix));
 		strcpy(this->score_matrix, score_matrix.c_str());
 	}
-	DAA_header2(const DAA_file& f);
+	DAA_header2(const DAAFile& f);
 	typedef enum { empty = 0, alignments = 1, ref_names = 2, ref_lengths = 3 } Block_type;
 	uint64_t diamond_build, db_seqs, db_seqs_used, db_letters, flags, query_records;
 	int32_t mode, gap_open, gap_extend, reward, penalty, reserved1, reserved2, reserved3;
@@ -98,10 +89,10 @@ struct DAA_header2
 	char block_type[256];
 };
 
-struct DAA_file
+struct DAAFile
 {
 
-	DAA_file(const std::string& file_name):
+	DAAFile(const std::string& file_name):
 		f_ (file_name),
 		query_count_ (0)
 	{
@@ -131,7 +122,7 @@ struct DAA_file
 		f_.seek(sizeof(DAA_header1) + sizeof(DAA_header2));
 	}
 
-	~DAA_file()
+	~DAAFile()
 	{
 		f_.close();
 	}
@@ -139,13 +130,13 @@ struct DAA_file
 	uint64_t diamond_build() const
 	{ return h2_.diamond_build; }
 
-	uint64_t db_seqs() const
+	int64_t db_seqs() const
 	{ return h2_.db_seqs; }
 
 	uint64_t db_seqs_used() const
 	{ return h2_.db_seqs_used; }
 
-	uint64_t db_letters() const
+	int64_t db_letters() const
 	{ return h2_.db_letters; }
 
 	const char* score_matrix() const
@@ -224,6 +215,6 @@ private:
 	PtrVector<std::string> ref_name_;
 	std::vector<uint32_t> ref_len_;
 
-	friend void write_file(DAA_file&, OutputFile&);
+	friend void write_file(DAAFile&, OutputFile&);
 
 };

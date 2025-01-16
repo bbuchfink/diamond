@@ -1,7 +1,6 @@
 #pragma once
-#include <array>
-#include "../../basic/sequence.h"
-#include "../../util/geo/geo.h"
+#include "basic/sequence.h"
+#include "util/geo/geo.h"
 
 namespace DP { namespace AnchoredSwipe {
 

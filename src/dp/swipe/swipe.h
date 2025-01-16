@@ -21,22 +21,19 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #pragma once
 #include <assert.h>
-#include <limits>
 #include <vector>
 #include "../score_vector.h"
-#include "../score_vector_int8.h"
-#include "../score_vector_int16.h"
-#include "../../basic/value.h"
-#include "../../util/simd/vector.h"
-#include "../../util/system.h"
-#include "../../util/memory/alignment.h"
-#include "../../util/simd/transpose.h"
+#include "basic/value.h"
+#include "util/system.h"
+#include "util/memory/alignment.h"
+#include "util/simd/transpose.h"
+#include "stats/score_matrix.h"
 
 namespace DP {
 	struct NoCBS;
 }
 
-template<typename _sv, typename _cbs>
+template<typename Sv, typename Cbs>
 struct CBSBuffer {
 	CBSBuffer(const DP::NoCBS&, int, uint32_t) {}
 	void* operator()(int i) const {
@@ -44,35 +41,35 @@ struct CBSBuffer {
 	}
 };
 
-template<typename _sv>
-struct CBSBuffer<_sv, const int8_t*> {
+template<typename Sv>
+struct CBSBuffer<Sv, const int8_t*> {
 	CBSBuffer(const int8_t* v, int l, uint32_t channel_mask) {
-		typedef typename ::DISPATCH_ARCH::ScoreTraits<_sv>::Score Score;
+		typedef typename ::DISPATCH_ARCH::ScoreTraits<Sv>::Score Score;
 		data.reserve(l);
 		for (int i = 0; i < l; ++i)
-			data.push_back(blend_sv<_sv>(Score(v[i]), (Score)0, channel_mask));
+			data.push_back(blend_sv<Sv>(Score(v[i]), (Score)0, channel_mask));
 	}
-	_sv operator()(int i) const {
+	Sv operator()(int i) const {
 		return data[i];
 	}
-	std::vector<_sv, Util::Memory::AlignmentAllocator<_sv, 32>> data;
+	std::vector<Sv, Util::Memory::AlignmentAllocator<Sv, 32>> data;
 };
 
-template<typename _sv>
-FORCE_INLINE _sv cell_update(const _sv &diagonal_cell,
-	const _sv &shift_cell0,
-	const _sv &shift_cell1,
-	const _sv &scores,
-	const _sv &gap_extension,
-	const _sv &gap_open,
-	const _sv &frame_shift,
-	_sv &horizontal_gap,
-	_sv &vertical_gap,
-	_sv &best)
+template<typename Sv>
+FORCE_INLINE Sv cell_update(const Sv &diagonal_cell,
+	const Sv &shift_cell0,
+	const Sv &shift_cell1,
+	const Sv &scores,
+	const Sv &gap_extension,
+	const Sv &gap_open,
+	const Sv &frame_shift,
+	Sv &horizontal_gap,
+	Sv &vertical_gap,
+	Sv &best)
 {
 	using std::max;
-	_sv current_cell = diagonal_cell + scores;
-	const _sv f = scores - frame_shift;
+	Sv current_cell = diagonal_cell + scores;
+	const Sv f = scores - frame_shift;
 	current_cell = max(current_cell, shift_cell0 + f);
 	current_cell = max(current_cell, shift_cell1 + f);
 	current_cell = max(max(current_cell, vertical_gap), horizontal_gap);
@@ -80,7 +77,7 @@ FORCE_INLINE _sv cell_update(const _sv &diagonal_cell,
 	best = max(best, current_cell);
 	vertical_gap -= gap_extension;
 	horizontal_gap -= gap_extension;
-	const _sv open = current_cell - gap_open;
+	const Sv open = current_cell - gap_open;
 	vertical_gap = max(vertical_gap, open);
 	horizontal_gap = max(horizontal_gap, open);
 	return current_cell;

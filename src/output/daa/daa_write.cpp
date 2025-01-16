@@ -1,7 +1,8 @@
 #include "daa_write.h"
-#include "../util/util.h"
-#include "../util/sequence/sequence.h"
-#include "../../basic/statistics.h"
+#include "util/util.h"
+#include "util/sequence/sequence.h"
+#include "basic/statistics.h"
+#include "basic/packed_sequence.h"
 
 using std::string;
 using std::vector;
@@ -21,7 +22,7 @@ size_t write_daa_query_record(TextBuffer& buf, const char* query_name, const Seq
 	uint32_t l = (uint32_t)query.length();
 	buf.write(l);
 	buf.write_c_str(query_name, find_first_of(query_name, Util::Seq::id_delimiters));
-	Packed_sequence s(query, align_mode.input_sequence_type);
+	PackedSequence s(query, align_mode.input_sequence_type);
 	uint8_t flags = s.has_n() ? 1 : 0;
 	buf.write(flags);
 	buf << s.data();
@@ -93,7 +94,7 @@ void finish_daa(OutputFile& f, const SequenceFile& db)
 	f.write(&h2_, 1);
 }
 
-DAA_header2::DAA_header2(const DAA_file& daa_in) :
+DAA_header2::DAA_header2(const DAAFile& daa_in) :
 	DAA_header2(daa_in.db_seqs(),
 		daa_in.db_letters(),
 		daa_in.gap_open_penalty(),
@@ -122,7 +123,7 @@ static void write_header2(OutputFile& f, const DAA_header2& h2) {
 	f.write(&h2, 1);
 }
 
-void finish_daa(OutputFile& f, DAA_file& daa_in) {
+void finish_daa(OutputFile& f, DAAFile& daa_in) {
 	DAA_header2 h2_(daa_in);
 
 	terminate_aln_block(f, h2_);
@@ -140,7 +141,7 @@ void finish_daa(OutputFile& f, DAA_file& daa_in) {
 	write_header2(f, h2_);
 }
 
-void finish_daa(OutputFile& f, DAA_file& daa_in, const StringSet& seq_ids, const vector<uint32_t>& seq_lens, int64_t query_count) {
+void finish_daa(OutputFile& f, DAAFile& daa_in, const StringSet& seq_ids, const vector<uint32_t>& seq_lens, int64_t query_count) {
 	DAA_header2 h2_(daa_in);
 	terminate_aln_block(f, h2_);
 	h2_.db_seqs_used = seq_ids.size();

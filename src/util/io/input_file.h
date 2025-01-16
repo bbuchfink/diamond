@@ -20,9 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #pragma once
-#include <vector>
 #include <string>
-#include <stdexcept>
 #include <stdint.h>
 #include "output_file.h"
 #include "deserializer.h"

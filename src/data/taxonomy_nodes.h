@@ -24,9 +24,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <vector>
 #include <set>
 #include <string>
-#include "../util/io/serializer.h"
-#include "../util/io/deserializer.h"
-#include "../basic/value.h"
+#include "util/io/serializer.h"
+#include "util/io/deserializer.h"
+#include "basic/value.h"
 
 struct Rank {
 	Rank() :

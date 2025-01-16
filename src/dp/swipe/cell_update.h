@@ -30,67 +30,66 @@ struct DummyRowCounter {
 	void store(Score* ptr) {
 		std::fill(ptr, ptr + ::DISPATCH_ARCH::ScoreTraits<Sv>::CHANNELS, ::DISPATCH_ARCH::ScoreTraits<Sv>::zero_score());
 	}
-	template<typename _sv>
-	FORCE_INLINE void inc(const _sv&, const _sv&) {}
+	FORCE_INLINE void inc(const Sv&, const Sv&) {}
 	enum { MAX_LEN = INT_MAX };
 };
 
-template<typename _sv>
+template<typename Sv>
 struct VectorRowCounter {
-	typedef typename ::DISPATCH_ARCH::ScoreTraits<_sv>::Score Score;
+	typedef typename ::DISPATCH_ARCH::ScoreTraits<Sv>::Score Score;
 	VectorRowCounter(int i) :
-		i(::DISPATCH_ARCH::ScoreTraits<_sv>::zero_score() + Score(i)),
+		i(::DISPATCH_ARCH::ScoreTraits<Sv>::zero_score() + Score(i)),
 		i_max()
 	{
 	}
-	void inc(const _sv& best, const _sv& current_cell) {
+	void inc(const Sv& best, const Sv& current_cell) {
 		i_max = blend(i_max, i, best == current_cell);
-		i += _sv(Score(1));
+		i += Sv(Score(1));
 	}
 	void store(Score* ptr) {
 		store_sv(i_max, ptr);
 	}
-	static constexpr int MAX_LEN = ::DISPATCH_ARCH::ScoreTraits<_sv>::max_int_score();
-	_sv i;
-	_sv i_max;
+	static constexpr int MAX_LEN = ::DISPATCH_ARCH::ScoreTraits<Sv>::max_int_score();
+	Sv i;
+	Sv i_max;
 };
 
-template<typename _sv>
-FORCE_INLINE _sv add_cbs(const _sv& v, void*) {
+template<typename Sv>
+FORCE_INLINE Sv add_cbs(const Sv& v, void*) {
 	return v;
 }
 
-template<typename _sv>
-FORCE_INLINE _sv add_cbs(const _sv& v, const _sv& query_bias) {
+template<typename Sv>
+FORCE_INLINE Sv add_cbs(const Sv& v, const Sv& query_bias) {
 	return v + query_bias;
 }
 
-template<typename _score>
-FORCE_INLINE _score add_cbs_scalar(_score x, int8_t b) {
-	return x + _score(b);
+template<typename Score>
+FORCE_INLINE Score add_cbs_scalar(Score x, int8_t b) {
+	return x + Score(b);
 }
 
-template<typename _score>
-FORCE_INLINE _score add_cbs_scalar(_score x, void* b) {
+template<typename Score>
+FORCE_INLINE Score add_cbs_scalar(Score x, void* b) {
 	return x;
 }
 
-template<typename _sv>
-FORCE_INLINE void make_gap_mask(typename ::DISPATCH_ARCH::ScoreTraits<_sv>::TraceMask* trace_mask, const _sv& current_cell, const _sv& vertical_gap, const _sv& horizontal_gap) {
-	trace_mask->gap = ::DISPATCH_ARCH::ScoreTraits<_sv>::TraceMask::make(cmp_mask(current_cell, vertical_gap), cmp_mask(current_cell, horizontal_gap));
+template<typename Sv>
+FORCE_INLINE void make_gap_mask(typename ::DISPATCH_ARCH::ScoreTraits<Sv>::TraceMask* trace_mask, const Sv& current_cell, const Sv& vertical_gap, const Sv& horizontal_gap) {
+	trace_mask->gap = ::DISPATCH_ARCH::ScoreTraits<Sv>::TraceMask::make(cmp_mask(current_cell, vertical_gap), cmp_mask(current_cell, horizontal_gap));
 }
 
-template<typename _sv>
-FORCE_INLINE void make_gap_mask(std::nullptr_t, const _sv&, const _sv&, const _sv&) {
+template<typename Sv>
+FORCE_INLINE void make_gap_mask(std::nullptr_t, const Sv&, const Sv&, const Sv&) {
 }
 
-template<typename _sv>
-FORCE_INLINE void make_open_mask(typename ::DISPATCH_ARCH::ScoreTraits<_sv>::TraceMask* trace_mask, const _sv& open, const _sv& vertical_gap, const _sv& horizontal_gap) {
-	trace_mask->open = ::DISPATCH_ARCH::ScoreTraits<_sv>::TraceMask::make(cmp_mask(vertical_gap, open), cmp_mask(horizontal_gap, open));
+template<typename Sv>
+FORCE_INLINE void make_open_mask(typename ::DISPATCH_ARCH::ScoreTraits<Sv>::TraceMask* trace_mask, const Sv& open, const Sv& vertical_gap, const Sv& horizontal_gap) {
+	trace_mask->open = ::DISPATCH_ARCH::ScoreTraits<Sv>::TraceMask::make(cmp_mask(vertical_gap, open), cmp_mask(horizontal_gap, open));
 }
 
-template<typename _sv>
-FORCE_INLINE void make_open_mask(std::nullptr_t, const _sv&, const _sv&, const _sv&) {
+template<typename Sv>
+FORCE_INLINE void make_open_mask(std::nullptr_t, const Sv&, const Sv&, const Sv&) {
 }
 
 template<typename Sv>

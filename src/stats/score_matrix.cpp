@@ -23,31 +23,26 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <math.h>
 #include <string>
 #include <limits>
-#include <algorithm>
 #include <stdexcept>
-#include <fstream>
 #include <vector>
 #include <sstream>
+#include <fstream>
 #include "score_matrix.h"
-#include "../basic/config.h"
-#include "../stats/cbs.h"
+#include "basic/config.h"
+#include "stats/cbs.h"
 
 using std::string;
 using std::vector;
 
 ScoreMatrix score_matrix;
 
-static Sls::AlignmentEvaluerParameters alp_params(const Stats::StandardMatrix* standard_matrix, int gap_open, int gap_extend, bool mmseqs_compat) {
-	if (mmseqs_compat)
-		return { 0.27359865037097330642, 0.044620920658722244834, 1.5938724404943873658, -19.959867650284412122,
-		1.5938724404943873658, -19.959867650284412122, 30.455610143099914211, -622.28684628915891608,
-		30.455610143099914211, -622.28684628915891608, 29.602444874818868215, -601.81087985041381216 };
+static Sls::AlignmentEvaluerParameters alp_params(const Stats::StandardMatrix* standard_matrix, int gap_open, int gap_extend) {
 	const Stats::StandardMatrix::Parameters& p = standard_matrix->constants(gap_open, gap_extend), & u = standard_matrix->ungapped_constants();
 	const double G = gap_open + gap_extend, b = 2.0 * G * (u.alpha - p.alpha), beta = 2.0 * G * (u.alpha_v - p.alpha_v);
 	return Sls::AlignmentEvaluerParameters { p.Lambda, p.K, p.alpha, b, p.alpha, b, p.alpha_v, beta, p.alpha_v, beta, p.sigma, 2.0 * G * (u.alpha_v - p.sigma) };
 }
 
-ScoreMatrix::ScoreMatrix(const string & matrix, int gap_open, int gap_extend, int frameshift, int stop_match_score, uint64_t db_letters, int scale, bool mmseqs_compat):
+ScoreMatrix::ScoreMatrix(const string & matrix, int gap_open, int gap_extend, int frameshift, int stop_match_score, uint64_t db_letters, int scale):
 	standard_matrix_(&Stats::StandardMatrix::get(matrix)),
 	gap_open_ (gap_open == -1 ? standard_matrix_->default_gap_exist : gap_open),
 	gap_extend_ (gap_extend == -1 ? standard_matrix_->default_gap_extend : gap_extend),
@@ -67,7 +62,7 @@ ScoreMatrix::ScoreMatrix(const string & matrix, int gap_open, int gap_extend, in
 	matrix8u_high_(standard_matrix_->scores.data(), stop_match_score, bias_, 16, 16),
 	matrix16_(standard_matrix_->scores.data(), stop_match_score)
 {	
-	evaluer.initParameters(alp_params(standard_matrix_, gap_open_, gap_extend_, mmseqs_compat));
+	evaluer.initParameters(alp_params(standard_matrix_, gap_open_, gap_extend_));
 	ln_k_ = std::log(evaluer.parameters().K);
 	init_background_scores();
 }
@@ -108,9 +103,9 @@ std::ostream& operator<<(std::ostream& s, const ScoreMatrix&m)
 	return s;
 }
 
-const signed char* custom_scores(const string &matrix_file, int mask_score)
+static const int8_t* custom_scores(const string &matrix_file, int mask_score)
 {
-	static signed char scores[AMINO_ACID_COUNT * AMINO_ACID_COUNT];
+	static int8_t scores[AMINO_ACID_COUNT * AMINO_ACID_COUNT];
 	string l, s;
 	std::stringstream ss;
 	vector<Letter> pos;
@@ -190,13 +185,13 @@ ScoreMatrix::ScoreMatrix(const string& matrix_file, int gap_open, int gap_extend
 	init_background_scores();
 }
 
-template<typename _t>
-ScoreMatrix::Scores<_t>::Scores(const double (&freq_ratios)[Stats::NCBI_ALPH][Stats::NCBI_ALPH], double lambda, const int8_t* scores, int scale) {
+template<typename T>
+ScoreMatrix::Scores<T>::Scores(const double (&freq_ratios)[Stats::NCBI_ALPH][Stats::NCBI_ALPH], double lambda, const int8_t* scores, int scale) {
 	const size_t n = value_traits.alphabet_size;
 	for (size_t i = 0; i < 32; ++i)
 		for (size_t j = 0; j < 32; ++j) {
 			if (i < TRUE_AA && j < TRUE_AA)
-				data[i * 32 + j] = (_t)std::round(std::log(freq_ratios[Stats::ALPH_TO_NCBI[i]][Stats::ALPH_TO_NCBI[j]]) / lambda * scale);
+				data[i * 32 + j] = (T)std::round(std::log(freq_ratios[Stats::ALPH_TO_NCBI[i]][Stats::ALPH_TO_NCBI[j]]) / lambda * scale);
 			else if (i < n && j < n)
 				data[i * 32 + j] = (int)scores[i * n + j] * scale;
 			else
@@ -204,9 +199,9 @@ ScoreMatrix::Scores<_t>::Scores(const double (&freq_ratios)[Stats::NCBI_ALPH][St
 		}
 }
 
-template<typename _t>
-std::vector<const _t*> ScoreMatrix::Scores<_t>::pointers() const {
-	vector<const _t*> r(32);
+template<typename T>
+std::vector<const T*> ScoreMatrix::Scores<T>::pointers() const {
+	vector<const T*> r(32);
 	for (int i = 0; i < 32; ++i)
 		r[i] = &data[i * 32];
 	return r;
@@ -216,13 +211,7 @@ template struct ScoreMatrix::Scores<int>;
 
 double ScoreMatrix::evalue(int raw_score, unsigned query_len, unsigned subject_len) const
 {
-	if (config.mmseqs_compat) {
-		const double epa = evaluer.evaluePerArea(raw_score);
-		const double a = evaluer.area(raw_score, query_len, db_letters_);
-		return epa * a;
-	}
-	else
-		return evaluer.evalue((double)raw_score / scale_, query_len, subject_len) * (double)db_letters_ / (double)subject_len;
+	return evaluer.evalue((double)raw_score / scale_, query_len, subject_len) * (double)db_letters_ / (double)subject_len;
 }
 
 double ScoreMatrix::evalue_norm(int raw_score, unsigned query_len, unsigned subject_len) const

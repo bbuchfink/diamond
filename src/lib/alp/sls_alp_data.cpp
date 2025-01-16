@@ -33,11 +33,18 @@ Contents: Input data for the ascending ladder points simulation
 
 ******************************************************************************/
 
+// Modified by Benjamin Buchfink
+
 #include <iostream>
 #include "sls_alp_data.hpp"
 
+using std::string;
+using std::ifstream;
+using std::ios;
+using std::cout;
+using std::map;
+using std::vector;
 using namespace Sls;
-using namespace std;
 
 void alp_data::input_data_for_the_constructor(
 string randout_,//if defined, then the program outputs complete randomization information into a file

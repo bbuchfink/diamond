@@ -1,6 +1,6 @@
 #pragma once
-#include "../basic/match.h"
-#include "../output/output_format.h"
+#include "basic/match.h"
+#include "output/output_format.h"
 
 namespace Extension {
 

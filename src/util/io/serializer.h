@@ -18,9 +18,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #pragma once
 #include <string>
-#include <set>
-#include <vector>
-#include "../algo/varint.h"
 #include "stream_entity.h"
 #include "consumer.h"
 #include "../system/endianness.h"
@@ -28,16 +25,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 struct Serializer : public Consumer
 {
 
-	enum { VARINT = 1 };
-
-	Serializer(StreamEntity *buffer, int flags = 0);
+	Serializer(StreamEntity *buffer);
 
 	Serializer& operator<<(int32_t x)
 	{
-		if (varint_)
-			write_varint((uint32_t)x, *this);
-		else
-			write(big_endian_byteswap(x));
+		write(big_endian_byteswap(x));
 		return *this;
 	}
 
@@ -55,10 +47,7 @@ struct Serializer : public Consumer
 
 	Serializer& operator<<(unsigned x)
 	{
-		if (varint_)
-			write_varint(x, *this);
-		else
-			write(big_endian_byteswap(x));
+		write(big_endian_byteswap(x));
 		return *this;
 	}
 
@@ -79,85 +68,33 @@ struct Serializer : public Consumer
 		return *this;
 	}
 
-	Serializer& operator<<(const std::vector<unsigned> &v)
-	{
-		*this << (unsigned)v.size();
-		for (std::vector<unsigned>::const_iterator i = v.begin(); i < v.end(); ++i)
-			*this << *i;
-		return *this;
-	}
-
-	Serializer& operator<<(const std::vector<int32_t> &v)
-	{
-		*this << (unsigned)v.size();
-		for (std::vector<int32_t>::const_iterator i = v.begin(); i < v.end(); ++i)
-			*this << *i;
-		return *this;
-	}
-
-	Serializer& operator<<(const std::set<unsigned> &v)
-	{
-		*this << (unsigned)v.size();
-		for (std::set<unsigned>::const_iterator i = v.begin(); i != v.end(); ++i)
-			*this << *i;
-		return *this;
-	}
-
-	Serializer& operator<<(const std::set<int32_t>& v)
-	{
-		*this << (unsigned)v.size();
-		for (std::set<int32_t>::const_iterator i = v.begin(); i != v.end(); ++i)
-			*this << *i;
-		return *this;
-	}
-
 	Serializer& operator<<(const std::string &s)
 	{
 		write(s.c_str(), s.length() + 1);
 		return *this;
 	}
 
-	Serializer& operator<<(const std::vector<std::string> &v)
+	template<typename T>
+	void write(const T &x)
 	{
-		varint_ = false;
-		*this << (uint32_t)v.size();
-		for (std::vector<std::string>::const_iterator i = v.begin(); i < v.end(); ++i)
-			*this << *i;
-		return *this;
-	}
-
-	template<typename Type1, typename Type2>
-	Serializer& operator<<(const std::pair<Type1, Type2>& p) {
-		*this << p.first;
-		*this << p.second;
-		return *this;
-	}
-
-	template<typename _t>
-	void write(const _t &x)
-	{
-		if (sizeof(_t) <= avail()) {
-			*(_t*)next_ = x;
-			next_ += sizeof(_t);
+		if (sizeof(T) <= avail()) {
+#ifdef __sparc__
+			std::copy((char*)&x, (char*)&x + sizeof(T), next_);
+#else
+			*(T*)next_ = x;
+#endif
+			next_ += sizeof(T);
 		}
 		else
 			write(&x, 1);
 	}
 
-	template<typename _t>
-	void write(const _t *ptr, size_t count)
+	template<typename T>
+	void write(const T *ptr, size_t count)
 	{
-		write_raw((const char*)ptr, count * sizeof(_t));
+		write_raw((const char*)ptr, count * sizeof(T));
 	}
 
-	template<class _t>
-	void write_raw(const std::vector<_t> &v)
-	{
-		write(v.data(), v.size());
-	}
-
-	void set(int flag);
-	void unset(int flag);
 	void write_raw(const char *ptr, size_t count);
 	void seek(int64_t p, int origin = SEEK_SET);
 	void rewind();
@@ -181,6 +118,5 @@ protected:
 
 	StreamEntity *buffer_;
 	char *begin_, *next_, *end_;
-	bool varint_;
 
 };

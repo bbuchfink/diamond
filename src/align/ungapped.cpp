@@ -20,23 +20,19 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <array>
 #include <algorithm>
-#include <limits.h>
 #include <utility>
 #include <atomic>
 #include <mutex>
-#include <limits.h>
-#include "../basic/config.h"
-#include "../stats/hauser_correction.h"
+#include "basic/config.h"
+#include "stats/hauser_correction.h"
 #include "target.h"
-#include "../dp/ungapped.h"
+#include "dp/ungapped.h"
 #include "target.h"
-#include "../data/reference.h"
-#include "../util/log_stream.h"
-#include "../util/parallel/thread_pool.h"
-#include "../chaining/chaining.h"
-#include "../dp/dp.h"
+#include "util/log_stream.h"
+#include "util/parallel/thread_pool.h"
+#include "chaining/chaining.h"
 #include "def.h"
-#include "../util/geo/geo.h"
+#include "util/geo/geo.h"
 
 using std::array;
 using std::vector;
@@ -47,10 +43,6 @@ using std::pair;
 
 namespace Extension {
 
-std::vector<int16_t*> target_matrices;
-std::mutex target_matrices_lock;
-atomic<size_t> target_matrix_count(0);
-
 WorkTarget::WorkTarget(BlockId block_id, const Sequence& seq, int query_len, const ::Stats::Composition& query_comp, const int16_t** query_matrix) :
 	block_id(block_id),
 	seq(seq),
@@ -60,11 +52,12 @@ WorkTarget::WorkTarget(BlockId block_id, const Sequence& seq, int query_len, con
 	matrix = ::Stats::TargetMatrix(query_comp, query_len, seq);
 }
 
-WorkTarget ungapped_stage(FlatArray<SeedHit>::DataIterator begin, FlatArray<SeedHit>::DataIterator end, const Sequence *query_seq, const Bias_correction *query_cb, const ::Stats::Composition& query_comp, const int16_t** query_matrix, uint32_t block_id, Statistics& stat, const Block& targets, const Mode mode) {
+WorkTarget ungapped_stage(FlatArray<SeedHit>::DataIterator begin, FlatArray<SeedHit>::DataIterator end, const Sequence *query_seq, const HauserCorrection *query_cb, const ::Stats::Composition& query_comp, const int16_t** query_matrix, uint32_t block_id, Statistics& stat, const Block& targets, const Mode mode) {
 	array<vector<DiagonalSegment>, MAX_CONTEXT> diagonal_segments;
 	TaskTimer timer;
 	const SequenceSet& ref_seqs = targets.seqs(), &ref_seqs_unmasked = targets.unmasked_seqs();
 	const bool masking = config.comp_based_stats == ::Stats::CBS::COMP_BASED_STATS_AND_MATRIX_ADJUST ? ::Stats::use_seg_masking(query_seq[0], ref_seqs_unmasked[block_id]) : true;
+	const bool with_diag_filter = (config.hamming_ext || config.diag_filter_cov.present() || config.diag_filter_id.present()) && !config.mutual_cover.present() && align_mode.query_contexts == 1;
 	WorkTarget target(block_id, masking ? ref_seqs[block_id] : ref_seqs_unmasked[block_id], ::Stats::count_true_aa(query_seq[0]), query_comp, query_matrix);
 	stat.inc(Statistics::TIME_MATRIX_ADJUST, timer.microseconds());
 	if (target.adjusted_matrix())
@@ -73,7 +66,8 @@ WorkTarget ungapped_stage(FlatArray<SeedHit>::DataIterator begin, FlatArray<Seed
 	if (mode == Mode::FULL) {
 		for (FlatArray<SeedHit>::DataIterator hit = begin; hit < end; ++hit)
 			target.ungapped_score[hit->frame] = std::max(target.ungapped_score[hit->frame], hit->score);
-		return target;
+		if (!with_diag_filter)
+			return target;
 	}
 	if (end - begin == 1 && align_mode.query_translated) { // ???
 		target.ungapped_score[begin->frame] = begin->score;
@@ -81,7 +75,6 @@ WorkTarget ungapped_stage(FlatArray<SeedHit>::DataIterator begin, FlatArray<Seed
 		return target;
 	}
 	std::sort(begin, end);
-	const bool with_diag_filter = (config.hamming_ext || config.diag_filter_cov > 0 || config.diag_filter_id > 0) && !config.mutual_cover.present();
 	for (FlatArray<SeedHit>::DataIterator hit = begin; hit < end; ++hit) {
 		const auto f = hit->frame;
 		target.ungapped_score[f] = std::max(target.ungapped_score[f], hit->score);
@@ -100,9 +93,14 @@ WorkTarget ungapped_stage(FlatArray<SeedHit>::DataIterator begin, FlatArray<Seed
 			target.hsp[0].push_back(h);
 			return target;
 		}
-		if (h.score < 0)
+		if (h.score < 0) {
+			target.ungapped_score[0] = 0;
 			return target;
+		}
 	}
+
+	if (mode == Mode::FULL)
+		return target;
 
 	for (int frame = 0; frame < align_mode.query_contexts; ++frame) {
 		if (diagonal_segments[frame].empty())
@@ -114,7 +112,7 @@ WorkTarget ungapped_stage(FlatArray<SeedHit>::DataIterator begin, FlatArray<Seed
 	return target;
 }
 
-void ungapped_stage_worker(size_t i, size_t thread_id, const Sequence *query_seq, const Bias_correction *query_cb, const ::Stats::Composition* query_comp, FlatArray<SeedHit>::Iterator seed_hits, vector<uint32_t>::const_iterator target_block_ids, vector<WorkTarget> *out, mutex *mtx, Statistics* stat, const Block* targets, const Mode mode) {
+void ungapped_stage_worker(size_t i, size_t thread_id, const Sequence *query_seq, const HauserCorrection *query_cb, const ::Stats::Composition* query_comp, FlatArray<SeedHit>::Iterator seed_hits, vector<uint32_t>::const_iterator target_block_ids, vector<WorkTarget> *out, mutex *mtx, Statistics* stat, const Block* targets, const Mode mode) {
 	Statistics stats;
 	const int16_t* query_matrix = nullptr;
 	WorkTarget target = ungapped_stage(seed_hits.begin(i), seed_hits.end(i), query_seq, query_cb, *query_comp, &query_matrix, target_block_ids[i], stats, *targets, mode);
@@ -126,7 +124,7 @@ void ungapped_stage_worker(size_t i, size_t thread_id, const Sequence *query_seq
 	delete[] query_matrix;
 }
 
-vector<WorkTarget> ungapped_stage(const Sequence *query_seq, const Bias_correction *query_cb, const ::Stats::Composition& query_comp, FlatArray<SeedHit>::Iterator seed_hits, FlatArray<SeedHit>::Iterator seed_hits_end, vector<uint32_t>::const_iterator target_block_ids, DP::Flags flags, Statistics& stat, const Block& target_block, const Mode mode) {
+vector<WorkTarget> ungapped_stage(const Sequence *query_seq, const HauserCorrection *query_cb, const ::Stats::Composition& query_comp, FlatArray<SeedHit>::Iterator seed_hits, FlatArray<SeedHit>::Iterator seed_hits_end, vector<uint32_t>::const_iterator target_block_ids, DP::Flags flags, Statistics& stat, const Block& target_block, const Mode mode) {
 	vector<WorkTarget> targets;
 	const int64_t n = seed_hits_end - seed_hits;
 	if(n == 0)

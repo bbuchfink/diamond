@@ -20,12 +20,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #pragma once
 
+#include <float.h>
 #include <map>
 #include <array>
-#include <limits.h>
 #include <vector>
-#include <float.h>
-#include "../basic/value.h"
+#include "basic/value.h"
 
 namespace Stats {
 

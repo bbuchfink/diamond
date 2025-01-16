@@ -1,12 +1,26 @@
 #pragma once
 
 #include <deque>
-#include "../basic/value.h"
-#include "../util/enum.h"
+#include "basic/value.h"
+#include "util/enum.h"
 
 enum struct MaskingAlgo { NONE = 0, TANTAN = 1, SEG = 2, MOTIF = 4 };
 
 DEFINE_ENUM_FLAG_OPERATORS(MaskingAlgo)
+
+template<>
+struct EnumTraits<MaskingAlgo> {
+	static const EMap<MaskingAlgo> to_string;
+	static const SEMap<MaskingAlgo> from_string;
+};
+
+enum class MaskingMode { NONE, TANTAN, BLAST_SEG };
+
+template<>
+struct EnumTraits<MaskingMode> {
+	static const SEMap<MaskingMode> from_string;
+	static const EMap<MaskingMode> to_string;
+};
 
 namespace Mask {
 

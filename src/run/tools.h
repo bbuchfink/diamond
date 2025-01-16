@@ -16,15 +16,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#ifndef TOOLS_H_
-#define TOOLS_H_
-
+#pragma once
 void get_seq();
 void random_seqs();
-void sort_file();
 void roc();
-void db_stat();
-void model_sim();
-void match_file_stat();
-
-#endif

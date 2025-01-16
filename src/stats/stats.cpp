@@ -20,7 +20,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <algorithm>
 #include <iterator>
-#include <ctype.h>
 #include "standard_matrix.h"
 
 using std::string;
@@ -54,7 +53,10 @@ const StandardMatrix::Parameters& StandardMatrix::ungapped_constants() const {
 }
 
 double approx_id(Score raw_score, Loc range1, Loc range2) {
-	return min(max((double)raw_score / max(range1, range2) * 16.56 + 11.41, 0.0), 100.0);
+	const Loc m = max(range1, range2);
+	if (m == 0)
+		return 100.0;
+	return min(max((double)raw_score / m * 16.56 + 11.41, 0.0), 100.0);
 }
 
 }

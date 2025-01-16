@@ -19,13 +19,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #pragma once
-#include <list>
 #include <vector>
 #include <mutex>
 #include "../sequence_set.h"
 #include "../seed_histogram.h"
-#include "../util/seq_file_format.h"
-#include "../masking/masking.h"
+#include "masking/masking.h"
 
 struct SequenceFile;
 

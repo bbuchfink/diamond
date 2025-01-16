@@ -83,4 +83,3 @@ struct CallbackBidirectional : public Callback {
 };
 
 }
- 

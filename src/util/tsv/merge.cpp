@@ -9,9 +9,9 @@ using std::greater;
 namespace Util { namespace Tsv {
 
 File* merge(std::vector<File*>::iterator begin, std::vector<File*>::iterator end, int column) {
-	using pair = pair<int64_t, int64_t>;
+	using Pair = pair<int64_t, int64_t>;
 	File* out = new File((*begin)->schema(), "", Flags::TEMP);
-	priority_queue<pair, vector<pair>, greater<pair>> queue;
+	priority_queue<Pair, vector<Pair>, greater<Pair>> queue;
 	vector<Table> tables;
 	tables.reserve(end - begin);
 	for (auto it = begin; it != end; ++it) {

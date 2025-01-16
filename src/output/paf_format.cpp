@@ -17,7 +17,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #include "output_format.h"
-#include "../util/sequence/sequence.h"
+#include "util/sequence/sequence.h"
 
 void PAF_format::print_query_intro(Output::Info& info) const
 {

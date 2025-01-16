@@ -1,6 +1,6 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2023 Max Planck Society for the Advancement of Science e.V.
+Copyright (C) 2013-2024 Max Planck Society for the Advancement of Science e.V.
                         Benjamin Buchfink
                         Eberhard Karls Universitaet Tuebingen
 						
@@ -22,19 +22,15 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
 #pragma once
-#include <limits>
 #include <list>
-#include <float.h>
 #include "sequence.h"
-#include "packed_loc.h"
 #include "value.h"
 #include "packed_transcript.h"
 #include "translated_position.h"
-#include "../util/geo/diagonal_segment.h"
-#include "value.h"
-#include "../util/io/serialize.h"
-#include "../util/io/input_file.h"
-#include "../util/hsp/approx_hsp.h"
+#include "util/geo/diagonal_segment.h"
+#include "util/io/input_file.h"
+#include "util/hsp/approx_hsp.h"
+#include "util/io/serialize.h"
 
 inline Interval normalized_range(unsigned pos, int len, Strand strand)
 {
@@ -102,7 +98,11 @@ struct Hsp
 		matrix(nullptr)
 	{}
 
+#ifdef WITH_DNA
     Hsp(const IntermediateRecord &r, unsigned query_source_len, Loc qlen, Loc tlen, const OutputFormat* output_format, const Stats::Blastn_Score *dna_score_builder = nullptr);
+#else
+	Hsp(const IntermediateRecord& r, unsigned query_source_len, Loc qlen, Loc tlen, const OutputFormat* output_format);
+#endif
 	Hsp(const ApproxHsp& h, Loc qlen, Loc tlen);
 
 	struct Iterator
@@ -115,7 +115,7 @@ struct Hsp
 		{ }
 		bool good() const
 		{
-			return *ptr_ != Packed_operation::terminator();
+			return *ptr_ != PackedOperation::terminator();
 		}
 		Iterator& operator++()
 		{
@@ -145,7 +145,7 @@ struct Hsp
 			}
 			return *this;
 		}
-		Edit_operation op() const
+		EditOperation op() const
 		{
 			return ptr_->op();
 		}
@@ -159,7 +159,7 @@ struct Hsp
 		TranslatedPosition query_pos;
 		unsigned subject_pos;
 	protected:
-		const Packed_operation *ptr_;
+		const PackedOperation *ptr_;
 		unsigned count_;
 	};
 
@@ -201,7 +201,7 @@ struct Hsp
 
 	bool operator<(const Hsp &rhs) const
 	{
-		return score > rhs.score || (score == rhs.score && query_source_range.begin_ < rhs.query_source_range.begin_);
+		return score > rhs.score || (score == rhs.score && (d_begin < rhs.d_begin || (d_begin == rhs.d_begin && query_source_range.begin_ < rhs.query_source_range.begin_)));
 	}
 
 	static bool cmp_evalue(const Hsp& a, const Hsp& b) {
@@ -246,7 +246,7 @@ struct Hsp
 	bool is_weakly_enveloped_by(std::list<Hsp>::const_iterator begin, std::list<Hsp>::const_iterator end, int cutoff) const;
 	void push_back(const DiagonalSegmentT &d, const TranslatedSequence &query, const Sequence& subject, bool reversed);
 	void push_match(Letter q, Letter s, bool positive);
-	void push_gap(Edit_operation op, int length, const Letter *subject);
+	void push_gap(EditOperation op, int length, const Letter *subject);
 	void splice(const DiagonalSegmentT &d0, const DiagonalSegmentT &d1, const TranslatedSequence &query, const Sequence& subject, bool reversed);
 	void set_begin(const DiagonalSegmentT &d, int dna_len);
 	void set_end(const DiagonalSegmentT &d, int dna_len);
@@ -255,19 +255,23 @@ struct Hsp
 	void clear();
 	double approx_id_percent(const Sequence& query, const Sequence& target) const;
 	bool is_identity(const Sequence& query, const Sequence& target) const;
+	std::pair<Loc, Loc> min_range_len(double qcov, double tcov, Loc qlen, Loc tlen) const;
 
 	bool is_weakly_enveloped(const Hsp &j) const;
 	std::pair<int, int> diagonal_bounds() const;
 	bool backtraced;
-	int score, frame, length, identities, mismatches, positives, gap_openings, gaps, swipe_target, d_begin, d_end, reserved1, reserved2;
+	int score, frame, length, identities, mismatches, positives, gap_openings, gaps, swipe_target, d_begin, d_end;
+#ifdef DP_STAT
+	int reserved1, reserved2;
+#endif
 #if WITH_DNA
     int mapping_quality, n_anchors;
 #endif
-	Interval query_source_range, query_range, subject_source_range,subject_range;
+	Interval query_source_range, query_range, subject_source_range, subject_range;
 	double evalue, bit_score, corrected_bit_score, approx_id;
 	Sequence target_seq;
 	const Stats::TargetMatrix* matrix;
-	Packed_transcript transcript;
+	PackedTranscript transcript;
 };
 
 struct HspContext
@@ -367,7 +371,7 @@ struct HspContext
 	{
 		return Iterator(*this);
 	}
-	Packed_transcript::Const_iterator begin_old() const
+	PackedTranscript::ConstIterator begin_old() const
 	{
 		return hsp_.transcript.begin();
 	}
@@ -424,17 +428,19 @@ struct HspContext
 	{ return hsp_.oriented_range(); }
 	int blast_query_frame() const
 	{ return hsp_.blast_query_frame(); }
-	Packed_transcript transcript() const
+	PackedTranscript transcript() const
 	{ return hsp_.transcript; }
 	bool operator<(const HspContext& h) const {
 		return query_oid < h.query_oid;
 	}
+#ifdef DP_STAT
 	int reserved1() const {
 		return hsp_.reserved1;
 	}
 	int reserved2() const {
 		return hsp_.reserved2;
 	}
+#endif
 	Hsp hsp() const {
 		return hsp_;
 	}
@@ -531,6 +537,7 @@ struct TypeDeserializer<HspContext> {
         file_->read(h.hsp_.n_anchors);
 #endif
 		h.hsp_.query_source_range = h.hsp_.query_range;
+		h.hsp_.subject_source_range = h.hsp_.subject_range;
 		return h;
 	}
 

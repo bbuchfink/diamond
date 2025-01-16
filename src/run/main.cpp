@@ -24,15 +24,16 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #ifdef WITH_MIMALLOC
 #include <mimalloc-2.0/mimalloc-new-delete.h>
 #endif
-#include "../basic/config.h"
+#include "basic/config.h"
 #include "tools.h"
-#include "../data/reference.h"
 #include "workflow.h"
-#include "../cluster/cluster_registry.h"
-#include "../output/recursive_parser.h"
-#include "../util/simd.h"
-#include "../data/dmnd/dmnd.h"
-#include "../util/command_line_parser.h"
+#include "cluster/cluster_registry.h"
+#ifdef WITH_MCL
+#include "contrib/mcl/recursive_parser.h"
+#endif
+#include "data/dmnd/dmnd.h"
+#include "util/command_line_parser.h"
+#include "util/log_stream.h"
 
 using std::cout;
 using std::cerr;
@@ -44,33 +45,24 @@ void opt();
 void run_masker();
 void fastq2fasta();
 void view_daa();
-void view_tsv();
 void db_info();
-void test_main();
 void benchmark_sw();
 void db_annot_stats();
-void read_sim();
 void info();
 void seed_stat();
 void pairwise();
 void translate();
-void filter_blasttab();
-void show_cbs();
 void reverse();
 void roc();
 void roc_id();
 void makeindex();
 void find_shapes();
-void composition();
-void join();
 void hash_seqs();
 void list_seeds();
 void prep_db();
 void greedy_vertex_cover();
 void merge_daa();
 #ifdef EXTRA
-void index_fasta();
-void fetch_seq();
 void length_sort();
 void sort();
 void word_count();
@@ -91,6 +83,7 @@ namespace Cluster {
 void reassign();
 void realign();
 void recluster();
+void make_seed_table();
 namespace Incremental {
 }}
 
@@ -118,10 +111,6 @@ int main(int ac, const char* av[])
 		case Config::view:
 			if (!config.daa_file.empty())
 				view_daa();
-#ifdef EXTRA
-			else if (!config.input_ref_file.empty())
-				view_tsv();
-#endif
 			else
 				throw std::runtime_error("The view command requires a DAA (option -a) input file.");
 			break;
@@ -140,9 +129,6 @@ int main(int ac, const char* av[])
 		case Config::dbinfo:
 			db_info();
 			break;
-		case Config::read_sim:
-			read_sim();
-			break;
 		case Config::info:
 			info();
 			break;
@@ -152,6 +138,7 @@ int main(int ac, const char* av[])
 		case Config::cluster:
 		case Config::DEEPCLUST:
 		case Config::LINCLUST:
+#ifdef WITH_MCL
 			// Why is cluster_similarity not set at the end of the Config constructor?
 			if(!config.cluster_similarity.empty()){
 				string expression = RecursiveParser::clean_expression(&config.cluster_similarity);
@@ -164,16 +151,11 @@ int main(int ac, const char* av[])
 					throw e;
 				}
 			}
+#endif
 			Workflow::Cluster::ClusterRegistry::get(config.cluster_algo.get("cascaded"))->run();
 			break;
 		case Config::translate:
 			translate();
-			break;
-		case Config::filter_blasttab:
-			filter_blasttab();
-			break;
-		case Config::show_cbs:
-			show_cbs();
 			break;
 		case Config::benchmark:
 			Benchmark::benchmark();
@@ -205,12 +187,6 @@ int main(int ac, const char* av[])
 		case Config::prep_db:
 			prep_db();
 			break;
-		case Config::composition:
-			composition();
-			break;
-		case Config::JOIN:
-			join();
-			break;
 		case Config::LIST_SEEDS:
 			list_seeds();
 			break;
@@ -230,12 +206,6 @@ int main(int ac, const char* av[])
 			merge_daa();
 			break;
 #ifdef EXTRA
-		case Config::INDEX_FASTA:
-			index_fasta();
-			break;
-        case Config::FETCH_SEQ:
-			fetch_seq();
-			break;
         case Config::blastn:
             Search::run();
             break;
@@ -253,6 +223,9 @@ int main(int ac, const char* av[])
 			break;
 		case Config::MODEL_SEQS:
 			model_seqs();
+			break;
+		case Config::MAKE_SEED_TABLE:
+			Cluster::make_seed_table();
 			break;
 #ifdef WITH_FAMSA
 		case Config::PROFILE_RECLUSTER:

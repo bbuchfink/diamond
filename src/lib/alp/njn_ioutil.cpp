@@ -33,6 +33,8 @@ Contents:
 
 ******************************************************************************/
 
+// Modified by Benjamin Buchfink
+
 #include <math.h>
 
 #include <assert.h>
@@ -40,8 +42,12 @@ Contents:
 #include <iostream>
 #include <fstream>
 
-
-using namespace std;
+using std::stringstream;
+using std::string;
+using std::cerr;
+using std::endl;
+using std::istream;
+using std::ios_base;
 using namespace Njn;
 using namespace IoUtil;
 

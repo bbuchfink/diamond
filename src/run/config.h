@@ -20,12 +20,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #pragma once
-#include <list>
 #include <memory>
 #include <mutex>
-#include "../util/data_structures/bit_vector.h"
-#include "../util/scores/cutoff_table.h"
-#include "../stats/dna_scoring/build_score.h"
+#include "util/data_structures/bit_vector.h"
+#include "util/scores/cutoff_table.h"
+#ifdef WITH_DNA
+#include "contrib/dna/build_score.h"
+#endif
 
 struct SequenceFile;
 struct Consumer;
@@ -47,10 +48,13 @@ namespace Extension {
 	namespace GlobalRanking {
 	struct Hit;
 }}
-namespace Dna{
-    class Index;
-    struct TotalTime;
+
+#ifdef WITH_DNA
+namespace Dna {
+	class Index;
+	struct TotalTime;
 }
+#endif
 
 namespace Search {
 
@@ -64,6 +68,9 @@ struct Round {
 	}
 	bool operator==(Round r) const {
 		return sensitivity == r.sensitivity && linearize == r.linearize;
+	}
+	bool operator!=(Round r) const {
+		return sensitivity != r.sensitivity || linearize != r.linearize;
 	}
 	Sensitivity sensitivity;
 	bool linearize;
@@ -92,6 +99,7 @@ struct Config {
 	bool                                       track_aligned_queries;
 	double                                     freq_sd;
 	Loc                                        minimizer_window;
+	Loc                                        sketch_size;
 	bool                                       lin_stage1_target;
 	unsigned                                   hamming_filter_id;
 	double                                     min_length_ratio;
@@ -99,6 +107,7 @@ struct Config {
 	double                                     ungapped_evalue_short;
 	double                                     gapped_filter_evalue;
 	unsigned                                   index_chunks;
+	int                                        seedp_bits;
 	unsigned                                   query_bins;
 	int64_t                                    max_target_seqs;
 	std::unique_ptr<OutputFormat>              output_format;
@@ -113,12 +122,15 @@ struct Config {
 	std::unique_ptr<AsyncBuffer<Hit>>          seed_hit_buf;
 	std::unique_ptr<RankingBuffer>             global_ranking_buffer;
 	std::unique_ptr<RankingTable>              ranking_table;
-    std::unique_ptr<Stats::Blastn_Score>       score_builder;
 #ifdef WITH_DNA
-    std::unique_ptr<Dna::Index>               dna_ref_index;
-    std::unique_ptr<Dna::TotalTime>           timer;
-    double                                       chain_pen_gap;
-    double                                       chain_pen_skip;
+	std::unique_ptr<Stats::Blastn_Score>       score_builder;
+    std::unique_ptr<Dna::Index>                dna_ref_index;
+    std::unique_ptr<Dna::TotalTime>            timer;
+    double                                     chain_pen_gap;
+    double                                     chain_pen_skip;
+    double                                     chain_fraction_align;
+    int                                        min_chain_score;
+    double                                     max_overlap_extension;
 #endif
 
     int                                        current_query_block;

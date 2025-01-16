@@ -1,5 +1,6 @@
 #pragma once
 #include "query_mapper.h"
+#include "dp/dp.h"
 
 namespace ExtensionPipeline {
 	namespace BandedSwipe {

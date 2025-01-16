@@ -22,10 +22,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <vector>
 #include <stdint.h>
 #define _REENTRANT
-#include "../../lib/ips4o/ips4o.hpp"
+#include "ips4o/ips4o.hpp"
 #include "../algo/sort_helper.h"
-#include "../algo/transform_iterator.h"
 #include "../util.h"
+#include "../algo/transform_iterator.h"
 
 template<typename T, typename I = int64_t>
 struct FlatArray {

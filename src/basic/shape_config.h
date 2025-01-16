@@ -22,8 +22,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #pragma once
 #include <vector>
-#include <algorithm>
-#include <stdint.h>
 #include <string>
 #include "shape.h"
 
@@ -39,8 +37,8 @@ public:
 	ShapeConfig(const std::vector<std::string>& codes, unsigned count):
 		n_ (0)
 	{
-		unsigned maxShapes = count == 0 ? (unsigned)codes.size() : count;
-		for (unsigned i = 0; i < maxShapes; ++i) {
+		unsigned max_shapes = count == 0 ? (unsigned)codes.size() : std::min(count, (unsigned)codes.size());
+		for (unsigned i = 0; i < max_shapes; ++i) {
 			shapes_[n_] = Shape(codes[i].c_str(), i);
 			if (shapes_[n_].weight_ != shapes_[0].weight_)
 				throw std::runtime_error("Seed shape weight has to be uniform.");
@@ -57,7 +55,7 @@ public:
 	friend std::ostream& operator<<(std::ostream&s, const ShapeConfig& cfg)
 	{
 		for (unsigned i = 0; i < cfg.n_; ++i)
-			s << cfg.shapes_[i] << (i<cfg.n_-1?",":"");
+			s << cfg.shapes_[i] << (i < cfg.n_ - 1 ? "," : "");
 		return s;
 	}
 

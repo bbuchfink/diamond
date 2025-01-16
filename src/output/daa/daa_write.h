@@ -23,7 +23,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #pragma once
 #include "../output.h"
 #include "daa_file.h"
-#include "../data/sequence_file.h"
+#include "data/sequence_file.h"
 
 void init_daa(OutputFile& f);
 
@@ -37,7 +37,7 @@ void write_daa_record(TextBuffer& buf, const Hsp& match, uint32_t subject_id);
 
 void finish_daa(OutputFile& f, const SequenceFile& db);
 
-void finish_daa(OutputFile& f, DAA_file& daa_in);
+void finish_daa(OutputFile& f, DAAFile& daa_in);
 
-void finish_daa(OutputFile& f, DAA_file& daa_in, const StringSet& seq_ids, const std::vector<uint32_t>& seq_lens, int64_t query_count);
+void finish_daa(OutputFile& f, DAAFile& daa_in, const StringSet& seq_ids, const std::vector<uint32_t>& seq_lens, int64_t query_count);
 

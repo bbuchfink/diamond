@@ -20,7 +20,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #pragma once
-#include <utility>
 #include <memory>
 #include <thread>
 #include "stream_entity.h"
@@ -31,17 +30,20 @@ struct InputStreamBuffer : public StreamEntity
 	InputStreamBuffer(StreamEntity* prev, int flags = 0);
 	virtual void rewind() override;
 	virtual void seek(int64_t p, int origin) override;
-	virtual std::pair<const char*, const char*> read() override;
-	virtual void putback(const char* p, size_t n) override;
+	virtual bool fetch() override;
 	virtual void close() override;
 	virtual int64_t tell() override;
+	virtual bool eof() override;
+
+	const char* begin, * end;
+
 private:
 
 	static void load_worker(InputStreamBuffer *buf);
 	
 	const size_t buf_size_;
 	std::unique_ptr<char[]> buf_, load_buf_;
-	size_t putback_count_, load_count_, file_offset_;
+	size_t load_count_, file_offset_;
 	bool async_;
 	std::thread* load_worker_;
 };

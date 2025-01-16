@@ -16,7 +16,7 @@ static size_t lazy_masking(vector<uint32_t>::const_iterator target_block_ids, ve
 pair<vector<Target>, Stats> extend(BlockId query_id,
 	const Sequence *query_seq,
 	int source_query_len,
-	const Bias_correction *query_cb,
+	const HauserCorrection *query_cb,
 	const ::Stats::Composition& query_comp,
 	FlatArray<SeedHit>::Iterator seed_hits,
 	FlatArray<SeedHit>::Iterator seed_hits_end,

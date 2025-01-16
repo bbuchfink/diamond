@@ -21,21 +21,20 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <algorithm>
 #include <utility>
 #include <math.h>
-#include <mutex>
+#include <memory>
 #include <numeric>
 #include "extend.h"
-#include "../data/queries.h"
-#include "../basic/config.h"
-#include "../stats/hauser_correction.h"
+#include "data/block/block.h"
+#include "data/sequence_set.h"
+#include "data/string_set.h"
+#include "util/options/option.h"
+#include "basic/config.h"
+#include "stats/hauser_correction.h"
 #include "target.h"
-#include "../dp/dp.h"
-#include "../util/log_stream.h"
-#include "../data/reference.h"
-#include "../util/system.h"
-#include "../util/util.h"
+#include "util/log_stream.h"
+#include "util/util.h"
 #include "global_ranking/global_ranking.h"
-#include "../masking/masking.h"
-#include "../search/hit.h"
+#include "search/hit.h"
 #include "load_hits.h"
 #include "def.h"
 
@@ -45,7 +44,6 @@ using std::list;
 using std::array;
 using std::pair;
 using std::endl;
-using std::move;
 using std::make_move_iterator;
 using std::any_of;
 using std::numeric_limits;
@@ -67,6 +65,7 @@ const std::map<Sensitivity, Mode> default_ext_mode = {
 	{ Sensitivity::FASTER, Mode::BANDED_FAST},
 	{ Sensitivity::FAST, Mode::BANDED_FAST},
 	{ Sensitivity::SHAPES30x10, Mode::BANDED_FAST},
+	{ Sensitivity::LINCLUST_20, Mode::BANDED_FAST},
 	{ Sensitivity::DEFAULT, Mode::BANDED_FAST},
 	{ Sensitivity::MID_SENSITIVE, Mode::BANDED_FAST},
 	{ Sensitivity::SENSITIVE, Mode::BANDED_FAST},
@@ -86,7 +85,7 @@ int64_t ranking_chunk_size(int64_t target_count, const int64_t ref_letters, cons
 		return MAPANY_CHUNK_SIZE;
 	const double default_letters = config.sensitivity >= Sensitivity::VERY_SENSITIVE ? 800 * 1e6 : 2 * 1e9;
 	const int64_t block_mult = std::max(int64_t(std::round((double)ref_letters / default_letters)), (int64_t)1);
-	if (config.toppercent < 100.0)
+	if (config.toppercent.present())
 		return MIN_CHUNK_SIZE * block_mult;
 	const int64_t size = std::max(MIN_CHUNK_SIZE, std::min(make_multiple(max_target_seqs, (int64_t)32), MAX_CHUNK_SIZE)) * block_mult;
 	return config.target_hard_cap ? std::min(size, config.target_hard_cap) : size;
@@ -112,7 +111,7 @@ static HspValues first_round_hspv(const Search::Config& cfg) {
 static bool ranking_terminate(bool new_hits, int last_tail_score, int tail_score, int64_t targets_processed, int64_t targets_aligned) {
 	if (config.target_hard_cap && targets_processed >= config.target_hard_cap)
 		return true;
-	if (config.mapany && config.toppercent == 100.0 && targets_aligned > 0)
+	if (config.mapany && config.toppercent.blank() && targets_aligned > 0)
 		return true;
 	return !new_hits && (last_tail_score == 0
 		|| double(tail_score) / (double)last_tail_score <= config.ranking_score_drop_factor
@@ -145,7 +144,7 @@ pair<vector<Match>, Stats> extend(
 	const unsigned UNIFIED_TARGET_LEN = 50;
 	const unsigned contexts = align_mode.query_contexts;
 	vector<Sequence> query_seq;
-	vector<Bias_correction> query_cb;
+	vector<HauserCorrection> query_cb;
 	const char* query_title = cfg.query->ids()[query_id];
 
 	if (config.log_query || (flag_any(flags, DP::Flags::PARALLEL) && !config.swipe_all))
@@ -169,15 +168,17 @@ pair<vector<Match>, Stats> extend(
 	const int64_t chunk_size = ranking_chunk_size(target_count, cfg.target->seqs().letters(), cfg.max_target_seqs);
 	vector<TargetScore>::const_iterator i0 = l.target_scores.cbegin(), i1 = i0 + std::min((ptrdiff_t)chunk_size, l.target_scores.cend() - i0);
 
-	if (config.toppercent == 100.0 && config.min_bit_score == 0.0 && (i1 - i0) < cfg.max_target_seqs && (config.ext_chunk_size == 0 || config.lin_stage1))
+	if (config.toppercent.blank() && config.min_bit_score == 0.0 && (i1 - i0) < cfg.max_target_seqs && (config.ext_chunk_size == 0 || config.lin_stage1))
 #ifdef EVAL_TARGET
 		while (i1 < l.target_scores.cend() && i1->evalue <= config.max_evalue && size_t(i1 - i0) < config.max_alignments) ++i1;
 #else
 		while (i1 < l.target_scores.cend() && score_matrix.evalue(i1->score, query_len, UNIFIED_TARGET_LEN) <= config.max_evalue) i1 += min((ptrdiff_t)16, l.target_scores.cend() - i1);
 #endif
 	
-	const HspValues first_round_hspv = (config.prefix_scan || config.anchored_swipe) ? HspValues::COORDS : HspValues::NONE;
-	const bool first_round_culling = !have_filters(cfg) || config.toppercent != 100.0;
+	const HspValues first_round_hspv = config.anchored_swipe ||
+		(config.sensitivity <= Sensitivity::SHAPES30x10 && flag_only(cfg.output_format->hsp_values, HspValues::COORDS) && config.toppercent.blank() && (size_t)cfg.max_target_seqs >= l.target_scores.size())
+		? HspValues::COORDS : HspValues::NONE;
+	const bool first_round_culling = !have_filters(cfg) || config.toppercent.present();
 	bool new_hits_ev = false;
 	int tail_score = 0, previous_tail_score = 0;
 	FlatArray<SeedHit> seed_hits_chunk;
@@ -217,7 +218,7 @@ pair<vector<Match>, Stats> extend(
 				cfg,
 				stat,
 				flags,
-				HspValues::NONE);
+				first_round_hspv);
 
 			stats += v.second;
 			stat.inc(Statistics::TARGET_HITS4, v.first.size());
@@ -225,7 +226,7 @@ pair<vector<Match>, Stats> extend(
 			if (multi_chunk)
 				new_hits = append_hits(aligned_targets, v.first.begin(), v.first.end(), first_round_culling, cfg);
 			else
-				aligned_targets = move(v.first);
+				aligned_targets = std::move(v.first);
 
 			i0 = i1;
 			i1 += std::min((ptrdiff_t)chunk_size, l.target_scores.cend() - i1);
@@ -242,14 +243,14 @@ pair<vector<Match>, Stats> extend(
 		
 		vector<Match> round_matches = align(aligned_targets, matches.size(), query_seq.data(), query_title, query_cb.data(), source_query_len, self_aln_score, flags, first_round_hspv, first_round_culling, stat, cfg);
 		matches.insert(matches.end(), make_move_iterator(round_matches.begin()), make_move_iterator(round_matches.end()));
-	} while (config.toppercent == 100.0 && (int64_t)matches.size() < config.max_target_seqs_.get(DEFAULT_MAX_TARGET_SEQS) && i0 < l.target_scores.cend() && new_hits_ev && (!config.mapany || (config.mapany && matches.empty())));
+	} while (config.toppercent.blank() && (int64_t)matches.size() < config.max_target_seqs_.get(DEFAULT_MAX_TARGET_SEQS) && i0 < l.target_scores.cend() && new_hits_ev && (!config.mapany || (config.mapany && matches.empty())));
 
 	if (add_self_aln(cfg) && !any_of(matches.cbegin(), matches.cend(), [query_id](const Match& m) { return m.target_block_id == query_id; }))
 		matches.push_back(Match::self_match(query_id, query_seq[0]));
 
 	culling(matches, cfg);
 
-	return make_pair(move(matches), stats);
+	return make_pair(std::move(matches), stats);
 }
 
 pair<vector<Match>, Stats> extend(BlockId query_id, Search::Hit* begin, Search::Hit* end, const Search::Config &cfg, Statistics &stat, DP::Flags flags) {

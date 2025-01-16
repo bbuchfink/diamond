@@ -17,14 +17,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #pragma once
-#include <algorithm>
 #include "../range.h"
 #include "../data_structures/double_array.h"
 
 template<typename T>
 struct JoinArrayIterator {
 
-	JoinArrayIterator(T *ptr, T *end):
+	JoinArrayIterator(T* ptr, T* end) :
 		ptr_(ptr),
 		end_(end)
 	{}
@@ -88,47 +87,3 @@ struct JoinIterator {
 	}
 
 };
-
-/*template<typename _t>
-struct JoinResult : public vector<pair<DoubleArray<typename _t::Value>*, DoubleArray<typename _t::Value>*> >
-{
-
-	typedef typename _t::Value Value;
-
-	struct Iterator
-	{
-		typename DoubleArray<Value>::Iterator r, s;
-		Iterator(typename JoinResult<_t>::iterator begin, typename JoinResult<_t>::iterator end) :
-			r(begin->first->begin()),
-			s(begin->second->begin()),
-			it_(begin),
-			end_(end)
-		{}
-		Iterator& operator++()
-		{
-			++r;
-			++s;
-			if (!(r < it_->first->end())) {
-				++it_;
-				if (it_ < end_) {
-					r = it_->first->begin();
-					s = it_->second->begin();
-				}
-			}
-			return *this;
-		}
-		bool good() const
-		{
-			return it_ < end_;
-		}
-	private:
-		typename JoinResult<_t>::iterator it_, end_;
-	};
-
-	Iterator begin()
-	{
-		return Iterator(vector<pair<DoubleArray<typename _t::Value>*, DoubleArray<typename _t::Value>*> >::begin(), this->end());
-	}
-
-};
-*/

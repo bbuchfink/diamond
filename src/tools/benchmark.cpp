@@ -20,31 +20,26 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <chrono>
 #include <utility>
-#include <algorithm>
-#include <bitset>
 #include <iomanip>
-#include "../basic/sequence.h"
-#include "../stats/score_matrix.h"
-#include "../dp/score_vector.h"
-#include "../dp/swipe/swipe.h"
-#include "../dp/dp.h"
-#include "../dp/score_vector_int8.h"
-#include "../dp/score_vector_int16.h"
-#include "../dp/score_profile.h"
-#include "../dp/ungapped.h"
-#include "../search/finger_print.h"
-#include "../dp/ungapped_simd.h"
-#include "../util/simd/vector.h"
-#include "../util/simd/transpose.h"
-#include "../dp/scan_diags.h"
-#include "../stats/cbs.h"
-#include "../util/profiler.h"
-#include "../dp/swipe/cell_update.h"
-#include "../dp/pfscan/pfscan.h"
-#include "../dp/pfscan/simd.h"
-#include "../dp/swipe/anchored.h"
-#include "../dp/swipe/config.h"
-#include "../util/simd/dispatch.h"
+#include "basic/sequence.h"
+#include "stats/score_matrix.h"
+#include "dp/score_vector.h"
+#include "dp/swipe/swipe.h"
+#include "dp/dp.h"
+#include "dp/score_vector_int8.h"
+#include "dp/score_profile.h"
+#include "dp/ungapped.h"
+#include "search/finger_print.h"
+#include "util/simd/vector.h"
+#include "util/simd/transpose.h"
+#include "dp/scan_diags.h"
+#include "stats/cbs.h"
+#include "util/profiler.h"
+#include "dp/swipe/cell_update.h"
+#include "dp/swipe/anchored.h"
+#include "dp/swipe/config.h"
+#include "util/simd/dispatch.h"
+#include "dp/score_vector_int16.h"
 
 void benchmark_io();
 
@@ -241,13 +236,13 @@ void mt_swipe(const Sequence& s1, const Sequence& s2) {
 	DP::Targets targets;
 	for (size_t i = 0; i < CHANNELS; ++i)
 		targets[0].emplace_back(s2, s2.length(), 0, 0, Interval(), 0, 0, 0);
-	Bias_correction cbs(s1);
+	HauserCorrection cbs(s1);
 	Statistics stat;
 	Sequence query = s1;
 	query.len_ = std::min(query.len_, (Loc)255);
 	auto dp_size = (n * query.length() * s2.length() * CHANNELS);
 	DP::Params params{
-		query, "", Frame(0), query.length(), cbs.int8.data(), DP::Flags::FULL_MATRIX, HspValues(), stat, nullptr
+		query, "", Frame(0), query.length(), cbs.int8.data(), DP::Flags::FULL_MATRIX, false, 0, HspValues(), stat, nullptr
 	};
 
 	auto f = [&]() {
@@ -272,7 +267,7 @@ void swipe(const Sequence&s1, const Sequence&s2) {
 	DP::Targets targets;
 	for (size_t i = 0; i < 32; ++i)
 		targets[0].emplace_back(s2, s2.length(), 0, 0, Interval(), 0, 0, 0);
-	Bias_correction cbs(s1);
+	HauserCorrection cbs(s1);
 	Statistics stat;
 	Sequence query = s1;
 	query.len_ = std::min(query.len_, (Loc)255);
@@ -280,7 +275,7 @@ void swipe(const Sequence&s1, const Sequence&s2) {
 	config.comp_based_stats = 4;
 	Stats::TargetMatrix matrix(Stats::composition(s1), s1.length(), s2);
 	DP::Params params{
-		query, "", Frame(0), query.length(), cbs.int8.data(), DP::Flags::FULL_MATRIX, HspValues(), stat, nullptr
+		query, "", Frame(0), query.length(), cbs.int8.data(), DP::Flags::FULL_MATRIX, false, 0, HspValues(), stat, nullptr
 	};
 
 	high_resolution_clock::time_point t1 = high_resolution_clock::now();
@@ -333,9 +328,9 @@ void banded_swipe(const Sequence &s1, const Sequence &s2) {
 	static const size_t n = 10000llu;
 	//static const size_t n = 1llu;
 	Statistics stat;
-	Bias_correction cbs(s1);
+	HauserCorrection cbs(s1);
 	DP::Params params{
-		s1, "", Frame(0), s1.length(), cbs.int8.data(), DP::Flags::NONE, HspValues(), stat, nullptr
+		s1, "", Frame(0), s1.length(), cbs.int8.data(), DP::Flags::NONE, false, 0, HspValues(), stat, nullptr
 	};
 	high_resolution_clock::time_point t1 = high_resolution_clock::now();
 	for (size_t i = 0; i < n; ++i) {
@@ -416,47 +411,11 @@ void anchored_swipe(const Sequence& s1, const Sequence& s2) {
 //#endif
 #endif
 
-#ifdef __SSE2__
-
-void prefix_scan(const Sequence& s1, const Sequence& s2) {
-	static const size_t n = 100000llu;
-	const auto s1_ = s1.subseq(0, 150);
-	const auto s2_ = s2.subseq(0, 150);
-	Statistics stat;
-	Bias_correction cbs(s1_);
-	LongScoreProfile<int16_t> prof = DP::make_profile16(s1_, nullptr, 0);
-	LongScoreProfile<int8_t> prof8 = DP::make_profile8(s1_, nullptr, 0);
-	auto v = prof.pointers(0);
-	auto v8 = prof8.pointers(0);
-	DP::PrefixScan::Config cfg{ s1_,s2_, "", "", -32, 32, Interval(), v.data(), nullptr, v8.data(), nullptr, stat, 1000, 60, 0 };
-	
-	high_resolution_clock::time_point t1 = high_resolution_clock::now();
-	for (size_t i = 0; i < n; ++i) {
-		//volatile auto out = DP::PrefixScan::align16(cfg);
-	}
-	message_stream << "Prefix Scan (int16_t):\t\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (s2_.length() * 64 * n) * 1000 << " ps/Cell" << endl;
-	//statistics += stat;
-	//statistics.print();
-	//statistics.reset();
-
-	cfg.score_bias = 0;
-	stat.reset();
-	t1 = high_resolution_clock::now();
-	for (size_t i = 0; i < n; ++i) {
-		//volatile auto out = DP::PrefixScan::align8(cfg);
-	}
-	message_stream << "Prefix Scan (int8_t):\t\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (s2_.length() * 64 * n) * 1000 << " ps/Cell" << endl;
-	statistics += stat;
-	//statistics.print();
-}
-
-#endif
-
 #if defined(__SSE4_1__) | defined(__ARM_NEON)
 void diag_scores(const Sequence& s1, const Sequence& s2) {
 	static const size_t n = 100000llu;
 	high_resolution_clock::time_point t1 = high_resolution_clock::now();
-	Bias_correction cbs(s1);
+	HauserCorrection cbs(s1);
 	LongScoreProfile<int8_t> p = DP::make_profile8(s1, cbs.int8.data(), 0);
 	int scores[128];
 	for (size_t i = 0; i < n; ++i) {
@@ -545,9 +504,6 @@ void benchmark() {
 	anchored_swipe(s1, s2);
 	//minimal_sw(s1, s2);
 //#endif
-#endif
-#ifdef __SSE2__
-	prefix_scan(s1, s2);
 #endif
 #if defined(__SSE4_1__) | defined(__ARM_NEON)
 	swipe(s3, s4);

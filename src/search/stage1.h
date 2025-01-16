@@ -20,6 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "search.h"
 #include "stage2.h"
+#include "data/block/block.h"
 
 using std::vector;
 

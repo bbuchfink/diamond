@@ -2,7 +2,7 @@
 DIAMOND protein aligner
 Copyright (C) 2020 Max Planck Society for the Advancement of Science e.V.
 
-Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
+Code developed by Benjamin Buchfink <buchfink@gmail.com>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -20,24 +20,24 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #pragma once
 
-#include <algorithm>
 #include "search.h"
 #include "sse_dist.h"
-#include "../util/sequence/sequence.h"
-#include "../basic/config.h"
+#include "util/sequence/sequence.h"
 #include "finger_print.h"
+#include "basic/shape_config.h"
+#include "data/seed_histogram.h"
 
 namespace Search {
 
-static inline bool verify_hit(const Letter* q, const Letter* s, int score_cutoff, bool left, uint32_t match_mask, int sid, bool chunked, unsigned hamming_filter_id) {
+static inline bool verify_hit(const Letter* q, const Letter* s, int score_cutoff, bool left, uint32_t match_mask, int sid, bool chunked, unsigned hamming_filter_id, PackedSeed seedp_mask) {
 	if (chunked) {
 		if ((shapes[sid].mask_ & match_mask) == shapes[sid].mask_) {
 			PackedSeed seed;
 			if (!shapes[sid].set_seed(seed, s))
 				return false;
-			if (left && !current_range.lower_or_equal(seed_partition(seed)))
+			if (left && !current_range.lower_or_equal(seed_partition(seed, seedp_mask)))
 				return false;
-			if (!left && !current_range.lower(seed_partition(seed)))
+			if (!left && !current_range.lower(seed_partition(seed, seedp_mask)))
 				return false;
 		}
 	}
@@ -46,11 +46,11 @@ static inline bool verify_hit(const Letter* q, const Letter* s, int score_cutoff
 	return id >= hamming_filter_id;
 }
 
-static inline bool verify_hits(uint32_t mask, const Letter* q, const Letter* s, int score_cutoff, bool left, uint32_t match_mask, int sid, bool chunked, unsigned hamming_filter_id) {
+static inline bool verify_hits(uint32_t mask, const Letter* q, const Letter* s, int score_cutoff, bool left, uint32_t match_mask, int sid, bool chunked, unsigned hamming_filter_id, PackedSeed seedp_mask) {
 	int shift = 0;
 	while (mask != 0) {
 		int i = ctz(mask);
-		if (verify_hit(q + i + shift, s + i + shift, score_cutoff, left, match_mask >> (i + shift), sid, chunked, hamming_filter_id))
+		if (verify_hit(q + i + shift, s + i + shift, score_cutoff, left, match_mask >> (i + shift), sid, chunked, hamming_filter_id, seedp_mask))
 			return true;
 		mask >>= i + 1;
 		shift += i + 1;
@@ -95,7 +95,7 @@ static inline bool left_most_filter(const Sequence &query,
 	const uint32_t left_hit = context.current_matcher.hit(match_mask_left, len_left) & query_mask_left;
 
 	if (first_shape && !chunked)
-		return left_hit == 0 || !verify_hits(left_hit, q, s, score_cutoff, true, match_mask_left, shape_id, chunked, hamming_filter_id);
+		return left_hit == 0 || !verify_hits(left_hit, q, s, score_cutoff, true, match_mask_left, shape_id, chunked, hamming_filter_id, context.seedp_mask);
 
 	const uint32_t len_right = window - window_left - 1,
 		match_mask_right = uint32_t(match_mask >> (window_left + 1)),
@@ -104,8 +104,8 @@ static inline bool left_most_filter(const Sequence &query,
 	const PatternMatcher& right_matcher = chunked ? context.current_matcher : context.previous_matcher;
 	const uint32_t right_hit = right_matcher.hit(match_mask_right, len_right) & query_mask_right;
 
-	return (left_hit == 0 || !verify_hits(left_hit, q, s, score_cutoff, true, match_mask_left, shape_id, chunked, hamming_filter_id))
-		&& (right_hit == 0 || !verify_hits(right_hit, q + window_left + 1, s + window_left + 1, score_cutoff, false, match_mask_right, shape_id, chunked, hamming_filter_id));
+	return (left_hit == 0 || !verify_hits(left_hit, q, s, score_cutoff, true, match_mask_left, shape_id, chunked, hamming_filter_id, context.seedp_mask))
+		&& (right_hit == 0 || !verify_hits(right_hit, q + window_left + 1, s + window_left + 1, score_cutoff, false, match_mask_right, shape_id, chunked, hamming_filter_id, context.seedp_mask));
 }
 
 }

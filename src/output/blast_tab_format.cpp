@@ -1,10 +1,10 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2021 Max Planck Society for the Advancement of Science e.V.
+Copyright (C) 2013-2024 Max Planck Society for the Advancement of Science e.V.
                         Benjamin Buchfink
                         Eberhard Karls Universitaet Tuebingen
 						
-Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
+Code developed by Benjamin Buchfink <buchfink@gmail.com>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -22,20 +22,17 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <sstream>
 #include <set>
-#include <numeric>
 #include <string.h>
 #include <algorithm>
 #include <iostream>
-#include "../basic/match.h"
+#include "basic/match.h"
 #include "output_format.h"
-#include "../data/taxonomy.h"
-#include "../data/queries.h"
-#include "../util/util.h"
-#include "../run/config.h"
-#include "../util/sequence/sequence.h"
-#include "../dp/ungapped.h"
-#include "../basic/reduction.h"
-#include "../dp/needleman_wunsch.h"
+#include "util/util.h"
+#include "util/sequence/sequence.h"
+#include "dp/ungapped.h"
+#include "basic/reduction.h"
+#include "dp/scalar/needleman_wunsch.h"
+#include "data/sequence_file.h"
 
 using namespace Output;
 using std::endl;
@@ -46,7 +43,7 @@ using std::back_inserter;
 using std::vector;
 using std::runtime_error;
 
-const vector<OutputField> Blast_tab_format::field_def = {
+const vector<OutputField> TabularFormat::field_def = {
 { "qseqid", "cseqid", "Query ID", HspValues::NONE, Flags::IS_STRING },		// 0 means Query Seq - id
 { "qgi", "", "qgi", HspValues::NONE, Flags::NONE },			// 1 means Query GI
 { "qacc", "", "qacc", HspValues::NONE, Flags::IS_STRING },			// 2 means Query accesion
@@ -133,7 +130,7 @@ struct EnumTraits<Header> {
 
 const SEMap<Header> EnumTraits<Header>::from_string = { {"0", Header::NONE}, {"simple", Header::SIMPLE}, {"verbose", Header::VERBOSE} };
 
-Header Blast_tab_format::header_format(unsigned workflow) {
+Header TabularFormat::header_format(unsigned workflow) {
 	const bool cluster = workflow == Config::cluster || workflow == Config::DEEPCLUST;
 	if (workflow != Config::blastp && !cluster)
 		throw runtime_error("header_format");
@@ -149,8 +146,8 @@ Header Blast_tab_format::header_format(unsigned workflow) {
 	return h;
 }
 
-Blast_tab_format::Blast_tab_format(bool json) :
-	OutputFormat((json ? OutputFormat::json : OutputFormat::blast_tab), HspValues::NONE, Flags::NONE),
+TabularFormat::TabularFormat(bool json) :
+	OutputFormat((json ? OutputFormat::json : OutputFormat::blast_tab), HspValues::NONE, Flags::NONE, json ? ',' : '\0'),
     is_json(json)
 {
 	static const unsigned stdf[] = { 0, 5, 23, 22, 25, 27, 13, 14, 15, 16, 19, 20 };
@@ -203,17 +200,17 @@ void print_staxids(TextBuffer &out, int64_t subject_global_id, const SequenceFil
 	out.print(db.taxids(subject_global_id), json ? ',':';');
 }
 
-template<typename _it>
-void print_taxon_names(_it begin, _it end, const SequenceFile& db, TextBuffer &out, bool json = false) {
+template<typename It>
+void print_taxon_names(It begin, It end, const SequenceFile& db, TextBuffer &out, bool json = false) {
 	if (begin == end) {
 		out << "N/A";
 		return;
 	}
-	for (_it i = begin; i != end; ++i) {
+	for (It i = begin; i != end; ++i) {
         if(json)
             out << "\"";
 		if (i != begin)
-			out << json ? ',': ';';
+			out << (json ? ',' : ';');
 		out << db.taxon_scientific_name(*i);
         if(json)
             out << "\"";
@@ -231,7 +228,7 @@ void print_lineage(int64_t target_oid, const SequenceFile& db, TextBuffer& out, 
 	}
 }
 
-void Blast_tab_format::print_match(const HspContext& r, Output::Info& info)
+void TabularFormat::print_match(const HspContext& r, Output::Info& info)
 {
 	TextBuffer& out = info.out;
     const char* prepos = "\t";
@@ -256,10 +253,10 @@ void Blast_tab_format::print_match(const HspContext& r, Output::Info& info)
 			out << r.query_len;
 			break;
 		case 5:
-			print_title(out, r.target_title.c_str(), false, false, "<>");
+			print_title(out, r.target_title.c_str(), false, false, "");
 			break;
 		case 6:
-            print_title(out, r.target_title.c_str(), false, true, is_json ? "," : "<>", 0,is_json);
+			print_title(out, r.target_title.c_str(), false, true, is_json ? "," : ";", 0, is_json);
             break;
 		case 12:
 			out << r.subject_len;
@@ -532,14 +529,18 @@ void Blast_tab_format::print_match(const HspContext& r, Output::Info& info)
 			out.print_e(r.evalue() == 0 ? r.bit_score() : -r.evalue());
 			break;
 		case 74:
+#ifdef DP_STAT
 			out << r.reserved1();
+#endif
 			break;
 		case 75:
+#ifdef DP_STAT
 			out << r.reserved2();
+#endif
 			break;
 #endif
 		default:
-			throw std::runtime_error(string("Invalid output field: ") + field_def[*i].key);
+			throw runtime_error(string("Invalid output field: ") + field_def[*i].key);
 		}
         if(is_json) {
             if(flag_any(field_def[*i].flags , Flags::IS_STRING))
@@ -557,7 +558,7 @@ void Blast_tab_format::print_match(const HspContext& r, Output::Info& info)
     out << (is_json ? "\t}" : "\n");
 }
 
-void Blast_tab_format::print_query_intro(Output::Info& info) const
+void TabularFormat::print_query_intro(Output::Info& info) const
 {
 	TextBuffer& out = info.out;
 	if (info.unaligned && config.report_unaligned == 1) {
@@ -625,7 +626,7 @@ void Blast_tab_format::print_query_intro(Output::Info& info) const
 				info.query.source_seq.print(out, input_value_traits);
 				break;
 			default:
-				throw std::runtime_error(string("Invalid output field: ") + field_def[*i].key);
+				throw runtime_error(string("Invalid output field: ") + field_def[*i].key);
 			}
 			if (i < fields.end() - 1)
 				out << '\t';			
@@ -634,12 +635,12 @@ void Blast_tab_format::print_query_intro(Output::Info& info) const
 	}
 }
 
-void Blast_tab_format::output_header(Consumer& f, bool cluster) const {
+void TabularFormat::output_header(Consumer& f, bool cluster) const {
 	vector<string> headers;
 	transform(fields.begin(), fields.end(), back_inserter(headers), [cluster](int64_t i) {
-		const string& key = cluster ? Blast_tab_format::field_def[i].clust_key : Blast_tab_format::field_def[i].key;
+		const string& key = cluster ? TabularFormat::field_def[i].clust_key : TabularFormat::field_def[i].key;
 		if (cluster && key.empty())
-			throw runtime_error("Output field not supported for clustering: " + Blast_tab_format::field_def[i].key);
+			throw runtime_error("Output field not supported for clustering: " + TabularFormat::field_def[i].key);
 		return key;
 		});
 	const string s = join("\t", headers) + '\n';
@@ -647,7 +648,7 @@ void Blast_tab_format::output_header(Consumer& f, bool cluster) const {
 	return;
 }
 
-void Blast_tab_format::print_header(Consumer &f, int mode, const char *matrix, int gap_open, int gap_extend, double evalue, const char *first_query_name, unsigned first_query_len) const {
+void TabularFormat::print_header(Consumer &f, int mode, const char *matrix, int gap_open, int gap_extend, double evalue, const char *first_query_name, unsigned first_query_len) const {
 	const Header h = header_format(Config::blastp);
 	if (h == Header::VERBOSE) {
 		std::stringstream ss;
@@ -665,7 +666,7 @@ void Blast_tab_format::print_header(Consumer &f, int mode, const char *matrix, i
 		f.consume(hdr, strlen(hdr));
     }
 }
-void Blast_tab_format::print_footer(Consumer &f) const {
+void TabularFormat::print_footer(Consumer &f) const {
     if(is_json) {
         const char* s = "\n]";
 		f.consume(s, strlen(s));

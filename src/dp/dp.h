@@ -22,15 +22,14 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #pragma once
 #include <list>
 #include <vector>
-#include "../basic/sequence.h"
-#include "../basic/match.h"
-#include "../stats/hauser_correction.h"
-#include "../basic/statistics.h"
-#include "../basic/config.h"
-#include "../data/sequence_set.h"
-#include "../stats/cbs.h"
+#include "basic/sequence.h"
+#include "basic/match.h"
+#include "basic/statistics.h"
+#include "basic/config.h"
+#include "data/sequence_set.h"
+#include "stats/cbs.h"
 #include "flags.h"
-#include "../util/parallel/thread_pool.h"
+#include "util/parallel/thread_pool.h"
 
 struct DpTarget
 {
@@ -171,6 +170,8 @@ struct Params {
 	const int query_source_len;
 	const int8_t* const composition_bias;
 	const Flags flags;
+	const bool reverse_targets;
+	Loc target_max_len;
 	HspValues v;
 	Statistics& stat;
 	ThreadPool* thread_pool;
@@ -181,7 +182,71 @@ enum { BINS = 6, SCORE_BINS = 3, ALGO_BINS = 2 };
 struct Traceback {};
 struct ScoreOnly {};
 
-using Targets = std::array<std::vector<DpTarget>, BINS>;
+struct TargetVec {
+	using const_iterator = std::vector<DpTarget>::const_iterator;
+	using iterator = std::vector<DpTarget>::iterator;
+	TargetVec() :
+		max_len_(0)
+	{}
+	iterator begin() {
+		return targets_.begin();
+	}
+	iterator end() {
+		return targets_.end();
+	}
+	const_iterator begin() const {
+		return targets_.begin();
+	}
+	const_iterator end() const {
+		return targets_.end();
+	}
+	DpTarget& operator[](int64_t i) {
+		return targets_[i];
+	}
+	const DpTarget& operator[](int64_t i) const {
+		return targets_[i];
+	}
+	DpTarget& front() {
+		return targets_.front();
+	}
+	const DpTarget& front() const {
+		return targets_.front();
+	}
+	int64_t size() const {
+		return targets_.size();
+	}
+	void reserve(int64_t size) {
+		targets_.reserve(size);
+	}
+	void push_back(const DpTarget& t) {
+		targets_.push_back(t);
+		max_len_ = std::max(max_len_, t.seq.length());
+	}
+	void push_back(const TargetVec& v) {
+		targets_.insert(targets_.end(), v.targets_.begin(), v.targets_.end());
+		max_len_ = std::max(max_len_, v.max_len_);
+	}
+	bool empty() const {
+		return targets_.empty();
+	}
+	void clear() {
+		targets_.clear();
+		max_len_ = 0;
+	}
+	Loc max_len() const {
+		return max_len_;
+	}
+	template<typename... T>
+	void emplace_back(T&&... args) {
+		targets_.emplace_back(std::forward<T>(args)...);
+		max_len_ = std::max(max_len_, targets_.back().seq.length());
+	}
+private:
+	std::vector<DpTarget> targets_;
+	Loc max_len_;
+};
+
+using Targets = std::array<TargetVec, BINS>;
 
 struct NoCBS {
 	constexpr void* operator[](int i) const { return nullptr; }

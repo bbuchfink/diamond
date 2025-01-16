@@ -18,7 +18,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #pragma once
 #include <stdexcept>
-#include <stdlib.h>
 
 struct Modulo {
 	size_t operator()(size_t offset, size_t size) const {
@@ -32,22 +31,22 @@ struct NoModulo {
 	}
 };
 
-template<typename _K, typename _V, typename _HashFunction, typename ModuloOp>
-struct HashTable : private _HashFunction
+template<typename Key, typename Value, typename HashFunction, typename ModuloOp>
+struct HashTable : private HashFunction
 {
 
 	struct Entry
 	{
-		_K key;
-		_V value;
+		Key key;
+		Value value;
 		bool blank() const
 		{
-			return value == (_V)0;
+			return value == (Value)0;
 		}
 	};
 
-	HashTable(size_t size, const _HashFunction &hash) :
-		_HashFunction(hash),
+	HashTable(size_t size, const HashFunction &hash) :
+		HashFunction(hash),
 		table((Entry*)calloc(size, sizeof(Entry))),
 		size_(size),
 		destroy_(true)
@@ -67,7 +66,7 @@ struct HashTable : private _HashFunction
 			free(table);
 	}
 
-	_V& operator[](_K key)
+	Value& operator[](Key key)
 	{
 		Entry *e = get_entry(key);
 		if (e->blank())
@@ -75,17 +74,17 @@ struct HashTable : private _HashFunction
 		return *e;
 	}
 
-	_V* find(_K key)
+	Value* find(Key key)
 	{
 		return get_present_entry(key);
 	}
 
-	Entry* find_entry(_K key)
+	Entry* find_entry(Key key)
 	{
 		return get_present_entry(key);
 	}
 
-	Entry* insert(_K key)
+	Entry* insert(Key key)
 	{
 		return get_or_insert_entry(key);
 	}
@@ -111,9 +110,9 @@ struct HashTable : private _HashFunction
 
 private:
 
-	Entry* get_entry(_K key, bool stat=false)
+	Entry* get_entry(Key key, bool stat=false)
 	{
-		Entry *p = &table[ModuloOp()(_HashFunction::operator()(key), size_)];
+		Entry *p = &table[ModuloOp()(HashFunction::operator()(key), size_)];
 		bool wrapped = false;
 		//if(stat) ++probe_n;
 		while (p->key != key && !p->blank()) {
@@ -129,9 +128,9 @@ private:
 		return p;
 	}
 
-	Entry* get_present_entry(_K key, bool stat = false)
+	Entry* get_present_entry(Key key, bool stat = false)
 	{
-		Entry *p = &table[ModuloOp()(_HashFunction::operator()(key), size_)];
+		Entry *p = &table[ModuloOp()(HashFunction::operator()(key), size_)];
 		bool wrapped = false;
 		//if(stat) ++probe_n;
 		while(true) {
@@ -151,9 +150,9 @@ private:
 		return p;
 	}
 
-	Entry* get_or_insert_entry(_K key, bool stat = false)
+	Entry* get_or_insert_entry(Key key, bool stat = false)
 	{
-		Entry *p = &table[ModuloOp()(_HashFunction::operator()(key), size_)];
+		Entry *p = &table[ModuloOp()(HashFunction::operator()(key), size_)];
 		bool wrapped = false;
 		//if(stat) ++probe_n;
 		while (true) {

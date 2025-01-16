@@ -1,5 +1,5 @@
 #pragma once
-#include "tsv.h"
+#include "util/string/tokenizer_dyn.h"
 #include "def.h"
 #include "record.h"
 
@@ -13,7 +13,7 @@ using MapFunc = std::function<Table(const Record&)>;
 struct Table {
 	
 	Table(const Schema& schema);
-	template<typename It, typename Tok = TokenIterator<std::string::const_iterator, '\t'>>
+	template<typename It, typename Tok = Util::String::TokenIterator<std::string::const_iterator, '\t'>>
 	Table(const Schema& schema, It begin, It end);
 	Table(Table&& table) noexcept;
 	Table(const Schema& schema, std::vector<char>&& data, std::vector<int64_t>&& limits);
@@ -39,12 +39,10 @@ struct Table {
 		return Record(schema_, data_.data(), data_.data() + limits_[1]);
 	}
 
-	template<typename It, typename Tok = TokenIterator<It, '\t'>>
-	void push_back(It begin, It end, RecordId record_id = -1);
+	void push_back(const char* begin, const char* end, const Util::String::TokenizerBase* tok, RecordId record_id = -1);
 	void push_back(const Record& record);
 	void append(const Table& table);
-	template<typename It, typename Tok = TokenIterator<std::string::const_iterator, '\t'>>
-	void append(It begin, It end);
+	void append(const char* begin, const char* end, const Util::String::TokenizerBase* tok);
 	void write(TextBuffer& buf) const;
 
 	template<typename... Targs>

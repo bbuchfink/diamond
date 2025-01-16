@@ -19,25 +19,21 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #include <memory>
-#include "../basic/value.h"
+#include "basic/value.h"
 #include "align.h"
-#include "../data/reference.h"
-#include "../output/output_format.h"
-#include "../output/output.h"
+#include "output/output_format.h"
+#include "output/output.h"
 #include "legacy/pipeline.h"
-#include "../util/async_buffer.h"
-#include "../util/parallel/thread_pool.h"
-#if _MSC_FULL_VER == 191627042
-#include "../util/algo/merge_sort.h"
-#endif
+#include "util/async_buffer.h"
+#include "util/parallel/thread_pool.h"
 #include "extend.h"
 #ifdef WITH_DNA
 #include "../dna/extension.h"
 #endif
-#include "../util/algo/radix_sort.h"
-#include "target.h"
+#include "util/util.h"
 #define _REENTRANT
-#include "../lib/ips4o/ips4o.hpp"
+#include "ips4o/ips4o.hpp"
+#include "data/queries.h"
 
 using std::get;
 using std::tuple;
@@ -50,20 +46,15 @@ using std::vector;
 
 DpStat dp_stat;
 
-static vector<int64_t> partition;
-
 namespace Extension {
 
 TextBuffer* pipeline_short(BlockId query, Search::Hit* begin, Search::Hit* end, Search::Config& cfg, Statistics& stats);
 
 }
 
-#if !defined(EXTRA) || defined(WITH_DNA)
-#define OLD
-#endif
-
-static void make_partition(Search::Hit* begin, Search::Hit* end) {
-	partition.clear();
+static vector<int64_t> make_partition(Search::Hit* begin, Search::Hit* end) {
+	vector<int64_t> partition;
+	partition.reserve(div_up(end - begin, config.min_task_trace_pts) + 1);
 	Search::Hit* p = begin;
 	partition.push_back(0);
 	const BlockId c = align_mode.query_contexts;
@@ -76,16 +67,16 @@ static void make_partition(Search::Hit* begin, Search::Hit* end) {
 		partition.push_back(q - begin);
 		p = q;
 	}
+	return partition;
 }
-
-#ifndef OLD
 
 struct HitIterator {
 	static bool single_query() {
 		return config.swipe_all || align_mode.mode == AlignMode::blastn;
 	}
-	HitIterator(BlockId qbegin, BlockId qend, Search::Hit* begin, Search::Hit* end):
-		p(single_query() ? qbegin : 0),
+	HitIterator(BlockId qbegin, BlockId qend, Search::Hit* begin, Search::Hit* end, vector<int64_t>::const_iterator partition, int64_t parts):
+		partition(partition),
+		parts(parts),
 		data(begin),
 		query_begin(qbegin),
 		query_end(qend)
@@ -94,16 +85,13 @@ struct HitIterator {
 		BlockId query;
 		Search::Hit* begin, * end;
 	};
-	vector<Hits> operator*() {
+	vector<Hits> fetch(int64_t i) {
 		vector<Hits> r;
-		int64_t i = p++;
 		if (single_query()) {
-			if (i < query_end)
-				r.push_back(Hits{ (BlockId)i,nullptr,nullptr });
+			r.push_back(Hits{ (BlockId)i,nullptr,nullptr });
 			return r;
 		}
-		if (i >= int64_t(partition.size()) - 1)
-			return r;
+		assert(i >= 0 && i < parts);
 		const BlockId c = align_mode.query_contexts;
 		Search::Hit* begin = data + partition[i], * end = data + partition[i + 1];
 		BlockId last_query = begin > data ? (begin - 1)->query_/c + 1 : query_begin;
@@ -119,76 +107,25 @@ struct HitIterator {
 			++it;
 			++last_query;
 		}
-		if (i == (int64_t)partition.size() - 2) {
+		if (i == parts - 1) {
 			r.reserve(r.size() + query_end - (r.back().query + 1));
 			for (BlockId j = r.back().query + 1; j < query_end; ++j)
 				r.push_back(Hits{ j, nullptr,nullptr });
 		}
 		return r;
 	}
-	bool good(const vector<Hits>& hits) const {
-		return !hits.empty();
-	}
-	std::atomic<int64_t> p;
+	const vector<int64_t>::const_iterator partition;
+	const int64_t parts;
 	Search::Hit* data;
 	const BlockId query_begin, query_end;
 };
 
-#else
-
-struct HitIterator
-{
-	static bool single_query() {
-		return config.swipe_all || align_mode.mode == AlignMode::blastn;
-	}
-	struct Hits {
-		BlockId query;
-		Search::Hit* begin, *end;
-	};
-	HitIterator(BlockId qbegin, BlockId qend, Search::Hit* begin, Search::Hit* end):
-		query_begin_(qbegin),
-		query_end_(qend),
-		query_(qbegin),
-		it_(begin),
-		end_(end)
-	{}
-	vector<Hits> operator*()
-	{
-		static const int64_t MAX_QUERIES = 256;
-		vector<Hits> r;
-		int64_t n = 0, query_count = 0;
-		do {
-			Hits hits;
-			const unsigned q = (unsigned)query_++,
-				c = align_mode.query_contexts;
-			hits.begin = it_;
-			while (it_ < end_ && it_->query_ / c == q)
-				++it_;
-			hits.end = it_;
-			hits.query = q;
-			n += hits.end - hits.begin;
-			++query_count;
-			r.push_back(hits);
-		} while (it_ < end_ && n < config.min_task_trace_pts && query_count < MAX_QUERIES);
-		return r;
-	}
-	bool good(const vector<Hits>& hits) const {
-		return query_ < query_end_;
-	}
-private:
-	const BlockId query_begin_, query_end_;
-	BlockId query_;
-	Search::Hit* it_, * const end_;
-};
-
-#endif
-
-TextBuffer* legacy_pipeline(const HitIterator::Hits& hits, Search::Config& cfg, Statistics &stat) {
+static TextBuffer* legacy_pipeline(const HitIterator::Hits& hits, Search::Config& cfg, Statistics &stat) {
 	if (hits.end == hits.begin) {
 		TextBuffer *buf = nullptr;
 		if (!cfg.blocked_processing && *cfg.output_format != OutputFormat::daa && config.report_unaligned != 0) {
 			buf = new TextBuffer;
-			Output::Info info{ cfg.query->seq_info(hits.query), true, cfg.db.get(), *buf, {}, AccessionParsing() };
+			Output::Info info{ cfg.query->seq_info(hits.query), true, cfg.db.get(), *buf, {}, Util::Seq::AccessionParsing(), cfg.db->sequence_count(), cfg.db->letters() };
 			cfg.output_format->print_query_intro(info);
 			cfg.output_format->print_query_epilog(info);
 		}
@@ -220,17 +157,11 @@ TextBuffer* legacy_pipeline(const HitIterator::Hits& hits, Search::Config& cfg, 
 	return buf;
 }
 
-bool align_worker(HitIterator* hit_it, ThreadPool::TaskSet* task_set, Search::Config* cfg)
+static void align_worker(HitIterator* hit_it, Search::Config* cfg, int64_t next)
 {
 	try {
-		vector<HitIterator::Hits> hits = **hit_it;
-#ifdef OLD
-		if(hit_it->good(hits))
-			task_set->enqueue(align_worker, hit_it, task_set, cfg);
-#else
-		if (!hit_it->good(hits))
-			return false;
-#endif
+		const vector<HitIterator::Hits> hits = hit_it->fetch(next);
+		assert(!hits.empty());
 		Statistics stat;
 		DpStat dp_stat;
 		const bool parallel = config.swipe_all && (cfg->target->seqs().size() >= cfg->query->seqs().size());
@@ -253,7 +184,7 @@ bool align_worker(HitIterator* hit_it, ThreadPool::TaskSet* task_set, Search::Co
 
 			pair<vector<Extension::Match>, Extension::Stats> matches =
 #ifdef WITH_DNA
-           align_mode.mode == AlignMode::blastn ? Dna::extend(*cfg, cfg->query->seqs()[h->query]) :
+				align_mode.mode == AlignMode::blastn ? Dna::extend(*cfg, cfg->query->seqs()[h->query]) :
 #endif
 				Extension::extend(h->query, h->begin, h->end, *cfg, stat, parallel ? DP::Flags::PARALLEL : DP::Flags::NONE);
 			TextBuffer* buf = cfg->blocked_processing ? Extension::generate_intermediate_output(matches.first, h->query, *cfg) : Extension::generate_output(matches.first, matches.second, h->query, stat, *cfg);
@@ -273,9 +204,6 @@ bool align_worker(HitIterator* hit_it, ThreadPool::TaskSet* task_set, Search::Co
 				}
 			}
 			output_sink->push(h->query, buf);
-			//if (config.swipe_all && !config.no_heartbeat && (h->query % 100 == 0))
-				//log_stream << "Queries = " << h->query << std::endl;
-
 		}
 
 		statistics += stat;
@@ -284,7 +212,6 @@ bool align_worker(HitIterator* hit_it, ThreadPool::TaskSet* task_set, Search::Co
 	catch (std::exception& e) {
 		exit_with_error(e);
 	}
-	return true;
 }
 
 void align_queries(Consumer* output_file, Search::Config& cfg)
@@ -301,7 +228,7 @@ void align_queries(Consumer* output_file, Search::Config& cfg)
 	cfg.seed_hit_buf->load(std::min(mem_limit - res_size - cfg.seed_hit_buf->bin_size(1) * (int64_t)sizeof(Search::Hit), config.trace_pt_fetch_size));
 
 	while (true) {
-		timer.go("Loading trace points");				
+		timer.go("Loading trace points");
 		tuple<vector<Search::Hit>*, BlockId, BlockId> input = cfg.seed_hit_buf->retrieve();
 		if (get<0>(input) == nullptr)
 			break;
@@ -322,35 +249,22 @@ void align_queries(Consumer* output_file, Search::Config& cfg)
 #endif
 		statistics.inc(Statistics::TIME_SORT_SEED_HITS, timer.microseconds());
 
-#ifndef OLD
 		timer.go("Computing partition");
-		make_partition(hit_buf->data(), hit_buf->data() + hit_buf->size());
-#endif
+		const vector<int64_t> partition = make_partition(hit_buf->data(), hit_buf->data() + hit_buf->size());
 
 		timer.go("Computing alignments");
-		HitIterator hit_it(query_range.first, query_range.second, hit_buf->data(), hit_buf->data() + hit_buf->size());
-        OutputWriter writer{output_file, (*cfg.output_format == OutputFormat::json) ? ',' : char(0)};
+		HitIterator hit_it(query_range.first, query_range.second, hit_buf->data(), hit_buf->data() + hit_buf->size(), partition.begin(), (int64_t)partition.size() - 1);
+        OutputWriter writer{output_file, cfg.output_format->query_separator};
 		output_sink.reset(new ReorderQueue<TextBuffer*, OutputWriter>(query_range.first, writer));
 		unique_ptr<thread> heartbeat;
 		if (config.verbosity >= 3 && config.load_balancing == Config::query_parallel && !config.swipe_all && config.heartbeat)
 			heartbeat.reset(new thread(heartbeat_worker, query_range.second, &cfg));
-		size_t n_threads = config.threads_align == 0 ? config.threads_ : config.threads_align;
-		if (config.load_balancing == Config::target_parallel || (config.swipe_all && (cfg.target->seqs().size() >= cfg.query->seqs().size())))
-			n_threads = 1;
-		auto task = [&hit_it, &cfg](ThreadPool& tp) {
-			return align_worker(&hit_it, nullptr, &cfg);
-		};
-#ifndef OLD
-		cfg.thread_pool.reset(new ThreadPool(task));
-		cfg.thread_pool->run(n_threads, false);
+		const int threads = config.load_balancing == Config::target_parallel || (config.swipe_all && (cfg.target->seqs().size() >= cfg.query->seqs().size())) ? 1
+			: (config.threads_align == 0 ? config.threads_ : config.threads_align);
+		auto task = [&hit_it, &cfg](ThreadPool& tp, int64_t i) { return align_worker(&hit_it, &cfg, i); };
+		cfg.thread_pool.reset(config.swipe_all ? new ThreadPool(task, query_range.first, query_range.second) : new ThreadPool(task, 0, (int64_t)partition.size() - 1));
+		cfg.thread_pool->run(threads);
 		cfg.thread_pool->join();
-#else
-		cfg.thread_pool.reset(new ThreadPool ());
-		cfg.thread_pool->run(n_threads);
-		ThreadPool::TaskSet task_set(*cfg.thread_pool, 1);
-		task_set.enqueue(align_worker, &hit_it, &task_set, &cfg);
-		task_set.wait();
-#endif
 		if (heartbeat)
 			heartbeat->join();
 		statistics.inc(Statistics::TIME_EXT, timer.microseconds());
@@ -363,10 +277,6 @@ void align_queries(Consumer* output_file, Search::Config& cfg)
 		delete hit_buf;
 	}
 	statistics.max(Statistics::SEARCH_TEMP_SPACE, cfg.seed_hit_buf->total_disk_size());
-	for (auto i : Extension::target_matrices)
-		delete[] i;
-	Extension::target_matrices.clear();
-	statistics.inc(Statistics::MATRIX_ADJUST_COUNT, Extension::target_matrix_count);
 
 	if (!cfg.blocked_processing && !cfg.iterated())
 		cfg.db->end_random_access(false);

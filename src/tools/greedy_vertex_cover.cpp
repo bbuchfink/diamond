@@ -23,15 +23,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <mutex>
 #include <unordered_map>
 #include <memory>
-#include "../util/tsv/tsv.h"
-#include "../util/tsv/file.h"
-#include "../basic/config.h"
-#include "../util/log_stream.h"
-#include "../util/string/fixed_string.h"
-#include "../util/string/tokenizer.h"
-#include "../util/algo/algo.h"
-#include "../util/system/system.h"
-#include "../cluster/cluster.h"
+#include "util/tsv/tsv.h"
+#include "basic/config.h"
+#include "util/log_stream.h"
+#include "util/string/tokenizer.h"
+#include "util/algo/algo.h"
+#include "util/system/system.h"
+#include "cluster/cluster.h"
 
 using std::unique_ptr;
 using std::ofstream;
@@ -44,6 +42,7 @@ using std::vector;
 using std::unordered_map;
 using std::numeric_limits;
 using std::runtime_error;
+using std::function;
 //using Acc = FixedString<32>;
 using Acc = string;
 
@@ -63,7 +62,7 @@ void greedy_vertex_cover() {
 	TextInputFile mapping_file(config.database);
 	string query;
 	while (mapping_file.getline(), !mapping_file.line.empty() || !mapping_file.eof()) {
-		Util::String::Tokenizer(mapping_file.line, "\t") >> query;
+		Util::String::Tokenizer<Util::String::CharDelimiter>(mapping_file.line, Util::String::CharDelimiter('\t')) >> query;
 		acc2oid.emplace(query, acc2oid.size());
 	}
 	mapping_file.close();
@@ -74,8 +73,8 @@ void greedy_vertex_cover() {
 
 	timer.go("Counting input lines");
 	atomic<int64_t> lines(0);
-	std::function<void(int64_t, const char*, const char*)> fn([&](int64_t, const char* begin, const char* end) {
-		Util::Tsv::LineIterator it(begin, end);
+	function<void(int64_t, const char*, const char*)> fn([&](int64_t, const char* begin, const char* end) {
+		Util::String::LineIterator it(begin, end);
 		int64_t n = 0;
 		double qcov, tcov;
 		while (it.good()) {
@@ -86,7 +85,7 @@ void greedy_vertex_cover() {
 				else
 					++n;
 			else {
-				Util::String::Tokenizer(line, "\t") >> Util::String::Skip() >> Util::String::Skip() >> qcov >> tcov;
+				Util::String::Tokenizer<Util::String::CharDelimiter>(line, Util::String::CharDelimiter('\t')) >> Util::String::Skip() >> Util::String::Skip() >> qcov >> tcov;
 				if (qcov >= cov)
 					++n;
 				if (tcov >= cov)
@@ -106,14 +105,14 @@ void greedy_vertex_cover() {
 	edges.reserve(lines);
 
 	timer.go("Reading input lines");
-	std::function<void(int64_t, const char*, const char*)> fn2([&](int64_t, const char* begin, const char* end) {
-		Util::Tsv::LineIterator it(begin, end);
+	function<void(int64_t, const char*, const char*)> fn2([&](int64_t, const char* begin, const char* end) {
+		Util::String::LineIterator it(begin, end);
 		vector<Edge> e;
 		string query, target;
 		double qcov, tcov, evalue;
 		while (it.good()) {
 			string line = *it;
-			Util::String::Tokenizer tok(line, "\t");
+			Util::String::Tokenizer<Util::String::CharDelimiter> tok(line, Util::String::CharDelimiter('\t'));
 			tok >> query >> target;
 			if (!triplets)
 				tok >> qcov >> tcov;

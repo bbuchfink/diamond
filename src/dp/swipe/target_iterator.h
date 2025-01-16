@@ -21,11 +21,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #pragma once
 #include <stdint.h>
-#include <algorithm>
 #include "../dp.h"
-#include "../../basic/value.h"
-#include "../../util/simd/vector.h"
-#include "../../stats/hauser_correction.h"
+#include "basic/value.h"
+#include "util/data_structures/array.h"
 
 template<typename T, int N>
 struct SmallVector
@@ -60,33 +58,36 @@ private:
 
 namespace DISPATCH_ARCH {
 
-template<typename _t>
+template<typename T>
 struct TargetIterator
 {
 
-	typedef ::DISPATCH_ARCH::SIMD::Vector<_t> SeqVector;
+	typedef ::DISPATCH_ARCH::SIMD::Vector<T> SeqVector;
 	enum {
 		CHANNELS = SeqVector::CHANNELS
 	};
 
-	TargetIterator(std::vector<DpTarget>::const_iterator subject_begin, std::vector<DpTarget>::const_iterator subject_end, int i1, int qlen, int *d_begin) :
-		next(0),
+	TargetIterator(DP::TargetVec::const_iterator subject_begin, DP::TargetVec::const_iterator subject_end, bool reverse_targets, int i1, int qlen, int *d_begin) :
 		n_targets(int(subject_end - subject_begin)),
 		cols(0),
 		custom_matrix_16bit(false),
 		subject_begin(subject_begin)
 	{
-		for (; next < std::min((int)CHANNELS, n_targets); ++next) {
+		for (int next = 0; next < std::min((int)CHANNELS, n_targets); ++next) {
 			const DpTarget &t = subject_begin[next];
 			pos[next] = i1 - (t.d_end - 1);
 			const int d0 = d_begin[next];
 			//const int d0 = t.d_begin;
 			const int j1 = std::min(qlen - 1 - d0, (int)(t.seq.length() - 1)) + 1;
 			cols = std::max(cols, j1 - pos[next]);
-			target[next] = next;
 			active.push_back(next);
 			if (t.adjusted_matrix() && (t.matrix->score_max > SCHAR_MAX || t.matrix->score_min < SCHAR_MIN))
 				custom_matrix_16bit = true;
+			target_seqs[next] = Array<Letter>(t.seq.length());
+			if(reverse_targets)
+				target_seqs[next].assign_reversed(t.seq.data(), t.seq.end());
+			else
+				target_seqs[next].assign(t.seq.data(), t.seq.end());
 		}
 	}
 
@@ -103,7 +104,7 @@ struct TargetIterator
 	char operator[](int channel) const
 	{
 		if (pos[channel] >= 0) {
-			return subject_begin[target[channel]].seq[pos[channel]];
+			return target_seqs[channel][pos[channel]];
 		} else
 			return SUPER_HARD_MASK;
 	}
@@ -111,7 +112,7 @@ struct TargetIterator
 
 	SeqVector get() const
 	{
-		alignas(32) _t s[CHANNELS];
+		alignas(32) T s[CHANNELS];
 		std::fill(s, s + CHANNELS, SUPER_HARD_MASK);
 		for (int i = 0; i < active.size(); ++i) {
 			const int channel = active[i];
@@ -126,7 +127,7 @@ struct TargetIterator
 		for (int i = 0; i < active.size(); ++i) {
 			const int channel = active[i];
 			const int l = (int)(*this)[channel];
-			const DpTarget& dp_target = subject_begin[target[channel]];
+			const DpTarget& dp_target = subject_begin[channel];
 			target_scores[channel] = dp_target.adjusted_matrix() ? &dp_target.matrix->scores[32 * l] : &score_matrix.matrix8()[32 * l];
 		}
 		return target_scores;
@@ -139,27 +140,16 @@ struct TargetIterator
 		for (int i = 0; i < active.size(); ++i) {
 			const int channel = active[i];
 			const int l = (int)(*this)[channel];
-			const DpTarget& dp_target = subject_begin[target[channel]];
+			const DpTarget& dp_target = subject_begin[channel];
 			target_scores[channel] = dp_target.adjusted_matrix() ? &dp_target.matrix->scores32[32 * l] : &score_matrix.matrix32()[32 * l];
 		}
 		return target_scores;
 	}
 
-	bool init_target(int i, int channel)
-	{
-		if (next < n_targets) {
-			pos[channel] = 0;
-			target[channel] = next++;
-			return true;
-		}
-		active.erase(i);
-		return false;
-	}
-
 	bool inc(int channel)
 	{
 		++pos[channel];
-		if (pos[channel] >= (int)subject_begin[target[channel]].seq.length())
+		if (pos[channel] >= subject_begin[channel].seq.length())
 			return false;
 		return true;
 	}
@@ -172,10 +162,11 @@ struct TargetIterator
 		return r;
 	}
 
-	int pos[CHANNELS], target[CHANNELS], next, n_targets, cols;
+	int pos[CHANNELS], n_targets, cols;
 	bool custom_matrix_16bit;
 	SmallVector<int, CHANNELS> active;
-	const std::vector<DpTarget>::const_iterator subject_begin;
+	const DP::TargetVec::const_iterator subject_begin;
+	std::array<Array<Letter>, CHANNELS> target_seqs;
 };
 
 template<typename T, typename It>
@@ -185,7 +176,8 @@ struct AsyncTargetBuffer
 	typedef ::DISPATCH_ARCH::SIMD::Vector<T> SeqVector;
 	enum { CHANNELS = SeqVector::CHANNELS };
 
-	AsyncTargetBuffer(const It begin, const It end, std::atomic<BlockId>* const next):
+	AsyncTargetBuffer(const It begin, const It end, Loc max_target_len, bool reverse_targets, std::atomic<BlockId>* const next):
+		reverse_targets(reverse_targets),
 		begin(begin),
 		target_count(BlockId(end - begin)),
 		next(next),
@@ -193,13 +185,18 @@ struct AsyncTargetBuffer
 	{
 		BlockId n;
 		int i = 0;
-		while (i < CHANNELS && (n = (*next)++) < target_count) {
+		while (i < CHANNELS && (n = next->fetch_add(1, std::memory_order_relaxed)) < target_count) {
 			DpTarget t = begin[n];
 			if (t.blank())
 				t.target_idx = n;
 			pos[i] = 0;
 			dp_targets[i] = t;
 			active.push_back(i);
+			target_seqs[i] = Array<Letter>(max_target_len);
+			if (reverse_targets)
+				target_seqs[i].assign_reversed(t.seq.data(), t.seq.end());
+			else
+				target_seqs[i].assign(t.seq.data(), t.seq.end());
 			++i;
 		}
 	}
@@ -214,7 +211,7 @@ struct AsyncTargetBuffer
 	char operator[](int channel) const
 	{
 		if (pos[channel] >= 0) {
-			return dp_targets[channel].seq[pos[channel]];
+			return target_seqs[channel][pos[channel]];
 		}
 		else
 			return SUPER_HARD_MASK;
@@ -268,6 +265,10 @@ struct AsyncTargetBuffer
 			t.target_idx = n;
 		pos[channel] = 0;
 		dp_targets[channel] = t;
+		if (reverse_targets)
+			target_seqs[channel].assign_reversed(t.seq.data(), t.seq.end());
+		else
+			target_seqs[channel].assign(t.seq.data(), t.seq.end());
 		return true;
 	}
 
@@ -293,6 +294,7 @@ struct AsyncTargetBuffer
 		return r;
 	}
 
+	const bool reverse_targets;
 	int pos[CHANNELS];
 	SmallVector<int, CHANNELS> active;
 	const It begin;
@@ -300,6 +302,7 @@ struct AsyncTargetBuffer
 	std::atomic<BlockId>* const next;
 	DpTarget dp_targets[CHANNELS];
 	bool custom_matrix_16bit;
+	std::array<Array<Letter>, CHANNELS> target_seqs;
 
 };
 

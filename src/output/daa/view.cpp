@@ -22,17 +22,19 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <memory>
 #include <thread>
-#include "../basic/config.h"
-#include "../util/io/output_file.h"
-#include "../util/text_buffer.h"
+#include "basic/config.h"
+#include "util/io/output_file.h"
+#include "util/text_buffer.h"
 #include "daa_file.h"
-#include "../util/binary_buffer.h"
+#include "util/binary_buffer.h"
 #include "../output_format.h"
-#include "../legacy/util/task_queue.h"
-#include "../stats/score_matrix.h"
-#include "../data/taxonomy.h"
+#include "legacy/util/task_queue.h"
+#include "stats/score_matrix.h"
+#include "data/taxonomy.h"
 #include "daa_write.h"
-#include "../run/config.h"
+#include "run/config.h"
+#include "daa_record.h"
+#include "util/log_stream.h"
 
 using std::thread;
 using std::unique_ptr;
@@ -41,9 +43,9 @@ using std::endl;
 
 const unsigned view_buf_size = 32;
 
-struct View_writer
+struct ViewWriter
 {
-	View_writer() :
+	ViewWriter() :
 		f_(new OutputFile(config.output_file, config.compressor()))
 	{ }
 	void operator()(TextBuffer &buf)
@@ -51,16 +53,16 @@ struct View_writer
 		f_->write(buf.data(), buf.size());
 		buf.clear();
 	}
-	~View_writer()
+	~ViewWriter()
 	{
 		f_->close();
 	}
 	unique_ptr<OutputFile> f_;
 };
 
-struct View_fetcher
+struct ViewFetcher
 {
-	View_fetcher(DAA_file &daa) :
+	ViewFetcher(DAAFile &daa) :
 		daa(daa)
 	{ }
 	bool operator()()
@@ -79,15 +81,15 @@ struct View_fetcher
 	BinaryBuffer buf[view_buf_size];
 	unsigned n;
 	size_t query_num;
-	DAA_file &daa;
+	DAAFile &daa;
 };
 
 void view_query(DAA_query_record &r, TextBuffer &out, OutputFormat &format, const Search::Config& cfg)
 {
 	unique_ptr<OutputFormat> f(format.clone());
 	size_t seek_pos;
-	Output::Info info{ SeqInfo { (BlockId)r.query_num, (OId)r.query_num, r.query_name.c_str(), "", (Loc)r.query_len(), r.query_seq.source(), Sequence()},
-		false, nullptr, out, {}, AccessionParsing() };
+	Output::Info info{ SeqInfo { (BlockId)r.query_num, (OId)r.query_num, r.query_name.c_str(), "", (Loc)r.query_len(), r.query_seq.source(), Sequence() },
+		false, nullptr, out, {}, Util::Seq::AccessionParsing(), r.file().db_seqs(), r.file().db_letters() };
 	if (format == OutputFormat::daa)
 		seek_pos = write_daa_query_record(out, r.query_name.c_str(), r.query_seq.source());
 	else
@@ -112,12 +114,12 @@ void view_query(DAA_query_record &r, TextBuffer &out, OutputFormat &format, cons
 	
 }
 
-void view_worker(DAA_file *daa, View_writer *writer, TaskQueue<TextBuffer, View_writer> *queue, OutputFormat *format, Search::Config* cfg)
+void view_worker(DAAFile *daa, ViewWriter *writer, TaskQueue<TextBuffer, ViewWriter> *queue, OutputFormat *format, Search::Config* cfg)
 {
 	
 	try {
 		size_t n;
-		View_fetcher query_buf(*daa);
+		ViewFetcher query_buf(*daa);
 		TextBuffer *buffer = 0;
 		while (queue->get(n, buffer, query_buf)) {
 			for (unsigned j = 0; j < query_buf.n; ++j) {
@@ -136,7 +138,9 @@ void view_worker(DAA_file *daa, View_writer *writer, TaskQueue<TextBuffer, View_
 void view_daa()
 {
 	TaskTimer timer("Loading subject IDs");
-	DAA_file daa(config.daa_file);
+	DAAFile daa(config.daa_file);
+	if (align_mode.input_sequence_type == SequenceType::nucleotide)
+		input_value_traits = nucleotide_traits;
 	score_matrix = ScoreMatrix(daa.score_matrix(), daa.gap_open_penalty(), daa.gap_extension_penalty(), 0, 1, daa.db_letters());
 	timer.finish();
 
@@ -149,12 +153,10 @@ void view_daa()
 	Search::Config cfg;
 	cfg.db_seqs = daa.db_seqs();
 	cfg.db_letters = daa.db_letters();
-
-	cfg.output_format.reset(init_output(cfg.max_target_seqs));
 	taxonomy.init();
 
 	timer.go("Generating output");
-	View_writer writer;
+	ViewWriter writer;
 	if (*cfg.output_format == OutputFormat::daa)
 		init_daa(*writer.f_);
 
@@ -169,7 +171,7 @@ void view_daa()
 		writer(out);
 
 		vector<thread> threads;
-		TaskQueue<TextBuffer, View_writer> queue(3 * config.threads_, writer);
+		TaskQueue<TextBuffer, ViewWriter> queue(3 * config.threads_, writer);
 		for (int i = 0; i < config.threads_; ++i)
 			threads.emplace_back(view_worker, &daa, &writer, &queue, cfg.output_format.get(), &cfg);
 		for (auto &t : threads)

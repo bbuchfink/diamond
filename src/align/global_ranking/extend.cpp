@@ -24,11 +24,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <thread>
 #include <atomic>
 #include "global_ranking.h"
-#include "../output/output.h"
-#include "../target.h"
-#include "../dp/dp.h"
-#include "../data/queries.h"
-#include "../masking/masking.h"
+#include "output/output.h"
+#include "align/target.h"
+#include "data/queries.h"
+#include "masking/masking.h"
 
 using std::unique_ptr;
 using std::mutex;

@@ -16,9 +16,6 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <time.h>
 #include <set>
 #include <iostream>
 #include <sstream>
@@ -26,19 +23,15 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <chrono>
 #include <thread>
 #include "tools.h"
-#include "../basic/config.h"
-#include "../data/sequence_set.h"
-#include "../util/seq_file_format.h"
-#include "../data/queries.h"
-#include "../data/sequence_file.h"
-#include "../masking/masking.h"
-#include "../dp/dp.h"
-#include "../basic/packed_transcript.h"
-#include "../data/reference.h"
-#include "../data/dmnd/dmnd.h"
-#include "../util/util.h"
-#include "../util/sequence/sequence.h"
-#include "../util/sequence/translate.h"
+#include "basic/config.h"
+#include "data/sequence_set.h"
+#include "data/sequence_file.h"
+#include "masking/masking.h"
+#include "basic/packed_transcript.h"
+#include "data/dmnd/dmnd.h"
+#include "util/sequence/sequence.h"
+#include "util/sequence/translate.h"
+#include "basic/match.h"
 
 using std::thread;
 using std::chrono::high_resolution_clock;
@@ -93,12 +86,13 @@ void run_masker()
 	TextInputFile f(config.single_query_file());
 	vector<Letter> seq, seq2;
 	string id;
-	const FASTA_format format;
+	//const FASTA_format format;
 	size_t letters = 0, seqs = 0, seqs_total = 0;
 
 	high_resolution_clock::time_point t1 = high_resolution_clock::now();
 
-	while (format.get_seq(id, seq, f, value_traits)) {
+	//while (format.get_seq(id, seq, f, value_traits)) {
+	while(true) {
 		cout << '>' << id << endl;
 		seq2 = seq;
 		Masking::get()(seq2.data(), seq2.size(), MaskingAlgo::TANTAN, 0);
@@ -128,40 +122,15 @@ void fastq2fasta()
 	unique_ptr<TextInputFile> f(new TextInputFile(config.single_query_file()));
 	vector<Letter> seq;
 	string id;
-	const FASTQ_format format;
+//	const FASTQ_format format;
 	input_value_traits = value_traits = nucleotide_traits;
 	size_t n = 0, max = atoi(config.seq_no[0].c_str());
-	while (n < max && format.get_seq(id, seq, *f, value_traits)) {
+	//while (n < max && format.get_seq(id, seq, *f, value_traits)) {
+	while(true) {
 		cout << '>' << id << endl;
 		cout << Sequence(seq.data(), seq.size()) << endl;
 		++n;
 	}
-}
-
-void read_sim()
-{
-	const double ID = 0.35;
-	srand((unsigned)time(0));
-	TextInputFile in(config.single_query_file());
-	OutputFile out(config.output_file);
-	FASTA_format format;
-	string id;
-	vector<Letter> seq;
-	input_value_traits = nucleotide_traits;
-	TextBuffer buf;
-	while (format.get_seq(id, seq, in, value_traits)) {
-		buf << '>' << id << '\n';
-		for (size_t i = 0; i < seq.size(); ++i) {
-			if ((double)rand() / RAND_MAX <= ID)
-				buf << nucleotide_traits.alphabet[(size_t)seq[i]];
-			else
-				buf << nucleotide_traits.alphabet[rand() % 4];
-		}
-		buf << '\n';
-		out.write(buf.data(), buf.size());
-		buf.clear();
-	}
-	out.close();
 }
 
 void info()
@@ -190,22 +159,22 @@ void info()
 }
 
 void pairwise_worker(TextInputFile *in, std::mutex *input_lock, std::mutex *output_lock) {
-	FASTA_format format;
+	//FASTA_format format;
 	std::string id_r, id_q;
 	vector<Letter> ref, query;
 
 	while(true) {
 		input_lock->lock();
-		if (!format.get_seq(id_r, ref, *in, value_traits)) {
+		/*if (!format.get_seq(id_r, ref, *in, value_traits)) {
 			input_lock->unlock();
 			return;
 		}
 		if (!format.get_seq(id_q, query, *in, value_traits)) {
 			input_lock->unlock();
 			return;
-		}
+		}*/
 		input_lock->unlock();
-		const std::string ir = Util::Seq::seqid(id_r.c_str(), false), iq = Util::Seq::seqid(id_q.c_str(), false);
+		const std::string ir = Util::Seq::seqid(id_r.c_str()), iq = Util::Seq::seqid(id_q.c_str());
 		Hsp hsp(true);
 		//smith_waterman(Sequence(query), Sequence(ref), hsp);
 		HspContext context(hsp, 0, 0, TranslatedSequence(query), "", 0, 0, nullptr, 0, 0, Sequence());
@@ -239,21 +208,14 @@ void pairwise()
 		t.join();
 }
 
-void fasta_skip_to(string &id, vector<Letter> &seq, string &blast_id, TextInputFile &f)
-{
-	while (Util::Seq::seqid(id.c_str(), false) != blast_id) {
-		if (!FASTA_format().get_seq(id, seq, f, value_traits))
-			throw runtime_error("Sequence not found in FASTA file.");
-	}
-}
-
 void translate() {
 	input_value_traits = nucleotide_traits;
 	TextInputFile in(config.single_query_file());
 	string id;
 	vector<Letter> seq;
 	vector<Letter> proteins[6];
-	while (FASTA_format().get_seq(id, seq, in, input_value_traits)) {
+	//while (FASTA_format().get_seq(id, seq, in, input_value_traits)) {
+	while(true) {
 		Translator::translate(seq, proteins);
 		cout << ">" << id << endl;
 		cout << Sequence(proteins[0]) << endl;
@@ -267,7 +229,8 @@ void reverse() {
 	string id;
 	vector<Letter> seq;
 	TextBuffer buf;
-	while (FASTA_format().get_seq(id, seq, in, value_traits)) {
+	//while (FASTA_format().get_seq(id, seq, in, value_traits)) {
+	while(true) {
 		buf << '>';
 		buf << '\\';
 		buf.write_raw(id.data(), id.size());
@@ -277,19 +240,6 @@ void reverse() {
 		buf << '\0';
 		cout << buf.data();
 		buf.clear();
-	}
-	in.close();
-}
-
-void show_cbs() {
-	score_matrix = ScoreMatrix("BLOSUM62", config.gap_open, config.gap_extend, config.frame_shift, 1);
-	TextInputFile in(config.single_query_file());
-	string id;
-	vector<Letter> seq;
-	while (FASTA_format().get_seq(id, seq, in, value_traits)) {
-		Bias_correction bc{ Sequence(seq) };
-		for (size_t i = 0; i < seq.size(); ++i)
-			cout << value_traits.alphabet[(long)seq[i]] << '\t' << bc[i] << endl;
 	}
 	in.close();
 }

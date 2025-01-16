@@ -1,5 +1,6 @@
 #include <string>
 #include <vector>
+#include <stdexcept>
 #pragma once
 
 struct OptionsGroup;

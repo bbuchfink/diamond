@@ -1,3 +1,23 @@
+/****
+DIAMOND protein aligner
+Copyright (C) 2019-2024 Max Planck Society for the Advancement of Science e.V.
+
+Code developed by Klaus Reuter
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+****/
+
 #include <string>
 #include <iostream>
 #include <chrono>
@@ -6,23 +26,25 @@
 #include <limits>
 #include <vector>
 #include <algorithm>
-
-#include <cstdio>
-#include <cstring>
+#include <string.h>
 #ifndef WIN32
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include "multiprocessing.h"
 #endif
 
-#include "multiprocessing.h"
 // #define DEBUG
 #undef DEBUG
 #include "filestack.h"
 
-using namespace std;
-
+using std::runtime_error;
+using std::this_thread::sleep_for;
+using std::numeric_limits;
+using std::to_string;
+using std::string;
+using std::vector;
 
 const string default_file_name = "default_stack.idx";
 const int default_max_line_length = 4096;
@@ -54,8 +76,6 @@ FileStack::~FileStack() {
     close(fd);
 #endif
 }
-
-
 
 int FileStack::lock() {
 #ifndef WIN32
@@ -354,12 +374,10 @@ int FileStack::clear() {
     return stat;
 }
 
-
-
 bool FileStack::poll_query(const string & query, const double sleep_s, const size_t max_iter) {
     DBG("");
     string buf;
-    const chrono::duration<double> sleep_time(sleep_s);
+    const std::chrono::duration<double> sleep_time(sleep_s);
     for (size_t i=0; i < max_iter; ++i) {
         top(buf);
         if (buf.find(query) != string::npos) {
@@ -371,7 +389,7 @@ bool FileStack::poll_query(const string & query, const double sleep_s, const siz
         if (buf.find("STOP") != string::npos) {
             throw(runtime_error("STOP on FileStack " + file_name));
         }
-        this_thread::sleep_for(sleep_time);
+        sleep_for(sleep_time);
     }
     throw(runtime_error("Could not discover keyword " + query + " on FileStack " + file_name
                       + " within " + to_string(double(max_iter) * sleep_s) + " seconds."));
@@ -381,12 +399,12 @@ bool FileStack::poll_query(const string & query, const double sleep_s, const siz
 bool FileStack::poll_size(const size_t size, const double sleep_s, const size_t max_iter) {
     DBG("");
     string buf;
-    const chrono::duration<double> sleep_time(sleep_s);
+    const std::chrono::duration<double> sleep_time(sleep_s);
     for (size_t i=0; i < max_iter; ++i) {
         if (this->size() == size) {
             return true;
         }
-        this_thread::sleep_for(sleep_time);
+        sleep_for(sleep_time);
     }
     throw(runtime_error("Could not detect size " + to_string(size) + " of FileStack " + file_name
                       + " within " + to_string(double(max_iter) * sleep_s) + " seconds."));

@@ -17,29 +17,32 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #pragma once
-#include "../util/binary_buffer.h"
-#include "../basic/value.h"
+#include <utility>
+#include "util/binary_buffer.h"
+#include "basic/value.h"
 #include "sequence.h"
 
-typedef enum { op_match = 0, op_insertion = 1, op_deletion = 2, op_substitution = 3, op_frameshift_forward = 4, op_frameshift_reverse = 5 } Edit_operation;
+typedef enum { op_match = 0, op_insertion = 1, op_deletion = 2, op_substitution = 3, op_frameshift_forward = 4, op_frameshift_reverse = 5 } EditOperation;
 
 struct Reversed {};
 
-struct Packed_operation
+struct PackedOperation
 {
 	enum { OP_BITS = 2, COUNT_BITS = 8 - OP_BITS, MAX_COUNT = (1 << COUNT_BITS) - 1 };
-	Packed_operation(uint8_t code):
-		code (code)
-	{ }
-	Packed_operation(Edit_operation op, unsigned count):
-		code ((op<<COUNT_BITS) | count)
-	{ }
-	Packed_operation(Edit_operation op, Letter v) :
+	PackedOperation(uint8_t code) :
+		code(code)
+	{}
+	PackedOperation(EditOperation op, unsigned count) :
+		code((op << COUNT_BITS) | count)
+	{}
+	PackedOperation(EditOperation op, Letter v) :
 		code((op << COUNT_BITS) | (int)v)
-	{ }
+	{}
 	operator uint8_t() const
-	{ return code; }
-	Edit_operation op() const
+	{
+		return code;
+	}
+	EditOperation op() const
 	{
 		uint8_t o = code >> COUNT_BITS;
 		switch (o) {
@@ -53,7 +56,7 @@ struct Packed_operation
 				return op_substitution;
 			}
 		default:
-			return (Edit_operation)o;
+			return (EditOperation)o;
 		}
 	}
 	unsigned count() const
@@ -68,43 +71,47 @@ struct Packed_operation
 	}
 	Letter letter() const
 	{
-		return code&MAX_COUNT;
+		return code & MAX_COUNT;
 	}
-	static Packed_operation terminator()
-	{ return Packed_operation(op_match, 0u); }
-	static Packed_operation frameshift_forward()
+	static PackedOperation terminator()
 	{
-		return Packed_operation(op_substitution, (unsigned)AMINO_ACID_COUNT + 1);
+		return PackedOperation(op_match, 0u);
 	}
-	static Packed_operation frameshift_reverse()
+	static PackedOperation frameshift_forward()
 	{
-		return Packed_operation(op_substitution, (unsigned)AMINO_ACID_COUNT);
+		return PackedOperation(op_substitution, (unsigned)AMINO_ACID_COUNT + 1);
+	}
+	static PackedOperation frameshift_reverse()
+	{
+		return PackedOperation(op_substitution, (unsigned)AMINO_ACID_COUNT);
 	}
 	uint8_t code;
 };
 
-struct Combined_operation
+struct CombinedOperation
 {
-	Edit_operation op;
+	EditOperation op;
 	unsigned count;
 	Letter letter;
 };
 
-struct Packed_transcript
+struct PackedTranscript
 {
 
-	struct Const_iterator
+	struct ConstIterator
 	{
-		Const_iterator(const Packed_operation *op):
-			ptr_ (op)
-		{ gather(); }
+		ConstIterator(const PackedOperation* op) :
+			ptr_(op)
+		{
+			gather();
+		}
 		bool good() const
-		{ return *ptr_ != Packed_operation::terminator(); }
-		Const_iterator& operator++()
+		{ return *ptr_ != PackedOperation::terminator(); }
+		ConstIterator& operator++()
 		{ ++ptr_; gather(); return *this; }
-		const Combined_operation& operator*() const
+		const CombinedOperation& operator*() const
 		{ return op_; }
-		const Combined_operation* operator->() const
+		const CombinedOperation* operator->() const
 		{ return &op_; }
 	private:
 		void gather()
@@ -124,8 +131,8 @@ struct Packed_transcript
 				--ptr_;
 			}
 		}
-		const Packed_operation *ptr_;
-		Combined_operation op_;
+		const PackedOperation* ptr_;
+		CombinedOperation op_;
 	};
 
 	void read(BinaryBuffer::Iterator &it)
@@ -135,42 +142,42 @@ struct Packed_transcript
 		do {
 			it >> code;
 			data_.push_back(code);
-		} while (code != Packed_operation::terminator());
+		} while (code != PackedOperation::terminator());
 	}
 
-	Const_iterator begin() const
-	{ return Const_iterator (data_.data()); }
+	ConstIterator begin() const
+	{ return ConstIterator(data_.data()); }
 
-	const std::vector<Packed_operation>& data() const
+	const std::vector<PackedOperation>& data() const
 	{ return data_; }
 
-	const Packed_operation* ptr() const
+	const PackedOperation* ptr() const
 	{
 		return &data_[0];
 	}
 
-	void push_back(Edit_operation op)
+	void push_back(EditOperation op)
 	{
 		if (op == op_frameshift_forward)
-			data_.push_back(Packed_operation::frameshift_forward());
+			data_.push_back(PackedOperation::frameshift_forward());
 		else if (op == op_frameshift_reverse)
-			data_.push_back(Packed_operation::frameshift_reverse());
-		else if (data_.empty() || data_.back().op() != op || (data_.back().op() == op && data_.back().count() == Packed_operation::MAX_COUNT))
-			data_.push_back(Packed_operation(op, 1u));
+			data_.push_back(PackedOperation::frameshift_reverse());
+		else if (data_.empty() || data_.back().op() != op || (data_.back().op() == op && data_.back().count() == PackedOperation::MAX_COUNT))
+			data_.push_back(PackedOperation(op, 1u));
 		else
 			++data_.back().code;
 	}
 
-	void push_back(Edit_operation op, Letter l)
+	void push_back(EditOperation op, Letter l)
 	{
-		data_.push_back(Packed_operation(op, l));
+		data_.push_back(PackedOperation(op, l));
 	}
 
-	void push_back(Edit_operation op, unsigned count)
+	void push_back(EditOperation op, unsigned count)
 	{
 		while (count > 0) {
-			const unsigned n = std::min(count, (unsigned)Packed_operation::MAX_COUNT);
-			data_.push_back(Packed_operation(op, n));
+			const unsigned n = std::min(count, (unsigned)PackedOperation::MAX_COUNT);
+			data_.push_back(PackedOperation(op, n));
 			count -= n;
 		}
 	}
@@ -187,7 +194,7 @@ struct Packed_transcript
 
 	void push_terminator()
 	{
-		data_.push_back(Packed_operation::terminator());
+		data_.push_back(PackedOperation::terminator());
 	}
 
 	void clear()
@@ -216,7 +223,7 @@ struct Packed_transcript
 
 private:
 
-	std::vector<Packed_operation> data_;
+	std::vector<PackedOperation> data_;
 
 	friend struct Hsp;
 

@@ -21,9 +21,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #pragma once
 #include <vector>
-#include "../basic/sequence.h"
-#include "../basic/value.h"
-#include "../stats/hauser_correction.h"
+#include <utility>
+#include "basic/sequence.h"
+#include "basic/value.h"
 
 template<typename Score = int8_t>
 struct LongScoreProfile

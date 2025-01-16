@@ -17,11 +17,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #pragma once
+#include <array>
 #include <vector>
 #include <stdexcept>
 #include <stdint.h>
+#include <utility>
 #include <string.h>
-#include "intrin.h"
 #include "algo/varint.h"
 
 struct BinaryBuffer : public std::vector<char>
@@ -41,7 +42,11 @@ struct BinaryBuffer : public std::vector<char>
 		void read(T &x)
 		{
 			check(sizeof(T));
+#ifdef __sparc__
+			std::copy(ptr_, ptr_ + sizeof(T), (char*)&x);
+#else
 			x = *(T*)(&*ptr_);
+#endif
 			ptr_ += sizeof(T);
 		}
 		template<typename T>
@@ -71,7 +76,14 @@ struct BinaryBuffer : public std::vector<char>
 		}
 		void read_varint(uint32_t &dst)
 		{
-			::read_varint(*this, dst);
+			check(1);
+			std::array<char, 5> buf;
+			std::copy(ptr_, std::min(ptr_ + 5, end_), buf.begin());
+			std::pair<uint32_t, const char*> r = read_varuint32(buf.data());
+			const int64_t n = r.second - buf.data();
+			check(n);
+			ptr_ += n;
+			dst = r.first;
 		}
 		Iterator& operator>>(std::string &dst)
 		{
@@ -85,7 +97,9 @@ struct BinaryBuffer : public std::vector<char>
 		{ return ptr_ < end_; }
 	private:
 		void check(size_t size) const
-		{ if(ptr_+size > end_) throw std::runtime_error("Unexpected end of file."); }
+		{
+			if (ptr_ + size > end_) throw std::runtime_error("Unexpected end of file.");
+		}
 		std::vector<char>::const_iterator ptr_, end_;
 	};
 

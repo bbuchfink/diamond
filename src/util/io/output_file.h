@@ -17,12 +17,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #pragma once
-#include <map>
-#include <stdexcept>
 #include <string>
-#include <utility>
 #include "serializer.h"
-#include "../text_buffer.h"
 
 enum class Compressor { NONE, ZLIB, ZSTD };
 
@@ -34,17 +30,6 @@ struct OutputFile : public Serializer
 #endif
 
 	void remove();
-
-	template<typename _k, typename _v>
-	void write_map_csv(typename std::map<_k, _v>::const_iterator begin, typename std::map<_k, _v>::const_iterator end)
-	{
-		TextBuffer buf;
-		for (typename std::map<_k, _v>::const_iterator i = begin; i != end; ++i) {
-			buf << i->first << '\t' << i->second << '\n';
-			write(buf.data(), buf.size());
-			buf.clear();
-		}
-	}
 
 	std::string file_name() const
 	{

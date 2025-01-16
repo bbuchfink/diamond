@@ -23,8 +23,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <string>
 #include <array>
 #include <vector>
-#include <string.h>
-#include "../../basic/sequence.h"
+#include "basic/sequence.h"
 #include "../io/output_file.h"
 
 namespace Util { namespace Seq {
@@ -44,9 +43,27 @@ static inline Sequence clip(const Letter *seq, int len, int anchor) {
 }
 
 extern const char* id_delimiters;
+extern const char* FASTA_HEADER_SEP[2];
 
+struct AccessionParsing {
+	AccessionParsing() :
+		uniref_prefix(0),
+		gi_prefix(0),
+		prefix_before_pipe(0),
+		suffix_after_pipe(0),
+		suffix_after_dot(0),
+		pdb_suffix(0)
+	{}
+	friend std::ostream& operator<<(std::ostream& s, const AccessionParsing& stat);
+	int64_t uniref_prefix, gi_prefix, prefix_before_pipe, suffix_after_pipe, suffix_after_dot, pdb_suffix;
+};
+
+std::string get_accession(const std::string& t, AccessionParsing& stat);
+std::vector<std::string> accession_from_title(const char* title, bool parse_seqids, AccessionParsing& stat);
 std::string all_seqids(const char* s);
-std::string seqid(const char* title, bool short_seqids);
+std::string seqid(const char* title);
+std::vector<std::string> seq_titles(const char* title);
+
 void get_title_def(const std::string& s, std::string& title, std::string& def);
 bool is_fully_masked(const Sequence& seq);
 std::array<std::vector<Letter>, 6> translate(const Sequence& seq);
@@ -54,39 +71,8 @@ Loc find_orfs(std::vector<Letter>& seq, const Loc min_len);
 bool looks_like_dna(const Sequence& seq);
 std::vector<Score> window_scores(Sequence seq1, Sequence seq2, Loc window);
 const char* fix_title(std::string& s);
-
-struct FastaIterator {
-	FastaIterator(const char* ptr, const char* end) :
-		ptr_(ptr),
-		end_(end)
-	{}
-	bool good() const {
-		return ptr_ < end_;
-	}
-	std::string operator*() const {
-		if (*ptr_ == '>') {
-			return seqid(ptr_ + 1, false);
-		}
-		else {
-			std::string r;
-			const char* p = ptr_;
-			do {
-				const char* n = std::find(p, end_, '\n');
-				r.append(p, n);
-				p = n + 1;
-			} while (p < end_);
-			return r;
-		}
-	}
-	FastaIterator& operator++() {
-		if (*ptr_ == '>')
-			ptr_ = std::find(ptr_, end_, '\n') + 1;
-		else
-			ptr_ = end_;
-		return *this;
-	}
-private:
-	const char* ptr_, *end_;
-};
+std::vector<Letter> from_string(const char* s, const ValueTraits& t, int64_t line);
+void from_string(const char* s, std::vector<Letter>& out, const ValueTraits& t, int64_t line);
+void from_string(const std::string& s, std::vector<Letter>& out, const ValueTraits& t, int64_t line);
 
 }}

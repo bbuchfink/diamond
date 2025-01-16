@@ -25,17 +25,17 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <list>
 #include <set>
 #include <iostream>
-#include "../basic/sequence.h"
-#include "../basic/match.h"
-#include "../stats/score_matrix.h"
-//#include "../align/extend_ungapped.h"
-#include "../output/output_format.h"
-#include "../util/hsp/approx_hsp.h"
-#include "chaining.h"
-#include "../util/util.h"
-#include "../dp/ungapped.h"
+#include "basic/sequence.h"
+#include "basic/match.h"
+#include "stats/score_matrix.h"
+#include "output/output_format.h"
+#include "util/hsp/approx_hsp.h"
+#include "util/util.h"
+#include "dp/ungapped.h"
 #include "aligner.h"
 #include "diag_graph.h"
+#include "util/geo/diagonal_segment.h"
+#include "dp/dp.h"
 
 using std::endl;
 using std::cout;

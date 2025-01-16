@@ -104,13 +104,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 
-#include "../basic/config.h"
+#include "basic/config.h"
 #include "score_matrix.h"
-#include <string.h>
-#include <assert.h>
-#include <math.h>
-#include <stdlib.h>
-#include "../lib/blast/nlm_linear_algebra.h"
+#include "blast/nlm_linear_algebra.h"
 #include "cbs.h"
 
 using std::vector;

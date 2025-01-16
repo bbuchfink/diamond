@@ -1,3 +1,23 @@
+/****
+DIAMOND protein aligner
+Copyright (C) 2019-2024 Max Planck Society for the Advancement of Science e.V.
+
+Code developed by Klaus Reuter
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+****/
+
 #include <iostream>
 #include <string>
 #include <vector>
@@ -17,8 +37,13 @@
 #include "filestack.h"
 #include "parallelizer.h"
 
-using namespace std;
-
+using std::shared_ptr;
+using std::runtime_error;
+using std::to_string;
+using std::cerr;
+using std::endl;
+using std::string;
+using std::vector;
 
 std::shared_ptr<Parallelizer> Parallelizer::instance_ptr = nullptr;
 
@@ -214,8 +239,8 @@ bool Parallelizer::delete_stack(const std::string & tag) {
 
 
 void Parallelizer::sleep(const double sleep_s) {
-    const chrono::duration<double> sleep_time(sleep_s);
-    this_thread::sleep_for(sleep_time);
+    const std::chrono::duration<double> sleep_time(sleep_s);
+    std::this_thread::sleep_for(sleep_time);
 }
 
 
@@ -240,8 +265,8 @@ void Parallelizer::log(const string & buf) {
 	auto log_stack = get_stack(LOG);
 
     // we use ms since the Epoch as the universal timestamp
-    const auto ms = chrono::duration_cast<chrono::milliseconds>(
-            chrono::system_clock::now() - chrono::time_point<chrono::system_clock>{}
+    const auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::system_clock::now() - std::chrono::time_point<std::chrono::system_clock>{}
         ).count();
     const string tagged_buf = to_string(ms) + ' ' + buf + '\n';
 

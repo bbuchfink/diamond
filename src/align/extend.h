@@ -20,15 +20,15 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #pragma once
 #include <list>
-#include <algorithm>
-#include <float.h>
-#include "../basic/match.h"
-#include "../basic/statistics.h"
-#include "../util/text_buffer.h"
-#include "../run/config.h"
-#include "../dp/flags.h"
-#include "../stats/cbs.h"
-#include "../output/def.h"
+#include <array>
+#include "basic/match.h"
+#include "basic/statistics.h"
+#include "util/text_buffer.h"
+#include "run/config.h"
+#include "dp/flags.h"
+#include "stats/cbs.h"
+#include "output/def.h"
+#include "basic/const.h"
 
 namespace Extension {
 

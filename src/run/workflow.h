@@ -21,9 +21,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #pragma once
 #include <memory>
-#include "../data/sequence_file.h"
-#include "../util/io/text_input_file.h"
-#include "../util/io/consumer.h"
+#include "data/sequence_file.h"
+#include "util/io/consumer.h"
 
 namespace Search {
 

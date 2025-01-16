@@ -1,14 +1,15 @@
 #pragma once
-#include "../util/data_structures/double_array.h"
-#include "../data/flags.h"
-#include "../data/sequence_set.h"
+#include "util/data_structures/double_array.h"
+#include "data/flags.h"
+#include "data/sequence_set.h"
+#include "basic/seed.h"
 
 namespace Search {
 
 struct KmerRanking {
 
-	KmerRanking(const SequenceSet& queries, DoubleArray<PackedLocId> *query_seed_hits, DoubleArray<PackedLocId> *ref_seed_hits);
-	KmerRanking(const SequenceSet& queries, DoubleArray<PackedLoc>* query_seed_hits, DoubleArray<PackedLoc>* ref_seed_hits);
+	KmerRanking(const SequenceSet& queries, SeedPartition seedp_count, DoubleArray<PackedLocId> *query_seed_hits, DoubleArray<PackedLocId> *ref_seed_hits);
+	KmerRanking(const SequenceSet& queries, SeedPartition seedp_count, DoubleArray<PackedLoc>* query_seed_hits, DoubleArray<PackedLoc>* ref_seed_hits);
 	KmerRanking(const SequenceSet& queries);
 
 	int highest_ranking(const PackedLocId* begin, const PackedLocId* end) {

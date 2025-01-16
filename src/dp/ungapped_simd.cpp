@@ -17,13 +17,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #include <assert.h>
-#include <algorithm>
 #include "score_vector_int8.h"
-#include "../util/simd/vector.h"
 #include "ungapped_simd.h"
-#include "../util/simd/transpose.h"
+#include "util/simd/transpose.h"
 #include "ungapped.h"
-#include "../util/simd/dispatch.h"
+#include "util/simd/dispatch.h"
+#include "util/simd/vector.h"
 
 using namespace DISPATCH_ARCH;
 

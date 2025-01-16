@@ -17,10 +17,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #include <stdio.h>
-#ifdef _MSC_VER
-#define NOMINMAX
-#include <Windows.h>
-#else
+#ifndef _MSC_VER
 #include <fcntl.h>
 #include <unistd.h>
 #include <errno.h>
@@ -28,7 +25,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <sys/types.h>
 #include <sys/stat.h>
 #endif
-
 #include "file_source.h"
 #include "../system.h"
 
@@ -78,6 +74,10 @@ void FileSource::rewind()
 	::rewind(f_);
 }
 
+bool FileSource::eof() {
+	return feof(f_);
+}
+
 void FileSource::seek(int64_t pos, int origin)
 {
 #ifdef _MSC_VER
@@ -93,14 +93,6 @@ void FileSource::seek(int64_t pos, int origin)
 #endif
 }
 
-/*void FileSource::putback(char c)
-{
-	if ((char)ungetc((int)c, f_) != c) {
-		perror(0);
-		throw std::runtime_error("Error calling ungetc.");
-	}
-}*/
-
 size_t FileSource::read(char *ptr, size_t count)
 {
 	size_t n;
@@ -109,7 +101,7 @@ size_t FileSource::read(char *ptr, size_t count)
 			return n;
 		else {
 			perror(0);
-			throw File_read_exception(file_name_);
+			throw FileReadException(file_name_);
 		}
 	}
 	return n;

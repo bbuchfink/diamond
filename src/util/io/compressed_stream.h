@@ -20,13 +20,15 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <string>
 #include <zlib.h>
 #include "stream_entity.h"
+#include "input_stream_buffer.h"
 
 struct ZlibSource : public StreamEntity
 {
-	ZlibSource(StreamEntity *prev);
+	ZlibSource(InputStreamBuffer *prev);
 	virtual size_t read(char *ptr, size_t count);
 	virtual void close();
 	virtual void rewind();
+	virtual bool eof() override;
 private:
 	void init();
 	z_stream strm;

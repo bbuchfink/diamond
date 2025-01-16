@@ -34,7 +34,7 @@ void ZlibSource::init()
 		throw std::runtime_error("Error opening compressed file (inflateInit): " + file_name());
 }
 
-ZlibSource::ZlibSource(StreamEntity *prev):
+ZlibSource::ZlibSource(InputStreamBuffer *prev):
 	StreamEntity(prev)
 {
 	init();
@@ -42,18 +42,21 @@ ZlibSource::ZlibSource(StreamEntity *prev):
 
 size_t ZlibSource::read(char *ptr, size_t count)
 {
+	InputStreamBuffer* buf = static_cast<InputStreamBuffer*>(prev_);
 	strm.avail_out = (uInt)count;
 	strm.next_out = (Bytef*)ptr;
 	while (strm.avail_out > 0 && !eos_) {
 		if (strm.avail_in == 0) {
-			pair<const char*, const char*> in = prev_->read();
+			if (buf->end == buf->begin)
+				buf->fetch();
 
-			strm.avail_in = (uInt)(in.second - in.first);
+			strm.avail_in = (uInt)(buf->end - buf->begin);
 			if (strm.avail_in == 0) {
 				eos_ = true;
 				break;
 			}
-			strm.next_in = (Bytef*)in.first;
+			strm.next_in = (Bytef*)buf->begin;
+			buf->begin += strm.avail_in;
 		}
 
 		int ret = inflate(&strm, Z_NO_FLUSH);
@@ -63,9 +66,13 @@ size_t ZlibSource::read(char *ptr, size_t count)
 				throw std::runtime_error("Error initializing compressed stream (inflateInit): " + file_name());
 		}
 		else if (ret != Z_OK)
-			throw std::runtime_error("Inflate error.");
+			throw std::runtime_error("Error reading gzip-compressed input file. The file may be corrupted.");
 	}
 	return count - strm.avail_out;
+}
+
+bool ZlibSource::eof() {
+	return eos_;
 }
 
 void ZlibSource::close()

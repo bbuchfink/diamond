@@ -1,6 +1,10 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2017 Benjamin Buchfink <buchfink@gmail.com>
+Copyright (C) 2013-2024 Max Planck Society for the Advancement of Science e.V.
+						Benjamin Buchfink
+						Eberhard Karls Universitaet Tuebingen
+
+Code developed by Benjamin Buchfink <buchfink@gmail.com>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -19,21 +23,21 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #pragma once
 #include <vector>
 #include "value.h"
-#include "../util/binary_buffer.h"
+#include "util/binary_buffer.h"
 #include "sequence.h"
 
 inline bool has_n(const Sequence &seq)
 {
-	for(Loc i=0;i<seq.length();++i)
-		if(seq[i] == 4)
+	for (Loc i = 0; i < seq.length(); ++i)
+		if (seq[i] == 4)
 			return true;
 	return false;
 }
 
-struct Packed_sequence
+struct PackedSequence
 {
 
-	Packed_sequence(const Sequence &seq, SequenceType type):
+	PackedSequence(const Sequence &seq, SequenceType type):
 		has_n_ (type == SequenceType::nucleotide ? ::has_n(seq) : false)
 	{
 		switch (type) {
@@ -48,7 +52,7 @@ struct Packed_sequence
 		}
 	}
 
-	Packed_sequence(BinaryBuffer::Iterator &it, unsigned len, bool has_n, unsigned b):
+	PackedSequence(BinaryBuffer::Iterator &it, unsigned len, bool has_n, unsigned b):
 		has_n_ (has_n)
 	{
 		const size_t l = (len*b+7)/8;
@@ -59,11 +63,11 @@ struct Packed_sequence
 	{
 		dst.clear();
 		unsigned x = 0, n = 0, l = 0;
-		const unsigned mask = (1<<b)-1;
-		for(unsigned i=0;i<data_.size();++i) {
+		const unsigned mask = (1 << b) - 1;
+		for (unsigned i = 0; i < data_.size(); ++i) {
 			x |= (unsigned)data_[i] << n;
 			n += 8;
-			while(n >= b && l < len) {
+			while (n >= b && l < len) {
 				dst.push_back(x & mask);
 				n -= b;
 				x >>= b;

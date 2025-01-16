@@ -20,8 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #pragma once
-#include "../../basic/translated_position.h"
-#include "../../basic/sequence.h"
+#include "basic/translated_position.h"
 
 struct DiagonalSegment
 {

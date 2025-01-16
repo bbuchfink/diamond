@@ -1,7 +1,4 @@
-#include <stdio.h>
-#include <stdlib.h>
 #include <stdexcept>
-#include <string.h>
 #include <iostream>
 #include "system.h"
 #include "../string/string.h"
@@ -15,13 +12,11 @@
   #include <sys/mman.h>
   #include <fcntl.h>
   #include <unistd.h>
-  #ifndef  __APPLE__
-    #ifdef __FreeBSD__
-      #include <sys/types.h>
-      #include <sys/sysctl.h>
-    #else
-      #include <sys/sysinfo.h>
-    #endif
+  #ifdef __FreeBSD__
+    #include <sys/types.h>
+    #include <sys/sysctl.h>
+  #elif defined(HAVE_SYSINFO)
+    #include <sys/sysinfo.h>
   #endif
 #endif
 
@@ -137,9 +132,7 @@ void reset_color(bool err) {
 }
 
 double total_ram() {
-#if defined(WIN32) || defined(__APPLE__)
-	return 0.0;
-#elif defined(__FreeBSD__)
+#ifdef __FreeBSD__
 	int mib[2] = { CTL_HW, HW_REALMEM };
 	u_int namelen = sizeof(mib) / sizeof(mib[0]);
 	uint64_t oldp;
@@ -149,11 +142,13 @@ double total_ram() {
 		return 0.0;
 	else
 		return oldp / 1e9;
-#else
+#elif defined(HAVE_SYSINFO)
 	struct sysinfo info;
 	if (sysinfo(&info) != 0)
 		return 0.0;
 	return (double)info.totalram / 1e9;
+#else
+	return 0.0;
 #endif
 }
 

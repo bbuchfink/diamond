@@ -20,8 +20,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 #include <set>
 #include "output_format.h"
-#include "../data/taxonomy.h"
-#include "../util/sequence/sequence.h"
+#include "util/sequence/sequence.h"
+#include "data/sequence_file.h"
 
 using std::set;
 using std::vector;
@@ -29,6 +29,8 @@ using std::string;
 
 static string taxon_lineage(TaxId taxid, SequenceFile& db) {
 	const vector<TaxId> lin = db.taxon_nodes().lineage(taxid);
+	if (lin.empty())
+		return "N/A";
 	string out(db.taxon_scientific_name(lin.front()));
 	for (vector<TaxId>::const_iterator i = lin.begin() + 1; i != lin.end(); ++i)
 		out += "; " + db.taxon_scientific_name(*i);

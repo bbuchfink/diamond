@@ -20,9 +20,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <thread>
 #include <atomic>
 #include "pipeline.h"
-#include "../../dp/dp.h"
-#include "../../util/geo/interval_partition.h"
-#include "../../util/simd.h"
+#include "dp/dp.h"
+#include "util/geo/interval_partition.h"
 
 using std::thread;
 using std::list;
@@ -38,9 +37,9 @@ struct Target : public ::Target
 
 	void ungapped_stage(QueryMapper &mapper)
 	{
-		vector<Seed_hit>::iterator hits = mapper.seed_hits.begin() + begin, hits_end = mapper.seed_hits.begin() + end;
+		vector<SeedHit>::iterator hits = mapper.seed_hits.begin() + begin, hits_end = mapper.seed_hits.begin() + end;
 		top_hit = hits[0];
-		for (vector<Seed_hit>::iterator i = hits + 1; i < hits_end; ++i)
+		for (vector<SeedHit>::iterator i = hits + 1; i < hits_end; ++i)
 			if (i->ungapped.score > top_hit.ungapped.score)
 				top_hit = *i;
 		filter_score = top_hit.ungapped.score;
@@ -54,11 +53,11 @@ struct Target : public ::Target
 		return TranslatedPosition::absolute_interval(TranslatedPosition(i0, f), TranslatedPosition(i1, f), query_dna_len);
 	}
 
-	void add_strand(QueryMapper &mapper, vector<DpTarget> &v, vector<Seed_hit>::iterator begin, vector<Seed_hit>::iterator end, int target_idx)
+	void add_strand(QueryMapper &mapper, vector<DpTarget> &v, vector<SeedHit>::iterator begin, vector<SeedHit>::iterator end, int target_idx)
 	{
 		if (end == begin) return;
 		const int band = config.padding, d_min = -int(subject.length() - 1), d_max = int(mapper.query_seq(0).length() - 1);
-		vector<Seed_hit>::iterator i = begin;
+		vector<SeedHit>::iterator i = begin;
 		int d0 = std::max(i->diagonal() - band, d_min), d1 = std::min(i->diagonal() + band, d_max);
 		++i;
 		for (; i < end; ++i) {
@@ -76,14 +75,14 @@ struct Target : public ::Target
 
 	void add(QueryMapper &mapper, vector<DpTarget> &vf, vector<DpTarget> &vr, int target_idx)
 	{
-		vector<Seed_hit>::iterator hits = mapper.seed_hits.begin() + begin, hits_end = mapper.seed_hits.begin() + end;
+		vector<SeedHit>::iterator hits = mapper.seed_hits.begin() + begin, hits_end = mapper.seed_hits.begin() + end;
 		Strand strand = top_hit.strand();
 		if(mapper.target_parallel)
-			std::stable_sort(hits, hits_end, Seed_hit::compare_diag_strand);
+			std::stable_sort(hits, hits_end, SeedHit::compare_diag_strand);
 		else
-			std::stable_sort(hits, hits_end, Seed_hit::compare_diag_strand2);
+			std::stable_sort(hits, hits_end, SeedHit::compare_diag_strand2);
 
-		const auto it = find_if(hits, hits_end, [](const Seed_hit &x) { return x.strand() == REVERSE; });
+		const auto it = find_if(hits, hits_end, [](const SeedHit &x) { return x.strand() == REVERSE; });
 		if(strand == FORWARD || mapper.target_parallel)
 			add_strand(mapper, vf, hits, it, target_idx);
 		if (strand == REVERSE || mapper.target_parallel)
@@ -120,7 +119,7 @@ struct Target : public ::Target
 	bool is_outranked(const IntervalPartition &ip, int source_query_len, double rr) const
 	{
 		const Interval r = ungapped_query_range(source_query_len);
-		if (config.toppercent == 100.0) {
+		if (config.toppercent.blank()) {
 			const int min_score = int((double)filter_score / rr);
 			return (double)ip.covered(r, min_score, IntervalPartition::MinScore()) / r.length() * 100.0 >= config.query_range_cover;
 		}
@@ -145,7 +144,7 @@ void Pipeline::range_ranking(const int64_t max_target_seqs)
 		else {
 			ip.insert(t->ungapped_query_range(source_query_len), t->filter_score);
 			++i;
-		}			
+		}
 	}
 }
 
@@ -202,7 +201,7 @@ void Pipeline::run(Statistics &stat, const Search::Config& cfg)
 		log_stream << "Query: " << query_id << "; Seed hits: " << seed_hits.size() << "; Targets: " << n_targets() << endl;
 	}
 
-	if (n_targets() > cfg.max_target_seqs || config.toppercent < 100.0) {
+	if (n_targets() > cfg.max_target_seqs || config.toppercent.present()) {
 		stat.inc(Statistics::TARGET_HITS1, n_targets());
 		timer.go("Swipe (score only)");
 		run_swipe(true);
@@ -227,18 +226,20 @@ void Pipeline::run(Statistics &stat, const Search::Config& cfg)
 					*i = max(*i, *j);
 			}
 
-			timer.go("Finding outranked targets");
-			for (auto i = targets.begin(); i < targets.end(); ++i)
-				if ((*i)->is_outranked(intervals[0], 1.0 - config.toppercent / 100)) {
-					delete *i;
-					*i = nullptr;
-				}
+			if (config.toppercent.present()) {
+				timer.go("Finding outranked targets");
+				for (auto i = targets.begin(); i < targets.end(); ++i)
+					if ((*i)->is_outranked(intervals[0], 1.0 - config.toppercent / 100)) {
+						delete* i;
+						*i = nullptr;
+					}
 
-			timer.go("Removing outranked targets");
-			vector<::Target*> &v(*static_cast<vector<::Target*>*>(&targets));
-			auto it = remove_if(v.begin(), v.end(), [](::Target *t) { return t == nullptr; });
-			v.erase(it, v.end());
-			timer.finish();
+				timer.go("Removing outranked targets");
+				vector<::Target*>& v(*static_cast<vector<::Target*>*>(&targets));
+				auto it = remove_if(v.begin(), v.end(), [](::Target* t) { return t == nullptr; });
+				v.erase(it, v.end());
+				timer.finish();
+			}
 			log_stream << "Targets after score-only ranking: " << targets.size() << endl;
 		}
 		else {

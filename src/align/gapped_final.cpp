@@ -1,8 +1,8 @@
 #include <array>
 #include "target.h"
-#include "../dp/dp.h"
-#include "../output/output_format.h"
-#include "../util/util.h"
+#include "dp/dp.h"
+#include "output/output_format.h"
+#include "util/util.h"
 #include "def.h"
 
 using std::array;
@@ -57,7 +57,7 @@ static void add_dp_targets(const Target& target, int target_idx, const Sequence*
 	}
 }
 
-vector<Match> align(vector<Target>& targets, const int64_t previous_matches, const Sequence* query_seq, const char* query_id, const Bias_correction* query_cb, int source_query_len, double query_self_aln_score, DP::Flags flags, const HspValues first_round, const bool first_round_culling, Statistics& stat, const Search::Config& cfg) {
+vector<Match> align(vector<Target>& targets, const int64_t previous_matches, const Sequence* query_seq, const char* query_id, const HauserCorrection* query_cb, int source_query_len, double query_self_aln_score, DP::Flags flags, const HspValues first_round, const bool first_round_culling, Statistics& stat, const Search::Config& cfg) {
 	static const int64_t MIN_STEP = 16;
 	vector<Match> r;
 	if (targets.empty())
@@ -81,11 +81,11 @@ vector<Match> align(vector<Target>& targets, const int64_t previous_matches, con
 	hsp_values |= filter_hspvalues();
 
 	vector<Target>::iterator it = targets.begin();
-	auto goon = [&r, &cfg, previous_matches]() { return config.toppercent == 100.0 ? ((int64_t)r.size() + previous_matches) < cfg.max_target_seqs : true; };
+	auto goon = [&r, &cfg, previous_matches]() { return config.toppercent.blank() ? ((int64_t)r.size() + previous_matches) < cfg.max_target_seqs : true; };
 
 	do {
 		array<DP::Targets, MAX_CONTEXT> dp_targets;
-		const int64_t step_size = !first_round_culling && config.toppercent == 100.0
+		const int64_t step_size = !first_round_culling && config.toppercent.blank()
 			? std::min(make_multiple(std::max(cfg.max_target_seqs - (int64_t)r.size(), MIN_STEP), MIN_STEP), int64_t(targets.end() - it))
 			: targets.size();
 		
@@ -112,6 +112,8 @@ vector<Match> align(vector<Target>& targets, const int64_t previous_matches, con
 				source_query_len,
 				::Stats::CBS::hauser(config.comp_based_stats) ? query_cb[frame].int8.data() : nullptr,
 				flags,
+				false,
+				0,
 				hsp_values,
 				stat,
 				cfg.thread_pool.get()

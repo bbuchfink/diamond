@@ -1,13 +1,14 @@
 #include "zstd_stream.h"
 
 using std::pair;
+using std::runtime_error;
 
 ZstdSink::ZstdSink(StreamEntity* prev) :
 	StreamEntity(prev),
 	stream(ZSTD_createCStream())
 {
 	if (!stream)
-		throw std::runtime_error("ZSTD_createCStream error");
+		throw runtime_error("ZSTD_createCStream error");
 }
 
 void ZstdSink::write(const char* ptr, size_t count)
@@ -23,7 +24,7 @@ void ZstdSink::write(const char* ptr, size_t count)
 		out_buf.size = out.second - out.first;
 		out_buf.pos = 0;
 		if(ZSTD_isError(ZSTD_compressStream(stream, &out_buf, &in_buf)))
-			throw std::runtime_error("ZSTD_compressStream");
+			throw runtime_error("ZSTD_compressStream");
 		prev_->flush(out_buf.pos);
 	} while (in_buf.pos < in_buf.size);
 }
@@ -40,7 +41,7 @@ void ZstdSink::close()
 		out_buf.size = out.second - out.first;
 		out_buf.pos = 0;
 		if (ZSTD_isError(n = ZSTD_endStream(stream, &out_buf)))
-			throw std::runtime_error("ZSTD_endStream");
+			throw runtime_error("ZSTD_endStream");
 		prev_->flush(out_buf.pos);
 	} while (n > 0);
 	ZSTD_freeCStream(stream);
@@ -48,7 +49,7 @@ void ZstdSink::close()
 	prev_->close();
 }
 
-ZstdSource::ZstdSource(StreamEntity* prev):
+ZstdSource::ZstdSource(InputStreamBuffer* prev):
 StreamEntity(prev)
 {
 	init();
@@ -70,21 +71,28 @@ size_t ZstdSource::read(char* ptr, size_t count)
 	out_buf.dst = ptr;
 	out_buf.pos = 0;
 	out_buf.size = count;
+	InputStreamBuffer* buf = static_cast<InputStreamBuffer*>(prev_);
 	while (out_buf.pos < out_buf.size && !eos_) {
 		if (in_buf.pos >= in_buf.size) {
-			pair<const char*, const char*> in = prev_->read();
+			if (buf->begin == buf->end)
+				buf->fetch();
 			in_buf.pos = 0;
-			in_buf.size = in.second - in.first;
-			in_buf.src = in.first;
+			in_buf.size = buf->end - buf->begin;
+			in_buf.src = buf->begin;
+			buf->begin += in_buf.size;
 			if (in_buf.size == 0) {
 				eos_ = true;
 				break;
 			}
 		}
 		if (ZSTD_isError(ZSTD_decompressStream(stream, &out_buf, &in_buf)))
-			throw std::runtime_error("ZSTD_decompressStream");
+			throw runtime_error("ZSTD_decompressStream");
 	}
 	return out_buf.pos;
+}
+
+bool ZstdSource::eof() {
+	return eos_;
 }
 
 void ZstdSource::close()

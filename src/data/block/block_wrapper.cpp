@@ -126,7 +126,7 @@ int64_t BlockWrapper::sequence_count() const {
 	return block_.seqs().size();
 }
 
-size_t BlockWrapper::letters() const {
+int64_t BlockWrapper::letters() const {
 	return block_.seqs().letters();
 }
 

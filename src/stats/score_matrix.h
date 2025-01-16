@@ -21,14 +21,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #pragma once
-#include <limits>
+#include <limits.h>
 #include <ostream>
 #include <math.h>
 #include <stdint.h>
-#include "../util/log_stream.h"
-#include "../basic/value.h"
-#include "../lib/alp/sls_alignment_evaluer.hpp"
-#include "../stats/standard_matrix.h"
+#include "basic/value.h"
+#include "alp/sls_alignment_evaluer.hpp"
+#include "stats/standard_matrix.h"
 
 const double LN_2 = 0.69314718055994530941723212145818;
 
@@ -38,7 +37,7 @@ struct ScoreMatrix
 	struct Custom {};
 
 	ScoreMatrix() :ln_k_(0.0) {}
-	ScoreMatrix(const std::string& matrix, int gap_open, int gap_extend, int frame_shift, int stop_match_score, uint64_t db_letters = 0, int scale = 1, bool mmseqs_compat = false);
+	ScoreMatrix(const std::string& matrix, int gap_open, int gap_extend, int frame_shift, int stop_match_score, uint64_t db_letters = 0, int scale = 1);
 	ScoreMatrix(const std::string &matrix_file, int gap_open, int gap_extend, int stop_match_score, const Custom&, uint64_t db_letters = 0);
 
 	friend std::ostream& operator<<(std::ostream& s, const ScoreMatrix&m);

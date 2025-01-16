@@ -1,12 +1,36 @@
+/****
+DIAMOND protein aligner
+Copyright (C) 2019-2024 Max Planck Society for the Advancement of Science e.V.
+
+Code developed by Klaus Reuter
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+****/
+
 // various tools related to the multiprocessing parallelization, to be moved elsewhere
 
 #include <string>
 #include <vector>
 #include <fstream>
-#include <sstream>
 #include "multiprocessing.h"
 
-using namespace std;
+using std::stringstream;
+using std::ifstream;
+using std::ofstream;
+using std::ios;
+using std::string;
+using std::vector;
 
 vector<string> split(const string & str, const char delim) {
 	stringstream strstr(str);

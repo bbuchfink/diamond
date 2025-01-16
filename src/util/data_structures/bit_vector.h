@@ -21,10 +21,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #pragma once
 
-#include <mutex>
 #include <vector>
 #include <stdint.h>
-#include <algorithm>
 #include "../intrin.h"
 #include "../simd.h"
 
@@ -78,9 +76,10 @@ struct BitVector {
 			}
 		}
 		n += vhsumq_u16(acc);
-#endif
+#else
 		for (; i < data_.size(); ++i)
 			n += popcount64(data[i]);
+#endif
 		return n;
 	}
 

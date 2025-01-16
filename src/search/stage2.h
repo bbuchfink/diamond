@@ -20,19 +20,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <limits.h>
 #include "search.h"
-#include "../data/queries.h"
-#include "../data/reference.h"
-#include "../dp/ungapped.h"
-#include "../util/sequence/sequence.h"
-#include "../dp/ungapped_simd.h"
-#include "../dp/dp.h"
+#include "dp/ungapped.h"
+#include "util/sequence/sequence.h"
+#include "dp/ungapped_simd.h"
 #include "left_most.h"
-#include "../util/simd/vector.h"
-#include "../dp/scan_diags.h"
-#include "finger_print.h"
-#include "../util/text_buffer.h"
-#include "../util/memory/alignment.h"
-#include "../run/config.h"
+#include "run/config.h"
+#include "util/simd/vector.h"
+#include "data/block/block.h"
 
 using std::vector;
 using std::pair;
@@ -126,7 +120,7 @@ static void search_query_offset(const SeedLoc& q,
 					continue;
 #endif
 				work_set.stats.inc(Statistics::TENTATIVE_MATCHES2);
-				if (work_set.cfg.minimizer_window || config.sketch_size
+				if (work_set.cfg.minimizer_window || work_set.cfg.sketch_size
 					|| left_most_filter(query_clipped + interval_overhang, subjects[j] + interval_overhang, window_left - interval_overhang, shapes[sid].length_, work_set.context, sid == 0, sid, score_cutoff, chunked, hamming_filter_id)) {
 					work_set.stats.inc(Statistics::TENTATIVE_MATCHES3);
 					if (hit_count++ == 0)

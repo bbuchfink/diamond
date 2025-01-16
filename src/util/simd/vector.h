@@ -18,9 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#ifndef SIMD_VECTOR_H_
-#define SIMD_VECTOR_H_
-
+#pragma once
 #include "../simd.h"
 
 #if ARCH_ID == 3
@@ -33,6 +31,4 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "vector8_sse.h"
 #else
 #include "vector_generic.h"
-#endif
-
 #endif

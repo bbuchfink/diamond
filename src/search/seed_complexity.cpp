@@ -22,13 +22,15 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <thread>
 #include <atomic>
 #include "seed_complexity.h"
-#include "../data/block/block.h"
-#include "../util/algo/join_result.h"
-#include "../util/string/string.h"
+#include "data/block/block.h"
+#include "util/algo/join_result.h"
+#include "util/string/string.h"
+#include "util/log_stream.h"
 
 using std::array;
 using std::vector;
 using std::endl;
+using std::atomic;
 
 extern double lnfact[];
 std::unordered_set<uint64_t> soft_mask;
@@ -81,14 +83,15 @@ void Search::mask_seeds(const Shape& shape, const SeedPartitionRange& range, Dou
 
 	TaskTimer timer("Masking low complexity seeds");
 	SequenceSet& query_seqs = cfg.query->seqs();
-	std::atomic_int seedp(range.begin());
+	atomic<SeedPartition> rel_seedp(0);
 	std::atomic_size_t seed_count(0), masked_seed_count(0), query_count(0), target_count(0);
 	const double cut = cfg.seed_complexity_cut;
+	const SeedPartition partition_count = range.size();
 
 	auto worker = [&] {
-		int p;
+		SeedPartition p;
 		size_t sc(0), msc(0), qc(0), tc(0);
-		while ((p = seedp++) < range.end()) {
+		while ((p = rel_seedp.fetch_add(1, std::memory_order_relaxed)) < partition_count) {
 			for (auto it = JoinIterator<SeedLoc>(query_seed_hits[p].begin(), ref_seed_hits[p].begin()); it;) {
 				++sc;
 				const Range<SeedLoc*> query_hits = *it.r;

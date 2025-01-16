@@ -24,31 +24,33 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "seed_array.h"
 #include "seed_set.h"
 #include "enum_seeds.h"
-#include "../util/data_structures/deque.h"
-#include "../search/seed_complexity.h"
+#include "util/data_structures/deque.h"
+#include "util/memory/alignment.h"
 
-using std::array;
 using std::vector;
+using std::fill;
+using std::array;
 
-template<typename SeedLoc> using PtrSet = vector<array<typename SeedArray<SeedLoc>::Entry*, Const::seedp>>;
+template<typename SeedLoc> using PtrSet = vector<vector<typename SeedArray<SeedLoc>::Entry*>>;
 
 template<typename SeedLoc>
 char* SeedArray<SeedLoc>::alloc_buffer(const SeedHistogram &hst, int index_chunks)
 {
-	return new char[sizeof(Entry) * hst.max_chunk_size(index_chunks)];
+	return (char*)Util::Memory::aligned_malloc(sizeof(Entry) * hst.max_chunk_size(index_chunks), 32);
+	//return new char[sizeof(Entry) * hst.max_chunk_size(index_chunks)];
 }
 
 template char* SeedArray<PackedLoc>::alloc_buffer(const SeedHistogram&, int);
 template char* SeedArray<PackedLocId>::alloc_buffer(const SeedHistogram&, int);
 
-static int seed_bits(const SeedEncoding code) {
+static int seed_bits(const SeedEncoding code, int seedp_bits) {
 	switch (code) {
 	case SeedEncoding::HASHED:
 		return int(sizeof(SeedOffset) * 8);
 	case SeedEncoding::SPACED_FACTOR:
-		return int(ceil(shapes[0].weight_ * Reduction::reduction.bit_size_exact()) - Const::seedp_bits);
+		return int(ceil(shapes[0].weight_ * Reduction::reduction.bit_size_exact()) - seedp_bits);
 	case SeedEncoding::CONTIGUOUS:
-		return shapes[0].length_ * Reduction::reduction.bit_size() - Const::seedp_bits;
+		return shapes[0].length_ * Reduction::reduction.bit_size() - seedp_bits;
 	default:
 		break;
 	}
@@ -58,57 +60,65 @@ static int seed_bits(const SeedEncoding code) {
 template<typename SeedLoc>
 struct BufferedWriter
 {
+	using Entry = typename SeedArray<SeedLoc>::Entry;
 	static const unsigned BUFFER_SIZE = 16;
-	BufferedWriter(typename SeedArray<SeedLoc>::Entry* const* ptr)
-	{
-		memset(n, 0, sizeof(n));
-		memcpy(this->ptr, ptr, sizeof(this->ptr));
-	}
+	BufferedWriter(Entry* const* ptr, int seedp_bits, SeedPartitionRange seedp_range):
+		seedp_mask(::seedp_mask(seedp_bits)),
+		seedp_bits(seedp_bits),
+		ptr(ptr, ptr + seedp_range.size()),
+		buf(seedp_range.size()),
+		n(seedp_range.size(), 0)
+	{}
 	void push(PackedSeed key, int64_t value, uint32_t block_id, const SeedPartitionRange &range)
 	{
-		const unsigned p = seed_partition(key);
+		const SeedPartition p = seed_partition(key, seedp_mask);
 		if (range.contains(p)) {
-			assert(n[p] < BUFFER_SIZE);
-			buf[p][n[p]++] = typename SeedArray<SeedLoc>::Entry(seed_partition_offset(key), value, block_id);
-			if (n[p] == BUFFER_SIZE)
-				flush(p);
+			const SeedPartition d = p - range.begin();
+			assert(n[d] < BUFFER_SIZE);
+			buf[d][n[d]++] = Entry(seed_partition_offset(key, seedp_bits), value, block_id);
+			if (n[d] == BUFFER_SIZE)
+				flush(d);
 		}
 	}
-	NO_INLINE void flush(unsigned p)
+	NO_INLINE void flush(SeedPartition p)
 	{
-		memcpy(ptr[p], buf[p], (size_t)n[p] * sizeof(typename SeedArray<SeedLoc>::Entry));
+		memcpy(ptr[p], buf[p].data(), (size_t)n[p] * sizeof(Entry));
 		ptr[p] += n[p];
 		n[p] = 0;
 	}
 	void flush()
 	{
-		for (unsigned p = 0; p < Const::seedp; ++p)
+		for (SeedPartition p = 0; p < (SeedPartition)n.size(); ++p)
 			if (n[p] > 0)
 				flush(p);
 	}
-	typename SeedArray<SeedLoc>::Entry *ptr[Const::seedp], buf[Const::seedp][BUFFER_SIZE];
-	uint8_t n[Const::seedp];
+	const PackedSeed seedp_mask, seedp_bits;
+	vector<Entry*> ptr;
+	vector<array<Entry, BUFFER_SIZE>> buf;
+	vector<uint8_t> n;
 };
 
 template<typename SeedLoc>
-PtrSet<SeedLoc> build_iterators(SeedArray<SeedLoc> &sa, const ShapeHistogram &hst)
+static PtrSet<SeedLoc> build_iterators(SeedArray<SeedLoc> &sa, const ShapeHistogram &hst, SeedPartitionRange range)
 {
 	PtrSet<SeedLoc> iterators(hst.size());
-	for (unsigned i = 0; i < Const::seedp; ++i)
-		iterators[0][i] = sa.begin(i);
+	for (auto& v : iterators)
+		v.reserve(range.size());
+	for (SeedPartition i = 0; i < range.size(); ++i)
+		iterators[0].push_back(sa.begin(i));
 
 	for (unsigned i = 1; i < hst.size(); ++i)
-		for (unsigned j = 0; j < Const::seedp; ++j)
-			iterators[i][j] = iterators[i - 1][j] + hst[i - 1][j];
+		for (SeedPartition j = range.begin(); j < range.end(); ++j)
+			iterators[i].push_back(iterators[i - 1][j - range.begin()] + hst[i - 1][j]);
 	return iterators;
 }
 
 template<typename SeedLoc>
 struct BuildCallback
 {
-	BuildCallback(const SeedPartitionRange &range, typename SeedArray<SeedLoc>::Entry* const* ptr) :
+	BuildCallback(const SeedPartitionRange &range, typename SeedArray<SeedLoc>::Entry* const* ptr, int seedp_bits) :
 		range(range),
-		it(new BufferedWriter<SeedLoc>(ptr))
+		it(new BufferedWriter<SeedLoc>(ptr, seedp_bits, range))
 	{ }
 	bool operator()(uint64_t seed, uint64_t pos, uint32_t block_id, size_t shape)
 	{
@@ -123,76 +133,81 @@ struct BuildCallback
 	{
 		delete it;
 	}
-	SeedPartitionRange range;
+	const SeedPartitionRange range;
 	BufferedWriter<SeedLoc> *it;
 };
 
 template<typename SeedLoc> template<typename Filter>
-SeedArray<SeedLoc>::SeedArray(Block &seqs, const ShapeHistogram &hst, const SeedPartitionRange &range, char *buffer, const Filter *filter, const EnumCfg& enum_cfg) :
-	key_bits(seed_bits(enum_cfg.code)),
+SeedArray<SeedLoc>::SeedArray(Block &seqs, const ShapeHistogram &hst, const SeedPartitionRange &range, int seedp_bits, char *buffer, const Filter *filter, const EnumCfg& enum_cfg) :
+	key_bits(seed_bits(enum_cfg.code, seedp_bits)),
 	data_((Entry*)buffer)
 {
 	if (enum_cfg.shape_end - enum_cfg.shape_begin > 1)
 		throw std::runtime_error("SeedArray construction for >1 shape.");
-	begin_[range.begin()] = 0;
-	for (int i = range.begin(); i < range.end(); ++i)
-		begin_[i + 1] = begin_[i] + partition_size(hst, i);
+	begin_.reserve(range.size() + 1);
+	begin_.push_back(0);
+	for (SeedPartition i = range.begin(); i < range.end(); ++i)
+		begin_.push_back(begin_.back() + partition_size(hst, i));
 
-	PtrSet<SeedLoc> iterators(build_iterators(*this, hst));
+	PtrSet<SeedLoc> iterators(build_iterators(*this, hst, range));
 	PtrVector<BuildCallback<SeedLoc>> cb;
 	for (size_t i = 0; i < enum_cfg.partition->size() - 1; ++i)
-		cb.push_back(new BuildCallback<SeedLoc>(range, iterators[i].data()));
+		cb.push_back(new BuildCallback<SeedLoc>(range, iterators[i].data(), seedp_bits));
 	stats_ = enum_seeds(seqs, cb, filter, enum_cfg);
 }
 
-template SeedArray<PackedLoc>::SeedArray(Block&, const ShapeHistogram&, const SeedPartitionRange &, char *buffer, const NoFilter *, const EnumCfg&);
-template SeedArray<PackedLoc>::SeedArray(Block&, const ShapeHistogram&, const SeedPartitionRange &, char *buffer, const SeedSet *, const EnumCfg&);
-template SeedArray<PackedLoc>::SeedArray(Block&, const ShapeHistogram&, const SeedPartitionRange &, char *buffer, const HashedSeedSet *, const EnumCfg&);
-template SeedArray<PackedLocId>::SeedArray(Block&, const ShapeHistogram&, const SeedPartitionRange&, char* buffer, const NoFilter*, const EnumCfg&);
-template SeedArray<PackedLocId>::SeedArray(Block&, const ShapeHistogram&, const SeedPartitionRange&, char* buffer, const SeedSet*, const EnumCfg&);
-template SeedArray<PackedLocId>::SeedArray(Block&, const ShapeHistogram&, const SeedPartitionRange&, char* buffer, const HashedSeedSet*, const EnumCfg&);
+template SeedArray<PackedLoc>::SeedArray(Block&, const ShapeHistogram&, const SeedPartitionRange&, int, char* buffer, const NoFilter*, const EnumCfg&);
+template SeedArray<PackedLoc>::SeedArray(Block&, const ShapeHistogram&, const SeedPartitionRange&, int, char* buffer, const SeedSet*, const EnumCfg&);
+template SeedArray<PackedLoc>::SeedArray(Block&, const ShapeHistogram&, const SeedPartitionRange&, int, char* buffer, const HashedSeedSet*, const EnumCfg&);
+template SeedArray<PackedLocId>::SeedArray(Block&, const ShapeHistogram&, const SeedPartitionRange&, int, char* buffer, const NoFilter*, const EnumCfg&);
+template SeedArray<PackedLocId>::SeedArray(Block&, const ShapeHistogram&, const SeedPartitionRange&, int, char* buffer, const SeedSet*, const EnumCfg&);
+template SeedArray<PackedLocId>::SeedArray(Block&, const ShapeHistogram&, const SeedPartitionRange&, int, char* buffer, const HashedSeedSet*, const EnumCfg&);
 
 template<typename SeedLoc>
-struct BufferedWriter2
+struct OnePassBufferedWriter
 {
+	using Entry = typename SeedArray<SeedLoc>::Entry;
 	static const unsigned BUFFER_SIZE = 16;
-	BufferedWriter2():
-		out(Const::seedp)
-	{
-		memset(n, 0, sizeof(n));
-	}
+	OnePassBufferedWriter(SeedPartitionRange range, int seedp_bits) :
+		seedp_bits(seedp_bits),
+		out(range.size()),
+		buf(range.size()),
+		n(range.size(), 0)
+	{}
 	void push(PackedSeed key, int64_t value, const SeedPartitionRange& range)
 	{
-		const unsigned p = seed_partition(key);
+		const SeedPartition p = seed_partition(key, seedp_mask(seedp_bits));
 		if (range.contains(p)) {
-			assert(n[p] < BUFFER_SIZE);
-			buf[p][n[p]++] = typename SeedArray<SeedLoc>::Entry(seed_partition_offset(key), value);
-			if (n[p] == BUFFER_SIZE)
-				flush(p);
+			const SeedPartition d = p - range.begin();
+			assert(n[d] < BUFFER_SIZE);
+			buf[d][n[d]++] = Entry(seed_partition_offset(key, seedp_bits), value);
+			if (n[d] == BUFFER_SIZE)
+				flush(d);
 		}
 	}
 	NO_INLINE void flush(unsigned p)
 	{
-		out[p].push_back(buf[p], n[p]);
+		out[p].push_back(buf[p].data(), n[p]);
 		n[p] = 0;
 	}
 	void flush()
 	{
-		for (unsigned p = 0; p < Const::seedp; ++p)
+		for (SeedPartition p = 0; p < (SeedPartition)n.size(); ++p)
 			if (n[p] > 0)
 				flush(p);
 	}
-	vector<Deque<typename SeedArray<SeedLoc>::Entry, 15>> out;
-	typename SeedArray<SeedLoc>::Entry buf[Const::seedp][BUFFER_SIZE];
-	uint8_t n[Const::seedp];
+	const int seedp_bits;
+	vector<Deque<Entry, 15>> out;
+	vector<array<Entry, BUFFER_SIZE>> buf;
+	vector<uint8_t> n;
 };
 
 template<typename SeedLoc>
-struct BuildCallback2
+struct OnePassBuildCallback
 {
-	BuildCallback2(const SeedPartitionRange& range) :
+	OnePassBuildCallback(const SeedPartitionRange& range, int seedp_bits) :
 		range(range),
-		it(new BufferedWriter2<SeedLoc>())
+		it(new OnePassBufferedWriter<SeedLoc>(range, seedp_bits))
 	{ }
 	bool operator()(uint64_t seed, uint64_t pos, uint32_t block_id, size_t shape)
 	{
@@ -203,40 +218,39 @@ struct BuildCallback2
 	{
 		it->flush();
 	}
-	~BuildCallback2()
+	~OnePassBuildCallback()
 	{
 		delete it;
 	}
 	SeedPartitionRange range;
-	BufferedWriter2<SeedLoc> * it;
+	OnePassBufferedWriter<SeedLoc>* it;
 };
 
 template<typename SeedLoc> template<typename Filter>
-SeedArray<SeedLoc>::SeedArray(Block& seqs, const SeedPartitionRange& range, const Filter* filter, EnumCfg& enum_cfg) :
-	key_bits(seed_bits(enum_cfg.code)),
+SeedArray<SeedLoc>::SeedArray(Block& seqs, const SeedPartitionRange& range, int seedp_bits, const Filter* filter, EnumCfg& enum_cfg) :
+	key_bits(seed_bits(enum_cfg.code, seedp_bits)),
 	data_(nullptr)
 {
 	if (enum_cfg.shape_end - enum_cfg.shape_begin > 1)
 		throw std::runtime_error("SeedArray construction for >1 shape.");
 	const auto seq_partition = seqs.seqs().partition(config.threads_);
-	PtrVector<BuildCallback2<SeedLoc>> cb;
+	PtrVector<OnePassBuildCallback<SeedLoc>> cb;
 	for (size_t i = 0; i < seq_partition.size() - 1; ++i)
-		cb.push_back(new BuildCallback2<SeedLoc>(range));
+		cb.push_back(new OnePassBuildCallback<SeedLoc>(range, seedp_bits));
 	enum_cfg.partition = &seq_partition;
 	stats_ = enum_seeds(seqs, cb, filter, enum_cfg);
 
-	array<size_t, Const::seedp> counts;
-	counts.fill(0);
-	for (BuildCallback2<SeedLoc>* p : cb)
-		for (size_t i = 0; i < Const::seedp; ++i)
+	vector<size_t> counts(range.size(), 0);
+	for (OnePassBuildCallback<SeedLoc>* p : cb)
+		for (SeedPartition i = 0; i < range.size(); ++i)
 			counts[i] += p->it->out[i].size();
 
-	for (size_t i = 0; i < Const::seedp; ++i) {
+	for (SeedPartition i = 0; i < range.size(); ++i) {
 		entries_[i].reserve(counts[i]);
-		for (BuildCallback2<SeedLoc>* p : cb)
+		for (OnePassBuildCallback<SeedLoc>* p : cb)
 			p->it->out[i].move(entries_[i]);
 	}
 }
 
-template SeedArray<PackedLoc>::SeedArray(Block&, const SeedPartitionRange&, const HashedSeedSet*, EnumCfg&);
-template SeedArray<PackedLocId>::SeedArray(Block&, const SeedPartitionRange&, const HashedSeedSet*, EnumCfg&);
+template SeedArray<PackedLoc>::SeedArray(Block&, const SeedPartitionRange&, int, const HashedSeedSet*, EnumCfg&);
+template SeedArray<PackedLocId>::SeedArray(Block&, const SeedPartitionRange&, int, const HashedSeedSet*, EnumCfg&);

@@ -19,27 +19,26 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #pragma once
-#include <utility>
 #include <stdint.h>
 #include "radix_cluster.h"
 #include "../math/integer.h"
 
-template<typename _t, typename _get_key>
-void radix_sort(_t* begin, _t* end, uint32_t max_key, size_t threads) {
-	typedef typename _t::Key Key;
+template<typename T, typename GetKey>
+void radix_sort(T* begin, T* end, uint32_t max_key, size_t threads) {
+	typedef typename T::Key Key;
 	const size_t n = end - begin;
 	if (n <= 1)
 		return;
 	const uint32_t bit_len = (uint32_t)bit_length(max_key), rounds = (bit_len + config.radix_bits - 1) / config.radix_bits;
-	_t* buf = (_t*)new char[n * sizeof(_t)];
+	T* buf = (T*)new char[n * sizeof(T)];
 
-	_t* in = begin, * out = buf;
+	T* in = begin, * out = buf;
 	for (uint32_t i = 0; i < rounds; ++i) {
 		if(threads > 1)
-			parallel_radix_cluster<_t, _get_key>(Relation<_t>(in, n), i * config.radix_bits, out, threads);
+			parallel_radix_cluster<T, GetKey>(Relation<T>(in, n), i * config.radix_bits, out, threads);
 		else {
 			unsigned *hst = new unsigned[(size_t)1 << config.radix_bits];
-			radix_cluster< _t, _get_key>(Relation<_t>(in, n), i * config.radix_bits, out, hst);
+			radix_cluster<T, GetKey>(Relation<T>(in, n), i * config.radix_bits, out, hst);
 			delete[] hst;
 		}
 

@@ -1,10 +1,10 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2020 Max Planck Society for the Advancement of Science e.V.
+Copyright (C) 2013-2024 Max Planck Society for the Advancement of Science e.V.
                         Benjamin Buchfink
                         Eberhard Karls Universitaet Tuebingen
 
-Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
+Code developed by Benjamin Buchfink <buchfink@gmail.com>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -21,10 +21,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #pragma once
-#include <stdint.h>
-#include "../util/system.h"
+#include "util/system.h"
 
+#ifndef __sparc__
 #pragma pack(1)
+#endif
 
 struct packed_uint40_t
 {
@@ -34,10 +35,10 @@ struct packed_uint40_t
             high (),
             low ()
     { }
-    packed_uint40_t(uint64_t v):
-            high ((uint8_t)(v>>32)),
-            low ((uint32_t)(v&0xfffffffflu))
-    { }
+    packed_uint40_t(uint64_t v) :
+        high((uint8_t)(v >> 32)),
+        low((uint32_t)(v & UINT64_C(0xffffffff)))
+    {}
     packed_uint40_t& operator=(uint32_t x) {
         high = 0;
         low = x;
@@ -69,4 +70,3 @@ struct packed_uint40_t
 typedef packed_uint40_t PackedLoc;
 
 #pragma pack()
-

@@ -20,60 +20,58 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #pragma once
-#include <string.h>
 #include <thread>
-#include <algorithm>
-#include "../../basic/config.h"
+#include "basic/config.h"
 #include "partition.h"
 
-template<typename _t>
+template<typename T>
 struct Relation
 {
-	Relation(_t *data, size_t n) :
+	Relation(T *data, size_t n) :
 		data(data),
 		n(n)
 	{}
-	_t *data;
+	T *data;
 	size_t n;
-	const _t& operator[](size_t i) const
+	const T& operator[](size_t i) const
 	{
 		return data[i];
 	}
-	const _t *end() const
+	const T *end() const
 	{
 		return data + n;
 	}
-	Relation<_t> part(size_t begin, size_t n) const {
-		return Relation<_t>(data + begin, n);
+	Relation<T> part(size_t begin, size_t n) const {
+		return Relation<T>(data + begin, n);
 	}
 };
 
-template<typename _t>
+template<typename T>
 struct ExtractBits
 {
-	ExtractBits(_t n, uint32_t shift) :
+	ExtractBits(T n, uint32_t shift) :
 		shift(shift),
 		mask(n - 1)
 	{}
-	_t operator()(_t x) const
+	T operator()(T x) const
 	{
 		return (x >> shift) & mask;
 	}
 	uint32_t shift;
-	_t mask;
+	T mask;
 };
 
-template<typename _t, typename _get_key>
-void radix_cluster(const Relation<_t> &in, unsigned shift, _t *out, unsigned *hst)
+template<typename T, typename GetKey>
+void radix_cluster(const Relation<T> &in, unsigned shift, T *out, unsigned *hst)
 {
-	typedef typename _t::Key Key;
+	typedef typename T::Key Key;
 	static const size_t BUF_SIZE = 8;
 	const unsigned clusters = 1 << config.radix_bits;
 	ExtractBits<Key> radix(clusters, shift);
 
 	memset(hst, 0, clusters*sizeof(unsigned));
-	for (const _t *i = in.data; i < in.end(); ++i)
-		++hst[radix(_get_key()(*i))];
+	for (const T *i = in.data; i < in.end(); ++i)
+		++hst[radix(GetKey()(*i))];
 	unsigned sum = 0;
 	for (unsigned i = 0; i < clusters; ++i) {
 		const unsigned c = hst[i];
@@ -82,15 +80,15 @@ void radix_cluster(const Relation<_t> &in, unsigned shift, _t *out, unsigned *hs
 	}
 
 	if (config.radix_cluster_buffered) {
-		_t *buf = new _t[clusters*BUF_SIZE];
+		T *buf = new T[clusters*BUF_SIZE];
 		unsigned *buf_n = new unsigned[clusters];
 		memset(buf_n, 0, clusters*sizeof(unsigned));
 
-		for (const _t *i = in.data; i < in.end(); ++i) {
-			const unsigned r = radix(_get_key()(*i));
+		for (const T *i = in.data; i < in.end(); ++i) {
+			const unsigned r = radix(GetKey()(*i));
 			buf[r*BUF_SIZE + buf_n[r]++] = *i;	
 			if (buf_n[r] == BUF_SIZE) {
-				memcpy(out + hst[r], buf + r*BUF_SIZE, BUF_SIZE*sizeof(_t));
+				memcpy(out + hst[r], buf + r*BUF_SIZE, BUF_SIZE*sizeof(T));
 				hst[r] += BUF_SIZE;
 				buf_n[r] = 0;
 			}
@@ -99,38 +97,38 @@ void radix_cluster(const Relation<_t> &in, unsigned shift, _t *out, unsigned *hs
 		delete[] buf_n;
 	}
 	else {
-		for (const _t *i = in.data; i < in.end(); ++i) {
-			const unsigned r = radix(_get_key()(*i));
+		for (const T *i = in.data; i < in.end(); ++i) {
+			const unsigned r = radix(GetKey()(*i));
 			out[hst[r]++] = *i;
 		}
 	}
 }
 
-template<typename _t, typename _get_key>
-void parallel_radix_cluster_build_hst(Relation<_t> in, uint32_t shift, size_t* hst)
+template<typename T, typename GetKey>
+void parallel_radix_cluster_build_hst(Relation<T> in, uint32_t shift, size_t* hst)
 {
-	typedef typename _t::Key Key;
+	typedef typename T::Key Key;
 	const Key clusters = (Key)1 << config.radix_bits;
 	ExtractBits<Key> radix(clusters, shift);
-	for (const _t* i = in.data; i < in.end(); ++i)
-		++hst[radix(_get_key()(*i))];
+	for (const T* i = in.data; i < in.end(); ++i)
+		++hst[radix(GetKey()(*i))];
 }
 
-template<typename _t, typename _get_key>
-void parallel_radix_cluster_scatter(Relation<_t> in, uint32_t shift, size_t* hst, _t* out) {
-	typedef typename _t::Key Key;
+template<typename T, typename GetKey>
+void parallel_radix_cluster_scatter(Relation<T> in, uint32_t shift, size_t* hst, T* out) {
+	typedef typename T::Key Key;
 	const Key clusters = (Key)1 << config.radix_bits;
 	ExtractBits<Key> radix(clusters, shift);
-	for (const _t* i = in.data; i < in.end(); ++i) {
-		const unsigned r = radix(_get_key()(*i));
+	for (const T* i = in.data; i < in.end(); ++i) {
+		const unsigned r = radix(GetKey()(*i));
 		out[hst[r]++] = *i;
 	}
 }
 
-template<typename _t, typename _get_key>
-void parallel_radix_cluster(const Relation<_t>& in, uint32_t shift, _t* out, size_t thread_count)
+template<typename T, typename GetKey>
+void parallel_radix_cluster(const Relation<T>& in, uint32_t shift, T* out, size_t thread_count)
 {
-	typedef typename _t::Key Key;
+	typedef typename T::Key Key;
 	const Key clusters = (Key)1 << config.radix_bits;
 	std::vector<size_t> hst(clusters, 0);
 		
@@ -143,7 +141,7 @@ void parallel_radix_cluster(const Relation<_t>& in, uint32_t shift, _t* out, siz
 		thread_hst.emplace_back(clusters, 0);
 	std::vector<std::thread> threads;
 	for (unsigned i = 0; i < nt; ++i) {
-		threads.emplace_back(parallel_radix_cluster_build_hst<_t, _get_key>, in.part(p.begin(i), p.size(i)), shift, thread_hst[i].data());
+		threads.emplace_back(parallel_radix_cluster_build_hst<T, GetKey>, in.part(p.begin(i), p.size(i)), shift, thread_hst[i].data());
 	}
 	for (unsigned i = 0; i < nt; ++i) {
 		threads[i].join();
@@ -167,7 +165,7 @@ void parallel_radix_cluster(const Relation<_t>& in, uint32_t shift, _t* out, siz
 
 	threads.clear();
 	for (unsigned i = 0; i < nt; ++i)
-		threads.emplace_back(parallel_radix_cluster_scatter<_t, _get_key>, in.part(p.begin(i), p.size(i)), shift, thread_hst[i].data(), out);
+		threads.emplace_back(parallel_radix_cluster_scatter<T, GetKey>, in.part(p.begin(i), p.size(i)), shift, thread_hst[i].data(), out);
 	for (unsigned i = 0; i < nt; ++i)
 		threads[i].join();
 }

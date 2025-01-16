@@ -17,8 +17,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #pragma once
-#include <algorithm>
-#include "../util/geo/interval.h"
+#include "util/geo/interval.h"
 #include "value.h"
 
 enum Strand { FORWARD = 0, REVERSE = 1 };

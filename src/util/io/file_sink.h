@@ -21,10 +21,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #pragma once
 #include <string>
-#include <stdexcept>
 #include <mutex>
 #include "stream_entity.h"
-#include "exceptions.h"
 
 struct FileSink : public StreamEntity
 {

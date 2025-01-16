@@ -1,10 +1,10 @@
 #include <array>
 #include <iostream>
 #include <unordered_map>
-#include "../basic/config.h"
-#include "../util/io/text_input_file.h"
-#include "../util/string/tokenizer.h"
-#include "../util/log_stream.h"
+#include "basic/config.h"
+#include "util/io/text_input_file.h"
+#include "util/string/tokenizer.h"
+#include "util/log_stream.h"
 
 using std::cout;
 using std::endl;
@@ -33,7 +33,7 @@ static bool fetch_map(TextInputFile& map_in, const string& query) {
 	totals.clear();
 	query_mapped.clear();
 	while (map_in.getline(), !map_in.eof()) {
-		Util::String::Tokenizer(map_in.line, "\t") >> q >> target >> id >> family;
+		Util::String::Tokenizer<Util::String::CharDelimiter>(map_in.line, Util::String::CharDelimiter('\t')) >> q >> target >> id >> family;
 		if (next_query.empty()) {
 			next_query = q;
 			query_mapped = q;
@@ -89,7 +89,7 @@ void roc_id() {
 	while (in.getline(), !in.eof()) {
 		if (in.line.empty())
 			break;
-		Util::String::Tokenizer(in.line, "\t") >> query >> target;
+		Util::String::Tokenizer<Util::String::CharDelimiter>(in.line, Util::String::CharDelimiter('\t')) >> query >> target;
 		++hits;
 		if (query != query_aln) {
 			print();

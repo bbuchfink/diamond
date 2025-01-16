@@ -21,15 +21,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <mutex>
 #include <memory>
 #include "cluster.h"
-#include "../util/algo/algo.h"
-#include "../util/util.h"
-#include "../util/algo/sort_helper.h"
-#include "../util/parallel/thread_pool.h"
-#include "../dp/dp.h"
-#include "../output/output_format.h"
-#include "../stats/hauser_correction.h"
-#include "../output/output.h"
-#include "../util/algo/merge_files.h"
+#include "util/parallel/thread_pool.h"
+#include "dp/dp.h"
+#include "stats/hauser_correction.h"
+#include "output/output.h"
+#include "util/algo/merge_files.h"
 
 using std::vector;
 using std::unique_ptr;
@@ -79,9 +75,9 @@ static void align_centroid(CentroidId centroid, ReorderQueue<TextBuffer*, Output
 		dp_targets[bin].emplace_back(seq, seq.length(), block_id);
 	}
 
-	const Bias_correction cbs(centroid_seq);
+	const HauserCorrection cbs(centroid_seq);
 	const string centroid_seqid = cfg.lazy_titles ? cfg.db.seqid(centroid_oid) : cfg.centroid_block->ids()[centroid_id];
-	DP::Params p{ centroid_seq, centroid_seqid.c_str(), Frame(0), centroid_seq.length(), config.comp_based_stats == 1 ? cbs.int8.data() : nullptr, DP::Flags::FULL_MATRIX, cfg.hsp_values, stats, &tp };
+	DP::Params p{ centroid_seq, centroid_seqid.c_str(), Frame(0), centroid_seq.length(), config.comp_based_stats == 1 ? cbs.int8.data() : nullptr, DP::Flags::FULL_MATRIX, false, 0, cfg.hsp_values, stats, &tp };
 	list<Hsp> hsps = DP::BandedSwipe::swipe(dp_targets, p);
 
 	TextBuffer* buf = new TextBuffer;
@@ -102,21 +98,16 @@ static void align_centroid(CentroidId centroid, ReorderQueue<TextBuffer*, Output
 	out.push(centroid, buf);
 }
 
-static InputFile* run_block_pair(CentroidId begin, Cfg& cfg) {
-	atomic<CentroidId> next(begin);
+static InputFile* run_block_pair(CentroidId begin, CentroidId end, Cfg& cfg) {
 	TempFile out;
 	OutputWriter writer{ &out };
 	output_sink.reset(new ReorderQueue<TextBuffer*, OutputWriter>(begin, writer));
-	auto worker = [&](ThreadPool& tp) {
+	auto worker = [&](ThreadPool& tp, int64_t i) {
 		Statistics stats;
-		CentroidId i = next++;
-		if (i >= (CentroidId)cfg.centroids.size() || cfg.centroids[i] >= cfg.centroid_block->oid_end())
-			return false;
 		align_centroid(i, *output_sink, stats, tp, cfg);
 		statistics += stats;
-		return true;
 	};
-	ThreadPool tp(worker);
+	ThreadPool tp(worker, begin, end);
 	tp.run(config.threads_, true);
 	tp.join();
 	InputFile* f = new InputFile(out);
@@ -160,7 +151,7 @@ void realign(const FlatArray<OId>& clusters, const vector<OId>& centroids, Seque
 			if (cfg.member_block->empty())
 				break;
 			timer.go("Processing centroid block " + to_string(n1 + 1) + ", member block " + to_string(n2 + 1));
-			tmp.push_back(run_block_pair(begin, cfg));
+			tmp.push_back(run_block_pair(begin, end, cfg));
 			++n2;
 			if (cfg.centroid_block->seqs().size() == db.sequence_count())
 				break;

@@ -6,7 +6,7 @@
  * @param x
  * @return log2 of x
  */
-static inline float log2_ap(float x)
+static inline float log2_approximate(float x)
 {
     union { float f; uint32_t i; } z = { x };
     float log_2 = ((z.i >> 23) & 255) - 128;

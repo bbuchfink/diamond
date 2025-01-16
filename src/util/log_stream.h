@@ -24,9 +24,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <ostream>
 #include <fstream>
 #include <mutex>
-#include <limits.h>
 #include <chrono>
 #include <stdint.h>
+#include <limits.h>
 
 struct MessageStream
 {

@@ -19,6 +19,8 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
+#include "util/data_structures/mem_buffer.h"
+
 namespace DP { namespace Swipe {
 namespace DISPATCH_ARCH {
 
@@ -173,7 +175,7 @@ struct TracebackVectorMatrix
 			--j;
 			assert(i >= -1 && j >= -1);
 		}
-		pair<Edit_operation, int> walk_gap()
+		std::pair<EditOperation, int> walk_gap()
 		{
 			if (mask_->gap & channel_mask_vgap) {
 				int l = 0;

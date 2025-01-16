@@ -16,16 +16,14 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#include <algorithm>
 #include <string.h>
 #include "serializer.h"
 
 using std::string;
 using std::pair;
 
-Serializer::Serializer(StreamEntity *buffer, int flags) :
-	buffer_(buffer),
-	varint_(flags & VARINT)
+Serializer::Serializer(StreamEntity *buffer) :
+	buffer_(buffer)
 {
 	reset_buffer();
 }
@@ -97,26 +95,6 @@ void Serializer::write_raw(const char *ptr, size_t count)
 			reset_buffer();
 		}
 	} while (count > 0);
-}
-
-void Serializer::set(int flag)
-{
-	switch (flag) {
-	case VARINT:
-		varint_ = true;
-	default:
-		;
-	}
-}
-
-void Serializer::unset(int flag)
-{
-	switch (flag) {
-	case VARINT:
-		varint_ = false;
-	default:
-		;
-	}
 }
 
 void Serializer::consume(const char *ptr, size_t n) {

@@ -18,14 +18,12 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#include <float.h>
-#include "../basic/config.h"
-#include "../util/io/text_input_file.h"
-#include "../util/log_stream.h"
-#include "../data/sequence_file.h"
+#include "basic/config.h"
+#include "util/log_stream.h"
+#include "data/sequence_file.h"
 #include "cluster.h"
-#include "../basic/match.h"
-#include "../output/output_format.h"
+#include "basic/match.h"
+#include "output/output_format.h"
 
 using std::endl;
 using std::vector;
@@ -47,15 +45,15 @@ void realign() {
 	unique_ptr<OutputFormat> output_format(get_output_format());
 	if (output_format->code != OutputFormat::blast_tab)
 		throw runtime_error("The realign workflow only supports tabular output format.");
-	for (int64_t i : dynamic_cast<Blast_tab_format*>(output_format.get())->fields) {
+	for (int64_t i : dynamic_cast<TabularFormat*>(output_format.get())->fields) {
 		if (i == 6 || i == 17 || i == 18 || (i >= 30 && i <= 38) || i == 48 || i == 54 || i == 55 || i == 56 || i == 58 || i == 59 || i == 60)
-			throw std::runtime_error("Unsupported output field for the realign workflow: " + Blast_tab_format::field_def.at(i).key);
+			throw std::runtime_error("Unsupported output field for the realign workflow: " + TabularFormat::field_def.at(i).key);
 	}
 
 	TaskTimer timer("Opening the output file");
 	OutputFile out(config.output_file);
-	if (Blast_tab_format::header_format(Config::cluster) == Header::SIMPLE)
-		dynamic_cast<Blast_tab_format*>(output_format.get())->output_header(out, true);
+	if (TabularFormat::header_format(Config::cluster) == Header::SIMPLE)
+		dynamic_cast<TabularFormat*>(output_format.get())->output_header(out, true);
 
 	timer.go("Opening the database");
 	unique_ptr<SequenceFile> db(SequenceFile::auto_create({ config.database }, SequenceFile::Flags::NEED_LETTER_COUNT | SequenceFile::Flags::ACC_TO_OID_MAPPING, SequenceFile::Metadata()));
@@ -73,7 +71,7 @@ void realign() {
 
 	TextBuffer buf;
 	function<void(const HspContext&)> format_output([&buf, &out, &output_format](const HspContext& h) {
-		Output::Info info{ SeqInfo(), false, nullptr, buf, {}, AccessionParsing() };
+		Output::Info info{ SeqInfo(), false, nullptr, buf, {}, Util::Seq::AccessionParsing(), 0, 0 };
 		info.query.title = h.query_title.c_str();
 		output_format->print_match(h, info);
 		out.write(buf.data(), buf.size());

@@ -19,7 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #pragma once
-#include "../util/enum.h"
+#include "util/enum.h"
 
 namespace Extension {
 

@@ -19,12 +19,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #include "cascaded.h"
-#include "../../basic/config.h"
-#include "../../data/fasta/fasta_file.h"
-#include "../../run/workflow.h"
-#include "../../output/output_format.h"
-#include "../../basic/statistics.h"
-#include "../search/search.h"
+#include "basic/config.h"
+#include "data/fasta/fasta_file.h"
+#include "run/workflow.h"
+#include "basic/statistics.h"
+#include "util/log_stream.h"
 
 using std::unique_ptr;
 using std::endl;

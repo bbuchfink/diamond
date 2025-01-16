@@ -47,8 +47,7 @@ struct StreamEntity
 	{
 		throw UnsupportedOperation();
 	}
-	virtual std::pair<const char*, const char*> read()
-	{
+	virtual bool fetch() {
 		throw UnsupportedOperation();
 	}
 	virtual void close()
@@ -71,8 +70,7 @@ struct StreamEntity
 	{
 		throw UnsupportedOperation();
 	}
-	virtual void putback(const char *p, size_t count)
-	{
+	virtual bool eof() {
 		throw UnsupportedOperation();
 	}
 	virtual int64_t file_size() {

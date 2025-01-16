@@ -24,7 +24,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <stdint.h>
 #include <string>
 #include <utility>
-#include "../basic/sequence.h"
+#include "basic/sequence.h"
 
 namespace Test {
 

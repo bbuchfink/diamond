@@ -19,16 +19,18 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #include <unordered_map>
-#include "../../basic/config.h"
+#include "basic/config.h"
 #include "daa_file.h"
 #include "daa_write.h"
+#include "daa_record.h"
+#include "util/log_stream.h"
 
 using std::unordered_map;
 using std::string;
 using std::endl;
 using std::vector;
 
-unordered_map<uint32_t, uint32_t> build_mapping(unordered_map<string, uint32_t>& acc2oid, StringSet& seq_ids, vector<uint32_t>& seq_lens, DAA_file& f) {
+unordered_map<uint32_t, uint32_t> build_mapping(unordered_map<string, uint32_t>& acc2oid, StringSet& seq_ids, vector<uint32_t>& seq_lens, DAAFile& f) {
 	TaskTimer timer(("Reading targets for file " + f.file().file_name).c_str());
 	unordered_map<uint32_t, uint32_t> r;
 	for (uint32_t i = 0; i < f.db_seqs_used(); ++i) {
@@ -44,7 +46,7 @@ unordered_map<uint32_t, uint32_t> build_mapping(unordered_map<string, uint32_t>&
 	return r;
 }
 
-static int64_t write_file(DAA_file& f, OutputFile& out, const unordered_map<uint32_t, uint32_t>& subject_map) {
+static int64_t write_file(DAAFile& f, OutputFile& out, const unordered_map<uint32_t, uint32_t>& subject_map) {
 	uint32_t size = 0;
 	BinaryBuffer buf;
 	TextBuffer out_buf;
@@ -65,7 +67,7 @@ static int64_t write_file(DAA_file& f, OutputFile& out, const unordered_map<uint
 
 void merge_daa() {
 	TaskTimer timer("Initializing");
-	vector<DAA_file*> files;
+	vector<DAAFile*> files;
 	const int n = (int)config.input_ref_file.size();
 	if (n == 0)
 		throw std::runtime_error("Missing parameter: input files (--in)");
@@ -78,7 +80,7 @@ void merge_daa() {
 	oid_maps.reserve(n);
 	for (int i = 0; i < n; ++i) {
 		timer.go("Opening input file");
-		files.push_back(new DAA_file(config.input_ref_file[i]));
+		files.push_back(new DAAFile(config.input_ref_file[i]));
 		timer.finish();
 		oid_maps.push_back(build_mapping(acc2oid, seq_ids, seq_lens, *files.back()));
 	}
@@ -87,7 +89,7 @@ void merge_daa() {
 	OutputFile out(config.output_file);
 	init_daa(out);
 	int64_t query_count = 0;
-	for (vector<DAA_file*>::iterator i = files.begin(); i < files.end(); ++i) {
+	for (vector<DAAFile*>::iterator i = files.begin(); i < files.end(); ++i) {
 		timer.go(("Writing output for file " + (**i).file().file_name).c_str());
 		query_count += write_file(**i, out, oid_maps[i - files.begin()]);
 	}

@@ -16,7 +16,9 @@ struct NoFilter
 
 extern NoFilter no_filter;
 
+#ifndef __sparc__
 #pragma pack(1)
+#endif
 struct PackedLocId {
 	PackedLocId() {}
 	PackedLocId(PackedLoc pos) :
@@ -42,7 +44,7 @@ static inline uint32_t block_id(PackedLoc i) {
 }
 
 struct EnumCfg {
-	const std::vector<size_t>* partition;
+	const std::vector<BlockId>* partition;
 	size_t shape_begin, shape_end;
 	const SeedEncoding code;
 	const std::vector<bool>* const skip;
@@ -51,4 +53,5 @@ struct EnumCfg {
 	const MaskingAlgo soft_masking;
 	const Loc minimizer_window;
 	const bool filter_low_complexity_seeds, mask_low_complexity_seeds;
+	const Loc sketch_size;
 };

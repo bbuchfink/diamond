@@ -1,11 +1,10 @@
 #pragma once
 #include <thread>
 #include "block/block.h"
-#include "../search/seed_complexity.h"
-#include "../util/ptr_vector.h"
-#include "../basic/seed_iterator.h"
-#include "../basic/shape_config.h"
-#include "../masking/masking.h"
+#include "search/seed_complexity.h"
+#include "util/ptr_vector.h"
+#include "basic/seed_iterator.h"
+#include "basic/shape_config.h"
 #include "flags.h"
 
 template<typename F, typename Filter>
@@ -85,7 +84,7 @@ void enum_seeds_hashed(SequenceSet* seqs, F* f, unsigned begin, unsigned end, co
 				const uint64_t key = *it;
 				if (filter->contains(key, shape_id)) {
 					if (!cfg.filter_low_complexity_seeds || Search::seed_is_complex(it.seq_ptr(sh), sh, cfg.seed_cut))
-						(*f)(key, seqs->position(i, it.seq_ptr(sh) - seq.data()), i, shape_id);
+						(*f)(key, seqs->position(i, Loc(it.seq_ptr(sh) - seq.data())), i, shape_id);
 					else if (cfg.mask_low_complexity_seeds)
 						*it.seq_ptr(sh) |= SEED_MASK;
 				}
@@ -169,8 +168,8 @@ static void enum_seeds_worker(F* f, SequenceSet* seqs, const unsigned begin, con
 	}
 	else if(cfg->minimizer_window > 0)
 		*stats = enum_seeds_minimizer<F, Filter, MinimizerIterator>(seqs, f, begin, end, filter, *cfg, cfg->minimizer_window);
-	else if(config.sketch_size > 0)
-		*stats = enum_seeds_minimizer<F, Filter, SketchIterator>(seqs, f, begin, end, filter, *cfg, config.sketch_size);
+	else if(cfg->sketch_size > 0)
+		*stats = enum_seeds_minimizer<F, Filter, SketchIterator>(seqs, f, begin, end, filter, *cfg, cfg->sketch_size);
 	else
 		*stats = enum_seeds<F, Filter>(seqs, f, begin, end, filter, *cfg);
 }

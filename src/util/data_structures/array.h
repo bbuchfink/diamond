@@ -83,6 +83,10 @@ struct Array {
 		size_ += n;
 	}
 
+	T operator[](int i) const {
+		return ptr_[i];
+	}
+
 private:
 	T* ptr_;
 	Size size_;

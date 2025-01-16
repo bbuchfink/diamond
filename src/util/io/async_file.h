@@ -29,11 +29,11 @@ struct AsyncFile : public TempFile {
 		TempFile()
 	{}
 
-	template<typename _t>
-	void write(const _t *ptr, size_t count)
+	template<typename T>
+	void write(const T *ptr, size_t count)
 	{
 		std::lock_guard<std::mutex> guard(mtx_);
-		write_raw((const char*)ptr, count * sizeof(_t));
+		write_raw((const char*)ptr, count * sizeof(T));
 	}
 
 private:

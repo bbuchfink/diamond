@@ -4,6 +4,7 @@
 using std::advance;
 using std::string;
 using std::to_string;
+using std::copy;
 
 namespace Util { namespace Tsv {
 
@@ -16,7 +17,9 @@ static int32_t interpret(const char* ptr, int32_t) {
 }
 
 static string interpret(const char* ptr, const string&) {
-	return string(ptr + 4, ptr + 4 + *reinterpret_cast<const int32_t*>(ptr));
+	int32_t len;
+	copy(ptr, ptr + 4, (char*)&len);
+	return string(ptr + 4, ptr + 4 + len);
 }
 
 Record::Iterator::Iterator(Schema::const_iterator it, const char* ptr):

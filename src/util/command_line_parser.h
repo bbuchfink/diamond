@@ -178,7 +178,7 @@ struct OptionDesc : public OptionBase
 	virtual void read(const std::vector<std::string> &v)
 	{
 		if (!check_pcount<T>(v, min_count))
-			throw std::runtime_error("Invalid parameter count for option '--" + id + "'");
+			throw std::runtime_error("Invalid parameter count for option '" + (short_id ? std::string("-") + short_id + '/' : std::string()) + "--" + id + "'");
 		read_option(*store_, v);
 	}
 	virtual bool present() {
@@ -204,13 +204,13 @@ struct CommandLineParserBase
 
 struct OptionsGroup
 {
-	struct Add_f
+	struct AddFunc
 	{
-		Add_f(OptionsGroup& parent) :
+		AddFunc(OptionsGroup& parent) :
 			parent_(&parent)
 		{}
 		template<typename T>
-		Add_f& operator()(const char* id, char short_id, const char* desc, T& store, T def = T(), const int min_count = 1)
+		AddFunc& operator()(const char* id, char short_id, const char* desc, T& store, T def = T(), const int min_count = 1)
 		{
 			auto o = new OptionDesc<T>(id, short_id, desc, parent_->disabled, store, def, min_count, parent_);
 			parent_->options.emplace_back(o);
@@ -222,9 +222,9 @@ struct OptionsGroup
 	private:
 		OptionsGroup* parent_;
 	};
-	Add_f add()
+	AddFunc add()
 	{
-		return Add_f(*this);
+		return AddFunc(*this);
 	}
 	OptionsGroup(const char* title, const std::vector<int>& commands, bool disabled, CommandLineParserBase* parent) :
 		title(title),

@@ -23,34 +23,18 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #pragma once
 #include <stdexcept>
 #include <string>
-#include "const.h"
-#include "../util/simd.h"
+#include "util/simd.h"
 
 typedef signed char Letter;
-enum class SequenceType : int32_t { amino_acid=0, nucleotide=1 };
-struct Amino_acid {};
-struct Nucleotide {};
+enum class SequenceType : int32_t { amino_acid = 0, nucleotide = 1 };
 
-
-struct invalid_sequence_char_exception : public std::exception
+struct CharRepresentation
 {
-	const std::string msg;
-	invalid_sequence_char_exception(char ch);
-	~invalid_sequence_char_exception() noexcept
-	{ }
-	virtual const char* what() const throw()
-	{
-		return msg.c_str();
-	}
-};
-
-struct Char_representation
-{
-	Char_representation(unsigned size, const char* chars, char mask, const char* mask_chars);
+	CharRepresentation(unsigned size, const char* chars, char mask, const char* mask_chars);
 	Letter operator()(char c) const
 	{
 		if (data_[(long)c] == invalid)
-			throw invalid_sequence_char_exception(c);
+			throw std::runtime_error("Invalid character in sequence: " + (c >= 32 && c < 127 ? std::string("'") + c + "'" : "ASCII " + std::to_string((long)c)));
 		return data_[(long)c];
 	}
 private:
@@ -64,7 +48,7 @@ struct ValueTraits
 	const char *alphabet;
 	unsigned alphabet_size;
 	Letter mask_char;
-	Char_representation from_char;
+	CharRepresentation from_char;
 	SequenceType seq_type;
 };
 
@@ -143,6 +127,10 @@ struct AlignMode
 		if (i >= query_contexts)
 			throw std::runtime_error("Sequence context is out of bounds.");
 		return i;
+	}
+	const char* to_string() const {
+		static const char* mode_str[] = { 0, 0, "blastp", "blastx", "blastn" };
+		return mode_str[mode];
 	}
 	enum { blastp = 2, blastx = 3, blastn = 4 };
 	SequenceType sequence_type, input_sequence_type;

@@ -20,18 +20,17 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#include <iostream>
 #include <limits.h>
 #include <algorithm>
-#include "../data/taxonomy.h"
+#include "data/taxonomy.h"
 #include "output_format.h"
-#include "../data/reference.h"
-#include "../util/escape_sequences.h"
-#include "../data/queries.h"
+#include "util/escape_sequences.h"
 #include "output.h"
-#include "../util/util.h"
-#include "../run/config.h"
-#include "../util/sequence/sequence.h"
+#include "util/util.h"
+#include "run/config.h"
+#include "util/sequence/sequence.h"
+#include "util/log_stream.h"
+#include "util/string/tokenizer.h"
 
 using std::endl;
 using std::runtime_error;
@@ -147,47 +146,22 @@ void IntermediateRecord::finish_file(Consumer& f)
 
 void OutputFormat::print_title(TextBuffer &buf, const char *id, bool full_titles, bool all_titles, const char *separator, const EscapeSequences *esc, bool json_array)
 {
-	if (!all_titles) {
-		if (config.short_seqids)
-			buf << Util::Seq::seqid(id, true);
-		else
-			print_escaped_until(buf, id, full_titles ? "\1" : Util::Seq::id_delimiters, esc);
-        return;
-	}
-	if (strchr(id, '\1') == 0) {
-        if(json_array)
-            buf << "\"";
-		print_escaped_until(buf, id, full_titles ? "\1" : Util::Seq::id_delimiters, esc);
-        if(json_array)
-            buf << "\"";
-        return;
-	}
-	const vector<string> t(tokenize(id, "\1"));
-	vector<string>::const_iterator i = t.begin();
-	for (; i < t.end() - 1; ++i) {
-        if(json_array)
-            buf << "\"";
-		if (full_titles) {
-			print_escaped(buf, *i, esc);
-            if(json_array)
-                buf << "\"";
+	Util::String::Tokenizer<Util::String::StringDelimiters> tok(id, Util::String::StringDelimiters(Util::Seq::FASTA_HEADER_SEP, 2));
+	string s;
+	int n = 0;
+	do {
+		if (n++ > 0)
 			buf << separator;
-            if(json_array)
-                buf << "\"";
-		}
-		else {
-			print_escaped_until(buf, i->c_str(), Util::Seq::id_delimiters, esc);
-            buf << (json_array ? "\",\"" : ";");
-		}
-	}
-	if (full_titles) {
-        print_escaped(buf, *i, esc);
-    }
-	else {
-        print_escaped_until(buf, i->c_str(), Util::Seq::id_delimiters, esc);
-    }
-    if(json_array)
-        buf << "\"";
+		if (json_array)
+			buf << '\"';
+		tok >> s;
+		if (full_titles)
+			print_escaped(buf, s, esc);
+		else
+			print_escaped_until(buf, s.c_str(), Util::Seq::id_delimiters, esc);
+		if (json_array)
+			buf << '\"';
+	} while (tok.good() && all_titles);
 }
 
 void print_hsp(Hsp &hsp, const TranslatedSequence &query)
@@ -195,7 +169,7 @@ void print_hsp(Hsp &hsp, const TranslatedSequence &query)
 	TextBuffer buf;
 	//Pairwise_format().print_match(Hsp_context(hsp, 0, query, "", 0, 0, 0, 0, Sequence()), Search::Config(true), buf);
 	buf << '\0';
-	std::cout << buf.data() << endl;
+	//std::cout << buf.data() << endl;
 }
 
 OutputFormat* get_output_format()
@@ -203,12 +177,12 @@ OutputFormat* get_output_format()
 	const vector<string> &f = config.output_format;
 	if (f.size() == 0) {
 		if (config.daa_file == "" || config.command == Config::view)
-			return new Blast_tab_format();
+			return new TabularFormat();
 		else if ((config.command == Config::blastp || config.command == Config::blastx) && config.daa_file.length() > 0)
 			return new DAA_format();
 	}
 	if (f[0] == "tab" || f[0] == "6")
-		return new Blast_tab_format();
+		return new TabularFormat();
 	else if (f[0] == "sam" || f[0] == "101")
 		return new Sam_format;
 	else if (f[0] == "xml" || f[0] == "5")
@@ -223,19 +197,21 @@ OutputFormat* get_output_format()
 		return new TaxonFormat;
 	else if (f[0] == "paf" || f[0] == "103")
 		return new PAF_format;
+#ifdef WITH_MCL
 	else if (f[0] == "bin1")
 		return new Bin1_format;
 	else if (f[0] == "clus")
 		return new Clustering_format(&f[1]);
+#endif
 	else if (f[0] == "edge")
 		return new Output::Format::Edge;
     else if(f[0] == "json-flat" || f[0] == "104")
-        return new Blast_tab_format(true);
+        return new TabularFormat(true);
 	else
 		throw std::runtime_error("Invalid output format: " + f[0] + "\nAllowed values: 0,5,xml,6,tab,100,daa,101,sam,102,103,paf");
 }
 
-OutputFormat* init_output(const int64_t max_target_seqs)
+OutputFormat* init_output(int64_t& max_target_seqs)
 {
 	OutputFormat* output_format = get_output_format();
 	if(config.command == Config::view && (output_format->needs_taxon_id_lists || output_format->needs_taxon_nodes || output_format->needs_taxon_scientific_names))
@@ -245,17 +221,28 @@ OutputFormat* init_output(const int64_t max_target_seqs)
 		throw std::runtime_error("The DAA format is not supported in multiprocessing mode.");
 	if (*output_format == OutputFormat::daa && config.global_ranking_targets)
 		throw std::runtime_error("The DAA format is not supported in global ranking mode.");
-	if (*output_format == OutputFormat::taxon && config.toppercent == 100.0 && config.min_bit_score == 0.0)
+	if (*output_format == OutputFormat::taxon && config.toppercent.blank() && config.min_bit_score == 0.0)
 		config.toppercent = 10.0;
-	if (config.toppercent == 100.0) {
-		if (max_target_seqs >= 0) {
-			message_stream << "#Target sequences to report alignments for: ";
-			if (max_target_seqs == INT64_MAX || max_target_seqs == 0)
-				message_stream << "unlimited";
-			else
-				message_stream << max_target_seqs;
-			message_stream << endl;
+	if (config.toppercent.present()) {
+		if (config.toppercent < 0 || config.toppercent > 100)
+			throw runtime_error("Allowed value range for --top is between 0.0 and 100.0");
+		if (config.toppercent == 100.0) {
+			config.toppercent.unset();
+			max_target_seqs = INT64_MAX;
 		}
+	}
+	else {
+		max_target_seqs = config.max_target_seqs_.get(DEFAULT_MAX_TARGET_SEQS);
+		if (config.max_target_seqs_.present() && config.max_target_seqs_ == 0)
+			max_target_seqs = INT64_MAX;
+	}
+	if (config.toppercent.blank()) {
+		message_stream << "#Target sequences to report alignments for: ";
+		if (max_target_seqs == INT64_MAX)
+			message_stream << "unlimited";
+		else
+			message_stream << max_target_seqs;
+		message_stream << endl;
 	}
 	else
 		message_stream << "Percentage range of top alignment score to report hits: " << config.toppercent << endl;
@@ -265,25 +252,11 @@ OutputFormat* init_output(const int64_t max_target_seqs)
 	return output_format;
 }
 
-void Bin1_format::print_query_intro(Output::Info& info) const {
-	info.out.write(std::numeric_limits<uint32_t>::max());
-	info.out.write((uint32_t)info.query.block_id);
-}
-
-void Bin1_format::print_match(const HspContext& r, Output::Info& info) {
-	if (r.query_id < r.subject_oid) {
-		info.out.write((uint32_t)r.subject_oid);
-		info.out.write(r.bit_score() / std::max(r.query.source().length(), r.subject_len));
-	}
-}
-
 namespace Output { namespace Format {
 
 void Edge::print_match(const HspContext& r, Output::Info& info)
 {
-	info.out.write(Data{ r.query_oid, r.subject_oid, (float)r.qcovhsp(), (float)r.scovhsp(),
-		config.mmseqs_compat ? (r.evalue() == 0.0 ? r.bit_score() : -r.evalue())
-		: r.corrected_bit_score() });
+	info.out.write(Data{ r.query_oid, r.subject_oid, (float)r.qcovhsp(), (float)r.scovhsp(),  r.corrected_bit_score() });
 }
 
 }}

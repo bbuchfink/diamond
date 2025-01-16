@@ -31,10 +31,14 @@ vector<string> cluster_steps(double approx_id, bool linear) {
 	if (!config.cluster_steps.empty())
 		return config.cluster_steps;
 	vector<string> v = { "faster_lin" };
+	if (approx_id < 90)
+		v.push_back("fast_lin");
+	if (approx_id < 80)
+		v.push_back("linclust-20_lin");
 	if (linear)
 		return v;
 	v.push_back("fast");
-	if (approx_id < 90)
+	if (approx_id < 80)
 		v.push_back("default");
 	if (approx_id < 50)
 		v.push_back("more-sensitive");
@@ -42,25 +46,27 @@ vector<string> cluster_steps(double approx_id, bool linear) {
 }
 
 vector<string> default_round_approx_id(int steps) {
-	switch (steps) {
+	return {};
+	/*switch (steps) {
 	case 1:
 		return {};
 	case 2:
 		return { "27.0" };
 	default:
 		return { "27.0", "0.0" };
-	}
+	}*/
 }
 
 vector<string> default_round_cov(int steps) {
-	switch (steps) {
+	return {};
+	/*switch (steps) {
 	case 1:
 		return {};
 	case 2:
 		return { "85.0" };
 	default:
 		return { "87.0", "85.0" };
-	}
+	}*/
 }
 
 static int round_ccd(int round) {

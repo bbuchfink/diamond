@@ -19,29 +19,31 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#include <array>
 #include <algorithm>
-#include "../dp/dp.h"
+#include <array>
+#include "hauser_correction.h"
 #include "score_matrix.h"
+#include "basic/config.h"
+#include "cbs.h"
 
 using std::array;
 using std::vector;
 
 static const int PADDING = 32;
 
-struct Vector_scores
+struct VectorScores
 {
-	Vector_scores()
+	VectorScores()
 	{
 		memset(scores, 0, sizeof(scores));
 	}
-	Vector_scores& operator+=(Letter l)
+	VectorScores& operator+=(Letter l)
 	{
 		for (Letter i = 0; i < 20; ++i)
 			scores[i] += score_matrix(l, i);
 		return *this;
 	}
-	Vector_scores& operator-=(Letter l)
+	VectorScores& operator-=(Letter l)
 	{
 		for (Letter i = 0; i < 20; ++i)
 			scores[i] -= score_matrix(l, i);
@@ -50,10 +52,10 @@ struct Vector_scores
 	int scores[20];
 };
 
-Bias_correction::Bias_correction(const Sequence &seq):
+HauserCorrection::HauserCorrection(const Sequence &seq):
 	vector<float>(seq.length())
 {
-	Vector_scores scores;
+	VectorScores scores;
 	const unsigned window = config.cbs_window, window_half = std::min(window/2, (unsigned)seq.length() - 1);
 	unsigned n = 0;
 	unsigned h = 0, m = 0, t = 0, l = (unsigned)seq.length();
@@ -108,7 +110,7 @@ Bias_correction::Bias_correction(const Sequence &seq):
 	int8.insert(int8.end(), PADDING, 0);
 }
 
-int Bias_correction::operator()(const Hsp &hsp) const
+int HauserCorrection::operator()(const Hsp &hsp) const
 {
 	float s = 0;
 	for (Hsp::Iterator i = hsp.begin(); i.good(); ++i) {
@@ -123,7 +125,7 @@ int Bias_correction::operator()(const Hsp &hsp) const
 	return (int)s;
 }
 
-int Bias_correction::operator()(const DiagonalSegment &d) const
+int HauserCorrection::operator()(const DiagonalSegment &d) const
 {
 	float s = 0;
 	const int end = d.query_end();
@@ -132,7 +134,7 @@ int Bias_correction::operator()(const DiagonalSegment &d) const
 	return (int)s;
 }
 
-vector<int8_t> Bias_correction::reverse(const int8_t* p, const size_t len) {
+vector<int8_t> HauserCorrection::reverse(const int8_t* p, const size_t len) {
 	vector<int8_t> r;
 	if (p == nullptr)
 		return r;

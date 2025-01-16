@@ -17,7 +17,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #pragma once
-#include <limits.h>
 #include "text_buffer.h"
 
 struct EscapeSequence

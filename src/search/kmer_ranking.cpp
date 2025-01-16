@@ -1,8 +1,8 @@
 #include <atomic>
 #include <thread>
 #include "kmer_ranking.h"
-#include "../util/algo/join_result.h"
-#include "../basic/config.h"
+#include "util/algo/join_result.h"
+#include "basic/config.h"
 
 using std::pair;
 using std::vector;
@@ -14,18 +14,18 @@ using std::runtime_error;
 
 namespace Search {
 
-KmerRanking::KmerRanking(const SequenceSet& queries, DoubleArray<PackedLoc>* query_seed_hits, DoubleArray<PackedLoc>* ref_seed_hits) {
+KmerRanking::KmerRanking(const SequenceSet& queries, SeedPartition seedp_count, DoubleArray<PackedLoc>* query_seed_hits, DoubleArray<PackedLoc>* ref_seed_hits) {
 	throw runtime_error("Unsupported");
 }
 
-KmerRanking::KmerRanking(const SequenceSet& queries, DoubleArray<PackedLocId> *query_seed_hits, DoubleArray<PackedLocId> *ref_seed_hits) {
-	atomic_int seedp(0);
+KmerRanking::KmerRanking(const SequenceSet& queries, SeedPartition seedp_count, DoubleArray<PackedLocId> *query_seed_hits, DoubleArray<PackedLocId> *ref_seed_hits) {
+	atomic<SeedPartition> rel_seedp(0);
 	const auto query_count = queries.size();
 	atomic<float>* counts = new atomic<float>[query_count];
 	
 	auto worker = [&] {
-		int p;
-		while ((p = seedp++) < Const::seedp) {
+		SeedPartition p;
+		while ((p = rel_seedp.fetch_add(1, std::memory_order_relaxed)) < seedp_count) {
 			for (auto it = JoinIterator<PackedLocId>(query_seed_hits[p].begin(), ref_seed_hits[p].begin()); it;) {
 				const Range<PackedLocId*> query_hits = *it.r;
 				for (PackedLocId s : query_hits) {

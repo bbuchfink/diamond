@@ -1,4 +1,5 @@
 // Copyright 2015 Yutaro Konta
+// Modified by Benjamin Buchfink
 
 #include "LambdaCalculator.hh"
 #include <vector>
@@ -7,7 +8,8 @@
 #include <cstdlib>
 #include <cfloat>
 #include <cmath>
-using namespace std;
+
+using std::vector;
 
 static double roundToFewDigits(double x)
 {

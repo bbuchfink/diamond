@@ -22,7 +22,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <array>
 #include <vector>
-#include "../basic/sequence.h"
+#include "basic/sequence.h"
 #include "standard_matrix.h"
 
 namespace Stats {
@@ -35,8 +35,6 @@ struct TargetMatrix {
 
     TargetMatrix()
     {}
-
-    TargetMatrix(const int16_t* query_matrix, const int16_t* target_matrix);
 
     TargetMatrix(const Composition& query_comp, int query_len, const Sequence& target);
     int score_width() const;
@@ -197,7 +195,6 @@ struct CBS {
     double query_match_distance_threshold;
     double length_ratio_threshold;
     double angle;
-    static constexpr int AVG_MATRIX_SCALE = 32;
 };
 
 std::vector<int> CompositionMatrixAdjust(int query_len, int target_len, const double* query_comp, const double* target_comp, int scale, double ungapped_lambda, const double* joint_probs, const double* background_freqs);
@@ -214,14 +211,6 @@ int Blast_OptimizeTargetFrequencies(double x[],
     double tol,
     int maxits);
 bool OptimizeTargetFrequencies(double* out, const double* joints_prob, const double* row_probs, const double* col_probs, double relative_entropy, double tol, int maxits);
-
-inline int16_t* make_16bit_matrix(const std::vector<int>& matrix) {
-    int16_t* out = new int16_t[TRUE_AA * TRUE_AA];
-    for (size_t i = 0; i < TRUE_AA; ++i)
-        for (size_t j = 0; j < TRUE_AA; ++j)
-            out[i * TRUE_AA + j] = matrix[i * AMINO_ACID_COUNT + j];
-    return out;
-}
 
 extern const int ALPH_TO_NCBI[];
 extern CBS comp_based_stats;

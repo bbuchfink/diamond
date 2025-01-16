@@ -17,11 +17,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #pragma once
-#include "../basic/match.h"
-#include "../stats/score_matrix.h"
+#include "stats/score_matrix.h"
 
-template<typename _matrix>
-bool have_vgap(const _matrix& dp,
+template<typename Matrix>
+bool have_vgap(const Matrix& dp,
 	int i,
 	int j,
 	int gap_open,
@@ -40,8 +39,8 @@ bool have_vgap(const _matrix& dp,
 	return false;
 }
 
-template<typename _matrix>
-bool have_hgap(const _matrix& dp,
+template<typename Matrix>
+bool have_hgap(const Matrix& dp,
 	int i,
 	int j,
 	int gap_open,
@@ -60,8 +59,8 @@ bool have_hgap(const _matrix& dp,
 	return false;
 }
 
-template<typename _matrix>
-int have_diag(const _matrix& dp,
+template<typename Matrix>
+int have_diag(const Matrix& dp,
 	int i,
 	int j,
 	const Sequence& query,

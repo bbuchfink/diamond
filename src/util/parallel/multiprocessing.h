@@ -1,5 +1,24 @@
-#ifndef _MULTIPROCESSING_H_
-#define _MULTIPROCESSING_H_
+/****
+DIAMOND protein aligner
+Copyright (C) 2019-2024 Max Planck Society for the Advancement of Science e.V.
+
+Code developed by Klaus Reuter
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+****/
+
+#pragma once
 // various tools related to the multiprocessing parallelization, to be moved elsewhere
 
 #include <string>
@@ -8,16 +27,13 @@
 #include <sstream>
 #include <iomanip>
 
-using std::vector;
-using std::string;
-
-vector<string> split(const string & str, const char delim);
-string join(const vector<string> & tokens, const char delim);
-string quote(const string & str);
-string unquote(const string & str);
-void copy(const string & src_file_name, const string & dst_file_name);
-string join_path(const string & path_1, const string & path_2);
-bool file_exists(const string & file_name);
+std::vector<std::string> split(const std::string & str, const char delim);
+std::string join(const std::vector<std::string> & tokens, const char delim);
+std::string quote(const std::string & str);
+std::string unquote(const std::string & str);
+void copy(const std::string & src_file_name, const std::string & dst_file_name);
+std::string join_path(const std::string & path_1, const std::string & path_2);
+bool file_exists(const std::string & file_name);
 
 
 template<typename T>
@@ -72,5 +88,3 @@ std::string append_label(const std::string & str, const T & label, const size_t 
 	ss << std::setfill('0') << std::setw(width) << label;
 	return str + ss.str();
 }
-
-#endif

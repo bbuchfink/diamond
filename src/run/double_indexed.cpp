@@ -21,45 +21,34 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #include <string>
-#include <sstream>
-#include <iomanip>
 #include <iostream>
-#include <limits>
 #include <memory>
-#include <algorithm>
-#include <cstdio>
-#include "../data/reference.h"
-#include "../data/queries.h"
-#include "../basic/statistics.h"
-#include "../basic/shape_config.h"
-#include "../util/seq_file_format.h"
-#include "../output/output_format.h"
-#include "../data/frequent_seeds.h"
-#include "../output/daa/daa_write.h"
-#include "../data/taxonomy.h"
-#include "../masking/masking.h"
-#include "../data/block/block.h"
-#include "../search/search.h"
-#include "workflow.h"
-#include "../util/io/consumer.h"
-#include "../util/parallel/thread_pool.h"
-#include "../util/parallel/multiprocessing.h"
-#include "../util/parallel/parallelizer.h"
-#include "../util/system/system.h"
-#include "../align/target.h"
-#include "../data/seed_set.h"
-#include "../util/data_structures/deque.h"
-#include "../align/global_ranking/global_ranking.h"
-#include "../align/align.h"
-#include "../util/async_buffer.h"
+#include "data/queries.h"
+#include "basic/statistics.h"
+#include "basic/shape_config.h"
+#include "output/output_format.h"
+#include "data/frequent_seeds.h"
+#include "output/daa/daa_write.h"
+#include "masking/masking.h"
+#include "data/block/block.h"
+#include "search/search.h"
+#include "util/io/consumer.h"
+#include "util/parallel/multiprocessing.h"
+#include "util/parallel/parallelizer.h"
+#include "util/system/system.h"
+#include "data/seed_set.h"
+#include "align/global_ranking/global_ranking.h"
+#include "align/align.h"
+#include "util/async_buffer.h"
 #include "config.h"
-#include "../data/seed_array.h"
-#include "../data/fasta/fasta_file.h"
+#include "data/seed_array.h"
+#include "data/fasta/fasta_file.h"
+#include "data/dmnd/dmnd.h"
+#include "util/data_structures/deque.h"
 
 #ifdef WITH_DNA
 #include "../dna/dna_index.h"
 #endif
-
 
 using std::unique_ptr;
 using std::endl;
@@ -67,6 +56,8 @@ using std::list;
 using std::pair;
 using std::tie;
 using std::shared_ptr;
+using std::string;
+using std::vector;
 
 namespace Search {
 
@@ -120,7 +111,7 @@ static void run_ref_chunk(SequenceFile &db_file,
 	log_rss();
 	auto& query_seqs = cfg.query->seqs();
 
-	if ((cfg.lin_stage1_target || cfg.min_length_ratio > 0.0) && !config.kmer_ranking && cfg.target.unique()) {
+	if ((cfg.lin_stage1_target || cfg.min_length_ratio > 0.0) && !config.kmer_ranking && cfg.target.use_count() == 1) {
 		timer.go("Length sorting reference");
 		cfg.target.reset(cfg.target->length_sorted(config.threads_));
 	}
@@ -156,24 +147,23 @@ static void run_ref_chunk(SequenceFile &db_file,
 	if (config.global_ranking_targets)
 		;// cfg.global_ranking_buffer.reset(new Config::RankingBuffer());
 	else
-		cfg.seed_hit_buf.reset(new AsyncBuffer<Search::Hit>(query_seqs.size() / align_mode.query_contexts,
+		cfg.seed_hit_buf.reset(new AsyncBuffer<Search::Hit>(query_seqs.partition(cfg.query_bins, true, true),
 			config.tmpdir,
-			cfg.query_bins,
 			{ cfg.target->long_offsets(), align_mode.query_contexts }));
 
 	if (!config.swipe_all) {
 		timer.go("Building reference histograms");
 		if (query_seeds_bitset.get()) {
-			EnumCfg enum_cfg{ nullptr, 0, 0, cfg.seed_encoding, nullptr, false, false, cfg.seed_complexity_cut, MaskingAlgo::NONE, cfg.minimizer_window, false, false };
-			cfg.target->hst() = SeedHistogram(*cfg.target, true, query_seeds_bitset.get(), enum_cfg);
+			EnumCfg enum_cfg{ nullptr, 0, 0, cfg.seed_encoding, nullptr, false, false, cfg.seed_complexity_cut, MaskingAlgo::NONE, cfg.minimizer_window, false, false, cfg.sketch_size };
+			cfg.target->hst() = SeedHistogram(*cfg.target, true, query_seeds_bitset.get(), enum_cfg, cfg.seedp_bits);
 		}
 		else if (query_seeds_hashed.get()) {
-			EnumCfg enum_cfg{ nullptr, 0, 0, cfg.seed_encoding, nullptr, false, false, cfg.seed_complexity_cut, MaskingAlgo::NONE, cfg.minimizer_window, false, false };
-			cfg.target->hst() = SeedHistogram(*cfg.target, true, query_seeds_hashed.get(), enum_cfg);
+			EnumCfg enum_cfg{ nullptr, 0, 0, cfg.seed_encoding, nullptr, false, false, cfg.seed_complexity_cut, MaskingAlgo::NONE, cfg.minimizer_window, false, false, cfg.sketch_size };
+			cfg.target->hst() = SeedHistogram(*cfg.target, true, query_seeds_hashed.get(), enum_cfg, cfg.seedp_bits);
 		}
 		else {
-			EnumCfg enum_cfg{ nullptr, 0, 0, cfg.seed_encoding, nullptr, false, false, cfg.seed_complexity_cut, cfg.soft_masking, cfg.minimizer_window, false, false };
-			cfg.target->hst() = SeedHistogram(*cfg.target, false, &no_filter, enum_cfg);
+			EnumCfg enum_cfg{ nullptr, 0, 0, cfg.seed_encoding, nullptr, false, false, cfg.seed_complexity_cut, cfg.soft_masking, cfg.minimizer_window, false, false, cfg.sketch_size };
+			cfg.target->hst() = SeedHistogram(*cfg.target, false, &no_filter, enum_cfg, cfg.seedp_bits);
 		}
 
 		timer.go("Allocating buffers");
@@ -207,8 +197,8 @@ static void run_ref_chunk(SequenceFile &db_file,
 #ifdef WITH_DNA
         if(config.command != ::Config::blastn)
 #endif
-		delete[] ref_buffer;
-		delete[] query_buffer;
+		Util::Memory::aligned_free(query_buffer);
+		Util::Memory::aligned_free(ref_buffer);
 		delete target_seeds;
 
 		timer.go("Clearing query masking");
@@ -268,12 +258,13 @@ static void run_query_iteration(const unsigned query_iteration,
 		options.query_skip.reset(new vector<bool> (query_aligned));
 
 	if (config.algo == ::Config::Algo::AUTO &&
-		(!sensitivity_traits[(int)align_mode.sequence_type].at(config.sensitivity).support_query_indexed
+		(!sensitivity_traits.at(config.sensitivity).support_query_indexed
 			|| query_seqs.letters() > MAX_INDEX_QUERY_SIZE
 			|| options.db_letters < MIN_QUERY_INDEXED_DB_SIZE
 			|| config.target_indexed
 			|| config.swipe_all
-			|| options.minimizer_window))
+			|| options.minimizer_window
+			|| options.sketch_size))
 		config.algo = ::Config::Algo::DOUBLE_INDEXED;
 	if (config.algo == ::Config::Algo::AUTO || config.algo == ::Config::Algo::QUERY_INDEXED) {
 		timer.go("Building query seed set");
@@ -296,7 +287,9 @@ static void run_query_iteration(const unsigned query_iteration,
 	}
 
 	const Sensitivity sens = options.sensitivity[query_iteration].sensitivity;
-	::Config::set_option(options.index_chunks, config.lowmem_, 0u, config.algo == ::Config::Algo::DOUBLE_INDEXED ? sensitivity_traits[(int)align_mode.sequence_type].at(sens).index_chunks : 1u);
+	::Config::set_option(options.index_chunks, config.lowmem_, 0u, config.algo == ::Config::Algo::DOUBLE_INDEXED ? sensitivity_traits.at(sens).index_chunks : 1u);
+	options.seedp_bits = Search::seedp_bits(shapes[0].weight_, config.threads_, options.index_chunks);
+	log_stream << "Seed partition bits = " << options.seedp_bits << endl;
 	options.lazy_masking = config.algo != ::Config::Algo::DOUBLE_INDEXED && options.target_masking != MaskingAlgo::NONE && config.frame_shift == 0;
 	if (config.command != ::Config::blastn && options.gapped_filter_evalue != 0.0) {
 		options.cutoff_gapped1 = { config.gapped_filter_evalue1 };
@@ -320,8 +313,8 @@ static void run_query_iteration(const unsigned query_iteration,
 	if (!config.swipe_all && !config.target_indexed) {
 		timer.go("Building query histograms");
 		EnumCfg enum_cfg{ nullptr, 0, 0, options.seed_encoding, options.query_skip.get(), false, false, options.seed_complexity_cut,
-			options.soft_masking, options.minimizer_window, static_cast<bool>(query_seeds_hashed.get()), false };
-		options.query->hst() = SeedHistogram(*options.query, false, &no_filter, enum_cfg);
+		options.soft_masking, options.minimizer_window, static_cast<bool>(query_seeds_hashed.get()), false, options.sketch_size };
+		options.query->hst() = SeedHistogram(*options.query, false, &no_filter, enum_cfg, options.seedp_bits);
 		timer.finish();
 	}
 
@@ -485,7 +478,7 @@ static void run_query_chunk(Consumer &master_out,
 			string buf;
 
 			if ((! file_exists("stop")) && (work->pop(buf) > 0)) {
-				P->log("JOIN BEGIN "+std::to_string(options.current_query_block));
+				P->log("JOIN BEGIN " + std::to_string(options.current_query_block));
 
 				P->create_stack_from_file(stack_join_wip, get_ref_part_file_name(stack_join_wip, options.current_query_block));
 				auto wip = P->get_stack(stack_join_wip);
@@ -500,7 +493,7 @@ static void run_query_chunk(Consumer &master_out,
 				options.current_ref_block = db_file.get_n_partition_chunks();
 
 				vector<string> tmp_file_names;
-				for (int64_t i=0; i<options.current_ref_block; ++i) {
+				for (int64_t i = 0; i < options.current_ref_block; ++i) {
 					tmp_file_names.push_back(get_ref_block_tmpfile_name(options.current_query_block, i));
 				}
 
@@ -530,7 +523,7 @@ static void run_query_chunk(Consumer &master_out,
 				P->delete_stack(stack_join_wip);
 				P->delete_stack(stack_join_done);
 
-				P->log("JOIN END "+std::to_string(options.current_query_block));
+				P->log("JOIN END " + std::to_string(options.current_query_block));
 			}
 			P->delete_stack(stack_join_todo);
 		} else {
@@ -558,7 +551,7 @@ static void master_thread(TaskTimer &total_timer, Config &options)
 	SequenceFile* db_file = options.db.get();
 	if (config.multiprocessing && config.mp_recover) {
 		const size_t max_assumed_query_chunks = 65536;
-		for (size_t i=0; i<max_assumed_query_chunks; ++i) {
+		for (size_t i = 0; i < max_assumed_query_chunks; ++i) {
 			const string file_align_todo = get_ref_part_file_name(stack_align_todo, i);
 			if (! file_exists(file_align_todo)) {
 				break;
@@ -707,7 +700,7 @@ static void master_thread(TaskTimer &total_timer, Config &options)
 		}
 	}
 
-	if (options.query_file.unique()) {
+	if (options.query_file.use_count() == 1) {
 		timer.go("Closing the input file");
 		options.query_file->close();
 	}
@@ -759,7 +752,6 @@ void run(const shared_ptr<SequenceFile>& db, const shared_ptr<SequenceFile>& que
 		::Config::set_option(config.chunk_size, 2.0);
 
 	Config cfg;
-	cfg.output_format.reset(init_output(cfg.max_target_seqs));
 	statistics.reset();
 
 	const bool taxon_filter = !config.taxonlist.empty() || !config.taxon_exclude.empty();
@@ -831,10 +823,10 @@ void run(const shared_ptr<SequenceFile>& db, const shared_ptr<SequenceFile>& que
 		timer.finish();
 	}
 
+#ifdef WITH_DNA
 	if (align_mode.sequence_type == SequenceType::nucleotide)
 		cfg.score_builder.reset(new Stats::Blastn_Score(config.match_reward, config.mismatch_penalty, config.gap_open, config.gap_extend, cfg.db_letters, cfg.db->sequence_count()));
-
-
+#endif
 
     master_thread(total, cfg);
 	log_rss();

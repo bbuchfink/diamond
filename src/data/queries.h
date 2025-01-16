@@ -24,7 +24,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <mutex>
 #include <memory>
 #include <vector>
-#include "../util/io/output_file.h"
+#include "util/io/output_file.h"
 #include "block/block.h"
 
 extern std::mutex query_aligned_mtx;

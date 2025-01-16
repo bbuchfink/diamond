@@ -23,6 +23,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <list>
 #include <vector>
 #include <iterator>
+#include <stddef.h>
 #include "../parallel/mutex.h"
 #include "writer.h"
 #include "../io/serialize.h"

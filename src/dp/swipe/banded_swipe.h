@@ -20,18 +20,14 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #include <array>
-#include <algorithm>
 #include <utility>
 #include <list>
-#include <limits.h>
 #include "../dp.h"
 #include "swipe.h"
 #include "target_iterator.h"
-#include "../../util/math/integer.h"
-#include "../../basic/config.h"
-#include "../util/data_structures/range_partition.h"
-#include "../../util/intrin.h"
-#include "../../util/memory/alignment.h"
+#include "basic/config.h"
+#include "util/data_structures/range_partition.h"
+#include "banded_matrix.h"
 
 using std::list;
 using std::pair;
@@ -43,16 +39,16 @@ using namespace DISPATCH_ARCH;
 namespace DP { namespace BandedSwipe {
 namespace DISPATCH_ARCH {
 
-template<typename _sv, typename _cbs>
-Hsp traceback(_cbs bias_correction, const TracebackMatrix<_sv> &dp, const DpTarget &target, int d_begin, typename ScoreTraits<_sv>::Score max_score, double evalue, int max_col, int channel, int i0, int i1, int max_band_i, Void, Params& p)
+template<typename Sv, typename Cbs>
+Hsp traceback(Cbs bias_correction, const TracebackMatrix<Sv> &dp, const DpTarget &target, int d_begin, typename ScoreTraits<Sv>::Score max_score, double evalue, int max_col, int channel, int i0, int i1, int max_band_i, Void, Params& p)
 {
-	typedef typename ScoreTraits<_sv>::Score Score;
+	typedef typename ScoreTraits<Sv>::Score Score;
 	const int j0 = i1 - (target.d_end - 1), d1 = target.d_end;
-	typename TracebackMatrix<_sv>::TracebackIterator it(dp.traceback(max_col + 1, i0 + max_col, j0 + max_col, (int)p.query.length(), channel, max_score));
+	typename TracebackMatrix<Sv>::TracebackIterator it(dp.traceback(max_col + 1, i0 + max_col, j0 + max_col, (int)p.query.length(), channel, max_score));
 	
 	Hsp out(true);
 	out.swipe_target = target.target_idx;
-	out.score = ScoreTraits<_sv>::int_score(max_score);
+	out.score = ScoreTraits<Sv>::int_score(max_score);
 	out.evalue = evalue;
 	out.bit_score = score_matrix.bitscore(out.score);
 	out.corrected_bit_score = score_matrix.bitscore_corrected(out.score, p.query.length(), target.true_target_len);
@@ -65,7 +61,7 @@ Hsp traceback(_cbs bias_correction, const TracebackMatrix<_sv> &dp, const DpTarg
 	out.query_range.end_ = it.i + 1;
 	out.subject_range.end_ = it.j + 1;
 	
-	while (it.score() > ScoreTraits<_sv>::zero_score()) {
+	while (it.score() > ScoreTraits<Sv>::zero_score()) {
 		const Letter q = p.query[it.i], s = target.seq[it.j];
 		const Score m = score_matrix(q, s), score = it.score();
 		const Score m2 = add_cbs_scalar(m, bias_correction[it.i]);
@@ -73,7 +69,7 @@ Hsp traceback(_cbs bias_correction, const TracebackMatrix<_sv> &dp, const DpTarg
 			out.push_match(q, s, m > (Score)0);
 			it.walk_diagonal();
 		} else {
-			const pair<Edit_operation, int> g(it.walk_gap(d_begin, d1));
+			const pair<EditOperation, int> g(it.walk_gap(d_begin, d1));
 			out.push_gap(g.first, g.second, target.seq.data() + it.j + g.second);
 		}
 	}
@@ -89,12 +85,12 @@ Hsp traceback(_cbs bias_correction, const TracebackMatrix<_sv> &dp, const DpTarg
 	return out;
 }
 
-template<typename _sv, typename Cell, typename _cbs, typename StatType>
-Hsp traceback(_cbs bias_correction, const Matrix<Cell> &dp, const DpTarget &target, int d_begin, typename ScoreTraits<_sv>::Score max_score, double evalue, int max_col, int channel, int i0, int i1, int max_band_i, const StatType& stats, Params& p)
+template<typename Sv, typename Cell, typename Cbs, typename StatType>
+Hsp traceback(Cbs bias_correction, const Matrix<Cell> &dp, const DpTarget &target, int d_begin, typename ScoreTraits<Sv>::Score max_score, double evalue, int max_col, int channel, int i0, int i1, int max_band_i, const StatType& stats, Params& p)
 {
 	Hsp out(false);
 	out.swipe_target = target.target_idx;
-	out.score = ScoreTraits<_sv>::int_score(max_score);
+	out.score = ScoreTraits<Sv>::int_score(max_score);
 	if (!target.adjusted_matrix())
 		out.score *= config.cbs_matrix_scale;
 	out.evalue = evalue;
@@ -128,18 +124,18 @@ Hsp traceback(_cbs bias_correction, const Matrix<Cell> &dp, const DpTarget &targ
     return out;
 }
 
-template<typename _sv, typename _cbs>
-Hsp traceback(_cbs bias_correction, const TracebackVectorMatrix<_sv> &dp, const DpTarget &target, int d_begin, typename ScoreTraits<_sv>::Score max_score, double evalue, int max_col, int channel, int i0, int i1, int max_band_i, Void, Params& p)
+template<typename Sv, typename Cbs>
+Hsp traceback(Cbs bias_correction, const TracebackVectorMatrix<Sv> &dp, const DpTarget &target, int d_begin, typename ScoreTraits<Sv>::Score max_score, double evalue, int max_col, int channel, int i0, int i1, int max_band_i, Void, Params& p)
 {
-	typedef typename ScoreTraits<_sv>::Score Score;
-	typedef typename ScoreTraits<_sv>::TraceMask TraceMask;
+	typedef typename ScoreTraits<Sv>::Score Score;
+	typedef typename ScoreTraits<Sv>::TraceMask TraceMask;
 	const auto channel_mask = TraceMask::vmask(channel) | TraceMask::hmask(channel);
 	const int j0 = i1 - (target.d_end - 1), d1 = target.d_end;
-	typename TracebackVectorMatrix<_sv>::TracebackIterator it(dp.traceback(max_col + 1, i0 + max_col, max_band_i, j0 + max_col, (int)p.query.length(), channel));
+	typename TracebackVectorMatrix<Sv>::TracebackIterator it(dp.traceback(max_col + 1, i0 + max_col, max_band_i, j0 + max_col, (int)p.query.length(), channel));
 	Hsp out(true);
 	out.swipe_target = target.target_idx;
 	out.target_seq = target.seq;
-	out.score = ScoreTraits<_sv>::int_score(max_score);
+	out.score = ScoreTraits<Sv>::int_score(max_score);
 	out.evalue = evalue;
 	out.bit_score = score_matrix.bitscore(out.score);
 	out.corrected_bit_score = score_matrix.bitscore_corrected(out.score, p.query.length(), target.true_target_len);
@@ -168,7 +164,7 @@ Hsp traceback(_cbs bias_correction, const TracebackVectorMatrix<_sv> &dp, const 
 			it.walk_diagonal();
 		}
 		else {
-			const pair<Edit_operation, int> g(it.walk_gap());
+			const pair<EditOperation, int> g(it.walk_gap());
 			out.push_gap(g.first, g.second, target.seq.data() + it.j + g.second);
 			score -= (score_matrix.gap_open() + g.second * score_matrix.gap_extend()) * target.matrix_scale();
 		}
@@ -186,22 +182,22 @@ Hsp traceback(_cbs bias_correction, const TracebackVectorMatrix<_sv> &dp, const 
     out.approx_id = out.approx_id_percent(p.query, target.seq);
 	return out;
 }
-template<typename _sv, typename _cbs, typename Cfg>
-list<Hsp> swipe(const vector<DpTarget>::const_iterator subject_begin, const vector<DpTarget>::const_iterator subject_end, _cbs composition_bias, vector<DpTarget> &overflow, Params& p)
+template<typename Sv, typename Cbs, typename Cfg>
+list<Hsp> swipe(const TargetVec::const_iterator subject_begin, const TargetVec::const_iterator subject_end, Cbs composition_bias, TargetVec& overflow, Params& p)
 {
-	typedef typename ScoreTraits<_sv>::Score Score;
+	typedef typename ScoreTraits<Sv>::Score Score;
 	using Cell = typename Cfg::Cell;
 	using Matrix = typename SelectMatrix<Cell, Cfg::traceback>::Type;
 	using RowCounter = typename Cfg::RowCounter;
 	using IdMask = typename Cfg::IdMask;
-	using StatType = decltype(extract_stats<_sv>(Cell(), int()));
- 	constexpr int CHANNELS = ScoreTraits<_sv>::CHANNELS;
+	using StatType = decltype(extract_stats<Sv>(Cell(), int()));
+ 	constexpr int CHANNELS = ScoreTraits<Sv>::CHANNELS;
 
 	assert(subject_end - subject_begin <= CHANNELS);
 	const int qlen = (int)p.query.length();
 
 	int band = 0;
-	for (vector<DpTarget>::const_iterator j = subject_begin; j < subject_end; ++j)
+	for (TargetVec::const_iterator j = subject_begin; j < subject_end; ++j)
 		band = std::max(band, j->d_end - j->d_begin);
 
 	if (band > RowCounter::MAX_LEN)
@@ -224,24 +220,24 @@ list<Hsp> swipe(const vector<DpTarget>::const_iterator subject_begin, const vect
 	RangePartition<CHANNELS, Score> band_parts(band_offset, target_count, band);
 #endif
 	
-	::DISPATCH_ARCH::TargetIterator<Score> targets(subject_begin, subject_end, i1, qlen, d_begin);
+	::DISPATCH_ARCH::TargetIterator<Score> targets(subject_begin, subject_end, p.reverse_targets, i1, qlen, d_begin);
 	Matrix dp(band, targets.cols);
 
 	const uint32_t cbs_mask = targets.cbs_mask();
 	const Score go = score_matrix.gap_open() + score_matrix.gap_extend(), go_s = go * (Score)config.cbs_matrix_scale,
 		ge = score_matrix.gap_extend(), ge_s = ge * (Score)config.cbs_matrix_scale;
-	const _sv open_penalty = blend_sv<_sv>(go, go_s, cbs_mask),
-		extend_penalty = blend_sv<_sv>(ge, ge_s, cbs_mask);
-	SwipeProfile<_sv> profile;
+	const Sv open_penalty = blend_sv<Sv>(go, go_s, cbs_mask),
+		extend_penalty = blend_sv<Sv>(ge, ge_s, cbs_mask);
+	SwipeProfile<Sv> profile;
 	array<const int8_t*, 32> target_scores;
 
 	Score best[CHANNELS];
 	int max_col[CHANNELS], max_band_row[CHANNELS];
 	StatType stats[CHANNELS];
-	std::fill(best, best + CHANNELS, ScoreTraits<_sv>::zero_score());
+	std::fill(best, best + CHANNELS, ScoreTraits<Sv>::zero_score());
 	std::fill(max_col, max_col + CHANNELS, 0);
 	std::fill(max_band_row, max_band_row + CHANNELS, 0);
-	CBSBuffer<_sv, _cbs> cbs_buf(composition_bias, qlen, cbs_mask);
+	CBSBuffer<Sv, Cbs> cbs_buf(composition_bias, qlen, cbs_mask);
 
 	int j = 0;
 	while (targets.active.size() > 0) {
@@ -250,14 +246,14 @@ list<Hsp> swipe(const vector<DpTarget>::const_iterator subject_begin, const vect
 			break;
 		typename Matrix::ColumnIterator it(dp.begin(band_offset, j));
 		Cell vgap = Cell(), hgap = Cell();
-		_sv col_best = _sv();
+		Sv col_best = Sv();
 		RowCounter row_counter(band_offset);
 
 		if (band_offset > 0)
 			it.set_zero();
 
 		const auto target_seqv = targets.get();
-		const _sv target_seq = _sv(target_seqv);
+		const Sv target_seq = Sv(target_seqv);
 		if (cbs_mask != 0) {
 			if (targets.custom_matrix_16bit)
 				profile.set(targets.get32().data());
@@ -279,7 +275,7 @@ list<Hsp> swipe(const vector<DpTarget>::const_iterator subject_begin, const vect
 		for (int part = 0; part < band_parts.count(); ++part) {
 			const int i_begin = std::max(i0 + band_parts.begin(part), i0_);
 			const int i_end = std::min(i0 + band_parts.end(part), i1_);
-			const _sv target_mask = load_sv<_sv>(band_parts.mask(part));
+			const Sv target_mask = load_sv<Sv>(band_parts.mask(part));
 			vgap += target_mask;
 #ifdef DP_STAT
 			p.stat.inc(Statistics::GROSS_DP_CELLS, uint64_t(i_end - i_begin) * CHANNELS);
@@ -291,7 +287,7 @@ list<Hsp> swipe(const vector<DpTarget>::const_iterator subject_begin, const vect
 #endif
 				hgap = it.hgap();
 				auto stat_h = it.hstat();
-				_sv match_scores = profile.get(p.query[i]);
+				Sv match_scores = profile.get(p.query[i]);
 #ifdef STRICT_BAND
 				hgap += target_mask;
 				match_scores += target_mask;
@@ -322,7 +318,7 @@ list<Hsp> swipe(const vector<DpTarget>::const_iterator subject_begin, const vect
 			if (col_best_[channel] > best[channel]) {
 				best[channel] = col_best_[channel];
 				max_col[channel] = j;
-				max_band_row[channel] = ScoreTraits<_sv>::int_score(i_max[channel]);
+				max_band_row[channel] = ScoreTraits<Sv>::int_score(i_max[channel]);
 				stats[channel] = extract_stats(dp[max_band_row[channel]], channel);
 				//std::cout << "stats[" << channel << "]=" << stats[channel] << std::endl;
 			}
@@ -335,13 +331,13 @@ list<Hsp> swipe(const vector<DpTarget>::const_iterator subject_begin, const vect
 	list<Hsp> out;
 	TaskTimer timer;
 	for (int i = 0; i < targets.n_targets; ++i) {
-		if (best[i] < ScoreTraits<_sv>::max_score() && !overflow_stats<_sv>(stats[i])) {
-			int score = ScoreTraits<_sv>::int_score(best[i]);
+		if (best[i] < ScoreTraits<Sv>::max_score() && !overflow_stats<Sv>(stats[i])) {
+			int score = ScoreTraits<Sv>::int_score(best[i]);
 			if (!subject_begin[i].adjusted_matrix())
 				score *= config.cbs_matrix_scale;
 			const double evalue = score_matrix.evalue(score, qlen, subject_begin[i].true_target_len);
 			if (score > 0 && score_matrix.report_cutoff(score, evalue)) {
-				out.push_back(traceback<_sv>(composition_bias, dp, subject_begin[i], d_begin[i], best[i], evalue, max_col[i], i, i0 - j, i1 - j, max_band_row[i], stats[i], p));
+				out.push_back(traceback<Sv>(composition_bias, dp, subject_begin[i], d_begin[i], best[i], evalue, max_col[i], i, i0 - j, i1 - j, max_band_row[i], stats[i], p));
 			}
 		}
 		else

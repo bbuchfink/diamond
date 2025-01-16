@@ -20,12 +20,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <memory>
 #include "extend.h"
-#include "target.h"
-#include "../data/queries.h"
-#include "../output/output_format.h"
-#include "../output/daa/daa_write.h"
-#include "../util/sequence/sequence.h"
-
+#include "output/output_format.h"
+#include "output/daa/daa_write.h"
+#include "util/sequence/sequence.h"
+#include "util/util.h"
 
 using std::vector;
 
@@ -38,7 +36,7 @@ TextBuffer* generate_output(vector<Match> &targets, const Extension::Stats& stat
 	std::unique_ptr<OutputFormat> f(cfg.output_format->clone());
 	size_t seek_pos = 0;
 	unsigned n_hsp = 0, hit_hsps = 0;
-	Output::Info info{ cfg.query->seq_info(query_block_id), targets.empty(), cfg.db.get(), *out, stats, AccessionParsing() };
+	Output::Info info{ cfg.query->seq_info(query_block_id), targets.empty(), cfg.db.get(), *out, stats, Util::Seq::AccessionParsing(), cfg.db->sequence_count(), cfg.db->letters() };
 	TranslatedSequence query = query_seqs.translated_seq(align_mode.query_translated ? cfg.query->source_seqs()[query_block_id] : query_seqs[query_block_id], query_block_id * align_mode.query_contexts);
 	const char *query_title = cfg.query->ids()[query_block_id];
 	const double query_self_aln_score = cfg.query->has_self_aln() ? cfg.query->self_aln_score(query_block_id) : 0.0;

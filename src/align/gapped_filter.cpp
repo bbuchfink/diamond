@@ -18,15 +18,12 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#include <algorithm>
+#include <cstdint>
 #include <utility>
 #include <mutex>
 #include "target.h"
-#include "../dp/dp.h"
-#include "../stats/score_matrix.h"
-#include "../data/reference.h"
-#include "../util/parallel/thread_pool.h"
-#include "../dp/scan_diags.h"
+#include "util/parallel/thread_pool.h"
+#include "dp/scan_diags.h"
 
 using std::mutex;
 using std::vector;
@@ -74,7 +71,7 @@ void gapped_filter_worker(size_t i, size_t thread_id, const LongScoreProfile<int
 	}
 }
 
-pair<FlatArray<SeedHit>, vector<uint32_t>> gapped_filter(const Sequence* query, const Bias_correction* query_cbs, FlatArray<SeedHit>::Iterator seed_hits, FlatArray<SeedHit>::Iterator seed_hits_end, vector<uint32_t>::const_iterator target_block_ids, Statistics& stat, DP::Flags flags, const Search::Config &params) {
+pair<FlatArray<SeedHit>, vector<uint32_t>> gapped_filter(const Sequence* query, const HauserCorrection* query_cbs, FlatArray<SeedHit>::Iterator seed_hits, FlatArray<SeedHit>::Iterator seed_hits_end, vector<uint32_t>::const_iterator target_block_ids, Statistics& stat, DP::Flags flags, const Search::Config &params) {
 	const int64_t n = seed_hits_end - seed_hits;
 	FlatArray<SeedHit> hits_out;
 	vector<uint32_t> target_ids_out;

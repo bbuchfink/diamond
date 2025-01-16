@@ -1,10 +1,10 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2020 Max Planck Society for the Advancement of Science e.V.
+Copyright (C) 2013-2024 Max Planck Society for the Advancement of Science e.V.
                         Benjamin Buchfink
                         Eberhard Karls Universitaet Tuebingen
 						
-Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
+Code developed by Benjamin Buchfink <buchfink@gmail.com>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -26,12 +26,6 @@ struct Const
 
 	enum {
 		build_version = 164,
-#ifdef SINGLE_THREADED
-		seedp_bits = 0,
-#else
-		seedp_bits = 10,
-#endif
-		seedp = 1<<seedp_bits,
 		max_seed_weight = 32,
 		max_shapes = 64
 	};
@@ -41,8 +35,4 @@ struct Const
 
 };
 
-#define SIMPLE_SEARCH
 static constexpr int MAX_CONTEXT = 6;
-// #define FREQUENCY_MASKING
-// #define ST_JOIN
-// #define NO_COLLISION_FILTER

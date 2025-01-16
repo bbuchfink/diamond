@@ -21,14 +21,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #pragma once
+#include <math.h>
 #include <assert.h>
 #include <vector>
-#include <algorithm>
 #include <string>
 #include <limits>
-#include <set>
 #include <mutex>
-#include <math.h>
 
 template<typename T>
 inline T div_up(T x, T m)
@@ -42,7 +40,6 @@ inline T round_up(T x, T m)
 	return div_up(x, m) * m;
 }
 
-std::vector<std::string> tokenize(const char* str, const char* delimiters);
 extern const char dir_separator;
 std::string extract_dir(const std::string &s);
 
@@ -169,14 +166,14 @@ inline T make_multiple(T x, T m)
 }
 
 std::string hex_print(const char* x, int len);
-std::set<int32_t> parse_csv(const std::string& s);
 std::string join(const char *c, const std::vector<std::string> &v);
 
 template<typename T, typename F>
-auto apply(const std::vector<T> &v, F f) -> std::vector<typename std::result_of<F(T)>::type> {
 #if __cplusplus >= 201703L
+auto apply(const std::vector<T>& v, F f) -> std::vector<typename std::invoke_result<F, T>::type> {
 	using R = typename std::invoke_result<F, T>::type;
 #else
+auto apply(const std::vector<T> &v, F f) -> std::vector<typename std::result_of<F(T)>::type> {
 	using R = typename std::result_of<F(T)>::type;
 #endif
 	std::vector<R> r;
@@ -221,7 +218,11 @@ private:
 template<typename It, typename Key>
 struct KeyMergeIterator {
 	using value_type = typename std::iterator_traits<It>::value_type;
-	typedef typename std::result_of<Key(value_type&)>::type KeyType;
+#if __cplusplus >= 201703L
+	using KeyType = typename std::invoke_result<Key, value_type&>::type;
+#else
+	using KeyType = typename std::result_of<Key(value_type&)>::type;
+#endif
 	KeyMergeIterator(const It& begin, const It& end, const Key& key) :
 		end_(end),
 		begin_(begin),

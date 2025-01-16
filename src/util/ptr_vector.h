@@ -19,11 +19,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #pragma once
 #include <vector>
 
-template<typename _t>
-struct PtrVector : public std::vector<_t*>
+template<typename T>
+struct PtrVector : public std::vector<T*>
 {
 
-	using vector = std::vector<_t*>;
+	using vector = std::vector<T*>;
 
 	PtrVector():
 		vector()
@@ -33,18 +33,18 @@ struct PtrVector : public std::vector<_t*>
 		vector(n)
 	{}
 
-	_t& operator[](typename vector::size_type n)
+	T& operator[](typename vector::size_type n)
 	{ return *vector::operator[](n); }
 
-	const _t& operator[](typename vector::size_type n) const
+	const T& operator[](typename vector::size_type n) const
 	{ return *vector::operator[](n); }
 
-	_t*& get(typename vector::size_type n)
+	T*& get(typename vector::size_type n)
 	{
 		return vector::operator[](n);
 	}
 
-	_t& back()
+	T& back()
 	{
 		return *vector::back();
 	}

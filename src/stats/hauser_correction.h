@@ -22,20 +22,14 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #pragma once
 #include <vector>
 #include <stdint.h>
-#include "../basic/sequence.h"
-#include "../util/geo/diagonal_segment.h"
-#include "../basic/match.h"
+#include "basic/sequence.h"
+#include "util/geo/diagonal_segment.h"
+#include "basic/match.h"
 
-struct No_score_correction
+struct HauserCorrection : public std::vector<float>
 {
-	void operator()(int &score, int i, int query_anchor, int mult) const
-	{}
-};
-
-struct Bias_correction : public std::vector<float>
-{
-	Bias_correction() {}
-	Bias_correction(const Sequence &seq);
+	HauserCorrection() {}
+	HauserCorrection(const Sequence &seq);
 	void operator()(float &score, int i, int query_anchor, int mult) const
 	{
 		score += (*this)[query_anchor + i * mult];

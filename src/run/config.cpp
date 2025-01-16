@@ -1,23 +1,22 @@
 #include "config.h"
-#include "../basic/config.h"
-#include "../data/block/block.h"
-#include "../data/taxonomy_nodes.h"
-#include "../data/sequence_file.h"
-#include "../search/hit.h"
-#include "../util/async_buffer.h"
-#include "../search/hit.h"
-#include "../util/data_structures/deque.h"
-#include "../align/global_ranking/global_ranking.h"
-#include "../search/search.h"
-#include "../masking/masking.h"
-#include "../align/def.h"
-#include "../dna/dna_index.h"
+#include "basic/config.h"
+#include "data/block/block.h"
+#include "data/taxonomy_nodes.h"
+#include "data/sequence_file.h"
+#include "search/hit.h"
+#include "util/async_buffer.h"
+#include "search/hit.h"
+#include "util/data_structures/deque.h"
+#include "align/global_ranking/global_ranking.h"
+#include "search/search.h"
+#include "masking/masking.h"
+#include "align/def.h"
 
 #ifdef WITH_DNA
 #include "../dna/extension.h"
 #include "../dna/timer.h"
+#include "../dna/dna_index.h"
 #endif
-
 
 using std::endl;
 using std::runtime_error;
@@ -34,7 +33,7 @@ Config::Config() :
 	lazy_masking(false),
 	track_aligned_queries(false),
 	lin_stage1_target(false),
-	max_target_seqs(config.max_target_seqs_.get(25)),
+	max_target_seqs(0),
 	db(nullptr),
 	query_file(nullptr),
 	out(nullptr),
@@ -49,13 +48,10 @@ Config::Config() :
 			throw runtime_error("Iterated search is not compatible with --self.");
 		if (config.lin_stage1)
 			throw runtime_error("Iterated search is not compatible with --lin-stage1.");
-		if (config.linsearch)
-			throw runtime_error("Iterated search is not compatible with --linsearch.");
 		if (config.iterate.empty()) {
 			sensitivity = { {Sensitivity::FASTER, true} };
 			const auto rounds = iterated_sens.at(config.sensitivity);
-			for (Sensitivity s : rounds)
-				sensitivity.push_back(s);
+			sensitivity.insert(sensitivity.end(), rounds.begin(), rounds.end());
 		}
 		else
 			for (const string& s : config.iterate) {
@@ -68,15 +64,21 @@ Config::Config() :
 			}
 	}
 	
-	sensitivity.push_back(config.sensitivity);
+	if (sensitivity.empty() || (!sensitivity.empty() && sensitivity.back() != Round(config.sensitivity, config.linsearch)))
+		sensitivity.emplace_back(config.sensitivity, config.linsearch);
 	std::sort(sensitivity.begin(), sensitivity.end());
 	if (std::adjacent_find(sensitivity.begin(), sensitivity.end()) != sensitivity.end())
 		throw std::runtime_error("The same sensitivity level was specified multiple times for --iterate.");
 
 	if (sensitivity.size() > 1) {
-		message_stream << "Running iterated search mode with sensitivity steps:";
-		for (Round r : sensitivity)
-			message_stream << ' ' << to_string(r.sensitivity);
+		message_stream << "Running iterated search mode with sensitivity steps: ";
+		for (auto it = sensitivity.begin(); it != sensitivity.end(); ++it) {
+			message_stream << to_string(it->sensitivity);
+			if (it->linearize)
+				message_stream << " (linear)";
+			if (it != sensitivity.end() - 1)
+				message_stream << ", ";
+		}
 		message_stream << endl;
 		track_aligned_queries = true;
 	}
@@ -122,7 +124,7 @@ Config::Config() :
     }
 
 	if (config.ext_.empty()) {
-		if (config.global_ranking_targets || config.swipe_all)
+		if (config.global_ranking_targets || config.swipe_all || config.lin_stage1 || config.linsearch)
 			extension_mode = Extension::Mode::FULL;
 		else
 			extension_mode = Extension::default_ext_mode.at(sensitivity.back().sensitivity);
@@ -147,17 +149,20 @@ Config::Config() :
 	if (config.freq_sd_ != 0.0 && !config.freq_masking)
 		throw std::runtime_error("--freq-sd requires --freq-masking.");
 
-	if (max_target_seqs == 0)
-		max_target_seqs = INT64_MAX;
 
 	if (config.minimizer_window_ && config.algo == ::Config::Algo::CTG_SEED)
 		throw runtime_error("Minimizer setting is not compatible with contiguous seed mode.");
 
-	if (config.query_cover == config.subject_cover && config.min_length_ratio == 0.0) {
+	if (config.query_cover >= 50 && config.query_cover == config.subject_cover && config.min_length_ratio == 0.0 && !align_mode.query_translated) {
 		min_length_ratio = config.lin_stage1 ? std::min(config.query_cover / 100 + 0.05, 1.0) : std::max(config.query_cover / 100 - 0.05, 0.0);
 	}
-	else
+	else {
+		if (align_mode.query_translated && config.min_length_ratio != 0.0)
+			throw runtime_error("--min-len-ratio is not supported for translated searches");
 		min_length_ratio = config.min_length_ratio;
+	}
+
+	output_format.reset(init_output(max_target_seqs));
 }
 
 Config::~Config() {

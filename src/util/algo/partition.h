@@ -1,12 +1,12 @@
 #pragma once
-#include <algorithm>
+#include <stddef.h>
 
-template<typename _t = size_t>
+template<typename T = size_t>
 struct Partition
 {
 	Partition() : parts(0), items(0), size_(0), remainder(0)
 	{ }
-	Partition(_t items, _t parts) : parts(std::min(parts, items)), items(items)
+	Partition(T items, T parts) : parts(std::min(parts, items)), items(items)
 	{
 		if (this->parts > 0) {
 			size_ = items / this->parts;
@@ -17,19 +17,19 @@ struct Partition
 			remainder = 0;
 		}
 	}
-	_t begin(_t i) const
+	T begin(T i) const
 	{
-		_t b = std::min(i, remainder); return b * (size_ + 1) + (i - b) * size_;
+		T b = std::min(i, remainder); return b * (size_ + 1) + (i - b) * size_;
 	}
-	_t end(_t i) const
+	T end(T i) const
 	{
 		return begin(i) + size(i);
 	}
-	_t size(_t i) const
+	T size(T i) const
 	{
 		return i < remainder ? (size_ + 1) : size_;
 	}
-	const _t parts;
+	const T parts;
 private:
-	_t items, size_, remainder;
+	T items, size_, remainder;
 };

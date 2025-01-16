@@ -16,11 +16,9 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#include <algorithm>
 #include <numeric>
 #include <iostream>
 #include <mutex>
-#include "../basic/config.h"
 #include "log_stream.h"
 #include "util.h"
 #include "escape_sequences.h"
@@ -117,33 +115,6 @@ void exit_with_error(const std::exception& e) {
 	std::cerr << "Error: " << e.what() << endl;
 	log_stream << "Error: " << e.what() << endl;
 	exit(EXIT_FAILURE);
-}
-
-std::vector<std::string> tokenize(const char* str, const char* delimiters)
-{
-	std::vector<std::string> out;
-	std::string token;
-	while (*str != 0) {
-		while (*str != 0 && strchr(delimiters, *str))
-			++str;
-		token.clear();
-		while (*str != 0 && strchr(delimiters, *str) == nullptr)
-			token += *(str++);
-		if (token.length() > 0)
-			out.push_back(token);
-	}
-	if (out.size() == 0)
-		out.push_back(std::string());
-	return out;
-}
-
-std::set<int32_t> parse_csv(const std::string& s)
-{
-	std::set<int32_t> r;
-	std::vector<std::string> t(tokenize(s.c_str(), ","));
-	for (std::vector<std::string>::const_iterator i = t.begin(); i != t.end(); ++i)
-		if (!i->empty()) r.insert(atoi(i->c_str()));
-	return r;
 }
 
 std::string to_upper_case(const std::string& s)

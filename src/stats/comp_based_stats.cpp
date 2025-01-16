@@ -51,13 +51,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <array>
 #include <vector>
-#include <algorithm>
 #include <math.h>
-#include "../basic/value.h"
-#include "../basic/sequence.h"
+#include "basic/value.h"
 #include "score_matrix.h"
 #include "cbs.h"
-#include "../basic/config.h"
+#include "basic/config.h"
 
 namespace Stats {
 

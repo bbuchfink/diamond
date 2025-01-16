@@ -22,15 +22,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <utility>
 #include <unordered_map>
-#include "../util/io/input_file.h"
+#include "util/io/input_file.h"
 #include "sequence_set.h"
-#include "../util/data_structures/bit_vector.h"
-#include "taxon_list.h"
+#include "util/data_structures/bit_vector.h"
 #include "taxonomy_nodes.h"
-#include "../util/enum.h"
-#include "../util/data_structures/bit_vector.h"
+#include "util/enum.h"
 #include "block/block.h"
-#include "../util/tsv/file.h"
+#include "util/tsv/tsv.h"
 
 struct Chunk
 {
@@ -130,7 +128,7 @@ struct SequenceFile {
 	virtual std::vector<Letter> dict_seq(DictId dict_id, const size_t ref_block) const;
 	virtual int64_t sequence_count() const = 0;
 	virtual int64_t sparse_sequence_count() const = 0;
-	virtual size_t letters() const = 0;
+	virtual int64_t letters() const = 0;
 	virtual size_t letters_filtered(const BitVector& v) const;
 	virtual int db_version() const = 0;
 	virtual int program_build_version() const = 0;

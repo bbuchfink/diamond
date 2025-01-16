@@ -1,10 +1,10 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2021 Max Planck Society for the Advancement of Science e.V.
+Copyright (C) 2013-2024 Max Planck Society for the Advancement of Science e.V.
                         Benjamin Buchfink
                         Eberhard Karls Universitaet Tuebingen
 
-Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
+Code developed by Benjamin Buchfink <buchfink@gmail.com>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -20,26 +20,22 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#include <limits>
-#include <fstream>
-#include "../basic/config.h"
-#include "../util/seq_file_format.h"
-#include "../util/log_stream.h"
-#include "../masking/masking.h"
+#include "basic/config.h"
+#include "util/log_stream.h"
+#include "masking/masking.h"
 #include "../taxonomy.h"
 #include "../taxon_list.h"
 #include "../taxonomy_nodes.h"
-#include "../util/algo/MurmurHash3.h"
-#include "../util/io/record_reader.h"
-#include "../util/parallel/multiprocessing.h"
+#include "murmurhash/MurmurHash3.h"
+#include "legacy/dmnd/record_reader.h"
+#include "util/parallel/multiprocessing.h"
 #include "dmnd.h"
-#include "../reference.h"
-#include "../taxonomy.h"
-#include "../util/system/system.h"
-#include "../util/algo/external_sort.h"
-#include "../../util/util.h"
+#include "util/system/system.h"
+#include "util/algo/external_sort.h"
+#include "util/util.h"
 #include "../fasta/fasta_file.h"
-#include "../../util/sequence/sequence.h"
+#include "util/sequence/sequence.h"
+#include "legacy/dmnd/io.h"
 
 using std::tuple;
 using std::string;
@@ -48,6 +44,7 @@ using std::endl;
 using std::unique_ptr;
 using std::pair;
 using std::runtime_error;
+using std::vector;
 
 const char* DatabaseFile::FILE_EXTENSION = ".dmnd";
 const uint32_t ReferenceHeader::current_db_version_prot = 3;
@@ -55,7 +52,6 @@ const uint32_t ReferenceHeader::current_db_version_nucl = 4;
 
 Serializer& operator<<(Serializer &s, const ReferenceHeader2 &h)
 {
-	s.unset(Serializer::VARINT);
 	s << sizeof(ReferenceHeader2);
 	s.write(h.hash, sizeof(h.hash));
 	s << h.taxon_array_offset << h.taxon_array_size << h.taxon_nodes_offset << h.taxon_names_offset;
@@ -70,7 +66,7 @@ Deserializer& operator>>(Deserializer &d, ReferenceHeader2 &h)
 #ifdef EXTRA
 	int32_t db_type;
 #endif
-	d.read_record().read(h.hash, sizeof(h.hash))
+	DynamicRecordReader(d).read(h.hash, sizeof(h.hash))
 		>> h.taxon_array_offset
 		>> h.taxon_array_size
 		>> h.taxon_nodes_offset
@@ -87,14 +83,12 @@ Deserializer& operator>>(Deserializer &d, ReferenceHeader2 &h)
 
 InputFile& operator>>(InputFile& file, ReferenceHeader& h)
 {
-	file.varint = false;
 	file >> h.magic_number >> h.build >> h.db_version >> h.sequences >> h.letters >> h.pos_array_offset;
 	return file;
 }
 
 Serializer& operator<<(Serializer& file, const ReferenceHeader& h)
 {
-	file.unset(Serializer::VARINT);
 	file << h.magic_number << h.build << h.db_version << h.sequences << h.letters << h.pos_array_offset;
 	return file;
 }
@@ -161,7 +155,7 @@ DatabaseFile::DatabaseFile(const string &input_file, Metadata metadata, Flags fl
 
 	if (flag_any(metadata, Metadata::TAXON_SCIENTIFIC_NAMES)) {
 		seek(header2.taxon_names_offset);
-		(*this) >> taxon_scientific_names_;
+		deserialize(*this, taxon_scientific_names_);
 	}
 
 	if (flag_any(metadata, Metadata::TAXON_NODES))
@@ -227,7 +221,7 @@ void DatabaseFile::make_db()
 {
 	config.file_buffer_size = 4 * MEGABYTES;
 	if (config.input_ref_file.size() > 1)
-		throw std::runtime_error("Too many arguments provided for option --in.");
+		throw runtime_error("Too many arguments provided for option --in.");
 	const string input_file_name = config.input_ref_file.empty() ? string() : config.input_ref_file.front();
 	if (input_file_name.empty())
 		message_stream << "Input file parameter (--in) is missing. Input will be read from stdin." << endl;
@@ -257,10 +251,9 @@ void DatabaseFile::make_db()
     }
 
     Block* block;
-	const FASTA_format format;
 	vector<SeqInfo> pos_array;
 	ExternalSorter<pair<string, OId>> accessions;
-	AccessionParsing acc_stats;
+	Util::Seq::AccessionParsing acc_stats;
 	try {
 		while (true) {
 			timer.go("Loading sequences");
@@ -280,13 +273,13 @@ void DatabaseFile::make_db()
 			for (size_t i = 0; i < n; ++i) {
 				Sequence seq = block->seqs()[i];
 				if (seq.length() == 0)
-					throw std::runtime_error("File format error: sequence of length 0 at line " + std::to_string(db_file.line_count()));
+					throw std::runtime_error("File format error: sequence of length 0");
 				push_seq(seq, block->ids()[i], block->ids().length(i), offset, pos_array, *out, letters, n_seqs);
 			}
 			if (!config.prot_accession2taxid.empty()) {
 				timer.go("Writing accessions");
 				for (size_t i = 0; i < n; ++i) {
-					vector<string> acc = accession_from_title(block->ids()[i], acc_stats);
+					vector<string> acc = Util::Seq::accession_from_title(block->ids()[i], !config.no_parse_seqids, acc_stats);
 					for (const string& s : acc)
 						accessions.push(std::make_pair(s, total_seqs + i));
 				}
@@ -338,7 +331,7 @@ void DatabaseFile::make_db()
 	}
 	if (!config.namesdmp.empty()) {
 		header2.taxon_names_offset = out->tell();
-		*out << taxonomy.name_;
+		serialize(*out, taxonomy.name_);
 	}
 
 #ifdef EXTRA
@@ -544,7 +537,7 @@ int64_t DatabaseFile::sequence_count() const {
 	return ref_header.sequences;
 }
 
-size_t DatabaseFile::letters() const {
+int64_t DatabaseFile::letters() const {
 	return ref_header.letters;
 }
 
@@ -647,22 +640,6 @@ std::string DatabaseFile::taxon_scientific_name(TaxId taxid) const {
 	return taxid < (TaxId)taxon_scientific_names_.size() && !taxon_scientific_names_[taxid].empty() ? taxon_scientific_names_[taxid] : std::to_string(taxid);
 }
 
-#ifdef EXTRA
-
-const char* const SEQID_EXTENSION = ".seqid";
-
-void DatabaseFile::prep_db() {
-	config.database.require();
-	TaskTimer timer("Opening the database");
-	DatabaseFile db(config.database);
-	timer.go("Writing seqid list");
-	db.make_seqid_list(); // db.file_name() + SEQID_EXTENSION);
-	timer.go("Closing the database");
-	db.close();
-}
-
-#endif
-
 void DatabaseFile::read_seqid_list() {
 	if (flag_any(flags_, Flags::ACC_TO_OID_MAPPING))
 		acc2oid_.reserve(sequence_count());
@@ -679,9 +656,6 @@ void DatabaseFile::read_seqid_list() {
 			message_stream << "Warning: " << msg << std::endl;
 		add_seqid_mapping(id, oid++);
 		if (flag_any(flags_, Flags::NEED_LENGTH_LOOKUP))
-			seq_length_.push_back(seq.size());
+			seq_length_.push_back((Loc)seq.size());
 	}
-	/*if ((flag_any(flags_, Flags::ACC_TO_OID_MAPPING) && (int64_t)acc2oid_.size() != sequence_count())
-		|| (flag_any(flags_, Flags::OID_TO_ACC_MAPPING) && (int64_t)acc_.size() != sequence_count()))
-		throw runtime_error("Inconsistent size of database and seqid file.");*/
 }

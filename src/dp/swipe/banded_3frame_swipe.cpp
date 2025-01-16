@@ -21,12 +21,14 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <utility>
 #include <numeric>
 #include <atomic>
+#include "util/simd/vector.h"
 #include "../dp.h"
 #include "swipe.h"
 #include "target_iterator.h"
-#include "../../util/data_structures/mem_buffer.h"
+#include "util/data_structures/mem_buffer.h"
+#include "util/simd/dispatch.h"
 #include "../score_vector_int16.h"
-#include "../util/simd/dispatch.h"
+#include "../score_vector_int8.h"
 
 using std::list;
 using std::thread;
@@ -212,7 +214,7 @@ struct Banded3FrameSwipeTracebackMatrix
 			}
 			assert(i >= -1 && j >= -1);
 		}
-		pair<Edit_operation, int> walk_gap(int d0, int d1)
+		pair<EditOperation, int> walk_gap(int d0, int d1)
 		{
 			const int i0 = std::max(d0 + j, 0), j0 = std::max(i - d1, -1);
 			const Score *h = score_ - (band_ - 2) * ScoreTraits<Sv>::CHANNELS, *h0 = score_ - (j - j0) * (band_ - 2) * ScoreTraits<Sv>::CHANNELS;
@@ -373,7 +375,7 @@ Hsp traceback(Sequence *query, Strand strand, int dna_len, const Banded3FrameSwi
 			it.walk_reverse_shift();
 		}
 		else {
-			const pair<Edit_operation, int> g(it.walk_gap(d_begin, d1));
+			const pair<EditOperation, int> g(it.walk_gap(d_begin, d1));
 			out.push_gap(g.first, g.second, target.seq.data() + it.j + g.second);
 		}
 	}
@@ -381,6 +383,7 @@ Hsp traceback(Sequence *query, Strand strand, int dna_len, const Banded3FrameSwi
 	out.set_begin(it.i + 1, it.j + 1, Frame(strand, it.frame), dna_len);
 	out.transcript.reverse();
 	out.transcript.push_terminator();
+	out.subject_source_range = out.subject_range;
 	return out;
 }
 
@@ -400,19 +403,19 @@ Hsp traceback(Sequence *query, Strand strand, int dna_len, const Banded3FrameSwi
 	return out;
 }
 
-template<typename _sv, typename _traceback>
+template<typename Sv, typename Traceback>
 list<Hsp> banded_3frame_swipe(
-	const TranslatedSequence &query,
+	const TranslatedSequence& query,
 	Strand strand, std::vector<DpTarget>::const_iterator subject_begin,
 	std::vector<DpTarget>::const_iterator subject_end,
 	DpStat &stat,
 	bool parallel,
 	std::vector<DpTarget> &overflow)
 {
-	typedef typename Banded3FrameSwipeMatrixRef<_sv, _traceback>::type Matrix;
-	typedef typename ScoreTraits<_sv>::Score Score;
+	typedef typename Banded3FrameSwipeMatrixRef<Sv, Traceback>::type Matrix;
+	typedef typename ScoreTraits<Sv>::Score Score;
 
-	assert(subject_end - subject_begin <= ScoreTraits<_sv>::CHANNELS);
+	assert(subject_end - subject_begin <= ScoreTraits<Sv>::CHANNELS);
 	Sequence q[3];
 	query.get_strand(strand, q);
 	const int qlen = (int)q[0].length(), qlen2 = (int)q[1].length(), qlen3 = (int)q[2].length();
@@ -421,7 +424,7 @@ list<Hsp> banded_3frame_swipe(
 	for (vector<DpTarget>::const_iterator j = subject_begin; j < subject_end; ++j)
 		band = std::max(band, j->d_end - j->d_begin);
 
-	int i0 = INT_MAX, i1 = INT_MAX, d_begin[ScoreTraits<_sv>::CHANNELS];
+	int i0 = INT_MAX, i1 = INT_MAX, d_begin[ScoreTraits<Sv>::CHANNELS];
 	for (vector<DpTarget>::const_iterator j = subject_begin; j < subject_end; ++j) {
 		d_begin[j - subject_begin] = j->d_end - band;
 		int i2 = std::max(j->d_end - 1, 0);
@@ -429,21 +432,21 @@ list<Hsp> banded_3frame_swipe(
 		i0 = std::min(i0, i2 + 1 - band);
 	}
 
-	TargetIterator<Score> targets(subject_begin, subject_end, i1, qlen, d_begin);
+	TargetIterator<Score> targets(subject_begin, subject_end, false, i1, qlen, d_begin);
 	Matrix dp(band * 3, targets.cols);
 
-	const _sv open_penalty(score_matrix.gap_open() + score_matrix.gap_extend()),
+	const Sv open_penalty(score_matrix.gap_open() + score_matrix.gap_extend()),
 		extend_penalty(score_matrix.gap_extend()),
 		frameshift_penalty(score_matrix.frame_shift());
 	
-	SwipeProfile<_sv> profile;
+	SwipeProfile<Sv> profile;
 #ifndef __SSSE3__
 	std::array<const int8_t*, 32> target_scores;
 #endif
-	Score best[ScoreTraits<_sv>::CHANNELS];
-	int max_col[ScoreTraits<_sv>::CHANNELS];
-	for (int i = 0; i < ScoreTraits<_sv>::CHANNELS; ++i) {
-		best[i] = ScoreTraits<_sv>::zero_score();
+	Score best[ScoreTraits<Sv>::CHANNELS];
+	int max_col[ScoreTraits<Sv>::CHANNELS];
+	for (int i = 0; i < ScoreTraits<Sv>::CHANNELS; ++i) {
+		best[i] = ScoreTraits<Sv>::zero_score();
 		max_col[i] = 0;
 	}
 
@@ -455,8 +458,8 @@ list<Hsp> banded_3frame_swipe(
 		typename Matrix::ColumnIterator it(dp.begin((i0_ - i0) * 3, j));
 		if (i0_ - i0 > 0)
 			it.set_zero();
-		_sv vgap0, vgap1, vgap2, hgap, col_best;
-		vgap0 = vgap1 = vgap2 = col_best = ScoreTraits<_sv>::zero();
+		Sv vgap0, vgap1, vgap2, hgap, col_best;
+		vgap0 = vgap1 = vgap2 = col_best = ScoreTraits<Sv>::zero();
 
 #ifdef __SSSE3__
 		profile.set(targets.get());
@@ -465,7 +468,7 @@ list<Hsp> banded_3frame_swipe(
 #endif
 		for (int i = i0_; i <= i1_; ++i) {
 			hgap = it.hgap();
-			_sv next = cell_update<_sv>(it.sm3, it.sm4, it.sm2, profile.get(q[0][i]), extend_penalty, open_penalty, frameshift_penalty, hgap, vgap0, col_best);
+			Sv next = cell_update<Sv>(it.sm3, it.sm4, it.sm2, profile.get(q[0][i]), extend_penalty, open_penalty, frameshift_penalty, hgap, vgap0, col_best);
 			it.set_hgap(hgap);
 			it.set_score(next);
 			++it;
@@ -473,7 +476,7 @@ list<Hsp> banded_3frame_swipe(
 			if (i >= qlen2)
 				break;
 			hgap = it.hgap();
-			next = cell_update<_sv>(it.sm3, it.sm4, it.sm2, profile.get(q[1][i]), extend_penalty, open_penalty, frameshift_penalty, hgap, vgap1, col_best);
+			next = cell_update<Sv>(it.sm3, it.sm4, it.sm2, profile.get(q[1][i]), extend_penalty, open_penalty, frameshift_penalty, hgap, vgap1, col_best);
 			it.set_hgap(hgap);
 			it.set_score(next);
 			++it;
@@ -481,7 +484,7 @@ list<Hsp> banded_3frame_swipe(
 			if (i >= qlen3)
 				break;
 			hgap = it.hgap();
-			next = cell_update<_sv>(it.sm3, it.sm4, it.sm2, profile.get(q[2][i]), extend_penalty, open_penalty, frameshift_penalty, hgap, vgap2, col_best);
+			next = cell_update<Sv>(it.sm3, it.sm4, it.sm2, profile.get(q[2][i]), extend_penalty, open_penalty, frameshift_penalty, hgap, vgap2, col_best);
 			it.set_hgap(hgap);
 			it.set_score(next);
 			++it;
@@ -492,7 +495,7 @@ list<Hsp> banded_3frame_swipe(
 		//stat.gross_cells += ScoreTraits<_sv>::CHANNELS * (i1_ - i0_ + 1) * 3;
 #endif
 
-		Score col_best_[ScoreTraits<_sv>::CHANNELS];
+		Score col_best_[ScoreTraits<Sv>::CHANNELS];
 		store_sv(col_best, col_best_);
 		for (int i = 0; i < targets.active.size();) {
 			int channel = targets.active[i];
@@ -512,11 +515,11 @@ list<Hsp> banded_3frame_swipe(
 	
 	list<Hsp> out;
 	for (int i = 0; i < targets.n_targets; ++i) {
-		if (best[i] < ScoreTraits<_sv>::max_score()) {
-			const int score = ScoreTraits<_sv>::int_score(best[i]) * config.cbs_matrix_scale;
+		if (best[i] < ScoreTraits<Sv>::max_score()) {
+			const int score = ScoreTraits<Sv>::int_score(best[i]) * config.cbs_matrix_scale;
 			const double evalue = score_matrix.evalue(score, qlen, (unsigned)subject_begin[i].seq.length());
 			if (score_matrix.report_cutoff(score, evalue))
-				out.push_back(traceback<_sv>(q, strand, (int)query.source().length(), dp, subject_begin[i], d_begin[i], best[i], evalue, max_col[i], i, i0 - j, i1 - j));
+				out.push_back(traceback<Sv>(q, strand, (int)query.source().length(), dp, subject_begin[i], d_begin[i], best[i], evalue, max_col[i], i, i0 - j, i1 - j));
 		}
 		else
 			overflow.push_back(subject_begin[i]);
@@ -524,7 +527,7 @@ list<Hsp> banded_3frame_swipe(
 	return out;
 }
 
-template<typename _sv>
+template<typename Sv>
 list<Hsp> banded_3frame_swipe_targets(std::vector<DpTarget>::const_iterator begin,
 	vector<DpTarget>::const_iterator end,
 	bool score_only,
@@ -535,11 +538,11 @@ list<Hsp> banded_3frame_swipe_targets(std::vector<DpTarget>::const_iterator begi
 	std::vector<DpTarget> &overflow)
 {
 	list<Hsp> out;
-	for (vector<DpTarget>::const_iterator i = begin; i < end; i += std::min((ptrdiff_t)ScoreTraits<_sv>::CHANNELS, end - i)) {
+	for (vector<DpTarget>::const_iterator i = begin; i < end; i += std::min((ptrdiff_t)ScoreTraits<Sv>::CHANNELS, end - i)) {
 		if (score_only)
-			out.splice(out.end(), banded_3frame_swipe<_sv, DP::ScoreOnly>(query, strand, i, i + std::min(ptrdiff_t(ScoreTraits<_sv>::CHANNELS), end - i), stat, parallel, overflow));
+			out.splice(out.end(), banded_3frame_swipe<Sv, DP::ScoreOnly>(query, strand, i, i + std::min(ptrdiff_t(ScoreTraits<Sv>::CHANNELS), end - i), stat, parallel, overflow));
 		else
-			out.splice(out.end(), banded_3frame_swipe<_sv, DP::Traceback>(query, strand, i, i + std::min(ptrdiff_t(ScoreTraits<_sv>::CHANNELS), end - i), stat, parallel, overflow));
+			out.splice(out.end(), banded_3frame_swipe<Sv, DP::Traceback>(query, strand, i, i + std::min(ptrdiff_t(ScoreTraits<Sv>::CHANNELS), end - i), stat, parallel, overflow));
 	}
 	return out;
 }
@@ -556,7 +559,7 @@ void banded_3frame_swipe_worker(std::vector<DpTarget>::const_iterator begin,
 	DpStat stat;
 	size_t pos;
 	vector<DpTarget> of;
-	while (begin + (pos = next->fetch_add(config.swipe_chunk_size)) < end)
+	while (begin + (pos = next->fetch_add(config.swipe_chunk_size, std::memory_order_relaxed)) < end)
 #if defined(__SSE2__) | defined(__ARM_NEON)
 		if(score_only)
 			out->splice(out->end(), banded_3frame_swipe_targets<ScoreVector<int16_t, SHRT_MIN>>(begin + pos, min(begin + pos + config.swipe_chunk_size, end), score_only, *query, strand, stat, true, of));

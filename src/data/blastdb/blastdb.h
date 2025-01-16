@@ -2,7 +2,6 @@
 #include <objtools/blast/seqdb_reader/seqdbexpert.hpp>
 #include <memory>
 #include "../sequence_file.h"
-#include "../string_set.h"
 
 using BlastOid = int;
 
@@ -29,7 +28,7 @@ struct BlastDB : public SequenceFile {
 	virtual std::vector<Letter> dict_seq(DictId dict_id, const size_t ref_block) const override;
 	virtual int64_t sequence_count() const override;
 	virtual int64_t sparse_sequence_count() const override;
-	virtual size_t letters() const override;
+	virtual int64_t letters() const override;
 	virtual int db_version() const override;
 	virtual int program_build_version() const override;
 	virtual bool read_seq(std::vector<Letter>& seq, std::string& id, std::vector<char>* quals = nullptr) override;

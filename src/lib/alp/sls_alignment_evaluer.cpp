@@ -33,9 +33,9 @@ Contents: library functions of main routines
 
 ******************************************************************************/
 
+// Modified by Benjamin Buchfink
 
 #include "sls_alignment_evaluer.hpp"
-
 #include "sls_alp.hpp"
 #include "sls_alp_data.hpp"
 #include "sls_alp_regression.hpp"
@@ -43,8 +43,7 @@ Contents: library functions of main routines
 #include "njn_localmaxstatmatrix.hpp"
 #include "njn_localmaxstatutil.hpp"
 
-using namespace std;
-
+using std::string;
 
 namespace Sls {
 

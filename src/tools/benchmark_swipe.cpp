@@ -1,7 +1,7 @@
 #include <chrono>
-#include "../dp/score_vector_int8.h"
-#include "../dp/score_vector_int16.h"
-#include "../dp/swipe/cell_update.h"
+#include "dp/score_vector_int8.h"
+#include "dp/swipe/stat_cell.h"
+#include "dp/swipe/cell_update.h"
 
 using namespace DISPATCH_ARCH;
 using std::vector;

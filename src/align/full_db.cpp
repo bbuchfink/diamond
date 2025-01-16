@@ -1,6 +1,6 @@
 #include <map>
 #include "target.h"
-#include "../dp/dp.h"
+#include "dp/dp.h"
 
 using std::list;
 using std::map;
@@ -8,7 +8,7 @@ using std::vector;
 
 namespace Extension {
 
-vector<Target> full_db_align(const Sequence* query_seq, const Bias_correction* query_cb, DP::Flags flags, const HspValues hsp_values, Statistics& stat, const Block& target_block) {
+vector<Target> full_db_align(const Sequence* query_seq, const HauserCorrection* query_cb, DP::Flags flags, const HspValues hsp_values, Statistics& stat, const Block& target_block) {
 	vector<DpTarget> v;
 	vector<Target> r;
 	::Stats::TargetMatrix matrix;
@@ -23,6 +23,8 @@ vector<Target> full_db_align(const Sequence* query_seq, const Bias_correction* q
 			query_seq[frame].length(),
 			::Stats::CBS::hauser(config.comp_based_stats) ? query_cb[frame].int8.data() : nullptr,
 			flags | DP::Flags::FULL_MATRIX,
+			false,
+			ref_seqs.max_len(0, ref_seqs.size()),
 			hsp_values,
 			stat,
 			nullptr

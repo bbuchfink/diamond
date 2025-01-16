@@ -20,15 +20,15 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #pragma once
-#include "../util/io/output_file.h"
-#include "../util/data_structures/compact_array.h"
-#include "../util/table.h"
-#include "../basic/value.h"
+#include "util/io/output_file.h"
+#include "legacy/dmnd/compact_array.h"
+#include "util/table.h"
+#include "basic/value.h"
 
 template<typename Type, typename Cmp>
 struct ExternalSorter;
 
-struct TaxonList : public CompactArray<std::vector<TaxId>>
+struct TaxonList : public CompactArray
 {
 	typedef std::pair<std::string, OId> T;
 	TaxonList(Deserializer &in, size_t size, size_t data_size);

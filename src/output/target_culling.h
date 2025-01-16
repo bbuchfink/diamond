@@ -23,8 +23,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <vector>
 #include <set>
 #include <map>
-#include "../align/legacy/query_mapper.h"
-#include "../util/geo/interval_partition.h"
+#include "align/legacy/query_mapper.h"
+#include "util/geo/interval_partition.h"
 #include "output.h"
 
 struct TargetCulling
@@ -59,7 +59,7 @@ struct GlobalCulling : public TargetCulling
 			if (taxons_exceeded == t.taxon_rank_ids.size())
 				return { NEXT,0 };
 		}
-		if (config.toppercent < 100.0)
+		if (config.toppercent.present())
 			return { (1.0 - score_matrix.bitscore(t.filter_score) / top_score_) * 100.0 <= config.toppercent ? INCLUDE : FINISHED, 0 };
 		else
 			return { n_ < max_target_seqs_ ? INCLUDE : FINISHED,0 };
@@ -80,7 +80,7 @@ struct GlobalCulling : public TargetCulling
 		}
 		if (config.global_ranking_targets)
 			return n_ < config.global_ranking_targets ? INCLUDE : FINISHED;
-		else if (config.toppercent < 100.0)
+		else if (config.toppercent.present())
 			return (1.0 - score_matrix.bitscore(target_hsp[0].score) / top_score_) * 100.0 <= config.toppercent ? INCLUDE : FINISHED;
 		else
 			return n_ < max_target_seqs_ ? INCLUDE : FINISHED;
@@ -120,7 +120,7 @@ struct RangeCulling : public TargetCulling
 	{
 		int c = 0, l = 0;
 		for (std::list<Hsp>::const_iterator i = t.hsps.begin(); i != t.hsps.end(); ++i) {
-			if (config.toppercent == 100.0) {
+			if (config.toppercent.blank()) {
 				c += p_.covered(i->query_source_range);
 			}
 			else {
@@ -136,7 +136,7 @@ struct RangeCulling : public TargetCulling
 	{
 		int c = 0, l = 0;
 		for (std::vector<IntermediateRecord>::const_iterator i = target_hsp.begin(); i != target_hsp.end(); ++i) {
-			if (config.toppercent == 100.0)
+			if (config.toppercent.blank())
 				c += p_.covered(i->absolute_query_range());
 			else {
 				const int cutoff = int((double)i->score / (1.0 - config.toppercent / 100.0));

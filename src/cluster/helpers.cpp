@@ -18,15 +18,12 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#include <fstream>
 #include <sstream>
 #include "cluster.h"
-#include "../util/tsv/tsv.h"
-#include "../util/string/tokenizer.h"
-#include "../basic/config.h"
-#include "../search/search.h"
-#define _REENTRANT
-#include "../lib/ips4o/ips4o.hpp"
+#include "util/tsv/tsv.h"
+#include "util/string/tokenizer.h"
+#include "basic/config.h"
+#include "util/log_stream.h"
 
 const char* const HEADER_LINE = "centroid\tmember";
 
@@ -55,13 +52,13 @@ pair<FlatArray<Int>, vector<Int>> read(const string& file_name, const SequenceFi
 	vector<pair<Int, Int>> pairs;
 	pairs.reserve(lines);
 	int64_t mappings = 0;
-	if (Blast_tab_format::header_format(::Config::cluster) == Header::SIMPLE) {
+	if (TabularFormat::header_format(::Config::cluster) == Header::SIMPLE) {
 		in.getline();
 		if (in.line != HEADER_LINE)
 			throw runtime_error("Clusters file is missing header line.");
 	}
 	while (in.getline(), !in.eof() || !in.line.empty()) {
-		Util::String::Tokenizer(in.line, "\t") >> centroid >> member;
+		Util::String::Tokenizer<Util::String::CharDelimiter>(in.line, Util::String::CharDelimiter('\t')) >> centroid >> member;
 		const Int centroid_oid = (Int)db.accession_to_oid(centroid).front();
 		const Int member_oid = (Int)db.accession_to_oid(member).front();
 		pairs.emplace_back(centroid_oid, member_oid);
@@ -83,18 +80,18 @@ vector<Int> read(const string& file_name, const SequenceFile& db) {
 	string centroid, member;
 	vector<Int> v(db.sequence_count());
 	int64_t mappings = 0;
-	if (Blast_tab_format::header_format(::Config::cluster) == Header::SIMPLE) {
+	if (TabularFormat::header_format(::Config::cluster) == Header::SIMPLE) {
 		in.getline();
 		if (in.line != HEADER_LINE)
 			throw runtime_error("Clustering input file is missing header line.");
 	}
 	while (in.getline(), !in.eof() || !in.line.empty()) {
-		Util::String::Tokenizer(in.line, "\t") >> centroid >> member;
+		Util::String::Tokenizer<Util::String::CharDelimiter>(in.line, Util::String::CharDelimiter('\t')) >> centroid >> member;
 		const auto centroid_oid = db.accession_to_oid(centroid);
 		const auto member_oid = db.accession_to_oid(member);
 		v[member_oid.front()] = (Int)centroid_oid.front();
 		++mappings;
-		if (mappings % 1000000 == 0)
+		if (mappings % 1'000'000 == 0)
 			log_stream << "#Entries: " << mappings << endl;
 	}
 	in.close();
@@ -202,7 +199,7 @@ vector<SuperBlockId> member_counts(const vector<SuperBlockId>& mapping) {
 
 void init_thresholds() {
 	if (config.member_cover.present() && config.mutual_cover.present())
-		throw std::runtime_error("--member-cover and --mutual-cover are mutually exclusive.");
+		throw runtime_error("--member-cover and --mutual-cover are mutually exclusive.");
 	if (!config.mutual_cover.present())
 		config.member_cover.set_if_blank(DEFAULT_MEMBER_COVER);
 	if (!config.approx_min_id.present())
@@ -213,19 +210,20 @@ void init_thresholds() {
 		config.masking_ = "0";
 	if (config.approx_min_id < 90.0 || config.mutual_cover.present())
 		return;
+	config.diag_filter_id.set_if_blank(config.approx_min_id - (config.command == ::Config::CLUSTER_REASSIGN ? 10.0 : 10.0));
+	if (config.approx_min_id < 90.0)
+		return;
 	if(config.command == ::Config::CLUSTER_REASSIGN) {
-		config.diag_filter_id = 80.0;
-		config.diag_filter_cov = config.member_cover > 50.0 ? config.member_cover - 10.0 : 0.0;
+		config.diag_filter_cov.set_if_blank(config.member_cover > 50.0 ? config.member_cover - 10.0 : 0.0);
 	}
 	else {
-		config.diag_filter_id = 85.0;
-		config.diag_filter_cov = config.member_cover > 50.0 ? config.member_cover - 10.0 : 0.0;
+		config.diag_filter_cov.set_if_blank(config.member_cover > 50.0 ? config.member_cover - 10.0 : 0.0);
 	}
 }
 
 File* open_out_tsv() {
 	File* file = new File(Schema{ Type::STRING, Type::STRING }, config.output_file, Flags::WRITE);
-	if (Blast_tab_format::header_format(::Config::cluster) == Header::SIMPLE)
+	if (TabularFormat::header_format(::Config::cluster) == Header::SIMPLE)
 		file->write_record("centroid", "member");
 	return file;
 }
@@ -257,14 +255,14 @@ double round_value(const vector<string>& par, const string& name, int round, int
 	if (round >= round_count - 1)
 		return 0.0;
 	if ((int64_t)par.size() >= round_count)
-		throw std::runtime_error("Too many values provided for " + name);
+		throw runtime_error("Too many values provided for " + name);
 	vector<double> v;
 	for(const string& s : par) {
 		stringstream ss(s);
 		double i;
 		ss >> i;
 		if (ss.fail() || !ss.eof())
-			throw std::runtime_error("Invalid value provided for " + name + ": " + s);
+			throw runtime_error("Invalid value provided for " + name + ": " + s);
 		v.push_back(i);
 	}
 	v.insert(v.begin(), round_count - 1 - v.size(), v.front());

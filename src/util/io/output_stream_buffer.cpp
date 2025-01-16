@@ -16,7 +16,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#include "../../basic/config.h"
+#include "basic/config.h"
 #include "output_stream_buffer.h"
 
 using std::pair;

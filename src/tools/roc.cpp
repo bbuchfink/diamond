@@ -20,27 +20,23 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <iostream>
 #include <atomic>
+#include <condition_variable>
 #include <array>
 #include <set>
 #include <map>
 #include <unordered_map>
 #include <unordered_set>
 #include <tuple>
+#include <float.h>
+#include <cmath>
 #include <vector>
-#include <math.h>
 #include <mutex>
-#include <condition_variable>
 #include <queue>
 #include <thread>
-#include <limits.h>
-#include <float.h>
-#include <sstream>
-#include "../util/io/text_input_file.h"
-#include "../basic/config.h"
-#include "../util/string/tokenizer.h"
-#include "../util/log_stream.h"
-#include "tsv_record.h"
-#include "../util/string/tokenizer.h"
+#include "util/io/text_input_file.h"
+#include "basic/config.h"
+#include "util/string/tokenizer.h"
+#include "util/log_stream.h"
 
 using std::string;
 using std::cout;
@@ -73,7 +69,7 @@ struct FamilyMapping : public unordered_multimap<string, int> {
 		int fold, superfam, fam;
 
 		while (mapping_file.getline(), !mapping_file.eof()) {
-			Util::String::Tokenizer(mapping_file.line, "\t") >> Util::String::Skip() >> acc >> Util::String::Skip() >> domain_class >> fold >> superfam >> fam;
+			Util::String::Tokenizer<Util::String::CharDelimiter>(mapping_file.line, Util::String::CharDelimiter('\t')) >> Util::String::Skip() >> acc >> Util::String::Skip() >> domain_class >> fold >> superfam >> fam;
 			if (acc.empty() || domain_class.empty() || domain_class.length() > 1)
 				throw std::runtime_error("Format error.");
 
@@ -285,15 +281,15 @@ struct QueryStats {
 
 double query_roc(const string& buf, Histogram& hist) {
 	string query, acc, line;
-	Util::String::Tokenizer(buf, "\t") >> query;
+	Util::String::Tokenizer<Util::String::CharDelimiter>(buf, Util::String::CharDelimiter('\t')) >> query;
 	QueryStats stats(query, families, acc2fam_query);
-	Util::String::Tokenizer tok(buf, "\n");
+	Util::String::Tokenizer<Util::String::CharDelimiter> tok(buf, Util::String::CharDelimiter('\n'));
 	double evalue = 0.0;
 	while(tok.good() && (!stats.have_rev_hit || get_roc)) {
 		tok >> line;
 		if (line.empty())
 			break;
-		Util::String::Tokenizer tok2(line, "\t");
+		Util::String::Tokenizer<Util::String::CharDelimiter> tok2(line, Util::String::CharDelimiter('\t'));
 		tok2 >> Util::String::Skip() >> acc;
 		if (get_roc)
 			tok2 >> evalue;
@@ -386,7 +382,7 @@ void roc() {
 	while (in.getline(), !in.eof()) {
 		if (in.line.empty())
 			break;
-		Util::String::Tokenizer(in.line, "\t") >> acc;
+		Util::String::Tokenizer<Util::String::CharDelimiter>(in.line, Util::String::CharDelimiter('\t')) >> acc;
 		if (acc != query) {
 			if (!query.empty()) {
 				std::lock_guard<std::mutex> lock(mtx);

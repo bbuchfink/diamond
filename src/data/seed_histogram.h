@@ -21,13 +21,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #pragma once
-#include <array>
 #include <vector>
 #include "flags.h"
-#include "../basic/const.h"
-#include "../masking/masking.h"
+#include "basic/seed.h"
 
-typedef std::vector<std::array<unsigned, Const::seedp>> ShapeHistogram;
+using ShapeHistogram = std::vector<std::vector<unsigned>>;
 
 struct SeedPartitionRange
 {
@@ -35,30 +33,26 @@ struct SeedPartitionRange
 		begin_ (0),
 		end_ (0)
 	{ }
-	SeedPartitionRange(int begin, int end):
+	SeedPartitionRange(SeedPartition begin, SeedPartition end):
 		begin_ (begin),
 		end_ (end)
 	{ }
-	bool contains(int i) const
+	bool contains(SeedPartition i) const
 	{ return i >= begin_ && i < end_; }
-	int begin() const
+	SeedPartition begin() const
 	{ return begin_; }
-	int end() const
+	SeedPartition end() const
 	{ return end_; }
-	bool lower(int i) const
+	bool lower(SeedPartition i) const
 	{ return i < begin_; }
-	bool lower_or_equal(int i) const
+	bool lower_or_equal(SeedPartition i) const
 	{ return i < end_; }
-	int size() const
+	SeedPartition size() const
 	{
 		return end_ - begin_;
 	}
-	static SeedPartitionRange all()
-	{
-		return SeedPartitionRange(0, Const::seedp);
-	}
 private:
-	int begin_, end_;
+	SeedPartition begin_, end_;
 };
 
 extern SeedPartitionRange current_range;
@@ -74,7 +68,7 @@ inline size_t partition_size(const ShapeHistogram &hst, size_t p)
 inline size_t hst_size(const ShapeHistogram &hst, const SeedPartitionRange &range)
 {
 	size_t s = 0;
-	for(int i=range.begin();i<range.end();++i)
+	for (SeedPartition i = range.begin(); i < range.end(); ++i)
 		s += partition_size(hst, i);
 	return s;
 }
@@ -87,21 +81,25 @@ struct SeedHistogram
 	SeedHistogram();
 	
 	template<typename Filter>
-	SeedHistogram(Block& seqs, bool serial, const Filter* filter, EnumCfg& enum_cfg);
+	SeedHistogram(Block& seqs, bool serial, const Filter* filter, EnumCfg& enum_cfg, int seedp_bits);
 
 	const ShapeHistogram& get(unsigned sid) const
 	{ return data_[sid]; }
 
 	size_t max_chunk_size(const int index_chunks) const;
 
-	const std::vector<size_t>& partition() const
+	const std::vector<BlockId>& partition() const
 	{
 		return p_;
 	}
 
+	int seedp() const {
+		return (int)data_.front().front().size();
+	}
+
 private:
 
+	std::vector<BlockId> p_;
 	std::vector<ShapeHistogram> data_;
-	std::vector<size_t> p_;
 
 };

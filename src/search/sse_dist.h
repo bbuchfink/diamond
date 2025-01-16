@@ -23,9 +23,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #pragma once
 #include <assert.h>
-#include "../basic/reduction.h"
-#include "../basic/value.h"
-#include "../util/simd.h"
+#include "basic/reduction.h"
+#include "basic/value.h"
+#include "util/simd.h"
 
 #ifdef __SSSE3__
 static inline __m128i reduce_seq_ssse3(const Letter *seq, const Letter* map)

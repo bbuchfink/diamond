@@ -17,54 +17,37 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #pragma once
-#include <stdint.h>
 #include "const.h"
-#include "../util/hash_function.h"
 #include "config.h"
 #include "value.h"
-#include "../stats/score_matrix.h"
+#include "stats/score_matrix.h"
 
 using PackedSeed = uint64_t;
 #ifdef LONG_SEEDS
 using SeedOffset = uint64_t;
+using SeedPartition = uint32_t;
 #else
 using SeedOffset = uint32_t;
+using SeedPartition = uint32_t;
 #endif
 
-inline unsigned seed_partition(PackedSeed s)
-{
-	return (unsigned)(s & (Const::seedp-1));
+static inline PackedSeed seedp_mask(int seedp_bits) {
+	return ((PackedSeed)1 << seedp_bits) - 1;
 }
 
-inline SeedOffset seed_partition_offset(PackedSeed s)
-{
-	return (SeedOffset)(s >> Const::seedp_bits);
+static inline PackedSeed seedp_count(int seedp_bits) {
+	return (PackedSeed)1 << seedp_bits;
 }
 
-struct Hashed_seed
+static inline SeedPartition seed_partition(PackedSeed s, PackedSeed seedp_mask)
 {
-	Hashed_seed()
-	{}
-	explicit Hashed_seed(uint64_t seed):
-		hash(MurmurHash()(seed))
-	{}
-	unsigned partition() const
-	{
-		return unsigned(hash&(p - 1));
-	}
-	uint64_t offset() const
-	{
-		return hash >> p_bits;
-	}
-	operator uint64_t() const
-	{
-		return hash;
-	}
-	enum {
-		p_bits = 10, p = 1 << p_bits
-	};
-	uint64_t hash;
-};
+	return (SeedPartition)(s & seedp_mask);
+}
+
+static inline SeedOffset seed_partition_offset(PackedSeed s, PackedSeed seedp_bits)
+{
+	return (SeedOffset)(s >> seedp_bits);
+}
 
 struct Seed
 {
@@ -99,4 +82,3 @@ private:
 	void enum_neighborhood(unsigned pos, int treshold, std::vector<Seed>& out, int score);
 	Letter data_[Const::max_seed_weight];
 };
-

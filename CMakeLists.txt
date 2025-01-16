@@ -16,7 +16,6 @@ option(LEFTMOST_SEED_FILTER "LEFTMOST_SEED_FILTER" ON)
 option(SEQ_MASK "SEQ_MASK" ON)
 option(DP_STAT "DP_STAT" OFF)
 option(SINGLE_THREADED "SINGLE_THREADED" OFF)
-option(EIGEN_BLAS "EIGEN_BLAS" OFF)
 option(WITH_ZSTD "WITH_ZSTD" OFF)
 option(HIT_KEEP_TARGET_ID "HIT_KEEP_TARGET_ID" OFF)
 option(LONG_SEEDS "LONG_SEEDS" OFF)
@@ -39,7 +38,7 @@ elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "PPC64*|ppc64*|powerpc64*")
   set(X86 OFF)
   # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -maltivec")
   add_definitions(-DEIGEN_DONT_VECTORIZE)
-elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^s390")
+elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^s390|sparc")
   set(X86 OFF)
 endif()
 
@@ -133,6 +132,8 @@ else()
   set_cxx_standard(11 "-std=gnu++11")
 endif()
 
+check_symbol_exists(sysinfo "sys/sysinfo.h" HAVE_SYSINFO)
+
 if(CMAKE_BUILD_MARCH)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=${CMAKE_BUILD_MARCH}")
 endif()
@@ -168,7 +169,6 @@ set(DISPATCH_OBJECTS
         "src/masking/tantan.cpp"
         "src/dp/scan_diags.cpp"
         "src/dp/ungapped_simd.cpp"
-        "src/dp/pfscan/pfscan.cpp"
         "src/dp/swipe/anchored_wrapper.cpp"
         "src/dp/score_profile.cpp"
         )
@@ -179,15 +179,11 @@ endif()
 
 add_library(arch_generic OBJECT ${DISPATCH_OBJECTS})
 target_compile_options(arch_generic PUBLIC -DDISPATCH_ARCH=ARCH_GENERIC -DARCH_ID=0 -DEigen=Eigen_GENERIC)
-target_include_directories(arch_generic PRIVATE "${CMAKE_SOURCE_DIR}/src/lib")
 if(X86)
   add_library(arch_sse4_1 OBJECT ${DISPATCH_OBJECTS})
-  target_include_directories(arch_sse4_1 PRIVATE "${CMAKE_SOURCE_DIR}/src/lib")
   add_library(arch_avx2 OBJECT ${DISPATCH_OBJECTS})
-  target_include_directories(arch_avx2 PRIVATE "${CMAKE_SOURCE_DIR}/src/lib")
   if(WITH_AVX512)
     add_library(arch_avx512 OBJECT ${DISPATCH_OBJECTS})
-    target_include_directories(arch_avx512 PRIVATE "${CMAKE_SOURCE_DIR}/src/lib")
   endif()
   add_definitions(-DWITH_AVX2)
   add_definitions(-DWITH_SSE4_1)
@@ -210,7 +206,6 @@ endif(X86)
 if(AARCH64)
   add_definitions(-DWITH_NEON)
   add_library(arch_neon OBJECT ${DISPATCH_OBJECTS})
-  target_include_directories(arch_neon PRIVATE "${CMAKE_SOURCE_DIR}/src/lib")
   target_compile_options(arch_neon PUBLIC -DDISPATCH_ARCH=ARCH_NEON -DARCH_ID=4 -D__ARM_NEON -D__aarch64__ -DEigen=Eigen_NEON)
 endif(AARCH64)
 
@@ -223,7 +218,6 @@ if(HAVE_MFPU_NEON)
     add_definitions(-DWITH_NEON)
     add_definitions(-DHAVE_MFPU_NEON)
     add_library(arch_neon OBJECT ${DISPATCH_OBJECTS})
-    target_include_directories(arch_neon PRIVATE "${CMAKE_SOURCE_DIR}/src/lib")
     target_compile_options(arch_neon PUBLIC -DDISPATCH_ARCH=ARCH_NEON -DARCH_ID=4 -D__ARM_NEON -DEigen=Eigen_NEON -mfpu=neon)
   endif()
   if(HAVE_GETAUXVAL)
@@ -239,7 +233,6 @@ set(OBJECTS
         src/data/seed_histogram.cpp
         src/output/daa/daa_record.cpp
         src/util/command_line_parser.cpp
-        src/util/seq_file_format.cpp
         src/util/util.cpp
         src/basic/basic.cpp
         src/basic/hssp.cpp
@@ -247,8 +240,6 @@ set(OBJECTS
         src/run/tools.cpp
         src/chaining/greedy_align.cpp
         src/output/output_format.cpp
-        src/output/clustering_variables.cpp
-        src/output/clustering_format.cpp
         src/output/join_blocks.cpp
         src/data/frequent_seeds.cpp
         src/align/legacy/query_mapper.cpp
@@ -280,18 +271,16 @@ set(OBJECTS
         src/util/io/text_input_file.cpp
         src/data/taxon_list.cpp
         src/data/taxonomy_nodes.cpp
-        src/util/algo/MurmurHash3.cpp
+        src/lib/murmurhash/MurmurHash3.cpp
         src/search/stage0.cpp
         src/data/seed_array.cpp
         src/output/paf_format.cpp
         src/util/system/system.cpp
         src/util/algo/greedy_vertex_cover.cpp
         src/util/sequence/sequence.cpp
-        src/tools/tsv_record.cpp
         src/tools/tools.cpp
         src/util/system/getRSS.cpp
         src/lib/tantan/LambdaCalculator.cc
-        src/util/algo/edge_vec.cpp
         src/util/string/string.cpp
         src/align/extend.cpp
         src/test/test.cpp
@@ -359,9 +348,7 @@ set(OBJECTS
         src/align/global_ranking/table.cpp
         src/output/daa/daa_write.cpp
         src/search/seed_complexity.cpp
-        src/tools/view.cpp
         src/util/tsv/tsv.cpp
-        src/tools/join.cpp
         src/basic/value.cpp
         src/masking/motifs.cpp
         src/align/alt_hsp.cpp
@@ -375,8 +362,6 @@ set(OBJECTS
         src/cluster/helpers.cpp
         src/search/kmer_ranking.cpp
         src/chaining/hamming_ext.cpp
-        src/dna/smith_watermann.cpp
-        src/stats/dna_scoring/build_score.cpp
         src/lib/blast/blast_message.cpp
         src/lib/blast/blast_stat.cpp
         src/lib/blast/blastn_score.cpp
@@ -393,25 +378,31 @@ set(OBJECTS
         src/dp/scalar/smith_waterman.cpp
         src/align/short.cpp
         src/tools/tsv.cpp
+        src/cluster/external/make_seed_table.cpp
         )
 
 if(WITH_DNA)
   list(APPEND OBJECTS
-          src/dna/smith_watermann.cpp
-          src/dna/dna_index.cpp
-          src/dna/seed_set_dna.cpp
-          src/dna/extension.cpp
-          src/dna/chain.cpp
-          src/dna/extension_chain.cpp
-          #src/dna/align.cpp
+          src/contrib/dna/smith_watermann.cpp
+          src/contrib/dna/dna_index.cpp
+          src/contrib/dna/seed_set_dna.cpp
+          src/contrib/dna/extension.cpp
+          src/contrib/dna/chain.cpp
+          src/contrib/dna/extension_chain.cpp
+          src/contrib/dna/alignment.cpp
+          src/contrib/dna/extension_seed_matches.cpp
+          src/contrib/dna/smith_watermann.cpp
           src/lib/ksw2/ksw2_extz2_sse.c
           src/lib/ksw2/ksw2_extz.c
           src/lib/WFA2-lib.diamond/bindings/cpp/WFAligner.cpp
+          src/contrib/dna/build_score.cpp
   )
 endif()
 
 if(WITH_MCL)
-  list(APPEND OBJECTS src/contrib/mcl/mcl.cpp)
+  list(APPEND OBJECTS src/contrib/mcl/mcl.cpp
+                      src/contrib/mcl/clustering_variables.cpp
+                      src/contrib/mcl/clustering_format.cpp)
 endif()
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}")
@@ -436,9 +427,11 @@ else()
   add_executable(diamond $<TARGET_OBJECTS:arch_generic> ${OBJECTS} ${BLAST_OBJ} ${ZSTD_OBJ})
 endif()
 
-target_include_directories(diamond PRIVATE
-        "${ZLIB_INCLUDE_DIR}"
-        "${CMAKE_SOURCE_DIR}/src/lib")
+if (${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
+  target_compile_options(diamond PUBLIC /Zc:__cplusplus)
+endif()
+
+include_directories("${CMAKE_SOURCE_DIR}/src/" "${ZLIB_INCLUDE_DIR}" "${CMAKE_SOURCE_DIR}/src/lib")
 
 if(BLAST_INCLUDE_DIR)
   function(find_blast_lib var library)
@@ -487,14 +480,7 @@ endif()
 if(WITH_DNA)
   include_directories(src/lib/WFA2-lib.diamond)
   add_subdirectory(src/lib/WFA2-lib.diamond)
-  target_link_libraries(diamond  wfa2)
-endif()
-
-if(EIGEN_BLAS)
-  add_definitions(-DEIGEN_USE_BLAS -DEIGEN_USE_LAPACKE)
-  find_package(LAPACKE)
-  target_include_directories(diamond PRIVATE "${LAPACKE_INCLUDE_DIR}")
-  target_link_libraries(diamond "${LAPACKE_LIBRARIES_DEP}")
+  target_link_libraries(diamond wfa2)
 endif()
 
 if(WITH_ZSTD OR BLAST_INCLUDE_DIR)
@@ -510,6 +496,11 @@ if(WITH_MIMALLOC)
   add_definitions(-DWITH_MIMALLOC)
   target_link_libraries(diamond mimalloc)
   target_include_directories(diamond PRIVATE ${MIMALLOC_INCLUDE_DIR})
+endif()
+
+if (${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
+  find_library(BCRYPT_LIBRARY BCrypt)
+  target_link_libraries(diamond ${BCRYPT_LIBRARY})
 endif()
 
 target_link_libraries(diamond ${ZLIB_LIBRARY} ${CMAKE_THREAD_LIBS_INIT})

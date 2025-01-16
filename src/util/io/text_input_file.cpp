@@ -20,40 +20,35 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 using std::string;
 
-TextInputFile::TextInputFile(const string &file_name) :
+TextInputFile::TextInputFile(const string &file_name, const char* line_separator) :
 	InputFile(file_name),
 	line_count(0),
-	line_buf_used_(0),
-	line_buf_end_(0),
 	putback_line_(false),
-	eof_(false)
+	eof_(false),
+	line_separator(line_separator)
 {
 }
 
-TextInputFile::TextInputFile(TempFile &tmp_file) :
+TextInputFile::TextInputFile(TempFile &tmp_file, const char* line_separator) :
 	InputFile(tmp_file),
 	line_count(0),
-	line_buf_used_(0),
-	line_buf_end_(0),
 	putback_line_(false),
-	eof_(false)
+	eof_(false),
+	line_separator(line_separator)
 {}
 
-TextInputFile::TextInputFile(OutputFile& out_file) :
+TextInputFile::TextInputFile(OutputFile& out_file, const char* line_separator) :
 	InputFile(out_file),
 	line_count(0),
-	line_buf_used_(0),
-	line_buf_end_(0),
 	putback_line_(false),
-	eof_(false)
+	eof_(false),
+	line_separator(line_separator)
 {}
 
 void TextInputFile::rewind()
 {
 	InputFile::rewind();
 	line_count = 0;
-	line_buf_used_ = 0;
-	line_buf_end_ = 0;
 	putback_line_ = false;
 	eof_ = false;
 	line.clear();
@@ -66,39 +61,32 @@ bool TextInputFile::eof() const
 
 void TextInputFile::getline()
 {
+	assert(strlen(line_separator) <= 2);
 	if (putback_line_) {
 		putback_line_ = false;
 		++line_count;
 		return;
 	}
 	line.clear();
-	while (true) {
-		const char *p = (const char*)memchr(&line_buf_[line_buf_used_], '\n', line_buf_end_ - line_buf_used_);
-		if (p == 0) {
-			line.append(&line_buf_[line_buf_used_], line_buf_end_ - line_buf_used_);
-			line_buf_end_ = read(line_buf_, line_buf_size);
-			line_buf_used_ = 0;
-			if (line_buf_end_ == 0) {
-				eof_ = true;
-				++line_count;
-				return;
-			}
-		}
-		else {
-			const size_t n = (p - line_buf_) - line_buf_used_;
-			line.append(&line_buf_[line_buf_used_], n);
-			line_buf_used_ += n + 1;
-			const size_t s = line.length() - 1;
-			if (!line.empty() && line[s] == '\r')
-				line.resize(s);
-			++line_count;
-			return;
-		}
+	if (strlen(line_separator) == 1) {
+		eof_ = !read_to(std::back_inserter(line), line_separator[0]);
+		++line_count;
 	}
+	else {
+		auto r = read_to(std::back_inserter(line), line_separator[0], line_separator[1]);
+		eof_ = !r.first;
+		line_count += r.second;
+	}
+	if (!line.empty() && line.back() == '\r')
+		line.resize(line.length() - 1);
 }
 
 void TextInputFile::putback_line()
 {
 	putback_line_ = true;
 	--line_count;
+}
+
+void TextInputFile::set_separator(const char* separator) {
+	this->line_separator = separator;
 }

@@ -1,10 +1,8 @@
 #include <iostream>
-#include "chaining.h"
-#include "../output/output_format.h"
-#include "../dp/dp.h"
-#include "../dp/ungapped.h"
+#include "output/output_format.h"
+#include "dp/ungapped.h"
 #include "diag_graph.h"
-#include "../dp/scalar/scalar.h"
+#include "dp/scalar/scalar.h"
 
 using std::cout;
 using std::endl;

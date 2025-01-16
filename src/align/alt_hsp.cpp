@@ -1,6 +1,7 @@
-#include "target.h"
-#include "../dp/dp.h"
-#include "../util/sequence/sequence.h"
+#include "dp/dp.h"
+#include "extend.h"
+#include "util/sequence/sequence.h"
+#include "stats/hauser_correction.h"
 
 using std::list;
 using std::array;
@@ -63,7 +64,7 @@ struct ActiveTarget {
 
 using TargetVec = vector<ActiveTarget>;
 
-static TargetVec recompute_alt_hsps(const Sequence* query_seq, const int query_source_len, const Bias_correction* query_cb, TargetVec& targets, const HspValues v, Statistics& stats) {
+static TargetVec recompute_alt_hsps(const Sequence* query_seq, const int query_source_len, const HauserCorrection* query_cb, TargetVec& targets, const HspValues v, Statistics& stats) {
 	array<DP::Targets, MAX_CONTEXT> dp_targets;
 	const Loc qlen = query_seq[0].length();
 	for (auto it = targets.begin(); it != targets.end(); ++it) {
@@ -80,7 +81,7 @@ static TargetVec recompute_alt_hsps(const Sequence* query_seq, const int query_s
 
 	for (int32_t context = 0; context < align_mode.query_contexts; ++context) {
 		const int8_t* cbs = ::Stats::CBS::hauser(config.comp_based_stats) ? query_cb[context].int8.data() : nullptr;
-		DP::Params params{ query_seq[context], "", Frame(context), query_source_len, cbs, DP::Flags::FULL_MATRIX, v, stats, nullptr };
+		DP::Params params{ query_seq[context], "", Frame(context), query_source_len, cbs, DP::Flags::FULL_MATRIX, false, 0, v, stats, nullptr };
 		list<Hsp> hsp = DP::BandedSwipe::swipe(dp_targets[context], params);
 		while (!hsp.empty()) {
 			ActiveTarget& t = targets[hsp.front().swipe_target];
@@ -102,7 +103,7 @@ static TargetVec recompute_alt_hsps(const Sequence* query_seq, const int query_s
 	return out;
 }
 
-void recompute_alt_hsps(vector<Match>::iterator begin, vector<Match>::iterator end, const Sequence* query, const int query_source_len, const Bias_correction* query_cb, const HspValues v, Statistics& stats) {
+void recompute_alt_hsps(vector<Match>::iterator begin, vector<Match>::iterator end, const Sequence* query, const int query_source_len, const HauserCorrection* query_cb, const HspValues v, Statistics& stats) {
 	if (config.max_hsps == 1)
 		return;
 	TargetVec targets;

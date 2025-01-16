@@ -3,20 +3,14 @@
 #include <mutex>
 #include <thread>
 #include "tsv.h"
-#include "../util/io/input_stream_buffer.h"
 #include "file.h"
 
 using std::mutex;
 using std::condition_variable;
-using std::runtime_error;
-using std::string;
 using std::function;
 using std::queue;
 using std::vector;
-using std::search;
-using std::copy;
 using std::unique_lock;
-using std::move;
 using std::thread;
 using std::back_inserter;
 
@@ -47,7 +41,7 @@ void File::read(int64_t max_size, int threads, function<void(int64_t chunk, cons
 				{
 					unique_lock<mutex> lock(mtx);
 					read_cv.wait(lock, [&buffers, consumers] { return buffers.size() < consumers; });
-					buffers.push(move(new_buf));
+					buffers.push(std::move(new_buf));
 				}
 			}
 			if (n < READ_SIZE || total + READ_SIZE > max_size) {
@@ -68,7 +62,7 @@ void File::read(int64_t max_size, int threads, function<void(int64_t chunk, cons
 				unique_lock<mutex> lock(mtx);
 				consume_cv.wait(lock, [&buffers, &stop] { return stop || !buffers.empty(); });
 				if (!buffers.empty()) {
-					buf = move(buffers.front());
+					buf = std::move(buffers.front());
 					buffers.pop();
 					chunk = next_chunk++;
 				}

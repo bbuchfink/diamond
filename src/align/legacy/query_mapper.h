@@ -20,25 +20,23 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #pragma once
-#include <queue>
 #include <vector>
 #include <list>
 #include <set>
-#include <float.h>
-#include "../../data/queries.h"
-#include "../../util/ptr_vector.h"
-#include "../../dp/dp.h"
-#include "../../data/reference.h"
-#include "../../util/hsp/approx_hsp.h"
-#include "../../basic/match.h"
-#include "../../run/config.h"
-#include "../search/hit.h"
+#include "util/ptr_vector.h"
+#include "util/hsp/approx_hsp.h"
+#include "basic/match.h"
+#include "run/config.h"
+#include "search/hit.h"
+#include "stats/hauser_correction.h"
+#include "basic/statistics.h"
+#include "data/block/block.h"
 
-struct Seed_hit
+struct SeedHit
 {
-	Seed_hit()
+	SeedHit()
 	{}
-	Seed_hit(unsigned frame, unsigned subject, unsigned subject_pos, unsigned query_pos, const DiagonalSegment &ungapped) :
+	SeedHit(unsigned frame, unsigned subject, unsigned subject_pos, unsigned query_pos, const DiagonalSegment &ungapped) :
 		frame_(frame),
 		subject_(subject),
 		subject_pos_(subject_pos),
@@ -50,7 +48,7 @@ struct Seed_hit
 	{
 		return (int)query_pos_ - (int)subject_pos_;
 	}
-	bool operator<(const Seed_hit &rhs) const
+	bool operator<(const SeedHit &rhs) const
 	{
 		return ungapped.score > rhs.ungapped.score;
 	}
@@ -74,25 +72,25 @@ struct Seed_hit
 	{
 		return ::Frame(frame_).strand;
 	}
-	static bool compare_pos(const Seed_hit &x, const Seed_hit &y)
+	static bool compare_pos(const SeedHit &x, const SeedHit &y)
 	{
 		return DiagonalSegment::cmp_subject_end(x.ungapped, y.ungapped);
 	}
-	static bool compare_diag(const Seed_hit &x, const Seed_hit &y)
+	static bool compare_diag(const SeedHit &x, const SeedHit &y)
 	{
 		return x.frame_ < y.frame_ || (x.frame_ == y.frame_ && (x.diagonal() < y.diagonal() || (x.diagonal() == y.diagonal() && x.ungapped.j < y.ungapped.j)));
 	}
-	static bool compare_diag_strand(const Seed_hit &x, const Seed_hit &y)
+	static bool compare_diag_strand(const SeedHit &x, const SeedHit &y)
 	{
 		return x.strand() < y.strand() || (x.strand() == y.strand() && (x.diagonal() < y.diagonal() || (x.diagonal() == y.diagonal() && x.ungapped.j < y.ungapped.j)));
 	}
-	static bool compare_diag_strand2(const Seed_hit &x, const Seed_hit &y)
+	static bool compare_diag_strand2(const SeedHit &x, const SeedHit &y)
 	{
 		return x.strand() < y.strand() || (x.strand() == y.strand() && (x.diagonal() < y.diagonal() || (x.diagonal() == y.diagonal() && x.subject_pos_ < y.subject_pos_)));
 	}
 	struct Frame
 	{
-		unsigned operator()(const Seed_hit &x) const
+		unsigned operator()(const SeedHit &x) const
 		{
 			return x.frame_;
 		}
@@ -147,7 +145,7 @@ struct Target
 	size_t begin, end;
 	std::list<Hsp> hsps;
 	std::list<ApproxHsp> ts;
-	Seed_hit top_hit;
+	SeedHit top_hit;
 	std::set<TaxId> taxon_rank_ids;
 
 	enum { INTERVAL = 64 };
@@ -184,8 +182,8 @@ struct QueryMapper
 	unsigned query_id, targets_finished, next_target;
 	unsigned source_query_len, unaligned_from;
 	PtrVector<Target> targets;
-	std::vector<Seed_hit> seed_hits;
-	std::vector<Bias_correction> query_cb;
+	std::vector<SeedHit> seed_hits;
+	std::vector<HauserCorrection> query_cb;
 	TranslatedSequence translated_query;
 	const Search::Config &metadata;
 	bool target_parallel;

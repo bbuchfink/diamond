@@ -17,21 +17,20 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #pragma once
-#include <vector>
 #include <string>
-#include <stdexcept>
 #include "input_file.h"
 
 struct TextInputFile : public InputFile
 {
-	TextInputFile(const std::string &file_name);
-	TextInputFile(TempFile &tmp_file);
-	TextInputFile(OutputFile& out_file);
+	TextInputFile(const std::string& file_name, const char* line_separator = "\n");
+	TextInputFile(TempFile &tmp_file, const char* line_separator = "\n");
+	TextInputFile(OutputFile& out_file, const char* line_separator = "\n");
 	void rewind();
 	bool eof() const;
 	void putback(char c);
 	void getline();
 	void putback_line();
+	void set_separator(const char* separator);
 	operator bool() const {
 		return !eof();
 	}
@@ -41,10 +40,7 @@ struct TextInputFile : public InputFile
 
 protected:
 
-	enum { line_buf_size = 256 };
-
-	char line_buf_[line_buf_size];
-	size_t line_buf_used_, line_buf_end_;
 	bool putback_line_, eof_;
+	const char* line_separator;
 
 };

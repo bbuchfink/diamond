@@ -1,10 +1,10 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2021 Max Planck Society for the Advancement of Science e.V.
+Copyright (C) 2013-2024 Max Planck Society for the Advancement of Science e.V.
                         Benjamin Buchfink
                         Eberhard Karls Universitaet Tuebingen
 
-Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
+Code developed by Benjamin Buchfink <buchfink@gmail.com>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -22,16 +22,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #pragma once
 #include <vector>
-#include <exception>
 #include <assert.h>
 #include <thread>
-#include <tuple>
 #include <iterator>
 #include <atomic>
-#include "io/temp_file.h"
 #include "io/input_file.h"
 #include "log_stream.h"
-#include "../util/ptr_vector.h"
+#include "util/ptr_vector.h"
 #include "io/async_file.h"
 #include "io/input_stream_buffer.h"
 #include "text_buffer.h"
@@ -42,21 +39,19 @@ template<typename T>
 struct AsyncBuffer
 {
 
-	typedef std::vector<T> Vector;
+	using Vector = std::vector<T>;
 	using Key = typename SerializerTraits<T>::Key;
 	static const int64_t ENTRY_SIZE = (int64_t)sizeof(T);
 
-	AsyncBuffer(Key input_count, const std::string &tmpdir, int bins, const SerializerTraits<T>& traits) :
-		bins_(bins),
-		bin_size_((input_count + bins_ - 1) / bins_),
-		input_count_(input_count),
+	AsyncBuffer(const std::vector<Key>& key_partition, const std::string &tmpdir, const SerializerTraits<T>& traits) :
+		key_partition_(key_partition),
 		traits_(traits),
 		bins_processed_(0),
 		total_disk_size_(0)
 	{
-		log_stream << "Async_buffer() " << input_count << ',' << bin_size_ << std::endl;
-		count_ = new std::atomic_size_t[bins];
-		for (int i = 0; i < bins; ++i) {
+		log_stream << "Async_buffer() " << key_partition.back() << std::endl;
+		count_ = new std::atomic_size_t[key_partition.size()];
+		for (size_t i = 0; i < key_partition.size(); ++i) {
 			tmp_file_.push_back(new AsyncFile());
 			count_[i] = (size_t)0;
 		}
@@ -68,38 +63,51 @@ struct AsyncBuffer
 
 	Key begin(int bin) const
 	{
-		return (Key)bin*bin_size_;
+		return bin == 0 ? 0 : key_partition_[bin - 1];
 	}
 
 	Key end(int bin) const
 	{
-		return std::min(Key(bin + 1)*bin_size_, input_count_);
+		return key_partition_[bin];
+	}
+
+	int bins() const {
+		return (int)key_partition_.size();
+	}
+
+	int bin(Key key) const {
+		const int n = (int)key_partition_.size();
+		for (int i = 0; i < n; ++i)
+			if (key < key_partition_[i])
+				return i;
+		throw std::runtime_error("key_partition error");
 	}
 
 	struct Iterator : public Writer<T>
 	{
-		Iterator(AsyncBuffer &parent, size_t thread_num) :
+		Iterator(AsyncBuffer& parent, size_t thread_num) :
+			last_bin_(0),
 			buffer_(parent.bins()),
 			count_(parent.bins(), 0),
 			parent_(parent)
 		{
-			ser_.reserve(parent.bins_);
-			for (int i = 0; i < parent.bins_; ++i) {
+			ser_.reserve(parent.bins());
+			for (int i = 0; i < parent.bins(); ++i) {
 				ser_.emplace_back(buffer_[i], parent.traits_);
 				out_.push_back(&parent.tmp_file_[i]);
 			}
 		}
 		virtual Iterator& operator=(const T& x) override
 		{
-			const int bin = int(ser_.front().traits.key(x) / parent_.bin_size_);
 			if (SerializerTraits<T>::is_sentry(x)) {
-				if (buffer_[bin].size() >= buffer_size)
-					flush(bin);
+				last_bin_ = parent_.bin(ser_.front().traits.key(x));
+				if (buffer_[last_bin_].size() >= buffer_size)
+					flush(last_bin_);
 			}
 			else
-				++count_[bin];
-			assert(bin < parent_.bins());
-			ser_[bin] << x;
+				++count_[last_bin_];
+			assert(last_bin_ < parent_.bins());
+			ser_[last_bin_] << x;
 			return *this;
 		}
 		void flush(int bin)
@@ -109,13 +117,14 @@ struct AsyncBuffer
 		}
 		virtual ~Iterator()
 		{
-			for (int bin = 0; bin < parent_.bins_; ++bin) {
+			for (int bin = 0; bin < parent_.bins(); ++bin) {
 				flush(bin);
 				parent_.count_[bin] += count_[bin];
 			}
 		}
 	private:
 		enum { buffer_size = 65536 };
+		int last_bin_;
 		std::vector<TextBuffer> buffer_;
 		std::vector<TypeSerializer<T>> ser_;
 		std::vector<size_t> count_;
@@ -129,13 +138,13 @@ struct AsyncBuffer
 			for (; bins_processed_ < end; ++bins_processed_)
 				load_bin(*data_next_, bins_processed_);
 		};
-		if (bins_processed_ == bins_) {
+		if (bins_processed_ == bins()) {
 			data_next_ = nullptr;
 			return;
 		}
 		int64_t size = count_[bins_processed_], current_size, disk_size = tmp_file_[bins_processed_].tell();
 		int end = bins_processed_ + 1;
-		while (end < bins_ && (size + (current_size = count_[end])) * ENTRY_SIZE < max_size) {
+		while (end < bins() && (size + (current_size = count_[end])) * ENTRY_SIZE < max_size) {
 			size += current_size;
 			disk_size += tmp_file_[end].tell();
 			++end;
@@ -155,11 +164,6 @@ struct AsyncBuffer
 			delete load_worker_;
 		}
 		return std::tuple<std::vector<T>*, Key, Key> { data_next_, input_range_next_.first, input_range_next_.second };
-	}
-
-	int bins() const
-	{
-		return bins_;
 	}
 
 	size_t total_disk_size() {
@@ -185,8 +189,7 @@ private:
 		f.close_and_delete();
 	}
 
-	const int bins_;
-	const Key bin_size_, input_count_;
+	const std::vector<Key> key_partition_;
 	const SerializerTraits<T> traits_;
 	int bins_processed_;
 	int64_t total_disk_size_;

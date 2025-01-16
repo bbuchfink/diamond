@@ -1,10 +1,10 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2020 Max Planck Society for the Advancement of Science e.V.
+Copyright (C) 2013-2024 Max Planck Society for the Advancement of Science e.V.
                         Benjamin Buchfink
                         Eberhard Karls Universitaet Tuebingen
 
-Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
+Code developed by Benjamin Buchfink <buchfink@gmail.com>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -23,13 +23,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #pragma once
 #include <string>
 #include <vector>
-#include <stdint.h>
-#include <map>
-#include "../util/enum.h"
-#include "../util/options/option.h"
+#include "util/options/option.h"
 #include "value.h"
+#include "util/enum.h"
 
-enum class Sensitivity { FASTER = -1, FAST = 0, DEFAULT = 1, MID_SENSITIVE = 2, SHAPES30x10 = 3, SENSITIVE = 4, MORE_SENSITIVE = 5, VERY_SENSITIVE = 6, ULTRA_SENSITIVE = 7};
+enum class Sensitivity { FASTER = -1, FAST = 0, DEFAULT = 1, LINCLUST_20 = 2, SHAPES30x10 = 3, MID_SENSITIVE = 4, SENSITIVE = 5, MORE_SENSITIVE = 6, VERY_SENSITIVE = 7, ULTRA_SENSITIVE = 8 };
 enum class Compressor;
 
 template<> struct EnumTraits<Sensitivity> {
@@ -105,7 +103,7 @@ struct Config
 	int		penalty;
 	double	min_id;
 	unsigned	compress_temp;
-	double	toppercent;
+	Option<double>	toppercent;
 	string	daa_file;
 	string_vector	output_format;
 	string	output_file;
@@ -138,20 +136,9 @@ struct Config
 	bool mode_very_sensitive;
 	unsigned max_hsps;
 	bool no_self_hits;
-	unsigned id_left, id_right, id_n;
-	int bmatch, bmismatch, bcutoff;
 	unsigned query_bins_;
-	uint64_t n_ants;
-	double rho;
-	double p_best;
-	double d_exp, d_new;
-	double score_estimate_factor;
-	int diag_min_estimate;
-	double path_cutoff;
-	bool use_smith_waterman;
 	string prot_accession2taxid;
 	int superblock;
-	unsigned max_cells;
 	Option<string> masking_;
 	bool log_query;
 	bool log_subject;
@@ -225,7 +212,7 @@ struct Config
 	bool no_logfile;
 	int band_bin;
 	int col_bin;
-	size_t file_buffer_size;
+	int64_t file_buffer_size;
 	bool self;
 	int64_t trace_pt_fetch_size;
 	uint32_t tile_size;
@@ -278,7 +265,6 @@ struct Config
 	bool skip_missing_seqids;
 	Option<string_vector> iterate;
 	bool ignore_warnings;
-	bool short_seqids;
 	bool no_reextend;
 	double seed_cut_;
 	bool no_reorder;
@@ -319,16 +305,14 @@ struct Config
 	bool weighted_gvc;
 	bool kmer_ranking;
 	bool hamming_ext;
-	double diag_filter_id;
-	double diag_filter_cov;
+	Option<double> diag_filter_id;
+	Option<double> diag_filter_cov;
 	bool strict_gvc;
-	bool mmseqs_compat;
 	string edge_format;
 	bool no_block_size_limit;
 	string edges;
 	bool mp_self;
 	bool approx_backtrace;
-	bool prefix_scan;
 	double narrow_band_cov;
 	double narrow_band_factor;
 	Loc anchor_window;
@@ -350,8 +334,16 @@ struct Config
   double repetitive_cutoff;
   bool chaining_out;
   bool align_long_reads;
+  bool best_hsp_only;
   double chain_pen_gap_scale;
   double chain_pen_skip_scale;
+  double chain_fraction_align_;
+  int min_chain_score_;
+  double max_overlap_extension_;
+  int zdrop_extension;
+  int zdrop_global;
+  int band_extension;
+  int band_global;
 #endif
     double min_length_ratio;
 	Option<double> mutual_cover;
@@ -364,6 +356,7 @@ struct Config
 	bool mode_shapes30x10;
 	string aln_out;
 	bool include_lineage;
+	bool mode_linclust_20;
 
     SequenceType dbtype;
 
@@ -376,10 +369,11 @@ struct Config
 
 	enum {
 		makedb = 0, blastp = 1, blastx = 2, view = 3, help = 4, version = 5, getseq = 6, benchmark = 7, random_seqs = 8, compare = 9, sort = 10, roc = 11, db_stat = 12, model_sim = 13,
-		match_file_stat = 14, model_seqs = 15, opt = 16, mask = 17, fastq2fasta = 18, dbinfo = 19, test_extra = 20, test_io = 21, db_annot_stats = 22, read_sim = 23, info = 24, seed_stat = 25,
-		smith_waterman = 26, cluster = 27, translate = 28, filter_blasttab = 29, show_cbs = 30, simulate_seqs = 31, split = 32, upgma = 33, upgma_mc = 34, regression_test = 35,
-		reverse_seqs = 36, compute_medoids = 37, mutate = 38, rocid = 40, makeidx = 41, find_shapes, prep_db, composition, JOIN, HASH_SEQS, LIST_SEEDS, CLUSTER_REALIGN,
-		GREEDY_VERTEX_COVER, INDEX_FASTA, FETCH_SEQ, CLUSTER_REASSIGN, blastn, RECLUSTER, LENGTH_SORT, MERGE_DAA, DEEPCLUST, LINCLUST, WORD_COUNT, CUT, MODEL_SEQS
+		match_file_stat = 14, model_seqs = 15, opt = 16, mask = 17, fastq2fasta = 18, dbinfo = 19, test_extra = 20, test_io = 21, db_annot_stats = 22, info = 24, seed_stat = 25,
+		smith_waterman = 26, cluster = 27, translate = 28, simulate_seqs = 31, split = 32, upgma = 33, upgma_mc = 34, regression_test = 35,
+		reverse_seqs = 36, compute_medoids = 37, mutate = 38, rocid = 40, makeidx = 41, find_shapes, prep_db, HASH_SEQS, LIST_SEEDS, CLUSTER_REALIGN,
+		GREEDY_VERTEX_COVER, CLUSTER_REASSIGN, blastn, RECLUSTER, LENGTH_SORT, MERGE_DAA, DEEPCLUST, LINCLUST, WORD_COUNT, CUT, MODEL_SEQS,
+		MAKE_SEED_TABLE
 	};
 
 
@@ -425,7 +419,7 @@ struct Config
 
 	inline bool output_range(unsigned n_target_seq, int score, int top_score, const int64_t max_target_seqs)
 	{
-		if (toppercent < 100)
+		if (toppercent.present())
 			return (1.0 - (double)score / top_score) * 100 <= toppercent;
 		else
 			return n_target_seq < max_target_seqs;
@@ -441,18 +435,17 @@ struct Config
 	bool mem_buffered() const { return tmpdir == "/dev/shm"; }
 	Compressor compressor() const;
 
-  	template<typename _t>
-	static void set_option(_t& option, _t value, _t def = 0) { if (option == def) option = value; }
-	template<typename _t>
-	static void set_option(_t& option, _t value, _t def, _t alt) { if (value != def) option = value; else option = alt; }
+  	template<typename T>
+	static void set_option(T& option, T value, T def = 0) { if (option == def) option = value; }
+	template<typename T>
+	static void set_option(T& option, T value, T def, T alt) { if (value != def) option = value; else option = alt; }
 };
 
-void print_warnings();
 extern Config config;
 
-template<typename _t>
-_t top_cutoff_score(_t top_score) {
-	return _t((1.0 - config.toppercent / 100.0)*top_score);
+template<typename T>
+T top_cutoff_score(T top_score) {
+	return T((1.0 - config.toppercent / 100.0) * top_score);
 }
 
 template<> struct EnumTraits<Config::Algo> {
@@ -462,4 +455,4 @@ template<> struct EnumTraits<Config::Algo> {
 
 extern const char* const DEFAULT_MEMORY_LIMIT;
 
-std::pair<double, int> block_size(int64_t memory_limit, Sensitivity s, bool lin);
+std::pair<double, int> block_size(int64_t memory_limit, int64_t db_letters, Sensitivity s, bool lin, int thread_count);

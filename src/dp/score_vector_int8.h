@@ -22,7 +22,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #pragma once
+#include <limits.h>
 #include "score_vector.h"
+#include "stats/score_matrix.h"
 
 namespace DISPATCH_ARCH {
 

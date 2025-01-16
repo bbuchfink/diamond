@@ -1,12 +1,10 @@
 #pragma once
 #include <string>
 #include <string.h>
-#include <algorithm>
-#include <ostream>
 #include <vector>
-#include <math.h>
 #include <cmath>
 #include <stdio.h>
+#include <set>
 
 inline bool ends_with(const std::string &s, const char *t) {
 	if (s.length() < strlen(t))
@@ -58,5 +56,14 @@ std::string replace(const std::string& s, char a, char b);
 std::string ratio_percentage(const double x, const double y);
 std::string ratio_percentage(const size_t x, const size_t y);
 int64_t interpret_number(const std::string& s);
+std::vector<std::string> tokenize(const char* str, const char* delimiters);
+std::set<int32_t> parse_csv(const std::string& s);
+
+template<typename T>
+T convert_string(const char* s);
+template<typename T>
+T convert_string(const std::string& s) {
+	return convert_string<T>(s.c_str());
+}
 
 }}

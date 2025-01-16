@@ -18,12 +18,12 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#include "../basic/config.h"
-#include "../util/log_stream.h"
+#include "basic/config.h"
+#include "util/log_stream.h"
 #include "cluster.h"
-#include "../basic/statistics.h"
-#include "../run/workflow.h"
-#include "../data/fasta/fasta_file.h"
+#include "basic/statistics.h"
+#include "run/workflow.h"
+#include "data/fasta/fasta_file.h"
 #include "cascaded/cascaded.h"
 
 using std::endl;

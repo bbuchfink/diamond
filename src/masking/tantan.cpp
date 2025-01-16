@@ -24,11 +24,12 @@ A new repeat-masking method enables specific detection of homologous sequences, 
 
 #include <array>
 #include <stdint.h>
-#include <algorithm>
 #include <Eigen/Core>
 #include "../basic/value.h"
 #include "def.h"
 #include "../util/simd/dispatch.h"
+
+#define USE_TLS
 
 using Eigen::Array;
 using Eigen::Dynamic;
@@ -98,7 +99,7 @@ Mask::Ranges mask(Letter *seq,
 	}
 
 	const float z = b * b2b + f.sum() * p_repeat_end;
-	const float zinv = 1.0/z;
+	const float zinv = 1.0f/z;
 	b = b2b;
 	f = p_repeat_end;
 	Mask::Ranges ranges;

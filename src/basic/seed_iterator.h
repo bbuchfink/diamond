@@ -20,11 +20,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #pragma once
+#include <algorithm>
 #include <deque>
 #include "shape.h"
 #include "sequence.h"
-#include "../util/hash_function.h"
-#include "../util/algo/MurmurHash3.h"
+#include "util/hash_function.h"
 
 struct SeedIterator
 {

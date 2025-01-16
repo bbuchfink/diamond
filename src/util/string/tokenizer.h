@@ -24,6 +24,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <string.h>
 #include <stdexcept>
 #include <stdlib.h>
+#include <tuple>
 
 namespace Util { namespace String {
 
@@ -38,12 +39,86 @@ struct TokenizerException : public std::runtime_error {
 
 struct Skip {};
 
+struct CharDelimiter {
+	CharDelimiter (char c):
+		c(c)
+	{}
+	std::pair<const char*, const char*> scan(const char* p) const {
+		const char* q = strchr(p, c);
+		return q ? std::pair<const char*, const char*>(q, q + 1) : std::pair<const char*, const char*>(nullptr, nullptr);
+	}
+	const char* next(const char* p) const {
+		if (p[0] == c)
+			return p + 1;
+		else {
+			if (*p != '\0')
+				throw TokenizerException();
+			return nullptr;
+		}
+	}
+	const char c;
+};
+
+struct StringDelimiter {
+	StringDelimiter(const char* s):
+		s(s),
+		len((int)strlen(s))
+	{}
+	std::pair<const char*, const char*> scan(const char* p) const {
+		const char* q = strstr(p, s);
+		return q ? std::pair<const char*, const char*>(q, q + len) : std::pair<const char*, const char*>(nullptr, nullptr);
+	}
+	const char* next(const char* p) const {
+		if (strncmp(p, s, len) == 0)
+			return p + len;
+		else {
+			if (*p != '\0')
+				throw TokenizerException();
+			return nullptr;
+		}
+	}
+	const char* s;
+	const int len;
+};
+
+struct StringDelimiters {
+	StringDelimiters(const char** s, int n) :
+		s(s),
+		n(n)
+	{}
+	std::pair<const char*, const char*> scan(const char* p) const {
+		for (int i = 0; i < n; ++i) {
+			const char* ptr = strstr(p, s[i]);
+			if (ptr)
+				return { ptr,ptr + strlen(s[i]) };
+		}
+		return { nullptr,nullptr };
+	}
+	const char* next(const char* p) const {
+		for (int i = 0; i < n; ++i) {
+			const size_t l = strlen(s[i]);
+			if (strncmp(p, s[i], l) == 0)
+				return p + l;
+		}
+		if (*p != '\0')
+			throw TokenizerException();
+		return nullptr;
+	}
+	const char** s;
+	const int n;
+};
+
+template<typename Delimiters>
 struct Tokenizer {
 
-	Tokenizer(const std::string &s, const char *delimiter):
+	Tokenizer(const std::string &s, Delimiters delimiters):
 		p(s.c_str()),
-		delimiter(delimiter),
-		len(strlen(delimiter))
+		delimiters(delimiters)
+	{}
+
+	Tokenizer(const char* s, Delimiters delimiters):
+		p(s),
+		delimiters(delimiters)
 	{}
 
 	const char* ptr() const {
@@ -57,28 +132,19 @@ struct Tokenizer {
 	Tokenizer& operator>>(const Skip&) {
 		if (p == nullptr)
 			throw TokenizerException();
-		const char *d = strstr(p, delimiter);
-		if (d) {
-			p = d + len;
-		}
-		else {
-			p = nullptr;
-		}
+		std::tie(std::ignore, p) = delimiters.scan(p);
 		return *this;
 	}
 
 	Tokenizer& operator>>(std::string &s) {
 		if (p == nullptr)
 			throw TokenizerException();
-		const char *d = strstr(p, delimiter);
-		if (d) {
-			s.assign(p, d - p);
-			p = d + len;
-		}
-		else {
+		const auto d = delimiters.scan(p);
+		if (d.first)
+			s.assign(p, d.first - p);
+		else
 			s.assign(p);
-			p = nullptr;
-		}
+		p = d.second;
 		return *this;
 	}
 
@@ -90,13 +156,7 @@ struct Tokenizer {
 		x = (int64_t)n;
 		if (end == p)
 			throw TokenizerException();
-		if (strncmp(end, delimiter, len) == 0)
-			p = end + len;
-		else {
-			if (*end != '\0')
-				throw TokenizerException();
-			p = nullptr;
-		}
+		p = delimiters.next(end);
 		return *this;
 	}
 
@@ -121,13 +181,7 @@ struct Tokenizer {
 		x = strtod(p, &end);
 		if (end == p)
 			throw TokenizerException("Unable to parse double");
-		if (strncmp(end, delimiter, len) == 0)
-			p = end + len;
-		else {
-			if (*end != '\0')
-				throw TokenizerException("Invalid char in double");
-			p = nullptr;
-		}
+		p = delimiters.next(end);
 		return *this;
 	}
 
@@ -138,13 +192,7 @@ struct Tokenizer {
 		x = strtof(p, &end);
 		if (end == p)
 			throw TokenizerException("Unable to parse float");
-		if (strncmp(end, delimiter, len) == 0)
-			p = end + len;
-		else {
-			if (*end != '\0')
-				throw TokenizerException("Invalid char in float");
-			p = nullptr;
-		}
+		p = delimiters.next(end);
 		return *this;
 	}
 
@@ -165,8 +213,9 @@ struct Tokenizer {
 	}
 
 private:
-	const char *p, *delimiter;
-	size_t len;
+
+	const char* p;
+	const Delimiters delimiters;
 
 };
 

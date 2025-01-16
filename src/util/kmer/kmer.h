@@ -20,8 +20,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #pragma once
 #include <stdint.h>
-#include "../../basic/value.h"
-#include "../../basic/sequence.h"
+#include "basic/value.h"
+#include "basic/sequence.h"
 #include "../math/integer.h"
 
 struct IdentityReduction {

@@ -17,13 +17,14 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #include <set>
+#include <algorithm>
 #include <iomanip>
 #include "taxonomy_nodes.h"
-#include "taxonomy.h"
-#include "../util/log_stream.h"
-#include "../util/string/string.h"
-#include "../util/io/text_input_file.h"
-#include "../util/string/tokenizer.h"
+#include "util/log_stream.h"
+#include "util/string/string.h"
+#include "util/io/text_input_file.h"
+#include "util/string/tokenizer.h"
+#include "legacy/dmnd/io.h"
 
 using std::string;
 using std::reverse;
@@ -39,7 +40,7 @@ TaxonomyNodes::TaxonomyNodes(const string& file_name, const bool init_cache)
 	TaxId taxid, parent;
 	string rank;
 	while (!f.eof() && (f.getline(), !f.line.empty())) {
-		Util::String::Tokenizer(f.line, "\t|\t") >> taxid >> parent >> rank;
+		Util::String::Tokenizer<Util::String::StringDelimiter>(f.line, Util::String::StringDelimiter("\t|\t")) >> taxid >> parent >> rank;
 		parent_.resize(taxid + 1, 0);
 		parent_[taxid] = parent;
 		rank_.resize(taxid + 1, Rank::none);
@@ -53,9 +54,8 @@ TaxonomyNodes::TaxonomyNodes(const string& file_name, const bool init_cache)
 void TaxonomyNodes::save(Serializer &out)
 {
 	TaskTimer timer("Building taxonomy nodes");
-	out.unset(Serializer::VARINT);
-	out << parent_;
-	out.write_raw(rank_);
+	serialize(out, parent_);
+	out.write(rank_.data(), rank_.size());
 	timer.finish();
 	message_stream << parent_.size() << " taxonomy nodes processed." << endl;
 	size_t rank_count[Rank::count];
@@ -73,8 +73,7 @@ void TaxonomyNodes::save(Serializer &out)
 
 TaxonomyNodes::TaxonomyNodes(Deserializer &in, uint32_t db_build)
 {
-	in.varint = false;
-	in >> parent_;
+	deserialize(in, parent_);
 	if (db_build >= 131) {
 		rank_.resize(parent_.size());
 		in.read(rank_.data(), rank_.size());

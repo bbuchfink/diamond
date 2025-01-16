@@ -29,6 +29,7 @@ struct FileSource : public StreamEntity
 	virtual size_t read(char *ptr, size_t count) override;
 	virtual void close() override;
 	virtual int64_t file_size() override;
+	virtual bool eof() override;
 	virtual const std::string& file_name() const override
 	{
 		return file_name_;

@@ -20,11 +20,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #pragma once
-#include <limits.h>
-#include <algorithm>
 #include <float.h>
-#include "../util/geo/interval.h"
-#include "../util/geo/diagonal_segment.h"
+#include <limits>
+#include "../geo/interval.h"
+#include "../geo/diagonal_segment.h"
 
 struct Anchor : public DiagonalSegment {
 	Anchor():

@@ -1,5 +1,5 @@
 #pragma once
-#include "../util/enum.h"
+#include "util/enum.h"
 
 namespace DP {
 

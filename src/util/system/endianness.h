@@ -1,16 +1,15 @@
-#ifndef ENDIANNESS_H_
-#define ENDIANNESS_H_
+#pragma once
 
 #include <stdint.h>
-#include "../../lib/psnip/endian.h"
+#include "psnip/endian.h"
 
 static inline bool is_little_endian() {
 	static int32_t test = 1;
 	return *reinterpret_cast<int8_t*>(&test) == 1;
 }
 
-template<typename _t>
-_t big_endian_byteswap(_t x) {
+template<typename T>
+T big_endian_byteswap(T x) {
 	return x;
 }
 
@@ -49,5 +48,3 @@ inline int16_t big_endian_byteswap<int16_t>(int16_t x)
 {
 	return psnip_endian_le16(x);
 }
-
-#endif

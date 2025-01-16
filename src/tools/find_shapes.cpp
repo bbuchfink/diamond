@@ -1,10 +1,11 @@
 #include <iostream>
 #include <array>
 #include <set>
-#include "../util/io/text_input_file.h"
-#include "../basic/config.h"
-#include "../util/intrin.h"
-#include "../util/util.h"
+#include <algorithm>
+#include "util/io/text_input_file.h"
+#include "basic/config.h"
+#include "util/intrin.h"
+#include "util/string/string.h"
 
 using std::set;
 using std::cout;
@@ -15,7 +16,7 @@ using std::array;
 
 using Pattern = uint32_t;
 
-static const int W = 7, L = 16, N = 64, T = 3;
+static const int W = 12, L = 24, N = 64, T = 6;
 
 static array<size_t, 1 << L> counts;
 static set<Pattern> exclude;
@@ -117,7 +118,7 @@ void find_shapes() {
 		TextInputFile in(config.single_query_file());
 		size_t n = 0, nt = 0;
 		while (in.getline(), !in.eof() || !in.line.empty()) {
-			auto v = tokenize(in.line.c_str(), "\t");
+			auto v = Util::String::tokenize(in.line.c_str(), "\t");
 			if ((v.size() > 1 || !is_id(v.front()))) {
 				if (!is_excluded(v.begin(), v.end())) {
 					process_aln(v.begin(), v.end());

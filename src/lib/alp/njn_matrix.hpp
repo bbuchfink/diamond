@@ -36,6 +36,7 @@ Contents: Matrix routines
 
 ******************************************************************************/
 
+// Modified by Benjamin Buchfink
 
 #include "njn_approx.hpp"
 #include "njn_doubletype.hpp"
@@ -278,7 +279,6 @@ namespace Njn {
 
 	using namespace Njn;
 	using namespace Njn::IoUtil;
-	using namespace std;
 
         size_t i = 0;
         size_t j = 0;
@@ -291,7 +291,7 @@ namespace Njn {
 
                     for (i = 0; i < getM (); i++) { 
              
-						if (i != 0) ostr_ << endl;
+						if (i != 0) ostr_ << std::endl;
 
                         for (size_t j = 0; j < getN (); j++) {
 
@@ -330,7 +330,7 @@ namespace Njn {
 
             for (i = 0; i < getM (); i++) 
             {
-                if (i != 0) ostr_ << endl;
+                if (i != 0) ostr_ << std::endl;
 
                 for (size_t j = i; j < getN (); j++) 
                 {
@@ -354,7 +354,6 @@ namespace Njn {
 
 		using namespace Njn;
 		using namespace Njn::IoUtil;
-		using namespace std;
 
         size_t i = 0;
         size_t j = 0;
@@ -362,8 +361,8 @@ namespace Njn {
         size_t m = 0;
         size_t n = 0;
 
-        string s;
-        stringstream sstream;
+        std::string s;
+        std::stringstream sstream;
 
         std::vector <T> v;
         T value = this->getValue ();
@@ -407,8 +406,8 @@ namespace Njn {
             case IoUtil::HUMAN :
             default :
 
-                string s;
-                stringstream sstream;
+                std::string s;
+                std::stringstream sstream;
 
                 IoUtil::getLine (istr_, s);
                 sstream.str ("");
@@ -443,9 +442,9 @@ namespace Njn {
 
                         if (sstream.fail ()) {
 
-                            ostringstream sistream;
+                            std::ostringstream sistream;
                             sistream << i;
-                            ostringstream sjstream;
+                            std::ostringstream sjstream;
                             sjstream << j;
                             IoUtil::abort ("Njn::Matrix::in : bad d_matrix_p [" + sistream.str () + "][" + sjstream.str () + "]");
                         }

@@ -37,7 +37,7 @@ struct BuildHelper {
 				*it += d;
 			begin += counts[i];
 		}
-		return Table(schema, move(buffer), move(limits));
+		return Table(schema, std::move(buffer), std::move(limits));
 	}
 	vector<char> buffer;
 	vector<int64_t> limits;

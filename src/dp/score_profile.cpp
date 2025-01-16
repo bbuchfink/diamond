@@ -2,8 +2,9 @@
 #include "score_vector.h"
 #include "score_vector_int8.h"
 #include "score_vector_int16.h"
-#include "../util/util.h"
-#include "../util/simd/dispatch.h"
+#include "util/util.h"
+#include "util/simd/dispatch.h"
+#include "stats/score_matrix.h"
 
 using std::array;
 

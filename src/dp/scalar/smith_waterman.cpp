@@ -18,10 +18,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <vector>
 #include "../dp.h"
-#include "double_buffer.h"
-#include "../../util/util.h"
 #include "traceback.h"
-#include "../output/output_format.h"
 
 using std::vector;
 using std::pair;
@@ -29,8 +26,8 @@ using std::pair;
 struct Local {};
 struct Global {};
 
-template<typename _score, typename _mode>
-_score saturate(_score x)
+template<typename Score, typename Mode>
+Score saturate(Score x)
 {
 	return x;
 }
@@ -41,8 +38,8 @@ int saturate<int, Local>(int x)
 	return std::max(x, 0);
 }
 
-template<typename _score, typename _mode>
-void set_max_score(_score s, _score& max_score)
+template<typename Score, typename Mode>
+void set_max_score(Score s, Score& max_score)
 {
 }
 
@@ -52,11 +49,11 @@ void set_max_score<int, Local>(int s, int& max_score)
 	max_score = std::max(max_score, s);
 }
 
-template<typename _t>
-struct Fixed_score_buffer
+template<typename T>
+struct FixedScoreBuffer
 {
 
-	inline void init(size_t col_size, size_t cols, _t init)
+	inline void init(size_t col_size, size_t cols, T init)
 	{
 		col_size_ = col_size;
 		data_.clear();
@@ -66,35 +63,35 @@ struct Fixed_score_buffer
 			data_[i] = init;
 	}
 
-	std::pair<int, int> find(_t s) const
+	std::pair<int, int> find(T s) const
 	{
 		const int i = int(std::find(data_.begin(), data_.end(), s) - data_.begin());
 		return std::pair<int, int>(int(i % col_size_), int(i / col_size_));
 	}
 
-	inline std::pair<_t*, _t*> get()
+	inline std::pair<T*, T*> get()
 	{
 		data_.resize(data_.size() + col_size_);
-		_t* ptr = last();
-		return std::pair<_t*, _t*>(ptr - col_size_, ptr);
+		T* ptr = last();
+		return std::pair<T*, T*>(ptr - col_size_, ptr);
 	}
 
-	inline _t* last()
+	inline T* last()
 	{
 		return &*(data_.end() - col_size_);
 	}
 
-	const _t* column(int col) const
+	const T* column(int col) const
 	{
 		return &data_[col_size_ * col];
 	}
 
-	_t operator()(int i, int j) const
+	T operator()(int i, int j) const
 	{
 		return data_[j * col_size_ + i];
 	}
 
-	friend std::ostream& operator<<(std::ostream& s, const Fixed_score_buffer& buf)
+	friend std::ostream& operator<<(std::ostream& s, const FixedScoreBuffer& buf)
 	{
 		s << '\t';
 		for (int j = 0; j < int(buf.data_.size() / buf.col_size_); ++j)
@@ -110,25 +107,25 @@ struct Fixed_score_buffer
 	}
 
 private:
-	std::vector<_t> data_;
+	std::vector<T> data_;
 	size_t col_size_;
 
 };
 
-template<typename _score, typename _mode>
-struct Dp_matrix
+template<typename Score, typename Mode>
+struct DpMatrix
 {
 
 	struct Column_iterator
 	{
 
-		inline Column_iterator(const pair<_score*, _score*>& score, _score* hgap, int query_len, int col) :
+		inline Column_iterator(const pair<Score*, Score*>& score, Score* hgap, int query_len, int col) :
 			score_(score),
 			hgap_(hgap),
 			end_(score_.second + query_len + 1),
 			i_(0)
 		{
-			*score_.first = saturate<_score, _mode>(col == 0 ? 0 : -score_matrix.gap_open() - col * score_matrix.gap_extend());
+			*score_.first = saturate<Score, Mode>(col == 0 ? 0 : -score_matrix.gap_open() - col * score_matrix.gap_extend());
 			++score_.second;
 		}
 
@@ -142,17 +139,17 @@ struct Dp_matrix
 			return score_.second < end_;
 		}
 
-		inline _score& score()
+		inline Score& score()
 		{
 			return *score_.second;
 		}
 
-		inline _score diag() const
+		inline Score diag() const
 		{
 			return *score_.first;
 		}
 
-		inline _score& hgap()
+		inline Score& hgap()
 		{
 			return *hgap_;
 		}
@@ -166,9 +163,9 @@ struct Dp_matrix
 		}
 
 	private:
-		pair<_score*, _score*> score_;
-		_score* hgap_;
-		const _score* const end_;
+		pair<Score*, Score*> score_;
+		Score* hgap_;
+		const Score* const end_;
 		int i_;
 
 	};
@@ -178,7 +175,7 @@ struct Dp_matrix
 		return Column_iterator(score_.get(), hgap_.data(), query_len_, j);
 	}
 
-	inline Dp_matrix(int query_len, int subject_len) :
+	inline DpMatrix(int query_len, int subject_len) :
 		query_len_(query_len)
 	{
 		score_.init(query_len + 1, subject_len + 1, 0);
@@ -187,10 +184,10 @@ struct Dp_matrix
 		int* score = score_.last();
 		int g = -score_matrix.gap_open() - score_matrix.gap_extend();
 		for (int i = 1; i <= query_len; ++i)
-			score[i] = saturate<_score, _mode>(g--);
+			score[i] = saturate<Score, Mode>(g--);
 	}
 
-	const Fixed_score_buffer<_score>& score_buffer() const
+	const FixedScoreBuffer<Score>& score_buffer() const
 	{
 		return score_;
 	}
@@ -198,34 +195,31 @@ struct Dp_matrix
 private:
 
 	const int query_len_;
-	static thread_local Fixed_score_buffer<_score> score_;
-	static thread_local vector<_score> hgap_;
+	FixedScoreBuffer<Score> score_;
+	vector<Score> hgap_;
 
 };
 
-template<typename _score, typename _mode> thread_local Fixed_score_buffer<_score> Dp_matrix<_score, _mode>::score_;
-template<typename _score, typename _mode> thread_local vector<_score> Dp_matrix<_score, _mode>::hgap_;
-
-template<typename _score, typename _mode>
-const Fixed_score_buffer<_score>& needleman_wunsch(Sequence query, Sequence subject, int& max_score, const _mode&, const _score&)
+template<typename Score, typename Mode>
+FixedScoreBuffer<Score> needleman_wunsch(Sequence query, Sequence subject, int& max_score, const Mode&, const Score&)
 {
 	using std::max;
 	const int gap_open = score_matrix.gap_open() + score_matrix.gap_extend(), gap_extend = score_matrix.gap_extend();
 	int m = 0;
 
-	Dp_matrix<_score, _mode> mtx((unsigned)query.length(), (unsigned)subject.length());
+	DpMatrix<Score, Mode> mtx((unsigned)query.length(), (unsigned)subject.length());
 
 	for (int j = 0; j < (int)subject.length(); ++j) {
-		typename Dp_matrix<_score, _mode>::Column_iterator it = mtx.column(j);
-		_score vgap = std::numeric_limits<int>::min() + gap_extend;
+		typename DpMatrix<Score, Mode>::Column_iterator it = mtx.column(j);
+		Score vgap = std::numeric_limits<int>::min() + gap_extend;
 		for (; it.valid(); ++it) {
-			const _score match_score = score_matrix(subject[j], query[it.row()]);
-			const _score s = saturate<_score, _mode>(max(max(it.diag() + match_score, vgap), it.hgap()));
-			const _score open = s - gap_open;
+			const Score match_score = score_matrix(subject[j], query[it.row()]);
+			const Score s = saturate<Score, Mode>(max(max(it.diag() + match_score, vgap), it.hgap()));
+			const Score open = s - gap_open;
 			vgap = max(vgap - gap_extend, open);
 			it.hgap() = max(it.hgap() - gap_extend, open);
 			it.score() = s;
-			set_max_score<_score, _mode>(s, m);
+			set_max_score<Score, Mode>(s, m);
 		}
 	}
 
@@ -233,12 +227,12 @@ const Fixed_score_buffer<_score>& needleman_wunsch(Sequence query, Sequence subj
 	return mtx.score_buffer();
 }
 
-template const Fixed_score_buffer<int>& needleman_wunsch<int, Local>(Sequence query, Sequence subject, int& max_score, const Local&, const int&);
+template FixedScoreBuffer<int> needleman_wunsch<int, Local>(Sequence query, Sequence subject, int& max_score, const Local&, const int&);
 
 void smith_waterman(Sequence q, Sequence s, Hsp& out)
 {
 	int max_score;
-	const Fixed_score_buffer<int>& dp = needleman_wunsch(q, s, max_score, Local(), int());
+	const FixedScoreBuffer<int> dp = needleman_wunsch(q, s, max_score, Local(), int());
 	pair<int, int> max_pos = dp.find(max_score);
 
 	const int gap_open = score_matrix.gap_open(), gap_extend = score_matrix.gap_extend();

@@ -1,10 +1,10 @@
- /****
+/****
 DIAMOND protein aligner
-Copyright (C) 2013-2022 Max Planck Society for the Advancement of Science e.V.
+Copyright (C) 2013-2024 Max Planck Society for the Advancement of Science e.V.
                         Benjamin Buchfink
                         Eberhard Karls Universitaet Tuebingen
 
-Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
+Code developed by Benjamin Buchfink <buchfink@gmail.com>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -22,31 +22,24 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <memory>
 #include <iostream>
-#include <cstdlib>
-#include <sys/stat.h>
-#include <exception>
-#include <iomanip>
-#include <numeric>
 #include <thread>
-#include "../util/command_line_parser.h"
+#include "util/command_line_parser.h"
 #include "config.h"
-#include "../util/util.h"
-#include "../util/log_stream.h"
-#include "../basic/value.h"
-#include "../stats/score_matrix.h"
-#include "../util/system.h"
-#include "reduction.h"
-#include "shape_config.h"
-#include "../util/io/temp_file.h"
-#include "../basic/match.h"
-#include "../cluster/cluster_registry.h"
-#include "../util/sequence/translate.h"
-#include "../dp/dp.h"
-#include "../masking/masking.h"
-#include "../util/system/system.h"
-#include "../util/simd.h"
-#include "../util/parallel/multiprocessing.h"
-#include "../search/search.h"
+#include "util/util.h"
+#include "util/log_stream.h"
+#include "basic/value.h"
+#include "stats/score_matrix.h"
+#include "util/io/temp_file.h"
+#include "util/sequence/translate.h"
+#include "masking/masking.h"
+#include "util/system/system.h"
+#include "util/simd.h"
+#include "search/search.h"
+#include "stats/cbs.h"
+#include "basic/shape.h"
+#ifndef _MSC_VER
+#include <sys/stat.h>
+#endif
 
 using std::thread;
 using std::stringstream;
@@ -57,11 +50,13 @@ using std::string;
 using std::pair;
 using std::cout;
 using std::cerr;
+using std::vector;
 
 const EMap<Sensitivity> EnumTraits<Sensitivity>::to_string = {
 	{ Sensitivity::FASTER, "faster" },
 	{ Sensitivity::FAST, "fast" },
 	{ Sensitivity::DEFAULT, "default" },
+	{ Sensitivity::LINCLUST_20, "linclust-20" },
 	{ Sensitivity::MID_SENSITIVE, "mid-sensitive" },
 	{ Sensitivity::SHAPES30x10, "shapes-30x10" },
 	{ Sensitivity::SENSITIVE, "sensitive" },
@@ -76,6 +71,7 @@ const SEMap<Sensitivity> EnumTraits<Sensitivity>::from_string = {
 	{ "default", Sensitivity::DEFAULT },
 	{ "mid-sensitive", Sensitivity::MID_SENSITIVE },
 	{ "shapes-30x10", Sensitivity::SHAPES30x10 },
+	{ "linclust-20", Sensitivity::LINCLUST_20 },
 	{ "sensitive", Sensitivity::SENSITIVE },
 	{ "more-sensitive", Sensitivity::MORE_SENSITIVE },
 	{ "very-sensitive", Sensitivity::VERY_SENSITIVE },
@@ -93,27 +89,37 @@ const SEMap<Config::Algo> EnumTraits<Config::Algo>::from_string = { {"", Config:
 const EMap<SequenceType> EnumTraits<SequenceType>::to_string = { {SequenceType::amino_acid,"prot"}, { SequenceType::nucleotide,"nucl"} };
 const SEMap<SequenceType> EnumTraits<SequenceType>::from_string = { {"prot",SequenceType::amino_acid}, {"nucl",SequenceType::nucleotide} };
 
-
 Config config;
 
-pair<double, int> block_size(int64_t memory_limit, Sensitivity s, bool lin) {
+pair<double, int> block_size(int64_t memory_limit, int64_t db_letters, Sensitivity s, bool lin, int thread_count) {
+	const double AVG_SEQ_LENGTH_EST = 200;
 	const double m = (double)memory_limit / 1e9;
-	const int min = std::max(Search::sensitivity_traits[(int)align_mode.sequence_type].at(s).minimizer_window, 1),
-		c = m < 40.0 && s <= Sensitivity::MORE_SENSITIVE && min == 1 ? 4 : 1;
-	const double min_factor = std::min(1 / (double)min * 2, 1.0);
-	const double max = s <= Sensitivity::DEFAULT ? 12.0 :
-		(s <= Sensitivity::MORE_SENSITIVE ? 6.0 : 2.0);
-	double b = m / (18.0 * min_factor / c + 2.0);
+	const int min = Search::sensitivity_traits.at(s).minimizer_window,
+		sketch_size = Search::sensitivity_traits.at(s).sketch_size,
+		max_c = min > 0 || sketch_size > 0 ? 1 : (lin ? 16 : 4),
+		shape_weight = Shape(Search::shape_codes.at(s).front().c_str(), 0).weight_;
+	const double max_b = lin ? 32768 : (s <= Sensitivity::FAST ? 12.0 : 2.0); // s <= Sensitivity::DEFAULT ? 12.0 : (s <= Sensitivity::MORE_SENSITIVE ? 6.0 : 1.6);
+	// c = m < 40.0 && s <= Sensitivity::MORE_SENSITIVE && min == 0 && sketch_size == 0 ? 4 : 1;
+	assert(min == 0 || sketch_size == 0);
+	int c = 0;
+	double b;
+	do {
+		++c;
+		double seeds_per_letter = (sketch_size > 0 ? 1 / AVG_SEQ_LENGTH_EST * sketch_size : 1.0) / c;
+		if (min > 0)
+			seeds_per_letter /= (double)min / 2;
+		const double hash_join_factor = 1.0 + (double)thread_count / (seedp_count(Search::seedp_bits(shape_weight, thread_count, c)) / c);
+		const double seed_array_entry_size = 18.0 * hash_join_factor;
+		b = m / (seed_array_entry_size * seeds_per_letter + 2.0);
+	} while ((int64_t)b * 1'000'000'000 < db_letters && b < max_b && c < max_c);
 	/*if (b > 4)
 		b = floor(b);
 	else if (b > 0.4)
 		b = floor(b * 10) / 10;
 	else
 		b = floor(b * 1000) / 1000;*/
-	if (!config.no_block_size_limit && !lin)
-		b = std::min(b, max);
-	//if (s >= Sensitivity::ULTRA_SENSITIVE)
-		//b = std::min(b, 0.6);
+	if (!config.no_block_size_limit)
+		b = std::min(b, max_b);
 	return { std::max(b, 0.001), c };
 }
 
@@ -178,13 +184,10 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 		.add_command("dbstat", "", db_stat)
 		.add_command("mask", "", mask)
 		.add_command("fastq2fasta", "", fastq2fasta)
-		.add_command("read-sim", "", read_sim)
 		.add_command("info", "", info)
 		.add_command("seed-stat", "", seed_stat)
 		.add_command("smith-waterman", "", smith_waterman)
 		.add_command("translate", "", translate)
-		.add_command("filter-blasttab", "", filter_blasttab)
-		.add_command("show-cbs", "", show_cbs)
 		.add_command("simulate-seqs", "", simulate_seqs)
 		.add_command("split", "", split)
 		.add_command("upgma", "", upgma)
@@ -194,17 +197,14 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 		.add_command("mutate", "", mutate)
 		.add_command("roc-id", "", rocid)
 		.add_command("find-shapes", "", find_shapes)
-		.add_command("composition", "", composition)
-		.add_command("join", "", JOIN)
 		.add_command("hashseqs", "", HASH_SEQS)
 		.add_command("listseeds", "", LIST_SEEDS)
-		.add_command("index-fasta", "", INDEX_FASTA)
-		.add_command("fetch-seq", "", FETCH_SEQ)
 		.add_command("blastn", "Align DNA query sequences against a DNA reference database", blastn)
 		.add_command("length-sort", "", LENGTH_SORT)
 		.add_command("wc", "", WORD_COUNT)
 		.add_command("cut", "", CUT)
 		.add_command("model-seqs", "", MODEL_SEQS)
+	    .add_command("make-seed-table", "", MAKE_SEED_TABLE)
 #endif
 		;
 
@@ -244,7 +244,6 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 		("comp-based-stats", 0, "composition based statistics mode (0-4)", comp_based_stats, 1u)
 		("masking", 0, "masking algorithm (none, seg, tantan=default)", masking_)
 		("soft-masking", 0, "soft masking (none=default, seg, tantan)", soft_masking)
-		("mmseqs-compat", 0, "", mmseqs_compat)
 		("no-block-size-limit", 0, "", no_block_size_limit);
 
 	auto& align_clust = parser.add_group("Aligner/Clustering options", { blastp, blastx, cluster, RECLUSTER, CLUSTER_REASSIGN, DEEPCLUST, LINCLUST });
@@ -257,13 +256,14 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 	auto& aligner_view = parser.add_group("Aligner/view options", { blastp, blastx, view });
 	aligner_view.add()
 		("max-target-seqs", 'k', "maximum number of target sequences to report alignments for (default=25)", max_target_seqs_)
-		("top", 0, "report alignments within this percentage range of top alignment score (overrides --max-target-seqs)", toppercent, 100.0);
+		("top", 0, "report alignments within this percentage range of top alignment score (overrides --max-target-seqs)", toppercent);
 
 	auto& aligner_sens = parser.add_group("Aligner/sens options", { blastp, blastx, makeidx });
 	aligner_sens.add()
 		("faster", 0, "enable faster mode", mode_faster)
 		("fast", 0, "enable fast mode", mode_fast)
 		("mid-sensitive", 0, "enable mid-sensitive mode", mode_mid_sensitive)
+		("linclust-20", 0, "enable mode for linear search at 20% identity", mode_linclust_20)
 		("shapes-30x10", 0, "enable mode using 30 seed shapes of weight 10", mode_shapes30x10)
 		("sensitive", 0, "enable sensitive mode)", mode_sensitive)
 		("more-sensitive", 0, "enable more sensitive mode", mode_more_sensitive)
@@ -367,8 +367,11 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 \tfull_qqual means Query quality values\n\
 \tqstrand means Query strand\n\
 \n\tDefault: qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore", output_format)
-("include-lineage", 0, "Include lineage in the taxonomic classification format", include_lineage)
 ;
+
+	auto& taxon_format = parser.add_group("Taxon output format options", { blastp, blastx });
+	taxon_format.add()
+		("include-lineage", 0, "Include lineage in the taxonomic classification format", include_lineage);
 
 	auto& cluster_opt = parser.add_group("Clustering options", { cluster, RECLUSTER, DEEPCLUST, LINCLUST });
 	kmer_ranking = false;
@@ -378,9 +381,12 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 		("round-coverage", 0, "Per-round coverage cutoffs for cascaded clustering", round_coverage)
 		("round-approx-id", 0, "Per-round approx-id cutoffs for cascaded clustering", round_approx_id);
 
+	auto& memory_opt = parser.add_group("Memory options", { cluster, RECLUSTER, CLUSTER_REASSIGN, GREEDY_VERTEX_COVER, DEEPCLUST, LINCLUST, CLUSTER_REALIGN });
+	memory_opt.add()
+		("memory-limit", 'M', "Memory limit in GB (default = 16G)", memory_limit);
+
 	auto& cluster_reassign_opt = parser.add_group("Clustering/reassign options", { cluster, RECLUSTER, CLUSTER_REASSIGN, GREEDY_VERTEX_COVER, DEEPCLUST, LINCLUST });
 	cluster_reassign_opt.add()
-		("memory-limit", 'M', "Memory limit in GB (default = 16G)", memory_limit)
 		("member-cover", 0, "Minimum coverage% of the cluster member sequence (default=80.0)", member_cover)
 		("mutual-cover", 0, "Minimum mutual coverage% of the cluster member and representative sequence", mutual_cover);
 
@@ -404,7 +410,7 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 
 	auto& advanced_gen = parser.add_group("Advanced/general", { blastp, blastx, blastn, CLUSTER_REASSIGN, regression_test, cluster, DEEPCLUST, LINCLUST, makedb });
 	advanced_gen.add()
-		("file-buffer-size", 0, "file buffer size in bytes (default=67108864)", file_buffer_size, (size_t)67108864)
+		("file-buffer-size", 0, "file buffer size in bytes (default=67108864)", file_buffer_size, INT64_C(67'108'864))
 		("no-unlink", 0, "Do not unlink temporary files.", no_unlink)
 		("ignore-warnings", 0, "Ignore warnings", ignore_warnings)
 		("no-parse-seqids", 0, "Print raw seqids without parsing", no_parse_seqids);
@@ -425,19 +431,23 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 		("seed-cut", 0, "cutoff for seed complexity", seed_cut_)
 		("freq-masking", 0, "mask seeds based on frequency", freq_masking)
 		("freq-sd", 0, "number of standard deviations for ignoring frequent seeds", freq_sd_, 0.0)
+		("sketch-size", 0, "Subsample seeds based on minimizer sketch of the given size", sketch_size)
 		("id2", 0, "minimum number of identities for stage 1 hit", min_identities_)
 		("linsearch", 0, "only consider seed hits against longest target for identical seeds", linsearch)
 		("lin-stage1", 0, "only consider seed hits against longest query for identical seeds", lin_stage1)
 		("xdrop", 'x', "xdrop for ungapped alignment", ungapped_xdrop, 12.3)
+		("ungapped-evalue", 0, "E-value threshold for ungapped filter (auto)", ungapped_evalue_, -1.0)
+		("ungapped-evalue-short", 0, "E-value threshold for ungapped filter (short reads) (auto)", ungapped_evalue_short_, -1.0)
 		("gapped-filter-evalue", 0, "E-value threshold for gapped filter (auto)", gapped_filter_evalue_, -1.0)
 		("band", 0, "band for dynamic programming computation", padding)
+		("swipe-task-size", 0, "task size for DP parallelism (100000000)", swipe_task_size, INT64_C(100'000'000))
 		("shape-mask", 0, "seed shapes", shape_mask)
 		("multiprocessing", 0, "enable distributed-memory parallel processing", multiprocessing)
 		("mp-init", 0, "initialize multiprocessing run", mp_init)
 		("mp-recover", 0, "enable continuation of interrupted multiprocessing run", mp_recover)
 		("mp-query-chunk", 0, "process only a single query chunk as specified", mp_query_chunk, -1)
 		("culling-overlap", 0, "minimum range overlap with higher scoring hit to delete a hit (default=50%)", inner_culling_overlap, 50.0)
-		("taxon-k", 0, "maximum number of targets to report per species", taxon_k, (uint64_t)0)
+		("taxon-k", 0, "maximum number of targets to report per species", taxon_k, UINT64_C(0))
 		("range-cover", 0, "percentage of query range to be covered for range culling (default=50%)", query_range_cover, 50.0)
 		("xml-blord-format", 0, "Use gnl|BL_ORD_ID| style format in XML output", xml_blord_format)
 		("sam-query-len", 0, "add the query length to the SAM format (tag ZQ)", sam_qlen_field)
@@ -454,20 +464,25 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 		("bootstrap", 0, "", bootstrap)
 		("heartbeat", 0, "", heartbeat)
 		("mp-self", 0, "", mp_self)
-#ifdef EXTRA
-        ("zdrop", 'z', "zdrop for gapped dna alignment", zdrop, 40)
-#endif
 #ifdef WITH_DNA
+        ("zdrop", 'z', "zdrop for gapped dna alignment", zdrop, 40)
         ("repetition-cutoff", 0 ,"filter out top FLOAT fraction of repetitive minimizers ",repetitive_cutoff,0.0002)
         ("extension", 0, "extension algorithm (wfa, ksw=default)", dna_extension_string, string("ksw"))
         ("chaining-out", 0, "use chaining without extension", chaining_out)
         ("align-long-reads", 0, "use chaining with extension", align_long_reads)
+        ("best-hsp-only", 0, "only show the best HSP for any single query-subject pair", best_hsp_only)
         ("chain-pen-gap-scale", 0, "scaling factor for the chaining gap penalty", chain_pen_gap_scale, 0.8)
-        ("chain-pen-skip-scalee", 0, "scaling factor for the chaining skip penalty", chain_pen_skip_scale, 0.0)
+        ("chain-pen-skip-scale", 0, "scaling factor for the chaining skip penalty", chain_pen_skip_scale, 0.0)
         ("penalty", 0, "blastn mismatch penalty", mismatch_penalty, -3)
         ("reward", 0, "blastn match reward", match_reward, 2)
+        ("chain-align-cutoff", 0, "percentage of chains not mapped/aligned in comparison to the best chaining score", chain_fraction_align_)
+        ("min-chain-score", 0, "minimum chaining score to be considered for an alignment", min_chain_score_)
+        ("max-overlap-extension", 0, "minimum chaining score to be considered for an alignment", max_overlap_extension_)
+        ("zdrop-extension", 0, "zdrop for extension at chain ends", zdrop_extension, 80)
+        ("zdrop-global", 0, "zdrop for global extension between anchors", zdrop_global, 150)
+        ("band-extension", 0, "min band for extension at chain ends", band_extension, 40)
+        ("band-global", 0, "min band for global extension between anchors", band_global, 40)
 #endif
-
 		("query-or-subject-cover", 0, "", query_or_target_cover);
 
 	auto& view_align_options = parser.add_group("View/Align options", { view, blastp, blastx });
@@ -513,23 +528,7 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 		("reverse", 0, "", reverse)
 		("neighborhood-score", 0, "", neighborhood_score)
 		("seed-weight", 'w', "", seed_weight, 7u)
-		("idl", 0, "", id_left)
-		("idr", 0, "", id_right)
-		("idn", 0, "", id_n)
-		("bmatch", 0, "", bmatch)
-		("bmismatch", 0, "", bmismatch)
-		("bcutoff", 0, "", bcutoff)
-		("ants", 0, "", n_ants, uint64_t(100))
-		("rho", 0, "", rho, 0.99)
-		("p_best", 0, "", p_best, 0.05)
-		("d_exp", 0, "", d_exp, 1.0)
-		("d_new", 0, "", d_new, 1.0)
-		("score-estimate-factor", 0, "", score_estimate_factor, 0.0)
-		("diag-min-estimate", 0, "", diag_min_estimate, 17)
-		("path-cutoff", 0, "", path_cutoff, 0.92)
-		("sw", 0, "", use_smith_waterman)
 		("superblock", 0, "", superblock, 128)
-		("max-cells", 0, "", max_cells, 10000000u)
 		("load-balancing", 0, "", load_balancing, (unsigned)Config::query_parallel)
 		("log-query", 0, "", log_query)
 		("log-subject", 0, "", log_subject)
@@ -572,8 +571,6 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 		("gapped-filter-diag-score", 0, "", gapped_filter_diag_bit_score, 12.0)
 		("gapped-filter-window", 0, "", gapped_filter_window, 200)
 		("output-hits", 0, "", output_hits)
-		("ungapped-evalue", 0, "", ungapped_evalue_, -1.0)
-		("ungapped-evalue-short", 0, "", ungapped_evalue_short_, -1.0)
 		("no-logfile", 0, "", no_logfile)
 		("band-bin", 0, "", band_bin, 24)
 		("col-bin", 0, "", col_bin, 400)
@@ -613,8 +610,7 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 		("deque_bucket_size", 0, "", deque_bucket_size, (size_t)524288)
 		("query-match-distance-threshold", 0, "", query_match_distance_threshold, -1.0)
 		("length-ratio-threshold", 0, "", length_ratio_threshold, -1.0)
-		("max-swipe-dp", 0, "", max_swipe_dp, (int64_t)1000000)
-		("short-seqids", 0, "", short_seqids)
+		("max-swipe-dp", 0, "", max_swipe_dp, INT64_C(1'000'000))
 		("no-reextend", 0, "", no_reextend)
 		("no-reorder", 0, "", no_reorder)
 		("file1", 0, "", file1)
@@ -623,10 +619,8 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 		("motif-mask-file", 0, "", motif_mask_file)
 		("max-motif-len", 0, "", max_motif_len, 30)
 		("chaining-stacked-hsp-ratio", 0, "", chaining_stacked_hsp_ratio, 0.5)
-		("swipe-task-size", 0, "", swipe_task_size, (int64_t)100000000)
 		("minimizer-window", 0, "", minimizer_window_)
 		("min_task_trace_pts", 0, "", min_task_trace_pts, (int64_t)1024)
-		("sketch-size", 0, "", sketch_size)
 		("oid-list", 0, "", oid_list)
 		("bootstrap-block", 0, "", bootstrap_block, (int64_t)1000000)
 		("centroid-factor", 0, "", centroid_factor, (int64_t)3)
@@ -658,7 +652,6 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 		("mcl-stats", 0, "Some stats about the connected components in MCL", cluster_mcl_stats)
 		("cluster-algo", 0, "Clustering algorithm (\"mcl\")", cluster_algo)
 		("approx-backtrace", 0, "", approx_backtrace)
-		("prefix-scan", 0, "", prefix_scan)
 		("narrow-band-cov", 0, "", narrow_band_cov)
 		("narrow-band-factor", 0, "", narrow_band_factor)
 		("anchor-window", 0, "", anchor_window, 12)
@@ -705,15 +698,15 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
     }
 
 
-	if (toppercent != 100.0 && max_target_seqs_.present())
-		throw std::runtime_error("--top and --max-target-seqs are mutually exclusive.");
+	if (toppercent.present() && max_target_seqs_.present())
+		throw std::runtime_error("--top and -k/--max-target-seqs are mutually exclusive.");
 
 	if (command == blastx && no_self_hits)
 		throw std::runtime_error("--no-self-hits option is not supported in blastx mode.");
 
 	if (long_reads) {
 		query_range_culling = true;
-		if (toppercent == 100.0)
+		if (toppercent.blank())
 			toppercent = 10.0;
 		if (frame_shift == 0)
 			frame_shift = 15;
@@ -849,12 +842,13 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 	case Config::CLUSTER_REALIGN:
 	case Config::RECLUSTER:
 	case Config::MODEL_SEQS:
+	case Config::MAKE_SEED_TABLE:
 		if (frame_shift != 0 && command == Config::blastp)
 			throw std::runtime_error("Frameshift alignments are only supported for translated searches.");
 		if (query_range_culling && frame_shift == 0)
 			throw std::runtime_error("Query range culling is only supported in frameshift alignment mode (option -F).");
 		if (matrix_file == "") {
-			score_matrix = ScoreMatrix(to_upper_case(matrix), gap_open, gap_extend, frame_shift, stop_match_score, 0, cbs_matrix_scale, mmseqs_compat);
+			score_matrix = ScoreMatrix(to_upper_case(matrix), gap_open, gap_extend, frame_shift, stop_match_score, 0, cbs_matrix_scale);
 		}
 		else {
 			if (gap_open == -1 || gap_extend == -1)
@@ -875,6 +869,7 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 		|| command == Config::RECLUSTER || command == Config::DEEPCLUST || command == Config::LINCLUST) {
 		if (tmpdir == "")
 			tmpdir = extract_dir(output_file);
+		temp_file_handler.init(tmpdir.c_str());
 
 		raw_ungapped_xdrop = score_matrix.rawscore(ungapped_xdrop);
 		verbose_stream << "CPU features detected: " << SIMD::features() << endl;
@@ -890,6 +885,7 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 	if (mode_very_sensitive) set_sens(Sensitivity::VERY_SENSITIVE);
 	if (mode_ultra_sensitive) set_sens(Sensitivity::ULTRA_SENSITIVE);
 	if (mode_shapes30x10) set_sens(Sensitivity::SHAPES30x10);
+	if (mode_linclust_20) set_sens(Sensitivity::LINCLUST_20);
 
 	algo = from_string<Algo>(algo_str);
     dbtype = from_string<SequenceType>(dbstring);

@@ -21,7 +21,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #pragma once
-#include <stdexcept>
 
 #ifdef _MSC_VER
 
@@ -36,7 +35,11 @@ typedef __int64 ssize_t;
 
 #else
 
+#ifdef __sparc__
+#define PACKED_ATTRIBUTE
+#else
 #define PACKED_ATTRIBUTE __attribute__((packed))
+#endif
 #define FORCE_INLINE __attribute__((always_inline)) static inline
 #define FLATTEN __attribute__((flatten))
 #define UNLINK unlink

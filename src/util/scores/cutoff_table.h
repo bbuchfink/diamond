@@ -19,7 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #pragma once
-#include "../../stats/score_matrix.h"
+#include "stats/score_matrix.h"
 #include "../intrin.h"
 
 namespace Util { namespace Scores {

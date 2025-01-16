@@ -20,20 +20,17 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#include <list>
 #include <atomic>
 #include <thread>
-#include <algorithm>
 #include <iterator>
 #include "../sequence_set.h"
-#include "../util/seq_file_format.h"
 #include "block.h"
-#include "../util/sequence/sequence.h"
+#include "util/sequence/sequence.h"
 #include "../sequence_file.h"
-#include "../basic/config.h"
-#include "../dp/ungapped.h"
+#include "basic/config.h"
+#include "dp/ungapped.h"
 #define _REENTRANT
-#include "../../lib/ips4o/ips4o.hpp"
+#include "ips4o/ips4o.hpp"
 
 using std::vector;
 using std::mutex;
@@ -92,23 +89,21 @@ int64_t Block::push_back(const Sequence& seq, const char* id, const std::vector<
 		seqs_.push_back(seq.data(), seq.end());
 		return seq.length();
 	}
-	else {
-		if (seqs_.size() > numeric_limits<BlockId>::max() - 6)
-			throw runtime_error(OVERFLOW_ERR);
-		source_seqs_.push_back(seq.data(), seq.end());
-		auto t = Util::Seq::translate(seq);
-		const Loc min_len = config.min_orf_len((Loc)t.front().size());
-		int64_t letters = 0;
-		for (int j = 0; j < 6; ++j) {
-			if (frame_mask & (1 << j)) {
-				letters += Util::Seq::find_orfs(t[j], min_len);
-				seqs_.push_back(t[j].cbegin(), t[j].cend());
-			}
-			else
-				seqs_.fill(t[j].size(), MASK_LETTER);
+	if (seqs_.size() > numeric_limits<BlockId>::max() - 6)
+		throw runtime_error(OVERFLOW_ERR);
+	source_seqs_.push_back(seq.data(), seq.end());
+	auto t = Util::Seq::translate(seq);
+	const Loc min_len = config.min_orf_len((Loc)t.front().size());
+	int64_t letters = 0;
+	for (int j = 0; j < 6; ++j) {
+		if (frame_mask & (1 << j)) {
+			letters += Util::Seq::find_orfs(t[j], min_len);
+			seqs_.push_back(t[j].cbegin(), t[j].cend());
 		}
-		return letters;
+		else
+			seqs_.fill(t[j].size(), MASK_LETTER);
 	}
+	return letters;
 }
 
 void Block::append(const Block& b) {
@@ -149,7 +144,7 @@ DictId Block::dict_id(size_t block, BlockId block_id, SequenceFile& db) const
 		else if (config.sallseqid)
 			t = Util::Seq::all_seqids(title);
 		else
-			t = Util::Seq::seqid(title, config.short_seqids);
+			t = Util::Seq::seqid(title);
 	}
 	const Letter* seq = unmasked_seqs().empty() ? nullptr : unmasked_seqs()[block_id].data();
 	double self_aln_score = 0.0;

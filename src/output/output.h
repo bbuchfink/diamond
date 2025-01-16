@@ -22,18 +22,15 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #pragma once
 #include <memory>
-#include <map>
-#include <mutex>
 #include <stdint.h>
-#include "../util/io/output_file.h"
-#include "../basic/packed_transcript.h"
-#include "../util/text_buffer.h"
-#include "../data/reference.h"
-#include "../basic/match.h"
-#include "../util/io/consumer.h"
+#include "basic/packed_transcript.h"
+#include "util/text_buffer.h"
+#include "basic/match.h"
+#include "util/io/consumer.h"
 #include "output_format.h"
-#include "../run/config.h"
-#include "../util/data_structures/reorder_queue.h"
+#include "run/config.h"
+#include "util/data_structures/reorder_queue.h"
+#include "util/ptr_vector.h"
 
 inline unsigned get_length_flag(unsigned x)
 {
@@ -87,20 +84,20 @@ struct IntermediateRecord
 	uint32_t score, query_begin, subject_begin, query_end, subject_end, identities, mismatches, positives, length, gap_openings, gaps;
 	double evalue;
 	uint8_t flag;
-	Packed_transcript transcript;
+	PackedTranscript transcript;
 };
 
 void join_blocks(int64_t ref_blocks, Consumer &master_out, const PtrVector<TempFile> &tmp_file, Search::Config& cfg, SequenceFile &db_file,
 					const std::vector<std::string> tmp_file_names = std::vector<std::string>());
 
 struct OutputWriter {
-    OutputWriter(Consumer* file_, char sep = char(0), bool first = true):
-    file_(file_),
-	first(first),
-    sep(sep)
-    {};
+	OutputWriter(Consumer* file_, char sep = char(0), bool first = true) :
+		file_(file_),
+		first(first),
+		sep(sep)
+	{};
 	void operator()(TextBuffer* buf) {
-        if(!first && sep != char(0))
+        if(!first && sep != '\0')
         {
             file_ ->consume(&sep, 1);
         }

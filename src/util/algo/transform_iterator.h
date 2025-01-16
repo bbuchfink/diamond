@@ -5,7 +5,11 @@ template<typename It, typename F>
 struct TransformIterator {
 	using difference_type = typename It::difference_type;
 	using iterator_category = std::random_access_iterator_tag;
+#if __cplusplus >= 201703L
+	using reference = typename std::invoke_result<F, const typename It::value_type&>::type;
+#else
 	using reference = typename std::result_of<F(const typename It::value_type&)>::type;
+#endif
 	using value_type = reference;
 	using pointer = reference*;
 	TransformIterator(It it, const F& f) :

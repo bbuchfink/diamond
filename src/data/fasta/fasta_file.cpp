@@ -18,20 +18,35 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#include <fstream>
 #include "fasta_file.h"
-#include "../../util/system/system.h"
-#include "../../util/seq_file_format.h"
-#include "../../basic/config.h"
-#include "../../util/sequence/sequence.h"
-#include "../../util/string/tokenizer.h"
+#include "util/sequence/sequence.h"
 
 using std::vector;
 using std::string;
 using std::pair;
 using std::runtime_error;
+using std::unique_ptr;
 using std::tie;
+using std::next;
 using namespace Util::Tsv;
+using Util::String::TokenizerBase;
+using Util::String::FastaTokenizer;
+using Util::String::FastqTokenizer;
+
+static const Schema FASTA_SCHEMA { Type::STRING, Type::STRING };
+static const Schema FASTQ_SCHEMA{ Type::STRING, Type::STRING, Type::STRING };
+const char* FASTA_SEP = "\n>", * FASTQ_SEP = "\n@";
+
+SeqFileFormat guess_format(TextInputFile& file) {
+	string r = file.peek(1);
+	if (r.empty())
+		throw std::runtime_error("Error detecting input file format. Input file seems to be empty.");
+	switch (r.front()) {
+	case '>': return SeqFileFormat::FASTA;
+	case '@': return SeqFileFormat::FASTQ;
+	default: throw std::runtime_error("Error detecting input file format. First line must begin with '>' (FASTA) or '@' (FASTQ).");
+	}
+}
 
 FastaFile::FastaFile(const std::vector<std::string>& file_name, Metadata metadata, Flags flags, const ValueTraits& value_traits):
 	SequenceFile(SequenceFile::Type::FASTA, Alphabet::STD, flags, FormatFlags::DICT_LENGTHS | FormatFlags::DICT_SEQIDS, value_traits),
@@ -39,43 +54,33 @@ FastaFile::FastaFile(const std::vector<std::string>& file_name, Metadata metadat
 {
 	if (file_name.size() > 2)
 		throw OperationNotSupported();
-	for (const auto& f : file_name)
-		file_.emplace_back(f);
+	unique_ptr<TextInputFile> input_file(new TextInputFile(file_name.front()));
+	format_ = guess_format(*input_file);
+	Util::Tsv::Config config(format_ == SeqFileFormat::FASTA ? FASTA_SEP : FASTQ_SEP, format_ == SeqFileFormat::FASTA ? (TokenizerBase*)(new FastaTokenizer()) : new FastqTokenizer);
+	const auto schema = format_ == SeqFileFormat::FASTA ? FASTA_SCHEMA : FASTQ_SCHEMA;
+	file_.emplace_back(schema, std::move(input_file), Util::Tsv::Flags(), config);
+	if (file_name.size() > 1)
+		file_.emplace_back(schema, file_name[1], Util::Tsv::Flags(), config);
 	file_ptr_ = file_.begin();
-	format_ = guess_format(file_.front());
+	
 	if (!flag_any(flags, Flags::NEED_LETTER_COUNT))
 		return;
-#if EXTRA
-	/*if (exists(file_name.front() + ".fai")) {
-		TaskTimer timer("Reading faidx file", 3);
-		int64_t seqs = 0, letters = 0;
-		string acc;
-		for (const auto& f : file_name) {
-			pair<int64_t, int64_t> r = read_fai_file(f + ".fai", seqs, letters);
-			seqs += r.first;
-			letters += r.second;
-		}
-		seqs_ = seqs;
-		letters_ = letters;
-	}
-	else {*/
-#endif
 	tie(seqs_, letters_) = init_read();
 	set_seqinfo_ptr(0);
-#ifdef EXTRA
-	//}
-#endif
 }
 
 FastaFile::FastaFile(const string& file_name, bool overwrite, const WriteAccess&, Flags flags, const ValueTraits& value_traits):
 	SequenceFile(SequenceFile::Type::FASTA, Alphabet::STD, flags, FormatFlags::DICT_LENGTHS | FormatFlags::DICT_SEQIDS, value_traits),
 	out_file_(file_name.empty() ? new TempFile : new OutputFile(file_name, Compressor::NONE, overwrite ? "w+b" : "r+b")),
-	format_(new FASTA_format()),
+	format_(SeqFileFormat::FASTA),
 	oid_(0),
 	seqs_(0),
 	letters_(0)
 {
-	file_.emplace_back(*out_file_);
+	unique_ptr<TextInputFile> in(new TextInputFile(*out_file_, FASTA_SEP));
+	Util::Tsv::Config config(FASTA_SEP, new FastaTokenizer());
+	file_.emplace_back(FASTA_SCHEMA, std::move(in), Util::Tsv::Flags(), config);
+	//file_.emplace_back(*out_file_);
 	file_ptr_ = file_.begin();
 	if (!overwrite) {
 		vector<Letter> seq;
@@ -97,7 +102,7 @@ bool FastaFile::files_synced() {
 	if (file_ptr_->eof()) {
 		string id;
 		vector<Letter> seq;
-		if (++file_ptr_ != file_.end() && format_->get_seq(id, seq, *file_ptr_, value_traits_, nullptr))
+		if (next(file_ptr_) != file_.end() && !next(file_ptr_)->read_record().empty())
 			return false;
 	}
 	return true;
@@ -116,10 +121,7 @@ void FastaFile::close() {
 		file_.front().close();
 	else
 		for (auto& f : file_)
-			if (f.temp_file)
-				f.close_and_delete();
-			else
-				f.close();
+			f.close();
 	
 }
 
@@ -151,10 +153,18 @@ void FastaFile::init_seq_access() {
 bool FastaFile::read_seq(vector<Letter>& seq, string &id, std::vector<char>* quals)
 {
 	oid_++;
-	const bool r = format_->get_seq(id, seq, *(file_ptr_++), this->value_traits_, quals);
-	if (file_ptr_ == file_.end())
-		file_ptr_ = file_.begin();
-	return r;
+	Table t = file_ptr_->read_record();
+	if (!t.empty()) {
+		id = t.front().get<string>(0);
+		Util::Seq::from_string(t.front().get<string>(1), seq, value_traits_, 0);
+		if (format_ == SeqFileFormat::FASTQ && quals) {
+			const string q = t.front().get<string>(2);
+			quals->assign(q.begin(), q.end());
+		}
+		if (++file_ptr_ == file_.end())
+			file_ptr_ = file_.begin();
+	}
+	return !t.empty();
 }
 
 void FastaFile::create_partition_balanced(int64_t max_letters) {
@@ -200,7 +210,7 @@ int64_t FastaFile::sequence_count() const {
 	return seqs_;
 }
 
-size_t FastaFile::letters() const {
+int64_t FastaFile::letters() const {
 	return letters_;
 }
 
@@ -245,7 +255,7 @@ const BitVector* FastaFile::builtin_filter()
 
 std::string FastaFile::file_name()
 {
-	return file_.front().file_name;
+	return file_.front().file_name();
 }
 
 int64_t FastaFile::sparse_sequence_count() const
@@ -295,29 +305,6 @@ void FastaFile::write_seq(const Sequence& seq, const std::string& id) {
 		seq_length_.push_back(seq.length());
 }
 
-void FastaFile::prep_db(const string& path) {
-	TaskTimer timer("Indexing FASTA file");
-	TextInputFile f(path);
-	FASTA_format fmt;
-	vector<Letter> seq;
-	string id;
-	std::ofstream out(path + ".fai");
-	int64_t seqs = 0, letters = 0;
-	while (fmt.get_seq(id, seq, f, amino_acid_traits)) {
-		out << Util::Seq::seqid(id.c_str(), false) << '\t' << seq.size() << std::endl;
-		++seqs;
-		letters += seq.size();
-	}
-	f.close();
-	out.close();
-	timer.finish();
-	message_stream << "Processed " << seqs << " sequences, " << letters << " total letters." << std::endl;
-}
-
-int64_t FastaFile::line_count() const {
-	return file_.front().line_count;
-}
-
 std::pair<int64_t, int64_t> FastaFile::init_read() {
 	vector<Letter> seq;
 	string id;
@@ -326,7 +313,7 @@ std::pair<int64_t, int64_t> FastaFile::init_read() {
 		if (flag_any(flags_, Flags::ACC_TO_OID_MAPPING | Flags::OID_TO_ACC_MAPPING))
 			add_seqid_mapping(id, seqs);
 		if (flag_any(flags_, Flags::NEED_LENGTH_LOOKUP))
-			seq_length_.push_back(seq.size());
+			seq_length_.push_back((Loc)seq.size());
 		++seqs;
 		letters += seq.size();
 	}

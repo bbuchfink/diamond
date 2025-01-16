@@ -50,7 +50,6 @@ using std::shared_ptr;
 using std::fill;
 using std::cout;
 using std::ostream;
-using std::move;
 using std::max;
 
 #include "sparse.h"

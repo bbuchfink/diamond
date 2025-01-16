@@ -18,12 +18,11 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#include <algorithm>
+#include "basic/config.h"
 #include "score_profile.h"
-#include "../util/simd.h"
-#include "dp.h"
 #include "score_vector_int8.h"
-#include "../util/simd/dispatch.h"
+#include "util/simd/dispatch.h"
+#include "stats/score_matrix.h"
 
 using namespace DISPATCH_ARCH;
 

@@ -1,3 +1,81 @@
+[2.1.11]
+- Improved the performance of the clustering workflow.
+- Fixed a bug that could produce clustering errors when clustering at
+  sequence identities >= 50% and processing the database in multiple super
+  blocks.
+- The `--faster` mode will by default use a minimizer sketch of fixed size
+  per sequence instead of window-based minimizers.
+- Added the option `--sketch-size` to enable seeding using a minimizer
+  sketch of the given size per sequence.
+- Cascaded clustering and iterated search will by default use the `--fast`
+  mode with linearization in the second round.
+- The `--round-coverage` parameter is now also applied to uni-directional
+  coverage clustering.
+- Cluster output files will correctly contain carriage returns on Windows.
+- Fixed generation of the Docker container against the latest version of the
+  NCBI toolkit.
+- Fixed a bug that caused target coordinates not to be reported correctly
+  in the tabular format in frameshift alignment mode.
+- Added the options `--ungapped-evalue` and `--ungapped-evalue-short` to set
+  e-value thresholds for the ungapped hit filter.
+- Linearization of clustering rounds is limited to the `faster`, `fast`,
+  and `shapes-30x10` sensitivity modes.
+- Fixed an issue that could cause an `array size overflow` error when using
+  very large `.dmnd` databases with taxonomic annotation.
+- Fixed a bug that caused query letters to be printed as `ARND` instead of
+  `ACGT` in the `view` workflow.
+- Fixed a bug that caused using paired end input files to malfunction with
+  an error message.
+- Fixed a bug that could cause a crash in global ranking mode.
+- Accession parsing rules applied to database sequences accessions for the
+  purpose of matching them to accessions in the taxonomy mapping file are now
+  by default also applied to the accessions in the mapping file (disable using
+  `--no-parse-seqids`).
+- Fixed an issue that could cause increased memory use in the hash join stage.
+- Added support for FASTA headers containing multiple sequence IDs separated
+  by blank spaces (so far only the `\1` character was supported as a
+  separator).
+- Fixed an issue that could cause hanging or crashes in the `Computing
+  alignments` stage.
+- `--linsearch` can now be used in conjunction with `--iterate`.
+- Fixed a compiler error for GCC 4.8.5.
+- Fixed a compiler error on Solaris.
+- Fixed compiler errors on systems that do not support the sysinfo function.
+- Fixed `Bus error` occuring on Sparc systems.
+- Compilation on Sparc systems can be performed without setting `-DX86=OFF`.
+- Fixed two issues that could cause increased memory use in the computing
+  alignments stage.
+- Fixed a bug that caused superfluous quote characters in the JSON output
+  format.
+- Linear search modes will by default use full-matrix extension.
+- Fixed an issue that could cause reduced performance in the masking sequences
+  stage.
+- Fixed a bug that could cause a crash when using mutual coverage thresholds
+  in blastx mode.
+- Fixed a bug that could cause a crash when the `--include-lineage` option
+  was used.
+- When reading protein sequences that unexpectedly only contain DNA letters,
+  an error message is only produced if the first 10 sequences in the input
+  file all exhibit the problem.
+- Fixed a bug that caused setting `--top 100` not to function correctly.
+- Fixed a bug that caused target coordinates not to be reported correctly in
+  the output of the realign workflow.
+- Fixed a bug that did not permit using the '--memory-limit/-M' option for
+  the realign workflow.
+- Fixed an issue that could cause non-deterministic output in frameshift
+  alignment mode.
+- Fixed a bug that could cause a crash when using the XML output format in
+  the view workflow.
+- Added the sensitivity mode `--linclust-20` using 30 seed shapes of weight 12.
+- Fixed an issue that could cause non-deterministic output for identically-scoring
+  HSPs in the same target.
+- Disabled the default use of increased coverage and identity cutoffs in
+  earlier clustering rounds.
+- Optimized the performance of the extension stage when coverage or approximate
+  identity filters are used.
+- Optimized the performance of the extension stage when not using output fields
+  that require alignment traceback.
+
 [2.1.10]
 - Fixed a bug that could cause a crash when using a bi-directional coverage
   cutoff in query-indexed mode.
@@ -16,7 +94,7 @@
   output field not to work correctly when using the `--anchored-swipe`
   option.
 - Added the option `--no-reassign` to prevent reassignment to closest
-  representative for the greedy vertex cover workflow.
+  representative for the greedy vertex cover and clustering workflows.
 - Added the option `--connected-component-depth` to activate clustering
   of connected components at a given maximum depth for the greedy vertex
   cover and the clustering workflows.

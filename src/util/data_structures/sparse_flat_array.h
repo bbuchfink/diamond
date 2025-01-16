@@ -23,10 +23,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <tuple>
 #include "flat_array.h"
 #define _REENTRANT
-#include "../../lib/ips4o/ips4o.hpp"
+#include "ips4o/ips4o.hpp"
 #include "../util.h"
-#include "../algo/sort_helper.h"
-#include "../algo/transform_iterator.h"
+#include "algo/sort_helper.h"
+#include "algo/transform_iterator.h"
 
 template<typename Key, typename T>
 struct SparseFlatArray {

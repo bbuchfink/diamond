@@ -21,15 +21,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #pragma once
-#include <algorithm>
 #include <stdint.h>
 #include <mutex>
-#include "../util/log_stream.h"
-
-typedef uint64_t stat_type;
 
 struct Statistics
 {
+
+	using StatType = int64_t;
 
 	enum value {
 		SEED_HITS, TENTATIVE_MATCHES0, TENTATIVE_MATCHES1, TENTATIVE_MATCHES2, TENTATIVE_MATCHES3, TENTATIVE_MATCHES4, TENTATIVE_MATCHESX, MATCHES, ALIGNED, GAPPED, DUPLICATES,
@@ -47,7 +45,7 @@ struct Statistics
 	}
 
 	void reset() {
-		std::fill(data_, data_ + COUNT, (stat_type)0);
+		std::fill(data_, data_ + COUNT, (StatType)0);
 	}
 
 	Statistics& operator+=(const Statistics &rhs)
@@ -59,20 +57,20 @@ struct Statistics
 		return *this;
 	}
 
-	void inc(const value v, stat_type n = 1lu)
+	void inc(const value v, StatType n = 1lu)
 	{ data_[v] += n; }
 
-	void max(const value v, stat_type n)
+	void max(const value v, StatType n)
 	{
 		data_[v] = std::max(data_[v], n);
 	}
 
-	stat_type get(const value v) const
+	StatType get(const value v) const
 	{ return data_[v]; }
 
 	void print() const;
 
-	stat_type data_[COUNT];
+	StatType data_[COUNT];
 	std::mutex mtx_;
 
 };

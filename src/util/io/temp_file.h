@@ -20,6 +20,14 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <utility>
 #include "output_file.h"
 
+struct TempFileHandler {
+	void init(const char* path);
+private:
+	const std::string path_;
+};
+
+extern TempFileHandler temp_file_handler;
+
 struct TempFile : public OutputFile
 {
 

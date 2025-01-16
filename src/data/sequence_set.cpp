@@ -23,9 +23,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <atomic>
 #include <thread>
 #include "sequence_set.h"
-#include "../util/util.h"
-#include "../util/sequence/sequence.h"
-#include "../util/log_stream.h"
+#include "util/sequence/sequence.h"
+#include "util/log_stream.h"
 
 using std::vector;
 using std::pair;
@@ -59,19 +58,23 @@ SequenceSet::Length SequenceSet::max_len(size_t begin, size_t end) const
 	return max;
 }
 
-std::vector<size_t> SequenceSet::partition(unsigned n_part) const
+std::vector<SequenceSet::Id> SequenceSet::partition(unsigned n_part, bool shortened, bool context_reduced) const
 {
-	std::vector<size_t> v;
+	std::vector<Id> v;
 	const size_t l = (this->letters() + n_part - 1) / n_part;
-	v.push_back(0);
+	const Id c = context_reduced ? align_mode.query_contexts : 1;
+	if(!shortened)
+		v.push_back(0);
 	for (Id i = 0; i < this->size();) {
 		size_t n = 0;
-		while (i < this->size() && n < l)
-			n += this->length(i++);
-		v.push_back(i);
+		while (i < this->size() && n < l) {
+			for (Id j = 0; j < c; ++j)
+				n += this->length(i++);
+		}
+		v.push_back(i / c);
 	}
-	for (size_t i = v.size(); i < n_part + 1; ++i)
-		v.push_back(this->size());
+	for (size_t i = v.size(); i < n_part + (shortened ? 0 : 1); ++i)
+		v.push_back(this->size() / c);
 	return v;
 }
 
@@ -136,11 +139,6 @@ size_t max_id_len(const StringSet& ids)
 	for (BlockId i = 0; i < ids.size(); ++i)
 		max = std::max(max, find_first_of(ids[i], Util::Seq::id_delimiters));
 	return max;
-}
-
-vector<string> seq_titles(const char* title)
-{
-	return tokenize(title, "\1");
 }
 
 std::vector<std::pair<Loc, BlockId>> SequenceSet::lengths() const {

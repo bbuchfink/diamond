@@ -16,9 +16,10 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#include "../basic/config.h"
+#include "basic/config.h"
 #include "daa_record.h"
-#include "../output.h"
+#include "basic/packed_sequence.h"
+#include "../output_format.h"
 
 DAA_format::DAA_format() :
 	OutputFormat(daa, HspValues::TRANSCRIPT, config.salltitles ? Output::Flags::FULL_TITLES : (config.sallseqid ? Output::Flags::ALL_SEQIDS : Output::Flags::NONE))
@@ -33,13 +34,13 @@ BinaryBuffer::Iterator DAA_query_record::init(const BinaryBuffer &buf)
 	uint8_t flags;
 	it >> flags;
 	if (file_.mode() == AlignMode::blastp) {
-		Packed_sequence seq(it, query_len, false, 5);
+		PackedSequence seq(it, query_len, false, 5);
 		seq.unpack(context[0], 5, query_len);
 		query_seq = TranslatedSequence(Sequence(context[0]));
 	}
 	else {
 		const bool have_n = (flags & 1) == 1;
-		Packed_sequence seq(it, query_len, have_n, have_n ? 3 : 2);
+		PackedSequence seq(it, query_len, have_n, have_n ? 3 : 2);
 		seq.unpack(source_seq, have_n ? 3 : 2, query_len);
 		translate_query(source_seq, context);
 		query_seq = TranslatedSequence(Sequence(source_seq), context);
@@ -95,7 +96,7 @@ void copy_match_record_raw(BinaryBuffer::Iterator& it, TextBuffer& buf, const st
 	buf.write_packed(score);
 	buf.write_packed(query_begin);
 	buf.write_packed(subject_begin);
-	const uint8_t t = Packed_operation::terminator();
+	const uint8_t t = PackedOperation::terminator();
 	uint8_t c;
 	do {
 		it >> c;

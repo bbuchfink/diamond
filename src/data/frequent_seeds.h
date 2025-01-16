@@ -20,11 +20,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #pragma once
-#include "flags.h"
-#include "../util/algo/join_result.h"
-#include "../util/range.h"
-#include "../run/config.h"
-#include "../util/data_structures/double_array.h"
+#include "run/config.h"
+#include "util/data_structures/double_array.h"
 #include "seed_histogram.h"
 
 struct SequenceSet;

@@ -21,19 +21,19 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <string>
 #include <random>
 #ifdef WITH_BLASTDB
-#include "../data/blastdb/blastdb.h"
+#include "data/blastdb/blastdb.h"
 #endif
-#include "../util/system/system.h"
-#include "../util/io/output_file.h"
-#include "../util/io/input_file.h"
-#include "../util/log_stream.h"
-#include "../data/reference.h"
-#include "../util/io/input_stream_buffer.h"
-#include "../basic/config.h"
-#include "../util/data_structures/deque.h"
+#include "util/system/system.h"
+#include "util/io/output_file.h"
+#include "util/io/input_file.h"
+#include "util/log_stream.h"
+#include "util/io/input_stream_buffer.h"
+#include "basic/config.h"
+#include "util/data_structures/deque.h"
+#include "data/sequence_file.h"
 #define _REENTRANT
-#include "../lib/ips4o/ips4o.hpp"
-#include "../search/hit.h"
+#include "ips4o/ips4o.hpp"
+#include "search/hit.h"
 
 using std::vector;
 using std::string;
@@ -52,14 +52,11 @@ static void seed_hit_files() {
 		std::uniform_int_distribution<uint32_t> query(0, 2000000), seed(0, 20000), subject(1, UINT32_MAX);
 		std::uniform_int_distribution<uint16_t> score(30, 1000);
 		for (size_t i = 0; i < total_count / query_count; ++i) {
-			out.set(Serializer::VARINT);
 			out << query(generator) << seed(generator);
-			out.unset(Serializer::VARINT);
 			for (size_t j = 0; j < query_count; ++j) {
 				out << subject(generator);
 				out.write(score(generator));
 			}
-			out.unset(Serializer::VARINT);
 			out << (uint32_t)0;
 		}
 		const size_t s = out.tell();

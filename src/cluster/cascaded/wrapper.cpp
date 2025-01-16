@@ -20,10 +20,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <numeric>
 #include "cascaded.h"
-#include "../data/fasta/fasta_file.h"
-#include "../run/workflow.h"
-#include "../util/system/system.h"
-#include "../../search/search.h"
+#include "data/fasta/fasta_file.h"
+#include "run/workflow.h"
+#include "util/system/system.h"
+#include "search/search.h"
+#include "util/log_stream.h"
 
 using std::shared_ptr;
 using std::endl;
@@ -52,7 +53,6 @@ struct Config {
 		message_stream(true),
 		verbosity(1),
 		sens(from_string<Sensitivity>(rstrip(cluster_steps(config.approx_min_id, linclust).back(), "_lin"))),
-		output_format(init_output(-1)),
 		centroids(new FastaFile("", true, FastaFile::WriteAccess())),
 		seqs_processed(0),
 		letters_processed(0),
@@ -64,7 +64,6 @@ struct Config {
 	int                                 verbosity;
 	Sensitivity                         sens;
 	double                              block_size;
-	std::unique_ptr<OutputFormat>       output_format;
 	std::shared_ptr<FastaFile>          centroids;
 	TaskTimer                           total_time;
 	int64_t                             seqs_processed;
@@ -73,18 +72,17 @@ struct Config {
 	std::unique_ptr<File>               oid_to_centroid_oid;
 };
 
-int64_t seq_mem_use(Loc len, Loc id_len, int c, int min) {
-	assert(min > 1);
-	int extend_stage = (len / (min / 2)) * (15  // trace point buffer
+int64_t seq_mem_use(Loc len, Loc id_len, int c, int min, int sketch_size) {
+	assert(min > 1 || sketch_size > 0);
+	int extend_stage = (min > 1 ? (len / (min / 2)) : sketch_size) * (15  // trace point buffer
 		+ 16)        // SeedHitList
 		+ 12         // SeedHitList
 		+ 2 * len;   // SequenceSet
 	extend_stage /= 2;
-	assert(min > 1);
 	return std::max(
 		len + 8  // SequenceSet
 		+ id_len + 8 // Seqtitle
-		+ len * 9 / c / (min / 2) // SeedArray
+		+ (min > 1 ? len / (min / 2) : sketch_size) * 9 / c // SeedArray
 		+ 8 // super_block_id_to_oid
 		+ 8 // BestCentroid / clustering
 		+ 4 // unaligned 
@@ -109,12 +107,15 @@ struct BestCentroid : public Consumer, public vector<OId> {
 
 static vector<SuperBlockId> search_vs_centroids(shared_ptr<FastaFile>& super_block, const OId* super_block_id_to_oid, Config& cfg) {
 	//if (cfg.verbosity >= 2)
-		message_stream << "Searching vs. centroids #sequences = " << super_block->sequence_count() << " , #centroids = " << cfg.centroids->sequence_count() << endl;
+		message_stream << "Searching vs. centroids #sequences = " << super_block->sequence_count()
+			<< ", #letters = " << super_block->letters()
+			<< ", #centroids = " << cfg.centroids->sequence_count()
+			<< ", #centroid letters = " << cfg.centroids->letters() << endl;
 	
 	config.output_format = { "edge" };
 	config.self = false;
 	config.max_target_seqs_ = 1;
-	config.toppercent = 100;
+	config.toppercent.unset();
 	config.sensitivity = cfg.sens;
 	if (config.mutual_cover.present()) {
 		config.query_cover = config.subject_cover = config.mutual_cover.get_present();
@@ -124,16 +125,13 @@ static vector<SuperBlockId> search_vs_centroids(shared_ptr<FastaFile>& super_blo
 		config.subject_cover = 0;
 	}	
 	config.query_or_target_cover = 0;
-	if (cfg.linclust) {
-		config.iterate.unset();
-		config.linsearch = true;
-	}
-	else {
-		config.iterate = vector<string>();
-		config.linsearch = false;
-	}
+	config.linsearch = cfg.linclust;
+	config.iterate = vector<string>();
 	config.lin_stage1 = false;
-	tie(config.chunk_size, config.lowmem_) = block_size(Util::String::interpret_number(config.memory_limit.get(DEFAULT_MEMORY_LIMIT)), cfg.sens, cfg.linclust);
+	tie(config.chunk_size, config.lowmem_) = block_size(Util::String::interpret_number(config.memory_limit.get(DEFAULT_MEMORY_LIMIT)),
+		std::max(super_block->letters(), cfg.centroids->letters()), cfg.sens, cfg.linclust, config.threads_);
+	//if (cfg.linclust)
+		//config.chunk_size = std::max(config.chunk_size, (double)(super_block->letters() + 1024) / 1e9);
 	cfg.centroids->set_seqinfo_ptr(0);
 	shared_ptr<BestCentroid> best_centroid(new BestCentroid(super_block->sequence_count()));
 	log_rss();
@@ -162,6 +160,7 @@ void Cascaded::run() {
 	config.database.require();
 	init_thresholds();
 	config.hamming_ext = config.approx_min_id >= 50.0;
+
 	TaskTimer total_time;
 	TaskTimer timer("Opening the input file");
 	shared_ptr<SequenceFile> db(SequenceFile::auto_create({ config.database }, SequenceFile::Flags::NEED_LETTER_COUNT | SequenceFile::Flags::OID_TO_ACC_MAPPING | SequenceFile::Flags::NEED_LENGTH_LOOKUP));
@@ -170,7 +169,7 @@ void Cascaded::run() {
 	timer.finish();
 	message_stream << "Input database: " << db->file_name() << " (" << db->sequence_count() << " sequences, " << db->letters() << " letters)" << endl;
 	const int64_t mem_limit = Util::String::interpret_number(config.memory_limit.get(DEFAULT_MEMORY_LIMIT));
-	const int64_t block_size = (int64_t)(::block_size(mem_limit, Sensitivity::FASTER, true).first * 1e9);
+	const int64_t block_size = (int64_t)(::block_size(mem_limit, db->letters(), Sensitivity::FASTER, true, config.threads_).first * 1e9); // take cluster steps into account here
 	unique_ptr<Util::Tsv::File> out(open_out_tsv());
 
 	if (block_size >= (double)db->letters() && db->sequence_count() < numeric_limits<SuperBlockId>::max()) {
@@ -182,8 +181,9 @@ void Cascaded::run() {
 		timer.go("Length sorting the input file");
 		Config cfg(db);
 		config.db_size = db->letters();
-		const int minimizer_window = std::max(Search::sensitivity_traits[(int)align_mode.sequence_type].at(Sensitivity::FASTER).minimizer_window, 1);
-		auto seq_size = function<int64_t(Loc)>(bind(seq_mem_use, std::placeholders::_1, 0, 1, minimizer_window));
+		const int minimizer_window = Search::sensitivity_traits.at(Sensitivity::FASTER).minimizer_window,
+			sketch_size = Search::sensitivity_traits.at(Sensitivity::FASTER).sketch_size;
+		auto seq_size = function<int64_t(Loc)>(bind(seq_mem_use, std::placeholders::_1, 0, 1, minimizer_window, sketch_size));
 		vector<tuple<FastaFile*, vector<OId>, Util::Tsv::File*>> super_blocks = db->length_sort(mem_limit / 2, seq_size);
 		timer.finish();
 		config.freq_masking = true;

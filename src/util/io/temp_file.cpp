@@ -19,7 +19,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <stdio.h>
 #ifdef _MSC_VER
 #define NOMINMAX
+#define NT_SUCCESS(Status) (((NTSTATUS)(Status)) >= 0)
+#define STATUS_UNSUCCESSFUL ((NTSTATUS)0xC0000001L)
 #include <Windows.h>
+#include <bcrypt.h>
 #else
 #include <fcntl.h>
 #include <unistd.h>
@@ -28,15 +31,34 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <sys/time.h>
 #endif
 
+#include <iostream>
+#include <array>
 #include <vector>
 #include "temp_file.h"
-#include "../../basic/config.h"
+#include "basic/config.h"
 #include "../util.h"
 #include "input_file.h"
 
 using std::vector;
 using std::string;
 using std::pair;
+using std::array;
+using std::runtime_error;
+using std::to_string;
+
+TempFileHandler temp_file_handler;
+
+void TempFileHandler::init(const char* path) {
+	if (!path_.empty())
+		throw runtime_error("Double init of TempFileHandler");
+#ifdef _MSC_VER
+	NTSTATUS status = STATUS_UNSUCCESSFUL;
+	array<UCHAR, 20> buf;
+	
+	if(!NT_SUCCESS(status = BCryptGenRandom(nullptr, buf.data(), 20, BCRYPT_USE_SYSTEM_PREFERRED_RNG)))
+		throw runtime_error("Error " + to_string(status) + " returned by BCryptGenRandom");
+#endif
+}
 
 unsigned TempFile::n = 0;
 uint64_t TempFile::hash_key;

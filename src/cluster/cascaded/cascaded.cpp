@@ -21,12 +21,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <numeric>
 #include "cascaded.h"
-#include "../util/util.h"
-#include "../util/sequence/sequence.h"
-#include "../output/output_format.h"
-#include "../util/algo/algo.h"
-#include "../../basic/statistics.h"
-#include "../../run/workflow.h"
+#include "util/algo/algo.h"
+#include "basic/statistics.h"
+#include "run/workflow.h"
+#include "util/log_stream.h"
 
 const char* const DEFAULT_MEMORY_LIMIT = "16G";
 const double CASCADED_ROUND_MAX_EVALUE = 0.001;
@@ -34,7 +32,6 @@ const double CASCADED_ROUND_MAX_EVALUE = 0.001;
 using std::vector;
 using std::shared_ptr;
 using std::endl;
-using std::move;
 using std::runtime_error;
 using std::numeric_limits;
 using std::to_string;
@@ -42,6 +39,7 @@ using std::tie;
 using std::string;
 using std::pair;
 using std::iota;
+using std::make_pair;
 
 namespace Cluster {
 
@@ -63,14 +61,16 @@ vector<SuperBlockId> cluster(shared_ptr<SequenceFile>& db, const shared_ptr<BitV
 	const bool mutual_cover = config.mutual_cover.present();
 	config.command = Config::blastp;
 	config.output_format = { "edge" };
+	const vector<string> round_coverage = config.round_coverage.empty() ? default_round_cov(round_count) : config.round_coverage;
+	const double cov_cutoff = config.mutual_cover.present() ? config.mutual_cover.get_present() : config.member_cover,
+		round_cov_cutoff = std::max(cov_cutoff, round_value(round_coverage, "--round-coverage", round, round_count));
 	if (config.mutual_cover.present()) {
-		const vector<string> round_coverage = config.round_coverage.empty() ? default_round_cov(round_count) : config.round_coverage;
-		config.query_cover = config.subject_cover = std::max(config.mutual_cover.get_present(), round_value(round_coverage, "--round-coverage", round, round_count));
+		config.query_cover = config.subject_cover = round_cov_cutoff;
 	}
 	else {
 		config.query_cover = 0;
 		config.subject_cover = 0;
-		config.query_or_target_cover = config.member_cover;
+		config.query_or_target_cover = round_cov_cutoff;
 	}
 	config.algo = Config::Algo::DOUBLE_INDEXED;
 	config.max_target_seqs_ = INT64_MAX;
@@ -82,7 +82,12 @@ vector<SuperBlockId> cluster(shared_ptr<SequenceFile>& db, const shared_ptr<BitV
 	if(filter) {
 		config.db_size = db->letters_filtered(*filter);
 	}
-	tie(config.chunk_size, config.lowmem_) = block_size(Util::String::interpret_number(config.memory_limit.get(DEFAULT_MEMORY_LIMIT)), config.sensitivity, config.lin_stage1);
+	tie(config.chunk_size, config.lowmem_) = config.lin_stage1 && round == 0 ? make_pair<double, int>(32768, 1) :
+		block_size(Util::String::interpret_number(config.memory_limit.get(DEFAULT_MEMORY_LIMIT)),
+			filter ? config.db_size : db->letters(),
+			config.sensitivity,
+			config.lin_stage1,
+			config.threads_);
 
 	shared_ptr<Callback> callback(mutual_cover ? (Callback*)new CallbackBidirectional : (Callback*)new CallbackUnidirectional);
 
@@ -99,7 +104,7 @@ vector<SuperBlockId> cluster(shared_ptr<SequenceFile>& db, const shared_ptr<BitV
 		output_edges(config.aln_out, *db, edges);
 	timer.go("Sorting edges");
 	db->reopen();
-	FlatArray<Edge> edge_array = make_flat_array_dense(move(edges), (SuperBlockId)db->sequence_count(), config.threads_, Edge::GetKey());
+	FlatArray<Edge> edge_array = make_flat_array_dense(std::move(edges), (SuperBlockId)db->sequence_count(), config.threads_, Edge::GetKey());
 	timer.finish();
 
 	const auto algo = from_string<GraphAlgo>(config.graph_algo);
@@ -134,8 +139,10 @@ vector<SuperBlockId> cascaded(shared_ptr<SequenceFile>& db, bool linear) {
 		TaskTimer timer;
 		config.lin_stage1 = ends_with(steps[i], "_lin");
 		config.sensitivity = from_string<Sensitivity>(rstrip(steps[i], "_lin"));
-		const vector<string> round_approx_id = config.round_approx_id.empty() ? default_round_approx_id(steps.size()) : config.round_approx_id;
-		config.approx_min_id = std::max(target_approx_id, round_value(round_approx_id, "--round-approx-id", i, steps.size()));
+		if (config.lin_stage1 && config.sensitivity > Sensitivity::SHAPES30x10)
+			throw std::runtime_error("Linearization is only supported for the faster, fast, and shapes-30x10 sensitivity modes.");
+		const vector<string> round_approx_id = config.round_approx_id.empty() ? default_round_approx_id((int)steps.size()) : config.round_approx_id;
+		config.approx_min_id = std::max(target_approx_id, round_value(round_approx_id, "--round-approx-id", i, (int)steps.size()));
 		config.max_evalue = (size_t)i == steps.size() - 1 ? evalue_cutoff : std::min(evalue_cutoff, CASCADED_ROUND_MAX_EVALUE);
 		tie(centroids, *oid_filter) = update_clustering(*oid_filter,
 			centroids,

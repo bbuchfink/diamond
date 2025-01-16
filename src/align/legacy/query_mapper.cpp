@@ -22,13 +22,16 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <memory>
 #include <algorithm>
 #include "query_mapper.h"
-#include "../../data/reference.h"
-#include "../../dp/ungapped.h"
-#include "../../output/output.h"
-#include "../../output/output_format.h"
-#include "../../output/daa/daa_write.h"
-#include "../../output/target_culling.h"
-#include "../../util/util.h"
+#include "data/sequence_file.h"
+#include "data/taxonomy_nodes.h"
+#include "dp/ungapped.h"
+#include "output/output.h"
+#include "output/output_format.h"
+#include "output/daa/daa_write.h"
+#include "output/target_culling.h"
+#include "util/util.h"
+#include "stats/cbs.h"
+#include "util/log_stream.h"
 
 using std::tie;
 using std::list;
@@ -164,12 +167,12 @@ void QueryMapper::load_targets()
 
 void QueryMapper::rank_targets(double ratio, double factor, const int64_t max_target_seqs)
 {
-	if (config.taxon_k && config.toppercent == 100.0)
+	if (config.taxon_k && config.toppercent.blank())
 		return;
 	std::stable_sort(targets.begin(), targets.end(), Target::compare_score);
 
 	int score = 0;
-	if (config.toppercent < 100) {
+	if (config.toppercent.present()) {
 		score = int((double)targets[0].filter_score * (1.0 - config.toppercent / 100.0) * ratio);
 	}
 	else {
@@ -177,7 +180,7 @@ void QueryMapper::rank_targets(double ratio, double factor, const int64_t max_ta
 		score = int((double)targets[min_idx - 1].filter_score * ratio);
 	}
 
-	const int64_t cap = (config.toppercent < 100 || max_target_seqs == INT64_MAX) ? INT64_MAX : int64_t(max_target_seqs * factor);
+	const int64_t cap = (config.toppercent.present() || max_target_seqs == INT64_MAX) ? INT64_MAX : int64_t(max_target_seqs * factor);
 	int64_t i = 0;
 	for (; i < (int64_t)targets.size(); ++i)
 		if (targets[i].filter_score < score || i >= cap)
@@ -189,7 +192,7 @@ void QueryMapper::rank_targets(double ratio, double factor, const int64_t max_ta
 void QueryMapper::score_only_culling(const int64_t max_target_seqs)
 {
 	static const double COV_INCLUDE_CUTOFF = 0.1;
-	std::stable_sort(targets.begin(), targets.end(), config.toppercent == 100.0 ? Target::compare_evalue : Target::compare_score);
+	std::stable_sort(targets.begin(), targets.end(), config.toppercent.blank() ? Target::compare_evalue : Target::compare_score);
 	unique_ptr<TargetCulling> target_culling(TargetCulling::get(max_target_seqs));
 	const unsigned query_len = (unsigned)query_seq(0).length();
 	PtrVector<Target>::iterator i;
@@ -215,7 +218,7 @@ void QueryMapper::score_only_culling(const int64_t max_target_seqs)
 
 bool QueryMapper::generate_output(TextBuffer &buffer, Statistics &stat, const Search::Config& cfg)
 {
-	std::stable_sort(targets.begin(), targets.end(), config.toppercent == 100.0 ? Target::compare_evalue : Target::compare_score);
+	std::stable_sort(targets.begin(), targets.end(), config.toppercent.blank() ? Target::compare_evalue : Target::compare_score);
 
 	unsigned n_hsp = 0, n_target_seq = 0, hit_hsps = 0;
 	unique_ptr<TargetCulling> target_culling(TargetCulling::get(cfg.max_target_seqs));
@@ -223,7 +226,7 @@ bool QueryMapper::generate_output(TextBuffer &buffer, Statistics &stat, const Se
 	size_t seek_pos = 0;
 	const char *query_title = metadata.query->ids()[query_id];
 	unique_ptr<OutputFormat> f(cfg.output_format->clone());
-	Output::Info info{ cfg.query->seq_info(query_id), true, cfg.db.get(), buffer, {}, AccessionParsing() };
+	Output::Info info{ cfg.query->seq_info(query_id), true, cfg.db.get(), buffer, {}, Util::Seq::AccessionParsing(), cfg.db->sequence_count(), cfg.db->letters() };
 
 	for (size_t i = 0; i < targets.size(); ++i) {
 

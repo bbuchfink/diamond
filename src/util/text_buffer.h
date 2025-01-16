@@ -21,9 +21,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #pragma once
-#include <stdlib.h>
 #include <stdio.h>
-#include <stdexcept>
 #include <stdint.h>
 #include <limits>
 #include <vector>
@@ -41,7 +39,7 @@ inline size_t find_first_of(const char* s, const char* delimiters)
 struct TextBuffer
 {
 
-	typedef char value_type;
+	using value_type = char;
 
 	TextBuffer():
 		data_ (0),
@@ -60,10 +58,10 @@ struct TextBuffer
 		const size_t s = ptr_ - data_;
 		if (s + n < alloc_size_)
 			return;
-		alloc_size_ = s + n + block_size - ((s + n) & (block_size - 1));
+		alloc_size_ = s + n + BLOCK_SIZE - ((s + n) & (BLOCK_SIZE - 1));
 		data_ = (char*)realloc(data_, alloc_size_);
+		if (data_ == nullptr) throw std::bad_alloc();
 		ptr_ = data_ + s;
-		if (data_ == 0) throw std::runtime_error("Failed to allocate memory.");
 	}
 
 	void operator+=(size_t n)
@@ -78,18 +76,22 @@ struct TextBuffer
 	void clear()
 	{ ptr_ = data_; }
 
-	template<typename _t>
-	TextBuffer& write(const _t& data)
+	template<typename T>
+	TextBuffer& write(const T& data)
 	{
-		reserve(sizeof(_t));
-		*reinterpret_cast<_t*>(ptr_) = data;
-		ptr_ += sizeof(_t);
+		reserve(sizeof(T));
+#ifdef __sparc__
+		std::copy((char*)&data, (char*)&data + sizeof(T), ptr_);
+#else
+		*reinterpret_cast<T*>(ptr_) = data;
+#endif
+		ptr_ += sizeof(T);
 		return *this;
 	}
 
 	void write_c_str(const char* s)
 	{
-		const size_t l = strlen(s)+1;
+		const size_t l = strlen(s) + 1;
 		reserve(l);
 		memcpy(ptr_, s, l);
 		ptr_ += l;
@@ -97,10 +99,10 @@ struct TextBuffer
 
 	void write_c_str(const char*s, size_t len)
 	{
-		reserve(len+1);
+		reserve(len + 1);
 		memcpy(ptr_, s, len);
 		ptr_ += len;
-		*(ptr_++) = '\0';
+		*ptr_++ = '\0';
 	}
 
 	void write_raw(const char *s, size_t len)
@@ -111,7 +113,7 @@ struct TextBuffer
 	}
 
 	void push_back(char c) {
-		*(ptr_++) = c;
+		*ptr_++ = c;
 	}
 
 	void write_until(const char *s, const char *delimiters)
@@ -132,7 +134,9 @@ struct TextBuffer
 
 	TextBuffer& write_varint(unsigned x)
 	{
-		::write_varint(x, *this);
+		char buf[5];
+		char* end = write_varuint32(x, buf);
+		write_raw(buf, end - buf);
 		return *this;
 	}
 
@@ -165,14 +169,14 @@ struct TextBuffer
 	TextBuffer& operator<<(char c)
 	{
 		reserve(1);
-		*(ptr_++) = c;
+		*ptr_++ = c;
 		return *this;
 	}
 
 	TextBuffer& operator<<(unsigned char c)
 	{
 		reserve(1);
-		*(ptr_++) = c;
+		*ptr_++ = c;
 		return *this;
 	}
 	
@@ -257,7 +261,7 @@ struct TextBuffer
 	{
 		if (v.empty()) return *this;
 		typename std::vector<T>::const_iterator i = v.begin();
-		*this << *(i++);
+		*this << *i++;
 		for (; i < v.end(); ++i)
 			*this << ';' << *i;
 		return *this;
@@ -279,7 +283,7 @@ struct TextBuffer
 	}
 
 protected:
-	enum { block_size = 4096 };
+	enum { BLOCK_SIZE = 4096 };
 	char *data_, *ptr_;
 	size_t alloc_size_;
 

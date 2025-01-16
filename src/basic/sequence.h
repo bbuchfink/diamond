@@ -25,11 +25,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <vector>
 #include <string>
 #include <assert.h>
-#include "../basic/value.h"
-#include "../util/binary_buffer.h"
-#include "../util/text_buffer.h"
+#include "basic/value.h"
+#include "util/text_buffer.h"
 #include "translated_position.h"
-#include "../util/geo/interval.h"
+#include "util/geo/interval.h"
 
 struct Sequence
 {
@@ -220,7 +219,7 @@ struct Sequence
 	double length_ratio(const Sequence& seq) const {
 		return len_ < seq.len_ ? (double)len_ / seq.len_ : (double)seq.len_ / len_;
 	}
-	static std::vector<Letter> from_string(const char* str, const ValueTraits&vt = value_traits);
+	static std::vector<Letter> from_string(const char* str, const ValueTraits&vt = value_traits, int64_t line = 0);
 
 	Loc len_;
 	const Letter *data_;

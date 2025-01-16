@@ -20,12 +20,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #pragma once
-#include "../basic/value.h"
-#include "../basic/shape.h"
-#include "../util/data_structures/double_array.h"
-#include "../data/flags.h"
-#include "../run/config.h"
-#include "../data/seed_histogram.h"
+#include "basic/value.h"
+#include "basic/shape.h"
+#include "util/data_structures/double_array.h"
+#include "run/config.h"
+#include "data/seed_histogram.h"
 
 namespace Search {
 

@@ -19,18 +19,15 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#include <stdio.h>
 #include <set>
 #include <stdexcept>
 #include "taxonomy.h"
-#include "../util/io/text_input_file.h"
-#include "../basic/config.h"
-#include "../util/log_stream.h"
-#include "reference.h"
-#include "../util/string/string.h"
-#include "../util/string/tokenizer.h"
-#include "../util/util.h"
-#include "../util/sequence/sequence.h"
+#include "util/io/text_input_file.h"
+#include "basic/config.h"
+#include "util/log_stream.h"
+#include "util/string/string.h"
+#include "util/string/tokenizer.h"
+#include "taxonomy_nodes.h"
 
 using std::string;
 using std::map;
@@ -61,38 +58,6 @@ Rank::Rank(const char *s) {
 
 Taxonomy taxonomy;
 
-string get_accession(const string &title, AccessionParsing& stat)
-{
-	if (config.no_parse_seqids)
-		return title;
-	size_t i;
-	string t(title);
-	if (t.compare(0, 6, "UniRef") == 0) {
-		t.erase(0, t.find('_', 0) + 1);
-		++stat.uniref_prefix;
-	}
-	else if ((i = t.find_first_of('|', 0)) != string::npos) {
-		if (t.compare(0, 3, "gi|") == 0) {
-			t.erase(0, t.find_first_of('|', i + 1) + 1);
-			i = t.find_first_of('|', 0);
-			++stat.gi_prefix;
-		}
-		t.erase(0, i + 1);
-		++stat.prefix_before_pipe;
-		i = t.find_first_of('|', 0);
-		if (i != string::npos) {
-			t.erase(i);
-			++stat.suffix_after_pipe;
-		}
-	}
-	i = t.find_last_of('.');
-	if (i != string::npos) {
-		t.erase(i);
-		++stat.suffix_after_dot;
-	}
-	return t;
-}
-
 size_t Taxonomy::load_names() {
 	TextInputFile in(config.namesdmp);
 	string name, type;
@@ -101,7 +66,7 @@ size_t Taxonomy::load_names() {
 	while (in.getline(), !in.eof()) {
 		if (in.line.empty())
 			continue;
-		Util::String::Tokenizer(in.line, "\t|\t") >> id >> name >> Util::String::Skip() >> type;
+		Util::String::Tokenizer<Util::String::StringDelimiter>(in.line, Util::String::StringDelimiter("\t|\t")) >> id >> name >> Util::String::Skip() >> type;
 		type = rstrip(type, "\t|");
 		if (type == "scientific name") {
 			name_.resize(id + 1);
@@ -122,24 +87,4 @@ void Taxonomy::init()
 		timer.finish();
 		message_stream << "Loaded taxonomy names for " << n << " taxon ids." << endl;
 	}
-}
-
-vector<string> accession_from_title(const char *title, AccessionParsing& stat)
-{
-	vector<string> t(seq_titles(title));
-	for (vector<string>::iterator i = t.begin(); i < t.end(); ++i)
-		*i = get_accession(Util::Seq::seqid(i->c_str(), false), stat);
-	return t;
-}
-
-std::ostream& operator<<(std::ostream& s, const AccessionParsing& stat) {
-	Util::Table t;
-	t("UniRef prefix", stat.uniref_prefix);
-	t("gi|xxx| prefix", stat.gi_prefix);
-	t("xxx| prefix", stat.prefix_before_pipe);
-	t("|xxx suffix", stat.suffix_after_pipe);
-	t(".xxx suffix", stat.suffix_after_dot);
-	t(":PDB= suffix", stat.pdb_suffix);
-	s << t;
-	return s;
 }

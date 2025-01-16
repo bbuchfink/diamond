@@ -24,16 +24,18 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <objtools/blast/blastdb_format/blastdb_dataextract.hpp>
 #include <objtools/blast/seqdb_reader/impl/seqdbtax.hpp>
 #include <corelib/ncbiutil.hpp>
-#include "../util/io/text_input_file.h"
+#include "util/io/text_input_file.h"
 #include "blastdb.h"
-#include "../../util/string/tokenizer.h"
-#include "../../util/system/system.h"
-#include "../basic/config.h"
-#include "../../util/util.h"
+#include "util/string/tokenizer.h"
+#include "util/system/system.h"
+#include "basic/config.h"
+#include "util/util.h"
+#include "util/log_stream.h"
 
 using std::cout;
 using std::endl;
 using std::vector;
+using std::runtime_error;
 using namespace ncbi;
 
 static string full_id(CBioseq& bioseq, CBioseq_Handle* bioseq_handle, bool long_ids, bool ctrl_a) {
@@ -52,17 +54,17 @@ static string full_id(CBioseq& bioseq, CBioseq_Handle* bioseq_handle, bool long_
 	return id;
 }
 
-template<typename _it>
-static void load_seq_data(CBioseq& bioseq, CBioseq_Handle bioseq_handle, _it it) {
+template<typename It>
+static void load_seq_data(CBioseq& bioseq, CBioseq_Handle bioseq_handle, It it) {
 	ncbi::objects::CSeqVector v = bioseq_handle.GetSeqVector(CBioseq_Handle::eCoding_Iupac);
 	if (v.GetCoding() != CSeq_data::e_Iupacaa)
-		throw std::runtime_error("Invalid sequence coding in BLAST database.");
+		throw runtime_error("Invalid sequence coding in BLAST database.");
 	
 	for (ncbi::TSeqPos i = 0; i < v.size(); ++i) {
 		const auto l = v[i] & 31;
 		const Letter s = IUPACAA_TO_STD[l];
 		if (s == -1)
-			throw std::runtime_error("Unrecognized sequence character in BLAST database letter=" + std::to_string(l)
+			throw runtime_error("Unrecognized sequence character in BLAST database letter=" + std::to_string(l)
 				+ " accession=" + bioseq.GetFirstId()->AsFastaString()
 				+ " position=" + std::to_string(i + 1));
 		*it = s;
@@ -72,7 +74,7 @@ static void load_seq_data(CBioseq& bioseq, CBioseq_Handle bioseq_handle, _it it)
 
 list<CRef<CSeq_id>>::const_iterator best_id(const list<CRef<CSeq_id>>& ids) {
 	if (ids.empty())
-		throw std::runtime_error("Unable to retrieve sequence id from BLAST database.");
+		throw runtime_error("Unable to retrieve sequence id from BLAST database.");
 	auto min = ids.cbegin(), it = min;
 	int min_score = (*min)->TextScore(), s;
 	++it;
@@ -254,7 +256,7 @@ int64_t BlastDB::sparse_sequence_count() const
 	return sparse_sequence_count_;
 }
 
-size_t BlastDB::letters() const
+int64_t BlastDB::letters() const
 {
 	return db_->GetTotalLength();
 }
@@ -422,7 +424,7 @@ void BlastDB::init_random_access(const size_t query_block, const size_t ref_bloc
 			if (flag_any(flags_, Flags::ALL_SEQIDS))
 				acc = Util::String::replace(f.line, '\t', '\1');
 			else
-				Util::String::Tokenizer(f.line, "\t") >> acc;
+				Util::String::Tokenizer<Util::String::CharDelimiter>(f.line, Util::String::CharDelimiter('\t')) >> acc;
 			acc_.push_back(acc.begin(), acc.end());
 		}
 		f.close();

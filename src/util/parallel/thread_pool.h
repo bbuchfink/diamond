@@ -1,8 +1,9 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2021-2022 Max Planck Society for the Advancement of Science e.V.
+Copyright (C) 2021-2024 Max Planck Society for the Advancement of Science e.V.
+                        Benjamin Buchfink
 
-Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
+Code developed by Benjamin Buchfink <buchfink@gmail.com>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -25,7 +26,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <vector>
 #include <queue>
 #include <condition_variable>
-#include <numeric>
 #include <functional>
 #include "../log_stream.h"
 
@@ -34,7 +34,7 @@ namespace Util { namespace Parallel {
 template<typename F, typename... Args>
 void pool_worker(std::atomic<size_t> *partition, size_t thread_id, size_t partition_count, F f, Args... args) {
 	size_t p;
-	while ((p = (*partition)++) < partition_count) {
+	while ((p = partition->fetch_add(1, std::memory_order_relaxed)) < partition_count) {
 		f(p, thread_id, args...);
 	}
 }
@@ -77,11 +77,10 @@ struct ThreadPool {
 			thread_pool(&thread_pool)
 		{}
 		void finish() {
+			std::unique_lock<std::mutex> lock(thread_pool->mtx_);
 			++finished_;
-			if (finished()) {
+			if (finished())
 				cv_.notify_all();
-				thread_pool->cv_.notify_all();
-			}
 		}
 		bool finished() const {
 			return total_ == finished_;
@@ -89,16 +88,12 @@ struct ThreadPool {
 		int64_t total() const {
 			return total_;
 		}
-		void add() {
-			++total_;
-		}
-		void wait() {
-			std::unique_lock<std::mutex> lock(mtx_);
-			cv_.wait(lock, [this] {return this->finished(); });
-		}
 		void run() {
-			if (finished())
-				return;
+			{
+				std::unique_lock<std::mutex> lock(thread_pool->mtx_);
+				if (finished())
+					return;
+			}
 			thread_pool->run_set(this);
 		}
 		template<class F, class... Args>
@@ -107,9 +102,8 @@ struct ThreadPool {
 		}
 		const int priority;
 	private:		
-		std::atomic<int64_t> total_, finished_;
+		int64_t total_, finished_;
 		ThreadPool* thread_pool;
-		std::mutex mtx_;
 		std::condition_variable cv_;
 		friend struct ThreadPool;
 	};
@@ -136,17 +130,29 @@ struct ThreadPool {
 	template<class F, class... Args>
 	void enqueue(TaskSet& task_set, F&& f, Args&&... args)
 	{
+		if (pop_before_enqueue_) {
+			for (;;) {
+				Task t;
+				if (!queue_empty()) {
+					std::unique_lock<std::mutex> lock(this->mtx_);
+					t = pop_task();
+				}
+				if (t) {
+					t.f();
+					if (t.task_set)
+						t.task_set->finish();
+				}
+				else
+					break;
+			}
+		}
 		auto task = std::bind(std::forward<F>(f), std::forward<Args>(args)...);
 		{
 			std::unique_lock<std::mutex> lock(mtx_);
-
-			/*if (stop_)
-				throw std::runtime_error("enqueue on stopped ThreadPool");*/
-
-			task_set.add();
+			++task_set.total_;
 			tasks_[task_set.priority].emplace([task]() { task(); }, task_set);
+			task_set.cv_.notify_one();
 		}
-		cv_.notify_one();
 	}
 
 	void run_set(TaskSet* task_set) {
@@ -154,33 +160,31 @@ struct ThreadPool {
 		{
 			Task task;
 
-			if (!task_set && run_default_) {
+			if (!task_set) {
+				if (default_finished_.load(std::memory_order_relaxed) >= default_count_) {
+					++threads_finished_;
+					return;
+				}
 				if (!queue_empty()) {
 					std::unique_lock<std::mutex> lock(this->mtx_);
 					task = pop_task();
 				}
 				if (!task) {
-					++default_started_;
-					if (!default_task_(*this))
-						run_default_ = false;
-					++default_finished_;
-					if (!run_default_ && default_started_ == default_finished_) {
-						stop_ = true;
-						cv_.notify_all();
+					const int64_t next = default_begin_.fetch_add(1, std::memory_order_relaxed);
+					if (next < default_end_) {
+						default_task_(*this, next);
+						default_finished_.fetch_add(1, std::memory_order_relaxed);
 					}
 					continue;
 				}
 			}
 			else {
 				std::unique_lock<std::mutex> lock(this->mtx_);
-				this->cv_.wait(lock,
-					[this, task_set] { return (stop_ && !task_set) || !queue_empty(task_set ? task_set->priority : PRIORITY_COUNT-1) || (task_set && task_set->finished()); });
-				if ((stop_ && queue_empty() && !task_set) || (task_set && task_set->finished())) {
-					if (!task_set)
-						++threads_finished_;
+				task_set->cv_.wait(lock,
+					[this, task_set] { return !queue_empty(task_set->priority) || task_set->finished(); });
+				if (task_set->finished())
 					return;
-				}
-				task = pop_task(task_set ? task_set->priority : PRIORITY_COUNT - 1);
+				task = pop_task(task_set->priority);
 			}
 
 			task.f();
@@ -189,24 +193,25 @@ struct ThreadPool {
 		}
 	}
 
-	ThreadPool(const std::function<bool(ThreadPool&)>& default_task = std::function<bool(ThreadPool&)>()) :
+	ThreadPool(const std::function<void(ThreadPool&, int64_t)>& default_task = std::function<void(ThreadPool&, int64_t)>(), int64_t default_begin = 0, int64_t default_end = 0, bool pop_before_enqueue = false) :
+		pop_before_enqueue_(pop_before_enqueue),
+		default_end_(default_end),
+		default_count_(default_end - default_begin),
 		default_task_(default_task),
 		mtx_(),
-		stop_(false),
-		run_default_(default_task.operator bool()),
-		default_started_(0),
+		default_begin_(default_begin),
 		default_finished_(0),
 		threads_finished_(0)
 	{
 	}
 
-	void run(size_t threads, bool heartbeat = false) {
-		for (size_t i = 0; i < threads; ++i)
+	void run(int threads, bool heartbeat = false) {
+		for (int i = 0; i < threads; ++i)
 			workers_.emplace_back([this] {	this->run_set(nullptr); });
 		if (heartbeat)
 			heartbeat_ = std::thread([&]() {
-			while (!stop_) {
-				log_stream << "Workers=" << workers_.size() << '/' << threads_finished_ << " started = " << default_started_ << " finished = "
+			while (default_finished_ < default_count_) {
+				log_stream << "Workers=" << workers_.size() << '/' << threads_finished_ << " begin = " << default_begin_ << " finished = "
 					<< default_finished_ << " queue=" << queue_len(0) << '/' << queue_len(1) << std::endl;
 				std::this_thread::sleep_for(std::chrono::seconds(1));
 			}});
@@ -214,11 +219,6 @@ struct ThreadPool {
 
 	~ThreadPool()
 	{
-		{
-			std::unique_lock<std::mutex> lock(mtx_);
-			stop_ = true;
-		}
-		cv_.notify_all();
 		join();
 	}
 
@@ -254,13 +254,13 @@ private:
 		return task;
 	}
 
+	const bool pop_before_enqueue_;
+	const int64_t default_end_, default_count_;
 	std::array<std::queue<Task>, PRIORITY_COUNT> tasks_;
-	std::function<bool(ThreadPool&)> default_task_;
+	std::function<void(ThreadPool&, int64_t)> default_task_;
 	std::vector<std::thread> workers_;
 	std::thread heartbeat_;
 	std::mutex mtx_;
-	std::condition_variable cv_;
-	bool stop_, run_default_;
-	std::atomic<int64_t> default_started_, default_finished_, threads_finished_;
+	std::atomic<int64_t> default_begin_, default_finished_, threads_finished_;
 
 };

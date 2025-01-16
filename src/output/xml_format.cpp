@@ -1,9 +1,7 @@
 #include <sstream>
 #include "output_format.h"
-#include "../util/escape_sequences.h"
-#include "../data/taxonomy.h"
-#include "../util/util.h"
-#include "../util/sequence/sequence.h"
+#include "util/escape_sequences.h"
+#include "util/sequence/sequence.h"
 
 using std::endl;
 using std::string;
@@ -35,7 +33,7 @@ void XML_format::print_match(const HspContext& r, Output::Info& info)
 			out << "</Hit_def>" << '\n';
 		}
 		out << "  <Hit_accession>";
-		print_escaped(out, get_accession(id, info.acc_stats), &EscapeSequences::XML);
+		print_escaped(out, config.no_parse_seqids ? id : Util::Seq::get_accession(id, info.acc_stats), &EscapeSequences::XML);
 		out << "</Hit_accession>" << '\n'
 			<< "  <Hit_len>" << r.subject_len << "</Hit_len>" << '\n'
 			<< "  <Hit_hsps>" << '\n';
@@ -85,7 +83,7 @@ void XML_format::print_header(Consumer& f, int mode, const char* matrix, int gap
 	ss << "<?xml version=\"1.0\"?>" << endl
 		<< "<!DOCTYPE BlastOutput PUBLIC \"-//NCBI//NCBI BlastOutput/EN\" \"http://www.ncbi.nlm.nih.gov/dtd/NCBI_BlastOutput.dtd\">" << endl
 		<< "<BlastOutput>" << endl
-		<< "  <BlastOutput_program>" << mode_str(mode) << "</BlastOutput_program>" << endl
+		<< "  <BlastOutput_program>" << AlignMode(mode).to_string() << "</BlastOutput_program>" << endl
 		<< "  <BlastOutput_version>" << Const::program_name << ' ' << Const::version_string << "</BlastOutput_version>" << endl
 		<< "  <BlastOutput_reference>Benjamin Buchfink, Xie Chao, and Daniel Huson (2015), &quot;Fast and sensitive protein alignment using DIAMOND&quot;, Nature Methods 12:59-60.</BlastOutput_reference>" << endl
 		<< "  <BlastOutput_db>" << config.database << "</BlastOutput_db>" << endl
@@ -130,8 +128,8 @@ void XML_format::print_query_epilog(Output::Info& info) const
 	((info.out << "</Iteration_hits>" << '\n'
 		<< "  <Iteration_stat>" << '\n'
 		<< "    <Statistics>" << '\n'
-		<< "      <Statistics_db-num>" << info.db->sequence_count() << "</Statistics_db-num>" << '\n'
-		<< "      <Statistics_db-len>" << info.db->letters() << "</Statistics_db-len>" << '\n'
+		<< "      <Statistics_db-num>" << info.db_seqs << "</Statistics_db-num>" << '\n'
+		<< "      <Statistics_db-len>" << info.db_letters << "</Statistics_db-len>" << '\n'
 		<< "      <Statistics_hsp-len>0</Statistics_hsp-len>" << '\n'
 		<< "      <Statistics_eff-space>0</Statistics_eff-space>" << '\n'
 		<< "      <Statistics_kappa>").print_d(score_matrix.k()) << "</Statistics_kappa>" << '\n'

@@ -3,8 +3,8 @@
 #include <string>
 #include <utility>
 #include <ostream>
-#include <algorithm>
 #include <iomanip>
+#include <math.h>
 
 namespace Util {
 
@@ -44,20 +44,20 @@ struct Table {
 		return *this;
 	}
 
-        Table& operator()(const std::string& s, int n, const char* unit = "") {
-                data_.emplace_back(s, std::to_string(n) + unit);
-                max_len_ = std::max(max_len_, s.length());
-                return *this;
-        }
+	Table& operator()(const std::string& s, int n, const char* unit = "") {
+		data_.emplace_back(s, std::to_string(n) + unit);
+		max_len_ = std::max(max_len_, s.length());
+		return *this;
+	}
 
-        Table& operator()(const std::string& s, unsigned int n, const char* unit = "") {
-                data_.emplace_back(s, std::to_string(n) + unit);
-                max_len_ = std::max(max_len_, s.length());
-                return *this;
-        }
+	Table& operator()(const std::string& s, unsigned int n, const char* unit = "") {
+		data_.emplace_back(s, std::to_string(n) + unit);
+		max_len_ = std::max(max_len_, s.length());
+		return *this;
+	}
 
 	Table& operator()(const std::string& s, double n, const char* unit = "") {
-		data_.emplace_back(s, (n >= 100.0 ? std::to_string((int64_t)std::round(n)) : std::to_string(n)) + unit);
+		data_.emplace_back(s, (n >= 100.0 ? std::to_string((int64_t)round(n)) : std::to_string(n)) + unit);
 		max_len_ = std::max(max_len_, s.length());
 		return *this;
 	}

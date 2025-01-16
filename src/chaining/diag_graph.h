@@ -1,5 +1,9 @@
 #pragma once
-#include "../util/geo/diagonal_segment.h"
+#include <stddef.h>
+#include <assert.h>
+#include <vector>
+#include "util/geo/diagonal_segment.h"
+#include "basic/sequence.h"
 
 struct DiagonalNode : public DiagonalSegment
 {

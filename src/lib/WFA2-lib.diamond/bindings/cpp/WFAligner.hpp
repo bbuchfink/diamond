@@ -47,6 +47,9 @@ namespace wfa {
  */
 class WFAligner {
 public:
+wavefront_aligner_t* getWfAligner_for_reap() {
+        return wfAligner;
+    }
   // Configuration
   enum MemoryModel {
     MemoryHigh,

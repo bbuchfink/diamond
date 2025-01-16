@@ -22,14 +22,17 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #pragma once
 #include <stdint.h>
-#include "../basic/packed_loc.h"
-#include "../basic/value.h"
-#include "../util/io/input_file.h"
-#include "../util/io/serialize.h"
+#include "basic/packed_loc.h"
+#include "basic/value.h"
+#include "util/io/input_file.h"
+#include "util/io/serialize.h"
+#include "util/text_buffer.h"
 
 namespace Search {
 
+#ifndef __sparc__
 #pragma pack(1)
+#endif
 
 struct Hit
 {
@@ -84,17 +87,17 @@ struct Hit
 	{
 		return (int64_t)subject_ - (int64_t)seed_offset_;
 	}
-	template<unsigned _d>
+	template<unsigned d>
 	static unsigned query_id(const Hit& x)
 	{
-		return x.query_ / _d;
+		return x.query_ / d;
 	}
-	template<unsigned _d>
+	template<unsigned d>
 	struct Query_id
 	{
 		unsigned operator()(const Hit& x) const
 		{
-			return query_id<_d>(x);
+			return query_id<d>(x);
 		}
 	};
 	struct Query {
@@ -117,7 +120,7 @@ struct Hit
 		bool operator()(const Hit& lhs, const Hit& rhs) const
 		{
 			return lhs.subject_ < rhs.subject_
-				|| (lhs.subject_ == rhs.subject_ && lhs.seed_offset_ < rhs.seed_offset_);
+				|| (lhs.subject_ == rhs.subject_ && (lhs.query_ < rhs.query_ || (lhs.query_ == rhs.query_ && lhs.seed_offset_ < rhs.seed_offset_)));
 		}
 	};
 	struct CmpQueryTarget {
@@ -180,8 +183,8 @@ template<> struct TypeSerializer<Search::Hit> {
 	TypeSerializer& operator<<(const Search::Hit& hit) {
 		if (SerializerTraits<Search::Hit>::is_sentry(hit)) {
 			buf_->write((uint16_t)0);
-			buf_->write_varint(hit.query_);
-			buf_->write_varint(hit.seed_offset_);
+			buf_->write(hit.query_);
+			buf_->write(hit.seed_offset_);
 			return *this;
 		}
 		buf_->write((uint16_t)hit.score_);
@@ -218,19 +221,15 @@ template<> struct TypeDeserializer<Search::Hit> {
 
 		for (;;) {
 			uint32_t query_id, seed_offset;
-			f_->varint = true;
-			(*f_) >> query_id >> seed_offset;
+			f_->read(query_id);
+			f_->read(seed_offset);
 			PackedLoc subject_loc;
 			uint32_t x;
-			f_->varint = false;
 			for (;;) {
 				uint16_t score;
-				try {
-					f_->read(score);
-				}
-				catch (EndOfStream&) {
+				const size_t n = f_->read(&score, 1);
+				if (n == 0)
 					return *this;
-				}
 				if (score == 0)
 					break;
 				if (traits_.long_subject_offsets)

@@ -22,15 +22,15 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #pragma once
 #include <memory>
+#include <mutex>
 #include <unordered_set>
-#include "../basic/value.h"
-#include "../stats/score_matrix.h"
-#include "../basic/sequence.h"
-#include "../lib/blast/blast_seg.h"
-#include "../data/string_set.h"
-#include "../util/enum.h"
+#include "basic/value.h"
+#include "stats/score_matrix.h"
+#include "basic/sequence.h"
+#include "blast/blast_seg.h"
+#include "data/string_set.h"
 #include "def.h"
-#include "../util/kmer/kmer.h"
+#include "util/kmer/kmer.h"
 
 struct MaskingTable;
 struct SequenceSet;
@@ -57,20 +57,6 @@ private:
 };
 
 size_t mask_seqs(SequenceSet &seqs, const Masking &masking, bool hard_mask, const MaskingAlgo algo, MaskingTable* table = nullptr);
-
-template<>
-struct EnumTraits<MaskingAlgo> {
-	static const EMap<MaskingAlgo> to_string;
-	static const SEMap<MaskingAlgo> from_string;
-};
-
-enum class MaskingMode { NONE, TANTAN, BLAST_SEG };
-
-template<>
-struct EnumTraits<MaskingMode> {
-	static const SEMap<MaskingMode> from_string;
-    static const EMap<MaskingMode> to_string;
-};
 
 struct MaskingTable {
 

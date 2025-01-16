@@ -1,6 +1,6 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2013-2020 Max Planck Society for the Advancement of Science e.V.
+Copyright (C) 2013-2024 Max Planck Society for the Advancement of Science e.V.
                         Benjamin Buchfink
                         Eberhard Karls Universitaet Tuebingen
 						
@@ -21,26 +21,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #pragma once
-#include <memory>
-#include <vector>
-#include <map>
-#include "../basic/statistics.h"
-#include "legacy/query_mapper.h"
-#include "../run/workflow.h"
-#include "../search/hit.h"
-
-struct Output_writer
-{
-	Output_writer(OutputFile* f) :
-		f_(f)
-	{ }
-	void operator()(TextBuffer &buf)
-	{
-		f_->write(buf.data(), buf.size());
-		buf.clear();
-	}
-private:
-	OutputFile* const f_;
-};
+#include "util/io/consumer.h"
+#include "run/config.h"
 
 void align_queries(Consumer* output_file, Search::Config &cfg);

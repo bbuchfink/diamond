@@ -25,9 +25,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "const.h"
 #include "value.h"
 #include "seed.h"
-#include "../stats/score_matrix.h"
 #include "reduction.h"
-#include "config.h"
 
 struct Shape
 {

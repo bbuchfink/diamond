@@ -1,19 +1,35 @@
+/****
+DIAMOND protein aligner
+Copyright (C) 2019-2024 Max Planck Society for the Advancement of Science e.V.
+                        Benjamin Buchfink
+
+Code developed by Benjamin Buchfink <buchfink@gmail.com>
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+****/
+
 #pragma once
 #include <functional>
-#include <iterator>
 #include <memory>
-#include <tuple>
-#include <array>
 #include "../io/text_input_file.h"
 #include "table.h"
 #include "../enum.h"
-#include "helpers.h"
-#include "construct.h"
 
 namespace Util { namespace Tsv {
 
 enum class Flags {
-	READ_WRITE = 1, WRITE = 1 << 1, OVERWRITE = 1 << 2, RECORD_ID_COLUMN = 1 << 3, TEMP = 1 << 4
+	READ = 0, READ_WRITE = 1, WRITE = 1 << 1, OVERWRITE = 1 << 2, RECORD_ID_COLUMN = 1 << 3, TEMP = 1 << 4
 };
 
 DEFINE_ENUM_FLAG_OPERATORS(Flags);
@@ -23,16 +39,19 @@ struct FileColumn {
 };
 
 struct Config {
-	Config():
-		line_delimiter("\n")
+	Config(const char* line_delimiter = "", Util::String::TokenizerBase* line_tokenizer = new Util::String::CharTokenizer('\t')) :
+		line_delimiter(line_delimiter),
+		line_tokenizer(line_tokenizer)
 	{}
 	std::string line_delimiter;
+	std::shared_ptr<Util::String::TokenizerBase> file_tokenizer, line_tokenizer;
 };
 
 struct File {
 
 	File(const Schema& schema, const char* file_name, Flags flags = Flags(), const Config& config = Config());
 	File(const Schema& schema, const std::string& file_name, Flags flags = Flags(), const Config& config = Config());
+	File(const Schema& schema, std::unique_ptr<TextInputFile>&& file, Flags flags = Flags(), const Config& config = Config());
 	void rewind();
 	bool eof();
 	int64_t size();
@@ -44,18 +63,7 @@ struct File {
 	Table read(int threads);
 	Table read_record();
 
-	template<typename... Targs, typename Out>
-	void read(Out out) {
-		using T = typename Out::container_type::value_type;
-		using Tok = TokenIterator<typename std::string::const_iterator, '\t'>;
-		if ((int)schema_.size() != sizeof...(Targs))
-			throw std::runtime_error("Template parameters do not match schema.");
-		rewind();
-		while (file_->getline(), !file_->line.empty() || !file_->eof()) {
-			Tok it(file_->line.cbegin(), file_->line.cend());
-			*out++ = Construct<Targs..., void>().template operator()<T, Tok>(it);
-		}
-	}
+	template<typename... Targs, typename Out> void read(Out out);
 
 	template<typename F, typename Out>
 	void read(int threads, F& f, Out& out) {
@@ -88,10 +96,10 @@ struct File {
 		write_record((int)schema_.size(), FArgs...);
 	}
 
-	template<typename... Targs>
+	/*template<typename... Targs>
 	void write_record(const std::tuple<Targs...>& tuple) {
 		TupleDispatch<Targs...>()(*this, tuple, typename gens<sizeof...(Targs)>::type());
-	}
+	}*/
 
 	template<typename It, typename F>
 	void write(It begin, It end, F& f) {
@@ -102,6 +110,9 @@ struct File {
 	File* map(int threads, std::function<Table(const Record&)>& f);
 
 	File* sort(int column, int threads);
+	void close();
+	bool eof() const;
+	std::string file_name() const;
 	
 private:
 
@@ -117,17 +128,17 @@ private:
 		write_record(i - 1, FArgs...);
 	}
 
-	template<typename... Targs>
+	/*template<typename... Targs>
 	struct TupleDispatch {
 		template<int ...S>
 		void operator()(File& f, const std::tuple<Targs...>& tuple, seq<S...>) const {
 			f.write_record((int)f.schema_.size(), std::get<S>(tuple) ...);
 		}
-	};
+	};*/
 
 	const Flags flags_;
 	const Schema schema_;
-	const Config config_;
+	Config config_;
 	std::unique_ptr<OutputFile> out_file_;
 	std::unique_ptr<TextInputFile> file_;
 	TextBuffer write_buf_;

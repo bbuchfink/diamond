@@ -17,11 +17,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #pragma once
+#include <algorithm>
 #include <ostream>
 #include <stdexcept>
-#include <algorithm>
-#include <string>
-#include "../../basic/value.h"
+#include "basic/value.h"
 
 struct Interval
 {

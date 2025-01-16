@@ -20,17 +20,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <map>
 #include <numeric>
-#include <algorithm>
 #include "target.h"
-#include "../dp/dp.h"
-#include "../util/geo/interval.h"
-#include "../data/reference.h"
-#include "../output/output_format.h"
+#include "dp/dp.h"
+#include "util/geo/interval.h"
 #include "def.h"
-#include "../dp/pfscan/pfscan.h"
-#include "../util/geo/geo.h"
-#include "../stats/cbs.h"
-#include "../dp/ungapped.h"
+#include "util/geo/geo.h"
+#include "stats/cbs.h"
+#include "dp/ungapped.h"
 
 using std::vector;
 using std::array;
@@ -77,7 +73,7 @@ int band(int len, const Mode mode) {
 }
 
 static int hsp_band(int base_band, int qlen, int tlen, const ApproxHsp& hsp) {
-	if (config.prefix_scan && !config.classic_band) {
+	if (!config.classic_band) {
 		return std::max(Loc((hsp.d_max - hsp.d_min) * 0.15), 32);
 	}
 	if (config.narrow_band_cov == 0.0)
@@ -177,7 +173,7 @@ static void add_dp_targets(const WorkTarget& target,
 	}
 }
 
-pair<vector<Target>, Stats> align(const vector<WorkTarget> &targets, const Sequence *query_seq, const char* query_id, const Bias_correction *query_cb, int source_query_len, DP::Flags flags, const HspValues hsp_values, const Mode mode, ThreadPool& tp, const Search::Config& cfg, Statistics &stat) {
+pair<vector<Target>, Stats> align(const vector<WorkTarget> &targets, const Sequence *query_seq, const char* query_id, const HauserCorrection *query_cb, int source_query_len, DP::Flags flags, const HspValues hsp_values, const Mode mode, ThreadPool& tp, const Search::Config& cfg, Statistics &stat) {
 	array<DP::Targets, MAX_CONTEXT> dp_targets;
 	vector<Target> r;
 	if (targets.empty())
@@ -204,54 +200,27 @@ pair<vector<Target>, Stats> align(const vector<WorkTarget> &targets, const Seque
 	Stats stats;
 
 	for (int frame = 0; frame < align_mode.query_contexts; ++frame) {
-		const int64_t n = std::accumulate(dp_targets[frame].begin(), dp_targets[frame].end(), (int64_t)0, [](int64_t n, const vector<DpTarget>& v) { return n + v.size(); });
+		const int64_t n = std::accumulate(dp_targets[frame].begin(), dp_targets[frame].end(), (int64_t)0, [](int64_t n, const DP::TargetVec& v) { return n + v.size(); });
 		if (n == 0)
 			continue;
 		stats.extension_count += n;
-		if (config.prefix_scan) {
-			LongScoreProfile<int16_t> p;
-			LongScoreProfile<int8_t> p8;
-			const bool hauser_cbs = ::Stats::CBS::hauser(config.comp_based_stats);
-			TaskTimer timer;
-			p = DP::make_profile16(query_seq[frame], hauser_cbs ? query_cb[frame].int8.data() : nullptr, 0);
-			p8 = DP::make_profile8(query_seq[frame], hauser_cbs ? query_cb[frame].int8.data() : nullptr, 0);
-			LongScoreProfile<int16_t> p_rev(p.reverse());
-			LongScoreProfile<int8_t> p8_rev(p8.reverse());
-			stat.inc(Statistics::TIME_PROFILE, timer.microseconds());
-			const auto v = p.pointers(0), vr = p_rev.pointers(0);
-			const auto v8 = p8.pointers(0), vr8 = p8_rev.pointers(0);
-			for (int i = 0; i < 6; ++i)
-				for (const DpTarget& t : dp_targets[frame][i]) {
-					const char* tid = cfg.target->ids()[r[t.target_idx].block_id];
-					DP::PrefixScan::Config cfg{ query_seq[frame], t.seq, query_id, tid, t.d_begin, t.d_end,
-						t.chaining_target_range, v.data(), vr.data(), v8.data(), vr8.data(), stat, 0, 0, t.chaining_score };
-					//Hsp h = DP::PrefixScan::align(cfg);
-					//const DiagonalSegment anchor = make_null_anchor(t.anchor);
-					const Anchor anchor = make_clipped_anchor(t.anchor, query_seq[frame], hauser_cbs ? query_cb[frame].int8.data() : nullptr, t.seq);
-					if (anchor.score == 0)
-						continue;
-					Hsp h = DP::PrefixScan::align_anchored(anchor, cfg);
-					if (h.evalue <= config.max_evalue)
-						r[t.target_idx].add_hit(std::move(h));
-				}
-		}
-		else {
-			DP::Params params{
-				query_seq[frame],
-				query_id,
-				Frame(frame),
-				source_query_len,
-				::Stats::CBS::hauser(config.comp_based_stats) ? query_cb[frame].int8.data() : nullptr,
-				flags,
-				hsp_values,
-				stat,
-				&tp
-			};
-			DP::AnchoredSwipe::Config cfg{ query_seq[frame], ::Stats::CBS::hauser(config.comp_based_stats) ? query_cb[frame].int8.data() : nullptr, 0, stat, &tp };
-			list<Hsp> hsp = config.anchored_swipe ? DP::BandedSwipe::anchored_swipe(dp_targets[frame], cfg) : DP::BandedSwipe::swipe(dp_targets[frame], params);
-			while (!hsp.empty())
-				r[hsp.front().swipe_target].add_hit(hsp, hsp.begin());
-		}
+		DP::Params params{
+			query_seq[frame],
+			query_id,
+			Frame(frame),
+			source_query_len,
+			::Stats::CBS::hauser(config.comp_based_stats) ? query_cb[frame].int8.data() : nullptr,
+			flags,
+			false,
+			0,
+			hsp_values,
+			stat,
+			&tp
+		};
+		DP::AnchoredSwipe::Config cfg{ query_seq[frame], ::Stats::CBS::hauser(config.comp_based_stats) ? query_cb[frame].int8.data() : nullptr, 0, stat, &tp };
+		list<Hsp> hsp = config.anchored_swipe ? DP::BandedSwipe::anchored_swipe(dp_targets[frame], cfg) : DP::BandedSwipe::swipe(dp_targets[frame], params);
+		while (!hsp.empty())
+			r[hsp.front().swipe_target].add_hit(hsp, hsp.begin());
 	}
 
 	vector<Target> r2;

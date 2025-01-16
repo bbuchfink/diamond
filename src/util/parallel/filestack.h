@@ -1,5 +1,24 @@
-#ifndef _FILESTACK_H_
-#define _FILESTACK_H_
+/****
+DIAMOND protein aligner
+Copyright (C) 2019-2024 Max Planck Society for the Advancement of Science e.V.
+
+Code developed by Klaus Reuter
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+****/
+
+#pragma once
 
 #include <string>
 #ifndef WIN32
@@ -7,13 +26,11 @@
 #include <fcntl.h>
 #endif
 
-
 #ifdef DEBUG
 #define DBG(x) (std::cerr << __PRETTY_FUNCTION__ << ":" << __LINE__ << " " << x << std::endl)
 #else
 #define DBG(x)
 #endif
-
 
 class FileStack {
     public:
@@ -62,5 +79,3 @@ class FileStack {
         int pop(std::string &, const bool, size_t &);
         int pop_non_locked(std::string &, const bool, size_t &);
 };
-
-#endif

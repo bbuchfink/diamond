@@ -21,10 +21,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #pragma once
-#include <string>
-#include "../basic/sequence.h"
+#include "basic/sequence.h"
 #include "string_set.h"
-#include "../basic/value.h"
+#include "basic/value.h"
 
 struct SequenceSet : public StringSetBase<Letter, Sequence::DELIMITER, 1>
 {
@@ -46,7 +45,7 @@ struct SequenceSet : public StringSetBase<Letter, Sequence::DELIMITER, 1>
 
 	Length max_len(size_t begin, size_t end) const;
 
-	std::vector<size_t> partition(unsigned n_part) const;
+	std::vector<Id> partition(unsigned n_part, bool shortened = false, bool context_reduced = false) const;
 
 	size_t reverse_translated_len(size_t i) const;
 
@@ -75,4 +74,3 @@ private:
 };
 
 size_t max_id_len(const StringSet& ids);
-std::vector<std::string> seq_titles(const char* title);

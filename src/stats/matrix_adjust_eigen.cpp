@@ -18,10 +18,9 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#include <type_traits>
-#include "../lib/Eigen/Dense"
-#include "../basic/value.h"
-#include "../util/profiler.h"
+#include "Eigen/Dense"
+#include "basic/value.h"
+#include "util/profiler.h"
 
 // #define DYNAMIC
 

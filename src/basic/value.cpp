@@ -20,19 +20,12 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#include <string.h>
-#include <assert.h>
 #include "value.h"
 #include "reduction.h"
-#include "../util/util.h"
 
-const Letter Char_representation::invalid = '\xff';
+const Letter CharRepresentation::invalid = '\xff';
 
-invalid_sequence_char_exception::invalid_sequence_char_exception(char ch) :
-	msg(std::string("Invalid character (") + print_char(ch) + ") in sequence")
-{ }
-
-Char_representation::Char_representation(unsigned size, const char* chars, char mask, const char* mask_chars)
+CharRepresentation::CharRepresentation(unsigned size, const char* chars, char mask, const char* mask_chars)
 {
 	memset(data_, invalid, sizeof(data_));
 	for (unsigned i = 0; i < size; ++i) {
@@ -52,7 +45,7 @@ ValueTraits::ValueTraits(const char* alphabet, Letter mask_char, const char* ign
 	alphabet(alphabet),
 	alphabet_size((unsigned)strlen(alphabet)),
 	mask_char(mask_char),
-	from_char(Char_representation((unsigned)alphabet_size, alphabet, mask_char, ignore)),
+	from_char(CharRepresentation((unsigned)alphabet_size, alphabet, mask_char, ignore)),
 	seq_type(seq_type)
 {}
 

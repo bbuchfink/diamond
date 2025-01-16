@@ -20,12 +20,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <unordered_map>
 #include <limits>
 #include "daa_file.h"
-#include "../basic/packed_sequence.h"
-#include "../basic/value.h"
-#include "../util/sequence/translate.h"
-#include "../basic/packed_transcript.h"
-#include "../stats/score_matrix.h"
-#include "../basic/match.h"
+#include "basic/value.h"
+#include "util/sequence/translate.h"
+#include "basic/match.h"
 
 inline void translate_query(const std::vector<Letter>& query, std::vector<Letter> *context)
 {
@@ -102,7 +99,7 @@ struct DAA_query_record
 		bool good_;
 	};
 
-	DAA_query_record(const DAA_file& file, const BinaryBuffer &buf, size_t query_num):
+	DAA_query_record(const DAAFile& file, const BinaryBuffer &buf, size_t query_num):
 		query_num (query_num),
 		file_(file),
 		it_(init(buf))
@@ -122,6 +119,10 @@ struct DAA_query_record
 		return align_mode.query_translated ? source_seq.size() : context[0].size();
 	}
 
+	const DAAFile& file() const {
+		return file_;
+	}
+
 	std::string query_name;
 	size_t query_num;
 	std::vector<Letter> source_seq;
@@ -132,7 +133,7 @@ private:
 
 	BinaryBuffer::Iterator init(const BinaryBuffer &buf);
 
-	const DAA_file& file_;
+	const DAAFile& file_;
 	const BinaryBuffer::Iterator it_;
 	
 };

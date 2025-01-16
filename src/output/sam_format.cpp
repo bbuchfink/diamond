@@ -18,14 +18,16 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <sstream>
 #include "output_format.h"
-#include "../util/sequence/sequence.h"
+#include "util/sequence/sequence.h"
 
-using namespace std;
+using std::string;
+using std::stringstream;
+using std::endl;
 
 void print_md(const HspContext &r, TextBuffer &buf)
 {
 	unsigned matches = 0, del = 0;
-	for (Packed_transcript::Const_iterator i = r.begin_old(); i.good(); ++i) {
+	for (PackedTranscript::ConstIterator i = r.begin_old(); i.good(); ++i) {
 		switch (i->op) {
 		case op_match:
 			del = 0;
@@ -64,7 +66,7 @@ void print_cigar(const HspContext &r, TextBuffer &buf)
 	static const unsigned map[] = { 0, 1, 2, 0, 3, 4 };
 	static const char letter[] = { 'M', 'I', 'D', '\\', '/' };
 	unsigned n = 0, op = 0;
-	for (Packed_transcript::Const_iterator i = r.begin_old(); i.good(); ++i) {
+	for (PackedTranscript::ConstIterator i = r.begin_old(); i.good(); ++i) {
 		if (map[i->op] == op)
 			n += i->count;
 		else {

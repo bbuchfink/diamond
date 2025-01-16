@@ -16,9 +16,8 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#include <algorithm>
 #include <iostream>
-#include "../util/algo/MurmurHash3.h"
+#include "../lib/murmurhash/MurmurHash3.h"
 #ifndef _MSC_VER
 #include <stdio.h>
 #include <errno.h>
@@ -30,7 +29,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "file_source.h"
 #include "compressed_stream.h"
 #include "input_stream_buffer.h"
-#include "../../basic/config.h"
 #include "temp_file.h"
 #ifdef WITH_ZSTD
 #include "zstd_stream.h"
@@ -49,7 +47,7 @@ static Compressor detect_compressor(const char* b) {
 	return Compressor::NONE;
 }
 
-static StreamEntity* make_decompressor(const Compressor c, StreamEntity* buffer) {
+static StreamEntity* make_decompressor(const Compressor c, InputStreamBuffer* buffer) {
 	switch (c) {
 	case Compressor::ZLIB:
 		return new ZlibSource(buffer);
@@ -83,18 +81,11 @@ InputFile::InputFile(const string &file_name, int flags) :
 #endif
 	if (flags & NO_AUTODETECT)
 		return;
-	FileSource *source = dynamic_cast<FileSource*>(buffer_->root());
-	char b[4];
-	size_t n = source->read(b, 4);
-	/*if (n == 2)
-		source->putback(b[1]);
-	if (n >= 1)
-		source->putback(b[0]);*/
-	buffer_->putback(b, n);
-	if (n < 4)
+	const string begin = peek(4);
+	if (begin.length() < 4)
 		return;
-	const auto c = detect_compressor(b);
-	if(c != Compressor::NONE)
+	const auto c = detect_compressor(begin.c_str());
+	if (c != Compressor::NONE)
 		buffer_ = new InputStreamBuffer(make_decompressor(c, buffer_));
 }
 

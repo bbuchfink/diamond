@@ -20,16 +20,16 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#include "../align/align.h"
-#include "../output/output.h"
-#include "../output/output_format.h"
-#include "../stats/stats.h"
+#include "output/output.h"
+#include "output/output_format.h"
+#include "stats/stats.h"
 
 using std::list;
 using std::equal;
 using std::runtime_error;
+using std::pair;
 
-std::pair<int, int> Hsp::diagonal_bounds() const
+pair<int, int> Hsp::diagonal_bounds() const
 {
 	int d0 = std::numeric_limits<int>::max(), d1 = std::numeric_limits<int>::min();
 	for (Iterator it = begin(); it.good(); ++it) {
@@ -272,7 +272,7 @@ void Hsp::push_match(Letter q, Letter s, bool positive)
 	++length;
 }
 
-void Hsp::push_gap(Edit_operation op, int length, const Letter *subject)
+void Hsp::push_gap(EditOperation op, int length, const Letter *subject)
 {
 	++gap_openings;
 	this->length += length;
@@ -288,18 +288,25 @@ void Hsp::push_gap(Edit_operation op, int length, const Letter *subject)
 #endif
 }
 
+#ifdef WITH_DNA
 Hsp::Hsp(const IntermediateRecord &r, unsigned query_source_len, Loc qlen, Loc tlen, const OutputFormat* output_format, const Stats::Blastn_Score *dna_score_builder):
+#else
+Hsp::Hsp(const IntermediateRecord& r, unsigned query_source_len, Loc qlen, Loc tlen, const OutputFormat* output_format) :
+#endif
 	backtraced(!IntermediateRecord::stats_mode(output_format->hsp_values) && output_format->hsp_values != HspValues::NONE),
 	score(r.score),
 	evalue(r.evalue),
 	transcript(r.transcript)
 {
-    if(dna_score_builder == nullptr){
+#ifdef WITH_DNA
+    if(dna_score_builder)
+		bit_score = dna_score_builder->blast_bit_Score(r.score);
+	else
+#endif
+	{
         bit_score = score_matrix.bitscore(r.score);
         corrected_bit_score = score_matrix.bitscore_corrected(r.score, qlen, tlen);
-    }
-    else
-        bit_score = dna_score_builder->blast_bit_Score(r.score);
+    }        
 
     subject_range.begin_ = r.subject_begin;
 	if (align_mode.mode == AlignMode::blastx) {
@@ -341,6 +348,7 @@ Hsp::Hsp(const ApproxHsp& h, Loc qlen, Loc tlen) :
 	query_source_range(h.query_range),
 	query_range(h.query_range),
 	subject_range(h.subject_range),
+	subject_source_range(h.subject_range),
 	evalue(h.evalue),
 	bit_score(score_matrix.bitscore(h.score)),
 	corrected_bit_score(score_matrix.bitscore_corrected(h.score, qlen, tlen)),
@@ -370,4 +378,9 @@ double HspContext::scovhsp() const {
 
 double HspContext::id_percent() const {
 	return (double)identities() * 100 / length();
+}
+
+pair<Loc, Loc> Hsp::min_range_len(double qcov, double tcov, Loc qlen, Loc tlen) const {
+	return  { std::max(query_range.end_ - (Loc)std::floor(double(query_range.end_) - qcov * qlen / 100.0), (Loc)0),
+		std::max(subject_range.end_ - (Loc)std::floor(double(subject_range.end_) - tcov * tlen / 100.0), (Loc)0) };
 }

@@ -20,7 +20,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "dp.h"
 #include "../stats/score_matrix.h"
 #include "../stats/hauser_correction.h"
-#include "ungapped.h"
 #include "../util/sequence/sequence.h"
 
 using std::max;
@@ -79,7 +78,7 @@ int xdrop_ungapped(const Letter *query, const Letter *subject, unsigned &delta, 
 	return score;
 }
 
-DiagonalSegment xdrop_ungapped(const Sequence &query, const Bias_correction &query_bc, const Sequence &subject, int qa, int sa)
+DiagonalSegment xdrop_ungapped(const Sequence &query, const HauserCorrection& query_bc, const Sequence &subject, int qa, int sa)
 {
 	const float xdrop = (float)config.raw_ungapped_xdrop;
 	float score = 0, st = 0;
@@ -260,7 +259,7 @@ Score self_score(const Sequence& seq)
 {
 	Score s = 0, sl = 0;
 	if (Stats::CBS::hauser(config.comp_based_stats)) {
-		Bias_correction cbs(seq);
+		HauserCorrection cbs(seq);
 
 		for (Loc i = 0; i < seq.length(); ++i) {
 			const Letter l = seq[i];

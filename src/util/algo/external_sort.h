@@ -25,12 +25,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../io/temp_file.h"
 #include "../io/input_file.h"
 #define _REENTRANT
-#include "../lib/ips4o/ips4o.hpp"
-#include "../basic/config.h"
+#include "ips4o/ips4o.hpp"
+#include "basic/config.h"
 
-template<typename _t>
-static inline size_t alloc_size(const _t& x) {
-	return sizeof(_t);
+template<typename T>
+static inline size_t alloc_size(const T& x) {
+	return sizeof(T);
 }
 
 static inline size_t alloc_size(const std::pair<std::string, uint32_t>& x) {
@@ -107,7 +107,7 @@ private:
 
 	bool get_entry(size_t bucket, Entry& e) {
 		try {
-			(*files_[bucket]) >> e.value;
+			deserialize((*files_[bucket]), e.value);
 		}
 		catch (EndOfStream&) {
 			files_[bucket]->close_and_delete();
@@ -124,7 +124,7 @@ private:
 		ips4o::parallel::sort(idx_.begin(), idx_.end(), CmpIdx{ buf_.begin() }, config.threads_);
 		TempFile f;
 		for (uint32_t i : idx_)
-			f << buf_[i];
+			serialize(f, buf_[i]);
 		files_.push_back(new InputFile(f));
 		buf_.clear();
 		size_ = 0;

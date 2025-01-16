@@ -20,8 +20,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <vector>
 #include "target.h"
-#include "../search/hit.h"
-#include "../data/sequence_set.h"
+#include "search/hit.h"
+#include "data/sequence_set.h"
 
 namespace Extension {
 

@@ -1,7 +1,8 @@
 #include <iostream>
+#include <algorithm>
 #include "aligner.h"
-#include "../basic/config.h"
-#include "../util/geo/geo.h"
+#include "basic/config.h"
+#include "diag_graph.h"
 
 using std::vector;
 using std::cout;
@@ -142,8 +143,6 @@ bool Aligner::backtrace_old(size_t node, int j_end, Hsp* out, ApproxHsp& t, int 
 		return true;
 
 }
-
-
 
 void Aligner::backtrace(const size_t node, const int j_end, Hsp* out, ApproxHsp& t, const int score_max, const int score_min, const int max_shift, unsigned& next) const
 {

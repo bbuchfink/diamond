@@ -19,7 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #pragma once
-#include "../../lib/interval_tree/interval_tree.hpp"
+#include "interval_tree/interval_tree.hpp"
 #include "interval.h"
 
 template<typename Int>

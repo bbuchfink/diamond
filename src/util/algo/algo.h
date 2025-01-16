@@ -1,12 +1,10 @@
 #pragma once
 #include <stdint.h>
 #include <vector>
-#include <stddef.h>
 #include "partition.h"
 #define _REENTRANT
-#include "../../lib/ips4o/ips4o.hpp"
 #include "../data_structures/flat_array.h"
-#include "../../basic/value.h"
+#include "basic/value.h"
 
 namespace Util { namespace Algo {
 

@@ -1,4 +1,4 @@
-#include "../search/search.h"
+#include "search/search.h"
 #include "load_hits.h"
 
 namespace Extension {

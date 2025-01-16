@@ -1,6 +1,7 @@
 #pragma once
 #include <zstd.h>
 #include "stream_entity.h"
+#include "input_stream_buffer.h"
 
 struct ZstdSink : public StreamEntity
 {
@@ -13,10 +14,11 @@ private:
 
 struct ZstdSource : public StreamEntity
 {
-	ZstdSource(StreamEntity* prev);
+	ZstdSource(InputStreamBuffer* prev);
 	virtual size_t read(char* ptr, size_t count);
 	virtual void close();
 	virtual void rewind();
+	virtual bool eof() override;
 private:
 	void init();
 	ZSTD_DStream* stream;

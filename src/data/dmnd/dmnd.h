@@ -23,10 +23,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #pragma once
 #include <string>
 #include <stdint.h>
-#include <limits.h>
-#include <list>
-#include "../util/io/serializer.h"
-#include "../util/io/input_file.h"
+#include "util/io/serializer.h"
+#include "util/io/input_file.h"
 #include "../sequence_file.h"
 #include "../taxon_list.h"
 
@@ -77,6 +75,9 @@ struct Database_format_exception : public std::exception
 	{ return "Database file is not a DIAMOND database."; }
 };
 
+Chunk to_chunk(const std::string& line);
+std::string to_string(const Chunk& c);
+
 struct DatabaseFile : public SequenceFile, public InputFile
 {
 
@@ -103,9 +104,6 @@ struct DatabaseFile : public SequenceFile, public InputFile
 	virtual bool eof() const override;
 	virtual void init_seq_access() override;
 	static void make_db();
-#ifdef EXTRA
-	static void prep_db();
-#endif
 
 	enum { min_build_required = 74, MIN_DB_VERSION = 2 };
 
@@ -137,7 +135,7 @@ struct DatabaseFile : public SequenceFile, public InputFile
 	virtual void skip_id_data() override;
 	virtual int64_t sequence_count() const override;
 	virtual bool read_seq(std::vector<Letter>& seq, std::string& id, std::vector<char>* quals = nullptr) override;
-	virtual size_t letters() const override;
+	virtual int64_t letters() const override;
 	virtual int db_version() const override;
 	virtual int program_build_version() const override;
 	virtual Metadata metadata() const override;

@@ -20,10 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #include <stdio.h>
-#ifdef _MSC_VER
-#define NOMINMAX
-#include <Windows.h>
-#else
+#ifndef _MSC_VER
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -31,7 +28,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <errno.h>
 #include <string.h>
 #endif
-
 #include "file_sink.h"
 #include "../system.h"
 
@@ -109,7 +105,7 @@ void FileSink::write(const char *ptr, size_t count)
 	if ((n = fwrite((const void*)ptr, 1, count, f_)) != count) {
 		if (async_) mtx_.unlock();
 		perror(0);
-		throw File_write_exception(file_name_);
+		throw FileWriteException(file_name_);
 	}
 	if (async_) mtx_.unlock();
 }

@@ -1,6 +1,25 @@
+/****
+DIAMOND protein aligner
+Copyright (C) 2019-2024 Max Planck Society for the Advancement of Science e.V.
+
+Code developed by Benjamin Buchfink <buchfink@gmail.com>
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+****/
+
 #include "file.h"
 #include "../enum.h"
-#include "construct.h"
 #include "../data_structures/reorder_queue.h"
 #include "build_helper.h"
 
@@ -8,6 +27,16 @@ using std::vector;
 using std::function;
 using std::string;
 using std::runtime_error;
+using std::unique_ptr;
+using Util::String::TokenizerBase;
+using Util::String::CharTokenizer;
+using Util::String::MultiCharTokenizer;
+
+#ifdef _WIN32
+static const char* DEFAULT_LINE_DELIMITER = "\r\n";
+#else
+static const char* DEFAULT_LINE_DELIMITER = "\n";
+#endif
 
 namespace Util { namespace Tsv {
 
@@ -26,6 +55,7 @@ File::File(const Schema& schema, const char* file_name, Flags flags, const Confi
 	config_(config),
 	record_id_(0)
 {
+	const char* input_file_delim = config.line_delimiter.empty() ? "\n" : config_.line_delimiter.c_str();
 	if (flag_all(flags, Flags::WRITE | Flags::OVERWRITE))
 		throw std::runtime_error("Invalid File flags");
 	if (flag_any(flags_, Flags::RECORD_ID_COLUMN) && schema.front() != Type::INT64)
@@ -42,19 +72,34 @@ File::File(const Schema& schema, const char* file_name, Flags flags, const Confi
 	}
 	if (flag_any(flags_, Flags::READ_WRITE)) {
 		if (flag_any(flags_, Flags::TEMP)) {
-			file_.reset(new TextInputFile(*(TempFile*)out_file_.get()));
+			file_.reset(new TextInputFile(*(TempFile*)out_file_.get(), input_file_delim));
 		}
 		else {
-			file_.reset(new TextInputFile(*out_file_));
+			file_.reset(new TextInputFile(*out_file_, input_file_delim));
 		}
 	}
 	else if (!flag_any(flags_, Flags::WRITE))
-		file_.reset(new TextInputFile(file_name));
+		file_.reset(new TextInputFile(file_name, input_file_delim));
+	if (config_.line_delimiter.empty())
+		config_.line_delimiter = flag_any(flags, Flags::WRITE | Flags::READ_WRITE | Flags::OVERWRITE) ? DEFAULT_LINE_DELIMITER : "\n";
+	config_.file_tokenizer.reset(Util::String::make_tokenizer(config_.line_delimiter));
 }
 
 File::File(const Schema& schema, const std::string& file_name, Flags flags, const Config& config):
 	File(schema, file_name.c_str(), flags, config)
 {}
+
+File::File(const Schema& schema, unique_ptr<TextInputFile>&& file, Flags flags, const Config& config):
+	flags_(get_flags(flags)),
+	schema_(schema),
+	config_(config),
+	record_id_(0)
+{
+	if (flags != Flags::READ)
+		throw runtime_error("File::File");
+	file_ = std::move(file);
+	file_->set_separator(config_.line_delimiter.c_str());
+}
 
 void File::rewind() {
 	if (out_file_)
@@ -73,20 +118,34 @@ int64_t File::size() {
 }
 
 File::~File() {
+	close();
+}
+
+bool File::eof() const {
+	return file_->eof();
+}
+
+std::string File::file_name() const {
+	return file_->file_name;
+}
+
+void File::close() {
 	if (file_ && file_->temp_file)
 		file_->close_and_delete();
 	else {
 		if (out_file_)
 			out_file_->close();
-		else
+		else if(file_)
 			file_->close();
 	}
+	file_.reset();
+	out_file_.reset();
 }
 
 void File::read(int threads, std::function<void(int64_t chunk, const Table&)>& callback) {
 	function<void(int64_t, const char*, const char*)> f([this, &callback](int64_t chunk, const char* begin, const char* end) {
 		Table table(schema_);
-		table.append(begin, end);
+		table.append(begin, end, config_.line_tokenizer.get());
 		callback(chunk, table);
 		});
 	read(INT64_MAX, threads, f);
@@ -98,11 +157,12 @@ Table File::read(int64_t max_size, int threads) {
 	ReorderQueue<Table*, decltype(callback)> queue(0, callback);
 	function<void(int64_t, const char*, const char*)> f([this, &queue](int64_t chunk, const char* begin, const char* end) {
 		Table* table = new Table(this->schema());
-		LineIterator it(begin, end);
-		while (it.good()) {
-			const string line = *it;
-			table->push_back(line.begin(), line.end());
-			++it;
+		unique_ptr<TokenizerBase> tok(config_.file_tokenizer->clone());
+		tok->reset(begin, end);
+		while (tok->good()) {
+			const string line = **tok;
+			table->push_back(line.c_str(), line.c_str() + line.length(), tok.get());
+			++(*tok);
 		}
 		queue.push(chunk, table);
 	});
@@ -120,7 +180,7 @@ Table File::read_record() {
 	file_->getline();
 	if (file_->eof() && file_->line.empty())
 		return table;
-	table.push_back(file_->line.cbegin(), file_->line.cend(), flag_any(flags_, Flags::RECORD_ID_COLUMN) ? record_id_ : -1);
+	table.push_back(file_->line.c_str(), file_->line.c_str() + file_->line.length(), config_.line_tokenizer.get(), flag_any(flags_, Flags::RECORD_ID_COLUMN) ? record_id_ : -1);
 	++record_id_;
 	return table;
 }
@@ -128,7 +188,7 @@ Table File::read_record() {
 void File::write_record(int i) {
 	if (i != (flag_any(flags_, Flags::RECORD_ID_COLUMN) ? 1 : 0))
 		throw runtime_error("write_record with insufficient field count.");
-	write_buf_ << '\n';
+	write_buf_ << config_.line_delimiter;
 	out_file_->write(write_buf_.data(), write_buf_.size());
 	write_buf_.clear();
 }

@@ -36,6 +36,8 @@ Contents: Matrix routines
 
 ******************************************************************************/
 
+// Modified by Benjamin Buchfink
+
 #include <vector>
 #include "njn_approx.hpp"
 
@@ -190,7 +192,6 @@ namespace Njn {
       
 	  using namespace Njn;
 	  using namespace IoUtil;
-	  using namespace std;
 
       size_t i = 0;
 
@@ -200,7 +201,7 @@ namespace Njn {
 
          for (i = 0; i < getM (); i++) { 
    
-            if (i != 0) ostr_ << endl;
+            if (i != 0) ostr_ << std::endl;
             ostr_ << getVector () [i];
          }
 
@@ -241,11 +242,9 @@ namespace Njn {
 
 	  using namespace Njn;
 	  using namespace IoUtil;
-	  using namespace std;
 
-
-      string s;
-      stringstream sstream;
+      std::string s;
+      std::stringstream sstream;
       size_t m = 0;
 
       switch (getFormat ()) {
@@ -287,7 +286,7 @@ namespace Njn {
             sstream >> d_vector_p [i];
 
             if (sstream.fail ()) {
-               ostringstream sstream;
+               std::ostringstream sstream;
                sstream << i;
                IoUtil::abort ("Njn::Vector::in : bad d_vector_p [" + sstream.str () + "]");
             }

@@ -19,18 +19,15 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-
-#include <math.h>
-#include <algorithm>
 #include <atomic>
 #include <numeric>
 #include <thread>
 #include "masking.h"
-#include "../lib/tantan/LambdaCalculator.hh"
+#include "tantan/LambdaCalculator.hh"
 #include "tantan.h"
-#include "../lib/blast/blast_filter.h"
-#include "../data/sequence_set.h"
-#include "../basic/config.h"
+#include "blast/blast_filter.h"
+#include "data/sequence_set.h"
+#include "basic/config.h"
 
 using std::unique_ptr;
 using std::atomic;
@@ -221,7 +218,7 @@ void mask_worker(atomic<BlockId> *next, SequenceSet *seqs, const Masking *maskin
 {
 	BlockId i;
 	size_t n = 0;
-	while ((i = (*next)++) < seqs->size()) {
+	while ((i = next->fetch_add(1, std::memory_order_relaxed)) < seqs->size()) {
 		seqs->convert_to_std_alph(i);
 		if (hard_mask)
 			n += masking->operator()(seqs->ptr(i), seqs->length(i), algo, i, table);

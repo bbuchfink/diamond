@@ -29,7 +29,7 @@ struct BlockWrapper : public SequenceFile
 	virtual std::string seqid(OId oid) const override;
 	virtual int64_t sequence_count() const override;
 	virtual bool read_seq(std::vector<Letter>& seq, std::string& id, std::vector<char>* quals = nullptr) override;
-	virtual size_t letters() const override;
+	virtual int64_t letters() const override;
 	virtual int db_version() const override;
 	virtual int program_build_version() const override;
 	virtual Metadata metadata() const override;

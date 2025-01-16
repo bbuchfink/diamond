@@ -20,15 +20,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #define NOMINMAX
-#include "../lib/mio/mmap.hpp"
-#include <array>
+#include "mio/mmap.hpp"
 #include "seed_set.h"
-#include "../util/ptr_vector.h"
-#include "../util/math/integer.h"
+#include "util/ptr_vector.h"
+#include "util/math/integer.h"
 #include "enum_seeds.h"
-#include "../util/system/system.h"
-#include "../util/io/output_file.h"
-#include "../basic/shape_config.h"
+#include "basic/shape_config.h"
+#include "util/log_stream.h"
 
 static const size_t PADDING = 32;
 static const double HASH_TABLE_FACTOR = 1.25;
@@ -41,9 +39,9 @@ using std::string;
 
 NoFilter no_filter;
 
-struct Seed_set_callback
+struct SeedSetCallback
 {
-	Seed_set_callback(vector<bool> &data, size_t max_coverage):
+	SeedSetCallback(vector<bool> &data, size_t max_coverage):
 		coverage(0),
 		max_coverage(max_coverage),
 		data(&data)
@@ -69,17 +67,17 @@ SeedSet::SeedSet(Block &seqs, double max_coverage, const std::vector<bool>* skip
 {
 	if (!shapes[0].contiguous())
 		throw std::runtime_error("Contiguous seed required.");
-	PtrVector<Seed_set_callback> v;
-	v.push_back(new Seed_set_callback(data_, size_t(max_coverage*pow(Reduction::reduction.size(), shapes[0].length_))));
+	PtrVector<SeedSetCallback> v;
+	v.push_back(new SeedSetCallback(data_, size_t(max_coverage*pow(Reduction::reduction.size(), shapes[0].length_))));
 	const auto p = seqs.seqs().partition(1);
-	const EnumCfg cfg{ &p, 0, 1, SeedEncoding::CONTIGUOUS, skip, true, false, seed_cut, soft_masking, 0, false, false };
+	const EnumCfg cfg{ &p, 0, 1, SeedEncoding::CONTIGUOUS, skip, true, false, seed_cut, soft_masking, 0, false, false, 0 };
 	enum_seeds(seqs, v, &no_filter, cfg);
 	coverage_ = (double)v.back().coverage / pow(Reduction::reduction.size(), shapes[0].length_);
 }
 
-struct Hashed_seed_set_callback
+struct HashedSeedSetCallback
 {
-	Hashed_seed_set_callback(PtrVector<HashSet<Modulo2, Identity>> &dst):
+	HashedSeedSetCallback(PtrVector<HashSet<Modulo2, Identity>> &dst):
 		dst(dst)
 	{}
 	bool operator()(uint64_t seed, uint64_t pos, uint32_t block_id, uint64_t shape)
@@ -96,10 +94,10 @@ HashedSeedSet::HashedSeedSet(Block &seqs, const std::vector<bool>* skip, const d
 {
 	for (size_t i = 0; i < shapes.count(); ++i)
 		data_.push_back(new Table(next_power_of_2(seqs.seqs().letters() * HASH_TABLE_FACTOR)));
-	PtrVector<Hashed_seed_set_callback> v;
-	v.push_back(new Hashed_seed_set_callback(data_));
+	PtrVector<HashedSeedSetCallback> v;
+	v.push_back(new HashedSeedSetCallback(data_));
 	const auto p = seqs.seqs().partition(1);
-	const EnumCfg cfg{ &p, 0, shapes.count(), SeedEncoding::HASHED, skip, false, false, seed_cut, soft_masking, 0, false, false };
+	const EnumCfg cfg{ &p, 0, shapes.count(), SeedEncoding::HASHED, skip, false, false, seed_cut, soft_masking, 0, false, false, 0 };
 	enum_seeds(seqs, v, &no_filter, cfg);
 
 	vector<size_t> sizes;

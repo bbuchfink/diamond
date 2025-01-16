@@ -20,28 +20,26 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#include <fstream>
 #include <iostream>
 #include <thread>
-#include "sequence_file.h"
-#include "../masking/masking.h"
-#include "reference.h"
-#include "dmnd/dmnd.h"
-#include "../util/system/system.h"
-#include "../util/util.h"
-#include "../util/algo/partition.h"
-#include "../util/sequence/sequence.h"
-#include "../util/parallel/multiprocessing.h"
-#include "../basic/config.h"
-#include "fasta/fasta_file.h"
-#include "../util/string/tokenizer.h"
-#include "../util/tsv/file.h"
 #define _REENTRANT
-#include "../lib/ips4o/ips4o.hpp"
+#include "ips4o/ips4o.hpp"
 #ifdef WITH_BLASTDB
 #include "blastdb/blastdb.h"
 #endif
+#include "sequence_file.h"
+#include "masking/masking.h"
+#include "dmnd/dmnd.h"
+#include "util/system/system.h"
+#include "util/sequence/sequence.h"
+#include "util/parallel/multiprocessing.h"
+#include "basic/config.h"
+#include "fasta/fasta_file.h"
+#include "util/string/tokenizer.h"
+#include "util/tsv/tsv.h"
+#include "util/log_stream.h"
 
+using std::string;
 using std::cout;
 using std::endl;
 using std::setw;
@@ -56,6 +54,7 @@ using std::tuple;
 using std::get;
 using std::unique_ptr;
 using std::function;
+using std::vector;
 using namespace Util::Tsv;
 
 static constexpr int64_t CHECK_FOR_DNA_COUNT = 10;
@@ -204,6 +203,7 @@ static int frame_mask() {
 }
 
 std::pair<Block*, int64_t> SequenceFile::load_onepass(const int64_t max_letters, const BitVector* filter, LoadFlags flags) {
+	static const char* DNA_ERR = "The sequences are expected to be proteins but only contain DNA letters. Use the option --ignore-warnings to proceed.";
 	vector<Letter> seq;
 	string id;
 	vector<char> qual;
@@ -212,8 +212,10 @@ std::pair<Block*, int64_t> SequenceFile::load_onepass(const int64_t max_letters,
 	const bool load_seqs = flag_any(flags, LoadFlags::SEQS), load_titles = flag_any(flags, LoadFlags::TITLES), preserve_dna = flag_any(flags,LoadFlags::DNA_PRESERVATION);
 	vector<char>* q = flag_any(flags, LoadFlags::QUALITY) ? &qual : nullptr;
 	OId oid = tell_seq();
+	const bool first_block = oid == 0;
 	const int frame_mask = ::frame_mask();
 	const int64_t modulo = file_count();
+	int looks_like_dna = 0;
 	do {
 		if (!read_seq(seq, id, q))
 			break;
@@ -227,9 +229,14 @@ std::pair<Block*, int64_t> SequenceFile::load_onepass(const int64_t max_letters,
 		letters += block->push_back(Sequence(seq), load_titles ? id.c_str() : nullptr, q, oid++, this->value_traits_.seq_type, frame_mask, !preserve_dna);
 
         ++seq_count;
-		if (seq_count <= CHECK_FOR_DNA_COUNT && value_traits_.seq_type == SequenceType::amino_acid && Util::Seq::looks_like_dna(Sequence(seq)) && !config.ignore_warnings)
-			throw std::runtime_error("The sequences are expected to be proteins but only contain DNA letters. Use the option --ignore-warnings to proceed.");
+		if (first_block && seq_count <= CHECK_FOR_DNA_COUNT && value_traits_.seq_type == SequenceType::amino_acid && Util::Seq::looks_like_dna(Sequence(seq)) && !config.ignore_warnings) {
+			++looks_like_dna;
+			if (looks_like_dna >= CHECK_FOR_DNA_COUNT)
+				throw std::runtime_error(DNA_ERR);
+		}
 	} while (letters < max_letters || seq_count % modulo != 0);
+	if (seq_count > 0 && looks_like_dna == seq_count)
+		throw std::runtime_error(DNA_ERR);
 	if (file_count() == 2 && !files_synced())
 		throw std::runtime_error("Unequal number of sequences in paired read files.");
 	block->seqs_.finish_reserve();
@@ -285,7 +292,7 @@ void SequenceFile::get_seq()
 	if (!config.query_file.empty()) {
 		TextInputFile list(config.single_query_file());
 		while (list.getline(), !list.eof()) {
-			const vector<string> t(tokenize(list.line.c_str(), "\t"));
+			const vector<string> t(Util::String::tokenize(list.line.c_str(), "\t"));
 			if (t.size() != 2)
 				throw std::runtime_error("Query file format error.");
 			seq_titles[t[0]] = t[1];
@@ -305,7 +312,7 @@ void SequenceFile::get_seq()
 		TextInputFile f(config.oid_list);
 		OId oid;
 		while (f.getline(), !f.line.empty() || !f.eof()) {
-			Util::String::Tokenizer(f.line, "\t") >> oid;
+			Util::String::Tokenizer<Util::String::CharDelimiter>(f.line, Util::String::CharDelimiter('\t')) >> oid;
 			seqs.insert(oid);
 		}
 		f.close();
@@ -319,7 +326,7 @@ void SequenceFile::get_seq()
 	OutputFile out(config.output_file);
 	for (int64_t n = 0; n < sequence_count(); ++n) {
 		read_seq(seq, id);
-		std::map<string, string>::const_iterator mapped_title = seq_titles.find(Util::Seq::seqid(id.c_str(), false));
+		std::map<string, string>::const_iterator mapped_title = seq_titles.find(Util::Seq::seqid(id.c_str()));
 		if (all || seqs.find(n) != seqs.end() || mapped_title != seq_titles.end()) {
 			buf << '>' << (mapped_title != seq_titles.end() ? mapped_title->second : id) << '\n';
 			if (config.reverse) {
@@ -352,7 +359,7 @@ Util::Tsv::File* SequenceFile::make_seqid_list() {
 	init_seq_access();
 	for (int64_t n = 0; n < sequence_count(); ++n) {
 		read_seq(seq, id);
-		f->write_record(Util::Seq::seqid(id.c_str(), false));
+		f->write_record(Util::Seq::seqid(id.c_str()));
 	}
 	return f;
 }
@@ -578,9 +585,9 @@ SequenceFile::SequenceFile(Type type, Alphabet alphabet, Flags flags, FormatFlag
 void SequenceFile::write_dict_entry(size_t block, size_t oid, size_t len, const char* id, const Letter* seq, const double self_aln_score)
 {
 	OutputFile& f = *dict_file_;
-	f << (uint32_t)oid;
-	if(flag_any(format_flags_, FormatFlags::DICT_LENGTHS))
-		f << (uint32_t)len;
+	f.write((uint32_t)oid);
+	if (flag_any(format_flags_, FormatFlags::DICT_LENGTHS))
+		f.write((uint32_t)len);
 	if (flag_any(format_flags_, FormatFlags::DICT_SEQIDS)) {
 		f << id;
 		dict_alloc_size_ += strlen(id);
@@ -588,7 +595,7 @@ void SequenceFile::write_dict_entry(size_t block, size_t oid, size_t len, const 
 	if (flag_any(flags_, Flags::TARGET_SEQS))
 		f.write(seq, len);
 	if (flag_any(flags_, Flags::SELF_ALN_SCORES))
-		f << self_aln_score;
+		f.write(self_aln_score);
 }
 
 bool SequenceFile::load_dict_entry(InputFile& f, size_t ref_block)
@@ -596,15 +603,11 @@ bool SequenceFile::load_dict_entry(InputFile& f, size_t ref_block)
 	const size_t b = dict_block(ref_block);
 	uint32_t oid, len;
 	string title;
-	try {
-		f >> oid;
-	}
-	catch (EndOfStream&) {
+	if(f.read(&oid, 1) == 0)
 		return false;
-	}
 	dict_oid_[b].push_back(oid);
 	if (flag_any(format_flags_, FormatFlags::DICT_LENGTHS)) {
-		f >> len;
+		f.read(len);
 		dict_len_[b].push_back(len);
 	}
 	if (flag_any(format_flags_, FormatFlags::DICT_SEQIDS)) {
@@ -618,7 +621,7 @@ bool SequenceFile::load_dict_entry(InputFile& f, size_t ref_block)
 	}
 	if (flag_any(flags_, Flags::SELF_ALN_SCORES)) {
 		double self_aln_score;
-		f >> self_aln_score;
+		f.read(self_aln_score);
 		dict_self_aln_score_[b].push_back(self_aln_score);
 	}
 	return true;
@@ -681,7 +684,7 @@ BitVector* SequenceFile::filter_by_taxonomy(const std::string& include, const st
 	if (!include.empty() && !exclude.empty())
 		throw std::runtime_error("Options --taxonlist and --taxon-exclude are mutually exclusive.");
 	const bool e = !exclude.empty();
-	const std::set<TaxId> taxon_filter_list(parse_csv(e ? exclude : include));
+	const std::set<TaxId> taxon_filter_list(Util::String::parse_csv(e ? exclude : include));
 	if (taxon_filter_list.empty())
 		throw std::runtime_error("Option --taxonlist/--taxon-exclude used with empty list.");
 	if (taxon_filter_list.find(1) != taxon_filter_list.end() || taxon_filter_list.find(0) != taxon_filter_list.end())
@@ -699,7 +702,7 @@ void SequenceFile::build_acc_to_oid() {
 	string id;
 	for (OId i = 0; i < sequence_count(); ++i) {
 		read_seq(seq, id);
-		acc2oid_[Util::Seq::seqid(id.c_str(), false)] = i;
+		acc2oid_[Util::Seq::seqid(id.c_str())] = i;
 	}
 }
 
@@ -799,7 +802,7 @@ pair<int64_t, int64_t> SequenceFile::read_fai_file(const string& file_name, int6
 	Loc len;
 	TextInputFile fai(file_name);
 	while (fai.getline(), !fai.line.empty() || !fai.eof()) {
-		Util::String::Tokenizer(fai.line, "\t") >> acc >> len;
+		Util::String::Tokenizer<Util::String::CharDelimiter>(fai.line, Util::String::CharDelimiter('\t')) >> acc >> len;
 		if (flag_any(flags_, Flags::ACC_TO_OID_MAPPING))
 			acc2oid_[acc] = seqs;
 		//if (flag_any(flags_, Flags::OID_TO_ACC_MAPPING))
@@ -830,26 +833,16 @@ void db_info() {
 
 void prep_db() {
 	config.database.require();
-	if (is_blast_db(config.database)) {
+	if (is_blast_db(config.database))
 #ifdef WITH_BLASTDB
 		BlastDB::prep_blast_db(config.database);
-#else
-		;
-#endif
-	}
-#ifdef EXTRA
-	else if (DatabaseFile::is_diamond_db(auto_append_extension_if_exists(config.database, DatabaseFile::FILE_EXTENSION)))
-		DatabaseFile::prep_db();
 	else
-		FastaFile::prep_db(config.database);
-#else
-	else
-		throw runtime_error("Database file is not a BLAST database");
 #endif
+		throw runtime_error("No BLAST protein database was found at the specified path.");
 }
 
 void SequenceFile::add_seqid_mapping(const std::string& id, OId oid) {
-	const string acc = Util::Seq::seqid(id.c_str(), false);
+	const string acc = Util::Seq::seqid(id.c_str());
 	if (flag_any(flags_, Flags::ACC_TO_OID_MAPPING)) {
 		if (oid != (OId)acc2oid_.size())
 			throw runtime_error("add_seqid_mapping");

@@ -17,13 +17,14 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #pragma once
-#include <array>
 #include <vector>
 #include "seed_histogram.h"
-#include "../search/seed_complexity.h"
+#include "search/seed_complexity.h"
 #include "flags.h"
 
+#ifndef __sparc__
 #pragma pack(1)
+#endif
 
 struct Block;
 
@@ -75,10 +76,10 @@ struct SeedArray
 
 
 	template<typename Filter>
-	SeedArray(Block &seqs, const ShapeHistogram &hst, const SeedPartitionRange &range, char *buffer, const Filter* filter, const EnumCfg& enum_cfg);
+	SeedArray(Block &seqs, const ShapeHistogram &hst, const SeedPartitionRange &range, int seedp_bits, char *buffer, const Filter* filter, const EnumCfg& enum_cfg);
 
 	template<typename Filter>
-	SeedArray(Block& seqs, const SeedPartitionRange& range, const Filter* filter, EnumCfg& cfg);
+	SeedArray(Block& seqs, const SeedPartitionRange& range, int seedp_bits, const Filter* filter, EnumCfg& cfg);
 
 	Entry* begin(unsigned i)
 	{
@@ -106,8 +107,8 @@ struct SeedArray
 	}
 
 	size_t size() const {
-		if(data_)
-			return begin_[Const::seedp];
+		if (data_)
+			return begin_.back();
 		else {
 			size_t n = 0;
 			for (const auto& v : entries_)
@@ -127,8 +128,8 @@ struct SeedArray
 private:
 
 	Entry *data_;
-	size_t begin_[Const::seedp + 1];
-	std::array<std::vector<Entry>, Const::seedp> entries_;
+	std::vector<int64_t> begin_;
+	std::vector<std::vector<Entry>> entries_;
 	Search::SeedStats stats_;
 
 };

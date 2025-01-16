@@ -1,9 +1,9 @@
 /****
 DIAMOND protein aligner
-Copyright (C) 2016-2020 Max Planck Society for the Advancement of Science e.V.
+Copyright (C) 2016-2024 Max Planck Society for the Advancement of Science e.V.
                         Benjamin Buchfink
 						
-Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
+Code developed by Benjamin Buchfink <buchfink@gmail.com>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -21,58 +21,33 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
 #pragma once
-#include <vector>
+#include <string.h>
 #include <utility>
 #include <iterator>
-#include <string.h>
 #include <assert.h>
-#include "stream_entity.h"
-#include "../algo/varint.h"
+#include "input_stream_buffer.h"
 #include "../system/endianness.h"
 
-struct DynamicRecordReader;
+struct Deserializer {
 
-struct Deserializer
-{
-
-	enum { VARINT = 1 };
-
-	Deserializer(StreamEntity* buffer);
+	Deserializer(InputStreamBuffer* buffer);
 	void rewind();
 	Deserializer& seek(int64_t pos);
 	void seek_forward(size_t n);
 	bool seek_forward(char delimiter);
 	void close();
 
-	Deserializer(const char *begin, const char *end, int flags = 0):
-		varint(flags & VARINT),
-		buffer_(NULL),
-		begin_(begin),
-		end_(end)
-	{}
-
 	Deserializer& operator>>(unsigned &x)
 	{
-		if (varint)
-			read_varint(*this, x);
-		else {
-			read(x);
-			x = big_endian_byteswap(x);
-		}
+		read(x);
+		x = big_endian_byteswap(x);
 		return *this;
 	}
 
 	Deserializer& operator>>(int32_t &x)
 	{
-		if (varint) {
-			uint32_t i;
-			read_varint(*this, i);
-			x = (int32_t)i;
-		}
-		else {
-			read(x);
-			x = big_endian_byteswap(x);
-		}
+		read(x);
+		x = big_endian_byteswap(x);
 		return *this;
 	}
 
@@ -115,7 +90,7 @@ struct Deserializer
 		return *this;
 	}
 
-	Deserializer& operator>>(std::string &s)
+	Deserializer& operator>>(std::string& s)
 	{
 		s.clear();
 		if (!read_to(std::back_inserter(s), '\0'))
@@ -123,61 +98,30 @@ struct Deserializer
 		return *this;
 	}
 
-	Deserializer& operator>>(std::vector<std::string> &v)
+	template<typename T>
+	void read(T &x)
 	{
-		uint32_t n;
-		varint = false;
-		*this >> n;
-		v.clear();
-		v.reserve(n);
-		std::string s;
-		for (uint32_t i = 0; i < n; ++i) {
-			*this >> s;
-			v.push_back(std::move(s));
+		if (avail() >= (int64_t)sizeof(T)) {
+#ifdef __sparc__
+			std::copy(buffer_->begin, buffer_->begin + sizeof(T), (char*)&x);
+#else
+			x = *(const T*)buffer_->begin;
+#endif
+			buffer_->begin += sizeof(T);
 		}
-		return *this;
-	}
-
-	Deserializer& operator>>(std::vector<int32_t> &v)
-	{
-		int32_t n, x;
-		*this >> n;
-		v.clear();
-		v.reserve(n);
-		for (int32_t i = 0; i < n; ++i) {
-			*this >> x;
-			v.push_back(x);
-		}
-		return *this;
-	}
-
-	template<typename Type1, typename Type2>
-	Deserializer& operator>>(std::pair<Type1, Type2>& p) {
-		*this >> p.first;
-		*this >> p.second;
-		return *this;
-	}
-
-	template<typename _t>
-	void read(_t &x)
-	{
-		if (avail() >= sizeof(_t)) {
-			x = *(const _t*)begin_;
-			begin_ += sizeof(_t);
-		}
-		else if (read_raw((char*)&x, sizeof(_t)) != sizeof(_t))
+		else if (read_raw((char*)&x, sizeof(T)) != sizeof(T))
 			throw EndOfStream();
 	}
 
-	template<class _t>
-	size_t read(_t *ptr, size_t count)
+	template<class T>
+	size_t read(T *ptr, size_t count)
 	{
-		return read_raw((char*)ptr, count*sizeof(_t)) / sizeof(_t);
+		return read_raw((char*)ptr, count*sizeof(T)) / sizeof(T);
 	}
 
 	const char* data() const
 	{
-		return begin_;
+		return buffer_->begin;
 	}
 
 	template<typename It>
@@ -185,64 +129,75 @@ struct Deserializer
 	{
 		int d = delimiter;
 		do {
-			const char* p = (const char*)memchr((void*)begin_, d, avail());
+			const char* p = (const char*)memchr((void*)buffer_->begin, d, avail());
 			if (p == 0) {
-				std::copy(begin_, end_, dst);
+				std::copy(buffer_->begin, buffer_->end, dst);
 			}
 			else {
-				const size_t n = p - begin_;
-				std::copy(begin_, begin_ + n, dst);
-				begin_ += n + 1;
+				const size_t n = p - buffer_->begin;
+				std::copy(buffer_->begin, buffer_->begin + n, dst);
+				buffer_->begin += n + 1;
 				return true;
 			}
-		} while (fetch());
+		} while (buffer_->fetch());
 		return false;
 	}
 
 	template<typename It>
-	void read_raw(size_t count, It out)
+	std::pair<bool, int64_t> read_to(It dst, char line_delimiter, char record_start)
 	{
-		if (count <= avail()) {
-			pop(count, out);
-			return;
-		}
+		int d = line_delimiter;
+		int64_t nl = 0;
 		do {
-			const size_t n = std::min(count, avail());
-			pop(n, out);
-			count -= n;
-			if (avail() == 0)
-				fetch();
-		} while (count > 0 && avail() > 0);
+			const char* p = (const char*)memchr((void*)buffer_->begin, d, avail());
+			if (p == nullptr) {
+				std::copy(buffer_->begin, buffer_->end, dst);
+				if (!buffer_->fetch())
+					return { false,nl };
+			}
+			else {
+				++nl;
+				if (p + 1 < buffer_->begin + avail()) {
+					if (p[1] == record_start) {
+						const size_t n = p - buffer_->begin;
+						std::copy(buffer_->begin, buffer_->begin + n, dst);
+						buffer_->begin += n + 1;
+						return { true,nl };
+					}
+					else {
+						std::copy(buffer_->begin, p + 1, dst);
+						buffer_->begin = p + 1;
+					}
+				}
+				else {
+					std::copy(buffer_->begin, p, dst);
+					if (!buffer_->fetch())
+						return { false,nl };
+					if (buffer_->begin[0] == record_start)
+						return { true,nl };
+					else
+						*dst++ = line_delimiter;
+				}
+			}
+		} while (true);
 	}
 
-	size_t read_raw(char *ptr, size_t count);
-	DynamicRecordReader read_record();
+	size_t read_raw(char *ptr, int64_t count);
+	std::string peek(int64_t n);
 	int64_t file_size() {
 		return buffer_->file_size();
 	}
 	~Deserializer();
 
-	bool varint;
-
 protected:
 	
-	void pop(char *dst, size_t n);
+	void pop(char *dst, int64_t n);
 
-	template<typename It>
-	void pop(size_t n, It out)
+	int64_t avail() const
 	{
-		assert(n <= avail());
-		std::copy(begin_, begin_ + n, out);
-		begin_ += n;
-	}
-
-	bool fetch();
-
-	size_t avail() const
-	{
-		return end_ - begin_;
+		return buffer_->end - buffer_->begin;
 	}
 	
-	StreamEntity *buffer_;
-	const char *begin_, *end_;
+	InputStreamBuffer *buffer_;
+
 };

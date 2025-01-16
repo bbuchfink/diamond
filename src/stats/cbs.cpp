@@ -19,9 +19,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #include "cbs.h"
-#include "../basic/config.h"
+#include "basic/config.h"
 #include "score_matrix.h"
-#include "../masking/masking.h"
 
 using std::vector;
 
@@ -136,32 +135,6 @@ TargetMatrix::TargetMatrix(const Composition& query_comp, int query_len, const S
                 score_max = std::max(score_max, scores32[i * 32 + j]);
             }
         //std::cerr << std::endl;
-    }
-}
-
-TargetMatrix::TargetMatrix(const int16_t* query_matrix, const int16_t* target_matrix) :
-    scores(32 * AMINO_ACID_COUNT),
-    scores32(32 * AMINO_ACID_COUNT),
-    score_min(INT_MAX),
-    score_max(INT_MIN)
-{
-    const double f = (double)config.cbs_matrix_scale / (double)CBS::AVG_MATRIX_SCALE;
-    for (size_t i = 0; i < AMINO_ACID_COUNT; ++i) {
-        for (size_t j = 0; j < AMINO_ACID_COUNT; ++j)
-            if (i < 20 && j < 20) {
-                const int score = (int)std::round(((double)query_matrix[i * 20 + j] + (double)target_matrix[i * 20 + j]) * f / 2.0);
-                scores[i * 32 + j] = score;
-                scores32[i * 32 + j] = score;
-                score_min = std::min(score_min, score);
-                score_max = std::max(score_max, score);
-            }
-            else {
-                const int score = score_matrix(i, j) * config.cbs_matrix_scale;
-                scores[i * 32 + j] = score;
-                scores32[i * 32 + j] = score;
-                score_min = std::min(score_min, score);
-                score_max = std::max(score_max, score);
-            }
     }
 }
 

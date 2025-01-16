@@ -9,7 +9,6 @@ task:
   compile_script: |
     mkdir bin && cd bin
     cmake -DCMAKE_BUILD_TYPE=Release ..
-    make
+    make -j $(nproc --all)
   test_script: |
-    bin/diamond test
-    # gdb --ex=r -return-child-result -batch -ex bt --args bin/diamond test
+    cd bin && ctest -C Release

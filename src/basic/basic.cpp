@@ -20,20 +20,19 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
+#include <algorithm>
 #include "value.h"
 #include "shape_config.h"
-#include "../util/sequence/translate.h"
+#include "util/sequence/translate.h"
 #include "statistics.h"
 #include "sequence.h"
-#include "../masking/masking.h"
-#include "../util/util.h"
-#include "../stats/standard_matrix.h"
+#include "stats/standard_matrix.h"
+#include "util/log_stream.h"
 
 const char* Const::version_string = "2.1.10";
 using std::string;
 using std::vector;
 using std::count;
-
 
 const char* Const::program_name = "diamond";
 
@@ -141,9 +140,10 @@ void Translator::init(unsigned id)
 		}
 }
 
-vector<Letter> Sequence::from_string(const char* str, const ValueTraits&vt)
+vector<Letter> Sequence::from_string(const char* str, const ValueTraits&vt, int64_t line)
 {
 	vector<Letter> seq;
+	seq.reserve(strlen(str));
 	while (*str)
 		seq.push_back(vt.from_char(*(str++)));
 	return seq;
@@ -266,7 +266,7 @@ Reduction::Reduction(const char* definition_string)
 	memset(map8b_, 0, sizeof(map8b_));
 	map_[(long)MASK_LETTER] = MASK_LETTER;
 	map_[(long)STOP_LETTER] = MASK_LETTER;
-	const vector<string> tokens(tokenize(definition_string, " "));
+	const vector<string> tokens(Util::String::tokenize(definition_string, " "));
 	size_ = (unsigned)tokens.size();
 	bit_size_exact_ = log(size_) / log(2);
 	bit_size_ = (int)ceil(bit_size_exact_);

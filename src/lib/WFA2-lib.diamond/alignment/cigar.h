@@ -26,7 +26,7 @@
  *
  * PROJECT: Wavefront Alignment Algorithms
  * AUTHOR(S): Santiago Marco-Sola <santiagomsola@gmail.com>
- * DESCRIPTION: Cigar data-structure (match/mismatch/insertion/deletion)
+ * DESCRIPTION: Cigar_short data-structure (match/mismatch/insertion/deletion)
  */
 
 #ifndef CIGAR_H_

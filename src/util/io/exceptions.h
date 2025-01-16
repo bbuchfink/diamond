@@ -34,16 +34,16 @@ struct FileOpenException : public std::runtime_error
 	{ }
 };
 
-struct File_read_exception : public std::runtime_error
+struct FileReadException : public std::runtime_error
 {
-	File_read_exception(const std::string &file_name) :
+	FileReadException(const std::string &file_name) :
 		runtime_error(std::string("Error reading file ") + file_name)
 	{ }
 };
 
-struct File_write_exception : public std::runtime_error
+struct FileWriteException : public std::runtime_error
 {
-	File_write_exception(const std::string &file_name) :
+	FileWriteException(const std::string &file_name) :
 		runtime_error(std::string("Error writing file ") + file_name)
 	{ }
 };

@@ -19,10 +19,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #pragma once
+#include <math.h>
 #include <limits.h>
 #include <stdint.h>
-#include <algorithm>
-#include <math.h>
+#include <assert.h>
+#include "../intrin.h"
 
 static inline int8_t saturated_add(int8_t x, int8_t y) {
 	return (int8_t)std::max(int32_t(x) + int32_t(y), (int32_t)std::numeric_limits<int8_t>::min());
@@ -36,8 +37,9 @@ static inline int32_t saturated_add(int32_t x, int32_t y) {
 	return x + y;
 }
 
-static inline size_t bit_length(size_t x) {
-	return (size_t)ceil(log(x) / log(2)) + 1;
+static inline int bit_length(int64_t x) {
+	assert(x > 0);
+	return 64 - clz((uint64_t)x);
 }
 
 static inline uint64_t next_power_of_2(double x)
@@ -45,9 +47,9 @@ static inline uint64_t next_power_of_2(double x)
 	return 1llu << uint64_t(ceil(log(x) / log(2)));
 }
 
-template<typename _it, int N>
-bool next_combination(_it begin, _it end) {
-	_it i = begin;
+template<typename It, int N>
+bool next_combination(It begin, It end) {
+	It i = begin;
 	while (i < end) {
 		if (*i < N - 1) {
 			++(*i);

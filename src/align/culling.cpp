@@ -20,10 +20,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <algorithm>
 #include "target.h"
-#include "../basic/config.h"
-#include "../data/reference.h"
-#include "../output/recursive_parser.h"
-#include "../output/output_format.h"
+#include "basic/config.h"
+#ifdef WITH_MCL
+#include "contrib/mcl/recursive_parser.h"
+#endif
+#include "output/output_format.h"
 #include "culling.h"
 
 using std::vector;
@@ -90,7 +91,7 @@ void Match::max_hsp_culling() {
 }
 
 static void sort_targets(vector<Target>& targets) {
-	std::sort(targets.begin(), targets.end(), config.toppercent < 100.0 ? Target::comp_score : Target::comp_evalue);
+	std::sort(targets.begin(), targets.end(), config.toppercent.present() ? Target::comp_score : Target::comp_evalue);
 }
 
 template<typename It>
@@ -100,7 +101,7 @@ static It output_range(const It begin, const It end, const Search::Config& cfg) 
 	It i = begin;
 	if (i->filter_evalue == DBL_MAX)
 		return begin;
-	if (config.toppercent < 100.0) {
+	if (config.toppercent.present()) {
 		const double cutoff = std::max(top_cutoff_score(score_matrix.bitscore(begin->filter_score)), 1.0);
 		while (i < end && (score_matrix.bitscore(i->filter_score) >= cutoff))
 			++i;
@@ -116,7 +117,7 @@ static It output_range(const It begin, const It end, const Search::Config& cfg) 
 bool append_hits(vector<Target>& targets, vector<Target>::iterator begin, vector<Target>::iterator end, bool with_culling, const Search::Config& cfg) {
 	if (end <= begin)
 		return false;
-	bool new_hits = config.toppercent == 100.0 && (int64_t)targets.size() < cfg.max_target_seqs;
+	bool new_hits = config.toppercent.blank() && (int64_t)targets.size() < cfg.max_target_seqs;
 	bool append = !with_culling || new_hits;
 
 	culling(targets, append, cfg);
@@ -131,8 +132,8 @@ bool append_hits(vector<Target>& targets, vector<Target>::iterator begin, vector
 	vector<Target>::const_iterator range_end = output_range(targets.begin(), targets.end(), cfg);
 
 	if (targets.empty()
-		|| (config.toppercent == 100.0 && min_evalue <= (range_end - 1)->filter_evalue)
-		|| (config.toppercent != 100.0 && max_score >= top_cutoff_score((range_end - 1)->filter_score))) {
+		|| (config.toppercent.blank() && min_evalue <= (range_end - 1)->filter_evalue)
+		|| (config.toppercent.present() && max_score >= top_cutoff_score((range_end - 1)->filter_score))) {
 		append = true;
 		new_hits = true;
 	}
@@ -145,11 +146,13 @@ bool append_hits(vector<Target>& targets, vector<Target>::iterator begin, vector
 
 bool filter_hsp(Hsp& hsp, int source_query_len, const char *query_title, int subject_len, const char* subject_title, const Sequence& query_seq, const Sequence& subject_seq, const double query_self_aln_score, const double target_self_aln_score, const OutputFormat* output_format) {
 	bool cluster_threshold = true;
+#ifdef WITH_MCL
 	if (config.cluster_threshold.present()) {
 		HspContext context(hsp, 0, 0, TranslatedSequence(query_seq), query_title, 0, subject_len, subject_title, 0, 0, subject_seq, 0, query_self_aln_score, target_self_aln_score);
 		RecursiveParser rp(&context, dynamic_cast<const Clustering_format*>(output_format)->format.c_str());
 		cluster_threshold = rp.evaluate() >= config.cluster_threshold;
 	}
+#endif
 	const double qcov = hsp.query_cover_percent(source_query_len),
 		tcov = hsp.subject_cover_percent(subject_len),
 		approx_min_id = config.approx_min_id.get(0.0);
@@ -193,7 +196,7 @@ void apply_filters(std::vector<Match>::iterator begin, std::vector<Match>::itera
 }
 
 void culling(std::vector<Match>& targets, const Search::Config& cfg) {
-	std::sort(targets.begin(), targets.end(), config.toppercent < 100.0 ? Match::cmp_score : Match::cmp_evalue);
+	std::sort(targets.begin(), targets.end(), config.toppercent.present() ? Match::cmp_score : Match::cmp_evalue);
 	targets.erase(output_range(targets.begin(), targets.end(), cfg), targets.end());
 }
 

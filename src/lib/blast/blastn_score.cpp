@@ -3,11 +3,9 @@
 #include "blast_encoding.h"
 #include "blast_def.h"
 #include "blast_psi_priv.h"
-#include "blast/ncbi_math.h"
-#include "blast_setup.h"
 #include "ncbi_std.h"
 #include "blast_options.h"
-#include "blast_encoding.h"
+#include "ncbi_math.h"
 
 
 

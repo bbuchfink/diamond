@@ -37,7 +37,6 @@ using std::unordered_set;
 using std::ios;
 using std::ifstream;
 using std::min;
-using std::move;
 using std::max;
 using std::runtime_error;
 using std::string;
@@ -142,11 +141,11 @@ private:
 				Eigen::Triplet<T> t(query, subject, (T)value);
 				auto it = data->find(t);
 				if(it == data->end()){
-					data->emplace(move(t));
+					data->emplace(std::move(t));
 					disjointSet->merge(query, subject);
 				}
 				else if (t.value() > it->value()){
-					data->emplace_hint(data->erase(it), move(t));
+					data->emplace_hint(data->erase(it), std::move(t));
 				}
 				if(os && (data->size()*unit_size*1.0)/(1024ULL*1024*1024) > max_size){
 					dump();

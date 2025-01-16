@@ -19,12 +19,19 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#include <iostream>
 #include <algorithm>
 #include <string.h>
+#include <iostream>
 #include "command_line_parser.h"
 
-using namespace std;
+using std::string;
+using std::vector;
+using std::map;
+using std::runtime_error;
+using std::cout;
+using std::max;
+using std::endl;
+using std::pair;
 
 OptionsGroup& CommandLineParser::add_group(const char *title, const std::vector<int>& commands, bool disabled) {
 	groups_.emplace_back(title, commands, disabled, this);

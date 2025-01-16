@@ -1,6 +1,9 @@
 #include <vector>
 #include <list>
 #include "../sequence_file.h"
+#include "util/tsv/tsv.h"
+
+enum class SeqFileFormat { FASTA, FASTQ };
 
 struct FastaFile : public SequenceFile
 {
@@ -31,7 +34,7 @@ struct FastaFile : public SequenceFile
 	virtual void skip_id_data() override;
 	virtual int64_t sequence_count() const override;
 	virtual bool read_seq(std::vector<Letter>& seq, std::string& id, std::vector<char>* quals = nullptr) override;
-	virtual size_t letters() const override;
+	virtual int64_t letters() const override;
 	virtual int db_version() const override;
 	virtual int program_build_version() const override;
 	virtual Metadata metadata() const override;
@@ -51,18 +54,14 @@ struct FastaFile : public SequenceFile
 	virtual void init_write() override;
 	virtual void write_seq(const Sequence& seq, const std::string& id) override;
 
-	int64_t line_count() const;
-
-	static void prep_db(const std::string& path);
-
 private:
 
 	std::pair<int64_t, int64_t> init_read();
 
-	std::list<TextInputFile> file_;
-	std::list<TextInputFile>::iterator file_ptr_;
+	std::list<Util::Tsv::File> file_;
+	std::list<Util::Tsv::File>::iterator file_ptr_;
 	std::unique_ptr<OutputFile> out_file_;
-	std::unique_ptr<const SequenceFileFormat> format_;
+	SeqFileFormat format_;
 	OId oid_;
 	int64_t seqs_, letters_;
 	

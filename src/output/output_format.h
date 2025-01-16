@@ -21,39 +21,34 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #pragma once
-#include <algorithm>
-#include <exception>
-#include <memory>
-#include "../basic/match.h"
-#include "../output/daa/daa_file.h"
-#include "../output/daa/daa_record.h"
-#include "../util/io/output_file.h"
-#include "../stats/score_matrix.h"
-#include "../util/escape_sequences.h"
-#include "../util/io/consumer.h"
-#include "../util/enum.h"
-#include "../run/config.h"
-#include "../dp/flags.h"
-#include "../data/taxonomy.h"
+#include "basic/match.h"
+#include "dp/flags.h"
 #include "def.h"
+#include "util/sequence/sequence.h"
+#include "data/block/block.h"
+#include "util/escape_sequences.h"
+#include "basic/config.h"
+#include "data/sequence_file.h"
 
 namespace Output {
 
-struct Info {	
+struct Info {
 	SeqInfo query;
 	bool unaligned;
 	SequenceFile* db;
 	TextBuffer& out;
 	Extension::Stats stats;
-	AccessionParsing acc_stats;
+	Util::Seq::AccessionParsing acc_stats;
+	int64_t db_seqs, db_letters;
 };
 
 }
 
 struct OutputFormat
 {
-	OutputFormat(unsigned code, HspValues hsp_values = HspValues::TRANSCRIPT, Output::Flags flags = Output::Flags::NONE):
+	OutputFormat(unsigned code, HspValues hsp_values = HspValues::TRANSCRIPT, Output::Flags flags = Output::Flags::NONE, char query_separator = '\0') :
 		code(code),
+		query_separator(query_separator),
 		needs_taxon_id_lists(false),
 		needs_taxon_nodes(false),
 		needs_taxon_scientific_names(false),
@@ -80,11 +75,12 @@ struct OutputFormat
 	{
 		return code;
 	}
-	unsigned code;
+	const unsigned code;
+	const char query_separator;
 	bool needs_taxon_id_lists, needs_taxon_nodes, needs_taxon_scientific_names, needs_taxon_ranks, needs_paired_end_info;
 	HspValues hsp_values;
 	Output::Flags flags;
-	enum { daa, blast_tab, blast_xml, sam, blast_pairwise, null, taxon, paf, bin1, EDGE ,json};
+	enum { daa, blast_tab, blast_xml, sam, blast_pairwise, null, taxon, paf, bin1, EDGE, json };
 };
 
 struct Null_format : public OutputFormat
@@ -115,19 +111,19 @@ struct OutputField {
 
 enum class Header { NONE, SIMPLE, VERBOSE };
 
-struct Blast_tab_format : public OutputFormat
+struct TabularFormat : public OutputFormat
 {
-    Blast_tab_format(bool json = false);
+	TabularFormat(bool json = false);
     static const std::vector<OutputField> field_def;
     virtual void print_header(Consumer &f, int mode, const char *matrix, int gap_open, int gap_extend, double evalue, const char *first_query_name, unsigned first_query_len) const override;
     virtual void print_footer(Consumer &f) const override;
     virtual void print_query_intro(Output::Info& info) const override;
     virtual void print_match(const HspContext& r, Output::Info& info) override;
-    virtual ~Blast_tab_format()
+    virtual ~TabularFormat()
     { }
     virtual OutputFormat* clone() const override
     {
-        return new Blast_tab_format(*this);
+        return new TabularFormat(*this);
     }
     static Header header_format(unsigned workflow);
     void output_header(Consumer& f, bool cluster) const;
@@ -145,7 +141,7 @@ struct PAF_format : public OutputFormat
 	virtual void print_match(const HspContext& r, Output::Info& info) override;
 	virtual ~PAF_format()
 	{ }
-	virtual OutputFormat* clone() const
+	virtual OutputFormat* clone() const override
 	{
 		return new PAF_format(*this);
 	}
@@ -222,34 +218,6 @@ struct TaxonFormat : public OutputFormat
 	double evalue;
 };
 
-struct Bin1_format : public OutputFormat
-{
-	Bin1_format():
-		OutputFormat(bin1)
-	{}
-	virtual void print_query_intro(Output::Info& info) const override;
-	virtual void print_match(const HspContext& r, Output::Info& info) override;
-	virtual ~Bin1_format()
-	{ }
-	virtual OutputFormat* clone() const override
-	{
-		return new Bin1_format(*this);
-	}
-};
-
-struct Clustering_format : public OutputFormat
-{
-	std::string format;
-	Clustering_format(const std::string* const format);
-	virtual void print_match(const HspContext& r, Output::Info& info) override;
-	virtual ~Clustering_format()
-	{ }
-	virtual OutputFormat* clone() const override
-	{
-		return new Clustering_format(*this);
-	}
-};
-
 namespace Output { namespace Format {
 
 struct Edge : public OutputFormat
@@ -274,6 +242,6 @@ struct Edge : public OutputFormat
 }}
 
 OutputFormat* get_output_format();
-OutputFormat* init_output(const int64_t max_target_seqs);
+OutputFormat* init_output(int64_t& max_target_seqs);
 void print_hsp(Hsp &hsp, const TranslatedSequence &query);
 void print_cigar(const HspContext &r, TextBuffer &buf);

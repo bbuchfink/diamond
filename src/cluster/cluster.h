@@ -20,13 +20,14 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #pragma once
 #include <string>
 #include <vector>
-#include "../basic/value.h"
-#include "../data/sequence_file.h"
-#include "../util/data_structures/flat_array.h"
-#include "../basic/match.h"
-#include "../dp/flags.h"
-#include "../output/output_format.h"
-#include "../util/algo/algo.h"
+#include "basic/value.h"
+#include "data/sequence_file.h"
+#include "util/data_structures/flat_array.h"
+#include "basic/match.h"
+#include "dp/flags.h"
+#include "output/output_format.h"
+#include "util/algo/algo.h"
+#include "util/tsv/tsv.h"
 
 class ClusteringAlgorithm {
 public:

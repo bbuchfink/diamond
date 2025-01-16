@@ -18,9 +18,9 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-#include "../../output/output.h"
-#include "../../basic/statistics.h"
-#include "../../util/data_structures/bit_vector.h"
+#include "output/output.h"
+#include "basic/statistics.h"
+#include "util/data_structures/bit_vector.h"
 #include "../extend.h"
 #include "../target.h"
 

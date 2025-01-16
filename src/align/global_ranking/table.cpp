@@ -20,18 +20,14 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "global_ranking.h"
 #define _REENTRANT
-#include "../../lib/ips4o/ips4o.hpp"
-#include "../../search/hit.h"
-#include "../../util/data_structures/deque.h"
-#include "../../util/util.h"
-#include "../../util/algo/algo.h"
-#include "../../data/seed_array.h"
-#if _MSC_FULL_VER == 191627042
-#include "../../util/algo/merge_sort.h"
-#endif
+#include "ips4o/ips4o.hpp"
+#include "search/hit.h"
+#include "util/data_structures/deque.h"
+#include "util/util.h"
+#include "util/algo/algo.h"
+#include "dp/ungapped.h"
+#include "search/search.h"
 #include "../load_hits.h"
-#include "../dp/ungapped.h"
-#include "../search/search.h"
 
 using std::endl;
 using std::thread;

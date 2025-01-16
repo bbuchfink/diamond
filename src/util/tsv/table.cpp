@@ -1,7 +1,6 @@
 #define _REENTRANT
-#include "../../lib/ips4o/ips4o.hpp"
+#include "ips4o/ips4o.hpp"
 #include "table.h"
-#include "../sequence/sequence.h"
 #include "../algo/sort_helper.h"
 #include "../algo/transform_iterator.h"
 #include "file.h"
@@ -14,10 +13,11 @@ using std::string;
 using std::vector;
 using std::pair;
 using std::less;
-using std::move;
 using std::bind;
 using std::atomic;
 using std::thread;
+using std::unique_ptr;
+using Util::String::TokenizerBase;
 
 namespace Util { namespace Tsv {
 
@@ -29,14 +29,14 @@ Table::Table(const Schema& schema) :
 
 Table::Table(Table&& table) noexcept:
 	schema_(table.schema_),
-	data_(move(table.data_)),
-	limits_(move(table.limits_))
+	data_(std::move(table.data_)),
+	limits_(std::move(table.limits_))
 {}
 
 Table::Table(const Schema& schema, std::vector<char>&& data, std::vector<int64_t>&& limits):
 	schema_(schema),
-	data_(move(data)),
-	limits_(move(limits))
+	data_(std::move(data)),
+	limits_(std::move(limits))
 {
 }
 
@@ -61,24 +61,21 @@ void Table::append(const Table& table) {
 		limits_.push_back(*it + d);
 }
 
-template<typename It, typename Tok>
-void Table::append(It begin, It end) {
-	LineIterator it(begin, end);
+void Table::append(const char* begin, const char* end, const TokenizerBase* tok) {
+	unique_ptr<TokenizerBase> it(tok->clone());
+	it->reset(begin, end);
 	string line;
-	while (it.good()) {
-		line = *it;
-		push_back(line.cbegin(), line.cend(), -1);
-		++it;
+	while (it->good()) {
+		line = **it;
+		push_back(line.c_str(), line.c_str() + line.length(), tok, -1);
+		++(*it);
 	}
 }
 
-template void Table::append<const char*, TokenIterator<string::const_iterator, '\t'>>(const char*, const char*);
-//template Table::Table<const char*, TokenIterator<string::const_iterator, '\t'>>(const Schema&, const char*, const char*);
-
 Table& Table::operator=(Table&& table) noexcept {
 	schema_ = table.schema_;
-	limits_ = move(table.limits_);
-	data_ = move(table.data_);
+	limits_ = std::move(table.limits_);
+	data_ = std::move(table.data_);
 	return *this;
 }
 
@@ -87,35 +84,32 @@ void Table::push_back(const Record& record) {
 	data_.insert(data_.end(), record.buf_, record.end_);
 }
 
-template<typename It, typename Tok>
-void Table::push_back(It begin, It end, RecordId record_id) {
-	Tok tok(begin, end);
+void Table::push_back(const char* begin, const char* end, const TokenizerBase* tok, RecordId record_id) {
+	unique_ptr<TokenizerBase> it(tok->clone());
+	it->reset(begin, end);
 	Schema::const_iterator i = schema_.cbegin();
 	limits_.push_back(limits_.back());
 	if (record_id >= 0) {
 		++i;
 		push(record_id);
 	}
-	while (tok.good() && i < schema_.cend()) {
+	while (it->good() && i < schema_.cend()) {
 		switch (*i) {
 		case Type::STRING:
-			push(*tok);
+			push(**it);
 			break;
 		case Type::INT64:
-			push(convert_string<int64_t>(*tok));
+			push(Util::String::convert_string<int64_t>(**it));
 			break;
 		default:
 			throw runtime_error("Invalid type in schema");
 		}
-		++tok;
+		++(*it);
 		++i;
 	}
 	if (i < schema_.cend())
 		throw runtime_error("Missing fields in input line");
 }
-
-template void Table::push_back<string::const_iterator, TokenIterator<string::const_iterator, '\t'>>(string::const_iterator, string::const_iterator, RecordId);
-template void Table::push_back<const char*, LineIterator>(const char*, const char*, RecordId);
 
 void Table::push(const std::string& s) {
 	push((int32_t)s.length());
@@ -165,7 +159,7 @@ void Table::map(int threads, std::function<Table(const Record&)>& f, File& out) 
 	atomic<int64_t> next(0);
 	auto worker = [&]() {
 		for (;;) {
-			const int64_t p = next++;
+			const int64_t p = next.fetch_add(1, std::memory_order_relaxed);
 			if (p * BATCH_SIZE >= size())
 				break;
 			TextBuffer* buf = new TextBuffer;

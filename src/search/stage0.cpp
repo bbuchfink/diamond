@@ -23,18 +23,20 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <utility>
 #include <atomic>
 #include "search.h"
-#include "../util/algo/hash_join.h"
-#include "../util/algo/radix_sort.h"
-#include "../data/reference.h"
-#include "../data/seed_array.h"
-#include "../data/queries.h"
-#include "../data/frequent_seeds.h"
-#include "../util/data_structures/double_array.h"
-#include "../util/system/system.h"
-#include "../util/data_structures/deque.h"
-#include "../util/util.h"
-#include "../util/async_buffer.h"
+#include "data/seed_array.h"
+#include "data/frequent_seeds.h"
+#include "util/data_structures/double_array.h"
+#include "util/system/system.h"
+#include "util/data_structures/deque.h"
+#include "util/async_buffer.h"
+#include "basic/seed.h"
 #include "seed_complexity.h"
+#include "util/algo/partition.h"
+#include "data/block/block.h"
+#include "basic/shape_config.h"
+#include "data/queries.h"
+#include "util/algo/radix_cluster.h"
+#include "util/algo/hash_join.h"
 
 using std::vector;
 using std::atomic;
@@ -49,15 +51,15 @@ static void seed_join_worker(
 	SeedArray<SeedLoc> *query_seeds,
 	SeedArray<SeedLoc> *ref_seeds,
 	atomic<unsigned> *seedp,
-	const SeedPartitionRange *seedp_range,
+	SeedPartition partition_count,
 	DoubleArray<SeedLoc> *query_seed_hits,
 	DoubleArray<SeedLoc> *ref_seeds_hits)
 {
-	int p;
+	SeedPartition p;
 	const int bits = query_seeds->key_bits;
 	if (bits != ref_seeds->key_bits)
 		throw std::runtime_error("Joining seed arrays with different key lengths.");
-	while ((p = (*seedp)++) < seedp_range->end()) {
+	while ((p = seedp->fetch_add(1, std::memory_order_relaxed)) < partition_count) {
 		std::pair<DoubleArray<SeedLoc>, DoubleArray<SeedLoc>> join = hash_join(
 			Relation<typename SeedArray<SeedLoc>::Entry>(query_seeds->begin(p), query_seeds->size(p)),
 			Relation<typename SeedArray<SeedLoc>::Entry>(ref_seeds->begin(p), ref_seeds->size(p)),
@@ -68,20 +70,16 @@ static void seed_join_worker(
 }
 
 template<typename SeedLoc>
-static void search_worker(atomic<unsigned> *seedp, const SeedPartitionRange *seedp_range, unsigned shape, size_t thread_id, DoubleArray<SeedLoc> *query_seed_hits, DoubleArray<SeedLoc> *ref_seed_hits, const Search::Context *context, const Search::Config* cfg)
+static void search_worker(atomic<SeedPartition> *seedp, SeedPartition partition_count, unsigned shape, size_t thread_id, DoubleArray<SeedLoc> *query_seed_hits, DoubleArray<SeedLoc> *ref_seed_hits, const Search::Context *context, const Search::Config* cfg)
 {
 	unique_ptr<Writer<Hit>> writer;
 	if (config.global_ranking_targets)
 		writer.reset(new AsyncWriter<Hit, Search::Config::RankingBuffer::EXPONENT>(*cfg->global_ranking_buffer));
 	else
 		writer.reset(new AsyncBuffer<Hit>::Iterator(*cfg->seed_hit_buf, thread_id));
-#ifdef __APPLE__
-	unique_ptr<Search::WorkSet> work_set(new Search::WorkSet{ *context, *cfg, shape, {}, writer.get(), {}, context->kmer_ranking });
-#else
-	unique_ptr<Search::WorkSet> work_set(new Search::WorkSet{ *context, *cfg, shape, {}, writer.get(), {}, {}, {}, context->kmer_ranking });
-#endif
-	int p;
-	while ((p = (*seedp)++) < seedp_range->end()) {
+	unique_ptr<Search::WorkSet> work_set(new Search::WorkSet(*context, *cfg, shape, writer.get(), context->kmer_ranking));
+	SeedPartition p;
+	while ((p = seedp->fetch_add(1, std::memory_order_relaxed)) < partition_count) {
 		auto it = JoinIterator<SeedLoc>(query_seed_hits[p].begin(), ref_seed_hits[p].begin());
 		run_stage1(it, work_set.get(), cfg);
 	}
@@ -92,8 +90,7 @@ template<typename SeedLoc>
 void search_shape(unsigned sid, int query_block, unsigned query_iteration, char *query_buffer, char *ref_buffer, Search::Config& cfg, const HashedSeedSet* target_seeds)
 {
 	using SA = SeedArray<SeedLoc>;
-	Partition<unsigned> p(Const::seedp, cfg.index_chunks);
-	DoubleArray<SeedLoc> query_seed_hits[Const::seedp], ref_seed_hits[Const::seedp];
+	Partition<SeedPartition> p((SeedPartition)seedp_count(cfg.seedp_bits), cfg.index_chunks);
 	log_rss();
 	SequenceSet& ref_seqs = cfg.target->seqs(), &query_seqs = cfg.query->seqs();
 	const SeedHistogram& ref_hst = cfg.target->hst(), query_hst = cfg.query->hst();
@@ -114,25 +111,26 @@ void search_shape(unsigned sid, int query_block, unsigned query_iteration, char 
 		SA *ref_idx;
 		const EnumCfg enum_ref{ &ref_hst.partition(), sid, sid + 1, cfg.seed_encoding, nullptr, false, false, cfg.seed_complexity_cut,
 			query_seeds_bitset.get() || (bool)query_seeds_hashed ? MaskingAlgo::NONE : cfg.soft_masking,
-			cfg.minimizer_window, false, false };
+			cfg.minimizer_window, false, false, cfg.sketch_size };
 		if (query_seeds_bitset.get())
-			ref_idx = new SA(*cfg.target, ref_hst.get(sid), range, ref_buffer, query_seeds_bitset.get(), enum_ref);
+			ref_idx = new SA(*cfg.target, ref_hst.get(sid), range, cfg.seedp_bits, ref_buffer, query_seeds_bitset.get(), enum_ref);
 		else if (query_seeds_hashed.get())
-			ref_idx = new SA(*cfg.target, ref_hst.get(sid), range, ref_buffer, query_seeds_hashed.get(), enum_ref);
+			ref_idx = new SA(*cfg.target, ref_hst.get(sid), range, cfg.seedp_bits, ref_buffer, query_seeds_hashed.get(), enum_ref);
 			//ref_idx = new SeedArray(ref_seqs, sid, range, query_seeds_hashed.get(), true);
 		else
-			ref_idx = new SA(*cfg.target, ref_hst.get(sid), range, ref_buffer, &no_filter, enum_ref);
+			ref_idx = new SA(*cfg.target, ref_hst.get(sid), range, cfg.seedp_bits, ref_buffer, &no_filter, enum_ref);
 		timer.finish();
 		log_rss();
 
 		timer.go("Building query seed array");
 		SA* query_idx;
 		EnumCfg enum_query{ target_seeds ? nullptr : &query_hst.partition(), sid, sid + 1, cfg.seed_encoding, cfg.query_skip.get(),
-			false, true, cfg.seed_complexity_cut, cfg.soft_masking, cfg.minimizer_window, static_cast<bool>(query_seeds_hashed.get()), static_cast<bool>(query_seeds_hashed.get()) };
+			false, true, cfg.seed_complexity_cut, cfg.soft_masking, cfg.minimizer_window, static_cast<bool>(query_seeds_hashed.get()),
+			static_cast<bool>(query_seeds_hashed.get()), cfg.sketch_size };
 		if (target_seeds)
-			query_idx = new SA(*cfg.query, range, target_seeds, enum_query);
+			query_idx = new SA(*cfg.query, range, cfg.seedp_bits, target_seeds, enum_query);
 		else
-			query_idx = new SA(*cfg.query, query_hst.get(sid), range, query_buffer, &no_filter, enum_query);
+			query_idx = new SA(*cfg.query, query_hst.get(sid), range, cfg.seedp_bits, query_buffer, &no_filter, enum_query);
 		timer.finish();
 		log_rss();
 
@@ -144,10 +142,11 @@ void search_shape(unsigned sid, int query_block, unsigned query_iteration, char 
 			<< ", " << Util::String::ratio_percentage(ref_idx->stats().low_complexity_seeds, ref_idx->stats().good_seed_positions) << endl;*/
 
 		timer.go("Computing hash join");
-		atomic<unsigned> seedp(range.begin());
+		atomic<SeedPartition> seedp(0);
 		vector<std::thread> threads;
+		vector<DoubleArray<SeedLoc>> query_seed_hits(range.size()), ref_seed_hits(range.size());
 		for (int i = 0; i < config.threads_; ++i)
-			threads.emplace_back(seed_join_worker<SeedLoc>, query_idx, ref_idx, &seedp, &range, query_seed_hits, ref_seed_hits);
+			threads.emplace_back(seed_join_worker<SeedLoc>, query_idx, ref_idx, &seedp, range.size(), query_seed_hits.data(), ref_seed_hits.data());
 		for (auto &t : threads)
 			t.join();
 		timer.finish();
@@ -155,16 +154,16 @@ void search_shape(unsigned sid, int query_block, unsigned query_iteration, char 
 
 		if(config.freq_masking && !config.lin_stage1 && !cfg.lin_stage1_target) {
 			timer.go("Building seed filter");
-			frequent_seeds.build(sid, range, query_seed_hits, ref_seed_hits, cfg);
+			frequent_seeds.build(sid, range, query_seed_hits.data(), ref_seed_hits.data(), cfg);
 		}
 		else
-			Search::mask_seeds(shapes[sid], range, query_seed_hits, ref_seed_hits, cfg);
+			Search::mask_seeds(shapes[sid], range, query_seed_hits.data(), ref_seed_hits.data(), cfg);
 
 		log_rss();
 		unique_ptr<KmerRanking> kmer_ranking;
 		if (keep_target_id(cfg) && config.lin_stage1) {
 			timer.go("Building kmer ranking");
-			kmer_ranking.reset(config.kmer_ranking ? new KmerRanking(cfg.query->seqs(), query_seed_hits, ref_seed_hits)
+			kmer_ranking.reset(config.kmer_ranking ? new KmerRanking(cfg.query->seqs(), range.size(), query_seed_hits.data(), ref_seed_hits.data())
 				: new KmerRanking(cfg.query->seqs()));
 		}
 
@@ -173,14 +172,15 @@ void search_shape(unsigned sid, int query_block, unsigned query_iteration, char 
 		context = new Search::Context{ {patterns.data(), patterns.data() + patterns.size() - 1 },
 			{patterns.data(), patterns.data() + patterns.size() },
 			score_matrix.rawscore(config.short_query_ungapped_bitscore),
-			kmer_ranking.get()
+			kmer_ranking.get(),
+			seedp_mask(cfg.seedp_bits)
 		};
 
 		timer.go("Searching alignments");
-		seedp = range.begin();
+		seedp = 0;
 		threads.clear();
 		for (int i = 0; i < config.threads_; ++i)
-			threads.emplace_back(search_worker<SeedLoc>, &seedp, &range, sid, i, query_seed_hits, ref_seed_hits, context, &cfg);
+			threads.emplace_back(search_worker<SeedLoc>, &seedp, range.size(), sid, i, query_seed_hits.data(), ref_seed_hits.data(), context, &cfg);
 		for (auto &t : threads)
 			t.join();
 		timer.finish();

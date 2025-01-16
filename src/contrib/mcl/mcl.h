@@ -39,6 +39,34 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../../cluster/cluster.h"
 #include "sparse_matrix_stream.h"
 
+struct Bin1_format : public OutputFormat
+{
+	Bin1_format() :
+		OutputFormat(bin1)
+	{}
+	virtual void print_query_intro(Output::Info& info) const override;
+	virtual void print_match(const HspContext& r, Output::Info& info) override;
+	virtual ~Bin1_format()
+	{ }
+	virtual OutputFormat* clone() const override
+	{
+		return new Bin1_format(*this);
+	}
+};
+
+struct Clustering_format : public OutputFormat
+{
+	std::string format;
+	Clustering_format(const std::string* const format);
+	virtual void print_match(const HspContext& r, Output::Info& info) override;
+	virtual ~Clustering_format()
+	{ }
+	virtual OutputFormat* clone() const override
+	{
+		return new Clustering_format(*this);
+	}
+};
+
 namespace Workflow { namespace Cluster{
 class MCL: public ClusteringAlgorithm {
 private:

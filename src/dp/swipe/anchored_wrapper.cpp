@@ -1,11 +1,30 @@
+/****
+DIAMOND protein aligner
+Copyright (C) 2019-2024 Max Planck Society for the Advancement of Science e.V.
+
+Code developed by Benjamin Buchfink <buchfink@gmail.com>
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+****/
+
 #include <memory>
+#include <numeric>
 #include "../dp.h"
 #include "anchored.h"
 #include "../score_profile.h"
-#include "../score_vector_int8.h"
-#include "../score_vector_int16.h"
-#include "../dp/ungapped.h"
-#include "../util/simd/dispatch.h"
+#include "util/simd/dispatch.h"
+#include "stats/score_matrix.h"
 
 using std::list;
 using std::vector;
@@ -190,7 +209,9 @@ list<Hsp> anchored_swipe(Targets& targets, const DP::AnchoredSwipe::Config& cfg)
 			if (t.anchor.score == 0)
 				continue;
 			int score = t.anchor.score, i0 = t.anchor.query_begin(), i1 = t.anchor.query_end(), j0 = t.anchor.subject_begin(), j1 = t.anchor.subject_end();
+#ifdef DP_STAT
 			int64_t gross_cells = 0, net_cells = 0;
+#endif
 			if (t.extend_right(cfg.query.length())) {
 				score += target_it->score;
 				i1 += target_it->query_end;
@@ -225,9 +246,11 @@ list<Hsp> anchored_swipe(Targets& targets, const DP::AnchoredSwipe::Config& cfg)
 				out.back().query_range = { i0,i1 };
 				out.back().query_source_range = out.back().query_range;
                 out.back().subject_range = { j0,j1 };
-                out.back().subject_source_range = out.back().subject_range;
+				out.back().subject_source_range = out.back().subject_range;
+#ifdef DP_STAT
 				out.back().reserved1 = (int)gross_cells; // stats.gross_cells;
 				out.back().reserved2 = (int)net_cells; // stats.net_cells;
+#endif
 				out.back().approx_id = out.back().approx_id_percent(cfg.query, t.seq);
 			}
 		}

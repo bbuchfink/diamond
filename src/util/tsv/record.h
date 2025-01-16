@@ -1,6 +1,6 @@
 #pragma once
 #include <stdint.h>
-#include <cstddef>
+#include <stddef.h>
 #include "def.h"
 #include "../text_buffer.h"
 

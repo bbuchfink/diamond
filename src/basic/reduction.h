@@ -24,7 +24,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <vector>
 #include <array>
 #include <string>
-#include <string.h>
 #include "value.h"
 #include "sequence.h"
 
@@ -102,6 +101,6 @@ private:
 	unsigned size_;
 	int bit_size_;
 	double bit_size_exact_;
-	std::array<double, 20> freq_;
+	std::array<double, TRUE_AA> freq_;
 
 };

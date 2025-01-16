@@ -21,13 +21,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #pragma once
+#include <cstddef>
 #include <assert.h>
 #include <vector>
-#include <stddef.h>
-#include "../basic/sequence.h"
-#include "../util/algo/binary_search.h"
+#include <algorithm>
 
-template<typename T, char _pchar, size_t _padding = 1lu>
+template<typename T, char padding_char, size_t padding_len = 1lu>
 struct StringSetBase
 {
 
@@ -36,10 +35,10 @@ struct StringSetBase
 	using Pos = int64_t;
 
 	enum { PERIMETER_PADDING = 256 };
-	static const char DELIMITER = _pchar;
+	static const char DELIMITER = padding_char;
 
 	StringSetBase():
-		data_ (PERIMETER_PADDING, _pchar)
+		data_ (PERIMETER_PADDING, padding_char)
 	{
 		limits_.push_back(PERIMETER_PADDING);
 	}
@@ -47,17 +46,17 @@ struct StringSetBase
 	void finish_reserve()
 	{
 		data_.resize(raw_len() + PERIMETER_PADDING);
-		std::fill(data_.begin() + raw_len(), data_.end(), _pchar);
+		std::fill(data_.begin() + raw_len(), data_.end(), padding_char);
 	}
 
 	void reserve(size_t n)
 	{
-		limits_.push_back(raw_len() + n + _padding);
+		limits_.push_back(raw_len() + n + padding_len);
 	}
 
 	void reserve(size_t entries, size_t length) {
 		limits_.reserve(entries + 1);
-		data_.reserve(length + 2 * PERIMETER_PADDING + entries * _padding);
+		data_.reserve(length + 2 * PERIMETER_PADDING + entries * padding_len);
 	}
 
 	void clear() {
@@ -74,9 +73,9 @@ struct StringSetBase
 	void push_back(_it begin, _it end)
 	{
 		assert(begin <= end);
-		limits_.push_back(raw_len() + (end - begin) + _padding);
+		limits_.push_back(raw_len() + (end - begin) + padding_len);
 		data_.insert(data_.end(), begin, end);
-		data_.insert(data_.end(), _padding, _pchar);
+		data_.insert(data_.end(), padding_len, padding_char);
 	}
 
 	void append(const StringSetBase& s) {
@@ -88,14 +87,14 @@ struct StringSetBase
 	template<typename It>
 	void assign(const size_t i, const It begin, const It end) {
 		std::copy(begin, end, ptr(i));
-		std::fill(ptr(i) + (end - begin), ptr(i) + (end - begin) + _padding, _pchar);
+		std::fill(ptr(i) + (end - begin), ptr(i) + (end - begin) + padding_len, padding_char);
 	}
 
 	void fill(size_t n, T v)
 	{
-		limits_.push_back(raw_len() + n + _padding);
+		limits_.push_back(raw_len() + n + padding_len);
 		data_.insert(data_.end(), n, v);
-		data_.insert(data_.end(), _padding, _pchar);
+		data_.insert(data_.end(), padding_len, padding_char);
 	}
 
 	T* ptr(size_t i)
@@ -105,7 +104,7 @@ struct StringSetBase
 	{ return &data_[limits_[i]]; }
 
 	const T* end(size_t i) const {
-		return &data_[limits_[i + 1] - _padding];
+		return &data_[limits_[i + 1] - padding_len];
 	}
 
 	size_t check_idx(size_t i) const
@@ -117,7 +116,7 @@ struct StringSetBase
 
 	Length length(size_t i) const
 	{
-		return Length(limits_[i + 1] - limits_[i] - _padding);
+		return Length(limits_[i + 1] - limits_[i] - padding_len);
 	}
 
 	Id size() const
@@ -222,7 +221,7 @@ struct StringSetBase
 		}
 
 		std::pair<const T*, int64_t> operator[](const ptrdiff_t i) const {
-			return { data_ + limits_[i] - limits_[0], limits_[i + 1] - limits_[i] - _padding };
+			return { data_ + limits_[i] - limits_[0], limits_[i + 1] - limits_[i] - padding_len };
 		}
 
 		std::pair<const T*, int64_t> operator*() const {

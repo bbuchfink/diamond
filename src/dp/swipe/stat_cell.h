@@ -20,7 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #pragma once
 #include <ostream>
-#include "../../basic/match.h"
+#include "basic/match.h"
 
 FORCE_INLINE uint8_t cmp_mask(int x, int y) {
 	return x == y;

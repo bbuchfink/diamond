@@ -20,26 +20,20 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <iostream>
 #include <string>
-#include <limits.h>
 #include <string.h>
 #include <numeric>
-#include <algorithm>
 #include <iomanip>
 #include <list>
-#include "../util/io/temp_file.h"
+#include "util/io/temp_file.h"
 #include "test.h"
-#include "../util/sequence/sequence.h"
-#include "../util/log_stream.h"
-#include "../data/reference.h"
-#include "../basic/statistics.h"
-#include "../run/workflow.h"
-#include "../util/util.h"
-#include "../util/string/string.h"
-#include "../util/system/system.h"
-#include "../data/dmnd/dmnd.h"
-#include "../basic/config.h"
-#include "../data/fasta/fasta_file.h"
-#include "../util/command_line_parser.h"
+#include "util/log_stream.h"
+#include "basic/statistics.h"
+#include "run/workflow.h"
+#include "util/string/string.h"
+#include "util/system/system.h"
+#include "basic/config.h"
+#include "data/fasta/fasta_file.h"
+#include "util/command_line_parser.h"
 
 using std::endl;
 using std::string;
@@ -51,7 +45,7 @@ using std::shared_ptr;
 namespace Test {
 
 static size_t run_testcase(size_t i, shared_ptr<SequenceFile> &db, shared_ptr<SequenceFile>& query_file, size_t max_width, bool bootstrap, bool log, bool to_cout) {
-	vector<string> args = tokenize(test_cases[i].command_line, " ");
+	vector<string> args = Util::String::tokenize(test_cases[i].command_line, " ");
 	args.emplace(args.begin(), "diamond");
 	if (log)
 		args.push_back("--log");

@@ -40,14 +40,13 @@
 #include <algorithm>
 #include <type_traits>
 #include <utility>
+#include "ips4o_fwd.hpp"
 
-#if __GNUG__ && __GNUC__ < 5
+#if __GNUG__ && !defined(__llvm__) && !defined(__INTEL_COMPILER) && __GNUC__ < 5
 #define IS_TRIVIALLY_DEFAULT_CONSTRUCTIBLE(T) __has_trivial_constructor(T)
 #else
 #define IS_TRIVIALLY_DEFAULT_CONSTRUCTIBLE(T) std::is_trivially_default_constructible<T>::value
 #endif
-
-#include "ips4o_fwd.hpp"
 
 namespace ips4o {
 namespace detail {

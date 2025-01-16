@@ -19,15 +19,15 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #pragma once
-#include "../basic/value.h"
-#include "../util/geo/diagonal_segment.h"
-#include "../stats/hauser_correction.h"
+#include "basic/value.h"
+#include "util/geo/diagonal_segment.h"
+#include "stats/hauser_correction.h"
 
 //int xdrop_ungapped(const Letter *query, const Letter *subject, unsigned seed_len, unsigned &delta, unsigned &len);
 //int xdrop_ungapped(const Letter *query, const Letter *subject, unsigned &delta, unsigned &len);
 int xdrop_ungapped_right(const Letter *query, const Letter *subject, int &len);
 int ungapped_window(const Letter* query, const Letter* subject, int window);
-DiagonalSegment xdrop_ungapped(const Sequence &query, const Bias_correction &query_bc, const Sequence &subject, int qa, int sa);
+DiagonalSegment xdrop_ungapped(const Sequence &query, const HauserCorrection& query_bc, const Sequence &subject, int qa, int sa);
 DiagonalSegment xdrop_ungapped(const Sequence& query, const int8_t* query_cbs, const Sequence& subject, int qa, int sa, bool count_identities);
 DiagonalSegment xdrop_ungapped(const Sequence& query, const Sequence& subject, const DiagonalSegment& anchor);
 int score_range(Sequence query, Sequence subject, int i, int j, int j_end);
