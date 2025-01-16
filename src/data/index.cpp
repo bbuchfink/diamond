@@ -7,7 +7,7 @@
 #include "util/log_stream.h"
 
 void makeindex() {
-	static const size_t MAX_LETTERS = 100'000'000;
+	static const size_t MAX_LETTERS = 100000000;
 	if (config.database.empty())
 		throw std::runtime_error("Missing parameter: database file (--db/-d).");
 	DatabaseFile db(config.database);

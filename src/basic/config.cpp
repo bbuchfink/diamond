@@ -111,7 +111,7 @@ pair<double, int> block_size(int64_t memory_limit, int64_t db_letters, Sensitivi
 		const double hash_join_factor = 1.0 + (double)thread_count / (seedp_count(Search::seedp_bits(shape_weight, thread_count, c)) / c);
 		const double seed_array_entry_size = 18.0 * hash_join_factor;
 		b = m / (seed_array_entry_size * seeds_per_letter + 2.0);
-	} while ((int64_t)b * 1'000'000'000 < db_letters && b < max_b && c < max_c);
+	} while ((int64_t)b * 1000000000 < db_letters && b < max_b && c < max_c);
 	/*if (b > 4)
 		b = floor(b);
 	else if (b > 0.4)
@@ -410,7 +410,7 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 
 	auto& advanced_gen = parser.add_group("Advanced/general", { blastp, blastx, blastn, CLUSTER_REASSIGN, regression_test, cluster, DEEPCLUST, LINCLUST, makedb });
 	advanced_gen.add()
-		("file-buffer-size", 0, "file buffer size in bytes (default=67108864)", file_buffer_size, INT64_C(67'108'864))
+		("file-buffer-size", 0, "file buffer size in bytes (default=67108864)", file_buffer_size, INT64_C(67108864))
 		("no-unlink", 0, "Do not unlink temporary files.", no_unlink)
 		("ignore-warnings", 0, "Ignore warnings", ignore_warnings)
 		("no-parse-seqids", 0, "Print raw seqids without parsing", no_parse_seqids);
@@ -440,7 +440,7 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 		("ungapped-evalue-short", 0, "E-value threshold for ungapped filter (short reads) (auto)", ungapped_evalue_short_, -1.0)
 		("gapped-filter-evalue", 0, "E-value threshold for gapped filter (auto)", gapped_filter_evalue_, -1.0)
 		("band", 0, "band for dynamic programming computation", padding)
-		("swipe-task-size", 0, "task size for DP parallelism (100000000)", swipe_task_size, INT64_C(100'000'000))
+		("swipe-task-size", 0, "task size for DP parallelism (100000000)", swipe_task_size, INT64_C(100000000))
 		("shape-mask", 0, "seed shapes", shape_mask)
 		("multiprocessing", 0, "enable distributed-memory parallel processing", multiprocessing)
 		("mp-init", 0, "initialize multiprocessing run", mp_init)
@@ -610,7 +610,7 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 		("deque_bucket_size", 0, "", deque_bucket_size, (size_t)524288)
 		("query-match-distance-threshold", 0, "", query_match_distance_threshold, -1.0)
 		("length-ratio-threshold", 0, "", length_ratio_threshold, -1.0)
-		("max-swipe-dp", 0, "", max_swipe_dp, INT64_C(1'000'000))
+		("max-swipe-dp", 0, "", max_swipe_dp, INT64_C(1000000))
 		("no-reextend", 0, "", no_reextend)
 		("no-reorder", 0, "", no_reorder)
 		("file1", 0, "", file1)

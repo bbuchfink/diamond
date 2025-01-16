@@ -49,7 +49,7 @@ struct SeedCallback {
 };
 
 void make_seed_table() {
-	static const int64_t BLOCK_SIZE = 1'000'000'000;
+	static const int64_t BLOCK_SIZE = 1000000000;
 	config.database.require();
 	const Sensitivity sens = Sensitivity::FASTER;
 	

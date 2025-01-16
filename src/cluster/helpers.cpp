@@ -91,7 +91,7 @@ vector<Int> read(const string& file_name, const SequenceFile& db) {
 		const auto member_oid = db.accession_to_oid(member);
 		v[member_oid.front()] = (Int)centroid_oid.front();
 		++mappings;
-		if (mappings % 1'000'000 == 0)
+		if (mappings % 1000000 == 0)
 			log_stream << "#Entries: " << mappings << endl;
 	}
 	in.close();

@@ -289,10 +289,10 @@ bool use_single_indexed(double coverage, size_t query_letters, size_t ref_letter
 	if (coverage >= SINGLE_INDEXED_SEED_SPACE_MAX_COVERAGE)
 		return false;
 	if (config.sensitivity >= Sensitivity::SENSITIVE) {
-		return query_letters < 300'000llu && query_letters * 20'000llu < ref_letters;
+		return query_letters < 300000llu && query_letters * 20000llu < ref_letters;
 	}
 	else
-		return query_letters < 3'000'000llu && query_letters * 2'000llu < ref_letters;
+		return query_letters < 3000000llu && query_letters * 2000llu < ref_letters;
 }
 
 bool keep_target_id(const Search::Config& cfg) {
