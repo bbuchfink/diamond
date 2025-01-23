@@ -27,7 +27,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "value.h"
 #include "util/enum.h"
 
-enum class Sensitivity { FASTER = -1, FAST = 0, DEFAULT = 1, LINCLUST_20 = 2, SHAPES30x10 = 3, MID_SENSITIVE = 4, SENSITIVE = 5, MORE_SENSITIVE = 6, VERY_SENSITIVE = 7, ULTRA_SENSITIVE = 8 };
+enum class Sensitivity { FASTER = -1, FAST = 0, DEFAULT = 1, LINCLUST_40 = 2, LINCLUST_20 = 3, SHAPES30x10 = 4, MID_SENSITIVE = 5, SENSITIVE = 6, MORE_SENSITIVE = 7, VERY_SENSITIVE = 8, ULTRA_SENSITIVE = 9 };
 enum class Compressor;
 
 template<> struct EnumTraits<Sensitivity> {

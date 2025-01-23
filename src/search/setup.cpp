@@ -47,6 +47,7 @@ const map<Sensitivity, SensitivityTraits> sensitivity_traits = {
 	{ Sensitivity::FAST,            {true,  true,  50.0,  11,   0,      0,      0,     4,        16,   nullptr,  0.9,     2.0,       murphy10, 0,         0 }},
 	{ Sensitivity::SHAPES30x10,     {true,  true,  50.0,  11,   0,      0,      0,     4,        16,   nullptr,  0.9,     2.0,       murphy10, 0,         0 }},
 	{ Sensitivity::DEFAULT,         {true,  true,  50.0,  11,   10000,  10000,  0,     4,        16,   "111111", 0.8,     2.0,       murphy10, 0,         0 }},
+	{ Sensitivity::LINCLUST_40,     {true,  true,  50.0,  11,   0,      0,      0,     4,        16,   nullptr,  0.9,     2.0,       murphy10, 0,         0 }},
 	{ Sensitivity::LINCLUST_20,     {true,  true,  50.0,  11,   0,      0,      0,     4,        16,   nullptr,  0.9,     2.0,       murphy10, 0,         0 }},
 	{ Sensitivity::MID_SENSITIVE,   {true,  true,  20.0,  11,   10000,  10000,  0,     4,        16,   nullptr,  1.0,     2.0,       murphy10, 0,         0 }},
 	{ Sensitivity::SENSITIVE,       {true,  true,  20.0,  11,   10000,  10000,  1,     4,        16,   "11111",  1.0,     2.0,       murphy10, 0,         0 }},
@@ -58,14 +59,15 @@ const map<Sensitivity, SensitivityTraits> sensitivity_traits = {
 const map<Sensitivity, vector<Round>> iterated_sens{
 	{ Sensitivity::FASTER,            { }},
 	{ Sensitivity::FAST,            { {Sensitivity::FAST, true} }},
-	{ Sensitivity::DEFAULT,         { {Sensitivity::FAST, true}, Sensitivity::FAST }},
+	{ Sensitivity::DEFAULT,         { {Sensitivity::FAST, true}, { Sensitivity::LINCLUST_40, true }}},
+	{ Sensitivity::LINCLUST_40,     { {Sensitivity::FAST, true}, {Sensitivity::LINCLUST_40, true} }},
 	{ Sensitivity::LINCLUST_20,     { {Sensitivity::FAST, true}, {Sensitivity::LINCLUST_20, true} }},
 	{ Sensitivity::SHAPES30x10,     { {Sensitivity::FAST, true}, {Sensitivity::SHAPES30x10, true} }},
-	{ Sensitivity::MID_SENSITIVE,   { {Sensitivity::FAST, true}, Sensitivity::FAST, Sensitivity::DEFAULT}},
-	{ Sensitivity::SENSITIVE,       { {Sensitivity::FAST, true}, Sensitivity::FAST, Sensitivity::DEFAULT}},
-	{ Sensitivity::MORE_SENSITIVE,  { {Sensitivity::FAST, true}, Sensitivity::FAST, Sensitivity::DEFAULT}},
-	{ Sensitivity::VERY_SENSITIVE,  { {Sensitivity::FAST, true}, Sensitivity::FAST, Sensitivity::DEFAULT, Sensitivity::MORE_SENSITIVE}},
-	{ Sensitivity::ULTRA_SENSITIVE, { {Sensitivity::FAST, true}, Sensitivity::FAST, Sensitivity::DEFAULT, Sensitivity::MORE_SENSITIVE}}
+	{ Sensitivity::MID_SENSITIVE,   { {Sensitivity::FAST, true}, { Sensitivity::LINCLUST_40, true }, Sensitivity::DEFAULT}},
+	{ Sensitivity::SENSITIVE,       { {Sensitivity::FAST, true}, { Sensitivity::LINCLUST_20, true }, Sensitivity::DEFAULT}},
+	{ Sensitivity::MORE_SENSITIVE,  { {Sensitivity::FAST, true}, { Sensitivity::LINCLUST_20, true }, Sensitivity::DEFAULT}},
+	{ Sensitivity::VERY_SENSITIVE,  { {Sensitivity::FAST, true}, { Sensitivity::LINCLUST_20, true }, Sensitivity::DEFAULT, Sensitivity::MORE_SENSITIVE}},
+	{ Sensitivity::ULTRA_SENSITIVE, { {Sensitivity::FAST, true}, { Sensitivity::LINCLUST_20, true }, Sensitivity::DEFAULT, Sensitivity::MORE_SENSITIVE}}
 };
 
 const map<double, unsigned> approx_id_to_hamming_id {
@@ -276,7 +278,25 @@ const map<Sensitivity, vector<string>> shape_codes ={
 "1110110101110111",
 "1111010101101111",
 "1111011011010111" }
-}}
+},
+{ Sensitivity::LINCLUST_40, {
+		"111111111111",
+"1111111011111",
+"1111110111111",
+"11111111010111",
+"11011101111111",
+"11111011110111",
+"11110011111111",
+"11101111101111",
+"11110111111011",
+"110111110110111",
+"111101111011011",
+"111101100111111",
+"111010111110111",
+"111101011101111",
+"111110110011111" }
+}
+}
 };
 
 int seedp_bits(int shape_weight, int threads, int index_chunks) {

@@ -64,7 +64,7 @@ struct Round {
 		linearize(lin)
 	{}
 	bool operator<(Round r) const {
-		return sensitivity < r.sensitivity || (sensitivity == r.sensitivity && linearize && !r.linearize);
+		return linearize && !r.linearize || (linearize == r.linearize && sensitivity < r.sensitivity);
 	}
 	bool operator==(Round r) const {
 		return sensitivity == r.sensitivity && linearize == r.linearize;

@@ -66,7 +66,7 @@
   alignment mode.
 - Fixed a bug that could cause a crash when using the XML output format in
   the view workflow.
-- Added the sensitivity mode `--linclust-20` using 30 seed shapes of weight 12.
+- Added the sensitivity modes `--linclust-20` and `--linclust-40`.
 - Fixed an issue that could cause non-deterministic output for identically-scoring
   HSPs in the same target.
 - Disabled the default use of increased coverage and identity cutoffs in
@@ -75,6 +75,8 @@
   identity filters are used.
 - Optimized the performance of the extension stage when not using output fields
   that require alignment traceback.
+- Fixed an issue that could cause an incorrect order of cascaded clustering
+  rounds.
 
 [2.1.10]
 - Fixed a bug that could cause a crash when using a bi-directional coverage

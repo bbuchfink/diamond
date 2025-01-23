@@ -33,13 +33,16 @@ vector<string> cluster_steps(double approx_id, bool linear) {
 	vector<string> v = { "faster_lin" };
 	if (approx_id < 90)
 		v.push_back("fast_lin");
-	if (approx_id < 80)
+	if (approx_id < 40)
 		v.push_back("linclust-20_lin");
+	else if (approx_id < 80)
+		v.push_back("linclust-40_lin");
 	if (linear)
 		return v;
-	v.push_back("fast");
 	if (approx_id < 80)
 		v.push_back("default");
+	else
+		v.push_back("fast");	
 	if (approx_id < 50)
 		v.push_back("more-sensitive");
 	return v;
