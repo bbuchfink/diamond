@@ -73,9 +73,9 @@ int band(int len, const Mode mode) {
 }
 
 static int hsp_band(int base_band, int qlen, int tlen, const ApproxHsp& hsp) {
-	if (!config.classic_band) {
+	/*if (!config.classic_band) {
 		return std::max(Loc((hsp.d_max - hsp.d_min) * 0.15), 32);
-	}
+	}*/
 	if (config.narrow_band_cov == 0.0)
 		return base_band;
 	if ((double)hsp.query_range.length() / qlen >= config.narrow_band_cov

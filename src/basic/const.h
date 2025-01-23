@@ -25,7 +25,7 @@ struct Const
 {
 
 	enum {
-		build_version = 164,
+		build_version = 165,
 		max_seed_weight = 32,
 		max_shapes = 64
 	};

@@ -2,6 +2,7 @@
 #include <iomanip>
 #include <stdexcept>
 #include <limits.h>
+#include <stdint.h>
 #include <limits>
 #include "string.h"
 
