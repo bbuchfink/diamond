@@ -55,7 +55,7 @@ TextBuffer* pipeline_short(BlockId query, Search::Hit* begin, Search::Hit* end, 
 
 static vector<int64_t> make_partition(Search::Hit* begin, Search::Hit* end) {
 	vector<int64_t> partition;
-	partition.reserve(div_up(end - begin, config.min_task_trace_pts) + 1);
+	partition.reserve(div_up(end - begin, (ptrdiff_t)config.min_task_trace_pts) + 1);
 	Search::Hit* p = begin;
 	partition.push_back(0);
 	const BlockId c = align_mode.query_contexts;
