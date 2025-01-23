@@ -28,7 +28,7 @@
   sequence identities >= 50% and processing the database in multiple super
   blocks.
 - Fixed a bug that could cause a crash in global ranking mode.
-- Accession parsing rules applied to database sequences accessions for the
+- Accession parsing rules applied to database sequence accessions for the
   purpose of matching them to accessions in the taxonomy mapping file are now
   by default also applied to the accessions in the mapping file (disable using
   `--no-parse-seqids`).
@@ -60,13 +60,13 @@
   file all exhibit the problem.
 - Fixed a bug that caused setting `--top 100` not to function correctly.
 - Fixed a bug that caused target coordinates not to be reported correctly in
-  the output of the realign workflow.
+  the output of the `realign` workflow.
 - Fixed a bug that did not permit using the '--memory-limit/-M' option for
-  the realign workflow.
+  the `realign` workflow.
 - Fixed an issue that could cause non-deterministic output in frameshift
   alignment mode.
 - Fixed a bug that could cause a crash when using the XML output format in
-  the view workflow.
+  the `view` workflow.
 - Added the sensitivity modes `--linclust-20` and `--linclust-40`.
 - Fixed an issue that could cause non-deterministic output for identically-scoring
   HSPs in the same target.

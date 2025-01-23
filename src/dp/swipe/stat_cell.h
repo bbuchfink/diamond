@@ -65,6 +65,9 @@ struct ForwardCell<int32_t> {
 	operator int32_t() const {
 		return v;
 	}
+	operator int32_t&() {
+		return v;
+	}
 	ForwardCell(const int32_t v) :
 		v(v),
 		ident(0),
@@ -121,6 +124,9 @@ template<>
 struct BackwardCell<int32_t> {
 	int32_t v, mismatch, gapopen;
 	operator int32_t() const {
+		return v;
+	}
+	operator int32_t& () {
 		return v;
 	}
 	BackwardCell(const int32_t v) :
