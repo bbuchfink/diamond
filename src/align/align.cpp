@@ -27,6 +27,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "util/async_buffer.h"
 #include "util/parallel/thread_pool.h"
 #include "extend.h"
+#include "util/util.h"
 #ifdef WITH_DNA
 #include "../dna/extension.h"
 #endif

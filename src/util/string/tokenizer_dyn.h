@@ -43,6 +43,7 @@ struct TokenizerBase {
 	const char* ptr() const {
 		return ptr_;
 	}
+	virtual ~TokenizerBase() {}
 	virtual std::string operator*() const = 0;
 	virtual TokenizerBase& operator++() = 0;
 	const char* ptr_, * end_;
@@ -59,6 +60,7 @@ struct CharTokenizer : public TokenizerBase {
 	virtual std::string operator*() const override {
 		return std::string(ptr_, std::find(ptr_, end_, delimiter_));
 	}
+	virtual ~CharTokenizer() {}
 	virtual CharTokenizer& operator++() override {
 		ptr_ = std::find(ptr_, end_, delimiter_);
 #ifndef NDEBUG
@@ -82,6 +84,7 @@ struct MultiCharTokenizer : public TokenizerBase {
 	virtual std::string operator*() const override {
 		return std::string(ptr_, std::search(ptr_, end_, delimiter_.begin(), delimiter_.end()));
 	}
+	virtual ~MultiCharTokenizer() {}
 	virtual MultiCharTokenizer& operator++() override {
 		ptr_ = std::search(ptr_, end_, delimiter_.begin(), delimiter_.end());
 #ifndef NDEBUG
