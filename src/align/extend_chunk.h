@@ -47,7 +47,7 @@ pair<vector<Target>, Stats> extend(BlockId query_id,
 	stat.inc(Statistics::TARGET_HITS3, seed_hits_end - seed_hits);
 
 	timer.go("Computing chaining");
-	vector<WorkTarget> targets = ungapped_stage(query_seq, query_cb, query_comp, seed_hits, seed_hits_end, target_block_ids, flags, stat, *cfg.target, cfg.extension_mode);
+	vector<WorkTarget> targets = ungapped_stage(query_seq, query_cb, query_comp, seed_hits, seed_hits_end, target_block_ids, flags, stat, *cfg.target, cfg.extension_mode, cfg);
 	if (!flag_any(flags, DP::Flags::PARALLEL))
 		stat.inc(Statistics::TIME_CHAINING, timer.microseconds());
 

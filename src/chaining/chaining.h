@@ -26,6 +26,6 @@ namespace Chaining {
 
 std::pair<int, std::list<ApproxHsp>> run(Sequence query, Sequence subject, std::vector<DiagonalSegment>::const_iterator begin, std::vector<DiagonalSegment>::const_iterator end, bool log, unsigned frame);
 std::list<Hsp> run(Sequence query, const std::vector<DpTarget>& targets);
-ApproxHsp hamming_ext(std::vector<DiagonalSegment>::iterator begin, std::vector<DiagonalSegment>::iterator end, Loc qlen, Loc tlen);
+ApproxHsp hamming_ext(std::vector<DiagonalSegment>::iterator begin, std::vector<DiagonalSegment>::iterator end, Loc qlen, Loc tlen, bool use_cov_filter);
 
 }

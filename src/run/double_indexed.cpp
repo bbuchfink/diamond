@@ -455,8 +455,8 @@ static void run_query_chunk(Consumer &master_out,
 
 	BlockId aligned = 0;
 	for (unsigned query_iteration = 0; query_iteration < options.sensitivity.size() && aligned < options.query->source_seq_count(); ++query_iteration) {
-		setup_search(options.sensitivity[query_iteration].sensitivity, options);
 		options.lin_stage1_target = config.linsearch || options.sensitivity[query_iteration].linearize;
+		setup_search(options.sensitivity[query_iteration].sensitivity, options);
 		run_query_iteration(query_iteration, master_out, unaligned_file, aligned_file, tmp_file, options);
 		if (options.iterated()) {
 			aligned += options.iteration_query_aligned;

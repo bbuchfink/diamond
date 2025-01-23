@@ -1,8 +1,6 @@
 [2.1.11]
-- Improved the performance of the clustering workflow.
-- Fixed a bug that could produce clustering errors when clustering at
-  sequence identities >= 50% and processing the database in multiple super
-  blocks.
+- Improved the performance and sensitivity of the `cluster`, `deepclust` and
+  `linclust` workflows.
 - The `--faster` mode will by default use a minimizer sketch of fixed size
   per sequence instead of window-based minimizers.
 - Added the option `--sketch-size` to enable seeding using a minimizer
@@ -18,14 +16,17 @@
   in the tabular format in frameshift alignment mode.
 - Added the options `--ungapped-evalue` and `--ungapped-evalue-short` to set
   e-value thresholds for the ungapped hit filter.
-- Linearization of clustering rounds is limited to the `faster`, `fast`,
-  and `shapes-30x10` sensitivity modes.
+- Linearization of search or clustering rounds is limited to seed shape
+  configurations of weight >= 10.
 - Fixed an issue that could cause an `array size overflow` error when using
   very large `.dmnd` databases with taxonomic annotation.
 - Fixed a bug that caused query letters to be printed as `ARND` instead of
   `ACGT` in the `view` workflow.
 - Fixed a bug that caused using paired end input files to malfunction with
   an error message.
+- Fixed a bug that could produce clustering errors when clustering at
+  sequence identities >= 50% and processing the database in multiple super
+  blocks.
 - Fixed a bug that could cause a crash in global ranking mode.
 - Accession parsing rules applied to database sequences accessions for the
   purpose of matching them to accessions in the taxonomy mapping file are now

@@ -24,7 +24,7 @@ static ApproxHsp find_aln(vector<DiagonalSegment>::iterator begin, vector<Diagon
 	return ApproxHsp(0);
 }
 
-static ApproxHsp filter(vector<DiagonalSegment>::iterator begin, vector<DiagonalSegment>::iterator end, Loc qlen, Loc tlen) {
+static ApproxHsp filter(vector<DiagonalSegment>::iterator begin, vector<DiagonalSegment>::iterator end, Loc qlen, Loc tlen, bool use_cov_filter) {
 	const double TOLERANCE_FACTOR = 1.1, ID_MIN_COV = 80;
 	stable_sort(begin, end, DiagonalSegment::cmp_score);
 	Loc ident = 0, len = 0;
@@ -36,7 +36,7 @@ static ApproxHsp filter(vector<DiagonalSegment>::iterator begin, vector<Diagonal
 		len += it->len;
 	}
 	const double qcov = (double)len / qlen * 100, tcov = (double)len / tlen * 100;
-	if (config.diag_filter_cov.present() && !config.lin_stage1 && !config.linsearch &&
+	if (config.diag_filter_cov.present() && use_cov_filter &&
 		((config.query_or_target_cover > 0 && max(qcov, tcov) < config.diag_filter_cov) || (config.query_cover > 0 && qcov < config.diag_filter_cov) || (config.subject_cover > 0 && tcov < config.diag_filter_cov)))
 		return ApproxHsp(0, -1);
 	if (config.diag_filter_id.present()
@@ -46,14 +46,14 @@ static ApproxHsp filter(vector<DiagonalSegment>::iterator begin, vector<Diagonal
 	return ApproxHsp(0);
 }
 
-ApproxHsp hamming_ext(vector<DiagonalSegment>::iterator begin, vector<DiagonalSegment>::iterator end, Loc qlen, Loc tlen) {
+ApproxHsp hamming_ext(vector<DiagonalSegment>::iterator begin, vector<DiagonalSegment>::iterator end, Loc qlen, Loc tlen, bool use_cov_filter) {
 	if (config.hamming_ext) {
 		ApproxHsp h = find_aln(begin, end, qlen, tlen);
 		if (h.score > 0)
 			return h;
 	}
 	if (config.diag_filter_cov.present() || config.diag_filter_id.present()) {
-		return filter(begin, end, qlen, tlen);
+		return filter(begin, end, qlen, tlen, use_cov_filter);
 	}
 	return ApproxHsp(0);
 }

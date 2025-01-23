@@ -25,6 +25,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "util/math/integer.h"
 #include "masking/def.h"
 #include "basic/shape_config.h"
+#include "align/def.h"
+#include "align/extend.h"
 
 using std::vector;
 using std::endl;
@@ -362,6 +364,9 @@ void setup_search(Sensitivity sens, Search::Config& cfg)
 	else
 		::shapes = ShapeConfig(config.shape_mask.empty() ? shape_codes.at(sens) : config.shape_mask, config.shapes);
 
+	if ((cfg.lin_stage1_target || config.lin_stage1) && shapes[0].weight_ < 10)
+		throw std::runtime_error("Linearization is only supported for seed shapes of weight >= 10.");
+
 	config.gapped_filter_diag_score = score_matrix.rawscore(config.gapped_filter_diag_bit_score);
 	const double seed_cut = config.seed_cut_ == 0.0 ? traits.seed_cut : config.seed_cut_;
 	cfg.seed_complexity_cut = seed_cut * std::log(2.0) * ::shapes[0].weight_;
@@ -370,6 +375,27 @@ void setup_search(Sensitivity sens, Search::Config& cfg)
 		cfg.soft_masking |= from_string<MaskingAlgo>(config.soft_masking);
 	cfg.cutoff_table = { cfg.ungapped_evalue };
 	cfg.cutoff_table_short = { cfg.ungapped_evalue_short };
+
+	if (config.ext_.empty()) {
+		if (config.global_ranking_targets || config.swipe_all || config.lin_stage1 || cfg.lin_stage1_target)
+			cfg.extension_mode = Extension::Mode::FULL;
+		else
+			cfg.extension_mode = Extension::default_ext_mode.at(sens);
+	}
+	else {
+		cfg.extension_mode = from_string<Extension::Mode>(config.ext_);
+		if (cfg.extension_mode != Extension::Mode::FULL) {
+			if (config.global_ranking_targets)
+				throw std::runtime_error("Global ranking only supports full matrix extension.");
+			if (config.swipe_all)
+				throw std::runtime_error("--swipe only supports full matrix extension.");
+		}
+	}
+
+	if (cfg.extension_mode == Extension::Mode::FULL) {
+		if (config.frame_shift > 0)
+			throw std::runtime_error("Frameshift alignment does not support full matrix extension.");
+	}
 }
 
 }

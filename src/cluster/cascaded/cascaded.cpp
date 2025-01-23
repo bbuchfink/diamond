@@ -139,8 +139,6 @@ vector<SuperBlockId> cascaded(shared_ptr<SequenceFile>& db, bool linear) {
 		TaskTimer timer;
 		config.lin_stage1 = ends_with(steps[i], "_lin");
 		config.sensitivity = from_string<Sensitivity>(rstrip(steps[i], "_lin"));
-		if (config.lin_stage1 && config.sensitivity > Sensitivity::SHAPES30x10)
-			throw std::runtime_error("Linearization is only supported for the faster, fast, and shapes-30x10 sensitivity modes.");
 		const vector<string> round_approx_id = config.round_approx_id.empty() ? default_round_approx_id((int)steps.size()) : config.round_approx_id;
 		config.approx_min_id = std::max(target_approx_id, round_value(round_approx_id, "--round-approx-id", i, (int)steps.size()));
 		config.max_evalue = (size_t)i == steps.size() - 1 ? evalue_cutoff : std::min(evalue_cutoff, CASCADED_ROUND_MAX_EVALUE);

@@ -53,15 +53,17 @@ Config::Config() :
 			const auto rounds = iterated_sens.at(config.sensitivity);
 			sensitivity.insert(sensitivity.end(), rounds.begin(), rounds.end());
 		}
-		else
+		else {
+			const Round target = Round(config.sensitivity, config.lin_stage1 || config.linsearch);
 			for (const string& s : config.iterate) {
 				if (ends_with(s, "_lin"))
 					sensitivity.push_back({ from_string<Sensitivity>(rstrip(s, "_lin")),true });
 				else
 					sensitivity.push_back(from_string<Sensitivity>(s));
-				if (sensitivity.back().sensitivity >= config.sensitivity)
+				if (!(sensitivity.back() < target))
 					throw runtime_error("Sensitivity levels set for --iterate must be below target sensitivity.");
 			}
+		}
 	}
 	
 	if (sensitivity.empty() || (!sensitivity.empty() && sensitivity.back() != Round(config.sensitivity, config.linsearch)))
@@ -122,27 +124,6 @@ Config::Config() :
 #endif
 
     }
-
-	if (config.ext_.empty()) {
-		if (config.global_ranking_targets || config.swipe_all || config.lin_stage1 || config.linsearch)
-			extension_mode = Extension::Mode::FULL;
-		else
-			extension_mode = Extension::default_ext_mode.at(sensitivity.back().sensitivity);
-	}
-	else {
-		extension_mode = from_string<Extension::Mode>(config.ext_);
-		if (extension_mode != Extension::Mode::FULL) {
-			if (config.global_ranking_targets)
-				throw std::runtime_error("Global ranking only supports full matrix extension.");
-			if (config.swipe_all)
-				throw std::runtime_error("--swipe only supports full matrix extension.");
-		}
-	}
-
-	if (extension_mode == Extension::Mode::FULL) {
-		if (config.frame_shift > 0)
-			throw std::runtime_error("Frameshift alignment does not support full matrix extension.");
-	}
 
 	if (config.freq_masking && config.seed_cut_ != 0.0)
 		throw std::runtime_error("Incompatible options: --freq-masking, --seed-cut.");
