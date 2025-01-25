@@ -22,7 +22,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <stdexcept>
 #include <stdint.h>
 #include <utility>
-#include <string.h>
+#include <string.h> // memcpy
+#include <string> // std::string
 #include "algo/varint.h"
 
 struct BinaryBuffer : public std::vector<char>
