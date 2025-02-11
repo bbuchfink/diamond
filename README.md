@@ -30,16 +30,17 @@ The online documentation is located at the [GitHub Wiki](https://github.com/bbuc
 
 Support
 =======
-Diamond is actively supported and developed software. Please use the [issue tracker](https://github.com/bbuchfink/diamond/issues) for malfunctions and the [GitHub discussions](https://github.com/bbuchfink/diamond/discussions) for questions, comments, feature requests, etc.
+DIAMOND is actively supported and developed software. Please use the [issue tracker](https://github.com/bbuchfink/diamond/issues) for malfunctions and the [GitHub discussions](https://github.com/bbuchfink/diamond/discussions) for questions, comments, feature requests, etc.
 
 About
 =====
-DIAMOND is developed by Benjamin Buchfink. From 2019-2024, it was developed by Benjamin Buchfink
-at the Drost lab, Max Planck Institute for Biology Tübingen. From 2018-2019, its development was
-supported by the German Federal Ministry for Economic Affairs and Energy through an EXIST grant.
-From 2016-2018, it was developed by Benjamin Buchfink as an independent researcher.
-From 2013-2015, the initial version was developed by Benjamin Buchfink at the Huson lab,
-University of Tübingen, Germany.
+DIAMOND is developed by Benjamin Buchfink at the Max Planck Institute for Biology
+Tübingen in collaboration with the Drost lab at the University of Dundee. From 2019-2024,
+it was developed by Benjamin Buchfink at the Drost lab, Max Planck Institute for Biology
+Tübingen. From 2018-2019, its development was supported by the German Federal Ministry
+for Economic Affairs and Energy through an EXIST grant. From 2016-2018, it was developed
+by Benjamin Buchfink as an independent researcher. From 2013-2015, the initial version
+was developed by Benjamin Buchfink at the Huson lab, University of Tübingen, Germany.
 
 \[[:email:Email](mailto:buchfink@gmail.com)\]
 \[[X](https://x.com/bbuchfink)\]
