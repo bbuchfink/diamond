@@ -353,7 +353,7 @@ bool insertions_after_deletions_)//if true, then insertions after deletions are 
 
 		d_memory_size_in_MB+=(double)(sizeof(double)*d_number_of_AA*2.0)/mb_bytes;
 
-		double tmp_size1=LONG_MAX;
+		double tmp_size1=(double)LONG_MAX;
 
 		double tmp_size=Tmin((double)(tmp_size1),
 			(

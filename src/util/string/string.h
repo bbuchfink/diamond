@@ -4,6 +4,7 @@
 #include <vector>
 #include <cmath>
 #include <stdio.h>
+#include <cstdint>
 #include <set>
 
 inline bool ends_with(const std::string &s, const char *t) {

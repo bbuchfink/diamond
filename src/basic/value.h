@@ -23,6 +23,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #pragma once
 #include <stdexcept>
 #include <string>
+#include <cstdint>
 #include "util/simd.h"
 
 typedef signed char Letter;

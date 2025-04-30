@@ -19,6 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #pragma once
 #include <string>
 #include <zlib.h>
+#include <cstdint>
 #include "stream_entity.h"
 #include "input_stream_buffer.h"
 
