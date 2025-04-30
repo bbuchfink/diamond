@@ -34,6 +34,12 @@ struct TransformIterator {
 	bool operator!=(const TransformIterator& it) const {
 		return it_ != it.it_;
 	}
+	TransformIterator operator+(difference_type n) const {
+		return TransformIterator(it_ + n, f_);
+	}
+	difference_type operator+(const TransformIterator& it) const {
+		return it_ + it.it_;
+	}
 	difference_type operator-(const TransformIterator& it) const {
 		return it_ - it.it_;
 	}
@@ -45,4 +51,9 @@ private:
 template<typename It, typename F>
 TransformIterator<It, F> transform(It it, const F& f) {
 	return TransformIterator<It, F>(it, f);
+}
+
+template<typename It, typename F>
+TransformIterator<It, F> operator+(typename TransformIterator<It, F>::difference_type n, const TransformIterator<It, F>& it) {
+	return it + n;
 }

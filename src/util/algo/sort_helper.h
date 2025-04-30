@@ -36,7 +36,7 @@ struct SortedListJoiner {
 		return it1_->good() && it2_->good();
 	}
 
-	typename std::result_of<Value(const typename It1::Value&, const typename It2::Value&)>::type operator*() const {
+	typename std::invoke_result<Value, const typename It1::Value&, const typename It2::Value&>::type operator*() const {
 		return value_(**it1_, **it2_);
 	}
 
@@ -88,8 +88,8 @@ template<typename It, typename Key, typename Value>
 struct KeyMerger
 {
 
-	typedef typename std::result_of<Key(const typename It::Value&)>::type KeyType;
-	typedef typename std::result_of<Value(const typename It::Value&)>::type ValueType;
+	typedef typename std::invoke_result<Key, const typename It::Value&>::type KeyType;
+	typedef typename std::invoke_result<Value, const typename It::Value&>::type ValueType;
 
 	KeyMerger(It& it, KeyType begin):
 		it_(&it),
@@ -122,7 +122,7 @@ private:
 };
 
 template<typename It, typename Key, typename Value>
-KeyMerger<It, Key, Value> merge_keys(It& it, Key key, Value value, typename std::result_of<Key(const typename It::Value&)>::type begin) {
+KeyMerger<It, Key, Value> merge_keys(It& it, Key key, Value value, typename std::invoke_result<Key, const typename It::Value&>::type begin) {
 	return KeyMerger<It, Key, Value>(it, begin);
 }
 

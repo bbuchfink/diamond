@@ -136,7 +136,7 @@ std::string to_lower_case(const std::string& s)
 std::string print_char(char c)
 {
 	char buf[16];
-	if (c < 32 && c >= 0)
+	if (c < 32 && c > 0)
 		snprintf(buf, sizeof(buf), "ASCII %u", (unsigned)c);
 	else
 		snprintf(buf, sizeof(buf), "%c", c);

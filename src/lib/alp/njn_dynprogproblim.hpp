@@ -130,6 +130,8 @@ namespace Njn {
         virtual inline void clear () {clear (0);}
 
         using DynProgProb::operator bool; // ? is the object ready for computation ?
+        using DynProgProb::operator=;
+        using DynProgProb::copy;
         using DynProgProb::setValueFct;
         using DynProgProb::setInput;
         using DynProgProb::getProb; // probability value
