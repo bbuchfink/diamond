@@ -36,7 +36,7 @@ using std::set;
 using std::vector;
 
 const char* Rank::names[] = {
-	"no rank", "superkingdom", "kingdom", "subkingdom", "superphylum", "phylum", "subphylum", "superclass", "class", "subclass", "infraclass", "cohort", "subcohort", "superorder",
+	"no rank", "superkingdom", "cellular root", "acellular root", "domain", "realm", "kingdom", "subkingdom", "superphylum", "phylum", "subphylum", "superclass", "class", "subclass", "infraclass", "cohort", "subcohort", "superorder",
 	"order", "suborder", "infraorder", "parvorder", "superfamily", "family", "subfamily", "tribe", "subtribe", "genus", "subgenus", "section", "subsection", "series", "species group",
 	"species subgroup", "species", "subspecies", "varietas", "forma", "strain", "biotype", "clade", "forma specialis", "genotype", "isolate", "morph", "pathogroup", "serogroup", "serotype", "subvariety"
 };
