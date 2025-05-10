@@ -302,7 +302,7 @@ const map<Sensitivity, vector<string>> shape_codes ={
 };
 
 int seedp_bits(int shape_weight, int threads, int index_chunks) {
-	return max(max(bit_length(power((int64_t)Reduction::reduction.size(), (int64_t)shape_weight) - 1) - (int)sizeof(SeedOffset) * 8,
+	return max(max(bit_length(power((int64_t)Reduction::get_reduction().size(), (int64_t)shape_weight) - 1) - (int)sizeof(SeedOffset) * 8,
 		bit_length((int64_t)threads * 4 * index_chunks - 1)), 8);
 }
 
@@ -358,7 +358,7 @@ void setup_search(Sensitivity sens, Search::Config& cfg)
 		if (!traits.contiguous_seed)
 			throw std::runtime_error("Contiguous seed mode is not supported for this sensitivity setting.");
 		if (sens == Sensitivity::DEFAULT)
-			Reduction::reduction = Reduction("KR EQ D N C G H F Y IV LM W P S T A");
+			Reduction::set_reduction("KR EQ D N C G H F Y IV LM W P S T A");
 		::shapes = ShapeConfig({ traits.contiguous_seed }, 0);
 	}
 	else
