@@ -37,10 +37,10 @@ struct Rank {
 	{}
 	Rank(const char *s);
 	enum {
-		count = 45, strain = 34, biotype = 35, clade = 36, forma_specialis = 37, genotype = 38, isolate = 39, morph = 40, pathogroup = 41, serogroup = 42, serotype = 43, subvariety = 44,
-		forma = 33, varietas = 32, subspecies = 31, species = 30, species_subgroup = 29, species_group = 28, series = 27, subsection = 26, section = 25, subgenus = 24, genus = 23, subtribe = 22,
-		tribe = 21, subfamily = 20, family = 19, superfamily = 18, parvorder = 17, infraorder = 16, suborder = 15, order = 14, superorder = 13, subcohort = 12, cohort = 11, infraclass = 10,
-		subclass = 9, class_rank = 8, superclass = 7, subphylum = 6, phylum = 5, superphylum = 4, subkingdom = 3, kingdom = 2, superkingdom = 1, none = 0
+		count = 49, strain = 38, biotype = 39, clade = 40, forma_specialis = 41, genotype = 42, isolate = 43, morph = 44, pathogroup = 45, serogroup = 46, serotype = 47, subvariety = 48,
+		forma = 37, varietas = 36, subspecies = 35, species = 34, species_subgroup = 33, species_group = 32, series = 31, subsection = 30, section = 29, subgenus = 28, genus = 27, subtribe = 26,
+		tribe = 25, subfamily = 24, family = 23, superfamily = 22, parvorder = 21, infraorder = 20, suborder = 19, order = 18, superorder = 17, subcohort = 16, cohort = 15, infraclass = 14,
+		subclass = 13, class_rank = 12, superclass = 11, subphylum = 10, phylum = 9, superphylum = 8, subkingdom = 7, kingdom = 6, realm = 5, domain = 4, acellular_root = 3, cellular_root = 2, superkingdom = 1, none = 0
 	};
 	operator int() const {
 		return (int)r;
