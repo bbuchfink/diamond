@@ -109,12 +109,12 @@ static inline int8x16_t reduce_seq(const Letter *seq, const Letter *map)
 static inline unsigned match_block_reduced(const Letter *x, const Letter *y)
 {
 #if defined(__SSE2__)
-	const __m128i r1 = reduce_seq(x, Reduction::reduction.map8());
-	const __m128i r2 = reduce_seq(y, Reduction::reduction.map8b());
+	const __m128i r1 = reduce_seq(x, Reduction::get_reduction().map8());
+	const __m128i r2 = reduce_seq(y, Reduction::get_reduction().map8b());
 	return _mm_movemask_epi8(_mm_cmpeq_epi8(r1, r2));
 #elif defined(__ARM_NEON)
-	const int8x16_t r1 = reduce_seq(x, Reduction::reduction.map8());
-	const int8x16_t r2 = reduce_seq(y, Reduction::reduction.map8b());
+	const int8x16_t r1 = reduce_seq(x, Reduction::get_reduction().map8());
+	const int8x16_t r2 = reduce_seq(y, Reduction::get_reduction().map8b());
 	return vmaskq_s8(vreinterpretq_s8_u8(vceqq_s8(r1, r2)));
 #else
 	unsigned r = 0;
@@ -123,7 +123,7 @@ static inline unsigned match_block_reduced(const Letter *x, const Letter *y)
 		const Letter lx = letter_mask(x[i]), ly = letter_mask(y[i]);
 		if (!is_amino_acid(lx) || !is_amino_acid(ly))
 			continue;
-		if (Reduction::reduction(lx) == Reduction::reduction(ly))
+		if (Reduction::get_reduction()(lx) == Reduction::get_reduction()(ly))
 			r |= 1;
 	}
 	return r;

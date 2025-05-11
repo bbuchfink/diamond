@@ -166,7 +166,7 @@ struct HashedSeedIterator
 		last_(0)
 	{
 		for (int i = 0; i < sh.length_ && ptr_ < end_; ++i)
-			last_ = (last_ << B) | Reduction::reduction(letter_mask(*(ptr_++)));
+			last_ = (last_ << B) | Reduction::get_reduction()(letter_mask(*(ptr_++)));
 	}
 	bool good() const
 	{
@@ -181,7 +181,7 @@ struct HashedSeedIterator
 			const Letter l = letter_mask(*(ptr_++));
 			if (!is_amino_acid(l))
 				continue;
-			last_ |= Reduction::reduction(l);
+			last_ |= Reduction::get_reduction()(l);
 			return *this;
 		}
 		++ptr_;
@@ -207,7 +207,7 @@ struct ContiguousSeedIterator
 		last_(0)
 	{
 		for (int i = 0; i < L - 1; ++i)
-			last_ = (last_ << B) | Reduction::reduction(letter_mask(*(ptr_++)));
+			last_ = (last_ << B) | Reduction::get_reduction()(letter_mask(*(ptr_++)));
 	}
 	bool good() const
 	{
@@ -219,7 +219,7 @@ struct ContiguousSeedIterator
 			last_ <<= B;
 			last_ &= (uint64_t(1) << (B*L)) - 1;
 			const Letter l = letter_mask(*(ptr_++));
-			last_ |= Reduction::reduction(l);
+			last_ |= Reduction::get_reduction()(l);
 			seed = last_;
 			return true;
 		}
@@ -245,7 +245,7 @@ struct ContiguousSeedIterator<L, B, FilterMaskedSeeds>
 	{
 		for (int i = 0; i < L - 1; ++i) {
 			const Letter l = letter_mask(*(ptr_++));
-			last_ = (last_ << B) | Reduction::reduction(l);
+			last_ = (last_ << B) | Reduction::get_reduction()(l);
 			if (!is_amino_acid(l))
 				mask_ |= 1;
 			mask_ <<= 1;
@@ -263,7 +263,7 @@ struct ContiguousSeedIterator<L, B, FilterMaskedSeeds>
 			mask_ <<= 1;
 			mask_ &= (1 << L) - 1;
 			const Letter l = letter_mask(*(ptr_++));
-			const unsigned r = Reduction::reduction(l);
+			const unsigned r = Reduction::get_reduction()(l);
 			last_ |= r;
 			seed = last_;
 			if (!is_amino_acid(l))

@@ -63,16 +63,16 @@ struct SeedSetCallback
 };
 
 SeedSet::SeedSet(Block &seqs, double max_coverage, const std::vector<bool>* skip, const double seed_cut, const MaskingAlgo soft_masking):
-	data_((size_t)pow(1llu<<Reduction::reduction.bit_size(), shapes[0].length_))
+	data_((size_t)pow(1llu<<Reduction::get_reduction().bit_size(), shapes[0].length_))
 {
 	if (!shapes[0].contiguous())
 		throw std::runtime_error("Contiguous seed required.");
 	PtrVector<SeedSetCallback> v;
-	v.push_back(new SeedSetCallback(data_, size_t(max_coverage*pow(Reduction::reduction.size(), shapes[0].length_))));
+	v.push_back(new SeedSetCallback(data_, size_t(max_coverage*pow(Reduction::get_reduction().size(), shapes[0].length_))));
 	const auto p = seqs.seqs().partition(1);
 	const EnumCfg cfg{ &p, 0, 1, SeedEncoding::CONTIGUOUS, skip, true, false, seed_cut, soft_masking, 0, false, false, 0 };
 	enum_seeds(seqs, v, &no_filter, cfg);
-	coverage_ = (double)v.back().coverage / pow(Reduction::reduction.size(), shapes[0].length_);
+	coverage_ = (double)v.back().coverage / pow(Reduction::get_reduction().size(), shapes[0].length_);
 }
 
 struct HashedSeedSetCallback

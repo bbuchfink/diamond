@@ -78,12 +78,24 @@ struct Reduction
 		return os;
 	}
 
+	static Reduction& get_reduction()
+	{
+		static Reduction instance("A KR EDNQ C G H ILVM FYW P ST");
+		return instance;
+	}
+
+	static void set_reduction(const Reduction& r)
+	{
+		get_reduction() = r;
+	}
+
 	static void reduce_seq(const Sequence &seq, std::vector<Letter> &dst)
 	{
 		dst.clear();
 		dst.resize(seq.length());
+		const Reduction& reduction_instance = get_reduction();
 		for (Loc i = 0; i < seq.length(); ++i)
-			dst[i] = reduction(seq[i]);
+			dst[i] = reduction_instance(seq[i]);
 	}
 
 	double freq(unsigned bucket) const {
@@ -91,8 +103,6 @@ struct Reduction
 	}
 
 	std::string decode_seed(const uint64_t seed, const size_t len) const;
-
-	static Reduction reduction;
 
 private:
 

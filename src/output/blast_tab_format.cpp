@@ -483,7 +483,7 @@ void TabularFormat::print_match(const HspContext& r, Output::Info& info)
 				}
 				else
 					if (j.query() < 20 && j.subject() < 20) {
-						if (Reduction::reduction(j.query()) == Reduction::reduction(j.subject()))
+						if (Reduction::get_reduction()(j.query()) == Reduction::get_reduction()(j.subject()))
 							s += '1';
 						else
 							s += '0';
