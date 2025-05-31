@@ -47,7 +47,7 @@ struct Shape
 	{
 		assert(strlen(code) <= 32);
 		memset(positions_, 0, sizeof(uint32_t)*Const::max_seed_weight);
-		const uint64_t b = Reduction::reduction.bit_size();
+		const uint64_t b = Reduction::get_reduction().bit_size();
 		unsigned i (0);
 		for(;i<strlen(code);++i) {
 			rev_mask_ <<= 1;
@@ -80,11 +80,11 @@ struct Shape
 #endif
 			if (!is_amino_acid(l))
 				return false;
-			unsigned r = Reduction::reduction(l);
+			unsigned r = Reduction::get_reduction()(l);
 #ifdef FREQUENCY_MASKING
 			f += background_freq[r];
 #endif
-			s *= Reduction::reduction.size();
+			s *= Reduction::get_reduction().size();
 			s += uint64_t(r);
 		}
 #ifdef FREQUENCY_MASKING
@@ -96,7 +96,7 @@ struct Shape
 	inline bool set_seed_shifted(PackedSeed &s, const Letter *seq) const
 	{
 		s = 0;
-		const uint64_t b = Reduction::reduction.bit_size();
+		const uint64_t b = Reduction::get_reduction().bit_size();
 		for (int i = 0; i < weight_; ++i) {
 			Letter l = seq[positions_[i]];
 #ifdef SEQ_MASK
@@ -104,7 +104,7 @@ struct Shape
 #endif
 			if (l == value_traits.mask_char || l == Sequence::DELIMITER || l == STOP_LETTER)
 				return false;
-			unsigned r = Reduction::reduction(l);
+			unsigned r = Reduction::get_reduction()(l);
 			s <<= b;
 			s |= uint64_t(r);
 		}
@@ -121,7 +121,7 @@ struct Shape
 #endif
 			if (l == MASK_LETTER)
 				return false;
-			s *= Reduction::reduction.size();
+			s *= Reduction::get_reduction().size();
 			s += uint64_t(l);
 		}
 		return true;

@@ -99,7 +99,8 @@ void list_seeds() {
 	cb.push_back(new Callback{ seeds });
 	auto parts = block->seqs().partition(1);
 	::shapes = ShapeConfig(config.shape_mask.empty() ? Search::shape_codes.at(Sensitivity::DEFAULT) : config.shape_mask, config.shapes);
-	Reduction::reduction = Reduction("A R N D C Q E G H I L K M F P S T W Y V");
+	Reduction custom("A R N D C Q E G H I L K M F P S T W Y V");
+	Reduction::set_reduction(custom);
 	EnumCfg cfg{ &parts, 0, 1, SeedEncoding::SPACED_FACTOR, nullptr, false, false, config.seed_cut_, MaskingAlgo::NONE, 0, false, false, 0 };
 	enum_seeds(*block, cb, &no_filter, cfg);
 	ips4o::parallel::sort(seeds.begin(), seeds.end());
@@ -115,7 +116,7 @@ void list_seeds() {
 	auto end = std::min(counts.rbegin() + config.query_count, counts.rend());
 	string s;
 	for (auto i = counts.rbegin(); i != end; ++i) {
-		s = Reduction::reduction.decode_seed(i->second, shapes[0].weight_);
+		s = Reduction::get_reduction().decode_seed(i->second, shapes[0].weight_);
 		cout << i->first << '\t' << s << endl;
 	}
 }

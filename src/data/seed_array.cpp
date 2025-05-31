@@ -48,9 +48,9 @@ static int seed_bits(const SeedEncoding code, int seedp_bits) {
 	case SeedEncoding::HASHED:
 		return int(sizeof(SeedOffset) * 8);
 	case SeedEncoding::SPACED_FACTOR:
-		return int(ceil(shapes[0].weight_ * Reduction::reduction.bit_size_exact()) - seedp_bits);
+		return int(ceil(shapes[0].weight_ * Reduction::get_reduction().bit_size_exact()) - seedp_bits);
 	case SeedEncoding::CONTIGUOUS:
-		return shapes[0].length_ * Reduction::reduction.bit_size() - seedp_bits;
+		return shapes[0].length_ * Reduction::get_reduction().bit_size() - seedp_bits;
 	default:
 		break;
 	}

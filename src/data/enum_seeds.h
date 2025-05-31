@@ -123,7 +123,7 @@ static void enum_seeds_worker(F* f, SequenceSet* seqs, const unsigned begin, con
 {
 	static const char* errmsg = "Unsupported contiguous seed.";
 	if (cfg->code == SeedEncoding::CONTIGUOUS) {
-		const uint64_t b = Reduction::reduction.bit_size(), l = shapes[cfg->shape_begin].length_;
+		const uint64_t b = Reduction::get_reduction().bit_size(), l = shapes[cfg->shape_begin].length_;
 		switch (l) {
 		case 7:
 			switch (b) {
@@ -157,7 +157,7 @@ static void enum_seeds_worker(F* f, SequenceSet* seqs, const unsigned begin, con
 		}
 	}
 	else if (cfg->code == SeedEncoding::HASHED) {
-		const uint64_t b = Reduction::reduction.bit_size();
+		const uint64_t b = Reduction::get_reduction().bit_size();
 		switch (b) {
 		case 4:
 			enum_seeds_hashed<F, 4, Filter>(seqs, f, begin, end, filter, *cfg);

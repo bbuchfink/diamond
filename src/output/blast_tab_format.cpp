@@ -411,7 +411,7 @@ void TabularFormat::print_match(const HspContext& r, Output::Info& info)
 			out << r.scovhsp();
 			break;
 		case 53:
-			out << strlen(info.query.qual) ? info.query.qual : "*";
+			out << (strlen(info.query.qual) ? info.query.qual : "*");
 			break;
 		case 54:
 			r.query.source().print(out, input_value_traits);
@@ -483,7 +483,7 @@ void TabularFormat::print_match(const HspContext& r, Output::Info& info)
 				}
 				else
 					if (j.query() < 20 && j.subject() < 20) {
-						if (Reduction::reduction(j.query()) == Reduction::reduction(j.subject()))
+						if (Reduction::get_reduction()(j.query()) == Reduction::get_reduction()(j.subject()))
 							s += '1';
 						else
 							s += '0';
@@ -620,7 +620,7 @@ void TabularFormat::print_query_intro(Output::Info& info) const
 				out << info.query.title;
 				break;
 			case 53:
-				out << strlen(info.query.qual) ? info.query.qual : "*";
+				out << (strlen(info.query.qual) ? info.query.qual : "*");
 				break;
 			case 54:
 				info.query.source_seq.print(out, input_value_traits);
