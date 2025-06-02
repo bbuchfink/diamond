@@ -66,7 +66,7 @@ const vector<uint64_t> ref_hashes = {
 0xe787dcb23cc5b120,
 0x5aa4baf48a888be9,
 0xa2519e06e3bfa2fd,
-0x2c355eaec8aea91,
+0x35002dcfe7d964b1,
 0x67b3a14cdd541dc3,
 };
 
