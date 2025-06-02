@@ -67,4 +67,6 @@ T convert_string(const std::string& s) {
 	return convert_string<T>(s.c_str());
 }
 
+std::string format(double number);
+
 }}

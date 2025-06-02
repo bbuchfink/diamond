@@ -126,6 +126,7 @@ vector<Int> greedy_vertex_cover(FlatArray<Edge<Int>>& neighbors, const SuperBloc
 			(Int)neighbors.count(i), i);
 
 	timer.go("Computing vertex cover");
+	int64_t cluster_count = 0;
 	while (!q.empty()) {
 		const Int node = q.top().second;
 		q.pop();
@@ -140,8 +141,11 @@ vector<Int> greedy_vertex_cover(FlatArray<Edge<Int>>& neighbors, const SuperBloc
 				make_cluster_cc(node, neighbors, centroids, connected_component_depth);
 			else
 				make_cluster_gvc(node, neighbors, centroids, merge_recursive);
+			++cluster_count;
 		}
 	}
+	timer.finish();
+	message_stream << "Cluster count = " << cluster_count << std::endl;
 
 	if (reassign) {
 		timer.go("Computing reassignment");

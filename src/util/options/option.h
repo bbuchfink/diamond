@@ -48,6 +48,11 @@ struct Option : public T {
 	T get(const T& default_value) const {
 		return present_ ? *this : default_value;
 	}
+	T get_present() const {
+		if (!present_)
+			throw std::runtime_error("Option::get_present");
+		return *this;
+	}
 	void unset() {
 		present_ = false;
 	}

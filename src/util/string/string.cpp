@@ -5,6 +5,13 @@
 #include <stdint.h>
 #include <limits>
 #include "string.h"
+#include <string>
+#include <vector>
+#include <cmath>
+#include <sstream>
+#include <iomanip>
+#include <algorithm>
+
 
 using std::string;
 using std::to_string;
@@ -132,6 +139,68 @@ int32_t convert_string<int32_t>(const char* s) {
 	if (i < (int64_t)INT32_MIN || i >(int64_t)INT32_MAX)
 		throw runtime_error(string("Error converting integer value: ") + s);
 	return (int32_t)i;
+}
+
+std::string format(double number) {
+	const std::vector<std::string> suffixes = { "", "K", "M", "G", "T", "P", "E" };
+
+	if (number == 0) {
+		return "0";
+	}
+
+	bool is_negative = number < 0;
+	double abs_number = std::abs(number);
+
+	int suffix_index = 0;
+	if (abs_number >= 1000) {
+		int exp = static_cast<int>(std::log10(abs_number) / 3);
+		suffix_index = std::min(exp, static_cast<int>(suffixes.size() - 1));
+	}
+
+	double divisor = std::pow(1000.0, suffix_index);
+	double formatted_number = abs_number / divisor;
+
+	std::ostringstream oss;
+	oss << std::fixed << std::setprecision(2) << formatted_number;
+	std::string num_str = oss.str();
+
+	// Trim trailing zeros and decimal point if needed
+	size_t dot_pos = num_str.find('.');
+	if (dot_pos != std::string::npos) {
+		// Find the last non-zero character after the decimal point
+		size_t last_non_zero = num_str.find_last_not_of('0');
+		if (last_non_zero != std::string::npos) {
+			num_str = num_str.substr(0, last_non_zero + 1);
+			// If the decimal point is now at the end, remove it
+			if (num_str.back() == '.') {
+				num_str.pop_back();
+			}
+		}
+	}
+
+	// Check if after trimming, the number is 1000 or more, adjust suffix if possible
+	if (formatted_number >= 999.995 && suffix_index < suffixes.size() - 1) {
+		suffix_index++;
+		divisor *= 1000;
+		formatted_number = abs_number / divisor;
+		oss.str("");
+		oss << std::fixed << std::setprecision(2) << formatted_number;
+		num_str = oss.str();
+		// Trim again
+		dot_pos = num_str.find('.');
+		if (dot_pos != std::string::npos) {
+			size_t last_non_zero = num_str.find_last_not_of('0');
+			if (last_non_zero != std::string::npos) {
+				num_str = num_str.substr(0, last_non_zero + 1);
+				if (num_str.back() == '.') {
+					num_str.pop_back();
+				}
+			}
+		}
+	}
+
+	std::string result = (is_negative ? "-" : "") + num_str + suffixes[suffix_index];
+	return result;
 }
 
 }}

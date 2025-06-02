@@ -217,8 +217,9 @@ pair<vector<Target>, Stats> align(const vector<WorkTarget> &targets, const Seque
 			stat,
 			&tp
 		};
-		DP::AnchoredSwipe::Config cfg{ query_seq[frame], ::Stats::CBS::hauser(config.comp_based_stats) ? query_cb[frame].int8.data() : nullptr, 0, stat, &tp };
-		list<Hsp> hsp = config.anchored_swipe ? DP::BandedSwipe::anchored_swipe(dp_targets[frame], cfg) : DP::BandedSwipe::swipe(dp_targets[frame], params);
+		DP::AnchoredSwipe::Config acfg{ query_seq[frame], ::Stats::CBS::hauser(config.comp_based_stats) ? query_cb[frame].int8.data() : nullptr, 0, stat, &tp };
+		list<Hsp> hsp = (config.anchored_swipe && !cfg.lin_stage1_target && !config.lin_stage1)
+			? DP::BandedSwipe::anchored_swipe(dp_targets[frame], acfg) : DP::BandedSwipe::swipe(dp_targets[frame], params);
 		while (!hsp.empty())
 			r[hsp.front().swipe_target].add_hit(hsp, hsp.begin());
 	}

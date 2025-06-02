@@ -39,10 +39,6 @@ namespace Search {
 
 const double SINGLE_INDEXED_SEED_SPACE_MAX_COVERAGE = 0.15;
 
-Reduction murphy10("A KR EDNQ C G H ILVM FYW P ST");
-Reduction steinegger12("AST C DN EQ FY G H IV KR LM P W");
-Reduction dna("A C G T");
-
 const map<Sensitivity, SensitivityTraits> sensitivity_traits = {
 	//                               qidx   motifm freqsd minid ug_ev   ug_ev_s gf_ev  idx_chunk qbins ctg_seed  seed_cut block_size reduction min_window sketch
 	{{ Sensitivity::FASTER,         {true,  true,  50.0,  11,   0,      0,      0,     4,        16,   nullptr,  0.9,     2.0,       murphy10, 0,         21 }},

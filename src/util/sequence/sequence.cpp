@@ -38,27 +38,24 @@ namespace Util { namespace Seq {
 const char* id_delimiters = " \a\b\f\n\r\t\v\1";
 const char* FASTA_HEADER_SEP[2] = {"\1", " >"};
 
-void format(Sequence seq, const char *id, const char *qual, OutputFile &out, const std::string &format, const ValueTraits& value_traits) {
-	static TextBuffer buf;
+void format(Sequence seq, const char *id, const char *qual, TextBuffer &out, const std::string &format, const ValueTraits& value_traits) {
 	constexpr Loc WRAP = 160;
 	const size_t l = seq.length();
 	if(format == "fasta") {
-		buf << '>' << id << '\n';
+		out << '>' << id << '\n';
 		for (Loc i = 0; i < seq.length(); i += WRAP) {
-			seq.print(buf, i, std::min(i + WRAP, seq.length()), value_traits);
-			buf << '\n';
+			seq.print(out, i, std::min(i + WRAP, seq.length()), value_traits);
+			out << '\n';
 		}
 	}
 	else if (format == "fastq") {
-		buf << '@' << id << '\n';
-		seq.print(buf, value_traits);
-		buf << "\n+\n";
-		buf << qual << '\n';
+		out << '@' << id << '\n';
+		seq.print(out, value_traits);
+		out << "\n+\n";
+		out << qual << '\n';
 	}
 	else
 		throw std::runtime_error("Invalid sequence file format");
-	out.write(buf.data(), buf.size());
-	buf.clear();
 }
 
 std::string all_seqids(const char* s)

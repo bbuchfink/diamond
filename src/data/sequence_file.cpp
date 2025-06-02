@@ -282,7 +282,7 @@ Block* SequenceFile::load_seqs(const int64_t max_letters, const BitVector* filte
 	if (flag_any(flags, LoadFlags::CONVERT_ALPHABET))
 		block->seqs_.convert_all_to_std_alph(config.threads_);
 
-	block->seqs_.print_stats();
+	//block->seqs_.print_stats();
 	return block;
 }
 

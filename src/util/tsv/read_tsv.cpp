@@ -13,6 +13,7 @@ using std::vector;
 using std::unique_lock;
 using std::thread;
 using std::back_inserter;
+using std::lock_guard;
 
 namespace Util { namespace Tsv {
 
@@ -45,7 +46,10 @@ void File::read(int64_t max_size, int threads, function<void(int64_t chunk, cons
 				}
 			}
 			if (n < READ_SIZE || total + READ_SIZE > max_size) {
-				stop = true;
+				{ 
+					lock_guard<mutex> lock(mtx);
+					stop = true;
+				}
 				consume_cv.notify_all();
 				break;
 			} else

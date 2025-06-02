@@ -46,6 +46,8 @@ using std::function;
 using namespace Util::Tsv;
 
 namespace Cluster {
+
+void external();
 		
 struct Config {
 	Config(shared_ptr<SequenceFile>& db) :
@@ -123,7 +125,7 @@ static vector<SuperBlockId> search_vs_centroids(shared_ptr<FastaFile>& super_blo
 	else {
 		config.query_cover = config.member_cover;
 		config.subject_cover = 0;
-	}	
+	}
 	config.query_or_target_cover = 0;
 	config.linsearch = cfg.linclust;
 	config.iterate = vector<string>();
@@ -158,6 +160,14 @@ static vector<SuperBlockId> search_vs_centroids(shared_ptr<FastaFile>& super_blo
 
 void Cascaded::run() {
 	config.database.require();
+	if (!config.parallel_tmpdir.empty()) {
+#ifdef EXTRA
+		external();
+#else
+		throw std::runtime_error("Option is not permitted for this workflow: --parallel-tmpdir");
+#endif
+		return;
+	}
 	init_thresholds();
 	config.hamming_ext = config.approx_min_id >= 50.0;
 

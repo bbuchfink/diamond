@@ -20,8 +20,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #pragma once
 
+#include <map>
+#include <mutex>
 #include <string>
-#ifndef WIN32
+#ifdef WIN32
+#define NOMINMAX
+#include <windows.h>
+#else
 #include <unistd.h>
 #include <fcntl.h>
 #endif
@@ -49,7 +54,7 @@ class FileStack {
         int top(int & i);
         int top(std::string & buf);
 
-        int remove(const std::string & line);
+        void remove(const std::string & line);
 
         int64_t push(int i);
         int64_t push(const std::string & buf);
@@ -63,19 +68,30 @@ class FileStack {
 
         int lock();
         int unlock();
+        int64_t seek(int64_t offset, int mode);
+        int64_t read(char* buf, int64_t size);
+        int64_t write(const char* buf, int64_t size);
+        int truncate(int64_t size);
 
         bool poll_query(const std::string & query, const double sleep_s=0.5, const size_t max_iter=7200);
         bool poll_size(const size_t size, const double sleep_s=0.5, const size_t max_iter=7200);
+        std::string file_name() const;
 
     private:
-        int fd;
+        
         bool locked;
-#ifndef WIN32
+#ifdef WIN32
+        HANDLE hFile;
+#else
+        int fd;
         struct flock lck;
 #endif
-        std::string file_name;
+        std::string file_name_;
         off_t max_line_length;
 
         int pop(std::string &, const bool, size_t &);
         int pop_non_locked(std::string &, const bool, size_t &);
+
+        std::mutex mtx_;
+
 };

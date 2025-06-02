@@ -21,6 +21,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #pragma once
 #include <algorithm>
+#include <utility>
+#include "../io/text_input_file.h"
 
 namespace Util { namespace String {
 
@@ -29,6 +31,23 @@ static inline const char* trim_cr(const char* begin, const char* end) {
 		return end - 1;
 	else
 		return end;
+}
+
+inline std::pair<const char*, int> find_newline(const char* begin, const char* end) {
+	const char* p = std::find(begin, end, '\n');
+	if (p == end)
+		return { p,0 };
+	if (p > begin && p[-1] == '\r')
+		return { p + 1,2 };
+	else
+		return { p + 1,1 };
+}
+
+inline bool is_whitespace(const std::string& s) {
+	for (char c : s)
+		if (c != ' ' && c != '\n' && c != '\r')
+			return false;
+	return true;
 }
 
 struct TokenizerBase {
@@ -46,6 +65,8 @@ struct TokenizerBase {
 	virtual ~TokenizerBase() {}
 	virtual std::string operator*() const = 0;
 	virtual TokenizerBase& operator++() = 0;
+	virtual std::pair<bool, std::string> read_record() = 0;
+	virtual std::pair<bool, std::string> read_record(TextInputFile& file) = 0;
 	const char* ptr_, * end_;
 };
 
@@ -69,11 +90,28 @@ struct CharTokenizer : public TokenizerBase {
 			++ptr_;
 		return *this;
 	}
+	virtual std::pair<bool, std::string> read_record() {
+		if (ptr_ >= end_)
+			return { false,std::string() };
+		const char* b = ptr_;
+		ptr_ = std::find(ptr_, end_, '\n');
+		if (ptr_ > b && ptr_[-1] == '\r') {			
+			++ptr_;
+			return { true, std::string(b, ptr_ - 2) };
+		}
+		else {
+			++ptr_;
+			return { true, std::string(b, ptr_ - 1) };
+		}
+	}
+	virtual std::pair<bool, std::string> read_record(TextInputFile&) {
+		throw std::runtime_error("Invalid use of CharTokenizer");
+	}
 private:
 	const char delimiter_;
 };
 
-struct MultiCharTokenizer : public TokenizerBase {
+/*struct MultiCharTokenizer : public TokenizerBase {
 	MultiCharTokenizer(const char* delimiter) :
 		delimiter_(delimiter)
 	{}
@@ -82,6 +120,7 @@ struct MultiCharTokenizer : public TokenizerBase {
 		return new MultiCharTokenizer(delimiter_.c_str());
 	}
 	virtual std::string operator*() const override {
+		std::cout << std::string(ptr_, std::search(ptr_, end_, delimiter_.begin(), delimiter_.end())) << std::endl;
 		return std::string(ptr_, std::search(ptr_, end_, delimiter_.begin(), delimiter_.end()));
 	}
 	virtual ~MultiCharTokenizer() {}
@@ -100,7 +139,7 @@ private:
 inline TokenizerBase* make_tokenizer(const std::string& delimiter) {
 	assert(!delimiter.empty());
 	return delimiter.length() == 1 ? static_cast<TokenizerBase*>(new CharTokenizer(delimiter[0])) : static_cast<TokenizerBase*>(new MultiCharTokenizer(delimiter.c_str()));
-}
+}*/
 
 template<typename It, char delimiter>
 struct TokenIterator {
@@ -163,9 +202,27 @@ struct FastaTokenizer : public TokenizerBase
 		}
 		return *this;
 	}
+	virtual std::pair<bool, std::string> read_record() override {
+		static const char* delimiter = "\n>";
+		if (ptr_ >= end_)
+			return { false,std::string() };
+		const char* p = ptr_;
+		ptr_ = std::search(ptr_, end_, delimiter, delimiter + 2);
+		return { true, std::string(p, ptr_) };
+	}
+	virtual std::pair<bool, std::string> read_record(TextInputFile& file) override {
+		if (file.eof())
+			return { false,std::string() };
+		std::string s;
+		file.read_to(std::back_inserter(s), '\n', '>');
+		return { !is_whitespace(s), s};
+	}
 };
 
-struct MalformedFastqRecord : public std::exception {
+struct MalformedFastqRecord : public std::runtime_error {
+	MalformedFastqRecord(int64_t line = -1):
+		std::runtime_error("Malformed FASTQ record" + (line == -1 ? "" : " on line " + std::to_string(line)))
+	{}
 };
 
 struct FastqTokenizer : public TokenizerBase
@@ -202,6 +259,73 @@ struct FastqTokenizer : public TokenizerBase
 				throw MalformedFastqRecord();
 		}
 		return *this;
+	}
+	virtual std::pair<bool, std::string> read_record() override {
+		if (ptr_ == end_)
+			return { false,std::string() };
+		if (*ptr_ != '@')
+			throw MalformedFastqRecord();
+		const char* l, *begin = ptr_;
+		int n;
+		std::tie(l, n) = find_newline(ptr_, end_);
+		if (n == 0) throw MalformedFastqRecord();
+		ptr_ = l;
+		int64_t len = 0;
+		for (;;) {
+			std::tie(l, n) = find_newline(ptr_, end_);
+			if (n == 0) throw MalformedFastqRecord();
+			len += l - ptr_ - n;
+			ptr_ = l;
+			if (ptr_ == end_) throw MalformedFastqRecord();
+			if (*ptr_ == '+') {
+				std::tie(l, n) = find_newline(ptr_, end_);
+				if (n == 0) throw MalformedFastqRecord();
+				ptr_ = l;
+				break;
+			}
+		}
+		int64_t qlen = 0;
+		for (;;) {
+			std::tie(l, n) = find_newline(ptr_, end_);
+			qlen += l - ptr_ - n;
+			ptr_ = l;
+			if (ptr_ == end_ || qlen >= len) break;
+		}
+		return { true, std::string(begin,ptr_) };
+	}
+
+	virtual std::pair<bool, std::string> read_record(TextInputFile& file) override {
+		if (file.eof())
+			return { false,std::string() };
+		file.getline();
+		if (file.eof() && file.line.empty())
+			return { false,std::string() };
+		const int64_t line = file.line_count;
+		if (file.line.empty() || file.line[0] != '@' || file.eof())
+			throw MalformedFastqRecord(line);
+		std::string s(file.line + '\n');
+		int64_t len = 0;
+		for (;;) {
+			file.getline();
+			if (file.eof() || file.line.empty()) throw MalformedFastqRecord(line);
+			if (file.line[0] == '+') {
+				s += file.line;
+				s += '\n';
+				break;
+			}
+			len += file.line.length();
+			s += file.line;
+			s += '\n';
+		}
+		int64_t qlen = 0;
+		for (;;) {
+			file.getline();
+			qlen += file.line.length();
+			s += file.line;
+			s += '\n';
+			if (file.eof() || qlen >= len) break;
+		}
+		return { true,s };
 	}
 };
 

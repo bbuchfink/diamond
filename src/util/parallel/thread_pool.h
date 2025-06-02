@@ -205,9 +205,9 @@ struct ThreadPool {
 	{
 	}
 
-	void run(int threads, bool heartbeat = false) {
+	void run(int threads, bool heartbeat = false, TaskSet* task_set = nullptr) {
 		for (int i = 0; i < threads; ++i)
-			workers_.emplace_back([this] {	this->run_set(nullptr); });
+			workers_.emplace_back([this, task_set] { this->run_set(task_set); });
 		if (heartbeat)
 			heartbeat_ = std::thread([&]() {
 			while (default_finished_ < default_count_) {

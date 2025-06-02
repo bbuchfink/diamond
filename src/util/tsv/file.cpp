@@ -28,9 +28,9 @@ using std::function;
 using std::string;
 using std::runtime_error;
 using std::unique_ptr;
+using std::pair;
 using Util::String::TokenizerBase;
 using Util::String::CharTokenizer;
-using Util::String::MultiCharTokenizer;
 
 #ifdef _WIN32
 static const char* DEFAULT_LINE_DELIMITER = "\r\n";
@@ -55,7 +55,7 @@ File::File(const Schema& schema, const char* file_name, Flags flags, const Confi
 	config_(config),
 	record_id_(0)
 {
-	const char* input_file_delim = config.line_delimiter.empty() ? "\n" : config_.line_delimiter.c_str();
+	//const char* input_file_delim = config.line_delimiter.empty() ? "\n" : config_.line_delimiter.c_str();
 	if (flag_all(flags, Flags::WRITE | Flags::OVERWRITE))
 		throw std::runtime_error("Invalid File flags");
 	if (flag_any(flags_, Flags::RECORD_ID_COLUMN) && schema.front() != Type::INT64)
@@ -72,17 +72,16 @@ File::File(const Schema& schema, const char* file_name, Flags flags, const Confi
 	}
 	if (flag_any(flags_, Flags::READ_WRITE)) {
 		if (flag_any(flags_, Flags::TEMP)) {
-			file_.reset(new TextInputFile(*(TempFile*)out_file_.get(), input_file_delim));
+			file_.reset(new TextInputFile(*(TempFile*)out_file_.get()));
 		}
 		else {
-			file_.reset(new TextInputFile(*out_file_, input_file_delim));
+			file_.reset(new TextInputFile(*out_file_));
 		}
 	}
 	else if (!flag_any(flags_, Flags::WRITE))
-		file_.reset(new TextInputFile(file_name, input_file_delim));
-	if (config_.line_delimiter.empty())
-		config_.line_delimiter = flag_any(flags, Flags::WRITE | Flags::READ_WRITE | Flags::OVERWRITE) ? DEFAULT_LINE_DELIMITER : "\n";
-	config_.file_tokenizer.reset(Util::String::make_tokenizer(config_.line_delimiter));
+		file_.reset(new TextInputFile(file_name));
+	/*if (config_.line_delimiter.empty())
+		config_.line_delimiter = flag_any(flags, Flags::WRITE | Flags::READ_WRITE | Flags::OVERWRITE) ? DEFAULT_LINE_DELIMITER : "\n";*/
 }
 
 File::File(const Schema& schema, const std::string& file_name, Flags flags, const Config& config):
@@ -98,7 +97,7 @@ File::File(const Schema& schema, unique_ptr<TextInputFile>&& file, Flags flags, 
 	if (flags != Flags::READ)
 		throw runtime_error("File::File");
 	file_ = std::move(file);
-	file_->set_separator(config_.line_delimiter.c_str());
+	//file_->set_separator(config_.line_delimiter.c_str());
 }
 
 void File::rewind() {
@@ -157,12 +156,11 @@ Table File::read(int64_t max_size, int threads) {
 	ReorderQueue<Table*, decltype(callback)> queue(0, callback);
 	function<void(int64_t, const char*, const char*)> f([this, &queue](int64_t chunk, const char* begin, const char* end) {
 		Table* table = new Table(this->schema());
-		unique_ptr<TokenizerBase> tok(config_.file_tokenizer->clone());
+		unique_ptr<TokenizerBase> tok(config_.line_tokenizer->clone());
 		tok->reset(begin, end);
-		while (tok->good()) {
-			const string line = **tok;
-			table->push_back(line.c_str(), line.c_str() + line.length(), tok.get());
-			++(*tok);
+		pair<bool, string> record;
+		while ((record = tok->read_record()).first) {
+			table->push_back(record.second.c_str(), record.second.c_str() + record.second.length(), config_.line_tokenizer.get());
 		}
 		queue.push(chunk, table);
 	});
@@ -177,10 +175,10 @@ Table File::read(int threads) {
 
 Table File::read_record() {
 	Table table(schema_);
-	file_->getline();
-	if (file_->eof() && file_->line.empty())
+	pair<bool, string> r = config_.line_tokenizer->read_record(*file_);
+	if(!r.first)
 		return table;
-	table.push_back(file_->line.c_str(), file_->line.c_str() + file_->line.length(), config_.line_tokenizer.get(), flag_any(flags_, Flags::RECORD_ID_COLUMN) ? record_id_ : -1);
+	table.push_back(r.second.c_str(), r.second.c_str() + r.second.length(), config_.line_tokenizer.get(), flag_any(flags_, Flags::RECORD_ID_COLUMN) ? record_id_ : -1);
 	++record_id_;
 	return table;
 }
@@ -188,7 +186,7 @@ Table File::read_record() {
 void File::write_record(int i) {
 	if (i != (flag_any(flags_, Flags::RECORD_ID_COLUMN) ? 1 : 0))
 		throw runtime_error("write_record with insufficient field count.");
-	write_buf_ << config_.line_delimiter;
+	write_buf_ << '\n'; // config_.line_delimiter;
 	out_file_->write(write_buf_.data(), write_buf_.size());
 	write_buf_.clear();
 }

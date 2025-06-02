@@ -379,6 +379,9 @@ set(OBJECTS
         src/align/short.cpp
         src/tools/tsv.cpp
         src/cluster/external/make_seed_table.cpp
+        src/cluster/external/external.cpp
+        src/cluster/external/align.cpp
+        src/cluster/external/cluster.cpp
         )
 
 if(WITH_DNA)

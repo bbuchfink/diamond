@@ -119,6 +119,8 @@ static void search_query_offset(const SeedLoc& q,
 				if (scores[j] < context.cutoff_table(query_len, ref_seqs::data_->length(l.first)))
 					continue;
 #endif
+				/*if (query_id == block_id(s[*(i + j)]))
+					continue;*/
 				work_set.stats.inc(Statistics::TENTATIVE_MATCHES2);
 				if (work_set.cfg.minimizer_window || work_set.cfg.sketch_size
 					|| left_most_filter(query_clipped + interval_overhang, subjects[j] + interval_overhang, window_left - interval_overhang, shapes[sid].length_, work_set.context, sid == 0, sid, score_cutoff, chunked, hamming_filter_id)) {

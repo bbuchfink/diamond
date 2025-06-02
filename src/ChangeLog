@@ -1,7 +1,14 @@
 [2.1.12]
+- Added support for the new NCBI taxonomic ranks "cellular root",
+  "acellular root", "domain" and "realm".
+- Fixed compiler errors for Clang 20.
+- Enabled transitive closure computation in earlier clustering rounds and
+  for bi-directional coverage clustering.
+- Fixed an issue that could cause hits to be partially lost in frameshift
+  alignment mode when they occured in both query strands for the same target.
+- Fixed an error parsing FASTQ files when quality value lines started with
+  the @ character.
 - Fixed a compiler error on macOS.
-- Fixed a bug that could cause a `Missing fields in input line` error when parsing
-  FASTQ files.
 
 [2.1.11]
 - Improved the performance and sensitivity of the `cluster`, `deepclust` and
@@ -21,8 +28,8 @@
   in the tabular format in frameshift alignment mode.
 - Added the options `--ungapped-evalue` and `--ungapped-evalue-short` to set
   e-value thresholds for the ungapped hit filter.
-- Linearization of search or clustering rounds is limited to seed shape
-  configurations of weight >= 10.
+- Linearization of search or clustering rounds is limited to seeds of weight
+  >= 10.
 - Fixed an issue that could cause an `array size overflow` error when using
   very large `.dmnd` databases with taxonomic annotation.
 - Fixed a bug that caused query letters to be printed as `ARND` instead of
@@ -66,13 +73,12 @@
 - Fixed a bug that caused setting `--top 100` not to function correctly.
 - Fixed a bug that caused target coordinates not to be reported correctly in
   the output of the `realign` workflow.
-- Fixed a bug that did not permit using the '--memory-limit/-M' option for
+- Fixed a bug that did not permit using the `--memory-limit/-M` option for
   the `realign` workflow.
 - Fixed an issue that could cause non-deterministic output in frameshift
   alignment mode.
 - Fixed a bug that could cause a crash when using the XML output format in
   the `view` workflow.
-- Added the sensitivity modes `--linclust-20` and `--linclust-40`.
 - Fixed an issue that could cause non-deterministic output for identically-scoring
   HSPs in the same target.
 - Disabled the default use of increased coverage and identity cutoffs in

@@ -39,12 +39,15 @@ struct FileColumn {
 };
 
 struct Config {
-	Config(const char* line_delimiter = "", Util::String::TokenizerBase* line_tokenizer = new Util::String::CharTokenizer('\t')) :
+	/*Config(const char* line_delimiter = "", Util::String::TokenizerBase* line_tokenizer = new Util::String::CharTokenizer('\t')) :
 		line_delimiter(line_delimiter),
 		line_tokenizer(line_tokenizer)
+	{}*/
+	Config(Util::String::TokenizerBase* line_tokenizer = new Util::String::CharTokenizer('\t')) :
+		line_tokenizer(line_tokenizer)
 	{}
-	std::string line_delimiter;
-	std::shared_ptr<Util::String::TokenizerBase> file_tokenizer, line_tokenizer;
+	//std::string line_delimiter;
+	std::shared_ptr<Util::String::TokenizerBase> line_tokenizer;
 };
 
 struct File {

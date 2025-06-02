@@ -9,6 +9,7 @@ ADD . .
 
 RUN git clone https://github.com/ncbi/ncbi-cxx-toolkit-public.git
 WORKDIR ncbi-cxx-toolkit-public
+# This is only for compatibility with older systems and can be skipped
 RUN sed -i 's/-msse4.2//g' ./src/build-system/cmake/toolchains/x86_64-darwin-clang.cmake
 RUN sed -i 's/-msse4.2//g' ./src/build-system/cmake/toolchains/x86_64-darwin-clang.cmake.in
 RUN sed -i 's/-msse4.2//g' ./src/build-system/cmake/toolchains/x86_64-linux-clang-1600.cmake

@@ -28,7 +28,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 namespace Util { namespace Seq {
 
-void format(Sequence seq, const char *id, const char *qual, OutputFile &out, const std::string &format, const ValueTraits& value_traits);
+void format(Sequence seq, const char *id, const char *qual, TextBuffer &out, const std::string &format, const ValueTraits& value_traits);
 
 static inline Sequence clip(const Letter *seq, int len, int anchor) {
 	const Letter *a = seq + anchor, *begin = seq, *end = seq + len, *p;

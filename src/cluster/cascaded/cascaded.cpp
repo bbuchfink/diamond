@@ -108,10 +108,10 @@ vector<SuperBlockId> cluster(shared_ptr<SequenceFile>& db, const shared_ptr<BitV
 	timer.finish();
 
 	const auto algo = from_string<GraphAlgo>(config.graph_algo);
-	const bool last_round = round == round_count - 1;
+	//const bool last_round = round == round_count - 1;
 	const int ccd = round_ccd(round, round_count);
 	return algo == GraphAlgo::GREEDY_VERTEX_COVER ?
-		Util::Algo::greedy_vertex_cover(edge_array, config.weighted_gvc ? member_counts : nullptr, last_round && !config.strict_gvc && !mutual_cover, !config.no_gvc_reassign, ccd)
+		Util::Algo::greedy_vertex_cover(edge_array, config.weighted_gvc ? member_counts : nullptr, !config.strict_gvc, !config.no_gvc_reassign, ccd)
 		: len_sorted_clust(edge_array);
 }
 

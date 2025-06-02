@@ -667,7 +667,9 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 		("tsv-read-size", 0, "", tsv_read_size, int64_t(GIGABYTES))
 		("min-len-ratio", 0, "", min_length_ratio)
 		("max-indirection", 0, "", max_indirection)
-		("aln-out", 0, "", aln_out);
+		("aln-out", 0, "", aln_out)
+		("linclust-chunk-size", 0, "", linclust_chunk_size, string("10G"))
+		("promiscuous-seed-ratio", 0 , "", promiscuous_seed_ratio, 1000.0);
 
 	parser.store(argc, argv, command);
 

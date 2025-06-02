@@ -358,6 +358,8 @@ struct Config
 	string aln_out;
 	bool include_lineage;
 	bool mode_linclust_20;
+	std::string linclust_chunk_size;
+	double promiscuous_seed_ratio;
 
     SequenceType dbtype;
 
@@ -389,7 +391,6 @@ struct Config
 	bool cluster_restart;
 
 	size_t max_size_set;
-	bool external;
 	string_vector cluster_steps;
 	double cluster_mcl_inflation;
 	uint32_t cluster_mcl_expansion;

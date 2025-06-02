@@ -34,13 +34,13 @@ using Util::Tsv::Type;
 using Util::String::TokenIterator;
 
 void split() {
-	TextInputFile in(config.single_query_file());
+	unique_ptr<SequenceFile> in(SequenceFile::auto_create({ config.single_query_file() }));
 	string id;
 	vector<Letter> seq;
 	size_t n = 0, f = 0, b = (size_t)(config.chunk_size * 1e9), seqs = 0;
 	OutputFile *out = new OutputFile(std::to_string(f) + ".faa.zst", Compressor::ZSTD);
-	while(true) {
-	//while (FASTA_format().get_seq(id, seq, in, value_traits)) {
+	TextBuffer buf;
+	while (in->read_seq(seq, id, nullptr)) {
 		if (n >= b) {
 			out->close();
 			delete out;
@@ -48,7 +48,9 @@ void split() {
 			n = 0;
 		}
 		string blast_id = Util::Seq::seqid(id.c_str());
-		Util::Seq::format(Sequence(seq), blast_id.c_str(), nullptr, *out, "fasta", amino_acid_traits);
+		Util::Seq::format(Sequence(seq), blast_id.c_str(), nullptr, buf, "fasta", amino_acid_traits);
+		out->write(buf.data(), buf.size());
+		buf.clear();
 		n += seq.size();
 		++seqs;
 		if (seqs % 1000000 == 0)

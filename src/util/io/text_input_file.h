@@ -22,15 +22,18 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 struct TextInputFile : public InputFile
 {
-	TextInputFile(const std::string& file_name, const char* line_separator = "\n");
+	/*TextInputFile(const std::string& file_name, const char* line_separator = "\n");
 	TextInputFile(TempFile &tmp_file, const char* line_separator = "\n");
-	TextInputFile(OutputFile& out_file, const char* line_separator = "\n");
+	TextInputFile(OutputFile& out_file, const char* line_separator = "\n");*/
+	TextInputFile(const std::string& file_name, char line_separator = '\n');
+	TextInputFile(TempFile& tmp_file, char line_separator = '\n');
+	TextInputFile(OutputFile& out_file, char line_separator = '\n');
 	void rewind();
 	bool eof() const;
 	void putback(char c);
 	void getline();
 	void putback_line();
-	void set_separator(const char* separator);
+	//void set_separator(const char* separator);
 	operator bool() const {
 		return !eof();
 	}
@@ -41,6 +44,6 @@ struct TextInputFile : public InputFile
 protected:
 
 	bool putback_line_, eof_;
-	const char* line_separator;
+	const char line_separator;
 
 };

@@ -26,6 +26,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "value.h"
 #include "seed.h"
 #include "reduction.h"
+#include "util/math/integer.h"
 
 struct Shape
 {
@@ -156,6 +157,10 @@ struct Shape
 	uint64_t long_mask() const
 	{
 		return long_mask_;
+	}
+
+	int bit_length() const {
+		return ::bit_length(power((int64_t)Reduction::get_reduction().size(), (int64_t)weight_) - 1);
 	}
 
 	int32_t length_, weight_, positions_[Const::max_seed_weight];

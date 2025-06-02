@@ -35,7 +35,7 @@ using Util::String::FastqTokenizer;
 
 static const Schema FASTA_SCHEMA { Type::STRING, Type::STRING };
 static const Schema FASTQ_SCHEMA{ Type::STRING, Type::STRING, Type::STRING };
-const char* FASTA_SEP = "\n>", * FASTQ_SEP = "\n@";
+//const char* FASTA_SEP = "\n>", * FASTQ_SEP = "\n@";
 
 SeqFileFormat guess_format(TextInputFile& file) {
 	string r = file.peek(1);
@@ -56,7 +56,8 @@ FastaFile::FastaFile(const std::vector<std::string>& file_name, Metadata metadat
 		throw OperationNotSupported();
 	unique_ptr<TextInputFile> input_file(new TextInputFile(file_name.front()));
 	format_ = guess_format(*input_file);
-	Util::Tsv::Config config(format_ == SeqFileFormat::FASTA ? FASTA_SEP : FASTQ_SEP, format_ == SeqFileFormat::FASTA ? (TokenizerBase*)(new FastaTokenizer()) : new FastqTokenizer);
+	//Util::Tsv::Config config(format_ == SeqFileFormat::FASTA ? FASTA_SEP : FASTQ_SEP, format_ == SeqFileFormat::FASTA ? (TokenizerBase*)(new FastaTokenizer()) : new FastqTokenizer);
+	Util::Tsv::Config config(format_ == SeqFileFormat::FASTA ? (TokenizerBase*)(new FastaTokenizer()) : new FastqTokenizer);
 	const auto schema = format_ == SeqFileFormat::FASTA ? FASTA_SCHEMA : FASTQ_SCHEMA;
 	file_.emplace_back(schema, std::move(input_file), Util::Tsv::Flags(), config);
 	if (file_name.size() > 1)
@@ -77,8 +78,9 @@ FastaFile::FastaFile(const string& file_name, bool overwrite, const WriteAccess&
 	seqs_(0),
 	letters_(0)
 {
-	unique_ptr<TextInputFile> in(new TextInputFile(*out_file_, FASTA_SEP));
-	Util::Tsv::Config config(FASTA_SEP, new FastaTokenizer());
+	unique_ptr<TextInputFile> in(new TextInputFile(*out_file_));
+	//Util::Tsv::Config config(FASTA_SEP, new FastaTokenizer());
+	Util::Tsv::Config config(new FastaTokenizer());
 	file_.emplace_back(FASTA_SCHEMA, std::move(in), Util::Tsv::Flags(), config);
 	//file_.emplace_back(*out_file_);
 	file_ptr_ = file_.begin();
@@ -298,7 +300,10 @@ void FastaFile::init_write() {
 }
 
 void FastaFile::write_seq(const Sequence& seq, const std::string& id) {
-	Util::Seq::format(seq, id.c_str(), nullptr,  *out_file_, "fasta", value_traits_);
+	static TextBuffer buf;
+	Util::Seq::format(seq, id.c_str(), nullptr,  buf, "fasta", value_traits_);
+	out_file_->write(buf.data(), buf.size());
+	buf.clear();
 	++seqs_;
 	letters_ += seq.length();
 	if (flag_any(flags_, Flags::NEED_LENGTH_LOOKUP))

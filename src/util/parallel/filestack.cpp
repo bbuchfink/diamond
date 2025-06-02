@@ -27,12 +27,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <vector>
 #include <algorithm>
 #include <string.h>
-#ifndef WIN32
+#include "multiprocessing.h"
+#ifdef WIN32
+#else
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include "multiprocessing.h"
 #endif
 
 // #define DEBUG
@@ -57,28 +58,44 @@ FileStack::FileStack() : FileStack::FileStack(default_file_name) {
 FileStack::FileStack(const string & file_name) : FileStack::FileStack(file_name, default_max_line_length) {
 }
 
-FileStack::FileStack(const string & file_name, int maximum_line_length) {
-#ifndef WIN32
+FileStack::FileStack(const string & file_name, int maximum_line_length):
+    locked(false),
+    file_name_(file_name)
+{
+#ifdef WIN32
+    hFile = CreateFile(TEXT(file_name.c_str()), FILE_GENERIC_WRITE | FILE_GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+    if (hFile == INVALID_HANDLE_VALUE)
+        throw std::runtime_error("Error opening file " + file_name_);
+#else
     DBG("");
     fd = open(file_name.c_str(), O_RDWR | O_CREAT, 00664);
     if (fd == -1) {
-        throw(std::runtime_error("could not open file " + file_name));
+        throw(std::runtime_error("could not open file " + file_name_));
     }
-    this->locked = false;
-    this->file_name = file_name;
-    set_max_line_length(maximum_line_length);
 #endif
+    set_max_line_length(maximum_line_length);
 }
 
 FileStack::~FileStack() {
     DBG("");
-#ifndef WIN32
+#ifdef WIN32
+    CloseHandle(hFile);
+#else
     close(fd);
 #endif
 }
 
 int FileStack::lock() {
-#ifndef WIN32
+    mtx_.lock();
+#ifdef WIN32
+    OVERLAPPED overlapvar;
+    overlapvar.Offset = 0;
+    overlapvar.OffsetHigh = 0;
+    if(!LockFileEx(hFile, LOCKFILE_EXCLUSIVE_LOCK, 0, MAXDWORD, MAXDWORD, &overlapvar))
+        throw std::runtime_error("could not put lock on file " + file_name_);
+    locked = true;
+    return 0;
+#else
     DBG("");
     int fcntl_status = -1;
     if (fd >= 0) {
@@ -89,51 +106,100 @@ int FileStack::lock() {
         lck.l_len = 0;
         fcntl_status = fcntl(fd, F_SETLKW, &lck);
         if (fcntl_status == -1) {
-            throw(std::runtime_error("could not put lock on file " + file_name));
+            throw(std::runtime_error("could not put lock on file " + file_name_));
         } else {
             locked = true;
         }
     } else {
-        throw(std::runtime_error("could not put lock on non-open file " + file_name));
+        throw(std::runtime_error("could not put lock on non-open file " + file_name_));
     }
     return fcntl_status;
-#else
-    return 0;
 #endif
 }
 
 int FileStack::unlock() {
-#ifndef WIN32
+#ifdef WIN32
+    OVERLAPPED overlapvar;
+    overlapvar.Offset = 0;
+    overlapvar.OffsetHigh = 0;
+    if (!UnlockFileEx(hFile, 0, MAXDWORD, MAXDWORD, &overlapvar))
+        throw(std::runtime_error("could not unlock file " + file_name_));
+    locked = false;
+    mtx_.unlock();
+    return 0;
+#else
     DBG("");
     int fcntl_status = -1;
     if (fd >= 0) {
         lck.l_type = F_UNLCK;
         fcntl_status = fcntl(fd, F_SETLKW, &lck);
         if (fcntl_status == -1) {
-            throw(std::runtime_error("could not unlock file " + file_name));
+            throw(std::runtime_error("could not unlock file " + file_name_));
         } else {
             locked = false;
         }
     }
+    mtx_.unlock();
     return fcntl_status;
+#endif
+}
+
+int64_t FileStack::seek(int64_t offset, int mode) {
+#ifdef WIN32
+    const DWORD off = SetFilePointer(hFile, offset, NULL, mode == SEEK_END ? FILE_END : FILE_BEGIN);
+    if (off == INVALID_SET_FILE_POINTER)
+        throw std::runtime_error("Failed to seek");
+    return off;
 #else
+    return lseek(fd, offset, mode);
+#endif
+}
+
+int64_t FileStack::read(char* buf, int64_t size) {
+#ifdef WIN32
+    DWORD n;
+    if (!ReadFile(hFile, buf, size, &n, NULL))
+        throw std::runtime_error("Error reading file " + file_name_);
+    return n;
+#else
+    return ::read(fd, buf, size);
+#endif
+}
+
+int64_t FileStack::write(const char* buf, int64_t size) {
+#ifdef WIN32
+    DWORD n;
+    if (!WriteFile(hFile, buf, size, &n, NULL))
+        throw std::runtime_error("Error writing file " + file_name_);
+    return n;
+#else
+    return ::write(fd, buf, size);
+#endif
+}
+
+int FileStack::truncate(int64_t size) {
+#ifdef WIN32
+    seek(size, SEEK_SET);
+    if (!SetEndOfFile(hFile))
+        throw std::runtime_error("Error calling SetEndOfFile");
     return 0;
+#else
+    return ftruncate(fd, size);
 #endif
 }
 
 int FileStack::pop_non_locked(string & buf, const bool keep_flag, size_t & size_after_pop) {
-#ifndef WIN32
     DBG("");
     buf.clear();
     int stat = 0;
-    const off_t size = lseek(fd, 0, SEEK_END);
+    const off_t size = seek(0, SEEK_END);
     if (size > 0) {
         off_t jmp = size - max_line_length;
         if (jmp < 0) jmp = 0;
-        lseek(fd, jmp, SEEK_SET);
+        seek(jmp, SEEK_SET);
 
         char * raw = new char[max_line_length * sizeof(char)];
-        const ssize_t n_read = read(fd, raw, max_line_length);
+        const int64_t n_read = read(raw, max_line_length);
         string chunk;
         chunk.assign(raw, n_read);
         delete [] raw;
@@ -152,9 +218,9 @@ int FileStack::pop_non_locked(string & buf, const bool keep_flag, size_t & size_
         }
         const size_t line_size = end - begin + 1;
         if (line_size > 0) {
-            buf.assign(chunk, begin, line_size - 1);
+            buf.assign(chunk, begin, line_size - (chunk[begin + line_size - 1] == '\n' ? 1 : 0));
             if (! keep_flag) {
-                stat = ftruncate(fd, size - line_size);
+                stat = truncate(size - line_size);
             }
         }
     }
@@ -167,9 +233,6 @@ int FileStack::pop_non_locked(string & buf, const bool keep_flag, size_t & size_
         DBG(buf);
         return buf.size();
     }
-#else
-    return 0;
-#endif
 }
 
 int FileStack::pop_non_locked(string & buf) {
@@ -179,7 +242,6 @@ int FileStack::pop_non_locked(string & buf) {
 }
 
 int FileStack::pop(string & buf, const bool keep_flag, size_t & size_after_pop) {
-#ifndef WIN32
     DBG("");
     bool locked_internally = false;
     if (! locked) {
@@ -191,9 +253,6 @@ int FileStack::pop(string & buf, const bool keep_flag, size_t & size_after_pop) 
         unlock();
     }
     return val;
-#else
-    return 0;
-#endif
 }
 
 int FileStack::pop(string & buf) {
@@ -221,7 +280,7 @@ int FileStack::pop(int & i) {
     if (get_status > 0) {
         return i = stoi(buf);
     } else {
-        return -1;
+        return i = -1;
     }
 }
 
@@ -233,23 +292,22 @@ int FileStack::top(int & i) {
     if (get_status > 0) {
         return i = stoi(buf);
     } else {
-        return -1;
+        return i = -1;
     }
 }
 
-int FileStack::remove(const string & line) {
+void FileStack::remove(const string & line) {
     DBG("");
-#ifndef WIN32
     bool locked_internally = false;
     if (! locked) {
         lock();
         locked_internally = true;
     }
-    const off_t size = lseek(fd, 0, SEEK_END);
-    lseek(fd, 0, SEEK_SET);
+    const off_t size = seek(0, SEEK_END);
+    seek(0, SEEK_SET);
 
     char * raw = new char[size * sizeof(char)];
-    const ssize_t n_read = read(fd, raw, size);
+    const int64_t n_read = read(raw, size);
     string buf;
     buf.assign(raw, n_read);
     delete [] raw;
@@ -259,33 +317,27 @@ int FileStack::remove(const string & line) {
 
     tokens.erase(std::remove(tokens.begin(), tokens.end(), line), tokens.end());
 
-    lseek(fd, 0, SEEK_SET);
-    int stat = ftruncate(fd, 0);
+    seek(0, SEEK_SET);
+    int stat = truncate(0);
     for (auto it = tokens.begin(); it != tokens.end(); ++it) {
         buf = *it + '\n';
-        size_t n = write(fd, buf.c_str(), buf.size());
+        size_t n = write(buf.c_str(), buf.size());
     }
 
     if (locked_internally) {
         unlock();
     }
-#endif
-    return 0;
 }
 
 int64_t FileStack::push_non_locked(const string & buf) {
     DBG("");
     static const string nl("\n");
-#ifndef WIN32
-    lseek(fd, 0, SEEK_END);
-    size_t n = write(fd, buf.c_str(), buf.size());
+    seek(0, SEEK_END);
+    size_t n = write(buf.c_str(), buf.size());
     if (buf.back() != nl.back()) {
-        n += write(fd, nl.c_str(), nl.size());
+        n += write(nl.c_str(), nl.size());
     }
     return n;
-#else
-	return 0;
-#endif
 }
 
 int64_t FileStack::push(const string & buf, size_t & size_after_push) {
@@ -305,6 +357,10 @@ int64_t FileStack::push(const string & buf, size_t & size_after_push) {
     return n;
 }
 
+std::string FileStack::file_name() const {
+    return file_name_;
+}
+
 int64_t FileStack::push(const string & buf) {
     DBG("");
     size_t size_after_push = numeric_limits<size_t>::max();
@@ -316,8 +372,6 @@ int64_t FileStack::push(int i) {
     string buf = to_string(i);
     return push(buf);
 }
-
-
 
 size_t FileStack::size() {
     DBG("");
@@ -331,17 +385,15 @@ size_t FileStack::size() {
         locked_internally = true;
     }
 
-#ifndef WIN32
     size_t n_bytes, i;
-    lseek(fd, 0, SEEK_SET);
-    while ((n_bytes = read(fd, raw, chunk_size)) > 0) {
+    seek(0, SEEK_SET);
+    while ((n_bytes = read(raw, chunk_size)) > 0) {
         for (i=0; i<n_bytes; i++) {
             if (raw[i] == '\n') {
                 c++;
             }
         }
     }
-#endif
 
     if (locked_internally) {
         unlock();
@@ -360,12 +412,8 @@ int FileStack::clear() {
         locked_internally = true;
     }
 
-#ifndef WIN32
-    lseek(fd, 0, SEEK_SET);
-    int stat = ftruncate(fd, 0);
-#else
-    int stat = 0;
-#endif
+    seek(0, SEEK_SET);
+    int stat = truncate(0);
 
     if (locked_internally) {
         unlock();
@@ -387,11 +435,11 @@ bool FileStack::poll_query(const string & query, const double sleep_s, const siz
             DBG(string("") + " ongoing : poll_iteration=" + to_string(i) + ", query=" + "\"" + query + "\"");
         }
         if (buf.find("STOP") != string::npos) {
-            throw(runtime_error("STOP on FileStack " + file_name));
+            throw(runtime_error("STOP on FileStack " + file_name_));
         }
         sleep_for(sleep_time);
     }
-    throw(runtime_error("Could not discover keyword " + query + " on FileStack " + file_name
+    throw(runtime_error("Could not discover keyword " + query + " on FileStack " + file_name_
                       + " within " + to_string(double(max_iter) * sleep_s) + " seconds."));
     return false;  // TODO : finally decide on the semantics
 };
@@ -406,7 +454,7 @@ bool FileStack::poll_size(const size_t size, const double sleep_s, const size_t 
         }
         sleep_for(sleep_time);
     }
-    throw(runtime_error("Could not detect size " + to_string(size) + " of FileStack " + file_name
+    throw(runtime_error("Could not detect size " + to_string(size) + " of FileStack " + file_name_
                       + " within " + to_string(double(max_iter) * sleep_s) + " seconds."));
     return false;  // TODO : finally decide on the semantics
 };

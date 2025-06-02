@@ -70,6 +70,10 @@ struct Context {
 	const PackedSeed seedp_mask;
 };
 
+extern Reduction steinegger12;
+extern Reduction murphy10;
+extern Reduction no_reduction;
+extern Reduction dna;
 extern const std::map<Sensitivity, SensitivityTraits> sensitivity_traits;
 extern const std::map<Sensitivity, std::vector<std::string>> shape_codes;
 extern const std::map<Sensitivity, std::vector<Round>> iterated_sens;

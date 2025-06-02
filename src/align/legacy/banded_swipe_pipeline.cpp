@@ -83,9 +83,9 @@ struct Target : public ::Target
 			std::stable_sort(hits, hits_end, SeedHit::compare_diag_strand2);
 
 		const auto it = find_if(hits, hits_end, [](const SeedHit &x) { return x.strand() == REVERSE; });
-		if(strand == FORWARD || mapper.target_parallel)
+		//if(strand == FORWARD || mapper.target_parallel)
 			add_strand(mapper, vf, hits, it, target_idx);
-		if (strand == REVERSE || mapper.target_parallel)
+		//if (strand == REVERSE || mapper.target_parallel)
 			add_strand(mapper, vr, it, hits_end, target_idx);
 
 		//const int d = hits[0].diagonal();

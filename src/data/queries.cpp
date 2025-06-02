@@ -31,14 +31,17 @@ unique_ptr<SeedSet> query_seeds_bitset;
 void write_unaligned(const Block& query, OutputFile *file)
 {
 	const size_t n = query.ids().size();
+	TextBuffer buf;
 	for (size_t i = 0; i < n; ++i) {
 		if (!query_aligned[i]) {
 			Util::Seq::format(align_mode.query_translated ? query.source_seqs()[i] : query.seqs()[i],
 				query.ids()[i],
 				query.qual().empty() ? nullptr : query.qual()[i],
-				*file,
+				buf,
 				config.unfmt,
 				input_value_traits);
+			file->write(buf.data(), buf.size());
+			buf.clear();
 		}
 	}
 }
@@ -46,14 +49,17 @@ void write_unaligned(const Block& query, OutputFile *file)
 void write_aligned(const Block& query, OutputFile *file)
 {
 	const size_t n = query.ids().size();
+	TextBuffer buf;
 	for (size_t i = 0; i < n; ++i) {
 		if (query_aligned[i]) {
 			Util::Seq::format(align_mode.query_translated ? query.source_seqs()[i] : query.seqs()[i],
 				query.ids()[i],
 				query.qual().empty() ? nullptr : query.qual()[i],
-				*file,
+				buf,
 				config.alfmt,
 				input_value_traits);
+			file->write(buf.data(), buf.size());
+			buf.clear();
 		}
 	}
 }
