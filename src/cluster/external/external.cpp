@@ -228,7 +228,7 @@ static pair<vector<string>, int> build_chunk_table(Job& job, const vector<string
 	shared_ptr<Chunk> current_chunk(new Chunk(next_chunk, chunks_path));
 	int64_t bucket, total_pairs = 0, total_distinct_pairs = 0, buckets_processed = 0;
 	mutex mtx;
-	while (bucket = queue.fetch_add(), bucket < pair_table.size()) {
+	while (bucket = queue.fetch_add(), bucket < (int64_t)pair_table.size()) {
 		VolumedFile file(pair_table[bucket]);
 		InputBuffer<PairEntry> data(file);
 		job.log("Building chunk table. Bucket=%lli/%lli Records=%s Size=%s", bucket + 1, pair_table.size(), format(data.size()).c_str(), format(data.byte_size()).c_str());
