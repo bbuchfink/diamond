@@ -179,7 +179,7 @@ std::string format(double number) {
 	}
 
 	// Check if after trimming, the number is 1000 or more, adjust suffix if possible
-	if (formatted_number >= 999.995 && suffix_index < suffixes.size() - 1) {
+	if (formatted_number >= 999.995 && suffix_index < (int)suffixes.size() - 1) {
 		suffix_index++;
 		divisor *= 1000;
 		formatted_number = abs_number / divisor;

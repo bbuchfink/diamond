@@ -22,7 +22,7 @@ std::vector<std::string> radix_cluster(Job& job, const VolumedFile& bucket, cons
 		for (int64_t i = 0; i < RADIX_COUNT; ++i)
 			buffers[i].reserve(BUF_SIZE);
 		int64_t v = 0;
-		while (v = next.fetch_add(1, std::memory_order_relaxed), v < bucket.size()) {
+		while (v = next.fetch_add(1, std::memory_order_relaxed), v < (int64_t)bucket.size()) {
 			InputFile in(bucket[v].path, InputFile::NO_AUTODETECT);
 			const int64_t n = bucket[v].record_count;
 			std::unique_ptr<T[]> data(new T[n]);
@@ -42,7 +42,7 @@ std::vector<std::string> radix_cluster(Job& job, const VolumedFile& bucket, cons
 		for (int i = 0; i < RADIX_COUNT; ++i)
 			;// output_files->write(i, buffers[i].data(), buffers[i].size());
 		};
-	for (int i = 0; i < std::min((size_t)config.threads_, bucket.size()); ++i)
+	for (int i = 0; i < std::min(config.threads_, (int)bucket.size()); ++i)
 		workers.emplace_back(worker, i);
 	for (auto& t : workers)
 		t.join();
@@ -64,7 +64,7 @@ std::vector<std::string> radix_sort(Job& job, const std::vector<std::string>& bu
 	Atomic queue(queue_path);
 	FileStack out(result_path);
 	int64_t i, buckets_processed = 0;
-	while (i = queue.fetch_add(), i < buckets.size()) {
+	while (i = queue.fetch_add(), i < (int64_t)buckets.size()) {
 		VolumedFile bucket(buckets[i]);
 		const int64_t data_size = bucket.records() * sizeof(T);
 		job.log("Radix sorting. Bucket=%lli/%lli Records=%s Size=%s", i + 1, buckets.size(), Util::String::format(bucket.records()).c_str(), Util::String::format(data_size).c_str());

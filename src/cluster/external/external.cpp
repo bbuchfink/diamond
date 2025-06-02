@@ -96,7 +96,7 @@ static vector<string> build_seed_table(Job& job, const VolumedFile& volumes) {
 		BufferArray buffers(*output_files, RADIX_COUNT);
 		int64_t v = 0;
 		vector<Letter> buf;
-		while (v = q.fetch_add(), v < volumes.size()) {
+		while (v = q.fetch_add(), v < (int64_t)volumes.size()) {
 			job.log("Building seed table. Volume=%lli/%lli Records=%s", v + 1, volumes.size(), format(volumes[v].record_count).c_str());
 			unique_ptr<SequenceFile> in(SequenceFile::auto_create({ volumes[v].path }));
 			string id;
@@ -105,7 +105,7 @@ static vector<string> build_seed_table(Job& job, const VolumedFile& volumes) {
 			while (in->read_seq(seq, id, nullptr)) {
 				Reduction::reduce_seq(Sequence(seq), buf);
 				const Shape& sh = shapes[0];
-				if (seq.size() < sh.length_) {
+				if (seq.size() < (size_t)sh.length_) {
 					++oid;
 					continue;
 				}
@@ -143,7 +143,7 @@ static vector<string> build_pair_table(Job& job, const vector<string>& seed_tabl
 	unique_ptr<FileArray> output_files(new FileArray(base_path, RADIX_COUNT, job.worker_id()));
 	Atomic queue(queue_path);
 	int64_t bucket, buckets_processed = 0;
-	while (bucket = queue.fetch_add(), bucket < seed_table.size()) {
+	while (bucket = queue.fetch_add(), bucket < (int64_t)seed_table.size()) {
 		VolumedFile file(seed_table[bucket]);
 		InputBuffer<SeedEntry> data(file);
 		job.log("Building pair table. Bucket=%lli/%lli Records=%s Size=%s", bucket + 1, seed_table.size(), format(data.size()).c_str(), format(data.byte_size()).c_str());
@@ -273,8 +273,9 @@ static pair<vector<string>, int> build_chunk_table(Job& job, const vector<string
 									my_chunk = current_chunk;
 									new_chunk = true;
 								}
-								else
-									;// should not happen?
+								else {
+									// should not happen?
+								}
 							}
 						}
 						if (new_chunk) {
@@ -321,7 +322,7 @@ static void build_chunks(Job& job, VolumedFile& db, const vector<string>& chunk_
 	Atomic queue(queue_path);
 	int64_t bucket, buckets_processed = 0;
 	atomic<int64_t> oid_counter(0), distinct_oid_counter(0);
-	while (bucket = queue.fetch_add(), bucket < chunk_table.size()) {
+	while (bucket = queue.fetch_add(), bucket < (int64_t)chunk_table.size()) {
 		VolumedFile file(chunk_table[bucket]);
 		InputBuffer<ChunkTableEntry> data(file);
 		job.log("Building chunks. Bucket=%lli/%lli Records=%s Size=%s", bucket + 1, chunk_table.size(), format(data.size()).c_str(), format(data.byte_size()).c_str());

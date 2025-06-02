@@ -43,7 +43,7 @@ struct HyperLogLog {
 
     void merge(const HyperLogLog& other) {
         if (p != other.p) throw std::invalid_argument("Precision must match for merging");
-        for (size_t i = 0; i < m; ++i) {
+        for (int i = 0; i < m; ++i) {
             if (registers[i] < other.registers[i]) {
                 registers[i] = other.registers[i];
             }

@@ -28,7 +28,7 @@ void cluster(Job& job, const vector<string>& edges, int64_t db_size) {
 	unique_ptr<FileArray> output_file(new FileArray(clustering_path, 1, job.worker_id()));
 	Atomic queue(queue_path);
 	int64_t bucket, buckets_processed = 0;
-	while (bucket = queue.fetch_add(), bucket < edges.size()) {
+	while (bucket = queue.fetch_add(), bucket < (int64_t)edges.size()) {
 		VolumedFile file(edges[bucket]);
 		InputBuffer<Edge> data(file);
 		job.log("Clustering. Bucket=%lli/%lli Records=%s Size=%s", bucket + 1, edges.size(), format(data.size()).c_str(), format(data.byte_size()).c_str());
@@ -54,7 +54,7 @@ void cluster(Job& job, const vector<string>& edges, int64_t db_size) {
 	output_file.reset();
 	Atomic finished(clustering_path + PATH_SEPARATOR + "finished");
 	const int f = finished.fetch_add(buckets_processed);
-	if (f + buckets_processed < edges.size())
+	if (f + buckets_processed < (int)edges.size())
 		return;
 	job.log("Computing transitive closure");
 	timer.go("Getting assignment volumes");
@@ -66,7 +66,7 @@ void cluster(Job& job, const vector<string>& edges, int64_t db_size) {
 	atomic<int> next(0);
 	auto read_worker = [&](int thread_id) {
 		int i;
-		while (i = next.fetch_add(1, std::memory_order_relaxed), i < v.size()) {
+		while (i = next.fetch_add(1, std::memory_order_relaxed), i < (int)v.size()) {
 			job.log("Reading assignments thread_id=%i volume=%i", thread_id, i);
 			InputFile f(v[i].path);
 			Assignment a;
@@ -105,11 +105,15 @@ void cluster(Job& job, const vector<string>& edges, int64_t db_size) {
 	for (int64_t i = 0; i < db_size; ++i) {
 		if (rep[i] == i)
 			++n;
+#ifdef _MSC_VER
 		fprintf(out, "%lli\t%lli\n", rep[i], i);
+#else
+		fprintf(out, "%li\t%li\n", rep[i], i);
+#endif
 	}
 	timer.finish();
 	fclose(out);
-	job.log("Cluster count = %lli", n);
+	job.log("Cluster count = %l", n);
 }
 
 }

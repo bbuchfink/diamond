@@ -49,59 +49,6 @@ void ZstdSink::close()
 	prev_->close();
 }
 
-CompressedBuffer::CompressedBuffer():
-	buf_(32768),
-	stream_(ZSTD_createCStream()),
-	size_(0)
-{
-	if (!stream_)
-		throw runtime_error("ZSTD_createCStream error");
-}
-
-void CompressedBuffer::write(const char* ptr, int64_t n) {
-	ZSTD_inBuffer in_buf;
-	in_buf.src = ptr;
-	in_buf.size = n;
-	in_buf.pos = 0;
-	ZSTD_outBuffer out_buf;
-	do {
-		out_buf.dst = buf_.data();
-		out_buf.size = buf_.size();
-		out_buf.pos = size_;
-		if (ZSTD_isError(ZSTD_compressStream(stream_, &out_buf, &in_buf)))
-			throw runtime_error("ZSTD_compressStream");
-		size_ = out_buf.pos;
-		if (in_buf.pos < in_buf.size)
-			buf_.resize(buf_.size() + 32768);
-	} while (in_buf.pos < in_buf.size);
-}
-
-void CompressedBuffer::finish() {
-	ZSTD_outBuffer out_buf;
-	size_t n;
-	do {
-		out_buf.dst = buf_.data();
-		out_buf.size = buf_.size();
-		out_buf.pos = size_;
-		if (ZSTD_isError(n = ZSTD_endStream(stream_, &out_buf)))
-			throw runtime_error("ZSTD_endStream");
-		size_ = out_buf.pos;
-		if (n > 0)
-			buf_.resize(buf_.size() + 32768);
-	} while (n > 0);
-	ZSTD_freeCStream(stream_);
-	stream_ = nullptr;
-}
-
-void CompressedBuffer::clear() {
-	stream_ = ZSTD_createCStream();
-	size_ = 0;
-}
-
-CompressedBuffer::~CompressedBuffer() {
-	ZSTD_freeCStream(stream_);
-}
-
 ZstdSource::ZstdSource(InputStreamBuffer* prev):
 StreamEntity(prev)
 {

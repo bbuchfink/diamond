@@ -9,7 +9,7 @@
 #include "util/algo/partition.h"
 #include "util/parallel/filestack.h"
 #include "util/parallel/atomic.h"
-#include "util/io/zstd_stream.h"
+#include "util/io/compressed_buffer.h"
 #include "basic/sequence.h"
 #include "data/block/block.h"
 #include "data/sequence_file.h"
@@ -142,7 +142,7 @@ struct Job {
 
 	void log(const char* format, ...) {
 		char buffer[1024];
-		char* ptr = buffer + sprintf(buffer, "[%i, %lli] ", worker_id_, std::chrono::duration_cast<std::chrono::duration<int>>(std::chrono::system_clock::now() - start_).count());
+		char* ptr = buffer + sprintf(buffer, "[%i, %lli] ", worker_id_, std::chrono::duration_cast<std::chrono::duration<long long int>>(std::chrono::system_clock::now() - start_).count());
 		va_list args;
 		va_start(args, format);
 		int i = vsprintf(ptr, format, args);
@@ -172,10 +172,10 @@ struct FileArray {
 		size_(size),
 		worker_id_(worker_id),
 		base_dir(base_dir),
+		mtx_(size),
 		records_(size, 0),
 		bytes_(size, 0),
-		next_(size, 1),
-		mtx_(size)
+		next_(size, 1)
 	{
 		for (int64_t i = 0; i < size; ++i) {
 			const std::string dir = base_dir + PATH_SEPARATOR + std::to_string(i) + PATH_SEPARATOR;
@@ -284,7 +284,7 @@ struct BufferArray {
 		write(radix, &x, 1);
 	}
 	~BufferArray() {
-		for (int i = 0; i < data_.size(); ++i) {
+		for (int i = 0; i < (int)data_.size(); ++i) {
 			data_[i].finish();
 			file_array_.write(i, data_[i].data(), data_[i].size(), records_[i]);
 		}
@@ -359,7 +359,7 @@ struct InputBuffer {
 		std::atomic<int64_t> next(0);
 		auto worker = [&]() {
 			int64_t v;
-			while (v = next.fetch_add(1, std::memory_order_relaxed), v < f.size()) {
+			while (v = next.fetch_add(1, std::memory_order_relaxed), v < (int64_t)f.size()) {
 				InputFile in(f[v].path);
 				in.read(&data_[f[v].oid_begin], f[v].record_count);
 				in.close();
@@ -441,7 +441,7 @@ struct ChunkSeqs {
 		//std::mutex mtx;
 		auto worker = [&]() {
 			int i;
-			while (i = next.fetch_add(1, std::memory_order_relaxed), i < seq_file.size()) {
+			while (i = next.fetch_add(1, std::memory_order_relaxed), i < (int)seq_file.size()) {
 				std::unique_ptr<SequenceFile> in(SequenceFile::auto_create({ seq_file[i].path }));
 				seq_blocks_[i] = in->load_seqs(INT64_MAX);
 				in->close();
@@ -482,7 +482,7 @@ struct ChunkSeqs {
 		std::atomic<int> next(0);
 		auto worker = [&]() {
 			int i;
-			while(i = next.fetch_add(1, std::memory_order_relaxed), i < seq_blocks_.size()) {
+			while(i = next.fetch_add(1, std::memory_order_relaxed), i < (int)seq_blocks_.size()) {
 				delete seq_blocks_[i];
 				delete oid2seq_[i];
 			}
@@ -508,7 +508,7 @@ struct ChunkSeqs {
 	Sequence operator[](int64_t oid) const {
 		//const auto r = range2block_.equal_range(std::make_pair(oid, oid));
 		//for (auto i = r.first; i != r.second; ++i) {
-		for (int i = 0; i < oid_range_.size(); ++i) {
+		for (int i = 0; i < (int)oid_range_.size(); ++i) {
 			if (oid < oid_range_[i].first || oid > oid_range_[i].second)
 				continue;
 			std::unordered_map<int64_t, Sequence>::const_iterator it;
