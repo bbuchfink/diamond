@@ -360,6 +360,7 @@ struct Config
 	bool mode_linclust_20;
 	std::string linclust_chunk_size;
 	double promiscuous_seed_ratio;
+	bool oid_output;
 
     SequenceType dbtype;
 

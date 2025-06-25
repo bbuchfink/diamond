@@ -136,11 +136,20 @@ void output(File& out, SequenceFile& db, File& oid_to_centroid_oid) {
 
 template<typename Int>
 void output_mem(File& out, SequenceFile& db, const FlatArray<Int>& clusters, const vector<Int>& centroids) {
-	const Util::Tsv::Table acc_mapping = db.seqid_file().read(config.threads_);
-	for (Int i = 0; i < (Int)centroids.size(); ++i) {
-		const string centroid = acc_mapping[centroids[i]].template get<string>(0);
-		for(auto j = clusters.cbegin(i); j != clusters.cend(i); ++j)
-			out.write_record(centroid, acc_mapping[*j].template get<string>(0));
+	if (config.oid_output) {
+		for (Int i = 0; i < (Int)centroids.size(); ++i) {
+			const string centroid = std::to_string(centroids[i]);
+			for (auto j = clusters.cbegin(i); j != clusters.cend(i); ++j)
+				out.write_record(centroid, std::to_string(*j));
+		}
+	}
+	else {
+		const Util::Tsv::Table acc_mapping = db.seqid_file().read(config.threads_);
+		for (Int i = 0; i < (Int)centroids.size(); ++i) {
+			const string centroid = acc_mapping[centroids[i]].template get<string>(0);
+			for (auto j = clusters.cbegin(i); j != clusters.cend(i); ++j)
+				out.write_record(centroid, acc_mapping[*j].template get<string>(0));
+		}
 	}
 }
 
