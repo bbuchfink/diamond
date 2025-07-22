@@ -92,7 +92,7 @@ struct HashedSeedSetCallback
 
 HashedSeedSet::HashedSeedSet(Block &seqs, const std::vector<bool>* skip, const double seed_cut, const MaskingAlgo soft_masking)
 {
-	for (size_t i = 0; i < shapes.count(); ++i)
+	for (int i = 0; i < shapes.count(); ++i)
 		data_.push_back(new Table(next_power_of_2(seqs.seqs().letters() * HASH_TABLE_FACTOR)));
 	PtrVector<HashedSeedSetCallback> v;
 	v.push_back(new HashedSeedSetCallback(data_));
@@ -101,15 +101,15 @@ HashedSeedSet::HashedSeedSet(Block &seqs, const std::vector<bool>* skip, const d
 	enum_seeds(seqs, v, &no_filter, cfg);
 
 	vector<size_t> sizes;
-	for (size_t i = 0; i < shapes.count(); ++i)
+	for (int i = 0; i < shapes.count(); ++i)
 		sizes.push_back(data_[i].load());
 	data_.clear();
 
-	for (size_t i = 0; i < shapes.count(); ++i)
+	for (int i = 0; i < shapes.count(); ++i)
 		data_.push_back(new Table(next_power_of_2(sizes[i] * HASH_TABLE_FACTOR)));
 	enum_seeds(seqs, v, &no_filter, cfg);
 
-	for (size_t i = 0; i < shapes.count(); ++i) {
+	for (int i = 0; i < shapes.count(); ++i) {
 		data_[i].finish();
 		log_stream << "Shape=" << i << " Hash_table_size=" << data_[i].size() << " load=" << (double)data_[i].load() / data_[i].size() << endl;
 	}
@@ -125,7 +125,7 @@ HashedSeedSet::HashedSeedSet(const string& index_file):
 		throw runtime_error("Invalid seed index file.");
 	if (*(uint32_t*)(buf + 8) != SEED_INDEX_VERSION)
 		throw runtime_error("Invalid seed index file version.");
-	uint32_t shape_count = *(uint32_t*)(buf + 12);
+	const int32_t shape_count = *(int32_t*)(buf + 12);
 	if (shape_count != shapes.count())
 		throw runtime_error("Index has a different number of shapes.");
 

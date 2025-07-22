@@ -939,10 +939,10 @@ const SNCBIPackedScoreMatrix* NCBISM_GetStandardMatrix(const char* name) {
 
         /* Use the C scores for U and X scores for the O characters;
            if this is not done then they will never align to non-gap residues */
-        x_index = AMINOACID_TO_NCBISTDAA['X'];
-        u_index = AMINOACID_TO_NCBISTDAA['U'];
-        o_index = AMINOACID_TO_NCBISTDAA['O'];
-        c_index = AMINOACID_TO_NCBISTDAA['C'];
+        x_index = AMINOACID_TO_NCBISTDAA[(int)'X'];
+        u_index = AMINOACID_TO_NCBISTDAA[(int)'U'];
+        o_index = AMINOACID_TO_NCBISTDAA[(int)'O'];
+        c_index = AMINOACID_TO_NCBISTDAA[(int)'C'];
         for (i = 0; i < sbp->alphabet_size; i++) {
             matrix[u_index][i] = matrix[c_index][i];
             matrix[i][u_index] = matrix[i][c_index];

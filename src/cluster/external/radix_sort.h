@@ -33,7 +33,7 @@ std::vector<std::string> radix_cluster(Job& job, const VolumedFile& bucket, cons
 				const uint64_t radix = (ptr->key() >> shift) & (RADIX_COUNT - 1);
 				std::vector<T>& buf = buffers[radix];
 				buf.push_back(*ptr);
-				if (buf.size() >= BUF_SIZE) {
+				if ((int64_t)buf.size() >= BUF_SIZE) {
 					//output_files->write(radix, buf.data(), buf.size());
 					buf.clear();
 				}

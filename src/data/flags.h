@@ -45,7 +45,7 @@ static inline uint32_t block_id(PackedLoc i) {
 
 struct EnumCfg {
 	const std::vector<BlockId>* partition;
-	size_t shape_begin, shape_end;
+	int shape_begin, shape_end;
 	const SeedEncoding code;
 	const std::vector<bool>* const skip;
 	const bool filter_masked_seeds, mask_seeds;
