@@ -87,7 +87,7 @@ static void search_worker(atomic<SeedPartition> *seedp, SeedPartition partition_
 }
 
 template<typename SeedLoc>
-void search_shape(unsigned sid, int query_block, unsigned query_iteration, char *query_buffer, char *ref_buffer, Search::Config& cfg, const HashedSeedSet* target_seeds)
+void search_shape(int sid, int query_block, unsigned query_iteration, char *query_buffer, char *ref_buffer, Search::Config& cfg, const HashedSeedSet* target_seeds)
 {
 	using SA = SeedArray<SeedLoc>;
 	Partition<SeedPartition> p((SeedPartition)seedp_count(cfg.seedp_bits), cfg.index_chunks);

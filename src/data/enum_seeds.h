@@ -19,7 +19,7 @@ Search::SeedStats enum_seeds(SequenceSet* seqs, F* f, unsigned begin, unsigned e
 		seqs->convert_to_std_alph(i);
 		const Sequence seq = (*seqs)[i];
 		Reduction::reduce_seq(seq, buf);
-		for (size_t shape_id = cfg.shape_begin; shape_id < cfg.shape_end; ++shape_id) {
+		for (int shape_id = cfg.shape_begin; shape_id < cfg.shape_end; ++shape_id) {
 			const Shape& sh = shapes[shape_id];
 			if (seq.length() < sh.length_) continue;
 			SeedIterator it(buf, sh);
@@ -51,7 +51,7 @@ Search::SeedStats enum_seeds_minimizer(SequenceSet* seqs, F* f, unsigned begin, 
             Reduction::reduce_seq(seq, buf);
         else
             buf = seq.copy();
-		for (size_t shape_id = cfg.shape_begin; shape_id < cfg.shape_end; ++shape_id) {
+		for (int shape_id = cfg.shape_begin; shape_id < cfg.shape_end; ++shape_id) {
 			const Shape& sh = shapes[shape_id];
 			if (seq.length() < sh.length_) continue;
 			It it(buf, sh, it_param);
@@ -75,7 +75,7 @@ void enum_seeds_hashed(SequenceSet* seqs, F* f, unsigned begin, unsigned end, co
 			continue;
 		seqs->convert_to_std_alph(i);
 		const Sequence seq = (*seqs)[i];
-		for (size_t shape_id = cfg.shape_begin; shape_id < cfg.shape_end; ++shape_id) {
+		for (int shape_id = cfg.shape_begin; shape_id < cfg.shape_end; ++shape_id) {
 			const Shape& sh = shapes[shape_id];
 			if (seq.length() < sh.length_) continue;
 			//const __m128i shape_mask = sh.long_mask_sse_;
@@ -197,7 +197,7 @@ Search::SeedStats enum_seeds(Block& seqs, PtrVector<F>& f, const Filter* filter,
 	}
 	if (cfg.soft_masking != MaskingAlgo::NONE) {
 		int l = 0;
-		for (size_t i = cfg.shape_begin; i < cfg.shape_end; ++i)
+		for (int i = cfg.shape_begin; i < cfg.shape_end; ++i)
 			l = std::max(l, shapes[i].length_);
 		seqs.remove_soft_masking((int)l, cfg.mask_seeds);
 	}
