@@ -5,18 +5,20 @@ include(CheckSymbolExists)
 include(CheckTypeSize)
 
 option(BUILD_STATIC "BUILD_STATIC" OFF)
-option(EXTRA "EXTRA" OFF)
 option(STATIC_LIBGCC "STATIC_LIBGCC" OFF)
 option(STATIC_LIBSTDC++ "STATIC_LIBSTDC++" OFF)
 option(X86 "X86" ON)
 option(ARM "ARM" OFF)
 option(AARCH64 "AARCH64" OFF)
+option(WITH_ZSTD "WITH_ZSTD" OFF)
+
+# experimental options not suitable for deployment purposes
+option(EXTRA "EXTRA" OFF)
 option(STRICT_BAND "STRICT_BAND" ON)
 option(LEFTMOST_SEED_FILTER "LEFTMOST_SEED_FILTER" ON)
 option(SEQ_MASK "SEQ_MASK" ON)
 option(DP_STAT "DP_STAT" OFF)
 option(SINGLE_THREADED "SINGLE_THREADED" OFF)
-option(WITH_ZSTD "WITH_ZSTD" OFF)
 option(HIT_KEEP_TARGET_ID "HIT_KEEP_TARGET_ID" OFF)
 option(LONG_SEEDS "LONG_SEEDS" OFF)
 option(WITH_AVX512 "WITH_AVX512" OFF)
@@ -24,6 +26,7 @@ option(WITH_DNA "WITH_DNA" OFF)
 option(WITH_MCL "WITH_MCL" OFF)
 option(WITH_MIMALLOC "WITH_MIMALLOC" OFF)
 option(USE_TLS "USE_TLS" OFF)
+
 set(MAX_SHAPE_LEN 19)
 set(BLAST_INCLUDE_DIR "" CACHE STRING "BLAST_INCLUDE_DIR")
 set(BLAST_LIBRARY_DIR "" CACHE STRING "BLAST_LIBRARY_DIR")
@@ -382,6 +385,7 @@ set(OBJECTS
         src/cluster/external/external.cpp
         src/cluster/external/align.cpp
         src/cluster/external/cluster.cpp
+        src/cluster/external/output.cpp
         )
 
 if(WITH_DNA)
@@ -503,7 +507,8 @@ endif()
 
 if (${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
   find_library(BCRYPT_LIBRARY BCrypt)
-  target_link_libraries(diamond ${BCRYPT_LIBRARY})
+  find_library(WS2_32_LIBRARY Ws2_32)
+  target_link_libraries(diamond ${BCRYPT_LIBRARY} ${WS2_32_LIBRARY})
 endif()
 
 target_link_libraries(diamond ${ZLIB_LIBRARY} ${CMAKE_THREAD_LIBS_INIT})

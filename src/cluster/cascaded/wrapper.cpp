@@ -160,6 +160,7 @@ static vector<SuperBlockId> search_vs_centroids(shared_ptr<FastaFile>& super_blo
 
 void Cascaded::run() {
 	config.database.require();
+	init_thresholds();
 	if (!config.parallel_tmpdir.empty()) {
 #ifdef EXTRA
 		external();
@@ -168,7 +169,6 @@ void Cascaded::run() {
 #endif
 		return;
 	}
-	init_thresholds();
 	config.hamming_ext = config.approx_min_id >= 50.0;
 
 	TaskTimer total_time;

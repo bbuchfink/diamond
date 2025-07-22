@@ -4,6 +4,7 @@
 #include <vector>
 #include <string>
 #include <mutex>
+#include "util/system/system.h"
 #include "util/io/output_file.h"
 #include "util/tsv/file.h"
 #include "util/algo/partition.h"
@@ -112,21 +113,15 @@ inline std::string base_path(const std::string& file_name) {
 	return file_name.substr(0, file_name.length() - s.length());
 }
 
-inline void mkdir(const std::string& dir) {
-#ifdef WIN32
-	CreateDirectory(dir.c_str(), NULL);
-#else
-	::mkdir(dir.c_str(), 493);
-#endif
-}
-
 struct Job {
 
 	Job():
-		base_dir_(config.parallel_tmpdir),
+		base_dir_(config.parallel_tmpdir + PATH_SEPARATOR + "diamond-tmp-" + Const::version_string),
+		round_(0),
 		start_(std::chrono::system_clock::now())
 	{
 		mkdir(base_dir_);
+		mkdir(base_dir());
 		log_file_.reset(new FileStack(base_dir_ + PATH_SEPARATOR + "diamond_job.log"));
 		Atomic worker_id(base_dir_ + PATH_SEPARATOR + "worker_id");
 		worker_id_ = worker_id.fetch_add();
@@ -136,8 +131,8 @@ struct Job {
 		return worker_id_;
 	}
 
-	const std::string& base_dir() const {
-		return base_dir_;
+	std::string base_dir(int round = -1) const {
+		return base_dir_ + PATH_SEPARATOR + "round" + std::to_string(round == -1 ? round_ : round);
 	}
 
 	void log(const char* format, ...) {
@@ -156,12 +151,44 @@ struct Job {
 		va_end(args);
 	}
 
+	void next_round() {
+		++round_;
+		mkdir(base_dir());
+	}
+
+	int round() const {
+		return round_;
+	}
+
+	void set_round(int volumes, int64_t input_count) {
+		volume_count_.push_back(volumes);
+		input_count_.push_back(input_count);
+	}
+
+	int volume_count(int round) const {
+		return volume_count_[round];
+	}
+
+	int input_count(int round) const {
+		return input_count_[round];
+	}
+
+	void set_round_count(int n) {
+		round_count_ = n;
+	}
+
+	bool last_round() const {
+		return round_ == round_count_ - 1;
+	}
+
 private:
 
 	std::string base_dir_;
-	int worker_id_;
+	int worker_id_, round_, round_count_;
 	std::unique_ptr<FileStack> log_file_;
 	std::chrono::system_clock::time_point start_;
+	std::vector<int> volume_count_;
+	std::vector<int64_t> input_count_;
 
 };
 
@@ -194,7 +221,7 @@ struct FileArray {
 		}
 	}
 
-	void write(int i, const char* ptr, int64_t count, int64_t records) {
+	bool write(int i, const char* ptr, int64_t count, int64_t records) {
 		std::lock_guard<std::mutex> lock(mtx_[i]);
 		output_files_[i]->write(ptr, count);
 		records_[i] += records;
@@ -206,7 +233,9 @@ struct FileArray {
 			output_files_[i]->close();
 			delete output_files_[i];
 			output_files_[i] = new OutputFile(base_dir + PATH_SEPARATOR + std::to_string(i) + PATH_SEPARATOR + "worker_" + std::to_string(worker_id_) + "_volume_" + std::to_string(next_[i]++));
+			return true;
 		}
+		return false;
 	}
 
 	int64_t records(int i) const {
@@ -223,6 +252,10 @@ struct FileArray {
 		for (int i = 0; i < size_; ++i)
 			buckets.push_back(bucket(i));
 		return buckets;
+	}
+
+	std::string file_name(int i) {
+		return output_files_[i]->file_name();
 	}
 
 private:
@@ -269,19 +302,21 @@ struct BufferArray {
 	{
 	}
 	template<typename T>
-	void write(int radix, const T* ptr, int64_t n) {
+	bool write(int radix, const T* ptr, int64_t n, int64_t record_count = -1) {
 		data_[radix].write((const char*)ptr, n * sizeof(T));
-		records_[radix] += n;
+		records_[radix] += record_count >= 0 ? record_count : n;
 		if (data_[radix].size() >= BUF_SIZE) {
 			data_[radix].finish();
-			file_array_.write(radix, data_[radix].data(), data_[radix].size(), records_[radix]);
+			const bool r = file_array_.write(radix, data_[radix].data(), data_[radix].size(), records_[radix]);
 			data_[radix].clear();
 			records_[radix] = 0;
+			return r;
 		}
+		return false;
 	}
 	template<typename T>
-	void write(int radix, const T& x) {
-		write(radix, &x, 1);
+	bool write(int radix, const T& x) {
+		return write(radix, &x, 1);
 	}
 	~BufferArray() {
 		for (int i = 0; i < (int)data_.size(); ++i) {
@@ -312,7 +347,9 @@ struct Volume {
 };
 
 struct VolumedFile : public std::vector<Volume> {
-	VolumedFile(const std::string& file_name) {
+	VolumedFile(const std::string& file_name):
+		list_file_(file_name)
+	{
 		Util::Tsv::File volume_file({ Util::Tsv::Type::STRING, Util::Tsv::Type::INT64 }, file_name);
 		const Util::Tsv::Table volume_table = volume_file.read(config.threads_);
 		reserve(volume_table.size());
@@ -335,6 +372,15 @@ struct VolumedFile : public std::vector<Volume> {
 			++end;
 		return { it,end };
 	}
+	void remove() const {
+		for (const Volume& v : *this)
+			::remove(v.path.c_str());
+		::remove(list_file_.c_str());
+		rmdir(path(list_file_).c_str());
+		
+	}
+private:
+	const std::string list_file_;
 };
 
 inline std::vector<std::string> read_list(const std::string& file_name) {
@@ -430,19 +476,19 @@ private:
 struct ChunkSeqs {
 
 	ChunkSeqs(const std::string& chunk_path):
+		seq_file_(chunk_path + "bucket.tsv"),
 		oid_count_(0),
 		letter_count_(0)
 	{
-		VolumedFile seq_file(chunk_path + "bucket.tsv");
 		std::atomic<int> next(0);
-		seq_blocks_.resize(seq_file.size());
-		oid2seq_.resize(seq_file.size());
-		oid_range_.resize(seq_file.size());
+		seq_blocks_.resize(seq_file_.size());
+		oid2seq_.resize(seq_file_.size());
+		oid_range_.resize(seq_file_.size());
 		//std::mutex mtx;
 		auto worker = [&]() {
 			int i;
-			while (i = next.fetch_add(1, std::memory_order_relaxed), i < (int)seq_file.size()) {
-				std::unique_ptr<SequenceFile> in(SequenceFile::auto_create({ seq_file[i].path }));
+			while (i = next.fetch_add(1, std::memory_order_relaxed), i < (int)seq_file_.size()) {
+				std::unique_ptr<SequenceFile> in(SequenceFile::auto_create({ seq_file_[i].path }));
 				seq_blocks_[i] = in->load_seqs(INT64_MAX);
 				in->close();
 				Block& b = *seq_blocks_[i];
@@ -466,7 +512,7 @@ struct ChunkSeqs {
 			}
 			};
 		std::vector<std::thread> workers;
-		for (int i = 0; i < std::min(config.threads_, int(seq_file.size())); ++i)
+		for (int i = 0; i < std::min(config.threads_, int(seq_file_.size())); ++i)
 			workers.emplace_back(worker);
 		for (auto& t : workers)
 			t.join();
@@ -491,6 +537,7 @@ struct ChunkSeqs {
 			workers.emplace_back(worker);
 		for (auto& t : workers)
 			t.join();
+		seq_file_.remove();
 	}
 
 	int64_t oids() const {
@@ -526,6 +573,7 @@ private:
 		}
 	};*/
 
+	VolumedFile seq_file_;
 	int64_t oid_count_, letter_count_;
 	std::vector<Block*> seq_blocks_;
 	//std::multimap<std::pair<int64_t, int64_t>, int, ChunkSeqs::CmpRange> range2block_;
@@ -535,6 +583,8 @@ private:
 };
 
 std::vector<std::string> align(Job& job, int chunk_count, int64_t db_size);
-void cluster(Job& job, const std::vector<std::string>& edges, int64_t db_size);
+std::string cluster(Job& job, const std::vector<std::string>& edges, const VolumedFile& volumes);
+std::string cluster_bidirectional(Job& job, const std::vector<std::string>& edges, const VolumedFile& volumes);
+void output(Job& job);
 
 }

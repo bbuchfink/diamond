@@ -37,9 +37,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "search/search.h"
 #include "stats/cbs.h"
 #include "basic/shape.h"
-#ifndef _MSC_VER
-#include <sys/stat.h>
-#endif
 
 using std::thread;
 using std::stringstream;
@@ -930,26 +927,15 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 	if (query_range_culling && taxon_k != 0)
 		throw std::runtime_error("--taxon-k is not supported for --range-culling mode.");
 
-	if (parallel_tmpdir == "") {
-		parallel_tmpdir = tmpdir;
-	} else {
-#ifndef WIN32
-		if (multiprocessing) {
-			// char * env_str = std::getenv("SLURM_JOBID");
-			// if (env_str) {
-			// 	parallel_tmpdir = join_path(parallel_tmpdir, "diamond_job_"+string(env_str));
-			// }
-			errno = 0;
-			int s = mkdir(parallel_tmpdir.c_str(), 00770);
-			if (s != 0) {
-				if (errno == EEXIST) {
-					// directory did already exist
-				} else {
-					throw(std::runtime_error("could not create parallel temporary directory " + parallel_tmpdir));
-				}
-			}
-		}
-#endif
+	if (multiprocessing && parallel_tmpdir.empty())
+		throw std::runtime_error("--multiprocessing requires setting --parallel-tmpdir");
+	
+	if (multiprocessing) {
+		// char * env_str = std::getenv("SLURM_JOBID");
+		// if (env_str) {
+		// 	parallel_tmpdir = join_path(parallel_tmpdir, "diamond_job_"+string(env_str));
+		// }
+		mkdir(parallel_tmpdir);
 	}
 
 	log_stream << "MAX_SHAPE_LEN=" << MAX_SHAPE_LEN;

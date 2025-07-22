@@ -1,4 +1,5 @@
 #pragma once
+#include <vector>
 #include <zstd.h>
 #include "stream_entity.h"
 #include "input_stream_buffer.h"

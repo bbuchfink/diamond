@@ -1,6 +1,19 @@
+[2.1.13]
+- Fixed an invalid error message for the `cluster`, `deepclust` and `linclust`
+  workflows.
+- Added the option `--oid-output` to output OIDs instead of accessions for
+  the clustering workflows, reducing its memory use.
+- Added support for using the `--multiprocessing` feature on Windows.
+- Using `--multiprocessing` requires explicitly setting `--parallel-tmpdir`.
+- Fixed a bug that could cause a crash when the `--target-indexed` option was
+  used.
+- As of now, a macOS binary is available as a GitHub release, supporting both
+  x86 and Apple silicon CPUs. Using BLAST databases is also supported.
+
 [2.1.12]
 - Added support for the new NCBI taxonomic ranks "cellular root",
   "acellular root", "domain" and "realm".
+- Added support for using BLAST databases to the Bioconda release.
 - Fixed compiler errors for Clang 20.
 - Enabled transitive closure computation in earlier clustering rounds and
   for bi-directional coverage clustering.

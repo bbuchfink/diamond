@@ -36,15 +36,29 @@ static void align_rep(ThreadPool& tp, const ChunkSeqs& chunk_seqs, vector<PairEn
 	}
 	DP::Params params{ rep, nullptr, Frame(0), rep.length(), nullptr, DP::Flags::FULL_MATRIX, false, max_len, HspValues::COORDS, stats, &tp };
 	const list<Hsp> hsps = DP::BandedSwipe::swipe(targets, params);
+	const bool unid = !config.mutual_cover.present();
 	for (const Hsp& h : hsps) {
 		const int64_t member_oid = begin[h.swipe_target].member_oid;
 		const Sequence member = chunk_seqs[member_oid];
 		if (h.approx_id_percent(rep, member) < config.approx_min_id.get(0))
 			continue;
-		if (h.subject_cover_percent(member.length()) >= config.member_cover.get(80))
-			out.write(MurmurHash()(member_oid) & (RADIX_COUNT - 1), Edge(rep_oid, member_oid, rep.length(), member.length()));
-		if (h.query_cover_percent(rep.length()) >= config.member_cover.get(80))
-			out.write(MurmurHash()(rep_oid) & (RADIX_COUNT - 1), Edge(member_oid, rep_oid, member.length(), rep.length()));
+		if (unid) {
+			if (h.subject_cover_percent(member.length()) >= config.member_cover.get(80))
+				out.write(MurmurHash()(member_oid) & (RADIX_COUNT - 1), Edge(rep_oid, member_oid, rep.length(), member.length()));
+			if (h.query_cover_percent(rep.length()) >= config.member_cover.get(80))
+				out.write(MurmurHash()(rep_oid) & (RADIX_COUNT - 1), Edge(member_oid, rep_oid, member.length(), rep.length()));
+		}
+		else if (h.subject_cover_percent(member.length()) >= config.mutual_cover.get_present() && h.query_cover_percent(rep.length()) >= config.mutual_cover.get_present()) {
+			int64_t oid1 = rep_oid;
+			int64_t oid2 = member_oid;
+			int64_t len1 = rep.length();
+			int64_t len2 = member.length();
+			if (oid1 > oid2) {
+				std::swap(oid1, oid2);
+				std::swap(len1, len2);
+			}
+			out.write(MurmurHash()(oid1) & (RADIX_COUNT - 1), Edge(oid1, oid2, len1, len2));
+		}
 	}
 }
 
@@ -95,6 +109,7 @@ vector<string> align(Job& job, int chunk_count, int64_t db_size) {
 		log_stream << "pairs=" << pairs_processed << endl;
 		timer.go("Deallocating memory");
 		pairs_file.close();
+		remove(pairs_file.file_name.c_str());
 		chunk_seqs.reset();
 		++chunks_processed;
 		timer.finish();

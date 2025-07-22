@@ -15,7 +15,7 @@ struct CompressedBuffer {
 		if (!stream_)
 			throw std::runtime_error("ZSTD_createCStream error");
 #else
-		throw std::runtime_error("ZSTD support missing. Compile with ZSTD library.");
+		throw std::runtime_error("ZSTD support missing. Compile with ZSTD library (CMake option -DWITH_ZSTD=ON).");
 #endif
 	}
 	~CompressedBuffer() {

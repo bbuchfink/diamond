@@ -1,5 +1,8 @@
 #include <stdexcept>
 #include <iostream>
+#if __cplusplus >= 201703L
+#include <filesystem>
+#endif
 #include "system.h"
 #include "../string/string.h"
 #include "../log_stream.h"
@@ -192,5 +195,26 @@ size_t l3_cache_size() {
 #else
 	const auto s = sysconf(_SC_LEVEL3_CACHE_SIZE);
 	return s == -1 ? 0 : s;
+#endif
+}
+
+void mkdir(const std::string& dir) {
+#ifdef WIN32
+	CreateDirectory(dir.c_str(), NULL);
+#else
+	errno = 0;
+	if (::mkdir(dir.c_str(), 493) != 0) {
+		if (errno == EEXIST) {
+		}
+		else
+			throw(std::runtime_error("could not create temporary directory " + dir));
+	}
+#endif
+}
+
+void rmdir(const std::string& dir) {
+#if __cplusplus >= 201703L
+	std::error_code errorCode;
+	std::filesystem::remove(dir, errorCode);
 #endif
 }

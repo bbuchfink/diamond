@@ -26,6 +26,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <stdexcept>
 #include <memory>
 #include "../system.h"
+#include "util/system/system.h"
 #ifndef WIN32
 #include <unistd.h>
 #include <sys/stat.h>
@@ -69,27 +70,12 @@ void Parallelizer::init(const string & tempdir) {
     }
     DBG("work_directory = " + work_directory);
 
-    errno = 0;
-#ifndef WIN32
-    int s = mkdir(work_directory.c_str(), 00770);
-#else
-    int s = 0;
-#endif
-    if (s != 0) {
-        if (errno == EEXIST) {
-            // directory did already exist
-        } else {
-            throw(runtime_error("could not create working directory " + work_directory + " for parallelizer"));
-        }
-    }
+    mkdir(work_directory);
 
     char hostname[1024];
     hostname[1023] = '\0';
-#ifdef WIN32    
-#else
     gethostname(hostname, 1023);
 	id = string(hostname) + "_" + to_string(getpid());
-#endif
     DBG("id = " + id);
 
     create_stack(LOG, id);
@@ -252,7 +238,6 @@ bool Parallelizer::clean(vector<string> & file_list) {
     file_list.clear();
     return true;
 }
-
 
 void Parallelizer::list_filestacks() {
 	// cerr << __PRETTY_FUNCTION__ << endl;

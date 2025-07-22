@@ -229,7 +229,8 @@ struct OnePassBuildCallback
 template<typename SeedLoc> template<typename Filter>
 SeedArray<SeedLoc>::SeedArray(Block& seqs, const SeedPartitionRange& range, int seedp_bits, const Filter* filter, EnumCfg& enum_cfg) :
 	key_bits(seed_bits(enum_cfg.code, seedp_bits)),
-	data_(nullptr)
+	data_(nullptr),
+	entries_(range.size())
 {
 	if (enum_cfg.shape_end - enum_cfg.shape_begin > 1)
 		throw std::runtime_error("SeedArray construction for >1 shape.");
