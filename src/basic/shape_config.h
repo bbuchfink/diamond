@@ -46,7 +46,7 @@ public:
 		}
 	}
 
-	unsigned count() const
+	int count() const
 	{ return n_; }
 
 	const Shape& operator[](size_t i) const

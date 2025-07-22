@@ -190,7 +190,7 @@ string cluster_bidirectional(Job& job, const vector<string>& edges, const Volume
 	if (lock.fetch_add() == 0) {
 		job.log("Computing clustering (bi-directional coverage)");
 		vector<uint32_t> degree(volumes.records(), 0);
-		for (int bucket = 0; bucket < edges.size(); ++bucket) {
+		for (int bucket = 0; bucket < (int)edges.size(); ++bucket) {
 			VolumedFile file(edges[bucket]);
 			InputBuffer<Edge> data(file);
 			job.log("Getting node degrees. Bucket=%lli/%lli Records=%s Size=%s", bucket + 1, edges.size(), format(data.size()).c_str(), format(data.byte_size()).c_str());

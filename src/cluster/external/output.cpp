@@ -1,3 +1,4 @@
+#include <inttypes.h>
 #include "external.h"
 
 using std::vector;
@@ -47,11 +48,7 @@ void output(Job& job) {
 	for (int64_t i = 0; i < (int64_t)inner.size(); ++i) {
 		if (inner[i] == i)
 			++n;
-#ifdef _MSC_VER
-		fprintf(out, "%lli\t%lli\n", inner[i], i);
-#else
-		fprintf(out, "%li\t%li\n", inner[i], i);
-#endif
+		fprintf(out, PRId64 "\t" PRId64 "\n", inner[i], i);
 	}
 	fclose(out);
 	job.log("Cluster count = %lli", n);

@@ -90,7 +90,7 @@ struct CharTokenizer : public TokenizerBase {
 			++ptr_;
 		return *this;
 	}
-	virtual std::pair<bool, std::string> read_record() {
+	virtual std::pair<bool, std::string> read_record() override {
 		if (ptr_ >= end_)
 			return { false,std::string() };
 		const char* b = ptr_;
@@ -104,7 +104,7 @@ struct CharTokenizer : public TokenizerBase {
 			return { true, std::string(b, ptr_ - 1) };
 		}
 	}
-	virtual std::pair<bool, std::string> read_record(TextInputFile&) {
+	virtual std::pair<bool, std::string> read_record(TextInputFile&) override {
 		throw std::runtime_error("Invalid use of CharTokenizer");
 	}
 private:

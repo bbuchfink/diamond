@@ -178,7 +178,7 @@ static void run_ref_chunk(SequenceFile &db_file,
 			timer.finish();
 		}
         if((config.command != ::Config::blastn)){
-            for (unsigned i = 0; i < shapes.count(); ++i) {
+            for (int i = 0; i < shapes.count(); ++i) {
                 if(config.global_ranking_targets)
                     cfg.global_ranking_buffer.reset(new Config::RankingBuffer());
                 search_shape(i, cfg.current_query_block, query_iteration, query_buffer, ref_buffer, cfg, target_seeds); //index_targets(0,cfg,ref_buffer,target_seeds);

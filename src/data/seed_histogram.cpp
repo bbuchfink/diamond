@@ -39,7 +39,7 @@ size_t SeedHistogram::max_chunk_size(const int index_chunks) const
 {
 	size_t max = 0;
 	::Partition<int> p(seedp(), index_chunks);
-	for (unsigned shape = 0; shape < shapes.count(); ++shape)
+	for (int shape = 0; shape < shapes.count(); ++shape)
 		for (int chunk = 0; chunk < p.parts; ++chunk)
 			max = std::max(max, hst_size(data_[shape], SeedPartitionRange(p.begin(chunk), p.end(chunk))));
 	return max;
@@ -54,7 +54,7 @@ SeedHistogram::SeedHistogram(Block& seqs, bool serial, const Filter* filter, Enu
 		Callback(size_t seqp, int seedp_bits, vector<ShapeHistogram>& data):
 			seedp_mask(::seedp_mask(seedp_bits))
 		{
-			for (unsigned s = 0; s < shapes.count(); ++s)
+			for (int s = 0; s < shapes.count(); ++s)
 				ptr.push_back(data[s][seqp].data());
 		}
 		bool operator()(PackedSeed seed, uint64_t pos, uint32_t block_id, size_t shape)
@@ -74,7 +74,7 @@ SeedHistogram::SeedHistogram(Block& seqs, bool serial, const Filter* filter, Enu
 		cb.push_back(new Callback(i, seedp_bits, data_));
 	enum_cfg.partition = &p_;
 	if (serial)
-		for (unsigned s = 0; s < shapes.count(); ++s) {
+		for (int s = 0; s < shapes.count(); ++s) {
 			enum_cfg.shape_begin = s;
 			enum_cfg.shape_end = s + 1;
 			enum_seeds(seqs, cb, filter, enum_cfg);

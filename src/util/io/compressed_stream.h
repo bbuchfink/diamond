@@ -26,9 +26,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 struct ZlibSource : public StreamEntity
 {
 	ZlibSource(InputStreamBuffer *prev);
-	virtual size_t read(char *ptr, size_t count);
-	virtual void close();
-	virtual void rewind();
+	virtual size_t read(char* ptr, size_t count) override;
+	virtual void close() override;
+	virtual void rewind() override;
 	virtual bool eof() override;
 private:
 	void init();

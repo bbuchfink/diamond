@@ -147,7 +147,7 @@ void greedy_vertex_cover() {
 	log_rss();
 
 	timer.go("Making flat array");
-	FlatArray<Edge> edge_array = make_flat_array_dense(move(edges), (Int)acc2oid.size(), config.threads_, Edge::GetKey());
+	FlatArray<Edge> edge_array = make_flat_array_dense(std::move(edges), (Int)acc2oid.size(), config.threads_, Edge::GetKey());
 	timer.finish();
 	log_rss();
 

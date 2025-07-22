@@ -137,10 +137,10 @@ struct Job {
 
 	void log(const char* format, ...) {
 		char buffer[1024];
-		char* ptr = buffer + sprintf(buffer, "[%i, %lli] ", worker_id_, std::chrono::duration_cast<std::chrono::duration<long long int>>(std::chrono::system_clock::now() - start_).count());
+		char* ptr = buffer + snprintf(buffer, 1024, "[%i, %lli] ", worker_id_, std::chrono::duration_cast<std::chrono::duration<long long int>>(std::chrono::system_clock::now() - start_).count());
 		va_list args;
 		va_start(args, format);
-		int i = vsprintf(ptr, format, args);
+		int i = vsnprintf(ptr, 1024 - (ptr - buffer), format, args);
 #ifdef WIN32
 		ptr[i++] = '\r';
 #endif

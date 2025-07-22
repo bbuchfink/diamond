@@ -365,7 +365,7 @@ static void build_chunks(Job& job, const VolumedFile& db, const vector<string>& 
 
 string round(Job& job, const VolumedFile& volumes) {
 	::shapes = ShapeConfig(Search::shape_codes.at(config.sensitivity), 0);
-	job.log("Starting round %i sensitivity %s %i shapes\n", job.round(), to_string(config.sensitivity), ::shapes.count());
+	job.log("Starting round %i sensitivity %s %i shapes\n", job.round(), to_string(config.sensitivity).c_str(), ::shapes.count());
 	job.set_round(volumes.size(), volumes.records());
 	const std::string pair_table_base = job.base_dir() + PATH_SEPARATOR + "pair_table";
 	mkdir(pair_table_base);

@@ -28,10 +28,10 @@ void makeindex() {
 	out.write(SEED_INDEX_VERSION);
 	out.write((uint32_t)shapes.count());
 
-	for (unsigned i = 0; i < shapes.count(); ++i)
+	for (int i = 0; i < shapes.count(); ++i)
 		out.write(index.table(i).size());
 
-	for (unsigned i = 0; i < shapes.count(); ++i) {
+	for (int i = 0; i < shapes.count(); ++i) {
 		out.write(index.table(i).data(), index.table(i).size() + HashedSeedSet::Table::PADDING);
 	}
 

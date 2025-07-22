@@ -437,10 +437,10 @@ BlastScoreBlkProteinMatrixRead(BlastScoreBlk* sbp, FILE *fp)
 
     /* Use the C scores for U and X scores for O characters;
        if this is not done then they will never align to non-gap residues */
-    x_index = AMINOACID_TO_NCBISTDAA['X'];
-    u_index = AMINOACID_TO_NCBISTDAA['U'];
-    o_index = AMINOACID_TO_NCBISTDAA['O'];
-    c_index = AMINOACID_TO_NCBISTDAA['C'];
+    x_index = AMINOACID_TO_NCBISTDAA[(int)'X'];
+    u_index = AMINOACID_TO_NCBISTDAA[(int)'U'];
+    o_index = AMINOACID_TO_NCBISTDAA[(int)'O'];
+    c_index = AMINOACID_TO_NCBISTDAA[(int)'C'];
     for (index1 = 0; index1 < sbp->alphabet_size; index1++) {
         matrix[u_index][index1] = matrix[c_index][index1];
         matrix[index1][u_index] = matrix[index1][c_index];
@@ -924,12 +924,12 @@ const SNCBIPackedScoreMatrix* NCBISM_GetStandardMatrix(const char* name) {
         for (i = 0; i < sbp->alphabet_size; i++) {
             for (j = 0; j < sbp->alphabet_size; j++) {
                 /* skip special characters */
-                if (i == AMINOACID_TO_NCBISTDAA['U'] ||
-                    i == AMINOACID_TO_NCBISTDAA['O'] ||
-                    i == AMINOACID_TO_NCBISTDAA['-'] ||
-                    j == AMINOACID_TO_NCBISTDAA['U'] ||
-                    j == AMINOACID_TO_NCBISTDAA['O'] ||
-                    j == AMINOACID_TO_NCBISTDAA['-']) {
+                if (i == AMINOACID_TO_NCBISTDAA[(int)'U'] ||
+                    i == AMINOACID_TO_NCBISTDAA[(int)'O'] ||
+                    i == AMINOACID_TO_NCBISTDAA[(int)'-'] ||
+                    j == AMINOACID_TO_NCBISTDAA[(int)'U'] ||
+                    j == AMINOACID_TO_NCBISTDAA[(int)'O'] ||
+                    j == AMINOACID_TO_NCBISTDAA[(int)'-']) {
                     continue;
                 }
                 matrix[i][j] = NCBISM_GetScore((const SNCBIPackedScoreMatrix *) psm,

@@ -132,7 +132,7 @@ HashedSeedSet::HashedSeedSet(const string& index_file):
 	const size_t* size_ptr = (const size_t*)(buf + SEED_INDEX_HEADER_SIZE);
 	uint8_t* data_ptr = (uint8_t*)(buf + SEED_INDEX_HEADER_SIZE + sizeof(size_t) * shape_count);
 
-	for (unsigned i = 0; i < shapes.count(); ++i) {
+	for (int i = 0; i < shapes.count(); ++i) {
 		data_.push_back(new Table(data_ptr, *size_ptr));
 		log_stream << "MMAPED Shape=" << i << " Hash_table_size=" << data_[i].size() << " load=" << (double)data_[i].load() / data_[i].size() << endl;
 		data_ptr += *size_ptr + Table::PADDING;
