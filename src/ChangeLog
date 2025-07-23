@@ -7,8 +7,12 @@
 - Using `--multiprocessing` requires explicitly setting `--parallel-tmpdir`.
 - Fixed a bug that could cause a crash when the `--target-indexed` option was
   used.
-- As of now, a macOS binary is available as a GitHub release, supporting both
+- As of now, a macOS binary is available for the GitHub release, supporting both
   x86 and Apple silicon CPUs. Using BLAST databases is also supported.
+- Added compatibility with later CMake versions (tested up to v4.0.3).
+- Added CMake option `-DCROSS_COMPILE` to disable auto-detection of host
+  architecture.
+- Added compilation script to produce macOS fat binary.
 
 [2.1.12]
 - Added support for the new NCBI taxonomic ranks "cellular root",

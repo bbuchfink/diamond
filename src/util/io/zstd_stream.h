@@ -7,8 +7,8 @@
 struct ZstdSink : public StreamEntity
 {
 	ZstdSink(StreamEntity* prev);
-	virtual void close();
-	virtual void write(const char* ptr, size_t count);
+	virtual void close() override;
+	virtual void write(const char* ptr, size_t count) override;
 private:
 	ZSTD_CStream* stream;
 };
@@ -16,9 +16,9 @@ private:
 struct ZstdSource : public StreamEntity
 {
 	ZstdSource(InputStreamBuffer* prev);
-	virtual size_t read(char* ptr, size_t count);
-	virtual void close();
-	virtual void rewind();
+	virtual size_t read(char* ptr, size_t count) override;
+	virtual void close() override;
+	virtual void rewind() override;
 	virtual bool eof() override;
 private:
 	void init();
