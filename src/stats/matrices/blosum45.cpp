@@ -22,7 +22,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 namespace Stats {
 
-const StandardMatrix blosum45{
+const StandardMatrix& getBlosum45() {
+
+    static const StandardMatrix blosum45_instance {
 
     14, 2,
 
@@ -445,6 +447,8 @@ const StandardMatrix blosum45{
  6.28722660e-01, 7.50000000e-01, 9.41772708e-01, 5.67250003e-01,
  7.50000000e-01, 2.90000000e-01, 7.50000000e-01, 2.36320536e+00} }
 
-};
+    };
+    return blosum45_instance;
+}
 
 }

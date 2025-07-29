@@ -40,6 +40,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "dp/swipe/config.h"
 #include "util/simd/dispatch.h"
 #include "dp/score_vector_int16.h"
+#include "stats/matrices/accessors.h"
 
 void benchmark_io();
 
@@ -447,7 +448,7 @@ void matrix_adjust(const Sequence& s1, const Sequence& s2) {
 	high_resolution_clock::time_point t1 = high_resolution_clock::now();
 	vector<double> mat_final(TRUE_AA * TRUE_AA);
 	int iteration_count;
-	const double* joint_probs = (const double*)(Stats::blosum62.joint_probs);
+	const double* joint_probs = (const double*)(Stats::getBlosum62().joint_probs);
 	auto row_probs = Stats::composition(s1), col_probs = Stats::composition(s2);
 	config.cbs_err_tolerance = 0.0001;
 

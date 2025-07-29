@@ -27,6 +27,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "statistics.h"
 #include "sequence.h"
 #include "stats/standard_matrix.h"
+#include "stats/matrices/accessors.h"
 #include "util/log_stream.h"
 
 const char* Const::version_string = "2.1.13";
@@ -278,7 +279,7 @@ Reduction::Reduction(const char* definition_string)
 			map_[letter] = i;
 			map8_[letter] = i;
 			map8b_[letter] = i;
-			freq_[i] += Stats::blosum62.background_freqs[letter];
+			freq_[i] += Stats::getBlosum62().background_freqs[letter];
 		}
 	for (double& f : freq_)
 		f = std::log(f);
