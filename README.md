@@ -1,4 +1,4 @@
-![diamond](http://www.diamondsearch.org/diamond_white_95px.png)
+![DIAMOND](/../../../../bbuchfink/diamond-data/blob/main/diamond_white_95px.png)
 
 Introduction
 ============
