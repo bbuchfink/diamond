@@ -1,13 +1,11 @@
 #include <stdexcept>
 #include <iostream>
-#if __cplusplus >= 201703L
-#include <filesystem>
-#endif
 #include "system.h"
 #include "../string/string.h"
 #include "../log_stream.h"
 
 #ifdef _MSC_VER
+  #define WIN32_LEAN_AND_MEAN
   #include <windows.h>
 #else
   #include <unistd.h>
@@ -27,6 +25,7 @@ using std::string;
 using std::cout;
 using std::cerr;
 using std::endl;
+using std::runtime_error;
 
 string executable_path() {
 	char buf[4096];
@@ -212,9 +211,17 @@ void mkdir(const std::string& dir) {
 #endif
 }
 
-void rmdir(const std::string& dir) {
-#if __cplusplus >= 201703L
-	std::error_code errorCode;
-	std::filesystem::remove(dir, errorCode);
+void rmdir(const std::string& path)
+{
+#ifdef _WIN32
+	const int wlen = MultiByteToWideChar(CP_UTF8, 0, path.c_str(), -1, nullptr, 0);
+	if (wlen <= 0) throw runtime_error("MultiByteToWideChar");
+
+	std::wstring wpath(wlen, L'\0');
+	MultiByteToWideChar(CP_UTF8, 0, path.c_str(), -1, &wpath[0], wlen);
+
+	RemoveDirectoryW(wpath.c_str());
+#else
+	::rmdir(path.c_str());
 #endif
 }
