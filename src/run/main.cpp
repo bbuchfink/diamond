@@ -53,8 +53,8 @@ void seed_stat();
 void pairwise();
 void translate();
 void reverse();
-void roc();
-void roc_id();
+//void roc();
+//void roc_id();
 void makeindex();
 void find_shapes();
 void hash_seqs();
@@ -170,10 +170,10 @@ int main(int ac, const char* av[])
 			reverse();
 			break;
 		case Config::roc:
-			roc();
+			throw std::runtime_error("Deprecated command: roc");
 			break;
 		case Config::rocid:
-			roc_id();
+			throw std::runtime_error("Deprecated command: rocid");
 			break;
 		case Config::makeidx:
 			makeindex();

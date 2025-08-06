@@ -296,7 +296,7 @@ set(OBJECTS
         src/cluster/cluster_registry.cpp
         src/cluster/cascaded/cascaded.cpp
         src/align/output.cpp
-        src/tools/roc.cpp
+        #src/tools/roc.cpp
         src/test/data.cpp
         src/test/test_cases.cpp
         src/chaining/smith_waterman.cpp
@@ -323,7 +323,7 @@ set(OBJECTS
         src/lib/alp/sls_pvalues.cpp
         src/align/global_ranking/global_ranking.cpp
         src/align/global_ranking/extend.cpp
-        src/tools/rocid.cpp
+        #src/tools/rocid.cpp
         src/lib/blast/blast_seg.cpp
         src/lib/blast/blast_filter.cpp
         src/lib/blast/nlm_linear_algebra.cpp
