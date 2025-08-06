@@ -56,3 +56,4 @@ src/extra/
 .vs/
 .unison
 /CMakeSettings.json
+/out/install/x64-Debug/bin/diamond.exe
