@@ -22,7 +22,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 namespace Stats {
 
-const StandardMatrix pam250{
+const StandardMatrix& getPam250() {
+
+    static const StandardMatrix pam250_instance {
 
     14, 2,
 
@@ -445,6 +447,8 @@ const StandardMatrix pam250{
     5.43022417e-01, 7.50000000e-01, 8.10366134e-01, 5.73996058e-01,
     7.50000000e-01, 1.70000000e-01, 7.50000000e-01, 2.91088108e+00} }
 
-};
+    };
+    return pam250_instance;
+}
 
 }

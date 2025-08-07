@@ -21,6 +21,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <algorithm>
 #include <iterator>
 #include "standard_matrix.h"
+#include "matrices/accessors.h"
 
 using std::string;
 using std::max;
@@ -28,8 +29,8 @@ using std::min;
 
 namespace Stats {
 
-const std::map<std::string, const StandardMatrix&> StandardMatrix::matrices = { { "blosum45", blosum45 }, { "blosum62", blosum62 }, { "blosum50", blosum50 }, { "blosum80", blosum80 }, { "blosum90", blosum90 },
-	{ "pam250", pam250 }, { "pam30", pam30 }, { "pam70", pam70 } };
+const std::map<std::string, const StandardMatrix&> StandardMatrix::matrices = { { "blosum45", getBlosum45() }, { "blosum62", getBlosum62() }, { "blosum50", getBlosum50() }, { "blosum80", getBlosum80() }, { "blosum90", getBlosum90() },
+	{ "pam250", getPam250() }, { "pam30", getPam30() }, { "pam70", getPam70() } };
 
 const StandardMatrix& StandardMatrix::get(const std::string& name) {
 	string n;

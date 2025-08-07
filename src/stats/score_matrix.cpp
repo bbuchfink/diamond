@@ -30,6 +30,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "score_matrix.h"
 #include "basic/config.h"
 #include "stats/cbs.h"
+#include "stats/matrices/accessors.h"
 
 using std::string;
 using std::vector;
@@ -174,7 +175,7 @@ ScoreMatrix::ScoreMatrix(const string& matrix_file, int gap_open, int gap_extend
 			m[i][j] = score_array_[i * AMINO_ACID_COUNT + j];
 		p[i] = m[i];
 	}
-	const double* bg = Stats::blosum62.background_freqs.data();
+	const double* bg = Stats::getBlosum62().background_freqs.data();
 	try {
 		evaluer.initGapped(N, p, bg, bg, gap_open_, gap_extend_, gap_open_, gap_extend_, false, 0.01, 0.05, 120.0, 1024.0, 1);
 	}
@@ -238,7 +239,7 @@ void ScoreMatrix::init_background_scores()
 	for (size_t i = 0; i < 20; ++i) {
 		background_scores_[i] = 0;
 		for (size_t j = 0; j < 20; ++j)
-			background_scores_[i] += Stats::blosum62.background_freqs[j] * (*this)(i, j);
+			background_scores_[i] += Stats::getBlosum62().background_freqs[j] * (*this)(i, j);
 	}
 }
 
