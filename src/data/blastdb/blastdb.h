@@ -67,6 +67,5 @@ private:
 	
 	friend void load_blast_seqid();
 	friend void load_blast_seqid_lin();
-	friend void prefetch_worker(BlastDB* db);
 
 };

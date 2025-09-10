@@ -51,12 +51,10 @@ WorkTarget::WorkTarget(BlockId block_id, const Sequence& seq, Sequence query, Lo
 	Stats::EMatrixAdjustRule rule;
 	if ((rule = ::Stats::adjust_matrix(query_comp, query_len_true_aa, config.comp_based_stats, seq)) != Stats::eDontAdjustMatrix) {
 		matrix.reset(new ::Stats::TargetMatrix(query_comp, query_len_true_aa, config.comp_based_stats, seq, stats, pool, rule));
-		profile = DP::make_profile16(query, *matrix, query.length() + max_target_len + 32);
-		profile_rev = profile.reverse();
-	}
-	else if (config.anchored_swipe) {
-		//profile = DP::make_profile16(query, nullptr, query.length() + max_target_len + 32);
-		//profile_rev = profile.reverse();
+		if (config.anchored_swipe) {
+			profile = DP::make_profile16(query, *matrix, query.length() + max_target_len + 32);
+			profile_rev = profile.reverse();
+		}
 	}
 }
 
@@ -133,10 +131,10 @@ vector<WorkTarget> ungapped_stage(const Sequence *query_seq, const HauserCorrect
 	if(n == 0)
 		return targets;
 	Loc max_target_len = 0;
-	if (config.anchored_swipe) {
+	/*if (config.anchored_swipe) {
 		for(int64_t i= 0; i < n; ++i)
 			max_target_len = std::max(max_target_len, target_block.seqs()[target_block_ids[i]].length());
-	}
+	}*/
 	targets.reserve(n);
 	if (flag_any(flags, DP::Flags::PARALLEL)) {
 		mutex mtx;

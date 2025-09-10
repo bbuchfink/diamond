@@ -302,7 +302,6 @@ struct Config
 	string unaligned_targets;
 	Option<double> approx_min_id;
 	bool mode_faster;
-	bool mode_oldfaster;
 	Option<double> member_cover;
 	bool weighted_gvc;
 	bool kmer_ranking;

@@ -58,8 +58,6 @@ struct DpTarget
 		target_idx(BLANK),
 		matrix(nullptr)
 	{
-		//if(matrix && matrix->scores.empty())
-			//__debugbreak();
 	}
 	//DpTarget(const Sequence &seq, int true_target_len, int d_begin, int d_end, Interval chaining_target_range, Score chaining_score, BlockId target_idx, int qlen, const Stats::TargetMatrix* matrix = nullptr, const CarryOver& carry_over = CarryOver(), const Anchor& anchor = Anchor()) :
 	DpTarget(const Sequence& seq, int true_target_len, int d_begin, int d_end, BlockId target_idx, int qlen, const Stats::TargetMatrix* matrix = nullptr, const CarryOver& carry_over = CarryOver(), const Anchor& anchor = Anchor()) :
@@ -75,8 +73,6 @@ struct DpTarget
 		matrix(matrix),
 		anchor(anchor)
 	{
-		//if (matrix && matrix->scores.empty())
-			//__debugbreak();
 	}
 	DpTarget(const Sequence& seq, int true_target_len, BlockId target_idx, const Stats::TargetMatrix* matrix = nullptr, const CarryOver& carry_over = CarryOver()):
 		seq(seq),
@@ -89,8 +85,6 @@ struct DpTarget
 		carry_over(carry_over),
 		matrix(matrix)
 	{
-		//if (matrix && matrix->scores.empty())
-			//__debugbreak();
 	}
 	DpTarget(const std::pair<const Letter*, int64_t> seq) :
 		seq(seq.first, seq.second),
@@ -101,8 +95,6 @@ struct DpTarget
 		target_idx(BLANK),
 		matrix(nullptr)
 	{
-		//if (matrix && matrix->scores.empty())
-			//__debugbreak();
 	}
 	int left_i1() const
 	{

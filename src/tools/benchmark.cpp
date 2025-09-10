@@ -39,11 +39,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "util/simd/dispatch.h"
 #include "dp/score_vector_int16.h"
 #include "search/hit_buffer.h"
-#ifdef WITH_LAPACK
-#include "stats/blast/matrix_adjust.h"
-#endif
-
 #include <random>
+
 void benchmark_io();
 
 using std::vector;

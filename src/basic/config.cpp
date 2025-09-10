@@ -264,7 +264,6 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 	auto& aligner_sens = parser.add_group("Aligner/sens options", { blastp, blastx, makeidx });
 	aligner_sens.add()
 		("faster", 0, "enable faster mode", mode_faster)
-		("oldfaster", 0, "enable old faster mode", mode_oldfaster)
 		("fast", 0, "enable fast mode", mode_fast)
 		("mid-sensitive", 0, "enable mid-sensitive mode", mode_mid_sensitive)
 		("linclust-20", 0, "enable mode for linear search at 20% identity", mode_linclust_20)

@@ -104,7 +104,7 @@ struct DSU {
 		std::iota(parent.begin(), parent.end(), 0);
 	}
 	int find(int x) {
-		while (x != parent[x]) { // Path compression
+		while (x != parent[x]) {
 			parent[x] = parent[parent[x]];
 			x = parent[x];
 		}
