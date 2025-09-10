@@ -34,6 +34,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "data/dmnd/dmnd.h"
 #include "util/command_line_parser.h"
 #include "util/log_stream.h"
+#include "util/system/system.h"
 
 using std::cout;
 using std::cerr;
@@ -59,15 +60,12 @@ void makeindex();
 void find_shapes();
 void hash_seqs();
 void list_seeds();
-void prep_db();
 void greedy_vertex_cover();
 void merge_daa();
 #ifdef EXTRA
 void length_sort();
-void sort();
 void word_count();
 void cut();
-void model_seqs();
 namespace Cluster {
 #ifdef WITH_FAMSA
 	void profile_recluster();
@@ -83,7 +81,6 @@ namespace Cluster {
 void reassign();
 void realign();
 void recluster();
-void make_seed_table();
 namespace Incremental {
 }}
 
@@ -185,7 +182,9 @@ int main(int ac, const char* av[])
 			hash_seqs();
 			break;
 		case Config::prep_db:
-			prep_db();
+			set_color(Color::YELLOW, true);
+			cerr << "Warning: prepdb is deprecated since v2.1.14 and no longer needed to use BLAST databases. No action was taken." << endl;
+			reset_color(true);
 			break;
 		case Config::LIST_SEEDS:
 			list_seeds();
@@ -212,20 +211,11 @@ int main(int ac, const char* av[])
 		case Config::LENGTH_SORT:
 			length_sort();
 			break;
-		case Config::sort:
-			sort();
-			break;
 		case Config::WORD_COUNT:
 			word_count();
 			break;
 		case Config::CUT:
 			cut();
-			break;
-		case Config::MODEL_SEQS:
-			model_seqs();
-			break;
-		case Config::MAKE_SEED_TABLE:
-			Cluster::make_seed_table();
 			break;
 #ifdef WITH_FAMSA
 		case Config::PROFILE_RECLUSTER:

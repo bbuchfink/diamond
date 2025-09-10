@@ -28,6 +28,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "align/target.h"
 #include "data/queries.h"
 #include "masking/masking.h"
+#include "data/sequence_file.h"
 
 using std::unique_ptr;
 using std::mutex;
@@ -41,7 +42,7 @@ namespace Extension { namespace GlobalRanking {
 
 typedef unordered_map<OId, BlockId> TargetMap;
 
-void extend_query(const QueryList& query_list, const TargetMap& db2block_id, const Search::Config& cfg, Statistics& stats) {
+void extend_query(const QueryList& query_list, const TargetMap& db2block_id, const Search::Config& cfg, Statistics& stats, std::pmr::monotonic_buffer_resource& pool) {
 	SeedHitList l;
 	const size_t n = query_list.targets.size();
 	l.target_block_ids.reserve(n);
@@ -56,15 +57,16 @@ void extend_query(const QueryList& query_list, const TargetMap& db2block_id, con
 	
 	DP::Flags flags = DP::Flags::FULL_MATRIX;
 	
-	pair<vector<Match>, Stats> matches = Extension::extend(
+	vector<Match> matches = Extension::extend(
 		query_list.query_block_id,
 		cfg,
 		stats,
 		flags,
-		l);
+		l,
+		pool);
 
-	TextBuffer* buf = Extension::generate_output(matches.first, matches.second, query_list.query_block_id, stats, cfg);
-	if (!matches.first.empty() && (!config.unaligned.empty() || !config.aligned_file.empty())) {
+	TextBuffer* buf = Extension::generate_output(matches, query_list.query_block_id, stats, cfg);
+	if (!matches.empty() && (!config.unaligned.empty() || !config.aligned_file.empty())) {
 		std::lock_guard<std::mutex> lock(query_aligned_mtx);
 		query_aligned[query_list.query_block_id] = true;
 	}
@@ -72,13 +74,14 @@ void extend_query(const QueryList& query_list, const TargetMap& db2block_id, con
 }
 
 void align_worker(InputFile* query_list, const TargetMap* db2block_id, const Search::Config* cfg, uint32_t* next_query) {
+	std::pmr::monotonic_buffer_resource pool;
 	try {
 		QueryList input;
 		Statistics stats;
 		while (input = fetch_query_targets(*query_list, *next_query), !input.targets.empty()) {
 			for (uint32_t i = input.last_query_block_id; i < input.query_block_id; ++i)
 				output_sink->push(i, nullptr);
-			extend_query(input, *db2block_id, *cfg, stats);
+			extend_query(input, *db2block_id, *cfg, stats, pool);
 		}
 		statistics += stats;
 	}
@@ -127,7 +130,7 @@ void extend(SequenceFile& db, TempFile& merged_query_list, BitVector& ranking_db
 	cfg.target.reset();
 }
 
-void extend_query(BlockId source_query_block_id, const TargetMap& db2block_id, Search::Config& cfg, Statistics& stats) {
+void extend_query(BlockId source_query_block_id, const TargetMap& db2block_id, Search::Config& cfg, Statistics& stats, std::pmr::monotonic_buffer_resource& pool) {
 	const size_t N = config.global_ranking_targets;
 	SeedHitList l;
 	vector<Hit>::const_iterator table_begin = cfg.ranking_table->cbegin() + source_query_block_id * N, table_end = table_begin + N;
@@ -147,16 +150,17 @@ void extend_query(BlockId source_query_block_id, const TargetMap& db2block_id, S
 
 		DP::Flags flags = DP::Flags::FULL_MATRIX;
 
-		pair<vector<Match>, Stats> matches = Extension::extend(
+		vector<Match> matches = Extension::extend(
 			source_query_block_id,
 			cfg,
 			stats,
 			flags,
-			l);
+			l,
+			pool);
 
-		buf = cfg.iterated() ? Extension::generate_intermediate_output(matches.first, source_query_block_id, cfg) : Extension::generate_output(matches.first, matches.second, source_query_block_id, stats, cfg);
+		buf = cfg.iterated() ? Extension::generate_intermediate_output(matches, source_query_block_id, cfg) : Extension::generate_output(matches, source_query_block_id, stats, cfg);
 
-		if (!matches.first.empty() && cfg.track_aligned_queries) {
+		if (!matches.empty() && cfg.track_aligned_queries) {
 			std::lock_guard<std::mutex> lock(query_aligned_mtx);
 			if (!query_aligned[source_query_block_id]) {
 				query_aligned[source_query_block_id] = true;
@@ -223,7 +227,8 @@ void extend(Search::Config& cfg, Consumer& out) {
 		try {
 			Statistics stats;
 			BlockId q;
-			while ((q = next_query++) < query_count) extend_query(q, db2block_id, cfg, stats);
+			std::pmr::monotonic_buffer_resource pool;
+			while ((q = next_query++) < query_count) extend_query(q, db2block_id, cfg, stats, pool);
 			statistics += stats;
 		}
 		catch (std::exception& e) {

@@ -22,6 +22,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <array>
 #include <vector>
 #include <list>
+#include <memory>
+#include <memory_resource>
 #include "util/geo/diagonal_segment.h"
 #include "basic/const.h"
 #include "util/hsp/approx_hsp.h"
@@ -32,6 +34,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "dp/flags.h"
 #include "data/block/block.h"
 #include "util/parallel/thread_pool.h"
+#include "dp/score_profile.h"
 
 struct SequenceSet;
 
@@ -65,32 +68,31 @@ struct SeedHit {
 };
 
 struct WorkTarget {
-	WorkTarget(BlockId block_id, const Sequence& seq, int query_len, const ::Stats::Composition& query_comp, const int16_t** query_matrix);
-	bool adjusted_matrix() const {
-		return !matrix.scores.empty();
-	}
+	WorkTarget(BlockId block_id, const Sequence& seq, Sequence query, Loc query_len_true_aa, const ::Stats::Composition& query_comp, Loc max_target_len, Statistics& stats, std::pmr::monotonic_buffer_resource& pool);
 	BlockId block_id;
 	Sequence seq;
 	std::array<int, MAX_CONTEXT> ungapped_score;
 	std::array<std::list<ApproxHsp>, MAX_CONTEXT> hsp;
-	::Stats::TargetMatrix matrix;
+	std::unique_ptr<::Stats::TargetMatrix> matrix;
+	LongScoreProfile<int16_t> profile, profile_rev;
 	bool done;
 };
 
-std::vector<WorkTarget> ungapped_stage(const Sequence *query_seq, const HauserCorrection *query_cb, const ::Stats::Composition& query_comp, FlatArray<SeedHit>::Iterator seed_hits, FlatArray<SeedHit>::Iterator seed_hits_end, std::vector<uint32_t>::const_iterator target_block_ids, DP::Flags flags, Statistics& stat, const Block& target_block, const Mode mode, const Search::Config& cfg);
+std::vector<WorkTarget> ungapped_stage(const Sequence *query_seq, const HauserCorrection *query_cb, const ::Stats::Composition& query_comp, FlatArray<SeedHit>::Iterator seed_hits, FlatArray<SeedHit>::Iterator seed_hits_end, std::vector<uint32_t>::const_iterator target_block_ids, DP::Flags flags, Statistics& stat, const Block& target_block, const Mode mode, std::pmr::monotonic_buffer_resource& pool, const Search::Config& cfg);
 
 struct Target {
 
-	Target(const BlockId block_id, const Sequence &seq, int ungapped_score, const ::Stats::TargetMatrix& matrix):
+	Target(const BlockId block_id, const Sequence &seq, int ungapped_score, std::unique_ptr<::Stats::TargetMatrix>&& matrix):
 		block_id(block_id),
 		seq(seq),
 		filter_score(0),
 		filter_evalue(DBL_MAX),
 		best_context(0),
 		ungapped_score(ungapped_score),
-		matrix(matrix),
+		matrix(std::move(matrix)),
 		done(false)
-	{}
+	{
+	}
 
 	void add_hit(Hsp&& hsp) {
 		if(hsp.evalue < filter_evalue) {
@@ -128,10 +130,6 @@ struct Target {
 		return t.filter_score > u.filter_score || (t.filter_score == u.filter_score && t.block_id < u.block_id);
 	}
 
-	bool adjusted_matrix() const {
-		return !matrix.scores.empty();
-	}
-
 	void inner_culling();
 	void max_hsp_culling();
 
@@ -142,7 +140,7 @@ struct Target {
 	int best_context;
 	int ungapped_score;
 	std::array<std::list<Hsp>, MAX_CONTEXT> hsp;
-	::Stats::TargetMatrix matrix;
+	std::unique_ptr<::Stats::TargetMatrix> matrix;
 	bool done;
 };
 
@@ -172,17 +170,18 @@ void culling(std::vector<Match>& targets, const Search::Config& cfg);
 bool append_hits(std::vector<Target>& targets, std::vector<Target>::iterator begin, std::vector<Target>::iterator end, const bool with_culling, const Search::Config& cfg);
 std::vector<WorkTarget> gapped_filter(const Sequence *query, const HauserCorrection* query_cbs, std::vector<WorkTarget>& targets, Statistics &stat);
 std::pair<FlatArray<SeedHit>, std::vector<uint32_t>> gapped_filter(const Sequence* query, const HauserCorrection* query_cbs, FlatArray<SeedHit>::Iterator seed_hits, FlatArray<SeedHit>::Iterator seed_hits_end, std::vector<uint32_t>::const_iterator target_block_ids, Statistics& stat, DP::Flags flags, const Search::Config &params);
-std::pair<std::vector<Target>, Stats> align(const std::vector<WorkTarget> &targets, const Sequence *query_seq, const char* query_id, const HauserCorrection *query_cb, int source_query_len, DP::Flags flags, const HspValues hsp_values, const Mode mode, ThreadPool& tp, const Search::Config& cfg, Statistics &stat);
+std::vector<Target> align(std::vector<WorkTarget> &targets, const Sequence *query_seq, const char* query_id, const HauserCorrection *query_cb, int source_query_len, DP::Flags flags, const HspValues hsp_values, const Mode mode, ThreadPool& tp, const Search::Config& cfg, Statistics &stat, std::pmr::monotonic_buffer_resource& pool);
 std::vector<Match> align(std::vector<Target> &targets, const int64_t previous_matches, const Sequence *query_seq, const char* query_id, const HauserCorrection *query_cb, int source_query_len, double query_self_aln_score, DP::Flags flags, const HspValues first_round, const bool first_round_culling, Statistics &stat, const Search::Config& cfg);
 std::vector<Target> full_db_align(const Sequence *query_seq, const HauserCorrection* query_cb, DP::Flags flags, const HspValues hsp_values, Statistics &stat, const Block& target_block);
 void recompute_alt_hsps(std::vector<Match>::iterator begin, std::vector<Match>::iterator end, const Sequence* query, const int query_source_len, const HauserCorrection* query_cb, const HspValues v, Statistics& stats);
 void apply_filters(std::vector<Match>::iterator begin, std::vector<Match>::iterator end, int source_query_len, const char* query_title, const double query_self_aln_score, const Sequence& query_seq, const Search::Config& cfg);
 
-std::pair<std::vector<Match>, Stats> extend(
+std::vector<Match> extend(
 	BlockId query_id,
 	const Search::Config& cfg,
 	Statistics &stat,
 	DP::Flags flags,
-	SeedHitList &l);
+	SeedHitList &l,
+	std::pmr::monotonic_buffer_resource& pool);
 
 }

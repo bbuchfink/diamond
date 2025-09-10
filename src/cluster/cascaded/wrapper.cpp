@@ -162,11 +162,10 @@ void Cascaded::run() {
 	config.database.require();
 	init_thresholds();
 	if (!config.parallel_tmpdir.empty()) {
-#ifdef EXTRA
-		external();
-#else
-		throw std::runtime_error("Option is not permitted for this workflow: --parallel-tmpdir");
-#endif
+		if (config.command == ::Config::LINCLUST)
+			external();
+		else
+			throw std::runtime_error("Option is not permitted for this workflow: --parallel-tmpdir");
 		return;
 	}
 	config.hamming_ext = config.approx_min_id >= 50.0;

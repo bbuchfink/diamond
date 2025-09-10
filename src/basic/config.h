@@ -28,7 +28,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "value.h"
 #include "util/enum.h"
 
-enum class Sensitivity { FASTER = -1, FAST = 0, DEFAULT = 1, LINCLUST_40 = 2, LINCLUST_20 = 3, SHAPES30x10 = 4, MID_SENSITIVE = 5, SENSITIVE = 6, MORE_SENSITIVE = 7, VERY_SENSITIVE = 8, ULTRA_SENSITIVE = 9 };
+enum class Sensitivity { FASTER = -1, FAST = 0, DEFAULT = 1, LINCLUST_40 = 2, LINCLUST_20 = 3, SHAPES6x10 = 4, SHAPES30x10 = 5, MID_SENSITIVE = 6, SENSITIVE = 7, MORE_SENSITIVE = 8, VERY_SENSITIVE = 9, ULTRA_SENSITIVE = 10 };
 enum class Compressor;
 
 template<> struct EnumTraits<Sensitivity> {
@@ -302,6 +302,7 @@ struct Config
 	string unaligned_targets;
 	Option<double> approx_min_id;
 	bool mode_faster;
+	bool mode_oldfaster;
 	Option<double> member_cover;
 	bool weighted_gvc;
 	bool kmer_ranking;
@@ -355,12 +356,14 @@ struct Config
 	string_vector round_approx_id;
 	int max_indirection;
 	bool mode_shapes30x10;
+	bool mode_shapes6x10;
 	string aln_out;
 	bool include_lineage;
 	bool mode_linclust_20;
 	std::string linclust_chunk_size;
 	double promiscuous_seed_ratio;
 	bool oid_output;
+	bool trace_pt_membuf;
 
     SequenceType dbtype;
 
@@ -380,8 +383,7 @@ struct Config
 		MAKE_SEED_TABLE
 	};
 
-
-	unsigned	command;
+	unsigned command;
 
 	enum class Algo { AUTO = -1, DOUBLE_INDEXED = 0, QUERY_INDEXED = 1, CTG_SEED };
 	Algo algo;

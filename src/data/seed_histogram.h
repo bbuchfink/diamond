@@ -88,7 +88,7 @@ struct SeedHistogram
 
 	size_t max_chunk_size(const int index_chunks) const;
 
-	const std::vector<BlockId>& partition() const
+	const std::vector<uint32_t>& partition() const
 	{
 		return p_;
 	}
@@ -99,7 +99,7 @@ struct SeedHistogram
 
 private:
 
-	std::vector<BlockId> p_;
+	std::vector<uint32_t> p_;
 	std::vector<ShapeHistogram> data_;
 
 };

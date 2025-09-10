@@ -11,7 +11,6 @@ namespace Extension {
 vector<Target> full_db_align(const Sequence* query_seq, const HauserCorrection* query_cb, DP::Flags flags, const HspValues hsp_values, Statistics& stat, const Block& target_block) {
 	vector<DpTarget> v;
 	vector<Target> r;
-	::Stats::TargetMatrix matrix;
 	list<Hsp> hsp;
 	const SequenceSet& ref_seqs = target_block.seqs();
 
@@ -25,6 +24,7 @@ vector<Target> full_db_align(const Sequence* query_seq, const HauserCorrection* 
 			flags | DP::Flags::FULL_MATRIX,
 			false,
 			ref_seqs.max_len(0, ref_seqs.size()),
+			-1,
 			hsp_values,
 			stat,
 			nullptr
@@ -38,7 +38,7 @@ vector<Target> full_db_align(const Sequence* query_seq, const HauserCorrection* 
 		BlockId block_id = hsp.begin()->swipe_target;
 		const auto it = subject_idx.emplace(block_id, (BlockId)r.size());
 		if (it.second)
-			r.emplace_back(block_id, ref_seqs[block_id], 0, matrix);
+			r.emplace_back(block_id, ref_seqs[block_id], 0, nullptr);
 		BlockId i = it.first->second;
 		r[i].add_hit(hsp, hsp.begin());
 	}

@@ -71,12 +71,12 @@ Mask::Ranges mask(Letter *seq,
 
 	for (int i = 0; i < (int)AMINO_ACID_COUNT; ++i) {
 		e[i].resize(std::max(RESERVE, len + WINDOW));
-		const float *l = likelihood_ratio_matrix[i];
+		const float* l = likelihood_ratio_matrix[i];
 		float* p = &e[i][len - 1];
 		for (int j = 0; j < len; ++j)
 			*(p--) = l[(size_t)letter_mask(seq[j])];
 		std::fill(e[i].data() + len, e[i].data() + len + WINDOW, (float)0.0);
-	}	
+	}
 
 	for (int i = 0; i < len; ++i) {
 		const float s = f.sum();

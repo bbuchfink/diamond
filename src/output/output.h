@@ -99,7 +99,7 @@ struct OutputWriter {
 	void operator()(TextBuffer* buf) {
         if(!first && sep != '\0')
         {
-            file_ ->consume(&sep, 1);
+            file_->consume(&sep, 1);
         }
 		file_->consume(buf->data(), buf->size());
         first = false;

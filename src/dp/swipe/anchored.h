@@ -40,10 +40,6 @@ using std::tie;
 
 namespace DP { namespace AnchoredSwipe {
 
-struct Options {
-	const int16_t* const* profile, * const* profile_rev;
-};
-
 #if ARCH_ID == 2
 	
 namespace DISPATCH_ARCH {
@@ -51,22 +47,11 @@ namespace DISPATCH_ARCH {
 static char blank[64] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 static constexpr Loc L = 13;
 
-template<typename Score>
-pair<Loc, Loc> limits(const Target<Score>* targets, size_t count) {
-	int band = 0, target_len = 0;
-	for (const Target<Score>* i = targets; i < targets + count; ++i) {
-		assert(i->band() > 0);
-		band = std::max(band, i->band());
-		target_len = std::max(target_len, i->seq.length());
-	}
-	return { band,target_len };
-}
-
-template<typename Sv>
+template<typename ScoreVector>
 struct TargetIterator {
-	enum { CHANNELS = ::DISPATCH_ARCH::ScoreTraits<Sv>::CHANNELS };
-	using Score = typename ::DISPATCH_ARCH::ScoreTraits<Sv>::Score;
-	TargetIterator(Target<Score>* targets, int64_t target_count, Loc target_len_max, DP::BandedSwipe::DISPATCH_ARCH::Matrix<Sv>& matrix, const Options& options) :
+	enum { CHANNELS = ::DISPATCH_ARCH::ScoreTraits<ScoreVector>::CHANNELS };
+	using Score = typename ::DISPATCH_ARCH::ScoreTraits<ScoreVector>::Score;
+	TargetIterator(Target<Score>* targets, int64_t target_count, Loc target_len_max, DP::BandedSwipe::DISPATCH_ARCH::Matrix<ScoreVector>& matrix, const Options& options) :
 		options(options),
 		begin(targets),
 		next(targets),
@@ -98,24 +83,39 @@ struct TargetIterator {
 		else
 			target_seqs[channel].push_back(targets[channel].seq.data(), targets[channel].seq.end());
 		target_seqs[channel].push_back(32, MASK_LETTER);
-		for (int j = 0; j < AMINO_ACID_COUNT; ++j)
-			profile_ptrs[channel][j] = (const Score*)(targets[channel].reverse ? options.profile_rev[j] : options.profile[j])
-				+ targets[channel].query_start + Geo::i(0, targets[channel].d_begin) - 1;		
+		if (options.profile == nullptr) {
+			if (targets[channel].reverse)
+				for (int j = 0; j < AMINO_ACID_COUNT; ++j)
+					profile_ptrs[channel][j] = targets[channel].profile_rev->get((int)j, targets[channel].query_start + Geo::i(0, targets[channel].d_begin) - 1);
+			else
+				for (int j = 0; j < AMINO_ACID_COUNT; ++j)
+					profile_ptrs[channel][j] = targets[channel].profile->get((int)j, targets[channel].query_start + Geo::i(0, targets[channel].d_begin) - 1);
+		}
+		else {
+			for (int j = 0; j < AMINO_ACID_COUNT; ++j)
+				profile_ptrs[channel][j] = (const Score*)(targets[channel].reverse ? options.profile_rev[j] : options.profile[j])
+				+ targets[channel].query_start + Geo::i(0, targets[channel].d_begin) - 1;
+		}
 		++active;
 		band = std::max(band, targets[channel].band());
 		return true;
 	}
-	inline void init_target_matrix(int channel, DP::BandedSwipe::DISPATCH_ARCH::Matrix<Sv>& matrix, Sv& max_score, Sv& col_counter, Sv& max_j) {
+	inline void init_target_matrix(int channel, DP::BandedSwipe::DISPATCH_ARCH::Matrix<ScoreVector>& matrix, ScoreVector& max_score, ScoreVector& col_counter, ScoreVector& max_j) {
 		matrix.init_channel_nw(channel, -Geo::i(0, targets[channel].d_begin), score_matrix.gap_open(), score_matrix.gap_extend());
 		set_channel(max_score, channel, -1);
 		set_channel(col_counter, channel, 0);
 		set_channel(max_j, channel, -1);
 	}
 	inline void reset_channel(int channel) {
-		for (int j = 0; j < AMINO_ACID_COUNT; ++j)
-			profile_ptrs[channel][j] = (const Score*)options.profile[0];
+		if (options.profile == nullptr) {
+			for (int j = 0; j < AMINO_ACID_COUNT; ++j)
+				profile_ptrs[channel][j] = (const Score*)blank;
+		}
+		else
+			for (int j = 0; j < AMINO_ACID_COUNT; ++j)
+				profile_ptrs[channel][j] = (const Score*)options.profile[0];
 	}
-	inline void next_block(DP::BandedSwipe::DISPATCH_ARCH::Matrix<Sv>& matrix, Sv& max_score, Sv& max_i, Sv& max_j, Sv& col_counter) {
+	inline void next_block(DP::BandedSwipe::DISPATCH_ARCH::Matrix<ScoreVector>& matrix, ScoreVector& max_score, ScoreVector& max_i, ScoreVector& max_j, ScoreVector& col_counter) {
 		for (int i = 0; i < CHANNELS; ++i) {
 			if (targets[i].blank()) {
 				std::fill(letters[i].begin(), letters[i].end(), MASK_LETTER);
@@ -153,13 +153,18 @@ struct TargetIterator {
 			}
 			copy(target_seqs[i].data() + loc[i], target_seqs[i].data() + loc[i] + L, letters[i].data());
 			loc[i] += L;
-			for (int j = 0; j < AMINO_ACID_COUNT; ++j)
-				profile_ptrs[i][j] += L;
+			if (profile_ptrs[i][0] != (const Score*)blank)
+				for (int j = 0; j < AMINO_ACID_COUNT; ++j)
+					profile_ptrs[i][j] += L;
 		}
 	}
 	inline array<const Score*, CHANNELS> column_ptrs(int k) {
 		array<const Score*, CHANNELS> prof_ptr;
 		for (int i = 0; i < CHANNELS; ++i) {
+			if(profile_ptrs[i][0] == (const Score*)blank) {
+				prof_ptr[i] = (const Score*)blank;
+				continue;
+			}
 			const Letter l = letter_mask(letters[i][k + L]);
 			prof_ptr[i] = profile_ptrs[i][(int)l] + k;
 		}
@@ -189,10 +194,10 @@ struct TargetIterator {
 	Loc band;
 };
 
-template<typename Sv>
-Stats FLATTEN smith_waterman(DP::AnchoredSwipe::Target<typename ::DISPATCH_ARCH::ScoreTraits<Sv>::Score>* targets, int64_t target_count, const Options& options) {
-	using Score = typename ::DISPATCH_ARCH::ScoreTraits<Sv>::Score;
-	const Loc CHANNELS = ::DISPATCH_ARCH::ScoreTraits<Sv>::CHANNELS;
+template<typename ScoreVector>
+Stats FLATTEN smith_waterman(DP::AnchoredSwipe::Target<typename ::DISPATCH_ARCH::ScoreTraits<ScoreVector>::Score>* targets, int64_t target_count, const Options& options) {
+	using Score = typename ::DISPATCH_ARCH::ScoreTraits<ScoreVector>::Score;
+	const Loc CHANNELS = ::DISPATCH_ARCH::ScoreTraits<ScoreVector>::CHANNELS;
 	constexpr Score SCORE_MIN = numeric_limits<Score>::min();
 	if (target_count == 0)
 		return Stats();
@@ -200,12 +205,12 @@ Stats FLATTEN smith_waterman(DP::AnchoredSwipe::Target<typename ::DISPATCH_ARCH:
 	alignas(32) Score scores[CHANNELS * CHANNELS];
 	Loc band_max, target_len_max;
 	tie(band_max, target_len_max) = limits(targets, target_count);
-	DP::BandedSwipe::DISPATCH_ARCH::Matrix<Sv> matrix(round_up(band_max, CHANNELS), 0, Sv(SCORE_MIN));
+	DP::BandedSwipe::DISPATCH_ARCH::Matrix<ScoreVector> matrix(round_up(band_max, CHANNELS), 0, ScoreVector(SCORE_MIN));
 	assert(round_up(band_max, CHANNELS) <= numeric_limits<Score>::max());
-	TargetIterator<Sv> target_it(targets, target_count, target_len_max, matrix, options);
-	const Sv go = Sv(score_matrix.gap_open() + score_matrix.gap_extend()),
-		ge = Sv(score_matrix.gap_extend()), one = Sv(1);
-	Sv max_score(-1), col_counter(0), max_j(-1), max_i(0);
+	TargetIterator<ScoreVector> target_it(targets, target_count, target_len_max, matrix, options);
+	const ScoreVector go = ScoreVector(score_matrix.gap_open() + score_matrix.gap_extend()),
+		ge = ScoreVector(score_matrix.gap_extend()), one = ScoreVector(1);
+	ScoreVector max_score(-1), col_counter(0), max_j(-1), max_i(0);
 	Stats stats;
 
 	while(target_it.next_block(matrix, max_score, max_i, max_j, col_counter), target_it.active > 0) {
@@ -216,22 +221,22 @@ Stats FLATTEN smith_waterman(DP::AnchoredSwipe::Target<typename ::DISPATCH_ARCH:
 			stats.net_cells += target_it.net_cells(k);
 #endif
 
-			typename DP::BandedSwipe::DISPATCH_ARCH::Matrix<Sv>::ColumnIterator it(matrix.begin(0, 0));
+			typename DP::BandedSwipe::DISPATCH_ARCH::Matrix<ScoreVector>::ColumnIterator it(matrix.begin(0, 0));
 			array<const Score*, CHANNELS> prof_ptr = target_it.column_ptrs(k);
-			Sv vgap = Sv(SCORE_MIN), hgap = Sv(), col_best = Sv(SCORE_MIN), row_counter(0), col_max_i(0);
+			ScoreVector vgap = ScoreVector(SCORE_MIN), hgap = ScoreVector(), col_best = ScoreVector(SCORE_MIN), row_counter(0), col_max_i(0);
 
 			for (int i = 0; i < band;) {
-			    transpose_offset(prof_ptr.data(), CHANNELS, i/CHANNELS, scores, __m256i());
+				transpose_offset(prof_ptr.data(), CHANNELS, i / CHANNELS, scores, __m256i());
 				const Score* score_ptr = scores;
 
 				do {
 					hgap = it.hgap();
-					Sv match_scores(score_ptr);
-					Sv score = it.diag() + match_scores;
+					ScoreVector match_scores(score_ptr);
+					ScoreVector score = it.diag() + match_scores;
 					score = max(score, hgap);
 					score = max(score, vgap);
-					Sv open = score - go;
-					const Sv gt_mask = score > col_best;
+					ScoreVector open = score - go;
+					const ScoreVector gt_mask = score > col_best;
 					col_max_i = blend(col_max_i, row_counter, gt_mask);
 					row_counter += one;
 					col_best = max(col_best, score);
@@ -246,7 +251,7 @@ Stats FLATTEN smith_waterman(DP::AnchoredSwipe::Target<typename ::DISPATCH_ARCH:
 					++i;
 				} while ((i & (CHANNELS - 1)) != 0);
 			}
-			const Sv gt_mask = col_best > max_score;
+			const ScoreVector gt_mask = col_best > max_score;
 			max_j = blend(max_j, col_counter, gt_mask);
 			max_i = blend(max_i, col_max_i, gt_mask);
 			max_score = max(max_score, col_best);

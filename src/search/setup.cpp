@@ -34,6 +34,7 @@ using std::map;
 using std::string;
 using std::prev;
 using std::max;
+using std::runtime_error;
 
 namespace Search {
 
@@ -43,6 +44,7 @@ const map<Sensitivity, SensitivityTraits> sensitivity_traits = {
 	//                               qidx   motifm freqsd minid ug_ev   ug_ev_s gf_ev  idx_chunk qbins ctg_seed  seed_cut block_size reduction min_window sketch
 	{{ Sensitivity::FASTER,         {true,  true,  50.0,  11,   0,      0,      0,     4,        16,   nullptr,  0.9,     2.0,       murphy10, 0,         21 }},
 	{ Sensitivity::FAST,            {true,  true,  50.0,  11,   0,      0,      0,     4,        16,   nullptr,  0.9,     2.0,       murphy10, 0,         0 }},
+	{ Sensitivity::SHAPES6x10,      {true,  true,  50.0,  11,   0,      0,      0,     4,        16,   nullptr,  0.9,     2.0,       murphy10, 0,         0 }},
 	{ Sensitivity::SHAPES30x10,     {true,  true,  50.0,  11,   0,      0,      0,     4,        16,   nullptr,  0.9,     2.0,       murphy10, 0,         0 }},
 	{ Sensitivity::DEFAULT,         {true,  true,  50.0,  11,   10000,  10000,  0,     4,        16,   "111111", 0.8,     2.0,       murphy10, 0,         0 }},
 	{ Sensitivity::LINCLUST_40,     {true,  true,  50.0,  11,   0,      0,      0,     4,        16,   nullptr,  0.9,     2.0,       murphy10, 0,         0 }},
@@ -213,6 +215,13 @@ const map<Sensitivity, vector<string>> shape_codes ={
 		{ "1101110101101111" } },
 	{ Sensitivity::FASTER,
 		{ "1101110101101111" } },
+	{ Sensitivity::SHAPES6x10, {
+"10111111111",
+"111110110111",
+"1101110111011",
+"111111101011",
+"1111011110011",
+"111111100100011" } },
 	{ Sensitivity::SHAPES30x10, {
 		"10111111111",
 		"111110110111",
@@ -299,7 +308,7 @@ const map<Sensitivity, vector<string>> shape_codes ={
 
 int seedp_bits(int shape_weight, int threads, int index_chunks) {
 	return max(max(bit_length(power((int64_t)Reduction::get_reduction().size(), (int64_t)shape_weight) - 1) - (int)sizeof(SeedOffset) * 8,
-		bit_length((int64_t)threads * 4 * index_chunks - 1)), 8);
+		bit_length((int64_t)threads * 4 * index_chunks - 1)), 10);
 }
 
 bool use_single_indexed(double coverage, size_t query_letters, size_t ref_letters)
@@ -317,7 +326,7 @@ bool keep_target_id(const Search::Config& cfg) {
 #ifdef HIT_KEEP_TARGET_ID
 	return true;
 #else
-	return cfg.min_length_ratio != 0.0 || config.global_ranking_targets;
+	return cfg.min_length_ratio != 0.0 || config.global_ranking_targets || (config.self && cfg.current_ref_block == 0);
 #endif
 }
 
@@ -360,6 +369,7 @@ void setup_search(Sensitivity sens, Search::Config& cfg)
 	else
 		::shapes = ShapeConfig(config.shape_mask.empty() ? shape_codes.at(sens) : config.shape_mask, config.shapes);
 
+	Reduction::set_reduction(traits.reduction);
 	if ((cfg.lin_stage1_target || config.lin_stage1) && shapes[0].weight_ < 10)
 		throw std::runtime_error("Linearization is only supported for seed shapes of weight >= 10.");
 
@@ -382,15 +392,17 @@ void setup_search(Sensitivity sens, Search::Config& cfg)
 		cfg.extension_mode = from_string<Extension::Mode>(config.ext_);
 		if (cfg.extension_mode != Extension::Mode::FULL) {
 			if (config.global_ranking_targets)
-				throw std::runtime_error("Global ranking only supports full matrix extension.");
+				throw runtime_error("Global ranking only supports full matrix extension.");
 			if (config.swipe_all)
-				throw std::runtime_error("--swipe only supports full matrix extension.");
+				throw runtime_error("--swipe only supports full matrix extension.");
 		}
 	}
 
 	if (cfg.extension_mode == Extension::Mode::FULL) {
 		if (config.frame_shift > 0)
-			throw std::runtime_error("Frameshift alignment does not support full matrix extension.");
+			throw runtime_error("Frameshift alignment does not support full matrix extension.");
+		if (config.anchored_swipe)
+			throw runtime_error("Anchored swipe does not support full matrix extension.");
 	}
 }
 

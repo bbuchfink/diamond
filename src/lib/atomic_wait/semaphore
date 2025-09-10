@@ -36,6 +36,7 @@ THE SOFTWARE.
 #elif defined(_WIN32)
 	#define __semaphore_no_inline __declspec(noinline)
 #define NOMINMAX
+#define WIN32_LEAN_AND_MEAN
     #include <Windows.h>
 	//#undef min
 	//#undef max

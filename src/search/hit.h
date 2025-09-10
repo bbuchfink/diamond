@@ -21,12 +21,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #pragma once
-#include <stdint.h>
 #include "basic/packed_loc.h"
 #include "basic/value.h"
-#include "util/io/input_file.h"
-#include "util/io/serialize.h"
-#include "util/text_buffer.h"
 
 namespace Search {
 
@@ -50,7 +46,8 @@ struct Hit
 	Hit() :
 		query_(),
 		subject_(),
-		seed_offset_()
+		seed_offset_(),
+		score_()
 	{ }
 	Hit(unsigned query, PackedLoc subject, SeedOffset seed_offset, uint16_t score = 0, uint32_t target_block_id = 0) :
 		query_(query),
@@ -151,107 +148,3 @@ struct Hit
 #pragma pack()
 
 }
-
-template<> struct SerializerTraits<Search::Hit> {
-	using Key = BlockId;
-	SerializerTraits(bool long_subject_offsets, int32_t query_contexts):
-		long_subject_offsets(long_subject_offsets),
-		key{ query_contexts }
-	{}
-	const bool long_subject_offsets;
-	const struct {
-		Key operator()(const Search::Hit& hit) const {
-			return hit.query_ / query_contexts;
-		}
-		const int32_t query_contexts;
-	} key;
-	static Search::Hit make_sentry(uint32_t query, Loc seed_offset) {
-		return { query, 0, seed_offset,0 };
-	}
-	static bool is_sentry(const Search::Hit& hit) {
-		return hit.score_ == 0;
-	}
-};
-
-template<> struct TypeSerializer<Search::Hit> {
-
-	TypeSerializer(TextBuffer& buf, const SerializerTraits<Search::Hit>& traits):
-		traits(traits),
-		buf_(&buf)
-	{}
-
-	TypeSerializer& operator<<(const Search::Hit& hit) {
-		if (SerializerTraits<Search::Hit>::is_sentry(hit)) {
-			buf_->write((uint16_t)0);
-			buf_->write(hit.query_);
-			buf_->write(hit.seed_offset_);
-			return *this;
-		}
-		buf_->write((uint16_t)hit.score_);
-		if (traits.long_subject_offsets)
-			buf_->write_raw((const char*)&hit.subject_, 5);
-		else
-			buf_->write(hit.subject_.low);
-#ifdef HIT_KEEP_TARGET_ID
-		buf_->write(hit.target_block_id);
-#endif
-		return *this;
-	}
-
-	const SerializerTraits<Search::Hit> traits;
-
-private:
-
-	TextBuffer* buf_;
-
-};
-
-template<> struct TypeDeserializer<Search::Hit> {
-
-	TypeDeserializer(InputFile& f, const SerializerTraits<Search::Hit>& traits):
-		f_(&f),
-		traits_(traits)
-	{
-	}
-
-	template<typename It>
-	TypeDeserializer<Search::Hit>& operator>>(It& it) {
-		uint16_t x;
-		f_->read(x);
-
-		for (;;) {
-			uint32_t query_id, seed_offset;
-			f_->read(query_id);
-			f_->read(seed_offset);
-			PackedLoc subject_loc;
-			uint32_t x;
-			for (;;) {
-				uint16_t score;
-				const size_t n = f_->read(&score, 1);
-				if (n == 0)
-					return *this;
-				if (score == 0)
-					break;
-				if (traits_.long_subject_offsets)
-					f_->read(subject_loc);
-				else {
-					f_->read(x);
-					subject_loc = x;
-				}
-#ifdef HIT_KEEP_TARGET_ID
-				uint32_t target_block_id;
-				f_->read(target_block_id);
-				*it = { query_id, subject_loc, (Loc)seed_offset, score, target_block_id };
-#else
-				*it = { query_id, subject_loc, (Loc)seed_offset, score };
-#endif
-			}
-		}
-	}
-
-private:
-
-	InputFile* f_;
-	const SerializerTraits<Search::Hit> traits_;
-
-};

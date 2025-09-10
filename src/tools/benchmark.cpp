@@ -19,8 +19,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #include <chrono>
-#include <utility>
-#include <iomanip>
 #include "basic/sequence.h"
 #include "stats/score_matrix.h"
 #include "dp/score_vector.h"
@@ -40,7 +38,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "dp/swipe/config.h"
 #include "util/simd/dispatch.h"
 #include "dp/score_vector_int16.h"
+#include "search/hit_buffer.h"
+#ifdef WITH_LAPACK
+#include "stats/blast/matrix_adjust.h"
+#endif
 
+#include <random>
 void benchmark_io();
 
 using std::vector;
@@ -64,6 +67,49 @@ static inline void transpose_scalar(const signed char **data, size_t n, signed c
 }
 
 namespace Benchmark { namespace DISPATCH_ARCH {
+
+void hit_buffer() {
+	vector<uint32_t> part;
+	part.push_back(0);
+	for (int i = 0; i < 16; ++i)
+		part.push_back((i + 1) * (INT_MAX / 16));
+	Search::HitBuffer buf(part, config.tmpdir, false, 1);
+	TaskTimer timer("Fill");
+	size_t n = (30ll * 1024ll * 1024ll * 1024ll) / sizeof(Search::Hit);
+	auto worker = [&]() {
+		size_t m = n / config.threads_;
+		Search::HitBuffer::Writer* w = new Search::HitBuffer::Writer(buf, 0);
+		std::default_random_engine generator;
+		std::uniform_int_distribution<int> distribution(1, INT_MAX);
+		std::uniform_int_distribution<uint16_t> scored(1, std::numeric_limits<uint16_t>::max());
+		for (size_t i = 0; i < m;) {
+			w->new_query(distribution(generator), distribution(generator));
+			for (size_t j = 0; j < 100; ++j) {
+				if (i % 1000000 == 0)
+					std::cout << i << "/" << m << std::endl;
+				w->write(distribution(generator), distribution(generator), scored(generator), distribution(generator));
+				++i;
+			}
+		}
+		delete w;
+		};
+	vector<std::thread> threads;
+	for(int i= 0; i < config.threads_; ++i)
+		threads.emplace_back(worker);
+	for(auto& t : threads) {
+		if (t.joinable())
+			t.join();
+	}
+	timer.go("Alloc");
+	buf.alloc_buffer();
+	timer.go("Read");
+	for (int i = 0; i < buf.bins(); ++i) {
+		buf.load(INT64_MAX);
+		std::tuple<Search::Hit*, int64_t, BlockId, BlockId> input = buf.retrieve();
+		std::cout << get<1>(input) << std::endl;
+	}
+	buf.free_buffer();
+}
 
 #if defined(__SSE4_1__) && defined(EXTRA)
 void swipe_cell_update();
@@ -235,14 +281,15 @@ void mt_swipe(const Sequence& s1, const Sequence& s2) {
 	static const size_t n = 100000llu;
 	DP::Targets targets;
 	for (size_t i = 0; i < CHANNELS; ++i)
-		targets[0].emplace_back(s2, s2.length(), 0, 0, Interval(), 0, 0, 0);
+		//targets[0].emplace_back(s2, s2.length(), 0, 0, Interval(), 0, 0, 0);
+		targets[0].emplace_back(s2, s2.length(), 0, 0, 0, 0);
 	HauserCorrection cbs(s1);
 	Statistics stat;
 	Sequence query = s1;
 	query.len_ = std::min(query.len_, (Loc)255);
 	auto dp_size = (n * query.length() * s2.length() * CHANNELS);
 	DP::Params params{
-		query, "", Frame(0), query.length(), cbs.int8.data(), DP::Flags::FULL_MATRIX, false, 0, HspValues(), stat, nullptr
+		query, "", Frame(0), query.length(), cbs.int8.data(), DP::Flags::FULL_MATRIX, false, 0, 0, HspValues(), stat, nullptr
 	};
 
 	auto f = [&]() {
@@ -266,16 +313,18 @@ void swipe(const Sequence&s1, const Sequence&s2) {
 	static const size_t n = 1000llu;
 	DP::Targets targets;
 	for (size_t i = 0; i < 32; ++i)
-		targets[0].emplace_back(s2, s2.length(), 0, 0, Interval(), 0, 0, 0);
+		//targets[0].emplace_back(s2, s2.length(), 0, 0, Interval(), 0, 0, 0);
+		targets[0].emplace_back(s2, s2.length(), 0, 0, 0, 0);
 	HauserCorrection cbs(s1);
 	Statistics stat;
 	Sequence query = s1;
 	query.len_ = std::min(query.len_, (Loc)255);
 	auto dp_size = (n * query.length() * s2.length() * CHANNELS);
 	config.comp_based_stats = 4;
-	Stats::TargetMatrix matrix(Stats::composition(s1), s1.length(), s2);
+	std::pmr::monotonic_buffer_resource pool;
+	Stats::TargetMatrix matrix(Stats::composition(s1), s1.length(), config.comp_based_stats, s2, stat, pool, Stats::eUserSpecifiedRelEntropy);
 	DP::Params params{
-		query, "", Frame(0), query.length(), cbs.int8.data(), DP::Flags::FULL_MATRIX, false, 0, HspValues(), stat, nullptr
+		query, "", Frame(0), query.length(), cbs.int8.data(), DP::Flags::FULL_MATRIX, false, 0, 0, HspValues(), stat, nullptr
 	};
 
 	high_resolution_clock::time_point t1 = high_resolution_clock::now();
@@ -324,13 +373,14 @@ void banded_swipe(const Sequence &s1, const Sequence &s2) {
 	DP::Targets targets;
 	//config.traceback_mode = TracebackMode::SCORE_BUFFER;
 	for (size_t i = 0; i < 8; ++i)
-		targets[1].emplace_back(s2, s2.length(), -32, 32, Interval(), 0, 0, 0);
+		//targets[1].emplace_back(s2, s2.length(), -32, 32, Interval(), 0, 0, 0);
+		targets[1].emplace_back(s2, s2.length(), -32, 32, 0, 0);
 	static const size_t n = 10000llu;
 	//static const size_t n = 1llu;
 	Statistics stat;
 	HauserCorrection cbs(s1);
 	DP::Params params{
-		s1, "", Frame(0), s1.length(), cbs.int8.data(), DP::Flags::NONE, false, 0, HspValues(), stat, nullptr
+		s1, "", Frame(0), s1.length(), cbs.int8.data(), DP::Flags::NONE, false, 0, 0, HspValues(), stat, nullptr
 	};
 	high_resolution_clock::time_point t1 = high_resolution_clock::now();
 	for (size_t i = 0; i < n; ++i) {
@@ -358,7 +408,7 @@ void anchored_swipe(const Sequence& s1, const Sequence& s2) {
 	static const size_t n = 10000llu;
 	const auto s1_ = s1.subseq(0, 128);
 	const auto s2_ = s2.subseq(0, 128);
-	LongScoreProfile<int16_t> prof = DP::make_profile16(s1_, nullptr, 0);
+	LongScoreProfile<int16_t> prof = DP::make_profile16(s1_, nullptr, 0, &score_matrix);
 	LongScoreProfile<int8_t> prof8 = DP::make_profile8(s1_, nullptr, 0);
 	auto v = prof.pointers(0);
 	auto v8 = prof8.pointers(0);
@@ -366,6 +416,7 @@ void anchored_swipe(const Sequence& s1, const Sequence& s2) {
 	vector<LongScoreProfile<int8_t>> profiles(32, prof8);
 	vector<vector<const int8_t*>> pointers;
 	Statistics stats;
+	std::pmr::monotonic_buffer_resource pool;
 	DP::AnchoredSwipe::Options options{ v.data(), v.data() };
 	for (int i = 0; i < 32; ++i) {
 		pointers.push_back(profiles[i].pointers(0));
@@ -376,11 +427,11 @@ void anchored_swipe(const Sequence& s1, const Sequence& s2) {
 	const int cols = round_up(s2_.length(), DP::AnchoredSwipe::ARCH_AVX2::L);
 
 	high_resolution_clock::time_point t1 = high_resolution_clock::now();
-	for (size_t i = 0; i < n; ++i) {
+	/*for (size_t i = 0; i < n; ++i) {
 		DP::AnchoredSwipe::ARCH_AVX2::smith_waterman<ScoreVector<int8_t, 0>>(targets.data(), 32, options);
 		volatile auto x = targets[0].score;
 	}
-	message_stream << "Anchored Swipe (int8_t):\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * cols * 64 * 32) * 1000 << " ps/Cell" << endl;
+	message_stream << "Anchored Swipe (int8_t):\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * cols * 64 * 32) * 1000 << " ps/Cell" << endl;*/
 
 	vector<DP::AnchoredSwipe::Target<int16_t>> targets16;
 	for (int i = 0; i < 16; ++i) {
@@ -397,12 +448,13 @@ void anchored_swipe(const Sequence& s1, const Sequence& s2) {
 	DP::Targets dp_targets;
 	Anchor a(DiagonalSegment(0, 0, 0, 0), 0, 0, 0, 0, 0);
 	for (int i = 0; i < 16; ++i)
-		dp_targets[0].emplace_back(s2_, s2_.length(), -32, 32, Interval(), 0, 0, s1_.length(), nullptr, DpTarget::CarryOver(), a);
-	DP::AnchoredSwipe::Config cfg{ s1_, nullptr, 0, stats, nullptr };
+		//dp_targets[0].emplace_back(s2_, s2_.length(), -32, 32, Interval(), 0, 0, s1_.length(), nullptr, DpTarget::CarryOver(), a);
+		dp_targets[0].emplace_back(s2_, s2_.length(), -32, 32, 0, s1_.length(), nullptr, DpTarget::CarryOver(), a);
+	DP::AnchoredSwipe::Config cfg{ s1_, nullptr, 0, stats, nullptr, false, Extension::Mode::BANDED_FAST, false };
 
 	t1 = high_resolution_clock::now();
 	for (size_t i = 0; i < n; ++i) {
-		DP::BandedSwipe::anchored_swipe(dp_targets, cfg);
+		DP::BandedSwipe::anchored_swipe(dp_targets, cfg, pool);
 		volatile auto x = targets[0].score;
 	}
 	message_stream << "Anchored Swipe2 (int16_t):\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * 128 * 64 * 16) * 1000 << " ps/Cell" << endl;
@@ -445,13 +497,25 @@ void evalue() {
 void matrix_adjust(const Sequence& s1, const Sequence& s2) {
 	static const size_t n = 10000llu;
 	high_resolution_clock::time_point t1 = high_resolution_clock::now();
-	vector<double> mat_final(TRUE_AA * TRUE_AA);
+	vector<MatrixFloat> mat_final(TRUE_AA * TRUE_AA);
 	int iteration_count;
-	const double* joint_probs = (const double*)(Stats::blosum62.joint_probs);
+	const MatrixFloat* joint_probs = (const MatrixFloat*)(Stats::blosum62.joint_probs);
 	auto row_probs = Stats::composition(s1), col_probs = Stats::composition(s2);
+	/*f or (int i = 0; i < 20; ++i)
+		printf("%f,", row_probs[i]);
+	printf("\n");
+	for (int i = 0; i < 20; ++i)
+		printf("%f,", col_probs[i]);*/
 	config.cbs_err_tolerance = 0.0001;
+	/*Eigen::VectorXd mat_final_eig(TRUE_AA * TRUE_AA);
+	vector<double> a1;
+	std::copy(joint_probs, joint_probs + TRUE_AA * TRUE_AA, std::back_inserter(a1));
+	Eigen::VectorXd joint_probs_eig = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(a1.data(), TRUE_AA * TRUE_AA);
+	Eigen::VectorXd row_probs_eig = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(row_probs.data(), TRUE_AA);
+	Eigen::VectorXd col_probs_eig = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(col_probs.data(), TRUE_AA);*/
 
-	for (size_t i = 0; i < n; ++i) {
+	/*for (size_t i = 0; i < n; ++i) {
+		std::fill(mat_final.begin(), mat_final.end(), 0.0);
 		Stats::Blast_OptimizeTargetFrequencies(mat_final.data(),
 			TRUE_AA,
 			&iteration_count,
@@ -463,14 +527,34 @@ void matrix_adjust(const Sequence& s1, const Sequence& s2) {
 			config.cbs_it_limit);
 	}
 
-	message_stream << "Matrix adjust:\t\t\t" << (double)duration_cast<std::chrono::microseconds>(high_resolution_clock::now() - t1).count() / (n) << " ms" << endl;
+	for (int i = 0; i < 20; ++i) {
+		for (int j = 0; j < 20; ++j)
+			printf("%f ", mat_final[i * 20 + j]);
+		printf("\n");
+	}
+
+	message_stream << "Matrix adjust:\t\t\t" << (double)duration_cast<std::chrono::microseconds>(high_resolution_clock::now() - t1).count() / (n) << " ms" << endl;*/
 
 	t1 = high_resolution_clock::now();
 	for (size_t i = 0; i < n; ++i) {
-		Stats::OptimizeTargetFrequencies(mat_final.data(), joint_probs, row_probs.data(), col_probs.data(), 0.44, config.cbs_err_tolerance, config.cbs_it_limit);
+		std::fill(mat_final.begin(), mat_final.end(), 0.0);
+		New_OptimizeTargetFrequencies(mat_final.data(),
+			TRUE_AA,
+			&iteration_count,
+			joint_probs,
+			row_probs.data(), col_probs.data(),
+			0.44,
+			config.cbs_err_tolerance,
+			config.cbs_it_limit);
 	}
 
-	message_stream << "Matrix adjust (vectorized):\t" << (double)duration_cast<std::chrono::microseconds>(high_resolution_clock::now() - t1).count() / (n) << " micros" << endl;
+	for (int i = 0; i < 20; ++i) {
+		for (int j = 0; j < 20; ++j)
+			printf("%f ", mat_final[i * 20 + j]);
+		printf("\n");
+	}
+
+	message_stream << "Matrix adjust (openblas):\t\t\t" << (double)duration_cast<std::chrono::microseconds>(high_resolution_clock::now() - t1).count() / (n) << " ms" << endl;
 
 	//Profiler::print(n);
 }
@@ -496,6 +580,8 @@ void benchmark() {
 	Sequence ss1 = Sequence(s1).subseq(34, (Loc)s1.size());
 	Sequence ss2 = Sequence(s2).subseq(33, (Loc)s2.size());
 
+	//hit_buffer();
+	matrix_adjust(s1, s2);
 #if defined(__SSE4_1__) | defined(__ARM_NEON)
 	//mt_swipe(s3, s4);
 #endif
@@ -505,6 +591,7 @@ void benchmark() {
 	//minimal_sw(s1, s2);
 //#endif
 #endif
+	
 #if defined(__SSE4_1__) | defined(__ARM_NEON)
 	swipe(s3, s4);
 	diag_scores(s1, s2);
@@ -513,7 +600,6 @@ void benchmark() {
 	banded_swipe(s1, s2);
 #endif
 	evalue();
-	matrix_adjust(s1, s2);
 #if defined(__SSE4_1__) | defined(__ARM_NEON)
 	benchmark_hamming(s1, s2);
 #endif

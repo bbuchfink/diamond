@@ -24,6 +24,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 using std::stringstream;
 using std::string;
 using std::vector;
+using std::runtime_error;
 
 namespace Cluster {
 
@@ -46,6 +47,14 @@ vector<string> cluster_steps(double approx_id, bool linear) {
 	if (approx_id < 50)
 		v.push_back("more-sensitive");
 	return v;
+}
+
+bool is_linclust(const vector<string>& steps) {
+	for (const string& s : steps) {
+		if (!ends_with(s, "_lin"))
+			return false;
+	}
+	return true;
 }
 
 vector<string> default_round_approx_id(int steps) {
@@ -72,23 +81,22 @@ vector<string> default_round_cov(int steps) {
 	}*/
 }
 
-static int round_ccd(int round) {
-	stringstream ss(config.connected_component_depth[round]);
+static int round_ccd(const string& depth) {
+	stringstream ss(depth);
 	int i;
 	ss >> i;
 	if (ss.fail() || !ss.eof())
-		throw std::runtime_error("Invalid number format for --connected-component-depth");
+		throw runtime_error("Invalid number format for --connected-component-depth");
 	return i;
 }
 
-int round_ccd(int round, int round_count) {
+int round_ccd(int round, int round_count, bool linear) {
 	if (config.connected_component_depth.size() > 1 && config.connected_component_depth.size() != (size_t)round_count)
-		throw std::runtime_error("Parameter count for --connected-component-depth has to be 1 or the number of cascaded clustering rounds.");
+		throw runtime_error("Parameter count for --connected-component-depth has to be 1 or the number of cascaded clustering rounds.");
 	if (config.connected_component_depth.size() == 0)
 		return 0;
-	if (config.connected_component_depth.size() == 1)
-		return round_ccd(0);
-	return round_ccd(round);
+	const int i = round_ccd(config.connected_component_depth.size() == 1 ? config.connected_component_depth[0] : config.connected_component_depth[round]);
+	return (round == round_count - 1) ^ linear ? 1 : i;
 }
 
 }

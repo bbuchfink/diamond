@@ -21,20 +21,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #pragma once
 #include "util/enum.h"
 
-namespace Extension {
-
-struct Stats {
-	Stats() :
-		extension_count(0)
-	{}
-	void operator+=(const Stats& x) {
-		extension_count += x.extension_count;
-	}
-	int64_t extension_count;
-};
-
-}
-
 namespace Output {
 
 enum class Flags : int {
@@ -44,7 +30,9 @@ enum class Flags : int {
 	TARGET_SEQS = 1 << 2,
 	SELF_ALN_SCORES = 1 << 3,
     IS_STRING = 1 << 4,
-    IS_ARRAY = 1 << 5
+    IS_ARRAY = 1 << 5,
+	SSEQID = 1 << 6,
+	DEFAULT_REPORT_UNALIGNED = 1 << 7
 };
 
 DEFINE_ENUM_FLAG_OPERATORS(Flags)

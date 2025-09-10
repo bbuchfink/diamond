@@ -22,10 +22,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <memory>
 #include "cluster.h"
 #include "util/parallel/thread_pool.h"
+#include "util/algo/merge_files.h"
 #include "dp/dp.h"
 #include "stats/hauser_correction.h"
 #include "output/output.h"
-#include "util/algo/merge_files.h"
 
 using std::vector;
 using std::unique_ptr;
@@ -77,13 +77,12 @@ static void align_centroid(CentroidId centroid, ReorderQueue<TextBuffer*, Output
 
 	const HauserCorrection cbs(centroid_seq);
 	const string centroid_seqid = cfg.lazy_titles ? cfg.db.seqid(centroid_oid) : cfg.centroid_block->ids()[centroid_id];
-	DP::Params p{ centroid_seq, centroid_seqid.c_str(), Frame(0), centroid_seq.length(), config.comp_based_stats == 1 ? cbs.int8.data() : nullptr, DP::Flags::FULL_MATRIX, false, 0, cfg.hsp_values, stats, &tp };
+	DP::Params p{ centroid_seq, centroid_seqid.c_str(), Frame(0), centroid_seq.length(), config.comp_based_stats == 1 ? cbs.int8.data() : nullptr, DP::Flags::FULL_MATRIX, false, 0, 0, cfg.hsp_values, stats, &tp };
 	list<Hsp> hsps = DP::BandedSwipe::swipe(dp_targets, p);
 
 	TextBuffer* buf = new TextBuffer;
-	TypeSerializer<HspContext> s(*buf);
 	for (Hsp& hsp : hsps) {
-		s << HspContext(hsp,
+		serialize(HspContext(hsp,
 			centroid_id,
 			centroid_oid,
 			TranslatedSequence(centroid_seq),
@@ -93,7 +92,7 @@ static void align_centroid(CentroidId centroid, ReorderQueue<TextBuffer*, Output
 			cfg.lazy_titles ? cfg.db.seqid(cfg.member_block->block_id2oid(hsp.swipe_target)).c_str() : cfg.member_block->ids()[hsp.swipe_target],
 			0,
 			0,
-			Sequence());
+			Sequence()), *buf);
 	}
 	out.push(centroid, buf);
 }
@@ -124,7 +123,7 @@ void realign(const FlatArray<OId>& clusters, const vector<OId>& centroids, Seque
 	TaskTimer timer;
 	Cfg cfg{ hsp_values, flag_any(db.format_flags(), SequenceFile::FormatFlags::TITLES_LAZY), clusters, centroids, db };
 
-	SequenceFile::LoadFlags flags = SequenceFile::LoadFlags::SEQS | SequenceFile::LoadFlags::CONVERT_ALPHABET | SequenceFile::LoadFlags::NO_CLOSE_WEAKLY;
+	SequenceFile::LoadFlags flags = SequenceFile::LoadFlags::SEQS | SequenceFile::LoadFlags::CONVERT_ALPHABET;
 	if (!cfg.lazy_titles)
 		flags |= SequenceFile::LoadFlags::TITLES;
 

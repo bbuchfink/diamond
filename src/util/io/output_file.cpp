@@ -20,6 +20,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #include <iostream>
+#ifndef _MSC_VER
+#include <fcntl.h>
+#endif
 #include "output_file.h"
 #include "file_sink.h"
 #include "output_stream_buffer.h"
@@ -67,4 +70,10 @@ void OutputFile::remove()
 {
 	if (::remove(file_name_.c_str()) != 0)
 		std::cerr << "Warning: Failed to delete file " << file_name_ << std::endl;
+}
+
+void OutputFile::advise_need() {
+#ifndef _MSC_VER
+	posix_fadvise(fileno(file()), 0, buffer_->file_size(), POSIX_FADV_SEQUENTIAL | POSIX_FADV_WILLNEED);
+#endif
 }

@@ -146,3 +146,11 @@ void FileSink::rewind()
 {
 	::rewind(f_);
 }
+
+int64_t FileSink::file_size() {
+	const int64_t pos = tell();
+	seek(0l, SEEK_END);
+	const int64_t s = tell();
+	seek(pos, SEEK_SET);
+	return s;
+}

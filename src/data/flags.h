@@ -3,6 +3,7 @@
 #include <vector>
 #include "../basic/packed_loc.h"
 #include "../masking/def.h"
+#include "basic/sequence.h"
 
 enum class SeedEncoding { SPACED_FACTOR, HASHED, CONTIGUOUS };
 
@@ -44,7 +45,7 @@ static inline uint32_t block_id(PackedLoc i) {
 }
 
 struct EnumCfg {
-	const std::vector<BlockId>* partition;
+	const std::vector<uint32_t>* partition;
 	int shape_begin, shape_end;
 	const SeedEncoding code;
 	const std::vector<bool>* const skip;
@@ -54,4 +55,12 @@ struct EnumCfg {
 	const Loc minimizer_window;
 	const bool filter_low_complexity_seeds, mask_low_complexity_seeds;
 	const Loc sketch_size;
+};
+
+struct SeqInfo {
+	BlockId block_id;
+	OId oid;
+	const char* title, * qual;
+	Loc len;
+	Sequence source_seq, mate_seq;
 };

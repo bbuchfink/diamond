@@ -2,11 +2,13 @@
 #include "output_format.h"
 #include "util/escape_sequences.h"
 #include "util/sequence/sequence.h"
+#include "basic/const.h"
+#include "stats/score_matrix.h"
 
 using std::endl;
 using std::string;
 
-void XML_format::print_match(const HspContext& r, Output::Info& info)
+void XMLFormat::print_match(const HspContext& r, Output::Info& info)
 {
 	auto& out = info.out;
 	if (r.hsp_num == 0) {
@@ -77,7 +79,7 @@ void XML_format::print_match(const HspContext& r, Output::Info& info)
 		<< "    </Hsp>" << '\n';
 }
 
-void XML_format::print_header(Consumer& f, int mode, const char* matrix, int gap_open, int gap_extend, double evalue, const char* first_query_name, unsigned first_query_len) const
+void XMLFormat::print_header(Consumer& f, int mode, const char* matrix, int gap_open, int gap_extend, double evalue, const char* first_query_name, unsigned first_query_len) const
 {
 	std::stringstream ss;
 	ss << "<?xml version=\"1.0\"?>" << endl
@@ -107,7 +109,7 @@ void XML_format::print_header(Consumer& f, int mode, const char* matrix, int gap
 	f.consume(ss.str().c_str(), ss.str().length());
 }
 
-void XML_format::print_query_intro(Output::Info& info) const
+void XMLFormat::print_query_intro(Output::Info& info) const
 {
 	info.out << "<Iteration>" << '\n'
 		<< "  <Iteration_iter-num>" << info.query.oid + 1 << "</Iteration_iter-num>" << '\n'
@@ -119,7 +121,7 @@ void XML_format::print_query_intro(Output::Info& info) const
 		<< "<Iteration_hits>" << '\n';
 }
 
-void XML_format::print_query_epilog(Output::Info& info) const
+void XMLFormat::print_query_epilog(Output::Info& info) const
 {
 	if (!info.unaligned) {
 		info.out << "  </Hit_hsps>" << '\n'
@@ -140,7 +142,7 @@ void XML_format::print_query_epilog(Output::Info& info) const
 		<< "</Iteration>" << '\n';
 }
 
-void XML_format::print_footer(Consumer& f) const
+void XMLFormat::print_footer(Consumer& f) const
 {
 	std::stringstream ss;
 	ss << "</BlastOutput_iterations>" << endl

@@ -200,6 +200,14 @@ struct FlatArray {
 		return m;
 	}
 
+	typename std::vector<T>::const_iterator global_cbegin() const {
+		return data_.cbegin();
+	}
+
+	typename std::vector<T>::const_iterator global_cend() const {
+		return data_.cend();
+	}
+
 private:
 
 	I sum(std::vector<I>& sizes) {

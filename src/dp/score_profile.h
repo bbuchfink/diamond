@@ -21,9 +21,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #pragma once
 #include <vector>
-#include <utility>
 #include "basic/sequence.h"
 #include "basic/value.h"
+#include "stats/cbs.h"
+#include "stats/score_matrix.h"
 
 template<typename Score = int8_t>
 struct LongScoreProfile
@@ -59,7 +60,8 @@ struct LongScoreProfile
 
 namespace DP {
 
+LongScoreProfile<int16_t> make_profile16(Sequence seq, const Stats::TargetMatrix& matrix, int64_t padding);
 LongScoreProfile<int8_t> make_profile8(Sequence seq, const int8_t* cbs, int64_t padding);
-LongScoreProfile<int16_t> make_profile16(Sequence seq, const int8_t* cbs, int64_t padding);
+LongScoreProfile<int16_t> make_profile16(Sequence seq, const int8_t* cbs, int64_t padding, const ::ScoreMatrix* matrix);
 
 }

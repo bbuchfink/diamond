@@ -1,8 +1,13 @@
 #pragma once
 #include "basic/sequence.h"
 #include "util/geo/geo.h"
+#include "../score_profile.h"
 
 namespace DP { namespace AnchoredSwipe {
+
+struct Options {
+	const int16_t* const* profile, * const* profile_rev;
+};
 
 struct Stats {
 	Stats():
@@ -28,9 +33,7 @@ struct Target {
 		score(0),
 		query_end(0),
 		target_end(0)
-	{
-		//this->profile[0] = profile;
-	}
+	{}
 	Sequence seq;
 	Loc d_begin, d_end;
 	//std::array<const Score* const*, 2> profile;
@@ -39,6 +42,7 @@ struct Target {
 	bool reverse;
 	Score score;
 	Loc query_end, target_end;
+	const LongScoreProfile<int16_t>* profile, *profile_rev;
 	bool blank() const {
 		return seq.length() == 0;
 	}
@@ -69,5 +73,16 @@ struct Target {
 		return int64_t(d_end - d_begin) * seq.length();
 	}
 };
+
+template<typename Score>
+std::pair<Loc, Loc> limits(const Target<Score>* targets, size_t count) {
+	int band = 0, target_len = 0;
+	for (const Target<Score>* i = targets; i < targets + count; ++i) {
+		assert(i->band() > 0);
+		band = std::max(band, i->band());
+		target_len = std::max(target_len, i->seq.length());
+	}
+	return { band,target_len };
+}
 
 }}

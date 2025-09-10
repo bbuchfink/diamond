@@ -18,8 +18,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "output_format.h"
 #include "util/util.h"
+#include "stats/score_matrix.h"
 
-void Pairwise_format::print_match(const HspContext& r, Output::Info &info)
+void PairwiseFormat::print_match(const HspContext& r, Output::Info &info)
 {
 	static const unsigned width = 60;
 	TextBuffer& out = info.out;
@@ -75,16 +76,16 @@ void Pairwise_format::print_match(const HspContext& r, Output::Info &info)
 	}
 }
 
-void Pairwise_format::print_footer(Consumer &out) const
+void PairwiseFormat::print_footer(Consumer &out) const
 {
 
 }
 
-void Pairwise_format::print_query_epilog(Output::Info &info) const
+void PairwiseFormat::print_query_epilog(Output::Info &info) const
 {
 }
 
-void Pairwise_format::print_query_intro(Output::Info &info) const
+void PairwiseFormat::print_query_intro(Output::Info &info) const
 {
 	info.out << "Query= " << info.query.title << "\n\nLength=" << info.query.len << "\n\n";
 	if (info.unaligned) {
@@ -92,7 +93,7 @@ void Pairwise_format::print_query_intro(Output::Info &info) const
 	}
 }
 
-void Pairwise_format::print_header(Consumer &f, int mode, const char *matrix, int gap_open, int gap_extend, double evalue, const char *first_query_name, unsigned first_query_len) const
+void PairwiseFormat::print_header(Consumer &f, int mode, const char *matrix, int gap_open, int gap_extend, double evalue, const char *first_query_name, unsigned first_query_len) const
 {
 	static const char* header = "BLASTP 2.3.0+\n\n\n";
 	f.consume(header, strlen(header));

@@ -1,8 +1,29 @@
+[2.1.14]
+- Improved the performance and sensitivity of the `cluster`, `deepclust` and
+  `linclust` workflows.
+- The `getseq` workflow now supports BLAST databases.
+- Disabled clearing of the page cache for mmaped pages when using BLAST
+  databases.
+- Reduced memory use when the `sallseqid` and `staxids` output fields are
+  used.
+- Fixed a bug that could cause a crash when using the JSON output format and
+  processing the database in multiple blocks.
+- Fixed a bug that could cause extra commas in the JSON output format.
+- Fixed a bug that could cause extra quotation marks when using the `stitle`
+  output field for the JSON output format.
+- The `prepdb` workflow is deprecated, and no longer needed to use BLAST
+  databases.
+- The `--anchored-swipe` option can be applied to linear mode clustering
+  rounds and searches.
+- The `--anchored-swipe` option can be used without compiling with `-DEXTRA=ON`
+  (only available on systems that support AVX2).
+- Improved the performace of compositional matrix adjustment.
+
 [2.1.13]
 - Fixed an invalid error message for the `cluster`, `deepclust` and `linclust`
   workflows.
 - Added the option `--oid-output` to output OIDs instead of accessions for
-  the clustering workflows, reducing its memory use.
+  the clustering workflows, reducing their memory use.
 - Added support for using the `--multiprocessing` feature on Windows.
 - Using `--multiprocessing` requires explicitly setting `--parallel-tmpdir`.
 - Fixed a bug that could cause a crash when the `--target-indexed` option was

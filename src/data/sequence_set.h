@@ -45,7 +45,7 @@ struct SequenceSet : public StringSetBase<Letter, Sequence::DELIMITER, 1>
 
 	Length max_len(size_t begin, size_t end) const;
 
-	std::vector<Id> partition(unsigned n_part, bool shortened = false, bool context_reduced = false) const;
+	std::vector<uint32_t> partition(unsigned n_part, bool shortened = false, bool context_reduced = false) const;
 
 	size_t reverse_translated_len(size_t i) const;
 

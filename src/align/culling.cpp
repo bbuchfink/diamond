@@ -156,11 +156,13 @@ bool filter_hsp(Hsp& hsp, int source_query_len, const char *query_title, int sub
 	const double qcov = hsp.query_cover_percent(source_query_len),
 		tcov = hsp.subject_cover_percent(subject_len),
 		approx_min_id = config.approx_min_id.get(0.0);
+	//const bool filter_uncov = std::max(hsp.query_range.begin_, source_query_len - hsp.query_range.end_) > config.uncov_cap || std::max(hsp.subject_range.begin_, subject_len - hsp.subject_range.end_) > config.uncov_cap;
 	return !cluster_threshold
 		|| hsp.id_percent() < config.min_id
 		|| (approx_min_id > 0 && hsp.approx_id < approx_min_id)
 		|| qcov < config.query_cover
 		|| tcov < config.subject_cover
+		//|| filter_uncov
 		|| (qcov < config.query_or_target_cover && tcov < config.query_or_target_cover)
 		|| (config.no_self_hits
 			&& query_seq == subject_seq

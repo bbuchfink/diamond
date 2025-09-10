@@ -1,5 +1,7 @@
 #pragma once
 #include <stdint.h>
+#include <numeric>
+#include <algorithm>
 #include <vector>
 #include "partition.h"
 #define _REENTRANT
@@ -32,6 +34,9 @@ struct Edge {
 
 template<typename Int>
 std::vector<Int> greedy_vertex_cover(FlatArray<Edge<Int>>& neighbors, const SuperBlockId* member_counts = nullptr, bool merge_recursive = false, bool reassign = true, Int connected_component_depth = 0);
+template<typename Int>
+std::vector<Int> cluster_pr(FlatArray<Edge<Int>>& neighbors);
+template<typename Int> FlatArray<Int> mcl(FlatArray<Int>& neighbors);
 
 template<typename It, typename Out>
 size_t merge_capped(It i0, const It i1, It j0, const It j1, const size_t cap, Out out) {
@@ -90,6 +95,31 @@ std::vector<std::pair<typename It::value_type, int64_t>> sort_by_value(const It 
 	ips4o::parallel::sort(out.begin(), out.end(), std::less<std::pair<typename It::value_type, int64_t>>(), threads);
 	return out;
 }
+
+struct DSU {
+	std::vector<int> parent, rank;
+	DSU(int n) {
+		parent.resize(n);
+		rank.resize(n, 0);
+		std::iota(parent.begin(), parent.end(), 0);
+	}
+	int find(int x) {
+		while (x != parent[x]) { // Path compression
+			parent[x] = parent[parent[x]];
+			x = parent[x];
+		}
+		return x;
+	}
+	void unite(int a, int b) {
+		a = find(a);
+		b = find(b);
+		if (a != b) {
+			if (rank[a] < rank[b]) std::swap(a, b);
+			parent[b] = a;
+			if (rank[a] == rank[b]) rank[a]++;
+		}
+	}
+};
 
 
 }}

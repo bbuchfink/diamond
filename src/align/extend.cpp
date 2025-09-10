@@ -59,11 +59,10 @@ const SEMap<Extension::Mode> EnumTraits<Extension::Mode>::from_string = {
 
 namespace Extension {
 
-#include "extend_chunk.h"
-
 const std::map<Sensitivity, Mode> default_ext_mode = {
 	{ Sensitivity::FASTER, Mode::BANDED_FAST},
 	{ Sensitivity::FAST, Mode::BANDED_FAST},
+	{ Sensitivity::SHAPES6x10, Mode::BANDED_FAST},
 	{ Sensitivity::SHAPES30x10, Mode::BANDED_FAST},
 	{ Sensitivity::LINCLUST_20, Mode::BANDED_FAST},
 	{ Sensitivity::LINCLUST_40, Mode::BANDED_FAST},
@@ -120,7 +119,7 @@ static bool ranking_terminate(bool new_hits, int last_tail_score, int tail_score
 }
 
 Match Match::self_match(BlockId query_id, Sequence query_seq) {
-	Match m(query_id, query_seq, ::Stats::TargetMatrix(), 0, numeric_limits<Score>::max(), 0.0);
+	Match m(query_id, query_seq, nullptr, 0, numeric_limits<Score>::max(), 0.0);
 	m.hsp.emplace_back();
 	m.hsp.back().evalue = 0.0;
 	m.hsp.back().score = numeric_limits<Score>::max();
@@ -135,12 +134,72 @@ static bool add_self_aln(const Search::Config& cfg) {
 	return config.add_self_aln && ((config.self && cfg.current_ref_block == 0) || (!config.self && cfg.current_query_block == cfg.current_ref_block));
 }
 
-pair<vector<Match>, Stats> extend(
+
+static size_t lazy_masking(std::vector<uint32_t>::const_iterator target_block_ids, vector<uint32_t>::const_iterator target_block_ids_end, Block& targets, const MaskingAlgo algo) {
+	if (algo == MaskingAlgo::NONE)
+		return 0;
+	vector<Letter> seq;
+	const Masking& masking = Masking::get();
+	size_t n = 0;
+	for (auto i = target_block_ids; i != target_block_ids_end; ++i)
+		if (targets.fetch_seq_if_unmasked(*i, seq)) {
+			masking(seq.data(), seq.size(), algo, *i);
+			targets.write_masked_seq(*i, seq);
+			++n;
+		}
+	return n;
+}
+
+static vector<Target> extend_chunk(BlockId query_id,
+	const Sequence* query_seq,
+	int source_query_len,
+	const HauserCorrection* query_cb,
+	const ::Stats::Composition& query_comp,
+	FlatArray<SeedHit>::Iterator seed_hits,
+	FlatArray<SeedHit>::Iterator seed_hits_end,
+	vector<uint32_t>::const_iterator target_block_ids,
+	const Search::Config& cfg,
+	Statistics& stat,
+	DP::Flags flags,
+	const HspValues hsp_values,
+	std::pmr::monotonic_buffer_resource& pool)
+{
+	static const Loc GAPPED_FILTER_MIN_QLEN = 85;
+	const int64_t n = seed_hits_end - seed_hits;
+	stat.inc(Statistics::TARGET_HITS2, n);
+	TaskTimer timer(flag_any(flags, DP::Flags::PARALLEL) ? config.target_parallel_verbosity : UINT_MAX);
+
+	if (cfg.lazy_masking && !config.global_ranking_targets)
+		stat.inc(Statistics::MASKED_LAZY, lazy_masking(target_block_ids, target_block_ids + n, *cfg.target, cfg.target_masking));
+
+	pair<FlatArray<SeedHit>, vector<uint32_t>> gf;
+	if (cfg.gapped_filter_evalue > 0.0 && config.global_ranking_targets == 0 && (!align_mode.query_translated || query_seq[0].length() >= GAPPED_FILTER_MIN_QLEN)) {
+		timer.go("Computing gapped filter");
+		gf = gapped_filter(query_seq, query_cb, seed_hits, seed_hits_end, target_block_ids, stat, flags, cfg);
+		if (!flag_any(flags, DP::Flags::PARALLEL))
+			stat.inc(Statistics::TIME_GAPPED_FILTER, timer.microseconds());
+		seed_hits = gf.first.begin();
+		seed_hits_end = gf.first.end();
+		target_block_ids = gf.second.cbegin();
+	}
+	stat.inc(Statistics::TARGET_HITS3, seed_hits_end - seed_hits);
+
+	timer.go("Computing chaining");
+	vector<WorkTarget> targets = ungapped_stage(query_seq, query_cb, query_comp, seed_hits, seed_hits_end, target_block_ids, flags, stat, *cfg.target, cfg.extension_mode, pool, cfg);
+	if (!flag_any(flags, DP::Flags::PARALLEL))
+		stat.inc(Statistics::TIME_CHAINING, timer.microseconds());
+
+	auto ret = align(targets, query_seq, cfg.query->ids()[query_id], query_cb, source_query_len, flags, hsp_values, cfg.extension_mode, *cfg.thread_pool, cfg, stat, pool);
+	return ret;
+}
+
+vector<Match> extend(
 	BlockId query_id,
 	const Search::Config& cfg,
 	Statistics& stat,
 	DP::Flags flags,
-	SeedHitList& l)
+	SeedHitList& l,
+	std::pmr::monotonic_buffer_resource& pool)
 {
 	const unsigned UNIFIED_TARGET_LEN = 50;
 	const unsigned contexts = align_mode.query_contexts;
@@ -185,7 +244,6 @@ pair<vector<Match>, Stats> extend(
 	FlatArray<SeedHit> seed_hits_chunk;
 	vector<uint32_t> target_block_ids_chunk;
 	vector<Match> matches;
-	Stats stats;
 
 	do {
 
@@ -207,7 +265,7 @@ pair<vector<Match>, Stats> extend(
 				}
 			}
 
-			pair<vector<Target>, Stats> v = extend(
+			vector<Target> v = extend_chunk(
 				query_id,
 				query_seq.data(),
 				source_query_len,
@@ -219,15 +277,15 @@ pair<vector<Match>, Stats> extend(
 				cfg,
 				stat,
 				flags,
-				first_round_hspv);
+				first_round_hspv,
+				pool);
 
-			stats += v.second;
-			stat.inc(Statistics::TARGET_HITS4, v.first.size());
-			new_hits = new_hits_ev = v.first.size() > 0;
+			stat.inc(Statistics::TARGET_HITS4, v.size());
+			new_hits = new_hits_ev = v.size() > 0;
 			if (multi_chunk)
-				new_hits = append_hits(aligned_targets, v.first.begin(), v.first.end(), first_round_culling, cfg);
+				new_hits = append_hits(aligned_targets, v.begin(), v.end(), first_round_culling, cfg);
 			else
-				aligned_targets = std::move(v.first);
+				aligned_targets = std::move(v);
 
 			i0 = i1;
 			i1 += std::min((ptrdiff_t)chunk_size, l.target_scores.cend() - i1);
@@ -251,10 +309,10 @@ pair<vector<Match>, Stats> extend(
 
 	culling(matches, cfg);
 
-	return make_pair(std::move(matches), stats);
+	return matches;
 }
 
-pair<vector<Match>, Stats> extend(BlockId query_id, Search::Hit* begin, Search::Hit* end, const Search::Config &cfg, Statistics &stat, DP::Flags flags) {
+vector<Match> extend(BlockId query_id, Search::Hit* begin, Search::Hit* end, const Search::Config &cfg, Statistics &stat, DP::Flags flags, std::pmr::monotonic_buffer_resource& pool) {
 	TaskTimer timer(flag_any(flags, DP::Flags::PARALLEL) ? config.target_parallel_verbosity : UINT_MAX);
 	timer.go("Loading seed hits");
 	SeedHitList l = load_hits(begin, end, cfg.target->seqs());
@@ -264,9 +322,13 @@ pair<vector<Match>, Stats> extend(BlockId query_id, Search::Hit* begin, Search::
 
 	const int64_t target_count = (int64_t)l.target_block_ids.size();
 	if (target_count == 0 && !config.swipe_all) {
-		if (add_self_aln(cfg))
-			return { {Match::self_match(query_id, cfg.query->seqs()[query_id])}, Stats() };
-		return { {}, Stats() };
+		if (add_self_aln(cfg)) {
+			vector<Match> r;
+			Match match = Match::self_match(query_id, cfg.query->seqs()[query_id]);
+			r.push_back(std::move(match));
+			return r;
+		}
+		return vector<Match>();
 	}
 	const int64_t chunk_size = ranking_chunk_size(target_count, cfg.target->seqs().letters(), cfg.max_target_seqs);
 
@@ -276,10 +338,10 @@ pair<vector<Match>, Stats> extend(BlockId query_id, Search::Hit* begin, Search::
 		stat.inc(Statistics::TIME_SORT_TARGETS_BY_SCORE, timer.microseconds());
 		timer.finish();
 		if (config.global_ranking_targets > 0)
-			return make_pair(GlobalRanking::ranking_list(query_id, l.target_scores.begin(), l.target_scores.end(), l.target_block_ids.begin(), l.seed_hits, cfg), Stats());
+			return GlobalRanking::ranking_list(query_id, l.target_scores.begin(), l.target_scores.end(), l.target_block_ids.begin(), l.seed_hits, cfg);
 	}
 
-	pair<vector<Match>, Stats> r = extend(query_id, cfg, stat, flags, l);
+	vector<Match> r = extend(query_id, cfg, stat, flags, l, pool);
 	return r;
 }
 

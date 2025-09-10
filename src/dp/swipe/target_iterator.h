@@ -81,6 +81,8 @@ struct TargetIterator
 			const int j1 = std::min(qlen - 1 - d0, (int)(t.seq.length() - 1)) + 1;
 			cols = std::max(cols, j1 - pos[next]);
 			active.push_back(next);
+			if (config.comp_based_stats == ::Stats::CBS::MATRIX_ADJUST && !t.matrix)
+				throw std::runtime_error("TargetIterator: No matrix provided for adjusted matrix.");
 			if (t.adjusted_matrix() && (t.matrix->score_max > SCHAR_MAX || t.matrix->score_min < SCHAR_MIN))
 				custom_matrix_16bit = true;
 			target_seqs[next] = Array<Letter>(t.seq.length());
@@ -141,7 +143,10 @@ struct TargetIterator
 			const int channel = active[i];
 			const int l = (int)(*this)[channel];
 			const DpTarget& dp_target = subject_begin[channel];
-			target_scores[channel] = dp_target.adjusted_matrix() ? &dp_target.matrix->scores32[32 * l] : &score_matrix.matrix32()[32 * l];
+			if(dp_target.adjusted_matrix())
+				throw std::runtime_error("TargetIterator does not support adjusted matrices.");
+			//target_scores[channel] = dp_target.adjusted_matrix() ? &dp_target.matrix->scores32[32 * l] : &score_matrix.matrix32()[32 * l];
+			target_scores[channel] = &score_matrix.matrix32()[32 * l];
 		}
 		return target_scores;
 	}
@@ -248,7 +253,10 @@ struct AsyncTargetBuffer
 			const int channel = active[i];
 			const int l = (int)(*this)[channel];
 			const DpTarget& dp_target = dp_targets[channel];
-			target_scores[channel] = dp_target.adjusted_matrix() ? &dp_target.matrix->scores32[32 * l] : &score_matrix.matrix32()[32 * l];
+			//target_scores[channel] = dp_target.adjusted_matrix() ? &dp_target.matrix->scores32[32 * l] : &score_matrix.matrix32()[32 * l];
+			if( dp_target.adjusted_matrix() )
+				throw std::runtime_error("AsyncTargetBuffer does not support adjusted matrices.");
+			target_scores[channel] = &score_matrix.matrix32()[32 * l];
 		}
 		return target_scores;
 	}

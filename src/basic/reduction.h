@@ -80,7 +80,6 @@ struct Reduction
 
 	static Reduction& get_reduction()
 	{
-		static Reduction instance("A KR EDNQ C G H ILVM FYW P ST");
 		return instance;
 	}
 
@@ -112,5 +111,6 @@ private:
 	int bit_size_;
 	double bit_size_exact_;
 	std::array<double, TRUE_AA> freq_;
+	static Reduction instance;
 
 };

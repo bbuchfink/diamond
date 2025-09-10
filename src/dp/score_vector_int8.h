@@ -241,10 +241,10 @@ struct ScoreVector<int8_t, DELTA>
 		data_(_mm256_loadu_si256(reinterpret_cast<const __m256i*>(s)))
 	{ }
 
-	ScoreVector(unsigned a, __m256i seq)
+	ScoreVector(unsigned a, __m256i seq, const int8_t* matrix_low, const int8_t* matrix_high)
 	{
-		const __m256i* row_lo = reinterpret_cast<const __m256i*>(&score_matrix.matrix8_low()[a << 5]);
-		const __m256i* row_hi = reinterpret_cast<const __m256i*>(&score_matrix.matrix8_high()[a << 5]);
+		const __m256i* row_lo = reinterpret_cast<const __m256i*>(&matrix_low[a << 5]);
+		const __m256i* row_hi = reinterpret_cast<const __m256i*>(&matrix_high[a << 5]);
 
 		seq = letter_mask(seq);
 
@@ -259,6 +259,10 @@ struct ScoreVector<int8_t, DELTA>
 		__m256i s2 = _mm256_shuffle_epi8(r2, seq_high);
 		data_ = _mm256_or_si256(s1, s2);
 	}
+
+	ScoreVector(unsigned a, __m256i seq):
+		ScoreVector(a, seq, score_matrix.matrix8_low(), score_matrix.matrix8_high())
+	{}
 
 	ScoreVector operator+(const ScoreVector& rhs) const
 	{

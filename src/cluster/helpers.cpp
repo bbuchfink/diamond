@@ -219,7 +219,8 @@ void init_thresholds() {
 		config.masking_ = "0";
 	if (config.approx_min_id < 90.0 || config.mutual_cover.present())
 		return;
-	config.diag_filter_id.set_if_blank(config.approx_min_id - (config.command == ::Config::CLUSTER_REASSIGN ? 10.0 : 10.0));
+	//if (!config.old_diag_filter)
+		config.diag_filter_id.set_if_blank(config.approx_min_id - (config.command == ::Config::CLUSTER_REASSIGN ? 10.0 : 10.0));
 	if (config.approx_min_id < 90.0)
 		return;
 	if(config.command == ::Config::CLUSTER_REASSIGN) {

@@ -94,6 +94,7 @@ static void search_query_offset(const SeedLoc& q,
 	const unsigned sid = work_set.shape_id;
 	const bool chunked = work_set.cfg.index_chunks > 1;
 	const unsigned hamming_filter_id = work_set.cfg.hamming_filter_id;
+	const bool self = config.self && work_set.cfg.current_ref_block == 0;
 	int n = 0;
 	size_t hit_count = 0;
 
@@ -107,33 +108,38 @@ static void search_query_offset(const SeedLoc& q,
 		if (score_cutoff)
 			DP::window_ungapped_best(query_clipped.data(), subjects, n, window_clipped, scores);
 
+#ifdef WITH_GLOBAL_RANKING
 		if (config.global_ranking_targets)
 			for (int j = 0; j < n; ++j)
 				if (scores[j] == UCHAR_MAX)
 					scores[j] = ::ungapped_window(query_clipped.data(), subjects[j], window_clipped);
+#endif
 
 		for (int j = 0; j < n; ++j) {
 			if (scores[j] > score_cutoff) {
+				if (self && block_id(s[*(i + j)]) == query_id)
+					continue;
 #ifdef UNGAPPED_SPOUGE
 				std::pair<size_t, size_t> l = ref_seqs::data_->local_position(s[*(i + j)]);
 				if (scores[j] < context.cutoff_table(query_len, ref_seqs::data_->length(l.first)))
 					continue;
 #endif
-				/*if (query_id == block_id(s[*(i + j)]))
-					continue;*/
 				work_set.stats.inc(Statistics::TENTATIVE_MATCHES2);
-				if (work_set.cfg.minimizer_window || work_set.cfg.sketch_size
+				if (work_set.cfg.minimizer_window || work_set.cfg.sketch_size || config.lin_stage1 || work_set.cfg.lin_stage1_target
 					|| left_most_filter(query_clipped + interval_overhang, subjects[j] + interval_overhang, window_left - interval_overhang, shapes[sid].length_, work_set.context, sid == 0, sid, score_cutoff, chunked, hamming_filter_id)) {
 					work_set.stats.inc(Statistics::TENTATIVE_MATCHES3);
 					if (hit_count++ == 0)
-						*work_set.out = SerializerTraits<Hit>::make_sentry(query_id, seed_offset);
-					if(config.global_ranking_targets)
-						*work_set.out = { query_id, (uint64_t)s[*(i + j)], seed_offset, (uint16_t)scores[j], block_id(s[*(i + j)]) };
+						work_set.out->new_query(query_id, seed_offset);
+#ifdef WITH_GLOBAL_RANKING
+					if (config.global_ranking_targets)
+						throw std::runtime_error("Unsupported");
+					//*work_set.out = { query_id, (uint64_t)s[*(i + j)], seed_offset, (uint16_t)scores[j], block_id(s[*(i + j)]) };
 					else
+#endif
 #ifdef HIT_KEEP_TARGET_ID
-						*work_set.out = { query_id, (uint64_t)s[*(i + j)], seed_offset, (uint16_t)scores[j], block_id(s[*(i + j)]) };
+						work_set.out->write(query_id, (uint64_t)s[*(i + j)], (uint16_t)scores[j], block_id(s[*(i + j)]));
 #else
-						*work_set.out = { query_id, (uint64_t)s[*(i + j)], seed_offset, (uint16_t)scores[j] };
+						work_set.out->write(query_id, (uint64_t)s[*(i + j)], (uint16_t)scores[j]);
 #endif
 				}
 			}

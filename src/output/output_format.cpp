@@ -31,6 +31,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "util/sequence/sequence.h"
 #include "util/log_stream.h"
 #include "util/string/tokenizer.h"
+#include "data/block/block.h"
 
 using std::endl;
 using std::runtime_error;
@@ -131,7 +132,7 @@ void IntermediateRecord::write(TextBuffer& buf, const Hsp& match, unsigned query
 }
 
 void IntermediateRecord::write(TextBuffer& buf, uint32_t target_block_id, int score, const Search::Config& cfg) {
-	const uint32_t target_oid = (uint32_t)cfg.target->block_id2oid(target_block_id);
+	const uint32_t target_oid = (uint32_t)cfg.target->block_id2oid(target_block_id); // check for overflow
 	assert(target_oid < cfg.db_seqs);
 	buf.write(target_oid);
 	const uint16_t s = (uint16_t)std::min(score, USHRT_MAX);
@@ -179,24 +180,24 @@ OutputFormat* get_output_format()
 		if (config.daa_file == "" || config.command == Config::view)
 			return new TabularFormat();
 		else if ((config.command == Config::blastp || config.command == Config::blastx) && config.daa_file.length() > 0)
-			return new DAA_format();
+			return new DAAFormat();
 	}
 	if (f[0] == "tab" || f[0] == "6")
 		return new TabularFormat();
 	else if (f[0] == "sam" || f[0] == "101")
-		return new Sam_format;
+		return new SamFormat;
 	else if (f[0] == "xml" || f[0] == "5")
-		return new XML_format;
+		return new XMLFormat;
 	else if (f[0] == "daa" || f[0] == "100")
-		return new DAA_format;
+		return new DAAFormat;
 	else if (f[0] == "0")
-		return new Pairwise_format;
+		return new PairwiseFormat;
 	else if (f[0] == "null")
 		return new Null_format;
 	else if (f[0] == "102")
 		return new TaxonFormat;
 	else if (f[0] == "paf" || f[0] == "103")
-		return new PAF_format;
+		return new PAFFormat;
 #ifdef WITH_MCL
 	else if (f[0] == "bin1")
 		return new Bin1_format;
@@ -208,7 +209,7 @@ OutputFormat* get_output_format()
     else if(f[0] == "json-flat" || f[0] == "104")
         return new TabularFormat(true);
 	else
-		throw std::runtime_error("Invalid output format: " + f[0] + "\nAllowed values: 0,5,xml,6,tab,100,daa,101,sam,102,103,paf");
+		throw std::runtime_error("Invalid output format: " + f[0] + "\nAllowed values: 0,5,xml,6,tab,100,daa,101,sam,102,103,104,paf");
 }
 
 OutputFormat* init_output(int64_t& max_target_seqs)

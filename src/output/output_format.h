@@ -25,10 +25,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "dp/flags.h"
 #include "def.h"
 #include "util/sequence/sequence.h"
-#include "data/block/block.h"
 #include "util/escape_sequences.h"
 #include "basic/config.h"
-#include "data/sequence_file.h"
+#include "data/flags.h"
+
+struct SequenceFile;
 
 namespace Output {
 
@@ -37,7 +38,6 @@ struct Info {
 	bool unaligned;
 	SequenceFile* db;
 	TextBuffer& out;
-	Extension::Stats stats;
 	Util::Seq::AccessionParsing acc_stats;
 	int64_t db_seqs, db_letters;
 };
@@ -75,6 +75,9 @@ struct OutputFormat
 	{
 		return code;
 	}
+	bool report_unaligned() const {
+		return config.report_unaligned != 0 && (config.report_unaligned != -1 || flag_any(flags, Output::Flags::DEFAULT_REPORT_UNALIGNED));
+	}
 	const unsigned code;
 	const char query_separator;
 	bool needs_taxon_id_lists, needs_taxon_nodes, needs_taxon_scientific_names, needs_taxon_ranks, needs_paired_end_info;
@@ -94,12 +97,12 @@ struct Null_format : public OutputFormat
 	}
 };
 
-struct DAA_format : public OutputFormat
+struct DAAFormat : public OutputFormat
 {
-	DAA_format();
+	DAAFormat();
 	virtual OutputFormat* clone() const
 	{
-		return new DAA_format(*this);
+		return new DAAFormat(*this);
 	}
 };
 
@@ -132,41 +135,41 @@ struct TabularFormat : public OutputFormat
 };
 
 
-struct PAF_format : public OutputFormat
+struct PAFFormat : public OutputFormat
 {
-	PAF_format():
-		OutputFormat(paf, HspValues::TRANSCRIPT, Output::Flags::NONE)
+	PAFFormat():
+		OutputFormat(paf, HspValues::TRANSCRIPT, Output::Flags::SSEQID | Output::Flags::DEFAULT_REPORT_UNALIGNED)
 	{}
 	virtual void print_query_intro(Output::Info& info) const override;
 	virtual void print_match(const HspContext& r, Output::Info& info) override;
-	virtual ~PAF_format()
+	virtual ~PAFFormat()
 	{ }
 	virtual OutputFormat* clone() const override
 	{
-		return new PAF_format(*this);
+		return new PAFFormat(*this);
 	}
 };
 
-struct Sam_format : public OutputFormat
+struct SamFormat : public OutputFormat
 {
-	Sam_format():
-		OutputFormat(sam, HspValues::TRANSCRIPT, Output::Flags::NONE)
+	SamFormat():
+		OutputFormat(sam, HspValues::TRANSCRIPT, Output::Flags::SSEQID | Output::Flags::DEFAULT_REPORT_UNALIGNED)
 	{ }
 	virtual void print_match(const HspContext& r, Output::Info& info) override;
 	virtual void print_header(Consumer &f, int mode, const char *matrix, int gap_open, int gap_extend, double evalue, const char *first_query_name, unsigned first_query_len) const override;
 	virtual void print_query_intro(Output::Info& info) const override;
-	virtual ~Sam_format()
+	virtual ~SamFormat()
 	{ }
 	virtual OutputFormat* clone() const override
 	{
-		return new Sam_format(*this);
+		return new SamFormat(*this);
 	}
 };
 
-struct XML_format : public OutputFormat
+struct XMLFormat : public OutputFormat
 {
-	XML_format():
-		OutputFormat(blast_xml, HspValues::TRANSCRIPT, Output::Flags::FULL_TITLES)
+	XMLFormat():
+		OutputFormat(blast_xml, HspValues::TRANSCRIPT, Output::Flags::FULL_TITLES | Output::Flags::SSEQID | Output::Flags::DEFAULT_REPORT_UNALIGNED)
 	{
 		config.salltitles = true;
 	} 
@@ -175,18 +178,18 @@ struct XML_format : public OutputFormat
 	virtual void print_query_intro(Output::Info& info) const override;
 	virtual void print_query_epilog(Output::Info& info) const override;
 	virtual void print_footer(Consumer &f) const override;
-	virtual ~XML_format()
+	virtual ~XMLFormat()
 	{ }
 	virtual OutputFormat* clone() const override
 	{
-		return new XML_format(*this);
+		return new XMLFormat(*this);
 	}
 };
 
-struct Pairwise_format : public OutputFormat
+struct PairwiseFormat : public OutputFormat
 {
-	Pairwise_format() :
-		OutputFormat(blast_pairwise, HspValues::TRANSCRIPT, Output::Flags::FULL_TITLES)
+	PairwiseFormat() :
+		OutputFormat(blast_pairwise, HspValues::TRANSCRIPT, Output::Flags::FULL_TITLES | Output::Flags::SSEQID | Output::Flags::DEFAULT_REPORT_UNALIGNED)
 	{
 		config.salltitles = true;
 	}
@@ -195,11 +198,11 @@ struct Pairwise_format : public OutputFormat
 	virtual void print_query_intro(Output::Info& info) const override;
 	virtual void print_query_epilog(Output::Info& infos) const override;
 	virtual void print_footer(Consumer &f) const override;
-	virtual ~Pairwise_format()
+	virtual ~PairwiseFormat()
 	{ }
 	virtual OutputFormat* clone() const override
 	{
-		return new Pairwise_format(*this);
+		return new PairwiseFormat(*this);
 	}
 };
 

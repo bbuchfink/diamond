@@ -29,7 +29,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "stats/standard_matrix.h"
 #include "util/log_stream.h"
 
-const char* Const::version_string = "2.1.13";
+const char* Const::version_string = "2.1.14";
 using std::string;
 using std::vector;
 using std::count;
@@ -201,6 +201,8 @@ void Statistics::print() const
 	if (data_[MASKED_LAZY])
 		log_stream << "Lazy maskings         = " << data_[MASKED_LAZY] << endl;
 	log_stream << "Matrix adjusts        = " << data_[MATRIX_ADJUST_COUNT] << endl;
+	log_stream << "Comp. based stats     = " << data_[COMP_BASED_STATS_COUNT] << endl;
+	log_stream << "Failed cbs            = " << data_[FAILED_COMP_BASED_STATS] << endl;
 	log_stream << "Extensions (8 bit)    = " << data_[EXT8] << endl;
 	log_stream << "Extensions (16 bit)   = " << data_[EXT16] << endl;
 	log_stream << "Extensions (32 bit)   = " << data_[EXT32] << endl;

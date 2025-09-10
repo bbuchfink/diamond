@@ -569,14 +569,6 @@ DatabaseFile::~DatabaseFile()
 	close();
 }
 
-void DatabaseFile::close_weakly()
-{
-}
-
-void DatabaseFile::reopen()
-{
-}
-
 BitVector* DatabaseFile::filter_by_accession(const std::string& file_name)
 {
 	throw std::runtime_error("The .dmnd database format does not support filtering by accession.");
@@ -613,12 +605,6 @@ size_t DatabaseFile::seq_length(size_t oid) const
 	if (oid < seq_length_.size())
 		return seq_length_[oid];
 	throw std::out_of_range("DatabaseFile::seq_length");
-}
-
-void DatabaseFile::init_random_access(const size_t query_block, const size_t ref_blocks, bool dictionary)
-{
-	if(dictionary)
-		load_dictionary(query_block, ref_blocks);
 }
 
 void DatabaseFile::end_random_access(bool dictionary)

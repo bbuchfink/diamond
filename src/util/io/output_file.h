@@ -36,6 +36,8 @@ struct OutputFile : public Serializer
 		return file_name_;
 	}
 
+	void advise_need();
+
 protected:
 
 	std::string file_name_;

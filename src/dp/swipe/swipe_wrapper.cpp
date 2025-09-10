@@ -39,6 +39,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "stats/hauser_correction.h"
 #include "stats/stats.h"
 
+using std::unique_ptr;
 using std::list;
 using std::atomic;
 using std::thread;
@@ -48,6 +49,7 @@ using std::mutex;
 using std::accumulate;
 using std::string;
 using std::pair;
+using std::runtime_error;
 
 template<bool tb, typename RC, typename C, typename IdM>
 struct SwipeConfig {
@@ -72,7 +74,7 @@ static unsigned bin(int x) {
 
 static const HspValues NO_TRACEBACK = HspValues::COORDS | HspValues::IDENT | HspValues::LENGTH | HspValues::MISMATCHES | HspValues::GAP_OPENINGS;
 
-unsigned bin(HspValues v, int query_len, int score, int ungapped_score, const int64_t dp_size, unsigned score_width, const Loc mismatch_est) {
+int bin(HspValues v, int query_len, int score, int ungapped_score, const int64_t dp_size, unsigned score_width, const Loc mismatch_est) {
 	unsigned b = 0;
 	b = std::max(b, bin(score));
 	if (ungapped_score > config.cutoff_score_8bit)
@@ -207,6 +209,7 @@ static void swipe_worker(const It begin, const It end, atomic<BlockId>* const ne
 		p->flags,
 		p->reverse_targets,
 		p->target_max_len,
+		p->swipe_bin,
 		p->v,
 		stat2,
 		nullptr
@@ -238,6 +241,7 @@ static void swipe_task(const It begin, const It end, list<Hsp> *out, TargetVec *
 		p->flags,
 		p->reverse_targets,
 		p->target_max_len,
+		p->swipe_bin,
 		p->v,
 		stat2,
 		nullptr
@@ -373,13 +377,16 @@ static list<Hsp> recompute_reversed(list<Hsp> &hsps, Params& p) {
 			|| (config.query_or_target_cover > 0 && std::max(qa, ta) < config.approx_min_id.get(0.0)))
 			continue;
 		Sequence reversed_seq(i->target_seq.data(), i->target_seq.data() + i->subject_range.end_);
+		assert(i->swipe_bin >= 0);
 		const Loc band = flag_any(p.flags, Flags::FULL_MATRIX) ? qlen : i->d_end - i->d_begin,
 			tlen = i->subject_range.end_,
-			b = bin(p.v, band, i->score, 0, INT64_MAX, 0, mismatch_est(i->query_range.end_, tlen, i->length, p.v));
+			b = std::max(bin(p.v, band, i->score, 0, INT64_MAX, 0, mismatch_est(i->query_range.end_, tlen, i->length, p.v)), i->swipe_bin);
 		assert(b >= SCORE_BINS);
 		const DpTarget::CarryOver carry_over{ i->query_range.end_, i->subject_range.end_, i->identities, i->length };
-		dp_targets[b].emplace_back(reversed_seq, i->target_seq.length(), Geo::rev_diag(i->d_end-1, qlen, tlen), Geo::rev_diag(i->d_begin, qlen, tlen) + 1,
-			Interval(), 0, i->swipe_target, qlen, i->matrix, carry_over);
+		//dp_targets[b].emplace_back(reversed_seq, i->target_seq.length(), Geo::rev_diag(i->d_end-1, qlen, tlen), Geo::rev_diag(i->d_begin, qlen, tlen) + 1,
+			//Interval(), 0, i->swipe_target, qlen, i->matrix, carry_over);
+		dp_targets[b].emplace_back(reversed_seq, i->target_seq.length(), Geo::rev_diag(i->d_end - 1, qlen, tlen), Geo::rev_diag(i->d_begin, qlen, tlen) + 1,
+			i->swipe_target, qlen, i->matrix, carry_over);
 	}
 
 	vector<Letter> reversed = p.query.reverse();
@@ -394,21 +401,47 @@ static list<Hsp> recompute_reversed(list<Hsp> &hsps, Params& p) {
 		p.flags,
 		true,
 		0,
+		p.swipe_bin,
 		p.v,
 		p.stat,
 		p.thread_pool
 	};
 	list<Hsp> out;
+#ifndef STRICT_BAND
+	unique_ptr<Targets> overflow_targets;
+#endif
 	for (unsigned bin = SCORE_BINS; bin < BINS; ++bin) {
 		params.target_max_len = dp_targets[bin].max_len();
+		params.swipe_bin = bin;
 		auto r = swipe_bin(bin, dp_targets[bin].begin(), dp_targets[bin].end(), 1, params);
-		if (!r.second.empty())
-			throw std::runtime_error("Non-empty overflow list in reversed DP. Query = " + string(p.query_id) + " bin=" + std::to_string(bin)
+		if (!r.second.empty()) {
+			assert(bin != BINS - 1);
+#ifdef STRICT_BAND
+			throw runtime_error("Non-empty overflow list in reversed DP. Query = " + string(p.query_id) + " bin=" + std::to_string(bin)
 				+ " target=" + r.second.front().seq.to_string()
 				+ " d_begin=" + std::to_string(r.second.front().d_begin)
 				+ " d_end=" + std::to_string(r.second.front().d_end));
+
+#else
+			if (!overflow_targets)
+				overflow_targets = std::make_unique<Targets>();
+			for (auto it = r.second.begin(); it != r.second.end(); ++it) {
+				for(const Hsp& hsp: hsps) {
+					if(hsp.swipe_target == it->target_idx) {
+						(*overflow_targets)[bin + 1].emplace_back(hsp.target_seq, hsp.target_seq.length(), hsp.d_begin, hsp.d_end, hsp.swipe_target, p.query.length(), hsp.matrix, DpTarget::CarryOver());
+					}
+				}				
+			}
+#endif
+		}
 		out.splice(out.end(), r.first);
 	}
+#ifndef STRICT_BAND
+	if(overflow_targets) {
+		list<Hsp> recompute = ::DP::BandedSwipe::swipe(*overflow_targets, p);
+		out.splice(out.end(), recompute);
+	}
+#endif
 	return out;
 }
 
@@ -424,6 +457,7 @@ list<Hsp> swipe(const Targets &targets, Params& p)
 			round_targets.push_back(targets[bin]);
 			round_targets.push_back(result.second);
 			p.target_max_len = round_targets.max_len();
+			p.swipe_bin = bin;
 			result = swipe_bin(bin, round_targets.begin(), round_targets.end(), 0, p);
 			if(algo_bin == 0)
 				out.splice(out.end(), result.first);
@@ -454,6 +488,6 @@ list<Hsp> swipe_set(const SequenceSet::ConstIterator begin, const SequenceSet::C
 
 DISPATCH_2(std::list<Hsp>, swipe, const Targets&, targets, Params&, params)
 DISPATCH_3(std::list<Hsp>, swipe_set, const SequenceSet::ConstIterator, begin, const SequenceSet::ConstIterator, end, Params&, params)
-DISPATCH_7(unsigned, bin, HspValues, v, int, query_len, int, score, int, ungapped_score, const int64_t, dp_size, unsigned, score_width, const Loc, mismatch_est)
+DISPATCH_7(int, bin, HspValues, v, int, query_len, int, score, int, ungapped_score, const int64_t, dp_size, unsigned, score_width, const Loc, mismatch_est)
 
 }}

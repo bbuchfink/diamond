@@ -65,12 +65,14 @@ struct Target : public ::Target
 				d1 = std::min(i->diagonal() + band, d_max);
 			}
 			else {
-				v.emplace_back(subject, subject.length(), d0, d1, Interval(), 0, target_idx, 0); // set cols here?
+				//v.emplace_back(subject, subject.length(), d0, d1, Interval(), 0, target_idx, 0); // set cols here?
+				v.emplace_back(subject, subject.length(), d0, d1, target_idx, 0); // set cols here?
 				d0 = std::max(i->diagonal() - band, d_min);
 				d1 = std::min(i->diagonal() + band, d_max);
 			}
 		}
-		v.emplace_back(subject, subject.length(), d0, d1, Interval(), 0, target_idx, 0);
+		//v.emplace_back(subject, subject.length(), d0, d1, Interval(), 0, target_idx, 0);
+		v.emplace_back(subject, subject.length(), d0, d1, target_idx, 0);
 	}
 
 	void add(QueryMapper &mapper, vector<DpTarget> &vf, vector<DpTarget> &vr, int target_idx)

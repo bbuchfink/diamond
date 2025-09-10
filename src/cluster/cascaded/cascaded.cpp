@@ -25,6 +25,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "basic/statistics.h"
 #include "run/workflow.h"
 #include "util/log_stream.h"
+#include "stats/cbs.h"
 
 const char* const DEFAULT_MEMORY_LIMIT = "16G";
 const double CASCADED_ROUND_MAX_EVALUE = 0.001;
@@ -103,16 +104,15 @@ vector<SuperBlockId> cluster(shared_ptr<SequenceFile>& db, const shared_ptr<BitV
 	if (!config.aln_out.empty())
 		output_edges(config.aln_out, *db, edges);
 	timer.go("Sorting edges");
-	db->reopen();
 	FlatArray<Edge> edge_array = make_flat_array_dense(std::move(edges), (SuperBlockId)db->sequence_count(), config.threads_, Edge::GetKey());
 	timer.finish();
 
 	const auto algo = from_string<GraphAlgo>(config.graph_algo);
-	//const bool last_round = round == round_count - 1;
-	const int ccd = round_ccd(round, round_count);
+	const int ccd = round_ccd(round, round_count, config.lin_stage1);
 	return algo == GraphAlgo::GREEDY_VERTEX_COVER ?
 		Util::Algo::greedy_vertex_cover(edge_array, config.weighted_gvc ? member_counts : nullptr, !config.strict_gvc, !config.no_gvc_reassign, ccd)
 		: len_sorted_clust(edge_array);
+	//return Util::Algo::cluster_pr(edge_array);
 }
 
 static pair<vector<SuperBlockId>, BitVector> update_clustering(const BitVector& previous_filter, const vector<SuperBlockId>& previous_centroids, vector<SuperBlockId>&& current_centroids, int round) {
@@ -127,17 +127,23 @@ static pair<vector<SuperBlockId>, BitVector> update_clustering(const BitVector& 
 vector<SuperBlockId> cascaded(shared_ptr<SequenceFile>& db, bool linear) {
 	if (db->sequence_count() > (int64_t)numeric_limits<SuperBlockId>::max())
 		throw runtime_error("Workflow supports a maximum of " + to_string(numeric_limits<SuperBlockId>::max()) + " input sequences.");
-	const auto steps = cluster_steps(config.approx_min_id, linear);
+	const vector<string> steps = cluster_steps(config.approx_min_id, linear);
 	const double evalue_cutoff = config.max_evalue,
 		target_approx_id = config.approx_min_id;
+	const bool anchored_swipe = config.anchored_swipe, linclust = is_linclust(steps);
 	shared_ptr<BitVector> oid_filter(new BitVector);
 	int64_t cluster_count = db->sequence_count();
 	vector<SuperBlockId> centroids(cluster_count);
 	iota(centroids.begin(), centroids.end(), 0);
+	if (linclust)
+		config.comp_based_stats = 0;
 
 	for (int i = 0; i < (int)steps.size(); i++) {
 		TaskTimer timer;
 		config.lin_stage1 = ends_with(steps[i], "_lin");
+		config.anchored_swipe = anchored_swipe && (linclust || !config.lin_stage1);
+		if (anchored_swipe)
+			config.ext_ = "banded-fast";
 		config.sensitivity = from_string<Sensitivity>(rstrip(steps[i], "_lin"));
 		const vector<string> round_approx_id = config.round_approx_id.empty() ? default_round_approx_id((int)steps.size()) : config.round_approx_id;
 		config.approx_min_id = std::max(target_approx_id, round_value(round_approx_id, "--round-approx-id", i, (int)steps.size()));

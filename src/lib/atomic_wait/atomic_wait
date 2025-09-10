@@ -133,6 +133,7 @@ The strategy is chosen this way, by platform:
     #define __NO_TABLE
 
     #define NOMINMAX
+    #define WIN32_LEAN_AND_MEAN
     #include <Windows.h>
     #define __YIELD() Sleep(0)
     #define __SLEEP(x) Sleep(x)

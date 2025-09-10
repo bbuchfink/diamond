@@ -20,9 +20,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "daa_record.h"
 #include "basic/packed_sequence.h"
 #include "../output_format.h"
+#include "stats/score_matrix.h"
 
-DAA_format::DAA_format() :
-	OutputFormat(daa, HspValues::TRANSCRIPT, config.salltitles ? Output::Flags::FULL_TITLES : (config.sallseqid ? Output::Flags::ALL_SEQIDS : Output::Flags::NONE))
+DAAFormat::DAAFormat() :
+	OutputFormat(daa, HspValues::TRANSCRIPT, Output::Flags::SSEQID | (config.salltitles ? Output::Flags::FULL_TITLES : (config.sallseqid ? Output::Flags::ALL_SEQIDS : Output::Flags::NONE)))
 {}
 
 BinaryBuffer::Iterator DAA_query_record::init(const BinaryBuffer &buf)

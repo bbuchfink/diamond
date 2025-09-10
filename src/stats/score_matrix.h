@@ -31,6 +31,33 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 const double LN_2 = 0.69314718055994530941723212145818;
 
+template<typename T>
+struct Scores
+{
+	Scores() {}
+	Scores(int n, const int8_t* scores, int stop_match_score = 1, int8_t bias = 0, int modulo = 32, int offset = 0)
+	{
+		for (int i = 0; i < 32; ++i)
+			for (int j = 0; j < 32; ++j) {
+				const int j2 = j % modulo + offset;
+				data[i * 32 + j] = i < n && j2 < n ? (T)(scores[i * n + j2] + (int)bias) : SCHAR_MIN;
+			}
+		if (stop_match_score != 1)
+			data[24 * 32 + 24] = stop_match_score;
+	}
+	Scores(const MatrixFloat(&freq_ratios)[Stats::NCBI_ALPH][Stats::NCBI_ALPH], double lambda, const int8_t* scores, int scale);
+	std::vector<const T*> pointers() const;
+	friend std::ostream& operator<<(std::ostream& s, const Scores& scores) {
+		for (int i = 0; i < 20; ++i) {
+			for (int j = 0; j < 20; ++j)
+				s << scores.data[i * 32 + j] << '\t';
+			s << std::endl;
+		}
+		return s;
+	}
+	alignas(32) T data[32 * 32];
+};
+
 struct ScoreMatrix
 {
 
@@ -169,11 +196,11 @@ struct ScoreMatrix
 		db_letters_ = (double)n;
 	}
 
-	const double* joint_probs() const {
-		return (const double*)standard_matrix_->joint_probs;
+	const MatrixFloat* joint_probs() const {
+		return (const MatrixFloat*)standard_matrix_->joint_probs;
 	}
 
-	const double* background_freqs() const {
+	const MatrixFloat* background_freqs() const {
 		return standard_matrix_->background_freqs.data();
 	}
 
@@ -202,34 +229,6 @@ struct ScoreMatrix
 
 private:
 
-	template<typename _t>
-	struct Scores
-	{
-		Scores() {}
-		Scores(const int8_t *scores, int stop_match_score = 1, int8_t bias = 0, unsigned modulo = 32, unsigned offset = 0)
-		{
-			const unsigned n = value_traits.alphabet_size;
-			for (unsigned i = 0; i < 32; ++i)
-				for (unsigned j = 0; j < 32; ++j) {
-					const unsigned j2 = j % modulo + offset;
-					data[i * 32 + j] = i < n && j2 < n ? (_t)(scores[i * n + j2] + (int)bias) : SCHAR_MIN;
-				}
-			if (stop_match_score != 1)
-				data[24 * 32 + 24] = stop_match_score;
-		}
-		Scores(const double (&freq_ratios)[Stats::NCBI_ALPH][Stats::NCBI_ALPH], double lambda, const int8_t* scores, int scale);
-		std::vector<const _t*> pointers() const;
-		friend std::ostream& operator<<(std::ostream& s, const Scores& scores) {
-			for (int i = 0; i < 20; ++i) {
-				for (int j = 0; j < 20; ++j)
-					s << scores.data[i * 32 + j] << '\t';
-				s << std::endl;
-			}
-			return s;
-		}
-		alignas(32) _t data[32 * 32];
-	};
-
 	void init_background_scores();
 
 	const Stats::StandardMatrix* standard_matrix_;
@@ -253,3 +252,6 @@ private:
 };
 
 extern ScoreMatrix score_matrix;
+//extern ScoreMatrix blosum80;
+//extern ScoreMatrix pam70;
+//extern ScoreMatrix pam30;

@@ -128,7 +128,10 @@ check_type_size(int SIZEOF_INT)
 
 check_cxx_compiler_flag("-std=gnu++14" HAS_GNUPP14)
 check_cxx_compiler_flag("-std=gnu++17" HAS_GNUPP17)
-if(HAS_GNUPP17 OR ${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
+check_cxx_compiler_flag("-std=gnu++20" HAS_GNUPP20)
+if(HAS_GNUPP20 OR ${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
+  set_cxx_standard(20 "-std=gnu++20")
+elseif(HAS_GNUPP17)
   set_cxx_standard(17 "-std=gnu++17")
 elseif (HAS_GNUPP14)
   set_cxx_standard(14 "-std=gnu++14")
@@ -183,6 +186,11 @@ endif()
 
 add_library(arch_generic OBJECT ${DISPATCH_OBJECTS})
 target_compile_options(arch_generic PUBLIC -DDISPATCH_ARCH=ARCH_GENERIC -DARCH_ID=0 -DEigen=Eigen_GENERIC)
+#target_compile_options(arch_generic PUBLIC -DDISPATCH_ARCH=ARCH_GENERIC -DARCH_ID=0)
+if (${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
+    target_compile_options(arch_generic PUBLIC /Zc:__cplusplus)
+endif()
+
 if(X86)
   add_library(arch_sse4_1 OBJECT ${DISPATCH_OBJECTS})
   add_library(arch_avx2 OBJECT ${DISPATCH_OBJECTS})
@@ -192,14 +200,18 @@ if(X86)
   add_definitions(-DWITH_AVX2)
   add_definitions(-DWITH_SSE4_1)
   if (${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
-    target_compile_options(arch_sse4_1 PUBLIC -DDISPATCH_ARCH=ARCH_SSE4_1 -DARCH_ID=1 -D__SSSE3__ -D__SSE4_1__ -D__POPCNT__ -DEigen=Eigen_SSE4_1)
-    target_compile_options(arch_avx2 PUBLIC -DDISPATCH_ARCH=ARCH_AVX2 -DARCH_ID=2 /arch:AVX2 -D__SSSE3__ -D__SSE4_1__ -D__POPCNT__ -DEigen=Eigen_AVX2)
+    target_compile_options(arch_sse4_1 PUBLIC -DDISPATCH_ARCH=ARCH_SSE4_1 -DARCH_ID=1 -D__SSSE3__ -D__SSE4_1__ -D__POPCNT__ -DEigen=Eigen_SSE4_1 /Zc:__cplusplus)
+    target_compile_options(arch_avx2 PUBLIC -DDISPATCH_ARCH=ARCH_AVX2 -DARCH_ID=2 /arch:AVX2 -D__SSSE3__ -D__SSE4_1__ -D__POPCNT__ -DEigen=Eigen_AVX2 /Zc:__cplusplus)
+    #target_compile_options(arch_sse4_1 PUBLIC -DDISPATCH_ARCH=ARCH_SSE4_1 -DARCH_ID=1 -D__SSSE3__ -D__SSE4_1__ -D__POPCNT__ /Zc:__cplusplus)
+    #target_compile_options(arch_avx2 PUBLIC -DDISPATCH_ARCH=ARCH_AVX2 -DARCH_ID=2 /arch:AVX2 -D__SSSE3__ -D__SSE4_1__ -D__POPCNT__ /Zc:__cplusplus)
     if(WITH_AVX512)
       target_compile_options(arch_avx512 PUBLIC -DDISPATCH_ARCH=ARCH_AVX512 -DARCH_ID=3 /arch:AVX512 -D__SSSE3__ -D__SSE4_1__ -D__POPCNT__ -DEigen=Eigen_AVX512)
     endif()
   else()
     target_compile_options(arch_sse4_1 PUBLIC -DDISPATCH_ARCH=ARCH_SSE4_1 -DARCH_ID=1 -mssse3 -mpopcnt -msse4.1 -DEigen=Eigen_SSE4_1)
     target_compile_options(arch_avx2 PUBLIC -DDISPATCH_ARCH=ARCH_AVX2 -DARCH_ID=2 -mssse3 -mpopcnt -msse4.1 -msse4.2 -mavx -mavx2 -DEigen=Eigen_AVX2)
+    #target_compile_options(arch_sse4_1 PUBLIC -DDISPATCH_ARCH=ARCH_SSE4_1 -DARCH_ID=1 -mssse3 -mpopcnt -msse4.1)
+    #target_compile_options(arch_avx2 PUBLIC -DDISPATCH_ARCH=ARCH_AVX2 -DARCH_ID=2 -mssse3 -mpopcnt -msse4.1 -msse4.2 -mavx -mavx2)
     if(WITH_AVX512)
       target_compile_options(arch_avx512 PUBLIC -DDISPATCH_ARCH=ARCH_AVX512 -DARCH_ID=3 -mssse3 -mpopcnt -msse4.1 -msse4.2 -mavx -mavx2 -mavx512f -mavx512bw -DEigen=Eigen_AVX512)
     endif()
@@ -327,20 +339,11 @@ set(OBJECTS
         src/lib/blast/blast_seg.cpp
         src/lib/blast/blast_filter.cpp
         src/lib/blast/nlm_linear_algebra.cpp
-        src/stats/matrices/blosum45.cpp
-        src/stats/matrices/blosum50.cpp
-        src/stats/matrices/blosum62.cpp
-        src/stats/matrices/blosum80.cpp
-        src/stats/matrices/blosum90.cpp
-        src/stats/matrices/pam250.cpp
-        src/stats/matrices/pam30.cpp
-        src/stats/matrices/pam70.cpp
         src/stats/stats.cpp
         src/stats/cbs.cpp
         src/stats/comp_based_stats.cpp
         src/stats/hauser_correction.cpp
         src/stats/matrix_adjust.cpp
-        src/stats/matrix_adjust_eigen.cpp
         src/data/index.cpp
         src/data/dmnd/dmnd.cpp
         src/data/sequence_file.cpp
@@ -380,14 +383,17 @@ set(OBJECTS
         src/util/tsv/merge.cpp
         src/util/tsv/join.cpp
         src/dp/scalar/smith_waterman.cpp
-        src/align/short.cpp
         src/tools/tsv.cpp
-        src/cluster/external/make_seed_table.cpp
         src/cluster/external/external.cpp
         src/cluster/external/align.cpp
         src/cluster/external/cluster.cpp
         src/cluster/external/output.cpp
-        )
+        src/util/algo/pagerank.cpp
+        src/util/algo/mcl.cpp
+        src/stats/blast/matrix_adjust.cpp
+        src/stats/blast/ncbi.cpp
+        src/search/hit_buffer.cpp
+)
 
 if(WITH_DNA)
   list(APPEND OBJECTS
@@ -494,6 +500,7 @@ endif()
 if(WITH_ZSTD OR BLAST_INCLUDE_DIR)
   find_path(${ZSTD_INCLUDE_DIR} NAMES zstd.h PATHS ${ZSTD_INCLUDE_DIR})
   find_library(ZSTD_LIBRARY NAMES libzstd.a libzstd_static)
+  message("zstd ${ZSTD_LIBRARY}")
   target_include_directories(diamond PRIVATE "${ZSTD_INCLUDE_DIR}")
   target_link_libraries(diamond ${ZSTD_LIBRARY})
   add_definitions(-DWITH_ZSTD)

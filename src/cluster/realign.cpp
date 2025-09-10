@@ -71,7 +71,7 @@ void realign() {
 
 	TextBuffer buf;
 	function<void(const HspContext&)> format_output([&buf, &out, &output_format](const HspContext& h) {
-		Output::Info info{ SeqInfo(), false, nullptr, buf, {}, Util::Seq::AccessionParsing(), 0, 0 };
+		Output::Info info{ SeqInfo(), false, nullptr, buf, Util::Seq::AccessionParsing(), 0, 0 };
 		info.query.title = h.query_title.c_str();
 		output_format->print_match(h, info);
 		out.write(buf.data(), buf.size());

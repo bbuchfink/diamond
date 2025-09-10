@@ -1,5 +1,5 @@
 #pragma once
-#include <objtools/blast/seqdb_reader/seqdbexpert.hpp>
+#include <objtools/blast/seqdb_reader/seqdb.hpp>
 #include <memory>
 #include "../sequence_file.h"
 
@@ -22,8 +22,7 @@ struct BlastDB : public SequenceFile {
 	virtual void read_seq_data(Letter* dst, size_t len, size_t& pos, bool seek) override;
 	virtual void read_id_data(const int64_t oid, char* dst, size_t len) override;
 	virtual void skip_id_data() override;
-	virtual std::string seqid(OId oid) const override;
-	virtual std::string dict_title(DictId dict_id, const size_t ref_block) const override;
+	virtual std::string seqid(OId oid, bool all = false) const override;
 	virtual Loc dict_len(DictId dict_id, const size_t ref_block) const override;
 	virtual std::vector<Letter> dict_seq(DictId dict_id, const size_t ref_block) const override;
 	virtual int64_t sequence_count() const override;
@@ -40,15 +39,12 @@ struct BlastDB : public SequenceFile {
 	virtual int get_n_partition_chunks() override;
 	virtual void set_seqinfo_ptr(OId i) override;
 	virtual void close() override;
-	virtual void close_weakly() override;
-	virtual void reopen() override;
 	virtual BitVector* filter_by_accession(const std::string& file_name) override;
 	virtual const BitVector* builtin_filter() override;
 	virtual std::string file_name() override;
 	virtual std::vector<TaxId> taxids(size_t oid) const override;
 	virtual void seq_data(size_t oid, std::vector<Letter>& dst) const override;
 	virtual size_t seq_length(size_t oid) const override;
-	virtual void init_random_access(const size_t query_block, const size_t ref_blocks, bool dictionary = true) override;
 	virtual void end_random_access(bool dictionary = true) override;
 	virtual std::vector<OId> accession_to_oid(const std::string& acc) const override;
 	virtual void init_write() override;
@@ -57,19 +53,20 @@ struct BlastDB : public SequenceFile {
 
 	static void prep_blast_db(const std::string& path);
 
-	static const char* ACCESSION_FIELD;
-	
 private:
 
+	std::string fetch_seqid(OId oid, bool all) const;
+
 	const std::string file_name_;
-	std::unique_ptr<ncbi::CSeqDBExpert> db_;
+	std::unique_ptr<ncbi::CSeqDB> db_;
 	int oid_;
 	const bool long_seqids_;
 	const Flags flags_;
 	int64_t sequence_count_, sparse_sequence_count_;
 	BitVector oid_filter_;
-
+	
 	friend void load_blast_seqid();
 	friend void load_blast_seqid_lin();
+	friend void prefetch_worker(BlastDB* db);
 
 };

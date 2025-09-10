@@ -49,8 +49,8 @@ const vector<OutputField> TabularFormat::field_def = {
 { "qacc", "", "qacc", HspValues::NONE, Flags::IS_STRING },			// 2 means Query accesion
 { "qaccver", "", "qaccver", HspValues::NONE, Flags::IS_STRING },		// 3 means Query accesion.version
 { "qlen", "clen", "Query length", HspValues::NONE, Flags::NONE },			// 4 means Query sequence length
-{ "sseqid",	"mseqid", "Subject ID", HspValues::NONE, Flags::IS_STRING },	// 5 means Subject Seq - id
-{ "sallseqid", "", "Subject IDs", HspValues::NONE, Flags::ALL_SEQIDS |Flags::IS_ARRAY },	// 6 means All subject Seq - id(s), separated by a ';'
+{ "sseqid",	"mseqid", "Subject ID", HspValues::NONE, Flags::IS_STRING | Flags::SSEQID },	// 5 means Subject Seq - id
+{ "sallseqid", "", "Subject IDs", HspValues::NONE, Flags::ALL_SEQIDS | Flags::IS_ARRAY | Flags::SSEQID },	// 6 means All subject Seq - id(s), separated by a ';'
 { "sgi", "", "sgi", HspValues::NONE, Flags::NONE },			// 7 means Subject GI
 { "sallgi", "", "sallgi", HspValues::NONE, Flags::ALL_SEQIDS | Flags::IS_ARRAY },		// 8 means All subject GIs
 { "sacc", "", "sacc", HspValues::NONE, Flags::IS_STRING },			// 9 means Subject accession
@@ -83,8 +83,8 @@ const vector<OutputField> TabularFormat::field_def = {
 { "scomnames", "", "scomnames", HspValues::NONE, Flags::IS_ARRAY },	// 36 means unique Subject Common Name(s), separated by a ';'
 { "sblastnames", "", "sblastnames", HspValues::NONE, Flags::NONE },	// 37 means unique Subject Blast Name(s), separated by a ';'	(in alphabetical order)
 { "sskingdoms",	"", "Subject super kingdoms", HspValues::NONE, Flags::IS_ARRAY }, // 38 means unique Subject Super Kingdom(s), separated by a ';'	(in alphabetical order)
-{ "stitle", "", "Subject title", HspValues::NONE, Flags::FULL_TITLES | Flags::IS_STRING },		// 39 means Subject Title
-{ "salltitles", "", "Subject titles", HspValues::NONE, Flags::FULL_TITLES | Flags::IS_ARRAY},	// 40 means All Subject Title(s), separated by a '<>'
+{ "stitle", "", "Subject title", HspValues::NONE, Flags::FULL_TITLES | Flags::IS_STRING  | Flags::SSEQID },		// 39 means Subject Title
+{ "salltitles", "", "Subject titles", HspValues::NONE, Flags::FULL_TITLES | Flags::IS_ARRAY | Flags::SSEQID },	// 40 means All Subject Title(s), separated by a '<>'
 { "sstrand", "", "sstrand", HspValues::NONE, Flags::IS_STRING },		// 41 means Subject Strand
 { "qcovs", "", "qcovs", HspValues::NONE, Flags::NONE },		// 42 means Query Coverage Per Subject
 { "qcovhsp", "ccovhsp", "Query coverage per HSP", HspValues::QUERY_COORDS, Flags::NONE },		// 43 means Query Coverage Per HSP
@@ -158,6 +158,7 @@ TabularFormat::TabularFormat(bool json) :
 			hsp_values = HspValues::QUERY_COORDS | HspValues::TARGET_COORDS | HspValues::LENGTH | HspValues::IDENT | HspValues::MISMATCHES | HspValues::GAP_OPENINGS;
 		else
 			hsp_values = HspValues::TRANSCRIPT;
+		flags |= Output::Flags::SSEQID;
 		return;
 	}
 	for (vector<string>::const_iterator i = f.begin() + 1; i != f.end(); ++i) {
@@ -176,7 +177,9 @@ TabularFormat::TabularFormat(bool json) :
 			needs_taxon_ranks = true;
 		}
 		fields.push_back(j);
-		if (j == 6 || j == 39 || j == 40 || j == 34)
+		if (j == 6 || j == 34)
+			config.sallseqid = true;
+		if (j == 39 || j == 40)
 			config.salltitles = true;
 		if (j == 48 || j == 65 || j == 71)
 			flags |= Flags::TARGET_SEQS;
@@ -233,9 +236,9 @@ void TabularFormat::print_match(const HspContext& r, Output::Info& info)
 	TextBuffer& out = info.out;
     const char* prepos = "\t";
     if(is_json) {
-        if(r.hit_num !=0)
-            out << ",";
-        out << "\n\t{\n";
+		if (r.hit_num != 0)
+			out << ",";
+		out << "\n\t{\n";
     }
 	for (auto i = fields.cbegin(); i != fields.cend(); ++i) {
         if(is_json){
@@ -373,7 +376,7 @@ void TabularFormat::print_match(const HspContext& r, Output::Info& info)
 			break;
 		}
 		case 39:
-            print_title(out, r.target_title.c_str(), true, false, is_json ? "," : "<>",0,is_json);
+			print_title(out, r.target_title.c_str(), true, false, is_json ? "," : "<>", 0, false);
             break;
 		case 40:
             print_title(out, r.target_title.c_str(), true, true, is_json ? ",":"<>", 0 ,is_json);
@@ -518,7 +521,7 @@ void TabularFormat::print_match(const HspContext& r, Output::Info& info)
 			out << (double)r.identities() / std::max(r.query.index(r.frame()).length(), r.subject_len) * 100;
 			break;
 		case 69:
-			out << info.stats.extension_count;
+			//out << info.stats.extension_count;
 			break;
 		case 70:
 			out.print_e(score_matrix.bitscore(r.query[Frame(0)].length() < r.subject_len ?
@@ -547,8 +550,8 @@ void TabularFormat::print_match(const HspContext& r, Output::Info& info)
                 out << "\"";
             if(flag_any(field_def[*i].flags , Flags::IS_ARRAY))
                 out << "]";
-            if ( i < fields.end() - 1)
-                out << ",\n";
+			if (i < fields.end() - 1)
+				out << ",\n";
             else
                 out << "\n";
         }

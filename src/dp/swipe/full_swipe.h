@@ -43,6 +43,7 @@ Hsp traceback(Cbs bias_correction, const Matrix<Cell>& dp, const DpTarget& targe
 {
 	Hsp out(false);
 	out.swipe_target = target.target_idx;
+	out.swipe_bin = p.swipe_bin;
 	out.score = ScoreTraits<Sv>::int_score(max_score) * config.cbs_matrix_scale;
 	out.evalue = evalue;
 	out.bit_score = score_matrix.bitscore(out.score);
@@ -83,6 +84,7 @@ Hsp traceback(Cbs bias_correction, const TracebackVectorMatrix<Sv> &dp, const Dp
 	typename TracebackVectorMatrix<Sv>::TracebackIterator it(dp.traceback(max_col, max_i, max_j, channel));
 	Hsp out(true);
 	out.swipe_target = target.target_idx;
+	out.swipe_bin = p.swipe_bin;
 	out.score = ScoreTraits<Sv>::int_score(max_score);
 	out.evalue = evalue;
 	out.bit_score = score_matrix.bitscore(out.score);
@@ -97,7 +99,10 @@ Hsp traceback(Cbs bias_correction, const TracebackVectorMatrix<Sv> &dp, const Dp
 	const bool adjusted_matrix = target.adjusted_matrix();
 	if (!adjusted_matrix)
 		out.score *= config.cbs_matrix_scale;
-	const int* matrix = adjusted_matrix ? target.matrix->scores32.data() : score_matrix.matrix32();
+	//const int* matrix = adjusted_matrix ? target.matrix->scores32.data() : score_matrix.matrix32();
+	if (adjusted_matrix)
+		throw std::runtime_error("Traceback with adjusted matrix not supported");
+	const int* matrix = score_matrix.matrix32();
 
 	while (it.i >= 0 && it.j >= 0 && score < end_score) {
 		if ((it.mask().gap & channel_mask) == 0) {

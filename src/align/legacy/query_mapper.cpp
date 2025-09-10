@@ -226,7 +226,7 @@ bool QueryMapper::generate_output(TextBuffer &buffer, Statistics &stat, const Se
 	size_t seek_pos = 0;
 	const char *query_title = metadata.query->ids()[query_id];
 	unique_ptr<OutputFormat> f(cfg.output_format->clone());
-	Output::Info info{ cfg.query->seq_info(query_id), true, cfg.db.get(), buffer, {}, Util::Seq::AccessionParsing(), cfg.db->sequence_count(), cfg.db->letters() };
+	Output::Info info{ cfg.query->seq_info(query_id), true, cfg.db.get(), buffer, Util::Seq::AccessionParsing(), cfg.db->sequence_count(), cfg.db->letters() };
 
 	for (size_t i = 0; i < targets.size(); ++i) {
 
@@ -237,7 +237,7 @@ bool QueryMapper::generate_output(TextBuffer &buffer, Statistics &stat, const Se
 		if (!cfg.blocked_processing)
 			target_title = metadata.target->has_ids() ? metadata.target->ids()[subject_id] : metadata.db->seqid(database_id);
 		else
-			dict_id = metadata.target->dict_id(cfg.current_ref_block, subject_id, *metadata.db);
+			dict_id = metadata.target->dict_id(cfg.current_ref_block, subject_id, *metadata.db, *f);
 		const unsigned subject_len = (unsigned)metadata.target->seqs()[subject_id].length();
 		targets[i].apply_filters(source_query_len, subject_len, query_title);
 		if (targets[i].hsps.size() == 0)
@@ -270,7 +270,7 @@ bool QueryMapper::generate_output(TextBuffer &buffer, Statistics &stat, const Se
 						f->print_query_intro(info);
 				}
 				if (*f == OutputFormat::daa)
-					write_daa_record(buffer, *j, safe_cast<uint32_t>(metadata.target->dict_id(cfg.current_ref_block, subject_id, *metadata.db)));
+					write_daa_record(buffer, *j, safe_cast<uint32_t>(metadata.target->dict_id(cfg.current_ref_block, subject_id, *metadata.db, *f)));
 				else
 					f->print_match(HspContext(*j,
 						query_id,
@@ -301,7 +301,7 @@ bool QueryMapper::generate_output(TextBuffer &buffer, Statistics &stat, const Se
 		else
 			IntermediateRecord::finish_query(buffer, seek_pos);
 	}
-	else if (!cfg.blocked_processing && *f != OutputFormat::daa && config.report_unaligned != 0) {
+	else if (!cfg.blocked_processing && *f != OutputFormat::daa && f->report_unaligned()) {
 		f->print_query_intro(info);
 		f->print_query_epilog(info);
 	}

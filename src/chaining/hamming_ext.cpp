@@ -46,6 +46,23 @@ static ApproxHsp filter(vector<DiagonalSegment>::iterator begin, vector<Diagonal
 	return ApproxHsp(0);
 }
 
+static ApproxHsp old_filter(vector<DiagonalSegment>::iterator begin, vector<DiagonalSegment>::iterator end, Loc qlen, Loc tlen) {
+	const double TOLERANCE_FACTOR = 1.1;
+	stable_sort(begin, end, DiagonalSegment::cmp_score);
+	Loc ident = 0, len = 0;
+	const Loc qtol = safe_cast<Loc>(qlen * TOLERANCE_FACTOR), ttol = safe_cast<Loc>(tlen * TOLERANCE_FACTOR);
+	for (auto it = begin; it < end; ++it) {
+		if (len + it->len > qtol || len + it->len > ttol)
+			continue;
+		ident += it->ident;
+		len += it->len;
+	}
+	if (max((double)len / qlen, (double)len / tlen) * 100.0 < config.diag_filter_cov
+		|| (double)ident / len * 100.0 < config.diag_filter_id)
+		return ApproxHsp(0, -1);
+	return ApproxHsp(0);
+}
+
 ApproxHsp hamming_ext(vector<DiagonalSegment>::iterator begin, vector<DiagonalSegment>::iterator end, Loc qlen, Loc tlen, bool use_cov_filter) {
 	if (config.hamming_ext) {
 		ApproxHsp h = find_aln(begin, end, qlen, tlen);

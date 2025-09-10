@@ -24,10 +24,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "output/output_format.h"
 #include "output/output.h"
 #include "legacy/pipeline.h"
-#include "util/async_buffer.h"
+#include "search/hit_buffer.h"
 #include "util/parallel/thread_pool.h"
 #include "extend.h"
 #include "util/util.h"
+//#include "util/sort/sort.h"
 #ifdef WITH_DNA
 #include "../dna/extension.h"
 #endif
@@ -35,6 +36,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define _REENTRANT
 #include "ips4o/ips4o.hpp"
 #include "data/queries.h"
+#include "data/sequence_file.h"
+#include "search/hit_buffer.h"
 
 using std::get;
 using std::tuple;
@@ -46,12 +49,6 @@ using std::pair;
 using std::vector;
 
 DpStat dp_stat;
-
-namespace Extension {
-
-TextBuffer* pipeline_short(BlockId query, Search::Hit* begin, Search::Hit* end, Search::Config& cfg, Statistics& stats);
-
-}
 
 static vector<int64_t> make_partition(Search::Hit* begin, Search::Hit* end) {
 	vector<int64_t> partition;
@@ -124,9 +121,9 @@ struct HitIterator {
 static TextBuffer* legacy_pipeline(const HitIterator::Hits& hits, Search::Config& cfg, Statistics &stat) {
 	if (hits.end == hits.begin) {
 		TextBuffer *buf = nullptr;
-		if (!cfg.blocked_processing && *cfg.output_format != OutputFormat::daa && config.report_unaligned != 0) {
+		if (!cfg.blocked_processing && *cfg.output_format != OutputFormat::daa && cfg.output_format->report_unaligned()) {
 			buf = new TextBuffer;
-			Output::Info info{ cfg.query->seq_info(hits.query), true, cfg.db.get(), *buf, {}, Util::Seq::AccessionParsing(), cfg.db->sequence_count(), cfg.db->letters() };
+			Output::Info info{ cfg.query->seq_info(hits.query), true, cfg.db.get(), *buf, Util::Seq::AccessionParsing(), cfg.db->sequence_count(), cfg.db->letters() };
 			cfg.output_format->print_query_intro(info);
 			cfg.output_format->print_query_epilog(info);
 		}
@@ -161,6 +158,7 @@ static TextBuffer* legacy_pipeline(const HitIterator::Hits& hits, Search::Config
 static void align_worker(HitIterator* hit_it, Search::Config* cfg, int64_t next)
 {
 	try {
+		std::pmr::monotonic_buffer_resource pool;
 		const vector<HitIterator::Hits> hits = hit_it->fetch(next);
 		assert(!hits.empty());
 		Statistics stat;
@@ -173,23 +171,18 @@ static void align_worker(HitIterator* hit_it, Search::Config* cfg, int64_t next)
 				output_sink->push(h->query, buf);
 				continue;
 			}
-			if (config.pipeline_short) {
-				TextBuffer* buf = Extension::pipeline_short(h->query, h->begin, h->end, *cfg, stat);
-				output_sink->push(h->query, buf);
-				continue;
-			}
 			if (h->begin == nullptr && !HitIterator::single_query()) {
 				output_sink->push(h->query, nullptr);
 				continue;
 			}
 
-			pair<vector<Extension::Match>, Extension::Stats> matches =
+			vector<Extension::Match> matches =
 #ifdef WITH_DNA
 				align_mode.mode == AlignMode::blastn ? Dna::extend(*cfg, cfg->query->seqs()[h->query]) :
 #endif
-				Extension::extend(h->query, h->begin, h->end, *cfg, stat, parallel ? DP::Flags::PARALLEL : DP::Flags::NONE);
-			TextBuffer* buf = cfg->blocked_processing ? Extension::generate_intermediate_output(matches.first, h->query, *cfg) : Extension::generate_output(matches.first, matches.second, h->query, stat, *cfg);
-			if (!matches.first.empty() && cfg->track_aligned_queries) {
+				Extension::extend(h->query, h->begin, h->end, *cfg, stat, parallel ? DP::Flags::PARALLEL : DP::Flags::NONE, pool);
+			TextBuffer* buf = cfg->blocked_processing ? Extension::generate_intermediate_output(matches, h->query, *cfg) : Extension::generate_output(matches, h->query, stat, *cfg);
+			if (!matches.empty() && cfg->track_aligned_queries) {
 				std::lock_guard<std::mutex> lock(query_aligned_mtx);
 				if (!query_aligned[h->query]) {
 					query_aligned[h->query] = true;
@@ -198,7 +191,7 @@ static void align_worker(HitIterator* hit_it, Search::Config* cfg, int64_t next)
 			}
 			if (!config.unaligned_targets.empty()) {
 				lock_guard<mutex> lock(cfg->aligned_targets_mtx);
-				for (const Extension::Match &m : matches.first) {
+				for (const Extension::Match &m : matches) {
 					const OId oid = cfg->target->block_id2oid(m.target_block_id);
 					if (!cfg->aligned_targets[oid])
 						cfg->aligned_targets[oid] = true;
@@ -220,42 +213,48 @@ void align_queries(Consumer* output_file, Search::Config& cfg)
 	const int64_t mem_limit = Util::String::interpret_number(config.memory_limit.get("16G"));
 
 	pair<BlockId, BlockId> query_range;
-	TaskTimer timer(nullptr, 3);
+	TaskTimer timer("Allocating memory", 3);
 
 	if (!cfg.blocked_processing && !cfg.iterated())
 		cfg.db->init_random_access(cfg.current_query_block, 0, false);
 
 	int64_t res_size = cfg.query->mem_size() + cfg.target->mem_size(), last_size = 0;
-	cfg.seed_hit_buf->load(std::min(mem_limit - res_size - cfg.seed_hit_buf->bin_size(1) * (int64_t)sizeof(Search::Hit), config.trace_pt_fetch_size));
+	cfg.seed_hit_buf->alloc_buffer();
+	//cfg.seed_hit_buf->load(std::min(mem_limit - res_size - cfg.seed_hit_buf->bin_size(1) * (int64_t)sizeof(Search::Hit), config.trace_pt_fetch_size));
 
 	while (true) {
 		timer.go("Loading trace points");
-		tuple<vector<Search::Hit>*, BlockId, BlockId> input = cfg.seed_hit_buf->retrieve();
+		cfg.seed_hit_buf->load(std::min(mem_limit - res_size - cfg.seed_hit_buf->bin_size(1) * (int64_t)sizeof(Search::Hit), config.trace_pt_fetch_size));
+		tuple<Search::Hit*, int64_t, BlockId, BlockId> input = cfg.seed_hit_buf->retrieve();
 		if (get<0>(input) == nullptr)
 			break;
 		statistics.inc(Statistics::TIME_LOAD_SEED_HITS, timer.microseconds());
-		vector<Search::Hit>* hit_buf = get<0>(input);
-		res_size += hit_buf->size() * sizeof(Search::Hit);
-		query_range = { get<1>(input), get<2>(input) };
-		cfg.seed_hit_buf->load(std::min(mem_limit - res_size, config.trace_pt_fetch_size));
+		timer.finish();
+		Search::Hit* hit_buf = get<0>(input);
+		const int64_t hit_count = get<1>(input);
+		log_stream << "Processing " << hit_count << " trace points." << std::endl;
+		res_size += hit_count * sizeof(Search::Hit);
+		query_range = { get<2>(input), get<3>(input) };
+		//cfg.seed_hit_buf->load(std::min(mem_limit - res_size, config.trace_pt_fetch_size));
 
 		if (res_size + last_size > mem_limit)
 			log_stream << "Warning: resident size (" << (res_size + last_size) << ") exceeds memory limit." << std::endl;
 
 		timer.go("Sorting trace points");
 #ifdef NDEBUG
-		ips4o::parallel::sort(hit_buf->begin(), hit_buf->end(), std::less<Search::Hit>(), config.threads_);
+		//sort::sort_parallel_blocked_inplace(hit_buf, hit_buf + hit_count, std::less<Search::Hit>(), config.threads_);
+		ips4o::parallel::sort(hit_buf, hit_buf + hit_count, std::less<Search::Hit>(), config.threads_);
 #else
-		std::sort(hit_buf->begin(), hit_buf->end());
+		std::sort(hit_buf, hit_buf + hit_count);
 #endif
 		statistics.inc(Statistics::TIME_SORT_SEED_HITS, timer.microseconds());
 
 		timer.go("Computing partition");
-		const vector<int64_t> partition = make_partition(hit_buf->data(), hit_buf->data() + hit_buf->size());
+		const vector<int64_t> partition = make_partition(hit_buf, hit_buf + hit_count);
 
 		timer.go("Computing alignments");
-		HitIterator hit_it(query_range.first, query_range.second, hit_buf->data(), hit_buf->data() + hit_buf->size(), partition.begin(), (int64_t)partition.size() - 1);
-        OutputWriter writer{output_file, cfg.output_format->query_separator};
+		HitIterator hit_it(query_range.first, query_range.second, hit_buf, hit_buf + hit_count, partition.begin(), (int64_t)partition.size() - 1);
+        OutputWriter writer{output_file, cfg.blocked_processing ? '\0' : cfg.output_format->query_separator };
 		output_sink.reset(new ReorderQueue<TextBuffer*, OutputWriter>(query_range.first, writer));
 		unique_ptr<thread> heartbeat;
 		if (config.verbosity >= 3 && config.load_balancing == Config::query_parallel && !config.swipe_all && config.heartbeat)
@@ -273,12 +272,13 @@ void align_queries(Consumer* output_file, Search::Config& cfg)
 		timer.go("Deallocating buffers");
 		cfg.thread_pool.reset();
 		output_sink.reset();
-		last_size = hit_buf->size() * sizeof(Search::Hit);
+		last_size = hit_count * sizeof(Search::Hit);
 		res_size -= last_size;
-		delete hit_buf;
 	}
 	statistics.max(Statistics::SEARCH_TEMP_SPACE, cfg.seed_hit_buf->total_disk_size());
 
+	timer.go("Freeing memory");
+	cfg.seed_hit_buf->free_buffer();
 	if (!cfg.blocked_processing && !cfg.iterated())
 		cfg.db->end_random_access(false);
 }

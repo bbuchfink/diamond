@@ -43,7 +43,7 @@ static bool first_round_filter_all(const Search::Config& cfg, HspValues first_ro
 }
 
 static void add_dp_targets(const Target& target, int target_idx, const Sequence* query_seq, array<DP::Targets, MAX_CONTEXT>& dp_targets, DP::Flags flags, const HspValues hsp_values, const Mode mode) {
-	const ::Stats::TargetMatrix* matrix = target.adjusted_matrix() ? &target.matrix : nullptr;
+	const ::Stats::TargetMatrix* matrix = target.matrix.get();
 	const Loc tlen = target.seq.length();
 	for (int frame = 0; frame < align_mode.query_contexts; ++frame) {
 		const Loc qlen = query_seq[frame].length();
@@ -52,7 +52,8 @@ static void add_dp_targets(const Target& target, int target_idx, const Sequence*
 				? (int64_t)qlen * (int64_t)tlen
 				: (int64_t)DpTarget::banded_cols(qlen, tlen, hsp.d_begin, hsp.d_end) * int64_t(hsp.d_end - hsp.d_begin);
 			const int b = DP::BandedSwipe::bin(hsp_values, flag_any(flags, DP::Flags::FULL_MATRIX) ? qlen : hsp.d_end - hsp.d_begin, hsp.score, 0, dp_size, matrix ? matrix->score_width() : 0, 0);
-			dp_targets[frame][b].emplace_back(target.seq, tlen, hsp.d_begin, hsp.d_end, Interval(), 0, target_idx, qlen, matrix);
+			//dp_targets[frame][b].emplace_back(target.seq, tlen, hsp.d_begin, hsp.d_end, Interval(), 0, target_idx, qlen, matrix);
+			dp_targets[frame][b].emplace_back(target.seq, tlen, hsp.d_begin, hsp.d_end, target_idx, qlen, matrix);
 		}
 	}
 }
@@ -68,7 +69,7 @@ vector<Match> align(vector<Target>& targets, const int64_t previous_matches, con
 		r.reserve(targets.size());
 	for (Target& t : targets)
 		if (copy_all || t.done)
-			r.emplace_back(t.block_id, t.seq, t.matrix, t.hsp, t.ungapped_score);
+			r.emplace_back(t.block_id, t.seq, std::move(t.matrix), t.hsp, t.ungapped_score);
 	if (r.size() == targets.size()) {
 		apply_filters(r.begin(), r.end(), source_query_len, query_id, query_self_aln_score, query_seq[0], cfg);
 		return r;
@@ -94,12 +95,10 @@ vector<Match> align(vector<Target>& targets, const int64_t previous_matches, con
 		const int64_t matches_begin = r.size();
 
 		for (auto i = it; i < it + step_size; ++i) {
-			/*if (config.log_subject)
-				std::cout << "Target=" << ref_ids::get()[targets[i].block_id] << " id=" << i << endl;*/
 			if (i->done)
 				continue;
 			add_dp_targets(*i, (int32_t)r.size(), query_seq, dp_targets, flags, hsp_values, cfg.extension_mode);
-			r.emplace_back(i->block_id, i->seq, i->matrix, i->ungapped_score);
+			r.emplace_back(i->block_id, i->seq, std::move(i->matrix), i->ungapped_score);
 		}
 
 		for (int frame = 0; frame < align_mode.query_contexts; ++frame) {
@@ -114,6 +113,7 @@ vector<Match> align(vector<Target>& targets, const int64_t previous_matches, con
 				flags,
 				false,
 				0,
+				-1,
 				hsp_values,
 				stat,
 				cfg.thread_pool.get()

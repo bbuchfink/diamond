@@ -1,4 +1,35 @@
+/****
+Copyright © 2013-2025 Benjamin J. Buchfink
+
+Redistribution and use in source and binary forms, with or without modification,
+are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this
+list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice,
+this list of conditions and the following disclaimer in the documentation and/or
+other materials provided with the distribution.
+
+3. Neither the name of the copyright holder nor the names of its contributors
+may be used to endorse or promote products derived from this software without
+specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
+INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
+EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+****/
+// SPDX-License-Identifier: BSD-3-Clause
+
 #include <type_traits>
+#include <string>
 #include "../basic/config.h"
 #include "util/tsv/tsv.h"
 #include "util/parallel/atomic.h"
@@ -30,6 +61,7 @@ using std::pair;
 using std::atomic;
 using Util::String::format;
 using std::shared_ptr;
+using std::to_string;
 
 namespace Cluster {
 
@@ -120,9 +152,10 @@ static vector<string> build_seed_table(Job& job, const VolumedFile& volumes, int
 	return buckets;
 }
 
-static vector<string> build_pair_table(Job& job, const vector<string>& seed_table, int64_t db_size, FileArray& output_files) {
+static vector<string> build_pair_table(Job& job, const vector<string>& seed_table, int shape, int64_t db_size, FileArray& output_files) {
 	const int64_t BUF_SIZE = 4096, shift = bit_length(db_size - 1) - RADIX_BITS; // promiscuous_cutoff = db_size / config.promiscuous_seed_ratio;
-	const string queue_path = base_path(seed_table.front()) + PATH_SEPARATOR + "build_pair_table_queue";
+	const string seed_table_base = job.base_dir() + PATH_SEPARATOR + "seed_table_" + to_string(shape);
+	const string queue_path = seed_table_base + PATH_SEPARATOR + "build_pair_table_queue";
 	const bool unid = !config.mutual_cover.present();
 	Atomic queue(queue_path);
 	int64_t bucket, buckets_processed = 0;
@@ -155,7 +188,7 @@ static vector<string> build_pair_table(Job& job, const vector<string>& seed_tabl
 		++buckets_processed;
 	}
 	const vector<string> buckets = output_files.buckets();
-	Atomic finished(base_path(seed_table.front()) + PATH_SEPARATOR + "pair_table_finished");
+	Atomic finished(seed_table_base + PATH_SEPARATOR + "pair_table_finished");
 	finished.fetch_add(buckets_processed);
 	finished.await(seed_table.size());
 	return buckets;
@@ -306,49 +339,51 @@ static void build_chunks(Job& job, const VolumedFile& db, const vector<string>& 
 		VolumedFile file(chunk_table[bucket]);
 		InputBuffer<ChunkTableEntry> data(file);
 		job.log("Building chunks. Bucket=%lli/%lli Records=%s Size=%s", bucket + 1, chunk_table.size(), format(data.size()).c_str(), format(data.byte_size()).c_str());
-		ips4o::parallel::sort(data.begin(), data.end(), std::less<ChunkTableEntry>(), config.threads_);
-		const int64_t oid_begin = data.front().oid, oid_end = data.back().oid + 1;
-		const pair<vector<Volume>::const_iterator, vector<Volume>::const_iterator> volumes = db.find(oid_begin, oid_end);
-		atomic<int64_t> next(0);
-		auto worker = [&]() {
-			int64_t volume;
-			const ChunkTableEntry* table_ptr = data.begin();
-			BufferArray output_bufs(*output_files, chunk_count);
-			TextBuffer buf;
-			while (volume = next.fetch_add(1, std::memory_order_relaxed), volume < volumes.second - volumes.first) {
-				const Volume& v = volumes.first[volume];
-				while (table_ptr->oid < v.oid_begin)
-					++table_ptr;
-				unique_ptr<SequenceFile> in(SequenceFile::auto_create({ v.path }));
-				string id;
-				vector<Letter> seq;
-				int64_t file_oid = v.oid_begin;
-				while (file_oid < oid_end && in->read_seq(seq, id, nullptr)) {
-					if (table_ptr->oid > file_oid) {
-						++file_oid;
-						continue;
-					}
-					Util::Seq::format(seq, std::to_string(file_oid).c_str(), nullptr, buf, "fasta", amino_acid_traits);
-					const ChunkTableEntry* begin = table_ptr;
-					while (table_ptr < data.end() && table_ptr->oid == file_oid) {
-						if (table_ptr == begin || table_ptr->chunk != table_ptr[-1].chunk) {
-							output_bufs.write(table_ptr->chunk, buf.data(), buf.size());
-							oid_counter.fetch_add(1, std::memory_order_relaxed);
-						}
+		if (data.size() > 0) {
+			ips4o::parallel::sort(data.begin(), data.end(), std::less<ChunkTableEntry>(), config.threads_);
+			const int64_t oid_begin = data.front().oid, oid_end = data.back().oid + 1;
+			const pair<vector<Volume>::const_iterator, vector<Volume>::const_iterator> volumes = db.find(oid_begin, oid_end);
+			atomic<int64_t> next(0);
+			auto worker = [&]() {
+				int64_t volume;
+				const ChunkTableEntry* table_ptr = data.begin();
+				BufferArray output_bufs(*output_files, chunk_count);
+				TextBuffer buf;
+				while (volume = next.fetch_add(1, std::memory_order_relaxed), volume < volumes.second - volumes.first) {
+					const Volume& v = volumes.first[volume];
+					while (table_ptr->oid < v.oid_begin)
 						++table_ptr;
+					unique_ptr<SequenceFile> in(SequenceFile::auto_create({ v.path }));
+					string id;
+					vector<Letter> seq;
+					int64_t file_oid = v.oid_begin;
+					while (file_oid < oid_end && in->read_seq(seq, id, nullptr)) {
+						if (table_ptr->oid > file_oid) {
+							++file_oid;
+							continue;
+						}
+						Util::Seq::format(seq, std::to_string(file_oid).c_str(), nullptr, buf, "fasta", amino_acid_traits);
+						const ChunkTableEntry* begin = table_ptr;
+						while (table_ptr < data.end() && table_ptr->oid == file_oid) {
+							if (table_ptr == begin || table_ptr->chunk != table_ptr[-1].chunk) {
+								output_bufs.write(table_ptr->chunk, buf.data(), buf.size());
+								oid_counter.fetch_add(1, std::memory_order_relaxed);
+							}
+							++table_ptr;
+						}
+						buf.clear();
+						distinct_oid_counter.fetch_add(1, std::memory_order_relaxed);
+						++file_oid;
 					}
-					buf.clear();
-					distinct_oid_counter.fetch_add(1, std::memory_order_relaxed);
-					++file_oid;
+					in->close();
 				}
-				in->close();
-			}
-		};
-		vector<thread> workers;
-		for (int i = 0; i < std::min(config.threads_, int(volumes.second - volumes.first)); ++i)
-			workers.emplace_back(worker);
-		for (auto& t : workers)
-			t.join();
+				};
+			vector<thread> workers;
+			for (int i = 0; i < std::min(config.threads_, int(volumes.second - volumes.first)); ++i)
+				workers.emplace_back(worker);
+			for (auto& t : workers)
+				t.join();
+		}
 		file.remove();
 		++buckets_processed;
 	}
@@ -360,11 +395,15 @@ static void build_chunks(Job& job, const VolumedFile& db, const vector<string>& 
 	finished.await(chunk_table.size());
 	timer.finish();
 	log_stream << "build_chunks oids=" << oid_counter << '/' << db.records() << " distinct_oids=" << distinct_oid_counter << endl;
-	db.remove();
 }
 
 string round(Job& job, const VolumedFile& volumes) {
 	::shapes = ShapeConfig(Search::shape_codes.at(config.sensitivity), 0);
+	if (config.mutual_cover.present()) {
+		config.min_length_ratio = config.sensitivity < Sensitivity::LINCLUST_40 ?
+			std::min(config.mutual_cover.get_present() / 100 + 0.05, 1.0)
+			: config.mutual_cover.get_present() / 100 - 0.05;
+	}
 	job.log("Starting round %i sensitivity %s %i shapes\n", job.round(), to_string(config.sensitivity).c_str(), ::shapes.count());
 	job.set_round(volumes.size(), volumes.records());
 	const std::string pair_table_base = job.base_dir() + PATH_SEPARATOR + "pair_table";
@@ -374,7 +413,7 @@ string round(Job& job, const VolumedFile& volumes) {
 	for (int shape = 0; shape < ::shapes.count(); ++shape) {
 		const vector<string> buckets = build_seed_table(job, volumes, shape);
 		const vector<string> sorted_seed_table = radix_sort<SeedEntry>(job, buckets, shapes[0].bit_length() - RADIX_BITS);
-		pair_table = build_pair_table(job, sorted_seed_table, volumes.records(), *pair_table_files);
+		pair_table = build_pair_table(job, sorted_seed_table, shape, volumes.records(), *pair_table_files);
 	}
 	pair_table_files.reset();
 	const vector<string> sorted_pair_table = radix_sort<PairEntry>(job, pair_table, bit_length(volumes.records() - 1) - RADIX_BITS);
@@ -395,6 +434,7 @@ string round(Job& job, const VolumedFile& volumes) {
 void external() {
 	if (config.output_file.empty())
 		throw std::runtime_error("Option missing: output file (--out/-o)");
+	config.file_buffer_size = 64 * 1024;
 	TaskTimer total;
 	Job job;
 	VolumedFile volumes(config.database.get_present());
@@ -408,7 +448,6 @@ void external() {
 		job.log("#Sequences = %lli", volumes.records());
 	}
 	if (config.mutual_cover.present()) {
-		config.min_length_ratio = std::min(config.mutual_cover.get_present() / 100 + 0.05, 1.0);
 		config.query_or_target_cover = 0;
 		config.query_cover = config.mutual_cover.get_present();
 		config.subject_cover = config.mutual_cover.get_present();

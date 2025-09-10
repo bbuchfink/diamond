@@ -3,6 +3,7 @@
 #include "dp/ungapped.h"
 #include "diag_graph.h"
 #include "dp/scalar/scalar.h"
+#include "stats/score_matrix.h"
 
 using std::cout;
 using std::endl;

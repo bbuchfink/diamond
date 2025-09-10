@@ -20,7 +20,6 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
-
 #pragma once
 #include <list>
 #include "sequence.h"
@@ -30,7 +29,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "util/geo/diagonal_segment.h"
 #include "util/io/input_file.h"
 #include "util/hsp/approx_hsp.h"
-#include "util/io/serialize.h"
 
 inline Interval normalized_range(unsigned pos, int len, Strand strand)
 {
@@ -260,7 +258,7 @@ struct Hsp
 	bool is_weakly_enveloped(const Hsp &j) const;
 	std::pair<int, int> diagonal_bounds() const;
 	bool backtraced;
-	int score, frame, length, identities, mismatches, positives, gap_openings, gaps, swipe_target, d_begin, d_end;
+	int score, frame, length, identities, mismatches, positives, gap_openings, gaps, swipe_target, swipe_bin, d_begin, d_end;
 #ifdef DP_STAT
 	int reserved1, reserved2;
 #endif
@@ -457,92 +455,65 @@ struct HspContext
 	Sequence subject_seq;
 private:
 	Hsp hsp_;
-	template<typename T> friend struct TypeDeserializer;
+	friend HspContext deserialize(InputFile*);
 };
 
-template<>
-struct TypeSerializer<HspContext> {
-
-	TypeSerializer(TextBuffer& buf) :
-		buf_(&buf)
-	{}
-
-	TypeSerializer& operator<<(const HspContext& h) {
-		buf_->write(h.query_id);
-		buf_->write(h.query_oid);
-		buf_->write(h.subject_oid);
-		buf_->write_c_str(h.query_title.c_str());
-		buf_->write_c_str(h.target_title.c_str());
-		buf_->write(h.query_len);
-		buf_->write(h.subject_len);
-		buf_->write(h.identities());
-		buf_->write(h.mismatches());
-		buf_->write(h.positives());
-		buf_->write(h.gaps());
-		buf_->write(h.length());
-		buf_->write(h.gap_openings());
-		buf_->write(h.query_range().begin_);
-		buf_->write(h.query_range().end_);
-		buf_->write(h.subject_range().begin_);
-		buf_->write(h.subject_range().end_);
-		buf_->write(h.bit_score());
-		buf_->write(h.evalue());
-		buf_->write(h.score());
-		buf_->write(h.approx_id());
+inline void serialize(const HspContext& h, TextBuffer& buf) {
+	buf.write(h.query_id);
+	buf.write(h.query_oid);
+	buf.write(h.subject_oid);
+	buf.write_c_str(h.query_title.c_str());
+	buf.write_c_str(h.target_title.c_str());
+	buf.write(h.query_len);
+	buf.write(h.subject_len);
+	buf.write(h.identities());
+	buf.write(h.mismatches());
+	buf.write(h.positives());
+	buf.write(h.gaps());
+	buf.write(h.length());
+	buf.write(h.gap_openings());
+	buf.write(h.query_range().begin_);
+	buf.write(h.query_range().end_);
+	buf.write(h.subject_range().begin_);
+	buf.write(h.subject_range().end_);
+	buf.write(h.bit_score());
+	buf.write(h.evalue());
+	buf.write(h.score());
+	buf.write(h.approx_id());
 #if WITH_DNA
-        buf_->write(h.mapping_quality());
-        buf_->write(h.n_anchors());
+	buf.write(h.mapping_quality());
+	buf.write(h.n_anchors());
 #endif
-		return *this;
-	}
+}
 
-private:
-
-	TextBuffer* buf_;
-
-};
-
-template<>
-struct TypeDeserializer<HspContext> {
-
-	TypeDeserializer(InputFile* f) :
-		file_(f)
-	{}
-
-	HspContext get() {
-		HspContext h;
-		file_->read(h.query_id);
-		file_->read(h.query_oid);
-		file_->read(h.subject_oid);
-		*file_ >> h.query_title;
-		*file_ >> h.target_title;
-		file_->read(h.query_len);
-		file_->read(h.subject_len);
-		file_->read(h.hsp_.identities);
-		file_->read(h.hsp_.mismatches);
-		file_->read(h.hsp_.positives);
-		file_->read(h.hsp_.gaps);
-		file_->read(h.hsp_.length);
-		file_->read(h.hsp_.gap_openings);
-		file_->read(h.hsp_.query_range.begin_);
-		file_->read(h.hsp_.query_range.end_);
-		file_->read(h.hsp_.subject_range.begin_);
-		file_->read(h.hsp_.subject_range.end_);
-		file_->read(h.hsp_.bit_score);
-		file_->read(h.hsp_.evalue);
-		file_->read(h.hsp_.score);
-		file_->read(h.hsp_.approx_id);
+inline HspContext deserialize(InputFile* file_) {
+	HspContext h;
+	file_->read(h.query_id);
+	file_->read(h.query_oid);
+	file_->read(h.subject_oid);
+	*file_ >> h.query_title;
+	*file_ >> h.target_title;
+	file_->read(h.query_len);
+	file_->read(h.subject_len);
+	file_->read(h.hsp_.identities);
+	file_->read(h.hsp_.mismatches);
+	file_->read(h.hsp_.positives);
+	file_->read(h.hsp_.gaps);
+	file_->read(h.hsp_.length);
+	file_->read(h.hsp_.gap_openings);
+	file_->read(h.hsp_.query_range.begin_);
+	file_->read(h.hsp_.query_range.end_);
+	file_->read(h.hsp_.subject_range.begin_);
+	file_->read(h.hsp_.subject_range.end_);
+	file_->read(h.hsp_.bit_score);
+	file_->read(h.hsp_.evalue);
+	file_->read(h.hsp_.score);
+	file_->read(h.hsp_.approx_id);
 #ifdef WITH_DNA
-        file_->read(h.hsp_.mapping_quality);
-        file_->read(h.hsp_.n_anchors);
+	file_->read(h.hsp_.mapping_quality);
+	file_->read(h.hsp_.n_anchors);
 #endif
-		h.hsp_.query_source_range = h.hsp_.query_range;
-		h.hsp_.subject_source_range = h.hsp_.subject_range;
-		return h;
-	}
-
-private:
-
-	InputFile* file_;
-
-};
+	h.hsp_.query_source_range = h.hsp_.query_range;
+	h.hsp_.subject_source_range = h.hsp_.subject_range;
+	return h;
+}

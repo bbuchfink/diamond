@@ -27,8 +27,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "finger_print.h"
 #include "util/memory/alignment.h"
 #include "run/config.h"
+#include "hit_buffer.h"
 #include "hit.h"
-#include "util/data_structures/writer.h"
 #include "data/flags.h"
 #include "kmer_ranking.h"
 #include "util/algo/join_result.h"
@@ -110,7 +110,7 @@ int seedp_bits(int shape_weight, int threads, int index_chunks);
 namespace Search {
 
 struct WorkSet {
-	WorkSet(const Context& context, const Search::Config& cfg, unsigned shape_id, Writer<Hit>* out, KmerRanking *kmer_ranking):
+	WorkSet(const Context& context, const Search::Config& cfg, unsigned shape_id, HitBuffer::Writer* out, KmerRanking *kmer_ranking):
 		context(context),
 		cfg(cfg),
 		shape_id(shape_id),
@@ -121,7 +121,7 @@ struct WorkSet {
 	const Search::Config& cfg;
 	unsigned shape_id;
 	Statistics stats;
-	Writer<Hit>* out;
+	HitBuffer::Writer* out;
 #ifndef __APPLE__
 	std::vector<FingerPrint, Util::Memory::AlignmentAllocator<FingerPrint, 16>> vq, vs;
 #endif

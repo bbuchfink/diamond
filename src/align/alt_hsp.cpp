@@ -69,7 +69,7 @@ static TargetVec recompute_alt_hsps(const Sequence* query_seq, const int query_s
 	const Loc qlen = query_seq[0].length();
 	for (auto it = targets.begin(); it != targets.end(); ++it) {
 		const int64_t dp_size = (int64_t)qlen * (int64_t)it->match->seq.length();
-		const ::Stats::TargetMatrix* matrix = it->match->matrix.blank() ? nullptr : &it->match->matrix;
+		const ::Stats::TargetMatrix* matrix = it->match->matrix.get();
 		const int bin = DP::BandedSwipe::bin(v, qlen, 0, 0, dp_size, matrix ? matrix->score_width() : 0, 0);
 		for (int32_t context = 0; context < align_mode.query_contexts; ++context) {
 			if (it->masked_seq[context]) {
@@ -81,7 +81,8 @@ static TargetVec recompute_alt_hsps(const Sequence* query_seq, const int query_s
 
 	for (int32_t context = 0; context < align_mode.query_contexts; ++context) {
 		const int8_t* cbs = ::Stats::CBS::hauser(config.comp_based_stats) ? query_cb[context].int8.data() : nullptr;
-		DP::Params params{ query_seq[context], "", Frame(context), query_source_len, cbs, DP::Flags::FULL_MATRIX, false, 0, v, stats, nullptr };
+		DP::Params params{ query_seq[context], "", Frame(context), query_source_len, cbs, DP::Flags::FULL_MATRIX, false, 0, -1,
+			v, stats, nullptr };
 		list<Hsp> hsp = DP::BandedSwipe::swipe(dp_targets[context], params);
 		while (!hsp.empty()) {
 			ActiveTarget& t = targets[hsp.front().swipe_target];

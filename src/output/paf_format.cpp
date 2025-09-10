@@ -18,8 +18,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "output_format.h"
 #include "util/sequence/sequence.h"
+#include "stats/score_matrix.h"
 
-void PAF_format::print_query_intro(Output::Info& info) const
+void PAFFormat::print_query_intro(Output::Info& info) const
 {
 	if (info.unaligned) {
 		info.out.write_until(info.query.title, Util::Seq::id_delimiters);
@@ -27,7 +28,7 @@ void PAF_format::print_query_intro(Output::Info& info) const
 	}
 }
 
-void PAF_format::print_match(const HspContext& r, Output::Info& info)
+void PAFFormat::print_match(const HspContext& r, Output::Info& info)
 {
 	info.out.write_until(r.query_title.c_str(), Util::Seq::id_delimiters);
 	info.out << '\t' << r.query.source().length() << '\t'

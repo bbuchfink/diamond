@@ -95,6 +95,10 @@ struct Serializer : public Consumer
 		write_raw((const char*)ptr, count * sizeof(T));
 	}
 
+	int64_t file_size() {
+		return buffer_->file_size();
+	}
+
 	void write_raw(const char *ptr, size_t count);
 	void seek(int64_t p, int origin = SEEK_SET);
 	void rewind();

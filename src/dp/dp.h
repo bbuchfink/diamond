@@ -30,6 +30,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "stats/cbs.h"
 #include "flags.h"
 #include "util/parallel/thread_pool.h"
+#include "align/def.h"
+#include "dp/score_profile.h"
 
 struct DpTarget
 {
@@ -55,20 +57,26 @@ struct DpTarget
 		cols(),
 		target_idx(BLANK),
 		matrix(nullptr)
-	{}
-	DpTarget(const Sequence &seq, int true_target_len, int d_begin, int d_end, Interval chaining_target_range, Score chaining_score, BlockId target_idx, int qlen, const Stats::TargetMatrix* matrix = nullptr, const CarryOver& carry_over = CarryOver(), const Anchor& anchor = Anchor()) :
+	{
+		//if(matrix && matrix->scores.empty())
+			//__debugbreak();
+	}
+	//DpTarget(const Sequence &seq, int true_target_len, int d_begin, int d_end, Interval chaining_target_range, Score chaining_score, BlockId target_idx, int qlen, const Stats::TargetMatrix* matrix = nullptr, const CarryOver& carry_over = CarryOver(), const Anchor& anchor = Anchor()) :
+	DpTarget(const Sequence& seq, int true_target_len, int d_begin, int d_end, BlockId target_idx, int qlen, const Stats::TargetMatrix* matrix = nullptr, const CarryOver& carry_over = CarryOver(), const Anchor& anchor = Anchor()) :
 		seq(seq),
 		d_begin(d_begin),
 		d_end(d_end),
 		cols(banded_cols(qlen, seq.length(), d_begin, d_end)),
 		true_target_len(true_target_len),
-		chaining_target_range(chaining_target_range),
-		chaining_score(chaining_score),
+		//chaining_target_range(chaining_target_range),
+		//chaining_score(chaining_score),
 		target_idx(target_idx),
 		carry_over(carry_over),
 		matrix(matrix),
 		anchor(anchor)
 	{
+		//if (matrix && matrix->scores.empty())
+			//__debugbreak();
 	}
 	DpTarget(const Sequence& seq, int true_target_len, BlockId target_idx, const Stats::TargetMatrix* matrix = nullptr, const CarryOver& carry_over = CarryOver()):
 		seq(seq),
@@ -76,11 +84,14 @@ struct DpTarget
 		d_end(),
 		cols(),
 		true_target_len(true_target_len),
-		chaining_score(0),
+		//chaining_score(0),
 		target_idx(target_idx),
 		carry_over(carry_over),
 		matrix(matrix)
-	{}
+	{
+		//if (matrix && matrix->scores.empty())
+			//__debugbreak();
+	}
 	DpTarget(const std::pair<const Letter*, int64_t> seq) :
 		seq(seq.first, seq.second),
 		d_begin(),
@@ -90,6 +101,8 @@ struct DpTarget
 		target_idx(BLANK),
 		matrix(nullptr)
 	{
+		//if (matrix && matrix->scores.empty())
+			//__debugbreak();
 	}
 	int left_i1() const
 	{
@@ -132,12 +145,13 @@ struct DpTarget
 	}
 	Sequence seq;
 	Loc d_begin, d_end, cols, true_target_len;
-	Interval chaining_target_range;
-	Score chaining_score;
+	//Interval chaining_target_range;
+	//Score chaining_score;
 	BlockId target_idx;
 	CarryOver carry_over;
 	const Stats::TargetMatrix* matrix;
 	Anchor anchor;
+	const LongScoreProfile<int16_t>* prof, *prof_reverse;
 };
 
 struct DpStat
@@ -172,6 +186,7 @@ struct Params {
 	const Flags flags;
 	const bool reverse_targets;
 	Loc target_max_len;
+	int swipe_bin;
 	HspValues v;
 	Statistics& stat;
 	ThreadPool* thread_pool;
@@ -211,6 +226,9 @@ struct TargetVec {
 	}
 	const DpTarget& front() const {
 		return targets_.front();
+	}
+	DpTarget& back() {
+		return targets_.back();
 	}
 	int64_t size() const {
 		return targets_.size();
@@ -260,6 +278,9 @@ struct Config {
 	Score score_hint;
 	Statistics& stats;
 	ThreadPool* thread_pool;
+	bool recompute_adjusted;
+	Extension::Mode extension_mode;
+	bool target_profiles;
 };
 
 }
@@ -274,8 +295,8 @@ namespace BandedSwipe {
 
 std::list<Hsp> swipe(const Targets& targets, Params& params);
 std::list<Hsp> swipe_set(const SequenceSet::ConstIterator begin, const SequenceSet::ConstIterator end, Params& params);
-unsigned bin(HspValues v, int query_len, int score, int ungapped_score, const int64_t dp_size, unsigned score_width, const Loc mismatch_est);
-std::list<Hsp> anchored_swipe(Targets& targets, const DP::AnchoredSwipe::Config& cfg);
+int bin(HspValues v, int query_len, int score, int ungapped_score, const int64_t dp_size, unsigned score_width, const Loc mismatch_est);
+std::list<Hsp> anchored_swipe(Targets& targets, const DP::AnchoredSwipe::Config& cfg, std::pmr::monotonic_buffer_resource& pool);
 
 }
 

@@ -28,7 +28,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "util/data_structures/double_array.h"
 #include "util/system/system.h"
 #include "util/data_structures/deque.h"
-#include "util/async_buffer.h"
+#include "search/hit_buffer.h"
 #include "basic/seed.h"
 #include "seed_complexity.h"
 #include "util/algo/partition.h"
@@ -37,6 +37,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "data/queries.h"
 #include "util/algo/radix_cluster.h"
 #include "util/algo/hash_join.h"
+#include "util/log_stream.h"
 
 using std::vector;
 using std::atomic;
@@ -72,11 +73,12 @@ static void seed_join_worker(
 template<typename SeedLoc>
 static void search_worker(atomic<SeedPartition> *seedp, SeedPartition partition_count, unsigned shape, size_t thread_id, DoubleArray<SeedLoc> *query_seed_hits, DoubleArray<SeedLoc> *ref_seed_hits, const Search::Context *context, const Search::Config* cfg)
 {
-	unique_ptr<Writer<Hit>> writer;
+	unique_ptr<HitBuffer::Writer> writer;
 	if (config.global_ranking_targets)
-		writer.reset(new AsyncWriter<Hit, Search::Config::RankingBuffer::EXPONENT>(*cfg->global_ranking_buffer));
+		throw std::runtime_error("Unsupported");
+		//writer.reset(new AsyncWriter<Hit, Search::Config::RankingBuffer::EXPONENT>(*cfg->global_ranking_buffer));
 	else
-		writer.reset(new AsyncBuffer<Hit>::Iterator(*cfg->seed_hit_buf, thread_id));
+		writer.reset(new HitBuffer::Writer(*cfg->seed_hit_buf, thread_id));
 	unique_ptr<Search::WorkSet> work_set(new Search::WorkSet(*context, *cfg, shape, writer.get(), context->kmer_ranking));
 	SeedPartition p;
 	while ((p = seedp->fetch_add(1, std::memory_order_relaxed)) < partition_count) {

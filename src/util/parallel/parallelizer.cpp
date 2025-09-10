@@ -74,7 +74,9 @@ void Parallelizer::init(const string & tempdir) {
 
     char hostname[1024];
     hostname[1023] = '\0';
+#ifndef WIN32
     gethostname(hostname, 1023);
+#endif
 	id = string(hostname) + "_" + to_string(getpid());
     DBG("id = " + id);
 

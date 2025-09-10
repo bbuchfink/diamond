@@ -40,7 +40,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "util/log_stream.h"
 
 using std::string;
-using std::cout;
 using std::endl;
 using std::setw;
 using std::thread;
@@ -165,7 +164,6 @@ pair<Block*, int64_t> SequenceFile::load_twopass(const int64_t max_letters, cons
 		if (use_filter && !flag_all(format_flags_, FormatFlags::SEEKABLE))
 			throw OperationNotSupported();
 		seek_offset(offset);
-		size_t load_size = 0;
 		for (BlockId i = 0; i < filtered_seq_count; ++i) {
 			bool seek = false;
 			if (use_filter && filtered_pos[i]) {
@@ -173,7 +171,6 @@ pair<Block*, int64_t> SequenceFile::load_twopass(const int64_t max_letters, cons
 				seek = true;
 			}
 			const size_t l = block->seqs_.length(i);
-			load_size += l;
 			read_seq_data(block->seqs_.ptr(i), l, offset, seek);
 			if (flag_any(flags, LoadFlags::TITLES))
 				read_id_data(block->block2oid_[i], block->ids_.ptr(i), block->ids_.length(i));
@@ -181,11 +178,6 @@ pair<Block*, int64_t> SequenceFile::load_twopass(const int64_t max_letters, cons
 				skip_id_data();
 			if (type_ == Type::DMND)
 				Masking::get().remove_bit_mask(block->seqs_.ptr(i), block->seqs_.length(i));
-			if (load_size > MAX_LOAD_SIZE) {
-				close_weakly();
-				reopen();
-				load_size = 0;
-			}
 		}
 		
 	}
@@ -256,8 +248,6 @@ size_t SequenceFile::dict_block(const size_t ref_block)
 
 Block* SequenceFile::load_seqs(const int64_t max_letters, const BitVector* filter, LoadFlags flags, const Chunk& chunk)
 {
-	reopen();
-
 	if(max_letters == 0)
 		seek_chunk(chunk);	
 
@@ -271,8 +261,6 @@ Block* SequenceFile::load_seqs(const int64_t max_letters, const BitVector* filte
 		tie(block, seqs_processed) = load_onepass(max_letters, filter, flags);
 	}
 
-	if (!flag_any(flags, LoadFlags::NO_CLOSE_WEAKLY))
-		close_weakly();
 	if (block->empty())
 		return block;
 
@@ -427,7 +415,7 @@ void SequenceFile::load_dictionary(const size_t query_block, const size_t ref_bl
 			f.close_and_delete();
 		}
 	}
-	else {		
+	else {
 		TempFile* t = dynamic_cast<TempFile*>(dict_file_.get());
 		if (!t)
 			throw std::runtime_error("Failed to load dictionary file.");
@@ -715,7 +703,13 @@ vector<OId> SequenceFile::accession_to_oid(const string& accession) const {
 	}
 }
 
-std::string SequenceFile::seqid(OId oid) const {
+void SequenceFile::init_random_access(const size_t query_block, const size_t ref_blocks, bool dictionary)
+{
+	if (dictionary)
+		load_dictionary(query_block, ref_blocks);
+}
+
+std::string SequenceFile::seqid(OId oid, bool all) const {
 	throw std::runtime_error("seqid");
 	//if (oid >= acc_.size())
 		//throw std::runtime_error("OId to accession mapping not available.");
@@ -815,6 +809,7 @@ pair<int64_t, int64_t> SequenceFile::read_fai_file(const string& file_name, int6
 }
 
 void db_info() {
+	using std::cout;
 	if (config.database.empty())
 		throw std::runtime_error("Missing option for database file: --db/-d.");
 	SequenceFile* db = SequenceFile::auto_create({ config.database }, SequenceFile::Flags::NO_FASTA | SequenceFile::Flags::NO_COMPATIBILITY_CHECK);
@@ -829,16 +824,6 @@ void db_info() {
 	cout << setw(w) << "Letters  " << db->letters() << endl;
 	db->close();
 	delete db;
-}
-
-void prep_db() {
-	config.database.require();
-	if (is_blast_db(config.database))
-#ifdef WITH_BLASTDB
-		BlastDB::prep_blast_db(config.database);
-	else
-#endif
-		throw runtime_error("No BLAST protein database was found at the specified path.");
 }
 
 void SequenceFile::add_seqid_mapping(const std::string& id, OId oid) {

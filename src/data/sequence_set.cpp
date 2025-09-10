@@ -58,9 +58,9 @@ SequenceSet::Length SequenceSet::max_len(size_t begin, size_t end) const
 	return max;
 }
 
-std::vector<SequenceSet::Id> SequenceSet::partition(unsigned n_part, bool shortened, bool context_reduced) const
+std::vector<uint32_t> SequenceSet::partition(unsigned n_part, bool shortened, bool context_reduced) const
 {
-	std::vector<Id> v;
+	std::vector<uint32_t> v;
 	const size_t l = (this->letters() + n_part - 1) / n_part;
 	const Id c = context_reduced ? align_mode.query_contexts : 1;
 	if(!shortened)

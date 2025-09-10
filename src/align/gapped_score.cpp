@@ -26,7 +26,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "def.h"
 #include "util/geo/geo.h"
 #include "stats/cbs.h"
-#include "dp/ungapped.h"
 
 using std::vector;
 using std::array;
@@ -85,10 +84,10 @@ static int hsp_band(int base_band, int qlen, int tlen, const ApproxHsp& hsp) {
 	return base_band;
 }
 
-Match::Match(BlockId target_block_id, const Sequence& seq, const ::Stats::TargetMatrix& matrix, std::array<std::list<Hsp>, MAX_CONTEXT> &hsps, int ungapped_score):
+Match::Match(BlockId target_block_id, const Sequence& seq, std::unique_ptr<::Stats::TargetMatrix>&& matrix, std::array<std::list<Hsp>, MAX_CONTEXT>& hsps, int ungapped_score) :
 	target_block_id(target_block_id),
 	seq(seq),
-	matrix(matrix),
+	matrix(std::move(matrix)),
 	filter_score(0),
 	filter_evalue(DBL_MAX),
 	ungapped_score(ungapped_score)
@@ -115,7 +114,7 @@ static void add_dp_targets(const WorkTarget& target,
 {
 	const Loc band = Extension::band(query_seq->length(), mode),
 		slen = target.seq.length();
-	const ::Stats::TargetMatrix* matrix = target.matrix.scores.empty() ? nullptr : &target.matrix;
+	const ::Stats::TargetMatrix* matrix = target.matrix.get();
 	const unsigned score_width = matrix ? matrix->score_width() : 0;
 	for (int frame = 0; frame < align_mode.query_contexts; ++frame) {
 
@@ -125,7 +124,8 @@ static void add_dp_targets(const WorkTarget& target,
 			if (target.ungapped_score[frame] == 0)
 				continue;
 			const unsigned b = DP::BandedSwipe::bin(hsp_values, qlen, 0, target.ungapped_score[frame], (int64_t)qlen * (int64_t)slen, score_width, 0);
-			dp_targets[frame][b].emplace_back(target.seq, slen, 0, 0, Interval(), 0, target_idx, qlen, matrix);
+			//dp_targets[frame][b].emplace_back(target.seq, slen, 0, 0, Interval(), 0, target_idx, qlen, matrix);
+			dp_targets[frame][b].emplace_back(target.seq, slen, 0, 0, target_idx, qlen, matrix);
 			continue;
 		}
 		if (target.hsp[frame].empty())
@@ -156,7 +156,10 @@ static void add_dp_targets(const WorkTarget& target,
 				if (d0 != INT_MAX) {
 					const int64_t dp_size = (int64_t)DpTarget::banded_cols(qlen, slen, d0, d1) * int64_t(d1 - d0);
 					const auto bin = DP::BandedSwipe::bin(hsp_values, d1 - d0, 0, score, dp_size, score_width, 0);
-					dp_targets[frame][bin].emplace_back(target.seq, slen, d0, d1, Interval(j_min, j_max), score, target_idx, qlen, matrix, DpTarget::CarryOver(), anchor);
+					//dp_targets[frame][bin].emplace_back(target.seq, slen, d0, d1, Interval(j_min, j_max), score, target_idx, qlen, matrix, DpTarget::CarryOver(), anchor);
+					dp_targets[frame][bin].emplace_back(target.seq, slen, d0, d1, target_idx, qlen, matrix, DpTarget::CarryOver(), anchor);
+					dp_targets[frame][bin].back().prof = &target.profile;
+					dp_targets[frame][bin].back().prof_reverse = &target.profile_rev;
 				}
 				d0 = b0;
 				d1 = b1;
@@ -169,26 +172,29 @@ static void add_dp_targets(const WorkTarget& target,
 
 		const int64_t dp_size = (int64_t)DpTarget::banded_cols(qlen, slen, d0, d1) * int64_t(d1 - d0);
 		const auto bin = DP::BandedSwipe::bin(hsp_values, d1 - d0, 0, score, dp_size, score_width, 0);
-		dp_targets[frame][bin].emplace_back(target.seq, slen, d0, d1, Interval(j_min, j_max), score, target_idx, qlen, matrix, DpTarget::CarryOver(), anchor);
+		//dp_targets[frame][bin].emplace_back(target.seq, slen, d0, d1, Interval(j_min, j_max), score, target_idx, qlen, matrix, DpTarget::CarryOver(), anchor);
+		dp_targets[frame][bin].emplace_back(target.seq, slen, d0, d1, target_idx, qlen, matrix, DpTarget::CarryOver(), anchor);
+		dp_targets[frame][bin].back().prof = &target.profile;
+		dp_targets[frame][bin].back().prof_reverse = &target.profile_rev;
 	}
 }
 
-pair<vector<Target>, Stats> align(const vector<WorkTarget> &targets, const Sequence *query_seq, const char* query_id, const HauserCorrection *query_cb, int source_query_len, DP::Flags flags, const HspValues hsp_values, const Mode mode, ThreadPool& tp, const Search::Config& cfg, Statistics &stat) {
+vector<Target> align(vector<WorkTarget>& targets, const Sequence* query_seq, const char* query_id, const HauserCorrection* query_cb, int source_query_len, DP::Flags flags, const HspValues hsp_values, const Mode mode, ThreadPool& tp, const Search::Config& cfg, Statistics& stat, std::pmr::monotonic_buffer_resource& pool) {
 	array<DP::Targets, MAX_CONTEXT> dp_targets;
 	vector<Target> r;
 	if (targets.empty())
-		return make_pair(r, Stats());
+		return r;
 	r.reserve(targets.size());
 	size_t cbs_targets = 0;
 
 	for (int i = 0; i < (int)targets.size(); ++i) {
-		r.emplace_back(targets[i].block_id, targets[i].seq, targets[i].ungapped_score.front(), targets[i].matrix);
 		if (targets[i].done)
 			r.back().add_hit(targets[i].hsp[0].front(), query_seq[targets[i].hsp[0].front().frame].length());
 		else
 			add_dp_targets(targets[i], i, query_seq, dp_targets, flags, hsp_values, mode, cfg);
-		if (targets[i].adjusted_matrix())
-			++cbs_targets;		
+		if (targets[i].matrix)
+			++cbs_targets;
+		r.emplace_back(targets[i].block_id, targets[i].seq, targets[i].ungapped_score.front(), std::move(targets[i].matrix));
 	}
 	stat.inc(Statistics::TARGET_HITS3_CBS, cbs_targets);
 
@@ -197,13 +203,10 @@ pair<vector<Target>, Stats> align(const vector<WorkTarget> &targets, const Seque
 	if (mode == Mode::GLOBAL)
 		flags |= DP::Flags::SEMI_GLOBAL;
 
-	Stats stats;
-
 	for (int frame = 0; frame < align_mode.query_contexts; ++frame) {
 		const int64_t n = std::accumulate(dp_targets[frame].begin(), dp_targets[frame].end(), (int64_t)0, [](int64_t n, const DP::TargetVec& v) { return n + v.size(); });
 		if (n == 0)
 			continue;
-		stats.extension_count += n;
 		DP::Params params{
 			query_seq[frame],
 			query_id,
@@ -213,17 +216,20 @@ pair<vector<Target>, Stats> align(const vector<WorkTarget> &targets, const Seque
 			flags,
 			false,
 			0,
+			-1,
 			hsp_values,
 			stat,
 			&tp
 		};
-		DP::AnchoredSwipe::Config acfg{ query_seq[frame], ::Stats::CBS::hauser(config.comp_based_stats) ? query_cb[frame].int8.data() : nullptr, 0, stat, &tp };
-		list<Hsp> hsp = (config.anchored_swipe && !cfg.lin_stage1_target && !config.lin_stage1)
-			? DP::BandedSwipe::anchored_swipe(dp_targets[frame], acfg) : DP::BandedSwipe::swipe(dp_targets[frame], params);
+		DP::AnchoredSwipe::Config acfg{ query_seq[frame],
+			::Stats::CBS::hauser(config.comp_based_stats) ? query_cb[frame].int8.data() : nullptr,
+			0, stat, &tp, false, cfg.extension_mode, false };
+		list<Hsp> hsp = config.anchored_swipe
+			? DP::BandedSwipe::anchored_swipe(dp_targets[frame], acfg, pool) : DP::BandedSwipe::swipe(dp_targets[frame], params);
 		while (!hsp.empty())
 			r[hsp.front().swipe_target].add_hit(hsp, hsp.begin());
 	}
-
+	
 	vector<Target> r2;
 	r2.reserve(r.size());
 	for (vector<Target>::iterator i = r.begin(); i != r.end(); ++i)
@@ -233,7 +239,7 @@ pair<vector<Target>, Stats> align(const vector<WorkTarget> &targets, const Seque
 			r2.push_back(std::move(*i));
 		}
 
-	return make_pair(r2, stats);
+	return r2;
 }
 
 }

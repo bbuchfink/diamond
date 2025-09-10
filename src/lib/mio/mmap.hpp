@@ -35,6 +35,8 @@
 # ifndef WIN32_LEAN_AND_MEAN
 #  define WIN32_LEAN_AND_MEAN
 # endif // WIN32_LEAN_AND_MEAN
+#define NOMINMAX
+#define WIN32_LEAN_AND_MEAN
 # include <windows.h>
 #else // ifdef _WIN32
 # define INVALID_HANDLE_VALUE -1

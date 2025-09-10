@@ -1,3 +1,33 @@
+/****
+Copyright © 2013-2025 Benjamin J. Buchfink
+
+Redistribution and use in source and binary forms, with or without modification,
+are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this
+list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice,
+this list of conditions and the following disclaimer in the documentation and/or
+other materials provided with the distribution.
+
+3. Neither the name of the copyright holder nor the names of its contributors
+may be used to endorse or promote products derived from this software without
+specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
+INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
+EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+****/
+// SPDX-License-Identifier: BSD-3-Clause
+
 #pragma once
 #include <atomic>
 #include <stdarg.h>
@@ -25,9 +55,9 @@ const char PATH_SEPARATOR = '/';
 namespace Cluster {
 
 const uint64_t RADIX_BITS = 8;
-const int64_t RADIX_COUNT = INT64_C(1) << RADIX_BITS;
+const int_fast16_t RADIX_COUNT = INT64_C(1) << RADIX_BITS;
 
-const int64_t MAX_FILE_SIZE = 1 * 1024 * 1024 * 1024;
+const int_fast64_t MAX_FILE_SIZE = 1 * 1024 * 1024 * 1024;
 
 struct PairEntry {
 	PairEntry() :
@@ -36,13 +66,13 @@ struct PairEntry {
 		rep_len(),
 		member_len()
 	{}
-	PairEntry(int64_t rep_oid, int64_t member_oid, int32_t rep_len, int32_t member_len) :
+	PairEntry(int_fast64_t rep_oid, int_fast64_t member_oid, int_fast32_t rep_len, int_fast32_t member_len) :
 		rep_oid(rep_oid),
 		member_oid(member_oid),
 		rep_len(rep_len),
 		member_len(member_len)
 	{}
-	int64_t key() const {
+	int_fast64_t key() const {
 		return rep_oid;
 	}
 	bool operator<(const PairEntry& e) const {
@@ -53,8 +83,8 @@ struct PairEntry {
 			return e.rep_oid;
 		}
 	};
-	int64_t rep_oid, member_oid;
-	int32_t rep_len, member_len;
+	int_fast64_t rep_oid, member_oid;
+	int_fast32_t rep_len, member_len;
 };
 
 struct PairEntryShort {
@@ -214,9 +244,11 @@ struct FileArray {
 
 	~FileArray() {
 		for (int64_t i = 0; i < size_; ++i) {
+			output_files_[i]->close();
 			if (records_[i] > 0)
 				bucket_files_[i]->push(output_files_[i]->file_name() + '\t' + std::to_string(records_[i]));
-			output_files_[i]->close();
+			else
+				::remove(output_files_[i]->file_name().c_str());
 			delete output_files_[i];
 		}
 	}
@@ -401,7 +433,7 @@ struct InputBuffer {
 		size_(f.records()),
 		data_(new T[size_]),
 		part_(size_, parts)
-	{		
+	{
 		std::atomic<int64_t> next(0);
 		auto worker = [&]() {
 			int64_t v;

@@ -26,29 +26,32 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "util/util.h"
 
 using std::vector;
+using std::string;
 
 namespace Extension {
 
-TextBuffer* generate_output(vector<Match> &targets, const Extension::Stats& stats, BlockId query_block_id, Statistics &stat, const Search::Config& cfg)
+TextBuffer* generate_output(vector<Match> &targets, BlockId query_block_id, Statistics &stat, const Search::Config& cfg)
 {
+	const bool aligned = !targets.empty();
+	if (!aligned && !cfg.output_format->report_unaligned())
+		return nullptr;
 	const SequenceSet& query_seqs = cfg.query->seqs(), &ref_seqs = cfg.target->seqs();
 	TextBuffer* out = new TextBuffer;
 	std::unique_ptr<OutputFormat> f(cfg.output_format->clone());
 	size_t seek_pos = 0;
 	unsigned n_hsp = 0, hit_hsps = 0;
-	Output::Info info{ cfg.query->seq_info(query_block_id), targets.empty(), cfg.db.get(), *out, stats, Util::Seq::AccessionParsing(), cfg.db->sequence_count(), cfg.db->letters() };
+	Output::Info info{ cfg.query->seq_info(query_block_id), targets.empty(), cfg.db.get(), *out, Util::Seq::AccessionParsing(), cfg.db->sequence_count(), cfg.db->letters() };
 	TranslatedSequence query = query_seqs.translated_seq(align_mode.query_translated ? cfg.query->source_seqs()[query_block_id] : query_seqs[query_block_id], query_block_id * align_mode.query_contexts);
 	const char *query_title = cfg.query->ids()[query_block_id];
 	const double query_self_aln_score = cfg.query->has_self_aln() ? cfg.query->self_aln_score(query_block_id) : 0.0;
-	const bool aligned = !targets.empty();
-
+	
 	if (cfg.iterated()) {
 		if (aligned) seek_pos = IntermediateRecord::write_query_intro(*out, query_block_id);
 	}
 	else if (*f == OutputFormat::daa) {
 		if (aligned) seek_pos = write_daa_query_record(*out, query_title, query.source());
 	}
-	else if (aligned || config.report_unaligned)
+	else if (aligned || config.report_unaligned != 0)
 		f->print_query_intro(info);
 
 	for (int i = 0; i < (int)targets.size(); ++i) {
@@ -64,10 +67,11 @@ TextBuffer* generate_output(vector<Match> &targets, const Extension::Stats& stat
 		hit_hsps = 0;
 		for (Hsp &hsp : targets[i].hsp) {
 			if (*f == OutputFormat::daa)
-				write_daa_record(*out, hsp, safe_cast<uint32_t>(cfg.target->dict_id(cfg.current_ref_block, subject_id, *cfg.db)));
+				write_daa_record(*out, hsp, safe_cast<uint32_t>(cfg.target->dict_id(cfg.current_ref_block, subject_id, *cfg.db, *f)));
 			else if(cfg.iterated())
-				IntermediateRecord::write(*out, hsp, query_block_id, cfg.target->dict_id(cfg.current_ref_block, subject_id, *cfg.db), database_id, cfg.output_format.get());
-			else
+				IntermediateRecord::write(*out, hsp, query_block_id, cfg.target->dict_id(cfg.current_ref_block, subject_id, *cfg.db, *f), database_id, cfg.output_format.get());
+			else {
+				const string target_title = cfg.target->has_ids() ? cfg.target->ids()[subject_id] : (flag_any(f->flags, Output::Flags::SSEQID) ? cfg.db->seqid(database_id, config.sallseqid) : "");
 				f->print_match(HspContext(hsp,
 					query_block_id,
 					cfg.query->block_id2oid(query_block_id),
@@ -75,13 +79,14 @@ TextBuffer* generate_output(vector<Match> &targets, const Extension::Stats& stat
 					query_title,
 					database_id,
 					subject_len,
-					(cfg.target->has_ids() ? cfg.target->ids()[subject_id] : cfg.db->seqid(database_id)).c_str(),
+					target_title.c_str(),
 					i,
 					hit_hsps,
 					cfg.target->unmasked_seqs().empty() ? cfg.target->seqs()[subject_id] : cfg.target->unmasked_seqs()[subject_id],
 					targets[i].ungapped_score,
 					query_self_aln_score,
 					target_self_aln_score), info);
+			}
 			
 			++n_hsp;
 			++hit_hsps;
@@ -99,7 +104,7 @@ TextBuffer* generate_output(vector<Match> &targets, const Extension::Stats& stat
 		if (*f == OutputFormat::daa) {
 			if (aligned) finish_daa_query_record(*out, seek_pos);
 		}
-		else if (aligned || config.report_unaligned)
+		else if (aligned || config.report_unaligned != 0)
 			f->print_query_epilog(info);
 	}
 
@@ -118,7 +123,7 @@ TextBuffer* generate_intermediate_output(const vector<Match> &targets, BlockId q
 	for (size_t i = 0; i < targets.size(); ++i) {
 
 		const BlockId block_id = targets[i].target_block_id;
-		const size_t dict_id = target.dict_id(cfg.current_ref_block, block_id, *cfg.db);
+		const size_t dict_id = target.dict_id(cfg.current_ref_block, block_id, *cfg.db, *cfg.output_format);
 
 		for (const Hsp &hsp : targets[i].hsp)
 			IntermediateRecord::write(*out, hsp, query_block_id, dict_id, target.block_id2oid(block_id), cfg.output_format.get());

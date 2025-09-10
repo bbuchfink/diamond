@@ -134,9 +134,10 @@ void Block::write_masked_seq(size_t block_id, const std::vector<Letter>& seq) {
 	masked_[block_id] = true;
 }
 
-DictId Block::dict_id(size_t block, BlockId block_id, SequenceFile& db) const
+DictId Block::dict_id(size_t block, BlockId block_id, SequenceFile& db, const OutputFormat& format) const
 {
 	string t;
+	const OId oid = block_id2oid(block_id);
 	if (has_ids()) {
 		const char* title = ids()[block_id];
 		if (config.salltitles)
@@ -146,6 +147,8 @@ DictId Block::dict_id(size_t block, BlockId block_id, SequenceFile& db) const
 		else
 			t = Util::Seq::seqid(title);
 	}
+	else if (flag_any(format.flags, Output::Flags::SSEQID))
+		t = db.seqid(oid, config.sallseqid);
 	const Letter* seq = unmasked_seqs().empty() ? nullptr : unmasked_seqs()[block_id].data();
 	double self_aln_score = 0.0;
 	if (flag_any(db.flags(), SequenceFile::Flags::SELF_ALN_SCORES)) {
@@ -153,7 +156,7 @@ DictId Block::dict_id(size_t block, BlockId block_id, SequenceFile& db) const
 			throw std::runtime_error("Missing self alignment scores in Block.");
 		self_aln_score = this->self_aln_score(block_id);
 	}
-	return db.dict_id(block, block_id, block_id2oid(block_id), seqs().length(block_id), t.c_str(), seq, self_aln_score);
+	return db.dict_id(block, block_id, oid, seqs().length(block_id), t.c_str(), seq, self_aln_score);
 }
 
 void Block::soft_mask(const MaskingAlgo algo) {

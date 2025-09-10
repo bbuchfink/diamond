@@ -21,10 +21,32 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <algorithm>
 #include <iterator>
 #include "standard_matrix.h"
+#include "matrices/blosum45.h"
+#include "matrices/blosum50.h"
+#include "matrices/blosum62.h"
+#include "matrices/blosum80.h"
+#include "matrices/blosum90.h"
+#include "matrices/pam30.h"
+#include "matrices/pam70.h"
+#include "matrices/pam250.h"
+#include "basic/reduction.h"
 
 using std::string;
 using std::max;
 using std::min;
+
+const ValueTraits amino_acid_traits(AMINO_ACID_ALPHABET, 23, "UO-", SequenceType::amino_acid);
+const ValueTraits nucleotide_traits("ACGTN", 4, "MRWSYKVHDBX", SequenceType::nucleotide);
+ValueTraits value_traits(amino_acid_traits);
+ValueTraits input_value_traits(amino_acid_traits);
+Reduction Reduction::instance("A KR EDNQ C G H ILVM FYW P ST");
+
+namespace Search {
+	Reduction murphy10("A KR EDNQ C G H ILVM FYW P ST");
+	Reduction steinegger12("AST C DN EQ FY G H IV KR LM P W");
+	Reduction no_reduction("A S T C D N E Q F Y G H I V K R L M P W");
+	Reduction dna("A C G T");
+}
 
 namespace Stats {
 

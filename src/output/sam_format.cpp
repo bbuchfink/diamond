@@ -19,6 +19,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <sstream>
 #include "output_format.h"
 #include "util/sequence/sequence.h"
+#include "basic/const.h"
+#include "stats/score_matrix.h"
 
 using std::string;
 using std::stringstream;
@@ -80,7 +82,7 @@ void print_cigar(const HspContext &r, TextBuffer &buf)
 		buf << n << letter[op];
 }
 
-void Sam_format::print_query_intro(Output::Info &info) const
+void SamFormat::print_query_intro(Output::Info &info) const
 {
 	if (info.unaligned) {
 		info.out.write_until(info.query.title, Util::Seq::id_delimiters);
@@ -88,7 +90,7 @@ void Sam_format::print_query_intro(Output::Info &info) const
 	}
 }
 
-void Sam_format::print_match(const HspContext& r, Output::Info &info)
+void SamFormat::print_match(const HspContext& r, Output::Info &info)
 {
 	TextBuffer& out = info.out;
 	out.write_until(r.query_title.c_str(), Util::Seq::id_delimiters);
@@ -129,7 +131,7 @@ void Sam_format::print_match(const HspContext& r, Output::Info &info)
 	out << '\n';
 }
 
-void Sam_format::print_header(Consumer &f, int mode, const char *matrix, int gap_open, int gap_extend, double evalue, const char *first_query_name, unsigned first_query_len) const
+void SamFormat::print_header(Consumer &f, int mode, const char *matrix, int gap_open, int gap_extend, double evalue, const char *first_query_name, unsigned first_query_len) const
 {
 	static const char* mode_str[] = { 0, 0, "BlastP", "BlastX", "BlastN" };
 	stringstream h;

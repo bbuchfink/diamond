@@ -26,7 +26,7 @@ struct BlockWrapper : public SequenceFile
 	virtual void read_seq_data(Letter* dst, size_t len, size_t& pos, bool seek) override;
 	virtual void read_id_data(const int64_t oid, char* dst, size_t len) override;
 	virtual void skip_id_data() override;
-	virtual std::string seqid(OId oid) const override;
+	virtual std::string seqid(OId oid, bool all) const override;
 	virtual int64_t sequence_count() const override;
 	virtual bool read_seq(std::vector<Letter>& seq, std::string& id, std::vector<char>* quals = nullptr) override;
 	virtual int64_t letters() const override;
@@ -35,8 +35,6 @@ struct BlockWrapper : public SequenceFile
 	virtual Metadata metadata() const override;
 	virtual int build_version() override;
 	virtual ~BlockWrapper();
-	virtual void close_weakly() override;
-	virtual void reopen() override;
 	virtual BitVector* filter_by_accession(const std::string& file_name) override;
 	virtual const BitVector* builtin_filter() override;
 	virtual std::string file_name() override;
@@ -44,7 +42,6 @@ struct BlockWrapper : public SequenceFile
 	virtual std::vector<TaxId> taxids(size_t oid) const override;
 	virtual void seq_data(size_t oid, std::vector<Letter>& dst) const override;
 	virtual size_t seq_length(size_t oid) const override;
-	virtual void init_random_access(const size_t query_block, const size_t ref_blocks, bool dictionary = true) override;
 	virtual void end_random_access(bool dictionary = true) override;
 
 private:

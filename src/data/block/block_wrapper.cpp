@@ -96,7 +96,7 @@ void BlockWrapper::seek_chunk(const Chunk& chunk) {
 	throw OperationNotSupported();
 }
 
-std::string BlockWrapper::seqid(OId oid) const {
+std::string BlockWrapper::seqid(OId oid, bool all) const {
 	return block_.ids()[oid];
 }
 
@@ -150,14 +150,6 @@ BlockWrapper::~BlockWrapper()
 {
 }
 
-void BlockWrapper::close_weakly()
-{
-}
-
-void BlockWrapper::reopen()
-{
-}
-
 BitVector* BlockWrapper::filter_by_accession(const std::string& file_name)
 {
 	throw OperationNotSupported();
@@ -191,12 +183,6 @@ void BlockWrapper::seq_data(size_t oid, std::vector<Letter>& dst) const
 size_t BlockWrapper::seq_length(size_t oid) const
 {
 	throw OperationNotSupported();
-}
-
-void BlockWrapper::init_random_access(const size_t query_block, const size_t ref_blocks, bool dictionary)
-{
-	if (dictionary)
-		load_dictionary(query_block, ref_blocks);
 }
 
 void BlockWrapper::end_random_access(bool dictionary)

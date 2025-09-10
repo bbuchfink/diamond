@@ -157,7 +157,7 @@ void alph_ncbi_to_std(const It begin, const It end) {
 
 using Loc = int32_t;
 using BlockId = int32_t;
-using OId = int64_t;
+using OId = int_fast64_t;
 using DictId = int64_t;
 using Score = int32_t;
 using TaxId = int32_t;

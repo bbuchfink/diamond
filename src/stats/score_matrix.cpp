@@ -23,6 +23,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <math.h>
 #include <string>
 #include <limits>
+#include <array>
 #include <stdexcept>
 #include <vector>
 #include <sstream>
@@ -31,10 +32,16 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "basic/config.h"
 #include "stats/cbs.h"
 
+using std::array;
 using std::string;
 using std::vector;
+using std::copy;
+using std::runtime_error;
 
 ScoreMatrix score_matrix;
+//ScoreMatrix blosum80;
+//ScoreMatrix pam70;
+//ScoreMatrix pam30;
 
 static Sls::AlignmentEvaluerParameters alp_params(const Stats::StandardMatrix* standard_matrix, int gap_open, int gap_extend) {
 	const Stats::StandardMatrix::Parameters& p = standard_matrix->constants(gap_open, gap_extend), & u = standard_matrix->ungapped_constants();
@@ -50,17 +57,17 @@ ScoreMatrix::ScoreMatrix(const string & matrix, int gap_open, int gap_extend, in
 	db_letters_ ((double)db_letters),
 	scale_(scale),
 	name_(matrix),
-	matrix8_(standard_matrix_->scores.data(), stop_match_score),
-	matrix32_(standard_matrix_->scores.data(), stop_match_score),
+	matrix8_(AMINO_ACID_COUNT, standard_matrix_->scores.data(), stop_match_score),
+	matrix32_(AMINO_ACID_COUNT, standard_matrix_->scores.data(), stop_match_score),
 	matrix32_scaled_(standard_matrix_->freq_ratios, standard_matrix_->ungapped_constants().Lambda, standard_matrix_->scores.data(), scale),
 	bias_((char)(-low_score())),
 	ideal_lambda_(Stats::ideal_lambda(matrix32_.pointers().data())),
-	matrix8u_(standard_matrix_->scores.data(), stop_match_score, bias_),
-	matrix8_low_(standard_matrix_->scores.data(), stop_match_score, 0, 16),
-	matrix8_high_(standard_matrix_->scores.data(), stop_match_score, 0, 16, 16),
-	matrix8u_low_(standard_matrix_->scores.data(), stop_match_score, bias_, 16),
-	matrix8u_high_(standard_matrix_->scores.data(), stop_match_score, bias_, 16, 16),
-	matrix16_(standard_matrix_->scores.data(), stop_match_score)
+	matrix8u_(AMINO_ACID_COUNT, standard_matrix_->scores.data(), stop_match_score, bias_),
+	matrix8_low_(AMINO_ACID_COUNT, standard_matrix_->scores.data(), stop_match_score, 0, 16),
+	matrix8_high_(AMINO_ACID_COUNT, standard_matrix_->scores.data(), stop_match_score, 0, 16, 16),
+	matrix8u_low_(AMINO_ACID_COUNT, standard_matrix_->scores.data(), stop_match_score, bias_, 16),
+	matrix8u_high_(AMINO_ACID_COUNT, standard_matrix_->scores.data(), stop_match_score, bias_, 16, 16),
+	matrix16_(AMINO_ACID_COUNT, standard_matrix_->scores.data(), stop_match_score)
 {	
 	evaluer.initParameters(alp_params(standard_matrix_, gap_open_, gap_extend_));
 	ln_k_ = std::log(evaluer.parameters().K);
@@ -156,15 +163,15 @@ ScoreMatrix::ScoreMatrix(const string& matrix_file, int gap_open, int gap_extend
 	db_letters_((double)db_letters),
 	scale_(1),
 	name_("custom"),
-	matrix8_(score_array_, stop_match_score),
-	matrix32_(score_array_, stop_match_score),
+	matrix8_(AMINO_ACID_COUNT, score_array_, stop_match_score),
+	matrix32_(AMINO_ACID_COUNT, score_array_, stop_match_score),
 	bias_((char)(-low_score())),
-	matrix8u_(score_array_, stop_match_score, bias_),
-	matrix8_low_(score_array_, stop_match_score, 0, 16),
-	matrix8_high_(score_array_, stop_match_score, 0, 16, 16),
-	matrix8u_low_(score_array_, stop_match_score, bias_, 16),
-	matrix8u_high_(score_array_, stop_match_score, bias_, 16, 16),
-	matrix16_(score_array_, stop_match_score)
+	matrix8u_(AMINO_ACID_COUNT, score_array_, stop_match_score, bias_),
+	matrix8_low_(AMINO_ACID_COUNT, score_array_, stop_match_score, 0, 16),
+	matrix8_high_(AMINO_ACID_COUNT, score_array_, stop_match_score, 0, 16, 16),
+	matrix8u_low_(AMINO_ACID_COUNT, score_array_, stop_match_score, bias_, 16),
+	matrix8u_high_(AMINO_ACID_COUNT, score_array_, stop_match_score, bias_, 16, 16),
+	matrix16_(AMINO_ACID_COUNT, score_array_, stop_match_score)
 {
 	const int N = TRUE_AA;
 	long m[N][N];
@@ -174,19 +181,20 @@ ScoreMatrix::ScoreMatrix(const string& matrix_file, int gap_open, int gap_extend
 			m[i][j] = score_array_[i * AMINO_ACID_COUNT + j];
 		p[i] = m[i];
 	}
-	const double* bg = Stats::blosum62.background_freqs.data();
+	array<double, TRUE_AA> bg;
+	copy(Stats::blosum62.background_freqs.data(), Stats::blosum62.background_freqs.data() + TRUE_AA, bg.begin());
 	try {
-		evaluer.initGapped(N, p, bg, bg, gap_open_, gap_extend_, gap_open_, gap_extend_, false, 0.01, 0.05, 120.0, 1024.0, 1);
+		evaluer.initGapped(N, p, bg.data(), bg.data(), gap_open_, gap_extend_, gap_open_, gap_extend_, false, 0.01, 0.05, 120.0, 1024.0, 1);
 	}
 	catch (...) {
-		throw std::runtime_error("The ALP library failed to compute the statistical parameters for this matrix. It may help to adjust the gap penalty settings.");
+		throw runtime_error("The ALP library failed to compute the statistical parameters for this matrix. It may help to adjust the gap penalty settings.");
 	}
 	ln_k_ = std::log(evaluer.parameters().K);
 	init_background_scores();
 }
 
 template<typename T>
-ScoreMatrix::Scores<T>::Scores(const double (&freq_ratios)[Stats::NCBI_ALPH][Stats::NCBI_ALPH], double lambda, const int8_t* scores, int scale) {
+Scores<T>::Scores(const MatrixFloat (&freq_ratios)[Stats::NCBI_ALPH][Stats::NCBI_ALPH], double lambda, const int8_t* scores, int scale) {
 	const size_t n = value_traits.alphabet_size;
 	for (size_t i = 0; i < 32; ++i)
 		for (size_t j = 0; j < 32; ++j) {
@@ -200,14 +208,14 @@ ScoreMatrix::Scores<T>::Scores(const double (&freq_ratios)[Stats::NCBI_ALPH][Sta
 }
 
 template<typename T>
-std::vector<const T*> ScoreMatrix::Scores<T>::pointers() const {
+std::vector<const T*> Scores<T>::pointers() const {
 	vector<const T*> r(32);
 	for (int i = 0; i < 32; ++i)
 		r[i] = &data[i * 32];
 	return r;
 }
 
-template struct ScoreMatrix::Scores<int>;
+template struct Scores<int>;
 
 double ScoreMatrix::evalue(int raw_score, unsigned query_len, unsigned subject_len) const
 {

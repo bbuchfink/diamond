@@ -100,6 +100,10 @@ void set_color(Color color, bool err) {
 		break;
 	case Color::GREEN:
 		c = FOREGROUND_GREEN;
+		break;
+	case Color::YELLOW:
+		c = FOREGROUND_RED | FOREGROUND_GREEN;
+		break;
 	default:
 		break;
 	}

@@ -23,6 +23,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <memory>
 #include <iostream>
 #include <thread>
+#include <numeric>
 #include "util/command_line_parser.h"
 #include "config.h"
 #include "util/util.h"
@@ -37,6 +38,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "search/search.h"
 #include "stats/cbs.h"
 #include "basic/shape.h"
+#include "util/io/input_file.h"
 
 using std::thread;
 using std::stringstream;
@@ -56,6 +58,7 @@ const EMap<Sensitivity> EnumTraits<Sensitivity>::to_string = {
 	{ Sensitivity::LINCLUST_40, "linclust-40" },
 	{ Sensitivity::LINCLUST_20, "linclust-20" },
 	{ Sensitivity::MID_SENSITIVE, "mid-sensitive" },
+	{ Sensitivity::SHAPES6x10, "shapes-6x10" },
 	{ Sensitivity::SHAPES30x10, "shapes-30x10" },
 	{ Sensitivity::SENSITIVE, "sensitive" },
 	{ Sensitivity::MORE_SENSITIVE, "more-sensitive" },
@@ -68,6 +71,7 @@ const SEMap<Sensitivity> EnumTraits<Sensitivity>::from_string = {
 	{ "fast", Sensitivity::FAST },
 	{ "default", Sensitivity::DEFAULT },
 	{ "mid-sensitive", Sensitivity::MID_SENSITIVE },
+	{ "shapes-6x10", Sensitivity::SHAPES6x10 },
 	{ "shapes-30x10", Sensitivity::SHAPES30x10 },
 	{ "linclust-40", Sensitivity::LINCLUST_40 },
 	{ "linclust-20", Sensitivity::LINCLUST_20 },
@@ -97,7 +101,7 @@ pair<double, int> block_size(int64_t memory_limit, int64_t db_letters, Sensitivi
 		sketch_size = Search::sensitivity_traits.at(s).sketch_size,
 		max_c = min > 0 || sketch_size > 0 ? 1 : (lin ? 16 : 4),
 		shape_weight = Shape(Search::shape_codes.at(s).front().c_str(), 0).weight_;
-	const double max_b = lin ? 32768 : (s <= Sensitivity::FAST ? 12.0 : 2.0); // s <= Sensitivity::DEFAULT ? 12.0 : (s <= Sensitivity::MORE_SENSITIVE ? 6.0 : 1.6);
+	const double max_b = lin ? 32768 : (s <= Sensitivity::DEFAULT ? 12.0 : (s <= Sensitivity::MORE_SENSITIVE ? 6.0 : 1.6));
 	// c = m < 40.0 && s <= Sensitivity::MORE_SENSITIVE && min == 0 && sketch_size == 0 ? 4 : 1;
 	assert(min == 0 || sketch_size == 0);
 	int c = 0;
@@ -157,7 +161,7 @@ Compressor Config::compressor() const
 Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& parser)
 {
    parser.add_command("makedb", "Build DIAMOND database from a FASTA file", makedb)
-		.add_command("prepdb", "Prepare BLAST database for use with Diamond", prep_db)
+		.add_command("prepdb", "", prep_db)
 		.add_command("blastp", "Align amino acid query sequences against a protein reference database", blastp)
 		.add_command("blastx", "Align DNA query sequences against a protein reference database", blastx)
 		.add_command("cluster", "Cluster protein sequences", cluster)
@@ -207,7 +211,7 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 #endif
 		;
 
-	auto& general = parser.add_group("General options", { makedb, blastp, blastx, cluster, view, prep_db, getseq, dbinfo, makeidx, CLUSTER_REALIGN, GREEDY_VERTEX_COVER, DEEPCLUST, RECLUSTER, MERGE_DAA, LINCLUST, CLUSTER_REASSIGN });
+	auto& general = parser.add_group("General options", { makedb, blastp, blastx, cluster, view, getseq, dbinfo, makeidx, CLUSTER_REALIGN, GREEDY_VERTEX_COVER, DEEPCLUST, RECLUSTER, MERGE_DAA, LINCLUST, CLUSTER_REASSIGN });
 	general.add()
 		("threads", 'p', "number of CPU threads", threads_)
 		("verbose", 'v', "verbose console output", verbose)
@@ -215,7 +219,7 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 		("quiet", 0, "disable console output", quiet)
 		("tmpdir", 't', "directory for temporary files", tmpdir);
 
-	auto& general_db = parser.add_group("General/database options", { makedb, blastp, blastx, cluster, prep_db, getseq, dbinfo, makeidx, CLUSTER_REALIGN, GREEDY_VERTEX_COVER, DEEPCLUST, RECLUSTER, LINCLUST, CLUSTER_REASSIGN });
+	auto& general_db = parser.add_group("General/database options", { makedb, blastp, blastx, cluster, getseq, dbinfo, makeidx, CLUSTER_REALIGN, GREEDY_VERTEX_COVER, DEEPCLUST, RECLUSTER, LINCLUST, CLUSTER_REASSIGN });
 	general_db.add()
 		("db", 'd', "database file", database);
 
@@ -260,9 +264,11 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 	auto& aligner_sens = parser.add_group("Aligner/sens options", { blastp, blastx, makeidx });
 	aligner_sens.add()
 		("faster", 0, "enable faster mode", mode_faster)
+		("oldfaster", 0, "enable old faster mode", mode_oldfaster)
 		("fast", 0, "enable fast mode", mode_fast)
 		("mid-sensitive", 0, "enable mid-sensitive mode", mode_mid_sensitive)
 		("linclust-20", 0, "enable mode for linear search at 20% identity", mode_linclust_20)
+		("shapes-6x10", 0, "enable mode using 30 seed shapes of weight 10", mode_shapes6x10)
 		("shapes-30x10", 0, "enable mode using 30 seed shapes of weight 10", mode_shapes30x10)
 		("sensitive", 0, "enable sensitive mode)", mode_sensitive)
 		("more-sensitive", 0, "enable more sensitive mode", mode_more_sensitive)
@@ -291,7 +297,6 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 		("global-ranking", 'g', "number of targets for global ranking", global_ranking_targets)
 		("block-size", 'b', "sequence block size in billions of letters (default=2.0)", chunk_size)
 		("index-chunks", 'c', "number of chunks for index processing (default=4)", lowmem_)
-		("parallel-tmpdir", 0, "directory for temporary files used by multiprocessing", parallel_tmpdir)
 		("gapopen", 0, "gap open penalty", gap_open, -1)
 		("gapextend", 0, "gap extension penalty", gap_extend, -1)
 		("matrix", 0, "score matrix for protein alignment (default=BLOSUM62)", matrix, string("blosum62"))
@@ -387,16 +392,16 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 	auto& cluster_reassign_opt = parser.add_group("Clustering/reassign options", { cluster, RECLUSTER, CLUSTER_REASSIGN, GREEDY_VERTEX_COVER, DEEPCLUST, LINCLUST });
 	cluster_reassign_opt.add()
 		("member-cover", 0, "Minimum coverage% of the cluster member sequence (default=80.0)", member_cover)
-		("mutual-cover", 0, "Minimum mutual coverage% of the cluster member and representative sequence", mutual_cover);
+		("mutual-cover", 0, "Minimum mutual coverage% of the cluster member and representative sequence", mutual_cover)
+		("connected-component-depth", 0, "Depth to cluster connected components", connected_component_depth)
+		("no-reassign", 0, "Do not reassign to closest representative", no_gvc_reassign);
 
 	auto& gvc_opt = parser.add_group("GVC options", { GREEDY_VERTEX_COVER });
 	gvc_opt.add()
 		("centroid-out", 0, "Output file for centroids", centroid_out)
 		("edges", 0, "Input file for greedy vertex cover", edges)
 		("edge-format", 0, "Edge format for greedy vertex cover (default/triplet)", edge_format)
-		("symmetric", 0, "Edges are symmetric", symmetric)
-		("no-reassign", 0, "Do not reassign to closest representative", no_gvc_reassign)
-		("connected-component-depth", 0, "Depth to cluster connected components", connected_component_depth);
+		("symmetric", 0, "Edges are symmetric", symmetric);
 
 	auto& realign_opt = parser.add_group("Cluster input options", { CLUSTER_REALIGN, RECLUSTER, CLUSTER_REASSIGN });
 	realign_opt.add()
@@ -416,13 +421,16 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 
 	auto& advanced_aln_cluster = parser.add_group("Advanced options aln/cluster", { blastp, blastx, blastn, CLUSTER_REASSIGN, regression_test, cluster, DEEPCLUST, LINCLUST, RECLUSTER });
 	advanced_aln_cluster.add()
+		("parallel-tmpdir", 0, "directory for temporary files used by multiprocessing", parallel_tmpdir)
 		("bin", 0, "number of query bins for seed search", query_bins_)
 		("ext-chunk-size", 0, "chunk size for adaptive ranking (default=auto)", ext_chunk_size)
 		("no-ranking", 0, "disable ranking heuristic", no_ranking)
 		("dbsize", 0, "effective database size (in letters)", db_size)
 		("no-auto-append", 0, "disable auto appending of DAA and DMND file extensions", no_auto_append)
 		("tantan-minMaskProb", 0, "minimum repeat probability for masking (default=0.9)", tantan_minMaskProb, 0.9)
-		("oid-output", 0, "Output OIDs instead of accessions (clustering)", oid_output);
+		("oid-output", 0, "Output OIDs instead of accessions (clustering)", oid_output)
+		("swipe-task-size", 0, "task size for DP parallelism (100000000)", swipe_task_size, INT64_C(100000000))
+		("anchored-swipe", 0, "Enable anchored SWIPE extension", anchored_swipe);
 
 	auto& advanced = parser.add_group("Advanced options", { blastp, blastx, blastn, regression_test });
 	advanced.add()
@@ -441,7 +449,6 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 		("short-query-ungapped-bitscore", 0, "Bit score threshold for ungapped alignments for short queries", short_query_ungapped_bitscore, 25.0)
 		("gapped-filter-evalue", 0, "E-value threshold for gapped filter (auto)", gapped_filter_evalue_, -1.0)
 		("band", 0, "band for dynamic programming computation", padding)
-		("swipe-task-size", 0, "task size for DP parallelism (100000000)", swipe_task_size, INT64_C(100000000))
 		("shape-mask", 0, "seed shapes", shape_mask)
 		("multiprocessing", 0, "enable distributed-memory parallel processing", multiprocessing)
 		("mp-init", 0, "initialize multiprocessing run", mp_init)
@@ -604,7 +611,7 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 		("cbs-matrix-scale", 0, "", cbs_matrix_scale, 1)
 		("query-count", 0, "", query_count, (size_t)1)
 		("cbs-angle", 0, "", cbs_angle, -1.0)
-		("cbs-err-tolerance", 0, "", cbs_err_tolerance, 0.00000001)
+		("cbs-err-tolerance", 0, "", cbs_err_tolerance, 0.1)
 		("cbs-it-limit", 0, "", cbs_it_limit, 2000)
 		("hash_join_swap", 0, "", hash_join_swap)
 		("deque_bucket_size", 0, "", deque_bucket_size, (size_t)524288)
@@ -658,9 +665,7 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 		("anchor-score", 0, "", anchor_score, 1.0)
 		("classic-band", 0, "", classic_band)
 		("no_8bit_extension", 0, "", no_8bit_extension)
-		("anchored-swipe", 0, "", anchored_swipe)
 		("no_chaining_merge_hsps", 0, "", no_chaining_merge_hsps)
-		("pipeline-short", 0, "", pipeline_short)
 		("graph-algo", 0, "", graph_algo, string("gvc"))
 		("tsv-read-size", 0, "", tsv_read_size, int64_t(GIGABYTES))
 		("min-len-ratio", 0, "", min_length_ratio)
@@ -668,7 +673,7 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 		("aln-out", 0, "", aln_out)
 		("linclust-chunk-size", 0, "", linclust_chunk_size, string("10G"))
 		("promiscuous-seed-ratio", 0 , "", promiscuous_seed_ratio, 1000.0);
-
+		
 	parser.store(argc, argv, command);
 
 	if (debug_log)
@@ -699,7 +704,6 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
         }
     }
 
-
 	if (toppercent.present() && max_target_seqs_.present())
 		throw std::runtime_error("--top and -k/--max-target-seqs are mutually exclusive.");
 
@@ -716,8 +720,6 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 
 	if (global_ranking_targets > 0 && (query_range_culling || taxon_k || multiprocessing || mp_init || mp_recover || comp_based_stats >= 2 || frame_shift > 0))
 		throw std::runtime_error("Global ranking is not supported in this mode.");
-
-
 
 #ifdef EXTRA
 	if (comp_based_stats >= Stats::CBS::COUNT)
@@ -851,6 +853,9 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 			throw std::runtime_error("Query range culling is only supported in frameshift alignment mode (option -F).");
 		if (matrix_file == "") {
 			score_matrix = ScoreMatrix(to_upper_case(matrix), gap_open, gap_extend, frame_shift, stop_match_score, 0, cbs_matrix_scale);
+			//blosum80 = ScoreMatrix("BLOSUM80", 11, 1, frame_shift, stop_match_score, 0, cbs_matrix_scale);
+			//pam70 = ScoreMatrix("PAM70", 11, 1, frame_shift, stop_match_score, 0, cbs_matrix_scale);
+			//pam30 = ScoreMatrix("PAM30", 10, 1, frame_shift, stop_match_score, 0, cbs_matrix_scale);
 		}
 		else {
 			if (gap_open == -1 || gap_extend == -1)
@@ -887,6 +892,7 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 	if (mode_very_sensitive) set_sens(Sensitivity::VERY_SENSITIVE);
 	if (mode_ultra_sensitive) set_sens(Sensitivity::ULTRA_SENSITIVE);
 	if (mode_shapes30x10) set_sens(Sensitivity::SHAPES30x10);
+	if (mode_shapes6x10) set_sens(Sensitivity::SHAPES6x10);
 	if (mode_linclust_20) set_sens(Sensitivity::LINCLUST_20);
 
 	algo = from_string<Algo>(algo_str);
@@ -917,9 +923,6 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 	if (target_indexed && lowmem_ != 1)
 		throw std::runtime_error("--target-indexed requires -c1.");
 
-	/*log_stream << "sizeof(hit)=" << sizeof(hit) << " sizeof(packed_uint40_t)=" << sizeof(packed_uint40_t)
-		<< " sizeof(sorted_list::entry)=" << sizeof(sorted_list::entry) << endl;*/
-
 	if (swipe_all) {
 		algo = Algo::DOUBLE_INDEXED;
 	}
@@ -937,6 +940,9 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 		// }
 		mkdir(parallel_tmpdir);
 	}
+
+	if (!memory_limit.empty())
+		trace_pt_membuf = Util::String::interpret_number(memory_limit) > 1024 * (1ll << 30);
 
 	log_stream << "MAX_SHAPE_LEN=" << MAX_SHAPE_LEN;
 #ifdef SEQ_MASK

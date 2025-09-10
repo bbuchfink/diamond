@@ -89,9 +89,9 @@ list<CRef<CSeq_id>>::const_iterator best_id(const list<CRef<CSeq_id>>& ids) {
 }
 
 BlastDB::BlastDB(const std::string& file_name, Metadata metadata, Flags flags, const ValueTraits& value_traits) :
-	SequenceFile(Type::BLAST, Alphabet::NCBI, flags, FormatFlags::TITLES_LAZY | FormatFlags::SEEKABLE | FormatFlags::LENGTH_LOOKUP, value_traits),
+	SequenceFile(Type::BLAST, Alphabet::NCBI, flags, FormatFlags::TITLES_LAZY | FormatFlags::SEEKABLE | FormatFlags::LENGTH_LOOKUP | FormatFlags::DICT_LENGTHS | FormatFlags::DICT_SEQIDS, value_traits),
 	file_name_(file_name),
-	db_(new CSeqDBExpert(file_name, CSeqDB::eProtein)),
+	db_(new CSeqDB(file_name, CSeqDB::eProtein, nullptr, true)),
 	oid_(0),
 	long_seqids_(false),
 	flags_(flags),
@@ -102,11 +102,6 @@ BlastDB::BlastDB(const std::string& file_name, Metadata metadata, Flags flags, c
 	if (flag_any(metadata, Metadata::TAXON_NODES | Metadata::TAXON_MAPPING | Metadata::TAXON_SCIENTIFIC_NAMES | Metadata::TAXON_RANKS))
 		throw std::runtime_error("Taxonomy features are not supported for the BLAST database format.");
 #endif
-	vector<string> paths;
-	CSeqDB::FindVolumePaths(file_name, CSeqDB::eProtein, paths);
-	for (const string& db : paths)
-		if(!exists(db + ".acc"))
-			throw std::runtime_error("Accession file not found. BLAST databases require preprocessing using this command line: diamond prepdb -d DATABASE_PATH");
 	if (config.multiprocessing)
 		throw std::runtime_error("Multiprocessing mode is not compatible with BLAST databases.");
 
@@ -209,23 +204,31 @@ void BlastDB::skip_id_data()
 	//++oid_seqdata_;
 }
 
-std::string BlastDB::seqid(OId oid) const
-{
+string BlastDB::fetch_seqid(OId oid, bool all) const {
 	if (flag_any(flags_, Flags::FULL_TITLES)) {
-		return full_id(*db_->GetBioseq((int)oid), nullptr, long_seqids_, true);
+		return full_id(*db_->GetBioseqNoData((int)oid), nullptr, long_seqids_, true);
 	}
 	else {
-		if (oid >= acc_.size())
-			throw std::runtime_error("Accession array not correctly initialized.");
-		return acc_[oid];
+		const list<CRef<CSeq_id>> ids = db_->GetSeqIDs(oid);
+		if (ids.empty())
+			return "N/A";
+		if (all) {
+			string r;
+			for (list<CRef<CSeq_id>>::const_iterator i = ids.begin(); i != ids.end(); ++i) {
+				if (i != ids.begin())
+					r += '\1';
+				r += (*i)->GetSeqIdString(true);
+			}
+			return r;
+		}
+		else
+			return ids.front()->GetSeqIdString(true);
 	}
 }
 
-std::string BlastDB::dict_title(DictId dict_id, const size_t ref_block) const
+string BlastDB::seqid(OId oid, bool all) const
 {
-	if (dict_id >= (DictId)dict_oid_[dict_block(ref_block)].size())
-		throw std::runtime_error("Dictionary not loaded.");
-	return seqid(dict_oid_[dict_block(ref_block)][dict_id]);
+	return fetch_seqid(oid, all);
 }
 
 Loc BlastDB::dict_len(DictId dict_id, const size_t ref_block) const
@@ -319,17 +322,7 @@ void BlastDB::set_seqinfo_ptr(int64_t i)
 
 void BlastDB::close()
 {
-}
-
-void BlastDB::close_weakly()
-{
 	db_.reset();
-}
-
-void BlastDB::reopen()
-{
-	if(db_.get() == nullptr)
-		db_.reset(new CSeqDBExpert(file_name_, CSeqDB::eProtein));
 }
 
 BitVector* BlastDB::filter_by_accession(const std::string& file_name)
@@ -398,43 +391,8 @@ size_t BlastDB::seq_length(size_t oid) const
 	return db_->GetSeqLength((int)oid);
 }
 
-const char* BlastDB::ACCESSION_FIELD = "#accession*";
-
-void BlastDB::init_random_access(const size_t query_block, const size_t ref_block, bool dictionary)
-{
-	reopen();
-	if(dictionary)
-		load_dictionary(query_block, ref_block);
-	if (flag_any(flags_, Flags::FULL_TITLES))
-		return;
-	TaskTimer timer("Loading accessions");
-	vector<string> paths;
-	if(db_.get())
-		db_->FindVolumePaths(paths);
-	else
-		CSeqDB::FindVolumePaths(file_name_, CSeqDB::eProtein, paths);
-	acc_.clear();
-	string acc;
-	for (const string& path : paths) {
-		TextInputFile f(path + ".acc");
-		f.getline();
-		if (f.line != ACCESSION_FIELD)
-			throw std::runtime_error("Accession file is missing the header field: " + path);
-		while (f.getline(), !f.eof() || !f.line.empty()) {
-			if (flag_any(flags_, Flags::ALL_SEQIDS))
-				acc = Util::String::replace(f.line, '\t', '\1');
-			else
-				Util::String::Tokenizer<Util::String::CharDelimiter>(f.line, Util::String::CharDelimiter('\t')) >> acc;
-			acc_.push_back(acc.begin(), acc.end());
-		}
-		f.close();
-	}
-}
-
 void BlastDB::end_random_access(bool dictionary)
 {
-	acc_.clear();
-	acc_.shrink_to_fit();
 	if(dictionary)
 		free_dictionary();
 }
@@ -472,12 +430,12 @@ void BlastDB::prep_blast_db(const string& path) {
 	CSeqDB::FindVolumePaths(path, CSeqDB::eProtein, paths);
 	for (const string& db : paths) {
 		message_stream << "Processing volume: " << db << endl;
-		CSeqDB volume(db, CSeqDB::eProtein);
+		CSeqDB volume(db, CSeqDB::eProtein, nullptr, false);
 		const int n = volume.GetNumOIDs();
 		message_stream << "Number of sequences: " << n << endl;
 		OutputFile out(db + ".acc", Compressor::ZSTD);
 		TextBuffer buf;
-		buf << BlastDB::ACCESSION_FIELD << '\n';
+		//buf << BlastDB::ACCESSION_FIELD << '\n';
 		size_t id_count = 0;
 		for (int i = 0; i < n; ++i) {
 			list<CRef<CSeq_id>> ids = volume.GetSeqIDs(i);

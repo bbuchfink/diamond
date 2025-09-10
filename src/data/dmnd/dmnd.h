@@ -142,8 +142,6 @@ struct DatabaseFile : public SequenceFile, public InputFile
 	virtual std::string taxon_scientific_name(TaxId taxid) const override;
 	virtual int build_version() override;
 	virtual ~DatabaseFile();
-	virtual void close_weakly() override;
-	virtual void reopen() override;
 	virtual BitVector* filter_by_accession(const std::string& file_name) override;
 	virtual const BitVector* builtin_filter() override;
 	virtual std::string file_name() override;
@@ -151,7 +149,6 @@ struct DatabaseFile : public SequenceFile, public InputFile
 	virtual std::vector<TaxId> taxids(size_t oid) const override;
 	virtual void seq_data(size_t oid, std::vector<Letter>& dst) const override;
 	virtual size_t seq_length(size_t oid) const override;
-	virtual void init_random_access(const size_t query_block, const size_t ref_blocks, bool dictionary = true) override;
 	virtual void end_random_access(bool dictionary = true) override;
 	virtual void init_write() override;
 	virtual void write_seq(const Sequence& seq, const std::string& id) override;

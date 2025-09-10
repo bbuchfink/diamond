@@ -214,7 +214,7 @@ void join_query(
 	const Search::Config &cfg)
 {
 	TranslatedSequence query_seq(cfg.query->translated(query));
-	Output::Info info = { cfg.query->seq_info(query), false, cfg.db.get(), out, {}, Util::Seq::AccessionParsing(), cfg.db->sequence_count(), cfg.db->letters() };
+	Output::Info info = { cfg.query->seq_info(query), false, cfg.db.get(), out, Util::Seq::AccessionParsing(), cfg.db->sequence_count(), cfg.db->letters() };
 	const double query_self_aln_score = flag_any(cfg.output_format->flags, Output::Flags::SELF_ALN_SCORES) ? cfg.query->self_aln_score(query) : 0.0;
 	BlockJoiner joiner(buf, *cfg.db, cfg.output_format.get());
 	vector<IntermediateRecord> target_hsp;
@@ -296,9 +296,11 @@ void join_worker(TaskQueue<TextBuffer, JoinWriter> *queue, const Search::Config*
 
 			const Sequence query_seq = align_mode.query_translated ? cfg->query->source_seqs()[fetcher.query_id] : cfg->query->seqs()[fetcher.query_id];
 
+			if (n > 0 && cfg->output_format->query_separator != '\0')
+				out->write(cfg->output_format->query_separator);
 			if (*cfg->output_format != OutputFormat::daa && config.report_unaligned != 0) {
 				for (unsigned i = fetcher.unaligned_from; i < fetcher.query_id; ++i) {
-					Output::Info info{ cfg->query->seq_info(i), true, cfg->db.get(), *out, {}, Util::Seq::AccessionParsing(), cfg->db->sequence_count(), cfg->db->letters() };
+					Output::Info info{ cfg->query->seq_info(i), true, cfg->db.get(), *out, Util::Seq::AccessionParsing(), cfg->db->sequence_count(), cfg->db->letters() };
 					cfg->output_format->print_query_intro(info);
 					cfg->output_format->print_query_epilog(info);
 				}
@@ -306,7 +308,7 @@ void join_worker(TaskQueue<TextBuffer, JoinWriter> *queue, const Search::Config*
 
 			unique_ptr<OutputFormat> f(cfg->output_format->clone());
 
-			Output::Info info{ cfg->query->seq_info(fetcher.query_id), false, cfg->db.get(), *out, {}, Util::Seq::AccessionParsing(), cfg->db->sequence_count(), cfg->db->letters() };
+			Output::Info info{ cfg->query->seq_info(fetcher.query_id), false, cfg->db.get(), *out, Util::Seq::AccessionParsing(), cfg->db->sequence_count(), cfg->db->letters() };
 			if (*f == OutputFormat::daa)
 				seek_pos = write_daa_query_record(*out, query_name, query_seq);
 			/*else if (config.global_ranking_targets)
@@ -367,7 +369,7 @@ void join_blocks(int64_t ref_blocks, Consumer &master_out, const PtrVector<TempF
 	if (*cfg.output_format != OutputFormat::daa && config.report_unaligned != 0) {
 		TextBuffer out;
 		for (BlockId i = JoinFetcher::query_last + 1; i < query_ids.size(); ++i) {
-			Output::Info info{ cfg.query->seq_info(i), true, cfg.db.get(), out, {}, Util::Seq::AccessionParsing(), cfg.db->sequence_count(), cfg.db->letters() };
+			Output::Info info{ cfg.query->seq_info(i), true, cfg.db.get(), out, Util::Seq::AccessionParsing(), cfg.db->sequence_count(), cfg.db->letters() };
 			cfg.output_format->print_query_intro(info);
 			cfg.output_format->print_query_epilog(info);
 		}

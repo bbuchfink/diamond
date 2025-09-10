@@ -143,7 +143,7 @@ private:
 	std::vector<bool> state_;
 	std::mutex mtx_;
 	std::condition_variable cond_;
-	volatile size_t head_, tail_, limit_, head_idx_, queued_, queued_size_;
+	size_t head_, tail_, limit_, head_idx_, queued_, queued_size_;
 	bool at_end_;
 	Callback &callback_;
 

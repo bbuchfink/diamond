@@ -21,6 +21,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define NOMINMAX
 #define NT_SUCCESS(Status) (((NTSTATUS)(Status)) >= 0)
 #define STATUS_UNSUCCESSFUL ((NTSTATUS)0xC0000001L)
+#define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 #include <bcrypt.h>
 #else

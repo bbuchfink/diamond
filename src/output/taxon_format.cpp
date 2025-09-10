@@ -38,7 +38,7 @@ static string taxon_lineage(TaxId taxid, SequenceFile& db) {
 }
 
 TaxonFormat::TaxonFormat() :
-	OutputFormat(taxon, HspValues::NONE, Output::Flags::NONE),
+	OutputFormat(taxon, HspValues::NONE, Output::Flags::DEFAULT_REPORT_UNALIGNED),
 	taxid(0),
 	evalue(std::numeric_limits<double>::max())
 {

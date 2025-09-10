@@ -25,8 +25,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <iterator>
 #include <stddef.h>
 #include "../parallel/mutex.h"
-#include "writer.h"
-#include "../io/serialize.h"
 
 template<typename T, size_t E, typename Sync = ::Sync>
 struct Deque {
@@ -234,7 +232,7 @@ private:
 
 };
 
-template<typename T, size_t E>
+/*template<typename T, size_t E>
 struct AsyncWriter : public Writer<T> {
 
 	AsyncWriter(Deque<T, E, Async>& dst):
@@ -264,3 +262,4 @@ private:
 	std::vector<T> buf_;
 
 };
+*/

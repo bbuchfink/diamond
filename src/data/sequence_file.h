@@ -88,8 +88,7 @@ struct SequenceFile {
 		QUALITY = 1 << 2,
 		LAZY_MASKING = 1 << 3,
 		CONVERT_ALPHABET = 1 << 4,
-		NO_CLOSE_WEAKLY = 1 << 5,
-        DNA_PRESERVATION = 1 << 6,
+        DNA_PRESERVATION = 1 << 5,
         ALL = SEQS | TITLES
 	};
 
@@ -122,8 +121,8 @@ struct SequenceFile {
 	virtual void read_seq_data(Letter* dst, size_t len, size_t& pos, bool seek) = 0;
 	virtual void read_id_data(const int64_t oid, char* dst, size_t len) = 0;
 	virtual void skip_id_data() = 0;
-	virtual std::string seqid(OId oid) const;
-	virtual std::string dict_title(DictId dict_id, const size_t ref_block) const;
+	virtual std::string seqid(OId oid, bool all = false) const;
+	virtual std::string dict_title(DictId dict_id, const size_t ref_block) const final;
 	virtual Loc dict_len(DictId dict_id, const size_t ref_block) const;
 	virtual std::vector<Letter> dict_seq(DictId dict_id, const size_t ref_block) const;
 	virtual int64_t sequence_count() const = 0;
@@ -141,15 +140,13 @@ struct SequenceFile {
 	virtual int get_n_partition_chunks() = 0;
 	virtual void set_seqinfo_ptr(OId i) = 0;
 	virtual void close() = 0;
-	virtual void close_weakly() = 0;
-	virtual void reopen() = 0;
 	virtual BitVector* filter_by_accession(const std::string& file_name) = 0;
 	virtual std::vector<TaxId> taxids(size_t oid) const = 0;
 	virtual const BitVector* builtin_filter() = 0;
 	virtual std::string file_name() = 0;
 	virtual void seq_data(size_t oid, std::vector<Letter>& dst) const = 0;
 	virtual size_t seq_length(size_t oid) const = 0;
-	virtual void init_random_access(const size_t query_block, const size_t ref_blocks, bool dictionary = true) = 0;
+	void init_random_access(const size_t query_block, const size_t ref_blocks, bool dictionary = true);
 	virtual void end_random_access(bool dictionary = true) = 0;
 	virtual std::vector<OId> accession_to_oid(const std::string& acc) const;
 	virtual void init_write();
@@ -238,7 +235,6 @@ protected:
 	std::unordered_map<std::string, OId> acc2oid_;
 	std::unique_ptr<Util::Tsv::File> seqid_file_;
 	std::vector<Loc> seq_length_;
-	StringSet acc_;
 
 private:
 

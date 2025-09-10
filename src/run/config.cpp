@@ -4,7 +4,7 @@
 #include "data/taxonomy_nodes.h"
 #include "data/sequence_file.h"
 #include "search/hit.h"
-#include "util/async_buffer.h"
+#include "search/hit_buffer.h"
 #include "search/hit.h"
 #include "util/data_structures/deque.h"
 #include "align/global_ranking/global_ranking.h"
@@ -126,23 +126,23 @@ Config::Config() :
     }
 
 	if (config.freq_masking && config.seed_cut_ != 0.0)
-		throw std::runtime_error("Incompatible options: --freq-masking, --seed-cut.");
+		throw runtime_error("Incompatible options: --freq-masking, --seed-cut.");
 	if (config.freq_sd_ != 0.0 && !config.freq_masking)
-		throw std::runtime_error("--freq-sd requires --freq-masking.");
-
+		throw runtime_error("--freq-sd requires --freq-masking.");
 
 	if (config.minimizer_window_ && config.algo == ::Config::Algo::CTG_SEED)
 		throw runtime_error("Minimizer setting is not compatible with contiguous seed mode.");
 
 	if (config.query_cover >= 50 && config.query_cover == config.subject_cover && config.min_length_ratio == 0.0 && !align_mode.query_translated) {
-		min_length_ratio = config.lin_stage1 ? std::min(config.query_cover / 100 + 0.05, 1.0) : std::max(config.query_cover / 100 - 0.05, 0.0);
+		min_length_ratio = config.lin_stage1 && sensitivity.back().sensitivity < Sensitivity::LINCLUST_40
+			? std::min(config.query_cover / 100 + 0.05, 0.92) : std::max(config.query_cover / 100 - 0.05, 0.0);
 	}
 	else {
 		if (align_mode.query_translated && config.min_length_ratio != 0.0)
 			throw runtime_error("--min-len-ratio is not supported for translated searches");
 		min_length_ratio = config.min_length_ratio;
 	}
-
+	log_stream << "Min length ratio: " << min_length_ratio << endl;
 	output_format.reset(init_output(max_target_seqs));
 }
 

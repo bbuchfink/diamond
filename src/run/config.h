@@ -38,7 +38,10 @@ struct OutputFormat;
 enum class Sensitivity;
 enum class SeedEncoding;
 enum class MaskingAlgo;
-template<typename T> struct AsyncBuffer;
+
+namespace Search {
+	struct HitBuffer;
+}
 
 struct Async;
 template<typename T, size_t E, typename Sync> struct Deque;
@@ -111,7 +114,7 @@ struct Config {
 	unsigned                                   query_bins;
 	int64_t                                    max_target_seqs;
 	std::unique_ptr<OutputFormat>              output_format;
-
+	
 	std::shared_ptr<SequenceFile>              db;
 	std::shared_ptr<SequenceFile>              query_file;
 	std::shared_ptr<Consumer>                  out;
@@ -119,7 +122,7 @@ struct Config {
 
 	std::shared_ptr<Block>                     query, target;
 	std::unique_ptr<std::vector<bool>>         query_skip;
-	std::unique_ptr<AsyncBuffer<Hit>>          seed_hit_buf;
+	std::unique_ptr<HitBuffer>                 seed_hit_buf;
 	std::unique_ptr<RankingBuffer>             global_ranking_buffer;
 	std::unique_ptr<RankingTable>              ranking_table;
 #ifdef WITH_DNA

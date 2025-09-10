@@ -39,7 +39,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "data/seed_set.h"
 #include "align/global_ranking/global_ranking.h"
 #include "align/align.h"
-#include "util/async_buffer.h"
+#include "search/hit_buffer.h"
 #include "config.h"
 #include "data/seed_array.h"
 #include "data/fasta/fasta_file.h"
@@ -116,7 +116,8 @@ static void run_ref_chunk(SequenceFile &db_file,
 		cfg.target.reset(cfg.target->length_sorted(config.threads_));
 	}
 
-	if (config.comp_based_stats == Stats::CBS::COMP_BASED_STATS_AND_MATRIX_ADJUST || flag_any(cfg.output_format->flags, Output::Flags::TARGET_SEQS)) {
+	//if (config.comp_based_stats == Stats::CBS::COMP_BASED_STATS_AND_MATRIX_ADJUST || flag_any(cfg.output_format->flags, Output::Flags::TARGET_SEQS)) {
+	if (flag_any(cfg.output_format->flags, Output::Flags::TARGET_SEQS)) {
 		cfg.target->unmasked_seqs() = cfg.target->seqs();
 		cfg.target->unmasked_seqs().convert_all_to_std_alph(config.threads_);
 	}
@@ -147,9 +148,9 @@ static void run_ref_chunk(SequenceFile &db_file,
 	if (config.global_ranking_targets)
 		;// cfg.global_ranking_buffer.reset(new Config::RankingBuffer());
 	else
-		cfg.seed_hit_buf.reset(new AsyncBuffer<Search::Hit>(query_seqs.partition(cfg.query_bins, true, true),
+		cfg.seed_hit_buf.reset(new Search::HitBuffer(query_seqs.partition(cfg.query_bins, true, true),
 			config.tmpdir,
-			{ cfg.target->long_offsets(), align_mode.query_contexts }));
+			cfg.target->long_offsets(), align_mode.query_contexts));
 
 	if (!config.swipe_all) {
 		timer.go("Building reference histograms");
@@ -177,15 +178,15 @@ static void run_ref_chunk(SequenceFile &db_file,
 			target_seeds = new ::HashedSeedSet(db_file.file_name() + ".seed_idx");
 			timer.finish();
 		}
-        if((config.command != ::Config::blastn)){
-            for (int i = 0; i < shapes.count(); ++i) {
-                if(config.global_ranking_targets)
-                    cfg.global_ranking_buffer.reset(new Config::RankingBuffer());
-                search_shape(i, cfg.current_query_block, query_iteration, query_buffer, ref_buffer, cfg, target_seeds); //index_targets(0,cfg,ref_buffer,target_seeds);
-                if (config.global_ranking_targets)
-                    Extension::GlobalRanking::update_table(cfg);
-            }
-        }
+		if ((config.command != ::Config::blastn)) {
+			for (int i = 0; i < shapes.count(); ++i) {
+				if (config.global_ranking_targets)
+					cfg.global_ranking_buffer.reset(new Config::RankingBuffer());
+				search_shape(i, cfg.current_query_block, query_iteration, query_buffer, ref_buffer, cfg, target_seeds); //index_targets(0,cfg,ref_buffer,target_seeds);
+				if (config.global_ranking_targets)
+					Extension::GlobalRanking::update_table(cfg);
+			}
+		}
 #ifdef WITH_DNA
         else
             cfg.dna_ref_index.reset(new Dna::Index(cfg, ref_buffer));
@@ -400,7 +401,6 @@ static void run_query_iteration(const unsigned query_iteration,
 				options.target.reset(db_file.load_seqs(config.block_size(), options.db_filter.get(), load_flags));
 			}
 			if (options.current_ref_block == 0) {
-				db_file.reopen();
 				const int64_t db_seq_count = options.db_filter ? options.db_filter->one_count() : options.db->sequence_count();
 				options.blocked_processing = config.global_ranking_targets || options.target->seqs().size() < db_seq_count;
 			}

@@ -35,9 +35,10 @@ struct Cascaded : public ClusteringAlgorithm {
 
 std::vector<SuperBlockId> cascaded(std::shared_ptr<SequenceFile>& db, bool linear);
 std::vector<std::string> cluster_steps(double approx_id, bool linear);
+bool is_linclust(const std::vector<std::string>& steps);
 std::vector<std::string> default_round_approx_id(int steps);
 std::vector<std::string> default_round_cov(int steps);
-int round_ccd(int round, int round_count);
+int round_ccd(int round, int round_count, bool linear);
 
 struct Callback : public Consumer {
 	using Edge = Util::Algo::Edge<SuperBlockId>;

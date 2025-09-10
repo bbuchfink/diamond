@@ -1,18 +1,19 @@
 #include <queue>
-#include "../io/serialize.h"
 #include "../io/exceptions.h"
 
 template<typename T, typename It, typename F>
 void merge_sorted_files(const It begin, const It end, F& f) {
 	struct Entry {
-		Entry(T&& value, ptrdiff_t idx):
+		Entry(T&& value, ptrdiff_t idx) :
 			value(value),
 			idx(idx)
-		{}
-		Entry(const Entry& e):
+		{
+		}
+		Entry(const Entry& e) :
 			value(e.value),
 			idx(e.idx)
-		{}
+		{
+		}
 		Entry& operator=(const Entry& e) {
 			value = e.value;
 			idx = e.idx;
@@ -25,11 +26,11 @@ void merge_sorted_files(const It begin, const It end, F& f) {
 		ptrdiff_t idx;
 	};
 	std::priority_queue<Entry> q;
-	std::vector<TypeDeserializer<T>> d;
+	std::vector<InputFile*> d;
 	for (It i = begin; i != end; ++i) {
 		d.emplace_back(*i);
 		try {
-			q.emplace(d.back().get(), i - begin);
+			q.emplace(deserialize(d.back()), i - begin);
 		}
 		catch (EndOfStream&) {
 		}
@@ -39,7 +40,7 @@ void merge_sorted_files(const It begin, const It end, F& f) {
 		const ptrdiff_t idx = q.top().idx;
 		q.pop();
 		try {
-			q.emplace(d[idx].get(), idx);
+			q.emplace(deserialize(d[idx]), idx);
 		}
 		catch (EndOfStream&) {
 		}

@@ -49,18 +49,6 @@ ValueTraits::ValueTraits(const char* alphabet, Letter mask_char, const char* ign
 	seq_type(seq_type)
 {}
 
-const ValueTraits amino_acid_traits(AMINO_ACID_ALPHABET, 23, "UO-", SequenceType::amino_acid);
-const ValueTraits nucleotide_traits("ACGTN", 4, "MRWSYKVHDBX", SequenceType::nucleotide);
-ValueTraits value_traits(amino_acid_traits);
-ValueTraits input_value_traits(amino_acid_traits);
-
-namespace Search {
-	Reduction murphy10("A KR EDNQ C G H ILVM FYW P ST");
-	Reduction steinegger12("AST C DN EQ FY G H IV KR LM P W");
-	Reduction no_reduction("A S T C D N E Q F Y G H I V K R L M P W");
-	Reduction dna("A C G T");
-}
-
 // 15 = O, 21 = U
 const Letter IUPACAA_TO_STD[32] = { -1, 0, 20, 4, 3, 6, 13, 7, 8, 9, 21, 11, 10, 12, 2, MASK_LETTER, 14, 5, 1, 15, 16, MASK_LETTER, 19, 17, 23, 18, 22, -1, -1, -1, -1, 24 };
 // 24 = U, 26 = O

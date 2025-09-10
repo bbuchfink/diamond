@@ -43,6 +43,7 @@ struct FileSink : public StreamEntity
 	{
 		return f_;
 	}
+	int64_t file_size();
 protected:
 	FILE *f_;
 	const std::string file_name_;

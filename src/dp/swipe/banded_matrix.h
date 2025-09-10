@@ -28,14 +28,14 @@ using std::pair;
 namespace DP { namespace BandedSwipe {
 namespace DISPATCH_ARCH {
 
-template<typename Sv>
+template<typename ScoreVector>
 struct Matrix
 {
-	using Score = typename ::DISPATCH_ARCH::ScoreTraits<Sv>::Score;
-	static constexpr int CHANNELS = ::DISPATCH_ARCH::ScoreTraits<Sv>::CHANNELS;
+	using Score = typename ::DISPATCH_ARCH::ScoreTraits<ScoreVector>::Score;
+	static constexpr int CHANNELS = ::DISPATCH_ARCH::ScoreTraits<ScoreVector>::CHANNELS;
 	struct ColumnIterator
 	{
-		ColumnIterator(Sv* hgap_front, Sv* score_front) :
+		ColumnIterator(ScoreVector* hgap_front, ScoreVector* score_front) :
 			hgap_ptr_(hgap_front),
 			score_ptr_(score_front)
 		{ }
@@ -43,19 +43,19 @@ struct Matrix
 		{
 			++hgap_ptr_; ++score_ptr_;
 		}
-		inline Sv hgap() const
+		inline ScoreVector hgap() const
 		{
 			return *(hgap_ptr_ + 1);
 		}
-		inline Sv diag() const
+		inline ScoreVector diag() const
 		{
 			return *score_ptr_;
 		}
-		inline void set_hgap(const Sv& x)
+		inline void set_hgap(const ScoreVector& x)
 		{
 			*hgap_ptr_ = x;
 		}
-		inline void set_score(const Sv& x)
+		inline void set_score(const ScoreVector& x)
 		{
 			*score_ptr_ = x;
 		}
@@ -70,9 +70,9 @@ struct Matrix
 		}
 		void set_hstat(std::nullptr_t) {}
 		inline void set_zero() {}
-		Sv *hgap_ptr_, *score_ptr_;
+		ScoreVector*hgap_ptr_, *score_ptr_;
 	};
-	Matrix(int band, size_t cols, Sv init = Sv()) :
+	Matrix(int band, size_t cols, ScoreVector init = ScoreVector()) :
 		band_(band)
 	{
 		hgap_.resize(band + 1);
@@ -127,13 +127,13 @@ struct Matrix
 	int band() const {
 		return band_;
 	}
-	Sv operator[](int i) const {
+	ScoreVector operator[](int i) const {
 		return score_[i];
 	}
 #if defined(__APPLE__) || !defined(USE_TLS)
-	MemBuffer<Sv> hgap_, score_;
+	MemBuffer<ScoreVector> hgap_, score_;
 #else
-	static thread_local MemBuffer<Sv> hgap_, score_;
+	static thread_local MemBuffer<ScoreVector> hgap_, score_;
 #endif
 private:
 	int band_;	

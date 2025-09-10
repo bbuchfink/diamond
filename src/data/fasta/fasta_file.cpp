@@ -237,14 +237,6 @@ FastaFile::~FastaFile()
 	close();
 }
 
-void FastaFile::close_weakly()
-{
-}
-
-void FastaFile::reopen()
-{
-}
-
 BitVector* FastaFile::filter_by_accession(const std::string& file_name)
 {
 	throw std::runtime_error("The FASTA database format does not support filtering by accession.");
@@ -280,12 +272,6 @@ size_t FastaFile::seq_length(size_t oid) const
 	if (oid < seq_length_.size())
 		return seq_length_[oid];
 	throw OperationNotSupported();
-}
-
-void FastaFile::init_random_access(const size_t query_block, const size_t ref_blocks, bool dictionary)
-{
-	if (dictionary)
-		load_dictionary(query_block, ref_blocks);
 }
 
 void FastaFile::end_random_access(bool dictionary)
