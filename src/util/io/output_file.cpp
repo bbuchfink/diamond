@@ -20,7 +20,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #include <iostream>
-#ifndef _MSC_VER
+#ifdef __APPLE__
+#include <TargetConditionals.h>
+#elif not defined(_MSC_VER)
 #include <fcntl.h>
 #endif
 #include "output_file.h"
@@ -72,8 +74,11 @@ void OutputFile::remove()
 		std::cerr << "Warning: Failed to delete file " << file_name_ << std::endl;
 }
 
+
+
 void OutputFile::advise_need() {
-#ifndef _MSC_VER
+#if TARGET_OS_MAC
+#elif not defined(_MSC_VER)
 	posix_fadvise(fileno(file()), 0, buffer_->file_size(), POSIX_FADV_SEQUENTIAL | POSIX_FADV_WILLNEED);
 #endif
 }
