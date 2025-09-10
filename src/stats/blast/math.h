@@ -1,4 +1,6 @@
 #pragma once
+
+#ifdef __AVX2__
 #include <immintrin.h>
 #include <stdint.h>
 
@@ -140,3 +142,5 @@ static inline float fast_sqrtf_avx(float x) {
     __m256 s = _mm256_mul_ps(vx, r);
     return _mm_cvtss_f32(_mm256_castps256_ps128(s));
 }
+
+#endif
