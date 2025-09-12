@@ -34,13 +34,6 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <memory_resource>
 #elif defined(__has_include) && __has_include(<memory_resource>) && (!_MSC_VER || _HAS_CXX17)
 #include <memory_resource>
-
-#elif defined(__has_include) && __has_include(<experimental/memory_resource>) && (!_MSC_VER || _HAS_CXX17)
-#include <experimental/memory_resource>
-namespace std {
-    namespace pmr = std::experimental::pmr;
-}
-
 #else
 #include <list>
 #include <vector>
