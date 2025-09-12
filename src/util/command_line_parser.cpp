@@ -123,7 +123,7 @@ void CommandLineParser::print_help()
     cout << endl;
     cout << "Possible [OPTIONS] for COMMAND can be seen with syntax: diamond COMMAND" <<endl;
 	cout << endl;
-	cout << "Online documentation at http://www.diamondsearch.org" << endl;
+	cout << "Online documentation at https://github.com/bbuchfink/diamond/wiki" << endl;
 }
 void CommandLineParser::print_documentation(int command)
 {
