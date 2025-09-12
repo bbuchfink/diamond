@@ -136,10 +136,10 @@ bool Parallelizer::barrier(const string & tag) {
 
     auto cmd_file_name = get_barrier_file_name("cmd", tag, i_barrier);
     DBG(cmd_file_name);
-    auto cmd_fs = FileStack(cmd_file_name);
+    FileStack cmd_fs(cmd_file_name);
     auto ack_file_name = get_barrier_file_name("ack", tag, i_barrier);
     DBG(ack_file_name);
-    auto ack_fs = FileStack(ack_file_name);
+    FileStack ack_fs(ack_file_name);
 
     static const string msg = "WAIT";
     if (is_master()) {

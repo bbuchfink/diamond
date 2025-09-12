@@ -19,6 +19,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #include <chrono>
+#include <random>
+#include "util/memory_resource.h"
 #include "basic/sequence.h"
 #include "stats/score_matrix.h"
 #include "dp/score_vector.h"
@@ -39,7 +41,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "util/simd/dispatch.h"
 #include "dp/score_vector_int16.h"
 #include "search/hit_buffer.h"
-#include <random>
 
 void benchmark_io();
 
@@ -103,7 +104,7 @@ void hit_buffer() {
 	for (int i = 0; i < buf.bins(); ++i) {
 		buf.load(INT64_MAX);
 		std::tuple<Search::Hit*, int64_t, BlockId, BlockId> input = buf.retrieve();
-		std::cout << get<1>(input) << std::endl;
+		std::cout << std::get<1>(input) << std::endl;
 	}
 	buf.free_buffer();
 }

@@ -23,7 +23,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <vector>
 #include <list>
 #include <memory>
-#include <memory_resource>
+#include "util/memory_resource.h"
 #include "util/geo/diagonal_segment.h"
 #include "basic/const.h"
 #include "util/hsp/approx_hsp.h"

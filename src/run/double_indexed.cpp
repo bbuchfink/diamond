@@ -556,9 +556,9 @@ static void master_thread(TaskTimer &total_timer, Config &options)
 			if (! file_exists(file_align_todo)) {
 				break;
 			} else {
-				auto stack_todo = FileStack(file_align_todo);
+				FileStack stack_todo(file_align_todo);
 				const string file_align_wip = get_ref_part_file_name(stack_align_wip, i);
-				auto stack_wip = FileStack(file_align_wip);
+				FileStack stack_wip(file_align_wip);
 				string buf;
 				int j = 0;
 				while (stack_wip.pop_non_locked(buf)) {
@@ -569,10 +569,10 @@ static void master_thread(TaskTimer &total_timer, Config &options)
 					message_stream << "Restored " << j << " align chunks for query " << i << endl;
 			}
 			const string file_join_wip = get_ref_part_file_name(stack_join_wip, i);
-			auto stack_wip = FileStack(file_join_wip);
+			FileStack stack_wip(file_join_wip);
 			if (stack_wip.size() > 0) {
 				const string file_join_todo = get_ref_part_file_name(stack_join_todo, i);
-				auto stack_todo = FileStack(file_join_todo);
+				FileStack stack_todo(file_join_todo);
 				string buf;
 				int j = 0;
 				while (stack_wip.pop_non_locked(buf)) {
