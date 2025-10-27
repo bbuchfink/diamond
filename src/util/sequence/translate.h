@@ -54,13 +54,18 @@ public:
 	static size_t translate(const Sequence& dnaSequence, std::vector<Letter> *proteins)
 	{
 		size_t length_ = dnaSequence.length(), d, n;
+		if (length_ < 3) {
+			for (int i = 0; i < 6; ++i)
+				proteins[i].clear();
+			return 0;
+		}
 		proteins[0].resize(d = length_ / 3);
 		proteins[3].resize(d);
 		n = 2*d;
-		proteins[1].resize(d = (length_-1) / 3);
+		proteins[1].resize(d = (length_ - 1) / 3);
 		proteins[4].resize(d);
 		n += 2*d;
-		proteins[2].resize(d = (length_-2) / 3);
+		proteins[2].resize(d = (length_ - 2) / 3);
 		proteins[5].resize(d);
 		n += 2*d;
 

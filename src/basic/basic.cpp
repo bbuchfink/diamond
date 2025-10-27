@@ -1,24 +1,32 @@
 /****
-DIAMOND protein aligner
-Copyright (C) 2013-2020 Max Planck Society for the Advancement of Science e.V.
-                        Benjamin Buchfink
-                        Eberhard Karls Universitaet Tuebingen
-						
-Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
+Copyright © 2013-2025 Benjamin J. Buchfink <buchfink@gmail.com>
 
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
+Redistribution and use in source and binary forms, with or without modification,
+are permitted provided that the following conditions are met:
 
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
+1. Redistributions of source code must retain the above copyright notice, this
+list of conditions and the following disclaimer.
 
-You should have received a copy of the GNU General Public License
-along with this program.  If not, see <http://www.gnu.org/licenses/>.
+2. Redistributions in binary form must reproduce the above copyright notice,
+this list of conditions and the following disclaimer in the documentation and/or
+other materials provided with the distribution.
+
+3. Neither the name of the copyright holder nor the names of its contributors
+may be used to endorse or promote products derived from this software without
+specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
+INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
+EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ****/
+// SPDX-License-Identifier: BSD-3-Clause
 
 #include <algorithm>
 #include "value.h"
@@ -29,11 +37,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "stats/standard_matrix.h"
 #include "util/log_stream.h"
 
-const char* Const::version_string = "2.1.14";
 using std::string;
 using std::vector;
 using std::count;
+using std::runtime_error;
 
+const char* Const::version_string = "2.1.15";
 const char* Const::program_name = "diamond";
 
 AlignMode::AlignMode(unsigned mode) :
@@ -119,7 +128,7 @@ void Translator::init(unsigned id)
 {
 	static const unsigned idx[] = { 2, 1, 3, 0 };
 	if (id >= sizeof(codes) / sizeof(codes[0]) || codes[id] == 0)
-		throw std::runtime_error("Invalid genetic code id.");
+		throw runtime_error("Invalid genetic code id.");
 	for (unsigned i = 0; i < 5; ++i)
 		for (unsigned j = 0; j < 5; ++j)
 			for (unsigned k = 0; k < 5; ++k)
@@ -172,8 +181,8 @@ void Seed::enum_neighborhood(int treshold, vector<Seed>& out)
 	enum_neighborhood(0, treshold, out, score(*this));
 }
 
-std::vector<Letter> Sequence::reverse() const {
-	std::vector<Letter> v;
+vector<Letter> Sequence::reverse() const {
+	vector<Letter> v;
 	v.reserve(len_);
 	std::reverse_copy(data(), end(), std::back_inserter(v));
 	return v;
@@ -206,6 +215,7 @@ void Statistics::print() const
 	log_stream << "Extensions (8 bit)    = " << data_[EXT8] << endl;
 	log_stream << "Extensions (16 bit)   = " << data_[EXT16] << endl;
 	log_stream << "Extensions (32 bit)   = " << data_[EXT32] << endl;
+	log_stream << "Extensions (Recompute)= " << data_[EXTENSIONS_RECOMPUTE] << endl;
 	log_stream << "Overflows (8 bit)     = " << data_[EXT_OVERFLOW_8] << endl;
 	log_stream << "Wasted (16 bit)       = " << data_[EXT_WASTED_16] << endl;
 	log_stream << "Effort (Extension)    = " << 2 * data_[EXT16] + data_[EXT8] << endl;
@@ -227,6 +237,7 @@ void Statistics::print() const
 	log_stream << "Time (Sort targets by score) = " << (double)data_[TIME_SORT_TARGETS_BY_SCORE] / 1e6 << "s (CPU)" << endl;
 	log_stream << "Time (Gapped filter)         = " << (double)data_[TIME_GAPPED_FILTER] / 1e6 << "s (CPU)" << endl;
 	log_stream << "Time (Matrix adjust)         = " << (double)data_[TIME_MATRIX_ADJUST] / 1e6 << "s (CPU)" << endl;
+	log_stream << "Time (Profile generation)    = " << (double)data_[TIME_PROFILE_GENERATION] / 1e6 << "s (CPU)" << endl;
 	log_stream << "Time (Chaining)              = " << (double)data_[TIME_CHAINING] / 1e6 << "s (CPU)" << endl;
 	log_stream << "Time (DP target sorting)     = " << (double)data_[TIME_TARGET_SORT] / 1e6 << "s (CPU)" << endl;
 	log_stream << "Time (Query profiles)        = " << (double)data_[TIME_PROFILE] / 1e6 << "s (CPU)" << endl;
@@ -292,7 +303,7 @@ Reduction::Reduction(const char* definition_string)
 	map8b_[(long)DELIMITER_LETTER] = (Letter)(size_ + 1);
 }
 
-std::string Reduction::decode_seed(const uint64_t seed, const size_t len) const {
+string Reduction::decode_seed(const uint64_t seed, const size_t len) const {
 	string s(len, '-');
 	uint64_t c = seed;
 	for (size_t i = 0; i < len; ++i) {

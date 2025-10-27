@@ -1,24 +1,32 @@
 /****
-DIAMOND protein aligner
-Copyright (C) 2013-2022 Max Planck Society for the Advancement of Science e.V.
-                        Benjamin Buchfink
-                        Eberhard Karls Universitaet Tuebingen
-						
-Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
+Copyright © 2013-2025 Benjamin J. Buchfink <buchfink@gmail.com>
 
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
+Redistribution and use in source and binary forms, with or without modification,
+are permitted provided that the following conditions are met:
 
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
+1. Redistributions of source code must retain the above copyright notice, this
+list of conditions and the following disclaimer.
 
-You should have received a copy of the GNU General Public License
-along with this program.  If not, see <http://www.gnu.org/licenses/>.
+2. Redistributions in binary form must reproduce the above copyright notice,
+this list of conditions and the following disclaimer in the documentation and/or
+other materials provided with the distribution.
+
+3. Neither the name of the copyright holder nor the names of its contributors
+may be used to endorse or promote products derived from this software without
+specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
+INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
+EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ****/
+// SPDX-License-Identifier: BSD-3-Clause
 
 #include <iostream>
 #include <thread>
@@ -54,6 +62,7 @@ using std::get;
 using std::unique_ptr;
 using std::function;
 using std::vector;
+using std::set;
 using namespace Util::Tsv;
 
 static constexpr int64_t CHECK_FOR_DNA_COUNT = 10;
@@ -558,16 +567,21 @@ double SequenceFile::dict_self_aln_score(const size_t dict_id, const size_t ref_
 	return dict_self_aln_score_[b][dict_id];
 }
 
-SequenceFile::SequenceFile(Type type, Alphabet alphabet, Flags flags, FormatFlags format_flags, const ValueTraits& value_traits):
+SequenceFile::SequenceFile(Type type, Alphabet alphabet, Flags flags, FormatFlags format_flags, Metadata metadata, const ValueTraits& value_traits):
 	flags_(flags),
 	format_flags_(format_flags),
-	value_traits_(value_traits),
+	value_traits_(value_traits),	
+	metadata_(metadata),
 	type_(type),
-	alphabet_(alphabet)	
+	alphabet_(alphabet)
 {
 	if (flag_any(flags_, Flags::OID_TO_ACC_MAPPING))
 		//seqid_file_.reset(new File(Schema{ ::Type::INT64, ::Type::STRING }, "", ::Flags::TEMP)); // | ::Flags::RECORD_ID_COLUMN));
 		seqid_file_.reset(new File(Schema{ ::Type::STRING }, "", ::Flags::TEMP));
+}
+
+SequenceFile::Metadata SequenceFile::metadata() const {
+	return metadata_;
 }
 
 void SequenceFile::write_dict_entry(size_t block, size_t oid, size_t len, const char* id, const Letter* seq, const double self_aln_score)
@@ -666,19 +680,19 @@ std::vector<Letter> SequenceFile::dict_seq(DictId dict_id, const size_t ref_bloc
 	return vector<Letter>(s.data(), s.end());
 }
 
-BitVector* SequenceFile::filter_by_taxonomy(const std::string& include, const std::string& exclude) const
+BitVector* SequenceFile::filter_by_taxonomy(const string& include, const string& exclude)
 {
 	BitVector* v = new BitVector(sequence_count());
 	if (!include.empty() && !exclude.empty())
-		throw std::runtime_error("Options --taxonlist and --taxon-exclude are mutually exclusive.");
+		throw runtime_error("Options --taxonlist and --taxon-exclude are mutually exclusive.");
 	const bool e = !exclude.empty();
-	const std::set<TaxId> taxon_filter_list(Util::String::parse_csv(e ? exclude : include));
+	const set<TaxId> taxon_filter_list(Util::String::parse_csv(e ? exclude : include));
 	if (taxon_filter_list.empty())
-		throw std::runtime_error("Option --taxonlist/--taxon-exclude used with empty list.");
+		throw runtime_error("Option --taxonlist/--taxon-exclude used with empty list.");
 	if (taxon_filter_list.find(1) != taxon_filter_list.end() || taxon_filter_list.find(0) != taxon_filter_list.end())
-		throw std::runtime_error("Option --taxonlist/--taxon-exclude used with invalid argument (0 or 1).");
+		throw runtime_error("Option --taxonlist/--taxon-exclude used with invalid argument (0 or 1).");
 	for (OId i = 0; i < sequence_count(); ++i)
-		if (taxon_nodes_->contained(taxids(i), taxon_filter_list) ^ e)
+		if (contained(taxids(i), taxon_filter_list, e, e) ^ e)
 			v->set(i);
 	return v;
 }
@@ -908,4 +922,136 @@ size_t SequenceFile::letters_filtered(const BitVector& v) const {
 		if (v.get(i))
 			n += seq_length(i);
 	return n;
+}
+
+set<TaxId> SequenceFile::rank_taxid(const std::vector<TaxId>& taxid, int rank) {
+	set<TaxId> r;
+	for (TaxId i : taxid)
+		r.insert(rank_taxid(i, rank));
+	return r;
+}
+
+TaxId SequenceFile::get_parent(TaxId taxid) {
+	throw OperationNotSupported();
+}
+
+void SequenceFile::print_info() const {
+}
+
+int SequenceFile::rank(TaxId taxid) const {
+	throw OperationNotSupported();
+}
+
+TaxId SequenceFile::rank_taxid(TaxId taxid, int rank) {
+	static const int max = 64;
+	int n = 0;
+	while (true) {
+		if (this->rank(taxid) == rank)
+			return taxid;
+		if (taxid <= 1)
+			return 0;
+		if (++n > max)
+			throw runtime_error("Path in taxonomy too long (rank_taxid).");
+		taxid = get_parent(taxid);
+	}
+	return 0;
+}
+
+vector<TaxId> SequenceFile::lineage(TaxId taxid) {
+	vector<TaxId> out;
+	int n = 0;
+	while (true) {
+		if (taxid <= 0)
+			return {};
+		if (taxid == 1)
+			break;
+		if (++n > MAX_LINEAGE)
+			throw runtime_error("Path in taxonomy too long (TaxonomyNodes::lineage).");
+		out.push_back(taxid);
+		taxid = get_parent(taxid);
+	}
+	reverse(out.begin(), out.end());
+	return out;
+}
+
+TaxId SequenceFile::get_lca(TaxId t1, TaxId t2)
+{
+	if (t1 == t2 || t2 <= 0)
+		return t1;
+	if (t1 <= 0)
+		return t2;
+	TaxId p = t2;
+	set<TaxId> l;
+	l.insert(p);
+	int n = 0;
+	do {
+		p = get_parent(p);
+		if (p <= 0)
+			return t1;
+		l.insert(p);
+		if (++n > MAX_LINEAGE)
+			throw runtime_error("Path in taxonomy too long (get_lca).");
+	} while (p != t1 && p != 1);
+	if (p == t1)
+		return p;
+	p = t1;
+	n = 0;
+	while (l.find(p) == l.end()) {
+		p = get_parent(p);
+		if (p <= 0)
+			return t2;
+		if (++n > MAX_LINEAGE)
+			throw runtime_error("Path in taxonomy too long (get_lca).");
+	}
+	return p;
+}
+
+TaxId SequenceFile::max_taxid() const {
+	throw OperationNotSupported();
+}
+
+bool SequenceFile::contained(TaxId query, const set<TaxId>& filter, bool include_invalid)
+{
+	static const int max = 64;
+	if (get_parent(query) < 0)
+		return include_invalid;
+	if (cached_[query])
+		return contained_[query];
+	if (filter.find(1) != filter.end())
+		return true;
+	int n = 0;
+	TaxId p = query;
+	while (p > 1 && filter.find(p) == filter.end()) {
+		p = get_parent(p);
+		if (p <= 0)
+			return include_invalid;
+		if (++n > max)
+			throw runtime_error("Path in taxonomy too long (contained).");
+	}
+	const bool contained = p > 1;
+	TaxId q = query;
+	while (set_cached(q, contained), q != p)
+		q = get_parent(q);
+	return contained;
+}
+
+bool SequenceFile::contained(const vector<TaxId>& query, const set<TaxId>& filter, bool all, bool include_invalid)
+{
+	static const int max = 64;
+	if (filter.find(1) != filter.end())
+		return true;
+	for (vector<TaxId>::const_iterator i = query.begin(); i != query.end(); ++i) {
+		const bool c = contained(*i, filter, include_invalid);
+		if (c && !all)
+			return true;
+		if (!c && all)
+			return false;
+	}
+	return all;
+}
+
+void SequenceFile::init_cache() {
+	const TaxId m = max_taxid();
+	cached_.insert(cached_.end(), m + 1, false);
+	contained_.insert(contained_.end(), m + 1, false);
 }

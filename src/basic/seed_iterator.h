@@ -26,11 +26,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "sequence.h"
 #include "util/hash_function.h"
 
+template<typename It>
 struct SeedIterator
 {
-	SeedIterator(std::vector<Letter> &seq, const Shape &sh):
-		ptr_ (seq.data()),
-		end_ (ptr_ + seq.size() - sh.length_ + 1)
+	SeedIterator(It begin, It end, const Shape& sh):
+		ptr_ (begin),
+		end_ (end - sh.length_ + 1)
 	{}
 	bool good() const
 	{
@@ -45,15 +46,17 @@ struct SeedIterator
 		return *this;
 	}
 private:
-	const Letter *ptr_, *end_;
+	It ptr_;
+	const It end_;
 };
 
+template<typename It>
 struct MinimizerIterator
 {
-	MinimizerIterator(std::vector<Letter>& seq, const Shape& sh, Loc window) :
-		ptr_(seq.data()),
-		begin_(seq.data()),
-		end_(ptr_ + seq.size() - sh.length_ + 1),
+	MinimizerIterator(It begin, It end, const Shape& sh, Loc window) :
+		ptr_(begin),
+		begin_(begin),
+		end_(end - sh.length_ + 1),
 		window_(window),
 		sh_(sh)
 	{
@@ -107,7 +110,7 @@ private:
 		}
 		return int(j - hashes_.begin());
 	}
-	const Letter* ptr_, *begin_, *end_;
+	It ptr_, begin_, end_;
 	std::deque<uint64_t> seeds_, hashes_;
 	std::deque<Loc> pos_;
 	const Loc window_;
@@ -117,15 +120,16 @@ private:
 
 struct SketchIterator
 {
-	SketchIterator(std::vector<Letter>& seq, const Shape& sh, Loc n)
+	template<typename It>
+	SketchIterator(It begin, It end, const Shape& sh, Loc n)
 	{
 		std::vector<Kmer> v;
-		v.reserve(seq.size() - sh.length_ + 1);
-		const Letter* end = seq.data() + seq.size() - sh.length_ + 1;
+		v.reserve((end - begin) - sh.length_ + 1);
+		const It end2 = end - sh.length_ + 1;
 		uint64_t s;
-		for (const Letter* p = seq.data(); p < end; ++p)
+		for (It p = begin; p < end2; ++p)
 			if (sh.set_seed_reduced(s, p))
-				v.emplace_back(s, MurmurHash()(s), Loc(p - seq.data()));
+				v.emplace_back(s, MurmurHash()(s), Loc(p - begin));
 		std::sort(v.begin(), v.end());
 		data_.insert(data_.end(), v.begin(), v.begin() + std::min(n, (Loc)v.size()));
 		it_ = data_.begin();

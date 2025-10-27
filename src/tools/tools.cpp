@@ -122,8 +122,3 @@ void list_seeds() {
 		cout << i->first << '\t' << s << endl;
 	}
 }
-
-void length_sort() {
-	Schema schema{ Type::STRING, Type::STRING };
-	Util::Tsv::Table table(schema);
-}

@@ -1,41 +1,55 @@
 /****
-DIAMOND protein aligner
-Copyright (C) 2021 Max Planck Society for the Advancement of Science e.V.
+Copyright © 2013-2025 Benjamin J. Buchfink <buchfink@gmail.com>
 
-Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
+Redistribution and use in source and binary forms, with or without modification,
+are permitted provided that the following conditions are met:
 
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
+1. Redistributions of source code must retain the above copyright notice, this
+list of conditions and the following disclaimer.
 
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
+2. Redistributions in binary form must reproduce the above copyright notice,
+this list of conditions and the following disclaimer in the documentation and/or
+other materials provided with the distribution.
 
-You should have received a copy of the GNU General Public License
-along with this program.  If not, see <http://www.gnu.org/licenses/>.
+3. Neither the name of the copyright holder nor the names of its contributors
+may be used to endorse or promote products derived from this software without
+specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
+INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
+EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ****/
+// SPDX-License-Identifier: BSD-3-Clause
 
+#include <sqlite3.h>
 #include <objmgr/object_manager.hpp>
 #include <objmgr/scope.hpp>
 #include <objmgr/util/create_defline.hpp>
 #include <objtools/blast/blastdb_format/blastdb_dataextract.hpp>
 #include <objtools/blast/seqdb_reader/impl/seqdbtax.hpp>
 #include <corelib/ncbiutil.hpp>
+#include <objtools/blast/seqdb_reader/seqdb.hpp>
+//#include <objects/taxon1/local_taxon.hpp>
 #include "util/io/text_input_file.h"
 #include "blastdb.h"
-#include "util/string/tokenizer.h"
 #include "util/system/system.h"
 #include "basic/config.h"
-#include "util/util.h"
 #include "util/log_stream.h"
+#include "taxdmp.h"
+#include "data/taxonomy_nodes.h"
+#include "phr.h"
 
-using std::cout;
 using std::endl;
 using std::vector;
 using std::runtime_error;
+using std::numeric_limits;
 using namespace ncbi;
 
 static string full_id(CBioseq& bioseq, CBioseq_Handle* bioseq_handle, bool long_ids, bool ctrl_a) {
@@ -89,33 +103,96 @@ list<CRef<CSeq_id>>::const_iterator best_id(const list<CRef<CSeq_id>>& ids) {
 }
 
 BlastDB::BlastDB(const std::string& file_name, Metadata metadata, Flags flags, const ValueTraits& value_traits) :
-	SequenceFile(Type::BLAST, Alphabet::NCBI, flags, FormatFlags::TITLES_LAZY | FormatFlags::SEEKABLE | FormatFlags::LENGTH_LOOKUP | FormatFlags::DICT_LENGTHS | FormatFlags::DICT_SEQIDS, value_traits),
+	SequenceFile(Type::BLAST, Alphabet::NCBI, flags, FormatFlags::TITLES_LAZY | FormatFlags::SEEKABLE | FormatFlags::LENGTH_LOOKUP | FormatFlags::DICT_LENGTHS | FormatFlags::DICT_SEQIDS, metadata, value_traits),
 	file_name_(file_name),
 	db_(new CSeqDB(file_name, CSeqDB::eProtein, nullptr, true)),
+	taxon_db_(nullptr),
 	oid_(0),
 	long_seqids_(false),
 	flags_(flags),
 	sequence_count_(db_->GetNumOIDs()),
 	sparse_sequence_count_(db_->GetNumSeqs())
 {
-#ifndef EXTRA
-	if (flag_any(metadata, Metadata::TAXON_NODES | Metadata::TAXON_MAPPING | Metadata::TAXON_SCIENTIFIC_NAMES | Metadata::TAXON_RANKS))
-		throw std::runtime_error("Taxonomy features are not supported for the BLAST database format.");
-#endif
-	if (config.multiprocessing)
-		throw std::runtime_error("Multiprocessing mode is not compatible with BLAST databases.");
-
-	if (flag_any(metadata, Metadata::TAXON_NODES)) {
-		const string path = extract_dir(SeqDB_ResolveDbPathNoExtension(db_->GetDBNameList(), 'p'));
-		if (path.empty())
-			throw std::runtime_error("Could not find BLAST database path.");
-		try {
-			taxon_nodes_.reset(new TaxonomyNodes(path + dir_separator + "nodes.dmp", true));
-		}
-		catch (FileOpenException&) {
-			throw std::runtime_error("Taxonomy nodes file (nodes.dmp) was not found in the BLAST database directory.");
-		}
+	const string dbdir = containing_directory_absolute(SeqDB_ResolveDbPathNoExtension(db_->GetDBNameList(), 'p'));
+	if (flag_any(metadata, Metadata::TAXON_RANKS)) {
+		const string file = dbdir + PATH_SEPARATOR + "nodes.dmp";
+		if(!exists(file))
+			throw runtime_error("Taxonomy rank information (nodes.dmp) is missing in search path ("
+				+ dbdir + "). Download and extract this file in the database directory: https://ftp.ncbi.nlm.nih.gov/pub/taxonomy/new_taxdump/new_taxdump.zip");
+		int next_rank = Rank::count;
+		auto f = [&](TaxId taxid, TaxId parent, const string& rank) {
+			const int p = Rank::predefined(rank.c_str());
+			if (p >= 0) {
+				rank_mapping_[taxid] = p;
+			}
+			else {
+				auto it = custom_ranks_.find(rank);
+				if (it == custom_ranks_.end()) {
+					const int r = next_rank++;
+					custom_ranks_[rank] = r;
+					rank_mapping_[taxid] = r;
+				}
+				else
+					rank_mapping_[taxid] = it->second;
+			}
+			};
+		read_nodes_dmp(file, f);
 	}
+	if (flag_any(metadata, Metadata::TAXON_NODES)) {
+		const string dbpath = dbdir + PATH_SEPARATOR + "taxonomy4blast.sqlite3";
+		if(!exists(dbpath))
+			throw runtime_error("Taxonomy database file not found: " + dbpath + ". Make sure that the database was downloaded correctly.");
+		/*CArgDescriptions desc;
+		CLocalTaxon::AddArguments(desc);
+		const char* argv[] = {"", "-taxon-db", dbpath.c_str(), nullptr};
+		int argc = 3;
+		CNcbiArguments ncbi_argv(argc, argv);
+		unique_ptr<CArgs> args(desc.CreateArgs(ncbi_argv));
+		taxon_.reset(new CLocalTaxon(*args));*/
+		if (sqlite3_open_v2(dbpath.c_str(), &taxon_db_, SQLITE_OPEN_READONLY, nullptr) != SQLITE_OK) {
+			string msg = taxon_db_ ? sqlite3_errmsg(taxon_db_) : "unknown error";
+			if (taxon_db_) sqlite3_close(taxon_db_);
+			throw runtime_error("Failed to open database " + dbpath + ": " + msg);
+		}
+		const TaxId max_id = max_taxid();
+		parent_cache_.resize(max_id + 1, numeric_limits<TaxId>::min());
+		init_cache();
+	}
+	if (flag_any(metadata, Metadata::TAXON_SCIENTIFIC_NAMES)) {
+		if (getenv("BLASTDB") == nullptr)
+#ifdef _MSC_VER
+			_putenv_s("BLASTDB", dbdir.c_str());
+#else
+			if(setenv("BLASTDB", dbdir.c_str(), 0) != 0)
+				cerr << "Warning: Failed to set BLASTDB environment variable: " << strerror(errno) << endl;
+#endif
+		SSeqDBTaxInfo info;
+		if (!CSeqDBTaxInfo::GetTaxNames(1234, info))
+			throw runtime_error("Taxonomy information (scientific names) is missing. Make sure that the BLAST database was downloaded correctly and that taxonomy files (taxdb.bti) are present in the database search paths (current working directory, BLAST database directory, BLASTDB environment variable)");
+		const string file = dbdir + PATH_SEPARATOR + "names.dmp";
+		if (!exists(file))
+			throw runtime_error("Taxonomy names information (names.dmp) is missing in search path ("
+				+ dbdir + "). Download and extract this file in the database directory: https://ftp.ncbi.nlm.nih.gov/pub/taxonomy/new_taxdump/new_taxdump.zip");
+		auto f = [&](TaxId taxid, const string& name) {			
+			if (!CSeqDBTaxInfo::GetTaxNames(taxid, info))
+				extra_names_[taxid] = name;
+			};
+		read_names_dmp(file, f);
+	}
+	if (config.multiprocessing)
+		throw runtime_error("Multiprocessing mode is not compatible with BLAST databases.");
+}
+
+void BlastDB::print_info() const {
+	if (flag_any(metadata_, Metadata::TAXON_RANKS)) {
+		if (!custom_ranks_.empty())
+			message_stream << "Custom taxonomic ranks in database: " << custom_ranks_.size() << endl;
+		message_stream << "Taxonomic ids assigned to ranks: " << rank_mapping_.size() << endl;
+	}
+	if (flag_any(metadata_, Metadata::TAXON_NODES))
+		message_stream << "Maximum taxid in database: " << parent_cache_.size() - 1 << endl;
+	if (flag_any(metadata_, Metadata::TAXON_SCIENTIFIC_NAMES))
+		message_stream << "Extra taxonomic scientific names in names.dmp: " << extra_names_.size() << endl;
 }
 
 int64_t BlastDB::file_count() const {
@@ -238,7 +315,7 @@ Loc BlastDB::dict_len(DictId dict_id, const size_t ref_block) const
 	return db_->GetSeqLength((int)dict_oid_[dict_block(ref_block)][dict_id]);
 }
 
-std::vector<Letter> BlastDB::dict_seq(DictId dict_id, const size_t ref_block) const
+vector<Letter> BlastDB::dict_seq(DictId dict_id, const size_t ref_block) const
 {
 	const size_t b = dict_block(ref_block);
 	if (dict_id >= (DictId)dict_oid_[b].size())
@@ -274,7 +351,7 @@ int BlastDB::program_build_version() const
 	return 0;
 }
 
-bool BlastDB::read_seq(std::vector<Letter>& seq, std::string& id, std::vector<char>* quals)
+bool BlastDB::read_seq(vector<Letter>& seq, string& id, vector<char>* quals)
 {
 	id.clear();
 	CRef<CBioseq> bioseq = db_->GetBioseq(oid_);
@@ -290,11 +367,6 @@ bool BlastDB::read_seq(std::vector<Letter>& seq, std::string& id, std::vector<ch
 	return true;
 }
 
-SequenceFile::Metadata BlastDB::metadata() const
-{
-	return Metadata();
-}
-
 int BlastDB::build_version()
 {
 	return 0;
@@ -305,7 +377,7 @@ void BlastDB::create_partition_balanced(int64_t max_letters)
 	throw OperationNotSupported();
 }
 
-void BlastDB::save_partition(const std::string& partition_file_name, const std::string& annotation)
+void BlastDB::save_partition(const string& partition_file_name, const string& annotation)
 {
 	throw OperationNotSupported();
 }
@@ -323,9 +395,10 @@ void BlastDB::set_seqinfo_ptr(int64_t i)
 void BlastDB::close()
 {
 	db_.reset();
+	sqlite3_close(taxon_db_);
 }
 
-BitVector* BlastDB::filter_by_accession(const std::string& file_name)
+BitVector* BlastDB::filter_by_accession(const string& file_name)
 {
 	BitVector* v = new BitVector(sequence_count());
 	TextInputFile in(file_name);
@@ -356,27 +429,98 @@ BitVector* BlastDB::filter_by_accession(const std::string& file_name)
 	return v;
 }
 
-std::string BlastDB::file_name()
+string BlastDB::file_name()
 {
 	return file_name_;
 }
 
-std::vector<TaxId> BlastDB::taxids(size_t oid) const
+vector<TaxId> BlastDB::taxids(size_t oid) const
 {
 	vector<TaxId> v;
 	db_->GetTaxIDs((BlastOid)oid, v);
 	return v;
 }
 
+TaxId BlastDB::max_taxid() const {
+	set<TaxId> taxids;
+	db_->GetDBTaxIds(taxids);
+	TaxId m = taxids.empty() ? 0 : *taxids.rbegin();
+	if (taxon_db_) {
+		static const char* sql = "SELECT max(taxid) FROM TaxidInfo;";
+
+		sqlite3_stmt* stmt = nullptr;
+		if (sqlite3_prepare_v2(taxon_db_, sql, -1, &stmt, nullptr) != SQLITE_OK) {
+			string msg = sqlite3_errmsg(taxon_db_);
+			sqlite3_close(taxon_db_);
+			throw runtime_error("Failed to prepare statement: " + msg);
+		}
+
+		int rc = sqlite3_step(stmt);
+		if (rc == SQLITE_ROW) {
+			m = std::max(m, sqlite3_column_int(stmt, 0));
+		} else {
+			string msg = sqlite3_errmsg(taxon_db_);
+			sqlite3_finalize(stmt);
+			sqlite3_close(taxon_db_);
+			throw runtime_error("SQLite step error: " + msg);
+		}
+	}
+	return m;
+}
+
+TaxId BlastDB::get_parent(TaxId taxid) {
+	//return taxon_->GetParent(taxid);
+	if (taxid <= 0)
+		return taxid;
+	if (parent_cache_[taxid] != numeric_limits<TaxId>::min())
+		return parent_cache_[taxid];
+	static const char* sql = "SELECT parent FROM TaxidInfo WHERE taxid = ?1 LIMIT 1;";
+
+	sqlite3_stmt* stmt = nullptr;
+	if (sqlite3_prepare_v2(taxon_db_, sql, -1, &stmt, nullptr) != SQLITE_OK) {
+		string msg = sqlite3_errmsg(taxon_db_);
+		sqlite3_close(taxon_db_);
+		throw runtime_error("Failed to prepare statement: " + msg);
+	}
+
+	if (sqlite3_bind_int(stmt, 1, taxid) != SQLITE_OK) {
+		string msg = sqlite3_errmsg(taxon_db_);
+		sqlite3_finalize(stmt);
+		sqlite3_close(taxon_db_);
+		throw runtime_error("Failed to bind parameter: " + msg);
+	}
+
+	TaxId result;
+	int rc = sqlite3_step(stmt);
+	if (rc == SQLITE_ROW) {
+		result = sqlite3_column_int(stmt, 0);
+	}
+	else if (rc == SQLITE_DONE) {
+		result = -1;
+	}
+	else {
+		string msg = sqlite3_errmsg(taxon_db_);
+		sqlite3_finalize(stmt);
+		sqlite3_close(taxon_db_);
+		throw runtime_error("SQLite step error: " + msg);
+	}
+
+	parent_cache_[taxid] = result;
+	sqlite3_finalize(stmt);
+	return result;
+}
+
 string BlastDB::taxon_scientific_name(TaxId taxid) const {
 	SSeqDBTaxInfo info;
 	if(CSeqDBTaxInfo::GetTaxNames(taxid, info))
 		return info.scientific_name;
-	else
-		return std::to_string(taxid);
+	else {
+		auto it = extra_names_.find(taxid);
+		return it == extra_names_.end() ? std::to_string(taxid) : it->second;
+	}
 }
 
-void BlastDB::seq_data(size_t oid, std::vector<Letter>& dst) const
+void BlastDB::seq_data(size_t oid, vector<Letter>& dst) const
 {
 	const char* buf;
 	const int db_len = db_->GetSequence((int)oid, &buf);
@@ -397,7 +541,7 @@ void BlastDB::end_random_access(bool dictionary)
 		free_dictionary();
 }
 
-std::vector<OId> BlastDB::accession_to_oid(const std::string& acc) const
+vector<OId> BlastDB::accession_to_oid(const string& acc) const
 {
 	vector<int> r;
 	db_->AccessionToOids(acc, r);
@@ -425,43 +569,31 @@ BlastDB::~BlastDB()
 	close();
 }
 
-void BlastDB::prep_blast_db(const string& path) {
-	vector<string> paths;
-	CSeqDB::FindVolumePaths(path, CSeqDB::eProtein, paths);
-	for (const string& db : paths) {
-		message_stream << "Processing volume: " << db << endl;
-		CSeqDB volume(db, CSeqDB::eProtein, nullptr, false);
-		const int n = volume.GetNumOIDs();
-		message_stream << "Number of sequences: " << n << endl;
-		OutputFile out(db + ".acc", Compressor::ZSTD);
-		TextBuffer buf;
-		//buf << BlastDB::ACCESSION_FIELD << '\n';
-		size_t id_count = 0;
-		for (int i = 0; i < n; ++i) {
-			list<CRef<CSeq_id>> ids = volume.GetSeqIDs(i);
-			if (!ids.empty()) {
-				//auto best = best_id(ids);
-				auto it = ids.cbegin();
-				buf << (*it)->GetSeqIdString(true);
-				while (++it != ids.cend()) {
-					//if (it != best)
-						buf << '\t' << (*it)->GetSeqIdString(true);
-				}
-				id_count += ids.size();
-			}
-			buf << '\n';
-			out.write(buf.data(), buf.size());
-			buf.clear();
-		}
-		message_stream << "Number of accessions: " << id_count << endl;
-		out.close();
-	}
-}
-
 void BlastDB::init_write() {
 	throw OperationNotSupported();
 }
 
-void BlastDB::write_seq(const Sequence& seq, const std::string& id) {
+void BlastDB::write_seq(const Sequence& seq, const string& id) {
 	throw OperationNotSupported();
+}
+
+StringSet BlastDB::load_ids(OId begin, OId end) const {
+	auto it = volumes_.lower_bound(begin);
+	if(it == volumes_.end())
+		throw runtime_error("No volume found for OID " + std::to_string(begin));
+	Phr phr(it->second + ".phr", it->second + ".pin");
+	StringSet ids;
+	for (OId i = 0; i < phr.size(); ++i) {
+		ids.reserve(phr.len(i));
+	}
+	ids.finish_reserve();
+	vector<pair<const uint8_t*, size_t>> titles;
+	vector<string> seqids;
+	vector<uint64_t> taxids;
+	for (OId i = 0; i < phr.size(); ++i) {
+		if(!phr.parse_record(i, titles, seqids, taxids))
+			throw runtime_error("Failed to parse PHR record with OID " + std::to_string(i) + " in BLAST database.");
+		ids.assign(i, seqids[0].begin(), seqids[0].end());
+	}
+	return ids;
 }

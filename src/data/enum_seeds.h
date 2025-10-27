@@ -1,3 +1,33 @@
+/****
+Copyright © 2013-2025 Benjamin J. Buchfink <buchfink@gmail.com>
+
+Redistribution and use in source and binary forms, with or without modification,
+are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this
+list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice,
+this list of conditions and the following disclaimer in the documentation and/or
+other materials provided with the distribution.
+
+3. Neither the name of the copyright holder nor the names of its contributors
+may be used to endorse or promote products derived from this software without
+specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
+INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
+EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+****/
+// SPDX-License-Identifier: BSD-3-Clause
+
 #pragma once
 #include <thread>
 #include "block/block.h"
@@ -10,19 +40,21 @@
 template<typename F, typename Filter>
 Search::SeedStats enum_seeds(SequenceSet* seqs, F* f, unsigned begin, unsigned end, const Filter* filter, const EnumCfg& cfg)
 {
-	std::vector<Letter> buf(seqs->max_len(begin, end));
+	std::pmr::monotonic_buffer_resource pool;
 	uint64_t key;
 	Search::SeedStats stats;
 	for (unsigned i = begin; i < end; ++i) {
 		if (cfg.skip && (*cfg.skip)[i / align_mode.query_contexts])
 			continue;
+		if(config.min_query_len > 0 && seqs->source_length(i) < config.min_query_len)
+			continue;
 		seqs->convert_to_std_alph(i);
 		const Sequence seq = (*seqs)[i];
-		Reduction::reduce_seq(seq, buf);
+		std::pmr::vector<Letter> buf = Reduction::reduce_seq(seq, pool);
 		for (int shape_id = cfg.shape_begin; shape_id < cfg.shape_end; ++shape_id) {
 			const Shape& sh = shapes[shape_id];
 			if (seq.length() < sh.length_) continue;
-			SeedIterator it(buf, sh);
+			SeedIterator<typename std::pmr::vector<Letter>::const_iterator> it(buf.cbegin(), buf.cend(), sh);
 			Letter* ptr = seqs->ptr(i);
 			Loc j = 0;
 			while (it.good()) {
@@ -40,21 +72,23 @@ Search::SeedStats enum_seeds(SequenceSet* seqs, F* f, unsigned begin, unsigned e
 template<typename F, typename Filter, typename It>
 Search::SeedStats enum_seeds_minimizer(SequenceSet* seqs, F* f, unsigned begin, unsigned end, const Filter* filter, const EnumCfg& cfg, Loc it_param)
 {
-	std::vector<Letter> buf(seqs->max_len(begin, end));
 	Search::SeedStats stats;
+	std::pmr::monotonic_buffer_resource pool;
 	for (unsigned i = begin; i < end; ++i) {
 		if (cfg.skip && (*cfg.skip)[i / align_mode.query_contexts])
 			continue;
+		if (config.min_query_len > 0 && seqs->source_length(i) < config.min_query_len)
+			continue;
 		seqs->convert_to_std_alph(i);
 		const Sequence seq = (*seqs)[i];
-        if (align_mode.mode != AlignMode::blastn)
-            Reduction::reduce_seq(seq, buf);
-        else
-            buf = seq.copy();
+        //if (align_mode.mode != AlignMode::blastn)
+        std::pmr::vector<Letter> buf = Reduction::reduce_seq(seq, pool);
+        //else
+            //buf = seq.copy();
 		for (int shape_id = cfg.shape_begin; shape_id < cfg.shape_end; ++shape_id) {
 			const Shape& sh = shapes[shape_id];
 			if (seq.length() < sh.length_) continue;
-			It it(buf, sh, it_param);
+			It it(buf.cbegin(), buf.cend(), sh, it_param);
 			while (it.good()) {
 				const uint64_t key = *it;
 				if (filter->contains(key, shape_id))
@@ -72,6 +106,8 @@ void enum_seeds_hashed(SequenceSet* seqs, F* f, unsigned begin, unsigned end, co
 {
 	for (unsigned i = begin; i < end; ++i) {
 		if (cfg.skip && (*cfg.skip)[i / align_mode.query_contexts])
+			continue;
+		if (config.min_query_len > 0 && seqs->source_length(i) < config.min_query_len)
 			continue;
 		seqs->convert_to_std_alph(i);
 		const Sequence seq = (*seqs)[i];
@@ -102,6 +138,8 @@ void enum_seeds_contiguous(SequenceSet* seqs, F* f, unsigned begin, unsigned end
 	for (unsigned i = begin; i < end; ++i) {
 		if (cfg.skip && (*cfg.skip)[i / align_mode.query_contexts])
 			continue;
+		if (config.min_query_len > 0 && seqs->source_length(i) < config.min_query_len)
+			continue;
 		seqs->convert_to_std_alph(i);
 		const Sequence seq = (*seqs)[i];
 		if (seq.length() < It::length()) continue;
@@ -121,6 +159,7 @@ void enum_seeds_contiguous(SequenceSet* seqs, F* f, unsigned begin, unsigned end
 template<typename F, typename Filter, typename IteratorFilter>
 static void enum_seeds_worker(F* f, SequenceSet* seqs, const unsigned begin, const unsigned end, const Filter* filter, Search::SeedStats* stats, const EnumCfg* cfg)
 {
+	using It = std::pmr::vector<Letter>::const_iterator;
 	static const char* errmsg = "Unsupported contiguous seed.";
 	if (cfg->code == SeedEncoding::CONTIGUOUS) {
 		const uint64_t b = Reduction::get_reduction().bit_size(), l = shapes[cfg->shape_begin].length_;
@@ -167,7 +206,7 @@ static void enum_seeds_worker(F* f, SequenceSet* seqs, const unsigned begin, con
 		}
 	}
 	else if(cfg->minimizer_window > 0)
-		*stats = enum_seeds_minimizer<F, Filter, MinimizerIterator>(seqs, f, begin, end, filter, *cfg, cfg->minimizer_window);
+		*stats = enum_seeds_minimizer<F, Filter, MinimizerIterator<It>>(seqs, f, begin, end, filter, *cfg, cfg->minimizer_window);
 	else if(cfg->sketch_size > 0)
 		*stats = enum_seeds_minimizer<F, Filter, SketchIterator>(seqs, f, begin, end, filter, *cfg, cfg->sketch_size);
 	else

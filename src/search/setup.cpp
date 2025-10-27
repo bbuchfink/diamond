@@ -383,7 +383,7 @@ void setup_search(Sensitivity sens, Search::Config& cfg)
 	cfg.cutoff_table_short = { cfg.ungapped_evalue_short };
 
 	if (config.ext_.empty()) {
-		if (config.global_ranking_targets || config.swipe_all || config.lin_stage1 || cfg.lin_stage1_target)
+		if (config.global_ranking_targets || config.swipe_all || ((config.lin_stage1 || cfg.lin_stage1_target) && !config.linclust_banded_ext))
 			cfg.extension_mode = Extension::Mode::FULL;
 		else
 			cfg.extension_mode = Extension::default_ext_mode.at(sens);

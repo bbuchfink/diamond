@@ -1,3 +1,31 @@
+# Copyright © 2013-2025 Benjamin J. Buchfink <buchfink@gmail.com>
+#
+# Redistribution and use in source and binary forms, with or without modification,
+# are permitted provided that the following conditions are met:
+# 
+# 1. Redistributions of source code must retain the above copyright notice, this
+# list of conditions and the following disclaimer.
+# 
+# 2. Redistributions in binary form must reproduce the above copyright notice,
+# this list of conditions and the following disclaimer in the documentation and/or
+# other materials provided with the distribution.
+# 
+# 3. Neither the name of the copyright holder nor the names of its contributors
+# may be used to endorse or promote products derived from this software without
+# specific prior written permission.
+# 
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+# WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+# IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
+# INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+# BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+# DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+# OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+# NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
+# EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+# SPDX-License-Identifier: BSD-3-Clause
+
 cmake_minimum_required (VERSION 2.6...3.5)
 project (DIAMOND)
 include(CheckCXXCompilerFlag)
@@ -19,13 +47,11 @@ option(STRICT_BAND "STRICT_BAND" ON)
 option(LEFTMOST_SEED_FILTER "LEFTMOST_SEED_FILTER" ON)
 option(SEQ_MASK "SEQ_MASK" ON)
 option(DP_STAT "DP_STAT" OFF)
-option(SINGLE_THREADED "SINGLE_THREADED" OFF)
 option(HIT_KEEP_TARGET_ID "HIT_KEEP_TARGET_ID" OFF)
 option(LONG_SEEDS "LONG_SEEDS" OFF)
 option(WITH_AVX512 "WITH_AVX512" OFF)
 option(WITH_DNA "WITH_DNA" OFF)
 option(WITH_MCL "WITH_MCL" OFF)
-option(WITH_MIMALLOC "WITH_MIMALLOC" OFF)
 option(USE_TLS "USE_TLS" OFF)
 
 set(MAX_SHAPE_LEN 19)
@@ -41,7 +67,6 @@ elseif(NOT CROSS_COMPILE AND CMAKE_SYSTEM_PROCESSOR MATCHES "^(arm.*|ARM.*)")
 elseif(NOT CROSS_COMPILE AND CMAKE_SYSTEM_PROCESSOR MATCHES "PPC64*|ppc64*|powerpc64*")
   set(X86 OFF)
   # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -maltivec")
-  add_definitions(-DEIGEN_DONT_VECTORIZE)
 elseif(NOT CROSS_COMPILE AND CMAKE_SYSTEM_PROCESSOR MATCHES "^s390|sparc")
   set(X86 OFF)
 endif()
@@ -56,10 +81,6 @@ endif()
 
 if(USE_TLS)
   add_definitions(-DUSE_TLS)
-endif()
-
-if(SINGLE_THREADED)
-  add_definitions(-DSINGLE_THREADED)
 endif()
 
 if(SEQ_MASK)
@@ -140,6 +161,11 @@ else()
 endif()
 
 check_symbol_exists(sysinfo "sys/sysinfo.h" HAVE_SYSINFO)
+CHECK_INCLUDE_FILE_CXX("memory_resource" HAVE_MEMORY_RESOURCE)
+
+if(HAVE_MEMORY_RESOURCE)
+  add_definitions(-DHAVE_MEMORY_RESOURCE)
+endif()
 
 if(CMAKE_BUILD_MARCH)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=${CMAKE_BUILD_MARCH}")
@@ -185,8 +211,7 @@ if(EXTRA)
 endif()
 
 add_library(arch_generic OBJECT ${DISPATCH_OBJECTS})
-target_compile_options(arch_generic PUBLIC -DDISPATCH_ARCH=ARCH_GENERIC -DARCH_ID=0 -DEigen=Eigen_GENERIC)
-#target_compile_options(arch_generic PUBLIC -DDISPATCH_ARCH=ARCH_GENERIC -DARCH_ID=0)
+target_compile_options(arch_generic PUBLIC -DDISPATCH_ARCH=ARCH_GENERIC -DARCH_ID=0)
 if (${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
     target_compile_options(arch_generic PUBLIC /Zc:__cplusplus)
 endif()
@@ -200,20 +225,16 @@ if(X86)
   add_definitions(-DWITH_AVX2)
   add_definitions(-DWITH_SSE4_1)
   if (${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
-    target_compile_options(arch_sse4_1 PUBLIC -DDISPATCH_ARCH=ARCH_SSE4_1 -DARCH_ID=1 -D__SSSE3__ -D__SSE4_1__ -D__POPCNT__ -DEigen=Eigen_SSE4_1 /Zc:__cplusplus)
-    target_compile_options(arch_avx2 PUBLIC -DDISPATCH_ARCH=ARCH_AVX2 -DARCH_ID=2 /arch:AVX2 -D__SSSE3__ -D__SSE4_1__ -D__POPCNT__ -DEigen=Eigen_AVX2 /Zc:__cplusplus)
-    #target_compile_options(arch_sse4_1 PUBLIC -DDISPATCH_ARCH=ARCH_SSE4_1 -DARCH_ID=1 -D__SSSE3__ -D__SSE4_1__ -D__POPCNT__ /Zc:__cplusplus)
-    #target_compile_options(arch_avx2 PUBLIC -DDISPATCH_ARCH=ARCH_AVX2 -DARCH_ID=2 /arch:AVX2 -D__SSSE3__ -D__SSE4_1__ -D__POPCNT__ /Zc:__cplusplus)
+    target_compile_options(arch_sse4_1 PUBLIC -DDISPATCH_ARCH=ARCH_SSE4_1 -DARCH_ID=1 -D__SSSE3__ -D__SSE4_1__ -D__POPCNT__ /Zc:__cplusplus)
+    target_compile_options(arch_avx2 PUBLIC -DDISPATCH_ARCH=ARCH_AVX2 -DARCH_ID=2 /arch:AVX2 -D__SSSE3__ -D__SSE4_1__ -D__POPCNT__ /Zc:__cplusplus)
     if(WITH_AVX512)
-      target_compile_options(arch_avx512 PUBLIC -DDISPATCH_ARCH=ARCH_AVX512 -DARCH_ID=3 /arch:AVX512 -D__SSSE3__ -D__SSE4_1__ -D__POPCNT__ -DEigen=Eigen_AVX512)
+      target_compile_options(arch_avx512 PUBLIC -DDISPATCH_ARCH=ARCH_AVX512 -DARCH_ID=3 /arch:AVX512 -D__SSSE3__ -D__SSE4_1__ -D__POPCNT__)
     endif()
   else()
-    target_compile_options(arch_sse4_1 PUBLIC -DDISPATCH_ARCH=ARCH_SSE4_1 -DARCH_ID=1 -mssse3 -mpopcnt -msse4.1 -DEigen=Eigen_SSE4_1)
-    target_compile_options(arch_avx2 PUBLIC -DDISPATCH_ARCH=ARCH_AVX2 -DARCH_ID=2 -mssse3 -mpopcnt -msse4.1 -msse4.2 -mavx -mavx2 -DEigen=Eigen_AVX2)
-    #target_compile_options(arch_sse4_1 PUBLIC -DDISPATCH_ARCH=ARCH_SSE4_1 -DARCH_ID=1 -mssse3 -mpopcnt -msse4.1)
-    #target_compile_options(arch_avx2 PUBLIC -DDISPATCH_ARCH=ARCH_AVX2 -DARCH_ID=2 -mssse3 -mpopcnt -msse4.1 -msse4.2 -mavx -mavx2)
+    target_compile_options(arch_sse4_1 PUBLIC -DDISPATCH_ARCH=ARCH_SSE4_1 -DARCH_ID=1 -mssse3 -mpopcnt -msse4.1)
+    target_compile_options(arch_avx2 PUBLIC -DDISPATCH_ARCH=ARCH_AVX2 -DARCH_ID=2 -mssse3 -mpopcnt -msse4.1 -msse4.2 -mavx -mavx2)
     if(WITH_AVX512)
-      target_compile_options(arch_avx512 PUBLIC -DDISPATCH_ARCH=ARCH_AVX512 -DARCH_ID=3 -mssse3 -mpopcnt -msse4.1 -msse4.2 -mavx -mavx2 -mavx512f -mavx512bw -DEigen=Eigen_AVX512)
+      target_compile_options(arch_avx512 PUBLIC -DDISPATCH_ARCH=ARCH_AVX512 -DARCH_ID=3 -mssse3 -mpopcnt -msse4.1 -msse4.2 -mavx -mavx2 -mavx512f -mavx512bw)
     endif()
   endif()
 endif(X86)
@@ -222,7 +243,7 @@ endif(X86)
 if(AARCH64)
   add_definitions(-DWITH_NEON)
   add_library(arch_neon OBJECT ${DISPATCH_OBJECTS})
-  target_compile_options(arch_neon PUBLIC -DDISPATCH_ARCH=ARCH_NEON -DARCH_ID=4 -D__ARM_NEON -D__aarch64__ -DEigen=Eigen_NEON)
+  target_compile_options(arch_neon PUBLIC -DDISPATCH_ARCH=ARCH_NEON -DARCH_ID=4 -D__ARM_NEON -D__aarch64__)
 endif(AARCH64)
 
 # NEON is optional on Armv7, so we need to check for compiler support,
@@ -234,7 +255,7 @@ if(HAVE_MFPU_NEON)
     add_definitions(-DWITH_NEON)
     add_definitions(-DHAVE_MFPU_NEON)
     add_library(arch_neon OBJECT ${DISPATCH_OBJECTS})
-    target_compile_options(arch_neon PUBLIC -DDISPATCH_ARCH=ARCH_NEON -DARCH_ID=4 -D__ARM_NEON -DEigen=Eigen_NEON -mfpu=neon)
+    target_compile_options(arch_neon PUBLIC -DDISPATCH_ARCH=ARCH_NEON -DARCH_ID=4 -D__ARM_NEON -mfpu=neon)
   endif()
   if(HAVE_GETAUXVAL)
     add_definitions(-DHAVE_GETAUXVAL)
@@ -275,6 +296,7 @@ set(OBJECTS
         src/output/target_culling.cpp
         src/align/legacy/banded_swipe_pipeline.cpp
         src/util/io/compressed_stream.cpp
+        src/util/io/compressed_buffer.cpp
         src/util/io/deserializer.cpp
         src/util/io/file_sink.cpp
         src/util/io/file_source.cpp
@@ -317,7 +339,6 @@ set(OBJECTS
         src/util/parallel/filestack.cpp
         src/util/parallel/parallelizer.cpp
         src/util/parallel/multiprocessing.cpp
-        src/tools/benchmark_io.cpp
         src/lib/alp/njn_dynprogprob.cpp
         src/lib/alp/njn_dynprogproblim.cpp
         src/lib/alp/njn_dynprogprobproto.cpp
@@ -389,10 +410,12 @@ set(OBJECTS
         src/cluster/external/cluster.cpp
         src/cluster/external/output.cpp
         src/util/algo/pagerank.cpp
-        src/util/algo/mcl.cpp
-        src/stats/blast/matrix_adjust.cpp
+        #src/util/algo/mcl.cpp
+        #src/stats/blast/matrix_adjust.cpp
         src/stats/blast/ncbi.cpp
         src/search/hit_buffer.cpp
+        src/data/blastdb/phr.cpp
+        src/util/io/mmap.cpp
 )
 
 if(WITH_DNA)
@@ -425,7 +448,7 @@ if(BLAST_INCLUDE_DIR)
   set(BLAST_OBJ "src/data/blastdb/blastdb.cpp")
 endif()
 
-if(WITH_ZSTD OR BLAST_INCLUDE_DIR)
+if(WITH_ZSTD)
   set(ZSTD_OBJ "src/util/io/zstd_stream.cpp")
 endif()
 
@@ -477,10 +500,16 @@ if(BLAST_INCLUDE_DIR)
   find_blast_lib(XNCBI_LIBRARY xncbi)
   find_blast_lib(XUTIL_LIBRARY xutil)
   find_blast_lib(LMDB_LIBRARY lmdb)
+  #find_blast_lib(TAXON1_LIBRARY taxon1)
+  #find_blast_lib(LOCAL_TAXON_LIBRARY local_taxon)
+  #find_blast_lib(CONNECT_LIBRARY connect)
+  #find_blast_lib(SQLITEWRAPP_LIBRARY sqlitewrapp)
+  #find_blast_lib(XCONNECT_LIBRARY xconnect)
+  find_package(SQLite3)
   target_link_libraries(diamond ${SEQDB_LIBRARY} ${BLASTDB_LIBRARY} ${BLASTDB_FORMAT_LIBRARY} ${GENERAL_LIBRARY}
           ${XOBJUTIL_LIBRARY} ${XOBJMGR_LIBRARY} ${GENOME_COLLECTION_LIBRARY} ${SEQ_LIBRARY} ${SEQCODE_LIBRARY}
           ${SEQSET_LIBRARY} ${SEQUTIL_LIBRARY} ${PUB_LIBRARY} ${MEDLINE_LIBRARY} ${BIBLIO_LIBRARY} ${SUBMIT_LIBRARY}
-          ${XSER_LIBRARY} ${XNCBI_LIBRARY} ${XUTIL_LIBRARY} ${LMDB_LIBRARY})
+          ${XSER_LIBRARY} ${XNCBI_LIBRARY} ${XUTIL_LIBRARY} ${LMDB_LIBRARY} SQLite::SQLite3)
   add_definitions(-DWITH_BLASTDB)
   set_target_properties(diamond PROPERTIES INSTALL_RPATH_USE_LINK_PATH TRUE)
   if (${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
@@ -491,25 +520,12 @@ if(BLAST_INCLUDE_DIR)
   endif()
 endif()
 
-if(WITH_DNA)
-  include_directories(src/lib/WFA2-lib.diamond)
-  add_subdirectory(src/lib/WFA2-lib.diamond)
-  target_link_libraries(diamond wfa2)
-endif()
-
-if(WITH_ZSTD OR BLAST_INCLUDE_DIR)
+if(WITH_ZSTD)
   find_path(${ZSTD_INCLUDE_DIR} NAMES zstd.h PATHS ${ZSTD_INCLUDE_DIR})
   find_library(ZSTD_LIBRARY NAMES libzstd.a libzstd_static)
   target_include_directories(diamond PRIVATE "${ZSTD_INCLUDE_DIR}")
   target_link_libraries(diamond ${ZSTD_LIBRARY})
   add_definitions(-DWITH_ZSTD)
-endif()
-
-if(WITH_MIMALLOC)
-  find_package(mimalloc 2.0 REQUIRED)
-  add_definitions(-DWITH_MIMALLOC)
-  target_link_libraries(diamond mimalloc)
-  target_include_directories(diamond PRIVATE ${MIMALLOC_INCLUDE_DIR})
 endif()
 
 if (${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
@@ -528,4 +544,4 @@ SET(SP -DTEST_DIR=${CMAKE_SOURCE_DIR}/src/test -P ${CMAKE_SOURCE_DIR}/src/test/t
 add_test(NAME blastp COMMAND ${CMAKE_COMMAND} -DNAME=blastp "-DARGS=blastp -q ${TD}/1.faa -d ${TD}/2.faa -p1" ${SP})
 add_test(NAME blastp-mid-sens COMMAND ${CMAKE_COMMAND} -DNAME=blastp-mid-sens "-DARGS=blastp -q ${TD}/3.faa -d ${TD}/4.faa --mid-sensitive -p1" ${SP})
 add_test(NAME blastp-f0 COMMAND ${CMAKE_COMMAND} -DNAME=blastp-f0 "-DARGS=blastp -q ${TD}/1.faa -d ${TD}/2.faa -f0 -p1" ${SP})
-# add_test(NAME diamond COMMAND diamond test)
+add_test(NAME diamond COMMAND diamond test)

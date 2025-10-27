@@ -1,27 +1,35 @@
 /****
-DIAMOND protein aligner
-Copyright (C) 2013-2022 Max Planck Society for the Advancement of Science e.V.
-                        Benjamin Buchfink
-                        Eberhard Karls Universitaet Tuebingen
-						
-Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
+Copyright © 2013-2025 Benjamin J. Buchfink <buchfink@gmail.com>
 
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
+Redistribution and use in source and binary forms, with or without modification,
+are permitted provided that the following conditions are met:
 
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
+1. Redistributions of source code must retain the above copyright notice, this
+list of conditions and the following disclaimer.
 
-You should have received a copy of the GNU General Public License
-along with this program.  If not, see <http://www.gnu.org/licenses/>.
+2. Redistributions in binary form must reproduce the above copyright notice,
+this list of conditions and the following disclaimer in the documentation and/or
+other materials provided with the distribution.
+
+3. Neither the name of the copyright holder nor the names of its contributors
+may be used to endorse or promote products derived from this software without
+specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
+INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
+EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ****/
+// SPDX-License-Identifier: BSD-3-Clause
 
 #pragma once
-#include <math.h>
+#include <cmath>
 #include <assert.h>
 #include <vector>
 #include <string>
@@ -111,22 +119,78 @@ T1 percentage(T2 x, T2 y)
 
 void print_binary(uint64_t x);
 
-template<typename T1, typename T2>
-inline typename std::enable_if<std::is_signed<T2>::value, T1>::type safe_cast(T2 x)
-{
-	if (x > (T2)std::numeric_limits<T1>::max() || x < (T2)std::numeric_limits<T1>::min())
-		throw std::runtime_error("Integer value out of bounds.");
-	return (T1)x;
+template <class To, class From,
+	typename std::enable_if<std::is_integral<From>::value && std::is_integral<To>::value, int>::type = 0>
+inline To safe_cast(From value) {
+	static_assert(std::is_integral<To>::value, "Destination must be an integral type");
+	using ToT = To;
+	using FromT = From;
+#if __cplusplus >= 201703L
+	if constexpr (std::is_signed<FromT>::value && std::is_signed<ToT>::value) {
+#else
+	if (std::is_signed<FromT>::value && std::is_signed<ToT>::value) {
+#endif
+		if (value < std::numeric_limits<ToT>::min() ||
+			value > std::numeric_limits<ToT>::max()) {
+			throw std::runtime_error("safe_cast: out of range (signed -> signed)");
+		}
+	}
+#if __cplusplus >= 201703L
+	else if constexpr (std::is_signed<FromT>::value && !std::is_signed<ToT>::value) {
+#else
+	else if (std::is_signed<FromT>::value && !std::is_signed<ToT>::value) {
+#endif
+		if (value < 0) {
+			throw std::runtime_error("safe_cast: negative value to unsigned");
+		}
+		using UFrom = typename std::make_unsigned<FromT>::type;
+		if (static_cast<UFrom>(value) > std::numeric_limits<ToT>::max()) {
+			throw std::runtime_error("safe_cast: overflow (signed -> unsigned)");
+		}
+	}
+#if __cplusplus >= 201703L
+	else if constexpr (!std::is_signed<FromT>::value && std::is_signed<ToT>::value) {
+#else
+	else if (!std::is_signed<FromT>::value && std::is_signed<ToT>::value) {
+#endif
+		using UTo = typename std::make_unsigned<ToT>::type;
+		if (value > static_cast<UTo>(std::numeric_limits<ToT>::max())) {
+			throw std::runtime_error("safe_cast: overflow (unsigned -> signed)");
+		}
+	}
+	else {
+		if (value > std::numeric_limits<ToT>::max()) {
+			throw std::runtime_error("safe_cast: overflow (unsigned -> unsigned)");
+		}
+	}
+	return static_cast<ToT>(value);
 }
 
-template<typename T1, typename T2>
-inline typename std::enable_if<std::is_unsigned<T2>::value, T1>::type safe_cast(T2 x)
-{
-	if (x > (T2)std::numeric_limits<T1>::max())
-		throw std::runtime_error("Integer value out of bounds.");
-	return (T1)x;
+template <class To, class From,
+	typename std::enable_if<std::is_floating_point<From>::value && std::is_integral<To>::value, int>::type = 0>
+inline To safe_cast(From value) {
+	static_assert(std::is_integral<To>::value, "Destination must be an integral type");
+	if (!std::isfinite(value)) {
+		throw std::runtime_error("safe_cast: non-finite value (NaN/Inf)");
+	}
+#if __cplusplus >= 201703L
+	if constexpr (std::is_unsigned<To>::value) {
+#else
+	if (std::is_unsigned<To>::value) {
+#endif
+		if (value < 0) {
+			throw std::runtime_error("safe_cast: negative value to unsigned");
+		}
+	}
+	using LD = long double;
+	const LD lv = static_cast<LD>(value);
+	const LD tmin = static_cast<LD>(std::numeric_limits<To>::min());
+	const LD tmax = static_cast<LD>(std::numeric_limits<To>::max());
+	if (lv < tmin || lv > tmax) {
+		throw std::runtime_error("safe_cast: out of range (float -> int)");
+	}
+	return static_cast<To>(lv);
 }
-
 
 struct IndexIterator
 {

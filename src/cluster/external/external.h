@@ -46,10 +46,8 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "data/sequence_file.h"
 
 #ifdef WIN32
-const char PATH_SEPARATOR = '\\';
 #else
 #include <sys/stat.h>
-const char PATH_SEPARATOR = '/';
 #endif
 
 namespace Cluster {

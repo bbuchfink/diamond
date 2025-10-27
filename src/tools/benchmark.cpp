@@ -1,22 +1,32 @@
 /****
-DIAMOND protein aligner
-Copyright (C) 2013-2020 Max Planck Society for the Advancement of Science e.V.
-                        Benjamin Buchfink
-                        Eberhard Karls Universitaet Tuebingen
+Copyright © 2013-2025 Benjamin J. Buchfink <buchfink@gmail.com>
 
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
+Redistribution and use in source and binary forms, with or without modification,
+are permitted provided that the following conditions are met:
 
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
+1. Redistributions of source code must retain the above copyright notice, this
+list of conditions and the following disclaimer.
 
-You should have received a copy of the GNU General Public License
-along with this program.  If not, see <http://www.gnu.org/licenses/>.
+2. Redistributions in binary form must reproduce the above copyright notice,
+this list of conditions and the following disclaimer in the documentation and/or
+other materials provided with the distribution.
+
+3. Neither the name of the copyright holder nor the names of its contributors
+may be used to endorse or promote products derived from this software without
+specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
+INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
+EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ****/
+// SPDX-License-Identifier: BSD-3-Clause
 
 #include <chrono>
 #include <random>
@@ -42,8 +52,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "dp/score_vector_int16.h"
 #include "search/hit_buffer.h"
 
-void benchmark_io();
-
 using std::vector;
 using std::endl;
 using std::chrono::high_resolution_clock;
@@ -58,10 +66,10 @@ static inline void transpose_scalar(const signed char **data, size_t n, signed c
 	size_t x, y;
 	for (x = 0; x < WIDTH - n; ++x)
 		for (y = 0; y < WIDTH; ++y)
-			out[y*WIDTH+x] = 0;
+			out[y * WIDTH + x] = 0;
 	for (; x < WIDTH; ++x)
 		for (y = 0; y < WIDTH; ++y)
-			out[y*WIDTH+x] = data[x + n - WIDTH][y];
+			out[y * WIDTH + x] = data[x + n - WIDTH][y];
 }
 
 namespace Benchmark { namespace DISPATCH_ARCH {
@@ -84,7 +92,7 @@ void hit_buffer() {
 			w->new_query(distribution(generator), distribution(generator));
 			for (size_t j = 0; j < 100; ++j) {
 				if (i % 1000000 == 0)
-					std::cout << i << "/" << m << std::endl;
+					printf("%zu/%zu\n", i, m);
 				w->write(distribution(generator), distribution(generator), scored(generator), distribution(generator));
 				++i;
 			}
@@ -103,8 +111,8 @@ void hit_buffer() {
 	timer.go("Read");
 	for (int i = 0; i < buf.bins(); ++i) {
 		buf.load(INT64_MAX);
-		std::tuple<Search::Hit*, int64_t, BlockId, BlockId> input = buf.retrieve();
-		std::cout << std::get<1>(input) << std::endl;
+		std::tuple<Search::Hit*, size_t, BlockId, BlockId> input = buf.retrieve();
+		printf("%i: %zd\n", i, std::get<1>(input));
 	}
 	buf.free_buffer();
 }
@@ -536,14 +544,14 @@ void matrix_adjust(const Sequence& s1, const Sequence& s2) {
 	t1 = high_resolution_clock::now();
 	for (size_t i = 0; i < n; ++i) {
 		std::fill(mat_final.begin(), mat_final.end(), 0.0);
-		New_OptimizeTargetFrequencies(mat_final.data(),
+		/*New_OptimizeTargetFrequencies(mat_final.data(),
 			TRUE_AA,
 			&iteration_count,
 			joint_probs,
 			row_probs.data(), col_probs.data(),
 			0.44,
 			config.cbs_err_tolerance,
-			config.cbs_it_limit);
+			config.cbs_it_limit);*/
 	}
 
 	for (int i = 0; i < 20; ++i) {
@@ -562,9 +570,6 @@ void benchmark() {
 #if defined(__SSE4_1__) && defined(EXTRA)
 		swipe_cell_update();
 #endif
-		return;
-	}if (!config.type.empty()) {
-		benchmark_io();
 		return;
 	}
 

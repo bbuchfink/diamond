@@ -1,22 +1,32 @@
 /****
-DIAMOND protein aligner
-Copyright (C) 2020 Max Planck Society for the Advancement of Science e.V.
+Copyright © 2013-2025 Benjamin J. Buchfink <buchfink@gmail.com>
 
-Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
+Redistribution and use in source and binary forms, with or without modification,
+are permitted provided that the following conditions are met:
 
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
+1. Redistributions of source code must retain the above copyright notice, this
+list of conditions and the following disclaimer.
 
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
+2. Redistributions in binary form must reproduce the above copyright notice,
+this list of conditions and the following disclaimer in the documentation and/or
+other materials provided with the distribution.
 
-You should have received a copy of the GNU General Public License
-along with this program.  If not, see <http://www.gnu.org/licenses/>.
+3. Neither the name of the copyright holder nor the names of its contributors
+may be used to endorse or promote products derived from this software without
+specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
+INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
+EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ****/
+// SPDX-License-Identifier: BSD-3-Clause
 
 #include <algorithm>
 #include <iterator>
@@ -34,6 +44,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 using std::string;
 using std::max;
 using std::min;
+using std::map;
+using std::runtime_error;
 
 const ValueTraits amino_acid_traits(AMINO_ACID_ALPHABET, 23, "UO-", SequenceType::amino_acid);
 const ValueTraits nucleotide_traits("ACGTN", 4, "MRWSYKVHDBX", SequenceType::nucleotide);
@@ -50,10 +62,11 @@ namespace Search {
 
 namespace Stats {
 
-const std::map<std::string, const StandardMatrix&> StandardMatrix::matrices = { { "blosum45", blosum45 }, { "blosum62", blosum62 }, { "blosum50", blosum50 }, { "blosum80", blosum80 }, { "blosum90", blosum90 },
+const map<string, const StandardMatrix&> StandardMatrix::matrices = { { "blosum45", blosum45 }, { "blosum62", blosum62 },
+	{ "blosum50", blosum50 }, { "blosum80", blosum80 }, { "blosum90", blosum90 },
 	{ "pam250", pam250 }, { "pam30", pam30 }, { "pam70", pam70 } };
 
-const StandardMatrix& StandardMatrix::get(const std::string& name) {
+const StandardMatrix& StandardMatrix::get(const string& name) {
 	string n;
 	std::transform(name.begin(), name.end(), std::back_inserter(n), [](unsigned char c) { return tolower(c); });
 	auto it = matrices.find(n);
@@ -67,7 +80,7 @@ const StandardMatrix::Parameters& StandardMatrix::constants(int gap_exist, int g
 	for (const auto& i : parameters)
 		if (i.gap_exist == g && i.gap_extend == e)
 			return i;
-	throw std::runtime_error("Gap penalty settings are outside the supported range for this scoring matrix.");
+	throw runtime_error("Gap penalty settings are outside the supported range for this scoring matrix.");
 }
 
 const StandardMatrix::Parameters& StandardMatrix::ungapped_constants() const {

@@ -32,12 +32,6 @@ using std::pair;
 using Util::String::TokenizerBase;
 using Util::String::CharTokenizer;
 
-#ifdef _WIN32
-static const char* DEFAULT_LINE_DELIMITER = "\r\n";
-#else
-static const char* DEFAULT_LINE_DELIMITER = "\n";
-#endif
-
 namespace Util { namespace Tsv {
 
 static Flags get_flags(Flags flags) {

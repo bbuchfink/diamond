@@ -144,7 +144,7 @@ int FileStack::unlock() {
 #endif
 }
 
-int64_t FileStack::seek(int64_t offset, int mode) {
+int64_t FileStack::seek(size_t offset, int mode) {
 #ifdef WIN32
     const DWORD off = SetFilePointer(hFile, offset, NULL, mode == SEEK_END ? FILE_END : FILE_BEGIN);
     if (off == INVALID_SET_FILE_POINTER)
@@ -155,18 +155,21 @@ int64_t FileStack::seek(int64_t offset, int mode) {
 #endif
 }
 
-int64_t FileStack::read(char* buf, int64_t size) {
+size_t FileStack::read(char* buf, size_t size) {
 #ifdef WIN32
     DWORD n;
     if (!ReadFile(hFile, buf, size, &n, NULL))
-        throw std::runtime_error("Error reading file " + file_name_);
+        throw runtime_error("Error reading file " + file_name_);
     return n;
 #else
-    return ::read(fd, buf, size);
+    ssize_t i = ::read(fd, buf, size);
+    if (i < 0)
+        throw runtime_error("Error reading file " + file_name_);
+    return (size_t)i;
 #endif
 }
 
-int64_t FileStack::write(const char* buf, int64_t size) {
+int64_t FileStack::write(const char* buf, size_t size) {
 #ifdef WIN32
     DWORD n;
     if (!WriteFile(hFile, buf, size, &n, NULL))
@@ -177,7 +180,7 @@ int64_t FileStack::write(const char* buf, int64_t size) {
 #endif
 }
 
-int FileStack::truncate(int64_t size) {
+int FileStack::truncate(size_t size) {
 #ifdef WIN32
     seek(size, SEEK_SET);
     if (!SetEndOfFile(hFile))

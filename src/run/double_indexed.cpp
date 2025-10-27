@@ -1,25 +1,38 @@
 /****
-DIAMOND protein aligner
-Copyright (C) 2013-2023 Max Planck Society for the Advancement of Science e.V.
-                        Benjamin Buchfink
-                        Eberhard Karls Universitaet Tuebingen
+Copyright © 2013-2025 Benjamin J. Buchfink <buchfink@gmail.com>
 
-Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
+Redistribution and use in source and binary forms, with or without modification,
+are permitted provided that the following conditions are met:
 
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
+1. Redistributions of source code must retain the above copyright notice, this
+list of conditions and the following disclaimer.
 
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
+2. Redistributions in binary form must reproduce the above copyright notice,
+this list of conditions and the following disclaimer in the documentation and/or
+other materials provided with the distribution.
 
-You should have received a copy of the GNU General Public License
-along with this program.  If not, see <http://www.gnu.org/licenses/>.
+3. Neither the name of the copyright holder nor the names of its contributors
+may be used to endorse or promote products derived from this software without
+specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
+INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
+EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ****/
+// SPDX-License-Identifier: BSD-3-Clause
 
+#ifdef _WIN32
+#define NOMINMAX
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#endif
 #include <string>
 #include <iostream>
 #include <memory>
@@ -50,6 +63,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../dna/dna_index.h"
 #endif
 
+using std::runtime_error;
 using std::unique_ptr;
 using std::endl;
 using std::list;
@@ -146,7 +160,7 @@ static void run_ref_chunk(SequenceFile &db_file,
 
 	timer.go("Initializing temporary storage");
 	if (config.global_ranking_targets)
-		;// cfg.global_ranking_buffer.reset(new Config::RankingBuffer());
+		cfg.global_ranking_buffer.reset(new Config::RankingBuffer());
 	else
 		cfg.seed_hit_buf.reset(new Search::HitBuffer(query_seqs.partition(cfg.query_bins, true, true),
 			config.tmpdir,
@@ -786,7 +800,9 @@ void run(const shared_ptr<SequenceFile>& db, const shared_ptr<SequenceFile>& que
 	else {
 		timer.go("Opening the database");
 		cfg.db.reset(SequenceFile::auto_create({ config.database }, flags, metadata_flags, value_traits));
+		timer.finish();
 	}
+	cfg.db->print_info();
 	if (config.multiprocessing && cfg.db->type() == SequenceFile::Type::FASTA)
 		throw std::runtime_error("Multiprocessing mode is not compatible with FASTA databases.");
 	cfg.db_seqs = cfg.db->sequence_count();
@@ -810,13 +826,15 @@ void run(const shared_ptr<SequenceFile>& db, const shared_ptr<SequenceFile>& que
 		if (taxon_filter) {
 			timer.go("Building taxonomy filter");
 			cfg.db_filter.reset(cfg.db->filter_by_taxonomy(config.taxonlist, config.taxon_exclude));
+			timer.finish();
+			message_stream << "Filtered database contains " << cfg.db_filter->one_count() << " sequences." << endl;
 		}
 		timer.finish();
 	}
 
 	if (!config.seqidlist.empty()) {
 		if (taxon_filter)
-			throw std::runtime_error("--seqidlist is not compatible with taxonomy filtering.");
+			throw runtime_error("--seqidlist is not compatible with taxonomy filtering.");
 		message_stream << "Filtering database by accession list: " << config.seqidlist << endl;
 		timer.go("Building database filter");
 		cfg.db_filter.reset(cfg.db->filter_by_accession(config.seqidlist));

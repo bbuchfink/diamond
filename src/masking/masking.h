@@ -48,7 +48,7 @@ struct Masking
 		return *instance;
 	}
 	static std::unique_ptr<Masking> instance;
-	static const int8_t bit_mask;
+	static constexpr int8_t bit_mask = (int8_t)128;
 private:
 	enum { size = 64 };
 	float likelihoodRatioMatrixf_[size][size], *probMatrixPointersf_[size];

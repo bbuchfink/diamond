@@ -285,35 +285,15 @@ Blast_CompositionMatrixAdj(int** matrix,
         background_freqs);
 
     array<MatrixFloat, TRUE_AA * TRUE_AA> mat_final;
-    //TaskTimer timer;
-    /*status =
-        Blast_OptimizeTargetFrequencies(mat_final.data(),
-            COMPO_NUM_TRUE_AA,
-            &iteration_count,
-            joint_probs,
-            row_probs, col_probs,
-            (desired_re > 0.0),
-            desired_re,
-            config.cbs_err_tolerance,
-            config.cbs_it_limit);*/
-
-    status = New_OptimizeTargetFrequencies(mat_final.data(),
+    status = Blast_OptimizeTargetFrequencies(mat_final.data(),
 	COMPO_NUM_TRUE_AA,
         &iteration_count,
         joint_probs,
         row_probs, col_probs,
+		(desired_re > 0.0),
         desired_re,
         config.cbs_err_tolerance,
         config.cbs_it_limit);
-
-    /*status = Stats::OptimizeTargetFrequencies(mat_final.data(),
-        joint_probs,
-        row_probs, col_probs,
-        desired_re,
-        config.cbs_err_tolerance,
-        config.cbs_it_limit);*/
-
-	//stats.inc(Statistics::TIME_MATRIX_ADJUST, timer.microseconds());
 
     if (status != 0)            /* Did not compute the target freqs */
         return status;

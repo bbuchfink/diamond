@@ -26,6 +26,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <string>
 #include "value.h"
 #include "sequence.h"
+#include "util/memory_resource.h"
 
 struct Reduction
 {
@@ -88,13 +89,14 @@ struct Reduction
 		get_reduction() = r;
 	}
 
-	static void reduce_seq(const Sequence &seq, std::vector<Letter> &dst)
+	static std::pmr::vector<Letter> reduce_seq(const Sequence &seq, std::pmr::monotonic_buffer_resource& pool)
 	{
-		dst.clear();
-		dst.resize(seq.length());
+		std::pmr::vector<Letter> dst(&pool);
+		dst.reserve(seq.length());
 		const Reduction& reduction_instance = get_reduction();
 		for (Loc i = 0; i < seq.length(); ++i)
-			dst[i] = reduction_instance(seq[i]);
+			dst.push_back(reduction_instance(seq[i]));
+		return dst;
 	}
 
 	double freq(unsigned bucket) const {

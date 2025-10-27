@@ -22,11 +22,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <set>
 #include <stdexcept>
 #include "taxonomy.h"
-#include "util/io/text_input_file.h"
+#include "data/blastdb/taxdmp.h"
 #include "basic/config.h"
 #include "util/log_stream.h"
-#include "util/string/string.h"
-#include "util/string/tokenizer.h"
 #include "taxonomy_nodes.h"
 
 using std::string;
@@ -34,6 +32,7 @@ using std::map;
 using std::endl;
 using std::set;
 using std::vector;
+using std::runtime_error;
 
 const char* Rank::names[] = {
 	"no rank", "superkingdom", "cellular root", "acellular root", "domain", "realm", "kingdom", "subkingdom", "superphylum", "phylum", "subphylum", "superclass", "class", "subclass", "infraclass", "cohort", "subcohort", "superorder",
@@ -41,40 +40,31 @@ const char* Rank::names[] = {
 	"species subgroup", "species", "subspecies", "varietas", "forma", "strain", "biotype", "clade", "forma specialis", "genotype", "isolate", "morph", "pathogroup", "serogroup", "serotype", "subvariety"
 };
 
-map<std::string, Rank> Rank::init_map() {
+map<string, Rank> Rank::init_map() {
 	map<string, Rank> r;
 	for (size_t i = 0; i < count; ++i)
 		r[names[i]] = Rank(i);
 	return r;
 }
 
-const map<std::string, Rank> Rank::rank_map = Rank::init_map();
+const map<string, Rank> Rank::rank_map = Rank::init_map();
 
 Rank::Rank(const char *s) {
 	if (rank_map.find(s) == rank_map.end())
-		throw std::runtime_error("Invalid taxonomic rank: " + string(s));
+		throw runtime_error("Invalid taxonomic rank: " + string(s));
 	r = rank_map.find(s)->second.r;
 }
 
 Taxonomy taxonomy;
 
 size_t Taxonomy::load_names() {
-	TextInputFile in(config.namesdmp);
-	string name, type;
-	int64_t id;
-	size_t n = 0;
-	while (in.getline(), !in.eof()) {
-		if (in.line.empty())
-			continue;
-		Util::String::Tokenizer<Util::String::StringDelimiter>(in.line, Util::String::StringDelimiter("\t|\t")) >> id >> name >> Util::String::Skip() >> type;
-		type = rstrip(type, "\t|");
-		if (type == "scientific name") {
-			name_.resize(id + 1);
-			name_[id] = name;
-			++n;
-		}
-	}
-	in.close();
+	size_t n;
+	auto f = [&](int64_t id, const string& name) {
+		name_.resize(id + 1);
+		name_[id] = name;
+		++n;
+		};
+	read_names_dmp(config.namesdmp, f);
 	return n;
 }
 

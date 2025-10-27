@@ -1,14 +1,46 @@
+/****
+Copyright © 2013-2025 Benjamin J. Buchfink <buchfink@gmail.com>
+
+Redistribution and use in source and binary forms, with or without modification,
+are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this
+list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice,
+this list of conditions and the following disclaimer in the documentation and/or
+other materials provided with the distribution.
+
+3. Neither the name of the copyright holder nor the names of its contributors
+may be used to endorse or promote products derived from this software without
+specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
+INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
+EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+****/
+// SPDX-License-Identifier: BSD-3-Clause
+
 #include <stdexcept>
 #include <iostream>
+#include <string>
+#include <vector>
 #include "system.h"
 #include "../string/string.h"
 #include "../log_stream.h"
-
 #ifdef _MSC_VER
   #define WIN32_LEAN_AND_MEAN
   #include <windows.h>
 #else
   #include <unistd.h>
+  #include <limits.h>
   #include <sys/stat.h>
   #include <sys/mman.h>
   #include <fcntl.h>
@@ -26,12 +58,13 @@ using std::cout;
 using std::cerr;
 using std::endl;
 using std::runtime_error;
+using std::tuple;
 
 string executable_path() {
 	char buf[4096];
 #ifdef _MSC_VER
 	if (GetModuleFileNameA(NULL, buf, sizeof(buf)) == 0)
-		throw std::runtime_error("Error executing GetModuleFileNameA.");
+		throw runtime_error("Error executing GetModuleFileNameA.");
 	return string(buf);
 #else
 	if (readlink("/proc/self/exe", buf, sizeof(buf)) < 0)
@@ -158,7 +191,7 @@ double total_ram() {
 #endif
 }
 
-std::tuple<char*, size_t, int> mmap_file(const char* filename) {
+tuple<char*, size_t, int> mmap_file(const char* filename) {
 #ifdef WIN32
 	throw std::runtime_error("Memory mapping not supported on Windows.");
 #else
@@ -227,5 +260,157 @@ void rmdir(const std::string& path)
 	RemoveDirectoryW(wpath.c_str());
 #else
 	::rmdir(path.c_str());
+#endif
+}
+
+static bool is_sep_char(char c) {
+#ifdef _WIN32
+	return c == '\\' || c == '/';
+#else
+	return c == '/';
+#endif
+}
+
+static bool ends_with_sep(const std::string& s) {
+	return !s.empty() && is_sep_char(s.back());
+}
+
+static std::string last_component(const std::string& p) {
+	if (p.empty()) return std::string();
+	std::size_t end = p.size();
+	while (end > 0 && is_sep_char(p[end - 1])) --end;
+	std::size_t start = end;
+	while (start > 0 && !is_sep_char(p[start - 1])) --start;
+	return p.substr(start, end - start);
+}
+
+#ifndef _WIN32
+
+static bool is_abs_posix(const std::string& p) {
+	return !p.empty() && p[0] == '/';
+}
+
+static std::string get_cwd_posix() {
+	std::vector<char> buf(256);
+	for (;;) {
+		if (getcwd(buf.data(), buf.size())) return std::string(buf.data());
+		buf.resize(buf.size() * 2);
+	}
+}
+
+static std::string lex_normalize_posix(const std::string& path) {
+	const bool abs = is_abs_posix(path);
+	std::vector<std::string> stack;
+	std::size_t i = 0, n = path.size();
+
+	while (i < n) {
+		while (i < n && path[i] == '/') ++i;
+		std::size_t start = i;
+		while (i < n && path[i] != '/') ++i;
+		std::string token = path.substr(start, i - start);
+		if (token.empty() || token == ".") continue;
+		if (token == "..") {
+			if (!stack.empty()) stack.pop_back();
+			else if (!abs) stack.push_back("..");
+		}
+		else {
+			stack.push_back(token);
+		}
+	}
+
+	std::string out;
+	if (abs) out.push_back('/');
+	for (std::size_t k = 0; k < stack.size(); ++k) {
+		if (k) out.push_back('/');
+		out += stack[k];
+	}
+	if (out.empty()) return abs ? "/" : ".";
+	return out;
+}
+
+static std::string parent_dir_posix(const std::string& abs_path) {
+	if (abs_path == "/") return "/";
+	std::size_t pos = abs_path.find_last_of('/');
+	if (pos == std::string::npos) return ".";
+	if (pos == 0) return "/";
+	return abs_path.substr(0, pos);
+}
+
+#else
+
+static std::wstring widen_utf8(const std::string& s) {
+	if (s.empty()) return std::wstring();
+	int wlen = MultiByteToWideChar(CP_UTF8, 0, s.data(), (int)s.size(), nullptr, 0);
+	std::wstring w(wlen, L'\0');
+	MultiByteToWideChar(CP_UTF8, 0, s.data(), (int)s.size(), &w[0], wlen);
+	return w;
+}
+
+static std::string narrow_utf8(const std::wstring& w) {
+	if (w.empty()) return std::string();
+	int len = WideCharToMultiByte(CP_UTF8, 0, w.data(), (int)w.size(), nullptr, 0, nullptr, nullptr);
+	std::string s(len, '\0');
+	WideCharToMultiByte(CP_UTF8, 0, w.data(), (int)w.size(), &s[0], len, nullptr, nullptr);
+	return s;
+}
+
+#endif
+
+std::string containing_directory_absolute(const std::string& file_path) {
+	const std::string fp = file_path.empty() ? "." : file_path;
+	const std::string base = last_component(fp);
+	const bool treat_as_dir = ends_with_sep(fp) || base == "." || base == "..";
+
+#ifndef _WIN32
+	std::string joined;
+	if (is_abs_posix(fp)) {
+		joined = fp;
+	}
+	else {
+		std::string cwd = get_cwd_posix();
+		if (cwd.empty()) return std::string();
+		joined = cwd + "/" + fp;
+	}
+
+	std::string abs_norm = lex_normalize_posix(joined);
+	if (treat_as_dir) return abs_norm;
+	return parent_dir_posix(abs_norm);
+#else
+	std::wstring winput = widen_utf8(fp);
+	if (winput.empty()) winput = L".";
+
+	DWORD need = GetFullPathNameW(winput.c_str(), 0, nullptr, nullptr);
+	if (need == 0) return std::string();
+
+	std::vector<wchar_t> buf(need);
+	DWORD written = GetFullPathNameW(winput.c_str(), (DWORD)buf.size(), buf.data(), nullptr);
+	if (written == 0) return std::string();
+
+	std::wstring full(buf.data(), written);
+
+	for (auto& ch : full) if (ch == L'/') ch = L'\\';
+
+	if (treat_as_dir) {
+		return narrow_utf8(full);
+	}
+
+	std::size_t pos = full.find_last_of(L"\\/");
+	if (pos == std::wstring::npos) return narrow_utf8(full);
+
+	if (pos == 2 && full.size() >= 3 && full[1] == L':') ++pos;
+	std::wstring parent = full.substr(0, pos);
+	return narrow_utf8(parent);
+#endif
+}
+
+bool stdout_is_a_tty() {
+#if defined(_WIN32)
+	HANDLE h = GetStdHandle(STD_OUTPUT_HANDLE);
+	if (h == nullptr || h == INVALID_HANDLE_VALUE) return false;
+	if (GetFileType(h) != FILE_TYPE_CHAR) return false;
+	DWORD mode;
+	return GetConsoleMode(h, &mode) != 0;
+#else
+	return ::isatty(STDOUT_FILENO) == 1;
 #endif
 }

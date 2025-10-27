@@ -203,4 +203,8 @@ std::string format(double number) {
 	return result;
 }
 
+std::string format(int64_t number) {
+	return format((double)number);
+}
+
 }}

@@ -23,6 +23,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 namespace Util { namespace tantan {
 
-Mask::Ranges mask(Letter* seq, int len, const float** likelihood_ratio_matrix, float p_repeat, float p_repeat_end, float repeat_decay, float p_mask, const Letter* maskTable);
+Mask::Ranges mask(Letter* seq, int len, const float** likelihood_ratio_matrix, float p_repeat, float p_repeat_end, float repeat_decay, float p_mask, int mask_mode);
 
 }}

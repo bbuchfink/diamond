@@ -1,6 +1,41 @@
+/****
+Copyright © 2013-2025 Benjamin J. Buchfink <buchfink@gmail.com>
+
+Redistribution and use in source and binary forms, with or without modification,
+are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this
+list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice,
+this list of conditions and the following disclaimer in the documentation and/or
+other materials provided with the distribution.
+
+3. Neither the name of the copyright holder nor the names of its contributors
+may be used to endorse or promote products derived from this software without
+specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
+INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
+EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+****/
+// SPDX-License-Identifier: BSD-3-Clause
+
+#ifndef WIN32
+#include <sys/mman.h>
+#include <fcntl.h>
+#endif
 #include "hit_buffer.h"
-#include "util/log_stream.h"
 #include "basic/config.h"
+#include "util/io/input_file.h"
+#include "util/log_stream.h"
 
 using std::vector;
 using std::string;
@@ -8,92 +43,10 @@ using std::thread;
 using std::copy;
 using std::runtime_error;
 using std::mutex;
+using std::endl;
+using std::atomic_size_t;
 
 namespace Search {
-
-static int64_t load_hits(MMap& f, bool long_subject_offsets, int threads, Hit* out) {
-	mutex mtx;
-	const uint8_t* input_ptr = f.data(), * input_end = input_ptr + f.size();
-	std::atomic_int64_t next(0);
-	//SingleProducerQueue<std::vector<uint8_t>> queue(256, threads);
-	auto worker = [&]() {
-		for (;;) {
-			uint32_t buf_size;
-			const uint8_t* ptr;
-			{
-				std::lock_guard<mutex> lock(mtx);
-				if(input_ptr >= input_end)
-					return;
-				copy(input_ptr, input_ptr + sizeof(buf_size), (char*)&buf_size);
-				ptr = input_ptr + sizeof(buf_size);
-				input_ptr += sizeof(buf_size) + buf_size;
-			}
-			//vector<uint8_t> buf;
-			//buf.reserve(buf_size);
-			//copy(buf_ptr, buf_ptr + buf_size, std::back_inserter(buf));
-			std::vector<Hit> dst;
-			//const uint8_t* ptr = buf.data(), * end = ptr + buf.size();
-			const uint8_t* end = ptr + buf_size;
-			uint16_t x;
-			std::copy(ptr, ptr + sizeof(x), (char*)&x);
-			ptr += sizeof(x);
-			assert(x == 0);
-			for (;;) {
-				if (ptr >= end)
-					break;
-				uint32_t query_id, seed_offset;
-				std::copy(ptr, ptr + sizeof(query_id), (char*)&query_id);
-				ptr += sizeof(query_id);
-				std::copy(ptr, ptr + sizeof(seed_offset), (char*)&seed_offset);
-				ptr += sizeof(seed_offset);
-				PackedLoc subject_loc;
-				uint32_t x;
-				for (;;) {
-					if (ptr >= end)
-						break;
-					uint16_t score;
-					std::copy(ptr, ptr + sizeof(score), (char*)&score);
-					ptr += sizeof(score);
-					if (score == 0)
-						break;
-					if (long_subject_offsets) {
-						std::copy(ptr, ptr + sizeof(subject_loc), (char*)&subject_loc);
-						ptr += sizeof(subject_loc);
-					}
-					else {
-						std::copy(ptr, ptr + sizeof(uint32_t), (char*)&x);
-						ptr += sizeof(uint32_t);
-						subject_loc = x;
-					}
-#ifdef HIT_KEEP_TARGET_ID
-					uint32_t target_block_id;
-					std::copy(ptr, ptr + sizeof(target_block_id), (char*)&target_block_id);
-					ptr += sizeof(target_block_id);
-					dst.emplace_back(query_id, subject_loc, (Loc)seed_offset, score, target_block_id);
-#else
-					dst.emplace_back(query_id, subject_loc, (Loc)seed_offset, score);
-#endif
-				}
-			}
-			assert(!dst.empty());
-			std::copy(dst.begin(), dst.end(), out + next.fetch_add(dst.size(), std::memory_order_relaxed));
-		}
-		};
-	vector<thread> workers;
-	for (int i = 0; i < threads; ++i)
-		workers.emplace_back(worker);
-	//int64_t max_queue_size = 0;
-	//while (ptr < end) {
-	//	queue.push(std::move(buf));
-	//}
-	//queue.close();
-	for (auto& t : workers) {
-		if (t.joinable())
-			t.join();
-	}
-	//assert(queue.empty());
-	return next;
-}
 
 HitBuffer::HitBuffer(const vector<Key>& key_partition, const string& tmpdir, bool long_subject_offsets, int query_contexts) :
 	key_partition_(key_partition),
@@ -102,25 +55,24 @@ HitBuffer::HitBuffer(const vector<Key>& key_partition, const string& tmpdir, boo
 	bins_processed_(0),
 	total_disk_size_(0),
 	bin_mutex_(key_partition.size()),
+	mmap_(false),
 	load_worker_(nullptr)
 {
 	log_stream << "Async_buffer() " << key_partition.back() << std::endl;
-	count_ = new std::atomic_size_t[key_partition.size()];
-	MMap::Options options;
-	options.temp_dir_override = tmpdir;
+	count_ = new atomic_size_t[key_partition.size()];
 	for (size_t i = 0; i < key_partition.size(); ++i) {
 		if (config.trace_pt_membuf) {
 			hit_buf_.emplace_back();
-			hit_buf_.back().reserve(1ll * 1024ll * 1024ll * 1024ll / sizeof(Hit));
+			hit_buf_.back().reserve(GIGABYTES / sizeof(Hit));
 		}
 		else
-			tmp_file_.emplace_back(options);
-		count_[i] = (size_t)0;
+			tmp_file_.emplace_back(new TempFile());
+		count_[i].store(0, std::memory_order_relaxed);
 	}
 }
 
-void HitBuffer::load(int64_t max_size) {
-	max_size = std::max(max_size, (int64_t)1);
+void HitBuffer::load(size_t max_size) {
+	max_size = std::max(max_size, (size_t)1);
 	auto worker = [this](int end) {
 		Hit* out = data_next_;
 		for (; bins_processed_ < end; ++bins_processed_) {
@@ -132,19 +84,21 @@ void HitBuffer::load(int64_t max_size) {
 		data_next_ = nullptr;
 		return;
 	}
-	int64_t size = count_[bins_processed_], current_size;
+	size_t size = count_[bins_processed_], current_size;
 	int end = bins_processed_ + 1;
 	if (!config.trace_pt_membuf) {
-		int64_t disk_size = tmp_file_[bins_processed_].size();
-		while (end < bins() && (size + (current_size = count_[end])) * ENTRY_SIZE < max_size && (end - bins_processed_ == 0)) {
+		tmp_file_[bins_processed_]->flush();
+		size_t disk_size = tmp_file_[bins_processed_]->file_size();
+		while (end < bins() && (size + (current_size = count_[end])) * sizeof(Hit) < max_size && (end - bins_processed_ == 0)) {
 			size += current_size;
-			disk_size += tmp_file_[end].size();
+			tmp_file_[end]->flush();
+			disk_size += tmp_file_[end]->file_size();
 			++end;
 		}
-		log_stream << "Async_buffer.load() " << size << "(" << (double)size * sizeof(Hit) / (1 << 30) << " GB, " << (double)disk_size / (1 << 30) << " GB on disk)" << std::endl;
+		log_stream << "Async_buffer.load() " << size << " (" << (double)size * sizeof(Hit) / (1 << 30) << " GB, " << (double)disk_size / (1 << 30) << " GB on disk)" << endl;
 		total_disk_size_ += disk_size;
 		data_size_next_ = size;
-		load_worker_ = new std::thread(worker, end);
+		load_worker_ = new thread(worker, end);
 	}
 	input_range_next_.first = begin(bins_processed_);
 	input_range_next_.second = this->end(end - 1);	
@@ -155,16 +109,60 @@ void HitBuffer::load_bin(Hit* out, int bin)
 	if (!config.trace_pt_membuf) {
 #ifndef _MSC_VER
 		if (bin < bins() - 1)
-			posix_madvise(tmp_file_[bin + 1].data(), tmp_file_[bin + 1].size(), POSIX_MADV_SEQUENTIAL | POSIX_MADV_WILLNEED);
+			posix_fadvise(fileno(tmp_file_[bin + 1]->file()), 0, 0, POSIX_FADV_SEQUENTIAL | POSIX_FADV_WILLNEED);
 #endif
+#ifdef WITH_ZSTD
+		const Compressor c = Compressor::ZSTD;
+#else
+		const Compressor c = Compressor::ZLIB;
+#endif
+		InputFile f(*tmp_file_[bin], 0, c);
 		if (count_[bin] > 0) {
-			//mprotect(out, )
-			const size_t n = load_hits(tmp_file_[bin], long_subject_offsets_, 8, out);
+			size_t n = f.read(out, count_[bin]);
 			if (n != count_[bin])
 				throw runtime_error("Mismatching hit count / possibly corrupted temporary file");
 		}
-		tmp_file_[bin].close();
+		f.close_and_delete();
+		delete tmp_file_[bin];
 	}
+}
+
+void HitBuffer::alloc_buffer() {
+	if (config.trace_pt_membuf)
+		return;
+	int64_t max_size = 0;
+	for (int i = 0; i < bins(); ++i)
+		max_size = std::max(max_size, bin_size(i));
+	alloc_size_ = max_size;
+	if (max_size == 0) {
+		data_next_ = nullptr;
+		return;
+	}
+#ifdef _MSC_VER
+	data_next_ = new Hit[max_size];
+#else
+	data_next_ = (Hit*)mmap(nullptr, max_size * sizeof(Hit), PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_HUGETLB, -1, 0);
+	if (data_next_ == MAP_FAILED) {
+		data_next_ = new Hit[max_size];
+		//throw runtime_error(string("Failed to allocate memory for hit buffer: ") + strerror(errno));
+	}
+	else
+		mmap_ = true;
+#endif
+}
+
+void HitBuffer::free_buffer() {
+	if (!config.trace_pt_membuf) {
+#ifdef _MSC_VER
+		delete[] data_next_;
+#else
+		if (mmap_)
+			munmap(data_next_, alloc_size_ * sizeof(Search::Hit));
+		else
+			delete[] data_next_;
+#endif
+	}
+
 }
 
 }

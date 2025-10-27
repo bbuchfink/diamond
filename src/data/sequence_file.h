@@ -1,22 +1,32 @@
 /****
-DIAMOND protein aligner
-Copyright (C) 2021 Max Planck Society for the Advancement of Science e.V.
+Copyright © 2013-2025 Benjamin J. Buchfink <buchfink@gmail.com>
 
-Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
+Redistribution and use in source and binary forms, with or without modification,
+are permitted provided that the following conditions are met:
 
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
+1. Redistributions of source code must retain the above copyright notice, this
+list of conditions and the following disclaimer.
 
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
+2. Redistributions in binary form must reproduce the above copyright notice,
+this list of conditions and the following disclaimer in the documentation and/or
+other materials provided with the distribution.
 
-You should have received a copy of the GNU General Public License
-along with this program.  If not, see <http://www.gnu.org/licenses/>.
+3. Neither the name of the copyright holder nor the names of its contributors
+may be used to endorse or promote products derived from this software without
+specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
+INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
+EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ****/
+// SPDX-License-Identifier: BSD-3-Clause
 
 #pragma once
 
@@ -25,7 +35,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "util/io/input_file.h"
 #include "sequence_set.h"
 #include "util/data_structures/bit_vector.h"
-#include "taxonomy_nodes.h"
 #include "util/enum.h"
 #include "block/block.h"
 #include "util/tsv/tsv.h"
@@ -48,6 +57,8 @@ struct OperationNotSupported : public std::exception {
 };
 
 struct FastaFile;
+
+constexpr int MAX_LINEAGE = 256;
 
 struct SequenceFile {
 
@@ -105,9 +116,10 @@ struct SequenceFile {
 		enum { SIZE = 16 };
 	};
 
-	SequenceFile(Type type, Alphabet alphabet, Flags flags, FormatFlags format_flags, const ValueTraits& value_traits = amino_acid_traits);
+	SequenceFile(Type type, Alphabet alphabet, Flags flags, FormatFlags format_flags, Metadata metadata, const ValueTraits& value_traits = amino_acid_traits);
 
 	virtual int64_t file_count() const = 0;
+	virtual void print_info() const;
 	virtual void init_seqinfo_access() = 0;
 	virtual void init_seq_access() = 0;
 	virtual void seek_chunk(const Chunk& chunk) = 0;
@@ -132,7 +144,7 @@ struct SequenceFile {
 	virtual int db_version() const = 0;
 	virtual int program_build_version() const = 0;
 	virtual bool read_seq(std::vector<Letter>& seq, std::string& id, std::vector<char>* quals = nullptr) = 0;
-	virtual Metadata metadata() const = 0;
+	Metadata metadata() const;
 	virtual std::string taxon_scientific_name(TaxId taxid) const;
 	virtual int build_version() = 0;
 	virtual void create_partition_balanced(int64_t max_letters) = 0;
@@ -142,6 +154,15 @@ struct SequenceFile {
 	virtual void close() = 0;
 	virtual BitVector* filter_by_accession(const std::string& file_name) = 0;
 	virtual std::vector<TaxId> taxids(size_t oid) const = 0;
+	virtual TaxId max_taxid() const;
+	virtual TaxId get_parent(TaxId taxid);
+	virtual int rank(TaxId taxid) const;
+	std::set<TaxId> rank_taxid(const std::vector<TaxId>& taxid, int rank);
+	TaxId rank_taxid(TaxId taxid, int rank);
+	std::vector<TaxId> lineage(TaxId taxid);
+	TaxId get_lca(TaxId t1, TaxId t2);
+	bool contained(TaxId query, const std::set<TaxId>& filter, bool include_invalid);
+	bool contained(const std::vector<TaxId>& query, const std::set<TaxId>& filter, bool all, bool include_invalid);
 	virtual const BitVector* builtin_filter() = 0;
 	virtual std::string file_name() = 0;
 	virtual void seq_data(size_t oid, std::vector<Letter>& dst) const = 0;
@@ -160,7 +181,7 @@ struct SequenceFile {
 	size_t total_blocks() const;
 	SequenceSet seqs_by_accession(const std::vector<std::string>::const_iterator begin, const std::vector<std::string>::const_iterator end) const;
 	std::vector<Letter> seq_by_accession(const std::string& acc) const;
-	BitVector* filter_by_taxonomy(const std::string& include, const std::string& exclude) const;
+	BitVector* filter_by_taxonomy(const std::string& include, const std::string& exclude);
 	void write_accession_list(const std::vector<bool>& oids, std::string& file_name);
 	template<typename It>
 	std::vector<int64_t> seq_offsets(It begin, It end);
@@ -185,9 +206,6 @@ struct SequenceFile {
 	}
 	FormatFlags format_flags() const {
 		return format_flags_;
-	}
-	const TaxonomyNodes& taxon_nodes() const {
-		return *taxon_nodes_;
 	}
 
 	static SequenceFile* auto_create(const std::vector<std::string>& path, Flags flags = Flags::NONE, Metadata metadata = Metadata(), const ValueTraits& value_traits = amino_acid_traits);
@@ -219,10 +237,12 @@ protected:
 	void build_acc_to_oid();
 	std::pair<int64_t, int64_t> read_fai_file(const std::string& file_name, int64_t seqs, int64_t letters);
 	void add_seqid_mapping(const std::string& id, OId oid);
+	void init_cache();
 
 	const Flags flags_;
 	const FormatFlags format_flags_;
 	const ValueTraits& value_traits_;
+	const Metadata metadata_;
 	std::unique_ptr<OutputFile> dict_file_;
 	DictId next_dict_id_;
 	size_t dict_alloc_size_;
@@ -231,7 +251,6 @@ protected:
 	std::vector<StringSet> dict_title_;
 	std::vector<SequenceSet> dict_seq_;
 	std::vector<std::vector<double>> dict_self_aln_score_;
-	std::unique_ptr<TaxonomyNodes> taxon_nodes_;
 	std::unordered_map<std::string, OId> acc2oid_;
 	std::unique_ptr<Util::Tsv::File> seqid_file_;
 	std::vector<Loc> seq_length_;
@@ -246,12 +265,18 @@ private:
 	std::pair<Block*, int64_t> load_twopass(const int64_t max_letters, const BitVector* filter, LoadFlags flags, const Chunk& chunk);
 	std::pair<Block*, int64_t> load_onepass(const int64_t max_letters, const BitVector* filter, LoadFlags flags);
 	void load_dict_block(InputFile* f, const size_t ref_block);
+	void set_cached(TaxId taxon_id, bool contained)
+	{
+		cached_[taxon_id] = true;
+		contained_[taxon_id] = contained;
+	}
 
 	const Type type_;
 	const Alphabet alphabet_;
 
 	std::map<size_t, std::vector<DictId>> block_to_dict_id_;
 	std::mutex dict_mtx_;
+	std::vector<bool> cached_, contained_;
 
 };
 

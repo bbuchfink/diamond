@@ -1,29 +1,37 @@
 /****
-DIAMOND protein aligner
-Copyright (C) 2013-2024 Max Planck Society for the Advancement of Science e.V.
-                        Benjamin Buchfink
-                        Eberhard Karls Universitaet Tuebingen
+Copyright © 2013-2025 Benjamin J. Buchfink <buchfink@gmail.com>
 
-Code developed by Benjamin Buchfink <buchfink@gmail.com>
+Redistribution and use in source and binary forms, with or without modification,
+are permitted provided that the following conditions are met:
 
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
+1. Redistributions of source code must retain the above copyright notice, this
+list of conditions and the following disclaimer.
 
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
+2. Redistributions in binary form must reproduce the above copyright notice,
+this list of conditions and the following disclaimer in the documentation and/or
+other materials provided with the distribution.
 
-You should have received a copy of the GNU General Public License
-along with this program.  If not, see <http://www.gnu.org/licenses/>.
+3. Neither the name of the copyright holder nor the names of its contributors
+may be used to endorse or promote products derived from this software without
+specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
+INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
+EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ****/
+// SPDX-License-Identifier: BSD-3-Clause
 
 #include <memory>
 #include <iostream>
-#include <thread>
 #include <numeric>
+#include <thread>
 #include "util/command_line_parser.h"
 #include "config.h"
 #include "util/util.h"
@@ -40,6 +48,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "basic/shape.h"
 #include "util/io/input_file.h"
 
+using std::runtime_error;
 using std::thread;
 using std::stringstream;
 using std::endl;
@@ -160,7 +169,11 @@ Compressor Config::compressor() const
 
 Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& parser)
 {
-   parser.add_command("makedb", "Build DIAMOND database from a FASTA file", makedb)
+	double query_match_distance_threshold;
+	double length_ratio_threshold;
+	double cbs_angle;
+
+	parser.add_command("makedb", "Build DIAMOND database from a FASTA file", makedb)
 		.add_command("prepdb", "", prep_db)
 		.add_command("blastp", "Align amino acid query sequences against a protein reference database", blastp)
 		.add_command("blastx", "Align DNA query sequences against a protein reference database", blastx)
@@ -190,7 +203,6 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 		.add_command("info", "", info)
 		.add_command("seed-stat", "", seed_stat)
 		.add_command("smith-waterman", "", smith_waterman)
-		.add_command("translate", "", translate)
 		.add_command("simulate-seqs", "", simulate_seqs)
 		.add_command("split", "", split)
 		.add_command("upgma", "", upgma)
@@ -203,7 +215,6 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 		.add_command("hashseqs", "", HASH_SEQS)
 		.add_command("listseeds", "", LIST_SEEDS)
 		.add_command("blastn", "Align DNA query sequences against a DNA reference database", blastn)
-		.add_command("length-sort", "", LENGTH_SORT)
 		.add_command("wc", "", WORD_COUNT)
 		.add_command("cut", "", CUT)
 		.add_command("model-seqs", "", MODEL_SEQS)
@@ -357,6 +368,7 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 \tbtop means Blast traceback operations(BTOP)\n\
 \tcigar means CIGAR string\n\
 \tstaxids means unique Subject Taxonomy ID(s), separated by a ';' (in numerical order)\n\
+\tslineages means unique Subject Lineage(s), separated by a '<>'\n\
 \tsscinames means unique Subject Scientific Name(s), separated by a ';'\n\
 \tsskingdoms means unique Subject Super Kingdom(s), separated by a ';'\n\
 \tskingdoms means unique Subject Kingdom(s), separated by a ';'\n\
@@ -429,12 +441,17 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 		("tantan-minMaskProb", 0, "minimum repeat probability for masking (default=0.9)", tantan_minMaskProb, 0.9)
 		("oid-output", 0, "Output OIDs instead of accessions (clustering)", oid_output)
 		("swipe-task-size", 0, "task size for DP parallelism (100000000)", swipe_task_size, INT64_C(100000000))
-		("anchored-swipe", 0, "Enable anchored SWIPE extension", anchored_swipe);
+		("anchored-swipe", 0, "Enable anchored SWIPE extension", anchored_swipe)
+		("query-match-distance-threshold", 0, "Matrix adjust threshold", query_match_distance_threshold, -1.0)
+		("length-ratio-threshold", 0, "Matrix adjust threshold", length_ratio_threshold, -1.0)
+		("cbs-angle", 0, "Matrix adjust threshold", cbs_angle, -1.0)
+		("linclust-banded-ext", 0, "Use banded instead of full matrix DP for linear searches", linclust_banded_ext);
 
 	auto& advanced = parser.add_group("Advanced options", { blastp, blastx, blastn, regression_test });
 	advanced.add()
 		("algo", 0, "Seed search algorithm (0=double-indexed/1=query-indexed/ctg=contiguous-seed)", algo_str)
 		("min-orf", 'l', "ignore translated sequences without an open reading frame of at least this length", run_len)
+		("min-query-len", 0, "filter query sequences shorter than this length", min_query_len)
 		("seed-cut", 0, "cutoff for seed complexity", seed_cut_)
 		("freq-masking", 0, "mask seeds based on frequency", freq_masking)
 		("freq-sd", 0, "number of standard deviations for ignoring frequent seeds", freq_sd_, 0.0)
@@ -517,10 +534,6 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 		("rank-ratio", 0, "include subjects within this ratio of last hit", rank_ratio, -1.0)
 		("lambda", 0, "lambda parameter for custom matrix", lambda)
 		("K", 0, "K parameter for custom matrix", K);
-
-	double query_match_distance_threshold;
-	double length_ratio_threshold;
-	double cbs_angle;
 
 #ifdef EXTRA
 	auto& hidden_options = parser.add_group("", {});
@@ -609,13 +622,10 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 		("family-cap", 0, "", family_cap)
 		("cbs-matrix-scale", 0, "", cbs_matrix_scale, 1)
 		("query-count", 0, "", query_count, (size_t)1)
-		("cbs-angle", 0, "", cbs_angle, -1.0)
-		("cbs-err-tolerance", 0, "", cbs_err_tolerance, 0.1)
+		("cbs-err-tolerance", 0, "", cbs_err_tolerance, 0.00000001)
 		("cbs-it-limit", 0, "", cbs_it_limit, 2000)
 		("hash_join_swap", 0, "", hash_join_swap)
 		("deque_bucket_size", 0, "", deque_bucket_size, (size_t)524288)
-		("query-match-distance-threshold", 0, "", query_match_distance_threshold, -1.0)
-		("length-ratio-threshold", 0, "", length_ratio_threshold, -1.0)
 		("max-swipe-dp", 0, "", max_swipe_dp, INT64_C(1000000))
 		("no-reextend", 0, "", no_reextend)
 		("no-reorder", 0, "", no_reorder)
@@ -689,7 +699,8 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 
 	if (verbosity >= 1 || command == regression_test) {
 		ostream& header_out = command == Config::help ? cout : cerr;
-		header_out << Const::program_name << " v" << Const::version_string << "." << (unsigned)Const::build_version << " (C) Max Planck Society for the Advancement of Science, Benjamin Buchfink, University of Tuebingen" << endl;
+		header_out << Const::program_name << " v" << Const::version_string << "." << (unsigned)Const::build_version
+			<< " (C) Max Planck Society for the Advancement of Science, Benjamin J. Buchfink, University of Tuebingen" << endl;
 		header_out << "Documentation, support and updates available at http://www.diamondsearch.org" << endl;
 		header_out << "Please cite: http://dx.doi.org/10.1038/s41592-021-01101-x Nature Methods (2021)" << endl << endl;
 	}
@@ -704,10 +715,10 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
     }
 
 	if (toppercent.present() && max_target_seqs_.present())
-		throw std::runtime_error("--top and -k/--max-target-seqs are mutually exclusive.");
+		throw runtime_error("--top and -k/--max-target-seqs are mutually exclusive.");
 
 	if (command == blastx && no_self_hits)
-		throw std::runtime_error("--no-self-hits option is not supported in blastx mode.");
+		throw runtime_error("--no-self-hits option is not supported in blastx mode.");
 
 	if (long_reads) {
 		query_range_culling = true;
@@ -718,14 +729,14 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 	}
 
 	if (global_ranking_targets > 0 && (query_range_culling || taxon_k || multiprocessing || mp_init || mp_recover || comp_based_stats >= 2 || frame_shift > 0))
-		throw std::runtime_error("Global ranking is not supported in this mode.");
+		throw runtime_error("Global ranking is not supported in this mode.");
 
 #ifdef EXTRA
 	if (comp_based_stats >= Stats::CBS::COUNT)
 #else
-	if (comp_based_stats >= 5)
+	if (comp_based_stats >= 6)
 #endif
-		throw std::runtime_error("Invalid value for --comp-based-stats. Permitted values: 0, 1, 2, 3, 4.");
+		throw std::runtime_error("Invalid value for --comp-based-stats. Permitted values: 0, 1, 2, 3, 4, 5.");
 
 	Stats::comp_based_stats = Stats::CBS(comp_based_stats, query_match_distance_threshold, length_ratio_threshold, cbs_angle);
 
@@ -746,17 +757,17 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 		case Config::blastx:
         case Config::blastn:
 			if (database == "")
-				throw std::runtime_error("Missing parameter: database file (--db/-d)");
+				throw runtime_error("Missing parameter: database file (--db/-d)");
 			if (daa_file.length() > 0) {
 				if (output_file.length() > 0)
-					throw std::runtime_error("Options --daa and --out cannot be used together.");
+					throw runtime_error("Options --daa and --out cannot be used together.");
 				if (output_format.size() > 0 && output_format[0] != "daa")
-					throw std::runtime_error("Invalid parameter: --daa/-a. Output file is specified with the --out/-o parameter.");
+					throw runtime_error("Invalid parameter: --daa/-a. Output file is specified with the --out/-o parameter.");
 				output_file = daa_file;
 			}
 			if (daa_file.length() > 0 || (output_format.size() > 0 && (output_format[0] == "daa" || output_format[0] == "100"))) {
 				if (!compression.empty())
-					throw std::runtime_error("Compression is not supported for DAA format.");
+					throw runtime_error("Compression is not supported for DAA format.");
 				if (!no_auto_append)
 					auto_append_extension(output_file, ".daa");
 			}
@@ -768,7 +779,7 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 		switch (command) {
 		case Config::dbinfo:
 			if (database == "")
-				throw std::runtime_error("Missing parameter: database file (--db/-d)");
+				throw runtime_error("Missing parameter: database file (--db/-d)");
 		}
 	}
 
@@ -847,9 +858,9 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 	case Config::MODEL_SEQS:
 	case Config::MAKE_SEED_TABLE:
 		if (frame_shift != 0 && command == Config::blastp)
-			throw std::runtime_error("Frameshift alignments are only supported for translated searches.");
+			throw runtime_error("Frameshift alignments are only supported for translated searches.");
 		if (query_range_culling && frame_shift == 0)
-			throw std::runtime_error("Query range culling is only supported in frameshift alignment mode (option -F).");
+			throw runtime_error("Query range culling is only supported in frameshift alignment mode (option -F).");
 		if (matrix_file == "") {
 			score_matrix = ScoreMatrix(to_upper_case(matrix), gap_open, gap_extend, frame_shift, stop_match_score, 0, cbs_matrix_scale);
 			//blosum80 = ScoreMatrix("BLOSUM80", 11, 1, frame_shift, stop_match_score, 0, cbs_matrix_scale);
@@ -905,7 +916,7 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 		input_value_traits = nucleotide_traits;
 
 	if (query_strands != "both" && query_strands != "minus" && query_strands != "plus")
-		throw std::runtime_error("Invalid value for parameter --strand");
+		throw runtime_error("Invalid value for parameter --strand");
 
 	if (unfmt == "fastq" || alfmt == "fastq")
 		store_query_quality = true;
@@ -914,23 +925,23 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 
 	if (command == blastx) {
 		if (query_file.size() > 2)
-			throw std::runtime_error("A maximum of 2 query files is supported in blastx mode.");
+			throw runtime_error("A maximum of 2 query files is supported in blastx mode.");
 	}
 	else if (query_file.size() > 1)
-		throw std::runtime_error("--query/-q has more than one argument.");
+		throw runtime_error("--query/-q has more than one argument.");
 
 	if (target_indexed && lowmem_ != 1)
-		throw std::runtime_error("--target-indexed requires -c1.");
+		throw runtime_error("--target-indexed requires -c1.");
 
 	if (swipe_all) {
 		algo = Algo::DOUBLE_INDEXED;
 	}
 
 	if (query_range_culling && taxon_k != 0)
-		throw std::runtime_error("--taxon-k is not supported for --range-culling mode.");
+		throw runtime_error("--taxon-k is not supported for --range-culling mode.");
 
 	if (multiprocessing && parallel_tmpdir.empty())
-		throw std::runtime_error("--multiprocessing requires setting --parallel-tmpdir");
+		throw runtime_error("--multiprocessing requires setting --parallel-tmpdir");
 	
 	if (multiprocessing) {
 		// char * env_str = std::getenv("SLURM_JOBID");
@@ -940,8 +951,7 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 		mkdir(parallel_tmpdir);
 	}
 
-	if (!memory_limit.empty())
-		trace_pt_membuf = Util::String::interpret_number(memory_limit) > 1024 * (1ll << 30);
+	trace_pt_membuf = memory_limit.empty() ? false : Util::String::interpret_number(memory_limit) > 1024 * (1ll << 30);
 
 	log_stream << "MAX_SHAPE_LEN=" << MAX_SHAPE_LEN;
 #ifdef SEQ_MASK

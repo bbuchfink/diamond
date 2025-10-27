@@ -96,15 +96,6 @@ static const int kReMatrixAdjustmentPseudocounts = 20;
 /** relative entropy of BLOSUM62 */
 static const double kFixedReBlosum62 = 0.44;
 
-static void print(const double* v, int n, const char* s) {
-    /*std::cout << s << std::endl;
-    for (int i = 0; i < n; ++i)
-        std::cout << v[i] << ' ';
-    std::cout << std::endl;*/
-}
-
-//#include <algo/blast/composition_adjustment/optimize_target_freq.h>
-
 /** bound on error for Newton's method */
 /** iteration limit for Newton's method */
 
@@ -265,7 +256,6 @@ ResidualsLinearConstraints(double rA[], int alphsize, const double x[],
         rA[i + alphsize - 1] = row_sums[i];
     }
     MultiplyByA(1.0, rA, alphsize, -1.0, x);
-    print(rA, 2 * 20 - 1, "ResidualsLinearConstraints rA");
 }
 
 
@@ -304,7 +294,6 @@ DualResiduals(double resids_x[], int alphsize, double** grads,
         }
     }
     MultiplyByAtranspose(1.0, resids_x, alphsize, 1.0, z);
-    print(resids_x, n, "DualResiduals resids_x");
 }
 
 
@@ -364,7 +353,6 @@ CalculateResiduals(double* rnorm,
     }
     *rnorm =
         sqrt(norm_resids_x * norm_resids_x + norm_resids_z * norm_resids_z);
-    print(rnorm, 1, "CalculateResiduals rnorm");
 }
 
 
@@ -539,7 +527,6 @@ FactorReNewtonSystem(ReNewtonSystem* newton_system,
     /* Then we compute J D^{-1} J^T; First fill in the part that corresponds
      * to the linear constraints */
     ScaledSymmetricProductA(W, Dinv, alphsize);
-    print(W[0], 820, "FactorReNewtonSystem W");
 
     if (constrain_rel_entropy) {
         /* Save the gradient of the relative entropy constraint. */
@@ -768,7 +755,6 @@ Blast_OptimizeTargetFrequencies(double x[],
     if (grads == NULL) goto error_return;
 
     ComputeScoresFromProbs(old_scores, alphsize, q, row_sums, col_sums);
-    print(old_scores, n, "old_scores");
 
     /* Use q as the initial value for x */
     memcpy(x, q, n * sizeof(double));
@@ -779,8 +765,6 @@ Blast_OptimizeTargetFrequencies(double x[],
         /* Compute the residuals */
         EvaluateReFunctions(values, grads, alphsize, x, q, old_scores,
             constrain_rel_entropy);
-        print(values, 2, "values");
-        print(grads[0], 2 * n, "grads");
         CalculateResiduals(&rnorm, resids_x, alphsize, resids_z, values,
             grads, row_sums, col_sums, x, z,
             constrain_rel_entropy, relative_entropy);
@@ -815,7 +799,6 @@ Blast_OptimizeTargetFrequencies(double x[],
             }
         }
     }
-    print(x, 20 * 20, "x");
     converged = 0;
     if (its <= maxits && rnorm <= tol) {
         /* Newton's iteration converged */

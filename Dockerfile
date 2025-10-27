@@ -31,7 +31,7 @@ RUN make -j $(nproc --all) && make install
 
 FROM ubuntu:latest
 
-LABEL maintainer="Benjamin Buchfink <buchfink@gmail.com>"
+LABEL maintainer="Benjamin J. Buchfink <buchfink@gmail.com>"
 
 COPY --from=build-diamond /usr/local/bin/diamond /usr/local/bin/diamond
 

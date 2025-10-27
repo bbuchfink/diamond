@@ -1,3 +1,42 @@
+[2.1.15]
+- Added support for using the `staxids`, `sscinames`, `sskingdoms`, `skingdoms`,
+  `sphylums` and `slineages` output fields with BLAST databases.
+- Added support for using the taxonomic classification output format
+  (`--outfmt/-f 102`) with BLAST databases.
+- Added support for using the `--taxonlist` and `--taxon-exclude` options
+  with BLAST databases.
+- The `--taxonlist` and `--taxon-exclude` options will by default exclude database
+  sequences with a missing parent assignment instead of producing an error.
+- The `--taxon-exclude` option will only exclude database sequences if all associated
+  taxids (or their ancestral taxids) are required to be excluded.
+- The `slineages` output field will print the (deduplicated) lineages of all taxids
+  associated with a database sequence, separated by `<>`, instead of only the first taxid.
+- The order of the `slineages` output field will be from root to leaf to be consistent
+  with the NCBI lineage declaration.
+- The `slineages` output field will print `N/A` instead of an empty string for
+  sequences with a missing taxonomic assignment.
+- The `slineages` output field will be printed as an array in the JSON output format.
+- Removed the trailing semicolon and added spaces for the `slineages` output field.
+- Added the option `--comp-based-stats 5` to enable compositional matrix adjustment
+  conditioned on sequence properties with fallback on composition-based statistics.
+- Added the options `--query-match-distance-threshold`, `--length-ratio-threshold` and
+  `--cbs-angle` to set matrix adjustment conditions.
+- Eliminated dependency on Eigen.
+- Added option `--linclust-banded-ext` to use banded instead of full-matrix Smith
+  Waterman extension in linear search and clustering rounds.
+- Compilation with BLAST database support no longer requires the zstd library.
+- Compilation with BLAST database support requires sqlite3.
+- Fixed compiler errors for GCC 4.8.5.
+- Fixed an issue that could cause increased memory use and crashes.
+- Fixed an error when using compositional matrix adjust.
+- Adjusted the convergence parameters for compositional matrix adjust, and
+  removed the performance optimization for the time being.
+- Fixed an error using the global ranking mode.
+- Added the option `--min-query-len` to filter queries by minimum length (applies
+  to the length of the input DNA sequence in blastx mode).
+- Now providing multi-platform docker images for platforms linux/amd64 and
+  linux/arm64.
+
 [2.1.14]
 - Improved the performance and sensitivity of the `cluster`, `deepclust` and
   `linclust` workflows.
@@ -17,7 +56,14 @@
   rounds and searches.
 - The `--anchored-swipe` option can be used without compiling with `-DEXTRA=ON`
   (only available on systems that support AVX2).
-- Improved the performace of compositional matrix adjustment.
+- Improved the performace of compositional matrix adjustment (only available
+  when compiled natively on systems that support AVX2).
+- Added the option `--short-query-ungapped-bitscore` to set ungapped bitscore
+  threshold for short queries.
+- Fixed two cases of static initialization order fiasco.
+- Added support for using the `--parallel-tmpdir` option for the `linclust`
+  workflow.
+- Adjusted the convergence parameters for compositional matrix adjust.
 
 [2.1.13]
 - Fixed an invalid error message for the `cluster`, `deepclust` and `linclust`
@@ -163,6 +209,8 @@
   to include taxonomic lineage in the output.
 - Added native support for the ARM NEON instruction set (contributed by
   Martin Larralde).
+- Added the `slineages` output field to the tabular format to print the
+  taxonomic lineage of the subject sequence.
 
 [2.1.8]
 - Fixed an issue that could cause reduced performance when running in

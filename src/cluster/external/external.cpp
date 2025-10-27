@@ -62,6 +62,7 @@ using std::atomic;
 using Util::String::format;
 using std::shared_ptr;
 using std::to_string;
+using std::pmr::monotonic_buffer_resource;
 
 namespace Cluster {
 
@@ -102,8 +103,8 @@ static vector<string> build_seed_table(Job& job, const VolumedFile& volumes, int
 	vector<thread> workers;
 	auto worker = [&](int thread_id) {
 		BufferArray buffers(*output_files, RADIX_COUNT);
+		monotonic_buffer_resource pool;
 		int64_t v = 0;
-		vector<Letter> buf;
 		while (v = q.fetch_add(), v < (int64_t)volumes.size()) {
 			job.log("Building seed table. Shape=%i/%i Volume=%lli/%lli Records=%s", shape + 1, ::shapes.count(), v + 1, volumes.size(), format(volumes[v].record_count).c_str());
 			unique_ptr<OutputFile> oid_out;
@@ -118,14 +119,14 @@ static vector<string> build_seed_table(Job& job, const VolumedFile& volumes, int
 					const int64_t prev_oid = atoll(id.c_str());
 					oid_out->write(&prev_oid, 1);
 				}
-				Reduction::reduce_seq(Sequence(seq), buf);
+				std::pmr::vector<Letter> buf = Reduction::reduce_seq(Sequence(seq), pool);
 				const Shape& sh = shapes[shape];
 				if (seq.size() < (size_t)sh.length_) {
 					++oid;
 					continue;
 				}
 				//SketchIterator it(buf, sh, std::min(sketch_size, std::max((int)std::round(seq.size() * SKETCH_SIZE_RATIO), 1)));
-				SketchIterator it(buf, sh, sketch_size);
+				SketchIterator it(buf.cbegin(), buf.cend(), sh, sketch_size);
 				while (it.good()) {
 					const uint64_t key = *it, radix = MurmurHash()(key) & (RADIX_COUNT - 1);
 					buffers.write(radix, SeedEntry(key, oid, (int32_t)seq.size()));

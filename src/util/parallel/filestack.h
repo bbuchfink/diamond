@@ -69,10 +69,10 @@ class FileStack {
 
         int lock();
         int unlock();
-        int64_t seek(int64_t offset, int mode);
-        int64_t read(char* buf, int64_t size);
-        int64_t write(const char* buf, int64_t size);
-        int truncate(int64_t size);
+        int64_t seek(size_t offset, int mode);
+        size_t read(char* buf, size_t size);
+        int64_t write(const char* buf, size_t size);
+        int truncate(size_t size);
 
         bool poll_query(const std::string & query, const double sleep_s=0.5, const size_t max_iter=7200);
         bool poll_size(const size_t size, const double sleep_s=0.5, const size_t max_iter=7200);

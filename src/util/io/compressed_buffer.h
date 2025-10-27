@@ -1,81 +1,70 @@
+/****
+Copyright © 2013-2025 Benjamin J. Buchfink <buchfink@gmail.com>
+
+Redistribution and use in source and binary forms, with or without modification,
+are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this
+list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice,
+this list of conditions and the following disclaimer in the documentation and/or
+other materials provided with the distribution.
+
+3. Neither the name of the copyright holder nor the names of its contributors
+may be used to endorse or promote products derived from this software without
+specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
+INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
+EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+****/
+// SPDX-License-Identifier: BSD-3-Clause
+
 #pragma once
-#ifdef WITH_ZSTD
-#include <zstd.h>
-#endif
+#include <vector>
+
+struct z_stream_s;
+struct ZSTD_CCtx_s;
 
 struct CompressedBuffer {
-	CompressedBuffer() :
-		buf_(32768),
-#ifdef WITH_ZSTD
-		stream_(ZSTD_createCStream()),
-#endif
-		size_(0)
-	{
-#ifdef WITH_ZSTD
-		if (!stream_)
-			throw std::runtime_error("ZSTD_createCStream error");
-#else
-		throw std::runtime_error("ZSTD support missing. Compile with ZSTD library (CMake option -DWITH_ZSTD=ON).");
-#endif
+
+	static constexpr size_t BUF_SIZE = 32768;
+
+	CompressedBuffer();
+	~CompressedBuffer();
+	void write(const char* ptr, size_t n);
+
+	template<typename T>
+	void write(const T& x) {
+		write(reinterpret_cast<const char*>(&x), sizeof(T));
 	}
-	~CompressedBuffer() {
-#ifdef WITH_ZSTD
-		ZSTD_freeCStream(stream_);
-#endif
-	}
-	void write(const char* ptr, int64_t n) {
-#ifdef WITH_ZSTD
-		ZSTD_inBuffer in_buf;
-		in_buf.src = ptr;
-		in_buf.size = n;
-		in_buf.pos = 0;
-		ZSTD_outBuffer out_buf;
-		do {
-			out_buf.dst = buf_.data();
-			out_buf.size = buf_.size();
-			out_buf.pos = size_;
-			if (ZSTD_isError(ZSTD_compressStream(stream_, &out_buf, &in_buf)))
-				throw std::runtime_error("ZSTD_compressStream");
-			size_ = out_buf.pos;
-			if (in_buf.pos < in_buf.size)
-				buf_.resize(buf_.size() + 32768);
-		} while (in_buf.pos < in_buf.size);
-#endif
-	}
-	void finish() {
-#ifdef WITH_ZSTD
-		ZSTD_outBuffer out_buf;
-		size_t n;
-		do {
-			out_buf.dst = buf_.data();
-			out_buf.size = buf_.size();
-			out_buf.pos = size_;
-			if (ZSTD_isError(n = ZSTD_endStream(stream_, &out_buf)))
-				throw std::runtime_error("ZSTD_endStream");
-			size_ = out_buf.pos;
-			if (n > 0)
-				buf_.resize(buf_.size() + 32768);
-		} while (n > 0);
-		ZSTD_freeCStream(stream_);
-		stream_ = nullptr;
-#endif
-	}
-	void clear() {
-#ifdef WITH_ZSTD
-		stream_ = ZSTD_createCStream();
-		size_ = 0;
-#endif
-	}
+
+	void finish();
+	void clear();
+
 	const char* data() const {
 		return buf_.data();
 	}
-	int64_t size() const {
+
+	size_t size() const {
 		return size_;
 	}
+
 private:
 	std::vector<char> buf_;
 #ifdef WITH_ZSTD
-	ZSTD_CStream* stream_;
+	ZSTD_CCtx_s* stream_;
+#else
+	z_stream_s* stream_;
 #endif
-	int64_t size_;
+	size_t size_;
+
 };

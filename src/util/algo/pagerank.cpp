@@ -370,7 +370,7 @@ vector<Int> cluster_pr(FlatArray<Edge<Int>>& neighbors) {
             vector<Int> id_map;
             tie(cc_neighbors, id_map) = get_cc(i, neighbors, ccs);
             vector<Int> reps(cc_neighbors.size(), -1);
-            FlatArray<Int> clustering = mcl(cc_neighbors);
+            FlatArray<Int> clustering; // = mcl(cc_neighbors);
             clusters += clustering.size();
             for (Int i = 0; i < clustering.size(); ++i) {
 				auto end = clustering.cend(i);

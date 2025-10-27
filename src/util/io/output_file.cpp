@@ -74,8 +74,6 @@ void OutputFile::remove()
 		std::cerr << "Warning: Failed to delete file " << file_name_ << std::endl;
 }
 
-
-
 void OutputFile::advise_need() {
 #if TARGET_OS_MAC
 #elif not defined(_MSC_VER)

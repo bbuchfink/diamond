@@ -49,12 +49,14 @@ WorkTarget::WorkTarget(BlockId block_id, const Sequence& seq, Sequence query, Lo
 {
 	ungapped_score.fill(0);
 	Stats::EMatrixAdjustRule rule;
-	if ((rule = ::Stats::adjust_matrix(query_comp, query_len_true_aa, config.comp_based_stats, seq)) != Stats::eDontAdjustMatrix) {
+	if (!config.anchored_swipe && (rule = ::Stats::adjust_matrix(query_comp, query_len_true_aa, config.comp_based_stats, seq)) != Stats::eDontAdjustMatrix) {
 		matrix.reset(new ::Stats::TargetMatrix(query_comp, query_len_true_aa, config.comp_based_stats, seq, stats, pool, rule));
-		if (config.anchored_swipe) {
+		/*if (config.anchored_swipe) {
+			TaskTimer timer;
 			profile = DP::make_profile16(query, *matrix, query.length() + max_target_len + 32);
 			profile_rev = profile.reverse();
-		}
+			stats.inc(Statistics::TIME_PROFILE_GENERATION, timer.microseconds());
+		}*/
 	}
 }
 
@@ -131,7 +133,7 @@ vector<WorkTarget> ungapped_stage(const Sequence *query_seq, const HauserCorrect
 	if(n == 0)
 		return targets;
 	Loc max_target_len = 0;
-	/*if (config.anchored_swipe) {
+	/*if (config.anchored_swipe && config.comp_based_stats == Stats::CBS::COMP_BASED_STATS_AND_MATRIX_ADJUST) {
 		for(int64_t i= 0; i < n; ++i)
 			max_target_len = std::max(max_target_len, target_block.seqs()[target_block_ids[i]].length());
 	}*/

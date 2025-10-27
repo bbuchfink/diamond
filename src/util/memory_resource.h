@@ -30,9 +30,7 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #pragma once
 
-#if defined(__cpp_lib_memory_resource) && (!_MSC_VER || _HAS_CXX17)
-#include <memory_resource>
-#elif defined(__has_include) && __has_include(<memory_resource>) && (!_MSC_VER || _HAS_CXX17)
+#if HAVE_MEMORY_RESOURCE
 #include <memory_resource>
 #else
 #include <list>
@@ -46,7 +44,7 @@ template<typename T>
 struct list : public std::list<T> {
     list(monotonic_buffer_resource*):
         std::list<T>()
-    { }			
+    { }
 };
 
 template<typename T>

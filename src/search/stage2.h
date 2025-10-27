@@ -1,22 +1,32 @@
 /****
-DIAMOND protein aligner
-Copyright (C) 2019-2023 Max Planck Society for the Advancement of Science e.V.
+Copyright © 2013-2025 Benjamin J. Buchfink <buchfink@gmail.com>
 
-Code developed by Benjamin Buchfink <buchfink@gmail.com>
+Redistribution and use in source and binary forms, with or without modification,
+are permitted provided that the following conditions are met:
 
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
+1. Redistributions of source code must retain the above copyright notice, this
+list of conditions and the following disclaimer.
 
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
+2. Redistributions in binary form must reproduce the above copyright notice,
+this list of conditions and the following disclaimer in the documentation and/or
+other materials provided with the distribution.
 
-You should have received a copy of the GNU General Public License
-along with this program.  If not, see <http://www.gnu.org/licenses/>.
+3. Neither the name of the copyright holder nor the names of its contributors
+may be used to endorse or promote products derived from this software without
+specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
+INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
+EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ****/
+// SPDX-License-Identifier: BSD-3-Clause
 
 #include <limits.h>
 #include "search.h"
@@ -75,7 +85,7 @@ static void search_query_offset(const SeedLoc& q,
 	FlatArray<uint32_t>::DataConstIterator hits_end,
 	WorkSet& work_set)
 {
-	constexpr int N = ::DISPATCH_ARCH::SIMD::Vector<int8_t>::CHANNELS;
+	constexpr int N = ::DISPATCH_ARCH::SIMD::Vector<int8_t>::LANES;
 	const SequenceSet& ref_seqs = work_set.cfg.target->seqs(), &query_seqs = work_set.cfg.query->seqs();
 	const Letter* query = query_seqs.data(q);
 
@@ -128,19 +138,17 @@ static void search_query_offset(const SeedLoc& q,
 				if (work_set.cfg.minimizer_window || work_set.cfg.sketch_size || config.lin_stage1 || work_set.cfg.lin_stage1_target
 					|| left_most_filter(query_clipped + interval_overhang, subjects[j] + interval_overhang, window_left - interval_overhang, shapes[sid].length_, work_set.context, sid == 0, sid, score_cutoff, chunked, hamming_filter_id)) {
 					work_set.stats.inc(Statistics::TENTATIVE_MATCHES3);
-					if (hit_count++ == 0)
-						work_set.out->new_query(query_id, seed_offset);
-#ifdef WITH_GLOBAL_RANKING
 					if (config.global_ranking_targets)
-						throw std::runtime_error("Unsupported");
-					//*work_set.out = { query_id, (uint64_t)s[*(i + j)], seed_offset, (uint16_t)scores[j], block_id(s[*(i + j)]) };
-					else
-#endif
+						work_set.global_ranking_buffer->write({ query_id, (uint64_t)s[*(i + j)], seed_offset, (uint16_t)scores[j], block_id(s[*(i + j)]) });
+					else {
+						if (hit_count++ == 0)
+							work_set.out->new_query(query_id, seed_offset);
 #ifdef HIT_KEEP_TARGET_ID
 						work_set.out->write(query_id, (uint64_t)s[*(i + j)], (uint16_t)scores[j], block_id(s[*(i + j)]));
 #else
 						work_set.out->write(query_id, (uint64_t)s[*(i + j)], (uint16_t)scores[j]);
 #endif
+					}
 				}
 			}
 		}

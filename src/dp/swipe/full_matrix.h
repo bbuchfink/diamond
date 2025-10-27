@@ -214,7 +214,7 @@ struct TracebackVectorMatrix
 	{
 		hgap_.resize(rows);
 		score_.resize(rows + 1);
-		trace_mask_.resize(cols * rows);
+		trace_mask_.resize((size_t)cols * rows);
 		std::fill(hgap_.begin(), hgap_.end(), Sv());
 		std::fill(score_.begin(), score_.end(), Sv());
 	}

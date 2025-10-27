@@ -1,24 +1,32 @@
 /****
-DIAMOND protein aligner
-Copyright (C) 2013-2024 Max Planck Society for the Advancement of Science e.V.
-                        Benjamin Buchfink
-                        Eberhard Karls Universitaet Tuebingen
-						
-Code developed by Benjamin Buchfink <buchfink@gmail.com>
+Copyright © 2013-2025 Benjamin J. Buchfink <buchfink@gmail.com>
 
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
+Redistribution and use in source and binary forms, with or without modification,
+are permitted provided that the following conditions are met:
 
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
+1. Redistributions of source code must retain the above copyright notice, this
+list of conditions and the following disclaimer.
 
-You should have received a copy of the GNU General Public License
-along with this program.  If not, see <http://www.gnu.org/licenses/>.
+2. Redistributions in binary form must reproduce the above copyright notice,
+this list of conditions and the following disclaimer in the documentation and/or
+other materials provided with the distribution.
+
+3. Neither the name of the copyright holder nor the names of its contributors
+may be used to endorse or promote products derived from this software without
+specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
+INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
+EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ****/
+// SPDX-License-Identifier: BSD-3-Clause
 
 #include <sstream>
 #include <set>
@@ -33,8 +41,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "basic/reduction.h"
 #include "dp/scalar/needleman_wunsch.h"
 #include "data/sequence_file.h"
+#include "data/taxonomy_nodes.h"
+#include "util/system/system.h"
 
 using namespace Output;
+using std::array;
 using std::endl;
 using std::set;
 using std::string;
@@ -120,7 +131,7 @@ const vector<OutputField> TabularFormat::field_def = {
 { "neg_evalue", "neg_evalue", "", HspValues::NONE, Flags::NONE }, // 73
 { "reserved1", "reserved1", "", HspValues::NONE, Flags::NONE}, // 74
 { "reserved2", "reserved2", "", HspValues::NONE, Flags::NONE}, // 75
-{ "slineages", "", "Subject lineages", HspValues::NONE, Flags::IS_STRING} // 76
+{ "slineages", "", "Subject lineages", HspValues::NONE, Flags::NONE } // 76
 };
 
 template<>
@@ -172,9 +183,12 @@ TabularFormat::TabularFormat(bool json) :
 			needs_taxon_scientific_names = true;
 			needs_taxon_id_lists = true;
 		}
-		if (j == 38 || j == 59 || j == 60 || j == 76) {
+		if (j == 38 || j == 59 || j == 60) {
 			needs_taxon_nodes = true;
 			needs_taxon_ranks = true;
+		}
+		if (j == 76) {
+			needs_taxon_nodes = true;
 		}
 		fields.push_back(j);
 		if (j == 6 || j == 34)
@@ -220,14 +234,64 @@ void print_taxon_names(It begin, It end, const SequenceFile& db, TextBuffer &out
 	}
 }
 
-void print_lineage(int64_t target_oid, const SequenceFile& db, TextBuffer& out, bool json = false) {
+static vector<TaxId> lineage(TaxId taxid, SequenceFile& db) {
+	vector<TaxId> l;
+	TaxId i = taxid;
+	int n = 0;
+	while (true) {
+		if (i <= 0)
+			return {};
+		if (i == 1)
+			break;
+		l.push_back(i);
+		i = db.get_parent(i);
+		if (l.size() >= MAX_LINEAGE)
+			throw runtime_error("Lineage too long for taxid " + std::to_string(taxid));
+	}
+	return l;
+}
+
+static void print_lineage(int64_t target_oid, SequenceFile& db, TextBuffer& out, bool json = false) {
 	const vector<TaxId> taxids = db.taxids(target_oid);
-	if (taxids.empty())
+	if (taxids.empty()) {
+		out << (json ? " []" : "N/A");
 		return;
-	TaxId i = taxids.front();
-	while (i > 1) {
-		out << db.taxon_scientific_name(i) << ';';
-		i = db.taxon_nodes().get_parent(i);
+	}
+	set<vector<TaxId>> lineages;
+	for(TaxId i : taxids) {
+		const vector<TaxId> l = lineage(i, db);
+		if (!l.empty())
+			lineages.insert(l);
+	}
+	if(lineages.empty()) {
+		out << (json ? " []" : "N/A");
+		return;
+	}
+	if (json) {
+		out << " [" DEFAULT_LINE_DELIMITER;
+	}
+	for(auto i = lineages.begin(); i != lineages.end(); ++i) {
+		if (i != lineages.begin())
+			out << (json ? "," DEFAULT_LINE_DELIMITER : "<>");
+		if (json) {
+			out << "\t\t[";
+		}		
+		const vector<TaxId>& lin = *i;
+		for (auto j = lin.rbegin(); j != lin.rend(); ++j) {
+			if (j != lin.rbegin())
+				out << (json ? ", " : "; ");
+			if(json)
+				out << '\"';
+			out << db.taxon_scientific_name(*j);
+			if (json)
+				out << '\"';
+		}
+		if (json) {
+			out << ']';
+		}
+	}
+	if (json) {
+		out << DEFAULT_LINE_DELIMITER "\t]";
 	}
 }
 
@@ -371,7 +435,7 @@ void TabularFormat::print_match(const HspContext& r, Output::Info& info)
 			break;
 		}
 		case 38: {
-			const set<TaxId> tax_id = info.db->taxon_nodes().rank_taxid(info.db->taxids(r.subject_oid), Rank::superkingdom);
+			const set<TaxId> tax_id = info.db->rank_taxid(info.db->taxids(r.subject_oid), Rank::superkingdom);
 			print_taxon_names(tax_id.begin(), tax_id.end(), *info.db, out, is_json);
 			break;
 		}
@@ -437,12 +501,12 @@ void TabularFormat::print_match(const HspContext& r, Output::Info& info)
 			print_cigar(r, out);
 			break;
 		case 59: {
-			const set<TaxId> tax_id = info.db->taxon_nodes().rank_taxid(info.db->taxids(r.subject_oid), Rank::kingdom);
+			const set<TaxId> tax_id = info.db->rank_taxid(info.db->taxids(r.subject_oid), Rank::kingdom);
 			print_taxon_names(tax_id.begin(), tax_id.end(), *info.db, out);
 			break;
 		}
 		case 60: {
-			const set<TaxId> tax_id = info.db->taxon_nodes().rank_taxid(info.db->taxids(r.subject_oid), Rank::phylum);
+			const set<TaxId> tax_id = info.db->rank_taxid(info.db->taxids(r.subject_oid), Rank::phylum);
 			print_taxon_names(tax_id.begin(), tax_id.end(), *info.db, out);
 			break;
 		}
@@ -505,7 +569,7 @@ void TabularFormat::print_match(const HspContext& r, Output::Info& info)
 			out << r.corrected_bit_score();
 			break;
 		case 76:
-			print_lineage(r.subject_oid, *info.db, out);
+			print_lineage(r.subject_oid, *info.db, out, is_json);
 			break;
 #ifdef EXTRA
 		case 65:

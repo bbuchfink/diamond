@@ -73,13 +73,14 @@ static void seed_join_worker(
 template<typename SeedLoc>
 static void search_worker(atomic<SeedPartition> *seedp, SeedPartition partition_count, unsigned shape, size_t thread_id, DoubleArray<SeedLoc> *query_seed_hits, DoubleArray<SeedLoc> *ref_seed_hits, const Search::Context *context, const Search::Config* cfg)
 {
+	using GRB = AsyncWriter<Hit, Search::Config::RankingBuffer::EXPONENT>;
 	unique_ptr<HitBuffer::Writer> writer;
+	unique_ptr<GRB> grb;
 	if (config.global_ranking_targets)
-		throw std::runtime_error("Unsupported");
-		//writer.reset(new AsyncWriter<Hit, Search::Config::RankingBuffer::EXPONENT>(*cfg->global_ranking_buffer));
+		grb.reset(new GRB(*cfg->global_ranking_buffer));
 	else
 		writer.reset(new HitBuffer::Writer(*cfg->seed_hit_buf, thread_id));
-	unique_ptr<Search::WorkSet> work_set(new Search::WorkSet(*context, *cfg, shape, writer.get(), context->kmer_ranking));
+	unique_ptr<Search::WorkSet> work_set(new Search::WorkSet(*context, *cfg, shape, writer.get(), grb.get(), context->kmer_ranking));
 	SeedPartition p;
 	while ((p = seedp->fetch_add(1, std::memory_order_relaxed)) < partition_count) {
 		auto it = JoinIterator<SeedLoc>(query_seed_hits[p].begin(), ref_seed_hits[p].begin());

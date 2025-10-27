@@ -1,23 +1,32 @@
 /****
-DIAMOND protein aligner
-Copyright (C) 2016-2020 Max Planck Society for the Advancement of Science e.V.
-                        Benjamin Buchfink
-						
-Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
+Copyright © 2013-2025 Benjamin J. Buchfink <buchfink@gmail.com>
 
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
+Redistribution and use in source and binary forms, with or without modification,
+are permitted provided that the following conditions are met:
 
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
+1. Redistributions of source code must retain the above copyright notice, this
+list of conditions and the following disclaimer.
 
-You should have received a copy of the GNU General Public License
-along with this program.  If not, see <http://www.gnu.org/licenses/>.
+2. Redistributions in binary form must reproduce the above copyright notice,
+this list of conditions and the following disclaimer in the documentation and/or
+other materials provided with the distribution.
+
+3. Neither the name of the copyright holder nor the names of its contributors
+may be used to endorse or promote products derived from this software without
+specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
+INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
+EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ****/
+// SPDX-License-Identifier: BSD-3-Clause
 
 #pragma once
 #include <map>
@@ -27,6 +36,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "util/io/serializer.h"
 #include "util/io/deserializer.h"
 #include "basic/value.h"
+#include "util/util.h"
 
 struct Rank {
 	Rank() :
@@ -49,6 +59,10 @@ struct Rank {
 		s << std::string(names[(int)r.r]);
 		return s;
 	}
+	static int predefined(const char* s) {
+		auto it = rank_map.find(s);
+		return it == rank_map.end() ? -1 : (int)it->second;
+	}
 	static const char* names[count];
 private:
 	char r;
@@ -59,33 +73,29 @@ private:
 struct TaxonomyNodes
 {
 
-	TaxonomyNodes(const std::string& file_name, const bool init_cache = false);
+	TaxonomyNodes(const std::string& file_name);
 	TaxonomyNodes(Deserializer &in, uint32_t db_build);
 	void save(Serializer &out);
-	unsigned get_parent(unsigned taxid) const
+	unsigned get_parent(TaxId taxid) const
 	{
-		if (taxid >= parent_.size())
+		if (safe_cast<size_t>(taxid) >= parent_.size())
 			throw std::runtime_error(std::string("No taxonomy node found for taxon id ") + std::to_string(taxid));
 		return parent_[taxid];
 	}
-	unsigned rank_taxid(unsigned taxid, Rank rank) const;
-	std::set<TaxId> rank_taxid(const std::vector<TaxId> &taxid, Rank rank) const;
-	unsigned get_lca(unsigned t1, unsigned t2) const;
+	int rank(TaxId tax_id) const {
+		if (tax_id < 0 || safe_cast<size_t>(tax_id) >= rank_.size())
+			return -1;
+		return rank_[tax_id];
+	}
 	bool contained(TaxId query, const std::set<TaxId> &filter);
 	bool contained(const std::vector<TaxId>& query, const std::set<TaxId> &filter);
-	std::vector<TaxId> lineage(TaxId taxid) const;
+	TaxId max() const {
+		return safe_cast<TaxId>(parent_.size() - 1);
+	}
 
 private:
 
-	void set_cached(unsigned taxon_id, bool contained)
-	{
-		cached_[taxon_id] = true;
-		contained_[taxon_id] = contained;
-	}
-	void init_cache();
-
 	std::vector<TaxId> parent_;
 	std::vector<Rank> rank_;
-	std::vector<bool> cached_, contained_;
 
 };

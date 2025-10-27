@@ -1,22 +1,32 @@
 /****
-DIAMOND protein aligner
-Copyright (C) 2019-2024 Max Planck Society for the Advancement of Science e.V.
+Copyright © 2013-2025 Benjamin J. Buchfink <buchfink@gmail.com>
 
-Code developed by Benjamin Buchfink <buchfink@gmail.com>
+Redistribution and use in source and binary forms, with or without modification,
+are permitted provided that the following conditions are met:
 
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
+1. Redistributions of source code must retain the above copyright notice, this
+list of conditions and the following disclaimer.
 
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
+2. Redistributions in binary form must reproduce the above copyright notice,
+this list of conditions and the following disclaimer in the documentation and/or
+other materials provided with the distribution.
 
-You should have received a copy of the GNU General Public License
-along with this program.  If not, see <http://www.gnu.org/licenses/>.
+3. Neither the name of the copyright holder nor the names of its contributors
+may be used to endorse or promote products derived from this software without
+specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
+INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
+EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ****/
+// SPDX-License-Identifier: BSD-3-Clause
 
 #include <memory>
 #include <numeric>
@@ -27,6 +37,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "util/simd/dispatch.h"
 #include "stats/score_matrix.h"
 #include "align/def.h"
+#include "stats/stats.h"
 
 using std::list;
 using std::vector;
@@ -35,7 +46,6 @@ using std::pair;
 using std::sort;
 using std::runtime_error;
 using std::accumulate;
-using std::make_unique;
 
 namespace DP { namespace BandedSwipe { namespace DISPATCH_ARCH {
 
@@ -192,8 +202,8 @@ list<Hsp> anchored_swipe(Targets& targets, const DP::AnchoredSwipe::Config& cfg,
 	const ScoreMatrix& matrix = score_matrix; // select_matrix(cfg.query.length());
 
 	if (!cfg.target_profiles) {
-		profiles = make_unique<Profiles>(cfg.query, cfg.query_cbs, cfg.query.length() + max_target_len + 32, matrix);
-		profiles_rev = make_unique<Profiles>(*profiles, Profiles::Reverse());
+		profiles.reset(new Profiles(cfg.query, cfg.query_cbs, cfg.query.length() + max_target_len + 32, matrix));
+		profiles_rev.reset(new Profiles(*profiles, Profiles::Reverse()));
 		prof_pointers = profiles->int16.pointers(0);
 		prof_pointers_rev = profiles_rev->int16.pointers(0);
 	}
@@ -269,12 +279,16 @@ list<Hsp> anchored_swipe(Targets& targets, const DP::AnchoredSwipe::Config& cfg,
 				++target_it;
 			}
 			// filter for cover
+			cfg.stats.inc(Statistics::EXT16);
 			const double qcov = double(i1 - i0) / cfg.query.length() * 100.0, tcov = double(j1 - j0) / t.seq.length() * 100.0;
-			if (config.query_or_target_cover > 0 || config.query_cover > 0 || config.subject_cover > 0) {				
-				if (!cfg.recompute_adjusted && (std::max(qcov, tcov) < config.query_or_target_cover
-					|| qcov < config.query_cover || tcov < config.subject_cover))
-					continue;
+			bool cov_filtered = false;
+			if (config.query_or_target_cover > 0 || config.query_cover > 0 || config.subject_cover > 0) {
+				cov_filtered = std::max(qcov, tcov) < config.query_or_target_cover
+					|| qcov < config.query_cover || tcov < config.subject_cover;
 			}
+
+			if (!cfg.recompute_adjusted && cov_filtered)
+				continue;
 
 			/*if (std::max(i0, cfg.query.length() - i1) > config.uncov_cap || std::max(j0, t.seq.length() - j1) > config.uncov_cap)
 				continue;*/
@@ -282,13 +296,20 @@ list<Hsp> anchored_swipe(Targets& targets, const DP::AnchoredSwipe::Config& cfg,
 			const double evalue = matrix.evalue(score, cfg.query.length(), t.seq.length()); // consider adjusted matrix
 			if(!cfg.recompute_adjusted && evalue > config.max_evalue)
 				continue;
+
+			if(cfg.recompute_adjusted && (qcov < 70.0 || tcov < 70.0))
+				continue;
+
+			const double approx_id = Stats::approx_id(score, i1 - i0, j1 - j0);
 			
-			if (cfg.recompute_adjusted) {
+			if (cfg.recompute_adjusted && approx_id < 70) {
 				matrices.emplace_back(query_comp, cfg.query.length(), Stats::CBS::MATRIX_ADJUST, t.seq, cfg.stats, pool, Stats::eUserSpecifiedRelEntropy);
+				// redecide bin here
 				recompute[bin].push_back(DpTarget(t.seq, t.true_target_len, t.d_begin, t.d_end, t.target_idx,
 					cfg.query.length(), &matrices.back(), DpTarget::CarryOver(), t.anchor));
+				cfg.stats.inc(Statistics::EXTENSIONS_RECOMPUTE);
 			}
-			else {
+			else if (!cov_filtered) {
 				out.emplace_back();
 				out.back().score = score;
 				out.back().evalue = evalue;
@@ -310,7 +331,8 @@ list<Hsp> anchored_swipe(Targets& targets, const DP::AnchoredSwipe::Config& cfg,
 	if (cfg.recompute_adjusted) {
 		DP::Params params{ cfg.query, nullptr, Frame(0), cfg.query.length(), nullptr, DP::Flags::NONE, false,
 		0, 0, HspValues::COORDS, cfg.stats, cfg.thread_pool };
-		return DP::BandedSwipe::swipe(recompute, params);
+		out.splice(out.end(), DP::BandedSwipe::swipe(recompute, params));
+		return out;
 	}
 	return out;
 }

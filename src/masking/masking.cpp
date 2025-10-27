@@ -50,7 +50,6 @@ const SEMap<MaskingMode> EnumTraits<MaskingMode>::from_string{
 };
 
 unique_ptr<Masking> Masking::instance;
-const int8_t Masking::bit_mask = (int8_t)128;
 
 MaskingTable::MaskingTable():
 	seq_count_(0),
@@ -165,7 +164,7 @@ size_t Masking::operator()(Letter *seq, size_t len, MaskingAlgo algo, const size
 {
 	size_t n = 0;
 	if (flag_any(algo, MaskingAlgo::TANTAN)) {
-		Mask::Ranges r = Util::tantan::mask(seq, (int)len, (const float**)probMatrixPointersf_, 0.005f, 0.05f, 1.0f / 0.9f, (float)config.tantan_minMaskProb, table ? nullptr : mask_table_x_);
+		Mask::Ranges r = Util::tantan::mask(seq, (int)len, (const float**)probMatrixPointersf_, 0.005f, 0.05f, 1.0f / 0.9f, (float)config.tantan_minMaskProb, table ? 0 : 1);
 		if (table)
 			for (auto i : r) {
 				table->add(block_id, i.first, i.second, seq);
@@ -195,7 +194,7 @@ size_t Masking::operator()(Letter *seq, size_t len, MaskingAlgo algo, const size
 
 void Masking::mask_bit(Letter *seq, size_t len) const
 {
-	Util::tantan::mask(seq, (int)len, (const float**)probMatrixPointersf_, 0.005f, 0.05f, 1.0f / 0.9f, (float)config.tantan_minMaskProb, mask_table_bit_);
+	Util::tantan::mask(seq, (int)len, (const float**)probMatrixPointersf_, 0.005f, 0.05f, 1.0f / 0.9f, (float)config.tantan_minMaskProb, 2);
 }
 
 void Masking::bit_to_hard_mask(Letter *seq, size_t len, size_t &n) const

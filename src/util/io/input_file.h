@@ -36,7 +36,7 @@ struct InputFile : public Deserializer
 	enum { BUFFERED = 1, NO_AUTODETECT = 2 };
 
 	InputFile(const std::string &file_name, int flags = 0);
-	InputFile(TempFile &tmp_file, int flags = 0);
+	InputFile(TempFile &tmp_file, int flags = 0, Compressor c = Compressor::NONE);
 	InputFile(OutputFile& tmp_file, int flags = 0);
 	void close_and_delete();
 	uint64_t hash();

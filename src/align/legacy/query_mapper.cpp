@@ -157,7 +157,7 @@ void QueryMapper::load_targets()
 			targets.get(n) = new Target(i,
 				seed_hits[i].subject_,
 				metadata.target->seqs()[seed_hits[i].subject_],
-				config.taxon_k ? metadata.db->taxon_nodes().rank_taxid(metadata.db->taxids(oid), Rank::species) : set<TaxId>());
+				config.taxon_k ? metadata.db->rank_taxid(metadata.db->taxids(oid), Rank::species) : set<TaxId>());
 			++n;
 			subject_id = seed_hits[i].subject_;
 		}

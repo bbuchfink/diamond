@@ -1,24 +1,32 @@
 /****
-DIAMOND protein aligner
-Copyright (C) 2013-2025 Max Planck Society for the Advancement of Science e.V.
-                        Benjamin Buchfink
-                        Eberhard Karls Universitaet Tuebingen
+Copyright © 2013-2025 Benjamin J. Buchfink <buchfink@gmail.com>
 
-Code developed by Benjamin Buchfink <buchfink@gmail.com>
+Redistribution and use in source and binary forms, with or without modification,
+are permitted provided that the following conditions are met:
 
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
+1. Redistributions of source code must retain the above copyright notice, this
+list of conditions and the following disclaimer.
 
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
+2. Redistributions in binary form must reproduce the above copyright notice,
+this list of conditions and the following disclaimer in the documentation and/or
+other materials provided with the distribution.
 
-You should have received a copy of the GNU General Public License
-along with this program.  If not, see <http://www.gnu.org/licenses/>.
+3. Neither the name of the copyright holder nor the names of its contributors
+may be used to endorse or promote products derived from this software without
+specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
+INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
+EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ****/
+// SPDX-License-Identifier: BSD-3-Clause
 
 #pragma once
 #include <assert.h>
@@ -27,9 +35,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <atomic>
 #include <mutex>
 #include "basic/config.h"
-#include "util/io/mmap.h"
-#include "util/text_buffer.h"
 #include "hit.h"
+#include "util/io/temp_file.h"
+#include "util/io/compressed_buffer.h"
 
 namespace Search {
 
@@ -38,8 +46,7 @@ struct HitBuffer
 
 	using Vector = std::vector<Hit>;
 	using Key = uint32_t;
-	static const int64_t ENTRY_SIZE = (int64_t)sizeof(Hit);
-
+	
 	HitBuffer(const std::vector<Key>& key_partition, const std::string& tmpdir, bool long_subject_offsets, int query_contexts);
 	~HitBuffer() {
 		delete[] count_;
@@ -79,21 +86,15 @@ struct HitBuffer
 		{}
 		void new_query(unsigned query, Loc seed_offset) {
 			last_bin_ = parent_.bin(query / parent_.query_contexts_);
-			if (config.trace_pt_membuf) {
-				seed_offset_ = seed_offset;
-				query_ = query;
+			seed_offset_ = seed_offset;
+			query_ = query;
+			if (config.trace_pt_membuf) {				
 				if (buffer_[last_bin_].size() >= buffer_size)
 					flush(last_bin_);
 			}
 			else
 				if (text_buffer_[last_bin_].size() >= buffer_size)
 					flush(last_bin_);
-			
-			if (!config.trace_pt_membuf) {
-				text_buffer_[last_bin_].write((uint16_t)0);
-				text_buffer_[last_bin_].write(query);
-				text_buffer_[last_bin_].write(seed_offset);
-			}
 		}
 		void write(unsigned query, PackedLoc subject, uint16_t score, uint32_t target_block_id = 0)
 		{
@@ -108,14 +109,15 @@ struct HitBuffer
 #endif
 			}
 			else {
-				text_buffer_[last_bin_].write((uint16_t)score);
-				if (parent_.long_subject_offsets_)
-					text_buffer_[last_bin_].write_raw((const char*)&subject, 5);
-				else
-					text_buffer_[last_bin_].write(subject.low);
+				Hit h;
+				h.query_ = query;
+				h.subject_ = subject;
+				h.seed_offset_ = seed_offset_;
+				h.score_ = score;				
 #ifdef HIT_KEEP_TARGET_ID
-				text_buffer_[last_bin_].write(target_block_id);
+				h.target_block_id = target_block_id;
 #endif
+				text_buffer_[last_bin_].write(h);
 			}
 		}
 		void flush(int bin)
@@ -128,14 +130,13 @@ struct HitBuffer
 				buffer_[bin].clear();
 			}
 			else {
+				text_buffer_[bin].finish();
 				if (text_buffer_[bin].size() == 0)
 					return;
-				MMap& tmp_file = parent_.tmp_file_[bin];
-				const uint32_t size = text_buffer_[bin].size();
+				TempFile* tmp_file = parent_.tmp_file_[bin];				
 				{
 					std::lock_guard<std::mutex> lock(parent_.bin_mutex_[bin]);
-					tmp_file.write(&size, sizeof(uint32_t));
-					tmp_file.write(text_buffer_[bin].data(), text_buffer_[bin].size());
+					tmp_file->write(text_buffer_[bin].data(), text_buffer_[bin].size());
 				}
 				text_buffer_[bin].clear();
 			}			
@@ -153,20 +154,20 @@ struct HitBuffer
 		std::vector<std::vector<Hit>> buffer_;
 		Loc seed_offset_;
 		BlockId query_;
-		std::vector<TextBuffer> text_buffer_;
+		std::vector<CompressedBuffer> text_buffer_;
 		std::vector<size_t> count_;
 		HitBuffer &parent_;
 	};
 
-	void load(int64_t max_size);
+	void load(size_t max_size);
 
-	std::tuple<Hit*, int64_t, Key, Key> retrieve() {
+	std::tuple<Hit*, size_t, Key, Key> retrieve() {
 		if (config.trace_pt_membuf) {
 			if (bins_processed_ >= bins())
-				return std::tuple<Hit*, int64_t, Key, Key> { nullptr, 0, 0, 0 };
+				return std::tuple<Hit*, size_t, Key, Key> { nullptr, 0, 0, 0 };
 			auto& buf = hit_buf_[bins_processed_];
 			++bins_processed_;
-			return std::tuple<Hit*, int64_t, Key, Key> { buf.data(), buf.size(), input_range_next_.first, input_range_next_.second };
+			return std::tuple<Hit*, size_t, Key, Key> { buf.data(), buf.size(), input_range_next_.first, input_range_next_.second };
 		}
 		else {
 			if (load_worker_) {
@@ -174,7 +175,7 @@ struct HitBuffer
 				delete load_worker_;
 				load_worker_ = nullptr;
 			}			
-			return std::tuple<Hit*, int64_t, Key, Key> { data_next_, data_size_next_, input_range_next_.first, input_range_next_.second };
+			return std::tuple<Hit*, size_t, Key, Key> { data_next_, data_size_next_, input_range_next_.first, input_range_next_.second };
 		}
 	}
 
@@ -186,36 +187,8 @@ struct HitBuffer
 		return count_[i];
 	}
 
-	void alloc_buffer() {
-		if (config.trace_pt_membuf)
-			return;
-		int64_t max_size = 0;
-		for (int i = 0; i < bins(); ++i)
-			max_size = std::max(max_size, bin_size(i));
-		alloc_size_ = max_size;
-		if (max_size == 0) {
-			data_next_ = nullptr;
-			return;
-		}
-#ifdef _MSC_VER
-		data_next_ = new Hit[max_size];
-#else
-		data_next_ = (Hit*)mmap(nullptr, max_size * sizeof(Hit), PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-		if(data_next_ == MAP_FAILED) {
-			throw std::runtime_error("Failed to allocate memory for hit buffer");
-		}
-#endif
-	}
-
-	void free_buffer() {
-		if (!config.trace_pt_membuf) {
-#ifdef _MSC_VER
-			delete[] data_next_;
-#else
-			munmap(data_next_, alloc_size_ * sizeof(Search::Hit));
-#endif
-		}
-	}
+	void alloc_buffer();
+	void free_buffer();
 
 private:
 
@@ -227,11 +200,12 @@ private:
 	int bins_processed_;
 	int64_t total_disk_size_;
 	std::vector<std::vector<Hit>> hit_buf_;
-	std::vector<MMap> tmp_file_;
+	std::vector<TempFile*> tmp_file_;
 	std::vector<std::mutex> bin_mutex_;
 	std::atomic_size_t *count_;
 	std::pair<Key, Key> input_range_next_;
 	Hit* data_next_;
+	bool mmap_;
 	int64_t data_size_next_, alloc_size_;
 	std::thread* load_worker_;
 

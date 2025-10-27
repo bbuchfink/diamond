@@ -1,20 +1,32 @@
 /****
-DIAMOND protein aligner
-Copyright (C) 2013-2019 Benjamin Buchfink <buchfink@gmail.com>
+Copyright © 2013-2025 Benjamin J. Buchfink <buchfink@gmail.com>
 
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
+Redistribution and use in source and binary forms, with or without modification,
+are permitted provided that the following conditions are met:
 
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
+1. Redistributions of source code must retain the above copyright notice, this
+list of conditions and the following disclaimer.
 
-You should have received a copy of the GNU General Public License
-along with this program.  If not, see <http://www.gnu.org/licenses/>.
+2. Redistributions in binary form must reproduce the above copyright notice,
+this list of conditions and the following disclaimer in the documentation and/or
+other materials provided with the distribution.
+
+3. Neither the name of the copyright holder nor the names of its contributors
+may be used to endorse or promote products derived from this software without
+specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
+INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
+EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ****/
+// SPDX-License-Identifier: BSD-3-Clause
 
 #include <set>
 #include <algorithm>
@@ -22,9 +34,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "taxonomy_nodes.h"
 #include "util/log_stream.h"
 #include "util/string/string.h"
-#include "util/io/text_input_file.h"
-#include "util/string/tokenizer.h"
 #include "legacy/dmnd/io.h"
+#include "blastdb/taxdmp.h"
 
 using std::string;
 using std::reverse;
@@ -34,21 +45,15 @@ using std::endl;
 using std::to_string;
 using std::runtime_error;
 
-TaxonomyNodes::TaxonomyNodes(const string& file_name, const bool init_cache)
+TaxonomyNodes::TaxonomyNodes(const string& file_name)
 {
-	TextInputFile f(file_name);
-	TaxId taxid, parent;
-	string rank;
-	while (!f.eof() && (f.getline(), !f.line.empty())) {
-		Util::String::Tokenizer<Util::String::StringDelimiter>(f.line, Util::String::StringDelimiter("\t|\t")) >> taxid >> parent >> rank;
+	auto f = [&](TaxId taxid, TaxId parent, const string& rank) {
 		parent_.resize(taxid + 1, 0);
 		parent_[taxid] = parent;
 		rank_.resize(taxid + 1, Rank::none);
 		rank_[taxid] = Rank(rank.c_str());
-	}
-	f.close();
-	if (init_cache)
-		this->init_cache();
+		};
+	read_nodes_dmp(file_name, f);
 }
 
 void TaxonomyNodes::save(Serializer &out)
@@ -78,117 +83,4 @@ TaxonomyNodes::TaxonomyNodes(Deserializer &in, uint32_t db_build)
 		rank_.resize(parent_.size());
 		in.read(rank_.data(), rank_.size());
 	}
-	init_cache();
-}
-
-void TaxonomyNodes::init_cache() {
-	cached_.insert(cached_.end(), parent_.size(), false);
-	contained_.insert(contained_.end(), parent_.size(), false);
-}
-
-unsigned TaxonomyNodes::get_lca(unsigned t1, unsigned t2) const
-{
-	static const int max = 64;
-	if (t1 == t2 || t2 == 0)
-		return t1;
-	if (t1 == 0)
-		return t2;
-	unsigned p = t2;
-	set<unsigned> l;
-	l.insert(p);
-	int n = 0;
-	do {
-		p = get_parent(p);
-		if (p == 0)
-			return t1;
-		l.insert(p);
-		if (++n > max)
-			throw std::runtime_error("Path in taxonomy too long (1).");
-	} while (p != t1 && p != 1);
-	if (p == t1)
-		return p;
-	p = t1;
-	n = 0;
-	while (l.find(p) == l.end()) {
-		p = get_parent(p);
-		if (p == 0)
-			return t2;
-		if (++n > max)
-			throw std::runtime_error("Path in taxonomy too long (2).");
-	}
-	return p;
-}
-
-bool TaxonomyNodes::contained(TaxId query, const set<TaxId> &filter)
-{
-	static const int max = 64;
-	if (query >= (TaxId)parent_.size())
-		throw runtime_error(string("No taxonomy node found for taxon id ") + to_string(query));
-	if (cached_[query])
-		return contained_[query];
-	if (filter.find(1) != filter.end())
-		return true;
-	int n = 0;
-	unsigned p = query;
-	while (p > 1 && filter.find(p) == filter.end()) {
-		p = get_parent(p);
-		if (++n > max)
-			throw std::runtime_error("Path in taxonomy too long (3).");
-	}
-	const bool contained = p > 1;
-	unsigned q = query;
-	while (set_cached(q, contained), q != p)
-		q = get_parent(q);
-	return contained;
-}
-
-bool TaxonomyNodes::contained(const vector<TaxId>& query, const set<TaxId> &filter)
-{
-	static const int max = 64;
-	if (filter.find(1) != filter.end())
-		return true;
-	for (vector<TaxId>::const_iterator i = query.begin(); i != query.end(); ++i)
-		if (contained(*i, filter))
-			return true;
-	return false;
-}
-
-unsigned TaxonomyNodes::rank_taxid(unsigned taxid, Rank rank) const {
-	static const int max = 64;
-	int n = 0;
-	while (true) {
-		if (taxid >= rank_.size())
-			return 0;
-		if (rank_[taxid] == rank)
-			return taxid;
-		if (taxid == 0 || taxid == 1)
-			return 0;
-		if (++n > max)
-			throw std::runtime_error("Path in taxonomy too long (4).");
-		taxid = get_parent(taxid);
-	}
-	return 0;
-}
-
-std::set<TaxId> TaxonomyNodes::rank_taxid(const std::vector<TaxId> &taxid, Rank rank) const {
-	set<TaxId> r;
-	for (unsigned i : taxid)
-		r.insert(rank_taxid(i, rank));
-	return r;
-}
-
-vector<TaxId> TaxonomyNodes::lineage(TaxId taxid) const {
-	static const int MAX = 64;
-	vector<TaxId> out;
-	int n = 0;
-	while (true) {
-		if (taxid == 0 || taxid == 1)
-			break;
-		if (++n > MAX)
-			throw std::runtime_error("Path in taxonomy too long (TaxonomyNodes::lineage).");
-		out.push_back(taxid);
-		taxid = get_parent(taxid);
-	}
-	reverse(out.begin(), out.end());
-	return out;
 }

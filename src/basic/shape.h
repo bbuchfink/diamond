@@ -112,7 +112,8 @@ struct Shape
 		return true;
 	}
 
-	inline bool set_seed_reduced(PackedSeed &s, const Letter *seq) const
+	template<typename It>
+	inline bool set_seed_reduced(PackedSeed &s, It seq) const
 	{
 		s = 0;
 		for (int i = 0; i < weight_; ++i) {

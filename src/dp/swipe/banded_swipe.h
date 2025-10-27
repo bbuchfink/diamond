@@ -155,15 +155,14 @@ Hsp traceback(Cbs bias_correction, const TracebackVectorMatrix<Sv> &dp, const Dp
 	if (!adjusted_matrix)
 		out.score *= config.cbs_matrix_scale;
 	int score = 0;
-	if(adjusted_matrix)
-		throw std::runtime_error("Adjusted matrix not supported in TracebackVectorMatrix.");
-	//const int* matrix = adjusted_matrix ? target.matrix->scores32.data() : score_matrix.matrix32();
+	
+	const int8_t* matrix8 = adjusted_matrix ? target.matrix->scores.data() : nullptr;
 	const int* matrix = score_matrix.matrix32();
 
 	while (it.i >= 0 && it.j >= 0 && score < end_score) {
 		if ((it.mask().gap & channel_mask) == 0) {
 			const Letter q = p.query[it.i], s = target.seq[it.j];
-			const int m = matrix[int(s) * 32 + (int)q];
+			const int m = adjusted_matrix ? matrix8[(int)s * 32 + q] : matrix[int(s) * 32 + (int)q];
 			const int m2 = adjusted_matrix ? m : add_cbs_scalar(m, bias_correction[it.i]);
 			score += m2;
 			out.push_match(q, s, m > (Score)0);

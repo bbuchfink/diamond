@@ -116,7 +116,7 @@ struct Deserializer {
 	template<class T>
 	size_t read(T *ptr, size_t count)
 	{
-		return read_raw((char*)ptr, count*sizeof(T)) / sizeof(T);
+		return read_raw((char*)ptr, count * sizeof(T)) / sizeof(T);
 	}
 
 	const char* data() const

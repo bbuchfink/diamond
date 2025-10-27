@@ -64,7 +64,7 @@ struct TargetIterator
 
 	typedef ::DISPATCH_ARCH::SIMD::Vector<T> SeqVector;
 	enum {
-		CHANNELS = SeqVector::CHANNELS
+		LANES = SeqVector::LANES
 	};
 
 	TargetIterator(DP::TargetVec::const_iterator subject_begin, DP::TargetVec::const_iterator subject_end, bool reverse_targets, int i1, int qlen, int *d_begin) :
@@ -73,7 +73,7 @@ struct TargetIterator
 		custom_matrix_16bit(false),
 		subject_begin(subject_begin)
 	{
-		for (int next = 0; next < std::min((int)CHANNELS, n_targets); ++next) {
+		for (int next = 0; next < std::min((int)LANES, n_targets); ++next) {
 			const DpTarget &t = subject_begin[next];
 			pos[next] = i1 - (t.d_end - 1);
 			const int d0 = d_begin[next];
@@ -114,8 +114,8 @@ struct TargetIterator
 
 	SeqVector get() const
 	{
-		alignas(32) T s[CHANNELS];
-		std::fill(s, s + CHANNELS, SUPER_HARD_MASK);
+		alignas(32) T s[LANES];
+		std::fill(s, s + LANES, SUPER_HARD_MASK);
 		for (int i = 0; i < active.size(); ++i) {
 			const int channel = active[i];
 			s[channel] = (*this)[channel];
@@ -137,7 +137,7 @@ struct TargetIterator
 
 	std::vector<const int32_t*> get32() const {
 		static const int32_t blank[32] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
-		std::vector<const int32_t*> target_scores(CHANNELS);
+		std::vector<const int32_t*> target_scores(LANES);
 		std::fill(target_scores.begin(), target_scores.end(), blank);
 		for (int i = 0; i < active.size(); ++i) {
 			const int channel = active[i];
@@ -167,11 +167,11 @@ struct TargetIterator
 		return r;
 	}
 
-	int pos[CHANNELS], n_targets, cols;
+	int pos[LANES], n_targets, cols;
 	bool custom_matrix_16bit;
-	SmallVector<int, CHANNELS> active;
+	SmallVector<int, LANES> active;
 	const DP::TargetVec::const_iterator subject_begin;
-	std::array<Array<Letter>, CHANNELS> target_seqs;
+	std::array<Array<Letter>, LANES> target_seqs;
 };
 
 template<typename T, typename It>
@@ -179,7 +179,7 @@ struct AsyncTargetBuffer
 {
 
 	typedef ::DISPATCH_ARCH::SIMD::Vector<T> SeqVector;
-	enum { CHANNELS = SeqVector::CHANNELS };
+	enum { LANES = SeqVector::LANES };
 
 	AsyncTargetBuffer(const It begin, const It end, Loc max_target_len, bool reverse_targets, std::atomic<BlockId>* const next):
 		reverse_targets(reverse_targets),
@@ -190,7 +190,7 @@ struct AsyncTargetBuffer
 	{
 		BlockId n;
 		int i = 0;
-		while (i < CHANNELS && (n = next->fetch_add(1, std::memory_order_relaxed)) < target_count) {
+		while (i < LANES && (n = next->fetch_add(1, std::memory_order_relaxed)) < target_count) {
 			DpTarget t = begin[n];
 			if (t.blank())
 				t.target_idx = n;
@@ -224,8 +224,8 @@ struct AsyncTargetBuffer
 
 	SeqVector seq_vector() const
 	{
-		alignas(32) T s[CHANNELS];
-		std::fill(s, s + CHANNELS, SUPER_HARD_MASK);
+		alignas(32) T s[LANES];
+		std::fill(s, s + LANES, SUPER_HARD_MASK);
 		for (int i = 0; i < active.size(); ++i) {
 			const int channel = active[i];
 			s[channel] = (*this)[channel];
@@ -247,7 +247,7 @@ struct AsyncTargetBuffer
 
 	std::vector<const int32_t*> get32() const {
 		static const int32_t blank[32] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
-		std::vector<const int32_t*> target_scores(CHANNELS);
+		std::vector<const int32_t*> target_scores(LANES);
 		std::fill(target_scores.begin(), target_scores.end(), blank);
 		for (int i = 0; i < active.size(); ++i) {
 			const int channel = active[i];
@@ -303,14 +303,14 @@ struct AsyncTargetBuffer
 	}
 
 	const bool reverse_targets;
-	int pos[CHANNELS];
-	SmallVector<int, CHANNELS> active;
+	int pos[LANES];
+	SmallVector<int, LANES> active;
 	const It begin;
 	const BlockId target_count;
 	std::atomic<BlockId>* const next;
-	DpTarget dp_targets[CHANNELS];
+	DpTarget dp_targets[LANES];
 	bool custom_matrix_16bit;
-	std::array<Array<Letter>, CHANNELS> target_seqs;
+	std::array<Array<Letter>, LANES> target_seqs;
 
 };
 

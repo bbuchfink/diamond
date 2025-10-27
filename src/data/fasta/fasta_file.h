@@ -37,7 +37,6 @@ struct FastaFile : public SequenceFile
 	virtual int64_t letters() const override;
 	virtual int db_version() const override;
 	virtual int program_build_version() const override;
-	virtual Metadata metadata() const override;
 	virtual int build_version() override;
 	virtual ~FastaFile();
 	virtual BitVector* filter_by_accession(const std::string& file_name) override;

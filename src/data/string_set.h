@@ -69,8 +69,8 @@ struct StringSetBase
 		data_.shrink_to_fit();
 	}
 
-	template<typename _it>
-	void push_back(_it begin, _it end)
+	template<typename It>
+	void push_back(It begin, It end)
 	{
 		assert(begin <= end);
 		limits_.push_back(raw_len() + (end - begin) + padding_len);
