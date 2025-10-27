@@ -119,6 +119,14 @@ static inline void unaligned_store(float v, float* p) {
 	*p = v;
 }
 
+static inline float add(float a, float b) {
+	return a + b;
+}
+
+static inline float mul(float a, float b) {
+	return a * b;
+}
+
 static inline float fmadd(float a, float b, float c) {
 	return a * b + c;
 }

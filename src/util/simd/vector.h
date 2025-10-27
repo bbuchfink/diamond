@@ -58,14 +58,14 @@ static inline float sum(const float* x, size_t n) {
 	return sum;
 }
 
-static inline void set(float* dst, float val, size_t n) {
+/*static inline void set(float* dst, float val, size_t n) {
 	using Register = Traits<float>::Register;
 	constexpr size_t L = Traits<float>::LANES;
 	const Register s = set(val, Register());
 	size_t i = 0;
 	for (; i + L <= n; i += L) unaligned_store(s, dst + i);
 	for (; i < n; ++i) dst[i] = val;
-}
+}*/
 
 static inline void scale(float* dst, float scale, size_t n) {
 	using Register = Traits<float>::Register;
@@ -77,7 +77,7 @@ static inline void scale(float* dst, float scale, size_t n) {
 	for (; i < n; ++i) dst[i] *= scale;
 }
 
-static inline void add(float* dst, const float* src, size_t n) {
+/*static inline void add(float* dst, const float* src, size_t n) {
 	using Register = Traits<float>::Register;
 	constexpr size_t L = Traits<float>::LANES;
 	size_t i = 0;
@@ -135,6 +135,6 @@ static inline void add_scalar_inplace(float* dst, float s, size_t n) {
 		unaligned_store(add(a, v), dst + i);
 	}
 	for (; i < n; ++i) dst[i] += s;
-}
+}*/
 
 }}

@@ -31,11 +31,11 @@ CPUS=$(sysctl -n hw.ncpu)
 export CFLAGS="-arch x86_64 -arch arm64 -mmacosx-version-min=10.15"
 export CXXFLAGS="-arch x86_64 -arch arm64 -mmacosx-version-min=10.15"
 export MACOSX_DEPLOYMENT_TARGET=10.15
-git clone https://github.com/facebook/zstd.git
+git clone https://github.com/facebook/zstd.git || TRUE
 cd zstd
 make -j $CPUS
 cd ..
-git clone https://github.com/ncbi/ncbi-cxx-toolkit-public.git
+git clone https://github.com/ncbi/ncbi-cxx-toolkit-public.git || TRUE
 cd ncbi-cxx-toolkit-public
 ./cmake-configure --without-debug --with-projects="objtools/blast/seqdb_reader;objtools/blast/blastdb_format" --with-build-root=build
 cd build/build
@@ -44,7 +44,7 @@ cd ..
 cp inc/ncbiconf_unix.h ../include
 cd ../..
 
-mkdir build_x86
+mkdir build_x86 || TRUE
 cd build_x86
 export CFLAGS="-arch x86_64 -mmacosx-version-min=10.15"
 export CXXFLAGS="-arch x86_64 -mmacosx-version-min=10.15"
@@ -59,7 +59,7 @@ cmake -DCMAKE_BUILD_TYPE=Release \
 make -j $CPUS
 cd ..
 
-mkdir build_arm
+mkdir build_arm || TRUE
 cd build_arm
 export CFLAGS="-arch arm64 -mmacosx-version-min=11.0"
 export CXXFLAGS="-arch arm64 -mmacosx-version-min=11.0"
