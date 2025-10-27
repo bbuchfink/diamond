@@ -35,7 +35,7 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "vector8_avx512.h"
 #elif ARCH_ID == 2
 #include "vector8_avx2.h"
-#elif ARCH_ID == 4
+#elif defined(__ARM_NEON)
 #include "vector8_neon.h"
 #elif defined(__SSE2__)
 #include "vector8_sse.h"

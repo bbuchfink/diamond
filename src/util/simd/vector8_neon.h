@@ -38,7 +38,7 @@ namespace DISPATCH_ARCH { namespace SIMD {
 template<>
 struct Vector<int8_t> {
 
-	static constexpr size_t CHANNELS = 16;
+	static constexpr size_t LANES = 16;
 
 	Vector()
 	{}
@@ -58,7 +58,7 @@ struct Vector<int8_t> {
 template<>
 struct Vector<int16_t> {
 
-	static constexpr size_t CHANNELS = 8;
+	static constexpr size_t LANES = 8;
 
 	Vector()
 	{}
@@ -78,7 +78,7 @@ struct Vector<int16_t> {
 template<>
 struct Vector<int32_t> {
 
-	static constexpr size_t CHANNELS = 1;
+	static constexpr size_t LANES = 1;
 
 	Vector()
 	{}
