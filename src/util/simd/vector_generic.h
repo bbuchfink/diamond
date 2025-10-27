@@ -107,6 +107,10 @@ static inline float load(const float* p, float) {
 	return *p;
 }
 
+static inline float unaligned_load(const float* p, float) {
+	return *p;
+}
+
 static inline void store(float v, float* p) {
 	*p = v;
 }
