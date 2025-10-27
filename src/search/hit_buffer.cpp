@@ -141,7 +141,11 @@ void HitBuffer::alloc_buffer() {
 #ifdef _MSC_VER
 	data_next_ = new Hit[max_size];
 #else
-	data_next_ = (Hit*)mmap(nullptr, max_size * sizeof(Hit), PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_HUGETLB, -1, 0);
+	int flags = MAP_PRIVATE | MAP_ANONYMOUS;
+#ifdef MAP_HUGETLB
+	flags |= MAP_HUGETLB;
+#endif
+	data_next_ = (Hit*)mmap(nullptr, max_size * sizeof(Hit), PROT_READ | PROT_WRITE, flags, -1, 0);
 	if (data_next_ == MAP_FAILED) {
 		data_next_ = new Hit[max_size];
 		//throw runtime_error(string("Failed to allocate memory for hit buffer: ") + strerror(errno));
