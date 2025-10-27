@@ -107,7 +107,7 @@ void HitBuffer::load(size_t max_size) {
 void HitBuffer::load_bin(Hit* out, int bin)
 {
 	if (!config.trace_pt_membuf) {
-#ifndef _MSC_VER
+#if !_MSC_VER && !__APPLE__
 		if (bin < bins() - 1)
 			posix_fadvise(fileno(tmp_file_[bin + 1]->file()), 0, 0, POSIX_FADV_SEQUENTIAL | POSIX_FADV_WILLNEED);
 #endif

@@ -95,5 +95,68 @@ struct Vector<int32_t> {
 
 };
 
+template<>
+struct Traits<float> {
+	static constexpr size_t LANES = 4;
+	using Register = float32x4_t;
+};
+
+static inline float32x4_t add(float32x4_t a, float32x4_t b) {
+	return vaddq_f32(a, b);
+}
+
+static inline float32x4_t zero(float32x4_t) {
+	return vdupq_n_f32(0.0f);
+}
+
+// Sets only lane 0 to x (like _mm_set_ss), other lanes = 0
+static inline float32x4_t set(float x, float32x4_t) {
+	float32x4_t z = vdupq_n_f32(0.0f);
+	return vsetq_lane_f32(x, z, 0);
+}
+
+static inline float32x4_t unaligned_load(const float* p, float32x4_t) {
+	// NEON uses the same intrinsic for aligned/unaligned loads
+	return vld1q_f32(p);
+}
+
+static inline float32x4_t load(const float* p, float32x4_t) {
+	return vld1q_f32(p);
+}
+
+static inline void unaligned_store(float32x4_t v, float* p) {
+	vst1q_f32(p, v);
+}
+
+static inline void store(float32x4_t v, float* p) {
+	vst1q_f32(p, v);
+}
+
+static inline float32x4_t mul(float32x4_t a, float32x4_t b) {
+	return vmulq_f32(a, b);
+}
+
+static inline float32x4_t fmadd(float32x4_t a, float32x4_t b, float32x4_t c) {
+	// c + a*b  (matches add(mul(a,b), c))
+#if defined(__aarch64__)
+	return vfmaq_f32(c, a, b);
+#else
+	// vmlaq_f32 is fused on CPUs with FMA; otherwise it may lower to mul+add
+	return vmlaq_f32(c, a, b);
+#endif
+}
+
+static inline float hsum(float32x4_t v) {
+#if defined(__aarch64__)
+	return vaddvq_f32(v);
+#else
+	// pairwise reduce: (v0+v1) + (v2+v3)
+	float32x2_t vlow = vget_low_f32(v);
+	float32x2_t vhigh = vget_high_f32(v);
+	float32x2_t sum2 = vadd_f32(vlow, vhigh);      // [v0+v2, v1+v3]
+	float32x2_t sum1 = vpadd_f32(sum2, sum2);      // [ (v0+v2)+(v1+v3), ... ]
+	return vget_lane_f32(sum1, 0);
+#endif
+}
 
 }}

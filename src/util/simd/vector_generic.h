@@ -96,24 +96,31 @@ struct Traits<float> {
 };
 
 static inline float zero(float) {
+	return 0.0f;
 }
 
 static inline float set(float x, float) {
+	return x;
 }
 
 static inline float load(const float* p, float) {
+	return *p;
 }
 
 static inline void store(float v, float* p) {
+	*p = v;
 }
 
 static inline void unaligned_store(float v, float* p) {
+	*p = v;
 }
 
 static inline float fmadd(float a, float b, float c) {
+	return a * b + c;
 }
 
 static inline float hsum(float a) {
+	return a;
 }
 
 }}

@@ -121,9 +121,11 @@ static inline __m128 load(const float* p, __m128) {
 }
 
 static inline void unaligned_store(__m128 v, float* p) {
+	_mm_storeu_ps(p, v);
 }
 
 static inline void store(__m128 v, float* p) {
+	_mm_store_ps(p, v);
 }
 
 static inline __m128 mul(__m128 a, __m128 b) {
@@ -131,11 +133,15 @@ static inline __m128 mul(__m128 a, __m128 b) {
 }
 
 static inline __m128 fmadd(__m128 a, __m128 b, __m128 c) {
-	return __m128();
+	return add(mul(a, b), c);
 }
 
-static inline float hsum(__m128 a) {
-	return 0;
+static inline float hsum(__m128 v) {
+	__m128 shuf = _mm_shuffle_ps(v, v, _MM_SHUFFLE(2, 3, 0, 1));
+	__m128 sums = _mm_add_ps(v, shuf);
+	shuf = _mm_shuffle_ps(sums, sums, _MM_SHUFFLE(1, 0, 3, 2));
+	sums = _mm_add_ss(sums, shuf);
+	return _mm_cvtss_f32(sums);
 }
 
 }}
