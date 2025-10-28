@@ -33,6 +33,7 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <limits.h>
 #include <stdint.h>
 #include <assert.h>
+#include <limits>
 #include "../intrin.h"
 
 static inline int8_t saturated_add(int8_t x, int8_t y) {
