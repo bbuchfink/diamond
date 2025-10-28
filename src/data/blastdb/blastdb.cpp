@@ -44,7 +44,7 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "util/log_stream.h"
 #include "taxdmp.h"
 #include "data/taxonomy_nodes.h"
-#include "phr.h"
+//#include "phr.h"
 
 using std::endl;
 using std::vector;
@@ -578,7 +578,8 @@ void BlastDB::write_seq(const Sequence& seq, const string& id) {
 }
 
 StringSet BlastDB::load_ids(OId begin, OId end) const {
-	auto it = volumes_.lower_bound(begin);
+	return StringSet();
+	/*auto it = volumes_.lower_bound(begin);
 	if(it == volumes_.end())
 		throw runtime_error("No volume found for OID " + std::to_string(begin));
 	Phr phr(it->second + ".phr", it->second + ".pin");
@@ -595,5 +596,5 @@ StringSet BlastDB::load_ids(OId begin, OId end) const {
 			throw runtime_error("Failed to parse PHR record with OID " + std::to_string(i) + " in BLAST database.");
 		ids.assign(i, seqids[0].begin(), seqids[0].end());
 	}
-	return ids;
+	return ids;*/
 }

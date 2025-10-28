@@ -414,7 +414,7 @@ set(OBJECTS
         #src/stats/blast/matrix_adjust.cpp
         src/stats/blast/ncbi.cpp
         src/search/hit_buffer.cpp
-        src/data/blastdb/phr.cpp
+        #src/data/blastdb/phr.cpp
         src/util/io/mmap.cpp
 )
 
