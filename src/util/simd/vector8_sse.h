@@ -109,7 +109,7 @@ static inline __m128 zero(__m128) {
 }
 
 static inline __m128 set(float x, __m128) {
-	return _mm_set_ss(x);
+	return _mm_set_ps1(x);
 }
 
 static inline __m128 unaligned_load(const float* p, __m128) {

@@ -111,8 +111,7 @@ static inline float32x4_t zero(float32x4_t) {
 
 // Sets only lane 0 to x (like _mm_set_ss), other lanes = 0
 static inline float32x4_t set(float x, float32x4_t) {
-	float32x4_t z = vdupq_n_f32(0.0f);
-	return vsetq_lane_f32(x, z, 0);
+	return vdupq_n_f32(x);
 }
 
 static inline float32x4_t unaligned_load(const float* p, float32x4_t) {
