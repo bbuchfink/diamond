@@ -33,7 +33,6 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "util/data_structures/flat_array.h"
 #include "basic/statistics.h"
 #include "util/algo/pattern_matcher.h"
-#include "finger_print.h"
 #include "util/memory/alignment.h"
 #include "run/config.h"
 #include "hit_buffer.h"
@@ -43,6 +42,8 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "util/algo/join_result.h"
 #include "basic/reduction.h"
 #include "util/data_structures/deque.h"
+#include "data/block/block.h"
+#include "hamming/finger_print.h"
 
 // #define UNGAPPED_SPOUGE
 
@@ -96,26 +97,6 @@ bool keep_target_id(const Search::Config& cfg);
 int seedp_bits(int shape_weight, int threads, int index_chunks);
 
 }
-
-/*struct Stage1_hit
-{
-	Stage1_hit(unsigned q_ref, unsigned q_offset, unsigned s_ref, unsigned s_offset) :
-		q(q_ref + q_offset),
-		s(s_ref + s_offset)
-	{}
-	bool operator<(const Stage1_hit &rhs) const
-	{
-		return q < rhs.q;
-	}
-	struct Query
-	{
-		unsigned operator()(const Stage1_hit &x) const
-		{
-			return x.q;
-		}
-	};
-	unsigned q, s;
-};*/
 
 namespace Search {
 

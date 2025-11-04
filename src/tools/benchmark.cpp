@@ -39,11 +39,11 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "dp/score_vector_int8.h"
 #include "dp/score_profile.h"
 #include "dp/ungapped.h"
-#include "search/finger_print.h"
 #include "util/simd/vector.h"
 #include "util/simd/transpose.h"
 #include "dp/scan_diags.h"
 #include "stats/cbs.h"
+#include "search/hamming/kernel.h"
 #include "util/profiler.h"
 #include "dp/swipe/cell_update.h"
 #include "dp/swipe/anchored.h"
@@ -126,7 +126,7 @@ void benchmark_hamming(const Sequence& s1, const Sequence& s2) {
 	static const size_t n = 100000000llu;
 	high_resolution_clock::time_point t1 = high_resolution_clock::now();
 
-	Byte_finger_print_48 f1(s1.data()), f2 (s2.data());
+	FingerPrint f1(s1.data()), f2 (s2.data());
 	for (size_t i = 0; i < n; ++i) {
 #ifdef __ARM_NEON
 		f1.r1 = veorq_s8(f1.r1, f1.r2);

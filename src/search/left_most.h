@@ -19,11 +19,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 
 #pragma once
-
 #include "search.h"
 #include "sse_dist.h"
 #include "util/sequence/sequence.h"
-#include "finger_print.h"
 #include "basic/shape_config.h"
 #include "data/seed_histogram.h"
 

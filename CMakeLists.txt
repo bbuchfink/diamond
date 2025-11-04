@@ -196,7 +196,7 @@ endif()
 
 set(DISPATCH_OBJECTS
         "src/dp/swipe/banded_3frame_swipe.cpp"
-        "src/search/stage1_2.cpp"
+        "src/search/hamming/stage1_2.cpp"
         "src/tools/benchmark.cpp"
         "src/dp/swipe/swipe_wrapper.cpp"
         "src/masking/tantan.cpp"

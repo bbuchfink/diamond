@@ -28,6 +28,7 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ****/
 // SPDX-License-Identifier: BSD-3-Clause
 
+#pragma once
 #include <limits.h>
 #include "search.h"
 #include "dp/ungapped.h"

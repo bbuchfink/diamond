@@ -29,15 +29,17 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // SPDX-License-Identifier: BSD-3-Clause
 
 #pragma once
+#include <cstring>
 #include "util/simd.h"
 #include "basic/value.h"
-#include <cstring>
+
+using std::vector;
 
 #ifdef __SSE2__
 
-struct Byte_finger_print_48
+struct FingerPrint
 {
-	Byte_finger_print_48(const Letter *q) :
+	FingerPrint(const Letter* q) :
 #ifdef SEQ_MASK
 		r1(letter_mask(_mm_loadu_si128((__m128i const*)(q - 16)))),
 		r2(letter_mask(_mm_loadu_si128((__m128i const*)(q)))),
@@ -47,12 +49,13 @@ struct Byte_finger_print_48
 		r2(_mm_loadu_si128((__m128i const*)(q))),
 		r3(_mm_loadu_si128((__m128i const*)(q + 16)))
 #endif
-	{}
+	{
+	}
 	static uint64_t match_block(__m128i x, __m128i y)
 	{
 		return (uint64_t)_mm_movemask_epi8(_mm_cmpeq_epi8(x, y));
 	}
-	unsigned match(const Byte_finger_print_48 &rhs) const
+	unsigned match(const FingerPrint& rhs) const
 	{
 		return popcount64(match_block(r3, rhs.r3) << 32 | match_block(r1, rhs.r1) << 16 | match_block(r2, rhs.r2));
 	}
@@ -61,9 +64,9 @@ struct Byte_finger_print_48
 
 #elif defined(__ARM_NEON)
 
-struct Byte_finger_print_48
+struct FingerPrint
 {
-	Byte_finger_print_48(const Letter *q) :
+	FingerPrint(const Letter* q) :
 #ifdef SEQ_MASK
 		r1(letter_mask(vld1q_s8(q - 16))),
 		r2(letter_mask(vld1q_s8(q))),
@@ -74,7 +77,7 @@ struct Byte_finger_print_48
 		r3(vld1q_s8(q + 16)),
 #endif
 	{}
-	unsigned match(const Byte_finger_print_48 &rhs) const
+		unsigned match(const FingerPrint& rhs) const
 	{
 		const uint8x16_t ONES = vdupq_n_u8(1);
 		uint8x16_t s1 = vandq_u8(vceqq_s8(r1, rhs.r1), ONES);
@@ -91,11 +94,12 @@ struct Byte_finger_print_48
 
 #else
 
-struct Byte_finger_print_48
+struct FingerPrint
 {
-	Byte_finger_print_48()
-	{}
-	Byte_finger_print_48(const Letter *q)
+	FingerPrint()
+	{
+	}
+	FingerPrint(const Letter* q)
 	{
 		memcpy(r, q - 16, 48);
 #ifdef SEQ_MASK
@@ -103,7 +107,7 @@ struct Byte_finger_print_48
 			r[i] &= LETTER_MASK;
 #endif
 	}
-	unsigned match(const Byte_finger_print_48 &rhs) const
+	unsigned match(const FingerPrint& rhs) const
 	{
 		unsigned n = 0;
 		for (unsigned i = 0; i < 48; ++i)
@@ -116,4 +120,15 @@ struct Byte_finger_print_48
 
 #endif
 
-typedef Byte_finger_print_48 FingerPrint;
+using Container = vector<FingerPrint, Util::Memory::AlignmentAllocator<FingerPrint, 16>>;
+
+template<typename SeedLoc>
+static void load_fps(const SeedLoc* p, size_t n, Container& v, const SequenceSet& seqs)
+{
+	v.clear();
+	v.reserve(n);
+	const SeedLoc* end = p + n;
+	for (; p < end; ++p) {
+		v.emplace_back(seqs.data(*p));
+	}
+}

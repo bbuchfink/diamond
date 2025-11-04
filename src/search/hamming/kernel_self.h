@@ -29,46 +29,47 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // SPDX-License-Identifier: BSD-3-Clause
 
 #pragma once
-#include <cstring>
-#include "util/simd.h"
-#include "basic/value.h"
-#include "util/data_structures/flat_array.h"
-#include "search/search.h"
+#include "search.h"
 #include "../stage2.h"
+#include "data/block/block.h"
+#include "kernel.h"
 
 using std::vector;
 
 namespace Search { namespace DISPATCH_ARCH {
-
-static void all_vs_all(const FingerPrint* a, uint32_t na, const FingerPrint* b, uint32_t nb, FlatArray<uint32_t>& out, unsigned hamming_filter_id) {
+	
+static void all_vs_all_self(const FingerPrint* a, uint32_t na, FlatArray<uint32_t>& out, unsigned hamming_filter_id) {
 	for (uint32_t i = 0; i < na; ++i) {
 		const FingerPrint e = a[i];
 		out.next();
-		for (uint32_t j = 0; j < nb; ++j)
-			if (e.match(b[j]) >= hamming_filter_id)
+		for (uint32_t j = i + 1; j < na; ++j)
+			if (e.match(a[j]) >= hamming_filter_id)
 				out.push_back(j);
 	}
 }
 
 template<typename SeedLoc>
-static void FLATTEN stage1(const SeedLoc* q, int32_t nq, const SeedLoc* s, int32_t ns, ::Search::WorkSet& work_set)
+static void FLATTEN stage1_self(const SeedLoc* q, int32_t nq, const SeedLoc* s, int32_t ns, WorkSet& work_set)
 {
 #ifdef __APPLE__
-	thread_local Container vq, vs;
+	thread_local Container vs;
 #else
-	Container& vq = work_set.vq, & vs = work_set.vs;
+	Container& vs = work_set.vs;
 #endif
 
 	const int32_t tile_size = config.tile_size;
 	load_fps(s, ns, vs, work_set.cfg.target->seqs());
-	work_set.stats.inc(Statistics::SEED_HITS, nq * ns);
-	load_fps(q, nq, vq, work_set.cfg.query->seqs());
-	const int32_t qs = (int32_t)vq.size(), ss = (int32_t)vs.size();
-	for (int32_t i = 0; i < qs; i += tile_size) {
-		for (int32_t j = 0; j < ss; j += tile_size) {
+
+	work_set.stats.inc(Statistics::SEED_HITS, ns * (ns - 1) / 2);
+	const int32_t ss = (int32_t)vs.size();
+	for (int32_t i = 0; i < ss; i += tile_size) {
+		work_set.hits.clear();
+		all_vs_all_self(vs.data() + i, std::min(tile_size, ss - i), work_set.hits, work_set.cfg.hamming_filter_id);
+		search_tile(work_set.hits, i, i, s, s, work_set);
+		for (int32_t j = i + tile_size; j < ss; j += tile_size) {
 			work_set.hits.clear();
-			all_vs_all(vq.data() + i, std::min(tile_size, qs - i), vs.data() + j, std::min(tile_size, ss - j), work_set.hits, work_set.cfg.hamming_filter_id);
-			search_tile(work_set.hits, i, j, q, s, work_set);
+			all_vs_all(vs.data() + i, std::min(tile_size, ss - i), vs.data() + j, std::min(tile_size, ss - j), work_set.hits, work_set.cfg.hamming_filter_id);
+			search_tile(work_set.hits, i, j, s, s, work_set);
 		}
 	}
 }
