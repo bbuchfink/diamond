@@ -29,43 +29,41 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // SPDX-License-Identifier: BSD-3-Clause
 
 #pragma once
-#include "search/search.h"
+
+#include <vector>
+#include "util/math/integer.h"
 
 using std::vector;
 
-namespace Search { namespace DISPATCH_ARCH {
+struct HitField {
 
-static void all_vs_all(const FingerPrint* __restrict a, size_t na, const FingerPrint* __restrict b, size_t nb, HitField& out, unsigned hamming_filter_id) {
-	for (size_t i = 0; i < na; ++i) {
-		const FingerPrint e = a[i];
-		for (size_t j = 0; j < nb; ++j)
-			out.set(i, j, e.match(b[j]) >= hamming_filter_id);
+	void init(size_t query, size_t target) {
+		shift_ = std::max(bit_length(target), 8);
+		data_.assign(query * ((size_t)1 << shift_), false);
 	}
-}
 
-template<typename SeedLoc>
-static void FLATTEN stage1(const SeedLoc* __restrict q, int32_t nq, const SeedLoc* __restrict s, int32_t ns, ::Search::WorkSet& work_set)
-{
-#ifdef __APPLE__
-	thread_local Container vq, vs;
-#else
-	Container& vq = work_set.vq, & vs = work_set.vs;
-#endif
-
-	const int32_t tile_size = config.tile_size;
-	load_fps(s, ns, vs, work_set.cfg.target->seqs());
-	work_set.stats.inc(Statistics::SEED_HITS, nq * ns);
-	load_fps(q, nq, vq, work_set.cfg.query->seqs());
-	const int32_t qs = (int32_t)vq.size(), ss = (int32_t)vs.size();
-	for (int32_t i = 0; i < qs; i += tile_size) {
-		for (int32_t j = 0; j < ss; j += tile_size) {
-			const size_t tq = std::min(tile_size, qs - i);
-			const size_t ts = std::min(tile_size, ss - j);
-			work_set.hits.init(nq, ns);
-			all_vs_all(vq.data() + i, tq, vs.data() + j, ts, work_set.hits, work_set.cfg.hamming_filter_id);
-			search_tile(work_set.hits, i, j, q, s, work_set);
-		}
+	void set(size_t query, size_t target, bool v) {
+		data_[query << shift_ | target] = v;
 	}
-}
 
-}}
+	const vector<uint_fast32_t>& hits(size_t query) {
+		hits_.clear();
+		const size_t base = query << shift_;
+		const size_t limit = base + ((size_t)1 << shift_);
+		for (size_t i = base; i < limit; ++i)
+			if (data_[i])
+				hits_.push_back(i - base);
+		return hits_;
+	}
+
+	size_t query_count() const {
+		return data_.size() >> shift_;
+	}
+
+private:
+
+	int shift_;
+	vector<bool> data_;
+	vector<uint_fast32_t> hits_;
+
+};

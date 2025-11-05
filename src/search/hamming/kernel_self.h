@@ -29,7 +29,6 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // SPDX-License-Identifier: BSD-3-Clause
 
 #pragma once
-#include "search.h"
 #include "../stage2.h"
 #include "data/block/block.h"
 #include "kernel.h"
@@ -38,13 +37,11 @@ using std::vector;
 
 namespace Search { namespace DISPATCH_ARCH {
 	
-static void all_vs_all_self(const FingerPrint* a, uint32_t na, FlatArray<uint32_t>& out, unsigned hamming_filter_id) {
+static void all_vs_all_self(const FingerPrint* a, uint32_t na, HitField& out, unsigned hamming_filter_id) {
 	for (uint32_t i = 0; i < na; ++i) {
 		const FingerPrint e = a[i];
-		out.next();
 		for (uint32_t j = i + 1; j < na; ++j)
-			if (e.match(a[j]) >= hamming_filter_id)
-				out.push_back(j);
+			out.set(i, j, e.match(a[j]) >= hamming_filter_id);
 	}
 }
 
@@ -63,12 +60,15 @@ static void FLATTEN stage1_self(const SeedLoc* q, int32_t nq, const SeedLoc* s, 
 	work_set.stats.inc(Statistics::SEED_HITS, ns * (ns - 1) / 2);
 	const int32_t ss = (int32_t)vs.size();
 	for (int32_t i = 0; i < ss; i += tile_size) {
-		work_set.hits.clear();
-		all_vs_all_self(vs.data() + i, std::min(tile_size, ss - i), work_set.hits, work_set.cfg.hamming_filter_id);
+		const size_t tq = std::min(tile_size, ss - i);
+		work_set.hits.init(tq, tq);
+		all_vs_all_self(vs.data() + i, tq, work_set.hits, work_set.cfg.hamming_filter_id);
 		search_tile(work_set.hits, i, i, s, s, work_set);
 		for (int32_t j = i + tile_size; j < ss; j += tile_size) {
-			work_set.hits.clear();
-			all_vs_all(vs.data() + i, std::min(tile_size, ss - i), vs.data() + j, std::min(tile_size, ss - j), work_set.hits, work_set.cfg.hamming_filter_id);
+			const size_t tq = std::min(tile_size, ss - i);
+			const size_t ts = std::min(tile_size, ss - j);
+			work_set.hits.init(tq, ts);
+			all_vs_all(vs.data() + i, tq, vs.data() + j, ts, work_set.hits, work_set.cfg.hamming_filter_id);
 			search_tile(work_set.hits, i, j, s, s, work_set);
 		}
 	}

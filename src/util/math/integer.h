@@ -29,6 +29,7 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // SPDX-License-Identifier: BSD-3-Clause
 
 #pragma once
+#include <cmath>
 #include <math.h>
 #include <limits.h>
 #include <stdint.h>
@@ -72,6 +73,10 @@ constexpr size_t next_pow2(size_t x) noexcept {
 #error "Unsupported size_t width"
 #endif
 	return size_t{ 1 } << (W - lz);
+}
+
+constexpr size_t next_pow2(double x) noexcept {
+	return next_pow2(static_cast<size_t>(std::ceil(x)));
 }
 
 template<typename It, int N>

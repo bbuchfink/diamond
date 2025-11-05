@@ -30,7 +30,7 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #pragma once
 #include <vector>
-#include "util/data_structures/flat_array.h"
+#include "hamming/hit_field.h"
 #include "basic/statistics.h"
 #include "util/algo/pattern_matcher.h"
 #include "util/memory/alignment.h"
@@ -118,7 +118,7 @@ struct WorkSet {
 #ifndef __APPLE__
 	std::vector<FingerPrint, Util::Memory::AlignmentAllocator<FingerPrint, 16>> vq, vs;
 #endif
-	FlatArray<uint32_t> hits;
+	HitField hits;
 	KmerRanking* kmer_ranking;
 };
 
