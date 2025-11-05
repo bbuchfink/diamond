@@ -29,18 +29,14 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // SPDX-License-Identifier: BSD-3-Clause
 
 #pragma once
-#include <cstring>
-#include "util/simd.h"
-#include "basic/value.h"
 #include "util/data_structures/flat_array.h"
 #include "search/search.h"
-#include "../stage2.h"
 
 using std::vector;
 
 namespace Search { namespace DISPATCH_ARCH {
 
-static void all_vs_all(const FingerPrint* a, uint32_t na, const FingerPrint* b, uint32_t nb, FlatArray<uint32_t>& out, unsigned hamming_filter_id) {
+static void all_vs_all(const FingerPrint* __restrict a, uint32_t na, const FingerPrint* __restrict b, uint32_t nb, FlatArray<uint32_t>& out, unsigned hamming_filter_id) {
 	for (uint32_t i = 0; i < na; ++i) {
 		const FingerPrint e = a[i];
 		out.next();
@@ -51,7 +47,7 @@ static void all_vs_all(const FingerPrint* a, uint32_t na, const FingerPrint* b, 
 }
 
 template<typename SeedLoc>
-static void FLATTEN stage1(const SeedLoc* q, int32_t nq, const SeedLoc* s, int32_t ns, ::Search::WorkSet& work_set)
+static void FLATTEN stage1(const SeedLoc* __restrict q, int32_t nq, const SeedLoc* __restrict s, int32_t ns, ::Search::WorkSet& work_set)
 {
 #ifdef __APPLE__
 	thread_local Container vq, vs;

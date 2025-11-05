@@ -28,18 +28,15 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ****/
 // SPDX-License-Identifier: BSD-3-Clause
 
-#include "search.h"
 #include "../stage2.h"
 #include "data/block/block.h"
 #include "kernel.h"
-#include "kernel_self.h"
-#include "kernel_mutual_cov.h"
 
 using std::vector;
 
 namespace Search { namespace DISPATCH_ARCH {
 
-static void FLATTEN stage1_query_lin(const PackedLoc* q, int32_t nq, const PackedLoc* s, int32_t ns, WorkSet& work_set)
+static void FLATTEN stage1_query_lin(const PackedLoc* __restrict q, int32_t nq, const PackedLoc* __restrict s, int32_t ns, WorkSet& work_set)
 {
 #ifdef __APPLE__
 	thread_local Container vq, vs;
@@ -60,7 +57,7 @@ static void FLATTEN stage1_query_lin(const PackedLoc* q, int32_t nq, const Packe
 	}
 }
 
-static void FLATTEN stage1_query_lin_ranked(const PackedLocId* q, int32_t nq, const PackedLocId* s, int32_t ns, WorkSet& work_set)
+static void FLATTEN stage1_query_lin_ranked(const PackedLocId* __restrict q, int32_t nq, const PackedLocId* __restrict s, int32_t ns, WorkSet& work_set)
 {
 #ifdef __APPLE__
 	thread_local Container vq, vs;
@@ -83,7 +80,7 @@ static void FLATTEN stage1_query_lin_ranked(const PackedLocId* q, int32_t nq, co
 }
 
 template<typename SeedLoc>
-static void FLATTEN stage1_target_lin(const SeedLoc* q, int32_t nq, const SeedLoc* s, int32_t ns, WorkSet& work_set)
+static void FLATTEN stage1_target_lin(const SeedLoc* __restrict q, int32_t nq, const SeedLoc* __restrict s, int32_t ns, WorkSet& work_set)
 {
 #ifdef __APPLE__
 	thread_local Container vq, vs;
@@ -104,7 +101,7 @@ static void FLATTEN stage1_target_lin(const SeedLoc* q, int32_t nq, const SeedLo
 	}
 }
 
-static void FLATTEN stage1_mutual_cov_query_lin(const PackedLocId* q, int32_t nq, const PackedLocId* s, int32_t ns, WorkSet& work_set)
+static void FLATTEN stage1_mutual_cov_query_lin(const PackedLocId* __restrict q, int32_t nq, const PackedLocId* __restrict s, int32_t ns, WorkSet& work_set)
 {
 	const double mlr = work_set.cfg.min_length_ratio;
 	const bool self = config.self && work_set.cfg.current_ref_block == 0;
@@ -144,7 +141,7 @@ static void FLATTEN stage1_mutual_cov_query_lin(const PackedLocId* q, int32_t nq
 	}
 }
 
-static void FLATTEN stage1_mutual_cov_target_lin(const PackedLocId* q, int32_t nq, const PackedLocId* s, int32_t ns, WorkSet& work_set)
+static void FLATTEN stage1_mutual_cov_target_lin(const PackedLocId* __restrict q, int32_t nq, const PackedLocId* __restrict s, int32_t ns, WorkSet& work_set)
 {
 	const double mlr = work_set.cfg.min_length_ratio;
 #ifdef __APPLE__

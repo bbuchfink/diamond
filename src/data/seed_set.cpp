@@ -93,7 +93,7 @@ struct HashedSeedSetCallback
 HashedSeedSet::HashedSeedSet(Block &seqs, const std::vector<bool>* skip, const double seed_cut, const MaskingAlgo soft_masking)
 {
 	for (int i = 0; i < shapes.count(); ++i)
-		data_.push_back(new Table(next_power_of_2(seqs.seqs().letters() * HASH_TABLE_FACTOR)));
+		data_.push_back(new Table(next_pow2(seqs.seqs().letters() * HASH_TABLE_FACTOR)));
 	PtrVector<HashedSeedSetCallback> v;
 	v.push_back(new HashedSeedSetCallback(data_));
 	const auto p = seqs.seqs().partition(1);
@@ -106,7 +106,7 @@ HashedSeedSet::HashedSeedSet(Block &seqs, const std::vector<bool>* skip, const d
 	data_.clear();
 
 	for (int i = 0; i < shapes.count(); ++i)
-		data_.push_back(new Table(next_power_of_2(sizes[i] * HASH_TABLE_FACTOR)));
+		data_.push_back(new Table(next_pow2(sizes[i] * HASH_TABLE_FACTOR)));
 	enum_seeds(seqs, v, &no_filter, cfg);
 
 	for (int i = 0; i < shapes.count(); ++i) {

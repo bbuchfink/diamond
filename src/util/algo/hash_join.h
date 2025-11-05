@@ -1,23 +1,32 @@
 /****
-DIAMOND protein aligner
-Copyright (C) 2016-2021 Max Planck Society for the Advancement of Science e.V.
-                        Benjamin Buchfink
-						
-Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
+Copyright © 2013-2025 Benjamin J. Buchfink <buchfink@gmail.com>
 
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
+Redistribution and use in source and binary forms, with or without modification,
+are permitted provided that the following conditions are met:
 
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
+1. Redistributions of source code must retain the above copyright notice, this
+list of conditions and the following disclaimer.
 
-You should have received a copy of the GNU General Public License
-along with this program.  If not, see <http://www.gnu.org/licenses/>.
+2. Redistributions in binary form must reproduce the above copyright notice,
+this list of conditions and the following disclaimer in the documentation and/or
+other materials provided with the distribution.
+
+3. Neither the name of the copyright holder nor the names of its contributors
+may be used to endorse or promote products derived from this software without
+specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
+INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
+EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ****/
+// SPDX-License-Identifier: BSD-3-Clause
 
 #pragma once
 #include <utility>
@@ -53,7 +62,7 @@ void hash_table_join(
 	using Key = typename T::Key;
 	typedef HashTable<Key, RelPtr, ExtractBits<Key>, NoModulo> Table;
 	
-	Key N = (Key)next_power_of_2(R.n * config.join_ht_factor);
+	Key N = (Key)next_pow2(R.n * config.join_ht_factor);
 	Table table(N, ExtractBits<Key>(N, shift));
 	typename Table::Entry *p;
 
@@ -181,7 +190,7 @@ void hash_join(
 	const unsigned key_bits = total_bits - shift;
 	if (R.n < config.join_split_size || key_bits < config.join_split_key_len) {
 		DoubleArray<typename T::Value> tmp_r((void*)dst_r), tmp_s((void*)dst_s);
-		if (next_power_of_2(R.n * config.join_ht_factor) < 1llu << key_bits)
+		if (next_pow2(R.n * config.join_ht_factor) < 1llu << key_bits)
 			hash_table_join(R, S, shift, tmp_r, tmp_s);
 		else
 			table_join(R, S, total_bits, shift, tmp_r, tmp_s);

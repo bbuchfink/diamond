@@ -35,14 +35,12 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "kernel_mutual_cov.h"
 #include "kernel_lin.h"
 
-using std::vector;
-
 namespace Search { namespace DISPATCH_ARCH {
 
-typedef void Stage1FnPackedLoc(const ::PackedLoc*, ::int32_t, const ::PackedLoc*, ::int32_t, ::Search::WorkSet&);
-typedef void Stage1FnPackedLocId(const ::PackedLocId*, ::int32_t, const ::PackedLocId*, ::int32_t, ::Search::WorkSet&);
+typedef void Stage1KernelPackedLoc(const ::PackedLoc*, ::int32_t, const ::PackedLoc*, ::int32_t, ::Search::WorkSet&);
+typedef void Stage1KernelPackedLocId(const ::PackedLocId*, ::int32_t, const ::PackedLocId*, ::int32_t, ::Search::WorkSet&);
 
-static Stage1FnPackedLocId* stage1_dispatch(const Search::Config* cfg, PackedLocId) {
+static Stage1KernelPackedLocId* stage1_dispatch(const Search::Config* cfg, PackedLocId) {
 	if (config.lin_stage1) {
 		return cfg->min_length_ratio > 0.0 ? stage1_mutual_cov_query_lin : stage1_query_lin_ranked;
 	}
@@ -58,7 +56,7 @@ static Stage1FnPackedLocId* stage1_dispatch(const Search::Config* cfg, PackedLoc
 	return stage1;
 }
 
-static Stage1FnPackedLoc* stage1_dispatch(const Search::Config* cfg, PackedLoc) {
+static Stage1KernelPackedLoc* stage1_dispatch(const Search::Config* cfg, PackedLoc) {
 	return config.lin_stage1 ? stage1_query_lin
 		: (cfg->lin_stage1_target ? stage1_target_lin<PackedLoc>
 			: (config.self && cfg->current_ref_block == 0 ? stage1_self<PackedLoc> : stage1<PackedLoc>));
@@ -71,9 +69,9 @@ void run_stage1(JoinIterator<PackedLoc>& it, Search::WorkSet* work_set, const Se
 }
 
 void run_stage1(JoinIterator<PackedLocId>& it, Search::WorkSet* work_set, const Search::Config* cfg) {
-	auto f = stage1_dispatch(cfg, PackedLocId());
+	auto kernel = stage1_dispatch(cfg, PackedLocId());
 	for (; it; ++it)
-		f(it.r->begin(), (int32_t)it.r->size(), it.s->begin(), (int32_t)it.s->size(), *work_set);
+		kernel(it.r->begin(), (int32_t)it.r->size(), it.s->begin(), (int32_t)it.s->size(), *work_set);
 }
 
 }}
