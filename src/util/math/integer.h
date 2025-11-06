@@ -48,30 +48,28 @@ static inline int32_t saturated_add(int32_t x, int32_t y) {
 	return x + y;
 }
 
-static inline int bit_length(unsigned long long x) {
+static inline int bit_length(uint64_t x) {
 	assert(x > 0);
-#if ULLONG_MAX == 0xFFFFFFFFu
-	return 32 - clz(x);
-#elif ULLONG_MAX == 0xFFFFFFFFFFFFFFFFull
 	return 64 - clz(x);
-#else
-#error "Unsupported size_t width"
-#endif
 }
 
 constexpr size_t next_pow2(size_t x) noexcept {
 	if (x <= 1) return 1;
 	if (x > (std::numeric_limits<size_t>::max() >> 1)) return 0;
 #if SIZE_MAX == 0xFFFFFFFFu
-	unsigned lz = clz(static_cast<unsigned>(x - 1));
+	unsigned lz = clz(static_cast<uint32_t>(x - 1));
 	const unsigned W = 32;
 #elif SIZE_MAX == 0xFFFFFFFFFFFFFFFFull
-	unsigned lz = clz(static_cast<unsigned long long>(x - 1));
+	unsigned lz = clz(static_cast<uint64_t>(x - 1));
 	const unsigned W = 64;
 #else
 #error "Unsupported size_t width"
 #endif
 	return size_t{ 1 } << (W - lz);
+}
+
+constexpr size_t next_pow2(double x) noexcept {
+	return next_pow2(static_cast<size_t>(std::ceil(x)));
 }
 
 template<typename It, int N>
