@@ -35,7 +35,39 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 using std::vector;
 
-#ifdef __SSE2__
+#ifdef __AVX2__
+
+struct FingerPrint {
+	alignas(32) __m256i v0;
+	alignas(32) __m256i v1;
+
+	explicit FingerPrint(const Letter* q)
+#ifdef SEQ_MASK
+		: v0(letter_mask(_mm256_loadu_si256((const __m256i*)(q - 16)))),
+		v1(_mm256_castsi128_si256(
+			letter_mask(_mm_loadu_si128((const __m128i*)(q + 16)))))
+#else
+		: v0(_mm256_loadu_si256((const __m256i*)(q - 16))),
+		v1(_mm256_castsi128_si256(
+			_mm_loadu_si128((const __m128i*)(q + 16))))
+#endif
+	{
+	}
+
+	static inline uint64_t match_block(__m256i a, __m256i b) {
+		return (uint64_t)_mm256_movemask_epi8(_mm256_cmpeq_epi8(a, b));
+	}
+
+	unsigned match(const FingerPrint& rhs) const {
+		uint64_t m0 = match_block(v0, rhs.v0);
+		uint64_t m1 = match_block(v1, rhs.v1) & 0xFFFFu;
+		uint64_t combined = m0 | (m1 << 32);
+		return popcount64(combined);
+	}
+
+};
+
+#elif defined(__SSE2__)
 
 struct FingerPrint
 {
