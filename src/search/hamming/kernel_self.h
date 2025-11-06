@@ -37,8 +37,23 @@ using std::vector;
 
 namespace Search { namespace DISPATCH_ARCH {
 	
-static void all_vs_all_self(const FingerPrint* a, uint32_t na, HitField& out, unsigned hamming_filter_id) {
-	for (uint32_t i = 0; i < na; ++i) {
+static void all_vs_all_self(const FingerPrint* __restrict a, uint32_t na, HitField& out, unsigned hamming_filter_id) {
+	const size_t na2 = na & ~size_t(3);
+	size_t i = 0;
+	for (; i < na2; i += 4) {
+		const FingerPrint e1 = a[i];
+		const FingerPrint e2 = a[i+1];
+		const FingerPrint e3 = a[i+2];
+		const FingerPrint e4 = a[i+3];
+		for (uint32_t j = i + 1; j < na; ++j) {
+			const FingerPrint fa = a[j];
+			out.set(i, j, e1.match(fa) >= hamming_filter_id);
+			out.set(i+1, j, e2.match(fa) >= hamming_filter_id);
+			out.set(i+2, j, e3.match(fa) >= hamming_filter_id);
+			out.set(i+3, j, e4.match(fa) >= hamming_filter_id);
+		}
+	}
+	for (; i < na; ++i) {
 		const FingerPrint e = a[i];
 		for (uint32_t j = i + 1; j < na; ++j)
 			out.set(i, j, e.match(a[j]) >= hamming_filter_id);

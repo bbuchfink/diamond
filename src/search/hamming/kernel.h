@@ -35,8 +35,23 @@ using std::vector;
 
 namespace Search { namespace DISPATCH_ARCH {
 
-static void all_vs_all(const FingerPrint* __restrict a, size_t na, const FingerPrint* __restrict b, size_t nb, HitField& out, unsigned hamming_filter_id) {
-	for (size_t i = 0; i < na; ++i) {
+static void all_vs_all(const FingerPrint* __restrict a, size_t na, const FingerPrint* __restrict b, size_t nb, HitField& out, const unsigned hamming_filter_id) {
+	const size_t na2 = na & ~size_t(3);
+	size_t i = 0;
+	for (; i < na2; i += 4) {
+		const FingerPrint e1 = a[i];
+		const FingerPrint e2 = a[i+1];
+		const FingerPrint e3 = a[i+2];
+		const FingerPrint e4 = a[i+3];
+		for (size_t j = 0; j < nb; ++j) {
+			const FingerPrint fb = b[j];
+			out.set(i, j, e1.match(fb) >= hamming_filter_id);
+			out.set(i+1, j, e2.match(fb) >= hamming_filter_id);
+			out.set(i+2, j, e3.match(fb) >= hamming_filter_id);
+			out.set(i+3, j, e4.match(fb) >= hamming_filter_id);
+		}
+	}
+	for (; i < na; ++i) {
 		const FingerPrint e = a[i];
 		for (size_t j = 0; j < nb; ++j)
 			out.set(i, j, e.match(b[j]) >= hamming_filter_id);
@@ -61,7 +76,7 @@ static void FLATTEN stage1(const SeedLoc* __restrict q, int32_t nq, const SeedLo
 		for (int32_t j = 0; j < ss; j += tile_size) {
 			const size_t tq = std::min(tile_size, qs - i);
 			const size_t ts = std::min(tile_size, ss - j);
-			work_set.hits.init(nq, ns);
+			work_set.hits.init(tq, ts);
 			all_vs_all(vq.data() + i, tq, vs.data() + j, ts, work_set.hits, work_set.cfg.hamming_filter_id);
 			search_tile(work_set.hits, i, j, q, s, work_set);
 		}
