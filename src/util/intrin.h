@@ -76,22 +76,22 @@ static inline int ctz(uint64_t x)
 #endif
 }
 
-static inline int clz(unsigned long long x) {
+static inline int clz(uint64_t x) {
 #ifdef _MSC_VER
 	unsigned long i;
 	unsigned char c = _BitScanReverse64(&i, x);
 	return 63 - (int)i;
 #else
-	return __builtin_clzll(x);
+	return __builtin_clzll((unsigned long long)x);
 #endif
 }
 
-static inline int clz(unsigned int x) {
+static inline int clz(uint32_t x) {
 #ifdef _MSC_VER
 	unsigned long i;
 	unsigned char c = _BitScanReverse(&i, x);
 	return 31 - (int)i;
 #else
-	return __builtin_clz(x);
+	return __builtin_clz((unsigned int)x);
 #endif
 }
