@@ -45,7 +45,13 @@ static void all_vs_all_self(const FingerPrint* __restrict a, uint32_t na, HitFie
 		const FingerPrint e2 = a[i+1];
 		const FingerPrint e3 = a[i+2];
 		const FingerPrint e4 = a[i+3];
-		for (uint32_t j = i + 1; j < na; ++j) {
+		out.set(i, i + 1, e1.match(e2) >= hamming_filter_id);
+		out.set(i, i + 2, e1.match(e3) >= hamming_filter_id);
+		out.set(i, i + 3, e1.match(e4) >= hamming_filter_id);
+		out.set(i + 1, i + 2, e2.match(e3) >= hamming_filter_id);
+		out.set(i + 1, i + 3, e2.match(e4) >= hamming_filter_id);
+		out.set(i + 2, i + 3, e3.match(e4) >= hamming_filter_id);
+		for (uint32_t j = i + 4; j < na; ++j) {
 			const FingerPrint fa = a[j];
 			out.set(i, j, e1.match(fa) >= hamming_filter_id);
 			out.set(i+1, j, e2.match(fa) >= hamming_filter_id);
