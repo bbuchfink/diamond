@@ -194,6 +194,7 @@ void Statistics::print() const
 	//log_stream << "Used ref size = " << data_[REF_SIZE] << endl;
 	//log_stream << "Traceback errors = " << data_[BIAS_ERRORS] << endl;
 	//log_stream << "Low complexity seeds  = " << data_[LOW_COMPLEXITY_SEEDS] << endl;
+	log_stream << "Seeds hit             = " << data_[SEEDS_HIT] << endl;
 	log_stream << "Hits (filter stage 0) = " << data_[SEED_HITS] << endl;
 	log_stream << "Hits (filter stage 1) = " << data_[TENTATIVE_MATCHES1] << " (" << data_[TENTATIVE_MATCHES1] * 100.0 / data_[SEED_HITS] << " %)" << endl;
 	log_stream << "Hits (filter stage 2) = " << data_[TENTATIVE_MATCHES2] << " (" << data_[TENTATIVE_MATCHES2] * 100.0 / data_[TENTATIVE_MATCHES1] << " %)" << endl;

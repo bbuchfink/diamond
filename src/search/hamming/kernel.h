@@ -36,7 +36,7 @@ using ::DISPATCH_ARCH::FingerPrint;
 
 namespace Search { namespace DISPATCH_ARCH {
 
-static void all_vs_all(const array<char, 48>* __restrict a, size_t na, const array<char, 48>* __restrict b, size_t nb, HitField& out, const unsigned hamming_filter_id) {
+static void all_vs_all2(const array<char, 48>* __restrict a, size_t na, const array<char, 48>* __restrict b, size_t nb, HitField& out, const unsigned hamming_filter_id) {
 	const size_t na2 = na & ~size_t(3);
 	size_t i = 0;
 	for (; i < na2; i += 4) {
@@ -50,6 +50,26 @@ static void all_vs_all(const array<char, 48>* __restrict a, size_t na, const arr
 			out.set(i+1, j, e2.match(fb) >= hamming_filter_id);
 			out.set(i+2, j, e3.match(fb) >= hamming_filter_id);
 			out.set(i+3, j, e4.match(fb) >= hamming_filter_id);
+		}
+	}
+	for (; i < na; ++i) {
+		const FingerPrint e(a[i]);
+		for (size_t j = 0; j < nb; ++j)
+			out.set(i, j, e.match(FingerPrint(b[j])) >= hamming_filter_id);
+	}
+}
+
+static void all_vs_all(const array<char, 48>* __restrict a, size_t na, const array<char, 48>* __restrict b, size_t nb, HitField& out, const unsigned hamming_filter_id) {
+	size_t i = 0;
+	for (; i + 2 < na; i += 3) {
+		const FingerPrint e1(a[i]);
+		const FingerPrint e2(a[i + 1]);
+		const FingerPrint e3(a[i + 2]);
+		for (size_t j = 0; j < nb; ++j) {
+			const FingerPrint fb(b[j]);
+			out.set(i, j, e1.match(fb) >= hamming_filter_id);
+			out.set(i + 1, j, e2.match(fb) >= hamming_filter_id);
+			out.set(i + 2, j, e3.match(fb) >= hamming_filter_id);
 		}
 	}
 	for (; i < na; ++i) {
