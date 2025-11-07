@@ -172,11 +172,11 @@ struct FingerPrint
 template<typename SeedLoc>
 static void load_fps(const SeedLoc* p, size_t n, ::Search::Container& v, const SequenceSet& seqs)
 {
-	v.clear();
-	v.reserve(n);
+	v.resize(n);
 	const SeedLoc* end = p + n;
+	array<char, 48>* dst = v.data();
 	for (; p < end; ++p) {
-		v.emplace_back(seqs.data(*p));
+		FingerPrint::load(seqs.data(*p), dst++);
 	}
 }
 
