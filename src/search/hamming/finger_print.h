@@ -43,11 +43,11 @@ namespace DISPATCH_ARCH {
 
 struct FingerPrint {
 	alignas(32) __m256i v0;
-	alignas(32) __m256i v1;
+	alignas(16) __m128i v1;
 
 	explicit FingerPrint(const std::array<char, 48>& a):
 		v0(_mm256_loadu_si256((const __m256i*)a.data())),
-		v1(_mm256_castsi128_si256(_mm_load_si128((const __m128i*)(a.data() + 32))))
+		v1(_mm_load_si128((const __m128i*)(a.data() + 32)))
 	{
 	}
 
@@ -58,19 +58,24 @@ struct FingerPrint {
 		_mm256_storeu_si256((__m256i*)dst, v0);
 		_mm_store_si128((__m128i*)dst + 2, v1);
 #else
-		std::copy(q - 16, dst, 48);
+		std::copy(q - 16, q + 32, dst->begin());
 #endif
 	}
 
-	static inline uint64_t match_block(__m256i a, __m256i b) {
-		return (uint64_t)_mm256_movemask_epi8(_mm256_cmpeq_epi8(a, b));
+	static inline int match_block(__m256i a, __m256i b) {
+		return _mm256_movemask_epi8(_mm256_cmpeq_epi8(a, b));
+	}
+
+	static int match_block(__m128i x, __m128i y) {
+		return _mm_movemask_epi8(_mm_cmpeq_epi8(x, y));
 	}
 
 	unsigned match(const FingerPrint& rhs) const {
-		uint64_t m0 = match_block(v0, rhs.v0);
-		uint64_t m1 = match_block(v1, rhs.v1) & 0xFFFFu;
-		uint64_t combined = m0 | (m1 << 32);
-		return popcount64(combined);
+		int m0 = match_block(v0, rhs.v0);
+		int m1 = match_block(v1, rhs.v1);
+		//uint64_t combined = m0 | (m1 << 32);
+		//return popcount64(combined);
+		return popcount32(m0) + popcount32(m1);
 	}
 
 };
@@ -96,17 +101,18 @@ struct FingerPrint
 		_mm_store_si128((__m128i*)dst + 1, r2);
 		_mm_store_si128((__m128i*)dst + 2, r3);
 #else
-		std::copy(q - 16, dst, 48);
+		std::copy(q - 16, q + 32, dst->begin());
 #endif
 	}
 
-	static uint64_t match_block(__m128i x, __m128i y)
+	static int match_block(__m128i x, __m128i y)
 	{
-		return (uint64_t)_mm_movemask_epi8(_mm_cmpeq_epi8(x, y));
+		return _mm_movemask_epi8(_mm_cmpeq_epi8(x, y));
 	}
 	unsigned match(const FingerPrint& rhs) const
 	{
-		return popcount64(match_block(r3, rhs.r3) << 32 | match_block(r1, rhs.r1) << 16 | match_block(r2, rhs.r2));
+		//return popcount64(match_block(r3, rhs.r3) << 32 | match_block(r1, rhs.r1) << 16 | match_block(r2, rhs.r2));
+		return popcount32(match_block(r1, rhs.r1) << 16 | match_block(r2, rhs.r2)) + popcount32(match_block(r3, rhs.r3));
 	}
 	alignas(16) __m128i r1, r2, r3;
 };

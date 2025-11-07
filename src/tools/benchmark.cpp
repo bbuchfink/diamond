@@ -43,7 +43,6 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "util/simd/transpose.h"
 #include "dp/scan_diags.h"
 #include "stats/cbs.h"
-#include "search/hamming/kernel.h"
 #include "util/profiler.h"
 #include "dp/swipe/cell_update.h"
 #include "dp/swipe/anchored.h"
