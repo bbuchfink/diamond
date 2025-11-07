@@ -29,11 +29,15 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // SPDX-License-Identifier: BSD-3-Clause
 
 #pragma once
+#include <array>
 #include <cstring>
 #include "util/simd.h"
 #include "basic/value.h"
+#include "../search.h"
 
-using std::vector;
+using std::array;
+
+namespace DISPATCH_ARCH {
 
 #ifdef __AVX2__
 
@@ -41,17 +45,21 @@ struct FingerPrint {
 	alignas(32) __m256i v0;
 	alignas(32) __m256i v1;
 
-	explicit FingerPrint(const Letter* q)
-#ifdef SEQ_MASK
-		: v0(letter_mask(_mm256_loadu_si256((const __m256i*)(q - 16)))),
-		v1(_mm256_castsi128_si256(
-			letter_mask(_mm_loadu_si128((const __m128i*)(q + 16)))))
-#else
-		: v0(_mm256_loadu_si256((const __m256i*)(q - 16))),
-		v1(_mm256_castsi128_si256(
-			_mm_loadu_si128((const __m128i*)(q + 16))))
-#endif
+	explicit FingerPrint(const std::array<char, 48>& a):
+		v0(_mm256_loadu_si256((const __m256i*)a.data())),
+		v1(_mm256_castsi128_si256(_mm_load_si128((const __m128i*)(a.data() + 32))))
 	{
+	}
+
+	static void load(const Letter* q, array<char, 48>* dst) {
+#ifdef SEQ_MASK
+		__m256i v0 = letter_mask(_mm256_loadu_si256((const __m256i*)(q - 16)));
+		__m128i v1 = letter_mask(_mm_loadu_si128((const __m128i*)(q + 16)));
+		_mm256_storeu_si256((__m256i*)dst, v0);
+		_mm_store_si128((__m128i*)dst + 2, v1);
+#else
+		std::copy(q - 16, dst, 48);
+#endif
 	}
 
 	static inline uint64_t match_block(__m256i a, __m256i b) {
@@ -71,18 +79,27 @@ struct FingerPrint {
 
 struct FingerPrint
 {
-	FingerPrint(const Letter* q) :
-#ifdef SEQ_MASK
-		r1(letter_mask(_mm_loadu_si128((__m128i const*)(q - 16)))),
-		r2(letter_mask(_mm_loadu_si128((__m128i const*)(q)))),
-		r3(letter_mask(_mm_loadu_si128((__m128i const*)(q + 16))))
-#else
-		r1(_mm_loadu_si128((__m128i const*)(q - 16))),
-		r2(_mm_loadu_si128((__m128i const*)(q))),
-		r3(_mm_loadu_si128((__m128i const*)(q + 16)))
-#endif
+
+	explicit FingerPrint(const std::array<char, 48>& a) :
+		r1(_mm_load_si128((const __m128i*)a.data())),
+		r2(_mm_load_si128((const __m128i*)(a.data()+16))),
+		r3(_mm_load_si128((const __m128i*)(a.data()+32)))
 	{
 	}
+
+	static void load(const Letter* q, array<char, 48>* dst) {
+#ifdef SEQ_MASK
+		__m128i r1 = letter_mask(_mm_loadu_si128((__m128i const*)(q - 16)));
+		__m128i r2 = letter_mask(_mm_loadu_si128((__m128i const*)(q)));
+		__m128i r3 = letter_mask(_mm_loadu_si128((__m128i const*)(q + 16)));
+		_mm_store_si128((__m128i*)dst, r1);
+		_mm_store_si128((__m128i*)dst + 1, r2);
+		_mm_store_si128((__m128i*)dst + 2, r3);
+#else
+		std::copy(q - 16, dst, 48);
+#endif
+	}
+
 	static uint64_t match_block(__m128i x, __m128i y)
 	{
 		return (uint64_t)_mm_movemask_epi8(_mm_cmpeq_epi8(x, y));
@@ -152,10 +169,8 @@ struct FingerPrint
 
 #endif
 
-using Container = vector<FingerPrint, Util::Memory::AlignmentAllocator<FingerPrint, 16>>;
-
 template<typename SeedLoc>
-static void load_fps(const SeedLoc* p, size_t n, Container& v, const SequenceSet& seqs)
+static void load_fps(const SeedLoc* p, size_t n, ::Search::Container& v, const SequenceSet& seqs)
 {
 	v.clear();
 	v.reserve(n);
@@ -163,4 +178,6 @@ static void load_fps(const SeedLoc* p, size_t n, Container& v, const SequenceSet
 	for (; p < end; ++p) {
 		v.emplace_back(seqs.data(*p));
 	}
+}
+
 }

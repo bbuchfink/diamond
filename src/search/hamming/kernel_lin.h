@@ -33,6 +33,7 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "kernel.h"
 
 using std::vector;
+using ::DISPATCH_ARCH::FingerPrint;
 
 namespace Search { namespace DISPATCH_ARCH {
 
@@ -45,8 +46,8 @@ static void FLATTEN stage1_query_lin(const PackedLoc* __restrict q, int32_t nq, 
 #endif
 
 	const int32_t tile_size = config.tile_size;
-	load_fps(q, 1, vq, work_set.cfg.query->seqs());
-	load_fps(s, ns, vs, work_set.cfg.target->seqs());
+	::DISPATCH_ARCH::load_fps(q, 1, vq, work_set.cfg.query->seqs());
+	::DISPATCH_ARCH::load_fps(s, ns, vs, work_set.cfg.target->seqs());
 	work_set.stats.inc(Statistics::SEED_HITS, ns);
 	
 	const int32_t ss = (int32_t)vs.size();
@@ -68,8 +69,8 @@ static void FLATTEN stage1_query_lin_ranked(const PackedLocId* __restrict q, int
 
 	const int32_t tile_size = config.tile_size;
 	const int32_t ranking = work_set.kmer_ranking->highest_ranking(q, q + nq);
-	load_fps(q + ranking, 1, vq, work_set.cfg.query->seqs());
-	load_fps(s, ns, vs, work_set.cfg.target->seqs());
+	::DISPATCH_ARCH::load_fps(q + ranking, 1, vq, work_set.cfg.query->seqs());
+	::DISPATCH_ARCH::load_fps(s, ns, vs, work_set.cfg.target->seqs());
 	work_set.stats.inc(Statistics::SEED_HITS, ns);
 
 	const int32_t ss = (int32_t)vs.size();
@@ -91,8 +92,8 @@ static void FLATTEN stage1_target_lin(const SeedLoc* __restrict q, int32_t nq, c
 #endif
 
 	const int32_t tile_size = config.tile_size;
-	load_fps(q, nq, vq, work_set.cfg.query->seqs());
-	load_fps(s, 1, vs, work_set.cfg.target->seqs());
+	::DISPATCH_ARCH::load_fps(q, nq, vq, work_set.cfg.query->seqs());
+	::DISPATCH_ARCH::load_fps(s, 1, vs, work_set.cfg.target->seqs());
 	work_set.stats.inc(Statistics::SEED_HITS, nq);
 
 	const int32_t qs = (int32_t)vq.size();
@@ -114,8 +115,8 @@ static void FLATTEN stage1_mutual_cov_query_lin(const PackedLocId* __restrict q,
 	Container& vq = work_set.vq, & vs = work_set.vs;
 #endif
 
-	load_fps(s, ns, vs, work_set.cfg.target->seqs());
-	load_fps(q, nq, vq, work_set.cfg.query->seqs());
+	::DISPATCH_ARCH::load_fps(s, ns, vs, work_set.cfg.target->seqs());
+	::DISPATCH_ARCH::load_fps(q, nq, vq, work_set.cfg.query->seqs());
 
 	const int32_t qs = (int32_t)vq.size(), ss = (int32_t)vs.size();
 	int32_t j = 0;
@@ -154,8 +155,8 @@ static void FLATTEN stage1_mutual_cov_target_lin(const PackedLocId* __restrict q
 	Container& vq = work_set.vq, & vs = work_set.vs;
 #endif
 
-	load_fps(s, ns, vs, work_set.cfg.target->seqs());
-	load_fps(q, nq, vq, work_set.cfg.query->seqs());
+	::DISPATCH_ARCH::load_fps(s, ns, vs, work_set.cfg.target->seqs());
+	::DISPATCH_ARCH::load_fps(q, nq, vq, work_set.cfg.query->seqs());
 
 	const int32_t qs = (int32_t)vq.size(), ss = (int32_t)vs.size();
 	int32_t i = 0;

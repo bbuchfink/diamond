@@ -37,14 +37,14 @@ using std::vector;
 
 namespace Search { namespace DISPATCH_ARCH {
 	
-static void all_vs_all_self(const FingerPrint* __restrict a, uint32_t na, HitField& out, unsigned hamming_filter_id) {
+static void all_vs_all_self(const array<char, 48>* __restrict a, uint32_t na, HitField& out, unsigned hamming_filter_id) {
 	const size_t na2 = na & ~size_t(3);
 	size_t i = 0;
 	for (; i < na2; i += 4) {
-		const FingerPrint e1 = a[i];
-		const FingerPrint e2 = a[i+1];
-		const FingerPrint e3 = a[i+2];
-		const FingerPrint e4 = a[i+3];
+		const FingerPrint e1(a[i]);
+		const FingerPrint e2(a[i + 1]);
+		const FingerPrint e3(a[i + 2]);
+		const FingerPrint e4(a[i + 3]);
 		out.set(i, i + 1, e1.match(e2) >= hamming_filter_id);
 		out.set(i, i + 2, e1.match(e3) >= hamming_filter_id);
 		out.set(i, i + 3, e1.match(e4) >= hamming_filter_id);
@@ -52,7 +52,7 @@ static void all_vs_all_self(const FingerPrint* __restrict a, uint32_t na, HitFie
 		out.set(i + 1, i + 3, e2.match(e4) >= hamming_filter_id);
 		out.set(i + 2, i + 3, e3.match(e4) >= hamming_filter_id);
 		for (uint32_t j = i + 4; j < na; ++j) {
-			const FingerPrint fa = a[j];
+			const FingerPrint fa(a[j]);
 			out.set(i, j, e1.match(fa) >= hamming_filter_id);
 			out.set(i+1, j, e2.match(fa) >= hamming_filter_id);
 			out.set(i+2, j, e3.match(fa) >= hamming_filter_id);
@@ -60,9 +60,9 @@ static void all_vs_all_self(const FingerPrint* __restrict a, uint32_t na, HitFie
 		}
 	}
 	for (; i < na; ++i) {
-		const FingerPrint e = a[i];
+		const FingerPrint e(a[i]);
 		for (uint32_t j = i + 1; j < na; ++j)
-			out.set(i, j, e.match(a[j]) >= hamming_filter_id);
+			out.set(i, j, e.match(FingerPrint(a[j])) >= hamming_filter_id);
 	}
 }
 
@@ -76,7 +76,7 @@ static void FLATTEN stage1_self(const SeedLoc* q, int32_t nq, const SeedLoc* s, 
 #endif
 
 	const int32_t tile_size = config.tile_size;
-	load_fps(s, ns, vs, work_set.cfg.target->seqs());
+	::DISPATCH_ARCH::load_fps(s, ns, vs, work_set.cfg.target->seqs());
 
 	work_set.stats.inc(Statistics::SEED_HITS, ns * (ns - 1) / 2);
 	const int32_t ss = (int32_t)vs.size();
