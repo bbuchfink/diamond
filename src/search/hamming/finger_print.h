@@ -39,7 +39,40 @@ using std::array;
 
 namespace DISPATCH_ARCH {
 
-#ifdef __AVX2__
+#ifdef __AVX512BW__
+
+struct FingerPrint {
+    alignas(64) __m512i v;
+    static constexpr __mmask64 K48 = (1ULL << 48) - 1; // lanes [0..47] valid
+
+    explicit FingerPrint(const std::array<char, 48>& a)
+        : v(_mm512_maskz_loadu_epi8(K48, a.data())) // zero top 16 bytes
+    {}
+
+    // Assumes Letter is byte-like (char/uint8_t).
+    static void load(const Letter* q, std::array<char, 48>* dst) {
+#ifdef SEQ_MASK
+        // Load 48 bytes starting at q-16 (i.e., bytes [q-16 .. q+31])
+        __m512i x = _mm512_maskz_loadu_epi8(K48, static_cast<const void*>(q - 16));
+        // Provide a 512-bit overload of letter_mask(...) or adapt as needed.
+		x = _mm512_and_si512(x, _mm512_set1_epi8(LETTER_MASK));
+        _mm512_mask_storeu_epi8(dst->data(), K48, x);
+#else
+        std::copy(q - 16, q + 32, dst->begin());
+#endif
+    }
+
+    static inline __mmask64 match_block(__m512i a, __m512i b) {
+        return _mm512_cmpeq_epi8_mask(a, b); // 64-bit bitmask (one bit per byte)
+    }
+
+    unsigned match(const FingerPrint& rhs) const {
+        __mmask64 m = _mm512_cmpeq_epi8_mask(v, rhs.v) & K48; // ignore top 16 lanes
+		return popcount64(static_cast<unsigned long long>(m));
+    }
+};
+
+#elif defined(__AVX2__)
 
 struct FingerPrint {
 	alignas(32) __m256i v0;
