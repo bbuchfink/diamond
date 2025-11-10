@@ -54,7 +54,7 @@ static inline int bit_length(uint64_t x) {
 	return 64 - clz(x);
 }
 
-constexpr size_t next_pow2(size_t x) noexcept {
+size_t next_pow2(size_t x) noexcept {
 	if (x <= 1) return 1;
 	if (x > (std::numeric_limits<size_t>::max() >> 1)) return 0;
 #if SIZE_MAX == 0xFFFFFFFFu
