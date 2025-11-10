@@ -29,6 +29,7 @@ jobs:
     - uses: actions/checkout@v2
   
     - name: apt
+      if: runner.os == 'Linux'
       run: sudo apt-get update && sudo apt-get install -y g++ automake cmake zlib1g-dev git libzstd-dev libsqlite3-dev  
 
     - name: Configure CMake

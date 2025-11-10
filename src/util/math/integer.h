@@ -54,7 +54,7 @@ static inline int bit_length(uint64_t x) {
 	return 64 - clz(x);
 }
 
-size_t next_pow2(size_t x) noexcept {
+inline size_t next_pow2(size_t x) noexcept {
 	if (x <= 1) return 1;
 	if (x > (std::numeric_limits<size_t>::max() >> 1)) return 0;
 #if SIZE_MAX == 0xFFFFFFFFu
@@ -69,7 +69,7 @@ size_t next_pow2(size_t x) noexcept {
 	return size_t{ 1 } << (W - lz);
 }
 
-size_t next_pow2(double x) noexcept {
+inline size_t next_pow2(double x) noexcept {
 	return next_pow2(static_cast<size_t>(std::ceil(x)));
 }
 
