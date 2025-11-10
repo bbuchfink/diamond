@@ -69,7 +69,7 @@ size_t next_pow2(size_t x) noexcept {
 	return size_t{ 1 } << (W - lz);
 }
 
-constexpr size_t next_pow2(double x) noexcept {
+size_t next_pow2(double x) noexcept {
 	return next_pow2(static_cast<size_t>(std::ceil(x)));
 }
 
