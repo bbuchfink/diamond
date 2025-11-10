@@ -29,9 +29,7 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // SPDX-License-Identifier: BSD-3-Clause
 
 #pragma once
-#include <string>
 #include <zlib.h>
-#include <cstdint>
 #include "stream_entity.h"
 #include "input_stream_buffer.h"
 
@@ -59,3 +57,5 @@ private:
 	static const size_t chunk_size = 1llu << 20;
 	z_stream strm;
 };
+
+size_t zlib_decompress(FILE* src, void* dst, size_t dstCapacity) noexcept;

@@ -133,13 +133,13 @@ struct HitBuffer
 				text_buffer_[bin].finish();
 				if (text_buffer_[bin].size() == 0)
 					return;
-				TempFile* tmp_file = parent_.tmp_file_[bin];				
+				TmpFile& tmp_file = parent_.tmp_file_[bin];
 				{
 					std::lock_guard<std::mutex> lock(parent_.bin_mutex_[bin]);
-					tmp_file->write(text_buffer_[bin].data(), text_buffer_[bin].size());
+					tmp_file.write(text_buffer_[bin].data(), text_buffer_[bin].size());
 				}
 				text_buffer_[bin].clear();
-			}			
+			}
 		}
 		virtual ~Writer()
 		{
@@ -200,7 +200,7 @@ private:
 	int bins_processed_;
 	int64_t total_disk_size_;
 	std::vector<std::vector<Hit>> hit_buf_;
-	std::vector<TempFile*> tmp_file_;
+	std::vector<TmpFile> tmp_file_;
 	std::vector<std::mutex> bin_mutex_;
 	std::atomic_size_t *count_;
 	std::pair<Key, Key> input_range_next_;

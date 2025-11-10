@@ -34,7 +34,6 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #endif
 #include "hit_buffer.h"
 #include "basic/config.h"
-#include "util/io/input_file.h"
 #include "util/log_stream.h"
 
 using std::vector;
@@ -65,8 +64,9 @@ HitBuffer::HitBuffer(const vector<Key>& key_partition, const string& tmpdir, boo
 			hit_buf_.emplace_back();
 			hit_buf_.back().reserve(GIGABYTES / sizeof(Hit));
 		}
-		else
-			tmp_file_.emplace_back(new TempFile());
+		else {
+			tmp_file_.emplace_back();
+		}
 		count_[i].store(0, std::memory_order_relaxed);
 	}
 }
@@ -87,12 +87,10 @@ void HitBuffer::load(size_t max_size) {
 	size_t size = count_[bins_processed_], current_size;
 	int end = bins_processed_ + 1;
 	if (!config.trace_pt_membuf) {
-		tmp_file_[bins_processed_]->flush();
-		size_t disk_size = tmp_file_[bins_processed_]->file_size();
+		size_t disk_size = tmp_file_[bins_processed_].size();
 		while (end < bins() && (size + (current_size = count_[end])) * sizeof(Hit) < max_size && (end - bins_processed_ == 0)) {
 			size += current_size;
-			tmp_file_[end]->flush();
-			disk_size += tmp_file_[end]->file_size();
+			disk_size += tmp_file_[end].size();
 			++end;
 		}
 		log_stream << "Async_buffer.load() " << size << " (" << (double)size * sizeof(Hit) / (1 << 30) << " GB, " << (double)disk_size / (1 << 30) << " GB on disk)" << endl;
@@ -109,21 +107,20 @@ void HitBuffer::load_bin(Hit* out, int bin)
 	if (!config.trace_pt_membuf) {
 #if !_MSC_VER && !__APPLE__
 		if (bin < bins() - 1)
-			posix_fadvise(fileno(tmp_file_[bin + 1]->file()), 0, 0, POSIX_FADV_SEQUENTIAL | POSIX_FADV_WILLNEED);
+			posix_fadvise(fileno(tmp_file_[bin + 1].file()), 0, 0, POSIX_FADV_SEQUENTIAL | POSIX_FADV_WILLNEED);
 #endif
 #ifdef WITH_ZSTD
 		const Compressor c = Compressor::ZSTD;
 #else
 		const Compressor c = Compressor::ZLIB;
 #endif
-		InputFile f(*tmp_file_[bin], 0, c);
 		if (count_[bin] > 0) {
-			size_t n = f.read(out, count_[bin]);
-			if (n != count_[bin])
+			tmp_file_[bin].seek(0, SEEK_SET);
+			size_t n = decompress(tmp_file_[bin].file(), out, count_[bin] * sizeof(Hit), c);
+			if (n != count_[bin] * sizeof(Hit))
 				throw runtime_error("Mismatching hit count / possibly corrupted temporary file");
 		}
-		f.close_and_delete();
-		delete tmp_file_[bin];
+		tmp_file_[bin].close();
 	}
 }
 
@@ -148,7 +145,6 @@ void HitBuffer::alloc_buffer() {
 	data_next_ = (Hit*)mmap(nullptr, max_size * sizeof(Hit), PROT_READ | PROT_WRITE, flags, -1, 0);
 	if (data_next_ == MAP_FAILED) {
 		data_next_ = new Hit[max_size];
-		//throw runtime_error(string("Failed to allocate memory for hit buffer: ") + strerror(errno));
 	}
 	else
 		mmap_ = true;

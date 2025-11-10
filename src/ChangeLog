@@ -1,3 +1,13 @@
+[2.1.16]
+- Fixed an architecture-dependent inconsistency (present since v2.1.15) of
+  tantan repeat masking.
+- Fixed a crash occuring when clustering at 90% identity or above.
+- Fixed a potential crash.
+- Added the option `--hit-membuf` for memory buffering of seed hits.
+- Fixed a potential crash when using `--comp-based-stats 4`.
+- Fixed an issue that caused line breaks in quality string of FASTQ files
+  to be copied to the output file.
+
 [2.1.15]
 - Added support for using the `staxids`, `sscinames`, `sskingdoms`, `skingdoms`,
   `sphylums` and `slineages` output fields with BLAST databases.

@@ -28,7 +28,10 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ****/
 // SPDX-License-Identifier: BSD-3-Clause
 
+#include <vector>
+#include <string.h>
 #include "zstd_stream.h"
+#include "../system.h"
 
 using std::pair;
 using std::runtime_error;
@@ -86,7 +89,6 @@ StreamEntity(prev)
 	init();
 }
 
-
 void ZstdSource::init()
 {
 	eos_ = false;
@@ -94,32 +96,60 @@ void ZstdSource::init()
 	in_buf.pos = 0;
 	in_buf.size = 0;
 	in_buf.src = nullptr;
+	size_t zr = ZSTD_initDStream(stream);
+	if (ZSTD_isError(zr)) throw runtime_error(ZSTD_getErrorName(zr));
 }
 
 size_t ZstdSource::read(char* ptr, size_t count)
 {
-	ZSTD_outBuffer out_buf;
-	out_buf.dst = ptr;
-	out_buf.pos = 0;
-	out_buf.size = count;
-	InputStreamBuffer* buf = static_cast<InputStreamBuffer*>(prev_);
-	while (out_buf.pos < out_buf.size && !eos_) {
-		if (in_buf.pos >= in_buf.size) {
+	ZSTD_outBuffer out_buf{ ptr, count, 0 };
+	auto* buf = static_cast<InputStreamBuffer*>(prev_);
+
+	while (out_buf.pos < out_buf.size) {
+		// Refill only when current input slice is fully consumed
+		if (in_buf.pos == in_buf.size) {
 			if (buf->begin == buf->end)
 				buf->fetch();
-			in_buf.pos = 0;
-			in_buf.size = buf->end - buf->begin;
+
+			// No pointer arithmetic here!
 			in_buf.src = buf->begin;
-			buf->begin += in_buf.size;
+			in_buf.size = static_cast<size_t>(buf->end - buf->begin);
+			in_buf.pos = 0;
+
 			if (in_buf.size == 0) {
-				eos_ = true;
+				eos_ = true;               // true EOF
 				break;
 			}
 		}
-		const size_t code = ZSTD_decompressStream(stream, &out_buf, &in_buf);
-		if (ZSTD_isError(code))
-			throw runtime_error(string("ZSTD_decompressStream: ") + ZSTD_getErrorName(code));;
+
+		size_t const ret = ZSTD_decompressStream(stream, &out_buf, &in_buf);
+		if (ZSTD_isError(ret))
+			throw runtime_error(string("ZSTD_decompressStream: ")
+				+ ZSTD_getErrorName(ret));
+
+		// Consume exactly what the decoder used in this call
+		size_t const consumed = in_buf.pos;
+		buf->begin += consumed;
+
+		// Keep any unconsumed tail for the next iteration
+		size_t const remaining = in_buf.size - consumed;
+		if (remaining) {
+			in_buf.src = buf->begin;
+			in_buf.size = remaining;
+			in_buf.pos = 0;
+		}
+		else {
+			in_buf.src = nullptr;
+			in_buf.size = 0;
+			in_buf.pos = 0;
+		}
+
+		// Optional: detect truncation at file EOF
+		if (buf->begin == buf->end && ret > 0) {
+			throw runtime_error("truncated zstd stream (need more input)");
+		}
 	}
+
 	return out_buf.pos;
 }
 
@@ -140,4 +170,46 @@ void ZstdSource::rewind()
 {
 	prev_->rewind();
 	init();
+}
+
+size_t zstd_decompress(FILE* src, void* dst, size_t dstCapacity) noexcept {
+	ZSTD_DCtx* dctx = ZSTD_createDCtx();
+	if (!dctx)
+		hard_fail("ZSTD_createDCtx");
+	const size_t inChunkSize = ZSTD_DStreamInSize();
+	std::vector<unsigned char> in(inChunkSize);
+	unsigned char* outBase = static_cast<unsigned char*>(dst);
+	size_t totalOut = 0;
+	size_t lastRet = 1;
+	for (;;) {
+		const size_t read = std::fread(in.data(), 1, in.size(), src);
+		if (std::ferror(src)) {
+			ZSTD_freeDCtx(dctx);
+			hard_fail(string("Error reading file: ") + strerror(errno));
+		}
+		ZSTD_inBuffer input{ in.data(), read, 0 };
+		while (input.pos < input.size) {
+			ZSTD_outBuffer output{ outBase + totalOut, dstCapacity - totalOut, 0 };
+			size_t const ret = ZSTD_decompressStream(dctx, &output, &input);
+			if (ZSTD_isError(ret)) {
+				ZSTD_freeDCtx(dctx);
+				hard_fail(ZSTD_getErrorName(ret));
+			}
+			totalOut += output.pos;
+			lastRet = ret;
+			if (totalOut > dstCapacity) {
+				ZSTD_freeDCtx(dctx);
+				hard_fail("Failed decompressing zstd stream: output buffer too small");
+			}
+		}
+		if (read == 0) {
+			if (lastRet != 0) {
+				ZSTD_freeDCtx(dctx);
+				hard_fail("Failed decompressing zstd stream");
+			}
+			break;
+		}
+	}
+	ZSTD_freeDCtx(dctx);
+	return totalOut;
 }

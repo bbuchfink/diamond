@@ -30,7 +30,7 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #pragma once
 #include <vector>
-#include "util/data_structures/flat_array.h"
+#include "hamming/hit_field.h"
 #include "basic/statistics.h"
 #include "util/algo/pattern_matcher.h"
 #include "util/memory/alignment.h"
@@ -43,7 +43,6 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "basic/reduction.h"
 #include "util/data_structures/deque.h"
 #include "data/block/block.h"
-#include "hamming/finger_print.h"
 
 // #define UNGAPPED_SPOUGE
 
@@ -100,6 +99,8 @@ int seedp_bits(int shape_weight, int threads, int index_chunks);
 
 namespace Search {
 
+using Container = vector<std::array<char, 48>, Util::Memory::AlignmentAllocator<std::array<char, 48>, 16>>;
+
 struct WorkSet {
 	WorkSet(const Context& context, const Search::Config& cfg, unsigned shape_id, HitBuffer::Writer* out, AsyncWriter<Hit, Search::Config::RankingBuffer::EXPONENT>* global_ranking_buffer, KmerRanking *kmer_ranking):
 		context(context),
@@ -116,14 +117,14 @@ struct WorkSet {
 	HitBuffer::Writer* out;
 	AsyncWriter<Hit, Search::Config::RankingBuffer::EXPONENT>* global_ranking_buffer;
 #ifndef __APPLE__
-	std::vector<FingerPrint, Util::Memory::AlignmentAllocator<FingerPrint, 16>> vq, vs;
+	Container vq, vs;
 #endif
-	FlatArray<uint32_t> hits;
+	HitField hits;
 	KmerRanking* kmer_ranking;
 };
 
-void run_stage1(JoinIterator<PackedLoc>& it, Search::WorkSet* work_set, const Search::Config* cfg);
-void run_stage1(JoinIterator<PackedLocId>& it, Search::WorkSet* work_set, const Search::Config* cfg);
+void run_stage1(JoinIterator<PackedLoc>& it, WorkSet* work_set, const Search::Config* cfg);
+void run_stage1(JoinIterator<PackedLocId>& it, WorkSet* work_set, const Search::Config* cfg);
 
 }
 

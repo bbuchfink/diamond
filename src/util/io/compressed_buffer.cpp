@@ -58,21 +58,21 @@ CompressedBuffer::~CompressedBuffer() {
 
 void CompressedBuffer::write(const char* ptr, size_t n) {
 #ifdef WITH_ZSTD
-	ZSTD_inBuffer in_buf;
-	in_buf.src = ptr;
-	in_buf.size = n;
-	in_buf.pos = 0;
-	ZSTD_outBuffer out_buf;
-	do {
-		out_buf.dst = buf_.data();
-		out_buf.size = buf_.size();
-		out_buf.pos = size_;
-		if (ZSTD_isError(ZSTD_compressStream(stream_, &out_buf, &in_buf)))
-			throw runtime_error("ZSTD_compressStream");
-		size_ = out_buf.pos;
-		if (in_buf.pos < in_buf.size)
+	ZSTD_inBuffer in_buf{ ptr, n, 0 };
+	while (in_buf.pos < in_buf.size) {
+		if (size_ == buf_.size())
 			buf_.resize(buf_.size() + BUF_SIZE);
-	} while (in_buf.pos < in_buf.size);
+		ZSTD_outBuffer out_buf;
+		out_buf.dst = buf_.data() + size_;
+		out_buf.size = buf_.size() - size_;
+		out_buf.pos = 0;
+		size_t zr = ZSTD_compressStream(static_cast<ZSTD_CStream*>(stream_), &out_buf, &in_buf);
+		if (ZSTD_isError(zr))
+			throw runtime_error(ZSTD_getErrorName(zr));
+		size_ += out_buf.pos;
+		if (out_buf.pos == 0 && in_buf.pos < in_buf.size)
+			buf_.resize(buf_.size() + BUF_SIZE);
+	}
 #else
 	const unsigned char* in = reinterpret_cast<const unsigned char*>(ptr);
 	while (n > 0) {
@@ -101,19 +101,20 @@ void CompressedBuffer::write(const char* ptr, size_t n) {
 
 void CompressedBuffer::finish() {
 #ifdef WITH_ZSTD
-	ZSTD_outBuffer out_buf;
-	size_t n;
-	do {
-		out_buf.dst = buf_.data();
-		out_buf.size = buf_.size();
-		out_buf.pos = size_;
-		if (ZSTD_isError(n = ZSTD_endStream(stream_, &out_buf)))
-			throw runtime_error("ZSTD_endStream");
-		size_ = out_buf.pos;
-		if (n > 0)
+	for (;;) {
+		if (size_ == buf_.size())
 			buf_.resize(buf_.size() + BUF_SIZE);
-	} while (n > 0);
-	ZSTD_freeCStream(stream_);
+		ZSTD_outBuffer out_buf;
+		out_buf.dst = buf_.data() + size_;
+		out_buf.size = buf_.size() - size_;
+		out_buf.pos = 0;
+		size_t remaining = ZSTD_endStream(static_cast<ZSTD_CStream*>(stream_), &out_buf);
+		if (ZSTD_isError(remaining))
+			throw runtime_error(ZSTD_getErrorName(remaining));
+		size_ += out_buf.pos;
+		if (remaining == 0) break;
+	}
+	ZSTD_freeCStream(static_cast<ZSTD_CStream*>(stream_));
 #else
 	int ret;
 	stream_->next_in = Z_NULL;
@@ -143,6 +144,8 @@ void CompressedBuffer::clear() {
 	stream_ = ZSTD_createCStream();
 	if (!stream_)
 		throw runtime_error("ZSTD_createCStream error");
+	size_t zr = ZSTD_initCStream(stream_, 0);
+	if (ZSTD_isError(zr)) throw runtime_error(ZSTD_getErrorName(zr));
 #else
 	stream_ = new z_stream;
 	stream_->zalloc = Z_NULL;

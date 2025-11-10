@@ -29,22 +29,19 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // SPDX-License-Identifier: BSD-3-Clause
 
 #pragma once
-#include "search.h"
 #include "../stage2.h"
 #include "data/block/block.h"
-#include "kernel.h"
 
-using std::vector;
+using std::array;
 
 namespace Search { namespace DISPATCH_ARCH {
 	
-static void all_vs_all_mutual_cov(const PackedLocId* q, const PackedLocId* s, const FingerPrint* a, uint32_t na, const FingerPrint* b, uint32_t nb, FlatArray<uint32_t>& out, unsigned hamming_filter_id, WorkSet& work_set) {
+static void all_vs_all_mutual_cov(const PackedLocId* q, const PackedLocId* s, const array<char, 48>* __restrict a, uint32_t na, const array<char, 48>* __restrict b, uint32_t nb, HitField& out, unsigned hamming_filter_id, WorkSet& work_set) {
 	uint32_t j0 = 0, j1 = 0;
 	const double mlr = work_set.cfg.min_length_ratio;
 	for (uint32_t i = 0; i < na; ++i) {
-		const FingerPrint e = a[i];
+		const FingerPrint e(a[i]);
 		const Loc qlen = work_set.cfg.query->seqs().length(q[i].block_id);
-		out.next();
 		while (j0 < nb) {
 			const Loc tlen = work_set.cfg.target->seqs().length(s[j0].block_id);
 			const double lr = (double)qlen / tlen;
@@ -54,33 +51,29 @@ static void all_vs_all_mutual_cov(const PackedLocId* q, const PackedLocId* s, co
 		}
 		j1 = std::max(j1, j0);
 		for (uint32_t j = j0; j < j1; ++j) {
-			if (e.match(b[j]) >= hamming_filter_id)
-				out.push_back(j);
+			out.set(i, j, e.match(FingerPrint(b[j])) >= hamming_filter_id);
 		}
 		for (; j1 < nb; ++j1) {
 			const Loc tlen = work_set.cfg.target->seqs().length(s[j1].block_id);
 			const double lr = (double)tlen / qlen;
 			if (lr < mlr)
 				break;
-			if (e.match(b[j1]) >= hamming_filter_id)
-				out.push_back(j1);
+			out.set(i, j1, e.match(FingerPrint(b[j1])) >= hamming_filter_id);
 		}
 	}
 }
 
-static void all_vs_all_self_mutual_cov(const PackedLocId* q, const FingerPrint* a, uint32_t na, FlatArray<uint32_t>& out, unsigned hamming_filter_id, WorkSet& work_set) {
+static void all_vs_all_self_mutual_cov(const PackedLocId* q, const array<char, 48>* __restrict a, uint32_t na, HitField& out, unsigned hamming_filter_id, WorkSet& work_set) {
 	const double mlr = work_set.cfg.min_length_ratio;
 	for (uint32_t i = 0; i < na; ++i) {
-		const FingerPrint e = a[i];
+		const FingerPrint e(a[i]);
 		const Loc qlen = work_set.cfg.query->seqs().length(q[i].block_id);
-		out.next();
 		for (uint32_t j = i + 1; j < na; ++j) {
 			const Loc tlen = work_set.cfg.query->seqs().length(q[j].block_id);
 			if ((double)tlen / qlen < mlr)
 				break;
 			work_set.stats.inc(Statistics::SEED_HITS);
-			if (e.match(a[j]) >= hamming_filter_id)
-				out.push_back(j);
+			out.set(i, j, e.match(FingerPrint(a[j])) >= hamming_filter_id);
 		}
 	}
 }
@@ -94,14 +87,16 @@ static void FLATTEN stage1_mutual_cov(const PackedLocId* q, int32_t nq, const Pa
 #endif
 
 	const int32_t tile_size = config.tile_size;
-	load_fps(s, ns, vs, work_set.cfg.target->seqs());
+	::DISPATCH_ARCH::load_fps(s, ns, vs, work_set.cfg.target->seqs());
 	work_set.stats.inc(Statistics::SEED_HITS, nq * ns);
-	load_fps(q, nq, vq, work_set.cfg.query->seqs());
+	::DISPATCH_ARCH::load_fps(q, nq, vq, work_set.cfg.query->seqs());
 	const int32_t qs = (int32_t)vq.size(), ss = (int32_t)vs.size();
 	for (int32_t i = 0; i < qs; i += tile_size) {
 		for (int32_t j = 0; j < ss; j += tile_size) {
-			work_set.hits.clear();
-			all_vs_all_mutual_cov(q + i, s + j, vq.data() + i, std::min(tile_size, qs - i), vs.data() + j, std::min(tile_size, ss - j), work_set.hits, work_set.cfg.hamming_filter_id, work_set);
+			const size_t tq = std::min(tile_size, qs - i);
+			const size_t ts = std::min(tile_size, ss - j);
+			work_set.hits.init(tq, ts);
+			all_vs_all_mutual_cov(q + i, s + j, vq.data() + i, tq, vs.data() + j, ts, work_set.hits, work_set.cfg.hamming_filter_id, work_set);
 			search_tile(work_set.hits, i, j, q, s, work_set);
 		}
 	}
@@ -115,11 +110,11 @@ static void FLATTEN stage1_self_mutual_cov(const PackedLocId* q, int32_t nq, con
 	Container& vs = work_set.vs;
 #endif
 
-	load_fps(s, ns, vs, work_set.cfg.target->seqs());
+	::DISPATCH_ARCH::load_fps(s, ns, vs, work_set.cfg.target->seqs());
 
 	//work_set.stats.inc(Statistics::SEED_HITS, ns * (ns - 1) / 2);
 	const int32_t ss = (int32_t)vs.size();
-	work_set.hits.clear();
+	work_set.hits.init(ss, ss);
 	all_vs_all_self_mutual_cov(s, vs.data(), ss, work_set.hits, work_set.cfg.hamming_filter_id, work_set);
 	search_tile(work_set.hits, 0, 0, s, s, work_set);
 }

@@ -29,6 +29,9 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // SPDX-License-Identifier: BSD-3-Clause
 
 #pragma once
+#include <cstdio>
+#include <exception>
+#include <string>
 
 #ifdef _MSC_VER
 
@@ -62,3 +65,13 @@ typedef __int64 ssize_t;
 #define POSIX_OPEN(x,y,z) open(x,y,z)
 #define POSIX_OPEN2(x,y) open(x,y)
 #endif
+
+[[noreturn]] inline void hard_fail(const char* why) noexcept {
+    std::fputs(why, stderr);
+    std::fputc('\n', stderr);
+    std::terminate();
+}
+
+[[noreturn]] inline void hard_fail(const std::string& why) noexcept {
+    hard_fail(why.c_str());
+}

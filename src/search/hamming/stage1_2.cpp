@@ -63,15 +63,19 @@ static Stage1KernelPackedLoc* stage1_dispatch(const Search::Config* cfg, PackedL
 }
 
 void run_stage1(JoinIterator<PackedLoc>& it, Search::WorkSet* work_set, const Search::Config* cfg) {
-	auto f = stage1_dispatch(cfg, PackedLoc());
-	for (; it; ++it)
-		f(it.r->begin(), (int32_t)it.r->size(), it.s->begin(), (int32_t)it.s->size(), *work_set);
+	auto kernel = stage1_dispatch(cfg, PackedLoc());
+	for (; it; ++it) {
+		work_set->stats.inc(Statistics::SEEDS_HIT);
+		kernel(it.r->begin(), (int32_t)it.r->size(), it.s->begin(), (int32_t)it.s->size(), *work_set);
+	}
 }
 
 void run_stage1(JoinIterator<PackedLocId>& it, Search::WorkSet* work_set, const Search::Config* cfg) {
 	auto kernel = stage1_dispatch(cfg, PackedLocId());
-	for (; it; ++it)
+	for (; it; ++it) {
+		work_set->stats.inc(Statistics::SEEDS_HIT);
 		kernel(it.r->begin(), (int32_t)it.r->size(), it.s->begin(), (int32_t)it.s->size(), *work_set);
+	}
 }
 
 }}

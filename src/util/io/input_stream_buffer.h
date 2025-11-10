@@ -34,6 +34,9 @@ struct InputStreamBuffer : public StreamEntity
 	virtual void close() override;
 	virtual int64_t tell() override;
 	virtual bool eof() override;
+	virtual FILE* file() override {
+		return prev_->file();
+	}
 
 	const char* begin, * end;
 

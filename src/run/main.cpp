@@ -89,6 +89,11 @@ namespace Incremental {
 
 int main(int ac, const char* av[])
 {
+	std::set_terminate([]() noexcept {
+		std::abort();
+		// std::_Exit(EXIT_FAILURE);
+		// std::quick_exit(EXIT_FAILURE);
+		});
 	try {
 		init_motif_table();
 		CommandLineParser parser;

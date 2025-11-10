@@ -373,6 +373,7 @@ struct Config
 	bool trace_pt_membuf;
 	bool linclust_banded_ext;
 	Loc min_query_len;
+	bool hit_membuf;
 
     SequenceType dbtype;
 

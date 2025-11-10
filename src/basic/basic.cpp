@@ -42,7 +42,7 @@ using std::vector;
 using std::count;
 using std::runtime_error;
 
-const char* Const::version_string = "2.1.15";
+const char* Const::version_string = "2.1.16";
 const char* Const::program_name = "diamond";
 
 AlignMode::AlignMode(unsigned mode) :
@@ -194,6 +194,7 @@ void Statistics::print() const
 	//log_stream << "Used ref size = " << data_[REF_SIZE] << endl;
 	//log_stream << "Traceback errors = " << data_[BIAS_ERRORS] << endl;
 	//log_stream << "Low complexity seeds  = " << data_[LOW_COMPLEXITY_SEEDS] << endl;
+	log_stream << "Seeds hit             = " << data_[SEEDS_HIT] << endl;
 	log_stream << "Hits (filter stage 0) = " << data_[SEED_HITS] << endl;
 	log_stream << "Hits (filter stage 1) = " << data_[TENTATIVE_MATCHES1] << " (" << data_[TENTATIVE_MATCHES1] * 100.0 / data_[SEED_HITS] << " %)" << endl;
 	log_stream << "Hits (filter stage 2) = " << data_[TENTATIVE_MATCHES2] << " (" << data_[TENTATIVE_MATCHES2] * 100.0 / data_[TENTATIVE_MATCHES1] << " %)" << endl;
@@ -233,6 +234,7 @@ void Statistics::print() const
 	log_stream << "Gapped filter (targets) = " << data_[GAPPED_FILTER_TARGETS] << endl;
 	log_stream << "Gapped filter (hits) stage 1 = " << data_[GAPPED_FILTER_HITS1] << endl;
 	log_stream << "Gapped filter (hits) stage 2 = " << data_[GAPPED_FILTER_HITS2] << endl;
+	log_stream << "Time (search)                = " << (double)data_[TIME_SEARCH] / 1e6 << "s (wall)" << endl;
 	log_stream << "Time (Load seed hit targets) = " << (double)data_[TIME_LOAD_HIT_TARGETS] / 1e6 << "s (CPU)" << endl;
 	log_stream << "Time (Sort targets by score) = " << (double)data_[TIME_SORT_TARGETS_BY_SCORE] / 1e6 << "s (CPU)" << endl;
 	log_stream << "Time (Gapped filter)         = " << (double)data_[TIME_GAPPED_FILTER] / 1e6 << "s (CPU)" << endl;

@@ -55,7 +55,7 @@ std::pair<SequenceSet::Length, SequenceSet::Length> SequenceSet::len_bounds(Leng
 		max = std::max(this->length(i), max);
 		min = this->length(i) >= min_len ? std::min(this->length(i), min) : min;
 	}
-	return std::pair<Length, Length>(min, max);
+	return pair<Length, Length>(min, max);
 }
 
 SequenceSet::Length SequenceSet::max_len(size_t begin, size_t end) const

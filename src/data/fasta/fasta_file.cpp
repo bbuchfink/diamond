@@ -170,7 +170,7 @@ bool FastaFile::read_seq(vector<Letter>& seq, string &id, std::vector<char>* qua
 		id = t.front().get<string>(0);
 		Util::Seq::from_string(t.front().get<string>(1), seq, value_traits_, 0);
 		if (format_ == SeqFileFormat::FASTQ && quals) {
-			const string q = t.front().get<string>(2);
+			const string q = Util::Seq::remove_newlines(t.front().get<string>(2));
 			quals->assign(q.begin(), q.end());
 		}
 		if (++file_ptr_ == file_.end())

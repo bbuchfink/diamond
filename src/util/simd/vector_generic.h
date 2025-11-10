@@ -95,6 +95,12 @@ struct Traits<float> {
 	using Register = float;
 };
 
+template<>
+struct Traits<float> {
+	static constexpr size_t LANES = 1;
+	using Register = float;
+};
+
 static inline float zero(float) {
 	return 0.0f;
 }

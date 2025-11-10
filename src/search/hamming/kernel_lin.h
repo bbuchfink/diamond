@@ -33,6 +33,7 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "kernel.h"
 
 using std::vector;
+using ::DISPATCH_ARCH::FingerPrint;
 
 namespace Search { namespace DISPATCH_ARCH {
 
@@ -45,14 +46,15 @@ static void FLATTEN stage1_query_lin(const PackedLoc* __restrict q, int32_t nq, 
 #endif
 
 	const int32_t tile_size = config.tile_size;
-	load_fps(q, 1, vq, work_set.cfg.query->seqs());
-	load_fps(s, ns, vs, work_set.cfg.target->seqs());
+	::DISPATCH_ARCH::load_fps(q, 1, vq, work_set.cfg.query->seqs());
+	::DISPATCH_ARCH::load_fps(s, ns, vs, work_set.cfg.target->seqs());
 	work_set.stats.inc(Statistics::SEED_HITS, ns);
 	
 	const int32_t ss = (int32_t)vs.size();
 	for (int32_t j = 0; j < ss; j += tile_size) {
-		work_set.hits.clear();
-		all_vs_all(vq.data(), 1, vs.data() + j, std::min(tile_size, ss - j), work_set.hits, work_set.cfg.hamming_filter_id);
+		const size_t ts = std::min(tile_size, ss - j);
+		work_set.hits.init(1, ts);
+		all_vs_all(vq.data(), 1, vs.data() + j, ts, work_set.hits, work_set.cfg.hamming_filter_id);
 		search_tile(work_set.hits, 0, j, q, s, work_set);
 	}
 }
@@ -67,14 +69,15 @@ static void FLATTEN stage1_query_lin_ranked(const PackedLocId* __restrict q, int
 
 	const int32_t tile_size = config.tile_size;
 	const int32_t ranking = work_set.kmer_ranking->highest_ranking(q, q + nq);
-	load_fps(q + ranking, 1, vq, work_set.cfg.query->seqs());
-	load_fps(s, ns, vs, work_set.cfg.target->seqs());
+	::DISPATCH_ARCH::load_fps(q + ranking, 1, vq, work_set.cfg.query->seqs());
+	::DISPATCH_ARCH::load_fps(s, ns, vs, work_set.cfg.target->seqs());
 	work_set.stats.inc(Statistics::SEED_HITS, ns);
 
 	const int32_t ss = (int32_t)vs.size();
 	for (int32_t j = 0; j < ss; j += tile_size) {
-		work_set.hits.clear();
-		all_vs_all(vq.data(), 1, vs.data() + j, std::min(tile_size, ss - j), work_set.hits, work_set.cfg.hamming_filter_id);
+		const size_t ts = std::min(tile_size, ss - j);
+		work_set.hits.init(1, ts);
+		all_vs_all(vq.data(), 1, vs.data() + j, ts, work_set.hits, work_set.cfg.hamming_filter_id);
 		search_tile(work_set.hits, ranking, j, q, s, work_set);
 	}
 }
@@ -89,14 +92,15 @@ static void FLATTEN stage1_target_lin(const SeedLoc* __restrict q, int32_t nq, c
 #endif
 
 	const int32_t tile_size = config.tile_size;
-	load_fps(q, nq, vq, work_set.cfg.query->seqs());
-	load_fps(s, 1, vs, work_set.cfg.target->seqs());
+	::DISPATCH_ARCH::load_fps(q, nq, vq, work_set.cfg.query->seqs());
+	::DISPATCH_ARCH::load_fps(s, 1, vs, work_set.cfg.target->seqs());
 	work_set.stats.inc(Statistics::SEED_HITS, nq);
 
 	const int32_t qs = (int32_t)vq.size();
 	for (int32_t j = 0; j < qs; j += tile_size) {
-		work_set.hits.clear();
-		all_vs_all(vq.data() + j, std::min(tile_size, qs - j), vs.data(), 1, work_set.hits, work_set.cfg.hamming_filter_id);
+		const size_t tq = std::min(tile_size, qs - j);
+		work_set.hits.init(tq, 1);
+		all_vs_all(vq.data() + j, tq, vs.data(), 1, work_set.hits, work_set.cfg.hamming_filter_id);
 		search_tile(work_set.hits, j, 0, q, s, work_set);
 	}
 }
@@ -111,8 +115,8 @@ static void FLATTEN stage1_mutual_cov_query_lin(const PackedLocId* __restrict q,
 	Container& vq = work_set.vq, & vs = work_set.vs;
 #endif
 
-	load_fps(s, ns, vs, work_set.cfg.target->seqs());
-	load_fps(q, nq, vq, work_set.cfg.query->seqs());
+	::DISPATCH_ARCH::load_fps(s, ns, vs, work_set.cfg.target->seqs());
+	::DISPATCH_ARCH::load_fps(q, nq, vq, work_set.cfg.query->seqs());
 
 	const int32_t qs = (int32_t)vq.size(), ss = (int32_t)vs.size();
 	int32_t j = 0;
@@ -124,10 +128,11 @@ static void FLATTEN stage1_mutual_cov_query_lin(const PackedLocId* __restrict q,
 			if ((double)tlen / qlen < mlr)
 				break;
 		}
-		work_set.hits.clear();
+		const size_t ts = j1 - j;
+		work_set.hits.init(1, ts);
 		//all_vs_all(vq.data() + i, 1, vs.data() + j, j1 - j, work_set.hits, work_set.cfg.hamming_filter_id);
 		const int32_t qpos = self ? i + (j1 - j) / 2 : i;
-		all_vs_all(vq.data() + qpos, 1, vs.data() + j, j1 - j, work_set.hits, work_set.cfg.hamming_filter_id);
+		all_vs_all(vq.data() + qpos, 1, vs.data() + j, ts, work_set.hits, work_set.cfg.hamming_filter_id);
 		search_tile(work_set.hits, qpos, j, q, s, work_set);
 		j = j1;
 		if (j == ss)
@@ -150,8 +155,8 @@ static void FLATTEN stage1_mutual_cov_target_lin(const PackedLocId* __restrict q
 	Container& vq = work_set.vq, & vs = work_set.vs;
 #endif
 
-	load_fps(s, ns, vs, work_set.cfg.target->seqs());
-	load_fps(q, nq, vq, work_set.cfg.query->seqs());
+	::DISPATCH_ARCH::load_fps(s, ns, vs, work_set.cfg.target->seqs());
+	::DISPATCH_ARCH::load_fps(q, nq, vq, work_set.cfg.query->seqs());
 
 	const int32_t qs = (int32_t)vq.size(), ss = (int32_t)vs.size();
 	int32_t i = 0;
@@ -163,8 +168,9 @@ static void FLATTEN stage1_mutual_cov_target_lin(const PackedLocId* __restrict q
 			if ((double)qlen / tlen < mlr)
 				break;
 		}
-		work_set.hits.clear();
-		all_vs_all(vq.data() + i, i1 - i, vs.data() + j, 1, work_set.hits, work_set.cfg.hamming_filter_id);
+		const size_t tq = i1 - i;
+		work_set.hits.init(tq, 1);
+		all_vs_all(vq.data() + i, tq, vs.data() + j, 1, work_set.hits, work_set.cfg.hamming_filter_id);
 		search_tile(work_set.hits, i, j, q, s, work_set);
 		i = i1;
 		if (i == qs)

@@ -43,7 +43,6 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "util/simd/transpose.h"
 #include "dp/scan_diags.h"
 #include "stats/cbs.h"
-#include "search/hamming/kernel.h"
 #include "util/profiler.h"
 #include "dp/swipe/cell_update.h"
 #include "dp/swipe/anchored.h"
@@ -121,7 +120,7 @@ void hit_buffer() {
 void swipe_cell_update();
 #endif
 
-#if defined(__SSE4_1__) | defined(__ARM_NEON)
+/*#if defined(__SSE4_1__) | defined(__ARM_NEON)
 void benchmark_hamming(const Sequence& s1, const Sequence& s2) {
 	static const size_t n = 100000000llu;
 	high_resolution_clock::time_point t1 = high_resolution_clock::now();
@@ -143,7 +142,7 @@ void benchmark_hamming(const Sequence& s1, const Sequence& s2) {
 #endif
 		<< (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * 48) * 1000 << " ps/Cell" << endl;
 }
-#endif
+#endif*/
 
 void benchmark_ungapped(const Sequence& s1, const Sequence& s2)
 {
@@ -604,7 +603,7 @@ void benchmark() {
 #endif
 	evalue();
 #if defined(__SSE4_1__) | defined(__ARM_NEON)
-	benchmark_hamming(s1, s2);
+	//benchmark_hamming(s1, s2);
 #endif
 	benchmark_ungapped(ss1, ss2);
 #if (defined(__SSSE3__) && defined(__SSE4_1__)) | defined(__aarch64__)

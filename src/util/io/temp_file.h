@@ -29,7 +29,6 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // SPDX-License-Identifier: BSD-3-Clause
 
 #pragma once
-#include <utility>
 #include "output_file.h"
 
 struct TempFileHandler {
@@ -45,18 +44,124 @@ struct TempFile : public OutputFile
 
 	TempFile(bool unlink = true);
 	TempFile(const std::string & file_name);
+	TempFile(const TempFileData& d);
 	virtual void finalize() override {}
 	static std::string get_temp_dir();
 	static unsigned n;
 	static uint64_t hash_key;
 	bool unlinked;
 
+	static TempFileData init(bool unlink);
+
 private:
 
+};
+
+struct TmpFile {
+
+	TmpFile():
+		file_(nullptr)
+	{
+		TempFileData d = TempFile::init(true);
 #ifdef _MSC_VER
-	std::string init(bool unlink);
+		file_ = fopen(d.name.c_str(), "w+b");
 #else
-	std::pair<std::string, int> init(bool unlink);
+		file_ = fdopen(d.fd, "w+b");
 #endif
+		if (file_ == 0) {
+			perror(("\nError opening temporary file " + d.name).c_str());
+			throw std::runtime_error("Error opening temporary file " + d.name);
+		}
+		if (setvbuf(file_, nullptr, _IOFBF, 64 * MEGABYTES) != 0)
+			throw std::runtime_error("Error calling setvbuf.");
+		unlinked_ = d.unlinked;
+		file_name_ = d.name;
+	}
+
+	TmpFile(const TmpFile&) = delete;
+	TmpFile& operator= (const TmpFile&) = delete;
+	TmpFile(TmpFile&& f) noexcept {
+		file_ = f.file_;
+		unlinked_ = f.unlinked_;
+		file_name_ = f.file_name_;
+		f.file_ = nullptr;
+	}
+	TmpFile& operator=(TmpFile&& f) noexcept {
+		file_ = f.file_;
+		unlinked_ = f.unlinked_;
+		file_name_ = f.file_name_;
+		f.file_ = nullptr;
+		return *this;
+	}
+
+	void close() {
+		if (file_) {
+			fclose(file_);
+			if (!unlinked_ && remove(file_name_.c_str()) != 0)
+				fprintf(stderr, "Warning: Failed to delete temporary file %s\n", file_name_.c_str());
+		}
+		file_ = nullptr;
+	}
+
+	~TmpFile() {
+		close();
+	}
+
+	void write(const void* ptr, size_t n) {
+		if (fwrite(ptr, 1, n, file_) != n) {
+			perror(0);
+			throw std::runtime_error("Error writing to temporary file " + file_name_);
+		}
+	}
+
+	void seek(int64_t p, int origin)
+	{
+#ifdef WIN32
+		if (_fseeki64(file_, p, origin) != 0) {
+			perror(0);
+			throw std::runtime_error("Error calling fseek.");
+		}
+#else
+		if (fseek(file_, p, origin) != 0) {
+			perror(0);
+			throw std::runtime_error("Error calling fseek.");
+		}
+#endif
+	}
+
+	int64_t tell()
+	{
+#ifdef WIN32
+		int64_t x;
+		if ((x = _ftelli64(file_)) == (int64_t)-1)
+			throw std::runtime_error("Error executing ftell on stream " + file_name_);
+		return x;
+#else
+		const long n = ftell(file_);
+		if (n < 0) {
+			perror(0);
+			throw std::runtime_error("Error calling ftell.");
+		}
+		return n;
+#endif
+	}
+
+	int64_t size() {
+		const int64_t pos = tell();
+		seek(0l, SEEK_END);
+		const int64_t s = tell();
+		seek(pos, SEEK_SET);
+		return s;
+	}
+
+	FILE* file() {
+		return file_;
+	}
+
+private:
+
+	FILE* file_;
+	bool unlinked_;
+	std::string file_name_;
 
 };

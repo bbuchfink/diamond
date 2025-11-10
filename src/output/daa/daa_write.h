@@ -34,18 +34,10 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "data/sequence_file.h"
 
 void init_daa(OutputFile& f);
-
 size_t write_daa_query_record(TextBuffer& buf, const char* query_name, const Sequence& query);
-
 void finish_daa_query_record(TextBuffer& buf, size_t seek_pos);
-
 void write_daa_record(TextBuffer& buf, const IntermediateRecord& r);
-
 void write_daa_record(TextBuffer& buf, const Hsp& match, uint32_t subject_id);
-
 void finish_daa(OutputFile& f, const SequenceFile& db);
-
 void finish_daa(OutputFile& f, DAAFile& daa_in);
-
 void finish_daa(OutputFile& f, DAAFile& daa_in, const StringSet& seq_ids, const std::vector<uint32_t>& seq_lens, int64_t query_count);
-

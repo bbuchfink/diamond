@@ -48,7 +48,6 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define HAVE_NEON(x)
 #endif
 
-
 #if defined(WITH_NEON) | defined(WITH_AVX2) | defined(WITH_SSE4_1)
 #define HAVE_SIMD(x) x
 #else

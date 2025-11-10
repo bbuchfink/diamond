@@ -445,7 +445,8 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 		("query-match-distance-threshold", 0, "Matrix adjust threshold", query_match_distance_threshold, -1.0)
 		("length-ratio-threshold", 0, "Matrix adjust threshold", length_ratio_threshold, -1.0)
 		("cbs-angle", 0, "Matrix adjust threshold", cbs_angle, -1.0)
-		("linclust-banded-ext", 0, "Use banded instead of full matrix DP for linear searches", linclust_banded_ext);
+		("linclust-banded-ext", 0, "Use banded instead of full matrix DP for linear searches", linclust_banded_ext)
+		("hit-membuf", 0, "Buffer intermediate hits in memory (0=default/1)", hit_membuf);
 
 	auto& advanced = parser.add_group("Advanced options", { blastp, blastx, blastn, regression_test });
 	advanced.add()
@@ -456,6 +457,7 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 		("freq-masking", 0, "mask seeds based on frequency", freq_masking)
 		("freq-sd", 0, "number of standard deviations for ignoring frequent seeds", freq_sd_, 0.0)
 		("sketch-size", 0, "Subsample seeds based on minimizer sketch of the given size", sketch_size)
+		("tile-size", 0, "Loop tiling size (default=1024)", tile_size, (uint32_t)1024)
 		("id2", 0, "minimum number of identities for stage 1 hit", min_identities_)
 		("linsearch", 0, "only consider seed hits against longest target for identical seeds", linsearch)
 		("lin-stage1", 0, "only consider seed hits against longest query for identical seeds", lin_stage1)
@@ -596,7 +598,6 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 		("col-bin", 0, "", col_bin, 400)
 		("self", 0, "", self)
 		("trace-pt-fetch-size", 0, "", trace_pt_fetch_size, (int64_t)10e9)
-		("tile-size", 0, "", tile_size, (uint32_t)1024)
 		("short-query-max-len", 0, "", short_query_max_len, 60)
 		("gapped-filter-evalue1", 0, "", gapped_filter_evalue1, 2000.0)
 		("ext-yield", 0, "", ext_min_yield)
@@ -952,7 +953,11 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 	}
 
 	trace_pt_membuf = memory_limit.empty() ? false : Util::String::interpret_number(memory_limit) > 1024 * (1ll << 30);
+	if (hit_membuf) {
+		trace_pt_membuf = true;
+	}
 
+	log_stream << "TRACE_PT_MEMBUF=" << (trace_pt_membuf ? "ON" : "OFF") << endl;
 	log_stream << "MAX_SHAPE_LEN=" << MAX_SHAPE_LEN;
 #ifdef SEQ_MASK
 	log_stream << " SEQ_MASK";

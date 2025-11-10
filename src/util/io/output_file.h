@@ -22,12 +22,20 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 enum class Compressor { NONE, ZLIB, ZSTD };
 
+const size_t MEGABYTES = 1 << 20;
+const size_t GIGABYTES = 1 << 30;
+const size_t KILOBYTES = 1 << 10;
+
+struct TempFileData {
+	std::string name;
+	int fd;
+	bool unlinked;
+};
+
 struct OutputFile : public Serializer
 {
 	OutputFile(const std::string &file_name, Compressor compressor = Compressor::NONE, const char *mode = "wb");
-#ifndef _MSC_VER
-	OutputFile(std::pair<std::string, int> fd, const char *mode);
-#endif
+	OutputFile(const TempFileData& d, Compressor compressor, const char *mode);
 
 	void remove();
 
@@ -43,3 +51,5 @@ protected:
 	std::string file_name_;
 
 };
+
+size_t decompress(FILE* src, void* dst, size_t dstCapacity, Compressor compressor) noexcept;

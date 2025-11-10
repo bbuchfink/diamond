@@ -29,7 +29,6 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // SPDX-License-Identifier: BSD-3-Clause
 
 #pragma once
-#include "search.h"
 #include "../stage2.h"
 #include "data/block/block.h"
 #include "kernel.h"
@@ -38,13 +37,32 @@ using std::vector;
 
 namespace Search { namespace DISPATCH_ARCH {
 	
-static void all_vs_all_self(const FingerPrint* a, uint32_t na, FlatArray<uint32_t>& out, unsigned hamming_filter_id) {
-	for (uint32_t i = 0; i < na; ++i) {
-		const FingerPrint e = a[i];
-		out.next();
+static void all_vs_all_self(const array<char, 48>* __restrict a, uint32_t na, HitField& out, unsigned hamming_filter_id) {
+	const size_t na2 = na & ~size_t(3);
+	size_t i = 0;
+	for (; i < na2; i += 4) {
+		const FingerPrint e1(a[i]);
+		const FingerPrint e2(a[i + 1]);
+		const FingerPrint e3(a[i + 2]);
+		const FingerPrint e4(a[i + 3]);
+		out.set(i, i + 1, e1.match(e2) >= hamming_filter_id);
+		out.set(i, i + 2, e1.match(e3) >= hamming_filter_id);
+		out.set(i, i + 3, e1.match(e4) >= hamming_filter_id);
+		out.set(i + 1, i + 2, e2.match(e3) >= hamming_filter_id);
+		out.set(i + 1, i + 3, e2.match(e4) >= hamming_filter_id);
+		out.set(i + 2, i + 3, e3.match(e4) >= hamming_filter_id);
+		for (uint32_t j = i + 4; j < na; ++j) {
+			const FingerPrint fa(a[j]);
+			out.set(i, j, e1.match(fa) >= hamming_filter_id);
+			out.set(i+1, j, e2.match(fa) >= hamming_filter_id);
+			out.set(i+2, j, e3.match(fa) >= hamming_filter_id);
+			out.set(i+3, j, e4.match(fa) >= hamming_filter_id);
+		}
+	}
+	for (; i < na; ++i) {
+		const FingerPrint e(a[i]);
 		for (uint32_t j = i + 1; j < na; ++j)
-			if (e.match(a[j]) >= hamming_filter_id)
-				out.push_back(j);
+			out.set(i, j, e.match(FingerPrint(a[j])) >= hamming_filter_id);
 	}
 }
 
@@ -58,17 +76,20 @@ static void FLATTEN stage1_self(const SeedLoc* q, int32_t nq, const SeedLoc* s, 
 #endif
 
 	const int32_t tile_size = config.tile_size;
-	load_fps(s, ns, vs, work_set.cfg.target->seqs());
+	::DISPATCH_ARCH::load_fps(s, ns, vs, work_set.cfg.target->seqs());
 
 	work_set.stats.inc(Statistics::SEED_HITS, ns * (ns - 1) / 2);
 	const int32_t ss = (int32_t)vs.size();
 	for (int32_t i = 0; i < ss; i += tile_size) {
-		work_set.hits.clear();
-		all_vs_all_self(vs.data() + i, std::min(tile_size, ss - i), work_set.hits, work_set.cfg.hamming_filter_id);
+		const size_t tq = std::min(tile_size, ss - i);
+		work_set.hits.init(tq, tq);
+		all_vs_all_self(vs.data() + i, tq, work_set.hits, work_set.cfg.hamming_filter_id);
 		search_tile(work_set.hits, i, i, s, s, work_set);
 		for (int32_t j = i + tile_size; j < ss; j += tile_size) {
-			work_set.hits.clear();
-			all_vs_all(vs.data() + i, std::min(tile_size, ss - i), vs.data() + j, std::min(tile_size, ss - j), work_set.hits, work_set.cfg.hamming_filter_id);
+			const size_t tq = std::min(tile_size, ss - i);
+			const size_t ts = std::min(tile_size, ss - j);
+			work_set.hits.init(tq, ts);
+			all_vs_all(vs.data() + i, tq, vs.data() + j, ts, work_set.hits, work_set.cfg.hamming_filter_id);
 			search_tile(work_set.hits, i, j, s, s, work_set);
 		}
 	}

@@ -83,5 +83,6 @@ const char* fix_title(std::string& s);
 std::vector<Letter> from_string(const char* s, const ValueTraits& t, int64_t line);
 void from_string(const char* s, std::vector<Letter>& out, const ValueTraits& t, int64_t line);
 void from_string(const std::string& s, std::vector<Letter>& out, const ValueTraits& t, int64_t line);
+std::string remove_newlines(const std::string& s);
 
 }}

@@ -29,9 +29,17 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // SPDX-License-Identifier: BSD-3-Clause
 
 #include <stdexcept>
+#include <cstdio>
+#include <cerrno>
+#include <vector>
+#include <limits>
+#include <zlib.h>
+#include <string.h>
 #include "compressed_stream.h"
+#include "../system.h"
 
 using std::pair;
+using std::string;
 
 void ZlibSource::init()
 {
@@ -135,4 +143,88 @@ void ZlibSink::close()
 	deflate_loop(0, 0, Z_FINISH);
 	deflateEnd(&strm);
 	prev_->close();
+}
+
+size_t zlib_decompress(FILE* src, void* dst, size_t dstCapacity) noexcept {
+    z_stream zs{};
+    int ret = inflateInit2(&zs, 15 + 32);	
+    if (ret != Z_OK)
+		hard_fail("inflateInit2");
+    const size_t inChunkSize = 64 * 1024;
+    std::vector<unsigned char> in(inChunkSize);
+    unsigned char* outBase = static_cast<unsigned char*>(dst);
+    size_t totalOut = 0;
+	bool endedLastStream = false;
+	for (;;) {
+		size_t rd = std::fread(in.data(), 1, in.size(), src);
+		if (std::ferror(src))
+			hard_fail(string("Error reading file: ") + strerror(errno));
+		zs.next_in = in.data();
+		zs.avail_in = static_cast<uInt>(rd);
+		while (zs.avail_in > 0) {
+			uInt outChunk = (uInt)std::min(dstCapacity - totalOut, (size_t)std::numeric_limits<uInt>::max());
+			if (outChunk == 0) {
+				unsigned char scratch;
+				zs.next_out = &scratch;
+				zs.avail_out = 1;
+				int z = inflate(&zs, Z_NO_FLUSH);
+				if (z == Z_STREAM_END) {
+					endedLastStream = true;
+#if ZLIB_VERNUM >= 0x1270
+					if (inflateReset2(&zs, 15 + 32) != Z_OK) { inflateEnd(&zs); hard_fail("inflateReset2"); }
+#else
+					if (inflateReset(&zs) != Z_OK) { inflateEnd(&zs); hard_fail("inflateReset"); }
+#endif
+					continue;
+				}
+				if (z == Z_OK && zs.avail_out == 0) {
+					inflateEnd(&zs);
+					hard_fail("zlib_decompress: output buffer too small");
+				}
+				if (z == Z_BUF_ERROR && zs.avail_in == 0) {
+					break;
+				}
+				inflateEnd(&zs);
+				hard_fail(std::string("Error during zlib decompression: ") + (zs.msg ? zs.msg : "unknown error"));
+			}
+			zs.next_out = outBase + totalOut;
+			zs.avail_out = outChunk;
+			int z = inflate(&zs, Z_NO_FLUSH);
+			totalOut += (outChunk - zs.avail_out);
+			if (z == Z_STREAM_END) {
+				endedLastStream = true;
+#if ZLIB_VERNUM >= 0x1270
+				if (inflateReset2(&zs, 15 + 32) != Z_OK) { inflateEnd(&zs); hard_fail("inflateReset2"); }
+#else
+				if (inflateReset(&zs) != Z_OK) { inflateEnd(&zs); hard_fail("inflateReset"); }
+#endif
+				continue;
+			}
+			if (z == Z_OK) {
+				endedLastStream = false;
+				if (zs.avail_out == 0) continue;
+				break;
+			}
+			if (z == Z_BUF_ERROR) {
+				if (zs.avail_in == 0) break;
+				if (zs.avail_out == 0) {
+					inflateEnd(&zs);
+					hard_fail("zlib_decompress: output buffer too small");
+				}
+			}
+			if (z != Z_OK && z != Z_BUF_ERROR) {
+				inflateEnd(&zs);
+				hard_fail("Error during zlib decompression: " + std::string(zs.msg ? zs.msg : "unknown error"));
+			}
+		}
+		if (rd == 0) {
+			if (!endedLastStream) {
+				inflateEnd(&zs);
+				hard_fail("Unexpected end of zlib stream");
+			}
+			break;
+		}
+	}
+	inflateEnd(&zs);
+	return totalOut;
 }

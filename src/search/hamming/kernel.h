@@ -29,25 +29,39 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // SPDX-License-Identifier: BSD-3-Clause
 
 #pragma once
-#include "util/data_structures/flat_array.h"
 #include "search/search.h"
+#include "finger_print.h"
 
-using std::vector;
+using std::array;
+using ::DISPATCH_ARCH::FingerPrint;
 
 namespace Search { namespace DISPATCH_ARCH {
 
-static void all_vs_all(const FingerPrint* __restrict a, uint32_t na, const FingerPrint* __restrict b, uint32_t nb, FlatArray<uint32_t>& out, unsigned hamming_filter_id) {
-	for (uint32_t i = 0; i < na; ++i) {
-		const FingerPrint e = a[i];
-		out.next();
-		for (uint32_t j = 0; j < nb; ++j)
-			if (e.match(b[j]) >= hamming_filter_id)
-				out.push_back(j);
+static void all_vs_all(const array<char, 48>* __restrict a, size_t na, const array<char, 48>* __restrict b, size_t nb, HitField& out, const unsigned hamming_filter_id) {
+	const size_t na2 = na & ~size_t(3);
+	size_t i = 0;
+	for (; i < na2; i += 4) {
+		const FingerPrint e1(a[i]);
+		const FingerPrint e2(a[i + 1]);
+		const FingerPrint e3(a[i + 2]);
+		const FingerPrint e4(a[i + 3]);
+		for (size_t j = 0; j < nb; ++j) {
+			const FingerPrint fb(b[j]);
+			out.set(i, j, e1.match(fb) >= hamming_filter_id);
+			out.set(i+1, j, e2.match(fb) >= hamming_filter_id);
+			out.set(i+2, j, e3.match(fb) >= hamming_filter_id);
+			out.set(i+3, j, e4.match(fb) >= hamming_filter_id);
+		}
+	}
+	for (; i < na; ++i) {
+		const FingerPrint e(a[i]);
+		for (size_t j = 0; j < nb; ++j)
+			out.set(i, j, e.match(FingerPrint(b[j])) >= hamming_filter_id);
 	}
 }
 
 template<typename SeedLoc>
-static void FLATTEN stage1(const SeedLoc* __restrict q, int32_t nq, const SeedLoc* __restrict s, int32_t ns, ::Search::WorkSet& work_set)
+static void FLATTEN stage1(const SeedLoc* __restrict q, int32_t nq, const SeedLoc* __restrict s, int32_t ns, WorkSet& work_set)
 {
 #ifdef __APPLE__
 	thread_local Container vq, vs;
@@ -56,14 +70,16 @@ static void FLATTEN stage1(const SeedLoc* __restrict q, int32_t nq, const SeedLo
 #endif
 
 	const int32_t tile_size = config.tile_size;
-	load_fps(s, ns, vs, work_set.cfg.target->seqs());
+	::DISPATCH_ARCH::load_fps(s, ns, vs, work_set.cfg.target->seqs());
 	work_set.stats.inc(Statistics::SEED_HITS, nq * ns);
-	load_fps(q, nq, vq, work_set.cfg.query->seqs());
+	::DISPATCH_ARCH::load_fps(q, nq, vq, work_set.cfg.query->seqs());
 	const int32_t qs = (int32_t)vq.size(), ss = (int32_t)vs.size();
 	for (int32_t i = 0; i < qs; i += tile_size) {
 		for (int32_t j = 0; j < ss; j += tile_size) {
-			work_set.hits.clear();
-			all_vs_all(vq.data() + i, std::min(tile_size, qs - i), vs.data() + j, std::min(tile_size, ss - j), work_set.hits, work_set.cfg.hamming_filter_id);
+			const size_t tq = std::min(tile_size, qs - i);
+			const size_t ts = std::min(tile_size, ss - j);
+			work_set.hits.init(tq, ts);
+			all_vs_all(vq.data() + i, tq, vs.data() + j, ts, work_set.hits, work_set.cfg.hamming_filter_id);
 			search_tile(work_set.hits, i, j, q, s, work_set);
 		}
 	}

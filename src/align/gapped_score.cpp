@@ -117,6 +117,7 @@ Match::Match(BlockId target_block_id, const Sequence& seq, std::unique_ptr<::Sta
 
 static void add_dp_targets(const WorkTarget& target,
 	int target_idx,
+	const ::Stats::TargetMatrix* matrix,
 	const Sequence* query_seq,
 	array<DP::Targets, MAX_CONTEXT>& dp_targets,
 	DP::Flags flags, const HspValues hsp_values,
@@ -125,7 +126,6 @@ static void add_dp_targets(const WorkTarget& target,
 {
 	const Loc band = Extension::band(query_seq->length(), mode),
 		slen = target.seq.length();
-	const ::Stats::TargetMatrix* matrix = target.matrix.get();
 	const unsigned score_width = matrix ? matrix->score_width() : 0;
 	for (int frame = 0; frame < align_mode.query_contexts; ++frame) {
 
@@ -198,14 +198,17 @@ vector<Target> align(vector<WorkTarget>& targets, const Sequence* query_seq, con
 	r.reserve(targets.size());
 	size_t cbs_targets = 0;
 
-	for (int i = 0; i < (int)targets.size(); ++i) {
-		if (targets[i].done)
+	for (size_t i = 0; i < targets.size(); ++i) {
+		r.emplace_back(targets[i].block_id, targets[i].seq, targets[i].ungapped_score.front(), std::move(targets[i].matrix));
+		if (targets[i].done) {
+			assert(targets[i].hsp[0].size() == 1);
+			assert(align_mode.query_contexts == 1);
 			r.back().add_hit(targets[i].hsp[0].front(), query_seq[targets[i].hsp[0].front().frame].length());
+		}
 		else
-			add_dp_targets(targets[i], i, query_seq, dp_targets, flags, hsp_values, mode, cfg);
+			add_dp_targets(targets[i], i, r.back().matrix.get(), query_seq, dp_targets, flags, hsp_values, mode, cfg);
 		if (targets[i].matrix)
 			++cbs_targets;
-		r.emplace_back(targets[i].block_id, targets[i].seq, targets[i].ungapped_score.front(), std::move(targets[i].matrix));
 	}
 	stat.inc(Statistics::TARGET_HITS3_CBS, cbs_targets);
 

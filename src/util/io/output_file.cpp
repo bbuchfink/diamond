@@ -32,6 +32,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #ifdef WITH_ZSTD
 #include "zstd_stream.h"
 #endif
+#include "../system.h"
 
 using std::string;
 
@@ -60,13 +61,15 @@ OutputFile::OutputFile(const string &file_name, Compressor compressor, const cha
 	}
 }
 
-#ifndef _MSC_VER
-OutputFile::OutputFile(std::pair<std::string, int> fd, const char *mode):
-	Serializer(new OutputStreamBuffer(new FileSink(fd.first, fd.second, mode))),
-	file_name_(fd.first)
+OutputFile::OutputFile(const TempFileData& d, Compressor compressor, const char *mode):
+#ifdef _MSC_VER
+	OutputFile(d.name, compressor, mode)
+#else
+	Serializer(new OutputStreamBuffer(new FileSink(d.name, d.fd, mode))),
+	file_name_(d.name)
+#endif	
 {
 }
-#endif
 
 void OutputFile::remove()
 {
@@ -79,4 +82,17 @@ void OutputFile::advise_need() {
 #elif not defined(_MSC_VER)
 	posix_fadvise(fileno(file()), 0, buffer_->file_size(), POSIX_FADV_SEQUENTIAL | POSIX_FADV_WILLNEED);
 #endif
+}
+
+size_t decompress(FILE* src, void* dst, size_t dstCapacity, Compressor compressor) noexcept {
+	switch (compressor) {
+	case Compressor::ZLIB:
+		return zlib_decompress(src, dst, dstCapacity);
+#ifdef WITH_ZSTD
+	case Compressor::ZSTD:
+		return zstd_decompress(src, dst, dstCapacity);
+#endif
+	default:
+		hard_fail("Invalid compressor in decompress");
+	}
 }

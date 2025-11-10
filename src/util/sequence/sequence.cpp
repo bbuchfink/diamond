@@ -258,4 +258,14 @@ void from_string(const string& s, vector<Letter>& out, const ValueTraits& t, int
 	}
 }
 
+std::string remove_newlines(const std::string& s) {
+	std::string r;
+	r.reserve(s.length());
+	for (char c : s) {
+		if (c != '\n' && c != '\r')
+			r.push_back(c);
+	}
+	return r;
+}
+
 }}

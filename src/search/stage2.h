@@ -82,8 +82,8 @@ static pair<unsigned, Loc> query_data(const PackedLocId q, const SequenceSet& qu
 template<typename SeedLoc>
 static void search_query_offset(const SeedLoc& q,
 	const SeedLoc* s,
-	FlatArray<uint32_t>::DataConstIterator hits,
-	FlatArray<uint32_t>::DataConstIterator hits_end,
+	vector<uint_fast32_t>::const_iterator hits,
+	vector<uint_fast32_t>::const_iterator hits_end,
 	WorkSet& work_set)
 {
 	constexpr int N = ::DISPATCH_ARCH::SIMD::Vector<int8_t>::LANES;
@@ -111,7 +111,7 @@ static void search_query_offset(const SeedLoc& q,
 
 	const int interval_mod = config.left_most_interval > 0 ? seed_offset % config.left_most_interval : window_left, interval_overhang = std::max(window_left - interval_mod, 0);
 
-	for (FlatArray<uint32_t>::DataConstIterator i = hits; i < hits_end; i += n) {
+	for (vector<uint_fast32_t>::const_iterator i = hits; i < hits_end; i += n) {
 
 		n = std::min(N, int(hits_end - i));
 		for (int j = 0; j < n; ++j)
@@ -158,21 +158,21 @@ static void search_query_offset(const SeedLoc& q,
 
 template<typename SeedLoc>
 static void FLATTEN search_tile(
-	const FlatArray<uint32_t> &hits,
+	HitField& hits,
 	int32_t query_begin,
 	int32_t subject_begin,
 	const SeedLoc* q,
 	const SeedLoc* s,
 	WorkSet& work_set)
 {
-	work_set.stats.inc(Statistics::TENTATIVE_MATCHES1, hits.data_size());
-	const uint32_t query_count = (uint32_t)hits.size();
+	const size_t query_count = hits.query_count();
 	const SeedLoc* q_begin = q + query_begin, *s_begin = s + subject_begin;
-	for (uint32_t i = 0; i < query_count; ++i) {
-		FlatArray<uint32_t>::DataConstIterator r1 = hits.begin(i), r2 = hits.end(i);
-		if (r2 == r1)
+	for (size_t i = 0; i < query_count; ++i) {
+		const vector<uint_fast32_t>& h = hits.hits(i);
+		if (h.empty())
 			continue;
-		search_query_offset(q_begin[i], s_begin, r1, r2, work_set);
+		work_set.stats.inc(Statistics::TENTATIVE_MATCHES1, h.size());
+		search_query_offset(q_begin[i], s_begin, h.cbegin(), h.cend(), work_set);
 	}
 }
 
