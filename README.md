@@ -1,4 +1,4 @@
-![DIAMOND](/../../../../bbuchfink/diamond-data/blob/main/diamond_white_95px.png)
+![DIAMOND](/../../../../bbuchfink/diamond-data/blob/main/diamond_coat_of_arms1.jpg)
 
 Introduction
 ============
@@ -34,8 +34,9 @@ DIAMOND is actively supported and developed software. Please use the [issue trac
 
 About
 =====
-DIAMOND is developed by Benjamin J. Buchfink at the Max Planck Institute for Biology
-Tübingen in collaboration with the Drost lab at the University of Dundee. From 2019-2024,
+DIAMOND is developed by Dr. Benjamin J. Buchfink, independent scientist, Tübingen, Germany,
+supported by the Max Planck Society for the Advancement of Science, in collaboration with
+the Drost lab at the University of Dundee. From 2019-2024,
 it was developed by Benjamin Buchfink at the Drost lab, Max Planck Institute for Biology
 Tübingen. From 2018-2019, its development was supported by the German Federal Ministry
 for Economic Affairs and Energy through an EXIST grant. From 2016-2018, it was developed
