@@ -35,6 +35,7 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <unordered_map>
 #include <utility>
 #include <vector>
+#include <sstream>
 #include "volume.h"
 #include "util/io/mmap.h"
 #include "ber.h"
