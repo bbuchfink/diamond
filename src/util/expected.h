@@ -177,6 +177,14 @@ public:
                 return storage_.value_;
         }
 
+        constexpr const T* operator->() const noexcept {
+            return &storage_.value_;
+        }
+
+        constexpr T* operator->() noexcept {
+            return &storage_.value_;
+        }
+        
         E &error()
         {
                 if (has_value_)
