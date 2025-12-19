@@ -159,7 +159,7 @@ struct HitBuffer
 		HitBuffer &parent_;
 	};
 
-	void load(size_t max_size);
+	bool load(size_t max_size);
 
 	std::tuple<Hit*, size_t, Key, Key> retrieve() {
 		if (config.trace_pt_membuf) {

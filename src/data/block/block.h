@@ -40,12 +40,11 @@ struct SequenceFile;
 
 struct Block {
 
-	Block(Alphabet alphabet = Alphabet::STD);
+	Block();
 	unsigned source_len(unsigned block_id) const;
 	TranslatedSequence translated(size_t block_id) const;
 	bool long_offsets() const;
 	bool empty() const;
-	void convert_to_std_alph(size_t i);
 	SequenceSet& seqs() {
 		return seqs_;
 	}
@@ -84,9 +83,6 @@ struct Block {
 		//return block2oid_.back() + 1;
 	}
 	BlockId oid2block_id(OId i) const;
-	Alphabet alphabet() const {
-		return seqs_.alphabet();
-	}
 	bool fetch_seq_if_unmasked(size_t block_id, std::vector<Letter>& seq);
 	void write_masked_seq(size_t block_id, const std::vector<Letter>& seq);
 	DictId dict_id(size_t block, BlockId block_id, SequenceFile& db, const OutputFormat& format) const;

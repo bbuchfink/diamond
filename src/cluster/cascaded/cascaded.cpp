@@ -56,15 +56,15 @@ string Cascaded::get_description() {
 	return "Cascaded greedy vertex cover algorithm";
 }
 
-static BitVector rep_bitset(const vector<SuperBlockId> &centroid, const BitVector *superset = nullptr) {
-	BitVector r(centroid.size());
+static DbFilter rep_bitset(const vector<SuperBlockId> &centroid, const DbFilter *superset = nullptr) {
+	DbFilter r(centroid.size());
 	for (SuperBlockId c : centroid)
-		if (!superset || superset->get(c))
-			r.set(c);
+		if (!superset || superset->oid_filter.get(c))
+			r.oid_filter.set(c);
 	return r;
 }
 
-vector<SuperBlockId> cluster(shared_ptr<SequenceFile>& db, const shared_ptr<BitVector>& filter, const SuperBlockId* member_counts, int round, int round_count) {
+vector<SuperBlockId> cluster(shared_ptr<SequenceFile>& db, const shared_ptr<DbFilter>& filter, const SuperBlockId* member_counts, int round, int round_count) {
 	using Edge = Util::Algo::Edge<SuperBlockId>;
 	statistics.reset();
 	const bool mutual_cover = config.mutual_cover.present();
@@ -123,11 +123,11 @@ vector<SuperBlockId> cluster(shared_ptr<SequenceFile>& db, const shared_ptr<BitV
 	//return Util::Algo::cluster_pr(edge_array);
 }
 
-static pair<vector<SuperBlockId>, BitVector> update_clustering(const BitVector& previous_filter, const vector<SuperBlockId>& previous_centroids, vector<SuperBlockId>&& current_centroids, int round) {
-	BitVector oid_filter(round == 0 ? rep_bitset(current_centroids) : rep_bitset(current_centroids, &previous_filter));
+static pair<vector<SuperBlockId>, DbFilter> update_clustering(const DbFilter& previous_filter, const vector<SuperBlockId>& previous_centroids, vector<SuperBlockId>&& current_centroids, int round) {
+	DbFilter oid_filter(round == 0 ? rep_bitset(current_centroids) : rep_bitset(current_centroids, &previous_filter));
 	if (round > 0)
 		for (size_t i = 0; i < current_centroids.size(); ++i)
-			if (!previous_filter.get(i))
+			if (!previous_filter.oid_filter.get(i))
 				current_centroids[i] = current_centroids[previous_centroids[i]];
 	return { current_centroids, oid_filter };
 }
@@ -139,7 +139,7 @@ vector<SuperBlockId> cascaded(shared_ptr<SequenceFile>& db, bool linear) {
 	const double evalue_cutoff = config.max_evalue,
 		target_approx_id = config.approx_min_id;
 	const bool anchored_swipe = config.anchored_swipe, linclust = is_linclust(steps);
-	shared_ptr<BitVector> oid_filter(new BitVector);
+	shared_ptr<DbFilter> oid_filter(new DbFilter);
 	int64_t cluster_count = db->sequence_count();
 	vector<SuperBlockId> centroids(cluster_count);
 	iota(centroids.begin(), centroids.end(), 0);
@@ -160,7 +160,7 @@ vector<SuperBlockId> cascaded(shared_ptr<SequenceFile>& db, bool linear) {
 			centroids,
 			cluster(db, i == 0 ? nullptr : oid_filter, config.weighted_gvc ? member_counts(centroids).data() : nullptr, i, (int)steps.size()),
 			i);
-		const int64_t n = oid_filter->one_count();
+		const int64_t n = oid_filter->oid_filter.one_count();
 		message_stream << "Clustering round " << i + 1 << " complete. #Input sequences: " << cluster_count
 			<< " #Clusters: " << n
 			<< " #Letters: " << db->letters_filtered(*oid_filter)

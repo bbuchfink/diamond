@@ -33,11 +33,10 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <array>
 #include <vector>
 #include "basic/sequence.h"
-#include "../io/output_file.h"
 
 namespace Util { namespace Seq {
 
-void format(Sequence seq, const char *id, const char *qual, TextBuffer &out, const std::string &format, const ValueTraits& value_traits);
+void format(Sequence seq, const char *id, const char *qual, TextBuffer &out, const std::string &format, const ValueTraits& value_traits, Loc wrap = 160);
 
 static inline Sequence clip(const Letter *seq, int len, int anchor) {
 	const Letter *a = seq + anchor, *begin = seq, *end = seq + len, *p;

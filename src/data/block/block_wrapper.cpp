@@ -34,7 +34,7 @@ using std::vector;
 using std::string;
 
 BlockWrapper::BlockWrapper(const Block& block, Metadata metadata, Flags flags, const ValueTraits& value_traits) :
-	SequenceFile(SequenceFile::Type::BLOCK, Alphabet::STD, flags, FormatFlags::LENGTH_LOOKUP | FormatFlags::TITLES_LAZY | FormatFlags::SEEKABLE, metadata, value_traits),
+	SequenceFile(SequenceFile::Type::BLOCK, flags, FormatFlags::LENGTH_LOOKUP | FormatFlags::TITLES_LAZY | FormatFlags::SEEKABLE, metadata, value_traits),
 	block_(block),
 	oid_(0)
 {
@@ -106,7 +106,7 @@ void BlockWrapper::seek_chunk(const Chunk& chunk) {
 	throw OperationNotSupported();
 }
 
-std::string BlockWrapper::seqid(OId oid, bool all) const {
+std::string BlockWrapper::seqid(OId oid, bool all, bool full_titles) {
 	return block_.ids()[oid];
 }
 
@@ -124,7 +124,7 @@ void BlockWrapper::read_seq_data(Letter* dst, size_t len, size_t& pos, bool seek
 	++pos;
 }
 
-void BlockWrapper::read_id_data(const int64_t oid, char* dst, size_t len) {
+void BlockWrapper::read_id_data(const int64_t oid, char* dst, size_t len, bool all, bool full_titles) {
 	std::copy(block_.ids().ptr(oid), block_.ids().end(oid), dst);
 	dst[len] = '\0';
 }
@@ -156,14 +156,9 @@ BlockWrapper::~BlockWrapper()
 {
 }
 
-BitVector* BlockWrapper::filter_by_accession(const std::string& file_name)
+DbFilter* BlockWrapper::filter_by_accession(const std::string& file_name)
 {
 	throw OperationNotSupported();
-}
-
-const BitVector* BlockWrapper::builtin_filter()
-{
-	return nullptr;
 }
 
 std::string BlockWrapper::file_name()
@@ -171,22 +166,17 @@ std::string BlockWrapper::file_name()
 	return {};
 }
 
-int64_t BlockWrapper::sparse_sequence_count() const
-{
-	throw OperationNotSupported();
-}
-
 std::vector<TaxId> BlockWrapper::taxids(size_t oid) const
 {
 	throw OperationNotSupported();
 }
 
-void BlockWrapper::seq_data(size_t oid, std::vector<Letter>& dst) const
+void BlockWrapper::seq_data(size_t oid, std::vector<Letter>& dst)
 {
 	throw OperationNotSupported();
 }
 
-size_t BlockWrapper::seq_length(size_t oid) const
+Loc BlockWrapper::seq_length(size_t oid)
 {
 	throw OperationNotSupported();
 }

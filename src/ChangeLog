@@ -1,3 +1,28 @@
+[2.1.17]
+- Added (tabular/json) output fields sRANK to print taxonomy nodes of the given rank
+  associated with the subject sequence, where RANK can be any rank in the NCBI taxonomy,
+  e.g. sdomain, skingdom, sphylum, sorder, sgenus, sspecies, etc.
+- Using BLAST databases is now universally supported (including taxonomy features),
+  without depending on the NCBI toolkit.
+- SQLite3 is now a required dependency for compilation.
+- Added line breaks for the `getseq` workflow at 80 letters per line.
+- Removed the `BLAST_LIBRARY_DIR` and `BLAST_INCLUDE_DIR` CMake options.
+- Fixed a `Missing taxdb` error message when using BLAST databases.
+- When filtering a database by taxonomy, the letter count for computing
+  e-values will now correctly refer to the filtered subset.
+- Removed support for BLAST alias databases filtered by GI numbers and filtered using a
+  binary-formatted seqid list (`.bsl` file extension).
+- Added support for soft masking using the SEG algorithm (`--soft-masking seg`).
+- Added the output field `hspnum` to print 0-based HSP number within a target
+  to the tabular and JSON output format.
+- Added the output field `normalized_bitscore` to print the bitscore normalized
+  by the maximum of the self alignment scores of query and target sequence to the tabular
+  and JSON output format.
+- Added the output field `normalized_nident` to print the number of identical
+  residues normalized by the maximum of the lengths of query and target sequence
+  to the tabular and JSON output format.
+- Fixed the `--swipe` option not producing any output.
+
 [2.1.16]
 - Fixed an architecture-dependent inconsistency (present since v2.1.15) of
   tantan repeat masking.

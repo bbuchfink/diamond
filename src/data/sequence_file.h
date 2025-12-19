@@ -60,6 +60,19 @@ struct FastaFile;
 
 constexpr int MAX_LINEAGE = 256;
 
+struct DbFilter {
+	DbFilter():
+		letter_count(0)
+	{ }
+	DbFilter(uint64_t size) :
+		oid_filter(size),
+		letter_count()
+	{
+	}
+	BitVector oid_filter;
+	uint64_t letter_count;
+};
+
 struct SequenceFile {
 
 	enum class Type { DMND = 0, BLAST = 1, FASTA = 2, BLOCK = 3 };
@@ -82,7 +95,8 @@ struct SequenceFile {
 		NEED_LETTER_COUNT = 1 << 6,
 		ACC_TO_OID_MAPPING = 1 << 7,
 		OID_TO_ACC_MAPPING = 1 << 8,
-		NEED_LENGTH_LOOKUP = 1 << 9
+		NEED_LENGTH_LOOKUP = 1 << 9,
+		NEED_EARLY_TAXON_MAPPING = 1 << 10
 	};
 
 	enum class FormatFlags {
@@ -98,8 +112,9 @@ struct SequenceFile {
 		TITLES = 1 << 1,
 		QUALITY = 1 << 2,
 		LAZY_MASKING = 1 << 3,
-		CONVERT_ALPHABET = 1 << 4,
-        DNA_PRESERVATION = 1 << 5,
+        DNA_PRESERVATION = 1 << 4,
+		FULL_TITLES = 1 << 5,
+		ALL_SEQIDS = 1 << 6,
         ALL = SEQS | TITLES
 	};
 
@@ -116,10 +131,9 @@ struct SequenceFile {
 		enum { SIZE = 16 };
 	};
 
-	SequenceFile(Type type, Alphabet alphabet, Flags flags, FormatFlags format_flags, Metadata metadata, const ValueTraits& value_traits = amino_acid_traits);
+	SequenceFile(Type type, Flags flags, FormatFlags format_flags, Metadata metadata, const ValueTraits& value_traits = amino_acid_traits);
 
 	virtual int64_t file_count() const = 0;
-	virtual void print_info() const;
 	virtual void init_seqinfo_access() = 0;
 	virtual void init_seq_access() = 0;
 	virtual void seek_chunk(const Chunk& chunk) = 0;
@@ -131,16 +145,15 @@ struct SequenceFile {
 	virtual size_t id_len(const SeqInfo& seq_info, const SeqInfo& seq_info_next) = 0;
 	virtual void seek_offset(size_t p) = 0;
 	virtual void read_seq_data(Letter* dst, size_t len, size_t& pos, bool seek) = 0;
-	virtual void read_id_data(const int64_t oid, char* dst, size_t len) = 0;
+	virtual void read_id_data(const int64_t oid, char* dst, size_t len, bool all, bool full_titles) = 0;
 	virtual void skip_id_data() = 0;
-	virtual std::string seqid(OId oid, bool all = false) const;
+	virtual std::string seqid(OId oid, bool all, bool full_titles);
 	virtual std::string dict_title(DictId dict_id, const size_t ref_block) const final;
-	virtual Loc dict_len(DictId dict_id, const size_t ref_block) const;
-	virtual std::vector<Letter> dict_seq(DictId dict_id, const size_t ref_block) const;
+	virtual Loc dict_len(DictId dict_id, const size_t ref_block);
+	virtual std::vector<Letter> dict_seq(DictId dict_id, const size_t ref_block);
 	virtual int64_t sequence_count() const = 0;
-	virtual int64_t sparse_sequence_count() const = 0;
 	virtual int64_t letters() const = 0;
-	virtual size_t letters_filtered(const BitVector& v) const;
+	virtual size_t letters_filtered(const DbFilter& v);
 	virtual int db_version() const = 0;
 	virtual int program_build_version() const = 0;
 	virtual bool read_seq(std::vector<Letter>& seq, std::string& id, std::vector<char>* quals = nullptr) = 0;
@@ -152,7 +165,7 @@ struct SequenceFile {
 	virtual int get_n_partition_chunks() = 0;
 	virtual void set_seqinfo_ptr(OId i) = 0;
 	virtual void close() = 0;
-	virtual BitVector* filter_by_accession(const std::string& file_name) = 0;
+	virtual DbFilter* filter_by_accession(const std::string& file_name) = 0;
 	virtual std::vector<TaxId> taxids(size_t oid) const = 0;
 	virtual TaxId max_taxid() const;
 	virtual TaxId get_parent(TaxId taxid);
@@ -163,25 +176,25 @@ struct SequenceFile {
 	TaxId get_lca(TaxId t1, TaxId t2);
 	bool contained(TaxId query, const std::set<TaxId>& filter, bool include_invalid);
 	bool contained(const std::vector<TaxId>& query, const std::set<TaxId>& filter, bool all, bool include_invalid);
-	virtual const BitVector* builtin_filter() = 0;
 	virtual std::string file_name() = 0;
-	virtual void seq_data(size_t oid, std::vector<Letter>& dst) const = 0;
-	virtual size_t seq_length(size_t oid) const = 0;
+	virtual void seq_data(size_t oid, std::vector<Letter>& dst) = 0;
+	virtual Loc seq_length(size_t oid) = 0;
 	void init_random_access(const size_t query_block, const size_t ref_blocks, bool dictionary = true);
 	virtual void end_random_access(bool dictionary = true) = 0;
 	virtual std::vector<OId> accession_to_oid(const std::string& acc) const;
 	virtual void init_write();
 	virtual void write_seq(const Sequence& seq, const std::string& id);
 	virtual ~SequenceFile();
+	virtual void print_info() const;
 
 	Type type() const { return type_; }
 	Block* load_seqs(const int64_t max_letters, const BitVector* filter = nullptr, LoadFlags flags = LoadFlags(3), const Chunk& chunk = Chunk());
 	void get_seq();
 	Util::Tsv::File* make_seqid_list();
 	size_t total_blocks() const;
-	SequenceSet seqs_by_accession(const std::vector<std::string>::const_iterator begin, const std::vector<std::string>::const_iterator end) const;
-	std::vector<Letter> seq_by_accession(const std::string& acc) const;
-	BitVector* filter_by_taxonomy(const std::string& include, const std::string& exclude);
+	SequenceSet seqs_by_accession(const std::vector<std::string>::const_iterator begin, const std::vector<std::string>::const_iterator end);
+	std::vector<Letter> seq_by_accession(const std::string& acc);
+	DbFilter* filter_by_taxonomy(std::istream& filter, char delimiter, bool exclude);
 	void write_accession_list(const std::vector<bool>& oids, std::string& file_name);
 	template<typename It>
 	std::vector<int64_t> seq_offsets(It begin, It end);
@@ -191,6 +204,7 @@ struct SequenceFile {
 	void sub_db(It begin, It end, FastaFile* out);
 	std::vector<std::tuple<FastaFile*, std::vector<OId>, Util::Tsv::File*>> length_sort(int64_t block_size, std::function<int64_t(Loc)>& seq_size);
 	Util::Tsv::File& seqid_file();
+	static void init_taxon_output_fields();
 
 	void init_dict(const size_t query_block, const size_t target_block);
 	void init_dict_block(size_t block, size_t seq_count, bool persist);
@@ -272,7 +286,6 @@ private:
 	}
 
 	const Type type_;
-	const Alphabet alphabet_;
 
 	std::map<size_t, std::vector<DictId>> block_to_dict_id_;
 	std::mutex dict_mtx_;
@@ -288,3 +301,20 @@ DEFINE_ENUM_FLAG_OPERATORS(SequenceFile::Flags)
 DEFINE_ENUM_FLAG_OPERATORS(SequenceFile::Metadata)
 DEFINE_ENUM_FLAG_OPERATORS(SequenceFile::FormatFlags)
 DEFINE_ENUM_FLAG_OPERATORS(SequenceFile::LoadFlags)
+
+template<typename It>
+void print_taxon_names(It begin, It end, const SequenceFile& db, TextBuffer& out, bool json = false) {
+	if (begin == end) {
+		out << "N/A";
+		return;
+	}
+	for (It i = begin; i != end; ++i) {
+		if (json)
+			out << "\"";
+		if (i != begin)
+			out << (json ? ',' : ';');
+		out << db.taxon_scientific_name(*i);
+		if (json)
+			out << "\"";
+	}
+}

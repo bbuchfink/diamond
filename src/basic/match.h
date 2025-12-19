@@ -309,7 +309,6 @@ struct HspContext
 		subject_len(subject_len),		
 		hit_num(hit_num),
 		hsp_num(hsp_num),
-		ungapped_score(ungapped_score),
 		query_self_aln_score(query_self_aln_score),
 		target_self_aln_score(target_self_aln_score),
 		subject_seq(subject_seq),
@@ -458,7 +457,6 @@ struct HspContext
 	OId query_oid, subject_oid;
 	Loc query_len, subject_len;
 	unsigned hit_num, hsp_num;
-	int ungapped_score;
 	double query_self_aln_score, target_self_aln_score;
 	Sequence subject_seq;
 private:

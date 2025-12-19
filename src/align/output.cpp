@@ -73,6 +73,7 @@ TextBuffer* generate_output(vector<Match> &targets, BlockId query_block_id, Stat
 		const int64_t database_id = cfg.target->block_id2oid(subject_id);
 		const unsigned subject_len = (unsigned)ref_seqs[subject_id].length();
 		const double target_self_aln_score = cfg.target->has_self_aln() ? cfg.target->self_aln_score(subject_id) : 0.0;
+		const bool all_seqids = flag_any(cfg.output_format->flags, Output::Flags::ALL_SEQIDS);
 
 		hit_hsps = 0;
 		for (Hsp &hsp : targets[i].hsp) {
@@ -81,7 +82,7 @@ TextBuffer* generate_output(vector<Match> &targets, BlockId query_block_id, Stat
 			else if(cfg.iterated())
 				IntermediateRecord::write(*out, hsp, query_block_id, cfg.target->dict_id(cfg.current_ref_block, subject_id, *cfg.db, *f), database_id, cfg.output_format.get());
 			else {
-				const string target_title = cfg.target->has_ids() ? cfg.target->ids()[subject_id] : (flag_any(f->flags, Output::Flags::SSEQID) ? cfg.db->seqid(database_id, config.sallseqid) : "");
+				const string target_title = cfg.target->has_ids() ? cfg.target->ids()[subject_id] : (flag_any(f->flags, Output::Flags::SSEQID) ? cfg.db->seqid(database_id, all_seqids, true) : "");
 				f->print_match(HspContext(hsp,
 					query_block_id,
 					cfg.query->block_id2oid(query_block_id),

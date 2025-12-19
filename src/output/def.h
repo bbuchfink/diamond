@@ -42,7 +42,8 @@ enum class Flags : int {
     IS_STRING = 1 << 4,
     IS_ARRAY = 1 << 5,
 	SSEQID = 1 << 6,
-	DEFAULT_REPORT_UNALIGNED = 1 << 7
+	DEFAULT_REPORT_UNALIGNED = 1 << 7,
+	NO_REALIGN = 1 << 8
 };
 
 DEFINE_ENUM_FLAG_OPERATORS(Flags)

@@ -1,5 +1,5 @@
 /****
-Copyright © 2013-2025 Benjamin J. Buchfink <buchfink@gmail.com>
+Copyright  2013-2025 Benjamin J. Buchfink <buchfink@gmail.com>
 
 Redistribution and use in source and binary forms, with or without modification,
 are permitted provided that the following conditions are met:
@@ -35,9 +35,36 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <sys/types.h>
 #include <sys/stat.h>
 #endif
+
 #include "mmap.h"
 
-bool map_file(const char* path, MappedFile& mf) {
+MappedFile& MappedFile::operator=(MappedFile&& other) noexcept
+{
+    if (this == &other) {
+        return *this;
+    }
+
+    unmap();
+
+    data_ = other.data_;
+    size_ = other.size_;
+#if defined(_WIN32)
+    hFile = other.hFile;
+    hMap = other.hMap;
+#endif
+
+    other.data_ = nullptr;
+    other.size_ = 0;
+#if defined(_WIN32)
+    other.hFile = INVALID_HANDLE_VALUE;
+    other.hMap = nullptr;
+#endif
+
+    return *this;
+}
+
+bool MappedFile::map(const char* path)
+{
 #if defined(_WIN32)
     HANDLE h = CreateFileA(path, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
     if (h == INVALID_HANDLE_VALUE) return false;
@@ -47,9 +74,9 @@ bool map_file(const char* path, MappedFile& mf) {
     if (!hm) { CloseHandle(h); return false; }
     LPVOID addr = MapViewOfFile(hm, FILE_MAP_READ, 0, 0, 0);
     if (!addr) { CloseHandle(hm); CloseHandle(h); return false; }
-    mf.data = (const uint8_t*)addr;
-    mf.size = (size_t)sz.QuadPart;
-    mf.hFile = h; mf.hMap = hm;
+    data_ = (const uint8_t*)addr;
+    size_ = (size_t)sz.QuadPart;
+    hFile = h; hMap = hm;
     return true;
 #else
     int fd = ::open(path, O_RDONLY);
@@ -59,20 +86,25 @@ bool map_file(const char* path, MappedFile& mf) {
     if (st.st_size <= 0) { ::close(fd); return false; }
     void* addr = mmap(nullptr, (size_t)st.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
     if (addr == MAP_FAILED) { ::close(fd); return false; }
-    mf.data = (const uint8_t*)addr;
-    mf.size = (size_t)st.st_size;
+    data_ = (const uint8_t*)addr;
+    size_ = (size_t)st.st_size;
     ::close(fd);
     return true;
 #endif
 }
 
-void unmap_file(MappedFile& mf) {
+void MappedFile::unmap()
+{
 #if defined(_WIN32)
-    if (mf.data) UnmapViewOfFile((LPCVOID)mf.data);
-    if (mf.hMap) CloseHandle(mf.hMap);
-    if (mf.hFile != INVALID_HANDLE_VALUE) CloseHandle(mf.hFile);
+    if (data_) UnmapViewOfFile((LPCVOID)data_);
+    if (hMap) CloseHandle(hMap);
+    if (hFile != INVALID_HANDLE_VALUE) CloseHandle(hFile);
 #else
-    if (mf.data && mf.size) munmap((void*)mf.data, mf.size);
+    if (data_ && size_) munmap((void*)data_, size_);
 #endif
-    mf.data = nullptr; mf.size = 0;
+    data_ = nullptr; size_ = 0;
+#if defined(_WIN32)
+    hFile = INVALID_HANDLE_VALUE;
+    hMap = nullptr;
+#endif
 }

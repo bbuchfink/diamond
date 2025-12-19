@@ -83,7 +83,7 @@ void write_daa_record(TextBuffer& buf, const Hsp& match, uint32_t subject_id)
 	buf << match.transcript.data();
 }
 
-void finish_daa(OutputFile& f, const SequenceFile& db)
+void finish_daa(OutputFile& f, SequenceFile& db)
 {
 	DAA_header2 h2_(db.sequence_count(),
 		score_matrix.db_letters(),

@@ -48,7 +48,6 @@ Search::SeedStats enum_seeds(SequenceSet* seqs, F* f, unsigned begin, unsigned e
 			continue;
 		if(config.min_query_len > 0 && seqs->source_length(i) < config.min_query_len)
 			continue;
-		seqs->convert_to_std_alph(i);
 		const Sequence seq = (*seqs)[i];
 		std::pmr::vector<Letter> buf = Reduction::reduce_seq(seq, pool);
 		for (int shape_id = cfg.shape_begin; shape_id < cfg.shape_end; ++shape_id) {
@@ -79,7 +78,6 @@ Search::SeedStats enum_seeds_minimizer(SequenceSet* seqs, F* f, unsigned begin, 
 			continue;
 		if (config.min_query_len > 0 && seqs->source_length(i) < config.min_query_len)
 			continue;
-		seqs->convert_to_std_alph(i);
 		const Sequence seq = (*seqs)[i];
         //if (align_mode.mode != AlignMode::blastn)
         std::pmr::vector<Letter> buf = Reduction::reduce_seq(seq, pool);
@@ -109,7 +107,6 @@ void enum_seeds_hashed(SequenceSet* seqs, F* f, unsigned begin, unsigned end, co
 			continue;
 		if (config.min_query_len > 0 && seqs->source_length(i) < config.min_query_len)
 			continue;
-		seqs->convert_to_std_alph(i);
 		const Sequence seq = (*seqs)[i];
 		for (int shape_id = cfg.shape_begin; shape_id < cfg.shape_end; ++shape_id) {
 			const Shape& sh = shapes[shape_id];
@@ -140,7 +137,6 @@ void enum_seeds_contiguous(SequenceSet* seqs, F* f, unsigned begin, unsigned end
 			continue;
 		if (config.min_query_len > 0 && seqs->source_length(i) < config.min_query_len)
 			continue;
-		seqs->convert_to_std_alph(i);
 		const Sequence seq = (*seqs)[i];
 		if (seq.length() < It::length()) continue;
 		It it(seq);
@@ -229,7 +225,6 @@ Search::SeedStats enum_seeds(Block& seqs, PtrVector<F>& f, const Filter* filter,
 	}
 	for (auto& t : threads)
 		t.join();
-	seqs.seqs().alphabet() = Alphabet::STD;
 	for (size_t i = 1; i < f.size(); ++i) {
 		stats[0].good_seed_positions += stats[i].good_seed_positions;
 		stats[0].low_complexity_seeds += stats[i].low_complexity_seeds;

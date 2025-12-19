@@ -230,22 +230,6 @@ inline T make_multiple(T x, T m)
 }
 
 std::string hex_print(const char* x, int len);
-std::string join(const char *c, const std::vector<std::string> &v);
-
-template<typename T, typename F>
-#if __cplusplus >= 201703L
-auto apply(const std::vector<T>& v, F f) -> std::vector<typename std::invoke_result<F, T>::type> {
-	using R = typename std::invoke_result<F, T>::type;
-#else
-auto apply(const std::vector<T> &v, F f) -> std::vector<typename std::result_of<F(T)>::type> {
-	using R = typename std::result_of<F(T)>::type;
-#endif
-	std::vector<R> r;
-	r.reserve(v.size());
-	for (const auto &i : v)
-		r.push_back(f(i));
-	return r;
-}
 
 template<typename T1, typename T2>
 std::vector<std::pair<T1, T2>> combine(const std::vector<T1> &v1, const std::vector<T2> &v2) {

@@ -35,7 +35,7 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "stats/score_matrix.h"
 
 DAAFormat::DAAFormat() :
-	OutputFormat(daa, HspValues::TRANSCRIPT, Output::Flags::SSEQID | (config.salltitles ? Output::Flags::FULL_TITLES : (config.sallseqid ? Output::Flags::ALL_SEQIDS : Output::Flags::NONE)))
+	OutputFormat(daa, HspValues::TRANSCRIPT, Output::Flags::SSEQID | (config.salltitles ? (Output::Flags::FULL_TITLES | Output::Flags::ALL_SEQIDS): (config.sallseqid ? Output::Flags::ALL_SEQIDS : Output::Flags::NONE)))
 {}
 
 BinaryBuffer::Iterator DAA_query_record::init(const BinaryBuffer &buf)

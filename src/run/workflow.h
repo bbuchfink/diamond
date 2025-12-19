@@ -26,6 +26,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 namespace Search {
 
-void run(const std::shared_ptr<SequenceFile>& db = nullptr, const std::shared_ptr<SequenceFile>& query = nullptr, const std::shared_ptr<Consumer>& out = nullptr, const std::shared_ptr<BitVector>& db_filter = nullptr);
+void run(const std::shared_ptr<SequenceFile>& db = nullptr, const std::shared_ptr<SequenceFile>& query = nullptr, const std::shared_ptr<Consumer>& out = nullptr, const std::shared_ptr<DbFilter>& db_filter = nullptr);
 
 }

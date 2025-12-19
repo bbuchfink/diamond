@@ -129,17 +129,17 @@ void DatabaseFile::init(Flags flags)
 	if (flag_any(flags, Flags::NO_COMPATIBILITY_CHECK))
 		return;
 	if (ref_header.build < min_build_required || ref_header.db_version < MIN_DB_VERSION)
-		throw std::runtime_error("Database was built with an older version of Diamond and is incompatible.");
+		throw runtime_error("Database was built with an older version of Diamond and is incompatible.");
 	if (ref_header.db_version > std::max(ReferenceHeader::current_db_version_prot , ReferenceHeader::current_db_version_nucl))
-		throw std::runtime_error("Database was built with a newer version of Diamond and is incompatible.");
+		throw runtime_error("Database was built with a newer version of Diamond and is incompatible.");
 	if (ref_header.sequences == 0)
-		throw std::runtime_error("Incomplete database file. Database building did not complete successfully.");
+		throw runtime_error("Incomplete database file. Database building did not complete successfully.");
 	*this >> header2;
 	pos_array_offset = ref_header.pos_array_offset;
 }
 
 DatabaseFile::DatabaseFile(const string &input_file, Metadata metadata, Flags flags, const ValueTraits& value_traits):
-	SequenceFile(SequenceFile::Type::DMND, Alphabet::STD, flags, FormatFlags::DICT_LENGTHS | FormatFlags::DICT_SEQIDS | FormatFlags::SEEKABLE | FormatFlags::LENGTH_LOOKUP, metadata, value_traits),
+	SequenceFile(SequenceFile::Type::DMND, flags, FormatFlags::DICT_LENGTHS | FormatFlags::DICT_SEQIDS | FormatFlags::SEEKABLE | FormatFlags::LENGTH_LOOKUP, metadata, value_traits),
 	InputFile(auto_append_extension_if_exists(input_file, FILE_EXTENSION), InputFile::BUFFERED),
 	temporary(false)
 {
@@ -156,7 +156,7 @@ DatabaseFile::DatabaseFile(const string &input_file, Metadata metadata, Flags fl
 		e.push_back("taxonomy ranks information (database needs to be built with diamond version >= 0.9.30");
 
 	if (!e.empty())
-		throw std::runtime_error("Options require taxonomy information included in the database. Please use the respective options to build this information into the database when running diamond makedb: " + join(", ", e));
+		throw std::runtime_error("Options require taxonomy information included in the database. Please use the respective options to build this information into the database when running diamond makedb: " + join(", ", e.begin(), e.end()));
 
 	if (flag_any(metadata, Metadata::TAXON_MAPPING))
 		taxon_list_.reset(new TaxonList(seek(header2.taxon_array_offset), ref_header.sequences, header2.taxon_array_size));
@@ -176,7 +176,7 @@ DatabaseFile::DatabaseFile(const string &input_file, Metadata metadata, Flags fl
 }
 
 DatabaseFile::DatabaseFile(TempFile &tmp_file, const ValueTraits& value_traits):
-	SequenceFile(SequenceFile::Type::DMND, Alphabet::STD, Flags::NONE, FormatFlags::DICT_LENGTHS | FormatFlags::DICT_SEQIDS | FormatFlags::SEEKABLE | FormatFlags::LENGTH_LOOKUP, Metadata(), value_traits),
+	SequenceFile(SequenceFile::Type::DMND, Flags::NONE, FormatFlags::DICT_LENGTHS | FormatFlags::DICT_SEQIDS | FormatFlags::SEEKABLE | FormatFlags::LENGTH_LOOKUP, Metadata(), value_traits),
 	InputFile(tmp_file, 0),
 	temporary(true)
 {
@@ -535,7 +535,7 @@ void DatabaseFile::read_seq_data(Letter* dst, size_t len, size_t& pos, bool seek
 	*(dst + len) = Sequence::DELIMITER;
 }
 
-void DatabaseFile::read_id_data(const int64_t oid, char* dst, size_t len) {
+void DatabaseFile::read_id_data(const int64_t oid, char* dst, size_t len, bool all, bool full_titles) {
 	read(dst, len + 1);
 }
 
@@ -573,14 +573,9 @@ DatabaseFile::~DatabaseFile()
 	close();
 }
 
-BitVector* DatabaseFile::filter_by_accession(const std::string& file_name)
+DbFilter* DatabaseFile::filter_by_accession(const std::string& file_name)
 {
 	throw std::runtime_error("The .dmnd database format does not support filtering by accession.");
-	return nullptr;
-}
-
-const BitVector* DatabaseFile::builtin_filter()
-{
 	return nullptr;
 }
 
@@ -589,22 +584,17 @@ std::string DatabaseFile::file_name()
 	return InputFile::file_name;
 }
 
-int64_t DatabaseFile::sparse_sequence_count() const
-{
-	return sequence_count();
-}
-
 std::vector<TaxId> DatabaseFile::taxids(size_t oid) const
 {
 	return (*taxon_list_)[oid];
 }
 
-void DatabaseFile::seq_data(size_t oid, std::vector<Letter>& dst) const
+void DatabaseFile::seq_data(size_t oid, std::vector<Letter>& dst)
 {
 	throw OperationNotSupported();
 }
 
-size_t DatabaseFile::seq_length(size_t oid) const
+Loc DatabaseFile::seq_length(size_t oid)
 {
 	if (oid < seq_length_.size())
 		return seq_length_[oid];

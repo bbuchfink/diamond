@@ -59,6 +59,8 @@ using std::cerr;
 using std::endl;
 using std::runtime_error;
 using std::tuple;
+using std::pair;
+using std::make_pair;
 
 string executable_path() {
 	char buf[4096];
@@ -356,50 +358,50 @@ static std::string narrow_utf8(const std::wstring& w) {
 
 #endif
 
-std::string containing_directory_absolute(const std::string& file_path) {
+pair<string, string> absolute_path(const std::string& file_path) {
 	const std::string fp = file_path.empty() ? "." : file_path;
 	const std::string base = last_component(fp);
 	const bool treat_as_dir = ends_with_sep(fp) || base == "." || base == "..";
 
-#ifndef _WIN32
+#ifndef WIN32
 	std::string joined;
 	if (is_abs_posix(fp)) {
 		joined = fp;
 	}
 	else {
 		std::string cwd = get_cwd_posix();
-		if (cwd.empty()) return std::string();
+		if (cwd.empty()) return {};
 		joined = cwd + "/" + fp;
 	}
 
 	std::string abs_norm = lex_normalize_posix(joined);
-	if (treat_as_dir) return abs_norm;
-	return parent_dir_posix(abs_norm);
+	if (treat_as_dir) return make_pair(abs_norm, string());
+	return make_pair(parent_dir_posix(abs_norm), base);
 #else
 	std::wstring winput = widen_utf8(fp);
 	if (winput.empty()) winput = L".";
 
 	DWORD need = GetFullPathNameW(winput.c_str(), 0, nullptr, nullptr);
-	if (need == 0) return std::string();
+	if (need == 0) return {};
 
 	std::vector<wchar_t> buf(need);
 	DWORD written = GetFullPathNameW(winput.c_str(), (DWORD)buf.size(), buf.data(), nullptr);
-	if (written == 0) return std::string();
+	if (written == 0) return {};
 
 	std::wstring full(buf.data(), written);
 
 	for (auto& ch : full) if (ch == L'/') ch = L'\\';
 
 	if (treat_as_dir) {
-		return narrow_utf8(full);
+		return make_pair(narrow_utf8(full), string());
 	}
 
 	std::size_t pos = full.find_last_of(L"\\/");
-	if (pos == std::wstring::npos) return narrow_utf8(full);
+	if (pos == std::wstring::npos) return make_pair(narrow_utf8(full), base);
 
 	if (pos == 2 && full.size() >= 3 && full[1] == L':') ++pos;
 	std::wstring parent = full.substr(0, pos);
-	return narrow_utf8(parent);
+	return make_pair(narrow_utf8(parent), base);
 #endif
 }
 
@@ -413,4 +415,21 @@ bool stdout_is_a_tty() {
 #else
 	return ::isatty(STDOUT_FILENO) == 1;
 #endif
+}
+
+bool is_absolute_path(const std::string& path) {
+	if (path.empty())
+		return false;
+	if (path[0] == '/')
+		return true;
+	if (path[0] == '\\')
+		return true;
+	if (path.size() >= 3 &&
+		std::isalpha(static_cast<unsigned char>(path[0])) &&
+		path[1] == ':' &&
+		(path[2] == '/' || path[2] == '\\'))
+	{
+		return true;
+	}
+	return false;
 }

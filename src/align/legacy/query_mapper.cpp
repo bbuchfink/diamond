@@ -235,7 +235,7 @@ bool QueryMapper::generate_output(TextBuffer &buffer, Statistics &stat, const Se
 		string target_title;
 		size_t dict_id;
 		if (!cfg.blocked_processing)
-			target_title = metadata.target->has_ids() ? metadata.target->ids()[subject_id] : metadata.db->seqid(database_id);
+			target_title = metadata.target->has_ids() ? metadata.target->ids()[subject_id] : metadata.db->seqid(database_id, true, true);
 		else
 			dict_id = metadata.target->dict_id(cfg.current_ref_block, subject_id, *metadata.db, *f);
 		const unsigned subject_len = (unsigned)metadata.target->seqs()[subject_id].length();

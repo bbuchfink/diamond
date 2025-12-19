@@ -59,11 +59,13 @@ SeqFileFormat guess_format(TextInputFile& file) {
 }
 
 FastaFile::FastaFile(const std::vector<std::string>& file_name, Metadata metadata, Flags flags, const ValueTraits& value_traits):
-	SequenceFile(SequenceFile::Type::FASTA, Alphabet::STD, flags, FormatFlags::DICT_LENGTHS | FormatFlags::DICT_SEQIDS, metadata, value_traits),
+	SequenceFile(SequenceFile::Type::FASTA, flags, FormatFlags::DICT_LENGTHS | FormatFlags::DICT_SEQIDS, metadata, value_traits),
 	oid_(0)
 {
 	if (file_name.size() > 2)
 		throw OperationNotSupported();
+	if (bool(metadata & (Metadata::TAXON_MAPPING | Metadata::TAXON_NODES | Metadata::TAXON_RANKS | Metadata::TAXON_SCIENTIFIC_NAMES)))
+		throw runtime_error("Fasta database format does not support taxonomic features.");
 	unique_ptr<TextInputFile> input_file(new TextInputFile(file_name.front()));
 	format_ = guess_format(*input_file);
 	//Util::Tsv::Config config(format_ == SeqFileFormat::FASTA ? FASTA_SEP : FASTQ_SEP, format_ == SeqFileFormat::FASTA ? (TokenizerBase*)(new FastaTokenizer()) : new FastqTokenizer);
@@ -81,7 +83,7 @@ FastaFile::FastaFile(const std::vector<std::string>& file_name, Metadata metadat
 }
 
 FastaFile::FastaFile(const string& file_name, bool overwrite, const WriteAccess&, Flags flags, const ValueTraits& value_traits):
-	SequenceFile(SequenceFile::Type::FASTA, Alphabet::STD, flags, FormatFlags::DICT_LENGTHS | FormatFlags::DICT_SEQIDS, Metadata(), value_traits),
+	SequenceFile(SequenceFile::Type::FASTA, flags, FormatFlags::DICT_LENGTHS | FormatFlags::DICT_SEQIDS, Metadata(), value_traits),
 	out_file_(file_name.empty() ? new TempFile : new OutputFile(file_name, Compressor::NONE, overwrite ? "w+b" : "r+b")),
 	format_(SeqFileFormat::FASTA),
 	oid_(0),
@@ -210,7 +212,7 @@ void FastaFile::read_seq_data(Letter* dst, size_t len, size_t& pos, bool seek) {
 	throw OperationNotSupported();
 }
 
-void FastaFile::read_id_data(const int64_t oid, char* dst, size_t len) {
+void FastaFile::read_id_data(const int64_t oid, char* dst, size_t len, bool all, bool full_titles) {
 	throw OperationNotSupported();
 }
 
@@ -243,14 +245,9 @@ FastaFile::~FastaFile()
 	close();
 }
 
-BitVector* FastaFile::filter_by_accession(const std::string& file_name)
+DbFilter* FastaFile::filter_by_accession(const std::string& file_name)
 {
 	throw std::runtime_error("The FASTA database format does not support filtering by accession.");
-}
-
-const BitVector* FastaFile::builtin_filter()
-{
-	return nullptr;
 }
 
 std::string FastaFile::file_name()
@@ -258,22 +255,17 @@ std::string FastaFile::file_name()
 	return file_.front().file_name();
 }
 
-int64_t FastaFile::sparse_sequence_count() const
-{
-	throw OperationNotSupported();
-}
-
 std::vector<TaxId> FastaFile::taxids(size_t oid) const
 {
 	throw OperationNotSupported();
 }
 
-void FastaFile::seq_data(size_t oid, std::vector<Letter>& dst) const
+void FastaFile::seq_data(size_t oid, std::vector<Letter>& dst)
 {
 	throw OperationNotSupported();
 }
 
-size_t FastaFile::seq_length(size_t oid) const
+Loc FastaFile::seq_length(size_t oid)
 {
 	if (oid < seq_length_.size())
 		return seq_length_[oid];

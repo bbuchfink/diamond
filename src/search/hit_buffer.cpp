@@ -71,7 +71,7 @@ HitBuffer::HitBuffer(const vector<Key>& key_partition, const string& tmpdir, boo
 	}
 }
 
-void HitBuffer::load(size_t max_size) {
+bool HitBuffer::load(size_t max_size) {
 	max_size = std::max(max_size, (size_t)1);
 	auto worker = [this](int end) {
 		Hit* out = data_next_;
@@ -82,7 +82,7 @@ void HitBuffer::load(size_t max_size) {
 		};
 	if (bins_processed_ == bins()) {
 		data_next_ = nullptr;
-		return;
+		return false;
 	}
 	size_t size = count_[bins_processed_], current_size;
 	int end = bins_processed_ + 1;
@@ -100,6 +100,7 @@ void HitBuffer::load(size_t max_size) {
 	}
 	input_range_next_.first = begin(bins_processed_);
 	input_range_next_.second = this->end(end - 1);	
+	return true;
 }
 
 void HitBuffer::load_bin(Hit* out, int bin)

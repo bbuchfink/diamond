@@ -46,7 +46,8 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "search/search.h"
 #include "stats/cbs.h"
 #include "basic/shape.h"
-#include "util/io/input_file.h"
+#include "output/output_format.h"
+#include "data/sequence_file.h"
 
 using std::runtime_error;
 using std::thread;
@@ -322,9 +323,9 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 		("seqidlist", 0, "filter the database by list of accessions", seqidlist)
 		("skip-missing-seqids", 0, "ignore accessions missing in the database", skip_missing_seqids);
 
-	auto& format = parser.add_group("Output format options", { blastp, blastx, view, CLUSTER_REALIGN });
-	format.add()
-		("outfmt", 'f', "output format\n\
+	SequenceFile::init_taxon_output_fields();
+	std::ostringstream format_str;
+	format_str << "output format\n\
 \t0   = BLAST pairwise\n\
 \t5   = BLAST XML\n\
 \t6   = BLAST tabular\n\
@@ -333,56 +334,23 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 \t102 = Taxonomic classification\n\
 \t103 = PAF\n\
 \t104 = JSON (flat)\n\n\
-\tValues 6 and 104 may be followed by a space-separated list of these keywords:\n\n\
-\tqseqid means Query Seq - id\n\
-\tqlen means Query sequence length\n\
-\tsseqid means Subject Seq - id\n\
-\tsallseqid means All subject Seq - id(s), separated by a ';'\n\
-\tslen means Subject sequence length\n\
-\tqstart means Start of alignment in query\n\
-\tqend means End of alignment in query\n\
-\tsstart means Start of alignment in subject\n\
-\tsend means End of alignment in subject\n\
-\tqseq means Aligned part of query sequence\n\
-\tqseq_gapped means Aligned part of query sequence (with gaps)\n\
-\tqseq_translated means Aligned part of query sequence (translated)\n\
-\tfull_qseq means Query sequence\n\
-\tfull_qseq_mate means Query sequence of the mate\n\
-\tsseq means Aligned part of subject sequence\n\
-\tsseq_gapped means Aligned part of subject sequence (with gaps)\n\
-\tfull_sseq means Subject sequence\n\
-\tevalue means Expect value\n\
-\tbitscore means Bit score\n\
-\tcorrected_bitscore means Bit score corrected for edge effects\n\
-\tscore means Raw score\n\
-\tlength means Alignment length\n\
-\tpident means Percentage of identical matches\n\
-\tapprox_pident means Approximate percentage of identical matches\n\
-\tnident means Number of identical matches\n\
-\tmismatch means Number of mismatches\n\
-\tpositive means Number of positive - scoring matches\n\
-\tgapopen means Number of gap openings\n\
-\tgaps means Total number of gaps\n\
-\tppos means Percentage of positive - scoring matches\n\
-\tqframe means Query frame\n\
-\tbtop means Blast traceback operations(BTOP)\n\
-\tcigar means CIGAR string\n\
-\tstaxids means unique Subject Taxonomy ID(s), separated by a ';' (in numerical order)\n\
-\tslineages means unique Subject Lineage(s), separated by a '<>'\n\
-\tsscinames means unique Subject Scientific Name(s), separated by a ';'\n\
-\tsskingdoms means unique Subject Super Kingdom(s), separated by a ';'\n\
-\tskingdoms means unique Subject Kingdom(s), separated by a ';'\n\
-\tsphylums means unique Subject Phylum(s), separated by a ';'\n\
-\tstitle means Subject Title\n\
-\tsalltitles means All Subject Title(s), separated by a '<>'\n\
-\tqcovhsp means Query Coverage Per HSP\n\
-\tscovhsp means Subject Coverage Per HSP\n\
-\tqtitle means Query title\n\
-\tqqual means Query quality values for the aligned part of the query\n\
-\tfull_qqual means Query quality values\n\
-\tqstrand means Query strand\n\
-\n\tDefault: qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore", output_format)
-;
+\tValues 6 and 104 may be followed by a space-separated list of these keywords:\n\n";
+
+	const auto l = [&] {
+		vector<size_t> l;
+		std::transform(TabularFormat::field_def.begin(), TabularFormat::field_def.end(), std::back_inserter(l), [](const auto& p) { return p.second.key.length(); });
+		return l;
+		}();
+	const size_t max_len = *std::max_element(l.begin(), l.end());
+
+	for (auto i : TabularFormat::field_def)
+		format_str << "\t" << std::setw(max_len) << i.second.key << " means " << i.second.description << "\n";
+
+	format_str << "\n\tDefault: qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore\n";
+
+	auto& format = parser.add_group("Output format options", { blastp, blastx, view, CLUSTER_REALIGN });
+	format.add()
+		("outfmt", 'f', format_str.str().c_str(), output_format);
 
 	auto& taxon_format = parser.add_group("Taxon output format options", { blastp, blastx });
 	taxon_format.add()
@@ -799,8 +767,9 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 		;
 	}
 
-	invocation = join(" ", vector<string>(&argv[0], &argv[argc]));
-	log_stream << invocation << endl;
+	std::ostringstream invocation;
+	join(" ", &argv[0], &argv[argc], invocation);
+	log_stream << invocation.str() << endl;
 
 	if (!no_auto_append) {
 		if (command == Config::makedb)

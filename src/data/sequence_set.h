@@ -36,10 +36,9 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 struct SequenceSet : public StringSetBase<Letter, Sequence::DELIMITER, 1>
 {
 
-	SequenceSet(Alphabet alphabet = Alphabet::STD);
+	SequenceSet();
 	SequenceSet(StringSetBase&& string_set):
-		StringSetBase(string_set),
-		alphabet_(Alphabet::STD)
+		StringSetBase(string_set)
 	{}
 	
 	void print_stats() const;
@@ -62,23 +61,8 @@ struct SequenceSet : public StringSetBase<Letter, Sequence::DELIMITER, 1>
 	size_t avg_len() const;
 
 	virtual ~SequenceSet();
-
-	Alphabet alphabet() const {
-		return alphabet_;
-	}
-
-	Alphabet& alphabet() {
-		return alphabet_;
-	}
-
-	void convert_to_std_alph(size_t id);
-	void convert_all_to_std_alph(size_t threads);
 	std::vector<std::pair<Loc, BlockId>> lengths() const;
 	Loc source_length(BlockId i) const;
-	
-private:
-
-	Alphabet alphabet_;
 
 };
 

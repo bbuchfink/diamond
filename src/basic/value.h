@@ -151,18 +151,6 @@ extern AlignMode align_mode;
 extern const Letter IUPACAA_TO_STD[32];
 extern const Letter NCBI_TO_STD[28];
 
-enum class Alphabet { STD, NCBI };
-
-template<typename It>
-void alph_ncbi_to_std(const It begin, const It end) {
-	for (It i = begin; i != end; ++i) {
-		const size_t l = *i;
-		if (l >= sizeof(NCBI_TO_STD))
-			throw std::runtime_error("Unrecognized sequence character in BLAST database");
-		*i = NCBI_TO_STD[l];
-	}
-}
-
 using Loc = int32_t;
 using BlockId = int32_t;
 using OId = int_fast64_t;

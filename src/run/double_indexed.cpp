@@ -57,7 +57,7 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "data/seed_array.h"
 #include "data/fasta/fasta_file.h"
 #include "data/dmnd/dmnd.h"
-#include "util/data_structures/deque.h"
+#include "data/blastdb/blastdb.h"
 
 #ifdef WITH_DNA
 #include "../dna/dna_index.h"
@@ -133,7 +133,6 @@ static void run_ref_chunk(SequenceFile &db_file,
 	//if (config.comp_based_stats == Stats::CBS::COMP_BASED_STATS_AND_MATRIX_ADJUST || flag_any(cfg.output_format->flags, Output::Flags::TARGET_SEQS)) {
 	if (flag_any(cfg.output_format->flags, Output::Flags::TARGET_SEQS)) {
 		cfg.target->unmasked_seqs() = cfg.target->seqs();
-		cfg.target->unmasked_seqs().convert_all_to_std_alph(config.threads_);
 	}
 
 	if (cfg.target_masking != MaskingAlgo::NONE && !cfg.lazy_masking) {
@@ -341,6 +340,10 @@ static void run_query_iteration(const unsigned query_iteration,
 		load_flags |= SequenceFile::LoadFlags::TITLES;
 	if (options.lazy_masking)
 		load_flags |= SequenceFile::LoadFlags::LAZY_MASKING;
+	if (bool(options.output_format->flags & Output::Flags::FULL_TITLES))
+		load_flags |= SequenceFile::LoadFlags::FULL_TITLES;
+	if (bool(options.output_format->flags & Output::Flags::ALL_SEQIDS))
+		load_flags |= SequenceFile::LoadFlags::ALL_SEQIDS;
 
 	if (config.multiprocessing) {
 		db_file.set_seqinfo_ptr(0);
@@ -362,7 +365,7 @@ static void run_query_iteration(const unsigned query_iteration,
 
 			P->log("SEARCH BEGIN " + std::to_string(options.current_query_block) + " " + std::to_string(chunk.i));
 
-			options.target.reset(db_file.load_seqs((size_t)(0), options.db_filter.get(), load_flags, chunk));
+			options.target.reset(db_file.load_seqs((size_t)(0), &options.db_filter->oid_filter, load_flags, chunk));
 			options.current_ref_block = chunk.i;
 			options.blocked_processing = true;
 			if (!config.mp_self || chunk.i >= options.current_query_block)
@@ -412,10 +415,10 @@ static void run_query_iteration(const unsigned query_iteration,
 			}
 			else {
 				timer.go("Loading reference sequences");
-				options.target.reset(db_file.load_seqs(config.block_size(), options.db_filter.get(), load_flags));
+				options.target.reset(db_file.load_seqs(config.block_size(), &options.db_filter->oid_filter, load_flags));
 			}
 			if (options.current_ref_block == 0) {
-				const int64_t db_seq_count = options.db_filter ? options.db_filter->one_count() : options.db->sequence_count();
+				const int64_t db_seq_count = options.db_filter ? options.db_filter->oid_filter.one_count() : options.db->sequence_count();
 				options.blocked_processing = config.global_ranking_targets || options.target->seqs().size() < db_seq_count;
 			}
 			if (options.target->empty()) break;
@@ -623,6 +626,10 @@ static void master_thread(TaskTimer &total_timer, Config &options)
 	options.current_query_block = 0;
 	OId query_file_offset = 0;
 	SequenceFile::LoadFlags load_flags = SequenceFile::LoadFlags::ALL;
+	if (bool(options.output_format->flags & Output::Flags::FULL_TITLES))
+		load_flags |= SequenceFile::LoadFlags::FULL_TITLES;
+	if (bool(options.output_format->flags & Output::Flags::ALL_SEQIDS))
+		load_flags |= SequenceFile::LoadFlags::ALL_SEQIDS;
 	if (config.store_query_quality)
 		load_flags |= SequenceFile::LoadFlags::QUALITY;
 	if (config.command == ::Config::blastn)
@@ -633,8 +640,8 @@ static void master_thread(TaskTimer &total_timer, Config &options)
 		size_t block_count = 0;
 		do {
 			if (options.self) {
-				db_file->set_seqinfo_ptr(query_file_offset);
-				options.query.reset(db_file->load_seqs((size_t)(config.chunk_size * 1e9), options.db_filter.get(), SequenceFile::LoadFlags::ALL));
+				db_file->set_seqinfo_ptr(query_file_offset);				
+				options.query.reset(db_file->load_seqs((size_t)(config.chunk_size * 1e9), &options.db_filter->oid_filter, load_flags));
 				query_file_offset = db_file->tell_seq();
 			} else
 				options.query.reset(options.query_file->load_seqs((int64_t)(config.chunk_size * 1e9), nullptr, load_flags));
@@ -675,7 +682,7 @@ static void master_thread(TaskTimer &total_timer, Config &options)
 			db_file->set_seqinfo_ptr(query_file_offset);
 			timer.finish();
 			timer.go("Loading query sequences");
-			options.query.reset(db_file->load_seqs(config.block_size(), options.db_filter.get(), SequenceFile::LoadFlags::ALL));
+			options.query.reset(db_file->load_seqs(config.block_size(), &options.db_filter->oid_filter, load_flags));
 			query_file_offset = db_file->tell_seq();
 		}
 		else {
@@ -751,7 +758,7 @@ static void master_thread(TaskTimer &total_timer, Config &options)
 	//print_warnings();
 }
 
-void run(const shared_ptr<SequenceFile>& db, const shared_ptr<SequenceFile>& query, const shared_ptr<Consumer>& out, const shared_ptr<BitVector>& db_filter)
+void run(const shared_ptr<SequenceFile>& db, const shared_ptr<SequenceFile>& query, const shared_ptr<Consumer>& out, const shared_ptr<DbFilter>& db_filter)
 {
 	TaskTimer total;
 
@@ -792,6 +799,11 @@ void run(const shared_ptr<SequenceFile>& db, const shared_ptr<SequenceFile>& que
 		flags |= SequenceFile::Flags::SELF_ALN_SCORES;
 	if (!config.unaligned_targets.empty())
 		flags |= SequenceFile::Flags::OID_TO_ACC_MAPPING;
+	if (taxon_filter)
+		flags |= SequenceFile::Flags::NEED_EARLY_TAXON_MAPPING | SequenceFile::Flags::NEED_LENGTH_LOOKUP;
+	if (!config.seqidlist.empty())
+		flags |= SequenceFile::Flags::NEED_LENGTH_LOOKUP;
+
 	if (db) {
 		cfg.db = db;
 		if (!query)
@@ -802,9 +814,11 @@ void run(const shared_ptr<SequenceFile>& db, const shared_ptr<SequenceFile>& que
 		cfg.db.reset(SequenceFile::auto_create({ config.database }, flags, metadata_flags, value_traits));
 		timer.finish();
 	}
-	cfg.db->print_info();
 	if (config.multiprocessing && cfg.db->type() == SequenceFile::Type::FASTA)
-		throw std::runtime_error("Multiprocessing mode is not compatible with FASTA databases.");
+		throw runtime_error("Multiprocessing mode is not compatible with FASTA databases.");
+	const Pal* pal = nullptr;
+	if (cfg.db->type() == SequenceFile::Type::BLAST)
+		pal = &dynamic_cast<BlastDB*>(cfg.db.get())->pal();
 	cfg.db_seqs = cfg.db->sequence_count();
 	cfg.db_letters = cfg.db->letters();
 	cfg.ref_blocks = cfg.db->total_blocks();
@@ -815,31 +829,48 @@ void run(const shared_ptr<SequenceFile>& db, const shared_ptr<SequenceFile>& que
 		cfg.aligned_targets.insert(cfg.aligned_targets.begin(), cfg.db->sequence_count(), false);
 	timer.finish();
 
-	message_stream << "Database: " << config.database << ' ';
-	message_stream << "(type: " << to_string(cfg.db->type()) << ", ";
-	message_stream << "sequences: " << cfg.db->sequence_count() << ", ";
-	message_stream << "letters: " << cfg.db->letters() << ')' << endl;
-	message_stream << "Block size = " << (size_t)(config.chunk_size * 1e9) << endl;
-	score_matrix.set_db_letters(config.db_size ? config.db_size : cfg.db->letters());
+	cfg.db->print_info();
+	message_stream << "Block size = " << (size_t)(config.chunk_size * 1e9) << endl;	
+	const bool alias_taxfilter = pal && pal->metadata.find("TAXIDLIST") != pal->metadata.end();
 
-	if (cfg.output_format->needs_taxon_nodes || taxon_filter || taxon_culling) {
-		if (taxon_filter) {
-			timer.go("Building taxonomy filter");
-			cfg.db_filter.reset(cfg.db->filter_by_taxonomy(config.taxonlist, config.taxon_exclude));
-			timer.finish();
-			message_stream << "Filtered database contains " << cfg.db_filter->one_count() << " sequences." << endl;
-		}
+	if (taxon_filter) {
+		if (!config.taxonlist.empty() && !config.taxon_exclude.empty())
+			throw runtime_error("Options --taxonlist and --taxon-exclude are mutually exclusive.");
+		timer.go("Building taxonomy filter");
+		std::istringstream filter(config.taxonlist.empty() ? config.taxon_exclude : config.taxonlist);
+		cfg.db_filter.reset(cfg.db->filter_by_taxonomy(filter, ',', !config.taxon_exclude.empty()));
+		timer.finish();
+	}
+	else if (alias_taxfilter) {
+		timer.go("Building taxonomy filter");
+		std::ifstream filter(pal->metadata.at("TAXIDLIST"));
+		if (!filter)
+			throw runtime_error("Cannot open TAXIDLIST file: " + pal->metadata.at("TAXIDLIST"));
+		cfg.db_filter.reset(cfg.db->filter_by_taxonomy(filter, '\n', false));
 		timer.finish();
 	}
 
-	if (!config.seqidlist.empty()) {
+	string seqidlist = config.seqidlist;
+	if (pal) {
+		auto it = pal->metadata.find("SEQIDLIST");
+		if(it != pal->metadata.end()) {
+			if (!seqidlist.empty())
+				throw runtime_error("Using --seqidlist on already filtered BLAST alias database.");
+			seqidlist = it->second;
+		}
+	}
+	if (!seqidlist.empty()) {
 		if (taxon_filter)
 			throw runtime_error("--seqidlist is not compatible with taxonomy filtering.");
-		message_stream << "Filtering database by accession list: " << config.seqidlist << endl;
+		message_stream << "Filtering database by accession list: " << seqidlist << endl;
 		timer.go("Building database filter");
-		cfg.db_filter.reset(cfg.db->filter_by_accession(config.seqidlist));
+		cfg.db_filter.reset(cfg.db->filter_by_accession(seqidlist));
 		timer.finish();
 	}
+
+	if (cfg.db_filter)
+		message_stream << "Filtered database contains " << cfg.db_filter->oid_filter.one_count() << " sequences, " << cfg.db_filter->letter_count << " letters." << endl;
+	score_matrix.set_db_letters(config.db_size ? config.db_size : (cfg.db_filter && cfg.db_filter->letter_count ? cfg.db_filter->letter_count : cfg.db->letters()));
 
 #ifdef WITH_DNA
 	if (align_mode.sequence_type == SequenceType::nucleotide)

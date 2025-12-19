@@ -55,8 +55,6 @@ option(WITH_MCL "WITH_MCL" OFF)
 option(USE_TLS "USE_TLS" OFF)
 
 set(MAX_SHAPE_LEN 19)
-set(BLAST_INCLUDE_DIR "" CACHE STRING "BLAST_INCLUDE_DIR")
-set(BLAST_LIBRARY_DIR "" CACHE STRING "BLAST_LIBRARY_DIR")
 
 if(NOT CROSS_COMPILE AND CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64.*|AARCH64.*|arm64.*)")
   set(X86 OFF)
@@ -150,7 +148,10 @@ check_type_size(int SIZEOF_INT)
 check_cxx_compiler_flag("-std=gnu++14" HAS_GNUPP14)
 check_cxx_compiler_flag("-std=gnu++17" HAS_GNUPP17)
 check_cxx_compiler_flag("-std=gnu++20" HAS_GNUPP20)
-if(HAS_GNUPP20 OR ${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
+check_cxx_compiler_flag("-std=gnu++23" HAS_GNUPP23)
+if(HAS_GNUPP23 OR ${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
+  set_cxx_standard(23 "-std=gnu++23")
+elseif(HAS_GNUPP20)
   set_cxx_standard(20 "-std=gnu++20")
 elseif(HAS_GNUPP17)
   set_cxx_standard(17 "-std=gnu++17")
@@ -162,10 +163,16 @@ endif()
 
 check_symbol_exists(sysinfo "sys/sysinfo.h" HAVE_SYSINFO)
 CHECK_INCLUDE_FILE_CXX("memory_resource" HAVE_MEMORY_RESOURCE)
+CHECK_INCLUDE_FILE_CXX("expected" HAVE_EXPECTED)
 
 if(HAVE_MEMORY_RESOURCE)
   add_definitions(-DHAVE_MEMORY_RESOURCE)
 endif()
+
+if(HAVE_EXPECTED)
+  add_definitions(-DHAVE_EXPECTED)
+endif()
+
 
 if(CMAKE_BUILD_MARCH)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=${CMAKE_BUILD_MARCH}")
@@ -414,8 +421,13 @@ set(OBJECTS
         #src/stats/blast/matrix_adjust.cpp
         src/stats/blast/ncbi.cpp
         src/search/hit_buffer.cpp
-        #src/data/blastdb/phr.cpp
+        src/data/blastdb/phr.cpp
+        src/data/blastdb/psq.cpp
+        src/data/blastdb/pin.cpp
+        src/data/blastdb/pal.cpp
+        src/data/blastdb/asn1.cpp
         src/util/io/mmap.cpp
+        src/data/blastdb/blastdb.cpp
 )
 
 if(WITH_DNA)
@@ -444,24 +456,20 @@ endif()
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}")
 
-if(BLAST_INCLUDE_DIR)
-  set(BLAST_OBJ "src/data/blastdb/blastdb.cpp")
-endif()
-
 if(WITH_ZSTD)
   set(ZSTD_OBJ "src/util/io/zstd_stream.cpp")
 endif()
 
 if(X86)
   if(WITH_AVX512)
-    add_executable(diamond $<TARGET_OBJECTS:arch_generic> $<TARGET_OBJECTS:arch_sse4_1> $<TARGET_OBJECTS:arch_avx2> $<TARGET_OBJECTS:arch_avx512> ${OBJECTS} ${BLAST_OBJ} ${ZSTD_OBJ})
+    add_executable(diamond $<TARGET_OBJECTS:arch_generic> $<TARGET_OBJECTS:arch_sse4_1> $<TARGET_OBJECTS:arch_avx2> $<TARGET_OBJECTS:arch_avx512> ${OBJECTS} ${ZSTD_OBJ})
   else()
-    add_executable(diamond $<TARGET_OBJECTS:arch_generic> $<TARGET_OBJECTS:arch_sse4_1> $<TARGET_OBJECTS:arch_avx2> ${OBJECTS} ${BLAST_OBJ} ${ZSTD_OBJ})
+    add_executable(diamond $<TARGET_OBJECTS:arch_generic> $<TARGET_OBJECTS:arch_sse4_1> $<TARGET_OBJECTS:arch_avx2> ${OBJECTS} ${ZSTD_OBJ})
   endif()
 elseif(ARM OR AARCH64)
-  add_executable(diamond $<TARGET_OBJECTS:arch_generic> $<TARGET_OBJECTS:arch_neon> ${OBJECTS} ${BLAST_OBJ} ${ZSTD_OBJ})
+  add_executable(diamond $<TARGET_OBJECTS:arch_generic> $<TARGET_OBJECTS:arch_neon> ${OBJECTS} ${ZSTD_OBJ})
 else()
-  add_executable(diamond $<TARGET_OBJECTS:arch_generic> ${OBJECTS} ${BLAST_OBJ} ${ZSTD_OBJ})
+  add_executable(diamond $<TARGET_OBJECTS:arch_generic> ${OBJECTS} ${ZSTD_OBJ})
 endif()
 
 if (${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
@@ -469,56 +477,8 @@ if (${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
 endif()
 
 include_directories("${CMAKE_SOURCE_DIR}/src/" "${ZLIB_INCLUDE_DIR}" "${CMAKE_SOURCE_DIR}/src/lib")
-
-if(BLAST_INCLUDE_DIR)
-  function(find_blast_lib var library)
-    find_library(${var} ${library} PATHS ${BLAST_LIBRARY_DIR} "/usr/lib/ncbi-blast+")
-    if(${${var}} STREQUAL "${var}-NOTFOUND")
-      message(FATAL_ERROR "Unable to find BLAST library: ${library}")
-    endif()
-    message("Found BLAST library: ${${var}}")
-  endfunction(find_blast_lib)
-  message("BLAST_INCLUDE_DIR: ${BLAST_INCLUDE_DIR}")
-  message("BLAST_LIBRARY_DIR: ${BLAST_LIBRARY_DIR}")
-  target_include_directories(diamond PRIVATE "${BLAST_INCLUDE_DIR}")
-  find_blast_lib(SEQDB_LIBRARY seqdb)
-  find_blast_lib(BIBLIO_LIBRARY biblio)
-  find_blast_lib(BLASTDB_LIBRARY blastdb)
-  find_blast_lib(BLASTDB_FORMAT_LIBRARY blastdb_format)
-  find_blast_lib(GENERAL_LIBRARY general)
-  find_blast_lib(GENOME_COLLECTION_LIBRARY genome_collection)
-  find_blast_lib(MEDLINE_LIBRARY medline)
-  find_blast_lib(PUB_LIBRARY pub)
-  find_blast_lib(SEQ_LIBRARY seq)
-  find_blast_lib(SEQCODE_LIBRARY seqcode)
-  find_blast_lib(SEQSET_LIBRARY seqset)
-  find_blast_lib(SEQUTIL_LIBRARY sequtil)
-  find_blast_lib(SUBMIT_LIBRARY submit)
-  find_blast_lib(XOBJMGR_LIBRARY xobjmgr)
-  find_blast_lib(XOBJUTIL_LIBRARY xobjutil)
-  find_blast_lib(XSER_LIBRARY xser)
-  find_blast_lib(XNCBI_LIBRARY xncbi)
-  find_blast_lib(XUTIL_LIBRARY xutil)
-  find_blast_lib(LMDB_LIBRARY lmdb)
-  #find_blast_lib(TAXON1_LIBRARY taxon1)
-  #find_blast_lib(LOCAL_TAXON_LIBRARY local_taxon)
-  #find_blast_lib(CONNECT_LIBRARY connect)
-  #find_blast_lib(SQLITEWRAPP_LIBRARY sqlitewrapp)
-  #find_blast_lib(XCONNECT_LIBRARY xconnect)
-  find_package(SQLite3)
-  target_link_libraries(diamond ${SEQDB_LIBRARY} ${BLASTDB_LIBRARY} ${BLASTDB_FORMAT_LIBRARY} ${GENERAL_LIBRARY}
-          ${XOBJUTIL_LIBRARY} ${XOBJMGR_LIBRARY} ${GENOME_COLLECTION_LIBRARY} ${SEQ_LIBRARY} ${SEQCODE_LIBRARY}
-          ${SEQSET_LIBRARY} ${SEQUTIL_LIBRARY} ${PUB_LIBRARY} ${MEDLINE_LIBRARY} ${BIBLIO_LIBRARY} ${SUBMIT_LIBRARY}
-          ${XSER_LIBRARY} ${XNCBI_LIBRARY} ${XUTIL_LIBRARY} ${LMDB_LIBRARY} SQLite::SQLite3)
-  add_definitions(-DWITH_BLASTDB)
-  set_target_properties(diamond PROPERTIES INSTALL_RPATH_USE_LINK_PATH TRUE)
-  if (${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
-    find_library(DBGHELP_LIBRARY Dbghelp)
-    target_link_libraries(diamond ${DBGHELP_LIBRARY})
-  else()
-    target_link_libraries(diamond ${CMAKE_DL_LIBS})
-  endif()
-endif()
+find_package(SQLite3)
+target_link_libraries(diamond SQLite::SQLite3)
 
 if(WITH_ZSTD)
   find_path(${ZSTD_INCLUDE_DIR} NAMES zstd.h PATHS ${ZSTD_INCLUDE_DIR})

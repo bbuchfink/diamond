@@ -28,13 +28,12 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ****/
 // SPDX-License-Identifier: BSD-3-Clause
 
+#include <algorithm>
 #include <iostream>
 #include <thread>
 #define _REENTRANT
 #include "ips4o/ips4o.hpp"
-#ifdef WITH_BLASTDB
 #include "blastdb/blastdb.h"
-#endif
 #include "sequence_file.h"
 #include "masking/masking.h"
 #include "dmnd/dmnd.h"
@@ -112,16 +111,11 @@ pair<Block*, int64_t> SequenceFile::load_twopass(const int64_t max_letters, cons
 	OId database_id = tell_seq();
 	int64_t letters = 0, seqs = 0, id_letters = 0, seqs_processed = 0, filtered_seq_count = 0;
 	vector<int64_t> filtered_pos;
-	Block* block = new Block(alphabet_);
+	Block* block = new Block();
 
 	SeqInfo r = read_seqinfo();
 	size_t offset = r.pos;
 	bool last = false;
-	if (type() == Type::BLAST && sequence_count() != sparse_sequence_count()) {
-		if (filter)
-			throw std::runtime_error("Database filtering is not compatible with a BLAST alias database.");
-		filter = builtin_filter();
-	}
 	const bool use_filter = filter && !filter->empty();
 
 	auto goon = [&]() {
@@ -164,6 +158,8 @@ pair<Block*, int64_t> SequenceFile::load_twopass(const int64_t max_letters, cons
 
 	if (seqs == 0 || filtered_seq_count == 0)
 		return { block, seqs_processed };
+	const bool full_titles = bool(flags & LoadFlags::FULL_TITLES);
+	const bool all_seqids = bool(flags & LoadFlags::ALL_SEQIDS);
 
 	if (flag_any(flags, LoadFlags::SEQS)) {
 		block->seqs_.finish_reserve();
@@ -182,7 +178,7 @@ pair<Block*, int64_t> SequenceFile::load_twopass(const int64_t max_letters, cons
 			const size_t l = block->seqs_.length(i);
 			read_seq_data(block->seqs_.ptr(i), l, offset, seek);
 			if (flag_any(flags, LoadFlags::TITLES))
-				read_id_data(block->block2oid_[i], block->ids_.ptr(i), block->ids_.length(i));
+				read_id_data(block->block2oid_[i], block->ids_.ptr(i), block->ids_.length(i), all_seqids, full_titles);
 			else
 				skip_id_data();
 			if (type_ == Type::DMND)
@@ -209,7 +205,7 @@ std::pair<Block*, int64_t> SequenceFile::load_onepass(const int64_t max_letters,
 	string id;
 	vector<char> qual;
 	int64_t letters = 0, seq_count = 0;
-	Block* block = new Block(alphabet_);
+	Block* block = new Block();
 	const bool load_seqs = flag_any(flags, LoadFlags::SEQS), load_titles = flag_any(flags, LoadFlags::TITLES), preserve_dna = flag_any(flags,LoadFlags::DNA_PRESERVATION);
 	vector<char>* q = flag_any(flags, LoadFlags::QUALITY) ? &qual : nullptr;
 	OId oid = tell_seq();
@@ -275,10 +271,6 @@ Block* SequenceFile::load_seqs(const int64_t max_letters, const BitVector* filte
 
 	if (flag_any(flags, LoadFlags::LAZY_MASKING))
 		block->masked_.resize(block->seqs_.size(), false);
-
-	if (flag_any(flags, LoadFlags::CONVERT_ALPHABET))
-		block->seqs_.convert_all_to_std_alph(config.threads_);
-
 	//block->seqs_.print_stats();
 	return block;
 }
@@ -325,17 +317,19 @@ void SequenceFile::get_seq()
 		read_seq(seq, id);
 		std::map<string, string>::const_iterator mapped_title = seq_titles.find(Util::Seq::seqid(id.c_str()));
 		if (all || seqs.find(n) != seqs.end() || mapped_title != seq_titles.end()) {
-			buf << '>' << (mapped_title != seq_titles.end() ? mapped_title->second : id) << '\n';
 			if (config.reverse) {
+				buf << '>' << (mapped_title != seq_titles.end() ? mapped_title->second : id) << '\n';
 				Sequence(seq).print(buf, value_traits, Sequence::Reversed());
 				buf << '\n';
 			}
 			else if (config.hardmasked) {
+				buf << '>' << (mapped_title != seq_titles.end() ? mapped_title->second : id) << '\n';
 				Sequence(seq).print(buf, value_traits, Sequence::Hardmasked());
 				buf << '\n';
 			}
-			else
-				buf << Sequence(seq) << '\n';
+			else {
+				Util::Seq::format(seq, id.c_str(), nullptr, buf, "fasta", amino_acid_traits, 80);
+			}
 		}
 		out.write(buf.data(), buf.size());
 		letters += seq.size();
@@ -370,16 +364,12 @@ SequenceFile::~SequenceFile()
 }
 
 static bool is_blast_db(const string& path) {
-	if (exists(path + ".pin") || exists(path + ".pal")) {
-#ifdef WITH_BLASTDB
+	if (exists(path + ".pin") || exists(path + ".pal") || ends_with(path, ".pal")) {
 		if (config.multiprocessing)
 			throw std::runtime_error("--multiprocessing is not compatible with BLAST databases.");
 		if (config.target_indexed)
 			throw std::runtime_error("--target-indexed is not compatible with BLAST databases.");
 		return true;
-#else
-		throw std::runtime_error("This executable was not compiled with support for BLAST databases.");
-#endif
 	}
 	return false;
 }
@@ -387,11 +377,7 @@ static bool is_blast_db(const string& path) {
 SequenceFile* SequenceFile::auto_create(const vector<string>& path, Flags flags, Metadata metadata, const ValueTraits& value_traits) {
 	if (path.size() == 1) {
 		if (is_blast_db(path.front()))
-#ifdef WITH_BLASTDB
 			return new BlastDB(path.front(), metadata, flags, value_traits);
-#else
-			return nullptr;
-#endif
 		const string a = auto_append_extension_if_exists(path.front(), DatabaseFile::FILE_EXTENSION);
 		if (DatabaseFile::is_diamond_db(a))
 			return new DatabaseFile(a, metadata, flags, value_traits);
@@ -464,9 +450,9 @@ size_t SequenceFile::total_blocks() const {
 	return (this->letters() + c - 1) / c;
 }
 
-SequenceSet SequenceFile::seqs_by_accession(const std::vector<std::string>::const_iterator begin, const std::vector<std::string>::const_iterator end) const
+SequenceSet SequenceFile::seqs_by_accession(const std::vector<std::string>::const_iterator begin, const std::vector<std::string>::const_iterator end)
 {
-	SequenceSet out(Alphabet::NCBI);
+	SequenceSet out;
 	vector<size_t> oids;
 	oids.reserve(end - begin);
 	for (auto it = begin; it != end; ++it) {
@@ -487,18 +473,15 @@ SequenceSet SequenceFile::seqs_by_accession(const std::vector<std::string>::cons
 			continue;
 		seq_data(oids[i], seq);
 		out.assign(i, seq.begin(), seq.end());
-		out.convert_to_std_alph(i);
 	}
-	out.alphabet() = Alphabet::STD;
 	return out;
 }
 
-std::vector<Letter> SequenceFile::seq_by_accession(const std::string& acc) const
+std::vector<Letter> SequenceFile::seq_by_accession(const std::string& acc)
 {
 	const size_t oid = single_oid(this, acc);
 	vector<Letter> seq;
 	seq_data(oid, seq);
-	alph_ncbi_to_std(seq.begin(), seq.end());
 	return seq;
 }
 
@@ -567,13 +550,12 @@ double SequenceFile::dict_self_aln_score(const size_t dict_id, const size_t ref_
 	return dict_self_aln_score_[b][dict_id];
 }
 
-SequenceFile::SequenceFile(Type type, Alphabet alphabet, Flags flags, FormatFlags format_flags, Metadata metadata, const ValueTraits& value_traits):
+SequenceFile::SequenceFile(Type type, Flags flags, FormatFlags format_flags, Metadata metadata, const ValueTraits& value_traits):
 	flags_(flags),
 	format_flags_(format_flags),
 	value_traits_(value_traits),	
 	metadata_(metadata),
-	type_(type),
-	alphabet_(alphabet)
+	type_(type)
 {
 	if (flag_any(flags_, Flags::OID_TO_ACC_MAPPING))
 		//seqid_file_.reset(new File(Schema{ ::Type::INT64, ::Type::STRING }, "", ::Flags::TEMP)); // | ::Flags::RECORD_ID_COLUMN));
@@ -663,15 +645,15 @@ std::string SequenceFile::dict_title(DictId dict_id, const size_t ref_block) con
 	return dict_title_[b][dict_id];
 }
 
-Loc SequenceFile::dict_len(DictId dict_id, const size_t ref_block) const
+Loc SequenceFile::dict_len(DictId dict_id, const size_t ref_block)
 {
 	const size_t b = dict_block(ref_block);
 	if (b >= dict_len_.size() || dict_id >= (DictId)dict_len_[b].size())
-		throw std::runtime_error("Dictionary not loaded.");
+		throw runtime_error("Dictionary not loaded.");
 	return dict_len_[b][dict_id];
 }
 
-std::vector<Letter> SequenceFile::dict_seq(DictId dict_id, const size_t ref_block) const
+std::vector<Letter> SequenceFile::dict_seq(DictId dict_id, const size_t ref_block)
 {
 	const size_t b = dict_block(ref_block);
 	if (b >= dict_seq_.size() || dict_id >= (DictId)dict_seq_[b].size())
@@ -680,21 +662,24 @@ std::vector<Letter> SequenceFile::dict_seq(DictId dict_id, const size_t ref_bloc
 	return vector<Letter>(s.data(), s.end());
 }
 
-BitVector* SequenceFile::filter_by_taxonomy(const string& include, const string& exclude)
+DbFilter* SequenceFile::filter_by_taxonomy(std::istream& filter, char delimiter, bool exclude)
 {
-	BitVector* v = new BitVector(sequence_count());
-	if (!include.empty() && !exclude.empty())
-		throw runtime_error("Options --taxonlist and --taxon-exclude are mutually exclusive.");
-	const bool e = !exclude.empty();
-	const set<TaxId> taxon_filter_list(Util::String::parse_csv(e ? exclude : include));
+	DbFilter *f = new DbFilter(sequence_count());
+	set<TaxId> taxon_filter_list;
+	string token;
+	while (std::getline(filter, token, delimiter)) {
+		taxon_filter_list.insert(std::stoi(token));
+	}
 	if (taxon_filter_list.empty())
 		throw runtime_error("Option --taxonlist/--taxon-exclude used with empty list.");
 	if (taxon_filter_list.find(1) != taxon_filter_list.end() || taxon_filter_list.find(0) != taxon_filter_list.end())
 		throw runtime_error("Option --taxonlist/--taxon-exclude used with invalid argument (0 or 1).");
 	for (OId i = 0; i < sequence_count(); ++i)
-		if (contained(taxids(i), taxon_filter_list, e, e) ^ e)
-			v->set(i);
-	return v;
+		if (contained(taxids(i), taxon_filter_list, exclude, exclude) ^ exclude) {
+			f->oid_filter.set(i);
+			f->letter_count += seq_length(i);
+		}
+	return f;
 }
 
 void SequenceFile::build_acc_to_oid() {
@@ -723,7 +708,7 @@ void SequenceFile::init_random_access(const size_t query_block, const size_t ref
 		load_dictionary(query_block, ref_blocks);
 }
 
-std::string SequenceFile::seqid(OId oid, bool all) const {
+std::string SequenceFile::seqid(OId oid, bool all, bool full_titles) {
 	throw std::runtime_error("seqid");
 	//if (oid >= acc_.size())
 		//throw std::runtime_error("OId to accession mapping not available.");
@@ -833,8 +818,8 @@ void db_info() {
 	if(db->type() == SequenceFile::Type::DMND)
 		cout << setw(w) << "Diamond build  " << db->program_build_version() << endl;
 	cout << setw(w) << "Sequences  " << db->sequence_count() << endl;
-	if (db->type() == SequenceFile::Type::BLAST && db->sequence_count() != db->sparse_sequence_count())
-		cout << setw(w) << "Sequences (filtered) " << db->sparse_sequence_count() << endl;
+	/*if (db->type() == SequenceFile::Type::BLAST && db->sequence_count() != db->sparse_sequence_count())
+		cout << setw(w) << "Sequences (filtered) " << db->sparse_sequence_count() << endl;*/
 	cout << setw(w) << "Letters  " << db->letters() << endl;
 	db->close();
 	delete db;
@@ -916,10 +901,10 @@ Util::Tsv::File& SequenceFile::seqid_file() {
 	return *seqid_file_;
 }
 
-size_t SequenceFile::letters_filtered(const BitVector& v) const {
+size_t SequenceFile::letters_filtered(const DbFilter& v) {
 	size_t n = 0;
-	for (OId i = 0; i < v.size(); ++i)
-		if (v.get(i))
+	for (OId i = 0; i < v.oid_filter.size(); ++i)
+		if (v.oid_filter.get(i))
 			n += seq_length(i);
 	return n;
 }
@@ -933,9 +918,6 @@ set<TaxId> SequenceFile::rank_taxid(const std::vector<TaxId>& taxid, int rank) {
 
 TaxId SequenceFile::get_parent(TaxId taxid) {
 	throw OperationNotSupported();
-}
-
-void SequenceFile::print_info() const {
 }
 
 int SequenceFile::rank(TaxId taxid) const {
@@ -1054,4 +1036,45 @@ void SequenceFile::init_cache() {
 	const TaxId m = max_taxid();
 	cached_.insert(cached_.end(), m + 1, false);
 	contained_.insert(contained_.end(), m + 1, false);
+}
+
+void SequenceFile::print_info() const {
+	message_stream << "Database: " << config.database << ' ';
+	message_stream << "(type: " << to_string(type()) << ", ";
+	message_stream << "sequences: " << sequence_count() << ", ";
+	message_stream << "letters: " << letters() << ')' << endl;
+}
+
+void SequenceFile::init_taxon_output_fields() {
+	using namespace std::placeholders;
+	auto callback = [](const TabularFormat&, const HspContext& r, Output::Info& info, Rank rank) {
+		set<TaxId> tax_id = info.db->rank_taxid(info.db->taxids(r.subject_oid), rank);
+		tax_id.erase(-1);
+		tax_id.erase(0);
+		tax_id.erase(1);
+		if (tax_id.empty())
+			info.out << "N/A";
+		else
+			print_taxon_names(tax_id.begin(), tax_id.end(), *info.db, info.out);
+		};
+	auto star = [](const TabularFormat&, Output::Info& info) {
+		info.out << '*';
+		};
+	for (int i = 1; i < Rank::count; ++i) {
+		const FieldId next = FieldId((int)TabularFormat::field_def.rbegin()->first + 1);
+		OutputField f;
+		f.description = "Unique subject ";
+		f.description += Rank::names[i];
+		f.description += "(s), separated by a ';'";
+		f.flags = Output::Flags::IS_ARRAY | Output::Flags::NO_REALIGN;
+		f.hsp_values = HspValues::NONE;
+		f.id = next;
+		f.key = "s";
+		f.key += Rank::names[i];
+		std::replace(f.key.begin(), f.key.end(), ' ', '_');
+		if (!TabularFormat::field_def.emplace(next, f).second)
+			throw runtime_error("Duplicate taxonomic rank.");
+		TabularFormat::field_callbacks[next].match = std::bind(callback, _1, _2, _3, Rank(i));
+		TabularFormat::field_callbacks[next].query_intro = star;
+	}
 }

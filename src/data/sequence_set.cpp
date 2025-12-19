@@ -38,8 +38,7 @@ using std::vector;
 using std::pair;
 using std::string;
 
-SequenceSet::SequenceSet(Alphabet alphabet) :
-	alphabet_(alphabet)
+SequenceSet::SequenceSet()
 { }
 
 void SequenceSet::print_stats() const
@@ -112,34 +111,6 @@ size_t SequenceSet::avg_len() const
 
 SequenceSet::~SequenceSet()
 { }
-
-void SequenceSet::convert_to_std_alph(size_t id)
-{
-	if (alphabet_ == Alphabet::STD)
-		return;
-	Letter* ptr = this->ptr(id);
-	const size_t len = length(id);
-	alph_ncbi_to_std(ptr, ptr + len);
-}
-
-void SequenceSet::convert_all_to_std_alph(size_t threads)
-{
-	if (alphabet_ == Alphabet::STD)
-		return;
-	std::atomic_size_t next(0);
-	auto worker = [this, &next] {
-		const size_t n = this->size();
-		size_t i;
-		while ((i = next++) < n)
-			this->convert_to_std_alph(i);
-	};
-	vector<std::thread> t;
-	for (size_t i = 0; i < threads; ++i)
-		t.emplace_back(worker);
-	for (auto& i : t)
-		i.join();
-	alphabet_ = Alphabet::STD;
-}
 
 size_t max_id_len(const StringSet& ids)
 {

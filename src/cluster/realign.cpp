@@ -45,9 +45,9 @@ void realign() {
 	unique_ptr<OutputFormat> output_format(get_output_format());
 	if (output_format->code != OutputFormat::blast_tab)
 		throw runtime_error("The realign workflow only supports tabular output format.");
-	for (int64_t i : dynamic_cast<TabularFormat*>(output_format.get())->fields) {
-		if (i == 6 || i == 17 || i == 18 || (i >= 30 && i <= 38) || i == 48 || i == 54 || i == 55 || i == 56 || i == 58 || i == 59 || i == 60)
-			throw std::runtime_error("Unsupported output field for the realign workflow: " + TabularFormat::field_def.at(i).key);
+	for (FieldId i : dynamic_cast<TabularFormat*>(output_format.get())->fields) {
+		if(bool(TabularFormat::field_def.at(i).flags & Output::Flags::NO_REALIGN))
+			throw runtime_error("Unsupported output field for the realign workflow: " + TabularFormat::field_def.at(i).key);
 	}
 
 	TaskTimer timer("Opening the output file");

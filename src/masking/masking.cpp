@@ -39,6 +39,8 @@ using std::atomic_size_t;
 const EMap<MaskingAlgo> EnumTraits<MaskingAlgo>::to_string{ {MaskingAlgo::NONE, "None"}, {MaskingAlgo::SEG, "SEG"}, {MaskingAlgo::TANTAN, "tantan"} };
 const SEMap<MaskingAlgo> EnumTraits<MaskingAlgo>::from_string{
 	{ "0", MaskingAlgo::NONE },
+	{ "none", MaskingAlgo::NONE },
+	{ "seg", MaskingAlgo::SEG },
 	{ "tantan", MaskingAlgo::TANTAN }
 };
 const SEMap<MaskingMode> EnumTraits<MaskingMode>::from_string{
@@ -179,9 +181,15 @@ size_t Masking::operator()(Letter *seq, size_t len, MaskingAlgo algo, const size
 		if (seg_locs) {
 			BlastSeqLoc* l = seg_locs;
 			do {
-				for (signed i = l->ssr->left; i <= l->ssr->right; i++) {
-					nMasked++;
-					seq[i] = value_traits.mask_char;
+				if (table) {
+					table->add(block_id, l->ssr->left, l->ssr->right + 1, seq);
+					n += l->ssr->right - l->ssr->left + 1;
+				}
+				else {
+					for (signed i = l->ssr->left; i <= l->ssr->right; i++) {
+						nMasked++;
+						seq[i] = value_traits.mask_char;
+					}
 				}
 			} while ((l = l->next) != 0);
 			BlastSeqLocFree(seg_locs);
@@ -218,7 +226,6 @@ void mask_worker(atomic<BlockId> *next, SequenceSet *seqs, const Masking *maskin
 	BlockId i;
 	size_t n = 0;
 	while ((i = next->fetch_add(1, std::memory_order_relaxed)) < seqs->size()) {
-		seqs->convert_to_std_alph(i);
 		if (hard_mask)
 			n += masking->operator()(seqs->ptr(i), seqs->length(i), algo, i, table);
 		else
@@ -240,7 +247,5 @@ size_t mask_seqs(SequenceSet &seqs, const Masking &masking, bool hard_mask, cons
 		threads.emplace_back(mask_worker, &next, &seqs, &masking, hard_mask, algo, table, &count);
 	for (auto &t : threads)
 		t.join();
-	seqs.alphabet() = Alphabet::STD;
 	return count;
 }
-

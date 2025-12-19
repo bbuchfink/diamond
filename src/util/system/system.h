@@ -62,7 +62,8 @@ void unmap_file(char* ptr, size_t size, int fd);
 size_t l3_cache_size();
 void mkdir(const std::string& dir);
 void rmdir(const std::string& dir);
-std::string containing_directory_absolute(const std::string& file_path);
+std::pair<std::string, std::string> absolute_path(const std::string& file_path);
+bool is_absolute_path(const std::string& path);
 
 #ifdef _MSC_VER
 #define POPEN _popen

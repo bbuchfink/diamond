@@ -29,15 +29,21 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // SPDX-License-Identifier: BSD-3-Clause
 
 #pragma once
-#include "../output.h"
-#include "daa_file.h"
-#include "data/sequence_file.h"
+#include <string>
+#include <vector>
+#include <map>
+#include "util/expected.h"
+#include "basic/value.h"
 
-void init_daa(OutputFile& f);
-size_t write_daa_query_record(TextBuffer& buf, const char* query_name, const Sequence& query);
-void finish_daa_query_record(TextBuffer& buf, size_t seek_pos);
-void write_daa_record(TextBuffer& buf, const IntermediateRecord& r);
-void write_daa_record(TextBuffer& buf, const Hsp& match, uint32_t subject_id);
-void finish_daa(OutputFile& f, SequenceFile& db);
-void finish_daa(OutputFile& f, DAAFile& daa_in);
-void finish_daa(OutputFile& f, DAAFile& daa_in, const StringSet& seq_ids, const std::vector<uint32_t>& seq_lens, int64_t query_count);
+struct Pal {
+	int volume(OId oid) const noexcept;
+	std::vector<std::string> volumes;
+	std::map<std::string, std::string> metadata;
+	std::vector<OId> oid_index;
+	OId sequence_count;
+	uint64_t letters;
+	int version;
+	[[nodiscard]] std::expected<Pal, Diamond::Error> static open(const std::string& path);
+private:
+	std::expected<std::vector<std::string>::iterator, Diamond::Error> recurse(const std::string& path, std::vector<std::string>::iterator volume_it);
+};

@@ -109,10 +109,6 @@ void extend(SequenceFile& db, TempFile& merged_query_list, BitVector& ranking_db
 		timer.finish();
 		log_stream << "Masked letters: " << n << endl;
 	}
-	else {
-		timer.go("Converting alphabet");
-		cfg.target->seqs().convert_all_to_std_alph(config.threads_);
-	}
 
 	timer.go("Computing alignments");
 	OutputWriter writer{ &master_out };
@@ -188,6 +184,8 @@ void extend(Search::Config& cfg, Consumer& out) {
 	auto flags = SequenceFile::LoadFlags::SEQS;
 	if (!flag_any(cfg.db->format_flags(), SequenceFile::FormatFlags::TITLES_LAZY))
 		flags |= SequenceFile::LoadFlags::TITLES;
+	if (bool(cfg.output_format->flags & Output::Flags::FULL_TITLES))
+		flags |= SequenceFile::LoadFlags::FULL_TITLES;
 	cfg.target.reset(cfg.db->load_seqs(INT64_MAX, &filter, flags));
 	TargetMap db2block_id;
 	const BlockId db_count = cfg.target->seqs().size();
@@ -203,11 +201,6 @@ void extend(Search::Config& cfg, Consumer& out) {
 		n = mask_seqs(cfg.target->seqs(), Masking::get(), true, cfg.target_masking);
 		timer.finish();
 		log_stream << "Masked letters: " << n << endl;
-	}
-	else {
-		timer.go("Converting alphabet");
-		cfg.target->seqs().convert_all_to_std_alph(config.threads_);
-		timer.finish();
 	}
 
 	if (cfg.iterated()) {

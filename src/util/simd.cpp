@@ -30,11 +30,13 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <vector>
 #include "simd.h"
-#include "util.h"
+#include "util/string/string.h"
 
 #ifdef HAVE_GETAUXVAL
 #include <sys/auxv.h>
 #endif
+
+using std::string;
 
 #ifdef _WIN32
 #define cpuid(info,x)    __cpuidex(info,x,0)
@@ -132,9 +134,9 @@ Arch arch() {
 	return a == Arch::None ? (a = init_arch()) : a;
 }
 
-std::string features() {
+string features() {
 	init_arch();
-	std::vector<std::string> r;
+	std::vector<string> r;
 	if (flags & NEON)
 		r.push_back("neon");
 	if (flags & SSSE3)
@@ -145,7 +147,7 @@ std::string features() {
 		r.push_back("sse4.1");
 	if (flags & AVX2)
 		r.push_back("avx2");
-	return r.empty() ? "None" : join(" ", r);
+	return r.empty() ? "None" : join(" ", r.begin(), r.end());
 }
 
 }

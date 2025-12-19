@@ -1,5 +1,5 @@
 /****
-Copyright © 2013-2025 Benjamin J. Buchfink <buchfink@gmail.com>
+Copyright Â© 2013-2025 Benjamin J. Buchfink <buchfink@gmail.com>
 
 Redistribution and use in source and binary forms, with or without modification,
 are permitted provided that the following conditions are met:
@@ -29,6 +29,8 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // SPDX-License-Identifier: BSD-3-Clause
 
 #pragma once
+#include <functional>
+#include <map>
 #include "basic/match.h"
 #include "dp/flags.h"
 #include "def.h"
@@ -51,6 +53,66 @@ struct Info {
 };
 
 }
+
+enum class FieldId : unsigned {
+	QSeqId = 0,
+	QLen = 4,
+	SSeqId = 5,
+	SAllSeqId = 6,
+	SLen = 12,
+	QStart = 13,
+	QEnd = 14,
+	SStart = 15,
+	SEnd = 16,
+	QSeq = 17,
+	SSeq = 18,
+	EValue = 19,
+	BitScore = 20,
+	Score = 21,
+	Length = 22,
+	PIdent = 23,
+	NIdent = 24,
+	Mismatch = 25,
+	Positive = 26,
+	GapOpen = 27,
+	Gaps = 28,
+	PPos = 29,
+	QFrame = 31,
+	BTop = 33,
+	STaxIds = 34,
+	SSciNames = 35,
+	SSKingdoms = 38,
+	STitle = 39,
+	SAllTitles = 40,
+	SStrand = 41,
+	QCovHsp = 43,
+	QTitle = 45,
+	FullSSeq = 48,
+	QQual = 49,
+	QNum = 50,
+	SNum = 51,
+	SCovHsp = 52,
+	FullQQual = 53,
+	FullQSeq = 54,
+	QSeqGapped = 55,
+	SSeqGapped = 56,
+	QStrand = 57,
+	Cigar = 58,
+	SKingdoms = 59,
+	SPhylums = 60,
+	FullQSeqMate = 62,
+	QSeqTranslated = 63,
+	HspNum = 66,
+	NormalizedBitscore = 67,
+	NORMALIZED_NIDENT = 68,
+	ApproxPIdent = 71,
+	CorrectedBitScore = 72,
+	NegEValue = 73,
+	Reserved1 = 74,
+	Reserved2 = 75,
+	SLineages = 76,
+	COUNT = 77
+};
 
 struct OutputFormat
 {
@@ -114,32 +176,44 @@ struct DAAFormat : public OutputFormat
 	}
 };
 
+enum class FieldId : unsigned;
+
 struct OutputField {
-	const std::string key, clust_key, description;
-	const HspValues hsp_values;
-	const Output::Flags flags;
+	FieldId id;
+	std::string key, clust_key, description;
+	HspValues hsp_values;
+	Output::Flags flags;
 };
 
 enum class Header { NONE, SIMPLE, VERBOSE };
 
+struct TabularFormat;
+
+struct FieldCallbacks {
+	std::function<void(const TabularFormat&, const HspContext&, Output::Info&)> match;
+	std::function<void(const TabularFormat&, Output::Info&)> query_intro;
+};
+
 struct TabularFormat : public OutputFormat
 {
 	TabularFormat(bool json = false);
-    static const std::vector<OutputField> field_def;
-    virtual void print_header(Consumer &f, int mode, const char *matrix, int gap_open, int gap_extend, double evalue, const char *first_query_name, unsigned first_query_len) const override;
-    virtual void print_footer(Consumer &f) const override;
-    virtual void print_query_intro(Output::Info& info) const override;
-    virtual void print_match(const HspContext& r, Output::Info& info) override;
-    virtual ~TabularFormat()
-    { }
-    virtual OutputFormat* clone() const override
-    {
-        return new TabularFormat(*this);
-    }
-    static Header header_format(unsigned workflow);
-    void output_header(Consumer& f, bool cluster) const;
-    std::vector<int64_t> fields;
-    bool is_json;
+	static std::map<FieldId, OutputField> field_def;
+	static std::map<FieldId, FieldCallbacks> field_callbacks;
+	virtual void print_header(Consumer& f, int mode, const char* matrix, int gap_open, int gap_extend, double evalue, const char* first_query_name, unsigned first_query_len) const override;
+	virtual void print_footer(Consumer& f) const override;
+	virtual void print_query_intro(Output::Info& info) const override;
+	virtual void print_match(const HspContext& r, Output::Info& info) override;
+	virtual ~TabularFormat()
+	{
+	}
+	virtual OutputFormat* clone() const override
+	{
+		return new TabularFormat(*this);
+	}
+	static Header header_format(unsigned workflow);
+	void output_header(Consumer& f, bool cluster) const;
+	std::vector<FieldId> fields;
+	bool is_json;
 };
 
 
@@ -177,10 +251,8 @@ struct SamFormat : public OutputFormat
 struct XMLFormat : public OutputFormat
 {
 	XMLFormat():
-		OutputFormat(blast_xml, HspValues::TRANSCRIPT, Output::Flags::FULL_TITLES | Output::Flags::SSEQID | Output::Flags::DEFAULT_REPORT_UNALIGNED)
-	{
-		config.salltitles = true;
-	} 
+		OutputFormat(blast_xml, HspValues::TRANSCRIPT, Output::Flags::FULL_TITLES | Output::Flags::SSEQID | Output::Flags::DEFAULT_REPORT_UNALIGNED | Output::Flags::ALL_SEQIDS)
+	{} 
 	virtual void print_match(const HspContext& r, Output::Info& info) override;
 	virtual void print_header(Consumer &f, int mode, const char *matrix, int gap_open, int gap_extend, double evalue, const char *first_query_name, unsigned first_query_len) const override;
 	virtual void print_query_intro(Output::Info& info) const override;
@@ -197,10 +269,8 @@ struct XMLFormat : public OutputFormat
 struct PairwiseFormat : public OutputFormat
 {
 	PairwiseFormat() :
-		OutputFormat(blast_pairwise, HspValues::TRANSCRIPT, Output::Flags::FULL_TITLES | Output::Flags::SSEQID | Output::Flags::DEFAULT_REPORT_UNALIGNED)
-	{
-		config.salltitles = true;
-	}
+		OutputFormat(blast_pairwise, HspValues::TRANSCRIPT, Output::Flags::FULL_TITLES | Output::Flags::SSEQID | Output::Flags::DEFAULT_REPORT_UNALIGNED | Output::Flags::ALL_SEQIDS)
+	{}
 	virtual void print_match(const HspContext& r, Output::Info& info) override;
 	virtual void print_header(Consumer &f, int mode, const char *matrix, int gap_open, int gap_extend, double evalue, const char *first_query_name, unsigned first_query_len) const override;
 	virtual void print_query_intro(Output::Info& info) const override;

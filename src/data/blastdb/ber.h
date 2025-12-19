@@ -29,51 +29,58 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // SPDX-License-Identifier: BSD-3-Clause
 
 #pragma once
-#include <cstdint>
-#include <string>
-#include <vector>
-#include <stdexcept>
 #include "util/io/mmap.h"
-#include "basic/value.h"
 
-// ---- replace your PinIndex with this ----
-struct PinIndex {
-    uint32_t version = 0;            // 4 or 5
-    uint32_t dbtype = 0;            // 0: DNA, 1: Protein
-    std::string_view title;
-    std::string_view timestamp;
-    uint32_t nseq = 0;
+using Byte = std::uint8_t;
+using ByteView = MappedFile::View;
 
-    uint64_t residue_count = 0;
-    uint32_t max_seq_len = 0;
-
-    std::vector<uint64_t> hdr_offsets;
-};
-
-struct Phr {
-
-    Phr(const std::string& phr, const std::string& pin);
-
-    bool parse_record(OId i,
-        std::vector<std::pair<const uint8_t*, size_t>>& titles,
-        std::vector<std::string>& ids,
-        std::vector<uint64_t>& taxids);
-
-    size_t size() const {
-        return idx_.nseq;
+inline std::uint32_t ReadBE32(const ByteView& buffer, std::size_t& offset)
+{
+    if (offset + 4 > buffer.size()) {
+        throw std::runtime_error("Unexpected end of file while reading 32-bit value");
     }
 
-    size_t len(OId i) const {
-        if (i + 1 >= (OId)idx_.hdr_offsets.size())
-            throw std::out_of_range("Phr::len");
-        return (size_t)(idx_.hdr_offsets[i + 1] - idx_.hdr_offsets[i]);
-	}
+    std::uint32_t value = 0;
+    for (int i = 0; i < 4; ++i) {
+        value = (value << 8) | buffer[offset + i];
+    }
+    offset += 4;
+    return value;
+}
 
-    ~Phr();
+inline static std::uint64_t ReadLE64(const ByteView& buffer, std::size_t& offset)
+{
+    if (offset + 8 > buffer.size()) {
+        throw std::runtime_error("Unexpected end of file while reading 64-bit value");
+    }
 
-private:
+    std::uint64_t value = 0;
+    for (int i = 7; i >= 0; --i) {
+        value = (value << 8) | static_cast<std::uint64_t>(buffer[offset + i]);
+    }
+    offset += 8;
+    return value;
+}
 
-    PinIndex idx_;
-    MappedFile phr_;
+inline int64_t decode_integer(const std::vector<std::uint8_t>& data) {
+    if (data.size() > sizeof(int64_t)) {
+        return {};
+    }
+    int64_t value = (data[0] & 0x80) ? -1 : 0;
+    for (uint8_t byte : data) {
+        value = (value << 8) | byte;
+    }
+    return value;
+}
 
-};
+inline std::string ReadPascalString(const ByteView& buffer, std::size_t& offset)
+{
+    const std::uint32_t length = ReadBE32(buffer, offset);
+    if (offset + length > buffer.size()) {
+        throw std::runtime_error("String length exceeds file size");
+    }
+
+    std::string result(reinterpret_cast<const char*>(buffer.data() + offset), length);
+    offset += length;
+    return result;
+}

@@ -50,21 +50,15 @@ using std::string;
 using std::runtime_error;
 using std::numeric_limits;
 
-Block::Block(Alphabet alphabet):
-	seqs_(alphabet),
-	source_seqs_(Alphabet::STD),
-	unmasked_seqs_(alphabet),
+Block::Block():
+	source_seqs_(),
+	unmasked_seqs_(),
 	soft_masked_(false)
 {
 }
 
 bool Block::empty() const {
 	return seqs_.size() == 0;
-}
-
-void Block::convert_to_std_alph(size_t block_id)
-{
-	throw std::runtime_error("");
 }
 
 unsigned Block::source_len(unsigned block_id) const
@@ -148,15 +142,15 @@ DictId Block::dict_id(size_t block, BlockId block_id, SequenceFile& db, const Ou
 	const OId oid = block_id2oid(block_id);
 	if (has_ids()) {
 		const char* title = ids()[block_id];
-		if (config.salltitles)
+		if (bool(format.flags & Output::Flags::FULL_TITLES))
 			t = title;
-		else if (config.sallseqid)
+		else if (bool(format.flags & Output::Flags::ALL_SEQIDS))
 			t = Util::Seq::all_seqids(title);
 		else
 			t = Util::Seq::seqid(title);
 	}
 	else if (flag_any(format.flags, Output::Flags::SSEQID))
-		t = db.seqid(oid, config.sallseqid);
+		t = db.seqid(oid, bool(format.flags & Output::Flags::ALL_SEQIDS), true);
 	const Letter* seq = unmasked_seqs().empty() ? nullptr : unmasked_seqs()[block_id].data();
 	double self_aln_score = 0.0;
 	if (flag_any(db.flags(), SequenceFile::Flags::SELF_ALN_SCORES)) {
@@ -199,7 +193,6 @@ void Block::compute_self_aln() {
 		const size_t n = this->seqs_.size();
 		size_t i;
 		while ((i = next++) < n) {
-			this->seqs().convert_to_std_alph(i);
 			this->self_aln_score_[i] = score_matrix.bitscore(self_score(this->seqs_[i]));
 		}
 	};
@@ -208,7 +201,6 @@ void Block::compute_self_aln() {
 		t.emplace_back(worker);
 	for (auto& i : t)
 		i.join();
-	this->seqs().alphabet() = Alphabet::STD;
 }
 
 double Block::self_aln_score(const int64_t block_id) const {

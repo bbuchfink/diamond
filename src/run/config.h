@@ -28,6 +28,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "contrib/dna/build_score.h"
 #endif
 
+struct DbFilter;
 struct SequenceFile;
 struct Consumer;
 struct TextInputFile;
@@ -118,7 +119,7 @@ struct Config {
 	std::shared_ptr<SequenceFile>              db;
 	std::shared_ptr<SequenceFile>              query_file;
 	std::shared_ptr<Consumer>                  out;
-	std::shared_ptr<BitVector>                 db_filter;
+	std::shared_ptr<DbFilter>                  db_filter;
 
 	std::shared_ptr<Block>                     query, target;
 	std::unique_ptr<std::vector<bool>>         query_skip;

@@ -76,7 +76,7 @@ static void align_centroid(CentroidId centroid, ReorderQueue<TextBuffer*, Output
 	}
 
 	const HauserCorrection cbs(centroid_seq);
-	const string centroid_seqid = cfg.lazy_titles ? cfg.db.seqid(centroid_oid) : cfg.centroid_block->ids()[centroid_id];
+	const string centroid_seqid = cfg.lazy_titles ? cfg.db.seqid(centroid_oid, false, false) : cfg.centroid_block->ids()[centroid_id];
 	DP::Params p{ centroid_seq, centroid_seqid.c_str(), Frame(0), centroid_seq.length(), config.comp_based_stats == 1 ? cbs.int8.data() : nullptr, DP::Flags::FULL_MATRIX, false, 0, 0, cfg.hsp_values, stats, &tp };
 	list<Hsp> hsps = DP::BandedSwipe::swipe(dp_targets, p);
 
@@ -89,7 +89,7 @@ static void align_centroid(CentroidId centroid, ReorderQueue<TextBuffer*, Output
 			centroid_seqid.c_str(),
 			cfg.member_block->block_id2oid(hsp.swipe_target),
 			cfg.member_block->seqs().length(hsp.swipe_target),
-			cfg.lazy_titles ? cfg.db.seqid(cfg.member_block->block_id2oid(hsp.swipe_target)).c_str() : cfg.member_block->ids()[hsp.swipe_target],
+			cfg.lazy_titles ? cfg.db.seqid(cfg.member_block->block_id2oid(hsp.swipe_target), false, false).c_str() : cfg.member_block->ids()[hsp.swipe_target],
 			0,
 			0,
 			Sequence()), *buf);
@@ -123,7 +123,7 @@ void realign(const FlatArray<OId>& clusters, const vector<OId>& centroids, Seque
 	TaskTimer timer;
 	Cfg cfg{ hsp_values, flag_any(db.format_flags(), SequenceFile::FormatFlags::TITLES_LAZY), clusters, centroids, db };
 
-	SequenceFile::LoadFlags flags = SequenceFile::LoadFlags::SEQS | SequenceFile::LoadFlags::CONVERT_ALPHABET;
+	SequenceFile::LoadFlags flags = SequenceFile::LoadFlags::SEQS;
 	if (!cfg.lazy_titles)
 		flags |= SequenceFile::LoadFlags::TITLES;
 

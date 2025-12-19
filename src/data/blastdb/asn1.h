@@ -29,15 +29,58 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // SPDX-License-Identifier: BSD-3-Clause
 
 #pragma once
-#include "../output.h"
-#include "daa_file.h"
-#include "data/sequence_file.h"
+#include <cstdint>
+#include <stdexcept>
+#include <vector>
 
-void init_daa(OutputFile& f);
-size_t write_daa_query_record(TextBuffer& buf, const char* query_name, const Sequence& query);
-void finish_daa_query_record(TextBuffer& buf, size_t seek_pos);
-void write_daa_record(TextBuffer& buf, const IntermediateRecord& r);
-void write_daa_record(TextBuffer& buf, const Hsp& match, uint32_t subject_id);
-void finish_daa(OutputFile& f, SequenceFile& db);
-void finish_daa(OutputFile& f, DAAFile& daa_in);
-void finish_daa(OutputFile& f, DAAFile& daa_in, const StringSet& seq_ids, const std::vector<uint32_t>& seq_lens, int64_t query_count);
+// High-level classification of ASN.1 tags.
+enum class Class : std::uint8_t {
+    Universal = 0,
+    Application = 1,
+    ContextSpecific = 2,
+    Private = 3,
+};
+
+// Common universal tag numbers for quick identification.
+enum class UniversalTag : std::uint8_t {
+    Eoc = 0,
+    Boolean = 1,
+    Integer = 2,
+    BitString = 3,
+    OctetString = 4,
+    Null = 5,
+    ObjectIdentifier = 6,
+    Utf8String = 12,
+    Sequence = 16,
+    Set = 17,
+    PrintableString = 19,
+    T61String = 20,
+    Ia5String = 22,
+    UtcTime = 23,
+    GeneralizedTime = 24,
+    BmpString = 30,
+};
+
+struct TagInfo {
+    Class tagClass{};
+    bool constructed{};
+    std::uint32_t tagNumber{};
+};
+
+struct Node {
+    TagInfo tag;
+    std::vector<std::uint8_t> value;
+    std::vector<Node> children;
+};
+
+class DecodeError : public std::runtime_error {
+  public:
+    using std::runtime_error::runtime_error;
+};
+
+// Decode the ASN.1 data contained in [data, data + length). The function
+// returns a list of nodes corresponding to the top-level TLVs found in the
+// buffer. Constructed types are recursively decoded and stored in the
+// children vector while primitive types retain their raw value bytes.
+std::vector<Node> decode(const char *data, std::size_t length);
+void print_node(const Node& node, std::ostream& os, int depth = 0);

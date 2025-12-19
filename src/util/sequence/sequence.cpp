@@ -32,19 +32,19 @@ using std::vector;
 using std::array;
 using std::string;
 using std::min;
+using std::runtime_error;
 
 namespace Util { namespace Seq {
 
 const char* id_delimiters = " \a\b\f\n\r\t\v\1";
 const char* FASTA_HEADER_SEP[2] = {"\1", " >"};
 
-void format(Sequence seq, const char *id, const char *qual, TextBuffer &out, const std::string &format, const ValueTraits& value_traits) {
-	constexpr Loc WRAP = 160;
+void format(Sequence seq, const char *id, const char *qual, TextBuffer &out, const std::string &format, const ValueTraits& value_traits, Loc wrap) {
 	const size_t l = seq.length();
 	if(format == "fasta") {
 		out << '>' << id << '\n';
-		for (Loc i = 0; i < seq.length(); i += WRAP) {
-			seq.print(out, i, std::min(i + WRAP, seq.length()), value_traits);
+		for (Loc i = 0; i < seq.length(); i += wrap) {
+			seq.print(out, i, std::min(i + wrap, seq.length()), value_traits);
 			out << '\n';
 		}
 	}
@@ -55,7 +55,7 @@ void format(Sequence seq, const char *id, const char *qual, TextBuffer &out, con
 		out << qual << '\n';
 	}
 	else
-		throw std::runtime_error("Invalid sequence file format");
+		throw runtime_error("Invalid sequence file format");
 }
 
 std::string all_seqids(const char* s)
