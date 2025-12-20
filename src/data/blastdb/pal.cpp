@@ -29,6 +29,7 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // SPDX-License-Identifier: BSD-3-Clause
 
 #include <assert.h>
+#include <algorithm>
 #include <fstream>
 #include <sstream>
 #include <stdexcept>
