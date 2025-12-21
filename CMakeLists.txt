@@ -472,7 +472,7 @@ endif()
 
 include_directories("${CMAKE_SOURCE_DIR}/src/" "${ZLIB_INCLUDE_DIR}" "${CMAKE_SOURCE_DIR}/src/lib")
 find_package(SQLite3)
-target_link_libraries(diamond SQLite::SQLite3)
+target_link_libraries(diamond SQLite::SQLite3 ${CMAKE_DL_LIBS})
 
 if(WITH_ZSTD)
   find_path(${ZSTD_INCLUDE_DIR} NAMES zstd.h PATHS ${ZSTD_INCLUDE_DIR})
