@@ -47,6 +47,8 @@ using std::set;
 using std::tie;
 using std::vector;
 using std::advance;
+using Diamond::Expected;
+using Diamond::Unexpected;
 
 static string trim(const string& text)
 {
@@ -69,10 +71,10 @@ static vector<string> split_whitespace(const std::string& text)
     return parts;
 }
 
-[[nodiscard]] std::expected<vector<string>::iterator, Diamond::Error> Pal::recurse(const string& path, vector<string>::iterator volume_it) {
+[[nodiscard]] Expected<vector<string>::iterator, Diamond::Error> Pal::recurse(const string& path, vector<string>::iterator volume_it) {
 	auto pal = Pal::open(path);
     if(!pal)
-		return std::unexpected(pal.error());
+		return Unexpected(pal.error());
 	volume_it = volumes.insert(volume_it, pal->volumes.begin(), pal->volumes.end());
 	advance(volume_it, pal->volumes.size());
     
@@ -80,7 +82,7 @@ static vector<string> split_whitespace(const std::string& text)
         if (metadata.find(kv.first) != metadata.end()) {
             if(kv.first == "TITLE" || kv.first == "NSEQ" || kv.first == "LENGTH")
 				continue;
-            return std::unexpected(Diamond::Error{ Diamond::ErrorCode::PAL_PARSE_ERROR,
+            return Unexpected(Diamond::Error{ Diamond::ErrorCode::PAL_PARSE_ERROR,
                 "Duplicate key '" + kv.first + "' in nested PAL file: " + path });
         }
         else
@@ -95,7 +97,7 @@ static vector<string> split_whitespace(const std::string& text)
     return volume_it;
 }
 
-[[nodiscard]] std::expected<Pal, Diamond::Error> Pal::open(const string& path) {
+[[nodiscard]] Expected<Pal, Diamond::Error> Pal::open(const string& path) {
 	const set<string> supported_keys = { "TITLE", "MEMB_BIT", "SEQIDLIST", "NSEQ", "LENGTH", "TAXIDLIST" };
     Pal pal;
     string db_dir, file;
@@ -107,7 +109,7 @@ static vector<string> split_whitespace(const std::string& text)
         const string pal_path = ends_with(path, ".pal") ? path : path + ".pal";
         std::ifstream in(pal_path);
         if (!in)
-            return std::unexpected(Diamond::Error{ Diamond::ErrorCode::PAL_OPEN_ERROR, "Unable to open PAL file: " + pal_path });
+            return Diamond::Unexpected(Diamond::Error{ Diamond::ErrorCode::PAL_OPEN_ERROR, "Unable to open PAL file: " + pal_path });
         string line;
         size_t line_number = 0;
         while (std::getline(in, line)) {
@@ -124,7 +126,7 @@ static vector<string> split_whitespace(const std::string& text)
 
             const auto key_end = line.find_first_of(" \t");
             if (key_end == string::npos) {
-                return std::unexpected(Diamond::Error{ Diamond::ErrorCode::PAL_PARSE_ERROR,
+                return Unexpected(Diamond::Error{ Diamond::ErrorCode::PAL_PARSE_ERROR,
                     "Line " + std::to_string(line_number) + " is missing a value: " + line });
             }
 
@@ -137,7 +139,7 @@ static vector<string> split_whitespace(const std::string& text)
             if (key == "DBLIST") {
                 const auto volumes = split_whitespace(value);
                 if (volumes.empty()) {
-                    return std::unexpected(Diamond::Error{ Diamond::ErrorCode::PAL_PARSE_ERROR,
+                    return Unexpected(Diamond::Error{ Diamond::ErrorCode::PAL_PARSE_ERROR,
                     "DBLIST on line " + std::to_string(line_number) + " does not list any volumes" });
                 }
                 pal.volumes.insert(pal.volumes.end(), volumes.begin(), volumes.end());
@@ -148,12 +150,12 @@ static vector<string> split_whitespace(const std::string& text)
             }
 
 			if (supported_keys.find(key) == supported_keys.end())
-                return std::unexpected(Diamond::Error{ Diamond::ErrorCode::BLASTDB_UNSUPPORTED_FEATURE,
+                return Unexpected(Diamond::Error{ Diamond::ErrorCode::BLASTDB_UNSUPPORTED_FEATURE,
                     "Unsupported PAL key '" + key + "' on line " + std::to_string(line_number) });
 
             const auto duplicate = pal.metadata.find(key);
             if (duplicate != pal.metadata.end()) {
-                return std::unexpected(Diamond::Error{ Diamond::ErrorCode::PAL_PARSE_ERROR,
+                return Unexpected(Diamond::Error{ Diamond::ErrorCode::PAL_PARSE_ERROR,
                     "Duplicate key '" + key + "' on line " + std::to_string(line_number) });
             }
 
@@ -170,7 +172,7 @@ static vector<string> split_whitespace(const std::string& text)
             it = pal.volumes.erase(it);
             auto e = pal.recurse(is_absolute_path(nested) ? nested : db_dir + PATH_SEPARATOR + nested, it);
             if(!e)
-				return std::unexpected(e.error());
+				return Unexpected(e.error());
             it = e.value();
         }
         else {
@@ -184,7 +186,7 @@ static vector<string> split_whitespace(const std::string& text)
     }
     if (pal.metadata.find("SEQIDLIST") != pal.metadata.end()) {
         if(ends_with(pal.metadata["SEQIDLIST"], ".bsl"))
-            return std::unexpected(Diamond::Error{ Diamond::ErrorCode::BLASTDB_UNSUPPORTED_FEATURE,
+            return Unexpected(Diamond::Error{ Diamond::ErrorCode::BLASTDB_UNSUPPORTED_FEATURE,
 				"Binary SEQIDLIST files (.bsl) are not supported, use text file instead: " + pal.metadata["SEQIDLIST"] });
         if (!is_absolute_path(pal.metadata["SEQIDLIST"])) {
             pal.metadata["SEQIDLIST"] = db_dir + PATH_SEPARATOR + pal.metadata["SEQIDLIST"];

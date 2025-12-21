@@ -43,7 +43,7 @@ struct Pal {
 	OId sequence_count;
 	uint64_t letters;
 	int version;
-	[[nodiscard]] std::expected<Pal, Diamond::Error> static open(const std::string& path);
+	[[nodiscard]] Diamond::Expected<Pal, Diamond::Error> static open(const std::string& path);
 private:
-	std::expected<std::vector<std::string>::iterator, Diamond::Error> recurse(const std::string& path, std::vector<std::string>::iterator volume_it);
+	Diamond::Expected<std::vector<std::string>::iterator, Diamond::Error> recurse(const std::string& path, std::vector<std::string>::iterator volume_it);
 };

@@ -34,147 +34,138 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace Diamond {
 
-enum struct ErrorCode {
-	PAL_OPEN_ERROR, PAL_PARSE_ERROR, BLASTDB_UNSUPPORTED_FEATURE
-};
+    enum struct ErrorCode {
+        PAL_OPEN_ERROR, PAL_PARSE_ERROR, BLASTDB_UNSUPPORTED_FEATURE
+    };
 
-struct Error {
-    ErrorCode code;
-    std::string message;
-};
+    struct Error {
+        ErrorCode code;
+        std::string message;
+    };
 
-}
-
-#if defined(HAVE_EXPECTED) and __cplusplus >= 202302L
-#include <expected>
-#else
-
-namespace std
-{
-
-template<typename E>
-class unexpected
-{
-public:
-        explicit unexpected(const E &error): error_(error)
+    template<typename E>
+    class Unexpected
+    {
+    public:
+        explicit Unexpected(const E& error) : error_(error)
         {
         }
 
-        explicit unexpected(E &&error): error_(static_cast<E&&>(error))
+        explicit Unexpected(E&& error) : error_(static_cast<E&&>(error))
         {
         }
 
-        E &error()
+        E& error()
         {
-                return error_;
+            return error_;
         }
 
-        const E &error() const
+        const E& error() const
         {
-                return error_;
+            return error_;
         }
 
-private:
+    private:
         E error_;
-};
+    };
 
-class BadExpectedAccess : public exception
-{
-public:
-        const char *what() const noexcept override
+    class BadExpectedAccess : public std::exception
+    {
+    public:
+        const char* what() const noexcept override
         {
-                return "bad expected access";
+            return "bad expected access";
         }
-};
+    };
 
-template<typename T, typename E>
-class expected
-{
-public:
-        expected(): has_value_(true)
+    template<typename T, typename E>
+    class Expected
+    {
+    public:
+        Expected() : has_value_(true)
         {
-                new (&storage_.value_) T();
-        }
-
-        expected(const T &value): has_value_(true)
-        {
-                new (&storage_.value_) T(value);
+            new (&storage_.value_) T();
         }
 
-        expected(T &&value): has_value_(true)
+        Expected(const T& value) : has_value_(true)
         {
-                new (&storage_.value_) T(static_cast<T&&>(value));
+            new (&storage_.value_) T(value);
         }
 
-        expected(const unexpected<E> &error): has_value_(false)
+        Expected(T&& value) : has_value_(true)
         {
-                new (&storage_.error_) E(error.error());
+            new (&storage_.value_) T(static_cast<T&&>(value));
         }
 
-        expected(unexpected<E> &&error): has_value_(false)
+        Expected(const Unexpected<E>& error) : has_value_(false)
         {
-                new (&storage_.error_) E(static_cast<E&&>(error.error()));
+            new (&storage_.error_) E(error.error());
         }
 
-        expected(const expected &other): has_value_(other.has_value_)
+        Expected(Unexpected<E>&& error) : has_value_(false)
         {
-                if (has_value_)
-                        new (&storage_.value_) T(other.storage_.value_);
-                else
-                        new (&storage_.error_) E(other.storage_.error_);
+            new (&storage_.error_) E(static_cast<E&&>(error.error()));
         }
 
-        expected(expected &&other): has_value_(other.has_value_)
+        Expected(const Expected& other) : has_value_(other.has_value_)
         {
-                if (has_value_)
-                        new (&storage_.value_) T(static_cast<T&&>(other.storage_.value_));
-                else
-                        new (&storage_.error_) E(static_cast<E&&>(other.storage_.error_));
+            if (has_value_)
+                new (&storage_.value_) T(other.storage_.value_);
+            else
+                new (&storage_.error_) E(other.storage_.error_);
         }
 
-        ~expected()
+        Expected(Expected&& other) : has_value_(other.has_value_)
         {
-                destroy();
+            if (has_value_)
+                new (&storage_.value_) T(static_cast<T&&>(other.storage_.value_));
+            else
+                new (&storage_.error_) E(static_cast<E&&>(other.storage_.error_));
         }
 
-        expected &operator=(const expected &other)
+        ~Expected()
         {
-                if (this == &other)
-                        return *this;
-                assign_copy(other);
+            destroy();
+        }
+
+        Expected& operator=(const Expected& other)
+        {
+            if (this == &other)
                 return *this;
+            assign_copy(other);
+            return *this;
         }
 
-        expected &operator=(expected &&other)
+        Expected& operator=(Expected&& other)
         {
-                if (this == &other)
-                        return *this;
-                assign_move(static_cast<expected&&>(other));
+            if (this == &other)
                 return *this;
+            assign_move(static_cast<Expected&&>(other));
+            return *this;
         }
 
         bool has_value() const
         {
-                return has_value_;
+            return has_value_;
         }
 
         explicit operator bool() const
         {
-                return has_value_;
+            return has_value_;
         }
 
-        T &value()
+        T& value()
         {
-                if (!has_value_)
-                        throw BadExpectedAccess();
-                return storage_.value_;
+            if (!has_value_)
+                throw BadExpectedAccess();
+            return storage_.value_;
         }
 
-        const T &value() const
+        const T& value() const
         {
-                if (!has_value_)
-                        throw BadExpectedAccess();
-                return storage_.value_;
+            if (!has_value_)
+                throw BadExpectedAccess();
+            return storage_.value_;
         }
 
         constexpr const T* operator->() const noexcept {
@@ -184,140 +175,138 @@ public:
         constexpr T* operator->() noexcept {
             return &storage_.value_;
         }
-        
-        E &error()
+
+        E& error()
         {
-                if (has_value_)
-                        throw BadExpectedAccess();
-                return storage_.error_;
+            if (has_value_)
+                throw BadExpectedAccess();
+            return storage_.error_;
         }
 
-        const E &error() const
+        const E& error() const
         {
-                if (has_value_)
-                        throw BadExpectedAccess();
-                return storage_.error_;
+            if (has_value_)
+                throw BadExpectedAccess();
+            return storage_.error_;
         }
 
         template<typename U>
-        T value_or(U &&default_value) const
+        T value_or(U&& default_value) const
         {
-                if (has_value_)
-                        return storage_.value_;
-                return T(static_cast<U&&>(default_value));
+            if (has_value_)
+                return storage_.value_;
+            return T(static_cast<U&&>(default_value));
         }
 
-        void swap(expected &other)
+        void swap(Expected& other)
         {
-                if (has_value_ && other.has_value_)
-                {
-                        using std::swap;
-                        swap(storage_.value_, other.storage_.value_);
-                }
-                else if (has_value_ && !other.has_value_)
-                {
-                        T temp(static_cast<T&&>(storage_.value_));
-                        storage_.value_.~T();
-                        new (&storage_.error_) E(static_cast<E&&>(other.storage_.error_));
-                        other.storage_.error_.~E();
-                        new (&other.storage_.value_) T(static_cast<T&&>(temp));
-                        other.has_value_ = true;
-                        has_value_ = false;
-                }
-                else if (!has_value_ && other.has_value_)
-                {
-                        other.swap(*this);
-                }
-                else
-                {
-                        using std::swap;
-                        swap(storage_.error_, other.storage_.error_);
-                }
+            if (has_value_ && other.has_value_)
+            {
+                using std::swap;
+                swap(storage_.value_, other.storage_.value_);
+            }
+            else if (has_value_ && !other.has_value_)
+            {
+                T temp(static_cast<T&&>(storage_.value_));
+                storage_.value_.~T();
+                new (&storage_.error_) E(static_cast<E&&>(other.storage_.error_));
+                other.storage_.error_.~E();
+                new (&other.storage_.value_) T(static_cast<T&&>(temp));
+                other.has_value_ = true;
+                has_value_ = false;
+            }
+            else if (!has_value_ && other.has_value_)
+            {
+                other.swap(*this);
+            }
+            else
+            {
+                using std::swap;
+                swap(storage_.error_, other.storage_.error_);
+            }
         }
 
-private:
+    private:
         struct storage
         {
-                storage()
-                {
-                }
+            storage()
+            {
+            }
 
-                ~storage()
-                {
-                }
+            ~storage()
+            {
+            }
 
-                union
-                {
-                        T value_;
-                        E error_;
-                };
+            union
+            {
+                T value_;
+                E error_;
+            };
         } storage_;
 
         bool has_value_;
 
         void destroy()
         {
-                if (has_value_)
-                        storage_.value_.~T();
-                else
-                        storage_.error_.~E();
+            if (has_value_)
+                storage_.value_.~T();
+            else
+                storage_.error_.~E();
         }
 
-        void assign_copy(const expected &other)
+        void assign_copy(const Expected& other)
         {
-                if (has_value_ && other.has_value_)
-                {
-                        storage_.value_ = other.storage_.value_;
-                }
-                else if (has_value_ && !other.has_value_)
-                {
-                        storage_.value_.~T();
-                        new (&storage_.error_) E(other.storage_.error_);
-                        has_value_ = false;
-                }
-                else if (!has_value_ && other.has_value_)
-                {
-                        storage_.error_.~E();
-                        new (&storage_.value_) T(other.storage_.value_);
-                        has_value_ = true;
-                }
-                else
-                {
-                        storage_.error_ = other.storage_.error_;
-                }
+            if (has_value_ && other.has_value_)
+            {
+                storage_.value_ = other.storage_.value_;
+            }
+            else if (has_value_ && !other.has_value_)
+            {
+                storage_.value_.~T();
+                new (&storage_.error_) E(other.storage_.error_);
+                has_value_ = false;
+            }
+            else if (!has_value_ && other.has_value_)
+            {
+                storage_.error_.~E();
+                new (&storage_.value_) T(other.storage_.value_);
+                has_value_ = true;
+            }
+            else
+            {
+                storage_.error_ = other.storage_.error_;
+            }
         }
 
-        void assign_move(expected &&other)
+        void assign_move(Expected&& other)
         {
-                if (has_value_ && other.has_value_)
-                {
-                        storage_.value_ = static_cast<T&&>(other.storage_.value_);
-                }
-                else if (has_value_ && !other.has_value_)
-                {
-                        storage_.value_.~T();
-                        new (&storage_.error_) E(static_cast<E&&>(other.storage_.error_));
-                        has_value_ = false;
-                }
-                else if (!has_value_ && other.has_value_)
-                {
-                        storage_.error_.~E();
-                        new (&storage_.value_) T(static_cast<T&&>(other.storage_.value_));
-                        has_value_ = true;
-                }
-                else
-                {
-                        storage_.error_ = static_cast<E&&>(other.storage_.error_);
-                }
+            if (has_value_ && other.has_value_)
+            {
+                storage_.value_ = static_cast<T&&>(other.storage_.value_);
+            }
+            else if (has_value_ && !other.has_value_)
+            {
+                storage_.value_.~T();
+                new (&storage_.error_) E(static_cast<E&&>(other.storage_.error_));
+                has_value_ = false;
+            }
+            else if (!has_value_ && other.has_value_)
+            {
+                storage_.error_.~E();
+                new (&storage_.value_) T(static_cast<T&&>(other.storage_.value_));
+                has_value_ = true;
+            }
+            else
+            {
+                storage_.error_ = static_cast<E&&>(other.storage_.error_);
+            }
         }
-};
+    };
 
-template<typename E>
-unexpected<E> make_unexpected(E error)
-{
-        return unexpected<E>(static_cast<E&&>(error));
+    template<typename E>
+    Unexpected<E> make_unexpected(E error)
+    {
+        return Unexpected<E>(static_cast<E&&>(error));
+    }
+
 }
-
-}
-
-#endif

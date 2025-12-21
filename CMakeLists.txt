@@ -163,16 +163,10 @@ endif()
 
 check_symbol_exists(sysinfo "sys/sysinfo.h" HAVE_SYSINFO)
 CHECK_INCLUDE_FILE_CXX("memory_resource" HAVE_MEMORY_RESOURCE)
-CHECK_INCLUDE_FILE_CXX("expected" HAVE_EXPECTED)
 
 if(HAVE_MEMORY_RESOURCE)
   add_definitions(-DHAVE_MEMORY_RESOURCE)
 endif()
-
-if(HAVE_EXPECTED)
-  add_definitions(-DHAVE_EXPECTED)
-endif()
-
 
 if(CMAKE_BUILD_MARCH)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=${CMAKE_BUILD_MARCH}")

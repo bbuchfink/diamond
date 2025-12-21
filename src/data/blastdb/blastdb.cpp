@@ -48,7 +48,7 @@ using std::string;
 using std::runtime_error;
 using std::numeric_limits;
 using std::set;
-using std::expected;
+using Diamond::Expected;
 
 BlastDB::BlastDB(const string& file_name, Metadata metadata, Flags flags, const ValueTraits& value_traits) :
 	SequenceFile(Type::BLAST, flags, FormatFlags::SEEKABLE | FormatFlags::LENGTH_LOOKUP | FormatFlags::DICT_LENGTHS | FormatFlags::DICT_SEQIDS, metadata, value_traits),
