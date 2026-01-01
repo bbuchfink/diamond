@@ -57,3 +57,6 @@ src/extra/
 .unison
 /CMakeSettings.json
 /out/install/x64-Debug/bin/diamond.exe
+/src/test/test.ps1
+/src/test/out
+/src/test/data.dmnd
