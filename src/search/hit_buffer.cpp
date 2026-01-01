@@ -85,6 +85,7 @@ bool HitBuffer::load(size_t max_size) {
 		return false;
 	}
 	size_t size = count_[bins_processed_], current_size;
+	const int begin = bins_processed_;
 	int end = bins_processed_ + 1;
 	if (!config.trace_pt_membuf) {
 		size_t disk_size = tmp_file_[bins_processed_].size();
@@ -98,7 +99,7 @@ bool HitBuffer::load(size_t max_size) {
 		data_size_next_ = size;
 		load_worker_ = new thread(worker, end);
 	}
-	input_range_next_.first = begin(bins_processed_);
+	input_range_next_.first = this->begin(begin);
 	input_range_next_.second = this->end(end - 1);	
 	return true;
 }
