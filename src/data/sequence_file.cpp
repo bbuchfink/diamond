@@ -120,7 +120,7 @@ int SequenceFile::raw_chunk_no() const {
 pair<Block*, int64_t> SequenceFile::load_parallel(const uint64_t max_letters, const BitVector* filter, unordered_map<string, bool>* accs, const Chunk& chunk, bool load_taxids) {
 	assert(chunk.n_seqs == 0);
 	assert(config.threads_ > 0);
-	const size_t letters = config.minichunk;
+	const uint64_t letters = config.minichunk;
 	const int t = std::min(config.load_threads, config.threads_), p = t >= 3 ? t - 2 : 1;
 	const int raw_chunk_start = raw_chunk_no();
 	int64_t seqs = 0;
